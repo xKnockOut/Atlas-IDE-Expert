@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4635] of string = (
+  BaseLines: array[0..4722] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -61,7 +61,8 @@ const
     '        "E2357",',
     '        "E2372",',
     '        "E2375"',
-    '      ]',
+    '      ],',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "language-feature",',
@@ -86,7 +87,8 @@ const
     '      "group": "internal",',
     '      "description": "An lsp-ignore comment suppresses no finding and can be removed.",',
     '      "bad": "// lsp-ignore: empty-except\nX := 1;",',
-    '      "good": "X := 1;"',
+    '      "good": "X := 1;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "unknown-rule-id",',
@@ -97,7 +99,8 @@ const
     '      "description": "An lsp-ignore comment names a rule id that does not exist, so it suppresses nothing. The message suggests the most similar known id (typo); such a comment is not also reported as' +
     ' unused-suppression.",',
     '      "bad": "// lsp-ignore: empty-exept\ntry X; except end;",',
-    '      "good": "// lsp-ignore: empty-except\ntry X; except end;"',
+    '      "good": "// lsp-ignore: empty-except\ntry X; except end;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "unit-too-deep",',
@@ -379,7 +382,8 @@ const
     '      "group": "threads",',
     '      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",',
     '      "bad": "FWorker.Resume;",',
-    '      "good": "FWorker.Start;"',
+    '      "good": "FWorker.Start;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "result-not-set",',
@@ -1240,7 +1244,8 @@ const
     '      "group": "style",',
     '      "description": "Free already checks for nil, so testing Assigned before Free or FreeAndNil is redundant.",',
     '      "bad": "if Assigned(List) then\n  List.Free;",',
-    '      "good": "List.Free;"',
+    '      "good": "List.Free;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "raise-in-finally",',
@@ -1281,7 +1286,8 @@ const
     '          "default": true,',
     '          "description": "Also report a class cast that only precedes Free (CastAndFree)."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "redundant-begin-end",',
@@ -1855,7 +1861,8 @@ const
     '      "description": "Obj.Destroy is called directly as a statement. If Obj is nil, the call crashes; Free checks for nil first and is the usual way to release an object. inherited Destroy and calls o' +
     'f a destructor with arguments are exempt. High confidence. Quick fix: Destroy becomes Free.",',
     '      "bad": "Verbindung.Destroy;",',
-    '      "good": "Verbindung.Free;"',
+    '      "good": "Verbindung.Free;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "managed-type-raw-memory",',
@@ -3013,10 +3020,11 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "The header in the implementation section has different parameters (count, name, type, const/var/out), a different result type, procedure instead of function or a different callin' +
-    'g convention than the declaration in the type (like E2037). With overloads the nearest declaration is compared (parameter count, then types, names and modifiers); if that is not unique, declared-not-i' +
-    'mplemented and implemented-not-declared report both sides instead. A body may omit the parameter list, the result type and the calling convention. Methods inside {$IF} blocks are skipped; with include' +
-    ' files the confidence is medium. Quick fix: align the implementation header with the declaration, or, as the second action, the declaration with the implementation (default values stay in the declarat' +
-    'ion). Off with refactoring.syncSignatures = false only removes the quick fixes.",',
+    'g convention than the declaration in the type or, for a routine of the unit, in the interface section (like E2037). With overloads the nearest declaration is compared (parameter count, then types, nam' +
+    'es and modifiers); if that is not unique, declared-not-implemented and implemented-not-declared report both sides instead. Unit routines are compared only when the name is unique and neither overload,' +
+    ' external nor forward is involved. A body may omit the parameter list, the result type and the calling convention. Methods inside {$IF} blocks are skipped; with include files the confidence is medium.' +
+    ' Quick fix: align the implementation header with the declaration, or, as the second action, the declaration with the implementation (default values stay in the declaration). Off with refactoring.syncS' +
+    'ignatures = false only removes the quick fixes.",',
     '      "bad": "procedure Buchen(const Betrag: Currency; Datum: TDate);\n…\nprocedure TKonto.Buchen(Betrag: Currency; Datum: TDateTime);",',
     '      "good": "procedure Buchen(const Betrag: Currency; Datum: TDate);\n…\nprocedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);",',
     '      "compilerCodes": [',
@@ -3112,7 +3120,8 @@ const
     '      "compilerCodes": [',
     '        "E2014"',
     '      ],',
-    '      "level": "A"',
+    '      "level": "A",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "duplicate-case-label",',
@@ -3177,7 +3186,8 @@ const
     '      "description": "An identifier is declared twice in the same scope (like E2004): a local variable, constant, type or label and a parameter of the routine, two fields, a field and a method or prop' +
     'erty of a type, two types, a constant and a variable of the unit across interface and implementation. Likewise a unit twice in uses or in the uses clauses of interface and implementation at once (opti' +
     'on checkUses). Overloads and bodies of routines, a forward declaration and its type, TList next to TList<T> and declarations in different branches of the same {$IF} do not count. Quick fix: remove the' +
-    ' second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties.",',
+    ' second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties. Default array properties overload' +
+    'ed under the same name are checked by default-property-invalid (#1380).",',
     '      "bad": "procedure TRechnung.Summieren(Betrag: Currency);\nvar\n  Betrag: Currency;\nbegin",',
     '      "good": "procedure TRechnung.Summieren(Betrag: Currency);\nbegin",',
     '      "compilerCodes": [',
@@ -3191,7 +3201,8 @@ const
     '          "description": "Report duplicate entries in uses clauses."',
     '        }',
     '      ],',
-    '      "level": "A"',
+    '      "level": "A",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "conditional-directive-unbalanced",',
@@ -3296,10 +3307,10 @@ const
     '      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the ' +
     'wrong kind, parameters or types (like E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2271); a class property uses an instance memb' +
     'er or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array property uses a field (like E2174, index with a field compile' +
-    's); a field selector goes through a field that is no record (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, fo' +
-    'r ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compa' +
-    'red only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection)' +
-    '.",',
+    's); a field selector goes through a field that is no record or stands behind a class property (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names' +
+    ' are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the cla' +
+    'ss includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/' +
+    'write, completion.accessorSection).",',
     '      "bad": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write SetName;\nend;",',
     '      "good": "TKunde = class\nprivate\n  FName: string;\n  procedure SetName(const Value: string);\npublic\n  property Name: string read FName write SetName;\nend;",',
     '      "compilerCodes": [',
@@ -3666,7 +3677,8 @@ const
     '      "compilerCodes": [',
     '        "W1040"',
     '      ],',
-    '      "level": "B"',
+    '      "level": "B",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "file-encoding-unsupported",',
@@ -3711,9 +3723,10 @@ const
     '      "group": "compiler",',
     '      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the param' +
     'eters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), conversion to or from an ancestor (E2522, chain within the' +
-    ' file) or Assign without var before the first parameter (E2464). Types count as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep t' +
-    'he rule silent, and True, False and OnesComplement are accepted. Comparison operators with a result other than Boolean compile (Spring4D criteria) and stay silent. Quick fixes: nearest operator name, ' +
-    'result like the first parameter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",',
+    ' file) or Assign whose first parameter is not a var parameter of the own type (E2464, E2617). Bodies of an unknown operator or of a class operator in a class match no declaration (E2037). Types count ' +
+    'as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Comparison o' +
+    'perators with a result other than Boolean compile (Spring4D criteria) and stay silent. Quick fixes: nearest operator name, result like the first parameter, var before the first parameter, parameter li' +
+    'st from the template; each in the declaration and the implementation.",',
     '      "bad": "TGeld = record\n  class operator Inc(const A: TGeld): Integer;\nend;",',
     '      "good": "TGeld = record\n  class operator Inc(const A: TGeld): TGeld;\nend;",',
     '      "compilerCodes": [',
@@ -3723,7 +3736,9 @@ const
     '        "E2518",',
     '        "E2519",',
     '        "E2521",',
-    '        "E2522"',
+    '        "E2522",',
+    '        "E2617",',
+    '        "E2037"',
     '      ],',
     '      "level": "A"',
     '    },',
@@ -4066,6 +4081,45 @@ const
     '      "level": "T"',
     '    },',
     '    {',
+    '      "id": "string-conversion",',
+    '      "name": "Conversion between Unicode and ANSI strings",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "compiler",',
+    '      "description": "Implicit and explicit conversions between string, UnicodeString or WideString on one side and AnsiString, RawByteString or UTF8String on the other, like the compiler warnings: im' +
+    'plicit to string (like W1057) or to AnsiString with possible data loss (like W1058) in assignments, inline variables with a type and arguments for value and const parameters of routines without overlo' +
+    'ads; explicit casts string(A) (like W1059) and AnsiString(S) (like W1060); a string constant with characters the ANSI code page does not know assigned to an AnsiString (like W1058 and W1062); a WideCh' +
+    'ar in a set expression of character literals such as C in [''0''..''9''] (like W1050); changing a character of a string directly (S[1] := ''x'', like W1068). Like dcc, W1059, W1060 and W1068 are only report' +
+    'ed after {$WARN EXPLICIT_STRING_CAST ON}, {$WARN EXPLICIT_STRING_CAST_LOSS ON} or {$WARN IMMUTABLE_STRINGS ON}; {$WARN ... OFF} and {$WARNINGS OFF} silence the rule from their position, {$WARN ... ERR' +
+    'OR} reports an error. Only reported when both types are known for sure (variables, fields, properties, function results and typed constants of the built-in string types from System, also via a plain a' +
+    'lias) and their declarations are always compiled with the statement. Silent: concatenations, casts as source, conversions between two ANSI types (AnsiString, RawByteString, UTF8String; dcc converts by' +
+    ' code page), own string types such as type AnsiString(28591), {$H-} and Delphi before 2009. W1062 depends on the ANSI code page of the compiling machine (option ansiCodePage, default 1252; 0 turns thi' +
+    's check off); only characters Windows does not map to a best-fit replacement are reported: Hebrew to Thai, Hangul, kana and CJK, symbols and dingbats U+2600-U+27BF and characters outside the BMP (emoj' +
+    'i). Project options of the .dproj (DCC_IMPLICIT_STRING_CAST = false, true or error and the like) count as with dcc. Quick fixes: convert explicitly (string(A), AnsiString(S)); use CharInSet and add Sy' +
+    'stem.SysUtils to uses.",',
+    '      "bad": "function IstZiffer(const Zeichen: Char): Boolean;\nbegin\n  Result := Zeichen in [''0''..''9''];\nend;",',
+    '      "good": "function IstZiffer(const Zeichen: Char): Boolean;\nbegin\n  Result := CharInSet(Zeichen, [''0''..''9'']);\nend;",',
+    '      "compilerCodes": [',
+    '        "W1050",',
+    '        "W1057",',
+    '        "W1058",',
+    '        "W1059",',
+    '        "W1060",',
+    '        "W1062",',
+    '        "W1068"',
+    '      ],',
+    '      "options": [',
+    '        {',
+    '          "name": "ansiCodePage",',
+    '          "type": "integer",',
+    '          "default": 1252,',
+    '          "description": "ANSI code page of the machine that compiles; characters it surely lacks are reported like W1062 when assigned to an AnsiString. Only 1252 is known; 0 or another value turns t' +
+    'his check off."',
+    '        }',
+    '      ],',
+    '      "level": "T"',
+    '    },',
+    '    {',
     '      "id": "unsafe-code",',
     '      "name": "Unsafe code",',
     '      "category": "code-smell",',
@@ -4265,6 +4319,20 @@ const
     '      ]',
     '    },',
     '    {',
+    '      "id": "unused-uses",',
+    '      "name": "Unused unit in uses",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "style",',
+    '      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same ' +
+    'analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep and entries in inactive {$IFDEF} bran' +
+    'ches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where th' +
+    'e same entries are dimmed, without a symbol index (--no-index) and with syntax errors.",',
+    '      "bad": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils,\n  System.Classes;  // nothing from System.Classes is used\n\nfunction Titel(const AName: string): string;",',
+    '      "good": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils;\n\nfunction Titel(const AName: string): string;",',
+    '      "safeFix": true',
+    '    },',
+    '    {',
     '      "id": "message-method-invalid",',
     '      "name": "Message method declared incorrectly",',
     '      "category": "bug",',
@@ -4337,8 +4405,9 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "The compiler prescribes the calling convention here: constructors and destructors of a class only with register (like E2236), getters and setters of published properties as well ' +
-    '(like E2270), and varargs only with cdecl (like E2277 for external routines, otherwise E2591). Explicit register is fine; class constructors, accessors outside published sections and inherited accesso' +
-    'rs stay silent. Quick fix: remove the convention in the declaration and in the method body of the same file, or set cdecl for varargs.",',
+    '(like E2270), and varargs only with cdecl (like E2277 for external routines, otherwise E2591); without external, varargs is allowed on Win32 not at all (like E2277), which the rule reports only when t' +
+    'he platform is known. Explicit register is fine; class constructors, accessors outside published sections and inherited accessors stay silent. Quick fix: remove the convention in the declaration and i' +
+    'n the method body of the same file, or set cdecl for varargs.",',
     '      "bad": "function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';",',
     '      "good": "function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';",',
     '      "compilerCodes": [',
@@ -4375,9 +4444,9 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "A method directive the compiler rejects: abstract without virtual, dynamic or override (like E2167), a body in the implementation section for an abstract method (like E2136), fin' +
-    'al on a method that is not virtual (like E2351), abstract together with final (like E2371), a class declared abstract sealed (like E2383, E2540) or static on an instance method or a virtual class meth' +
-    'od (like E2376). A body only counts for an abstract method when no non-abstract method of the same name in the same class is compiled with it (overloads, {$IFDEF} branches). Quick fixes: insert virtua' +
-    'l; before abstract, remove the body.",',
+    'al on a method that is not virtual (like E2351), abstract together with final (like E2371), a class declared abstract sealed (like E2540), an abstract method in a sealed class (like E2383, E2540) or a' +
+    ' sealed class that leaves an inherited abstract method open (like E2539, ancestors via the symbol index) or static on an instance method or a virtual class method (like E2376). A body only counts for ' +
+    'an abstract method when no non-abstract method of the same name in the same class is compiled with it (overloads, {$IFDEF} branches). Quick fixes: insert virtual; before abstract, remove the body.",',
     '      "bad": "TForm = class\n  function Flaeche: Double; abstract;\nend;",',
     '      "good": "TForm = class\n  function Flaeche: Double; virtual; abstract;\nend;",',
     '      "compilerCodes": [',
@@ -4387,9 +4456,31 @@ const
     '        "E2371",',
     '        "E2383",',
     '        "E2540",',
+    '        "E2539",',
     '        "E2376"',
     '      ],',
     '      "level": "A"',
+    '    },',
+    '    {',
+    '      "id": "declaration-invalid",',
+    '      "name": "Declaration the compiler rejects",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A declaration Delphi rejects for its form alone: packed before a type other than array, record, object, class, set, file or string (like E2006), a routine returning file (like E2' +
+    '024), a virtual constructor in an object type (like E2062), a property without read, write or index in an interface other than a dispinterface or in an automated section (like E2128), or two construct' +
+    'ors with different names and the same parameter types when the project produces C++ output (DCC_CBuilderOutput or -J switch in the .dproj, like W1029). Property redeclarations without a type stay sile' +
+    'nt. No quick fix: the right correction depends on the intent.",',
+    '      "bad": "type\n  TZahl = packed Integer;\n\nfunction Lesen: file;",',
+    '      "good": "type\n  TZahl = Integer;\n\nprocedure Lesen(var F: file);",',
+    '      "compilerCodes": [',
+    '        "E2006",',
+    '        "E2024",',
+    '        "E2062",',
+    '        "E2128",',
+    '        "W1029"',
+    '      ],',
+    '      "level": "B"',
     '    },',
     '    {',
     '      "id": "unsatisfied-forward",',
@@ -4398,9 +4489,10 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "A routine declared in the interface section or with forward has no body (like E2065), or a forward declaration TFoo = class; or IFoo = interface; is never completed in the same t' +
-    'ype section (like E2086, E2420). Methods are checked by declared-not-implemented. A body fits when it has the same name; with overload the number of parameters must match too. An external declaration ' +
-    'in the implementation section counts as a body. Declarations inside a {$IFDEF} branch are skipped; with include files the rule does not check routines. Quick fix: create an empty body before initializ' +
-    'ation or the final end.",',
+    'ype section (like E2086, E2420). A record containing itself as a field and a class or interface using a type that is only declared forward as ancestor or in its interface list are incomplete types as ' +
+    'well (like E2086). Methods are checked by declared-not-implemented. A body fits when it has the same name; with overload the number of parameters must match too. An external declaration in the impleme' +
+    'ntation section counts as a body. Declarations inside a {$IFDEF} branch are skipped; with include files the rule does not check routines. Quick fix: create an empty body before initialization or the f' +
+    'inal end.",',
     '      "bad": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nend.",',
     '      "good": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\nbegin\n  Result := 0;\nend;\n\nend.",',
     '      "compilerCodes": [',
@@ -4487,9 +4579,10 @@ const
     '      "category": "bug",',
     '      "severity": "error",',
     '      "group": "compiler",',
-    '      "description": "default; behind a property without index parameters (like E2132), a second default property of the same class with the same index types (like E2131; overloading by index type is ' +
-    'allowed), or Obj[I] on a class that has no default property in its whole ancestor chain (like E2149). The type of Obj is resolved by name resolution; unresolvable types, broken ancestor chains and cla' +
-    'sses with a class helper in the unit stay silent. Property redeclarations without a type (property Items; default;) take the index from the ancestor and are not checked.",',
+    '      "description": "default; behind a property without index parameters (like E2132), a second default property of the same class with another name or the same index types (like E2131; overloading b' +
+    'y index type under the same name is allowed), or Obj[I] on a class that has no default property in its whole ancestor chain (like E2149). The type of Obj is resolved by name resolution; unresolvable t' +
+    'ypes, broken ancestor chains and classes with a class helper in the unit stay silent. Property redeclarations without a type (property Items; default;) take the index from the ancestor and are not che' +
+    'cked.",',
     '      "bad": "TListe = class\n  property Name: string read FName; default;\nend;",',
     '      "good": "TListe = class\n  property Items[I: Integer]: string read GetItem; default;\nend;",',
     '      "compilerCodes": [',
@@ -4535,6 +4628,28 @@ const
     '        "H2445",',
     '        "H2456",',
     '        "H2457"',
+    '      ],',
+    '      "level": "B",',
+    '      "safeFix": true',
+    '    },',
+    '    {',
+    '      "id": "compiler-hints",',
+    '      "name": "Compiler hint without its own rule",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "compiler",',
+    '      "description": "Hints and warnings of the compiler that belong to no other rule. published in a class without RTTI: the compiler switches on {$M+} for it (like W1055); reported once per class at' +
+    ' the first member behind the first explicit published, silent with {$M+} or {$TYPEINFO ON} at the declaration, with an ancestor that has RTTI (known descendants of TPersistent, {$M+} at its declaratio' +
+    'n or own published members) and after {$WARN TYPEINFO_IMPLICITLY_ADDED OFF} or {$WARNINGS OFF}; an ancestor whose chain is not known up to TObject or whose file cannot be read keeps the rule silent, a' +
+    's do generic and nested classes. Initialize or Finalize with a variable of a built-in type without managed parts such as Integer, Double or Boolean, also through aliases (like H2243), or with a variab' +
+    'le of a pointer to a managed type such as PString or PVariant, where P^ was probably meant (like H2244); only calls with one plain identifier whose type is known for sure, silent after {$HINTS OFF} an' +
+    'd when Initialize or Finalize can mean an own routine or a member (with, method of a class with an unknown ancestor).",',
+    '      "bad": "type\n  TEinstellung = class\n  published\n    property Wert: Integer read FWert;\n  end;",',
+    '      "good": "type\n  TEinstellung = class(TPersistent)\n  published\n    property Wert: Integer read FWert;\n  end;",',
+    '      "compilerCodes": [',
+    '        "W1055",',
+    '        "H2243",',
+    '        "H2244"',
     '      ],',
     '      "level": "B"',
     '    },',
@@ -5119,9 +5234,9 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function' +
-    ' result (like E2197), a constant for an open array (like E2192) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in r' +
-    'outines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and ' +
-    'write it back for string elements and properties with write.",',
+    ' result (like E2197), a constant for an open array (like E2192) or an expression (like E2036); @ before an arithmetic or logical expression is reported as well (like E2036). Reported only for routines' +
+    ' without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants un' +
+    'less {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",',
     '      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",',
     '      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",',
     '      "compilerCodes": [',
@@ -5408,7 +5523,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2140] of string = (
+  OverlayLines_de: array[0..2166] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -7150,10 +7265,11 @@ const
     '      "id": "signature-mismatch",',
     '      "name": "Implementierung weicht von der Deklaration ab",',
     '      "description": "Der Kopf im implementation-Teil hat andere Parameter (Anzahl, Name, Typ, const/var/out), einen anderen Ergebnistyp, procedure statt function oder eine andere Aufrufkonvention als' +
-    ' die Deklaration im Typ (wie E2037). Bei Überladungen wird die nächstliegende Deklaration verglichen (Parameteranzahl, dann Typen, Namen und Modifizierer); ist sie nicht eindeutig, melden declared-not' +
-    '-implemented und implemented-not-declared beide Seiten. Ein Rumpf darf Parameterliste, Ergebnistyp und Aufrufkonvention weglassen. Methoden in {$IF}-Blöcken werden übergangen; mit Include-Dateien ist ' +
-    'die Konfidenz mittel. Korrektur: Kopf der Implementierung an die Deklaration angleichen oder als zweite Aktion die Deklaration an die Implementierung (Standardwerte bleiben in der Deklaration). refact' +
-    'oring.syncSignatures = false entfernt nur die Korrekturen."',
+    ' die Deklaration im Typ oder, bei einer Routine der Unit, im interface-Teil (wie E2037). Bei Überladungen wird die nächstliegende Deklaration verglichen (Parameteranzahl, dann Typen, Namen und Modifiz' +
+    'ierer); ist sie nicht eindeutig, melden declared-not-implemented und implemented-not-declared beide Seiten. Routinen der Unit vergleicht die Regel nur bei eindeutigem Namen und ohne overload, external' +
+    ' und forward. Ein Rumpf darf Parameterliste, Ergebnistyp und Aufrufkonvention weglassen. Methoden in {$IF}-Blöcken werden übergangen; mit Include-Dateien ist die Konfidenz mittel. Korrektur: Kopf der ' +
+    'Implementierung an die Deklaration angleichen oder als zweite Aktion die Deklaration an die Implementierung (Standardwerte bleiben in der Deklaration). refactoring.syncSignatures = false entfernt nur ' +
+    'die Korrekturen."',
     '    },',
     '    {',
     '      "id": "interface-not-implemented",',
@@ -7228,7 +7344,7 @@ const
     'd eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg. Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface ' +
     'und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$' +
     'IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Metho' +
-    'den und Properties.",',
+    'den und Properties. Unter demselben Namen überladene default-Array-Properties prüft default-property-invalid (#1380).",',
     '      "options": [',
     '        {',
     '          "name": "checkUses",',
@@ -7280,10 +7396,10 @@ const
     '      "description": "Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter h' +
     'aben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen, und keine Überladung passt (wie E2271); eine Klas' +
     'sen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property eine class var oder eine statische Klassenmethode (wie E2356); eine Array-Property nutzt ' +
-    'ein Feld (wie E2174, index mit Feld übersetzt dcc); ein Feldselektor geht über ein Feld, das kein Record ist (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Reco' +
-    'rd fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Kla' +
-    'sse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: ' +
-    'anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection)."',
+    'ein Feld (wie E2174, index mit Feld übersetzt dcc); ein Feldselektor geht über ein Feld, das kein Record ist, oder steht hinter einer Klassen-Property (wie E2459), nennt ein Mitglied, das kein Feld is' +
+    't (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name n' +
+    'ur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein feh' +
+    'lendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection)."',
     '    },',
     '    {',
     '      "id": "assign-to-property-member",',
@@ -7518,9 +7634,10 @@ const
     '      "name": "Operator falsch deklariert",',
     '      "description": "Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fe' +
     'hlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Umwandlung in oder aus einem Vorfahren (E' +
-    '2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und Typargumente übereinstimmen; Aliase des eigenen Ty' +
-    'ps in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Vergleichsoperatoren mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D-Kriterien); sie bleiben still. ' +
-    'Korrekturen: nächstliegender Operatorname, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf."',
+    '2522, Kette innerhalb der Datei) oder Assign, dessen erster Parameter kein var-Parameter des eigenen Typs ist (E2464, E2617). Rümpfe eines unbekannten Operators oder eines class operator in einer Klas' +
+    'se passen zu keiner Deklaration (E2037). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, F' +
+    'alse und OnesComplement gelten als bekannt. Vergleichsoperatoren mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D-Kriterien); sie bleiben still. Korrekturen: nächstliegender Operatorname, Erge' +
+    'bnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf."',
     '    },',
     '    {',
     '      "id": "generic-declaration-invalid",',
@@ -7666,6 +7783,28 @@ const
     'eren (PChar(Pfad) mit Pfad: AnsiString wird Pfad: string), string(…) bzw. AnsiString(…) um das Argument, passenden Zeigertyp verwenden."',
     '    },',
     '    {',
+    '      "id": "string-conversion",',
+    '      "name": "Umwandlung zwischen Unicode- und ANSI-Strings",',
+    '      "description": "Implizite und ausdrückliche Umwandlungen zwischen string, UnicodeString oder WideString auf der einen und AnsiString, RawByteString oder UTF8String auf der anderen Seite, wie die' +
+    ' Compilerwarnungen: implizit in string (wie W1057) bzw. in AnsiString mit möglichem Datenverlust (wie W1058) bei Zuweisungen, Inline-Variablen mit Typ und Argumenten für Wert- und const-Parameter von ' +
+    'Routinen ohne Überladungen; ausdrückliche Umwandlungen string(A) (wie W1059) und AnsiString(S) (wie W1060); eine Stringkonstante mit Zeichen, die die ANSI-Codepage nicht kennt, an einen AnsiString (wi' +
+    'e W1058 und W1062); ein WideChar in einem Mengenausdruck aus Zeichenliteralen wie C in [''0''..''9''] (wie W1050); ein Zeichen eines string direkt ändern (S[1] := ''x'', wie W1068). Wie bei dcc meldet die R' +
+    'egel W1059, W1060 und W1068 nur nach {$WARN EXPLICIT_STRING_CAST ON}, {$WARN EXPLICIT_STRING_CAST_LOSS ON} bzw. {$WARN IMMUTABLE_STRINGS ON}; {$WARN … OFF} und {$WARNINGS OFF} schalten sie ab ihrer St' +
+    'elle ab, {$WARN … ERROR} meldet einen Fehler. Gemeldet wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse und typisierte Konstanten der eingebauten Stri' +
+    'ngtypen aus System, auch über einen einfachen Alias) und ihre Deklarationen immer mit der Anweisung übersetzt werden. Still bleiben: Verkettungen, Umwandlungen als Quelle, Umwandlungen zwischen zwei A' +
+    'NSI-Typen (AnsiString, RawByteString, UTF8String; dcc wandelt nach Codepage um), eigene Stringtypen wie type AnsiString(28591), {$H-} und Delphi vor 2009. W1062 hängt von der ANSI-Codepage des überset' +
+    'zenden Rechners ab (Option ansiCodePage, Vorgabe 1252; 0 schaltet diese Prüfung ab); gemeldet werden nur Zeichen, die Windows auch nicht ersatzweise abbildet: Hebräisch bis Thai, Hangul, Kana und CJK,' +
+    ' Symbole und Dingbats U+2600–U+27BF und Zeichen außerhalb der BMP (Emoji). Projektoptionen der .dproj (DCC_IMPLICIT_STRING_CAST = false, true oder error usw.) gelten wie bei dcc. Korrekturen: ausdrück' +
+    'lich umwandeln (string(A), AnsiString(S)); CharInSet verwenden und System.SysUtils in uses eintragen.",',
+    '      "options": [',
+    '        {',
+    '          "name": "ansiCodePage",',
+    '          "description": "ANSI-Codepage des Rechners, der übersetzt; Zeichen, die ihr sicher fehlen, meldet die Regel wie W1062, wenn sie an einen AnsiString gehen. Bekannt ist nur 1252; 0 oder ein an' +
+    'derer Wert schaltet diese Prüfung ab."',
+    '        }',
+    '      ]',
+    '    },',
+    '    {',
     '      "id": "unsafe-code",',
     '      "name": "Unsicherer Code",',
     '      "description": "Code, den dcc seit Delphi für .NET als unsicher meldet: der @-Operator auf eine Variable, ein Feld oder einen Parameter (wie W1047) und die Umwandlung eines untypisierten Pointer' +
@@ -7781,6 +7920,14 @@ const
     '      ]',
     '    },',
     '    {',
+    '      "id": "unused-uses",',
+    '      "name": "Ungenutzte Unit im uses",',
+    '      "description": "Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil i' +
+    'hres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Eint' +
+    'räge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix' +
+    ' unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."',
+    '    },',
+    '    {',
     '      "id": "message-method-invalid",',
     '      "name": "message-Methode falsch deklariert",',
     '      "description": "Eine message-Prozedur einer Klasse hat nicht genau einen var-Parameter (wie E2138; der Typ wird nicht geprüft, ein untypisierter var-Parameter ist in Ordnung), ihre Nachrichtennu' +
@@ -7809,8 +7956,9 @@ const
     '      "id": "calling-convention-required",',
     '      "name": "Aufrufkonvention passt nicht",',
     '      "description": "Der Compiler schreibt hier die Aufrufkonvention vor: Konstruktoren und Destruktoren einer Klasse nur mit register (wie E2236), Getter und Setter von published-Properties ebenso (' +
-    'wie E2270) und varargs nur mit cdecl (wie E2277 bei external-Routinen, sonst E2591). Ein ausdrückliches register ist in Ordnung; Klassenkonstruktoren, Accessoren außerhalb von published-Abschnitten un' +
-    'd geerbte Accessoren bleiben still. Korrektur: die Konvention in der Deklaration und im Rumpf derselben Datei entfernen bzw. bei varargs cdecl setzen."',
+    'wie E2270) und varargs nur mit cdecl (wie E2277 bei external-Routinen, sonst E2591); ohne external ist varargs unter Win32 gar nicht erlaubt (wie E2277), was die Regel nur bei bekannter Plattform meld' +
+    'et. Ein ausdrückliches register ist in Ordnung; Klassenkonstruktoren, Accessoren außerhalb von published-Abschnitten und geerbte Accessoren bleiben still. Korrektur: die Konvention in der Deklaration ' +
+    'und im Rumpf derselben Datei entfernen bzw. bei varargs cdecl setzen."',
     '    },',
     '    {',
     '      "id": "dispinterface-invalid",',
@@ -7824,17 +7972,27 @@ const
     '      "id": "abstract-declaration-invalid",',
     '      "name": "abstract, final oder static falsch kombiniert",',
     '      "description": "Eine Methodendirektive, die der Compiler ablehnt: abstract ohne virtual, dynamic oder override (wie E2167), ein Rumpf im implementation-Teil zu einer abstrakten Methode (wie E213' +
-    '6), final an einer nicht virtuellen Methode (wie E2351), abstract zusammen mit final (wie E2371), eine Klasse abstract sealed (wie E2383, E2540) oder static an einer Instanzmethode bzw. einer virtuell' +
-    'en Klassenmethode (wie E2376). Ein Rumpf zählt nur dann als Rumpf einer abstrakten Methode, wenn keine gleichnamige nicht abstrakte Methode derselben Klasse mit ihm übersetzt wird (Überladungen, {$IFD' +
-    'EF}-Zweige). Korrekturen: virtual; vor abstract einfügen, Rumpf entfernen."',
+    '6), final an einer nicht virtuellen Methode (wie E2351), abstract zusammen mit final (wie E2371), eine Klasse abstract sealed (wie E2540), eine abstrakte Methode in einer sealed-Klasse (wie E2383, E25' +
+    '40) oder eine sealed-Klasse, die eine geerbte abstrakte Methode offen lässt (wie E2539, Vorfahren über den Symbolindex) oder static an einer Instanzmethode bzw. einer virtuellen Klassenmethode (wie E2' +
+    '376). Ein Rumpf zählt nur dann als Rumpf einer abstrakten Methode, wenn keine gleichnamige nicht abstrakte Methode derselben Klasse mit ihm übersetzt wird (Überladungen, {$IFDEF}-Zweige). Korrekturen:' +
+    ' virtual; vor abstract einfügen, Rumpf entfernen."',
+    '    },',
+    '    {',
+    '      "id": "declaration-invalid",',
+    '      "name": "Deklaration, die der Compiler ablehnt",',
+    '      "description": "Eine Deklaration, die Delphi schon wegen ihrer Form ablehnt: packed vor einem anderen Typ als array, record, object, class, set, file oder string (wie E2006), eine Routine mit Er' +
+    'gebnistyp file (wie E2024), ein virtueller Konstruktor in einem object-Typ (wie E2062), eine Property ohne read, write und index in einem Interface, das kein dispinterface ist, oder in einem automated' +
+    '-Abschnitt (wie E2128) oder zwei Konstruktoren mit verschiedenen Namen und denselben Parametertypen, wenn das Projekt C++-Ausgaben erzeugt (DCC_CBuilderOutput oder Schalter -J in der .dproj, wie W1029' +
+    '). Neudeklarationen von Properties ohne Typ bleiben still. Keine Korrektur: Die richtige hängt von der Absicht ab."',
     '    },',
     '    {',
     '      "id": "unsatisfied-forward",',
     '      "name": "Vorwärtsdeklaration nie aufgelöst",',
     '      "description": "Eine Routine aus dem interface-Teil oder mit forward hat keinen Rumpf (wie E2065), oder eine Vorwärtsdeklaration TFoo = class; bzw. IFoo = interface; wird im selben type-Abschnit' +
-    't nie vollständig deklariert (wie E2086, E2420). Methoden prüft declared-not-implemented. Ein Rumpf passt, wenn er gleich heißt; bei overload muss auch die Zahl der Parameter stimmen. Ein external im ' +
-    'implementation-Teil zählt als Rumpf. Deklarationen in einem {$IFDEF}-Zweig bleiben unbeachtet; mit Include-Dateien prüft die Regel keine Routinen. Korrektur: leeren Rumpf vor initialization bzw. dem a' +
-    'bschließenden end. anlegen."',
+    't nie vollständig deklariert (wie E2086, E2420). Ein Record, der sich selbst als Feld enthält, und eine Klasse oder ein Interface, die einen erst vorwärts deklarierten Typ als Vorfahr oder in der Inte' +
+    'rface-Liste nutzen, verwenden ebenfalls einen unvollständigen Typ (wie E2086). Methoden prüft declared-not-implemented. Ein Rumpf passt, wenn er gleich heißt; bei overload muss auch die Zahl der Param' +
+    'eter stimmen. Ein external im implementation-Teil zählt als Rumpf. Deklarationen in einem {$IFDEF}-Zweig bleiben unbeachtet; mit Include-Dateien prüft die Regel keine Routinen. Korrektur: leeren Rumpf' +
+    ' vor initialization bzw. dem abschließenden end. anlegen."',
     '    },',
     '    {',
     '      "id": "member-hides-ancestor",',
@@ -7872,9 +8030,10 @@ const
     '    {',
     '      "id": "default-property-invalid",',
     '      "name": "default-Property falsch deklariert oder fehlt",',
-    '      "description": "default; hinter einer Property ohne Indexparameter (wie E2132), eine zweite default-Property derselben Klasse mit denselben Indextypen (wie E2131; Überladung über den Indextyp is' +
-    't erlaubt) oder Obj[I] auf einer Klasse, die in ihrer ganzen Vorfahrenkette keine default-Property hat (wie E2149). Den Typ von Obj ermittelt die Namensauflösung; nicht auflösbare Typen, abgebrochene ' +
-    'Vorfahrenketten und Klassen mit einem Class-Helper in der Unit bleiben still. Neudeklarationen ohne Typ (property Items; default;) übernehmen den Index des Vorfahren und werden nicht geprüft."',
+    '      "description": "default; hinter einer Property ohne Indexparameter (wie E2132), eine zweite default-Property derselben Klasse mit anderem Namen oder denselben Indextypen (wie E2131; Überladung ü' +
+    'ber den Indextyp unter demselben Namen ist erlaubt) oder Obj[I] auf einer Klasse, die in ihrer ganzen Vorfahrenkette keine default-Property hat (wie E2149). Den Typ von Obj ermittelt die Namensauflösu' +
+    'ng; nicht auflösbare Typen, abgebrochene Vorfahrenketten und Klassen mit einem Class-Helper in der Unit bleiben still. Neudeklarationen ohne Typ (property Items; default;) übernehmen den Index des Vor' +
+    'fahren und werden nicht geprüft."',
     '    },',
     '    {',
     '      "id": "property-redeclaration-invalid",',
@@ -7891,6 +8050,17 @@ const
     't der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwendet diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457). Geprüft werden A' +
     'ufrufe, Properties mit inline-Getter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst ' +
     '(unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm). Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen."',
+    '    },',
+    '    {',
+    '      "id": "compiler-hints",',
+    '      "name": "Compilerhinweis ohne eigene Regel",',
+    '      "description": "Hinweise und Warnungen des Compilers, die zu keiner anderen Regel gehören. published in einer Klasse ohne RTTI: Der Compiler schaltet für sie {$M+} ein (wie W1055); gemeldet einm' +
+    'al je Klasse am ersten Mitglied hinter dem ersten ausdrücklichen published, still bei {$M+} oder {$TYPEINFO ON} an der Deklaration, bei einem Vorfahren mit RTTI (bekannte Nachfahren von TPersistent, {' +
+    '$M+} an seiner Deklaration oder eigene published-Mitglieder) und nach {$WARN TYPEINFO_IMPLICITLY_ADDED OFF} oder {$WARNINGS OFF}; ein Vorfahr, dessen Kette nicht bis TObject bekannt ist oder dessen Da' +
+    'tei sich nicht lesen lässt, hält die Regel still, ebenso generische und verschachtelte Klassen. Initialize oder Finalize mit einer Variablen eines eingebauten Typs ohne verwaltete Teile wie Integer, D' +
+    'ouble oder Boolean, auch über Aliase (wie H2243), oder mit einer Variablen eines Zeigers auf einen verwalteten Typ wie PString oder PVariant, wo wohl P^ gemeint war (wie H2244); nur Aufrufe mit einem ' +
+    'einfachen Bezeichner, dessen Typ sicher bekannt ist, still nach {$HINTS OFF} und wenn Initialize bzw. Finalize eine eigene Routine oder ein Mitglied meinen kann (with, Methode einer Klasse mit unbekan' +
+    'ntem Vorfahren)."',
     '    },',
     '    {',
     '      "id": "directive-typo",',
@@ -8218,9 +8388,10 @@ const
     '      "id": "invalid-var-argument",',
     '      "name": "Ungültiges Argument für einen var- oder out-Parameter",',
     '      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Propert' +
-    'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder d' +
-    'em Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: ei' +
-    'ne lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben."',
+    'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036); auch @ vor einem arithmetischen oder logischen Ausdruck meldet die Regel (wi' +
+    'e E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und blei' +
+    'ben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreib' +
+    'en."',
     '    },',
     '    {',
     '      "id": "condition-not-boolean",',

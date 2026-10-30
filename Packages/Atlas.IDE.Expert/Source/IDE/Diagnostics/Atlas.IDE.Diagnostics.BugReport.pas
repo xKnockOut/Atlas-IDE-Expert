@@ -34,6 +34,10 @@ type
       const AMessage: TProc<string>); static;
   public
     class procedure Execute(const AServer: TAtlasServerCommandWithArguments; const AMessage: TProc<string>); static;
+    /// <summary>Eingaben des Berichts ohne den Teil des Servers (auch für das Diagnosepaket, #1356).</summary>
+    class function Collect: TAtlasBugReportInput; static;
+    /// <summary>Bericht aus AInput und der Antwort von atlas.server.bugReport (nil = Server fehlt).</summary>
+    class function ReportText(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue): string; static;
     /// <summary>Ordner der Projekte der geöffneten Projektgruppe (für &lt;ws&gt;); auch für „Problem melden“
     /// (#766).</summary>
     class function ProjectRoots: TArray<string>; static;
@@ -100,6 +104,40 @@ begin
     GetEnvironmentVariable('USERDOMAIN')];
 end;
 
+class function TAtlasIdeBugReport.Collect: TAtlasBugReportInput;
+begin
+  Result := Default(TAtlasBugReportInput);
+  Result.PluginVersion := TAtlasPluginVersion.Version;
+  Result.IdeVersion := TAtlasUpdates.IdeVersion;
+  {$IFDEF WIN64}
+  Result.Platform := 'Win64';
+  {$ELSE}
+  Result.Platform := 'Win32';
+  {$ENDIF}
+  Result.Anonymize := TAtlasIdeSettings.Current.BugReportAnonymize;
+  Result.Created := Now;
+  Result.Roots := ProjectRoots;
+  Result.Identity := Identity;
+  Result.Settings := SettingsJson;
+  Result.Experimental := TAtlasIdeSettings.ActiveExperimental;
+  Result.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
+    TAtlasBugReport.LogLines);
+  Result.ServerErrorOutput := TAtlasBugReport.Tail(TAtlasServerExits.StderrFileName(TAtlasRotatingLog.DefaultFolder),
+    TAtlasBugReport.ErrorOutputLines);
+end;
+
+class function TAtlasIdeBugReport.ReportText(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue): string;
+var
+  Input: TAtlasBugReportInput;
+begin
+  Input := AInput;
+  if (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('text') is TJSONString) then
+    Input.ServerReport := TJSONObject(AAnswer).GetValue('text').Value
+  else
+    Input.ServerMissing := TAtlasStrings.Text(TAtlasTextId.BugReportNoServer);
+  Result := TAtlasBugReport.Build(Input);
+end;
+
 class procedure TAtlasIdeBugReport.Execute(const AServer: TAtlasServerCommandWithArguments;
   const AMessage: TProc<string>);
 var
@@ -109,24 +147,7 @@ begin
   if FBusy then
     Exit;
   Message := AMessage;
-  Input := Default(TAtlasBugReportInput);
-  Input.PluginVersion := TAtlasPluginVersion.Version;
-  Input.IdeVersion := TAtlasUpdates.IdeVersion;
-  {$IFDEF WIN64}
-  Input.Platform := 'Win64';
-  {$ELSE}
-  Input.Platform := 'Win32';
-  {$ENDIF}
-  Input.Anonymize := TAtlasIdeSettings.Current.BugReportAnonymize;
-  Input.Created := Now;
-  Input.Roots := ProjectRoots;
-  Input.Identity := Identity;
-  Input.Settings := SettingsJson;
-  Input.Experimental := TAtlasIdeSettings.ActiveExperimental;
-  Input.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
-    TAtlasBugReport.LogLines);
-  Input.ServerErrorOutput := TAtlasBugReport.Tail(TAtlasServerExits.StderrFileName(TAtlasRotatingLog.DefaultFolder),
-    TAtlasBugReport.ErrorOutputLines);
+  Input := Collect;
   if not Assigned(AServer) then
   begin
     Finish(Input, nil, Message);
@@ -155,15 +176,9 @@ class procedure TAtlasIdeBugReport.Finish(const AInput: TAtlasBugReportInput; co
   const AMessage: TProc<string>);
 var
   Report, Target, Note: string;
-  Input: TAtlasBugReportInput;
 begin
-  Input := AInput;
-  if (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('text') is TJSONString) then
-    Input.ServerReport := TJSONObject(AAnswer).GetValue('text').Value
-  else
-    Input.ServerMissing := TAtlasStrings.Text(TAtlasTextId.BugReportNoServer);
-  Report := TAtlasBugReport.Build(Input);
-  if Input.Anonymize then
+  Report := ReportText(AInput, AAnswer);
+  if AInput.Anonymize then
     Note := TAtlasStrings.Text(TAtlasTextId.BugReportAnonymized)
   else
     Note := TAtlasStrings.Text(TAtlasTextId.BugReportPlain);

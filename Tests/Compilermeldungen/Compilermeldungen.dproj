@@ -20,6 +20,7 @@
         <DCC_ExeOutput>.\Output\$(Platform)\Bin</DCC_ExeOutput>
         <SanitizedProjectName>Compilermeldungen</SanitizedProjectName>
         <DCC_UnitSearchPath>Faelle;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_AdditionalSwitches>-JPHNE</DCC_AdditionalSwitches>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
@@ -224,6 +225,7 @@
         <DCCReference Include="Faelle\Cm.E2240.pas"/>
         <DCCReference Include="Faelle\Cm.E2242.pas"/>
         <DCCReference Include="Faelle\Cm.E2243.pas"/>
+        <DCCReference Include="Faelle\Cm.H2243b.pas"/>
         <DCCReference Include="Faelle\Cm.E2245.pas"/>
         <DCCReference Include="Faelle\Cm.E2245b.pas"/>
         <DCCReference Include="Faelle\Cm.E2246.pas"/>
@@ -419,6 +421,7 @@
         <DCCReference Include="Faelle\Cm.H2443.pas"/>
         <DCCReference Include="Faelle\Cm.H2444.pas"/>
         <DCCReference Include="Faelle\Cm.H2445.pas"/>
+        <DCCReference Include="Faelle\Cm.H2445b.pas"/>
         <DCCReference Include="Faelle\Cm.H2456.pas"/>
         <DCCReference Include="Faelle\Cm.H2457.pas"/>
         <DCCReference Include="Faelle\Cm.H2505.pas"/>
@@ -497,15 +500,21 @@
         <DCCReference Include="Faelle\Cm.W1048b.pas"/>
         <DCCReference Include="Faelle\Cm.W1048c.pas"/>
         <DCCReference Include="Faelle\Cm.W1050.pas"/>
+        <DCCReference Include="Faelle\Cm.W1050b.pas"/>
         <DCCReference Include="Faelle\Cm.W1054.pas"/>
         <DCCReference Include="Faelle\Cm.W1054b.pas"/>
         <DCCReference Include="Faelle\Cm.W1055.pas"/>
+        <DCCReference Include="Faelle\Cm.W1055b.pas"/>
         <DCCReference Include="Faelle\Cm.W1057.pas"/>
+        <DCCReference Include="Faelle\Cm.W1057b.pas"/>
+        <DCCReference Include="Faelle\Cm.W1057c.pas"/>
         <DCCReference Include="Faelle\Cm.W1058.pas"/>
+        <DCCReference Include="Faelle\Cm.W1058b.pas"/>
         <DCCReference Include="Faelle\Cm.W1059.pas"/>
         <DCCReference Include="Faelle\Cm.W1060.pas"/>
         <DCCReference Include="Faelle\Cm.W1061.pas"/>
         <DCCReference Include="Faelle\Cm.W1062.pas"/>
+        <DCCReference Include="Faelle\Cm.W1062b.pas"/>
         <DCCReference Include="Faelle\Cm.W1063.pas"/>
         <DCCReference Include="Faelle\Cm.W1064.pas"/>
         <DCCReference Include="Faelle\Cm.W1066.pas"/>
