@@ -152,8 +152,10 @@ var
 begin
   SetLength(FRects, Length(FButtons));
   SetLength(FArrows, Length(FButtons));
-  mSize := ClientHeight;
-  if not HandleAllocated then
+  // ClientHeight holt ein Fenster; vor dem Einhängen (SetButtons in CreateBar) gibt es keine Eltern.
+  if HandleAllocated then
+    mSize := ClientHeight
+  else
     mSize := Height;
   mSize := mSize - Scale(2);
   mArrow := Scale(10);
