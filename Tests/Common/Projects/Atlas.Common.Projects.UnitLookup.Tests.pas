@@ -25,6 +25,8 @@ type
     [Test]
     procedure RequiredPackagesProvideUnits;
     [Test]
+    procedure UnitsOfIndirectlyRequiredPackages;
+    [Test]
     procedure AtlasSourceUsesIndexAndBrowsingPaths;
     [Test]
     procedure FolderOutsideSearchPaths;
@@ -249,6 +251,47 @@ begin
   Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(Answer(Lookup, 'Komp.Fehlt')), 'Fremd ist unbekannt');
   Data.RequiredPackages := ['Komponenten'];
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(Data), 'Komp.Fehlt')));
+end;
+
+procedure TUnitLookupTests.UnitsOfIndirectlyRequiredPackages;
+var
+  Data: TUnitLookupSetup;
+begin
+  // Wie Atlas.Windows: requires rtl, Atlas.Common; Atlas.Common verlangt Atlas.Text, dessen Units dcc mitsieht.
+  Data := Setup(LibraryFiles);
+  Data.RequiredPackages := ['rtl', 'Atlas.Common'];
+  Data.PackageProvides :=
+    function(const APackage, AUnitName: string): TRulePackageAnswer
+    begin
+      if SameText(APackage, 'Atlas.Text') and SameText(AUnitName, 'Atlas.Text.MapFile') then
+        Exit(TRulePackageAnswer.Yes);
+      if SameText(APackage, 'Fremd') then
+        Exit(TRulePackageAnswer.Unknown);
+      Result := TRulePackageAnswer.No;
+    end;
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(Data), 'Atlas.Text.MapFile')),
+    'ohne requires der Packages nur die direkten');
+  Data.PackageRequires :=
+    function(APackage: string): TArray<string>
+    begin
+      Result := nil;
+      if SameText(APackage, 'Atlas.Common') then
+        Result := TArray<string>.Create('rtl', 'Atlas.Text');
+      if SameText(APackage, 'Atlas.Text') then
+        Result := TArray<string>.Create('rtl', 'Atlas.Common');
+    end;
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(Data), 'Atlas.Text.MapFile')));
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(Data), 'Atlas.Text.Fehlt')),
+    'Ringe im requires enden');
+  // Ein unbekanntes Package weiter hinten macht die Antwort unsicher.
+  Data.PackageRequires :=
+    function(APackage: string): TArray<string>
+    begin
+      Result := nil;
+      if SameText(APackage, 'Atlas.Common') then
+        Result := TArray<string>.Create('Fremd');
+    end;
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(Data), 'Atlas.Text.Fehlt')));
 end;
 
 procedure TUnitLookupTests.AtlasSourceUsesIndexAndBrowsingPaths;

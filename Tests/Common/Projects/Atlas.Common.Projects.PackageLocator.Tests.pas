@@ -28,6 +28,8 @@ type
     procedure ContainedFilesAreAbsolute;
     [Test]
     procedure RequiredFilesFollowRequires;
+    [Test]
+    procedure RequiresComeFromSource;
   end;
 
 implementation
@@ -229,6 +231,26 @@ begin
     Assert.AreEqual(2, Integer(Length(Found)), String.Join(';', Found));
     Assert.AreEqual(ExpandFileName(TPath.Combine(Folder, 'uBasis.pas')), Found[0]);
     Assert.AreEqual(ExpandFileName(TPath.Combine(Folder, 'uKern.pas')), Found[1]);
+  finally
+    Locator.Free;
+  end;
+end;
+
+procedure TPackageLocatorTests.RequiresComeFromSource;
+const
+  MitRequires = 'package Basis;'#10'requires rtl, Kern;'#10'contains'#10'  uBasis in ''uBasis.pas'';'#10'end.';
+var
+  Locator: TPackageLocator;
+  Found: TArray<string>;
+begin
+  Locator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), MitRequires),
+    Entry(TPath.Combine('A', 'Kern.dcp'), Dcp(['uKern']))], nil));
+  try
+    Found := Locator.Requires('basis');
+    Assert.AreEqual('rtl;Kern', String.Join(';', Found));
+    // Ein .dcp nennt seine requires nicht, ein unbekanntes Package hat keine.
+    Assert.AreEqual(0, Integer(Length(Locator.Requires('Kern'))));
+    Assert.AreEqual(0, Integer(Length(Locator.Requires('Fehlt'))));
   finally
     Locator.Free;
   end;

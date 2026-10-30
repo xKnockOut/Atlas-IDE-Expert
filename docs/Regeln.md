@@ -425,6 +425,8 @@ Entspricht der Compilermeldung `E2023`, `E2025`, `E2029`, `E2031`, `E2049`, `E20
 
 Stufe A (Parser genügt).
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix syntax`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -474,6 +476,8 @@ if not (Sender is TButton) then
 
 Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden.
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-suppression`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -493,6 +497,8 @@ X := 1;
 **Unbekannte Regelkennung** · Code Smell · Hinweis · Gruppe Atlas intern
 
 Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein solcher Kommentar zählt nicht zusätzlich als unused-suppression.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unknown-rule-id`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -885,6 +891,8 @@ end;
 **Veraltetes TThread.Resume/Suspend** · Code Smell · Warnung · Gruppe Threads
 
 TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix thread-resume-suspend`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -2544,6 +2552,8 @@ if Visible then
 
 Free prüft selbst auf nil, eine Assigned-Prüfung vor Free oder FreeAndNil ist überflüssig.
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix redundant-assigned-free`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -2611,6 +2621,8 @@ if Done then
 **Überflüssige Typumwandlung** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix redundant-cast`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -3507,6 +3519,8 @@ Richtig:
 **Destroy statt Free aufgerufen** · Bug · Warnung · Gruppe Fehler finden
 
 Obj.Destroy wird direkt als Anweisung aufgerufen. Ist Obj nil, knallt der Aufruf; Free prüft vorher auf nil und ist der übliche Weg, ein Objekt freizugeben. inherited Destroy und Aufrufe eines Destruktors mit Argumenten sind ausgenommen. Konfidenz hoch. Schnellkorrektur: aus Destroy wird Free.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix destroy-called-directly`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -5285,6 +5299,8 @@ Entspricht der Compilermeldung `E2014`.
 
 Stufe A (Parser genügt).
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix comparison-as-statement`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -5393,6 +5409,8 @@ Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004):
 Entspricht der Compilermeldung `E2004`.
 
 Stufe A (Parser genügt).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix duplicate-declaration`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -6060,6 +6078,8 @@ Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses
 Entspricht der Compilermeldung `W1040`.
 
 Stufe B (Namensauflösung über Units).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix implicit-variants-unit`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -6766,6 +6786,8 @@ uses
 
 Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern.
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-uses`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -7171,6 +7193,8 @@ Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbe
 Entspricht der Compilermeldung `H2443`, `H2445`, `H2456`, `H2457`.
 
 Stufe B (Namensauflösung über Units).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix inline-not-expanded`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 

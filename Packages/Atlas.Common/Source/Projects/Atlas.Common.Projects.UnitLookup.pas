@@ -13,7 +13,9 @@
 //      DCU-Ausgabeordner, Bibliothekspfade der Installation; je Ordner Name.pas
 //      oder Name.dcu, auch mit jedem Unit-Namespace davor (SysUtils →
 //      System.SysUtils)
-//   4. bei Packages die Units der requires-Packages (.dpk bzw. .dcp)
+//   4. bei Packages die Units der requires-Packages (.dpk bzw. .dcp), auch über
+//      deren requires: dcc lädt mit Atlas.Common.dcp auch das davon verlangte
+//      Atlas.Text.dcp, dessen Units damit ebenso sichtbar sind
 // Quelle Atlas: Units im Index und in den Quellpfaden (Browsing Path).
 //
 // Dateien aus {$I} und {$R} (FindFile, #1379): Ordner der einbindenden Datei,
@@ -58,6 +60,8 @@ type
     ReadText: TUnitLookupReadText;
     /// <summary>Liefert Package APackage die Unit? nil = keine requires-Prüfung.</summary>
     PackageProvides: TRulePackageProvides;
+    /// <summary>requires eines Packages (aus der .dpk); leer ohne Quelle. nil = nur die direkten Packages.</summary>
+    PackageRequires: TFunc<string, TArray<string>>;
     /// <summary>Gibt es das Package (.dpk oder .dcp)? nil = unbekannt.</summary>
     PackageExists: TFunc<string, Boolean>;
     /// <summary>Steht die Unit im Index (Quelle Atlas)? nil = Index unbekannt.</summary>
@@ -297,7 +301,10 @@ end;
 function TUnitLookup.FindInProject(const AUnitName, AFromFile: string; out AUnsure: Boolean): Boolean;
 var
   Names: TArray<string>;
-  Name, Package: string;
+  Name, Package, mRequired: string;
+  mPackages: TList<string>;
+  mSeen: TDictionary<string, Boolean>;
+  mPosition: Integer;
 begin
   AUnsure := False;
   Result := True;
@@ -311,16 +318,43 @@ begin
         Exit;
   if InProjectFolders(AUnitName, Names) then
     Exit;
-  // Packages: Units der requires-Packages, auch ohne .dcu im Pfad.
+  // Packages: Units der requires-Packages, auch ohne .dcu im Pfad, und die der Packages, die diese verlangen.
   if Assigned(FSetup.PackageProvides) then
-    for Package in FSetup.RequiredPackages do
-      for Name in Names do
-        case FSetup.PackageProvides(Package, Name) of
-          TRulePackageAnswer.Yes:
-            Exit;
-          TRulePackageAnswer.Unknown:
-            AUnsure := True;
+  begin
+    mPackages := TList<string>.Create;
+    mSeen := TDictionary<string, Boolean>.Create;
+    try
+      for Package in FSetup.RequiredPackages do
+        if not mSeen.ContainsKey(LowerCase(Package)) then
+        begin
+          mSeen.Add(LowerCase(Package), True);
+          mPackages.Add(Package);
         end;
+      mPosition := 0;
+      while mPosition < mPackages.Count do
+      begin
+        Package := mPackages[mPosition];
+        Inc(mPosition);
+        for Name in Names do
+          case FSetup.PackageProvides(Package, Name) of
+            TRulePackageAnswer.Yes:
+              Exit;
+            TRulePackageAnswer.Unknown:
+              AUnsure := True;
+          end;
+        if Assigned(FSetup.PackageRequires) then
+          for mRequired in FSetup.PackageRequires(Package) do
+            if not mSeen.ContainsKey(LowerCase(mRequired)) then
+            begin
+              mSeen.Add(LowerCase(mRequired), True);
+              mPackages.Add(mRequired);
+            end;
+      end;
+    finally
+      mSeen.Free;
+      mPackages.Free;
+    end;
+  end;
   if (Length(FSetup.RequiredPackages) > 0) and not Assigned(FSetup.PackageProvides) then
     AUnsure := True;
   Result := False;
