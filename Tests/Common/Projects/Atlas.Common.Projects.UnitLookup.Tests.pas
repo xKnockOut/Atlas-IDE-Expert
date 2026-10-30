@@ -36,6 +36,10 @@ type
     procedure RepeatedQuestionsGiveSameAnswers;
     [Test]
     procedure FindFileLikeCompiler;
+    /// <summary>3a: Units, die ein Projekt der Gruppe in einen Suchpfad übersetzt, auch ohne .dcu für diese
+    /// Plattform (AtlasServer mit Atlas.Common im DCU-Suchpfad).</summary>
+    [Test]
+    procedure UnitsBuiltByGroupProjects;
   end;
 
 implementation
@@ -111,8 +115,30 @@ begin
   Result := ALookup.Find(AName, '', 'C:\P\Main.pas', [TRuleUnitSource.Project]);
 end;
 
-procedure TUnitLookupTests.FindsSourceAndCompiledUnitsWithNamespaces;
+procedure TUnitLookupTests.UnitsBuiltByGroupProjects;
 var
+  mSetup: TUnitLookupSetup;
+  mOutput: TUnitLookupGroupOutput;
+begin
+  mSetup := Setup(LibraryFiles);
+  mSetup.Project.SearchPaths := ['C:\P\Src', 'C:\Out\Win32\Debug\Dcu\Common'];
+  mOutput := Default(TUnitLookupGroupOutput);
+  mOutput.DcuFolder := 'C:\Out\Win32\Debug\Dcu\Common\';
+  mOutput.Units := ['Common.Vergleich', 'Common.Text'];
+  mSetup.GroupOutputs := [mOutput];
+  // Ein zweites Projekt übersetzt in einen Ordner außerhalb der Suchpfade: zählt nicht.
+  mOutput.DcuFolder := 'C:\Out\Win32\Debug\Dcu\Fremd';
+  mOutput.Units := ['Fremd.Unit'];
+  mSetup.GroupOutputs := mSetup.GroupOutputs + [mOutput];
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mSetup), 'Common.Vergleich')),
+    'ohne .dcu, aber von der Gruppe gebaut');
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mSetup), 'common.text')));
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mSetup), 'Fremd.Unit')),
+    'Ausgabe nicht im Suchpfad');
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mSetup), 'Common.Fehlt')));
+end;
+
+procedure TUnitLookupTests.FindsSourceAndCompiledUnitsWithNamespaces;var
   Lookup: IRuleUnitLookup;
 begin
   Lookup := TUnitLookup.Create(Setup(LibraryFiles + ['C:\P\Src\Rechnung.Druck.pas']));

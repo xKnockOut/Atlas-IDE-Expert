@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
@@ -146,6 +146,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Mitlaufender Kopf in den Farben des Editors (#1229): Die Kopfzeilen sind hervorgehoben wie im Editor, nach dessen Farbschema (reservierte Wörter und Direktiven fett, Strings, Zahlen, Kommentare, Compilerdirektiven in ihren Farben). Klammern und Blockwörter, mit „Anweisungen mitfärben“ (`PairOwners`) auch `procedure`, `function`, `class` usw., erscheinen in der Farbe ihrer Tiefe wie im Editor, mit den eigenen Paarfarben für Hell und Dunkel. Ohne Klammerfarben oder in Dateien, die sie ausblenden, bleibt der Kopf einfarbig.
 
 ### Behoben
+- `uses-unit-not-found` meldete Units als fehlend, die ein anderes Projekt der Projektgruppe in einen Suchpfad übersetzt, solange die .dcu für Plattform oder Konfiguration noch fehlte (AtlasServer mit Atlas.Common unter Win32). Solche Units gelten jetzt als vorhanden; die Gruppe baut sie vorher.
 - `owned-field-free-unclear` meldet keine Felder mehr, die an eine Liste mit Besitz gehen: `Add…`, `Insert…` usw. an ein Feld vom Typ `TObjectList`, `TObjectStack`, `TObjectQueue` oder `TComponentList` (nicht mit `False` erzeugt) oder an ein Feld, dessen Klasse eine solche Liste für den Elementtyp hält (aus der Datei oder dem Symbolindex, etwa `TAtlasCompileEvents.Add(FWatcher)`), gilt als Übergabe des Besitzes; auch `field-not-freed` schweigt dann. `TArray<T>`-Felder (dynamische Arrays) meldeten beide Regeln, weil der Index die Klasse `TArray` aus `System.Generics.Collections` fand; Typen mit Typargumenten passen jetzt nur noch zu generischen Typen gleichen Namens.
 - Leerraum auf der Seite *Issue-Tracker › Verbindungen*: Zustandsfeld, Benutzerfeld, „Beim Beginnen“ und Zielzustände einer Verbindung standen in 180 bzw. 376 Pixel hohen Zeilen (Breite als Höhe übergeben); jetzt einzeilig wie Name und Adresse. Zustandsfeld und Benutzerfeld erscheinen nur noch bei YouTrack, GitHub kennt keine Felder (Zustände sind Labels, zuständig sind Benutzer); ausgeblendet belegen sie keinen Platz.
 - `missing-begin-update` schweigt bei Menüs (`TPopupMenu.Items` ist ein `TMenuItem` ohne BeginUpdate) und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder statisches Array der Datei); der else-Zweig nach `if … then begin … end else` zählt jetzt zum Schleifenrumpf. Die 16 echten Befunde im Plugin (Auswahllisten, Listenansichten, Baum, Memo) füllen ihre Listen jetzt zwischen BeginUpdate und EndUpdate.

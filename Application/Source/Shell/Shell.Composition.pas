@@ -2798,6 +2798,22 @@ begin
   Identity.Kind := TIndexProcessInfo.KindLsp;
   Identity.Client := FClientName;
   Workspace.ProcessIdentity := Identity;
+  // uses-unit-not-found: Was ein Projekt der Gruppe in einen Suchpfad übersetzt, gibt es beim Bau der Gruppe.
+  Workspace.OnGroupProjects :=
+    function: TArray<string>
+    var
+      Other: TShellWorkspace;
+    begin
+      Result := nil;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        for Other in FWorkspaces do
+          if Other.ProjectFile <> '' then
+            Result := Result + [Other.ProjectFile];
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   // requires-Packages als Quelle zuerst bei den Projekten der Gruppe suchen (#46).
   Workspace.OnPackageFolders :=
     function: TArray<string>

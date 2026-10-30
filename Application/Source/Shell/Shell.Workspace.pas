@@ -84,6 +84,7 @@ type
     /// </summary>
     FUnitLookup: IRuleUnitLookup;
     FOnPackageFolders: TFunc<TArray<string>>;
+    FOnGroupProjects: TFunc<TArray<string>>;
     /// <summary>Gemerkte Wahl über Neustarts (#46); gehört der Komposition, nil = nichts merken.</summary>
     FSelection: TProjectSelection;
     /// <summary>Gemerkte Konfiguration und Plattform schon übernommen; danach gilt nur noch selectBuild.</summary>
@@ -295,6 +296,9 @@ type
     /// <summary>Ordner, in denen requires-Packages als .dpk gesucht werden (#46), z. B. die Projekte der Gruppe;
     /// vor Load setzen. Danach folgen Projektordner, Such- und Bibliothekspfade.</summary>
     property OnPackageFolders: TFunc<TArray<string>> read FOnPackageFolders write FOnPackageFolders;
+    /// <summary>Projektdateien (.dproj) der Gruppe: Was sie in einen Suchpfad übersetzen, gilt für
+    /// uses-unit-not-found als vorhanden; vor Load setzen. nil = nur dieses Projekt.</summary>
+    property OnGroupProjects: TFunc<TArray<string>> read FOnGroupProjects write FOnGroupProjects;
     /// <summary>Packages des zuletzt geladenen Projekts (#46); nil vor dem ersten Laden. Bleibt bis zur Freigabe
     /// des Arbeitsbereichs gültig. Threadsicher.</summary>
     property PackageLocator: TPackageLocator read GetPackageLocator;
@@ -493,8 +497,41 @@ begin
   Result := FLocator;
 end;
 
+/// <summary>DCU-Ausgabe und Units der anderen Projekte der Gruppe (uses-unit-not-found, 3a): mit derselben
+/// Plattform und Konfiguration gelesen. Nicht lesbare Projekte fehlen nur.</summary>
+function GroupOutputsFor(const AOwnFile: string; const AFiles: TArray<string>; const AOptions: TDprojOptions;
+  const ALogger: ILogger): TArray<TUnitLookupGroupOutput>;
+var
+  mFile: string;
+  mProject: TProjectInfo;
+  mOutput: TUnitLookupGroupOutput;
+  mUnit: TProjectUnit;
+begin
+  Result := nil;
+  for mFile in AFiles do
+  begin
+    if SameText(mFile, AOwnFile) then
+      Continue;
+    try
+      mProject := TDprojReader.Load(mFile, AOptions);
+    except
+      on E: Exception do
+      begin
+        ALogger.Debug(Format('Gruppenprojekt %s für die Unit-Suche nicht lesbar: %s', [mFile, E.Message]));
+        Continue;
+      end;
+    end;
+    mOutput := Default(TUnitLookupGroupOutput);
+    mOutput.DcuFolder := TUnitLookup.DcuOutputOf(mProject);
+    for mUnit in mProject.Units do
+      mOutput.Units := mOutput.Units + [mUnit.Name];
+    if mOutput.DcuFolder <> '' then
+      Result := Result + [mOutput];
+  end;
+end;
 function UnitLookupFor(const AProject: TProjectInfo; const AInstallation: ILibraryPathProvider;
-  const ALibraryPaths: TArray<string>; const AHold: IPackageLocatorHold; const AIndex: ISymbolIndex): IRuleUnitLookup;
+  const ALibraryPaths: TArray<string>; const AHold: IPackageLocatorHold; const AIndex: ISymbolIndex;
+  const AGroupOutputs: TArray<TUnitLookupGroupOutput>): IRuleUnitLookup;
 var
   Setup: TUnitLookupSetup;
   Text: string;
@@ -505,6 +542,7 @@ begin
   Setup.Project := AProject;
   Setup.LibraryPaths := ALibraryPaths;
   Setup.LibraryKnown := Length(ALibraryPaths) > 0;
+  Setup.GroupOutputs := AGroupOutputs;
   if AInstallation <> nil then
     Setup.BrowsingPaths := AInstallation.BrowsingPaths(AProject.Platform);
   // requires der .dpk: deren Units findet der Compiler über die .dcp.
@@ -1774,7 +1812,7 @@ var
   CompilerLibraryPaths: TArray<string>;
   Names: TArray<string>;
   ProjectUnit: TProjectUnit;
-  PackageFolders: TArray<string>;
+  PackageFolders, GroupFiles: TArray<string>;
   Locator: TPackageLocator;
   Hold: IPackageLocatorHold;
   Lookup: IRuleUnitLookup;
@@ -1990,7 +2028,11 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
-  Lookup := UnitLookupFor(Project, Installation, CompilerLibraryPaths, Hold, FIndex);
+  GroupFiles := nil;
+  if Assigned(FOnGroupProjects) then
+    GroupFiles := FOnGroupProjects();
+  Lookup := UnitLookupFor(Project, Installation, CompilerLibraryPaths, Hold, FIndex, GroupOutputsFor(mProjectFile,
+    GroupFiles, Options, FLogger));
   TMonitor.Enter(FLock);
   try
     FUnitLookup := Lookup;

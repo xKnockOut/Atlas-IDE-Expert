@@ -13,6 +13,9 @@
 //      DCU-Ausgabeordner, Bibliothekspfade der Installation; je Ordner Name.pas
 //      oder Name.dcu, auch mit jedem Unit-Namespace davor (SysUtils →
 //      System.SysUtils)
+//   3a. Units, die ein anderes Projekt der Projektgruppe in einen dieser Ordner
+//      übersetzt (DCC_DcuOutput): Die Gruppe baut es vorher, auch wenn die .dcu
+//      für Plattform oder Konfiguration noch fehlt
 //   4. bei Packages die Units der requires-Packages (.dpk bzw. .dcp), auch über
 //      deren requires: dcc lädt mit Atlas.Common.dcp auch das davon verlangte
 //      Atlas.Text.dcp, dessen Units damit ebenso sichtbar sind
@@ -38,6 +41,13 @@ uses
 type
   /// <summary>Liest eine Textdatei; False, wenn sie fehlt.</summary>
   TUnitLookupReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+
+  /// <summary>Anderes Projekt der Gruppe: Ordner, in den es übersetzt, und seine Units.</summary>
+  TUnitLookupGroupOutput = record
+    /// <summary>DCU-Ausgabeordner, absolut, mit eingesetzter Plattform und Konfiguration.</summary>
+    DcuFolder: string;
+    Units: TArray<string>;
+  end;
 
   /// <summary>Was TUnitLookup über Projekt, Installation und Dateisystem wissen muss.</summary>
   TUnitLookupSetup = record
@@ -68,6 +78,8 @@ type
     IndexKnows: TFunc<string, Boolean>;
     /// <summary>Namen der Units im Index für Vorschläge; nil = keine.</summary>
     IndexUnits: TFunc<TArray<string>>;
+    /// <summary>Die anderen Projekte der Projektgruppe (3a).</summary>
+    GroupOutputs: TArray<TUnitLookupGroupOutput>;
   end;
 
   TUnitLookup = class(TInterfacedObject, IRuleUnitLookup)
@@ -88,6 +100,8 @@ type
     FProjectUnits: TDictionary<string, Boolean>;
     // Unit-Name (klein) -> in einem der Projektordner gefunden. Unter FLock.
     FFolderAnswers: TDictionary<string, Boolean>;
+    // Units (klein), die ein Projekt der Gruppe in einen der Projektordner übersetzt; nach dem Konstruktor nur gelesen.
+    FGroupUnits: TDictionary<string, Boolean>;
     function InProjectFolders(const AUnitName: string; const ANames: TArray<string>): Boolean;
     function Listing(const AFolder: string): TDictionary<string, string>;
     function InFolder(const AFolder, AName: string): Boolean;
@@ -103,6 +117,8 @@ type
     function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
     function FolderOutsidePaths(const AUnitName: string): string;
     function ReadProject(out AFileName, AText: string): Boolean;
+    /// <summary>DCU-Ausgabeordner (DCC_DcuOutput) mit eingesetzter Plattform und Konfiguration; '' ohne.</summary>
+    class function DcuOutputOf(const AProject: TProjectInfo): string; static;
     /// <summary>Ordner, die der Compiler durchsucht (ohne den der verwendenden Datei).</summary>
     property ProjectFolders: TArray<string> read FProjectFolders;
   end;
@@ -169,8 +185,9 @@ end;
 constructor TUnitLookup.Create(const ASetup: TUnitLookupSetup);
 var
   Folders: TList<string>;
-  Folder: string;
+  Folder, mName: string;
   mUnit: TProjectUnit;
+  mOutput: TUnitLookupGroupOutput;
 begin
   inherited Create;
   FSetup := ASetup;
@@ -179,6 +196,7 @@ begin
   // Einmal je Projekt statt je uses-Eintrag und Namespace über alle Units (#1342).
   FProjectUnits := TDictionary<string, Boolean>.Create;
   FFolderAnswers := TDictionary<string, Boolean>.Create;
+  FGroupUnits := TDictionary<string, Boolean>.Create;
   for mUnit in ASetup.Project.Units do
     FProjectUnits.AddOrSetValue(LowerCase(mUnit.Name), True);
   Folders := TList<string>.Create;
@@ -187,7 +205,7 @@ begin
       Folders.Add(TProjectPaths.DirectoryOf(ASetup.Project.FileName));
     for Folder in ASetup.Project.SearchPaths do
       Folders.Add(Folder);
-    Folder := DcuOutput(ASetup.Project);
+    Folder := DcuOutputOf(ASetup.Project);
     if Folder <> '' then
       Folders.Add(Folder);
     for Folder in ASetup.LibraryPaths do
@@ -197,6 +215,14 @@ begin
       if HasMacro(Folder) then
         FUncertain := True;
     FProjectFolders := Folders.ToArray;
+    for mOutput in ASetup.GroupOutputs do
+      for Folder in FProjectFolders do
+        if (mOutput.DcuFolder <> '') and SameFolder(Folder, mOutput.DcuFolder) then
+        begin
+          for mName in mOutput.Units do
+            FGroupUnits.AddOrSetValue(LowerCase(mName), True);
+          Break;
+        end;
     // dcc sucht Include- und Ressourcendateien zusätzlich in -I und -R (#1379).
     FFileFolders := FProjectFolders;
     for Folder in FileSearchPaths(ASetup.Project) do
@@ -212,6 +238,7 @@ end;
 
 destructor TUnitLookup.Destroy;
 begin
+  FGroupUnits.Free;
   FFolderAnswers.Free;
   FProjectUnits.Free;
   FListings.Free;
@@ -318,6 +345,9 @@ begin
         Exit;
   if InProjectFolders(AUnitName, Names) then
     Exit;
+  for Name in Names do
+    if FGroupUnits.ContainsKey(LowerCase(Name)) then
+      Exit;
   // Packages: Units der requires-Packages, auch ohne .dcu im Pfad, und die der Packages, die diese verlangen.
   if Assigned(FSetup.PackageProvides) then
   begin
@@ -535,6 +565,11 @@ begin
   finally
     Queue.Free;
   end;
+end;
+
+class function TUnitLookup.DcuOutputOf(const AProject: TProjectInfo): string;
+begin
+  Result := DcuOutput(AProject);
 end;
 
 function TUnitLookup.ReadProject(out AFileName, AText: string): Boolean;
