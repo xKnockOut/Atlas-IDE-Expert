@@ -601,8 +601,9 @@ const
     '      "category": "bug",',
     '      "severity": "warning",',
     '      "group": "components",',
-    '      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. For Paint th' +
-    'e confidence is low, because TCustomControl.Paint only draws the design-time frame.",',
+    '      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. Paint is rep' +
+    'orted only if an ancestor''s Paint draws something itself (TCustomPanel, TCustomForm, TPaintBox, TImage, a grid or a class from the file or index that declares Paint), with medium confidence; TCustomCo' +
+    'ntrol.Paint and TGraphicControl.Paint are empty, so leaving out inherited there is normal.",',
     '      "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",',
     '      "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"',
     '    },',
@@ -5879,7 +5880,8 @@ const
     '      "id": "component-missing-inherited",',
     '      "name": "Komponentenmethode ohne inherited",',
     '      "description": "Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene A' +
-    'rbeit. Bei Paint ist die Konfidenz niedrig, weil TCustomControl.Paint nur den Rahmen im Designer zeichnet."',
+    'rbeit. Paint wird nur gemeldet, wenn das Paint eines Vorfahren selbst zeichnet (TCustomPanel, TCustomForm, TPaintBox, TImage, ein Grid oder eine Klasse aus Datei oder Index, die Paint deklariert), mit' +
+    ' mittlerer Konfidenz; TCustomControl.Paint und TGraphicControl.Paint sind leer, dort ist ein Paint ohne inherited üblich."',
     '    },',
     '    {',
     '      "id": "component-default-mismatch",',

@@ -1,4 +1,4 @@
-{
+﻿{
   "rules": [
     {
       "id": "syntax",
@@ -536,7 +536,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "components",
-      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. For Paint the confidence is low, because TCustomControl.Paint only draws the design-time frame.",
+      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. Paint is reported only if an ancestor's Paint draws something itself (TCustomPanel, TCustomForm, TPaintBox, TImage, a grid or a class from the file or index that declares Paint), with medium confidence; TCustomControl.Paint and TGraphicControl.Paint are empty, so leaving out inherited there is normal.",
       "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",
       "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"
     },
