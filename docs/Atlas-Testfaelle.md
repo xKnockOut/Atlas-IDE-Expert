@@ -8950,6 +8950,17 @@ Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend
 | HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
 | HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |
 
+## Fremde Quellen im Editor (diagnostics.librarySources)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FQ1 | Projekt öffnen, mit Strg+Klick auf `THTTPClient` nach `System.Net.HttpClient.pas` springen, ebenso `System.Generics.Defaults.pas` öffnen | Keine Befunde der Prüfregeln im Editor und in der Problemliste (vorher u. a. `boolean-assign-if` in Zeile 1537 und `float-equality` in den Vergleichern) (**Abnahme**) |
+| FQ2 | Eine Unit aus einem Bibliothekspfad einer Komponente (z. B. JVCL `run`) öffnen, die nicht im Projekt steht | Keine Befunde |
+| FQ3 | Dieselbe Komponenten-Unit per DCCReference ins Projekt aufnehmen oder ihren Ordner in die Projekt-Suchpfade | Befunde wie bei eigenen Units |
+| FQ4 | `diagnostics.librarySources` in settings.json auf `true`, RTL-Unit erneut öffnen | Befunde erscheinen wieder |
+| FQ5 | Eine eigene `.pas` außerhalb aller Projekte und Bibliothekspfade öffnen (z. B. `C:\Temp\Versuch.pas`) | Wird wie bisher geprüft |
+| FQ6 | `Atlas.Core.Editor.Conditionals.pas` öffnen | Kein `float-equality` an `Result = Right` bzw. `Result <> Right` (Unterdrückung mit Begründung) |
+
 ## Fehlalarme an Record-Feldern (Prep-v1.2.0)
 
 Vorbereitung: Atlas-Repository auf Prep-v1.2.0 in der IDE, `naming-prefix` eingeschaltet (atlas.json des Repositorys), `Atlas.Core.Results.Model.pas` öffnen.

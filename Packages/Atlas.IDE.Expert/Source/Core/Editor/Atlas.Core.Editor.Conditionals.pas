@@ -222,10 +222,11 @@ begin
     Exit;
   Op := Take.Text;
   Right := ParseValue;
+  // $IF vergleicht wie dcc exakt; eine Toleranz würde Zweige anders wählen als der Compiler.
   if Op = '=' then
-    Result := Truth(Result = Right)
+    Result := Truth(Result = Right) // lsp-ignore: float-equality
   else if Op = '<>' then
-    Result := Truth(Result <> Right)
+    Result := Truth(Result <> Right) // lsp-ignore: float-equality
   else if Op = '<' then
     Result := Truth(Result < Right)
   else if Op = '>' then
