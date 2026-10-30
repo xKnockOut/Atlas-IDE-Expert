@@ -7349,6 +7349,8 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | FC5 | `ExtractFileName(Datei) = ''`, `ExtractFileExt(Datei) = '.1'`, `ExtractFileDir(Dir) = Dir`, `SameFileName(A, B)` | Keine Meldung |
 | FC6 | FC1 in einer Unit ohne `System.SysUtils` in der uses-Klausel (Datei-Funktion über eigene Unit), Korrektur anwenden | `System.SysUtils` wird ergänzt, das Ergebnis übersetzt |
 | FC7 | `"filename-compare-case": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+| FC8 | `Atlas.Core.Vcs.Internals.Text.pas` öffnen (Zeile mit `(PathDelim = '\') and SameText(Root, FileName) or (Root = FileName)`); dazu `if PathDelim = '\' then R := SameFileName(A, AFileName) else R := A = AFileName;` | Keine Meldung; `R := SameText(A, 'x') or (A = AFileName)` meldet weiter |
+| FC9 | Unit mit `DUnitX.TestFramework` in der uses-Klausel und `Result := AFileName = 'B.pas';` (etwa `Atlas.Core.Search.Files.Tests.pas`) | Keine Meldung; dieselbe Zeile in einer Unit ohne Test-Framework meldet |
 
 ## Beim Start erzeugtes Objekt wird nicht freigegeben (#971)
 
