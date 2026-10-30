@@ -61,6 +61,7 @@ uses
   Atlas.Common.Rules.Builtin.Generics,
   Atlas.Common.Rules.Builtin.TypeChecks,
   Atlas.Common.Rules.Builtin.TypeKinds,
+  Atlas.Common.Rules.Builtin.TypeMismatch,
   Atlas.Common.Rules.Builtin.Constants,
   Atlas.Common.Rules.Builtin.Forms,
   Atlas.Common.Rules.Builtin.SharedState,
@@ -146,7 +147,8 @@ begin
     RegisterLoopRules(Registry);
     RegisterGenericRules(Registry);
     RegisterTypeCheckRules(Registry);
-    RegisterTypeKindRules(Registry);
+    RegisterTypeKindRules(Registry,
+    RegisterTypeMismatchRules(Registry);
     RegisterConstantRules(Registry);
     RegisterFormRules(Registry);
     RegisterSharedStateRules(Registry);

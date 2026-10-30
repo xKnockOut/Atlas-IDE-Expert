@@ -12,11 +12,14 @@
 //                              nicht statischer Klassenmethode (E2355) und
 //                              umgekehrt bei class var und statischer
 //                              Klassenmethode (E2356), Feld hinter
-//                              einer Array-Property (E2174), Feldselektor über
-//                              ein Feld, das kein Record ist (E2459), an einer
-//                              Klassen-Property (E2459, #1380), auf ein
-//                              Mitglied, das kein Feld ist (E2461), oder auf
-//                              ein fehlendes Feld (E2562).
+//                              einer Array-Property (E2008; Doku: E2174),
+//                              Feldselektor über ein Feld, das kein Record ist
+//                              (E2459), an einer Klassen-Property (E2459,
+//                              #1380), auf ein Mitglied, das kein Feld ist
+//                              (E2461), oder auf ein fehlendes Feld (E2562).
+//                              Delphi 13 meldet falsche Signaturen und das Feld
+//                              hinter einer Array-Property als E2008 (dcc-Lauf
+//                              vom 29.10.2026, #1369).
 //   default-property-invalid   default falsch (#1073): an einer Property ohne
 //                              Index (E2132), zweite default-Property mit
 //                              denselben Indextypen oder mit einem anderen
@@ -545,7 +548,7 @@ var
       if AShape.Symbol.MaxArgs > 0 then
       begin
         AReport.Add(Range(AAccessor), Format('Die Array-Property %s braucht hinter %s eine Methode; %s ist ein ' +
-          'Feld (wie E2174).', [AShape.Symbol.Name, Clause, Symbol.Name]), TRuleConfidence.High);
+          'Feld (wie E2008).', [AShape.Symbol.Name, Clause, Symbol.Name]), TRuleConfidence.High);
         Exit;
       end;
       if AShape.IsClass and not Symbol.HasDirective('class') then
