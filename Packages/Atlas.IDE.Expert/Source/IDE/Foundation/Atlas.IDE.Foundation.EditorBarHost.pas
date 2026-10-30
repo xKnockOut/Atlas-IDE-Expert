@@ -26,6 +26,10 @@
 //   (TAtlasGuard.Report), die übrigen Leisten laufen weiter. Guard blendet
 //   die Leisten aus, solange die Sicherung des Features ausgelöst ist, und
 //   danach wieder ein.
+// - Ansicht (#1442): ShowIn legt fest, ob eine Leiste nur im Code-Editor
+//   (Brotkrumen, Editorleiste), nur im Formular-Designer (Designer-Leiste)
+//   oder in beiden steht; Ensure blendet sie danach ein und aus
+//   (TAtlasIdeDesignerView).
 // - Abbau: Destroy (bzw. Clear) gibt alle Leisten frei; der Wächter schreibt
 //   dabei nicht mehr zurück. Danach hält Atlas keine Leiste in einem
 //   IDE-Fenster mehr (vgl. #1233).
@@ -42,6 +46,11 @@ uses
   Atlas.Core.Diagnostics.Guard;
 
 type
+{$SCOPEDENUMS ON}
+  /// <summary>Wo eine Leiste steht: im Code-Editor, im Formular-Designer oder in beiden (Vorgabe).</summary>
+  TAtlasEditorBarView = (Any, Code, Designer);
+{$SCOPEDENUMS OFF}
+
   TAtlasEditorBarHost = class
   public type
     /// <summary>Neue Leiste für das Eltern-Steuerelement des Editors; noch ohne Parent.</summary>
@@ -70,7 +79,12 @@ type
     FHidden: Boolean;
     FDisabledLogged: Integer;
     FOnRemoved: TProc<TControl>;
+    FShowIn: TAtlasEditorBarView;
     procedure Removed(ABar: TControl);
+    /// <summary>Soll die Leiste im Editorfenster von AEditorParent gerade zu sehen sein (Sicherung und Ansicht)?
+    /// </summary>
+    function Wanted(AEditorParent: TWinControl): Boolean;
+    procedure ApplyView(ABar: TControl; AEditorParent: TWinControl);
     function CreateFor(AEditorParent: TWinControl): TControl;
     procedure PlaceGuarded(ABar: TControl; AEditorParent: TWinControl);
     procedure Show(AShown: Boolean);
@@ -117,6 +131,10 @@ type
     property Hidden: Boolean read FHidden;
     /// <summary>Eine Leiste ist weg (von der IDE freigegeben); nicht bei Clear.</summary>
     property OnRemoved: TProc<TControl> read FOnRemoved write FOnRemoved;
+    /// <summary>Wo die Leisten stehen (#1442); Vorgabe Any. Gilt ab dem nächsten Ensure.</summary>
+    property ShowIn: TAtlasEditorBarView read FShowIn write FShowIn;
+    /// <summary>Steht die Leiste ABar gerade sichtbar im Editorfenster (nach Ansicht und Sicherung)?</summary>
+    function Showing(ABar: TControl): Boolean;
   end;
 
 implementation
@@ -124,6 +142,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Forms,
+  Atlas.IDE.Foundation.DesignerView,
   Atlas.IDE.Foundation.EditorBuffer;
 
 type
@@ -340,6 +359,7 @@ begin
     FBars.Add(mBar);
     FParents.Add(AEditorParent);
     FPlace(mBar, AEditorParent);
+    ApplyView(mBar, AEditorParent);
     Result := mBar;
   except
     on E: Exception do
@@ -361,6 +381,7 @@ procedure TAtlasEditorBarHost.PlaceGuarded(ABar: TControl; AEditorParent: TWinCo
 begin
   try
     FPlace(ABar, AEditorParent);
+    ApplyView(ABar, AEditorParent);
   except
     on E: Exception do
       TAtlasGuard.Report(FFeature, E);
@@ -462,13 +483,48 @@ begin
     [FName, mChain, sLineBreak, mTrace]));
 end;
 
+function TAtlasEditorBarHost.Wanted(AEditorParent: TWinControl): Boolean;
+begin
+  Result := not FHidden;
+  if not Result then
+    Exit;
+  case FShowIn of
+    TAtlasEditorBarView.Code:
+      Result := not TAtlasIdeDesignerView.Shown(AEditorParent);
+    TAtlasEditorBarView.Designer:
+      Result := TAtlasIdeDesignerView.Shown(AEditorParent);
+  else
+    // Any: in Code und Designer.
+  end;
+end;
+
+procedure TAtlasEditorBarHost.ApplyView(ABar: TControl; AEditorParent: TWinControl);
+var
+  mWanted: Boolean;
+begin
+  // Any: Die Sichtbarkeit gehört dem Dienst (Suchleiste schließt sich selbst); nur die Sicherung blendet aus.
+  if FShowIn = TAtlasEditorBarView.Any then
+    Exit;
+  mWanted := Wanted(AEditorParent);
+  if ABar.Visible <> mWanted then
+    ABar.Visible := mWanted;
+end;
+
+function TAtlasEditorBarHost.Showing(ABar: TControl): Boolean;
+begin
+  Result := Contains(ABar) and ABar.Visible;
+end;
+
 procedure TAtlasEditorBarHost.Show(AShown: Boolean);
 var
-  mBar: TControl;
+  mIndex: Integer;
 begin
-  for mBar in FBars do
-    if mBar.Visible <> AShown then
-      mBar.Visible := AShown;
+  // Eingeblendet wird nur, was zur Ansicht passt (Code bzw. Designer).
+  for mIndex := 0 to FBars.Count - 1 do
+    if AShown and (FShowIn <> TAtlasEditorBarView.Any) then
+      ApplyView(FBars[mIndex], FParents[mIndex])
+    else if FBars[mIndex].Visible <> AShown then
+      FBars[mIndex].Visible := AShown;
 end;
 
 function TAtlasEditorBarHost.Guard: Boolean;

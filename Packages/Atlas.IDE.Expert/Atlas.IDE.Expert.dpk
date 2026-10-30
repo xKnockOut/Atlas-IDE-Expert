@@ -557,6 +557,10 @@ contains
   Atlas.Core.StatusBar.Content in 'Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas',
   Atlas.UI.Problems.KindIcon in 'Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas',
   Atlas.UI.StatusBar.Bar in 'Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas',
-  Atlas.IDE.StatusBar.Service in 'Source\IDE\StatusBar\Atlas.IDE.StatusBar.Service.pas';
+  Atlas.IDE.StatusBar.Service in 'Source\IDE\StatusBar\Atlas.IDE.StatusBar.Service.pas',
+  Atlas.Core.Designer.Components in 'Source\Core\Designer\Atlas.Core.Designer.Components.pas',
+  Atlas.IDE.Foundation.DesignerView in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas',
+  Atlas.UI.Designer.Bar in 'Source\UI\Designer\Atlas.UI.Designer.Bar.pas',
+  Atlas.IDE.Designer.Bar in 'Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas';
 
 end.

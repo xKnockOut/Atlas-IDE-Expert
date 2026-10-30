@@ -82,6 +82,7 @@ uses
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
   Atlas.IDE.StatusBar.Service,
+  Atlas.IDE.Designer.Bar,
   Atlas.IDE.Editor.MetricsLens,
   Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.Editor.LineChanges,
@@ -2339,6 +2340,20 @@ begin
     StatusField.RequestRefresh;
 end;
 
+/// <summary>Designer-Leiste (#1442) über dem Formular-Designer; Meldungen über Hooks.</summary>
+procedure StartDesignerBar;
+var
+  Hooks: TAtlasIdeDesignerBar.THooks;
+begin
+  Hooks := Default(TAtlasIdeDesignerBar.THooks);
+  Hooks.Message :=
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end;
+  TAtlasIdeDesignerBar.Install(Hooks);
+end;
+
 procedure StartCommands;
 begin
   CommandsInstalled := True;
@@ -2450,6 +2465,7 @@ begin
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
   StartStatusBar;
+  StartDesignerBar;
   // Mitlaufender Kopf (#506) aus demselben Gliederungsstand.
   TAtlasIdeStickyScroll.Install;
   // Änderungsmarken und Zeilenhistorie (#507).
@@ -2617,6 +2633,7 @@ begin
   TAtlasIdeStickyScroll.Uninstall;
   TAtlasIdeEditorToolbar.Uninstall;
   TAtlasIdeStatusBar.Uninstall;
+  TAtlasIdeDesignerBar.Uninstall;
   TAtlasIdeBreadcrumbs.Uninstall;
   TAtlasIdeMinimap.Uninstall;
   TAtlasIdeOverviewRuler.Uninstall;
@@ -4142,6 +4159,7 @@ begin
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
       TAtlasIdeStatusBar.ThemeChanged;
+      TAtlasIdeDesignerBar.ThemeChanged;
       TAtlasIdeSearch.ThemeChanged;
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
@@ -4195,6 +4213,8 @@ begin
       TAtlasIdeEditorToolbar.ApplySettings;
       // editor.statusBar* (#1155); das Atlas-Feld zieht um oder zurück (RequestRefresh unten).
       TAtlasIdeStatusBar.ApplySettings;
+      // editor.designerBar (#1442).
+      TAtlasIdeDesignerBar.ApplySettings;
       // search.resultsInMessages (#878).
       TAtlasIdeSearch.ApplySettings;
       // editor.stickyScroll* (#506).
