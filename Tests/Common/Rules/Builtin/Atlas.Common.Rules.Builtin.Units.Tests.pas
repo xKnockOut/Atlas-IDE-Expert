@@ -485,15 +485,15 @@ var
   Source, Fixed: string;
   Found: TArray<TRuleFinding>;
 begin
-  Source := Werkzeug('', '  Initialisieren,'#10'  Berechnen,'#10'  Initialisieren');
+  Source := Werkzeug('', '  Initialisieren name ''Start'','#10'  Berechnen,'#10'  Berechnen name ''Start''');
   Found := ExportFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Initialisieren wird zweimal exportiert (wie E2287).', Found[0].Message);
+  Assert.AreEqual('Der Name ''Start'' wird zweimal exportiert (wie E2287).', Found[0].Message);
   Assert.AreEqual(10, Found[0].Range.StartPos.Line);
   Assert.AreEqual(2, Found[0].Range.StartPos.Character);
   Assert.AreEqual('Doppelten Eintrag entfernen', Found[0].Fixes[0].Title);
   Fixed := ApplyAny(Source, Found[0].Fixes[0].Edits[0]);
-  Assert.AreEqual(Werkzeug('', '  Initialisieren,'#10'  Berechnen'), Fixed);
+  Assert.AreEqual(Werkzeug('', '  Initialisieren name ''Start'','#10'  Berechnen'), Fixed);
   Assert.AreEqual(0, Integer(Length(ExportFindings(Fixed))));
 end;
 
@@ -507,19 +507,21 @@ begin
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Der Name ''Start'' wird zweimal exportiert (wie E2287).', Found[0].Message);
   // Einziger Eintrag seiner Klausel: Die Korrektur entfernt die Klausel.
-  Source := Werkzeug('exports Berechnen;'#10, '  Berechnen');
+  Source := Werkzeug('exports Berechnen name ''B'';'#10, '  Initialisieren name ''B''');
   Found := ExportFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(StringReplace(Source, 'exports'#10'  Berechnen;', '', []),
+  Assert.AreEqual(StringReplace(Source, 'exports'#10'  Initialisieren name ''B'';', '', []),
     ApplyAny(Source, Found[0].Fixes[0].Edits[0]));
   // Doppelter erster Eintrag einer späteren Klausel: entfernt bis zum nächsten Eintrag.
-  Source := Werkzeug('exports Berechnen;'#10, 'Berechnen, Initialisieren');
+  Source := Werkzeug('exports Berechnen name ''B'';'#10, 'Initialisieren name ''B'', Initialisieren');
   Found := ExportFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Werkzeug('exports Berechnen;'#10, 'Initialisieren'), ApplyAny(Source, Found[0].Fixes[0].Edits[0]));
-  // Groß-/Kleinschreibung zählt bei Bezeichnern nicht, bei Exportnamen schon.
-  Assert.AreEqual(1, Integer(Length(ExportFindings(Werkzeug('', 'Berechnen, berechnen')))));
+  Assert.AreEqual(Werkzeug('exports Berechnen name ''B'';'#10, 'Initialisieren'),
+    ApplyAny(Source, Found[0].Fixes[0].Edits[0]));
+  // Bei Exportnamen zählt die Groß-/Kleinschreibung.
   Assert.AreEqual(0, Integer(Length(ExportFindings(Werkzeug('', 'Berechnen name ''A'', Initialisieren name ''a''')))));
+  // Denselben Eintrag zweimal ohne name übersetzt Delphi 13 (#1383, CmE2287).
+  Assert.AreEqual(0, Integer(Length(ExportFindings(Werkzeug('', 'Berechnen, berechnen, Berechnen')))));
 end;
 
 procedure TUnitRulesTests.ExportsNotExportable;
@@ -534,13 +536,14 @@ begin
   Assert.AreEqual('Intern ist mit local deklariert und kann nicht exportiert werden (wie E2276).', Found[0].Message);
   Found := ExportFindings(Werkzeug('var'#10'  Zaehler: Integer;'#10'const'#10'  Version = 3;'#10'type'#10 +
     '  TRueckruf = procedure;'#10, 'Zaehler, Version, TRueckruf'));
-  Assert.AreEqual(3, Integer(Length(Found)));
-  Assert.AreEqual('Zaehler ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).',
+  // Variablen exportiert dcc (#1383, CmE2121c); für Konstanten und Typen meldet Delphi 13 E2276 (Cm.E2121b).
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Version ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2276).',
     Found[0].Message);
-  Assert.AreEqual('TRueckruf ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).',
-    Found[2].Message);
+  Assert.AreEqual('TRueckruf ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2276).',
+    Found[1].Message);
   // Variable eines Prozedurtyps bleibt eine Variable.
-  Assert.AreEqual(1, Integer(Length(ExportFindings(Werkzeug('var'#10'  Rueckruf: procedure;'#10, 'Rueckruf')))));
+  Assert.AreEqual(0, Integer(Length(ExportFindings(Werkzeug('var'#10'  Rueckruf: procedure;'#10, 'Rueckruf')))));
 end;
 
 procedure TUnitRulesTests.ExportsLocalScope;
@@ -596,7 +599,7 @@ procedure TUnitRulesTests.ExportsOptions;
 var
   Source: string;
 begin
-  Source := Werkzeug('', 'Berechnen, Berechnen');
+  Source := Werkzeug('', 'Berechnen name ''B'', Initialisieren name ''B''');
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TExportsInvalidRule.Create, Source, '', 'Werkzeug.dpr'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExportsInvalidRule.Create, Source,
     '{"rules": {"exports-invalid": "off"}}', 'Werkzeug.dpr'))));
