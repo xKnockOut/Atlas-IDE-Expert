@@ -570,9 +570,14 @@ var
 begin
   if FGroupChoice.Items.Count = 0 then
   begin
-    FGroupChoice.Items.Add(TAtlasStrings.Text(TAtlasTextId.RulesAllGroups));
-    for Index := 0 to High(TAtlasRuleTable.GroupIds) do
-      FGroupChoice.Items.Add(GroupCaption(TAtlasRuleTable.GroupIds[Index]));
+    FGroupChoice.Items.BeginUpdate;
+    try
+      FGroupChoice.Items.Add(TAtlasStrings.Text(TAtlasTextId.RulesAllGroups));
+      for Index := 0 to High(TAtlasRuleTable.GroupIds) do
+        FGroupChoice.Items.Add(GroupCaption(TAtlasRuleTable.GroupIds[Index]));
+    finally
+      FGroupChoice.Items.EndUpdate;
+    end;
     FGroupChoice.ItemIndex := 0;
   end;
   if FSeverity.Items.Count = 0 then
