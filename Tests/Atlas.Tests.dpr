@@ -1214,6 +1214,7 @@ uses
   Atlas.Common.Rules.Builtin.PaletteIcons.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.Tests.pas',
   Atlas.Common.Rules.Builtin.Performance.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.Tests.pas',
   Atlas.Common.Rules.ChangedFiles.Tests in 'Common\Rules\Atlas.Common.Rules.ChangedFiles.Tests.pas',
+  Atlas.Common.Rules.LibrarySources.Tests in 'Common\Rules\Atlas.Common.Rules.LibrarySources.Tests.pas',
   Atlas.Common.Editing.RefactoringCommands.Tests in 'Common\Editing\Atlas.Common.Editing.RefactoringCommands.Tests.pas',
   Atlas.Common.Editing.ExpressionCommands.Tests in 'Common\Editing\Atlas.Common.Editing.ExpressionCommands.Tests.pas',
   Atlas.Common.Editing.Modernizer.Tests in 'Common\Editing\Atlas.Common.Editing.Modernizer.Tests.pas',
