@@ -28,6 +28,8 @@ type
     [Test]
     procedure EventPropertyIsMedium;
     [Test]
+    procedure EventWritingTheVariableIsSilent;
+    [Test]
     procedure CustomDeferredApiFromOptions;
     [Test]
     procedure FixCopiesValuePerIteration;
@@ -154,6 +156,20 @@ begin
     Routine('  for S in Liste do'#10'    F.OnDone := procedure begin Log(S); end;', StringVar));
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+end;
+
+procedure TCaptureRuleTests.EventWritingTheVariableIsSilent;
+begin
+  // Das Ereignis sammelt in der Variablen (Testprotokoll, Zähler); dass sie sich danach ändert, ist gewollt.
+  TRuleAssert.Silent(TCapturedLoopVariableRule.Create,
+    Routine('  S := '''';'#10'  F.OnDone := procedure begin S := S + ''x''; end;'#10'  F.Run;'#10 +
+      '  S := '''';', StringVar));
+  TRuleAssert.Silent(TCapturedLoopVariableRule.Create,
+    Routine('  I := 0;'#10'  F.OnDone := procedure begin Inc(I); end;'#10'  F.Run;'#10'  I := 0;',
+      'var'#10'  I: Integer;'#10));
+  // Liest das Ereignis nur, bleibt die Meldung.
+  TRuleAssert.Reports(TCapturedLoopVariableRule.Create,
+    Routine('  S := ''a'';'#10'  F.OnDone := procedure begin Log(S); end;'#10'  S := ''b'';', StringVar));
 end;
 
 procedure TCaptureRuleTests.CustomDeferredApiFromOptions;

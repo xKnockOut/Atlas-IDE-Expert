@@ -173,6 +173,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Derived,
@@ -1430,32 +1431,69 @@ begin
     'Veraltetes TThread.Resume oder Suspend');
 end;
 
+/// <summary>Ist AReceiver ein Bezeichner, dessen deklarierter Typ sicher kein Thread ist: Typ in der Datei
+/// deklariert, Vorfahrenkette (Datei oder Index) vollständig bis TObject und ohne TThread (eigene Klassen mit
+/// Pause/Resume wie TAtlasTimeClock)?</summary>
+function KnownNonThread(ATypes: TDeclaredTypes; AAncestry: TAncestry; AReceiver: TSyntaxNode): Boolean;
+var
+  mType: string;
+  mComplete, mObjectMissing: Boolean;
+begin
+  Result := False;
+  if AReceiver.Kind <> TSyntaxKind.Identifier then
+    Exit;
+  mType := ATypes.DeclaredType(AReceiver.Name, AReceiver.StartPos);
+  if (mType = '') or SameText(mType, 'TThread') or AAncestry.DescendsFrom(mType, 'TThread') then
+    Exit;
+  AAncestry.Ancestors(mType, mComplete, mObjectMissing);
+  Result := mComplete;
+end;
+
 procedure TThreadResumeSuspendRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Report: IRuleReport;
+  mTypes: TDeclaredTypes;
+  mAncestry: TAncestry;
 begin
   if AContext.Tree = nil then
     Exit;
   Report := AReport;
-  // Iterativ (Bericht M1).
-  AContext.Tree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      Call: TMethodCall;
-      Range: TTextRange;
-    begin
-      Result := True;
-      // Nur X.Resume/X.Suspend ohne Argumente: Resume(…) gehört zu anderen Klassen.
-      if not TryMethodCall(ANode, Call) or (Call.Call <> nil) or (Call.Receiver = nil) then
-        Exit;
-      Range := NameRange(Call.Member);
-      if SameText(Call.Method, 'Resume') then
-        Report.Add(Range, 'TThread.Resume ist veraltet; einen erzeugten Thread mit Start starten',
-          TRuleConfidence.High, [TRuleFix.Create('Durch Start ersetzen', [TRuleEdit.Create(Range, 'Start')], True)])
-      else if SameText(Call.Method, 'Suspend') then
-        Report.Add(Range, 'TThread.Suspend ist veraltet und kann den Thread mitten in einer Sperre anhalten; ' +
-          'stattdessen mit einem Ereignis (TEvent) warten', TRuleConfidence.High);
-    end);
+  mTypes := nil;
+  mAncestry := nil;
+  try
+    // Iterativ (Bericht M1).
+    AContext.Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      var
+        Call: TMethodCall;
+        Range: TTextRange;
+      begin
+        Result := True;
+        // Nur X.Resume/X.Suspend ohne Argumente: Resume(…) gehört zu anderen Klassen.
+        if not TryMethodCall(ANode, Call) or (Call.Call <> nil) or (Call.Receiver = nil) or
+          not MatchText(Call.Method, ['Resume', 'Suspend']) then
+          Exit;
+        // Typen erst beim ersten Kandidaten bestimmen: Resume und Suspend sind selten.
+        if mTypes = nil then
+        begin
+          mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+          mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext),
+            AContext));
+        end;
+        if KnownNonThread(mTypes, mAncestry, Call.Receiver) then
+          Exit;
+        Range := NameRange(Call.Member);
+        if SameText(Call.Method, 'Resume') then
+          Report.Add(Range, 'TThread.Resume ist veraltet; einen erzeugten Thread mit Start starten',
+            TRuleConfidence.High, [TRuleFix.Create('Durch Start ersetzen', [TRuleEdit.Create(Range, 'Start')], True)])
+        else
+          Report.Add(Range, 'TThread.Suspend ist veraltet und kann den Thread mitten in einer Sperre anhalten; ' +
+            'stattdessen mit einem Ereignis (TEvent) warten', TRuleConfidence.High);
+      end);
+  finally
+    mAncestry.Free;
+    mTypes.Free;
+  end;
 end;
 
 /// <summary>Methode mit einem Parameter Sender: OnClick, OnTimer und Verwandte.</summary>

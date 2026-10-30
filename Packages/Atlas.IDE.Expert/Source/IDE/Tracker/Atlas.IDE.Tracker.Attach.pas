@@ -97,7 +97,6 @@ uses
   Winapi.ShellAPI,
   System.UITypes,
   System.IOUtils,
-  System.StrUtils,
   ToolsAPI,
   Vcl.Controls,
   Vcl.Forms,
@@ -513,13 +512,18 @@ end;
 
 procedure TAtlasIdeIssueAttach.Sent(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest;
   const AOutcome: TAtlasAttachOutcome);
+var
+  mState: string;
 begin
   FCancel := nil;
   ReleaseThread(False);
   // Die Dateien sind gesendet bzw. gescheitert: der Ordner des Laufs geht in jedem Fall.
   DropTemp;
-  TAtlasGuard.Log(Format('Anhängen: %s, %d Dateien, %s', [AProvider.Name, Length(ARequest.Files),
-    IfThen(AOutcome.Succeeded, 'gesendet', 'nicht gesendet (' + TAtlasCiBuild.ErrorKey(AOutcome.Error) + ')')]));
+  if AOutcome.Succeeded then
+    mState := 'gesendet'
+  else
+    mState := 'nicht gesendet (' + TAtlasCiBuild.ErrorKey(AOutcome.Error) + ')';
+  TAtlasGuard.Log(Format('Anhängen: %s, %d Dateien, %s', [AProvider.Name, Length(ARequest.Files), mState]));
   if AOutcome.Error = TAtlasCiFetchError.Cancelled then
     Exit;
   if not AOutcome.Succeeded then

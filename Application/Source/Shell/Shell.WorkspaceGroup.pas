@@ -53,7 +53,7 @@ type
     /// statt je Prüfung einen eigenen aufzubauen.</summary>
     FUsesGraph: TUsesGraphService;
     /// <summary>Code-Abfragen über alle Projekte der Gruppe (#1351) für query_code, --query und die Regeln
-    /// query:<name>; ein Dienst, damit ein Ergebnis je Index-Stand einmal gerechnet wird.</summary>
+    /// query:&lt;name&gt;; ein Dienst, damit ein Ergebnis je Index-Stand einmal gerechnet wird.</summary>
     FQueries: ICodeQueries;
     function Workspaces: TArray<TShellWorkspace>;
     function QuerySource(out ASource: TQuerySource): Boolean;

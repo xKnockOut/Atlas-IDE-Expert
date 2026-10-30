@@ -549,11 +549,11 @@ class function TCompilerFixes.FixAll(const AText: string; ATree: TSyntaxTree;
   out AFix: TCompilerFix): Boolean;
 var
   Message: TFixMessage;
-  Item: TCompilerFix;
   Edits: TArray<TTextEdit>;
   Units, Added, Names: TArray<string>;
   Count: Integer;
   Code: string;
+  mFixes: TArray<TCompilerFix>;
 begin
   AFix := Default(TCompilerFix);
   Code := UpperCase(Trim(ACode));
@@ -583,16 +583,15 @@ begin
   else
     for Message in AMessages do
       if Message.Code = Code then
-        for Item in Fixes(AText, ATree, Message, AContext) do
+      begin
+        // Nur die erste (bevorzugte) Korrektur je Meldung, ohne Überschneidung mit schon gesammelten.
+        mFixes := Fixes(AText, ATree, Message, AContext);
+        if (mFixes <> nil) and not OverlapsAny(mFixes[0].Edits, Edits) then
         begin
-          // Nur die erste (bevorzugte) Korrektur je Meldung, ohne Überschneidung mit schon gesammelten.
-          if not OverlapsAny(Item.Edits, Edits) then
-          begin
-            Edits := Edits + Item.Edits;
-            Inc(Count);
-          end;
-          Break;
+          Edits := Edits + mFixes[0].Edits;
+          Inc(Count);
         end;
+      end;
   Result := Count >= 2;
   if Result then
     AFix := Fix(Code, Format('Alle %s in der Datei beheben (%d)', [Code, Count]), Edits, False);

@@ -105,7 +105,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.ProfileData,
   Atlas.Core.Settings.Transfer;
 

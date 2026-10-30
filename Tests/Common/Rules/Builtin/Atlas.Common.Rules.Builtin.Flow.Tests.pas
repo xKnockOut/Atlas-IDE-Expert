@@ -223,6 +223,9 @@ procedure TFlowRulesTests.OutArgumentIsSilent;
 begin
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
     Routine('  Lese(I);'#10'  J := I;', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
+  // Ein Feld als var- oder out-Argument schreibt einen Teil des Records.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create,
+    Routine('  Lese(E.Wert);'#10'  J := E.Wert;', 'procedure P;', 'var'#10'  E: TEintrag;'#10'  J: Integer;'#10));
 end;
 
 procedure TFlowRulesTests.UninitializedFlagsNestedAndRecords;
@@ -579,6 +582,10 @@ begin
     // Ein Zweig setzt Knoten neu (FindChild kann nil liefern); die Prüfung gilt diesem Wert (#1109).
     '  if Knoten.Kind = 1 then'#10'    Knoten := Knoten.FindChild(2);'#10'  if Knoten = nil then'#10'    Exit;',
     CheckHeader, CheckVars));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // FreeAndNil im except-Zweig setzt Kunde auf nil; die Prüfung danach gilt diesem Weg (TWICImage laden).
+    '  try'#10'    Kunde.Laden;'#10'  except'#10'    on Exception do'#10'      FreeAndNil(Kunde);'#10'  end;'#10 +
+    '  if Kunde <> nil then'#10'    Anzeigen(Kunde);', CheckHeader, CheckVars));
 end;
 
 procedure TFlowRulesTests.DerefBeforeNilCheckFieldsAndOff;

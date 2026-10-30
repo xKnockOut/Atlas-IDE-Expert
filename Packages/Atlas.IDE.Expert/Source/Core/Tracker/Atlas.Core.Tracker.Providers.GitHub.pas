@@ -177,12 +177,12 @@ type
     class function ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError; static;
     /// <summary>Adresse eines Issues in der API (ohne Anhang wie /comments); '' bei ungültiger Kennung.</summary>
     class function IssueApiUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
-    /// <summary>Antwort von /issues/<n>; False bei ungültigem JSON bzw. ohne Nummer.</summary>
+    /// <summary>Antwort von /issues/&lt;n&gt;; False bei ungültigem JSON bzw. ohne Nummer.</summary>
     class function ParseDetails(const AJson: string; out ADetails: TAtlasTrackerDetails;
       out ACommentCount: Integer): Boolean; static;
-    /// <summary>Antwort von /issues/<n>/comments (älteste zuerst); False bei ungültigem JSON.</summary>
+    /// <summary>Antwort von /issues/&lt;n&gt;/comments (älteste zuerst); False bei ungültigem JSON.</summary>
     class function ParseComments(const AJson: string; out AComments: TArray<TAtlasTrackerComment>): Boolean; static;
-    /// <summary>Antwort von /issues/<n>/timeline: Verweise ("cross-referenced"); AProject entscheidet, was im
+    /// <summary>Antwort von /issues/&lt;n&gt;/timeline: Verweise ("cross-referenced"); AProject entscheidet, was im
     /// Fenster öffnet. False bei ungültigem JSON.</summary>
     class function ParseTimeline(const AJson, AProject: string; out ALinks: TArray<TAtlasTrackerLink>): Boolean;
       static;
@@ -208,12 +208,12 @@ type
     class function AssigneesUrl(const ATarget: TAtlasTrackerTarget): string; static;
     /// <summary>Fehlertext ("message") einer Antwort; '' ohne.</summary>
     class function ErrorMessage(const AJson: string): string; static;
-    /// <summary>"body" aus der Antwort von /issues/<n>, ungekürzt ('' bei null); False bei ungültigem JSON (#1273).
+    /// <summary>"body" aus der Antwort von /issues/&lt;n&gt;, ungekürzt ('' bei null); False bei ungültigem JSON (#1273).
     /// </summary>
     class function ParseBody(const AJson: string; out AText: string): Boolean; static;
     /// <summary>Inhalt des PATCH: {"body": AText}.</summary>
     class function BodyJson(const AText: string): string; static;
-    /// <summary>sub_issues_summary und issue_dependencies_summary aus /issues/<n> (#1279).</summary>
+    /// <summary>sub_issues_summary und issue_dependencies_summary aus /issues/&lt;n&gt; (#1279).</summary>
     class function ParseLinkSummary(const AJson: string): TAtlasGitHubLinkSummary; static;
     /// <summary>Liste von Issues (…/sub_issues, …/dependencies/…) als Verknüpfungen der Art AKind; AProject
     /// entscheidet, was im Fenster öffnet. False bei ungültigem JSON.</summary>
@@ -222,11 +222,11 @@ type
     /// <summary>ANew in ALinks übernehmen: eine Erwähnung desselben Issues wird durch die genauere Art ersetzt,
     /// dieselbe Art nicht doppelt; höchstens TAtlasTrackerDetails.MaxLinks.</summary>
     class procedure MergeLinks(var ALinks: TArray<TAtlasTrackerLink>; const ANew: TArray<TAtlasTrackerLink>); static;
-    /// <summary>Interne ID ("id") aus /issues/<n> bzw. der Antwort beim Anlegen; 0 ohne.</summary>
+    /// <summary>Interne ID ("id") aus /issues/&lt;n&gt; bzw. der Antwort beim Anlegen; 0 ohne.</summary>
     class function ParseIssueId(const AJson: string): Int64; static;
     /// <summary>Inhalt für POST /issues.</summary>
     class function NewIssueBody(const ATitle, ADescription: string): string; static;
-    /// <summary>Inhalt {"<AName>": AId} für sub_issues bzw. blocked_by.</summary>
+    /// <summary>Inhalt {"&lt;AName&gt;": AId} für sub_issues bzw. blocked_by.</summary>
     class function IdBody(const AName: string; AId: Int64): string; static;
     /// <summary>ISO 8601 in UTC ("2026-10-28T10:40:49Z").</summary>
     class function IsoTime(ATime: TDateTime): string; static;

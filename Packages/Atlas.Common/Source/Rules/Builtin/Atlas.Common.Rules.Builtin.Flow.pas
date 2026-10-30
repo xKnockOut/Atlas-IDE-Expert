@@ -146,7 +146,7 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-    /// <summary>Paare "Öffnen|Ort|Schließen" aus der Tabelle und der Option pairs ("Öffnen>Schließen" oder
+    /// <summary>Paare "Öffnen|Ort|Schließen" aus der Tabelle und der Option pairs ("Öffnen&gt;Schließen" oder
     /// {"open", "close"}).</summary>
     class function Pairs(const AOptions: string): TArray<string>; static;
   end;
@@ -237,8 +237,11 @@ begin
         TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod:
           Result := TSyntaxSearchStep.Skip;
         TSyntaxKind.Call:
+          // Auch X.Feld oder X[I] als Argument: Ein var- oder out-Parameter schreibt dann einen Teil von X
+          // (Liste.Find(Name, Eintrag.Wert)).
           for Index := 1 to ANode.ChildCount - 1 do
-            if IsName(ANode[Index], Name) then
+            if IsName(ANode[Index], Name) or ((ANode[Index].Kind in [TSyntaxKind.MemberAccess,
+              TSyntaxKind.IndexAccess]) and SameText(RootName(ANode[Index]), Name)) then
               Result := TSyntaxSearchStep.Found;
         TSyntaxKind.AddressOf:
           if (ANode.ChildCount > 0) and SameText(RootName(ANode[0]), Name) then
@@ -1531,6 +1534,8 @@ var
     Queue: TArray<TFlowNode>;
     Head: Integer;
     Current, Prev: TFlowNode;
+    mFreed: string;
+    mToNil: Boolean;
   begin
     Result := False;
     SetLength(Visited, Graph.Nodes.Count);
@@ -1543,7 +1548,10 @@ var
       if Visited[Current.Index] or (Current = AFrom) then
         Continue;
       Visited[Current.Index] := True;
-      if AssignsPath(Current, APath) then
+      // FreeAndNil(X) setzt X ebenso neu (etwa im except-Zweig nach einem gescheiterten Laden): die spätere
+      // Prüfung gilt diesem Weg.
+      if AssignsPath(Current, APath) or (FreedBy(Current.Syntax, mFreed, mToNil) and mToNil and
+        SameText(mFreed, APath)) then
         Exit(True);
       for Prev in Current.Predecessors do
         if not Visited[Prev.Index] then
@@ -3928,7 +3936,7 @@ type
   /// <summary>Was ein Aufruf für den Weg einer noreturn-Routine bedeutet.</summary>
   TNoreturnCallEffect = (Returns, Ends, Unknown);
 
-/// <summary>AName ohne Typparameter (TListe<T>.Fehler -> TListe.Fehler), klein geschrieben.</summary>
+/// <summary>AName ohne Typparameter (TListe&lt;T&gt;.Fehler -&gt; TListe.Fehler), klein geschrieben.</summary>
 function WithoutTypeParams(const AName: string): string;
 var
   mIndex, mDepth: Integer;

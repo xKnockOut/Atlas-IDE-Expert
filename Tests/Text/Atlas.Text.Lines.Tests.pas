@@ -283,7 +283,7 @@ var
 begin
   Table := TLineTable.Build(Text);
   Assert.AreEqual<Integer>(5, Table.LineCount);
-  for Offset := 0 to Length(Text) do
+  for Offset := 0 to Length(Text) do // lsp-ignore: loop-off-by-one -- Offsets zwischen den Zeichen; Text[Offset] nur ab 1
   begin
     // Der Offset zwischen CR und LF hat keine eigene Position.
     if (Offset > 0) and (Offset < Length(Text)) and (Text[Offset] = #13) and (Text[Offset + 1] = #10) then

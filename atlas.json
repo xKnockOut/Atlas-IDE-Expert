@@ -1,6 +1,7 @@
 {
   "project": "Tests/Atlas.Tests.dproj",
   "minDelphiVersion": "23.0",
+  "exclude": ["Tools/Linux/Compat/**"],
   "rules": {
     "metric-method-length": "off",
     "metric-nesting-depth": "off",
@@ -14,11 +15,16 @@
     "metric-unit-length": "off",
     "metric-uses-count": "off",
     "metric-inheritance-depth": "off",
+    "generic-exception-raised": {"exclude": ["Tests/**"]},
+    "format-without-settings": {"exclude": ["Tests/**"]},
+    "security-insecure-http": {"exclude": ["Tests/**"]},
+    "unused-unit": {"exclude": ["Tests/**/*Golden.pas"]},
     "loop-runs-at-most-once": {
       "allowFirstElement": true
     },
     "architecture-role-import": {
       "severity": "warning",
+      "exclude": ["Tests/**"],
       "prefixes": ["Atlas.Text", "Atlas.Common", "Atlas.Windows", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "allow": [
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
@@ -29,6 +35,7 @@
     },
     "architecture-contract-content": {
       "severity": "warning",
+      "exclude": ["Tests/**"],
       "prefixes": ["Atlas.Text", "Atlas.Common", "Atlas.Windows", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "allow": ["Atlas.Common.Dfm.Contract.TDfm*"]
     },

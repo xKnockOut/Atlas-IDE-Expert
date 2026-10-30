@@ -43,7 +43,7 @@ uses
 
 const
   PropertyBefore =
-    'unit Atlas.Common.Editing.ClassActions.PropertyGolden;'#13#10 +
+    'unit Atlas.Common.Editing.ClassActions.PropertyGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.'#13#10 +
     #13#10 +
     '// Golden-Datei für die Code-Aktion „Getter, Setter und Feld erzeugen“ (#42):'#13#10 +
     '// genau das, was die Aktion aus "property Name: string;" ohne read/write'#13#10 +
@@ -70,7 +70,7 @@ const
     'end.'#13#10;
 
   InterfaceBefore =
-    'unit Atlas.Common.Editing.ClassActions.InterfaceGolden;'#13#10 +
+    'unit Atlas.Common.Editing.ClassActions.InterfaceGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.'#13#10 +
     #13#10 +
     '// Golden-Datei für die Code-Aktion „Methoden von IFoo implementieren“ (#42):'#13#10 +
     '// genau das, was die Aktion für ein Interface im Kopf der Klasse erzeugt.'#13#10 +
@@ -94,7 +94,7 @@ const
     'end.'#13#10;
 
   OverrideBefore =
-    'unit Atlas.Common.Editing.ClassActions.OverrideGolden; // lsp-ignore-file: override-only-inherited -- Die Aktion erzeugt absichtlich Rümpfe nur mit inherited.'#13#10 +
+    'unit Atlas.Common.Editing.ClassActions.OverrideGolden; // lsp-ignore-file: override-only-inherited, unused-public-member -- Die Aktion erzeugt absichtlich Rümpfe nur mit inherited; das Testprojekt übersetzt nur das Ergebnis.'#13#10 +
     #13#10 +
     '// Golden-Datei für die Code-Aktion „Name überschreiben“ (#42): genau das,'#13#10 +
     '// was die Aktion für zwei virtuelle Methoden des Vorfahren erzeugt. Der Test'#13#10 +

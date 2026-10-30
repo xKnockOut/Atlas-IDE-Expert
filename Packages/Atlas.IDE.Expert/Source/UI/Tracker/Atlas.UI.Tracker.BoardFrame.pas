@@ -614,7 +614,7 @@ begin
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := ToColor(FColors.Muted);
     mRect := FLayout.Headers[mIndex];
-    InflateRect(mRect, -6, 0);
+    InflateRect(mRect, -ScaleValue(6), 0);
     DrawText(Canvas.Handle, PChar(mText), Length(mText), mRect,
       DT_LEFT or DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
     Canvas.Font.Style := [];

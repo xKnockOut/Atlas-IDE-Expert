@@ -628,7 +628,7 @@ begin
   try
     TFile.WriteAllText(FileName, '{kaputt');
     Assert.IsTrue(Favorites.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
-    Assert.AreEqual('{kaputt', TFile.ReadAllText(FileName + TAtlasDataFile.DefectExtension));
+    Assert.AreEqual('{kaputt', TFile.ReadAllText(FileName + TAtlasDataFile.DefectExtension, TEncoding.UTF8));
     Favorites.Toggle(Member('Open', 'TDataSet', 1, 0));
     Assert.IsTrue(Favorites.SaveToFile(FileName));
     Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
@@ -640,8 +640,8 @@ begin
     Assert.AreEqual(0, Integer(Favorites.Count));
     Favorites.Toggle(Member('Close', 'TDataSet', 1, 0));
     Assert.IsFalse(Favorites.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(FileName), '"Open"');
-    Assert.DoesNotContain(TFile.ReadAllText(FileName), '"Close"');
+    Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '"Open"');
+    Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), '"Close"');
   finally
     Favorites.Free;
     TDirectory.Delete(Folder, True);

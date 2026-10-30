@@ -94,8 +94,6 @@ const
     'Action', 'DataSource', 'DataField');
 
 type
-  TDesignerBarState = class;
-
   /// <summary>Taste für „Komponenten suchen“, solange der Designer den Fokus hat.</summary>
   TSearchKeyClient = class(TAtlasKeyClient)
   protected

@@ -136,8 +136,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Text.Lines,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Pascal.Contract;
 
 const
   /// <summary>Klassen der RTL, die IInterface implementieren.</summary>

@@ -54,6 +54,8 @@ type
     [Test]
     procedure SuspendReportsAndResumeWithArgumentsIsSilent;
     [Test]
+    procedure ResumeOnOwnNonThreadClassIsSilent;
+    [Test]
     procedure PairWithoutFinallyIssueExample;
     [Test]
     procedure PairWithoutFinallyVariants;
@@ -372,6 +374,20 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
   TRuleAssert.Silent(TThreadResumeSuspendRule.Create, Routine('  FPlayer.Resume(Position);'));
+end;
+
+procedure TConcurrencyRulesTests.ResumeOnOwnNonThreadClassIsSilent;
+const
+  cTypes = 'type'#10'  TClock = class'#10'    procedure Pause;'#10'    procedure Resume;'#10'  end;'#10 +
+    '  TWorker = class(TThread)'#10'  end;'#10'  TA = class'#10'    FClock: TClock;'#10'    FWorker: TWorker;'#10 +
+    '    procedure Run;'#10'  end;'#10;
+begin
+  // Eigene Klasse mit Pause/Resume (wie TAtlasTimeClock): Vorfahrenkette bis TObject ohne TThread.
+  TRuleAssert.Silent(TThreadResumeSuspendRule.Create, 'unit U;'#10'interface'#10 + cTypes + 'implementation'#10 +
+    'procedure TA.Run;'#10'begin'#10'  FClock.Resume;'#10'  FClock.Suspend;'#10'end;'#10'end.');
+  // Thread-Nachfahre derselben Datei: weiter gemeldet, auch wenn TThread selbst nicht im Index steht.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TThreadResumeSuspendRule.Create, 'unit U;'#10'interface'#10 +
+    cTypes + 'implementation'#10'procedure TA.Run;'#10'begin'#10'  FWorker.Resume;'#10'end;'#10'end.'))));
 end;
 
 function Import(const ABody: string): string;

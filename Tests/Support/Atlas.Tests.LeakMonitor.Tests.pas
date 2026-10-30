@@ -382,7 +382,7 @@ begin
   Worker := TThread.CreateAnonymousThread(
     procedure
     begin
-      FreeAndNil(Shared);
+      FreeAndNil(Shared); // lsp-ignore: captured-loop-variable -- Absicht: der Thread gibt das Objekt später frei
     end);
   Worker.FreeOnTerminate := False;
   try

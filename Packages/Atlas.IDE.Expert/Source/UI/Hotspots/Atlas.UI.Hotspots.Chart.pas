@@ -181,16 +181,16 @@ begin
     mX := mLeft + (mRight - mLeft) * mTick div cTicks;
     mCaption := IntToStr(Round(mMaxChanges * mTick / cTicks));
     mSize := Canvas.TextExtent(mCaption);
-    Canvas.TextOut(mX - mSize.cx div 2, mBottom + 2, mCaption);
+    Canvas.TextOut(mX - mSize.cx div 2, mBottom + Round(2 * Scale), mCaption);
     mY := mBottom - (mBottom - mTop) * mTick div cTicks;
     mCaption := IntToStr(Round(mMaxComplexity * mTick / cTicks));
     mSize := Canvas.TextExtent(mCaption);
-    Canvas.TextOut(mLeft - mSize.cx - 4, mY - mSize.cy div 2, mCaption);
+    Canvas.TextOut(mLeft - mSize.cx - Round(4 * Scale), mY - mSize.cy div 2, mCaption);
   end;
   mCaption := TAtlasStrings.Text(TAtlasTextId.HotspotsColChanges);
   mSize := Canvas.TextExtent(mCaption);
-  Canvas.TextOut(mRight - mSize.cx, mBottom - mSize.cy - 2, mCaption);
-  Canvas.TextOut(mLeft + 4, mTop, TAtlasStrings.Text(TAtlasTextId.HotspotsColComplexity));
+  Canvas.TextOut(mRight - mSize.cx, mBottom - mSize.cy - Round(2 * Scale), mCaption);
+  Canvas.TextOut(mLeft + Round(4 * Scale), mTop, TAtlasStrings.Text(TAtlasTextId.HotspotsColComplexity));
   // Blasen: größte zuerst, damit kleine sichtbar bleiben; gewählte und überfahrene mit Rahmen.
   Canvas.Brush.Style := bsSolid;
   for mBubble in FBubbles do
@@ -200,7 +200,7 @@ begin
     if (mBubble.Entry = FSelected) or (mBubble.Entry = FHover) then
     begin
       Canvas.Pen.Color := ToColor(mColors.Accent);
-      Canvas.Pen.Width := Max(2, Round(2 * Scale));
+      Canvas.Pen.Width := Round(2 * Scale);
     end
     else
     begin
@@ -217,7 +217,7 @@ begin
     begin
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := ToColor(mColors.Text);
-      Canvas.TextOut(mBubble.X + mBubble.Radius + 3, mBubble.Y - Canvas.TextHeight('Ag') div 2,
+      Canvas.TextOut(mBubble.X + mBubble.Radius + Round(3 * Scale), mBubble.Y - Canvas.TextHeight('Ag') div 2,
         FEntries[mBubble.Entry].Caption);
     end;
 end;

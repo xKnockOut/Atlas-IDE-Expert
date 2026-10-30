@@ -107,8 +107,9 @@ begin
     for mIndex := 1 to TAtlasIssueHistory.MaxEntries + 5 do
       mHistory.Visit(Entry('#' + IntToStr(mIndex)));
     Assert.AreEqual(Integer(TAtlasIssueHistory.MaxEntries), mHistory.Count);
-    while mHistory.GoBack(mEntry) do
-      ;
+    repeat
+      // Bis zum ältesten Eintrag zurück.
+    until not mHistory.GoBack(mEntry);
     Assert.AreEqual('#6', mEntry.Key, 'die ältesten fallen heraus');
   finally
     mHistory.Free;

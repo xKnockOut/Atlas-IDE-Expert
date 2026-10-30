@@ -261,7 +261,7 @@ begin
   Canvas.Brush.Color := ToColor(mColors.Accent);
   if Focused then
   begin
-    Canvas.Pen.Width := 2;
+    Canvas.Pen.Width := ScaleValue(2);
     Canvas.Pen.Color := ToColor(mColors.Text);
   end
   else

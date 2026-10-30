@@ -57,6 +57,8 @@ type
     [Test]
     procedure PackageContainsIsNoImport;
     [Test]
+    procedure TestUnitIsSilent;
+    [Test]
     procedure ParsesOptions;
   end;
 
@@ -71,6 +73,8 @@ type
     procedure IgnoresImplementationSection;
     [Test]
     procedure IgnoresNonContractUnit;
+    [Test]
+    procedure IgnoresTestUnitOfContract;
     [Test]
     procedure ForwardDeclarationIsSilent;
     [Test]
@@ -326,6 +330,14 @@ begin
     'experimentell: ohne Konfiguration aus');
 end;
 
+procedure TRoleImportRuleTests.TestUnitIsSilent;
+begin
+  // Die Testunit trägt den Namen der getesteten Contract-Unit, gehört aber zu keiner Rolle.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Atlas.Common.Logging.Contract.Tests;'#10'interface'#10'uses DUnitX.TestFramework;'#10 +
+    'implementation'#10'uses Atlas.Common.Logging.Providers.Logger;'#10'end.', RoleConfig, 'Tests/x.pas'))));
+end;
+
 procedure TRoleImportRuleTests.ApprovedExceptionIsSilent;
 const
   Config = '{ "rules": { "architecture-role-import": { "severity": "warning", "prefixes": ["Atlas.Common"], ' +
@@ -388,6 +400,13 @@ const
 function ContractFindings(const ASource: string; const AConfig: string = ContractConfig): TArray<TRuleFinding>;
 begin
   Result := TRuleAssert.Findings(TContractContentRule.Create, ASource, AConfig, 'Source/x.pas');
+end;
+
+procedure TContractContentRuleTests.IgnoresTestUnitOfContract;
+begin
+  Assert.AreEqual(0, Integer(Length(ContractFindings('unit App.Orders.Contract.Tests;'#10'interface'#10 +
+    'uses DUnitX.TestFramework;'#10'type'#10'  [TestFixture]'#10'  TOrderTests = class'#10'  end;'#10 +
+    'implementation'#10'end.'))));
 end;
 
 procedure TContractContentRuleTests.ReportsClassInContract;
