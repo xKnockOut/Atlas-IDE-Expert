@@ -11,20 +11,36 @@
 // einer früheren Stufe oder an derselben mit kleinerer Priorität steht.
 // Hover und Vervollständigung sind davon nicht betroffen: EnsureUnit wartet
 // nie auf den Scheduler.
+//
+// Queue (#1356) nennt für das Fenster „Atlas-Server“, wie viele Aufbauten auf
+// eine Stufe warten, ob einer läuft und seit wann der älteste wartet.
 
 interface
 
 uses
   System.SysUtils,
+  System.Classes,
   System.Generics.Collections,
   Atlas.Common.Index.Contract;
 
 type
+  /// <summary>Stand der Aufbauten für den Status (#1356).</summary>
+  TIndexSchedulerQueue = record
+    /// <summary>Aufbauten, die auf ihre Stufe warten.</summary>
+    Waiting: Integer;
+    /// <summary>1, während ein Aufbau eine Stufe bearbeitet, sonst 0.</summary>
+    Running: Integer;
+    /// <summary>Wartezeit des am längsten wartenden Aufbaus; 0 ohne.</summary>
+    OldestWaitMs: Int64;
+  end;
+
   TIndexScheduler = class
   private type
     TEntry = record
       Priority: Integer;
       Stage: TIndexStage;
+      /// <summary>Wartet seit diesem Zeitpunkt (TThread.GetTickCount64) in Enter; 0 = wartet nicht.</summary>
+      WaitingSince: UInt64;
     end;
   private
     FLock: TObject;
@@ -32,6 +48,8 @@ type
     FNextTicket: Int64;
     FRunning: Int64;
     function MayRun(ATicket: Int64; const AEntry: TEntry): Boolean;
+    /// <summary>Unter FLock: Wartemarke des Aufbaus löschen (AWaiting False).</summary>
+    procedure SetWaiting(ATicket: Int64; AWaiting: Boolean);
     function Enter(ATicket: Int64; AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
     procedure Leave(ATicket: Int64);
     procedure Unregister(ATicket: Int64);
@@ -43,6 +61,8 @@ type
     function Register(APriority: Integer): IIndexTurn;
     /// <summary>Zahl der angemeldeten Aufbauten (für Tests).</summary>
     function Count: Integer;
+    /// <summary>Wartende und laufende Aufbauten, älteste Wartezeit.</summary>
+    function Queue: TIndexSchedulerQueue;
   end;
 
 implementation
@@ -111,6 +131,7 @@ var
 begin
   Entry.Priority := APriority;
   Entry.Stage := TIndexStage.Project;
+  Entry.WaitingSince := 0;
   TMonitor.Enter(FLock);
   try
     Inc(FNextTicket);
@@ -130,6 +151,42 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+function TIndexScheduler.Queue: TIndexSchedulerQueue;
+var
+  mPair: TPair<Int64, TEntry>;
+  mNow: UInt64;
+begin
+  Result := Default(TIndexSchedulerQueue);
+  mNow := TThread.GetTickCount64;
+  TMonitor.Enter(FLock);
+  try
+    if FRunning <> 0 then
+      Result.Running := 1;
+    for mPair in FEntries do
+      if mPair.Value.WaitingSince <> 0 then
+      begin
+        Inc(Result.Waiting);
+        if Int64(mNow - mPair.Value.WaitingSince) > Result.OldestWaitMs then
+          Result.OldestWaitMs := Int64(mNow - mPair.Value.WaitingSince);
+      end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TIndexScheduler.SetWaiting(ATicket: Int64; AWaiting: Boolean);
+var
+  mEntry: TEntry;
+begin
+  if not FEntries.TryGetValue(ATicket, mEntry) then
+    Exit;
+  if AWaiting then
+    mEntry.WaitingSince := TThread.GetTickCount64
+  else
+    mEntry.WaitingSince := 0;
+  FEntries[ATicket] := mEntry;
 end;
 
 function TIndexScheduler.MayRun(ATicket: Int64; const AEntry: TEntry): Boolean;
@@ -161,15 +218,20 @@ begin
     if not FEntries.TryGetValue(ATicket, Entry) then
       Exit(True);
     Entry.Stage := AStage;
+    Entry.WaitingSince := TThread.GetTickCount64;
     FEntries[ATicket] := Entry;
     // Andere sehen die neue Stufe sofort.
     TMonitor.PulseAll(FLock);
     while not MayRun(ATicket, Entry) do
     begin
       if Assigned(ACancelled) and ACancelled() then
+      begin
+        SetWaiting(ATicket, False);
         Exit(False);
+      end;
       TMonitor.Wait(FLock, PollMs);
     end;
+    SetWaiting(ATicket, False);
     FRunning := ATicket;
     Result := True;
   finally

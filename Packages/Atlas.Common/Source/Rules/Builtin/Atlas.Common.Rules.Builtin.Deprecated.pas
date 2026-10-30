@@ -11,12 +11,18 @@
 // deprecated 'Grund' steht in der Meldung. Nicht gemeldet werden die
 // Deklaration selbst und der Name im Kopf einer Implementierung.
 //
-// Welche Arten gemeldet werden, legt die Option kinds fest (Standard
-// deprecated und experimental, wie meist in Projekten); die Schalter
+// Ob eine Art gemeldet wird, entscheidet wie bei dcc der Stand der Warnung
+// (Rules.WarnSwitches, #1378): ab Werk alle acht an, dann die Projektoption
+// der .dproj (DCC_SYMBOL_PLATFORM = false …), dann die Schalter
 // {$WARN SYMBOL_PLATFORM OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_…} und
-// {$WARNINGS OFF} in der Datei gelten ab ihrer Stelle wie beim Compiler.
-// Steht ein Schalter in einem {$IF}-Zweig, der nicht sicher mit der Stelle
-// übersetzt wird, schweigt die Regel dort.
+// {$WARNINGS OFF} in der Datei ab ihrer Stelle. Steht ein Schalter in einem
+// {$IF}-Zweig, der nicht sicher mit der Stelle übersetzt wird, schweigt die
+// Regel dort. Die Option kinds schränkt die Arten zusätzlich ein (Standard
+// alle vier).
+//
+// Die .NET-Direktive {$UNSAFECODE ON|OFF} meldet dcc für Windows als
+// plattformspezifisches Symbol (W1002, Fall CmE2406); die Regel meldet sie
+// ebenso, solange SYMBOL_PLATFORM an ist.
 //
 // Korrektur: Ersatz aus dem deprecated-Text (deprecated 'Use Neu'), bzw. für
 // platform-Routinen der RTL ohne Text aus einer kleinen Tabelle, wenn genau
@@ -55,11 +61,11 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Semantics.NameResolver;
 
 const
@@ -70,26 +76,16 @@ const
   SymbolSwitches: array[0..3] of string = ('SYMBOL_DEPRECATED', 'SYMBOL_EXPERIMENTAL', 'SYMBOL_PLATFORM',
     'SYMBOL_LIBRARY');
   UnitSwitches: array[0..3] of string = ('UNIT_DEPRECATED', 'UNIT_EXPERIMENTAL', 'UNIT_PLATFORM', 'UNIT_LIBRARY');
+  // Index von platform in KindWords.
+  cPlatformKind = 2;
+  // Direktiven, die es nur für .NET gab; dcc für Windows meldet sie als plattformspezifisch (W1002).
+  cNetDirectives: array[0..0] of string = ('UNSAFECODE');
   // platform-Routinen der RTL ohne Grund im Quelltext und ihr plattformunabhängiger Ersatz.
   KnownOld: array[0..1] of string = ('IncludeTrailingBackslash', 'ExcludeTrailingBackslash');
   KnownNew: array[0..1] of string = ('IncludeTrailingPathDelimiter', 'ExcludeTrailingPathDelimiter');
   KnownUnits: array[0..1] of string = ('System.SysUtils', 'SysUtils');
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Zustand einer Warnung an einer Stelle: an, als Fehler, aus oder nicht sicher bekannt.</summary>
-  TWarnState = (Enabled, AsError, Disabled, Unknown);
-  TWarnValue = (SetOn, SetError, SetOff, SetDefault);
-{$SCOPEDENUMS OFF}
-
-  /// <summary>Schalter {$WARN Name Wert} bzw. {$WARNINGS Wert} (Name '') an Offset und Zweig Path.</summary>
-  TWarnSwitch = record
-    Offset: Integer;
-    Path: string;
-    Name: string;
-    Value: TWarnValue;
-  end;
-
   TDeprecatedCheck = class
   private
     FContext: TRuleContext;
@@ -100,12 +96,11 @@ type
     FScope: TNameResolver;
     FOwn: TUnitIndex;
     FKinds: TArray<string>;
-    FSwitches: TArray<TWarnSwitch>;
-    FPaths: TArray<string>;
+    FSwitches: TRuleWarnSwitches;
     FTokenIndex: TDictionary<Integer, Integer>;
-    procedure ReadSwitches;
+    procedure IndexTokens;
     /// <summary>Wie die Warnung AKind (Symbol bzw. Unit) am Token ATokenIndex steht.</summary>
-    function StateAt(AKind: Integer; AUnitLevel: Boolean; ATokenIndex: Integer): TWarnState;
+    function StateAt(AKind: Integer; AUnitLevel: Boolean; ATokenIndex: Integer): TRuleWarnState;
     function FindIndexedUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     function SymbolOf(const AResolved: TResolvedSymbol; out AOwner: TUnitIndex; out ASymbol: TIndexSymbol): Boolean;
     /// <summary>Eindeutiger Ersatz für ASymbol, an der Stelle sichtbar und von derselben Art; '' ohne.</summary>
@@ -118,6 +113,7 @@ type
     procedure CheckSymbols;
     /// <summary>Abschnitte automated in Klassen (W1000 „Symbol 'AUTOMATED' ist veraltet“, #1373).</summary>
     procedure CheckAutomated;
+    procedure CheckNetDirectives;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
@@ -209,133 +205,42 @@ begin
   FScope := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
   FScope.Namespaces := AContext.Namespaces;
   FTokenIndex := TDictionary<Integer, Integer>.Create;
-  // Standard wie meist in Projekten: platform und library aus.
-  FKinds := TRuleOptions.Strings(AContext.Options, 'kinds', ['deprecated', 'experimental']);
+  FSwitches := TRuleWarnSwitches.Create(AContext);
+  // Standard wie dcc: alle Arten; ob die Warnung an ist, sagt FSwitches.
+  FKinds := TRuleOptions.Strings(AContext.Options, 'kinds', ['deprecated', 'experimental', 'platform', 'library']);
 end;
 
 destructor TDeprecatedCheck.Destroy;
 begin
+  FSwitches.Free;
   FTokenIndex.Free;
   FScope.Free;
   FResolver.Free;
   inherited;
 end;
 
-procedure TDeprecatedCheck.ReadSwitches;
+procedure TDeprecatedCheck.IndexTokens;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-  Name, Body: string;
-  Words: TArray<string>;
-  Switch: TWarnSwitch;
-  Value: string;
+  mIndex: Integer;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := FContext.Tree.Tokens;
-  FPaths := TConditionalBranches.Paths(Tokens);
-  FSwitches := nil;
-  for Index := 0 to High(Tokens) do
-  begin
-    FTokenIndex.AddOrSetValue(Tokens[Index].Offset, Index);
-    if Tokens[Index].Kind <> TPascalTokenKind.Directive then
-      Continue;
-    Name := TPascalLexer.DirectiveName(Tokens[Index].Text);
-    if (Name <> 'WARN') and (Name <> 'WARNINGS') then
-      Continue;
-    // {$WARN SYMBOL_PLATFORM OFF} bzw. (*$WARNINGS OFF*)
-    Body := Tokens[Index].Text;
-    if StartsStr('(*', Body) then
-      Body := Copy(Body, 4, Length(Body) - 5)
-    else
-      Body := Copy(Body, 3, Length(Body) - 3);
-    Words := Body.Split([' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty);
-    Switch := Default(TWarnSwitch);
-    Switch.Offset := Tokens[Index].Offset;
-    Switch.Path := TConditionalBranches.PathAt(FPaths, Index);
-    if Name = 'WARN' then
-    begin
-      if Length(Words) < 3 then
-        Continue;
-      Switch.Name := UpperCase(Words[1]);
-      Value := UpperCase(Words[2]);
-    end
-    else
-    begin
-      if Length(Words) < 2 then
-        Continue;
-      Value := UpperCase(Words[1]);
-    end;
-    if Value = 'ON' then
-      Switch.Value := TWarnValue.SetOn
-    else if Value = 'ERROR' then
-      Switch.Value := TWarnValue.SetError
-    else if Value = 'OFF' then
-      Switch.Value := TWarnValue.SetOff
-    else if (Value = 'DEFAULT') and (Name = 'WARN') then
-      Switch.Value := TWarnValue.SetDefault
-    else
-      Continue;
-    FSwitches := FSwitches + [Switch];
-  end;
+  mTokens := FContext.Tree.Tokens;
+  for mIndex := 0 to High(mTokens) do
+    FTokenIndex.AddOrSetValue(mTokens[mIndex].Offset, mIndex);
 end;
 
-function TDeprecatedCheck.StateAt(AKind: Integer; AUnitLevel: Boolean; ATokenIndex: Integer): TWarnState;
+function TDeprecatedCheck.StateAt(AKind: Integer; AUnitLevel: Boolean; ATokenIndex: Integer): TRuleWarnState;
 var
-  Base, State, Warnings: TWarnState;
-  Switch: TWarnSwitch;
-  Path, Key: string;
-  Offset: Integer;
+  mKey: string;
 begin
-  if IndexText(KindWords[AKind], FKinds) >= 0 then
-    Base := TWarnState.Enabled
-  else
-    Base := TWarnState.Disabled;
+  if IndexText(KindWords[AKind], FKinds) < 0 then
+    Exit(TRuleWarnState.Disabled);
   if AUnitLevel then
-    Key := UnitSwitches[AKind]
+    mKey := UnitSwitches[AKind]
   else
-    Key := SymbolSwitches[AKind];
-  State := Base;
-  Warnings := TWarnState.Enabled;
-  Path := TConditionalBranches.PathAt(FPaths, ATokenIndex);
-  Offset := FContext.Tree.Tokens[ATokenIndex].Offset;
-  for Switch in FSwitches do
-  begin
-    if Switch.Offset >= Offset then
-      Break;
-    if (Switch.Name <> '') and (Switch.Name <> Key) then
-      Continue;
-    // Ein Schalter im anderen Zweig desselben {$IF} gilt hier nie; einer, der nicht sicher mit übersetzt
-    // wird, macht den Zustand unbekannt.
-    if TConditionalBranches.Exclusive(Path, Switch.Path) then
-      Continue;
-    if Switch.Name = '' then
-    begin
-      if not TConditionalBranches.Implies(Path, Switch.Path) then
-        Warnings := TWarnState.Unknown
-      else if Switch.Value = TWarnValue.SetOff then
-        Warnings := TWarnState.Disabled
-      else
-        Warnings := TWarnState.Enabled;
-      Continue;
-    end;
-    if not TConditionalBranches.Implies(Path, Switch.Path) then
-      State := TWarnState.Unknown
-    else
-      case Switch.Value of
-        TWarnValue.SetOn:
-          State := TWarnState.Enabled;
-        TWarnValue.SetError:
-          State := TWarnState.AsError;
-        TWarnValue.SetOff:
-          State := TWarnState.Disabled;
-        TWarnValue.SetDefault:
-          State := Base;
-      end;
-  end;
-  if (State = TWarnState.Disabled) or (Warnings = TWarnState.Disabled) then
-    Exit(TWarnState.Disabled);
-  if (State = TWarnState.Unknown) or (Warnings = TWarnState.Unknown) then
-    Exit(TWarnState.Unknown);
-  Result := State;
+    mKey := SymbolSwitches[AKind];
+  // dcc meldet alle acht Warnungen ab Werk.
+  Result := FSwitches.StateAt(mKey, True, ATokenIndex);
 end;
 
 function TDeprecatedCheck.FindIndexedUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
@@ -443,7 +348,7 @@ procedure TDeprecatedCheck.ReportKinds(const ARange: TTextRange; ATokenIndex: In
   const ADirectives: TArray<string>; const AReason, AReplacement: string; AUnitLevel: Boolean);
 var
   Kind: Integer;
-  State: TWarnState;
+  State: TRuleWarnState;
   Message, Prefix, Code: string;
   Fixes: TArray<TRuleFix>;
   Severity: TRuleSeverity;
@@ -453,7 +358,7 @@ begin
     if IndexText(KindWords[Kind], ADirectives) < 0 then
       Continue;
     State := StateAt(Kind, AUnitLevel, ATokenIndex);
-    if (State = TWarnState.Disabled) or (State = TWarnState.Unknown) then
+    if not TRuleWarnSwitches.Reported(State) then
       Continue;
     if AUnitLevel then
     begin
@@ -477,7 +382,7 @@ begin
         [TTextEdit.Create(ARange, AReplacement)])];
     // {$WARN … ERROR} macht die Warnung zum Fehler.
     Severity := TRuleSeverity.Default;
-    if State = TWarnState.AsError then
+    if State = TRuleWarnState.AsError then
       Severity := TRuleSeverity.Error;
     FReport.AddWithSeverity(ARange, Message, Severity, Fixes);
   end;
@@ -601,9 +506,40 @@ begin
   end;
 end;
 
+procedure TDeprecatedCheck.CheckNetDirectives;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mName: string;
+  mState: TRuleWarnState;
+  mSeverity: TRuleSeverity;
+  mRange: TTextRange;
+begin
+  mTokens := FContext.Tree.Tokens;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if mTokens[mIndex].Kind <> TPascalTokenKind.Directive then
+      Continue;
+    mName := TPascalLexer.DirectiveName(mTokens[mIndex].Text);
+    if IndexText(mName, cNetDirectives) < 0 then
+      Continue;
+    mState := StateAt(cPlatformKind, False, mIndex);
+    if not TRuleWarnSwitches.Reported(mState) then
+      Continue;
+    mSeverity := TRuleSeverity.Default;
+    if mState = TRuleWarnState.AsError then
+      mSeverity := TRuleSeverity.Error;
+    mRange := TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos);
+    FReport.AddWithSeverity(mRange, Format('Den Schalter %s gibt es nur für .NET; er ist plattformspezifisch ' +
+      'und wirkt hier nicht (wie W1002).', [mName]), mSeverity,
+      [TRuleFix.Create(Format('Schalter %s entfernen', [mName]), [TTextEdit.Create(mRange, '')])]);
+  end;
+end;
+
 procedure TDeprecatedCheck.Run;
 begin
-  ReadSwitches;
+  IndexTokens;
+  CheckNetDirectives;
   FResolver.PinTree(FContext.Tree, FContext.RelativePath);
   try
     FOwn := FResolver.ExtractedUnit(FContext.Tree, FContext.RelativePath);
