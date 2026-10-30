@@ -5570,9 +5570,9 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 |---|---|---|
 | ZG1 | Das Beispiel aus #1001: `TKunde = class` mit `FName: string;` und `property Name: string read FName write SetName;` | Fehler `property-accessor-invalid` an `SetName`: „SetName ist in TKunde nicht deklariert (wie E2168).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
 | ZG2 | Schnellkorrektur „SetName anlegen“, danach Strg+Z | Deklaration `procedure SetName(const Value: string);` vor der Property und Rumpf mit Änderungsprüfung; danach keine Meldung; ein Undo-Schritt nimmt es zurück. Mit `completion.accessorSection` = `protected` landet der Setter in protected |
-| ZG3 | `read GetName` mit `procedure GetName;` bzw. `function GetName: Integer;`, `property Items[Index: Integer]: string read GetItem` mit `function GetItem: string;` | „… passt nicht als Getter von …; erwartet wird function …“ (wie E2234) |
+| ZG3 | `read GetName` mit `procedure GetName;` bzw. `function GetName: Integer;`, `property Items[Index: Integer]: string read GetItem` mit `function GetItem: string;` | „… passt nicht als Getter von …; erwartet wird function …“ (wie E2008; bis #1382 E2234) |
 | ZG4 | Setter `procedure SetName(var Value: string);` | „Der Setter SetName nimmt den Wert als var-Parameter …“ (wie E2282) |
-| ZG5 | `GetName` zweimal mit `overload` | „GetName ist überladen …“ (wie E2271) |
+| ZG5 | `GetName` zweimal mit `overload` | „GetName ist überladen …“ (wie E2250; bis #1382 E2271) |
 | ZG6 | `class property Anzahl: Integer read FAnzahl` mit Instanzfeld, mit `class function GetAnzahl` ohne `static`; `property Anzahl read FAnzahl` mit `class var FAnzahl` | Meldungen wie E2355 bzw. E2356 |
 | ZG7 | `property Items[I: Integer]: string read FItems;`, `property Rot: Integer index 1 read FRot;`, `read Basis` auf eine andere Property | Meldungen wie E2174 bzw. E2168 |
 | ZG8 | Feldselektoren: `read FAdresse.Ort` (Klasse), `read FPunkt.Z` (fehlt im Record), `read FPunkt.Laenge` (Methode des Records); `read FPunkt.X` | Meldungen wie E2459, E2562, E2461; `FPunkt.X` still |
@@ -5849,7 +5849,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | SV2 | Schnellkorrektur „Auf while-Schleife umstellen“, danach Strg+Z | `I := 0; while I <= Zeilen.Count - 1 do begin … Inc(I); end;`, keine Meldung mehr; ein Undo-Schritt |
 | SV3 | `I := 5;` im Rumpf; `downto` mit `Dec(I)`; Rumpf mit `Continue` | Meldung „… darf im Rumpf nicht zugewiesen werden (wie E2081).“; Korrektur mit `>=` und `Dec`; mit Continue keine Korrektur |
 | SV4 | Eigene `procedure Weiter(var N: Integer)` und `Weiter(I)` im Rumpf | „Schleifenvariable I wird als var-Parameter an Weiter übergeben (wie W1015).“ |
-| SV5 | `for FIndex := …` mit einem Feld, `for GZaehler := …` mit einer globalen Variablen, lokale Prozedur mit der Variablen der äußeren Routine | „Schleifenvariable FIndex ist ein Feld, keine einfache lokale Variable (wie E1019).“ usw.; Korrektur „for var FIndex verwenden“ nur, wenn die Routine den Namen sonst nicht benutzt |
+| SV5 | `for FIndex := …` mit einem Feld, `for GZaehler := …` mit einer globalen Variablen, lokale Prozedur mit der Variablen der äußeren Routine | „Schleifenvariable FIndex ist ein Feld, keine einfache lokale Variable (wie E1019).“, für GZaehler W1019 (#1382) usw.; Korrektur „for var FIndex verwenden“ nur, wenn die Routine den Namen sonst nicht benutzt |
 | SV6 | Lesen der Variablen, `Zeilen[I] := …`, `Zeilen.Delete(I)`, anonyme Methode im Rumpf, Schleife in `with`, Parameter als Schleifenvariable | Keine Meldung |
 | SV7 | `"for-variable-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | SV8 | Abgleich mit Delphi: SV1, SV3, SV4, SV5 übersetzen | dcc meldet E2081, W1015 bzw. E1019 an denselben Stellen, für SV6 nichts; abweichende Codes in der Regel nachtragen |
@@ -5981,7 +5981,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | YH5 | Interface aus einer anderen Unit (Index), auch über einen Interface-Vorfahren | Meldung wie YH1 |
 | YH6 | Passende Typen, gleichnamige Überladungen mit anderen Parametern, Varianten in `{$IFDEF}`-Zweigen, von denen eine passt | Keine Meldung |
 | YH7 | `"hresult-integer-mix": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| YH8 | Abgleich mit Delphi: YH1, YH3, YH4 übersetzen | dcc meldet X1008 (bzw. die Warnung „Integer and HRESULT interchanged“) an denselben Stellen; in der Meldungsliste von Atlas erscheint der Code X1008 als Warnung |
+| YH8 | Abgleich mit Delphi: YH1, YH3, YH4 übersetzen | dcc meldet X1008 (bzw. die Warnung „Integer and HRESULT interchanged“) an denselben Stellen; in der Meldungsliste von Atlas erscheint der Code X1008 als Warnung; Delphi 13 meldet W1008, die Meldung der Regel nennt seit #1382 W1008 |
 
 ## Ungültiges Argument für var- und out-Parameter (#1037)
 
@@ -6941,11 +6941,11 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `TGeld = record Be
 | OD3 | `class operator Substract(const A, B: TGeld): TGeld;` | „Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).“, Korrektur „In Subtract umbenennen“ ändert Deklaration und Rumpf |
 | OD4 | `class operator Negative(const A, B: TGeld): TGeld;` und `class operator Add(const A: TGeld): TGeld;` | „Der Operator Negative muss 1 Parameter haben (wie E2517).“ mit Korrektur „Parameter nach Vorlage: (const A: TGeld)“; für Add 2 Parameter |
 | OD5 | `class operator Add(A, B: Integer): TGeld;` und `class operator Implicit(A: Integer): string;` | „… muss TGeld in mindestens einem Parameter haben (wie E2518).“ bzw. „Implicit muss TGeld als Parameter oder Ergebnis haben (wie E2521).“ |
-| OD6 | `class operator Inc(const A: TGeld): Integer;`; in einer Klasse `TKind = class(TBasis)` ein `class operator Implicit(A: TKind): TBasis;` | „Inc muss denselben Typ liefern wie den ersten Parameter, hier TGeld (wie E2519).“ mit Korrektur „TGeld als Ergebnis“; „Implicit darf nicht in den Vorfahren TBasis oder aus ihm umwandeln (wie E2522).“ |
+| OD6 | `class operator Inc(const A: TGeld): Integer;`; in einer Klasse `TKind = class(TBasis)` ein `class operator Implicit(A: TKind): TBasis;` | „Inc muss denselben Typ liefern wie den ersten Parameter, hier TGeld (wie E2519).“ mit Korrektur „TGeld als Ergebnis“; für den `class operator` in der Klasse meldet seit #1382 die Regel `syntax` „'procedure', 'function', 'property' oder 'var' erwartet, aber 'operator' gefunden (wie E2123).“ |
 | OD7 | `class operator Assign(const Dest: TGeld; const [ref] Src: TGeld);` | „Der erste Parameter von Assign muss ein var-Parameter sein (wie E2464).“, Korrektur „var vor den ersten Parameter setzen“ |
 | OD8 | Richtige Operatoren (Add, Equal mit Boolean, Implicit nach Integer, Initialize/Finalize, True/False), Parametertyp aus fremder Unit, Alias `TMoney = TGeld` | Keine Meldung |
 | OD9 | `"operator-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet für OD1 nichts, sonst E2393, E2517, E2518, E2521, E2519, E2522, E2464 an denselben Stellen, für OD8 nichts |
+| OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet für OD1 nichts, sonst E2393, E2517, E2518, E2521, E2519, E2123 (Delphi 13; die Hilfe nennt E2522), E2464 an denselben Stellen, für OD8 nichts |
 
 ## Generische Deklaration unzulässig (#1029)
 
@@ -6957,14 +6957,32 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | GD2 | Als `class procedure Tauschen<T>(var A, B: T); static;` in `TTausch = record` verschieben | Keine Meldung |
 | GD3 | `TA<T: class, record>`, `TA<T: class, constructor, constructor>`, `TA<T: record, constructor>`, `TA<T: class, TBasis>` (TBasis Klasse der Unit), `TA<T: TEins, TZwei>`, `TA<T: Integer>`, `M<T: TPunkt>` (TPunkt Record) | Meldungen wie E2507, E2603, E2516, E2552, E2553 und zweimal E2510, jeweils an der Einschränkung |
 | GD4 | `TE<T> = (eA, eB);`, `TL<T> = TList<T>;`, `TZ<T> = ^Integer;`, `TM<T> = set of Byte;`, `TH<T> = class helper for TObject` | Je „Der Typ … darf keine Typparameter haben; …“ (wie E2508) am Typnamen |
-| GD5 | In einer Klasse `class operator Add<T>`, `destructor Destroy<T>;`, `class constructor Create<T>;`, `procedure Laden<T>; virtual;`, `procedure Lesen<T>(A: T); override;`; im Interface `procedure Schreiben<T>(A: T);` | Meldungen wie E2529, E2528 (zweimal), E2533 (an `virtual` bzw. `override`), E2535 |
+| GD5 | In einer Klasse `class operator Add<T>`, `destructor Destroy<T>;`, `class constructor Create<T>;`, `procedure Laden<T>; virtual;`, `procedure Lesen<T>(A: T); override;`, `constructor Create<T>(A: T);`; im Interface `procedure Schreiben<T>(A: T);` | Meldungen wie E2529, E2528 (dreimal, beim Konstruktor „Konstruktoren dürfen keine Typparameter haben (wie E2528).“, #1376), E2533 (an `virtual` bzw. `override`), E2535 |
 | GD6 | `TListeKlasse = class of TListe<Integer>;`, `TNamen<T> = class(TCustomAttribute)`, Attribut `[TMarke<Integer>]` | Meldungen wie E2548, E2549, E2565 |
 | GD7 | `TListe<T> = class procedure Hinzu<T>(A: T); end;` | „Der Typparameter T verdeckt den gleichnamigen Typparameter von TListe (wie H2509).“ |
 | GD8 | Klasse mit `F<T>` und `F<T, U>`, in einer Methode `F<Integer, string, Byte>(2)` bzw. `TA.F<Integer, Byte, Word>(1)` | „F hat keine Variante mit 3 Typparametern; deklariert: F<T>, F<T, U> (wie E2551).“; mit 1 oder 2 Typargumenten keine Meldung |
 | GD9 | `TListe<T> = class` im interface-Teil, im implementation-Teil `const Grenze = 10;` und `TListe<T>.Pruefen` verwendet `Grenze` | „TListe.Pruefen gehört zu einem generischen Typ …, darf Grenze aus dem implementation-Teil nicht verwenden (wie E2506).“; mit einem Feld `Grenze` in TListe, einer lokalen Variable `Grenze`, in `with` oder bei einer nicht generischen Klasse keine Meldung |
-| GD10 | Erlaubtes: `T: class, constructor`, `T: TComponent, IFoo, constructor`, `TArr<T> = array of T`, `TP<T> = reference to procedure(A: T)`, generischer Konstruktor, `class function Neu<T>: T; static;` | Keine Meldung |
+| GD10 | Erlaubtes: `T: class, constructor`, `T: TComponent, IFoo, constructor`, `TArr<T> = array of T`, `TP<T> = reference to procedure(A: T)`, Konstruktor ohne Typparameter in `TB<T> = class`, `class function Neu<T>: T; static;` | Keine Meldung |
 | GD11 | `"generic-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| GD12 | Abgleich mit Delphi: GD1 und GD3 bis GD9 übersetzen; zusätzlich eine lokale Prozedur in `TListe<T>.Pruefen` | dcc meldet dieselben Codes an denselben Stellen, für GD2 und GD10 nichts; meldet dcc für die lokale Prozedur E2570, ergänzt die Regel diesen Fall |
+| GD12 | Abgleich mit Delphi: GD1 und GD3 bis GD9 sowie GD13 bis GD15 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für GD2, GD10 und GD16 nichts |
+| GD13 | `uses System.Classes;` und `TBehaelter<T: class, TStream> = class`, `TBehaelter<T: TStream, TComponent> = class` (Fälle Cm.E2552, Cm.E2553, #1376) | „Die Klasse TStream lässt sich nicht zusammen mit class bzw. record fordern (wie E2552).“ bzw. „Nur eine Klasse ist als Einschränkung erlaubt; TComponent ist die zweite (wie E2553).“, sobald der Index die RTL kennt |
+| GD14 | In `procedure TBehaelter<T>.Machen;` eine lokale `procedure Innen;`, ebenso in `function TWerkzeug.Neu<T>: Integer;` (Fall Cm.E2570) | „Die lokale Routine Innen ist in TBehaelter.Machen nicht erlaubt: …; als private Methode oder anonyme Methode schreiben (wie E2570).“ am Namen der lokalen Routine |
+| GD15 | `TEigen = type TBehaelter<Integer>;` (Fall Cm.E2574), Korrektur „type entfernen (Alias)“ | „Der instanziierte Typ TBehaelter<Integer> lässt sich nicht mit type als eigener Typ deklarieren (wie E2574).“; nach der Korrektur `TEigen = TBehaelter<Integer>;` ohne Meldung |
+| GD16 | Anonyme Methode in `TBehaelter<T>.Machen`, lokale Routine in einer normalen Methode, `TListe = TBehaelter<Integer>;`, `TZahl = type Integer;`, `T: TComponent, IZeigbar, constructor` | Keine Meldung |
+
+## Typargumente lassen sich nicht ableiten (#1376)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GI1 | `TKlasse` mit `class function Neu<T>: T;`, in einer Routine `mZahl := TKlasse.Neu;` (Fall Cm.E2531) | Fehler `generic-inference-failed` an `TKlasse.Neu`: „Neu braucht ausdrückliche Typargumente (Neu<…>): T kommt in keinem Parameter vor und lässt sich nicht ableiten (wie E2531).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GI2 | `TKlasse.Neu;` als Anweisung und `mZahl := TKlasse.Neu();` | Je dieselbe Meldung |
+| GI3 | `class procedure Paar<T>(A, B: T);`, Aufruf `TKlasse.Paar(1, 'a');` (Fall Cm.E2532), dazu `TKlasse.Paar(mZahl, mText);` und `TKlasse.Paar(True, -1);` | „T von Paar lässt sich nicht ableiten: Die Argumente sind verschiedener Art (Zahl und Zeichenkette); …(wie E2532).“ am zweiten Argument, beim dritten Aufruf „Boolean und Zahl“ |
+| GI4 | `TKlasse.Neu<Integer>`, `TKlasse.Paar(1, 2)`, `TKlasse.Paar(mZahl, mWert)` (Integer und Double), `TKlasse.Paar(mVariant, 1)`, `mFunktion := TKlasse.Neu;` mit `mFunktion: TFunc<Integer>`, nicht generische Überladung `Neu: Integer` | Keine Meldung |
+| GI5 | Generische Methode in einer anderen Unit des Projekts | Meldungen wie GI1 und GI3 |
+| GI6 | `"generic-inference-failed": "off"`, `"group:compiler": "off"`, `"group:compiler": {"typeLevel": "off"}` bzw. `exclude` | Keine Meldung |
+| GI7 | Abgleich mit Delphi: `Tests/DccFaelle` mit `pwsh Tools/Build-DccFaelle.ps1` bauen | `DccGenerics` ohne Meldung, `DccGenericsGegen` meldet an jeder Marke GG1 bis GG6 den genannten Code; weicht dcc ab, Regel anpassen |
 
 ## Sprachregel für Records, Inline und Helfer verletzt (#994)
 
@@ -8682,6 +8700,17 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | KM3 | Teillauf mit `-Cases 'Cm.E2399'` nach einem vollen Lauf | dcc.tsv enthält weiter alle Fälle; nur die Zeilen von Cm.E2399 sind neu |
 | KM4 | `python3 Tools/Compare-Compilermeldungen.py --input Tests/Compilermeldungen/Ergebnisse --output <Ordner>` | `vergleich.md` und `vergleich.json` entstehen; Kennzahlen wie im Bericht (482 Meldungen, 228 erkannt) |
 | KM5 | `Tests/Compilermeldungen/Compilermeldungen.dproj` in der IDE öffnen | Atlas indiziert das Projekt; Fehler der Fälle erscheinen als Befunde, die IDE baut das Projekt nicht (nur für den Index) |
+
+## Meldungscodes wie dcc (#1382)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| MK1 | Delphi 13: Tests/Compilermeldungen öffnen, Fälle Cm.E2058, Cm.E2060, Cm.E2522, Cm.E2053, Cm.E2091, Cm.W1008, Cm.W1019, Cm.W1030 ansehen | Die Befunde nennen denselben Code wie dcc 13 (E2058 und E2059, E2123, E2053, E2088, W1008, W1019, E1030) |
+| MK2 | Prozedur mit lokalem `Log: TextFile;`, `AssignFile(Log, Name); {$I-} Append(Log); {$I+} if IOResult <> 0 then Exit; Writeln(Log, …); CloseFile(Log);` | Kein E2003 und kein „ist nicht deklariert“ für TextFile, AssignFile, Append, IOResult, CloseFile |
+| MK3 | `type TAlt = object constructor Init; destructor Done; end; PAlt = ^TAlt;`, im Rumpf `New(P, Init); Dispose(P, Done);` | Keine Meldung; mit `New(P, Anlegen)` „"Anlegen" ist kein Konstruktor von TAlt …“ (wie E2601), mit `Dispose(P, Weg)` E2602 |
+| MK4 | `Fail;` in einer gewöhnlichen Prozedur, dann im Konstruktor `Init` von MK3 | Erst „Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).“, im Konstruktor keine Meldung |
+| MK5 | atlas.json `"delphiVersion": "23.0"`, `{$FOOBAR}` in einer Unit | „Unbekannte Direktive {$FOOBAR} (wie W1030).“; ohne den Eintrag in Delphi 13 „(wie E1030)“ |
+| MK6 | `pwsh Tools/Build-Compilermeldungen.ps1` voll (Delphi 13), dann Compare-Compilermeldungen.py; dasselbe mit Delphi 12 | Delphi 13: keine Zeile „anderer Code“ für die Codes aus #1382, kein falsches E2003 bei Cm.E2002/E2071/E2078/E2601/E2602; Delphi 12: abweichende Codes notieren (Meldung folgt `delphiVersion`); beide Builds 0/0/0 |
 
 ## Seite „Versionsverwaltung“ (#1285)
 

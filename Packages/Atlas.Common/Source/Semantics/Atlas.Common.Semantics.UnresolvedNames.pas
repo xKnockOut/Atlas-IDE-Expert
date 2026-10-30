@@ -9,6 +9,12 @@
 // - Compiler-Intrinsics (Length, Inc, Exit, …) gelten als bekannt;
 // - ohne Unit System im Index wird gar nichts gemeldet, weil dann jeder
 //   RTL-Name fehlen würde.
+// Alte object-Syntax (#1382): In New(P, Init) und Dispose(P, Done) ist das
+// zweite Argument ein Konstruktor bzw. Destruktor des object-Typs hinter P,
+// kein eigener Bezeichner. Fehlt er in diesem Typ (samt bekannten Vorfahren),
+// lautet der Befund wie E2601 bzw. E2602; Fail außerhalb eines Konstruktors
+// wie E2078. Ist der Typ hinter P kein object-Typ oder unbekannt, bleibt der
+// Name still (E2467 und E2019 gehören zu anderen Regeln).
 
 interface
 
@@ -27,6 +33,11 @@ type
     /// <summary>Gemeinter Name, z. B. TState.Error für einen Wert unter {$SCOPEDENUMS ON} (#849); sonst ''.
     /// </summary>
     Suggestion: string;
+    /// <summary>'' für einen nicht deklarierten Namen (E2003); E2601 bzw. E2602 für einen fehlenden Konstruktor
+    /// bzw. Destruktor in New/Dispose, E2078 für Fail außerhalb eines Konstruktors (#1382).</summary>
+    Code: string;
+    /// <summary>Bei E2601 und E2602 der object-Typ hinter dem Zeiger.</summary>
+    Owner: string;
   end;
 
   TUnresolvedNames = class
@@ -43,11 +54,15 @@ type
     class function Find(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string): TArray<TUnresolvedName>; static;
     /// <summary>Vom Compiler eingebaute Routinen und Konstanten ohne Deklaration in System.pas.</summary>
     class function IsIntrinsic(const AName: string): Boolean; static;
+    /// <summary>Meldung zu einem Eintrag mit Code (E2601, E2602, E2078); '' ohne Code.</summary>
+    class function Describe(const AName: TUnresolvedName): string; static;
   end;
 
 implementation
 
 uses
+  System.StrUtils,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.SystemIntrinsics;
 
 const
@@ -75,6 +90,74 @@ begin
   for Name in Intrinsics do
     if SameText(Name, AName) then
       Exit(True);
+  Result := False;
+end;
+
+class function TUnresolvedNames.Describe(const AName: TUnresolvedName): string;
+begin
+  if AName.Code = 'E2601' then
+    Result := Format('"%s" ist kein Konstruktor von %s; New braucht einen Konstruktor des object-Typs (wie E2601).',
+      [AName.Name, AName.Owner])
+  else if AName.Code = 'E2602' then
+    Result := Format('"%s" ist kein Destruktor von %s; Dispose braucht einen Destruktor des object-Typs ' +
+      '(wie E2602).', [AName.Name, AName.Owner])
+  else if AName.Code = 'E2078' then
+    Result := 'Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).'
+  else
+    Result := '';
+end;
+
+/// <summary>Object-Typ hinter dem Zeiger APointer (Variable oder Zeigertyp wie PAltObjekt = ^TAltObjekt).
+/// </summary>
+function ObjectTarget(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string; APointer: TSyntaxNode;
+  out AType: TResolvedSymbol): Boolean;
+var
+  mPointer: TResolvedSymbol;
+  mTarget: string;
+begin
+  AType := Default(TResolvedSymbol);
+  if APointer.Kind <> TSyntaxKind.Identifier then
+    Exit(False);
+  mPointer := AResolver.ResolveType(ATree, AFileName, APointer.StartPos);
+  if not mPointer.Found then
+    Exit(False);
+  if mPointer.SymbolKind = TIndexSymbolKind.ObjectType then
+  begin
+    AType := mPointer;
+    Exit(True);
+  end;
+  mTarget := mPointer.Signature;
+  if Pos('^', mTarget) = 0 then
+    Exit(False);
+  mTarget := Trim(Copy(mTarget, Pos('^', mTarget) + 1, MaxInt));
+  if EndsStr(';', mTarget) then
+    mTarget := Trim(Copy(mTarget, 1, Length(mTarget) - 1));
+  if (mTarget = '') or not IsValidIdent(mTarget, True) then
+    Exit(False);
+  AType := AResolver.ResolveChain(ATree, AFileName, mTarget.Split(['.']), APointer.StartOffset);
+  Result := AType.Found and (AType.SymbolKind = TIndexSymbolKind.ObjectType);
+end;
+
+/// <summary>Liegt ANode im Rumpf eines Konstruktors (nächste umgebende Routine)?</summary>
+function InConstructor(ATree: TSyntaxTree; ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+  mToken: TPascalToken;
+begin
+  mNode := ANode.Parent;
+  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
+    mNode := mNode.Parent;
+  if mNode = nil then
+    Exit(False);
+  for mToken in ATree.Tokens do
+    if mToken.Offset >= mNode.StartOffset then
+    begin
+      if mToken.IsKeyword('constructor') then
+        Exit(True);
+      if not mToken.IsKeyword('class') and not (mToken.Kind in [TPascalTokenKind.Comment,
+        TPascalTokenKind.Directive]) then
+        Exit(False);
+    end;
   Result := False;
 end;
 
@@ -124,6 +207,8 @@ class function TUnresolvedNames.Find(AResolver: TNameResolver; ATree: TSyntaxTre
 var
   // Nachschlagen statt Liste: bei vielen Inline-Variablen sonst ein Lauf je Bezeichner (Diagnoselog 15.10.2026).
   Declared: TDictionary<string, Boolean>;
+  // Konstruktor- und Destruktornamen in New/Dispose (#1382): keine eigenen Bezeichner.
+  mMembers: TDictionary<TSyntaxNode, Boolean>;
 
   function IsDeclared(const AName: string): Boolean;
   begin
@@ -155,6 +240,58 @@ var
     end;
   end;
 
+  /// <summary>New(P, Init) bzw. Dispose(P, Done) mit der Routine aus System (#1382): Den Namen des Konstruktors
+  /// bzw. Destruktors merken; fehlt er im object-Typ hinter P, Eintrag mit E2601 bzw. E2602.</summary>
+  procedure CheckAllocation(ACall: TSyntaxNode);
+  var
+    mMember: TSyntaxNode;
+    mType, mFound: TResolvedSymbol;
+    mComplete: Boolean;
+    mItem: TUnresolvedName;
+  begin
+    if (ACall.ChildCount < 3) or (ACall[0].Kind <> TSyntaxKind.Identifier) or
+      not MatchText(ACall[0].Name, ['New', 'Dispose']) or IsDeclared(ACall[0].Name) or
+      AResolver.ResolveChain(ATree, AFileName, [ACall[0].Name], ACall[0].StartOffset).Found then
+      Exit;
+    mMember := ACall[2];
+    if (mMember.Kind = TSyntaxKind.Call) and (mMember.ChildCount > 0) then
+      mMember := mMember[0];
+    if (mMember.Kind <> TSyntaxKind.Identifier) or (mMember.Name = '') then
+      Exit;
+    mMembers.AddOrSetValue(mMember, True);
+    if not ObjectTarget(AResolver, ATree, AFileName, ACall[1], mType) then
+      Exit;
+    AResolver.AncestorNames(mType, mComplete);
+    if not mComplete then
+      Exit;
+    if AResolver.FindMember(mType, mMember.Name, mFound) then
+      Exit;
+    mItem := Default(TUnresolvedName);
+    mItem.Name := mMember.Name;
+    mItem.Range := TTextRange.Create(mMember.StartPos, mMember.EndPos);
+    mItem.Owner := mType.Name;
+    if SameText(ACall[0].Name, 'Dispose') then
+      mItem.Code := 'E2602'
+    else
+      mItem.Code := 'E2601';
+    Result := Result + [mItem];
+  end;
+
+  /// <summary>Fail aus System außerhalb eines Konstruktors (#1382, wie E2078).</summary>
+  procedure CheckFail(ANode: TSyntaxNode);
+  var
+    mItem: TUnresolvedName;
+  begin
+    if not SameText(ANode.Name, 'Fail') or IsDeclared(ANode.Name) or InConstructor(ATree, ANode) or
+      AResolver.ResolveChain(ATree, AFileName, [ANode.Name], ANode.StartOffset).Found then
+      Exit;
+    mItem := Default(TUnresolvedName);
+    mItem.Name := ANode.Name;
+    mItem.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+    mItem.Code := 'E2078';
+    Result := Result + [mItem];
+  end;
+
   procedure Visit(ARoot: TSyntaxNode);
   var
     Pending: TStack<TUnresolvedEntry>;
@@ -184,11 +321,15 @@ var
         else if Node.Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection,
           TSyntaxKind.RoutineHeader, TSyntaxKind.Parameters, TSyntaxKind.GenericArgs] then
           InStatements := False;
+        if InStatements and (Node.Kind = TSyntaxKind.Call) then
+          CheckAllocation(Node);
+        if InStatements and (Node.Kind = TSyntaxKind.Identifier) and (Node.Name <> '') then
+          CheckFail(Node);
         // Typumwandlungen und Typhelfer (Integer(X), string.Join) sowie der Anfang eines Unit-Namens
         // (Winapi in Winapi.Windows.TextOut) sind keine fehlenden Bezeichner (#647).
         if InStatements and (Node.Kind = TSyntaxKind.Identifier) and (Node.Name <> '') and
           not IsIntrinsic(Node.Name) and not IsDeclared(Node.Name) and
-          not TNameResolver.IsBuiltinTypeName(Node.Name) then
+          not TNameResolver.IsBuiltinTypeName(Node.Name) and not mMembers.ContainsKey(Node) then
         begin
           // IsUnitPrefix erst danach: ResolveChain legt die Unit und den Abschnitt fest.
           Resolved := AResolver.ResolveChain(ATree, AFileName, [Node.Name], Node.StartOffset);
@@ -213,6 +354,7 @@ begin
   if (ATree = nil) or (ATree.Root = nil) then
     Exit;
   Declared := TDictionary<string, Boolean>.Create;
+  mMembers := TDictionary<TSyntaxNode, Boolean>.Create;
   try
     CollectDeclared(ATree.Root);
     AResolver.PinTree(ATree, AFileName);
@@ -222,6 +364,7 @@ begin
       AResolver.UnpinTree;
     end;
   finally
+    mMembers.Free;
     Declared.Free;
   end;
 end;

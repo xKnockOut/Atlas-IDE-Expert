@@ -531,7 +531,7 @@ begin
     Found[1].Message);
   Assert.AreEqual(20, Found[1].Range.StartPos.Line);
   Assert.AreEqual('implements ist nicht zusammen mit index erlaubt (wie E2260).', Found[2].Message);
-  Assert.AreEqual('Der Getter GetD einer implements-Property darf nicht dynamic sein (wie E2263).', Found[3].Message);
+  Assert.AreEqual('Der Getter GetD einer implements-Property darf nicht dynamic sein (wie E2263 und E2148).', Found[3].Message);
   // Record als Typ.
   Assert.AreEqual('implements ist nur an Properties mit Klassen- oder Interface-Typ erlaubt, TPunkt ist keiner ' +
     '(wie E2259).', Found[4].Message);
