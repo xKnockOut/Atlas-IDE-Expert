@@ -430,8 +430,6 @@ Entspricht der Compilermeldung `E2023`, `E2025`, `E2029`, `E2031`, `E2049`, `E20
 
 Stufe A (Parser genügt).
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix syntax`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -508,8 +506,6 @@ end;
 
 Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden.
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-suppression`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -529,8 +525,6 @@ X := 1;
 **Unbekannte Regelkennung** · Code Smell · Hinweis · Gruppe Atlas intern
 
 Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein solcher Kommentar zählt nicht zusätzlich als unused-suppression.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unknown-rule-id`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -705,7 +699,7 @@ uses uTypen;
 
 **Import verletzt die Rollenmatrix** · Code Smell · Warnung · Gruppe Architektur
 
-Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Quelle -> Ziel"-Globs.
+Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Quelle -> Ziel"-Globs. Testunits (mit DUnitX, DUnit oder TestInsight im uses) prüft die Regel nicht.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -734,7 +728,7 @@ uses System.SysUtils;
 
 **Klasse in einer Contract-Unit** · Code Smell · Warnung · Gruppe Architektur
 
-Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Unit.Typ"-Globs.
+Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Unit.Typ"-Globs. Testunits prüft die Regel nicht.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -922,9 +916,7 @@ end;
 
 **Veraltetes TThread.Resume/Suspend** · Code Smell · Warnung · Gruppe Threads
 
-TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix thread-resume-suspend`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten. Still, wenn der deklarierte Typ des Empfängers eine vollständige Vorfahrenkette ohne TThread hat (eigene Klassen mit Methoden Resume/Suspend).
 
 Mit Treffer:
 
@@ -1363,7 +1355,7 @@ type
 
 **Erfasste Schleifenvariable** · Bug · Warnung · Gruppe Fehler finden
 
-Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert.
+Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert. Still, wenn die anonyme Methode die Variable selbst zuweist (Ereignisse, die einen Zustand fortschreiben).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -1393,7 +1385,7 @@ for S in List do
 
 **Komponentenmethode ohne inherited** · Bug · Warnung · Gruppe Komponenten
 
-Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene Arbeit. Paint wird nur gemeldet, wenn das Paint eines Vorfahren selbst zeichnet (TCustomPanel, TCustomForm, TPaintBox, TImage, ein Grid oder eine Klasse aus Datei oder Index, die Paint deklariert), mit mittlerer Konfidenz; TCustomControl.Paint und TGraphicControl.Paint sind leer, dort ist ein Paint ohne inherited üblich.
+Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene Arbeit. Paint wird nur gemeldet, wenn das Paint eines Vorfahren selbst zeichnet (TCustomPanel, TImage, ein Grid oder eine Klasse aus Datei oder Index, die Paint deklariert), mit mittlerer Konfidenz; TCustomForm und TPaintBox lösen zur Laufzeit nur OnPaint aus, dort zählt ein Paint ohne inherited nur, wenn die Unit OnPaint benutzt oder eine Formulardatei hat; TCustomControl.Paint und TGraphicControl.Paint sind leer, dort ist ein Paint ohne inherited üblich.
 
 Mit Treffer:
 
@@ -1494,7 +1486,7 @@ end;
 
 **Feste Pixelwerte** · Code Smell · Warnung · Gruppe Komponenten
 
-Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv, 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen werden nicht gemeldet.
+Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv oder über eine Methode der Klasse, die selbst skaliert (ruft ScaleValue, MulDiv oder eine Routine Scale… auf), 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen werden nicht gemeldet.
 
 Mit Treffer:
 
@@ -2584,8 +2576,6 @@ if Visible then
 
 Free prüft selbst auf nil, eine Assigned-Prüfung vor Free oder FreeAndNil ist überflüssig.
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix redundant-assigned-free`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -2653,8 +2643,6 @@ if Done then
 **Überflüssige Typumwandlung** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix redundant-cast`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -3354,7 +3342,7 @@ Bericht.Free;
 
 **Erst benutzt, dann auf nil geprüft** · Bug · Warnung · Gruppe Fehler finden
 
-X wird dereferenziert (X.Feld, X.Methode, X^) und erst danach mit Assigned(X), X <> nil oder X = nil geprüft. Entweder ist die Prüfung überflüssig oder der Zugriff davor kann knallen. Gemeldet wird nur, wenn jeder Weg zur Prüfung durch den Zugriff führt und X vorher nicht geprüft wurde; eine neue Zuweisung, die Übergabe von X an eine Routine und bei Feldern und globalen Variablen jeder Aufruf dazwischen beenden den Weg. Konfidenz mittel. Ist die Prüfung ein if ohne else direkt nach dem Zugriff im selben Block, zieht die Schnellkorrektur den Zugriff hinein.
+X wird dereferenziert (X.Feld, X.Methode, X^) und erst danach mit Assigned(X), X <> nil oder X = nil geprüft. Entweder ist die Prüfung überflüssig oder der Zugriff davor kann knallen. Gemeldet wird nur, wenn jeder Weg zur Prüfung durch den Zugriff führt und X vorher nicht geprüft wurde; eine neue Zuweisung, FreeAndNil(X), die Übergabe von X oder eines seiner Felder oder Elemente (X.Feld, X[I]) an eine Routine und bei Feldern und globalen Variablen jeder Aufruf dazwischen beenden den Weg. Konfidenz mittel. Ist die Prüfung ein if ohne else direkt nach dem Zugriff im selben Block, zieht die Schnellkorrektur den Zugriff hinein.
 
 Mit Treffer:
 
@@ -3551,8 +3539,6 @@ Richtig:
 **Destroy statt Free aufgerufen** · Bug · Warnung · Gruppe Fehler finden
 
 Obj.Destroy wird direkt als Anweisung aufgerufen. Ist Obj nil, knallt der Aufruf; Free prüft vorher auf nil und ist der übliche Weg, ein Objekt freizugeben. inherited Destroy und Aufrufe eines Destruktors mit Argumenten sind ausgenommen. Konfidenz hoch. Schnellkorrektur: aus Destroy wird Free.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix destroy-called-directly`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -4532,7 +4518,7 @@ finalization
 
 **DUnitX-Test ohne Assert** · Code Smell · Hinweis · Gruppe Packages und Tests
 
-Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über Methoden derselben Klasse oder Routinen der Unit: Sie ist immer grün. Als Prüfung zählen Aufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still. Sicherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zur Methode springen.
+Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über ihre lokalen Routinen, Methoden derselben Klasse oder Routinen der Unit: Sie ist immer grün. Als Prüfung zählen Aufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still. Sicherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zur Methode springen.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -5332,8 +5318,6 @@ Entspricht der Compilermeldung `E2014`.
 
 Stufe A (Parser genügt).
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix comparison-as-statement`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -5442,8 +5426,6 @@ Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004):
 Entspricht der Compilermeldung `E2004`.
 
 Stufe A (Parser genügt).
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix duplicate-declaration`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -6111,8 +6093,6 @@ Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses
 Entspricht der Compilermeldung `W1040`.
 
 Stufe B (Namensauflösung über Units).
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix implicit-variants-unit`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -6789,7 +6769,7 @@ end;
 
 **Unit wird von keiner anderen Unit verwendet** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Eine Unit einer Anwendung verwendet keine andere Unit des Uses-Graphen: Höchstens Programme nennen sie im uses, und sie verwenden außerhalb ihres uses keinen ihrer Bezeichner (Application.CreateForm(TForm1, Form1) zählt als Verwendung). Units mit initialization- oder finalization-Abschnitt (Registrierungen, Seiteneffekte beim Start) gelten als verwendet. Konfidenz mittel: Code außerhalb der Projektgruppe, Skripte oder zur Laufzeit geladene Packages können die Unit trotzdem nutzen. Still bei Units von Packages und DLLs (Nutzer außerhalb der Gruppe), solange projectKinds sie nicht erlaubt, ohne Projekte, solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt. Gemeldet am Unit-Namen im Kopf.
+Eine Unit einer Anwendung verwendet keine andere Unit des Uses-Graphen: Höchstens Programme nennen sie im uses, und sie verwenden außerhalb ihres uses keinen ihrer Bezeichner (Application.CreateForm(TForm1, Form1) zählt als Verwendung). Units mit initialization- oder finalization-Abschnitt (Registrierungen, Seiteneffekte beim Start) gelten als verwendet, ebenso Units mit einer Klasse [TestFixture], die DUnitX per RTTI findet. Konfidenz mittel: Code außerhalb der Projektgruppe, Skripte oder zur Laufzeit geladene Packages können die Unit trotzdem nutzen. Still bei Units von Packages und DLLs (Nutzer außerhalb der Gruppe), solange projectKinds sie nicht erlaubt, ohne Projekte, solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt. Gemeldet am Unit-Namen im Kopf.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -6818,8 +6798,6 @@ uses
 **Ungenutzte Unit im uses** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-uses`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -7255,8 +7233,6 @@ Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbe
 Entspricht der Compilermeldung `H2443`, `H2445`, `H2456`, `H2457`.
 
 Stufe B (Namensauflösung über Units).
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix inline-not-expanded`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 

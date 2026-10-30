@@ -3,6 +3,7 @@
 // Wächter des Gliederungsstands: Ohne Abfrage wirkt Entfernen und Leeren
 // sofort; während einer Abfrage wird es vorgemerkt und nach der äußersten
 // Abfrage zurückgegeben.
+// lsp-ignore-file: lock-without-finally -- der Wächter ist keine Sperre; die Tests prüfen Enter und Leave einzeln
 
 interface
 

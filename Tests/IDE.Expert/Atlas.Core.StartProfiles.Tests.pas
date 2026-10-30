@@ -391,13 +391,13 @@ begin
     Lines := TStringList.Create;
     try
       Lines.Text := '{"format": 9, "profiles": []}';
-      Lines.SaveToFile(FileName);
+      Lines.SaveToFile(FileName, TEncoding.UTF8);
     finally
       Lines.Free;
     end;
     Assert.IsFalse(TAtlasStartProfiles.Save(Folder, TAtlasStartProfiles.Empty(Project)),
       'eine neuere Fassung hat die Datei geschrieben');
-    Assert.AreEqual(9, TAtlasStartProfiles.FormatOf(TFile.ReadAllText(FileName)));
+    Assert.AreEqual(9, TAtlasStartProfiles.FormatOf(TFile.ReadAllText(FileName, TEncoding.UTF8)));
   finally
     RemoveFolder(Folder);
   end;
@@ -487,8 +487,8 @@ begin
     Assert.AreEqual(FileName, State.KeptFile);
     State.Profiles := [Profile('Ersatz', '-ersatz')];
     Assert.IsFalse(TAtlasStartProfiles.Save(Folder, State), 'beim Laden gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(FileName), '-lokal');
-    Assert.DoesNotContain(TFile.ReadAllText(FileName), '-ersatz');
+    Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '-lokal');
+    Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), '-ersatz');
   finally
     RemoveFolder(Folder);
   end;

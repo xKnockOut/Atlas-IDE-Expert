@@ -166,11 +166,13 @@ const
   // tun nichts, ein Paint ohne inherited ist dort das übliche Muster.
   EmptyPaintBases: array[0..9] of string = ('TCustomControl', 'TGraphicControl', 'TWinControl', 'TControl',
     'TComponent', 'TPersistent', 'TObject', 'TScrollingWinControl', 'TCustomFrame', 'TFrame');
-  // VCL-Vorfahren, deren Paint selbst zeichnet (Rahmen, Hintergrund, Text, Bild) oder OnPaint auslöst.
-  DrawingPaintBases: array[0..20] of string = ('TCustomPanel', 'TPanel', 'TCustomGridPanel', 'TGridPanel',
-    'TCustomFlowPanel', 'TFlowPanel', 'TCustomForm', 'TForm', 'TPaintBox', 'TImage', 'TShape', 'TBevel',
-    'TCustomLabel', 'TLabel', 'TSpeedButton', 'TSplitter', 'TCustomGrid', 'TCustomDrawGrid', 'TDrawGrid',
-    'TStringGrid', 'TCustomStaticText');
+  // VCL-Vorfahren, deren Paint selbst zeichnet (Rahmen, Hintergrund, Text, Bild).
+  DrawingPaintBases: array[0..17] of string = ('TCustomPanel', 'TPanel', 'TCustomGridPanel', 'TGridPanel',
+    'TCustomFlowPanel', 'TFlowPanel', 'TImage', 'TShape', 'TBevel', 'TCustomLabel', 'TLabel', 'TSpeedButton',
+    'TSplitter', 'TCustomGrid', 'TCustomDrawGrid', 'TDrawGrid', 'TStringGrid', 'TCustomStaticText');
+  // VCL-Vorfahren, deren Paint zur Laufzeit nur OnPaint auslöst (im Designer dazu Raster bzw. Strichrahmen).
+  // Ohne inherited fehlt dort nur OnPaint; das zählt erst, wenn die Unit OnPaint benutzt oder ein DFM hat.
+  OnPaintPaintBases: array[0..2] of string = ('TCustomForm', 'TForm', 'TPaintBox');
   // RTL- und VCL-Klassen mit eigenem Konstruktor, auch wenn sie nicht im Index stehen (#919).
   ConstructorBases: array[0..13] of string = ('TThread', 'TStrings', 'TStringList', 'TList', 'TObjectList',
     'TDictionary', 'TObjectDictionary', 'TQueue', 'TStack', 'TStream', 'TFileStream', 'TMemoryStream',
@@ -233,12 +235,18 @@ type
     function IsComponent(const AClassName: string): Boolean;
     /// <summary>Nächster Vorfahr von AClassName, dessen Paint selbst zeichnet: bekannte VCL-Klasse aus
     /// DrawingPaintBases oder eine Klasse aus Datei oder Index, die Paint selbst deklariert. False, wenn zuerst ein
-    /// Vorfahr mit leerem Paint (TCustomControl, TGraphicControl) kommt oder die Kette abbricht.</summary>
-    function PaintingAncestor(const AClassName: string; out AAncestor: string): Boolean;
+    /// Vorfahr mit leerem Paint (TCustomControl, TGraphicControl) kommt oder die Kette abbricht. AOnPaintOnly: Der
+    /// Vorfahr stammt aus OnPaintPaintBases (TForm, TPaintBox), sein Paint löst nur OnPaint aus.</summary>
+    function PaintingAncestor(const AClassName: string; out AAncestor: string; out AOnPaintOnly: Boolean): Boolean;
+    /// <summary>Kann OnPaint in dieser Unit belegt sein: Bezeichner OnPaint im Quelltext oder {$R} mit .dfm
+    /// (die Belegung stünde dann im DFM).</summary>
+    function MayUseOnPaint: Boolean;
     function FindMethod(const AClassName, AMethodName: string; out AMethod: TMethodImpl): Boolean;
     function DeclaredWith(const AClass: TClassInfo; const AMethodName, ADirective: string): Boolean;
     function Properties(const AClass: TClassInfo): TArray<TPropertyInfo>;
     function HasToken(ANode: TSyntaxNode; const AWords: array of string): Boolean;
+    /// <summary>Wie HasToken für Bezeichner, die mit APrefix beginnen (Scale…).</summary>
+    function HasTokenStarting(ANode: TSyntaxNode; const APrefix: string): Boolean;
     function NodeText(ANode: TSyntaxNode): string;
     function NameToken(const AMethod: TMethodImpl; out AToken: TPascalToken): Boolean;
     function InsertAfterBegin(ABlock: TSyntaxNode; const AText: string; out AEdit: TRuleEdit): Boolean;
@@ -336,7 +344,8 @@ begin
   Result := False;
 end;
 
-function TComponentModel.PaintingAncestor(const AClassName: string; out AAncestor: string): Boolean;
+function TComponentModel.PaintingAncestor(const AClassName: string; out AAncestor: string;
+  out AOnPaintOnly: Boolean): Boolean;
 var
   mName: string;
   mDepth: Integer;
@@ -344,6 +353,7 @@ var
   mSymbol: TIndexSymbol;
 begin
   AAncestor := '';
+  AOnPaintOnly := False;
   mName := FAncestry.ParentOf(AClassName);
   mDepth := 0;
   while (mName <> '') and (mDepth < 64) do
@@ -356,6 +366,12 @@ begin
       AAncestor := mName;
       Exit(True);
     end;
+    if IsIn(mName, OnPaintPaintBases) then
+    begin
+      AAncestor := mName;
+      AOnPaintOnly := True;
+      Exit(True);
+    end;
     if FAncestry.FindClass(mName, mType) then
       for mSymbol in FAncestry.Methods(mType) do
         if SameText(mSymbol.Name, 'Paint') then
@@ -366,6 +382,17 @@ begin
     mName := FAncestry.ParentOf(mName);
     Inc(mDepth);
   end;
+  Result := False;
+end;
+
+function TComponentModel.MayUseOnPaint: Boolean;
+var
+  mToken: TPascalToken;
+begin
+  for mToken in FContext.Tree.Tokens do
+    if ((mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'OnPaint')) or
+      ((mToken.Kind = TPascalTokenKind.Directive) and ContainsText(mToken.Text, '.dfm')) then
+      Exit(True);
   Result := False;
 end;
 
@@ -483,6 +510,24 @@ begin
     if Token.Offset >= ANode.EndOffset then
       Break;
     if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and IsIn(Token.Text, AWords) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+function TComponentModel.HasTokenStarting(ANode: TSyntaxNode; const APrefix: string): Boolean;
+var
+  mToken: TPascalToken;
+  mIndex: Integer;
+begin
+  for mIndex := FContext.Tree.FirstTokenFrom(ANode.StartOffset) to High(FContext.Tree.Tokens) do
+  begin
+    mToken := FContext.Tree.Tokens[mIndex];
+    if mToken.Offset < ANode.StartOffset then
+      Continue;
+    if mToken.Offset >= ANode.EndOffset then
+      Break;
+    if (mToken.Kind = TPascalTokenKind.Identifier) and StartsText(APrefix, mToken.Text) then
       Exit(True);
   end;
   Result := False;
@@ -628,6 +673,7 @@ var
   Confidence: TRuleConfidence;
   Message: string;
   Ancestor: string;
+  mOnPaintOnly: Boolean;
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
@@ -646,10 +692,15 @@ begin
       // zeichnet. Die übrigen Methoden tun in jedem VCL-Vorfahren eigene Arbeit.
       if SameText(Method.MethodName, 'Paint') then
       begin
-        if not Model.PaintingAncestor(Info.Name, Ancestor) then
+        if not Model.PaintingAncestor(Info.Name, Ancestor, mOnPaintOnly) then
           Continue;
         Confidence := TRuleConfidence.Medium;
-        Message := Format('%s.Paint ruft inherited nicht auf; %s.Paint zeichnet dort selbst', [Info.Name, Ancestor]);
+        if not mOnPaintOnly then
+          Message := Format('%s.Paint ruft inherited nicht auf; %s.Paint zeichnet dort selbst', [Info.Name, Ancestor])
+        else if Model.MayUseOnPaint then
+          Message := Format('%s.Paint ruft inherited nicht auf; %s.Paint löst dort OnPaint aus', [Info.Name, Ancestor])
+        else
+          Continue;
       end
       else
       begin
@@ -906,8 +957,22 @@ begin
   Result := IsIn(Name, ScaleCalls) or StartsText('Scale', Name);
 end;
 
-/// <summary>Steht der Wert in einem Zusammenhang, der kein Pixelwert ist oder schon skaliert?</summary>
-function Excluded(ANode: TSyntaxNode): Boolean;
+/// <summary>Methoden der Datei, die selbst skalieren: Ihr Rumpf ruft ScaleValue, MulDiv oder einen Scale…-Helfer
+/// auf (eigene Helfer wie Px(6) mit MulDiv(AValue, CurrentPPI, 96)).</summary>
+function ScalingHelpers(AModel: TComponentModel): TArray<string>;
+var
+  mMethod: TMethodImpl;
+begin
+  Result := nil;
+  for mMethod in AModel.Methods do
+    if (mMethod.Block <> nil) and (AModel.HasToken(mMethod.Block, ScaleCalls) or
+      AModel.HasTokenStarting(mMethod.Block, 'Scale')) then
+      Result := Result + [mMethod.MethodName];
+end;
+
+/// <summary>Steht der Wert in einem Zusammenhang, der kein Pixelwert ist oder schon skaliert? AHelpers: eigene
+/// Methoden, die skalieren (ScalingHelpers).</summary>
+function Excluded(ANode: TSyntaxNode; const AHelpers: TArray<string>): Boolean;
 var
   Parent, Child: TSyntaxNode;
 begin
@@ -917,7 +982,8 @@ begin
   begin
     case Parent.Kind of
       TSyntaxKind.Call:
-        if IsScaleCall(Parent.Name) or IsIn(Parent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']) then
+        if IsScaleCall(Parent.Name) or IsIn(Parent.Name, AHelpers) or
+          IsIn(Parent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']) then
           Exit(True);
       TSyntaxKind.BinaryExpr:
         if (Child = ANode) and IsIn(Parent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor']) then
@@ -938,17 +1004,19 @@ begin
   Result := False;
 end;
 
-procedure CollectPixels(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
+procedure CollectPixels(ANode: TSyntaxNode; AList: TList<TSyntaxNode>; const AHelpers: TArray<string>);
 var
   List: TList<TSyntaxNode>;
+  mHelpers: TArray<string>;
 begin
   List := AList;
+  mHelpers := AHelpers;
   // Iterativ (Bericht M1).
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin
       Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
-      if Result and IsPixelLiteral(AVisited) and not Excluded(AVisited) then
+      if Result and IsPixelLiteral(AVisited) and not Excluded(AVisited, mHelpers) then
         List.Add(AVisited);
     end);
 end;
@@ -962,10 +1030,12 @@ var
   Index, Last: Integer;
   Edits: TArray<TRuleEdit>;
   Literal: TSyntaxNode;
+  mHelpers: TArray<string>;
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
     Exit;
+  mHelpers := ScalingHelpers(Model);
   Literals := TList<TSyntaxNode>.Create;
   try
     for Method in Model.Methods do
@@ -973,7 +1043,7 @@ begin
       if not IsIn(Method.MethodName, PaintMethods) or not Model.IsComponent(Method.ClassName) then
         Continue;
       Literals.Clear;
-      CollectPixels(Method.Block, Literals);
+      CollectPixels(Method.Block, Literals, mHelpers);
       // Ein Treffer je Ausdruck (z. B. Rect(0, 0, 16, 16)), nicht je Zahl.
       Index := 0;
       while Index < Literals.Count do

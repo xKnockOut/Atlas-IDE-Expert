@@ -110,11 +110,9 @@ var
       while Pending.Count > 0 do
       begin
         Node := Pending.Pop;
+        // Auch lokale Routinen: Ein Test prüft oft in einer eigenen Hilfsroutine (procedure Silent(…) mit Assert).
         if Node.Kind = TSyntaxKind.RoutineDecl then
-        begin
           Routines := Routines + [Node];
-          Continue;
-        end;
         for Index := Node.ChildCount - 1 downto 0 do
           Pending.Push(Node[Index]);
       end;

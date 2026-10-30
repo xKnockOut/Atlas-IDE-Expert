@@ -269,7 +269,7 @@ end;
 
 const
   GoldenBefore =
-    'unit Atlas.Common.Editing.CompilerFixesGolden;' + LB +
+    'unit Atlas.Common.Editing.CompilerFixesGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.' + LB +
     '' + LB +
     '// Golden-Datei für die Schnellkorrekturen an Compilermeldungen, Teil 2' + LB +
     '// (#549): genau das, was die Korrekturen aus dem Vorher-Text in' + LB +

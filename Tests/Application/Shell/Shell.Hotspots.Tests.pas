@@ -41,7 +41,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
-  Atlas.Common.Hotspots.History,
   Atlas.Common.Hotspots.Service,
   Shell.Platform,
   Shell.VcsChanges,
@@ -142,7 +141,7 @@ var
 begin
   Result := TSymbolIndex.Create;
   for mName in TArray<string>.Create('Src/Neu.pas', 'Src/Andere.pas') do
-    Result.AddUnit(TIndexExtractor.ExtractText(TFile.ReadAllText(TPath.Combine(AFolder, mName)),
+    Result.AddUnit(TIndexExtractor.ExtractText(TFile.ReadAllText(TPath.Combine(AFolder, mName), TEncoding.UTF8),
       TPath.Combine(AFolder, mName), nil, nil));
 end;
 
@@ -156,7 +155,7 @@ begin
     begin
       Result := TFile.Exists(AFileName);
       if Result then
-        AText := TFile.ReadAllText(AFileName);
+        AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
     end);
   try
     mRequest := THotspotRequest.FromSettings(TServerSettings.Default);

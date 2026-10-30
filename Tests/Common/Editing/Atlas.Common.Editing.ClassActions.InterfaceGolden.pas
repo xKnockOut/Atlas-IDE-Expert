@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassActions.InterfaceGolden;
+﻿unit Atlas.Common.Editing.ClassActions.InterfaceGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.
 
 // Golden-Datei für die Code-Aktion „Methoden von IFoo implementieren“ (#42):
 // genau das, was die Aktion für ein Interface im Kopf der Klasse erzeugt.

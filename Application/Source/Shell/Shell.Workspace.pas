@@ -173,7 +173,6 @@ type
     function GetNamespaces: TArray<string>;
     function GetIncludePaths: TArray<string>;
     function GetProjectFiles: TArray<string>;
-    function GetPackageLocator: TPackageLocator;
     /// <summary>Meldet den eigenen Prozess am Cache an bzw. um (#62) und hält Zustand und Ereignis fest.</summary>
     procedure ReportProcess(const ACacheFile, AState: string; AWriter: Boolean; const AEvent: string); overload;
     /// <summary>Nur ein Ereignis am angemeldeten Cache; ohne Anmeldung nichts.</summary>
@@ -299,9 +298,6 @@ type
     /// <summary>Projektdateien (.dproj) der Gruppe: Was sie in einen Suchpfad übersetzen, gilt für
     /// uses-unit-not-found als vorhanden; vor Load setzen. nil = nur dieses Projekt.</summary>
     property OnGroupProjects: TFunc<TArray<string>> read FOnGroupProjects write FOnGroupProjects;
-    /// <summary>Packages des zuletzt geladenen Projekts (#46); nil vor dem ersten Laden. Bleibt bis zur Freigabe
-    /// des Arbeitsbereichs gültig. Threadsicher.</summary>
-    property PackageLocator: TPackageLocator read GetPackageLocator;
     /// <summary>Unit-Suche des zuletzt geladenen Projekts (#1016); nil vor dem ersten Laden. Threadsicher.</summary>
     function UnitLookup: IRuleUnitLookup;
     /// <summary>Dienste des Projekts für die Prüfregeln (#1112): Symbolindex, Nachladen von Units dieses
@@ -1724,16 +1720,6 @@ begin
     Exit(False);
   end;
   Result := True;
-end;
-
-function TShellWorkspace.GetPackageLocator: TPackageLocator;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FPackageLocator;
-  finally
-    TMonitor.Exit(FLock);
-  end;
 end;
 
 procedure TShellWorkspace.AddPackageFiles(const AProject: TProjectInfo; ALocator: TPackageLocator; var AFiles,

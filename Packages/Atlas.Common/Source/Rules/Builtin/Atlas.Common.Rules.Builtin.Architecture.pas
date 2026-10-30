@@ -407,6 +407,10 @@ begin
   // Ohne Präfixe schweigt die Regel: Projekte ohne Rollenkonzept sehen nichts.
   if Options.Prefixes = nil then
     Exit;
+  // Test-Units tragen den Namen der getesteten Unit (X.Contract.Tests), gehören aber zu keiner Rolle (Konzept:
+  // Tests werden nicht geprüft).
+  if TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
+    Exit;
   OwnName := OwnUnitName(AContext);
   Source := TArchitectureMatrix.Classify(OwnName, Options.Prefixes, Options.HostRoles);
   if not Source.Known then
@@ -453,6 +457,8 @@ begin
     Exit;
   Options := TRoleImportRule.ParseOptions(AContext.Options);
   if Options.Prefixes = nil then
+    Exit;
+  if TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
     Exit;
   OwnName := OwnUnitName(AContext);
   if TArchitectureMatrix.Classify(OwnName, Options.Prefixes, Options.HostRoles).Role <>

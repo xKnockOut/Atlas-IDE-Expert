@@ -10,6 +10,7 @@
 // FIRST/SKIP, Alias.*, Unterabfrage, EXISTS, COUNT(*), Meldungstexte),
 // zusammengesetzte Texte, Korrektur aus den persistenten Feldern der
 // Formulardatei, SQL der Formulardatei, Standard aus, Abschalten und Ausnahmen.
+// lsp-ignore-file: sql-write-without-where -- die SQL-Texte sind Prüffälle der Regel
 
 interface
 

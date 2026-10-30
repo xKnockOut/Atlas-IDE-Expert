@@ -190,7 +190,7 @@ begin
   Result := -1;
 end;
 
-procedure TAtlasTabOrderOverlay.Paint; // lsp-ignore: component-missing-inherited -- zeichnet die ganze Fläche
+procedure TAtlasTabOrderOverlay.Paint;
 var
   mIndex: Integer;
   mRect: TRect;

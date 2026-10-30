@@ -410,7 +410,7 @@ begin
     InUnit(StringReplace(Source, '  Result := A;', '  if A = 2 then'#10'    Exit(2);'#10'  Result := A;', [])));
 end;
 
-/// <summary>Unit mit der Kette TStufe1 = class(ABasis) bis TStufe<ACount>.</summary>
+/// <summary>Unit mit der Kette TStufe1 = class(ABasis) bis TStufe&lt;ACount&gt;.</summary>
 function Chain(const ABasis: string; ACount: Integer): string;
 var
   Index: Integer;

@@ -190,7 +190,7 @@ begin
   Result.Force := AForce;
 end;
 
-/// <summary>Text von AFileName nach dem WorkspaceEdit in AAnswer; '<gelöscht>' bei einer Löschung.</summary>
+/// <summary>Text von AFileName nach dem WorkspaceEdit in AAnswer; '&lt;gelöscht&gt;' bei einer Löschung.</summary>
 function After(AAnswer: TJSONObject; const AFileName: string): string;
 var
   Item, Edit: TJSONValue;

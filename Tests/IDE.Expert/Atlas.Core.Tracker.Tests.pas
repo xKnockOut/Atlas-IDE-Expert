@@ -828,7 +828,7 @@ begin
   Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Foreign);
   Assert.IsFalse(TAtlasCommitHook.Install(Hooks), 'fremder Hook bleibt');
   Assert.IsTrue(TAtlasCommitHook.Uninstall(Hooks));
-  Assert.IsTrue(Pos('echo fremd', TFile.ReadAllText(TAtlasCommitHook.HookFile(Hooks))) > 0);
+  Assert.IsTrue(Pos('echo fremd', TFile.ReadAllText(TAtlasCommitHook.HookFile(Hooks), TEncoding.UTF8)) > 0);
   Assert.IsFalse(TAtlasCommitHook.Install(''));
 end;
 

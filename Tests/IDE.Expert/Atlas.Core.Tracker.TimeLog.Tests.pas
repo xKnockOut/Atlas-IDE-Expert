@@ -520,7 +520,7 @@ begin
     begin
       ALog.Add(TAtlasTimeSpan.Create(YouTrackIssue('ATL-1'), At(10, 0), At(10, 30)));
     end, mLog));
-  Assert.AreEqual('{kaputt', TFile.ReadAllText(mPath));
+  Assert.AreEqual('{kaputt', TFile.ReadAllText(mPath, TEncoding.UTF8));
 end;
 
 procedure TAtlasTimeLogTests.LockedFileFails;

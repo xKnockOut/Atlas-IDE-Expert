@@ -231,7 +231,7 @@ type
     procedure ClicksReachSource;
   end;
 
-  /// <summary>Bereich „<Projekt> für Atlas einrichten“ (#759).</summary>
+  /// <summary>Bereich „&lt;Projekt&gt; für Atlas einrichten“ (#759).</summary>
   [TestFixture]
   TAtlasWelcomeSetupFrameTests = class
   public
@@ -1474,7 +1474,7 @@ begin
     Board.OnAskName :=
       function(const APrompt: string; var AName: string): Boolean
       begin
-        AName := Answer;
+        AName := Answer; // lsp-ignore: captured-loop-variable -- Absicht: liest den jeweils aktuellen Wert
         Result := True;
       end;
     Board.OnConfirm :=

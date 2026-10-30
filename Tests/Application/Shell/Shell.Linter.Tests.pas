@@ -510,7 +510,7 @@ begin
   Assert.AreEqual(1, Run(['--check', Path('Src/Schief.pas'), '--format-check', '--format', 'json']));
   Assert.Contains(OutputText, '"kind":"indent"');
   // Geprüft wird nur im Speicher.
-  Assert.AreEqual(cIndentedUnit, TFile.ReadAllText(Path('Src/Schief.pas')));
+  Assert.AreEqual(cIndentedUnit, TFile.ReadAllText(Path('Src/Schief.pas'), TEncoding.UTF8));
 end;
 
 procedure TShellLinterTests.FormatWriteKeepsEncoding;
@@ -559,7 +559,7 @@ begin
   Assert.AreEqual(1, Run(['--check', Path('Src/Kaputt.pas'), '--format-write']));
   Assert.Contains(OutputText, 'Syntaxfehler, nicht formatiert');
   Assert.AreEqual(StringReplace(BrokenUnit, '  if then;', '     if then;', []),
-    TFile.ReadAllText(Path('Src/Kaputt.pas')));
+    TFile.ReadAllText(Path('Src/Kaputt.pas'), TEncoding.UTF8));
   Assert.AreEqual(1, Run(['--check', Path('Src/Kaputt.pas'), '--format-check']));
 end;
 

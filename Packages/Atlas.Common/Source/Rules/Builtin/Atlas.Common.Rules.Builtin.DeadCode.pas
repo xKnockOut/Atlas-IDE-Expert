@@ -40,7 +40,9 @@
 //                       außerhalb ihres uses keinen ihrer Bezeichner (z. B.
 //                       Application.CreateForm(TForm1, Form1)). Units mit
 //                       initialization- oder finalization-Teil (Registrierung)
-//                       gelten als verwendet, Packages und DLLs haben Nutzer
+//                       gelten als verwendet, ebenso Units mit einer Klasse
+//                       [TestFixture], die DUnitX per RTTI findet
+//                       ({$STRONGLINKTYPES ON}). Packages und DLLs haben Nutzer
 //                       außerhalb der Gruppe (Option projectKinds).
 //   unused-uses         uses-Eintrag, aus dessen Unit nichts verwendet wird
 //                       (#1352), mit derselben Analyse wie die Hinweise im
@@ -158,6 +160,19 @@ begin
       if SameText(Name, 'I') or SameText(Name, 'INCLUDE') then
         Exit(True);
     end;
+  Result := False;
+end;
+
+/// <summary>Trägt die Unit das Attribut [TestFixture]? DUnitX findet solche Klassen per RTTI, ohne dass eine
+/// Unit sie nennt oder registriert.</summary>
+function HasTestFixture(const ATokens: TArray<TPascalToken>): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 1 to High(ATokens) do
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, 'TestFixture') and
+      ATokens[mIndex - 1].IsSymbol('[') then
+      Exit(True);
   Result := False;
 end;
 
@@ -737,6 +752,9 @@ begin
   Local := TRuleDerived.UnitIndex(Cache, AContext);
   // Registrierungen und andere Seiteneffekte beim Start.
   if Local.HasInitialization then
+    Exit;
+  // Testklassen: Der Testrunner findet sie über ihre Attribute.
+  if HasTestFixture(AContext.Tree.Tokens) then
     Exit;
   Programs := '';
   for User in Users do

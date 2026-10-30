@@ -34,7 +34,7 @@ begin
   Result := CharInSet(ACh, ['0'..'9']);
 end;
 
-/// <summary>Zeichen, neben dem kein Verweis beginnt bzw. endet: Bezeichner, &, # und $ (z. B. &#312;, $1F).
+/// <summary>Zeichen, neben dem kein Verweis beginnt bzw. endet: Bezeichner, &amp;, # und $ (z. B. &#312;, $1F).
 /// </summary>
 function JoinsLink(ACh: Char): Boolean;
 begin

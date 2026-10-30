@@ -563,6 +563,9 @@ begin
           Result[mIndex] := Moved(ARects[mIndex], ARects[mIndex].Left + mDX, ARects[mIndex].Top + mDY);
         Exit;
       end;
+    // Ausrichten am ersten Element: in der Schleife darunter.
+    TAtlasAlignKind.Lefts, TAtlasAlignKind.Rights, TAtlasAlignKind.Tops, TAtlasAlignKind.Bottoms,
+    TAtlasAlignKind.CentersH, TAtlasAlignKind.CentersV, TAtlasAlignKind.SameWidth, TAtlasAlignKind.SameHeight: ;
   end;
   for mIndex := 1 to High(ARects) do
     case AKind of
@@ -586,6 +589,9 @@ begin
       TAtlasAlignKind.SameHeight:
         Result[mIndex] := Rect(ARects[mIndex].Left, ARects[mIndex].Top, ARects[mIndex].Right,
           ARects[mIndex].Top + mRef.Height);
+      // Schon im case darüber erledigt.
+      TAtlasAlignKind.CenterInParentH, TAtlasAlignKind.CenterInParentV, TAtlasAlignKind.SpaceH,
+      TAtlasAlignKind.SpaceV: ;
     end;
 end;
 

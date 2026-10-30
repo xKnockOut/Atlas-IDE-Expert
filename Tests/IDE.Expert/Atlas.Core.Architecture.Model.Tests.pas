@@ -898,7 +898,7 @@ begin
     mValue.Free;
   end;
   mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
-    'C:\Pericht.html', mOptions));
+    'C:\P\bericht.html', mOptions));
   try
     mItem := (mValue as TJSONArray).Items[2] as TJSONObject;
     mNumber := mItem.GetValue<Double>('resolution');
