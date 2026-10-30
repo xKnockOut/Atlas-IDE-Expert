@@ -21,6 +21,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Generics.Collections,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
@@ -67,7 +68,7 @@ type
     FGeneration: Integer;
     FThread: TThread;
     FCancel: IAtlasCiCancel;
-    FWorkers: TList;
+    FWorkers: TList<TThread>;
     function View: TAtlasIssueDevelopmentView;
     function ProjectFile: string;
     procedure Load(AForce: Boolean);
@@ -141,7 +142,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCache := TAtlasIssueDevelopmentCache.Create;
-  FWorkers := TList.Create;
+  FWorkers := TList<TThread>.Create;
 end;
 
 destructor TAtlasIdeIssueDevelopment.Destroy;
@@ -239,13 +240,13 @@ begin
   begin
     mWait := nil;
     for mIndex := 0 to FWorkers.Count - 1 do
-      mWait := mWait + [TThread(FWorkers[mIndex])];
+      mWait := mWait + [FWorkers[mIndex]];
     if Length(mWait) > 0 then
       TAtlasShutdown.WaitForThreads(mWait);
   end;
   for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    mThread := TThread(FWorkers[mIndex]);
+    mThread := FWorkers[mIndex];
     if mThread.Finished then
     begin
       mThread.Free;

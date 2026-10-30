@@ -49,7 +49,8 @@ type
     // #848, #849, #861, #862, 25: Methodenzuordnungen je Klasse, 26: Namen ohne Escape-& (#1137), 27: Codepage-
     // Strings (#1140), 28: Begründungen (#1123), 29: Prozedurtypen vollständig (#1326). 19 (#1001) fehlte hier,
     // die Willkommensseite fand deshalb keinen Cache. 30: inline-Routinen ohne Verweise (#1381).
-    FormatVersion = 30;
+    // 31: Typargumente je Vorfahr.
+    FormatVersion = 31;
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
   private

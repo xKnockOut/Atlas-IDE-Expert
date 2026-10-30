@@ -13,6 +13,8 @@
 // Treffer, sonst nur einen mit niedriger Konfidenz; unused-assignment
 // schweigt in solchen Routinen ganz. Routinen mit asm-Rumpf werden übergangen.
 // unused-assignment übergeht Variablen mit Interface-Typ (Referenzzähler: Bereichswächter, X := nil).
+// Den Code H2077 nennt die Meldung nur bei bekanntem, nicht verwaltetem Typ: Für Strings, dynamische
+// Arrays, Variants und Records mit solchen Feldern meldet dcc nichts (#1383, Cm.E2056).
 //
 // unused-parameter nimmt aus:
 // - Parameter namens Sender und Routinen mit einem solchen (Ereignis-Handler),
@@ -108,6 +110,7 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Flow;
 
 type
@@ -798,6 +801,30 @@ var
   Name: string;
   Writes, Reads: TList<TSyntaxNode>;
   Cache: IRuleDerivedCache;
+  // Typtext je Name (Kleinbuchstaben) der Routine; '' ohne Typangabe (var X := …).
+  Types: TDictionary<string, string>;
+  Managed: TManagedTypes;
+
+  procedure AddTypes(ADecl: TSyntaxNode);
+  var
+    Part: string;
+  begin
+    for Part in SplitNames(ADecl.Name) do
+      Types.AddOrSetValue(LowerCase(Part), Managed.NodeTypeText(ADecl));
+  end;
+
+  /// <summary>" (wie H2077)", wenn dcc für den Typ von AName den Hinweis gibt: Typ bekannt und nicht verwaltet.
+  /// </summary>
+  function CodeSuffix(const AName: string): string;
+  var
+    TypeText: string;
+  begin
+    Result := '';
+    if not Types.TryGetValue(LowerCase(AName), TypeText) or (TypeText = '') then
+      Exit;
+    if (Managed.Managed(TypeText, 0) = '') and not Managed.CustomManaged(TypeText, 0) then
+      Result := ' (wie H2077)';
+  end;
 
   procedure Collect(ARoot: TSyntaxNode);
   var
@@ -891,8 +918,8 @@ var
         end;
       if not Defined or Used then
         Continue;
-      AReport.Add(NameRange(AContext, Write, Name), Format('Der an "%s" zugewiesene Wert wird nie gelesen', [Name]),
-        TRuleConfidence.High);
+      AReport.Add(NameRange(AContext, Write, Name), Format('Der an "%s" zugewiesene Wert wird nie gelesen%s',
+        [Name, CodeSuffix(Name)]), TRuleConfidence.High);
     end;
   end;
 
@@ -905,6 +932,8 @@ begin
   Routines := TRuleDerived.Routines(Cache, AContext);
   Writes := TList<TSyntaxNode>.Create;
   Reads := TList<TSyntaxNode>.Create;
+  Types := TDictionary<string, string>.Create;
+  Managed := TManagedTypes.Create(AContext.Tree, AContext.Text, AContext.Index);
   try
     for Routine in Routines do
     begin
@@ -912,24 +941,33 @@ begin
       if not RoutineInfo(AContext, Routine, Info) or Info.Conditionals then
         Continue;
       Names := nil;
+      Types.Clear;
       for Index := 0 to Routine.ChildCount - 1 do
       begin
         Section := Routine[Index];
         if Section.Kind = TSyntaxKind.VarSection then
           for Inner := 0 to Section.ChildCount - 1 do
             if (Section[Inner].Kind = TSyntaxKind.VarDecl) and not IsInterfaceTyped(Section[Inner]) then
+            begin
               Names := Names + SplitNames(Section[Inner].Name);
+              AddTypes(Section[Inner]);
+            end;
       end;
       Locals := nil;
       CollectInlineVars(Info.Block, Locals);
       for Decl in Locals do
         if not IsInterfaceTyped(Decl) then
+        begin
           Names := Names + SplitNames(Decl.Name);
+          AddTypes(Decl);
+        end;
       Graph := nil;
       for Name in Names do
         CheckName;
     end;
   finally
+    Managed.Free;
+    Types.Free;
     Reads.Free;
     Writes.Free;
   end;
