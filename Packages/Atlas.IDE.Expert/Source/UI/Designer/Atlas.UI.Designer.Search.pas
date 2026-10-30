@@ -31,6 +31,7 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Designer.Components;
 
