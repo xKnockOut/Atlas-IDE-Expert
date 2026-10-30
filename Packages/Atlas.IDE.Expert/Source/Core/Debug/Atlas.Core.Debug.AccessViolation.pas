@@ -463,6 +463,7 @@ begin
           SkipRestOfChain(FCheck, TAtlasAvCheckState.NotReached);
         end;
       end;
+    TAtlasAvPurpose.Header, TAtlasAvPurpose.Offset: ;
   end;
   Inc(FCheck);
 end;

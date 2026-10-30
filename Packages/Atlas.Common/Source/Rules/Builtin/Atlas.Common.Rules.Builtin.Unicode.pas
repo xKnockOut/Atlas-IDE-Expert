@@ -619,6 +619,7 @@ begin
       Result := TRuleSeverity.Off;
     TCharPlace.StringLiteral:
       Result := TRuleSeverity.Hint;
+    TCharPlace.Code: ;
   end;
 end;
 

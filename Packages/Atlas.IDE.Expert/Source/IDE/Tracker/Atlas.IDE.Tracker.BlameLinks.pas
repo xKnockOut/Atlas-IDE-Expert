@@ -762,6 +762,7 @@ begin
           [AName, AtlasVcsOutcomeName(AHistory.VcsOutcome)]), AList, nil);
         Exit;
       end;
+    TAtlasBlameHistoryOutcome.Ok: ;
   end;
   FListTarget := ATarget;
   FListKind := AKind;

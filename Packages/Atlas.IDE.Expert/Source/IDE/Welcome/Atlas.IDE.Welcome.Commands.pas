@@ -898,6 +898,7 @@ begin
             Place(False);
           TAtlasIdePageStep.Unplace:
             Unplace(False);
+          TAtlasIdePageStep.None: ;
         end;
       FShownIde := IdePage;
       FLastLayout := Current.WelcomePageLayout;

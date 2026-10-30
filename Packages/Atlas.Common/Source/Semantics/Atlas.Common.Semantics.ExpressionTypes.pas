@@ -1198,6 +1198,8 @@ var
           end;
         TSyntaxKind.VariantPart:
           Failed_ := True;
+      else
+        // Übrige Arten: nichts zu tun.
       end;
     end;
   end;

@@ -1734,6 +1734,8 @@ var
             mName := Both(mName, Sequence(mPart, 0, mPart.ChildCount - 1, mMixed), mMixed);
           Result := mName;
         end;
+    else
+      // Übrige Arten: nichts zu tun.
     end;
   end;
 
@@ -1868,6 +1870,8 @@ var
           TSyntaxKind.IfExpr:
             if mNode.ChildCount > 0 then
               mCondition := mNode[0];
+        else
+          // Übrige Arten: nichts zu tun.
         end;
         if (mCondition <> nil) and Mentions(mCondition) then
           Exit;

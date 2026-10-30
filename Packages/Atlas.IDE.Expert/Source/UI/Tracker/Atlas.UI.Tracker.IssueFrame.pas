@@ -1830,6 +1830,7 @@ begin
       FFix.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewBrowse);
     TAtlasIssueFix.Retry:
       FFix.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFixRetry);
+    TAtlasIssueFix.None: ;
   end;
   FStatus.Visible := True;
   UpdateButtons;

@@ -135,6 +135,8 @@ begin
         APosition := TTextPosition.Create(ACallee.EndPos.Line, ACallee.EndPos.Character - Length(ACallee.Name));
         Result := True;
       end;
+  else
+    // Übrige Arten: nichts zu tun.
   end;
 end;
 
@@ -389,6 +391,8 @@ begin
         Exit(Parent.StartPos.Line);
       TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod:
         Exit;
+    else
+      // Übrige Arten: nichts zu tun.
     end;
     Next := NextStatement(Current);
     if Next <> nil then
@@ -415,6 +419,8 @@ begin
         end;
       TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection:
         Exit;
+    else
+      // Übrige Arten: nichts zu tun.
     end;
     Current := Parent;
   end;

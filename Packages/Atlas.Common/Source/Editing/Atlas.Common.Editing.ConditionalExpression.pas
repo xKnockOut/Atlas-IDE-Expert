@@ -256,6 +256,8 @@ begin
             Result := Left;
         end;
       end;
+  else
+    // Übrige Arten: nichts zu tun.
   end;
 end;
 
@@ -466,6 +468,8 @@ begin
               not TPureRoutines.IsPure(Callee.Name) then
               Result := TSyntaxSearchStep.Found;
           end;
+      else
+        // Übrige Arten: nichts zu tun.
       end;
     end) <> nil;
 end;

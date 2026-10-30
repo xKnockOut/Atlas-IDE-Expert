@@ -251,6 +251,7 @@ begin
       TAtlasEventScope.VisibleForms:
         if not MatchText(Handler.Form, AVisibleForms) then
           Continue;
+      TAtlasEventScope.AllForms: ;
     end;
     Result := Result + [Index];
   end;

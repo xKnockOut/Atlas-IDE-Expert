@@ -161,6 +161,8 @@ begin
           Element := TEnumTableElement.Pointer_;
         TIndexSymbolKind.EnumType:
           Element := TEnumTableElement.Enum;
+      else
+        // Übrige Arten: nichts zu tun.
       end;
   end;
   Result := TEnumTableValues.Create(Element, Name, ATable.IndexType.Name);
