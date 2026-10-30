@@ -31,6 +31,8 @@
         <Projects Include="DccAutomation.dproj"/>
         <Projects Include="DccAutomationGegen.dproj"/>
         <Projects Include="DccAutomationAufrufGegen.dproj"/>
+        <Projects Include="DccUeberladungen.dproj"/>
+        <Projects Include="DccUeberladungenGegen.dproj"/>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -127,5 +129,13 @@
     </Target>
     <Target Name="Build">
         <CallTarget Targets="DccEigenschaften;DccEigenschaftenGegen;DccVarParameter;DccVarParameterGegen;DccSichtbarkeit;DccSichtbarkeitGegen;DccInline;DccInlineGegen;DccInlineKonstanteGegen;DccVorwaerts;DccVorwaertsGegen;DccInterfaces;DccInterfacesGegen;DccOperatoren;DccOperatorenGegen;DccDeklarationen;DccDeklarationenGegen;DccKonstanten;DccKonstantenGegen;DccPublished;DccPublishedGegen;DccAutomation;DccAutomationGegen;DccAutomationAufrufGegen"/>
+    <Target Name="DccUeberladungen">
+        <MSBuild Projects="DccUeberladungen.dproj"/>
+    </Target>
+    <Target Name="DccUeberladungenGegen">
+        <MSBuild Projects="DccUeberladungenGegen.dproj"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="DccEigenschaften;DccEigenschaftenGegen;DccVarParameter;DccVarParameterGegen;DccSichtbarkeit;DccSichtbarkeitGegen;DccInline;DccInlineGegen;DccInlineKonstanteGegen;DccVorwaerts;DccVorwaertsGegen;DccInterfaces;DccInterfacesGegen;DccOperatoren;DccOperatorenGegen;DccDeklarationen;DccDeklarationenGegen;DccKonstanten;DccKonstantenGegen;DccPublished;DccPublishedGegen;DccUeberladungen;DccUeberladungenGegen"/>
     </Target>
 </Project>
