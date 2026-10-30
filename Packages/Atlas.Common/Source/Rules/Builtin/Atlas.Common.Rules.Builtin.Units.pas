@@ -4,14 +4,18 @@
 //   unit-name-mismatch  Der Name hinter unit weicht vom Dateinamen ab (#990,
 //                       wie E1038, W1038), oder die Datei aus "uses X in
 //                       '…'" deklariert eine andere Unit als X (wie E2085).
+//                       Passt dort auch der Name der Unit nicht zu ihrer
+//                       Datei, meldet Delphi 13 nur E1038 in der Unit
+//                       (#1382); dann schweigt die Regel in der uses-Klausel.
 //   text-after-final-end  Code nach dem abschließenden end. (#991, wie W1011);
 //                       Kommentare und Direktiven nur mit allowComments =
 //                       false.
 //   exports-invalid     exports in einer Routine (#1077, wie E2191), Export
-//                       einer threadvar oder einer Routine mit local (wie
-//                       E2276), einer Variablen, Konstanten oder eines Typs
-//                       (wie E2121) und derselbe Eintrag bzw. Exportname
-//                       zweimal (wie E2287).
+//                       einer threadvar, einer Routine mit local, einer
+//                       Konstanten oder eines Typs (wie E2276) und derselbe
+//                       Exportname zweimal über name '…' (wie E2287).
+//                       Variablen und derselbe Eintrag zweimal ohne name
+//                       übersetzt Delphi 13 still (#1383).
 //   unit-name-conflict  Eine Unit heißt System oder SysInit (#1079, wie
 //                       E2272), oder {$NOINCLUDE X} nennt eine Unit, die die
 //                       Unit-Suche sicher nicht findet (wie E2242).
@@ -341,6 +345,9 @@ begin
     Used := TModuleHeader.Read(TPascalLexer.Tokenize(Text));
     if (Used.Kind <> TModuleKind.UnitModule) or (Used.Name = '') or SameText(Used.Name, Entry.Name) then
       Continue;
+    // Ursache in der Unit selbst: Dort meldet dcc E1038 (bzw. diese Regel, wenn die Datei geprüft wird).
+    if (ExpectedName(Entry.InPath) <> '') and not SameText(Used.Name, ExpectedName(Entry.InPath)) then
+      Continue;
     AReport.Add(Entry.Range, Format('%s in ''%s'': die Datei deklariert die Unit %s (wie E2085).',
       [Entry.Name, Entry.InPath, Used.Name]), TRuleConfidence.High,
       [TRuleFix.Create(Format('In %s ändern', [Used.Name]), [TRuleEdit.Create(Entry.Range, Used.Name)])]);
@@ -424,7 +431,7 @@ end;
 function TExportsInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ExportsInvalidRuleId, TRuleSeverity.Error,
-    'exports-Klausel unzulässig (wie E2191, E2276, E2121, E2287)');
+    'exports-Klausel unzulässig (wie E2191, E2276, E2287)');
 end;
 
 /// <summary>Text eines String-Literals ohne Hochkommas ('' wird ').</summary>
@@ -700,13 +707,14 @@ begin
           Message := Format('%s ist mit local deklariert und kann nicht exportiert werden (wie E2276).', [Entry.Name])
         else if TGlobalKind.ThreadVariable in Kinds then
           Message := Format('Die threadvar %s kann nicht exportiert werden (wie E2276).', [Entry.Name])
-        else if Kinds <> [] then
-          Message := Format('%s ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).',
+        // Globale Variablen exportiert dcc (#1383); für einen Typ meldet Delphi 13 E2276, nicht E2121.
+        else if Kinds * [TGlobalKind.Constant, TGlobalKind.TypeName] <> [] then
+          Message := Format('%s ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2276).',
             [Entry.Name]);
       end;
       if Message <> '' then
         AReport.Add(RangeOf(Tokens, Entry.First, Entry.NameLast), Message, TRuleConfidence.High);
-      // Derselbe Eintrag oder derselbe Exportname weiter vorn.
+      // Derselbe Exportname weiter vorn. Denselben Eintrag zweimal ohne name übersetzt Delphi 13 (#1383).
       Duplicate := False;
       for Other := 0 to ClauseIndex do
       begin
@@ -717,13 +725,9 @@ begin
           Earlier := Clauses[Other].Entries[OtherEntry];
           if Exclusive(Earlier.First, Entry.First) then
             Continue;
-          if not Entry.HasNameClause and not Earlier.HasNameClause and SameText(Entry.Name, Earlier.Name) and
-            (Entry.Parameters = Earlier.Parameters) then
-            Message := Format('%s wird zweimal exportiert (wie E2287).', [Entry.Name])
-          else if (Entry.ExportName <> '') and (Entry.ExportName = Earlier.ExportName) then
-            Message := Format('Der Name ''%s'' wird zweimal exportiert (wie E2287).', [Entry.ExportName])
-          else
+          if (Entry.ExportName = '') or (Entry.ExportName <> Earlier.ExportName) then
             Continue;
+          Message := Format('Der Name ''%s'' wird zweimal exportiert (wie E2287).', [Entry.ExportName]);
           Duplicate := True;
           Break;
         end;

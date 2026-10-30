@@ -167,6 +167,26 @@ begin
   Assert.IsTrue(TSystemIntrinsics.IsKnown('NativeInt'));
   Assert.IsTrue(TSystemIntrinsics.IsKnown('Cardinal'));
   Assert.IsFalse(TSystemIntrinsics.IsKnown('Unbekannt'));
+  // Typen des Compilers ohne Deklaration in System.pas und Fail der alten object-Syntax (#1382).
+  Assert.IsTrue(TSystemIntrinsics.IsType('TextFile'));
+  Assert.IsTrue(TSystemIntrinsics.IsType('Text'));
+  Assert.IsTrue(TSystemIntrinsics.IsType('Real48'));
+  Assert.IsFalse(TSystemIntrinsics.IsType('Fail'));
+  Assert.IsTrue(TSystemIntrinsics.IsKnown('Fail'));
+  // Datei-Routinen ohne Deklaration in System.pas (#1382); Eof gibt es mit und ohne Datei.
+  Assert.IsTrue(TSystemIntrinsics.IsKnown('AssignFile'));
+  Assert.IsTrue(TSystemIntrinsics.IsKnown('Append'));
+  Assert.IsTrue(TSystemIntrinsics.IsKnown('CloseFile'));
+  Assert.IsFalse(TSystemIntrinsics.IsType('CloseFile'));
+  Assert.AreEqual(2, Integer(Length(TSystemIntrinsics.Find('Eof'))));
+  Assert.AreEqual(2, TSystemIntrinsics.Find('AssignFile')[0].MinArgs);
+  Assert.AreEqual(3, TSystemIntrinsics.Find('AssignFile')[0].MaxArgs);
+  // Speicher-Routinen: FreeMem mit und ohne Größe (Marco 30.10.2026, GetMem/FreeMem gemeldet).
+  Assert.IsTrue(TSystemIntrinsics.IsKnown('GetMem'));
+  Assert.IsTrue(TSystemIntrinsics.IsKnown('ReallocMem'));
+  Assert.AreEqual(1, TSystemIntrinsics.Find('FreeMem')[0].MinArgs);
+  Assert.AreEqual(2, TSystemIntrinsics.Find('FreeMem')[0].MaxArgs);
+  Assert.IsTrue(TSystemIntrinsics.IsType('OleVariant'));
 end;
 
 procedure TSystemIntrinsicsTests.NameAtSkipsMembersAfterDot;

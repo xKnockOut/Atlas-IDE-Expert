@@ -81,6 +81,10 @@ begin
   Assert.AreEqual(-1, TLanguageFeatures.ParseVersion('abc'));
   Assert.IsTrue(TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, '20.0'));
   Assert.IsFalse(TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, '19.0'));
+  // Codes der Compilermeldungen je Version (#1382): ohne gültige Version gilt die neueste.
+  Assert.IsTrue(TLanguageFeatures.IsAtLeast('37.0', '37.0'));
+  Assert.IsFalse(TLanguageFeatures.IsAtLeast('23.0', '37.0'));
+  Assert.IsTrue(TLanguageFeatures.IsAtLeast('', '37.0'));
 end;
 
 procedure TLanguageFeaturesTests.ReportsNothingWithoutVersion;
