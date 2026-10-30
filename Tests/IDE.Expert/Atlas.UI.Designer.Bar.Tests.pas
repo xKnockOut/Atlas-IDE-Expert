@@ -29,6 +29,10 @@ type
     procedure HintsPerButton;
     [Test]
     procedure ClicksReachEvents;
+    /// <summary>Wie TDesignerBarState.CreateBar: Knöpfe vor dem Einhängen setzen. Die Sicherung schaltete die Leiste
+    /// sonst nach „hat kein übergeordnetes Fenster“ ab.</summary>
+    [Test]
+    procedure ButtonsBeforeParent;
   end;
 
 implementation
@@ -76,6 +80,23 @@ begin
   FForm.Free;
   FForm := nil;
   FBar := nil;
+end;
+
+procedure TAtlasDesignerBarTests.ButtonsBeforeParent;
+var
+  mBar: TAtlasDesignerBar;
+begin
+  mBar := TAtlasDesignerBar.Create(nil);
+  try
+    mBar.SetButtons(TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create('search',
+      TAtlasToolbarIcon.ComponentSearch, 'Suchen')));
+    Assert.IsFalse(mBar.HandleAllocated, 'ohne Fenster gesetzt');
+    mBar.Parent := FForm;
+    mBar.Align := alTop;
+    Assert.IsFalse(mBar.ButtonRect('search').IsEmpty);
+  finally
+    mBar.Free;
+  end;
 end;
 
 procedure TAtlasDesignerBarTests.ButtonsInOrder;
