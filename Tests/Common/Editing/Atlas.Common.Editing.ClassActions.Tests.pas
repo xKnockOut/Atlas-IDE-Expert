@@ -94,7 +94,7 @@ const
     'end.'#13#10;
 
   OverrideBefore =
-    'unit Atlas.Common.Editing.ClassActions.OverrideGolden;'#13#10 +
+    'unit Atlas.Common.Editing.ClassActions.OverrideGolden; // lsp-ignore-file: override-only-inherited -- Die Aktion erzeugt absichtlich Rümpfe nur mit inherited.'#13#10 +
     #13#10 +
     '// Golden-Datei für die Code-Aktion „Name überschreiben“ (#42): genau das,'#13#10 +
     '// was die Aktion für zwei virtuelle Methoden des Vorfahren erzeugt. Der Test'#13#10 +

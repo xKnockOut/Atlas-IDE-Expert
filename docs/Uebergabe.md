@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## override-only-inherited in der Golden-Datei (30.10.2026, Branch `claude/project-thread-3roozg`)
+- Die zwei Treffer in `Tests/Common/Editing/Atlas.Common.Editing.ClassActions.OverrideGolden.pas` sind fachlich richtig, die Golden-Datei enthält aber absichtlich, was die Aktion „überschreiben“ erzeugt (Rümpfe nur mit `inherited`).
+- **Ursache:** Der Ausschluss stand als Pfad in der `atlas.json` der Repo-Wurzel. Die IDE legt je Projekt einen Arbeitsbereich mit dem Ordner der `.dproj` als Wurzel an (`AddProjectWorkspace`), und `TLspConfiguration` liest `atlas.json` nur dort. Für `Atlas.Tests` (Wurzel `Tests/`) galt die Datei also gar nicht; ebenso bei `--check` auf eine einzelne Datei.
+- **Korrektur:** `// lsp-ignore-file: override-only-inherited` in der ersten Zeile der Golden-Datei und gleich in `OverrideBefore` des Tests (die Aktion übernimmt die Zeile, Zeilennummern bleiben). Der Pfad-Ausschluss in `atlas.json` ist entfernt. Gegenprobe mit dem Linux-AtlasServer: `--check` auf die Datei und über `.` ohne Treffer der Regel, keine ungenutzte Unterdrückung.
+- Offen: Dass die Wurzel-`atlas.json` in der IDE für Projekte in Unterordnern nicht gilt, betrifft alle Einstellungen dieses Repos (z. B. `metric-*` aus). Eigenes Thema, nicht hier geändert.
+
 ## Weitere Generics-Fehler (#1376, 29.10.2026, Branch `feature/1376-generics-fehler`)
 - `generic-declaration-invalid` (jetzt Stufe B): E2528 auch für Konstruktoren von Klassen (dcc 13 meldet `constructor Create<T>;`, GD10 nannte den generischen Konstruktor fälschlich erlaubt; Records und `object` bleiben ungeprüft still), E2552/E2553 mit Klassen aus dem Index (`TNameResolver.ResolveTypeTextFrom`, nur wenn der Name weder Typparameter noch in der Datei deklariert ist), E2570 (lokale Routine in Methoden generischer Typen und generischen Methoden; Kopf mit Punkt und GenericParams; spring4d hat in 1207 generischen Methoden keine einzige lokale Routine), E2574 (`type` vor `TypeReference` mit GenericArgs außerhalb generischer Typen, Korrektur entfernt `type`).
 - Neue Regel `generic-inference-failed` (Stufe T, Unit `Builtin.Generics`): E2531 und E2532 über `CallCandidates`; eigene Typparameter liest `TGenericInferenceFailedRule.OwnTypeParams` aus der Signatur. Vorfilter: Name hat einen generischen Kopf in der Datei oder `Index.HasSymbol` mit TypeParams.
