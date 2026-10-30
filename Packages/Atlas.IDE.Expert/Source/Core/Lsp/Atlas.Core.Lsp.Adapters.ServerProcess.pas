@@ -35,6 +35,8 @@ type
     FOutputRead: THandle;
     FReader: TThread;
     FWriter: TThread;
+    // Schützt FWriter: Der Lese-Thread antwortet über Write noch, während Destroy den Schreib-Thread abbaut.
+    FWriterLock: TObject;
     FClient: TLspClient;
     FStarted: UInt64;
     // stderr-Datei und ihre Größe nach der Kopfzeile dieses Starts; '' = NUL.
@@ -219,6 +221,7 @@ var
   CommandLine: string;
 begin
   inherited Create;
+  FWriterLock := TObject.Create;
   Security := Default(TSecurityAttributes);
   Security.nLength := SizeOf(Security);
   Security.bInheritHandle := True;
@@ -367,6 +370,7 @@ end;
 destructor TLspServerProcess.Destroy;
 var
   WriterMs, CancelMs, ProcessMs: Cardinal;
+  Writer: TThread;
 begin
   WriterMs := 1000;
   CancelMs := 500;
@@ -391,7 +395,15 @@ begin
         TerminateProcess(FProcess, 1);
     end;
     FWriter.WaitFor;
-    FreeAndNil(FWriter);
+    // Erst aus dem Zugriff nehmen, dann freigeben: Antworten des Lese-Threads fallen danach weg.
+    System.TMonitor.Enter(FWriterLock);
+    try
+      Writer := FWriter;
+      FWriter := nil;
+    finally
+      System.TMonitor.Exit(FWriterLock);
+    end;
+    Writer.Free;
   end;
   // stdin schließen: Der Server sieht das Ende der Eingabe und beendet sich.
   if FInputWrite <> 0 then
@@ -412,12 +424,20 @@ begin
   if FOutputRead <> 0 then
     CloseHandle(FOutputRead);
   FClient.Free;
+  FWriterLock.Free;
   inherited;
 end;
 
 procedure TLspServerProcess.Write(const ABytes: TBytes);
 begin
-  TWriterThread(FWriter).Add(ABytes);
+  System.TMonitor.Enter(FWriterLock);
+  try
+    // nil: Destroy hat den Schreib-Thread schon abgebaut (Antwort des Lese-Threads beim Beenden).
+    if FWriter <> nil then
+      TWriterThread(FWriter).Add(ABytes);
+  finally
+    System.TMonitor.Exit(FWriterLock);
+  end;
 end;
 
 function TLspServerProcess.GetClient: TLspClient;
