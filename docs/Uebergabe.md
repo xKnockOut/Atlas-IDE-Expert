@@ -143,6 +143,12 @@
 - Nicht mit dcc geprüft (nur aus der Erfahrung): RawByteString/UTF8String/WideString-Formen, Argumente, Inline-Variablen, W1062 bei einem einzelnen Literal ohne `+`. Dafür neue Fälle `Cm.W1050b`, `Cm.W1057b`, `Cm.W1058b`, `Cm.W1062b` und Gegenfall `Cm.W1057c` (Erwartet `-`); Handtests UW1–UW6. Meldet dcc dort anders, die Regel anpassen.
 - Cloud: `AtlasServer --check` (Linux, ohne RTL-Index) auf Tests/Compilermeldungen: alle sieben Codes der Issue-Fälle „erkannt“, keine Zusatztreffer, der Gegenfall still. RawByteString/UTF8String erkennt die Regel nur mit System im Index (unter Windows mit RTL-Quellen).
 
+## Falsches F2613 für Units indirekt verlangter Packages (30.10.2026, Branch `claude/project-thread-yicf6g`)
+- **Befund (Marco, wt-1350):** In `Atlas.Windows.Diagnostics.StackTrace` meldete `uses-unit-not-found` „Unit Atlas.Text.MapFile nicht gefunden (wie F2613)“, Strg+Klick und Hover fanden die Unit.
+- **Ursache:** Navigation und Hover nehmen den Index (alle Units der Gruppe). Die Regel sucht wie dcc, kannte bei Packages aber nur die direkt verlangten: Atlas.Windows verlangt `rtl, Atlas.Common`, `Atlas.Text` kommt erst über `requires` von Atlas.Common. dcc lädt die .dcp der requires-Packages samt deren requires und findet die Unit; die Suchpfade waren nicht die Ursache.
+- **Fix:** `TUnitLookup.FindInProject` folgt dem requires (`TUnitLookupSetup.PackageRequires`, im Server `TPackageLocator.Requires` aus der .dpk-Quelle; ein .dcp nennt seine requires nicht). Ringe enden, ein unbekanntes Package unterwegs macht die Antwort unsicher (Regel still). Tests `UnitsOfIndirectlyRequiredPackages`, `RequiresComeFromSource` (unter FPC grün, Delphi-Build offen).
+- **Nebenbei:** In `CHANGELOG.md` standen auf Prep-v1.2.0 Konfliktmarken aus dem Merge von #1372 (Abschnitt Behoben); beide Seiten behalten.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.
