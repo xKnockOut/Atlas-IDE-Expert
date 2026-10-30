@@ -305,18 +305,33 @@ begin
   begin
     FUpdating := True;
     try
-      for Index := 0 to FModel.TargetCount - 1 do
-        if FTargetList <> nil then
-        begin
-          FTargetList.Items.Add(TargetCaption(Index));
-          FTargetList.Checked[Index] := FModel.Targets[Index].Checked;
-        end
-        else
-        begin
-          FTarget.Items.Add(TargetCaption(Index));
-          if FModel.Targets[Index].Checked then
-            FTarget.ItemIndex := Index;
+      if FTargetList <> nil then
+      begin
+        FTargetList.Items.BeginUpdate;
+        try
+          for Index := 0 to FModel.TargetCount - 1 do
+          begin
+            FTargetList.Items.Add(TargetCaption(Index));
+            FTargetList.Checked[Index] := FModel.Targets[Index].Checked;
+          end;
+        finally
+          FTargetList.Items.EndUpdate;
         end;
+      end
+      else
+      begin
+        FTarget.Items.BeginUpdate;
+        try
+          for Index := 0 to FModel.TargetCount - 1 do
+          begin
+            FTarget.Items.Add(TargetCaption(Index));
+            if FModel.Targets[Index].Checked then
+              FTarget.ItemIndex := Index;
+          end;
+        finally
+          FTarget.Items.EndUpdate;
+        end;
+      end;
     finally
       FUpdating := False;
     end;
@@ -326,10 +341,15 @@ begin
   begin
     FUpdating := True;
     try
-      FUnit.Items.Add(OwnUnitCaption);
-      for Name in FModel.Units do
-        if not SameText(Name, FModel.OwnUnit) then
-          FUnit.Items.Add(Name);
+      FUnit.Items.BeginUpdate;
+      try
+        FUnit.Items.Add(OwnUnitCaption);
+        for Name in FModel.Units do
+          if not SameText(Name, FModel.OwnUnit) then
+            FUnit.Items.Add(Name);
+      finally
+        FUnit.Items.EndUpdate;
+      end;
       FUnit.ItemIndex := 0;
       // Ziel des Servers (refactoring.extractSuperclassTarget) vorwählen.
       if FModel.Target <> '' then
