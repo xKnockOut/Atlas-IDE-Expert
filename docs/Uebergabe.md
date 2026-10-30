@@ -31,6 +31,18 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## missing-begin-update im eigenen Code (30.10.2026, Branch `claude/project-thread-8pjit2`)
+- 17 Befunde aus Marcos Lauf geprüft. Falsch waren 4 Menüs (`TPopupMenu.Items` ist ein `TMenuItem`, das kein BeginUpdate hat) und `FSeverity` in `Settings.Rules` (feste 6 Werte). Die Regel fragt jetzt den deklarierten Typ des Besitzers ab (`TDeclaredTypes`, Menütypen still) und schweigt bei for-Schleifen mit höchstens `FewIterations` = 10 Durchläufen (Zahlen, `Low`/`High` bzw. `for … in` über ein statisches Array der Datei; verschachtelt zählt das Produkt).
+- Ursache im Schleifenrumpf: `StatementEnd` endete bei `if … then begin … end else …` am ersten end, der else-Zweig fiel aus dem Rumpf (dadurch fehlte z. B. `FTarget.Items` in ExtractMembers). Jetzt gehört ein else zur Anweisung, solange ein if davor offen ist.
+- 16 echte Befunde behoben: EventBreak, ProcessesDialog (`FLog.Lines`), ExtractMembers (2 Listen + Auswahlfeld), ProjectDialog (ganzer Baum), Settings.Rules (`FGroupChoice`), AttachDialog (3 Auswahlfelder), DevelopmentView (3 Listenansichten); nach der Korrektur zusätzlich gefunden: Problems.Frame (`FillCombo`), Problems.BulkFix (`FFiles`), IssueFrame (`FAttachments`, `FLinks`).
+- Nicht mit Delphi gebaut; Tests `BeginUpdateMenuSilent`, `BeginUpdateFewIterationsSilent`, `BeginUpdateElseBranchInLoop`.
+
+## override-only-inherited in der Golden-Datei (30.10.2026, Branch `claude/project-thread-3roozg`)
+- Die zwei Treffer in `Tests/Common/Editing/Atlas.Common.Editing.ClassActions.OverrideGolden.pas` sind fachlich richtig, die Golden-Datei enthält aber absichtlich, was die Aktion „überschreiben“ erzeugt (Rümpfe nur mit `inherited`).
+- **Ursache:** Der Ausschluss stand als Pfad in der `atlas.json` der Repo-Wurzel. Die IDE legt je Projekt einen Arbeitsbereich mit dem Ordner der `.dproj` als Wurzel an (`AddProjectWorkspace`), und `TLspConfiguration` liest `atlas.json` nur dort. Für `Atlas.Tests` (Wurzel `Tests/`) galt die Datei also gar nicht; ebenso bei `--check` auf eine einzelne Datei.
+- **Korrektur:** `// lsp-ignore-file: override-only-inherited` in der ersten Zeile der Golden-Datei und gleich in `OverrideBefore` des Tests (die Aktion übernimmt die Zeile, Zeilennummern bleiben). Der Pfad-Ausschluss in `atlas.json` ist entfernt. Gegenprobe mit dem Linux-AtlasServer: `--check` auf die Datei und über `.` ohne Treffer der Regel, keine ungenutzte Unterdrückung.
+- Offen: Dass die Wurzel-`atlas.json` in der IDE für Projekte in Unterordnern nicht gilt, betrifft alle Einstellungen dieses Repos (z. B. `metric-*` aus). Eigenes Thema, nicht hier geändert.
+
 ## #1383 Meldungen, wo Delphi 13 schweigt (29.10.2026, Branch `feature/1383-ohne-dcc-befund`, Entwurfs-PR #1397)
 - Versionsunabhängig behoben: `class abstract` (E2402) und `S[1]` an var (E2354) gibt es nur unter .NET; überladene Array-Properties (W1075); `{$WARN MOBILE_DELPHI}`/`UNSAFE_VOID_POINTER` bekannt. Stilregeln nennen den Code nur, wo dcc meldet: `unused-assignment` H2077 nur bei nicht verwalteten Typen, `uses-cycle` F2047 nur bei reinen interface-Zyklen (Selbstverweis F2092), `xmldoc-mismatch` nur im interface-Teil und nur W1205 (fremdes Zeichen hinter dem Tagnamen). `Compare-Compilermeldungen.py` zählt diese vier Regeln nur über den Code in der Meldung (`NUR_MELDUNG`).
 - Delphi-12-Lauf vorbereitet: `Build-Compilermeldungen.ps1 -Dcc -BdsVersion 23.0 -ResultFile …` (ohne IDE mit dcc32/dcc64), Anleitung im Projektordner `anleitungen/1383-delphi12-faelle-bauen.md`; zwölf Zusatzfälle (F2069b–d, H2367b, H2440b, W1009c/d, W1071b/c, E2373b, CmE2121c), auch mit Delphi 13 zu bauen.
@@ -39,6 +51,7 @@
 - Neu und noch nicht gebaut: `CmE2287b` (gleicher Exportname über name), `CmE2276b` (Konstante exportieren).
 - Weiter offen bis Delphi 12: E2146, E2325/E2326, E2549, E2591, H2505, W1040, W1070 (Delphi 13 still); F2069 zwischen 1024 und 4095 Zeichen (Delphi 12 und dcc auf der Kommandozeile).
 - Cloud: `--check` ohne RTL-Index lässt indexabhängige Regeln (E2003 usw.) aus; Vergleich in der Cloud nur für die geänderten Regeln aussagekräftig. Katalog-Unit per Python-Nachbau von `Update-RuleCatalog.ps1` erzeugt (byte-gleich geprüft), `Update-RuleCatalog.ps1 -Check` auf Windows laufen lassen.
+
 ## Weitere Generics-Fehler (#1376, 29.10.2026, Branch `feature/1376-generics-fehler`)
 - `generic-declaration-invalid` (jetzt Stufe B): E2528 auch für Konstruktoren von Klassen (dcc 13 meldet `constructor Create<T>;`, GD10 nannte den generischen Konstruktor fälschlich erlaubt; Records und `object` bleiben ungeprüft still), E2552/E2553 mit Klassen aus dem Index (`TNameResolver.ResolveTypeTextFrom`, nur wenn der Name weder Typparameter noch in der Datei deklariert ist), E2570 (lokale Routine in Methoden generischer Typen und generischen Methoden; Kopf mit Punkt und GenericParams; spring4d hat in 1207 generischen Methoden keine einzige lokale Routine), E2574 (`type` vor `TypeReference` mit GenericArgs außerhalb generischer Typen, Korrektur entfernt `type`).
 - Neue Regel `generic-inference-failed` (Stufe T, Unit `Builtin.Generics`): E2531 und E2532 über `CallCandidates`; eigene Typparameter liest `TGenericInferenceFailedRule.OwnTypeParams` aus der Signatur. Vorfilter: Name hat einen generischen Kopf in der Datei oder `Index.HasSymbol` mit TypeParams.
