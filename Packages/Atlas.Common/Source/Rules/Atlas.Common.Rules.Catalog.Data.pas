@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4844] of string = (
+  BaseLines: array[0..4865] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -3367,14 +3367,15 @@ const
     '      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the ' +
     'wrong kind, parameters or types (like E2008, older Delphi versions E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2250, older Delp' +
     'hi versions E2271); a class property uses an instance member or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array pro' +
-    'perty uses a field (like E2174, index with a field compiles); a field selector goes through a field that is no record or stands behind a class property (like E2459), names a member that is no field (l' +
-    'ike E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists' +
-    ' in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name' +
-    '> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",',
+    'perty uses a field (like E2008 in Delphi 13, documented as E2174, index with a field compiles); a field selector goes through a field that is no record or stands behind a class property (like E2459), ' +
+    'names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor ' +
+    'chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick f' +
+    'ix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",',
     '      "bad": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write SetName;\nend;",',
     '      "good": "TKunde = class\nprivate\n  FName: string;\n  procedure SetName(const Value: string);\npublic\n  property Name: string read FName write SetName;\nend;",',
     '      "compilerCodes": [',
     '        "E2168",',
+    '        "E2008",',
     '        "E2234",',
     '        "E2282",',
     '        "E2271",',
@@ -5275,14 +5276,15 @@ const
     '      "category": "bug",',
     '      "severity": "error",',
     '      "group": "compiler",',
-    '      "description": "New (like E2255) or Dispose (like E2256) on a dynamic array, SetLength without a length (like E2246), New with a length on a type that is not a dynamic array (like E2307) and New' +
-    '(TArrayType) without a length (like E2308). Typical for old code that switched from pointers to dynamic arrays. The rule only reports when name resolution knows the variable or type for sure; aliases ' +
-    'are followed (TValues = array of Double), TBytes and the other dynamic arrays of the RTL count even without an index; open array parameters and pointers stay silent. Quick fixes: Dispose(A) becomes A ' +
-    ':= nil, New(A) becomes SetLength(A, 1).",',
+    '      "description": "New (like E2255) or Dispose (like E2008 in Delphi 13, documented as E2256) on a dynamic array, SetLength without a length (like E2246), New with a length on a type that is not a ' +
+    'dynamic array (like E2008 in Delphi 13, documented as E2307) and New(TArrayType) without a length (like E2308). Typical for old code that switched from pointers to dynamic arrays. The rule only report' +
+    's when name resolution knows the variable or type for sure; aliases are followed (TValues = array of Double), TBytes and the other dynamic arrays of the RTL count even without an index; open array par' +
+    'ameters and pointers stay silent. Quick fixes: Dispose(A) becomes A := nil, New(A) becomes SetLength(A, 1).",',
     '      "bad": "Dispose(Werte);",',
     '      "good": "Werte := nil;",',
     '      "compilerCodes": [',
     '        "E2255",',
+    '        "E2008",',
     '        "E2256",',
     '        "E2246",',
     '        "E2307",',
@@ -5358,6 +5360,31 @@ const
     '      "good": "if Liste.Count > 0 then\n  Verarbeiten;",',
     '      "compilerCodes": [',
     '        "E2012"',
+    '      ],',
+    '      "level": "T"',
+    '    },',
+    '    {',
+    '      "id": "type-mismatch",',
+    '      "name": "Incompatible types",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "An assignment, argument, var parameter, operator, typecast or procedural type uses incompatible types, and both types are certain: Integer := ''abc'', a class parameter with defaul' +
+    't 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + [''a''] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, no' +
+    't ''a'' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point va' +
+    'lue (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice v' +
+    'ersa (like E2009); of overloaded routines none fits the procedural type (like E2010). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last on' +
+    'e counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded' +
+    ' routines and with blocks stay silent. No quick fix: only the developer knows which side is wrong.",',
+    '      "bad": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := ''drei'';",',
+    '      "good": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 3;",',
+    '      "compilerCodes": [',
+    '        "E2010",',
+    '        "E2008",',
+    '        "E2009",',
+    '        "E2015",',
+    '        "E2033",',
+    '        "E2089"',
     '      ],',
     '      "level": "T"',
     '    },',
@@ -5692,7 +5719,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2195] of string = (
+  OverlayLines_de: array[0..2200] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -7591,10 +7618,11 @@ const
     '      "description": "Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter h' +
     'aben die falsche Art, Parameter oder Typen (wie E2008, ältere Delphi-Versionen E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen, und keine Überladu' +
     'ng passt (wie E2250, ältere Delphi-Versionen E2271); eine Klassen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property eine class var oder eine st' +
-    'atische Klassenmethode (wie E2356); eine Array-Property nutzt ein Feld (wie E2174, index mit Feld übersetzt dcc); ein Feldselektor geht über ein Feld, das kein Record ist, oder steht hinter einer Klas' +
-    'sen-Property (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie b' +
-    'leibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingeba' +
-    'ut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection)."',
+    'atische Klassenmethode (wie E2356); eine Array-Property nutzt ein Feld (wie E2008 in Delphi 13, dokumentiert als E2174, index mit Feld übersetzt dcc); ein Feldselektor geht über ein Feld, das kein Rec' +
+    'ord ist, oder steht hinter einer Klassen-Property (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei un' +
+    'd für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen v' +
+    'ergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, compl' +
+    'etion.accessorSection)."',
     '    },',
     '    {',
     '      "id": "assign-to-property-member",',
@@ -8572,10 +8600,10 @@ const
     '    {',
     '      "id": "dynamic-array-misuse",',
     '      "name": "New, Dispose oder SetLength falsch für dynamische Arrays",',
-    '      "description": "New (wie E2255) oder Dispose (wie E2256) auf einem dynamischen Array, SetLength ohne Länge (wie E2246), New mit Länge auf einem Typ, der kein dynamisches Array ist (wie E2307), u' +
-    'nd New(TArrayTyp) ohne Länge (wie E2308). Häufig in altem Code, der von Zeigern auf dynamische Arrays umgestellt wurde. Die Regel meldet nur, wenn die Namensauflösung Variable bzw. Typ sicher kennt; A' +
-    'liase werden verfolgt (TWerte = array of Double), TBytes und die übrigen dynamischen Arrays der RTL gelten auch ohne Index; offene Array-Parameter und Zeiger bleiben still. Korrekturen: Dispose(A) wir' +
-    'd A := nil, New(A) wird SetLength(A, 1)."',
+    '      "description": "New (wie E2255) oder Dispose (wie E2008 in Delphi 13, dokumentiert als E2256) auf einem dynamischen Array, SetLength ohne Länge (wie E2246), New mit Länge auf einem Typ, der kein' +
+    ' dynamisches Array ist (wie E2008 in Delphi 13, dokumentiert als E2307), und New(TArrayTyp) ohne Länge (wie E2308). Häufig in altem Code, der von Zeigern auf dynamische Arrays umgestellt wurde. Die Re' +
+    'gel meldet nur, wenn die Namensauflösung Variable bzw. Typ sicher kennt; Aliase werden verfolgt (TWerte = array of Double), TBytes und die übrigen dynamischen Arrays der RTL gelten auch ohne Index; of' +
+    'fene Array-Parameter und Zeiger bleiben still. Korrekturen: Dispose(A) wird A := nil, New(A) wird SetLength(A, 1)."',
     '    },',
     '    {',
     '      "id": "local-routine-as-callback",',
@@ -8608,6 +8636,17 @@ const
     '      "description": "Die Bedingung von if, while, until oder eines bedingten Ausdrucks hat sicher einen Typ, der kein Boolean ist: Zahl, Zeiger, Klasse, Interface, String oder Zeichen (wie E2012). An' +
     'ders als C verlangt Delphi einen Boolean. Gemeldet nur bei sicher bekanntem Typ; Boolean-Typen wie LongBool, Aufzählungen, Aliase und unbekannte Typen bleiben still. Korrektur: <> 0 (Alternative > 0),' +
     ' <> nil (Alternative Assigned), <> '''' bzw. <> #0 ergänzen."',
+    '    },',
+    '    {',
+    '      "id": "type-mismatch",',
+    '      "name": "Inkompatible Typen",',
+    '      "description": "Zuweisung, Argument, var-Parameter, Operator, Typumwandlung oder prozeduraler Typ mit unverträglichen Typen, beide sicher bekannt: Integer := ''abc'', ein Klassenparameter mit Stan' +
+    'dardwert 0, ein statisches Array := nil, eine Prozedur ohne Ergebnis als Wert, string + Integer oder [1] + [''a''] (wie E2010); ein Operator, der für einen Operanden nicht definiert ist, etwa string - C' +
+    'har, Double div 2, not ''a'' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer G' +
+    'leitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozedurale' +
+    'n Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010). Wie bei dcc hat Result den Typ aus dem interface-' +
+    'Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (cl' +
+    'ass operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler."',
     '    },',
     '    {',
     '      "id": "for-in-not-enumerable",',

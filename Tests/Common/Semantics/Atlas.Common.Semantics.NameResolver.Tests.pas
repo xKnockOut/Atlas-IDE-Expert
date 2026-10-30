@@ -23,6 +23,8 @@ type
     [Test]
     procedure ResolvesLocalsParametersAndResult;
     [Test]
+    procedure DuplicateLocalsAndResultLikeDcc;
+    [Test]
     procedure NodeTypeAndPropertyReadsField;
     [Test]
     procedure ResolvesInlineVarsOnlyAfterDeclaration;
@@ -236,6 +238,41 @@ begin
   Assert.IsTrue(R.Kind = TResolvedKind.Symbol);
   Assert.AreEqual('Haupt', R.UnitName);
   Assert.AreEqual(3, R.SelectionRange.StartPos.Line);
+end;
+
+procedure TNameResolverTests.DuplicateLocalsAndResultLikeDcc;
+const
+  // #1369: Wie dcc gilt von zwei lokalen Deklarationen die letzte (E2004), und Result hat den Typ aus dem
+  // interface-Teil, auch wenn der Kopf der Implementierung abweicht (E2037).
+  Source =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'function Liefere: Integer;'#10 +
+    'implementation'#10 +
+    'function Liefere: string;'#10 +
+    'var'#10 +
+    '  Wert: Integer;'#10 +
+    '  Wert: string;'#10 +
+    'begin'#10 +
+    '  Wert := '''';'#10 +
+    '  Result := '''';'#10 +
+    'end;'#10 +
+    'function Intern: string;'#10 +
+    'begin'#10 +
+    '  Result := '''';'#10 +
+    'end;'#10 +
+    'end.';
+var
+  R: TResolvedSymbol;
+begin
+  R := ResolveAt(Source, 'Wert :=');
+  Assert.AreEqual('string', R.TypeName);
+  Assert.AreEqual(7, R.SelectionRange.StartPos.Line);
+  R := ResolveAt(Source, 'Result :=');
+  Assert.AreEqual('Integer', R.TypeName);
+  // Ohne Deklaration im interface-Teil gilt der eigene Kopf.
+  R := ResolveAt(Source, 'Result :=', 2);
+  Assert.AreEqual('string', R.TypeName);
 end;
 
 procedure TNameResolverTests.ResolvesStrictMembersInNestedTypeMethods;

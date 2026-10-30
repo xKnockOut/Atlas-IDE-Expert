@@ -217,7 +217,7 @@ begin
   Assert.AreEqual('Basis ist eine Property; hinter read gehört ein Feld oder eine Methode (wie E2168).',
     OnlyMessage(Kunden('  private'#10'    FBasis: Integer;'#10'  public'#10 +
     '    property Basis: Integer read FBasis;'#10'    property Kopie: Integer read Basis;'#10, '')));
-  Assert.AreEqual('Die Array-Property Items braucht hinter read eine Methode; FItems ist ein Feld (wie E2174).',
+  Assert.AreEqual('Die Array-Property Items braucht hinter read eine Methode; FItems ist ein Feld (wie E2008).',
     OnlyMessage(Kunden('  private'#10'    FItems: string;'#10'  public'#10 +
     '    property Items[Index: Integer]: string read FItems;'#10, '')));
   // Gegentest PG3 aus Tests/DccFaelle (#1328): keine Überladung passt.
