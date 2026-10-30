@@ -8960,6 +8960,16 @@ Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend
 | FQ5 | Eine eigene `.pas` außerhalb aller Projekte und Bibliothekspfade öffnen (z. B. `C:\Temp\Versuch.pas`) | Wird wie bisher geprüft |
 | FQ6 | `Atlas.Core.Editor.Conditionals.pas` öffnen | Kein `float-equality` an `Result = Right` bzw. `Result <> Right` (Unterdrückung mit Begründung) |
 
+## Fehlalarme an Record-Feldern (Prep-v1.2.0)
+
+Vorbereitung: Atlas-Repository auf Prep-v1.2.0 in der IDE, `naming-prefix` eingeschaltet (atlas.json des Repositorys), `Atlas.Core.Results.Model.pas` öffnen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RE1 | `TAtlasResultEntry` ansehen | Keine Meldung „Feld … ohne Präfix F“ an `FileName`, `Line`, `Character`, `Text`, `Detail`, `Confidence`; keine Meldung „TAtlasConfidence wird in TAtlasResultEntry benutzt, bevor es deklariert ist“ |
+| RE2 | In einer Testunit `TP = record private Wert: Integer; public property W: Integer read Wert; end;` und `TK = class public Alter: Integer; end;` | `Wert` gemeldet (erwartet: FWert), `Alter` nicht |
+| RE3 | `type TA = record S: TS; end; TS = (A, B);` | Weiterhin „TS wird in TA benutzt, bevor es deklariert ist“ |
+
 ## Generische Interfaces und Typparameter
 
 | Nr. | Schritte | Erwartet |
