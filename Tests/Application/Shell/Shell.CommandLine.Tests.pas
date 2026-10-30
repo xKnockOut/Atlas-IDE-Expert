@@ -45,6 +45,8 @@ type
     [Test]
     procedure ReadsChangedArguments;
     [Test]
+    procedure ReadsAffectedTestsArguments;
+    [Test]
     procedure ReadsFailOnAndSourceRoot;
     /// <summary>Alle Text- und Schalterparameter der Tabelle (S-02), auch mit Großbuchstaben.</summary>
     [Test]
@@ -275,6 +277,26 @@ begin
   Assert.IsTrue(Options.IncludeUncommitted);
   Options := TCommandLineOptions.Parse(['--check', 'App.dproj']);
   Assert.AreEqual('', Options.ChangedRef);
+end;
+
+procedure TCommandLineOptionsTests.ReadsAffectedTestsArguments;
+var
+  mOptions: TCommandLineOptions;
+begin
+  // #1353: Basis optional wie bei --changed; dunitx ist nur hier ein Format, ohne Warnung.
+  mOptions := TCommandLineOptions.Parse(['--check', 'Tests.dproj', '--affected-tests', '--format', 'dunitx']);
+  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
+  Assert.IsTrue(mOptions.AffectedTests);
+  Assert.AreEqual('', mOptions.AffectedBase);
+  Assert.AreEqual('dunitx', mOptions.FormatText);
+  mOptions := TCommandLineOptions.Parse(['--affected-tests', 'develop', '--check', 'Tests.dproj']);
+  Assert.AreEqual('develop', mOptions.AffectedBase);
+  Assert.AreEqual('Tests.dproj', mOptions.CheckTarget);
+  mOptions := TCommandLineOptions.Parse(['--affected-tests=HEAD', '--include-uncommitted', '--check', 'T.dproj']);
+  Assert.AreEqual('HEAD', mOptions.AffectedBase);
+  Assert.IsTrue(mOptions.IncludeUncommitted);
+  // --include-uncommitted gehört hier zu --affected-tests, nicht zu --changed.
+  Assert.AreEqual('', mOptions.ChangedRef);
 end;
 
 procedure TCommandLineOptionsTests.ReadsTimings;

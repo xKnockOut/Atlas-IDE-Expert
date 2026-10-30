@@ -111,6 +111,10 @@
       "arguments": { "project": "RefApp", "mode": "check" },
       "process": true
     },
+    "get_affected_tests": {
+      "arguments": { "format": "json" },
+      "process": true
+    },
     "run_tests": {
       "arguments": {},
       "process": true

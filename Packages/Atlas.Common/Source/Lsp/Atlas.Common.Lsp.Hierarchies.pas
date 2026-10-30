@@ -105,6 +105,10 @@ type
     /// außerhalb von Routinen und im Kopf der Routine selbst, der deklariert und nicht aufruft.</summary>
     class function CallerAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
       out AItem: THierarchyItem): Boolean; static;
+    /// <summary>Routine mit Rumpf, in der APosition steht, samt ihrem Kopf (procedure TFoo.Bar → Bar in TFoo), für
+    /// geänderte Zeilen (#1353). False außerhalb von Routinen.</summary>
+    class function RoutineAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+      out AItem: THierarchyItem): Boolean; static;
     /// <summary>Element zu einem Symbol aus dem Index.</summary>
     class function ItemOf(const AUnitName, AFileName: string; const ASymbol: TIndexSymbol): THierarchyItem; static;
     /// <summary>Ist das Element eine Routine oder Methode?</summary>
@@ -509,6 +513,17 @@ begin
     Exit;
   AItem := RoutineItem(ATree, Routine, AFileName);
   Result := True;
+end;
+
+class function TLspHierarchies.RoutineAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+  out AItem: THierarchyItem): Boolean;
+var
+  mRoutine: TSyntaxNode;
+begin
+  mRoutine := EnclosingRoutine(ATree.Root, APosition);
+  Result := mRoutine <> nil;
+  if Result then
+    AItem := RoutineItem(ATree, mRoutine, AFileName);
 end;
 
 class function TLspHierarchies.ItemOf(const AUnitName, AFileName: string; const ASymbol: TIndexSymbol): THierarchyItem;

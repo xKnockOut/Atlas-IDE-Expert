@@ -43,6 +43,15 @@
 //   --format-write        schreibt die formatierten Dateien (atomar, Kodierung bleibt)
 //                         Beide mit --changed/--diff, --changed-lines (nur geänderte Zeilen) und --units.
 //
+// Betroffene Tests (#1353):
+//   --affected-tests [<Basis>] statt der Prüfung die DUnitX-Tests, die eine Änderung gegenüber
+//                         der Basis betrifft (Git: Merge-Base mit <Basis>, Standard main;
+//                         SVN: Revision, Standard BASE); Ziel aus --check ist das Testprojekt
+//                         oder die Projektgruppe. --format text, json oder dunitx (fertiges
+//                         --run:… für die Test-exe), --output, --include-uncommitted.
+//                         Exit-Code 0; 2, wenn alle Tests nötig sind; 3 bei Fehlern oder mit
+//                         tests.affected = false
+//
 // Architekturbericht (#1118):
 //   --architecture <Datei> Architekturübersicht des Ziels aus --check (Standard: aktueller Ordner)
 //                         als Markdown (.md) oder interaktive HTML-Seite (.html) schreiben,
@@ -91,6 +100,9 @@ type
     /// <summary>Ziel des Linter-Modus; '' = Server-Modus.</summary>
     CheckTarget: string;
     CheckFormat: TFindingsFormat;
+    /// <summary>Wert von --format wie angegeben ('' = nicht angegeben); --affected-tests kennt auch dunitx.
+    /// </summary>
+    FormatText: string;
     OutputFile: string;
     RuleFilter: TArray<string>;
     UnitFilter: TArray<string>;
@@ -137,6 +149,10 @@ type
     IncludeUncommitted: Boolean;
     /// <summary>Nur Treffer in geänderten Zeilen ausgeben.</summary>
     ChangedLines: Boolean;
+    /// <summary>--affected-tests (#1353): betroffene Tests statt der Prüfung.</summary>
+    AffectedTests: Boolean;
+    /// <summary>Basis von --affected-tests; '' = main (Git) bzw. BASE (SVN).</summary>
+    AffectedBase: string;
     /// <summary>--format-check (#1358): Formatierung prüfen statt Regeln.</summary>
     FormatCheck: Boolean;
     /// <summary>--format-write (#1358): formatierte Dateien schreiben.</summary>
@@ -341,6 +357,8 @@ begin
     else if Name = '--format' then
     begin
       if TakeValue then
+      begin
+        Result.FormatText := Value;
         // diff gibt es nur beim Formatieren (#1358); die Prüfung dort lehnt es ohne --format-check ab.
         if SameText(Value.Trim, 'diff') then
           Result.FormatDiff := True
@@ -349,8 +367,10 @@ begin
           Result.CheckFormat := CheckFormat;
           Result.FormatDiff := False;
         end
-        else
+        // dunitx gibt es nur für --affected-tests (#1353); dort wird der Wert geprüft.
+        else if not SameText(Value, 'dunitx') then
           AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
+      end;
     end
     else if Name = '--rules' then
     begin
@@ -405,6 +425,18 @@ begin
       else
         Result.ChangedRef := DefaultChangedBase;
     end
+    else if Name = '--affected-tests' then
+    begin
+      // Basis optional wie bei --changed: --affected-tests, --affected-tests=dev oder --affected-tests dev
+      Result.AffectedTests := True;
+      if HasValue then
+        Result.AffectedBase := Value
+      else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
+      begin
+        Inc(Index);
+        Result.AffectedBase := AArgs[Index];
+      end;
+    end
     else if Name = '--timings' then
     begin
       // Datei optional: --timings, --timings=profil.md oder --timings profil.md
@@ -440,7 +472,8 @@ begin
 
     Inc(Index);
   end;
-  if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') then
+  // Mit --affected-tests gilt --include-uncommitted für dessen Basis, nicht als --changed.
+  if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') and not Result.AffectedTests then
   begin
     // Ohne Ref gilt --changed mit der Standardbasis.
     Result.ChangedRef := DefaultChangedBase;

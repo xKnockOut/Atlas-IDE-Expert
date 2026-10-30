@@ -145,6 +145,9 @@ begin
     // Auswirkungsanalyse (#1120).
     Setting('Impact', 'navigation.impact', True),
     Setting('ImpactDepth', 'navigation.impactDepth', False),
+    // Betroffene Tests (#1353): Plugin-Befehl und Server (--affected-tests, get_affected_tests) lesen denselben Wert.
+    Setting('TestsAffected', 'tests.affected', True),
+    Setting('TestsAffectedDepth', 'tests.affectedDepth', False),
     // Tracker-Verbindungen (#1260): persönlich, der Server prüft sie nur.
     JsonSetting('IssuesConnections', 'issues.connections'),
     // Zuordnung Delphi-Projekt → Tracker-Projekt (#1261): persönlich wie die Verbindungen.

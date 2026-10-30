@@ -8943,6 +8943,30 @@ Vorbereitung: Umgebungsvariable `ATLAS_CRASH_TEST` vor dem Start von Delphi setz
 | AF15 | Delphi neu starten nach AF5 (ohne Änderung der Datei) | Statusleiste zeigt das Überspringen wieder (Merker `uebersprungen.json`) |
 | AF16 | `pwsh Tools/New-CrashTest.ps1 <Fallordner> -Name Probe` | `Tests/Application/Shell/CrashCases/Shell.CrashCase.Probe.Tests.pas` angelegt und in `Atlas.Tests.dpr`/`.dproj` eingetragen; baut ohne Hinweise; ohne Testschalter grün |
 | AF17 | Claude Code im MCP-Modus: Werkzeug mit unerwarteter Ausnahme (sonst überspringen) | Fall mit Methode `tools/call`, ohne Meldung im Plugin |
+## Betroffene Tests einer Änderung (#1353)
+
+Vorbereitung: Atlas-Repository als Git-Arbeitskopie, Projektgruppe `Atlas.groupproj` offen, Testprojekt `Tests\Atlas.Tests.dproj` gebaut; dazu eine SVN-Arbeitskopie mit einem kleinen DUnitX-Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BT1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAffectedTestsTests` grün, `TwentyFilesInThousandUnitsStayFast` unter 5 s (**Abnahme**) |
+| BT2 | Im Rumpf von `TBaseline.Match` (Atlas.Common.Rules.Baseline) eine Zeile ändern und speichern; *Atlas › Betroffene Tests ausführen* | „Atlas ermittelt die betroffenen Tests …“, die IDE bleibt bedienbar; dann „Betroffene Tests gegenüber main (Tiefe 3): n“, je Test eine Zeile mit Grund (`TBaseline.Match → …`), danach laufen nur diese Tests (**Abnahme**). Ungespeicherte Änderungen zählen erst nach dem Speichern |
+| BT3 | Nur eine private Routine im implementation-Teil ändern | Nur Tests, die sie über öffentliche Routinen erreichen; Gründe zeigen den Weg |
+| BT4 | Nur einen Kommentar oder Leerzeilen ändern | „Keine betroffenen Tests gegenüber main.“, kein Testlauf |
+| BT5 | `initialization` einer Unit ändern | Die Testunits, die die Unit (über bis zu 3 Ebenen uses) verwenden, laufen als ganze Fixtures |
+| BT6 | Eine `.dfm` ändern (Caption) | Tests, die die Formularklasse verwenden |
+| BT7 | Eine `.inc` ändern | Tests der Units, die sie einbinden |
+| BT8 | `Atlas.Tests.dpr` ändern | „Alle Tests nötig: Testprogramm Atlas.Tests.dpr geändert“, alle Tests laufen |
+| BT9 | `AtlasServer --check Tests\Atlas.Tests.dproj --affected-tests --format dunitx` nach BT2 | stdout nur `--run:…`, stderr der Bericht mit Gründen; Exit-Code 0; `Atlas.Tests.exe` mit dem Argument führt genau diese Tests aus |
+| BT10 | Dieselbe Änderung in der SVN-Arbeitskopie, `--affected-tests` ohne Basis | Basis `BASE`, dieselben Tests wie unter Git |
+| BT11 | `"tests": {"affected": false}` in settings.json | Befehl fehlt in Menü und Palette, Claude Code sieht `get_affected_tests` nicht, `--affected-tests` endet mit Exit-Code 3 |
+| BT12 | Claude Code: `get_affected_tests` mit `format: "json"`, danach `run_tests` mit `run` | Gleiche Tests wie BT2; `run_tests` führt sie aus |
+| BT13 | *Tools › Optionen › Atlas › Compiler*: „Vor dem Commit anbieten“ an, OK | Meldung „pre-commit-Hook in … angelegt“; `.git\hooks\pre-commit` und `.git\atlas-affected-tests` vorhanden |
+| BT14 | BT13, in Git Bash `git commit` mit einer Änderung aus BT2 | Bericht mit Gründen, Frage „Betroffene Tests jetzt ausführen?“; „j“ führt sie aus; nach einem Fehlschlag Frage „Trotzdem committen?“, „n“ bricht ab |
+| BT15 | BT13, Commit aus der VCS-Ansicht der IDE (kein Terminal) | Commit läuft durch, der Bericht steht im Protokoll |
+| BT16 | Fremder `pre-commit`-Hook vorhanden, BT13 | Meldung „… fremder pre-commit-Hook; Atlas lässt ihn stehen“, Datei unverändert |
+| BT17 | Einstellung wieder aus, OK | Eigener Hook und `atlas-affected-tests` entfernt, fremder Hook bleibt |
+
 ## Sammelkorrektur (#1352)
 
 Vorbereitung: Kopie von `Tests/Referenzprojekt`; ein eigenes Projekt mit drei Units in UTF-8 mit BOM, UTF-8 ohne BOM und ANSI (CRLF) und je einem ungenutzten uses-Eintrag.
