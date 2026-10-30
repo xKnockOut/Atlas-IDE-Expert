@@ -238,6 +238,9 @@ type
     function DelphiVersion: string;
     /// <summary>Ordner der Delphi-Installation ($(BDS)); '' ohne Installation. Threadsicher.</summary>
     function BdsRoot: string;
+    /// <summary>Bibliothekspfade der Installation für das Projekt, aufgelöst; nil ohne Installation. Threadsicher.
+    /// </summary>
+    function LibraryPaths: TArray<string>;
     /// <summary>Suche nach einer Unit, die der Compiler nicht fand (#550): aktives Projekt, alle
     /// Konfigurationen und Plattformen der .dproj, Bibliothekspfade und Ordnerzugriff. Gruppe und Index
     /// ergänzt der Aufrufer. False ohne Projekt. Threadsicher.</summary>
@@ -1092,6 +1095,16 @@ begin
   TMonitor.Enter(FLock);
   try
     Result := FBdsRoot;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspace.LibraryPaths: TArray<string>;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FCompilerLibraryPaths;
   finally
     TMonitor.Exit(FLock);
   end;

@@ -1130,6 +1130,12 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"diagnostics": {"log": false}}', '{"diagnostics": {"logDays": 2}}', Issues);
   Assert.IsTrue(Settings.DiagnosticsLog, 'atlas.json ersetzt den ganzen Abschnitt');
   Assert.AreEqual(2, Settings.DiagnosticsLogDays);
+  // Fremde Quellen im Editor (diagnostics.librarySources)
+  Assert.IsFalse(Parse('{}', Issues).DiagnosticsLibrarySources);
+  Assert.IsTrue(Parse('{"diagnostics": {"librarySources": true}}', Issues).DiagnosticsLibrarySources);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Parse('{"diagnostics": {"librarySources": "ja"}}', Issues).DiagnosticsLibrarySources);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Umfang des Index (#648)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.IndexProjectGroup and Settings.IndexSearchPaths);

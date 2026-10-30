@@ -8372,6 +8372,7 @@ Vorbereitung: Verbindungen zu YouTrack und GitHub mit Token (#1260), Projekt mit
 | ZS12 | Felder „Zustandsfeld“, „Startzustand“ und „Zielzustände“ der Verbindung setzen, globale Werte anders | Die Werte der Verbindung gelten; Adresse der Verbindung ändern verliert die Felder nicht |
 | ZS13 | Netz während des Sendens trennen, Dialog schließen versuchen | Schließen wartet bis zur Antwort; danach „Tracker nicht erreichbar.“ |
 | ZS14 | Plugin entladen, während eine Änderung gesendet wird | Keine Zugriffsverletzung, keine späte Meldung |
+| ZS15 | Optionen › Issue-Tracker › Verbindungen: Verbindung YouTrack wählen, dann GitHub, dann bei GitHub den Anbieter auf YouTrack und zurück stellen | Alle Felder einzeilig ohne Leerraum dazwischen; bei YouTrack Zustandsfeld und Benutzerfeld sichtbar, bei GitHub ausgeblendet, „Beim Beginnen“ und „Zielzustände“ rücken direkt unter die Adresse; Hell und Dunkel |
 
 ## Zeit je Issue erfassen und buchen (#1267)
 
@@ -8948,6 +8949,17 @@ Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend
 | HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
 | HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
 | HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |
+
+## Fremde Quellen im Editor (diagnostics.librarySources)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FQ1 | Projekt öffnen, mit Strg+Klick auf `THTTPClient` nach `System.Net.HttpClient.pas` springen, ebenso `System.Generics.Defaults.pas` öffnen | Keine Befunde der Prüfregeln im Editor und in der Problemliste (vorher u. a. `boolean-assign-if` in Zeile 1537 und `float-equality` in den Vergleichern) (**Abnahme**) |
+| FQ2 | Eine Unit aus einem Bibliothekspfad einer Komponente (z. B. JVCL `run`) öffnen, die nicht im Projekt steht | Keine Befunde |
+| FQ3 | Dieselbe Komponenten-Unit per DCCReference ins Projekt aufnehmen oder ihren Ordner in die Projekt-Suchpfade | Befunde wie bei eigenen Units |
+| FQ4 | `diagnostics.librarySources` in settings.json auf `true`, RTL-Unit erneut öffnen | Befunde erscheinen wieder |
+| FQ5 | Eine eigene `.pas` außerhalb aller Projekte und Bibliothekspfade öffnen (z. B. `C:\Temp\Versuch.pas`) | Wird wie bisher geprüft |
+| FQ6 | `Atlas.Core.Editor.Conditionals.pas` öffnen | Kein `float-equality` an `Result = Right` bzw. `Result <> Right` (Unterdrückung mit Begründung) |
 
 ## Fehlalarme an Record-Feldern (Prep-v1.2.0)
 
