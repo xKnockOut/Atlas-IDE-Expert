@@ -10,9 +10,14 @@
 // Sicherheit (#99): mcp.disabledTools aus atlas.json, --restricted schaltet
 // schreibende Werkzeuge ab, schreibende Aufrufe stehen im Log. Ungespeicherte
 // Dateien der IDE meldet das Plugin in %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json.
-// Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action)
+// Formatieren (format_code, #1358) mit den Formatregeln des Projekts, zu dem die Datei gehört.
+// Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action, fix_findings)
 // bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
 // im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
+// get_server_status (#1356) zeigt den Status des Atlas-Servers der IDE für den
+// Ordner (aus dessen Statusdatei), sonst den dieses Prozesses.
+// Prompts und Ressourcenvorlagen (#1357) kommen aus TMcpPrompts; hier nur die
+// Auflösung von Units und Pfaden (#99) und die Änderungen für prepare_commit.
 
 interface
 
@@ -40,6 +45,7 @@ uses
   System.SyncObjs,
   System.IOUtils,
   System.StrUtils,
+  System.DateUtils,
   System.JSON,
   Atlas.Common.Product.Version,
   Atlas.Common.Logging.Contract,
@@ -69,10 +75,17 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Lsp.Formatting,
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Mcp.TestTools,
   Atlas.Common.Mcp.DeadCodeTools,
+  Atlas.Common.Mcp.Prompts,
+  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Core.Vcs.Providers.Git,
+  Atlas.Core.Tracker.CommitHook,
+  Shell.VcsChanges,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Rules.ProjectFiles,
@@ -90,6 +103,10 @@ uses
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Lsp.Status,
+  Atlas.Common.Mcp.StatusTools,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Architecture.Overview,
@@ -99,6 +116,11 @@ uses
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.SymbolPath,
   Atlas.Common.Lsp.SymbolPath,
+  Atlas.Common.Hotspots.Contract,
+  Atlas.Common.Hotspots.Analysis,
+  Atlas.Common.Hotspots.Service,
+  Atlas.Common.Hotspots.Report,
+  Atlas.Common.Lsp.Hotspots,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Projects.Contract,
   Shell.Platform,
@@ -106,8 +128,8 @@ uses
   Shell.Workspace,
   Shell.WorkspaceGroup,
   Shell.Bootstrap,
-  Shell.VcsChanges,
   Shell.AffectedTests,
+  Shell.Hotspots,
   Shell.Diagnostics;
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
@@ -436,9 +458,10 @@ end;
 
 type
   /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
-  /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs.</summary>
+  /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs. AResolution: Feinheit γ für
+  /// diesen Aufruf (#1366), 0 = architecture.grouping.resolution.</summary>
   TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection;
-    const AUnit, ACompareWith: string): string;
+    const AUnit, ACompareWith: string; AResolution: Double): string;
   /// <summary>Antwort von find_path (#1117) als Text.</summary>
   TMcpFindPathFunc = reference to function(const ARequest: TSymbolPathRequest): string;
 
@@ -811,24 +834,39 @@ begin
     'der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). Mit "compareWith" der Vergleich ' +
     'mit einem gespeicherten Stand (#1121): neue und entfernte Zyklen, Querverbindungen und uses-Kanten zwischen ' +
     'Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, neue und entfernte Units. Umfang und ' +
-    'Bibliotheks-Units aus architecture.* in atlas.json.',
+    'Bibliotheks-Units aus architecture.* in atlas.json. "resolution" (0,2–5,0) stellt die Feinheit der ' +
+    'Teilsysteme für diesen Aufruf ein (#1366): größer = mehr und kleinere Teilsysteme.',
     '{"type":"object","properties":{' +
       '"section":{"type":"string","enum":["overview","central","subsystems","cycles","crossLinks"],' +
         '"description":"Abschnitt; Vorgabe overview"},' +
       '"unit":{"type":"string","description":"Steckbrief dieser Unit statt eines Abschnitts"},' +
       '"compareWith":{"type":"string","description":"Gespeicherter Stand (JSON aus AtlasServer --architecture ' +
-        '<Datei.json>), Pfad relativ zum Projekt: liefert die Abschnitte des Vergleichs"}}}',
+        '<Datei.json>), Pfad relativ zum Projekt: liefert die Abschnitte des Vergleichs"},' +
+      '"resolution":{"type":"number","minimum":0.2,"maximum":5,"description":"Feinheit der Teilsysteme ' +
+        '(Louvain-Auflösung γ); Vorgabe architecture.grouping.resolution, 1 = klassisch"}}}',
     function(const AArguments: TJSONObject): string
     var
       Section: TArchitectureSection;
       CompareWith: string;
+      mValue: TJSONValue;
+      mResolution: Double;
     begin
       if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
         raise EMcpToolError.Create('"section" ist overview, central, subsystems, cycles oder crossLinks');
+      mResolution := 0;
+      mValue := nil;
+      if AArguments <> nil then
+        mValue := AArguments.GetValue('resolution');
+      if mValue <> nil then
+      begin
+        if not (mValue is TJSONNumber) or not TArchitectureGrouping.ValidResolution(TJSONNumber(mValue).AsDouble) then
+          raise EMcpToolError.Create('"resolution" ist eine Zahl von 0,2 bis 5,0');
+        mResolution := TJSONNumber(mValue).AsDouble;
+      end;
       CompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
       if CompareWith <> '' then
         CompareWith := AGuard.Resolve(CompareWith);
-      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith);
+      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith, mResolution);
     end);
   AServer.AddTool('find_path',
     'Kürzester Weg zwischen zwei Symbolen oder Units (#1117), z. B. „Wie hängt TKundenForm mit TDatenbank ' +
@@ -1018,6 +1056,147 @@ begin
       Result := AEdit.ApplyCodeAction(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName, Line,
         TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
     end, TMcpToolKind.Write);
+  AServer.AddTool('fix_findings',
+    'Sammelkorrektur (#1352): wendet die sicheren Korrekturen der genannten Regeln (oder "all") in einer Datei ' +
+    'oder im ganzen Projekt an, nur Treffer ab fix.minConfidence (Vorgabe hoch) und nur Regeln mit safeFix im ' +
+    'Katalog; bis zu drei Durchgänge, keine neuen Syntaxfehler. dryRun (Vorgabe true) zeigt nur Zusammenfassung ' +
+    'und Diff; dryRun=false schreibt alle Dateien oder keine. In der IDE offene Dateien ändert das Plugin als ' +
+    'einen Rückgängig-Schritt je Datei, ungespeicherte bleiben unberührt.',
+    '{"type":"object","properties":{' +
+      '"rules":{"type":"array","items":{"type":"string"},"description":"Regelkennungen, z. B. [\"redundant-cast\"]; [\"all\"] = alle"},' +
+      '"file":{"type":"string","description":"Pfad einer Unit; leer = alle Projektdateien"},' +
+      '"minConfidence":{"type":"string","enum":["medium","high"],"description":"Untergrenze der Konfidenz; nicht unter fix.minConfidence"},' +
+      '"dryRun":{"type":"boolean","default":true,"description":"Nur Vorschau, nichts schreiben"}},' +
+      '"required":["rules"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      mFiles, mRules: TArray<string>;
+      mItems: TJSONArray;
+      mItem: TJSONValue;
+      mFile: string;
+    begin
+      mRules := nil;
+      if (AArguments <> nil) and (AArguments.GetValue('rules') is TJSONArray) then
+      begin
+        mItems := TJSONArray(AArguments.GetValue('rules'));
+        for mItem in mItems do
+          if (mItem is TJSONString) and (Trim(mItem.Value) <> '') then
+            mRules := mRules + [Trim(mItem.Value)];
+      end;
+      mFile := TMcpServer.OptionalString(AArguments, 'file');
+      if mFile <> '' then
+        mFiles := TArray<string>.Create(AGuard.Resolve(mFile))
+      else
+        mFiles := AGroup.Main.ProjectFiles;
+      if Length(mFiles) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      Result := AEdit.FixFindings(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, mFiles, mRules,
+        TMcpServer.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
+    end, TMcpToolKind.Write);
+  AServer.AddTool('format_code',
+    'Formatiert eine Unit nach den Formatregeln des Projekts (#1358; format.* in atlas.json, .editorconfig) wie ' +
+    '"Dokument formatieren" in der IDE, ganz oder nur startLine..endLine. Mit text wird geplanter Code statt der ' +
+    'Datei formatiert und als Text zurückgegeben, ohne zu schreiben. Ohne text zeigt dryRun (Vorgabe true) den ' +
+    'Diff; dryRun=false schreibt wie apply_code_action (offene Dateien als ein Rückgängig-Schritt in der IDE). ' +
+    'Dateien mit Syntaxfehlern werden nicht formatiert; // atlas-format: off ... on bleibt unverändert.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad der Unit (relativ zum Projekt oder absolut)"},' +
+      '"text":{"type":"string","description":"Optional: geplanter Inhalt der ganzen Unit statt der Datei"},' +
+      '"startLine":{"type":"integer","minimum":1,"description":"Erste zu formatierende Zeile (ab 1); ohne Angabe die ganze Unit"},' +
+      '"endLine":{"type":"integer","minimum":1,"description":"Letzte zu formatierende Zeile; Vorgabe startLine"},' +
+      '"dryRun":{"type":"boolean","default":true,"description":"Nur Vorschau, nichts schreiben"}},' +
+      '"required":["file"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      mFileName, mText: string;
+      mStartLine, mEndLine: Integer;
+      mScope: TFormatScope;
+      mStyle: TFormatStyle;
+    begin
+      mFileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+      mScope := TFormatScope.All;
+      if AArguments.TryGetValue<Integer>('startLine', mStartLine) then
+      begin
+        if not AArguments.TryGetValue<Integer>('endLine', mEndLine) then
+          mEndLine := mStartLine;
+        if (mStartLine < 1) or (mEndLine < mStartLine) then
+          raise EMcpToolError.Create('"startLine" ab 1 und "endLine" nicht davor');
+        mScope := TFormatScope.Lines([TFormatLineSpan.Create(mStartLine - 1, mEndLine - 1)]);
+      end;
+      // Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben (TLspFormatting.Resolve).
+      mStyle := TLspFormatting.Resolve(nil, mFileName, AGroup.WorkspaceOf(mFileName).Configuration.Settings.Formatting,
+        function(const AConfigFile: string; out AConfigText: string): Boolean
+        begin
+          Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
+        end);
+      if AArguments.TryGetValue<string>('text', mText) then
+        Result := AEdit.FormatCode(mStyle, mFileName, mText, mScope)
+      else
+        Result := AEdit.FormatCode(mStyle, mFileName, mScope, DryRunOf(AArguments));
+    end, TMcpToolKind.Write);
+end;
+
+/// <summary>Status dieses MCP-Prozesses für get_server_status, wenn kein Server der IDE läuft (#1356).</summary>
+function OwnStatus(const AIndex: ISymbolIndex; AStarted: TDateTime): TServerStatus;
+var
+  mParts: TIndexMemoryParts;
+  mTrees: TSyntaxTreeCacheStats;
+begin
+  Result := Default(TServerStatus);
+  Result.ProcessId := TShellPlatform.CurrentProcessId;
+  Result.Version := TProductVersion.Version;
+  Result.Started := AStarted;
+  Result.UptimeMs := MilliSecondsBetween(Now, AStarted);
+  Result.State := TServerStatus.StateReady;
+  Result.MemoryBytes := TShutdownLeaks.AllocatedBytes;
+  Result.IndexCacheHitPercent := -1;
+  mTrees := TSyntaxTreeCache.Stats;
+  Result.TreeCacheHitPercent := mTrees.HitPercent;
+  Result.TreeCacheTrees := mTrees.Trees;
+  Result.Memory.TreeCache := mTrees.Bytes;
+  Result.Memory.Total := Result.MemoryBytes;
+  if AIndex = nil then
+    Exit;
+  Result.Units := AIndex.UnitCount;
+  Result.Symbols := AIndex.SymbolCount;
+  Result.IndexBytes := AIndex.MemoryBytes;
+  Result.CompactUnits := AIndex.CompactCount;
+  Result.OffloadedUnits := AIndex.OffloadedCount;
+  Result.BudgetBytes := AIndex.Budget;
+  mParts := AIndex.MemoryParts;
+  Result.Memory.Symbols := mParts.ProjectBytes;
+  Result.Memory.LibraryUnits := mParts.LibraryBytes;
+  Result.Memory.Usages := mParts.UsageBytes;
+  Result.Memory.Budget := Result.BudgetBytes;
+end;
+
+/// <summary>get_server_status (#1356): Status des Servers der IDE aus der Statusdatei, sonst dieses Prozesses.
+/// </summary>
+procedure RegisterStatusTools(AServer: TMcpServer; const AIndex: ISymbolIndex; const ARoot: string);
+var
+  mStarted: TDateTime;
+begin
+  mStarted := Now;
+  AServer.AddTool(TMcpStatusTools.ToolName,
+    'Status des Atlas-Servers (#1356) wie im Fenster „Atlas-Server“ der IDE: Speicher je Bereich gegen das ' +
+    'Budget, die langsamsten Units und Regeln des letzten Prüflaufs, Warteschlange, Cache-Treffer und die ' +
+    'langsamsten Anfragen. Läuft für den Projektordner kein Server der IDE, der Status dieses MCP-Prozesses. ' +
+    'Nur lesend; hilfreich, wenn Atlas oder die IDE langsam ist oder viel Speicher braucht.',
+    '{"type":"object","properties":{' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      mFormat: string;
+    begin
+      mFormat := TMcpServer.OptionalString(AArguments, 'format');
+      if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      Result := TMcpStatusTools.ServerStatus(TIndexCacheDirectory.DefaultRoot, ARoot, SameText(mFormat, 'json'), Now,
+        function: TServerStatus
+        begin
+          Result := OwnStatus(AIndex, mStarted);
+        end);
+    end);
 end;
 
 /// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
@@ -1177,6 +1356,172 @@ begin
     end, TMcpToolKind.Process);
 end;
 
+/// <summary>get_hotspots (#1354): derselbe Dienst wie atlas/hotspots und --hotspots.</summary>
+procedure RegisterHotspotTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; AService: THotspotService;
+  const ARoot: string);
+begin
+  AServer.AddTool('get_hotspots',
+    'Hotspots (#1354): Units bzw. Methoden, die im Zeitraum oft geändert wurden und zugleich komplex sind ' +
+    '(Wert = normierte Änderungen × normierte kognitive Komplexität), mit Änderungen, Autoren, Zeilen, Trend ' +
+    'der Komplexität und letzter Änderung aus Git bzw. SVN (vcs.provider). Mit section "coupling" die ' +
+    'Änderungskopplung: Dateien, die fast immer zusammen geändert werden, ohne uses-Kante zwischen ihnen. ' +
+    'Zeitraum und Mindestzahl gemeinsamer Commits aus hotspots.* in atlas.json. Lesend.',
+    '{"type":"object","properties":{' +
+      '"level":{"type":"string","enum":["unit","method"],"description":"Ebene; Vorgabe unit"},' +
+      '"limit":{"type":"integer","minimum":1,"description":"Länge der Liste; Vorgabe 20"},' +
+      '"months":{"type":"integer","minimum":1,"maximum":60,"description":"Zeitraum in Monaten; Vorgabe ' +
+        'hotspots.months (12)"},' +
+      '"section":{"type":"string","enum":["hotspots","coupling"],"description":"Abschnitt; Vorgabe hotspots"},' +
+      '"format":{"type":"string","enum":["text","markdown","json"],"description":"text (Vorgabe), markdown ' +
+        'oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      mSettings: TServerSettings;
+      mRequest: THotspotRequest;
+      mResult: THotspotResult;
+      mSection: THotspotSection;
+      mVcs: IHotspotVcs;
+      mFormat, mError: string;
+      mLimit: Integer;
+    begin
+      mSettings := AGroup.Main.Configuration.Settings;
+      if not mSettings.HotspotsEnabled then
+        raise EMcpToolError.Create('Hotspots sind ausgeschaltet (hotspots.enabled)');
+      if not THotspotReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), mSection) then
+        raise EMcpToolError.Create('"section" ist hotspots oder coupling');
+      mFormat := TMcpServer.OptionalString(AArguments, 'format');
+      if (mFormat <> '') and not SameText(mFormat, 'text') and not SameText(mFormat, 'markdown') and
+        not SameText(mFormat, 'json') then
+        raise EMcpToolError.Create('"format" ist text, markdown oder json');
+      if not AArguments.TryGetValue<Integer>('limit', mLimit) then
+        mLimit := THotspotReport.TextLimit;
+      if mLimit < 1 then
+        raise EMcpToolError.Create('"limit" ist eine ganze Zahl ab 1');
+      mRequest := THotspotRequest.FromSettings(mSettings);
+      if not TLspHotspots.ApplyOptions(AArguments, mRequest, mError) then
+        raise EMcpToolError.Create(mError);
+      mRequest.Title := ExtractFileName(ARoot);
+      mRequest.Root := ARoot;
+      mRequest.Namespaces := AGroup.Main.Namespaces;
+      // Umfang wie get_architecture (architecture.scope).
+      if mSettings.ArchitectureScope = 'project' then
+        mRequest.Files := AGroup.Main.ProjectFiles
+      else
+        mRequest.Files := AGroup.AllFiles;
+      if Length(mRequest.Files) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen');
+      // Ohne Versionsverwaltung ein Hinweis statt einer leeren Liste.
+      if not TShellHotspotVcs.Detect(ARoot, mSettings, mVcs, mError) then
+        Exit('Keine Hotspots: ' + mError + '. Hotspots brauchen ein Git-Repository oder eine SVN-Arbeitskopie.');
+      try
+        mResult := AService.Analyze(mRequest, mVcs);
+      except
+        on E: EHotspots do
+          raise EMcpToolError.Create(E.Message);
+      end;
+      // Der Text kürzt selbst und nennt die Gesamtzahl ("20 von 431").
+      if SameText(mFormat, 'json') then
+        Result := THotspotReport.Json(TLspHotspots.Limited(mResult, mLimit))
+      else if SameText(mFormat, 'markdown') then
+        Result := THotspotReport.Markdown(TLspHotspots.Limited(mResult, mLimit))
+      else
+        Result := THotspotReport.Text(mResult, mSection, mLimit);
+    end);
+end;
+
+/// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
+/// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
+function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; AGuard: TMcpPathGuard):
+  TFunc<string, string>;
+begin
+  Result :=
+    function(AUnit: string): string
+    var
+      mUnit: TUnitIndex;
+    begin
+      if (Pos('\', AUnit) > 0) or (Pos('/', AUnit) > 0) or SameText(ExtractFileExt(AUnit), '.pas') then
+        Exit(AGuard.Resolve(AUnit));
+      // Units anderer Projekte der Gruppe erst bei Bedarf (#1112).
+      AGroup.EnsureUnit(AUnit);
+      if not AIndex.FindUnit(AUnit, mUnit) then
+        raise EMcpToolError.CreateFmt('Unit "%s" ist nicht im Index', [AUnit]);
+      Result := AGuard.Resolve(mUnit.FileName);
+    end;
+end;
+
+/// <summary>Änderungen laut Git oder SVN für prepare_commit (#1357): geänderte Dateien unter ARoot und ihre Befunde
+/// in geänderten Zeilen wie --changed-lines, dazu der Commit-Präfix, den das Plugin für das aktuelle Issue in
+/// &lt;gitdir&gt;/atlas-commit-prefix schreibt (#765).</summary>
+function ChangesOf(AGroup: TShellWorkspaceGroup; const ARoot: string): TMcpChangesFunc;
+begin
+  Result :=
+    function(const ABase: string): TMcpChangeSet
+    var
+      mSettings: TServerSettings;
+      mProcess: ICompilerProcess;
+      mVcs: TVcsChanges;
+      mFile, mText, mRelative: string;
+      mLines: TChangedLines;
+      mChanged: TMcpChangedFile;
+      mFinding: TRuleFinding;
+      mScopes: TFindingScopes;
+      mCheckProject: TCheckProjectFunc;
+    begin
+      Result := Default(TMcpChangeSet);
+      Result.Files := nil;
+      Result.Base := ABase;
+      if Result.Base = '' then
+        Result.Base := 'HEAD';
+      mSettings := AGroup.Main.Configuration.Settings;
+      // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
+      mProcess := TProcessRunner.Create;
+      try
+        mVcs := TVcsChanges.Detect(mProcess, ARoot, mSettings.VcsProvider, mSettings.VcsGitPath,
+          mSettings.VcsSvnPath, mSettings.VcsTimeoutSeconds);
+      except
+        on E: EVcsChanges do
+        begin
+          Result.Error := E.Message;
+          Exit;
+        end;
+      end;
+      try
+        try
+          // Ohne Basis: nicht eingecheckte Änderungen gegenüber HEAD (SVN: BASE); mit Basis seit der Abzweigung.
+          mVcs.Load(Result.Base, ABase <> '', ABase = '', True, True);
+        except
+          on E: EVcsChanges do
+          begin
+            Result.Error := E.Message;
+            Exit;
+          end;
+        end;
+        Result.Vcs := mVcs.Name;
+        mCheckProject := CheckProjectOf(AGroup);
+        for mFile in mVcs.Files do
+        begin
+          if not TMcpPathGuard.IsInside(ARoot, mFile) then
+            Continue;
+          mChanged := Default(TMcpChangedFile);
+          mRelative := ExtractRelativePath(IncludeTrailingPathDelimiter(ARoot), mFile);
+          mChanged.Path := mRelative;
+          mChanged.Findings := nil;
+          if MatchText(ExtractFileExt(mFile), ['.pas', '.dpr', '.dpk']) and ReadSourceText(mFile, mText) and
+            TChangedFiles.LinesOf(mVcs.Lines, mVcs.RepoRoot, mFile, mLines) then
+            for mFinding in TFileChecker.CheckText(BuiltinRules, mSettings, mRelative, mText, mCheckProject(mFile),
+              AGroup.Main.CheckSource(mFile), mScopes) do
+              if mLines.Contains(mFinding.Range.StartPos.Line) then
+                mChanged.Findings := mChanged.Findings + [mFinding];
+          Result.Files := Result.Files + [mChanged];
+        end;
+        if mVcs is TGitChanges then
+          Result.CommitPrefix := TAtlasCommitHook.ReadPrefix(TAtlasGitVersionControl.GitDir(mVcs.RepoRoot));
+      finally
+        mVcs.Free;
+      end;
+    end;
+end;
+
 class function TMcpShell.ToolNames: TArray<string>;
 var
   Server: TMcpServer;
@@ -1190,6 +1535,8 @@ begin
     RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
     RegisterDeadCodeTools(Server, nil, nil, '', nil);
     RegisterAffectedTestsTool(Server, nil, '', nil);
+    RegisterHotspotTools(Server, nil, nil, '');
+    RegisterStatusTools(Server, nil, '');
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do
@@ -1224,11 +1571,13 @@ var
   Anonymizer: ILogAnonymizer;
   AllFiles: TFunc<TArray<string>>;
   Architecture: TArchitectureService;
+  Hotspots: THotspotService;
   PathGraphs: TUsesGraphService;
   PathLocator: TUsesLocator;
   PathOptions: TUsesGraphOptions;
   EnsureAny: TFunc<string, Boolean>;
   GlobalSettings: string;
+  Prompts: TMcpPrompts;
 begin
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
@@ -1335,6 +1684,12 @@ begin
       if not Group.WorkspaceOf(AFileName).Defines(Result) then
         Result := nil;
     end);
+  // Hotspots (#1354): derselbe Dienst wie atlas/hotspots und --hotspots.
+  Hotspots := THotspotService.Create(Index,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end);
   // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units (Start oder Ziel).
   PathOptions := TUsesGraphOptions.Default;
   PathOptions.IncludeLibrary := True;
@@ -1403,13 +1758,14 @@ begin
       Logger.Info(AText);
     end;
   Server := TMcpServer.Create(TProductVersion.Name, TProductVersion.Version);
+  Prompts := nil;
   Dispatcher := TJsonRpcDispatcher.Create;
   Connection := TJsonRpcConnection.Create(Transport, Dispatcher);
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
     RegisterTools(Server, Tools, Code, Group, Root, Guard, Edit,
-      function(ASection: TArchitectureSection; const AUnit, ACompareWith: string): string
+      function(ASection: TArchitectureSection; const AUnit, ACompareWith: string; AResolution: Double): string
       var
         Settings: TServerSettings;
         Request: TArchitectureRequest;
@@ -1422,6 +1778,9 @@ begin
         if not Settings.ArchitectureEnabled then
           raise EMcpToolError.Create('Architekturübersicht ist ausgeschaltet (architecture.enabled)');
         Request := TArchitectureRequest.FromSettings(Settings);
+        // Nur für diesen Aufruf (#1366); die Einstellung bleibt.
+        if AResolution > 0 then
+          Request.Grouping.Resolution := AResolution;
         Request.Title := ExtractFileName(Root);
         Request.Root := Root;
         Request.Namespaces := Workspace.Namespaces;
@@ -1432,6 +1791,9 @@ begin
           Request.Files := AllFiles();
         if Length(Request.Files) = 0 then
           raise EMcpToolError.Create('Kein Projekt geladen');
+        // Derselbe zuletzt berechnete Stand wie im LSP-Prozess (#1367).
+        Request.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot,
+          Request.ScopeKey);
         Overview := Architecture.Overview(Request);
         if ACompareWith <> '' then
         begin
@@ -1448,6 +1810,8 @@ begin
       end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
     RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
     RegisterAffectedTestsTool(Server, Group, Root, Code.ImpactOptionsFor);
+    RegisterHotspotTools(Server, Group, Hotspots, Root);
+    RegisterStatusTools(Server, Index, Root);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
     Server.OnDisabledTools :=
@@ -1457,6 +1821,8 @@ begin
         // Abgeschaltete Funktion (#227): Werkzeug gar nicht anbieten.
         if not Workspace.Configuration.Settings.ArchitectureEnabled then
           Result := Result + ['get_architecture'];
+        if not Workspace.Configuration.Settings.HotspotsEnabled then
+          Result := Result + ['get_hotspots'];
         if not Workspace.Configuration.Settings.Navigation.SymbolPath then
           Result := Result + ['find_path'];
         // Betroffene Tests (#1353).
@@ -1482,6 +1848,21 @@ begin
           Catalog.Free;
         end;
       end);
+    // Prompts und Ressourcenvorlagen (#1357), abschaltbar mit mcp.prompts.
+    Prompts := TMcpPrompts.Create(Server,
+      function: TServerSettings
+      begin
+        Result := Workspace.Configuration.Settings;
+      end);
+    Prompts.ReadText := ReadSourceText;
+    Prompts.ResolveFile :=
+      function(APath: string): string
+      begin
+        Result := Guard.Resolve(APath);
+      end;
+    Prompts.ResolveUnit := UnitFileOf(Index, Group, Guard);
+    Prompts.Changes := ChangesOf(Group, Root);
+    Prompts.Register;
     // Vor jedem Werkzeugaufruf geänderte Projektdateien nachladen (#48).
     Server.OnBeforeToolCall :=
       procedure
@@ -1520,11 +1901,13 @@ begin
     Connection.Free;
     Dispatcher.Free;
     Server.Free;
+    Prompts.Free;
     Guard.Free;
     Edit.Free;
     Code.Free;
     Tools.Free;
     Architecture.Free;
+    Hotspots.Free;
     PathLocator.Free;
     PathGraphs.Free;
     Group.Free;

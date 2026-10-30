@@ -41,6 +41,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
 | `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
+| `hotspots` | global (settings.json) | object | – |  | Hotspots: Units und Methoden, die oft geändert werden und zugleich komplex sind (Änderungen aus Git oder SVN im Zeitraum × kognitive Komplexität), mit Trend gegenüber vor drei Monaten und Änderungskopplung (Units ohne uses-Kante, die oft zusammen geändert werden). Fenster „Atlas-Hotspots“, Bericht (AtlasServer --hotspots <Datei.html\|.md\|.json>) und MCP-Werkzeug get_hotspots. Bibliotheks-Units und architecture.exclude zählen nicht; die Versionsverwaltung kommt aus vcs.provider. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `diagnostics` | gemischt, siehe unten | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
@@ -55,8 +56,9 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `testUnits` | Projekt (atlas.json) | object | – |  | Testunits anlegen und zwischen Unit und Testunit wechseln: Namensmuster, Ordner neuer Testunits und Testprojekt. |
 | `tests` | global (settings.json) | object | – |  | Betroffene Tests einer Änderung: aus dem Unterschied zur Basis (Git oder SVN) die geänderten Routinen, Typen und Konstanten bestimmen, ihre Auswirkungen verfolgen und nur die DUnitX-Tests nennen, die sie erreichen (Kommandozeile --affected-tests, MCP-Werkzeug get_affected_tests, Plugin-Befehl „Betroffene Tests ausführen“). |
 | `minConfidence` | Projekt (atlas.json) | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
+| `fix` | Projekt (atlas.json) | object | – |  | Sammelkorrektur (--fix, MCP fix_findings, „Alle sicheren Treffer korrigieren …“ im Fenster „Atlas-Prüfung“): wendet nur sichere Korrekturen von Regeln mit safeFix im Katalog an. |
 | `exclude` | Projekt (atlas.json) | array<string> | – | z. B. `["ThirdParty/**","Generated/*.pas"]` | Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). |
-| `mcp` | gemischt, siehe unten | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}` | MCP-Modus (--mcp) für KI-Assistenten. |
+| `mcp` | gemischt, siehe unten | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}`, `{"prompts":true,"promptLanguage":"en"}` | MCP-Modus (--mcp) für KI-Assistenten. |
 | `format` | Projekt (atlas.json) | object | – |  | Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. |
 | `tasks` | global und Projekt | array<object> | – |  | Projektaufgaben (#900): Befehle des Projekts, die das Plugin per Befehlspalette, Menü Atlas › Aufgaben, Taste, Statusfeld oder Schnellaktion startet; die Ausgabe steht im Register „Atlas-Aufgaben“, erkannte Fundstellen als Befunde in Problemliste und Editor. Projekt vor global bei gleichem Namen. Variablen in command, args, cwd und env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}. |
 | `issues` | global (settings.json) | object | – |  | Issue-Tracker im Plugin (Tools › Optionen › Atlas › Issue-Tracker, Bereich „Meine Issues“). Persönlich, daher nur in settings.json; der Abschnitt tracker der Projektdatei .atlas gilt daneben für das Team. |
@@ -242,6 +244,16 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
 | `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
 | `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
+| `architecture.explainAssignment` | global (settings.json) | boolean | `true` |  | Zuordnung jeder Unit erklären: Tabelle der Kanten je Teilsystem (interface, implementation, gewichtete Summe) im Hinweis und Steckbrief des Fensters, im Bericht und in get_architecture mit unit, dazu die Spalte „knapp“ für Units, bei denen ein anderes Teilsystem mindestens 75 % der Summe erreicht. |
+| `architecture.grouping` | global (settings.json) | object | – |  | Wie die Architekturübersicht die Units in Teilsysteme gruppiert (Louvain auf dem uses-Graphen). Gilt für Fenster, Bericht, AtlasServer --architecture und get_architecture. |
+
+## hotspots
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `hotspots.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = kein Fenster, kein Menüeintrag, kein get_hotspots; AtlasServer --hotspots endet mit Exitcode 3. |
+| `hotspots.months` | global (settings.json) | integer | `12` | 1…60 | Ausgewerteter Zeitraum in Monaten (Commits seit heute minus months). |
+| `hotspots.coupling` | global (settings.json) | object | – |  | Änderungskopplung: Paare mit mindestens minCommits gemeinsamen Commits und einem Anteil von mindestens 70 % ohne uses-Kante zwischen ihnen; .pas/.dfm derselben Unit und Commits mit mehr als 50 Dateien zählen nicht. |
 
 ## diagnostics
 
@@ -345,12 +357,21 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `tests.affected` | global (settings.json) | boolean | `true` |  | Betroffene Tests ermitteln; aus: Plugin-Befehl und MCP-Werkzeug fehlen, --affected-tests endet mit Exitcode 3. |
 | `tests.affectedDepth` | global (settings.json) | integer | `3` | 1…5 | Ebenen der Auswirkungsanalyse von der Änderung bis zum Test: 1 = nur Tests, die das geänderte Symbol direkt verwenden. |
 
+## fix
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `fix.minConfidence` | Projekt (atlas.json) | string | `"high"` | `"medium"`, `"high"` | Untergrenze der Konfidenz für Sammelkorrekturen: Treffer darunter werden übersprungen und gezählt. fix_findings darf sie mit minConfidence nur anheben. |
+
 ## mcp
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `mcp.disabledTools` | global (settings.json) | array<string> | `` |  | Werkzeuge, die der MCP-Server nicht anbietet, z. B. rename_symbol oder apply_code_action. Im eingeschränkten Modus (--restricted) sind schreibende Werkzeuge immer aus. |
 | `mcp.globalSettings` | Projekt (atlas.json) | boolean | `true` |  | Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\Atlas\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa für reproduzierbare Ergebnisse im Team. |
+| `mcp.prompts` | global (settings.json) | boolean | `true` |  | Prompts (in Claude Code Schrägstrich-Befehle wie /mcp__delphi__unit_review) und Ressourcenvorlagen (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last) anbieten. false: prompts/list und resources/templates/list sind leer, die Werkzeuge bleiben. |
+| `mcp.promptLanguage` | global (settings.json) | string | `"de"` | `"de"`, `"en"` | Sprache der Anleitungen in den Prompts. |
+| `mcp.customPrompts` | Projekt (atlas.json) | array<object> | `` |  | Eigene Prompts des Projekts mit Platzhaltern {argument} im Text und eingebetteten Inhalten aus include (z. B. diagnostics, metrics). |
 
 ## format
 

@@ -13,9 +13,12 @@
          kein JSON-RPC-Fehler, kein isError (außer bei expectError), Inhalt nicht leer,
          erwarteter Text (contains) enthalten
       4. Jede Ressource aus resources/list lesen
+      5. Jeden Prompt aus prompts/list mit seinem Beispiel (prompts) über prompts/get holen und
+         jede Ressourcenvorlage aus resources/templates/list mit ihrer Beispiel-URI (templates)
+         lesen (#1357): Beschreibungen vorhanden, kein Fehler, Inhalt nicht leer, erwarteter Text
 
-    Ein Werkzeug ohne Beispiel lässt den Lauf scheitern; neue Werkzeuge bekommen so zwingend
-    einen Eintrag. Werkzeuge mit "process": true (build_project, run_tests) laufen nur mit
+    Ein Werkzeug, ein Prompt oder eine Vorlage ohne Beispiel lässt den Lauf scheitern; neue bekommen
+    so zwingend einen Eintrag. Werkzeuge mit "process": true (build_project, run_tests) laufen nur mit
     -WithProcessTools, weil sie die IDE oder einen Testlauf brauchen.
 
     Jede Nachricht in beide Richtungen steht roh im Mitschnitt (JSON Lines, Vorgabe
@@ -288,6 +291,8 @@ try {
 
     $toolList = @((Invoke-Rpc 'tools/list' @{}).Response.result.tools)
     $resourceList = @()
+    $templateList = @()
+    $promptList = @()
     $resourcesResponse = (Invoke-Rpc 'resources/list' @{}).Response
     if ($null -ne (Get-Property $resourcesResponse 'result')) { $resourceList = @($resourcesResponse.result.resources) }
     if ($resourceList.Count -gt 0) {
@@ -295,9 +300,20 @@ try {
         $templatesResponse = (Invoke-Rpc 'resources/templates/list' @{}).Response
         if ($null -ne (Get-Property $templatesResponse 'error')) {
             Add-Finding "resources/templates/list: $($templatesResponse.error.message)"
+        } else {
+            $templateList = @($templatesResponse.result.resourceTemplates)
         }
     }
-    Write-Host ("{0} Werkzeuge, {1} Ressourcen" -f $toolList.Count, $resourceList.Count)
+    if ($null -ne (Get-Property (Get-Property $init.Response.result 'capabilities') 'prompts')) {
+        $promptsResponse = (Invoke-Rpc 'prompts/list' @{}).Response
+        if ($null -ne (Get-Property $promptsResponse 'error')) {
+            Add-Finding "prompts/list: $($promptsResponse.error.message)"
+        } else {
+            $promptList = @($promptsResponse.result.prompts)
+        }
+    }
+    Write-Host ("{0} Werkzeuge, {1} Ressourcen, {2} Vorlagen, {3} Prompts" -f $toolList.Count, $resourceList.Count,
+        $templateList.Count, $promptList.Count)
 
     $exampleTools = Get-Property $exampleData 'tools'
     $exampleNames = @($exampleTools.PSObject.Properties.Name)
@@ -378,6 +394,72 @@ try {
                 $outcome = 'Inhalt'
             }
             $rows.Add([pscustomobject]@{ Werkzeug = $resource.uri; Ergebnis = $outcome; Ms = $call.Ms; Zeichen = $text.Length })
+        }
+
+        # Prompts (#1357): Beschreibung je Prompt und Argument, Beispiel über prompts/get.
+        $examplePrompts = Get-Property $exampleData 'prompts'
+        foreach ($prompt in $promptList) {
+            $name = $prompt.name
+            if (-not (Get-Property $prompt 'description')) { Add-Finding "Prompt ${name}: Beschreibung fehlt" }
+            foreach ($argument in @(Get-Property $prompt 'arguments')) {
+                if ($null -ne $argument -and -not (Get-Property $argument 'description')) {
+                    Add-Finding "Prompt ${name}: Argument '$($argument.name)' ohne Beschreibung"
+                }
+            }
+            $example = Get-Property $examplePrompts $name
+            if ($null -eq $example) {
+                Add-Finding "Prompt ${name}: kein Beispiel unter prompts in $(Split-Path -Leaf $Examples)"
+                continue
+            }
+            $promptArgs = ConvertTo-Hashtable (Get-Property $example 'arguments')
+            try {
+                Resolve-Placeholders $promptArgs $name
+                # prompts/get nimmt nur Text als Argumente.
+                foreach ($key in @($promptArgs.Keys)) { $promptArgs[$key] = [string]$promptArgs[$key] }
+                $call = Invoke-Rpc 'prompts/get' ([ordered]@{ name = $name; arguments = $promptArgs })
+            } catch {
+                Add-Finding "Prompt ${name}: $($_.Exception.Message)"
+                continue
+            }
+            $text = ''
+            $result = Get-Property $call.Response 'result'
+            foreach ($message in @(Get-Property $result 'messages')) {
+                if ($null -ne $message) { $text += [string](Get-Property (Get-Property $message 'content') 'text') }
+            }
+            $outcome = 'ok'
+            $rpcError = Get-Property $call.Response 'error'
+            if ($null -ne $rpcError) {
+                Add-Finding "Prompt ${name}: JSON-RPC-Fehler $($rpcError.code): $($rpcError.message)"
+                $outcome = 'Fehler'
+            } elseif ($text.Trim() -eq '') {
+                Add-Finding "Prompt ${name}: leere Nachricht"
+                $outcome = 'leer'
+            } elseif ((Get-Property $example 'contains') -and -not $text.Contains($example.contains)) {
+                Add-Finding "Prompt ${name}: '$($example.contains)' fehlt in der Nachricht"
+                $outcome = 'Inhalt'
+            }
+            $rows.Add([pscustomobject]@{ Werkzeug = "prompt $name"; Ergebnis = $outcome; Ms = $call.Ms; Zeichen = $text.Length })
+        }
+
+        # Ressourcenvorlagen (#1357): je Vorlage eine Beispiel-URI lesen.
+        $exampleTemplates = Get-Property $exampleData 'templates'
+        foreach ($template in $templateList) {
+            $example = Get-Property $exampleTemplates $template.uriTemplate
+            if ($null -eq $example) {
+                Add-Finding "$($template.uriTemplate): kein Beispiel unter templates in $(Split-Path -Leaf $Examples)"
+                continue
+            }
+            $call = Invoke-Rpc 'resources/read' ([ordered]@{ uri = $example.uri })
+            $text = Get-ResultText (Get-Property $call.Response 'result')
+            $outcome = 'ok'
+            if ($null -ne (Get-Property $call.Response 'error') -or $text.Trim() -eq '') {
+                Add-Finding "$($example.uri): Fehler oder leer"
+                $outcome = 'Fehler'
+            } elseif ((Get-Property $example 'contains') -and -not $text.Contains($example.contains)) {
+                Add-Finding "$($example.uri): '$($example.contains)' fehlt"
+                $outcome = 'Inhalt'
+            }
+            $rows.Add([pscustomobject]@{ Werkzeug = $example.uri; Ergebnis = $outcome; Ms = $call.Ms; Zeichen = $text.Length })
         }
     }
 } finally {

@@ -40,6 +40,8 @@ begin
     // Vor --check: Das Ziel aus --check ist hier das Testprojekt (#1353).
     if Options.AffectedTests then
       Exit(TLinterShell.AffectedTests(Options));
+    if Options.HotspotsFile <> '' then
+      Exit(TLinterShell.Hotspots(Options));
     if Options.CheckTarget <> '' then
       Exit(TLinterShell.Run(Options));
     if Options.Mcp then
