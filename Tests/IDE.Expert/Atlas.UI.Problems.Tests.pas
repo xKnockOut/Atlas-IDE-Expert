@@ -42,6 +42,10 @@ type
     /// Trennzeile, Knopf „Offene zuerst“.</summary>
     [Test]
     procedure OpenFirstPinsDimsAndSkipsSections;
+    /// <summary>Neue Markierung beim Auffüllen holt nicht jede Zeile über OnData (IDE hing bei vielen Befunden
+    /// in TCustomListView.ClearSelection).</summary>
+    [Test]
+    procedure RefillReselectsWithoutFetchingEveryRow;
   end;
 
 implementation
@@ -52,10 +56,26 @@ uses
   Winapi.Windows,
   Vcl.Forms,
   Vcl.Menus,
+  Vcl.ComCtrls,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain;
+
+type
+  /// <summary>Zählt die Abrufe der virtuellen Liste und reicht sie weiter.</summary>
+  TFetchCounter = class
+  public
+    Inner: TLVOwnerDataEvent;
+    Count: Integer;
+    procedure Fetch(Sender: TObject; Item: TListItem);
+  end;
+
+procedure TFetchCounter.Fetch(Sender: TObject; Item: TListItem);
+begin
+  Inc(Count);
+  Inner(Sender, Item);
+end;
 
 function Problem(ALine: Integer; const ASource, ACode, AMessage: string; ASeverity: TAtlasProblemSeverity;
   const AFix: string): TAtlasProblem;
@@ -243,6 +263,45 @@ begin
     Assert.AreEqual(#$25BE' Kunde.pas (2)', Frame.List.Items[0].SubItems[0]);
   finally
     Host.Free;
+  end;
+end;
+
+procedure TAtlasProblemsFrameTests.RefillReselectsWithoutFetchingEveryRow;
+var
+  Host: TForm;
+  Frame: TAtlasProblemsFrame;
+  Counter: TFetchCounter;
+  Problems: TArray<TAtlasProblem>;
+  Index: Integer;
+begin
+  SetLength(Problems, 300);
+  for Index := 0 to High(Problems) do
+    Problems[Index] := Problem(Index, 'Atlas', 'empty-except', 'Leerer except-Block', TAtlasProblemSeverity.Warning,
+      '');
+  Host := TForm.CreateNew(nil);
+  Counter := TFetchCounter.Create;
+  try
+    Frame := NewFrame(Host);
+    Frame.SetFindings(TAtlasFindings.FromProblems('C:\P\Kunde.pas', Problems, nil), 'C:\P\Kunde.pas', nil);
+    // Zwei Zeilen markiert, dann wählt die Sicht eine dritte.
+    Frame.List.ItemIndex := 1;
+    Frame.List.ItemIndex := 2;
+    Assert.AreEqual(2, Integer(Frame.List.SelCount));
+    Counter.Inner := Frame.List.OnData;
+    Frame.List.OnData := Counter.Fetch;
+    try
+      Frame.View.Select(4);
+      Frame.Refill;
+    finally
+      Frame.List.OnData := Counter.Inner;
+    end;
+    Assert.AreEqual(1, Integer(Frame.List.SelCount));
+    Assert.AreEqual(4, Frame.List.ItemIndex);
+    // Mit ClearSelection holte das jede der 301 Zeilen mindestens einmal.
+    Assert.IsTrue(Counter.Count < 30, Format('%d Abrufe für %d Zeilen', [Counter.Count, Frame.List.Items.Count]));
+  finally
+    Host.Free;
+    Counter.Free;
   end;
 end;
 
