@@ -31,6 +31,11 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Create über Klassenreferenz (30.10.2026, Branch `claude/project-thread-yhkr0w`)
+- Falsches E2034 bei `raise FError.Create('…')` mit `FError: ExceptClass` (gesehen in `TFailingRule.Check` der Engine-Tests). **Ursache:** Der Index führt `X = class of Y` als ClassType ohne Vorfahren; `TNameResolver.ExprCandidates` suchte Mitglieder eines Werts dieses Typs in der Referenz selbst, `AncestorOf` ergänzte TObject und fand `TObject.Create` ohne Parameter.
+- **Behoben im Resolver:** `TNameResolver.ClassRefTargetOf` löst die Zielklasse in der Unit der Referenz auf; Mitglieder über Variablen, Felder und Parameter einer Klassenreferenz (auch über Aliase wie `TFehlerKlasse = ExceptClass`) kommen aus der Zielklasse, Konstruktoren liefern deren Typ. `TNameResolver.ClassRefTarget` ersetzt die Kopie in `class-reference-nonvirtual-constructor`.
+- Test `TCallRulesTests.ClassReferenceConstructor`. Unter FPC grün: Calls-, Resolver-, Hover-, Inheritance-, Casts- und UnsafeCode-Tests sowie alle Builtin-Regel- und Semantics-Tests. Offen: Delphi-Build 12/13 (0/0/0).
+
 ## Weitere Generics-Fehler (#1376, 29.10.2026, Branch `feature/1376-generics-fehler`)
 - `generic-declaration-invalid` (jetzt Stufe B): E2528 auch für Konstruktoren von Klassen (dcc 13 meldet `constructor Create<T>;`, GD10 nannte den generischen Konstruktor fälschlich erlaubt; Records und `object` bleiben ungeprüft still), E2552/E2553 mit Klassen aus dem Index (`TNameResolver.ResolveTypeTextFrom`, nur wenn der Name weder Typparameter noch in der Datei deklariert ist), E2570 (lokale Routine in Methoden generischer Typen und generischen Methoden; Kopf mit Punkt und GenericParams; spring4d hat in 1207 generischen Methoden keine einzige lokale Routine), E2574 (`type` vor `TypeReference` mit GenericArgs außerhalb generischer Typen, Korrektur entfernt `type`).
 - Neue Regel `generic-inference-failed` (Stufe T, Unit `Builtin.Generics`): E2531 und E2532 über `CallCandidates`; eigene Typparameter liest `TGenericInferenceFailedRule.OwnTypeParams` aus der Signatur. Vorfilter: Name hat einen generischen Kopf in der Datei oder `Index.HasSymbol` mit TypeParams.
