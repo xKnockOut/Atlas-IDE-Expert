@@ -160,7 +160,7 @@ var
   Units: TList<TProjectUnit>;
   ProjectUnit: TProjectUnit;
   Include: string;
-  Origins: TArray<TPair<string, string>>;
+  Origins: TList<TPair<string, string>>;
   Before: TArray<string>;
   Define: string;
 begin
@@ -173,7 +173,7 @@ begin
   Directory := TProjectPaths.DirectoryOf(AFileName);
   Properties := TMSBuildProperties.Create(AOptions.FileExists);
   Units := TList<TProjectUnit>.Create;
-  Origins := nil;
+  Origins := TList<TPair<string, string>>.Create;
   try
     if Root.Name <> 'Project' then
       raise EProjectError.CreateFmt('%s: Wurzelelement <Project> erwartet', [AFileName]);
@@ -210,11 +210,8 @@ begin
           if SameText(Item.Name, 'DCC_Define') then
             for Define in UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define'))) do
               if IndexStr(Define, Before) < 0 then
-              begin
-                SetLength(Origins, Length(Origins) + 1);
-                Origins[High(Origins)].Key := Define;
-                Origins[High(Origins)].Value := LevelOf(Group.Attribute('Condition'), Properties.Get('Config'));
-              end;
+                Origins.Add(TPair<string, string>.Create(Define,
+                  LevelOf(Group.Attribute('Condition'), Properties.Get('Config'))));
         end;
       end
       else if Group.Name = 'ItemGroup' then
@@ -242,7 +239,7 @@ begin
     Result.Config := Properties.Get('Config');
     Result.Platform := Properties.Get('Platform');
     Result.Defines := UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define')));
-    Result.DefineOrigins := Origins;
+    Result.DefineOrigins := Origins.ToArray;
     Result.SearchPaths := UniquePaths(Directory, TProjectPaths.SplitList(Properties.Get('DCC_UnitSearchPath')));
     Result.Namespaces := TProjectPaths.SplitList(Properties.Get('DCC_Namespace'));
     Result.Units := Units.ToArray;
@@ -251,6 +248,7 @@ begin
     Result.Platforms := nil;
     CollectTargets(Root, Result.Configs, Result.Platforms);
   finally
+    Origins.Free;
     Units.Free;
     Properties.Free;
     Root.Free;

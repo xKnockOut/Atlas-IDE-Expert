@@ -360,6 +360,7 @@ var
   Client: string;
 begin
   FList.Items.BeginUpdate;
+  FLog.Lines.BeginUpdate;
   try
     FList.Items.Clear;
     FLog.Lines.Clear;
@@ -402,6 +403,7 @@ begin
     for Line in Workspace.Events do
       FLog.Lines.Add(Line.Time + '  ' + Line.Text);
   finally
+    FLog.Lines.EndUpdate;
     FList.Items.EndUpdate;
   end;
 end;
