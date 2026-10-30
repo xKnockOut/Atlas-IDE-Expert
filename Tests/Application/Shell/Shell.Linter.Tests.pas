@@ -67,6 +67,9 @@ type
     /// Spalte (Exit-Code 3).</summary>
     [Test]
     procedure QueryFormatsAndExitCodes;
+    /// <summary>--hotspots (#1354): ohne Versionsverwaltung Exit-Code 3, mit Git-Repository der Bericht.</summary>
+    [Test]
+    procedure HotspotsNeedVersionControl;
     [Test]
     procedure SuppressionStatsGiveZero;
     [Test]
@@ -105,6 +108,9 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
+  Atlas.Core.Vcs.Contract,
+  Shell.Platform,
+  Shell.VcsChanges,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.FormatCheck,
   Shell.CommandLine,
@@ -284,6 +290,36 @@ begin
   TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"enabled": false}}');
   Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
     '--architecture', Report])), 'atlas.json schaltet nicht ab');
+end;
+
+procedure TShellLinterTests.HotspotsNeedVersionControl;
+var
+  mReport, mGit, mText: string;
+  mRunner: IAtlasVcsRunner;
+  mCommands: TArray<string>;
+  mCommand: string;
+begin
+  mReport := Path('hotspots.md');
+  // Der Temp-Ordner liegt in keiner Arbeitskopie: Grund auf stderr, Exit-Code 3.
+  Assert.AreEqual(3, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', mReport])));
+  Assert.IsFalse(TFile.Exists(mReport));
+  Assert.AreEqual(3, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', Path('hotspots.pdf')])));
+  mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
+  if mGit = '' then
+    Exit;
+  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mCommands := TArray<string>.Create('init -q', 'config user.name Atlas', 'config user.email test@example.org',
+    'config commit.gpgsign false', 'add Src', 'commit -q -m Start');
+  for mCommand in mCommands do
+    Assert.AreEqual(0, mRunner.Run(mGit, mCommand.Split([' ']), FFolder, 60000).ExitCode, mCommand);
+  Assert.AreEqual(0, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', mReport])));
+  mText := TFile.ReadAllText(mReport, TEncoding.UTF8);
+  Assert.IsTrue(mText.StartsWith('# Hotspots'), mText);
+  Assert.IsTrue(mText.Contains('1 Commits'), mText);
+  Assert.IsTrue(mText.Contains('Kaputt'), 'geänderte Unit im Bericht');
 end;
 
 procedure TShellLinterTests.ArchitectureCompareFailsOnNewCycle;

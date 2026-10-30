@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Architecture.Report.Tests;
 
 // Tests der Ausgaben der Architekturübersicht (#1118): Markdown, JSON, HTML
-// (offline, Daten eingebettet), MCP-Abschnitte und Unit-Steckbrief.
+// (offline, Daten eingebettet), MCP-Abschnitte und Unit-Steckbrief;
+// Zuordnung der Units mit Erklärung (#1368).
 
 interface
 
@@ -35,6 +36,16 @@ type
     procedure HeaderNamesChangedResolution;
     [Test]
     procedure NamesParentOfSplitSubsystem;
+    [Test]
+    procedure MarksFoundation;
+    [Test]
+    procedure ExplainsAssignment;
+    [Test]
+    procedure WithoutExplainAssignmentUnchanged;
+    [Test]
+    procedure AssignmentFoundationRowDoesNotCount;
+    [Test]
+    procedure ExplanationNamesActiveSettings;
   end;
 
 implementation
@@ -52,7 +63,8 @@ uses
   Atlas.Common.Architecture.MapTemplate,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
-  Atlas.Common.Architecture.UsesGraph.Tests;
+  Atlas.Common.Architecture.UsesGraph.Tests,
+  Atlas.Common.Architecture.Overview.Tests;
 
 /// <summary>Drei Namensräume wie in den Übersichtstests, dazu ein Zyklus über implementation in Data und eine
 /// Fundstelle für Ui.Main → Data.Model.</summary>
@@ -281,15 +293,16 @@ var
 begin
   mOverview := Sample;
   mText := TArchitectureReport.Markdown(mOverview);
-  Assert.IsFalse(Pos('Feinheit', mText) > 0, 'γ = 1,0 steht nicht im Kopf');
+  // Die Erklärung der Zuordnung (#1368) nennt alle Einstellungen; im Kopf steht γ nur, wenn es abweicht.
+  Assert.IsFalse(Pos('Feinheit γ', mText) > 0, 'γ = 1,0 steht nicht im Kopf');
   Assert.Contains(TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview)),
-    '"grouping":{"resolution":1}');
+    '"grouping":{"resolution":1,"maxShare":0.25,"minCohesion":0.3,"foundations":"separate"}');
   mOverview.Grouping.Resolution := 2.5;
   mText := TArchitectureReport.Markdown(mOverview);
   Assert.Contains(mText, 'Umfang: Projektgruppe, ohne Bibliotheks-Units, Feinheit γ = 2,5', False);
   Assert.Contains(TArchitectureReport.Text(mOverview, TArchitectureSection.Overview, 10), 'Feinheit γ = 2,5', False);
   Assert.Contains(TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview)),
-    '"grouping":{"resolution":2.5}');
+    '"grouping":{"resolution":2.5,');
   // Die HTML-Seite liest denselben Wert aus den Daten.
   Assert.Contains(TArchitectureReport.Html(mOverview), 'Feinheit γ = ', False);
 end;
@@ -312,6 +325,170 @@ begin
   Assert.Contains(TArchitectureReport.Markdown(mOverview), '### ' + mName + ' (Teil von App)');
   Assert.Contains(TArchitectureReport.Text(mOverview, TArchitectureSection.Subsystems, 10),
     mName + ' (Teil von App): ');
+end;
+
+procedure TArchitectureReportTests.MarksFoundation;
+var
+  mOverview: TArchitectureOverview;
+  mJson, mMarkdown, mText: string;
+begin
+  mOverview := Sample;
+  Assert.IsFalse(Pos('"foundation":true', TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview))) > 0);
+  // Teilsystem „Fundament“ (#1365): Kennzeichen, kein Zusammenhalt, Regel als Hinweis.
+  mOverview.Subsystems[0].Name := TArchitectureAnalyzer.FoundationName;
+  mOverview.Subsystems[0].Foundation := True;
+  mOverview.Subsystems[0].ColorSlot := -1;
+  mJson := TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview));
+  Assert.Contains(mJson, '"color":-1,"shade":0,"foundation":true');
+  mMarkdown := TArchitectureReport.Markdown(mOverview);
+  Assert.Contains(mMarkdown, '| Fundament | ');
+  Assert.Contains(mMarkdown, ' | – | ');
+  Assert.Contains(mMarkdown, 'Fundament: ' + TArchitectureAnalyzer.FoundationRule);
+  mText := TArchitectureReport.Text(mOverview, TArchitectureSection.Subsystems, 10);
+  Assert.Contains(mText, 'Fundament: ' + IntToStr(Length(mOverview.Subsystems[0].Units)) + ' Units, Zusammenhalt –');
+  Assert.Contains(mText, TArchitectureAnalyzer.FoundationRule);
+end;
+
+function AnalyzeUnits(const AUnits: TArray<TUnitIndex>; const AGrouping: TArchitectureGrouping):
+  TArchitectureOverview;
+var
+  mGraph: TUsesGraph;
+begin
+  mGraph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
+  try
+    Result := TArchitectureAnalyzer.Analyze(mGraph, nil, 5, AGrouping);
+  finally
+    mGraph.Free;
+  end;
+  Result.Title := 'Zuordnung';
+end;
+
+function UnitJson(const AOverview: TArchitectureOverview; const AName: string): TJSONObject;
+var
+  mValue: TJSONValue;
+begin
+  mValue := TJSONObject.ParseJSONValue(TArchitectureReport.Json(AOverview, TArchitectureLayouter.Compute(AOverview)));
+  try
+    Result := Item(mValue as TJSONObject, 'units', AOverview.IndexOf(AName)).Clone as TJSONObject;
+  finally
+    mValue.Free;
+  end;
+end;
+
+procedure TArchitectureReportTests.ExplainsAssignment;
+var
+  mOverview: TArchitectureOverview;
+  mMarkdown, mText, mJson, mHtml, mExplanation: string;
+  mUnit: TJSONObject;
+  mRows: TJSONArray;
+  mOwn, mOther: Integer;
+begin
+  mOverview := AnalyzeUnits(AssignmentProject, TArchitectureGrouping.Default);
+  mOwn := mOverview.Units[mOverview.IndexOf('Z.Own.Mid')].Subsystem;
+  mOther := mOverview.Units[mOverview.IndexOf('Z.Oth.U1')].Subsystem;
+  mExplanation := TArchitectureReport.GroupingExplanation(mOverview.Grouping);
+  // Markdown: Erklärung als Absatz unter „Teilsysteme“, knappe Units je Teilsystem.
+  mMarkdown := TArchitectureReport.Markdown(mOverview);
+  Assert.Contains(mMarkdown, mExplanation);
+  Assert.IsTrue(Pos('## Teilsysteme', mMarkdown) < Pos(mExplanation, mMarkdown));
+  Assert.Contains(mMarkdown, 'Knapp zugeordnet:'#13#10#13#10'- Z.Own.Mid: Oth erreicht 6 von 8, 3 Kanten fehlen zum Wechsel');
+  // MCP: Block „Zuordnung“.
+  mText := TArchitectureReport.UnitText(mOverview, 'Z.Own.Mid');
+  Assert.Contains(mText, 'Zuordnung (Kanten je Teilsystem, interface 2, implementation 1):');
+  Assert.Contains(mText, '  Own (eigenes) | 3 | 2 | 8'#13#10'  Oth | 2 | 2 | 6'#13#10);
+  Assert.Contains(mText, '  knapp: Oth erreicht 6 von 8, 3 Kanten fehlen zum Wechsel');
+  Assert.IsFalse(Pos('knapp', TArchitectureReport.UnitText(mOverview, 'Z.Own.U1')) > 0);
+  // JSON: Zeilen je Teilsystem und fehlende Kanten.
+  mUnit := UnitJson(mOverview, 'Z.Own.Mid');
+  try
+    mRows := mUnit.GetValue<TJSONArray>('assignment');
+    Assert.AreEqual(2, mRows.Count);
+    Assert.AreEqual(Format('[%d,3,2]', [mOwn]), mRows.Items[0].ToJSON);
+    Assert.AreEqual(Format('[%d,2,2]', [mOther]), mRows.Items[1].ToJSON);
+    Assert.AreEqual(3, mUnit.GetValue<Integer>('close'));
+  finally
+    mUnit.Free;
+  end;
+  mUnit := UnitJson(mOverview, 'Z.Own.U1');
+  try
+    Assert.IsNull(mUnit.GetValue('close'));
+  finally
+    mUnit.Free;
+  end;
+  mJson := TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview));
+  Assert.Contains(mJson, '"explanation":"Atlas bildet die Teilsysteme');
+  // HTML: Daten und Darstellung im Steckbrief.
+  mHtml := TArchitectureReport.Html(mOverview);
+  Assert.Contains(mHtml, '"assignment":[[');
+  Assert.Contains(mHtml, 'function assignmentInfo');
+  Assert.Contains(mHtml, 'id="explanation"');
+end;
+
+procedure TArchitectureReportTests.WithoutExplainAssignmentUnchanged;
+var
+  mOverview, mBefore: TArchitectureOverview;
+begin
+  mOverview := AnalyzeUnits(AssignmentProject, TArchitectureGrouping.Default);
+  mOverview.ExplainAssignment := False;
+  // Wie eine Übersicht ohne Zuordnung (Stand vor #1368).
+  mBefore := mOverview;
+  mBefore.Assignments := nil;
+  Assert.IsFalse(mOverview.ShowsAssignment);
+  Assert.AreEqual(TArchitectureReport.Markdown(mBefore), TArchitectureReport.Markdown(mOverview));
+  Assert.AreEqual(TArchitectureReport.UnitText(mBefore, 'Z.Own.Mid'), TArchitectureReport.UnitText(mOverview,
+    'Z.Own.Mid'));
+  Assert.AreEqual(TArchitectureReport.Json(mBefore, TArchitectureLayouter.Compute(mBefore)),
+    TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview)));
+  Assert.IsFalse(Pos('Knapp zugeordnet', TArchitectureReport.Markdown(mOverview)) > 0);
+  Assert.IsFalse(Pos('Zuordnung', TArchitectureReport.UnitText(mOverview, 'Z.Own.Mid')) > 0);
+  Assert.IsFalse(Pos('"assignment"', TArchitectureReport.Html(mOverview)) > 0);
+  Assert.IsFalse(Pos('"explanation":', TArchitectureReport.Html(mOverview)) > 0);
+end;
+
+procedure TArchitectureReportTests.AssignmentFoundationRowDoesNotCount;
+var
+  mOverview: TArchitectureOverview;
+  mGrouping: TArchitectureGrouping;
+  mText: string;
+  mUnit: TJSONObject;
+begin
+  mGrouping := TArchitectureGrouping.Default;
+  mGrouping.MaxShare := 0;
+  mGrouping.MinCohesion := 0;
+  mOverview := AnalyzeUnits(FoundationProject, mGrouping);
+  mText := TArchitectureReport.UnitText(mOverview, 'App.Ui.U2');
+  Assert.Contains(mText, '  Fundament | 1 | 0 | 2 (zählt nicht)');
+  Assert.Contains(mText, '  Ui (eigenes) | 0 | 2 | 2');
+  mUnit := UnitJson(mOverview, 'App.Ui.U2');
+  try
+    Assert.Contains(mUnit.GetValue<TJSONArray>('assignment').ToJSON, Format('[%d,1,0,0]',
+      [mOverview.Units[mOverview.IndexOf('App.Common.Logging')].Subsystem]));
+  finally
+    mUnit.Free;
+  end;
+end;
+
+procedure TArchitectureReportTests.ExplanationNamesActiveSettings;
+var
+  mGrouping: TArchitectureGrouping;
+  mText: string;
+begin
+  mText := TArchitectureReport.GroupingExplanation(TArchitectureGrouping.Default);
+  Assert.Contains(mText, 'uses-Kanten');
+  Assert.Contains(mText, 'Louvain');
+  Assert.Contains(mText, 'Einstellungen: Feinheit 1,0 · nachteilen ab 25 Prozent aller Units oder unter Zusammenhalt ' +
+    '0,3 (ab 30 Units) · Fundamente getrennt');
+  mGrouping := TArchitectureGrouping.Default;
+  mGrouping.Resolution := 1.5;
+  mGrouping.MaxShare := 0;
+  mGrouping.MinCohesion := 0;
+  mGrouping.Foundations := TArchitectureFoundations.Group;
+  mText := TArchitectureReport.GroupingExplanation(mGrouping);
+  Assert.Contains(mText, 'Einstellungen: Feinheit 1,5 · nicht nachteilen · Fundamente mitgruppiert.');
+  mGrouping.Foundations := TArchitectureFoundations.Attach;
+  mGrouping.MinCohesion := 0.5;
+  Assert.Contains(TArchitectureReport.GroupingExplanation(mGrouping),
+    '· nachteilen unter Zusammenhalt 0,5 (ab 30 Units) · Fundamente angehängt.');
 end;
 
 initialization

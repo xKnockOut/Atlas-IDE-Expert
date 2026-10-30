@@ -13,7 +13,9 @@
 //           (#1121, Pfad oder file-URI, relativ zum Projekt), "compare":
 //           false schaltet den Vergleich mit architecture.baseline ab,
 //           "resolution": Feinheit γ der Teilsysteme 0,2–5,0 (#1366;
-//           Vorgabe architecture.grouping.resolution, nur für diesen Aufruf)}
+//           Vorgabe architecture.grouping.resolution, nur für diesen Aufruf),
+//           "renameSubsystems": true rechnet einmal ohne Angleichung an den
+//           vorigen Stand (#1367, Befehl „Teilsysteme neu benennen“)}
 //   Antwort {"enabled": true, "root": Projektordner, "format": "json",
 //   "data": {…}} mit den Daten aus TArchitectureReport.Json (samt Lage der
 //   Karte; Pfade relativ zu "root"), sonst {"enabled": true, "root": …,
@@ -206,6 +208,7 @@ begin
   // Nur für diesen Aufruf; die Einstellung bleibt (#1366).
   if mFound then
     Request.Grouping.Resolution := mResolution;
+  Request.Rename := FlagOf(AParams, 'renameSubsystems', False);
   Result := FService.Overview(Request);
 end;
 

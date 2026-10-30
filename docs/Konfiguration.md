@@ -43,6 +43,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
 | `query` | global (settings.json) | object | – |  | Code-Abfragen über den Index (#1351): eine kleine Sprache wie „classes where inherits TForm and methods > 40 order by methods desc“ im Fenster „Atlas-Abfrage“, im MCP-Werkzeug query_code und mit AtlasServer --check <Ziel> --query. Felder und Zahlen stammen aus Index, Metriken, Uses-Graph, Formulardateien und Aufrufhierarchie (dieselben wie get_metrics und find_unused_code). |
 | `queries` | Projekt (atlas.json) | array<object> | `` | z. B. `{"name":"grosse-formulare","query":"classes where inherits TForm and methods > 40","failIfAny":true,"severity":"warning","message":"{name} hat {methods} Methoden"}` | Gespeicherte Code-Abfragen (#1351) für das Fenster „Atlas-Abfrage“, query_code und AtlasServer --query @name. Mit failIfAny wird jeder Treffer ein Befund der Regel query:<name> im Editor, bei --check und in SARIF; Baseline, Unterdrückungen und rules wirken wie bei anderen Regeln. |
+| `hotspots` | global (settings.json) | object | – |  | Hotspots: Units und Methoden, die oft geändert werden und zugleich komplex sind (Änderungen aus Git oder SVN im Zeitraum × kognitive Komplexität), mit Trend gegenüber vor drei Monaten und Änderungskopplung (Units ohne uses-Kante, die oft zusammen geändert werden). Fenster „Atlas-Hotspots“, Bericht (AtlasServer --hotspots <Datei.html\|.md\|.json>) und MCP-Werkzeug get_hotspots. Bibliotheks-Units und architecture.exclude zählen nicht; die Versionsverwaltung kommt aus vcs.provider. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `diagnostics` | gemischt, siehe unten | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
@@ -56,6 +57,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `memberOrder` | Projekt (atlas.json) | object | – |  | Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. |
 | `testUnits` | Projekt (atlas.json) | object | – |  | Testunits anlegen und zwischen Unit und Testunit wechseln: Namensmuster, Ordner neuer Testunits und Testprojekt. |
 | `minConfidence` | Projekt (atlas.json) | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
+| `fix` | Projekt (atlas.json) | object | – |  | Sammelkorrektur (--fix, MCP fix_findings, „Alle sicheren Treffer korrigieren …“ im Fenster „Atlas-Prüfung“): wendet nur sichere Korrekturen von Regeln mit safeFix im Katalog an. |
 | `exclude` | Projekt (atlas.json) | array<string> | – | z. B. `["ThirdParty/**","Generated/*.pas"]` | Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). |
 | `mcp` | gemischt, siehe unten | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}`, `{"prompts":true,"promptLanguage":"en"}` | MCP-Modus (--mcp) für KI-Assistenten. |
 | `format` | Projekt (atlas.json) | object | – |  | Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. |
@@ -243,6 +245,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
 | `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
 | `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
+| `architecture.explainAssignment` | global (settings.json) | boolean | `true` |  | Zuordnung jeder Unit erklären: Tabelle der Kanten je Teilsystem (interface, implementation, gewichtete Summe) im Hinweis und Steckbrief des Fensters, im Bericht und in get_architecture mit unit, dazu die Spalte „knapp“ für Units, bei denen ein anderes Teilsystem mindestens 75 % der Summe erreicht. |
 | `architecture.grouping` | global (settings.json) | object | – |  | Wie die Architekturübersicht die Units in Teilsysteme gruppiert (Louvain auf dem uses-Graphen). Gilt für Fenster, Bericht, AtlasServer --architecture und get_architecture. |
 
 ## query
@@ -250,6 +253,14 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `query.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = kein Fenster, kein Menü- und Palettenbefehl, kein query_code; --query endet mit Exitcode 3 und Hinweis. Gespeicherte Abfragen mit failIfAny melden dann nichts. |
+
+## hotspots
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `hotspots.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = kein Fenster, kein Menüeintrag, kein get_hotspots; AtlasServer --hotspots endet mit Exitcode 3. |
+| `hotspots.months` | global (settings.json) | integer | `12` | 1…60 | Ausgewerteter Zeitraum in Monaten (Commits seit heute minus months). |
+| `hotspots.coupling` | global (settings.json) | object | – |  | Änderungskopplung: Paare mit mindestens minCommits gemeinsamen Commits und einem Anteil von mindestens 70 % ohne uses-Kante zwischen ihnen; .pas/.dfm derselben Unit und Commits mit mehr als 50 Dateien zählen nicht. |
 
 ## diagnostics
 
@@ -345,6 +356,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `testUnits.pattern` | Projekt (atlas.json) | string | `"{unit}.Tests"` |  | Name der Testunit; {unit} steht für den Namen der getesteten Unit, z. B. "{unit}.Tests" oder "Test.{unit}". |
 | `testUnits.folder` | Projekt (atlas.json) | string | `""` |  | Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts. |
 | `testUnits.project` | Projekt (atlas.json) | string | `""` |  | Testprojekt (.dproj oder .dpr) relativ zur Wurzel; leer: das Projekt im Arbeitsbereich, dessen .dpr DUnitX oder DUnit verwendet. |
+
+## fix
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `fix.minConfidence` | Projekt (atlas.json) | string | `"high"` | `"medium"`, `"high"` | Untergrenze der Konfidenz für Sammelkorrekturen: Treffer darunter werden übersprungen und gezählt. fix_findings darf sie mit minConfidence nur anheben. |
 
 ## mcp
 

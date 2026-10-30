@@ -29,6 +29,12 @@
 //   --no-index            ohne Symbolindex prüfen (#1112); Regeln, die Typen anderer Units
 //                         oder der RTL brauchen, schweigen dann
 //   --index-cache <Ordner> Ordner der Index-Caches (Standard wie der Server, %LOCALAPPDATA%\Atlas)
+//   --fix <a,b|all>       Sammelkorrektur (#1352): sichere Korrekturen dieser Regeln anwenden (fix.minConfidence)
+//   --fix-dry-run         mit --fix nur den vereinigten Diff ausgeben (stdout bzw. --output), nichts schreiben
+//   --timings [<Datei>]   nach dem Lauf das Zeitprofil (#1356): langsamste Units und Regeln,
+//                         Indexzeit, Speicher; als Markdown, mit Endung .json als JSON; ohne
+//                         Datei auf stderr. Die Treffer bleiben unverändert auf stdout bzw. --output.
+//                         (Nicht --profile: Das wählt seit #146 das Regelprofil.)
 //
 // Formatieren ohne IDE (#1358), Ziel wie bei --check:
 //   --format-check        prüft, ob die Dateien den Formatregeln (format.*, .editorconfig) entsprechen;
@@ -52,6 +58,12 @@
 //                         aus atlas.json (queries) aus. --format text (Standard), json oder csv;
 //                         Exit-Code 0, Fehler in der Abfrage 3, query.enabled aus 3
 //   --fail-on-match       mit --query Exit-Code 1, sobald die Abfrage etwas findet
+// Hotspots (#1354):
+//   --hotspots <Datei>    Hotspots des Ziels aus --check (Standard: aktueller Ordner) aus
+//                         Änderungshäufigkeit und Komplexität samt Methoden und
+//                         Änderungskopplung als Markdown (.md), HTML-Seite mit Blasendiagramm
+//                         (.html) oder Daten (.json) schreiben; Exit-Code 3 ohne
+//                         Versionsverwaltung oder mit hotspots.enabled = false
 //
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
@@ -105,8 +117,13 @@ type
     NoIndex: Boolean;
     /// <summary>Ordner der Index-Caches für --check (#1112); '' = wie der Server.</summary>
     IndexCacheFolder: string;
+    /// <summary>--timings (#1356): Zeitprofil nach dem Lauf; TimingsFile '' = auf stderr.</summary>
+    Timings: Boolean;
+    TimingsFile: string;
     /// <summary>--architecture: Zieldatei des Architekturberichts (#1118, .md oder .html); '' = keiner.</summary>
     ArchitectureFile: string;
+    /// <summary>--hotspots: Zieldatei des Hotspot-Berichts (#1354, .md, .html oder .json); '' = keiner.</summary>
+    HotspotsFile: string;
     /// <summary>--compare: gespeicherter Architekturstand für den Vergleich (#1121); '' = keiner.</summary>
     CompareFile: string;
     /// <summary>--query: Code-Abfrage oder @name einer gespeicherten (#1351); '' = keine.</summary>
@@ -144,6 +161,10 @@ type
     McpRoot: string;
     /// <summary>Prozess-ID des Editors aus --clientProcessId; 0 = unbekannt.</summary>
     ClientProcessId: Cardinal;
+    /// <summary>--fix (#1352): Regeln der Sammelkorrektur, "all" = alle; nil = keine Sammelkorrektur.</summary>
+    FixRules: TArray<string>;
+    /// <summary>--fix-dry-run: nur den Diff ausgeben.</summary>
+    FixDryRun: Boolean;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
     Warnings: TArray<string>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
@@ -269,15 +290,15 @@ begin
     StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
     StringOption('--index-cache', @Result.IndexCacheFolder),
     StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile),
-    StringOption('--query', @Result.QueryText)];
+    StringOption('--query', @Result.QueryText), StringOption('--hotspots', @Result.HotspotsFile)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
     FlagOption('--changed-lines', @Result.ChangedLines), FlagOption('--update-baseline', @Result.UpdateBaseline),
     FlagOption('--suppression-stats', @Result.SuppressionStats), FlagOption('--metrics', @Result.Metrics),
     FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex),
-    FlagOption('--fail-on-match', @Result.FailOnMatch), FlagOption('--format-check', @Result.FormatCheck),
-    FlagOption('--format-write', @Result.FormatWrite)];
+    FlagOption('--fix-dry-run', @Result.FixDryRun), FlagOption('--fail-on-match', @Result.FailOnMatch),
+    FlagOption('--format-check', @Result.FormatCheck), FlagOption('--format-write', @Result.FormatWrite)];
 
   Index := Low(AArgs);
   while Index <= High(AArgs) do
@@ -352,6 +373,15 @@ begin
       if TakeValue then
         Result.UnitFilter := TFindingFilter.SplitList(Value);
     end
+    else if Name = '--fix' then
+    begin
+      if TakeValue then
+      begin
+        Result.FixRules := TFindingFilter.SplitList(Value);
+        if Result.FixRules = nil then
+          AddWarning('--fix erwartet Regeln, z. B. --fix redundant-cast oder --fix all');
+      end;
+    end
     else if Name = '--min-severity' then
     begin
       if TakeValue then
@@ -385,6 +415,18 @@ begin
       end
       else
         Result.ChangedRef := DefaultChangedBase;
+    end
+    else if Name = '--timings' then
+    begin
+      // Datei optional: --timings, --timings=profil.md oder --timings profil.md
+      Result.Timings := True;
+      if HasValue then
+        Result.TimingsFile := Value
+      else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
+      begin
+        Inc(Index);
+        Result.TimingsFile := AArgs[Index];
+      end;
     end
     else if Name = '--diff' then
     begin

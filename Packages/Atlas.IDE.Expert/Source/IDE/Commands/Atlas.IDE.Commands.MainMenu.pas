@@ -13,7 +13,8 @@
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 // „Prozesse am Projekt…“ (#62) zeigt Index-Cache, Sperre und die LSP- und
-// MCP-Prozesse am Projekt; sichtbar nach diagnostics.processes.
+// MCP-Prozesse am Projekt; sichtbar nach diagnostics.processes. „Atlas-Server:
+// Speicher und Laufzeiten“ (#1356) sichtbar nach server.statusWindow.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
 // „Einrichtung prüfen…“ (#625) ruft OnSetup auf.
 // „Tastenkürzel-Übersicht…“ (#520) ruft OnKeyMap auf; sichtbar nach
@@ -89,6 +90,9 @@ type
     FKeyMapItem: TMenuItem;
     /// <summary>„Prozesse am Projekt…“ (#62), sichtbar nach diagnostics.processes.</summary>
     FProcessesItem: TMenuItem;
+    /// <summary>„Atlas-Server: Speicher und Laufzeiten“ (#1356), sichtbar nach server.statusWindow.</summary>
+    FServerStatusItem: TMenuItem;
+    FOnServerStatus: TProc;
     FOnWelcome: TProc<TAtlasWelcomeCommand>;
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
@@ -126,6 +130,9 @@ type
     FViewArchitecture: TMenuItem;
     FQueryItem: TMenuItem;
     FViewQuery: TMenuItem;
+    /// <summary>Fenster „Atlas-Hotspots“ (#1354) im Atlas-Menü und unter Ansicht › Atlas.</summary>
+    FHotspotsItem: TMenuItem;
+    FViewHotspots: TMenuItem;
     /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FUnitRelationsItem: TMenuItem;
     FViewUnitRelations: TMenuItem;
@@ -150,6 +157,7 @@ type
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
     procedure QueryClick(Sender: TObject);
+    procedure HotspotsClick(Sender: TObject);
     procedure UnitRelationsClick(Sender: TObject);
     procedure BoardClick(Sender: TObject);
     procedure SymbolPathClick(Sender: TObject);
@@ -168,6 +176,7 @@ type
     procedure DiagnosticExportClick(Sender: TObject);
     procedure ProcessesClick(Sender: TObject);
     procedure BugReportClick(Sender: TObject);
+    procedure ServerStatusClick(Sender: TObject);
     procedure SetupClick(Sender: TObject);
     procedure KeyMapClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
@@ -184,6 +193,8 @@ type
     property OnRename: TProc read FOnRename write FOnRename;
     /// <summary>„Fehlerbericht erstellen…“ (#108).</summary>
     property OnBugReport: TProc read FOnBugReport write FOnBugReport;
+    /// <summary>Fenster „Atlas-Server“ (#1356).</summary>
+    property OnServerStatus: TProc read FOnServerStatus write FOnServerStatus;
     /// <summary>„Einrichtung prüfen…“ (#625).</summary>
     property OnSetup: TProc read FOnSetup write FOnSetup;
     /// <summary>„Tastenkürzel-Übersicht…“ (#520).</summary>
@@ -226,6 +237,7 @@ uses
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
   Atlas.IDE.Query.Service,
+  Atlas.IDE.Hotspots.Service,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.EditorToolbar.Service,
@@ -330,6 +342,7 @@ begin
   FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
   // Code-Abfragen (#1351).
   FQueryItem := AddItem(TAtlasTextId.QueryCommand, 0, QueryClick);
+  FHotspotsItem := AddItem(TAtlasTextId.HotspotsCommand, 0, HotspotsClick);
   FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
   // Weg zwischen Symbolen (#1117).
   FSymbolPathItem := AddItem(TAtlasTextId.SymbolPathCommand, 0, SymbolPathClick);
@@ -416,6 +429,7 @@ begin
   AddItem(TAtlasTextId.SetupMenu, 0, SetupClick);
   AddItem(TAtlasTextId.DiagExportMenu, 0, DiagnosticExportClick);
   FProcessesItem := AddItem(TAtlasTextId.ProcessesMenu, 0, ProcessesClick);
+  FServerStatusItem := AddItem(TAtlasTextId.ServerWindowCommand, 0, ServerStatusClick);
   AddItem(TAtlasTextId.BugReportMenu, 0, BugReportClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
@@ -463,6 +477,10 @@ begin
       FViewQuery.Caption := TAtlasStrings.Text(TAtlasTextId.QueryViewMenu);
       FViewQuery.OnClick := QueryClick;
       FViewAtlas.Add(FViewQuery);
+      FViewHotspots := TMenuItem.Create(FViewAtlas);
+      FViewHotspots.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsViewMenu);
+      FViewHotspots.OnClick := HotspotsClick;
+      FViewAtlas.Add(FViewHotspots);
       FViewUnitRelations := TMenuItem.Create(FViewAtlas);
       FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
       FViewUnitRelations.OnClick := UnitRelationsClick;
@@ -728,6 +746,18 @@ begin
       end);
 end;
 
+procedure TAtlasMainMenu.ServerStatusClick(Sender: TObject);
+begin
+  if not Assigned(FOnServerStatus) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked('Atlas.ServerStatus');
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnServerStatus();
+    end);
+end;
+
 procedure TAtlasMainMenu.SetupClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked(TAtlasSetupChecklist.CommandId);
@@ -760,6 +790,9 @@ begin
   // Prozesse am Projekt (#62) nach diagnostics.processes.
   if FProcessesItem <> nil then
     FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
+  // Fenster „Atlas-Server“ (#1356) nach server.statusWindow.
+  if FServerStatusItem <> nil then
+    FServerStatusItem.Visible := TAtlasIdeSettings.Current.ServerStatusWindow and Assigned(FOnServerStatus);
   // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
   if FCallDiagramItem <> nil then
     FCallDiagramItem.Visible := TAtlasIdeSettings.Current.CallHierarchyDiagram;
@@ -793,6 +826,11 @@ begin
     FQueryItem.Visible := TAtlasIdeCodeQuery.Enabled;
   if FViewQuery <> nil then
     FViewQuery.Visible := TAtlasIdeCodeQuery.Enabled;
+  // Hotspots (#1354) nach hotspots.enabled.
+  if FHotspotsItem <> nil then
+    FHotspotsItem.Visible := TAtlasIdeHotspots.Enabled;
+  if FViewHotspots <> nil then
+    FViewHotspots.Visible := TAtlasIdeHotspots.Enabled;
   // Unit-Beziehungen (#593) am selben Schalter.
   if FUnitRelationsItem <> nil then
     FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
@@ -803,7 +841,8 @@ begin
     FViewBoard.Visible := TAtlasIdeSettings.Current.IssuesBoard;
   if FViewAtlas <> nil then
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled or
-      TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard or TAtlasIdeCodeQuery.Enabled;
+      TAtlasIdeHotspots.Enabled or TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard or
+        TAtlasIdeCodeQuery.Enabled;
   // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
   if FSymbolPathItem <> nil then
     FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
@@ -1040,6 +1079,16 @@ begin
     procedure
     begin
       TAtlasIdeCodeQuery.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.HotspotsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Hotspots');
+  TAtlasGuard.Run(TAtlasFeature.Hotspots,
+    procedure
+    begin
+      TAtlasIdeHotspots.ShowWindow;
     end);
 end;
 

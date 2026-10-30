@@ -42,6 +42,9 @@
 // AContext.Cancelled und bricht mit ERuleCheckCancelled ab. Früher lief eine
 // abgebrochene oder überholte Prüfung bis zum Ende weiter (bis 240 s). Die
 // langsamste Regel ab SlowRuleMs geht als slowRule/slowRuleMs ins Diagnoselog.
+// Dieselbe Messung geht an den Profiler des Threads (TCheckProfiler, #1356),
+// wenn die Projektprüfung oder --check einen angehängt hat: Summe je Regel
+// über den Prüflauf für das Fenster „Atlas-Server“ und --timings.
 //
 // Robustheit (#1094, Bericht M1): Die Regeln und ihre Dienste gehen iterativ
 // durch den Baum (TSyntaxNode.Walk/Search oder eigener Stapel), auch lange
@@ -116,6 +119,7 @@ uses
   System.StrUtils,
   System.Diagnostics,
   System.Generics.Defaults,
+  Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Documents.Contract,
@@ -608,6 +612,7 @@ begin
       Context.UsesCycleImplementation := Settings.DiagnosticsUsesCycleImplementation;
       Context.SortUses := Settings.SortUses;
       Context.SortUsesByNamespace := Settings.SortUsesByNamespace;
+      Context.UsesKeep := Settings.UsesKeep;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als
@@ -641,6 +646,9 @@ begin
       if Failed then
         Continue;
       Elapsed := Watch.ElapsedMilliseconds;
+      // Zeitprofil des Prüflaufs (#1356): dieselbe Messung, an den Profiler des Threads, falls einer hängt.
+      TCheckProfiler.RuleTimed(Descriptor.Id, TCheckProfiler.TicksToMicroseconds(Watch.ElapsedTicks,
+        TStopwatch.Frequency));
       if Elapsed >= SlowRuleMs then
         TRequestDiagnostics.Slowest('slowRule', Descriptor.Id, Integer(Elapsed));
       RanIds.Add(LowerCase(Descriptor.Id));
@@ -659,8 +667,11 @@ begin
       Report := TRuleReport.Create(AfterIds[Index], AfterSeverities[Index], Findings);
       TRequestDiagnostics.CurrentRule(AfterIds[Index]);
       Before := Findings.Count;
+      Watch := TStopwatch.StartNew;
       try
         Afters[Index].CheckFindings(AfterContexts[Index], Findings.ToArray, RanIds.ToArray, Report);
+        TCheckProfiler.RuleTimed(AfterIds[Index], TCheckProfiler.TicksToMicroseconds(Watch.ElapsedTicks,
+          TStopwatch.Frequency));
       except
         on ERuleCheckCancelled do
           raise;

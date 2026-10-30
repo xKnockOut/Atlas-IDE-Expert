@@ -37,6 +37,9 @@ type
     procedure ReadsRestricted;
     [Test]
     procedure ReadsProfile;
+    /// <summary>#1356: --timings mit und ohne Datei, unabhängig vom Regelprofil --profile.</summary>
+    [Test]
+    procedure ReadsTimings;
     [Test]
     procedure WarnsAboutInvalidLinterValues;
     [Test]
@@ -46,6 +49,9 @@ type
     /// <summary>Alle Text- und Schalterparameter der Tabelle (S-02), auch mit Großbuchstaben.</summary>
     [Test]
     procedure ReadsTableOptions;
+    /// <summary>#1352: Sammelkorrektur.</summary>
+    [Test]
+    procedure ReadsFixArguments;
     /// <summary>#1358: --format-check, --format-write und --format diff.</summary>
     [Test]
     procedure ReadsFormatterArguments;
@@ -204,6 +210,12 @@ begin
   Options := TCommandLineOptions.Parse(['--architecture=Bericht.html']);
   Assert.AreEqual(0, Integer(Length(Options.Warnings)));
   Assert.AreEqual('Bericht.html', Options.ArchitectureFile, '--architecture (#1118)');
+  Assert.AreEqual('', Options.HotspotsFile);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--hotspots', 'hotspots.html']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('hotspots.html', Options.HotspotsFile, '--hotspots (#1354)');
+  Assert.AreEqual('App.dproj', Options.CheckTarget);
+  Options := TCommandLineOptions.Parse(['--architecture=Bericht.html']);
   Assert.AreEqual('', Options.CheckTarget);
   // Vergleich (#1121): Abweichungsarten bei --fail-on ohne Warnung, der Wert bleibt für den Bericht.
   Options := TCommandLineOptions.Parse(['--architecture', 'neu.json', '--compare', 'alt.json', '--fail-on',
@@ -262,6 +274,28 @@ begin
   Assert.AreEqual('', Options.ChangedRef);
 end;
 
+procedure TCommandLineOptionsTests.ReadsTimings;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--timings']);
+  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
+  Assert.IsTrue(mOptions.Timings);
+  Assert.AreEqual('', mOptions.TimingsFile);
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--timings', 'profil.md', '--profile', 'strict']);
+  Assert.AreEqual('profil.md', mOptions.TimingsFile);
+  Assert.AreEqual('strict', mOptions.Profile);
+  mOptions := TCommandLineOptions.Parse(['--timings=profil.json', '--check', 'App.dproj']);
+  Assert.AreEqual('profil.json', mOptions.TimingsFile);
+  Assert.AreEqual('App.dproj', mOptions.CheckTarget);
+  mOptions := TCommandLineOptions.Parse(['--timings', '--check', 'App.dproj']);
+  Assert.IsTrue(mOptions.Timings);
+  Assert.AreEqual('', mOptions.TimingsFile);
+  Assert.AreEqual('App.dproj', mOptions.CheckTarget);
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj']);
+  Assert.IsFalse(mOptions.Timings);
+end;
+
 procedure TCommandLineOptionsTests.ReadsProfile;
 var
   Options: TCommandLineOptions;
@@ -311,6 +345,23 @@ begin
   Assert.IsFalse(Options.Mcp or Options.Restricted);
   // --include-uncommitted ohne Ref: Standardbasis.
   Assert.AreEqual(TCommandLineOptions.DefaultChangedBase, Options.ChangedRef);
+end;
+
+procedure TCommandLineOptionsTests.ReadsFixArguments;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix', 'redundant-cast, unused-uses',
+    '--fix-dry-run']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('redundant-cast|unused-uses', string.Join('|', Options.FixRules));
+  Assert.IsTrue(Options.FixDryRun);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix=all']);
+  Assert.AreEqual('all', string.Join('|', Options.FixRules));
+  Assert.IsFalse(Options.FixDryRun);
+  Assert.AreEqual(0, Integer(Length(TCommandLineOptions.Parse(['--check', 'App.dproj']).FixRules)));
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix', ',']);
+  Assert.AreEqual(1, Integer(Length(Options.Warnings)));
 end;
 
 procedure TCommandLineOptionsTests.ReadsFormatterArguments;

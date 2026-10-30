@@ -6,13 +6,19 @@
 // Caches auf der Platte, die letzte Aktualisierung je Ordner und die Zahl der
 // Units mit ausgelagerten Verwendungen (Einstellungsseite des Plugins); seit
 // #261 der Weg zum Compiler und, wenn keiner nutzbar ist, Grund und Ausweg.
+// Seit #1356 (Fenster „Atlas-Server“, --timings, MCP get_server_status)
+// zusätzlich, rückwärtsverträglich unter neuen Schlüsseln: Prozess (pid,
+// Version, Start, Zustand), Speicher je Bereich gegen das Budget, Zeitprofil
+// des letzten Prüflaufs, Warteschlange von Index und Prüfung und die
+// Trefferquoten von Index-Cache und Syntaxbaum-Cache.
 
 interface
 
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.JsonRpc.Statistics;
+  Atlas.Common.JsonRpc.Statistics,
+  Atlas.Common.Diagnostics.CheckProfile;
 
 type
   TWorkspaceStatus = record
@@ -42,7 +48,47 @@ type
     function ProjectText: string;
   end;
 
+  /// <summary>Speicher je Bereich in Byte (#1356), geschätzt außer Total.</summary>
+  TServerMemory = record
+    /// <summary>Symbole und uses der Projekt-Units.</summary>
+    Symbols: Int64;
+    /// <summary>Verwendungen, soweit nicht ausgelagert.</summary>
+    Usages: Int64;
+    /// <summary>Symbole und uses der Bibliotheks-Units.</summary>
+    LibraryUnits: Int64;
+    /// <summary>Gemeinsame Syntaxbäume der geöffneten Dokumente (TreeCache).</summary>
+    TreeCache: Int64;
+    /// <summary>Text der geöffneten Dokumente.</summary>
+    Documents: Int64;
+    /// <summary>Belegter Speicher des Prozesses (Heap); -1 = unbekannt.</summary>
+    Total: Int64;
+    /// <summary>Budget des Index; 0 = unbegrenzt.</summary>
+    Budget: Int64;
+    /// <summary>Total ohne die geschätzten Bereiche; 0, wenn die Schätzung darüber liegt oder Total unbekannt ist.
+    /// </summary>
+    function Rest: Int64;
+    /// <summary>Summe der geschätzten Bereiche ohne Rest.</summary>
+    function Estimated: Int64;
+    /// <summary>Index (Symbole, Verwendungen, Bibliothek) über dem Budget bzw. schon verkleinert.</summary>
+    function OverBudget(ACompactUnits, AOffloadedUnits: Integer): Boolean;
+  end;
+
+  /// <summary>Warteschlange der Aufbauten und der Projektprüfung (#1356).</summary>
+  TServerQueue = record
+    IndexWaiting: Integer;
+    IndexRunning: Integer;
+    CheckWaiting: Integer;
+    CheckRunning: Integer;
+    /// <summary>Längste Wartezeit über beide Schlangen.</summary>
+    OldestWaitMs: Int64;
+  end;
+
   TServerStatus = record
+  public const
+    StateLoading = 'loading';
+    StateReady = 'ready';
+    StateChecking = 'checking';
+  public
     Units: Integer;
     Symbols: Integer;
     /// <summary>Belegter Speicher in Byte; -1 = unbekannt.</summary>
@@ -67,9 +113,30 @@ type
     CompilerBackend: string;
     /// <summary>Grund und Ausweg, wenn kein Compiler nutzbar ist; sonst ''.</summary>
     CompilerReason: string;
+    /// <summary>Prozess (#1356): Kennung, Version, Start (Ortszeit), Laufzeit und Zustand (StateLoading, StateReady,
+    /// StateChecking); ProcessId 0 = nicht erhoben (ältere Aufrufer).</summary>
+    ProcessId: Cardinal;
+    Version: string;
+    Started: TDateTime;
+    UptimeMs: Int64;
+    State: string;
+    Memory: TServerMemory;
+    CheckRun: TCheckRunProfile;
+    Queue: TServerQueue;
+    /// <summary>Units aus dem Index-Cache in Prozent der geladenen; -1 ohne Indexlauf.</summary>
+    IndexCacheHitPercent: Integer;
+    /// <summary>Zugriffe auf den Syntaxbaum-Cache ohne neuen Parse in Prozent; -1 ohne Zugriff.</summary>
+    TreeCacheHitPercent: Integer;
+    TreeCacheTrees: Integer;
+    /// <summary>Units aus dem Cache in Prozent aller Units der Workspaces; -1 ohne Indexlauf.</summary>
+    class function CacheHitPercent(const AWorkspaces: TArray<TWorkspaceStatus>): Integer; static;
+    /// <summary>Text zum Zustand: „lädt“, „bereit“, „prüft“.</summary>
+    function StateText: string;
     /// <summary>Der Aufrufer übernimmt das Objekt; enthält zusätzlich "markdown".</summary>
     function ToJson: TJSONObject;
     function ToMarkdown: string;
+  private
+    procedure AppendDiagnostics(ABuilder: TStringBuilder);
   end;
 
 const
@@ -114,6 +181,94 @@ begin
     Result := Result + ' · ausgewählt';
 end;
 
+{ TServerMemory }
+
+function TServerMemory.Estimated: Int64;
+begin
+  Result := Symbols + Usages + LibraryUnits + TreeCache + Documents;
+end;
+
+function TServerMemory.Rest: Int64;
+begin
+  Result := 0;
+  if Total > Estimated then
+    Result := Total - Estimated;
+end;
+
+function TServerMemory.OverBudget(ACompactUnits, AOffloadedUnits: Integer): Boolean;
+begin
+  Result := (Budget > 0) and ((Symbols + Usages + LibraryUnits > Budget) or (ACompactUnits > 0) or
+    (AOffloadedUnits > 0));
+end;
+
+{ TServerStatus }
+
+class function TServerStatus.CacheHitPercent(const AWorkspaces: TArray<TWorkspaceStatus>): Integer;
+var
+  mWorkspace: TWorkspaceStatus;
+  mLoaded, mCached: Int64;
+begin
+  mLoaded := 0;
+  mCached := 0;
+  for mWorkspace in AWorkspaces do
+    if mWorkspace.LastIndexMs >= 0 then
+    begin
+      Inc(mLoaded, mWorkspace.Parsed + mWorkspace.FromCache);
+      Inc(mCached, mWorkspace.FromCache);
+    end;
+  if mLoaded = 0 then
+    Exit(-1);
+  Result := Round(mCached * 100 / mLoaded);
+end;
+
+function TServerStatus.StateText: string;
+begin
+  if State = StateLoading then
+    Result := 'lädt'
+  else if State = StateChecking then
+    Result := 'prüft'
+  else
+    Result := 'bereit';
+end;
+
+procedure TServerStatus.AppendDiagnostics(ABuilder: TStringBuilder);
+var
+  mProfile: string;
+begin
+  ABuilder.Append(#10).Append(Format('- Prozess %d, Version %s, läuft seit %d s, %s',
+    [ProcessId, Version, UptimeMs div 1000, StateText])).Append(#10);
+  ABuilder.Append(#10).Append('| Speicher | MB |').Append(#10);
+  ABuilder.Append('|---|---:|').Append(#10);
+  ABuilder.Append('| Symbole | ').Append(MegaBytes(Memory.Symbols)).Append(' |').Append(#10);
+  ABuilder.Append('| Verwendungen | ').Append(MegaBytes(Memory.Usages)).Append(' |').Append(#10);
+  ABuilder.Append('| Bibliotheks-Units | ').Append(MegaBytes(Memory.LibraryUnits)).Append(' |').Append(#10);
+  ABuilder.Append('| Syntaxbaum-Cache | ').Append(MegaBytes(Memory.TreeCache)).Append(' |').Append(#10);
+  ABuilder.Append('| Offene Dokumente | ').Append(MegaBytes(Memory.Documents)).Append(' |').Append(#10);
+  ABuilder.Append('| Rest | ').Append(MegaBytes(Memory.Rest)).Append(' |').Append(#10);
+  if Memory.Total >= 0 then
+    ABuilder.Append('| Gesamt | ').Append(MegaBytes(Memory.Total)).Append(' |').Append(#10);
+  if Memory.Budget > 0 then
+    ABuilder.Append('| Budget des Index | ').Append(MegaBytes(Memory.Budget)).Append(' |').Append(#10);
+  if Memory.OverBudget(CompactUnits, OffloadedUnits) then
+    ABuilder.Append(#10).Append('Budget überschritten: Verwendungen werden ausgelagert.').Append(#10);
+  ABuilder.Append(#10).Append(Format('- Warteschlange: Index %d wartend, %d laufend; Prüfung %d wartend, %d laufend; ' +
+    'älteste Wartezeit %d ms', [Queue.IndexWaiting, Queue.IndexRunning, Queue.CheckWaiting, Queue.CheckRunning,
+    Queue.OldestWaitMs])).Append(#10);
+  ABuilder.Append('- Cache-Treffer: ');
+  if IndexCacheHitPercent >= 0 then
+    ABuilder.Append(Format('Index %d %%', [IndexCacheHitPercent]))
+  else
+    ABuilder.Append('Index –');
+  if TreeCacheHitPercent >= 0 then
+    ABuilder.Append(Format(', Syntaxbäume %d %% (%d im Speicher)', [TreeCacheHitPercent, TreeCacheTrees]))
+  else
+    ABuilder.Append(', Syntaxbäume –');
+  ABuilder.Append(#10);
+  mProfile := CheckRun.ToMarkdown;
+  if mProfile <> '' then
+    ABuilder.Append(#10).Append(mProfile);
+end;
+
 function TServerStatus.ToMarkdown: string;
 var
   Builder: TStringBuilder;
@@ -155,6 +310,8 @@ begin
         Builder.Append(', Cache ').Append(MegaBytes(Workspace.CacheBytes + Workspace.LibraryCacheBytes));
         Builder.Append(#10);
       end;
+    if ProcessId <> 0 then
+      AppendDiagnostics(Builder);
     if Length(Requests) > 0 then
     begin
       Builder.Append(#10).Append('| Methode | Anzahl | Mittel ms | Max ms | Fehler |').Append(#10);
@@ -229,6 +386,40 @@ begin
     Item.AddPair('backend', CompilerBackend);
     Item.AddPair('reason', CompilerReason);
     Result.AddPair('compiler', Item);
+  end;
+  if ProcessId <> 0 then
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('pid', TJSONNumber.Create(ProcessId));
+    Item.AddPair('version', Version);
+    Item.AddPair('started', DateText(Started));
+    Item.AddPair('uptimeMs', TJSONNumber.Create(UptimeMs));
+    Item.AddPair('state', State);
+    Result.AddPair('process', Item);
+    Item := TJSONObject.Create;
+    Item.AddPair('symbols', TJSONNumber.Create(Memory.Symbols));
+    Item.AddPair('usages', TJSONNumber.Create(Memory.Usages));
+    Item.AddPair('libraryUnits', TJSONNumber.Create(Memory.LibraryUnits));
+    Item.AddPair('treeCache', TJSONNumber.Create(Memory.TreeCache));
+    Item.AddPair('documents', TJSONNumber.Create(Memory.Documents));
+    Item.AddPair('rest', TJSONNumber.Create(Memory.Rest));
+    Item.AddPair('total', TJSONNumber.Create(Memory.Total));
+    Item.AddPair('budget', TJSONNumber.Create(Memory.Budget));
+    Item.AddPair('overBudget', TJSONBool.Create(Memory.OverBudget(CompactUnits, OffloadedUnits)));
+    Result.AddPair('memory', Item);
+    Result.AddPair('checkRun', CheckRun.ToJson);
+    Item := TJSONObject.Create;
+    Item.AddPair('indexWaiting', TJSONNumber.Create(Queue.IndexWaiting));
+    Item.AddPair('indexRunning', TJSONNumber.Create(Queue.IndexRunning));
+    Item.AddPair('checkWaiting', TJSONNumber.Create(Queue.CheckWaiting));
+    Item.AddPair('checkRunning', TJSONNumber.Create(Queue.CheckRunning));
+    Item.AddPair('oldestWaitMs', TJSONNumber.Create(Queue.OldestWaitMs));
+    Result.AddPair('queue', Item);
+    Item := TJSONObject.Create;
+    Item.AddPair('index', TJSONNumber.Create(IndexCacheHitPercent));
+    Item.AddPair('trees', TJSONNumber.Create(TreeCacheHitPercent));
+    Item.AddPair('treeCount', TJSONNumber.Create(TreeCacheTrees));
+    Result.AddPair('cacheHits', Item);
   end;
   Result.AddPair('markdown', ToMarkdown);
 end;

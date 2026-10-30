@@ -8,19 +8,35 @@
 // JSON (Format 1; Nummern beziehen sich auf "units" bzw. "subsystems"):
 //   {"format": 1, "title": "Projekt", "created": "2026-10-23T10:00:00",
 //    "generation": 7, "durationMs": 12, "scope": "projectGroup",
-//    "includeLibrary": false, "grouping": {"resolution": 1},
+//    "includeLibrary": false,
+//    "grouping": {"resolution": 1, "maxShare": 0.25, "minCohesion": 0.3,
+//                 "foundations": "separate"},
 //    "excludes": ["Tests/**"],
 //    "summary": {"units": 3, "edges": 2, "subsystems": 1, "cycles": 0,
 //                "interfaceCycles": 0, "crossLinks": 0, "outliers": 0},
 //    "units": [{"name": "A", "file": "Source/A.pas", "subsystem": 0,
 //               "direct": 1, "total": 2, "uses": 0, "role": "foundation",
-//               "library": false, "x": 0, "y": 0}],
+//               "library": false, "x": 0, "y": 0,
+//               "assignment": [[0, 3, 2], [1, 2, 2], [2, 1, 0, 0]],
+//               "close": 3}],
+//    ("assignment" und "explanation" nur mit architecture.explainAssignment,
+//     #1368: je Teilsystem [Nummer, interface-Kanten, implementation-Kanten],
+//     nach gewichteter Summe absteigend; vierte Stelle 0 = zählt nicht, Kanten
+//     zum Fundament. "close" nur bei knapper Zuordnung: fehlende gewichtete
+//     Kanten zum Wechsel.)
+//    "explanation": "Atlas bildet die Teilsysteme …",
+//    "aligned": {"source": "baseline", "at": "2026-10-29T14:23:00", "kept": 5},
+//    ("aligned" nur, wenn Farben und Namen an einen vorigen Stand angeglichen
+//     wurden, #1367: "baseline" = architecture.baseline, "last" = zuletzt
+//     berechneter Stand; "at" = Zeitpunkt des Stands, "kept" = Teilsysteme,
+//     die Farbe und Namen behielten.)
 //    "edges": [[0, 1, "i"], [1, 2, "m"]],            (i = interface, m = implementation)
 //    "central": [0, 1],
 //    "subsystems": [{"name": "Kern", "units": [0, 1], "central": 0,
 //                    "inner": 2, "outer": 0, "cohesion": 1, "isolated": false,
-//                    "color": 0, "shade": 0, "parent": "Common",
-//                    "x": 0, "y": 0, "r": 70}],         ("parent" nur bei nachgeteilten, #1364)
+//                    "color": 0, "shade": 0, "foundation": true, "parent": "Common",
+//                    "x": 0, "y": 0, "r": 70}],         ("parent" nur bei nachgeteilten, #1364;
+//                                                        "foundation" nur am Teilsystem „Fundament“, #1365)
 //    "outliers": [{"unit": 3, "suggested": 1, "reason": "namespace",
 //                  "inside": 2, "toward": 0}],
 //    "cycles": [{"interfaceOnly": true, "units": [0, 1], "component": [0, 1],
@@ -93,6 +109,16 @@ type
     class function CycleCaption(const ACycle: TOverviewCycle): string; static;
     /// <summary>"A → B → A" eines Zyklus.</summary>
     class function CyclePath(const AOverview: TArchitectureOverview; const ACycle: TOverviewCycle): string; static;
+    /// <summary>Wie Atlas die Teilsysteme bildet (#1368): drei Sätze und die aktiven Einstellungen AGrouping.
+    /// </summary>
+    class function GroupingExplanation(const AGrouping: TArchitectureGrouping): string; static;
+    /// <summary>„Teilsysteme an Stand vom … angeglichen (…)“ (#1367); '' ohne Angleichung.</summary>
+    class function AlignedText(const AOverview: TArchitectureOverview): string; static;
+    /// <summary>"Data erreicht 6 von 8, 3 Kanten fehlen zum Wechsel"; '' bei klarer Zuordnung.</summary>
+    class function CloseText(const AOverview: TArchitectureOverview; const AAssignment: TOverviewAssignment): string;
+      static;
+    /// <summary>Block „Zuordnung“ einer Unit (get_architecture mit unit); '' ohne explainAssignment.</summary>
+    class function AssignmentText(const AOverview: TArchitectureOverview; AUnit: Integer): string; static;
   private
     class function JsonWith(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
       const AExtra: string): string; static;
@@ -187,6 +213,27 @@ begin
     Result := Result + ' (Teil von ' + ASubsystem.Parent + ')';
 end;
 
+/// <summary>Zusammenhalt in Prozent; „–“ beim Teilsystem „Fundament“ (#1365).</summary>
+function CohesionText(const ASubsystem: TOverviewSubsystem): string;
+begin
+  if ASubsystem.Foundation then
+    Result := '–'
+  else
+    Result := Percent(ASubsystem.Cohesion);
+end;
+
+/// <summary>Hinweis, nach welcher Regel das Teilsystem „Fundament“ entstand; '' ohne Fundament.</summary>
+function FoundationNote(const AOverview: TArchitectureOverview): string;
+var
+  mSubsystem: TOverviewSubsystem;
+begin
+  Result := '';
+  for mSubsystem in AOverview.Subsystems do
+    if mSubsystem.Foundation then
+      Result := TArchitectureAnalyzer.FoundationName + ': ' + TArchitectureAnalyzer.FoundationRule +
+        '; Kanten dorthin zählen nicht als Querverbindung und nicht im Zusammenhalt.';
+end;
+
 function CreatedText(const AOverview: TArchitectureOverview): string;
 begin
   Result := FormatDateTime('yyyy-mm-dd hh:nn', AOverview.Created);
@@ -231,6 +278,111 @@ begin
 end;
 
 { TArchitectureReport }
+
+class function TArchitectureReport.AlignedText(const AOverview: TArchitectureOverview): string;
+begin
+  Result := '';
+  if not AOverview.IsAligned then
+    Exit;
+  Result := 'Teilsysteme an Stand vom ' + FormatDateTime('yyyy-mm-dd hh:nn', AOverview.AlignedAt) + ' angeglichen (';
+  if AOverview.AlignedSource = TArchitectureAnalyzer.AlignedBaseline then
+    Result := Result + 'architecture.baseline'
+  else
+    Result := Result + 'zuletzt berechneter Stand';
+  if AOverview.AlignedKept = 1 then
+    Result := Result + '; 1 Teilsystem behält Farbe und Namen)'
+  else
+    Result := Result + '; ' + IntToStr(AOverview.AlignedKept) + ' Teilsysteme behalten Farbe und Namen)';
+end;
+
+class function TArchitectureReport.GroupingExplanation(const AGrouping: TArchitectureGrouping): string;
+var
+  mGrouping: TArchitectureGrouping;
+  mSplit: string;
+begin
+  mGrouping := AGrouping.Clamped;
+  Result := 'Atlas bildet die Teilsysteme aus den uses-Kanten zwischen den Units, ein- und ausgehende zusammen. ' +
+    'Eine Kante im interface wiegt ' + IntToStr(TArchitectureAnalyzer.InterfaceWeight) + ', eine im ' +
+    'implementation-Teil ' + IntToStr(TArchitectureAnalyzer.ImplementationWeight) + '. Das Louvain-Verfahren ' +
+    'fasst Units zusammen, die untereinander mehr gewichtete Kanten haben als nach außen; eine Unit liegt darum ' +
+    'meist dort, wohin die meisten ihrer gewichteten Kanten gehen, und gilt als knapp zugeordnet, wenn ein anderes ' +
+    'Teilsystem mindestens ' + IntToStr(TArchitectureAnalyzer.ClosePercent) + ' Prozent davon erreicht.';
+  Result := Result + ' Einstellungen: Feinheit ' + TArchitectureGrouping.ResolutionText(mGrouping.Resolution);
+  mSplit := '';
+  if mGrouping.MaxShare > 0 then
+    mSplit := 'ab ' + IntToStr(Round(mGrouping.MaxShare * 100)) + ' Prozent aller Units';
+  if mGrouping.MinCohesion > 0 then
+  begin
+    if mSplit <> '' then
+      mSplit := mSplit + ' oder ';
+    mSplit := mSplit + 'unter Zusammenhalt ' + TArchitectureGrouping.ResolutionText(mGrouping.MinCohesion) + ' (ab ' +
+      IntToStr(TArchitectureGrouping.LooseMinUnits) + ' Units)';
+  end;
+  if mSplit = '' then
+    Result := Result + ' · nicht nachteilen'
+  else
+    Result := Result + ' · nachteilen ' + mSplit;
+  case mGrouping.Foundations of
+    TArchitectureFoundations.Group:
+      Result := Result + ' · Fundamente mitgruppiert';
+    TArchitectureFoundations.Attach:
+      Result := Result + ' · Fundamente angehängt';
+  else
+    Result := Result + ' · Fundamente getrennt (Kanten dorthin zählen nicht)';
+  end;
+  Result := Result + '.';
+end;
+
+class function TArchitectureReport.CloseText(const AOverview: TArchitectureOverview;
+  const AAssignment: TOverviewAssignment): string;
+var
+  mRival: string;
+begin
+  if not AAssignment.Close then
+    Exit('');
+  mRival := SubsystemName(AOverview, AAssignment.Rows[AAssignment.Rival].Subsystem);
+  if AAssignment.Missing = 1 then
+    Result := mRival + ' erreicht ' + IntToStr(AAssignment.RivalSum) + ' von ' +
+      IntToStr(AAssignment.OwnSum) + ', 1 Kante fehlt zum Wechsel'
+  else if AAssignment.Missing > 1 then
+    Result := mRival + ' erreicht ' + IntToStr(AAssignment.RivalSum) + ' von ' +
+      IntToStr(AAssignment.OwnSum) + ', ' + IntToStr(AAssignment.Missing) + ' Kanten fehlen zum Wechsel'
+  else
+    Result := mRival + ' hat schon ' + IntToStr(AAssignment.RivalSum) + ' gewichtete Kanten, das ' +
+      'eigene Teilsystem ' + IntToStr(AAssignment.OwnSum) + ' (Louvain wertet das ganze Teilsystem)';
+end;
+
+class function TArchitectureReport.AssignmentText(const AOverview: TArchitectureOverview; AUnit: Integer): string;
+var
+  mAssignment: TOverviewAssignment;
+  mIndex: Integer;
+  mRow: TOverviewAssignmentRow;
+  mLine: string;
+begin
+  Result := '';
+  if not AOverview.ShowsAssignment then
+    Exit;
+  mAssignment := AOverview.Assignment(AUnit);
+  if mAssignment.Own < 0 then
+    Exit;
+  Result := 'Zuordnung (Kanten je Teilsystem, interface ' + IntToStr(TArchitectureAnalyzer.InterfaceWeight) +
+    ', implementation ' + IntToStr(TArchitectureAnalyzer.ImplementationWeight) + '):' + LineBreak +
+    '  Teilsystem | interface | impl. | Summe' + LineBreak;
+  for mIndex := 0 to High(mAssignment.Rows) do
+  begin
+    mRow := mAssignment.Rows[mIndex];
+    mLine := '  ' + SubsystemName(AOverview, mRow.Subsystem);
+    if mIndex = mAssignment.Own then
+      mLine := mLine + ' (eigenes)';
+    mLine := mLine + ' | ' + IntToStr(mRow.Interfaces) + ' | ' + IntToStr(mRow.Implementations) + ' | ' +
+      IntToStr(mRow.Sum);
+    if not mRow.Counts then
+      mLine := mLine + ' (zählt nicht)';
+    Result := Result + mLine + LineBreak;
+  end;
+  if mAssignment.Close then
+    Result := Result + '  knapp: ' + CloseText(AOverview, mAssignment) + LineBreak;
+end;
 
 class function TArchitectureReport.SectionName(ASection: TArchitectureSection): string;
 begin
@@ -331,6 +483,29 @@ begin
   Result := Result + ')';
 end;
 
+/// <summary>"assignment" und "close" einer Unit (#1368, siehe Kopf der Unit).</summary>
+procedure AppendAssignment(ABuilder: TStringBuilder; const AAssignment: TOverviewAssignment);
+var
+  mIndex: Integer;
+  mRow: TOverviewAssignmentRow;
+begin
+  ABuilder.Append(',"assignment":[');
+  for mIndex := 0 to High(AAssignment.Rows) do
+  begin
+    mRow := AAssignment.Rows[mIndex];
+    if mIndex > 0 then
+      ABuilder.Append(',');
+    ABuilder.Append('[').Append(mRow.Subsystem).Append(',').Append(mRow.Interfaces).Append(',')
+      .Append(mRow.Implementations);
+    if not mRow.Counts then
+      ABuilder.Append(',0');
+    ABuilder.Append(']');
+  end;
+  ABuilder.Append(']');
+  if AAssignment.Close then
+    ABuilder.Append(',"close":').Append(AAssignment.Missing);
+end;
+
 function EdgeJson(const AOverview: TArchitectureOverview; const AEdge: TOverviewEdge): string;
 begin
   Result := '"source":' + IntToStr(AEdge.Source) + ',"target":' + IntToStr(AEdge.Target) + ',"section":' +
@@ -376,7 +551,11 @@ begin
       .Append(',"durationMs":').Append(IntToStr(AOverview.DurationMs))
       .Append(',"scope":').Append(JsonText(AOverview.Scope))
       .Append(',"includeLibrary":').Append(JsonBool(AOverview.IncludeLibrary))
-      .Append(',"grouping":{"resolution":').Append(JsonNumber(AOverview.Grouping.Clamped.Resolution)).Append('}')
+      .Append(',"grouping":{"resolution":').Append(JsonNumber(AOverview.Grouping.Clamped.Resolution))
+      .Append(',"maxShare":').Append(JsonNumber(AOverview.Grouping.Clamped.MaxShare))
+      .Append(',"minCohesion":').Append(JsonNumber(AOverview.Grouping.Clamped.MinCohesion))
+      .Append(',"foundations":').Append(JsonText(TArchitectureGrouping.FoundationsText(AOverview.Grouping.Foundations)))
+      .Append('}')
       .Append(',"excludes":[');
     for Index := 0 to High(AOverview.Excludes) do
     begin
@@ -391,6 +570,12 @@ begin
       .Append(',"interfaceCycles":').Append(InterfaceCycleCount(AOverview))
       .Append(',"crossLinks":').Append(Length(AOverview.CrossLinks))
       .Append(',"outliers":').Append(Length(AOverview.Outliers)).Append('}');
+    if AOverview.ShowsAssignment then
+      Builder.Append(',"explanation":').Append(JsonText(GroupingExplanation(AOverview.Grouping)));
+    if AOverview.IsAligned then
+      Builder.Append(',"aligned":{"source":').Append(JsonText(AOverview.AlignedSource))
+        .Append(',"at":').Append(JsonText(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.AlignedAt)))
+        .Append(',"kept":').Append(AOverview.AlignedKept).Append('}');
     Builder.Append(',"units":[');
     for Index := 0 to High(AOverview.Units) do
     begin
@@ -408,6 +593,8 @@ begin
       if Index < Length(ALayout.Units) then
         Builder.Append(',"x":').Append(JsonNumber(ALayout.Units[Index].X))
           .Append(',"y":').Append(JsonNumber(ALayout.Units[Index].Y));
+      if AOverview.ShowsAssignment then
+        AppendAssignment(Builder, AOverview.Assignments[Index]);
       Builder.Append('}');
     end;
     Builder.Append('],"edges":[');
@@ -440,6 +627,8 @@ begin
         .Append(',"isolated":').Append(JsonBool(Subsystem.Isolated))
         .Append(',"color":').Append(Subsystem.ColorSlot)
         .Append(',"shade":').Append(Subsystem.Shade);
+      if Subsystem.Foundation then
+        Builder.Append(',"foundation":true');
       if Subsystem.Parent <> '' then
         Builder.Append(',"parent":').Append(JsonText(Subsystem.Parent));
       if Index < Length(ALayout.Subsystems) then
@@ -515,6 +704,30 @@ begin
   Result := MarkdownWith(AOverview, True) + LineBreak + TArchitectureComparer.Markdown(AComparison);
 end;
 
+/// <summary>Liste der knapp zugeordneten Units eines Teilsystems (#1368); nichts ohne solche.</summary>
+procedure AppendCloseUnits(ABuilder: TStringBuilder; const AOverview: TArchitectureOverview;
+  const ASubsystem: TOverviewSubsystem);
+var
+  mMember: Integer;
+  mAssignment: TOverviewAssignment;
+  mFirst: Boolean;
+begin
+  mFirst := True;
+  for mMember in ASubsystem.Units do
+  begin
+    mAssignment := AOverview.Assignment(mMember);
+    if not mAssignment.Close then
+      Continue;
+    if mFirst then
+      ABuilder.Append('Knapp zugeordnet:').Append(LineBreak).Append(LineBreak);
+    mFirst := False;
+    ABuilder.Append('- ').Append(AOverview.Units[mMember].Name).Append(': ')
+      .Append(TArchitectureReport.CloseText(AOverview, mAssignment)).Append(LineBreak);
+  end;
+  if not mFirst then
+    ABuilder.Append(LineBreak);
+end;
+
 class function TArchitectureReport.MarkdownWith(const AOverview: TArchitectureOverview;
   AWithComparison: Boolean): string;
 var
@@ -536,6 +749,8 @@ begin
       .Append(' ms').Append(LineBreak).Append(LineBreak);
     Builder.Append(Counts(AOverview)).Append(LineBreak).Append(LineBreak);
     Builder.Append('Umfang: ').Append(ScopeText(AOverview)).Append(LineBreak).Append(LineBreak);
+    if AOverview.IsAligned then
+      Builder.Append(AlignedText(AOverview)).Append(LineBreak).Append(LineBreak);
     Builder.Append('- [Zentrale Units](#zentrale-units)').Append(LineBreak)
       .Append('- [Teilsysteme](#teilsysteme)').Append(LineBreak)
       .Append('- [Ausreißer](#ausreißer)').Append(LineBreak)
@@ -570,10 +785,15 @@ begin
         .Append(' | ');
       if Subsystem.Central >= 0 then
         Builder.Append(Cell(AOverview.Units[Subsystem.Central].Name));
-      Builder.Append(' | ').Append(Percent(Subsystem.Cohesion)).Append(' | ').Append(Subsystem.InnerEdges)
+      Builder.Append(' | ').Append(CohesionText(Subsystem)).Append(' | ').Append(Subsystem.InnerEdges)
         .Append(' | ').Append(Subsystem.OuterEdges).Append(' |').Append(LineBreak);
     end;
     Builder.Append(LineBreak);
+    if FoundationNote(AOverview) <> '' then
+      Builder.Append(FoundationNote(AOverview)).Append(LineBreak).Append(LineBreak);
+    // Wonach die Teilsysteme gebildet werden (#1368).
+    if AOverview.ShowsAssignment then
+      Builder.Append(GroupingExplanation(AOverview.Grouping)).Append(LineBreak).Append(LineBreak);
     for Index := 0 to High(AOverview.Subsystems) do
     begin
       Subsystem := AOverview.Subsystems[Index];
@@ -588,6 +808,8 @@ begin
           Names := Names + ' (Ausreißer)';
       end;
       Builder.Append(Names).Append(LineBreak).Append(LineBreak);
+      if AOverview.ShowsAssignment then
+        AppendCloseUnits(Builder, AOverview, Subsystem);
     end;
 
     Builder.Append('## Ausreißer').Append(LineBreak).Append(LineBreak);
@@ -729,6 +951,8 @@ begin
   ALimit := Max(ALimit, 1);
   Result := 'Architektur ' + AOverview.Title + ' (' + ScopeText(AOverview) + ')' + LineBreak + Counts(AOverview) +
     LineBreak;
+  if AOverview.IsAligned then
+    Result := Result + AlignedText(AOverview) + LineBreak;
   case ASection of
     TArchitectureSection.Overview:
       begin
@@ -743,7 +967,7 @@ begin
         begin
           Subsystem := AOverview.Subsystems[Index];
           Result := Result + '  ' + SubsystemCaption(Subsystem) + ': ' + IntToStr(Length(Subsystem.Units)) +
-            ' Units, Zusammenhalt ' + Percent(Subsystem.Cohesion) + LineBreak;
+            ' Units, Zusammenhalt ' + CohesionText(Subsystem) + LineBreak;
         end;
         Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
         Result := Result + 'Weitere Abschnitte: central, subsystems, cycles, crossLinks; unit für einen Steckbrief.';
@@ -778,9 +1002,11 @@ begin
           if Length(Subsystem.Units) > 10 then
             Names := Names + ' … (' + IntToStr(Length(Subsystem.Units)) + ')';
           Result := Result + SubsystemCaption(Subsystem) + ': ' + IntToStr(Length(Subsystem.Units)) +
-            ' Units, Zusammenhalt ' + Percent(Subsystem.Cohesion) + LineBreak + '  ' + Names + LineBreak;
+            ' Units, Zusammenhalt ' + CohesionText(Subsystem) + LineBreak + '  ' + Names + LineBreak;
         end;
         Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
+        if FoundationNote(AOverview) <> '' then
+          Result := Result + FoundationNote(AOverview) + LineBreak;
         if Length(AOverview.Outliers) > 0 then
         begin
           Result := Result + 'Ausreißer:' + LineBreak;
@@ -878,6 +1104,7 @@ begin
       OutlierReasonCaption(Outlier.Reason) + '; ' + IntToStr(Outlier.Inside) + ' Kanten im eigenen, ' +
       IntToStr(Outlier.Toward) + ' zum Vorschlag)' + LineBreak;
   end;
+  Result := Result + AssignmentText(AOverview, Index);
 end;
 
 end.
