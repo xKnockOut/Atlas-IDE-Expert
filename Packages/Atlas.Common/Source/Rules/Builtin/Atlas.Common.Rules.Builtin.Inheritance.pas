@@ -2281,15 +2281,8 @@ begin
 end;
 
 class function TClassReferenceNonvirtualConstructorRule.ClassRefTarget(const ASignature: string): string;
-var
-  Words: TArray<string>;
-  Index: Integer;
 begin
-  Result := '';
-  Words := ASignature.Replace(';', ' ').Split([' ', #9, #10, #13, '='], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Words) - 2 do
-    if SameText(Words[Index], 'class') and SameText(Words[Index + 1], 'of') then
-      Exit(Words[Index + 2]);
+  Result := TNameResolver.ClassRefTarget(ASignature);
 end;
 
 procedure TClassReferenceNonvirtualConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
