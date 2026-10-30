@@ -10,7 +10,9 @@
 //                     einer Konstanten außerhalb bzw. am Rand des Wertebereichs
 //                     (#1011): Cardinal >= 0 ist immer wahr (wie W1022), Byte > 255
 //                     immer falsch (wie W1021); case-Marken außerhalb des Bereichs
-//                     des Ausdrucks (wie W1018). Die Konstante rechnet
+//                     des Ausdrucks (wie W1018; einzelne Marken, die dcc als
+//                     Fehler E1012 meldet, meldet constant-expression-error,
+//                     #1372). Die Konstante rechnet
 //                     Semantics.ConstantValues aus. NativeInt, LongInt und ihre
 //                     vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich
 //                     aller Plattformen; Teilbereichstypen meldet die Regel nicht.
@@ -120,6 +122,7 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.TypedScope,
+  Atlas.Common.Rules.Builtin.Constants,
   Atlas.Common.Editing.EnumTables,
   Atlas.Text.Lines;
 
@@ -328,7 +331,10 @@ var
           Outside := Scope.Values.EvaluateNode(Labeled[0], First) and Scope.Values.EvaluateNode(Labeled[1], Last) and
             (First <= Last) and ((Last < LowValue) or (First > HighValue))
         else
-          Outside := Scope.Values.EvaluateNode(Labeled, First) and ((First < LowValue) or (First > HighValue));
+          // Einzelne Marken, die auch als Zahl mit anderem Vorzeichen nicht passen, sind für dcc ein Fehler; sie
+          // meldet constant-expression-error (wie E1012, #1372).
+          Outside := Scope.Values.EvaluateNode(Labeled, First) and ((First < LowValue) or (First > HighValue)) and
+            not TConstantExpressionErrorRule.OutsideIsError(First, TypeName);
         if Outside then
           AReport.Add(TTextRange.Create(Labeled.StartPos, Labeled.EndPos), Format(
             '%s liegt außerhalb des Bereichs von %s; der Zweig wird nie ausgeführt (wie W1018).',

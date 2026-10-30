@@ -8,8 +8,18 @@
 //                              der Obergrenze eines Bereichs (array[5..1],
 //                              E2011), Konstante außerhalb eines ganzzahligen
 //                              Typs fester Größe bzw. eines Teilbereichstyps
-//                              (W1012) und Hex-, Binär- oder Oktalliterale
-//                              über 64 Bit (E2102).
+//                              (E1012; nur Werte, die als gleich breite Zahl
+//                              mit anderem Vorzeichen passen, wie $FFFFFFFF
+//                              für Integer, als Warnung W1012), Hex-, Binär-
+//                              oder Oktalliterale über 64 Bit (E2102, an Int64
+//                              zugewiesen zusätzlich W1012). Dazu (#1372):
+//                              konstanter Index außerhalb eines statischen
+//                              Arrays der Datei und case-Marke außerhalb des
+//                              Typs des case-Ausdrucks (E1012), Überlauf über
+//                              High(Int64) mit lauter Operanden mit Vorzeichen
+//                              (E2099), Menge über mehr als 256 Werte (E2028)
+//                              und Zahlen statt Sichtbarkeiten in {$RTTI}
+//                              (E2572).
 //   default-parameter-invalid  Unzulässiger Standardwert eines Parameters
 //                              (#993): mehrere Namen mit einem Standardwert
 //                              (A, B: Integer = 0, E2237), Parameter ohne
@@ -89,6 +99,13 @@ type
     /// <summary>Ist das Zahl-Token ATokenText ein Hex-, Binär- oder Oktalliteral, das nicht in 64 Bit passt
     /// (wie E2102)? Dezimalzahlen macht Delphi zu Gleitkommazahlen, sie zählen nicht.</summary>
     class function TooLargeLiteral(const ATokenText: string): Boolean; static;
+    /// <summary>Ist AValue außerhalb des ganzzahligen Typs fester Größe ATypeName ein Fehler (wie E1012)? Nur
+    /// Werte, die in einen gleich breiten Typ mit anderem Vorzeichen passen ($FFFFFFFF für Integer, -1 für
+    /// Cardinal), sind eine Warnung (wie W1012). False auch für Werte im Bereich und für andere Typen.</summary>
+    class function OutsideIsError(AValue: Int64; const ATypeName: string): Boolean; static;
+    /// <summary>Fehlerhafte Sichtbarkeitsmenge in einer {$RTTI}-Direktive (Text samt Klammern) wie
+    /// "METHODS([1])"; '' ohne. Gemeldet werden nur Zahlen, Strings und Zeichen als Element (wie E2572).</summary>
+    class function InvalidRttiVisibility(const ADirective: string): string; static;
   end;
 
   TDefaultParameterInvalidRule = class(TInterfacedObject, IRule)
@@ -148,11 +165,13 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Semantics.ConstantValues,
+  Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines;
 
@@ -528,8 +547,117 @@ begin
   end;
 end;
 
-procedure TConstantExpressionErrorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+class function TConstantExpressionErrorRule.OutsideIsError(AValue: Int64; const ATypeName: string): Boolean;
 var
+  mKind: TIntegerKind;
+  mLow, mHigh: Int64;
+begin
+  Result := False;
+  mKind := IntegerKindOf(ATypeName);
+  if (mKind.Bits = 0) or not IntegerRange(ATypeName, mLow, mHigh) or ((AValue >= mLow) and (AValue <= mHigh)) then
+    Exit;
+  if mKind.Bits >= 64 then
+    Exit(True);
+  // Passt der Wert in den gleich breiten Typ mit anderem Vorzeichen, legt dcc die Bits nur anders aus und warnt
+  // (W1012); sonst ist es ein Fehler (E1012, #1372).
+  if mKind.Signed then
+    Result := (AValue < mLow) or (AValue > (Int64(1) shl mKind.Bits) - 1)
+  else
+    Result := (AValue > mHigh) or (AValue < -(Int64(1) shl (mKind.Bits - 1)));
+end;
+
+class function TConstantExpressionErrorRule.InvalidRttiVisibility(const ADirective: string): string;
+var
+  mUpper, mContent, mElement: string;
+  mKey: string;
+  mStart, mOpen, mClose, mDepth: Integer;
+begin
+  Result := '';
+  mUpper := UpperCase(ADirective);
+  for mKey in TArray<string>.Create('METHODS', 'FIELDS', 'PROPERTIES') do
+  begin
+    mStart := Pos(mKey, mUpper);
+    if mStart = 0 then
+      Continue;
+    mOpen := mStart + Length(mKey);
+    while (mOpen <= Length(mUpper)) and CharInSet(mUpper[mOpen], [' ', #9, #10, #13]) do
+      Inc(mOpen);
+    if (mOpen > Length(mUpper)) or (mUpper[mOpen] <> '(') then
+      Continue;
+    // Passende schließende Klammer.
+    mDepth := 0;
+    mClose := mOpen;
+    while mClose <= Length(ADirective) do
+    begin
+      if ADirective[mClose] = '(' then
+        Inc(mDepth)
+      else if ADirective[mClose] = ')' then
+      begin
+        Dec(mDepth);
+        if mDepth = 0 then
+          Break;
+      end;
+      Inc(mClose);
+    end;
+    if mClose > Length(ADirective) then
+      Continue;
+    mContent := Trim(Copy(ADirective, mOpen + 1, mClose - mOpen - 1));
+    // Nur Mengen mit Zahlen, Strings oder Zeichen als Element sind sicher keine Sichtbarkeiten; Namen können
+    // Konstanten vom Typ TVisibilityClass sein.
+    if (Length(mContent) < 2) or (mContent[1] <> '[') or (mContent[Length(mContent)] <> ']') then
+      Continue;
+    for mElement in Copy(mContent, 2, Length(mContent) - 2).Split(TArray<string>.Create(',', '..')) do
+      if (Trim(mElement) <> '') and CharInSet(Trim(mElement)[1], ['0'..'9', '$', '%', '#', '''', '-', '+']) then
+        Exit(Copy(ADirective, mStart, mClose - mStart + 1));
+  end;
+end;
+
+/// <summary>Liegen die unteren 64 Bit des Hex- oder Binärliterals ATokenText über High(Int64)? Ein zu großes
+/// Literal kürzt dcc auf 64 Bit; an Int64 zugewiesen warnt es dann zusätzlich (W1012, #1372).</summary>
+function LowBitsAboveInt64(const ATokenText: string): Boolean;
+var
+  mText: string;
+begin
+  Result := False;
+  mText := StringReplace(ATokenText, '_', '', [rfReplaceAll]);
+  if Length(mText) < 2 then
+    Exit;
+  if mText[1] = '$' then
+  begin
+    mText := Copy(mText, 2, MaxInt);
+    if Length(mText) < 16 then
+      Exit;
+    Result := CharInSet(mText[Length(mText) - 15], ['8'..'9', 'A'..'F', 'a'..'f']);
+  end
+  else if mText[1] = '%' then
+  begin
+    mText := Copy(mText, 2, MaxInt);
+    Result := (Length(mText) >= 64) and (mText[Length(mText) - 63] = '1');
+  end;
+end;
+
+/// <summary>Zahl der Werte eines eingebauten ganzzahligen Typs mit mehr als 256 Werten (Word, Integer …) als
+/// Text; '' für andere.</summary>
+function WideOrdinalValues(const ATypeName: string): string;
+begin
+  case IndexText(ATypeName, ['Word', 'UInt16', 'SmallInt', 'Int16', 'Integer', 'Int32', 'FixedInt', 'LongInt',
+    'Cardinal', 'UInt32', 'FixedUInt', 'LongWord', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt']) of
+    0..3:
+      Result := '65536';
+    4..11:
+      Result := '4294967296';
+    12..15:
+      Result := 'mehr als 4294967296';
+  else
+    Result := '';
+  end;
+end;
+
+procedure TConstantExpressionErrorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  TKinds = set of TSyntaxKind;
+var
+  Scope: TTypedScope;
   FileName: string;
   Resolver: TNameResolver;
   Values: TConstantValues;
@@ -618,11 +746,14 @@ var
         [Lowest, Highest]), TRuleConfidence.High);
   end;
 
-  /// <summary>Bereich des Typs ATypeName (Typ fester Größe oder Teilbereichstyp, aufgelöst an ANode).</summary>
-  function TargetRange(ATypeNode: TSyntaxNode; const ATypeName: string; out ALow, AHigh: Int64): Boolean;
+  /// <summary>Bereich des Typs ATypeName (Typ fester Größe oder Teilbereichstyp, aufgelöst an ANode); ASubrange
+  /// sagt, ob es ein Teilbereichstyp ist.</summary>
+  function TargetRange(ATypeNode: TSyntaxNode; const ATypeName: string; out ALow, AHigh: Int64;
+    out ASubrange: Boolean): Boolean;
   var
     TypeSymbol: TResolvedSymbol;
   begin
+    ASubrange := False;
     if IntegerRange(ATypeName, ALow, AHigh) then
       Exit(True);
     Result := False;
@@ -630,12 +761,36 @@ var
       Exit;
     TypeSymbol := Resolver.ResolveType(AContext.Tree, FileName, ATypeNode.StartPos);
     Result := TypeSymbol.Found and SubrangeOf(TypeSymbol.Signature, ALow, AHigh);
+    ASubrange := Result;
   end;
 
-  procedure ReportRange(AValueNode: TSyntaxNode; AValue, ALow, AHigh: Int64; const ATypeName: string);
+  /// <summary>Wert außerhalb des Zieltyps: ein Fehler wie E1012 (Delphi 13 bei Teilbereichstypen und bei Werten,
+  /// die auch als Zahl mit anderem Vorzeichen nicht passen, #1372), sonst eine Warnung wie W1012.</summary>
+  procedure ReportRange(AValueNode: TSyntaxNode; AValue, ALow, AHigh: Int64; const ATypeName: string;
+    ASubrange: Boolean);
   begin
-    AReport.AddWithSeverity(NodeRange(AValueNode), Format('%d liegt außerhalb des Bereichs von %s (%d..%d, wie W1012).',
-      [AValue, ATypeName, ALow, AHigh]), TRuleSeverity.Warning, nil);
+    if ASubrange or OutsideIsError(AValue, ATypeName) then
+      AReport.Add(NodeRange(AValueNode), Format('%d liegt außerhalb des Bereichs von %s (%d..%d, wie E1012).',
+        [AValue, ATypeName, ALow, AHigh]), TRuleConfidence.High)
+    else
+      AReport.AddWithSeverity(NodeRange(AValueNode), Format(
+        '%d liegt außerhalb des Bereichs von %s (%d..%d, wie W1012).', [AValue, ATypeName, ALow, AHigh]),
+        TRuleSeverity.Warning, nil);
+  end;
+
+  /// <summary>Zu großes Literal an Int64: dcc kürzt es auf 64 Bit und warnt zusätzlich zu E2102 (W1012).</summary>
+  procedure CheckTruncatedLiteral(AValueNode: TSyntaxNode; const ATypeName: string);
+  var
+    mKind: TIntegerKind;
+  begin
+    if (AValueNode.Kind <> TSyntaxKind.Literal) or not TooLargeLiteral(AValueNode.Name) or
+      not LowBitsAboveInt64(AValueNode.Name) then
+      Exit;
+    mKind := IntegerKindOf(ATypeName);
+    if (mKind.Bits = 64) and mKind.Signed then
+      AReport.AddWithSeverity(NodeRange(AValueNode), Format(
+        '%s passt auf 64 Bit gekürzt nicht in %s (wie W1012).', [AValueNode.Name, ATypeName]),
+        TRuleSeverity.Warning, nil);
   end;
 
   /// <summary>Typisierte Konstante bzw. initialisierte Variable: Typ und Wert sind Kinder der Deklaration.</summary>
@@ -643,16 +798,19 @@ var
   var
     TypeNode, ValueNode: TSyntaxNode;
     Value, Lowest, Highest: Int64;
+    mSubrange: Boolean;
   begin
     if (ADecl.ChildCount < 2) or (ADecl[0].Kind <> TSyntaxKind.TypeReference) or (ADecl[0].ChildCount > 0) then
       Exit;
     TypeNode := ADecl[0];
     ValueNode := ADecl[ADecl.ChildCount - 1];
-    if (ValueNode.Kind = TSyntaxKind.TypeReference) or not ValueOf(ValueNode, Value) or
-      not TargetRange(TypeNode, TypeNode.Name, Lowest, Highest) then
+    if ValueNode.Kind = TSyntaxKind.TypeReference then
+      Exit;
+    CheckTruncatedLiteral(ValueNode, TypeNode.Name);
+    if not ValueOf(ValueNode, Value) or not TargetRange(TypeNode, TypeNode.Name, Lowest, Highest, mSubrange) then
       Exit;
     if (Value < Lowest) or (Value > Highest) then
-      ReportRange(ValueNode, Value, Lowest, Highest, TypeNode.Name);
+      ReportRange(ValueNode, Value, Lowest, Highest, TypeNode.Name, mSubrange);
   end;
 
   procedure CheckAssignment(AStatement: TSyntaxNode);
@@ -662,13 +820,22 @@ var
     TypeFound: Boolean;
     Value, Lowest, Highest: Int64;
     TypeName: string;
+    mSubrange: Boolean;
   begin
     if AStatement.ChildCount <> 2 then
       Exit;
     Target := AStatement[0];
     Source := AStatement[1];
-    if not (Target.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
-      not (Source.Kind in [TSyntaxKind.Literal, TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr,
+    if not (Target.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+      Exit;
+    if (Source.Kind = TSyntaxKind.Literal) and TooLargeLiteral(Source.Name) and LowBitsAboveInt64(Source.Name) and
+      Resolver.NodeType(AContext.Tree, FileName, Target, Symbol, TypeInfo, TypeFound) and
+      (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+    begin
+      CheckTruncatedLiteral(Source, Symbol.TypeName);
+      Exit;
+    end;
+    if not (Source.Kind in [TSyntaxKind.Literal, TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr,
       TSyntaxKind.ParenExpr, TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) or
       not ValueOf(Source, Value) then
       Exit;
@@ -680,14 +847,259 @@ var
       not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
       Exit;
     TypeName := Symbol.TypeName;
+    mSubrange := False;
     if not IntegerRange(TypeName, Lowest, Highest) then
     begin
       if not TypeFound or not SubrangeOf(TypeInfo.Signature, Lowest, Highest) then
         Exit;
       TypeName := TypeInfo.Name;
+      mSubrange := True;
     end;
     if (Value < Lowest) or (Value > Highest) then
-      ReportRange(Source, Value, Lowest, Highest, TypeName);
+      ReportRange(Source, Value, Lowest, Highest, TypeName, mSubrange);
+  end;
+
+  /// <summary>Text des Knotens wie im Quelltext.</summary>
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  /// <summary>Steht in ANode eine bedingte Direktive ({$IFDEF}, {$ELSE} …)? Dann ist der Inhalt unsicher.</summary>
+  function HasConditional(ANode: TSyntaxNode): Boolean;
+  var
+    mIndex: Integer;
+    mName: string;
+    mTokens: TArray<TPascalToken>;
+  begin
+    Result := False;
+    mTokens := AContext.Tree.Tokens;
+    mIndex := TConstantValues.TokenFrom(mTokens, ANode.StartOffset);
+    while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
+    begin
+      if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
+      begin
+        mName := TPascalLexer.DirectiveName(mTokens[mIndex].Text);
+        if StartsText('IF', mName) or StartsText('ELSE', mName) or SameText(mName, 'ENDIF') then
+          Exit(True);
+      end;
+      Inc(mIndex);
+    end;
+  end;
+
+  /// <summary>Knoten der Art AKinds in diesem Baum, der die Zeile von ASymbol umfasst und dessen Namensliste
+  /// (A,B) ASymbol.Name enthält; nil für Deklarationen anderer Dateien, ohne Treffer und mit bedingten
+  /// Direktiven.</summary>
+  function DeclarationOf(const ASymbol: TResolvedSymbol; AKinds: TKinds): TSyntaxNode;
+  var
+    mIndex, mLine: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mName: string;
+  begin
+    Result := nil;
+    if (ASymbol.Kind <> TResolvedKind.Local) and (ASymbol.FileName <> '') and not SameText(ASymbol.FileName,
+      FileName) then
+      Exit;
+    mLine := ASymbol.SelectionRange.StartPos.Line;
+    // Iterativ (Bericht M1).
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(AContext.Tree.Root);
+      while (mPending.Count > 0) and (Result = nil) do
+      begin
+        mNode := mPending.Pop;
+        if (mNode.StartPos.Line > mLine) or (mNode.EndPos.Line < mLine) then
+          Continue;
+        if mNode.Kind in AKinds then
+          for mName in mNode.Name.Split([',']) do
+            if SameText(Trim(mName), ASymbol.Name) then
+              Result := mNode;
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+          mPending.Push(mNode[mIndex]);
+      end;
+    finally
+      mPending.Free;
+    end;
+    if (Result <> nil) and HasConditional(Result) then
+      Result := nil;
+  end;
+
+  /// <summary>Statisches Array hinter dem Typknoten ATypeNode, auch über einen benannten Typ dieser Datei; nil bei
+  /// dynamischen Arrays und anderen Typen.</summary>
+  function StaticArrayOf(ATypeNode: TSyntaxNode): TSyntaxNode;
+  var
+    mTypeSymbol: TResolvedSymbol;
+    mDecl: TSyntaxNode;
+    mIndex: Integer;
+  begin
+    Result := nil;
+    if ATypeNode.Kind = TSyntaxKind.TypeReference then
+    begin
+      if (ATypeNode.ChildCount > 0) or (Pos('.', ATypeNode.Name) > 0) then
+        Exit;
+      mTypeSymbol := Resolver.ResolveType(AContext.Tree, FileName, ATypeNode.StartPos);
+      if not mTypeSymbol.Found or not Scope.DeclarationSure(mTypeSymbol, ATypeNode) then
+        Exit;
+      mDecl := DeclarationOf(mTypeSymbol, [TSyntaxKind.TypeDecl]);
+      if mDecl = nil then
+        Exit;
+      for mIndex := 0 to mDecl.ChildCount - 1 do
+        if not (mDecl[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
+        begin
+          ATypeNode := mDecl[mIndex];
+          Break;
+        end;
+    end;
+    // Ein Kind mehr als die Indextypen: der Elementtyp. Ohne Indextyp ist das Array dynamisch.
+    if (ATypeNode.Kind = TSyntaxKind.ArrayType) and (ATypeNode.ChildCount >= 2) then
+      Result := ATypeNode;
+  end;
+
+  function InWith(ANode: TSyntaxNode): Boolean;
+  var
+    mNode: TSyntaxNode;
+  begin
+    // Ein with-Objekt kann den Namen verdecken.
+    mNode := ANode.Parent;
+    while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.WithStatement) do
+      mNode := mNode.Parent;
+    Result := mNode <> nil;
+  end;
+
+  /// <summary>Konstanter Index außerhalb eines statischen Arrays dieser Datei (wie E1012, #1372).</summary>
+  procedure CheckIndex(AAccess: TSyntaxNode);
+  var
+    mBase, mDecl, mArray, mBound: TSyntaxNode;
+    mSymbol: TResolvedSymbol;
+    mIndex: Integer;
+    mValue, mLow, mHigh: Int64;
+    mAny: Boolean;
+  begin
+    if (AAccess.ChildCount < 2) or (AAccess[0].Kind <> TSyntaxKind.Identifier) then
+      Exit;
+    // Erst die Indizes: Meist ist keiner konstant, dann bleibt die Namensauflösung aus.
+    mAny := False;
+    for mIndex := 1 to AAccess.ChildCount - 1 do
+      if ValueOf(AAccess[mIndex], mValue) then
+        mAny := True;
+    if not mAny or InWith(AAccess) then
+      Exit;
+    mBase := AAccess[0];
+    mSymbol := Resolver.Resolve(AContext.Tree, FileName, mBase.StartPos);
+    // Der Baum enthält beide Zweige von {$IFDEF} … {$ELSE}: Die Deklaration muss immer mit der Stelle gelten.
+    if not mSymbol.Found or not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+      TIndexSymbolKind.Constant]) or not Scope.DeclarationSure(mSymbol, mBase) then
+      Exit;
+    mDecl := DeclarationOf(mSymbol, [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.ConstDecl]);
+    if (mDecl = nil) or (mDecl.ChildCount = 0) then
+      Exit;
+    mArray := StaticArrayOf(mDecl[0]);
+    if mArray = nil then
+      Exit;
+    for mIndex := 1 to AAccess.ChildCount - 1 do
+    begin
+      if mIndex > mArray.ChildCount - 1 then
+        Break;
+      mBound := mArray[mIndex - 1];
+      if (mBound.Kind = TSyntaxKind.SubrangeType) and (mBound.ChildCount = 2) and ValueOf(mBound[0], mLow) and
+        ValueOf(mBound[1], mHigh) and ValueOf(AAccess[mIndex], mValue) and ((mValue < mLow) or (mValue > mHigh)) then
+        AReport.Add(NodeRange(AAccess[mIndex]), Format(
+          'Index %d liegt außerhalb der Grenzen von %s (%d..%d, wie E1012).', [mValue, mBase.Name, mLow, mHigh]),
+          TRuleConfidence.High);
+    end;
+  end;
+
+  /// <summary>case-Marke außerhalb des ganzzahligen Typs fester Größe des case-Ausdrucks (wie E1012, #1372).
+  /// Marken, die als Zahl mit anderem Vorzeichen passen, und Bereiche meldet comparison-always-constant.</summary>
+  procedure CheckCaseLabels(ACase: TSyntaxNode);
+  var
+    mItem, mLabel: TSyntaxNode;
+    mItemIndex, mLabelIndex: Integer;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mAny: Boolean;
+    mValue, mLow, mHigh: Int64;
+    mTypeName: string;
+  begin
+    if ACase.ChildCount < 2 then
+      Exit;
+    // Erst die Marken: 0..127 passt in jeden Typ, dann bleibt die Namensauflösung aus.
+    mAny := False;
+    for mItemIndex := 1 to ACase.ChildCount - 1 do
+    begin
+      mItem := ACase[mItemIndex];
+      if mItem.Kind = TSyntaxKind.CaseItem then
+        for mLabelIndex := 0 to mItem.ChildCount - 2 do
+          if (mItem[mLabelIndex].Kind <> TSyntaxKind.RangeExpr) and ValueOf(mItem[mLabelIndex], mValue) and
+            ((mValue < 0) or (mValue > 127)) then
+            mAny := True;
+    end;
+    if not mAny then
+      Exit;
+    // Typ wie in comparison-always-constant: sicher bekannt und eingebaut.
+    if not Scope.SureType(Unwrapped(ACase[0]), mSymbol, mTypeInfo) or not (mTypeInfo.Builtin or
+      SameText(mTypeInfo.UnitName, 'System')) then
+      Exit;
+    mTypeName := mTypeInfo.Name;
+    if not IntegerRange(mTypeName, mLow, mHigh) then
+      Exit;
+    for mItemIndex := 1 to ACase.ChildCount - 1 do
+    begin
+      mItem := ACase[mItemIndex];
+      if mItem.Kind <> TSyntaxKind.CaseItem then
+        Continue;
+      // Das letzte Kind ist die Anweisung, davor stehen die Marken.
+      for mLabelIndex := 0 to mItem.ChildCount - 2 do
+      begin
+        mLabel := mItem[mLabelIndex];
+        if (mLabel.Kind <> TSyntaxKind.RangeExpr) and ValueOf(mLabel, mValue) and OutsideIsError(mValue, mTypeName) then
+          AReport.Add(NodeRange(mLabel), Format('%d liegt außerhalb des Bereichs von %s (%d..%d, wie E1012).',
+            [mValue, mTypeName, mLow, mHigh]), TRuleConfidence.High);
+      end;
+    end;
+  end;
+
+  /// <summary>Menge über einen Basistyp mit mehr als 256 Werten (wie E2028, #1372).</summary>
+  procedure CheckSetSize(ASet: TSyntaxNode);
+  var
+    mBase: TSyntaxNode;
+    mSymbol, mTypeSymbol: TResolvedSymbol;
+    mLow, mHigh: Int64;
+    mValues: string;
+    mRange: Boolean;
+  begin
+    if ASet.ChildCount <> 1 then
+      Exit;
+    mBase := ASet[0];
+    mValues := '';
+    mRange := False;
+    mLow := 0;
+    mHigh := 0;
+    if (mBase.Kind = TSyntaxKind.SubrangeType) and (mBase.ChildCount = 2) then
+      mRange := ValueOf(mBase[0], mLow) and ValueOf(mBase[1], mHigh)
+    else if (mBase.Kind = TSyntaxKind.TypeReference) and (mBase.ChildCount = 0) and (Pos('.', mBase.Name) = 0) then
+    begin
+      mSymbol := Resolver.Resolve(AContext.Tree, FileName, mBase.StartPos);
+      if not mSymbol.Found or SameText(mSymbol.UnitName, 'System') then
+        // Eingebaute Typen haben keine Deklaration im Quelltext.
+        mValues := WideOrdinalValues(mBase.Name)
+      else
+      begin
+        mTypeSymbol := Resolver.ResolveType(AContext.Tree, FileName, mBase.StartPos);
+        mRange := mTypeSymbol.Found and SubrangeOf(mTypeSymbol.Signature, mLow, mHigh);
+      end;
+    end;
+    // mHigh - mLow kann bei Low(Int64)..High(Int64) überlaufen; deshalb mit der Untergrenze vergleichen.
+    if mRange and (mLow <= mHigh) and (((mLow < 0) and (mHigh > High(Int64) + mLow)) or (mHigh - mLow >= 256)) then
+    begin
+      if (mLow < 0) and (mHigh > High(Int64) + mLow) then
+        mValues := 'mehr als 4294967296'
+      else
+        mValues := IntToStr(mHigh - mLow + 1);
+    end;
+    if mValues <> '' then
+      AReport.Add(NodeRange(ASet), Format('%s hat %s Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).',
+        [NodeText(ASet), mValues]), TRuleConfidence.High);
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
@@ -717,6 +1129,12 @@ var
             CheckInitializer(Node);
           TSyntaxKind.AssignStatement:
             CheckAssignment(Node);
+          TSyntaxKind.IndexAccess:
+            CheckIndex(Node);
+          TSyntaxKind.CaseStatement:
+            CheckCaseLabels(Node);
+          TSyntaxKind.SetType:
+            CheckSetSize(Node);
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
@@ -730,35 +1148,48 @@ var
 
 var
   Token: TPascalToken;
+  mTokens: TArray<TPascalToken>;
+  mPaths: TArray<string>;
+  mIndex: Integer;
+  mPathsKnown: Boolean;
+  mVisibility: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
-  for Token in AContext.Tree.Tokens do
+  mTokens := AContext.Tree.Tokens;
+  mPathsKnown := False;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    Token := mTokens[mIndex];
     if (Token.Kind = TPascalTokenKind.Number) and TooLargeLiteral(Token.Text) then
       AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos),
         Format('Ganzzahlkonstante zu groß: %s passt nicht in 64 Bit (wie E2102).', [Token.Text]),
-        TRuleConfidence.High);
-  FileName := AContext.FileName;
-  if FileName = '' then
-    FileName := AContext.RelativePath;
-  if FileName = '' then
-    FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-  try
-    Resolver.Namespaces := AContext.Namespaces;
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
-      try
-        Visit(AContext.Tree.Root);
-      finally
-        Values.Free;
+        TRuleConfidence.High)
+    else if (Token.Kind = TPascalTokenKind.Directive) and (TPascalLexer.DirectiveName(Token.Text) = 'RTTI') then
+    begin
+      mVisibility := InvalidRttiVisibility(Token.Text);
+      if mVisibility = '' then
+        Continue;
+      // Nur außerhalb bedingter Zweige: Einen Zweig, den dcc nicht übersetzt, prüft es auch nicht.
+      if not mPathsKnown then
+      begin
+        mPaths := TConditionalBranches.Paths(mTokens);
+        mPathsKnown := True;
       end;
-    finally
-      Resolver.UnpinTree;
+      if TConditionalBranches.PathAt(mPaths, mIndex) = '' then
+        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Format(
+          '%s in {$RTTI} ist keine Menge aus vcPrivate, vcProtected, vcPublic und vcPublished (wie E2572).',
+          [mVisibility]), TRuleConfidence.High);
     end;
+  end;
+  Scope := TTypedScope.Create(AContext);
+  try
+    FileName := Scope.FileName;
+    Resolver := Scope.Resolver;
+    Values := Scope.Values;
+    Visit(AContext.Tree.Root);
   finally
-    Resolver.Free;
+    Scope.Free;
   end;
 end;
 

@@ -6462,7 +6462,7 @@ type TPuffer = array of Int64;
 
 **Vergleich immer wahr oder immer falsch** · Bug · Warnung · Gruppe Compiler vorab
 
-Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs (wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen meldet die Regel nicht. Length(…) < 0 und Length(…) >= 0 meldet sie ebenfalls, obwohl dcc dort nicht warnt; die Meldung sagt das dazu.
+Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs (wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018); einzelne Marken, die auch mit anderem Vorzeichen nicht in die Breite des Typs passen, sind für dcc ein Fehler und meldet constant-expression-error (wie E1012). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen meldet die Regel nicht. Length(…) < 0 und Length(…) >= 0 meldet sie ebenfalls, obwohl dcc dort nicht warnt; die Meldung sagt das dazu.
 
 Entspricht der Compilermeldung `W1021`, `W1022`, `W1018`.
 
@@ -7823,9 +7823,9 @@ end;
 
 **Fehler in einem konstanten Ausdruck** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein konstanter Ausdruck teilt durch null (wie E2098), läuft über den Bereich von Int64 und UInt64 hinaus (wie E2099), ein Bereich hat die Untergrenze über der Obergrenze (array[5..1], wie E2011), eine Konstante verletzt einen ganzzahligen Typ fester Größe oder einen Teilbereichstyp (wie W1012, als Warnung; bei Zuweisungen nur Werte außerhalb von 0..127) oder ein Hex-, Binär- oder Oktalliteral braucht mehr als 64 Bit (wie E2102). Atlas wertet Literale, Konstanten (auch aus anderen Units) und SizeOf/High/Low von Typen fester Größe aus; eine Konstante aus einem {$IF}-Zweig zählt nur, wo die geprüfte Stelle mit ihr zusammen übersetzt wird. Ausdrücke mit unbekannten Teilen bleiben still.
+Ein konstanter Ausdruck teilt durch null (wie E2098) oder läuft über (wie E2099: über Int64 hinaus, wenn alle Operanden ein Vorzeichen haben, etwa High(Int64) + 1, sonst über UInt64 hinaus), ein Bereich hat die Untergrenze über der Obergrenze (array[5..1], wie E2011), eine Konstante verletzt einen ganzzahligen Typ fester Größe oder einen Teilbereichstyp (wie E1012; Werte, die nur als gleich breite Zahl mit anderem Vorzeichen passen, etwa $FFFFFFFF für Integer oder -1 für Cardinal, wie W1012 als Warnung; bei Zuweisungen nur Werte außerhalb von 0..127), ein konstanter Index liegt außerhalb eines statischen Arrays der Datei oder eine einzelne case-Marke außerhalb des Ganzzahltyps des case-Ausdrucks (wie E1012), ein Hex-, Binär- oder Oktalliteral braucht mehr als 64 Bit (wie E2102; an Int64 zugewiesen zusätzlich wie W1012), eine Menge hat mehr als 256 Elemente (set of 0..300, set of Word, wie E2028) oder eine Sichtbarkeitsmenge in {$RTTI} enthält Zahlen oder Strings statt vcPrivate, vcProtected, vcPublic und vcPublished (wie E2572). Atlas wertet Literale, Konstanten (auch aus anderen Units) und SizeOf/High/Low von Typen fester Größe aus; eine Konstante aus einem {$IF}-Zweig zählt nur, wo die geprüfte Stelle mit ihr zusammen übersetzt wird. Ausdrücke mit unbekannten Teilen bleiben still.
 
-Entspricht der Compilermeldung `E2098`, `E2099`, `E2011`, `W1012`, `E2102`.
+Entspricht der Compilermeldung `E2098`, `E2099`, `E2011`, `W1012`, `E2102`, `E1012`, `E2028`, `E2572`.
 
 Stufe B (Namensauflösung über Units).
 
