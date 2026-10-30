@@ -194,29 +194,34 @@ end;
 
 procedure TAtlasDesignerBar.Layout;
 var
-  mLeft, mGap, mPad, mIndex: Integer;
+  mLeft, mGap, mPad, mIndex, mHeight: Integer;
 begin
+  // ClientHeight legte ohne Fenster eines an und scheitert im Konstruktor ohne Elternteil.
+  if HandleAllocated then
+    mHeight := ClientHeight
+  else
+    mHeight := Height;
   mGap := Scale(6);
   mPad := Scale(6);
   mLeft := Scale(4);
-  FSearch.SetBounds(mLeft, Scale(3), Scale(SearchWidth), Max(ClientHeight - Scale(6), Scale(14)));
+  FSearch.SetBounds(mLeft, Scale(3), Scale(SearchWidth), Max(mHeight - Scale(6), Scale(14)));
   mLeft := mLeft + FSearch.Width + mGap;
   for mIndex := Low(FRects) to High(FRects) do
     FRects[mIndex] := TRect.Empty;
   FCounterRect := TRect.Empty;
   if Trim(FSearch.Text) <> '' then
   begin
-    FRects[PartPrevious] := Rect(mLeft, 0, mLeft + TextWidth('‹') + 2 * mPad, ClientHeight);
+    FRects[PartPrevious] := Rect(mLeft, 0, mLeft + TextWidth('‹') + 2 * mPad, mHeight);
     mLeft := FRects[PartPrevious].Right;
-    FCounterRect := Rect(mLeft, 0, mLeft + TextWidth(CounterText) + mPad, ClientHeight);
+    FCounterRect := Rect(mLeft, 0, mLeft + TextWidth(CounterText) + mPad, mHeight);
     mLeft := FCounterRect.Right;
-    FRects[PartNext] := Rect(mLeft, 0, mLeft + TextWidth('›') + 2 * mPad, ClientHeight);
+    FRects[PartNext] := Rect(mLeft, 0, mLeft + TextWidth('›') + 2 * mPad, mHeight);
     mLeft := FRects[PartNext].Right + mGap;
   end;
-  FRects[PartHide] := Rect(mLeft, 0, mLeft + TextWidth(FHideText) + 2 * mPad, ClientHeight);
+  FRects[PartHide] := Rect(mLeft, 0, mLeft + TextWidth(FHideText) + 2 * mPad, mHeight);
   mLeft := FRects[PartHide].Right + mGap;
   if FHiddenCount > 0 then
-    FRects[PartShowAll] := Rect(mLeft, 0, mLeft + TextWidth(ShowAllCaption) + 2 * mPad, ClientHeight);
+    FRects[PartShowAll] := Rect(mLeft, 0, mLeft + TextWidth(ShowAllCaption) + 2 * mPad, mHeight);
 end;
 
 function TAtlasDesignerBar.PartRect(APart: Integer): TRect;
@@ -357,7 +362,6 @@ procedure TAtlasDesignerBar.SearchKeyDown(Sender: TObject; var Key: Word; Shift:
 var
   mDelta: Integer;
 begin
-  mDelta := 0;
   case Key of
     VK_RETURN:
       if ssShift in Shift then
