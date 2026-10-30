@@ -728,6 +728,9 @@ begin
   Assert.AreEqual(0, Integer(Length(TypeFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
     'const'#10'  MinWert = 1;'#10'  MaxWert = 9;'#10'type'#10'  TBereich = MinWert..MaxWert;'#10 +
     'implementation'#10'end.'))));
+  // Parameter gleichen Namens wie sein Typ (hWnd: HWND in Watchdog und KeyHook): Der Name gilt dort noch nicht.
+  Assert.AreEqual(0, Integer(Length(TypeFindings(KundenUnit('Vcl.Basis',
+    '  TX = class'#10'    procedure Zeige(tSteuerung: TSteuerung);'#10'  end;'#10)))));
   // Ohne System im Index bzw. mit einer unbekannten Unit in uses keine Aussage.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TUnresolvedTypeRule.Create,
     KundenUnit('System.SysUtils', '  TX = class(TBasiz)'#10'  end;'#10), AttributeIndex(False), '', ''))));

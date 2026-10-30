@@ -617,6 +617,26 @@ var
     mOtherRoutines.Add(mKey, Result);
   end;
 
+  /// <summary>Deklarieren mehrere eingebundene Units eine freie Routine AName (GetEnvironmentVariable in
+  /// Winapi.Windows und System.SysUtils)? Welche gilt, entscheiden uses-Reihenfolge und Argumente.</summary>
+  function RoutineInSeveralUnits(const AName: string): Boolean;
+  var
+    mLocation: TSymbolLocation;
+    mFirst: string;
+  begin
+    Result := False;
+    mFirst := '';
+    for mLocation in AContext.Index.FindSymbols(AName) do
+      if (mLocation.Symbol.Kind in RoutineKinds) and (mLocation.Symbol.Container = '') and
+        (SameText(mLocation.UnitName, AContext.UnitName) or InScope(mLocation.UnitName)) then
+      begin
+        if mFirst = '' then
+          mFirst := mLocation.UnitName
+        else if not SameText(mFirst, mLocation.UnitName) then
+          Exit(True);
+      end;
+  end;
+
   /// <summary>Kennt der Index die ganze Vorfahrenkette des Typs, zu dem die Methode ACandidate gehört?</summary>
   function AncestorsKnown(const ACandidate: TResolvedSymbol): Boolean;
   var
@@ -727,6 +747,10 @@ var
         if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and
           (Length(mResolver.CallCandidates(AContext.Tree, mFileName, mNode[0])) <> 1) then
           Exit;
+        // Freie Routine aus mehreren Units: Welche gilt, entscheidet dcc nach uses-Reihenfolge und Argumenten.
+        if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and (mNode[0].Kind = TSyntaxKind.Identifier) and
+          RoutineInSeveralUnits(mNode[0].Name) then
+          Exit;
         for mIndex := mNode.ChildCount - 1 downto 0 do
           mPending.Push(mNode[mIndex]);
       end;
@@ -740,8 +764,8 @@ var
     if mInfo.BaseName <> '' then
       Result := mInfo.BaseName;
     ACategory := TExpressionTypes.CategoryOf(Result, mWidth, mSigned);
-    // const X = 'a' ist ein Char, auch wenn der Ausdruckstyp string sagt.
-    if (ACategory = TExpressionCategory.String_) and (AArgument.Kind in [TSyntaxKind.Identifier,
+    // Konstanten bekommen ihren Typ erst am Aufruf (const X = 'a' ist ein Char, Separator = '›' kein Integer).
+    if (AArgument.Kind in [TSyntaxKind.Identifier,
       TSyntaxKind.MemberAccess]) and mResolver.NodeType(AContext.Tree, mFileName, AArgument, mSymbol, mType,
       mTypeFound) and (mSymbol.SymbolKind = TIndexSymbolKind.Constant) then
     begin

@@ -419,6 +419,10 @@ var
   mSymbol, mType, mMember: TResolvedSymbol;
   mKind: TResolvedTypeKind;
 begin
+  // X.TryGetValue<Integer>: Der Parser legt um X.TryGetValue einen Knoten gleichen Namens mit den Typargumenten;
+  // das ist kein Punkt auf dem Ergebnis.
+  if (ANode.ChildCount > 1) and (ANode[ANode.ChildCount - 1].Kind = TSyntaxKind.GenericArgs) then
+    Exit;
   if (ANode.ChildCount = 0) or not ValueType(ANode[0], mSymbol, mType, mKind) or
     not TResolvedTypeKinds.IsSimpleValue(mKind) or HelperPossible(mSymbol, mType, ANode) or
     FResolver.FindMember(mType, ANode.Name, mMember) then
