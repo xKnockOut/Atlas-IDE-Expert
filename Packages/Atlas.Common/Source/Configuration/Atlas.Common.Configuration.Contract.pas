@@ -600,6 +600,8 @@ type
     MinConfidence: TRuleConfidence;
     /// <summary>"minConfidence" steht ausdrücklich in der Konfiguration und geht dem Profil vor (#146).</summary>
     MinConfidenceGiven: Boolean;
+    /// <summary>fix.minConfidence (#1352): Untergrenze der Konfidenz für Sammelkorrekturen; Vorgabe High.</summary>
+    FixMinConfidence: TRuleConfidence;
     /// <summary>Glob-Muster relativ zum Ordner der Konfiguration (*, **, ?).</summary>
     Exclude: TArray<string>;
     /// <summary>MCP-Werkzeuge, die der Server nicht anbietet (mcp.disabledTools, #99).</summary>
@@ -735,6 +737,9 @@ type
     /// (newCycle, newCrossLink, subsystemChange, centralGrowth; Vorgabe newCycle).</summary>
     ArchitectureBaseline: string;
     ArchitectureFailOn: TArray<string>;
+    /// <summary>Zuordnung jeder Unit erklären (#1368): Kanten je Teilsystem in Hinweis, Steckbrief, Bericht und
+    /// get_architecture, Spalte „knapp“ (architecture.explainAssignment, Vorgabe an).</summary>
+    ArchitectureExplainAssignment: Boolean;
     /// <summary>Gruppierung der Teilsysteme (architecture.grouping): Auflösung γ des Louvain-Verfahrens (0,2–5,0,
     /// Vorgabe 1, #1366) und ob das Fenster den Regler „Feinheit“ zeigt.</summary>
     ArchitectureGroupingResolution: Double;
@@ -748,6 +753,18 @@ type
     QueryEnabled: Boolean;
     /// <summary>Gespeicherte Abfragen (queries, #1351), optional als Regel query:&lt;Name&gt;.</summary>
     Queries: TArray<TSavedQuery>;
+    /// <summary>Übergreifende Fundament-Units (#1365): "group" (mitgruppieren), "attach" (anhängen) oder
+    /// "separate" (eigenes Teilsystem „Fundament“, Vorgabe).</summary>
+    ArchitectureGroupingFoundations: string;
+    /// <summary>Farben und Namen der Teilsysteme an den vorigen Stand angleichen (#1367): architecture.baseline,
+    /// sonst den zuletzt berechneten (architecture.grouping.keepPrevious, Vorgabe an).</summary>
+    ArchitectureGroupingKeepPrevious: Boolean;
+    /// <summary>Hotspots (#1354): Hauptschalter (aus = kein Fenster, kein get_hotspots, --hotspots endet mit Exit-Code
+    /// 3), ausgewerteter Zeitraum in Monaten (1..60) und Mindestzahl gemeinsamer Commits für die Änderungskopplung
+    /// (2..1000).</summary>
+    HotspotsEnabled: Boolean;
+    HotspotsMonths: Integer;
+    HotspotsCouplingMinCommits: Integer;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -1220,6 +1237,7 @@ begin
   Result.TestProfile := '';
   Result.MinConfidenceGiven := False;
   Result.MinConfidence := TRuleConfidence.Medium;
+  Result.FixMinConfidence := TRuleConfidence.High;
   Result.Exclude := nil;
   Result.Format := '';
   Result.Formatting := TFormatStyle.Default;
@@ -1287,12 +1305,18 @@ begin
   Result.ArchitectureExclude := nil;
   Result.ArchitectureBaseline := '';
   Result.ArchitectureFailOn := ['newCycle'];
+  Result.ArchitectureExplainAssignment := True;
   Result.ArchitectureGroupingResolution := 1;
   Result.ArchitectureGroupingShowResolutionSlider := True;
   Result.ArchitectureGroupingMaxShare := 0.25;
   Result.ArchitectureGroupingMinCohesion := 0.3;
   Result.QueryEnabled := True;
   Result.Queries := nil;
+  Result.ArchitectureGroupingFoundations := 'separate';
+  Result.ArchitectureGroupingKeepPrevious := True;
+  Result.HotspotsEnabled := True;
+  Result.HotspotsMonths := 12;
+  Result.HotspotsCouplingMinCommits := 5;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

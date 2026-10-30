@@ -40,6 +40,8 @@ begin
     // Code-Abfrage (#1351): das Ziel aus --check ist hier nur das Projekt der Abfrage.
     if Options.QueryText <> '' then
       Exit(TLinterShell.Query(Options));
+    if Options.HotspotsFile <> '' then
+      Exit(TLinterShell.Hotspots(Options));
     if Options.CheckTarget <> '' then
       Exit(TLinterShell.Run(Options));
     if Options.Mcp then

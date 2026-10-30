@@ -19,6 +19,9 @@
 //   Ändert sich eine Include-Datei, macht IncludesChanged die Bäume mit $I ungültig.
 // Texte ohne geöffnetes Dokument (Index, andere Dateien, Kommandozeile) parst
 // Parse ohne Cache; dort gilt das Speicherbudget aus #185.
+// Kennzahlen (#1356): Stats zählt Zugriffe und Parse-Läufe (Trefferquote) und
+// schätzt den Speicher der lebenden gemeinsamen Bäume (Token und Knoten,
+// einmal beim Anlegen geschätzt, beim Freigeben wieder abgezogen).
 
 interface
 
@@ -50,6 +53,19 @@ type
   /// <summary>Include-Resolver zu einer Datei (#860, Server: Suchpfade ihres Projekts); nil = $I nicht lesen.
   /// </summary>
   TTreeIncludeProvider = reference to function(const AUri: string): TIncludeResolver;
+
+  /// <summary>Kennzahlen des Caches seit Programmstart (#1356).</summary>
+  TSyntaxTreeCacheStats = record
+    /// <summary>Zugriffe über Get, GetFor und GetAll.</summary>
+    Lookups: Int64;
+    /// <summary>Davon neu geparst.</summary>
+    Parses: Int64;
+    /// <summary>Lebende gemeinsame Bäume und ihr geschätzter Speicher.</summary>
+    Trees: Integer;
+    Bytes: Int64;
+    /// <summary>Anteil der Zugriffe ohne neuen Parse in Prozent; -1 ohne Zugriff.</summary>
+    function HitPercent: Integer;
+  end;
 
   TSyntaxTreeCache = class
   public
@@ -83,6 +99,10 @@ type
       const ACancellation: IPascalCancellation; out AProcessed: TPreprocessorResult): TSyntaxTree; static;
     /// <summary>Anzahl der Parse-Läufe über Get seit Programmstart, für Tests und Status.</summary>
     class function ParseCount: Integer; static;
+    /// <summary>Zugriffe, Parse-Läufe und Speicher der lebenden Bäume (#1356).</summary>
+    class function Stats: TSyntaxTreeCacheStats; static;
+    /// <summary>Geschätzter Speicher eines Baums in Byte: Token mit Text, Knoten mit Namen und Kinderlisten.</summary>
+    class function EstimatedBytes(ATree: TSyntaxTree): Int64; static;
   end;
 
 implementation
@@ -106,6 +126,8 @@ type
     FConditionals: TArray<TConditionalRange>;
     FProcessed: TPreprocessorResult;
     FIncludesResolved: Boolean;
+    // Geschätzter Speicher, beim Anlegen zu LiveBytes gezählt (#1356).
+    FBytes: Int64;
   public
     constructor Create(ATree: TSyntaxTree; const AProcessed: TPreprocessorResult; AIncludesResolved: Boolean);
     destructor Destroy; override;
@@ -148,6 +170,10 @@ var
   IncludeProvider: TTreeIncludeProvider;
   // Stand der Include-Dateien; gehört bei Texten mit $I zum Schlüssel.
   IncludeGeneration: Integer;
+  // Kennzahlen (#1356), über TInterlocked.
+  Lookups: Int64;
+  LiveTrees: Integer;
+  LiveBytes: Int64;
 
 { TSharedSyntaxTree }
 
@@ -159,10 +185,15 @@ begin
   FProcessed := AProcessed;
   FIncludesResolved := AIncludesResolved;
   FConditionals := TPascalPreprocessor.MainConditionals(AProcessed);
+  FBytes := TSyntaxTreeCache.EstimatedBytes(FTree);
+  TInterlocked.Add(LiveBytes, FBytes);
+  TInterlocked.Increment(LiveTrees);
 end;
 
 destructor TSharedSyntaxTree.Destroy;
 begin
+  TInterlocked.Add(LiveBytes, -FBytes);
+  TInterlocked.Decrement(LiveTrees);
   FTree.Free;
   inherited;
 end;
@@ -297,6 +328,7 @@ var
 begin
   Document := ADocument;
   Mode := AMode;
+  TInterlocked.Increment(Lookups);
   Key := Mode.Key(Document.Text);
   Value := Document.Derived(Key,
     function: IInterface
@@ -410,6 +442,58 @@ end;
 class function TSyntaxTreeCache.ParseCount: Integer;
 begin
   Result := TInterlocked.CompareExchange(Parses, 0, 0);
+end;
+
+class function TSyntaxTreeCache.Stats: TSyntaxTreeCacheStats;
+begin
+  Result.Lookups := TInterlocked.CompareExchange(Lookups, 0, 0);
+  Result.Parses := TInterlocked.CompareExchange(Parses, 0, 0);
+  Result.Trees := TInterlocked.CompareExchange(LiveTrees, 0, 0);
+  Result.Bytes := TInterlocked.CompareExchange(LiveBytes, 0, 0);
+end;
+
+function StringBytes(const AValue: string): Int64;
+begin
+  // Kopf (Referenzzähler, Länge, Codepage) plus UTF-16-Zeichen und Endnull, wie Index.Memory.
+  if AValue = '' then
+    Result := 0
+  else
+    Result := 12 + (Length(AValue) + 1) * SizeOf(Char);
+end;
+
+class function TSyntaxTreeCache.EstimatedBytes(ATree: TSyntaxTree): Int64;
+var
+  mBytes: Int64;
+  mToken: TPascalToken;
+begin
+  Result := 0;
+  if ATree = nil then
+    Exit;
+  mBytes := TSyntaxTree.InstanceSize + 16 + Int64(Length(ATree.Tokens)) * SizeOf(TPascalToken);
+  for mToken in ATree.Tokens do
+    Inc(mBytes, StringBytes(mToken.Text));
+  if ATree.Root <> nil then
+    ATree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Inc(mBytes, TSyntaxNode.InstanceSize + StringBytes(ANode.Name));
+        // Kinderliste: Objekt und Array der Zeiger.
+        if ANode.ChildCount > 0 then
+          Inc(mBytes, 48 + Int64(ANode.ChildCount) * SizeOf(Pointer));
+        Result := True;
+      end);
+  Result := mBytes;
+end;
+
+{ TSyntaxTreeCacheStats }
+
+function TSyntaxTreeCacheStats.HitPercent: Integer;
+begin
+  if Lookups <= 0 then
+    Exit(-1);
+  Result := Round((Lookups - Parses) * 100 / Lookups);
+  if Result < 0 then
+    Result := 0;
 end;
 
 initialization

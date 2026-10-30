@@ -11,7 +11,7 @@
 <style>
 :root {
   --bg: #f4f5f7; --panel: #fff; --line: #d6d9e0; --fg: #1d2330; --muted: #5d6576; --edge: #b4bac6;
-  --accent: #2f6fb3; --path: #d9480f; --cycle: #c92a2a; --error: #c92a2a; --add: #2b8a3e;
+  --accent: #2f6fb3; --path: #d9480f; --cycle: #c92a2a; --error: #c92a2a; --add: #2b8a3e; --warn: #9a6200;
   --c0: #2f6fb3; --c1: #7a4fb0; --c2: #2e7d4f; --c3: #b07a1d; --c4: #a33c5a;
   --c5: #1b8a8f; --c6: #6b6f1d; --c7: #c2571a; --c8: #4a5ab8; --c9: #8a4f3a;
   --sans: "Segoe UI", system-ui, -apple-system, sans-serif; --mono: Consolas, "Cascadia Mono", monospace;
@@ -19,7 +19,7 @@
 }
 @media (prefers-color-scheme: dark) { :root {
   --bg: #15181e; --panel: #1e222a; --line: #333946; --fg: #e3e6ec; --muted: #9aa2b2; --edge: #4c5465;
-  --accent: #6aa6e6; --path: #ff8a4c; --cycle: #ff6b6b; --error: #ff6b6b; --add: #69db7c;
+  --accent: #6aa6e6; --path: #ff8a4c; --cycle: #ff6b6b; --error: #ff6b6b; --add: #69db7c; --warn: #e0a84a;
   --c0: #6aa6e6; --c1: #b28be0; --c2: #6cc293; --c3: #e0b257; --c4: #e07a98;
   --c5: #5cc6c9; --c6: #c3c75a; --c7: #f0945a; --c8: #94a0f0; --c9: #d09a83;
   color-scheme: dark; } }
@@ -71,6 +71,8 @@ circle.ring { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }
 .link.cycle { stroke: var(--cycle); stroke-width: 2.5; opacity: 1; }
 .link.added { stroke: var(--add); stroke-width: 2.5; opacity: 1; }
 .link.removed { stroke: var(--error); stroke-width: 2; stroke-dasharray: 6 4; opacity: 1; }
+.link.found { stroke-dasharray: 2 4; opacity: .35; }
+.group circle.body.foundation, circle.ring.foundation { stroke-dasharray: 8 5; }
 .added-text { color: var(--add); font-weight: 600; }
 .node.onpath circle { stroke: var(--path); stroke-width: 3; }
 .node.oncycle circle { stroke: var(--cycle); stroke-width: 3; }
@@ -85,6 +87,12 @@ summary { cursor: pointer; }
 .error { color: var(--error); font-weight: 600; }
 .tag { font-size: 11px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); color: var(--muted); }
 .unit-link { cursor: pointer; color: var(--accent); text-decoration: underline dotted; }
+/* Zuordnung einer Unit (#1368): Kanten je Teilsystem im Steckbrief. */
+table.assign { width: auto; border: 0; background: none; font-size: 12.5px; }
+table.assign td { border: 0; padding: 1px 10px 1px 0; white-space: nowrap; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.close { color: var(--warn); font-size: 12.5px; }
+.tag.close { border-color: var(--warn); margin-left: 4px; }
 </style>
 </head>
 <body>
@@ -94,6 +102,7 @@ summary { cursor: pointer; }
     <div class="muted" id="stamp"></div>
     <div id="counts"></div>
     <div class="muted" id="scope"></div>
+    <div class="muted" id="aligned" hidden></div>
   </header>
   <nav class="toc">
     <a href="#karte">Architekturkarte</a><a href="#zentrale-units">Zentrale Units</a><a href="#teilsysteme">Teilsysteme</a>
@@ -126,7 +135,7 @@ summary { cursor: pointer; }
       <div class="hint" id="hint">Ziehen verschiebt, Mausrad zoomt · Klick wählt eine Unit · Umschalt+Klick setzt das Ziel</div>
     </div>
     <div class="side">
-      <div class="card"><h3>Teilsysteme</h3><div class="legend" id="legend"></div><div class="muted">Klick blendet ein Teilsystem aus und ein.</div></div>
+      <div class="card"><h3>Teilsysteme</h3><div class="legend" id="legend"></div><div class="muted">Klick blendet ein Teilsystem aus und ein.</div><div class="muted" id="foundationNote" hidden>Fundament: Units mit Rolle Fundament, deren direkt Abhängige in mindestens drei Teilsystemen liegen oder höchstens zu 60 % im eigenen, und Units, die nur sie verwenden; Kanten dorthin zählen nicht als Querverbindung und nicht im Zusammenhalt.</div></div>
       <div class="card"><h3>Weg</h3><div class="muted" id="pathInfo">Von und nach wählen, dann „Weg zeigen“.</div><ol class="steps" id="steps"></ol></div>
       <div class="card"><h3>Unit</h3><div id="unitInfo" class="muted">Klick auf eine Unit zeigt ihren Steckbrief.</div></div>
     </div>
@@ -137,6 +146,7 @@ summary { cursor: pointer; }
   <div class="scroll"><table id="central"></table></div>
 
   <h2 id="teilsysteme">Teilsysteme</h2>
+  <p class="muted" id="explanation" hidden></p>
   <div class="scroll"><table id="subsystems"></table></div>
   <div id="subsystemDetails"></div>
 
@@ -176,6 +186,8 @@ summary { cursor: pointer; }
   // (wie TAtlasArchitecturePalette: je Stufe 22 % Weiß bzw. Schwarz, höchstens 60 %).
   function color(i) {
     var s = S[i] || {}, slot = s.color !== undefined ? s.color : i, base = 'var(--c' + (slot % 10) + ')', shade = s.shade || 0;
+    // Das Teilsystem „Fundament“ (#1365) in neutraler Farbe.
+    if (s.foundation) return 'var(--muted)';
     if (!shade) return base;
     var mix = Math.min(60, 22 * Math.abs(shade));
     return 'color-mix(in srgb, ' + base + ' ' + (100 - mix) + '%, ' + (shade > 0 ? '#fff' : '#000') + ')';
@@ -202,6 +214,13 @@ summary { cursor: pointer; }
     (sm.interfaceCycles ? ' (davon nur interface: ' + sm.interfaceCycles + ')' : '') + ' · Querverbindungen: ' + sm.crossLinks + ' · Ausreißer: ' + sm.outliers;
   $('scope').textContent = 'Umfang: ' + (D.scope === 'project' ? 'Projekt' : 'Projektgruppe') + (D.includeLibrary ? ', mit' : ', ohne') + ' Bibliotheks-Units' +
     (D.excludes.length ? ', ausgeschlossen: ' + D.excludes.join(', ') : '') + resolutionText();
+  // Angleichung an einen vorigen Stand (#1367).
+  if (D.aligned) {
+    $('aligned').textContent = 'Teilsysteme an Stand vom ' + D.aligned.at.replace('T', ' ').substring(0, 16) + ' angeglichen (' +
+      (D.aligned.source === 'baseline' ? 'architecture.baseline' : 'zuletzt berechneter Stand') + '; ' + D.aligned.kept +
+      (D.aligned.kept === 1 ? ' Teilsystem behält' : ' Teilsysteme behalten') + ' Farbe und Namen)';
+    $('aligned').hidden = false;
+  }
 
   // Graph
   var out = U.map(function () { return []; }), inn = U.map(function () { return []; });
@@ -256,7 +275,8 @@ summary { cursor: pointer; }
   });
   svg.addEventListener('pointerup', function () { setTimeout(function () { drag = null; }, 0); });
 
-  // Zeichnen
+  // Zeichnen; showFound: Kanten zum Fundament (#1365) zeigen.
+  var showFound = true;
   function nodeRadius(u) { return 5 + Math.sqrt(U[u].total) * 1.8; }
   function anchor(u) { var s = U[u].subsystem; return isOpen(s) ? { x: U[u].x, y: U[u].y, r: nodeRadius(u) } : { x: S[s].x, y: S[s].y, r: groupRadius(s) }; }
   // Zugeklappt füllt ein Teilsystem den größten Teil seines Platzes auf der Karte.
@@ -274,10 +294,12 @@ summary { cursor: pointer; }
       var a = anchor(l.s), b = anchor(l.t), ss = U[l.s].subsystem, ts = U[l.t].subsystem;
       var key = (isOpen(ss) ? 'u' + l.s : 's' + ss) + '>' + (isOpen(ts) ? 'u' + l.t : 's' + ts);
       if (!isOpen(ss) && !isOpen(ts) && ss === ts) return;
-      var onPath = pathLinks && pathLinks.indexOf(l) >= 0;
+      var onPath = pathLinks && pathLinks.indexOf(l) >= 0, found = S[ss].foundation || S[ts].foundation;
+      if (found && !showFound && !onPath) return;
       if (seen[key] && !onPath) return; seen[key] = true;
       var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
       var cls = 'link' + (l.k === 'm' ? ' impl' : '');
+      if (found && !onPath) cls += ' found';
       if (onPath) cls += ' path';
       else if (showCmp && addedLink[l.s + '>' + l.t]) cls += ' added';
       else if (showCyc && cycleOf[l.s] !== undefined && cycleOf[l.s] === cycleOf[l.t]) cls += ' cycle';
@@ -292,7 +314,7 @@ summary { cursor: pointer; }
     S.forEach(function (s, i) {
       if (hidden[i]) return;
       if (isOpen(i)) {
-        if (collapsed || S.length > 1) rings.appendChild(svgEl('circle', { 'class': 'ring', cx: s.x, cy: s.y, r: s.r }));
+        if (collapsed || S.length > 1) rings.appendChild(svgEl('circle', { 'class': 'ring' + (s.foundation ? ' foundation' : ''), cx: s.x, cy: s.y, r: s.r }));
         if (collapsed) {
           var g0 = svgEl('g', { 'class': 'group', 'data-s': i });
           var t0 = svgEl('text', { x: s.x, y: s.y - s.r - 6, 'text-anchor': 'middle', 'font-size': groupFont(i) });
@@ -302,7 +324,7 @@ summary { cursor: pointer; }
         return;
       }
       var g = svgEl('g', { 'class': 'group', 'data-s': i, tabindex: 0 });
-      g.appendChild(svgEl('circle', { 'class': 'body', cx: s.x, cy: s.y, r: groupRadius(i), fill: color(i), stroke: color(i) }));
+      g.appendChild(svgEl('circle', { 'class': 'body' + (s.foundation ? ' foundation' : ''), cx: s.x, cy: s.y, r: groupRadius(i), fill: color(i), stroke: color(i) }));
       var t = svgEl('text', { x: s.x, y: s.y + groupFont(i) / 3, 'text-anchor': 'middle', 'font-size': groupFont(i) });
       t.textContent = s.name + ' (' + s.units.length + ')';
       g.appendChild(t);
@@ -409,8 +431,40 @@ summary { cursor: pointer; }
     D.outliers.forEach(function (o) { if (o.unit === u) rows.push(['Ausreißer', 'gehört eher zu ' + S[o.suggested].name]); });
     rows.forEach(function (r) { kv.appendChild(el('span', {}, r[0])); kv.appendChild(el('span', {}, String(r[1]))); });
     box.appendChild(kv);
+    if (x.assignment) assignmentInfo(u, box);
     box.appendChild(el('div', { 'class': 'muted' }, 'Umschalt+Klick auf eine andere Unit zeigt den Weg dorthin.'));
     draw();
+  }
+  // Zuordnung (#1368): Kanten je Teilsystem wie TArchitectureReport.AssignmentText; [Teilsystem, interface,
+  // implementation(, 0 = zählt nicht)].
+  function rowSum(r) { return 2 * r[1] + r[2]; }
+  function rivalOf(x) { for (var k = 0; k < x.assignment.length; k++) { var r = x.assignment[k]; if (r[0] !== x.subsystem && r[3] !== 0) return r; } return null; }
+  function ownOf(x) { for (var k = 0; k < x.assignment.length; k++) if (x.assignment[k][0] === x.subsystem) return x.assignment[k]; return null; }
+  function closeText(x) {
+    var rival = rivalOf(x), own = ownOf(x);
+    if (x.close === undefined || !rival || !own) return '';
+    if (x.close === 0) return 'Knapp: ' + S[rival[0]].name + ' hat schon ' + rowSum(rival) + ' gewichtete Kanten, das eigene Teilsystem ' + rowSum(own) + '.';
+    return 'Knapp: Mit ' + x.close + (x.close === 1 ? ' weiteren Kante' : ' weiteren Kanten') + ' zu ' + S[rival[0]].name + ' läge sie dort (' + rowSum(rival) + ' von ' + rowSum(own) + ').';
+  }
+  function assignmentInfo(u, box) {
+    var x = U[u], head = el('div', { 'class': 'muted' }, 'Teilsystem ');
+    var sw = el('span', { 'class': 'sw' }); sw.style.background = color(x.subsystem); head.appendChild(sw);
+    // Hat ein anderes Teilsystem schon gleich viele Kanten (close 0), entschied Louvain über das ganze Teilsystem.
+    head.appendChild(document.createTextNode(S[x.subsystem].name + (x.close === 0 ? ', Kanten je Teilsystem' : ', weil die meisten Kanten dorthin gehen') + ' (interface zählt 2, implementation 1):'));
+    box.appendChild(head);
+    var t = el('table', { 'class': 'assign' });
+    x.assignment.forEach(function (r) {
+      var tr = el('tr'), name = el('td'), dot = el('span', { 'class': 'sw' });
+      dot.style.background = color(r[0]); name.appendChild(dot); name.appendChild(document.createTextNode(S[r[0]].name));
+      tr.appendChild(name);
+      tr.appendChild(el('td', { 'class': 'n' }, r[1] + ' × interface'));
+      tr.appendChild(el('td', { 'class': 'n' }, r[2] + ' × impl.'));
+      tr.appendChild(el('td', { 'class': 'n' }, r[3] === 0 ? 'zählt nicht' : '= ' + rowSum(r)));
+      t.appendChild(tr);
+    });
+    box.appendChild(t);
+    var c = closeText(x);
+    if (c) box.appendChild(el('div', { 'class': 'close' }, c));
   }
   function unitLink(u) { var a = el('span', { 'class': 'unit-link mono', tabindex: 0 }, U[u].name); a.addEventListener('click', function () { expanded[U[u].subsystem] = true; select(u); $('karte').scrollIntoView(); }); return a; }
 
@@ -421,6 +475,14 @@ summary { cursor: pointer; }
     b.appendChild(document.createTextNode(s.name + ' ')); b.appendChild(el('span', { 'class': 'muted' }, String(s.units.length)));
     b.addEventListener('click', function () { hidden[i] = !hidden[i]; b.setAttribute('aria-pressed', String(!hidden[i])); draw(); });
     target.appendChild(b);
+  }
+  // Kanten zum Fundament (#1365) blass, über die Legende ein- und ausblendbar.
+  var hasFoundation = S.some(function (s) { return s.foundation; });
+  if (hasFoundation) {
+    $('foundationNote').hidden = false;
+    var fb = el('button', { type: 'button', 'aria-pressed': 'true', title: 'Kanten zu den Units im Teilsystem „Fundament“ zeigen' }, 'Kanten zum Fundament');
+    fb.addEventListener('click', function () { showFound = !showFound; fb.setAttribute('aria-pressed', String(showFound)); draw(); });
+    $('legend').appendChild(fb);
   }
   var familyDone = {};
   S.forEach(function (s, i) {
@@ -464,16 +526,19 @@ summary { cursor: pointer; }
     D.central.map(function (u, i) { var x = U[u]; return [{ v: i + 1 }, { v: x.name, node: function () { return unitLink(u); } }, { v: S[x.subsystem].name }, { v: x.direct }, { v: x.total }, { v: x.uses }, { v: roleCaption(x.role) }]; }),
     [true, false, false, true, true, true, false]);
   table('subsystems', ['#', 'Teilsystem', 'Units', 'zentrale Unit', 'Zusammenhalt %', 'Kanten innen', 'Kanten nach außen'],
-    S.map(function (s, i) { return [{ v: i + 1 }, { v: subsystemCaption(s) }, { v: s.units.length }, { v: s.central >= 0 ? U[s.central].name : '' }, { v: Math.round(s.cohesion * 100) }, { v: s.inner }, { v: s.outer }]; }),
+    S.map(function (s, i) { return [{ v: i + 1 }, { v: subsystemCaption(s) }, { v: s.units.length }, { v: s.central >= 0 ? U[s.central].name : '' }, { v: s.foundation ? '–' : Math.round(s.cohesion * 100) }, { v: s.inner }, { v: s.outer }]; }),
     [true, false, true, false, true, true, true]);
   var outlierOf = {}; D.outliers.forEach(function (o) { outlierOf[o.unit] = o; });
+  // Wonach die Teilsysteme gebildet werden (#1368).
+  if (D.explanation) { $('explanation').textContent = D.explanation; $('explanation').hidden = false; }
   S.forEach(function (s) {
-    var d = el('details'); d.appendChild(el('summary', {}, s.name + ' · ' + s.units.length + ' Units · Zusammenhalt ' + Math.round(s.cohesion * 100) + ' %'));
+    var d = el('details'); d.appendChild(el('summary', {}, s.name + ' · ' + s.units.length + ' Units · Zusammenhalt ' + (s.foundation ? '–' : Math.round(s.cohesion * 100) + ' %')));
     var p = el('div');
     s.units.forEach(function (u, k) {
       if (k) p.appendChild(document.createTextNode(', '));
       p.appendChild(unitLink(u));
       if (outlierOf[u]) p.appendChild(el('span', { 'class': 'tag' }, 'Ausreißer → ' + S[outlierOf[u].suggested].name));
+      if (U[u].close !== undefined && rivalOf(U[u])) p.appendChild(el('span', { 'class': 'tag close', title: closeText(U[u]) }, 'knapp → ' + S[rivalOf(U[u])[0]].name));
     });
     d.appendChild(p); $('subsystemDetails').appendChild(d);
   });

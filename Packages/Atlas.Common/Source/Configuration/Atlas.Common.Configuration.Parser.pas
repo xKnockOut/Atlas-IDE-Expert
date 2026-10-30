@@ -90,6 +90,7 @@ type
     procedure ReadOverrides(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadMcp(ANode: TJsonNode);
+    procedure ReadFix(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
     procedure ReadDeadCode(ANode: TJsonNode);
     procedure ReadSlashCommands(ANode: TJsonNode);
@@ -120,6 +121,7 @@ type
     procedure ReadQuery(ANode: TJsonNode);
     procedure ReadQueries(ANode: TJsonNode);
     function ReadSavedQuery(ANode: TJsonNode; out AQuery: TSavedQuery): Boolean;
+    procedure ReadHotspots(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     procedure ReadTasks(ANode: TJsonNode);
     procedure ReadIssues(ANode: TJsonNode);
@@ -795,6 +797,31 @@ begin
       ReadMcpCustomPrompts(ANode[Index])
     else
       ReportNode(ANode[Index], Format('Unbekannte Einstellung "mcp.%s"', [ANode.Keys[Index]]));
+end;
+
+procedure TValidator.ReadFix(ANode: TJsonNode);
+var
+  mIndex: Integer;
+  mText: string;
+  mConfidence: TRuleConfidence;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"fix" muss ein Objekt sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+    if ANode.Keys[mIndex] = 'minConfidence' then
+    begin
+      // Sammelkorrekturen (#1352) nie unter mittlerer Konfidenz.
+      if ExpectString(ANode[mIndex], 'fix.minConfidence', mText) then
+        if TConfigurationParser.TryParseConfidence(mText, mConfidence) and (mConfidence <> TRuleConfidence.Low) then
+          FSettings.FixMinConfidence := mConfidence
+        else
+          ReportNode(ANode[mIndex], 'Erlaubt sind "medium" und "high"');
+    end
+    else
+      ReportNode(ANode[mIndex], Format('Unbekannte Einstellung "fix.%s"', [ANode.Keys[mIndex]]));
 end;
 
 /// <summary>Name eines Prompts oder Arguments: Buchstabe, dann Buchstaben, Ziffern, "_" oder "-".</summary>
@@ -2216,6 +2243,59 @@ begin
   end;
 end;
 
+procedure TValidator.ReadHotspots(ANode: TJsonNode);
+var
+  mIndex, mInner, mNumber: Integer;
+  mKey, mInnerKey: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"hotspots" muss ein Objekt sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mKey := ANode.Keys[mIndex];
+    if mKey = 'enabled' then
+      ExpectBoolean(ANode[mIndex], mKey, FSettings.HotspotsEnabled)
+    else if mKey = 'months' then
+    begin
+      if (ANode[mIndex].Kind = TJsonKind.Number) and TryStrToInt(ANode[mIndex].Value, mNumber) and (mNumber >= 1) and
+        (mNumber <= 60) then
+        FSettings.HotspotsMonths := mNumber
+      else
+        ReportNode(ANode[mIndex], '"hotspots.months" muss eine ganze Zahl von 1 bis 60 sein');
+    end
+    else if mKey = 'coupling' then
+    begin
+      if ANode[mIndex].Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(ANode[mIndex], '"hotspots.coupling" muss ein Objekt sein');
+        Continue;
+      end;
+      for mInner := 0 to ANode[mIndex].Count - 1 do
+      begin
+        mInnerKey := ANode[mIndex].Keys[mInner];
+        if mInnerKey = 'minCommits' then
+        begin
+          if (ANode[mIndex][mInner].Kind = TJsonKind.Number) and TryStrToInt(ANode[mIndex][mInner].Value, mNumber) and
+            (mNumber >= 2) and (mNumber <= 1000) then
+            FSettings.HotspotsCouplingMinCommits := mNumber
+          else
+            ReportNode(ANode[mIndex][mInner],
+              '"hotspots.coupling.minCommits" muss eine ganze Zahl von 2 bis 1000 sein');
+        end
+        else
+          Report(ANode[mIndex].KeyStarts[mInner], ANode[mIndex].KeyStarts[mInner] + Length(mInnerKey) + 2,
+            Format('Unbekannte Einstellung "hotspots.coupling.%s"', [mInnerKey]), False);
+      end;
+    end
+    else
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
+        Format('Unbekannte Einstellung "hotspots.%s"', [mKey]), False);
+  end;
+end;
+
 procedure TValidator.ReadArchitecture(ANode: TJsonNode);
 
   // Zahl von AMin bis AMax; sonst Fehler mit ARange ("0,2 bis 5,0").
@@ -2230,7 +2310,7 @@ procedure TValidator.ReadArchitecture(ANode: TJsonNode);
       ReportNode(AValueNode, Format('"architecture.grouping.%s" muss eine Zahl von %s sein', [AName, ARange]));
   end;
 
-  // architecture.grouping: Gruppierung der Teilsysteme (#1366, #1364).
+  // architecture.grouping: Gruppierung der Teilsysteme (#1366, #1364, #1365, #1367).
   procedure ReadGrouping(AGroupNode: TJsonNode);
   var
     mIndex: Integer;
@@ -2250,8 +2330,19 @@ procedure TValidator.ReadArchitecture(ANode: TJsonNode);
         ReadNumber(AGroupNode[mIndex], mKey, '0 bis 0,9', 0, 0.9, FSettings.ArchitectureGroupingMaxShare)
       else if mKey = 'minCohesion' then
         ReadNumber(AGroupNode[mIndex], mKey, '0 bis 1', 0, 1, FSettings.ArchitectureGroupingMinCohesion)
+      else if mKey = 'foundations' then
+      begin
+        if (AGroupNode[mIndex].Kind = TJsonKind.String_) and ((AGroupNode[mIndex].Value = 'group') or
+          (AGroupNode[mIndex].Value = 'attach') or (AGroupNode[mIndex].Value = 'separate')) then
+          FSettings.ArchitectureGroupingFoundations := AGroupNode[mIndex].Value
+        else
+          ReportNode(AGroupNode[mIndex],
+            '"architecture.grouping.foundations" muss "group", "attach" oder "separate" sein');
+      end
       else if mKey = 'showResolutionSlider' then
         ExpectBoolean(AGroupNode[mIndex], mKey, FSettings.ArchitectureGroupingShowResolutionSlider)
+      else if mKey = 'keepPrevious' then
+        ExpectBoolean(AGroupNode[mIndex], mKey, FSettings.ArchitectureGroupingKeepPrevious)
       else
         Report(AGroupNode.KeyStarts[mIndex], AGroupNode.KeyStarts[mIndex] + Length(mKey) + 2,
           Format('Unbekannte Einstellung "architecture.grouping.%s"', [mKey]), False);
@@ -2327,6 +2418,8 @@ begin
               'newCycle, newCrossLink, subsystemChange, centralGrowth)', [Value]));
         end;
     end
+    else if Key = 'explainAssignment' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ArchitectureExplainAssignment)
     else if Key = 'grouping' then
       ReadGrouping(ANode[Index])
     else
@@ -3153,6 +3246,8 @@ begin
         ReadExclude(Value)
       else if Key = 'mcp' then
         ReadMcp(Value)
+      else if Key = 'fix' then
+        ReadFix(Value)
       else if Key = 'minConfidence' then
       begin
         if ExpectString(Value, Key, Text) then
@@ -3201,6 +3296,8 @@ begin
         ReadQuery(Value)
       else if Key = 'queries' then
         ReadQueries(Value)
+      else if Key = 'hotspots' then
+        ReadHotspots(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'completeBlocks' then
@@ -3557,6 +3654,8 @@ begin
       Result.MinConfidence := FileSettings.MinConfidence;
       Result.MinConfidenceGiven := FileSettings.MinConfidenceGiven;
     end
+    else if Key = 'fix' then
+      Result.FixMinConfidence := FileSettings.FixMinConfidence
     else if Key = 'tasks' then
       Result.Tasks := FileSettings.Tasks
     else if Key = 'issues' then
@@ -3634,10 +3733,19 @@ begin
       Result.ArchitectureExclude := FileSettings.ArchitectureExclude;
       Result.ArchitectureBaseline := FileSettings.ArchitectureBaseline;
       Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
+      Result.ArchitectureExplainAssignment := FileSettings.ArchitectureExplainAssignment;
       Result.ArchitectureGroupingResolution := FileSettings.ArchitectureGroupingResolution;
       Result.ArchitectureGroupingShowResolutionSlider := FileSettings.ArchitectureGroupingShowResolutionSlider;
       Result.ArchitectureGroupingMaxShare := FileSettings.ArchitectureGroupingMaxShare;
       Result.ArchitectureGroupingMinCohesion := FileSettings.ArchitectureGroupingMinCohesion;
+      Result.ArchitectureGroupingFoundations := FileSettings.ArchitectureGroupingFoundations;
+      Result.ArchitectureGroupingKeepPrevious := FileSettings.ArchitectureGroupingKeepPrevious;
+    end
+    else if Key = 'hotspots' then
+    begin
+      Result.HotspotsEnabled := FileSettings.HotspotsEnabled;
+      Result.HotspotsMonths := FileSettings.HotspotsMonths;
+      Result.HotspotsCouplingMinCommits := FileSettings.HotspotsCouplingMinCommits;
     end
     else if Key = 'query' then
       Result.QueryEnabled := FileSettings.QueryEnabled

@@ -135,6 +135,10 @@ begin
     Setting('ArchitectureCentralUnits', 'architecture.centralUnits', False),
     // Code-Abfragen (#1351): Server (query_code, --query, Regeln query:<name>) und Plugin lesen denselben Wert.
     Setting('QueryEnabled', 'query.enabled', True),
+    // Hotspots (#1354): Server (Bericht, get_hotspots, atlas/hotspots) und Plugin lesen dieselben Werte.
+    Setting('HotspotsEnabled', 'hotspots.enabled', True),
+    Setting('HotspotsMonths', 'hotspots.months', False),
+    Setting('HotspotsCouplingMinCommits', 'hotspots.coupling.minCommits', False),
     // Treffersicherheit der Verwendungen (#1119).
     Setting('ReferencesInferred', 'references.inferred', True),
     Setting('ReferencesTextMatches', 'references.textMatches', True),
