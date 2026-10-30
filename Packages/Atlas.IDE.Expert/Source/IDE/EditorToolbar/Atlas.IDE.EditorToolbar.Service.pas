@@ -125,7 +125,6 @@ const
   TickMs = 150;
   /// <summary>Befehlsliste und offene Dateien nur alle so viele Takte neu lesen (etwa 2 s).</summary>
   SlowTicks = 13;
-  PositionBelow = 'belowBreadcrumbs';
   PositionAbove = 'aboveBreadcrumbs';
   PositionInline = 'inBreadcrumbs';
   AtlasPrefix = 'Atlas: ';

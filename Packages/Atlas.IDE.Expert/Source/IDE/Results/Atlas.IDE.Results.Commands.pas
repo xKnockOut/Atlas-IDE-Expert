@@ -91,8 +91,6 @@ uses
   Atlas.IDE.Foundation.Files;
 
 const
-  // Projektweit über viele Units; deutlich länger als ein Hover.
-  SearchTimeoutMs = 30000;
   // Beim Tippen: lieber leer als die IDE aufhalten.
   SymbolTimeoutMs = 1500;
 
