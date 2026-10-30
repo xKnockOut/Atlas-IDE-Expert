@@ -258,8 +258,13 @@ begin
     Exit;
   FPrepared := True;
   HandleNeeded;
-  for Name in FForms do
-    FForm.Items.Add(Name);
+  FForm.Items.BeginUpdate;
+  try
+    for Name in FForms do
+      FForm.Items.Add(Name);
+  finally
+    FForm.Items.EndUpdate;
+  end;
   Index := FForm.Items.IndexOf(FChoice.Form);
   if (Index < 0) and (FForm.Items.Count > 0) then
     Index := 0;
