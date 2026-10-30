@@ -52,11 +52,6 @@ uses
   Atlas.Core.Hotspots.Model,
   Atlas.Core.Hotspots.Model.Tests;
 
-function Joined(const ALines: TArray<string>): string;
-begin
-  Result := string.Join(#10, ALines);
-end;
-
 procedure TAtlasHotspotsFrameTests.WarmUpFirstUse;
 begin
   SetUp;

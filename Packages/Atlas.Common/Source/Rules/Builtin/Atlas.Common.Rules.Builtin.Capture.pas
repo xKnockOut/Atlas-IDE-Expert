@@ -388,6 +388,40 @@ begin
   end;
 end;
 
+/// <summary>Schreibt die anonyme Methode AMethod selbst AName (Zuweisung, Inc/Dec)? Dann ist die Variable
+/// gemeinsamer Zustand (ein Ereignis sammelt dort, was es sieht), kein Wert, den sie beim Erzeugen festhalten
+/// soll.</summary>
+function WrittenInside(AMethod: TSyntaxNode; const AName: string): Boolean;
+var
+  mStack: TStack<TSyntaxNode>;
+  mNode, mCall: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mStack := TStack<TSyntaxNode>.Create;
+  try
+    mStack.Push(AMethod);
+    while mStack.Count > 0 do
+    begin
+      mNode := mStack.Pop;
+      if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount > 0) and
+        (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, AName) then
+        Exit(True);
+      if (mNode.Kind = TSyntaxKind.CallStatement) and (mNode.ChildCount > 0) then
+      begin
+        mCall := mNode[0];
+        if (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount > 1) and (mCall[0].Kind = TSyntaxKind.Identifier) and
+          MatchText(mCall[0].Name, ['Inc', 'Dec']) and (mCall[1].Kind = TSyntaxKind.Identifier) and
+          SameText(mCall[1].Name, AName) then
+          Exit(True);
+      end;
+      for mIndex := 0 to mNode.ChildCount - 1 do
+        mStack.Push(mNode[mIndex]);
+    end;
+  finally
+    mStack.Free;
+  end;
+end;
 
 /// <summary>Korrektur "Variable je Durchlauf kopieren"; False, wenn sie nicht sicher möglich ist.</summary>
 function CopyPerIterationFix(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
@@ -513,6 +547,9 @@ begin
               Continue;
             Changes := True;
           end
+          else if WrittenInside(Method, Local.Name) then
+            // Ereignis, das in die Variable schreibt (Log := Log + …, Inc(Zähler)): gewollt geteilt.
+            Changes := False
           else
           begin
             if Graph = nil then

@@ -42,8 +42,6 @@ type
     procedure ListsOwnLines;
   end;
 
-function SourceText: string;
-
 implementation
 
 uses
@@ -106,11 +104,6 @@ const
     'end;'#10 +
     #10 +
     'end.'#10;
-
-function SourceText: string;
-begin
-  Result := Source;
-end;
 
 function Pos_(ALine, ACharacter: Integer): TTextPosition;
 begin

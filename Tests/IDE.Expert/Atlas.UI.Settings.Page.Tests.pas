@@ -676,7 +676,7 @@ begin
     Page.OnTeamFile :=
       function: TAtlasTeamSettings
       begin
-        Result := Team;
+        Result := Team; // lsp-ignore: captured-loop-variable -- Absicht: liest den jeweils aktuellen Wert
       end;
     Page.OnOpenTeamFile :=
       procedure
@@ -1896,7 +1896,7 @@ begin
     Page.OnAskLayoutName :=
       function(const APrompt: string; var AName: string): Boolean
       begin
-        AName := Answer;
+        AName := Answer; // lsp-ignore: captured-loop-variable -- Absicht: liest den jeweils aktuellen Wert
         Result := Answer <> '';
       end;
     Page.OnConfirmLayout :=
@@ -4051,7 +4051,7 @@ begin
   Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{"language": "en"}',
     '{"language": "de", "encoding": "windows-1252"}', False);
   try
-    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Ptlas.json');
+    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\P\atlas.json');
     try
       Assert.IsTrue(Dialog.SelectPage('Allgemein'));
       Assert.IsTrue(Pos('Projekt', Dialog.StateText('language')) > 0);
@@ -4079,7 +4079,7 @@ begin
     ' "severity": "error"}]}');
   Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), Text, '', False);
   try
-    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Ptlas.json');
+    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\P\atlas.json');
     try
       Dialog.Catalog := Catalog;
       // Mit Fenster: Erst dann hat der Behälter seine Breite; ohne war die Prüfung der Breite wertlos.

@@ -39,9 +39,9 @@ type
     /// <summary>Ergebnistyp hinter der Parameterliste als Schlüsselteil ("|integer"); '' ohne.</summary>
     class function ResultKey(const AHead: string): string; static;
     /// <summary>Generische Teile des Qualifizierers vor dem Methodennamen AName im Kopf AHead, je Teil '1'
-    /// (generisch) oder '0': "TDict<K, V>.TEnumerator.MoveNext" ergibt '10', "TProperty.Create" '0'; '' ohne
-    /// Qualifizierer; '?' bei bedingten Direktiven im Qualifizierer (TList{$IFDEF X}<T>{$ENDIF}.Add), deren
-    /// aktiver Zweig im Text nicht zu sehen ist. Delphi erlaubt neben TProperty einen generischen TProperty<T>;
+    /// (generisch) oder '0': "TDict&lt;K, V&gt;.TEnumerator.MoveNext" ergibt '10', "TProperty.Create" '0'; '' ohne
+    /// Qualifizierer; '?' bei bedingten Direktiven im Qualifizierer (TList{$IFDEF X}&lt;T&gt;{$ENDIF}.Add), deren
+    /// aktiver Zweig im Text nicht zu sehen ist. Delphi erlaubt neben TProperty einen generischen TProperty&lt;T&gt;;
     /// Rümpfe gehören nur zum Typ mit gleicher Maske.</summary>
     class function QualifierMask(const AHead, AName: string): string; static;
     /// <summary>Text AText ohne Leerraum in Kleinbuchstaben, z. B. für Typen ("arrayofptypeinfo").</summary>
@@ -205,8 +205,8 @@ begin
   Result := '';
 end;
 
-/// <summary>Kopf ohne Kommentare, ohne "&" vor Namen und ohne Leerraum um ".": "TA.{%H-}&Type",
-/// "TA.<Zeilenumbruch>  Run" ergeben "TA.Type" bzw. "TA.Run".</summary>
+/// <summary>Kopf ohne Kommentare, ohne "&amp;" vor Namen und ohne Leerraum um ".": "TA.{%H-}&amp;Type",
+/// "TA.&lt;Zeilenumbruch&gt;  Run" ergeben "TA.Type" bzw. "TA.Run".</summary>
 function QualifierText(const AHead: string): string;
 var
   mPos: Integer;

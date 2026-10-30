@@ -236,7 +236,7 @@ end;
 
 function CreatedText(const AOverview: TArchitectureOverview): string;
 begin
-  Result := FormatDateTime('yyyy-mm-dd hh:nn', AOverview.Created);
+  Result := FormatDateTime('yyyy-mm-dd hh:nn', AOverview.Created, TFormatSettings.Invariant);
 end;
 
 function InterfaceCycleCount(const AOverview: TArchitectureOverview): Integer;
@@ -284,7 +284,8 @@ begin
   Result := '';
   if not AOverview.IsAligned then
     Exit;
-  Result := 'Teilsysteme an Stand vom ' + FormatDateTime('yyyy-mm-dd hh:nn', AOverview.AlignedAt) + ' angeglichen (';
+  Result := 'Teilsysteme an Stand vom ' + FormatDateTime('yyyy-mm-dd hh:nn', AOverview.AlignedAt,
+    TFormatSettings.Invariant) + ' angeglichen (';
   if AOverview.AlignedSource = TArchitectureAnalyzer.AlignedBaseline then
     Result := Result + 'architecture.baseline'
   else
@@ -546,7 +547,8 @@ begin
   Builder := TStringBuilder.Create;
   try
     Builder.Append('{"format":').Append(Format).Append(',"title":').Append(JsonText(AOverview.Title))
-      .Append(',"created":').Append(JsonText(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.Created)))
+      .Append(',"created":')
+      .Append(JsonText(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.Created, TFormatSettings.Invariant)))
       .Append(',"generation":').Append(IntToStr(AOverview.Generation))
       .Append(',"durationMs":').Append(IntToStr(AOverview.DurationMs))
       .Append(',"scope":').Append(JsonText(AOverview.Scope))
@@ -574,7 +576,8 @@ begin
       Builder.Append(',"explanation":').Append(JsonText(GroupingExplanation(AOverview.Grouping)));
     if AOverview.IsAligned then
       Builder.Append(',"aligned":{"source":').Append(JsonText(AOverview.AlignedSource))
-        .Append(',"at":').Append(JsonText(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.AlignedAt)))
+        .Append(',"at":')
+        .Append(JsonText(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.AlignedAt, TFormatSettings.Invariant)))
         .Append(',"kept":').Append(AOverview.AlignedKept).Append('}');
     Builder.Append(',"units":[');
     for Index := 0 to High(AOverview.Units) do

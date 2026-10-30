@@ -77,7 +77,8 @@ type
 procedure TFetchCounter.Fetch(Sender: TObject; Item: TListItem);
 begin
   Inc(Count);
-  Inner(Sender, Item);
+  if Assigned(Inner) then
+    Inner(Sender, Item);
 end;
 
 function Problem(ALine: Integer; const ASource, ACode, AMessage: string; ASeverity: TAtlasProblemSeverity;
@@ -288,7 +289,7 @@ begin
     Frame.SetFindings(TAtlasFindings.FromProblems('C:\P\Kunde.pas', Problems, nil), 'C:\P\Kunde.pas', nil);
     // Zwei Zeilen markiert, dann wählt die Sicht eine dritte.
     Frame.List.ItemIndex := 1;
-    Frame.List.ItemIndex := 2;
+    Frame.List.ItemIndex := 2; // lsp-ignore: duplicate-assignment -- markiert eine zweite Zeile (Mehrfachauswahl)
     Assert.AreEqual(2, Integer(Frame.List.SelCount));
     Counter.Inner := Frame.List.OnData;
     Frame.List.OnData := Counter.Fetch;

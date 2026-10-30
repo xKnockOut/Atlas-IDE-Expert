@@ -416,7 +416,7 @@ begin
   end;
 end;
 
-/// <summary>Zeile ist genau ein Bild: ![alt](url) (YouTrack auch mit {width=…}) bzw. <img … src=…>.</summary>
+/// <summary>Zeile ist genau ein Bild: ![alt](url) (YouTrack auch mit {width=…}) bzw. &lt;img … src=…&gt;.</summary>
 function ImageLineOf(const ALine: string; out AAlt, AUrl: string): Boolean;
 var
   mText: string;

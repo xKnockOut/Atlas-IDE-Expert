@@ -430,7 +430,7 @@ end;
 procedure TAtlasIdeIssueSearch.Answered(AGeneration: Integer; const AQuery: TAtlasIssueSearchQuery;
   ASucceeded: Boolean; const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
 var
-  mName: string;
+  mName, mState: string;
 begin
   ReleaseThreads(False);
   // Neuere Eingabe, abgebrochen oder Palette zu: diese Antwort zählt nicht.
@@ -440,8 +440,11 @@ begin
   mName := '';
   if FProvider <> nil then
     mName := FProvider.Name;
-  TAtlasGuard.Log(Format('Palettensuche: %s, %s', [mName, IfThen(ASucceeded, IntToStr(Length(AIssues)) +
-    ' Treffer', 'keine Antwort (' + TAtlasCiBuild.ErrorKey(AError) + ')')]));
+  if ASucceeded then
+    mState := IntToStr(Length(AIssues)) + ' Treffer'
+  else
+    mState := 'keine Antwort (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+  TAtlasGuard.Log(Format('Palettensuche: %s, %s', [mName, mState]));
   if ASucceeded then
   begin
     FLastQuery := AQuery;

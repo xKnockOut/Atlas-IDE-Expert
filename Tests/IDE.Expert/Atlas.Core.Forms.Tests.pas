@@ -70,6 +70,7 @@ end;
 
 procedure TTestHandler.Ping(Sender: TObject);
 begin
+  // Nur als Ziel des Ereignisses gebraucht; die Tests prüfen, dass es zugewiesen ist.
 end;
 
 const

@@ -160,6 +160,8 @@ begin
           Result := 'nil';
         TIndexSymbolKind.EnumType:
           Result := FirstMember(AResolver, AIndex, ATree, AFileName, Resolved);
+      else
+        // Übrige Typarten ohne Vorgabewert.
       end;
     end;
 end;

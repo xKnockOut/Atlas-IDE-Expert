@@ -26,6 +26,8 @@ type
     [Test]
     procedure PaintOnDrawingAncestorReports;
     [Test]
+    procedure PaintOnFormWithoutOnPaintIsSilent;
+    [Test]
     procedure DestroyGetsInheritedAtEnd;
     [Test]
     procedure InheritedPresentIsSilent;
@@ -45,6 +47,8 @@ type
     procedure SetterWithInvalidateOrUnpaintedFieldIsSilent;
     [Test]
     procedure FixedPixelsOncePerCall;
+    [Test]
+    procedure OwnScalingHelperIsSilent;
     [Test]
     procedure ScaledAndTrivialPixelsAreSilent;
     [Test]
@@ -253,11 +257,26 @@ begin
     TwoLevelUnit('TCustomControl', PaintMember, 'procedure TBase.Paint;'#10'begin'#10'  Fill;'#10'end;'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TBase.Paint zeichnet dort selbst', Findings[0].Message);
-  // Zwischenvorfahr ohne Paint über TCustomForm.
+  // Zwischenvorfahr ohne Paint über TCustomForm: TForm.Paint löst nur OnPaint aus, das die Unit hier belegt.
   Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create,
-    TwoLevelUnit('TForm', '  protected'#10'    procedure Layout;', 'procedure TBase.Layout;'#10'begin'#10'end;'#10));
+    TwoLevelUnit('TForm', '  protected'#10'    procedure Layout;',
+    'procedure TBase.Layout;'#10'begin'#10'  OnPaint := nil;'#10'end;'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TForm.Paint zeichnet dort selbst', Findings[0].Message);
+  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TForm.Paint löst dort OnPaint aus', Findings[0].Message);
+end;
+
+procedure TComponentRulesTests.PaintOnFormWithoutOnPaintIsSilent;
+var
+  mSource: string;
+begin
+  // TCustomForm.Paint und TPaintBox.Paint lösen zur Laufzeit nur OnPaint aus: Ohne OnPaint in der Unit und ohne
+  // DFM fehlt ohne inherited nichts (selbst gezeichnete Fenster wie TAtlasStatusWindow).
+  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TForm)'));
+  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TPaintBox)'));
+  // Mit DFM kann OnPaint dort belegt sein.
+  mSource := ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TForm)').Replace('implementation',
+    'implementation'#10'{$R *.dfm}');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComponentMissingInheritedRule.Create, mSource))));
 end;
 
 procedure TComponentRulesTests.DestroyGetsInheritedAtEnd;
@@ -400,6 +419,23 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual(PaintUnit('  Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));'),
     ApplyFix(Source, Findings[0].Fixes[0]));
+end;
+
+procedure TComponentRulesTests.OwnScalingHelperIsSilent;
+const
+  cMembers = '  private'#10'    function Px(AValue: Integer): Integer;'#10'    function Zoom(AValue: Double): Integer;' +
+    #10'  protected'#10'    procedure Paint; override;';
+  cHelpers = 'function TFoo.Px(AValue: Integer): Integer;'#10'begin'#10'  Result := MulDiv(AValue, CurrentPPI, 96);' +
+    #10'end;'#10'function TFoo.Zoom(AValue: Double): Integer;'#10'begin'#10'  Result := Round(AValue);'#10'end;'#10;
+begin
+  // Px skaliert selbst (MulDiv mit CurrentPPI): Px(6) ist kein fester Pixelwert.
+  TRuleAssert.Silent(TComponentFixedPixelsRule.Create, ControlUnit(cMembers, cHelpers +
+    'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Canvas.RoundRect(0, 0, Width, Height, Px(6), Px(6));' +
+    #10'end;'));
+  // Zoom rundet nur: weiter gemeldet.
+  TRuleAssert.Reports(TComponentFixedPixelsRule.Create, ControlUnit(cMembers, cHelpers +
+    'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Canvas.FillRect(Rect(0, 0, Zoom(6), Height));' +
+    #10'end;'));
 end;
 
 procedure TComponentRulesTests.ScaledAndTrivialPixelsAreSilent;

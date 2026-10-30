@@ -224,7 +224,7 @@ type
     FArchitectureService: TArchitectureService;
     FArchitecture: TLspArchitecture;
     /// <summary>Code-Abfragen (#1351): Dienst mit Zwischenspeicher je Index-Stand für atlas/query, das Fenster
-    /// „Atlas-Abfrage“ und die Regeln query:<name>.</summary>
+    /// „Atlas-Abfrage“ und die Regeln query:&lt;name&gt;.</summary>
     FQueries: ICodeQueries;
     FQuery: TLspQuery;
     /// <summary>Hotspots (#1354): Dienst mit Zwischenspeicher je Stand der Versionsverwaltung und Index-Generation,

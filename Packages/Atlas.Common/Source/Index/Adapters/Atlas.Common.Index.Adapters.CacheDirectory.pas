@@ -49,7 +49,7 @@ type
     /// <summary>Herkunft eines Projekt-Caches (Projektdatei oder Arbeitsordner), neben der Cache-Datei.</summary>
     OriginFileName = 'projekt.txt';
     BuildPattern = 'build-*.json';
-    /// <summary>Zuletzt berechnete Architekturstände (#1367): <Wurzel>\Architektur\<Hash>\architecture-last.json.
+    /// <summary>Zuletzt berechnete Architekturstände (#1367): &lt;Wurzel&gt;\Architektur\&lt;Hash&gt;\architecture-last.json.
     /// </summary>
     ArchitectureFolder = 'Architektur';
     ArchitectureFileName = 'architecture-last.json';

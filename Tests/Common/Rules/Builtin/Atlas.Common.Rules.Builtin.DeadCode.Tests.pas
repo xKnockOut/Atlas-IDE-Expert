@@ -212,6 +212,7 @@ var
   Tree: TSyntaxTree;
   Incomplete: Boolean;
 begin
+  Result := nil;
   Incomplete := AScenario.Incomplete;
   Texts := TDictionary<string, string>.Create;
   try
@@ -509,6 +510,16 @@ begin
   // initialization-Teil: Registrierung beim Start.
   Data.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'implementation'#10'initialization'#10'end.');
   Assert.AreEqual('', Messages(Run(Data, FileOf('Waise')), UnusedUnitRuleId));
+  // Testklasse ohne Registrierung: DUnitX findet [TestFixture] per RTTI.
+  Data.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'type'#10'  [TestFixture]'#10'  TWaiseTests = class'#10 +
+    '  public'#10'    [Test]'#10'    procedure Laeuft;'#10'  end;'#10'implementation'#10 +
+    'procedure TWaiseTests.Laeuft;'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual('', Messages(Run(Data, FileOf('Waise')), UnusedUnitRuleId));
+  // [Test] allein macht keine Testklasse.
+  Data.Put(FileOf('Waise'), 'unit Waise;'#10'interface'#10'type'#10'  TWaise = class'#10'  public'#10 +
+    '    [Test]'#10'    procedure Laeuft;'#10'  end;'#10'implementation'#10 +
+    'procedure TWaise.Laeuft;'#10'begin'#10'end;'#10'end.');
+  Assert.AreNotEqual('', Messages(Run(Data, FileOf('Waise')), UnusedUnitRuleId));
   // Package: Nutzer außerhalb der Gruppe; mit projectKinds gemeldet.
   Data := Group([TArray<string>.Create('Waise', '', '')]);
   Data.Projects[0].Kind := TRuleProjectKind.Package;
