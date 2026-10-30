@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4748] of string = (
+  BaseLines: array[0..4765] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -3750,11 +3750,12 @@ const
     '      "group": "compiler",',
     '      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type ' +
     'next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, ali' +
-    'as or helper (E2508), on a destructor or class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535)' +
-    '; class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509)' +
-    '; a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the inter' +
-    'face section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known). Types count only when they are built in or declared in the file; unk' +
-    'nown types keep the rule silent. Local procedures in generic methods (E2570) are not reported until a check against Delphi 12/13 confirms that they are still rejected.",',
+    'as or helper (E2508), on a constructor of a class, a destructor or a class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or' +
+    ' an interface method (E2535); class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one o' +
+    'f the enclosing type (H2509); a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic ' +
+    'method declared in the interface section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known); a local routine in a generic method or a' +
+    ' method of a generic type (E2570); type before an instantiated type such as type TList<Integer> (E2574, quick fix: remove type and declare an alias). Types count when they are built in, declared in th' +
+    'e file or, for class constraints (E2552, E2553), found in the symbol index; unknown types keep the rule silent.",',
     '      "bad": "procedure Swap<T>(var A, B: T);",',
     '      "good": "type\n  TSwap = record\n    class procedure Swap<T>(var A, B: T); static;\n  end;",',
     '      "compilerCodes": [',
@@ -3774,10 +3775,12 @@ const
     '        "E2552",',
     '        "E2553",',
     '        "E2565",',
+    '        "E2570",',
+    '        "E2574",',
     '        "E2603",',
     '        "H2509"',
     '      ],',
-    '      "level": "A"',
+    '      "level": "B"',
     '    },',
     '    {',
     '      "id": "type-restriction-violated",',
@@ -5393,6 +5396,25 @@ const
     '      "level": "B"',
     '    },',
     '    {',
+    '      "id": "generic-inference-failed",',
+    '      "name": "Type arguments cannot be inferred",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A call of a generic method without type arguments whose type parameters cannot be inferred from the arguments: a type parameter that occurs in no parameter, for example only in t' +
+    'he result (like E2531), or arguments of different kinds (number, string, Boolean) for parameters whose type is the same type parameter (like E2532). E2531 is reported as a statement, as a call with pa' +
+    'rentheses and on the right side of an assignment to a value of known, non-procedural type, and only when every overload has such a type parameter. E2532 is reported only for exactly one routine withou' +
+    't overload; arguments of unknown type (Variant, classes, expressions) and numbers of different size keep the rule silent. Like argument-count-mismatch it is silent for declarations in conditional bran' +
+    'ches and names that an unknown ancestor can hide.",',
+    '      "bad": "Zahl := TFabrik.Neu;\nTFabrik.Paar(1, ''a'');",',
+    '      "good": "Zahl := TFabrik.Neu<Integer>;\nTFabrik.Paar<string>(''1'', ''a'');",',
+    '      "compilerCodes": [',
+    '        "E2531",',
+    '        "E2532"',
+    '      ],',
+    '      "level": "T"',
+    '    },',
+    '    {',
     '      "id": "unresolved-type",',
     '      "name": "Type in a declaration not found",',
     '      "category": "bug",',
@@ -5555,7 +5577,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2171] of string = (
+  OverlayLines_de: array[0..2176] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -7676,12 +7698,13 @@ const
     '      "name": "Generische Deklaration unzulässig",',
     '      "description": "Eine generische Deklaration, die Delphi ablehnt: Einschränkungen class und record zugleich (wie E2507), eine Einschränkung doppelt (E2603), record zusammen mit constructor (E2516' +
     '), eine Klasse neben class bzw. record (E2552), zwei Klassen (E2553), ein Einschränkungstyp, der weder Klasse noch Interface ist (E2510); Typparameter an Aufzählung, Menge, Teilbereich, Zeiger, Klasse' +
-    'nreferenz, Alias oder Helfer (E2508), an Destruktor oder Klassenkonstruktor (E2528), Operator (E2529), globaler Routine (E2530), virtueller, dynamischer, message- oder override-Methode (E2533) oder In' +
-    'terface-Methode (E2535); class of eines parametrisierten Typs (E2548), generische Klasse, die von TCustomAttribute erbt (E2549), parametrisierter Typ als Attribut (E2565); ein Typparameter, der einen ' +
-    'des umgebenden Typs verdeckt (H2509); ein Aufruf mit einer Zahl Typargumente, die keine Überladung hat (E2551, Klassen und Records der Datei mit Vorfahren aus der Datei); eine Methode eines generische' +
-    'n Typs oder eine generische Methode aus dem interface-Teil, die ein Symbol des implementation-Teils verwendet (E2506; still in with und wenn die Vorfahrenkette nicht bekannt ist). Typen zählen nur, we' +
-    'nn sie eingebaut oder in der Datei deklariert sind; unbekannte Typen halten die Regel still. Lokale Prozeduren in generischen Methoden (E2570) meldet die Regel erst, wenn der Abgleich mit Delphi 12/13' +
-    ' bestätigt, dass sie noch abgelehnt werden."',
+    'nreferenz, Alias oder Helfer (E2508), an Konstruktor einer Klasse, Destruktor oder Klassenkonstruktor (E2528), Operator (E2529), globaler Routine (E2530), virtueller, dynamischer, message- oder overri' +
+    'de-Methode (E2533) oder Interface-Methode (E2535); class of eines parametrisierten Typs (E2548), generische Klasse, die von TCustomAttribute erbt (E2549), parametrisierter Typ als Attribut (E2565); ei' +
+    'n Typparameter, der einen des umgebenden Typs verdeckt (H2509); ein Aufruf mit einer Zahl Typargumente, die keine Überladung hat (E2551, Klassen und Records der Datei mit Vorfahren aus der Datei); ein' +
+    'e Methode eines generischen Typs oder eine generische Methode aus dem interface-Teil, die ein Symbol des implementation-Teils verwendet (E2506; still in with und wenn die Vorfahrenkette nicht bekannt ' +
+    'ist); eine lokale Routine in einer generischen Methode oder einer Methode eines generischen Typs (E2570); type vor einem instanziierten Typ wie type TList<Integer> (E2574, Korrektur: type entfernen un' +
+    'd einen Alias deklarieren). Typen zählen, wenn sie eingebaut oder in der Datei deklariert sind und, bei Klassen als Einschränkung (E2552, E2553), auch aus dem Symbolindex; unbekannte Typen halten die ' +
+    'Regel still."',
     '    },',
     '    {',
     '      "id": "type-restriction-violated",',
@@ -8491,6 +8514,15 @@ const
     'hne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argum' +
     'ente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Ei' +
     'nschränkung ergänzen (T: class, constructor bzw. T: class)."',
+    '    },',
+    '    {',
+    '      "id": "generic-inference-failed",',
+    '      "name": "Typargumente lassen sich nicht ableiten",',
+    '      "description": "Ein Aufruf einer generischen Methode ohne Typargumente, deren Typparameter sich aus den Argumenten nicht ableiten lassen: ein Typparameter, der in keinem Parameter vorkommt, etwa' +
+    ' nur im Ergebnis (wie E2531), oder Argumente verschiedener Art (Zahl, Zeichenkette, Boolean) für Parameter, deren Typ derselbe Typparameter ist (wie E2532). E2531 meldet die Regel als Anweisung, als A' +
+    'ufruf mit Klammern und auf der rechten Seite einer Zuweisung an einen Wert bekannten, nicht prozeduralen Typs, und nur, wenn jede Überladung einen solchen Typparameter hat. E2532 meldet sie nur bei ge' +
+    'nau einer Routine ohne overload; Argumente unbekannten Typs (Variant, Klassen, Ausdrücke) und Zahlen verschiedener Breite halten sie still. Wie argument-count-mismatch schweigt sie bei Deklarationen i' +
+    'n bedingten Zweigen und bei Namen, die ein unbekannter Vorfahr verdecken kann."',
     '    },',
     '    {',
     '      "id": "unresolved-type",',
