@@ -216,6 +216,20 @@ type
     class function Default: TTestUnitSettings; static;
   end;
 
+  /// <summary>Tests ("tests", #1353): betroffene Tests einer Änderung für --affected-tests, das MCP-Werkzeug
+  /// get_affected_tests und den Plugin-Befehl „Betroffene Tests ausführen“.</summary>
+  TTestsSettings = record
+  public const
+    MinAffectedDepth = 1;
+    MaxAffectedDepth = 5;
+  public
+    /// <summary>tests.affected: Befehl, MCP-Werkzeug und --affected-tests.</summary>
+    Affected: Boolean;
+    /// <summary>tests.affectedDepth: Tiefe der Verfolgung (1–5).</summary>
+    AffectedDepth: Integer;
+    class function Default: TTestsSettings; static;
+  end;
+
   {$SCOPEDENUMS ON}
   /// <summary>Bedingung einer Eigenschaftsregel für Formulardateien (#309).</summary>
   TDfmCondition = (Equal, NotEqual, Contains, NotContains, Empty, NotEmpty);
@@ -676,6 +690,8 @@ type
     MemberOrder: TMemberOrderSettings;
     /// <summary>Testunits anlegen und wechseln (#274, #189).</summary>
     TestUnits: TTestUnitSettings;
+    /// <summary>Betroffene Tests einer Änderung (#1353).</summary>
+    Tests: TTestsSettings;
     /// <summary>Eigenschaftsregeln für Formulardateien (#309).</summary>
     DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
@@ -1039,6 +1055,14 @@ begin
   Result.Project := '';
 end;
 
+{ TTestsSettings }
+
+class function TTestsSettings.Default: TTestsSettings;
+begin
+  Result.Affected := True;
+  Result.AffectedDepth := 3;
+end;
+
 { TDirectiveSettings }
 
 class function TDirectiveSettings.Default: TDirectiveSettings;
@@ -1261,6 +1285,7 @@ begin
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
   Result.TestUnits := TTestUnitSettings.Default;
+  Result.Tests := TTestsSettings.Default;
   Result.DfmPropertyRules := nil;
   // Wie die Vorgabe des Plugins (#492): darüber zuerst Verwendungen auslagern.
   Result.MemoryBudgetMb := 768;

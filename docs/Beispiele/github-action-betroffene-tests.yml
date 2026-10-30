@@ -1,0 +1,52 @@
+# Beispiel (#1353): im Pull Request nur die DUnitX-Tests ausführen, die die
+# Änderungen erreichen; nachts alle. Läuft auf einem selbst gehosteten
+# Windows-Runner mit Delphi (Bauen der Test-EXE) und AtlasServer.exe (siehe
+# Release, #83). Anpassen: Pfad des Testprojekts, der Test-EXE und von rsvars.bat.
+name: Betroffene Tests
+
+on:
+  pull_request:
+  schedule:
+    # Nachtlauf mit allen Tests: Er fängt, was eine Auswahl verpassen kann
+    # (etwa über RTTI aufgerufene Methoden).
+    - cron: '0 2 * * *'
+
+env:
+  TESTPROJEKT: Tests\Tests.dproj
+  TEST_EXE: Tests\Win64\Debug\Tests.exe
+  RSVARS: C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat
+
+jobs:
+  tests:
+    runs-on: [self-hosted, windows, delphi]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Für die Merge-Base braucht git die Historie beider Branches.
+          fetch-depth: 0
+      - name: Testprojekt bauen
+        shell: cmd
+        run: |
+          call "%RSVARS%"
+          msbuild "%TESTPROJEKT%" /t:Build /p:Config=Debug /p:Platform=Win64
+      - name: Betroffene Tests bestimmen
+        id: auswahl
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: |
+          # stdout: nur "--run:…" (leer ohne betroffene Tests); der Bericht mit Gründen steht auf stderr im Protokoll.
+          $run = .\AtlasServer.exe --check $env:TESTPROJEKT --affected-tests origin/${{ github.base_ref }} --format dunitx
+          $code = $LASTEXITCODE
+          # 0 = Auswahl, 2 = alle Tests nötig (Testprogramm geändert, Analyse unvollständig), 3 = Fehler oder aus.
+          if ($code -eq 2) { $run = '' }
+          elseif ($code -ne 0) { exit $code }
+          elseif (-not $run) { "keine=true" >> $env:GITHUB_OUTPUT }
+          "run=$run" >> $env:GITHUB_OUTPUT
+      - name: Tests ausführen
+        if: steps.auswahl.outputs.keine != 'true'
+        shell: pwsh
+        run: |
+          $arguments = @('--exitbehavior:Continue')
+          if ('${{ steps.auswahl.outputs.run }}') { $arguments += '${{ steps.auswahl.outputs.run }}' }
+          & $env:TEST_EXE @arguments
+          exit $LASTEXITCODE

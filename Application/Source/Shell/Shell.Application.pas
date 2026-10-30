@@ -41,6 +41,9 @@ begin
     // Vor --check: Das Ziel aus --check ist hier nur das Projekt des Berichts.
     if Options.ArchitectureFile <> '' then
       Exit(TLinterShell.Architecture(Options));
+    // Vor --check: Das Ziel aus --check ist hier das Testprojekt (#1353).
+    if Options.AffectedTests then
+      Exit(TLinterShell.AffectedTests(Options));
     if Options.HotspotsFile <> '' then
       Exit(TLinterShell.Hotspots(Options));
     if Options.CheckTarget <> '' then

@@ -607,6 +607,9 @@ type
     /// <summary>Auswirkungsanalyse (#1120): Tiefe aus "navigation", Treffersicherheit, Testunits des Testprogramms
     /// und ein Zeitlimit unter dem der Anfrage, damit die Antwort mit Hinweis statt eines Abbruchs kommt.</summary>
     function ImpactOptionsFor(const AUri: string): TImpactOptions;
+    /// <summary>atlas/affectedTests (#1353): betroffene Tests der Änderungen im Arbeitsbereich von
+    /// textDocument.uri gegenüber "base"; Antwort wie get_affected_tests im Format json.</summary>
+    function HandleAffectedTests(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
@@ -715,6 +718,8 @@ uses
   Atlas.Common.Pascal.IncludeFiles,
   Shell.SlashHost,
   Shell.VcsChanges,
+  Shell.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests,
   Shell.Hotspots,
   Shell.Bootstrap,
   Shell.Commands.Build,
@@ -1504,6 +1509,7 @@ begin
     EnsureUnit);
   FImpact.OptionsFor := ImpactOptionsFor;
   FImpact.Attach(FDispatcher);
+  FDispatcher.RegisterConcurrentRequest(TAffectedTests.Method, HandleAffectedTests);
   FDataFlow := TLspDataFlow.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
@@ -6051,6 +6057,81 @@ begin
       Text := '';
     Result.Tests := TImpactTestScope.FromProgram(Context.Settings.Pattern, Text);
   end;
+end;
+
+function TServerComposition.HandleAffectedTests(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mUri: string;
+  mSettings: TServerSettings;
+  mQuery: TShellAffectedQuery;
+  mRequest: TAffectedRequest;
+  mContext: TTestUnitContext;
+  mWorkspace: TShellWorkspace;
+  mResolver: TNameResolver;
+  mEnsureUnit: TEnsureUnitFunc;
+  mReadDisk: TReferenceReadText;
+  mProcess: ICompilerProcess;
+  mFound: TAffectedResult;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Feld "textDocument.uri" fehlt in ' + TAffectedTests.Method);
+  mSettings := SettingsFor(mUri);
+  mQuery := Default(TShellAffectedQuery);
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    mWorkspace := PickWorkspace(TDocumentUris.ToPath(mUri));
+    if mWorkspace = nil then
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, 'Kein Arbeitsbereich zu ' + mUri);
+    mQuery.WorkingDir := mWorkspace.Root;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  if not TJSONObject(AParams).TryGetValue<string>('base', mQuery.Base) then
+    mQuery.Base := '';
+  if not TJSONObject(AParams).TryGetValue<Boolean>('includeUncommitted', mQuery.IncludeUncommitted) then
+    mQuery.IncludeUncommitted := True;
+  if not TJSONObject(AParams).TryGetValue<Integer>('depth', mQuery.Depth) then
+    mQuery.Depth := 0;
+  mRequest := Default(TAffectedRequest);
+  mRequest.Files := ProjectSourceFiles;
+  mRequest.TestPrograms := TShellAffectedTests.TestPrograms(mRequest.Files, ReadSourceText);
+  if TestUnitContextFor(mUri, mContext) and (mContext.TestProgram <> '') and
+    (IndexText(mContext.TestProgram, mRequest.TestPrograms) < 0) then
+    mRequest.TestPrograms := mRequest.TestPrograms + [mContext.TestProgram];
+  // Treffersicherheit und Zeitlimit wie atlas/impact; Testunits aus allen Testprogrammen.
+  mRequest.Options := ImpactOptionsFor(mUri);
+  mRequest.Options.Tests := TShellAffectedTests.TestScope(mSettings.TestUnits.Pattern, mRequest.TestPrograms,
+    ReadSourceText);
+  // Typisierte Variable: TNameResolver.Create ist überladen.
+  mEnsureUnit := EnsureUnit;
+  // git bzw. svn vergleichen die gespeicherten Dateien: Die geänderten Zeilen passen nur zum Text auf der Platte,
+  // nicht zu einem ungespeicherten Puffer im Editor.
+  mReadDisk :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+    end;
+  mResolver := TNameResolver.Create(FIndex, mEnsureUnit);
+  try
+    mResolver.Namespaces := FImpact.Namespaces;
+    try
+      // Eigener Prozessstarter: git/svn laufen neben einem Compilerlauf. Über eine Variable: nie ein frisches
+      // Objekt an einen const-Interface-Parameter.
+      mProcess := TProcessRunner.Create;
+      mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery, mResolver, FIndex, mRequest, mReadDisk,
+        ACancellation);
+    except
+      on E: EAffectedTestsOff do
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);
+      on E: EVcsChanges do
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);
+    end;
+  finally
+    mResolver.Free;
+  end;
+  Result := TAffectedTests.ToJson(mFound);
 end;
 
 function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;

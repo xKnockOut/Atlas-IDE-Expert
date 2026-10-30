@@ -314,6 +314,9 @@ begin
   Assert.IsTrue(Settings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
   Assert.IsTrue(Settings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
+  Assert.IsTrue(Settings.TestsAffected, 'Betroffene Tests standardmäßig an (#1353)');
+  Assert.AreEqual(3, Settings.TestsAffectedDepth, 'Tiefe der betroffenen Tests standardmäßig 3 (#1353)');
+  Assert.IsFalse(Settings.TestsAffectedBeforeCommit, 'Angebot vor dem Commit standardmäßig aus (#1353)');
   Assert.IsTrue(Settings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsFalse(Settings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(Settings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
@@ -1011,6 +1014,13 @@ begin
   Settings.ImpactDepth := 9;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MaxImpactDepth, Settings.ImpactDepth);
+  // tests.affectedDepth (#1353): 1 bis 5.
+  Settings.TestsAffectedDepth := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinTestsAffectedDepth, Settings.TestsAffectedDepth);
+  Settings.TestsAffectedDepth := 7;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxTestsAffectedDepth, Settings.TestsAffectedDepth);
 end;
 
 procedure TAtlasPluginSettingsTests.OneActionAfterSaving;

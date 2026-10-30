@@ -1259,6 +1259,10 @@ type
     // Absturzfälle des Servers (#1355).
     CrashRestartedTitle, CrashCaseTitle, CrashCaseText, CrashOpenCase, CrashCreateIssue, CrashHide,
     CrashSkipTitle, CrashSkipText, CrashSkipEnded, CrashRetry, CrashSkipProblem, AttachCrashCase);
+    // Betroffene Tests (#1353).
+    TestsAffectedCommand, TestsAffectedRunning, TestsAffectedFound, TestsAffectedNone, TestsAffectedAll,
+    TestsAffectedFailed, TestsAffectedOff, TestsAffectedNoProject, TestsAffectedHookForeign,
+    TestsAffectedHookInstalled, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit);
 
   TAtlasStrings = class
   private class var
@@ -4460,7 +4464,20 @@ const
      '%s an %s wird bis zur nächsten Änderung übersprungen (%d Abstürze, %s).',
      '%s an %s wird wieder beantwortet.', 'Erneut versuchen',
      'Übersprungen nach Absturz: %s (%d Abstürze, %s); Fall %s',
-     'Absturzfall (%d Dateien)'),
+     'Absturzfall (%d Dateien)',
+     'Betroffene Tests ausführen',
+     'Atlas ermittelt die betroffenen Tests …',
+     'Betroffene Tests gegenüber %s (Tiefe %d): %d',
+     'Keine betroffenen Tests gegenüber %s.',
+     'Alle Tests nötig: %s',
+     'Betroffene Tests: %s',
+     'Betroffene Tests sind ausgeschaltet (tests.affected).',
+     'Betroffene Tests: Kein Projekt geöffnet.',
+     'Betroffene Tests vor dem Commit: In %s liegt schon ein fremder pre-commit-Hook; Atlas lässt ihn stehen.',
+     'Betroffene Tests vor dem Commit: pre-commit-Hook in %s angelegt.',
+     'Befehl „Betroffene Tests ausführen“: nur die Tests, die die Änderungen gegenüber main bzw. BASE erreichen',
+     'Ebenen von der Änderung bis zum Test (1 bis 5):',
+     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -7529,7 +7546,20 @@ const
      '%s on %s is skipped until the next change (%d crashes, %s).',
      '%s on %s is answered again.', 'Retry',
      'Skipped after crash: %s (%d crashes, %s); case %s',
-     'Crash case (%d files)'));
+     'Crash case (%d files)',
+     'Run affected tests',
+     'Atlas is determining the affected tests …',
+     'Affected tests against %s (depth %d): %d',
+     'No affected tests against %s.',
+     'All tests needed: %s',
+     'Affected tests: %s',
+     'Affected tests are switched off (tests.affected).',
+     'Affected tests: no project open.',
+     'Affected tests before commit: %s already holds a foreign pre-commit hook; Atlas leaves it alone.',
+     'Affected tests before commit: pre-commit hook created in %s.',
+     'Command “Run affected tests”: only the tests reached by the changes against main or BASE',
+     'Levels from the change to the test (1 to 5):',
+     'Offer before committing (Git pre-commit hook, Git only)'));
 
 { TAtlasStrings }
 

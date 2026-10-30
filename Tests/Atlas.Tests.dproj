@@ -218,6 +218,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SignatureFormat.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Impact.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AffectedTests.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DeepTrees.Tests.pas"/>
@@ -828,6 +829,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Vcs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Run.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Debug.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>
@@ -1300,6 +1303,8 @@
         <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.VcsChanges.pas"/>
         <DCCReference Include="Application\Shell\Shell.VcsChanges.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.AffectedTests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.AffectedTests.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Platform.pas"/>
         <DCCReference Include="Application\Shell\Shell.Platform.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.CrashCases.pas"/>

@@ -67,6 +67,9 @@ uses
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Lsp.Impact,
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.Paths,
@@ -127,6 +130,7 @@ uses
   Shell.Workspace,
   Shell.WorkspaceGroup,
   Shell.Bootstrap,
+  Shell.AffectedTests,
   Shell.Hotspots,
   Shell.Diagnostics;
 
@@ -1263,6 +1267,97 @@ begin
     end);
 end;
 
+/// <summary>get_affected_tests (#1353): betroffene Tests der Änderungen gegenüber einer Basis; das Ergebnis im
+/// Format json passt mit "run" direkt in run_tests.tests.</summary>
+procedure RegisterAffectedTestsTool(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; const ARoot: string;
+  const AOptionsFor: TImpactOptionsProvider);
+begin
+  AServer.AddTool('get_affected_tests',
+    'Betroffene Tests einer Änderung (#1353): aus dem Unterschied zur Basis (Git oder SVN wie --changed) die ' +
+    'geänderten Routinen, Typen und Konstanten bestimmen, ihre Auswirkungen bis zur Tiefe verfolgen (wie ' +
+    'get_impact) und die DUnitX-Testmethoden nennen, die sie erreichen, je mit Grund. Sind mehr als 80 % einer ' +
+    'Fixture betroffen, die ganze Fixture. "run" im Format json passt direkt in run_tests.tests; "all" heißt, ' +
+    'dass alle Tests nötig sind (Grund in "reason").',
+    '{"type":"object","properties":{' +
+      '"base":{"type":"string","description":"Git-Ref (Merge-Base mit HEAD) bzw. SVN-Revision; leer = main bzw. ' +
+        'BASE"},' +
+      '"includeUncommitted":{"type":"boolean","default":true,"description":"Index, Arbeitsverzeichnis und neue ' +
+        'Dateien mitzählen"},' +
+      '"depth":{"type":"integer","minimum":1,"maximum":5,"description":"Ebenen; leer = tests.affectedDepth"},' +
+      '"format":{"type":"string","enum":["text","json","dunitx"],"description":"text (Vorgabe), json oder ' +
+        'dunitx (Argument --run:… für die Test-EXE)"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      mSettings: TServerSettings;
+      mFormat: TAffectedFormat;
+      mQuery: TShellAffectedQuery;
+      mRequest: TAffectedRequest;
+      mResolver: TNameResolver;
+      mFound: TAffectedResult;
+      mProcess: ICompilerProcess;
+      mEnsureUnit: TEnsureUnitFunc;
+      mReadText: TReferenceReadText;
+      mArgument: string;
+    begin
+      mSettings := AGroup.Main.Configuration.Settings;
+      if not mSettings.Tests.Affected then
+        raise EMcpToolError.Create(TShellAffectedTests.OffMessage);
+      if not TAffectedTests.TryParseFormat(TMcpServer.OptionalString(AArguments, 'format'), mFormat) then
+        raise EMcpToolError.Create('"format" ist text, json oder dunitx');
+      mQuery := Default(TShellAffectedQuery);
+      mQuery.WorkingDir := ARoot;
+      mQuery.Base := TMcpServer.OptionalString(AArguments, 'base');
+      if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('includeUncommitted', mQuery.IncludeUncommitted)
+      then
+        mQuery.IncludeUncommitted := True;
+      if (AArguments = nil) or not AArguments.TryGetValue<Integer>('depth', mQuery.Depth) then
+        mQuery.Depth := 0;
+      mReadText :=
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+        end;
+      mRequest := Default(TAffectedRequest);
+      mRequest.Files := AGroup.AllFiles;
+      mRequest.TestPrograms := TShellAffectedTests.TestPrograms(mRequest.Files, mReadText);
+      // Treffersicherheit und Zeitlimit wie get_impact; Testunits aus allen Testprogrammen der Gruppe.
+      mRequest.Options := AOptionsFor('');
+      mRequest.Options.Tests := TShellAffectedTests.TestScope(mSettings.TestUnits.Pattern, mRequest.TestPrograms,
+        mReadText);
+      mProcess := TProcessRunner.Create;
+      // Typisierte Variable: TNameResolver.Create ist überladen.
+      mEnsureUnit :=
+        function(const AUnitName: string): Boolean
+        begin
+          Result := AGroup.EnsureUnit(AUnitName);
+        end;
+      mResolver := TNameResolver.Create(AGroup.Index, mEnsureUnit);
+      try
+        mResolver.Namespaces := AGroup.Main.Namespaces;
+        try
+          mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery, mResolver, AGroup.Index, mRequest, mReadText,
+            nil);
+        except
+          on E: EVcsChanges do
+            raise EMcpToolError.Create(E.Message);
+        end;
+      finally
+        mResolver.Free;
+      end;
+      if mFormat <> TAffectedFormat.DUnitX then
+        Exit(TAffectedTests.Render(mFound, mFormat));
+      // dunitx: nur das Argument; ohne Argument sagt der Text warum.
+      if mFound.All then
+        Result := 'Alle Tests nötig: ' + mFound.AllReason
+      else if Length(mFound.Tests) = 0 then
+        Result := Format('Keine betroffenen Tests gegenüber %s.', [mFound.Base])
+      else if TAffectedTests.DUnitXArgument(mFound, mArgument) then
+        Result := mArgument
+      else
+        Result := 'Alle Tests nötig: zu viele Tests für ein --run-Argument';
+    end, TMcpToolKind.Process);
+end;
+
 /// <summary>get_hotspots (#1354): derselbe Dienst wie atlas/hotspots und --hotspots.</summary>
 procedure RegisterHotspotTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; AService: THotspotService;
   const ARoot: string);
@@ -1441,6 +1536,7 @@ begin
   try
     RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
     RegisterDeadCodeTools(Server, nil, nil, '', nil);
+    RegisterAffectedTestsTool(Server, nil, '', nil);
     RegisterHotspotTools(Server, nil, nil, '');
     RegisterStatusTools(Server, nil, '');
     Listed := Server.ListTools;
@@ -1738,6 +1834,7 @@ begin
           Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
       end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
     RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
+    RegisterAffectedTestsTool(Server, Group, Root, Code.ImpactOptionsFor);
     RegisterHotspotTools(Server, Group, Hotspots, Root);
     RegisterStatusTools(Server, Index, Root);
     // Sicherheit (#99).
@@ -1753,6 +1850,9 @@ begin
           Result := Result + ['get_hotspots'];
         if not Workspace.Configuration.Settings.Navigation.SymbolPath then
           Result := Result + ['find_path'];
+        // Betroffene Tests (#1353).
+        if not Workspace.Configuration.Settings.Tests.Affected then
+          Result := Result + ['get_affected_tests'];
       end;
     Server.OnAudit :=
       procedure(AText: string)

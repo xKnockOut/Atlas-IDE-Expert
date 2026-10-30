@@ -55,6 +55,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
 | `memberOrder` | Projekt (atlas.json) | object | – |  | Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. |
 | `testUnits` | Projekt (atlas.json) | object | – |  | Testunits anlegen und zwischen Unit und Testunit wechseln: Namensmuster, Ordner neuer Testunits und Testprojekt. |
+| `tests` | global (settings.json) | object | – |  | Betroffene Tests einer Änderung: aus dem Unterschied zur Basis (Git oder SVN) die geänderten Routinen, Typen und Konstanten bestimmen, ihre Auswirkungen verfolgen und nur die DUnitX-Tests nennen, die sie erreichen (Kommandozeile --affected-tests, MCP-Werkzeug get_affected_tests, Plugin-Befehl „Betroffene Tests ausführen“). |
 | `minConfidence` | Projekt (atlas.json) | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
 | `fix` | Projekt (atlas.json) | object | – |  | Sammelkorrektur (--fix, MCP fix_findings, „Alle sicheren Treffer korrigieren …“ im Fenster „Atlas-Prüfung“): wendet nur sichere Korrekturen von Regeln mit safeFix im Katalog an. |
 | `exclude` | Projekt (atlas.json) | array<string> | – | z. B. `["ThirdParty/**","Generated/*.pas"]` | Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). |
@@ -358,6 +359,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `testUnits.pattern` | Projekt (atlas.json) | string | `"{unit}.Tests"` |  | Name der Testunit; {unit} steht für den Namen der getesteten Unit, z. B. "{unit}.Tests" oder "Test.{unit}". |
 | `testUnits.folder` | Projekt (atlas.json) | string | `""` |  | Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts. |
 | `testUnits.project` | Projekt (atlas.json) | string | `""` |  | Testprojekt (.dproj oder .dpr) relativ zur Wurzel; leer: das Projekt im Arbeitsbereich, dessen .dpr DUnitX oder DUnit verwendet. |
+
+## tests
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `tests.affected` | global (settings.json) | boolean | `true` |  | Betroffene Tests ermitteln; aus: Plugin-Befehl und MCP-Werkzeug fehlen, --affected-tests endet mit Exitcode 3. |
+| `tests.affectedDepth` | global (settings.json) | integer | `3` | 1…5 | Ebenen der Auswirkungsanalyse von der Änderung bis zum Test: 1 = nur Tests, die das geänderte Symbol direkt verwenden. |
 
 ## fix
 

@@ -158,6 +158,7 @@ contains
   Atlas.Common.Lsp.SignatureFormat in 'Source\Lsp\Atlas.Common.Lsp.SignatureFormat.pas',
   Atlas.Common.Lsp.Hierarchies in 'Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas',
   Atlas.Common.Lsp.Impact in 'Source\Lsp\Atlas.Common.Lsp.Impact.pas',
+  Atlas.Common.Lsp.AffectedTests in 'Source\Lsp\Atlas.Common.Lsp.AffectedTests.pas',
   Atlas.Common.Lsp.Implementations in 'Source\Lsp\Atlas.Common.Lsp.Implementations.pas',
   Atlas.Common.Lsp.InlayHints in 'Source\Lsp\Atlas.Common.Lsp.InlayHints.pas',
   Atlas.Common.Lsp.MessageHandlers in 'Source\Lsp\Atlas.Common.Lsp.MessageHandlers.pas',

@@ -191,6 +191,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureFormat.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MessageHandlers.pas"/>

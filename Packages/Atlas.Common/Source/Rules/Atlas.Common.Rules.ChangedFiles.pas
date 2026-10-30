@@ -4,7 +4,9 @@
 // wertet nur Text aus; Git bzw. SVN (#276) startet die Shell.
 //   ParseNameStatus  Ausgabe von "git diff --name-status": umbenannte Dateien
 //                    unter neuem Namen, gelöschte werden ignoriert.
-//   ParseHunks       Ausgabe von "git diff -U0": geänderte Zeilen je Datei.
+//   ParseHunks       Ausgabe von "git diff -U0": geänderte Zeilen je Datei,
+//                    dazu die Stellen, an denen nur Zeilen entfernt wurden
+//                    (Gaps, für betroffene Tests #1353; ParseSvnDiff ebenso).
 //   Select           geänderte Units, Units zu geänderten DFMs/FMXs und zu
 //                    geänderten Include-Dateien; Projekt- und Konfigurations-
 //                    dateien wählen alles.
@@ -31,6 +33,9 @@ type
     /// <summary>Pfad relativ zur Wurzel des Repositorys, mit "/" getrennt.</summary>
     Path: string;
     Spans: TArray<TLineSpan>;
+    /// <summary>Stellen, an denen nur Zeilen entfernt wurden (#1353): 0-basierte Zeile der neuen Fassung, vor der
+    /// sie standen (am Dateiende die Zeilenzahl). Ersetzte Zeilen stehen in Spans, nicht hier.</summary>
+    Gaps: TArray<Integer>;
     function Contains(ALine: Integer): Boolean;
   end;
 
@@ -211,6 +216,12 @@ begin
         Start := StrToIntDef(Header, 0);
         Count := 1;
       end;
+      // Nur entfernt: "+c,0" nennt die Zeile c, hinter der sie fehlen (c = 0 am Dateianfang).
+      if (Count = 0) and (Start >= 0) then
+      begin
+        Result[Current].Gaps := Result[Current].Gaps + [Start];
+        Continue;
+      end;
       if (Count <= 0) or (Start <= 0) then
         Continue;
       Span.First := Start - 1;
@@ -261,17 +272,28 @@ end;
 class function TChangedFiles.ParseSvnDiff(const ALines: TArray<string>): TArray<TChangedLines>;
 var
   Line, Header: string;
-  Current, NewLine, Plus, Space, Comma: Integer;
+  Current, NewLine, Plus, Space, Comma, mRemovedAt: Integer;
   Span: TLineSpan;
   Item: TChangedLines;
+
+  // Nur entfernte Zeilen (ohne "+" dahinter) als Lücke vor NewLine, wie "+c,0" bei Git (#1353).
+  procedure FlushRemoved;
+  begin
+    if (mRemovedAt >= 0) and (Current >= 0) then
+      Result[Current].Gaps := Result[Current].Gaps + [mRemovedAt];
+    mRemovedAt := -1;
+  end;
+
 begin
   Result := nil;
   Current := -1;
   NewLine := -1;
+  mRemovedAt := -1;
   for Line in ALines do
   begin
     if StartsStr('+++ ', Line) then
     begin
+      FlushRemoved;
       // "+++ Src/Kunde.pas	(working copy)"
       Header := Copy(Line, Length('+++ ') + 1, MaxInt);
       if Pos(#9, Header) > 0 then
@@ -284,6 +306,7 @@ begin
     end
     else if StartsStr('@@ ', Line) and (Current >= 0) then
     begin
+      FlushRemoved;
       Plus := Pos(' +', Line);
       Space := PosEx(' ', Line, Plus + 2);
       NewLine := -1;
@@ -293,15 +316,22 @@ begin
         Comma := Pos(',', Header);
         if Comma > 0 then
           Header := Copy(Header, 1, Comma - 1);
-        NewLine := StrToIntDef(Header, 0) - 1;
+        NewLine := StrToIntDef(Header, -1) - 1;
+        // "+0,0": Die neue Fassung ist leer.
+        if NewLine = -1 then
+          NewLine := 0;
       end;
     end
     else if (Current >= 0) and (NewLine >= 0) and (Line <> '') then
       case Line[1] of
         ' ':
-          Inc(NewLine);
+          begin
+            FlushRemoved;
+            Inc(NewLine);
+          end;
         '+':
           begin
+            mRemovedAt := -1;
             // Benachbarte Zeilen zu einem Bereich zusammenfassen.
             if (Length(Result[Current].Spans) > 0) and
               (Result[Current].Spans[High(Result[Current].Spans)].Last = NewLine - 1) then
@@ -314,12 +344,19 @@ begin
             end;
             Inc(NewLine);
           end;
-        '-', '\':
+        '-':
+          if mRemovedAt < 0 then
+            mRemovedAt := NewLine;
+        '\':
           ;
       else
-        NewLine := -1;
+        begin
+          FlushRemoved;
+          NewLine := -1;
+        end;
       end;
   end;
+  FlushRemoved;
 end;
 
 class function TChangedFiles.IncludeNames(const AText: string): TArray<string>;
