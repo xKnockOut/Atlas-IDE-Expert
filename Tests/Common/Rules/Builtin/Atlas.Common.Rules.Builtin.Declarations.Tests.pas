@@ -88,6 +88,10 @@ type
     procedure InterfaceUnknownAncestorIsSilent;
     [Test]
     procedure InterfaceDifferentSignature;
+    /// <summary>Typargumente des Interfaces in der Vorfahrenliste werden vor dem Vergleich eingesetzt, auch an
+    /// zweiter Stelle, verschachtelt, mit mehreren Typparametern und über geerbte Interfaces.</summary>
+    [Test]
+    procedure InterfaceGenericArguments;
     [Test]
     procedure InterfaceResolutionForUnlistedInterface;
     [Test]
@@ -688,6 +692,64 @@ begin
   Assert.AreEqual('Info weicht von der Deklaration in ILogger ab (wie E2211).', Findings[0].Message);
   Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+function GenericUnit(const AClass: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10 +
+    '  TScoredItem = record'#10'    Score: Integer;'#10'  end;'#10 +
+    '  TPaar<A, B> = record'#10'    Links: A;'#10'    Rechts: B;'#10'  end;'#10 +
+    '  IComparer<T> = interface'#10'    function Compare(const Left, Right: T): Integer;'#10'  end;'#10 +
+    '  IOrdered<T> = interface(IComparer<T>)'#10'    function Kleinstes(const AWerte: TArray<T>): T;'#10'  end;'#10 +
+    '  IMap<K, V> = interface'#10'    function Get(const AKey: K): V;'#10 +
+    '    procedure Put(const AKey: K; const AValue: V);'#10'  end;'#10 +
+    AClass + #10'implementation'#10'end.';
+end;
+
+procedure TDeclarationRulesTests.InterfaceGenericArguments;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Zweiter Vorfahr mit Typargument (Fehlalarm E2211 aus der IDE).
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, GenericUnit(
+    '  TScoredItemComparer = class(TInterfacedObject, IComparer<TScoredItem>)'#10'  public'#10 +
+    '    function Compare(const Left, Right: TScoredItem): Integer;'#10'  end;'));
+  // Mehrere Typparameter.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, GenericUnit(
+    '  TMap = class(TInterfacedObject, IMap<string, Integer>)'#10 +
+    '    function Get(const AKey: string): Integer;'#10 +
+    '    procedure Put(const AKey: string; const AValue: Integer);'#10'  end;'));
+  // Verschachtelte Typargumente.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, GenericUnit(
+    '  TPaarComparer = class(TInterfacedObject, IComparer<TPaar<string, TArray<Integer>>>)'#10 +
+    '    function Compare(const Left, Right: TPaar<string, TArray<Integer>>): Integer;'#10'  end;'));
+  // Generische Klasse reicht ihren Typparameter weiter.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, GenericUnit(
+    '  TComparer<T> = class(TInterfacedObject, IComparer<T>)'#10 +
+    '    function Compare(const Left, Right: T): Integer; virtual; abstract;'#10'  end;'));
+  // Geerbtes Interface mit durchgereichtem Typargument.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, GenericUnit(
+    '  TOrdnung = class(TInterfacedObject, IOrdered<TScoredItem>)'#10 +
+    '    function Compare(const Left, Right: TScoredItem): Integer;'#10 +
+    '    function Kleinstes(const AWerte: TArray<TScoredItem>): TScoredItem;'#10'  end;'));
+  // Mehrere Interfaces mit verschiedenen Typargumenten.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, GenericUnit(
+    '  TBeides = class(TInterfacedObject, IComparer<TScoredItem>, IMap<Integer, string>)'#10 +
+    '    function Compare(const Left, Right: TScoredItem): Integer;'#10 +
+    '    function Get(const AKey: Integer): string;'#10 +
+    '    procedure Put(const AKey: Integer; const AValue: string);'#10'  end;'));
+  // Abweichung bleibt eine Meldung.
+  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, GenericUnit(
+    '  TScoredItemComparer = class(TInterfacedObject, IComparer<TScoredItem>)'#10 +
+    '    function Compare(const Left, Right: Integer): Integer;'#10'  end;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Compare weicht von der Deklaration in IComparer ab (wie E2211).', Findings[0].Message);
+  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, GenericUnit(
+    '  TMap = class(TInterfacedObject, IMap<string, Integer>)'#10 +
+    '    function Get(const AKey: string): Integer;'#10 +
+    '    procedure Put(const AKey: Integer; const AValue: string);'#10'  end;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Put weicht von der Deklaration in IMap ab (wie E2211).', Findings[0].Message);
 end;
 
 procedure TDeclarationRulesTests.InterfaceResolutionForUnlistedInterface;

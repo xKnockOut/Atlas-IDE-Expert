@@ -8929,3 +8929,11 @@ Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend
 | HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
 | HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
 | HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |
+
+## Generische Interfaces und Typparameter
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GE1 | `TScoredItemComparer = class(TInterfacedObject, IComparer<TScoredItem>)` mit `function Compare(const Left, Right: TScoredItem): Integer;` (System.Generics.Defaults) | Keine Meldung „Compare weicht von der Deklaration in IComparer ab (wie E2211)“; mit `Integer` statt `TScoredItem` erscheint sie (wie dcc) |
+| GE2 | `System.Generics.Defaults.pas` öffnen, zu `class function TComparer<T>.TryUseRecEqualityOperator` und `TComparer<T>._Default` | Kein „"T" ist nicht deklariert“ an `TypeInfo(T)`, `SizeOf(T)`, `GetTypeKind(T)` |
+| GE3 | Projekt mit altem Index öffnen | Index wird einmal neu aufgebaut (Format 31, `index-31.atlasidx`), danach wieder aus dem Cache |

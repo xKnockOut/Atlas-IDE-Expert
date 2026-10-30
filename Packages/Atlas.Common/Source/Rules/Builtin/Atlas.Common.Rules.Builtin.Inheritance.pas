@@ -524,7 +524,9 @@ begin
   begin
     AName := BareName(AType.Symbol.Ancestors[0]);
     // Ohne Typargumente ist der Vorfahr nicht generisch: class(THorseChannel) neben THorseChannel<T>.
-    mArity := GenericArity(AType.Symbol.AncestorArgs);
+    mArity := 0;
+    if Length(AType.Symbol.AncestorArgs) > 0 then
+      mArity := GenericArity(AType.Symbol.AncestorArgs[0]);
   end;
   Result := FindTypeOf(AName, mArity, AParent);
 end;
