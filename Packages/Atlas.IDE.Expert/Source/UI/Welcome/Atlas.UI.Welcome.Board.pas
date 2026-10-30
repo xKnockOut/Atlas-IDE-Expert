@@ -19,10 +19,22 @@
 // - Rechtsklick auf einen Bereich: „Ausblenden“ (wie #628, mit
 //   „Rückgängig“), „Einstellungen dazu …“ und „Seite anpassen“.
 // Zweispaltige Bereiche und die Reihenfolge rechnet TAtlasWelcomeFlow.
+// Scrollen (#1440): Die VCL-Scrollbox scrollt nicht selbst mit dem Mausrad,
+// und WM_MOUSEWHEEL landet beim Fenster unter dem Zeiger bzw. beim
+// fokussierten Steuerelement des Formulars (in der IDE oft der Editor). Die
+// Tafel nimmt das Rad deshalb an einer Stelle für alle Bereiche ab
+// (Application.OnMessage, solange der Zeiger über ihr steht): Die innerste
+// Fläche, die in die Richtung noch scrollen kann (z. B. „Neu in Atlas“),
+// bekommt es zuerst, danach die Seite. Bild auf/ab und Pos1/Ende scrollen die
+// Seite, solange kein Eingabefeld und keine Liste den Fokus hat; ein Klick auf
+// freie Fläche gibt ihr den Fokus. Beim Ziehen eines Bereichs scrollt sie am
+// oberen und unteren Rand von selbst. Die Schritte rechnet
+// TAtlasWelcomeScroll.
 
 interface
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.Types,
@@ -31,8 +43,10 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.Menus,
+  Vcl.AppEvnts,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Layout,
+  Atlas.Core.Welcome.Scroll,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,
   Atlas.UI.Welcome.Arrange;
@@ -81,6 +95,15 @@ type
     FBarMenu: TPopupMenu;
     FOnAskName: TAtlasWelcomeAskName;
     FOnConfirm: TAtlasWelcomeConfirm;
+    FEvents: TApplicationEvents;
+    FWheelRest: Integer;
+    FEdgeTimer: TTimer;
+    FEdgePoint: TPoint;
+    procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
+    function ScrollArea(AControl: TWinControl; AWheelDelta: Integer): Boolean;
+    procedure UpdateEdgeScroll(const AScreen: TPoint);
+    function EdgeStep: Integer;
+    procedure EdgeTick(Sender: TObject);
     procedure ScrollResize(Sender: TObject);
     procedure ScrollMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure ViewHeightChanged(Sender: TObject);
@@ -153,15 +176,32 @@ type
     property InsertLine: TPanel read FInsertLine;
     property SectionMenu: TPopupMenu read FSectionMenu;
     property BarMenu: TPopupMenu read FBarMenu;
+    /// <summary>Liegt AControl in der Tafel (Kopf, Leisten, Bereiche)?</summary>
+    function Contains(AControl: TControl): Boolean;
+    /// <summary>Mausrad über AControl (#1440): die innerste Fläche, die in die Richtung noch scrollen kann, sonst
+    /// die Seite. AWheelDelta wie WM_MOUSEWHEEL (positiv = nach oben). False = AControl liegt nicht in der Tafel
+    /// oder nichts kann sich mehr bewegen.</summary>
+    function ScrollWheel(AControl: TControl; AWheelDelta: Integer): Boolean;
+    /// <summary>Seite mit Bild auf/ab bzw. Pos1/Ende scrollen; False = Position unverändert.</summary>
+    function ScrollKey(AKey: TAtlasWelcomeScrollKey): Boolean;
+    /// <summary>Taste der Seite zu AKey (VK_PRIOR, VK_NEXT, VK_HOME, VK_END ohne Alt); None = keine.</summary>
+    class function ScrollKeyOf(AKey: Word; AShift: TShiftState): TAtlasWelcomeScrollKey; static;
+    /// <summary>Behält AControl Bild auf/ab und Pos1/Ende für sich (Eingabefeld, Liste, Auswahlfeld)?</summary>
+    class function OwnsScrollKeys(AControl: TControl): Boolean; static;
     property OnAskName: TAtlasWelcomeAskName read FOnAskName write FOnAskName;
     property OnConfirm: TAtlasWelcomeConfirm read FOnConfirm write FOnConfirm;
+    /// <summary>Scrollbare Fläche unter Kopf und Leiste.</summary>
+    property ScrollBox: TScrollBox read FScroll;
+    /// <summary>Takt für das Scrollen am Rand beim Ziehen; läuft nur, solange gescrollt wird.</summary>
+    property EdgeTimer: TTimer read FEdgeTimer;
   end;
 
 implementation
 
 uses
-  Winapi.Windows,
+  Winapi.Messages,
   System.UITypes,
+  Vcl.StdCtrls,
   Vcl.Graphics,
   Vcl.Dialogs,
   Vcl.Themes,
@@ -266,10 +306,19 @@ begin
   Item.OnClick := SectionMenuCustomize;
   FSectionMenu.Items.Add(Item);
   FBarMenu := TPopupMenu.Create(Self);
+  FEdgeTimer := TTimer.Create(Self);
+  FEdgeTimer.Enabled := False;
+  FEdgeTimer.Interval := 40;
+  FEdgeTimer.OnTimer := EdgeTick;
+  FEvents := TApplicationEvents.Create(nil);
+  FEvents.OnMessage := AppMessage;
 end;
 
 destructor TAtlasWelcomeBoardFrame.Destroy;
 begin
+  // Zuerst: Nach dem Abbau der Bereiche darf keine Nachricht mehr hier ankommen.
+  FreeAndNil(FEvents);
+  FEdgeTimer.Enabled := False;
   // Die Bereichs-Frames gehören dem Wörterbuch, nicht dem Frame.
   FreeAndNil(FViews);
   FSource := nil;
@@ -631,13 +680,218 @@ procedure TAtlasWelcomeBoardFrame.ScrollMouseDown(Sender: TObject; Button: TMous
 var
   Column: Integer;
   Before: string;
+  mForm: TCustomForm;
 begin
+  // Fokus auf die Seite, damit Bild auf/ab und Pos1/Ende sie scrollen (#1440). Nur mit sichtbarer Form:
+  // CanFocus allein lässt eine verborgene durch.
+  mForm := GetParentForm(FScroll);
+  if (Button = mbLeft) and FScroll.CanFocus and FScroll.Showing and not FScroll.Focused and (mForm <> nil) and
+    mForm.Visible then
+    FScroll.SetFocus;
   // Klick auf freie Fläche setzt die Einfügelinie für „Bereich hinzufügen“ und „Ausgeblendet“.
   if not FEditing or (Button <> mbLeft) then
     Exit;
   TAtlasWelcomeFlow.DropTarget(FCells, FPlaced, FScroll.ClientWidth, Gap, MinColumnWidth, X,
     Y + FScroll.VertScrollBar.Position, '', Column, Before);
   SetTarget(Column, Before);
+end;
+
+function TAtlasWelcomeBoardFrame.Contains(AControl: TControl): Boolean;
+var
+  mControl: TControl;
+begin
+  mControl := AControl;
+  while mControl <> nil do
+  begin
+    if mControl = Self then
+      Exit(True);
+    mControl := mControl.Parent;
+  end;
+  Result := False;
+end;
+
+function TAtlasWelcomeBoardFrame.ScrollArea(AControl: TWinControl; AWheelDelta: Integer): Boolean;
+var
+  mBar: TControlScrollBar;
+  mMax, mPixels, mLines, mIndex: Integer;
+  mInfo: TScrollInfo;
+  mCode: WPARAM;
+begin
+  Result := False;
+  if AControl is TScrollingWinControl then
+  begin
+    // Scrollbox und Frames: Die VCL scrollt sie nicht selbst mit dem Mausrad.
+    mBar := TScrollingWinControl(AControl).VertScrollBar;
+    if not mBar.Visible or not mBar.IsScrollBarVisible then
+      Exit;
+    mMax := TAtlasWelcomeScroll.MaxPosition(mBar.Range, AControl.ClientHeight);
+    if not TAtlasWelcomeScroll.CanScroll(mBar.Position, mMax, AWheelDelta) then
+      Exit;
+    mPixels := TAtlasWelcomeScroll.WheelPixels(FWheelRest, AWheelDelta, Mouse.WheelScrollLines,
+      Scaled(Self, TAtlasWelcomeScroll.LineHeight), AControl.ClientHeight);
+    mBar.Position := TAtlasWelcomeScroll.Clamp(mBar.Position + mPixels, mMax);
+    Exit(True);
+  end;
+  // Fenster mit eigener senkrechter Leiste (Listen, Mehrzeiler): zeilenweise, wie ihr eigenes Mausrad.
+  if not AControl.HandleAllocated or ((GetWindowLongPtr(AControl.Handle, GWL_STYLE) and WS_VSCROLL) = 0) then
+    Exit;
+  mInfo := Default(TScrollInfo);
+  mInfo.cbSize := SizeOf(mInfo);
+  mInfo.fMask := SIF_ALL;
+  if not GetScrollInfo(AControl.Handle, SB_VERT, mInfo) then
+    Exit;
+  mMax := TAtlasWelcomeScroll.MaxPosition(mInfo.nMax - mInfo.nMin + 1, Integer(mInfo.nPage));
+  if not TAtlasWelcomeScroll.CanScroll(mInfo.nPos - mInfo.nMin, mMax, AWheelDelta) then
+    Exit;
+  mLines := TAtlasWelcomeScroll.WheelLines(FWheelRest, AWheelDelta, Mouse.WheelScrollLines);
+  if mLines < 0 then
+    mCode := SB_LINEUP
+  else
+    mCode := SB_LINEDOWN;
+  for mIndex := 1 to Abs(mLines) do
+    AControl.Perform(WM_VSCROLL, mCode, 0);
+  if mLines <> 0 then
+    AControl.Perform(WM_VSCROLL, SB_ENDSCROLL, 0);
+  Result := True;
+end;
+
+function TAtlasWelcomeBoardFrame.ScrollWheel(AControl: TControl; AWheelDelta: Integer): Boolean;
+var
+  mControl: TControl;
+begin
+  Result := False;
+  if (AWheelDelta = 0) or not Contains(AControl) then
+    Exit;
+  // Von innen nach außen: Eine Liste mit eigener Leiste scrollt zuerst selbst, an ihrem Ende die Seite.
+  mControl := AControl;
+  while (mControl <> nil) and (mControl <> FScroll) and (mControl <> Self) do
+  begin
+    if (mControl is TWinControl) and ScrollArea(TWinControl(mControl), AWheelDelta) then
+      Exit(True);
+    mControl := mControl.Parent;
+  end;
+  Result := ScrollArea(FScroll, AWheelDelta);
+end;
+
+function TAtlasWelcomeBoardFrame.ScrollKey(AKey: TAtlasWelcomeScrollKey): Boolean;
+var
+  mBar: TControlScrollBar;
+  mOld, mNew: Integer;
+begin
+  mBar := FScroll.VertScrollBar;
+  mOld := mBar.Position;
+  mNew := TAtlasWelcomeScroll.KeyPosition(AKey, mOld,
+    TAtlasWelcomeScroll.MaxPosition(mBar.Range, FScroll.ClientHeight), FScroll.ClientHeight,
+    Scaled(Self, TAtlasWelcomeScroll.LineHeight));
+  Result := mNew <> mOld;
+  if Result then
+    mBar.Position := mNew;
+end;
+
+class function TAtlasWelcomeBoardFrame.ScrollKeyOf(AKey: Word; AShift: TShiftState): TAtlasWelcomeScrollKey;
+begin
+  Result := TAtlasWelcomeScrollKey.None;
+  if ssAlt in AShift then
+    Exit;
+  case AKey of
+    VK_PRIOR:
+      Result := TAtlasWelcomeScrollKey.PageUp;
+    VK_NEXT:
+      Result := TAtlasWelcomeScrollKey.PageDown;
+    VK_HOME:
+      Result := TAtlasWelcomeScrollKey.Top;
+    VK_END:
+      Result := TAtlasWelcomeScrollKey.Bottom;
+  else
+    // Übrige Tasten bleiben beim Steuerelement.
+  end;
+end;
+
+class function TAtlasWelcomeBoardFrame.OwnsScrollKeys(AControl: TControl): Boolean;
+begin
+  // Eingabefelder (Suchfeld #760) bewegen den Cursor, Listen und Auswahlfelder ihre Auswahl.
+  Result := (AControl is TCustomEdit) or (AControl is TCustomListControl);
+end;
+
+procedure TAtlasWelcomeBoardFrame.AppMessage(var Msg: TMsg; var Handled: Boolean);
+var
+  mControl: TControl;
+  mKey: TAtlasWelcomeScrollKey;
+begin
+  if Handled or not Showing then
+    Exit;
+  try
+    case Msg.message of
+      WM_MOUSEWHEEL:
+        begin
+          // Strg (Zoom) und Umschalt (waagerecht) bleiben beim Fenster.
+          if (LoWord(Msg.wParam) and (MK_CONTROL or MK_SHIFT)) <> 0 then
+            Exit;
+          mControl := FindDragTarget(Msg.pt, True);
+          if not Contains(mControl) then
+            Exit;
+          ScrollWheel(mControl, SmallInt(HiWord(Msg.wParam)));
+          // Auch am Ende: Über der Seite gehört das Rad ihr, sonst scrollte das fokussierte Fenster (der Editor).
+          Handled := True;
+        end;
+      WM_KEYDOWN:
+        begin
+          mControl := FindControl(Msg.hwnd);
+          if not Contains(mControl) or OwnsScrollKeys(mControl) then
+            Exit;
+          mKey := ScrollKeyOf(Word(Msg.wParam), KeyDataToShiftState(Msg.lParam));
+          if mKey = TAtlasWelcomeScrollKey.None then
+            Exit;
+          ScrollKey(mKey);
+          Handled := True;
+        end;
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+  end;
+end;
+
+function TAtlasWelcomeBoardFrame.EdgeStep: Integer;
+var
+  mLocal: TPoint;
+begin
+  Result := 0;
+  if (FDragId = '') or not FScroll.HandleAllocated then
+    Exit;
+  mLocal := FScroll.ScreenToClient(FEdgePoint);
+  // Nur über der Seite: Der Zug aus der Leiste „Ausgeblendet“ unten soll nicht gleich losscrollen.
+  if not PtInRect(FScroll.ClientRect, mLocal) then
+    Exit;
+  Result := TAtlasWelcomeScroll.EdgeScroll(mLocal.Y, FScroll.ClientHeight,
+    Scaled(Self, TAtlasWelcomeScroll.EdgeWidth), Scaled(Self, TAtlasWelcomeScroll.EdgeStep));
+end;
+
+procedure TAtlasWelcomeBoardFrame.UpdateEdgeScroll(const AScreen: TPoint);
+var
+  mBar: TControlScrollBar;
+begin
+  FEdgePoint := AScreen;
+  mBar := FScroll.VertScrollBar;
+  FEdgeTimer.Enabled := (EdgeStep <> 0) and mBar.IsScrollBarVisible;
+end;
+
+procedure TAtlasWelcomeBoardFrame.EdgeTick(Sender: TObject);
+var
+  mBar: TControlScrollBar;
+  mStep, mMax: Integer;
+begin
+  mStep := EdgeStep;
+  mBar := FScroll.VertScrollBar;
+  mMax := TAtlasWelcomeScroll.MaxPosition(mBar.Range, FScroll.ClientHeight);
+  if (mStep = 0) or not TAtlasWelcomeScroll.CanScroll(mBar.Position, mMax, -mStep) then
+  begin
+    FEdgeTimer.Enabled := False;
+    Exit;
+  end;
+  mBar.Position := TAtlasWelcomeScroll.Clamp(mBar.Position + mStep, mMax);
+  // Einfügelinie zum neuen Inhalt unter dem stehenden Zeiger nachführen.
+  DragMove(FEdgePoint);
 end;
 
 procedure TAtlasWelcomeBoardFrame.Later(const AProc: TProc<IAtlasWelcomeArrangeSource>);
@@ -737,6 +991,7 @@ begin
     Exit;
   Local := FScroll.ScreenToClient(AScreen);
   FDropValid := PtInRect(FScroll.ClientRect, Local);
+  UpdateEdgeScroll(AScreen);
   if not FDropValid then
     Exit;
   TAtlasWelcomeFlow.DropTarget(FCells, FPlaced, FScroll.ClientWidth, Gap, MinColumnWidth, Local.X,
@@ -751,6 +1006,7 @@ var
 begin
   Id := FDragId;
   FDragId := '';
+  FEdgeTimer.Enabled := False;
   if (Id = '') or not ADrop or not FDropValid then
   begin
     SetTarget(-1, '');
