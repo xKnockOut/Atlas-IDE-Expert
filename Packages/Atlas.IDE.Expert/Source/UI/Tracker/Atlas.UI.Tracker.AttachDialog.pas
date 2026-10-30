@@ -429,15 +429,30 @@ begin
     Exit;
   FFilled := True;
   // Einträge von Auswahllisten brauchen das Fenster: nicht im Konstruktor.
-  for mInfo in FWindows do
-    FWindowBox.Items.Add(mInfo.Caption);
-  if Length(FWindows) = 0 then
-    FWindowBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.AttachNoWindows));
+  FWindowBox.Items.BeginUpdate;
+  try
+    for mInfo in FWindows do
+      FWindowBox.Items.Add(mInfo.Caption);
+    if Length(FWindows) = 0 then
+      FWindowBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.AttachNoWindows));
+  finally
+    FWindowBox.Items.EndUpdate;
+  end;
   FWindowBox.ItemIndex := 0;
-  for mText in FInput.Issues do
-    FIssue.Items.Add(mText);
-  for mText in FInput.LogFiles do
-    FLogBox.Items.Add(mText);
+  FIssue.Items.BeginUpdate;
+  try
+    for mText in FInput.Issues do
+      FIssue.Items.Add(mText);
+  finally
+    FIssue.Items.EndUpdate;
+  end;
+  FLogBox.Items.BeginUpdate;
+  try
+    for mText in FInput.LogFiles do
+      FLogBox.Items.Add(mText);
+  finally
+    FLogBox.Items.EndUpdate;
+  end;
   // Das Hauptfenster des Programms gleich aufnehmen; die Liste braucht ihr Fenster.
   if Length(FWindows) > 0 then
     CaptureWindow(FWindows[0].Handle)

@@ -663,13 +663,17 @@ end;
 
 class function TAtlasGitParser.ParseLineLog(const AText: string): TArray<TAtlasVcsLineCommit>;
 var
+  mItems, mFields: TArray<string>;
   mItem: string;
-  mFields: TArray<string>;
   mCommit: TAtlasVcsLineCommit;
-  mCount, mStart, mStop: Integer;
+  mCount, mStart, mStop, mFound: Integer;
 begin
+  // Höchstens ein Eintrag je Abschnitt: Länge vorab, am Ende kürzen.
+  mItems := AText.Split([#$1E]);
   Result := nil;
-  for mItem in AText.Split([#$1E]) do
+  SetLength(Result, Length(mItems));
+  mFound := 0;
+  for mItem in mItems do
   begin
     if mItem.Trim([#10, #13]) = '' then
       Continue;
@@ -695,19 +699,25 @@ begin
     mCommit.Date := UnixField(mFields[2]);
     mCommit.Message := TrimRight(mFields[3]);
     mCommit.Patch := TrimmedLines(mFields[4]);
-    SetLength(Result, Length(Result) + 1);
-    Result[High(Result)] := mCommit;
+    Result[mFound] := mCommit;
+    Inc(mFound);
   end;
+  SetLength(Result, mFound);
 end;
 
 class function TAtlasGitParser.ParseMessages(const AText: string): TArray<TAtlasVcsRevisionMessage>;
 var
+  mItems: TArray<string>;
   mItem: string;
-  mSplit: Integer;
+  mSplit, mFound: Integer;
   mMessage: TAtlasVcsRevisionMessage;
 begin
+  // Höchstens ein Eintrag je Abschnitt: Länge vorab, am Ende kürzen.
+  mItems := AText.Split([#$1E]);
   Result := nil;
-  for mItem in AText.Split([#$1E]) do
+  SetLength(Result, Length(mItems));
+  mFound := 0;
+  for mItem in mItems do
   begin
     if mItem.Trim([#10, #13]) = '' then
       Continue;
@@ -716,9 +726,10 @@ begin
       raise EAtlasVcsParse.Create('git log: Hash und Nachricht erwartet');
     mMessage.Revision := Copy(mItem, 1, mSplit - 1);
     mMessage.Message := TrimRight(Copy(mItem, mSplit + 1, MaxInt));
-    SetLength(Result, Length(Result) + 1);
-    Result[High(Result)] := mMessage;
+    Result[mFound] := mMessage;
+    Inc(mFound);
   end;
+  SetLength(Result, mFound);
 end;
 
 type

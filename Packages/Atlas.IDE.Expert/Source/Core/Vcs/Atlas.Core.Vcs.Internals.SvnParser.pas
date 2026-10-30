@@ -594,7 +594,7 @@ end;
 class function TAtlasSvnParser.ParseLogDiff(const AText: string): TArray<TAtlasSvnLogDiff>;
 var
   mLines, mPatch: TArray<string>;
-  mIndex, mCount, mMessage, mOld, mNew: Integer;
+  mIndex, mCount, mMessage, mOld, mNew, mFound: Integer;
   mItem: TAtlasSvnLogDiff;
   mHunk: TAtlasVcsHunk;
   mLine: string;
@@ -608,7 +608,9 @@ var
   end;
 
 begin
+  // Die Zahl der Revisionen ist vorher unbekannt: Platz verdoppeln, am Ende kürzen.
   Result := nil;
+  mFound := 0;
   mLines := AText.Split([#10]);
   for mIndex := 0 to High(mLines) do
     mLines[mIndex] := mLines[mIndex].TrimRight([#13]);
@@ -671,9 +673,12 @@ begin
       Dec(mCount);
     SetLength(mPatch, mCount);
     mItem.Patch := mPatch;
-    SetLength(Result, Length(Result) + 1);
-    Result[High(Result)] := mItem;
+    if mFound = Length(Result) then
+      SetLength(Result, mFound * 2 + 4);
+    Result[mFound] := mItem;
+    Inc(mFound);
   end;
+  SetLength(Result, mFound);
 end;
 
 end.
