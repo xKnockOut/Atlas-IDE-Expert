@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Rules.ManagedTypes;
 
-// Verwaltete Typen für Prüfregeln: Strings, Interfaces, dynamische Arrays und Variants, auch als Feld
-// eines Records, Element eines statischen Arrays oder hinter einem Alias, aufgelöst über die Datei und den
-// Index (#921, #922); dazu verwaltete Records mit class operator Initialize oder Finalize (#1071).
+// Verwaltete Typen für Prüfregeln: Strings, Interfaces, Methodenreferenzen, dynamische Arrays und Variants,
+// auch als Feld eines Records, Element eines statischen Arrays oder hinter einem Alias, aufgelöst über die Datei
+// und den Index (#921, #922); dazu verwaltete Records mit class operator Initialize oder Finalize (#1071).
 // Unbekannte Typen gelten als nicht verwaltet, damit Regeln nur sichere Fälle melden.
 
 interface
@@ -25,8 +25,8 @@ type
     function IndexCustomManaged(const AName: string; ADepth: Integer): Boolean;
   public
     constructor Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
-    /// <summary>'Strings', 'Interfaces', 'dynamische Arrays' oder 'Variants', wenn ATypeName solche Teile
-    /// hat; '' sonst oder wenn der Typ unbekannt ist.</summary>
+    /// <summary>'Strings', 'Interfaces', 'Methodenreferenzen', 'dynamische Arrays' oder 'Variants', wenn
+    /// ATypeName solche Teile hat; '' sonst oder wenn der Typ unbekannt ist.</summary>
     function Managed(const ATypeName: string; ADepth: Integer): string;
     /// <summary>Zieltyp eines Zeigertyps (^TRec oder PRec = ^TRec in der Datei); '' sonst.</summary>
     function Pointee(const ATypeName: string): string;
@@ -145,7 +145,12 @@ begin
       TIndexSymbolKind.InterfaceType:
         Exit('Interfaces');
       TIndexSymbolKind.TypeAlias:
-        Exit(Managed(Location.Symbol.TypeName, ADepth + 1));
+        begin
+          // reference to … ist ein Interface mit Referenzzähler.
+          if IndexText('reference to', Location.Symbol.Directives) >= 0 then
+            Exit('Methodenreferenzen');
+          Exit(Managed(Location.Symbol.TypeName, ADepth + 1));
+        end;
       TIndexSymbolKind.RecordType:
         begin
           if not FIndex.FindFile(Location.FileName, UnitIndex) then
@@ -191,6 +196,8 @@ begin
     Exit('Variants');
   if MatchText(Name, ['IInterface', 'IUnknown', 'IDispatch']) then
     Exit('Interfaces');
+  if StartsText('reference to', Name) then
+    Exit('Methodenreferenzen');
   if StartsText('array of', Name) or StartsText('TArray<', Name) or MatchText(Name, DynamicArrayNames) then
     Exit('dynamische Arrays');
   // Statisches Array: verwaltet, wenn die Elemente es sind.
@@ -216,6 +223,9 @@ begin
     Exit(FieldsManaged(Body, ADepth));
   if Decl.FindChild(TSyntaxKind.InterfaceType) <> nil then
     Exit('Interfaces');
+  Body := Decl.FindChild(TSyntaxKind.ProcedureType);
+  if (Body <> nil) and SameText(Body.Name, 'reference') then
+    Exit('Methodenreferenzen');
   if (Decl.FindChild(TSyntaxKind.TypeReference) <> nil) or (Decl.FindChild(TSyntaxKind.ArrayType) <> nil) then
     Result := Managed(NodeTypeText(Decl), ADepth + 1);
 end;

@@ -13,6 +13,8 @@
 // Treffer, sonst nur einen mit niedriger Konfidenz; unused-assignment
 // schweigt in solchen Routinen ganz. Routinen mit asm-Rumpf werden übergangen.
 // unused-assignment übergeht Variablen mit Interface-Typ (Referenzzähler: Bereichswächter, X := nil).
+// Ebenso still bleibt das Leeren eines zuvor gesetzten Werts (X := nil, '', Default(T), T.Empty): Es gibt
+// Speicher und Referenzen vorzeitig frei oder schützt nach Free. Leeren ohne vorherigen Wert meldet sie weiter.
 // Den Code H2077 nennt die Meldung nur bei bekanntem, nicht verwaltetem Typ: Für Strings, dynamische
 // Arrays, Variants und Records mit solchen Feldern meldet dcc nichts (#1383, Cm.E2056).
 //
@@ -790,6 +792,20 @@ begin
   Result := (Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z']);
 end;
 
+/// <summary>Leert die Zuweisung AWrite ihr Ziel (X := nil, X := '', X := Default(T), X := T.Empty)?</summary>
+function ClearsValue(const AText: string; AWrite: TSyntaxNode): Boolean;
+var
+  Value: string;
+begin
+  if (AWrite.Kind <> TSyntaxKind.AssignStatement) or (AWrite.ChildCount < 2) then
+    Exit(False);
+  Value := Copy(AText, AWrite[1].StartOffset + 1, AWrite[1].EndOffset - AWrite[1].StartOffset);
+  Value := StringReplace(StringReplace(StringReplace(StringReplace(Value, ' ', '', [rfReplaceAll]), #9, '',
+    [rfReplaceAll]), #13, '', [rfReplaceAll]), #10, '', [rfReplaceAll]);
+  Result := SameText(Value, 'nil') or (Value = '''''') or (StartsText('Default(', Value) and EndsText(')', Value)) or
+    EndsText('.Empty', Value) or EndsText('.Empty()', Value);
+end;
+
 procedure TUnusedAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Routines, Locals: TArray<TSyntaxNode>;
@@ -884,6 +900,20 @@ var
     Result := False;
   end;
 
+  /// <summary>Erreicht eine andere Zuweisung an Name die Zuweisung AWrite, hält die Variable dort also schon
+  /// einen Wert?</summary>
+  function HoldsValue(AWrite: TSyntaxNode): Boolean;
+  var
+    Node, Definition: TFlowNode;
+  begin
+    for Node in Graph.Nodes do
+      if Node.Syntax = AWrite then
+        for Definition in Graph.ReachingDefinitions(Node, Name).Definitions do
+          if Definition.Syntax <> AWrite then
+            Exit(True);
+    Result := False;
+  end;
+
   procedure CheckName;
   var
     Write: TSyntaxNode;
@@ -917,6 +947,9 @@ var
             Used := True;
         end;
       if not Defined or Used then
+        Continue;
+      // Leeren eines gesetzten Werts ist Freigabe (Started := Default(…) am Testende, Lookup := nil vor Free).
+      if ClearsValue(AContext.Text, Write) and HoldsValue(Write) then
         Continue;
       AReport.Add(NameRange(AContext, Write, Name), Format('Der an "%s" zugewiesene Wert wird nie gelesen%s',
         [Name, CodeSuffix(Name)]), TRuleConfidence.High);

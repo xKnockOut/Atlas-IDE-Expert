@@ -38,7 +38,8 @@ const
   Source = 'unit U;'#10'interface'#10'type'#10'  TName = record'#10'    S: string;'#10'  end;'#10 +
     '  TAlias = TName;'#10'  TLeer = record'#10'    N: Integer;'#10'  end;'#10'  TZaehler = record'#10 +
     '    class operator Initialize(out ADest: TZaehler);'#10'  end;'#10'  THuelle = record'#10 +
-    '    Z: array[0..1] of TZaehler;'#10'  end;'#10'implementation'#10'end.';
+    '    Z: array[0..1] of TZaehler;'#10'  end;'#10'  TLeser = reference to function(const A: string): Boolean;'#10 +
+    '  TEreignis = procedure of object;'#10'implementation'#10'end.';
 
 procedure Check(const AIndex: ISymbolIndex; const AProc: TProc<TManagedTypes>);
 var
@@ -80,6 +81,10 @@ begin
       Assert.AreEqual('Strings', ATypes.Managed('TAlias', 0));
       Assert.AreEqual('', ATypes.Managed('TLeer', 0));
       Assert.AreEqual('', ATypes.Managed('TZaehler', 0));
+      // Methodenreferenzen sind Interfaces, Methodenzeiger nicht.
+      Assert.AreEqual('Methodenreferenzen', ATypes.Managed('TLeser', 0));
+      Assert.AreEqual('Methodenreferenzen', ATypes.Managed('reference to procedure', 0));
+      Assert.AreEqual('', ATypes.Managed('TEreignis', 0));
     end);
 end;
 
@@ -104,6 +109,7 @@ begin
   Index.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TFremd = record'#10 +
     '    Liste: TArray<Integer>;'#10'  end;'#10'  TFremdAlias = TFremd;'#10'  TFremdZaehler = record'#10 +
     '    class operator Finalize(var ADest: TFremdZaehler);'#10'  end;'#10'  IFremd = interface'#10'  end;'#10 +
+    '  TFremdRueckruf = reference to procedure(A: Integer);'#10'  TFremdZeiger = procedure(A: Integer);'#10 +
     'implementation'#10'end.', 'C:\P\Fremd.pas', nil));
   Check(Index,
     procedure(ATypes: TManagedTypes)
@@ -111,6 +117,8 @@ begin
       Assert.AreEqual('dynamische Arrays', ATypes.Managed('TFremd', 0));
       Assert.AreEqual('dynamische Arrays', ATypes.Managed('TFremdAlias', 0));
       Assert.AreEqual('Interfaces', ATypes.Managed('IFremd', 0));
+      Assert.AreEqual('Methodenreferenzen', ATypes.Managed('TFremdRueckruf', 0));
+      Assert.AreEqual('', ATypes.Managed('TFremdZeiger', 0));
       Assert.IsTrue(ATypes.CustomManaged('TFremdZaehler', 0));
       Assert.IsFalse(ATypes.CustomManaged('TFremd', 0));
     end);
