@@ -30,6 +30,8 @@ type
     [Test]
     procedure DeprecatedUnits;
     [Test]
+    procedure OnlyTheChosenOverload;
+    [Test]
     procedure ReplacementFromKnownRoutine;
     [Test]
     procedure ReplacementMustBeUnique;
@@ -123,6 +125,9 @@ const
     'interface'#10 +
     'function IncludeTrailingBackslash(const S: string): string; platform;'#10 +
     'function IncludeTrailingPathDelimiter(const S: string): string;'#10 +
+    'function FileAge(const FileName: string): LongInt; overload; deprecated;'#10 +
+    'function FileAge(const FileName: string; out FileDateTime: TDateTime;'#10 +
+    '  FollowLink: Boolean = True): Boolean; overload;'#10 +
     'implementation'#10 +
     'function IncludeTrailingBackslash(const S: string): string;'#10 +
     'begin'#10 +
@@ -132,6 +137,15 @@ const
     'begin'#10 +
     '  Result := S;'#10 +
     'end;'#10 +
+    'end.';
+
+  // Wie die RTL: TDateTime ist ein eigener Typ über Double.
+  UnitSystem =
+    'unit System;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TDateTime = type Double;'#10 +
+    'implementation'#10 +
     'end.';
 
   UnitAltlast =
@@ -168,6 +182,7 @@ begin
   Result := TSymbolIndex.Create;
   Result.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText(UnitSysUtils, 'C:\RTL\System.SysUtils.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(UnitSystem, 'C:\RTL\System.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText(UnitAltlast, 'C:\P\Werk.Altlast.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText(UnitWindows, 'C:\P\Werk.Windows.pas', nil));
 end;
@@ -318,6 +333,31 @@ begin
     '  Ohne;'#10 +
     '  {$ENDIF}'#10 +
     '  Alt;'#10), '', True)));
+end;
+
+procedure TDeprecatedRulesTests.OnlyTheChosenOverload;
+const
+  Source =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses System.SysUtils;'#13#10 +
+    'type'#13#10 +
+    '  TDatei = class'#13#10 +
+    '    function Stempel(const AFileName: string; out AStamp: Int64): Boolean;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'function TDatei.Stempel(const AFileName: string; out AStamp: Int64): Boolean;'#13#10 +
+    'var'#13#10 +
+    '  Age: TDateTime;'#13#10 +
+    'begin'#13#10 +
+    '  Result := FileAge(AFileName, Age);'#13#10 +
+    '  AStamp := FileAge(AFileName);'#13#10 +
+    '  Result := FileAge(AFileName, Age, False);'#13#10 +
+    'end;'#13#10 +
+    'end.';
+begin
+  // Nur die Überladung FileAge(string): LongInt ist deprecated; gemeldet wird nur der Aufruf, der sie wählt.
+  Assert.AreEqual('13:12 FileAge ist deprecated (wie W1000).|', Messages(Run(Source, '', True)));
 end;
 
 procedure TDeprecatedRulesTests.DeprecatedUnits;
