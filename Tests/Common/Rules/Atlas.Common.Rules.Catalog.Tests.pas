@@ -324,9 +324,18 @@ begin
   // Eingebauter Katalog: line-length entspricht F2069 (#938).
   Assert.IsTrue(TRuleCatalog.Shared.TryFind('line-length', Entry));
   Assert.AreEqual('F2069', string.Join(',', Entry.CompilerCodes));
-  // X-Codes (Vorab-Prüfungen des Compilers, #1040) sind gültig.
+  // Delphi 13 meldet W1008, die Delphi-Hilfe nennt X1008 (#1382).
   Assert.IsTrue(TRuleCatalog.Shared.TryFind('hresult-integer-mix', Entry));
-  Assert.AreEqual('X1008', string.Join(',', Entry.CompilerCodes));
+  Assert.AreEqual('W1008', string.Join(',', Entry.CompilerCodes));
+  // X-Codes (Vorab-Prüfungen des Compilers, #1040) sind gültig.
+  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"bug","severity":"warning",' +
+    '"compilerCodes":["X1008"]}]}');
+  try
+    Assert.IsTrue(Catalog.TryFind('x', Entry));
+    Assert.AreEqual('X1008', string.Join(',', Entry.CompilerCodes));
+  finally
+    Catalog.Free;
+  end;
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":"F2069"}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["Y2069"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["F206"]}]}');

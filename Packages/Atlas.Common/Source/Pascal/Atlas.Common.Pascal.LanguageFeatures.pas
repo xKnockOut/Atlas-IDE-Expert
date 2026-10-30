@@ -49,6 +49,9 @@ type
     /// <summary>Wandelt "37.0" oder "37" in 37000 um; -1 bei ungültiger Angabe.</summary>
     class function ParseVersion(const AVersion: string): Integer; static;
     class function IsAvailable(AFeature: TLanguageFeature; const AVersion: string): Boolean; static;
+    /// <summary>Ist AVersion mindestens AMinimum (BDS-Nummern)? Ohne gültige AVersion gilt die neueste Version:
+    /// True (#1382, Codes der Compilermeldungen je Delphi-Version).</summary>
+    class function IsAtLeast(const AVersion, AMinimum: string): Boolean; static;
     /// <summary>Sprachstand (#1126): die ältere aus AVersion (gewählte Version) und AMinimum (minDelphiVersion
     /// des Projekts). Eine ungültige oder leere Angabe zählt nicht; sind beide ungültig, ''.</summary>
     class function LanguageLevel(const AVersion, AMinimum: string): string; static;
@@ -141,6 +144,14 @@ var
 begin
   Version := ParseVersion(AVersion);
   Result := (Version < 0) or (Version >= ParseVersion(Minimums[AFeature]));
+end;
+
+class function TLanguageFeatures.IsAtLeast(const AVersion, AMinimum: string): Boolean;
+var
+  mVersion: Integer;
+begin
+  mVersion := ParseVersion(AVersion);
+  Result := (mVersion < 0) or (mVersion >= ParseVersion(AMinimum));
 end;
 
 class function TLanguageFeatures.LanguageLevel(const AVersion, AMinimum: string): string;

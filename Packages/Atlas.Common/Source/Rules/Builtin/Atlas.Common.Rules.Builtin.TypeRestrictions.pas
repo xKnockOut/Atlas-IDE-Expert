@@ -7,12 +7,15 @@
 //                                 (E2517), ohne den eigenen Typ in den
 //                                 Parametern (E2518) bzw. in Parameter oder
 //                                 Ergebnis (E2521), Inc/Dec mit anderem
-//                                 Ergebnis als dem ersten Parameter (E2519),
-//                                 Umwandlung in einen Vorfahren (E2522) oder
-//                                 Assign ohne var vor dem ersten Parameter
-//                                 (Delphi 13 meldet E2617 statt E2464,
-//                                 Cm.E2464, #1380). Zum Rumpf eines
-//                                 unbekannten Operators bzw. eines class
+//                                 Ergebnis als dem ersten Parameter (E2519)
+//                                 oder Assign ohne var vor dem ersten
+//                                 Parameter (Delphi 13 meldet E2617 statt
+//                                 E2464, Cm.E2464, #1380). Geprüft werden nur
+//                                 Records: Einen class operator in einer
+//                                 Klasse meldet Delphi 13 als E2123 (Regel
+//                                 syntax, #1382), damit entfällt E2522
+//                                 (Umwandlung in einen Vorfahren). Zum Rumpf
+//                                 eines unbekannten Operators bzw. eines class
 //                                 operator in einer Klasse gibt es keine
 //                                 gültige Deklaration (wie E2037, Cm.E2393,
 //                                 Cm.E2522, #1380).
@@ -23,8 +26,10 @@
 //                                 neben class/record (E2552), zwei Klassen
 //                                 (E2553), ungültiger Typ (E2510);
 //                                 Typparameter an Aufzählung, Menge, Zeiger,
-//                                 Alias, Helfer (E2508), Destruktor oder
-//                                 Klassenkonstruktor (E2528), Operator
+//                                 Alias, Helfer (E2508), Konstruktor,
+//                                 Destruktor oder Klassenkonstruktor
+//                                 (E2528, Konstruktoren nur in Klassen),
+//                                 Operator
 //                                 (E2529), globaler Routine (E2530),
 //                                 virtueller Methode (E2533), Interface-
 //                                 Methode (E2535); class of eines
@@ -37,10 +42,15 @@
 //                                 generischer Typen aus dem interface-Teil,
 //                                 die Symbole des implementation-Teils
 //                                 verwenden (E2506, still bei Vorfahren
-//                                 außerhalb von Datei und Index und in with).
-//                                 E2570 (lokale Prozedur in generischer
-//                                 Methode) bleibt aus, bis der Abgleich mit
-//                                 Delphi 12/13 zeigt, dass es noch kommt.
+//                                 außerhalb von Datei und Index und in with);
+//                                 lokale Routinen in generischen Methoden und
+//                                 Methoden generischer Typen (E2570, #1376);
+//                                 type vor einem instanziierten Typ (type
+//                                 TListe<Integer>, E2574, Korrektur: type
+//                                 entfernen). Klassen als Einschränkung
+//                                 (E2552, E2553) erkennt die Regel in der
+//                                 Datei, eingebaut (TObject) und über den
+//                                 Index (TStream aus System.Classes, #1376).
 //   type-restriction-violated     feste Sprachregeln für Records, Helfer,
 //                                 Klassenkonstruktoren, inline und threadvar
 //                                 (#994): virtuelle und andere verbotene
@@ -195,6 +205,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Fuzzy;
 
 function BareTypeName(const AName: string): string;
@@ -690,11 +701,11 @@ var
   procedure CheckOperator(AHeader: TSyntaxNode);
   var
     Head: TRoutineHead;
-    Own, Name, Closest, Other, Template, Ancestor: string;
+    Own, Name, Closest, Other, Template: string;
     OwnNames, ParamTypes: TArray<string>;
     Shape: TOperatorShape;
     Range: TTextRange;
-    Index, Count, Expected, Depth: Integer;
+    Index, Count, Expected: Integer;
     Param: TSyntaxNode;
     HasOwn, Certain: Boolean;
   begin
@@ -706,6 +717,13 @@ var
     Index := NameToken(Tokens, AHeader);
     if (Own = '') or (Name = '') or (Index < 0) or not IsValidIdent(Name) then
       Exit;
+    // Klassenoperatoren gibt es unter Win32 und Win64 nur in Records: In einer Klasse meldet syntax die
+    // Deklaration (E2123, #1382), hier bleibt nur der Rumpf, der zu nichts passt (Cm.E2522, #1380).
+    if AHeader.Parent.Kind = TSyntaxKind.ClassType then
+    begin
+      ReportBodies(Own, Head);
+      Exit;
+    end;
     Range := TokenRange(Tokens[Index]);
     Shape := OperatorShape(Name);
     if Shape = TOperatorShape.Unknown then
@@ -719,9 +737,6 @@ var
       ReportBodies(Own, Head);
       Exit;
     end;
-    // Klassenoperatoren gibt es unter Win32 und Win64 nur in Records (Cm.E2522: dcc lehnt die Deklaration ab).
-    if AHeader.Parent.Kind = TSyntaxKind.ClassType then
-      ReportBodies(Own, Head);
     if Shape = TOperatorShape.Tolerated then
       Exit;
     OwnNames := Types.SameNames(Own);
@@ -781,24 +796,6 @@ var
         Report(Range, Format('%s muss %s als Parameter oder Ergebnis haben (wie E2521).', [Name, Own]), nil);
         Exit;
       end;
-      // Umwandlung in bzw. aus einem Vorfahren (E2522), Kette aus der Datei.
-      if HasOwn then
-      begin
-        Ancestor := Types.ParentOf(Own);
-        Depth := 0;
-        while (Ancestor <> '') and (Depth < 32) do
-        begin
-          if MatchText(Ancestor, ParamTypes) or ((Head.ResultType <> nil) and
-            SameText(BareTypeName(Head.ResultType.Name), Ancestor)) then
-          begin
-            Report(Range, Format('%s darf nicht in den Vorfahren %s oder aus ihm umwandeln (wie E2522).',
-              [Name, Ancestor]), nil);
-            Exit;
-          end;
-          Ancestor := Types.ParentOf(Ancestor);
-          Inc(Depth);
-        end;
-      end;
     end
     else if not HasOwn and Certain and (Shape <> TOperatorShape.Managed) then
     begin
@@ -836,6 +833,7 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+        // Operatoren gibt es nur in Records; Köpfe in Klassen nur für die Rümpfe (E2037, #1380).
         if (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
           (ANode.Parent.Kind in [TSyntaxKind.RecordType, TSyntaxKind.ClassType]) then
           Headers.Add(ANode);
@@ -1397,6 +1395,8 @@ var
   Nodes: TList<TSyntaxNode>;
   Node: TSyntaxNode;
   Index: Integer;
+  mResolver: TNameResolver;
+  mLocal: TUnitIndex;
 
   procedure Report(const ARange: TTextRange; const AMessage: string);
   begin
@@ -1425,6 +1425,38 @@ var
       Result := NodeRange(AHeader);
   end;
 
+  /// <summary>Art einer Einschränkung, die weder eingebaut noch in der Datei deklariert ist, über den Index
+  /// (TStream aus System.Classes, #1376): Klasse oder Interface, sonst Unknown. Typparameter aus AScope und
+  /// Namen der Datei (Aliase) bleiben Unknown.</summary>
+  function IndexConstraintKind(const AText: string; const AScope: TArray<string>): TConstraintKind;
+  var
+    mBare, mFileName: string;
+    mSymbol: TResolvedSymbol;
+  begin
+    Result := TConstraintKind.Unknown;
+    mBare := BareTypeName(AText);
+    if (AContext.Index = nil) or (mBare = '') or MatchText(mBare, AScope) or (Types.IndexOf(mBare) >= 0) then
+      Exit;
+    if mResolver = nil then
+    begin
+      mFileName := AContext.FileName;
+      if mFileName = '' then
+        mFileName := AContext.RelativePath;
+      if mFileName = '' then
+        mFileName := AContext.UnitName + '.pas';
+      mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+      mResolver.Namespaces := AContext.Namespaces;
+      mResolver.PinTree(AContext.Tree, mFileName);
+      mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
+    end;
+    if not mResolver.ResolveTypeTextFrom(mLocal, AText, mSymbol) or mSymbol.Builtin or (mSymbol.Condition <> '') then
+      Exit;
+    if mSymbol.SymbolKind = TIndexSymbolKind.ClassType then
+      Result := TConstraintKind.ClassType
+    else if mSymbol.SymbolKind = TIndexSymbolKind.InterfaceType then
+      Result := TConstraintKind.InterfaceType;
+  end;
+
   // Einschränkungen einer Typparameterliste: E2507, E2510, E2516, E2552, E2553, E2603.
   procedure CheckConstraints(AParams: TSyntaxNode);
   var
@@ -1447,6 +1479,8 @@ var
       for Constraint in Group do
       begin
         Kind := ConstraintKind(Types, Constraint.Text, Scope);
+        if Kind = TConstraintKind.Unknown then
+          Kind := IndexConstraintKind(Constraint.Text, Scope);
         Key := LowerCase(Constraint.Text);
         if MatchText(Key, Seen) and (Kind <> TConstraintKind.ClassType) then
         begin
@@ -1501,6 +1535,48 @@ var
     end;
   end;
 
+  // type vor einem instanziierten Typ (TEigen = type TListe<Integer>): E2574.
+  procedure CheckTypedType(ADecl, ATypeNode: TSyntaxNode);
+  var
+    mAt, mBefore: Integer;
+    mRange: TTextRange;
+  begin
+    if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or (ATypeNode.FindChild(TSyntaxKind.GenericArgs) = nil) or
+      (ScopeTypeParams(ADecl) <> nil) then
+      Exit;
+    mAt := TRoutineBody.TokenAt(Tokens, ATypeNode.StartOffset);
+    mBefore := TRoutineBody.PreviousToken(Tokens, mAt);
+    if (mBefore < 0) or (mBefore >= Length(Tokens)) or (Tokens[mBefore].Kind <> TPascalTokenKind.Keyword) or
+      not SameText(Tokens[mBefore].Text, 'type') then
+      Exit;
+    mRange := TTextRange.Create(Tokens[mBefore].StartPos, ATypeNode.EndPos);
+    AReport.Add(mRange, Format('Der instanziierte Typ %s lässt sich nicht mit type als eigener Typ deklarieren ' +
+      '(wie E2574).', [OneLine(AContext.Text, ATypeNode)]), TRuleConfidence.High,
+      [TRuleFix.Create('type entfernen (Alias)', [TRuleEdit.Create(TTextRange.Create(Tokens[mBefore].StartPos,
+      Tokens[mAt].StartPos), '')])]);
+  end;
+
+  // Lokale Routinen in einer generischen Methode oder einer Methode eines generischen Typs: E2570.
+  procedure CheckLocalRoutines(ADecl: TSyntaxNode);
+  var
+    mHeader, mInner: TSyntaxNode;
+    mChild: Integer;
+  begin
+    mHeader := ADecl.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader = nil) or (Pos('.', mHeader.Name) = 0) or (mHeader.FindChild(TSyntaxKind.GenericParams) = nil) then
+      Exit;
+    for mChild := 0 to ADecl.ChildCount - 1 do
+      if ADecl[mChild].Kind = TSyntaxKind.RoutineDecl then
+      begin
+        mInner := ADecl[mChild].FindChild(TSyntaxKind.RoutineHeader);
+        if mInner = nil then
+          mInner := ADecl[mChild];
+        Report(HeaderNameRange(mInner), Format('Die lokale Routine %s ist in %s nicht erlaubt: Methoden generischer ' +
+          'Typen und generische Methoden haben keine lokalen Routinen; als private Methode oder anonyme Methode ' +
+          'schreiben (wie E2570).', [ADecl[mChild].Name, mHeader.Name]));
+      end;
+  end;
+
   // Typdeklaration mit Typparametern: E2508, E2549, H2509.
   procedure CheckTypeDecl(ADecl: TSyntaxNode);
   var
@@ -1512,6 +1588,8 @@ var
   begin
     Params := ADecl.FindChild(TSyntaxKind.GenericParams);
     TypeNode := TypeOfDecl(ADecl);
+    if (Params = nil) and (TypeNode <> nil) then
+      CheckTypedType(ADecl, TypeNode);
     if (Params = nil) or (TypeNode = nil) then
       Exit;
     if TypeNode.Kind in NonGenericTypeKinds then
@@ -1595,6 +1673,12 @@ var
       if Head.IsClass and (Head.Keyword = 'constructor') then
       begin
         Report(HeaderNameRange(AHeader), 'Klassenkonstruktoren dürfen keine Typparameter haben (wie E2528).');
+        Exit;
+      end;
+      // Mit dcc 13 belegt für Klassen (Cm.E2528); Records und object bleiben ungeprüft still.
+      if (Head.Keyword = 'constructor') and (Holder.Kind = TSyntaxKind.ClassType) then
+      begin
+        Report(HeaderNameRange(AHeader), 'Konstruktoren dürfen keine Typparameter haben (wie E2528).');
         Exit;
       end;
       for Name in VirtualDirectives do
@@ -1773,6 +1857,8 @@ begin
   Root := AContext.Tree.Root;
   Types := TFileTypes.Collect(Root);
   InterfacePart := Root.FindChild(TSyntaxKind.InterfaceSection);
+  mResolver := nil;
+  mLocal := Default(TUnitIndex);
   Nodes := TList<TSyntaxNode>.Create;
   try
     Root.Walk(
@@ -1781,7 +1867,7 @@ begin
         // Methodenzuordnungen (function IFoo<T>.Bar = Baz;) deklarieren nichts Generisches (#1325).
         Result := not ((ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution);
         if Result and (ANode.Kind in [TSyntaxKind.GenericParams, TSyntaxKind.TypeDecl, TSyntaxKind.ClassOfType,
-          TSyntaxKind.Attribute, TSyntaxKind.RoutineHeader, TSyntaxKind.MemberAccess]) then
+          TSyntaxKind.Attribute, TSyntaxKind.RoutineHeader, TSyntaxKind.MemberAccess, TSyntaxKind.RoutineDecl]) then
           Nodes.Add(ANode);
       end);
     for Index := 0 to Nodes.Count - 1 do
@@ -1804,6 +1890,8 @@ begin
           CheckHeader(Node);
         TSyntaxKind.MemberAccess:
           CheckCall(Node);
+        TSyntaxKind.RoutineDecl:
+          CheckLocalRoutines(Node);
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
@@ -1811,6 +1899,11 @@ begin
     CheckLocalSymbols;
   finally
     Nodes.Free;
+    if mResolver <> nil then
+    begin
+      mResolver.UnpinTree;
+      mResolver.Free;
+    end;
   end;
 end;
 
@@ -3405,6 +3498,12 @@ var
             if IsTypeInfo then
               AReport.Add(NodeRange(Argument), Format('%s hat keine Typinformation: Dateitypen erzeugen keine ' +
                 'RTTI (wie E2134).', [Name]), TRuleConfidence.High, nil)
+            else if (ACall.Parent <> nil) and (ACall.Parent.Kind = TSyntaxKind.AssignStatement) and
+              (ACall.Parent.ChildCount > 1) and (ACall.Parent[1] = ACall) then
+              // Die Zuweisung an eine Dateivariable meldet dcc zusätzlich als E2015.
+              AReport.Add(NodeRange(Argument), Format('Default ist für den Dateityp %s nicht erlaubt, und ' +
+                'Dateivariablen lassen sich nicht zuweisen (wie E2538 und E2015).', [Name]),
+                TRuleConfidence.High, nil)
             else
               AReport.Add(NodeRange(Argument), Format('Default ist für den Dateityp %s nicht erlaubt (wie E2538).',
                 [Name]), TRuleConfidence.High, nil);
