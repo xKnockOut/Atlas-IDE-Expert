@@ -442,12 +442,15 @@ var
   Identifiers: TList<TSyntaxNode>;
   OuterLocals: TArray<TRoutineLocal>;
   Node, Child: TSyntaxNode;
-  Index, Found: Integer;
+  Index, Found, Count: Integer;
   Written: Boolean;
 begin
-  Captured := nil;
   ConstLines := nil;
   OuterLocals := Cache.Locals(Outer);
+  // Jede äußere Lokale höchstens einmal: Länge vorab, am Ende auf Count kürzen.
+  Captured := nil;
+  SetLength(Captured, Length(OuterLocals));
+  Count := 0;
   Identifiers := TList<TSyntaxNode>.Create;
   try
     TRoutineLocals.CollectKind(Anonymous, TSyntaxKind.Identifier, Identifiers);
@@ -483,12 +486,12 @@ begin
         Continue;
       end;
       Index := 0;
-      while (Index <= High(Captured)) and not ((Captured[Index].Local.Decl = OuterLocals[Found].Decl) and
+      while (Index < Count) and not ((Captured[Index].Local.Decl = OuterLocals[Found].Decl) and
         SameText(Captured[Index].Local.Name, OuterLocals[Found].Name)) do
         Inc(Index);
-      if Index > High(Captured) then
+      if Index = Count then
       begin
-        SetLength(Captured, Length(Captured) + 1);
+        Inc(Count);
         Captured[Index] := Default(TAnonymousCaptured);
         Captured[Index].Local := OuterLocals[Found];
         Captured[Index].TypeText := OuterLocals[Found].TypeText;
@@ -509,6 +512,7 @@ begin
           TRoutineParts.ChildNames(Outer[Index])) >= 0) then
           Exit(Fail('nutzt den lokalen Typ ' + Node.Name, AReason));
   finally
+    SetLength(Captured, Count);
     Identifiers.Free;
   end;
   Result := True;

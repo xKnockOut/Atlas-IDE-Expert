@@ -158,9 +158,6 @@ const
   /// <summary>Deklarationen, deren Typ einen Alias bekommen kann.</summary>
   DeclarationContexts = [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl,
     TSyntaxKind.InlineConst, TSyntaxKind.Parameter, TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl];
-  BuiltinNames: array[0..20] of string = ('string', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'Byte', 'Word',
-    'Double', 'Single', 'Extended', 'Currency', 'Boolean', 'Char', 'AnsiString', 'UnicodeString', 'Pointer',
-    'Variant', 'TObject', 'NativeInt', 'TDateTime', 'Real');
 
 function Fail(const AReason: string; out AOut: string): Boolean;
 begin

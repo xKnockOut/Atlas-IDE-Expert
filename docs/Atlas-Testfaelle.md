@@ -8375,6 +8375,7 @@ Vorbereitung: Verbindungen zu YouTrack und GitHub mit Token (#1260), Projekt mit
 | ZS12 | Felder „Zustandsfeld“, „Startzustand“ und „Zielzustände“ der Verbindung setzen, globale Werte anders | Die Werte der Verbindung gelten; Adresse der Verbindung ändern verliert die Felder nicht |
 | ZS13 | Netz während des Sendens trennen, Dialog schließen versuchen | Schließen wartet bis zur Antwort; danach „Tracker nicht erreichbar.“ |
 | ZS14 | Plugin entladen, während eine Änderung gesendet wird | Keine Zugriffsverletzung, keine späte Meldung |
+| ZS15 | Optionen › Issue-Tracker › Verbindungen: Verbindung YouTrack wählen, dann GitHub, dann bei GitHub den Anbieter auf YouTrack und zurück stellen | Alle Felder einzeilig ohne Leerraum dazwischen; bei YouTrack Zustandsfeld und Benutzerfeld sichtbar, bei GitHub ausgeblendet, „Beim Beginnen“ und „Zielzustände“ rücken direkt unter die Adresse; Hell und Dunkel |
 
 ## Zeit je Issue erfassen und buchen (#1267)
 
@@ -8951,6 +8952,16 @@ Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend
 | HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
 | HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
 | HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |
+
+## Fehlalarme an Record-Feldern (Prep-v1.2.0)
+
+Vorbereitung: Atlas-Repository auf Prep-v1.2.0 in der IDE, `naming-prefix` eingeschaltet (atlas.json des Repositorys), `Atlas.Core.Results.Model.pas` öffnen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RE1 | `TAtlasResultEntry` ansehen | Keine Meldung „Feld … ohne Präfix F“ an `FileName`, `Line`, `Character`, `Text`, `Detail`, `Confidence`; keine Meldung „TAtlasConfidence wird in TAtlasResultEntry benutzt, bevor es deklariert ist“ |
+| RE2 | In einer Testunit `TP = record private Wert: Integer; public property W: Integer read Wert; end;` und `TK = class public Alter: Integer; end;` | `Wert` gemeldet (erwartet: FWert), `Alter` nicht |
+| RE3 | `type TA = record S: TS; end; TS = (A, B);` | Weiterhin „TS wird in TA benutzt, bevor es deklariert ist“ |
 
 ## Generische Interfaces und Typparameter
 
