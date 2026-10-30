@@ -127,6 +127,9 @@ type
     procedure SetShowCompilerCode(AValue: Boolean);
     /// <summary>Anzeigereihenfolge und Breiten der Liste nach FColumns übernehmen.</summary>
     procedure ReadColumns;
+    /// <summary>Hebt die Markierung der virtuellen Liste mit einer Nachricht auf. TCustomListView.ClearSelection
+    /// holt jede Zeile einzeln über OnData und hängt bei vielen Befunden die IDE auf.</summary>
+    procedure ClearListSelection;
     procedure ApplyOrder;
     function ColumnCaption(AColumn: TAtlasFindingColumn): string;
     function CellText(const ARow: TAtlasFindingRow; AColumn: TAtlasFindingColumn): string;
@@ -888,6 +891,12 @@ begin
       Counts.OfKind(Kind)]);
 end;
 
+procedure TAtlasProblemsFrame.ClearListSelection;
+begin
+  if FList.HandleAllocated then
+    ListView_SetItemState(FList.Handle, -1, 0, LVIS_SELECTED);
+end;
+
 procedure TAtlasProblemsFrame.Refill;
 var
   Selected: Integer;
@@ -908,7 +917,7 @@ begin
     Selected := FView.SelectedRow;
     if Selected <> FList.ItemIndex then
     begin
-      FList.ClearSelection;
+      ClearListSelection;
       if Selected >= 0 then
       begin
         FList.ItemIndex := Selected;
@@ -1181,7 +1190,7 @@ begin
       Key := 0;
       if RowAt(Target, Next) then
       begin
-        FList.ClearSelection;
+        ClearListSelection;
         FList.ItemIndex := Target;
         FList.Items[Target].Focused := True;
         FList.Items[Target].MakeVisible(False);
