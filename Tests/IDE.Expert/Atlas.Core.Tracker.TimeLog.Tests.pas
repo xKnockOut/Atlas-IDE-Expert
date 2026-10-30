@@ -118,9 +118,6 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Providers.YouTrack;
 
-const
-  Minute = 1 / MinsPerDay;
-
 type
   /// <summary>Transport mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe und Inhalte.</summary>
   TFakeTimeTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiSend)
