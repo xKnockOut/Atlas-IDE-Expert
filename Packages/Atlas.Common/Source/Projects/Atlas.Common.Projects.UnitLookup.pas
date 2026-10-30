@@ -80,6 +80,9 @@ type
     IndexUnits: TFunc<TArray<string>>;
     /// <summary>Die anderen Projekte der Projektgruppe (3a).</summary>
     GroupOutputs: TArray<TUnitLookupGroupOutput>;
+    /// <summary>Wie GroupOutputs, aber bei jeder Suche neu gefragt: Die IDE meldet die Projekte der Gruppe einzeln
+    /// und nach diesem an. nil = nur GroupOutputs.</summary>
+    GroupOutputsOf: TFunc<TArray<TUnitLookupGroupOutput>>;
   end;
 
   TUnitLookup = class(TInterfacedObject, IRuleUnitLookup)
@@ -108,6 +111,7 @@ type
     function Candidates(const AUnitName: string): TArray<string>;
     function FindInProject(const AUnitName, AFromFile: string; out AUnsure: Boolean): Boolean;
     function FindInAtlas(const AUnitName: string): Boolean;
+    function BuiltByGroup(const ANames: TArray<string>): Boolean;
   public
     constructor Create(const ASetup: TUnitLookupSetup);
     destructor Destroy; override;
@@ -345,9 +349,8 @@ begin
         Exit;
   if InProjectFolders(AUnitName, Names) then
     Exit;
-  for Name in Names do
-    if FGroupUnits.ContainsKey(LowerCase(Name)) then
-      Exit;
+  if BuiltByGroup(Names) then
+    Exit;
   // Packages: Units der requires-Packages, auch ohne .dcu im Pfad, und die der Packages, die diese verlangen.
   if Assigned(FSetup.PackageProvides) then
   begin
@@ -387,6 +390,32 @@ begin
   end;
   if (Length(FSetup.RequiredPackages) > 0) and not Assigned(FSetup.PackageProvides) then
     AUnsure := True;
+  Result := False;
+end;
+
+function TUnitLookup.BuiltByGroup(const ANames: TArray<string>): Boolean;
+var
+  mName, mUnit, mFolder: string;
+  mOutput: TUnitLookupGroupOutput;
+  mInPath: Boolean;
+begin
+  Result := True;
+  for mName in ANames do
+    if FGroupUnits.ContainsKey(LowerCase(mName)) then
+      Exit;
+  if Assigned(FSetup.GroupOutputsOf) then
+    for mOutput in FSetup.GroupOutputsOf() do
+    begin
+      mInPath := False;
+      for mFolder in FProjectFolders do
+        if (mOutput.DcuFolder <> '') and SameFolder(mFolder, mOutput.DcuFolder) then
+          mInPath := True;
+      if mInPath then
+        for mUnit in mOutput.Units do
+          for mName in ANames do
+            if SameText(mUnit, mName) then
+              Exit;
+    end;
   Result := False;
 end;
 

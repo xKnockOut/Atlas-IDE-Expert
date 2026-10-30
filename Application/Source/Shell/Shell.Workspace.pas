@@ -532,9 +532,106 @@ begin
       Result := Result + [mOutput];
   end;
 end;
+type
+  /// <summary>Projekte der Gruppe für die Unit-Suche (uses-unit-not-found): bei jeder Anfrage die aktuelle Liste,
+  /// gelesen werden die .dproj nur, wenn sie sich geändert hat. Die IDE meldet die Projekte einzeln und nach dem
+  /// ersten an.</summary>
+  TGroupOutputCache = class
+  private
+    FLock: TObject;
+    FKey: string;
+    FOutputs: TArray<TUnitLookupGroupOutput>;
+    FFiles: TFunc<TArray<string>>;
+    FOwnFile: string;
+    FOptions: TDprojOptions;
+    FLogger: ILogger;
+  public
+    constructor Create(const AFiles: TFunc<TArray<string>>; const AOwnFile: string; const AOptions: TDprojOptions;
+      const ALogger: ILogger);
+    destructor Destroy; override;
+    function Current: TArray<TUnitLookupGroupOutput>;
+  end;
+
+  IGroupOutputCacheHold = interface
+    ['{6B1F4E2A-93C7-4D5B-A8E1-2F7C9D0B3A64}']
+    function Cache: TGroupOutputCache;
+  end;
+
+  TGroupOutputCacheHold = class(TInterfacedObject, IGroupOutputCacheHold)
+  private
+    FCache: TGroupOutputCache;
+  public
+    constructor Create(ACache: TGroupOutputCache);
+    destructor Destroy; override;
+    function Cache: TGroupOutputCache;
+  end;
+
+constructor TGroupOutputCache.Create(const AFiles: TFunc<TArray<string>>; const AOwnFile: string;
+  const AOptions: TDprojOptions; const ALogger: ILogger);
+begin
+  inherited Create;
+  FLock := TObject.Create;
+  FFiles := AFiles;
+  FOwnFile := AOwnFile;
+  FOptions := AOptions;
+  FLogger := ALogger;
+end;
+
+destructor TGroupOutputCache.Destroy;
+begin
+  FLock.Free;
+  inherited;
+end;
+
+function TGroupOutputCache.Current: TArray<TUnitLookupGroupOutput>;
+var
+  mFiles: TArray<string>;
+  mKey: string;
+begin
+  mFiles := FFiles();
+  mKey := AnsiUpperCase(string.Join(';', mFiles));
+  System.TMonitor.Enter(FLock);
+  try
+    if mKey <> FKey then
+    begin
+      FOutputs := GroupOutputsFor(FOwnFile, mFiles, FOptions, FLogger);
+      FKey := mKey;
+    end;
+    Result := FOutputs;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+constructor TGroupOutputCacheHold.Create(ACache: TGroupOutputCache);
+begin
+  inherited Create;
+  FCache := ACache;
+end;
+
+destructor TGroupOutputCacheHold.Destroy;
+begin
+  FCache.Free;
+  inherited;
+end;
+
+function TGroupOutputCacheHold.Cache: TGroupOutputCache;
+begin
+  Result := FCache;
+end;
+
+/// <summary>Rückruf für TUnitLookupSetup.GroupOutputsOf; fängt nur den Halter ein.</summary>
+function GroupOutputsOfHold(const AHold: IGroupOutputCacheHold): TFunc<TArray<TUnitLookupGroupOutput>>;
+begin
+  Result :=
+    function: TArray<TUnitLookupGroupOutput>
+    begin
+      Result := AHold.Cache.Current;
+    end;
+end;
 function UnitLookupFor(const AProject: TProjectInfo; const AInstallation: ILibraryPathProvider;
   const ALibraryPaths: TArray<string>; const AHold: IPackageLocatorHold; const AIndex: ISymbolIndex;
-  const AGroupOutputs: TArray<TUnitLookupGroupOutput>): IRuleUnitLookup;
+  const AGroupOutputsOf: TFunc<TArray<TUnitLookupGroupOutput>>): IRuleUnitLookup;
 var
   Setup: TUnitLookupSetup;
   Text: string;
@@ -545,7 +642,7 @@ begin
   Setup.Project := AProject;
   Setup.LibraryPaths := ALibraryPaths;
   Setup.LibraryKnown := Length(ALibraryPaths) > 0;
-  Setup.GroupOutputs := AGroupOutputs;
+  Setup.GroupOutputsOf := AGroupOutputsOf;
   if AInstallation <> nil then
     Setup.BrowsingPaths := AInstallation.BrowsingPaths(AProject.Platform);
   // requires der .dpk: deren Units findet der Compiler über die .dcp.
@@ -1815,7 +1912,8 @@ var
   CompilerLibraryPaths: TArray<string>;
   Names: TArray<string>;
   ProjectUnit: TProjectUnit;
-  PackageFolders, GroupFiles: TArray<string>;
+  PackageFolders: TArray<string>;
+  GroupOutputsOf: TFunc<TArray<TUnitLookupGroupOutput>>;
   Locator: TPackageLocator;
   Hold: IPackageLocatorHold;
   Lookup: IRuleUnitLookup;
@@ -2031,11 +2129,11 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
-  GroupFiles := nil;
+  GroupOutputsOf := nil;
   if Assigned(FOnGroupProjects) then
-    GroupFiles := FOnGroupProjects();
-  Lookup := UnitLookupFor(Project, Installation, CompilerLibraryPaths, Hold, FIndex, GroupOutputsFor(mProjectFile,
-    GroupFiles, Options, FLogger));
+    GroupOutputsOf := GroupOutputsOfHold(TGroupOutputCacheHold.Create(TGroupOutputCache.Create(FOnGroupProjects,
+      mProjectFile, Options, FLogger)));
+  Lookup := UnitLookupFor(Project, Installation, CompilerLibraryPaths, Hold, FIndex, GroupOutputsOf);
   TMonitor.Enter(FLock);
   try
     FUnitLookup := Lookup;

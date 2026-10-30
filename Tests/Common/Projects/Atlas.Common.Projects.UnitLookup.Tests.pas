@@ -119,6 +119,8 @@ procedure TUnitLookupTests.UnitsBuiltByGroupProjects;
 var
   mSetup: TUnitLookupSetup;
   mOutput: TUnitLookupGroupOutput;
+  mLate: TArray<TUnitLookupGroupOutput>;
+  mLookup: IRuleUnitLookup;
 begin
   mSetup := Setup(LibraryFiles);
   mSetup.Project.SearchPaths := ['C:\P\Src', 'C:\Out\Win32\Debug\Dcu\Common'];
@@ -136,6 +138,22 @@ begin
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mSetup), 'Fremd.Unit')),
     'Ausgabe nicht im Suchpfad');
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mSetup), 'Common.Fehlt')));
+  // Über GroupOutputsOf: Die IDE meldet die übrigen Projekte erst nach diesem an; die Suche fragt bei Bedarf.
+  mLate := nil;
+  mSetup.GroupOutputs := nil;
+  mSetup.GroupOutputsOf :=
+    function: TArray<TUnitLookupGroupOutput>
+    begin
+      Result := mLate;
+    end;
+  mLookup := TUnitLookup.Create(mSetup);
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(mLookup, 'Common.Vergleich')), 'Gruppe noch leer');
+  mOutput.DcuFolder := 'C:\Out\Win32\Debug\Dcu\Common';
+  mOutput.Units := ['Common.Vergleich'];
+  mLate := [mOutput];
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'Common.Vergleich')), 'später angemeldet');
+  mLookup := nil;
+  mSetup.GroupOutputsOf := nil;
 end;
 
 procedure TUnitLookupTests.FindsSourceAndCompiledUnitsWithNamespaces;var
