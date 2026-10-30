@@ -3,24 +3,32 @@
 // Inhalt des Seitenfensters „Atlas-Architektur“ (#1118), reine VCL: oben
 // „Neu berechnen“, „Bericht speichern …“, „Stand speichern …“ und
 // „Vergleichen mit …“ (#1121, Datei .json), Umfang (Projektgruppe, Projekt),
-// „Bibliotheks-Units“ und ein Filter nach Unit-Namen; darunter sechs Reiter:
+// „Bibliotheks-Units“, der Regler „Feinheit“ (#1366, TAtlasResolutionSlider,
+// daneben „γ = 1,0 · 6 Teilsysteme“; OnResolutionChanged beim Loslassen,
+// ShowResolution blendet ihn aus) und ein Filter nach Unit-Namen; darunter
+// sechs Reiter:
 // - Übersicht: „Einpassen“, „Namen“, „implementation-uses“, „Zyklen
 //   markieren“, „Änderungen zum Stand“ (nur mit Vergleich) und „Teilsysteme ▾“
 //   (ein- und ausblenden), die Karte (TAtlasArchitectureMap), darunter Angaben
-//   zur gewählten Unit bzw. der Weg nach Umschalt+Klick,
+//   zur gewählten Unit bzw. der Weg nach Umschalt+Klick; mit
+//   architecture.explainAssignment (#1368) dazu die Zuordnung der gewählten
+//   Unit als Tabelle (Steckbrief) und als Hinweis über der Karte,
 // - Zentrale Units: Tabelle, Klick auf eine Spalte sortiert (nochmals:
 //   umgekehrt); ShowCostRanking zeigt sie nach „gesamt abhängig“ absteigend,
 //   also die Units, deren interface-Änderung am meisten neu übersetzt
 //   (#554),
-// - Teilsysteme: Baum mit Zusammenhalt und Units, Ausreißer mit Grund,
+// - Teilsysteme: Baum mit Zusammenhalt und Units, Ausreißer mit Grund und
+//   knapp zugeordnete Units (#1368); das Fragezeichen darüber erklärt, wie
+//   die Teilsysteme entstehen,
 // - Zyklen: je Zyklus der Weg und die uses-Einträge mit Fundstelle,
 // - Querverbindungen: seltene Kanten und Kanten gegen die Hauptrichtung,
 // - Vergleich (#1121): gegen welchen Stand, „Vergleich aufheben“ und je
 //   Abschnitt (neue Zyklen, Querverbindungen, Kanten zwischen Teilsystemen,
 //   Wechsel, Wachstum, Units) die Einträge; ohne Vergleich ein Hinweis, bei
 //   unlesbarem Stand die Meldung.
-// Unten die Statuszeile (Zahlen, Index-Stand, Rechendauer und Ausschlüsse
-// bzw. ein Hinweis).
+// Unten die Statuszeile (Zahlen, Index-Stand, Rechendauer und Ausschlüsse,
+// „Teilsysteme an Stand vom … angeglichen“ (#1367) bzw. ein Hinweis). Das Menü
+// „Teilsysteme ▾“ bietet mit OnRenameSubsystems „Teilsysteme neu benennen“.
 // Doppelklick oder Enter öffnet die Unit (OnOpenUnit) bzw. springt zum
 // uses-Eintrag (OnOpenLocation, Zeile und Spalte ab 1); Strg+Doppelklick auf
 // eine Unit zeigt sie im Fenster „Unit-Beziehungen“ (OnUnitRelations, #593).
@@ -44,7 +52,8 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Atlas.Core.Architecture.Model,
-  Atlas.UI.Architecture.Map;
+  Atlas.UI.Architecture.Map,
+  Atlas.UI.Architecture.Slider;
 
 type
   TAtlasArchitectureFrame = class(TFrame)
@@ -56,6 +65,9 @@ type
     FCompare: TButton;
     FScope: TComboBox;
     FLibrary: TCheckBox;
+    FResolutionCaption: TLabel;
+    FResolution: TAtlasResolutionSlider;
+    FResolutionInfo: TLabel;
     FFilter: TEdit;
     FPages: TPageControl;
     /// <summary>Reiter in Reihenfolge; CreateWnd hängt sie ein (das braucht das Fenster des PageControls).</summary>
@@ -70,6 +82,11 @@ type
     FSubsystemsMenu: TPopupMenu;
     FMap: TAtlasArchitectureMap;
     FInfo: TLabel;
+    /// <summary>Zuordnung der gewählten Unit (#1368), unter der Karte.</summary>
+    FAssignment: TPaintBox;
+    FSubsystemsBar: TPanel;
+    FExplainButton: TButton;
+    FExplanation: TLabel;
     FCentral: TListView;
     FSubsystems: TTreeView;
     FCycles: TTreeView;
@@ -99,6 +116,8 @@ type
     FOnClearComparison: TProc;
     FOnScopeChanged: TProc<string>;
     FOnLibraryChanged: TProc<Boolean>;
+    FOnResolutionChanged: TProc<Double>;
+    FOnRenameSubsystems: TProc;
     FOnOpenUnit: TProc<string>;
     FOnOpenLocation: TProc<string, Integer, Integer>;
     FOnUnitRelations: TProc<string>;
@@ -122,6 +141,9 @@ type
     function ChangeCaption(AKind: TAtlasArchChangeKind; const AChange: TAtlasArchChange): string;
     procedure UpdateStatus;
     procedure UpdateInfo;
+    procedure UpdateAssignment;
+    procedure AssignmentPaint(Sender: TObject);
+    procedure ExplainClick(Sender: TObject);
     procedure RefreshClick(Sender: TObject);
     procedure SaveClick(Sender: TObject);
     procedure SaveStateClick(Sender: TObject);
@@ -137,7 +159,9 @@ type
     procedure MarkCyclesClick(Sender: TObject);
     procedure SubsystemsClick(Sender: TObject);
     procedure SubsystemItemClick(Sender: TObject);
+    procedure FoundationEdgesClick(Sender: TObject);
     procedure ShowAllClick(Sender: TObject);
+    procedure RenameSubsystemsClick(Sender: TObject);
     procedure CentralColumnClick(Sender: TObject; Column: TListColumn);
     procedure CentralDblClick(Sender: TObject);
     procedure CrossDblClick(Sender: TObject);
@@ -149,6 +173,12 @@ type
     procedure SetScopeValue(const AValue: string);
     function GetIncludeLibrary: Boolean;
     procedure SetIncludeLibrary(AValue: Boolean);
+    function GetResolutionValue: Double;
+    procedure SetResolutionValue(AValue: Double);
+    function GetShowResolution: Boolean;
+    procedure SetShowResolution(AValue: Boolean);
+    /// <summary>„γ = 1,0 · 6 Teilsysteme“; die Zahl nur, wenn die Karte mit diesem Wert gerechnet ist.</summary>
+    procedure UpdateResolutionInfo(AValue: Double);
   protected
     procedure CreateWnd; override;
   public
@@ -164,8 +194,12 @@ type
     procedure OpenUnit(AUnit: Integer);
     /// <summary>uses-Eintrag öffnen (OnOpenLocation), ohne Fundstelle die Unit, in der er steht.</summary>
     procedure OpenLink(const ALink: TAtlasArchLink);
-    /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“.</summary>
+    /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“ und mit
+    /// OnRenameSubsystems „Teilsysteme neu benennen“ (#1367).</summary>
     procedure FillSubsystemsMenu;
+    /// <summary>Zeile eines Teilsystems in Menü und Reiter: Name, Units, Zusammenhalt (Fundament ohne, #1365).
+    /// </summary>
+    function SubsystemCaption(ASubsystem: Integer): string;
     /// <summary>Zeile für Zeile der Text einer Liste bzw. eines Baums (für Tests und Bildschirmleser).</summary>
     function CentralText: TArray<string>;
     function SubsystemText: TArray<string>;
@@ -192,6 +226,9 @@ type
     property CrossLinkList: TListView read FCrossLinks;
     property StatusLabel: TLabel read FStatus;
     property InfoLabel: TLabel read FInfo;
+    property AssignmentBox: TPaintBox read FAssignment;
+    property ExplainButton: TButton read FExplainButton;
+    property ExplanationLabel: TLabel read FExplanation;
     property FitButton: TButton read FFit;
     property NamesCheck: TCheckBox read FNames;
     property ImplementationCheck: TCheckBox read FImplementation;
@@ -199,6 +236,12 @@ type
     property SubsystemsMenu: TPopupMenu read FSubsystemsMenu;
     property ScopeValue: string read FScopeValue write SetScopeValue;
     property IncludeLibrary: Boolean read GetIncludeLibrary write SetIncludeLibrary;
+    /// <summary>Feinheit γ des Reglers (#1366); Setzen meldet nichts.</summary>
+    property ResolutionValue: Double read GetResolutionValue write SetResolutionValue;
+    /// <summary>Regler „Feinheit“ zeigen (architecture.grouping.showResolutionSlider).</summary>
+    property ShowResolution: Boolean read GetShowResolution write SetShowResolution;
+    property ResolutionSlider: TAtlasResolutionSlider read FResolution;
+    property ResolutionInfo: TLabel read FResolutionInfo;
     property SortColumn: TAtlasArchColumn read FSortColumn;
     property SortDescending: Boolean read FSortDescending;
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
@@ -212,6 +255,11 @@ type
     property OnClearComparison: TProc read FOnClearComparison write FOnClearComparison;
     property OnScopeChanged: TProc<string> read FOnScopeChanged write FOnScopeChanged;
     property OnLibraryChanged: TProc<Boolean> read FOnLibraryChanged write FOnLibraryChanged;
+    /// <summary>Regler losgelassen, Doppelklick oder Taste: neue Feinheit (#1366).</summary>
+    property OnResolutionChanged: TProc<Double> read FOnResolutionChanged write FOnResolutionChanged;
+    /// <summary>„Teilsysteme neu benennen“ im Menü „Teilsysteme ▾“ (#1367): einmal ohne Angleichung rechnen.
+    /// </summary>
+    property OnRenameSubsystems: TProc read FOnRenameSubsystems write FOnRenameSubsystems;
     property OnOpenUnit: TProc<string> read FOnOpenUnit write FOnOpenUnit;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
     property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
@@ -227,6 +275,10 @@ uses
   System.Math,
   System.Types,
   Vcl.Dialogs,
+  Vcl.Themes,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Architecture.Assignment,
   Atlas.UI.Strings;
 
 {$R *.dfm}
@@ -311,6 +363,45 @@ begin
   FLibrary.Width := 120;
   FLibrary.OnClick := LibraryClick;
 
+  FResolutionCaption := TLabel.Create(Self);
+  FResolutionCaption.Parent := FTop;
+  FResolutionCaption.Align := alLeft;
+  FResolutionCaption.AlignWithMargins := True;
+  FResolutionCaption.Left := FLibrary.Left + FLibrary.Width + 1;
+  FResolutionCaption.Layout := tlCenter;
+  FResolutionCaption.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureResolutionCaption);
+  FResolutionCaption.ShowAccelChar := False;
+
+  FResolution := TAtlasResolutionSlider.Create(Self);
+  FResolution.Parent := FTop;
+  FResolution.Align := alLeft;
+  FResolution.AlignWithMargins := True;
+  FResolution.Left := FResolutionCaption.Left + FResolutionCaption.Width + 1;
+  FResolution.Width := 140;
+  FResolution.Hint := TAtlasStrings.Text(TAtlasTextId.ArchitectureResolutionHint);
+  FResolution.ShowHint := True;
+  FResolution.OnTracking :=
+    procedure(AValue: Double)
+    begin
+      UpdateResolutionInfo(AValue);
+    end;
+  FResolution.OnChange :=
+    procedure(AValue: Double)
+    begin
+      UpdateResolutionInfo(AValue);
+      if Assigned(FOnResolutionChanged) then
+        FOnResolutionChanged(AValue);
+    end;
+
+  FResolutionInfo := TLabel.Create(Self);
+  FResolutionInfo.Parent := FTop;
+  FResolutionInfo.Align := alLeft;
+  FResolutionInfo.AlignWithMargins := True;
+  FResolutionInfo.Left := FResolution.Left + FResolution.Width + 1;
+  FResolutionInfo.Layout := tlCenter;
+  FResolutionInfo.ShowAccelChar := False;
+  UpdateResolutionInfo(FResolution.Value);
+
   FFilter := TEdit.Create(Self);
   FFilter.Parent := FTop;
   FFilter.Align := alClient;
@@ -340,6 +431,14 @@ begin
   FInfo.EllipsisPosition := epEndEllipsis;
   FInfo.Font.Color := clGrayText;
   FInfo.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureMapHint);
+  FAssignment := TPaintBox.Create(Self);
+  FAssignment.Parent := Sheet;
+  FAssignment.Align := alBottom;
+  FAssignment.AlignWithMargins := True;
+  // Über der Zeile mit den Angaben zur Unit.
+  FAssignment.Top := FInfo.Top - 1;
+  FAssignment.Visible := False;
+  FAssignment.OnPaint := AssignmentPaint;
   FMapBar := TPanel.Create(Self);
   FMapBar.Parent := Sheet;
   FMapBar.Align := alTop;
@@ -430,6 +529,31 @@ begin
   AddColumn(FCentral, TAtlasStrings.Text(TAtlasTextId.ArchitectureColRole), 100);
 
   Sheet := NewSheet(TAtlasStrings.Text(TAtlasTextId.ArchitectureTabSubsystems));
+  // Fragezeichen mit der Erklärung, wie die Teilsysteme entstehen (#1368); nur mit Zuordnung vom Server.
+  FSubsystemsBar := TPanel.Create(Self);
+  FSubsystemsBar.Parent := Sheet;
+  FSubsystemsBar.Align := alTop;
+  FSubsystemsBar.BevelOuter := bvNone;
+  FSubsystemsBar.ShowCaption := False;
+  FSubsystemsBar.AutoSize := True;
+  FSubsystemsBar.Visible := False;
+  FExplainButton := TButton.Create(Self);
+  FExplainButton.Parent := FSubsystemsBar;
+  FExplainButton.Align := alLeft;
+  FExplainButton.AlignWithMargins := True;
+  FExplainButton.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainButton);
+  FExplainButton.Hint := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint);
+  FExplainButton.ShowHint := True;
+  FExplainButton.Width := 28;
+  FExplainButton.OnClick := ExplainClick;
+  FExplanation := TLabel.Create(Self);
+  FExplanation.Parent := FSubsystemsBar;
+  FExplanation.Align := alClient;
+  FExplanation.AlignWithMargins := True;
+  FExplanation.ShowAccelChar := False;
+  FExplanation.WordWrap := True;
+  FExplanation.Font.Color := clGrayText;
+  FExplanation.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint);
   FSubsystems := NewTree(Sheet);
 
   Sheet := NewSheet(TAtlasStrings.Text(TAtlasTextId.ArchitectureTabCycles));
@@ -577,6 +701,41 @@ begin
   end;
 end;
 
+function TAtlasArchitectureFrame.GetResolutionValue: Double;
+begin
+  Result := FResolution.Value;
+end;
+
+procedure TAtlasArchitectureFrame.SetResolutionValue(AValue: Double);
+begin
+  FResolution.Value := AValue;
+  UpdateResolutionInfo(FResolution.Value);
+end;
+
+function TAtlasArchitectureFrame.GetShowResolution: Boolean;
+begin
+  Result := FResolution.Visible;
+end;
+
+procedure TAtlasArchitectureFrame.SetShowResolution(AValue: Boolean);
+begin
+  FResolutionCaption.Visible := AValue;
+  FResolution.Visible := AValue;
+  FResolutionInfo.Visible := AValue;
+end;
+
+procedure TAtlasArchitectureFrame.UpdateResolutionInfo(AValue: Double);
+var
+  mText: string;
+begin
+  mText := TAtlasArchResolution.Text(AValue, FormatSettings);
+  if FHasModel and TAtlasArchResolution.Same(FModel.Resolution, AValue) then
+    FResolutionInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionInfo, [mText,
+      FModel.SubsystemCount])
+  else
+    FResolutionInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionValue, [mText]);
+end;
+
 procedure TAtlasArchitectureFrame.SetModel(const AModel: TAtlasArchitectureModel);
 begin
   FModel := AModel;
@@ -585,6 +744,7 @@ begin
   FMap.SetModel(FModel);
   FMap.Filter := FFilter.Text;
   FillAll;
+  UpdateResolutionInfo(FResolution.Value);
 end;
 
 procedure TAtlasArchitectureFrame.SetMessage(const AText: string; AKeep: Boolean);
@@ -596,6 +756,7 @@ begin
     FHasModel := False;
     FMap.SetModel(FModel);
     FillAll;
+    UpdateResolutionInfo(FResolution.Value);
   end;
   UpdateStatus;
 end;
@@ -648,6 +809,8 @@ end;
 procedure TAtlasArchitectureFrame.FillAll;
 begin
   FLinks := nil;
+  FSubsystemsBar.Visible := FModel.HasAssignment;
+  FExplanation.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint);
   FillCentral;
   FillSubsystems;
   FillCycles;
@@ -703,7 +866,8 @@ begin
   FSubsystems.Items.BeginUpdate;
   try
     FSubsystems.Items.Clear;
-    for Index := 0 to High(FModel.Subsystems) do
+    // Teile eines nachgeteilten Teilsystems (#1364) beieinander.
+    for Index in FModel.LegendOrder do
     begin
       Subsystem := FModel.Subsystems[Index];
       Members := nil;
@@ -712,9 +876,14 @@ begin
           Members := Members + [Member];
       if Length(Members) = 0 then
         Continue;
-      Group := FSubsystems.Items.Add(nil, TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine,
-        [Subsystem.Name, Length(Subsystem.Units), Round(Subsystem.Cohesion * 100)]));
+      Line := SubsystemCaption(Index);
+      if Subsystem.Parent <> '' then
+        Line := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemPart, [Line, Subsystem.Parent]);
+      Group := FSubsystems.Items.Add(nil, Line);
       Group.Data := nil;
+      // Regel des Fundaments (#1365) als erste Zeile.
+      if Subsystem.Foundation then
+        FSubsystems.Items.AddChild(Group, TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationRule)).Data := nil;
       for Member in FModel.Sorted(Members, TAtlasArchColumn.Total, True) do
       begin
         Line := FModel.Units[Member].Name;
@@ -725,6 +894,9 @@ begin
         else if Outlier >= 0 then
             Line := Line + ' — ' + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureOutlierEdges,
             [FModel.SubsystemName(FModel.Outliers[Outlier].Suggested)]);
+        // Knapp zugeordnet (#1368).
+        if TAtlasArchitectureAssignment.CloseMark(FModel, Member) <> '' then
+          Line := Line + ' — ' + TAtlasArchitectureAssignment.CloseMark(FModel, Member);
         Node := FSubsystems.Items.AddChild(Group, Line);
         // Unit: negative Zahl (−1 − Nummer), uses-Eintrag: positive (Nummer in FLinks + 1).
         Node.Data := Pointer(NativeInt(-1 - Member));
@@ -870,6 +1042,11 @@ begin
     if Length(Comparison.Failed) > 0 then
       Info := Info + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonFailed,
         [string.Join(', ', Comparison.Failed)]);
+    // Verschiedene Feinheit (#1366): Teilsystemwechsel können allein daher kommen.
+    if Comparison.ResolutionDiffers then
+      Info := Info + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonResolution,
+        [TAtlasArchResolution.Text(Comparison.BaselineResolution, FormatSettings),
+        TAtlasArchResolution.Text(Comparison.Resolution, FormatSettings)]);
   end
   else
     Info := TAtlasStrings.Text(TAtlasTextId.ArchitectureNoComparison);
@@ -933,6 +1110,13 @@ begin
     if Length(FModel.Excludes) > 0 then
       FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusExcludes,
         [string.Join(', ', FModel.Excludes)]);
+    // Angleichung an einen vorigen Stand (#1367).
+    if FModel.AlignedSource = 'baseline' then
+      FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedBaseline,
+        [FModel.AlignedText])
+    else if FModel.AlignedSource <> '' then
+      FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedLast,
+        [FModel.AlignedText]);
     if FModel.Comparison.Present then
       FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusComparison,
         [FModel.Comparison.Count])
@@ -948,6 +1132,7 @@ procedure TAtlasArchitectureFrame.UpdateInfo;
 var
   Item: TAtlasArchUnit;
 begin
+  UpdateAssignment;
   if Length(FMap.Route) > 0 then
   begin
     // Fester Weg aus „Weg zwischen Symbolen“ (#1117).
@@ -973,6 +1158,55 @@ begin
   Item := FModel.Units[FMap.Selected];
   FInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureUnitInfo, [Item.Name,
     FModel.SubsystemName(Item.Subsystem), Item.Direct, Item.Total, Item.Uses_]);
+end;
+
+procedure TAtlasArchitectureFrame.UpdateAssignment;
+var
+  mBitmap: TBitmap;
+  mSize: TSize;
+begin
+  // Steckbrief (#1368): nur mit gewählter Unit, ohne Weg und mit Zuordnung vom Server.
+  if (FMap.PathFrom >= 0) or (Length(FMap.Route) > 0) or
+    not TAtlasArchitectureAssignment.Available(FModel, FMap.Selected) then
+  begin
+    FAssignment.Visible := False;
+    Exit;
+  end;
+  // Messen ohne Fenster: auf einer Bitmap mit derselben Schrift.
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.Canvas.Font.Assign(Font);
+    mSize := TAtlasArchitectureAssignment.Measure(mBitmap.Canvas, FModel, FMap.Selected, CurrentPPI);
+  finally
+    mBitmap.Free;
+  end;
+  FAssignment.Height := mSize.cy + 1;
+  FAssignment.Visible := True;
+  FAssignment.Top := FInfo.Top - 1;
+  FAssignment.Invalidate;
+end;
+
+procedure TAtlasArchitectureFrame.AssignmentPaint(Sender: TObject);
+var
+  mColors: TAtlasColors;
+  mSize: TSize;
+begin
+  if not TAtlasArchitectureAssignment.Available(FModel, FMap.Selected) then
+    Exit;
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  FAssignment.Canvas.Font.Assign(Font);
+  mSize := TAtlasArchitectureAssignment.Measure(FAssignment.Canvas, FModel, FMap.Selected, CurrentPPI);
+  TAtlasArchitectureAssignment.Draw(FAssignment.Canvas, Rect(0, 0, Min(mSize.cx, FAssignment.Width), mSize.cy),
+    FModel, FMap.Selected, CurrentPPI, mColors);
+end;
+
+procedure TAtlasArchitectureFrame.ExplainClick(Sender: TObject);
+begin
+  // Erneut: wieder nur der kurze Hinweis.
+  if FExplanation.Caption = TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint) then
+    FExplanation.Caption := TAtlasArchitectureAssignment.Explanation(FModel)
+  else
+    FExplanation.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint);
 end;
 
 procedure TAtlasArchitectureFrame.OpenUnit(AUnit: Integer);
@@ -1120,15 +1354,38 @@ end;
 
 procedure TAtlasArchitectureFrame.FillSubsystemsMenu;
 var
-  Index: Integer;
+  Index, mOther, mParts: Integer;
   Item: TMenuItem;
+  mFamily, mCaption: string;
 begin
   FSubsystemsMenu.Items.Clear;
-  for Index := 0 to High(FModel.Subsystems) do
+  // Wie die Legende der HTML-Karte: die Teile eines nachgeteilten Teilsystems (#1364) eingerückt unter seinem
+  // Namen.
+  mFamily := '';
+  for Index in FModel.LegendOrder do
   begin
+    mCaption := SubsystemCaption(Index);
+    if FModel.Subsystems[Index].Parent = '' then
+      mFamily := ''
+    else
+    begin
+      if not SameText(FModel.Subsystems[Index].Parent, mFamily) then
+      begin
+        mFamily := FModel.Subsystems[Index].Parent;
+        mParts := 0;
+        for mOther := 0 to High(FModel.Subsystems) do
+          if SameText(FModel.Subsystems[mOther].Parent, mFamily) then
+            Inc(mParts);
+        Item := TMenuItem.Create(FSubsystemsMenu);
+        Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemFamily, [mFamily, mParts]);
+        Item.Enabled := False;
+        Item.Tag := -1;
+        FSubsystemsMenu.Items.Add(Item);
+      end;
+      mCaption := '      ' + mCaption;
+    end;
     Item := TMenuItem.Create(FSubsystemsMenu);
-    Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine, [FModel.Subsystems[Index].Name,
-      Length(FModel.Subsystems[Index].Units), Round(FModel.Subsystems[Index].Cohesion * 100)]);
+    Item.Caption := mCaption;
     Item.Tag := Index;
     Item.Checked := FMap.SubsystemVisible[Index];
     Item.OnClick := SubsystemItemClick;
@@ -1137,10 +1394,36 @@ begin
   if FSubsystemsMenu.Items.Count = 0 then
     Exit;
   FSubsystemsMenu.Items.NewBottomLine;
+  // Kanten zum Fundament (#1365) ein- und ausblenden.
+  if FModel.HasFoundation then
+  begin
+    Item := TMenuItem.Create(FSubsystemsMenu);
+    Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationEdges);
+    Item.Checked := FMap.ShowFoundationEdges;
+    Item.Tag := -1;
+    Item.OnClick := FoundationEdgesClick;
+    FSubsystemsMenu.Items.Add(Item);
+  end;
   Item := TMenuItem.Create(FSubsystemsMenu);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureShowAll);
   Item.OnClick := ShowAllClick;
   FSubsystemsMenu.Items.Add(Item);
+  // Farben und Namen neu vergeben (#1367), nur wenn der Dienst es anbietet.
+  if Assigned(FOnRenameSubsystems) then
+  begin
+    Item := TMenuItem.Create(FSubsystemsMenu);
+    Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameSubsystems);
+    Item.Hint := TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameHint);
+    Item.Tag := -1;
+    Item.OnClick := RenameSubsystemsClick;
+    FSubsystemsMenu.Items.Add(Item);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.RenameSubsystemsClick(Sender: TObject);
+begin
+  if Assigned(FOnRenameSubsystems) then
+    FOnRenameSubsystems();
 end;
 
 procedure TAtlasArchitectureFrame.SubsystemsClick(Sender: TObject);
@@ -1150,6 +1433,25 @@ begin
   FillSubsystemsMenu;
   Point := FSubsystemsButton.ClientToScreen(System.Types.Point(0, FSubsystemsButton.Height));
   FSubsystemsMenu.Popup(Point.X, Point.Y);
+end;
+
+procedure TAtlasArchitectureFrame.FoundationEdgesClick(Sender: TObject);
+var
+  mItem: TMenuItem;
+begin
+  mItem := Sender as TMenuItem;
+  FMap.ShowFoundationEdges := not FMap.ShowFoundationEdges;
+  mItem.Checked := FMap.ShowFoundationEdges;
+end;
+
+function TAtlasArchitectureFrame.SubsystemCaption(ASubsystem: Integer): string;
+begin
+  if FModel.Subsystems[ASubsystem].Foundation then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureFoundationLine, [FModel.Subsystems[ASubsystem].Name,
+      Length(FModel.Subsystems[ASubsystem].Units)])
+  else
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine, [FModel.Subsystems[ASubsystem].Name,
+      Length(FModel.Subsystems[ASubsystem].Units), Round(FModel.Subsystems[ASubsystem].Cohesion * 100)]);
 end;
 
 procedure TAtlasArchitectureFrame.SubsystemItemClick(Sender: TObject);

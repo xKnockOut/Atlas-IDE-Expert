@@ -97,6 +97,13 @@
         "dryRun": true
       }
     },
+    "fix_findings": {
+      "arguments": {
+        "rules": ["redundant-cast"],
+        "dryRun": true
+      },
+      "contains": "Vorschau"
+    },
     "get_last_build": {
       "arguments": {}
     },
@@ -111,6 +118,10 @@
     "get_architecture": {
       "arguments": {},
       "contains": "Teilsysteme:"
+    },
+    "get_hotspots": {
+      "arguments": {},
+      "contains": "Hotspots"
     },
     "get_unit_dependencies": {
       "arguments": { "unit": "Ref.Formulare.Haupt" },

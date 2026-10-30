@@ -14,7 +14,12 @@ type
     [Test]
     procedure ReadsArchitectureSettings;
     [Test]
+    procedure ReadsHotspotsSettings;
+    [Test]
     procedure ReadsArchitectureComparisonSettings;
+    /// <summary>architecture.grouping (#1366): Feinheit 0,2–5,0 und Regler im Fenster.</summary>
+    [Test]
+    procedure ReadsArchitectureGrouping;
     [Test]
     procedure ReadsNavigationSymbolPath;
     [Test]
@@ -129,6 +134,9 @@ type
     procedure ReadsMinDelphiVersion;
     [Test]
     procedure ReadsSortUses;
+    /// <summary>#1352: Untergrenze der Sammelkorrektur.</summary>
+    [Test]
+    procedure ReadsFixMinConfidence;
   end;
 
 implementation
@@ -232,6 +240,87 @@ begin
   Assert.AreEqual('subsystemChange', string.Join(',', Settings.ArchitectureFailOn));
 end;
 
+procedure TConfigurationParserTests.ReadsArchitectureGrouping;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual(Double(1), mSettings.ArchitectureGroupingResolution, 1E-9);
+  Assert.IsTrue(mSettings.ArchitectureGroupingShowResolutionSlider);
+  Assert.AreEqual(Double(0.25), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.3), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  // Nachteilung (#1364): 0 schaltet ab, Grenzen 0,9 bzw. 1.
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0, "minCohesion": 1}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(0), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(1), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0.9, "minCohesion": 0.05}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(0.9), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.05), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0.95, "minCohesion": -0.1}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].IsError);
+  Assert.AreEqual(Double(0.25), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.3), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  Parse('{"architecture": {"grouping": {"maxShare": "viel"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  // Fundamente (#1365).
+  Assert.AreEqual('separate', TServerSettings.Default.ArchitectureGroupingFoundations);
+  mSettings := Parse('{"architecture": {"grouping": {"foundations": "attach"}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('attach', mSettings.ArchitectureGroupingFoundations);
+  mSettings := Parse('{"architecture": {"grouping": {"foundations": "Group"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('separate', mSettings.ArchitectureGroupingFoundations);
+  // Zuordnung erklären (#1368).
+  Assert.IsTrue(TServerSettings.Default.ArchitectureExplainAssignment);
+  mSettings := Parse('{"architecture": {"explainAssignment": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.ArchitectureExplainAssignment);
+  mSettings := Parse('{"architecture": {"explainAssignment": "nein"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.ArchitectureExplainAssignment);
+  // Farben und Namen halten (#1367).
+  Assert.IsTrue(TServerSettings.Default.ArchitectureGroupingKeepPrevious);
+  mSettings := Parse('{"architecture": {"grouping": {"keepPrevious": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.ArchitectureGroupingKeepPrevious);
+  mSettings := Parse('{"architecture": {"grouping": {"keepPrevious": "aus"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.ArchitectureGroupingKeepPrevious);
+  mSettings := Parse('{"architecture": {"grouping": {"resolution": 2.5, "showResolutionSlider": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(2.5), mSettings.ArchitectureGroupingResolution, 1E-9);
+  Assert.IsFalse(mSettings.ArchitectureGroupingShowResolutionSlider);
+  // Grenzen 0,2 und 5,0 gelten noch.
+  mSettings := Parse('{"architecture": {"grouping": {"resolution": 0.2}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(0.2), mSettings.ArchitectureGroupingResolution, 1E-9);
+  mSettings := Parse('{"architecture": {"grouping": {"resolution": 5}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(5), mSettings.ArchitectureGroupingResolution, 1E-9);
+  // Außerhalb, falscher Typ und unbekannte Schlüssel: Meldung, Vorgabe bleibt.
+  mSettings := Parse('{"architecture": {"grouping": {"resolution": 0.1, "showResolutionSlider": 1, "x": 1}}}',
+    mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].IsError);
+  Assert.IsFalse(mIssues[2].IsError);
+  Assert.AreEqual(Double(1), mSettings.ArchitectureGroupingResolution, 1E-9);
+  Assert.IsTrue(mSettings.ArchitectureGroupingShowResolutionSlider);
+  Parse('{"architecture": {"grouping": {"resolution": 5.5}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Parse('{"architecture": {"grouping": {"resolution": "fein"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Parse('{"architecture": {"grouping": true}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  // Globale Ebene wie die übrigen architecture-Schlüssel.
+  mSettings := TConfigurationParser.ParseLayered('{"architecture": {"grouping": {"resolution": 0.5}}}', '{}',
+    mIssues);
+  Assert.AreEqual(Double(0.5), mSettings.ArchitectureGroupingResolution, 1E-9);
+end;
+
 procedure TConfigurationParserTests.ReadsNavigationSymbolPath;
 var
   Settings: TServerSettings;
@@ -288,6 +377,40 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"architecture": {"centralUnits": 30}}',
     '{"architecture": {"exclude": ["Demo/**"]}}', Issues);
   Assert.AreEqual(1, Integer(Length(Settings.ArchitectureExclude)));
+end;
+
+procedure TConfigurationParserTests.ReadsHotspotsSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Hotspots (#1354)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.HotspotsEnabled);
+  Assert.AreEqual(12, Settings.HotspotsMonths);
+  Assert.AreEqual(5, Settings.HotspotsCouplingMinCommits);
+  Settings := Parse('{"hotspots": {"enabled": false, "months": 24, "coupling": {"minCommits": 8}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.HotspotsEnabled);
+  Assert.AreEqual(24, Settings.HotspotsMonths);
+  Assert.AreEqual(8, Settings.HotspotsCouplingMinCommits);
+  Settings := Parse('{"hotspots": {"enabled": 1, "months": 61, "coupling": {"minCommits": 1, "y": 2}, "x": true}}',
+    Issues);
+  Assert.AreEqual(5, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.HotspotsEnabled);
+  Assert.AreEqual(12, Settings.HotspotsMonths);
+  Assert.AreEqual(5, Settings.HotspotsCouplingMinCommits);
+  Settings := Parse('{"hotspots": {"months": 0, "coupling": {"minCommits": 1001}}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Parse('{"hotspots": {"months": 2.5, "coupling": []}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Parse('{"hotspots": []}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"hotspots": {"months": 6}}',
+    '{"hotspots": {"coupling": {"minCommits": 3}}}', Issues);
+  // Die Datei setzt "hotspots" und hat damit für den ganzen Schlüssel Vorrang.
+  Assert.AreEqual(12, Settings.HotspotsMonths);
+  Assert.AreEqual(3, Settings.HotspotsCouplingMinCommits);
 end;
 
 procedure TConfigurationParserTests.MergesLayersPerKey;
@@ -1799,6 +1922,24 @@ begin
   Assert.IsFalse(Parse('{}', Issues).SortUses);
   Assert.IsTrue(Parse('{"sortUses": true}', Issues).SortUses);
   Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TServerSettingsTests.ReadsFixMinConfidence;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Parse('{}', Issues).FixMinConfidence));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Parse('{"fix": {"minConfidence": "medium"}}',
+    Issues).FixMinConfidence));
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  // Niedrige Konfidenz ist für Sammelkorrekturen nie erlaubt; die Vorgabe bleibt.
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Parse('{"fix": {"minConfidence": "low"}}',
+    Issues).FixMinConfidence));
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"fix": {"bulk": true}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"fix": "high"}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization
