@@ -13,7 +13,9 @@ type
   /// Beschriftung.</summary>
   TAtlasToolbarIcon = (Letter, InterfacePart, ImplementationPart, UsesClause, Initialization_, Return, Back,
     Forward, Toggle, TestUnit, UnitSearch, FindMethod, QuickOpen, CodeActions, Format, Problems, Outline,
-    Palette, More, Gear);
+    Palette, More, Gear,
+    // Designer-Leiste (#1442).
+    ComponentSearch, NonVisual, NonVisualHidden, SelectParent, TabOrder, AlignControls);
 {$SCOPEDENUMS OFF}
 
   TAtlasToolbarIcons = class

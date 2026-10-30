@@ -598,6 +598,7 @@ begin
   Assert.AreEqual('Issue-Kennungen', TAtlasGuard.FeatureName(TAtlasFeature.IssueLinks));
   Assert.AreEqual('Issues in der Zeilenhistorie', TAtlasGuard.FeatureName(TAtlasFeature.BlameIssues));
   Assert.AreEqual('Hotspots', TAtlasGuard.FeatureName(TAtlasFeature.Hotspots));
+  Assert.AreEqual('Designer-Leiste', TAtlasGuard.FeatureName(TAtlasFeature.DesignerBar));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

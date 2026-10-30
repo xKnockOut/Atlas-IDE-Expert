@@ -28,6 +28,9 @@ type
     /// <summary>#1122: Aufrufdiagramm standardmäßig an, abschaltbar, übersteht Speichern und Laden.</summary>
     [Test]
     procedure CallHierarchyDiagramOption;
+    /// <summary>#1442: Designer-Leiste Vorgabe an; Speichern und Laden.</summary>
+    [Test]
+    procedure EditorDesignerBarOptions;
     /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure QuickBookmarkOptions;
@@ -3141,6 +3144,36 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.EditorStatusBar);
   Assert.AreEqual('', Loaded.EditorStatusBarItems, 'alle Elemente aus bleibt leer');
+end;
+
+procedure TAtlasPluginSettingsTests.EditorDesignerBarOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.EditorDesignerBar);
+  Assert.AreEqual(32988, Settings.DesignerSearchKey, 'Alt+^');
+  Assert.AreEqual(TAtlasPluginSettings.DesignerSearchWindow, Settings.DesignerSearchStyle, 'großes Fenster');
+  Assert.IsFalse(Settings.DesignerTabOrderClick, 'experimentell: aus');
+  Assert.IsFalse(Settings.DesignerAlign, 'experimentell: aus');
+  Settings.EditorDesignerBar := False;
+  Settings.DesignerSearchKey := 0;
+  Settings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchPopup;
+  Settings.DesignerTabOrderClick := True;
+  Settings.DesignerAlign := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.EditorDesignerBar);
+  Assert.AreEqual(0, Loaded.DesignerSearchKey, 'keine Taste');
+  Assert.AreEqual(TAtlasPluginSettings.DesignerSearchPopup, Loaded.DesignerSearchStyle);
+  Assert.IsTrue(Loaded.DesignerTabOrderClick);
+  Assert.IsTrue(Loaded.DesignerAlign);
+  Store.WriteString('DesignerSearchStyle', 'riesig');
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.DesignerSearchWindow, Loaded.DesignerSearchStyle, 'Unbekanntes: Vorgabe');
 end;
 
 procedure TAtlasPluginSettingsTests.QuickBookmarkOptions;

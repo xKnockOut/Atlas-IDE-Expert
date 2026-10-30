@@ -490,6 +490,11 @@ type
     FEditorToolbarLabels: TCheckBox;
     FEditorToolbarCustomize: TButton;
     FEditorStatusBar: TCheckBox;
+    FEditorDesignerBar: TCheckBox;
+    FDesignerSearchKey: TEdit;
+    FDesignerSearchStyle: TAtlasChoiceBox;
+    FDesignerTabOrderClick: TCheckBox;
+    FDesignerAlign: TCheckBox;
     FEditorStatusBarItems: TEdit;
     FOnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     FGitGutter: TCheckBox;
@@ -2454,6 +2459,14 @@ begin
   FEditorStatusBarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBarItems));
   // Aufrufdiagramm (#1122).
   FCallHierarchyDiagram := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCallHierarchyDiagram));
+  // Designer-Leiste im Formular-Designer (#1442).
+  FEditorDesignerBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorDesignerBar));
+  FDesignerSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchKey));
+  FDesignerSearchStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchStyle),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchWindow),
+    TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchPopup)]);
+  FDesignerTabOrderClick := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerTabOrderClick));
+  FDesignerAlign := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerAlign));
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
@@ -6436,6 +6449,11 @@ begin
   FMarks.Bind(FEditorToolbarReturnButton, ['EditorToolbarReturnButton']);
   FMarks.Bind(FEditorToolbarLabels, ['EditorToolbarLabels']);
   FMarks.Bind(FEditorStatusBar, ['EditorStatusBar']);
+  FMarks.Bind(FEditorDesignerBar, ['EditorDesignerBar']);
+  FMarks.Bind(FDesignerSearchKey, ['DesignerSearchKey']);
+  FMarks.Bind(FDesignerSearchStyle, ['DesignerSearchStyle']);
+  FMarks.Bind(FDesignerTabOrderClick, ['DesignerTabOrderClick']);
+  FMarks.Bind(FDesignerAlign, ['DesignerAlign']);
   FMarks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
@@ -8742,6 +8760,12 @@ begin
   FEditorToolbarReturnButton.Checked := ASettings.EditorToolbarReturnButton;
   FEditorToolbarLabels.Checked := ASettings.EditorToolbarLabels;
   FEditorStatusBar.Checked := ASettings.EditorStatusBar;
+  FEditorDesignerBar.Checked := ASettings.EditorDesignerBar;
+  FDesignerSearchKey.Text := ShortCutToText(TShortCut(ASettings.DesignerSearchKey));
+  FDesignerSearchStyle.Choice := Ord(SameText(ASettings.DesignerSearchStyle,
+    TAtlasPluginSettings.DesignerSearchPopup));
+  FDesignerTabOrderClick.Checked := ASettings.DesignerTabOrderClick;
+  FDesignerAlign.Checked := ASettings.DesignerAlign;
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
@@ -9351,6 +9375,14 @@ begin
   ASettings.EditorToolbarReturnButton := FEditorToolbarReturnButton.Checked;
   ASettings.EditorToolbarLabels := FEditorToolbarLabels.Checked;
   ASettings.EditorStatusBar := FEditorStatusBar.Checked;
+  ASettings.EditorDesignerBar := FEditorDesignerBar.Checked;
+  ASettings.DesignerSearchKey := Integer(TextToShortCut(Trim(FDesignerSearchKey.Text)));
+  if FDesignerSearchStyle.Choice = 1 then
+    ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchPopup
+  else
+    ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchWindow;
+  ASettings.DesignerTabOrderClick := FDesignerTabOrderClick.Checked;
+  ASettings.DesignerAlign := FDesignerAlign.Checked;
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);

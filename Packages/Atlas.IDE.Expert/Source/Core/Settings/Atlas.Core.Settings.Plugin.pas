@@ -204,6 +204,9 @@ type
     /// <summary>Werte von editor.multiCursorModifier (#589): Taste für den Klick mit neuer Marke.</summary>
     MultiCursorModifierAlt = 'alt';
     MultiCursorModifierCtrl = 'ctrl';
+    /// <summary>Werte von editor.designerBar.searchStyle (#1442).</summary>
+    DesignerSearchWindow = 'window';
+    DesignerSearchPopup = 'popup';
     /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.MinEntries/MaxMaxEntries
     /// (Test prüft Gleichheit).</summary>
     MinNotificationEntries = 10;
@@ -977,6 +980,21 @@ type
     /// <summary>Sichtbare Elemente in Reihenfolge: status, findings, liveCheck, method, durch Komma getrennt (#1155,
     /// editor.statusBar.items); leer = keine.</summary>
     EditorStatusBarItems: string;
+    /// <summary>Designer-Leiste im Formular-Designer statt Brotkrumen und Editorleiste (#1442,
+    /// editor.designerBar): Komponenten suchen, Nichtvisuelle (Strg+H der IDE), Elternelement, Tab-Reihenfolge,
+    /// Ausrichten.</summary>
+    EditorDesignerBar: Boolean;
+    /// <summary>Taste für „Komponenten suchen“ im Designer (TShortCut, editor.designerBar.searchKey); 0 = keine.
+    /// </summary>
+    DesignerSearchKey: Integer;
+    /// <summary>Fenster „Komponenten suchen“: DesignerSearchWindow (groß mit Vorschau) oder DesignerSearchPopup
+    /// (klein wie Strg+P), editor.designerBar.searchStyle.</summary>
+    DesignerSearchStyle: string;
+    /// <summary>Tab-Reihenfolge per Klick auf die Nummern neu vergeben (experimentell,
+    /// editor.designerBar.tabOrderClick).</summary>
+    DesignerTabOrderClick: Boolean;
+    /// <summary>Knopf „Ausrichten“ mit Menü (experimentell, editor.designerBar.align).</summary>
+    DesignerAlign: Boolean;
     /// <summary>Schnelle Lesezeichen, nummeriert und unnummeriert (#1104, bookmarks.quick); Hauptschalter.</summary>
     QuickBookmarks: Boolean;
     /// <summary>Spalte links der Zeilennummern mit den Markern (#1104, bookmarks.quick.gutter).</summary>
@@ -2139,6 +2157,12 @@ begin
   Result.EditorToolbarLabels := False;
   Result.EditorStatusBar := True;
   Result.EditorStatusBarItems := TAtlasStatusBarItems.DefaultText;
+  Result.EditorDesignerBar := True;
+  // Alt+^ (VK_OEM_5 mit Alt).
+  Result.DesignerSearchKey := 32988;
+  Result.DesignerSearchStyle := DesignerSearchWindow;
+  Result.DesignerTabOrderClick := False;
+  Result.DesignerAlign := False;
   Result.QuickBookmarks := True;
   Result.QuickBookmarksGutter := True;
   Result.QuickBookmarksGutterClick := True;
@@ -2645,6 +2669,8 @@ begin
   CompleteStatementTryKind := Choice(CompleteStatementTryKind, [TryKindFinally, TryKindExcept, TryKindAsk]);
   MultiCursorModifier := Choice(MultiCursorModifier, [MultiCursorModifierAlt, MultiCursorModifierCtrl]);
   SmartPaste := Choice(SmartPaste, ['off', 'uses', 'indent', 'both']);
+  DesignerSearchKey := EnsureRange(DesignerSearchKey, 0, $FFFF);
+  DesignerSearchStyle := Choice(DesignerSearchStyle, [DesignerSearchWindow, DesignerSearchPopup]);
   MultiCursorNextKey := EnsureRange(MultiCursorNextKey, 0, $FFFF);
   MultiCursorSkipKey := EnsureRange(MultiCursorSkipKey, 0, $FFFF);
   MultiCursorLineEndsKey := EnsureRange(MultiCursorLineEndsKey, 0, $FFFF);
@@ -3036,6 +3062,11 @@ begin
   EditorToolbarLabels := AStore.ReadInteger('EditorToolbarLabels', BoolValue(Default.EditorToolbarLabels)) <> 0;
   EditorStatusBar := AStore.ReadInteger('EditorStatusBar', BoolValue(Default.EditorStatusBar)) <> 0;
   EditorStatusBarItems := AStore.ReadString('EditorStatusBarItems', Default.EditorStatusBarItems);
+  EditorDesignerBar := AStore.ReadInteger('EditorDesignerBar', BoolValue(Default.EditorDesignerBar)) <> 0;
+  DesignerSearchKey := AStore.ReadInteger('DesignerSearchKey', Default.DesignerSearchKey);
+  DesignerSearchStyle := AStore.ReadString('DesignerSearchStyle', Default.DesignerSearchStyle);
+  DesignerTabOrderClick := AStore.ReadInteger('DesignerTabOrderClick', BoolValue(Default.DesignerTabOrderClick)) <> 0;
+  DesignerAlign := AStore.ReadInteger('DesignerAlign', BoolValue(Default.DesignerAlign)) <> 0;
   QuickBookmarks := AStore.ReadInteger('QuickBookmarks', BoolValue(Default.QuickBookmarks)) <> 0;
   QuickBookmarksGutter := AStore.ReadInteger('QuickBookmarksGutter', BoolValue(Default.QuickBookmarksGutter)) <> 0;
   QuickBookmarksGutterClick := AStore.ReadInteger('QuickBookmarksGutterClick',
@@ -3631,6 +3662,11 @@ begin
   AStore.WriteInteger('EditorToolbarLabels', BoolValue(EditorToolbarLabels));
   AStore.WriteInteger('EditorStatusBar', BoolValue(EditorStatusBar));
   AStore.WriteString('EditorStatusBarItems', EditorStatusBarItems);
+  AStore.WriteInteger('EditorDesignerBar', BoolValue(EditorDesignerBar));
+  AStore.WriteInteger('DesignerSearchKey', DesignerSearchKey);
+  AStore.WriteString('DesignerSearchStyle', DesignerSearchStyle);
+  AStore.WriteInteger('DesignerTabOrderClick', BoolValue(DesignerTabOrderClick));
+  AStore.WriteInteger('DesignerAlign', BoolValue(DesignerAlign));
   AStore.WriteInteger('QuickBookmarks', BoolValue(QuickBookmarks));
   AStore.WriteInteger('QuickBookmarksGutter', BoolValue(QuickBookmarksGutter));
   AStore.WriteInteger('QuickBookmarksGutterClick', BoolValue(QuickBookmarksGutterClick));
