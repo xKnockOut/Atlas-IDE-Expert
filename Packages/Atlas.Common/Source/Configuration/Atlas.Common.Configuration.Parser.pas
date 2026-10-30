@@ -1834,6 +1834,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.EnumTables)
     else if Key = 'enumTablesResourceStrings' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.EnumTablesResourceStrings)
+    else if Key = 'overloads' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.Overloads)
     else if Key = 'extractInterface' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExtractInterface)
     else if Key = 'extractSuperclass' then

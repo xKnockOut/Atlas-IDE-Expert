@@ -254,6 +254,7 @@ uses
   Atlas.IDE.Editor.MethodKind,
   Atlas.IDE.Editor.TypeAlias,
   Atlas.IDE.Editor.EnumTables,
+  Atlas.IDE.Editor.Overloads,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1835,6 +1836,23 @@ begin
       procedure(AText: string)
       begin
         Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeOverloads.ClientCommand then
+  begin
+    // Client-Befehl: „Überladung anlegen“ (#674); danach der Platzhalter-Modus über die Composition.
+    TAtlasIdeOverloads.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end,
+      procedure(const AView: IOTAEditView; const ABefore: string; AOffset: Integer;
+        const AExpansion: TAtlasSnippetExpansion)
+      begin
+        if Assigned(FOnPlaceholders) then
+          FOnPlaceholders(AView, ABefore, AOffset, AExpansion);
       end);
     Exit;
   end;

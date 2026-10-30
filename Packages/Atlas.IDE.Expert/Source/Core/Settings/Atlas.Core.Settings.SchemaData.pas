@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3109] of string = (
+  Lines: array[0..3115] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1570,6 +1570,16 @@ const
     '          "description": "„Namenstabelle anlegen“ schreibt je Element einen resourcestring (übersetzbar) und eine Tabelle array[TTyp] of PResStringRec mit @-Verweisen; lesen mit LoadResString(CTypName' +
       's[X]).",',
     '          "x-issue": "#667"',
+    '        },',
+    '        "overloads": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen auf dem Kopf einer Routine (Strg+.): „Überladung anlegen (Kopie)“ kopiert Deklaration und Rumpf direkt hinter das Original, beide mit overload; danach führt der' +
+      ' Platzhalter-Modus erst durch die Parameterliste der Kopie (in Deklaration und Implementierung gleich), dann durch den Rumpf. „Überladung anlegen (als Weiterleitung)“ legt eine Überladung ohne den let' +
+      'zten Parameter an, die die bestehende aufruft und für ihn den Standardwert seines Typs mitgibt (0, '''', False, nil, erstes Element einer Aufzählung, sonst Default(Typ)), als Platzhalter. virtual, ove' +
+      'rride, dynamic und message gehen nicht auf die neue Überladung über; ist das Original ein override, weist Atlas darauf hin. Der ///-Kommentar wird mitkopiert. Überladungen über Standardparameter zusam' +
+      'menführen gibt es bewusst nicht.",',
+    '          "x-issue": "#674"',
     '        },',
     '        "varBlock": {',
     '          "type": "boolean",',
