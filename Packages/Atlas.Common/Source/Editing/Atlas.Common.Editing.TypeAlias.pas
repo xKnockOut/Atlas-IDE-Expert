@@ -1126,7 +1126,7 @@ var
   Change: TFileChange;
   Changes: TArray<TFileChange>;
   PreviewLines, Units: TArray<string>;
-  UnitName, OwnName, LineBreak: string;
+  UnitName, LineBreak: string;
   NameNode: TSyntaxNode;
   UsesEdit: TTextEdit;
 begin
@@ -1140,7 +1140,6 @@ begin
     Decl := Decl.Parent;
   Expression := Decl[0];
   Named := Expression.Kind = TSyntaxKind.TypeReference;
-  OwnName := TUsesClauses.OwnName(ADeclaring.Tree.Tokens);
   // Units der Typen im Ausdruck, für andere Units; Typen aus dem implementation-Teil sehen sie nicht.
   Units := nil;
   Hidden := not InInterface(Decl);

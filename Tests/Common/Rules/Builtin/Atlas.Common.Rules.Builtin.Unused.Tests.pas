@@ -70,6 +70,9 @@ type
     procedure AssignmentReadLaterIsSilent;
     [Test]
     procedure AssignmentReadInLoopIsSilent;
+    /// <summary>Leeren eines gesetzten Werts ist Freigabe; Leeren ohne vorherigen Wert bleibt ein Befund.</summary>
+    [Test]
+    procedure ClearingAssignedValueIsSilent;
     [Test]
     procedure WildcardMatching;
     [Test]
@@ -398,6 +401,36 @@ procedure TUnusedRulesTests.AssignmentReadInLoopIsSilent;
 begin
   TRuleAssert.Silent(TUnusedAssignmentRule.Create,
     Routine('  I := 0;'#10'  while I < 10 do'#10'    I := I + 1;', 'procedure P;', 'var'#10'  I: Integer;'#10));
+end;
+
+procedure TUnusedRulesTests.ClearingAssignedValueIsSilent;
+const
+  // Rechte Seiten, die das Ziel leeren.
+  ClearValues: array[0..4] of string = ('nil', '''''', 'Default(TErgebnis)', 'TErgebnis.Empty', 'Default( TErgebnis )');
+var
+  Value: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  for Value in ClearValues do
+  begin
+    // Started := Default(…) am Testende, Lookup := nil vor Resolver.Free.
+    TRuleAssert.Silent(TUnusedAssignmentRule.Create,
+      Routine('  X := Load;'#10'  Result := X.Text;'#10'  X := ' + Value + ';'#10'  Work;', 'function F: string;',
+        'var'#10'  X: TErgebnis;'#10));
+    // Leeren im finally: Der Wert davor stammt aus dem try.
+    TRuleAssert.Silent(TUnusedAssignmentRule.Create,
+      Routine('  try'#10'    X := Load;'#10'    Result := X.Text;'#10'  finally'#10'    X := ' + Value + ';'#10'  end;',
+        'function F: string;', 'var'#10'  X: TErgebnis;'#10));
+    // Ohne vorherigen Wert ist das Leeren überflüssig.
+    Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
+      Routine('  X := ' + Value + ';'#10'  Work;', 'procedure P;', 'var'#10'  X: TErgebnis;'#10));
+    Assert.AreEqual(1, Integer(Length(Findings)), Value);
+  end;
+  // Andere Werte am Ende bleiben Befunde.
+  Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
+    Routine('  X := Load;'#10'  Result := X.Text;'#10'  X := Load;', 'function F: string;', 'var'#10'  X: TErgebnis;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
 end;
 
 procedure TUnusedRulesTests.WildcardMatching;

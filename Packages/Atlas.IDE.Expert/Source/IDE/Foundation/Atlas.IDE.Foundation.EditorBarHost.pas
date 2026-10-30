@@ -486,7 +486,6 @@ begin
   mChain := '';
   if ABar is TControl then
     mChain := ControlChain(TControl(ABar).Parent);
-  mTrace := '';
   try
     raise EAtlasBarDisabled.Create(FName + ' wird gesperrt');
   except

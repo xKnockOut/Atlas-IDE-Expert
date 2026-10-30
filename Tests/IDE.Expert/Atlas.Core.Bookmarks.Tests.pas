@@ -436,7 +436,7 @@ end;
 procedure TAtlasBookmarkListTests.MoveBeforeReorders;
 var
   List: TAtlasBookmarkList;
-  A, B, C: string;
+  A, C: string;
 
   function Order: string;
   var
@@ -450,7 +450,7 @@ var
 begin
   List := TAtlasBookmarkList.Create(KundeProject);
   A := List.Add(KundeFile, Join(Code), 18, 'A', 0);
-  B := List.Add(KundeFile, Join(Code), 19, 'B', 0);
+  List.Add(KundeFile, Join(Code), 19, 'B', 0);
   C := List.Add(KundeFile, Join(Code), 20, 'C', 0);
   Assert.IsTrue(List.MoveBefore(C, A));
   Assert.AreEqual('CAB', Order);

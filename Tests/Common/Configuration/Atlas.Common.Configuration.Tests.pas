@@ -370,7 +370,7 @@ begin
   Assert.IsTrue(Settings.ArchitectureEnabled);
   Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
   Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
-  Settings := Parse('{"architecture": {"centralUnits": 101}}', Issues);
+  Parse('{"architecture": {"centralUnits": 101}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Parse('{"architecture": []}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
@@ -400,7 +400,7 @@ begin
   Assert.IsTrue(Settings.HotspotsEnabled);
   Assert.AreEqual(12, Settings.HotspotsMonths);
   Assert.AreEqual(5, Settings.HotspotsCouplingMinCommits);
-  Settings := Parse('{"hotspots": {"months": 0, "coupling": {"minCommits": 1001}}}', Issues);
+  Parse('{"hotspots": {"months": 0, "coupling": {"minCommits": 1001}}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
   Parse('{"hotspots": {"months": 2.5, "coupling": []}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
@@ -416,7 +416,6 @@ end;
 procedure TConfigurationParserTests.MergesLayersPerKey;
 var
   Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
 begin
   // #227: globale Datei unter den Editor-Einstellungen; Objekte je Schlüssel, Listen ersetzt.
   Assert.AreEqual('', TConfigurationParser.MergeText('', ''));
@@ -427,7 +426,7 @@ begin
   Assert.AreEqual('{"x": ["c"], "r": {"q": "error", "p": "off"}}', TConfigurationParser.MergeText(
     '// global'#10'{"x": ["a", "b"], "r": {"p": "warning", "q": "error"}}', '{"x": ["c"], "r": {"p": "off"}}'));
   Assert.AreEqual('{"k\"y": 1}', TConfigurationParser.MergeText('{"k\"y": 1}', '{}'));
-  Settings := TConfigurationParser.Parse(TConfigurationParser.MergeText('{"format": {"indentSize": 4, ' +
+  TConfigurationParser.Parse(TConfigurationParser.MergeText('{"format": {"indentSize": 4, ' +
     '"useTabs": true}}', '{"format": {"indentSize": 3}}'), Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
 end;
@@ -574,7 +573,7 @@ begin
   Assert.IsTrue(Settings.Formatting.AlignDeclarations);
   Assert.IsTrue(Settings.Formatting.AlignComments);
   Assert.IsTrue(Settings.Formatting.Given = [TFormatKey.MaxLineLength]);
-  Settings := Parse('{"format": {"beginPlacement": "below", "maxLineLength": -1}}', Issues);
+  Parse('{"format": {"beginPlacement": "below", "maxLineLength": -1}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
@@ -619,9 +618,9 @@ begin
   Settings := Parse('{"vcs": {"timeoutSeconds": 0}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)), 'unter 1');
   Assert.AreEqual(15, Settings.VcsTimeoutSeconds, 'ungültig: Vorgabe');
-  Settings := Parse('{"vcs": {"timeoutSeconds": 301}}', Issues);
+  Parse('{"vcs": {"timeoutSeconds": 301}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)), 'über 300');
-  Settings := Parse('{"vcs": {"timeoutSeconds": "30"}}', Issues);
+  Parse('{"vcs": {"timeoutSeconds": "30"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)), 'Text statt Zahl');
   Settings := Parse('{"vcs": {"git": "git.exe", "svn": {"pfad": "svn.exe"}}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)), 'git muss ein Objekt sein, svn.pfad unbekannt');
@@ -1229,7 +1228,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsFalse(Settings.Directives.Completion);
   Assert.IsFalse(Settings.Directives.Hover);
-  Settings := Parse('{"directives": {"x": 1}}', Issues);
+  Parse('{"directives": {"x": 1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Parse('{"directives": 1}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
@@ -1290,7 +1289,7 @@ begin
   Assert.AreEqual('method', Settings.MemberOrder.Members[0]);
   Assert.IsTrue(Settings.MemberOrder.SortFields);
   Assert.IsTrue(Settings.MemberOrder.SortPublished);
-  Settings := Parse('{"memberOrder": {"sections": ["intern"], "x": 1}}', Issues);
+  Parse('{"memberOrder": {"sections": ["intern"], "x": 1}}', Issues);
   // Unbekannte Sichtbarkeit (Fehler), "x" unbekannt (Warnung).
   Assert.AreEqual(2, Integer(Length(Issues)));
 end;
@@ -1369,7 +1368,7 @@ begin
   mSettings := Parse('{"mcp": {"promptLanguage": "fr"}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)), 'nur de oder en');
   Assert.AreEqual('de', mSettings.McpPromptLanguage, 'ungültige Sprache lässt die Vorgabe');
-  mSettings := Parse('{"mcp": {"customPrompts": {"name": "a"}}}', mIssues);
+  Parse('{"mcp": {"customPrompts": {"name": "a"}}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
   // Ohne Text, Name mit Leerzeichen, unbekannter Inhalt, doppelter Name.
   mSettings := Parse('{"mcp": {"customPrompts": [{"name": "ohne_text"}, {"name": "mit leer", "text": "x"}, ' +
@@ -1411,7 +1410,7 @@ begin
     ' "severity": "warning", "severityMap": {"SCHLIMM": "error"}}}]}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung');
   Assert.IsTrue(Settings.Tasks.StartsWith('['), Settings.Tasks);
-  Settings := Parse('{"tasks": [{"name": "A", "command": "x", "group": "lint", "matcher": "eslint", "timeoutSec": -1,' +
+  Parse('{"tasks": [{"name": "A", "command": "x", "group": "lint", "matcher": "eslint", "timeoutSec": -1,' +
     ' "beforeBuild": "stop", "foo": 1}, {"name": "a", "command": ""}, {"command": "y"}, 3,' +
     ' {"name": "M", "command": "z", "matcher": {"severityMap": {"X": "fatal"}}}]}', Issues);
   // group, matcher, timeoutSec, beforeBuild, foo; Doppelname a und leerer command; ohne name; 3; Muster ohne regex
@@ -1435,7 +1434,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung');
   Assert.IsTrue(Settings.IssueConnections.StartsWith('['), Settings.IssueConnections);
   Assert.IsTrue(Settings.IssueConnections.Contains('"Firma"'), Settings.IssueConnections);
-  Settings := Parse('{"issues": {"connections": [{"name": "A", "provider": "youtrack", "url": "http://yt.local"},' +
+  Parse('{"issues": {"connections": [{"name": "A", "provider": "youtrack", "url": "http://yt.local"},' +
     ' {"name": "a", "provider": "github", "url": "https://user@github.com"}, {"provider": "", "url": 3, "token": "x"},' +
     ' 3], "queries": []}}', Issues);
   // http; Doppelname a und Benutzer in der Adresse; url kein String, token unbekannt, ohne name, ohne provider (leer)
@@ -1466,7 +1465,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung; project darf fehlen');
   Assert.IsTrue(Settings.IssueProjects.StartsWith('['), Settings.IssueProjects);
   Assert.IsTrue(Settings.IssueProjects.Contains('"KASSE"'), Settings.IssueProjects);
-  Settings := Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma"}, ' +
+  Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma"}, ' +
     '{"match": "c:/a/", "connection": "GitHub"}, {"connection": 3, "project": 4, "x": 1}, 3]}}', Issues);
   // Pfad doppelt; connection kein String, project kein String, x unbekannt, ohne match, ohne connection; 3.
   Assert.AreEqual(7, Integer(Length(Issues)));
@@ -1487,7 +1486,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)), 'connection und project dürfen fehlen');
   Assert.IsTrue(Settings.IssueQueries.StartsWith('['), Settings.IssueQueries);
   Assert.IsTrue(Settings.IssueQueries.Contains('"Sprint"'), Settings.IssueQueries);
-  Settings := Parse('{"issues": {"queries": [{"name": "A", "query": "x"}, {"name": "a", "query": ""}, ' +
+  Parse('{"issues": {"queries": [{"name": "A", "query": "x"}, {"name": "a", "query": ""}, ' +
     '{"connection": 3, "x": 1}, 3]}}', Issues);
   // Name doppelt, query leer; connection kein String, x unbekannt, ohne name, ohne query; 3.
   Assert.AreEqual(7, Integer(Length(Issues)));
@@ -1789,7 +1788,7 @@ begin
   Assert.IsTrue(Issues[0].IsError);
   Assert.IsTrue(Issues[1].IsError);
   Assert.IsFalse(Issues[2].IsError);
-  Settings := Parse('{"hints": {"xmlDocMaxLines": -1}}', Issues);
+  Parse('{"hints": {"xmlDocMaxLines": -1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Veraltetes xmlDocFull (#770): true = expanded, false = collapsed, mit Warnung; xmlDocExpand gewinnt.
   Settings := Parse('{"hints": {"xmlDocFull": false}}', Issues);

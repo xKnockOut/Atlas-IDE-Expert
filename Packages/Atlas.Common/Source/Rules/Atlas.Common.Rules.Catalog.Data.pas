@@ -464,7 +464,8 @@ const
     '      "group": "style",',
     '      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077, which dcc gives only for unmanaged types: for strings, dynami' +
     'c arrays, variants and records with such fields, and for variables without a declared type, the message names no code (#1383). Variables of an interface type are exempt: assigning them holds or releas' +
-    'es a reference (scope guards, Writer := nil).",',
+    'es a reference (scope guards, Writer := nil). Clearing a value that was set before (X := nil, '''', Default(T), T.Empty) is not reported either: it releases memory and references early or guards after F' +
+    'ree. Clearing without a previous value is still reported.",',
     '      "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",',
     '      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",',
     '      "options": [',
@@ -5797,7 +5798,8 @@ const
     '      "name": "Zugewiesener Wert ungenutzt",',
     '      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077, den dcc nur für nicht verwaltete Typen g' +
     'ibt: Bei Strings, dynamischen Arrays, Variants und Records mit solchen Feldern sowie bei Variablen ohne Typangabe nennt die Meldung keinen Code (#1383). Variablen mit Interface-Typ sind ausgenommen: D' +
-    'ie Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).",',
+    'ie Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil). Ebenso still bleibt das Leeren eines zuvor gesetzten Werts (X := nil, '''', Default(T), T.Empty): Es gibt Speicher und Re' +
+    'ferenzen vorzeitig frei oder schützt nach Free. Leeren ohne vorherigen Wert wird weiter gemeldet.",',
     '      "options": [',
     '        {',
     '          "name": "ignore",',
