@@ -715,7 +715,12 @@ type
     StatusBarReady, StatusBarRecheckClick, StatusBarRechecking, StatusBarProjectProgress, StatusBarPausedDebugger,
     SettingsSearchFromFirst,
     // Projektprüfung als begrenzter Lauf (#1247).
-    StatusBarProjectDone, StatusBarProjectPaused);
+    StatusBarProjectDone, StatusBarProjectPaused,
+    // Designer-Leiste im Formular-Designer (#1442).
+    SettingsEditorDesignerBar, DesignerBarSearchHint, DesignerBarNoHit, DesignerBarHits, DesignerBarPrevHint,
+    DesignerBarNextHint, DesignerBarHide, DesignerBarShowAll, DesignerBarHideSelection, DesignerBarHideClass,
+    DesignerBarHideNonVisual, DesignerBarShowClass, DesignerBarKeptAligned, DesignerBarHiddenHint,
+    DesignerBarNoSelection);
 
   TAtlasStrings = class
   private class var
@@ -2322,7 +2327,13 @@ const
      'Keine Befunde dieser Art in der Unit.', 'Klick: Atlas-Status · Rechtsklick: Schnellschalter', 'bereit',
      'Klick: alle Units neu prüfen', 'Atlas prüft alle Units neu …', 'Projekt %d %%', 'angehalten (Debugger)',
      'Beim Tippen zum ersten Treffer springen (sonst zum nächsten ab dem Cursor)',
-     'Projekt fertig', 'pausiert (Kompilieren)'),
+     'Projekt fertig', 'pausiert (Kompilieren)',
+     'Designer-Leiste im Formular-Designer (Komponenten suchen, ein- und ausblenden)', 'Komponente suchen …',
+     'kein Treffer', '%d/%d', 'Voriger Treffer (Umschalt+Enter)', 'Nächster Treffer (Enter)', 'Ausblenden ▾',
+     'Alle einblenden (%d)', 'Auswahl ausblenden', 'Alle %s ausblenden', 'Nichtvisuelle Komponenten ausblenden',
+     '%s wieder einblenden',
+     '%d ausgerichtete Steuerelemente bleiben sichtbar: Ausblenden verschöbe ihre Nachbarn und änderte die .dfm.',
+     'Nur im Designer ausgeblendet, die .dfm bleibt unverändert', 'Im Designer ist nichts ausgewählt.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3835,7 +3846,13 @@ const
      'No findings of this kind in this unit.', 'Click: Atlas status · Right-click: quick toggles', 'ready',
      'Click: check all units again', 'Atlas is checking all units again …', 'project %d %%', 'paused (debugger)',
      'Jump to the first match while typing (otherwise the next one after the cursor)',
-     'project done', 'paused (compiling)'));
+     'project done', 'paused (compiling)',
+     'Designer bar in the form designer (find, hide and show components)', 'Find component …',
+     'no match', '%d/%d', 'Previous match (Shift+Enter)', 'Next match (Enter)', 'Hide ▾',
+     'Show all (%d)', 'Hide selection', 'Hide all %s', 'Hide non-visual components',
+     'Show %s again',
+     '%d aligned controls stay visible: hiding them would move their neighbours and change the .dfm.',
+     'Hidden in the designer only, the .dfm stays unchanged', 'Nothing is selected in the designer.'));
 
 { TAtlasStrings }
 

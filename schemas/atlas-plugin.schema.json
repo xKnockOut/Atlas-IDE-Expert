@@ -86,6 +86,10 @@
       "caption": "Atlas-Statusleiste",
       "captionEn": "Atlas status bar"
     },
+    "editor.designerBar": {
+      "caption": "Designer-Leiste",
+      "captionEn": "Designer bar"
+    },
     "editor.stickyScroll": {
       "caption": "Mitlaufender Kopf",
       "captionEn": "Sticky scroll"
@@ -3238,6 +3242,20 @@
       "x-caption": "Atlas-Statusleiste",
       "x-captionEn": "Atlas status bar",
       "x-issue": "#1155"
+    },
+    "EditorDesignerBar": {
+      "description": "Designer-Leiste im Formular-Designer an Stelle von Brotkrumen und Editorleiste: Komponenten nach Teilen des Namens suchen und auswählen (Enter: nächster Treffer), einzelne Komponenten, alle einer Klasse oder alle nichtvisuellen nur in der Anzeige aus- und wieder einblenden; die .dfm bleibt unverändert. Brotkrumen und Editorleiste stehen nur im Code-Editor, auch wenn diese Leiste aus ist.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.designerBar",
+      "x-area": "editor",
+      "x-feature": "DesignerBar",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-quickToggle": true,
+      "x-caption": "Designer-Leiste",
+      "x-captionEn": "Designer bar",
+      "x-issue": "#1442"
     },
     "EditorStatusBarItems": {
       "type": "string",
