@@ -23,6 +23,14 @@
 // bzw. -Setter und for-in über einen Typ mit inline-GetEnumerator, MoveNext
 // oder Current. Mit {$INLINE OFF} in der Datei schweigt die Regel, ebenso
 // ohne Projektindex (inline-Routinen der Datei selbst meldet sie nicht).
+//
+// Ein Verweis auf einen Alias einer Deklaration aus System (System.TypInfo:
+// TTypeKind = System.TTypeKind, tkRecord = System.TTypeKind.tkRecord) braucht
+// die Unit des Alias nicht: dcc löst ihn auf System auf. Sonst meldete die
+// Regel bei jedem TList<T>.Add und TStack<T>.Push „System.TypInfo fehlt“.
+// Für H2456/H2457 zählen eingebaute Typen, Intrinsics und System nicht als
+// Verweis (THashFNV1a32.GetHashValue mit Integer(...) in
+// System.Generics.Defaults).
 
 interface
 
@@ -56,13 +64,17 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.UnresolvedNames;
 
 type
   /// <summary>Was eine inline-Routine aus Sicht ihrer Unit braucht.</summary>
   TInlineNeeds = record
     /// <summary>Units, die der Rumpf benutzt (ohne System und die eigene Unit).</summary>
     Units: TArray<string>;
+    /// <summary>Verweist der Rumpf auf etwas außerhalb seiner Unit, das nicht eingebaut ist und nicht aus System
+    /// stammt? Unaufgelöste Verweise zählen mit (H2456, H2457).</summary>
+    External: Boolean;
   end;
 
   /// <summary>Gerufene inline-Routine samt ihrer Unit.</summary>
@@ -98,6 +110,9 @@ type
     function IndirectVia(const AUnit: TUnitIndex): string;
     /// <summary>Zyklus zwischen AUnit und der eigenen Unit, je Unit nur einmal gesucht.</summary>
     function CycleOf(const AUnit: TUnitIndex): string;
+    /// <summary>Ist AResolved ein Alias einer Deklaration aus System oder SysInit (tkRecord =
+    /// System.TTypeKind.tkRecord)?</summary>
+    function IsImplicitAlias(const AResolved: TResolvedSymbol): Boolean;
     function NeedsOf(const ACallee: TInlineCallee): TInlineNeeds;
     function HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
     function IsCandidate(const AName: string): Boolean;
@@ -286,6 +301,33 @@ begin
   FCycles.Add(mKey, Result);
 end;
 
+function TInlineCheck.IsImplicitAlias(const AResolved: TResolvedSymbol): Boolean;
+var
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mTarget: string;
+  mEquals: Integer;
+begin
+  Result := False;
+  if not (AResolved.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.TypeAlias]) or
+    not FCallee.DeclaringUnit(AResolved, mUnit) then
+    Exit;
+  for mSymbol in mUnit.Symbols do
+    if (mSymbol.SelectionRange.StartPos = AResolved.SelectionRange.StartPos) and
+      SameText(mSymbol.Name, AResolved.Name) then
+    begin
+      // Signatur "tkRecord = System.TTypeKind.tkRecord" bzw. "TTypeKind = System.TTypeKind".
+      mEquals := mSymbol.Signature.IndexOf('=');
+      if mEquals < 0 then
+        Exit;
+      mTarget := mSymbol.Signature.Substring(mEquals + 1).Trim;
+      if mTarget.EndsWith(';') then
+        mTarget := mTarget.Substring(0, mTarget.Length - 1).TrimRight;
+      Exit((StartsText('System.', mTarget) or StartsText('SysInit.', mTarget)) and
+        (mTarget.IndexOfAny([' ', '(', '[', '+', '-', '*', '<']) < 0));
+    end;
+end;
+
 function TInlineCheck.NeedsOf(const ACallee: TInlineCallee): TInlineNeeds;
 var
   Key, Ref, Container, UnitName: string;
@@ -312,8 +354,10 @@ begin
         Continue;
       if Ref[1] = ':' then
       begin
-        if FCallee.ResolveTypeTextFrom(ACallee.OwnerUnit, Copy(Ref, 2, MaxInt), Resolved) and
-          not Resolved.Builtin and (Resolved.Kind = TResolvedKind.Symbol) then
+        if not FCallee.ResolveTypeTextFrom(ACallee.OwnerUnit, Copy(Ref, 2, MaxInt), Resolved) then
+          Result.External := True
+        else if not Resolved.Builtin and (Resolved.Kind = TResolvedKind.Symbol) and
+          not IsImplicitAlias(Resolved) then
           UnitName := Resolved.UnitName;
       end
       else
@@ -325,13 +369,20 @@ begin
           if not HasOwner or FCallee.DeclaredMember(Owner, Ref, Member) then
             Continue;
         end;
-        if FCallee.ResolveNameFrom(ACallee.OwnerUnit, Ref, Resolved) and not Resolved.Builtin and
-          (Resolved.Kind = TResolvedKind.Symbol) then
+        if not FCallee.ResolveNameFrom(ACallee.OwnerUnit, Ref, Resolved) then
+        begin
+          // Eingebaute Typen (Integer(...)) und Intrinsics (SizeOf, Length) löst der Index nicht auf.
+          if not TNameResolver.IsBuiltinTypeName(Ref) and not TUnresolvedNames.IsIntrinsic(Ref) then
+            Result.External := True;
+        end
+        else if not Resolved.Builtin and (Resolved.Kind = TResolvedKind.Symbol) and
+          not IsImplicitAlias(Resolved) then
           UnitName := Resolved.UnitName;
       end;
       if (UnitName = '') or SameText(UnitName, ACallee.OwnerUnit.UnitName) or
         (IndexText(UnitName, ImplicitUnits) >= 0) then
         Continue;
+      Result.External := True;
       if Units.IndexOf(UnitName) < 0 then
         Units.Add(UnitName);
     end;
@@ -516,8 +567,9 @@ begin
   // Zyklen zuerst: Dann bettet der Compiler gar nicht ein, gleich was in uses steht. Nur bei Rümpfen mit
   // Verweisen wie vor #1381: Ob dcc H2456/H2457 meldet, hängt von der Reihenfolge der Übersetzung ab; bei
   // Cm.H2456 und Cm.H2457 (Rumpf ohne Verweise, die Unit des Falls zuerst übersetzt) schweigt Delphi 13 (#1383).
+  // Eingebaute Typen und System zählen nicht als Verweis (Integer(...) in THashFNV1a32.GetHashValue).
   Cycle := '';
-  if not IsWithoutRefs(ACallee.Symbol) then
+  if not IsWithoutRefs(ACallee.Symbol) and Needs.External then
     Cycle := CycleOf(ACallee.OwnerUnit);
   if Cycle = CycleDirect then
   begin

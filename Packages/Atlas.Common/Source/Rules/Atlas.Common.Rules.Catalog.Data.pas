@@ -4648,9 +4648,10 @@ const
     '      "group": "compiler",',
     '      "description": "A call of an inline routine from another unit that the compiler does not expand: its body needs a unit that is missing from uses here (like H2443, typically System.Generics.Colle' +
     'ctions for TJSONObject.Count), the calling routine is inline itself and the unit of the callee is only in the implementation uses (like H2445), or the unit of the callee uses this unit directly (like ' +
-    'H2456) or through other units (like H2457). Calls, properties with an inline getter or setter and for-in loops (GetEnumerator, MoveNext, Current) are checked. The index records what each inline body r' +
-    'efers to; the rule only reports what it resolves for sure (unknown references and members inherited from other units stay silent). Access to private or strict private members is not reported: Delphi 1' +
-    '3 expands such calls. Silent with {$INLINE OFF} in the file. Quick fix: add the missing units to the uses clause of the section.",',
+    'H2456) or through other units (like H2457; only if the body refers to more than built-in types, intrinsics and System). Calls, properties with an inline getter or setter and for-in loops (GetEnumerato' +
+    'r, MoveNext, Current) are checked. The index records what each inline body refers to; the rule only reports what it resolves for sure (unknown references and members inherited from other units stay si' +
+    'lent; an alias of a System declaration such as tkRecord in System.TypInfo does not need its unit). Access to private or strict private members is not reported: Delphi 13 expands such calls. Silent wit' +
+    'h {$INLINE OFF} in the file. Quick fix: add the missing units to the uses clause of the section.",',
     '      "bad": "uses\n  System.JSON;\n...\nfor Wert in Feld as TJSONArray do",',
     '      "good": "uses\n  System.JSON, System.Generics.Collections;\n...\nfor Wert in Feld as TJSONArray do",',
     '      "compilerCodes": [',
@@ -8106,9 +8107,10 @@ const
     '      "name": "Inline-Funktion wird nicht eingebettet",',
     '      "description": "Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbettet: Ihr Rumpf braucht eine Unit, die hier in uses fehlt (wie H2443, typisch System.Generics.Coll' +
     'ections bei TJSONObject.Count), die aufrufende Routine ist selbst inline und die Unit der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwende' +
-    't diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457). Geprüft werden Aufrufe, Properties mit inline-Getter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sic' +
-    'h, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst (unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm). Zugriffe auf private- oder strict priv' +
-    'ate-Mitglieder meldet sie nicht: Delphi 13 bettet solche Aufrufe ein. Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen."',
+    't diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457; nur, wenn der Rumpf auf mehr als eingebaute Typen, Intrinsics und System verweist). Geprüft werden Aufrufe, Properties mit inline-Get' +
+    'ter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst (unbekannte Verweise und geerbte ' +
+    'Mitglieder aus anderen Units bleiben stumm; ein Alias einer Deklaration aus System wie tkRecord in System.TypInfo braucht dessen Unit nicht). Zugriffe auf private- oder strict private-Mitglieder melde' +
+    't sie nicht: Delphi 13 bettet solche Aufrufe ein. Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen."',
     '    },',
     '    {',
     '      "id": "compiler-hints",',

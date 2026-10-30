@@ -9,6 +9,11 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## Fehlalarme von inline-not-expanded aus Marcos Befundliste (30.10.2026, Branch `claude/project-thread-li3obi`)
+- Liste: 1890 Befunde, alle `inline-not-expanded` (Atlas-Quellen und RTL). 1554 × „System.TypInfo fehlt“ (TList.Add, TStack.Push, TList.Clear …), 240 × H2444 an TMonitor.Enter (entfällt mit #1383, H2444 ganz aus), 32 × H2457 an THashFNV1a32.GetHashValue in System.Generics.Defaults: Fehlalarme, behoben. 56 × Posix.Unistd/Posix.Stdio an DeleteFile/RenameFile: nur mit POSIX-Defines möglich (DeleteFile ist nur unter POSIX inline), im Nachstellen mit Win32/Win64 still; Herkunft des Laufs offen. 8 × System.Generics.Collections bzw. System.NetConsts (TJSONArray.Count/Items, THTTPClient.Accept): wohl echt wie in CLAUDE.md beschrieben.
+- Ursachen: System.TypInfo deklariert `tkRecord = System.TTypeKind.tkRecord` (Alias); die Regel zählte die Unit des Alias. Zyklus: `Integer(...)`, `SizeOf`, `Length` galten als Verweis nach außen.
+- Nachstellen in der Cloud: RTL-Quellen von Marcos Rechner (nur gelesen, nicht eingecheckt) über `DCC_UnitSearchPath` einer kleinen `.dproj`, `AtlasServer --check`. Handtests IL10–IL13.
+
 ## Wie hier gebaut wird
 - RAD Studio 13 (37.0) ohne Kommandozeilen-Compiler. Gebaut wird über `C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1`, Doku liegt daneben.
 - Pro Build eine frische IDE:

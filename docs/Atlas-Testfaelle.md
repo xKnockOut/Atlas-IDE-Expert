@@ -6551,6 +6551,10 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | IL7 | Alle Units ergänzt, Routine ohne `inline`, `{$INLINE OFF}` in der Datei | Keine Meldung |
 | IL8 | `"inline-not-expanded": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | IL9 | Abgleich mit Delphi: IL1, IL3, IL4, IL5 übersetzen | dcc meldet H2443, H2444, H2445 bzw. H2456/H2457 an denselben Stellen, für IL7 nichts |
+| IL10 | RTL im Index: `TList<Integer>.Add`, `TStack<string>.Push`, `TQueue<string>.Enqueue` und `TList.Clear` mit nur `System.Generics.Collections` im uses (ohne `System.TypInfo`) | Keine Meldung (vorher „System.TypInfo fehlt in uses“) |
+| IL11 | `System.TMonitor.Enter(Obj)` in einer beliebigen Unit | Keine Meldung (vorher „Zugriff auf TMonitor.CheckMonitorSupport (strict private)“, entfällt mit #1383) |
+| IL12 | `System.Generics.Defaults.pas` der RTL als Teil eines Projekts prüfen | Keine H2457-Meldung an `THashFNV1a32.GetHashValue`; ein Rumpf mit Verweis auf eine andere Unit meldet den Zyklus weiter (IL5) |
+| IL13 | Gegenprobe: `A.Count` mit `A: TJSONArray`, nur `System.JSON` im uses | Meldung „System.Generics.Collections fehlt in uses (wie H2443)“ bleibt |
 
 ## Veraltete und gebundene Symbole wie W1000–W1007 (#1018)
 
