@@ -19,7 +19,8 @@
 //                              High(Int64) mit lauter Operanden mit Vorzeichen
 //                              (E2099), Menge über mehr als 256 Werte (E2028)
 //                              und Zahlen statt Sichtbarkeiten in {$RTTI}
-//                              (E2572).
+//                              (E2572). Zahlen in asm-Blöcken prüft
+//                              asm-invalid (dcc meldet dort E2113, #1375).
 //   default-parameter-invalid  Unzulässiger Standardwert eines Parameters
 //                              (#993): mehrere Namen mit einem Standardwert
 //                              (A, B: Integer = 0, E2237), Parameter ohne
@@ -1149,6 +1150,24 @@ var
     end;
   end;
 
+  /// <summary>Liegt AOffset in einem asm-Block? Zahlen dort prüft asm-invalid (dcc meldet E2113, #1375).</summary>
+  function InAsm(AOffset: Integer): Boolean;
+  var
+    mFound: TSyntaxNode;
+  begin
+    mFound := AContext.Tree.Root.Search(
+      function(ANode: TSyntaxNode): TSyntaxSearchStep
+      begin
+        if (AOffset < ANode.StartOffset) or (AOffset >= ANode.EndOffset) then
+          Result := TSyntaxSearchStep.Skip
+        else if ANode.Kind = TSyntaxKind.AsmBlock then
+          Result := TSyntaxSearchStep.Found
+        else
+          Result := TSyntaxSearchStep.Descend;
+      end);
+    Result := mFound <> nil;
+  end;
+
 var
   Token: TPascalToken;
   mTokens: TArray<TPascalToken>;
@@ -1164,7 +1183,7 @@ begin
   for mIndex := 0 to High(mTokens) do
   begin
     Token := mTokens[mIndex];
-    if (Token.Kind = TPascalTokenKind.Number) and TooLargeLiteral(Token.Text) then
+    if (Token.Kind = TPascalTokenKind.Number) and TooLargeLiteral(Token.Text) and not InAsm(Token.Offset) then
       AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos),
         Format('Ganzzahlkonstante zu groß: %s passt nicht in 64 Bit (wie E2102).', [Token.Text]),
         TRuleConfidence.High)

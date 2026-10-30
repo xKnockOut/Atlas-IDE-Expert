@@ -50,6 +50,26 @@
       "level": "A"
     },
     {
+      "id": "asm-invalid",
+      "name": "Invalid statement in inline assembler",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Statements in asm blocks that dcc rejects: a missing operand (mov eax, ) and esp as an index register with a scale factor ([eax + esp * 2]) like E2105, two registers of different size (mov al, ebx), lea with a number and a number as the target of mov like E2107 (dcc reports E2107 here instead of E2108 and E2116), db with a local variable of the routine like E2109, OFFSET a + OFFSET b like E2111, a number beyond 64 bits like E2113, a string constant of more than 4 characters for a 32-bit register like E2114 and division by zero (/ 0, mod 0) like E2118. Only forms confirmed with dcc are reported, at most one finding per statement. Statements with a compiler directive or a { } comment in the same line (Free Pascal writes ARM register lists that way), the other data directives, Win64 registers (rax, r8 …, which can be variable names under Win32) and files for Free Pascal ({$MODE …}, {$ASMMODE …}) stay silent.",
+      "bad": "asm\n  mov al, ebx\nend;",
+      "good": "asm\n  mov al, bl\nend;",
+      "compilerCodes": [
+        "E2105",
+        "E2107",
+        "E2109",
+        "E2111",
+        "E2113",
+        "E2114",
+        "E2118"
+      ],
+      "level": "A"
+    },
+    {
       "id": "unused-suppression",
       "name": "Unused suppression",
       "category": "code-smell",
