@@ -992,6 +992,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.StatusBar.Bar.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Components.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Bar.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

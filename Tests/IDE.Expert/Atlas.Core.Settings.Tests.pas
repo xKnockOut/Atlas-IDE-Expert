@@ -25,6 +25,9 @@ type
     /// </summary>
     [Test]
     procedure EditorStatusBarOptions;
+    /// <summary>#1442: Designer-Leiste Vorgabe an; Speichern und Laden.</summary>
+    [Test]
+    procedure EditorDesignerBarOptions;
     /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure QuickBookmarkOptions;
@@ -2146,6 +2149,21 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.EditorStatusBar);
   Assert.AreEqual('', Loaded.EditorStatusBarItems, 'alle Elemente aus bleibt leer');
+end;
+
+procedure TAtlasPluginSettingsTests.EditorDesignerBarOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.EditorDesignerBar);
+  Settings.EditorDesignerBar := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.EditorDesignerBar);
 end;
 
 procedure TAtlasPluginSettingsTests.QuickBookmarkOptions;
