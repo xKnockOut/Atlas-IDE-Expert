@@ -378,10 +378,8 @@ begin
           Result.CheckFormat := CheckFormat;
           Result.FormatDiff := False;
         end
-        // dunitx gibt es nur für --affected-tests (#1353); dort wird der Wert geprüft.
-        else if not SameText(Value, 'dunitx') then
-        // csv gibt es nur für --query (#1351); dort prüft der Linter das Format.
-        else if not SameText(Value, 'csv') then
+        // dunitx gibt es nur für --affected-tests (#1353), csv nur für --query (#1351); dort wird der Wert geprüft.
+        else if not SameText(Value, 'dunitx') and not SameText(Value, 'csv') then
           AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
       end;
     end

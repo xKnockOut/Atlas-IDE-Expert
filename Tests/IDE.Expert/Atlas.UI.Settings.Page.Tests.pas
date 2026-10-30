@@ -701,7 +701,8 @@ begin
     Team := TAtlasTeamFile.Parse('{', 'C:\Repo\.atlas', 'C:\Repo');
     Team.Project := 'C:\Repo\Kasse.dproj';
     Page.TeamFileCheck.Checked := True;
-    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid));
+    // Mit Lage des Fehlers in der Datei (Zeile 1, Spalte 2 für "{").
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileInvalidAt, [1, 2]));
   finally
     Page.Free;
   end;

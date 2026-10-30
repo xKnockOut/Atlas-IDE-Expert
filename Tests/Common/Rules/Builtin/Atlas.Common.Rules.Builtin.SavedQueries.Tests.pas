@@ -156,7 +156,9 @@ begin
   Assert.AreEqual(2, Integer(Length(mFindings)));
   // Unterdrückung am Ende der Zeile des ersten Treffers.
   mLines := mText.Split([#10]);
-  mLines[mFindings[0].Range.StartPos.Line] := mLines[mFindings[0].Range.StartPos.Line] + ' // lsp-ignore: query:rechnen';
+  // TrimRight: unter Windows endet die Zeile auf #13, der Kommentar gehört davor.
+  mLines[mFindings[0].Range.StartPos.Line] := TrimRight(mLines[mFindings[0].Range.StartPos.Line]) +
+    ' // lsp-ignore: query:rechnen';
   mSuppressed := string.Join(#10, mLines);
   Assert.AreEqual(1, Integer(Length(QueryFindings(Check(SettingsOf(cSettings), mSuppressed, Services, cFile)))));
   // Baseline aus den Befunden blendet beide aus.

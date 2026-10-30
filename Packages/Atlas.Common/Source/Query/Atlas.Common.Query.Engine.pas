@@ -824,78 +824,84 @@ var
   mTake: Boolean;
 begin
   Result := TObjectList<TQueryElement>.Create(True);
-  mSeen := TDictionary<string, Integer>.Create;
   try
-    for mUnit in FUnits do
-    begin
-      CheckCancelled;
-      if AEntity = TQueryEntity.Units then
+    mSeen := TDictionary<string, Integer>.Create;
+    try
+      for mUnit in FUnits do
       begin
-        mElement := TQueryElement.Create;
-        mElement.Owner := mUnit;
-        mElement.SymbolIndex := -1;
-        Result.Add(mElement);
-        Continue;
-      end;
-      if AEntity = TQueryEntity.Forms then
-        LoadForm(mUnit);
-      mSeen.Clear;
-      for mIndex := 0 to High(mUnit.Data.Symbols) do
-      begin
-        mSymbol := mUnit.Data.Symbols[mIndex];
-        case AEntity of
-          TQueryEntity.Classes:
-            mTake := mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
-          TQueryEntity.Records:
-            mTake := mSymbol.Kind = TIndexSymbolKind.RecordType;
-          TQueryEntity.Interfaces:
-            mTake := mSymbol.Kind = TIndexSymbolKind.InterfaceType;
-          TQueryEntity.Forms:
-            mTake := (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mUnit.FormClass <> '') and
-              SameText(mSymbol.QualifiedName, mUnit.FormClass);
-          TQueryEntity.Methods:
-            mTake := (mSymbol.Kind in cMethodKinds) and (mSymbol.Container <> '');
-          TQueryEntity.Routines:
-            mTake := (mSymbol.Kind = TIndexSymbolKind.Routine) and (mSymbol.Container = '');
-          TQueryEntity.Fields:
-            mTake := (mSymbol.Kind = TIndexSymbolKind.Field) and (mSymbol.Container <> '');
-          TQueryEntity.Properties:
-            mTake := (mSymbol.Kind = TIndexSymbolKind.Property_) and (mSymbol.Container <> '');
-        else
-          mTake := False;
-        end;
-        if not mTake then
-          Continue;
-        if AEntity in TQueryCatalog.MemberEntities then
+        CheckCancelled;
+        if AEntity = TQueryEntity.Units then
         begin
-          LoadCounts(mUnit);
-          if not mUnit.Declared[mIndex] then
+          mElement := TQueryElement.Create;
+          mElement.Owner := mUnit;
+          mElement.SymbolIndex := -1;
+          Result.Add(mElement);
+          Continue;
+        end;
+        if AEntity = TQueryEntity.Forms then
+          LoadForm(mUnit);
+        mSeen.Clear;
+        for mIndex := 0 to High(mUnit.Data.Symbols) do
+        begin
+          mSymbol := mUnit.Data.Symbols[mIndex];
+          case AEntity of
+            TQueryEntity.Classes:
+              mTake := mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
+            TQueryEntity.Records:
+              mTake := mSymbol.Kind = TIndexSymbolKind.RecordType;
+            TQueryEntity.Interfaces:
+              mTake := mSymbol.Kind = TIndexSymbolKind.InterfaceType;
+            TQueryEntity.Forms:
+              mTake := (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mUnit.FormClass <> '') and
+                SameText(mSymbol.QualifiedName, mUnit.FormClass);
+            TQueryEntity.Methods:
+              mTake := (mSymbol.Kind in cMethodKinds) and (mSymbol.Container <> '');
+            TQueryEntity.Routines:
+              mTake := (mSymbol.Kind = TIndexSymbolKind.Routine) and (mSymbol.Container = '');
+            TQueryEntity.Fields:
+              mTake := (mSymbol.Kind = TIndexSymbolKind.Field) and (mSymbol.Container <> '');
+            TQueryEntity.Properties:
+              mTake := (mSymbol.Kind = TIndexSymbolKind.Property_) and (mSymbol.Container <> '');
+          else
+            mTake := False;
+          end;
+          if not mTake then
             Continue;
-        end;
-        // Typen: Vorwärtsdeklaration und Deklaration einmal (die spätere gilt). Routinen: Deklaration im
-        // interface und Rumpf im implementation einmal (die erste gilt).
-        if AEntity in TQueryCatalog.TypeEntities then
-          mKey := UpperCase(mSymbol.QualifiedName)
-        else if AEntity = TQueryEntity.Routines then
-          mKey := UpperCase(mSymbol.Name) + '(' + UpperCase(string.Join(',', mSymbol.ParamTypes)) + ')'
-        else
-          mKey := '';
-        if (mKey <> '') and mSeen.TryGetValue(mKey, mSlot) then
-        begin
+          if AEntity in TQueryCatalog.MemberEntities then
+          begin
+            LoadCounts(mUnit);
+            if not mUnit.Declared[mIndex] then
+              Continue;
+          end;
+          // Typen: Vorwärtsdeklaration und Deklaration einmal (die spätere gilt). Routinen: Deklaration im
+          // interface und Rumpf im implementation einmal (die erste gilt).
           if AEntity in TQueryCatalog.TypeEntities then
-            Result[mSlot].SymbolIndex := mIndex;
-          Continue;
+            mKey := UpperCase(mSymbol.QualifiedName)
+          else if AEntity = TQueryEntity.Routines then
+            mKey := UpperCase(mSymbol.Name) + '(' + UpperCase(string.Join(',', mSymbol.ParamTypes)) + ')'
+          else
+            mKey := '';
+          if (mKey <> '') and mSeen.TryGetValue(mKey, mSlot) then
+          begin
+            if AEntity in TQueryCatalog.TypeEntities then
+              Result[mSlot].SymbolIndex := mIndex;
+            Continue;
+          end;
+          mElement := TQueryElement.Create;
+          mElement.Owner := mUnit;
+          mElement.SymbolIndex := mIndex;
+          Result.Add(mElement);
+          if mKey <> '' then
+            mSeen.Add(mKey, Result.Count - 1);
         end;
-        mElement := TQueryElement.Create;
-        mElement.Owner := mUnit;
-        mElement.SymbolIndex := mIndex;
-        Result.Add(mElement);
-        if mKey <> '' then
-          mSeen.Add(mKey, Result.Count - 1);
       end;
+    finally
+      mSeen.Free;
     end;
-  finally
-    mSeen.Free;
+  except
+    // Abbruch (EQueryCancelled) mitten im Sammeln: die Liste gehört noch niemandem.
+    Result.Free;
+    raise;
   end;
 end;
 
