@@ -1187,7 +1187,8 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "performance",',
-    '      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Off by default.",',
+    '      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no B' +
+    'eginUpdate) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",',
     '      "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",',
     '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"',
     '    },',
@@ -6196,7 +6197,7 @@ const
     '      "id": "missing-begin-update",',
     '      "name": "Hinzufügen in einer Schleife ohne BeginUpdate",',
     '      "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen.' +
-    ' Standardmäßig aus."',
+    ' Still bei Menüs (TMenuItem hat kein BeginUpdate) und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus."',
     '    },',
     '    {',
     '      "id": "setlength-in-loop",',
