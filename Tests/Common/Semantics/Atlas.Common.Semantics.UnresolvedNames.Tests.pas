@@ -199,6 +199,17 @@ begin
     '    Erase(Daten);'#10 +
     '  Rename(Daten, AText);'#10 +
     'end;'#10 +
+    'procedure Speicher;'#10 +
+    'var'#10 +
+    '  P: Pointer;'#10 +
+    '  V: OleVariant;'#10 +
+    'begin'#10 +
+    '  GetMem(P, 16);'#10 +
+    '  ReallocMem(P, 32);'#10 +
+    '  FreeMem(P);'#10 +
+    '  if Sqrt(Int(2.5)) + Frac(1.5) + Sin(0) + Cos(0) + ArcTan(1) + Ln(1) + Exp(0) < 0 then'#10 +
+    '    RunError(1);'#10 +
+    'end;'#10 +
     'end.'));
 end;
 

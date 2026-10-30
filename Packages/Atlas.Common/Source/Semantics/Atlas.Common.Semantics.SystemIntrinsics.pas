@@ -2,10 +2,11 @@
 
 // Bezeichner der Unit System ohne Quelltext (#880): Compiler-Intrinsics (Assigned, Length, SetLength,
 // Inc ...), eingebaute Typen (Integer, Int64, NativeInt ..., auch Text/TextFile und die alten Typen Real48,
-// OpenString, #1382), die Datei-Routinen (AssignFile, Append, Reset, CloseFile, Eof ..., #1382) und
-// True/False. Die Unit System ist immer
-// eingebunden; was in System.pas steht, kommt aus dem Index, sofern die RTL-Quelle indexiert ist. Diese
-// Liste ergänzt nur, was dort fehlt, und gilt deshalb erst nach allen indexierten Units.
+// OpenString, OleVariant, LongInt, #1382), die Datei-Routinen (AssignFile, Append, Reset, CloseFile, Eof ...),
+// Speicher (GetMem, FreeMem, ReallocMem), Mathematik (Sqrt, Sin, Int, Frac ...) und RunError (#1382) sowie
+// True/False. Die Unit System ist immer eingebunden; was in System.pas steht, kommt aus dem Index, sofern
+// die RTL-Quelle indexiert ist. Diese Liste ergänzt nur, was dort fehlt, und gilt deshalb erst nach allen
+// indexierten Units.
 // Die Köpfe sind für Parameter-Hinweis und Hover gedacht; generische bzw. untypisierte Parameter
 // stehen wie in der Delphi-Hilfe ohne Typ.
 
@@ -52,10 +53,11 @@ uses
 
 const
   // Name|Art (R Routine, T Typ, C Konstante)|Kopf|Beschreibung
-  Entries: array[0..130] of string = (
+  Entries: array[0..145] of string = (
     'Abs|R|function Abs(X): <Typ von X>;|Betrag einer Zahl.',
     'Addr|R|function Addr(var X): Pointer;|Adresse einer Variablen oder Routine (wie @).',
     'Append|R|procedure Append(var F: Text);|Öffnet eine Textdatei zum Anhängen.',
+    'ArcTan|R|function ArcTan(const X: Extended): Extended;|Arkustangens im Bogenmaß.',
     'Assert|R|procedure Assert(Condition: Boolean);|Löst EAssertionFailed aus, wenn Condition False ist.',
     'Assert|R|procedure Assert(Condition: Boolean; const Message: string);|Löst EAssertionFailed mit Message aus, wenn Condition False ist.',
     'Assign|R|procedure Assign(var F; const FileName: string; CodePage: Word = 0);|Verbindet eine Dateivariable mit einem Dateinamen (alter Name von AssignFile).',
@@ -75,6 +77,7 @@ const
     'Continue|R|procedure Continue;|Springt zum nächsten Durchlauf der innersten Schleife.',
     'Copy|R|function Copy(const S: string; Index, Count: Integer): string;|Teilstring bzw. Teil eines dynamischen Arrays ab Index (Strings ab 1, Arrays ab 0).',
     'Copy|R|function Copy(const S: string; Index: Integer): string;|Rest ab Index.',
+    'Cos|R|function Cos(const X: Extended): Extended;|Kosinus eines Winkels im Bogenmaß.',
     'Dec|R|procedure Dec(var X);|Verringert X um 1.',
     'Dec|R|procedure Dec(var X; N: Integer);|Verringert X um N.',
     'Default|R|function Default(T): T;|Standardwert des Typs T (0, nil, leerer String ...).',
@@ -88,11 +91,15 @@ const
     'Exclude|R|procedure Exclude(var S; I);|Entfernt das Element I aus der Menge S.',
     'Exit|R|procedure Exit;|Verlässt die aktuelle Routine.',
     'Exit|R|procedure Exit(const Value);|Setzt Result auf Value und verlässt die Funktion.',
+    'Exp|R|function Exp(const X: Extended): Extended;|e hoch X.',
     'Fail|R|procedure Fail;|Bricht im Konstruktor eines object-Typs das Anlegen ab (alte object-Syntax).',
     'FilePos|R|function FilePos(var F): Int64;|Aktuelle Position in einer typisierten oder untypisierten Datei.',
     'FileSize|R|function FileSize(var F): Int64;|Größe einer typisierten oder untypisierten Datei in Datensätzen.',
     'Finalize|R|procedure Finalize(var V; Count: NativeInt = 1);|Gibt verwaltete Inhalte (Strings, Interfaces ...) von V frei.',
     'Flush|R|procedure Flush(var F: Text);|Schreibt den Puffer einer Textdatei.',
+    'Frac|R|function Frac(const X: Extended): Extended;|Nachkommateil einer Zahl.',
+    'FreeMem|R|procedure FreeMem(var P: Pointer; Size: NativeInt = 0);|Gibt mit GetMem oder AllocMem angelegten Speicher frei.',
+    'GetMem|R|procedure GetMem(var P: Pointer; Size: NativeInt);|Legt Size Bytes Speicher an und setzt P darauf (Inhalt nicht initialisiert).',
     'GetTypeKind|R|function GetTypeKind(T): TTypeKind;|Art des Typs T, zur Übersetzungszeit ausgewertet.',
     'Halt|R|procedure Halt(ExitCode: Integer = 0);|Beendet das Programm.',
     'HasWeakRef|R|function HasWeakRef(T): Boolean;|True, wenn T [Weak]-Referenzen enthält.',
@@ -103,10 +110,12 @@ const
     'Include|R|procedure Include(var S; I);|Fügt das Element I der Menge S hinzu.',
     'Initialize|R|procedure Initialize(var V; Count: NativeInt = 1);|Initialisiert verwaltete Inhalte von V.',
     'Insert|R|procedure Insert(const Source: string; var Dest: string; Index: Integer);|Fügt Source an der Stelle Index in Dest ein (auch dynamische Arrays).',
+    'Int|R|function Int(const X: Extended): Extended;|Ganzzahliger Teil einer Zahl als Gleitkommazahl.',
     'IOResult|R|function IOResult: Integer;|Fehlercode der letzten Ein-/Ausgabe unter {$I-}; setzt ihn zurück.',
     'IsConstValue|R|function IsConstValue(const Value): Boolean;|True, wenn Value zur Übersetzungszeit konstant ist.',
     'IsManagedType|R|function IsManagedType(T): Boolean;|True, wenn T verwaltete Inhalte hat (Strings, Interfaces ...).',
     'Length|R|function Length(const S): Integer;|Länge eines Strings oder Anzahl der Elemente eines Arrays.',
+    'Ln|R|function Ln(const X: Extended): Extended;|Natürlicher Logarithmus.',
     'Lo|R|function Lo(X: Word): Byte;|Niederwertiges Byte von X.',
     'Low|R|function Low(X): Integer;|Niedrigster Index bzw. Wert eines Arrays, Strings oder Ordinaltyps.',
     'New|R|procedure New(var P: Pointer);|Legt eine neue dynamische Variable an und setzt P darauf.',
@@ -117,11 +126,13 @@ const
     'Ptr|R|function Ptr(Address: NativeInt): Pointer;|Zeiger auf die Adresse Address.',
     'Read|R|procedure Read(var F: Text; var V1);|Liest Werte aus einer Datei bzw. der Konsole.',
     'Readln|R|procedure Readln(var F: Text; var V1);|Liest Werte und springt in die nächste Zeile.',
+    'ReallocMem|R|procedure ReallocMem(var P: Pointer; Size: NativeInt);|Ändert die Größe eines mit GetMem angelegten Speicherblocks; Size 0 gibt ihn frei.',
     'Rename|R|procedure Rename(var F; const NewName: string);|Benennt die mit F verbundene, geschlossene Datei um.',
     'Reset|R|procedure Reset(var F; RecSize: Integer = 128);|Öffnet eine bestehende Datei; RecSize nur für untypisierte Dateien.',
     'ReturnAddress|R|function ReturnAddress: Pointer;|Rücksprungadresse der aktuellen Routine.',
     'Rewrite|R|procedure Rewrite(var F; RecSize: Integer = 128);|Legt eine Datei an bzw. leert sie; RecSize nur für untypisierte Dateien.',
     'Round|R|function Round(X: Extended): Int64;|Rundet X auf die nächste Ganzzahl.',
+    'RunError|R|procedure RunError(ErrorCode: Byte = 0);|Beendet das Programm mit einem Laufzeitfehler.',
     'Seek|R|procedure Seek(var F; N: Int64);|Setzt die Position in einer typisierten oder untypisierten Datei.',
     'SeekEof|R|function SeekEof(var F: Text): Boolean;|Wie Eof, überspringt vorher Leerraum.',
     'SeekEof|R|function SeekEof: Boolean;|Wie Eof für die Standardeingabe, überspringt vorher Leerraum.',
@@ -130,9 +141,11 @@ const
     'SetLength|R|procedure SetLength(var S; NewLength: NativeInt);|Setzt die Länge eines Strings oder dynamischen Arrays (mehrdimensional: weitere Längen).',
     'SetString|R|procedure SetString(var S: string; Buffer: PChar; Length: Integer);|Setzt S auf Length Zeichen ab Buffer.',
     'SetTextBuf|R|procedure SetTextBuf(var F: Text; var Buf; Size: Integer = 0);|Gibt einer Textdatei einen eigenen Puffer.',
+    'Sin|R|function Sin(const X: Extended): Extended;|Sinus eines Winkels im Bogenmaß.',
     'SizeOf|R|function SizeOf(const X): Integer;|Größe einer Variablen oder eines Typs in Byte.',
     'Slice|R|function Slice(var A; Count: Integer): <offenes Array>;|Die ersten Count Elemente von A als offenes Array-Argument.',
     'Sqr|R|function Sqr(X): <Typ von X>;|Quadrat von X.',
+    'Sqrt|R|function Sqrt(const X: Extended): Extended;|Quadratwurzel.',
     'Str|R|procedure Str(const X; var S: string);|Wandelt eine Zahl in einen String.',
     'Succ|R|function Succ(X): <Typ von X>;|Nachfolger des Ordinalwerts X.',
     'Swap|R|function Swap(X: Word): Word;|Vertauscht höher- und niederwertiges Byte.',
@@ -182,6 +195,9 @@ const
     'OpenString|T|type OpenString|Offener ShortString-Parameter (alte Syntax).',
     'PShortString|T|type PShortString = ^ShortString;|Zeiger auf einen ShortString.',
     'Extended80|T|type Extended80|Gleitkommazahl mit 10 Byte auf allen Plattformen.',
+    'LongInt|T|type LongInt|Ganzzahl mit Vorzeichen, 32 Bit (unter 64-Bit-Linux und iOS 64 Bit).',
+    'LongWord|T|type LongWord|Ganzzahl ohne Vorzeichen, 32 Bit (unter 64-Bit-Linux und iOS 64 Bit).',
+    'OleVariant|T|type OleVariant|Variant mit nur OLE-kompatiblen Typen.',
     'True|C|const True = Boolean(1);|Wahrheitswert wahr.',
     'False|C|const False = Boolean(0);|Wahrheitswert falsch.');
 
