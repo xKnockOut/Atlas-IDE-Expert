@@ -474,6 +474,7 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Scroll.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.HostLayout.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.IndexFiles.pas"/>
