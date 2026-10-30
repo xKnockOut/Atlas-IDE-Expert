@@ -41,6 +41,9 @@ type
     function Provides(const APackage, AUnitName: string; out AContains: Boolean): Boolean;
     /// <summary>Quelle &lt;APackage&gt;.dpk; False, wenn es keine gibt (auch, wenn nur ein .dcp da ist).</summary>
     function FindSource(const APackage: string; out AFileName: string; out ASource: TPackageSource): Boolean;
+    /// <summary>Namen aus requires der Quelle &lt;APackage&gt;.dpk; leer ohne Quelle (ein .dcp nennt sie nicht).
+    /// </summary>
+    function Requires(const APackage: string): TArray<string>;
     /// <summary>Kommt AUnitName als ganzer Name in den Bytes eines .dcp vor (ohne Groß-/Kleinschreibung)?</summary>
     class function CompiledContains(const AData: TBytes; const AUnitName: string): Boolean; static;
     /// <summary>Dateien aus contains mit in '…', vollständig zum Ordner von AFileName (der .dpk).</summary>
@@ -260,6 +263,18 @@ begin
   Result := Found.Known and Found.Source.IsPackage;
   AFileName := Found.FileName;
   ASource := Found.Source;
+end;
+
+function TPackageLocator.Requires(const APackage: string): TArray<string>;
+var
+  mFileName: string;
+  mSource: TPackageSource;
+  mEntry: TPackageEntry;
+begin
+  Result := nil;
+  if FindSource(APackage, mFileName, mSource) then
+    for mEntry in mSource.Requires do
+      Result := Result + [mEntry.Name];
 end;
 
 end.
