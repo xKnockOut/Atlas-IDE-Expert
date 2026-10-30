@@ -120,7 +120,7 @@ begin
   Loaded := TAtlasDebugIgnoreList.Parse('kein JSON', Valid);
   Assert.IsFalse(Valid);
   Assert.AreEqual(0, Integer(Length(Loaded.Classes)));
-  Loaded := TAtlasDebugIgnoreList.Parse('[1, 2]', Valid);
+  TAtlasDebugIgnoreList.Parse('[1, 2]', Valid);
   Assert.IsFalse(Valid);
 end;
 
