@@ -471,8 +471,15 @@ var
   mText: string;
 begin
   if ACombo.Items.Count = 0 then
-    for mText in ATexts do
-      ACombo.Items.Add(mText);
+  begin
+    ACombo.Items.BeginUpdate;
+    try
+      for mText in ATexts do
+        ACombo.Items.Add(mText);
+    finally
+      ACombo.Items.EndUpdate;
+    end;
+  end;
   if ACombo.ItemIndex < 0 then
     ACombo.ItemIndex := AIndex;
 end;
