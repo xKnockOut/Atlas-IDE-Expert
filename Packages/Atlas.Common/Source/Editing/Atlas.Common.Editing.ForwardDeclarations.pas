@@ -7,6 +7,9 @@
 //     (TA = TB) und Zeiger (^T, im selben Block erlaubt) zählen nicht, ebenso
 //     Klassenreferenzen (TXClass = class of TX) auf eine Klasse im selben
 //     type-Block: Die löst dcc wie Zeiger erst am Blockende auf (#1328).
+//     Ebenso ein Name, der weiter unten nur als Alias des gleichnamigen Typs
+//     einer anderen Unit steht (TX = UnitY.TX): Bis dahin gilt der Typ aus
+//     der uses-Liste, die frühere Verwendung übersetzt.
 //   - Korrektur je nach Lage:
 //       Klasse/Interface im selben type-Block   Forward-Deklaration am Blockanfang
 //       Forward-Deklaration steht weiter unten   sie nach oben verschieben
@@ -198,6 +201,21 @@ begin
   finally
     Names.Free;
   end;
+end;
+
+/// <summary>TX = UnitY.TX: Alias des gleichnamigen Typs einer anderen Unit. Diese Unit steht in uses, ihr TX ist
+/// also schon vor dem Alias sichtbar.</summary>
+function IsSameNameAlias(ADecl: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
+  Dot: Integer;
+begin
+  Node := TypeNode(ADecl);
+  Result := False;
+  if (Node = nil) or (Node.Kind <> TSyntaxKind.TypeReference) or (Node.ChildCount > 0) then
+    Exit;
+  Dot := LastDelimiter('.', Node.Name);
+  Result := (Dot > 0) and SameText(Copy(Node.Name, Dot + 1, MaxInt), ADecl.Name);
 end;
 
 /// <summary>True, wenn ARef das Ziel einer Klassenreferenz ist (class of ARef).</summary>
@@ -723,8 +741,10 @@ begin
           Target := Child;
           Break;
         end;
-      // class of auf eine Klasse weiter unten im selben type-Block übersetzt dcc (#1328).
-      if (Target >= 0) and not (IsClassReference(Ref) and (Decls[Target].Section = Decls[Index].Section)) then
+      // class of auf eine Klasse weiter unten im selben type-Block übersetzt dcc (#1328); vor TX = UnitY.TX gilt
+      // UnitY.TX.
+      if (Target >= 0) and not (IsClassReference(Ref) and (Decls[Target].Section = Decls[Index].Section)) and
+        not IsSameNameAlias(Decls[Target].Node) then
         UsedBefore(Decls[Index], Decls[Target], Ref);
     end;
   end;
