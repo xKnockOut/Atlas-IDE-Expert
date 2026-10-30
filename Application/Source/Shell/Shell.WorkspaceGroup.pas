@@ -25,6 +25,7 @@ uses
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
+  Atlas.Common.Query.Contract,
   Shell.Workspace;
 
 type
@@ -51,7 +52,11 @@ type
     /// <summary>Uses-Graph über FIndex für projektweite Regeln (#64) und die MCP-Werkzeuge; einer für die Gruppe,
     /// statt je Prüfung einen eigenen aufzubauen.</summary>
     FUsesGraph: TUsesGraphService;
+    /// <summary>Code-Abfragen über alle Projekte der Gruppe (#1351) für query_code, --query und die Regeln
+    /// query:<name>; ein Dienst, damit ein Ergebnis je Index-Stand einmal gerechnet wird.</summary>
+    FQueries: ICodeQueries;
     function Workspaces: TArray<TShellWorkspace>;
+    function QuerySource(out ASource: TQuerySource): Boolean;
     procedure Prepare(AWorkspace: TShellWorkspace);
     function RuleProjects: TArray<TRuleProject>;
   public
@@ -84,6 +89,9 @@ type
     /// <summary>Uses-Graph der Gruppe (#64) mit den Namensräumen des Hauptprojekts; neu aufgebaut wird er nur bei
     /// einer Änderung.</summary>
     function UsesGraph: TUsesGraphService;
+    /// <summary>Code-Abfragen über alle Projekte der Gruppe (#1351) mit dem Index, den Namensräumen des
+    /// Hauptprojekts und der Aufrufhierarchie.</summary>
+    function Queries: ICodeQueries;
     /// <summary>Projekte der Gruppe neu ermitteln (nach geänderten Projektdateien).</summary>
     procedure Invalidate;
     property Main: TShellWorkspace read FMain;
@@ -103,6 +111,8 @@ uses
   System.JSON,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Query.Service,
+  Atlas.Common.Lsp.Query,
   Shell.Bootstrap;
 
 type
@@ -143,10 +153,12 @@ begin
   FCacheRoot := TIndexCacheDirectory.DefaultRoot;
   FMain := TShellWorkspace.Create(ARoot, ExtractFileName(ARoot), AStore, FTransport, ALogger, AIndex, AProgressToken);
   FUsesGraph := TUsesGraphService.Create(AIndex, TUsesGraphOptions.Default);
+  FQueries := TCodeQueryService.Create(QuerySource);
 end;
 
 destructor TShellWorkspaceGroup.Destroy;
 begin
+  FQueries := nil;
   FUsesGraph.Free;
   FOthers.Free;
   FMain.Free;
@@ -347,6 +359,29 @@ begin
       Result := EnsureUnit(AUnitName);
     end;
   Result.Services.ProjectFiles := RuleProjectFiles;
+  // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
+  Result.Services.Queries := FQueries;
+end;
+
+function TShellWorkspaceGroup.Queries: ICodeQueries;
+begin
+  Result := FQueries;
+end;
+
+function TShellWorkspaceGroup.QuerySource(out ASource: TQuerySource): Boolean;
+begin
+  ASource := TLspQuery.Source(FIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end,
+    FRoot, AllFiles, FMain.Namespaces,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := Assigned(FReadText) and FReadText(AFileName, AText);
+    end,
+    FMain.Configuration.Settings.References);
+  Result := True;
 end;
 
 function TShellWorkspaceGroup.UsesGraph: TUsesGraphService;

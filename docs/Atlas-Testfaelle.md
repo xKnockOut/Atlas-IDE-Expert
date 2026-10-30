@@ -9089,6 +9089,33 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | CR7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 30 in Server und Plugin, Datei `index-30.atlasidx`) |
 | CR8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W1055','Cm.E2243','Cm.H2244','Cm.H2445','Cm.W1055b','Cm.H2243b' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1055, H2243, H2244 und H2445 „erkannt“, keine neuen Einträge unter „zusätzlich“ |
 
+## Code-Abfragen (#1351)
+
+Voraussetzung: Server läuft in der IDE, Projektgruppe aus dem Referenzprojekt (#94) geöffnet und indiziert; Claude Code mit dem Plugin `atlas`; eine Konsole mit `AtlasServer`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QA1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TCodeQueryEngineTests`, `TLspQueryTests`, `TAtlasQueryModelTests`, `TAtlasCodeQueryFrameTests` grün, Benchmark mit 1000 Units unter 2 s (**Abnahme**) |
+| QA2 | *Ansicht › Atlas › Abfrage*, ebenso *Atlas › Code abfragen* und Befehlspalette „Code abfragen“ | Fenster *Atlas-Abfrage* öffnet sich (schwebend), Schreibmarke in der Eingabezeile; Andocken und IDE-Neustart: Lage bleibt |
+| QA3 | `classes where inherits TForm and methods > 40 order by methods desc` eingeben, Enter | Erwartete Formulare, die meisten Methoden zuerst; dieselbe Reihenfolge mit `query_code` in Claude Code und `AtlasServer --check <Gruppe> --query "…"` (**Abnahme**) |
+| QA4 | `methods where complexity > 15 and callers = 0` | Komplexität wie `get_metrics`, nur Methoden, die auch `find_unused_code` meldet bzw. die niemand aufruft (**Abnahme**) |
+| QA5 | `classes where methds > 3` | Unter der Eingabe „Spalte 15: Unbekanntes Feld „methds“ … Vorschlag: methods“, Schreibmarke an Spalte 15, Liste leer (**Abnahme**) |
+| QA6 | Langsam `cl` tippen, dann `classes wh`, `classes where me`; Pfeile, Enter, Tab, Esc, Strg+Leer | Vorschlagsliste unter der Eingabe mit Mengen, Schlüsselwörtern, Feldern; Enter/Tab übernimmt mit Leerzeichen, Esc schließt, Strg+Leer öffnet erneut |
+| QA7 | `classes where inherits TFo`, `methods where calls Rec`, `units where uses Sys` | Vorschläge aus der Symbolsuche (Klassen, Routinen) bzw. Units des Projekts; ohne laufenden Server keine Liste, die IDE stockt nicht |
+| QA8 | Spaltenköpfe der Ergebnisliste anklicken, zweimal | Zahlen zuerst absteigend, Text aufsteigend, zweiter Klick umgekehrt; Zeilen ohne Wert unten; „Datei“ nach Pfad und Zeile |
+| QA9 | Doppelklick und Enter auf eine Zeile | Editor springt zur Deklaration (Zeile und Spalte) |
+| QA10 | `methods where calls Rechne` mit einem Aufruf über ein Interface | Zeile mit „· erschlossen“ in „Datei“, Statuszeile „…, 1 davon erschlossen“ |
+| QA11 | Eine teure Abfrage (`routines where callers = 0` in großer Gruppe), sofort „Abbrechen“ | Statuszeile „Abgebrochen.“, „Ausführen“ wieder aktiv, im Protokoll des Servers `$/cancelRequest`; die IDE bleibt bedienbar |
+| QA12 | „Als Regel speichern …“ mit Name `grosse-formulare`, Meldung `{name} hat {methods} Methoden` | `atlas.json` hat unter `queries` den Eintrag mit `failIfAny: true`, `severity: warning`; Kommentare und Reihenfolge der Datei bleiben; Statuszeile „In atlas.json als Regel query:grosse-formulare gespeichert.“; Auswahl oben zeigt die Abfrage |
+| QA13 | Unit eines der Formulare öffnen | Warnung `query:grosse-formulare` an der Klasse mit „TForm1 hat 45 Methoden“; `--check` und `--format sarif` melden sie ebenso; nach Aufnahme in die Baseline verschwindet sie (**Abnahme**) |
+| QA14 | Gespeicherte Abfrage in der Auswahl wählen | Abfrage steht in der Eingabe und läuft sofort |
+| QA15 | „Als CSV kopieren“, in einen Editor einfügen | Kopfzeile `name;…;path;inferred`, eine Zeile je Treffer wie `--format csv` |
+| QA16 | In `atlas.json` eine gespeicherte Abfrage mit Tippfehler (`methds`) | Konfigurationsmeldung an der Stelle der Abfrage in `atlas.json` mit Spalte |
+| QA17 | Konsole: `--query "units where usedBy > 10" --format json --output q.json`, `--format csv`, `--query @grosse-formulare`, `--query @unbekannt`, `--query "classes where" `, `--fail-on-match` | JSON bzw. CSV, Exit-Code 0; `@grosse-formulare` mit `failIfAny` Exit-Code 1; unbekannter Name und Syntaxfehler Exit-Code 3 mit Meldung auf stderr |
+| QA18 | Claude Code: `query_code` ohne `query`, mit `format: "json"`, mit `limit: 5` | Kurzhilfe mit Mengen und Feldern; JSON mit `rows`, `total`, `truncated`; höchstens 5 Zeilen |
+| QA19 | `query.enabled` aus (Schnellschalter bzw. *Allgemein › Code-Abfragen*) | Fenster schließt, Menüeinträge und Palettenbefehl fehlen, `query_code` fehlt in der Werkzeugliste, keine Befunde `query:…` mehr, `--query` endet mit Exit-Code 3 und Hinweis (**Abnahme**) |
+| QA20 | Ohne Projekt „Ausführen“ bzw. ohne laufenden Server | „Kein Projekt geöffnet.“ bzw. „Der Atlas-Server läuft nicht.“ |
+
 ## Fenster „Atlas-Server“ (#1356)
 
 Vorbereitung: Projektgruppe mit einigen Hundert Units, Index aufgebaut; für SRV7 und SRV9 der Server mit `--trace` (Einstellung `traceFile`).

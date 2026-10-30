@@ -238,6 +238,24 @@ type
   TDfmFixMode = (Prompt, Auto, None);
   {$SCOPEDENUMS OFF}
 
+  /// <summary>Gespeicherte Code-Abfrage aus queries (#1351): Name, Abfrage, Beschreibung und, mit FailIfAny, die
+  /// Regel query:&lt;Name&gt; mit Schweregrad und Meldung. In Message stehen Felder der Abfrage in geschweiften
+  /// Klammern ({name}, {methods}).</summary>
+  TSavedQuery = record
+    Name: string;
+    Query: string;
+    Description: string;
+    FailIfAny: Boolean;
+    Severity: TRuleSeverity;
+    /// <summary>Meldung je Treffer; '' = "{name}: Treffer der Abfrage {query}".</summary>
+    Message: string;
+    /// <summary>Stelle des Eintrags in atlas.json für Meldungen (#1351).</summary>
+    Range: TTextRange;
+    /// <summary>Stelle des Abfragetexts in atlas.json ab seinem ersten Zeichen ohne Leerraum: Spalte 1 der Abfrage
+    /// liegt bei QueryRange.StartPos.</summary>
+    QueryRange: TTextRange;
+  end;
+
   /// <summary>Eigenschaftsregel aus dfmPropertyRules (#309).</summary>
   TDfmPropertyRule = record
     ClassName: string;
@@ -756,6 +774,11 @@ type
     /// unter diesem Zusammenhalt ab 30 Units (0–1, Vorgabe 0,3; 0 = nie) wird ein Teilsystem geteilt.</summary>
     ArchitectureGroupingMaxShare: Double;
     ArchitectureGroupingMinCohesion: Double;
+    /// <summary>Code-Abfragen (#1351, query.enabled): Fenster „Atlas-Abfrage“, MCP query_code, --query und die
+    /// Regeln aus Queries; aus = nichts davon.</summary>
+    QueryEnabled: Boolean;
+    /// <summary>Gespeicherte Abfragen (queries, #1351), optional als Regel query:&lt;Name&gt;.</summary>
+    Queries: TArray<TSavedQuery>;
     /// <summary>Übergreifende Fundament-Units (#1365): "group" (mitgruppieren), "attach" (anhängen) oder
     /// "separate" (eigenes Teilsystem „Fundament“, Vorgabe).</summary>
     ArchitectureGroupingFoundations: string;
@@ -1326,6 +1349,8 @@ begin
   Result.ArchitectureGroupingShowResolutionSlider := True;
   Result.ArchitectureGroupingMaxShare := 0.25;
   Result.ArchitectureGroupingMinCohesion := 0.3;
+  Result.QueryEnabled := True;
+  Result.Queries := nil;
   Result.ArchitectureGroupingFoundations := 'separate';
   Result.ArchitectureGroupingKeepPrevious := True;
   Result.HotspotsEnabled := True;

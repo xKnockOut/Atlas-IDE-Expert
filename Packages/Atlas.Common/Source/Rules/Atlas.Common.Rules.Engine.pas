@@ -126,6 +126,7 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Common.Rules.Builtin.SavedQueries,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Rules.Suppressions,
@@ -526,6 +527,7 @@ var
   AfterContexts: TList<TRuleContext>;
   Before: Integer;
   Failed: Boolean;
+  mRules: TArray<IRule>;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
     Exit(nil);
@@ -544,11 +546,16 @@ begin
     Exit;
   end;
   MinConfidence := TRuleProfiles.MinConfidence(Settings, Settings.Profile);
+  // Gespeicherte Abfragen mit failIfAny (#1351) laufen als Regeln query:<name>, wo der Arbeitsbereich Abfragen
+  // anbietet: Editor, --check und SARIF zeigen sie, Unterdrückungen und Baseline wirken wie bei jeder Regel.
+  mRules := ARules;
+  if AContext.Queries <> nil then
+    mRules := mRules + TSavedQueryRule.RulesOf(Settings);
   // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer
   // gesetzter Cache gehört dem Aufrufer und bleibt gefüllt.
   Shared := AContext;
   // Neue Namen der Korrekturen nach der Namensregel (#1111), einmal für alle Regeln.
-  Shared.NewNames := NewNames(ARules, Settings, Shared);
+  Shared.NewNames := NewNames(mRules, Settings, Shared);
   OwnCache := nil;
   if Shared.Derived = nil then
   begin
@@ -572,7 +579,7 @@ begin
   AfterSeverities := TList<TRuleSeverity>.Create;
   AfterContexts := TList<TRuleContext>.Create;
   try
-    for Rule in ARules do
+    for Rule in mRules do
     begin
       Descriptor := Rule.Descriptor;
       Severity := EffectiveSeverity(Descriptor, Settings, AContext.RelativePath, Enabled);
@@ -580,7 +587,7 @@ begin
         Continue;
       if Descriptor.Experimental and not Enabled then
         Continue;
-      if OverridingRule(Descriptor.Id, ARules, Settings, AContext.RelativePath, AContext.UnitName) <> '' then
+      if OverridingRule(Descriptor.Id, mRules, Settings, AContext.RelativePath, AContext.UnitName) <> '' then
         Continue;
       Context := Shared;
       // Sprachstand (#1126): Korrekturen erzeugen keine Merkmale, die minDelphiVersion nicht kennt.
@@ -717,7 +724,7 @@ begin
       (ASettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint) <> TRuleSeverity.Off) then
     begin
       Known := TRuleProfiles.KnownRuleIds;
-      for Rule in ARules do
+      for Rule in mRules do
         Known := Known + [LowerCase(Rule.Descriptor.Id)];
       for Entry in Suppressions.Entries do
         for Index := 0 to High(Entry.Ids) do

@@ -133,6 +133,8 @@ begin
     TextSetting('ArchitectureScope', 'architecture.scope'),
     Setting('ArchitectureIncludeLibraryUnits', 'architecture.includeLibraryUnits', True),
     Setting('ArchitectureCentralUnits', 'architecture.centralUnits', False),
+    // Code-Abfragen (#1351): Server (query_code, --query, Regeln query:<name>) und Plugin lesen denselben Wert.
+    Setting('QueryEnabled', 'query.enabled', True),
     // Hotspots (#1354): Server (Bericht, get_hotspots, atlas/hotspots) und Plugin lesen dieselben Werte.
     Setting('HotspotsEnabled', 'hotspots.enabled', True),
     Setting('HotspotsMonths', 'hotspots.months', False),

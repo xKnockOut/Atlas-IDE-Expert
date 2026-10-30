@@ -63,6 +63,10 @@ type
     procedure ArchitectureAsMarkdownAndHtml;
     [Test]
     procedure ArchitectureCompareFailsOnNewCycle;
+    /// <summary>--query (#1351): Text, CSV, gespeicherte Abfrage mit failIfAny, --fail-on-match und Fehler mit
+    /// Spalte (Exit-Code 3).</summary>
+    [Test]
+    procedure QueryFormatsAndExitCodes;
     /// <summary>--hotspots (#1354): ohne Versionsverwaltung Exit-Code 3, mit Git-Repository der Bericht.</summary>
     [Test]
     procedure HotspotsNeedVersionControl;
@@ -360,6 +364,41 @@ begin
   Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
     Path('bericht.md')])));
   Assert.Contains(TFile.ReadAllText(Path('bericht.md'), TEncoding.UTF8), '### Neue Zyklen (1)');
+end;
+
+procedure TShellLinterTests.QueryFormatsAndExitCodes;
+
+  function Query(const AArgs: TArray<string>): Integer;
+  begin
+    if TFile.Exists(FOutput) then
+      TFile.Delete(FOutput);
+    Result := TLinterShell.Query(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src')] + AArgs +
+      ['--output', FOutput, '--index-cache', TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache')]));
+  end;
+
+begin
+  TFile.WriteAllText(Path('Src/Klassen.pas'), 'unit Klassen;'#13#10'interface'#13#10'type'#13#10 +
+    '  TBasis = class'#13#10'    procedure A;'#13#10'  end;'#13#10'  TKind = class(TBasis)'#13#10'  end;'#13#10 +
+    'implementation'#13#10'procedure TBasis.A;'#13#10'begin'#13#10'end;'#13#10'end.'#13#10);
+  Assert.AreEqual(0, Query(['--query', 'classes where inherits TBasis']));
+  Assert.Contains(OutputText, 'TKind');
+  Assert.Contains(OutputText, '1 Treffer');
+  Assert.AreEqual(0, Query(['--query', 'classes where methods > 0', '--format', 'csv']));
+  Assert.IsTrue(OutputText.StartsWith('name;unit;line;methods;path;inferred'), OutputText);
+  Assert.Contains(OutputText, 'TBasis;Klassen;4;1;Klassen.pas;');
+  // --fail-on-match: Exit-Code 1 nur mit Treffern.
+  Assert.AreEqual(1, Query(['--query', 'classes where methods > 0', '--fail-on-match']));
+  Assert.AreEqual(0, Query(['--query', 'classes where methods > 5', '--fail-on-match']));
+  // Fehler mit Spalte: Exit-Code 3, nichts auf stdout.
+  Assert.AreEqual(3, Query(['--query', 'classes where methds > 0']));
+  Assert.IsFalse(TFile.Exists(FOutput));
+  Assert.AreEqual(3, Query(['--query', 'classes where methods > 0', '--format', 'sarif']));
+  // Gespeicherte Abfrage: failIfAny wirkt wie --fail-on-match; unbekannter Name ist ein Fehler.
+  TFile.WriteAllText(Path('Src/atlas.json'), '{"queries": [{"name": "erben", "query": "classes where ' +
+    'inherits TBasis", "failIfAny": true}]}');
+  Assert.AreEqual(1, Query(['--query', '@erben']));
+  Assert.Contains(OutputText, 'TKind');
+  Assert.AreEqual(3, Query(['--query', '@fehlt']));
 end;
 
 procedure TShellLinterTests.SuppressionStatsGiveZero;

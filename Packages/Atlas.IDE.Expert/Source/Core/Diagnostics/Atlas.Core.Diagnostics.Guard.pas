@@ -58,7 +58,8 @@ type
     GoToDefinition, EditorToolbar, QuickBookmarks, StatusBar, Architecture, UnitRelations, SymbolPath, Tasks, Debugger,
     ExitPoints, Reassigned, ExpressionType, MethodPlacement, IssueLinks,
     BlameIssues, Hotspots,
-    DesignerBar);
+    DesignerBar,
+    BlameIssues, Query, Hotspots);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -635,7 +636,8 @@ const
     'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
     'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
     'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Hotspots',
-    'Designer-Leiste');
+    'Designer-Leiste',
+    'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Code-Abfragen', 'Hotspots');
 begin
   Result := Names[AFeature];
 end;
