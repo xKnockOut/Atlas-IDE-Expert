@@ -106,11 +106,13 @@ end;
 
 class function TAtlasVcsLineTrace.ParseHunks(const ALines: TArray<string>): TArray<TAtlasVcsHunk>;
 var
-  mIndex, mOld, mNew, mCount: Integer;
+  mIndex, mOld, mNew, mCount, mFound: Integer;
   mHunk: TAtlasVcsHunk;
   mLine: string;
 begin
+  // Die Zahl der Blöcke ist vorher unbekannt: Platz verdoppeln, am Ende kürzen.
   Result := nil;
+  mFound := 0;
   mIndex := 0;
   while mIndex < Length(ALines) do
   begin
@@ -152,9 +154,12 @@ begin
       Inc(mCount);
     end;
     SetLength(mHunk.Lines, mCount);
-    SetLength(Result, Length(Result) + 1);
-    Result[High(Result)] := mHunk;
+    if mFound = Length(Result) then
+      SetLength(Result, mFound * 2 + 4);
+    Result[mFound] := mHunk;
+    Inc(mFound);
   end;
+  SetLength(Result, mFound);
 end;
 
 class function TAtlasVcsLineTrace.Touches(const AHunks: TArray<TAtlasVcsHunk>; AFirst, ALast: Integer): Boolean;
@@ -245,10 +250,13 @@ end;
 class function TAtlasVcsLineTrace.Trace(const APatches: TArray<TArray<string>>; AFirst, ALast: Integer):
   TArray<Integer>;
 var
-  mIndex, mFirst, mLast: Integer;
+  mIndex, mFirst, mLast, mFound: Integer;
   mHunks: TArray<TAtlasVcsHunk>;
 begin
+  // Höchstens ein Eintrag je Patch: Länge vorab, am Ende kürzen.
   Result := nil;
+  SetLength(Result, Length(APatches));
+  mFound := 0;
   mFirst := AFirst;
   mLast := ALast;
   for mIndex := 0 to High(APatches) do
@@ -256,12 +264,13 @@ begin
     mHunks := ParseHunks(APatches[mIndex]);
     if Touches(mHunks, mFirst, mLast) then
     begin
-      SetLength(Result, Length(Result) + 1);
-      Result[High(Result)] := mIndex;
+      Result[mFound] := mIndex;
+      Inc(mFound);
     end;
     if not MapBack(mHunks, mFirst, mLast) then
       Break;
   end;
+  SetLength(Result, mFound);
 end;
 
 end.
