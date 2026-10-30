@@ -29,7 +29,7 @@ type
 
   /// <summary>Warum eine Abfrage nichts brachte.</summary>
   TAtlasCiFetchError = (None, NotConfigured, Network, Timeout, Unauthorized, NotFound, Server, Invalid, Cancelled,
-    UnknownProvider);
+    UnknownProvider, NoCredentials);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Fehlgeschlagener Test auf dem Server.</summary>
@@ -175,7 +175,7 @@ const
   OutcomeKeys: array[TAtlasCiOutcome] of string = ('unknown', 'success', 'unstable', 'failure', 'aborted',
     'notBuilt');
   ErrorKeys: array[TAtlasCiFetchError] of string = ('', 'notConfigured', 'network', 'timeout', 'unauthorized',
-    'notFound', 'server', 'invalid', 'cancelled', 'unknownProvider');
+    'notFound', 'server', 'invalid', 'cancelled', 'unknownProvider', 'noCredentials');
 
 { TAtlasCiBuild }
 

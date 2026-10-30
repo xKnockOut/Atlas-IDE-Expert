@@ -1202,7 +1202,7 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | MI12 | `issues.commitPattern` leeren, committen | Nachricht bleibt unverändert, keine Datei `atlas-commit-prefix`, keine Rückfrage zum Hook (**Abnahme**) |
 | MI13 | Klick auf „Issue: …“ im Statusfeld; „Ja“ | Rückfrage „Aktuelles Issue … beenden?“, danach verschwindet die Zeile, der Chip „aktuell“ ist weg, `atlas-commit-prefix` gelöscht; der Branch bleibt, aktiviert das Issue aber nicht gleich wieder |
 | MI14 | Befehlspalette „Zugang zum Issue-Tracker hinterlegen …“ (aktives Projekt mit `.atlas`); Token eingeben; dann leer lassen | Dialog „Issue-Tracker https://… (GitHub)“ mit verdecktem Feld; Meldung „Zugang … gespeichert“, der Bereich fragt sofort neu; in der Windows-Anmeldeinformationsverwaltung steht `Atlas:tracker:<Server>`; leer entfernt den Eintrag (**Abnahme**) |
-| MI15 | Kein Token hinterlegt bzw. `url` über http | Bereich zeigt „Anmeldung abgelehnt oder kein Token (Zugang zum Issue-Tracker hinterlegen)“, ohne Netzzugriff (Proxy- bzw. Firewall-Protokoll); der Befehl meldet bei http „… sendet das Token nur über https“ |
+| MI15 | Kein Token hinterlegt bzw. `url` über http | Bereich zeigt „Noch kein Token: Rechtsklick › Zugang zum Issue-Tracker hinterlegen …“; mit falschem Token „Anmeldung vom Tracker abgelehnt: Token ungültig, abgelaufen oder ohne Rechte …“, ohne Netzzugriff (Proxy- bzw. Firewall-Protokoll); der Befehl meldet bei http „… sendet das Token nur über https“ |
 | MI16 | Netz trennen (bzw. falsche `url`), Seite anzeigen | Kein Dialog; letzter Stand mit „Stand vom …“, ohne früheren Abruf die Fehlerart; die Seite wartet nicht (Hintergrund, 5 s) (**Abnahme**) |
 | MI17 | Seite mehrmals öffnen und schließen, IDE neu starten | Der Tracker wird je Projekt höchstens alle 10 Minuten gefragt (`issues.attempt` in der Zusammenfassung), auch nach dem Neustart; Kontextmenü „Tracker jetzt abfragen“ fragt sofort |
 | MI18 | Schalter „Meine Issues“ aus (auch über die Schnellschalter) | Bereich verschwindet ohne Neustart; kein Netzzugriff zum Tracker; Statuszeile und Präfix im Commit-Dialog entfallen, `.git/atlas-commit-prefix` wird gelöscht (der Hook tut dann nichts) (**Abnahme**) |
@@ -1212,6 +1212,7 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | MI22 | Englische IDE; helles und dunkles Thema; 150 % Skalierung; Fenster *Atlas-Start* | „My issues“, „Start“, Chips und Marken lesbar, nichts abgeschnitten |
 | MI23 | Karte „Atlas entdecken“ und „Neu in Atlas“ | Tipp „Issues aus dem Tracker beginnen“ mit Bild, „Ausprobieren“ öffnet den Zugangsdialog; „Neu in Atlas“ nennt die Funktion mit Schalter |
 | MI24 | IDE während einer laufenden Abfrage schließen (Server antwortet langsam) | IDE schließt ohne Hänger |
+| MI25 | „Zugang zum Issue-Tracker hinterlegen …“ mit einem Projekt ohne `tracker` in der `.atlas`; Meldungsansicht vorher geschlossen | Meldungsansicht öffnet sich mit „Issue-Tracker: Das aktive Projekt nennt in seiner .atlas keinen Tracker …“; ebenso nach dem Speichern des Tokens („… gespeichert“) |
 
 ## Designer-Leiste (#1442)
 
@@ -1861,6 +1862,9 @@ Voraussetzung: Git-Projekt `C:\Repo\App\Kasse.dproj` (Repository-Wurzel `C:\Repo
 | PD10 | `atlas.json` im Projekt mit `"token": "x"`, `"exclude": ["C:\\Fremd\\**", "/Generated/**"]` und `"testUnits": {"folder": "..\\Tests"}` | Warnungen in `atlas.json` an `token` und am absoluten Ausschluss („… gilt für alle im Team …“); `/Generated/**` und `..\Tests` gelten ohne Meldung |
 | PD11 | Dasselbe in `%APPDATA%\Atlas\settings.json` (global) mit einem absoluten `exclude` | Keine Warnung: die globale Datei ist persönlich |
 | PD12 | Abgesichert starten (wie AS5), dann Schnellschalter „Projektdatei .atlas“ an | Zuerst ist der Schalter wie alle aus (keine Meldungen zu `.atlas`, Befehl fehlt); danach gilt die Datei ohne Neustart, Befehl wieder in der Palette |
+| PD13 | Projektgruppe `C:\Gruppe\Kasse.groupproj` ohne Repository, Projekte in `C:\Gruppe\Pakete\Kern\Kern.dproj`; `.atlas` nur neben der .groupproj | Reiter *Projektdatei* zeigt `C:\Gruppe\.atlas` und ihre Werte; nach dem Schließen der Gruppe (nur `Kern.dproj` offen) „keine Projektdatei“ |
+| PD14 | SVN-Arbeitskopie `C:\Arbeit` (Ordner `.svn`), Projekt in `C:\Arbeit\Quellen\App`; `.atlas` in `C:\Arbeit` | Gilt (Wurzel der Arbeitskopie); eine weitere `.atlas` in `C:\Arbeit\Quellen` hat Vorrang |
+| PD15 | In `.atlas` nach `"version": 1` das Komma löschen, speichern | Meldungsansicht „Projektdatei C:\…\.atlas ist fehlerhaft: kein gültiges JSON in Zeile N, Spalte M …“ mit Zeile und Spalte des nächsten Eintrags (`"naming"`); Reiter *Projektdatei* „Die Datei ist fehlerhaft (Zeile N, Spalte M) …“ |
 
 ## Startprofile (#575)
 

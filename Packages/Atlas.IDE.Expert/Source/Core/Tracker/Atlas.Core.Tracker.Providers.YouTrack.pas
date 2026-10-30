@@ -2,7 +2,7 @@
 
 // Issue-Tracker YouTrack (#765), Cloud und Server, ohne VCL und Open Tools
 // API. Das Netz kommt über IAtlasCiTransport von außen.
-// - Anmeldung mit permanentem Token („Authorization: Bearer perm:…“), nur an
+// - Anmeldung mit permanentem Token („Authorization: Bearer perm-…“, älter perm:…), nur an
 //   den eingetragenen Server.
 // - Issues: GET <url>/api/issues?query=<Abfrage>&fields=idReadable,
 //   numberInProject,summary,customFields(name,value(name,presentation))

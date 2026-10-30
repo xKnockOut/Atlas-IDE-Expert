@@ -1799,7 +1799,9 @@ begin
         Transport := Transports(Provider, Target);
         if Transport <> nil then
           Ok := Provider.Fetch(Target, Transport, TAtlasWelcomeIssues.FetchTimeoutMs, TAtlasWelcomeIssues.MaxItems,
-            Issues, Error);
+            Issues, Error)
+        else
+          Error := TAtlasCiFetchError.NoCredentials;
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
