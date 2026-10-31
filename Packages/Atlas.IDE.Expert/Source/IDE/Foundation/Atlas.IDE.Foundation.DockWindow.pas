@@ -28,6 +28,7 @@
 interface
 
 uses
+  Winapi.Messages,
   System.Classes,
   Vcl.Controls,
   Vcl.Forms,
@@ -40,13 +41,19 @@ type
     FRegistered: Boolean;
     FForm: TCustomForm;
     FFrame: TCustomFrame;
+    /// <summary>Ursprüngliche Fensterprozedur der Form (Haken für WM_CREATE beim Ab- und Andocken).</summary>
+    FOldWndProc: TWndMethod;
     /// <summary>Formen aller Atlas-Dockfenster: Nur sie bekommen das Thema auch an der Form (schwebend).
     /// </summary>
     class var FDockForms: TArray<TCustomForm>;
     class function IsDockForm(AForm: TCustomForm): Boolean; static;
-    /// <summary>Thema und Stil der IDE an der Form: Schwebend zeichnet sie Titelleiste, Rand und Grund selbst.
-    /// </summary>
+    /// <summary>Thema der IDE an der Form: Grund per ApplyTheme, bei dunklem Thema eine dunkle Titelleiste von
+    /// Windows. Kein VCL-Stil an der Form: Der zeichnete die Titelleiste selbst und verlor beim Ziehen die
+    /// Schaltflächen.</summary>
     class procedure ThemeForm(AForm: TCustomForm); static;
+    /// <summary>Dunkle Titelleiste (DWM), solange das IDE-Thema dunkel ist; schwebend sichtbar.</summary>
+    class procedure ApplyDarkCaption(AForm: TCustomForm); static;
+    procedure FormWndProc(var AMessage: TMessage);
     procedure SetForm(AForm: TCustomForm);
     procedure FreeForm;
     procedure Reveal;
@@ -75,6 +82,8 @@ type
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.Dwmapi,
   System.SysUtils,
   Vcl.Graphics,
   Vcl.Themes,
@@ -145,6 +154,9 @@ begin
   if FForm <> nil then
   begin
     FForm.RemoveFreeNotification(Self);
+    if Assigned(FOldWndProc) then
+      FForm.WindowProc := FOldWndProc;
+    FOldWndProc := nil;
     for Index := High(FDockForms) downto 0 do
       if FDockForms[Index] = FForm then
         Delete(FDockForms, Index, 1);
@@ -155,6 +167,9 @@ begin
     FForm.FreeNotification(Self);
     if not IsDockForm(FForm) then
       FDockForms := FDockForms + [FForm];
+    // Beim Ab- und Andocken legt die IDE das Fenster neu an; die Titelleiste muss dann neu dunkel werden.
+    FOldWndProc := FForm.WindowProc;
+    FForm.WindowProc := FormWndProc;
     ThemeForm(FForm);
   end;
 end;
@@ -353,21 +368,50 @@ begin
     ThemeForm(GetParentForm(AControl, False));
 end;
 
+class procedure TAtlasIdeDockWindow.ApplyDarkCaption(AForm: TCustomForm);
+const
+  // Fehlt in Delphi 12 (Winapi.Dwmapi): ab Windows 10 20H1.
+  DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+var
+  Theming: IOTAIDEThemingServices;
+  Window: TColor;
+  Dark: BOOL;
+begin
+  if (AForm = nil) or not AForm.HandleAllocated or
+    not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or not Theming.IDEThemingEnabled or
+    (Theming.StyleServices = nil) then
+    Exit;
+  // Dunkel, wenn der Fenstergrund des IDE-Stils dunkel ist (Helligkeit nach Rec. 601).
+  Window := ColorToRGB(Theming.StyleServices.GetSystemColor(clWindow));
+  Dark := (GetRValue(Window) * 299 + GetGValue(Window) * 587 + GetBValue(Window) * 114) div 1000 < 128;
+  // Ältere Windows-Versionen kennen den Wert nicht und lehnen ihn ab: dann bleibt die Titelleiste hell.
+  DwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, @Dark, SizeOf(Dark));
+end;
+
+procedure TAtlasIdeDockWindow.FormWndProc(var AMessage: TMessage);
+begin
+  if Assigned(FOldWndProc) then
+    FOldWndProc(AMessage);
+  // Neu angelegtes Fenster (Ab- oder Andocken): Titelleiste wieder dunkel.
+  if (AMessage.Msg = WM_CREATE) and (FForm <> nil) then
+    try
+      ApplyDarkCaption(FForm);
+    except
+      on E: Exception do
+        TAtlasGuard.Log('Dunkle Titelleiste: ' + E.ClassName + ': ' + E.Message);
+    end;
+end;
+
 class procedure TAtlasIdeDockWindow.ThemeForm(AForm: TCustomForm);
 var
   Theming: IOTAIDEThemingServices;
-  Style: TCustomStyleServices;
 begin
   if (AForm = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
     not Theming.IDEThemingEnabled then
     Exit;
   try
     Theming.ApplyTheme(AForm);
-    Style := Theming.StyleServices;
-    // Stil je Form (VCL-Stile pro Steuerelement): Die VCL zeichnet damit auch Titelleiste und Rand des
-    // schwebenden Fensters im Stil der IDE; der Name bleibt beim Ab- und Andocken an der Form.
-    if (Style <> nil) and (TStyleManager.Style[Style.Name] = Style) and (AForm.StyleName <> Style.Name) then
-      AForm.StyleName := Style.Name;
+    ApplyDarkCaption(AForm);
   except
     // Thema ist Kosmetik: ein Fehler darf das Fenster nicht verhindern.
     on E: Exception do

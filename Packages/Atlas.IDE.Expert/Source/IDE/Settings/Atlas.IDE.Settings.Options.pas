@@ -670,7 +670,11 @@ begin
         Tree.Selected := Node;
         Exit;
       end;
-    Stop;
+    // Nicht gefunden: Delphi 13 legt die Unterseiten erst beim Aufklappen an ("Fremdhersteller" zu). Obere
+    // Zweige aufklappen und beim nächsten Takt erneut suchen, statt aufzugeben.
+    for Node in Tree.Items do
+      if (Node.Parent = nil) and Node.HasChildren and not Node.Expanded then
+        Node.Expand(False);
   except
     on E: Exception do
     begin
