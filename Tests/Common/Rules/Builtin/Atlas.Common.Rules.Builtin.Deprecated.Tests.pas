@@ -19,6 +19,10 @@ type
   public
     [Test]
     procedure CallReportsReason;
+    /// <summary>Eigene Deklarationen gleichen Namens (Feld, Aufzählungswert, Konstante, Parameter) sind keine
+    /// Verwendung des veralteten Symbols; ein Aufruf daneben bleibt gemeldet.</summary>
+    [Test]
+    procedure DeclarationsOfSameNameAreNoUse;
     [Test]
     procedure KindsOption;
     [Test]
@@ -240,6 +244,32 @@ begin
 end;
 
 { TDeprecatedRulesTests }
+
+procedure TDeprecatedRulesTests.DeclarationsOfSameNameAreNoUse;
+const
+  Source =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Werkzeug;'#10 +
+    'type'#10 +
+    '  TStand = record'#10 +
+    '    Alt: Integer;'#10 +
+    '  end;'#10 +
+    '  TArt = (Eins, Alt);'#10 +
+    'implementation'#10 +
+    'procedure Lauf(Ohne: Integer);'#10 +
+    'begin'#10 +
+    '  Neu;'#10 +
+    'end;'#10 +
+    'procedure Aufruf;'#10 +
+    'begin'#10 +
+    '  Werkzeug.Alt;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // Vorher meldete die Regel das Feld (Zeile 5), den Aufzählungswert (7) und den Parameter (9).
+  Assert.AreEqual('15:11 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(Run(Source, '', True)));
+end;
 
 procedure TDeprecatedRulesTests.CallReportsReason;
 var
