@@ -20,6 +20,7 @@ Hier stehen Architekturentscheidungen mit Kontext, Entscheidung und Folgen. Eine
 | [0014](0014-willkommensseite-nur-fenster.md) | Atlas-Willkommensseite nur im Fenster „Atlas-Start“ | Teilweise abgelöst durch 0015 |
 | [0015](0015-willkommensseite-und-fenster.md) | Atlas-Willkommensseite wieder auf der Willkommensseite der IDE, Fenster unabhängig | Angenommen |
 | [0016](0016-kein-installer.md) | Kein eigener Installer, Release-Paket von Hand einbinden | Angenommen |
+| [0017](0017-funktions-packages.md) | Plugin in Kern-Package und Add-on-Packages je Modul aufteilen | Angenommen |
 
 ## Vorlage
 

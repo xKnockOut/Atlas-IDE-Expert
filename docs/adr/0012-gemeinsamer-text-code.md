@@ -1,6 +1,6 @@
 # 0012: Plugin ohne Atlas.Common; gemeinsamer Code in Atlas.Text
 
-- Status: Angenommen
+- Status: Angenommen; der Grundsatz „ein BPL“ ist ersetzt durch [ADR 0017](0017-funktions-packages.md), das Teilen über Atlas.Text bleibt
 - Datum: 2026-10-15
 - Bezug: ADR 0002 Package-Aufteilung, ADR 0006 IDE-Plugin, #406 Package-Struktur des Plugins, Code-Review D-01 bis D-06, D-10, K-02
 
