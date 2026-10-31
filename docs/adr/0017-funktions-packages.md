@@ -30,7 +30,7 @@ Ziel ist ein Kern-Package plus je Modul ein eigenes Design-Time-Package, das man
 | `Atlas.IDE.Analysis` | `Atlas.IDE.Core` | Architekturübersicht, Unit-Beziehungen, Symbolpfad, Hotspots |
 | `Atlas.IDE.Designer` | `Atlas.IDE.Core` | Designer-Leiste und Komponentensuche im Formular-Designer |
 | `Atlas.IDE.Search` | `Atlas.IDE.Core` | Suche, Unitsuche, Abfrage |
-| `Atlas.IDE.Rules` | `Atlas.IDE.Core` | Pflege der Prüfregeln: Seite „Prüfregeln“ mit Regeltabelle und Profilen, Baseline, Sammelkorrektur, Erklären, Unterdrücken am Element |
+| `Atlas.IDE.Rules` | `Atlas.IDE.Core` | Prüfregeln: schaltet die Regelprüfung im Server ein; Seite „Prüfregeln“ mit Regeltabelle und Profilen, Baseline, Sammelkorrektur, Erklären, Unterdrücken am Element |
 | `Atlas.IDE.Tests` | `Atlas.IDE.Core` | DUnitX-Ergebnisse und Testbefehle |
 | `Atlas.IDE.Build` | `Atlas.IDE.Core` | Build-Werkzeuge: Release-Wächter, Schranke vor dem Kompilieren, Compilerschalter, Build-Zusammenfassung, „Öffnen und bauen“; Aufgaben, Startprofile |
 | `Atlas.IDE.Bookmarks` | `Atlas.IDE.Core` | Lesezeichen, Notizen |
@@ -39,9 +39,10 @@ Regeln:
 - Kein Modul requiret ein anderes. Querbezüge (Willkommensseite zeigt Issues, Hover zeigt Debugger-Werte, Palette öffnet die Unitsuche) laufen über Verträge im Kern; fehlt das Modul, bleibt der Beitrag leer.
 - Der Kern kennt kein Modul. Module melden Einstellungsseiten, Befehle, Menüeinträge, Statusfeldzeilen, Tipps und Bereiche der Willkommensseite beim Laden an und beim Entladen ab.
 - Ein nicht installiertes Modul verhält sich wie ein abgeschaltetes (Modul-Schalter aus #1454).
-- Im Kern bleibt, was viele andere Teile benutzen oder ohne das Code Insight nicht brauchbar ist: die Anzeige der Diagnosen (ohne sie sähe man nicht einmal Syntaxfehler; die Prüfregeln selbst laufen im Server, ihre Pflege liegt in `Atlas.IDE.Rules`), Compilermeldungen und Prüfen nach dem Speichern (Quelle der Diagnosen), Benachrichtigungen, Rückgängig, Doku, Versionsverwaltung (Grundlage für Willkommensseite, Tracker, Tests und Änderungsmarken im Editor). Der allgemeine Tooltip `Atlas.UI.Notes.Tip` wandert vorher nach Foundation.
+- Im Kern bleibt, was viele andere Teile benutzen oder ohne das Code Insight nicht brauchbar ist: die Anzeige der Diagnosen (ohne sie sähe man nicht einmal Syntaxfehler; die Prüfregeln selbst laufen im Server, aber nur mit `Atlas.IDE.Rules`, siehe unten), Compilermeldungen und Prüfen nach dem Speichern (Quelle der Diagnosen), Benachrichtigungen, Rückgängig, Doku, Versionsverwaltung (Grundlage für Willkommensseite, Tracker, Tests und Änderungsmarken im Editor). Der allgemeine Tooltip `Atlas.UI.Notes.Tip` wandert vorher nach Foundation.
 - Möglicher Schnitt nach dem Pilot (vermerkt, nicht entschieden): den Kern in `Atlas.IDE.Base` (Foundation, Rahmen für Einstellungen, Befehle, Statusfeld, Hosts, Style, Texte, Benachrichtigungen, Projekte, Dateien, Verträge, LSP-Client mit Serverstart erst auf Anfrage eines Moduls) und `Atlas.IDE.CodeInsight` (Vervollständigung, Hover, Signatur, Inlay-Hints, Gliederung, Anzeige der Diagnosen, Compilermeldungen, Snippets) teilen. Dann käme z. B. Bookmarks ohne Code Insight aus. Preis: zwölftes Package (48 Builds), Code Insight braucht immer zwei Installationen, und seine Beiträge an Editor, Statusfeld und Hover laufen ebenfalls über Verträge.
 - Versionsverwaltung als eigenes Package ginge nur mit einer zweiten Ebene (Willkommensseite und Tracker requiren sie); vorerst nicht vorgesehen.
+- Prüfregeln laufen nur, wenn `Atlas.IDE.Rules` installiert und `ruleChecks.enabled` an ist (Marco, 31.10.2026). Sonst teilt der Kern dem Server beim Start und bei jeder Änderung mit, dass er keine Regeln prüfen soll; es erscheinen nur Syntaxfehler und Compilermeldungen. Hat das Projekt Prüfregeln in der `atlas.json`, das Package fehlt aber, zeigt Atlas einmal je Projekt einen Hinweis. `--check` und MCP sind davon nicht betroffen.
 - `Atlas.Common` und `Atlas.Windows` bleiben außerhalb der IDE (ADR 0006, ADR 0012). Die Sprachlogik bleibt im Server, alle Packages nutzen die eine Sitzung des Kerns.
 
 Reihenfolge:
