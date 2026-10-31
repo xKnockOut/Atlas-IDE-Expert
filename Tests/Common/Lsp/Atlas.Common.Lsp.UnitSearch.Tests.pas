@@ -54,7 +54,8 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Editing.UsesActions;
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract;
 
 function MakeUnit(const AName, AFile: string; const AUses: TArray<string>; const AClass: string = '';
   const AAncestor: string = ''): TUnitIndex;

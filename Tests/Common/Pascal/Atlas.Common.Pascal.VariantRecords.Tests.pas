@@ -45,6 +45,7 @@ uses
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.DocumentSymbols;
 
 const

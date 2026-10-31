@@ -75,6 +75,7 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Rules.Baseline,
+  Atlas.Text.Json,
   System.Generics.Collections;
 
 class function TFindingsOutput.TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean;
@@ -123,40 +124,8 @@ begin
 end;
 
 class function TFindingsOutput.JsonString(const AText: string): string;
-var
-  Builder: TStringBuilder;
-  C: Char;
 begin
-  Builder := TStringBuilder.Create;
-  try
-    Builder.Append('"');
-    for C in AText do
-      case C of
-        '"':
-          Builder.Append('\"');
-        '\':
-          Builder.Append('\\');
-        #8:
-          Builder.Append('\b');
-        #9:
-          Builder.Append('\t');
-        #10:
-          Builder.Append('\n');
-        #12:
-          Builder.Append('\f');
-        #13:
-          Builder.Append('\r');
-      else
-        if Ord(C) < 32 then
-          Builder.Append('\u' + IntToHex(Ord(C), 4))
-        else
-          Builder.Append(C);
-      end;
-    Builder.Append('"');
-    Result := Builder.ToString;
-  finally
-    Builder.Free;
-  end;
+  Result := TJsonText.Quote(AText);
 end;
 
 class function TFindingsOutput.TryParseFailOn(const AText: string; out AFailOn: TFailOn): Boolean;

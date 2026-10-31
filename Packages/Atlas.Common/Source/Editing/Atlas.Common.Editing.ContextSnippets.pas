@@ -21,7 +21,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
 type
   TContextSnippet = record

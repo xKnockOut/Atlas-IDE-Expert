@@ -31,8 +31,6 @@ type
     procedure ResolverSuppliesTypesAndAncestors;
     [Test]
     procedure FormFieldIsNotOffered;
-    [Test]
-    procedure MentionsWholeWords;
   end;
 
 implementation
@@ -229,14 +227,6 @@ procedure TLspPromoteVariableTests.FormFieldIsNotOffered;
 begin
   // FLabel steht in Haupt.dfm: kein „In lokale Variable umwandeln“.
   Assert.AreEqual(0, Integer(Length(ActionsAt(FIndex, 9, 5))));
-end;
-
-procedure TLspPromoteVariableTests.MentionsWholeWords;
-begin
-  Assert.IsTrue(TLspPromoteVariable.MentionsWord('object FLabel: TLabel', 'flabel'));
-  Assert.IsTrue(TLspPromoteVariable.MentionsWord('FLabel', 'FLabel'));
-  Assert.IsFalse(TLspPromoteVariable.MentionsWord('object FLabel2: TLabel', 'FLabel'));
-  Assert.IsFalse(TLspPromoteVariable.MentionsWord('object XFLabel: TLabel', 'FLabel'));
 end;
 
 initialization

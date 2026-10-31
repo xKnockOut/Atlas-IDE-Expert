@@ -20,10 +20,10 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt die Klassenbefehle in ARegistry ein.</summary>
-procedure RegisterClassCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt die Klassenbefehle über ARegister ein.</summary>
+procedure RegisterClassCommands(const ARegister: TSlashRegister);
 
 /// <summary>Methodenname zur Botschaft: WM_SIZE wird zu WMSize, CM_MOUSEENTER zu CMMouseEnter (Tabelle, sonst je Teil groß).</summary>
 function MessageMethodName(const AMessage: string): string;
@@ -874,15 +874,15 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterClassCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterClassCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('impl', 'Fehlende Methodenrümpfe der Klasse anlegen', '/impl', ExecuteImpl));
-  ARegistry.Register(Command('ctor', 'Konstruktor mit den Feldern als Parametern', '/ctor owner', ExecuteCtor));
-  ARegistry.Register(Command('dtor', 'Destruktor, der erzeugte Felder freigibt', '/dtor', ExecuteDtor));
-  ARegistry.Register(Command('override', 'Virtuelle Methode eines Vorfahren überschreiben', '/override Paint',
+  ARegister(Command('impl', 'Fehlende Methodenrümpfe der Klasse anlegen', '/impl', ExecuteImpl));
+  ARegister(Command('ctor', 'Konstruktor mit den Feldern als Parametern', '/ctor owner', ExecuteCtor));
+  ARegister(Command('dtor', 'Destruktor, der erzeugte Felder freigibt', '/dtor', ExecuteDtor));
+  ARegister(Command('override', 'Virtuelle Methode eines Vorfahren überschreiben', '/override Paint',
     ExecuteOverride));
-  ARegistry.Register(Command('msg', 'Botschaftsmethode anlegen', '/msg WM_SIZE', ExecuteMsg));
-  ARegistry.Register(Command('intf', 'Interface an die Klasse hängen und seine Methoden anlegen', '/intf IExporter',
+  ARegister(Command('msg', 'Botschaftsmethode anlegen', '/msg WM_SIZE', ExecuteMsg));
+  ARegister(Command('intf', 'Interface an die Klasse hängen und seine Methoden anlegen', '/intf IExporter',
     ExecuteIntf));
 end;
 

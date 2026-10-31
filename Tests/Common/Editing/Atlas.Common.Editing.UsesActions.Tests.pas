@@ -69,6 +69,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Lsp.InactiveRegions;
 

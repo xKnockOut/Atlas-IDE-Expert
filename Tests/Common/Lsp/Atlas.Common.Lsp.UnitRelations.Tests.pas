@@ -58,6 +58,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.SymbolIndex,

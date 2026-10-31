@@ -11,7 +11,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Editing.UsesActions,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
 type
   TRecordingSlashHost = class(TInterfacedObject, ISlashHost)

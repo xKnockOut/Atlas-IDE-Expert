@@ -100,6 +100,7 @@
         <DCCReference Include="..\Atlas.Text\Source\Uris\Atlas.Text.Uris.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Diff\Atlas.Text.Diff.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Fuzzy\Atlas.Text.Fuzzy.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Json\Atlas.Text.Json.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Jsonc\Atlas.Text.Jsonc.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Defines\Atlas.Text.Defines.pas"/>
@@ -115,6 +116,7 @@
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.TextChanges.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Uris.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.WorkspaceEdits.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Contract.pas"/>
@@ -242,6 +244,7 @@
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ChoiceBox.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.QueryDialog.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Rules.pas"/>
@@ -492,6 +495,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.DocBox.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.CommentEditor.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Capture.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ImageMarkup.pas"/>
