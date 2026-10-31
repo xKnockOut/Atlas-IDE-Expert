@@ -15,10 +15,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt die Umschließen-Befehle in ARegistry ein.</summary>
-procedure RegisterWrapCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt die Umschließen-Befehle über ARegister ein.</summary>
+procedure RegisterWrapCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -388,25 +388,25 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterWrapCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterWrapCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('try', 'try … finally Free um die folgenden Anweisungen', '/try', ExecuteTry));
-  ARegistry.Register(Command('lock', 'Folgende Anweisungen sperren', '/lock', ExecuteLock));
-  ARegistry.Register(Command('sync', 'Folgende Anweisungen per TThread.Queue im Hauptthread', '/sync',
+  ARegister(Command('try', 'try … finally Free um die folgenden Anweisungen', '/try', ExecuteTry));
+  ARegister(Command('lock', 'Folgende Anweisungen sperren', '/lock', ExecuteLock));
+  ARegister(Command('sync', 'Folgende Anweisungen per TThread.Queue im Hauptthread', '/sync',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Queue', AEdits, AReason);
     end));
-  ARegistry.Register(Command('sync!', 'Folgende Anweisungen per TThread.Synchronize im Hauptthread', '/sync!',
+  ARegister(Command('sync!', 'Folgende Anweisungen per TThread.Synchronize im Hauptthread', '/sync!',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Synchronize', AEdits, AReason);
     end));
-  ARegistry.Register(Command('ifdef', 'Folgende Anweisungen in {$IFDEF}', '/ifdef DEBUG', ExecuteIfdef));
-  ARegistry.Register(Command('except', 'Folgende Anweisungen mit Protokoll und raise absichern', '/except',
+  ARegister(Command('ifdef', 'Folgende Anweisungen in {$IFDEF}', '/ifdef DEBUG', ExecuteIfdef));
+  ARegister(Command('except', 'Folgende Anweisungen mit Protokoll und raise absichern', '/except',
     ExecuteExcept));
-  ARegistry.Register(Command('region', 'Folgende Anweisungen in {$REGION}', '/region Laden', ExecuteRegion));
-  ARegistry.Register(Command('case', 'Fehlende Werte der Aufzählung im case darunter ergänzen', '/case', ExecuteCase));
+  ARegister(Command('region', 'Folgende Anweisungen in {$REGION}', '/region Laden', ExecuteRegion));
+  ARegister(Command('case', 'Fehlende Werte der Aufzählung im case darunter ergänzen', '/case', ExecuteCase));
 end;
 
 end.

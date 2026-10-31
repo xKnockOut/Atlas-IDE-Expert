@@ -14,7 +14,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
 type
   /// <summary>Text, Zeilen und Baum ohne die Befehlszeile.</summary>

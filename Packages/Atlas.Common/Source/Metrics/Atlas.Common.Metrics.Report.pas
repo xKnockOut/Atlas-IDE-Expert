@@ -94,7 +94,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Json;
 
 type
   TReportRow = record
@@ -159,37 +160,8 @@ begin
 end;
 
 class function TMetricsReport.JsonString(const AText: string): string;
-var
-  Index: Integer;
-  Ch: Char;
 begin
-  Result := '"';
-  for Index := 1 to Length(AText) do
-  begin
-    Ch := AText[Index];
-    case Ch of
-      '"':
-        Result := Result + '\"';
-      '\':
-        Result := Result + '\\';
-      #8:
-        Result := Result + '\b';
-      #9:
-        Result := Result + '\t';
-      #10:
-        Result := Result + '\n';
-      #12:
-        Result := Result + '\f';
-      #13:
-        Result := Result + '\r';
-    else
-      if Ord(Ch) < 32 then
-        Result := Result + '\u' + IntToHex(Ord(Ch), 4)
-      else
-        Result := Result + Ch;
-    end;
-  end;
-  Result := Result + '"';
+  Result := TJsonText.Quote(AText);
 end;
 
 function ValuesJson(const AValues: TMetricValues): string;

@@ -41,53 +41,27 @@ type
     /// Aufrufer übernimmt das Objekt.</summary>
     class function Execute(ATree: TSyntaxTree; const AText, AUri: string; const APosition: TTextPosition;
       const AName: string; const ALookup: TPromoteLookup; const AStyle: TFormatStyle): TJSONObject; static;
-    /// <summary>Kommt AName als ganzes Wort in AText vor (Groß-/Kleinschreibung egal)?</summary>
-    class function MentionsWord(const AText, AName: string): Boolean; static;
   end;
 
 implementation
 
 uses
   System.Generics.Collections,
-  System.StrUtils,
-  Atlas.Text.Chars,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
+  Atlas.Common.Lsp.FormMentions,
   Atlas.Common.Lsp.InlayHints;
-
-const
-  FormExtensions: array[0..1] of string = ('.dfm', '.fmx');
-
-class function TLspPromoteVariable.MentionsWord(const AText, AName: string): Boolean;
-var
-  Start: Integer;
-  Text, Name: string;
-begin
-  Text := UpperCase(AText);
-  Name := UpperCase(AName);
-  Start := PosEx(Name, Text, 1);
-  while Start > 0 do
-  begin
-    if ((Start = 1) or not TTextChars.IsIdentChar(Text[Start - 1])) and ((Start + Length(Name) > Length(Text)) or
-      not TTextChars.IsIdentChar(Text[Start + Length(Name)])) then
-      Exit(True);
-    Start := PosEx(Name, Text, Start + 1);
-  end;
-  Result := False;
-end;
 
 class function TLspPromoteVariable.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TPromoteLookup;
 var
   FileName: string;
-  ReadText: TReferenceReadText;
 begin
   Result := TPromoteLookup.FromTree(ATree);
   FileName := AFileName;
-  ReadText := AReadText;
   Result.InlineType :=
     function(const ALocal: TRoutineLocal): string
     var
@@ -104,18 +78,7 @@ begin
     begin
       Result := AResolver.ResolveChain(ATree, FileName, (AClassName + '.' + AName).Split(['.']), AOffset).Found;
     end;
-  Result.InForm :=
-    function(const AName: string): Boolean
-    var
-      Extension, Form: string;
-    begin
-      Result := False;
-      if not Assigned(ReadText) then
-        Exit;
-      for Extension in FormExtensions do
-        if ReadText(ChangeFileExt(FileName, Extension), Form) and MentionsWord(Form, AName) then
-          Exit(True);
-    end;
+  Result.InForm := TLspFormMentions.Lookup(AFileName, AReadText);
 end;
 
 class function TLspPromoteVariable.Actions(ATree: TSyntaxTree; const AText, AUri: string;

@@ -60,7 +60,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract;
 
 const
   ClassUnit =

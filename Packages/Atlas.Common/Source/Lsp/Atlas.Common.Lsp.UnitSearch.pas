@@ -29,7 +29,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Dfm.Contract,
-  Atlas.Common.Editing.UsesActions;
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract;
 
 type
   /// <summary>Ein Projekt der Gruppe mit seinen Dateien.</summary>

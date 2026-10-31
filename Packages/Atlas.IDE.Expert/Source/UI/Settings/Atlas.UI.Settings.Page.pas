@@ -81,6 +81,8 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.UI.Tracker.ValueBox,
+  Atlas.UI.Settings.ChoiceBox,
+  Atlas.UI.Settings.QueryDialog,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -89,24 +91,6 @@ uses
   Atlas.UI.EditorToolbar.Customize;
 
 type
-  /// <summary>Auswahlliste, die Einträge und Auswahl ohne Fensterhandle hält: Die IDE erzeugt und lädt die
-  /// Optionsseiten, bevor sie ein übergeordnetes Fenster haben; Items.Add bräuchte dann schon eins.</summary>
-  TAtlasChoiceBox = class(TComboBox)
-  private
-    FChoices: TArray<string>;
-    FChoice: Integer;
-    function GetChoice: Integer;
-    procedure SetChoice(AValue: Integer);
-  protected
-    procedure CreateWnd; override;
-    procedure DestroyWnd; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    procedure SetChoices(const AItems: array of string);
-    /// <summary>Gewählter Eintrag, -1 = keiner; gilt auch ohne Fenster.</summary>
-    property Choice: Integer read GetChoice write SetChoice;
-  end;
-
   /// <summary>Zeile der Optionsseite (Beschriftung und Eingabefeld): zeichnet nichts selbst, der
   /// Hintergrund des Reiters scheint durch.</summary>
   TAtlasSettingsRow = class(TWinControl)
@@ -134,11 +118,6 @@ type
   /// <summary>„Hinzufügen …“ der Tabelle Projekte (#1261): .dproj bzw. .groupproj (AFolder False) oder Ordner
   /// wählen; False bei Abbruch.</summary>
   TAtlasTrackerBrowseEvent = reference to function(AFolder: Boolean; out APath: string): Boolean;
-  TAtlasQueryTestDone = reference to procedure(const AResult: TAtlasTrackerQueryTestResult);
-  /// <summary>„Testen“ im Dialog „Abfrage bearbeiten“ (#1263): ATarget (Abfrage, Projekt, Sprache) über
-  /// AConnection im Hintergrund abfragen und ADone im Hauptthread aufrufen.</summary>
-  TAtlasQueryTestEvent = reference to procedure(const AConnection: TAtlasTrackerConnection;
-    const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone);
   /// <summary>„Bearbeiten …“ der Tabelle Abfragen (#1263): AQuery im Dialog ändern; True bei OK. ATaken: Namen der
   /// übrigen Abfragen.</summary>
   TAtlasTrackerQueryEditEvent = reference to function(var AQuery: TAtlasTrackerQuery;
@@ -2028,7 +2007,6 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.UI.Settings.QueryDialog,
   Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Debug.OwnCode,
@@ -2099,65 +2077,6 @@ begin
   else
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsMethodLength);
   end;
-end;
-
-{ TAtlasChoiceBox }
-
-constructor TAtlasChoiceBox.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  Style := csDropDownList;
-  FChoice := -1;
-end;
-
-procedure TAtlasChoiceBox.SetChoices(const AItems: array of string);
-var
-  Index: Integer;
-begin
-  SetLength(FChoices, Length(AItems));
-  for Index := 0 to High(AItems) do
-    FChoices[Index] := AItems[Index];
-  if HandleAllocated then
-  begin
-    Items.Clear;
-    for Index := 0 to High(FChoices) do
-      Items.Add(FChoices[Index]);
-    ItemIndex := FChoice;
-  end;
-end;
-
-procedure TAtlasChoiceBox.CreateWnd;
-var
-  Item: string;
-begin
-  inherited CreateWnd;
-  if Items.Count = 0 then
-    for Item in FChoices do
-      Items.Add(Item);
-  ItemIndex := FChoice;
-end;
-
-procedure TAtlasChoiceBox.DestroyWnd;
-begin
-  // Auswahl sichern, bevor das Fenster wegfällt (RecreateWnd); CreateWnd setzt sie wieder. So ändert der
-  // Getter nichts (getter-side-effect, #1052).
-  FChoice := ItemIndex;
-  inherited DestroyWnd;
-end;
-
-function TAtlasChoiceBox.GetChoice: Integer;
-begin
-  if HandleAllocated then
-    Result := ItemIndex
-  else
-    Result := FChoice;
-end;
-
-procedure TAtlasChoiceBox.SetChoice(AValue: Integer);
-begin
-  FChoice := AValue;
-  if HandleAllocated then
-    ItemIndex := AValue;
 end;
 
 { TAtlasSettingsRow }

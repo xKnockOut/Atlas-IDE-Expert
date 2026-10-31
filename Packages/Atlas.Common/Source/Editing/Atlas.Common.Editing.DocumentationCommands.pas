@@ -13,14 +13,14 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
 const
   /// <summary>Vorlage, wenn weder slashCommands.headerTemplate noch die Regel file-header eine vorgibt.</summary>
   DefaultHeaderTemplate = '{ {unit}' + #13#10 + '  Copyright (c) {jahr} {autor} }';
 
-/// <summary>Trägt /header, /deprecated und /region-all in ARegistry ein.</summary>
-procedure RegisterDocumentationCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt /header, /deprecated und /region-all über ARegister ein.</summary>
+procedure RegisterDocumentationCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -499,12 +499,12 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterDocumentationCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterDocumentationCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('header', 'Dateikopf setzen bzw. Jahr fortschreiben', '/header', ExecuteHeader));
-  ARegistry.Register(Command('deprecated', 'Deklaration darunter als veraltet markieren', '/deprecated Grund',
+  ARegister(Command('header', 'Dateikopf setzen bzw. Jahr fortschreiben', '/header', ExecuteHeader));
+  ARegister(Command('deprecated', 'Deklaration darunter als veraltet markieren', '/deprecated Grund',
     ExecuteDeprecated));
-  ARegistry.Register(Command('region-all', 'Methoden der Klasse in Regionen ordnen', '/region-all',
+  ARegister(Command('region-all', 'Methoden der Klasse in Regionen ordnen', '/region-all',
     ExecuteRegionAll));
 end;
 

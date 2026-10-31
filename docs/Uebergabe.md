@@ -9,6 +9,12 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## Unit-Zyklen aufgelöst (#1450, 31.10.2026, Branch `claude/project-thread-r4qz3t`, PR #1453)
+- `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet 0 statt 76 Befunde (Cloud, FPC; Lauf rund 13 Minuten). Schnell prüfen ohne Server: uses aller Units als Graph, Tarjan (so in der Cloud gemacht).
+- Schnellbefehle: Typen in `Atlas.Common.Editing.Contract` (auch `TUsesContext`), `RegisterXCommands(const ARegister: TSlashRegister)`, `TSlashSettings` ist ein Record, `TSlashActions` entfällt (`TSlashContext.Actions: TList<TProc>`). Das Register `Editing.SlashCommands` bleibt Root, weil Lsp, Rules und ClassActions `Shared` nutzen (Composition dürften sie nicht einbinden).
+- Neue Units: `Atlas.Text.Json`, `Atlas.Common.Lsp.FormMentions`, `Atlas.Core.Lsp.Uris`, `Atlas.UI.Settings.ChoiceBox`, `Atlas.UI.Tracker.DocBox`. `TLspSymbolKind` steht in `Lsp.Contract`, `UsageOf` in `TAtlasIdeCommandUsage`, `TAtlasQueryTestEvent` im QueryDialog.
+- Offen: Delphi-Build 0/0/0 (Win64-Gruppe, Win32-Plugin) und Tests; IDE- und UI-Units nur gelesen, nicht übersetzt.
+
 ## Release 1.2.0 vorbereitet (30.10.2026, Branch `claude/project-thread-s3nkro`)
 - Basis: Prep-v1.2.0 = main (5a22c4d7); kein PR mehr offen, main und release/1.1 vollständig enthalten.
 - Version 1.2.0 in `Atlas.Text.Product.Version`, `plugin.json`, `marketplace.json` (wie `Tools/Set-Version.ps1`, das in der Cloud mit pwsh 7.4 aus dem Scratchpad geprüft wurde: `Check-Version.ps1 -Expected 1.2.0` grün). CHANGELOG: `## [1.2.0] - 2026-10-30` unter einem leeren `[Unveröffentlicht]`; Datum beim Taggen anpassen, falls später.

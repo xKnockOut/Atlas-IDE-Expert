@@ -39,7 +39,8 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract;
 
 /// <summary>Führt den Befehl in Zeile ALine aus und wendet die Änderungen an; '' wenn er nicht passt.</summary>
 function Expand(const AText: string; ALine: Integer): string;

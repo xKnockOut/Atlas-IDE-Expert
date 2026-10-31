@@ -20,11 +20,11 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt /define, /define!, /searchpath, /config, /dfm, /unit, /open, /component und /test in ARegistry
+/// <summary>Trägt /define, /define!, /searchpath, /config, /dfm, /unit, /open, /component und /test über ARegister
 /// ein.</summary>
-procedure RegisterProjectCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterProjectCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -741,23 +741,23 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterProjectCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterProjectCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('define', 'Symbol in DCC_Define der aktiven Konfiguration eintragen', '/define TEST',
+  ARegister(Command('define', 'Symbol in DCC_Define der aktiven Konfiguration eintragen', '/define TEST',
     ExecuteDefine));
-  ARegistry.Register(Command('define!', 'Symbol in DCC_Define aller Konfigurationen eintragen', '/define! TEST',
+  ARegister(Command('define!', 'Symbol in DCC_Define aller Konfigurationen eintragen', '/define! TEST',
     ExecuteDefine));
-  ARegistry.Register(Command('searchpath', 'Ordner in den Suchpfad des Projekts eintragen',
+  ARegister(Command('searchpath', 'Ordner in den Suchpfad des Projekts eintragen',
     '/searchpath Source\Common', ExecuteSearchPath));
-  ARegistry.Register(Command('config', 'Konfiguration und Plattform umschalten', '/config Release Win64',
+  ARegister(Command('config', 'Konfiguration und Plattform umschalten', '/config Release Win64',
     ExecuteConfig));
-  ARegistry.Register(Command('dfm', 'Zur Stelle in der Formulardatei springen', '/dfm', ExecuteDfm));
-  ARegistry.Register(Command('unit', 'Neue Unit anlegen, ins Projekt eintragen und öffnen', '/unit Kunden.Daten',
+  ARegister(Command('dfm', 'Zur Stelle in der Formulardatei springen', '/dfm', ExecuteDfm));
+  ARegister(Command('unit', 'Neue Unit anlegen, ins Projekt eintragen und öffnen', '/unit Kunden.Daten',
     ExecuteUnit));
-  ARegistry.Register(Command('open', 'Unit aus dem Suchpfad öffnen', '/open System.SysUtils', ExecuteOpen));
-  ARegistry.Register(Command('component', 'Neue Komponenten-Unit mit Register anlegen und ins Projekt eintragen',
+  ARegister(Command('open', 'Unit aus dem Suchpfad öffnen', '/open System.SysUtils', ExecuteOpen));
+  ARegister(Command('component', 'Neue Komponenten-Unit mit Register anlegen und ins Projekt eintragen',
     '/component TMyButton : TButton', ExecuteComponent));
-  ARegistry.Register(Command('test', 'DUnitX-Test für die aktuelle Methode anlegen, Testunit bei Bedarf',
+  ARegister(Command('test', 'DUnitX-Test für die aktuelle Methode anlegen, Testunit bei Bedarf',
     '/test', ExecuteTest));
 end;
 

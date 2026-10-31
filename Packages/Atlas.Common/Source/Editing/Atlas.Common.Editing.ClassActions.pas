@@ -27,6 +27,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.AccessorCreation;
 

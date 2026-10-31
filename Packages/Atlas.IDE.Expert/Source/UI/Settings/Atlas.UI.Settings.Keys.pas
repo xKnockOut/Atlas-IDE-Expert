@@ -25,7 +25,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.Page;
+  Atlas.UI.Settings.ChoiceBox;
 
 type
   /// <summary>Wer belegt die Taste außer Atlas? '' wenn frei.</summary>

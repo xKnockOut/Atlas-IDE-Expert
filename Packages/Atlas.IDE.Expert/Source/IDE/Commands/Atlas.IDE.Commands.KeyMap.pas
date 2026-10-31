@@ -24,7 +24,7 @@
 //   Einstiege (#600 Tastenkürzel-Tipps, #766 Knopf auf der Willkommensseite:
 //   ShowWindow mit Suchtext).
 // - Spalte „Selten per Tastatur“ (#600): Collect übernimmt je Zeile die Zählung
-//   der Tastenkürzel-Tipps (TAtlasIdeShortcutTips.UsageOf), Aktionen über ihren
+//   der Tastenkürzel-Tipps (TAtlasIdeCommandUsage.UsageOf), Aktionen über ihren
 //   Namen, Atlas-Tasten über den Befehl der Palette.
 // - Abgeschaltete Funktionen (TAtlasKeyEntry.Disabled, etwa #775 aus oder
 //   „Units suchen“ aus) bekommen keine Zeile und sind kein Konflikt.
@@ -115,7 +115,6 @@ uses
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.IDE.Commands.Usage,
-  Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.UnitSearch.Commands;
 
 const
@@ -544,7 +543,7 @@ begin
     else
       Id := '';
     end;
-    if (Id <> '') and TAtlasIdeShortcutTips.UsageOf(Id, Entry) then
+    if (Id <> '') and TAtlasIdeCommandUsage.UsageOf(Id, Entry) then
     begin
       AItems[Index].MouseUses := Entry.Mouse;
       AItems[Index].KeyUses := Entry.Keyboard;

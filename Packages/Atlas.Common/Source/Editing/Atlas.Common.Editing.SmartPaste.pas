@@ -21,7 +21,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesActions;
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract;
 
 type
   /// <summary>Ein nicht auflösbarer Bezeichner und die Units, die ihn deklarieren.</summary>

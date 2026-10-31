@@ -28,32 +28,10 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Editing.Contract;
 
 type
-  /// <summary>Was der Index über eine Unit weiß.</summary>
-  TUsesUnitInfo = record
-    Known: Boolean;
-    HasInitialization: Boolean;
-    /// <summary>Namen der interface-Symbole, auch Mitglieder.</summary>
-    Names: TArray<string>;
-  end;
-
-  TUsesUnitInfoFunc = reference to function(const AUnitName: string): TUsesUnitInfo;
-
-  /// <summary>Units, deren interface ein Symbol AName auf Unit-Ebene deklariert.</summary>
-  TUnitsDeclaringFunc = reference to function(const AName: string): TArray<string>;
-
-  /// <summary>Alles, was die uses-Aktionen für ein Dokument brauchen.</summary>
-  TUsesContext = record
-    Info: TUsesUnitInfoFunc;
-    Declaring: TUnitsDeclaringFunc;
-    /// <summary>Einstellung "usesKeep".</summary>
-    Keep: TArray<string>;
-    /// <summary>Unit-Namespaces des Projekts (System für SysUtils).</summary>
-    Namespaces: TArray<string>;
-  end;
-
   {$SCOPEDENUMS ON}
   /// <summary>Warum ein uses-Eintrag im Editor auffällt (#621).</summary>
   TUsesEntryState = (

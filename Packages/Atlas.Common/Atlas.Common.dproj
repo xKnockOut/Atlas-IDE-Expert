@@ -297,6 +297,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Overloads.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Overloads.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PromoteVariable.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormMentions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PromoteVariable.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineLocals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.pas"/>
@@ -351,6 +352,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesClause.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesCommand.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CommandSource.pas"/>
