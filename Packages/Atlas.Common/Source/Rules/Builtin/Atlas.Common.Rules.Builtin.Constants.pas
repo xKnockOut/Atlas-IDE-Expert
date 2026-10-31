@@ -2876,6 +2876,9 @@ var
   LocalNames, ShortTypes, Suspects: TDictionary<string, Boolean>;
   // Werte von Konstanten für string[Laenge]; erst bei Bedarf.
   Values: TConstantValues;
+  // Deklarationen dieser Datei nach Namen (klein), erst bei Bedarf (EnsureDeclarations).
+  Declarations: TObjectDictionary<string, TList<TSyntaxNode>>;
+  TypeBodies: TDictionary<string, TSyntaxNode>;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -3064,41 +3067,57 @@ var
     Suspects.Add(Key, Result);
   end;
 
+  /// <summary>Einmal je Datei: Typdeklarationen und Deklarationen mit Typ nach Namen, in Baumreihenfolge. Vorher
+  /// durchsuchte jede verdächtige Zuweisung den ganzen Baum (Zuweisungen × Knoten, Sekunden bei großen Units).
+  /// </summary>
+  procedure EnsureDeclarations;
+  var
+    Index: Integer;
+    Name, Key: string;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
+    Nodes: TList<TSyntaxNode>;
+  begin
+    if Declarations <> nil then
+      Exit;
+    Declarations := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
+    TypeBodies := TDictionary<string, TSyntaxNode>.Create;
+    // Iterativ (Bericht M1); Vorordnung wie die frühere Suche, damit der erste Treffer gleich bleibt.
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(AContext.Tree.Root);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.ChildCount > 0) and
+          not TypeBodies.ContainsKey(LowerCase(Node.Name)) then
+          TypeBodies.Add(LowerCase(Node.Name), Node[0]);
+        if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.Field,
+          TSyntaxKind.Parameter]) and (Node.ChildCount > 0) then
+          for Name in Node.Name.Split([',']) do
+          begin
+            Key := LowerCase(Trim(Name));
+            if not Declarations.TryGetValue(Key, Nodes) then
+            begin
+              Nodes := TList<TSyntaxNode>.Create;
+              Declarations.Add(Key, Nodes);
+            end;
+            Nodes.Add(Node);
+          end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
+  end;
+
   /// <summary>Typknoten hinter "=" der Typdeklaration ATypeName in dieser Datei; nil sonst.</summary>
   function LocalTypeBody(const ATypeName: string): TSyntaxNode;
-  var
-    Found: TSyntaxNode;
-
-    procedure Search(ARoot: TSyntaxNode);
-    var
-      Index: Integer;
-      Node: TSyntaxNode;
-      Pending: TStack<TSyntaxNode>;
-    begin
-      // Iterativ (Bericht M1).
-      Pending := TStack<TSyntaxNode>.Create;
-      try
-        Pending.Push(ARoot);
-        while Pending.Count > 0 do
-        begin
-          Node := Pending.Pop;
-          if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.ChildCount > 0) and SameText(Node.Name, ATypeName) then
-          begin
-            Found := Node[0];
-            Exit;
-          end;
-          for Index := Node.ChildCount - 1 downto 0 do
-            Pending.Push(Node[Index]);
-        end;
-      finally
-        Pending.Free;
-      end;
-    end;
-
   begin
-    Found := nil;
-    Search(AContext.Tree.Root);
-    Result := Found;
+    EnsureDeclarations;
+    if not TypeBodies.TryGetValue(LowerCase(ATypeName), Result) then
+      Result := nil;
   end;
 
   // TypeNodeLength und TypeNameLength rufen sich gegenseitig auf; die Rekursion bleibt (Bericht M1): sie folgt
@@ -3137,49 +3156,26 @@ var
   /// keine Parameter).</summary>
   function DeclarationTypeNode(const ASymbol: TResolvedSymbol; out AFixable: Boolean): TSyntaxNode;
   var
-    Found: TSyntaxNode;
-
-    procedure Search(ARoot: TSyntaxNode);
-    var
-      Index: Integer;
-      Name: string;
-      Node: TSyntaxNode;
-      Pending: TStack<TSyntaxNode>;
-    begin
-      // Iterativ (Bericht M1).
-      Pending := TStack<TSyntaxNode>.Create;
-      try
-        Pending.Push(ARoot);
-        while Pending.Count > 0 do
-        begin
-          Node := Pending.Pop;
-          if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.Field,
-            TSyntaxKind.Parameter]) and (Node.ChildCount > 0) and
-            (Node.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
-            (Node.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
-            for Name in Node.Name.Split([',']) do
-              if SameText(Trim(Name), ASymbol.Name) then
-              begin
-                Found := Node[0];
-                AFixable := (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl]) and
-                  (Pos(',', Node.Name) = 0) and (Found.Kind = TSyntaxKind.TypeReference);
-                Exit;
-              end;
-          for Index := Node.ChildCount - 1 downto 0 do
-            Pending.Push(Node[Index]);
-        end;
-      finally
-        Pending.Free;
-      end;
-    end;
-
+    Nodes: TList<TSyntaxNode>;
+    Node: TSyntaxNode;
   begin
-    Found := nil;
+    Result := nil;
     AFixable := False;
-    if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
-      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName)) then
-      Search(AContext.Tree.Root);
-    Result := Found;
+    if not ((ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
+      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName))) then
+      Exit;
+    EnsureDeclarations;
+    if not Declarations.TryGetValue(LowerCase(ASymbol.Name), Nodes) then
+      Exit;
+    for Node in Nodes do
+      if (Node.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
+        (Node.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
+      begin
+        Result := Node[0];
+        AFixable := (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl]) and
+          (Pos(',', Node.Name) = 0) and (Result.Kind = TSyntaxKind.TypeReference);
+        Exit;
+      end;
   end;
 
   procedure ReportTruncated(AValue: TSyntaxNode; ALength, ALimit: Integer; ATypeNode: TSyntaxNode);
@@ -3380,6 +3376,8 @@ begin
     FileName := AContext.UnitName + '.pas';
   Resolver := nil;
   Values := nil;
+  Declarations := nil;
+  TypeBodies := nil;
   LocalNames := TDictionary<string, Boolean>.Create;
   ShortTypes := TDictionary<string, Boolean>.Create;
   Suspects := TDictionary<string, Boolean>.Create;
@@ -3395,6 +3393,8 @@ begin
       Resolver.UnpinTree;
       Resolver.Free;
     end;
+    TypeBodies.Free;
+    Declarations.Free;
     Suspects.Free;
     ShortTypes.Free;
     LocalNames.Free;
