@@ -3004,6 +3004,8 @@ var
   Local: TUnitIndex;
   // Name -> gibt es eine Property ohne write (Bit 1) bzw. ohne read (Bit 2) mit diesem Namen?
   Suspects: TDictionary<string, Integer>;
+  // Signaturen der Properties der eigenen Unit je Name (klein); erst bei Bedarf.
+  LocalProperties: TObjectDictionary<string, TList<string>>;
   Actions: TClassActionContext;
 
   function NodeText(ANode: TSyntaxNode): string;
@@ -3016,6 +3018,8 @@ var
     Symbol: TIndexSymbol;
     Location: TSymbolLocation;
     HasRead, HasWrite: Boolean;
+    Signatures: TList<string>;
+    Signature: string;
 
     procedure Note(const ASignature: string);
     begin
@@ -3032,9 +3036,24 @@ var
     if Suspects.TryGetValue(LowerCase(AName), Result) then
       Exit;
     Result := 0;
-    for Symbol in Local.Symbols do
-      if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Name, AName) then
-        Note(Symbol.Signature);
+    // Properties der eigenen Unit einmal nach Namen ordnen statt je Name über alle Symbole (große Units).
+    if LocalProperties = nil then
+    begin
+      LocalProperties := TObjectDictionary<string, TList<string>>.Create([doOwnsValues]);
+      for Symbol in Local.Symbols do
+        if Symbol.Kind = TIndexSymbolKind.Property_ then
+        begin
+          if not LocalProperties.TryGetValue(LowerCase(Symbol.Name), Signatures) then
+          begin
+            Signatures := TList<string>.Create;
+            LocalProperties.Add(LowerCase(Symbol.Name), Signatures);
+          end;
+          Signatures.Add(Symbol.Signature);
+        end;
+    end;
+    if LocalProperties.TryGetValue(LowerCase(AName), Signatures) then
+      for Signature in Signatures do
+        Note(Signature);
     if AContext.Index <> nil then
       for Location in AContext.Index.FindSymbols(AName) do
         if Location.Symbol.Kind = TIndexSymbolKind.Property_ then
@@ -3231,6 +3250,7 @@ begin
   Actions.DelphiVersion := AContext.DelphiVersion;
   Actions.Style := AContext.Formatting;
   Suspects := TDictionary<string, Integer>.Create;
+  LocalProperties := nil;
   Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
@@ -3243,6 +3263,7 @@ begin
     end;
   finally
     Resolver.Free;
+    LocalProperties.Free;
     Suspects.Free;
   end;
 end;
