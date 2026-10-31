@@ -184,7 +184,7 @@ type
     procedure Process(const AEntry: TEntry);
     procedure Requeue(const AEntry: TEntry; AFront: Boolean);
     procedure Store(const AUri: string; AStamp: Int64; AItems: TJSONArray; AFailed: Boolean);
-    procedure Settle(const AUri: string);
+    procedure Settle;
     function Interrupted(AInterruptible: Boolean): Boolean;
     function LabelOf(const AFileName: string): string;
     procedure Log(const AMessage: string);
@@ -800,7 +800,7 @@ begin
   end;
 end;
 
-procedure TLspWorkspaceCheck.Settle(const AUri: string);
+procedure TLspWorkspaceCheck.Settle;
 begin
   // Datei ohne neue Befunde erledigt (geöffnet, unverändert, fehlt).
   TMonitor.Enter(FLock);
@@ -867,7 +867,7 @@ begin
   // Geöffnete Dateien prüft textDocument/diagnostic mit dem Editortext.
   if (Assigned(FIsOpen) and FIsOpen(mUri)) or not FStamp(AEntry.FileName, mStamp) then
   begin
-    Settle(mUri);
+    Settle;
     Exit;
   end;
   TMonitor.Enter(FLock);
@@ -878,7 +878,7 @@ begin
   end;
   if mUnchanged or not FReadText(AEntry.FileName, mText) then
   begin
-    Settle(mUri);
+    Settle;
     Exit;
   end;
   // Erst in Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben (beim Token je Datei 88 Byte).

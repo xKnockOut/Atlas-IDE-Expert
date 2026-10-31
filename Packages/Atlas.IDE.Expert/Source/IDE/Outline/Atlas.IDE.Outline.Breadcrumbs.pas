@@ -123,7 +123,7 @@ type
     procedure Probe;
     procedure ShowDisabled;
     procedure EnsureBars;
-    function CreateBar(AParent: TWinControl): TAtlasBreadcrumbBar;
+    function CreateBar: TAtlasBreadcrumbBar;
     procedure Place(ABar: TAtlasBreadcrumbBar; AParent: TWinControl);
     procedure OpenMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
@@ -158,7 +158,7 @@ begin
   FHost := TAtlasEditorBarHost.Create('Brotkrumen', TAtlasFeature.Breadcrumbs,
     function(AEditorParent: TWinControl): TControl
     begin
-      Result := CreateBar(AEditorParent);
+      Result := CreateBar;
     end,
     procedure(ABar: TControl; AEditorParent: TWinControl)
     begin
@@ -256,7 +256,7 @@ begin
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
-function TBreadcrumbsState.CreateBar(AParent: TWinControl): TAtlasBreadcrumbBar;
+function TBreadcrumbsState.CreateBar: TAtlasBreadcrumbBar;
 var
   Bar: TAtlasBreadcrumbBar;
   Host: TAtlasEditorBarHost;

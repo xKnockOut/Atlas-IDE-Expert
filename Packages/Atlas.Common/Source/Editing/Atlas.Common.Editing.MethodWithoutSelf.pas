@@ -1019,7 +1019,7 @@ type
     procedure Warn(const AText: string);
     function AddSite(AWork: TFileWork; AOffset: Integer; out AReason: string): Boolean;
     function DeclaringEdits(out AReason: string): Boolean;
-    function ClassMethodEdits(out AReason: string): Boolean;
+    procedure ClassMethodEdits;
     function RoutineEdits(out AReason: string): Boolean;
     function HelperEdits(out AReason: string): Boolean;
     function QualifyStatics: TArray<TOffsetEdit>;
@@ -1155,7 +1155,7 @@ begin
     Result := Result + [TOffsetEdit.Create(Node.StartOffset, Node.StartOffset, Plan.Target.ClassName + '.')];
 end;
 
-function TMethodBuild.ClassMethodEdits(out AReason: string): Boolean;
+procedure TMethodBuild.ClassMethodEdits;
 var
   Work: TFileWork;
   WithStatic: Boolean;
@@ -1172,7 +1172,6 @@ begin
   if WithStatic then
     Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Declaration.EndOffset, Plan.Declaration.EndOffset,
       ' static;')];
-  Result := True;
 end;
 
 /// <summary>Bearbeitungen, die AInner (im Bereich AStart..AStop) in den verschobenen Text übernehmen; die übrigen
@@ -1391,7 +1390,9 @@ begin
     TMethodConversion.Helper:
       Result := HelperEdits(AReason);
   else
-    Result := ClassMethodEdits(AReason);
+    // class-Methode gelingt immer.
+    ClassMethodEdits;
+    Result := True;
   end;
 end;
 

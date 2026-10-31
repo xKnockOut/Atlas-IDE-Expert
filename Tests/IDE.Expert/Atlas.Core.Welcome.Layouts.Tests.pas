@@ -345,7 +345,7 @@ begin
   Result := [[Cell('a', 1), Cell('w', 2)], [Cell('b', 1)]];
 end;
 
-function FlowHeight(const AId: string; AWidth: Integer): Integer;
+function FlowHeight(const AId: string): Integer;
 begin
   if AId = 'a' then
     Result := 100
@@ -360,7 +360,7 @@ begin
   Result := TAtlasWelcomeFlow.Place(FlowCells, ClientWidth, Gap, MinWidth,
     function(const AId: string; AWidth: Integer): Integer
     begin
-      Result := FlowHeight(AId, AWidth);
+      Result := FlowHeight(AId);
     end);
 end;
 

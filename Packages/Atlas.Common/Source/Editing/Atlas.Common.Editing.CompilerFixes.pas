@@ -442,8 +442,7 @@ begin
     LineBreak + Indent + Format('Result := Default(%s);', [TypeText]))], True)];
 end;
 
-function StringCastFixes(const AText: string; ATree: TSyntaxTree; const AMessage: TFixMessage):
-  TArray<TCompilerFix>;
+function StringCastFixes(ATree: TSyntaxTree; const AMessage: TFixMessage): TArray<TCompilerFix>;
 var
   Names: TArray<string>;
   Target: string;
@@ -508,7 +507,7 @@ begin
   else if AMessage.Code = 'W1035' then
     Result := W1035Fixes(AText, ATree, AMessage)
   else if (AMessage.Code = 'W1057') or (AMessage.Code = 'W1058') then
-    Result := StringCastFixes(AText, ATree, AMessage);
+    Result := StringCastFixes(ATree, AMessage);
 end;
 
 function Compare(const A, B: TTextPosition): Integer;

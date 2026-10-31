@@ -121,7 +121,7 @@ type
     FActionIndex: Integer;
     FActionLogged: Boolean;
     procedure Tick(Sender: TObject);
-    function CreateBar(AEditorParent: TWinControl): TAtlasDesignerBar;
+    function CreateBar: TAtlasDesignerBar;
     procedure Place(ABar: TAtlasDesignerBar; AEditorParent: TWinControl);
     function Current(out AEditor: IOTAFormEditor; out ARoot: TComponent): Boolean;
     function Buttons: TArray<TAtlasDesignerButton>;
@@ -276,7 +276,7 @@ begin
   FHost := TAtlasEditorBarHost.Create('Designer-Leiste', TAtlasFeature.DesignerBar,
     function(AEditorParent: TWinControl): TControl
     begin
-      Result := CreateBar(AEditorParent);
+      Result := CreateBar;
     end,
     procedure(ABar: TControl; AEditorParent: TWinControl)
     begin
@@ -331,7 +331,7 @@ begin
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
-function TDesignerBarState.CreateBar(AEditorParent: TWinControl): TAtlasDesignerBar;
+function TDesignerBarState.CreateBar: TAtlasDesignerBar;
 var
   mBar: TAtlasDesignerBar;
   mHost: TAtlasEditorBarHost;

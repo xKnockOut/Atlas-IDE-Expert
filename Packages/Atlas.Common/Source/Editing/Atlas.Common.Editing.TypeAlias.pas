@@ -628,7 +628,7 @@ begin
 end;
 
 function MakeTarget(const AText: string; ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
-  const ALines: TLineTable; const ALookup: TTypeAliasLookup): TTypeAliasTarget;
+  const ALookup: TTypeAliasLookup): TTypeAliasTarget;
 begin
   Result := Default(TTypeAliasTarget);
   Result.StartOffset := ANode.StartOffset;
@@ -665,9 +665,9 @@ begin
   end;
   if Outer = nil then
     Exit;
-  Result := [MakeTarget(AText, ATree, AFileName, Outer, Lines, ALookup)];
+  Result := [MakeTarget(AText, ATree, AFileName, Outer, ALookup)];
   if Inner <> Outer then
-    Result := Result + [MakeTarget(AText, ATree, AFileName, Inner, Lines, ALookup)];
+    Result := Result + [MakeTarget(AText, ATree, AFileName, Inner, ALookup)];
 end;
 
 type
