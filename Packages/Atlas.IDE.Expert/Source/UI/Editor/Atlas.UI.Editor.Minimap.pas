@@ -86,6 +86,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
     procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -544,6 +545,20 @@ begin
   FLastScroll := ATopLine;
   if Assigned(FOnScroll) then
     FOnScroll(ATopLine);
+end;
+
+function TAtlasMinimapView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+var
+  Lines, Top: Integer;
+begin
+  // Mausrad über der Minimap scrollt den Editor wie über dem Text: Zeilen je Raste aus Windows (Vorgabe 3).
+  Lines := Max(1, Mouse.WheelScrollLines);
+  Top := Max(0, FTopLine - (WheelDelta * Lines) div WHEEL_DELTA);
+  Result := True;
+  if (Top = FTopLine) or not Assigned(FOnScroll) then
+    Exit;
+  FLastScroll := Top;
+  FOnScroll(Top);
 end;
 
 procedure TAtlasMinimapView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
