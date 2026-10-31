@@ -472,15 +472,32 @@ begin
       csInaccessible:
         Exit;
     end;
-    Count := AThread.GetCallCount;
-    if Count > AMax then
-      Count := AMax;
-    for Index := 0 to Count - 1 do
-    begin
-      FileName := '';
-      Line := 0;
-      AThread.GetCallPos(Index, FileName, Line);
-      AFrames := AFrames + [TAtlasDebugFrame.Create(AThread.GetCallHeader(Index), FileName, Line)];
+    try
+      Count := AThread.GetCallCount;
+      if Count > AMax then
+        Count := AMax;
+      for Index := 0 to Count - 1 do
+      begin
+        // Endet die Sitzung während des Lesens (Programm beendet sich nach der Exception), meldet der Kernel
+        // jeden weiteren Zugriff mit "Disconnected session": vor jedem Frame prüfen, ob der Halt noch gilt.
+        if StoppedThread = nil then
+        begin
+          AFrames := nil;
+          Exit(TAtlasDebugStackRead.None);
+        end;
+        FileName := '';
+        Line := 0;
+        AThread.GetCallPos(Index, FileName, Line);
+        AFrames := AFrames + [TAtlasDebugFrame.Create(AThread.GetCallHeader(Index), FileName, Line)];
+      end;
+    except
+      // Verbindung zum Debug-Kernel weg: ohne Stack weiter, nicht die IDE stören.
+      on E: Exception do
+      begin
+        AFrames := nil;
+        TAtlasGuard.Log(Format('Debugger-Stack nicht lesbar: %s: %s', [E.ClassName, E.Message]));
+        Exit(TAtlasDebugStackRead.None);
+      end;
     end;
     Result := TAtlasDebugStackRead.Ready;
   finally
@@ -504,7 +521,17 @@ begin
       csInaccessible:
         Exit;
     end;
-    ADepth := AThread.GetCallCount;
+    try
+      ADepth := AThread.GetCallCount;
+    except
+      // Verbindung zum Debug-Kernel weg (siehe ReadStack).
+      on E: Exception do
+      begin
+        ADepth := 0;
+        TAtlasGuard.Log(Format('Debugger-Stacktiefe nicht lesbar: %s: %s', [E.ClassName, E.Message]));
+        Exit(TAtlasDebugStackRead.None);
+      end;
+    end;
     Result := TAtlasDebugStackRead.Ready;
   finally
     AThread.EndCallStackAccess;
