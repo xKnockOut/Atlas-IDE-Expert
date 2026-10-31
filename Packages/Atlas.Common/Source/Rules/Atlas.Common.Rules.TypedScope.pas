@@ -22,6 +22,8 @@ type
   private
     FContext: TRuleContext;
     FFileName: string;
+    // Hält einen eigenen Cache, wenn Check ohne Engine läuft; der Resolver lebt so lange wie er.
+    FCache: IRuleDerivedCache;
     FResolver: TNameResolver;
     FValues: TConstantValues;
     FPaths: TArray<string>;
@@ -51,7 +53,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.ConditionalBranches;
+  Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Rules.Derived;
 
 function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
 begin
@@ -73,8 +76,9 @@ begin
     FFileName := AContext.UnitName + '.pas';
   FTokens := AContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
-  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-  FResolver.Namespaces := AContext.Namespaces;
+  // Der Resolver des Laufs (TRuleDerived.Resolver): Seine Antworten teilen sich alle Regeln einer Datei.
+  FCache := TRuleDerived.Open(AContext);
+  FResolver := TRuleDerived.Resolver(FCache, AContext);
   FResolver.PinTree(AContext.Tree, FFileName);
   FValues := TConstantValues.Create(AContext.Tree, FFileName, AContext.Index, FResolver);
 end;
@@ -82,9 +86,10 @@ end;
 destructor TTypedScope.Destroy;
 begin
   FValues.Free;
+  // Der Resolver gehört dem Cache.
   if FResolver <> nil then
     FResolver.UnpinTree;
-  FResolver.Free;
+  FCache := nil;
   inherited;
 end;
 

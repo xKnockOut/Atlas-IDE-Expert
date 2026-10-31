@@ -16,6 +16,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Contract;
 
 type
@@ -49,6 +50,12 @@ type
       const AFactory: TFunc<T>): T; static;
     /// <summary>TIndexExtractor.Extract(Tree, '') einmal je Lauf; leer ohne Baum.</summary>
     class function UnitIndex(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TUnitIndex; static;
+    /// <summary>Namensauflöser für alle Regeln des Laufs: Seine Antworten zu Units, Vorfahren und Helfern
+    /// gelten für die ganze Datei, statt dass jede Regel sie neu sucht. Gehört dem Cache, nie freigeben.
+    /// PinTree/UnpinTree paarweise wie bei einem eigenen; NameFilter nach Gebrauch zurücksetzen. Wer
+    /// gleichzeitig einen zweiten Resolver braucht (ResolveNameFrom setzt den Zustand zurück), legt den
+    /// zweiten selbst an.</summary>
+    class function Resolver(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TNameResolver; static;
     /// <summary>Alle RoutineDecl mit Rumpf, auch lokale, in Baumreihenfolge.</summary>
     class function Routines(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TArray<TSyntaxNode>; static;
     /// <summary>TFlowSignatures.FromTree der Datei; nil ohne Baum.</summary>
@@ -82,6 +89,7 @@ const
   KeyGraph = 'rules.graph:';
   KeyCodeTokens = 'rules.codeTokens';
   KeyLines = 'rules.lines';
+  KeyResolver = 'rules.resolver';
 
 { TRuleDerivedCache }
 
@@ -153,6 +161,17 @@ begin
     Index := TIndexExtractor.Extract(AContext.Tree, '');
   ACache.Put(KeyUnitIndex, TRuleDerivedValue<TUnitIndex>.Create(Index));
   Result := Index;
+end;
+
+class function TRuleDerived.Resolver(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TNameResolver;
+var
+  Value: TObject;
+begin
+  if ACache.TryGet(KeyResolver, Value) then
+    Exit(TNameResolver(Value));
+  Result := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  Result.Namespaces := AContext.Namespaces;
+  ACache.Put(KeyResolver, Result);
 end;
 
 class function TRuleDerived.Routines(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TArray<TSyntaxNode>;

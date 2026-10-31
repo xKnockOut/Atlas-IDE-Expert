@@ -92,6 +92,7 @@ procedure RegisterCallRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -252,6 +253,7 @@ end;
 procedure TArgumentCountMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Paths: TArray<string>;
 
@@ -484,9 +486,10 @@ begin
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
   Paths := TConditionalBranches.Paths(AContext.Tree.Tokens);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Visit(AContext.Tree.Root);
@@ -494,7 +497,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -566,6 +568,7 @@ end;
 procedure TOverloadResolutionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mResolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   mTypes: TExpressionTypes;
   mFileName: string;
   mPaths: TArray<string>;
@@ -1008,9 +1011,10 @@ begin
   mOptions.Conversions := False;
   mOptions.ConstValue := False;
   mOtherRoutines := TDictionary<string, Boolean>.Create;
-  mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    mResolver.Namespaces := AContext.Namespaces;
     mResolver.PinTree(AContext.Tree, mFileName);
     mTypes := TExpressionTypes.Create(mResolver, AContext.Tree, mFileName, AContext.Text, AContext.Index, mOptions);
     try
@@ -1020,7 +1024,6 @@ begin
       mResolver.UnpinTree;
     end;
   finally
-    mResolver.Free;
     mOtherRoutines.Free;
   end;
 end;

@@ -34,6 +34,7 @@ procedure RegisterMethodWithoutSelfRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
@@ -101,6 +102,7 @@ end;
 procedure TMethodWithoutSelfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName, FormText, Reason: string;
   Lookup: TMethodLookup;
   Target: TMethodTarget;
@@ -112,9 +114,10 @@ begin
     Exit;
   FileName := RuleFileName(AContext);
   FormText := AContext.FormText;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Lookup := TMethodLookup.FromResolver(Resolver, AContext.Tree, FileName);
@@ -143,7 +146,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 

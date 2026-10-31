@@ -210,6 +210,7 @@ procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.JSON,
@@ -1144,6 +1145,7 @@ end;
 procedure TCaseMissingEnumValueRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   RequireElse: Boolean;
 
@@ -1282,9 +1284,10 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Visit(AContext.Tree.Root);
@@ -1292,7 +1295,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -1652,6 +1654,7 @@ var
   LineBreak: string;
   Routines: TArray<TSyntaxNode>;
   mResolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   mFileName: string;
 
   /// <summary>Kann der Empfänger des Aufrufs AStatement eine Datenmenge sein (#1326)? Nein, wenn sein Typ bekannt
@@ -1672,8 +1675,9 @@ var
       Exit;
     if mResolver = nil then
     begin
-      mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      mResolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      mCache := TRuleDerived.Open(AContext);
+      mResolver := TRuleDerived.Resolver(mCache, AContext);
       mResolver.PinTree(AContext.Tree, mFileName);
     end;
     if not mResolver.NodeType(AContext.Tree, mFileName, mTarget[0], mSymbol, mTypeInfo, mTypeFound) or
@@ -1908,7 +1912,6 @@ begin
     if mResolver <> nil then
     begin
       mResolver.UnpinTree;
-      mResolver.Free;
     end;
   end;
 end;
@@ -2556,6 +2559,7 @@ var
 
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
@@ -2567,9 +2571,10 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
@@ -2582,7 +2587,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -2601,6 +2605,7 @@ const
     TSyntaxKind.RepeatStatement];
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Tokens: TTokens;
   Lines: TArray<string>;
@@ -2774,9 +2779,10 @@ begin
   Tokens := AContext.Tree.Tokens;
   Lines := TTextLines.SplitLines(AContext.Text);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Visit(AContext.Tree.Root);
@@ -2784,7 +2790,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -2799,6 +2804,7 @@ end;
 procedure TUntypedPointerRefcountRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Tokens: TTokens;
 
@@ -2931,9 +2937,10 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       // Ohne Rekursion durch den Baum (#1094).
@@ -2958,7 +2965,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -2999,6 +3005,7 @@ end;
 procedure TReadonlyPropertyAssignedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Lines: TArray<string>;
   Local: TUnitIndex;
@@ -3251,9 +3258,10 @@ begin
   Actions.Style := AContext.Formatting;
   Suspects := TDictionary<string, Integer>.Create;
   LocalProperties := nil;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -3262,7 +3270,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
     LocalProperties.Free;
     Suspects.Free;
   end;

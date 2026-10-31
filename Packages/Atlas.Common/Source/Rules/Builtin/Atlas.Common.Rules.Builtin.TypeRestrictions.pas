@@ -1396,6 +1396,7 @@ var
   Node: TSyntaxNode;
   Index: Integer;
   mResolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   mLocal: TUnitIndex;
 
   procedure Report(const ARange: TTextRange; const AMessage: string);
@@ -1444,8 +1445,9 @@ var
         mFileName := AContext.RelativePath;
       if mFileName = '' then
         mFileName := AContext.UnitName + '.pas';
-      mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      mResolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      mCache := TRuleDerived.Open(AContext);
+      mResolver := TRuleDerived.Resolver(mCache, AContext);
       mResolver.PinTree(AContext.Tree, mFileName);
       mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
     end;
@@ -1902,7 +1904,6 @@ begin
     if mResolver <> nil then
     begin
       mResolver.UnpinTree;
-      mResolver.Free;
     end;
   end;
 end;

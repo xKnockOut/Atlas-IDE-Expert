@@ -2327,6 +2327,7 @@ var
   Cache: IRuleDerivedCache;
   Tokens: TArray<TPascalToken>;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Calls: TDictionary<Integer, TSyntaxNode>;
 
@@ -2394,9 +2395,10 @@ begin
       FileName := AContext.RelativePath;
     if FileName = '' then
       FileName := AContext.UnitName + '.pas';
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    mCache := TRuleDerived.Open(AContext);
+    Resolver := TRuleDerived.Resolver(mCache, AContext);
     try
-      Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
       try
         for Index := 0 to High(Tokens) - 1 do
@@ -2407,7 +2409,6 @@ begin
         Resolver.UnpinTree;
       end;
     finally
-      Resolver.Free;
     end;
   finally
     Calls.Free;
@@ -2432,6 +2433,7 @@ var
   Cache: IRuleDerivedCache;
   Ancestry: TAncestry;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Local: TUnitIndex;
   Tokens: TArray<TPascalToken>;
@@ -2628,9 +2630,10 @@ begin
     FileName := AContext.UnitName + '.pas';
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
   try
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    mCache := TRuleDerived.Open(AContext);
+    Resolver := TRuleDerived.Resolver(mCache, AContext);
     try
-      Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
       try
         Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -2640,7 +2643,6 @@ begin
         Resolver.UnpinTree;
       end;
     finally
-      Resolver.Free;
     end;
   finally
     Ancestry.Free;

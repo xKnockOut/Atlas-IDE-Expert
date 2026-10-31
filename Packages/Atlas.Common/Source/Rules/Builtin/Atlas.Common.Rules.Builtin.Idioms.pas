@@ -90,6 +90,7 @@ procedure RegisterIdiomRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Character,
@@ -1016,6 +1017,7 @@ end;
 procedure TPreferCaseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   Lookup: TIfCaseLookup;
   Layout: TStatementLayout;
   FileName: string;
@@ -1038,9 +1040,10 @@ begin
     FileName := AContext.UnitName + '.pas';
   Tokens := AContext.Tree.Tokens;
   Layout := TStatementLayout.Create('', '  ', TTextLines.LineBreakOf(AContext.Text));
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Lookup := TIfCaseLookup.FromResolver(Resolver, AContext.Tree, FileName);
@@ -1081,7 +1084,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 

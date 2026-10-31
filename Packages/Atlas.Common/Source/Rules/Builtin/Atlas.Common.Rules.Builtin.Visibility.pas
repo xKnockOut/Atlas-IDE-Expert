@@ -132,6 +132,7 @@ var
   Local: TUnitIndex;
   Tokens: TArray<TPascalToken>;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   // Name -> gibt es ein nicht öffentliches Mitglied dieses Namens (Datei oder Index)?
   Suspects: TDictionary<string, Boolean>;
@@ -456,9 +457,10 @@ begin
     FileName := AContext.UnitName + '.pas';
   CheckPropertyAccessors;
   Suspects := TDictionary<string, Boolean>.Create;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Visit(AContext.Tree.Root);
@@ -466,7 +468,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
     Suspects.Free;
   end;
 end;

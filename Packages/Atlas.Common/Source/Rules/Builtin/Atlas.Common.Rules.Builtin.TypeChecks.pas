@@ -129,6 +129,7 @@ function RoutineParams(const AContext: TRuleContext; const ASymbol: TResolvedSym
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.Classes,
   System.StrUtils,
@@ -488,6 +489,7 @@ end;
 procedure TDynamicArrayMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Local: TUnitIndex;
   Node: TSyntaxNode;
@@ -620,9 +622,10 @@ begin
     not ContainsText(AContext.Text, 'SetLength') then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -634,7 +637,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -649,6 +651,7 @@ end;
 procedure TLocalRoutineAsCallbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName, LineBreak: string;
   Local: TUnitIndex;
   Nodes: TArray<TSyntaxNode>;
@@ -875,9 +878,10 @@ begin
     Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
     if LineBreak = '' then
       LineBreak := sLineBreak;
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    mCache := TRuleDerived.Open(AContext);
+    Resolver := TRuleDerived.Resolver(mCache, AContext);
     try
-      Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
       try
         Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -890,7 +894,6 @@ begin
         Resolver.UnpinTree;
       end;
     finally
-      Resolver.Free;
     end;
   finally
     Names.Free;
@@ -928,6 +931,7 @@ end;
 procedure THresultIntegerMixRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Local: TUnitIndex;
   Nodes: TArray<TSyntaxNode>;
@@ -1092,9 +1096,10 @@ begin
     not ContainsText(AContext.Text, 'Integer') and not ContainsText(AContext.Text, 'LongInt')) then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -1106,7 +1111,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -1121,6 +1125,7 @@ end;
 procedure TInvalidVarArgumentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName, LineBreak: string;
   Local: TUnitIndex;
   Lines: TArray<string>;
@@ -1435,9 +1440,10 @@ begin
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   if LineBreak = '' then
     LineBreak := sLineBreak;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -1450,7 +1456,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -1464,6 +1469,7 @@ end;
 procedure TConditionNotBooleanRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Local: TUnitIndex;
   Node: TSyntaxNode;
@@ -1535,9 +1541,10 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -1557,7 +1564,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -1571,6 +1577,7 @@ end;
 procedure TForInNotEnumerableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Node: TSyntaxNode;
 
@@ -1673,9 +1680,10 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, ' in') then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       for Node in PreOrder(AContext.Tree.Root) do
@@ -1685,7 +1693,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 

@@ -863,7 +863,22 @@ begin
 end;
 
 procedure TNameResolver.SetNamespaces(const AValue: TArray<string>);
+var
+  mIndex: Integer;
+  mSame: Boolean;
 begin
+  // Ein gemeinsamer Resolver (TRuleDerived.Resolver) bekommt dieselben Namespaces von jeder Regel erneut: dann
+  // die gemerkten Antworten behalten.
+  mSame := Length(AValue) = Length(FNamespaces);
+  if mSame then
+    for mIndex := 0 to High(AValue) do
+      if not SameText(AValue[mIndex], FNamespaces[mIndex]) then
+      begin
+        mSame := False;
+        Break;
+      end;
+  if mSame then
+    Exit;
   FNamespaces := AValue;
   // Die gemerkten Antworten hängen an den Namespaces.
   if FUnitAnswers <> nil then
