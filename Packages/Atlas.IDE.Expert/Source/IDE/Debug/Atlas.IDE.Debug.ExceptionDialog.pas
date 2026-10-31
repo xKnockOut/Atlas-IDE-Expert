@@ -42,6 +42,8 @@ type
     FOnFound: TAtlasDebugDialogFound;
     FOnTimeout: TProc;
     FLogged: Boolean;
+    // Bereit, während das Programm läuft: ohne Zeitlimit, nur modale Fenster (Arm).
+    FArmed: Boolean;
     procedure Tick(Sender: TObject);
     function ScanForm(AForm: TCustomForm): Boolean;
     procedure Collect(AControl: TWinControl; var ATexts, AButtons: TArray<string>;
@@ -54,6 +56,11 @@ type
     /// <summary>Nach einem Halt wegen einer Exception: Dialog suchen. AOnFound kommt höchstens einmal,
     /// AOnTimeout, wenn bis WatchMs keiner erschien.</summary>
     procedure Watch(const AOnFound: TAtlasDebugDialogFound; const AOnTimeout: TProc);
+    /// <summary>Während das Programm läuft: auf den Dialog warten, ohne Zeitlimit. Die IDE zeigt ihn in ihrer
+    /// Behandlung des Halts, bevor Atlas den Halt gemeldet bekommt; nur so lässt er sich ersetzen (#783).
+    /// </summary>
+    procedure Arm(const AOnFound: TAtlasDebugDialogFound);
+    function Armed: Boolean;
     procedure Cancel;
     /// <summary>Den erkannten Dialog mit „Fortsetzen“ schließen; False, wenn er nicht mehr da ist oder keinen
     /// solchen Knopf hat.</summary>
@@ -115,8 +122,22 @@ begin
   Tick(nil);
 end;
 
+procedure TAtlasIdeExceptionDialog.Arm(const AOnFound: TAtlasDebugDialogFound);
+begin
+  Cancel;
+  FOnFound := AOnFound;
+  FArmed := True;
+  FTimer.Enabled := True;
+end;
+
+function TAtlasIdeExceptionDialog.Armed: Boolean;
+begin
+  Result := FArmed and FTimer.Enabled;
+end;
+
 procedure TAtlasIdeExceptionDialog.Cancel;
 begin
+  FArmed := False;
   if FTimer <> nil then
     FTimer.Enabled := False;
   FOnFound := nil;
@@ -199,9 +220,13 @@ begin
     Form := Screen.CustomForms[Index];
     if not Form.Visible or (Form = Application.MainForm) then
       Continue;
+    // Bereit (Programm läuft): nur modale Fenster, damit der Takt die IDE nicht durchsucht.
+    if FArmed and not (fsModal in Form.FormState) then
+      Continue;
     if ScanForm(Form) then
     begin
       FTimer.Enabled := False;
+      FArmed := False;
       Found := FOnFound;
       FOnFound := nil;
       FOnTimeout := nil;
@@ -214,7 +239,7 @@ begin
       Exit;
     end;
   end;
-  if TThread.GetTickCount64 - FStartedAt >= WatchMs then
+  if not FArmed and (TThread.GetTickCount64 - FStartedAt >= WatchMs) then
   begin
     FTimer.Enabled := False;
     Timeout := FOnTimeout;

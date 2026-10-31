@@ -98,7 +98,13 @@ type
     FNextHandle: Integer;
     /// <summary>Quelle der Klasse schon protokolliert (Studie #783, Punkt S3; einmal je Sitzung).</summary>
     FStatusLogged: Boolean;
+    /// <summary>Halt, den der Dialog schon vor der Meldung der Session ausgelöst hat (Arm); 0 = keiner.</summary>
+    FEarlyStop: Integer;
     class procedure Captured(AFault: Boolean); static;
+    /// <summary>Dialog gefunden, während das Programm lief: den Halt sofort aufnehmen (#783).</summary>
+    class procedure EarlyFound(const AScan: TAtlasDebugDialogScan); static;
+    /// <summary>Während das Programm läuft auf den Exception-Dialog warten.</summary>
+    class procedure ArmDialog; static;
     class procedure ReadStack; static;
     class procedure RetryTick; static;
     class procedure DialogFound(const AScan: TAtlasDebugDialogScan); static;
@@ -167,12 +173,20 @@ begin
   FDialog.NewSession;
   FStatusLogged := False;
   FHasPending := False;
+  FEarlyStop := 0;
   TAtlasIdeDebugSources.Clear;
   RefreshWindow;
+  ArmDialog;
 end;
 
 procedure TAtlasIdeDebugExceptions.TListener.DebugStopped(AStop: TAtlasDebugStop);
 begin
+  // Schon über den Dialog aufgenommen (EarlyFound): nicht doppelt.
+  if FEarlyStop = TAtlasIdeDebugSession.StopCount then
+    Exit;
+  // Ein Halt ohne Dialog (Haltepunkt, Schritt): solange er steht, nicht weiter nach dem Dialog suchen.
+  if FDialog.Armed then
+    FDialog.Cancel;
   if (AStop = TAtlasDebugStop.Paused) or not TAtlasIdeSettings.Current.DebugExceptionHistory then
     Exit;
   Captured(AStop = TAtlasDebugStop.Fault);
@@ -189,11 +203,13 @@ begin
     FRetry.Enabled := False;
     Finish;
   end;
+  ArmDialog;
 end;
 
 procedure TAtlasIdeDebugExceptions.TListener.DebugEnded;
 begin
   DebugResumed;
+  FDialog.Cancel;
 end;
 
 { TAtlasIdeDebugExceptions }
@@ -428,6 +444,40 @@ begin
   FRetries := 0;
   ReadStack;
   FDialog.Watch(DialogFound, DialogTimeout);
+end;
+
+class procedure TAtlasIdeDebugExceptions.ArmDialog;
+begin
+  if (FDialog <> nil) and TAtlasIdeSettings.Current.DebugExceptionHistory then
+    FDialog.Arm(EarlyFound);
+end;
+
+class procedure TAtlasIdeDebugExceptions.EarlyFound(const AScan: TAtlasDebugDialogScan);
+var
+  Thread: IOTAThread;
+begin
+  Thread := TAtlasIdeDebugSession.StoppedThread;
+  if Thread = nil then
+    Exit;
+  if FHasPending then
+  begin
+    FDialogDone := True;
+    FStackDone := True;
+    Finish;
+  end;
+  // Die Session zählt diesen Halt erst, wenn die IDE ihren Dialog geschlossen hat: Nummer vorwegnehmen.
+  FEarlyStop := TAtlasIdeDebugSession.StopCount + 1;
+  FPending := Default(TAtlasDebugExceptionStop);
+  FPending.Stop := FEarlyStop;
+  FPending.Exception := TAtlasDebugException.Create(Now, AScan.ExceptionClass, AScan.Message,
+    Thread.GetOSThreadID, TAtlasIdeDebugSession.ThreadName(Thread), '', 0, '');
+  FHasPending := True;
+  FDialogDone := False;
+  FStackDone := False;
+  FRetries := 0;
+  ReadStack;
+  // Der Dialog ist schon erkannt (FDialog kennt seine Knöpfe): kein neues Watch, das ihn vergäße.
+  DialogFound(AScan);
 end;
 
 class procedure TAtlasIdeDebugExceptions.ReadStack;
