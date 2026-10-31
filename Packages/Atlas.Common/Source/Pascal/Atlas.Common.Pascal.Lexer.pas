@@ -65,7 +65,9 @@ type
     FText: string;
     FLength: Integer;
     FPos: Integer;
-    function Peek(ADelta: Integer = 0): Char; inline;
+    function Peek(ADelta: Integer): Char; overload; inline;
+    // Wie oben mit ADelta = 0.
+    function Peek: Char; overload; inline;
     function AtLineBreak: Boolean; inline;
     procedure SkipToLineEnd;
     function ScanUntil(const ACloser: string): Boolean;
@@ -108,6 +110,11 @@ begin
     Result := FText[FPos + ADelta + 1]
   else
     Result := #0;
+end;
+
+function TScanner.Peek: Char;
+begin
+  Result := Peek(0);
 end;
 
 function TScanner.AtLineBreak: Boolean;

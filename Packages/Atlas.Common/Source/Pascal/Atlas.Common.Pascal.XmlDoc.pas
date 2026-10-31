@@ -41,8 +41,16 @@ type
     Styles: TXmlDocStyles;
     /// <summary>Bullet: Listenebene ab 1.</summary>
     Level: Integer;
-    class function Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles = [];
-      const ATarget: string = ''; ALevel: Integer = 0): TXmlDocRun; static;
+    class function Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles;
+      const ATarget: string; ALevel: Integer): TXmlDocRun; overload; static;
+    /// <summary>Wie oben mit ALevel = 0.</summary>
+    class function Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles;
+      const ATarget: string): TXmlDocRun; overload; static;
+    /// <summary>Wie oben ohne Ziel (ATarget = '', ALevel = 0).</summary>
+    class function Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles): TXmlDocRun;
+      overload; static;
+    /// <summary>Wie oben ohne Auszeichnung (AStyles = [], ATarget = '', ALevel = 0).</summary>
+    class function Create(AKind: TXmlDocRunKind; const AText: string): TXmlDocRun; overload; static;
   end;
 
   TXmlDocRuns = TArray<TXmlDocRun>;
@@ -79,14 +87,20 @@ type
     Exceptions: TArray<TXmlDocEntry>;
     function IsEmpty: Boolean;
     /// <summary>Index des ersten Abschnitts AKind (bei Name gleich AName); -1 ohne.</summary>
-    function IndexOf(AKind: TXmlDocSectionKind; const AName: string = ''): Integer;
+    function IndexOf(AKind: TXmlDocSectionKind; const AName: string): Integer; overload;
+    /// <summary>Wie oben ohne Namen (AName = '').</summary>
+    function IndexOf(AKind: TXmlDocSectionKind): Integer; overload;
     /// <summary>Ergänzt fehlende Abschnitte aus ABase (inheritdoc): eigene Abschnitte gehen vor,
     /// Parameter und Exceptions je Name.</summary>
     function Inherit(const ABase: TXmlDoc): TXmlDoc;
     /// <summary>Ganzer Kommentar als Klartext; AWithParams = False lässt die Parameter weg (Parameter-Hint).</summary>
-    function ToPlainText(AWithParams: Boolean = True): string;
+    function ToPlainText(AWithParams: Boolean): string; overload;
+    /// <summary>Wie oben mit AWithParams = True.</summary>
+    function ToPlainText: string; overload;
     /// <summary>Ganzer Kommentar als Markdown (Hover für andere Clients).</summary>
-    function ToMarkdown(AWithParams: Boolean = True): string;
+    function ToMarkdown(AWithParams: Boolean): string; overload;
+    /// <summary>Wie oben mit AWithParams = True.</summary>
+    function ToMarkdown: string; overload;
     /// <summary>Zerlegt den XML-Text eines ///-Kommentars (ohne die ///).</summary>
     class function Parse(const AXml: string): TXmlDoc; static;
     /// <summary>Text der ///-Zeilen direkt über ALine (0-basiert), ohne ///; Attribute ([...])
@@ -316,6 +330,22 @@ begin
 end;
 
 { TXmlDocRun }
+
+class function TXmlDocRun.Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles;
+  const ATarget: string): TXmlDocRun;
+begin
+  Result := Create(AKind, AText, AStyles, ATarget, 0);
+end;
+
+class function TXmlDocRun.Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles): TXmlDocRun;
+begin
+  Result := Create(AKind, AText, AStyles, '', 0);
+end;
+
+class function TXmlDocRun.Create(AKind: TXmlDocRunKind; const AText: string): TXmlDocRun;
+begin
+  Result := Create(AKind, AText, [], '', 0);
+end;
 
 class function TXmlDocRun.Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles;
   const ATarget: string; ALevel: Integer): TXmlDocRun;
@@ -912,6 +942,11 @@ begin
   Result := Length(Sections) = 0;
 end;
 
+function TXmlDoc.IndexOf(AKind: TXmlDocSectionKind): Integer;
+begin
+  Result := IndexOf(AKind, '');
+end;
+
 function TXmlDoc.IndexOf(AKind: TXmlDocSectionKind; const AName: string): Integer;
 var
   Index: Integer;
@@ -1101,6 +1136,11 @@ begin
     end;
 end;
 
+function TXmlDoc.ToPlainText: string;
+begin
+  Result := ToPlainText(True);
+end;
+
 function TXmlDoc.ToPlainText(AWithParams: Boolean): string;
 var
   Section: TXmlDocSection;
@@ -1148,6 +1188,11 @@ begin
         SeeAlso := 'Siehe auch: ' + Section.Text;
     end;
   Result := JoinBlocks([Main, ParamLines, TypeLines, Facts, Remark, Example, SeeAlso]);
+end;
+
+function TXmlDoc.ToMarkdown: string;
+begin
+  Result := ToMarkdown(True);
 end;
 
 function TXmlDoc.ToMarkdown(AWithParams: Boolean): string;

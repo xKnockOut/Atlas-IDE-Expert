@@ -48,7 +48,10 @@ type
   TSourceColors = class
   public
     /// <summary>Alle Farbwerte in AText.</summary>
-    class function Find(const AText: string; const ASystemColors: TSystemColorProvider = nil): TArray<TColorMatch>; static;
+    class function Find(const AText: string; const ASystemColors: TSystemColorProvider): TArray<TColorMatch>;
+      overload; static;
+    /// <summary>Wie oben mit ASystemColors = nil.</summary>
+    class function Find(const AText: string): TArray<TColorMatch>; overload; static;
     /// <summary>Schreibweisen für AColor; die erste entspricht AFormat (Systemfarben werden zu Hex).</summary>
     class function Presentations(const AColor: TRgbColor; AFormat: TColorFormat): TArray<TColorPresentation>; static;
     /// <summary>TColor-Hex wie $00FF8000 (Großbuchstaben, 8 Stellen).</summary>
@@ -240,6 +243,11 @@ begin
       Exit(True);
     end;
   Result := False;
+end;
+
+class function TSourceColors.Find(const AText: string): TArray<TColorMatch>;
+begin
+  Result := Find(AText, nil);
 end;
 
 class function TSourceColors.Find(const AText: string; const ASystemColors: TSystemColorProvider): TArray<TColorMatch>;

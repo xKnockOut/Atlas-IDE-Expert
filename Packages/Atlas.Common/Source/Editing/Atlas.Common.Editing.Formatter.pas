@@ -31,7 +31,13 @@ type
     /// <summary>Änderungen für die Zeilen AFirstLine bis ALastLine (-1 = bis zum Ende).
     /// Zeilenenden und die abschließende Leerzeile nur bei der ganzen Datei.</summary>
     class function Edits(const AText: string; const ATokens: TArray<TPascalToken>;
-      const ASettings: TFormatStyle; AFirstLine: Integer = 0; ALastLine: Integer = -1): TArray<TTextEdit>; static;
+      const ASettings: TFormatStyle; AFirstLine, ALastLine: Integer): TArray<TTextEdit>; overload; static;
+    /// <summary>Wie oben mit ALastLine = -1.</summary>
+    class function Edits(const AText: string; const ATokens: TArray<TPascalToken>;
+      const ASettings: TFormatStyle; AFirstLine: Integer): TArray<TTextEdit>; overload; static;
+    /// <summary>Wie oben für die ganze Datei (AFirstLine = 0, ALastLine = -1).</summary>
+    class function Edits(const AText: string; const ATokens: TArray<TPascalToken>;
+      const ASettings: TFormatStyle): TArray<TTextEdit>; overload; static;
     /// <summary>Text nach dem Formatieren, z. B. für Tests und den Linter.</summary>
     class function FormatText(const AText: string; const ATokens: TArray<TPascalToken>;
       const ASettings: TFormatStyle): string; static;
@@ -396,6 +402,18 @@ begin
       if not TFormatLayout.Wrap(Result, TPascalLexer.Tokenize(JoinTexts(Result, LB)), Settings, First, Last) then
         Break;
   KeepProtected(Result, AOriginal, AJoined, ProtectedLines(ATokens, Length(AOriginal)));
+end;
+
+class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ASettings: TFormatStyle; AFirstLine: Integer): TArray<TTextEdit>;
+begin
+  Result := Edits(AText, ATokens, ASettings, AFirstLine, -1);
+end;
+
+class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ASettings: TFormatStyle): TArray<TTextEdit>;
+begin
+  Result := Edits(AText, ATokens, ASettings, 0, -1);
 end;
 
 class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;

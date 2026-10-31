@@ -124,7 +124,10 @@ type
     /// AProjectDone läuft nach der Projektstufe (Projektdateien und über uses erreichbare Units).</summary>
     function Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled; const ATurn: IIndexTurn;
-      const AProjectDone: TIndexStageDone = nil): TIndexBuildResult; overload;
+      const AProjectDone: TIndexStageDone): TIndexBuildResult; overload;
+    /// <summary>Wie oben mit AProjectDone = nil.</summary>
+    function Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>; const AProgress: TIndexProgressEvent;
+      const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult; overload;
     /// <summary>Indiziert die Unit, falls noch nicht vorhanden. False, wenn sie nicht gefunden wird.</summary>
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Übernimmt Dateiänderungen; liefert die Zahl geänderter Units.</summary>
@@ -560,6 +563,12 @@ begin
     IndexFile(AFiles[Index], ALibrary, AResult);
   end;
   Result := True;
+end;
+
+function TIndexBuilder.Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>;
+  const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult;
+begin
+  Result := Build(AFiles, ASearchFiles, ALibraryFiles, AProgress, ACancelled, ATurn, nil);
 end;
 
 function TIndexBuilder.Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>;

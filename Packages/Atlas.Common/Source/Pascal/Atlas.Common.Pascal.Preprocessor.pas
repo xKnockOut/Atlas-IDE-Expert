@@ -318,7 +318,8 @@ type
     procedure AddDefineSite(AFileIndex: Integer; const AToken: TPascalToken; const AName: string;
       AUndefine: Boolean);
     procedure AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string;
-      AKind: TPreprocessorIssueKind = TPreprocessorIssueKind.General);
+      AKind: TPreprocessorIssueKind); overload;
+    procedure AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string); overload;
     procedure AddDirectiveSite(AFileIndex: Integer; const AToken: TPascalToken);
     procedure ProcessText(const AText: string; AFileIndex, ADepth: Integer);
     procedure Include(const AName: string; AFileIndex, ADepth: Integer; const AToken: TPascalToken);
@@ -1193,6 +1194,11 @@ begin
     Site.RootPos := FRootRange.StartPos;
   Site.Body := Trim(DirectiveBody(AToken.Text));
   FDirectiveSites.Add(Site);
+end;
+
+procedure TPreprocessorRun.AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string);
+begin
+  AddIssue(AFileIndex, AToken, AMessage, TPreprocessorIssueKind.General);
 end;
 
 procedure TPreprocessorRun.AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string;

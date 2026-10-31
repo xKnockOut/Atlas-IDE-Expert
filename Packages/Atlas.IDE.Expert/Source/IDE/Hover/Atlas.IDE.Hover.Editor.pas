@@ -208,7 +208,12 @@ type
     function Handles(const AFileName: string): Boolean;
   public
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
-      const AProblemsAt: TAtlasHoverProblemsFunc = nil; const AHandles: TAtlasHoverHandlesFunc = nil);
+      const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc); overload;
+    /// <summary>Wie oben mit AHandles = nil.</summary>
+    constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
+      const AProblemsAt: TAtlasHoverProblemsFunc); overload;
+    /// <summary>Wie oben ohne Probleme (AProblemsAt = nil, AHandles = nil).</summary>
+    constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc); overload;
     destructor Destroy; override;
     procedure Hide;
     /// <summary>Laufende Anfragen abwarten, bevor die Sitzung wegfällt (Neustart, Abschalten; Code-Review A-07).
@@ -289,6 +294,17 @@ begin
 end;
 
 { TAtlasEditorHover }
+
+constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
+  const AProblemsAt: TAtlasHoverProblemsFunc);
+begin
+  Create(ASession, ALog, AProblemsAt, nil);
+end;
+
+constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc);
+begin
+  Create(ASession, ALog, nil, nil);
+end;
 
 constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
   const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);

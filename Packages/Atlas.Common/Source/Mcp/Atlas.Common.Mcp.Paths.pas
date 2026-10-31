@@ -23,8 +23,12 @@ type
   public
     /// <summary>ARoot: Arbeitsordner; AExtraRoots: weitere erlaubte Ordner (zur Laufzeit, z. B. erst nach dem
     /// Laden des Projekts bekannt); ACanonicalize: optional, löst Verknüpfungen auf.</summary>
-    constructor Create(const ARoot: string; const AExtraRoots: TFunc<TArray<string>> = nil;
-      const ACanonicalize: TFunc<string, string> = nil);
+    constructor Create(const ARoot: string; const AExtraRoots: TFunc<TArray<string>>;
+      const ACanonicalize: TFunc<string, string>); overload;
+    /// <summary>Wie oben mit ACanonicalize = nil.</summary>
+    constructor Create(const ARoot: string; const AExtraRoots: TFunc<TArray<string>>); overload;
+    /// <summary>Wie oben nur mit ARoot (AExtraRoots = nil, ACanonicalize = nil).</summary>
+    constructor Create(const ARoot: string); overload;
     /// <summary>Absoluter, geprüfter Pfad zu APath; EMcpToolError außerhalb der erlaubten Ordner.</summary>
     function Resolve(const APath: string): string;
     /// <summary>APath (absolut, normalisiert) liegt in AFolder oder ist AFolder.</summary>
@@ -40,6 +44,16 @@ uses
   Atlas.Common.Mcp.Server;
 
 { TMcpPathGuard }
+
+constructor TMcpPathGuard.Create(const ARoot: string; const AExtraRoots: TFunc<TArray<string>>);
+begin
+  Create(ARoot, AExtraRoots, nil);
+end;
+
+constructor TMcpPathGuard.Create(const ARoot: string);
+begin
+  Create(ARoot, nil, nil);
+end;
 
 constructor TMcpPathGuard.Create(const ARoot: string; const AExtraRoots: TFunc<TArray<string>>;
   const ACanonicalize: TFunc<string, string>);

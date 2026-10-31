@@ -30,7 +30,9 @@ type
     Name: string;
     /// <summary>Projekt- oder Gruppendatei, wenn der Eintrag eine Datei nennt (#648); sonst ''.</summary>
     ProjectFile: string;
-    constructor Create(const APath, AName: string; const AProjectFile: string = '');
+    constructor Create(const APath, AName, AProjectFile: string); overload;
+    /// <summary>Wie oben ohne Projektdatei (AProjectFile = '').</summary>
+    constructor Create(const APath, AName: string); overload;
     /// <summary>Schlüssel zum Wiederfinden beim Entfernen: die Datei, sonst der Ordner.</summary>
     function Key: string;
   end;
@@ -111,6 +113,11 @@ begin
 end;
 
 { TWorkspaceFolder }
+
+constructor TWorkspaceFolder.Create(const APath, AName: string);
+begin
+  Self := TWorkspaceFolder.Create(APath, AName, '');
+end;
 
 constructor TWorkspaceFolder.Create(const APath, AName, AProjectFile: string);
 begin

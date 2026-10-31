@@ -38,9 +38,14 @@ type
       ADefaultExt: string); overload;
     /// <summary>True mit AFileName, wenn der Nutzer einen Speicherort gewählt hat.</summary>
     class function Execute(const AHint, APreview: string; out AFileName: string;
-      const APrepare: TAtlasExportDialogPrepare = nil): Boolean; overload; static;
+      const APrepare: TAtlasExportDialogPrepare): Boolean; overload; static;
+    /// <summary>Wie oben mit APrepare = nil.</summary>
+    class function Execute(const AHint, APreview: string; out AFileName: string): Boolean; overload; static;
     class function Execute(const ATitle, AHint, APreview, ADefaultName, AFilter, ADefaultExt: string;
-      out AFileName: string; const APrepare: TAtlasExportDialogPrepare = nil): Boolean; overload; static;
+      out AFileName: string; const APrepare: TAtlasExportDialogPrepare): Boolean; overload; static;
+    /// <summary>Wie oben mit APrepare = nil.</summary>
+    class function Execute(const ATitle, AHint, APreview, ADefaultName, AFilter, ADefaultExt: string;
+      out AFileName: string): Boolean; overload; static;
     property FileName: string read FFileName;
     property HintLabel: TLabel read FHint;
   end;
@@ -148,6 +153,17 @@ begin
   finally
     Dialog.Free;
   end;
+end;
+
+class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string): Boolean;
+begin
+  Result := Execute(AHint, APreview, AFileName, nil);
+end;
+
+class function TAtlasDiagnosticExportDialog.Execute(const ATitle, AHint, APreview, ADefaultName, AFilter,
+  ADefaultExt: string; out AFileName: string): Boolean;
+begin
+  Result := Execute(ATitle, AHint, APreview, ADefaultName, AFilter, ADefaultExt, AFileName, nil);
 end;
 
 class function TAtlasDiagnosticExportDialog.Execute(const ATitle, AHint, APreview, ADefaultName, AFilter,

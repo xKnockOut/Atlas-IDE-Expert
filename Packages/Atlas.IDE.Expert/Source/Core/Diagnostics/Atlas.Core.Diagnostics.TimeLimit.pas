@@ -59,9 +59,14 @@ type
     class constructor Create;
     class destructor Destroy;
     /// <summary>AProc mit Zeitlimit ausführen (ALimitMs &lt; 0: LimitMs). AError: Klasse und Meldung bei Failed.</summary>
-    class function Run(const AProc: TProc; out AError: string; ALimitMs: Integer = -1): TAtlasTimedOutcome; static;
+    class function Run(const AProc: TProc; out AError: string; ALimitMs: Integer): TAtlasTimedOutcome;
+      overload; static;
+    /// <summary>Wie oben mit ALimitMs = -1 (LimitMs).</summary>
+    class function Run(const AProc: TProc; out AError: string): TAtlasTimedOutcome; overload; static;
     /// <summary>Alle Arbeiter beenden (nach TAtlasShutdown.Signal); True, wenn alle innerhalb von AMs enden.</summary>
-    class function StopAll(AMs: Cardinal = 1000): Boolean; static;
+    class function StopAll(AMs: Cardinal): Boolean; overload; static;
+    /// <summary>Wie oben mit AMs = 1000.</summary>
+    class function StopAll: Boolean; overload; static;
     /// <summary>Arbeiter, die gerade einen Aufruf ausführen (auch aufgegebene).</summary>
     class function BusyCount: Integer; static;
     /// <summary>Bis zu AMs warten, bis kein Arbeiter mehr einen Aufruf ausführt (auch aufgegebene); True, wenn
@@ -214,6 +219,11 @@ begin
   end;
 end;
 
+class function TAtlasTimeLimit.Run(const AProc: TProc; out AError: string): TAtlasTimedOutcome;
+begin
+  Result := Run(AProc, AError, -1);
+end;
+
 class function TAtlasTimeLimit.Run(const AProc: TProc; out AError: string; ALimitMs: Integer): TAtlasTimedOutcome;
 var
   Worker: TWorker;
@@ -281,6 +291,11 @@ begin
     FReleased.WaitFor(Cardinal(Left));
     Result := BusyCount = 0;
   end;
+end;
+
+class function TAtlasTimeLimit.StopAll: Boolean;
+begin
+  Result := StopAll(1000);
 end;
 
 class function TAtlasTimeLimit.StopAll(AMs: Cardinal): Boolean;

@@ -36,7 +36,9 @@ type
     /// <summary>Auf AEvent bis zu ATimeoutMs warten; wrAbandoned, wenn vorher das Abbruchsignal kam.</summary>
     class function WaitFor(AEvent: TEvent; ATimeoutMs: Cardinal): TWaitResult; static;
     /// <summary>Auf das Ende von AThreads warten, zusammen höchstens AMs; True, wenn alle beendet sind.</summary>
-    class function WaitForThreads(const AThreads: TArray<TThread>; AMs: Cardinal = StopMs): Boolean; static;
+    class function WaitForThreads(const AThreads: TArray<TThread>; AMs: Cardinal): Boolean; overload; static;
+    /// <summary>Wie oben mit AMs = StopMs.</summary>
+    class function WaitForThreads(const AThreads: TArray<TThread>): Boolean; overload; static;
   end;
 
 implementation
@@ -102,6 +104,11 @@ begin
       Exit;
   until Watch.ElapsedMilliseconds >= ATimeoutMs;
   Result := wrTimeout;
+end;
+
+class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>): Boolean;
+begin
+  Result := WaitForThreads(AThreads, StopMs);
 end;
 
 class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>; AMs: Cardinal): Boolean;

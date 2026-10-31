@@ -53,12 +53,17 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-      const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Vorkommen des Symbols an APosition in ATree, in Textreihenfolge.</summary>
     class function Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition;
-      const ACancellation: IJsonRpcCancellationToken = nil): TArray<TDocumentHighlight>; static;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition): TArray<TDocumentHighlight>; overload; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Ohne Zuweisung gelten die Vorgaben.</summary>
     property SettingsFor: THighlightSettingsProvider read FSettingsFor write FSettingsFor;
@@ -122,6 +127,11 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
+constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+begin
+  Create(AStore, AIndex, nil);
+end;
+
 constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
@@ -134,6 +144,12 @@ end;
 procedure TLspDocumentHighlights.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(Method, HandleHighlight);
+end;
+
+class function TLspDocumentHighlights.Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TDocumentHighlight>;
+begin
+  Result := Highlights(AResolver, AIndex, ATree, AFileName, APosition, nil);
 end;
 
 class function TLspDocumentHighlights.Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex;

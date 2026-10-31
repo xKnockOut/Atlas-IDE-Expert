@@ -78,7 +78,9 @@ type
     /// <summary>Meldet sich am Dokumentspeicher und, falls angegeben, für Editor-Einstellungen am Dispatcher an.
     /// Bei mehreren Arbeitsbereichsordnern verteilt die Komposition die Ereignisse selbst
     /// (DocumentEvent, SetEditorSettings) und ruft Attach nicht auf.</summary>
-    procedure Attach(ADispatcher: TJsonRpcDispatcher = nil);
+    procedure Attach(ADispatcher: TJsonRpcDispatcher); overload;
+    /// <summary>Wie oben ohne Dispatcher (ADispatcher = nil).</summary>
+    procedure Attach; overload;
     /// <summary>Verarbeitet ein Dokumentereignis wie nach Attach.</summary>
     procedure DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     /// <summary>Übernimmt Editor-Einstellungen (JSON des Abschnitts, '' = keine).</summary>
@@ -163,6 +165,11 @@ destructor TLspConfiguration.Destroy;
 begin
   FLock.Free;
   inherited;
+end;
+
+procedure TLspConfiguration.Attach;
+begin
+  Attach(nil);
 end;
 
 procedure TLspConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);

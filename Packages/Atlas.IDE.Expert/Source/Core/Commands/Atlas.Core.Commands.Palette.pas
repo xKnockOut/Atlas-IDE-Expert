@@ -151,7 +151,10 @@ type
     /// <summary>Indizes der passenden Befehle, beste zuerst. AKeepOrder: ohne Eingabe und bei
     /// Gleichstand die Reihenfolge von ACommands statt alphabetisch.</summary>
     class function Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
-      AHistory: TAtlasCommandHistory; AKeepOrder: Boolean = False): TArray<Integer>; static;
+      AHistory: TAtlasCommandHistory; AKeepOrder: Boolean): TArray<Integer>; overload; static;
+    /// <summary>Wie oben mit AKeepOrder = False.</summary>
+    class function Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
+      AHistory: TAtlasCommandHistory): TArray<Integer>; overload; static;
     /// <summary>Beschriftung ohne Kürzelzeichen: "&amp;Datei" → "Datei", "&amp;&amp;" → "&amp;", "..." am Ende weg.</summary>
     class function CleanCaption(const ACaption: string): string; static;
   end;
@@ -429,6 +432,12 @@ begin
     Result := TrimRight(Copy(Result, 1, Length(Result) - 3))
   else if Result.EndsWith('…') then
     Result := TrimRight(Copy(Result, 1, Length(Result) - 1));
+end;
+
+class function TAtlasCommandPalette.Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
+  AHistory: TAtlasCommandHistory): TArray<Integer>;
+begin
+  Result := Order(ACommands, APattern, AHistory, False);
 end;
 
 class function TAtlasCommandPalette.Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;

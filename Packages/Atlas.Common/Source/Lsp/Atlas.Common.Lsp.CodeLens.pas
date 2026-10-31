@@ -69,7 +69,10 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+      const AFiles: TReferenceFilesProvider); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     class function Capability: TJSONObject; static;
     /// <summary>Alle Linsen der Datei; Referenzen noch ohne Titel.</summary>
@@ -91,7 +94,12 @@ type
     /// <summary>Zählt die Referenzen auf das Symbol der Linse.</summary>
     class function ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken = nil): TCodeLensEntry; static;
+      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TCodeLensEntry;
+      overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
+      const AReadText: TReferenceReadText): TCodeLensEntry; overload; static;
     /// <summary>CodeLens des LSP; ohne Titel mit data für codeLens/resolve. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AEntry: TCodeLensEntry; const AFileName: string): TJSONObject; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -219,6 +227,12 @@ end;
 procedure TLspCodeLens.SetNamespaces(const AValue: TArray<string>);
 begin
   TLspNamespaces.Write(FNamespaces, AValue);
+end;
+
+constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+begin
+  Create(AStore, AIndex, AReadText, AFiles, nil);
 end;
 
 constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -386,6 +400,13 @@ begin
     Entry.Title := TMetricsReport.StructureLensPart(Item, ALimits);
     Result := Result + [Entry];
   end;
+end;
+
+class function TLspCodeLens.ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  ATree: TSyntaxTree; const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
+  const AReadText: TReferenceReadText): TCodeLensEntry;
+begin
+  Result := ResolveReferences(AResolver, AIndex, ATree, AFileName, AEntry, AFiles, AReadText, nil);
 end;
 
 class function TLspCodeLens.ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex;

@@ -41,7 +41,10 @@ type
       const AKnownFiles: TArray<string>): TArray<TAtlasCompilerMessage>; static;
     /// <summary>Parameter für atlas/compilerMessages; Info-Meldungen bleiben weg.</summary>
     class function ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject, APlatform: string;
-      ASucceeded: Boolean; ABackground: Boolean = False): TJSONObject; static;
+      ASucceeded, ABackground: Boolean): TJSONObject; overload; static;
+    /// <summary>Wie oben mit ABackground = False.</summary>
+    class function ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject, APlatform: string;
+      ASucceeded: Boolean): TJSONObject; overload; static;
   end;
 
 implementation
@@ -125,6 +128,12 @@ const
   Texts: array[TAtlasCompilerSeverity] of string = ('info', 'hint', 'warning', 'error', 'fatal');
 begin
   Result := Texts[ASeverity];
+end;
+
+class function TAtlasCompilerMessages.ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject,
+  APlatform: string; ASucceeded: Boolean): TJSONObject;
+begin
+  Result := ToJson(AMessages, AProject, APlatform, ASucceeded, False);
 end;
 
 class function TAtlasCompilerMessages.ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject,

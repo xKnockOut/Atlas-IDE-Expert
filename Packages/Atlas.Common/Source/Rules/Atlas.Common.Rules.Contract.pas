@@ -33,7 +33,9 @@ type
     /// </summary>
     Experimental: Boolean;
     constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
-      AExperimental: Boolean = False);
+      AExperimental: Boolean); overload;
+    /// <summary>Wie oben mit AExperimental = False.</summary>
+    constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string); overload;
   end;
 
   /// <summary>Eine Textersetzung einer Korrektur. Alias auf TTextEdit aus Documents.Contract,
@@ -70,7 +72,9 @@ type
     /// <summary>Aktion „Graph zeigen“ statt Änderung (#896): der Client öffnet die Unit-Beziehungen (#593) der
     /// geprüften Datei. Edits bleiben leer.</summary>
     ShowsUnitRelations: Boolean;
-    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
+    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean); overload;
+    /// <summary>Wie oben mit ASafe = False.</summary>
+    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>); overload;
     /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
     class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
     /// <summary>Aktion, die zu ATarget (in den Klammern eines Aufrufs) springt und dort den Parameter-Hint öffnet
@@ -506,6 +510,11 @@ end;
 
 { TRuleDescriptor }
 
+constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string);
+begin
+  Self := TRuleDescriptor.Create(AId, ADefaultSeverity, ADescription, False);
+end;
+
 constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
   AExperimental: Boolean);
 begin
@@ -516,6 +525,11 @@ begin
 end;
 
 { TRuleFix }
+
+constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>);
+begin
+  Self := TRuleFix.Create(ATitle, AEdits, False);
+end;
 
 constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean);
 begin

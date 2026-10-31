@@ -59,7 +59,9 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-      const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>semanticTokensProvider mit Legende, full und range.</summary>
     class function Capability: TJSONObject; static;
@@ -67,7 +69,10 @@ type
     /// <summary>Eingeordnete Bezeichner in ARange (alle, wenn AWithRange False), nach Position.</summary>
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AFileName: string;
       const ARange: TTextRange; AWithRange: Boolean;
-      const ACancellation: IJsonRpcCancellationToken = nil): TArray<TSemanticToken>; static;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TSemanticToken>; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AFileName: string;
+      const ARange: TTextRange; AWithRange: Boolean): TArray<TSemanticToken>; overload; static;
     /// <summary>Modifier reassigned an jedem Token, das eine Stelle der Namen ASymbols ist (#712).</summary>
     class procedure MarkReassigned(var ATokens: TArray<TSemanticToken>;
       const ASymbols: TArray<TReassignedSymbol>); static;
@@ -189,6 +194,11 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
+constructor TLspSemanticTokens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+begin
+  Create(AStore, AIndex, nil);
+end;
+
 constructor TLspSemanticTokens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
@@ -229,6 +239,12 @@ begin
   Result.AddPair('legend', Legend);
   Result.AddPair('full', TJSONBool.Create(True));
   Result.AddPair('range', TJSONBool.Create(True));
+end;
+
+class function TLspSemanticTokens.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const ARange: TTextRange; AWithRange: Boolean): TArray<TSemanticToken>;
+begin
+  Result := Collect(AResolver, AIndex, ATree, AFileName, ARange, AWithRange, nil);
 end;
 
 class function TLspSemanticTokens.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;

@@ -185,7 +185,9 @@ type
     procedure AttachClientHandlers;
   public
     /// <summary>AClient gehört weiter dem Aufrufer.</summary>
-    constructor Create(AClient: TLspClient; ATimeoutMs: Cardinal = 3000);
+    constructor Create(AClient: TLspClient; ATimeoutMs: Cardinal); overload;
+    /// <summary>Wie oben mit ATimeoutMs = 3000.</summary>
+    constructor Create(AClient: TLspClient); overload;
     destructor Destroy; override;
     class function PathToUri(const APath: string): string; static;
     class function UriToPath(const AUri: string): string; static;
@@ -488,6 +490,11 @@ begin
 end;
 
 { TLspSession }
+
+constructor TLspSession.Create(AClient: TLspClient);
+begin
+  Create(AClient, 3000);
+end;
 
 constructor TLspSession.Create(AClient: TLspClient; ATimeoutMs: Cardinal);
 begin
