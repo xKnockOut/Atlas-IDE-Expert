@@ -6,10 +6,27 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Schnellschalter: Symbol „Einstellung öffnen“ rechts in jeder Zeile (Klick oder Strg+Enter) öffnet Tools › Optionen › Atlas genau an dieser Einstellung und markiert sie.
+- Minimap: Das Mausrad über der Minimap scrollt den Editor (Zeilen je Raste aus Windows).
+- Atlas schaltet Delphis „Ausdrucksauswertung im Kurzhinweis“ (Registry-Wert `ToolTip Watches`) ab, solange der Atlas-Tooltip beim Debuggen die Werte zeigt (`debug.hoverValues`), und wieder an, wenn nicht; wirkt nach dem nächsten Start. Vorher lag ein zweiter Wert-Tooltip über dem Atlas-Hover.
+
 ### Geändert
+- Mitlaufender Kopf (`editor.stickyScroll`) ist nicht mehr experimentell und standardmäßig an.
+- Schnellschalter handlicher: beim ersten Öffnen nur die erste Gruppe offen, Aufklappen schließt die anderen (Akkordeon), höchstens 80 % der Arbeitsfläche hoch mit Bildlauf (Mausrad, Pfeiltasten) und schmalem Balken.
+- Minimap lesbarer: Maßstab 2 als Vorgabe (`editor.minimap.scale`, 4 Pixel je Zeile), Bezeichner kräftiger, der Schieber nur noch als Schatten, die Routine am Cursor zusätzlich mit einem Akzentstrich am linken Rand.
+- Fenster „Auswerten“: Records erscheinen mit Feldnamen (`FeatureClass`, `Id`, …) statt `[0]`, `[1]`, …; Atlas wertet mit der Formatangabe `,r` aus, außer der Ausdruck trägt schon eine eigene.
+- Exception-Leiste ersetzt den Dialog „Benachrichtigung über Debugger-Exception“ jetzt ohne Aufblitzen: Atlas erkennt ihn schon beim Öffnen (`OnModalBegin`), blendet ihn aus und schließt ihn mit „Anhalten“; die Leiste zeigt Klasse und Meldung. Steht er nach 1,5 s noch, wird er wieder sichtbar.
+- Tools › Optionen öffnet Atlas über `IOTAEnvironmentOptions140.EditOptions` direkt auf der Seite „Atlas“ (vorher Menübefehl und Suche im Baum, die im Dialog von Delphi 13 nichts fand).
 - Keine Unit-Zyklen mehr im eigenen Code (#1450): Die 76 Befunde von `uses-cycle` in 49 Zyklen über implementation-uses sind an der Ursache aufgelöst, `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts mehr. Schnellbefehle: Die gemeinsamen Typen (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` als Record, uses-Kontext `TUsesContext`) stehen in der neuen Contract-Unit `Atlas.Common.Editing.Contract`; die `*Commands`-Units binden nur sie ein und melden ihre Befehle über `TSlashRegister`, nur das Register bindet alle ein. Einzelpaare: `TLspSymbolKind` nach `Lsp.Contract` (DocumentSymbols ↔ FormFiles), Formularprüfung in `Lsp.FormMentions` (InlayHints → MethodWithoutSelf → PromoteVariable), JSON-Strings in `Atlas.Text.Json` (Baseline ↔ Output ↔ Checker), Dateiadressen in `Atlas.Core.Lsp.Uris` (Lsp.Session ↔ WorkspaceEdits), `TAtlasIdeCommandUsage.UsageOf` statt über die Tastenkürzel-Tipps (KeyMap ↔ ShortcutTips), `Atlas.UI.Settings.ChoiceBox` und der Rückruf „Testen“ beim Abfragedialog (Settings.Page ↔ QueryDialog), `Atlas.UI.Tracker.DocBox` (IssueFrame ↔ CommentEditor). Verhalten unverändert.
 
 ### Behoben
+- Debuggen unter Win64: Jeder Zugriff auf den Aufrufstapel (Exception-Verlauf, Werte im Editor, Auswerten) endete in der Meldung „disconnected session“. Atlas las die Rahmen ab Index 0, die Open Tools API zählt ab 1; der Win32-Debugger nahm das hin. Ein Fehler beim Lesen stört die IDE außerdem nicht mehr (abgefangen, protokolliert).
+- Der Exception-Dialog der IDE wurde nie erkannt (keine Klasse und Meldung in der Exception-Leiste): Die IDE zeigt ihn in ihrer eigenen Behandlung des Halts, Atlas suchte erst danach. Jetzt wartet Atlas, solange das Programm läuft, auf den Dialog.
+- Schwebende Atlas-Fenster im IDE-Thema: Titelleiste von Windows im dunklen Modus (alle Schaltflächen bleiben), Grund in der Farbe des IDE-Stils; vorher hell mit weißer Schrift.
+- Schnellschalter ragte nach dem Aufklappen einer Gruppe oben aus dem Bildschirm.
+- `TCrashReserve.Run` hielt unter Last den vorigen Fall noch für laufend („Der vorige Fall wird noch geschrieben“).
+- Test `HealthyHoverIsNotReproduced` meldete den ersten Gebrauch geteilter Speicher als Leck; ein `[SetupFixture]` nimmt ihn vorweg.
 - `unused-parameter` (#1451): Routinen in Tabellen von Routinen (typisierte Konstante `array[…] of TFix = (A, B)`, Record-Konstante `(Lauf: A)`, Array-Literal `[A, B]`, Vorbelegung `X: TFix = A`) gelten als Wert und werden nicht mehr gemeldet; ihre Signatur gibt der Elementtyp vor. Die 27 Befunde im eigenen Code waren Reste und sind entfernt: `AText` aus `TClassEdits.BodiesEnd`/`InsertBeforeLine`, `StringCastFixes`, `TExpressionText.Normalized` (und dadurch `Same`), `ALines` aus `MakeTarget` und `TExitPoints.Find` (Überladung mit Rückrufen), `ATree` aus `ResultAssignments`, `ANode` aus `TTypeMismatchCheck.ProceduralText`, `ASite` aus `TLspStepTargets.ResolveInherited`, `AUri` aus `TLspWorkspaceCheck.Settle`, `AReason` aus `TMethodBuild.ClassMethodEdits` (jetzt eine Prozedur, sie gelingt immer); im Plugin der Elternparameter der privaten Fabriken der sieben Editorleisten (die anonyme Funktion an `TAtlasEditorBarHost.Create` behält ihren), `AView` aus `TAtlasIdeExitPoints.Ask`, `AShift` aus `TAtlasIdeDebugDialogCompletion.HandleKey`, `AUnit` aus `MapSelect`, `AKind` aus `TAtlasBranchDialog.BaseCaption`, `AError` aus `TAtlasTrackerQueryTest.Evaluate`; in Tests `Owners`, `NoReader` und `FlowHeight`. Die beiden Beispiele `Postfix.pas` und `Entdecken.pas` behalten ihre Parameter (zum Ausprobieren gedacht).
 
 ## [1.2.0] - 2026-10-30
