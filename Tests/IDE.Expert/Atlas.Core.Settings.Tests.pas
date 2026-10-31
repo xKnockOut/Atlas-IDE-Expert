@@ -2201,7 +2201,7 @@ begin
   Assert.IsFalse(Settings.Minimap);
   Assert.AreEqual('blocks', Settings.MinimapRender);
   Assert.AreEqual(120, Settings.MinimapWidth);
-  Assert.AreEqual(1, Settings.MinimapScale);
+  Assert.AreEqual(2, Settings.MinimapScale);
   Assert.AreEqual(120, Settings.MinimapMaxColumn);
   Assert.AreEqual('right', Settings.MinimapSide);
   Assert.AreEqual('always', Settings.MinimapShowSlider);
@@ -2211,7 +2211,7 @@ begin
   Settings.Minimap := True;
   Settings.MinimapRender := 'characters';
   Settings.MinimapWidth := 90;
-  Settings.MinimapScale := 2;
+  Settings.MinimapScale := 3;
   Settings.MinimapMaxColumn := 80;
   Settings.MinimapSide := 'left';
   Settings.MinimapShowSlider := 'mouseover';
@@ -2227,7 +2227,7 @@ begin
   Assert.IsTrue(Loaded.Minimap);
   Assert.AreEqual('characters', Loaded.MinimapRender);
   Assert.AreEqual(90, Loaded.MinimapWidth);
-  Assert.AreEqual(2, Loaded.MinimapScale);
+  Assert.AreEqual(3, Loaded.MinimapScale);
   Assert.AreEqual(80, Loaded.MinimapMaxColumn);
   Assert.AreEqual('left', Loaded.MinimapSide);
   Assert.AreEqual('mouseover', Loaded.MinimapShowSlider);
