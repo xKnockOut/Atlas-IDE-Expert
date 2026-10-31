@@ -1,6 +1,6 @@
 ﻿# 0006: IDE-Plugin als Code Insight-Manager für RAD Studio
 
-- Status: Angenommen
+- Status: Angenommen; der Grundsatz „ein BPL“ ist ersetzt durch [ADR 0017](0017-funktions-packages.md)
 - Datum: 2026-10-09
 - Bezug: #175 RAD Studio als LSP-Client, #63 Hybrid-Modus (ADR 0005)
 

@@ -9,6 +9,12 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## Plugin in Funktions-Packages aufteilen (31.10.2026, Branch `claude/project-thread-ewwfb4`)
+- Marco fragte, ob Atlas-Funktionen in eigene Packages gehören. Analyse mit Varianten A bis D und Package-Diagramm: https://claude.ai/artifact/MYjWn34YhgeVw5PPA7eHu3.
+- Entscheidung: Ziel ist Variante C, feiner geschnitten (Kern `Atlas.IDE.Core` plus zehn Add-on-Packages: Debugger, Tracker, Welcome, Analysis, Designer, Search, Rules, Tests, Build, Bookmarks; die Anzeige der Diagnosen bleibt im Kern), festgehalten in ADR 0017. Den Kern in Base und CodeInsight zu teilen ist als möglicher Schnitt nach dem Pilot vermerkt. Weg: #1454 Modul-Schalter, #1455 Verträge statt direkter uses, #1456 Pilot mit dem Debugger; die übrigen Module erst nach dem Pilot. Versionen: #1454 und #1455 in 1.x, Pilot als `2.0.0-beta.1`, Aufteilung insgesamt = 2.0.0.
+- #227 „Geplante Einstellungen“ um die Modul-Schalter aus #1454 ergänzt.
+- Offen: alles umsetzen; nur Doku geändert.
+
 ## Unit-Zyklen aufgelöst (#1450, 31.10.2026, Branch `claude/project-thread-r4qz3t`, PR #1453)
 - `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet 0 statt 76 Befunde (Cloud, FPC; Lauf rund 13 Minuten). Schnell prüfen ohne Server: uses aller Units als Graph, Tarjan (so in der Cloud gemacht).
 - Schnellbefehle: Typen in `Atlas.Common.Editing.Contract` (auch `TUsesContext`), `RegisterXCommands(const ARegister: TSlashRegister)`, `TSlashSettings` ist ein Record, `TSlashActions` entfällt (`TSlashContext.Actions: TList<TProc>`). Das Register `Editing.SlashCommands` bleibt Root, weil Lsp, Rules und ClassActions `Shared` nutzen (Composition dürften sie nicht einbinden).
