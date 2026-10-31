@@ -4581,7 +4581,7 @@ const
     '      "type": "integer",',
     '      "minimum": 1,',
     '      "maximum": 3,',
-    '      "default": 1,',
+    '      "default": 2,',
     '      "x-key": "editor.minimap.scale",',
     '      "x-area": "editor",',
     '      "x-page": "Editor",',

@@ -126,6 +126,8 @@ uses
 const
   /// <summary>Deckkraft (0–255) von Methodenband, Zeilenband und Schieber.</summary>
   MethodAlpha = 28;
+  /// <summary>Breite des Akzentstrichs der Routine am Cursor (96 DPI).</summary>
+  MethodBarWidth = 2;
   BandAlpha = 80;
   // Nur ein Schatten: Bei 48 überdeckte der Schieber im dunklen Thema die Zeichen darunter.
   SliderAlpha = 20;
@@ -472,6 +474,10 @@ begin
     mTop := FMap.PixelOfLine(First);
     Bottom := Max(mTop + 1, FMap.PixelOfRow(FMap.RowOf(Last) + 1));
     Blend(Canvas, TRect.Create(0, mTop, ClientWidth, Bottom), FColors.Accent, MethodAlpha);
+    // Akzentstrich am linken Rand: Die leichte Hinterlegung allein ging im dunklen Thema unter.
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := TColor(FColors.Accent);
+    Canvas.FillRect(TRect.Create(0, mTop, Scale(MethodBarWidth), Bottom));
   end;
   // Marken: Zeilenband bzw. Streifen am linken Rand.
   if FOptions.Markers then

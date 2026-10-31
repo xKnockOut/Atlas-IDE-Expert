@@ -2210,7 +2210,8 @@ begin
   Result.Minimap := False;
   Result.MinimapRender := 'blocks';
   Result.MinimapWidth := 120;
-  Result.MinimapScale := 1;
+  // 2: 4 Pixel je Zeile, Zeichen lesbar wie in VS Code (bei 1 kaum erkennbar).
+  Result.MinimapScale := 2;
   Result.MinimapMaxColumn := 120;
   Result.MinimapSide := 'right';
   Result.MinimapShowSlider := 'always';
