@@ -1596,6 +1596,7 @@ begin
     TMonitor.Exit(FLock);
   end;
   if Hold <> nil then
+  begin
     Result.PackageProvides :=
       function(const APackage, AUnitName: string): TRulePackageAnswer
       var
@@ -1608,6 +1609,13 @@ begin
         else
           Result := TRulePackageAnswer.No;
       end;
+    // dcc sieht auch die Units der Packages, die ein requires-Package verlangt (wie TUnitLookup).
+    Result.PackageRequires :=
+      function(const APackage: string): TArray<string>
+      begin
+        Result := Hold.Locator.Requires(APackage);
+      end;
+  end;
   // Präfixe der Projektdatei .atlas für naming-prefix und die Korrektur von shadowed-name (#1111).
   if (FIdeProjects <> nil) and (ProjectFileName <> '') and FIdeProjects.Find(ProjectFileName, Context) then
     Result.Naming := Context.RuleNaming;

@@ -112,6 +112,8 @@ type
 {$SCOPEDENUMS OFF}
   /// <summary>Gehört AUnitName zu Package APackage (aus requires)? Über dessen .dpk bzw. .dcp (#46).</summary>
   TRulePackageProvides = reference to function(const APackage, AUnitName: string): TRulePackageAnswer;
+  /// <summary>Namen aus requires des Packages APackage (aus seiner .dpk); leer ohne Quelle.</summary>
+  TRulePackageRequires = reference to function(const APackage: string): TArray<string>;
   /// <summary>Antwort der Unit-Suche (#1016): gefunden, sicher nicht gefunden oder ohne Aussage (Pfade der
   /// Installation unbekannt, Makro in einem Pfad offen, Inhalt eines Packages unbekannt).</summary>
 {$SCOPEDENUMS ON}
@@ -312,6 +314,9 @@ type
     FileName: string;
     /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt, Package-Prüfungen schweigen.</summary>
     PackageProvides: TRulePackageProvides;
+    /// <summary>requires eines Packages: dcc sieht auch die Units der Packages, die ein requires-Package
+    /// verlangt (Atlas.Windows → Atlas.Common → Atlas.Text); nil = nur die direkten.</summary>
+    PackageRequires: TRulePackageRequires;
     /// <summary>Unit-Suche wie beim Compiler (#1016); nil = unbekannt (Linter, Datei ohne Projekt).</summary>
     Units: IRuleUnitLookup;
     /// <summary>Anwendungsart des Projekts, zu dem die Datei gehört (#926); Unknown ohne Projekt.</summary>
@@ -383,6 +388,8 @@ type
     Units: IRuleUnitLookup;
     /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt.</summary>
     PackageProvides: TRulePackageProvides;
+    /// <summary>requires eines Packages (für die Kette der requires); nil = nur die direkten.</summary>
+    PackageRequires: TRulePackageRequires;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt.</summary>
     ProjectFiles: IRuleProjectFiles;
     /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
@@ -490,6 +497,7 @@ begin
   AContext.Namespaces := Namespaces;
   AContext.Units := Units;
   AContext.PackageProvides := PackageProvides;
+  AContext.PackageRequires := PackageRequires;
   AContext.ProjectFiles := ProjectFiles;
   AContext.Naming := Naming;
   AContext.ProjectWarnings := ProjectWarnings;

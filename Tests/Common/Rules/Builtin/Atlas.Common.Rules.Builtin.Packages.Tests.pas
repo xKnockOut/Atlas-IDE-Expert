@@ -18,6 +18,10 @@ type
     procedure ReportsImplicitUnitsWithFix;
     [Test]
     procedure RequiredPackageProvidesUnit;
+    /// <summary>Wie dcc: Units der Packages, die ein requires-Package verlangt, sind ebenfalls vorhanden
+    /// (Atlas.Windows → Atlas.Common → Atlas.Text).</summary>
+    [Test]
+    procedure IndirectRequiresProvideUnit;
     [Test]
     procedure UnknownPackageIsSilent;
     [Test]
@@ -97,7 +101,30 @@ begin
     end;
 end;
 
-function Run(const ASource: string; const AProvides: TRulePackageProvides): TArray<TRuleFinding>;
+function Run(const ASource: string; const AProvides: TRulePackageProvides;
+  const ARequires: TRulePackageRequires): TArray<TRuleFinding>; overload;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := 'KasseCore.dpk';
+    Context.UnitName := 'KasseCore';
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.Index := NewIndex;
+    Context.FileName := 'C:\P\KasseCore.dpk';
+    Context.PackageProvides := AProvides;
+    Context.PackageRequires := ARequires;
+    Result := TRuleEngine.Run([IRule(TImplicitPackageImportRule.Create)], TServerSettings.Default, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+function Run(const ASource: string; const AProvides: TRulePackageProvides): TArray<TRuleFinding>; overload;
 var
   Context: TRuleContext;
   Tree: TSyntaxTree;
@@ -163,6 +190,25 @@ begin
   Assert.IsFalse(Messages(Run(PackageKasse, Provides(False))).Contains('uBasis'));
   Assert.IsTrue(Messages(Run(PackageKasse.Replace(', Basis;', ';'), Provides(False))).Contains(
     '"uBasis" wird implizit'));
+end;
+
+procedure TPackageRulesTests.IndirectRequiresProvideUnit;
+var
+  mSource: string;
+  mRequires: TRulePackageRequires;
+begin
+  // KasseCore verlangt nur Mitte, Mitte verlangt Basis, Basis liefert uBasis.
+  mSource := PackageKasse.Replace(', Basis;', ', Mitte;');
+  mRequires :=
+    function(const APackage: string): TArray<string>
+    begin
+      Result := nil;
+      if SameText(APackage, 'Mitte') then
+        Result := ['Basis'];
+    end;
+  Assert.IsFalse(Messages(Run(mSource, Provides(False), mRequires)).Contains('uBasis'));
+  // Ohne die Kette (nur direkte requires) wäre uBasis implizit.
+  Assert.IsTrue(Messages(Run(mSource, Provides(False), nil)).Contains('"uBasis" wird implizit'));
 end;
 
 procedure TPackageRulesTests.UnknownPackageIsSilent;
