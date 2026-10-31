@@ -225,7 +225,8 @@ begin
   FView.SetMarks([TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 5005, 1),
     TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Added, 10, 2)]);
   FView.SetFolds([TAtlasMinimapFold.Create(100, 50)]);
-  Assert.IsTrue(FView.Map.Compressed, '10 000 Zeilen werden gestaucht');
+  Assert.IsFalse(FView.Map.Compressed, '10 000 Zeilen werden nicht gestaucht');
+  Assert.IsTrue(FView.Map.Offset > 0, 'die Minimap scrollt mit zur Mitte');
   Assert.AreEqual(9950, FView.Map.RowCount);
   FView.Repaint;
   Options := TAtlasMinimap.Defaults;

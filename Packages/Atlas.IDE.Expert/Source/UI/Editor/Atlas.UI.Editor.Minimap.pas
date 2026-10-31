@@ -62,6 +62,8 @@ type
     FHeadersValid: Boolean;
     FBars: TAtlasOverviewBars;
     FBarsValid: Boolean;
+    /// <summary>Offset der Abbildung, mit dem FCode gezeichnet ist (Mitscrollen).</summary>
+    FCodeOffset: Integer;
     FHot: Boolean;
     FDragging: Boolean;
     FGrab: Integer;
@@ -304,6 +306,12 @@ begin
   FTopLine := ATopLine;
   FBottomLine := ABottomLine;
   FCursorLine := ACursorLine;
+  // Mitscrollen: Ändert sich der Offset, liegen Überschriften und Marken an anderer Stelle.
+  if FMapValid and FMap.Follow(FTopLine, Max(FTopLine, FBottomLine)) then
+  begin
+    FHeadersValid := False;
+    FBarsValid := False;
+  end;
   Invalidate;
 end;
 
@@ -328,6 +336,8 @@ begin
   if FMapValid then
     Exit;
   FMap := TAtlasMinimapMap.Create(Length(FRuns), FFolds, RowHeight, ClientHeight);
+  // Passt der Inhalt nicht, scrollt die Minimap mit der Lage im Editor mit (wie VS Code) statt zu stauchen.
+  FMap.Follow(FTopLine, Max(FTopLine, FBottomLine));
   FMapValid := True;
 end;
 
@@ -421,8 +431,8 @@ var
 begin
   EnsureMap;
   Same := FCodeValid and (FCodeWidth = ClientWidth) and (FCodeHeight = ClientHeight) and
-    (FCodeRows = FMap.RowCount) and (FCodeRowHeight = FMap.RowHeight) and TAtlasMinimap.SameFolds(FCodeFolds,
-    FMap.Folds);
+    (FCodeRows = FMap.RowCount) and (FCodeRowHeight = FMap.RowHeight) and (FCodeOffset = FMap.Offset) and
+    TAtlasMinimap.SameFolds(FCodeFolds, FMap.Folds);
   if Same and (FDirty = nil) then
     Exit;
   FCode.Canvas.Brush.Style := bsSolid;
@@ -447,13 +457,15 @@ begin
   FCode.SetSize(Max(1, ClientWidth), Max(1, ClientHeight));
   FCode.Canvas.Brush.Color := TColor(FColors.Surface);
   FCode.Canvas.FillRect(TRect.Create(0, 0, FCode.Width, FCode.Height));
-  for Row := 0 to FMap.RowCount - 1 do
+  // Nur die sichtbaren Zeilen: Beim Mitscrollen liegt der Rest außerhalb.
+  for Row := FMap.RowAt(0) to Min(FMap.RowCount - 1, FMap.RowAt(Max(0, ClientHeight - 1)) + 1) do
   begin
     mTop := FMap.PixelOfRow(Row);
     Bottom := Max(mTop + 1, FMap.PixelOfRow(Row + 1));
     PaintRow(FCode.Canvas, Row, mTop, Bottom - mTop);
   end;
   FCodeValid := True;
+  FCodeOffset := FMap.Offset;
   FCodeWidth := ClientWidth;
   FCodeHeight := ClientHeight;
   FCodeRows := FMap.RowCount;

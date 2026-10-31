@@ -9,6 +9,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ### Neu
 - Schnellschalter: Symbol „Einstellung öffnen“ rechts in jeder Zeile (Klick oder Strg+Enter) öffnet Tools › Optionen › Atlas genau an dieser Einstellung und markiert sie.
 - Minimap: Das Mausrad über der Minimap scrollt den Editor (Zeilen je Raste aus Windows).
+- Minimap scrollt bei langen Dateien mit, statt sie zu stauchen (wie VS Code): Zeilen behalten ihre volle Höhe, oben in der Datei steht der Anfang, unten das Ende, dazwischen anteilig; der Schieber läuft beim Ziehen gleichmäßig über die ganze Höhe.
 - Atlas schaltet Delphis „Ausdrucksauswertung im Kurzhinweis“ (Registry-Wert `ToolTip Watches`) ab, solange der Atlas-Tooltip beim Debuggen die Werte zeigt (`debug.hoverValues`), und wieder an, wenn nicht; wirkt nach dem nächsten Start. Vorher lag ein zweiter Wert-Tooltip über dem Atlas-Hover.
 
 ### Geändert

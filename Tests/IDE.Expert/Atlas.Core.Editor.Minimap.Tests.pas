@@ -21,7 +21,7 @@ type
     [Test]
     procedure PixelsWithoutCompression;
     [Test]
-    procedure LongFilesAreCompressed;
+    procedure LongFilesScrollWithEditor;
     [Test]
     procedure SliderPositionAndHeight;
     [Test]
@@ -158,28 +158,36 @@ begin
   Assert.AreEqual(99, Map.LineAt(1000), 'unter dem Inhalt: letzte Zeile');
 end;
 
-procedure TAtlasMinimapTests.LongFilesAreCompressed;
+procedure TAtlasMinimapTests.LongFilesScrollWithEditor;
 var
   Map: TAtlasMinimapMap;
 begin
-  // 10 000 Zeilen mit 2 Pixeln brauchten 20 000 Pixel; 500 sind da.
+  // 10 000 Zeilen mit 2 Pixeln brauchen 20 000 Pixel; 500 sind da. Nicht gestaucht: Die Minimap scrollt mit.
   Map := TAtlasMinimapMap.Create(10000, nil, 2, 500);
-  Assert.IsTrue(Map.Compressed);
+  Assert.IsFalse(Map.Compressed);
   Assert.AreEqual(500, Map.ContentHeight);
-  Assert.AreEqual(250, Map.PixelOfLine(5000));
-  Assert.AreEqual(5000, Map.LineAt(250));
-  Assert.AreEqual(9980, Map.LineAt(499));
-  Assert.AreEqual(9999, Map.LineAt(600));
-  // Gestaucht mit Faltung: Die verborgenen Zeilen zählen nicht.
+  Assert.AreEqual(0, Map.Offset, 'oben: Anfang');
+  // Mitte: Offset anteilig, 19 500 × 5000 / 9950.
+  Assert.IsTrue(Map.Follow(5000, 5049));
+  Assert.AreEqual(9798, Map.Offset);
+  Assert.AreEqual(202, Map.PixelOfLine(5000));
+  Assert.AreEqual(5000, Map.LineAt(202));
+  // Ende: die letzte Zeile ganz unten.
+  Map.Follow(9950, 9999);
+  Assert.AreEqual(19500, Map.Offset);
+  Assert.AreEqual(9999, Map.LineAt(499));
+  Assert.AreEqual(498, Map.PixelOfLine(9999));
+  // Zurück nach oben.
+  Assert.IsTrue(Map.Follow(0, 49));
+  Assert.AreEqual(0, Map.Offset);
+  // Mit Faltung: verborgene Zeilen gehören zur Kopfzeile.
   Map := TAtlasMinimapMap.Create(1000, [Fold(0, 499)], 2, 100);
   Assert.AreEqual(501, Map.RowCount);
-  Assert.IsTrue(Map.Compressed);
-  Assert.AreEqual(749, Map.LineAt(50));
-  Assert.AreEqual(49, Map.PixelOfLine(749));
   Assert.AreEqual(0, Map.PixelOfLine(300), 'in der Faltung: Kopfzeile');
-  // Gerade noch ohne Stauchung.
+  // Passt in die Höhe: kein Offset, Follow ändert nichts.
   Map := TAtlasMinimapMap.Create(250, nil, 2, 500);
-  Assert.IsFalse(Map.Compressed);
+  Assert.IsFalse(Map.Follow(200, 249));
+  Assert.AreEqual(0, Map.Offset);
 end;
 
 procedure TAtlasMinimapTests.SliderPositionAndHeight;
@@ -199,14 +207,16 @@ begin
   Span := Map.Slider(20, 39, 4);
   Assert.AreEqual(40, Span.Top);
   Assert.AreEqual(70, Span.Bottom);
-  // Am Ende der gestauchten Datei bleibt der Schieber in der Höhe.
+  // Mitscrollend: Am Ende steht der Schieber unten, in der Mitte anteilig.
   Map := TAtlasMinimapMap.Create(10000, nil, 2, 500);
+  Map.Follow(9990, 9999);
   Span := Map.Slider(9990, 9999, 4);
-  Assert.AreEqual(496, Span.Top);
+  Assert.AreEqual(480, Span.Top);
   Assert.AreEqual(500, Span.Bottom);
+  Map.Follow(5000, 5099);
   Span := Map.Slider(5000, 5099, 4);
-  Assert.AreEqual(250, Span.Top);
-  Assert.AreEqual(255, Span.Bottom);
+  Assert.AreEqual(152, Span.Top);
+  Assert.AreEqual(352, Span.Bottom);
 end;
 
 procedure TAtlasMinimapTests.DragAndClickTargets;
@@ -226,9 +236,12 @@ begin
   Map := TAtlasMinimapMap.Create(100, [Fold(10, 5)], 2, 500);
   Assert.AreEqual(10, Map.ClickTop(40, 20));
   Assert.AreEqual(16, Map.DragTop(22, 0, 20));
-  // Gestaucht: flüssig über 10 000 Zeilen.
+  // Mitscrollend über 10 000 Zeilen: Der Schieber läuft linear über 400 Pixel (500 − 50 Zeilen × 2), unabhängig
+  // vom Offset; Oberkante bei 250 = 62,5 % von 9950.
   Map := TAtlasMinimapMap.Create(10000, nil, 2, 500);
-  Assert.AreEqual(5000, Map.DragTop(260, 10, 50));
+  Assert.AreEqual(6218, Map.DragTop(260, 10, 50));
+  Map.Follow(6218, 6267);
+  Assert.AreEqual(6218, Map.DragTop(260, 10, 50), 'Offset ändert das Ziel nicht');
   Assert.AreEqual(9950, Map.DragTop(499, 0, 50));
 end;
 

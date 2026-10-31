@@ -91,11 +91,19 @@ type
     RowHeight: Integer;
     Height: Integer;
     Folds: TAtlasMinimapFolds;
+    /// <summary>Verschiebung des Inhalts nach oben in Pixeln, wenn er höher ist als die Minimap (Follow).</summary>
+    Offset: Integer;
     /// <summary>AFolds werden geordnet und geklemmt (siehe TAtlasMinimap.NormalizeFolds).</summary>
     class function Create(ALineCount: Integer; const AFolds: TAtlasMinimapFolds;
       ARowHeight, AHeight: Integer): TAtlasMinimapMap; static;
-    /// <summary>Feste Pixel je Zeile passen nicht: jede Zeile bekommt ihren Anteil.</summary>
+    /// <summary>Gestaucht wird nicht mehr: Passt der Inhalt nicht, scrollt die Minimap mit (wie VS Code). Immer False;
+    /// bleibt für die Stellen, die bei gestauchten Zeilen anders zeichneten.</summary>
     function Compressed: Boolean;
+    /// <summary>Höhe des ganzen Inhalts in Pixeln (alle Zeilen in voller Höhe).</summary>
+    function TotalHeight: Int64;
+    /// <summary>Offset aus der Lage im Editor: oben der Anfang, unten das Ende, dazwischen anteilig. True, wenn
+    /// sich der Offset geändert hat.</summary>
+    function Follow(ATopLine, ABottomLine: Integer): Boolean;
     /// <summary>Höhe des gezeichneten Inhalts (höchstens Height).</summary>
     function ContentHeight: Integer;
     /// <summary>Minimap-Zeile der Editorzeile; verborgene Zeilen gehören zu ihrer Kopfzeile.</summary>
@@ -283,16 +291,40 @@ begin
   Result.RowCount := Result.LineCount;
   for Fold in Result.Folds do
     Dec(Result.RowCount, Fold.Hidden);
+  Result.Offset := 0;
 end;
 
 function TAtlasMinimapMap.Compressed: Boolean;
 begin
-  Result := Int64(RowCount) * RowHeight > Height;
+  Result := False;
+end;
+
+function TAtlasMinimapMap.TotalHeight: Int64;
+begin
+  Result := Int64(Max(0, RowCount)) * RowHeight;
+end;
+
+function TAtlasMinimapMap.Follow(ATopLine, ABottomLine: Integer): Boolean;
+var
+  Overflow: Int64;
+  Scrollable, Top, NewOffset: Integer;
+begin
+  Overflow := TotalHeight - Height;
+  NewOffset := 0;
+  if (Overflow > 0) and (RowCount > 0) then
+  begin
+    // Anteil der Lage im Editor: 0 ganz oben, 1 ganz unten (letzte Seite sichtbar).
+    Scrollable := Max(1, RowCount - VisibleRows(ATopLine, Max(ATopLine, ABottomLine)));
+    Top := EnsureRange(RowOf(ATopLine), 0, Scrollable);
+    NewOffset := Integer((Overflow * Top) div Scrollable);
+  end;
+  Result := NewOffset <> Offset;
+  Offset := NewOffset;
 end;
 
 function TAtlasMinimapMap.ContentHeight: Integer;
 begin
-  Result := Integer(Min(Int64(RowCount) * RowHeight, Int64(Height)));
+  Result := Integer(Max(0, Min(TotalHeight - Offset, Int64(Height))));
 end;
 
 function TAtlasMinimapMap.RowOf(ALine: Integer): Integer;
@@ -341,20 +373,14 @@ begin
   if (RowCount <= 0) or (Height <= 0) then
     Exit(0);
   Row := EnsureRange(ARow, 0, RowCount);
-  if Compressed then
-    Result := Integer((Int64(Row) * Height) div RowCount)
-  else
-    Result := Row * RowHeight;
+  Result := Row * RowHeight - Offset;
 end;
 
 function TAtlasMinimapMap.RowAt(AY: Integer): Integer;
 begin
   if (RowCount <= 0) or (Height <= 0) then
     Exit(0);
-  if Compressed then
-    Result := Integer((Int64(Max(0, AY)) * RowCount) div Height)
-  else
-    Result := Max(0, AY) div RowHeight;
+  Result := (Max(0, AY) + Offset) div RowHeight;
   Result := EnsureRange(Result, 0, RowCount - 1);
 end;
 
@@ -397,7 +423,14 @@ var
 begin
   if RowCount <= 0 then
     Exit(0);
-  Row := RowAt(AY - AGrab);
+  if TotalHeight > Height then
+    // Mitscrollend (Follow): Die Oberkante des Schiebers läuft linear von 0 bis Height − Schieberhöhe, während die
+    // oberste Zeile von 0 bis RowCount − AVisibleRows läuft. Umkehrung davon; der Offset ändert sich beim Ziehen mit
+    // und darf nicht in die Rechnung eingehen, sonst läuft der Schieber davon.
+    Row := Integer((Int64(Max(0, AY - AGrab)) * Max(1, RowCount - Max(1, AVisibleRows))) div
+      Max(1, Height - Max(1, AVisibleRows) * RowHeight))
+  else
+    Row := RowAt(AY - AGrab);
   // Ganz oben gegriffen und darüber hinaus gezogen: erste Zeile.
   if AY - AGrab <= 0 then
     Row := 0;
