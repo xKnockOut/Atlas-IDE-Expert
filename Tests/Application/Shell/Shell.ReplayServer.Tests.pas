@@ -31,6 +31,11 @@ type
   [TestFixture]
   TShellReplayServerTests = class
   public
+    /// <summary>Den Server einmal durchlaufen: Geteilte Speicher wie die Ordnerlisten der Unit-Suche
+    /// (TSharedUnitListings) entstehen beim ersten Gebrauch und leben bis Programmende; das ist kein Leck des
+    /// Tests.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     /// <summary>Hover auf einer gesunden Unit stürzt nicht ab: „nicht reproduziert“, Exit-Code 0.</summary>
     [Test]
     procedure HealthyHoverIsNotReproduced;
@@ -95,19 +100,28 @@ end;
 
 { TShellReplayServerTests }
 
+const
+  HoverRequest = '{"format":1,"kind":"exception","method":"textDocument/hover","id":1,' +
+    '"params":{"textDocument":{"uri":"file:///C:/Fall/Demo.pas"},"position":{"line":2,"character":10}},' +
+    '"uri":"file:///C:/Fall/Demo.pas","file":"C:\\Fall\\Demo.pas","line":2,' +
+    '"exception":{"class":"EStackOverflow","message":"Stack overflow"},' +
+    '"files":{"snapshot":"Demo.pas","stack":"stapel.txt","settings":[]}}';
+  DemoUnit = 'unit Demo;'#13#10'interface'#13#10'procedure Hallo;'#13#10'implementation'#13#10 +
+    'procedure Hallo;'#13#10'begin'#13#10'end;'#13#10'end.'#13#10;
+
+procedure TShellReplayServerTests.WarmUpFirstUse;
+begin
+  TCrashReplayTest.Replay(HoverRequest, TArray<TCrashReplayFile>.Create(TCrashReplayFile.Create('Demo.pas',
+    DemoUnit)));
+  TCrashReplayTest.LastLog := nil;
+end;
+
 procedure TShellReplayServerTests.HealthyHoverIsNotReproduced;
 var
   mResult: TReplayResult;
 begin
-  mResult := TCrashReplayTest.Replay(
-    '{"format":1,"kind":"exception","method":"textDocument/hover","id":1,' +
-    '"params":{"textDocument":{"uri":"file:///C:/Fall/Demo.pas"},"position":{"line":2,"character":10}},' +
-    '"uri":"file:///C:/Fall/Demo.pas","file":"C:\\Fall\\Demo.pas","line":2,' +
-    '"exception":{"class":"EStackOverflow","message":"Stack overflow"},' +
-    '"files":{"snapshot":"Demo.pas","stack":"stapel.txt","settings":[]}}',
-    TArray<TCrashReplayFile>.Create(TCrashReplayFile.Create('Demo.pas',
-      'unit Demo;'#13#10'interface'#13#10'procedure Hallo;'#13#10'implementation'#13#10 +
-      'procedure Hallo;'#13#10'begin'#13#10'end;'#13#10'end.'#13#10)));
+  mResult := TCrashReplayTest.Replay(HoverRequest, TArray<TCrashReplayFile>.Create(
+    TCrashReplayFile.Create('Demo.pas', DemoUnit)));
   Assert.IsTrue(mResult.Outcome = TReplayOutcome.NotReproduced, mResult.Text);
   Assert.AreEqual(TShellReplay.ExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
   // Sauber beendet: Liefen beim Ende noch Anfragen, gibt die Komposition ihre Objekte absichtlich nicht frei.
