@@ -15,7 +15,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ### Geändert
 - Mitlaufender Kopf (`editor.stickyScroll`) ist nicht mehr experimentell und standardmäßig an.
 - Schnellschalter handlicher: beim ersten Öffnen nur die erste Gruppe offen, Aufklappen schließt die anderen (Akkordeon), höchstens 80 % der Arbeitsfläche hoch mit Bildlauf (Mausrad, Pfeiltasten) und schmalem Balken.
-- Minimap lesbarer: Maßstab 2 als Vorgabe (`editor.minimap.scale`, 4 Pixel je Zeile), Bezeichner kräftiger, der Schieber nur noch als Schatten, die Routine am Cursor zusätzlich mit einem Akzentstrich am linken Rand.
+- Minimap lesbarer: winzige Zeichen statt Balken je Wort als Vorgabe (`editor.minimap.render` = `characters`, wie VS Code), Maßstab 2 als Vorgabe (`editor.minimap.scale`, 4 Pixel je Zeile), Bezeichner kräftiger, der Schieber nur noch als Schatten, die Routine am Cursor zusätzlich mit einem Akzentstrich am linken Rand.
 - Fenster „Auswerten“: Records erscheinen mit Feldnamen (`FeatureClass`, `Id`, …) statt `[0]`, `[1]`, …; Atlas wertet mit der Formatangabe `,r` aus, außer der Ausdruck trägt schon eine eigene.
 - Exception-Leiste ersetzt den Dialog „Benachrichtigung über Debugger-Exception“ jetzt ohne Aufblitzen: Atlas erkennt ihn schon beim Öffnen (`OnModalBegin`), blendet ihn aus und schließt ihn mit „Anhalten“; die Leiste zeigt Klasse und Meldung. Steht er nach 1,5 s noch, wird er wieder sichtbar.
 - Tools › Optionen öffnet Atlas über `IOTAEnvironmentOptions140.EditOptions` direkt auf der Seite „Atlas“ (vorher Menübefehl und Suche im Baum, die im Dialog von Delphi 13 nichts fand).

@@ -2208,7 +2208,7 @@ begin
   Result.StickyScrollWith := False;
   Result.StickyScrollBlockMinLines := 25;
   Result.Minimap := False;
-  Result.MinimapRender := 'blocks';
+  Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
   // 2: 4 Pixel je Zeile, Zeichen lesbar wie in VS Code (bei 1 kaum erkennbar).
   Result.MinimapScale := 2;
@@ -2640,7 +2640,7 @@ begin
   ExpressionTypeKey := EnsureRange(ExpressionTypeKey, 0, $FFFF);
   MethodPlacement := Choice(MethodPlacement, AtlasMethodPlacements);
   SafeDeleteKey := EnsureRange(SafeDeleteKey, 0, $FFFF);
-  MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
+  MinimapRender := Choice(MinimapRender, ['characters', 'blocks']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
   MinimapMaxColumn := EnsureRange(MinimapMaxColumn, MinMinimapColumn, MaxMinimapColumn);

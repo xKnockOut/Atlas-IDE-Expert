@@ -80,14 +80,14 @@ var
   Options: TAtlasMinimapOptions;
 begin
   Options := TAtlasMinimap.Defaults;
-  Assert.AreEqual(Ord(TAtlasMinimapRender.Blocks), Ord(Options.Render));
+  Assert.AreEqual(Ord(TAtlasMinimapRender.Characters), Ord(Options.Render));
   Assert.AreEqual(120, Options.Width);
-  Assert.AreEqual(1, Options.Scale);
+  Assert.AreEqual(2, Options.Scale);
   Assert.AreEqual(120, Options.MaxColumn);
   Assert.AreEqual(Ord(TAtlasMinimapSide.Right), Ord(Options.Side));
   Assert.AreEqual(Ord(TAtlasMinimapSlider.Always), Ord(Options.Slider));
   Assert.IsTrue(Options.SectionHeaders and Options.HighlightMethod and Options.Markers and Options.ClickJumps);
-  Assert.AreEqual(2, Options.RowHeight);
+  Assert.AreEqual(4, Options.RowHeight);
 
   Options := TAtlasMinimap.Options('Characters', 'LEFT', 'mouseover', 80, 3, 60, False, False, False, False);
   Assert.AreEqual(Ord(TAtlasMinimapRender.Characters), Ord(Options.Render));
@@ -103,7 +103,7 @@ begin
 
   // Unbekannte Namen: Vorgabe; Zahlen geklemmt.
   Options := TAtlasMinimap.Options('pixel', 'oben', '', 5, 9, 10000, True, True, True, True);
-  Assert.AreEqual(Ord(TAtlasMinimapRender.Blocks), Ord(Options.Render));
+  Assert.AreEqual(Ord(TAtlasMinimapRender.Characters), Ord(Options.Render));
   Assert.AreEqual(Ord(TAtlasMinimapSide.Right), Ord(Options.Side));
   Assert.AreEqual(Ord(TAtlasMinimapSlider.Always), Ord(Options.Slider));
   Assert.AreEqual(TAtlasMinimap.MinWidth, Options.Width);

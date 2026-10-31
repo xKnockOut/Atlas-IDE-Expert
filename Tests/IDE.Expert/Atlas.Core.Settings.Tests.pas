@@ -2199,7 +2199,7 @@ begin
   // #873: experimentell, also aus; Vorgaben laut Issue; Speichern, Laden, Klemmen.
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsFalse(Settings.Minimap);
-  Assert.AreEqual('blocks', Settings.MinimapRender);
+  Assert.AreEqual('characters', Settings.MinimapRender);
   Assert.AreEqual(120, Settings.MinimapWidth);
   Assert.AreEqual(2, Settings.MinimapScale);
   Assert.AreEqual(120, Settings.MinimapMaxColumn);
@@ -2209,7 +2209,7 @@ begin
     Settings.MinimapClickJumps);
   Assert.IsFalse(Settings.MinimapNoticeShown);
   Settings.Minimap := True;
-  Settings.MinimapRender := 'characters';
+  Settings.MinimapRender := 'blocks';
   Settings.MinimapWidth := 90;
   Settings.MinimapScale := 3;
   Settings.MinimapMaxColumn := 80;
@@ -2225,7 +2225,7 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsTrue(Loaded.Minimap);
-  Assert.AreEqual('characters', Loaded.MinimapRender);
+  Assert.AreEqual('blocks', Loaded.MinimapRender);
   Assert.AreEqual(90, Loaded.MinimapWidth);
   Assert.AreEqual(3, Loaded.MinimapScale);
   Assert.AreEqual(80, Loaded.MinimapMaxColumn);
@@ -2241,7 +2241,7 @@ begin
   Loaded.MinimapScale := 9;
   Loaded.MinimapMaxColumn := 100000;
   Loaded.Normalize;
-  Assert.AreEqual('blocks', Loaded.MinimapRender);
+  Assert.AreEqual('characters', Loaded.MinimapRender);
   Assert.AreEqual('right', Loaded.MinimapSide);
   Assert.AreEqual('always', Loaded.MinimapShowSlider);
   Assert.AreEqual(TAtlasPluginSettings.MinMinimapWidth, Loaded.MinimapWidth);
