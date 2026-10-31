@@ -28,6 +28,7 @@ uses
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Index.NameFacts,
   Atlas.Common.Index.Service,
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Scheduler,
@@ -83,6 +84,8 @@ type
     /// <summary>Unit-Suche wie beim Compiler für uses-unit-not-found (#1016), je Indexaufbau neu; unter FLock.
     /// </summary>
     FUnitLookup: IRuleUnitLookup;
+    /// <summary>Antworten zum Index über alle Units des Arbeitsbereichs (TIndexNameFacts); lebt mit ihm.</summary>
+    FNameFacts: IIndexNameFacts;
     FOnPackageFolders: TFunc<TArray<string>>;
     FOnGroupProjects: TFunc<TArray<string>>;
     /// <summary>Gemerkte Wahl über Neustarts (#46); gehört der Komposition, nil = nichts merken.</summary>
@@ -763,6 +766,7 @@ begin
   inherited Create;
   FRoot := ARoot;
   FName := AName;
+  FNameFacts := TIndexNameFacts.Create;
   FLogger := ALogger;
   FTransport := ATransport;
   FIndex := AIndex;
@@ -1586,6 +1590,8 @@ begin
   Result.Namespaces := Namespaces;
   // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016).
   Result.Units := UnitLookup;
+  // Antworten zum Index (z. B. "Property Count ohne write?") über alle Units, statt je Unit neu.
+  Result.NameFacts := FNameFacts;
   // requires-Packages für implicit-package-import (#46); der Halter hält den Locator, solange die Prüfung ihn
   // braucht, auch über einen Projektwechsel hinaus (#1220). Nicht gefundene Packages sind unbekannt, damit die Regel
   // still bleibt statt falsch zu melden.

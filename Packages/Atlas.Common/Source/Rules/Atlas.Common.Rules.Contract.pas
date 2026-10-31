@@ -321,6 +321,9 @@ type
     /// <summary>requires eines Packages: dcc sieht auch die Units der Packages, die ein requires-Package
     /// verlangt (Atlas.Windows → Atlas.Common → Atlas.Text); nil = nur die direkten.</summary>
     PackageRequires: TRulePackageRequires;
+    /// <summary>Antworten zum Index über alle Units des Arbeitsbereichs (TIndexNameFacts); nil = je Unit neu.
+    /// </summary>
+    NameFacts: IIndexNameFacts;
     /// <summary>Unit-Suche wie beim Compiler (#1016); nil = unbekannt (Linter, Datei ohne Projekt).</summary>
     Units: IRuleUnitLookup;
     /// <summary>Anwendungsart des Projekts, zu dem die Datei gehört (#926); Unknown ohne Projekt.</summary>
@@ -394,6 +397,8 @@ type
     PackageProvides: TRulePackageProvides;
     /// <summary>requires eines Packages (für die Kette der requires); nil = nur die direkten.</summary>
     PackageRequires: TRulePackageRequires;
+    /// <summary>Antworten zum Index über alle Units des Arbeitsbereichs; nil = je Unit neu.</summary>
+    NameFacts: IIndexNameFacts;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt.</summary>
     ProjectFiles: IRuleProjectFiles;
     /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
@@ -502,6 +507,7 @@ begin
   AContext.Units := Units;
   AContext.PackageProvides := PackageProvides;
   AContext.PackageRequires := PackageRequires;
+  AContext.NameFacts := NameFacts;
   AContext.ProjectFiles := ProjectFiles;
   AContext.Naming := Naming;
   AContext.ProjectWarnings := ProjectWarnings;

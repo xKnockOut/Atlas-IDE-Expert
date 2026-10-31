@@ -210,6 +210,7 @@ procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Index.NameFacts,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
@@ -3002,6 +3003,40 @@ begin
   Result := AHasRead or AHasWrite;
 end;
 
+/// <summary>Properties namens AName im Index: Bit 1, wenn eine kein write hat, Bit 2, wenn eine kein read hat.
+/// Hängt nur vom Index ab und wird über alle Units des Laufs gemerkt (TIndexNameFacts).</summary>
+function IndexPropertyFlags(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex; const AName: string): Integer;
+var
+  mFacts: IIndexNameFacts;
+  mIndex: ISymbolIndex;
+  mName: string;
+begin
+  mFacts := AFacts;
+  mIndex := AIndex;
+  mName := AName;
+  Result := TIndexNameFacts.Get(mFacts, mIndex, 'propertyAccess:' + UpperCase(mName),
+    function: Integer
+    var
+      mLocations: TArray<TSymbolLocation>;
+      mPosition: Integer;
+      mHasRead, mHasWrite: Boolean;
+    begin
+      Result := 0;
+      if mIndex = nil then
+        Exit;
+      mLocations := mIndex.FindSymbols(mName);
+      for mPosition := 0 to High(mLocations) do
+        if (mLocations[mPosition].Symbol.Kind = TIndexSymbolKind.Property_) and
+          TReadonlyPropertyAssignedRule.Accessors(mLocations[mPosition].Symbol.Signature, mHasRead, mHasWrite) then
+        begin
+          if not mHasWrite then
+            Result := Result or 1;
+          if not mHasRead then
+            Result := Result or 2;
+        end;
+    end);
+end;
+
 procedure TReadonlyPropertyAssignedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
@@ -3023,8 +3058,6 @@ var
   function SuspectFlags(const AName: string): Integer;
   var
     Symbol: TIndexSymbol;
-    Locations: TArray<TSymbolLocation>;
-    LocationIndex: Integer;
     HasRead, HasWrite: Boolean;
     Signatures: TList<string>;
     Signature: string;
@@ -3062,14 +3095,9 @@ var
     if LocalProperties.TryGetValue(LowerCase(AName), Signatures) then
       for Signature in Signatures do
         Note(Signature);
-    if AContext.Index <> nil then
-    begin
-      // Über den Index: for-in kopierte jeden Treffer (häufige Namen wie Count haben Tausende).
-      Locations := AContext.Index.FindSymbols(AName);
-      for LocationIndex := 0 to High(Locations) do
-        if Locations[LocationIndex].Symbol.Kind = TIndexSymbolKind.Property_ then
-          Note(Locations[LocationIndex].Symbol.Signature);
-    end;
+    // Der Teil aus dem Index hängt nur vom Namen ab: über alle Units des Laufs gemerkt (häufige Namen wie Count
+    // haben Tausende Treffer und kamen sonst in jeder Unit neu).
+    Result := Result or IndexPropertyFlags(AContext.NameFacts, AContext.Index, AName);
     Suspects.Add(LowerCase(AName), Result);
   end;
 
