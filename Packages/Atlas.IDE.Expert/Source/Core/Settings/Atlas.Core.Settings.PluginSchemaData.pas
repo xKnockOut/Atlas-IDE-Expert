@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..6328] of string = (
+  Lines: array[0..6327] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -4410,14 +4410,13 @@ const
       ' (die äußere oben); im Rumpf der äußeren Routine steht nur ihr Kopf. Bei mehr Ebenen als erlaubt bleibt die innerste sichtbar, die äußeren werden zu einer Zeile „A › B › C“ zusammengefasst. Mehrzeilig' +
       'e Köpfe werden mit „(…)“ auf eine Zeile gekürzt. Klick auf eine Kopfzeile springt dorthin.",',
     '      "type": "boolean",',
-    '      "default": false,',
+    '      "default": true,',
     '      "x-key": "editor.stickyScroll",',
     '      "x-area": "editor",',
     '      "x-feature": "StickyScroll",',
     '      "x-page": "Editor",',
     '      "x-parent": "completion.enabled",',
     '      "x-node": "editor.stickyScroll",',
-    '      "x-experimental": true,',
     '      "x-quickToggle": true,',
     '      "x-caption": "Mitlaufender Kopf",',
     '      "x-captionEn": "Sticky scroll",',

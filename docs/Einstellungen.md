@@ -204,7 +204,6 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 | `editor.smartPaste` | Plugin (Registry `SmartPaste`) | Editor | #515 |
 | `editor.designerBar.tabOrderClick` | Plugin (Registry `DesignerTabOrderClick`) | Editor | #1442 |
 | `editor.designerBar.align` | Plugin (Registry `DesignerAlign`) | Editor | #1442 |
-| `editor.stickyScroll` | Plugin (Registry `StickyScroll`) | Editor | #506 |
 | `editor.minimap` | Plugin (Registry `Minimap`) | Editor | #873 |
 | `completion.typeConversion` | global (settings.json) | Vervollständigung | #490 |
 | `completion.assignAllFields` | global (settings.json) | Vervollständigung | #491 |
@@ -323,7 +322,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `editor.designerBar.align` (experimentell)
 
 - **Mitlaufender Kopf** (`editor.stickyScroll`)
-  - `editor.stickyScroll` (experimentell) – hängt an `completion.enabled`
+  - `editor.stickyScroll` – hängt an `completion.enabled`
     - `editor.stickyScrollMaxLines`
     - `editor.stickyScrollTypes`
     - `editor.stickyScrollRoutines`
