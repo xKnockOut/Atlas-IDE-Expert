@@ -80,6 +80,8 @@ type
     procedure BuildRows;
     procedure Layout;
     procedure MoveHot(ADelta: Integer);
+    /// <summary>Unterkante am Anker, aber nie über den oberen Rand der Arbeitsfläche hinaus.</summary>
+    procedure PlaceAboveAnchor;
     /// <summary>Bildlauf so, dass FHot sichtbar ist; Grenzen einhalten.</summary>
     procedure ScrollToHot;
     procedure ClampFirst;
@@ -399,7 +401,7 @@ begin
   ClampFirst;
   // Unten bleibt unten: das Fenster wächst bzw. schrumpft nach oben.
   if Visible then
-    SetBounds(Left, FAnchor.Y - Height, Width, Height);
+    PlaceAboveAnchor;
   Invalidate;
 end;
 
@@ -442,21 +444,30 @@ begin
     FAllButton.Caption := TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff);
   Layout;
   if Visible then
-    SetBounds(Left, FAnchor.Y - Height, Width, Height);
+    PlaceAboveAnchor;
   Invalidate;
+end;
+
+procedure TAtlasQuickToggleWindow.PlaceAboveAnchor;
+var
+  Area: TRect;
+begin
+  // Wächst das Fenster (Gruppe aufgeklappt), bleibt die Unterkante am Anker, solange oben Platz ist; sonst stößt
+  // es oben an die Arbeitsfläche, statt darüber hinaus zu ragen.
+  Area := Screen.MonitorFromPoint(FAnchor).WorkareaRect;
+  SetBounds(EnsureRange(FAnchor.X, Area.Left, Max(Area.Left, Area.Right - Width)),
+    Max(Area.Top, FAnchor.Y - Height), Width, Height);
 end;
 
 procedure TAtlasQuickToggleWindow.ShowAbove(const AAnchor: TPoint);
 var
   Area: TRect;
-  Left_, Top_: Integer;
 begin
-  Layout;
+  // Erst der Anker (Monitor und Unterkante), dann das Layout: Die Höchsthöhe richtet sich nach diesem Monitor.
   Area := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
-  Left_ := EnsureRange(AAnchor.X, Area.Left, Max(Area.Left, Area.Right - Width));
-  Top_ := Max(Area.Top, AAnchor.Y - Height);
-  FAnchor := Point(Left_, Top_ + Height);
-  SetBounds(Left_, Top_, Width, Height);
+  FAnchor := Point(AAnchor.X, Min(AAnchor.Y, Area.Bottom));
+  Layout;
+  PlaceAboveAnchor;
   Show;
   SetFocus;
 end;
