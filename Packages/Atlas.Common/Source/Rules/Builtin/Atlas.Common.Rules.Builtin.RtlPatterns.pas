@@ -62,6 +62,7 @@ procedure RegisterRtlPatternRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.Generics.Collections,
   System.SysUtils,
   System.StrUtils,
@@ -225,6 +226,7 @@ var
   Index, Start, Stop, Before: Integer;
   Removal, Insert: TTextRange;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   Local, Member: TResolvedSymbol;
   Name: string;
   Fixes: TArray<TRuleFix>;
@@ -270,8 +272,9 @@ begin
       begin
         if Resolver = nil then
         begin
-          Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-          Resolver.Namespaces := AContext.Namespaces;
+          // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+          mCache := TRuleDerived.Open(AContext);
+          Resolver := TRuleDerived.Resolver(mCache, AContext);
         end;
         Local := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, [Name], Tokens[Start].Offset, False);
         if Local.Kind = TResolvedKind.Local then
@@ -291,7 +294,6 @@ begin
       AReport.Add(RangeOf(Tokens, Start, PreviousCode(Tokens, Stop)), Message, TRuleConfidence.High, Fixes);
     end;
   finally
-    Resolver.Free;
   end;
 end;
 

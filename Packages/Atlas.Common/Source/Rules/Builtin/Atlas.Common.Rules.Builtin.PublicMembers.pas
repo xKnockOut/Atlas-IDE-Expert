@@ -283,6 +283,7 @@ var
   Forms: TList<string>;
   Texts: TDictionary<string, string>;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   Considered: TConsideredUsed;
   // Klassen (Kurzname, klein) -> in RegisterComponents/RegisterClass(es) genannt; je Prüfung einmal.
   Registered: TDictionary<string, Boolean>;
@@ -806,9 +807,10 @@ begin
   Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens,
     TRuleOptions.Strings(AContext.Options, 'keepAttributes', []) + AContext.KeepAttributes,
     TRuleOptions.Strings(AContext.Options, 'keepPatterns', []) + AContext.KeepPatterns);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     CollectFiles;
     for Symbol in Local.Symbols do
     begin
@@ -825,7 +827,6 @@ begin
         CheckSymbol(Symbol);
     end;
   finally
-    Resolver.Free;
     Considered.Free;
     Seen.Free;
     Texts.Free;

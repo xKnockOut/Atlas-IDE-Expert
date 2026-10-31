@@ -105,6 +105,7 @@ procedure RegisterUnresolvedRules(ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -138,13 +139,15 @@ end;
 procedure TUnresolvedIdentifierRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   Name: TUnresolvedName;
 begin
   if (AContext.Tree = nil) or not TUnresolvedNames.Available(AContext.Index) then
     Exit;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
       if Name.Code <> '' then
         AReport.Add(Name.Range, TUnresolvedNames.Describe(Name), TRuleConfidence.Medium)
@@ -154,7 +157,6 @@ begin
       else
         AReport.Add(Name.Range, Format('"%s" ist nicht deklariert', [Name.Name]), TRuleConfidence.Medium);
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -597,6 +599,7 @@ end;
 procedure TUnresolvedAttributeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   Lines: TArray<Boolean>;
   LineBreak: string;
   Level: TRuleConfidence;
@@ -747,9 +750,10 @@ begin
     if (Token.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', Token.Text) or
       StartsText('{$INCLUDE ', Token.Text)) then
       Level := TRuleConfidence.Medium;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, AContext.RelativePath);
     try
       Visit(AContext.Tree.Root);
@@ -757,7 +761,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 

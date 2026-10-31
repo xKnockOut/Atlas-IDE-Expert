@@ -235,6 +235,7 @@ procedure TGenericConstraintViolatedRule.Check(const AContext: TRuleContext; con
 var
   Cache: IRuleDerivedCache;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Local: TUnitIndex;
   // Namen aller Typparameter der Datei: solche Argumente bleiben ungeprüft.
@@ -703,9 +704,10 @@ begin
       FileName := AContext.RelativePath;
     if FileName = '' then
       FileName := AContext.UnitName + '.pas';
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    mCache := TRuleDerived.Open(AContext);
+    Resolver := TRuleDerived.Resolver(mCache, AContext);
     try
-      Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
       try
         Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -717,7 +719,6 @@ begin
         Resolver.UnpinTree;
       end;
     finally
-      Resolver.Free;
     end;
   finally
     ParamNames.Free;
@@ -823,6 +824,7 @@ end;
 procedure TGenericInferenceFailedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mResolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   mFileName: string;
   mGenericNames: TDictionary<string, Boolean>;
 
@@ -1098,9 +1100,10 @@ begin
     CollectGenericNames(AContext.Tree.Root);
     if (mGenericNames.Count = 0) and (AContext.Index = nil) then
       Exit;
-    mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    mCache := TRuleDerived.Open(AContext);
+    mResolver := TRuleDerived.Resolver(mCache, AContext);
     try
-      mResolver.Namespaces := AContext.Namespaces;
       mResolver.PinTree(AContext.Tree, mFileName);
       try
         Visit(AContext.Tree.Root);
@@ -1108,7 +1111,6 @@ begin
         mResolver.UnpinTree;
       end;
     finally
-      mResolver.Free;
     end;
   finally
     mGenericNames.Free;

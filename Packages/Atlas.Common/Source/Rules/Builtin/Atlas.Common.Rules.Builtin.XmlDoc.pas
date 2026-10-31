@@ -856,6 +856,7 @@ var
   Declarations: TDictionary<Integer, TSyntaxNode>;
   Documented: TDictionary<TSyntaxNode, Boolean>;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FromUnit: TUnitIndex;
   CrefsKnown: Boolean;
   CrefLevel: TRuleConfidence;
@@ -1392,8 +1393,9 @@ begin
       end;
     if CrefsKnown then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      mCache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(mCache, AContext);
       FromUnit := TRuleDerived.UnitIndex(Cache, AContext);
     end;
     for Block in DocBlocks(Tokens, Lines) do
@@ -1406,7 +1408,6 @@ begin
           CheckPublic(Section, True);
       end;
   finally
-    Resolver.Free;
     Documented.Free;
     Declarations.Free;
   end;

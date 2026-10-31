@@ -163,6 +163,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Common.Rules.Derived,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -1233,6 +1234,7 @@ procedure TDefaultParameterInvalidRule.Check(const AContext: TRuleContext; const
 var
   FileName: string;
   Resolver: TNameResolver;
+  Cache: IRuleDerivedCache;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -1408,8 +1410,9 @@ var
     // Erst hier die Namensauflösung: Die meisten Dateien haben keinen Standardwert mit eigenem Typ.
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
   end;
@@ -1587,7 +1590,6 @@ begin
     if Resolver <> nil then
     begin
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
   end;
 end;
@@ -1607,6 +1609,7 @@ const
 var
   FileName: string;
   Resolver: TNameResolver;
+  Cache: IRuleDerivedCache;
   // Vorfilter vor der Namensauflösung: Namen mit vorzeichenlosem Typ.
   Unsigned: TTypedNames;
 
@@ -1631,8 +1634,9 @@ var
       Exit;
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
     if not OperandKind(Resolver, AContext.Tree, FileName, ANode[0], LeftKind, LeftType) or
@@ -1727,7 +1731,6 @@ begin
     if Resolver <> nil then
     begin
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
     Unsigned.Free;
   end;
@@ -1797,6 +1800,7 @@ const
 var
   FileName: string;
   Resolver: TNameResolver;
+  Cache: IRuleDerivedCache;
   Sources: TTypedNames;
   // Paare "quelle>ziel" in einheitlichen Namen.
   Pairs: TDictionary<string, Boolean>;
@@ -1810,8 +1814,9 @@ var
   begin
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
   end;
@@ -2152,7 +2157,6 @@ begin
     if Resolver <> nil then
     begin
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
     Sources.Free;
     Pairs.Free;
@@ -2279,6 +2283,7 @@ var
   FileName, LineBreak: string;
   Lines: TArray<string>;
   Resolver: TNameResolver;
+  Cache: IRuleDerivedCache;
   // Namen typisierter Konstanten (Vorfilter): aus der Datei und aus dem Index.
   LocalNames, Suspects: TDictionary<string, Boolean>;
 
@@ -2439,8 +2444,9 @@ var
   begin
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
   end;
@@ -2759,7 +2765,6 @@ begin
     if Resolver <> nil then
     begin
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
     Suspects.Free;
     LocalNames.Free;
@@ -2879,6 +2884,8 @@ var
   // Deklarationen dieser Datei nach Namen (klein), erst bei Bedarf (EnsureDeclarations).
   Declarations: TObjectDictionary<string, TList<TSyntaxNode>>;
   TypeBodies: TDictionary<string, TSyntaxNode>;
+  // Hält den Resolver des Laufs (oder einen eigenen Cache ohne Engine).
+  Cache: IRuleDerivedCache;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -2889,8 +2896,9 @@ var
   begin
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
   end;
@@ -3389,10 +3397,7 @@ begin
   finally
     Values.Free;
     if Resolver <> nil then
-    begin
       Resolver.UnpinTree;
-      Resolver.Free;
-    end;
     TypeBodies.Free;
     Declarations.Free;
     Suspects.Free;

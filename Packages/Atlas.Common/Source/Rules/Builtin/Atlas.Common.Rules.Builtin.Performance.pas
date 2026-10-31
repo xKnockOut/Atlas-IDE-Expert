@@ -1355,6 +1355,7 @@ var
   Cache: IRuleDerivedCache;
   Lookup: TFlowSignatureLookup;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   Records: TDictionary<string, TSyntaxNode>;
   Interfaces, DynArrays, Exported: TArray<string>;
   MinRecordSize: Integer;
@@ -1371,8 +1372,9 @@ var
   begin
     if (Resolver = nil) and (AContext.Index <> nil) then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      mCache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(mCache, AContext);
     end;
     Result := TResolvedSignatures.Mode(Resolver, AContext.Tree, AContext.RelativePath, ACall, AArgument);
   end;
@@ -1658,7 +1660,6 @@ begin
       CheckRoutine(Routine);
   finally
     Records.Free;
-    Resolver.Free;
   end;
 end;
 

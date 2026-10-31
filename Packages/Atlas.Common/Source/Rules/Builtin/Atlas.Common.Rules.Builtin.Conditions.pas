@@ -114,6 +114,7 @@ procedure RegisterConditionRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -613,6 +614,7 @@ procedure TConstantConditionRule.Check(const AContext: TRuleContext; const ARepo
 var
   Values: TConditionValues;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
 
   procedure ReportIf(ANode: TSyntaxNode; const AValue: TConstantValue);
@@ -701,9 +703,10 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := RuleFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver,
       TRuleOptions.Strings(AContext.Options, 'switchConstants', []));
@@ -714,7 +717,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -925,6 +927,7 @@ procedure TInfiniteLoopRule.Check(const AContext: TRuleContext; const AReport: I
 var
   Values: TConditionValues;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   Raising: TDictionary<string, Boolean>;
   FileName: string;
 
@@ -995,9 +998,10 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := RuleFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver, nil);
     Raising := RaisingRoutines(AContext.Tree);
@@ -1009,7 +1013,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -1114,6 +1117,7 @@ end;
 procedure TLoopConditionUnchangedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   Raising: TDictionary<string, Boolean>;
   FileName: string;
 
@@ -1451,9 +1455,10 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := RuleFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     Raising := RaisingRoutines(AContext.Tree);
     try
@@ -1463,7 +1468,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
