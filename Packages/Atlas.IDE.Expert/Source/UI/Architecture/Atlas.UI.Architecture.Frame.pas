@@ -84,6 +84,8 @@ type
     FInfo: TLabel;
     /// <summary>Zuordnung der gewählten Unit (#1368), unter der Karte.</summary>
     FAssignment: TPaintBox;
+    FAssignmentBox: TScrollBox;
+    FAssignmentSplit: TSplitter;
     FSubsystemsBar: TPanel;
     FExplainButton: TButton;
     FExplanation: TLabel;
@@ -226,7 +228,8 @@ type
     property CrossLinkList: TListView read FCrossLinks;
     property StatusLabel: TLabel read FStatus;
     property InfoLabel: TLabel read FInfo;
-    property AssignmentBox: TPaintBox read FAssignment;
+    /// <summary>Bereich mit der Erklärung der Zuordnung links neben dem Diagramm (scrollbar).</summary>
+    property AssignmentBox: TScrollBox read FAssignmentBox;
     property ExplainButton: TButton read FExplainButton;
     property ExplanationLabel: TLabel read FExplanation;
     property FitButton: TButton read FFit;
@@ -431,13 +434,22 @@ begin
   FInfo.EllipsisPosition := epEndEllipsis;
   FInfo.Font.Color := clGrayText;
   FInfo.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureMapHint);
+  // Erklärung der Zuordnung links neben dem Diagramm (scrollbar, Breite über die Ziehleiste); unten verdrängte sie
+  // bei vielen Teilsystemen das Diagramm.
+  FAssignmentBox := TScrollBox.Create(Self);
+  FAssignmentBox.Parent := Sheet;
+  FAssignmentBox.Align := alLeft;
+  FAssignmentBox.BorderStyle := bsNone;
+  FAssignmentBox.VertScrollBar.Tracking := True;
+  FAssignmentBox.Visible := False;
+  FAssignmentSplit := TSplitter.Create(Self);
+  FAssignmentSplit.Parent := Sheet;
+  FAssignmentSplit.Align := alLeft;
+  FAssignmentSplit.Left := FAssignmentBox.Left + FAssignmentBox.Width + 1;
+  FAssignmentSplit.Visible := False;
   FAssignment := TPaintBox.Create(Self);
-  FAssignment.Parent := Sheet;
-  FAssignment.Align := alBottom;
-  FAssignment.AlignWithMargins := True;
-  // Über der Zeile mit den Angaben zur Unit.
-  FAssignment.Top := FInfo.Top - 1;
-  FAssignment.Visible := False;
+  FAssignment.Parent := FAssignmentBox;
+  FAssignment.SetBounds(0, 0, 10, 10);
   FAssignment.OnPaint := AssignmentPaint;
   FMapBar := TPanel.Create(Self);
   FMapBar.Parent := Sheet;
@@ -1170,7 +1182,8 @@ begin
   if (FMap.PathFrom >= 0) or (Length(FMap.Route) > 0) or
     not TAtlasArchitectureAssignment.Available(FModel, FMap.Selected) then
   begin
-    FAssignment.Visible := False;
+    FAssignmentSplit.Visible := False;
+    FAssignmentBox.Visible := False;
     Exit;
   end;
   // Messen ohne Fenster: auf einer Bitmap mit derselben Schrift.
@@ -1181,9 +1194,17 @@ begin
   finally
     mBitmap.Free;
   end;
-  FAssignment.Height := mSize.cy + 1;
-  FAssignment.Visible := True;
-  FAssignment.Top := FInfo.Top - 1;
+  FAssignment.SetBounds(0, 0, mSize.cx + 1, mSize.cy + 1);
+  if not FAssignmentBox.Visible then
+  begin
+    // Breite nach dem Inhalt (Platz für die Bildlaufleiste), höchstens 40 % der Seite; danach gilt die Ziehleiste.
+    FAssignmentBox.Width := Min(mSize.cx + GetSystemMetrics(SM_CXVSCROLL) + ScaleValue(8),
+      Max(ScaleValue(120), FAssignmentBox.Parent.Width * 2 div 5));
+    FAssignmentBox.Visible := True;
+    FAssignmentSplit.Left := FAssignmentBox.Left + FAssignmentBox.Width + 1;
+    FAssignmentSplit.Visible := True;
+  end;
+  FAssignmentBox.VertScrollBar.Position := 0;
   FAssignment.Invalidate;
 end;
 
