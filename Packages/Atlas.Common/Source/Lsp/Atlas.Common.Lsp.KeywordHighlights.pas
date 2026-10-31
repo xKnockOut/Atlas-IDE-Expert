@@ -435,7 +435,7 @@ begin
   Options := TExitPointOptions.Default;
   Options.Exceptions := False;
   Options.Keywords := ASettings.ExitKeywords;
-  Found := TExitPoints.Find(ATree, nil, APosition, Options, nil, nil);
+  Found := TExitPoints.Find(ATree, APosition, Options, nil, nil);
   for Point in Found.Points do
     Result := Result + [Point.Range];
 end;

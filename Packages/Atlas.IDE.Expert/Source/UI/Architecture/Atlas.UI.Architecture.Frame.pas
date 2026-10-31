@@ -168,7 +168,7 @@ type
     procedure TreeDblClick(Sender: TObject);
     procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure MapSelect(AUnit: Integer);
+    procedure MapSelect;
     procedure MapOpen(AUnit: Integer);
     procedure SetScopeValue(const AValue: string);
     function GetIncludeLibrary: Boolean;
@@ -503,7 +503,7 @@ begin
   FMap.OnSelect :=
     procedure(AUnit: Integer)
     begin
-      MapSelect(AUnit);
+      MapSelect;
     end;
   FMap.OnOpen :=
     procedure(AUnit: Integer)
@@ -1545,7 +1545,7 @@ begin
   Key := 0;
 end;
 
-procedure TAtlasArchitectureFrame.MapSelect(AUnit: Integer);
+procedure TAtlasArchitectureFrame.MapSelect;
 begin
   UpdateInfo;
 end;

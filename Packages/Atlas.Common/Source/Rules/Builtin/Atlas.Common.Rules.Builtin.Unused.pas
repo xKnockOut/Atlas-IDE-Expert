@@ -23,7 +23,13 @@
 // - Methoden mit override, virtual, dynamic, abstract oder message,
 //   published-Methoden (DFM-Ereignisse), Methoden von Klassen mit Interfaces
 //   und Methoden, deren Typdeklaration nicht in der Datei steht,
-// - Routinen, die als Wert verwendet werden (@P, X := P, X := Obj.P, Aufruf(P)).
+// - Routinen, die als Wert verwendet werden (@P, X := P, X := Obj.P, Aufruf(P)), auch in Tabellen:
+//   typisierte Konstante (array[…] of TFix = (A, B), Record-Konstante (Lauf: A)), Array-Literal [A, B] und
+//   Vorbelegung (X: TFix = A) (#1451).
+// Nicht ausgenommen ist eine Routine, die nur aus einer anonymen Methode oder einem Override aufgerufen wird:
+// Vorgegeben ist dann deren Signatur, die eigene ist frei. Nicht sichtbar ist die Übergabe als Wert in einer
+// anderen Unit (Obj.OnX := TFoo.Handler dort, Handler ohne Sender, nicht published): Der Index kennt keine
+// Verwendungen. Dort hilft nur // lsp-ignore: unused-parameter mit Grund.
 //
 // Option aller drei Regeln: {"ignore": ["Dummy*", "_*"]} nimmt Namen nach
 // Muster aus (* und ? als Platzhalter).
@@ -664,6 +670,11 @@ begin
       Result := Parent[0] <> ANode;
     TSyntaxKind.Call:
       Result := Parent[0] <> ANode;
+    // Tabellen: array[…] of TFix = (A, B), Record-Konstante (Name: 'x'; Lauf: A), [A, B], X: TFix = A (#1451).
+    // Eine Routine mit Parametern ohne Klammern ist dort kein Aufruf.
+    TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl,
+    TSyntaxKind.InlineVar, TSyntaxKind.InlineConst:
+      Result := True;
   else
     Result := False;
   end;

@@ -697,7 +697,7 @@ begin
     if Next = nil then
       Exit(Fail('Die Klasse ist nach dem Umbau nicht mehr lesbar.', AReason));
     try
-      Edits := [TClassEdits.InsertBeforeLine(Text, Next.FirstLine, BaseText)];
+      Edits := [TClassEdits.InsertBeforeLine(Next.FirstLine, BaseText)];
       APlan.BaseLine := Next.FirstLine + HeaderOffset;
       if Bodies <> nil then
       begin
@@ -706,11 +706,11 @@ begin
           if (Member.Body <> nil) and ((FirstBody < 0) or (Member.BodyFirstLine < FirstBody)) then
             FirstBody := Member.BodyFirstLine;
         if FirstBody >= 0 then
-          Edits := Edits + [TClassEdits.InsertBeforeLine(Text, FirstBody, string.Join(LineBreak + LineBreak, Bodies) +
+          Edits := Edits + [TClassEdits.InsertBeforeLine(FirstBody, string.Join(LineBreak + LineBreak, Bodies) +
             LineBreak + LineBreak)]
         else
         begin
-          Line := TClassEdits.BodiesEnd(Tree, Text, Layout.Name);
+          Line := TClassEdits.BodiesEnd(Tree, Layout.Name);
           if Line < 0 then
             Exit(Fail('Die Unit hat keinen implementation-Teil für die Rümpfe der Basisklasse.', AReason));
           Edits := Edits + [TClassEdits.InsertBodies(Text, Line, Bodies)];

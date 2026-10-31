@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
@@ -8,6 +8,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Geändert
 - Keine Unit-Zyklen mehr im eigenen Code (#1450): Die 76 Befunde von `uses-cycle` in 49 Zyklen über implementation-uses sind an der Ursache aufgelöst, `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts mehr. Schnellbefehle: Die gemeinsamen Typen (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` als Record, uses-Kontext `TUsesContext`) stehen in der neuen Contract-Unit `Atlas.Common.Editing.Contract`; die `*Commands`-Units binden nur sie ein und melden ihre Befehle über `TSlashRegister`, nur das Register bindet alle ein. Einzelpaare: `TLspSymbolKind` nach `Lsp.Contract` (DocumentSymbols ↔ FormFiles), Formularprüfung in `Lsp.FormMentions` (InlayHints → MethodWithoutSelf → PromoteVariable), JSON-Strings in `Atlas.Text.Json` (Baseline ↔ Output ↔ Checker), Dateiadressen in `Atlas.Core.Lsp.Uris` (Lsp.Session ↔ WorkspaceEdits), `TAtlasIdeCommandUsage.UsageOf` statt über die Tastenkürzel-Tipps (KeyMap ↔ ShortcutTips), `Atlas.UI.Settings.ChoiceBox` und der Rückruf „Testen“ beim Abfragedialog (Settings.Page ↔ QueryDialog), `Atlas.UI.Tracker.DocBox` (IssueFrame ↔ CommentEditor). Verhalten unverändert.
+
+### Behoben
+- `unused-parameter` (#1451): Routinen in Tabellen von Routinen (typisierte Konstante `array[…] of TFix = (A, B)`, Record-Konstante `(Lauf: A)`, Array-Literal `[A, B]`, Vorbelegung `X: TFix = A`) gelten als Wert und werden nicht mehr gemeldet; ihre Signatur gibt der Elementtyp vor. Die 27 Befunde im eigenen Code waren Reste und sind entfernt: `AText` aus `TClassEdits.BodiesEnd`/`InsertBeforeLine`, `StringCastFixes`, `TExpressionText.Normalized` (und dadurch `Same`), `ALines` aus `MakeTarget` und `TExitPoints.Find` (Überladung mit Rückrufen), `ATree` aus `ResultAssignments`, `ANode` aus `TTypeMismatchCheck.ProceduralText`, `ASite` aus `TLspStepTargets.ResolveInherited`, `AUri` aus `TLspWorkspaceCheck.Settle`, `AReason` aus `TMethodBuild.ClassMethodEdits` (jetzt eine Prozedur, sie gelingt immer); im Plugin der Elternparameter der privaten Fabriken der sieben Editorleisten (die anonyme Funktion an `TAtlasEditorBarHost.Create` behält ihren), `AView` aus `TAtlasIdeExitPoints.Ask`, `AShift` aus `TAtlasIdeDebugDialogCompletion.HandleKey`, `AUnit` aus `MapSelect`, `AKind` aus `TAtlasBranchDialog.BaseCaption`, `AError` aus `TAtlasTrackerQueryTest.Evaluate`; in Tests `Owners`, `NoReader` und `FlowHeight`. Die beiden Beispiele `Postfix.pas` und `Entdecken.pas` behalten ihre Parameter (zum Ausprobieren gedacht).
 
 ## [1.2.0] - 2026-10-30
 
