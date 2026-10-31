@@ -32,7 +32,7 @@ type
     procedure KeepsPreviousState;
   end;
 
-function NoReader(const AFileName: string; out AText: string): Boolean;
+function NoReader(out AText: string): Boolean;
 
 implementation
 
@@ -49,7 +49,7 @@ uses
   Atlas.Common.Architecture.UsesGraph.Tests,
   Atlas.Common.Architecture.Alignment.Tests;
 
-function NoReader(const AFileName: string; out AText: string): Boolean;
+function NoReader(out AText: string): Boolean;
 begin
   AText := '';
   Result := False;
@@ -60,7 +60,7 @@ begin
   Result := TArchitectureService.Create(AIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := NoReader(AFileName, AText);
+      Result := NoReader(AText);
     end,
     function(const AFileName: string): TArray<string>
     begin

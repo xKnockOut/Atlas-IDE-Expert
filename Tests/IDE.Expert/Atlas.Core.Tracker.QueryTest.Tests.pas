@@ -139,7 +139,7 @@ end;
 function Evaluate(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget; AStatus: Integer;
   const AText: string): TAtlasTrackerQueryTestResult;
 begin
-  Result := TAtlasTrackerQueryTest.Evaluate(AProvider, ATarget, True, AStatus, AText, TAtlasCiFetchError.None);
+  Result := TAtlasTrackerQueryTest.Evaluate(AProvider, ATarget, True, AStatus, AText);
 end;
 
 { TAtlasTrackerQueryTestTests }
@@ -179,7 +179,7 @@ begin
   mResult := Evaluate(mProvider, mTarget, 500, '{"error": "server_error"}');
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.ServerError), Ord(mResult.Outcome));
   Assert.AreEqual(500, mResult.HttpStatus);
-  mResult := TAtlasTrackerQueryTest.Evaluate(mProvider, mTarget, False, 0, '', TAtlasCiFetchError.Timeout);
+  mResult := TAtlasTrackerQueryTest.Evaluate(mProvider, mTarget, False, 0, '');
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Unreachable), Ord(mResult.Outcome));
   Assert.AreEqual(0, mResult.HttpStatus);
   mResult := Default(TAtlasTrackerQueryTestResult);

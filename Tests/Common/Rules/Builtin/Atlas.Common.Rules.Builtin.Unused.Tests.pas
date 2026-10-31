@@ -53,6 +53,14 @@ type
     procedure CallbackRoutineIsSilent;
     [Test]
     procedure MethodAssignedThroughObjectIsSilent;
+    /// <summary>Routinen in einer Tabelle (typisierte Konstante, Array-Literal, Record-Konstante) haben die
+    /// Signatur des Elementtyps (#1451).</summary>
+    [Test]
+    procedure RoutineInTableIsSilent;
+    /// <summary>Eine Routine, die nur aus einer anonymen Methode aufgerufen wird, hat eine freie Signatur (#1451).
+    /// </summary>
+    [Test]
+    procedure RoutineCalledFromCallbackReports;
     [Test]
     procedure PlainMethodReports;
     [Test]
@@ -318,6 +326,35 @@ begin
     ClassUnit('  public'#10'    procedure Name(Writer: TObject; var AName: string);',
       'procedure TFoo.Name(Writer: TObject; var AName: string);'#10'begin'#10'  AName := '''';'#10'end;'#10 +
       'procedure P(Foo: TFoo; W: TWriter);'#10'begin'#10'  W.OnFindMethodName := Foo.Name;'#10'end;'));
+end;
+
+procedure TUnusedRulesTests.RoutineInTableIsSilent;
+begin
+  TRuleAssert.Silent(TUnusedParameterRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10'type'#10'  TFix = function(A, B: Integer): Integer;'#10 +
+    'function Erste(A, B: Integer): Integer;'#10'begin'#10'  Result := A;'#10'end;'#10 +
+    'function Zweite(A, B: Integer): Integer;'#10'begin'#10'  Result := B;'#10'end;'#10 +
+    'const'#10'  cFixes: array[0..1] of TFix = (Erste, Zweite);'#10'end.');
+  TRuleAssert.Silent(TUnusedParameterRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10'function Erste(A, B: Integer): Integer;'#10'begin'#10 +
+    '  Result := A;'#10'end;'#10'procedure P;'#10'var'#10'  mFixes: TArray<TFix>;'#10'begin'#10 +
+    '  mFixes := [Erste];'#10'end;'#10'end.');
+  TRuleAssert.Silent(TUnusedParameterRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10'function Erste(A, B: Integer): Integer;'#10'begin'#10 +
+    '  Result := A;'#10'end;'#10'const'#10'  cEintrag: TEintrag = (Name: ''x''; Lauf: Erste);'#10'end.');
+end;
+
+procedure TUnusedRulesTests.RoutineCalledFromCallbackReports;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TUnusedParameterRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10'function Bau(AParent: TObject): TObject;'#10'begin'#10 +
+    '  Result := nil;'#10'end;'#10'procedure P;'#10'begin'#10'  Register(function(AParent: TObject): TObject'#10 +
+    '    begin'#10'      Result := Bau(AParent);'#10'    end);'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, '"AParent"');
+  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
 end;
 
 procedure TUnusedRulesTests.PlainMethodReports;

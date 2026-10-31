@@ -65,9 +65,9 @@ type
     class function MirroredComparison(const AOperator: string): string; static;
     /// <summary>Gleicher Ausdruck ohne Rücksicht auf Leerraum, Kommentare, Groß-/Kleinschreibung der Namen
     /// und äußere Klammern.</summary>
-    class function Same(const AText: string; ATree: TSyntaxTree; A, B: TSyntaxNode): Boolean; static;
+    class function Same(ATree: TSyntaxTree; A, B: TSyntaxNode): Boolean; static;
     /// <summary>Token von ANode ohne Kommentare, Namen in Kleinbuchstaben, durch Leerzeichen getrennt.</summary>
-    class function Normalized(const AText: string; ATree: TSyntaxTree; ANode: TSyntaxNode): string; static;
+    class function Normalized(ATree: TSyntaxTree; ANode: TSyntaxNode): string; static;
     /// <summary>Ohne Seiteneffekte: Namen, Literale, Mitglieder, Indizes, Operatoren und Aufrufe von
     /// Standardroutinen ohne Seiteneffekte (Pascal.PureRoutines). Ein Name kann eine parameterlose Funktion
     /// sein; das prüft der Aufrufer bei Bedarf über die Namensauflösung.</summary>
@@ -307,7 +307,7 @@ begin
     Result := Part(AText, Node);
 end;
 
-class function TExpressionText.Normalized(const AText: string; ATree: TSyntaxTree; ANode: TSyntaxNode): string;
+class function TExpressionText.Normalized(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
 var
   Node: TSyntaxNode;
   Tokens: TArray<TPascalToken>;
@@ -333,9 +333,9 @@ begin
   end;
 end;
 
-class function TExpressionText.Same(const AText: string; ATree: TSyntaxTree; A, B: TSyntaxNode): Boolean;
+class function TExpressionText.Same(ATree: TSyntaxTree; A, B: TSyntaxNode): Boolean;
 begin
-  Result := (A <> nil) and (B <> nil) and (Normalized(AText, ATree, A) = Normalized(AText, ATree, B));
+  Result := (A <> nil) and (B <> nil) and (Normalized(ATree, A) = Normalized(ATree, B));
 end;
 
 class function TExpressionText.IsSideEffectFree(ANode: TSyntaxNode): Boolean;

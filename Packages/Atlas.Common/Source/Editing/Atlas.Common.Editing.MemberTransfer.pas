@@ -637,7 +637,7 @@ begin
   begin
     Tree := TSyntaxTreeCache.Parse(AText);
     try
-      Line := TClassEdits.BodiesEnd(Tree, AText, AClassName);
+      Line := TClassEdits.BodiesEnd(Tree, AClassName);
       if Line < 0 then
       begin
         AReason := Format('Die Unit von %s hat keinen implementation-Teil für die Rümpfe.', [AClassName]);

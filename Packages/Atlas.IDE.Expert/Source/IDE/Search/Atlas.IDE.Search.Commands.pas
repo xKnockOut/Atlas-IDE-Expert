@@ -190,7 +190,7 @@ type
     class procedure ReplaceChosen; static;
     // Leisten.
     class function BarFor(const AWindow: INTAEditWindow): TAtlasSearchBar; static;
-    class function CreateBar(AParent: TWinControl): TAtlasSearchBar; static;
+    class function CreateBar: TAtlasSearchBar; static;
     class procedure Place(ABar: TAtlasSearchBar; AParent: TWinControl); static;
     class procedure Removed(ABar: TControl); static;
     class procedure ThemeBar(ABar: TAtlasSearchBar); static;
@@ -480,7 +480,7 @@ begin
     FHost := TAtlasEditorBarHost.Create('Suchleiste', TAtlasFeature.Search,
       function(AEditorParent: TWinControl): TControl
       begin
-        Result := CreateBar(AEditorParent);
+        Result := CreateBar;
       end,
       procedure(ABar: TControl; AEditorParent: TWinControl)
       begin
@@ -748,7 +748,7 @@ begin
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable.</summary>
-class function TAtlasIdeSearch.CreateBar(AParent: TWinControl): TAtlasSearchBar;
+class function TAtlasIdeSearch.CreateBar: TAtlasSearchBar;
 var
   Bar: TAtlasSearchBar;
 begin

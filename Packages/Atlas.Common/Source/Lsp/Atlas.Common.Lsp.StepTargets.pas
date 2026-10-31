@@ -97,7 +97,7 @@ type
     function IsInterface(const AUnit: TUnitIndex; const AContainer: string): Boolean;
     procedure AddTargets(var ACall: TLspStepCall; const AUnit: TUnitIndex; const AParamTypes: TArray<string>);
     function ResolveSite(const ASite: TStepCallSite; out ACall: TLspStepCall): Boolean;
-    function ResolveInherited(const ASite: TStepCallSite; const APosition: TTextPosition;
+    function ResolveInherited(const APosition: TTextPosition;
       out ACall: TLspStepCall): Boolean;
     function ResolveUnknown(const ASite: TStepCallSite; out ACall: TLspStepCall): Boolean;
     procedure MarkReceivers(var AAnswer: TLspStepAnswer; const ASites: TArray<TStepCallSite>;
@@ -367,7 +367,7 @@ begin
   end;
 end;
 
-function TLspStepTargets.ResolveInherited(const ASite: TStepCallSite; const APosition: TTextPosition;
+function TLspStepTargets.ResolveInherited(const APosition: TTextPosition;
   out ACall: TLspStepCall): Boolean;
 var
   Found: TArray<TDefinitionTarget>;
@@ -441,7 +441,7 @@ begin
   if ASite.Receiver <> nil then
     ACall.Receiver := TextOf(ASite.Receiver);
   if ASite.Callee.Kind = TSyntaxKind.InheritedExpr then
-    Exit(ResolveInherited(ASite, Position, ACall));
+    Exit(ResolveInherited(Position, ACall));
   if ASite.Node.Kind = TSyntaxKind.IndexAccess then
   begin
     // Liste[i]: die indizierte bzw. Default-Property.
