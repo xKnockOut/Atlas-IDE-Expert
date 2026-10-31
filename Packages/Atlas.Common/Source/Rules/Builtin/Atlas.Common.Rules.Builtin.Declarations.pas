@@ -2908,6 +2908,29 @@ var
     end;
   end;
 
+  // Sieht keine andere Unit die Routine? implementation-Teil (auch Methoden dort deklarierter Typen und lokale
+  // Routinen) oder Programmdatei. Dann prüft UsedAsValue alle Verwendungen als Wert, und die Korrektur ist sicher;
+  // eine Routine aus dem interface-Teil könnte eine andere Unit als Methodenzeiger nehmen (dann mehrdeutig).
+  function UnitPrivate(AHeader: TSyntaxNode): Boolean;
+  var
+    Node: TSyntaxNode;
+  begin
+    Node := AHeader.Parent;
+    while Node <> nil do
+    begin
+      case Node.Kind of
+        TSyntaxKind.InterfaceSection:
+          Exit(False);
+        TSyntaxKind.ImplementationSection, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
+          Exit(True);
+      else
+        // Weiter nach oben.
+      end;
+      Node := Node.Parent;
+    end;
+    Result := False;
+  end;
+
   // Vorfahren, Nachfahren oder Aufrufer von außen geben die Signatur vor.
   function SignatureGiven(const AHeader: TSignatureHeader): Boolean;
   var
@@ -2978,9 +3001,10 @@ var
       CanFix := HasBody and not Conditional(Body);
     end;
     Fixes := nil;
+    // Sicher (auch für --fix und die Sammelkorrektur), wenn keine andere Unit die Routine sieht.
     if CanFix then
       Fixes := [TRuleFix.Create('Überladungen statt Standardparameter',
-        Fix(Decl, AHeader, HasBody, Body, BodyNode, DeclIsBody, First))];
+        Fix(Decl, AHeader, HasBody, Body, BodyNode, DeclIsBody, First), UnitPrivate(AHeader))];
     for Index := 0 to Params.ChildCount - 1 do
       if (Params[Index].Kind = TSyntaxKind.Parameter) and (Params[Index].ChildCount > 1) then
       begin
