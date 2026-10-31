@@ -91,6 +91,10 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Dock.Plan;
 
+type
+  // Zugriff auf das geschützte Color von TCustomForm.
+  TFormAccess = class(TCustomForm);
+
 { TAtlasIdeDockWindow }
 
 constructor TAtlasIdeDockWindow.Create(const ADock: INTACustomDockableForm; APersistent: Boolean);
@@ -411,6 +415,10 @@ begin
     Exit;
   try
     Theming.ApplyTheme(AForm);
+    // Der Frame ist durchsichtig und zeigt den Grund der Form; ApplyTheme setzt ihn nicht (schwebend hellgrau
+    // unter weißer Schrift).
+    if Theming.StyleServices <> nil then
+      TFormAccess(AForm).Color := Theming.StyleServices.GetSystemColor(clBtnFace);
     ApplyDarkCaption(AForm);
   except
     // Thema ist Kosmetik: ein Fehler darf das Fenster nicht verhindern.

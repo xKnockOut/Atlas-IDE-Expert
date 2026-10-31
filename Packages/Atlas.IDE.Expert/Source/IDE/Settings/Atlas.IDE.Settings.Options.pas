@@ -1572,6 +1572,19 @@ begin
   end;
 end;
 
+/// <summary>Tools › Optionen über IOTAEnvironmentOptions140.EditOptions auf der Seite „Atlas“ öffnen; False, wenn die
+/// IDE das nicht anbietet.</summary>
+function EditAtlasOptions: Boolean;
+var
+  Services: IOTAServices;
+  Environment: IOTAEnvironmentOptions140;
+begin
+  Result := Supports(BorlandIDEServices, IOTAServices, Services) and (Services.GetEnvironmentOptions <> nil) and
+    Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Environment);
+  if Result then
+    Environment.EditOptions('', Options.GetCaption);
+end;
+
 class procedure TAtlasOptionsRegistration.ShowRule(const ARuleId: string);
 begin
   TAtlasProjectSettings.ShowRule(ARuleId);
@@ -1584,10 +1597,13 @@ begin
   PendingReveal := AKey;
   if Selector = nil then
     Selector := TAtlasOptionsSelector.Create;
-  // Der Dialog ist modal: Der Zeitgeber wählt die Seite, während er offen ist.
+  // Der Dialog ist modal: Der Zeitgeber wählt die Seite, während er offen ist (nur noch Rückfall).
   Selector.Start;
   try
-    RunOptionsDialog;
+    // Offizieller Weg: Dialog gleich auf der Seite „Atlas“ unter „Fremdhersteller“ (leere Area). Die Seite zeigt
+    // beim Anlegen PendingReveal. Der Baum von Delphi 13 ist kein TTreeView mehr; die Suche darin fand nichts.
+    if not EditAtlasOptions then
+      RunOptionsDialog;
   finally
     // Modal: Hier ist der Dialog wieder zu. Nicht gefunden oder geschlossen: nichts mehr vormerken.
     if Selector <> nil then
