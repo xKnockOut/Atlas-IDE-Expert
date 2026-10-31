@@ -100,6 +100,8 @@ type
     FStatusLogged: Boolean;
     /// <summary>Halt, den der Dialog schon vor der Meldung der Session ausgelöst hat (Arm); 0 = keiner.</summary>
     FEarlyStop: Integer;
+    /// <summary>Rückruf der Exception-Leiste für FDialog.MayHide (auch vor Start gesetzt).</summary>
+    FMayHide: TAtlasDebugDialogMayHide;
     class procedure Captured(AFault: Boolean); static;
     /// <summary>Dialog gefunden, während das Programm lief: den Halt sofort aufnehmen (#783).</summary>
     class procedure EarlyFound(const AScan: TAtlasDebugDialogScan); static;
@@ -139,6 +141,9 @@ type
     /// <summary>Den erkannten Dialog des aktuellen Halts mit „Anhalten“ schließen (#783: Leiste statt Dialog).
     /// </summary>
     class function BreakDialog: Boolean; static;
+    /// <summary>Entscheidet, ob der Exception-Dialog der IDE unsichtbar bleiben darf (nil = immer sichtbar).
+    /// </summary>
+    class procedure SetDialogMayHide(const AMayHide: TAtlasDebugDialogMayHide); static;
     /// <summary>Klasse künftig still fortsetzen (Ignorier-Liste speichern, Meldung).</summary>
     class procedure IgnoreClass(const AClass: string); static;
     /// <summary>Klasse an Datei und Zeile im Projekt künftig still fortsetzen (#783). False, wenn sie schon
@@ -227,6 +232,7 @@ begin
   FIgnore := TAtlasDebugIgnoreList.Load(Folder);
   if FDialog = nil then
     FDialog := TAtlasIdeExceptionDialog.Create;
+  FDialog.MayHide := FMayHide;
   if FRetry = nil then
   begin
     FRetry := TTimer.Create(nil);
@@ -350,6 +356,13 @@ end;
 class function TAtlasIdeDebugExceptions.BreakDialog: Boolean;
 begin
   Result := (FDialog <> nil) and FDialog.BreakFound;
+end;
+
+class procedure TAtlasIdeDebugExceptions.SetDialogMayHide(const AMayHide: TAtlasDebugDialogMayHide);
+begin
+  FMayHide := AMayHide;
+  if FDialog <> nil then
+    FDialog.MayHide := AMayHide;
 end;
 
 class procedure TAtlasIdeDebugExceptions.IgnoreClass(const AClass: string);
