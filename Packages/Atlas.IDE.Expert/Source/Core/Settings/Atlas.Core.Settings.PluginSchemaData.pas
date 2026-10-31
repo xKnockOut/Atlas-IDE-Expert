@@ -4557,7 +4557,7 @@ const
     '        "blocks",',
     '        "characters"',
     '      ],',
-    '      "default": "blocks",',
+    '      "default": "characters",',
     '      "x-key": "editor.minimap.render",',
     '      "x-area": "editor",',
     '      "x-page": "Editor",',

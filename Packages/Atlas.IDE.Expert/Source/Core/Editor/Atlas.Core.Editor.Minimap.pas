@@ -155,7 +155,7 @@ type
     DefaultWidth = 120;
     MinWidth = TAtlasPluginSettings.MinMinimapWidth;
     MaxWidth = TAtlasPluginSettings.MaxMinimapWidth;
-    DefaultScale = 1;
+    DefaultScale = 2;
     MinScale = TAtlasPluginSettings.MinMinimapScale;
     MaxScale = TAtlasPluginSettings.MaxMinimapScale;
     DefaultMaxColumn = 120;
@@ -453,7 +453,8 @@ end;
 
 class function TAtlasMinimap.Defaults: TAtlasMinimapOptions;
 begin
-  Result.Render := TAtlasMinimapRender.Blocks;
+  // Winzige Zeichen wie VS Code; Balken je Wort sind die Alternative.
+  Result.Render := TAtlasMinimapRender.Characters;
   Result.Width := DefaultWidth;
   Result.Scale := DefaultScale;
   Result.MaxColumn := DefaultMaxColumn;
@@ -487,7 +488,7 @@ begin
   for Render := Low(TAtlasMinimapRender) to High(TAtlasMinimapRender) do
     if SameText(Trim(AName), RenderNames[Render]) then
       Exit(Render);
-  Result := TAtlasMinimapRender.Blocks;
+  Result := TAtlasMinimapRender.Characters;
 end;
 
 class function TAtlasMinimap.SideOf(const AName: string): TAtlasMinimapSide;
