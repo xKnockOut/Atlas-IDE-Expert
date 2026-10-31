@@ -127,7 +127,8 @@ const
   /// <summary>Deckkraft (0–255) von Methodenband, Zeilenband und Schieber.</summary>
   MethodAlpha = 28;
   BandAlpha = 80;
-  SliderAlpha = 48;
+  // Nur ein Schatten: Bei 48 überdeckte der Schieber im dunklen Thema die Zeichen darunter.
+  SliderAlpha = 20;
   /// <summary>Mindesthöhe von Schieber und Marke bei 96 DPI.</summary>
   BaseMinSlider = 6;
   BaseMinMark = 2;
@@ -204,7 +205,8 @@ begin
     TAtlasTokenKind.Number:
       Result := AColors.Accent;
   else
-    Result := TAtlasColorMath.Mix(AColors.Text, AColors.Surface, 0.7);
+    // Kräftig wie in VS Code: Bezeichner sind der Großteil des Codes und müssen auf einen Blick lesbar sein.
+    Result := TAtlasColorMath.Mix(AColors.Text, AColors.Surface, 0.85);
   end;
 end;
 

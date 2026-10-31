@@ -2142,9 +2142,9 @@ var
   Settings, Loaded: TAtlasPluginSettings;
   Store: IAtlasSettingsStore;
 begin
-  // #506: experimentell, also aus; drei Zeilen; Grenzen 1 bis 10.
+  // #506: nicht mehr experimentell, also an; drei Zeilen; Grenzen 1 bis 10.
   Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsFalse(Settings.StickyScroll);
+  Assert.IsTrue(Settings.StickyScroll);
   Assert.AreEqual(3, Settings.StickyScrollMaxLines);
   Settings.StickyScroll := True;
   Settings.StickyScrollMaxLines := 5;

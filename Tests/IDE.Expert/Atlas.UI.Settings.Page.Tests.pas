@@ -3723,7 +3723,7 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.IsFalse(Page.StickyScroll.Checked);
+    Assert.IsTrue(Page.StickyScroll.Checked);
     Assert.AreEqual('3', Page.StickyScrollMaxLines.Text);
     Page.StickyScroll.Checked := True;
     Page.StickyScrollMaxLines.Text := '2';

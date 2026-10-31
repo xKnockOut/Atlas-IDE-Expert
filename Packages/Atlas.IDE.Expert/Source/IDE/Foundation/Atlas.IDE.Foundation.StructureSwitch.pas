@@ -36,6 +36,9 @@ type
     class function Apply(AOwnGuides: Boolean): Boolean; static;
     /// <summary>Help Insight angleichen; True, wenn geändert (wirkt nach dem nächsten Start der IDE).</summary>
     class function ApplyHelpInsight(AOwnTooltip: Boolean): Boolean; static;
+    /// <summary>Wert-Tooltip der IDE beim Debuggen angleichen (aus, solange der Atlas-Hover die Werte zeigt);
+    /// True, wenn geändert (wirkt nach dem nächsten Start der IDE).</summary>
+    class function ApplyTooltipWatches(AOwnValues: Boolean): Boolean; static;
     /// <summary>Beides nach den aktuellen Einstellungen; meldet Änderungen im Meldungsfenster.</summary>
     class procedure Sync; static;
     /// <summary>Error Insight der IDE an (#625)? Ohne Wert gilt die Vorgabe der IDE: an.</summary>
@@ -67,6 +70,9 @@ const
   StructureMarker = 'IdeStructureDisabled';
   HelpInsightValue = 'Help Insight';
   HelpInsightMarker = 'IdeHelpInsightDisabled';
+  // Delphi: „Ausdrucksauswertung im Kurzhinweis“ – eigener Wert-Tooltip über dem Atlas-Hover.
+  TooltipWatchesValue = 'ToolTip Watches';
+  TooltipWatchesMarker = 'IdeTooltipWatchesDisabled';
   ErrorInsightValue = 'Error Insight';
   ErrorInsightMarker = 'IdeErrorInsightDisabled';
 
@@ -213,6 +219,11 @@ begin
   Result := ApplyCodeInsight(HelpInsightValue, HelpInsightMarker, AOwnTooltip);
 end;
 
+class function TAtlasIdeStructureSwitch.ApplyTooltipWatches(AOwnValues: Boolean): Boolean;
+begin
+  Result := ApplyCodeInsight(TooltipWatchesValue, TooltipWatchesMarker, AOwnValues);
+end;
+
 function ReadErrorInsight: Boolean;
 var
   Registry: TRegistry;
@@ -305,6 +316,11 @@ begin
       Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.HelpInsightIdeOff)]
     else
       Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.HelpInsightIdeOn)];
+  if ApplyTooltipWatches(OwnTooltip and Settings.DebugHoverValues) then
+    if OwnTooltip and Settings.DebugHoverValues then
+      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.TooltipWatchesIdeOff)]
+    else
+      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.TooltipWatchesIdeOn)];
   if Length(Texts) = 0 then
     Exit;
   // Beim Laden des Plugins ist das Meldungsfenster noch nicht bereit.

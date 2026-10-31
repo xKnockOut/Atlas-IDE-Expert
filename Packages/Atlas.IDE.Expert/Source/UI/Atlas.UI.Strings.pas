@@ -31,7 +31,7 @@ type
     ProblemsConfidence, ConfidenceHigh, ConfidenceMedium, ConfidenceLow,
     SeverityError, SeverityWarning, SeverityInformation, SeverityHint,
     SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter,
-    HelpInsightIdeOff, HelpInsightIdeOn,
+    HelpInsightIdeOff, HelpInsightIdeOn, TooltipWatchesIdeOff, TooltipWatchesIdeOn,
     ReloadDiffTitle,
     AccessCompletion, AccessSignature, AccessHover, AccessPosition, AccessParameter,
     ProjectSettingsMenu, ProjectSettingsTitle, ProjectSettingsFromProject, ProjectSettingsDefault,
@@ -1354,6 +1354,10 @@ const
      'Atlas zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem ' +
        'nächsten Start von Delphi.',
      'Atlas hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas zeigt Werte beim Debuggen im eigenen Tooltip und hat die Ausdrucksauswertung im Kurzhinweis der IDE ' +
+       'abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas hat die Ausdrucksauswertung im Kurzhinweis der IDE wieder eingeschaltet; wirkt nach dem nächsten ' +
+       'Start von Delphi.',
      'Atlas: Unterschied in %s (- Editor, + Platte):',
      'Atlas Vervollständigung', 'Atlas Parameterhilfe', 'Atlas Tooltip', '%d von %d', 'Parameter %d: %s',
      'Projekt-Einstellungen (atlas.json)…', 'Atlas-Einstellungen des Projekts', 'aus dem Projekt', 'Standard: %s',
@@ -4557,6 +4561,10 @@ const
      'Atlas shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after ' +
        'the next start of Delphi.',
      'Atlas switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.',
+     'Atlas shows values while debugging in its own tooltip and switched off the IDE''s tooltip expression ' +
+       'evaluation; takes effect after the next start of Delphi.',
+     'Atlas switched the IDE''s tooltip expression evaluation back on; takes effect after the next start of ' +
+       'Delphi.',
      'Atlas: difference in %s (- editor, + disk):',
      'Atlas completion', 'Atlas parameter info', 'Atlas tooltip', '%d of %d', 'Parameter %d: %s',
      'Project settings (atlas.json)…', 'Atlas project settings', 'from the project', 'Default: %s',

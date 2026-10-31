@@ -2197,7 +2197,7 @@ begin
   Result.QuickBookmarksImportIde := True;
   Result.NextBookmarkKey := 0;
   Result.PreviousBookmarkKey := 0;
-  Result.StickyScroll := False;
+  Result.StickyScroll := True;
   Result.StickyScrollMaxLines := 3;
   Result.StickyScrollTypes := True;
   Result.StickyScrollRoutines := True;
