@@ -15,6 +15,8 @@
     "metric-unit-length": "off",
     "metric-uses-count": "off",
     "metric-inheritance-depth": "off",
+    "catch-all-without-raise": "off",
+    "narrowing-assignment": "off",
     "generic-exception-raised": {"exclude": ["Tests/**"]},
     "format-without-settings": {"exclude": ["Tests/**"]},
     "security-insecure-http": {"exclude": ["Tests/**"]},
