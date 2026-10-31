@@ -161,10 +161,18 @@ type
       Symbols: TArray<TIndexSymbol>;
       Positions: TArray<Integer>;
     end;
-    /// <summary>Gemerkte Antwort von FindUnit bzw. FindQualifierUnit (#1342).</summary>
+    /// <summary>Gefundene Unit an fester Adresse: Die Antworten halten nur den Verweis, statt bei jedem Treffer
+    /// den ganzen TUnitIndex zu kopieren (laut Stichproben ein spürbarer Teil der Regelzeit).</summary>
+    TUnitHolder = class
+    public
+      Value: TUnitIndex;
+    end;
+    PUnitIndex = ^TUnitIndex;
+    /// <summary>Gemerkte Antwort von FindUnit bzw. FindQualifierUnit (#1342); Holder nil, wenn nicht gefunden.
+    /// </summary>
     TUnitAnswer = record
       Found: Boolean;
-      UnitIndex: TUnitIndex;
+      Holder: TUnitHolder;
     end;
   private
     FIndex: ISymbolIndex;
@@ -182,6 +190,10 @@ type
     // Pro Aufruf von Resolve
     FTree: TSyntaxTree;
     FCurrent: TUnitIndex;
+    // Woher FCurrent stammt: Platz in FPins und Baum; -1 = anders gesetzt (TreeUnit, …From). Prepare lässt
+    // FCurrent dann stehen, statt die Unit je Aufruf neu zu kopieren.
+    FCurrentPin: Integer;
+    FCurrentTree: TSyntaxTree;
     FOffset: Integer;
     FInImplementation: Boolean;
     // Mit PinTree vorab ausgewertete Bäume als Stapel (verschachtelt, LIFO), für viele Aufrufe auf
@@ -209,12 +221,22 @@ type
     // Typabfrage schlug sonst alle uses-Units samt Namespace-Varianten neu im Index nach (#1342).
     FUnitAnswers: TDictionary<string, TUnitAnswer>;
     FQualifierAnswers: TDictionary<string, TUnitAnswer>;
+    // Besitzt alle Halter der Antworten; bleibt bis zum Ende des Resolvers, damit Verweise aus FindUnitRef auch
+    // nach geleerten Antworten (SetNamespaces) gültig sind.
+    FUnitHolders: TObjectList<TUnitHolder>;
     // Zeit im Nachladen (EnsureUnit) für das Diagnoselog (#647).
     FEnsureMs: Int64;
     FClassState: Integer;
     FClass: TResolvedSymbol;
     FInferDepth: Integer;
     function FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+    /// <summary>Wie FindUnit, aber nur ein Verweis auf die gemerkte Unit (nie kopiert); gültig bis zum Ende des
+    /// Resolvers. Für Schleifen über die uses-Units.</summary>
+    function FindUnitRef(const AName: string; out AUnit: PUnitIndex): Boolean;
+    /// <summary>Gemerkte Antwort zu AName (FindUnit), bei Bedarf gesucht.</summary>
+    function UnitAnswer(const AName: string): TUnitAnswer;
+    /// <summary>Halter für AUnit, im Besitz des Resolvers.</summary>
+    function HoldUnit(const AUnit: TUnitIndex): TUnitHolder;
     procedure SetNamespaces(const AValue: TArray<string>);
     /// <summary>FindUnit ohne gemerkte Antworten (außer der eigenen Unit).</summary>
     function SearchUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
@@ -834,6 +856,7 @@ begin
   inherited Create;
   FIndex := AIndex;
   FEnsureUnit := AEnsureUnit;
+  FCurrentPin := -1;
   FHelpers := TDictionary<string, TResolvedSymbol>.Create;
   FAncestors := TDictionary<string, TResolvedSymbol>.Create;
   FPins := TList<TPin>.Create;
@@ -853,6 +876,7 @@ begin
   FScopeSeen.Free;
   FQualifierAnswers.Free;
   FUnitAnswers.Free;
+  FUnitHolders.Free;
   FMissingUnits.Free;
   FUnitHelpers.Free;
   FPinCalls.Free;
@@ -887,9 +911,34 @@ begin
     FQualifierAnswers.Clear;
 end;
 
-function TNameResolver.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+function TNameResolver.HoldUnit(const AUnit: TUnitIndex): TUnitHolder;
+begin
+  if FUnitHolders = nil then
+    FUnitHolders := TObjectList<TUnitHolder>.Create(True);
+  Result := TUnitHolder.Create;
+  Result.Value := AUnit;
+  FUnitHolders.Add(Result);
+end;
+
+function TNameResolver.UnitAnswer(const AName: string): TUnitAnswer;
 var
   mKey: string;
+  mUnit: TUnitIndex;
+begin
+  mKey := UpperCase(AName);
+  if FUnitAnswers = nil then
+    FUnitAnswers := TDictionary<string, TUnitAnswer>.Create
+  else if FUnitAnswers.TryGetValue(mKey, Result) then
+    Exit;
+  Result.Found := SearchUnit(AName, mUnit);
+  Result.Holder := nil;
+  if Result.Found then
+    Result.Holder := HoldUnit(mUnit);
+  FUnitAnswers.Add(mKey, Result);
+end;
+
+function TNameResolver.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
   mAnswer: TUnitAnswer;
 begin
   // Die eigene Unit zuerst und nie gemerkt: FCurrent wechselt mit PinTree.
@@ -901,18 +950,32 @@ begin
   // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
   if FIndex = nil then
     Exit(False);
-  mKey := UpperCase(AName);
-  if FUnitAnswers = nil then
-    FUnitAnswers := TDictionary<string, TUnitAnswer>.Create
-  else if FUnitAnswers.TryGetValue(mKey, mAnswer) then
-  begin
-    AUnit := mAnswer.UnitIndex;
-    Exit(mAnswer.Found);
-  end;
-  mAnswer.Found := SearchUnit(AName, mAnswer.UnitIndex);
-  FUnitAnswers.Add(mKey, mAnswer);
-  AUnit := mAnswer.UnitIndex;
+  mAnswer := UnitAnswer(AName);
   Result := mAnswer.Found;
+  if Result then
+    AUnit := mAnswer.Holder.Value
+  else
+    AUnit := Default(TUnitIndex);
+end;
+
+function TNameResolver.FindUnitRef(const AName: string; out AUnit: PUnitIndex): Boolean;
+var
+  mAnswer: TUnitAnswer;
+begin
+  AUnit := nil;
+  // Die eigene Unit als Momentaufnahme: FCurrent kann sich während einer verschachtelten Abfrage ändern, der
+  // Verweis darf das nicht.
+  if SameText(AName, FCurrent.UnitName) then
+  begin
+    AUnit := @HoldUnit(FCurrent).Value;
+    Exit(True);
+  end;
+  if FIndex = nil then
+    Exit(False);
+  mAnswer := UnitAnswer(AName);
+  Result := mAnswer.Found;
+  if Result then
+    AUnit := @mAnswer.Holder.Value;
 end;
 
 function TNameResolver.SearchUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
@@ -976,12 +1039,17 @@ begin
     FQualifierAnswers := TDictionary<string, TUnitAnswer>.Create
   else if FQualifierAnswers.TryGetValue(mKey, mAnswer) then
   begin
-    AUnit := mAnswer.UnitIndex;
+    if mAnswer.Found then
+      AUnit := mAnswer.Holder.Value
+    else
+      AUnit := Default(TUnitIndex);
     Exit(mAnswer.Found);
   end;
-  mAnswer.Found := SearchQualifierUnit(AName, mAnswer.UnitIndex);
+  mAnswer.Found := SearchQualifierUnit(AName, AUnit);
+  mAnswer.Holder := nil;
+  if mAnswer.Found then
+    mAnswer.Holder := HoldUnit(AUnit);
   FQualifierAnswers.Add(mKey, mAnswer);
-  AUnit := mAnswer.UnitIndex;
   Result := mAnswer.Found;
 end;
 
@@ -1254,7 +1322,7 @@ function TNameResolver.LookupGlobal(const AUnit: TUnitIndex; const AName: string
   AWithImplementation, AOnlyTypes: Boolean; out AResult: TResolvedSymbol; AArity: Integer): Boolean;
 var
   UnitName: string;
-  Used: TUnitIndex;
+  Used: PUnitIndex;
 begin
   // Ohne Typargumente gewinnt ein nicht generischer Typ jeder Unit vor einem generischen gleichen Namens, wie im
   // Compiler: TList ist mit System.Classes und System.Generics.Collections in uses immer System.Classes.TList (#981).
@@ -1262,8 +1330,9 @@ begin
     Exit(True);
   if LookupInUnit(AUnit, AName, not AWithImplementation, AOnlyTypes, AResult, AArity) then
     Exit(True);
+  // Je Bezeichner über alle uses-Units: nur Verweise, keine Kopien der Units.
   for UnitName in ScopeUnits(AUnit, AWithImplementation) do
-    if FindUnit(UnitName, Used) and LookupInUnit(Used, AName, True, AOnlyTypes, AResult, AArity) then
+    if FindUnitRef(UnitName, Used) and LookupInUnit(Used^, AName, True, AOnlyTypes, AResult, AArity) then
       Exit(True);
   Result := False;
 end;
@@ -1961,19 +2030,20 @@ function TNameResolver.DefaultProperty(const AType: TResolvedSymbol; out AResult
 var
   Current, Ancestor: TResolvedSymbol;
   OwnerUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Depth: Integer;
+  Index, Depth: Integer;
 begin
   Current := AType;
   for Depth := 0 to MaxDepth do
   begin
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit(False);
-    for Symbol in OwnerUnit.Symbols do
-      if Symbol.IsDefault and (Symbol.Kind = TIndexSymbolKind.Property_) and
-        SameText(Symbol.Container, Current.QualifiedName) and IsVisible(Symbol, OwnerUnit, Current, False) then
+    // Über den Index: for-in kopierte bei jedem X[i] jedes Symbol der Unit (System.Classes: Tausende).
+    for Index := 0 to High(OwnerUnit.Symbols) do
+      if OwnerUnit.Symbols[Index].IsDefault and (OwnerUnit.Symbols[Index].Kind = TIndexSymbolKind.Property_) and
+        SameText(OwnerUnit.Symbols[Index].Container, Current.QualifiedName) and
+        IsVisible(OwnerUnit.Symbols[Index], OwnerUnit, Current, False) then
       begin
-        AResult := FromSymbol(OwnerUnit, Symbol);
+        AResult := FromSymbol(OwnerUnit, OwnerUnit.Symbols[Index]);
         AResult.Bindings := Current.Bindings;
         Exit(True);
       end;
@@ -3023,14 +3093,14 @@ function TNameResolver.ScopedEnumValue(ATree: TSyntaxTree; const AFileName, ANam
 
 var
   UnitName: string;
-  Used: TUnitIndex;
+  Used: PUnitIndex;
 begin
   AQualified := '';
   Prepare(ATree, AFileName, AOffset);
   if Find(FCurrent, False) then
     Exit(True);
   for UnitName in ScopeUnits(FCurrent, FInImplementation) do
-    if FindUnit(UnitName, Used) and Find(Used, True) then
+    if FindUnitRef(UnitName, Used) and Find(Used^, True) then
       Exit(True);
   Result := False;
 end;
@@ -3045,10 +3115,21 @@ begin
   FClassState := 0;
   FInferDepth := 0;
   PinIndex := PinnedIndex(ATree, AFileName);
-  if PinIndex >= 0 then
-    FCurrent := FPins[PinIndex].Merged
+  // Jeder Aufruf von Resolve/NodeType kommt hierher: FCurrent nur neu setzen, wenn Baum oder Pin wechseln. Vorher
+  // kopierte jeder Aufruf den Pin samt zwei TUnitIndex (FPins[…]) und dann die Unit (laut Stichproben teuer).
+  if (PinIndex >= 0) and (PinIndex = FCurrentPin) and (ATree = FCurrentTree) then
+    // FCurrent ist schon diese Unit.
+  else if PinIndex >= 0 then
+  begin
+    FCurrent := FPins.List[PinIndex].Merged;
+    FCurrentPin := PinIndex;
+    FCurrentTree := ATree;
+  end
   else
+  begin
     FCurrent := TreeUnit(ATree, AFileName);
+    FCurrentPin := -1;
+  end;
   // Helfer hängen an der Unit und ihren uses; je Baum neu bestimmen.
   if ATree <> FHelperTree then
   begin
@@ -3405,7 +3486,7 @@ function TNameResolver.UsedScopeCandidates(AWithIntrinsics: Boolean): TArray<TRe
 var
   List: TList<TResolvedSymbol>;
   UnitName: string;
-  Used: TUnitIndex;
+  Used: PUnitIndex;
   Intrinsic: TSystemIntrinsic;
   Symbol: TResolvedSymbol;
 begin
@@ -3416,8 +3497,8 @@ begin
   List := TList<TResolvedSymbol>.Create;
   try
     for UnitName in ScopeUnits(FScopeUnit, FScopeInImplementation) do
-      if FindUnit(UnitName, Used) then
-        CollectUnit(Used, True, List, FScopeSeen);
+      if FindUnitRef(UnitName, Used) then
+        CollectUnit(Used^, True, List, FScopeSeen);
     // Zuletzt, was System ohne Quelltext mitbringt: Indexiertes und Eigenes verdeckt gleichnamige Einträge.
     if AWithIntrinsics then
       for Intrinsic in TSystemIntrinsics.All do
@@ -3447,7 +3528,7 @@ var
   List: TList<TResolvedSymbol>;
   Seen: TDictionary<string, Boolean>;
   UnitName: string;
-  Used: TUnitIndex;
+  Used: PUnitIndex;
 begin
   Result := nil;
   if not FScopeOpen then
@@ -3456,8 +3537,8 @@ begin
   Seen := TDictionary<string, Boolean>.Create;
   try
     for UnitName in ScopeUnits(FScopeUnit, FScopeInImplementation) do
-      if FindUnit(UnitName, Used) then
-        CollectUnit(Used, True, List, Seen);
+      if FindUnitRef(UnitName, Used) then
+        CollectUnit(Used^, True, List, Seen);
     Result := List.ToArray;
   finally
     Seen.Free;
@@ -3682,9 +3763,8 @@ begin
   PinIndex := PinnedIndex(ATree, AFileName);
   if PinIndex >= 0 then
   begin
-    Pin := FPins[PinIndex];
-    Inc(Pin.Depth);
-    FPins[PinIndex] := Pin;
+    // Im Array zählen statt den Pin samt zwei TUnitIndex hin und her zu kopieren (jede Regel pinnt erneut).
+    Inc(FPins.List[PinIndex].Depth);
     Exit;
   end;
   Pin := Default(TPin);
@@ -3717,14 +3797,13 @@ begin
   PinIndex := PinnedIndex(Call.Tree, Call.FileName);
   if PinIndex < 0 then
     Exit;
-  Pin := FPins[PinIndex];
-  Dec(Pin.Depth);
-  if Pin.Depth > 0 then
-  begin
-    FPins[PinIndex] := Pin;
+  Dec(FPins.List[PinIndex].Depth);
+  if FPins.List[PinIndex].Depth > 0 then
     Exit;
-  end;
+  Pin := FPins[PinIndex];
   FPins.Delete(PinIndex);
+  // Die Plätze dahinter rücken auf: Prepare setzt FCurrent beim nächsten Mal neu.
+  FCurrentPin := -1;
   // Der Aufrufer gibt den Baum danach frei: keine Bezüge behalten, die eine wiederverwendete Adresse
   // treffen könnten. Ohne FHelperTree leert das nächste Prepare die baumbezogenen Caches.
   if FHelperTree = Pin.Tree then
@@ -3739,6 +3818,7 @@ begin
   FTree := nil;
   FOffset := 0;
   FCurrent := AFromUnit;
+  FCurrentPin := -1;
   FInImplementation := True;
   FClassState := 0;
   // Helfer- und Vorfahren-Cache bleiben (Code-Review P-17): Ihre Schlüssel enthalten Unit und Abschnitt.
@@ -3751,6 +3831,7 @@ begin
   FTree := nil;
   FOffset := 0;
   FCurrent := AFromUnit;
+  FCurrentPin := -1;
   FInImplementation := True;
   FClassState := 0;
   Result := ResolveTypeText(ATypeText, AFromUnit, True, AResult);
@@ -3762,6 +3843,7 @@ begin
   FTree := nil;
   FOffset := 0;
   FCurrent := AFromUnit;
+  FCurrentPin := -1;
   FInImplementation := True;
   FClassState := 0;
   // Helfer- und Vorfahren-Cache bleiben (Code-Review P-17): Ihre Schlüssel enthalten Unit und Abschnitt.

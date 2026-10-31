@@ -3023,7 +3023,8 @@ var
   function SuspectFlags(const AName: string): Integer;
   var
     Symbol: TIndexSymbol;
-    Location: TSymbolLocation;
+    Locations: TArray<TSymbolLocation>;
+    LocationIndex: Integer;
     HasRead, HasWrite: Boolean;
     Signatures: TList<string>;
     Signature: string;
@@ -3062,9 +3063,13 @@ var
       for Signature in Signatures do
         Note(Signature);
     if AContext.Index <> nil then
-      for Location in AContext.Index.FindSymbols(AName) do
-        if Location.Symbol.Kind = TIndexSymbolKind.Property_ then
-          Note(Location.Symbol.Signature);
+    begin
+      // Über den Index: for-in kopierte jeden Treffer (häufige Namen wie Count haben Tausende).
+      Locations := AContext.Index.FindSymbols(AName);
+      for LocationIndex := 0 to High(Locations) do
+        if Locations[LocationIndex].Symbol.Kind = TIndexSymbolKind.Property_ then
+          Note(Locations[LocationIndex].Symbol.Signature);
+    end;
     Suspects.Add(LowerCase(AName), Result);
   end;
 
