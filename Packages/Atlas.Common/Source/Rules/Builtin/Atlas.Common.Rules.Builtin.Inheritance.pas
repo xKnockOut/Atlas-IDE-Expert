@@ -2221,9 +2221,15 @@ var
     Fixes: TArray<TRuleFix>;
     Action: TCodeAction;
     Listed: string;
+    Member: TIndexSymbol;
   begin
     if not Ancestry.FindClass(Tokens[AName].Text, Location) then
       Exit;
+    // Create als Klassenfunktion (THTTPClient.Create liefert eine Instanz einer passenden Unterklasse): keine
+    // Instanz der abstrakten Klasse selbst.
+    for Member in Ancestry.Members(Location) do
+      if SameText(Member.Name, 'Create') and (Member.Kind <> TIndexSymbolKind.Constructor_) then
+        Exit;
     Range := TTextRange.Create(Tokens[AName].StartPos, Tokens[ACreate].EndPos);
     Open := Ancestry.OpenAbstractMethods(Location, Owners);
     if Open = nil then

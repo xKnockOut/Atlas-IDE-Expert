@@ -920,6 +920,11 @@ begin
     '  end;'#10'  TAKlasse = class of TA;'#10'implementation'#10'constructor TA.Create;'#10'begin'#10 +
     '  inherited Create;'#10'end;'#10'procedure P(K: TAKlasse);'#10'begin'#10'  K.Create.Free;'#10 +
     '  TUnbekannt.Create.Free;'#10'end;'#10'end.');
+  // Create als Klassenfunktion (wie THTTPClient.Create): liefert eine Unterklasse, keine Instanz von TA.
+  TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TA = class'#10'  public'#10'    class function Create: TA;'#10'    procedure Eins; virtual; abstract;'#10 +
+    '  end;'#10'implementation'#10'class function TA.Create: TA;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'procedure P;'#10'begin'#10'  TA.Create.Free;'#10'end;'#10'end.');
   // Überschrieben in einer Zwischenklasse; Überladung mit gleicher Parameterzahl.
   TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TA = class'#10'  public'#10'    procedure Eins(X: Integer); virtual; abstract;'#10'  end;'#10 +

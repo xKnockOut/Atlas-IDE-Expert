@@ -19,6 +19,9 @@
 //   (OwnerData), auch viele Zeilen füllen sofort.
 // - unten die Statuszeile mit Treffern, Laufzeit und erschlossenen Treffern
 //   bzw. einem Hinweis.
+// - „Hilfe“: Aufbau einer Abfrage, Beispiele und die Mengen mit ihren Feldern
+//   aus dem Katalog des Servers; steht an der Stelle der Liste, solange kein
+//   Ergebnis da ist, und lässt sich über den Knopf ein- und ausblenden.
 // Die IDE-Schicht bettet den Frame in ein andockbares Fenster ein, fragt den
 // Server und ruft SetCatalog, SetAnswer, SetRunning bzw. SetMessage. Die DFM
 // ist leer (TCustomFrame.Create verlangt eine Ressource); aufgebaut wird im
@@ -49,6 +52,12 @@ type
     FCancel: TButton;
     FSaveRule: TButton;
     FCopyCsv: TButton;
+    FHelpButton: TButton;
+    /// <summary>Hilfe an der Stelle der Liste: Aufbau, Beispiele, Mengen und Felder aus dem Katalog.</summary>
+    FHelp: TMemo;
+    /// <summary>Wahl über den Knopf: 0 automatisch (Hilfe, solange kein Ergebnis da ist), 1 gezeigt, -1 verborgen.
+    /// </summary>
+    FHelpChoice: Integer;
     FInputBar: TPanel;
     FInput: TEdit;
     FError: TLabel;
@@ -79,6 +88,9 @@ type
     procedure FillColumns;
     procedure FillRows;
     procedure UpdateButtons;
+    /// <summary>Hilfe zeigen, solange kein Ergebnis da ist oder sie eingeschaltet ist; Text aus dem Katalog.</summary>
+    procedure UpdateHelp;
+    procedure HelpClick(Sender: TObject);
     procedure UpdateStatus;
     procedure UpdateError;
     procedure PlaceSuggest;
@@ -137,6 +149,8 @@ type
     property SuggestList: TListBox read FSuggest;
     property Suggestions: TArray<string> read FSuggestions;
     property ResultList: TListView read FList;
+    property HelpMemo: TMemo read FHelp;
+    property HelpButton: TButton read FHelpButton;
     property ErrorLabel: TLabel read FError;
     property StatusLabel: TLabel read FStatus;
     property SortColumn: Integer read FSortColumn;
@@ -203,6 +217,7 @@ begin
   FCancel := NewButton(TAtlasStrings.Text(TAtlasTextId.QueryCancel), 90, CancelClick);
   FSaveRule := NewButton(TAtlasStrings.Text(TAtlasTextId.QuerySaveRule), 140, SaveRuleClick);
   FCopyCsv := NewButton(TAtlasStrings.Text(TAtlasTextId.QueryCopyCsv), 120, CopyCsvClick);
+  FHelpButton := NewButton(TAtlasStrings.Text(TAtlasTextId.QueryHelp), 70, HelpClick);
 
   FInputBar := TPanel.Create(Self);
   FInputBar.Parent := Self;
@@ -251,6 +266,17 @@ begin
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
 
+  FHelp := TMemo.Create(Self);
+  FHelp.Parent := Self;
+  FHelp.Align := alClient;
+  FHelp.AlignWithMargins := True;
+  FHelp.ReadOnly := True;
+  FHelp.WordWrap := True;
+  FHelp.ScrollBars := ssVertical;
+  FHelp.BorderStyle := bsNone;
+  FHelp.TabStop := False;
+  FHelp.Visible := False;
+
   // Über der Liste, unter der Eingabezeile; liegt im Frame, damit sie nicht vom Panel abgeschnitten wird.
   FSuggest := TListBox.Create(Self);
   FSuggest.Parent := Self;
@@ -288,6 +314,7 @@ begin
   FillColumns;
   FillRows;
   UpdateStatus;
+  UpdateHelp;
 end;
 
 function TAtlasCodeQueryFrame.CanFill(AControl: TWinControl): Boolean;
@@ -372,6 +399,56 @@ procedure TAtlasCodeQueryFrame.SetCatalog(const ACatalog: TAtlasQueryCatalog);
 begin
   FCatalog := ACatalog;
   FillSaved;
+  UpdateHelp;
+end;
+
+procedure TAtlasCodeQueryFrame.UpdateHelp;
+var
+  Text: TStringBuilder;
+  Entity: TAtlasQueryEntity;
+  Field: TAtlasQueryField;
+  Names: TArray<string>;
+begin
+  Text := TStringBuilder.Create;
+  try
+    Text.Append(TAtlasStrings.Text(TAtlasTextId.QueryHelpIntro));
+    // Mengen und Felder aus dem Katalog des Servers: stimmt immer mit der Sprache überein.
+    if FCatalog.Entities <> nil then
+    begin
+      Text.Append(sLineBreak).Append(sLineBreak).Append(TAtlasStrings.Text(TAtlasTextId.QueryHelpEntities));
+      for Entity in FCatalog.Entities do
+      begin
+        Names := nil;
+        for Field in Entity.Fields do
+          Names := Names + [Field.Name];
+        for Field in Entity.Predicates do
+          Names := Names + [Field.Name];
+        Text.Append(sLineBreak).Append('  ').Append(Entity.Name);
+        if Entity.Caption <> '' then
+          Text.Append(' (').Append(Entity.Caption).Append(')');
+        if Names <> nil then
+          Text.Append(': ').Append(string.Join(', ', Names));
+      end;
+    end;
+    FHelp.Text := Text.ToString;
+  finally
+    Text.Free;
+  end;
+  // Ohne Ergebnis steht die Hilfe an der Stelle der leeren Liste; der Knopf blendet sie ein und aus.
+  if FHelpChoice = 0 then
+    FHelp.Visible := not FHasAnswer
+  else
+    FHelp.Visible := FHelpChoice > 0;
+  FList.Visible := not FHelp.Visible;
+end;
+
+procedure TAtlasCodeQueryFrame.HelpClick(Sender: TObject);
+begin
+  if FHelp.Visible then
+    FHelpChoice := -1
+  else
+    FHelpChoice := 1;
+  UpdateHelp;
 end;
 
 procedure TAtlasCodeQueryFrame.SetAnswer(const AAnswer: TAtlasQueryAnswer);
@@ -384,11 +461,13 @@ begin
     FAnswer.Sort(FSortColumn, FSortDescending)
   else
     FSortColumn := -1;
+  FHelpChoice := 0;
   FillColumns;
   FillRows;
   UpdateError;
   UpdateButtons;
   UpdateStatus;
+  UpdateHelp;
 end;
 
 procedure TAtlasCodeQueryFrame.SetRunning(ARunning: Boolean);
@@ -406,6 +485,7 @@ begin
   FRunning := False;
   if not AKeep then
   begin
+    FHelpChoice := 0;
     FAnswer := Default(TAtlasQueryAnswer);
     FHasAnswer := False;
     FillColumns;
@@ -414,6 +494,7 @@ begin
   end;
   UpdateButtons;
   UpdateStatus;
+  UpdateHelp;
 end;
 
 procedure TAtlasCodeQueryFrame.UpdateButtons;
