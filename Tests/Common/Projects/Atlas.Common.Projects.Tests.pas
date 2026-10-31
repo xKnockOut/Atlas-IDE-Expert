@@ -42,6 +42,8 @@ type
     [Test]
     procedure KeepsAbsolutePaths;
     [Test]
+    procedure CommonFolderOfProjects;
+    [Test]
     procedure SplitsNamesAndExtensions;
     [Test]
     procedure ExpandsKnownVariablesOnly;
@@ -329,6 +331,20 @@ begin
   Assert.AreEqual('D:\Lib', TProjectPaths.Combine('C:\Work', 'D:\Lib'));
   Assert.AreEqual('\\server\share\x', TProjectPaths.Combine('C:\Work', '\\server\share\x'));
   Assert.IsFalse(TProjectPaths.IsAbsolute('Source'));
+end;
+
+procedure TProjectPathsTests.CommonFolderOfProjects;
+begin
+  // Projekte einer Gruppe in Unterordnern: der Stamm (Spalte "Datei" im Abfragefenster).
+  Assert.AreEqual('C:\Repo', TProjectPaths.CommonFolder('C:\Repo\Packages\Common', 'c:\repo\Application'));
+  Assert.AreEqual('C:\Repo\Packages', TProjectPaths.CommonFolder('C:\Repo\Packages\Common', 'C:\Repo\Packages\Ide\'));
+  Assert.AreEqual('C:\Repo', TProjectPaths.CommonFolder('C:\Repo', 'C:\Repo'));
+  // Ganze Ordnernamen: C:\Repo2 liegt nicht in C:\Repo.
+  Assert.AreEqual('C:\', TProjectPaths.CommonFolder('C:\Repo', 'C:\Repo2'));
+  Assert.AreEqual('', TProjectPaths.CommonFolder('C:\Repo', 'D:\Repo'));
+  Assert.AreEqual('', TProjectPaths.CommonFolder('', 'C:\Repo'));
+  Assert.AreEqual('/home/a', TProjectPaths.CommonFolder('/home/a/x', '/home/a/y'));
+  Assert.AreEqual('/', TProjectPaths.CommonFolder('/home', '/opt'));
 end;
 
 procedure TProjectPathsTests.SplitsNamesAndExtensions;

@@ -89,6 +89,7 @@ uses
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
   Atlas.Common.Lsp.MethodOrder,
+  Atlas.Common.Projects.Paths,
   Atlas.Common.Editing.SuggestConst,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.VarBlock,
@@ -6386,8 +6387,12 @@ begin
       mWorkspace := FWorkspaces[0];
     if mWorkspace = nil then
       Exit(False);
-    mRoot := mWorkspace.Root;
     mNamespaces := mWorkspace.Namespaces;
+    // Wurzel für die Spalte "Datei": gemeinsamer Ordner aller Projekte der Gruppe (bei Atlas der Stamm des
+    // Repositorys). Mit der Wurzel des aktiven Projekts stand für jede Unit der anderen Projekte der volle Pfad da.
+    mRoot := mWorkspace.Root;
+    for mCandidate in FWorkspaces do
+      mRoot := TProjectPaths.CommonFolder(mRoot, mCandidate.Root);
     mReferences := mWorkspace.Configuration.Settings.References;
     // Projektgruppe (#648): die Dateien aller geladenen Projekte.
     for mWorkspace in FWorkspaces do
