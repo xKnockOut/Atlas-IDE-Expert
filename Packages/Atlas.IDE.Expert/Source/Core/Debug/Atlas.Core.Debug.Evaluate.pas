@@ -51,6 +51,10 @@ type
     class function IsSimple(const AValue: string): Boolean; static;
     /// <summary>Ausdruck für das Feld AField von AExpression; Klammern um zusammengesetzte Ausdrücke.</summary>
     class function FieldExpression(const AExpression, AField: string): string; static;
+    /// <summary>AExpression mit der Formatangabe ",r": Der Debugger liefert Records dann mit Feldnamen
+    /// ("(Id: 'a'; Order: 10)" statt "('a', 10)"). Unverändert, wenn der Ausdruck schon eine Formatangabe trägt
+    /// (Komma auf oberster Ebene, etwa "X,h") oder leer ist.</summary>
+    class function WithFieldNames(const AExpression: string): string; static;
     /// <summary>Ausdruck unter dem Cursor (Strg+F7): Bezeichner samt Punkten und ^ davor bis zum Wortende,
     /// „Kunde.Adresse.Ort“; ACharacter 0-basiert. '' ohne Bezeichner.</summary>
     class function ExpressionAt(const ALine: string; ACharacter: Integer): string; static;
@@ -366,6 +370,14 @@ begin
   for Index := 2 to Length(Text) do
     if not TTextChars.IsIdentChar(Text[Index]) then
       Exit(False);
+end;
+
+class function TAtlasEvalText.WithFieldNames(const AExpression: string): string;
+begin
+  Result := Trim(AExpression);
+  if (Result = '') or (Length(SplitTop(Result)) > 1) then
+    Exit(AExpression);
+  Result := Result + ',r';
 end;
 
 class function TAtlasEvalText.FieldExpression(const AExpression, AField: string): string;

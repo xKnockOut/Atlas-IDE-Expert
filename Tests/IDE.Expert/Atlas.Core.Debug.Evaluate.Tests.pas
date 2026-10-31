@@ -133,6 +133,13 @@ begin
   Assert.AreEqual('Liste[0].Name', TAtlasEvalText.FieldExpression('Liste[0]', 'Name'));
   Assert.AreEqual('P^.X', TAtlasEvalText.FieldExpression('P^', 'X'));
   Assert.AreEqual('(TKunde(Sender)).Name', TAtlasEvalText.FieldExpression('TKunde(Sender)', 'Name'));
+  // ",r" für Feldnamen; eigene Formatangabe und Kommas in Klammern bzw. Strings.
+  Assert.AreEqual('GFeatures[N],r', TAtlasEvalText.WithFieldNames('GFeatures[N]'));
+  Assert.AreEqual('Format(''%d,%d'', [A, B]),r', TAtlasEvalText.WithFieldNames('Format(''%d,%d'', [A, B])'));
+  Assert.AreEqual('X,h', TAtlasEvalText.WithFieldNames('X,h'));
+  Assert.AreEqual('', TAtlasEvalText.WithFieldNames(''));
+  // Feldnamen landen als Namen der Teile im Baum.
+  Assert.AreEqual('Id', TAtlasEvalText.Parts('(FeatureClass: TSchemaFeature; Id: ''schema''; Order: 10)')[1].Name);
 end;
 
 procedure TAtlasDebugEvaluateTests.ExpressionUnderCursor;
