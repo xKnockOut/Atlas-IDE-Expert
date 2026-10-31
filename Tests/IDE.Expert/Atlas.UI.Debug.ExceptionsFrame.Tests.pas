@@ -169,7 +169,11 @@ begin
     Frame.SetHistory(nil, TAtlasDebugIgnoreList.Empty);
     Assert.IsTrue(Frame.EmptyLabel.Visible);
     Assert.IsFalse(Frame.List.Visible);
-    Assert.AreEqual('Noch keine Exception in dieser Debug-Sitzung.', Frame.EmptyLabel.Caption);
+    // Erst der Zustand, dann was das Fenster sammelt und wie man es bedient.
+    Assert.IsTrue(string(Frame.EmptyLabel.Caption).StartsWith('Noch keine Exception in dieser Debug-Sitzung.'),
+      Frame.EmptyLabel.Caption);
+    Assert.IsTrue(Pos('Doppelklick', Frame.EmptyLabel.Caption) > 0, Frame.EmptyLabel.Caption);
+    Assert.IsTrue(Pos('Kontextmenü', Frame.EmptyLabel.Caption) > 0, Frame.EmptyLabel.Caption);
   finally
     Host.Free;
   end;

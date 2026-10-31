@@ -3668,7 +3668,13 @@ const
      'Atlas: Exceptions', 'Filtern nach Klasse, Meldung, Ort', 'Zur Stelle springen', 'Klasse künftig ignorieren',
      'Bei dieser Klasse wieder anhalten', '%s künftig ignorieren', 'Bei %s wieder anhalten',
      'Kopieren (Klasse, Meldung, Aufrufstapel)', 'Verlauf leeren', 'Zeit', 'Klasse', 'Meldung', 'Anzahl', 'Ort',
-     'Thread', 'Noch keine Exception in dieser Debug-Sitzung.', 'ignoriert', 'Hauptthread', 'Alle Klassen',
+     'Thread', 'Noch keine Exception in dieser Debug-Sitzung.'#13#10#13#10 +
+     'Hier sammelt Atlas jede Exception, die der Debugger beim Lauf Ihres Programms meldet, auch abgefangene. ' +
+     'Gleiche Exceptions (Klasse, Meldung, Ort) stehen in einer Zeile mit Anzahl.'#13#10#13#10 +
+     'Oben filtern Sie nach Text oder Klasse. Ein Doppelklick springt zur Stelle im Quelltext, darunter steht der ' +
+     'Aufrufstapel der gewählten Exception. Über das Kontextmenü ignorieren Sie eine Klasse künftig (Atlas setzt ' +
+     'dann still fort), lassen den Debugger bei ihr wieder anhalten, kopieren Klasse, Meldung und Aufrufstapel oder ' +
+     'leeren den Verlauf.', 'ignoriert', 'Hauptthread', 'Alle Klassen',
      '%d Einträge, %d Exceptions in dieser Sitzung', 'Fehler des Betriebssystems', 'Exception',
      'Atlas: %s wird künftig ignoriert; Atlas setzt bei dieser Klasse still fort.',
      'Atlas: Bei %s hält der Debugger wieder an.', 'Atlas: Quelltext %s nicht gefunden.',
@@ -6815,7 +6821,13 @@ const
      'Atlas: Exceptions', 'Filter by class, message, location', 'Go to location', 'Ignore class from now on',
      'Stop again on this class', 'Ignore %s from now on', 'Stop again on %s', 'Copy (class, message, call stack)',
      'Clear history', 'Time', 'Class', 'Message', 'Count', 'Location', 'Thread',
-     'No exception in this debug session yet.', 'ignored', 'Main thread', 'All classes',
+     'No exception in this debug session yet.'#13#10#13#10 +
+     'Atlas collects every exception the debugger reports while your program runs, including handled ones. ' +
+     'Identical exceptions (class, message, location) share one row with a count.'#13#10#13#10 +
+     'Filter by text or class at the top. A double-click goes to the source location; below, you see the call stack ' +
+     'of the selected exception. The context menu ignores a class from now on (Atlas then continues silently), ' +
+     'stops on it again, copies class, message and call stack, or clears the history.', 'ignored', 'Main thread',
+     'All classes',
      '%d entries, %d exceptions in this session', 'Operating system fault', 'Exception',
      'Atlas: %s is ignored from now on; Atlas continues silently on this class.',
      'Atlas: The debugger stops on %s again.', 'Atlas: Source %s not found.',
