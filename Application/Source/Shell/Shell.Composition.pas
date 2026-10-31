@@ -6320,7 +6320,7 @@ end;
 
 function TServerComposition.QuerySource(out ASource: TQuerySource): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace, mCandidate: TShellWorkspace;
   mFiles, mNamespaces: TArray<string>;
   mRoot: string;
   mReferences: TReferenceSettings;
@@ -6329,7 +6329,19 @@ begin
   mFiles := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
-    mWorkspace := TShellWorkspace.Choose(nil, FWorkspaces);
+    // Projektgruppe: Choose liefert nur bei genau einem Arbeitsbereich etwas; sonst hieß es "Kein Projekt
+    // geladen". Wurzel, Namensräume und Einstellungen vom in der IDE aktiven Projekt, sonst vom ausgewählten,
+    // sonst vom ersten.
+    mWorkspace := nil;
+    for mCandidate in FWorkspaces do
+      if (mCandidate.ProjectFileName <> '') and SameText(mCandidate.ProjectFileName, FIdeProject.ActiveProject) then
+        mWorkspace := mCandidate;
+    if mWorkspace = nil then
+      for mCandidate in FWorkspaces do
+        if (mWorkspace = nil) and IsSelectedProject(mCandidate) then
+          mWorkspace := mCandidate;
+    if (mWorkspace = nil) and (FWorkspaces.Count > 0) then
+      mWorkspace := FWorkspaces[0];
     if mWorkspace = nil then
       Exit(False);
     mRoot := mWorkspace.Root;

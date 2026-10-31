@@ -356,7 +356,7 @@ end;
 
 procedure TLspConfiguration.LoadWorkspace(const ARootPath: string);
 var
-  Separator, Dir: string;
+  Separator, Dir, Parent, Text: string;
 begin
   FRootPath := ARootPath;
   if ARootPath = '' then
@@ -374,8 +374,25 @@ begin
       Dir := ARootPath
     else
       Dir := ARootPath + Separator;
+    // Projekte einer Gruppe liegen oft in Unterordnern (Packages\X\X.dproj), atlas.json im Stamm: nach oben
+    // suchen, bis zum Stamm des Repositorys (.git/.svn) bzw. des Laufwerks. Ohne Fund gilt die Wurzel selbst
+    // (dort legt "atlas.json anlegen" die Datei an).
     FPrimaryFileName := Dir + ConfigurationFileName;
     FLegacyFileName := Dir + LegacyConfigurationFileName;
+    while not (FReadFile(Dir + ConfigurationFileName, Text) or FReadFile(Dir + LegacyConfigurationFileName, Text)) do
+    begin
+      if DirectoryExists(Dir + '.git') or DirectoryExists(Dir + '.svn') or FileExists(Dir + '.git') then
+        Break;
+      Parent := ExtractFilePath(ExcludeTrailingPathDelimiter(Dir));
+      if (Parent = '') or SameText(Parent, Dir) then
+        Break;
+      Dir := Parent;
+    end;
+    if FReadFile(Dir + ConfigurationFileName, Text) or FReadFile(Dir + LegacyConfigurationFileName, Text) then
+    begin
+      FPrimaryFileName := Dir + ConfigurationFileName;
+      FLegacyFileName := Dir + LegacyConfigurationFileName;
+    end;
   end;
   LoadFromDisk;
 end;
