@@ -53,6 +53,43 @@ begin
     Result := AContext.Index.FindUnit(AUnitName, AUnit);
 end;
 
+/// <summary>requires des Packages und, über PackageRequires, die Packages, die diese verlangen: dcc sieht deren
+/// Units ebenso (Atlas.Windows → Atlas.Common → Atlas.Text); ohne Doppelte, in Suchreihenfolge.</summary>
+function RequiredClosure(const AContext: TRuleContext; const ASource: TPackageSource): TArray<string>;
+var
+  mSeen: TDictionary<string, Boolean>;
+  mList: TList<string>;
+  mEntry: TPackageEntry;
+  mPosition: Integer;
+  mRequired: string;
+begin
+  mSeen := TDictionary<string, Boolean>.Create;
+  mList := TList<string>.Create;
+  try
+    for mEntry in ASource.Requires do
+      if not mSeen.ContainsKey(UpperCase(mEntry.Name)) then
+      begin
+        mSeen.Add(UpperCase(mEntry.Name), True);
+        mList.Add(mEntry.Name);
+      end;
+    mPosition := 0;
+    while Assigned(AContext.PackageRequires) and (mPosition < mList.Count) do
+    begin
+      for mRequired in AContext.PackageRequires(mList[mPosition]) do
+        if not mSeen.ContainsKey(UpperCase(mRequired)) then
+        begin
+          mSeen.Add(UpperCase(mRequired), True);
+          mList.Add(mRequired);
+        end;
+      Inc(mPosition);
+    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
+    mSeen.Free;
+  end;
+end;
+
 function TImplicitPackageImportRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ImplicitPackageImportRuleId, TRuleSeverity.Warning,
@@ -66,10 +103,10 @@ var
   Pending: TQueue<TPending>;
   Item, Next: TPending;
   Indexed, Used: TUnitIndex;
-  Name, Path: string;
+  Name, Path, Package: string;
+  Required: TArray<string>;
   Index: Integer;
   Provided: Boolean;
-  Entry: TPackageEntry;
   Fix: TRuleFix;
 begin
   if (AContext.Index = nil) or not Assigned(AContext.PackageProvides) then
@@ -77,6 +114,7 @@ begin
   Source := TPackageReader.Read(AContext.Text);
   if not Source.IsPackage or not Source.HasContains then
     Exit;
+  Required := RequiredClosure(AContext, Source);
   Seen := TDictionary<string, Boolean>.Create;
   Pending := TQueue<TPending>.Create;
   try
@@ -101,8 +139,8 @@ begin
           Continue;
         Seen.Add(UpperCase(Name), True);
         Provided := False;
-        for Entry in Source.Requires do
-          if AContext.PackageProvides(Entry.Name, Name) <> TRulePackageAnswer.No then
+        for Package in Required do
+          if AContext.PackageProvides(Package, Name) <> TRulePackageAnswer.No then
           begin
             Provided := True;
             Break;
