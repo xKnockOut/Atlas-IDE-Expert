@@ -28,6 +28,9 @@ type
     procedure ReportsUnknownName;
     [Test]
     procedure KnowsLocalsUsesAndIntrinsics;
+    /// <summary>CompilerVersion steht in System.pas nur im Kommentar: auch mit indizierter System bekannt.</summary>
+    [Test]
+    procedure KnowsCompilerVersion;
     /// <summary>#1239: Variable aus for var … in mit begin … end.</summary>
     [Test]
     procedure KnowsForInVariableInBlock;
@@ -297,6 +300,19 @@ begin
     Tree.Free;
     Registry.Free;
   end;
+end;
+
+procedure TUnresolvedNamesTests.KnowsCompilerVersion;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'function Version: Double;'#10 +
+    'begin'#10 +
+    '  Result := CompilerVersion;'#10 +
+    'end;'#10 +
+    'end.'));
 end;
 
 procedure TUnresolvedNamesTests.ReportsUnknownName;

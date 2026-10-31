@@ -1217,7 +1217,7 @@ type
     StatusBarProjectDone, StatusBarProjectPaused,
     // Code-Abfragen (#1351): Optionsseite, Fenster „Atlas-Abfrage“.
     SettingsQuery, QueryCaption, QueryCommand, QueryViewMenu, QueryRun,
-    QueryCancel, QuerySaveRule, QueryCopyCsv, QuerySavedHint, QueryInputHint,
+    QueryCancel, QuerySaveRule, QueryCopyCsv, QuerySavedHint, QueryInputHint, QueryHelp, QueryHelpIntro, QueryHelpEntities,
     QueryRunning, QueryStatus, QueryStatusTruncated, QueryStatusInferred, QueryError,
     QuerySuggestion, QueryNoProject, QueryNoServer, QueryFailed, QueryDisabled,
     QueryCancelled, QueryInferred, QueryCopied, QueryRuleTitle, QueryRuleName,
@@ -4354,6 +4354,15 @@ const
      'Als CSV kopieren',
      'Gespeicherte Abfragen (queries in atlas.json)',
      'z. B. classes where inherits TForm and methods > 40 order by methods desc',
+     'Hilfe',
+     'So ist eine Abfrage aufgebaut:'#13#10'  <Menge> where <Bedingung> [order by <Feld> [asc|desc]] [limit n]'#13#10#13#10 +
+       'Beispiele:'#13#10'  classes where inherits TForm and methods > 40 order by methods desc limit 5'#13#10 +
+       '  methods where params > 3 or complexity > 10 and callers = 0'#13#10'  units where uses System.SysUtils'#13#10 +
+       '  classes where name like ''T*Frame'''#13#10#13#10 +
+       'Bedingungen verknüpfen and, or und not; Vergleiche: = != < <= > >= like (mit * als Platzhalter).'#13#10 +
+       'Strg+Leer zeigt passende Mengen, Felder und Namen. Enter führt aus, Doppelklick auf einen Treffer springt ' +
+       'hin. „Als Regel speichern …“ macht jeden Treffer zum Befund im Editor.',
+     'Mengen und ihre Felder:',
      'Abfrage läuft …',
      '%d Treffer in %d ms',
      '%d von %d Treffern in %d ms',
@@ -7479,6 +7488,15 @@ const
      'Copy as CSV',
      'Saved queries (queries in atlas.json)',
      'e.g. classes where inherits TForm and methods > 40 order by methods desc',
+     'Help',
+     'How a query is built:'#13#10'  <set> where <condition> [order by <field> [asc|desc]] [limit n]'#13#10#13#10 +
+       'Examples:'#13#10'  classes where inherits TForm and methods > 40 order by methods desc limit 5'#13#10 +
+       '  methods where params > 3 or complexity > 10 and callers = 0'#13#10'  units where uses System.SysUtils'#13#10 +
+       '  classes where name like ''T*Frame'''#13#10#13#10 +
+       'Combine conditions with and, or and not; comparisons: = != < <= > >= like (* as wildcard).'#13#10 +
+       'Ctrl+Space shows matching sets, fields and names. Enter runs the query, double-clicking a match jumps ' +
+       'there. “Save as rule …” turns every match into a finding in the editor.',
+     'Sets and their fields:',
      'Running query …',
      '%d matches in %d ms',
      '%d of %d matches in %d ms',
