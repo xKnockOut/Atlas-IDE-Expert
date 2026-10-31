@@ -161,6 +161,7 @@ procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Index.NameFacts,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Rules.Derived,
@@ -2868,6 +2869,73 @@ begin
   end;
 end;
 
+/// <summary>N, wenn ATypeName im Index ein Alias auf string[N]/ShortString ist; 0 sonst. Hängt nur vom Index ab
+/// und wird über alle Units des Laufs gemerkt (TIndexNameFacts).</summary>
+function IndexShortAlias(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex; const ATypeName: string): Integer;
+var
+  mFacts: IIndexNameFacts;
+  mIndex: ISymbolIndex;
+  mName: string;
+begin
+  mFacts := AFacts;
+  mIndex := AIndex;
+  mName := ATypeName;
+  Result := TIndexNameFacts.Get(mFacts, mIndex, 'shortAlias:' + UpperCase(mName),
+    function: Integer
+    var
+      mLocations: TArray<TSymbolLocation>;
+      mPosition: Integer;
+    begin
+      Result := 0;
+      if mIndex = nil then
+        Exit;
+      mLocations := mIndex.FindSymbols(mName);
+      for mPosition := 0 to High(mLocations) do
+        if mLocations[mPosition].Symbol.Kind = TIndexSymbolKind.TypeAlias then
+        begin
+          Result := TStringLengthLimitRule.ShortStringLength(TypeBodyOf(mLocations[mPosition].Symbol.Signature));
+          if Result > 0 then
+            Exit;
+        end;
+    end);
+end;
+
+/// <summary>Gibt es im Index eine Variable, ein Feld oder eine Property AName vom Typ string[N]/ShortString oder
+/// einem Alias darauf aus dem Index? Wie IndexShortAlias über alle Units gemerkt; lokale Aliase prüft der Aufrufer.
+/// </summary>
+function IndexShortVariable(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex; const AName: string): Boolean;
+var
+  mFacts: IIndexNameFacts;
+  mIndex: ISymbolIndex;
+  mName: string;
+begin
+  mFacts := AFacts;
+  mIndex := AIndex;
+  mName := AName;
+  Result := TIndexNameFacts.Get(mFacts, mIndex, 'shortVariable:' + UpperCase(mName),
+    function: Integer
+    var
+      mLocations: TArray<TSymbolLocation>;
+      mPosition: Integer;
+      mTypeName: string;
+    begin
+      Result := 0;
+      if mIndex = nil then
+        Exit;
+      mLocations := mIndex.FindSymbols(mName);
+      for mPosition := 0 to High(mLocations) do
+        if mLocations[mPosition].Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+          TIndexSymbolKind.Property_] then
+        begin
+          mTypeName := mLocations[mPosition].Symbol.TypeName;
+          if (TStringLengthLimitRule.ShortStringLength(mLocations[mPosition].Symbol.Signature) > 0) or
+            ((mTypeName <> '') and ((TStringLengthLimitRule.ShortStringLength(mTypeName) > 0) or
+            (IsValidIdent(mTypeName, True) and (IndexShortAlias(mFacts, mIndex, mTypeName) > 0)))) then
+            Exit(1);
+        end;
+    end) <> 0;
+end;
+
 procedure TStringLengthLimitRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   MaxLiteral = 255;
@@ -2985,22 +3053,13 @@ var
 
   /// <summary>Ist ATypeName ein Alias auf string[N]/ShortString (eigene Datei oder Index)? Liefert N.</summary>
   function AliasLength(const ATypeName: string): Integer;
-  var
-    Location: TSymbolLocation;
   begin
     Result := ShortStringLength(ATypeName);
     if (Result > 0) or not IsValidIdent(ATypeName, True) then
       Exit;
     if ShortTypes.ContainsKey(LowerCase(ATypeName)) then
       Exit(1);
-    if AContext.Index <> nil then
-      for Location in AContext.Index.FindSymbols(ATypeName) do
-        if Location.Symbol.Kind = TIndexSymbolKind.TypeAlias then
-        begin
-          Result := ShortStringLength(TypeBodyOf(Location.Symbol.Signature));
-          if Result > 0 then
-            Exit;
-        end;
+    Result := IndexShortAlias(AContext.NameFacts, AContext.Index, ATypeName);
   end;
 
   procedure CollectTypes(ARoot: TSyntaxNode);
@@ -3063,7 +3122,10 @@ var
     if Suspects.TryGetValue(Key, Result) then
       Exit;
     Result := False;
-    if AContext.Index <> nil then
+    // Ohne eigene Aliase der Datei hängt die Antwort nur vom Index ab: über alle Units gemerkt.
+    if ShortTypes.Count = 0 then
+      Result := IndexShortVariable(AContext.NameFacts, AContext.Index, AName)
+    else if AContext.Index <> nil then
       for Location in AContext.Index.FindSymbols(AName) do
         if (Location.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
           TIndexSymbolKind.Property_]) and ((ShortStringLength(Location.Symbol.Signature) > 0) or

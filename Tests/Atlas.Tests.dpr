@@ -70,6 +70,7 @@ uses
   Atlas.Common.Documents.ChangeTracker.Tests in 'Common\Documents\Atlas.Common.Documents.ChangeTracker.Tests.pas',
   Atlas.Common.Index.Tests in 'Common\Index\Atlas.Common.Index.Tests.pas',
   Atlas.Common.Index.NameIndex.Tests in 'Common\Index\Atlas.Common.Index.NameIndex.Tests.pas',
+  Atlas.Common.Index.NameFacts.Tests in 'Common\Index\Atlas.Common.Index.NameFacts.Tests.pas',
   Atlas.Common.Index.Usages.Tests in 'Common\Index\Atlas.Common.Index.Usages.Tests.pas',
   Atlas.Common.Index.TypeMembers.Tests in 'Common\Index\Atlas.Common.Index.TypeMembers.Tests.pas',
   Atlas.Common.Index.Files.Tests in 'Common\Index\Atlas.Common.Index.Files.Tests.pas',

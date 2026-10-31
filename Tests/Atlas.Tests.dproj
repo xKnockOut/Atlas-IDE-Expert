@@ -104,6 +104,7 @@
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.ChangeTracker.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.NameFacts.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Usages.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.TypeMembers.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Files.Tests.pas"/>

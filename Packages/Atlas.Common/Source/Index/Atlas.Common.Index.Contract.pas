@@ -258,6 +258,15 @@ type
     function Generation: Int64;
   end;
 
+  /// <summary>Antworten, die nur vom Index und einem Namen abhängen, über alle Units eines Arbeitsbereichs
+  /// gemerkt (TIndexNameFacts in Atlas.Common.Index.NameFacts).</summary>
+  IIndexNameFacts = interface
+    ['{4C2E8B91-7A3D-4F15-9E62-0B8D3C5A1F47}']
+    /// <summary>Gemerkte Antwort zu AKey für diese Fassung von AIndex; beim ersten Mal aus ACompute. AKey nennt
+    /// Frage und Namen ("propertyAccess:COUNT").</summary>
+    function Lookup(const AIndex: ISymbolIndex; const AKey: string; const ACompute: TFunc<Integer>): Integer;
+  end;
+
   IIndexFileSystem = interface
     ['{2F6C8B93-1E4D-4A75-9C02-B7E5D3A86F14}']
     /// <summary>Zeitstempel der Datei; False, wenn sie fehlt.</summary>
