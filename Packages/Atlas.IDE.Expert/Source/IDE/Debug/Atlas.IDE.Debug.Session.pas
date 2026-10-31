@@ -487,8 +487,10 @@ begin
         end;
         FileName := '';
         Line := 0;
-        AThread.GetCallPos(Index, FileName, Line);
-        AFrames := AFrames + [TAtlasDebugFrame.Create(AThread.GetCallHeader(Index), FileName, Line)];
+        // Die Rahmen der Open Tools API zählen ab 1 (ToolsAPI: "CallHeaders are one-based"). Index 0 nimmt der
+        // Win32-Debugger hin; der Win64-Debugger meldet darauf "disconnected session".
+        AThread.GetCallPos(Index + 1, FileName, Line);
+        AFrames := AFrames + [TAtlasDebugFrame.Create(AThread.GetCallHeader(Index + 1), FileName, Line)];
       end;
     except
       // Verbindung zum Debug-Kernel weg: ohne Stack weiter, nicht die IDE stören.
