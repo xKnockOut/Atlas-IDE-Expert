@@ -158,6 +158,10 @@ begin
     Result := FDone.WaitFor(TimeoutMs) = wrSignaled;
     if Result then
     begin
+      // Der Arbeiter zählt FFinished erst nach dem Signal hoch; sonst hielte ein sofort folgender Run den Fall
+      // noch für laufend.
+      while AtomicCmpExchange(FFinished, 0, 0) < FPosted do
+        TThread.Yield;
       AFailure := FFailure;
       Result := AFailure = '';
       FWork := nil;
