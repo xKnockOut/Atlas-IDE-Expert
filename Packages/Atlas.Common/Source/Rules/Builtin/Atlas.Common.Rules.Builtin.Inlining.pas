@@ -53,6 +53,7 @@ procedure RegisterInliningRules(ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Index.NameFacts,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -182,6 +183,44 @@ begin
   for Index := 0 to High(Words) - 1 do
     if SameText(Words[Index], Keyword) then
       Exit(Words[Index + 1]);
+end;
+
+/// <summary>Gibt es im Index eine inline-Routine AName mit Verweisen oder eine Property AName, deren Getter bzw.
+/// Setter im selben Typ eine ist? Hängt nur vom Index ab und wird über alle Units gemerkt (TIndexNameFacts); die
+/// eigene Datei prüft der Aufrufer.</summary>
+function IndexInlineCandidate(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex;
+  const AName: string): Boolean;
+var
+  mIndex: ISymbolIndex;
+  mName: string;
+begin
+  mIndex := AIndex;
+  mName := AName;
+  Result := TIndexNameFacts.Get(AFacts, mIndex, 'inlineCandidate:' + UpperCase(mName),
+    function: Integer
+    begin
+      Result := Ord(mIndex.HasSymbol(mName,
+        function(const ASymbol: TIndexSymbol): Boolean
+        var
+          mAccessor, mContainer: string;
+          mWrite: Boolean;
+        begin
+          Result := ASymbol.InlineRefs <> nil;
+          if Result or (ASymbol.Kind <> TIndexSymbolKind.Property_) then
+            Exit;
+          mContainer := ASymbol.Container;
+          for mWrite := False to True do
+          begin
+            mAccessor := AccessorName(ASymbol.Signature, mWrite);
+            if (mAccessor <> '') and mIndex.HasSymbol(mAccessor,
+              function(const AOther: TIndexSymbol): Boolean
+              begin
+                Result := (AOther.InlineRefs <> nil) and SameText(AOther.Container, mContainer);
+              end) then
+              Exit(True);
+          end;
+        end));
+    end) <> 0;
 end;
 
 { TInlineCheck }
@@ -448,12 +487,18 @@ begin
   // Verweisen, oder eine Property, deren Getter oder Setter eine ist?
   if FCandidates.TryGetValue(LowerCase(AName), Result) then
     Exit;
-  Result := FOwnCandidates.ContainsKey(LowerCase(AName)) or FIndex.HasSymbol(AName,
-    function(const ASymbol: TIndexSymbol): Boolean
-    begin
-      Result := (ASymbol.InlineRefs <> nil) or
-        ((ASymbol.Kind = TIndexSymbolKind.Property_) and HasInlineAccessor(ASymbol));
-    end);
+  if FOwnCandidates.ContainsKey(LowerCase(AName)) then
+    Result := True
+  // Ohne inline-Routinen in der eigenen Datei hängt die Antwort nur vom Index ab: über alle Units gemerkt.
+  else if FOwnInline.Count = 0 then
+    Result := IndexInlineCandidate(FContext.NameFacts, FIndex, AName)
+  else
+    Result := FIndex.HasSymbol(AName,
+      function(const ASymbol: TIndexSymbol): Boolean
+      begin
+        Result := (ASymbol.InlineRefs <> nil) or
+          ((ASymbol.Kind = TIndexSymbolKind.Property_) and HasInlineAccessor(ASymbol));
+      end);
   FCandidates.Add(LowerCase(AName), Result);
 end;
 
