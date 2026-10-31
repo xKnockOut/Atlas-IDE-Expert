@@ -51,6 +51,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract,
@@ -81,6 +82,15 @@ type
   private
     FIndex: ISymbolIndex;
     FLocal: TUnitIndex;
+    // Symbole je Datei aus dem Index (FindFile kopierte je Abfrage den ganzen TUnitIndex) und Mitglieder je Typ
+    // (vorher je Abfrage über alle Symbole der Unit, jedes als Kopie): Regeln fragen dieselben Klassen oft.
+    FUnitSymbols: TDictionary<string, TArray<TIndexSymbol>>;
+    FMembers: TDictionary<string, TArray<TIndexSymbol>>;
+    /// <summary>Symbole der Datei AFileName ('' = diese Datei); False, wenn der Index sie nicht kennt.</summary>
+    function SymbolsOf(const AFileName: string; out ASymbols: TArray<TIndexSymbol>): Boolean;
+    /// <summary>Felder, Properties, Methoden, Konstruktoren und Destruktoren von AType, je Typ einmal gesucht.
+    /// </summary>
+    function MemberList(const AType: TSymbolLocation): TArray<TIndexSymbol>;
     function FindType(const AName: string; out AType: TSymbolLocation): Boolean;
     /// <summary>Klasse AName mit AArity Typparametern (#1326: THorseChannel und THorseChannel&lt;T&gt; sind zwei
     /// Typen); AArity &lt; 0 = Zahl unbekannt, jede passt.</summary>
@@ -95,6 +105,7 @@ type
   public
     /// <summary>ALocal ist der Index der geprüften Datei (TRuleDerived.UnitIndex, Review P-03).</summary>
     constructor Create(const AIndex: ISymbolIndex; const ALocal: TUnitIndex);
+    destructor Destroy; override;
     /// <summary>Name des direkten Vorfahren; TObject ohne Angabe; '' wenn der Typ unbekannt ist.</summary>
     function ParentOf(const ATypeName: string): string;
     /// <summary>Erbt ATypeName (auch über mehrere Stufen) von AAncestor? False, wenn die Kette abbricht.</summary>
@@ -242,7 +253,6 @@ implementation
 
 uses
   System.StrUtils,
-  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -320,6 +330,65 @@ begin
   inherited Create;
   FIndex := AIndex;
   FLocal := ALocal;
+  FUnitSymbols := TDictionary<string, TArray<TIndexSymbol>>.Create;
+  FMembers := TDictionary<string, TArray<TIndexSymbol>>.Create;
+end;
+
+destructor TAncestry.Destroy;
+begin
+  FMembers.Free;
+  FUnitSymbols.Free;
+  inherited;
+end;
+
+function TAncestry.SymbolsOf(const AFileName: string; out ASymbols: TArray<TIndexSymbol>): Boolean;
+var
+  mKey: string;
+  mUnit: TUnitIndex;
+begin
+  if AFileName = '' then
+  begin
+    ASymbols := FLocal.Symbols;
+    Exit(True);
+  end;
+  mKey := AnsiLowerCase(AFileName);
+  if FUnitSymbols.TryGetValue(mKey, ASymbols) then
+    Exit(True);
+  Result := (FIndex <> nil) and FIndex.FindFile(AFileName, mUnit);
+  if not Result then
+    Exit;
+  ASymbols := mUnit.Symbols;
+  FUnitSymbols.Add(mKey, ASymbols);
+end;
+
+function TAncestry.MemberList(const AType: TSymbolLocation): TArray<TIndexSymbol>;
+var
+  mKey: string;
+  mSymbols: TArray<TIndexSymbol>;
+  mFound: TList<TIndexSymbol>;
+  mIndex: Integer;
+begin
+  mKey := AnsiLowerCase(AType.FileName) + '|' + AnsiLowerCase(AType.Symbol.Name) + '|' +
+    IntToStr(AType.Symbol.Range.StartPos.Line) + ':' + IntToStr(AType.Symbol.Range.EndPos.Line);
+  if FMembers.TryGetValue(mKey, Result) then
+    Exit;
+  Result := nil;
+  if SymbolsOf(AType.FileName, mSymbols) then
+  begin
+    mFound := TList<TIndexSymbol>.Create;
+    try
+      // Über den Index, damit nur die Treffer kopiert werden.
+      for mIndex := 0 to High(mSymbols) do
+        if (mSymbols[mIndex].Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
+          TIndexSymbolKind.Constructor_]) and SameText(mSymbols[mIndex].Container, AType.Symbol.Name) and
+          ContainsLine(AType.Symbol.Range, mSymbols[mIndex].Range.StartPos.Line) then
+          mFound.Add(mSymbols[mIndex]);
+      Result := mFound.ToArray;
+    finally
+      mFound.Free;
+    end;
+  end;
+  FMembers.Add(mKey, Result);
 end;
 
 function TAncestry.Reachable(const ALocation: TSymbolLocation): Boolean;
@@ -374,16 +443,18 @@ end;
 
 function TAncestry.FindTypeOf(const AName: string; AArity: Integer; out AType: TSymbolLocation): Boolean;
 var
-  Symbol: TIndexSymbol;
+  Index: Integer;
   Location: TSymbolLocation;
   Found: Boolean;
 begin
-  for Symbol in FLocal.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, AName) and
-      ((AArity < 0) or (GenericArity(Symbol.TypeParams) = AArity)) then
+  // Über den Index: for-in kopierte jedes Symbol der Datei, auch die vielen, die nicht passen.
+  for Index := 0 to High(FLocal.Symbols) do
+    if (FLocal.Symbols[Index].Kind = TIndexSymbolKind.ClassType) and (FLocal.Symbols[Index].Container = '') and
+      SameText(FLocal.Symbols[Index].Name, AName) and
+      ((AArity < 0) or (GenericArity(FLocal.Symbols[Index].TypeParams) = AArity)) then
     begin
       AType := Default(TSymbolLocation);
-      AType.Symbol := Symbol;
+      AType.Symbol := FLocal.Symbols[Index];
       Exit(True);
     end;
   Result := False;
@@ -420,23 +491,9 @@ begin
 end;
 
 function TAncestry.Members(const AType: TSymbolLocation): TArray<TIndexSymbol>;
-var
-  Symbols: TArray<TIndexSymbol>;
-  Symbol: TIndexSymbol;
-  UnitIndex: TUnitIndex;
 begin
-  Result := nil;
-  if AType.FileName = '' then
-    Symbols := FLocal.Symbols
-  else if (FIndex <> nil) and FIndex.FindFile(AType.FileName, UnitIndex) then
-    Symbols := UnitIndex.Symbols
-  else
-    Exit;
-  for Symbol in Symbols do
-    if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
-      TIndexSymbolKind.Constructor_]) and SameText(Symbol.Container, AType.Symbol.Name) and
-      ContainsLine(AType.Symbol.Range, Symbol.Range.StartPos.Line) then
-      Result := Result + [Symbol];
+  // Eigene Kopie: Aufrufer dürfen das Ergebnis ändern, ohne den Vorrat zu berühren.
+  Result := Copy(MemberList(AType));
 end;
 
 function TAncestry.FindAnyType(const AName: string; out AType: TSymbolLocation): Boolean;
@@ -444,14 +501,15 @@ const
   Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
 var
-  Symbol: TIndexSymbol;
+  Index: Integer;
   Location: TSymbolLocation;
 begin
-  for Symbol in FLocal.Symbols do
-    if (Symbol.Kind in Kinds) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+  for Index := 0 to High(FLocal.Symbols) do
+    if (FLocal.Symbols[Index].Kind in Kinds) and (FLocal.Symbols[Index].Container = '') and
+      SameText(FLocal.Symbols[Index].Name, AName) then
     begin
       AType := Default(TSymbolLocation);
-      AType.Symbol := Symbol;
+      AType.Symbol := FLocal.Symbols[Index];
       Exit(True);
     end;
   if FIndex <> nil then
@@ -606,11 +664,12 @@ const
   Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType];
 var
-  Symbol: TIndexSymbol;
+  Index: Integer;
   Location: TSymbolLocation;
 begin
-  for Symbol in FLocal.Symbols do
-    if (Symbol.Kind in Kinds) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+  for Index := 0 to High(FLocal.Symbols) do
+    if (FLocal.Symbols[Index].Kind in Kinds) and (FLocal.Symbols[Index].Container = '') and
+      SameText(FLocal.Symbols[Index].Name, AName) then
       Exit(True);
   if FIndex <> nil then
     for Location in FIndex.FindSymbols(AName) do
@@ -621,11 +680,11 @@ end;
 
 function TAncestry.IsTypeAlias(const AName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  Index: Integer;
   Location: TSymbolLocation;
 begin
-  for Symbol in FLocal.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.TypeAlias) and SameText(Symbol.Name, AName) then
+  for Index := 0 to High(FLocal.Symbols) do
+    if (FLocal.Symbols[Index].Kind = TIndexSymbolKind.TypeAlias) and SameText(FLocal.Symbols[Index].Name, AName) then
       Exit(True);
   if FIndex <> nil then
     for Location in FIndex.FindSymbols(AName) do
@@ -637,24 +696,16 @@ end;
 function TAncestry.HasConstructor(const ATypeName: string): Boolean;
 var
   Location: TSymbolLocation;
-  Symbols: TArray<TIndexSymbol>;
-  Symbol: TIndexSymbol;
-  UnitIndex: TUnitIndex;
+  Members: TArray<TIndexSymbol>;
+  Index: Integer;
 begin
   Result := False;
   if not FindType(ATypeName, Location) then
     Exit;
-  if Location.FileName = '' then
-    Symbols := FLocal.Symbols
-  else if (FIndex <> nil) and FIndex.FindFile(Location.FileName, UnitIndex) then
-    Symbols := UnitIndex.Symbols
-  else
-    Exit;
-  for Symbol in Symbols do
+  Members := MemberList(Location);
+  for Index := 0 to High(Members) do
     // Der Index führt Destruktoren ebenfalls als Constructor_.
-    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and not SameText(Symbol.Name, 'Destroy') and
-      SameText(Symbol.Container, Location.Symbol.Name) and
-      ContainsLine(Location.Symbol.Range, Symbol.Range.StartPos.Line) then
+    if (Members[Index].Kind = TIndexSymbolKind.Constructor_) and not SameText(Members[Index].Name, 'Destroy') then
       Exit(True);
 end;
 
@@ -1205,10 +1256,8 @@ function TAncestry.FindMember(const ATypeName, AName: string; out AMember: TInde
 var
   Name: string;
   Location: TSymbolLocation;
-  Symbols: TArray<TIndexSymbol>;
-  Symbol: TIndexSymbol;
-  UnitIndex: TUnitIndex;
-  Depth: Integer;
+  Members: TArray<TIndexSymbol>;
+  Index, Depth: Integer;
   Visible: Boolean;
 begin
   AMember := Default(TIndexSymbol);
@@ -1223,23 +1272,18 @@ begin
       AUnresolved := Name;
       Exit(False);
     end;
-    if Location.FileName = '' then
-      Symbols := FLocal.Symbols
-    else if (FIndex <> nil) and FIndex.FindFile(Location.FileName, UnitIndex) then
-      Symbols := UnitIndex.Symbols
-    else
-      Symbols := nil;
-    for Symbol in Symbols do
-      if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
-        SameText(Symbol.Container, Location.Symbol.Name) and SameText(Symbol.Name, AName) and
-        ContainsLine(Location.Symbol.Range, Symbol.Range.StartPos.Line) then
+    Members := MemberList(Location);
+    for Index := 0 to High(Members) do
+      if (Members[Index].Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+        SameText(Members[Index].Name, AName) then
       begin
         // private ist nur in derselben Unit sichtbar, strict private nur in der Klasse selbst.
-        Visible := (Depth = 0) or ((Location.FileName = '') and (Symbol.Visibility <> TIndexVisibility.StrictPrivate)) or
-          not (Symbol.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate]);
+        Visible := (Depth = 0) or ((Location.FileName = '') and
+          (Members[Index].Visibility <> TIndexVisibility.StrictPrivate)) or
+          not (Members[Index].Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate]);
         if Visible then
         begin
-          AMember := Symbol;
+          AMember := Members[Index];
           if Location.FileName <> '' then
             AUnitName := Location.UnitName;
           Exit(True);
