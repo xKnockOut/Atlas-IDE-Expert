@@ -50,6 +50,11 @@ Reihenfolge:
 3. #1456: Kern-Package und Debugger als erstes Add-on (Pilot).
 4. Die übrigen Module erst, wenn der Pilot Installieren, Entladen, Beenden und Bauen mit `cc.ps1` ohne Probleme zeigt. Zeigt er das nicht, bleibt es bei Schritt 2 und dieses ADR wird fortgeschrieben.
 
+Versionen (Marco, 31.10.2026):
+- Schritte 1 und 2 erscheinen in 1.x. Für Nutzer kommen nur Schalter und ein Profil dazu; Installation, BPL-Name und Einstellungen bleiben.
+- Die Aufteilung selbst ist Version **2.0**, weil sie jede Installation bricht: `Atlas.IDE.Expert<Version>.bpl` wird zu `Atlas.IDE.Core<Version>.bpl` plus Add-ons, der alte Eintrag unter Known Packages muss weg, das Release-Paket ändert seinen Aufbau, ein Update heißt neu installieren statt über den alten Ordner entpacken.
+- Der Pilot (Schritt 3) erscheint als Vorabversion `2.0.0-beta.1`, 1.x-Nutzer sind davon nicht betroffen. 2.0.0 erscheint, wenn alle elf Packages getrennt sind.
+
 ## Alternativen
 
 - **Ein BPL wie bisher (Variante A):** keine Installationswahl, die Suite lädt immer ganz.
