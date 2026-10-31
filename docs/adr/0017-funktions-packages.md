@@ -19,7 +19,7 @@ Gemessen an den uses-Verweisen zwischen Funktionsgruppen ist der Debugger am los
 
 ## Entscheidung
 
-Ziel ist ein Kern-Package plus je Modul ein eigenes Design-Time-Package, das man einzeln installiert (Variante C der Analyse vom 31.10.2026, auf Wunsch von Marco feiner geschnitten: neun Packages):
+Ziel ist ein Kern-Package plus je Modul ein eigenes Design-Time-Package, das man einzeln installiert (Variante C der Analyse vom 31.10.2026, auf Wunsch von Marco feiner geschnitten: elf Packages; Zuordnung aller Units und Querverweise in der Analyse, Abschnitt „Komplette Aufstellung“):
 
 | Package | Requires | Inhalt |
 |---|---|---|
@@ -32,13 +32,16 @@ Ziel ist ein Kern-Package plus je Modul ein eigenes Design-Time-Package, das man
 | `Atlas.IDE.Search` | `Atlas.IDE.Core` | Suche, Unitsuche, Abfrage |
 | `Atlas.IDE.Rules` | `Atlas.IDE.Core` | Pflege der Prüfregeln: Seite „Prüfregeln“ mit Regeltabelle und Profilen, Baseline, Sammelkorrektur, Erklären, Unterdrücken am Element |
 | `Atlas.IDE.Tests` | `Atlas.IDE.Core` | DUnitX-Ergebnisse und Testbefehle |
+| `Atlas.IDE.Build` | `Atlas.IDE.Core` | Build-Werkzeuge: Release-Wächter, Schranke vor dem Kompilieren, Compilerschalter, Build-Zusammenfassung, „Öffnen und bauen“; Aufgaben, Startprofile |
+| `Atlas.IDE.Bookmarks` | `Atlas.IDE.Core` | Lesezeichen, Notizen |
 
 Regeln:
 - Kein Modul requiret ein anderes. Querbezüge (Willkommensseite zeigt Issues, Hover zeigt Debugger-Werte, Palette öffnet die Unitsuche) laufen über Verträge im Kern; fehlt das Modul, bleibt der Beitrag leer.
 - Der Kern kennt kein Modul. Module melden Einstellungsseiten, Befehle, Menüeinträge, Statusfeldzeilen, Tipps und Bereiche der Willkommensseite beim Laden an und beim Entladen ab.
 - Ein nicht installiertes Modul verhält sich wie ein abgeschaltetes (Modul-Schalter aus #1454).
-- Im Kern bleibt, was viele andere Teile benutzen oder ohne das Code Insight nicht brauchbar ist: die Anzeige der Diagnosen (ohne sie sähe man nicht einmal Syntaxfehler; die Prüfregeln selbst laufen im Server, ihre Pflege liegt in `Atlas.IDE.Rules`), Build, Benachrichtigungen, Rückgängig, Doku, Lesezeichen und Notizen (eng mit Editor, Willkommensseite und Tracker verflochten), Versionsverwaltung.
-- Weitere Kandidaten nach dem Pilot: Aufgaben und Startprofile (5 900 Zeilen, benutzt von Komposition, Willkommensseite und Tests).
+- Im Kern bleibt, was viele andere Teile benutzen oder ohne das Code Insight nicht brauchbar ist: die Anzeige der Diagnosen (ohne sie sähe man nicht einmal Syntaxfehler; die Prüfregeln selbst laufen im Server, ihre Pflege liegt in `Atlas.IDE.Rules`), Compilermeldungen und Prüfen nach dem Speichern (Quelle der Diagnosen), Benachrichtigungen, Rückgängig, Doku, Versionsverwaltung (Grundlage für Willkommensseite, Tracker, Tests und Änderungsmarken im Editor). Der allgemeine Tooltip `Atlas.UI.Notes.Tip` wandert vorher nach Foundation.
+- Möglicher Schnitt nach dem Pilot (vermerkt, nicht entschieden): den Kern in `Atlas.IDE.Base` (Foundation, Rahmen für Einstellungen, Befehle, Statusfeld, Hosts, Style, Texte, Benachrichtigungen, Projekte, Dateien, Verträge, LSP-Client mit Serverstart erst auf Anfrage eines Moduls) und `Atlas.IDE.CodeInsight` (Vervollständigung, Hover, Signatur, Inlay-Hints, Gliederung, Anzeige der Diagnosen, Compilermeldungen, Snippets) teilen. Dann käme z. B. Bookmarks ohne Code Insight aus. Preis: zwölftes Package (48 Builds), Code Insight braucht immer zwei Installationen, und seine Beiträge an Editor, Statusfeld und Hover laufen ebenfalls über Verträge.
+- Versionsverwaltung als eigenes Package ginge nur mit einer zweiten Ebene (Willkommensseite und Tracker requiren sie); vorerst nicht vorgesehen.
 - `Atlas.Common` und `Atlas.Windows` bleiben außerhalb der IDE (ADR 0006, ADR 0012). Die Sprachlogik bleibt im Server, alle Packages nutzen die eine Sitzung des Kerns.
 
 Reihenfolge:
@@ -55,7 +58,7 @@ Reihenfolge:
 
 ## Folgen
 
-- **Builds:** je Package Win32 und Win64 für Delphi 12 und 13; bei neun Packages 36 statt 4 Builds je Release. `Atlas.groupproj` baut den Kern zuerst.
+- **Builds:** je Package Win32 und Win64 für Delphi 12 und 13; bei elf Packages 44 statt 4 Builds je Release. `Atlas.groupproj` baut den Kern zuerst.
 - **Bauen mit `cc.ps1` (ADR 0007):** Solange ein Add-on geladen ist, hält die IDE auch den Kern; zum Neubauen des Kerns werden die Add-ons mit entladen.
 - **Installation (ADR 0016):** Das Release-Paket enthält Kern und Add-ons je Plattform. Der Kern wird zuerst installiert und muss für den Windows-Lader auffindbar sein, wenn ein Add-on lädt.
 - **Entladen:** Add-ons bauen ihre Beiträge ab, bevor der Kern abgebaut wird. Einträge in den Hauptthread nur über `TAtlasMainThread` des Kerns; Editorleisten, Zeilenleisten-Spalten und Fenster nur über die Hosts des Kerns (`CLAUDE.md`).
