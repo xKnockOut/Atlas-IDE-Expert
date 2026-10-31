@@ -62,6 +62,9 @@ type
     FClosing: Boolean;
     FAllButton: TButton;
     FOnToggle: TProc<TAtlasQuickToggleItem>;
+    FOnOpenSetting: TProc<TAtlasQuickToggleItem>;
+    /// <summary>Maus über dem Symbol „Einstellung öffnen“ dieser Zeile; -1 ohne.</summary>
+    FHotOpen: Integer;
     FOnAllOff: TProc;
     FAnchor: TPoint;
     function RowHeight: Integer;
@@ -69,6 +72,10 @@ type
     function ButtonsHeight: Integer;
     function RowRect(AIndex: Integer): TRect;
     function RowAt(const APoint: TPoint): Integer;
+    /// <summary>Symbol „Einstellung öffnen“ rechts in einer Schalterzeile.</summary>
+    function OpenRect(ARow: Integer): TRect;
+    procedure OpenRow(ARow: Integer);
+    procedure PaintOpenIcon(const ARect: TRect; AHot: Boolean);
     function TagText(const AItem: TAtlasQuickToggleItem): string;
     procedure BuildRows;
     procedure Layout;
@@ -113,6 +120,11 @@ type
     property HotRow: Integer read FHot;
     /// <summary>Schalter umschalten; bei Projektwerten erst nach dem Schließen.</summary>
     property OnToggle: TProc<TAtlasQuickToggleItem> read FOnToggle write FOnToggle;
+    /// <summary>Symbol rechts bzw. Strg+Enter: die Einstellung in Tools › Optionen öffnen (nach dem Schließen).
+    /// </summary>
+    property OnOpenSetting: TProc<TAtlasQuickToggleItem> read FOnOpenSetting write FOnOpenSetting;
+    /// <summary>Zum Testen: Symbol „Einstellung öffnen“ der Zeile ARow anklicken.</summary>
+    procedure ClickOpen(ARow: Integer);
     /// <summary>„Alles aus für diese Sitzung“ bzw. „Alles wieder an“.</summary>
     property OnAllOff: TProc read FOnAllOff write FOnAllOff;
   end;
@@ -137,6 +149,7 @@ begin
   inherited CreateNew(AOwner);
   FColors := AColors;
   FHot := -1;
+  FHotOpen := -1;
   BorderStyle := bsNone;
   KeyPreview := True;
   DoubleBuffered := True;
@@ -188,6 +201,72 @@ begin
     if PtInRect(RowRect(Index), APoint) then
       Exit(Index);
   Result := -1;
+end;
+
+function TAtlasQuickToggleWindow.OpenRect(ARow: Integer): TRect;
+var
+  Row: TRect;
+  Size: Integer;
+begin
+  Result := TRect.Empty;
+  if (ARow < 0) or (ARow > High(FRows)) or (FRows[ARow].Item < 0) then
+    Exit;
+  Row := RowRect(ARow);
+  Size := ScaleValue(16);
+  // Rechts, mit Abstand zum Bildlaufbalken.
+  Result := Rect(Row.Right - ScaleValue(8) - Size, (Row.Top + Row.Bottom - Size) div 2, Row.Right - ScaleValue(8),
+    (Row.Top + Row.Bottom + Size) div 2);
+end;
+
+procedure TAtlasQuickToggleWindow.PaintOpenIcon(const ARect: TRect; AHot: Boolean);
+var
+  Inset, Mid: Integer;
+begin
+  // Kasten, oben rechts offen, mit Pfeil nach rechts oben: „Einstellung öffnen“.
+  if AHot then
+    Canvas.Pen.Color := ToColor(FColors.Accent)
+  else
+    Canvas.Pen.Color := ToColor(FColors.Muted);
+  Canvas.Pen.Width := Max(1, ScaleValue(1));
+  Inset := ScaleValue(3);
+  Mid := (ARect.Left + ARect.Right) div 2;
+  Canvas.MoveTo(Mid, ARect.Top + Inset);
+  Canvas.LineTo(ARect.Left + Inset, ARect.Top + Inset);
+  Canvas.LineTo(ARect.Left + Inset, ARect.Bottom - Inset);
+  Canvas.LineTo(ARect.Right - Inset, ARect.Bottom - Inset);
+  Canvas.LineTo(ARect.Right - Inset, (ARect.Top + ARect.Bottom) div 2);
+  // Pfeil.
+  Canvas.MoveTo(Mid - ScaleValue(1), (ARect.Top + ARect.Bottom) div 2 + ScaleValue(1));
+  Canvas.LineTo(ARect.Right - ScaleValue(1), ARect.Top + ScaleValue(1));
+  Canvas.MoveTo(ARect.Right - ScaleValue(1) - ScaleValue(5), ARect.Top + ScaleValue(1));
+  Canvas.LineTo(ARect.Right - ScaleValue(1), ARect.Top + ScaleValue(1));
+  Canvas.LineTo(ARect.Right - ScaleValue(1), ARect.Top + ScaleValue(1) + ScaleValue(5));
+  Canvas.Pen.Width := 1;
+end;
+
+procedure TAtlasQuickToggleWindow.OpenRow(ARow: Integer);
+var
+  Item: TAtlasQuickToggleItem;
+  Handler: TProc<TAtlasQuickToggleItem>;
+begin
+  if (ARow < 0) or (ARow > High(FRows)) or (FRows[ARow].Item < 0) or FClosing then
+    Exit;
+  Item := FItems[FRows[ARow].Item];
+  Handler := FOnOpenSetting;
+  if not Assigned(Handler) then
+    Exit;
+  // Tools › Optionen ist modal: erst schließen, dann öffnen.
+  Dismiss;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
+    procedure
+    begin
+      Handler(Item);
+    end);
+end;
+
+procedure TAtlasQuickToggleWindow.ClickOpen(ARow: Integer);
+begin
+  OpenRow(ARow);
 end;
 
 procedure TAtlasQuickToggleWindow.ClampFirst;
@@ -334,7 +413,8 @@ begin
     Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesSession)));
   Width_ := ScaleValue(280);
   for Row in FRows do
-    Width_ := Max(Width_, Canvas.TextWidth(Row.Text) + Tags + ScaleValue(64));
+    // 64: Kästchen und Ränder, 28: Symbol „Einstellung öffnen“.
+    Width_ := Max(Width_, Canvas.TextWidth(Row.Text) + Tags + ScaleValue(64 + 28));
   Width_ := Min(Width_, ScaleValue(720));
   ButtonWidth := Max(Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff)),
     Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOn))) + ScaleValue(24);
@@ -509,6 +589,13 @@ begin
       end;
     VK_SPACE, VK_RETURN:
       begin
+        // Strg+Enter: Einstellung öffnen statt schalten.
+        if (Key = VK_RETURN) and (ssCtrl in Shift) then
+        begin
+          Key := 0;
+          OpenRow(FHot);
+          Exit;
+        end;
         Key := 0;
         ToggleRow(FHot);
         Exit;
@@ -532,6 +619,14 @@ begin
     FHot := Row;
     Invalidate;
   end;
+  // Symbol „Einstellung öffnen“ unter der Maus hervorheben.
+  if not PtInRect(OpenRect(Row), Point(X, Y)) then
+    Row := -1;
+  if Row <> FHotOpen then
+  begin
+    FHotOpen := Row;
+    Invalidate;
+  end;
 end;
 
 procedure TAtlasQuickToggleWindow.CMMouseLeave(var Message: TMessage);
@@ -543,7 +638,11 @@ end;
 procedure TAtlasQuickToggleWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
-  if Button = mbLeft then
+  if Button <> mbLeft then
+    Exit;
+  if PtInRect(OpenRect(RowAt(Point(X, Y))), Point(X, Y)) then
+    OpenRow(RowAt(Point(X, Y)))
+  else
     ToggleRow(RowAt(Point(X, Y)));
 end;
 
@@ -629,7 +728,10 @@ begin
       Canvas.Pen.Width := 1;
     end;
     Canvas.Brush.Style := bsClear;
-    Part := Rect(Check.Right + ScaleValue(8), Row.Top, Row.Right - ScaleValue(6), Row.Bottom);
+    // Rechts in jeder Zeile das Symbol „Einstellung öffnen“, unter der Maus in Akzentfarbe.
+    if Assigned(FOnOpenSetting) then
+      PaintOpenIcon(OpenRect(Index), Index = FHotOpen);
+    Part := Rect(Check.Right + ScaleValue(8), Row.Top, OpenRect(Index).Left - ScaleValue(6), Row.Bottom);
     mText := TagText(Item);
     if mText <> '' then
     begin

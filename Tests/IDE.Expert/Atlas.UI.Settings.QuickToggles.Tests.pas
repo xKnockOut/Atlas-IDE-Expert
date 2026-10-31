@@ -28,6 +28,9 @@ type
     procedure FirstOpenAndAccordion;
     [Test]
     procedure ProjectValueRunsAfterClosing;
+    /// <summary>Symbol rechts öffnet die Einstellung nach dem Schließen, ohne zu schalten.</summary>
+    [Test]
+    procedure OpenSettingRunsAfterClosing;
     [Test]
     procedure AllOffButton;
   end;
@@ -140,6 +143,43 @@ begin
     CheckSynchronize;
     Application.ProcessMessages;
     Assert.AreEqual(1, Count);
+  finally
+    Application.ProcessMessages;
+  end;
+end;
+
+procedure TAtlasQuickToggleWindowTests.OpenSettingRunsAfterClosing;
+var
+  Window: TAtlasQuickToggleWindow;
+  Opened: string;
+  Toggled: Integer;
+begin
+  Opened := '';
+  Toggled := 0;
+  TAtlasQuickToggleWindow.ExpandAll;
+  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  try
+    Window.SetItems(SampleItems, False);
+    Window.OnToggle :=
+      procedure(AItem: TAtlasQuickToggleItem)
+      begin
+        Inc(Toggled);
+      end;
+    Window.OnOpenSetting :=
+      procedure(AItem: TAtlasQuickToggleItem)
+      begin
+        Opened := AItem.Toggle.Key;
+      end;
+    // Überschrift hat kein Symbol.
+    Window.ClickOpen(0);
+    Assert.AreEqual('', Opened);
+    // Tools › Optionen ist modal: erst nach dem Schließen, und geschaltet wird nichts.
+    Window.ClickOpen(1);
+    Assert.AreEqual('', Opened, 'erst nach dem Schließen');
+    CheckSynchronize;
+    Application.ProcessMessages;
+    Assert.AreEqual('PairColors', Opened);
+    Assert.AreEqual(0, Toggled);
   finally
     Application.ProcessMessages;
   end;

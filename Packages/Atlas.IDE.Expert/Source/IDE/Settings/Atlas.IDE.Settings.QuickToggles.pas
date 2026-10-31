@@ -79,7 +79,8 @@ uses
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Settings.Options;
 
 const
   AnswerSession = 100;
@@ -285,6 +286,16 @@ begin
         procedure
         begin
           SwitchItem(AItem);
+        end);
+    end;
+  // Symbol rechts: Tools › Optionen › Atlas an dieser Einstellung öffnen und markieren (#628).
+  FWindow.OnOpenSetting :=
+    procedure(AItem: TAtlasQuickToggleItem)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowSetting(AItem.Toggle.Key);
         end);
     end;
   FWindow.OnAllOff :=
