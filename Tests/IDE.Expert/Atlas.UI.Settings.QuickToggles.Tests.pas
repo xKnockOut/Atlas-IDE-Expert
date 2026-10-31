@@ -23,6 +23,9 @@ type
     /// <summary>Klick auf eine Überschrift klappt die Gruppe ein und wieder aus; geschaltet wird nichts.</summary>
     [Test]
     procedure HeaderCollapsesAndExpandsGroup;
+    /// <summary>Erstes Öffnen nur mit der ersten Seite; Aufklappen schließt die anderen.</summary>
+    [Test]
+    procedure FirstOpenAndAccordion;
     [Test]
     procedure ProjectValueRunsAfterClosing;
     [Test]
@@ -193,8 +196,31 @@ begin
     Window.SetItems(SampleItems, False);
     Assert.AreEqual(3, Window.RowCount);
     Window.ClickRow(0);
-    Assert.AreEqual(5, Window.RowCount, 'wieder ausgeklappt');
+    // Akkordeon: Editor wieder offen, dafür Hints zu (Editor, Klammerfarben, Blocklinien, Hints).
+    Assert.AreEqual(4, Window.RowCount, 'wieder ausgeklappt');
     Assert.AreEqual('Klammerfarben', Window.RowText(1));
+    Assert.AreEqual('Hints', Window.RowText(3));
+  finally
+    Window.Free;
+    TAtlasQuickToggleWindow.ExpandAll;
+  end;
+end;
+
+procedure TAtlasQuickToggleWindowTests.FirstOpenAndAccordion;
+var
+  Window: TAtlasQuickToggleWindow;
+begin
+  TAtlasQuickToggleWindow.ResetCollapse;
+  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  try
+    Window.SetItems(SampleItems, False);
+    // Erstes Öffnen: nur die erste Seite offen (Editor, Klammerfarben, Blocklinien, Hints).
+    Assert.AreEqual(4, Window.RowCount);
+    Assert.AreEqual('Hints', Window.RowText(3));
+    // Hints aufklappen schließt Editor: Editor, Hints, Hover.
+    Window.ClickRow(3);
+    Assert.AreEqual(3, Window.RowCount);
+    Assert.AreEqual('Hover', Window.RowText(2));
   finally
     Window.Free;
     TAtlasQuickToggleWindow.ExpandAll;
