@@ -115,7 +115,7 @@ type
       'Abort');
   public
     /// <summary>Stellen zur Abfrage an APosition; Query None, wenn dort nichts Passendes steht.</summary>
-    class function Find(ATree: TSyntaxTree; const ALines: TArray<string>; const APosition: TTextPosition;
+    class function Find(ATree: TSyntaxTree; const APosition: TTextPosition;
       const AOptions: TExitPointOptions; const AExceptions: TExitPointExceptionLookup;
       const AIsA: TExitPointClassTest): TExitPointSet; overload; static;
     /// <summary>Wie oben mit Doku und Klassen nur aus dem Baum (ALines sind seine Zeilen).</summary>
@@ -691,7 +691,7 @@ begin
     (SameText(AStatement[0].Name, 'Result') or SameText(AStatement[0].Name, AName));
 end;
 
-function ResultAssignments(ATree: TSyntaxTree; ARoutine: TSyntaxNode): TArray<TExitPoint>;
+function ResultAssignments(ARoutine: TSyntaxNode): TArray<TExitPoint>;
 var
   Node: TSyntaxNode;
   Name: string;
@@ -889,7 +889,7 @@ end;
 class function TExitPoints.Find(ATree: TSyntaxTree; const ALines: TArray<string>; const APosition: TTextPosition;
   const AOptions: TExitPointOptions): TExitPointSet;
 begin
-  Result := Find(ATree, ALines, APosition, AOptions, TreeExceptions(ATree, ALines), TreeClassTest(ATree));
+  Result := Find(ATree, APosition, AOptions, TreeExceptions(ATree, ALines), TreeClassTest(ATree));
 end;
 
 /// <summary>RoutineDecl mit Rumpf, in deren Kopf AOffset liegt; nil sonst.</summary>
@@ -906,7 +906,7 @@ begin
     Result := Routine;
 end;
 
-class function TExitPoints.Find(ATree: TSyntaxTree; const ALines: TArray<string>; const APosition: TTextPosition;
+class function TExitPoints.Find(ATree: TSyntaxTree; const APosition: TTextPosition;
   const AOptions: TExitPointOptions; const AExceptions: TExitPointExceptionLookup;
   const AIsA: TExitPointClassTest): TExitPointSet;
 var
@@ -1008,7 +1008,7 @@ begin
         if ExitPointsOf(ATree, Routine, AOptions, Raising, Result) then
         begin
           Result.Query := TExitPointQuery.ResultValue;
-          Result.Points := Sorted(Result.Points + ResultAssignments(ATree, Routine));
+          Result.Points := Sorted(Result.Points + ResultAssignments(Routine));
         end;
         Exit;
       end;

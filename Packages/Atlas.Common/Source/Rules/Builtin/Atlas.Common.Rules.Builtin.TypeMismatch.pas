@@ -115,7 +115,7 @@ type
     function ValueOf(ANode: TSyntaxNode): TValueType;
     function TargetValue(ANode: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): TValueType;
     function IsProcedure(ANode: TSyntaxNode): Boolean;
-    function ProceduralText(ANode: TSyntaxNode; const ASymbol, AType: TResolvedSymbol): string;
+    function ProceduralText(const ASymbol, AType: TResolvedSymbol): string;
     function RoutineCandidates(ANode: TSyntaxNode; out ACandidates: TArray<TResolvedSymbol>): Boolean;
     procedure Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
     procedure CheckAssignment(ANode: TSyntaxNode);
@@ -742,7 +742,7 @@ begin
       Exit(False);
 end;
 
-function TTypeMismatchCheck.ProceduralText(ANode: TSyntaxNode; const ASymbol, AType: TResolvedSymbol): string;
+function TTypeMismatchCheck.ProceduralText(const ASymbol, AType: TResolvedSymbol): string;
 var
   mBody: string;
 begin
@@ -783,7 +783,7 @@ begin
   mTarget := TargetValue(ANode[0], mSymbol, mType);
   if mSymbol.Name = '' then
     Exit;
-  mProcedural := ProceduralText(ANode[0], mSymbol, mType);
+  mProcedural := ProceduralText(mSymbol, mType);
   if mProcedural <> '' then
   begin
     if ParseShape(mProcedural, False, mShape) then

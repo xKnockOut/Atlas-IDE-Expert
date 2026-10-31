@@ -134,9 +134,9 @@ begin
   try
     Condition := ConditionOf(Tree);
     // (P1 and P2) and P3; je Klammer ein Vergleich mit zwei Seiten.
-    Assert.IsTrue(TExpressionText.Same(Text, Tree, Condition[0][0][0][0], Condition[0][0][0][1]));
-    Assert.IsTrue(TExpressionText.Same(Text, Tree, Condition[0][1][0][0], Condition[0][1][0][1]));
-    Assert.IsFalse(TExpressionText.Same(Text, Tree, Condition[1][0][0], Condition[1][0][1]));
+    Assert.IsTrue(TExpressionText.Same(Tree, Condition[0][0][0][0], Condition[0][0][0][1]));
+    Assert.IsTrue(TExpressionText.Same(Tree, Condition[0][1][0][0], Condition[0][1][0][1]));
+    Assert.IsFalse(TExpressionText.Same(Tree, Condition[1][0][0], Condition[1][0][1]));
   finally
     Tree.Free;
   end;

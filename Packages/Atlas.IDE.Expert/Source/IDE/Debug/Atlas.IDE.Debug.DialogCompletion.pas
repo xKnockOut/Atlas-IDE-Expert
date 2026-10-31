@@ -107,7 +107,7 @@ type
     procedure Query(AHistory, AAutomatic: Boolean);
     procedure Commit(const AItem: TAtlasCompletionItem);
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
-    procedure HandleKey(AKey: Word; AShift: TShiftState);
+    procedure HandleKey(AKey: Word);
     procedure Say(const AText: string);
     procedure LogDialog(AForm: TCustomForm);
     function Scope(out AFileName: string; out ALine: Integer): Boolean;
@@ -182,7 +182,7 @@ procedure TAtlasIdeDebugDialogCompletion.TKeys.HandleKey(AKey: Word; AShift: TSh
 begin
   try
     if TAtlasIdeDebugDialogCompletion.FInstance <> nil then
-      TAtlasIdeDebugDialogCompletion.FInstance.HandleKey(AKey, AShift);
+      TAtlasIdeDebugDialogCompletion.FInstance.HandleKey(AKey);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -761,7 +761,7 @@ begin
   Result := (AKey = VK_DOWN) and not FOwnField and not FController.Active and (WindowText(FEdit) = '');
 end;
 
-procedure TAtlasIdeDebugDialogCompletion.HandleKey(AKey: Word; AShift: TShiftState);
+procedure TAtlasIdeDebugDialogCompletion.HandleKey(AKey: Word);
 var
   Navigation: TAtlasNavigationKey;
 begin

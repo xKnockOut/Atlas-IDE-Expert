@@ -67,10 +67,9 @@ type
     /// <summary>Sprache aus der Antwort von localeSettings ({"locale": {"language": "de"}}); '' ohne.</summary>
     class function LanguageOfLocale(const AText: string): string; static;
     /// <summary>Antwort der Liste einer Ursache zuordnen. AAnswered: eine Antwort kam (AStatus, AText), sonst
-    /// AError.</summary>
+    /// Unreachable.</summary>
     class function Evaluate(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      AAnswered: Boolean; AStatus: Integer; const AText: string; AError: TAtlasCiFetchError):
-      TAtlasTrackerQueryTestResult; static;
+      AAnswered: Boolean; AStatus: Integer; const AText: string): TAtlasTrackerQueryTestResult; static;
     /// <summary>Sprache der Oberfläche, höchstens ATimeoutMs; '' unbekannt oder ohne LocaleUrl (GitHub).</summary>
     class function DetectLanguage(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const ATransport: IAtlasCiTransport; ATimeoutMs: Integer): string; static;
@@ -185,8 +184,8 @@ begin
 end;
 
 class function TAtlasTrackerQueryTest.Evaluate(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; AAnswered: Boolean; AStatus: Integer; const AText: string;
-  AError: TAtlasCiFetchError): TAtlasTrackerQueryTestResult;
+  const ATarget: TAtlasTrackerTarget; AAnswered: Boolean; AStatus: Integer; const AText: string):
+  TAtlasTrackerQueryTestResult;
 var
   mIssues: TArray<TAtlasTrackerIssue>;
   mIndex: Integer;
@@ -319,7 +318,7 @@ begin
       AProvider.SentQuery(ATarget)));
   mWatch := TStopwatch.StartNew;
   mAnswered := ATransport.Get(mUrl, TimeoutMs, mStatus, mText, mError);
-  Result := Evaluate(AProvider, ATarget, mAnswered, mStatus, mText, mError);
+  Result := Evaluate(AProvider, ATarget, mAnswered, mStatus, mText);
   Result.ElapsedMs := mWatch.ElapsedMilliseconds;
   if Result.Outcome <> TAtlasTrackerQueryOutcome.Empty then
     Exit;

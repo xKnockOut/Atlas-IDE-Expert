@@ -89,8 +89,7 @@ type
     procedure TimerTick(Sender: TObject);
     procedure Update;
     procedure Clear;
-    procedure Ask(const AView: IOTAEditView; const AText: string; ALine, ACharacter: Integer;
-      AExceptions, ALoops: Boolean);
+    procedure Ask(const AText: string; ALine, ACharacter: Integer; AExceptions, ALoops: Boolean);
     procedure Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal; const ASet: TAtlasExitPointSet);
     procedure ReapWorkers(AWait: Boolean);
     procedure EnsureFont(const AEditorFont: TFont);
@@ -361,11 +360,10 @@ begin
   if (FIdleCount < IdleTicks) or (Key = FAskedKey) then
     Exit;
   FAskedKey := Key;
-  Ask(View, Snapshot.Text, Line, Character, Exceptions, Loops);
+  Ask(Snapshot.Text, Line, Character, Exceptions, Loops);
 end;
 
-procedure TAtlasIdeExitPoints.Ask(const AView: IOTAEditView; const AText: string; ALine, ACharacter: Integer;
-  AExceptions, ALoops: Boolean);
+procedure TAtlasIdeExitPoints.Ask(const AText: string; ALine, ACharacter: Integer; AExceptions, ALoops: Boolean);
 var
   Session: TLspSession;
   FileName, Arguments: string;
