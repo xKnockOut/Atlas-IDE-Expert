@@ -14,10 +14,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt /notify, /changed, /loaded, /notification und /event in ARegistry ein.</summary>
-procedure RegisterComponentCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt /notify, /changed, /loaded, /notification und /event über ARegister ein.</summary>
+procedure RegisterComponentCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -584,16 +584,16 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterComponentCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterComponentCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('notify', 'Ereignis mit Feld, Property und Do-Methode', '/notify OnChange',
+  ARegister(Command('notify', 'Ereignis mit Feld, Property und Do-Methode', '/notify OnChange',
     ExecuteNotify));
-  ARegistry.Register(Command('changed', 'Setter mit Änderungsprüfung und Benachrichtigung', '/changed Farbe',
+  ARegister(Command('changed', 'Setter mit Änderungsprüfung und Benachrichtigung', '/changed Farbe',
     ExecuteChanged));
-  ARegistry.Register(Command('loaded', 'Loaded überschreiben', '/loaded', ExecuteLoaded));
-  ARegistry.Register(Command('event', 'Ereignis-Handler anlegen und in der DFM zuweisen', '/event Button1.OnClick',
+  ARegister(Command('loaded', 'Loaded überschreiben', '/loaded', ExecuteLoaded));
+  ARegister(Command('event', 'Ereignis-Handler anlegen und in der DFM zuweisen', '/event Button1.OnClick',
     ExecuteEvent));
-  ARegistry.Register(Command('notification', 'Notification für Komponentenfelder', '/notification FDataSource',
+  ARegister(Command('notification', 'Notification für Komponentenfelder', '/notification FDataSource',
     ExecuteNotification));
 end;
 

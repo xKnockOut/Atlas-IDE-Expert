@@ -16,10 +16,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt die Befehle in ARegistry ein.</summary>
-procedure RegisterExpressionCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt die Befehle über ARegister ein.</summary>
+procedure RegisterExpressionCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -508,25 +508,25 @@ begin
   end;
 end;
 
-procedure RegisterExpressionCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterExpressionCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('modern', 'Umgebende Routine modernisieren (for-in, Inline-Variablen, FreeAndNil)',
+  ARegister(Command('modern', 'Umgebende Routine modernisieren (for-in, Inline-Variablen, FreeAndNil)',
     '/modern -inline', ExecuteModern));
-  ARegistry.Register(Command('format', 'String-Verkettung darunter in Format(…) umwandeln', '/format',
+  ARegister(Command('format', 'String-Verkettung darunter in Format(…) umwandeln', '/format',
     ExecuteFormat));
-  ARegistry.Register(Command('multiline', 'Verkettetes Literal darunter als mehrzeiligen String schreiben',
+  ARegister(Command('multiline', 'Verkettetes Literal darunter als mehrzeiligen String schreiben',
     '/multiline',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteMultiline(AContext, True, AEdits, AReason);
     end));
-  ARegistry.Register(Command('multiline!', 'Mehrzeiligen String darunter als Verkettung schreiben', '/multiline!',
+  ARegister(Command('multiline!', 'Mehrzeiligen String darunter als Verkettung schreiben', '/multiline!',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteMultiline(AContext, False, AEdits, AReason);
     end));
-  ARegistry.Register(Command('iif', 'if/else-Zuweisung darunter als Bedingungsausdruck', '/iif', ExecuteIif));
-  ARegistry.Register(Command('inc', 'X := X + N darunter als Inc bzw. Dec', '/inc', ExecuteInc));
+  ARegister(Command('iif', 'if/else-Zuweisung darunter als Bedingungsausdruck', '/iif', ExecuteIif));
+  ARegister(Command('inc', 'X := X + N darunter als Inc bzw. Dec', '/inc', ExecuteInc));
 end;
 
 end.

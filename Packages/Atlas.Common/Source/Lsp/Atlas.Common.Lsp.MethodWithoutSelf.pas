@@ -71,14 +71,14 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.PromoteVariable,
+  Atlas.Common.Lsp.FormMentions,
   Atlas.Text.Lines;
 
 class function TLspMethodWithoutSelf.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TMethodLookup;
 begin
   Result := TMethodLookup.FromResolver(AResolver, ATree, AFileName);
-  Result.InForm := TLspPromoteVariable.Lookup(AResolver, ATree, AFileName, AReadText).InForm;
+  Result.InForm := TLspFormMentions.Lookup(AFileName, AReadText);
 end;
 
 class function TLspMethodWithoutSelf.Actions(ATree: TSyntaxTree; const AText, AUri: string;

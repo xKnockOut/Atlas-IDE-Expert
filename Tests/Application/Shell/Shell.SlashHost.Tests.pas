@@ -38,7 +38,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.StreamTransport,
-  Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract,
   Shell.Workspace,
   Shell.SlashHost;
 

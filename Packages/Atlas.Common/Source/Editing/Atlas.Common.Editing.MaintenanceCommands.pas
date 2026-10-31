@@ -17,7 +17,7 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
 const
   /// <summary>Hinweis, wenn /cleanuses keinen Index hat.</summary>
@@ -25,8 +25,8 @@ const
   /// <summary>Hinweis, wenn /ignore eine Regel nennt, die in der Zeile darunter nichts meldet.</summary>
   IgnoreNoHitHint = 'Regel %s meldet in der Zeile darunter nichts';
 
-/// <summary>Trägt die Pflegebefehle in ARegistry ein.</summary>
-procedure RegisterMaintenanceCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt die Pflegebefehle über ARegister ein.</summary>
+procedure RegisterMaintenanceCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -335,17 +335,17 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterMaintenanceCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterMaintenanceCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('sortuses', 'uses-Listen sortieren', '/sortuses', ExecuteSortUses));
-  ARegistry.Register(Command('cleanuses', 'Ungenutzte uses streichen, Reihenfolge bleibt', '/cleanuses',
+  ARegister(Command('sortuses', 'uses-Listen sortieren', '/sortuses', ExecuteSortUses));
+  ARegister(Command('cleanuses', 'Ungenutzte uses streichen, Reihenfolge bleibt', '/cleanuses',
     ExecuteCleanUses));
-  ARegistry.Register(Command('ignore', 'Prüfregel für die Zeile darunter unterdrücken',
+  ARegister(Command('ignore', 'Prüfregel für die Zeile darunter unterdrücken',
     '/ignore unused-local Absicht', ExecuteIgnore));
-  ARegistry.Register(Command('todo', 'TODO-Kommentar für die IDE-TODO-Liste', '/todo Fehlerfall prüfen',
+  ARegister(Command('todo', 'TODO-Kommentar für die IDE-TODO-Liste', '/todo Fehlerfall prüfen',
     ExecuteTodo));
-  ARegistry.Register(Command('doc', 'XML-Doc-Gerüst für die Routine darunter', '/doc', ExecuteDoc));
-  ARegistry.Register(Command('log', 'Protokollzeile mit Unit- und Routinennamen', '/log', ExecuteLog));
+  ARegister(Command('doc', 'XML-Doc-Gerüst für die Routine darunter', '/doc', ExecuteDoc));
+  ARegister(Command('log', 'Protokollzeile mit Unit- und Routinennamen', '/log', ExecuteLog));
 end;
 
 end.

@@ -45,6 +45,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.UsesService,

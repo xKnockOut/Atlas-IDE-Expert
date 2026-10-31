@@ -16,7 +16,7 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
 const
   /// <summary>Hinweis, wenn unter /fix bzw. /explain kein Treffer steht.</summary>
@@ -24,8 +24,8 @@ const
   /// <summary>Hinweis, wenn unter /fix nur Treffer ohne sichere Korrektur stehen.</summary>
   NoSafeFixHint = 'Für die Treffer in der Zeile darunter gibt es keine sichere Korrektur';
 
-/// <summary>Trägt /extract, /inline, /fix, /explain, /fmt und /measure in ARegistry ein.</summary>
-procedure RegisterRefactoringCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt /extract, /inline, /fix, /explain, /fmt und /measure über ARegister ein.</summary>
+procedure RegisterRefactoringCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -306,16 +306,16 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterRefactoringCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterRefactoringCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('extract', 'Anweisungen darunter in eine Methode ausziehen', '/extract Laden',
+  ARegister(Command('extract', 'Anweisungen darunter in eine Methode ausziehen', '/extract Laden',
     ExecuteExtract));
-  ARegistry.Register(Command('inline', 'Aufruf bzw. Variable in der Zeile darunter einbetten', '/inline',
+  ARegister(Command('inline', 'Aufruf bzw. Variable in der Zeile darunter einbetten', '/inline',
     ExecuteInline));
-  ARegistry.Register(Command('fix', 'Sichere Korrekturen der Zeile darunter anwenden', '/fix', ExecuteFix));
-  ARegistry.Register(Command('explain', 'Treffer der Zeile darunter erklären', '/explain', ExecuteExplain));
-  ARegistry.Register(Command('fmt', 'Umgebende Routine formatieren', '/fmt', ExecuteFmt));
-  ARegistry.Register(Command('measure', 'Laufzeit der folgenden Anweisungen messen', '/measure Laden',
+  ARegister(Command('fix', 'Sichere Korrekturen der Zeile darunter anwenden', '/fix', ExecuteFix));
+  ARegister(Command('explain', 'Treffer der Zeile darunter erklären', '/explain', ExecuteExplain));
+  ARegister(Command('fmt', 'Umgebende Routine formatieren', '/fmt', ExecuteFmt));
+  ARegister(Command('measure', 'Laufzeit der folgenden Anweisungen messen', '/measure Laden',
     ExecuteMeasure));
 end;
 

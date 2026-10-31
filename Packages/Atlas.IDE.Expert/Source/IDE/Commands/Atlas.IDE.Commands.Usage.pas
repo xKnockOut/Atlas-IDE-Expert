@@ -54,6 +54,9 @@ type
     /// <summary>„Zählung zurücksetzen“ (Einstellungen): alle Zähler auf null und sofort speichern; ohne Instanz
     /// direkt in der Datei.</summary>
     class procedure ResetCounts; static;
+    /// <summary>Nutzung je Befehl für die Tastenkürzel-Übersicht (#520, #600); False ohne Zählung der Sitzung.
+    /// </summary>
+    class function UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean; static;
     /// <summary>tips.usageTracking übernehmen (beim Laden und nach jeder Änderung der Einstellungen).</summary>
     procedure ApplySettings;
     /// <summary>Etwas geändert: gesammelt nach SaveDelayMs speichern.</summary>
@@ -165,6 +168,12 @@ begin
   Candidate := IncludeTrailingPathDelimiter(ExpandFileName(Candidate + '..'));
   if FileExists(Candidate + TAtlasTipCatalog.FileName) then
     Result := Candidate;
+end;
+
+class function TAtlasIdeCommandUsage.UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean;
+begin
+  AEntry := TAtlasCommandUsageEntry.Create(AId);
+  Result := (FInstance <> nil) and FInstance.Usage.Find(AId, AEntry);
 end;
 
 class procedure TAtlasIdeCommandUsage.ResetCounts;

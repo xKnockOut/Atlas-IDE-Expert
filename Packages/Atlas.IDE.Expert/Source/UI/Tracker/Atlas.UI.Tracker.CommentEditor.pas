@@ -181,7 +181,7 @@ uses
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.IssueFrame;
+  Atlas.UI.Tracker.DocBox;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin

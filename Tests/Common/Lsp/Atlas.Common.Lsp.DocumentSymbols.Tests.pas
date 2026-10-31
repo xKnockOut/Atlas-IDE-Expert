@@ -44,6 +44,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.DocumentSymbols;
 
 const

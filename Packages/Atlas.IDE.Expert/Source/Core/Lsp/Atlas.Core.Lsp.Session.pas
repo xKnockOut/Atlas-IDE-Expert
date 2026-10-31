@@ -429,7 +429,7 @@ implementation
 
 uses
   System.SyncObjs,
-  Atlas.Text.Uris;
+  Atlas.Core.Lsp.Uris;
 
 type
   TLspSignal = class(TInterfacedObject, ILspSignal)
@@ -511,14 +511,12 @@ end;
 
 class function TLspSession.PathToUri(const APath: string): string;
 begin
-  // Wie der Server (ADR 0012): c:\x → file:///c%3A/x; \\server\share → file://server/share
-  Result := TTextUris.FromPath(APath);
+  Result := TLspUris.FromPath(APath);
 end;
 
 class function TLspSession.UriToPath(const AUri: string): string;
 begin
-  // file:///c:/x → c:\x; file://server/share → \\server\share; andere Schemata → ''
-  Result := StringReplace(TTextUris.ToPath(AUri), '/', '\', [rfReplaceAll]);
+  Result := TLspUris.ToPath(AUri);
 end;
 
 class function TLspSession.HoverText(const AHover: TJSONValue): string;

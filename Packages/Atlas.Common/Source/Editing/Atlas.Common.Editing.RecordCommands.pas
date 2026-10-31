@@ -9,10 +9,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt /record, /operator, /equals und /clone in ARegistry ein.</summary>
-procedure RegisterRecordCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt /record, /operator, /equals und /clone über ARegister ein.</summary>
+procedure RegisterRecordCommands(const ARegister: TSlashRegister);
 
 /// <summary>Operatorname zu Symbol oder Name (= wird Equal, + wird Add); '' wenn unbekannt.</summary>
 function OperatorName(const AToken: string): string;
@@ -511,14 +511,14 @@ begin
   end;
 end;
 
-procedure RegisterRecordCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterRecordCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('record', 'Record mit Konstruktor anlegen', '/record TPunkt X, Y: Integer',
+  ARegister(Command('record', 'Record mit Konstruktor anlegen', '/record TPunkt X, Y: Integer',
     ExecuteRecord));
-  ARegistry.Register(Command('operator', 'class operator für den Record anlegen', '/operator = + Implicit',
+  ARegister(Command('operator', 'class operator für den Record anlegen', '/operator = + Implicit',
     ExecuteOperator));
-  ARegistry.Register(Command('equals', 'Equals und GetHashCode bzw. = und <> anlegen', '/equals', ExecuteEquals));
-  ARegistry.Register(Command('clone', 'Clone mit Freigabe bei Fehlern anlegen', '/clone', ExecuteClone));
+  ARegister(Command('equals', 'Equals und GetHashCode bzw. = und <> anlegen', '/equals', ExecuteEquals));
+  ARegister(Command('clone', 'Clone mit Freigabe bei Fehlern anlegen', '/clone', ExecuteClone));
 end;
 
 end.

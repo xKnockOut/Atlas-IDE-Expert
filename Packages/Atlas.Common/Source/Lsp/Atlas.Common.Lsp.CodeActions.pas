@@ -24,6 +24,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics;

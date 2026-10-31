@@ -66,6 +66,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,

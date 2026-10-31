@@ -13,10 +13,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt die Sammlungsbefehle in ARegistry ein.</summary>
-procedure RegisterCollectionCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt die Sammlungsbefehle über ARegister ein.</summary>
+procedure RegisterCollectionCommands(const ARegister: TSlashRegister);
 
 /// <summary>Vergleichsfunktion für zwei Werte vom Typ ATypeName, z. B. CompareText; AUnit ist die nötige Unit.</summary>
 function CompareFunction(const ATypeName: string; out AUnit: string): string;
@@ -617,15 +617,15 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterCollectionCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterCollectionCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('list', 'Liste als Feld oder lokale Variable', '/list FKunden: TKunde', ExecuteList));
-  ARegistry.Register(Command('dict', 'Dictionary als Feld oder lokale Variable', '/dict FCache: string, TKunde',
+  ARegister(Command('list', 'Liste als Feld oder lokale Variable', '/list FKunden: TKunde', ExecuteList));
+  ARegister(Command('dict', 'Dictionary als Feld oder lokale Variable', '/dict FCache: string, TKunde',
     ExecuteDictPlain));
-  ARegistry.Register(Command('dict!', 'Dictionary mit Schlüsseln ohne Groß-/Kleinschreibung',
+  ARegister(Command('dict!', 'Dictionary mit Schlüsseln ohne Groß-/Kleinschreibung',
     '/dict! FCache: string, TKunde', ExecuteDictIgnoreCase));
-  ARegistry.Register(Command('sort', 'Liste nach Feld oder Property sortieren', '/sort Kunden -Umsatz', ExecuteSort));
-  ARegistry.Register(Command('filter', 'Treffer einer Bedingung in eine neue Liste', '/filter Kunden Aktiv',
+  ARegister(Command('sort', 'Liste nach Feld oder Property sortieren', '/sort Kunden -Umsatz', ExecuteSort));
+  ARegister(Command('filter', 'Treffer einer Bedingung in eine neue Liste', '/filter Kunden Aktiv',
     ExecuteFilter));
 end;
 

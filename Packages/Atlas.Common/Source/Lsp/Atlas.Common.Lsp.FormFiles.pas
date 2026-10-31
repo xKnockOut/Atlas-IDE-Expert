@@ -35,8 +35,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.DocumentSymbols;
+  Atlas.Common.Documents.Contract;
 
 function ObjectToJson(AObject: TDfmObject): TJSONObject;
 var

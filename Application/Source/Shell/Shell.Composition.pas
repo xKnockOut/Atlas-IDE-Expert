@@ -94,7 +94,7 @@ uses
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
-  Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.BulkFix,
   Atlas.Common.Lsp.CompilerBaseline,
