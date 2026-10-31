@@ -32,6 +32,9 @@ type
     procedure ClickJumpsOrScrolls;
     [Test]
     procedure DragScrollsTheEditor;
+    /// <summary>Mausrad über der Minimap scrollt den Editor.</summary>
+    [Test]
+    procedure WheelScrollsTheEditor;
     [Test]
     procedure SliderOnlyOnMouseOver;
     [Test]
@@ -45,6 +48,8 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.Types,
+  Winapi.Windows,
   Winapi.Messages,
   Vcl.Controls,
   Atlas.Core.Style.Palette,
@@ -169,6 +174,30 @@ begin
   Assert.AreEqual(20, Scrolled);
   TViewAccess(FView).MouseUp(mbLeft, [], 5, 0);
   Assert.IsFalse(FView.SliderDragging);
+end;
+
+procedure TAtlasMinimapViewTests.WheelScrollsTheEditor;
+var
+  Scrolled: Integer;
+begin
+  Scrolled := -1;
+  FView.OnScroll :=
+    procedure(ATopLine: Integer)
+    begin
+      Scrolled := ATopLine;
+    end;
+  Fill(100);
+  FView.SetView(10, 29, 12);
+  // Eine Raste nach unten bzw. oben: Zeilen je Raste aus Windows.
+  Assert.IsTrue(TViewAccess(FView).DoMouseWheel([], -WHEEL_DELTA, Point(5, 5)));
+  Assert.AreEqual(10 + Mouse.WheelScrollLines, Scrolled);
+  TViewAccess(FView).DoMouseWheel([], WHEEL_DELTA, Point(5, 5));
+  Assert.AreEqual(10 - Mouse.WheelScrollLines, Scrolled);
+  // Ganz oben: nicht unter Zeile 0.
+  Scrolled := -1;
+  FView.SetView(0, 19, 0);
+  TViewAccess(FView).DoMouseWheel([], WHEEL_DELTA, Point(5, 5));
+  Assert.AreEqual(-1, Scrolled, 'oben bleibt oben');
 end;
 
 procedure TAtlasMinimapViewTests.SliderOnlyOnMouseOver;
