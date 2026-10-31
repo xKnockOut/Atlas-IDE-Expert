@@ -640,6 +640,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ServerPackage.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ReportDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.ReportDialog.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ExportDialog.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.ExportDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ProcessesDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.ProcessesDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>

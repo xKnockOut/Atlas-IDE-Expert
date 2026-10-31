@@ -32,6 +32,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Foundation.DockWindow,
   Atlas.Core.Diagnostics.BugReport,
   Atlas.Core.Diagnostics.Package,
   Atlas.Core.Diagnostics.ServerPackage,
@@ -106,7 +107,7 @@ begin
     TAtlasStrings.Fmt(TAtlasTextId.ServerPackageHint, [mNote]),
     TAtlasServerDiagnostics.Preview(mFiles, TAtlasStrings.Text(TAtlasTextId.ServerPackageCut)),
     TAtlasServerDiagnostics.ZipName(Now), TAtlasStrings.Text(TAtlasTextId.ServerPackageFilter), 'zip',
-    mTarget) then
+    mTarget, TAtlasIdeDockWindow.ApplyIdeTheme) then
     Exit;
   TAtlasDiagnosticPackage.WriteZip(mFiles, mTarget);
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.ServerPackageDone, [mTarget]));

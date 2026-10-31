@@ -50,6 +50,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Foundation.DockWindow,
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Product.Version,
@@ -184,7 +185,8 @@ begin
     Note := TAtlasStrings.Text(TAtlasTextId.BugReportPlain);
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Text(TAtlasTextId.BugReportTitle),
     TAtlasStrings.Fmt(TAtlasTextId.BugReportHint, [Note, TAtlasBugReport.IssuesUrl]), Report,
-    TAtlasBugReport.DefaultFileName(Now), TAtlasStrings.Text(TAtlasTextId.BugReportFilter), 'md', Target) then
+    TAtlasBugReport.DefaultFileName(Now), TAtlasStrings.Text(TAtlasTextId.BugReportFilter), 'md', Target,
+    TAtlasIdeDockWindow.ApplyIdeTheme) then
     Exit;
   TFile.WriteAllText(Target, Report, TEncoding.UTF8);
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.BugReportDone, [Target, TAtlasBugReport.IssuesUrl]));

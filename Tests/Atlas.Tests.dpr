@@ -531,6 +531,8 @@ uses
   Atlas.Core.Diagnostics.Package.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.Package.Tests.pas',
   Atlas.Core.Diagnostics.ServerPackage in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.ServerPackage.pas',
   Atlas.Core.Diagnostics.ServerPackage.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.ServerPackage.Tests.pas',
+  Atlas.UI.Diagnostics.ExportDialog in '..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ExportDialog.pas',
+  Atlas.UI.Diagnostics.ExportDialog.Tests in 'IDE.Expert\Atlas.UI.Diagnostics.ExportDialog.Tests.pas',
   Atlas.UI.Diagnostics.ReportDialog in '..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ReportDialog.pas',
   Atlas.UI.Diagnostics.ReportDialog.Tests in 'IDE.Expert\Atlas.UI.Diagnostics.ReportDialog.Tests.pas',
   Atlas.UI.Diagnostics.ProcessesDialog in '..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ProcessesDialog.pas',
