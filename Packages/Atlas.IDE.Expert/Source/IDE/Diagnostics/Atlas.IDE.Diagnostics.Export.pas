@@ -23,6 +23,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Foundation.DockWindow,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Diagnostics.Export,
@@ -50,7 +51,8 @@ begin
     Exit;
   end;
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Fmt(TAtlasTextId.DiagExportHint,
-    [TAtlasDiagnosticExport.DefaultDays]), TAtlasDiagnosticExport.Preview(Files, Info), Target) then
+    [TAtlasDiagnosticExport.DefaultDays]), TAtlasDiagnosticExport.Preview(Files, Info), Target,
+    TAtlasIdeDockWindow.ApplyIdeTheme) then
     Exit;
   TAtlasDiagnosticExport.WriteZip(Files, Target, Info);
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportDone, [Target]));

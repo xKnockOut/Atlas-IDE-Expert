@@ -19,23 +19,30 @@ uses
   Vcl.Graphics;
 
 type
+  /// <summary>Vorbereitung vor dem Zeigen, etwa das Thema der IDE (die UI-Schicht kennt es nicht).</summary>
+  TAtlasExportDialogPrepare = reference to procedure(AControl: TWinControl);
+
   TAtlasDiagnosticExportDialog = class(TForm)
   private
+    FHint: TLabel;
     FFileName: string;
     FDefaultName: string;
     FFilter: string;
     FDefaultExt: string;
     procedure SaveClick(Sender: TObject);
+    procedure FitHint(Sender: TObject);
   public
     constructor CreateDialog(AOwner: TComponent; const AHint, APreview: string); overload;
     /// <summary>Mit eigenem Titel, vorgeschlagenem Dateinamen, Filter und Endung.</summary>
     constructor CreateDialog(AOwner: TComponent; const ATitle, AHint, APreview, ADefaultName, AFilter,
       ADefaultExt: string); overload;
     /// <summary>True mit AFileName, wenn der Nutzer einen Speicherort gewählt hat.</summary>
-    class function Execute(const AHint, APreview: string; out AFileName: string): Boolean; overload; static;
+    class function Execute(const AHint, APreview: string; out AFileName: string;
+      const APrepare: TAtlasExportDialogPrepare = nil): Boolean; overload; static;
     class function Execute(const ATitle, AHint, APreview, ADefaultName, AFilter, ADefaultExt: string;
-      out AFileName: string): Boolean; overload; static;
+      out AFileName: string; const APrepare: TAtlasExportDialogPrepare = nil): Boolean; overload; static;
     property FileName: string read FFileName;
+    property HintLabel: TLabel read FHint;
   end;
 
 implementation
@@ -77,7 +84,12 @@ begin
   mHint.AlignWithMargins := True;
   mHint.Margins.SetBounds(Gap, Gap, Gap, Gap);
   mHint.WordWrap := True;
+  // Breite vor dem Text: Sonst misst die Beschriftung mit ihrer Standardbreite, bricht nach jedem Wort um und
+  // bleibt so hoch, dass die Vorschau kaum Platz hat.
+  mHint.Width := Width - 2 * Gap;
   mHint.Caption := AHint;
+  FHint := mHint;
+  OnResize := FitHint;
 
   Bottom := TPanel.Create(Self);
   Bottom.Parent := Self;
@@ -112,6 +124,13 @@ begin
   Memo.Lines.Text := APreview;
 end;
 
+procedure TAtlasDiagnosticExportDialog.FitHint(Sender: TObject);
+begin
+  // AutoSize misst nur beim Setzen neu; nach Breitenänderung (DPI, Größe) die Höhe zum Umbruch passend machen.
+  FHint.AutoSize := False;
+  FHint.AutoSize := True;
+end;
+
 procedure TAtlasDiagnosticExportDialog.SaveClick(Sender: TObject);
 var
   Dialog: TSaveDialog;
@@ -132,13 +151,15 @@ begin
 end;
 
 class function TAtlasDiagnosticExportDialog.Execute(const ATitle, AHint, APreview, ADefaultName, AFilter,
-  ADefaultExt: string; out AFileName: string): Boolean;
+  ADefaultExt: string; out AFileName: string; const APrepare: TAtlasExportDialogPrepare): Boolean;
 var
   Dialog: TAtlasDiagnosticExportDialog;
 begin
   Dialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, ATitle, AHint, APreview, ADefaultName, AFilter,
     ADefaultExt);
   try
+    if Assigned(APrepare) then
+      APrepare(Dialog);
     Result := Dialog.ShowModal = mrOk;
     AFileName := Dialog.FileName;
   finally
@@ -146,12 +167,15 @@ begin
   end;
 end;
 
-class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string): Boolean;
+class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string;
+  const APrepare: TAtlasExportDialogPrepare): Boolean;
 var
   Dialog: TAtlasDiagnosticExportDialog;
 begin
   Dialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, AHint, APreview);
   try
+    if Assigned(APrepare) then
+      APrepare(Dialog);
     Result := Dialog.ShowModal = mrOk;
     AFileName := Dialog.FileName;
   finally
