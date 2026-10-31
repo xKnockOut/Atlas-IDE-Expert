@@ -17,6 +17,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Mitlaufender Kopf (`editor.stickyScroll`) ist nicht mehr experimentell und standardmäßig an.
 - Projektprüfung schneller (gemessen an der Atlas-Gruppe, Befunde unverändert): `uses-unit-not-found` durchsuchte für jede Unit die übersetzten Packages (`.dcp`, mehrere MB) erneut, jetzt einmal je Package und Unit (vorher 96 von 212 s Regelzeit); `inline-not-expanded`, `readonly-property-assigned` und `string-length-limit` suchten in großen Units quadratisch; alle Regeln einer Datei teilen sich einen Namensauflöser; die Namenssuche im Symbolindex kopiert keine ganzen Units und Symbole mehr (vorher ein Viertel der Regelzeit). Zusammen rund ein Viertel weniger Zeit (Atlas.IDE.Expert: 364 statt 491 s), `inline-not-expanded` ein Drittel der vorigen Zeit.
 - Fenster „Architektur“: Die Erklärung der Zuordnung steht links neben dem Diagramm in einer scrollbaren Leiste mit Teiler statt darunter.
+- Projektprüfung weiter beschleunigt: Die Namensauflösung kopiert keine ganzen Units mehr (je Bezeichner bis zu drei), `TAncestry` merkt sich die Mitglieder je Klasse. Atlas.IDE.Expert prüft in 260 statt 491 s, die ganze Atlas-Gruppe (2 196 Units) in unter 10 Minuten; Befunde unverändert.
+- `--check Datei.pas` sucht `atlas.json` wie der Editor nach oben bis zum Stamm des Repositorys statt nur im Ordner der Datei.
+- Eigener Code: Standardparameter im Produktivcode durch Überladungen ersetzt (124 Stellen, `default-parameter`); `catch-all-without-raise` und `narrowing-assignment` sind für Atlas abgeschaltet.
 - Schnellschalter handlicher: beim ersten Öffnen nur die erste Gruppe offen, Aufklappen schließt die anderen (Akkordeon), höchstens 80 % der Arbeitsfläche hoch mit Bildlauf (Mausrad, Pfeiltasten) und schmalem Balken.
 - Minimap lesbarer: winzige Zeichen statt Balken je Wort als Vorgabe (`editor.minimap.render` = `characters`, wie VS Code), Maßstab 2 als Vorgabe (`editor.minimap.scale`, 4 Pixel je Zeile), Bezeichner kräftiger, der Schieber nur noch als Schatten, die Routine am Cursor zusätzlich mit einem Akzentstrich am linken Rand.
 - Fenster „Auswerten“: Records erscheinen mit Feldnamen (`FeatureClass`, `Id`, …) statt `[0]`, `[1]`, …; Atlas wertet mit der Formatangabe `,r` aus, außer der Ausdruck trägt schon eine eigene.
@@ -29,6 +32,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Der Exception-Dialog der IDE wurde nie erkannt (keine Klasse und Meldung in der Exception-Leiste): Die IDE zeigt ihn in ihrer eigenen Behandlung des Halts, Atlas suchte erst danach. Jetzt wartet Atlas, solange das Programm läuft, auf den Dialog.
 - Schwebende Atlas-Fenster im IDE-Thema: Titelleiste von Windows im dunklen Modus (alle Schaltflächen bleiben), Grund in der Farbe des IDE-Stils; vorher hell mit weißer Schrift.
 - Schnellschalter ragte nach dem Aufklappen einer Gruppe oben aus dem Bildschirm.
+- `deprecated-symbol` meldete eigene Deklarationen gleichen Namens (Feld `Release`, Aufzählungswert, Konstante, Parameter) als Verwendung eines veralteten Symbols anderswo.
+- `implicit-package-import` folgte `requires` nur eine Stufe tief und meldete Units, die der Compiler über ein requires-Package eines requires-Packages findet (W1033 ohne Grund).
+- `loop-runs-at-most-once` meldete im Plugin trotz `allowFirstElement`: Die eigene `atlas.json` des Plugins überdeckte die Einstellung.
 - Dialoge Diagnosepaket, Fehlerbericht und Diagnoselog: Der Hinweis oben war so hoch (ein Wort je Zeile), dass die Vorschau der Dateien kaum Platz hatte; die Dialoge erscheinen jetzt im IDE-Thema.
 - `TCrashReserve.Run` hielt unter Last den vorigen Fall noch für laufend („Der vorige Fall wird noch geschrieben“).
 - Test `HealthyHoverIsNotReproduced` meldete den ersten Gebrauch geteilter Speicher als Leck; ein `[SetupFixture]` nimmt ihn vorweg.
