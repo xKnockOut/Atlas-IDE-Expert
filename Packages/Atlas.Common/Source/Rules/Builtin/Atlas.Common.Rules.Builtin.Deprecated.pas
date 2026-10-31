@@ -151,9 +151,14 @@ begin
   end;
 end;
 
-/// <summary>Offsets der Namen in Routinenköpfen (procedure TFoo.Bar): Deklaration bzw. Implementierung,
-/// keine Verwendung.</summary>
-function HeaderNameOffsets(ATree: TSyntaxTree): TDictionary<Integer, Boolean>;
+/// <summary>Offsets der Namen, die hier deklariert werden, nicht verwendet: Routinenköpfe (procedure TFoo.Bar),
+/// Variablen, Felder, Konstanten, Typen, Parameter, Properties und Aufzählungswerte. Ein Feld Release ist keine
+/// Verwendung eines veralteten Release anderswo; die Auflösung an der Deklaration kann aber dort landen.</summary>
+function DeclarationNameOffsets(ATree: TSyntaxTree): TDictionary<Integer, Boolean>;
+const
+  NamedKinds = [TSyntaxKind.RoutineHeader, TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.ConstDecl,
+    TSyntaxKind.TypeDecl, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar,
+    TSyntaxKind.InlineConst];
 var
   Offsets: TDictionary<Integer, Boolean>;
   Tokens: TArray<TPascalToken>;
@@ -166,9 +171,9 @@ begin
       Low_, High_, Middle, Index: Integer;
     begin
       Result := True;
-      if ANode.Kind <> TSyntaxKind.RoutineHeader then
+      if not (ANode.Kind in NamedKinds + [TSyntaxKind.EnumType]) then
         Exit;
-      // Erstes Token des Kopfs (Tokens sind nach Offset sortiert).
+      // Erstes Token des Knotens (Tokens sind nach Offset sortiert).
       Low_ := 0;
       High_ := Length(Tokens);
       while Low_ < High_ do
@@ -179,10 +184,24 @@ begin
         else
           High_ := Middle;
       end;
+      if ANode.Kind = TSyntaxKind.EnumType then
+      begin
+        // (Use, Alloc, Release = 4): die Namen direkt nach "(" bzw. ","; der Wert hinter "=" ist eine Verwendung.
+        for Index := Low_ + 1 to High(Tokens) do
+        begin
+          if Tokens[Index].Offset >= ANode.EndOffset then
+            Break;
+          if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
+            (Tokens[Index - 1].IsSymbol('(') or Tokens[Index - 1].IsSymbol(',')) then
+            Offsets.AddOrSetValue(Tokens[Index].Offset, True);
+        end;
+        Exit;
+      end;
       for Index := Low_ to High(Tokens) do
       begin
         if (Tokens[Index].Offset >= ANode.EndOffset) or Tokens[Index].IsSymbol('(') or
-          Tokens[Index].IsSymbol(':') or Tokens[Index].IsSymbol(';') then
+          Tokens[Index].IsSymbol(':') or Tokens[Index].IsSymbol(';') or Tokens[Index].IsSymbol('=') or
+          Tokens[Index].IsSymbol('[') or Tokens[Index].IsSymbol('<') then
           Break;
         if Tokens[Index].Kind = TPascalTokenKind.Identifier then
           Offsets.AddOrSetValue(Tokens[Index].Offset, True);
@@ -439,7 +458,7 @@ var
 begin
   Tokens := FContext.Tree.Tokens;
   Candidates := TDictionary<string, Boolean>.Create;
-  Headers := HeaderNameOffsets(FContext.Tree);
+  Headers := DeclarationNameOffsets(FContext.Tree);
   try
     for Index := 0 to High(Tokens) do
     begin
