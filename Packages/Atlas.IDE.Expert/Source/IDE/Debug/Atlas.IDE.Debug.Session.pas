@@ -26,6 +26,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Debug.CallStack;
 
@@ -90,6 +91,13 @@ type
     FConfiguration: string;
     FPlatform: string;
     FLaunchValues: array[0..3] of string;
+    // Meldet einen Halt nach dem Notifier. Ein Zeitgeber statt ForceQueue: Er feuert auch in der Nachrichtenschleife
+    // des Exception-Dialogs der IDE, die Warteschlange erst nach dessen Schließen (#783: Dialog erkennen).
+    FStopTimer: TTimer;
+    FTicker: TObject;
+    FPendingStop: TAtlasDebugStop;
+    FPendingCount: Integer;
+    class procedure StopTick; static;
     class procedure NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>); static;
     class procedure StateChanged(const AProcess: IOTAProcess); static;
     class procedure Ended; static;
@@ -152,6 +160,17 @@ end;
 function IsStoppedState(AState: TOTAProcessState): Boolean;
 begin
   Result := AState in [psStopped, psFault, psResFault, psException];
+end;
+
+type
+  TStopTicker = class
+  public
+    procedure Tick(Sender: TObject);
+  end;
+
+procedure TStopTicker.Tick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugSession.StopTick);
 end;
 
 { TAtlasIdeDebugListener }
@@ -283,6 +302,8 @@ begin
       Services.RemoveNotifier(FNotifierIndex - 1);
     FNotifierIndex := 0;
   end;
+  FreeAndNil(FStopTimer);
+  FreeAndNil(FTicker);
   FreeAndNil(FListeners);
   FProcesses := 0;
   FStopped := False;
@@ -351,20 +372,17 @@ begin
     FStopped := True;
     Inc(FStopCount);
     // Erst nach der Benachrichtigung des Debuggers melden; ist der Halt bis dahin vorbei, entfällt er.
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Debugger,
-      procedure
-      var
-        Thread: IOTAThread;
-      begin
-        Thread := StoppedThread;
-        if Thread = nil then
-          Exit;
-        NotifyListeners(
-          procedure(AListener: IAtlasIdeDebugListener)
-          begin
-            AListener.DebugStopped(Stop);
-          end);
-      end);
+    FPendingStop := Stop;
+    FPendingCount := FStopCount;
+    if FStopTimer = nil then
+    begin
+      FTicker := TStopTicker.Create;
+      FStopTimer := TTimer.Create(nil);
+      FStopTimer.Enabled := False;
+      FStopTimer.Interval := 1;
+      FStopTimer.OnTimer := TStopTicker(FTicker).Tick;
+    end;
+    FStopTimer.Enabled := True;
   end
   else if (State = psRunning) and FStopped then
   begin
@@ -375,6 +393,22 @@ begin
         AListener.DebugResumed;
       end);
   end;
+end;
+
+class procedure TAtlasIdeDebugSession.StopTick;
+var
+  Stop: TAtlasDebugStop;
+begin
+  FStopTimer.Enabled := False;
+  // Weitergelaufen oder schon ein neuer Halt (der meldet sich selbst): dieser entfällt.
+  if not FStopped or (FPendingCount <> FStopCount) or (StoppedThread = nil) then
+    Exit;
+  Stop := FPendingStop;
+  NotifyListeners(
+    procedure(AListener: IAtlasIdeDebugListener)
+    begin
+      AListener.DebugStopped(Stop);
+    end);
 end;
 
 class procedure TAtlasIdeDebugSession.Ended;
