@@ -70,6 +70,9 @@ type
     /// <summary>True, wenn die Unit ein Test-Framework einbindet (DUnitX.TestFramework, TestFramework
     /// oder TestInsight.*). Hier statt in Rules.Profiles, damit Editing ohne Rules auskommt (A-11).</summary>
     class function IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean; static;
+    /// <summary>Nennt AUsed ein Testframework (DUnitX.TestFramework, TestFramework, TestInsight.*)? Wie
+    /// IsTestUnit, aber aus den uses-Listen des Index statt aus dem Quelltext.</summary>
+    class function UsesTestFramework(const AUsed: TArray<string>): Boolean; static;
     /// <summary>Alle Einträge aus uses, contains und requires mit Position, in Quelltextreihenfolge.</summary>
     class function References(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>; static;
     /// <summary>Name der eigenen Unit bzw. des Programms; '' wenn unbekannt.</summary>
@@ -191,10 +194,15 @@ end;
 { TUsesClauses }
 
 class function TUsesClauses.IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean;
+begin
+  Result := UsesTestFramework(UsedUnits(ATokens));
+end;
+
+class function TUsesClauses.UsesTestFramework(const AUsed: TArray<string>): Boolean;
 var
   Name: string;
 begin
-  for Name in UsedUnits(ATokens) do
+  for Name in AUsed do
     if SameText(Name, 'DUnitX.TestFramework') or SameText(Name, 'TestFramework') or
       Name.StartsWith('TestInsight.', True) then
       Exit(True);
