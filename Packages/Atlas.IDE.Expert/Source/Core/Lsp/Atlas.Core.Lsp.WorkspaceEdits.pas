@@ -111,7 +111,7 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.Uris,
   Atlas.Text.Lines;
 
 function ReadPosition(const ARange: TJSONObject; const AName: string; out APosition: TLspTextPosition): Boolean;
@@ -196,13 +196,13 @@ begin
   begin
     if not AValue.TryGetValue<string>('oldUri', Uri) or not AValue.TryGetValue<string>('newUri', NewUri) then
       Exit(False);
-    AResult.NewFileName := TLspSession.UriToPath(NewUri);
+    AResult.NewFileName := TLspUris.ToPath(NewUri);
     if AResult.NewFileName = '' then
       Exit(False);
   end
   else if not AValue.TryGetValue<string>('uri', Uri) then
     Exit(False);
-  AResult.FileName := TLspSession.UriToPath(Uri);
+  AResult.FileName := TLspUris.ToPath(Uri);
   if AResult.FileName = '' then
     Exit(False);
   if AValue.TryGetValue<TJSONObject>('options', Options) then
@@ -223,7 +223,7 @@ var
   Item: TJSONValue;
   Edit: TLspTextEdit;
 begin
-  AFile.FileName := TLspSession.UriToPath(AUri);
+  AFile.FileName := TLspUris.ToPath(AUri);
   AFile.Edits := nil;
   if (AFile.FileName = '') or (AEdits = nil) then
     Exit(False);
@@ -255,7 +255,7 @@ begin
     for Item in Unchanged do
       if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('uri', Uri) then
       begin
-        Place.FileName := TLspSession.UriToPath(Uri);
+        Place.FileName := TLspUris.ToPath(Uri);
         Place.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
         Place.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
         Place.Confidence := TAtlasConfidence.FromJson(Item);

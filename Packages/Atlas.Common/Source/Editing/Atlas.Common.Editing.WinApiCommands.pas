@@ -12,10 +12,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt /external, /exports, /oscheck und /olecheck in ARegistry ein.</summary>
-procedure RegisterWinApiCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt /external, /exports, /oscheck und /olecheck über ARegister ein.</summary>
+procedure RegisterWinApiCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -429,13 +429,13 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterWinApiCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterWinApiCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('external', 'Funktion aus einer DLL importieren', '/external MeineFunktion meine.dll',
+  ARegister(Command('external', 'Funktion aus einer DLL importieren', '/external MeineFunktion meine.dll',
     ExecuteExternal));
-  ARegistry.Register(Command('exports', 'Routinen der library exportieren', '/exports', ExecuteExports));
-  ARegistry.Register(Command('oscheck', 'Windows-API-Aufruf darunter prüfen', '/oscheck', ExecuteOsCheck));
-  ARegistry.Register(Command('olecheck', 'COM-Aufruf darunter mit OleCheck prüfen', '/olecheck', ExecuteOleCheck));
+  ARegister(Command('exports', 'Routinen der library exportieren', '/exports', ExecuteExports));
+  ARegister(Command('oscheck', 'Windows-API-Aufruf darunter prüfen', '/oscheck', ExecuteOsCheck));
+  ARegister(Command('olecheck', 'COM-Aufruf darunter mit OleCheck prüfen', '/olecheck', ExecuteOleCheck));
 end;
 
 end.

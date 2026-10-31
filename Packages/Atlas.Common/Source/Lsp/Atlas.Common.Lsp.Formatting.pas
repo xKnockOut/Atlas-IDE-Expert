@@ -22,7 +22,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.EditorConfig,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract;
 
 type
   /// <summary>Delphi-Version (BDS-Nummer) je Dokument; '' = unbekannt.</summary>

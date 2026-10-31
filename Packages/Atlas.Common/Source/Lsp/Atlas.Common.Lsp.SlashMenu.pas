@@ -29,6 +29,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SlashMenu,
   Atlas.Common.Lsp.Completion;
 

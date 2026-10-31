@@ -18,11 +18,11 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CommandSource;
 
-/// <summary>Trägt die Typbefehle in ARegistry ein.</summary>
-procedure RegisterTypeCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt die Typbefehle über ARegister ein.</summary>
+procedure RegisterTypeCommands(const ARegister: TSlashRegister);
 
 /// <summary>Präfix aus den Großbuchstaben des Typnamens ohne führendes T, klein: TKundenStatus wird ks.</summary>
 function EnumPrefix(const ATypeName: string): string;
@@ -901,26 +901,26 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterTypeCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterTypeCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('enum', 'Aufzählungstyp mit Präfix anlegen', '/enum TFarbe rot, gruen, blau names',
+  ARegister(Command('enum', 'Aufzählungstyp mit Präfix anlegen', '/enum TFarbe rot, gruen, blau names',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteEnum(AContext, True, AEdits, AReason);
     end));
-  ARegistry.Register(Command('enum!', 'Aufzählungstyp ohne Präfix anlegen', '/enum! TFarbe rot, gruen',
+  ARegister(Command('enum!', 'Aufzählungstyp ohne Präfix anlegen', '/enum! TFarbe rot, gruen',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteEnum(AContext, False, AEdits, AReason);
     end));
-  ARegistry.Register(Command('helper', 'Record- bzw. Class-Helper anlegen', '/helper TFarbe', ExecuteHelper));
-  ARegistry.Register(Command('singleton', 'Klasse zum Singleton machen', '/singleton', ExecuteSingleton));
-  ARegistry.Register(Command('encapsulate', 'Feld in Property mit Setter umwandeln', '/encapsulate FName',
+  ARegister(Command('helper', 'Record- bzw. Class-Helper anlegen', '/helper TFarbe', ExecuteHelper));
+  ARegister(Command('singleton', 'Klasse zum Singleton machen', '/singleton', ExecuteSingleton));
+  ARegister(Command('encapsulate', 'Feld in Property mit Setter umwandeln', '/encapsulate FName',
     ExecuteEncapsulate));
-  ARegistry.Register(Command('assign', 'Assign für alle Felder anlegen', '/assign', ExecuteAssign));
-  ARegistry.Register(Command('json', 'ToJson und FromJson anlegen', '/json', ExecuteJson));
-  ARegistry.Register(Command('exception', 'Ausnahmeklasse anlegen', '/exception EImportFehler', ExecuteException));
-  ARegistry.Register(Command('thread', 'TThread-Nachfahre mit Execute anlegen', '/thread TWorker', ExecuteThread));
+  ARegister(Command('assign', 'Assign für alle Felder anlegen', '/assign', ExecuteAssign));
+  ARegister(Command('json', 'ToJson und FromJson anlegen', '/json', ExecuteJson));
+  ARegister(Command('exception', 'Ausnahmeklasse anlegen', '/exception EImportFehler', ExecuteException));
+  ARegister(Command('thread', 'TThread-Nachfahre mit Execute anlegen', '/thread TWorker', ExecuteThread));
 end;
 
 end.

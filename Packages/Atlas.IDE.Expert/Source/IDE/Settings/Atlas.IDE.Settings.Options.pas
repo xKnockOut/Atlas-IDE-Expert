@@ -126,6 +126,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Progress,
   Atlas.UI.Settings.Page,
+  Atlas.UI.Settings.QueryDialog,
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.ServerPage,
   Atlas.Core.Settings.Baseline,

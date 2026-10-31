@@ -45,6 +45,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.MaintenanceCommands,
   Atlas.Common.Rules.Builtin.SlashCommands,
   Atlas.Tests.RuleAssert;

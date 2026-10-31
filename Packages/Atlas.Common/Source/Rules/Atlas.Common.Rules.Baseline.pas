@@ -238,8 +238,8 @@ implementation
 uses
   System.JSON,
   System.Generics.Defaults,
-  Atlas.Text.Lines,
-  Atlas.Common.Rules.Output;
+  Atlas.Text.Json,
+  Atlas.Text.Lines;
 
 const
   FormatVersion = 1;
@@ -349,7 +349,7 @@ begin
     begin
       if Index > 0 then
         Builder.Append(', ');
-      Builder.Append('{"path": ').Append(TFindingsOutput.JsonString(Orphans[Index].Path));
+      Builder.Append('{"path": ').Append(TJsonText.Quote(Orphans[Index].Path));
       Builder.Append(Format(', "count": %d}', [Orphans[Index].Count]));
     end;
     Builder.Append(']}}');
@@ -835,12 +835,12 @@ begin
       if I > 0 then
         Builder.Append(',');
       Builder.Append(sLineBreak);
-      Builder.Append('    {"path": ').Append(TFindingsOutput.JsonString(Sorted[I].Path));
-      Builder.Append(', "rule": ').Append(TFindingsOutput.JsonString(Sorted[I].RuleId));
-      Builder.Append(', "fingerprint": ').Append(TFindingsOutput.JsonString(Sorted[I].Fingerprint));
+      Builder.Append('    {"path": ').Append(TJsonText.Quote(Sorted[I].Path));
+      Builder.Append(', "rule": ').Append(TJsonText.Quote(Sorted[I].RuleId));
+      Builder.Append(', "fingerprint": ').Append(TJsonText.Quote(Sorted[I].Fingerprint));
       Builder.Append(Format(', "count": %d', [Sorted[I].Count]));
-      Builder.Append(', "routine": ').Append(TFindingsOutput.JsonString(Sorted[I].Routine));
-      Builder.Append(', "context": ').Append(TFindingsOutput.JsonString(Sorted[I].Context)).Append('}');
+      Builder.Append(', "routine": ').Append(TJsonText.Quote(Sorted[I].Routine));
+      Builder.Append(', "context": ').Append(TJsonText.Quote(Sorted[I].Context)).Append('}');
     end;
     if Sorted.Count > 0 then
       Builder.Append(sLineBreak).Append('  ');

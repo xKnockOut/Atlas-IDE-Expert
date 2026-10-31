@@ -55,6 +55,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.SafeDelete;
 

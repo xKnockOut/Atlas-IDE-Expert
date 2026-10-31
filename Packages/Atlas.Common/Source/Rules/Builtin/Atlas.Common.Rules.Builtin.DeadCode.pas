@@ -116,6 +116,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,

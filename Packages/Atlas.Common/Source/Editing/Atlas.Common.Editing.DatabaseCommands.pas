@@ -12,10 +12,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt /sql, /params, /loop und /transaction in ARegistry ein.</summary>
-procedure RegisterDatabaseCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt /sql, /params, /loop und /transaction über ARegister ein.</summary>
+procedure RegisterDatabaseCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -265,14 +265,14 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterDatabaseCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterDatabaseCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('sql', 'SQL-Text und Parameter einer Query setzen',
+  ARegister(Command('sql', 'SQL-Text und Parameter einer Query setzen',
     '/sql Q select * from Kunde where Nr = :Nr', ExecuteSql));
-  ARegistry.Register(Command('params', 'Fehlende ParamByName-Zeilen ergänzen', '/params Q', ExecuteParams));
-  ARegistry.Register(Command('loop', 'Datensätze durchlaufen (DisableControls, First, Next)', '/loop Q',
+  ARegister(Command('params', 'Fehlende ParamByName-Zeilen ergänzen', '/params Q', ExecuteParams));
+  ARegister(Command('loop', 'Datensätze durchlaufen (DisableControls, First, Next)', '/loop Q',
     ExecuteLoop));
-  ARegistry.Register(Command('transaction', 'Anweisungen in eine Transaktion fassen', '/transaction Con',
+  ARegister(Command('transaction', 'Anweisungen in eine Transaktion fassen', '/transaction Con',
     ExecuteTransaction));
 end;
 

@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Geändert
+- Keine Unit-Zyklen mehr im eigenen Code (#1450): Die 76 Befunde von `uses-cycle` in 49 Zyklen über implementation-uses sind an der Ursache aufgelöst, `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts mehr. Schnellbefehle: Die gemeinsamen Typen (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` als Record, uses-Kontext `TUsesContext`) stehen in der neuen Contract-Unit `Atlas.Common.Editing.Contract`; die `*Commands`-Units binden nur sie ein und melden ihre Befehle über `TSlashRegister`, nur das Register bindet alle ein. Einzelpaare: `TLspSymbolKind` nach `Lsp.Contract` (DocumentSymbols ↔ FormFiles), Formularprüfung in `Lsp.FormMentions` (InlayHints → MethodWithoutSelf → PromoteVariable), JSON-Strings in `Atlas.Text.Json` (Baseline ↔ Output ↔ Checker), Dateiadressen in `Atlas.Core.Lsp.Uris` (Lsp.Session ↔ WorkspaceEdits), `TAtlasIdeCommandUsage.UsageOf` statt über die Tastenkürzel-Tipps (KeyMap ↔ ShortcutTips), `Atlas.UI.Settings.ChoiceBox` und der Rückruf „Testen“ beim Abfragedialog (Settings.Page ↔ QueryDialog), `Atlas.UI.Tracker.DocBox` (IssueFrame ↔ CommentEditor). Verhalten unverändert.
+
 ## [1.2.0] - 2026-10-30
 
 ### Neu

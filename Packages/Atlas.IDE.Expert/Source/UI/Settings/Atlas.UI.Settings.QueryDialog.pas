@@ -28,10 +28,16 @@ uses
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Templates,
-  Atlas.UI.Settings.Page;
+  Atlas.UI.Settings.ChoiceBox;
 
 type
-  // TAtlasQueryTestEvent und TAtlasQueryTestDone stehen in Atlas.UI.Settings.Page (Haken der Seite).
+  /// <summary>Ergebnis von „Testen“ (#1263), im Hauptthread.</summary>
+  TAtlasQueryTestDone = reference to procedure(const AResult: TAtlasTrackerQueryTestResult);
+  /// <summary>„Testen“ im Dialog „Abfrage bearbeiten“ (#1263): ATarget (Abfrage, Projekt, Sprache) über
+  /// AConnection im Hintergrund abfragen und ADone im Hauptthread aufrufen.</summary>
+  TAtlasQueryTestEvent = reference to procedure(const AConnection: TAtlasTrackerConnection;
+    const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone);
+
   TAtlasTrackerQueryDialog = class;
 
   /// <summary>Verbindung vom laufenden Test zum Dialog; nil, sobald der Dialog weg ist.</summary>

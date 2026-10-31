@@ -13,10 +13,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt /task, /parallel, /future und /atomic in ARegistry ein.</summary>
-procedure RegisterTaskCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt /task, /parallel, /future und /atomic über ARegister ein.</summary>
+procedure RegisterTaskCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -584,13 +584,13 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterTaskCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterTaskCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('task', 'Folgende Anweisungen in TTask.Run', '/task', ExecuteTask));
-  ARegistry.Register(Command('parallel', 'for-Schleife darunter als TParallel.For', '/parallel', ExecuteParallel));
-  ARegistry.Register(Command('future', 'Folgende Anweisungen als TTask.Future', '/future Summe: Integer',
+  ARegister(Command('task', 'Folgende Anweisungen in TTask.Run', '/task', ExecuteTask));
+  ARegister(Command('parallel', 'for-Schleife darunter als TParallel.For', '/parallel', ExecuteParallel));
+  ARegister(Command('future', 'Folgende Anweisungen als TTask.Future', '/future Summe: Integer',
     ExecuteFuture));
-  ARegistry.Register(Command('atomic', 'Inc/Dec auf einem Feld als TInterlocked', '/atomic', ExecuteAtomic));
+  ARegister(Command('atomic', 'Inc/Dec auf einem Feld als TInterlocked', '/atomic', ExecuteAtomic));
 end;
 
 end.

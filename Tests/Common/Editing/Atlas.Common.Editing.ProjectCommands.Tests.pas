@@ -78,6 +78,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.Contract,
   Atlas.Text.Lines;
 
 type

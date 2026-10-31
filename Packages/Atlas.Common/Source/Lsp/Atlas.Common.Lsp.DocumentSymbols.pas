@@ -36,28 +36,6 @@ uses
   Atlas.Common.Semantics.TypeInfoClasses;
 
 type
-  /// <summary>Werte für SymbolKind des LSP (Auswahl).</summary>
-  TLspSymbolKind = record
-  public const
-    Module = 2;
-    Namespace = 3;
-    Class_ = 5;
-    Method = 6;
-    Property_ = 7;
-    Field = 8;
-    Constructor_ = 9;
-    Enum = 10;
-    Interface_ = 11;
-    Function_ = 12;
-    Variable = 13;
-    Constant = 14;
-    Object_ = 19;
-    EnumMember = 22;
-    Struct = 23;
-    Event = 24;
-    TypeParameter = 26;
-  end;
-
   TLspDocumentSymbols = class
   public const
     Method = 'textDocument/documentSymbol';
@@ -96,6 +74,7 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.FormFiles,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,

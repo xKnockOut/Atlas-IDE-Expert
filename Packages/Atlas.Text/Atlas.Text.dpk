@@ -30,7 +30,7 @@
 
 // Platform-Package mit Textcode, den Server und IDE-Plugin gleich brauchen
 // (ADR 0012): Zeilen, Zeichenklassen, Kodierungserkennung, URIs,
-// Anonymisierung, Zeilenvergleich, unscharfe Namensregeln, JSONC, XML-Entities
+// Anonymisierung, Zeilenvergleich, unscharfe Namensregeln, JSONC, JSON-Strings, XML-Entities
 // die Versionsangabe, DUnitX-Tests im Quelltext und ihre Berichte (#69) sowie Map-Dateien des Linkers für Stacktraces. Nur RTL (System.*), keine Zustände, kein inline.
 // Server und Tests linken dieses Package statisch über seine DCUs; das Plugin
 // übersetzt dieselben Quelldateien per "contains … in" mit, damit die IDE
@@ -48,6 +48,7 @@ contains
   Atlas.Text.Uris in 'Source\Uris\Atlas.Text.Uris.pas',
   Atlas.Text.Diff in 'Source\Diff\Atlas.Text.Diff.pas',
   Atlas.Text.Fuzzy in 'Source\Fuzzy\Atlas.Text.Fuzzy.pas',
+  Atlas.Text.Json in 'Source\Json\Atlas.Text.Json.pas',
   Atlas.Text.Jsonc in 'Source\Jsonc\Atlas.Text.Jsonc.pas',
   Atlas.Text.Entities in 'Source\Entities\Atlas.Text.Entities.pas',
   Atlas.Text.Defines in 'Source\Defines\Atlas.Text.Defines.pas',

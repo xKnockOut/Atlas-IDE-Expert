@@ -14,10 +14,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt die Deklarationsbefehle in ARegistry ein.</summary>
-procedure RegisterDeclarationCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt die Deklarationsbefehle über ARegister ein.</summary>
+procedure RegisterDeclarationCommands(const ARegister: TSlashRegister);
 
 implementation
 
@@ -309,23 +309,23 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterDeclarationCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterDeclarationCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('var', 'Lokale Variable anlegen', '/var Liste: TStringList', ExecuteVar));
-  ARegistry.Register(Command('const', 'Lokale Konstante anlegen', '/const Max = 10',
+  ARegister(Command('var', 'Lokale Variable anlegen', '/var Liste: TStringList', ExecuteVar));
+  ARegister(Command('const', 'Lokale Konstante anlegen', '/const Max = 10',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteConst(AContext, False, AEdits, AReason);
     end));
-  ARegistry.Register(Command('const!', 'Konstante in der implementation anlegen', '/const! Max = 10',
+  ARegister(Command('const!', 'Konstante in der implementation anlegen', '/const! Max = 10',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteConst(AContext, True, AEdits, AReason);
     end));
-  ARegistry.Register(Command('field', 'Feld im private-Abschnitt anlegen', '/field Name: string', ExecuteField));
-  ARegistry.Register(Command('prop', 'Property mit Feld und Setter anlegen', '/prop Name: string', ExecuteProp));
-  ARegistry.Register(Command('resstr', 'String-Literal darüber als resourcestring', '/resstr', ExecuteResStr));
-  ARegistry.Register(Command('guid', 'GUID in die Interface-Deklaration einfügen', '/guid', ExecuteGuid));
+  ARegister(Command('field', 'Feld im private-Abschnitt anlegen', '/field Name: string', ExecuteField));
+  ARegister(Command('prop', 'Property mit Feld und Setter anlegen', '/prop Name: string', ExecuteProp));
+  ARegister(Command('resstr', 'String-Literal darüber als resourcestring', '/resstr', ExecuteResStr));
+  ARegister(Command('guid', 'GUID in die Interface-Deklaration einfügen', '/guid', ExecuteGuid));
 end;
 
 end.

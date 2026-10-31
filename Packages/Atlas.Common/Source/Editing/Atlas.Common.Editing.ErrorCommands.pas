@@ -8,10 +8,10 @@
 interface
 
 uses
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.Contract;
 
-/// <summary>Trägt die Befehle zur Absicherung in ARegistry ein.</summary>
-procedure RegisterErrorCommands(ARegistry: TSlashCommandRegistry);
+/// <summary>Trägt die Befehle zur Absicherung über ARegister ein.</summary>
+procedure RegisterErrorCommands(const ARegister: TSlashRegister);
 
 type
   TGuardParameter = record
@@ -227,10 +227,10 @@ begin
   Result.Execute := AExecute;
 end;
 
-procedure RegisterErrorCommands(ARegistry: TSlashCommandRegistry);
+procedure RegisterErrorCommands(const ARegister: TSlashRegister);
 begin
-  ARegistry.Register(Command('guard', 'nil-Prüfungen für Parameter einfügen', '/guard AKunde', ExecuteGuard));
-  ARegistry.Register(Command('raise', 'Ausnahme auslösen', '/raise EImportFehler Datei fehlt', ExecuteRaise));
+  ARegister(Command('guard', 'nil-Prüfungen für Parameter einfügen', '/guard AKunde', ExecuteGuard));
+  ARegister(Command('raise', 'Ausnahme auslösen', '/raise EImportFehler Datei fehlt', ExecuteRaise));
 end;
 
 end.
