@@ -68,4 +68,4 @@ Versionen (Marco, 31.10.2026):
 - **Installation (ADR 0016):** Das Release-Paket enthält Kern und Add-ons je Plattform. Der Kern wird zuerst installiert und muss für den Windows-Lader auffindbar sein, wenn ein Add-on lädt.
 - **Entladen:** Add-ons bauen ihre Beiträge ab, bevor der Kern abgebaut wird. Einträge in den Hauptthread nur über `TAtlasMainThread` des Kerns; Editorleisten, Zeilenleisten-Spalten und Fenster nur über die Hosts des Kerns (`CLAUDE.md`).
 - **Texte und Schema:** `Atlas.Core.Strings` und die erzeugte Schema-Unit werden je Package geteilt.
-- **Tests:** `Atlas.Tests` übersetzt weiter alle Quellen; die Prüfskripte kennen die neuen Packages.
+- **Tests:** Es bleibt ein Testprojekt `Atlas.Tests`, das alle Quellen übersetzt (kein Testprojekt je Package: Tests laden keine BPLs, und mit RAD Studio Starter wäre jedes Projekt ein eigener Lauf über `cc.ps1`). Testordner je Package (`Tests/IDE.Core`, `Tests/IDE.Debugger` …) und je Modul eine DUnitX-Kategorie, damit sich die Tests eines Moduls allein ausführen lassen. Die Prüfskripte kennen die neuen Packages.
