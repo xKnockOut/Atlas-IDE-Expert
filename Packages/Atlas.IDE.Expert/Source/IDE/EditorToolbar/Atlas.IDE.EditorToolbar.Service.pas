@@ -151,7 +151,7 @@ type
     procedure Tick(Sender: TObject);
     function ToolbarOn: Boolean;
     function CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
-    function CreateBar(AHost: TWinControl): TAtlasEditorToolbar;
+    function CreateBar: TAtlasEditorToolbar;
     procedure Place(ABar: TAtlasEditorToolbar; AHost: TWinControl);
     procedure Track(const AView: IOTAEditView; const AFileName: string; ALine: Integer);
     procedure UpdateBar(ABar: TAtlasEditorToolbar; const AFileName: string;
@@ -263,7 +263,7 @@ begin
   FHost := TAtlasEditorBarHost.Create('Editorleiste', TAtlasFeature.EditorToolbar,
     function(AEditorParent: TWinControl): TControl
     begin
-      Result := CreateBar(AEditorParent);
+      Result := CreateBar;
     end,
     procedure(ABar: TControl; AEditorParent: TWinControl)
     begin
@@ -335,7 +335,7 @@ begin
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
-function TToolbarState.CreateBar(AHost: TWinControl): TAtlasEditorToolbar;
+function TToolbarState.CreateBar: TAtlasEditorToolbar;
 var
   Bar: TAtlasEditorToolbar;
   Host: TAtlasEditorBarHost;

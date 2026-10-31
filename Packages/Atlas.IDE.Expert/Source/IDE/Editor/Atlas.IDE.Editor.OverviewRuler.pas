@@ -114,7 +114,7 @@ type
     FHoverSince: UInt64;
     procedure Tick(Sender: TObject);
     function ActiveRuler: TAtlasOverviewRuler;
-    function CreateRuler(AParent: TWinControl): TAtlasOverviewRuler;
+    function CreateRuler: TAtlasOverviewRuler;
     procedure Place(ARuler: TAtlasOverviewRuler; AParent: TWinControl);
     procedure Update;
     function Collect(const AView: IOTAEditView; ALineCount: Integer): TAtlasOverviewMarks;
@@ -149,7 +149,7 @@ begin
   FHost := TAtlasEditorBarHost.Create('Übersichtsleiste', TAtlasFeature.OverviewRuler,
     function(AEditorParent: TWinControl): TControl
     begin
-      Result := CreateRuler(AEditorParent);
+      Result := CreateRuler;
     end,
     procedure(ABar: TControl; AEditorParent: TWinControl)
     begin
@@ -205,7 +205,7 @@ begin
 end;
 
 /// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
-function TOverviewState.CreateRuler(AParent: TWinControl): TAtlasOverviewRuler;
+function TOverviewState.CreateRuler: TAtlasOverviewRuler;
 var
   Ruler: TAtlasOverviewRuler;
 begin

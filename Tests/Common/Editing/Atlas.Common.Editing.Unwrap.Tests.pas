@@ -381,7 +381,7 @@ begin
   Assert.AreEqual(Ord(TUnwrapKind.IfDef), Ord(Found[1].Kind));
 end;
 
-function Owners(AWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner;
+function Owners(AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner;
 begin
   AElement := -1;
   Result := TWithOwner.Other;
@@ -413,7 +413,7 @@ begin
         Result := TWithResolution.Resolve(Text, Tree, AWith,
           function(AOwnerWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
           begin
-            Result := Owners(AOwnerWith, AIdentifier, AElement);
+            Result := Owners(AIdentifier, AElement);
           end, TExtractOptions.Default, Action, AReason);
         AEdits := Action.Edits;
       end;

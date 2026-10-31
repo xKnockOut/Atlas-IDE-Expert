@@ -147,7 +147,7 @@ begin
     FSelector := TExpressionText.Strip(ANode);
     Exit(True);
   end;
-  Result := TExpressionText.Same(FText, FTree, FSelector, ANode);
+  Result := TExpressionText.Same(FTree, FSelector, ANode);
 end;
 
 function TChainReader.IsConstantLabel(ANode: TSyntaxNode): Boolean;
@@ -323,9 +323,9 @@ var
   LowValue, HighValue: Int64;
 begin
   Result := Default(TLabelKey);
-  Result.Text := TExpressionText.Normalized(AText, ATree, ALabel.Low);
+  Result.Text := TExpressionText.Normalized(ATree, ALabel.Low);
   if ALabel.High <> nil then
-    Result.Text := Result.Text + ' .. ' + TExpressionText.Normalized(AText, ATree, ALabel.High);
+    Result.Text := Result.Text + ' .. ' + TExpressionText.Normalized(ATree, ALabel.High);
   if TOrdinalConstants.Evaluate(TExpressionText.Source(AText, ALabel.Low), nil, LowValue) then
   begin
     HighValue := LowValue;

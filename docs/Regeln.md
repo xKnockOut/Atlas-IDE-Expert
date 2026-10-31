@@ -1064,7 +1064,7 @@ end;
 
 **Ungenutzter Parameter** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen und Callbacks.
+Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen und Callbacks, auch Routinen in Tabellen von Routinen (typisierte Konstanten, Array-Literale). Eine Routine, die nur aus einer anonymen Methode aufgerufen wird, hat eine freie Signatur und wird gemeldet. Die Übergabe als Wert in einer anderen Unit sieht die Regel nicht; dort mit lsp-ignore und Grund unterdrücken.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|

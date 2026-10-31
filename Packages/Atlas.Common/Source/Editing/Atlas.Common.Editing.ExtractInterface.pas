@@ -575,7 +575,7 @@ begin
     if NewMethods <> nil then
     begin
       APlan.Edits := APlan.Edits + [TClassEdits.InsertMembers(Layout, TClassVisibility.Private_, False, NewMethods)];
-      BodiesLine := TClassEdits.BodiesEnd(ATree, AText, Layout.Name);
+      BodiesLine := TClassEdits.BodiesEnd(ATree, Layout.Name);
       if BodiesLine < 0 then
         Exit(Fail('Die Unit hat keinen implementation-Teil für die neuen Zugriffsmethoden.'));
       APlan.Edits := APlan.Edits + [TClassEdits.InsertBodies(AText, BodiesLine, NewBodies)];
@@ -586,7 +586,7 @@ begin
       Text := '';
       for Doc in APlan.Declaration.Split([#10]) do
         Text := Text + Indent + Doc + LineBreak;
-      APlan.Edits := APlan.Edits + [TClassEdits.InsertBeforeLine(AText, Layout.FirstLine, Text + LineBreak)];
+      APlan.Edits := APlan.Edits + [TClassEdits.InsertBeforeLine(Layout.FirstLine, Text + LineBreak)];
     end;
   finally
     Layout.Free;
@@ -615,7 +615,7 @@ begin
   for Part in ADeclaration.Split([#10]) do
     Text := Text + '  ' + Part + LineBreak;
   Line := Implementation_.StartPos.Line;
-  AEdit := TClassEdits.InsertBeforeLine(AText, Line, Text + LineBreak);
+  AEdit := TClassEdits.InsertBeforeLine(Line, Text + LineBreak);
   Result := True;
 end;
 

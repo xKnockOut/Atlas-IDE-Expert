@@ -147,7 +147,7 @@ type
     /// <summary>Name gültig, Basis gewählt, nichts mehr zu ermitteln.</summary>
     function CanCreate: Boolean;
     /// <summary>Text einer Basis in der Auswahl.</summary>
-    class function BaseCaption(AKind: TAtlasVcsKind; const ABase: TAtlasVcsBranchBase): string; static;
+    class function BaseCaption(const ABase: TAtlasVcsBranchBase): string; static;
     /// <summary>Zeilen für „Was passiert“: nummeriert, Serverschritte mit Zusatz.</summary>
     class function StepLines(AKind: TAtlasVcsKind; const ASteps: TArray<TAtlasVcsBranchStep>): TArray<string>;
       static;
@@ -881,7 +881,7 @@ begin
   AControl.Align := alTop;
 end;
 
-class function TAtlasBranchDialog.BaseCaption(AKind: TAtlasVcsKind; const ABase: TAtlasVcsBranchBase): string;
+class function TAtlasBranchDialog.BaseCaption(const ABase: TAtlasVcsBranchBase): string;
 begin
   case ABase.Kind of
     TAtlasVcsBranchBaseKind.RemoteMain:
@@ -931,7 +931,7 @@ begin
     try
       FBaseBox.Items.Clear;
       for mBase in FBases do
-        FBaseBox.Items.Add(BaseCaption(FFacts.Kind, mBase));
+        FBaseBox.Items.Add(BaseCaption(mBase));
     finally
       FBaseBox.Items.EndUpdate;
     end;

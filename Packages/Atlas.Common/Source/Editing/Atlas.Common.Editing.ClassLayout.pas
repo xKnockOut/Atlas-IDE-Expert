@@ -202,7 +202,7 @@ type
     /// <summary>Zeile, hinter der Rümpfe der Klasse AClassName in ATree stehen: Ende des letzten Rumpfs der
     /// Klasse, sonst Ende der implementation-Deklarationen (vor initialization bzw. end.); -1 ohne
     /// implementation.</summary>
-    class function BodiesEnd(ATree: TSyntaxTree; const AText, AClassName: string): Integer; static;
+    class function BodiesEnd(ATree: TSyntaxTree; const AClassName: string): Integer; static;
     /// <summary>Rümpfe ABodies (je ein Text, ohne Umbruch am Ende) hinter Zeile ALine einfügen, je durch eine
     /// Leerzeile getrennt.</summary>
     class function InsertBodies(const AText: string; ALine: Integer; const ABodies: TArray<string>): TTextEdit;
@@ -212,8 +212,7 @@ type
     class function ReplaceAccessor(ALayout: TClassLayout; AIndex: Integer; const AKeyword, ANewName: string;
       out AEdit: TTextEdit): Boolean; static;
     /// <summary>Text am Anfang der Zeile ALine einfügen.</summary>
-    class function InsertBeforeLine(const AText: string; ALine: Integer; const ANewText: string): TTextEdit;
-      static;
+    class function InsertBeforeLine(ALine: Integer; const ANewText: string): TTextEdit; static;
   end;
 
 /// <summary>Leerraum zusammenfassen und am Rand entfernen.</summary>
@@ -1191,7 +1190,7 @@ begin
     for Index := High(ALayout.Sections) downto 0 do
       if (ALayout.Sections[Index].HeadLine >= 0) and (ALayout.Sections[Index].Visibility > AVisibility) then
         Line := ALayout.Sections[Index].HeadLine;
-    Result := InsertBeforeLine(ALayout.Text, Line, ALayout.Indent + VisibilityName(AVisibility) +
+    Result := InsertBeforeLine(Line, ALayout.Indent + VisibilityName(AVisibility) +
       ALayout.LineBreak + Body);
     Exit;
   end;
@@ -1201,7 +1200,7 @@ begin
     begin
       Member := ALayout.Members[Index];
       if Member.IsMethod or (Member.Kind = TClassMemberKind.Property_) then
-        Exit(InsertBeforeLine(ALayout.Text, Member.FirstLine, Body));
+        Exit(InsertBeforeLine(Member.FirstLine, Body));
     end;
   // Hinter das letzte Mitglied bzw. die Kopfzeile des Abschnitts.
   Line := Section.HeadLine;
@@ -1210,7 +1209,7 @@ begin
   for Index in Section.Members do
     if ALayout.Members[Index].LastLine > Line then
       Line := ALayout.Members[Index].LastLine;
-  Result := InsertBeforeLine(ALayout.Text, Line + 1, Body);
+  Result := InsertBeforeLine(Line + 1, Body);
 end;
 
 class function TClassEdits.SetAncestors(ALayout: TClassLayout; const AAncestors: TArray<string>): TTextEdit;
@@ -1260,7 +1259,7 @@ begin
   Result := Text;
 end;
 
-class function TClassEdits.BodiesEnd(ATree: TSyntaxTree; const AText, AClassName: string): Integer;
+class function TClassEdits.BodiesEnd(ATree: TSyntaxTree; const AClassName: string): Integer;
 var
   Last: Integer;
   Implementation_: TSyntaxNode;
@@ -1297,7 +1296,7 @@ begin
   NewText := '';
   for Body in ABodies do
     NewText := NewText + LineBreak + Body + LineBreak;
-  Result := InsertBeforeLine(AText, ALine + 1, NewText);
+  Result := InsertBeforeLine(ALine + 1, NewText);
 end;
 
 class function TClassEdits.ReplaceAccessor(ALayout: TClassLayout; AIndex: Integer; const AKeyword,
@@ -1332,8 +1331,7 @@ begin
   Result := False;
 end;
 
-class function TClassEdits.InsertBeforeLine(const AText: string; ALine: Integer;
-  const ANewText: string): TTextEdit;
+class function TClassEdits.InsertBeforeLine(ALine: Integer; const ANewText: string): TTextEdit;
 begin
   Result := TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0), ANewText);
 end;
