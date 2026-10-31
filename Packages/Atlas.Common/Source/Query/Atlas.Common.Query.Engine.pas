@@ -221,7 +221,8 @@ begin
   if (mRoot <> '') and (mRoot <> '/') and SameText(Copy(mPath, 1, Length(mRoot)), mRoot) then
     Result := Copy(mPath, Length(mRoot) + 1, MaxInt)
   else
-    Result := mPath;
+    // Außerhalb der Wurzel (RTL, andere Laufwerke): der Pfad, wie er ist; "c:/Programme/…" las sich schlecht.
+    Result := AFileName;
 end;
 
 { TCodeQueryEngine }
