@@ -381,7 +381,7 @@ begin
     for Statement in Statements do
     begin
       if (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.ChildCount <> 2) or
-        not TExpressionText.Same(AText, ATree, Statement[0], First[0]) then
+        not TExpressionText.Same(ATree, Statement[0], First[0]) then
         Exit;
       Values := Values + [Statement[1]];
     end;
@@ -395,10 +395,10 @@ begin
     begin
       Call := CallOf(Statement);
       if (Call = nil) or (Call.ChildCount <> FirstCall.ChildCount) or
-        not TExpressionText.Same(AText, ATree, Call[0], FirstCall[0]) then
+        not TExpressionText.Same(ATree, Call[0], FirstCall[0]) then
         Exit;
       for Arg := 1 to Call.ChildCount - 1 do
-        if not TExpressionText.Same(AText, ATree, Call[Arg], FirstCall[Arg]) then
+        if not TExpressionText.Same(ATree, Call[Arg], FirstCall[Arg]) then
         begin
           if (Differs >= 0) and (Differs <> Arg) then
             Exit;

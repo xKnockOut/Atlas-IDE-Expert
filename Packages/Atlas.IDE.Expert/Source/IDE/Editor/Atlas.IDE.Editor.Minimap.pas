@@ -136,7 +136,7 @@ type
     FHideIde: Boolean;
     procedure Tick(Sender: TObject);
     function ActiveMinimap: TAtlasMinimapView;
-    function CreateView(AParent: TWinControl): TAtlasMinimapView;
+    function CreateView: TAtlasMinimapView;
     procedure Place(AView: TAtlasMinimapView; AParent: TWinControl);
     procedure PlaceView(AView: TAtlasMinimapView);
     procedure Update;
@@ -204,7 +204,7 @@ begin
   FHost := TAtlasEditorBarHost.Create('Minimap', TAtlasFeature.Minimap,
     function(AEditorParent: TWinControl): TControl
     begin
-      Result := CreateView(AEditorParent);
+      Result := CreateView;
     end,
     procedure(ABar: TControl; AEditorParent: TWinControl)
     begin
@@ -318,7 +318,7 @@ begin
 end;
 
 /// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
-function TMinimapState.CreateView(AParent: TWinControl): TAtlasMinimapView;
+function TMinimapState.CreateView: TAtlasMinimapView;
 var
   View: TAtlasMinimapView;
 begin

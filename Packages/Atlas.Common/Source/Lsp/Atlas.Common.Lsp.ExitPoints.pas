@@ -224,7 +224,7 @@ begin
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
     Resolver.Namespaces := ANamespaces;
-    Result := Json(TExitPoints.Find(Shared.Tree, Lines, TLspPositions.ReadPosition(AArguments.Items[1]), Options,
+    Result := Json(TExitPoints.Find(Shared.Tree, TLspPositions.ReadPosition(AArguments.Items[1]), Options,
       ExceptionLookup(Resolver, Shared.Tree, FileName, Lines, TLspDocumentation.Reader(FileName, Document.Text,
       AReadText)), ClassTest(Resolver, Shared.Tree, FileName)));
   finally

@@ -469,7 +469,9 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "A parameter is never used in the routine body. Overridden and virtual methods, event handlers, published methods, interface implementations and callbacks are exempt.",',
+    '      "description": "A parameter is never used in the routine body. Overridden and virtual methods, event handlers, published methods, interface implementations and callbacks are exempt, including ro' +
+    'utines in tables of routines (typed constants, array literals). A routine that is only called from an anonymous method has a free signature and is reported. Passing a routine as a value in another uni' +
+    't is not visible to the rule; suppress it there with lsp-ignore and a reason.",',
     '      "bad": "function Twice(A, B: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;",',
     '      "good": "function Twice(A: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;",',
     '      "options": [',
@@ -5948,7 +5950,8 @@ const
     '      "id": "unused-parameter",',
     '      "name": "Ungenutzter Parameter",',
     '      "description": "Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen' +
-    ' und Callbacks.",',
+    ' und Callbacks, auch Routinen in Tabellen von Routinen (typisierte Konstanten, Array-Literale). Eine Routine, die nur aus einer anonymen Methode aufgerufen wird, hat eine freie Signatur und wird gemel' +
+    'det. Die Übergabe als Wert in einer anderen Unit sieht die Regel nicht; dort mit lsp-ignore und Grund unterdrücken.",',
     '      "options": [',
     '        {',
     '          "name": "ignore",',

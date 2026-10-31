@@ -126,7 +126,7 @@ type
     FMethodFile: string;
     FMethod: TAtlasStatusMethod;
     procedure Tick(Sender: TObject);
-    function CreateBar(AHost: TWinControl): TAtlasEditorStatusBar;
+    function CreateBar: TAtlasEditorStatusBar;
     procedure Place(ABar: TAtlasEditorStatusBar; AHost: TWinControl);
     procedure Want(AOn: Boolean);
     procedure StatusInto(var AView: TAtlasStatusBarView);
@@ -217,7 +217,7 @@ begin
   FHost := TAtlasEditorBarHost.Create('Atlas-Statusleiste', TAtlasFeature.StatusBar,
     function(AEditorParent: TWinControl): TControl
     begin
-      Result := CreateBar(AEditorParent);
+      Result := CreateBar;
     end,
     procedure(ABar: TControl; AEditorParent: TWinControl)
     begin
@@ -282,7 +282,7 @@ begin
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
-function TStatusBarState.CreateBar(AHost: TWinControl): TAtlasEditorStatusBar;
+function TStatusBarState.CreateBar: TAtlasEditorStatusBar;
 var
   Bar: TAtlasEditorStatusBar;
   Host: TAtlasEditorBarHost;
