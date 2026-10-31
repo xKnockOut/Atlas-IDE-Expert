@@ -23,7 +23,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `profile` | Projekt (atlas.json) |  | `"standard"` | z. B. `"fast"`, `"strict"` | Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus "profiles". Als Objekt getrennt für Editor und Kommandozeile. |
 | `profiles` | Projekt (atlas.json) | object | – |  | Eigene Regelprofile: Name → { "extends": eingebautes oder eigenes Profil, "categories": nur diese Kategorien, "rules": Regel-ID → Schweregrad }. |
 | `overrides` | Projekt (atlas.json) | array<object> | – |  | Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID "*" steht für alle Regeln; spätere Einträge haben Vorrang. |
-| `excludeTests` | Projekt (atlas.json) | boolean | `false` |  | Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. |
+| `excludeTests` | global und Projekt | boolean | `false` |  | Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. Global für alle Projekte schaltbar; eine atlas.json, die den Schlüssel nennt, geht vor. |
 | `testProfile` | Projekt (atlas.json) | string | – | z. B. `"fast"` | Regelprofil für Test-Units und Testprojekte; leer: wie "profile". |
 | `compiler` | global (settings.json) | object | – |  | Compiler-Anbindung: Kommandozeilen-Compiler (dcc32/dcc64) oder eine eigene IDE über cc.ps1. |
 | `vcs` | global (settings.json) | object | – |  | Versionsverwaltung (Git, SVN) für geänderte Dateien, Branch und Revision. |
