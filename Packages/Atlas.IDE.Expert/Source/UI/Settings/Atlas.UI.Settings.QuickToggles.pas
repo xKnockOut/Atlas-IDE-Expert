@@ -13,6 +13,10 @@
 // Gruppen lassen sich ein- und ausklappen: Klick, Leertaste oder Enter auf der
 // Überschrift. Eingeklappt zeigt sie die Zahl ihrer Schalter. Der Zustand gilt
 // für die IDE-Sitzung (class var), das Fenster öffnet wie zuletzt verlassen.
+// Damit das Fenster handlich bleibt: beim ersten Öffnen nur die erste Seite
+// offen, Aufklappen schließt die anderen (Akkordeon), höchstens 80 % der
+// Arbeitsfläche hoch; darüber Bildlauf mit Mausrad und Pfeiltasten, rechts ein
+// schmaler Balken.
 
 interface
 
@@ -43,7 +47,13 @@ type
   private class var
     /// <summary>Eingeklappte Seiten (groß geschrieben), für die IDE-Sitzung.</summary>
     FCollapsed: TArray<string>;
+    /// <summary>Schon einmal geöffnet: Beim ersten Mal ist nur die erste Seite offen.</summary>
+    FCollapseInitialized: Boolean;
   private
+    /// <summary>Erste sichtbare Zeile (Bildlauf, wenn nicht alle Zeilen ins Fenster passen).</summary>
+    FFirst: Integer;
+    /// <summary>Zeilen, die ins Fenster passen.</summary>
+    FVisibleRows: Integer;
     FColors: TAtlasColors;
     FItems: TArray<TAtlasQuickToggleItem>;
     FRows: TArray<TRow>;
@@ -63,6 +73,9 @@ type
     procedure BuildRows;
     procedure Layout;
     procedure MoveHot(ADelta: Integer);
+    /// <summary>Bildlauf so, dass FHot sichtbar ist; Grenzen einhalten.</summary>
+    procedure ScrollToHot;
+    procedure ClampFirst;
     procedure ToggleRow(ARow: Integer);
     procedure ToggleGroup(const APage: string);
     class function IsCollapsed(const APage: string): Boolean; static;
@@ -76,6 +89,7 @@ type
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
     constructor CreateToggles(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Schalter und „Alles aus“ neu setzen (auch bei offenem Fenster).</summary>
@@ -92,6 +106,8 @@ type
     function RowItem(ARow: Integer): Integer;
     /// <summary>Alle Gruppen ausklappen (Tests).</summary>
     class procedure ExpandAll; static;
+    /// <summary>Wie beim ersten Öffnen der Sitzung (Tests).</summary>
+    class procedure ResetCollapse; static;
     property Items: TArray<TAtlasQuickToggleItem> read FItems;
     property AllButton: TButton read FAllButton;
     property HotRow: Integer read FHot;
@@ -160,18 +176,47 @@ end;
 
 function TAtlasQuickToggleWindow.RowRect(AIndex: Integer): TRect;
 begin
-  Result := Rect(ScaleValue(4), HeaderHeight + AIndex * RowHeight, ClientWidth - ScaleValue(4),
-    HeaderHeight + (AIndex + 1) * RowHeight);
+  Result := Rect(ScaleValue(4), HeaderHeight + (AIndex - FFirst) * RowHeight, ClientWidth - ScaleValue(4),
+    HeaderHeight + (AIndex - FFirst + 1) * RowHeight);
 end;
 
 function TAtlasQuickToggleWindow.RowAt(const APoint: TPoint): Integer;
 var
   Index: Integer;
 begin
-  for Index := 0 to High(FRows) do
+  for Index := FFirst to Min(High(FRows), FFirst + FVisibleRows - 1) do
     if PtInRect(RowRect(Index), APoint) then
       Exit(Index);
   Result := -1;
+end;
+
+procedure TAtlasQuickToggleWindow.ClampFirst;
+begin
+  FFirst := EnsureRange(FFirst, 0, Max(0, Length(FRows) - FVisibleRows));
+end;
+
+procedure TAtlasQuickToggleWindow.ScrollToHot;
+begin
+  if FHot >= 0 then
+  begin
+    if FHot < FFirst then
+      FFirst := FHot
+    else if FHot >= FFirst + FVisibleRows then
+      FFirst := FHot - FVisibleRows + 1;
+  end;
+  ClampFirst;
+end;
+
+function TAtlasQuickToggleWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+begin
+  // Drei Zeilen je Raste, wie im Editor.
+  if WheelDelta > 0 then
+    Dec(FFirst, 3)
+  else
+    Inc(FFirst, 3);
+  ClampFirst;
+  Invalidate;
+  Result := True;
 end;
 
 function TAtlasQuickToggleWindow.TagText(const AItem: TAtlasQuickToggleItem): string;
@@ -196,6 +241,13 @@ end;
 class procedure TAtlasQuickToggleWindow.ExpandAll;
 begin
   FCollapsed := nil;
+  FCollapseInitialized := True;
+end;
+
+class procedure TAtlasQuickToggleWindow.ResetCollapse;
+begin
+  FCollapsed := nil;
+  FCollapseInitialized := False;
 end;
 
 procedure TAtlasQuickToggleWindow.BuildRows;
@@ -204,6 +256,16 @@ var
   Page: string;
   Row: TRow;
 begin
+  // Erstes Öffnen in der Sitzung: nur die erste Seite offen, sonst wird das Fenster höher als der Bildschirm.
+  if not FCollapseInitialized and (FItems <> nil) then
+  begin
+    FCollapseInitialized := True;
+    FCollapsed := nil;
+    for Index := 0 to High(FItems) do
+      if not SameText(FItems[Index].Toggle.Page, FItems[0].Toggle.Page) and
+        not IsCollapsed(FItems[Index].Toggle.Page) then
+        FCollapsed := FCollapsed + [FItems[Index].Toggle.Page];
+  end;
   FRows := nil;
   Page := #0;
   Header := -1;
@@ -238,9 +300,11 @@ var
 begin
   if IsCollapsed(APage) then
   begin
-    for Index := High(FCollapsed) downto 0 do
-      if SameText(FCollapsed[Index], APage) then
-        Delete(FCollapsed, Index, 1);
+    // Akkordeon: Aufklappen schließt die anderen Seiten, damit das Fenster handlich bleibt.
+    FCollapsed := nil;
+    for Index := 0 to High(FItems) do
+      if not SameText(FItems[Index].Toggle.Page, APage) and not IsCollapsed(FItems[Index].Toggle.Page) then
+        FCollapsed := FCollapsed + [FItems[Index].Toggle.Page];
   end
   else
     FCollapsed := FCollapsed + [APage];
@@ -251,6 +315,9 @@ begin
     if (FRows[Index].Item < 0) and SameText(FRows[Index].Text, APage) then
       FHot := Index;
   Layout;
+  // Die aufgeklappte Seite steht oben.
+  FFirst := Max(0, FHot);
+  ClampFirst;
   // Unten bleibt unten: das Fenster wächst bzw. schrumpft nach oben.
   if Visible then
     SetBounds(Left, FAnchor.Y - Height, Width, Height);
@@ -273,7 +340,12 @@ begin
     Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOn))) + ScaleValue(24);
   Width_ := Max(Width_, ButtonWidth + ScaleValue(20));
   ClientWidth := Width_;
-  ClientHeight := HeaderHeight + Length(FRows) * RowHeight + ButtonsHeight;
+  // Höchstens 80 % der Arbeitsfläche hoch; der Rest per Mausrad bzw. Pfeiltasten.
+  FVisibleRows := Max(3, (Screen.MonitorFromPoint(FAnchor).WorkareaRect.Height * 4 div 5 - HeaderHeight -
+    ButtonsHeight) div RowHeight);
+  FVisibleRows := Min(FVisibleRows, Max(1, Length(FRows)));
+  ClampFirst;
+  ClientHeight := HeaderHeight + FVisibleRows * RowHeight + ButtonsHeight;
   FAllButton.SetBounds(ScaleValue(10), ClientHeight - ButtonsHeight + ScaleValue(8), ButtonWidth, ScaleValue(25));
 end;
 
@@ -395,6 +467,7 @@ begin
   if Row >= Count then
     Row := 0;
   FHot := Row;
+  ScrollToHot;
   Invalidate;
 end;
 
@@ -502,7 +575,7 @@ begin
   Canvas.MoveTo(0, HeaderHeight - ScaleValue(3));
   Canvas.LineTo(ClientWidth, HeaderHeight - ScaleValue(3));
   Box := ScaleValue(12);
-  for Index := 0 to High(FRows) do
+  for Index := FFirst to Min(High(FRows), FFirst + FVisibleRows - 1) do
   begin
     Row := RowRect(Index);
     Canvas.Brush.Style := bsClear;
@@ -567,6 +640,18 @@ begin
     Canvas.Font.Color := ToColor(FColors.Text);
     mText := FRows[Index].Text;
     DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+  end;
+  // Mehr Zeilen als Platz: schmaler Balken rechts zeigt Lage und Anteil.
+  if Length(FRows) > FVisibleRows then
+  begin
+    Part := Rect(ClientWidth - ScaleValue(5), HeaderHeight, ClientWidth - ScaleValue(2),
+      HeaderHeight + FVisibleRows * RowHeight);
+    Check := Part;
+    Check.Top := Part.Top + MulDiv(Part.Height, FFirst, Length(FRows));
+    Check.Bottom := Part.Top + MulDiv(Part.Height, FFirst + FVisibleRows, Length(FRows));
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(FColors.Muted);
+    Canvas.FillRect(Check);
   end;
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, ClientHeight - ButtonsHeight);
