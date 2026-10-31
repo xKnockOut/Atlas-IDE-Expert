@@ -49,7 +49,10 @@ type
     /// <summary>Adressen, die in einem Modul liegen, als "Modul+Offset" (hex); höchstens AMax,
     /// gleiche Einträge direkt hintereinander nur einmal.</summary>
     class function Frames(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
-      AMax: Integer = 24): TArray<string>; static;
+      AMax: Integer): TArray<string>; overload; static;
+    /// <summary>Wie oben mit AMax = 24.</summary>
+    class function Frames(const AAddresses: TArray<UInt64>;
+      const AModules: TArray<TAtlasModuleRange>): TArray<string>; overload; static;
   end;
 
   TAtlasHang = record
@@ -70,7 +73,9 @@ type
     FWithAtlas: Integer;
     FLongestMs: Int64;
   public
-    constructor Create(AThresholdMs: Integer = 500);
+    constructor Create(AThresholdMs: Integer); overload;
+    /// <summary>Wie oben mit AThresholdMs = 500.</summary>
+    constructor Create; overload;
     /// <summary>Wertet einen beendeten Hänger aus: '' unter der Schwelle, sonst der Bericht; zählt mit.</summary>
     function Finish(const AHang: TAtlasHang): string;
     /// <summary>Statistik der Sitzung in einer Zeile.</summary>
@@ -180,6 +185,12 @@ end;
 
 { TAtlasStackScan }
 
+class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>;
+  const AModules: TArray<TAtlasModuleRange>): TArray<string>;
+begin
+  Result := Frames(AAddresses, AModules, 24);
+end;
+
 class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
   AMax: Integer): TArray<string>;
 var
@@ -204,6 +215,11 @@ begin
 end;
 
 { TAtlasHangMonitor }
+
+constructor TAtlasHangMonitor.Create;
+begin
+  Create(500);
+end;
 
 constructor TAtlasHangMonitor.Create(AThresholdMs: Integer);
 begin

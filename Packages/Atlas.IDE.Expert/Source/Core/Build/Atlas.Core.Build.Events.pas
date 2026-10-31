@@ -88,7 +88,9 @@ type
     procedure Notify(const AMethod: string; AParams: TJSONObject);
     procedure Guard(const AWhat: string; const AAction: TProc);
   public
-    constructor Create(const AClock: TAtlasClockFunc = nil);
+    constructor Create(const AClock: TAtlasClockFunc); overload;
+    /// <summary>Wie oben mit AClock = nil.</summary>
+    constructor Create; overload;
     destructor Destroy; override;
     /// <summary>Der Dienst übernimmt AParticipant.</summary>
     procedure Add(AParticipant: TAtlasCompileParticipant);
@@ -196,6 +198,11 @@ begin
 end;
 
 { TAtlasCompileEvents }
+
+constructor TAtlasCompileEvents.Create;
+begin
+  Create(nil);
+end;
 
 constructor TAtlasCompileEvents.Create(const AClock: TAtlasClockFunc);
 begin

@@ -105,7 +105,8 @@ type
     function TokenIndexAt(AOffset: Integer): Integer;
     function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
     function NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer;
-      const ADetail: string = ''): TJSONObject;
+      const ADetail: string): TJSONObject; overload;
+    function NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer): TJSONObject; overload;
     procedure AddChild(ASymbol, AChild: TJSONObject);
     function RoutineKind(ANode: TSyntaxNode; AInType: Boolean): Integer;
     function TypeSymbol(ADecl: TSyntaxNode): TJSONObject;
@@ -352,6 +353,11 @@ begin
     Inc(Index);
   end;
   Result := NodeRange(ANode);
+end;
+
+function TSymbolBuilder.NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer): TJSONObject;
+begin
+  Result := NewSymbol(ANode, AName, AKind, '');
 end;
 
 function TSymbolBuilder.NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer;

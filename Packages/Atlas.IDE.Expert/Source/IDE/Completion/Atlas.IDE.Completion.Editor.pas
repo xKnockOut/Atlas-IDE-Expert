@@ -177,7 +177,9 @@ type
     /// <summary>Öffnet die Vervollständigung an der Cursorstelle von AView; False, wenn nicht möglich.
     /// AAutomatic: von der IDE nach einem Zeichen ausgelöst, nicht über Strg+Leer. Steht dann "[" vor dem
     /// Cursor, fragt Atlas nur nach Mengenwerten (#448).</summary>
-    function Invoke(const AView: IOTAEditView; AAutomatic: Boolean = False): Boolean;
+    function Invoke(const AView: IOTAEditView; AAutomatic: Boolean): Boolean; overload;
+    /// <summary>Wie oben über Strg+Leer (AAutomatic = False).</summary>
+    function Invoke(const AView: IOTAEditView): Boolean; overload;
     procedure Close;
     /// <summary>Andere Ansicht im Editor: Popup schließen und Platzhalter-Modus beenden.</summary>
     procedure ViewChanged;
@@ -663,6 +665,11 @@ begin
   AWindow := Info.hwndCaret;
   ARect := Info.rcCaret;
   MapWindowPoints(AWindow, 0, ARect, 2);
+end;
+
+function TAtlasEditorCompletion.Invoke(const AView: IOTAEditView): Boolean;
+begin
+  Result := Invoke(AView, False);
 end;
 
 function TAtlasEditorCompletion.Invoke(const AView: IOTAEditView; AAutomatic: Boolean): Boolean;

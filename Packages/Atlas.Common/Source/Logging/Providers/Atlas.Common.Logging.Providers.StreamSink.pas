@@ -22,8 +22,12 @@ type
     /// <summary>Senke auf eine Logdatei; eine vorhandene Datei wird fortgeschrieben. Mit
     /// AFallbackTag weicht sie auf "Name.Tag.log" aus, wenn die Datei belegt ist; ab
     /// AMaxBytes wird rotiert (#283).</summary>
-    class function CreateForFile(const AFileName: string; const AFallbackTag: string = '';
-      AMaxBytes: Int64 = TRotatingFileStream.DefaultMaxBytes): TStreamLogSink; static;
+    class function CreateForFile(const AFileName, AFallbackTag: string;
+      AMaxBytes: Int64): TStreamLogSink; overload; static;
+    /// <summary>Wie oben mit AMaxBytes = TRotatingFileStream.DefaultMaxBytes.</summary>
+    class function CreateForFile(const AFileName, AFallbackTag: string): TStreamLogSink; overload; static;
+    /// <summary>Wie oben ohne Ausweichnamen (AFallbackTag = '').</summary>
+    class function CreateForFile(const AFileName: string): TStreamLogSink; overload; static;
     { ILogSink }
     procedure Write(const AEntry: TLogEntry);
   end;
@@ -44,6 +48,16 @@ begin
   if FOwnsStream then
     FStream.Free;
   inherited;
+end;
+
+class function TStreamLogSink.CreateForFile(const AFileName, AFallbackTag: string): TStreamLogSink;
+begin
+  Result := CreateForFile(AFileName, AFallbackTag, TRotatingFileStream.DefaultMaxBytes);
+end;
+
+class function TStreamLogSink.CreateForFile(const AFileName: string): TStreamLogSink;
+begin
+  Result := CreateForFile(AFileName, '', TRotatingFileStream.DefaultMaxBytes);
 end;
 
 class function TStreamLogSink.CreateForFile(const AFileName, AFallbackTag: string;

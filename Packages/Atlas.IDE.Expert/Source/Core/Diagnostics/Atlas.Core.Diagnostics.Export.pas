@@ -25,8 +25,10 @@ type
     /// <summary>Diagnoselogs in AFolder, die in den letzten ADays Tagen geschrieben wurden, sortiert.</summary>
     class function Files(const AFolder: string; ADays: Integer; ANow: TDateTime): TArray<string>; static;
     /// <summary>Inhalt wie in der ZIP: je Datei eine Kopfzeile, danach die Zeilen (höchstens AMaxLines insgesamt).</summary>
-    class function Preview(const AFiles: TArray<string>; AMaxLines: Integer = PreviewLines): string; overload;
+    class function Preview(const AFiles: TArray<string>; AMaxLines: Integer): string; overload;
       static;
+    /// <summary>Wie oben mit AMaxLines = PreviewLines.</summary>
+    class function Preview(const AFiles: TArray<string>): string; overload; static;
     /// <summary>Wie oben, davor AInfo als atlas-info.txt.</summary>
     class function Preview(const AFiles: TArray<string>; const AInfo: string): string; overload; static;
     /// <summary>Schreibt die Dateien ohne Ordner in die ZIP-Datei ATarget; eine vorhandene wird ersetzt.</summary>
@@ -93,6 +95,11 @@ begin
   finally
     List.Free;
   end;
+end;
+
+class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>): string;
+begin
+  Result := Preview(AFiles, PreviewLines);
 end;
 
 class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>; AMaxLines: Integer): string;

@@ -48,7 +48,10 @@ type
     function SettingsOf(const AFileName: string): TReferenceSettings;
   public
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+      const AFiles: TReferenceFilesProvider); overload;
     /// <summary>Alle Verwendungen des Symbols im Projekt, mit Zeile und Quelltext.</summary>
     function References(const AName: string): string;
     /// <summary>Aufrufer und/oder aufgerufene Routinen einer Methode oder Routine.</summary>
@@ -147,6 +150,12 @@ uses
   Atlas.Text.Lines;
 
 { TMcpCodeTools }
+
+constructor TMcpCodeTools.Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+  const AFiles: TReferenceFilesProvider);
+begin
+  Create(AIndex, AReadText, AFiles, nil);
+end;
 
 constructor TMcpCodeTools.Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
   const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);

@@ -52,7 +52,9 @@ type
     FFlagRef: IInterface;
     procedure ReapWorkers;
   public
-    constructor Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal = DefaultTimeoutMs);
+    constructor Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal); overload;
+    /// <summary>Wie oben mit ATimeoutMs = DefaultTimeoutMs.</summary>
+    constructor Create(const ASession: TAtlasSessionFunc); overload;
     destructor Destroy; override;
     /// <summary>Fragt die Signaturen an ALine/ACharacter (0-basiert) an; ACallback im Hauptthread.
     /// False, wenn kein Server verfügbar ist.</summary>
@@ -74,6 +76,11 @@ uses
   Atlas.Core.Lsp.Client;
 
 { TAtlasServerSignatureProvider }
+
+constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc);
+begin
+  Create(ASession, DefaultTimeoutMs);
+end;
 
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);
 begin

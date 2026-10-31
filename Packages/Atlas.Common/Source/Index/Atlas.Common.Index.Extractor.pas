@@ -70,7 +70,9 @@ type
     /// "class var" vor dem var-Abschnitt)?</summary>
     function IsClassMember(ANode: TSyntaxNode): Boolean;
     procedure Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
-      const AAncestors: TArray<string> = nil);
+      const AAncestors: TArray<string>); overload;
+    /// <summary>Wie oben ohne Vorfahren (AAncestors = nil).</summary>
+    procedure Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind); overload;
     /// <summary>Tokens AFrom..ATo (ohne Kommentare und Compiler-Direktiven) als eine Zeile; mit
     /// AFirstLine endet der Text am Ende der ersten Zeile außerhalb von Klammern.</summary>
     function TokenText(AFrom, ATo: Integer; AFirstLine: Boolean): string;
@@ -131,7 +133,13 @@ type
     /// $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf. Mit AUsages kommen die
     /// Verwendungen der Bezeichner dazu (#492).</summary>
     class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver = nil; AUsages: Boolean = False): TUnitIndex; static;
+      const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex; overload; static;
+    /// <summary>Wie oben mit AUsages = False.</summary>
+    class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver): TUnitIndex; overload; static;
+    /// <summary>Wie oben ohne $I-Dateien und Verwendungen (AResolver = nil, AUsages = False).</summary>
+    class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>): TUnitIndex;
+      overload; static;
     /// <summary>Verwendungen aller Bezeichner in ATokens außer an den Deklarationsstellen von ASymbols
     /// (#492), nach Name sortiert; Schlüsselwörter, Direktiven, Self und Result zählen nicht.</summary>
     class function CollectUsages(const ATokens: TArray<TPascalToken>;
@@ -333,6 +341,11 @@ end;
 function RationaleOf(const AEntries: TArray<TRationaleEntry>): TArray<string>;
 begin
   Result := TRationale.EncodeAll(Copy(AEntries, 0, TRationale.MaxEntries));
+end;
+
+procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind);
+begin
+  Add(ANode, AName, AContainer, AKind, nil);
 end;
 
 procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
@@ -1740,6 +1753,18 @@ begin
   end;
 end;
 
+class function TIndexExtractor.ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
+  const AResolver: TIncludeResolver): TUnitIndex;
+begin
+  Result := ExtractText(AText, AFileName, ADefines, AResolver, False);
+end;
+
+class function TIndexExtractor.ExtractText(const AText, AFileName: string;
+  const ADefines: TArray<string>): TUnitIndex;
+begin
+  Result := ExtractText(AText, AFileName, ADefines, nil, False);
+end;
+
 class function TIndexExtractor.ExtractText(const AText, AFileName: string;
   const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex;
 begin
@@ -1849,7 +1874,7 @@ var
   Sections: TArray<string>;
 
   procedure AddUnavailable(const AName: string; AKind: TIndexSymbolKind; ALine, AColumn: Integer;
-    const ACondition: string; const AContainer: string = '');
+    const ACondition, AContainer: string); overload;
   var
     Item: TIndexSymbol;
     Key: string;
@@ -1873,6 +1898,13 @@ var
     Item.Condition := ACondition;
     Item.Unavailable := True;
     AUnit.Unavailable := AUnit.Unavailable + [Item];
+  end;
+
+  // Wie oben ohne Typ (AContainer = '').
+  procedure AddUnavailable(const AName: string; AKind: TIndexSymbolKind; ALine, AColumn: Integer;
+    const ACondition: string); overload;
+  begin
+    AddUnavailable(AName, AKind, ALine, AColumn, ACondition, '');
   end;
 
   // Innerster Klassen-, Record- oder Interface-Typ, in dessen Rumpf ALine liegt; '' = keiner.

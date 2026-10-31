@@ -64,12 +64,18 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+      const AFiles: TReferenceFilesProvider); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Stellen in ATree, die zu AWanted auflösen; AName ohne &amp;.</summary>
     class function InTree(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName, AName: string; const AWanted: TDefinitionTarget;
-      const ACancellation: IJsonRpcCancellationToken = nil): TArray<TTextRange>; static;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TTextRange>; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function InTree(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName, AName: string; const AWanted: TDefinitionTarget): TArray<TTextRange>; overload; static;
     /// <summary>Wie InTree, je Stelle eingestuft (#1119): Bezeichner über AClassifier.Classify, String-Literale
     /// über TextMatch. AInactive: inaktive Bereiche der Datei. AResolver ist der des Classifiers.</summary>
     class function HitsInTree(AResolver: TNameResolver; AClassifier: TReferenceClassifier; ATree: TSyntaxTree;
@@ -80,7 +86,11 @@ type
     class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken = nil): TArray<TReferenceLocation>; overload; static;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;
+      const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<TReferenceLocation>; overload; static;
     /// <summary>Wie oben, mit erschlossenen Stellen nach ASettings (#1119).</summary>
     class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;
@@ -173,6 +183,12 @@ begin
 end;
 
 constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+begin
+  Create(AStore, AIndex, AReadText, AFiles, nil);
+end;
+
+constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create;
@@ -186,6 +202,12 @@ end;
 procedure TLspReferences.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(Method, HandleReferences);
+end;
+
+class function TLspReferences.InTree(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName, AName: string; const AWanted: TDefinitionTarget): TArray<TTextRange>;
+begin
+  Result := InTree(AResolver, AIndex, ATree, AFileName, AName, AWanted, nil);
 end;
 
 class function TLspReferences.InTree(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -268,6 +290,13 @@ begin
     Result := nil;
 end;
 
+
+class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;
+  const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<TReferenceLocation>;
+begin
+  Result := Find(AResolver, AIndex, ATree, AFileName, APosition, ADeclaration, AFiles, AReadText, nil);
+end;
 
 class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;

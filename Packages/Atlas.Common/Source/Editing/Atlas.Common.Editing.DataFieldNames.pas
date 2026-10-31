@@ -71,7 +71,9 @@ type
     class function FromForm(const AFormText, ADataSet: string; AKind: TDataNameKind; out ASql: string;
       out AFound: Boolean): TArray<TDataName>; static;
     /// <summary>ASql in einer Zeile mit einfachen Leerzeichen, nach AMaxLength Zeichen mit "…" gekürzt.</summary>
-    class function ShortSql(const ASql: string; AMaxLength: Integer = 60): string; static;
+    class function ShortSql(const ASql: string; AMaxLength: Integer): string; overload; static;
+    /// <summary>Wie oben mit AMaxLength = 60.</summary>
+    class function ShortSql(const ASql: string): string; overload; static;
     /// <summary>Steht AName (ohne Groß-/Kleinschreibung) in ANames?</summary>
     class function Contains(const ANames: TArray<TDataName>; const AName: string): Boolean; static;
     /// <summary>Namen für ACall in der Unit AFileName mit Text AText: ohne Owner aus der eigenen
@@ -533,6 +535,11 @@ begin
     for Param in Params do
       Add(Result, Param.Name, Param.TypeName);
   end;
+end;
+
+class function TDataFieldNames.ShortSql(const ASql: string): string;
+begin
+  Result := ShortSql(ASql, 60);
 end;
 
 class function TDataFieldNames.ShortSql(const ASql: string; AMaxLength: Integer): string;

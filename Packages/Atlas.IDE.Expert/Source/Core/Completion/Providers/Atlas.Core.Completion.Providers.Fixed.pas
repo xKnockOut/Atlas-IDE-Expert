@@ -23,12 +23,26 @@ type
       const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
     /// <summary>AIncomplete: meldet die Liste als gekürzt (#431).</summary>
-    constructor Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal = 0; AIncomplete: Boolean = False);
+    constructor Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal; AIncomplete: Boolean); overload;
+    /// <summary>Wie oben mit AIncomplete = False.</summary>
+    constructor Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal); overload;
+    /// <summary>Wie oben ohne Verzögerung (ADelayMs = 0, AIncomplete = False).</summary>
+    constructor Create(const AItems: TAtlasCompletionItems); overload;
   end;
 
 implementation
 
 { TAtlasFixedCompletionProvider }
+
+constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal);
+begin
+  Create(AItems, ADelayMs, False);
+end;
+
+constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems);
+begin
+  Create(AItems, 0, False);
+end;
 
 constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal;
   AIncomplete: Boolean);

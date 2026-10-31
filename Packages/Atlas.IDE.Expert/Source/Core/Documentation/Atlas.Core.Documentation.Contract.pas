@@ -61,8 +61,9 @@ type
     Level: Integer;
     /// <summary>Ref: Fundort, wenn der Server ihn kennt.</summary>
     Location: TAtlasDocTarget;
-    class function Create(AKind: TAtlasDocRunKind; const AText: string;
-      const ATarget: string = ''): TAtlasDocRun; static;
+    class function Create(AKind: TAtlasDocRunKind; const AText, ATarget: string): TAtlasDocRun; overload; static;
+    /// <summary>Wie oben ohne Ziel (ATarget = '').</summary>
+    class function Create(AKind: TAtlasDocRunKind; const AText: string): TAtlasDocRun; overload; static;
     /// <summary>CodeBlock in Delphi (ohne Sprache, pascal, delphi, objectpascal, pas, dpr): eingefärbt.</summary>
     function IsDelphiCode: Boolean;
   end;
@@ -171,6 +172,11 @@ begin
 end;
 
 { TAtlasDocRun }
+
+class function TAtlasDocRun.Create(AKind: TAtlasDocRunKind; const AText: string): TAtlasDocRun;
+begin
+  Result := Create(AKind, AText, '');
+end;
 
 class function TAtlasDocRun.Create(AKind: TAtlasDocRunKind; const AText, ATarget: string): TAtlasDocRun;
 begin

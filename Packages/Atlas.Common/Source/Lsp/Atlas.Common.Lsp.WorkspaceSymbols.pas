@@ -47,7 +47,10 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Sortierte Treffer für AQuery, höchstens AMax.</summary>
     class function Search(const AIndex: ISymbolIndex; const AQuery: string; AMax: Integer;
-      const ACancellation: IJsonRpcCancellationToken = nil): TArray<TWorkspaceSymbol>; static;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TWorkspaceSymbol>; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function Search(const AIndex: ISymbolIndex; const AQuery: string; AMax: Integer): TArray<TWorkspaceSymbol>;
+      overload; static;
     /// <summary>Lesezeichen aus AHits, die zu AQuery passen, beste zuerst.</summary>
     class function SearchBookmarks(const AHits: TArray<TBookmarkHit>; const AQuery: string): TArray<TWorkspaceSymbol>;
       static;
@@ -89,6 +92,12 @@ end;
 procedure TLspWorkspaceSymbols.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(Method, HandleSymbol);
+end;
+
+class function TLspWorkspaceSymbols.Search(const AIndex: ISymbolIndex; const AQuery: string;
+  AMax: Integer): TArray<TWorkspaceSymbol>;
+begin
+  Result := Search(AIndex, AQuery, AMax, nil);
 end;
 
 class function TLspWorkspaceSymbols.Search(const AIndex: ISymbolIndex; const AQuery: string; AMax: Integer;

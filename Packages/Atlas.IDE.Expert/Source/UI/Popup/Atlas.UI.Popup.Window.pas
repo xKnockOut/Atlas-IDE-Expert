@@ -73,7 +73,9 @@ type
     /// <summary>Gefülltes Rechteck mit abgerundeten Ecken (ARadius logisch).</summary>
     procedure FillRounded(const ARect: TRect; AColor: TAtlasColor; ARadius: Integer);
     /// <summary>Umrandetes Rechteck mit abgerundeten Ecken, innen AFill (clNone = durchsichtig).</summary>
-    procedure FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer; AFill: TColor = clNone);
+    procedure FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer; AFill: TColor); overload;
+    /// <summary>Wie oben, innen durchsichtig (AFill = clNone).</summary>
+    procedure FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer); overload;
     /// <summary>Rolle (UiaListControlType, UiaToolTipControlType) und Name für Screenreader.</summary>
     procedure SetAccessible(ARole: Integer; const AName: string);
     /// <summary>Element für UI Automation; Listen liefern hier eine TAtlasAccessibleList mit Einträgen.</summary>
@@ -328,6 +330,11 @@ begin
   Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right + 1, ARect.Bottom + 1, Scale(2 * ARadius),
     Scale(2 * ARadius));
   Canvas.Pen.Style := psSolid;
+end;
+
+procedure TAtlasPopupWindow.FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer);
+begin
+  FrameRounded(ARect, ALine, ARadius, clNone);
 end;
 
 procedure TAtlasPopupWindow.FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer;

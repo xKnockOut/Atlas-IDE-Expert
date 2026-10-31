@@ -256,11 +256,17 @@ type
     function FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
       AIsParameter: Boolean): TResolvedSymbol;
     function LookupInUnit(const AUnit: TUnitIndex; const AName: string; AOnlyInterface, AOnlyTypes: Boolean;
-      out AResult: TResolvedSymbol; AArity: Integer = -1): Boolean;
+      out AResult: TResolvedSymbol; AArity: Integer): Boolean; overload;
+    function LookupInUnit(const AUnit: TUnitIndex; const AName: string; AOnlyInterface, AOnlyTypes: Boolean;
+      out AResult: TResolvedSymbol): Boolean; overload;
     function LookupGlobal(const AUnit: TUnitIndex; const AName: string; AWithImplementation, AOnlyTypes: Boolean;
-      out AResult: TResolvedSymbol; AArity: Integer = -1): Boolean;
+      out AResult: TResolvedSymbol; AArity: Integer): Boolean; overload;
+    function LookupGlobal(const AUnit: TUnitIndex; const AName: string; AWithImplementation, AOnlyTypes: Boolean;
+      out AResult: TResolvedSymbol): Boolean; overload;
     function ResolveTypeName(const ATypeName: string; const AFromUnit: TUnitIndex;
-      AWithImplementation: Boolean; out AResult: TResolvedSymbol; AArity: Integer = -1): Boolean;
+      AWithImplementation: Boolean; out AResult: TResolvedSymbol; AArity: Integer): Boolean; overload;
+    function ResolveTypeName(const ATypeName: string; const AFromUnit: TUnitIndex;
+      AWithImplementation: Boolean; out AResult: TResolvedSymbol): Boolean; overload;
     function ResolveTypeText(const AText: string; const AFromUnit: TUnitIndex; AWithImplementation: Boolean;
       out AResult: TResolvedSymbol): Boolean;
     function QualifyType(const AText: string; const AFromUnit: TUnitIndex; AWithImplementation: Boolean): string;
@@ -342,7 +348,9 @@ type
     procedure CollectInlineVars(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
       ASeen: TDictionary<string, Boolean>);
   public
-    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil); overload;
+    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AIndex: ISymbolIndex); overload;
     /// <summary>Wie Create, aber Bäume, die ATreeUnits hält, wertet der Resolver nicht selbst aus, sondern nimmt
     /// deren geteilten Stand (#1322). So extrahiert ein Prüflauf die Unit einmal statt je Typabfrage.</summary>
     constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
@@ -381,7 +389,10 @@ type
       out AQualified: string): Boolean;
     /// <summary>Löst die Kette ANames (A.B.C) so auf, wie sie an AOffset stünde.</summary>
     function ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
-      AOffset: Integer; AInherited: Boolean = False): TResolvedSymbol;
+      AOffset: Integer; AInherited: Boolean): TResolvedSymbol; overload;
+    /// <summary>Wie oben mit AInherited = False.</summary>
+    function ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+      AOffset: Integer): TResolvedSymbol; overload;
     /// <summary>Typ des Bezeichners an APosition (Aliase verfolgt); Typen liefern sich selbst.</summary>
     function ResolveType(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TResolvedSymbol;
     /// <summary>Alle an AOffset ohne Qualifizierung sichtbaren Namen, nächster Gültigkeitsbereich zuerst:
@@ -393,7 +404,9 @@ type
     /// <summary>Zweiter Teil (#616): Units aus uses und System, ohne Namen, die der erste Teil schon brachte.
     /// Leer ohne vorheriges OwnScopeCandidates. Mit AWithIntrinsics zuletzt die Bezeichner von System ohne
     /// Quelltext (#880: Assigned, SetLength, Integer ...), soweit kein indexierter Name sie schon brachte.</summary>
-    function UsedScopeCandidates(AWithIntrinsics: Boolean = False): TArray<TResolvedSymbol>;
+    function UsedScopeCandidates(AWithIntrinsics: Boolean): TArray<TResolvedSymbol>; overload;
+    /// <summary>Wie oben mit AWithIntrinsics = False.</summary>
+    function UsedScopeCandidates: TArray<TResolvedSymbol>; overload;
     /// <summary>Alle gleichnamigen verschachtelten Routinen neben der lokalen Routine ASymbol (#881), also
     /// ihre Überladungen in derselben umgebenden Routine, ASymbol eingeschlossen. Nach Resolve auf dem Baum,
     /// aus dem ASymbol stammt; sonst nur ASymbol.</summary>
@@ -491,7 +504,10 @@ type
     /// ("IComparer&lt;TKunde&gt;"); ohne gilt die des Index. Bei generischen Interfaces trägt jedes Ergebnis die
     /// Bindungen ("T=TKunde", ohne Unit-Präfix) in Bindings; verglichen wird mit eingesetzten Typen.</summary>
     function MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;
-      const AAncestors: TArray<string> = nil): TArray<TResolvedSymbol>; overload;
+      const AAncestors: TArray<string>): TArray<TResolvedSymbol>; overload;
+    /// <summary>Wie oben mit der Vorfahrenliste des Index (AAncestors = nil).</summary>
+    function MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
+      overload;
     /// <summary>Wie oben (#1000), dazu: ADelegated sind Interfaces, die eine Property mit implements übernimmt
     /// (samt ihren Vorfahren); Methodenzuordnungen "procedure IFoo.Bar = Baz" zählen als Implementierung.
     /// AComplete ist False, wenn die Kette der Vorfahrklassen vor TObject abbricht; dann kann ein unbekannter
@@ -501,7 +517,9 @@ type
       const AAncestors, ADelegated: TArray<string>; out AComplete: Boolean): TArray<TResolvedSymbol>; overload;
     /// <summary>Entfernt Unit-Präfixe aus einem Typtext ("Kunden.TKunde" → "TKunde", auch in Typargumenten):
     /// Units des Index und AOwnUnit.</summary>
-    function UnqualifyType(const AText: string; const AOwnUnit: string = ''): string;
+    function UnqualifyType(const AText, AOwnUnit: string): string; overload;
+    /// <summary>Wie oben ohne eigene Unit (AOwnUnit = '').</summary>
+    function UnqualifyType(const AText: string): string; overload;
     /// <summary>Name (Typ, Routine, Konstante …) so aufgelöst, wie er in AFromUnit stünde (cref, #654).</summary>
     function ResolveNameFrom(const AFromUnit: TUnitIndex; const AName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Ziel eines cref von AFromUnit aus (#654, #979): Typ, Typ.Mitglied, Mitglied von AContainer oder
@@ -850,6 +868,11 @@ begin
 end;
 
 { TNameResolver }
+
+constructor TNameResolver.Create(const AIndex: ISymbolIndex);
+begin
+  Create(AIndex, nil);
+end;
 
 constructor TNameResolver.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc);
 begin
@@ -1281,6 +1304,24 @@ begin
   Result.IsParameter := AIsParameter;
   if AKind in RoutineKinds then
     TIndexExtractor.ParamInfo(ANode, Result.MinArgs, Result.MaxArgs, Result.ParamTypes);
+end;
+
+function TNameResolver.LookupInUnit(const AUnit: TUnitIndex; const AName: string;
+  AOnlyInterface, AOnlyTypes: Boolean; out AResult: TResolvedSymbol): Boolean;
+begin
+  Result := LookupInUnit(AUnit, AName, AOnlyInterface, AOnlyTypes, AResult, -1);
+end;
+
+function TNameResolver.LookupGlobal(const AUnit: TUnitIndex; const AName: string;
+  AWithImplementation, AOnlyTypes: Boolean; out AResult: TResolvedSymbol): Boolean;
+begin
+  Result := LookupGlobal(AUnit, AName, AWithImplementation, AOnlyTypes, AResult, -1);
+end;
+
+function TNameResolver.ResolveTypeName(const ATypeName: string; const AFromUnit: TUnitIndex;
+  AWithImplementation: Boolean; out AResult: TResolvedSymbol): Boolean;
+begin
+  Result := ResolveTypeName(ATypeName, AFromUnit, AWithImplementation, AResult, -1);
 end;
 
 function TNameResolver.LookupInUnit(const AUnit: TUnitIndex; const AName: string;
@@ -3063,6 +3104,12 @@ begin
 end;
 
 function TNameResolver.ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+  AOffset: Integer): TResolvedSymbol;
+begin
+  Result := ResolveChain(ATree, AFileName, ANames, AOffset, False);
+end;
+
+function TNameResolver.ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
   AOffset: Integer; AInherited: Boolean): TResolvedSymbol;
 var
   Results: TArray<TResolvedSymbol>;
@@ -3480,6 +3527,11 @@ begin
   Result.MaxArgs := AIntrinsic.MaxArgs;
   Result.InInterface := True;
   Result.Builtin := True;
+end;
+
+function TNameResolver.UsedScopeCandidates: TArray<TResolvedSymbol>;
+begin
+  Result := UsedScopeCandidates(False);
 end;
 
 function TNameResolver.UsedScopeCandidates(AWithIntrinsics: Boolean): TArray<TResolvedSymbol>;
@@ -4096,6 +4148,11 @@ begin
   Result := Result + ')';
 end;
 
+function TNameResolver.UnqualifyType(const AText: string): string;
+begin
+  Result := UnqualifyType(AText, '');
+end;
+
 function TNameResolver.UnqualifyType(const AText, AOwnUnit: string): string;
 var
   Index, Start, Dot: Integer;
@@ -4130,6 +4187,12 @@ begin
       Result := Result + AText[Index];
       Inc(Index);
     end;
+end;
+
+function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex;
+  const ATypeName: string): TArray<TResolvedSymbol>;
+begin
+  Result := MissingInterfaceMembers(AFromUnit, ATypeName, nil);
 end;
 
 function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;

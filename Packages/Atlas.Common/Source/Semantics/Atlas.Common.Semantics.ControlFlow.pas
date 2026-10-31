@@ -138,8 +138,10 @@ type
     /// oder einen Anweisungsblock. Der Syntaxbaum muss länger leben als der Graph.
     /// ALookup nennt die Übergabeart von Argumenten; nil = TFlowSignatures.FromTree
     /// mit der Wurzel des Baums.</summary>
-    class function Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup = nil): TControlFlowGraph;
-      static;
+    class function Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup): TControlFlowGraph;
+      overload; static;
+    /// <summary>Wie oben mit ALookup = nil.</summary>
+    class function Build(ARoutine: TSyntaxNode): TControlFlowGraph; overload; static;
     function NodeOf(ASyntax: TSyntaxNode): TFlowNode;
     function IsReachable(ANode: TFlowNode): TFlowAnswer;
     /// <summary>Wird A auf jedem Weg vom Anfang zu B durchlaufen?</summary>
@@ -1277,6 +1279,11 @@ destructor TControlFlowGraph.Destroy;
 begin
   FNodes.Free;
   inherited;
+end;
+
+class function TControlFlowGraph.Build(ARoutine: TSyntaxNode): TControlFlowGraph;
+begin
+  Result := Build(ARoutine, nil);
 end;
 
 class function TControlFlowGraph.Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup):

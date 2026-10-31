@@ -55,7 +55,8 @@ type
     FPos: Integer;
     procedure Fail(const AMessage: string);
     function AtEnd: Boolean;
-    function Peek(AOffset: Integer = 0): Char;
+    function Peek(AOffset: Integer): Char; overload;
+    function Peek: Char; overload;
     function StartsWith(const AValue: string): Boolean;
     procedure Expect(const AValue: string);
     procedure SkipSpace;
@@ -149,6 +150,11 @@ end;
 function TParser.AtEnd: Boolean;
 begin
   Result := FPos > Length(FText);
+end;
+
+function TParser.Peek: Char;
+begin
+  Result := Peek(0);
 end;
 
 function TParser.Peek(AOffset: Integer): Char;

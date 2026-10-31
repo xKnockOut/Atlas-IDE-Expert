@@ -27,8 +27,13 @@ type
     class function FindInclude(const AName, AFromFile: string; const ASearchPaths: TArray<string>;
       const AFileExists: TIncludeFileExists; out AFileName: string): Boolean; static;
     /// <summary>Resolver für den Präprozessor. Ohne AFileExists/AReadText gilt das Dateisystem.</summary>
-    class function Resolver(const ASearchPaths: TArray<string>; const AFileExists: TIncludeFileExists = nil;
-      const AReadText: TIncludeReadText = nil): TIncludeResolver; static;
+    class function Resolver(const ASearchPaths: TArray<string>; const AFileExists: TIncludeFileExists;
+      const AReadText: TIncludeReadText): TIncludeResolver; overload; static;
+    /// <summary>Wie oben mit AReadText = nil.</summary>
+    class function Resolver(const ASearchPaths: TArray<string>;
+      const AFileExists: TIncludeFileExists): TIncludeResolver; overload; static;
+    /// <summary>Wie oben über das Dateisystem (AFileExists = nil, AReadText = nil).</summary>
+    class function Resolver(const ASearchPaths: TArray<string>): TIncludeResolver; overload; static;
     /// <summary>Liest eine Datei über TFileEncoding; False, wenn sie fehlt oder nicht lesbar ist.</summary>
     class function ReadFile(const AFileName: string; out AText: string): Boolean; static;
   end;
@@ -131,6 +136,17 @@ begin
     begin
       Result := TIncludeFiles.ReadFile(AFileName, AText);
     end;
+end;
+
+class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>;
+  const AFileExists: TIncludeFileExists): TIncludeResolver;
+begin
+  Result := Resolver(ASearchPaths, AFileExists, nil);
+end;
+
+class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>): TIncludeResolver;
+begin
+  Result := Resolver(ASearchPaths, nil, nil);
 end;
 
 class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>; const AFileExists: TIncludeFileExists;

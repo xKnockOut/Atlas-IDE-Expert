@@ -85,7 +85,10 @@ type
     /// implementation-uses, die schon im interface stehen; mit ASort alphabetisch sortieren.
     /// Listen mit Direktiven oder //-Kommentaren bleiben unangetastet. False ohne Änderung.</summary>
     class function Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
-      const ALineBreak: string; out AEdits: TArray<TTextEdit>; AByNamespace: Boolean = False): Boolean; static;
+      const ALineBreak: string; out AEdits: TArray<TTextEdit>; AByNamespace: Boolean): Boolean; overload; static;
+    /// <summary>Wie oben mit AByNamespace = False.</summary>
+    class function Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
+      const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; overload; static;
   end;
 
 implementation
@@ -446,6 +449,12 @@ begin
     end;
     Inc(Index);
   end;
+end;
+
+class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
+  const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
+begin
+  Result := Organize(ATokens, AText, ASort, ALineBreak, AEdits, False);
 end;
 
 class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;

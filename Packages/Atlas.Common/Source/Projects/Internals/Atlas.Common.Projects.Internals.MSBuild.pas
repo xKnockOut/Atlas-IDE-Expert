@@ -23,7 +23,9 @@ type
     FFileExists: TFunc<string, Boolean>;
   public
     /// <summary>AFileExists beantwortet Exists(...); nil = immer falsch.</summary>
-    constructor Create(const AFileExists: TFunc<string, Boolean> = nil);
+    constructor Create(const AFileExists: TFunc<string, Boolean>); overload;
+    /// <summary>Wie oben mit AFileExists = nil.</summary>
+    constructor Create; overload;
     destructor Destroy; override;
     function Get(const AName: string): string;
     procedure SetValue(const AName, AValue: string);
@@ -60,6 +62,11 @@ type
   end;
 
 { TMSBuildProperties }
+
+constructor TMSBuildProperties.Create;
+begin
+  Create(nil);
+end;
 
 constructor TMSBuildProperties.Create(const AFileExists: TFunc<string, Boolean>);
 begin
