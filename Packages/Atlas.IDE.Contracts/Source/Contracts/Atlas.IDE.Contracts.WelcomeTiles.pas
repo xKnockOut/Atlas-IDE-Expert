@@ -10,8 +10,7 @@
 // Umgekehrt stellt die Willkommensseite IAtlasWelcomeBoard (Inhalt einer
 // Kachel geändert) und IAtlasWelcomeProjects (Projektliste und gewähltes
 // Projekt) bereit. Nur Interfaces und Records, kein Code; die Ansicht
-// übergibt ein Steuerelement, daher vcl. Liegt bis zum Pilot (#1456) im
-// Plugin-Package, danach in Atlas.IDE.Contracts. Alle Aufrufe im Hauptthread.
+// übergibt ein Steuerelement, daher vcl. Liegt im Package Atlas.IDE.Contracts (#1456). Alle Aufrufe im Hauptthread.
 
 interface
 

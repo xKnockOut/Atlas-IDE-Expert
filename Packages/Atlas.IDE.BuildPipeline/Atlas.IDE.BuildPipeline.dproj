@@ -93,6 +93,7 @@
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Expert.dcp"/>
+        <DCCReference Include="Atlas.IDE.Contracts.dcp"/>
         <DCCReference Include="Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Gate.pas"/>
         <DCCReference Include="Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Inbox.pas"/>
         <DCCReference Include="Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas"/>

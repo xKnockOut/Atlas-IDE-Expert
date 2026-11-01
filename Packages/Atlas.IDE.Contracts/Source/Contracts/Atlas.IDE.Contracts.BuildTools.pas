@@ -5,8 +5,8 @@
 // (Startprofile #575, Projektaufgaben #900); die Schnellaktionen der
 // Willkommensseite (#764) fragen sie über die Registry und kommen ohne das
 // Modul aus. Wer das Ende einer Projektaufgabe wissen will, stellt einen
-// IAtlasTaskListener bereit. Nur Interfaces und Records, kein Code. Liegt bis
-// zum Pilot (#1456) im Plugin-Package, danach in Atlas.IDE.Contracts.
+// IAtlasTaskListener bereit. Nur Interfaces und Records, kein Code. Liegt im
+// Package Atlas.IDE.Contracts (#1456).
 
 interface
 
