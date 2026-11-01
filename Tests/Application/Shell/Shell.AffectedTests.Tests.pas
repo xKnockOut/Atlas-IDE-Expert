@@ -59,13 +59,21 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       if SameText(ExtractFileName(AFileName), 'Tests.dpr') then
-        AText := cTestProgram
+      begin
+        AText := cTestProgram;
+      end
       else if SameText(ExtractFileName(AFileName), 'Mehr.dpr') then
-        AText := cOtherTestProgram
+      begin
+        AText := cOtherTestProgram;
+      end
       else if SameText(ExtractFileName(AFileName), 'App.dpr') then
-        AText := cApplication
+      begin
+        AText := cApplication;
+      end
       else
+      begin
         AText := '';
+      end;
       Result := AText <> '';
     end;
 end;

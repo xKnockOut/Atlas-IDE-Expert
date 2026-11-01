@@ -108,8 +108,10 @@ var
 begin
   Result := '';
   for mFinding in AFound do
+  begin
     Result := Result + Format('%d:%d %s', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
       mFinding.Message]) + #10;
+  end;
 end;
 
 function InUnit(const AInterface, AImplementation: string): string;

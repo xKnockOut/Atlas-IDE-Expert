@@ -62,9 +62,13 @@ end;
 class function TLspDfmPropertyRules.UnitOf(const AFileName: string): string;
 begin
   if SameText(ExtractFileExt(AFileName), '.dfm') or SameText(ExtractFileExt(AFileName), '.fmx') then
-    Result := ChangeFileExt(AFileName, '.pas')
+  begin
+    Result := ChangeFileExt(AFileName, '.pas');
+  end
   else
+  begin
     Result := AFileName;
+  end;
 end;
 
 class function TLspDfmPropertyRules.BuildEdit(const AUnits: TArray<string>; const ACheck: TDfmRulesCheckFunc;
@@ -92,19 +96,27 @@ begin
     for UnitFile in AUnits do
     begin
       if Seen.ContainsKey(UpperCase(UnitFile)) then
+      begin
         Continue;
+      end;
       Seen.Add(UpperCase(UnitFile), True);
       if not ACheck(UnitFile, Findings) then
+      begin
         Continue;
+      end;
       for Finding in Findings do
       begin
         if not SameText(Finding.RuleId, RuleId) then
+        begin
           Continue;
+        end;
         for Fix in Finding.Fixes do
         begin
           // Nur Korrekturen in der Formulardatei; die erste je Treffer.
           if Fix.FileName = '' then
+          begin
             Continue;
+          end;
           if not Edits.TryGetValue(UpperCase(Fix.FileName), Existing) then
           begin
             Existing := nil;
@@ -112,11 +124,19 @@ begin
           end;
           Fits := True;
           for Edit in Fix.Edits do
+          begin
             for Taken in Existing do
+            begin
               if Overlaps(Edit.Range, Taken.Range) then
+              begin
                 Fits := False;
+              end;
+            end;
+          end;
           if Fits then
+          begin
             Existing := Existing + Fix.Edits;
+          end;
           Edits.AddOrSetValue(UpperCase(Fix.FileName), Existing);
           Break;
         end;
@@ -127,7 +147,9 @@ begin
     begin
       Existing := Edits[UpperCase(FileName)];
       if Length(Existing) = 0 then
+      begin
         Continue;
+      end;
       Document := TJSONObject.Create;
       Document.AddPair('uri', TDocumentUris.FromPath(FileName));
       Document.AddPair('version', TJSONNull.Create);

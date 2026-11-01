@@ -101,26 +101,46 @@ begin
   mText := Trim(ATypeText);
   // "type Integer" ist ein eigener Typ derselben Art.
   if StartsText('type ', mText) then
+  begin
     mText := Trim(Copy(mText, 6, MaxInt));
+  end;
   if mText = '' then
+  begin
     Exit(TResolvedTypeKind.Unknown);
+  end;
   if StartsStr('^', mText) then
+  begin
     Exit(TResolvedTypeKind.Pointer_);
+  end;
   if StartsText('class of ', mText) then
+  begin
     Exit(TResolvedTypeKind.ClassReference);
+  end;
   if StartsText('set of ', mText) then
+  begin
     Exit(TResolvedTypeKind.Set_);
+  end;
   if StartsText('array', mText) or StartsText('packed array', mText) then
+  begin
     Exit(TResolvedTypeKind.Array_);
+  end;
   if StartsText('procedure', mText) or StartsText('function', mText) or StartsText('reference to ', mText) then
+  begin
     Exit(TResolvedTypeKind.Procedure_);
+  end;
   if SameText(mText, 'file') or StartsText('file of ', mText) or SameText(mText, 'Text') or
     SameText(mText, 'TextFile') then
+  begin
     Exit(TResolvedTypeKind.File_);
+  end;
   if StartsText('string[', mText) then
+  begin
     Exit(TResolvedTypeKind.String_);
+  end;
   if StartsStr('(', mText) then
+  begin
     Exit(TResolvedTypeKind.Enumeration);
+  end;
   Result := OfBuiltin(mText);
 end;
 
@@ -135,15 +155,23 @@ var
 begin
   // Eingebaute Typen tragen in der Namensauflösung die Symbolart RecordType; maßgeblich ist ihr Name.
   if AType.Builtin then
+  begin
     Exit(OfBuiltin(AType.Name));
+  end;
   if not AType.Found or not AType.IsType then
+  begin
     Exit(TResolvedTypeKind.Unknown);
+  end;
   // "TClass = class of TObject" steht im Index als Klasse.
   mText := ADeclaredText;
   if mText = '' then
+  begin
     mText := DeclaredText(AType.Signature);
+  end;
   if StartsText('class of ', mText) then
+  begin
     Exit(TResolvedTypeKind.ClassReference);
+  end;
   case AType.SymbolKind of
     TIndexSymbolKind.ClassType:
       Result := TResolvedTypeKind.Class_;
@@ -193,7 +221,9 @@ begin
           Result := Copy(ASignature, mIndex + 1, MaxInt);
           mEnd := Pos(';', Result);
           if mEnd > 0 then
+          begin
             Result := Copy(Result, 1, mEnd - 1);
+          end;
           Exit(Trim(Result));
         end;
     end;

@@ -40,7 +40,9 @@ begin
   begin
     Module := LoadLibrary('msvcrt.dll');
     if Module <> 0 then
+    begin
       @ResetFunction := GetProcAddress(Module, '_resetstkoflw');
+    end;
     Looked := True;
   end;
   Result := Assigned(ResetFunction) and (ResetFunction() <> 0);

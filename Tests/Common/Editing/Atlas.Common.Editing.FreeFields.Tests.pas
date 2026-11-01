@@ -115,18 +115,26 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   SetLength(Order, Length(AEdits));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   for Index := 0 to High(Order) do
+  begin
     for Inner := Index + 1 to High(Order) do
+    begin
       if OffsetOf(AEdits[Order[Index]].Range.StartPos) < OffsetOf(AEdits[Order[Inner]].Range.StartPos) then
       begin
         Swap := Order[Index];
         Order[Index] := Order[Inner];
         Order[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index in Order do
   begin
@@ -149,8 +157,12 @@ begin
     Fields := TFreeFields.Analyze(Tree, AText, nil);
     Missing := nil;
     for Field in Fields do
+    begin
       if Field.State = TOwnedFieldState.NotFreed then
+      begin
         Missing := Missing + [Field];
+      end;
+    end;
     Assert.IsTrue(TFreeFields.Edits(Tree, AText, Missing, AStyle, Edits), AText);
   finally
     Tree.Free;
@@ -625,7 +637,9 @@ begin
   Fields := Analyze(Text);
   Assert.AreEqual(4, Integer(Length(Fields)));
   for Field in Fields do
+  begin
     Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Field.State), Field.Name);
+  end;
   Assert.AreEqual('wird von TFoo.TakeA zurückgegeben', Fields[0].Reason);
   Assert.AreEqual('wird von TFoo.TakeB zurückgegeben', Fields[1].Reason);
   Assert.AreEqual('wird in TFoo.Hand an AOther.Items übergeben', Fields[2].Reason);

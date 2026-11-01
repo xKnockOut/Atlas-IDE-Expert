@@ -98,15 +98,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for Run := 1 to Index - 1 do
+  begin
     if AText[Run] = #10 then
     begin
       Inc(Line);
       LineStart := Run + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -207,7 +211,9 @@ begin
       begin
         Result := True;
         if ANode.Kind = TSyntaxKind.Attribute then
+        begin
           Found := Found + TAttributes.Names(ANode);
+        end;
       end);
     Assert.AreEqual('Test,TestCase', string.Join(',', Found));
     Assert.AreEqual(0, Integer(Length(TAttributes.Names(nil))));

@@ -50,9 +50,13 @@ var
   Data: TWin32FileAttributeData;
 begin
   if not GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @Data) then
+  begin
     Exit('');
+  end;
   if (Data.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+  begin
     Exit('');
+  end;
   Result := Format('%u.%u.%u.%u', [Data.ftLastWriteTime.dwHighDateTime, Data.ftLastWriteTime.dwLowDateTime,
     Data.nFileSizeHigh, Data.nFileSizeLow]);
 end;
@@ -91,33 +95,47 @@ begin
         for Dir in Tracker.Directories do
         begin
           if Length(Handles) >= MAXIMUM_WAIT_OBJECTS then
+          begin
             Break;
+          end;
           Notify := FindFirstChangeNotification(PChar(Dir), False, FILE_NOTIFY_CHANGE_FILE_NAME or
             FILE_NOTIFY_CHANGE_LAST_WRITE or FILE_NOTIFY_CHANGE_SIZE);
           if Notify <> INVALID_HANDLE_VALUE then
+          begin
             Handles := Handles + [Notify];
+          end;
         end;
         try
           repeat
             Wait := WaitForMultipleObjects(Length(Handles), @Handles[0], False, PollMs);
             if Wait = WAIT_OBJECT_0 then
+            begin
               Exit;
+            end;
             if Wait = WAIT_OBJECT_0 + 1 then
+            begin
               Break;
+            end;
             if (Wait > WAIT_OBJECT_0 + 1) and (Wait < WAIT_OBJECT_0 + Cardinal(Length(Handles))) then
             begin
               // Mehrere Meldungen eines Speichervorgangs zusammenfassen.
               if WaitForSingleObject(Stop, SettleMs) = WAIT_OBJECT_0 then
+              begin
                 Exit;
+              end;
               FindNextChangeNotification(Handles[Wait - WAIT_OBJECT_0]);
             end;
             Changed := Tracker.Poll;
             if Length(Changed) > 0 then
+            begin
               OnChanged(Changed);
+            end;
           until False;
         finally
           for Index := 2 to High(Handles) do
+          begin
             FindCloseChangeNotification(Handles[Index]);
+          end;
         end;
       until False;
     end);
@@ -134,9 +152,13 @@ begin
     FThread.Free;
   end;
   if FReconfigure <> 0 then
+  begin
     CloseHandle(FReconfigure);
+  end;
   if FStop <> 0 then
+  begin
     CloseHandle(FStop);
+  end;
   FTracker.Free;
   inherited;
 end;

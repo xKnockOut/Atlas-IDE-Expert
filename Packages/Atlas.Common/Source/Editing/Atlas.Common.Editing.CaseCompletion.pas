@@ -74,7 +74,9 @@ function Compare(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
@@ -86,14 +88,18 @@ function Prev(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
@@ -102,18 +108,28 @@ var
 begin
   Result := False;
   if AToken.Kind <> TPascalTokenKind.Keyword then
+  begin
     Exit;
+  end;
   for Word in AWords do
+  begin
     if AToken.IsKeyword(Word) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 /// <summary>Breite von AIndent, Tabulator als zwei Zeichen.</summary>
@@ -123,10 +139,16 @@ var
 begin
   Result := 0;
   for Character in AIndent do
+  begin
     if Character = #9 then
-      Inc(Result, 2)
+    begin
+      Inc(Result, 2);
+    end
     else
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 /// <summary>case-Anweisung, deren Zweig an AIndex (";" bzw. "of") endet; -1 sonst.</summary>
@@ -143,15 +165,23 @@ begin
     while AIndex >= 0 do
     begin
       if ATokens[AIndex].IsSymbol(')') or ATokens[AIndex].IsSymbol(']') then
-        Inc(Parens)
+      begin
+        Inc(Parens);
+      end
       else if ATokens[AIndex].IsSymbol('(') or ATokens[AIndex].IsSymbol('[') then
-        Dec(Parens)
+      begin
+        Dec(Parens);
+      end
       else if (Parens = 0) and ATokens[AIndex].IsKeyword('case') then
-        Exit(AIndex)
+      begin
+        Exit(AIndex);
+      end
       else if (Parens = 0) and ((ATokens[AIndex].Kind = TPascalTokenKind.Keyword) and
         not IsKeywordIn(ATokens[AIndex], ['not', 'and', 'or', 'xor', 'div', 'mod', 'shl', 'shr', 'nil', 'inherited'])
         or ATokens[AIndex].IsSymbol(';')) then
+      begin
         Exit;
+      end;
       AIndex := Prev(ATokens, AIndex);
     end;
     Exit;
@@ -162,28 +192,38 @@ begin
   while AIndex >= 0 do
   begin
     if ATokens[AIndex].IsSymbol(')') or ATokens[AIndex].IsSymbol(']') then
-      Inc(Parens)
+    begin
+      Inc(Parens);
+    end
     else if ATokens[AIndex].IsSymbol('(') or ATokens[AIndex].IsSymbol('[') then
     begin
       if Parens = 0 then
+      begin
         Exit;
+      end;
       Dec(Parens);
     end
     else if ATokens[AIndex].IsKeyword('end') or ATokens[AIndex].IsKeyword('until') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if IsKeywordIn(ATokens[AIndex], ['begin', 'try', 'asm', 'case', 'repeat']) then
     begin
       if Depth = 0 then
       begin
         if ATokens[AIndex].IsKeyword('case') then
+        begin
           Result := AIndex;
+        end;
         Exit;
       end;
       Dec(Depth);
     end
     else if (Depth = 0) and IsKeywordIn(ATokens[AIndex], ['var', 'const', 'type', 'procedure', 'function',
       'constructor', 'destructor', 'implementation', 'uses', 'record', 'class', 'object', 'interface']) then
+    begin
       Exit;
+    end;
     AIndex := Prev(ATokens, AIndex);
   end;
 end;
@@ -206,7 +246,9 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if Compare(ATokens[Index].StartPos, APosition) >= 0 then
+    begin
       Break;
+    end;
     Before := Index;
   end;
   if (Before >= 0) and (ATokens[Before].Kind = TPascalTokenKind.Identifier) and
@@ -216,30 +258,46 @@ begin
     Before := Before - 1;
   end;
   if Before < 0 then
+  begin
     Exit;
+  end;
   Index := Before;
   if IsTrivia(ATokens[Index]) then
+  begin
     Index := Prev(ATokens, Index);
+  end;
   if (Index < 0) or not (ATokens[Index].IsKeyword('of') or ATokens[Index].IsSymbol(';')) then
+  begin
     Exit;
+  end;
   CaseIndex := EnclosingCase(ATokens, Index);
   if CaseIndex < 0 then
+  begin
     Exit;
+  end;
   // "of" der case-Anweisung.
   OfIndex := Next(ATokens, CaseIndex);
   Parens := 0;
   while OfIndex <= Index do
   begin
     if ATokens[OfIndex].IsSymbol('(') or ATokens[OfIndex].IsSymbol('[') then
-      Inc(Parens)
+    begin
+      Inc(Parens);
+    end
     else if ATokens[OfIndex].IsSymbol(')') or ATokens[OfIndex].IsSymbol(']') then
-      Dec(Parens)
+    begin
+      Dec(Parens);
+    end
     else if (Parens = 0) and ATokens[OfIndex].IsKeyword('of') then
+    begin
       Break;
+    end;
     OfIndex := Next(ATokens, OfIndex);
   end;
   if (OfIndex > Index) or not ATokens[OfIndex].IsKeyword('of') then
+  begin
     Exit;
+  end;
   ASlot.CasePos := ATokens[CaseIndex].StartPos;
   ASlot.CaseIndent := TTextLines.IndentOf(AText, ATokens[CaseIndex].StartPos.Line);
   // Vorwärts bis zum "end" der case-Anweisung: Marken sammeln, else-Teil erkennen.
@@ -268,30 +326,48 @@ begin
         'constructor', 'destructor', 'implementation', 'initialization', 'finalization', 'var', 'const', 'type']) and
         not (IsKeywordIn(ATokens[Index], ['procedure', 'function']) and (Prev(ATokens, Index) >= 0) and
         ATokens[Prev(ATokens, Index)].IsSymbol(':=')) then
+      begin
         Break;
+      end;
       if ATokens[Index].IsKeyword('else') and (Prev(ATokens, Index) >= 0) and
         (ATokens[Prev(ATokens, Index)].IsSymbol(';') or (Prev(ATokens, Index) = OfIndex)) then
       begin
         InElse := True;
         // Cursor im else-Teil: dort stehen Anweisungen, keine Zweige.
         if Compare(ATokens[Index].StartPos, APosition) < 0 then
+        begin
           Exit;
+        end;
       end;
     end;
     if (Index <> Prefix) and (Compare(ATokens[Index].StartPos, APosition) >= 0) then
+    begin
       ASlot.Following := True;
+    end;
     if IsKeywordIn(ATokens[Index], ['begin', 'try', 'asm', 'case']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsKeyword('end') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if ATokens[Index].IsKeyword('repeat') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsKeyword('until') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-      Inc(Parens)
+    begin
+      Inc(Parens);
+    end
     else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
+    begin
       Dec(Parens);
+    end;
     if (Depth = 0) and (Parens = 0) and not InElse then
     begin
       if ATokens[Index].IsSymbol(';') then
@@ -315,7 +391,9 @@ begin
         else if Index <> Prefix then
         begin
           if FirstLabel < 0 then
+          begin
             FirstLabel := Index;
+          end;
           Element := Element + CleanName(ATokens[Index].Text);
         end;
       end;
@@ -327,13 +405,21 @@ begin
   // Einrückung wie die vorhandenen Zweige, sonst eine Ebene tiefer als case.
   if (FirstLabel >= 0) and (Prev(ATokens, FirstLabel) >= 0) and
     (ATokens[Prev(ATokens, FirstLabel)].EndPos.Line < ATokens[FirstLabel].StartPos.Line) then
-    ASlot.BranchIndent := TTextLines.IndentOf(AText, ATokens[FirstLabel].StartPos.Line)
+  begin
+    ASlot.BranchIndent := TTextLines.IndentOf(AText, ATokens[FirstLabel].StartPos.Line);
+  end
   else
+  begin
     ASlot.BranchIndent := ASlot.CaseIndent + '  ';
+  end;
   if Prefix >= 0 then
-    ASlot.EditRange := TTextRange.Create(ATokens[Before].EndPos, ATokens[Prefix].EndPos)
+  begin
+    ASlot.EditRange := TTextRange.Create(ATokens[Before].EndPos, ATokens[Prefix].EndPos);
+  end
   else
+  begin
     ASlot.EditRange := TTextRange.Create(ATokens[Before].EndPos, APosition);
+  end;
   Result := True;
 end;
 
@@ -351,8 +437,12 @@ class function TCaseCompletion.Missing(const AValues, ALabels: TArray<string>;
     Index: Integer;
   begin
     for Index := 0 to High(AValues) do
+    begin
       if SameText(AValues[Index], LastPart(AName)) then
+      begin
         Exit(Index);
+      end;
+    end;
     Result := -1;
   end;
 
@@ -365,24 +455,38 @@ begin
   AMissing := nil;
   SetLength(Present, Length(AValues));
   for Index := 0 to High(Present) do
+  begin
     Present[Index] := False;
+  end;
   for Element in ALabels do
   begin
     Bounds := Element.Split(['..']);
     if (Length(Bounds) < 1) or (Length(Bounds) > 2) then
+    begin
       Exit(False);
+    end;
     Low_ := IndexOfValue(Bounds[0]);
     High_ := Low_;
     if Length(Bounds) = 2 then
+    begin
       High_ := IndexOfValue(Bounds[1]);
+    end;
     if (Low_ < 0) or (High_ < 0) then
+    begin
       Exit(False);
+    end;
     for Index := Low_ to High_ do
+    begin
       Present[Index] := True;
+    end;
   end;
   for Index := 0 to High(AValues) do
+  begin
     if not Present[Index] then
+    begin
       AMissing := AMissing + [AValues[Index]];
+    end;
+  end;
   Result := True;
 end;
 
@@ -396,18 +500,24 @@ begin
   begin
     Result := Result + ALineBreak + ASlot.BranchIndent + APrefix + AMissing[Index] + ': ';
     if Index = 0 then
+    begin
       Result := Result + '$0';
+    end;
     Result := Result + ';';
   end;
   if not ASlot.HasEnd and not ASlot.Following then
+  begin
     Result := Result + ALineBreak + ASlot.CaseIndent + 'end;';
+  end;
 end;
 
 class function TCaseCompletion.EndText(const ASlot: TCaseBranchSlot; const ALineBreak: string): string;
 begin
   Result := '';
   if not ASlot.HasEnd and ASlot.Following then
+  begin
     Result := ALineBreak + ASlot.CaseIndent + 'end;';
+  end;
 end;
 
 function Contains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
@@ -423,19 +533,25 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Node := ATree.Root;
   repeat
     Descended := False;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if Contains(Node[Index], APosition) then
       begin
         Node := Node[Index];
         if Node.Kind = TSyntaxKind.CaseStatement then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
+    end;
   until not Descended;
 end;
 
@@ -444,7 +560,9 @@ function TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer
 begin
   Result := 0;
   while (Result <= High(ATokens)) and (ATokens[Result].Offset < AOffset) do
+  begin
     Inc(Result);
+  end;
 end;
 
 class function TCaseCompletion.OfPosition(ATree: TSyntaxTree; ACase: TSyntaxNode;
@@ -460,9 +578,13 @@ begin
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < ACase.EndOffset) do
   begin
     if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
-      Inc(Parens)
+    begin
+      Inc(Parens);
+    end
     else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
-      Dec(Parens)
+    begin
+      Dec(Parens);
+    end
     else if (Parens = 0) and Tokens[Index].IsKeyword('of') then
     begin
       APosition := Tokens[Index].EndPos;
@@ -489,50 +611,74 @@ begin
   AHasElse := False;
   Result := False;
   if (ACase = nil) or not OfPosition(ATree, ACase, OfPos) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   if not BranchSlot(AText, Tokens, OfPos, Slot) or not Slot.HasEnd or not Missing(AValues, Slot.Labels, Absent) or
     (Absent = nil) then
+  begin
     Exit;
+  end;
   // Anker: "else" der case-Anweisung, sonst ihr "end".
   ElseNode := ACase.FindChild(TSyntaxKind.CaseElse);
   AHasElse := ElseNode <> nil;
   if AHasElse then
-    Anchor := TokenAt(Tokens, ElseNode.StartOffset)
+  begin
+    Anchor := TokenAt(Tokens, ElseNode.StartOffset);
+  end
   else
   begin
     Anchor := TokenAt(Tokens, ACase.EndOffset) - 1;
     while (Anchor >= 0) and IsTrivia(Tokens[Anchor]) do
+    begin
       Dec(Anchor);
+    end;
   end;
   if (Anchor < 0) or (Anchor > High(Tokens)) or not (Tokens[Anchor].IsKeyword('else') or
     Tokens[Anchor].IsKeyword('end')) then
+  begin
     Exit;
+  end;
   Before := Prev(Tokens, Anchor);
   if Before < 0 then
+  begin
     Exit;
+  end;
   if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
+  begin
+    LineBreak := #13#10;
+  end
   else
+  begin
     LineBreak := #10;
+  end;
   Semicolon := '';
   if not (Tokens[Before].IsSymbol(';') or Tokens[Before].IsKeyword('of')) then
+  begin
     Semicolon := ';';
+  end;
   Branches := '';
   for Index := 0 to High(Absent) do
+  begin
     Branches := Branches + LineBreak + Slot.BranchIndent + APrefix + Absent[Index] + ': ;';
+  end;
   // Vom letzten Token davor (auch einem Kommentar) bis vor den Anker: neue Zeilen, dann der Anker in der
   // Einrückung von case. Das fehlende ";" gehört hinter den Zweig, nicht hinter seinen Kommentar.
   if Before = Anchor - 1 then
+  begin
     AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Before].EndPos, Tokens[Anchor].StartPos),
-      Semicolon + Branches + LineBreak + Slot.CaseIndent)]
+      Semicolon + Branches + LineBreak + Slot.CaseIndent)];
+  end
   else
   begin
     AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Anchor - 1].EndPos, Tokens[Anchor].StartPos),
       Branches + LineBreak + Slot.CaseIndent)];
     if Semicolon <> '' then
+    begin
       AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Tokens[Before].EndPos, Tokens[Before].EndPos),
         Semicolon)];
+    end;
   end;
   ACount := Length(Absent);
   Result := True;

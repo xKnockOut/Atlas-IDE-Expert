@@ -173,12 +173,16 @@ var
   Index: Integer;
 begin
   if (ANode.Kind = AKind) and ((AName = '') or SameText(ANode.Name, AName)) then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := Find(ANode[Index], AKind, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -189,12 +193,16 @@ var
 begin
   Result := '';
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if ANode[Index].Kind = AKind then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + ANode[Index].Name;
     end;
+  end;
 end;
 
 function Diagnostics(const AText: string): string;
@@ -206,8 +214,10 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     for Diagnostic in Tree.Diagnostics do
+    begin
       Result := Result + Format('%d:%d %s; ', [Diagnostic.StartPos.Line, Diagnostic.StartPos.Character,
         Diagnostic.Message]);
+    end;
   finally
     Tree.Free;
   end;
@@ -221,11 +231,13 @@ begin
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -234,8 +246,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName) then
+    begin
       Exit(Symbol);
+    end;
+  end;
   raise Exception.CreateFmt('%s.%s fehlt im Index', [AContainer, AName]);
 end;
 
@@ -244,8 +260,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -256,11 +276,17 @@ begin
     begin
       AFileName := 'C:\P\' + AName;
       if SameText(AName, 'members.inc') then
-        AText := MembersInc
+      begin
+        AText := MembersInc;
+      end
       else if SameText(AName, 'mormot.commit.inc') then
-        AText := '''2.3.11221'''#10
+      begin
+        AText := '''2.3.11221'''#10;
+      end
       else
+      begin
         Exit(False);
+      end;
       Result := True;
     end;
 end;
@@ -379,7 +405,9 @@ begin
   Assert.IsFalse(HasSymbol(U, '', 'A'));
   Assert.IsFalse(HasSymbol(U, '', 'B'));
   for Symbol in U.Symbols do
+  begin
     Assert.IsFalse(Symbol.Name.StartsWith('TAtlasIncludeHost'), Symbol.Name);
+  end;
 end;
 
 procedure TLanguageGapsTests.NamedArgumentsParse;
@@ -558,7 +586,9 @@ begin
   Text := 'unit P13;'#10'interface'#10'implementation'#10'procedure ReadFrame(I: Integer);'#10'begin'#10 +
     '  if I = 0 then'#10'    X(0)';
   for Index := 1 to 312 do
+  begin
     Text := Text + Format(#10'  else if I = %d then'#10'    X(%d)', [Index, Index]);
+  end;
   Text := Text + ';'#10'end;'#10'procedure WriteFrame;'#10'begin'#10'end;'#10'end.';
   Assert.AreEqual('', Diagnostics(Text));
   Tree := TPascalParser.Parse(Text);
@@ -571,11 +601,17 @@ begin
     begin
       Inc(Count);
       if Node.ChildCount = 3 then
-        Node := Node[2]
+      begin
+        Node := Node[2];
+      end
       else
+      begin
         Node := nil;
+      end;
       if (Node <> nil) and (Node.Kind <> TSyntaxKind.IfStatement) then
+      begin
         Node := nil;
+      end;
     end;
     Assert.AreEqual(313, Count);
   finally
@@ -669,12 +705,16 @@ var
 begin
   Seen := 0;
   for Index := 0 to High(ATree.Tokens) do
+  begin
     if ATree.Tokens[Index].Text = AText then
     begin
       if Seen = ANth then
+      begin
         Exit(Index);
+      end;
       Inc(Seen);
     end;
+  end;
   Result := -1;
 end;
 
@@ -685,9 +725,13 @@ var
 begin
   Result := '';
   if ANode.Kind = TSyntaxKind.Literal then
+  begin
     Result := ANode.Name + '|';
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     Result := Result + LiteralNames(ANode[Index]);
+  end;
 end;
 
 procedure TLanguageGapsTests.ControlCharLiterals;

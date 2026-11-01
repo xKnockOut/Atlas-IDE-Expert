@@ -113,29 +113,40 @@ begin
   Used := 0;
   Helpers := 0;
   for UnitPos := 0 to High(Result.Units) do
+  begin
     for SymbolPos := 0 to High(Result.Units[UnitPos].Symbols) do
+    begin
       if Result.Units[UnitPos].Symbols[SymbolPos].InInterface and
         (Result.Units[UnitPos].Symbols[SymbolPos].Container = '') then
       begin
         Inc(Used);
         if (Result.Units[UnitPos].Symbols[SymbolPos].Kind = TIndexSymbolKind.HelperType) and
           (Length(Result.Units[UnitPos].Symbols[SymbolPos].Ancestors) > 0) then
+        begin
           Inc(Helpers);
+        end;
       end;
+    end;
+  end;
   SetLength(Result.Entries, Used);
   SetLength(Result.Helpers, Helpers);
   Used := 0;
   Helpers := 0;
   for Pass := 0 to 1 do
+  begin
     for UnitPos := 0 to High(Result.Units) do
     begin
       if Result.Units[UnitPos].Library_ <> (Pass = 1) then
+      begin
         Continue;
+      end;
       for SymbolPos := 0 to High(Result.Units[UnitPos].Symbols) do
       begin
         Symbol := Result.Units[UnitPos].Symbols[SymbolPos];
         if not Symbol.InInterface or (Symbol.Container <> '') then
+        begin
           Continue;
+        end;
         Result.Entries[Used].UnitPos := UnitPos;
         Result.Entries[Used].SymbolPos := SymbolPos;
         Result.Entries[Used].Mask := MaskOf(Symbol.Name);
@@ -149,6 +160,7 @@ begin
         end;
       end;
     end;
+  end;
 end;
 
 function TImportNameIndex.Count: Integer;
@@ -167,7 +179,9 @@ begin
     Fresh := (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Generation = AIndex.Generation);
     if not Fresh and (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Count >= LargeCount) and
       (CacheWatch.ElapsedMilliseconds < RebuildMs) then
+    begin
       Fresh := True;
+    end;
     if not Fresh then
     begin
       CacheNames := TImportNameIndex.Build(AIndex);

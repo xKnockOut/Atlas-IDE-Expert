@@ -65,7 +65,9 @@ begin
   for mIndex in AOperand.Tokens do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + ATokens[mIndex].Text;
   end;
 end;

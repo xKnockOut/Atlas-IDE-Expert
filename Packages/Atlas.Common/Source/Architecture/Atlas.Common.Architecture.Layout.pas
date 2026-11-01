@@ -70,7 +70,9 @@ begin
   Result.X := 0;
   Result.Y := 0;
   if AIndex = 0 then
+  begin
     Exit;
+  end;
   // Ring r beginnt bei 1 + 3·r·(r-1) und fasst 6·r Units.
   Ring := 1;
   First := 1;
@@ -92,7 +94,9 @@ var
   Ring, First: Integer;
 begin
   if ACount <= 1 then
+  begin
     Exit(TArchitectureLayouter.Spacing * 0.75);
+  end;
   Ring := 1;
   First := 1;
   while ACount > First + 6 * Ring do
@@ -108,9 +112,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to ACount - 1 do
+  begin
     if Sqr(ACircles[Index].X - X) + Sqr(ACircles[Index].Y - Y) <
       Sqr(ACircles[Index].Radius + ARadius + TArchitectureLayouter.Gap) - 1E-6 then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -133,11 +141,15 @@ begin
   SetLength(Result.Subsystems, Count);
   SetLength(Result.Units, Length(AOverview.Units));
   if Count = 0 then
+  begin
     Exit;
+  end;
   // Kanten zwischen Teilsystemen (ungerichtet) als Anziehung.
   SetLength(Links, Count);
   for Index := 0 to Count - 1 do
+  begin
     SetLength(Links[Index], Count);
+  end;
   for Edge in AOverview.Edges do
   begin
     From_ := AOverview.Units[Edge.Source].Subsystem;
@@ -149,7 +161,9 @@ begin
     end;
   end;
   for Index := 0 to Count - 1 do
+  begin
     Result.Subsystems[Index].Radius := RingRadius(Length(AOverview.Subsystems[Index].Units));
+  end;
   // Das erste (größte) Teilsystem in die Mitte, die übrigen der Reihe nach anlegen.
   Result.Subsystems[0].X := 0;
   Result.Subsystems[0].Y := 0;
@@ -176,12 +190,14 @@ begin
     SiblingY := 0;
     SiblingCount := 0;
     for Other := 0 to Placed - 1 do
+    begin
       if Siblings(AOverview, Placed, Other) then
       begin
         SiblingX := SiblingX + Result.Subsystems[Other].X;
         SiblingY := SiblingY + Result.Subsystems[Other].Y;
         Inc(SiblingCount);
       end;
+    end;
     if SiblingCount > 0 then
     begin
       TargetX := SiblingX / SiblingCount;
@@ -198,7 +214,9 @@ begin
       begin
         if (Pass = 0) and (Links[Placed][Other] = 0) and (Other < Placed - 6) and (Other > 0) and
           not Siblings(AOverview, Placed, Other) then
+        begin
           Continue;
+        end;
         for Step := 0 to Angles - 1 do
         begin
           Angle := Step / Angles * 2 * Pi;
@@ -206,7 +224,9 @@ begin
           X := Result.Subsystems[Other].X + Cos(Angle) * Distance;
           Y := Result.Subsystems[Other].Y + Sin(Angle) * Distance;
           if Overlaps(Result.Subsystems, Placed, X, Y, Circle.Radius) then
+          begin
             Continue;
+          end;
           Distance := Sqr(X - TargetX) + Sqr(Y - TargetY);
           // Gleichstand: der zuerst gefundene Platz (feste Reihenfolge).
           if Distance < BestDistance - 1E-6 then
@@ -218,13 +238,16 @@ begin
         end;
       end;
       if BestDistance < MaxDouble then
+      begin
         Break;
+      end;
     end;
     Circle.X := BestX;
     Circle.Y := BestY;
     Result.Subsystems[Placed] := Circle;
   end;
   for Index := 0 to Count - 1 do
+  begin
     for Position := 0 to High(AOverview.Subsystems[Index].Units) do
     begin
       Point := RingPoint(Position);
@@ -232,6 +255,7 @@ begin
       Point.Y := Point.Y + Result.Subsystems[Index].Y;
       Result.Units[AOverview.Subsystems[Index].Units[Position]] := Point;
     end;
+  end;
   Result.Left := MaxDouble;
   Result.Top := MaxDouble;
   Result.Right := -MaxDouble;

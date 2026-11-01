@@ -56,7 +56,9 @@ end;
 procedure TServerStatusFileTests.TearDown;
 begin
   if TDirectory.Exists(FRoot) then
+  begin
     TDirectory.Delete(FRoot, True);
+  end;
   FRoot := '';
 end;
 

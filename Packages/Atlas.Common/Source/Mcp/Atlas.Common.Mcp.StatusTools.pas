@@ -61,7 +61,9 @@ begin
         end;
         mMarkdown := '';
         if mObject.GetValue('markdown') is TJSONString then
+        begin
           mMarkdown := mObject.GetValue('markdown').Value;
+        end;
         Exit('Quelle: ' + mSource + #10#10 + mMarkdown);
       end;
     finally
@@ -79,7 +81,9 @@ begin
       Result := mObject.Format(2);
     end
     else
+    begin
       Result := 'Quelle: ' + mSource + #10#10 + mStatus.ToMarkdown;
+    end;
   finally
     mObject.Free;
   end;

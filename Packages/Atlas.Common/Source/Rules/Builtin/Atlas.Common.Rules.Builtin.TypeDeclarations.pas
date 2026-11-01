@@ -173,12 +173,16 @@ var
 begin
   Result := nil;
   for Index := 0 to AType.ChildCount - 1 do
+  begin
     if (AType[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(AType[Index].Name, AName) then
     begin
       if Result <> nil then
+      begin
         Exit(nil);
+      end;
       Result := AType[Index];
     end;
+  end;
 end;
 
 /// <summary>Rumpf AClassName.AMethod im implementation-Teil von ATree; nil ohne oder bei mehreren.</summary>
@@ -192,15 +196,21 @@ begin
   Many := False;
   Section := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Section = nil then
+  begin
     Section := ATree.Root;
+  end;
   for Index := 0 to Section.ChildCount - 1 do
+  begin
     if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AClassName + '.' + AMethod) then
     begin
       Many := Result <> nil;
       Result := Section[Index];
     end;
+  end;
   if Many then
+  begin
     Result := nil;
+  end;
 end;
 
 { TDeclarationScan }
@@ -262,9 +272,13 @@ begin
   FPaths := TConditionalBranches.Paths(FTokens);
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
   FResolver.PinTree(AContext.Tree, FileName);
@@ -294,14 +308,18 @@ function TDeclarationScan.NextCode(AIndex, AStop: Integer): Integer;
 begin
   Result := AIndex;
   while (Result < AStop) and IsTrivia(FTokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function TDeclarationScan.PreviousCode(AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(FTokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function TDeclarationScan.DirectiveRemoval(ADirective: TSyntaxNode): TTextEdit;
@@ -312,10 +330,14 @@ begin
   mLast := StopToken(ADirective) - 1;
   mNext := NextCode(mLast + 1, Length(FTokens));
   if (mNext < Length(FTokens)) and FTokens[mNext].IsSymbol(';') then
+  begin
     mLast := mNext;
+  end;
   mBefore := PreviousCode(mFirst);
   if mBefore < 0 then
+  begin
     mBefore := mFirst;
+  end;
   Result := TTextEdit.Create(TTextRange.Create(FTokens[mBefore].EndPos, FTokens[mLast].EndPos), '');
 end;
 
@@ -323,7 +345,9 @@ function TDeclarationScan.DispKeyword(AType: TSyntaxNode): Integer;
 begin
   Result := NextCode(FirstToken(AType), Length(FTokens));
   if (Result >= Length(FTokens)) or not SameText(FTokens[Result].Text, 'dispinterface') then
+  begin
     Result := -1;
+  end;
 end;
 
 function TDeclarationScan.Unconditional(ANode: TSyntaxNode): Boolean;
@@ -349,7 +373,9 @@ begin
   Result := FirstToken(AProperty);
   while (Result < Stop) and not ((FTokens[Result].Kind = TPascalTokenKind.Identifier) and
     SameText(FTokens[Result].Text, AProperty.Name)) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function TDeclarationScan.PropertyRange(AProperty: TSyntaxNode): TTextRange;
@@ -358,9 +384,13 @@ var
 begin
   Index := PropertyNameToken(AProperty);
   if Index < StopToken(AProperty) then
-    Result := TokenRange(Index)
+  begin
+    Result := TokenRange(Index);
+  end
   else
+  begin
     Result := TTextRange.Create(AProperty.StartPos, AProperty.EndPos);
+  end;
 end;
 
 function TDeclarationScan.ClauseEnd(AProperty: TSyntaxNode): Integer;
@@ -373,11 +403,17 @@ begin
   while Result < Stop do
   begin
     if FTokens[Result].IsSymbol('[') or FTokens[Result].IsSymbol('(') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if FTokens[Result].IsSymbol(']') or FTokens[Result].IsSymbol(')') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and FTokens[Result].IsSymbol(';') then
+    begin
       Exit;
+    end;
     Inc(Result);
   end;
 end;
@@ -395,11 +431,17 @@ begin
   for Index := PropertyNameToken(AProperty) + 1 to Stop - 1 do
   begin
     if IsTrivia(FTokens[Index]) then
+    begin
       Continue;
+    end;
     if FTokens[Index].IsSymbol('[') or FTokens[Index].IsSymbol('(') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if FTokens[Index].IsSymbol(']') or FTokens[Index].IsSymbol(')') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and not Argument and (FTokens[Index].Kind = TPascalTokenKind.Identifier) and
       MatchText(FTokens[Index].Text, PropertySpecifiers) then
     begin
@@ -422,8 +464,12 @@ var
 begin
   Result := '';
   for Index := AFirst to AStop - 1 do
+  begin
     if not IsTrivia(FTokens[Index]) then
+    begin
       Result := Result + FTokens[Index].Text;
+    end;
+  end;
 end;
 
 function TDeclarationScan.TypeKey(ANode: TSyntaxNode): string;
@@ -439,7 +485,9 @@ begin
   Result := UpperCase(Text(AFirst, AStop));
   Angle := Pos('<', Result);
   if Angle = 0 then
+  begin
     Angle := Length(Result) + 1;
+  end;
   Head := Copy(Result, 1, Angle - 1);
   Result := Copy(Head, LastDelimiter('.', Head) + 1, MaxInt) + Copy(Result, Angle, MaxInt);
 end;
@@ -468,7 +516,9 @@ var
   begin
     Result := AIndex;
     while (Result < AStop) and IsTrivia(Tokens[Result]) do
+    begin
       Inc(Result);
+    end;
   end;
 
   // Iterativ (Bericht M1).
@@ -496,22 +546,35 @@ var
         if Node.Kind = TSyntaxKind.TypeDecl then
         begin
           if Owner = '' then
-            Name := Node.Name
+          begin
+            Name := Node.Name;
+          end
           else
+          begin
             Name := Owner + '.' + Node.Name;
+          end;
         end;
         if Node.Kind = TSyntaxKind.ClassType then
+        begin
           for Index := 0 to Node.ChildCount - 1 do
           begin
             Header := Node[Index];
             if Header.Kind <> TSyntaxKind.RoutineHeader then
+            begin
               Continue;
+            end;
             Directive := nil;
             for Inner := 0 to Header.ChildCount - 1 do
+            begin
               if (Header[Inner].Kind = TSyntaxKind.Directive) and (Header[Inner].Name = 'message') then
+              begin
                 Directive := Header[Inner];
+              end;
+            end;
             if Directive = nil then
+            begin
               Continue;
+            end;
             Method := Default(TMessageMethod);
             Method.ClassName := Name;
             Method.Header := Header;
@@ -520,15 +583,20 @@ var
             Method.First := NextCode(FirstToken(Directive) + 1, Stop);
             Method.Last := Stop - 1;
             while (Method.Last >= Method.First) and IsTrivia(Tokens[Method.Last]) do
+            begin
               Dec(Method.Last);
+            end;
             Methods.Add(Method);
           end;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if Node[Index].Kind in DeclarationKinds then
           begin
             Pending.Push(Node[Index]);
             PendingOwner.Push(Name);
           end;
+        end;
       end;
     finally
       PendingOwner.Free;
@@ -544,8 +612,12 @@ var
     Result := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
     Stop := TConstantValues.TokenFrom(Tokens, AHeader.EndOffset);
     for Index := FirstToken(AHeader) to Stop - 1 do
+    begin
       if Tokens[Index].Kind = TPascalTokenKind.Identifier then
+      begin
         Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+      end;
+    end;
   end;
 
   function ExpressionText(const AMethod: TMessageMethod): string;
@@ -554,12 +626,16 @@ var
   begin
     Result := '';
     for Index := AMethod.First to AMethod.Last do
+    begin
       if not IsTrivia(Tokens[Index]) then
       begin
         if (Result <> '') and (Tokens[Index - 1].Offset + Length(Tokens[Index - 1].Text) <> Tokens[Index].Offset) then
+        begin
           Result := Result + ' ';
+        end;
         Result := Result + Tokens[Index].Text;
       end;
+    end;
   end;
 
   function MethodName(AHeader: TSyntaxNode): string;
@@ -569,7 +645,9 @@ var
     Result := AHeader.Name;
     Dot := LastDelimiter('.', Result);
     if Dot > 0 then
+    begin
       Result := Copy(Result, Dot + 1, MaxInt);
+    end;
   end;
 
   /// <summary>Einziger Parameter ohne var: nur den Modifizierer ändern.</summary>
@@ -582,7 +660,9 @@ var
     Result := (Params <> nil) and (Params.ChildCount = 1) and (Pos(',', Params[0].Name) = 0) and
       (Params[0].FindChild(TSyntaxKind.Attribute) = nil);
     if Result then
+    begin
       AParam := Params[0];
+    end;
   end;
 
   function ParameterEdits(AHeader: TSyntaxNode; out AEdits: TArray<TTextEdit>): Boolean;
@@ -597,14 +677,20 @@ var
     begin
       Index := FirstToken(Param);
       if Param.Modifier = TParameterModifier.None then
-        AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].StartPos), 'var ')]
+      begin
+        AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].StartPos), 'var ')];
+      end
       else
+      begin
         AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos), 'var')];
+      end;
       Exit;
     end;
     Params := AHeader.FindChild(TSyntaxKind.Parameters);
     if Params <> nil then
-      AEdits := [TTextEdit.Create(TTextRange.Create(Params.StartPos, Params.EndPos), DefaultMessageParameter)]
+    begin
+      AEdits := [TTextEdit.Create(TTextRange.Create(Params.StartPos, Params.EndPos), DefaultMessageParameter)];
+    end
     else
     begin
       // Ohne Klammern: direkt hinter dem Namen einfügen.
@@ -621,7 +707,9 @@ var
   begin
     Result := nil;
     if not ParameterEdits(AMethod.Header, Edits) then
+    begin
       Exit;
+    end;
     Decl := MethodBody(AContext.Tree, AMethod.ClassName, MethodName(AMethod.Header));
     if Decl <> nil then
     begin
@@ -630,15 +718,23 @@ var
       if (Header <> nil) and (Header.FindChild(TSyntaxKind.Parameters) <> nil) then
       begin
         if SingleParameter(AMethod.Header, Param) <> SingleParameter(Header, Param) then
+        begin
           Exit;
+        end;
         if ParameterEdits(Header, BodyEdits) then
+        begin
           Edits := Edits + BodyEdits;
+        end;
       end;
     end;
     if SingleParameter(AMethod.Header, Param) then
-      Result := [TRuleFix.Create(Format('Parameter %s als var übergeben', [Param.Name]), Edits)]
+    begin
+      Result := [TRuleFix.Create(Format('Parameter %s als var übergeben', [Param.Name]), Edits)];
+    end
     else
+    begin
       Result := [TRuleFix.Create(Format('Signatur %s einsetzen', [DefaultMessageParameter]), Edits)];
+    end;
   end;
 
   procedure CheckParameters(const AMethod: TMessageMethod);
@@ -650,16 +746,24 @@ var
     // Nur Prozeduren: message an Funktionen ist ein anderer Fall.
     Index := NextCode(FirstToken(AMethod.Header), Length(Tokens));
     if (Index < Length(Tokens)) and Tokens[Index].IsKeyword('class') then
+    begin
       Exit;
+    end;
     if Index >= Length(Tokens) then
+    begin
       Exit;
+    end;
     Keyword := LowerCase(Tokens[Index].Text);
     if Keyword <> 'procedure' then
+    begin
       Exit;
+    end;
     Params := AMethod.Header.FindChild(TSyntaxKind.Parameters);
     if (Params <> nil) and (Params.ChildCount = 1) and (Pos(',', Params[0].Name) = 0) and
       (Params[0].Modifier = TParameterModifier.VarParam) then
+    begin
       Exit;
+    end;
     AReport.Add(NameRange(AMethod.Header), Format('Die message-Methode %s braucht genau einen var-Parameter ' +
       '(wie E2138).', [MethodName(AMethod.Header)]), TRuleConfidence.High, SignatureFix(AMethod));
   end;
@@ -694,7 +798,9 @@ var
         begin
           Method := Methods[Index];
           if Method.First > Method.Last then
+          begin
             Continue;
+          end;
           Range := TTextRange.Create(Tokens[Method.First].StartPos, Tokens[Method.Last].EndPos);
           if Values.Evaluate(Method.First, Method.Last, Value) then
           begin
@@ -707,9 +813,12 @@ var
             end;
           end
           else
+          begin
             Keys[Index] := 't' + UpperCase(ExpressionText(Method).Replace(' ', ''));
+          end;
           Known[Index] := True;
           for Earlier := 0 to Index - 1 do
+          begin
             if Known[Earlier] and SameText(Methods[Earlier].ClassName, Method.ClassName) and
               (Keys[Earlier] = Keys[Index]) and
               not TConditionalBranches.Exclusive(PathOf(Methods[Earlier]), PathOf(Method)) then
@@ -718,6 +827,7 @@ var
                 MethodName(Methods[Earlier].Header)]), TRuleConfidence.High);
               Break;
             end;
+          end;
         end;
       finally
         Values.Free;
@@ -731,21 +841,31 @@ var
   Method: TMessageMethod;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Methods := TList<TMessageMethod>.Create;
   try
     Collect(AContext.Tree.Root, '');
     if Methods.Count = 0 then
+    begin
       Exit;
+    end;
     Paths := TConditionalBranches.Paths(Tokens);
     for Method in Methods do
+    begin
       CheckParameters(Method);
+    end;
     CheckNumbers;
   finally
     Methods.Free;
@@ -773,7 +893,9 @@ var
     Result := (ANode.Name <> '') and Scan.Resolver.ResolveTypeFrom(Scan.OwnUnit, ANode.Name, Resolved) and
       Resolved.Found and not Resolved.Builtin and (Resolved.SymbolKind in NonInterfaceKinds);
     if not Result then
+    begin
       Exit;
+    end;
     case Resolved.SymbolKind of
       TIndexSymbolKind.RecordType:
         AKind := 'ein Record';
@@ -789,8 +911,10 @@ var
     Kind: string;
   begin
     if Scan.Unconditional(ANode) and NotAnInterface(ANode, Kind) then
+    begin
       AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s ist %s und kein Interface ' +
         '(wie E2205).', [ANode.Name, Kind]), TRuleConfidence.High);
+    end;
   end;
 
   procedure CheckClassList(AClass: TSyntaxNode);
@@ -800,14 +924,21 @@ var
   begin
     References := nil;
     for Index := 0 to AClass.ChildCount - 1 do
+    begin
       if AClass[Index].Kind = TSyntaxKind.TypeReference then
-        References := References + [AClass[Index]]
+      begin
+        References := References + [AClass[Index]];
+      end
       else
+      begin
         Break;
+      end;
+    end;
     for Position := 1 to High(References) do
     begin
       ReportNotInterface(References[Position]);
       for Earlier := 0 to Position - 1 do
+      begin
         if (Scan.TypeKey(References[Earlier]) = Scan.TypeKey(References[Position])) and
           Scan.Unconditional(References[Position]) then
         begin
@@ -816,6 +947,7 @@ var
             TRuleConfidence.High);
           Break;
         end;
+      end;
     end;
   end;
 
@@ -830,8 +962,10 @@ var
       Word := LowerCase(Scan.Tokens[Index].Text);
       if (Word = 'stored') or (Word = 'nodefault') or
         ((Word = 'default') and (Scan.ClauseArgument(AProperty, Index) < Scan.ClauseEnd(AProperty))) then
+      begin
         AReport.Add(Scan.TokenRange(Index), Format('Die Klausel %s ist in Interfaces nicht erlaubt (wie E2207).',
           [Word]), TRuleConfidence.High);
+      end;
     end;
   end;
 
@@ -863,17 +997,23 @@ var
   begin
     if not Scan.Resolver.ResolveTypeFrom(Scan.OwnUnit, AName, Own) or not Own.Found or
       (Own.SymbolKind <> TIndexSymbolKind.InterfaceType) or not Scan.Resolver.AncestorOf(Own, Ancestor) then
+    begin
       Exit;
+    end;
     for Index := 0 to AType.ChildCount - 1 do
     begin
       Child := AType[Index];
       if (Child.Kind <> TSyntaxKind.PropertyDecl) or not Scan.Unconditional(Child) then
+      begin
         Continue;
+      end;
       if WithoutType(Child) and Scan.Resolver.DeclaredMember(Ancestor, Child.Name, Member) and
         (Member.SymbolKind = TIndexSymbolKind.Property_) then
+      begin
         AReport.Add(Scan.PropertyRange(Child), Format('Die Property %s ist schon in %s ' +
           'deklariert; Interfaces dürfen Properties nicht ohne Typ neu aufführen (wie E2206).', [Child.Name,
           Member.Container]), TRuleConfidence.High);
+      end;
     end;
   end;
 
@@ -885,33 +1025,47 @@ var
   begin
     // dispinterface prüft dispinterface-invalid.
     if Scan.DispKeyword(AType) >= 0 then
+    begin
       Exit;
+    end;
     First := True;
     for Index := 0 to AType.ChildCount - 1 do
     begin
       Child := AType[Index];
       if (Child.Kind = TSyntaxKind.TypeReference) and First then
+      begin
         ReportNotInterface(Child);
+      end;
       First := False;
       if not Scan.Unconditional(Child) then
+      begin
         Continue;
+      end;
       case Child.Kind of
         TSyntaxKind.Field:
           AReport.Add(Scan.FirstRange(Child), 'Interfaces dürfen keine Felder haben (wie E2209).', TRuleConfidence.High);
         TSyntaxKind.VarSection:
           for Inner := 0 to Child.ChildCount - 1 do
+          begin
             if Child[Inner].Kind = TSyntaxKind.VarDecl then
+            begin
               AReport.Add(Scan.FirstRange(Child[Inner]), 'Interfaces dürfen keine Felder haben (wie E2209).',
                 TRuleConfidence.High);
+            end;
+          end;
         TSyntaxKind.Visibility:
           AReport.Add(TTextRange.Create(Child.StartPos, Child.EndPos), Format('Die Direktive %s ist in ' +
             'Interfaces nicht erlaubt (wie E2210).', [Child.Name]), TRuleConfidence.High);
         TSyntaxKind.RoutineHeader:
           for Inner := 0 to Child.ChildCount - 1 do
+          begin
             if (Child[Inner].Kind = TSyntaxKind.Directive) and
               MatchText(Child[Inner].Name, InterfaceForbiddenDirectives) then
+            begin
               AReport.Add(Scan.FirstRange(Child[Inner]), Format('Die Direktive %s ist in Interfaces nicht erlaubt ' +
                 '(wie E2210).', [Child[Inner].Name]), TRuleConfidence.High);
+            end;
+          end;
         TSyntaxKind.PropertyDecl:
           CheckPropertyClauses(Child);
       else
@@ -939,14 +1093,22 @@ var
         begin
           Body := Node.FindChild(TSyntaxKind.InterfaceType);
           if Body <> nil then
+          begin
             CheckInterface(Body, Node.Name);
+          end;
           Body := Node.FindChild(TSyntaxKind.ClassType);
           if Body <> nil then
+          begin
             CheckClassList(Body);
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if Node[Index].Kind in DeclarationKinds then
+          begin
             Pending.Push(Node[Index]);
+          end;
+        end;
       end;
     finally
       Pending.Free;
@@ -955,7 +1117,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Scan := TDeclarationScan.Create(AContext);
   try
     Visit(AContext.Tree.Root);
@@ -988,18 +1152,24 @@ var
   begin
     Reference := AProperty.FindChild(TSyntaxKind.TypeReference);
     if (Reference = nil) or (Reference.Name = '') then
+    begin
       Exit;
+    end;
     // Eingebaute Typen (Integer, string …) stehen nicht im Index; ein eigener gleichnamiger Typ geht vor.
     if not Scan.Resolver.ResolveTypeFrom(Scan.OwnUnit, Reference.Name, Resolved) or not Resolved.Found then
     begin
       Resolved.Builtin := TNameResolver.IsBuiltinTypeName(Reference.Name);
       if not Resolved.Builtin then
+      begin
         Exit;
+      end;
     end;
     if Resolved.Builtin or (Resolved.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.EnumType]) then
+    begin
       AReport.Add(TTextRange.Create(Reference.StartPos, Reference.EndPos), Format('implements ist nur an ' +
         'Properties mit Klassen- oder Interface-Typ erlaubt, %s ist keiner (wie E2259).', [Reference.Name]),
         TRuleConfidence.High);
+    end;
   end;
 
   procedure CheckGetter(AType: TSyntaxNode; AGetter: Integer);
@@ -1010,18 +1180,26 @@ var
   begin
     Header := UniqueMethodHeader(AType, Scan.Tokens[AGetter].Text);
     if Header = nil then
+    begin
       Exit;
+    end;
     for Index := 0 to Header.ChildCount - 1 do
     begin
       if Header[Index].Kind <> TSyntaxKind.Directive then
+      begin
         Continue;
+      end;
       Name := Header[Index].Name;
       if MatchText(Name, ForeignConventions) then
+      begin
         AReport.Add(Scan.TokenRange(AGetter), Format('Der Getter %s einer implements-Property darf nicht %s ' +
-          'sein, nur register (wie E2262).', [Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High)
+          'sein, nur register (wie E2262).', [Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High);
+      end
       else if (Name = 'dynamic') or (Name = 'message') then
+      begin
         AReport.Add(Scan.TokenRange(AGetter), Format('Der Getter %s einer implements-Property darf nicht %s ' +
           'sein (wie E2263 und E2148).', [Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High);
+      end;
     end;
   end;
 
@@ -1041,17 +1219,27 @@ var
     begin
       Child := AType[Index];
       if (Child.Kind <> TSyntaxKind.PropertyDecl) or not Scan.Unconditional(Child) then
+      begin
         Continue;
+      end;
       Words := Scan.ClauseWords(Child);
       Implements := -1;
       HasRead := False;
       for Clause in Words do
+      begin
         if Word(Clause) = 'implements' then
-          Implements := Clause
+        begin
+          Implements := Clause;
+        end
         else if Word(Clause) = 'read' then
+        begin
           HasRead := True;
+        end;
+      end;
       if Implements < 0 then
+      begin
         Continue;
+      end;
       if AType.Kind <> TSyntaxKind.ClassType then
       begin
         AReport.Add(Scan.TokenRange(Implements), 'implements ist nur in Klassen erlaubt (wie E2258).',
@@ -1060,15 +1248,23 @@ var
       end;
       CheckType(Child);
       for Clause in Words do
+      begin
         if Word(Clause) = 'index' then
+        begin
           AReport.Add(Scan.TokenRange(Clause), 'implements ist nicht zusammen mit index erlaubt (wie E2260).',
-            TRuleConfidence.High)
+            TRuleConfidence.High);
+        end
         else if (Word(Clause) = 'read') and (Scan.ClauseArgument(Child, Clause) < Scan.ClauseEnd(Child)) and
           (Scan.Tokens[Scan.ClauseArgument(Child, Clause)].Kind = TPascalTokenKind.Identifier) then
+        begin
           CheckGetter(AType, Scan.ClauseArgument(Child, Clause));
+        end;
+      end;
       if not HasRead then
+      begin
         AReport.Add(Scan.TokenRange(Implements), 'implements braucht eine lesbare Property (wie E2261).',
           TRuleConfidence.High);
+      end;
       // Interfaces hinter implements, durch Kommas getrennt.
       Stop := Scan.ClauseEnd(Child);
       First := Scan.NextCode(Implements + 1, Stop);
@@ -1078,17 +1274,24 @@ var
         if Position < Stop then
         begin
           if Scan.Tokens[Position].IsSymbol('<') then
-            Inc(Depth)
+          begin
+            Inc(Depth);
+          end
           else if Scan.Tokens[Position].IsSymbol('>') then
+          begin
             Dec(Depth);
+          end;
           if (Depth > 0) or not Scan.Tokens[Position].IsSymbol(',') then
+          begin
             Continue;
+          end;
         end;
         if Position > First then
         begin
           Key := Scan.TypeKey(First, Position);
           Seen := False;
           for Clause := 0 to High(Keys) do
+          begin
             if Keys[Clause] = Key then
             begin
               AReport.Add(TTextRange.Create(Scan.Tokens[First].StartPos, Scan.Tokens[Position - 1].EndPos),
@@ -1097,6 +1300,7 @@ var
               Seen := True;
               Break;
             end;
+          end;
           if not Seen then
           begin
             Keys := Keys + [Key];
@@ -1112,10 +1316,13 @@ var
       Child := AType[Index];
       if (Child.Kind <> TSyntaxKind.RoutineHeader) or (Pos('.', Child.Name) = 0) or
         not Scan.Unconditional(Child) then
+      begin
         Continue;
+      end;
       Prefix := UpperCase(Copy(Child.Name, 1, LastDelimiter('.', Child.Name) - 1));
       Prefix := Copy(Prefix, LastDelimiter('.', Prefix) + 1, MaxInt);
       for Clause := 0 to High(Keys) do
+      begin
         if Keys[Clause] = Prefix then
         begin
           AReport.Add(Scan.TokenRange(Scan.NextCode(Scan.FirstToken(Child) + 1, Scan.StopToken(Child))),
@@ -1124,6 +1331,7 @@ var
             TRuleConfidence.High);
           Break;
         end;
+      end;
     end;
   end;
 
@@ -1142,11 +1350,17 @@ var
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
           TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+        begin
           CheckClass(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if Node[Index].Kind in DeclarationKinds + [TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
             TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+          begin
             Pending.Push(Node[Index]);
+          end;
+        end;
       end;
     finally
       Pending.Free;
@@ -1155,7 +1369,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Scan := TDeclarationScan.Create(AContext);
   try
     Visit(AContext.Tree.Root);
@@ -1182,8 +1398,12 @@ var
   begin
     Result := nil;
     for Index := 0 to AHeader.ChildCount - 1 do
+    begin
       if (AHeader[Index].Kind = TSyntaxKind.Directive) and SameText(AHeader[Index].Name, AName) then
+      begin
         Exit(AHeader[Index]);
+      end;
+    end;
   end;
 
   function Convention(AHeader: TSyntaxNode): TSyntaxNode;
@@ -1192,8 +1412,12 @@ var
   begin
     Result := nil;
     for Index := 0 to AHeader.ChildCount - 1 do
+    begin
       if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ForeignConventions) then
+      begin
         Exit(AHeader[Index]);
+      end;
+    end;
   end;
 
   function Keyword(AHeader: TSyntaxNode): string;
@@ -1203,7 +1427,9 @@ var
     Index := Scan.NextCode(Scan.FirstToken(AHeader), Length(Scan.Tokens));
     Result := '';
     if Index < Length(Scan.Tokens) then
+    begin
       Result := LowerCase(Scan.Tokens[Index].Text);
+    end;
   end;
 
   /// <summary>Korrektur: Konvention an AHeader und am Rumpf der Datei entfernen.</summary>
@@ -1215,12 +1441,16 @@ var
     Edits := [Scan.DirectiveRemoval(AConvention)];
     Body := MethodBody(AContext.Tree, AClassName, AHeader.Name);
     if Body <> nil then
+    begin
       Body := Body.FindChild(TSyntaxKind.RoutineHeader);
+    end;
     if Body <> nil then
     begin
       Other := Directive(Body, AConvention.Name);
       if Other <> nil then
+      begin
         Edits := Edits + [Scan.DirectiveRemoval(Other)];
+      end;
     end;
     Result := [TRuleFix.Create(Format('%s entfernen', [AConvention.Name]), Edits)];
   end;
@@ -1237,37 +1467,55 @@ var
     begin
       Child := AType[Index];
       if Child.Kind = TSyntaxKind.Visibility then
-        Published := Child.Name = 'published'
+      begin
+        Published := Child.Name = 'published';
+      end
       else if (Child.Kind = TSyntaxKind.RoutineHeader) and Scan.Unconditional(Child) and
         MatchText(Keyword(Child), ['constructor', 'destructor']) then
       begin
         Found := Convention(Child);
         if Found <> nil then
+        begin
           AReport.Add(Scan.FirstRange(Found), Format('Konstruktoren und Destruktoren brauchen register, nicht %s ' +
             '(wie E2236).', [Found.Name]), TRuleConfidence.High, RemoveFix(AClassName, Child, Found));
+        end;
       end
       else if (Child.Kind = TSyntaxKind.PropertyDecl) and Published and Scan.Unconditional(Child) then
+      begin
         for Clause in Scan.ClauseWords(Child) do
         begin
           if not MatchText(Scan.Tokens[Clause].Text, ['read', 'write']) then
+          begin
             Continue;
+          end;
           Argument := Scan.ClauseArgument(Child, Clause);
           if (Argument >= Scan.ClauseEnd(Child)) or (Scan.Tokens[Argument].Kind <> TPascalTokenKind.Identifier) then
+          begin
             Continue;
+          end;
           Header := UniqueMethodHeader(AType, Scan.Tokens[Argument].Text);
           if Header = nil then
+          begin
             Continue;
+          end;
           Found := Convention(Header);
           if Found = nil then
+          begin
             Continue;
+          end;
           if SameText(Scan.Tokens[Clause].Text, 'read') then
-            Kind := 'Getter'
+          begin
+            Kind := 'Getter';
+          end
           else
+          begin
             Kind := 'Setter';
+          end;
           AReport.Add(Scan.TokenRange(Argument), Format('Der %s %s der published-Property %s braucht register, ' +
             'nicht %s (wie E2270).', [Kind, Scan.Tokens[Argument].Text, Child.Name, Found.Name]),
             TRuleConfidence.High, RemoveFix(AClassName, Header, Found));
         end;
+      end;
     end;
   end;
 
@@ -1280,23 +1528,33 @@ var
   begin
     Varargs := Directive(AHeader, 'varargs');
     if (Varargs = nil) or not Scan.Unconditional(AHeader) then
+    begin
       Exit;
+    end;
     // Ohne external: dcc meldet E2277 unter Win32 auch mit cdecl; Win64 übersetzt es (Cm.E2277, #1380).
     if Directive(AHeader, 'external') = nil then
     begin
       if AContext.Tree.Platform = 'Win32' then
+      begin
         AReport.Add(Scan.FirstRange(Varargs), 'varargs ist unter Win32 nur an external-Routinen mit cdecl ' +
           'erlaubt (wie E2277).', TRuleConfidence.High);
+      end;
       Exit;
     end;
     if Directive(AHeader, 'cdecl') <> nil then
+    begin
       Exit;
+    end;
     Code := 'E2277';
     Found := Convention(AHeader);
     if Found = nil then
+    begin
       Found := Directive(AHeader, 'register');
+    end;
     if Found <> nil then
-      Edit := TTextEdit.Create(Scan.FirstRange(Found), 'cdecl')
+    begin
+      Edit := TTextEdit.Create(Scan.FirstRange(Found), 'cdecl');
+    end
     else
     begin
       Position := Scan.FirstRange(Varargs).StartPos;
@@ -1329,21 +1587,31 @@ var
         if Node.Kind = TSyntaxKind.TypeDecl then
         begin
           if Owner = '' then
-            Name := Node.Name
+          begin
+            Name := Node.Name;
+          end
           else
+          begin
             Name := Owner + '.' + Node.Name;
+          end;
         end;
         if Node.Kind = TSyntaxKind.ClassType then
+        begin
           CheckClass(Node, Name);
+        end;
         if Node.Kind = TSyntaxKind.RoutineHeader then
+        begin
           CheckVarargs(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if Node[Index].Kind in DeclarationKinds + [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
             TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
           begin
             Pending.Push(Node[Index]);
             PendingOwner.Push(Name);
           end;
+        end;
       end;
     finally
       PendingOwner.Free;
@@ -1353,7 +1621,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Scan := TDeclarationScan.Create(AContext);
   try
     Visit(AContext.Tree.Root, '');
@@ -1384,12 +1654,16 @@ var
     while Result < Length(Scan.Tokens) do
     begin
       if Scan.Tokens[Result].IsSymbol('(') then
-        Inc(mDepth)
+      begin
+        Inc(mDepth);
+      end
       else if Scan.Tokens[Result].IsSymbol(')') then
       begin
         Dec(mDepth);
         if mDepth = 0 then
+        begin
           Exit;
+        end;
       end;
       Inc(Result);
     end;
@@ -1407,7 +1681,9 @@ var
     begin
       mClose := ClosingParen(mNext);
       if mClose >= Length(Scan.Tokens) then
+      begin
         Exit;
+      end;
       AReport.Add(TTextRange.Create(Scan.Tokens[mNext].StartPos, Scan.Tokens[mClose].EndPos),
         'Ein dispinterface kann keinen Vorfahren haben (wie E2228).', TRuleConfidence.High,
         [TRuleFix.Create('Vorfahren entfernen', [TTextEdit.Create(TTextRange.Create(Scan.Tokens[AKeyword].EndPos,
@@ -1417,7 +1693,9 @@ var
     end;
     // Kurzform "D = dispinterface(I);" hat keinen Rumpf; dazu ist nichts belegt.
     if (mNext >= Length(Scan.Tokens)) or Scan.Tokens[mNext].IsSymbol('[') or Scan.Tokens[mNext].IsSymbol(';') then
+    begin
       Exit;
+    end;
     mIndent := TTextLines.IndentOf(AContext.Text, Scan.Tokens[Scan.FirstToken(ADeclaration)].StartPos.Line);
     AReport.Add(Scan.FirstRange(ADeclaration), Format('Das dispinterface %s braucht eine GUID (wie E2229).',
       [ADeclaration.Name]), TRuleConfidence.High, [TRuleFix.Create('GUID einfügen',
@@ -1435,23 +1713,31 @@ var
     begin
       mChild := AType[mIndex];
       if not Scan.Unconditional(mChild) then
+      begin
         Continue;
+      end;
       case mChild.Kind of
         TSyntaxKind.RoutineHeader:
           for mInner := 0 to mChild.ChildCount - 1 do
+          begin
             if (mChild[mInner].Kind = TSyntaxKind.Directive) and
               MatchText(mChild[mInner].Name, DispForbiddenDirectives) then
+            begin
               AReport.Add(Scan.FirstRange(mChild[mInner]), Format('Methoden eines dispinterface dürfen keine ' +
                 'Direktive %s haben (wie E2230).', [mChild[mInner].Name]), TRuleConfidence.High,
                 [TRuleFix.Create(Format('%s entfernen', [mChild[mInner].Name]),
                 [Scan.DirectiveRemoval(mChild[mInner])])]);
+            end;
+          end;
         TSyntaxKind.PropertyDecl:
           for mInner in Scan.ClauseWords(mChild) do
           begin
             mWord := LowerCase(Scan.Tokens[mInner].Text);
             if (mWord = 'read') or (mWord = 'write') then
+            begin
               AReport.Add(Scan.TokenRange(mInner), Format('Die Direktive %s ist in einem dispinterface nicht ' +
                 'erlaubt (wie E2231).', [mWord]), TRuleConfidence.High);
+            end;
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -1476,19 +1762,29 @@ var
         begin
           mBody := mNode.FindChild(TSyntaxKind.InterfaceType);
           if mBody <> nil then
-            mKeyword := Scan.DispKeyword(mBody)
+          begin
+            mKeyword := Scan.DispKeyword(mBody);
+          end
           else
+          begin
             mKeyword := -1;
+          end;
           if mKeyword >= 0 then
           begin
             if Scan.Unconditional(mNode) then
+            begin
               CheckHeader(mNode, mKeyword);
+            end;
             CheckMembers(mBody);
           end;
         end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           if mNode[mIndex].Kind in DeclarationKinds then
+          begin
             mPending.Push(mNode[mIndex]);
+          end;
+        end;
       end;
     finally
       mPending.Free;
@@ -1497,7 +1793,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Scan := TDeclarationScan.Create(AContext);
   try
     Visit(AContext.Tree.Root);

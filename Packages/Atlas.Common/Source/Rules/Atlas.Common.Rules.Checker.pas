@@ -153,7 +153,9 @@ var
 begin
   AContext.FileName := AFileName;
   if SameText(ExtractFileExt(AFileName), '.pas') then
+  begin
     for Extension in TArray<string>.Create('.dfm', '.fmx') do
+    begin
       if TFile.Exists(ChangeFileExt(AFileName, Extension)) then
       begin
         try
@@ -167,6 +169,8 @@ begin
         end;
         Break;
       end;
+    end;
+  end;
   Folder := ExtractFilePath(AFileName);
   AContext.ReadFile :=
     function(const AName: string; out AData: TBytes): Boolean
@@ -228,7 +232,9 @@ begin
   Severity := ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error);
   // Auch Syntaxfehler gehören zu einer Gruppe (#909, seit #1022 „Compiler vorab“).
   if (Severity = TRuleSeverity.Off) or TRuleEngine.GroupOff(SyntaxRuleId, ASettings) then
+  begin
     Exit;
+  end;
   for Diagnostic in ADiagnostics do
   begin
     Finding := Default(TRuleFinding);
@@ -238,7 +244,9 @@ begin
     Finding.Severity := Severity;
     Finding.Confidence := TRuleConfidence.High;
     if Diagnostic.FixTitle <> '' then
+    begin
       Finding.Fixes := [TRuleFix.Create(Diagnostic.FixTitle, Diagnostic.FixEdits, Diagnostic.FixSafe)];
+    end;
     Result := Result + [Finding];
   end;
 end;
@@ -259,12 +267,16 @@ begin
   Result := nil;
   Severity := ASettings.RuleSeverity(LanguageFeatureRuleId, TRuleSeverity.Warning);
   if (Severity = TRuleSeverity.Off) or TRuleEngine.GroupOff(LanguageFeatureRuleId, ASettings) then
+  begin
     Exit;
+  end;
   for Feature in TLanguageFeatures.Check(ATree, ALanguageLevel, AInactive) do
   begin
     // Bedingungsausdrücke meldet die Regel conditional-expression-version (#684) als Fehler mit Korrektur.
     if Feature.Feature = TLanguageFeature.IfExpression then
+    begin
       Continue;
+    end;
     Finding := Default(TRuleFinding);
     Finding.RuleId := LanguageFeatureRuleId;
     Finding.Range := TTextRange.Create(Feature.StartPos, Feature.EndPos);
@@ -328,15 +340,21 @@ end;
 class function TFileChecker.SourceOf(const ASource: TCheckSourceFunc; const AFileName: string): TCheckSource;
 begin
   if Assigned(ASource) then
-    Result := ASource(AFileName)
+  begin
+    Result := ASource(AFileName);
+  end
   else
+  begin
     Result := TCheckSource.Default;
+  end;
 end;
 
 class function TFileChecker.ProjectOf(const AProject: TCheckProjectFunc; const AFileName: string): TCheckProject;
 begin
   if Assigned(AProject) then
-    Result := AProject(AFileName)
+  begin
+    Result := AProject(AFileName);
+  end
   else
   begin
     Result := Default(TCheckProject);
@@ -351,12 +369,14 @@ var
 begin
   Result := Default(TCheckProject);
   for Source in APackages do
+  begin
     if Source.IsPackage and (Source.ContainsIndex(AUnitName) >= 0) then
     begin
       Result.Application := TRuleApplicationKind.Package;
       Result.Name := Source.Name;
       Exit;
     end;
+  end;
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -371,7 +391,9 @@ var
 begin
   AScopes := TFindingScopes.FromTree(nil);
   if (ARelativePath <> '') and ASettings.IsExcluded(ARelativePath) then
+  begin
     Exit(nil);
+  end;
   // Baum nur aus den aktiven Zweigen wie im Editor: Inaktive Zweige erzeugen keine Syntaxfehler und keine
   // Regeltreffer.
   Tree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, Processed);
@@ -396,9 +418,13 @@ begin
     // Pfad aus dem Projekt (#1054), sonst aus der Symbolquelle (#860): Formulardatei und Nachbardateien.
     FileName := AProject.FileName;
     if FileName = '' then
+    begin
       FileName := ASource.FileName;
+    end;
     if FileName <> '' then
+    begin
       SetFiles(Context, FileName);
+    end;
     Result := Syntax + TRuleEngine.Run(ARules, ASettings, Context);
   finally
     Tree.Free;

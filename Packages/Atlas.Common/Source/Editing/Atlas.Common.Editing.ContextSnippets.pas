@@ -66,7 +66,9 @@ function FullType(const AField: TIndexSymbol): string;
 begin
   Result := AField.TypeName;
   if AField.TypeArgs <> '' then
+  begin
     Result := Result + '<' + AField.TypeArgs + '>';
+  end;
 end;
 
 /// <summary>Zeilen des Rumpfs zwischen begin und end ohne die Cursorzeile, verbunden mit #10.</summary>
@@ -76,8 +78,12 @@ var
 begin
   Result := '';
   for Index := ABlock.StartPos.Line + 1 to ABlock.EndPos.Line - 1 do
+  begin
     if Index <> ASource.Line then
+    begin
       Result := Result + ASource.Lines[Index] + #10;
+    end;
+  end;
 end;
 
 /// <summary>Kommt AName als ganzes Wort in AText vor (ohne Groß/Klein)?</summary>
@@ -94,7 +100,9 @@ begin
     After := Found + Length(Name);
     if ((Found = 1) or not TTextChars.IsAsciiIdentChar(Upper[Found - 1])) and
       ((After > Length(Upper)) or not TTextChars.IsAsciiIdentChar(Upper[After])) then
+    begin
       Exit(True);
+    end;
     Found := PosEx(Name, Upper, Found + 1);
   end;
   Result := False;
@@ -113,9 +121,13 @@ end;
 function NotifyText(const ACall: string): string;
 begin
   if ACall = '' then
-    Result := 'ohne Benachrichtigung'
+  begin
+    Result := 'ohne Benachrichtigung';
+  end
   else
+  begin
     Result := 'ruft ' + ACall + ' auf';
+  end;
 end;
 
 { prop }
@@ -136,19 +148,25 @@ begin
   for Field in Members(ASource, AClass, [TIndexSymbolKind.Field]) do
   begin
     if (Length(Field.Name) < 2) or not CharInSet(Field.Name[1], ['F', 'f']) or (Field.TypeName = '') then
+    begin
       Continue;
+    end;
     Name := Copy(Field.Name, 2, MaxInt);
     if FindMember(ASource, AClass, Name, [TIndexSymbolKind.Property_], Member) then
+    begin
       Continue;
+    end;
     Setter := 'Set' + Name;
     TypeText := FullType(Field);
     Edits := nil;
     if not FindMember(ASource, AClass, Setter, [TIndexSymbolKind.Method], Member) then
+    begin
       // Wie /changed: eigener private-Abschnitt vor "end", weil Felder vor Methoden stehen müssen.
       Edits := [ASource.BeforeLine(EndLine, Indent + 'private' + LB + Indent + '  ' +
         Format('procedure %s(const Value: %s);', [Setter, TypeText])),
         ASource.AddBody(AClass.Name, Format('procedure %s.%s(const Value: %s);', [AClass.Name, Setter, TypeText]) +
         LB + TSetterGenerator.Body(Field.Name, 'Value', Call, LB))];
+    end;
     Result := Result + [Snippet('prop', 'prop ' + Name,
       Format('Property %s: %s mit Setter %s, der auf Änderung prüft und %s', [Name, TypeText, Setter,
       NotifyText(Call)]),
@@ -170,29 +188,41 @@ begin
   // Feld: read-Teil der Property, die über AMethod schreibt; sonst FName zu SetName.
   Field := '';
   for Prop in Members(ASource, AClass, [TIndexSymbolKind.Property_]) do
+  begin
     if SameText(Accessor(RangeText(ASource.Lines, Prop.Range), 'write'), AMethod) then
     begin
       Field := Accessor(RangeText(ASource.Lines, Prop.Range), 'read');
       Break;
     end;
+  end;
   if (Field = '') and StartsText('Set', AMethod) and (Length(AMethod) > 3) then
+  begin
     Field := 'F' + Copy(AMethod, 4, MaxInt);
+  end;
   if (Field = '') or not FindMember(ASource, AClass, Field, [TIndexSymbolKind.Field], Member) then
+  begin
     Exit;
+  end;
   Field := Member.Name;
   Value := ParameterNames(RoutineSignature(ASource.Lines[ARoutine.StartPos.Line]));
   if (Value = '') or (Pos(',', Value) > 0) or Mentions(BodyText(ASource, ABlock), Field) then
+  begin
     Exit;
+  end;
   Call := TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass);
   // Die Benachrichtigung ist der Platzhalter; ohne bleibt nur die Endposition.
   if Call <> '' then
+  begin
     Call := '${1:' + Call + '}';
+  end;
   Text := '';
   Found := False;
   for Line in TSetterGenerator.Statements(Field, Value, Call) do
   begin
     if Found then
+    begin
       Text := Text + #10;
+    end;
     Text := Text + Line;
     Found := True;
   end;
@@ -222,18 +252,26 @@ begin
   begin
     if (IndexText(Field.Name, Created) >= 0) or Mentions(Body, Field.Name) or
       not IsObjectField(ASource, AContext.Index, Field) then
+    begin
       Continue;
+    end;
     Inc(Number);
     Owner := '';
     if OwnerKnown and IsComponentType(ASource, AContext.Index, Field.TypeName) then
+    begin
       Owner := '(Self)';
+    end;
     Lines := Lines + [Format('%s := ${%d:%s}.Create%s;', [Field.Name, Number,
       TContextSnippets.Escape(FullType(Field)), Owner])];
   end;
   if Number = 0 then
+  begin
     Exit;
+  end;
   if not Mentions(Body, 'inherited') then
+  begin
     Lines := ['inherited;'] + Lines;
+  end;
   Text := string.Join(#10, Lines) + '$0';
   Result := [Snippet('create', 'create', Format('%d Objektfelder von %s erzeugen', [Number, AClass.Name]), Text,
     nil)];
@@ -254,14 +292,22 @@ begin
   Lines := nil;
   // In umgekehrter Reihenfolge der Erzeugung freigeben, wie /dtor.
   for Index := High(Created) downto 0 do
+  begin
     if not Mentions(Body, Created[Index]) then
+    begin
       Lines := Lines + [Format('FreeAndNil(%s);', [Created[Index]])];
+    end;
+  end;
   if Length(Lines) = 0 then
+  begin
     Exit;
+  end;
   Result := [Snippet('free', 'free', Format('%d erzeugte Felder von %s freigeben', [Integer(Length(Lines)),
     AClass.Name]), string.Join(#10, Lines) + '$0', nil)];
   if not Mentions(Body, 'inherited') then
+  begin
     Result[0].Text := Result[0].Text + #10'inherited;';
+  end;
 end;
 
 { TContextSnippets }
@@ -278,35 +324,53 @@ begin
   // Höchstens ein Wort vor dem Cursor, nichts dahinter.
   if (ACharacter < 0) or (ACharacter > Length(AContext.LineText)) or
     (Trim(Copy(AContext.LineText, ACharacter + 1, MaxInt)) <> '') then
+  begin
     Exit;
+  end;
   Before := TrimLeft(Copy(AContext.LineText, 1, ACharacter));
   for Index := 1 to Length(Before) do
+  begin
     if not TTextChars.IsAsciiIdentChar(Before[Index]) then
+    begin
       Exit;
+    end;
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
+    begin
       Exit;
+    end;
     Routine := Source.RoutineAt;
     if Routine = nil then
     begin
       // In der Klassendeklaration.
       if (ClassSymbol.Range.StartPos.Line < AContext.Line) and (ClassSymbol.Range.EndPos.Line > AContext.Line) then
+      begin
         Result := PropertyItems(Source, AContext, ClassSymbol);
+      end;
       Exit;
     end;
     Block := Routine.FindChild(TSyntaxKind.Block);
     if (Block = nil) or (Block.StartPos.Line >= AContext.Line) or (Block.EndPos.Line <= AContext.Line) then
+    begin
       Exit;
+    end;
     Dot := LastDelimiter('.', Routine.Name);
     Method := Copy(Routine.Name, Dot + 1, MaxInt);
     Head := LowerCase(TrimLeft(Source.Lines[Routine.StartPos.Line]));
     if StartsStr('constructor ', Head) then
-      Result := ConstructorItems(Source, AContext, ClassSymbol, Block)
+    begin
+      Result := ConstructorItems(Source, AContext, ClassSymbol, Block);
+    end
     else if StartsStr('destructor ', Head) then
-      Result := DestructorItems(Source, ClassSymbol, Block)
+    begin
+      Result := DestructorItems(Source, ClassSymbol, Block);
+    end
     else if StartsStr('procedure ', Head) then
+    begin
       Result := SetterItems(Source, AContext, ClassSymbol, Routine, Block, Method);
+    end;
   finally
     Source.Free;
   end;
@@ -318,10 +382,16 @@ var
 begin
   Result := '';
   for C in AText do
+  begin
     if CharInSet(C, ['\', '$', '}']) then
-      Result := Result + '\' + C
+    begin
+      Result := Result + '\' + C;
+    end
     else
+    begin
       Result := Result + C;
+    end;
+  end;
 end;
 
 /// <summary>Liest ab AIndex bis zum passenden "}" (oder Textende) und gibt den Klartext zurück; AIndex steht danach
@@ -362,7 +432,9 @@ begin
           begin
             Inc(AIndex);
             while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
+            begin
               Inc(AIndex);
+            end;
             Continue;
           end;
           // ${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe}
@@ -370,7 +442,9 @@ begin
           begin
             Inc(AIndex, 2);
             while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
+            begin
               Inc(AIndex);
+            end;
             if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
             begin
               Inc(AIndex);
@@ -382,16 +456,22 @@ begin
               Inc(AIndex);
               Start := AIndex;
               while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
+              begin
                 Inc(AIndex);
+              end;
               Result := Result + Copy(AText, Start, AIndex - Start);
               while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+              begin
                 Inc(AIndex);
+              end;
               Inc(AIndex);
             end
             else
             begin
               while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+              begin
                 Inc(AIndex);
+              end;
               Inc(AIndex);
             end;
             Continue;

@@ -45,7 +45,9 @@ function WithoutLeadingZeros(const ADigits: string): string;
 begin
   Result := ADigits;
   while (Length(Result) > 1) and (Result[1] = '0') do
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 class function TRationaleReferences.Find(const AText: string): TArray<TRationaleLink>;
@@ -67,9 +69,13 @@ begin
     begin
       mEnd := mIndex;
       while (mEnd <= Length(AText)) and (AText[mEnd] > ' ') do
+      begin
         Inc(mEnd);
+      end;
       while (mEnd > mIndex) and CharInSet(AText[mEnd - 1], ['.', ',', ';', ':', ')', '!', '?', '''', '"']) do
+      begin
         Dec(mEnd);
+      end;
       mLink.Kind := TRationaleLinkKind.Url;
       mLink.Key := Copy(AText, mIndex, mEnd - mIndex);
     end
@@ -78,31 +84,41 @@ begin
     begin
       mDigits := mIndex + 3;
       if (mDigits <= Length(AText)) and CharInSet(AText[mDigits], ['-', ' ']) then
+      begin
         Inc(mDigits);
+      end;
       mEnd := mDigits;
       while (mEnd <= Length(AText)) and IsDigit(AText[mEnd]) do
+      begin
         Inc(mEnd);
+      end;
       if (mEnd > mDigits) and ((mEnd > Length(AText)) or not JoinsLink(AText[mEnd])) then
       begin
         mLink.Kind := TRationaleLinkKind.Adr;
         mLink.Key := WithoutLeadingZeros(Copy(AText, mDigits, mEnd - mDigits));
       end
       else
+      begin
         mEnd := 0;
+      end;
     end
     // #312, nicht #13#10 und nicht mitten in einem Wort.
     else if (AText[mIndex] = '#') and ((mIndex = 1) or not JoinsLink(AText[mIndex - 1])) then
     begin
       mEnd := mIndex + 1;
       while (mEnd <= Length(AText)) and IsDigit(AText[mEnd]) do
+      begin
         Inc(mEnd);
+      end;
       if (mEnd > mIndex + 1) and ((mEnd > Length(AText)) or not JoinsLink(AText[mEnd])) then
       begin
         mLink.Kind := TRationaleLinkKind.Issue;
         mLink.Key := WithoutLeadingZeros(Copy(AText, mIndex + 1, mEnd - mIndex - 1));
       end
       else
+      begin
         mEnd := 0;
+      end;
     end;
     if mEnd > mIndex then
     begin
@@ -112,7 +128,9 @@ begin
       mIndex := mEnd;
     end
     else
+    begin
       Inc(mIndex);
+    end;
   end;
 end;
 
@@ -124,21 +142,29 @@ var
 begin
   Result := '';
   if AKey = '' then
+  begin
     Exit;
+  end;
   mNames := Copy(AFileNames);
   TArray.Sort<string>(mNames);
   for mFileName in mNames do
   begin
     mName := LowerCase(ExtractFileName(StringReplace(mFileName, '\', '/', [rfReplaceAll]).Replace('/', PathDelim)));
     if StartsStr('adr-', mName) or StartsStr('adr_', mName) then
+    begin
       Delete(mName, 1, 4);
+    end;
     mEnd := 1;
     while (mEnd <= Length(mName)) and IsDigit(mName[mEnd]) do
+    begin
       Inc(mEnd);
+    end;
     mDigits := Copy(mName, 1, mEnd - 1);
     if (mDigits <> '') and (WithoutLeadingZeros(mDigits) = AKey) and (mEnd <= Length(mName)) and
       CharInSet(mName[mEnd], ['-', '_', '.', ' ']) then
+    begin
       Exit(mFileName);
+    end;
   end;
 end;
 

@@ -126,13 +126,17 @@ var
   Root: string;
 begin
   if Length(ASource.Files) = 0 then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Keine Projektdateien: Baseline nicht geschrieben (Projekt noch nicht geladen?)');
+  end;
   Root := ASource.Root;
   // Bisherige Baseline: neuer Name, sonst der frühere (#403); nur für die Zähler.
   FileName := FileIn(Root, BaselineFileName);
   if not FFiles.Exists(FileName) and FFiles.Exists(FileIn(Root, LegacyBaselineFileName)) then
+  begin
     FileName := FileIn(Root, LegacyBaselineFileName);
+  end;
   Old := nil;
   Previous := 'none';
   SetAsideFile := '';
@@ -149,8 +153,12 @@ begin
     end;
   // Nicht still ersetzen (Bericht N3): Die alte Datei bleibt als .defekt zum Nachsehen, die Antwort nennt sie.
   if (Previous = 'invalid') and Assigned(FFiles.SetAside) then
+  begin
     if not FFiles.SetAside(FileName, SetAsideFile) then
+    begin
       SetAsideFile := '';
+    end;
+  end;
   Sources := nil;
   Skipped := 0;
   for FileName in ASource.Files do
@@ -173,13 +181,17 @@ begin
   FileName := FileIn(Root, BaselineFileName);
   FFiles.Write(FileName, Outcome.Json);
   if Assigned(FOnWritten) then
+  begin
     FOnWritten(FileName);
+  end;
   // Die Zähler stehen in CountersJson als eigenes Objekt; hier mit Kopf zusammengesetzt.
   Text := Outcome.CountersJson;
   Result := '{"format": ' + IntToStr(Format) + ', "file": ' + TFindingsOutput.JsonString(FileName) +
     ', "previous": ' + TFindingsOutput.JsonString(Previous) + ', ';
   if SetAsideFile <> '' then
+  begin
     Result := Result + '"setAside": ' + TFindingsOutput.JsonString(SetAsideFile) + ', ';
+  end;
   Result := Result + '"skipped": ' + IntToStr(Skipped) + ', ' + Copy(Text, 2, MaxInt);
 end;
 
@@ -190,14 +202,20 @@ var
 begin
   FileName := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
   // Auch für eine Quelltextdatei die Dateien ihres Arbeitsbereichs: Die Baseline gilt immer für alle.
   if not (Assigned(FSourceFor) and FSourceFor(FileName, True, Source)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Arbeitsbereich für die Baseline gefunden');
+  end;
   Text := Update(Source);
   Result := TJSONObject.ParseJSONValue(Text);
   if Result = nil then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Antwort der Baseline ist kein gültiges JSON');
+  end;
 end;
 
 end.

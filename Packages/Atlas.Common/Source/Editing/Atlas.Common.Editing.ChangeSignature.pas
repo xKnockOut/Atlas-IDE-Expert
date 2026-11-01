@@ -172,16 +172,22 @@ function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Intege
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
   if Result > High(ATokens) then
+  begin
     Result := -1;
+  end;
 end;
 
 function PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function IsSymbolAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const ASymbol: string): Boolean;
@@ -197,22 +203,32 @@ var
 begin
   Opening := ATokens[AOpen].Text;
   if Opening = '(' then
-    Closing := ')'
+  begin
+    Closing := ')';
+  end
   else if Opening = '[' then
-    Closing := ']'
+  begin
+    Closing := ']';
+  end
   else
+  begin
     Closing := '>';
+  end;
   Depth := 0;
   Result := AOpen;
   while Result <= High(ATokens) do
   begin
     if ATokens[Result].IsSymbol(Opening) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Result].IsSymbol(Closing) then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
     Inc(Result);
   end;
@@ -223,7 +239,9 @@ end;
 function SliceText(const AText: string; const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): string;
 begin
   if (AFirst < 0) or (ALast < AFirst) then
+  begin
     Exit('');
+  end;
   Result := Copy(AText, ATokens[AFirst].Offset + 1,
     ATokens[ALast].Offset + Length(ATokens[ALast].Text) - ATokens[AFirst].Offset);
 end;
@@ -237,15 +255,21 @@ begin
   Result := '';
   Space := False;
   for Index := 1 to Length(AText) do
+  begin
     if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-      Space := True
+    begin
+      Space := True;
+    end
     else
     begin
       if Space and (Result <> '') then
+      begin
         Result := Result + ' ';
+      end;
       Space := False;
       Result := Result + AText[Index];
     end;
+  end;
 end;
 
 /// <summary>Teile von AText an ADelimiter außerhalb von Klammern und Zeichenketten.</summary>
@@ -259,8 +283,11 @@ begin
   Quoted := False;
   Start := 1;
   for Index := 1 to Length(AText) do
+  begin
     if AText[Index] = '''' then
-      Quoted := not Quoted
+    begin
+      Quoted := not Quoted;
+    end
     else if not Quoted then
       case AText[Index] of
         '(', '[', '<':
@@ -274,6 +301,7 @@ begin
           Start := Index + 1;
         end;
       end;
+  end;
   Result := Result + [Copy(AText, Start, MaxInt)];
 end;
 
@@ -286,8 +314,11 @@ begin
   Depth := 0;
   Quoted := False;
   for Index := 1 to Length(AText) do
+  begin
     if AText[Index] = '''' then
-      Quoted := not Quoted
+    begin
+      Quoted := not Quoted;
+    end
     else if not Quoted then
       case AText[Index] of
         '(', '[', '<':
@@ -296,8 +327,11 @@ begin
           Dec(Depth);
       else
         if (AText[Index] = ADelimiter) and (Depth = 0) then
+        begin
           Exit(Index);
+        end;
       end;
+  end;
   Result := 0;
 end;
 
@@ -317,11 +351,17 @@ function TSignatureParameter.Text(AWithDefault: Boolean): string;
 begin
   Result := Name;
   if Modifier <> '' then
+  begin
     Result := Modifier + ' ' + Result;
+  end;
   if TypeName <> '' then
+  begin
     Result := Result + ': ' + TypeName;
+  end;
   if AWithDefault and (DefaultValue <> '') then
+  begin
     Result := Result + ' = ' + DefaultValue;
+  end;
 end;
 
 { TSignatureHeader }
@@ -336,8 +376,12 @@ var
   Directive: string;
 begin
   for Directive in Directives do
+  begin
     if SameText(Directive, ADirective) or StartsText(ADirective + ' ', Directive) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -347,7 +391,9 @@ var
 begin
   SetLength(Result, Length(Parameters));
   for Index := 0 to High(Parameters) do
+  begin
     Result[Index] := Parameters[Index].TypeName;
+  end;
 end;
 
 { TParameterChange }
@@ -383,7 +429,9 @@ begin
   begin
     Rest := Collapse(Group);
     if Rest = '' then
+    begin
       Continue;
+    end;
     Parameter := Default(TSignatureParameter);
     Parameter.Group := GroupIndex;
     Inc(GroupIndex);
@@ -416,12 +464,16 @@ begin
       Names := Copy(Rest, 1, Colon - 1);
     end
     else
+    begin
       Names := Rest;
+    end;
     for Name in SplitTopLevel(Names, ',') do
     begin
       Parameter.Name := Trim(Name);
       if Parameter.Name <> '' then
+      begin
         Result := Result + [Parameter];
+      end;
     end;
   end;
 end;
@@ -437,10 +489,14 @@ begin
     Token := ATokens[Index];
     if (Token.StartPos.Line > APosition.Line) or
       ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    begin
       Break;
+    end;
     if (Token.Kind = TPascalTokenKind.Identifier) and (Token.EndPos.Line = APosition.Line) and
       (APosition.Character <= Token.EndPos.Character) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -460,11 +516,15 @@ begin
   begin
     Close := Matching(ATokens, Current);
     if Close < 0 then
+    begin
       Exit;
+    end;
     AHeader.OpenToken := Current;
     AHeader.CloseToken := Close;
     if Close > NextToken(ATokens, Current) then
+    begin
       AHeader.Parameters := TChangeSignature.ParseParameters(SliceText(AText, ATokens, Current + 1, Close - 1));
+    end;
     Current := NextToken(ATokens, Close);
   end;
   if IsSymbolAt(ATokens, Current, ':') then
@@ -472,15 +532,21 @@ begin
     Next := Current;
     while (Next >= 0) and (Next <= High(ATokens)) and not ATokens[Next].IsSymbol(';') and
       not ATokens[Next].IsKeyword('of') do
+    begin
       Next := NextToken(ATokens, Next);
+    end;
     if Next < 0 then
+    begin
       Exit;
+    end;
     AHeader.ResultType := Collapse(SliceText(AText, ATokens, NextToken(ATokens, Current), PreviousToken(ATokens, Next)));
     Current := Next;
   end;
   // Prozedurale Typen: "of object" bzw. "reference to" gehören vor das ";".
   while (Current >= 0) and (ATokens[Current].IsKeyword('of') or SameText(ATokens[Current].Text, 'object')) do
+  begin
     Current := NextToken(ATokens, Current);
+  end;
   if not IsSymbolAt(ATokens, Current, ';') then
   begin
     // Kopf ohne ";" am Ende eines prozeduralen Typs in einer Parameterliste o. Ä.
@@ -495,16 +561,22 @@ begin
   AHeader.EndToken := Current;
   AHeader.LastToken := Current;
   if not ADirectives then
+  begin
     Exit(True);
+  end;
   AHeader.Directives := nil;
   Next := NextToken(ATokens, Current);
   while (Next >= 0) and IsWord(ATokens[Next], DirectiveWords) do
   begin
     Last := Next;
     while (Last >= 0) and not ATokens[Last].IsSymbol(';') do
+    begin
       Last := NextToken(ATokens, Last);
+    end;
     if Last < 0 then
+    begin
       Break;
+    end;
     Directive := LowerCase(Collapse(SliceText(AText, ATokens, Next, PreviousToken(ATokens, Last))));
     AHeader.Directives := AHeader.Directives + [Directive];
     AHeader.LastToken := Last;
@@ -521,7 +593,9 @@ begin
   AHeader := Default(TSignatureHeader);
   Result := False;
   if (ANameToken < 0) or (ANameToken > High(ATokens)) then
+  begin
     Exit;
+  end;
   AHeader.NameToken := ANameToken;
   // Rückwärts über "TFoo." bzw. "TAussen.TInnen." bis zum Schlüsselwort.
   Current := PreviousToken(ATokens, ANameToken);
@@ -532,15 +606,21 @@ begin
     begin
       // Generischer Typ TFoo<T>.Bar
       while (Current >= 0) and not ATokens[Current].IsSymbol('<') do
+      begin
         Dec(Current);
+      end;
       Current := PreviousToken(ATokens, Current);
     end;
     if (Current < 0) or (ATokens[Current].Kind <> TPascalTokenKind.Identifier) then
+    begin
       Exit;
+    end;
     Current := PreviousToken(ATokens, Current);
   end;
   if (Current < 0) or not IsWord(ATokens[Current], RoutineWords) then
+  begin
     Exit;
+  end;
   AHeader.Keyword := LowerCase(ATokens[Current].Text);
   AHeader.StartToken := Current;
   Next := PreviousToken(ATokens, Current);
@@ -559,7 +639,9 @@ begin
   begin
     Next := Matching(ATokens, Next);
     if Next < 0 then
+    begin
       Exit;
+    end;
     Next := NextToken(ATokens, Next);
   end;
   Result := ReadTail(AText, ATokens, Next, AHeader, True);
@@ -573,20 +655,28 @@ begin
   AHeader := Default(TSignatureHeader);
   Result := False;
   if (ANameToken < 0) or (ANameToken > High(ATokens)) then
+  begin
     Exit;
+  end;
   // TFooEvent = [reference to] procedure(...)
   Current := NextToken(ATokens, ANameToken);
   if not IsSymbolAt(ATokens, Current, '=') then
+  begin
     Exit;
+  end;
   Current := NextToken(ATokens, Current);
   if (Current >= 0) and SameText(ATokens[Current].Text, 'reference') then
   begin
     Current := NextToken(ATokens, Current);
     if (Current >= 0) and SameText(ATokens[Current].Text, 'to') then
+    begin
       Current := NextToken(ATokens, Current);
+    end;
   end;
   if (Current < 0) or not IsWord(ATokens[Current], ['procedure', 'function']) then
+  begin
     Exit;
+  end;
   AHeader.Keyword := LowerCase(ATokens[Current].Text);
   AHeader.StartToken := Current;
   // Der "Name" ist das Schlüsselwort: die Klammern folgen direkt.
@@ -610,31 +700,49 @@ begin
   begin
     Change := AChanges[Index];
     if not IsIdentifier(Change.Name) then
+    begin
       Exit(Format('"%s" ist kein gültiger Parametername.', [Change.Name]));
+    end;
     for Other := 0 to Index - 1 do
+    begin
       if SameText(AChanges[Other].Name, Change.Name) then
+      begin
         Exit(Format('Der Parameter "%s" steht zweimal in der Liste.', [Change.Name]));
+      end;
+    end;
     if Change.Origin >= 0 then
     begin
       if Change.Origin > High(AOld) then
+      begin
         Exit(Format('Der Parameter "%s" gehört nicht zur alten Signatur.', [Change.Name]));
+      end;
       if Used[Change.Origin] then
+      begin
         Exit(Format('Der Parameter "%s" steht zweimal in der Liste.', [AOld[Change.Origin].Name]));
+      end;
       Used[Change.Origin] := True;
       if AOld[Change.Origin].DefaultValue <> '' then
+      begin
         SeenDefault := True;
+      end;
     end
     else
     begin
       if Trim(Change.TypeName) = '' then
+      begin
         Exit(Format('Für den neuen Parameter "%s" fehlt der Typ.', [Change.Name]));
+      end;
       if Trim(Change.Value) = '' then
+      begin
         Exit(Format('Für den neuen Parameter "%s" fehlt der Wert, den die bisherigen Aufrufer übergeben.',
           [Change.Name]));
+      end;
       // Atlas erzeugt keine Standardwerte; hinter einem Parameter mit Standardwert ginge es nur mit einem.
       if SeenDefault then
+      begin
         Exit(Format('Der neue Parameter "%s" stünde hinter einem Parameter mit Standardwert. Bitte weiter vorn ' +
           'einfügen.', [Change.Name]));
+      end;
     end;
   end;
 end;
@@ -653,13 +761,19 @@ begin
     if Change.Origin >= 0 then
     begin
       if Change.Origin > High(AOld) then
+      begin
         Continue;
+      end;
       Parameter := AOld[Change.Origin];
       Renamed := (Change.Origin <= High(ARootNames)) and not SameText(Change.Name, ARootNames[Change.Origin]);
       if Renamed or (Change.Origin > High(ARootNames)) then
+      begin
         Parameter.Name := Change.Name;
+      end;
       if not AWithDefaults then
+      begin
         Parameter.DefaultValue := '';
+      end;
     end
     else
     begin
@@ -702,23 +816,31 @@ begin
     end;
     Current.Name := Group;
     if Result <> '' then
+    begin
       Result := Result + '; ';
+    end;
     Result := Result + Current.Text(AWithDefaults);
     Inc(Index);
   end;
   if Result <> '' then
+  begin
     Result := '(' + Result + ')';
+  end;
 end;
 
 class function TChangeSignature.HeaderEdit(const ATokens: TArray<TPascalToken>; const AHeader: TSignatureHeader;
   const AList: string): TTextEdit;
 begin
   if AHeader.OpenToken >= 0 then
+  begin
     Result := TTextEdit.Create(TTextRange.Create(ATokens[AHeader.OpenToken].StartPos,
-      ATokens[AHeader.CloseToken].EndPos), AList)
+      ATokens[AHeader.CloseToken].EndPos), AList);
+  end
   else
+  begin
     Result := TTextEdit.Create(TTextRange.Create(ATokens[AHeader.NameToken].EndPos,
       ATokens[AHeader.NameToken].EndPos), AList);
+  end;
 end;
 
 class function TChangeSignature.UseOf(const ATokens: TArray<TPascalToken>; ANameToken: Integer;
@@ -732,26 +854,40 @@ begin
   begin
     Before := PreviousToken(ATokens, Before);
     if Before >= 0 then
+    begin
       Before := PreviousToken(ATokens, Before);
+    end;
   end;
   if (Before >= 0) and IsWord(ATokens[Before], ['read', 'write', 'stored', 'add', 'remove']) then
+  begin
     Exit(TSignatureUse.Accessor);
+  end;
   if IsSymbolAt(ATokens, Before, '@') then
+  begin
     Exit(TSignatureUse.Pointer_);
+  end;
   After := NextToken(ATokens, ANameToken);
   if IsSymbolAt(ATokens, After, '<') then
   begin
     After := Matching(ATokens, After);
     if After >= 0 then
+    begin
       After := NextToken(ATokens, After);
+    end;
   end;
   if IsSymbolAt(ATokens, After, '(') then
+  begin
     Exit(TSignatureUse.Call);
+  end;
   // Ohne Klammern: Aufruf nur, wenn die Routine ohne Argumente aufrufbar ist und nicht zugewiesen wird.
   if AHasRequired or IsSymbolAt(ATokens, Before, ':=') then
-    Result := TSignatureUse.Pointer_
+  begin
+    Result := TSignatureUse.Pointer_;
+  end
   else
+  begin
     Result := TSignatureUse.Call;
+  end;
 end;
 
 class function TChangeSignature.CallEdit(const AText: string; const ATokens: TArray<TPascalToken>;
@@ -770,7 +906,9 @@ begin
   begin
     Open := Matching(ATokens, Open);
     if Open >= 0 then
+    begin
       Open := NextToken(ATokens, Open);
+    end;
   end;
   OldArgs := nil;
   Close := -1;
@@ -778,14 +916,22 @@ begin
   begin
     Close := Matching(ATokens, Open);
     if Close < 0 then
+    begin
       Exit(False);
+    end;
     if Close > NextToken(ATokens, Open) then
+    begin
       for Value in SplitTopLevel(SliceText(AText, ATokens, NextToken(ATokens, Open), PreviousToken(ATokens, Close)),
         ',') do
+      begin
         OldArgs := OldArgs + [Trim(Value)];
+      end;
+    end;
   end
   else
+  begin
     Open := -1;
+  end;
   NewArgs := nil;
   Missing := nil;
   for Index := 0 to High(AChanges) do
@@ -802,9 +948,13 @@ begin
       begin
         // Ausgelassenes Argument mit Standardwert.
         if Change.Origin <= High(AOld) then
-          Value := AOld[Change.Origin].DefaultValue
+        begin
+          Value := AOld[Change.Origin].DefaultValue;
+        end
         else
+        begin
           Value := '';
+        end;
         NewArgs := NewArgs + [Value];
         Missing := Missing + [True];
       end;
@@ -813,9 +963,13 @@ begin
     begin
       Value := '';
       if Index <= High(AValues) then
+      begin
         Value := AValues[Index];
+      end;
       if Value = '' then
+      begin
         Value := Change.Value;
+      end;
       NewArgs := NewArgs + [Value];
       Missing := Missing + [False];
     end;
@@ -823,24 +977,34 @@ begin
   // Ausgelassene Standardwerte am Ende bleiben ausgelassen.
   Last := High(NewArgs);
   while (Last >= 0) and Missing[Last] do
+  begin
     Dec(Last);
+  end;
   SetLength(NewArgs, Last + 1);
   Joined := string.Join(', ', NewArgs);
   if (Length(NewArgs) = Length(OldArgs)) and (Joined = string.Join(', ', OldArgs)) then
+  begin
     Exit(False);
+  end;
   if Open >= 0 then
   begin
     if Joined = '' then
+    begin
       // Foo() wird zu Foo.
-      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[ANameToken].EndPos, ATokens[Close].EndPos), '')
+      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[ANameToken].EndPos, ATokens[Close].EndPos), '');
+    end
     else
+    begin
       AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Open].StartPos, ATokens[Close].EndPos),
         '(' + Joined + ')');
+    end;
   end
   else
   begin
     if Joined = '' then
+    begin
       Exit(False);
+    end;
     AEdit := TTextEdit.Create(TTextRange.Create(ATokens[ANameToken].EndPos, ATokens[ANameToken].EndPos),
       '(' + Joined + ')');
   end;
@@ -855,19 +1019,29 @@ var
 begin
   Result := nil;
   if AFirst < 0 then
+  begin
     Exit;
+  end;
   for Index := AFirst to ALast do
   begin
     if (Index > High(ATokens)) or (ATokens[Index].Kind <> TPascalTokenKind.Identifier) then
+    begin
       Continue;
+    end;
     Text := ATokens[Index].Text;
     if StartsStr('&', Text) then
+    begin
       Text := Copy(Text, 2, MaxInt);
+    end;
     if not SameText(Text, AName) then
+    begin
       Continue;
+    end;
     Before := PreviousToken(ATokens, Index);
     if IsSymbolAt(ATokens, Before, '.') then
+    begin
       Continue;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -884,12 +1058,18 @@ begin
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
       if ACandidate = Root then
+      begin
         Exit(TSyntaxSearchStep.Descend);
+      end;
       if (ACandidate.StartOffset > Offset) or (Offset > ACandidate.EndOffset) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       // Die äußerste Routine, deren Kopf hier steht.
       if ACandidate.Kind = TSyntaxKind.RoutineDecl then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
 end;
@@ -903,26 +1083,38 @@ var
 begin
   Result := -1;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Node := FindRoutine(ATree.Root, Tokens[AHeader.NameToken].Offset);
   if Node = nil then
+  begin
     Exit;
+  end;
   HasBegin := False;
   for Index := AHeader.LastToken + 1 to High(Tokens) do
   begin
     if Tokens[Index].Offset >= Node.EndOffset then
+    begin
       Break;
+    end;
     if Tokens[Index].IsKeyword('begin') or Tokens[Index].IsKeyword('asm') then
+    begin
       HasBegin := True;
+    end;
     Result := Index;
   end;
   if not HasBegin then
+  begin
     Exit(-1);
+  end;
   // Das ";" hinter end gehört dazu.
   Index := NextToken(Tokens, Result);
   if IsSymbolAt(Tokens, Index, ';') then
+  begin
     Result := Index;
+  end;
 end;
 
 class function TChangeSignature.HeaderText(const AHeader: TSignatureHeader; const AQualifiedName: string;
@@ -930,9 +1122,13 @@ class function TChangeSignature.HeaderText(const AHeader: TSignatureHeader; cons
 begin
   Result := AHeader.Keyword + ' ' + AQualifiedName + ParameterList(AParameters, AWithDefaults);
   if AHeader.IsClass then
+  begin
     Result := 'class ' + Result;
+  end;
   if AHeader.ResultType <> '' then
+  begin
     Result := Result + ': ' + AHeader.ResultType;
+  end;
   Result := Result + ';';
 end;
 
@@ -945,18 +1141,30 @@ var
 begin
   Arguments := nil;
   for Change in AChanges do
+  begin
     if (Change.Origin >= 0) and (Change.Origin <= High(AOld)) then
-      Arguments := Arguments + [AOld[Change.Origin].Name]
+    begin
+      Arguments := Arguments + [AOld[Change.Origin].Name];
+    end
     else
+    begin
       Arguments := Arguments + [Change.Value];
+    end;
+  end;
   Name := AHeader.QualifiedName;
   if LastDelimiter('.', Name) > 0 then
+  begin
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  end;
   Result := Name;
   if Length(Arguments) > 0 then
+  begin
     Result := Result + '(' + string.Join(', ', Arguments) + ')';
+  end;
   if AHeader.IsFunction then
+  begin
     Result := 'Result := ' + Result;
+  end;
   Result := Result + ';';
 end;
 
@@ -969,12 +1177,18 @@ begin
   begin
     Word := Directive;
     if Pos(' ', Word) > 0 then
+    begin
       Word := Copy(Word, 1, Pos(' ', Word) - 1);
+    end;
     if IndexText(Word, ChainWords) < 0 then
+    begin
       Result := Result + ' ' + Directive + ';';
+    end;
   end;
   if AVirtual then
+  begin
     Result := Result + ' virtual;';
+  end;
 end;
 
 class function TChangeSignature.ApplyEdits(const AText: string; const AEdits: TArray<TTextEdit>): string;
@@ -988,9 +1202,13 @@ begin
     function(const A, B: TTextEdit): Integer
     begin
       if A.Range.StartPos.Line <> B.Range.StartPos.Line then
-        Result := B.Range.StartPos.Line - A.Range.StartPos.Line
+      begin
+        Result := B.Range.StartPos.Line - A.Range.StartPos.Line;
+      end
       else
+      begin
         Result := B.Range.StartPos.Character - A.Range.StartPos.Character;
+      end;
     end));
   Lines := TLineTable.Build(AText);
   Result := AText;

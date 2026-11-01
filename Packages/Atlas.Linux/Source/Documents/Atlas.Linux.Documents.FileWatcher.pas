@@ -51,9 +51,13 @@ var
   Info: Stat;
 begin
   if FpStat(RawByteString(UTF8String(AFileName)), Info) <> 0 then
+  begin
     Exit('');
+  end;
   if FpS_ISDIR(Info.st_mode) then
+  begin
     Exit('');
+  end;
   Result := Format('%d.%d.%d', [Int64(Info.st_mtime), Int64(Info.st_mtime_nsec), Int64(Info.st_size)]);
 end;
 
@@ -73,9 +77,13 @@ begin
   Poll.events := POLLIN;
   Poll.revents := 0;
   if FpPoll(@Poll, 1, ATimeoutMs) <= 0 then
+  begin
     Exit;
+  end;
   while FpRead(AInotify, Buffer, SizeOf(Buffer)) > 0 do
+  begin
     Result := True;
+  end;
 end;
 
 constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged);
@@ -108,36 +116,52 @@ begin
         Inotify := inotify_init1(IN_NONBLOCK or IN_CLOEXEC);
         try
           if Inotify >= 0 then
+          begin
             for Dir in Tracker.Directories do
+            begin
               inotify_add_watch(Inotify, PAnsiChar(UTF8String(Dir)),
                 IN_MODIFY or IN_CLOSE_WRITE or IN_MOVED_TO or IN_MOVED_FROM or IN_CREATE or IN_DELETE);
+            end;
+          end;
           Waited := 0;
           repeat
             if Stop.WaitFor(0) = wrSignaled then
+            begin
               Exit;
+            end;
             if Reconfigure.WaitFor(0) = wrSignaled then
+            begin
               Break;
+            end;
             if WaitForEvents(Inotify, SliceMs) then
             begin
               // Mehrere Meldungen eines Speichervorgangs zusammenfassen.
               if Stop.WaitFor(SettleMs) = wrSignaled then
+              begin
                 Exit;
+              end;
               WaitForEvents(Inotify, 0);
               Waited := PollMs;
             end
             else
+            begin
               Inc(Waited, SliceMs);
+            end;
             if Waited >= PollMs then
             begin
               Waited := 0;
               Changed := Tracker.Poll;
               if Length(Changed) > 0 then
+              begin
                 OnChanged(Changed);
+              end;
             end;
           until False;
         finally
           if Inotify >= 0 then
+          begin
             FpClose(Inotify);
+          end;
         end;
       until False;
     end);

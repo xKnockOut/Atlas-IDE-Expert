@@ -202,8 +202,12 @@ var
 begin
   Found := '';
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id.StartsWith('metric-') then
+    begin
       Found := Found + Rule.Descriptor.Id + ' ';
+    end;
+  end;
   Assert.AreEqual('metric-method-length metric-nesting-depth metric-cyclomatic-complexity ' +
     'metric-cognitive-complexity metric-parameter-count metric-boolean-operands metric-local-count ' +
     'metric-exit-points metric-class-size metric-unit-length metric-uses-count metric-inheritance-depth ', Found);
@@ -216,7 +220,9 @@ var
 begin
   Result := 'unit U;'#10'interface'#10'type'#10'  TfrmHaupt = class(TForm)'#10;
   for Index := 1 to ACount do
+  begin
     Result := Result + '    Feld' + IntToStr(Index) + ': TLabel;'#10;
+  end;
   Result := Result + '  end;'#10'implementation'#10'end.';
 end;
 
@@ -417,7 +423,9 @@ var
 begin
   Result := 'unit Kette;'#10'interface'#10'type'#10'  TStufe1 = class(' + ABasis + ')'#10'  end;'#10;
   for Index := 2 to ACount do
+  begin
     Result := Result + Format('  TStufe%d = class(TStufe%d)'#10'  end;'#10, [Index, Index - 1]);
+  end;
   Result := Result + 'implementation'#10'end.';
 end;
 

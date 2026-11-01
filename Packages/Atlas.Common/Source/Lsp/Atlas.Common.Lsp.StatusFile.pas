@@ -52,7 +52,9 @@ function NormalFolder(const AFolder: string): string;
 begin
   Result := AnsiLowerCase(StringReplace(Trim(AFolder), '\', '/', [rfReplaceAll]));
   if not Result.EndsWith('/') then
+  begin
     Result := Result + '/';
+  end;
 end;
 
 class function TServerStatusFile.FolderOf(const ARoot: string): string;
@@ -74,9 +76,13 @@ begin
   begin
     mFolder := NormalFolder(mRoot);
     if (mFolder = '/') or (mWanted = '/') then
+    begin
       Continue;
+    end;
     if mWanted.StartsWith(mFolder) or mFolder.StartsWith(mWanted) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -111,10 +117,14 @@ begin
   AStatus := '';
   mText := ReadText(AFileName);
   if mText = '' then
+  begin
     Exit;
+  end;
   mValue := TJSONObject.ParseJSONValue(mText);
   if mValue = nil then
+  begin
     Exit;
+  end;
   try
     if mValue is TJSONObject then
     begin
@@ -127,9 +137,15 @@ begin
       begin
         APid := Cardinal(TJSONNumber(mPid).AsInt64);
         if mObject.GetValue('roots') is TJSONArray then
+        begin
           for mItem in TJSONArray(mObject.GetValue('roots')) do
+          begin
             if mItem is TJSONString then
+            begin
               ARoots := ARoots + [mItem.Value];
+            end;
+          end;
+        end;
         AStatus := mStatus.ToJSON;
         Result := True;
       end;
@@ -152,14 +168,18 @@ var
   mOrphan: Boolean;
 begin
   if (ARoot = '') or (AStatus = nil) then
+  begin
     Exit;
+  end;
   mEntry := TJSONObject.Create;
   try
     mEntry.AddPair('pid', TJSONNumber.Create(APid));
     mEntry.AddPair('written', DateToISO8601(ANow, False));
     mRoots := TJSONArray.Create;
     for mRoot in AWorkspaceRoots do
+    begin
       mRoots.Add(mRoot);
+    end;
     mEntry.AddPair('roots', mRoots);
     mEntry.AddPair('status', TJSONObject(AStatus.Clone));
     try
@@ -169,18 +189,26 @@ begin
       mTemp := mTarget + '.tmp';
       TFile.WriteAllText(mTemp, mEntry.ToJSON([]), TEncoding.UTF8);
       if TFile.Exists(mTarget) then
+      begin
         TFile.Delete(mTarget);
+      end;
       TFile.Move(mTemp, mTarget);
       // Verwaiste Dateien anderer Prozesse wegräumen (Absturz ohne Delete).
       for mOther in TDirectory.GetFiles(FolderOf(ARoot), 'server-*.json') do
       begin
         if SameText(mOther, mTarget) then
+        begin
           Continue;
+        end;
         mOrphan := not ReadEntry(mOther, mOtherPid, mWritten, mOtherRoots, mOtherStatus);
         if not mOrphan then
+        begin
           mOrphan := SecondsBetween(ANow, mWritten) > 10 * MaxAgeSeconds;
+        end;
         if mOrphan then
+        begin
           TFile.Delete(mOther);
+        end;
       end;
     except
       on Exception do
@@ -196,7 +224,9 @@ class procedure TServerStatusFile.Delete(const ARoot: string; APid: Cardinal);
 begin
   try
     if TFile.Exists(FileFor(ARoot, APid)) then
+    begin
       TFile.Delete(FileFor(ARoot, APid));
+    end;
   except
     on Exception do
       Exit;
@@ -217,16 +247,24 @@ begin
   APid := 0;
   AWritten := 0;
   if not TDirectory.Exists(FolderOf(ARoot)) then
+  begin
     Exit;
+  end;
   // Ohne Variable für die Dateiliste: Delphi liefert TStringDynArray, Free Pascal TArray<string>.
   for mFile in TDirectory.GetFiles(FolderOf(ARoot), 'server-*.json') do
   begin
     if not ReadEntry(mFile, mPid, mWritten, mRoots, mStatus) then
+    begin
       Continue;
+    end;
     if (mWritten > ANow + OneSecond * MaxAgeSeconds) or (SecondsBetween(ANow, mWritten) > MaxAgeSeconds) then
+    begin
       Continue;
+    end;
     if not Matches(mRoots, AFolder) then
+    begin
       Continue;
+    end;
     // Jüngste gewinnt, bei Gleichstand die kleinere pid (eindeutig).
     if not Result or (mWritten > AWritten) or ((mWritten = AWritten) and (mPid < APid)) then
     begin

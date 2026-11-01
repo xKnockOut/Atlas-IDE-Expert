@@ -132,7 +132,9 @@ end;
 destructor TShellDiagnostics.Destroy;
 begin
   if FLogImpl <> nil then
+  begin
     FLogImpl.Flush;
+  end;
   FLog := nil;
   FWriter := nil;
   FIds.Free;
@@ -152,7 +154,9 @@ begin
   AAnonymizer := nil;
   Result := True;
   if AFileName = '' then
+  begin
     Exit;
+  end;
   try
     ALogger.AddSink(LogFileSink(AFileName, AFallbackTag, ANames, AAnonymizer), ALevel);
   except
@@ -174,7 +178,9 @@ begin
   AAnonymizer := nil;
   Result := Inner;
   if ANames then
+  begin
     Exit;
+  end;
   // Eigene Variable: out-Parameter lassen sich nicht einfangen.
   Anonymizer := TLogAnonymizer.Create(TProcessInfo.IdentityNames);
   AAnonymizer := Anonymizer;
@@ -202,7 +208,9 @@ begin
   FFolder.RetentionDays := ASettings.DiagnosticsLogDays;
   FLog.Configure(ASettings.DiagnosticsLog);
   if ASettings.DiagnosticsLog then
+  begin
     FFolder.Cleanup(ASettings.DiagnosticsLogDays);
+  end;
 end;
 
 function TShellDiagnostics.BeginRun(const AVersion: string; AMemoryBytes: Int64): Integer;
@@ -216,7 +224,9 @@ begin
   Process.Threads := TProcessInfo.ThreadCount;
   FLog.LogStart(AVersion, Process);
   for Index := 1 to Previous do
+  begin
     FLog.LogEvent('previous run ended without end line (process terminated or crashed)');
+  end;
 end;
 
 class function TShellDiagnostics.EndReasonText(AReason: TDiagnosticEndReason): string;
@@ -247,7 +257,9 @@ begin
   // Die Endzeile kommt schon, wenn die Eingabe endet (#647): Das Plugin wartet danach nur kurz und
   // beendet den Prozess, solange noch Anfragen laufen. Der spätere Aufruf aus Run zählt dann nicht.
   if FEnded then
+  begin
     Exit;
+  end;
   FEnded := True;
   Process.MemoryBytes := AMemoryBytes;
   Process.Threads := TProcessInfo.ThreadCount;
@@ -262,7 +274,9 @@ begin
   FLog.LogEnd(AReason, AExitCode, Process, ErrorClass, Stack);
   FLogImpl.Flush;
   if FMapFile and FLog.Enabled then
+  begin
     FFolder.WriteMap(FIds.MapLines);
+  end;
   FFolder.EndRun;
 end;
 
@@ -282,14 +296,20 @@ begin
   TMonitor.Enter(FLock);
   try
     if Generation = FLibraryGeneration then
+    begin
       Exit(FLibraryCount);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
   Count := 0;
   for UnitIndex in FIndex.Units do
+  begin
     if UnitIndex.Library_ then
+    begin
       Inc(Count);
+    end;
+  end;
   TMonitor.Enter(FLock);
   try
     FLibraryGeneration := Generation;
@@ -308,7 +328,9 @@ var
   Text: string;
 begin
   if not (AParams is TJSONObject) then
+  begin
     Exit;
+  end;
   if TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) then
   begin
     ARequest.Document := FIds.IdOf(TDiagnosticIdKind.Document, TDocumentUris.ToPath(Uri));
@@ -335,14 +357,20 @@ var
   Items: TJSONValue;
 begin
   if (AResult = nil) or (AResult is TJSONNull) then
+  begin
     Exit(0);
+  end;
   if AResult is TJSONArray then
+  begin
     Exit(TJSONArray(AResult).Count);
+  end;
   if AResult is TJSONObject then
   begin
     Items := TJSONObject(AResult).GetValue('items');
     if Items is TJSONArray then
+    begin
       Exit(TJSONArray(Items).Count);
+    end;
   end;
   Result := 1;
 end;
@@ -355,7 +383,9 @@ begin
   Slash := LastDelimiter('/', AMethod);
   Result := Copy(AMethod, Slash + 1, MaxInt);
   if StartsText('workspace/', AMethod) and (Result <> '') then
+  begin
     Result := 'ws' + UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+  end;
 end;
 
 procedure TShellDiagnostics.Started(const AMethod: string);
@@ -369,9 +399,13 @@ begin
   TMonitor.Enter(FLock);
   try
     if FRunning.TryGetValue(Name, Count) then
-      FRunning[Name] := Count + 1
+    begin
+      FRunning[Name] := Count + 1;
+    end
     else
+    begin
       FRunning.Add(Name, 1);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -392,7 +426,9 @@ begin
   // Rechenzeit gegen Laufzeit (#647): cpu weit unter ms heißt Warten (Sperre, volle CPU), nicht Rechnen.
   CpuMs := TProcessInfo.ThreadCpuMs;
   if (CpuMs >= 0) and (StartCpuMs >= 0) then
+  begin
     Notes.Notes := Notes.Notes + ['cpu=' + IntToStr(CpuMs - StartCpuMs)];
+  end;
   Name := ShortMethod(AMethod);
   Parallel := '';
   TMonitor.Enter(FLock);
@@ -400,29 +436,43 @@ begin
     if FRunning.TryGetValue(Name, Count) then
     begin
       if Count <= 1 then
-        FRunning.Remove(Name)
+      begin
+        FRunning.Remove(Name);
+      end
       else
+      begin
         FRunning[Name] := Count - 1;
+      end;
     end;
     // Was beim Ende dieser Anfrage noch läuft.
     for Pair in FRunning do
     begin
       if Parallel <> '' then
+      begin
         Parallel := Parallel + ',';
+      end;
       Parallel := Parallel + Pair.Key + IntToStr(Pair.Value);
     end;
   finally
     TMonitor.Exit(FLock);
   end;
   if Parallel <> '' then
+  begin
     Notes.Notes := Notes.Notes + ['parallel=' + Parallel];
+  end;
   // Bei einem Fehler noch offen (#1094): die Unit und die Regel, an denen die Anfrage scheiterte.
   if Notes.Subject <> '' then
+  begin
     Notes.Notes := Notes.Notes + ['unit=' + Notes.Subject];
+  end;
   if Notes.Rule <> '' then
+  begin
     Notes.Notes := Notes.Notes + ['rule=' + Notes.Rule];
+  end;
   if FEnded or not FLog.Enabled then
+  begin
     Exit;
+  end;
   Request := Default(TDiagnosticRequest);
   Request.Time := Now;
   Request.Method := AMethod;
@@ -436,12 +486,18 @@ begin
   begin
     Timeout := 0;
     if Assigned(FTimeoutMs) then
+    begin
       Timeout := FTimeoutMs();
+    end;
     // Der Wächter bricht nach dem Zeitlimit ab; früher abgebrochen hat der Client oder eine Änderung.
     if (Timeout > 0) and (AQueueMs + AElapsedMs >= Int64(Timeout) - 50) then
-      Request.Outcome := TDiagnosticOutcome.Timeout
+    begin
+      Request.Outcome := TDiagnosticOutcome.Timeout;
+    end
     else
+    begin
       Request.Outcome := TDiagnosticOutcome.Cancelled;
+    end;
   end
   else if AError <> nil then
   begin
@@ -452,11 +508,17 @@ begin
   begin
     Request.Count := Notes.Count;
     if Request.Count < 0 then
+    begin
       Request.Count := CountOf(AResult);
+    end;
     if Request.Count > 0 then
-      Request.Outcome := TDiagnosticOutcome.Ok
+    begin
+      Request.Outcome := TDiagnosticOutcome.Ok;
+    end
     else
+    begin
       Request.Outcome := TDiagnosticOutcome.Empty;
+    end;
   end;
   DescribeDocument(AParams, Request);
   if FIndex <> nil then
@@ -466,7 +528,9 @@ begin
   end;
   Request.IndexLoading := -1;
   if Assigned(FIndexLoading) then
+  begin
     Request.IndexLoading := FIndexLoading();
+  end;
   FLog.LogRequest(Request);
 end;
 

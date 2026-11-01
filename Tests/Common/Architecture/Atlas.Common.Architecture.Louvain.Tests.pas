@@ -56,8 +56,12 @@ var
 begin
   Result := nil;
   for A := 0 to 3 do
+  begin
     for B := A + 1 to 3 do
+    begin
       Result := Result + [Edge(AOffset + A, AOffset + B, 2)];
+    end;
+  end;
 end;
 
 /// <summary>Zwei vollständige Vierergruppen 0..3 und 4..7, verbunden durch 3–4.</summary>
@@ -76,8 +80,12 @@ begin
   for mGroup := 0 to 5 do
   begin
     for mA := 0 to 4 do
+    begin
       for mB := mA + 1 to 4 do
+      begin
         Result := Result + [Edge(mGroup * 5 + mA, mGroup * 5 + mB, 1)];
+      end;
+    end;
     Result := Result + [Edge(mGroup * 5 + 4, ((mGroup + 1) mod 6) * 5, 1)];
   end;
 end;
@@ -88,7 +96,9 @@ var
 begin
   Result := 0;
   for mValue in AValues do
+  begin
     Result := Max(Result, mValue + 1);
+  end;
 end;
 
 function Joined(const AValues: TArray<Integer>): string;
@@ -97,7 +107,9 @@ var
 begin
   Result := '';
   for Value in AValues do
+  begin
     Result := Result + IntToStr(Value);
+  end;
 end;
 
 { TLouvainTests }
@@ -190,7 +202,9 @@ begin
   // Q = 6 · (20/132 − γ · (22/132)²) = 10/11 − γ/6.
   SetLength(mGroups, 30);
   for mNode := 0 to 29 do
+  begin
     mGroups[mNode] := mNode div 5;
+  end;
   // Doubles statt konstanter Ausdrücke: FPC rechnet 0.5 / 6 sonst nur in Single.
   mInner := 10;
   mInner := mInner / 11;

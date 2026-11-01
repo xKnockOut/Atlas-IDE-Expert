@@ -70,7 +70,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 function PositionOf(const AText: string; AIndex: Integer): TTextPosition;
@@ -80,13 +82,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to AIndex - 1 do
+  begin
     if AText[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   Result := TTextPosition.Create(Line, Character);
 end;
 
@@ -127,7 +133,9 @@ begin
   Tree := TPascalParser.Parse(Text);
   try
     if not ARun(Text, Tree, Range, Action) then
+    begin
       Exit('-');
+    end;
     ATitle := Action.Title;
     Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
   finally

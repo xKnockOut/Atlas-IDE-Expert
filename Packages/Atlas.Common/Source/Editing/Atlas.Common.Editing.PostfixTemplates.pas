@@ -161,23 +161,41 @@ class function TPostfixTemplates.Applies(const AKey: string; const ATraits: TPos
   AInlineVar: Boolean): Boolean;
 begin
   if MatchText(AKey, ['for', 'forin']) then
-    Result := ATraits.Enumerable and (AInlineVar or (ATraits.ElementType <> ''))
+  begin
+    Result := ATraits.Enumerable and (AInlineVar or (ATraits.ElementType <> ''));
+  end
   else if MatchText(AKey, ['tryf', 'free']) then
-    Result := ATraits.IsClass
+  begin
+    Result := ATraits.IsClass;
+  end
   else if MatchText(AKey, ['ifa', 'notnil', 'nil']) then
-    Result := ATraits.IsReference
+  begin
+    Result := ATraits.IsReference;
+  end
   else if MatchText(AKey, ['not', 'if']) then
-    Result := ATraits.IsBoolean
+  begin
+    Result := ATraits.IsBoolean;
+  end
   else if SameText(AKey, 'fmt') then
-    Result := ATraits.IsString
+  begin
+    Result := ATraits.IsString;
+  end
   else if SameText(AKey, 'try') then
-    Result := ATraits.IsConstructorCall and (AInlineVar or (ATraits.TypeName <> ''))
+  begin
+    Result := ATraits.IsConstructorCall and (AInlineVar or (ATraits.TypeName <> ''));
+  end
   else if SameText(AKey, 'var') then
-    Result := AInlineVar or (ATraits.TypeName <> '')
+  begin
+    Result := AInlineVar or (ATraits.TypeName <> '');
+  end
   else if SameText(AKey, 'exit') then
-    Result := ATraits.InFunction
+  begin
+    Result := ATraits.InFunction;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 class function TPostfixTemplates.IsTypeCondition(const ACondition: string): Boolean;
@@ -191,30 +209,54 @@ var
   Condition: string;
 begin
   if not ATemplate.IsCustom then
+  begin
     Exit(Applies(ATemplate.Key, ATraits, AInlineVar));
+  end;
   Condition := LowerCase(Trim(ATemplate.Condition));
   if (Condition = '') or (Condition = 'any') then
-    Result := True
+  begin
+    Result := True;
+  end
   else if Condition = 'reference' then
-    Result := ATraits.IsReference
+  begin
+    Result := ATraits.IsReference;
+  end
   else if Condition = 'class' then
-    Result := ATraits.IsClass
+  begin
+    Result := ATraits.IsClass;
+  end
   else if Condition = 'string' then
-    Result := ATraits.IsString
+  begin
+    Result := ATraits.IsString;
+  end
   else if Condition = 'boolean' then
-    Result := ATraits.IsBoolean
+  begin
+    Result := ATraits.IsBoolean;
+  end
   else if Condition = 'enumerable' then
-    Result := ATraits.Enumerable
+  begin
+    Result := ATraits.Enumerable;
+  end
   else if Condition = 'constructor' then
-    Result := ATraits.IsConstructorCall
+  begin
+    Result := ATraits.IsConstructorCall;
+  end
   else if Condition = 'function' then
-    Result := ATraits.InFunction
+  begin
+    Result := ATraits.InFunction;
+  end
   else if ATraits.TypeName = '' then
-    Result := False
+  begin
+    Result := False;
+  end
   else if SameText(ATraits.TypeName, Trim(ATemplate.Condition)) then
-    Result := True
+  begin
+    Result := True;
+  end
   else
+  begin
     Result := Assigned(ADescends) and ADescends(Trim(ATemplate.Condition));
+  end;
 end;
 
 class function TPostfixTemplates.Escape(const AText: string): string;
@@ -242,18 +284,26 @@ var
   function Field(ANumber: Integer; const ADefault: string): string;
   begin
     if ASnippet then
-      Result := Format('${%d:%s}', [ANumber, Escape(ADefault)])
+    begin
+      Result := Format('${%d:%s}', [ANumber, Escape(ADefault)]);
+    end
     else
+    begin
       Result := ADefault;
+    end;
   end;
 
   // Endposition des Cursors.
   function Caret: string;
   begin
     if ASnippet then
-      Result := '$0'
+    begin
+      Result := '$0';
+    end
     else
+    begin
       Result := '';
+    end;
   end;
 
   // Eingerückte Folgezeile nach einem Kopf wie "if … then".
@@ -277,13 +327,19 @@ begin
   end;
   Key := LowerCase(ATemplate.Key);
   if ASnippet then
-    Expr := Escape(AExpr)
+  begin
+    Expr := Escape(AExpr);
+  end
   else
+  begin
     Expr := AExpr;
+  end;
   if (Key = 'for') or (Key = 'forin') then
   begin
     if AInlineVar then
-      Body := 'for var ' + Field(1, ItemName) + ' in ' + Expr + ' do'
+    begin
+      Body := 'for var ' + Field(1, ItemName) + ' in ' + Expr + ' do';
+    end
     else
     begin
       // Der Name steht auch in der Deklaration; kein Platzhalter, der nur eine Stelle ändern würde.
@@ -293,19 +349,33 @@ begin
     Result.Text := Body + Next;
   end
   else if Key = 'tryf' then
-    Result.Text := TryFinally(Expr)
+  begin
+    Result.Text := TryFinally(Expr);
+  end
   else if (Key = 'ifa') or (Key = 'notnil') then
-    Result.Text := 'if Assigned(' + Expr + ') then' + Next
+  begin
+    Result.Text := 'if Assigned(' + Expr + ') then' + Next;
+  end
   else if Key = 'nil' then
-    Result.Text := 'if not Assigned(' + Expr + ') then' + Next
+  begin
+    Result.Text := 'if not Assigned(' + Expr + ') then' + Next;
+  end
   else if Key = 'not' then
-    Result.Text := 'not ' + Expr
+  begin
+    Result.Text := 'not ' + Expr;
+  end
   else if Key = 'if' then
-    Result.Text := 'if ' + Expr + ' then' + Next
+  begin
+    Result.Text := 'if ' + Expr + ' then' + Next;
+  end
   else if Key = 'fmt' then
-    Result.Text := 'Format(' + Expr + ', [' + Caret + '])'
+  begin
+    Result.Text := 'Format(' + Expr + ', [' + Caret + '])';
+  end
   else if Key = 'free' then
-    Result.Text := 'FreeAndNil(' + Expr + ');'
+  begin
+    Result.Text := 'FreeAndNil(' + Expr + ');';
+  end
   else if Key = 'try' then
   begin
     Name := SuggestName(ATraits.TypeName);
@@ -313,7 +383,9 @@ begin
     begin
       Body := 'var ' + Field(1, Name) + ' := ' + Expr + ';';
       if ASnippet then
+      begin
         Name := '$1';
+      end;
     end
     else
     begin
@@ -326,7 +398,9 @@ begin
   begin
     Name := SuggestName(ATraits.TypeName);
     if AInlineVar then
-      Result.Text := 'var ' + Field(1, Name) + ' := ' + Expr + ';' + Caret
+    begin
+      Result.Text := 'var ' + Field(1, Name) + ' := ' + Expr + ';' + Caret;
+    end
     else
     begin
       Result.Text := Name + ' := ' + Expr + ';';
@@ -334,9 +408,13 @@ begin
     end;
   end
   else if Key = 'exit' then
-    Result.Text := 'Exit(' + Expr + ');'
+  begin
+    Result.Text := 'Exit(' + Expr + ');';
+  end
   else
+  begin
     Result.Text := AExpr;
+  end;
 end;
 
 class function TPostfixTemplates.CustomText(const ABody, AExpr, AIndent, ALineBreak: string;
@@ -361,18 +439,26 @@ begin
     else if (Ch = '$') and StartsText(ExprToken, Copy(Body, Index, Length(ExprToken))) then
     begin
       if ASnippet then
-        Result := Result + Escape(AExpr)
+      begin
+        Result := Result + Escape(AExpr);
+      end
       else
+      begin
         Result := Result + AExpr;
+      end;
       Inc(Index, Length(ExprToken));
     end
     else if (Ch = '$') and (Index < Length(Body)) and (Body[Index + 1] = '$') then
     begin
       // "$$" steht für ein "$".
       if ASnippet then
-        Result := Result + '\$'
+      begin
+        Result := Result + '\$';
+      end
       else
+      begin
         Result := Result + '$';
+      end;
       Inc(Index, 2);
     end
     else if (Ch = '$') and (Index < Length(Body)) and CharInSet(Body[Index + 1], ['0'..'9']) then
@@ -380,9 +466,13 @@ begin
       // $1 bzw. $0
       Close := Index + 1;
       while (Close <= Length(Body)) and CharInSet(Body[Close], ['0'..'9']) do
+      begin
         Inc(Close);
+      end;
       if ASnippet then
+      begin
         Result := Result + Copy(Body, Index, Close - Index);
+      end;
       Index := Close;
     end
     else if (Ch = '$') and (Index + 2 <= Length(Body)) and (Body[Index + 1] = '{') and
@@ -391,19 +481,29 @@ begin
       // ${1:Vorgabe} bzw. ${2}: Vorgabe bis zur schließenden Klammer.
       Close := PosEx('}', Body, Index);
       if Close = 0 then
+      begin
         Close := Length(Body) + 1;
+      end;
       if ASnippet then
-        Result := Result + Copy(Body, Index, Close - Index + 1)
+      begin
+        Result := Result + Copy(Body, Index, Close - Index + 1);
+      end
       else if Pos(':', Copy(Body, Index, Close - Index)) > 0 then
+      begin
         Result := Result + Copy(Body, PosEx(':', Body, Index) + 1, Close - PosEx(':', Body, Index) - 1);
+      end;
       Index := Close + 1;
     end
     else
     begin
       if ASnippet and CharInSet(Ch, ['\', '$', '}']) then
-        Result := Result + '\' + Ch
+      begin
+        Result := Result + '\' + Ch;
+      end
       else
+      begin
         Result := Result + Ch;
+      end;
       Inc(Index);
     end;
   end;
@@ -422,16 +522,26 @@ begin
   Text := Trim(ATypeName);
   Angle := Pos('<', Text);
   if StartsText('TArray<', Text) or StartsText('array ', Text) or StartsText('array[', Text) then
+  begin
     Exit('Values');
+  end;
   if Angle > 0 then
+  begin
     Text := Copy(Text, 1, Angle - 1);
+  end;
   if LastDelimiter('.', Text) > 0 then
+  begin
     Text := Copy(Text, LastDelimiter('.', Text) + 1, MaxInt);
+  end;
   // TStringList → StringList. Ohne T- oder I-Vorsatz (Integer, Tabelle) hieße die Variable wie ihr Typ.
   if (Length(Text) > 1) and CharInSet(Text[1], ['T', 'I']) and CharInSet(Text[2], ['A'..'Z']) then
-    Text := Copy(Text, 2, MaxInt)
+  begin
+    Text := Copy(Text, 2, MaxInt);
+  end
   else
+  begin
     Text := 'Value';
+  end;
   Result := Text;
 end;
 
@@ -443,15 +553,21 @@ begin
   Result := '';
   Text := Trim(ATypeText);
   if StartsText('TArray<', Text) and EndsStr('>', Text) then
+  begin
     Exit(Trim(Copy(Text, Length('TArray<') + 1, Length(Text) - Length('TArray<') - 1)));
+  end;
   if StartsText('array', Text) or StartsText('set ', Text) then
   begin
     OfPos := Pos(' OF ', UpperCase(Text));
     if OfPos > 0 then
+    begin
       Result := Trim(Copy(Text, OfPos + Length(' of '), MaxInt));
+    end;
     // array of const hat keinen Elementtyp, über den sich schreiben ließe.
     if SameText(Result, 'const') then
+    begin
       Result := '';
+    end;
   end;
 end;
 

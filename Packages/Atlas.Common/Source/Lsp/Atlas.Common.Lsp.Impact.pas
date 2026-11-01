@@ -313,9 +313,13 @@ var
 begin
   Bracket := Pos('<', AName);
   if Bracket > 0 then
-    Result := Copy(AName, 1, Bracket - 1)
+  begin
+    Result := Copy(AName, 1, Bracket - 1);
+  end
   else
+  begin
     Result := AName;
+  end;
 end;
 
 function IsFormFile(const AFileName: string): Boolean;
@@ -328,9 +332,13 @@ function RangeContains(const AOuter: TTextRange; const APosition: TTextPosition)
   function Compare(const A, B: TTextPosition): Integer;
   begin
     if A.Line <> B.Line then
-      Result := A.Line - B.Line
+    begin
+      Result := A.Line - B.Line;
+    end
     else
+    begin
       Result := A.Character - B.Character;
+    end;
   end;
 
 begin
@@ -371,9 +379,13 @@ end;
 procedure TImpactDeadline.ThrowIfCancellationRequested;
 begin
   if FInner <> nil then
+  begin
     FInner.ThrowIfCancellationRequested;
+  end;
   if Expired then
+  begin
     raise EImpactTimeLimit.Create('Zeitlimit der Auswirkungsanalyse erreicht');
+  end;
 end;
 
 { TImpactTestScope }
@@ -391,7 +403,9 @@ begin
   Result := Default(TImpactTestScope);
   Result.Pattern := APattern;
   if AProgramText <> '' then
+  begin
     Result.Units := TUsesClauses.UsedUnits(TPascalLexer.Tokenize(AProgramText));
+  end;
 end;
 
 { TImpactOptions }
@@ -415,8 +429,12 @@ var
 begin
   Result := 0;
   for Place in Places do
+  begin
     if Place.Level = ALevel then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TImpactResult.RunNames: TArray<string>;
@@ -429,12 +447,16 @@ begin
   Seen := TDictionary<string, Boolean>.Create;
   try
     for Test in Tests do
+    begin
       for Name in Test.RunNames do
+      begin
         if not Seen.ContainsKey(UpperCase(Name)) then
         begin
           Seen.Add(UpperCase(Name), True);
           Result := Result + [Name];
         end;
+      end;
+    end;
   finally
     Seen.Free;
   end;
@@ -475,7 +497,9 @@ begin
   FOptions.Depth := TImpactAnalysis.ClampDepth(AOptions.Depth);
   FMaxPlaces := AOptions.MaxPlaces;
   if (FMaxPlaces <= 0) or (FMaxPlaces > TImpactAnalysis.MaxPlaces) then
+  begin
     FMaxPlaces := TImpactAnalysis.MaxPlaces;
+  end;
   FDeadline := TImpactDeadline.Create(ACancellation, AOptions.TimeoutMs);
   FToken := FDeadline;
   FPlaces := TList<TImpactPlace>.Create;
@@ -483,15 +507,21 @@ begin
   FKeys := TDictionary<string, Integer>.Create;
   FOwnsFiles := AShared = nil;
   if FOwnsFiles then
-    FCache := TImpactFiles.Create
+  begin
+    FCache := TImpactFiles.Create;
+  end
   else
+  begin
     FCache := AShared;
+  end;
 end;
 
 destructor TImpactRun.Destroy;
 begin
   if FOwnsFiles then
+  begin
     FCache.Free;
+  end;
   FKeys.Free;
   FTests.Free;
   FPlaces.Free;
@@ -510,10 +540,14 @@ var
   Text: string;
 begin
   if FCache.Trees.TryGetValue(UpperCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   if not ReadText(AFileName, Text) then
+  begin
     Exit;
+  end;
   // Große Gruppen: nicht alle Bäume zugleich halten.
   if FCache.Trees.Count >= MaxCachedTrees then
   begin
@@ -529,7 +563,9 @@ var
   Tree: TSyntaxTree;
 begin
   if FCache.Units.TryGetValue(UpperCase(AFileName), AUnit) then
+  begin
     Exit(True);
+  end;
   Tree := TreeOf(AFileName);
   Result := Tree <> nil;
   if Result then
@@ -547,11 +583,15 @@ begin
   Result := False;
   Tree := TreeOf(AItem.FileName);
   if Tree = nil then
+  begin
     Exit;
+  end;
   Targets := TLspDefinition.Targets(FResolver, FIndex, Tree, AItem.FileName, AItem.SelectionRange.StartPos, True);
   Result := Length(Targets) > 0;
   if Result then
+  begin
     ATarget := Targets[0];
+  end;
 end;
 
 function TImpactRun.KeyOf(const AItem: THierarchyItem; ATerminal: Boolean): string;
@@ -560,11 +600,15 @@ var
 begin
   // Rumpf und Deklaration einer Methode sind dieselbe Stelle: Schlüssel ist die Deklaration.
   if not ATerminal and Declaration(AItem, Target) then
+  begin
     Result := UpperCase(Target.FileName) + '|' + IntToStr(Target.SelectionRange.StartPos.Line) + ':' +
-      IntToStr(Target.SelectionRange.StartPos.Character)
+      IntToStr(Target.SelectionRange.StartPos.Character);
+  end
   else
+  begin
     Result := UpperCase(AItem.FileName) + '|' + IntToStr(AItem.SelectionRange.StartPos.Line) + ':' +
       IntToStr(AItem.SelectionRange.StartPos.Character);
+  end;
 end;
 
 function TImpactRun.DeclarationSymbol(const AItem: THierarchyItem; out AUnit: TUnitIndex;
@@ -575,16 +619,22 @@ var
 begin
   Result := False;
   if not Declaration(AItem, Target) then
+  begin
     Exit;
+  end;
   if not (FIndex.FindFile(Target.FileName, AUnit) or ExtractedUnit(Target.FileName, AUnit)) then
+  begin
     Exit;
+  end;
   for Index in AUnit.SymbolsNamed(AItem.Name) do
+  begin
     if (AUnit.Symbols[Index].SelectionRange.StartPos = Target.SelectionRange.StartPos) and
       SameText(AUnit.SymbolFile(AUnit.Symbols[Index]), Target.FileName) then
     begin
       ASymbol := AUnit.Symbols[Index];
       Exit(True);
     end;
+  end;
 end;
 
 function TImpactRun.FormBindings(const AItem: THierarchyItem): TArray<TImpactFormBinding>;
@@ -597,13 +647,17 @@ var
 begin
   Result := nil;
   if (AItem.Name = '') or IsFormFile(AItem.FileName) or not ReadText(AItem.FileName, Text) then
+  begin
     Exit;
+  end;
   for FormFile in TFormFiles.FormFiles(AItem.FileName, Text) do
   begin
     if not FCache.Forms.TryGetValue(UpperCase(FormFile), Model) then
     begin
       if not ReadText(FormFile, Text) then
+      begin
         Continue;
+      end;
       Model := TFormModel.Create(Text);
       FCache.Forms.Add(UpperCase(FormFile), Model);
     end;
@@ -613,14 +667,18 @@ begin
       if Lines = nil then
       begin
         if not ReadText(FormFile, Text) then
+        begin
           Text := '';
+        end;
         Lines := TTextLines.SplitLines(Text);
       end;
       Binding.FileName := FormFile;
       Binding.Range := Range;
       Binding.Text := '';
       if (Range.StartPos.Line >= 0) and (Range.StartPos.Line < Length(Lines)) then
+      begin
         Binding.Text := Trim(Lines[Range.StartPos.Line]);
+      end;
       Result := Result + [Binding];
     end;
   end;
@@ -631,9 +689,13 @@ var
   Indexed: TUnitIndex;
 begin
   if FIndex.FindFile(AFileName, Indexed) or ExtractedUnit(AFileName, Indexed) then
-    Result := Indexed.UnitName
+  begin
+    Result := Indexed.UnitName;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TImpactRun.TestOf(const AItem: THierarchyItem; ALevel: Integer): Integer;
@@ -646,11 +708,17 @@ var
 begin
   Result := -1;
   if not TLspHierarchies.IsRoutine(AItem) or (AItem.Container = '') then
+  begin
     Exit;
+  end;
   if FIndex.FindFile(AItem.FileName, Indexed) then
-    UnitName := Indexed.UnitName
+  begin
+    UnitName := Indexed.UnitName;
+  end
   else
+  begin
     UnitName := '';
+  end;
   if not FCache.TestUnits.TryGetValue(UpperCase(AItem.FileName), Source) then
   begin
     Source := Default(TDUnitXUnit);
@@ -659,17 +727,23 @@ begin
     begin
       Source := TDUnitXSource.Scan(TTextLines.SplitLines(Text));
       if not FOptions.Tests.Contains(Source.UnitName) then
+      begin
         Source := Default(TDUnitXUnit);
+      end;
     end;
     FCache.TestUnits.Add(UpperCase(AItem.FileName), Source);
   end;
   if not Source.Find(AItem.Container, AItem.Name, FixtureIndex, TestIndex) or (TestIndex < 0) then
+  begin
     Exit;
+  end;
   Test.Name := TDUnitXCommandLine.TestName(Source.UnitName, Source.Fixtures[FixtureIndex].Name,
     Source.Fixtures[FixtureIndex].Tests[TestIndex].Method);
   Test.RunNames := TDUnitXCommandLine.RunNames(Source, FixtureIndex, TestIndex, -1);
   if Test.RunNames = nil then
+  begin
     Test.RunNames := [Test.Name];
+  end;
   Test.FileName := AItem.FileName;
   Test.Line := Source.LineOf(Source.Fixtures[FixtureIndex].Name, Source.Fixtures[FixtureIndex].Tests[TestIndex].Method);
   Test.Level := ALevel;
@@ -694,7 +768,9 @@ begin
       Place := FPlaces[Slot];
       Place.Ranges := Place.Ranges + ARanges;
       if AConfidence.IsSure then
+      begin
         Place.Confidence := AConfidence;
+      end;
       FPlaces[Slot] := Place;
     end;
     Exit;
@@ -708,7 +784,9 @@ begin
   Place.Item := AItem;
   // Aufrufer aus dem Syntaxbaum (CallerAt) kennen ihre Unit nicht.
   if Place.Item.UnitName = '' then
+  begin
     Place.Item.UnitName := UnitNameOf(AItem.FileName);
+  end;
   Place.Level := ALevel;
   Place.Edge := AEdge;
   Place.Cause := ACause;
@@ -720,7 +798,9 @@ begin
   Slot := FPlaces.Add(Place);
   FKeys.Add(Key, Slot);
   if not ATerminal then
+  begin
     ANext.Add(Slot);
+  end;
   Result := True;
 end;
 
@@ -734,14 +814,18 @@ begin
   Result := False;
   ATerminal := False;
   if not ExtractedUnit(AFileName, Extracted) then
+  begin
     Exit;
+  end;
   Found := False;
   for Symbol in Extracted.Symbols do
+  begin
     if RangeContains(Symbol.Range, APosition) and (not Found or (RangeSize(Symbol.Range) < RangeSize(Best.Range))) then
     begin
       Best := Symbol;
       Found := True;
     end;
+  end;
   if Found then
   begin
     AItem := TLspHierarchies.ItemOf(Extracted.UnitName, AFileName, Best);
@@ -751,7 +835,9 @@ begin
   AItem := Default(THierarchyItem);
   AItem.Name := Extracted.UnitName;
   if AItem.Name = '' then
+  begin
     AItem.Name := ChangeFileExt(ExtractFileName(AFileName), '');
+  end;
   AItem.SymbolKind := TIndexSymbolKind.Variable;
   AItem.UnitName := Extracted.UnitName;
   AItem.FileName := AFileName;
@@ -768,14 +854,18 @@ var
 begin
   Result := False;
   if not FIndex.FindFile(AFileName, Indexed) then
+  begin
     Exit;
+  end;
   for Index in Indexed.SymbolsNamed(AName) do
+  begin
     if (Indexed.Symbols[Index].Kind in MethodKinds) and SameText(Indexed.Symbols[Index].Container, ATypeName) then
     begin
       AItem := TLspHierarchies.ItemOf(Indexed.UnitName, Indexed.SymbolFile(Indexed.Symbols[Index]),
         Indexed.Symbols[Index]);
       Exit(True);
     end;
+  end;
 end;
 
 function TImpactRun.TypeSymbol(const AFromUnit: TUnitIndex; const ATypeName: string; out AUnit: TUnitIndex;
@@ -787,13 +877,17 @@ begin
   Result := False;
   if not FResolver.ResolveTypeFrom(AFromUnit, WithoutGenerics(ATypeName), Resolved) or
     not (Resolved.SymbolKind in TypeKinds) or not FIndex.FindFile(Resolved.FileName, AUnit) then
+  begin
     Exit;
+  end;
   for Index in AUnit.SymbolsNamed(Resolved.Name) do
+  begin
     if (AUnit.Symbols[Index].Kind in TypeKinds) and SameText(AUnit.Symbols[Index].Container, Resolved.Container) then
     begin
       ASymbol := AUnit.Symbols[Index];
       Exit(True);
     end;
+  end;
 end;
 
 procedure TImpactRun.AddReferences(const AItem: THierarchyItem; ACause, ALevel: Integer; var ANext: TList<Integer>);
@@ -807,31 +901,45 @@ var
 begin
   Tree := TreeOf(AItem.FileName);
   if Tree = nil then
+  begin
     Exit;
+  end;
   Locations := TLspReferences.Find(FResolver, FIndex, Tree, AItem.FileName, AItem.SelectionRange.StartPos, False,
     TImpactAnalysis.CandidateFiles(FIndex, FFiles, AItem.Name), FReadText, FOptions.References, FToken);
   if TLspHierarchies.IsRoutine(AItem) then
-    Edge := TImpactEdge.Call
+  begin
+    Edge := TImpactEdge.Call;
+  end
   else
+  begin
     Edge := TImpactEdge.Reference;
+  end;
   for Location in Locations do
   begin
     FToken.ThrowIfCancellationRequested;
     // Formularbindungen gehören zur Stelle selbst (FormBindings), nicht zur nächsten Ebene.
     if IsFormFile(Location.FileName) then
+    begin
       Continue;
+    end;
     Tree := TreeOf(Location.FileName);
     if Tree = nil then
+    begin
       Continue;
+    end;
     Terminal := False;
     if not TLspHierarchies.CallerAt(Tree, Location.FileName, Location.Range.StartPos, Place) then
     begin
       // Die Unit selbst (Terminal) ist keine Deklaration, die man weiter verfolgen könnte.
       if not EnclosingDeclaration(Location.FileName, Location.Range.StartPos, Place, Terminal) then
+      begin
         Continue;
+      end;
       // Der Verweis steht in der eigenen Deklaration (Methodenkopf in der Klasse): keine neue Stelle.
       if not Terminal and (KeyOf(Place, False) = KeyOf(AItem, False)) then
+      begin
         Continue;
+      end;
     end;
     Add(Place, ALevel, Edge, ACause, [Location.Range], Location.Confidence, Terminal, ANext);
   end;
@@ -852,15 +960,19 @@ var
 begin
   if not (AItem.SymbolKind in MethodKinds) or (AItem.Container = '') or
     not DeclarationSymbol(AItem, OwnUnit, Own) then
+  begin
     Exit;
+  end;
   OwnerFound := False;
   for Index in OwnUnit.SymbolsNamed(Own.Container) do
+  begin
     if OwnUnit.Symbols[Index].Kind in TypeKinds then
     begin
       Owner := OwnUnit.Symbols[Index];
       OwnerFound := True;
       Break;
     end;
+  end;
   // Overrides in allen Nachfahren bzw. Umsetzungen der Interface-Methode.
   if Own.IsVirtual or (OwnerFound and (Owner.Kind = TIndexSymbolKind.InterfaceType)) then
   begin
@@ -876,7 +988,9 @@ begin
         for Location in FIndex.Descendants(TypeName) do
         begin
           if not (Location.Symbol.Kind in TypeKinds) or Seen.ContainsKey(UpperCase(Location.Symbol.Name)) then
+          begin
             Continue;
+          end;
           Seen.Add(UpperCase(Location.Symbol.Name), True);
           Pending.Enqueue(Location.Symbol.Name);
           if OwnerFound and (Owner.Kind = TIndexSymbolKind.InterfaceType) then
@@ -887,15 +1001,20 @@ begin
             begin
               EqualsAt := Pos('=', Resolution);
               if (EqualsAt > 0) and SameText(Trim(Copy(Resolution, 1, EqualsAt - 1)), Own.Container + '.' + Own.Name) then
+              begin
                 Target := Trim(Copy(Resolution, EqualsAt + 1, MaxInt));
+              end;
             end;
             if (Location.Symbol.Kind <> TIndexSymbolKind.InterfaceType) and
               MemberOf(Location.FileName, Location.Symbol.Name, Target, Member) then
+            begin
               Add(Member, ALevel, TImpactEdge.Implementation_, ACause, nil, TReferenceConfidence.Sure, False, ANext);
+            end;
           end
           else if FIndex.FindFile(Location.FileName, TypeUnit) then
           begin
             for Index in TypeUnit.SymbolsNamed(Own.Name) do
+            begin
               if SameText(TypeUnit.Symbols[Index].Container, Location.Symbol.Name) and
                 TypeUnit.Symbols[Index].HasDirective('override') then
               begin
@@ -904,6 +1023,7 @@ begin
                   False, ANext);
                 Break;
               end;
+            end;
           end;
         end;
       end;
@@ -913,7 +1033,9 @@ begin
     end;
   end;
   if not OwnerFound or (Owner.Kind = TIndexSymbolKind.InterfaceType) then
+  begin
     Exit;
+  end;
   // Überschriebene Basismethode: der nächste Vorfahr mit einer gleichnamigen Methode.
   if Own.HasDirective('override') then
   begin
@@ -923,7 +1045,9 @@ begin
     begin
       if (Length(Found.Ancestors) = 0) or not TypeSymbol(TypeUnit, Found.Ancestors[0], BaseUnit, Base) or
         (Base.Kind = TIndexSymbolKind.InterfaceType) then
+      begin
         Break;
+      end;
       if MemberOf(BaseUnit.FileName, Base.Name, Own.Name, Member) then
       begin
         Add(Member, ALevel, TImpactEdge.BaseMethod, ACause, nil, TReferenceConfidence.Sure, False, ANext);
@@ -935,6 +1059,7 @@ begin
   end;
   // Interface-Methoden, die die Methode umsetzt: gleichnamige oder per Methodenzuordnung.
   for Ancestor in Owner.Ancestors do
+  begin
     if TypeSymbol(OwnUnit, Ancestor, BaseUnit, Base) and (Base.Kind = TIndexSymbolKind.InterfaceType) then
     begin
       Target := Own.Name;
@@ -943,11 +1068,16 @@ begin
         EqualsAt := Pos('=', Resolution);
         if (EqualsAt > 0) and SameText(Trim(Copy(Resolution, EqualsAt + 1, MaxInt)), Own.Name) and
           StartsText(WithoutGenerics(Ancestor) + '.', Trim(Copy(Resolution, 1, EqualsAt - 1))) then
+        begin
           Target := Copy(Trim(Copy(Resolution, 1, EqualsAt - 1)), Length(WithoutGenerics(Ancestor)) + 2, MaxInt);
+        end;
       end;
       if MemberOf(BaseUnit.FileName, Base.Name, Target, Member) then
+      begin
         Add(Member, ALevel, TImpactEdge.InterfaceMethod, ACause, nil, TReferenceConfidence.Sure, False, ANext);
+      end;
     end;
+  end;
 end;
 
 procedure TImpactRun.Expand(const AItem: THierarchyItem; ACause, ALevel: Integer; var ANext: TList<Integer>);
@@ -983,17 +1113,25 @@ begin
         for Slot in Frontier do
         begin
           if FFull then
+          begin
             Break;
+          end;
           if Slot < 0 then
-            Item := AStart
+          begin
+            Item := AStart;
+          end
           else
+          begin
             Item := FPlaces[Slot].Item;
+          end;
           Expand(Item, Slot, Level, Next);
         end;
         Frontier.Clear;
         Frontier.AddRange(Next.ToArray);
         if (Frontier.Count = 0) or FFull then
+        begin
           Break;
+        end;
       end;
       // Stellen der letzten Ebene, deren Verwendungen nicht mehr gesucht wurden.
       if not FFull and (Frontier.Count > 0) then
@@ -1006,7 +1144,9 @@ begin
         Include(Result.Limits, TImpactLimit.Time);
     end;
     if FFull then
+    begin
       Include(Result.Limits, TImpactLimit.Count);
+    end;
     Result.Places := FPlaces.ToArray;
     Result.Tests := FTests.ToArray;
   finally
@@ -1053,9 +1193,13 @@ class function TImpactAnalysis.ClampDepth(ADepth: Integer): Integer;
 begin
   Result := ADepth;
   if Result < MinDepth then
-    Result := MinDepth
+  begin
+    Result := MinDepth;
+  end
   else if Result > MaxDepth then
+  begin
     Result := MaxDepth;
+  end;
 end;
 
 class function TImpactAnalysis.CandidateFiles(const AIndex: ISymbolIndex; const AFiles: TArray<string>;
@@ -1066,18 +1210,24 @@ var
 begin
   // Attribute (#119): [Foo] verwendet FooAttribute; wie in der Referenzsuche beide Schreibweisen.
   if EndsText('Attribute', AName) and (Length(AName) > Length('Attribute')) then
-    Alternative := Copy(AName, 1, Length(AName) - Length('Attribute'))
+  begin
+    Alternative := Copy(AName, 1, Length(AName) - Length('Attribute'));
+  end
   else
+  begin
     Alternative := AName + 'Attribute';
+  end;
   SetLength(Result, Length(AFiles));
   Count := 0;
   for FileName in AFiles do
+  begin
     if (TIndexUsages.Lookup(AIndex, FileName, AName) <> TIndexUsageAnswer.Absent) or
       (TIndexUsages.Lookup(AIndex, FileName, Alternative) <> TIndexUsageAnswer.Absent) then
     begin
       Result[Count] := FileName;
       Inc(Count);
     end;
+  end;
   SetLength(Result, Count);
 end;
 
@@ -1114,13 +1264,17 @@ begin
     for mIndex := 0 to High(AStarts) do
     begin
       if ACancellation <> nil then
+      begin
         ACancellation.ThrowIfCancellationRequested;
+      end;
       if AOptions.TimeoutMs > 0 then
       begin
         // Mindestens 1 ms: 0 hieße ohne Zeitlimit.
         mLeft := (AOptions.TimeoutMs - mClock.ElapsedMilliseconds) div (Length(AStarts) - mIndex);
         if mLeft < 1 then
+        begin
           mLeft := 1;
+        end;
         mOptions.TimeoutMs := Integer(mLeft);
       end;
       mRun := TImpactRun.Create(AResolver, AIndex, AFiles, AReadText, mOptions, ACancellation, mShared);
@@ -1194,13 +1348,19 @@ begin
     Ranges := TJSONArray.Create;
     Entry.AddPair('ranges', Ranges);
     for Range in Place.Ranges do
+    begin
       Ranges.AddElement(TLspPositions.RangeToJson(Range));
+    end;
     Entry.AddPair('atlasConfidence', Place.Confidence.ToJson);
     Entry.AddPair('forms', FormsToJson(Place.Forms));
     if Place.Terminal then
+    begin
       Entry.AddPair('terminal', TJSONBool.Create(True));
+    end;
     if Place.Test >= 0 then
+    begin
       Entry.AddPair('test', AResult.Tests[Place.Test].Name);
+    end;
   end;
   Tests := TJSONArray.Create;
   Result.AddPair('tests', Tests);
@@ -1212,7 +1372,9 @@ begin
     Names := TJSONArray.Create;
     Entry.AddPair('run', Names);
     for Name in Test.RunNames do
+    begin
       Names.Add(Name);
+    end;
     Entry.AddPair('uri', TDocumentUris.FromPath(Test.FileName));
     Entry.AddPair('line', TJSONNumber.Create(Test.Line));
     Entry.AddPair('level', TJSONNumber.Create(Test.Level));
@@ -1220,7 +1382,9 @@ begin
   Limits := TJSONObject.Create;
   Result.AddPair('limits', Limits);
   for Limit := Low(TImpactLimit) to High(TImpactLimit) do
+  begin
     Limits.AddPair(LimitName(Limit), TJSONBool.Create(Limit in AResult.Limits));
+  end;
   Result.AddPair('unexpanded', TJSONNumber.Create(AResult.Unexpanded));
   Result.AddPair('maxPlaces', TJSONNumber.Create(AResult.MaxPlaces));
   Result.AddPair('timeoutMs', TJSONNumber.Create(AResult.TimeoutMs));
@@ -1245,14 +1409,22 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+  end;
   if Assigned(FOptionsFor) then
-    Options := FOptionsFor(Uri)
+  begin
+    Options := FOptionsFor(Uri);
+  end
   else
+  begin
     Options := TImpactOptions.Default;
+  end;
   if TJSONObject(AParams).TryGetValue<Integer>('depth', Depth) then
+  begin
     Options.Depth := Depth;
+  end;
   Cancellation := TRequestCancellation.Create(ACancellation);
   OwnTree := nil;
   if FStore.TryGet(Uri, Document) then
@@ -1266,10 +1438,14 @@ begin
     Tree := OwnTree;
   end
   else
+  begin
     Exit(TJSONNull.Create);
+  end;
   Files := nil;
   if Assigned(FFiles) then
+  begin
     Files := FFiles();
+  end;
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := Namespaces;
@@ -1280,7 +1456,9 @@ begin
       OwnTree.Free;
     end;
     if not Found then
+    begin
       Exit(TJSONNull.Create);
+    end;
     Result := ToJson(Analyze(Resolver, FIndex, Start, Files, FReadText, Options, ACancellation));
   finally
     Resolver.Free;

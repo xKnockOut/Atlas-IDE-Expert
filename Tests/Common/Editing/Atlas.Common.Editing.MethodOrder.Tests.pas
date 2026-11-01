@@ -106,7 +106,9 @@ var
 begin
   Result := FooKopf;
   for Name in ANames do
+  begin
     Result := Result + #10'procedure ' + Name + ';'#10'begin'#10'end;'#10;
+  end;
   Result := Result + Ende;
 end;
 
@@ -175,7 +177,9 @@ begin
   Assert.AreEqual(Kopf + SpeichernZahl + SpeichernText + Hilfe + Neu + Laden + Machen + Lauf + Ende, Done);
   Assert.IsTrue(ParsesClean(Done), 'Ergebnis parst');
   for Part in TArray<string>.Create(Machen, SpeichernText, Hilfe, Neu, Laden, Lauf, SpeichernZahl) do
+  begin
     Assert.AreEqual(1, Count(Done, Part), 'derselbe Rumpf genau einmal');
+  end;
   Assert.AreEqual(4, Integer(Length(Order.Moves)));
   Assert.AreEqual('Speichern', Order.Moves[0].Name);
   Assert.AreEqual(-4, Order.Moves[0].Delta);
@@ -317,7 +321,9 @@ var
   Placement: TMethodPlacement;
 begin
   for Placement := Low(TMethodPlacement) to High(TMethodPlacement) do
+  begin
     Assert.AreEqual(Ord(Placement), Ord(TMethodOrder.PlacementOf(TMethodOrder.PlacementName(Placement))));
+  end;
   Assert.AreEqual(Ord(TMethodPlacement.Declaration), Ord(TMethodOrder.PlacementOf('')));
   Assert.AreEqual('', TMethodOrder.ReasonName(TMethodStayReason.None));
 end;

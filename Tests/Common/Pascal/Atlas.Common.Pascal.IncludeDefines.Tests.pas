@@ -88,7 +88,9 @@ var
   Diagnostics: TArray<TSyntaxDiagnostic>;
 begin
   if not TPascalParser.ActiveDiagnostics(AText, AOptions, Diagnostics) then
+  begin
     Exit(-1);
+  end;
   Result := Length(Diagnostics);
 end;
 
@@ -184,8 +186,12 @@ const
   begin
     Result := 0;
     for Finding in TFileChecker.CheckText(nil, TServerSettings.Default, 'Ziel.pas', AText, ASource) do
+    begin
       if Finding.RuleId = SyntaxRuleId then
+      begin
         Inc(Result);
+      end;
+    end;
   end;
 
 begin

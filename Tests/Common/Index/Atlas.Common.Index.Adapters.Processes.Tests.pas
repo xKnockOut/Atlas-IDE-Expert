@@ -69,7 +69,9 @@ end;
 procedure TIndexProcessesTests.TearDown;
 begin
   if TDirectory.Exists(ExtractFileDir(FCacheFile)) then
+  begin
     TDirectory.Delete(ExtractFileDir(FCacheFile), True);
+  end;
   FCacheFile := '';
 end;
 
@@ -106,7 +108,9 @@ begin
   Entry := TIndexProcessEntry.Create(FCacheFile, Info(1, TIndexProcessInfo.KindLsp));
   try
     for Index := 1 to TIndexProcessEntry.MaxEvents + 5 do
+    begin
       Entry.Update('Ereignis ' + IntToStr(Index));
+    end;
     Assert.AreEqual(TIndexProcessEntry.MaxEvents, Integer(Length(Entry.Info.Events)));
     Assert.AreEqual('Ereignis 6', Entry.Info.Events[0].Text);
     Items := TIndexProcesses.List(FCacheFile);

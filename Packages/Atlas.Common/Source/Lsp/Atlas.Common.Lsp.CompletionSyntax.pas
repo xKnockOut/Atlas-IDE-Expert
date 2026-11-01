@@ -106,7 +106,9 @@ function NextSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): 
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 /// <summary>"TFoo = [packed] class|record|interface|dispinterface|object" ab ATokens[AIndex], nicht "class of"
@@ -117,29 +119,45 @@ var
 begin
   Result := False;
   if ATokens[AIndex].Kind <> TPascalTokenKind.Identifier then
+  begin
     Exit;
+  end;
   Index := NextSignificant(ATokens, AIndex);
   // Generische Parameter überspringen: TFoo<T> = class.
   if (Index <= High(ATokens)) and ATokens[Index].IsSymbol('<') then
+  begin
     while (Index <= High(ATokens)) and not ATokens[Index].IsSymbol('>') do
+    begin
       Index := NextSignificant(ATokens, Index);
+    end;
+  end;
   if (Index <= High(ATokens)) and ATokens[Index].IsSymbol('>') then
+  begin
     Index := NextSignificant(ATokens, Index);
+  end;
   if (Index > High(ATokens)) or not ATokens[Index].IsSymbol('=') then
+  begin
     Exit;
+  end;
   Index := NextSignificant(ATokens, Index);
   if (Index <= High(ATokens)) and IsWord(ATokens[Index], 'packed') then
+  begin
     Index := NextSignificant(ATokens, Index);
+  end;
   if Index > High(ATokens) then
+  begin
     Exit;
+  end;
   if IsWord(ATokens[Index], 'class') then
   begin
     Index := NextSignificant(ATokens, Index);
     Result := (Index > High(ATokens)) or not (IsWord(ATokens[Index], 'of') or ATokens[Index].IsSymbol(';'));
   end
   else
+  begin
     Result := IsWord(ATokens[Index], 'record') or IsWord(ATokens[Index], 'interface') or
       IsWord(ATokens[Index], 'dispinterface') or IsWord(ATokens[Index], 'object');
+  end;
 end;
 
 function Anchors(const ATokens: TArray<TPascalToken>): TArray<TAnchor>;
@@ -156,10 +174,14 @@ begin
     begin
       Token := ATokens[Index];
       if IsTrivia(Token) then
+      begin
         Continue;
+      end;
       // Nur das erste Token einer Zeile.
       if Token.StartPos.Line = LastLine then
+      begin
         Continue;
+      end;
       LastLine := Token.StartPos.Line;
       Anchor := Default(TAnchor);
       Anchor.Line := Token.StartPos.Line;
@@ -168,11 +190,15 @@ begin
       begin
         if IsRoutineWord(Token) or (IsWord(Token, 'class') and (Next <= High(ATokens)) and
           IsRoutineWord(ATokens[Next])) then
-          Anchor.Kind := TAnchorKind.Routine
+        begin
+          Anchor.Kind := TAnchorKind.Routine;
+        end
         else if IsWord(Token, 'interface') or IsWord(Token, 'implementation') or
           IsWord(Token, 'initialization') or IsWord(Token, 'finalization') or
           (IsWord(Token, 'end') and (Next <= High(ATokens)) and ATokens[Next].IsSymbol('.')) then
-          Anchor.Kind := TAnchorKind.Section
+        begin
+          Anchor.Kind := TAnchorKind.Section;
+        end
         else if IsWord(Token, 'type') or IsWord(Token, 'var') or IsWord(Token, 'const') or
           IsWord(Token, 'resourcestring') or IsWord(Token, 'threadvar') or IsWord(Token, 'uses') or
           IsWord(Token, 'label') or IsWord(Token, 'begin') then
@@ -181,14 +207,22 @@ begin
           Anchor.IsBegin := IsWord(Token, 'begin');
         end
         else if StartsTypeDecl(ATokens, Index) then
-          Anchor.Kind := TAnchorKind.TypeDecl
+        begin
+          Anchor.Kind := TAnchorKind.TypeDecl;
+        end
         else
+        begin
           Continue;
+        end;
       end
       else if (Token.StartPos.Character <= 2) and StartsTypeDecl(ATokens, Index) then
-        Anchor.Kind := TAnchorKind.TypeDecl
+      begin
+        Anchor.Kind := TAnchorKind.TypeDecl;
+      end
       else
+      begin
         Continue;
+      end;
       List.Add(Anchor);
     end;
     Result := List.ToArray;
@@ -213,8 +247,12 @@ begin
   // Letzter Anker bis zur Zeile des Cursors; in einer Routine über ihre var-, const- und begin-Zeilen zurück.
   Start := -1;
   for Index := 0 to High(List) do
+  begin
     if List[Index].Line <= APosition.Line then
+    begin
       Start := Index;
+    end;
+  end;
   SawBegin := False;
   while (Start >= 0) and (List[Start].Kind = TAnchorKind.Local) do
   begin
@@ -222,28 +260,40 @@ begin
     if List[Start].IsBegin then
     begin
       if SawBegin then
+      begin
         Exit;
+      end;
       SawBegin := True;
     end;
     Dec(Start);
     if (Start >= 0) and (List[Start].Kind <> TAnchorKind.Local) and (List[Start].Kind <> TAnchorKind.Routine) then
+    begin
       Exit;
+    end;
   end;
   if (Start < 0) or (List[Start].Kind = TAnchorKind.Section) then
+  begin
     Exit;
+  end;
   // Eine Klasse endet an type/var/const …, die Routine nur am nächsten Kopf, Typ oder Abschnitt.
   Last := MaxInt;
   for Index := Start + 1 to High(List) do
+  begin
     if (List[Index].Line > List[Start].Line) and
       ((List[Index].Kind <> TAnchorKind.Local) or (List[Start].Kind = TAnchorKind.TypeDecl)) then
     begin
       Last := List[Index].Line - 1;
       Break;
     end;
+  end;
   if List[Start].Kind = TAnchorKind.Routine then
-    Result.Kind := TCompletionScopeKind.Routine
+  begin
+    Result.Kind := TCompletionScopeKind.Routine;
+  end
   else
+  begin
     Result.Kind := TCompletionScopeKind.TypeDecl;
+  end;
   Result.FirstLine := List[Start].Line;
   Result.LastLine := Last;
 end;
@@ -258,21 +308,31 @@ begin
   Builder := TStringBuilder.Create;
   try
     if AScope.Kind = TCompletionScopeKind.Routine then
-      Builder.Append(RoutineHead)
+    begin
+      Builder.Append(RoutineHead);
+    end
     else
+    begin
       Builder.Append(TypeHead);
+    end;
     // Zeilen davor leer, damit Positionen gleich bleiben; Zeile 0 trägt den Kopf.
     for Index := 1 to High(Lines) do
     begin
       Builder.Append(#10);
       if (Index >= AScope.FirstLine) and (Index <= AScope.LastLine) then
+      begin
         Builder.Append(Lines[Index].TrimRight([#13]));
+      end;
     end;
     Builder.Append(#10);
     if AScope.Kind = TCompletionScopeKind.Routine then
-      Builder.Append(RoutineTail)
+    begin
+      Builder.Append(RoutineTail);
+    end
     else
+    begin
       Builder.Append(TypeTail);
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -288,13 +348,19 @@ begin
   Result := APosition;
   Lines := AText.Split([#10]);
   if (APosition.Line < 0) or (APosition.Line > High(Lines)) then
+  begin
     Exit;
+  end;
   Line := Lines[APosition.Line];
   Character := APosition.Character;
   if Character > Length(Line) then
+  begin
     Character := Length(Line);
+  end;
   while (Character > 0) and CharInSet(Line[Character], ['A'..'Z', 'a'..'z', '0'..'9', '_', '&']) do
+  begin
     Dec(Character);
+  end;
   Result := TTextPosition.Create(APosition.Line, Character);
 end;
 
@@ -316,21 +382,32 @@ begin
   Result.Line := -1;
   Result.Character := -1;
   if ATree = nil then
+  begin
     Exit;
+  end;
   // Ohne Fehler im ganzen Baum keine eigene Prüfung.
   Broken := False;
   for Diagnostic in ATree.Diagnostics do
+  begin
     if not Diagnostic.TreeIntact then
+    begin
       Broken := True;
+    end;
+  end;
   if not Broken then
+  begin
     Exit;
+  end;
   Scope := ScopeAt(ATree.Tokens, APosition);
   if (Scope.Kind = TCompletionScopeKind.None) or (Scope.FirstLine < 1) then
+  begin
     Exit;
+  end;
   Limit := WordStart(AText, APosition);
   Tree := TSyntaxTreeCache.Parse(ScopeText(AText, Scope));
   try
     for Diagnostic in Tree.Diagnostics do
+    begin
       if not Diagnostic.TreeIntact and (Diagnostic.StartPos.Line >= Scope.FirstLine) and
         Before(Diagnostic.StartPos, Limit) then
       begin
@@ -338,11 +415,16 @@ begin
         Result.Character := Diagnostic.StartPos.Character;
         Result.Message := Diagnostic.Message;
         if ACount = 0 then
-          Result.Trust := TCompletionTrust.Unknown
+        begin
+          Result.Trust := TCompletionTrust.Unknown;
+        end
         else
+        begin
           Result.Trust := TCompletionTrust.Limited;
+        end;
         Exit;
       end;
+    end;
   finally
     Tree.Free;
   end;
@@ -363,7 +445,9 @@ var
   Notice: TJSONObject;
 begin
   if ANotice.Trust = TCompletionTrust.Sure then
+  begin
     Exit;
+  end;
   Notice := TJSONObject.Create;
   Notice.AddPair('trust', TrustName(ANotice.Trust));
   Notice.AddPair('line', TJSONNumber.Create(ANotice.Line));

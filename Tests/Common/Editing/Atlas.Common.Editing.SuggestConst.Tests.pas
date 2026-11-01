@@ -64,18 +64,26 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   SetLength(Order, Length(AEdits));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   for Index := 0 to High(Order) do
+  begin
     for Inner := Index + 1 to High(Order) do
+    begin
       if OffsetOf(AEdits[Order[Index]].Range.StartPos) < OffsetOf(AEdits[Order[Inner]].Range.StartPos) then
       begin
         Swap := Order[Index];
         Order[Index] := Order[Inner];
         Order[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index in Order do
   begin

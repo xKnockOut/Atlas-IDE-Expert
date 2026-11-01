@@ -41,7 +41,9 @@ const
 function CreateFdStream(AFd: THandle; const AName: string): TStream;
 begin
   if FpFcntl(AFd, F_GETFD) < 0 then
+  begin
     raise EStreamError.CreateFmt('Kein gültiger Deskriptor für %s', [AName]);
+  end;
   Result := THandleStream.Create(AFd);
 end;
 
@@ -65,9 +67,13 @@ end;
 class procedure TStdStreams.RedirectTextOutputToStdErr;
 begin
   if FpFcntl(StdErrorFd, F_GETFD) < 0 then
+  begin
     Exit;
+  end;
   if TTextRec(Output).Mode = fmOutput then
+  begin
     Flush(Output);
+  end;
   TTextRec(Output).Handle := StdErrorFd;
 end;
 
@@ -78,10 +84,14 @@ begin
   // Eigener Deskriptor für das Protokoll; FD_CLOEXEC, damit Kindprozesse (git, dcc) ihn nicht erben.
   Protocol := FpFcntl(StdOutputFd, F_DUPFD_CLOEXEC, 3);
   if Protocol < 0 then
+  begin
     raise EStreamError.Create('stdout lässt sich nicht für das Protokoll reservieren');
+  end;
   Result := THandleStream.Create(Protocol);
   if FpFcntl(StdErrorFd, F_GETFD) >= 0 then
+  begin
     FpDup2(StdErrorFd, StdOutputFd);
+  end;
   RedirectTextOutputToStdErr;
 end;
 

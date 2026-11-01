@@ -49,10 +49,14 @@ var
   Answer: TJSONArray;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
+  end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+  end;
   Shared := TSyntaxTreeCache.Get(Document);
   Values := nil;
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
@@ -65,7 +69,9 @@ begin
   end;
   Answer := TJSONArray.Create;
   for Value in Values do
+  begin
     Answer.Add(Value);
+  end;
   Result := Answer;
 end;
 

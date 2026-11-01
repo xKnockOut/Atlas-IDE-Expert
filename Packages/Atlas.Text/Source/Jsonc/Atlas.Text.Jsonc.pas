@@ -44,11 +44,15 @@ begin
   while APos <= Length(AText) do
   begin
     if (AText[APos] = ' ') or (AText[APos] = #9) or (AText[APos] = #10) or (AText[APos] = #13) then
-      Inc(APos)
+    begin
+      Inc(APos);
+    end
     else if (AText[APos] = '/') and (APos < Length(AText)) and (AText[APos + 1] = '/') then
     begin
       while (APos <= Length(AText)) and (AText[APos] <> #10) and (AText[APos] <> #13) do
+      begin
         Inc(APos);
+      end;
     end
     else if (AText[APos] = '/') and (APos < Length(AText)) and (AText[APos + 1] = '*') then
     begin
@@ -62,7 +66,9 @@ begin
       APos := Close + 2;
     end
     else
+    begin
       Break;
+    end;
   end;
   Result := True;
 end;
@@ -80,7 +86,9 @@ begin
   while (APos <= Length(AText)) and (AText[APos] <> '"') do
   begin
     if AText[APos] = '\' then
+    begin
       Inc(APos);
+    end;
     Inc(APos);
   end;
   Inc(APos);
@@ -108,19 +116,29 @@ begin
           if AText[Position + 1] = '/' then
           begin
             while (Position <= Length(AText)) and (AText[Position] <> #10) and (AText[Position] <> #13) do
+            begin
               Inc(Position);
+            end;
           end
           else
           begin
             Next := Pos('*/', AText, Position + 2);
             if Next = 0 then
-              Position := Length(AText) + 1
+            begin
+              Position := Length(AText) + 1;
+            end
             else
+            begin
               Position := Next + 2;
+            end;
           end;
           for Index := Start to Position - 1 do
+          begin
             if (Result[Index] <> #10) and (Result[Index] <> #13) then
+            begin
               Result[Index] := ' ';
+            end;
+          end;
           Continue;
         end;
       ',':
@@ -129,7 +147,9 @@ begin
           Next := Position + 1;
           SkipSpace(AText, Next);
           if (Next <= Length(AText)) and ((AText[Next] = '}') or (AText[Next] = ']')) then
+          begin
             Result[Position] := ' ';
+          end;
         end;
     end;
     Inc(Position);
@@ -154,7 +174,9 @@ var
   function Fail: Boolean;
   begin
     if Error = 0 then
+    begin
       Error := Position;
+    end;
     Result := False;
   end;
 
@@ -162,37 +184,53 @@ var
   begin
     // Kommentare sind schon geblankt.
     while (Position <= Length(Text)) and IsSpace(Text[Position]) do
+    begin
       Inc(Position);
+    end;
   end;
 
   function Digits: Boolean;
   begin
     if (Position > Length(Text)) or not IsDigit(Text[Position]) then
+    begin
       Exit(Fail);
+    end;
     while (Position <= Length(Text)) and IsDigit(Text[Position]) do
+    begin
       Inc(Position);
+    end;
     Result := True;
   end;
 
   function Number: Boolean;
   begin
     if Text[Position] = '-' then
+    begin
       Inc(Position);
+    end;
     if not Digits then
+    begin
       Exit(False);
+    end;
     if (Position <= Length(Text)) and (Text[Position] = '.') then
     begin
       Inc(Position);
       if not Digits then
+      begin
         Exit(False);
+      end;
     end;
     if (Position <= Length(Text)) and ((Text[Position] = 'e') or (Text[Position] = 'E')) then
     begin
       Inc(Position);
       if (Position <= Length(Text)) and ((Text[Position] = '+') or (Text[Position] = '-')) then
+      begin
         Inc(Position);
+      end;
       if not Digits then
+      begin
         Exit(False);
+      end;
     end;
     Result := True;
   end;
@@ -209,9 +247,13 @@ var
       end;
       // Ein Zeilenumbruch im String heißt meist: schließendes Anführungszeichen vergessen.
       if Text[Position] < ' ' then
+      begin
         Exit(Fail);
+      end;
       if Text[Position] = '\' then
+      begin
         Inc(Position);
+      end;
       Inc(Position);
     end;
     Result := Fail;
@@ -220,7 +262,9 @@ var
   function Literal(const AWord: string): Boolean;
   begin
     if Copy(Text, Position, Length(AWord)) <> AWord then
+    begin
       Exit(Fail);
+    end;
     Inc(Position, Length(AWord));
     Result := True;
   end;
@@ -242,24 +286,34 @@ var
       begin
         Space;
         if (Position > Length(Text)) or (Text[Position] <> '"') or not StringValue then
+        begin
           Exit(Fail);
+        end;
         Space;
         if (Position > Length(Text)) or (Text[Position] <> ':') then
+        begin
           Exit(Fail);
+        end;
         Inc(Position);
       end;
       if not Value then
+      begin
         Exit(False);
+      end;
       Space;
       if Position > Length(Text) then
+      begin
         Exit(Fail);
+      end;
       if Text[Position] = AClose then
       begin
         Inc(Position);
         Exit(True);
       end;
       if Text[Position] <> ',' then
+      begin
         Exit(Fail);
+      end;
       Inc(Position);
     end;
   end;
@@ -268,7 +322,9 @@ var
   begin
     Space;
     if Position > Length(Text) then
+    begin
       Exit(Fail);
+    end;
     case Text[Position] of
       '{':
         Result := Members('}', True);
@@ -297,7 +353,9 @@ begin
   begin
     Space;
     if Position <= Length(Text) then
+    begin
       Error := Position;
+    end;
   end;
   Result := Error;
 end;
@@ -312,7 +370,9 @@ begin
   while (Index < AOffset) and (Index <= Length(AText)) do
   begin
     if (AText[Index] = #13) and (Index < Length(AText)) and (AText[Index + 1] = #10) then
+    begin
       Inc(Index);
+    end;
     if (AText[Index] = #10) or (AText[Index] = #13) then
     begin
       Inc(ALine);

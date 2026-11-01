@@ -42,10 +42,14 @@ begin
   // TJSONNumber erbt von TJSONString: Zahlen sind weder URI noch Text (#415).
   if (AArguments = nil) or (AArguments.Count < ACount) or not (AArguments.Items[0] is TJSONString) or
     (AArguments.Items[0] is TJSONNumber) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
+  end;
   if not AStore.TryGet(AArguments.Items[0].Value, Result) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' +
       AArguments.Items[0].Value);
+  end;
   APosition := TLspPositions.ReadPosition(AArguments.Items[1]);
 end;
 
@@ -60,7 +64,9 @@ begin
   Document := DocumentOf(AStore, AArguments, 2, Position);
   if not (TStringLiterals.LiteralAt(Document.Text, Position, Range) and
     TStringLiterals.PlainText(TStringLiterals.TextOf(Document.Text, Range), Text)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'An dieser Stelle steht kein String-Literal');
+  end;
   Result := TJSONString.Create(Text);
 end;
 
@@ -75,14 +81,20 @@ var
 begin
   Document := DocumentOf(AStore, AArguments, 3, Position);
   if not (AArguments.Items[2] is TJSONString) or (AArguments.Items[2] is TJSONNumber) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet wird der Text als drittes Argument');
+  end;
   Lines := Document.Text.Split([#10]);
   Line := '';
   if (Position.Line >= 0) and (Position.Line <= High(Lines)) then
+  begin
     Line := Lines[Position.Line];
+  end;
   Index := 1;
   while (Index <= Length(Line)) and CharInSet(Line[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   Indent := Copy(Line, 1, Index - 1);
   LineEnd := TTextLines.LineBreakOf(Document.Text);
   Result := TJSONString.Create(TStringLiterals.ToLiteral(AArguments.Items[2].Value, Indent, False, AMultiline,

@@ -66,7 +66,9 @@ begin
         TMonitor.Enter(Lock);
         try
           for FileName in AFiles do
+          begin
             Seen := Seen + ExtractFileName(FileName) + ';';
+          end;
         finally
           TMonitor.Exit(Lock);
         end;

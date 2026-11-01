@@ -60,8 +60,12 @@ var
 begin
   Result := nil;
   for Token in ATree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AName) then
+    begin
       Result := Result + [Token.Offset];
+    end;
+  end;
 end;
 
 procedure AddNames(ATree: TSyntaxTree; var ATargets: TInvertTargets; const AOld, ANew: string; AInvert: Boolean);
@@ -69,7 +73,9 @@ var
   Offset: Integer;
 begin
   for Offset in OffsetsOf(ATree, AOld) do
+  begin
     ATargets.AddName(Offset, ANew, AInvert);
+  end;
 end;
 
 function RewriteWith(const AText: string; const ASetup: TTargetsSetup; out AWarnings: TArray<TInvertWarning>): string;
@@ -134,21 +140,31 @@ var
   Start: Integer;
 begin
   while (Position <= Length(Text)) and (Text[Position] = ' ') do
+  begin
     Inc(Position);
+  end;
   Result := '';
   if Position > Length(Text) then
+  begin
     Exit;
+  end;
   Start := Position;
   if CharInSet(Text[Position], ['A'..'Z', 'a'..'z']) then
   begin
     while (Start <= Length(Text)) and CharInSet(Text[Start], ['A'..'Z', 'a'..'z', '0'..'9']) do
+    begin
       Inc(Start);
+    end;
     Result := Copy(Text, Position, Start - Position);
   end
   else if Copy(Text, Position, 2) = '<>' then
-    Result := '<>'
+  begin
+    Result := '<>';
+  end
   else
+  begin
     Result := Text[Position];
+  end;
 end;
 
 function TEvaluator.Next: string;
@@ -162,12 +178,20 @@ var
   Item: string;
 begin
   if SameText(AName, 'True') then
+  begin
     Exit(True);
+  end;
   if SameText(AName, 'False') then
+  begin
     Exit(False);
+  end;
   for Item in Values do
+  begin
     if SameText(Copy(Item, 1, Pos('=', Item) - 1), AName) then
+    begin
       Exit(Copy(Item, Pos('=', Item) + 1, MaxInt) = '1');
+    end;
+  end;
   raise Exception.Create('Unbekannt: ' + AName);
 end;
 
@@ -177,7 +201,9 @@ var
 begin
   Token := Next;
   if SameText(Token, 'not') then
+  begin
     Exit(not Factor);
+  end;
   if Token = '(' then
   begin
     Result := Expression;
@@ -208,9 +234,13 @@ begin
     Op := LowerCase(Next);
     Right := Term;
     if Op = 'or' then
-      Result := Result or Right
+    begin
+      Result := Result or Right;
+    end
     else
+    begin
       Result := Result xor Right;
+    end;
   end;
 end;
 
@@ -226,9 +256,13 @@ begin
     Next;
     Right := Simple;
     if Op = '=' then
-      Result := Result = Right
+    begin
+      Result := Result = Right;
+    end
     else
+    begin
       Result := Result <> Right;
+    end;
   end;
 end;
 
@@ -464,7 +498,9 @@ begin
       ATargets.AddLocal(Offsets[2], 'Value', 'Value');
       ATargets.AddCall(Offsets[3], 0);
       for Offset in OffsetsOf(ATree, 'Panel') do
+      begin
         Assert.IsTrue(Offset > 0);
+      end;
     end, Warnings);
   Assert.Contains(Text, '    FVisible: Boolean;');
   Assert.Contains(Text, '    procedure SetVisible(const Value: Boolean);');

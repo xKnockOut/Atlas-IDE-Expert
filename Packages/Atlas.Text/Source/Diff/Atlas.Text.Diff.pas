@@ -54,11 +54,15 @@ class procedure TTextDiff.CommonPrefixSuffix(const AOld, ANew: TArray<string>; o
 begin
   APrefix := 0;
   while (APrefix < Length(AOld)) and (APrefix < Length(ANew)) and (AOld[APrefix] = ANew[APrefix]) do
+  begin
     Inc(APrefix);
+  end;
   ASuffix := 0;
   while (ASuffix < Length(AOld) - APrefix) and (ASuffix < Length(ANew) - APrefix) and
     (AOld[High(AOld) - ASuffix] = ANew[High(ANew) - ASuffix]) do
+  begin
     Inc(ASuffix);
+  end;
 end;
 
 class function TTextDiff.Hunks(const AOld, ANew: TArray<string>): TArray<TTextLineHunk>;
@@ -71,14 +75,18 @@ var
   procedure Flush;
   begin
     if Open then
+    begin
       Result := Result + [Hunk];
+    end;
     Open := False;
   end;
 
   procedure Touch(AOldLine, ANewLine: Integer);
   begin
     if Open then
+    begin
       Exit;
+    end;
     Open := True;
     Hunk.OldStart := AOldLine;
     Hunk.NewStart := ANewLine;
@@ -92,7 +100,9 @@ begin
   OldCount := Length(AOld) - Prefix - Suffix;
   NewCount := Length(ANew) - Prefix - Suffix;
   if (OldCount = 0) and (NewCount = 0) then
+  begin
     Exit;
+  end;
   Hunk := Default(TTextLineHunk);
   if (OldCount = 0) or (NewCount = 0) or (Int64(OldCount + 1) * (NewCount + 1) > MaxCells) then
   begin
@@ -109,11 +119,19 @@ begin
   Table := nil;
   SetLength(Table, (OldCount + 1) * Width);
   for Row := OldCount - 1 downto 0 do
+  begin
     for Column := NewCount - 1 downto 0 do
+    begin
       if AOld[Prefix + Row] = ANew[Prefix + Column] then
-        Table[Row * Width + Column] := Table[(Row + 1) * Width + Column + 1] + 1
+      begin
+        Table[Row * Width + Column] := Table[(Row + 1) * Width + Column + 1] + 1;
+      end
       else
+      begin
         Table[Row * Width + Column] := Max(Table[(Row + 1) * Width + Column], Table[Row * Width + Column + 1]);
+      end;
+    end;
+  end;
   Open := False;
   Row := 0;
   Column := 0;
@@ -150,19 +168,25 @@ var
   procedure Add(const AText: string);
   begin
     if Full then
+    begin
       Exit;
+    end;
     if (AMaxLines >= 0) and (Count >= AMaxLines) then
     begin
       // Begrenzung erreicht: einmal "…", danach nichts mehr.
       Full := True;
       if Count = Length(Result) then
+      begin
         SetLength(Result, Count * 2 + 1);
+      end;
       Result[Count] := '…';
       Inc(Count);
       Exit;
     end;
     if Count = Length(Result) then
+    begin
       SetLength(Result, Count * 2 + 8);
+    end;
     Result[Count] := AText;
     Inc(Count);
   end;
@@ -173,25 +197,33 @@ begin
   Full := False;
   CommonPrefixSuffix(AOld, ANew, Prefix, Suffix);
   if (Prefix = Length(AOld)) and (Prefix = Length(ANew)) then
+  begin
     Exit;
+  end;
   if Length(AOld) = Length(ANew) then
   begin
     // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen.
     for Index := Prefix to High(AOld) - Suffix do
+    begin
       if AOld[Index] <> ANew[Index] then
       begin
         Add(Format('Zeile %d:', [Index + 1]));
         Add('- ' + AOld[Index]);
         Add('+ ' + ANew[Index]);
       end;
+    end;
   end
   else
   begin
     Add(Format('ab Zeile %d:', [Prefix + 1]));
     for Index := Prefix to High(AOld) - Suffix do
+    begin
       Add('- ' + AOld[Index]);
+    end;
     for Index := Prefix to High(ANew) - Suffix do
+    begin
       Add('+ ' + ANew[Index]);
+    end;
   end;
   SetLength(Result, Count);
 end;
@@ -205,11 +237,17 @@ end;
 function UnifiedRange(AStart, ACount: Integer): string;
 begin
   if ACount = 0 then
-    Result := Format('%d,0', [AStart])
+  begin
+    Result := Format('%d,0', [AStart]);
+  end
   else if ACount = 1 then
-    Result := IntToStr(AStart + 1)
+  begin
+    Result := IntToStr(AStart + 1);
+  end
   else
+  begin
     Result := Format('%d,%d', [AStart + 1, ACount]);
+  end;
 end;
 
 class function TTextDiff.Unified(const AOldName, ANewName: string; const AOld, ANew: TArray<string>;
@@ -222,7 +260,9 @@ begin
   Result := nil;
   mHunks := Hunks(AOld, ANew);
   if Length(mHunks) = 0 then
+  begin
     Exit;
+  end;
   mContext := Max(AContext, 0);
   Result := ['--- ' + AOldName, '+++ ' + ANewName];
   mFirst := 0;
@@ -232,7 +272,9 @@ begin
     mLast := mFirst;
     while (mLast < High(mHunks)) and (mHunks[mLast + 1].OldStart - (mHunks[mLast].OldStart +
       mHunks[mLast].OldCount) <= 2 * mContext) do
+    begin
       Inc(mLast);
+    end;
     mOldStart := Max(mHunks[mFirst].OldStart - mContext, 0);
     mNewStart := mHunks[mFirst].NewStart - (mHunks[mFirst].OldStart - mOldStart);
     mOldStop := Min(mHunks[mLast].OldStart + mHunks[mLast].OldCount + mContext, Length(AOld));

@@ -48,7 +48,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Name in ANames do
+  begin
     Result.Add(Name);
+  end;
 end;
 
 class function TLspSmartPaste.Execute(const AArguments: TJSONArray; const AUri, AText: string; ATree: TSyntaxTree;
@@ -66,7 +68,9 @@ var
   Edit: TTextEdit;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONObject) then
+  begin
     raise EArgumentException.Create('Argumente "uri" und "range" fehlen');
+  end;
   Range := TLspPositions.ReadRange(AArguments.Items[1]);
   Tokens := TPascalLexer.Tokenize(AText);
   Result := TJSONObject.Create;
@@ -76,6 +80,7 @@ begin
     Result.AddPair('units', NamesJson(TSmartPaste.Certain(Names)));
     Choices := TJSONArray.Create;
     for Item in Names do
+    begin
       if Length(Item.Units) > 1 then
       begin
         Choice := TJSONObject.Create;
@@ -83,14 +88,19 @@ begin
         Choice.AddPair('units', NamesJson(Item.Units));
         Choices.AddElement(Choice);
       end;
+    end;
     Result.AddPair('choices', Choices);
     Result.AddPair('interface', TJSONBool.Create(TSmartPaste.InInterface(Tokens, Range.StartPos)));
     Exit;
   end;
   Units := nil;
   for Value in TJSONArray(AArguments.Items[2]) do
+  begin
     if Value is TJSONString then
+    begin
       Units := Units + [Value.Value];
+    end;
+  end;
   if TSmartPaste.UsesEdits(Tokens, Range.StartPos, Units, AInterfaceUses, AUses.Namespaces,
     TTextLines.LineBreakOf(AText), Edits, Added, Moved) then
   begin
@@ -109,7 +119,9 @@ begin
     Result.AddPair('edit', WorkspaceEdit);
   end
   else
+  begin
     Result.AddPair('edit', TJSONNull.Create);
+  end;
   Result.AddPair('added', NamesJson(Added));
   Result.AddPair('toImplementation', NamesJson(Moved));
 end;

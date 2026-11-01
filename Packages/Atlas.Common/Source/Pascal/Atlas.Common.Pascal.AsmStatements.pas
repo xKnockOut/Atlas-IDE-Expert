@@ -104,14 +104,22 @@ begin
   // Sprungmarke: @@Ende:, @Ende: oder Ende:
   mStart := 0;
   while (mStart < Length(ACode)) and TokenAt(mStart).IsSymbol('@') do
+  begin
     Inc(mStart);
+  end;
   if (mStart + 1 < Length(ACode)) and (TokenAt(mStart).Kind in [TPascalTokenKind.Identifier,
     TPascalTokenKind.Keyword, TPascalTokenKind.Number]) and TokenAt(mStart + 1).IsSymbol(':') then
-    Inc(mStart, 2)
+  begin
+    Inc(mStart, 2);
+  end
   else
+  begin
     mStart := 0;
+  end;
   while (mStart + 1 < Length(ACode)) and MatchText(TokenAt(mStart).Text, cPrefixes) do
+  begin
     Inc(mStart);
+  end;
   if mStart >= Length(ACode) then
   begin
     Result.FirstToken := Result.LastToken;
@@ -139,7 +147,9 @@ begin
     Exit;
   end;
   if mStart >= Length(ACode) then
+  begin
     Exit;
+  end;
   mOperand := TList<Integer>.Create;
   try
     mDepth := 0;
@@ -147,9 +157,13 @@ begin
     begin
       mToken := TokenAt(mIndex);
       if mToken.IsSymbol('[') or mToken.IsSymbol('(') then
-        Inc(mDepth)
+      begin
+        Inc(mDepth);
+      end
       else if (mToken.IsSymbol(']') or mToken.IsSymbol(')')) and (mDepth > 0) then
-        Dec(mDepth)
+      begin
+        Dec(mDepth);
+      end
       else if mToken.IsSymbol(',') and (mDepth = 0) then
       begin
         AddOperand;
@@ -184,7 +198,9 @@ var
   procedure Flush;
   begin
     if mCode.Count > 0 then
+    begin
       mList.Add(Build(ATokens, mCode.ToArray, mUncertain));
+    end;
     mCode.Clear;
     mUncertain := False;
   end;
@@ -202,7 +218,9 @@ begin
       if mToken.Kind = TPascalTokenKind.Comment then
       begin
         if (mCode.Count > 0) and (mToken.StartPos.Line <= mLastLine) and not mToken.Text.StartsWith('//') then
+        begin
           mUncertain := True;
+        end;
         Continue;
       end;
       if (mToken.Kind = TPascalTokenKind.Directive) or
@@ -210,13 +228,17 @@ begin
       begin
         // Steht die Direktive (oder das fremde Token) in einer eigenen Zeile, endet die Anweisung davor sauber.
         if mToken.StartPos.Line > mLastLine then
+        begin
           Flush;
+        end;
         mUncertain := True;
         mLastLine := mToken.EndPos.Line;
         Continue;
       end;
       if mToken.StartPos.Line > mLastLine then
+      begin
         Flush;
+      end;
       mLastLine := mToken.EndPos.Line;
       if mToken.IsSymbol(';') then
       begin
@@ -224,7 +246,9 @@ begin
         Continue;
       end;
       if (mToken.Kind = TPascalTokenKind.Unknown) or not mToken.Terminated then
+      begin
         mUncertain := True;
+      end;
       mCode.Add(mIndex);
     end;
     Flush;
@@ -238,13 +262,21 @@ end;
 class function TAsmStatements.RegisterSize(const AName: string): Integer;
 begin
   if MatchText(AName, cRegisters8) then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else if MatchText(AName, cRegisters16) then
-    Result := 2
+  begin
+    Result := 2;
+  end
   else if MatchText(AName, cRegisters32) then
-    Result := 4
+  begin
+    Result := 4;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 class function TAsmStatements.IsDataDirective(const AMnemonic: string): Boolean;

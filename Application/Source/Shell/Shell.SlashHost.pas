@@ -233,11 +233,17 @@ begin
         Logger.Info(Format('%s geändert (Schnellbefehl, über den Editor)', [Description]));
         Target := nil;
         if Reload then
+        begin
           Target := WorkspaceOf(Uri);
+        end;
         if Target <> nil then
+        begin
           Target.Reload;
+        end;
         if Assigned(After) then
+        begin
           After();
+        end;
         Exit;
       end;
       Logger.Warning(Format('%s nicht geändert: %s', [Description, Reason]));
@@ -272,7 +278,9 @@ var
 begin
   Result := ClientWrites;
   if not Result then
+  begin
     Exit;
+  end;
   OldText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
   SendEdit(AUri, ExtractFileName(AFileName), TLspApplyEdit.ReplaceAll(AFileName, OldText, AText), nil);
 end;
@@ -294,9 +302,13 @@ end;
 procedure TShellSlashHost.InLoop(const AWork: TProc);
 begin
   if Assigned(FRunInLoop) then
-    FRunInLoop(AWork)
+  begin
+    FRunInLoop(AWork);
+  end
   else
+  begin
     AWork();
+  end;
 end;
 
 procedure TShellSlashHost.WriteProject(const AUri, AText: string);
@@ -309,11 +321,15 @@ var
 begin
   Workspace := FWorkspaceOf(AUri);
   if (Workspace = nil) or not Workspace.Project(Info) then
+  begin
     Exit;
+  end;
   try
     // In der IDE über das Plugin, nicht auf die Platte (#397).
     if WriteThroughClient(AUri, Info.FileName, AText) then
+    begin
       Exit;
+    end;
     // Kodierung und Zeilenumbrüche der vorhandenen Datei beibehalten.
     TFileEncoding.LoadFromFile(Info.FileName, FileFormat);
     TFileEncoding.SaveToFile(Info.FileName, AText, FileFormat);
@@ -336,7 +352,9 @@ begin
       // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
       Target := WorkspaceOf(Uri);
       if Target <> nil then
+      begin
         Target.Reload;
+      end;
     end);
 end;
 
@@ -361,7 +379,9 @@ begin
       // Wählt Konfiguration und Plattform und lädt neu: nur in der Schleife (A-03).
       Workspace := WorkspaceOf(Uri);
       if (Workspace <> nil) and not Workspace.SelectBuild(Config, PlatformName, Error) then
+      begin
         Logger.Warning(Error);
+      end;
     end);
 end;
 
@@ -379,7 +399,9 @@ function TShellSlashHost.Setting(const AUri, AName: string): string;
 begin
   Result := '';
   if Assigned(FSettingOf) then
+  begin
     Result := FSettingOf(AUri, AName);
+  end;
 end;
 
 function TShellSlashHost.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
@@ -463,7 +485,9 @@ begin
   Result := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
   Sibling := '';
   if AUri <> '' then
+  begin
     Sibling := TDocumentUris.ToPath(AUri);
+  end;
   if (Sibling <> '') and FileExists(Sibling) then
     try
       TFileEncoding.LoadFromFile(Sibling, Result);
@@ -473,9 +497,13 @@ begin
     end;
   Result.MixedLineBreaks := False;
   if Pos(#13#10, AText) > 0 then
-    Result.LineBreak := TLineBreakStyle.CRLF
+  begin
+    Result.LineBreak := TLineBreakStyle.CRLF;
+  end
   else if Pos(#10, AText) > 0 then
+  begin
     Result.LineBreak := TLineBreakStyle.LF;
+  end;
 end;
 
 procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
@@ -494,7 +522,9 @@ begin
   Show := AShow;
   Names := nil;
   for Item in AFiles do
+  begin
     Names := Names + [ExtractFileName(Item.FileName)];
+  end;
   Description := string.Join(', ', Names);
   try
     // In der IDE über das Plugin, damit neue und geänderte Dateien in ihren Puffern landen (#397).
@@ -505,14 +535,18 @@ begin
       begin
         OldText := '';
         if not Item.New then
+        begin
           OldText := TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
+        end;
         Changes := Changes + [TLspFileChange.Create(Item.FileName, OldText, Item.Text, Item.New)];
       end;
       AfterEdit :=
         procedure
         begin
           if Show <> '' then
+          begin
             SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
+          end;
         end;
       SendEdit(AUri, Description, TLspApplyEdit.Files(Changes), AfterEdit);
       Exit;
@@ -525,7 +559,9 @@ begin
         FileFormat := NewFileFormat(AUri, Item.Text);
       end
       else
+      begin
         TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
+      end;
       TFileEncoding.SaveToFile(Item.FileName, Item.Text, FileFormat);
     end;
     FLogger.Info(Format('%s geschrieben (Schnellbefehl)', [Description]));
@@ -546,9 +582,13 @@ begin
       // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
       Target := WorkspaceOf(Uri);
       if Target <> nil then
+      begin
         Target.Reload;
+      end;
       if Show <> '' then
+      begin
         SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
+      end;
     end);
 end;
 

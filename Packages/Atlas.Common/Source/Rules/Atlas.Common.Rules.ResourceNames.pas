@@ -37,7 +37,9 @@ begin
   AName := '';
   Result := False;
   if AAt + 2 > ALimit then
+  begin
     Exit;
+  end;
   if ReadWord(AData, AAt) = $FFFF then
   begin
     Inc(AAt, 4);
@@ -48,7 +50,9 @@ begin
     Ch := ReadWord(AData, AAt);
     Inc(AAt, 2);
     if Ch = 0 then
+    begin
       Exit(True);
+    end;
     AName := AName + Char(Ch);
   end;
 end;
@@ -66,13 +70,19 @@ begin
     DataSize := ReadCardinal(AData, At);
     HeaderSize := ReadCardinal(AData, At + 4);
     if (HeaderSize < 8) or (At + HeaderSize + DataSize > Length(AData)) then
+    begin
       Exit;
+    end;
     HeaderEnd := At + Integer(HeaderSize);
     Pos := At + 8;
     if not ReadId(AData, Pos, HeaderEnd, TypeName) or not ReadId(AData, Pos, HeaderEnd, Name) then
+    begin
       Exit;
+    end;
     if Name <> '' then
+    begin
       Result := Result + [UpperCase(Name)];
+    end;
     Next := HeaderEnd + Integer(DataSize);
     At := (Next + 3) and not 3;
   end;

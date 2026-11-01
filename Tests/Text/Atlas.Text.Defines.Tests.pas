@@ -37,8 +37,12 @@ var
   Symbol: string;
 begin
   for Symbol in ASymbols do
+  begin
     if SameText(Symbol, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -66,7 +70,9 @@ begin
   Assert.IsTrue(Has(Symbols, 'WIN64'));
   Assert.IsTrue(Has(Symbols, 'CPU64BITS'));
   for Symbol in Symbols do
+  begin
     Assert.IsFalse(Symbol.StartsWith('VER'), Symbol);
+  end;
 end;
 
 procedure TTextDefinesTests.PredefinedForMobile;

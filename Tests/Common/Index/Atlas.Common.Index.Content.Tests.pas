@@ -120,8 +120,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.QualifiedName, AQualifiedName) then
+    begin
       Exit(Symbol);
+    end;
+  end;
   Assert.Fail('Symbol fehlt: ' + AQualifiedName);
   Result := Default(TIndexSymbol);
 end;
@@ -131,11 +135,13 @@ var
   Usage: TIndexUsage;
 begin
   for Usage in AUsages do
+  begin
     if SameText(Usage.Name, AName) then
     begin
       AUsage := Usage;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -155,14 +161,20 @@ begin
     Builder.Append('unit U').Append(ANumber).Append(';'#13#10'interface'#13#10'type'#13#10);
     Builder.Append('  TKlasse').Append(ANumber).Append(' = class'#13#10'  private'#13#10);
     for Index := 1 to 10 do
+    begin
       Builder.Append('    FFeld').Append(Index).Append(': Integer;'#13#10);
+    end;
     Builder.Append('  public'#13#10);
     for Index := 1 to 20 do
+    begin
       Builder.Append('    procedure Methode').Append(Index).Append('(A: Integer); virtual;'#13#10);
+    end;
     Builder.Append('  end;'#13#10'implementation'#13#10);
     for Index := 1 to 20 do
+    begin
       Builder.Append('procedure TKlasse').Append(ANumber).Append('.Methode').Append(Index)
         .Append('(A: Integer); begin FFeld1 := A; end;'#13#10);
+    end;
     Builder.Append('end.');
     Result := Builder.ToString;
   finally

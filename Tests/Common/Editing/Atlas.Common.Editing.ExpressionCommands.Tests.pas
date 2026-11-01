@@ -75,7 +75,9 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
@@ -104,7 +106,9 @@ begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(11, 0), nil, nil, Edits, nil,
     AVersion);
   if Result then
+  begin
     AText := Apply(AText, Edits);
+  end;
 end;
 
 function Expand(const ACommand, AStatement: string; const AVersion: string = ''): string;

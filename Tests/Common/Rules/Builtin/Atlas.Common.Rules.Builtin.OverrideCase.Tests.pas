@@ -70,7 +70,9 @@ var
 begin
   Result := '';
   for Finding in AFound do
+  begin
     Result := Result + ' | ' + Finding.Message;
+  end;
 end;
 
 function OnlyMessage(const ASource: string): string;
@@ -101,7 +103,9 @@ begin
   // Nach Position absteigend, damit frühere Edits die Spalten späterer nicht verschieben.
   Edits := Copy(AFix.Edits);
   for Index := 0 to High(Edits) do
+  begin
     for Later := Index + 1 to High(Edits) do
+    begin
       if (Edits[Later].Range.StartPos.Line > Edits[Index].Range.StartPos.Line) or
         ((Edits[Later].Range.StartPos.Line = Edits[Index].Range.StartPos.Line) and
         (Edits[Later].Range.StartPos.Character > Edits[Index].Range.StartPos.Character)) then
@@ -110,10 +114,14 @@ begin
         Edits[Index] := Edits[Later];
         Edits[Later] := Edit;
       end;
+    end;
+  end;
   Lines := AText.Split([#10]);
   for Edit in Edits do
+  begin
     Lines[Edit.Range.StartPos.Line] := Copy(Lines[Edit.Range.StartPos.Line], 1, Edit.Range.StartPos.Character) +
       Edit.NewText + Copy(Lines[Edit.Range.StartPos.Line], Edit.Range.EndPos.Character + 1, MaxInt);
+  end;
   Result := string.Join(#10, Lines);
 end;
 

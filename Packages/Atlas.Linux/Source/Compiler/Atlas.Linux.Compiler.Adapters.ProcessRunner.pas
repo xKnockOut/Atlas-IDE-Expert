@@ -59,7 +59,9 @@ begin
   try
     Result := not FCancelled;
     if Result then
+    begin
       FRunning.Add(AProcess);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -94,7 +96,9 @@ begin
     FCancelled := True;
     // Unter der Sperre: Run entfernt einen Prozess erst (Untrack), bevor es ihn freigibt.
     for Running in FRunning do
+    begin
       Running.Terminate(CancelledExitCode);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -114,21 +118,31 @@ var
   begin
     Line := TEncoding.UTF8.GetString(Pending, AFrom, ACount);
     if (Line <> '') and (Line[Length(Line)] = #13) then
+    begin
       SetLength(Line, Length(Line) - 1);
+    end;
     if Assigned(AOnLine) then
+    begin
       AOnLine(Line);
+    end;
   end;
 
 begin
   if WasCancelled then
+  begin
     raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
+  end;
   Child := TProcess.Create(nil);
   try
     Child.Executable := ARequest.Executable;
     for Argument in ARequest.Arguments do
+    begin
       Child.Parameters.Add(Argument);
+    end;
     if ARequest.WorkingDir <> '' then
+    begin
       Child.CurrentDirectory := ARequest.WorkingDir;
+    end;
     Child.Options := [poUsePipes, poStderrToOutPut, poNoConsole];
     try
       Child.Execute;
@@ -139,34 +153,44 @@ begin
     // Kein stdin: Der Kindprozess soll nie auf eine Eingabe warten.
     Child.CloseInput;
     if not Track(Child) then
+    begin
       Child.Terminate(CancelledExitCode);
+    end;
     try
       Pending := nil;
       repeat
         BytesRead := Child.Output.Read(Buffer, SizeOf(Buffer));
         if BytesRead <= 0 then
+        begin
           Break;
+        end;
         Start := Length(Pending);
         SetLength(Pending, Start + BytesRead);
         Move(Buffer[0], Pending[Start], BytesRead);
         Start := 0;
         for LineEnd := 0 to High(Pending) do
+        begin
           if Pending[LineEnd] = 10 then
           begin
             EmitLine(Start, LineEnd - Start);
             Start := LineEnd + 1;
           end;
+        end;
         Pending := Copy(Pending, Start, MaxInt);
       until False;
       if Length(Pending) > 0 then
+      begin
         EmitLine(0, Length(Pending));
+      end;
       Child.WaitOnExit;
       Result := Child.ExitCode;
     finally
       Untrack(Child);
     end;
     if WasCancelled then
+    begin
       raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
+    end;
   finally
     Child.Free;
   end;

@@ -134,7 +134,9 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   // Von hinten nach vorn anwenden, damit frühere Stellen gültig bleiben.
   for Index := 1 to High(AEdits) do
   begin
@@ -176,7 +178,9 @@ begin
   Result := '';
   if TSlashMenu.Run(TSlashCommandRegistry.Shared, AText, ASpot, AName, AArguments, nil, nil, '', '', nil, Edits,
     AReason) then
+  begin
     Result := Apply(AText, Edits);
+  end;
 end;
 
 function HasPlace(APlaces: TSlashPlaces; APlace: TSlashPlace): Boolean;
@@ -295,8 +299,12 @@ var
 begin
   Names := nil;
   for Entry in TSlashMenu.Catalog do
+  begin
     if TSlashMenu.Fits(Entry, [TSlashPlace.ClassBody], False) and (Length(Names) < 6) then
+    begin
       Names := Names + [Entry.Name];
+    end;
+  end;
   Assert.AreEqual('ctor,dtor,prop,override,equals,impl', string.Join(',', Names));
 end;
 

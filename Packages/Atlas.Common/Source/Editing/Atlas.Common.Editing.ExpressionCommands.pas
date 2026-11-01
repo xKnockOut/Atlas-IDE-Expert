@@ -48,8 +48,12 @@ var
 begin
   Result := nil;
   for Token in TPascalLexer.Tokenize(AText) do
+  begin
     if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Result := Result + [Token];
+    end;
+  end;
 end;
 
 /// <summary>Text der Tokens AFirst bis ALast aus AText.</summary>
@@ -80,7 +84,9 @@ begin
   for Index := ASource.Line + 1 to Min(High(ASource.Lines), ASource.Line + 20) do
   begin
     if AText <> '' then
+    begin
       AText := AText + ' ';
+    end;
     AText := AText + Trim(ASource.Lines[Index]);
     if EndsStr(';', TrimRight(ASource.Lines[Index])) then
     begin
@@ -108,11 +114,17 @@ begin
   for Index := AFrom to High(ATokens) do
   begin
     if (Depth = 0) and SameText(ATokens[Index].Text, AText) then
+    begin
       Exit(Index);
+    end;
     if Opens(ATokens[Index]) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Closes(ATokens[Index]) then
+    begin
       Dec(Depth);
+    end;
   end;
   Result := -1;
 end;
@@ -131,45 +143,71 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if (Source.RoutineAt = nil) or not StatementBelow(Source, Last, Text) then
+    begin
       Exit(Fail('Unter /inc steht keine Zuweisung in einer Routine', AReason));
+    end;
     Tokens := CodeTokens(Text);
     Assign := FindTop(Tokens, 0, ':=');
     // X := X + N: rechts zuerst dieselben Tokens wie links.
     if (Assign <= 0) or (2 * Assign + 2 > High(Tokens)) then
+    begin
       Exit(Fail('Erwartet wird X := X + N bzw. X := X - N', AReason));
+    end;
     for Index := 0 to Assign - 1 do
+    begin
       if not SameText(Tokens[Index].Text, Tokens[Assign + 1 + Index].Text) then
+      begin
         Exit(Fail('Erwartet wird X := X + N bzw. X := X - N', AReason));
+      end;
+    end;
     Operator_ := 2 * Assign + 1;
     Increment := Tokens[Operator_].IsSymbol('+');
     if not (Increment or Tokens[Operator_].IsSymbol('-')) then
+    begin
       Exit(Fail('Erwartet wird X := X + N bzw. X := X - N', AReason));
+    end;
     Stop := High(Tokens);
     if Tokens[Stop].IsSymbol(';') then
+    begin
       Dec(Stop);
+    end;
     if Stop <= Operator_ then
+    begin
       Exit(Fail('Erwartet wird X := X + N bzw. X := X - N', AReason));
+    end;
     // Weitere Plus-/Minus-Operatoren oder Gleitkommazahlen: Inc/Dec wäre nicht gleichwertig.
     Depth := 0;
     for Index := Operator_ + 1 to Stop do
     begin
       if Opens(Tokens[Index]) then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Closes(Tokens[Index]) then
-        Dec(Depth)
+      begin
+        Dec(Depth);
+      end
       else if (Depth = 0) and (Tokens[Index].IsSymbol('+') or Tokens[Index].IsSymbol('-') or
         Tokens[Index].IsKeyword('or') or Tokens[Index].IsKeyword('xor')) then
+      begin
         Exit(Fail('/inc wandelt nur einen einzelnen Summanden um', AReason));
+      end;
       if (Tokens[Index].Kind = TPascalTokenKind.Number) and (LastDelimiter('.eE', Tokens[Index].Text) > 0) and
         not StartsStr('$', Tokens[Index].Text) then
+      begin
         Exit(Fail('Inc und Dec gelten nur für ganze Zahlen', AReason));
+      end;
     end;
     Target := Slice(Text, Tokens, 0, Assign - 1);
     Amount := Slice(Text, Tokens, Operator_ + 1, Stop);
     if Amount = '1' then
-      Text := IfThen(Increment, 'Inc', 'Dec') + '(' + Target + ');'
+    begin
+      Text := IfThen(Increment, 'Inc', 'Dec') + '(' + Target + ');';
+    end
     else
+    begin
       Text := IfThen(Increment, 'Inc', 'Dec') + '(' + Target + ', ' + Amount + ');';
+    end;
     AEdits := [ReplaceStatement(Source, Last, Text)];
     Result := True;
   finally
@@ -190,35 +228,55 @@ var
 begin
   AEdits := nil;
   if not TLanguageFeatures.IsAvailable(TLanguageFeature.IfExpression, AContext.DelphiVersion) then
+  begin
     Exit(Fail(Format('/iif braucht Bedingungsausdrücke, die es erst ab Delphi 13 gibt (eingestellt: %s)',
       [AContext.DelphiVersion]), AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if (Source.RoutineAt = nil) or not StatementBelow(Source, Last, Text) then
+    begin
       Exit(Fail('Unter /iif steht keine if-Anweisung in einer Routine', AReason));
+    end;
     Tokens := CodeTokens(Text);
     if (Length(Tokens) < 10) or not Tokens[0].IsKeyword('if') then
+    begin
       Exit(Fail(Expected, AReason));
+    end;
     ThenAt := FindTop(Tokens, 1, 'then');
     if ThenAt < 0 then
+    begin
       Exit(Fail(Expected, AReason));
+    end;
     FirstAssign := FindTop(Tokens, ThenAt + 1, ':=');
     ElseAt := FindTop(Tokens, ThenAt + 1, 'else');
     if (FirstAssign < 0) or (ElseAt < FirstAssign) then
+    begin
       Exit(Fail(Expected, AReason));
+    end;
     SecondAssign := FindTop(Tokens, ElseAt + 1, ':=');
     Stop := High(Tokens);
     if Tokens[Stop].IsSymbol(';') then
+    begin
       Dec(Stop);
+    end;
     if (SecondAssign < 0) or (SecondAssign >= Stop) then
+    begin
       Exit(Fail(Expected, AReason));
+    end;
     // Beide Zweige weisen demselben Ziel zu und enthalten keine weiteren Anweisungen.
     Target := Slice(Text, Tokens, ThenAt + 1, FirstAssign - 1);
     if not SameText(Target, Slice(Text, Tokens, ElseAt + 1, SecondAssign - 1)) then
+    begin
       Exit(Fail('/iif braucht in beiden Zweigen dieselbe Zielvariable', AReason));
+    end;
     for Index := ThenAt + 1 to Stop do
+    begin
       if Tokens[Index].IsKeyword('begin') or Tokens[Index].IsKeyword('if') or Tokens[Index].IsSymbol(';') then
+      begin
         Exit(Fail(Expected, AReason));
+      end;
+    end;
     Text := Format('%s := if %s then %s else %s;', [Target, Slice(Text, Tokens, 1, ThenAt - 1),
       Slice(Text, Tokens, FirstAssign + 1, ElseAt - 1), Slice(Text, Tokens, SecondAssign + 1, Stop)]);
     AEdits := [ReplaceStatement(Source, Last, Text)];
@@ -237,10 +295,14 @@ var
 begin
   Result := False;
   if ASource.Line + 1 > High(ASource.Lines) then
+  begin
     Exit;
+  end;
   Column := Pos('''', ASource.Lines[ASource.Line + 1]);
   if Column = 0 then
+  begin
     Exit;
+  end;
   Result := TStringLiterals.LiteralAt(AContext.Text, TTextPosition.Create(ASource.Line + 1, Column - 1), ARange);
 end;
 
@@ -253,20 +315,30 @@ var
 begin
   AEdits := nil;
   if AToMultiline and not TLanguageFeatures.IsAvailable(TLanguageFeature.MultilineString, AContext.DelphiVersion) then
+  begin
     Exit(Fail(Format('Mehrzeilige Strings gibt es erst ab Delphi 12 (eingestellt: %s)', [AContext.DelphiVersion]),
       AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if not LiteralBelow(Source, AContext, Range) then
+    begin
       Exit(Fail('Unter dem Befehl steht kein String-Literal', AReason));
+    end;
     Expression := TStringLiterals.TextOf(AContext.Text, Range);
     if not TStringLiterals.PlainText(Expression, Plain) then
+    begin
       Exit(Fail('Das Literal enthält mehr als Strings, sLineBreak und +', AReason));
+    end;
     if StartsStr('''''''', Trim(Expression)) = AToMultiline then
+    begin
       Exit(Fail(IfThen(AToMultiline, 'Das Literal ist schon mehrzeilig', 'Das Literal ist nicht mehrzeilig'),
         AReason));
+    end;
     if AToMultiline and (Pos(#10, Plain) = 0) then
+    begin
       Exit(Fail('Das Literal enthält keinen Zeilenumbruch', AReason));
+    end;
     Literal := TStringLiterals.ToLiteral(Plain, Source.Indent(Source.Line + 1), False, AToMultiline,
       TStringLiteralBreak.SLineBreak, 0, Source.LineBreak);
     AEdits := [Source.RemoveCommand, TTextEdit.Create(Range, Literal)];
@@ -310,12 +382,18 @@ begin
   begin
     TypeName := ATypes.DeclaredType(AOperand, APosition);
     if TDeclaredTypes.IsInt32(TypeName) or TDeclaredTypes.IsInt64(TypeName) then
+    begin
       Exit('%d');
+    end;
     if TDeclaredTypes.IsFloat(TypeName) then
+    begin
       Exit('%g');
+    end;
     if TDeclaredTypes.IsChar(TypeName) or MatchText(TypeName, ['string', 'UnicodeString', 'AnsiString',
       'WideString', 'ShortString', 'UTF8String', 'RawByteString']) then
+    begin
       Exit('%s');
+    end;
   end;
   AKnown := False;
 end;
@@ -348,10 +426,14 @@ var
     end;
     Mask := Mask + Placeholder(Types, Operand, Position, Argument, Known);
     if Arguments <> '' then
+    begin
       Arguments := Arguments + ', ';
+    end;
     Arguments := Arguments + Argument;
     if not Known then
+    begin
       Unknown := Unknown + IfThen(Unknown <> '', ', ', '') + Operand;
+    end;
     Inc(Others);
   end;
 
@@ -361,33 +443,45 @@ begin
   Types := nil;
   try
     if (Source.RoutineAt = nil) or (Source.Line + 1 > High(Source.Lines)) then
+    begin
       Exit(Fail('/format gilt für eine Verkettung in der Zeile darunter, im Rumpf einer Routine', AReason));
+    end;
     Line := Source.Lines[Source.Line + 1];
     Tokens := CodeTokens(Line);
     Hit := -1;
     for Index := 0 to High(Tokens) do
+    begin
       if Tokens[Index].Kind = TPascalTokenKind.StringLiteral then
       begin
         Hit := Index;
         Break;
       end;
+    end;
     if Hit < 0 then
+    begin
       Exit(Fail('In der Zeile unter /format steht kein String-Literal', AReason));
+    end;
     // Ausdruck um das Literal: nach links und rechts bis zu Komma, Zuweisung, Klammer oder Schlüsselwort.
     First := Hit;
     Depth := 0;
     while First > 0 do
     begin
       if Closes(Tokens[First - 1]) then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Opens(Tokens[First - 1]) then
       begin
         if Depth = 0 then
+        begin
           Break;
+        end;
         Dec(Depth);
       end
       else if (Depth = 0) and Stops(Tokens[First - 1]) then
+      begin
         Break;
+      end;
       Dec(First);
     end;
     Last := Hit;
@@ -395,15 +489,21 @@ begin
     while Last < High(Tokens) do
     begin
       if Opens(Tokens[Last + 1]) then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Closes(Tokens[Last + 1]) then
       begin
         if Depth = 0 then
+        begin
           Break;
+        end;
         Dec(Depth);
       end
       else if (Depth = 0) and Stops(Tokens[Last + 1]) then
+      begin
         Break;
+      end;
       Inc(Last);
     end;
     Types := TDeclaredTypes.Create(Source.Tree, Source.Text);
@@ -419,28 +519,42 @@ begin
     for Index := First to Last do
     begin
       if Opens(Tokens[Index]) then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Closes(Tokens[Index]) then
-        Dec(Depth)
+      begin
+        Dec(Depth);
+      end
       else if (Depth = 0) and Tokens[Index].IsSymbol('+') then
       begin
         if Index = Start then
+        begin
           Exit(Fail('Unvollständige Verkettung', AReason));
+        end;
         AddOperand(Start, Index - 1);
         Start := Index + 1;
       end
       else if (Depth = 0) and (Tokens[Index].Kind = TPascalTokenKind.Symbol) and (Tokens[Index].Text <> '.') then
+      begin
         Exit(Fail('/format wandelt nur Verkettungen mit + um', AReason));
+      end;
     end;
     if Start > Last then
+    begin
       Exit(Fail('Unvollständige Verkettung', AReason));
+    end;
     AddOperand(Start, Last);
     if (Literals = 0) or (Others = 0) then
+    begin
       Exit(Fail('Unter /format steht keine Verkettung aus Text und Werten', AReason));
+    end;
     Line := Copy(Line, 1, Tokens[First].Offset) + Format('Format(%s, [%s])', [TStringLiterals.Quote(Mask),
       Arguments]) + Copy(Line, Tokens[Last].Offset + Length(Tokens[Last].Text) + 1, MaxInt);
     if Unknown <> '' then
+    begin
       Line := Line + Format(' // /format: Typ von %s unbekannt, %%s angenommen', [Unknown]);
+    end;
     AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1,
       Length(Source.Lines[Source.Line + 1])), Line)];
     AddUses(Source, AContext, Source.Line, ['System.SysUtils'], AEdits);
@@ -473,35 +587,59 @@ begin
   AEdits := nil;
   Kinds := [TModernization.ForIn, TModernization.InlineVar, TModernization.FreeAndNilCall];
   for Option in AContext.Arguments.Split([' '], TStringSplitOptions.ExcludeEmpty) do
+  begin
     if SameText(Option, '-for') then
-      Exclude(Kinds, TModernization.ForIn)
+    begin
+      Exclude(Kinds, TModernization.ForIn);
+    end
     else if SameText(Option, '-inline') then
-      Exclude(Kinds, TModernization.InlineVar)
+    begin
+      Exclude(Kinds, TModernization.InlineVar);
+    end
     else if SameText(Option, '-free') then
-      Exclude(Kinds, TModernization.FreeAndNilCall)
+    begin
+      Exclude(Kinds, TModernization.FreeAndNilCall);
+    end
     else
+    begin
       Exit(Fail('Erwartet wird /modern [-for] [-inline] [-free]', AReason));
+    end;
+  end;
   // for var und Inline-Variablen gibt es erst ab Delphi 10.3.
   if not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion) then
+  begin
     Kinds := Kinds - [TModernization.ForIn, TModernization.InlineVar];
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit(Fail('/modern gilt nur im Rumpf einer Routine', AReason));
+    end;
     Lines := nil;
     for Line := Routine.StartPos.Line to Routine.EndPos.Line do
+    begin
       if Line <> Source.Line then
+      begin
         Lines := Lines + [Source.Lines[Line]];
+      end;
+    end;
     Lines := TModernizer.Apply(Lines, Kinds, Count);
     if Count = 0 then
+    begin
       Exit(Fail('In dieser Routine gibt es nichts zu modernisieren', AReason));
+    end;
     Text := '';
     for Line := 0 to High(Lines) do
+    begin
       Text := Text + Lines[Line] + Source.LineBreak;
+    end;
     AEdits := [TTextEdit.Create(TTextRange.Create(Routine.StartPos.Line, 0, Routine.EndPos.Line + 1, 0), Text)];
     if TModernization.FreeAndNilCall in Kinds then
+    begin
       AddUses(Source, AContext, Routine.StartPos.Line, ['System.SysUtils'], AEdits);
+    end;
     Result := True;
   finally
     Source.Free;

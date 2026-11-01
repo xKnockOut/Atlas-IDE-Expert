@@ -157,7 +157,9 @@ begin
   inherited Create;
   FRoot := ARoot;
   if FRoot = '' then
+  begin
     FRoot := DefaultRoot;
+  end;
   FLogger := ALogger;
   FDocuments := ADocuments;
   FRecent := ARecent;
@@ -166,7 +168,9 @@ begin
   FSkips := TCrashSkips.Create;
   try
     if TFile.Exists(SkipsFile) then
+    begin
       FSkips.Load(TFile.ReadAllText(SkipsFile, TEncoding.UTF8));
+    end;
   except
     on E: Exception do
       FLogger.Warning('Absturzfälle: Merker nicht lesbar, beginne leer: ' + E.ClassName);
@@ -175,9 +179,13 @@ begin
   FTestMethod := GetEnvironmentVariable(TestVariable);
   FTestOverflow := EndsText(':overflow', FTestMethod);
   if FTestOverflow then
+  begin
     FTestMethod := Copy(FTestMethod, 1, Length(FTestMethod) - Length(':overflow'));
+  end;
   if FTestMethod <> '' then
+  begin
     FLogger.Warning(Format('Testschalter %s gesetzt: %s stürzt künstlich ab', [TestVariable, FTestMethod]));
+  end;
 end;
 
 destructor TShellCrashCases.Destroy;
@@ -198,7 +206,9 @@ begin
   Result := Format('%s: %s ist an dieser Datei %d-mal abgestürzt (%s)', [SkipMessage, AEntry.Method,
     AEntry.Crashes, AEntry.ExceptionClass]);
   if AEntry.CaseFolder <> '' then
+  begin
     Result := Result + '; Fall ' + AEntry.CaseFolder;
+  end;
 end;
 
 function TShellCrashCases.SkipsFile: string;
@@ -237,26 +247,38 @@ begin
   Result.Client := FClient;
   Result.ServerPath := FServerPath;
   if FRecent <> nil then
+  begin
     Result.Recent := FRecent.Last(TJsonRpcRecentMessages.ReportCount);
+  end;
   if Assigned(FInitialize) then
+  begin
     Result.Initialize := FInitialize();
+  end;
   mParams := nil;
   if AParams <> '' then
+  begin
     mParams := TCrashCases.ParseOrNil(AParams);
+  end;
   try
     if TCrashCases.DocumentOf(mParams, Result.Uri, Result.Line) then
     begin
       if StartsText('file:', Result.Uri) then
+      begin
         Result.FileName := TDocumentUris.ToPath(Result.Uri);
+      end;
       Result.HasText := CurrentText(Result.Uri, mText);
       if Result.HasText then
+      begin
         Result.Text := mText;
+      end;
     end;
   finally
     mParams.Free;
   end;
   if Assigned(FSettingsFiles) then
+  begin
     for mFile in FSettingsFiles(Result.Uri) do
+    begin
       if (mFile <> '') and TFile.Exists(mFile) then
         try
           Result.Settings := Result.Settings + [TCrashCaseSetting.Create(ExtractFileName(mFile),
@@ -266,6 +288,8 @@ begin
           on E: Exception do
             FLogger.Warning('Absturzfall: Einstellungen nicht lesbar (' + ExtractFileName(mFile) + ')');
         end;
+    end;
+  end;
 end;
 
 function TShellCrashCases.Store(const ACase: TCrashCase; AOverflow: Boolean): string;
@@ -288,10 +312,14 @@ begin
         begin
           mFolder := TCrashCases.Write(mRoot, mCase);
         end, mFailure) then
+      begin
         mFolder := '';
+      end;
     end
     else
+    begin
       mFolder := TCrashCases.Write(FRoot, ACase);
+    end;
   except
     on E: Exception do
       mFailure := E.ClassName + ': ' + E.Message;
@@ -310,15 +338,21 @@ var
   mParams: TJSONObject;
 begin
   if not Assigned(FNotify) then
+  begin
     Exit;
+  end;
   mParams := TJSONObject.Create;
   mParams.AddPair('summary', ACase.Summary);
   mParams.AddPair('folder', AFolder);
   mParams.AddPair('method', ACase.Method);
   if ACase.Kind = TCrashCaseKind.Timeout then
-    mParams.AddPair('kind', 'timeout')
+  begin
+    mParams.AddPair('kind', 'timeout');
+  end
   else
+  begin
     mParams.AddPair('kind', 'exception');
+  end;
   mParams.AddPair('file', ACase.FileName);
   mParams.AddPair('uri', ACase.Uri);
   mParams.AddPair('line', TJSONNumber.Create(ACase.Line));
@@ -339,15 +373,21 @@ var
   mParams: TJSONObject;
 begin
   if not Assigned(FNotify) then
+  begin
     Exit;
+  end;
   mParams := TJSONObject.Create;
   mParams.AddPair('active', TJSONBool.Create(AActive));
   mParams.AddPair('method', AEntry.Method);
   mParams.AddPair('uri', AEntry.Uri);
   if StartsText('file:', AEntry.Uri) then
-    mParams.AddPair('file', TDocumentUris.ToPath(AEntry.Uri))
+  begin
+    mParams.AddPair('file', TDocumentUris.ToPath(AEntry.Uri));
+  end
   else
+  begin
     mParams.AddPair('file', '');
+  end;
   mParams.AddPair('crashes', TJSONNumber.Create(AEntry.Crashes));
   mParams.AddPair('exception', AEntry.ExceptionClass);
   mParams.AddPair('folder', AEntry.CaseFolder);
@@ -363,7 +403,9 @@ procedure TShellCrashCases.SaveSkips;
 begin
   try
     if (FSkips.Count = 0) and not TFile.Exists(SkipsFile) then
+    begin
       Exit;
+    end;
     TDirectory.CreateDirectory(FRoot);
     TFile.WriteAllText(SkipsFile, FSkips.ToJson, TEncoding.UTF8);
   except
@@ -381,24 +423,32 @@ var
   mSkipped: TArray<TCrashSkipEntry>;
 begin
   if not (FEnabled or FSkipEnabled) or (AError = nil) then
+  begin
     Exit;
+  end;
   try
     mParams := '';
     if AParams <> nil then
+    begin
       mParams := AParams.ToJSON;
+    end;
     mCase := NewCase(TCrashCaseKind.Exception_, AMethod, '', mParams);
     mCase.ExceptionClass := AError.ClassName;
     mCase.ExceptionMessage := AError.Message;
     mCase.Stack := AStack;
     mFolder := '';
     if FEnabled then
+    begin
       mFolder := Store(mCase, TStackGuard.IsOverflow(AError));
+    end;
     mSkipping := False;
     if FSkipEnabled and (mCase.Uri <> '') then
     begin
       mText := '';
       if mCase.HasText then
+      begin
         mText := mCase.Text;
+      end;
       mSkipping := FSkips.Crashed(AMethod, mCase.Uri, TCrashSkips.Checksum(mText), mFolder, AError.ClassName);
       SaveSkips;
       if mSkipping then
@@ -412,7 +462,9 @@ begin
       end;
     end;
     if FEnabled and (mFolder <> '') then
+    begin
       SendCase(mCase, mFolder, mSkipping);
+    end;
   except
     // Das Sichern darf die Fehlerantwort nicht verhindern (der Dispatcher verschluckt ohnehin).
     on E: Exception do
@@ -426,14 +478,20 @@ var
   mMethod, mParams, mFolder: string;
 begin
   if not FEnabled then
+  begin
     Exit;
+  end;
   try
     mMethod := AMethod;
     mParams := '';
     if FRecent <> nil then
+    begin
       FRecent.FindRequest(AId, mMethod, mParams);
+    end;
     if mMethod = '' then
+    begin
       mMethod := AMethod;
+    end;
     mCase := NewCase(TCrashCaseKind.Timeout, mMethod, AId, mParams);
     mCase.TimeoutMs := ATimeoutMs;
     mCase.ExceptionClass := 'Zeitlimit';
@@ -441,7 +499,9 @@ begin
     // Ein Abbruch durch den Watchdog zählt nicht für das Überspringen: Langsam ist nicht abgestürzt.
     mFolder := Store(mCase, False);
     if mFolder <> '' then
+    begin
       SendCase(mCase, mFolder, False);
+    end;
   except
     on E: Exception do
       FLogger.Error('Absturzfall (Zeitlimit): ' + E.ClassName + ': ' + E.Message);
@@ -461,7 +521,9 @@ procedure TShellCrashCases.TestCrash(const AMethod: string);
 begin
   FLogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TestVariable, AMethod]));
   if FTestOverflow then
+  begin
     Deeper(0);
+  end;
   raise ECrashTest.Create('Künstlicher Absturz (Testschalter ' + TestVariable + ')');
 end;
 
@@ -473,9 +535,13 @@ begin
   // Testschalter zuletzt: Auch der künstliche Absturz wird nach dem zweiten Mal übersprungen.
   if FSkipEnabled and (FSkips.Count > 0) and TCrashCases.DocumentOf(AParams, mUri, mLine) and
     FSkips.Watched(AMethod, mUri) then
+  begin
     CheckSkip(AMethod, mUri);
+  end;
   if (FTestMethod <> '') and SameText(AMethod, FTestMethod) then
+  begin
     TestCrash(AMethod);
+  end;
 end;
 
 procedure TShellCrashCases.CheckSkip(const AMethod, AUri: string);
@@ -487,7 +553,9 @@ begin
   mUri := AUri;
   // Erst jetzt die Prüfsumme: nur für Anfragen, die schon einmal an dieser Datei abgestürzt sind.
   if not CurrentText(mUri, mText) then
+  begin
     mText := '';
+  end;
   if FSkips.Skip(AMethod, mUri, TCrashSkips.Checksum(mText), mEntry, mChanged) then
   begin
     FLogger.Warning(Format('Sicherheitsnetz: %s an %s übersprungen nach Absturz; Fall %s', [AMethod,
@@ -508,10 +576,14 @@ var
 begin
   // Je Tastendruck: die Prüfsumme nur für Dateien mit Einträgen.
   if not FSkips.WatchedUri(AUri) then
+  begin
     Exit;
+  end;
   mEnded := FSkips.Changed(AUri, TCrashSkips.Checksum(AText));
   if Length(mEnded) = 0 then
+  begin
     Exit;
+  end;
   SaveSkips;
   for mEntry in mEnded do
   begin
@@ -542,9 +614,13 @@ var
   mEntry: TCrashSkipEntry;
 begin
   if not FSkipEnabled then
+  begin
     Exit;
+  end;
   for mEntry in FSkips.Skipped do
+  begin
     SendSkip(mEntry, True);
+  end;
 end;
 
 function TShellCrashCases.Skipped: TArray<TCrashSkipEntry>;

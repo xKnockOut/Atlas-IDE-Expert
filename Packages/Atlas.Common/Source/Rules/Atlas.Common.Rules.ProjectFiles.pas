@@ -102,7 +102,9 @@ end;
 destructor TRuleProjectFiles.Destroy;
 begin
   if FOwnsUsesGraph then
+  begin
     FUsesGraph.Free;
+  end;
   inherited;
 end;
 
@@ -124,7 +126,9 @@ var
 begin
   Result := nil;
   if UsesGraph = nil then
+  begin
     Exit;
+  end;
   Steps := nil;
   FromUnit := AFromUnit;
   ToFile := AToFile;
@@ -137,9 +141,13 @@ begin
       Step: TRuleUsesStep;
     begin
       if InterfaceOnly then
-        Sections := InterfaceUsesOnly
+      begin
+        Sections := InterfaceUsesOnly;
+      end
       else
+      begin
         Sections := AllUsesSections;
+      end;
       for Edge in AGraph.Path(AGraph.IndexOf(FromUnit), AGraph.IndexOfFile(ToFile), Sections) do
       begin
         Step.UnitName := AGraph.Node(Edge.Target).UnitName;
@@ -162,7 +170,9 @@ begin
   AUsers := nil;
   Result := False;
   if UsesGraph = nil then
+  begin
     Exit;
+  end;
   Users := nil;
   Known := False;
   FileName := AFileName;
@@ -176,13 +186,17 @@ begin
     begin
       Node := AGraph.IndexOfFile(FileName);
       if Node < 0 then
+      begin
         Exit;
+      end;
       Known := True;
       for Ref in AGraph.Node(Node).Incoming do
       begin
         Source := AGraph.Node(Ref.Source);
         if not Source.Active then
+        begin
           Continue;
+        end;
         Step.UnitName := Source.UnitName;
         Step.FileName := Source.FileName;
         Step.InInterface := Source.Outgoing[Ref.Item].Section = TUsesSection.Interface_;
@@ -209,24 +223,36 @@ begin
     Result.IsTest := IsTestSource(Text);
   end
   else if SameText(ExtractFileExt(AMainSource), '.dpk') then
+  begin
     Result.Kind := TRuleProjectKind.Package;
+  end;
   for Source in ASources do
+  begin
     if SameText(ExtractFileExt(Source), '.pas') then
     begin
       if FileExists(ChangeFileExt(Source, '.dfm')) then
-        Result.Forms := Result.Forms + [ChangeFileExt(Source, '.dfm')]
+      begin
+        Result.Forms := Result.Forms + [ChangeFileExt(Source, '.dfm')];
+      end
       else if FileExists(ChangeFileExt(Source, '.fmx')) then
+      begin
         Result.Forms := Result.Forms + [ChangeFileExt(Source, '.fmx')];
+      end;
     end;
+  end;
 end;
 
 function TRuleProjectFiles.Complete(out AReason: string): Boolean;
 begin
   AReason := '';
   if Assigned(FComplete) then
-    Result := FComplete(AReason)
+  begin
+    Result := FComplete(AReason);
+  end
   else
+  begin
     Result := True;
+  end;
 end;
 
 function TRuleProjectFiles.ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
@@ -242,15 +268,25 @@ begin
   begin
     Member := False;
     for Source in Project.Sources do
+    begin
       if SameText(Source, AFileName) then
+      begin
         Member := True;
+      end;
+    end;
     if Member then
-      Result := Result + [Project]
+    begin
+      Result := Result + [Project];
+    end
     else
+    begin
       Others := Others + [Project];
+    end;
   end;
   if AWholeGroup and (Result <> nil) then
+  begin
     Result := Result + Others;
+  end;
 end;
 
 function TRuleProjectFiles.ReadText(const AFileName: string; out AText: string): Boolean;
@@ -268,18 +304,26 @@ begin
   Result := False;
   // Erst billig im Text suchen, dann nur Bezeichner zählen (nicht Kommentare und Strings).
   if not ContainsText(AText, AName) then
+  begin
     Exit;
+  end;
   Tree := TSyntaxTreeCache.Parse(AText);
   try
     for Token in Tree.Tokens do
+    begin
       if Token.Kind = TPascalTokenKind.Identifier then
       begin
         Name := Token.Text;
         if StartsStr('&', Name) then
+        begin
           Name := Copy(Name, 2, MaxInt);
+        end;
         if SameText(Name, AName) then
+        begin
           Exit(True);
+        end;
       end;
+    end;
   finally
     Tree.Free;
   end;
@@ -301,17 +345,27 @@ begin
         Exit(TRuleNameAnswer.Absent);
     end;
   if not ReadText(AFileName, Text) then
+  begin
     Exit(TRuleNameAnswer.Unknown);
+  end;
   if TextHasName(Text, AName) then
+  begin
     Exit(TRuleNameAnswer.Present);
+  end;
   if HasUnit then
+  begin
     for Include in Indexed.Includes do
     begin
       if not ReadText(Include, Text) then
+      begin
         Exit(TRuleNameAnswer.Unknown);
+      end;
       if TextHasName(Text, AName) then
+      begin
         Exit(TRuleNameAnswer.Present);
+      end;
     end;
+  end;
   Result := TRuleNameAnswer.Absent;
 end;
 
@@ -321,21 +375,31 @@ var
   Token: TPascalToken;
 begin
   if SameText(ExtractFileExt(AFileName), '.dpk') then
+  begin
     Exit(TRuleProjectKind.Package);
+  end;
   Result := TRuleProjectKind.Unknown;
   Tree := TSyntaxTreeCache.Parse(AText);
   try
     for Token in Tree.Tokens do
+    begin
       if Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
       begin
         if SameText(Token.Text, 'program') then
-          Result := TRuleProjectKind.Application
+        begin
+          Result := TRuleProjectKind.Application;
+        end
         else if SameText(Token.Text, 'library') then
-          Result := TRuleProjectKind.Library_
+        begin
+          Result := TRuleProjectKind.Library_;
+        end
         else if SameText(Token.Text, 'package') then
+        begin
           Result := TRuleProjectKind.Package;
+        end;
         Exit;
       end;
+    end;
   finally
     Tree.Free;
   end;

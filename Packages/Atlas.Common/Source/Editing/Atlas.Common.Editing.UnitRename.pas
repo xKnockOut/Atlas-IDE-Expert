@@ -40,7 +40,9 @@ function CleanName(const AName: string): string;
 begin
   Result := AName;
   if Result.StartsWith('&') then
+  begin
     Result := Result.Substring(1);
+  end;
 end;
 
 function Contains(const AList: TArray<string>; const AName: string): Boolean;
@@ -48,8 +50,12 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if SameText(Item, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -69,9 +75,15 @@ begin
       if ACandidate.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
         TSyntaxKind.PropertyDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
         TSyntaxKind.RoutineHeader] then
+      begin
         for Name in ACandidate.Name.Split([',']) do
+        begin
           if SameText(CleanName(Trim(Name)), Wanted) then
+          begin
             Exit(TSyntaxSearchStep.Found);
+          end;
+        end;
+      end;
     end) <> nil;
 end;
 
@@ -90,12 +102,16 @@ begin
     begin
       Index := TRoutineBody.NextToken(ATokens, Index);
       if (Index > High(ATokens)) or not ATokens[Index].IsSymbol('.') then
+      begin
         Exit;
+      end;
       Index := TRoutineBody.NextToken(ATokens, Index);
     end;
     if (Index > High(ATokens)) or (ATokens[Index].Kind <> TPascalTokenKind.Identifier) or
       not SameText(CleanName(ATokens[Index].Text), AParts[Part]) then
+    begin
       Exit;
+    end;
   end;
   AEnd := Index;
   Result := True;
@@ -105,7 +121,9 @@ class function TUnitRename.UnitNameOf(const AFileName: string): string;
 begin
   Result := '';
   if SameText(ExtractFileExt(AFileName), '.pas') then
+  begin
     Result := ChangeFileExt(ExtractFileName(AFileName), '');
+  end;
 end;
 
 class function TUnitRename.Edits(const AFileName, AText: string; ATree: TSyntaxTree; const AOldName,
@@ -125,7 +143,9 @@ var
 begin
   AEdits := nil;
   if (ATree = nil) or (AOldName = '') or (ANewName = '') or SameText(AOldName, ANewName) then
+  begin
     Exit(False);
+  end;
   Tokens := ATree.Tokens;
   Lines := TLineTable.Build(AText);
   LineBreak := TTextLines.LineBreakOf(AText);
@@ -140,8 +160,10 @@ begin
     begin
       HeaderEnd := Tokens[Last].Offset;
       if SameText(UnitNameOf(AFileName), ANewName) then
+      begin
         AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Tokens[Next].StartPos, Tokens[Last].EndPos),
           ANewName)];
+      end;
     end;
   end;
   // uses-Einträge.
@@ -152,51 +174,81 @@ begin
     Options := Default(TUsesRewrite);
     Options.Drop := [AOldName];
     if TUsesClauses.Rewrite(Tokens, AText, Options, LineBreak, Dropped) then
+    begin
       AEdits := AEdits + Dropped;
+    end;
   end
   else
+  begin
     for Reference in TUsesClauses.References(Tokens) do
     begin
       if not SameText(Reference.Name, AOldName) then
+      begin
         Continue;
+      end;
       Offset := Lines.OffsetAt(Reference.Range.StartPos);
       InUses := False;
       for Clause in Clauses do
+      begin
         if (Offset > Tokens[Clause.UsesIndex].Offset) and (Offset < Tokens[Clause.Semicolon].Offset) then
+        begin
           InUses := True;
+        end;
+      end;
       if not InUses then
+      begin
         Continue;
+      end;
       // "Alt in 'Alt.pas'" pflegt die IDE.
       Next := TRoutineBody.NextToken(Tokens, TRoutineBody.TokenAt(Tokens, Lines.OffsetAt(Reference.Range.EndPos)) - 1);
       if (Next <= High(Tokens)) and Tokens[Next].IsKeyword('in') then
+      begin
         Continue;
+      end;
       AEdits := AEdits + [TTextEdit.Create(Reference.Range, ANewName)];
     end;
+  end;
   // Qualifizierte Bezeichner, sofern die Datei den Namen nicht selbst deklariert.
   if not Declares(ATree.Root, Parts[0]) then
+  begin
     for Index := TSyntaxTree.FirstTokenOf(Tokens, HeaderEnd + 1) to High(Tokens) do
     begin
       if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or (Tokens[Index].Offset <= HeaderEnd) or
         not SameText(CleanName(Tokens[Index].Text), Parts[0]) then
+      begin
         Continue;
+      end;
       InUses := False;
       for Clause in Clauses do
+      begin
         if (Tokens[Index].Offset > Tokens[Clause.UsesIndex].Offset) and
           (Tokens[Index].Offset < Tokens[Clause.Semicolon].Offset) then
+        begin
           InUses := True;
+        end;
+      end;
       if InUses then
+      begin
         Continue;
+      end;
       Previous := TRoutineBody.PreviousToken(Tokens, Index);
       if (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
+      begin
         Continue;
+      end;
       if not Matches(Tokens, Index, Parts, Last) then
+      begin
         Continue;
+      end;
       Next := TRoutineBody.NextToken(Tokens, Last);
       if (Next > High(Tokens)) or not Tokens[Next].IsSymbol('.') then
+      begin
         Continue;
+      end;
       AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Last].EndPos),
         ANewName)];
     end;
+  end;
   Result := AEdits <> nil;
 end;
 

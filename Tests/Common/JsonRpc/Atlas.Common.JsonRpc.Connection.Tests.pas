@@ -181,7 +181,9 @@ begin
     Connection := TJsonRpcConnection.Create(TJsonRpcStreamTransport.Create(Input, Output, False), ADispatcher);
     try
       if Assigned(AConfigure) then
+      begin
         AConfigure(Connection);
+      end;
       Connection.Run;
     finally
       Connection.Free;
@@ -204,8 +206,12 @@ var
   Response: TJSONObject;
 begin
   for Response in AResponses do
+  begin
     if Response.GetValue<Integer>('id') = AId then
+    begin
       Exit(Response);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -398,7 +404,9 @@ begin
       begin
         Watch := TStopwatch.StartNew;
         while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
+        begin
           TThread.Sleep(5);
+        end;
         ACancellation.ThrowIfCancellationRequested;
         Result := TJSONString.Create('nicht abgebrochen');
       end);
@@ -650,7 +658,9 @@ begin
           procedure(const AError: Exception)
           begin
             if AError.Message = 'kaputt' then
+            begin
               Inc(Reported);
+            end;
           end;
       end);
     try
@@ -693,8 +703,12 @@ begin
     try
       ForFirst := 0;
       for Response in Responses do
+      begin
         if Response.GetValue<Integer>('id') = 1 then
+        begin
           Inc(ForFirst);
+        end;
+      end;
       Assert.AreEqual(1, ForFirst, 'genau eine Antwort auf id 1');
       Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, FindResponse(Responses, 1).GetValue<Integer>('error.code'));
       Assert.IsTrue(FindResponse(Responses, 1).GetValue('result') = nil, 'späte Antwort verworfen');
@@ -738,7 +752,9 @@ begin
       begin
         Watch := TStopwatch.StartNew;
         while not Started and (Watch.ElapsedMilliseconds < 2000) do
+        begin
           TThread.Sleep(5);
+        end;
         Result := TJSONBool.Create(Started);
       end);
     Input := TJsonRpcTestSupport.InputOf(['{"jsonrpc":"2.0","id":1,"method":"slow"}',

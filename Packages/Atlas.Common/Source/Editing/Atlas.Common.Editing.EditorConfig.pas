@@ -65,10 +65,14 @@ begin
       T := Mark;
     end
     else
+    begin
       Exit(False);
+    end;
   end;
   while (P <= Length(APattern)) and (APattern[P] = '*') do
+  begin
     Inc(P);
+  end;
   Result := P > Length(APattern);
 end;
 
@@ -84,7 +88,9 @@ begin
   Pattern := APattern;
   // Muster mit Pfad ("src/*.pas") gelten ab dem Ordner der .editorconfig; hier zählt nur der Name.
   if LastDelimiter('/', Pattern) > 0 then
+  begin
     Pattern := Copy(Pattern, LastDelimiter('/', Pattern) + 1, MaxInt);
+  end;
   Open := Pos('{', Pattern);
   Close := Pos('}', Pattern);
   if (Open > 0) and (Close > Open) then
@@ -92,8 +98,12 @@ begin
     Prefix := Copy(Pattern, 1, Open - 1);
     Suffix := Copy(Pattern, Close + 1, MaxInt);
     for Alternative in Copy(Pattern, Open + 1, Close - Open - 1).Split([',']) do
+    begin
       if MatchWildcard(Prefix + Trim(Alternative) + Suffix, AFileName) then
+      begin
         Exit(True);
+      end;
+    end;
     Exit(False);
   end;
   Result := MatchWildcard(Pattern, AFileName);
@@ -118,7 +128,9 @@ begin
   begin
     Value := Trim(Line);
     if (Value = '') or CharInSet(Value[1], ['#', ';']) then
+    begin
       Continue;
+    end;
     if Value[1] = '[' then
     begin
       InSection := True;
@@ -127,50 +139,80 @@ begin
     end;
     Equals := Pos('=', Value);
     if Equals = 0 then
+    begin
       Continue;
+    end;
     Key := LowerCase(Trim(Copy(Value, 1, Equals - 1)));
     Value := LowerCase(Trim(Copy(Value, Equals + 1, MaxInt)));
     if not InSection then
     begin
       if (Key = 'root') and (Value = 'true') then
+      begin
         ARoot := True;
+      end;
       Continue;
     end;
     if not Active then
+    begin
       Continue;
+    end;
     if Key = 'indent_style' then
     begin
       IndentIsTab := Value = 'tab';
       if Value = 'tab' then
-        ASettings.UseTabs := True
+      begin
+        ASettings.UseTabs := True;
+      end
       else if Value = 'space' then
+      begin
         ASettings.UseTabs := False;
+      end;
     end
     else if (Key = 'indent_size') and TryStrToInt(Value, Size) and (Size >= 1) then
-      ASettings.IndentSize := Size
+    begin
+      ASettings.IndentSize := Size;
+    end
     else if (Key = 'indent_size') and (Value = 'tab') then
-      IndentIsTab := True
+    begin
+      IndentIsTab := True;
+    end
     else if (Key = 'tab_width') and TryStrToInt(Value, Size) and (Size >= 1) then
-      TabWidth := Size
+    begin
+      TabWidth := Size;
+    end
     else if Key = 'end_of_line' then
     begin
       if Value = 'lf' then
-        ASettings.EndOfLine := #10
+      begin
+        ASettings.EndOfLine := #10;
+      end
       else if Value = 'crlf' then
+      begin
         ASettings.EndOfLine := #13#10;
+      end;
     end
     else if (Key = 'trim_trailing_whitespace') and ((Value = 'true') or (Value = 'false')) then
-      ASettings.TrimTrailingWhitespace := Value = 'true'
+    begin
+      ASettings.TrimTrailingWhitespace := Value = 'true';
+    end
     else if (Key = 'insert_final_newline') and ((Value = 'true') or (Value = 'false')) then
-      ASettings.InsertFinalNewline := Value = 'true'
+    begin
+      ASettings.InsertFinalNewline := Value = 'true';
+    end
     else if (Key = 'max_line_length') and TryStrToInt(Value, Size) and (Size >= 0) then
-      ASettings.MaxLineLength := Size
+    begin
+      ASettings.MaxLineLength := Size;
+    end
     else if (Key = 'max_line_length') and (Value = 'off') then
+    begin
       ASettings.MaxLineLength := 0;
+    end;
   end;
   // Mit Tabs bestimmt tab_width die Breite einer Ebene, wenn indent_size fehlt.
   if IndentIsTab and (TabWidth > 0) then
+  begin
     ASettings.IndentSize := TabWidth;
+  end;
 end;
 
 class function TEditorConfig.ForFile(const AFileName: string; const AReadFile: TEditorConfigReadFile;
@@ -194,16 +236,22 @@ begin
         Probe := ABase;
         Apply(Text, AFileName, Probe, Root);
         if Root then
+        begin
           Break;
+        end;
       end;
       Parent := TProjectPaths.DirectoryOf(Directory);
       if (Parent = '') or SameText(Parent, Directory) then
+      begin
         Break;
+      end;
       Directory := Parent;
     end;
     // Die fernste Datei zuerst, damit nähere sie überschreiben.
     for Index := Texts.Count - 1 downto 0 do
+    begin
       Apply(Texts[Index], AFileName, Result, Root);
+    end;
   finally
     Texts.Free;
   end;
