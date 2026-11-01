@@ -121,76 +121,82 @@ end;
 
 { TTextAnonymizer }
 
-class function TTextAnonymizer.ReplaceQuoted(const AText: string): string;
-var
-  Builder: TStringBuilder;
-  Index, Stop: Integer;
-  Open, Close: Char;
+// Schließendes Anführungszeichen zu AText[AIndex]; #0, wenn dort keins beginnt.
+function ClosingQuote(const AText: string; AIndex: Integer): Char;
 begin
-  Builder := TStringBuilder.Create;
-  try
-    Index := 1;
-    while Index <= Length(AText) do
-    begin
-      Close := #0;
-      Open := AText[Index];
-      if Open = '"' then
-      begin
-        Close := '"';
-      end
-      else if Open = '''' then
+  case AText[AIndex] of
+    '"':
+      Result := '"';
+    '''':
       begin
         // Apostroph im Wort (z. B. „don't“) ist kein Anführungszeichen.
-        if (Index = 1) or not TTextChars.IsIdentChar(AText[Index - 1]) then
+        Result := #0;
+        if (AIndex = 1) or not TTextChars.IsIdentChar(AText[AIndex - 1]) then
         begin
-          Close := '''';
-        end;
-      end
-      else if Open = #$201E then
-      begin
-        // „…“ (deutsch)
-        Close := #$201C;
-      end
-      else if Open = #$201C then
-      begin
-        // “…” (englisch)
-        Close := #$201D;
-      end
-      else if Open = #$00BB then
-      begin
-        Close := #$00AB;
-      end
-      else if Open = #$00AB then
-      begin
-        Close := #$00BB;
-      end;
-      Stop := 0;
-      if Close <> #0 then
-      begin
-        Stop := Index + 1;
-        while (Stop <= Length(AText)) and (AText[Stop] <> Close) do
-        begin
-          Inc(Stop);
-        end;
-        if Stop > Length(AText) then
-        begin
-          Stop := 0;
+          Result := '''';
         end;
       end;
-      if (Stop > Index + 1) and (Copy(AText, Index + 1, 1) <> '<') then
+    // „…“ (deutsch)
+    #$201E:
+      Result := #$201C;
+    // “…” (englisch)
+    #$201C:
+      Result := #$201D;
+    #$00BB:
+      Result := #$00AB;
+    #$00AB:
+      Result := #$00BB;
+  else
+    Result := #0;
+  end;
+end;
+
+// Stelle des schließenden Anführungszeichens zu dem bei AIndex; 0 ohne.
+function QuoteEnd(const AText: string; AIndex: Integer): Integer;
+var
+  mClose: Char;
+begin
+  mClose := ClosingQuote(AText, AIndex);
+  if mClose = #0 then
+  begin
+    Exit(0);
+  end;
+  Result := AIndex + 1;
+  while (Result <= Length(AText)) and (AText[Result] <> mClose) do
+  begin
+    Inc(Result);
+  end;
+  if Result > Length(AText) then
+  begin
+    Result := 0;
+  end;
+end;
+
+class function TTextAnonymizer.ReplaceQuoted(const AText: string): string;
+var
+  mBuilder: TStringBuilder;
+  mIndex, mStop: Integer;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mIndex := 1;
+    while mIndex <= Length(AText) do
+    begin
+      mStop := QuoteEnd(AText, mIndex);
+      if (mStop > mIndex + 1) and (Copy(AText, mIndex + 1, 1) <> '<') then
       begin
-        Builder.Append(AText[Index]).Append(ValueLabel).Append(AText[Stop]);
-        Index := Stop + 1;
+        mBuilder.Append(AText[mIndex]).Append(ValueLabel).Append(AText[mStop]);
+        mIndex := mStop + 1;
       end
       else
       begin
-        Builder.Append(AText[Index]);
-        Inc(Index);
+        mBuilder.Append(AText[mIndex]);
+        Inc(mIndex);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
