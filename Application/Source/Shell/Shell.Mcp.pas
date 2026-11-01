@@ -1609,8 +1609,8 @@ begin
       try
         mResolver.Namespaces := AGroup.Main.Namespaces;
         try
-          mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery, mResolver, AGroup.Index, mRequest, mReadText,
-            nil);
+          mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery,
+            TShellAffectedSources.New(mResolver, AGroup.Index, mReadText), mRequest, nil);
         except
           on E: EVcsChanges do
             raise EMcpToolError.Create(E.Message);

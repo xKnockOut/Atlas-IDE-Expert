@@ -40,22 +40,31 @@ type
   /// <summary>Testunit zur Unit AUri mit Text AText (/test, #295).</summary>
   TSlashTestUnitFunc = reference to function(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
 
+  /// <summary>Woher der Host Ordner, Dateien und Einstellungen bekommt. WorkspaceOf, ReadText und
+  /// HeaderTemplate sind Pflicht; die übrigen dürfen fehlen (siehe Eigenschaften des Hosts).</summary>
+  TShellSlashSources = record
+    WorkspaceOf: TWorkspaceOfFunc;
+    ReadText: TReadTextFunc;
+    HeaderTemplate: THeaderTemplateFunc;
+    SettingOf: TSlashSettingFunc;
+    TestUnitOf: TSlashTestUnitFunc;
+    RuleIdsOf: TSlashRuleIdsFunc;
+    UsesContextOf: TSlashUsesContextFunc;
+    FindingsOf: TSlashFindingsFunc;
+    /// <summary>Quellen mit den drei Pflichtfunktionen, die übrigen leer.</summary>
+    class function New(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
+      const AHeaderTemplate: THeaderTemplateFunc): TShellSlashSources; static;
+  end;
+
   TShellSlashHost = class(TInterfacedObject, ISlashHost)
   private
-    FWorkspaceOf: TWorkspaceOfFunc;
-    FReadText: TReadTextFunc;
-    FHeaderTemplate: THeaderTemplateFunc;
+    FSources: TShellSlashSources;
     FTransport: IJsonRpcTransport;
     FLogger: ILogger;
     FRequestId: Integer;
     FDispatcher: TJsonRpcDispatcher;
     FClientAppliesEdits: TFunc<Boolean>;
     FRunInLoop: TJsonRpcScheduler;
-    FSettingOf: TSlashSettingFunc;
-    FTestUnitOf: TSlashTestUnitFunc;
-    FRuleIdsOf: TSlashRuleIdsFunc;
-    FUsesContextOf: TSlashUsesContextFunc;
-    FFindingsOf: TSlashFindingsFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
     procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc); overload;
@@ -67,16 +76,13 @@ type
     procedure InLoop(const AWork: TProc);
   public
     /// <summary>ADispatcher und AClientAppliesEdits dürfen nil sein; dann schreibt der Host selbst.</summary>
-    constructor Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-      const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger;
-      ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>); overload;
+    constructor Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
+      const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>); overload;
     /// <summary>Wie oben mit AClientAppliesEdits = nil.</summary>
-    constructor Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-      const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger;
-      ADispatcher: TJsonRpcDispatcher); overload;
+    constructor Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
+      const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher); overload;
     /// <summary>Wie oben mit ADispatcher = nil und AClientAppliesEdits = nil.</summary>
-    constructor Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-      const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport;
+    constructor Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger); overload;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
     function ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -98,16 +104,16 @@ type
     /// Kodierung der Datei.</summary>
     procedure EditFile(const AUri, AFileName, ANewText: string; const AEdit: TTextEdit);
     /// <summary>Einstellungen slashCommands.* zur Datei (#299, #304); ohne Zuweisung ''.</summary>
-    property SettingOf: TSlashSettingFunc read FSettingOf write FSettingOf;
+    property SettingOf: TSlashSettingFunc read FSources.SettingOf write FSources.SettingOf;
     /// <summary>Testunit zur Unit (/test, #295); ohne Zuweisung keine.</summary>
-    property TestUnitOf: TSlashTestUnitFunc read FTestUnitOf write FTestUnitOf;
+    property TestUnitOf: TSlashTestUnitFunc read FSources.TestUnitOf write FSources.TestUnitOf;
     /// <summary>Treffer der Prüfregeln in einer Zeile (/ignore, #297); ohne Zuweisung gilt jede Regel.</summary>
-    property RuleIdsOf: TSlashRuleIdsFunc read FRuleIdsOf write FRuleIdsOf;
+    property RuleIdsOf: TSlashRuleIdsFunc read FSources.RuleIdsOf write FSources.RuleIdsOf;
     /// <summary>Index und usesKeep (/sortuses, #297); ohne Zuweisung wird nur sortiert.</summary>
-    property UsesContextOf: TSlashUsesContextFunc read FUsesContextOf write FUsesContextOf;
+    property UsesContextOf: TSlashUsesContextFunc read FSources.UsesContextOf write FSources.UsesContextOf;
     /// <summary>Regeltreffer einer Zeile mit Erklärung und sicherer Korrektur (/fix, /explain, #300); ohne
     /// Zuweisung keine Prüfregeln.</summary>
-    property FindingsOf: TSlashFindingsFunc read FFindingsOf write FFindingsOf;
+    property FindingsOf: TSlashFindingsFunc read FSources.FindingsOf write FSources.FindingsOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -121,27 +127,32 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.ApplyEdit;
 
-constructor TShellSlashHost.Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-  const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger;
-  ADispatcher: TJsonRpcDispatcher);
+class function TShellSlashSources.New(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
+  const AHeaderTemplate: THeaderTemplateFunc): TShellSlashSources;
 begin
-  Create(AWorkspaceOf, AReadText, AHeaderTemplate, ATransport, ALogger, ADispatcher, nil);
+  Result := Default(TShellSlashSources);
+  Result.WorkspaceOf := AWorkspaceOf;
+  Result.ReadText := AReadText;
+  Result.HeaderTemplate := AHeaderTemplate;
 end;
 
-constructor TShellSlashHost.Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-  const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger);
+constructor TShellSlashHost.Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
+  const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher);
 begin
-  Create(AWorkspaceOf, AReadText, AHeaderTemplate, ATransport, ALogger, nil, nil);
+  Create(ASources, ATransport, ALogger, ADispatcher, nil);
 end;
 
-constructor TShellSlashHost.Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-  const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger;
-  ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>);
+constructor TShellSlashHost.Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
+  const ALogger: ILogger);
+begin
+  Create(ASources, ATransport, ALogger, nil, nil);
+end;
+
+constructor TShellSlashHost.Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
+  const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>);
 begin
   inherited Create;
-  FWorkspaceOf := AWorkspaceOf;
-  FReadText := AReadText;
-  FHeaderTemplate := AHeaderTemplate;
+  FSources := ASources;
   FTransport := ATransport;
   FLogger := ALogger;
   FDispatcher := ADispatcher;
@@ -152,13 +163,13 @@ function TShellSlashHost.Project(const AUri: string; out AProject: TProjectInfo)
 var
   Workspace: TShellWorkspace;
 begin
-  Workspace := FWorkspaceOf(AUri);
+  Workspace := FSources.WorkspaceOf(AUri);
   Result := (Workspace <> nil) and Workspace.Project(AProject);
 end;
 
 function TShellSlashHost.ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := FReadText(AFileName, AText);
+  Result := FSources.ReadText(AFileName, AText);
 end;
 
 function TShellSlashHost.DirectoryExists(const APath: string): Boolean;
@@ -201,73 +212,101 @@ begin
   SendEdit(AUri, ADescription, AEdit, AAfter, True);
 end;
 
+type
+  /// <summary>Was die Antwort auf workspace/applyEdit eines Schnellbefehls braucht; die Antwort kommt später in der
+  /// Nachrichtenschleife (ExpectResponse), deshalb als Kopie statt über Self.</summary>
+  TSlashEditAnswer = record
+    Logger: ILogger;
+    Transport: IJsonRpcTransport;
+    WorkspaceOf: TWorkspaceOfFunc;
+    Uri: string;
+    Description: string;
+    After: TProc;
+    Reload: Boolean;
+    procedure Handle(const AResponse: TJSONObject);
+  end;
+
+/// <summary>Meldet dem Benutzer, dass der Editor die Änderung abgelehnt hat.</summary>
+procedure ShowNotChanged(const ATransport: IJsonRpcTransport; const ADescription, AReason: string);
+var
+  mMessage: TJSONObject;
+begin
+  mMessage := TJSONObject.Create;
+  try
+    mMessage.AddPair('jsonrpc', '2.0');
+    mMessage.AddPair('method', 'window/showMessage');
+    mMessage.AddPair('params', TJSONObject.Create.AddPair('type', TJSONNumber.Create(2))
+      .AddPair('message', Format('Atlas: %s wurde nicht geändert (%s).', [ADescription, AReason])));
+    ATransport.WriteMessage(mMessage);
+  finally
+    mMessage.Free;
+  end;
+end;
+
+procedure TSlashEditAnswer.Handle(const AResponse: TJSONObject);
+var
+  mReason: string;
+  mTarget: TShellWorkspace;
+begin
+  if not TLspApplyEdit.ReadResult(AResponse, mReason) then
+  begin
+    Logger.Warning(Format('%s nicht geändert: %s', [Description, mReason]));
+    ShowNotChanged(Transport, Description, mReason);
+    Exit;
+  end;
+  Logger.Info(Format('%s geändert (Schnellbefehl, über den Editor)', [Description]));
+  if Reload and Assigned(WorkspaceOf) then
+  begin
+    mTarget := WorkspaceOf(Uri);
+    if mTarget <> nil then
+    begin
+      mTarget.Reload;
+    end;
+  end;
+  if Assigned(After) then
+  begin
+    After();
+  end;
+end;
+
+function AnswerHandler(const AAnswer: TSlashEditAnswer): TJsonRpcResponseHandler;
+var
+  mAnswer: TSlashEditAnswer;
+begin
+  mAnswer := AAnswer;
+  Result :=
+    procedure(const AResponse: TJSONObject)
+    begin
+      mAnswer.Handle(AResponse);
+    end;
+end;
+
 procedure TShellSlashHost.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc;
   AReload: Boolean);
 var
-  Reload: Boolean;
-  Id, Uri, Description: string;
-  Request: TJSONObject;
-  Logger: ILogger;
-  Transport: IJsonRpcTransport;
-  WorkspaceOf: TWorkspaceOfFunc;
-  After: TProc;
+  mId: string;
+  mAnswer: TSlashEditAnswer;
+  mRequest: TJSONObject;
 begin
-  Id := Format('atlas/applyEdit/%d', [AtomicIncrement(FRequestId)]);
-  // Nur lokale Werte einfangen: Die Antwort kommt in der Nachrichtenschleife (ExpectResponse).
-  Logger := FLogger;
-  Transport := FTransport;
-  WorkspaceOf := FWorkspaceOf;
-  Uri := AUri;
-  Description := ADescription;
-  After := AAfter;
-  Reload := AReload;
-  FDispatcher.ExpectResponse(Id,
-    procedure(const AResponse: TJSONObject)
-    var
-      Reason: string;
-      Target: TShellWorkspace;
-      Message: TJSONObject;
-    begin
-      if TLspApplyEdit.ReadResult(AResponse, Reason) then
-      begin
-        Logger.Info(Format('%s geändert (Schnellbefehl, über den Editor)', [Description]));
-        Target := nil;
-        if Reload then
-        begin
-          Target := WorkspaceOf(Uri);
-        end;
-        if Target <> nil then
-        begin
-          Target.Reload;
-        end;
-        if Assigned(After) then
-        begin
-          After();
-        end;
-        Exit;
-      end;
-      Logger.Warning(Format('%s nicht geändert: %s', [Description, Reason]));
-      Message := TJSONObject.Create;
-      try
-        Message.AddPair('jsonrpc', '2.0');
-        Message.AddPair('method', 'window/showMessage');
-        Message.AddPair('params', TJSONObject.Create.AddPair('type', TJSONNumber.Create(2))
-          .AddPair('message', Format('Atlas: %s wurde nicht geändert (%s).', [Description, Reason])));
-        Transport.WriteMessage(Message);
-      finally
-        Message.Free;
-      end;
-    end);
-  Request := TLspApplyEdit.Request(Id, 'Atlas: Schnellbefehl', AEdit);
+  mId := Format('atlas/applyEdit/%d', [AtomicIncrement(FRequestId)]);
+  mAnswer.Logger := FLogger;
+  mAnswer.Transport := FTransport;
+  mAnswer.WorkspaceOf := FSources.WorkspaceOf;
+  mAnswer.Uri := AUri;
+  mAnswer.Description := ADescription;
+  mAnswer.After := AAfter;
+  mAnswer.Reload := AReload;
+  FDispatcher.ExpectResponse(mId, AnswerHandler(mAnswer));
+  mRequest := TLspApplyEdit.Request(mId, 'Atlas: Schnellbefehl', AEdit);
   try
     try
-      FTransport.WriteMessage(Request);
+      FTransport.WriteMessage(mRequest);
     except
-      FDispatcher.ForgetResponse(Id);
+      FDispatcher.ForgetResponse(mId);
       raise;
     end;
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
@@ -319,7 +358,7 @@ var
   WorkspaceOf: TWorkspaceOfFunc;
   Uri: string;
 begin
-  Workspace := FWorkspaceOf(AUri);
+  Workspace := FSources.WorkspaceOf(AUri);
   if (Workspace = nil) or not Workspace.Project(Info) then
   begin
     Exit;
@@ -342,7 +381,7 @@ begin
     end;
   end;
   // const-Parameter lassen sich nicht einfangen.
-  WorkspaceOf := FWorkspaceOf;
+  WorkspaceOf := FSources.WorkspaceOf;
   Uri := AUri;
   InLoop(
     procedure
@@ -365,7 +404,7 @@ var
   Uri, Config, PlatformName: string;
 begin
   // const-Parameter lassen sich nicht einfangen; Self auch nicht (der Host kann vorher frei werden).
-  WorkspaceOf := FWorkspaceOf;
+  WorkspaceOf := FSources.WorkspaceOf;
   Logger := FLogger;
   Uri := AUri;
   Config := AConfig;
@@ -392,46 +431,46 @@ end;
 
 function TShellSlashHost.HeaderTemplate(const AUri: string): string;
 begin
-  Result := FHeaderTemplate(AUri);
+  Result := FSources.HeaderTemplate(AUri);
 end;
 
 function TShellSlashHost.Setting(const AUri, AName: string): string;
 begin
   Result := '';
-  if Assigned(FSettingOf) then
+  if Assigned(FSources.SettingOf) then
   begin
-    Result := FSettingOf(AUri, AName);
+    Result := FSources.SettingOf(AUri, AName);
   end;
 end;
 
 function TShellSlashHost.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
 begin
   AIds := nil;
-  Result := Assigned(FRuleIdsOf) and FRuleIdsOf(AUri, AText, ALine, AIds);
+  Result := Assigned(FSources.RuleIdsOf) and FSources.RuleIdsOf(AUri, AText, ALine, AIds);
 end;
 
 function TShellSlashHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
 begin
   AContext := Default(TUsesContext);
-  Result := Assigned(FUsesContextOf) and FUsesContextOf(AUri, AContext);
+  Result := Assigned(FSources.UsesContextOf) and FSources.UsesContextOf(AUri, AContext);
 end;
 
 function TShellSlashHost.FindingsAt(const AUri, AText: string; ALine: Integer;
   out AFindings: TArray<TSlashFinding>): Boolean;
 begin
   AFindings := nil;
-  Result := Assigned(FFindingsOf) and FFindingsOf(AUri, AText, ALine, AFindings);
+  Result := Assigned(FSources.FindingsOf) and FSources.FindingsOf(AUri, AText, ALine, AFindings);
 end;
 
 function TShellSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
 begin
   ATarget := Default(TSlashTestUnit);
-  if not Assigned(FTestUnitOf) then
+  if not Assigned(FSources.TestUnitOf) then
   begin
     ATarget.Reason := 'Testunits sind hier nicht verfügbar';
     Exit(False);
   end;
-  Result := FTestUnitOf(AUri, AText, ATarget);
+  Result := FSources.TestUnitOf(AUri, AText, ATarget);
 end;
 
 procedure TShellSlashHost.Notify(const AUri, AMessage: string);
@@ -506,90 +545,125 @@ begin
   end;
 end;
 
+// Dateinamen ohne Pfad, durch Komma getrennt.
+function FileNames(const AFiles: TArray<TSlashFile>): string;
+var
+  mItem: TSlashFile;
+  mNames: TArray<string>;
+begin
+  mNames := nil;
+  for mItem in AFiles do
+  begin
+    mNames := mNames + [ExtractFileName(mItem.FileName)];
+  end;
+  Result := string.Join(', ', mNames);
+end;
+
+// Änderungen für workspace/applyEdit: neue Dateien und Ersetzen des bisherigen Inhalts.
+function FileChanges(const AFiles: TArray<TSlashFile>): TArray<TLspFileChange>;
+var
+  mItem: TSlashFile;
+  mFormat: TFileFormat;
+  mOldText: string;
+begin
+  Result := nil;
+  for mItem in AFiles do
+  begin
+    mOldText := '';
+    if not mItem.New then
+    begin
+      mOldText := TFileEncoding.LoadFromFile(mItem.FileName, mFormat);
+    end;
+    Result := Result + [TLspFileChange.Create(mItem.FileName, mOldText, mItem.Text, mItem.New)];
+  end;
+end;
+
+// Schreibt AFiles auf die Platte: neue Dateien im Format der Umgebung, bestehende in ihrem bisherigen.
+procedure WriteToDisk(const AUri: string; const AFiles: TArray<TSlashFile>);
+var
+  mItem: TSlashFile;
+  mFormat: TFileFormat;
+begin
+  for mItem in AFiles do
+  begin
+    if mItem.New then
+    begin
+      ForceDirectories(ExtractFileDir(mItem.FileName));
+      mFormat := NewFileFormat(AUri, mItem.Text);
+    end
+    else
+    begin
+      TFileEncoding.LoadFromFile(mItem.FileName, mFormat);
+    end;
+    TFileEncoding.SaveToFile(mItem.FileName, mItem.Text, mFormat);
+  end;
+end;
+
+// Zeigt AShow im Editor ('' = nichts).
+function ShowAfter(const ATransport: IJsonRpcTransport; const AShow: string): TProc;
+var
+  mTransport: IJsonRpcTransport;
+  mShow: string;
+begin
+  mTransport := ATransport;
+  mShow := AShow;
+  Result :=
+    procedure
+    begin
+      if mShow <> '' then
+      begin
+        SendShowDocument(mTransport, mShow, TTextRange.Create(0, 0, 0, 0));
+      end;
+    end;
+end;
+
+// Lädt den Ordner zu AUri neu und zeigt danach AShow.
+function ReloadAndShow(const AWorkspaceOf: TWorkspaceOfFunc; const AUri: string; const AShowAfter: TProc): TProc;
+var
+  mWorkspaceOf: TWorkspaceOfFunc;
+  mUri: string;
+  mShowAfter: TProc;
+begin
+  mWorkspaceOf := AWorkspaceOf;
+  mUri := AUri;
+  mShowAfter := AShowAfter;
+  Result :=
+    procedure
+    var
+      mTarget: TShellWorkspace;
+    begin
+      // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
+      mTarget := mWorkspaceOf(mUri);
+      if mTarget <> nil then
+      begin
+        mTarget.Reload;
+      end;
+      mShowAfter();
+    end;
+end;
+
 procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
 var
-  Changes: TArray<TLspFileChange>;
-  Item: TSlashFile;
-  FileFormat: TFileFormat;
-  OldText, Show, Uri, Description: string;
-  Transport: IJsonRpcTransport;
-  WorkspaceOf: TWorkspaceOfFunc;
-  Names: TArray<string>;
-  AfterEdit: TProc;
+  mDescription: string;
 begin
-  // const-Parameter lassen sich nicht einfangen.
-  Transport := FTransport;
-  Show := AShow;
-  Names := nil;
-  for Item in AFiles do
-  begin
-    Names := Names + [ExtractFileName(Item.FileName)];
-  end;
-  Description := string.Join(', ', Names);
+  mDescription := FileNames(AFiles);
   try
     // In der IDE über das Plugin, damit neue und geänderte Dateien in ihren Puffern landen (#397).
     if ClientWrites then
     begin
-      Changes := nil;
-      for Item in AFiles do
-      begin
-        OldText := '';
-        if not Item.New then
-        begin
-          OldText := TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
-        end;
-        Changes := Changes + [TLspFileChange.Create(Item.FileName, OldText, Item.Text, Item.New)];
-      end;
-      AfterEdit :=
-        procedure
-        begin
-          if Show <> '' then
-          begin
-            SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
-          end;
-        end;
-      SendEdit(AUri, Description, TLspApplyEdit.Files(Changes), AfterEdit);
+      SendEdit(AUri, mDescription, TLspApplyEdit.Files(FileChanges(AFiles)), ShowAfter(FTransport, AShow));
       Exit;
     end;
-    for Item in AFiles do
-    begin
-      if Item.New then
-      begin
-        ForceDirectories(ExtractFileDir(Item.FileName));
-        FileFormat := NewFileFormat(AUri, Item.Text);
-      end
-      else
-      begin
-        TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
-      end;
-      TFileEncoding.SaveToFile(Item.FileName, Item.Text, FileFormat);
-    end;
-    FLogger.Info(Format('%s geschrieben (Schnellbefehl)', [Description]));
+    WriteToDisk(AUri, AFiles);
+    FLogger.Info(Format('%s geschrieben (Schnellbefehl)', [mDescription]));
   except
     on E: Exception do
     begin
-      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [Description, E.Message]));
+      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [mDescription, E.Message]));
       Exit;
     end;
   end;
-  WorkspaceOf := FWorkspaceOf;
-  Uri := AUri;
-  InLoop(
-    procedure
-    var
-      Target: TShellWorkspace;
-    begin
-      // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
-      Target := WorkspaceOf(Uri);
-      if Target <> nil then
-      begin
-        Target.Reload;
-      end;
-      if Show <> '' then
-      begin
-        SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
-      end;
-    end);
+  InLoop(ReloadAndShow(FSources.WorkspaceOf, AUri, ShowAfter(FTransport, AShow)));
 end;
 
 end.

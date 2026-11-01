@@ -114,7 +114,7 @@ begin
   mMessage := '';
   try
     // Vor jedem Aufruf von git oder svn: Prozess, Index und Resolver bleiben unbenutzt.
-    TShellAffectedTests.Run(nil, mSettings, mQuery, nil, nil, mRequest, ReadText(), nil);
+    TShellAffectedTests.Run(nil, mSettings, mQuery, TShellAffectedSources.New(nil, nil, ReadText()), mRequest, nil);
   except
     on E: EAffectedTestsOff do
       mMessage := E.Message;

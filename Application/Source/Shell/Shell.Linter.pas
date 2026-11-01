@@ -1474,8 +1474,8 @@ begin
       mResolver := TNameResolver.Create(mGroup.Index, mEnsureUnit);
       try
         mResolver.Namespaces := mGroup.Main.Namespaces;
-        mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery, mResolver, mGroup.Index, mRequest, mReadText,
-          nil);
+        mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery,
+          TShellAffectedSources.New(mResolver, mGroup.Index, mReadText), mRequest, nil);
       finally
         mResolver.Free;
       end;
