@@ -53,16 +53,24 @@ begin
   begin
     Available := AStream.NumBytesAvailable;
     if Available <= 0 then
+    begin
       Exit;
+    end;
     if Available > SizeOf(Chunk) then
+    begin
       Available := SizeOf(Chunk);
+    end;
     BytesRead := AStream.Read(Chunk, Available);
     if BytesRead <= 0 then
+    begin
       Exit;
+    end;
     if ACount < ALimit then
     begin
       if ACount + BytesRead > Length(ABuffer) then
+      begin
         SetLength(ABuffer, (ACount + BytesRead) * 2);
+      end;
       Move(Chunk[0], ABuffer[ACount], BytesRead);
       Inc(ACount, BytesRead);
     end;
@@ -82,7 +90,9 @@ function TLinuxVcsRunner.IsCancelled: Boolean;
 begin
   Result := not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated;
   if not Result and Assigned(FCancelled) then
+  begin
     Result := FCancelled();
+  end;
 end;
 
 function TLinuxVcsRunner.Run(const AExecutable: string; const AArguments: TArray<string>;
@@ -98,24 +108,38 @@ var
   Index: Integer;
 begin
   if not FAllowMainThread and (TThread.CurrentThread.ThreadID = MainThreadID) then
+  begin
     Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.MainThread, -1, nil));
+  end;
   if (AExecutable = '') or not FileExists(AExecutable) then
+  begin
     Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.ToolMissing, -1, nil));
+  end;
   if IsCancelled then
+  begin
     Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Cancelled, -1, nil));
+  end;
   Child := TProcess.Create(nil);
   try
     Child.Executable := AExecutable;
     for Argument in AArguments do
+    begin
       Child.Parameters.Add(Argument);
+    end;
     if AWorkingDir <> '' then
+    begin
       Child.CurrentDirectory := AWorkingDir;
+    end;
     // Eigene Umgebung ohne Rückfrage nach Zugangsdaten.
     Variables := nil;
     for Index := 1 to GetEnvironmentVariableCount do
+    begin
       Variables := Variables + [GetEnvironmentString(Index)];
+    end;
     for Argument in TAtlasVcsServerAccess.NoPromptEnvironment(Variables) do
+    begin
       Child.Environment.Add(Argument);
+    end;
     Child.Options := [poUsePipes, poNoConsole];
     try
       Child.Execute;
@@ -136,9 +160,13 @@ begin
       Drain(Child.Output, Output, OutputCount, MaxOutputBytes + 1);
       Drain(Child.Stderr, Errors, ErrorCount, MaxErrorBytes);
       if IsCancelled then
-        Outcome := TAtlasVcsOutcome.Cancelled
+      begin
+        Outcome := TAtlasVcsOutcome.Cancelled;
+      end
       else if TThread.GetTickCount64 >= Deadline then
+      begin
         Outcome := TAtlasVcsOutcome.TimedOut;
+      end;
       if Outcome <> TAtlasVcsOutcome.Ok then
       begin
         Child.Terminate(1);
@@ -151,12 +179,18 @@ begin
     Drain(Child.Stderr, Errors, ErrorCount, MaxErrorBytes);
     Child.WaitOnExit;
     if (Outcome = TAtlasVcsOutcome.Ok) and (OutputCount > MaxOutputBytes) then
+    begin
       Outcome := TAtlasVcsOutcome.Failed;
+    end;
     Result := TAtlasVcsRunResult.Make(Outcome, Child.ExitCode, nil);
     if Outcome = TAtlasVcsOutcome.Ok then
+    begin
       Result.Output := Copy(Output, 0, OutputCount);
+    end;
     if ErrorCount > 0 then
+    begin
       Result.ErrorText := Trim(TEncoding.UTF8.GetString(Errors, 0, ErrorCount));
+    end;
   finally
     Child.Free;
   end;

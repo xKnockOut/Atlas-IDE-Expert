@@ -119,10 +119,14 @@ var
 begin
   Index := 1;
   while (Index <= Length(Text)) and IsNameChar(Text[Index]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(Text, 1, Index - 1);
   if (Result <> '') and Result[1].IsDigit then
+  begin
     Result := '';
+  end;
 end;
 
 function TDebugDisplaySegment.NeedsCall: Boolean;
@@ -134,9 +138,13 @@ begin
   for Index := 1 to Length(Text) do
   begin
     if Text[Index] = '''' then
-      InString := not InString
+    begin
+      InString := not InString;
+    end
     else if not InString and (Text[Index] = '(') and (Index > 1) and IsNameChar(Text[Index - 1]) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -154,8 +162,12 @@ var
 begin
   Result := nil;
   for Segment in Segments do
+  begin
     if Segment.Kind = TDebugDisplaySegmentKind.Placeholder then
+    begin
       Result := Result + [Segment];
+    end;
+  end;
 end;
 
 class function TDebugDisplayTemplate.Parse(const AText: string): TDebugDisplayTemplate;
@@ -170,7 +182,9 @@ var
     Item: TDebugDisplaySegment;
   begin
     if Literal = '' then
+    begin
       Exit;
+    end;
     Item := Default(TDebugDisplaySegment);
     Item.Kind := TDebugDisplaySegmentKind.Text;
     Item.Text := Literal;
@@ -220,7 +234,9 @@ begin
     while Index <= Length(AText) do
     begin
       if AText[Index] = '''' then
-        InString := not InString
+      begin
+        InString := not InString;
+      end
       else if not InString then
         case AText[Index] of
           '(', '[':
@@ -229,10 +245,14 @@ begin
             Dec(Depth);
           ':':
             if (Depth = 0) and (Colon = 0) then
+            begin
               Colon := Index;
+            end;
           '}':
             if Depth <= 0 then
+            begin
               Break;
+            end;
         end;
       Inc(Index);
     end;
@@ -251,7 +271,9 @@ begin
       Segment.Format := Trim(Copy(AText, Colon + 1, Index - Colon - 1));
     end
     else
+    begin
       Inner := Copy(AText, Start, Index - Start);
+    end;
     Segment.Text := Trim(Inner);
     Segment.Offset := Start - 1 + (Length(Inner) - Length(TrimLeft(Inner)));
     if Segment.Text = '' then
@@ -283,7 +305,9 @@ begin
   AValue := '';
   AEnd := AStart;
   if (AStart < 1) or (AStart > Length(AText)) or (AText[AStart] <> '''') then
+  begin
     Exit(False);
+  end;
   Index := AStart + 1;
   while Index <= Length(AText) do
   begin
@@ -314,15 +338,23 @@ begin
   AStart := 0;
   Index := Pos('//', ALine);
   if (Index = 0) or (Trim(Copy(ALine, 1, Index - 1)) <> '') then
+  begin
     Exit;
+  end;
   Inc(Index, 2);
   while (Index <= Length(ALine)) and (ALine[Index] = ' ') do
+  begin
     Inc(Index);
+  end;
   if not SameText(Copy(ALine, Index, Length(AKey)), AKey) then
+  begin
     Exit;
+  end;
   Inc(Index, Length(AKey));
   while (Index <= Length(ALine)) and (ALine[Index] = ' ') do
+  begin
     Inc(Index);
+  end;
   AStart := Index;
   Result := True;
 end;
@@ -335,7 +367,9 @@ begin
   ATemplate := '';
   AColumn := -1;
   if not AfterCommentKey(ALine, CommentKey, Start) then
+  begin
     Exit(False);
+  end;
   if (Start <= Length(ALine)) and (ALine[Start] = '''') then
   begin
     Result := PascalString(ALine, Start, ATemplate, Stop);
@@ -355,7 +389,9 @@ var
 begin
   ANames := nil;
   if not AfterCommentKey(ALine, ChildrenKey, Start) then
+  begin
     Exit(False);
+  end;
   ANames := SplitNames(Copy(ALine, Start, MaxInt));
   Result := Length(ANames) > 0;
 end;
@@ -370,7 +406,9 @@ begin
   AValue := '';
   AColumn := -1;
   if Pos('[', TrimLeft(ALine)) <> 1 then
+  begin
     Exit;
+  end;
   Lower := LowerCase(ALine);
   // Name, Name mit Endung Attribute oder mit Unit (Atlas.Debug.Attributes.AtlasDebugDisplay).
   for Name in TArray<string>.Create(AName + 'Attribute', AName) do
@@ -384,12 +422,16 @@ begin
         ((Start > Length(ALine)) or not IsNameChar(ALine[Start])) then
       begin
         while (Start <= Length(ALine)) and (ALine[Start] = ' ') do
+        begin
           Inc(Start);
+        end;
         if (Start <= Length(ALine)) and (ALine[Start] = '(') then
         begin
           Inc(Start);
           while (Start <= Length(ALine)) and (ALine[Start] = ' ') do
+          begin
             Inc(Start);
+          end;
           if TDebugDisplayText.PascalString(ALine, Start, AValue, Stop) then
           begin
             AColumn := Start;
@@ -432,13 +474,21 @@ begin
   begin
     Name := Trim(Part);
     if Name = '' then
+    begin
       Continue;
+    end;
     Seen := False;
     for Known in Result do
+    begin
       if SameText(Known, Name) then
+      begin
         Seen := True;
+      end;
+    end;
     if not Seen then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 
@@ -501,10 +551,14 @@ begin
   ARule.TemplateColumn := -1;
   ARule.ChildrenLine := -1;
   if (ADeclLine < 0) or (ADeclLine > High(ALines)) then
+  begin
     Exit(False);
+  end;
   // Attribute in der Zeile der Deklaration: [AtlasDebugDisplay('…')] TKunde = class
   if StartsStr('[', TrimLeft(ALines[ADeclLine])) then
+  begin
     Inspect(ADeclLine, ALines[ADeclLine], True);
+  end;
   Line := ADeclLine - 1;
   while (Line >= 0) and (IsCommentLine(ALines[Line]) or IsAttributeLine(ALines[Line])) do
   begin
@@ -527,7 +581,9 @@ begin
   while (Offset < ASegment.Offset) and (Index <= Length(ALine)) do
   begin
     if Quoted and (ALine[Index] = '''') then
+    begin
       Inc(Index);
+    end;
     Inc(Index);
     Inc(Offset);
   end;

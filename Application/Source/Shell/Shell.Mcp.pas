@@ -156,7 +156,9 @@ var
 begin
   Result := nil;
   if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
+  begin
     Exit;
+  end;
   for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
@@ -170,10 +172,16 @@ begin
     try
       if not (Json is TJSONObject) or not TJSONObject(Json).TryGetValue<Integer>('pid', Pid) or
         not TProcessInstances.Running(Cardinal(Pid)) then
+      begin
         Continue;
+      end;
       if TJSONObject(Json).GetValue('files') is TJSONArray then
+      begin
         for Item in TJSONArray(TJSONObject(Json).GetValue('files')) do
+        begin
           Result := Result + [Item.Value];
+        end;
+      end;
     finally
       Json.Free;
     end;
@@ -190,7 +198,9 @@ var
 begin
   Result := 0;
   if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
+  begin
     Exit;
+  end;
   for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
@@ -204,10 +214,16 @@ begin
     try
       if not (Json is TJSONObject) or not TJSONObject(Json).TryGetValue<Integer>('pid', Pid) or
         not TProcessInstances.Running(Cardinal(Pid)) or not (TJSONObject(Json).GetValue('open') is TJSONArray) then
+      begin
         Continue;
+      end;
       for Item in TJSONArray(TJSONObject(Json).GetValue('open')) do
+      begin
         if SameText(Item.Value, AFileName) then
+        begin
           Exit(Cardinal(Pid));
+        end;
+      end;
     finally
       Json.Free;
     end;
@@ -222,7 +238,9 @@ var
 begin
   Result := nil;
   if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
+  begin
     Exit;
+  end;
   for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
@@ -233,7 +251,9 @@ begin
         Continue;
     end;
     if TMcpIdeBuilds.ParseEntry(Text, Entry) and TProcessInstances.Running(Entry.Pid) then
+    begin
       Result := Result + [Entry];
+    end;
   end;
 end;
 
@@ -272,7 +292,9 @@ end;
 function DryRunOf(const AArguments: TJSONObject): Boolean;
 begin
   if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('dryRun', Result) then
+  begin
     Result := True;
+  end;
 end;
 
 // Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.
@@ -293,17 +315,25 @@ begin
   Request := Default(TMcpIdeBuildRequest);
   Request.Mode := AMode;
   if Request.Mode = '' then
+  begin
     Request.Mode := 'make';
+  end;
   if not TMcpIdeBuilds.ModeValid(Request.Mode) then
+  begin
     raise EMcpToolError.Create('Argument "mode": erlaubt sind "make", "build" und "check"');
+  end;
   Request.Configuration := AConfiguration;
   Request.Platform := APlatform;
   // Relativer Pfad: relativ zum Arbeitsordner.
   Wanted := AProject;
   if (Wanted <> '') and ((Pos('\', Wanted) > 0) or (Pos('/', Wanted) > 0)) and not TPath.IsPathRooted(Wanted) then
+  begin
     Wanted := TPath.GetFullPath(TPath.Combine(ARoot, Wanted));
+  end;
   if not TMcpIdeBuilds.Pick(RunningIdes, ARoot, Wanted, Pid, Request.Project, Reason) then
+  begin
     raise EMcpToolError.Create(Reason);
+  end;
   if TMcpIdeBuilds.Send(TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     Pid), Request,
     procedure
@@ -314,9 +344,13 @@ begin
     begin
       Result := GetTickCount64;
     end, BuildText, Reason) <> TMcpIdeBuildOutcome.Done then
+  begin
     raise EMcpToolError.Create(Reason);
+  end;
   if not TMcpBuildTools.FromFileText(BuildText, Result) then
+  begin
     raise EMcpToolError.Create('Ergebnis der IDE nicht lesbar.');
+  end;
 end;
 
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
@@ -361,10 +395,16 @@ var
 begin
   Result := nil;
   if (ARoot = '') or not TDirectory.Exists(ARoot) then
+  begin
     Exit;
+  end;
   for FileName in TDirectory.GetFiles(ARoot, '*.dproj', TSearchOption.soAllDirectories) do
+  begin
     if not ContainsText(FileName, '\__history\') and not ContainsText(FileName, '\__recovery\') then
+    begin
       Result := Result + [FileName];
+    end;
+  end;
 end;
 
 function ReadSourceLines(const AFileName: string; out ALines: TArray<string>): Boolean;
@@ -373,9 +413,13 @@ var
 begin
   Result := ReadSourceText(AFileName, Text);
   if Result then
-    ALines := TTextLines.SplitLines(Text)
+  begin
+    ALines := TTextLines.SplitLines(Text);
+  end
   else
+  begin
     ALines := nil;
+  end;
 end;
 
 /// <summary>Führt die Test-EXE aus (#69): Ergebnis im XML-Bericht AResultFile; AOutput die letzten Zeilen der
@@ -419,7 +463,9 @@ begin
           begin
             Output := Output + [ALine];
             if Length(Output) > KeptLines then
+            begin
               Delete(Output, 0, Length(Output) - KeptLines);
+            end;
           end);
       except
         on ECompilerCancelled do
@@ -617,12 +663,18 @@ begin
       Name := TMcpServer.RequiredString(AArguments, 'name');
       Format := TMcpServer.OptionalString(AArguments, 'format');
       if (Format <> '') and not SameText(Format, 'text') and not SameText(Format, 'json') then
+      begin
         raise EMcpToolError.Create('"format" ist text oder json');
+      end;
       ACode.Namespaces := AGroup.Main.Namespaces;
       if AArguments.TryGetValue<Integer>('depth', Depth) then
-        Result := ACode.Impact(Name, Depth, SameText(Format, 'json'))
+      begin
+        Result := ACode.Impact(Name, Depth, SameText(Format, 'json'));
+      end
       else
+      begin
         Result := ACode.Impact(Name, SameText(Format, 'json'));
+      end;
     end);
   AServer.AddTool('get_last_build',
     'Ergebnis des letzten Builds, den der Benutzer in der IDE gestartet hat: Erfolg, Art, Zeitpunkt, Dauer, ' +
@@ -636,7 +688,9 @@ begin
       FileName := TIndexCacheDirectory.BuildFileFor(TIndexCacheDirectory.DefaultRoot, ARoot);
       if not FileExists(FileName) or
         not TMcpBuildTools.FromFileText(TFile.ReadAllText(FileName, TEncoding.UTF8), Build) then
+      begin
         Exit(TMcpBuildTools.NoBuild(ARoot));
+      end;
       Result := TMcpBuildTools.Report(Build, ARoot, TMcpServer.OptionalString(AArguments, 'project'));
     end);
   AServer.AddTool('build_project',
@@ -688,57 +742,85 @@ begin
       Target := Default(TMcpTestTarget);
       Wanted := TMcpServer.OptionalString(AArguments, 'project');
       if (Wanted <> '') and ((Pos('\', Wanted) > 0) or (Pos('/', Wanted) > 0)) and not TPath.IsPathRooted(Wanted) then
+      begin
         Wanted := TPath.GetFullPath(TPath.Combine(ARoot, Wanted));
+      end;
       if (Wanted <> '') and TPath.IsPathRooted(Wanted) and FileExists(Wanted) then
-        Target.Project := Wanted
+      begin
+        Target.Project := Wanted;
+      end
       else if not TMcpTestTools.PickProject(ProjectFilesUnder(ARoot), Wanted,
         function(AFileName: string): Boolean
         begin
           Result := IsTestProject(AFileName);
         end, Target.Project, Reason) then
+      begin
         raise EMcpToolError.Create(Reason);
+      end;
       // Plattform aus dem Projekt (#14): erst die Vorgaben der Datei lesen, dann für die Wahl auswerten.
       if not LoadProject(Target.Project, TMcpServer.OptionalString(AArguments, 'configuration'), '', Info) then
+      begin
         raise EMcpToolError.Create('Projektdatei nicht lesbar: ' + Target.Project);
+      end;
       if not TMcpTestTools.ChoosePlatform(TMcpServer.OptionalString(AArguments, 'platform'), Info.Platform,
         Info.Platforms, Target.Platform, Reason) then
+      begin
         raise EMcpToolError.Create(Reason);
+      end;
       if not LoadProject(Target.Project, TMcpServer.OptionalString(AArguments, 'configuration'), Target.Platform,
         Info) then
+      begin
         raise EMcpToolError.Create('Projektdatei nicht lesbar: ' + Target.Project);
+      end;
       Target.Configuration := Info.Config;
       Target.Executable := TMcpTestTools.ExecutableOf(Info);
       Target.WorkingDir := ExtractFileDir(Target.Executable);
       Tests := TMcpTestTools.TestsOf(AArguments);
       if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('build', BuildFirst) then
+      begin
         BuildFirst := False;
+      end;
       if (AArguments = nil) or not AArguments.TryGetValue<Integer>('timeoutSeconds', Timeout) or (Timeout <= 0) then
+      begin
         Timeout := TMcpTestTools.DefaultTimeoutSeconds;
+      end;
       if Timeout > TMcpTestTools.MaxTimeoutSeconds then
+      begin
         Timeout := TMcpTestTools.MaxTimeoutSeconds;
+      end;
       if BuildFirst then
       begin
         Build := BuildInIde(ARoot, Target.Project, 'make', Target.Configuration, Target.Platform);
         if not Build.Success then
+        begin
           Exit('Build fehlgeschlagen; Tests nicht ausgeführt.' + sLineBreak + TMcpBuildTools.Report(Build, ARoot, ''));
+        end;
       end;
       if not FileExists(Target.Executable) then
+      begin
         raise EMcpToolError.CreateFmt('Test-EXE fehlt: %s. Mit "build": true bauen oder das Projekt in der IDE ' +
           'für %s/%s bauen.', [Target.Executable, Target.Configuration, Target.Platform]);
+      end;
       ResultFile := TPath.Combine(TPath.GetTempPath, Format('atlas-tests-%s.xml',
         [TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '')]));
       try
         Code := RunTestProcess(Target, TDUnitXCommandLine.Arguments(ResultFile, Tests), Timeout, Output, TimedOut);
         if TimedOut then
+        begin
           raise EMcpToolError.CreateFmt('Testlauf nach %d s abgebrochen (timeoutSeconds).', [Timeout]);
+        end;
         Xml := '';
         if FileExists(ResultFile) then
+        begin
           Xml := TFile.ReadAllText(ResultFile, TEncoding.UTF8);
+        end;
         Run := TTestResults.Parse(Xml);
         Result := TMcpTestTools.Report(Target, Tests, Run, Code, Output, Info.Units, ReadSourceLines);
       finally
         if FileExists(ResultFile) then
+        begin
           System.SysUtils.DeleteFile(ResultFile);
+        end;
       end;
     end, TMcpToolKind.Process);
   AServer.AddTool('qualified_name',
@@ -757,9 +839,13 @@ begin
     begin
       FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not (AArguments.TryGetValue<Integer>('line', Line) and AArguments.TryGetValue<Integer>('column', Column)) then
+      begin
         raise EMcpToolError.Create('Argumente "line" und "column" fehlen');
+      end;
       if not AArguments.TryGetValue<Boolean>('withParameters', WithParameters) then
+      begin
         WithParameters := False;
+      end;
       ACode.Namespaces := AGroup.Main.Namespaces;
       Result := ACode.QualifiedName(FileName, Line, Column, WithParameters);
     end);
@@ -773,17 +859,25 @@ begin
     begin
       FileName := TMcpServer.OptionalString(AArguments, 'file');
       if FileName <> '' then
-        Files := [AGuard.Resolve(FileName)]
+      begin
+        Files := [AGuard.Resolve(FileName)];
+      end
       else
+      begin
         Files := AGroup.Main.ProjectFiles;
+      end;
       if Length(Files) = 0 then
+      begin
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      end;
       Result := TMcpCodeTools.Diagnostics(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, Files,
         ReadSourceText, CheckSource, CheckProject);
       // Solange der Index lädt, sehen Regeln, die Typen anderer Units brauchen, noch nicht alles (#1112).
       if not AGroup.Ready(Reason) then
+      begin
         Result := Format('Hinweis: %s; Befunde, die den Symbolindex brauchen, können noch fehlen.',
           [Reason]) + sLineBreak + Result;
+      end;
     end);
   AServer.AddTool('hook_check',
     'Für Hooks von Claude Code (PostToolUse nach Edit/Write, siehe Plugin atlas): Befunde ab severity ' +
@@ -823,13 +917,21 @@ begin
       FileName := TMcpServer.OptionalString(AArguments, 'file');
       Format := TMcpServer.OptionalString(AArguments, 'format');
       if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+      begin
         raise EMcpToolError.Create('"format" ist markdown oder json');
+      end;
       if FileName <> '' then
-        Files := [AGuard.Resolve(FileName)]
+      begin
+        Files := [AGuard.Resolve(FileName)];
+      end
       else
+      begin
         Files := AGroup.Main.ProjectFiles;
+      end;
       if Length(Files) = 0 then
+      begin
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      end;
       Result := TMcpCodeTools.Metrics(AGroup.Main.Configuration.Settings, ARoot, Files, ReadSourceText,
         SameText(Format, 'json'));
     end);
@@ -857,20 +959,28 @@ begin
       mResolution: Double;
     begin
       if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
+      begin
         raise EMcpToolError.Create('"section" ist overview, central, subsystems, cycles oder crossLinks');
+      end;
       mResolution := 0;
       mValue := nil;
       if AArguments <> nil then
+      begin
         mValue := AArguments.GetValue('resolution');
+      end;
       if mValue <> nil then
       begin
         if not (mValue is TJSONNumber) or not TArchitectureGrouping.ValidResolution(TJSONNumber(mValue).AsDouble) then
+        begin
           raise EMcpToolError.Create('"resolution" ist eine Zahl von 0,2 bis 5,0');
+        end;
         mResolution := TJSONNumber(mValue).AsDouble;
       end;
       CompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
       if CompareWith <> '' then
+      begin
         CompareWith := AGuard.Resolve(CompareWith);
+      end;
       Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith, mResolution);
     end);
   AServer.AddTool('find_path',
@@ -916,21 +1026,31 @@ begin
       FileName := TMcpServer.OptionalString(AArguments, 'file');
       Format := TMcpServer.OptionalString(AArguments, 'format');
       if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+      begin
         raise EMcpToolError.Create('"format" ist markdown oder json');
+      end;
       Filter := TTodoFilter.Default;
       Filter.UnitName := TMcpServer.OptionalString(AArguments, 'unit');
       Filter.Category := TMcpServer.OptionalString(AArguments, 'category');
       Filter.Owner := TMcpServer.OptionalString(AArguments, 'owner');
       Filter.Keyword := TMcpServer.OptionalString(AArguments, 'keyword');
       if (AArguments <> nil) and AArguments.TryGetValue<Boolean>('includeDone', IncludeDone) then
+      begin
         Filter.IncludeDone := IncludeDone;
+      end;
       // Projektweit heißt: die Dateien, die das Projektmodell (#14) dem Projekt zuordnet.
       if FileName <> '' then
-        Files := [AGuard.Resolve(FileName)]
+      begin
+        Files := [AGuard.Resolve(FileName)];
+      end
       else
+      begin
         Files := AGroup.Main.ProjectFiles;
+      end;
       if Length(Files) = 0 then
+      begin
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      end;
       Result := TMcpCodeTools.Todos(AGroup.Main.Configuration.Settings, ARoot, Files, ReadSourceText, Filter,
         SameText(Format, 'json'));
     end);
@@ -950,11 +1070,17 @@ begin
     begin
       FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not AArguments.TryGetValue<string>('text', Text) then
+      begin
         raise EMcpToolError.Create('Argument "text" fehlt');
+      end;
       if not AArguments.TryGetValue<Integer>('startLine', StartLine) then
+      begin
         StartLine := 0;
+      end;
       if not AArguments.TryGetValue<Integer>('endLine', EndLine) then
+      begin
         EndLine := StartLine;
+      end;
       Result := ACode.CheckCode(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName, Text,
         StartLine, EndLine);
     end);
@@ -969,12 +1095,18 @@ begin
       if SameText(ExtractFileExt(FileName), '.pas') then
       begin
         if FileExists(ChangeFileExt(FileName, '.dfm')) then
-          FileName := ChangeFileExt(FileName, '.dfm')
+        begin
+          FileName := ChangeFileExt(FileName, '.dfm');
+        end
         else
+        begin
           FileName := ChangeFileExt(FileName, '.fmx');
+        end;
       end;
       if not TDfmParser.IsFormFile(FileName) or not ReadSourceText(FileName, Text) then
+      begin
         raise EMcpToolError.CreateFmt('Formulardatei "%s" nicht gefunden', [FileName]);
+      end;
       Result := TMcpIndexTools.DfmInfo(Text);
     end);
   AServer.AddTool('explain_finding',
@@ -995,29 +1127,41 @@ begin
     begin
       FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not AArguments.TryGetValue<Integer>('line', Line) then
+      begin
         raise EMcpToolError.Create('Argument "line" fehlt');
+      end;
       RuleId := TMcpServer.OptionalString(AArguments, 'rule');
       if not ReadSourceText(FileName, Text) then
+      begin
         raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [FileName]);
+      end;
       RelativePath := FileName;
       if StartsText(IncludeTrailingPathDelimiter(ARoot), FileName) then
+      begin
         RelativePath := Copy(FileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+      end;
       Result := '';
       Catalog := TFindingPrompt.GermanCatalog;
       try
         for Finding in TFileChecker.CheckText(BuiltinRules, AGroup.Main.Configuration.Settings, RelativePath, Text,
           CheckProject(FileName), AGroup.Main.CheckSource(FileName), Scopes) do
+        begin
           if (Finding.Range.StartPos.Line = Line - 1) and ((RuleId = '') or SameText(RuleId, Finding.RuleId)) then
           begin
             if Result <> '' then
+            begin
               Result := Result + sLineBreak + sLineBreak;
+            end;
             Result := Result + TFindingPrompt.Markdown(Finding, FileName, Text, Catalog);
           end;
+        end;
       finally
         Catalog.Free;
       end;
       if Result = '' then
+      begin
         raise EMcpToolError.CreateFmt('Kein Befund in Zeile %d von %s.', [Line, ExtractFileName(FileName)]);
+      end;
     end);
   AServer.AddTool('rename_symbol',
     'Benennt ein Symbol projektweit um, samt .dfm/.fmx und automatisch benannter Ereignis-Handler (#61). ' +
@@ -1036,7 +1180,9 @@ begin
     begin
       FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not AArguments.TryGetValue<Integer>('line', Line) or not AArguments.TryGetValue<Integer>('column', Column) then
+      begin
         raise EMcpToolError.Create('Argumente "line" und "column" fehlen');
+      end;
       AEdit.Namespaces := AGroup.Main.Namespaces;
       Result := AEdit.RenameSymbol(FileName, Line, Column, TMcpServer.RequiredString(AArguments, 'newName'),
         DryRunOf(AArguments));
@@ -1057,7 +1203,9 @@ begin
     begin
       FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not AArguments.TryGetValue<Integer>('line', Line) then
+      begin
         raise EMcpToolError.Create('Argument "line" fehlt');
+      end;
       Result := AEdit.ApplyCodeAction(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName, Line,
         TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
     end, TMcpToolKind.Write);
@@ -1085,16 +1233,26 @@ begin
       begin
         mItems := TJSONArray(AArguments.GetValue('rules'));
         for mItem in mItems do
+        begin
           if (mItem is TJSONString) and (Trim(mItem.Value) <> '') then
+          begin
             mRules := mRules + [Trim(mItem.Value)];
+          end;
+        end;
       end;
       mFile := TMcpServer.OptionalString(AArguments, 'file');
       if mFile <> '' then
-        mFiles := TArray<string>.Create(AGuard.Resolve(mFile))
+      begin
+        mFiles := TArray<string>.Create(AGuard.Resolve(mFile));
+      end
       else
+      begin
         mFiles := AGroup.Main.ProjectFiles;
+      end;
       if Length(mFiles) = 0 then
+      begin
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      end;
       Result := AEdit.FixFindings(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, mFiles, mRules,
         TMcpServer.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
     end, TMcpToolKind.Write);
@@ -1123,9 +1281,13 @@ begin
       if AArguments.TryGetValue<Integer>('startLine', mStartLine) then
       begin
         if not AArguments.TryGetValue<Integer>('endLine', mEndLine) then
+        begin
           mEndLine := mStartLine;
+        end;
         if (mStartLine < 1) or (mEndLine < mStartLine) then
+        begin
           raise EMcpToolError.Create('"startLine" ab 1 und "endLine" nicht davor');
+        end;
         mScope := TFormatScope.Lines([TFormatLineSpan.Create(mStartLine - 1, mEndLine - 1)]);
       end;
       // Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben (TLspFormatting.Resolve).
@@ -1135,9 +1297,13 @@ begin
           Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
         end);
       if AArguments.TryGetValue<string>('text', mText) then
-        Result := AEdit.FormatCode(mStyle, mFileName, mText, mScope)
+      begin
+        Result := AEdit.FormatCode(mStyle, mFileName, mText, mScope);
+      end
       else
+      begin
         Result := AEdit.FormatCode(mStyle, mFileName, mScope, DryRunOf(AArguments));
+      end;
     end, TMcpToolKind.Write);
 end;
 
@@ -1161,7 +1327,9 @@ begin
   Result.Memory.TreeCache := mTrees.Bytes;
   Result.Memory.Total := Result.MemoryBytes;
   if AIndex = nil then
+  begin
     Exit;
+  end;
   Result.Units := AIndex.UnitCount;
   Result.Symbols := AIndex.SymbolCount;
   Result.IndexBytes := AIndex.MemoryBytes;
@@ -1195,7 +1363,9 @@ begin
     begin
       mFormat := TMcpServer.OptionalString(AArguments, 'format');
       if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
+      begin
         raise EMcpToolError.Create('"format" ist markdown oder json');
+      end;
       Result := TMcpStatusTools.ServerStatus(TIndexCacheDirectory.DefaultRoot, ARoot, SameText(mFormat, 'json'), Now,
         function: TServerStatus
         begin
@@ -1230,36 +1400,54 @@ begin
     begin
       mSettings := AGroup.Main.Configuration.Settings;
       if not mSettings.QueryEnabled then
+      begin
         raise EMcpToolError.Create('Code-Abfragen sind ausgeschaltet (query.enabled)');
+      end;
       mFormat := TMcpServer.OptionalString(AArguments, 'format');
       if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
+      begin
         raise EMcpToolError.Create('"format" ist markdown oder json');
+      end;
       mText := Trim(TMcpServer.OptionalString(AArguments, 'query'));
       if mText = '' then
+      begin
         Exit(TQueryCatalog.Help);
+      end;
       if mText.StartsWith('@') then
       begin
         mFound := False;
         for mSaved in mSettings.Queries do
+        begin
           if SameText(mSaved.Name, Copy(mText, 2, MaxInt)) then
           begin
             mText := mSaved.Query;
             mFound := True;
             Break;
           end;
+        end;
         if not mFound then
+        begin
           raise EMcpToolError.Create(Format('Keine gespeicherte Abfrage "%s" in atlas.json (queries)',
             [Copy(mText, 2, MaxInt)]));
+        end;
       end;
       if not AArguments.TryGetValue<Integer>('limit', mLimit) or (mLimit < 1) then
+      begin
         mLimit := 200;
+      end;
       mResult := AGroup.Queries.Execute(TQueryRequest.Create(mText, mLimit));
       if mResult.Failed then
+      begin
         raise EMcpToolError.Create(TQueryOutput.ErrorText(mResult));
+      end;
       if SameText(mFormat, 'json') then
-        Result := TQueryOutput.Json(mResult)
+      begin
+        Result := TQueryOutput.Json(mResult);
+      end
       else
+      begin
         Result := TQueryOutput.Markdown(mResult);
+      end;
     end);
 end;
 
@@ -1282,13 +1470,21 @@ begin
       FileName := TMcpServer.OptionalString(AArguments, 'file');
       Format := TMcpServer.OptionalString(AArguments, 'format');
       if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+      begin
         raise EMcpToolError.Create('"format" ist markdown oder json');
+      end;
       if FileName <> '' then
-        Files := [AGuard.Resolve(FileName)]
+      begin
+        Files := [AGuard.Resolve(FileName)];
+      end
       else
+      begin
         Files := AGroup.Main.ProjectFiles;
+      end;
       if Length(Files) = 0 then
+      begin
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      end;
       Result := TMcpDeadCodeTools.FindUnused(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, Files,
         AIndex, AGroup.RuleProjectFiles, AGroup.Main.Namespaces, SameText(Format, 'json'));
     end);
@@ -1310,14 +1506,22 @@ begin
     begin
       UnitName := TMcpServer.RequiredString(AArguments, 'unit');
       if (Pos('\', UnitName) > 0) or (Pos('/', UnitName) > 0) or SameText(ExtractFileExt(UnitName), '.pas') then
+      begin
         UnitName := AGuard.Resolve(UnitName);
+      end;
       if not TMcpDeadCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction'), Direction) then
+      begin
         raise EMcpToolError.Create('"direction" ist uses, usedBy oder both');
+      end;
       if not AArguments.TryGetValue<Boolean>('transitive', Transitive) then
+      begin
         Transitive := False;
+      end;
       Format := TMcpServer.OptionalString(AArguments, 'format');
       if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+      begin
         raise EMcpToolError.Create('"format" ist markdown oder json');
+      end;
       Text := '';
       AGroup.UsesGraph.Read(
         procedure(const AUses: TUsesGraph)
@@ -1363,17 +1567,25 @@ begin
     begin
       mSettings := AGroup.Main.Configuration.Settings;
       if not mSettings.Tests.Affected then
+      begin
         raise EMcpToolError.Create(TShellAffectedTests.OffMessage);
+      end;
       if not TAffectedTests.TryParseFormat(TMcpServer.OptionalString(AArguments, 'format'), mFormat) then
+      begin
         raise EMcpToolError.Create('"format" ist text, json oder dunitx');
+      end;
       mQuery := Default(TShellAffectedQuery);
       mQuery.WorkingDir := ARoot;
       mQuery.Base := TMcpServer.OptionalString(AArguments, 'base');
       if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('includeUncommitted', mQuery.IncludeUncommitted)
       then
+      begin
         mQuery.IncludeUncommitted := True;
+      end;
       if (AArguments = nil) or not AArguments.TryGetValue<Integer>('depth', mQuery.Depth) then
+      begin
         mQuery.Depth := 0;
+      end;
       mReadText :=
         function(const AFileName: string; out AText: string): Boolean
         begin
@@ -1407,16 +1619,26 @@ begin
         mResolver.Free;
       end;
       if mFormat <> TAffectedFormat.DUnitX then
+      begin
         Exit(TAffectedTests.Render(mFound, mFormat));
+      end;
       // dunitx: nur das Argument; ohne Argument sagt der Text warum.
       if mFound.All then
-        Result := 'Alle Tests nötig: ' + mFound.AllReason
+      begin
+        Result := 'Alle Tests nötig: ' + mFound.AllReason;
+      end
       else if Length(mFound.Tests) = 0 then
-        Result := Format('Keine betroffenen Tests gegenüber %s.', [mFound.Base])
+      begin
+        Result := Format('Keine betroffenen Tests gegenüber %s.', [mFound.Base]);
+      end
       else if TAffectedTests.DUnitXArgument(mFound, mArgument) then
-        Result := mArgument
+      begin
+        Result := mArgument;
+      end
       else
+      begin
         Result := 'Alle Tests nötig: zu viele Tests für ein --run-Argument';
+      end;
     end, TMcpToolKind.Process);
 end;
 
@@ -1450,33 +1672,53 @@ begin
     begin
       mSettings := AGroup.Main.Configuration.Settings;
       if not mSettings.HotspotsEnabled then
+      begin
         raise EMcpToolError.Create('Hotspots sind ausgeschaltet (hotspots.enabled)');
+      end;
       if not THotspotReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), mSection) then
+      begin
         raise EMcpToolError.Create('"section" ist hotspots oder coupling');
+      end;
       mFormat := TMcpServer.OptionalString(AArguments, 'format');
       if (mFormat <> '') and not SameText(mFormat, 'text') and not SameText(mFormat, 'markdown') and
         not SameText(mFormat, 'json') then
+      begin
         raise EMcpToolError.Create('"format" ist text, markdown oder json');
+      end;
       if not AArguments.TryGetValue<Integer>('limit', mLimit) then
+      begin
         mLimit := THotspotReport.TextLimit;
+      end;
       if mLimit < 1 then
+      begin
         raise EMcpToolError.Create('"limit" ist eine ganze Zahl ab 1');
+      end;
       mRequest := THotspotRequest.FromSettings(mSettings);
       if not TLspHotspots.ApplyOptions(AArguments, mRequest, mError) then
+      begin
         raise EMcpToolError.Create(mError);
+      end;
       mRequest.Title := ExtractFileName(ARoot);
       mRequest.Root := ARoot;
       mRequest.Namespaces := AGroup.Main.Namespaces;
       // Umfang wie get_architecture (architecture.scope).
       if mSettings.ArchitectureScope = 'project' then
-        mRequest.Files := AGroup.Main.ProjectFiles
+      begin
+        mRequest.Files := AGroup.Main.ProjectFiles;
+      end
       else
+      begin
         mRequest.Files := AGroup.AllFiles;
+      end;
       if Length(mRequest.Files) = 0 then
+      begin
         raise EMcpToolError.Create('Kein Projekt geladen');
+      end;
       // Ohne Versionsverwaltung ein Hinweis statt einer leeren Liste.
       if not TShellHotspotVcs.Detect(ARoot, mSettings, mVcs, mError) then
+      begin
         Exit('Keine Hotspots: ' + mError + '. Hotspots brauchen ein Git-Repository oder eine SVN-Arbeitskopie.');
+      end;
       try
         mResult := AService.Analyze(mRequest, mVcs);
       except
@@ -1485,11 +1727,17 @@ begin
       end;
       // Der Text kürzt selbst und nennt die Gesamtzahl ("20 von 431").
       if SameText(mFormat, 'json') then
-        Result := THotspotReport.Json(TLspHotspots.Limited(mResult, mLimit))
+      begin
+        Result := THotspotReport.Json(TLspHotspots.Limited(mResult, mLimit));
+      end
       else if SameText(mFormat, 'markdown') then
-        Result := THotspotReport.Markdown(TLspHotspots.Limited(mResult, mLimit))
+      begin
+        Result := THotspotReport.Markdown(TLspHotspots.Limited(mResult, mLimit));
+      end
       else
+      begin
         Result := THotspotReport.Text(mResult, mSection, mLimit);
+      end;
     end);
 end;
 
@@ -1504,11 +1752,15 @@ begin
       mUnit: TUnitIndex;
     begin
       if (Pos('\', AUnit) > 0) or (Pos('/', AUnit) > 0) or SameText(ExtractFileExt(AUnit), '.pas') then
+      begin
         Exit(AGuard.Resolve(AUnit));
+      end;
       // Units anderer Projekte der Gruppe erst bei Bedarf (#1112).
       AGroup.EnsureUnit(AUnit);
       if not AIndex.FindUnit(AUnit, mUnit) then
+      begin
         raise EMcpToolError.CreateFmt('Unit "%s" ist nicht im Index', [AUnit]);
+      end;
       Result := AGuard.Resolve(mUnit.FileName);
     end;
 end;
@@ -1535,7 +1787,9 @@ begin
       Result.Files := nil;
       Result.Base := ABase;
       if Result.Base = '' then
+      begin
         Result.Base := 'HEAD';
+      end;
       mSettings := AGroup.Main.Configuration.Settings;
       // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
       mProcess := TProcessRunner.Create;
@@ -1565,21 +1819,31 @@ begin
         for mFile in mVcs.Files do
         begin
           if not TMcpPathGuard.IsInside(ARoot, mFile) then
+          begin
             Continue;
+          end;
           mChanged := Default(TMcpChangedFile);
           mRelative := ExtractRelativePath(IncludeTrailingPathDelimiter(ARoot), mFile);
           mChanged.Path := mRelative;
           mChanged.Findings := nil;
           if MatchText(ExtractFileExt(mFile), ['.pas', '.dpr', '.dpk']) and ReadSourceText(mFile, mText) and
             TChangedFiles.LinesOf(mVcs.Lines, mVcs.RepoRoot, mFile, mLines) then
+          begin
             for mFinding in TFileChecker.CheckText(BuiltinRules, mSettings, mRelative, mText, mCheckProject(mFile),
               AGroup.Main.CheckSource(mFile), mScopes) do
+            begin
               if mLines.Contains(mFinding.Range.StartPos.Line) then
+              begin
                 mChanged.Findings := mChanged.Findings + [mFinding];
+              end;
+            end;
+          end;
           Result.Files := Result.Files + [mChanged];
         end;
         if mVcs is TGitChanges then
+        begin
           Result.CommitPrefix := TAtlasCommitHook.ReadPrefix(TAtlasGitVersionControl.GitDir(mVcs.RepoRoot));
+        end;
       finally
         mVcs.Free;
       end;
@@ -1605,7 +1869,9 @@ begin
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do
+      begin
         Result := Result + [Tool.GetValue<string>('name')];
+      end;
     finally
       Listed.Free;
     end;
@@ -1652,11 +1918,15 @@ begin
   TShellDiagnostics.AddLogFile(LoggerImpl, AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
     AOptions.LogNames, AOptions.LogLevel, Anonymizer);
   for Warning in AOptions.Warnings do
+  begin
     Logger.Warning(Warning);
+  end;
 
   Root := AOptions.McpRoot;
   if Root = '' then
+  begin
     Root := GetCurrentDir;
+  end;
   Root := ExcludeTrailingPathDelimiter(TPath.GetFullPath(Root));
 
   // Ab hier erreichen versehentliche Ausgaben nur noch stderr.
@@ -1679,9 +1949,13 @@ begin
   // atlas.json. Load übernimmt sie, damit der Index nur einmal mit den wirksamen Einstellungen startet.
   GlobalSettings := '';
   if TShellBootstrap.ProjectSettings(Root).McpGlobalSettings then
-    GlobalSettings := TShellBootstrap.LoadGlobalSettings(Logger)
+  begin
+    GlobalSettings := TShellBootstrap.LoadGlobalSettings(Logger);
+  end
   else
+  begin
     Logger.Info('Globale Einstellungen ausgeschaltet (mcp.globalSettings)');
+  end;
   AllFiles :=
     function: TArray<string>
     begin
@@ -1707,8 +1981,12 @@ begin
     begin
       Result := '';
       for Dpk in TDirectory.GetFiles(Root, '*.dpk', TSearchOption.soAllDirectories) do
+      begin
         if ReadSourceText(Dpk, Text) and TMcpIndexTools.PackageContains(Text, AUnitName) then
+        begin
           Exit(ChangeFileExt(ExtractFileName(Dpk), ''));
+        end;
+      end;
     end;
   Code := TMcpCodeTools.Create(Index, ReadSourceText,
     function: TArray<string>
@@ -1749,7 +2027,9 @@ begin
     begin
       // Defines des Projekts, zu dem die Datei gehört (Projektgruppe, #1112).
       if not Group.WorkspaceOf(AFileName).Defines(Result) then
+      begin
         Result := nil;
+      end;
     end);
   // Hotspots (#1354): derselbe Dienst wie atlas/hotspots und --hotspots.
   Hotspots := THotspotService.Create(Index,
@@ -1770,7 +2050,9 @@ begin
     begin
       // Defines des Projekts, zu dem die Datei gehört (Projektgruppe, #1112).
       if not Group.WorkspaceOf(AFileName).Defines(Result) then
+      begin
         Result := nil;
+      end;
     end);
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
   Edit.CheckSource := CheckSourceOf(Group);
@@ -1801,22 +2083,34 @@ begin
       Result.TimeoutMs := 60000;
       Project := Settings.TestUnits.Project;
       if (Project <> '') and not TPath.IsPathRooted(Project) then
+      begin
         Project := TPath.Combine(Root, Project);
+      end;
       if Project = '' then
+      begin
         for Candidate in ProjectFilesUnder(Root) do
+        begin
           if IsTestProject(Candidate) then
           begin
             Project := Candidate;
             Break;
           end;
+        end;
+      end;
       Text := '';
       if (Project <> '') and FileExists(ChangeFileExt(Project, '.dproj')) and
         LoadProject(ChangeFileExt(Project, '.dproj'), '', '', Info) and (Info.MainSource <> '') then
-        Project := Info.MainSource
+      begin
+        Project := Info.MainSource;
+      end
       else if Project <> '' then
+      begin
         Project := ChangeFileExt(Project, '.dpr');
+      end;
       if (Project <> '') and not ReadSourceText(Project, Text) then
+      begin
         Text := '';
+      end;
       Result.Tests := TImpactTestScope.FromProgram(Settings.TestUnits.Pattern, Text);
     end;
   Edit.Audit :=
@@ -1864,21 +2158,31 @@ begin
       begin
         Settings := Workspace.Configuration.Settings;
         if not Settings.ArchitectureEnabled then
+        begin
           raise EMcpToolError.Create('Architekturübersicht ist ausgeschaltet (architecture.enabled)');
+        end;
         Request := TArchitectureRequest.FromSettings(Settings);
         // Nur für diesen Aufruf (#1366); die Einstellung bleibt.
         if AResolution > 0 then
+        begin
           Request.Grouping.Resolution := AResolution;
+        end;
         Request.Title := ExtractFileName(Root);
         Request.Root := Root;
         Request.Namespaces := Workspace.Namespaces;
         // Projektgruppe (#648): die Dateien aller geladenen Projekte, sonst nur die des Hauptprojekts.
         if Request.Scope = 'project' then
-          Request.Files := Workspace.ProjectFiles
+        begin
+          Request.Files := Workspace.ProjectFiles;
+        end
         else
+        begin
           Request.Files := AllFiles();
+        end;
         if Length(Request.Files) = 0 then
+        begin
           raise EMcpToolError.Create('Kein Projekt geladen');
+        end;
         // Derselbe zuletzt berechnete Stand wie im LSP-Prozess (#1367).
         Request.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot,
           Request.ScopeKey);
@@ -1886,15 +2190,23 @@ begin
         if ACompareWith <> '' then
         begin
           if not TArchitectureComparer.CompareWithFile(ACompareWith, Overview, Comparison, Error) then
+          begin
             raise EMcpToolError.Create(Error);
+          end;
           if not TArchitectureComparer.ParseKinds(Settings.ArchitectureFailOn, FailOn, Error) then
+          begin
             FailOn := TArchitectureComparer.DefaultFailOn;
+          end;
           Result := TArchitectureComparer.Text(Comparison, FailOn, TArchitectureReport.TextLimit);
         end
         else if AUnit <> '' then
-          Result := TArchitectureReport.UnitText(Overview, AUnit)
+        begin
+          Result := TArchitectureReport.UnitText(Overview, AUnit);
+        end
         else
+        begin
           Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
+        end;
       end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
     RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
     RegisterAffectedTestsTool(Server, Group, Root, Code.ImpactOptionsFor);
@@ -1909,16 +2221,26 @@ begin
         Result := Workspace.Configuration.Settings.McpDisabledTools;
         // Abgeschaltete Funktion (#227): Werkzeug gar nicht anbieten.
         if not Workspace.Configuration.Settings.ArchitectureEnabled then
+        begin
           Result := Result + ['get_architecture'];
+        end;
         if not Workspace.Configuration.Settings.HotspotsEnabled then
+        begin
           Result := Result + ['get_hotspots'];
+        end;
         if not Workspace.Configuration.Settings.Navigation.SymbolPath then
+        begin
           Result := Result + ['find_path'];
+        end;
         // Betroffene Tests (#1353).
         if not Workspace.Configuration.Settings.Tests.Affected then
+        begin
           Result := Result + ['get_affected_tests'];
+        end;
         if not Workspace.Configuration.Settings.QueryEnabled then
+        begin
           Result := Result + ['query_code'];
+        end;
       end;
     Server.OnAudit :=
       procedure(AText: string)

@@ -73,10 +73,14 @@ const
 function TMapLocation.ToString: string;
 begin
   if not Found then
+  begin
     Exit('');
+  end;
   Result := Routine;
   if Line > 0 then
+  begin
     Result := Result + Format(' (%s:%d)', [FileName, Line]);
+  end;
 end;
 
 /// <summary>Liest "0001:00ABCDEF"; False bei anderem Segment oder Format.</summary>
@@ -89,7 +93,9 @@ begin
   Result := (Colon = 5) and TryStrToInt('$' + Copy(AText, 1, 4), ASegment) and
     TryStrToInt64('$' + Copy(AText, Colon + 1, MaxInt), Value);
   if Result then
+  begin
     AAddress := UInt64(Value);
+  end;
 end;
 
 /// <summary>Teile einer Zeile, durch Leerzeichen getrennt.</summary>
@@ -102,12 +108,18 @@ begin
   while Index <= Length(ALine) do
   begin
     while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+    begin
       Inc(Index);
+    end;
     Start := Index;
     while (Index <= Length(ALine)) and not CharInSet(ALine[Index], [' ', #9]) do
+    begin
       Inc(Index);
+    end;
     if Index > Start then
+    begin
       Result := Result + [Copy(ALine, Start, Index - Start)];
+    end;
   end;
 end;
 
@@ -152,14 +164,22 @@ begin
   for Line in StringReplace(AText, #13, '', [rfReplaceAll]).Split([#10]) do
   begin
     if Trim(Line) = '' then
+    begin
       Continue;
+    end;
     if StartsText('Detailed map of segments', Trim(Line)) then
-      Section := TSection.Segments
+    begin
+      Section := TSection.Segments;
+    end
     else if ContainsText(Line, 'Publics by Value') then
-      Section := TSection.Publics
+    begin
+      Section := TSection.Publics;
+    end
     else if ContainsText(Line, 'Publics by Name') or StartsText('Bound resource files', Trim(Line)) or
       StartsText('Program entry point', Trim(Line)) then
-      Section := TSection.Other
+    begin
+      Section := TSection.Other;
+    end
     else if StartsText('Line numbers for ', Line) then
     begin
       // Line numbers for System(System.pas) segment .text
@@ -171,7 +191,9 @@ begin
       CurrentFile := Copy(Inside, Open + 1, Close - Open - 1);
       // Nur Codesegment .text zählt.
       if not ContainsText(Copy(Inside, Close + 1, MaxInt), '.text') then
+      begin
         Section := TSection.Other;
+      end;
     end
     else
     begin
@@ -183,9 +205,13 @@ begin
             (Segment = 1) then
           begin
             if Address >= DefaultImageBase then
-              FCodeStart := Address - DefaultImageBase
+            begin
+              FCodeStart := Address - DefaultImageBase;
+            end
             else if Address > 0 then
+            begin
               FCodeStart := Address;
+            end;
             HeaderDone := True;
           end;
         TSection.Publics:
@@ -220,21 +246,33 @@ begin
     function(const ALeft, ARight: TSymbol): Integer
     begin
       if ALeft.Address < ARight.Address then
-        Result := -1
+      begin
+        Result := -1;
+      end
       else if ALeft.Address > ARight.Address then
-        Result := 1
+      begin
+        Result := 1;
+      end
       else
+      begin
         Result := 0;
+      end;
     end));
   FLines.Sort(TComparer<TLineEntry>.Construct(
     function(const ALeft, ARight: TLineEntry): Integer
     begin
       if ALeft.Address < ARight.Address then
-        Result := -1
+      begin
+        Result := -1;
+      end
       else if ALeft.Address > ARight.Address then
-        Result := 1
+      begin
+        Result := 1;
+      end
       else
+      begin
         Result := 0;
+      end;
     end));
 end;
 
@@ -246,7 +284,9 @@ var
 begin
   Result := Default(TMapLocation);
   if (AModuleOffset < FCodeStart) or (FSymbols.Count = 0) then
+  begin
     Exit;
+  end;
   Address := AModuleOffset - FCodeStart;
   // Letztes Symbol mit Adresse <= Address.
   Left := 0;
@@ -261,15 +301,21 @@ begin
       Left := Middle + 1;
     end
     else
+    begin
       Right := Middle - 1;
+    end;
   end;
   if Found < 0 then
+  begin
     Exit;
+  end;
   Result.Found := True;
   Result.Routine := FSymbols[Found].Name;
   Dot := Pos('.', Result.Routine);
   if Dot > 0 then
+  begin
     Result.UnitName := Copy(Result.Routine, 1, Dot - 1);
+  end;
   // Zeile: letzte Zeilenangabe <= Address, nicht vor dem Anfang der Routine.
   Left := 0;
   Right := FLines.Count - 1;
@@ -283,7 +329,9 @@ begin
       Left := Middle + 1;
     end
     else
+    begin
       Right := Middle - 1;
+    end;
   end;
   if (Found >= 0) and (FLines[Found].Address >= FSymbols[0].Address) then
   begin
@@ -306,14 +354,18 @@ begin
     for Line in StringReplace(AStackTrace, #13, '', [rfReplaceAll]).Split([#10]) do
     begin
       if Line = '' then
+      begin
         Continue;
+      end;
       Builder.Append(Line);
       if StartsText(Prefix, Trim(Line)) and
         TryStrToInt64('$' + Copy(Trim(Line), Length(Prefix) + 1, MaxInt), Offset) then
       begin
         Location := Resolve(UInt64(Offset));
         if Location.Found then
+        begin
           Builder.Append(' ').Append(Location.ToString);
+        end;
       end;
       Builder.Append(sLineBreak);
     end;

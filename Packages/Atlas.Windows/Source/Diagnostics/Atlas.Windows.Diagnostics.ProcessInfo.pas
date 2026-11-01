@@ -32,7 +32,9 @@ var
 begin
   Snapshot := CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
   if Snapshot = INVALID_HANDLE_VALUE then
+  begin
     Exit(-1);
+  end;
   try
     ProcessId := GetCurrentProcessId;
     Result := 0;
@@ -40,7 +42,9 @@ begin
     if Thread32First(Snapshot, Entry) then
       repeat
         if Entry.th32OwnerProcessID = ProcessId then
+        begin
           Inc(Result);
+        end;
       until not Thread32Next(Snapshot, Entry);
   finally
     CloseHandle(Snapshot);
@@ -52,7 +56,9 @@ var
   Creation, Exited, Kernel, User: TFileTime;
 begin
   if not GetThreadTimes(GetCurrentThread, Creation, Exited, Kernel, User) then
+  begin
     Exit(-1);
+  end;
   // FILETIME zählt in 100 ns.
   Result := (Int64(Kernel.dwHighDateTime) shl 32 + Kernel.dwLowDateTime +
     Int64(User.dwHighDateTime) shl 32 + User.dwLowDateTime) div 10000;
@@ -65,8 +71,12 @@ begin
   Result := nil;
   for Name in TArray<string>.Create(GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
     GetEnvironmentVariable('USERDOMAIN')) do
+  begin
     if Name <> '' then
+    begin
       Result := Result + [Name];
+    end;
+  end;
 end;
 
 end.

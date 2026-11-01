@@ -45,7 +45,9 @@ var
   Count, Index, Code: Integer;
 begin
   if Pos('%', AValue) = 0 then
+  begin
     Exit(AValue);
+  end;
   Bytes := nil;
   SetLength(Bytes, Length(AValue) * 3);
   Count := 0;
@@ -65,7 +67,9 @@ begin
     end;
     Chunk := TEncoding.UTF8.GetBytes(AValue[Index]);
     if Length(Chunk) > 0 then
+    begin
       Move(Chunk[0], Bytes[Count], Length(Chunk));
+    end;
     Inc(Count, Length(Chunk));
     Inc(Index);
   end;
@@ -82,10 +86,16 @@ begin
   Builder := TStringBuilder.Create;
   try
     for Value in Bytes do
+    begin
       if (Value < $80) and CharInSet(Char(Value), ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/']) then
-        Builder.Append(Char(Value))
+      begin
+        Builder.Append(Char(Value));
+      end
       else
+      begin
         Builder.Append('%').Append(HexDigits[(Value shr 4) + 1]).Append(HexDigits[(Value and 15) + 1]);
+      end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -103,18 +113,26 @@ var
   Slash: Integer;
 begin
   if not SameText(Copy(AUri, 1, Length(Scheme)), Scheme) then
+  begin
     Exit('');
+  end;
   Rest := Copy(AUri, Length(Scheme) + 1, MaxInt);
   Slash := Pos('/', Rest);
   if Slash = 0 then
+  begin
     Slash := Length(Rest) + 1;
+  end;
   Host := Copy(Rest, 1, Slash - 1);
   Result := PercentDecode(Copy(Rest, Slash, MaxInt));
   if (Host <> '') and not SameText(Host, 'localhost') then
+  begin
     Exit('\\' + PercentDecode(Host) + StringReplace(Result, '/', '\', [rfReplaceAll]));
+  end;
   // /c:/... → c:\...
   if (Length(Result) >= 3) and (Result[1] = '/') and (Result[3] = ':') then
+  begin
     Result := StringReplace(Copy(Result, 2, MaxInt), '/', '\', [rfReplaceAll]);
+  end;
 end;
 
 class function TTextUris.FromPath(const APath: string): string;
@@ -123,9 +141,13 @@ var
 begin
   Path := StringReplace(NormalizePath(APath), '\', '/', [rfReplaceAll]);
   if Copy(Path, 1, 2) = '//' then
+  begin
     Exit(Scheme + PercentEncode(Copy(Path, 3, MaxInt)));
+  end;
   if (Length(Path) >= 2) and (Path[2] = ':') then
+  begin
     Path := '/' + LowerCase(Path[1]) + ':' + Copy(Path, 3, MaxInt);
+  end;
   Result := Scheme + PercentEncode(Path);
 end;
 
@@ -138,45 +160,65 @@ begin
   Path := APath;
   // Lange Pfade: \\?\C:\... und \\?\UNC\server\...
   if SameText(Copy(Path, 1, 8), '\\?\UNC\') then
-    Path := '\\' + Copy(Path, 9, MaxInt)
+  begin
+    Path := '\\' + Copy(Path, 9, MaxInt);
+  end
   else if Copy(Path, 1, 4) = '\\?\' then
+  begin
     Path := Copy(Path, 5, MaxInt);
+  end;
   if IsWindowsPath(StringReplace(Path, '/', '\', [rfReplaceAll])) then
   begin
     Separator := '\';
     Path := StringReplace(Path, '/', '\', [rfReplaceAll]);
   end
   else
+  begin
     Separator := '/';
+  end;
 
   if Copy(Path, 1, 2) = '\\' then
-    Prefix := '\\'
+  begin
+    Prefix := '\\';
+  end
   else if (Length(Path) >= 2) and (Path[2] = ':') then
   begin
     Prefix := UpperCase(Path[1]) + ':' + Separator;
     Delete(Path, 1, 2);
   end
   else if Copy(Path, 1, 1) = Separator then
-    Prefix := Separator
+  begin
+    Prefix := Separator;
+  end
   else
+  begin
     Prefix := '';
+  end;
 
   Parts := Path.Split([Separator]);
   Kept := nil;
   SetLength(Kept, Length(Parts));
   Count := 0;
   for Part in Parts do
+  begin
     if (Part = '') or (Part = '.') then
-      Continue
+    begin
+      Continue;
+    end
     else if (Part = '..') and (Count > 0) and (Kept[Count - 1] <> '..') then
-      Dec(Count)
+    begin
+      Dec(Count);
+    end
     else if (Part = '..') and (Prefix <> '') then
-      Continue // über die Wurzel hinaus
+    begin
+      Continue;
+    end // über die Wurzel hinaus
     else
     begin
       Kept[Count] := Part;
       Inc(Count);
     end;
+  end;
   SetLength(Kept, Count);
   Result := Prefix + string.Join(Separator, Kept);
 end;

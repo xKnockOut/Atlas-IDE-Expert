@@ -34,25 +34,41 @@ begin
     Options := TCommandLineOptions.FromProcess;
     TShutdownLeaks.SetLogFile(Options.LogFile);
     if Options.ClearCache then
+    begin
       Exit(TLinterShell.ClearCache);
+    end;
     // Absturzfall nachstellen (#1355): eigener Server im Prozess, Ergebnis auf stderr.
     if Options.ReplayFile <> '' then
+    begin
       Exit(TShellReplayServer.Main(Options.ReplayFile));
+    end;
     // Vor --check: Das Ziel aus --check ist hier nur das Projekt des Berichts.
     if Options.ArchitectureFile <> '' then
+    begin
       Exit(TLinterShell.Architecture(Options));
+    end;
     // Vor --check: Das Ziel aus --check ist hier das Testprojekt (#1353).
     if Options.AffectedTests then
+    begin
       Exit(TLinterShell.AffectedTests(Options));
+    end;
     // Code-Abfrage (#1351): das Ziel aus --check ist hier nur das Projekt der Abfrage.
     if Options.QueryText <> '' then
+    begin
       Exit(TLinterShell.Query(Options));
+    end;
     if Options.HotspotsFile <> '' then
+    begin
       Exit(TLinterShell.Hotspots(Options));
+    end;
     if Options.CheckTarget <> '' then
+    begin
       Exit(TLinterShell.Run(Options));
+    end;
     if Options.Mcp then
+    begin
       Exit(TMcpShell.Run(Options));
+    end;
     Composition := TServerComposition.CreateForStdio(Options);
     try
       Result := Composition.Run;

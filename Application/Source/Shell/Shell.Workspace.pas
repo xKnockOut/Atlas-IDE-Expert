@@ -449,13 +449,17 @@ begin
   Result := nil;
   try
     if not TDirectory.Exists(AFolder) then
+    begin
       Exit;
+    end;
     Stamp := TDirectory.GetLastWriteTime(AFolder);
     Key := AnsiLowerCase(ExcludeTrailingPathDelimiter(AFolder)) + '|' + APattern;
     TMonitor.Enter(FLock);
     try
       if FListings.TryGetValue(Key, Listing) and (Listing.Stamp = Stamp) then
+      begin
         Exit(Listing.Files);
+      end;
     finally
       TMonitor.Exit(FLock);
     end;
@@ -512,7 +516,9 @@ begin
   for mFile in AFiles do
   begin
     if SameText(mFile, AOwnFile) or (IndexText(mFile, mSeen) >= 0) then
+    begin
       Continue;
+    end;
     mSeen := mSeen + [mFile];
     try
       mProject := TDprojReader.Load(mFile, AOptions);
@@ -526,9 +532,13 @@ begin
     mOutput := Default(TUnitLookupGroupOutput);
     mOutput.DcuFolder := TUnitLookup.DcuOutputOf(mProject);
     for mUnit in mProject.Units do
+    begin
       mOutput.Units := mOutput.Units + [mUnit.Name];
+    end;
     if mOutput.DcuFolder <> '' then
+    begin
       Result := Result + [mOutput];
+    end;
   end;
 end;
 type
@@ -595,7 +605,9 @@ begin
   System.TMonitor.Enter(FLock);
   try
     if (FCheckedAt <> 0) and (TThread.GetTickCount64 - FCheckedAt < cRecheckMs) then
+    begin
       Exit(FOutputs);
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -656,13 +668,17 @@ begin
   Setup.LibraryKnown := Length(ALibraryPaths) > 0;
   Setup.GroupOutputsOf := AGroupOutputsOf;
   if AInstallation <> nil then
+  begin
     Setup.BrowsingPaths := AInstallation.BrowsingPaths(AProject.Platform);
+  end;
   // requires der .dpk: deren Units findet der Compiler über die .dcp.
   if SameText(ExtractFileExt(AProject.MainSource), '.dpk') then
   try
     Text := TFileEncoding.LoadFromFile(AProject.MainSource, SourceFormat);
     for Entry in TPackageReader.Read(Text).Requires do
+    begin
       Setup.RequiredPackages := Setup.RequiredPackages + [Entry.Name];
+    end;
   except
     // Nicht lesbar: ohne requires, dann bleibt die Suche bei Packages unsicher.
     on Exception do
@@ -675,7 +691,9 @@ begin
       Result := nil;
       try
         if TDirectory.Exists(AFolder) then
+        begin
           Result := TDirectory.GetDirectories(AFolder);
+        end;
       except
         on Exception do
           Result := nil;
@@ -710,11 +728,17 @@ begin
         Contains: Boolean;
       begin
         if not AHold.Locator.Provides(APackage, AUnitName, Contains) then
-          Result := TRulePackageAnswer.Unknown
+        begin
+          Result := TRulePackageAnswer.Unknown;
+        end
         else if Contains then
-          Result := TRulePackageAnswer.Yes
+        begin
+          Result := TRulePackageAnswer.Yes;
+        end
         else
+        begin
           Result := TRulePackageAnswer.No;
+        end;
       end;
     Setup.PackageExists :=
       function(APackage: string): Boolean
@@ -747,7 +771,9 @@ begin
       begin
         Result := nil;
         for Item in AIndex.Units do
+        begin
           Result := Result + [Item.UnitName];
+        end;
       end;
   end;
   Result := TUnitLookup.Create(Setup);
@@ -788,11 +814,15 @@ begin
         [FName, ASettings.DelphiVersion, ASettings.Project, Length(ASettings.Rules), Length(ASettings.Exclude)]));
       // Vorgabe-Kodierung (#121) gilt für alle Lese- und Schreibpfade unter diesem Ordner.
       if FRoot <> '' then
+      begin
         TFileEncodingDefaults.SetFolder(FRoot, ASettings.DefaultEncoding);
+      end;
       // Der Index ist gemeinsam; bei mehreren Ordnern gilt das zuletzt gelesene Budget.
       FIndex.SetBudget(Int64(ASettings.MemoryBudgetMb) * 1024 * 1024);
       if Assigned(FOnSettingsChanged) then
+      begin
         FOnSettingsChanged(ASettings);
+      end;
       StartIndex(ASettings);
     end;
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);
@@ -805,14 +835,18 @@ begin
       IndexEvent(Format('index project#%d projectStage %d ms parsed %d cached %d missing %d',
         [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing]) + MissText(AResult));
       if Assigned(FOnProjectReady) then
+      begin
         FOnProjectReady();
+      end;
     end;
   FIndexService.OnFinished :=
     procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
     begin
       // Abgebrochen (Neustart): Der neue Aufbau hat FProjectPending schon wieder gesetzt.
       if not AResult.Cancelled then
+      begin
         FProjectPending := False;
+      end;
       IndexEvent(Format('index project#%d done %d ms parsed %d cached %d missing %d units %d resolve %d ms parse %d ms%s',
         [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing, FIndex.UnitCount,
          AResult.ResolveMs, AResult.ParseMs, IfThen(AResult.Cancelled, ' cancelled', '')]) + MissText(AResult));
@@ -834,14 +868,20 @@ begin
       begin
         // Prozesse am Projekt (#62): Der Schreiber hat gespeichert, ein Leser den Stand übernommen.
         if WritesCache then
+        begin
           ReportProcess(TIndexProcessInfo.StateReady, True, Format('Index gespeichert (%d Units)',
-            [AResult.Parsed + AResult.FromCache]))
+            [AResult.Parsed + AResult.FromCache]));
+        end
         else
+        begin
           ReportProcess(TIndexProcessInfo.StateReady, False, Format('Stand übernommen (%d Units aus dem Cache)',
             [AResult.FromCache]));
+        end;
         ReportEncodings;
         if Assigned(FOnIndexFinished) then
+        begin
           FOnIndexFinished();
+        end;
       end;
     end;
   FIndexService.OnCacheWritten :=
@@ -863,7 +903,9 @@ begin
       // von TIndexCache.ReadEntries enthalten keinen Pfad.
       Kind := 'project';
       if Pos(PathDelim + TIndexCacheDirectory.LibraryFolder + PathDelim, AFileName) > 0 then
+      begin
         Kind := 'library';
+      end;
       FLogger.Info(Format('Index-Cache verworfen (%s); wird neu aufgebaut', [AReason]));
       IndexEvent(Format('index project#%d cache rejected %s reason %s', [FPriority, Kind, AReason]));
       ReportProcess(TIndexProcessInfo.StateBuilding, WritesCache, Format('Cache verworfen (%s)', [AReason]));
@@ -876,7 +918,9 @@ begin
       // Bericht N1: früher still. Der nächste Aufbau liest die fehlenden Units neu; ohne Pfad ins Log.
       Kind := 'Projekt';
       if Pos(PathDelim + TIndexCacheDirectory.LibraryFolder + PathDelim, AFileName) > 0 then
+      begin
         Kind := 'Bibliothek';
+      end;
       FLogger.Warning(Format('Index-Cache (%s) nicht geschrieben: %s', [Kind, AReason]));
       IndexEvent('index cache not written ' + Kind);
     end;
@@ -896,14 +940,18 @@ begin
       end;
       // Teilweise aufgebauter Index: Syntaxprüfung und Pull-Diagnosen sollen ihn trotzdem nutzen.
       if Assigned(FOnIndexFinished) then
+      begin
         FOnIndexFinished();
+      end;
     end;
 end;
 
 destructor TShellWorkspace.Destroy;
 begin
   if FRoot <> '' then
+  begin
     TFileEncodingDefaults.RemoveFolder(FRoot);
+  end;
   FIndexService.Free;
   FCacheLock.Free;
   FProgress.Free;
@@ -924,14 +972,18 @@ end;
 procedure TShellWorkspace.IndexEvent(const AText: string);
 begin
   if Assigned(FOnIndexEvent) then
+  begin
     FOnIndexEvent(AText);
+  end;
 end;
 
 class function TShellWorkspace.Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace;
 begin
   Result := AFound;
   if (Result = nil) and (AAll <> nil) and (AAll.Count = 1) then
+  begin
     Result := AAll[0];
+  end;
 end;
 
 procedure TShellWorkspace.Load;
@@ -949,7 +1001,9 @@ begin
   // StartIndex ändert Zustand ohne Sperre: Andere Threads stellen Reload über TJsonRpcConnection.Queue
   // in die Schleife (A-03).
   if (FLoopThreadId <> 0) and (TThread.Current.ThreadID <> FLoopThreadId) then
+  begin
     raise EInvalidOpException.Create('Reload nur im Thread der Nachrichtenschleife');
+  end;
   FSignature := '';
   StartIndex(FConfiguration.Settings);
 end;
@@ -985,7 +1039,9 @@ begin
       Identity := FProcessIdentity;
       Identity.Workspace := FName;
       if Identity.Kind = '' then
+      begin
         Identity.Kind := TIndexProcessInfo.KindLsp;
+      end;
       FProcessEntry := TIndexProcessEntry.Create(ACacheFile, Identity);
     end;
     FProcessEntry.Update(AState, AWriter, AEvent);
@@ -999,7 +1055,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if FProcessEntry <> nil then
+    begin
       FProcessEntry.Update(AState, AWriter, AEvent);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1026,7 +1084,9 @@ begin
   AProcesses := nil;
   Result := ACacheFile <> '';
   if Result then
+  begin
     AProcesses := TIndexProcesses.List(ACacheFile);
+  end;
 end;
 
 procedure TShellWorkspace.Touch;
@@ -1042,11 +1102,15 @@ end;
 procedure TShellWorkspace.Activate;
 begin
   if not FDeferred or FActivated then
+  begin
     Exit;
+  end;
   FActivated := True;
   // Mit index.projectGroup = true ist der Arbeitsbereich schon indiziert.
   if Configuration.Settings.IndexProjectGroup then
+  begin
     Exit;
+  end;
   FLogger.Info(Format('%s: Datei des Projekts geöffnet, Index wird aufgebaut', [FName]));
   Reload;
 end;
@@ -1070,14 +1134,18 @@ function TShellWorkspace.ApplyText(const AFileName, AText: string): Boolean;
 begin
   Result := FIndexService.ApplyText(AFileName, AText);
   if Result then
+  begin
     Touch;
+  end;
 end;
 
 function TShellWorkspace.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
 begin
   Result := FIndexService.ApplyChanges(AChanges);
   if Result > 0 then
+  begin
     Touch;
+  end;
 end;
 
 function TShellWorkspace.CheckSource(const AFileName: string): TCheckSource;
@@ -1085,7 +1153,9 @@ var
   Symbols: TArray<string>;
 begin
   if not Defines(Symbols) then
+  begin
     Symbols := nil;
+  end;
   Result := TCheckSource.Create(AFileName, Symbols, TIncludeFiles.Resolver(IncludePaths));
 end;
 
@@ -1117,16 +1187,22 @@ begin
   Result := FCacheLock <> nil;
   // Für „Prozesse am Projekt“ (#62): wer schreibt, wer nur liest.
   if Result then
-    ReportProcess(ACacheFile, TIndexProcessInfo.StateBuilding, True, 'Cache-Sperre erhalten, Index wird aufgebaut')
+  begin
+    ReportProcess(ACacheFile, TIndexProcessInfo.StateBuilding, True, 'Cache-Sperre erhalten, Index wird aufgebaut');
+  end
   else
+  begin
     ReportProcess(ACacheFile, TIndexProcessInfo.StateReading, False, 'Sperre belegt, lade Cache nur lesend');
+  end;
   // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt; ohne ihn hier zu nennen, löschte das Aufräumen
   // ihn bei jedem Start, sobald der Ordner über der Höchstgröße lag (#616: "0 aus dem Cache").
   Keep := TArray<string>.Create(ACacheFile, ALibraryCacheFile);
   try
     // Herkunft und Benutzung vermerken (#905): Danach erkennt jede Instanz verwaiste und ungenutzte Caches.
     if Result then
+    begin
       TIndexCacheDirectory.WriteOrigin(ACacheFile, AOrigin);
+    end;
     TIndexCacheDirectory.TouchUse(ACacheFile);
     TIndexCacheDirectory.TouchUse(ALibraryCacheFile);
     // Im Log nur Anzahlen, keine Pfade (anonymes Server-Log).
@@ -1134,13 +1210,17 @@ begin
     begin
       Removed := TIndexCacheDirectory.RemoveOrphans(FCacheRoot, Keep);
       if Removed > 0 then
+      begin
         FLogger.Info(Format('%d verwaiste Index-Caches gelöscht (Projekt nicht mehr vorhanden)', [Removed]));
+      end;
     end;
     Removed := TIndexCacheDirectory.RemoveUnused(FCacheRoot, ASettings.IndexCacheMaxAgeDays,
       Keep);
     if Removed > 0 then
+    begin
       FLogger.Info(Format('%d Index-Caches gelöscht (länger als %d Tage nicht benutzt)',
         [Removed, ASettings.IndexCacheMaxAgeDays]));
+    end;
     Removed := TIndexCacheDirectory.Cleanup(FCacheRoot,
       TIndexCacheHousekeeping.MaxBytesOf(ASettings.IndexCacheMaxMb), Keep);
     if Removed > 0 then
@@ -1169,11 +1249,15 @@ begin
     procedure
     begin
       if not TFile.Exists(CacheFile) then
+      begin
         Exit;
+      end;
       try
         TFile.Delete(CacheFile);
         if TFile.Exists(LibraryCacheFile) then
+        begin
           TFile.Delete(LibraryCacheFile);
+        end;
         Logger.Info('Index-Cache verworfen: ' + ExtractFileName(CacheFile));
       except
         on E: Exception do
@@ -1195,21 +1279,33 @@ var
 begin
   Defines := nil;
   for Define in ADefines do
+  begin
     if (Trim(Define) <> '') and (IndexText(Trim(Define), Defines) < 0) then
+    begin
       Defines := Defines + [UpperCase(Trim(Define))];
+    end;
+  end;
   TMonitor.Enter(FLock);
   try
     if not FHasProject then
-      AError := Format('Für %s ist kein Projekt geladen.', [FName])
+    begin
+      AError := Format('Für %s ist kein Projekt geladen.', [FName]);
+    end
     else
+    begin
       AError := TDprojReader.CheckTarget(FProject, AConfig, APlatform);
+    end;
     Result := AError = '';
     if Result then
     begin
       if AConfig <> '' then
+      begin
         FBuildConfig := AConfig;
+      end;
       if APlatform <> '' then
+      begin
         FBuildPlatform := APlatform;
+      end;
       if AHasDefines then
       begin
         FBuildDefines := Defines;
@@ -1224,9 +1320,13 @@ begin
     FLogger.Info(Format('%s: Konfiguration %s, Plattform %s gewählt', [FName, AConfig, APlatform]));
     // Über Neustarts merken (#46); die Symbole der IDE kommen nach dem Start neu.
     if (FSelection <> nil) and ((AConfig <> '') or (APlatform <> '')) then
+    begin
       FSelection.SetBuild(ProjectFileName, AConfig, APlatform);
+    end;
     if AHasDefines then
+    begin
       FLogger.Info(Format('%s: %d Symbole aus den Projektoptionen der IDE', [FName, Length(Defines)]));
+    end;
     Reload;
   end;
 end;
@@ -1282,7 +1382,9 @@ begin
     TMonitor.Exit(FLock);
   end;
   if not Result then
+  begin
     Exit;
+  end;
   ASetup.Project := Project;
   ASetup.Namespaces := Project.Namespaces;
   Installation := nil;
@@ -1301,9 +1403,12 @@ begin
       Result := FileExists(AFileName);
     end;
   if Installation <> nil then
+  begin
     Options.Variables := Installation.Variables;
+  end;
   // Jede Konfiguration mit jeder Plattform, wie der Compiler sie sähe.
   for Config in Project.Configs do
+  begin
     for Platform in Project.Platforms do
     begin
       Options.Config := Config;
@@ -1319,6 +1424,7 @@ begin
       Target.SearchPaths := Loaded.SearchPaths;
       ASetup.Targets := ASetup.Targets + [Target];
     end;
+  end;
   if Installation <> nil then
   begin
     ASetup.Platforms := TMissingUnitSearch.KnownPlatforms;
@@ -1341,7 +1447,9 @@ begin
       Result := nil;
       try
         if TDirectory.Exists(AFolder) then
+        begin
           Result := TDirectory.GetDirectories(AFolder);
+        end;
       except
         on Exception do
           Result := nil;
@@ -1352,9 +1460,13 @@ end;
 function TShellWorkspace.IndexLoading: Integer;
 begin
   if FProgress.Active then
-    Result := FProgress.Percent
+  begin
+    Result := FProgress.Percent;
+  end
   else
+  begin
     Result := -1;
+  end;
 end;
 
 function TShellWorkspace.Project(out AProject: TProjectInfo): Boolean;
@@ -1363,9 +1475,13 @@ begin
   try
     Result := FHasProject;
     if Result then
-      AProject := FProject
+    begin
+      AProject := FProject;
+    end
     else
+    begin
       AProject := Default(TProjectInfo);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1503,7 +1619,9 @@ begin
   try
     Result := FFixedProject;
     if (Result = '') and FHasProject then
+    begin
       Result := FProject.FileName;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1521,12 +1639,18 @@ begin
   TMonitor.Enter(FLock);
   try
     if FBuildRestored then
+    begin
       Exit;
+    end;
     FBuildRestored := True;
     if FBuildConfig = '' then
+    begin
       FBuildConfig := Choice.Config;
+    end;
     if FBuildPlatform = '' then
+    begin
       FBuildPlatform := Choice.Platform;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1543,7 +1667,9 @@ begin
   try
     Result := (FBuildConfig <> '') or (FBuildPlatform <> '');
     if Result then
+    begin
       Error := TDprojReader.CheckTarget(AProject, FBuildConfig, FBuildPlatform);
+    end;
     Result := Result and (Error <> '');
     if Result then
     begin
@@ -1558,7 +1684,9 @@ begin
     FLogger.Warning(Format('%s: gewählte Konfiguration oder Plattform gibt es nicht mehr (%s); es gelten die Vorgaben',
       [FName, Error]));
     if FSelection <> nil then
+    begin
       FSelection.SetBuild(AProject.FileName, '', '');
+    end;
   end;
 end;
 
@@ -1609,11 +1737,17 @@ begin
         Contains: Boolean;
       begin
         if not Hold.Locator.Provides(APackage, AUnitName, Contains) then
-          Result := TRulePackageAnswer.Unknown
+        begin
+          Result := TRulePackageAnswer.Unknown;
+        end
         else if Contains then
-          Result := TRulePackageAnswer.Yes
+        begin
+          Result := TRulePackageAnswer.Yes;
+        end
         else
+        begin
           Result := TRulePackageAnswer.No;
+        end;
       end;
     // dcc sieht auch die Units der Packages, die ein requires-Package verlangt (wie TUnitLookup).
     Result.PackageRequires :=
@@ -1624,15 +1758,21 @@ begin
   end;
   // Präfixe der Projektdatei .atlas für naming-prefix und die Korrektur von shadowed-name (#1111).
   if (FIdeProjects <> nil) and (ProjectFileName <> '') and FIdeProjects.Find(ProjectFileName, Context) then
+  begin
     Result.Naming := Context.RuleNaming;
+  end;
   // Warnungen der .dproj (DCC_SYMBOL_PLATFORM, DCC_UNSAFE_CODE …) für die Regeln der Gruppe Compiler vorab (#1378).
   if Project(Info) then
+  begin
     for Pair in Info.Properties do
     begin
       Entry := TRuleWarnSwitches.ProjectEntry(Pair.Key, Pair.Value);
       if Entry <> '' then
+      begin
         Result.ProjectWarnings := Result.ProjectWarnings + [Entry];
+      end;
     end;
+  end;
 end;
 
 class function TShellWorkspace.RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
@@ -1647,15 +1787,25 @@ begin
   Result.FileName := AFileName;
   // Anwendungsart für writeln-in-gui-app (#926) und queue-nil-in-package (#943), nur für Dateien des Projekts.
   if AProject.MainSource = '' then
+  begin
     Exit;
+  end;
   Member := SameText(AProject.MainSource, AFileName);
   for ProjectUnit in AProject.Units do
+  begin
     if SameText(ProjectUnit.FileName, AFileName) then
+    begin
       Member := True;
+    end;
+  end;
   ConsoleTarget := '';
   for Pair in AProject.Properties do
+  begin
     if SameText(Pair.Key, 'DCC_ConsoleTarget') then
+    begin
       ConsoleTarget := Pair.Value;
+    end;
+  end;
   if Member and AReadText(AProject.MainSource, MainText) then
   begin
     Result.Application := TWritelnInGuiAppRule.ApplicationKind(ConsoleTarget, MainText);
@@ -1675,7 +1825,9 @@ var
 begin
   Projects := nil;
   for Project in AProjects do
+  begin
     Projects := Projects + [RuleProjectOf(Project, AFileName, AReadText)];
+  end;
   Result := MergeRuleProjects(Projects, AFileName);
 end;
 
@@ -1692,7 +1844,9 @@ begin
   begin
     // Ohne .dpr gehört die Datei nicht zu diesem Projekt (RuleProjectOf).
     if Project.ProjectMainSource = '' then
+    begin
       Continue;
+    end;
     if not Found then
     begin
       Result := Project;
@@ -1700,7 +1854,9 @@ begin
       Found := True;
     end
     else if Project.Application <> Result.Application then
+    begin
       Result.Application := TRuleApplicationKind.Unknown;
+    end;
   end;
 end;
 
@@ -1712,7 +1868,9 @@ begin
   AMainSource := '';
   Result := Project(Info);
   if not Result then
+  begin
     Exit;
+  end;
   AProject.FileName := ProjectFileName;
   AProject.Sources := ProjectFiles;
   AMainSource := Info.MainSource;
@@ -1746,36 +1904,48 @@ var
 begin
   if not SameText(ExtractFileExt(AProject.MainSource), '.dpk') or
     not TShellBootstrap.ReadSourceText(AProject.MainSource, Text) then
+  begin
     Exit;
+  end;
   Source := TPackageReader.Read(Text);
   if not Source.IsPackage then
+  begin
     Exit;
+  end;
   Known := TDictionary<string, Boolean>.Create;
   try
     for FileName in AFiles + ASearchFiles do
+    begin
       Known.AddOrSetValue(AnsiUpperCase(FileName), True);
+    end;
     Added := 0;
     for FileName in TPackageLocator.ContainedFiles(AProject.MainSource, Source) do
+    begin
       if not Known.ContainsKey(AnsiUpperCase(FileName)) and FileExists(FileName) then
       begin
         Known.Add(AnsiUpperCase(FileName), True);
         AFiles := AFiles + [FileName];
         Inc(Added);
       end;
+    end;
     Required := 0;
     for FileName in ALocator.RequiredFiles(Source) do
+    begin
       if not Known.ContainsKey(AnsiUpperCase(FileName)) and FileExists(FileName) then
       begin
         Known.Add(AnsiUpperCase(FileName), True);
         ASearchFiles := ASearchFiles + [FileName];
         Inc(Required);
       end;
+    end;
   finally
     Known.Free;
   end;
   if (Added > 0) or (Required > 0) then
+  begin
     FLogger.Info(Format('%s: Package mit %d Units aus contains ohne DCCReference und %d aus requires-Packages',
       [FName, Added, Required]));
+  end;
 end;
 
 function TShellWorkspace.GetIncludePaths: TArray<string>;
@@ -1812,7 +1982,9 @@ var
   procedure AddFile(const AFileName: string);
   begin
     if Seen.ContainsKey(AnsiUpperCase(AFileName)) or not FileExists(AFileName) then
+    begin
       Exit;
+    end;
     Seen.Add(AnsiUpperCase(AFileName), True);
     // Über TFileEncoding: teilt Löschen, damit das Plugin die Unit währenddessen ersetzen kann (Bericht M5).
     Survey.Add(TFileEncoding.ReadAllBytes(AFileName));
@@ -1836,8 +2008,12 @@ begin
       AddFile(ChangeFileExt(FileName, '.dfm'));
       AddFile(ChangeFileExt(FileName, '.fmx'));
       if FIndex.FindFile(FileName, UnitIndex) then
+      begin
         for Include in UnitIndex.Includes do
+        begin
           AddFile(Include);
+        end;
+      end;
     end;
   finally
     Seen.Free;
@@ -1852,7 +2028,9 @@ begin
   FLogger.Warning(Text);
   // Das Protokoll sieht im Editor kaum jemand: einmal als Meldung zeigen.
   if FEncodingsShown or (FTransport = nil) then
+  begin
     Exit;
+  end;
   FEncodingsShown := True;
   Params := TJSONObject.Create;
   Params.AddPair('type', TJSONNumber.Create(2));
@@ -1874,17 +2052,25 @@ begin
   if FFixedProject <> '' then
   begin
     if FileExists(FFixedProject) then
-      Result := FFixedProject
+    begin
+      Result := FFixedProject;
+    end
     else
+    begin
       FLogger.Warning('Projektdatei nicht gefunden: ' + FFixedProject);
+    end;
     Exit;
   end;
   if ASettings.Project <> '' then
   begin
     if TProjectPaths.IsAbsolute(ASettings.Project) then
-      Result := ASettings.Project
+    begin
+      Result := ASettings.Project;
+    end
     else if FRoot <> '' then
+    begin
       Result := TProjectPaths.Combine(FRoot, ASettings.Project);
+    end;
     if not FileExists(Result) then
     begin
       FLogger.Warning('Projektdatei nicht gefunden: ' + Result);
@@ -1894,13 +2080,19 @@ begin
   end;
   // Ohne Angabe: die einzige .dproj im Ordner.
   if (FRoot = '') or not TDirectory.Exists(FRoot) then
+  begin
     Exit;
+  end;
   Candidates := TDirectory.GetFiles(FRoot, '*.dproj');
   if Length(Candidates) = 1 then
-    Result := Candidates[0]
+  begin
+    Result := Candidates[0];
+  end
   else if Length(Candidates) > 1 then
+  begin
     FLogger.Info(Format('%d Projektdateien in %s; "project" in %s wählt eine aus',
       [Length(Candidates), FRoot, ConfigurationFileName]));
+  end;
 end;
 
 procedure TShellWorkspace.StartIndex(const ASettings: TServerSettings);
@@ -1944,7 +2136,9 @@ begin
   // die indexabhängigen Regeln in einem Ordner ohne Projekt nie (#1220).
   FWithoutProject := mProjectFile = '';
   if FWithoutProject then
+  begin
     Exit;
+  end;
   // In der IDE bestimmt die IDE Konfiguration, Plattform, Optionen und Delphi-Version (#396).
   Context := Default(TIdeProjectContext);
   HasContext := (FIdeProjects <> nil) and FIdeProjects.Find(mProjectFile, Context);
@@ -1958,15 +2152,19 @@ begin
   mInstalled := TDelphiInstallation.Versions;
   try
     if HasContext and (Context.BdsVersion <> '') and (IndexText(Context.BdsVersion, mInstalled) >= 0) then
-      Version := Context.BdsVersion
+    begin
+      Version := Context.BdsVersion;
+    end
     else
     begin
       // Ohne Installation die erwartete Version: Sie liefert nur die Symbole (#1321).
       Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, mInstalled, ConfiguredMissing);
       // Die Warnung steht auch an "delphiVersion" in atlas.json (#47).
       if ConfiguredMissing then
+      begin
         FLogger.Warning(Format('%s: delphiVersion %s ist nicht installiert; automatisch gewählt: %s',
           [FName, ASettings.DelphiVersion, Version]));
+      end;
     end;
     if TDelphiVersions.IsInstalled(Version, mInstalled) then
     begin
@@ -2000,19 +2198,29 @@ begin
   TMonitor.Enter(FLock);
   try
     if FBuildConfig <> '' then
+    begin
       Options.Config := FBuildConfig;
+    end;
     if FBuildPlatform <> '' then
+    begin
       Options.Platform := FBuildPlatform;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
   if HasContext and (Context.Configuration <> '') then
+  begin
     Options.Config := Context.Configuration;
+  end;
   if HasContext and (Context.Platform <> '') then
+  begin
     Options.Platform := Context.Platform;
+  end;
   Options.FileExists := FileExistsFunc;
   if Installation <> nil then
+  begin
     Options.Variables := Installation.Variables;
+  end;
   try
     Project := TDprojReader.Load(mProjectFile, Options);
     // Gemerkte Wahl (#46), die es im Projekt nicht mehr gibt: mit den Vorgaben weiter.
@@ -2021,9 +2229,13 @@ begin
       Options.Config := ASettings.Config;
       Options.Platform := ASettings.Platform;
       if HasContext and (Context.Configuration <> '') then
+      begin
         Options.Config := Context.Configuration;
+      end;
       if HasContext and (Context.Platform <> '') then
+      begin
         Options.Platform := Context.Platform;
+      end;
       Project := TDprojReader.Load(mProjectFile, Options);
     end;
   except
@@ -2035,20 +2247,26 @@ begin
   end;
   CompilerLibraryPaths := nil;
   if Installation <> nil then
+  begin
     CompilerLibraryPaths := Installation.LibraryPaths(Project.Platform);
+  end;
   if HasContext then
   begin
     if Installation <> nil then
     begin
       Context.ApplyTo(Project, Installation.Variables);
       if Length(Context.LibraryPaths) > 0 then
+      begin
         CompilerLibraryPaths := Context.ExpandedLibraryPaths(Project, Installation.Variables);
+      end;
     end
     else
     begin
       Context.ApplyTo(Project, nil);
       if Length(Context.LibraryPaths) > 0 then
+      begin
         CompilerLibraryPaths := Context.ExpandedLibraryPaths(Project, nil);
+      end;
     end;
     FLogger.Info(Format('%s: Projektkontext aus der IDE (%s, %s, %d Symbole, %d Suchpfade)',
       [FName, Project.Config, Project.Platform, Length(Project.Defines), Length(Project.SearchPaths)]));
@@ -2057,7 +2275,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if FHasBuildDefines then
+    begin
       Project.Defines := FBuildDefines;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -2066,7 +2286,9 @@ begin
     Names := [ChangeFileExt(ExtractFileName(Project.FileName), ''),
       ChangeFileExt(ExtractFileName(Project.MainSource), '')];
     for ProjectUnit in Project.Units do
+    begin
       Names := Names + [ProjectUnit.Name];
+    end;
     FOnNames(Names);
   end;
   TMonitor.Enter(FLock);
@@ -2090,9 +2312,13 @@ begin
   end;
   Signature := TIndexProjectFiles.Signature(Project, Version);
   if Installation <> nil then
-    LibraryPaths := CompilerLibraryPaths + Installation.BrowsingPaths(Project.Platform)
+  begin
+    LibraryPaths := CompilerLibraryPaths + Installation.BrowsingPaths(Project.Platform);
+  end
   else
+  begin
     LibraryPaths := nil;
+  end;
   // Alle Units der Such- und Bibliothekspfade (#648), nicht nur die über uses erreichbaren.
   ListUnits :=
     function(const AFolder: string): TArray<string>
@@ -2100,7 +2326,9 @@ begin
       Result := nil;
       try
         if TDirectory.Exists(AFolder) then
+        begin
           Result := TDirectory.GetFiles(AFolder, '*.pas');
+        end;
       except
         // Nicht lesbare Ordner (Rechte, Netzlaufwerk) tragen nichts bei.
         on Exception do
@@ -2114,29 +2342,41 @@ begin
       Pattern: string;
     begin
       for Pattern in Exclude do
+      begin
         if MatchesGlob(Pattern, AFileName) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
   Files := TIndexProjectFiles.Files(Project);
   SearchFiles := nil;
   if ASettings.IndexSearchPaths then
+  begin
     SearchFiles := TIndexProjectFiles.PathFiles(Project.SearchPaths, ListUnits, Excluded, Files);
+  end;
   LibraryFiles := nil;
   if ASettings.IndexLibraryPaths then
+  begin
     LibraryFiles := TIndexProjectFiles.PathFiles(LibraryPaths, ListUnits, Excluded, Files + SearchFiles);
+  end;
   // requires-Packages (#46): Quelle .dpk in den Ordnern der Gruppe, im Projektordner und in den Suchpfaden,
   // übersetzt .dcp in den Bibliothekspfaden.
   PackageFolders := nil;
   if Assigned(FOnPackageFolders) then
+  begin
     PackageFolders := FOnPackageFolders();
+  end;
   Locator := TPackageLocator.Create(PackageFolders + [ExtractFileDir(mProjectFile)] + Project.SearchPaths +
     CompilerLibraryPaths);
   Hold := TPackageLocatorHold.Create(Locator);
   TMonitor.Enter(FLock);
   try
     if FPackageLocatorHold <> nil then
+    begin
       FRetiredLocators.Add(FPackageLocatorHold);
+    end;
     FPackageLocatorHold := Hold;
     FPackageLocator := Locator;
   finally
@@ -2144,8 +2384,10 @@ begin
   end;
   GroupOutputsOf := nil;
   if Assigned(FOnGroupProjects) then
+  begin
     GroupOutputsOf := GroupOutputsOfHold(TGroupOutputCacheHold.Create(TGroupOutputCache.Create(FOnGroupProjects,
       mProjectFile, Options, FLogger)));
+  end;
   Lookup := UnitLookupFor(Project, Installation, CompilerLibraryPaths, Hold, FIndex, GroupOutputsOf);
   TMonitor.Enter(FLock);
   try
@@ -2158,7 +2400,9 @@ begin
   State := Signature + '#' + AnsiUpperCase(String.Join(';', Files)) + '#' +
     AnsiUpperCase(String.Join(';', SearchFiles)) + '#' + AnsiUpperCase(String.Join(';', LibraryFiles));
   if State = FSignature then
+  begin
     Exit;
+  end;
   FSignature := State;
   // Kein Stop hier (#874): Start bricht den laufenden Aufbau ab, ohne in der Nachrichtenschleife auf ihn zu
   // warten; der neue Aufbau beginnt erst nach dessen Ende.
@@ -2167,7 +2411,9 @@ begin
   Resolver.ListUnits := TSharedUnitListings.List;
   // Nicht freigeben: Anfragen können den alten Builder noch nutzen (EnsureUnit ohne Sperre, #647).
   if FUnitResolver <> nil then
+  begin
     FRetiredResolvers.Add(FUnitResolver);
+  end;
   FUnitResolver := Resolver;
   Request.Files := Files;
   Request.SearchFiles := SearchFiles;
@@ -2184,9 +2430,13 @@ begin
   end;
   // $I-Dateien wie beim Compiler: Projekt-Suchpfade, dann Bibliothekspfade (#264).
   if Installation <> nil then
-    Request.IncludePaths := Project.SearchPaths + CompilerLibraryPaths
+  begin
+    Request.IncludePaths := Project.SearchPaths + CompilerLibraryPaths;
+  end
   else
+  begin
     Request.IncludePaths := Project.SearchPaths;
+  end;
   Request.ResolveUnit :=
     function(const AUnitName: string): string
     begin
@@ -2202,7 +2452,9 @@ begin
   // Herkunft für das Aufräumen (#905): die Projektdatei, ohne sie der Arbeitsordner.
   CacheOrigin := Project.FileName;
   if CacheOrigin = '' then
+  begin
     CacheOrigin := FRoot;
+  end;
   Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile, CacheOrigin, ASettings);
   if Request.ReadOnlyCache then
   begin
@@ -2220,7 +2472,9 @@ begin
     FDiscardCache := False;
     // Im Index-Thread nach dem Ende des alten Aufbaus löschen: Sonst schriebe er den Cache danach wieder.
     if not Request.ReadOnlyCache then
+    begin
       Request.Prepare := DiscardCacheFiles(CacheFile, Request.LibraryCacheFile);
+    end;
   end;
   TMonitor.Enter(FLock);
   try
@@ -2235,7 +2489,9 @@ begin
     FLibraryCacheFile := Request.LibraryCacheFile;
     FOwnFiles.Clear;
     for FileName in Request.Files + Request.SearchFiles do
+    begin
       FOwnFiles.AddOrSetValue(AnsiUpperCase(FileName), True);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -2248,7 +2504,9 @@ begin
   FProjectPending := True;
   FIndexService.Start(Request);
   if Assigned(FOnProjectLoaded) then
+  begin
     FOnProjectLoaded();
+  end;
 end;
 
 end.
