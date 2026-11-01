@@ -15,7 +15,7 @@
 // Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück.
 // Welche IDE welche Projekte offen hat, steht unter "projects" und
 // "activeProject" in editor-dirty-<pid>.json (TAtlasDirtyExport im Plugin).
-// Gegenstück im Plugin: Atlas.Core.Build.Inbox und Atlas.IDE.Build.Inbox.
+// Gegenstück im Plugin: Atlas.Core.BuildPipeline.Inbox und Atlas.IDE.BuildPipeline.Inbox.
 
 interface
 

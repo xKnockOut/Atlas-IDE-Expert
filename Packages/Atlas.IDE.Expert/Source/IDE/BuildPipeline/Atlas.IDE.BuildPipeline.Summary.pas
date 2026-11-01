@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Build.Summary;
+﻿unit Atlas.IDE.BuildPipeline.Summary;
 
 // Schranke für Hinweise und Warnungen in der IDE (#530); die Bewertung steht
 // in Atlas.Core.Build.Verdict.
@@ -9,16 +9,14 @@
 //   build.zeroHints oder build.warningsAsErrors den Build scheitern lassen;
 //   dann holt Atlas die Gruppe auch nach vorn, sonst bleibt der Reiter „Build“
 //   der IDE vorn.
-// - Merkt sich die Meldungen des letzten Builds je Projekt für den Befehl
-//   „Aktuelle Compilermeldungen in die Basislinie“ (Modul Prüfregeln, #1455:
-//   es fragt Current).
+// Die Meldungen des letzten Builds je Projekt merkt sich Base
+// (Atlas.IDE.Build.LastMessages, #1455).
 // Nur im Hauptthread.
 
 interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Verdict;
@@ -27,20 +25,7 @@ type
   TAtlasIdeBuildSummary = class
   public const
     MessageGroup = 'Atlas';
-  private class var
-    FCurrent: TAtlasIdeBuildSummary;
-  private
-    FLast: TDictionary<string, TArray<TAtlasCompilerMessage>>;
   public
-    /// <summary>Die laufende Zusammenfassung (die zuletzt angelegte, bis zu ihrer Freigabe); nil ohne. Module fragen
-    /// sie bei jedem Aufruf neu (#1455).</summary>
-    class function Current: TAtlasIdeBuildSummary; static;
-    constructor Create;
-    destructor Destroy; override;
-    /// <summary>Meldungen des letzten Builds von AProject merken.</summary>
-    procedure Remember(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>);
-    /// <summary>Warnungen und Hinweise des letzten Builds von AProject, die in die Basislinie können.</summary>
-    function Baselinable(const AProject: string): TArray<TAtlasCompilerMessage>;
     /// <summary>Kopfzeile der Zusammenfassung.</summary>
     class function Headline(const AProject: string; const AVerdict: TAtlasBuildVerdict): string; static;
     /// <summary>Zusammenfassung in die Atlas-Gruppe; ASummary = build.summary.</summary>
@@ -52,47 +37,8 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.UI.Strings;
-
-{ TAtlasIdeBuildSummary }
-
-class function TAtlasIdeBuildSummary.Current: TAtlasIdeBuildSummary;
-begin
-  Result := FCurrent;
-end;
-
-constructor TAtlasIdeBuildSummary.Create;
-begin
-  inherited Create;
-  FLast := TDictionary<string, TArray<TAtlasCompilerMessage>>.Create;
-  FCurrent := Self;
-end;
-
-destructor TAtlasIdeBuildSummary.Destroy;
-begin
-  if FCurrent = Self then
-    FCurrent := nil;
-  FLast.Free;
-  inherited;
-end;
-
-procedure TAtlasIdeBuildSummary.Remember(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>);
-begin
-  FLast.AddOrSetValue(AnsiLowerCase(AProject), AMessages);
-end;
-
-function TAtlasIdeBuildSummary.Baselinable(const AProject: string): TArray<TAtlasCompilerMessage>;
-var
-  Messages: TArray<TAtlasCompilerMessage>;
-  Message: TAtlasCompilerMessage;
-begin
-  Result := nil;
-  if not FLast.TryGetValue(AnsiLowerCase(AProject), Messages) then
-    Exit;
-  for Message in Messages do
-    if TAtlasBuildVerdicts.Baselinable(Message) then
-      Result := Result + [Message];
-end;
+  Atlas.UI.Strings,
+  Atlas.UI.BuildPipeline.Strings;
 
 class function TAtlasIdeBuildSummary.Headline(const AProject: string; const AVerdict: TAtlasBuildVerdict): string;
 var
@@ -102,19 +48,21 @@ begin
   Counts := TAtlasStrings.BuildCounts(AVerdict.Warnings, AVerdict.Hints);
   case AVerdict.Reason of
     TAtlasBuildVerdictReason.CompilerFailed:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BuildSummaryFailed, [Name, AVerdict.Errors]);
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryFailed, [Name, AVerdict.Errors]);
     TAtlasBuildVerdictReason.WarningsAsErrors:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BuildSummaryRejectedCodes, [Name, Counts, AVerdict.PromotedCode]);
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryRejectedCodes,
+        [Name, Counts, AVerdict.PromotedCode]);
     TAtlasBuildVerdictReason.ZeroHints:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BuildSummaryRejected, [Name, Counts]);
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryRejected, [Name, Counts]);
   else
     if Counts = '' then
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BuildSummaryClean, [Name])
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryClean, [Name])
     else
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BuildSummaryCounts, [Name, Counts]);
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryCounts, [Name, Counts]);
   end;
   if AVerdict.Baselined > 0 then
-    Result := Result + TAtlasStrings.Fmt(TAtlasTextId.BuildSummaryBaselined, [AVerdict.Baselined]);
+    Result := Result + TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryBaselined,
+      [AVerdict.Baselined]);
 end;
 
 class procedure TAtlasIdeBuildSummary.Report(const AMessages: TArray<TAtlasCompilerMessage>;

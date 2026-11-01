@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Inbox.Tests;
+﻿unit Atlas.Core.BuildPipeline.Inbox.Tests;
 
 // Tests für den Eingang der Builds von Claude Code (#261) ohne IDE: Auftrag
 // lesen und übernehmen, Antwort im Format von get_last_build schreiben.
@@ -10,6 +10,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.BuildPipeline')]
   TAtlasBuildInboxTests = class
   private
     FFolder: string;
@@ -41,7 +42,7 @@ uses
   System.JSON,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Inbox;
+  Atlas.Core.BuildPipeline.Inbox;
 
 procedure TAtlasBuildInboxTests.Setup;
 begin

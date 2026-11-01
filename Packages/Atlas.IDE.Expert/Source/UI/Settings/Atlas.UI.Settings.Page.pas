@@ -2601,6 +2601,7 @@ begin
   // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
   AddSheet(TAtlasTextId.SettingsTabCompiler);
   AddModuleSwitch('BuildToolsEnabled');
+  AddModuleSwitch('BuildPipelineEnabled');
   AddModuleSwitch('TestsEnabled');
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));

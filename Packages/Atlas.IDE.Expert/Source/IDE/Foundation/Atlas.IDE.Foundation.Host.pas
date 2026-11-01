@@ -3,8 +3,8 @@
 // Dienste von Base für die Module (#1455, ADR 0017): Serversitzung (laufend
 // bzw. bei Bedarf gestartet), Befehle im Hintergrund an den Server,
 // Meldungsansicht „Atlas“, Warnungen, Bericht und Diagnoselog, Felder im
-// Atlas-Statusfeld und Compile-Ereignisse. Den Läufer der Builds auf Auftrag
-// liefert TAtlasIdeBuildRunner.Current.
+// Atlas-Statusfeld und Compile-Ereignisse. Builds auf Auftrag stellt das
+// Modul Build-Pipeline über IAtlasBuildJobs (Atlas.IDE.Contracts) bereit.
 // Teilnehmer, die ein Modul an den Compile-Ereignissen anmeldet, und Felder im
 // Statusfeld nimmt es beim Stoppen selbst zurück (Remove, leerer Text). Die Kompositionswurzel setzt die Quellen beim Start
 // (Install) und nimmt sie beim Entladen zurück (Uninstall); danach liefern

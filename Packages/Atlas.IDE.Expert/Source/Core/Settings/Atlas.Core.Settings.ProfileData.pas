@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  Profile0: array[0..67] of string = (
+  Profile0: array[0..68] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -79,13 +79,14 @@ const
     '    "analysis.enabled": true,',
     '    "tests.enabled": true,',
     '    "buildTools.enabled": true,',
+    '    "buildPipeline.enabled": true,',
     '    "bookmarks.enabled": true,',
     '    "designer.enabled": true,',
     '    "ruleChecks.enabled": true,',
     '    "search.enabled": true',
     '  }',
     '}');
-  Profile1: array[0..57] of string = (
+  Profile1: array[0..58] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -138,6 +139,7 @@ const
     '    "analysis.enabled": true,',
     '    "tests.enabled": true,',
     '    "buildTools.enabled": true,',
+    '    "buildPipeline.enabled": true,',
     '    "bookmarks.enabled": true,',
     '    "designer.enabled": true,',
     '    "ruleChecks.enabled": true,',
@@ -156,7 +158,7 @@ const
     '  "mode": "replace",',
     '  "settings": {}',
     '}');
-  Profile3: array[0..57] of string = (
+  Profile3: array[0..58] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -209,13 +211,14 @@ const
     '    "analysis.enabled": false,',
     '    "tests.enabled": false,',
     '    "buildTools.enabled": false,',
+    '    "buildPipeline.enabled": false,',
     '    "bookmarks.enabled": false,',
     '    "designer.enabled": false,',
     '    "ruleChecks.enabled": false,',
     '    "search.enabled": false',
     '  }',
     '}');
-  Profile4: array[0..21] of string = (
+  Profile4: array[0..22] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -233,6 +236,7 @@ const
     '    "analysis.enabled": false,',
     '    "tests.enabled": false,',
     '    "buildTools.enabled": false,',
+    '    "buildPipeline.enabled": false,',
     '    "bookmarks.enabled": false,',
     '    "designer.enabled": false,',
     '    "ruleChecks.enabled": false,',

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.ReleaseGuard;
+﻿unit Atlas.Core.BuildPipeline.ReleaseGuard;
 
 // Release-Build-Wächter (#533), ohne VCL und Open Tools API: Vor einem Build
 // in einer Release-Konfiguration prüft Atlas typische Fehlgriffe in den
