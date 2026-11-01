@@ -90,24 +90,24 @@ type
 
   TAtlasTrackerIssuesView = class(TAtlasTrackerTileView)
   public const
-    Indent = 8;
-    KeyWidth = 76;
-    LineHeight = 20;
-    ChipLineHeight = 22;
-    RowPadding = 5;
-    StatusHeight = 22;
-    FooterHeight = 24;
-    ButtonHeight = 26;
-    ButtonPadding = 12;
-    ChipHeight = 18;
-    ChipPadding = 6;
-    ChipGap = 4;
-    ChipRadius = 8;
+    cIndent = 8;
+    cKeyWidth = 76;
+    cLineHeight = 20;
+    cChipLineHeight = 22;
+    cRowPadding = 5;
+    cStatusHeight = 22;
+    cFooterHeight = 24;
+    cButtonHeight = 26;
+    cButtonPadding = 12;
+    cChipHeight = 18;
+    cChipPadding = 6;
+    cChipGap = 4;
+    cChipRadius = 8;
     /// <summary>Durchmesser des Punkts vor der Kennung eines Issues mit neuen Änderungen (#1271).</summary>
-    UnseenDot = 6;
+    cUnseenDot = 6;
     /// <summary>Vor dem Titel des Bereichs, solange ein Issue einen Punkt trägt.</summary>
-    UnseenMark = '● ';
-    MonoFont = 'Consolas';
+    cUnseenMark = '● ';
+    cMonoFont = 'Consolas';
   private
     FSource: IAtlasIssuesSource;
     FBox: TAtlasStyledCanvas;
@@ -166,7 +166,7 @@ type
     constructor Create(AOwner: TComponent); override;
     function BodyHeight: Integer; override;
     procedure UpdateContent; override;
-    function HitTest(X, Y: Integer): TAtlasIssuesHit;
+    function HitTest(AX, AY: Integer): TAtlasIssuesHit;
     /// <summary>Klick wie mit der Maus (auch für Tests): Kennung und Pull Request öffnen den Browser, „Beginnen“
     /// beginnt mit der Einstellung issues.start.</summary>
     procedure ClickAt(const AHit: TAtlasIssuesHit); overload;
@@ -239,30 +239,30 @@ uses
   Atlas.UI.Strings;
 
 const
-  Separator = ' · ';
+  cSeparator = ' · ';
   // Dieselben Töne wie „Testergebnisse“ und „Projekte“: lesbar im hellen und im dunklen Thema.
-  GreenColor = TColor($0043A02E);
-  YellowColor = TColor($001A8CC9);
-  RedColor = TColor($002E22CF);
-  GrayColor = TColor($00817666);
+  cGreenColor = TColor($0043A02E);
+  cYellowColor = TColor($001A8CC9);
+  cRedColor = TColor($002E22CF);
+  cGrayColor = TColor($00817666);
 
 /// <summary>Teile mit „ · “ verbunden; leere fallen weg.</summary>
 function JoinParts(const AParts: TArray<string>): string;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := '';
-  for Part in AParts do
+  for mPart in AParts do
   begin
-    if Part = '' then
+    if mPart = '' then
     begin
       Continue;
     end;
     if Result <> '' then
     begin
-      Result := Result + Separator;
+      Result := Result + cSeparator;
     end;
-    Result := Result + Part;
+    Result := Result + mPart;
   end;
 end;
 
@@ -287,7 +287,7 @@ constructor TAtlasTrackerIssuesView.Create(AOwner: TComponent);
   end;
 
 var
-  Line: TMenuItem;
+  mLine: TMenuItem;
 begin
   inherited Create(AOwner);
   FMenuRow := -1;
@@ -299,7 +299,7 @@ begin
   FQueryBar.BevelOuter := bvNone;
   FQueryBar.ShowCaption := False;
   FQueryBar.ParentBackground := True;
-  FQueryBar.Height := ScaleValue(StatusHeight);
+  FQueryBar.Height := ScaleValue(cStatusHeight);
   FQueryBar.Visible := False;
   FBox := TAtlasStyledCanvas.Create(Self);
   FBox.Parent := Self;
@@ -315,9 +315,9 @@ begin
   FBrowsePullItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesBrowsePullRequest), BrowsePullClick);
   FStartBranchItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStartBranch), StartBranchClick);
   FStartRememberItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStartRemember), StartRememberClick);
-  Line := TMenuItem.Create(Self);
-  Line.Caption := '-';
-  FMenu.Items.Add(Line);
+  mLine := TMenuItem.Create(Self);
+  mLine.Caption := '-';
+  FMenu.Items.Add(mLine);
   FQueryItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryNow), QueryClick);
   FCredentialsItem := AddItem(TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand), CredentialsClick);
   FEndItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesEnd), EndClick);
@@ -348,9 +348,9 @@ end;
 
 procedure TAtlasTrackerIssuesView.UpdateContent;
 var
-  OldHeight: Integer;
+  mOldHeight: Integer;
 begin
-  OldHeight := BodyHeight;
+  mOldHeight := BodyHeight;
   FView := Default(TAtlasIssuesView);
   if FSource <> nil then
   begin
@@ -368,7 +368,7 @@ begin
   UpdateQueryPicker;
   FBox.Invalidate;
   inherited;
-  if OldHeight <> BodyHeight then
+  if mOldHeight <> BodyHeight then
   begin
     HeightChanged;
   end;
@@ -396,7 +396,7 @@ begin
   Result := TitleText(AProjectName);
   if AUnseen then
   begin
-    Result := UnseenMark + Result;
+    Result := cUnseenMark + Result;
   end;
 end;
 
@@ -426,48 +426,48 @@ end;
 
 class function TAtlasTrackerIssuesView.StatusText(const AView: TAtlasIssuesView): string;
 var
-  Parts: TArray<string>;
+  mParts: TArray<string>;
 begin
   Result := '';
-  Parts := nil;
+  mParts := nil;
   case AView.Status of
     TAtlasIssuesStatus.NotConfigured:
       Exit;
     TAtlasIssuesStatus.Waiting:
       if AView.Querying then
       begin
-        Parts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
+        mParts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
       end
       else
       begin
-        Parts := [AView.Tracker, TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiNotQueried)];
+        mParts := [AView.Tracker, TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiNotQueried)];
       end;
     TAtlasIssuesStatus.Failed:
-      Parts := [AView.Tracker, ErrorText(AView.Error)];
+      mParts := [AView.Tracker, ErrorText(AView.Error)];
     TAtlasIssuesStatus.Stale:
-      Parts := [AView.Tracker, ErrorText(AView.Error), TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsStale,
+      mParts := [AView.Tracker, ErrorText(AView.Error), TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsStale,
         [FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AView.At))])];
   else
     if AView.Querying then
     begin
-      Parts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
+      mParts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
     end
     else if Length(AView.Items) = 0 then
     begin
-      Parts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesEmpty)];
+      mParts := [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesEmpty)];
     end;
   end;
   if AView.Querying and (AView.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale]) then
   begin
-    Parts := Parts + [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
+    mParts := mParts + [TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQuerying)];
   end;
-  Result := JoinParts(Parts);
+  Result := JoinParts(mParts);
 end;
 
 class function TAtlasTrackerIssuesView.FooterText(const AView: TAtlasIssuesView): string;
 var
-  Item: TAtlasTrackerIssue;
-  Listed: Boolean;
+  mItem: TAtlasTrackerIssue;
+  mListed: Boolean;
 begin
   if AView.Notice <> '' then
   begin
@@ -489,15 +489,15 @@ begin
   // Aktuelles Issue, das die Liste nicht zeigt (z. B. schon geschlossen oder anderer Bearbeiter).
   if AView.Active.Active then
   begin
-    Listed := False;
-    for Item in AView.Items do
+    mListed := False;
+    for mItem in AView.Items do
     begin
-      if SameText(Item.Key, AView.Active.Key) then
+      if SameText(mItem.Key, AView.Active.Key) then
       begin
-        Listed := True;
+        mListed := True;
       end;
     end;
-    if not Listed then
+    if not mListed then
     begin
       Exit(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesActiveFooter,
         [Trim(AView.Active.Key + ' ' + AView.Active.Title)]));
@@ -541,9 +541,9 @@ begin
   begin
     Result := AName;
   end
-  else if ACount >= TAtlasMyIssues.MaxItems then
+  else if ACount >= TAtlasMyIssues.cMaxItems then
   begin
-    Result := Format('%s (%d+)', [AName, TAtlasMyIssues.MaxItems]);
+    Result := Format('%s (%d+)', [AName, TAtlasMyIssues.cMaxItems]);
   end
   else
   begin
@@ -665,11 +665,11 @@ begin
   end;
   case APull.Checks of
     TAtlasTrackerChecks.Success:
-      Result := Result + Separator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksSuccess);
+      Result := Result + cSeparator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksSuccess);
     TAtlasTrackerChecks.Failure:
-      Result := Result + Separator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksFailure);
+      Result := Result + cSeparator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksFailure);
     TAtlasTrackerChecks.Pending:
-      Result := Result + Separator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksPending);
+      Result := Result + cSeparator + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesChecksPending);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -679,41 +679,41 @@ class function TAtlasTrackerIssuesView.ChecksColor(AChecks: TAtlasTrackerChecks)
 begin
   case AChecks of
     TAtlasTrackerChecks.Success:
-      Result := GreenColor;
+      Result := cGreenColor;
     TAtlasTrackerChecks.Failure:
-      Result := RedColor;
+      Result := cRedColor;
     TAtlasTrackerChecks.Pending:
-      Result := YellowColor;
+      Result := cYellowColor;
   else
-    Result := GrayColor;
+    Result := cGrayColor;
   end;
 end;
 
 class function TAtlasTrackerIssuesView.TileText(const AView: TAtlasIssuesView): string;
 var
-  Head: string;
+  mHead: string;
 begin
-  Head := AView.Active.Key;
-  if Head = '' then
+  mHead := AView.Active.Key;
+  if mHead = '' then
   begin
-    Head := AView.Tracker;
+    mHead := AView.Tracker;
   end;
-  if Head = '' then
+  if mHead = '' then
   begin
-    Head := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesTitle);
+    mHead := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesTitle);
   end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStatusTile, [Head, AView.OpenCount]);
+  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStatusTile, [mHead, AView.OpenCount]);
 end;
 
 class function TAtlasTrackerIssuesView.StartHint(const AView: TAtlasIssuesView;
   const AIssue: TAtlasTrackerIssue): string;
 var
-  Plan: TAtlasIssueStartPlan;
+  mPlan: TAtlasIssueStartPlan;
 begin
-  Plan := TAtlasMyIssues.PlanStart(AView.VcsKind, AView.Options, AIssue);
-  if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid then
+  mPlan := TAtlasMyIssues.PlanStart(AView.VcsKind, AView.Options, AIssue);
+  if (mPlan.Mode = TAtlasIssueStart.Branch) and mPlan.Valid then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesHintStart, [Plan.Branch]);
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesHintStart, [mPlan.Branch]);
   end
   else
   begin
@@ -728,10 +728,10 @@ end;
 
 function TAtlasTrackerIssuesView.FilterTop: Integer;
 begin
-  Result := ScaleValue(Indent) div 2;
+  Result := ScaleValue(cIndent) div 2;
   if StatusText(FView) <> '' then
   begin
-    Inc(Result, ScaleValue(StatusHeight));
+    Inc(Result, ScaleValue(cStatusHeight));
   end;
 end;
 
@@ -740,7 +740,7 @@ begin
   Result := FilterTop;
   if FilterText(FView) <> '' then
   begin
-    Inc(Result, ScaleValue(StatusHeight));
+    Inc(Result, ScaleValue(cStatusHeight));
   end;
 end;
 
@@ -755,23 +755,23 @@ end;
 
 function TAtlasTrackerIssuesView.RowHeight(AIndex: Integer): Integer;
 begin
-  Result := 2 * ScaleValue(RowPadding) + ScaleValue(LineHeight);
+  Result := 2 * ScaleValue(cRowPadding) + ScaleValue(cLineHeight);
   if (AIndex >= 0) and (AIndex <= High(FView.Items)) and
     ((Length(TAtlasMyIssues.Fields(FView.Items[AIndex])) > 0) or (FView.Items[AIndex].PullRequest.Number > 0) or
     SameText(FView.Items[AIndex].Key, FView.Active.Key)) then
   begin
-    Inc(Result, ScaleValue(ChipLineHeight));
+    Inc(Result, ScaleValue(cChipLineHeight));
   end;
 end;
 
 function TAtlasTrackerIssuesView.RowTop(AIndex: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := ListTop;
-  for Index := 0 to AIndex - 1 do
+  for mIndex := 0 to AIndex - 1 do
   begin
-    Inc(Result, RowHeight(Index));
+    Inc(Result, RowHeight(mIndex));
   end;
 end;
 
@@ -782,15 +782,15 @@ end;
 
 function TAtlasTrackerIssuesView.SourceTop: Integer;
 begin
-  Result := FooterTop + ScaleValue(FooterHeight);
+  Result := FooterTop + ScaleValue(cFooterHeight);
 end;
 
 function TAtlasTrackerIssuesView.BodyHeight: Integer;
 begin
-  Result := SourceTop + ScaleValue(Indent) div 2;
+  Result := SourceTop + ScaleValue(cIndent) div 2;
   if SourceText(FView) <> '' then
   begin
-    Inc(Result, ScaleValue(FooterHeight));
+    Inc(Result, ScaleValue(cFooterHeight));
   end;
   if FQueryBar.Visible then
   begin
@@ -800,13 +800,13 @@ end;
 
 function TAtlasTrackerIssuesView.ChipWidth(ACanvas: TCanvas; const AText: string): Integer;
 begin
-  Result := ACanvas.TextWidth(AText) + 2 * ScaleValue(ChipPadding);
+  Result := ACanvas.TextWidth(AText) + 2 * ScaleValue(cChipPadding);
 end;
 
 procedure TAtlasTrackerIssuesView.PaintChip(ACanvas: TCanvas; var ALeft: Integer; ATop, ALimit: Integer;
   const AText: string; AColor: TColor; AFilled: Boolean; out ARect: TRect);
 var
-  mWidth, Radius: Integer;
+  mWidth, mRadius: Integer;
 begin
   ARect := TRect.Empty;
   mWidth := ChipWidth(ACanvas, AText);
@@ -814,8 +814,8 @@ begin
   begin
     Exit;
   end;
-  ARect := Rect(ALeft, ATop, ALeft + mWidth, ATop + ScaleValue(ChipHeight));
-  Radius := 2 * ScaleValue(ChipRadius);
+  ARect := Rect(ALeft, ATop, ALeft + mWidth, ATop + ScaleValue(cChipHeight));
+  mRadius := 2 * ScaleValue(cChipRadius);
   ACanvas.Pen.Color := AColor;
   if AFilled then
   begin
@@ -826,7 +826,7 @@ begin
   begin
     ACanvas.Brush.Style := bsClear;
   end;
-  ACanvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Radius, Radius);
+  ACanvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, mRadius, mRadius);
   ACanvas.Brush.Style := bsClear;
   if AFilled then
   begin
@@ -836,29 +836,29 @@ begin
   begin
     ACanvas.Font.Color := AColor;
   end;
-  ACanvas.TextOut(ARect.Left + ScaleValue(ChipPadding), ARect.Top + (ARect.Height - ACanvas.TextHeight(AText)) div 2,
+  ACanvas.TextOut(ARect.Left + ScaleValue(cChipPadding), ARect.Top + (ARect.Height - ACanvas.TextHeight(AText)) div 2,
     AText);
-  ALeft := ARect.Right + ScaleValue(ChipGap);
+  ALeft := ARect.Right + ScaleValue(cChipGap);
 end;
 
 procedure TAtlasTrackerIssuesView.PaintStart(ACanvas: TCanvas; AIndex: Integer; ARight: Integer);
 var
   mText: string;
-  Area: TRect;
+  mArea: TRect;
   mTop, mWidth: Integer;
-  Accent: TColor;
+  mAccent: TColor;
 begin
   ACanvas.Font.Assign(Font);
   mText := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStart);
-  mWidth := ACanvas.TextWidth(mText) + 2 * ScaleValue(ButtonPadding);
+  mWidth := ACanvas.TextWidth(mText) + 2 * ScaleValue(cButtonPadding);
   // Über beide Zeilen der Zeile mittig (Mockup).
-  mTop := RowTop(AIndex) + (RowHeight(AIndex) - ScaleValue(ButtonHeight)) div 2;
-  Area := Rect(ARight - mWidth, mTop, ARight, mTop + ScaleValue(ButtonHeight));
-  FStartRects[AIndex] := Area;
-  Accent := StyleServices(Self).GetSystemColor(clBtnShadow);
+  mTop := RowTop(AIndex) + (RowHeight(AIndex) - ScaleValue(cButtonHeight)) div 2;
+  mArea := Rect(ARight - mWidth, mTop, ARight, mTop + ScaleValue(cButtonHeight));
+  FStartRects[AIndex] := mArea;
+  mAccent := StyleServices(Self).GetSystemColor(clBtnShadow);
   ACanvas.Brush.Style := bsClear;
-  ACanvas.Pen.Color := Accent;
-  ACanvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom, ScaleValue(6), ScaleValue(6));
+  ACanvas.Pen.Color := mAccent;
+  ACanvas.RoundRect(mArea.Left, mArea.Top, mArea.Right, mArea.Bottom, ScaleValue(6), ScaleValue(6));
   if CanStart then
   begin
     ACanvas.Font.Color := StyleServices(Self).GetSystemColor(clWindowText);
@@ -867,114 +867,114 @@ begin
   begin
     ACanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
   end;
-  ACanvas.TextOut(Area.Left + (Area.Width - ACanvas.TextWidth(mText)) div 2,
-    Area.Top + (Area.Height - ACanvas.TextHeight(mText)) div 2, mText);
+  ACanvas.TextOut(mArea.Left + (mArea.Width - ACanvas.TextWidth(mText)) div 2,
+    mArea.Top + (mArea.Height - ACanvas.TextHeight(mText)) div 2, mText);
 end;
 
 procedure TAtlasTrackerIssuesView.PaintRow(ACanvas: TCanvas; AIndex: Integer);
 var
-  Item: TAtlasTrackerIssue;
-  mTop, mLeft, Limit, Right: Integer;
-  TextColor, MutedColor, LineColor: TColor;
-  Field, mText: string;
-  Chip: TRect;
+  mItem: TAtlasTrackerIssue;
+  mTop, mLeft, mLimit, mRight: Integer;
+  mTextColor, mMutedColor, mLineColor: TColor;
+  mField, mText: string;
+  mChip: TRect;
 begin
-  Item := FView.Items[AIndex];
-  TextColor := StyleServices(Self).GetSystemColor(clWindowText);
-  MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
-  LineColor := StyleServices(Self).GetSystemColor(clBtnFace);
+  mItem := FView.Items[AIndex];
+  mTextColor := StyleServices(Self).GetSystemColor(clWindowText);
+  mMutedColor := StyleServices(Self).GetSystemColor(clGrayText);
+  mLineColor := StyleServices(Self).GetSystemColor(clBtnFace);
   mTop := RowTop(AIndex);
-  mLeft := ScaleValue(Indent);
-  Right := FBox.Width - ScaleValue(Indent);
+  mLeft := ScaleValue(cIndent);
+  mRight := FBox.Width - ScaleValue(cIndent);
   // Trennlinie zwischen den Zeilen (Mockup).
   if AIndex > 0 then
   begin
-    ACanvas.Pen.Color := LineColor;
+    ACanvas.Pen.Color := mLineColor;
     ACanvas.MoveTo(mLeft, mTop);
-    ACanvas.LineTo(Right, mTop);
+    ACanvas.LineTo(mRight, mTop);
   end;
-  PaintStart(ACanvas, AIndex, Right);
-  Limit := FStartRects[AIndex].Left - ScaleValue(8);
-  Inc(mTop, ScaleValue(RowPadding));
+  PaintStart(ACanvas, AIndex, mRight);
+  mLimit := FStartRects[AIndex].Left - ScaleValue(8);
+  Inc(mTop, ScaleValue(cRowPadding));
   // Kennung grau in Festbreitenschrift.
   ACanvas.Brush.Style := bsClear;
   ACanvas.Font.Assign(Font);
-  ACanvas.Font.Name := MonoFont;
-  ACanvas.Font.Color := MutedColor;
-  FKeyRects[AIndex] := Rect(mLeft, mTop, Min(mLeft + ACanvas.TextWidth(Item.Key), Limit), mTop + ScaleValue(LineHeight));
-  ACanvas.TextRect(FKeyRects[AIndex], mLeft, mTop + ScaleValue(1), Item.Key);
+  ACanvas.Font.Name := cMonoFont;
+  ACanvas.Font.Color := mMutedColor;
+  FKeyRects[AIndex] := Rect(mLeft, mTop, Min(mLeft + ACanvas.TextWidth(mItem.Key), mLimit), mTop + ScaleValue(cLineHeight));
+  ACanvas.TextRect(FKeyRects[AIndex], mLeft, mTop + ScaleValue(1), mItem.Key);
   // Neue Änderungen seit dem letzten Öffnen (#1271): Punkt im Rand vor der Kennung.
-  if FView.IsUnseen(Item.Key) then
+  if FView.IsUnseen(mItem.Key) then
   begin
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Brush.Color := StyleServices(Self).GetSystemColor(clHighlight);
     ACanvas.Pen.Color := ACanvas.Brush.Color;
-    ACanvas.Ellipse(Rect((mLeft - ScaleValue(UnseenDot)) div 2, mTop + (ScaleValue(LineHeight) -
-      ScaleValue(UnseenDot)) div 2, (mLeft + ScaleValue(UnseenDot)) div 2, mTop + (ScaleValue(LineHeight) +
-      ScaleValue(UnseenDot)) div 2));
+    ACanvas.Ellipse(Rect((mLeft - ScaleValue(cUnseenDot)) div 2, mTop + (ScaleValue(cLineHeight) -
+      ScaleValue(cUnseenDot)) div 2, (mLeft + ScaleValue(cUnseenDot)) div 2, mTop + (ScaleValue(cLineHeight) +
+      ScaleValue(cUnseenDot)) div 2));
     ACanvas.Brush.Style := bsClear;
   end;
-  mLeft := mLeft + Max(ScaleValue(KeyWidth), ACanvas.TextWidth(Item.Key) + ScaleValue(8));
+  mLeft := mLeft + Max(ScaleValue(cKeyWidth), ACanvas.TextWidth(mItem.Key) + ScaleValue(8));
   // Titel, abgeschnitten.
   ACanvas.Font.Assign(Font);
-  ACanvas.Font.Color := TextColor;
-  if SameText(Item.Key, FView.Active.Key) then
+  ACanvas.Font.Color := mTextColor;
+  if SameText(mItem.Key, FView.Active.Key) then
   begin
     ACanvas.Font.Style := [fsBold];
   end;
-  if mLeft < Limit then
+  if mLeft < mLimit then
   begin
-    ACanvas.TextRect(Rect(mLeft, mTop, Limit, mTop + ScaleValue(LineHeight)), mLeft, mTop + ScaleValue(1),
-      Item.Title);
+    ACanvas.TextRect(Rect(mLeft, mTop, mLimit, mTop + ScaleValue(cLineHeight)), mLeft, mTop + ScaleValue(1),
+      mItem.Title);
   end;
   ACanvas.Font.Style := [];
   // Zweite Zeile: Felder als Chips mit Rahmen, dann der Pull Request mit CI-Ampel.
-  mTop := mTop + ScaleValue(LineHeight) + (ScaleValue(ChipLineHeight) - ScaleValue(ChipHeight)) div 2;
+  mTop := mTop + ScaleValue(cLineHeight) + (ScaleValue(cChipLineHeight) - ScaleValue(cChipHeight)) div 2;
   ACanvas.Font.Size := Font.Size - 1;
   FPullRects[AIndex] := TRect.Empty;
-  if SameText(Item.Key, FView.Active.Key) then
+  if SameText(mItem.Key, FView.Active.Key) then
   begin
-    PaintChip(ACanvas, mLeft, mTop, Limit, TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesActive),
-      StyleServices(Self).GetSystemColor(clHighlight), True, Chip);
+    PaintChip(ACanvas, mLeft, mTop, mLimit, TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesActive),
+      StyleServices(Self).GetSystemColor(clHighlight), True, mChip);
   end;
-  for Field in TAtlasMyIssues.Fields(Item) do
+  for mField in TAtlasMyIssues.Fields(mItem) do
   begin
-    PaintChip(ACanvas, mLeft, mTop, Limit, Field, MutedColor, False, Chip);
+    PaintChip(ACanvas, mLeft, mTop, mLimit, mField, mMutedColor, False, mChip);
   end;
-  mText := PullRequestText(Item.PullRequest);
+  mText := PullRequestText(mItem.PullRequest);
   if mText <> '' then
   begin
-    PaintChip(ACanvas, mLeft, mTop, Limit, mText, ChecksColor(Item.PullRequest.Checks), False, Chip);
-    FPullRects[AIndex] := Chip;
+    PaintChip(ACanvas, mLeft, mTop, mLimit, mText, ChecksColor(mItem.PullRequest.Checks), False, mChip);
+    FPullRects[AIndex] := mChip;
   end;
   ACanvas.Font.Assign(Font);
 end;
 
 procedure TAtlasTrackerIssuesView.BoxPaint(Sender: TObject);
 var
-  Canvas: TCanvas;
-  Index, mTop: Integer;
+  mCanvas: TCanvas;
+  mIndex, mTop: Integer;
   mText: string;
 begin
-  Canvas := FBox.Canvas;
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Assign(Font);
+  mCanvas := FBox.Canvas;
+  mCanvas.Brush.Style := bsClear;
+  mCanvas.Font.Assign(Font);
   mText := StatusText(FView);
   if mText <> '' then
   begin
-    Canvas.Font.Size := Font.Size - 1;
+    mCanvas.Font.Size := Font.Size - 1;
     if FView.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale] then
     begin
-      Canvas.Font.Color := YellowColor;
+      mCanvas.Font.Color := cYellowColor;
     end
     else
     begin
-      Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
+      mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
     end;
-    Canvas.TextRect(Rect(ScaleValue(Indent), ScaleValue(Indent) div 2, FBox.Width - ScaleValue(Indent),
-      ScaleValue(Indent) div 2 + ScaleValue(StatusHeight)), ScaleValue(Indent), ScaleValue(Indent) div 2 +
+    mCanvas.TextRect(Rect(ScaleValue(cIndent), ScaleValue(cIndent) div 2, FBox.Width - ScaleValue(cIndent),
+      ScaleValue(cIndent) div 2 + ScaleValue(cStatusHeight)), ScaleValue(cIndent), ScaleValue(cIndent) div 2 +
       ScaleValue(2), mText);
-    Canvas.Font.Assign(Font);
+    mCanvas.Font.Assign(Font);
   end;
   // Filter der Sprint-Kachel (#1277): Link, der ihn aufhebt.
   FFilterRect := TRect.Empty;
@@ -982,32 +982,32 @@ begin
   if mText <> '' then
   begin
     mTop := FilterTop + ScaleValue(2);
-    Canvas.Font.Size := Font.Size - 1;
-    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
-    FFilterRect := Rect(ScaleValue(Indent), mTop, Min(ScaleValue(Indent) + Canvas.TextWidth(mText),
-      FBox.Width - ScaleValue(Indent)), mTop + Canvas.TextHeight(mText));
-    Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(StatusHeight)),
-      ScaleValue(Indent), mTop, mText);
-    Canvas.Font.Assign(Font);
+    mCanvas.Font.Size := Font.Size - 1;
+    mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
+    FFilterRect := Rect(ScaleValue(cIndent), mTop, Min(ScaleValue(cIndent) + mCanvas.TextWidth(mText),
+      FBox.Width - ScaleValue(cIndent)), mTop + mCanvas.TextHeight(mText));
+    mCanvas.TextRect(Rect(ScaleValue(cIndent), mTop, FBox.Width - ScaleValue(cIndent), mTop + ScaleValue(cStatusHeight)),
+      ScaleValue(cIndent), mTop, mText);
+    mCanvas.Font.Assign(Font);
   end;
   if Length(FStartRects) <> Length(FView.Items) then
   begin
     Exit;
   end;
-  for Index := 0 to High(FView.Items) do
+  for mIndex := 0 to High(FView.Items) do
   begin
-    PaintRow(Canvas, Index);
+    PaintRow(mCanvas, mIndex);
   end;
   // Woher die Liste kommt (#1262): Verbindung, Tracker-Projekt, gesendete Abfrage.
   mText := SourceText(FView);
   if mText <> '' then
   begin
     mTop := SourceTop + ScaleValue(4);
-    Canvas.Font.Size := Font.Size - 1;
-    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
-    Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(FooterHeight)),
-      ScaleValue(Indent), mTop, mText);
-    Canvas.Font.Assign(Font);
+    mCanvas.Font.Size := Font.Size - 1;
+    mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
+    mCanvas.TextRect(Rect(ScaleValue(cIndent), mTop, FBox.Width - ScaleValue(cIndent), mTop + ScaleValue(cFooterHeight)),
+      ScaleValue(cIndent), mTop, mText);
+    mCanvas.Font.Assign(Font);
   end;
   mText := FooterText(FView);
   if mText = '' then
@@ -1015,62 +1015,62 @@ begin
     Exit;
   end;
   mTop := FooterTop + ScaleValue(4);
-  Canvas.Font.Assign(Font);
-  Canvas.Font.Size := Font.Size - 1;
+  mCanvas.Font.Assign(Font);
+  mCanvas.Font.Size := Font.Size - 1;
   if FView.NoticeFailed then
   begin
-    Canvas.Font.Color := RedColor;
+    mCanvas.Font.Color := cRedColor;
   end
   else if FooterIsAssign(FView) then
   begin
     // Link „zuordnen …“: Akzentfarbe, Klickfläche nur über dem Text.
-    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
-    FAssignRect := Rect(ScaleValue(Indent), mTop, Min(ScaleValue(Indent) + Canvas.TextWidth(mText),
-      FBox.Width - ScaleValue(Indent)), mTop + Canvas.TextHeight(mText));
+    mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
+    FAssignRect := Rect(ScaleValue(cIndent), mTop, Min(ScaleValue(cIndent) + mCanvas.TextWidth(mText),
+      FBox.Width - ScaleValue(cIndent)), mTop + mCanvas.TextHeight(mText));
   end
   else
   begin
-    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
+    mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
   end;
-  Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(FooterHeight)),
-    ScaleValue(Indent), mTop, mText);
-  Canvas.Font.Assign(Font);
+  mCanvas.TextRect(Rect(ScaleValue(cIndent), mTop, FBox.Width - ScaleValue(cIndent), mTop + ScaleValue(cFooterHeight)),
+    ScaleValue(cIndent), mTop, mText);
+  mCanvas.Font.Assign(Font);
 end;
 
-function TAtlasTrackerIssuesView.HitTest(X, Y: Integer): TAtlasIssuesHit;
+function TAtlasTrackerIssuesView.HitTest(AX, AY: Integer): TAtlasIssuesHit;
 var
-  Index: Integer;
-  Point_: TPoint;
+  mIndex: Integer;
+  mPoint_: TPoint;
 begin
   Result := TAtlasIssuesHit.Create(TAtlasIssuesHitKind.None, -1);
-  Point_ := Point(X, Y);
-  if not FAssignRect.IsEmpty and FAssignRect.Contains(Point_) then
+  mPoint_ := Point(AX, AY);
+  if not FAssignRect.IsEmpty and FAssignRect.Contains(mPoint_) then
   begin
     Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Assign, -1));
   end;
-  if not FFilterRect.IsEmpty and FFilterRect.Contains(Point_) then
+  if not FFilterRect.IsEmpty and FFilterRect.Contains(mPoint_) then
   begin
     Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Filter, -1));
   end;
-  for Index := 0 to High(FView.Items) do
+  for mIndex := 0 to High(FView.Items) do
   begin
-    if (Y < RowTop(Index)) or (Y >= RowTop(Index) + RowHeight(Index)) then
+    if (AY < RowTop(mIndex)) or (AY >= RowTop(mIndex) + RowHeight(mIndex)) then
     begin
       Continue;
     end;
-    if (Index <= High(FStartRects)) and not FStartRects[Index].IsEmpty and FStartRects[Index].Contains(Point_) then
+    if (mIndex <= High(FStartRects)) and not FStartRects[mIndex].IsEmpty and FStartRects[mIndex].Contains(mPoint_) then
     begin
-      Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, Index));
+      Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Start, mIndex));
     end;
-    if (Index <= High(FKeyRects)) and not FKeyRects[Index].IsEmpty and FKeyRects[Index].Contains(Point_) then
+    if (mIndex <= High(FKeyRects)) and not FKeyRects[mIndex].IsEmpty and FKeyRects[mIndex].Contains(mPoint_) then
     begin
-      Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, Index));
+      Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, mIndex));
     end;
-    if (Index <= High(FPullRects)) and not FPullRects[Index].IsEmpty and FPullRects[Index].Contains(Point_) then
+    if (mIndex <= High(FPullRects)) and not FPullRects[mIndex].IsEmpty and FPullRects[mIndex].Contains(mPoint_) then
     begin
-      Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.PullRequest, Index));
+      Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.PullRequest, mIndex));
     end;
-    Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, Index));
+    Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, mIndex));
   end;
 end;
 
@@ -1088,8 +1088,8 @@ end;
 procedure TAtlasTrackerIssuesView.ClickAt(const AHit: TAtlasIssuesHit; ABrowse: Boolean);
 var
   mSource: IAtlasIssuesSource;
-  Item: TAtlasTrackerIssue;
-  Mode: TAtlasIssueStart;
+  mItem: TAtlasTrackerIssue;
+  mMode: TAtlasIssueStart;
 begin
   if (FSource <> nil) and (AHit.Kind = TAtlasIssuesHitKind.Assign) then
   begin
@@ -1116,14 +1116,14 @@ begin
     Exit;
   end;
   mSource := FSource;
-  Item := FView.Items[AHit.Index];
+  mItem := FView.Items[AHit.Index];
   if (AHit.Kind in [TAtlasIssuesHitKind.Row, TAtlasIssuesHitKind.Key]) and FView.Options.Preview and
     not ABrowse then
   begin
     Post(
       procedure
       begin
-        mSource.Preview(Item);
+        mSource.Preview(mItem);
       end);
     Exit;
   end;
@@ -1136,29 +1136,29 @@ begin
         Post(
           procedure
           begin
-            mSource.Browse(Item);
+            mSource.Browse(mItem);
           end);
       end;
     TAtlasIssuesHitKind.Key:
       Post(
         procedure
         begin
-          mSource.Browse(Item);
+          mSource.Browse(mItem);
         end);
     TAtlasIssuesHitKind.PullRequest:
       Post(
         procedure
         begin
-          mSource.BrowsePullRequest(Item);
+          mSource.BrowsePullRequest(mItem);
         end);
     TAtlasIssuesHitKind.Start:
       if CanStart then
       begin
-        Mode := FView.Options.Start;
+        mMode := FView.Options.Start;
         Post(
           procedure
           begin
-            mSource.Start(Item, Mode);
+            mSource.Start(mItem, mMode);
           end);
       end;
   end;
@@ -1166,13 +1166,13 @@ end;
 
 procedure TAtlasTrackerIssuesView.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
-  Hit: TAtlasIssuesHit;
-  Key: string;
+  mHit: TAtlasIssuesHit;
+  mKey: string;
 begin
-  Hit := HitTest(X, Y);
-  if (Hit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start,
+  mHit := HitTest(X, Y);
+  if (mHit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start,
     TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter]) or
-    ((Hit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
+    ((mHit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
   begin
     FBox.Cursor := crHandPoint;
   end
@@ -1180,13 +1180,13 @@ begin
   begin
     FBox.Cursor := crDefault;
   end;
-  Key := IntToStr(Ord(Hit.Kind)) + ':' + IntToStr(Hit.Index);
-  if Key = FHintKey then
+  mKey := IntToStr(Ord(mHit.Kind)) + ':' + IntToStr(mHit.Index);
+  if mKey = FHintKey then
   begin
     Exit;
   end;
-  FHintKey := Key;
-  case Hit.Kind of
+  FHintKey := mKey;
+  case mHit.Kind of
     TAtlasIssuesHitKind.Key:
       if FView.Options.Preview then
       begin
@@ -1199,11 +1199,11 @@ begin
     TAtlasIssuesHitKind.PullRequest:
       FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintPullRequest);
     TAtlasIssuesHitKind.Start:
-      FBox.Hint := StartHint(FView, FView.Items[Hit.Index]);
+      FBox.Hint := StartHint(FView, FView.Items[mHit.Index]);
     TAtlasIssuesHitKind.Row:
       begin
-        FBox.Hint := FView.Items[Hit.Index].Key + ' ' + FView.Items[Hit.Index].Title;
-        if FView.IsUnseen(FView.Items[Hit.Index].Key) then
+        FBox.Hint := FView.Items[mHit.Index].Key + ' ' + FView.Items[mHit.Index].Title;
+        if FView.IsUnseen(FView.Items[mHit.Index].Key) then
         begin
           FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.IssueNotifyUnseenHint);
         end;
@@ -1229,23 +1229,23 @@ end;
 
 procedure TAtlasTrackerIssuesView.MenuPopup(Sender: TObject);
 var
-  Position: TPoint;
-  Hit: TAtlasIssuesHit;
-  Item: TAtlasTrackerIssue;
-  HasItem, Branching: Boolean;
+  mPosition: TPoint;
+  mHit: TAtlasIssuesHit;
+  mItem: TAtlasTrackerIssue;
+  mHasItem, mBranching: Boolean;
 begin
-  Position := FBox.ScreenToClient(FMenu.PopupPoint);
-  Hit := HitTest(Position.X, Position.Y);
-  FMenuRow := Hit.Index;
-  HasItem := MenuIssue(Item);
-  Branching := (FView.VcsKind = TAtlasVcsKind.Git) or (FView.VcsKind = TAtlasVcsKind.Svn);
-  FPreviewItem.Visible := HasItem and FView.Options.Preview;
+  mPosition := FBox.ScreenToClient(FMenu.PopupPoint);
+  mHit := HitTest(mPosition.X, mPosition.Y);
+  FMenuRow := mHit.Index;
+  mHasItem := MenuIssue(mItem);
+  mBranching := (FView.VcsKind = TAtlasVcsKind.Git) or (FView.VcsKind = TAtlasVcsKind.Svn);
+  FPreviewItem.Visible := mHasItem and FView.Options.Preview;
   FPreviewItem.Default := FPreviewItem.Visible;
-  FBrowseItem.Visible := HasItem;
-  FBrowsePullItem.Visible := HasItem and (Item.PullRequest.Number > 0);
-  FStartBranchItem.Visible := HasItem and Branching;
+  FBrowseItem.Visible := mHasItem;
+  FBrowsePullItem.Visible := mHasItem and (mItem.PullRequest.Number > 0);
+  FStartBranchItem.Visible := mHasItem and mBranching;
   FStartBranchItem.Enabled := CanStart;
-  FStartRememberItem.Visible := HasItem;
+  FStartRememberItem.Visible := mHasItem;
   FStartRememberItem.Enabled := CanStart;
   FQueryItem.Visible := FView.Status <> TAtlasIssuesStatus.NotConfigured;
   FQueryItem.Enabled := not FView.Querying;
@@ -1282,9 +1282,9 @@ end;
 procedure TAtlasTrackerIssuesView.StartBranchClick(Sender: TObject);
 var
   mSource: IAtlasIssuesSource;
-  Item: TAtlasTrackerIssue;
+  mItem: TAtlasTrackerIssue;
 begin
-  if not CanStart or not MenuIssue(Item) then
+  if not CanStart or not MenuIssue(mItem) then
   begin
     Exit;
   end;
@@ -1292,16 +1292,16 @@ begin
   Post(
     procedure
     begin
-      mSource.Start(Item, TAtlasIssueStart.Branch);
+      mSource.Start(mItem, TAtlasIssueStart.Branch);
     end);
 end;
 
 procedure TAtlasTrackerIssuesView.StartRememberClick(Sender: TObject);
 var
   mSource: IAtlasIssuesSource;
-  Item: TAtlasTrackerIssue;
+  mItem: TAtlasTrackerIssue;
 begin
-  if not CanStart or not MenuIssue(Item) then
+  if not CanStart or not MenuIssue(mItem) then
   begin
     Exit;
   end;
@@ -1309,7 +1309,7 @@ begin
   Post(
     procedure
     begin
-      mSource.Start(Item, TAtlasIssueStart.Remember);
+      mSource.Start(mItem, TAtlasIssueStart.Remember);
     end);
 end;
 

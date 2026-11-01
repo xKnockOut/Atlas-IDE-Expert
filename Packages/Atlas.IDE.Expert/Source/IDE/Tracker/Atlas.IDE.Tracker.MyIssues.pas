@@ -143,18 +143,18 @@ type
   public const
     /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite (Layouts bleiben).
     /// </summary>
-    TileId = 'atlas.issues';
+    cTileId = 'atlas.issues';
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts: nach „Testergebnisse“ (Mockup: rechte Spalte, im
     /// Atlas-Layout ohne festen Platz).</summary>
-    Order = 26;
+    cOrder = 26;
     /// <summary>So lange gilt der gelesene Tracker aus .atlas, bevor er neu gelesen wird.</summary>
-    TargetCacheMs = 5000;
+    cTargetCacheMs = 5000;
     /// <summary>Takt für Commit-Dialog und Statuszeile.</summary>
-    WatchMs = 700;
+    cWatchMs = 700;
     /// <summary>Alle so viele Takte die Statuszeile neu (Projekt- oder Branch-Wechsel).</summary>
-    StatusTicks = 7;
+    cStatusTicks = 7;
     /// <summary>Zeitlimit je Aufruf der Versionsverwaltung bei „Beginnen“.</summary>
-    VcsTimeoutMs = 30000;
+    cVcsTimeoutMs = 30000;
   private type
     TCachedTarget = record
       Target: TAtlasTrackerTarget;
@@ -497,7 +497,7 @@ procedure TAtlasIdeIssues.Start;
 begin
   FStarted := True;
   FWatch := TTimer.Create(nil);
-  FWatch.Interval := WatchMs;
+  FWatch.Interval := cWatchMs;
   FWatch.OnTimer := WatchTick;
   FTitle := '';
   RegisterIssueLinks;
@@ -1394,8 +1394,8 @@ begin
           AttachPrompt;
         end;
       end;
-    FAttachLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, TAtlasMyIssues.AttachStatusId,
-      TAtlasMyIssues.AttachStatusOrder, mAction);
+    FAttachLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, TAtlasMyIssues.cAttachStatusId,
+      TAtlasMyIssues.cAttachStatusOrder, mAction);
     FAttachLineRef := FAttachLine;
     TAtlasStatusRegistry.Default.Add(FAttachLineRef);
   end;
@@ -1410,7 +1410,7 @@ begin
     Exit;
   end;
   FAttachLine.Detach;
-  TAtlasStatusRegistry.Default.Remove(TAtlasMyIssues.AttachStatusId);
+  TAtlasStatusRegistry.Default.Remove(TAtlasMyIssues.cAttachStatusId);
   FAttachLine := nil;
   FAttachLineRef := nil;
 end;
@@ -1427,19 +1427,19 @@ end;
 
 function TAtlasIdeIssues.IssueUrl(const AKey: string): string;
 var
-  Target: TAtlasTrackerTarget;
-  Provider: IAtlasTrackerProvider;
+  mTarget: TAtlasTrackerTarget;
+  mProvider: IAtlasTrackerProvider;
 begin
   Result := '';
   if not FStarted or (AKey = '') then
   begin
     Exit;
   end;
-  Target := TargetOf(CurrentProject);
-  Provider := ProviderOf(Target.Provider);
-  if Provider <> nil then
+  mTarget := TargetOf(CurrentProject);
+  mProvider := ProviderOf(mTarget.Provider);
+  if mProvider <> nil then
   begin
-    Result := Provider.IssuePage(Target, AKey);
+    Result := mProvider.IssuePage(mTarget, AKey);
   end;
 end;
 
@@ -1607,7 +1607,7 @@ begin
     FActive := Active;
     if FWelcome <> nil then
     begin
-      FWelcome.TileInfoChanged(TileId);
+      FWelcome.TileInfoChanged(cTileId);
     end;
   end;
 end;
@@ -1631,7 +1631,7 @@ end;
 
 procedure TAtlasIdeIssues.Refresh;
 var
-  Title: string;
+  mTitle: string;
 begin
   if not FStarted then
   begin
@@ -1659,11 +1659,11 @@ begin
   begin
     FNotify.Refresh;
   end;
-  Title := FTitle;
+  mTitle := FTitle;
   // Titel oder welcomePage.issues geändert: die Seite liest die Kachel neu; sonst nur der Inhalt.
   UpdateTileInfo;
   UpdateStatus;
-  if Title = FTitle then
+  if mTitle = FTitle then
   begin
     Changed;
   end;
@@ -1673,7 +1673,7 @@ procedure TAtlasIdeIssues.Changed;
 begin
   if FStarted and (FWelcome <> nil) then
   begin
-    FWelcome.TileChanged(TileId);
+    FWelcome.TileChanged(cTileId);
   end;
 end;
 
@@ -1755,7 +1755,7 @@ begin
   end;
   // .atlas nicht bei jedem Zeichnen lesen.
   mKey := TAtlasProjectSummaries.NormalizedPath(AProject);
-  if FTargets.TryGetValue(mKey, Result) and (GetTickCount64 - Result.Tick < TargetCacheMs) then
+  if FTargets.TryGetValue(mKey, Result) and (GetTickCount64 - Result.Tick < cTargetCacheMs) then
   begin
     Exit;
   end;
@@ -1827,40 +1827,40 @@ end;
 
 function TAtlasIdeIssues.StateOf(const AProject: string): TAtlasIssuesState;
 var
-  Key: string;
-  Summary: TAtlasProjectSummary;
+  mKey: string;
+  mSummary: TAtlasProjectSummary;
 begin
   Result := TAtlasIssuesState.Empty;
   if AProject = '' then
   begin
     Exit;
   end;
-  Key := TAtlasProjectSummaries.NormalizedPath(AProject);
-  if FStates.TryGetValue(Key, Result) then
+  mKey := TAtlasProjectSummaries.NormalizedPath(AProject);
+  if FStates.TryGetValue(mKey, Result) then
   begin
     Exit;
   end;
-  if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, Summary) then
+  if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, mSummary) then
   begin
-    TAtlasMyIssues.Read(Summary, Result);
+    TAtlasMyIssues.Read(mSummary, Result);
   end;
-  FStates.AddOrSetValue(Key, Result);
+  FStates.AddOrSetValue(mKey, Result);
 end;
 
 procedure TAtlasIdeIssues.SaveState(const AProject: string; const AState: TAtlasIssuesState);
 var
-  State: TAtlasIssuesState;
+  mState: TAtlasIssuesState;
 begin
   if AProject = '' then
   begin
     Exit;
   end;
-  State := AState;
-  FStates.AddOrSetValue(TAtlasProjectSummaries.NormalizedPath(AProject), State);
+  mState := AState;
+  FStates.AddOrSetValue(TAtlasProjectSummaries.NormalizedPath(AProject), mState);
   TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, AProject,
     procedure(var ASummary: TAtlasProjectSummary)
     begin
-      TAtlasMyIssues.Write(ASummary, State);
+      TAtlasMyIssues.Write(ASummary, mState);
     end);
 end;
 
@@ -1875,20 +1875,20 @@ end;
 
 function TAtlasIdeIssues.Options: TAtlasIssuesOptions;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasIssuesOptions.Create(TAtlasMyIssues.StartOf(Settings.IssuesStart),
-    Settings.IssuesBranchPattern, Settings.IssuesBranchBase,
-    Settings.IssuesCommitPattern);
-  Result.Preview := Settings.IssuesPreview and (FPreview <> nil);
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasIssuesOptions.Create(TAtlasMyIssues.StartOf(mSettings.IssuesStart),
+    mSettings.IssuesBranchPattern, mSettings.IssuesBranchBase,
+    mSettings.IssuesCommitPattern);
+  Result.Preview := mSettings.IssuesPreview and (FPreview <> nil);
 end;
 
 function TAtlasIdeIssues.ViewOf(const AProject: string): TAtlasIssuesView;
 var
-  Cached: TCachedTarget;
-  Target: TAtlasTrackerTarget;
-  Provider: IAtlasTrackerProvider;
+  mCached: TCachedTarget;
+  mTarget: TAtlasTrackerTarget;
+  mProvider: IAtlasTrackerProvider;
 begin
   Result := Default(TAtlasIssuesView);
   Result.Items := nil;
@@ -1897,32 +1897,32 @@ begin
     Result.Status := TAtlasIssuesStatus.NotConfigured;
     Exit;
   end;
-  Cached := CachedTargetOf(AProject);
-  Target := Cached.Target;
-  Result := TAtlasMyIssues.View(StateOf(AProject), Target, BranchOf(AProject));
+  mCached := CachedTargetOf(AProject);
+  mTarget := mCached.Target;
+  Result := TAtlasMyIssues.View(StateOf(AProject), mTarget, BranchOf(AProject));
   Result.Project := AProject;
   Result.ProjectName := ProjectName(AProject);
-  Result.Connection := Cached.Connection;
+  Result.Connection := mCached.Connection;
   Result.CanAssign := CanAssign;
-  Provider := ProviderOf(Target.Provider);
-  if Provider <> nil then
+  mProvider := ProviderOf(mTarget.Provider);
+  if mProvider <> nil then
   begin
-    Result.Tracker := Provider.Caption;
+    Result.Tracker := mProvider.Caption;
   end;
-  Result.TrackerProject := Target.Project;
-  Result.Queries := Cached.Queries;
-  Result.QueryIndex := Cached.QueryIndex;
-  Result.QueryCounts := TAtlasMyIssues.QueryCounts(StateOf(AProject), Cached.Queries);
+  Result.TrackerProject := mTarget.Project;
+  Result.Queries := mCached.Queries;
+  Result.QueryIndex := mCached.QueryIndex;
+  Result.QueryCounts := TAtlasMyIssues.QueryCounts(StateOf(AProject), mCached.Queries);
   Result.Picker := TAtlasIdeSettings.Current.IssuesQueryPicker;
   // Fußzeile: die gesendete Abfrage, bei der Vorgabe die des Anbieters.
-  Result.QueryText := Target.Query;
-  if (Result.QueryText = '') and (Provider <> nil) and Target.Configured then
+  Result.QueryText := mTarget.Query;
+  if (Result.QueryText = '') and (mProvider <> nil) and mTarget.Configured then
   begin
-    Result.QueryText := TAtlasTrackerTemplates.DefaultQuery(Provider.Name, Target.Language);
+    Result.QueryText := TAtlasTrackerTemplates.DefaultQuery(mProvider.Name, mTarget.Language);
   end;
-  if (Result.QueryText = '') and (Provider <> nil) and Target.Configured then
+  if (Result.QueryText = '') and (mProvider <> nil) and mTarget.Configured then
   begin
-    Result.QueryText := Provider.DefaultQuery;
+    Result.QueryText := mProvider.DefaultQuery;
   end;
   Result.Querying := (FQueryProject <> '') and SameText(FQueryProject, AProject);
   Result.Starting := FStartProject <> '';
@@ -1943,12 +1943,12 @@ begin
     Result.Filter := FFilter;
     Result.Items := FFilterIssues;
   end;
-  Result.Unseen := UnseenOf(Target);
+  Result.Unseen := UnseenOf(mTarget);
 end;
 
 function TAtlasIdeIssues.View: TAtlasIssuesView;
 var
-  Project: string;
+  mProject: string;
 begin
   Result := Default(TAtlasIssuesView);
   Result.Items := nil;
@@ -1956,8 +1956,8 @@ begin
   begin
     Exit;
   end;
-  Project := CurrentProject;
-  Result := ViewOf(Project);
+  mProject := CurrentProject;
+  Result := ViewOf(mProject);
   // Anderes Projekt oder Punkt (#1271): Titel „Meine Issues · <Projekt>“ nachziehen, nicht mitten im Zeichnen.
   if TAtlasTrackerIssuesView.TitleText(Result.ProjectName, Length(Result.Unseen) > 0) <> FTitle then
   begin
@@ -1991,13 +1991,13 @@ end;
 
 procedure TAtlasIdeIssues.Fetch(AForce: Boolean);
 var
-  Project, mQueryName: string;
+  mProject, mQueryName: string;
   mCached: TCachedTarget;
-  Target: TAtlasTrackerTarget;
-  Provider: IAtlasTrackerProvider;
-  Transports: TAtlasTrackerTransportHook;
-  Keep: IAtlasIssuesSource;
-  Owner: TAtlasIdeIssues;
+  mTarget: TAtlasTrackerTarget;
+  mProvider: IAtlasTrackerProvider;
+  mTransports: TAtlasTrackerTransportHook;
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
 begin
   // welcomePage.issues aus: kein Netzzugriff.
   if not FStarted or not Active or not Assigned(FTransportFactory) then
@@ -2010,27 +2010,27 @@ begin
   begin
     Exit;
   end;
-  Project := CurrentProject;
-  mCached := CachedTargetOf(Project);
-  Target := mCached.Target;
+  mProject := CurrentProject;
+  mCached := CachedTargetOf(mProject);
+  mTarget := mCached.Target;
   mQueryName := '';
   if mCached.QueryIndex >= 0 then
   begin
     mQueryName := mCached.Queries[mCached.QueryIndex].Name;
   end;
-  if not TAtlasMyIssues.Due(StateOf(Project), Target, NowUtc, AForce) then
+  if not TAtlasMyIssues.Due(StateOf(mProject), mTarget, NowUtc, AForce) then
   begin
     Exit;
   end;
-  Provider := ProviderOf(Target.Provider);
-  if Provider = nil then
+  mProvider := ProviderOf(mTarget.Provider);
+  if mProvider = nil then
   begin
     Exit;
   end;
-  FQueryProject := Project;
-  Keep := Self;
-  Owner := Self;
-  Transports := FTransportFactory;
+  FQueryProject := mProject;
+  mKeep := Self;
+  mOwner := Self;
+  mTransports := FTransportFactory;
   FThread := TThread.CreateAnonymousThread(
     procedure
     var
@@ -2044,10 +2044,10 @@ begin
       Error := TAtlasCiFetchError.Unauthorized;
       try
         // Liest das Token aus dem Anmeldespeicher von Windows (ohne Dialog); ohne Token kein Netz.
-        Transport := Transports(Provider, Target);
+        Transport := mTransports(mProvider, mTarget);
         if Transport <> nil then
         begin
-          Ok := Provider.Fetch(Target, Transport, TAtlasMyIssues.FetchTimeoutMs, TAtlasMyIssues.MaxItems,
+          Ok := mProvider.Fetch(mTarget, Transport, TAtlasMyIssues.cFetchTimeoutMs, TAtlasMyIssues.cMaxItems,
             Issues, Error);
         end
         else
@@ -2068,7 +2068,7 @@ begin
       begin
         Exit;
       end;
-      Deliver(Keep, Owner, Project, mQueryName, Target, Ok, Issues, Error);
+      Deliver(mKeep, mOwner, mProject, mQueryName, mTarget, Ok, Issues, Error);
     end);
   FThread.FreeOnTerminate := False;
   FThread.Start;
@@ -2078,7 +2078,7 @@ end;
 procedure TAtlasIdeIssues.Fetched(const AProject, AQueryName: string; const ATarget: TAtlasTrackerTarget;
   ASucceeded: Boolean; const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
 var
-  State: TAtlasIssuesState;
+  mState: TAtlasIssuesState;
 begin
   FQueryProject := '';
   ReleaseThread(False);
@@ -2086,14 +2086,14 @@ begin
   begin
     Exit;
   end;
-  State := StateOf(AProject);
-  TAtlasMyIssues.Recorded(State, ATarget, NowUtc, ASucceeded, AIssues, AError);
+  mState := StateOf(AProject);
+  TAtlasMyIssues.Recorded(mState, ATarget, NowUtc, ASucceeded, AIssues, AError);
   // Trefferzahl für die Klappliste (#1262).
   if ASucceeded then
   begin
-    State.SetCount(AQueryName, Length(AIssues));
+    mState.SetCount(AQueryName, Length(AIssues));
   end;
-  SaveState(AProject, State);
+  SaveState(AProject, mState);
   // Anonym: Anbieter, Anzahl bzw. Fehlerart; nie Adresse, Projekt, Kennungen oder Titel.
   if ASucceeded then
   begin
@@ -2112,16 +2112,16 @@ end;
 
 procedure TAtlasIdeIssues.QueueFetch;
 var
-  Keep: IAtlasIssuesSource;
+  mKeep: IAtlasIssuesSource;
 begin
   // Erst nach dem Ende des Abfrage-Threads (Fetch fragt nur, wenn keiner mehr läuft).
-  Keep := Self;
+  mKeep := Self;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      if Keep <> nil then
+      if mKeep <> nil then
       begin
-        TAtlasIdeIssues(Keep as TObject).Fetch(False);
+        TAtlasIdeIssues(mKeep as TObject).Fetch(False);
       end;
     end);
   // Sprint-Kachel lädt mit „Meine Issues“ (#1277), wenn fällig.
@@ -2219,37 +2219,37 @@ end;
 
 procedure TAtlasIdeIssues.StartChecked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
 var
-  Keep: IAtlasIssuesSource;
-  Project, Dir: string;
-  Issue: TAtlasTrackerIssue;
-  Settings: TAtlasIssuesOptions;
-  Plan: TAtlasIssueStartPlan;
-  Changes: Integer;
+  mKeep: IAtlasIssuesSource;
+  mProject, mDir: string;
+  mIssue: TAtlasTrackerIssue;
+  mSettings: TAtlasIssuesOptions;
+  mPlan: TAtlasIssueStartPlan;
+  mChanges: Integer;
   mFacts: TAtlasVcsBranchFacts;
 begin
   if not FStarted or not Active or (FStartProject <> '') or (AIssue.Key = '') then
   begin
     Exit;
   end;
-  Project := CurrentProject;
-  if Project = '' then
+  mProject := CurrentProject;
+  if mProject = '' then
   begin
     Exit;
   end;
-  Keep := Self;
-  Issue := AIssue;
-  Settings := Options;
-  Settings.Start := AMode;
+  mKeep := Self;
+  mIssue := AIssue;
+  mSettings := Options;
+  mSettings.Start := AMode;
   // Hauptbranch des Projekts (#1286) als Basis, wenn issues.branchBase leer ist.
-  Settings.MainBranch := TAtlasIdeVcs.MainBranchOf(Project, TAtlasIdeFiles.GroupOfProject(Project));
+  mSettings.MainBranch := TAtlasIdeVcs.MainBranchOf(mProject, TAtlasIdeFiles.GroupOfProject(mProject));
   // SVN (#1290): Ort, Quelle, Danach und Nachricht aus vcs.branch.svn.*.
-  Settings.Svn := TAtlasIdeBranching.SvnOptions(Project);
-  Dir := ExtractFileDir(Project);
-  Plan := Default(TAtlasIssueStartPlan);
-  Changes := 0;
+  mSettings.Svn := TAtlasIdeBranching.SvnOptions(mProject);
+  mDir := ExtractFileDir(mProject);
+  mPlan := Default(TAtlasIssueStartPlan);
+  mChanges := 0;
   mFacts := TAtlasVcsBranchFacts.Empty;
-  FStartProject := Project;
-  SetNotice(Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStarting, [Issue.Key]), False);
+  FStartProject := mProject;
+  SetNotice(mProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStarting, [mIssue.Key]), False);
   Changed;
   // Art der Versionsverwaltung, lokale Änderungen und (fehlt der Branch noch) der Stand für den Plan (#1288) im
   // Hintergrund; Dialog und Rückfrage danach im Hauptthread.
@@ -2262,40 +2262,40 @@ begin
       mBranching: IAtlasVcsBranching;
       mExists: Boolean;
     begin
-      Vcs := TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs));
+      Vcs := TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs));
       Kind := TAtlasVcsKind.None;
       if Vcs <> nil then
       begin
         Kind := Vcs.Kind;
       end;
-      Plan := TAtlasMyIssues.PlanStart(Kind, Settings, Issue);
-      if (Plan.Mode <> TAtlasIssueStart.Branch) or not Plan.Valid or (Vcs = nil) then
+      mPlan := TAtlasMyIssues.PlanStart(Kind, mSettings, mIssue);
+      if (mPlan.Mode <> TAtlasIssueStart.Branch) or not mPlan.Valid or (Vcs = nil) then
       begin
         Exit;
       end;
       if Vcs.Changes(Items) = TAtlasVcsOutcome.Ok then
       begin
-        Changes := TAtlasVcsBranchPlan.LocalChanges(Items);
+        mChanges := TAtlasVcsBranchPlan.LocalChanges(Items);
       end;
       // Vorhandener Branch: nur umschalten, ohne Dialog (wie bisher).
       if Supports(Vcs, IAtlasVcsBranching, mBranching) and
-        (mBranching.BranchExists(Plan.Branch, Plan.Svn, mExists) = TAtlasVcsOutcome.Ok) and not mExists then
+        (mBranching.BranchExists(mPlan.Branch, mPlan.Svn, mExists) = TAtlasVcsOutcome.Ok) and not mExists then
       begin
-        mFacts := TAtlasVcsBranchPlan.Inspect(Vcs, Plan.Bases);
-        mFacts.LocalChanges := Changes;
+        mFacts := TAtlasVcsBranchPlan.Inspect(Vcs, mPlan.Bases);
+        mFacts.LocalChanges := mChanges;
       end;
     end,
     procedure
     begin
-      if (Keep = nil) or not FStarted then
+      if (mKeep = nil) or not FStarted then
       begin
         Exit;
       end;
-      Prepared(Project, Issue, Plan, Changes, mFacts);
+      Prepared(mProject, mIssue, mPlan, mChanges, mFacts);
     end) then
   begin
     FStartProject := '';
-    SetNotice(Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesNotStarted, [Issue.Key]), True);
+    SetNotice(mProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesNotStarted, [mIssue.Key]), True);
     Changed;
   end;
 end;
@@ -2303,14 +2303,14 @@ end;
 procedure TAtlasIdeIssues.Prepared(const AProject: string; const AIssue: TAtlasTrackerIssue;
   const APlan: TAtlasIssueStartPlan; AChanges: Integer; const AFacts: TAtlasVcsBranchFacts);
 var
-  Project: string;
-  Plan: TAtlasIssueStartPlan;
+  mProject: string;
+  mPlan: TAtlasIssueStartPlan;
   mRequest: TAtlasVcsBranchRequest;
   mUseRequest, mNeverAsk, mDialog, mAsked: Boolean;
   mOptions: TAtlasVcsGitBranchOptions;
 begin
-  Project := AProject;
-  Plan := APlan;
+  mProject := AProject;
+  mPlan := APlan;
   mUseRequest := False;
   mDialog := False;
   mAsked := False;
@@ -2318,21 +2318,21 @@ begin
   // Neuer Branch (#1288): mit vcs.branch.confirm erst der Dialog „Branch anlegen“; „Abbrechen“ ändert nichts.
   // Ohne Dialog die Vorgaben aus dem Plan und den Git-Optionen (#1289). Findet SVN ohne erkennbares Layout
   // keinen Ort (#1290), fragt der Dialog trotzdem danach, statt an einem geratenen Ort anzulegen.
-  if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AFacts.Outcome = TAtlasVcsOutcome.Ok) then
+  if (mPlan.Mode = TAtlasIssueStart.Branch) and mPlan.Valid and (AFacts.Outcome = TAtlasVcsOutcome.Ok) then
   begin
     if not TAtlasIdeSettings.Current.VcsBranchConfirm then
     begin
       mOptions := TAtlasIdeBranching.GitOptions;
-      mUseRequest := TAtlasVcsBranchPlan.DefaultRequest(AFacts, Plan.Branch, Plan.Message, AIssue.Key, mOptions,
-        Plan.Svn, mRequest);
+      mUseRequest := TAtlasVcsBranchPlan.DefaultRequest(AFacts, mPlan.Branch, mPlan.Message, AIssue.Key, mOptions,
+        mPlan.Svn, mRequest);
       // uncommitted = ask ohne Dialog: mitnehmen, beiseitelegen oder abbrechen.
       if mUseRequest and (mRequest.Kind = TAtlasVcsKind.Git) and (mRequest.WorktreeFolder = '') and
         (AChanges > 0) and (mOptions.Uncommitted = TAtlasVcsGitUncommitted.Ask) then
       begin
-        if not TAtlasIdeBranching.AskUncommitted(AChanges, Plan.Branch, mRequest.Stash) then
+        if not TAtlasIdeBranching.AskUncommitted(AChanges, mPlan.Branch, mRequest.Stash) then
         begin
           FStartProject := '';
-          SetNotice(Project, '', False);
+          SetNotice(mProject, '', False);
           Changed;
           Exit;
         end;
@@ -2341,11 +2341,11 @@ begin
     end;
     if TAtlasIdeSettings.Current.VcsBranchConfirm or (not mUseRequest and (AFacts.Kind = TAtlasVcsKind.Svn)) then
     begin
-      if not TAtlasIdeBranching.Ask(ExtractFileDir(Project), AFacts, Plan.Branch, Plan.Message, AIssue.Key, Plan.Svn,
+      if not TAtlasIdeBranching.Ask(ExtractFileDir(mProject), AFacts, mPlan.Branch, mPlan.Message, AIssue.Key, mPlan.Svn,
         True, mRequest, mNeverAsk) then
       begin
         FStartProject := '';
-        SetNotice(Project, '', False);
+        SetNotice(mProject, '', False);
         Changed;
         Exit;
       end;
@@ -2355,48 +2355,48 @@ begin
       end;
       mUseRequest := True;
       mDialog := True;
-      Plan.Branch := mRequest.Name;
+      mPlan.Branch := mRequest.Name;
     end;
   end;
   // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren). Nicht, wenn sie schon
   // entschieden sind: im Dialog (Git), bei stash oder worktree (#1289).
-  if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AChanges > 0) and not mAsked and
+  if (mPlan.Mode = TAtlasIssueStart.Branch) and mPlan.Valid and (AChanges > 0) and not mAsked and
     not (mDialog and (mRequest.Kind = TAtlasVcsKind.Git)) and
     not (mUseRequest and (mRequest.Stash or (mRequest.WorktreeFolder <> ''))) and
-    (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesLocalChanges, [AChanges, Plan.Branch,
+    (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesLocalChanges, [AChanges, mPlan.Branch,
     sLineBreak + sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
   begin
     FStartProject := '';
-    SetNotice(Project, '', False);
+    SetNotice(mProject, '', False);
     Changed;
     Exit;
   end;
-  RunStart(Project, AIssue, Plan, mUseRequest, mRequest, AFacts, mDialog);
+  RunStart(mProject, AIssue, mPlan, mUseRequest, mRequest, AFacts, mDialog);
 end;
 
 procedure TAtlasIdeIssues.RunStart(const AProject: string; const AIssue: TAtlasTrackerIssue;
   const APlan: TAtlasIssueStartPlan; AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest;
   const AFacts: TAtlasVcsBranchFacts; AOfferLocal: Boolean);
 var
-  Keep: IAtlasIssuesSource;
-  Project, Dir: string;
-  Issue: TAtlasTrackerIssue;
-  Plan: TAtlasIssueStartPlan;
-  Outcome: TAtlasIssueStartResult;
+  mKeep: IAtlasIssuesSource;
+  mProject, mDir: string;
+  mIssue: TAtlasTrackerIssue;
+  mPlan: TAtlasIssueStartPlan;
+  mOutcome: TAtlasIssueStartResult;
   mRequest: TAtlasVcsBranchRequest;
   mFacts: TAtlasVcsBranchFacts;
   mUseRequest, mOfferLocal: Boolean;
 begin
-  Project := AProject;
-  Issue := AIssue;
-  Plan := APlan;
+  mProject := AProject;
+  mIssue := AIssue;
+  mPlan := APlan;
   mRequest := ARequest;
   mFacts := AFacts;
   mUseRequest := AUseRequest;
   mOfferLocal := AOfferLocal;
-  Outcome := Default(TAtlasIssueStartResult);
-  Keep := Self;
-  Dir := ExtractFileDir(Project);
+  mOutcome := Default(TAtlasIssueStartResult);
+  mKeep := Self;
+  mDir := ExtractFileDir(mProject);
   if not TAtlasIdeVcs.Run(
     procedure
     var
@@ -2406,24 +2406,24 @@ begin
     begin
       if mUseRequest then
       begin
-        Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan,
+        mOutcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), mPlan,
           mRequest, TAtlasIdeBranching.Progress(mRequest.Kind));
       end
       else
       begin
-        Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan);
+        mOutcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), mPlan);
       end;
       // worktree (#1289): Hook und Präfix-Datei gehören zum neuen Ordner (eigener Verwaltungsordner).
-      if (Outcome.Outcome = TAtlasIssueStartOutcome.Started) and (Outcome.Folder <> '') then
+      if (mOutcome.Outcome = TAtlasIssueStartOutcome.Started) and (mOutcome.Folder <> '') then
       begin
-        Outcome.Hooks := '';
-        Outcome.GitDir := '';
-        mVcs := TAtlasIdeVcs.ForFolder(Outcome.Folder, TAtlasIdeVcs.AtLeast(VcsTimeoutMs));
+        mOutcome.Hooks := '';
+        mOutcome.GitDir := '';
+        mVcs := TAtlasIdeVcs.ForFolder(mOutcome.Folder, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs));
         if Supports(mVcs, IAtlasVcsBranching, mBranching) and
           (mBranching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) then
         begin
-          Outcome.Hooks := mHooks;
-          Outcome.GitDir := mGitDir;
+          mOutcome.Hooks := mHooks;
+          mOutcome.GitDir := mGitDir;
         end;
       end;
     end,
@@ -2431,22 +2431,22 @@ begin
     var
       mFallback: TAtlasVcsBranchRequest;
     begin
-      if (Keep = nil) or not FStarted then
+      if (mKeep = nil) or not FStarted then
       begin
         Exit;
       end;
       // Abruf gescheitert (#1289), noch nichts geändert: nach dem Dialog vom lokalen Stand, ohne erneute Frage.
-      if mOfferLocal and (Outcome.Outcome = TAtlasIssueStartOutcome.Failed) and
-        TAtlasIdeBranching.AskLocal(mFacts, mRequest, Outcome.Steps, Outcome.Run, mFallback) then
+      if mOfferLocal and (mOutcome.Outcome = TAtlasIssueStartOutcome.Failed) and
+        TAtlasIdeBranching.AskLocal(mFacts, mRequest, mOutcome.Steps, mOutcome.Run, mFallback) then
       begin
-        RunStart(Project, Issue, Plan, True, mFallback, mFacts, False);
+        RunStart(mProject, mIssue, mPlan, True, mFallback, mFacts, False);
         Exit;
       end;
-      Finished(Project, Issue, Plan, Outcome);
+      Finished(mProject, mIssue, mPlan, mOutcome);
     end) then
   begin
     FStartProject := '';
-    SetNotice(Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesNotStarted, [Issue.Key]), True);
+    SetNotice(mProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesNotStarted, [mIssue.Key]), True);
     Changed;
   end;
 end;
@@ -2460,24 +2460,24 @@ begin
   end;
   if TAtlasCommitHook.State(AHooks) = TAtlasCommitHookState.Own then
   begin
-    AState.Hook := TAtlasMyIssues.HookYes;
+    AState.Hook := TAtlasMyIssues.cHookYes;
     Exit;
   end;
   if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesHookPrompt, [sLineBreak + sLineBreak]), mtConfirmation,
     [mbYes, mbNo], 0) <> mrYes then
   begin
-    AState.Hook := TAtlasMyIssues.HookNo;
+    AState.Hook := TAtlasMyIssues.cHookNo;
     Exit;
   end;
   if TAtlasCommitHook.State(AHooks) = TAtlasCommitHookState.Foreign then
   begin
-    AState.Hook := TAtlasMyIssues.HookForeign;
+    AState.Hook := TAtlasMyIssues.cHookForeign;
     Report(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHookForeign));
     Exit;
   end;
   if TAtlasCommitHook.Install(AHooks) then
   begin
-    AState.Hook := TAtlasMyIssues.HookYes;
+    AState.Hook := TAtlasMyIssues.cHookYes;
     TAtlasGuard.Log('Meine Issues: Git-Hook prepare-commit-msg angelegt');
   end
   else
@@ -2489,9 +2489,9 @@ end;
 procedure TAtlasIdeIssues.Finished(const AProject: string; const AIssue: TAtlasTrackerIssue;
   const APlan: TAtlasIssueStartPlan; const AResult: TAtlasIssueStartResult);
 var
-  State: TAtlasIssuesState;
-  Mode: TAtlasIssueStart;
-  Notice: string;
+  mState: TAtlasIssuesState;
+  mMode: TAtlasIssueStart;
+  mNotice: string;
   mProject, mOpen: string;
 begin
   FStartProject := '';
@@ -2528,10 +2528,10 @@ begin
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
-  Mode := TAtlasIssueStart.Branch;
+  mMode := TAtlasIssueStart.Branch;
   if AResult.Outcome = TAtlasIssueStartOutcome.Remembered then
   begin
-    Mode := TAtlasIssueStart.Remember;
+    mMode := TAtlasIssueStart.Remember;
   end;
   // worktree (#1289): Das Issue gilt für das Projekt im neuen Ordner; die bisherige Arbeitskopie bleibt.
   mProject := AProject;
@@ -2545,42 +2545,42 @@ begin
     end;
     mOpen := TAtlasIdeBranching.WorktreeProject(AProject, AResult.WorkingRoot, AResult.Folder);
   end;
-  State := StateOf(mProject);
-  TAtlasMyIssues.Started(State, AIssue, Mode, AResult.Branch, NowUtc);
+  mState := StateOf(mProject);
+  TAtlasMyIssues.Started(mState, AIssue, mMode, AResult.Branch, NowUtc);
   if AResult.GitDir <> '' then
   begin
-    State.GitDir := AResult.GitDir;
+    mState.GitDir := AResult.GitDir;
   end;
   // Git-Hook für das Präfix: nur mit Muster und nach Zustimmung.
   if (APlan.Prefix <> '') and (AResult.Hooks <> '') then
   begin
-    AskHook(mProject, State, AResult.Hooks);
+    AskHook(mProject, mState, AResult.Hooks);
   end;
-  SaveState(mProject, State);
+  SaveState(mProject, mState);
   case AResult.Outcome of
     TAtlasIssueStartOutcome.Started:
       if AResult.Folder <> '' then
       begin
-        Notice := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchWorktreeCreated, [AResult.Branch, AResult.Base,
+        mNotice := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchWorktreeCreated, [AResult.Branch, AResult.Base,
           AResult.Folder]);
       end
       else
       begin
-        Notice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesCreated, [AResult.Branch, AResult.Base]);
+        mNotice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesCreated, [AResult.Branch, AResult.Base]);
       end;
     TAtlasIssueStartOutcome.Switched:
-      Notice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesSwitched, [AResult.Branch]);
+      mNotice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesSwitched, [AResult.Branch]);
   else
     if APlan.Prefix <> '' then
     begin
-      Notice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesRememberedPrefix, [AIssue.Key, APlan.Prefix]);
+      mNotice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesRememberedPrefix, [AIssue.Key, APlan.Prefix]);
     end
     else
     begin
-      Notice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesRemembered, [AIssue.Key]);
+      mNotice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesRemembered, [AIssue.Key]);
     end;
   end;
-  SetNotice(AProject, Notice, False);
+  SetNotice(AProject, mNotice, False);
   UpdateStatus;
   // Tracker nachführen (#1266): Ergebnis als eigene Zeile, der Branch bleibt auch bei einem Fehler.
   if FSync <> nil then
@@ -2633,32 +2633,32 @@ end;
 
 procedure TAtlasIdeIssues.SyncPrefix(const AProject: string);
 var
-  State: TAtlasIssuesState;
-  Active_: TAtlasActiveIssue;
-  Target: TAtlasTrackerTarget;
-  Prefix: string;
+  mState: TAtlasIssuesState;
+  mActive_: TAtlasActiveIssue;
+  mTarget: TAtlasTrackerTarget;
+  mPrefix: string;
 begin
   if AProject = '' then
   begin
     Exit;
   end;
-  State := StateOf(AProject);
-  if (State.GitDir = '') or (State.Hook <> TAtlasMyIssues.HookYes) or not DirectoryExists(State.GitDir) then
+  mState := StateOf(AProject);
+  if (mState.GitDir = '') or (mState.Hook <> TAtlasMyIssues.cHookYes) or not DirectoryExists(mState.GitDir) then
   begin
     Exit;
   end;
-  Target := TargetOf(AProject);
-  Active_ := TAtlasMyIssues.Effective(State, Target.Provider, Target.Project, BranchOf(AProject));
-  Prefix := TAtlasMyIssues.CommitPrefix(Active_, Options.CommitPattern);
-  if (Prefix <> '') and not FPrefixDirs.Contains(State.GitDir) then
+  mTarget := TargetOf(AProject);
+  mActive_ := TAtlasMyIssues.Effective(mState, mTarget.Provider, mTarget.Project, BranchOf(AProject));
+  mPrefix := TAtlasMyIssues.CommitPrefix(mActive_, Options.CommitPattern);
+  if (mPrefix <> '') and not FPrefixDirs.Contains(mState.GitDir) then
   begin
-    FPrefixDirs.Add(State.GitDir);
+    FPrefixDirs.Add(mState.GitDir);
   end;
-  if TAtlasCommitHook.ReadPrefix(State.GitDir) = Prefix then
+  if TAtlasCommitHook.ReadPrefix(mState.GitDir) = mPrefix then
   begin
     Exit;
   end;
-  if not TAtlasCommitHook.WritePrefix(State.GitDir, Prefix) then
+  if not TAtlasCommitHook.WritePrefix(mState.GitDir, mPrefix) then
   begin
     TAtlasGuard.Log('Meine Issues: Präfix-Datei für den Git-Hook nicht geschrieben');
   end;
@@ -2666,12 +2666,12 @@ end;
 
 procedure TAtlasIdeIssues.ClearPrefixes;
 var
-  Dir: string;
+  mDir: string;
 begin
   // Bereich abgeschaltet: Ohne aktuelles Issue soll der Hook auch außerhalb der IDE nichts mehr voranstellen.
-  for Dir in FPrefixDirs do
+  for mDir in FPrefixDirs do
   begin
-    if not TAtlasCommitHook.WritePrefix(Dir, '') then
+    if not TAtlasCommitHook.WritePrefix(mDir, '') then
     begin
       TAtlasGuard.Log('Meine Issues: Präfix-Datei für den Git-Hook nicht gelöscht');
     end;
@@ -2681,10 +2681,10 @@ end;
 
 procedure TAtlasIdeIssues.UpdateStatus;
 var
-  Project, Text: string;
-  Data: TAtlasIssuesView;
-  Keep: IAtlasIssuesSource;
-  Action: TProc;
+  mProject, mText: string;
+  mData: TAtlasIssuesView;
+  mKeep: IAtlasIssuesSource;
+  mAction: TProc;
 begin
   if not FStarted or not Active then
   begin
@@ -2706,43 +2706,43 @@ begin
   begin
     FWatch.Enabled := True;
   end;
-  Project := CurrentProject;
-  Data := ViewOf(Project);
-  FPrefix := TAtlasMyIssues.CommitPrefix(Data.Active, Options.CommitPattern);
+  mProject := CurrentProject;
+  mData := ViewOf(mProject);
+  FPrefix := TAtlasMyIssues.CommitPrefix(mData.Active, Options.CommitPattern);
   try
-    SyncPrefix(Project);
+    SyncPrefix(mProject);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
-  if not Data.Active.Active then
+  if not mData.Active.Active then
   begin
     RemoveStatus;
     SyncTime('', '');
     Exit;
   end;
-  SyncTime(Project, Data.Active.Key);
+  SyncTime(mProject, mData.Active.Key);
   if FLine = nil then
   begin
-    Keep := Self;
+    mKeep := Self;
     // Typisierte Variable: Der Konstruktor ist überladen.
-    Action := procedure
+    mAction := procedure
       begin
-        if Keep <> nil then
+        if mKeep <> nil then
         begin
           EndActive;
         end;
       end;
-    FLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, TAtlasMyIssues.StatusId,
-      TAtlasMyIssues.StatusOrder, Action);
+    FLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, TAtlasMyIssues.cStatusId,
+      TAtlasMyIssues.cStatusOrder, mAction);
     FLineRef := FLine;
     TAtlasStatusRegistry.Default.Add(FLineRef);
   end;
-  Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStatusLine, [Trim(Data.Active.Key + ' ' + Data.Active.Title)]);
-  FLine.Update(Text, TAtlasStatusState.Neutral, Data.Active.Key, TAtlasTrackerIssuesView.TileText(Data),
+  mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStatusLine, [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);
+  FLine.Update(mText, TAtlasStatusState.Neutral, mData.Active.Key, TAtlasTrackerIssuesView.TileText(mData),
     TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStatusHint));
-  UpdateChecklistStatus(Project, Data.Active.Key);
-  UpdateAttachStatus(Data.Active.Key);
+  UpdateChecklistStatus(mProject, mData.Active.Key);
+  UpdateAttachStatus(mData.Active.Key);
 end;
 
 procedure TAtlasIdeIssues.RemoveStatus;
@@ -2754,7 +2754,7 @@ begin
     Exit;
   end;
   FLine.Detach;
-  TAtlasStatusRegistry.Default.Remove(TAtlasMyIssues.StatusId);
+  TAtlasStatusRegistry.Default.Remove(TAtlasMyIssues.cStatusId);
   FLine := nil;
   FLineRef := nil;
 end;
@@ -2792,8 +2792,8 @@ begin
           ChecklistClicked;
         end;
       end;
-    FChecklistLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, TAtlasMyIssues.ChecklistStatusId,
-      TAtlasMyIssues.ChecklistStatusOrder, mAction);
+    FChecklistLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, TAtlasMyIssues.cChecklistStatusId,
+      TAtlasMyIssues.cChecklistStatusOrder, mAction);
     FChecklistLineRef := FChecklistLine;
     TAtlasStatusRegistry.Default.Add(FChecklistLineRef);
   end;
@@ -2810,7 +2810,7 @@ begin
     Exit;
   end;
   FChecklistLine.Detach;
-  TAtlasStatusRegistry.Default.Remove(TAtlasMyIssues.ChecklistStatusId);
+  TAtlasStatusRegistry.Default.Remove(TAtlasMyIssues.cChecklistStatusId);
   FChecklistLine := nil;
   FChecklistLineRef := nil;
 end;
@@ -2852,7 +2852,7 @@ begin
     procedure
     begin
       Inc(FTicks);
-      if FTicks mod StatusTicks = 0 then
+      if FTicks mod cStatusTicks = 0 then
       begin
         UpdateStatus;
       end;
@@ -2863,24 +2863,24 @@ end;
 /// <summary>Erstes beschreibbares, sichtbares Nachrichtenfeld (Memo) in AControl.</summary>
 function FindMessageMemo(AControl: TWinControl): TCustomMemo;
 var
-  Index: Integer;
-  Child: TControl;
+  mIndex: Integer;
+  mChild: TControl;
 begin
   Result := nil;
-  for Index := 0 to AControl.ControlCount - 1 do
+  for mIndex := 0 to AControl.ControlCount - 1 do
   begin
-    Child := AControl.Controls[Index];
-    if not Child.Visible then
+    mChild := AControl.Controls[mIndex];
+    if not mChild.Visible then
     begin
       Continue;
     end;
-    if (Child is TCustomMemo) and Child.Enabled and not TEditAccess(Child).ReadOnly then
+    if (mChild is TCustomMemo) and mChild.Enabled and not TEditAccess(mChild).ReadOnly then
     begin
-      Exit(TCustomMemo(Child));
+      Exit(TCustomMemo(mChild));
     end;
-    if Child is TWinControl then
+    if mChild is TWinControl then
     begin
-      Result := FindMessageMemo(TWinControl(Child));
+      Result := FindMessageMemo(TWinControl(mChild));
       if Result <> nil then
       begin
         Exit;
@@ -2891,51 +2891,51 @@ end;
 
 procedure TAtlasIdeIssues.FillCommitDialog;
 var
-  Form: TCustomForm;
-  Memo: TCustomMemo;
-  Index: Integer;
-  Text: string;
+  mForm: TCustomForm;
+  mMemo: TCustomMemo;
+  mIndex: Integer;
+  mText: string;
 begin
   // Vergessene Felder: Fenster gibt es nicht mehr.
-  for Index := FFilled.Count - 1 downto 0 do
+  for mIndex := FFilled.Count - 1 downto 0 do
   begin
-    if not IsWindow(FFilled[Index]) then
+    if not IsWindow(FFilled[mIndex]) then
     begin
-      FFilled.Delete(Index);
+      FFilled.Delete(mIndex);
     end;
   end;
   if FPrefix = '' then
   begin
     Exit;
   end;
-  Form := Screen.ActiveForm;
+  mForm := Screen.ActiveForm;
   // Commit-Dialog der Versionsverwaltung der IDE (Git, SVN, Mercurial): am Namen der Formularklasse erkannt.
-  if (Form = nil) or not (ContainsText(Form.ClassName, 'Commit') or ContainsText(Form.Name, 'Commit')) then
+  if (mForm = nil) or not (ContainsText(mForm.ClassName, 'Commit') or ContainsText(mForm.Name, 'Commit')) then
   begin
     Exit;
   end;
-  Memo := FindMessageMemo(Form);
-  if (Memo = nil) or not Memo.HandleAllocated or FFilled.Contains(Memo.Handle) then
+  mMemo := FindMessageMemo(mForm);
+  if (mMemo = nil) or not mMemo.HandleAllocated or FFilled.Contains(mMemo.Handle) then
   begin
     Exit;
   end;
   // Einmal je Dialog: Was der Benutzer danach ändert, bleibt.
-  FFilled.Add(Memo.Handle);
-  Text := TAtlasTrackerNaming.Prefixed(TEditAccess(Memo).Text, FPrefix);
-  if Text = TEditAccess(Memo).Text then
+  FFilled.Add(mMemo.Handle);
+  mText := TAtlasTrackerNaming.Prefixed(TEditAccess(mMemo).Text, FPrefix);
+  if mText = TEditAccess(mMemo).Text then
   begin
     Exit;
   end;
-  TEditAccess(Memo).Text := Text;
-  Memo.SelStart := Length(Text);
+  TEditAccess(mMemo).Text := mText;
+  mMemo.SelStart := Length(mText);
   TAtlasGuard.Log('Meine Issues: Präfix im Commit-Dialog der IDE ergänzt');
 end;
 
 procedure TAtlasIdeIssues.Browse(const AIssue: TAtlasTrackerIssue);
 var
-  Issue: TAtlasTrackerIssue;
+  mIssue: TAtlasTrackerIssue;
 begin
-  Issue := AIssue;
+  mIssue := AIssue;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
@@ -2949,10 +2949,10 @@ begin
       begin
         Exit;
       end;
-      Url := Provider.IssuePage(Target, Issue.Key);
+      Url := Provider.IssuePage(Target, mIssue.Key);
       if FNotify <> nil then
       begin
-        FNotify.Seen(Target, Issue.Key);
+        FNotify.Seen(Target, mIssue.Key);
       end;
       // Nur Web-Adressen aus der eingetragenen Adresse, nie etwas aus der Antwort des Trackers.
       if Url.StartsWith('https://', True) or Url.StartsWith('http://', True) then
@@ -3150,9 +3150,9 @@ end;
 
 procedure TAtlasIdeIssues.BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
 var
-  Issue: TAtlasTrackerIssue;
+  mIssue: TAtlasTrackerIssue;
 begin
-  Issue := AIssue;
+  mIssue := AIssue;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
@@ -3162,11 +3162,11 @@ begin
     begin
       Target := TargetOf(CurrentProject);
       Provider := ProviderOf(Target.Provider);
-      if (Provider = nil) or (Issue.PullRequest.Number <= 0) then
+      if (Provider = nil) or (mIssue.PullRequest.Number <= 0) then
       begin
         Exit;
       end;
-      Url := Provider.PullRequestPage(Target, Issue.PullRequest.Number);
+      Url := Provider.PullRequestPage(Target, mIssue.PullRequest.Number);
       if Url.StartsWith('https://', True) or Url.StartsWith('http://', True) then
       begin
         ShellExecute(0, 'open', PChar(Url), nil, nil, SW_SHOWNORMAL);
