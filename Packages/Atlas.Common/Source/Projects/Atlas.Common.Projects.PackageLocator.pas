@@ -5,7 +5,8 @@
 // Gruppe, Suchpfade): Ihr contains ist die Antwort. Sonst das übersetzte
 // <Name>.dcp in den Bibliothekspfaden: Es enthält die Namen seiner Units als
 // Zeichenketten, die Suche danach ist eine Näherung ohne das DCP-Format.
-// Ergebnisse bleiben je Package im Speicher; der Zugriff ist threadsicher.
+// Ergebnisse bleiben je Package im Speicher; der Zugriff ist threadsicher. Die Bytes der .dcp hält
+// TPackageCompiledFiles einmal je Prozess für alle Locatoren.
 
 interface
 
@@ -17,6 +18,28 @@ uses
 type
   /// <summary>Liest eine Datei; False, wenn sie fehlt oder nicht lesbar ist.</summary>
   TPackageReadFile = reference to function(const AFileName: string; out AData: TBytes): Boolean;
+
+  /// <summary>Inhalt der übersetzten Packages (.dcp) einmal je Prozess. Jeder Arbeitsbereich hat seinen
+  /// TPackageLocator, und bei jedem Indexstart entsteht ein neuer; mit eigenen Kopien lag jede .dcp (bei
+  /// Fremdkomponenten oft zweistellige MB) je Projekt und je Neuladen im Speicher, beim Kunden über 2 GB.
+  /// Ein Eintrag gilt, solange Zeitstempel und Größe der Datei gleich sind.</summary>
+  TPackageCompiledFiles = record
+  private type
+    TEntry = record
+      Stamp: TDateTime;
+      Size: Int64;
+      Data: TBytes;
+    end;
+  private class var
+    FLock: TObject;
+    FFiles: TDictionary<string, TEntry>;
+  public
+    /// <summary>Inhalt von AFileName, geteilt; False, wenn die Datei fehlt oder nicht lesbar ist.</summary>
+    class function Read(const AFileName: string; out AData: TBytes): Boolean; static;
+    /// <summary>Summe der gehaltenen Inhalte in Byte (Fenster „Atlas-Server“).</summary>
+    class function Bytes: Int64; static;
+    class procedure Clear; static;
+  end;
 
   TPackageLocator = class
   private type
@@ -61,11 +84,90 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding;
 
+{ TPackageCompiledFiles }
+
+class function TPackageCompiledFiles.Read(const AFileName: string; out AData: TBytes): Boolean;
+var
+  mKey: string;
+  mEntry: TEntry;
+  mStamp: TDateTime;
+  mSize: Int64;
+begin
+  AData := nil;
+  if not TFile.Exists(AFileName) then
+    Exit(False);
+  try
+    mStamp := TFile.GetLastWriteTime(AFileName);
+    mSize := TFile.GetSize(AFileName);
+  except
+    on Exception do
+      Exit(False);
+  end;
+  mKey := AnsiUpperCase(ExpandFileName(AFileName));
+  TMonitor.Enter(FLock);
+  try
+    if FFiles.TryGetValue(mKey, mEntry) and (mEntry.Stamp = mStamp) and (mEntry.Size = mSize) then
+    begin
+      AData := mEntry.Data;
+      Exit(True);
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  // Außerhalb der Sperre lesen; liest ein zweiter Thread dieselbe Datei gleichzeitig, gewinnt der letzte.
+  try
+    AData := TFile.ReadAllBytes(AFileName);
+  except
+    // Gesperrte oder nicht lesbare Dateien zählen als fehlend.
+    on Exception do
+      Exit(False);
+  end;
+  mEntry.Stamp := mStamp;
+  mEntry.Size := mSize;
+  mEntry.Data := AData;
+  TMonitor.Enter(FLock);
+  try
+    FFiles.AddOrSetValue(mKey, mEntry);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Result := True;
+end;
+
+class function TPackageCompiledFiles.Bytes: Int64;
+var
+  mEntry: TEntry;
+begin
+  Result := 0;
+  TMonitor.Enter(FLock);
+  try
+    for mEntry in FFiles.Values do
+      Inc(Result, Length(mEntry.Data));
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+class procedure TPackageCompiledFiles.Clear;
+begin
+  TMonitor.Enter(FLock);
+  try
+    // Neu anlegen statt Clear: Clear behält die Bucket-Tabelle (Speicher bleibt belegt).
+    FFiles.Free;
+    FFiles := TDictionary<string, TEntry>.Create;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 function DiskReadFile: TPackageReadFile;
 begin
   Result :=
     function(const AFileName: string; out AData: TBytes): Boolean
     begin
+      // Übersetzte Packages geteilt über alle Locatoren (Speicher, Rückmeldung 01.11.2026).
+      if SameText(ExtractFileExt(AFileName), '.dcp') then
+        Exit(TPackageCompiledFiles.Read(AFileName, AData));
       AData := nil;
       Result := TFile.Exists(AFileName);
       if Result then
@@ -334,5 +436,13 @@ begin
     end;
   end;
 end;
+
+initialization
+  TPackageCompiledFiles.FLock := TObject.Create;
+  TPackageCompiledFiles.FFiles := TDictionary<string, TPackageCompiledFiles.TEntry>.Create;
+
+finalization
+  FreeAndNil(TPackageCompiledFiles.FFiles);
+  FreeAndNil(TPackageCompiledFiles.FLock);
 
 end.
