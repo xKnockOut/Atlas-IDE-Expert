@@ -556,6 +556,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.WorkspaceEdits.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.FeatureTable.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registry.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registration.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Handshake.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Parts.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Teardown.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ThreadList.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Processes.Tests.pas"/>
@@ -1097,6 +1101,12 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.StartProfiles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.Registration.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.Registry.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.Handshake.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Parts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.ThreadList.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Processes.pas"/>
