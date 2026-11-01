@@ -5844,6 +5844,7 @@ begin
   AStatus.Memory.LibraryUnits := mParts.LibraryBytes;
   AStatus.Memory.TreeCache := mTrees.Bytes;
   AStatus.Memory.Documents := AStatus.DocumentBytes;
+  AStatus.Memory.Packages := TPackageCompiledFiles.Bytes;
   AStatus.Memory.Total := AStatus.MemoryBytes;
   AStatus.Memory.Budget := AStatus.BudgetBytes;
   AStatus.IndexCacheHitPercent := TServerStatus.CacheHitPercent(AStatus.Workspaces);

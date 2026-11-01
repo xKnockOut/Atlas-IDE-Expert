@@ -60,6 +60,8 @@ type
     TreeCache: Int64;
     /// <summary>Text der geöffneten Dokumente.</summary>
     Documents: Int64;
+    /// <summary>Inhalt der übersetzten Packages (.dcp), einmal je Prozess (TPackageCompiledFiles).</summary>
+    Packages: Int64;
     /// <summary>Belegter Speicher des Prozesses (Heap); -1 = unbekannt.</summary>
     Total: Int64;
     /// <summary>Budget des Index; 0 = unbegrenzt.</summary>
@@ -185,7 +187,7 @@ end;
 
 function TServerMemory.Estimated: Int64;
 begin
-  Result := Symbols + Usages + LibraryUnits + TreeCache + Documents;
+  Result := Symbols + Usages + LibraryUnits + TreeCache + Documents + Packages;
 end;
 
 function TServerMemory.Rest: Int64;
@@ -244,6 +246,7 @@ begin
   ABuilder.Append('| Bibliotheks-Units | ').Append(MegaBytes(Memory.LibraryUnits)).Append(' |').Append(#10);
   ABuilder.Append('| Syntaxbaum-Cache | ').Append(MegaBytes(Memory.TreeCache)).Append(' |').Append(#10);
   ABuilder.Append('| Offene Dokumente | ').Append(MegaBytes(Memory.Documents)).Append(' |').Append(#10);
+  ABuilder.Append('| Packages (.dcp) | ').Append(MegaBytes(Memory.Packages)).Append(' |').Append(#10);
   ABuilder.Append('| Rest | ').Append(MegaBytes(Memory.Rest)).Append(' |').Append(#10);
   if Memory.Total >= 0 then
     ABuilder.Append('| Gesamt | ').Append(MegaBytes(Memory.Total)).Append(' |').Append(#10);
@@ -402,6 +405,7 @@ begin
     Item.AddPair('libraryUnits', TJSONNumber.Create(Memory.LibraryUnits));
     Item.AddPair('treeCache', TJSONNumber.Create(Memory.TreeCache));
     Item.AddPair('documents', TJSONNumber.Create(Memory.Documents));
+    Item.AddPair('packages', TJSONNumber.Create(Memory.Packages));
     Item.AddPair('rest', TJSONNumber.Create(Memory.Rest));
     Item.AddPair('total', TJSONNumber.Create(Memory.Total));
     Item.AddPair('budget', TJSONNumber.Create(Memory.Budget));
