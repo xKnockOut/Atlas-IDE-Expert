@@ -270,28 +270,26 @@ end;
 
 function TDelphiInstallation.ReadPaths(const APlatform, AValueName: string): TArray<string>;
 var
-  Registry: TRegistry;
-  Items: TList<string>;
-  Item: string;
+  mRegistry: TRegistry;
+  mItem: string;
 begin
-  Items := TList<string>.Create;
+  Result := nil;
+  mRegistry := OpenRead(HKEY_CURRENT_USER, BdsKey + '\' + FVersion + '\Library\' + APlatform);
+  if mRegistry = nil then
+  begin
+    Exit;
+  end;
   try
-    Registry := OpenRead(HKEY_CURRENT_USER, BdsKey + '\' + FVersion + '\Library\' + APlatform);
-    if Registry <> nil then
-      try
-        if Registry.ValueExists(AValueName) then
-        begin
-          for Item in TProjectPaths.SplitList(Registry.ReadString(AValueName)) do
-          begin
-            Items.Add(TProjectPaths.Normalize(ExpandFor(Item, APlatform)));
-          end;
-        end;
-      finally
-        Registry.Free;
-      end;
-    Result := Items.ToArray;
+    if not mRegistry.ValueExists(AValueName) then
+    begin
+      Exit;
+    end;
+    for mItem in TProjectPaths.SplitList(mRegistry.ReadString(AValueName)) do
+    begin
+      Result := Result + [TProjectPaths.Normalize(ExpandFor(mItem, APlatform))];
+    end;
   finally
-    Items.Free;
+    mRegistry.Free;
   end;
 end;
 
