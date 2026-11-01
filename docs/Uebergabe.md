@@ -56,8 +56,8 @@
 - Nach dem Debugger mit demselben Werkzeug verschoben: `Atlas.IDE.Designer` (7 Units), `.Rules` (7), `.Tests` (10), `.Bookmarks` (19), `.Analysis` (21), `.Search` (25), `.Build` (20), `.BuildPipeline` (10), nach Paket 2d (PR #1481, gemergt 555e65f2) auch `.Tracker` (104); je Package dpk/dproj wie beim Debugger, Eintrag in `Atlas.groupproj` vor dem Testprojekt, Testpfade angepasst. Inhalt der Units unverändert.
 - Danach auch `.Welcome` (63 Units, mit Frame-dfm), nachdem ihr Abschnitt im Optionsdialog ins Modul gezogen war (folgender Abschnitt). Alle zehn Module liegen damit in eigenen Packages; Prüfskripte grün, Inhalt der Units unverändert.
 - Danach das Package `Atlas.IDE.Contracts` (die sechs Units aus `Source/Contracts`, requires nur rtl und vcl, `DESIGNONLY` wie alle Atlas-Packages). Alle Module requiren Kern und Contracts (dpk und `DCCReference` der .dcp); in `Atlas.groupproj` steht Contracts vor dem Kern ohne Abhängigkeit, die Module hängen von beiden ab, die Bau-Reihenfolge ist Kern, Contracts, Module. `release.yml` baut Kern und Contracts zuerst (alphabetisch käme Contracts nach Build).
-- Offen: Umbenennung in `Atlas.IDE.Base`.
-- Handtests MP1–MP4 in `handtests-v2.md`.
+- Danach der Kern in `Atlas.IDE.Base` umbenannt (`Packages/Atlas.IDE.Base`, dpk/dproj, `Atlas.groupproj`, requires und `.dcp`-Verweise aller Module, Testprojekt, Server, Werkzeuge, Workflows, Doku). `Check-PackageDependencies` kennt nur noch `Atlas.IDE.Base`. Die Protokolldatei heißt bewusst weiter `Atlas.IDE.Expert<Ver>.log` (`cLogName`), damit Anleitungen und Fehlerberichte gültig bleiben; Testdaten mit dem alten Namen unverändert. Auf Marcos PC muss der Known-Packages-Eintrag von `Atlas.IDE.Expert370.bpl` auf `Atlas.IDE.Base370.bpl` umgestellt werden (Handtest RN1).
+- Handtests MP1–MP4 und RN1–RN3 in `handtests-v2.md`.
 
 ## Pilot: Debugger als eigenes Package (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 

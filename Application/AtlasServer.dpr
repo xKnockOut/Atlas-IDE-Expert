@@ -22,21 +22,21 @@ uses
   Shell.VcsChanges in 'Source\Shell\Shell.VcsChanges.pas',
   Shell.AffectedTests in 'Source\Shell\Shell.AffectedTests.pas',
   Shell.Hotspots in 'Source\Shell\Shell.Hotspots.pas',
-  Atlas.Core.Vcs.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas',
-  Atlas.Core.Vcs.Internals.Text in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas',
-  Atlas.Core.Vcs.ServerAccess in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas',
-  Atlas.Core.Vcs.Internals.GitParser in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas',
-  Atlas.Core.Vcs.Internals.SvnParser in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas',
-  Atlas.Core.Vcs.Internals.SvnLayout in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnLayout.pas',
-  Atlas.Core.Vcs.Internals.LineTrace in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.LineTrace.pas',
-  Atlas.Core.Vcs.Tools in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas',
-  Atlas.Core.Vcs.Providers.Git in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas',
-  Atlas.Core.Vcs.Providers.Svn in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas',
-  Atlas.Core.Vcs.Providers.Null in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Null.pas',
-  Atlas.Core.Vcs.Detection in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Detection.pas',
-  Atlas.Core.Vcs.Composition in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Composition.pas',
-  Atlas.Core.Vcs.Adapters.ProcessRunner in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas',
-  Atlas.Core.Tracker.CommitHook in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas',
+  Atlas.Core.Vcs.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas',
+  Atlas.Core.Vcs.Internals.Text in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas',
+  Atlas.Core.Vcs.ServerAccess in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas',
+  Atlas.Core.Vcs.Internals.GitParser in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas',
+  Atlas.Core.Vcs.Internals.SvnParser in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas',
+  Atlas.Core.Vcs.Internals.SvnLayout in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnLayout.pas',
+  Atlas.Core.Vcs.Internals.LineTrace in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Internals.LineTrace.pas',
+  Atlas.Core.Vcs.Tools in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas',
+  Atlas.Core.Vcs.Providers.Git in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas',
+  Atlas.Core.Vcs.Providers.Svn in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas',
+  Atlas.Core.Vcs.Providers.Null in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Null.pas',
+  Atlas.Core.Vcs.Detection in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Detection.pas',
+  Atlas.Core.Vcs.Composition in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Composition.pas',
+  Atlas.Core.Vcs.Adapters.ProcessRunner in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas',
+  Atlas.Core.Tracker.CommitHook in '..\Packages\Atlas.IDE.Base\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas',
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas',
   Shell.Diagnostics in 'Source\Shell\Shell.Diagnostics.pas',
   Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
@@ -49,7 +49,7 @@ uses
   Shell.Platform in 'Source\Shell\Shell.Platform.pas';
 
 // Atlas-Symbol (#751) als Programmsymbol (MAINICON).
-{$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Icon.res'}
+{$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Icon.res'}
 
 // Speicherrest beim Beenden an den Debugger; die Zeile im Log (--log) schreibt
 // TShutdownLeaks selbst. Kein ReportMemoryLeaksOnShutdown: dessen Dialog

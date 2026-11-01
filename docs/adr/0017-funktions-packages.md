@@ -178,7 +178,7 @@ Abnahme, jeder Fall mit Delphi 12 und 13, Win32 und Win64. Bestanden heißt: kei
 - P10. Desktop-Wiederherstellung: Dock-Fenster des Debuggers offen, IDE beenden, Debugger deinstallieren, IDE starten.
 - P11. `pwsh Tools/Build-Test.ps1` (Win64-Gruppe, Win32-Plugin) und alle Prüfskripte grün, 0/0/0.
 
-Stand 01.11.2026: Der Debugger liegt als `Packages/Atlas.IDE.Debugger` im eigenen Package (requires nur rtl, vcl, vclwinx, designide und den Kern), danach ebenso Designer, Rules, Tests, Bookmarks, Analysis, Search, Build, BuildPipeline und Tracker (Entscheidung Marco: alle direkt nacheinander); der Kern heißt bis zur Umbenennung weiter `Atlas.IDE.Expert`, die Verträge zwischen Modulen bleiben bis zum Auszug aller Module im Kern. Die Fälle P1–P11 sind noch nicht in der IDE geprüft.
+Stand 01.11.2026: Der Debugger liegt als `Packages/Atlas.IDE.Debugger` im eigenen Package (requires nur rtl, vcl, vclwinx, designide und den Kern), danach ebenso Designer, Rules, Tests, Bookmarks, Analysis, Search, Build, BuildPipeline, Tracker und Welcome (Entscheidung Marco: alle direkt nacheinander). Die Verträge zwischen Modulen liegen im Package `Atlas.IDE.Contracts`, der Kern heißt `Atlas.IDE.Base` (`Packages/Atlas.IDE.Base`, BPL `Atlas.IDE.Base<Ver>.bpl`); die Protokolldatei heißt weiter `Atlas.IDE.Expert<Ver>.log`. Die Fälle P1–P11 sind noch nicht in der IDE geprüft.
 
 Scheitert der Pilot an einem Fall ohne Abhilfe, greift Schritt 4: Es bleibt beim Stand nach #1455 (erzwungene Grenzen, Modul-Schalter), und dieses ADR wird fortgeschrieben.
 

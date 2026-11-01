@@ -30,7 +30,7 @@ Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen un
 **Weg A – Release-Paket von Hand einbinden:**
 
 1. `atlas-ide-expert-<Version>.zip` aus dem Release laden und in einen festen Ordner entpacken, z. B. `%LOCALAPPDATA%\Programs\Atlas`. Delphi vorher schließen.
-2. Delphi starten, *Komponente › Packages installieren › Hinzufügen* und `Win32\Atlas.IDE.Expert370.bpl` aus diesem Ordner wählen (64-Bit-IDE: `Win64\…`). Den Server `AtlasServer.exe` findet das Plugin eine Ebene über der BPL.
+2. Delphi starten, *Komponente › Packages installieren › Hinzufügen* und `Win32\Atlas.IDE.Base370.bpl` aus diesem Ordner wählen (64-Bit-IDE: `Win64\…`). Den Server `AtlasServer.exe` findet das Plugin eine Ebene über der BPL.
 3. Delphi einmal neu starten.
 
 Bis 1.1.0 lag dem Paket der Installer `AtlasSetup.exe` bei; seit 1.2.0 gibt es ihn nicht mehr. Einzelheiten: [docs/Installation.md](docs/Installation.md).
@@ -38,8 +38,8 @@ Bis 1.1.0 lag dem Paket der Installer `AtlasSetup.exe` bei; seit 1.2.0 gibt es i
 **Weg B – heute: selbst bauen und das Package in der IDE installieren:**
 
 1. Delphi ab 12 installieren und dieses Repository klonen.
-2. `Atlas.groupproj` in Delphi öffnen und alle Projekte für **Win64** erstellen (*Alle erstellen*). Für die klassische 32-Bit-IDE zusätzlich `Atlas.IDE.Expert` für **Win32** erstellen.
-3. In Delphi *Komponente › Packages installieren › Hinzufügen* und die BPL wählen: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` für die klassische IDE (Delphi 12: `…290.bpl`), `Output\Win64\Debug\Bpl\…` für die 64-Bit-IDE. Den Server `Output\Win64\Debug\Bin\AtlasServer.exe` findet das Plugin dort von selbst. Ab 2.0 danach aus demselben Ordner jedes Modul-Package hinzufügen, z. B. `Atlas.IDE.Debugger370.bpl` (#1456); das Kern-Package `Atlas.IDE.Expert` immer zuerst.
+2. `Atlas.groupproj` in Delphi öffnen und alle Projekte für **Win64** erstellen (*Alle erstellen*). Für die klassische 32-Bit-IDE zusätzlich `Atlas.IDE.Base` für **Win32** erstellen.
+3. In Delphi *Komponente › Packages installieren › Hinzufügen* und die BPL wählen: `Output\Win32\Debug\Bpl\Atlas.IDE.Base370.bpl` für die klassische IDE (Delphi 12: `…290.bpl`), `Output\Win64\Debug\Bpl\…` für die 64-Bit-IDE. Den Server `Output\Win64\Debug\Bin\AtlasServer.exe` findet das Plugin dort von selbst. Ab 2.0 danach aus demselben Ordner jedes Modul-Package hinzufügen, z. B. `Atlas.IDE.Debugger370.bpl` (#1456); das Kern-Package `Atlas.IDE.Base` immer zuerst.
 4. Delphi einmal neu starten.
 
 Ausführlich: [Installation](#installation).
@@ -241,8 +241,8 @@ Noch nicht in `main`, als Issues angelegt:
 
 1. Repository klonen und `Atlas.groupproj` in RAD Studio öffnen.
 2. `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` und `AtlasServer` für **Win64** erzeugen (alle vier für dieselbe Plattform). Ergebnis: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternativ `AtlasServer.exe` aus einem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) nehmen; der Server hängt nicht von der Delphi-Version ab.
-3. `Atlas.IDE.Expert` mit der Delphi-Version erzeugen, in der das Plugin laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-Bit-IDE: `Output\Win64\…`).
-4. *Komponente › Packages installieren › Hinzufügen* und die BPL auswählen. Ab 2.0 liegen die Verträge zwischen den Modulen in `Atlas.IDE.Contracts` und jedes Modul in einem eigenen Package (`Atlas.IDE.Debugger`, `.Designer`, `.Rules`, `.Tests`, `.Bookmarks`, `.Analysis`, `.Search`, `.Build`, `.BuildPipeline`, `.Tracker`, `.Welcome`, #1456), das gegen das Kern-Package und die Verträge übersetzt: nach `Atlas.IDE.Expert` und `Atlas.IDE.Contracts` erzeugen und installieren.
+3. `Atlas.IDE.Base` mit der Delphi-Version erzeugen, in der das Plugin laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Base370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-Bit-IDE: `Output\Win64\…`).
+4. *Komponente › Packages installieren › Hinzufügen* und die BPL auswählen. Ab 2.0 liegen die Verträge zwischen den Modulen in `Atlas.IDE.Contracts` und jedes Modul in einem eigenen Package (`Atlas.IDE.Debugger`, `.Designer`, `.Rules`, `.Tests`, `.Bookmarks`, `.Analysis`, `.Search`, `.Build`, `.BuildPipeline`, `.Tracker`, `.Welcome`, #1456), das gegen das Kern-Package und die Verträge übersetzt: nach `Atlas.IDE.Base` und `Atlas.IDE.Contracts` erzeugen und installieren.
 5. Liegt der Server nicht unter `Output\…\Bin` oder neben der BPL: *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“. Die Seite zeigt an, ob der Server gefunden wird.
 6. Delphi einmal neu starten: Atlas schaltet Help Insight und die Strukturhervorhebung der IDE ab, damit nichts doppelt erscheint; die IDE liest diese Schalter nur beim Start.
 
@@ -283,7 +283,7 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 | `Packages/Atlas.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
 | `Packages/Atlas.Linux` | Linux-Gegenstücke der Windows-Adapter des Servers, nur Quelltext, für den Bau mit Free Pascal (ADR 0013) |
 | `Application/AtlasServer` | Der Server (Konsolenprogramm, spricht LSP über stdin/stdout) |
-| `Packages/Atlas.IDE.Expert` | Das IDE-Plugin (Designtime-Package; Win32 für die klassische IDE, Win64 für die 64-Bit-IDE ab Delphi 12.3), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
+| `Packages/Atlas.IDE.Base` | Das IDE-Plugin (Designtime-Package; Win32 für die klassische IDE, Win64 für die 64-Bit-IDE ab Delphi 12.3), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX-Tests |
 
 Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
@@ -347,7 +347,7 @@ pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die
 
 ## CI
 
-- `server.yml`: Build der Projektgruppe über das IDE-Plugin `cc.ps1` (RAD Studio Starter hat kein msbuild, ADR 0007) für Win64 und Win32, samt Plugin-BPLs `Atlas.IDE.Expert370.bpl` für die klassische und die 64-Bit-IDE (Win32 und Win64, als Artefakte abgelegt), und DUnitX-Tests (nur Win64, ADR 0008). Ergebnisse als Check „DUnitX-Ergebnisse“ im Pull Request.
+- `server.yml`: Build der Projektgruppe über das IDE-Plugin `cc.ps1` (RAD Studio Starter hat kein msbuild, ADR 0007) für Win64 und Win32, samt Plugin-BPLs `Atlas.IDE.Base370.bpl` für die klassische und die 64-Bit-IDE (Win32 und Win64, als Artefakte abgelegt), und DUnitX-Tests (nur Win64, ADR 0008). Ergebnisse als Check „DUnitX-Ergebnisse“ im Pull Request.
   - Der Job braucht einen selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`) auf dem Arbeitsrechner des Entwicklers. Er läuft im angemeldeten Benutzerkontext und nicht als Dienst, weil `cc.ps1` eine IDE startet, und nur, solange dieser Rechner eingeschaltet ist. Jeder Job startet eine eigene Scratch-IDE.
   - Er läuft nur mit der Repository-Variablen `DELPHI_RUNNER=true`; sonst meldet der Job „uebersprungen“ das in der Zusammenfassung des Laufs. `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`.
   - Ein neuer Push auf denselben Branch bricht den laufenden Build ab (`concurrency`).

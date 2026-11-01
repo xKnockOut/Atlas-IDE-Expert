@@ -32,7 +32,7 @@
 // Modul Willkommensseite (#1456, ADR 0017): Fenster „Atlas-Start“ und Bereiche auf der Willkommensseite
 // der IDE, Weiterarbeiten, Projekte, Projektverlauf, Schnellaktionen, Atlas entdecken, Hilfe, Einrichten
 // und ihr Abschnitt im Optionsdialog. Meldet sich in der Unit-Initialisierung von
-// Atlas.IDE.Welcome.Composition über die Registry des Kern-Packages Atlas.IDE.Expert an und lässt sich
+// Atlas.IDE.Welcome.Composition über die Registry des Kern-Packages Atlas.IDE.Base an und lässt sich
 // ohne Neustart der IDE laden und entladen (Regeln 1 bis 4). Requiret nur das Kern-Package und
 // Atlas.IDE.Contracts, kein anderes Modul (Regel 9); Kacheln anderer Module kommen über Atlas.IDE.Contracts.WelcomeTiles.
 
@@ -41,7 +41,7 @@ requires
   vcl,
   vclwinx,
   designide,
-  Atlas.IDE.Expert,
+  Atlas.IDE.Base,
   Atlas.IDE.Contracts;
 
 contains

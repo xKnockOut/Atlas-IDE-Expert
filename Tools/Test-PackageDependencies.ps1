@@ -26,7 +26,7 @@ $ErrorActionPreference = 'Stop'
 
 $Script = Join-Path $PSScriptRoot 'Check-PackageDependencies.ps1'
 $Assignment = 'docs/adr/0017-unit-zuordnung.md'
-$Source = 'Packages/Atlas.IDE.Expert/Source'
+$Source = 'Packages/Atlas.IDE.Base/Source'
 $Failures = [System.Collections.Generic.List[string]]::new()
 $Touched = @{}
 

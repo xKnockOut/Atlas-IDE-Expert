@@ -1,6 +1,6 @@
 # ADR 0017: Zuordnung der Units zu Packages
 
-- Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Expert/Source`
+- Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Base/Source`
 - Bezug: [ADR 0017](0017-funktions-packages.md), Abschnitt „Fortschreibung: Laden, Entladen, Versionen“; #1455, #1456
 
 Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Dokument). Die Analyse enthielt nur Summen je Package, keine Liste je Unit. Die Liste hier ist aus dem Quellbaum erzeugt, nach diesen Regeln:
@@ -31,11 +31,11 @@ Ausnahmen:
 - `Atlas.IDE.Rules` (#1455, festgeschrieben): Ordner `IDE/Rules`, dazu Sammelkorrektur (`Core/UI.Problems.BulkFix`) und Eigenschaftsregeln (`IDE.Editor.DfmPropertyRules`). Im Kern bleiben Fenster „Atlas-Prüfung“ mit Erklären, Unterdrücken und Abschalten, Regeltabelle und Seite Prüfregeln, Stand und Format der Baseline-Datei und der Hinweis bei abgeschaltetem Modul (`RuleChecksNotice`): Sie laufen auch ohne das Modul.
 - `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen (ADR 0017, Fortschreibung).
 
-Das Prüfskript `Tools/Check-PackageDependencies.ps1` liest diese Datei als Daten (#1455): die Ordnertabelle oben, die Tabellen je Package unten (Einzelzeilen) und die Tabellen unter „Grenzen zwischen Base, Modulen und Verträgen“. Maßgeblich ist die Einzelzeile. Weicht sie von der Ordnertabelle ab, ist sie eine der Ausnahmen oben und braucht eine eigene Begründung (nicht nur „Ordner …“). Eine neue Unit unter `Packages/Atlas.IDE.Expert/Source` braucht eine Zeile hier, sonst schlägt das Skript fehl; ebenso eine Zeile, deren Datei es nicht mehr gibt.
+Das Prüfskript `Tools/Check-PackageDependencies.ps1` liest diese Datei als Daten (#1455): die Ordnertabelle oben, die Tabellen je Package unten (Einzelzeilen) und die Tabellen unter „Grenzen zwischen Base, Modulen und Verträgen“. Maßgeblich ist die Einzelzeile. Weicht sie von der Ordnertabelle ab, ist sie eine der Ausnahmen oben und braucht eine eigene Begründung (nicht nur „Ordner …“). Eine neue Unit unter `Packages/Atlas.IDE.Base/Source` braucht eine Zeile hier, sonst schlägt das Skript fehl; ebenso eine Zeile, deren Datei es nicht mehr gibt.
 
 ## Grenzen zwischen Base, Modulen und Verträgen
 
-Regeln (ADR 0017, Abschnitt Verträge; Regel 9 „Base kennt kein Modul“), geprüft über alle `uses` der Units unter `Packages/Atlas.IDE.Expert/Source`:
+Regeln (ADR 0017, Abschnitt Verträge; Regel 9 „Base kennt kein Modul“), geprüft über alle `uses` der Units unter `Packages/Atlas.IDE.Base/Source`:
 
 - Base verwendet kein Modul und keinen Vertrag aus `Atlas.IDE.Contracts` (Base requiret Contracts nicht).
 - Ein Modul verwendet kein anderes Modul; Querbezüge laufen über `Atlas.IDE.Contracts`.

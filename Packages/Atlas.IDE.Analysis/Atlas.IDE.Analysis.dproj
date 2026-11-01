@@ -92,7 +92,7 @@
         <DCCReference Include="vcl.dcp"/>
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
-        <DCCReference Include="Atlas.IDE.Expert.dcp"/>
+        <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Atlas.IDE.Contracts.dcp"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
         <DCCReference Include="Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas"/>
