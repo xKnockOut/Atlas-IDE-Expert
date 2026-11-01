@@ -67,8 +67,6 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 | `Atlas.UI.Settings.QueryDialog` | `Atlas.IDE.Tracker` | Abfragedialog gehört zum Modul Tracker (Paket 2) |
 | `Atlas.IDE.Vcs.Branching` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
 | `Atlas.IDE.Vcs.WorkingCopies` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
-| `Atlas.IDE.Contracts.Rules` | `Atlas.IDE.Base` | Vertrag ohne `Atlas.Core.Projects.Baseline` (eigener Record im Vertrag) |
-| `Atlas.IDE.Contracts.Tests` | `Atlas.IDE.Base` | Vertrag ohne `Atlas.Core.Projects.Summary` (eigener Record im Vertrag) |
 | `Atlas.Core.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.Core.Welcome.Saved` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
 | `Atlas.IDE.Welcome.Continue` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
@@ -107,6 +105,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
 | `Atlas.Core.Build.OpenBuildSettings` | `Core/Build/Atlas.Core.Build.OpenBuildSettings.pas` | Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455 |
+| `Atlas.Core.Projects.Recording` | `Core/Projects/Atlas.Core.Projects.Recording.pas` | Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455 |
+| `Atlas.IDE.Projects.Summaries` | `IDE/Projects/Atlas.IDE.Projects.Summaries.pas` | Projekt-Zusammenfassungen pflegen (auch ohne Willkommensseite), `IAtlasProjectSummaryListener`, #1455 |
 | `Atlas.Core.Build.Target` | `Core/Build/Atlas.Core.Build.Target.pas` | Konfiguration und Symbole für den Server ({$IFDEF}-Zweige, #615) |
 | `Atlas.Core.Build.Gate` | `Core/Build/Atlas.Core.Build.Gate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
@@ -937,4 +937,4 @@ Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Bis zum Pilot 
 | `Atlas.IDE.Contracts.BuildTools` | `Contracts/Atlas.IDE.Contracts.BuildTools.pas` | Startprofile und Projektaufgaben für andere Module, #1455 |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), #1455 |
-| `Atlas.IDE.Contracts.Rules` | `Contracts/Atlas.IDE.Contracts.Rules.pas` | Baseline aktualisieren und neuer Stand (Prüfregeln → Willkommensseite), #1455 |
+| `Atlas.IDE.Contracts.Rules` | `Contracts/Atlas.IDE.Contracts.Rules.pas` | Baseline aktualisieren (Prüfregeln → Willkommensseite), #1455 |

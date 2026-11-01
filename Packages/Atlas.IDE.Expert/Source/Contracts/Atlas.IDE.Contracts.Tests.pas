@@ -6,14 +6,12 @@
 // (Karte Tests #763, Schnellaktionen #764) fragt sie über die Registry und
 // kommt ohne das Modul aus. Tests ausführen geht über IAtlasTestRunner von
 // Base, weil auch Base (Auswirkungsanalyse #1120) Tests startet. Wer das
-// Ergebnis eines Laufs wissen will, stellt einen IAtlasTestsListener bereit.
+// Ergebnis eines Laufs wissen will, stellt einen IAtlasTestsListener bereit;
+// den ganzen Lauf schreibt das Modul in die Projekt-Zusammenfassung (Base).
 // Nur Interfaces, kein Code. Liegt bis zum Pilot (#1456) im Plugin-Package,
 // danach in Atlas.IDE.Contracts.
 
 interface
-
-uses
-  Atlas.Core.Projects.Summary;
 
 type
   /// <summary>Testprojekte ausführen, einzelne Tests debuggen und finden. Alle Aufrufe im Hauptthread der IDE.
@@ -36,9 +34,9 @@ type
   /// <summary>Hört auf das Ende eines Testlaufs (Hauptthread).</summary>
   IAtlasTestsListener = interface
     ['{ACFE6EC5-F063-4C02-B238-275945ECAE58}']
-    /// <summary>ATestProject: das Testprojekt (.dproj); ATests.Known = False, wenn nichts auszuwerten war.
-    /// </summary>
-    procedure TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
+    /// <summary>ATestProject: das Testprojekt (.dproj); APassed bestanden, AFailed fehlgeschlagen einschließlich
+    /// Fehler (0 und 0, wenn nichts auszuwerten war).</summary>
+    procedure TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
   end;
 
 implementation

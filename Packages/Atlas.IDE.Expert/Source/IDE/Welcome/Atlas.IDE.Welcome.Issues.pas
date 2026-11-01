@@ -443,7 +443,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Vcs.Branching,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Projects.Summaries;
 
 type
   // Zugriff auf ReadOnly (geschützt in TCustomEdit) für das Nachrichtenfeld des Commit-Dialogs.
@@ -562,7 +563,7 @@ begin
       if mKeep <> nil then
         Result := ExtractFileDir(mOwner.CurrentProject);
     end;
-  mHooks.SummaryFolder := TAtlasIdeProjects.Folder;
+  mHooks.SummaryFolder := TAtlasIdeProjectSummaries.Folder;
   // Stop löst den Ring (die Hooks halten diese Quelle).
   FComments := TAtlasIdeCommentService.Create(mHooks, IssuesFolder);
   FCommentsRef := FComments;
@@ -1511,7 +1512,7 @@ begin
   end;
   if Active_ <> '' then
   begin
-    Active_ := TAtlasIdeProjects.ProjectFileOf(Active_);
+    Active_ := TAtlasIdeProjectSummaries.ProjectFileOf(Active_);
     for Entry in Entries do
       if TAtlasProjectSummaries.NormalizedPath(Entry.Project) = TAtlasProjectSummaries.NormalizedPath(Active_) then
         Exit(Entry.Project);
@@ -1621,7 +1622,7 @@ begin
   Key := TAtlasProjectSummaries.NormalizedPath(AProject);
   if FStates.TryGetValue(Key, Result) then
     Exit;
-  if TAtlasProjectSummaries.Load(TAtlasIdeProjects.Folder, AProject, Summary) then
+  if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, Summary) then
     TAtlasWelcomeIssues.Read(Summary, Result);
   FStates.AddOrSetValue(Key, Result);
 end;
@@ -1634,7 +1635,7 @@ begin
     Exit;
   State := AState;
   FStates.AddOrSetValue(TAtlasProjectSummaries.NormalizedPath(AProject), State);
-  TAtlasProjectSummaries.Update(TAtlasIdeProjects.Folder, AProject,
+  TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, AProject,
     procedure(var ASummary: TAtlasProjectSummary)
     begin
       TAtlasWelcomeIssues.Write(ASummary, State);
