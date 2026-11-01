@@ -106,6 +106,7 @@ uses
   Atlas.Common.Lsp.Status,
   Atlas.Common.Mcp.StatusTools,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
@@ -1325,6 +1326,7 @@ begin
   Result.TreeCacheHitPercent := mTrees.HitPercent;
   Result.TreeCacheTrees := mTrees.Trees;
   Result.Memory.TreeCache := mTrees.Bytes;
+  Result.Memory.Packages := TPackageCompiledFiles.Bytes;
   Result.Memory.Total := Result.MemoryBytes;
   if AIndex = nil then
   begin

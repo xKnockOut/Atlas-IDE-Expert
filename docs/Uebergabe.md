@@ -1,5 +1,13 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Speicherkorrekturen für Projektgruppen in v2.0 übernommen (01.11.2026, Branch `claude/project-thread-3ck2sf` auf `claude/project-thread-rc7rg9`)
+- Marcos Commits 38205b4e (`.dcp` einmal je Prozess, `TPackageCompiledFiles`, Bereich „Packages (.dcp)“) und ea252294 (gemeinsamer Suchpfad-Cache `Index\<Version>\Suchpfade\<Hash>`, `TUnitIndex.DefinesKey`, Cache nach Abbruch frei) aus `release/1.2` gepickt; Konflikte nur wegen begin-end.
+- Für Atlas ohne Befunde: 119 × `missing-begin-end` in den berührten Units per `--fix missing-begin-end`; neue Metrik-Befunde behoben: Tests der Gruppe in eigener Klasse `TIndexGroupCacheTests` (Dateien über `PutBuilderFiles`/`ResolveLibraryUnit`), `TIndexBuilder.IndexFileNow` mit einem Ausstieg für beide Cache-Wege, `TIndexService.Run` hält die gemeinsamen Kopien über `TSharedCacheHold` (Interface, gibt beim Freigeben zurück, wie `LockForWrite`), `TIndexCacheDirectory.TouchUse('')` tut nichts (vorher Marke im aktuellen Ordner; Test `TouchUseIgnoresEmptyName`).
+- Vorhandene Metrik-Befunde in den großen Routinen (`StartIndex`, `TShellWorkspace.Create`, `WriteCaches`, `ToJson`, Klassengrößen) bleiben für „Atlas-Befunde im eigenen Repo“; sie wurden durch die Übernahme um wenige Zeilen größer. Shell.Mcp (eine Zeile `Packages (.dcp)`) trägt der Befunde-Thread in seine Aufteilung ein.
+- FPC: PackageLocator, Index, CacheHousekeeping 116/118; `ChangedIncludeReindexesUnit` und `CachedIncludeUnitReusedUntilIncludeChanges` scheitern unter FPC auch ohne diese Änderung. Im FPC-Lauf musste `BuilderSkipsUnitsAlreadyIndexed` umgeschrieben werden (FPC Internal error 2022110601 bei Methodenzeiger in lokaler Routine); unter Delphi unverändert.
+- `Application/Source/Shell/Shell.Linter.pas.orig` entfernt, `*.orig`/`*.rej` in `.gitignore` (in `release/1.2` und `main` liegt die Datei noch).
+- Offene Punkte als Issues: #1477 (quadratisch bei riesigen Units), #1478 (Diagnosepaket und Logs anonym), #1479 („bereit“ mit mehreren Läufen messen), #1480 (`--timings` bei Gruppen). Delphi-Build und Handtests offen.
+
 ## Atlas-Befunde im eigenen Repo, Teil 1 (01.11.2026, Branch `claude/project-thread-jz4idl` von `claude/project-thread-rc7rg9`)
 
 - Lauf: `AtlasServer --check . --units 'Packages/**,Application/**'` mit eingeschalteten `metric-*` (13 min): 7064 Metrik-Warnungen, 56421 `missing-begin-end`, 54 sonstige. Wie der Metrik-Bestand abgebaut wird, entscheidet Marco; `atlas.json` bleibt bis dahin unverändert.

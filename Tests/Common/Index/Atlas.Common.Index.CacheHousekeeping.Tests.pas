@@ -93,6 +93,9 @@ type
     procedure OriginExistsWithMissingDrive;
     [Test]
     procedure TouchUseRenewsLastUse;
+    /// <summary>Ohne Bibliotheks- oder Suchpfad-Cache ('') legt TouchUse keine Marke im aktuellen Ordner an.</summary>
+    [Test]
+    procedure TouchUseIgnoresEmptyName;
     [Test]
     procedure RemoveUnusedDeletesOldCaches;
   end;
@@ -764,6 +767,20 @@ begin
   TIndexCacheDirectory.TouchUse(Cache);
   Assert.IsTrue(TIndexCacheDirectory.LastUse(Cache) > Now - 1);
   Assert.IsTrue(TFile.GetLastWriteTime(Cache) < Now - 99, 'der Cache selbst bleibt unverändert');
+end;
+
+procedure TIndexCacheDirectoryTests.TouchUseIgnoresEmptyName;
+var
+  mPrevious: string;
+begin
+  mPrevious := GetCurrentDir;
+  SetCurrentDir(FRoot);
+  try
+    TIndexCacheDirectory.TouchUse('');
+  finally
+    SetCurrentDir(mPrevious);
+  end;
+  Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(FRoot))));
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveUnusedDeletesOldCaches;
