@@ -60,7 +60,9 @@ type
     /// <summary>Codepage bei Ansi1252; 0 gilt als 1252.</summary>
     CodePage: Integer;
     class function Create(AEncoding: TFileEncodingKind; ALineBreak: TLineBreakStyle;
-      ACodePage: Integer = 1252): TFileFormat; static;
+      ACodePage: Integer): TFileFormat; overload; static;
+    /// <summary>Wie oben mit ACodePage = 1252.</summary>
+    class function Create(AEncoding: TFileEncodingKind; ALineBreak: TLineBreakStyle): TFileFormat; overload; static;
   end;
 
   /// <summary>Vorgabe-Codepage je Ordner (#121); threadsicher.</summary>
@@ -110,13 +112,19 @@ type
     class var FReader: TFileBytesReader;
   public
     /// <summary>Erkennt die Kodierung; ADefault gilt für reines ASCII.</summary>
-    class function DetectEncoding(const ABytes: TBytes; ADefault: TFileEncodingKind = TFileEncodingKind.Utf8): TFileEncodingKind; static;
+    class function DetectEncoding(const ABytes: TBytes; ADefault: TFileEncodingKind): TFileEncodingKind; overload; static;
+    /// <summary>Wie oben mit ADefault = Utf8.</summary>
+    class function DetectEncoding(const ABytes: TBytes): TFileEncodingKind; overload; static;
     /// <summary>Häufigster Zeilenumbruch; ohne Umbruch ADefault.</summary>
     class function DetectLineBreak(const AText: string; out AMixed: Boolean;
-      ADefault: TLineBreakStyle = TLineBreakStyle.CRLF): TLineBreakStyle; static;
+      ADefault: TLineBreakStyle): TLineBreakStyle; overload; static;
+    /// <summary>Wie oben mit ADefault = CRLF.</summary>
+    class function DetectLineBreak(const AText: string; out AMixed: Boolean): TLineBreakStyle; overload; static;
     /// <summary>Liest Bytes als Text und liefert das erkannte Format.</summary>
     class function Decode(const ABytes: TBytes; out AFormat: TFileFormat;
-      ADefault: TFileEncodingKind = TFileEncodingKind.Utf8): string; static;
+      ADefault: TFileEncodingKind): string; overload; static;
+    /// <summary>Wie oben mit ADefault = Utf8.</summary>
+    class function Decode(const ABytes: TBytes; out AFormat: TFileFormat): string; overload; static;
     /// <summary>Wie Decode, aber mit Vorgabe-Codepage (#121): 65001 = UTF-8 wie Decode; sonst gilt die Codepage
     /// für reines ASCII und ungültiges UTF-8.</summary>
     class function DecodeWithCodePage(const ABytes: TBytes; out AFormat: TFileFormat;
@@ -184,6 +192,11 @@ var
   DefaultFolders: TDictionary<string, Integer>;
 
 { TFileFormat }
+
+class function TFileFormat.Create(AEncoding: TFileEncodingKind; ALineBreak: TLineBreakStyle): TFileFormat;
+begin
+  Result := Create(AEncoding, ALineBreak, 1252);
+end;
 
 class function TFileFormat.Create(AEncoding: TFileEncodingKind; ALineBreak: TLineBreakStyle;
   ACodePage: Integer): TFileFormat;
@@ -476,6 +489,21 @@ begin
 end;
 
 { TFileEncoding }
+
+class function TFileEncoding.DetectEncoding(const ABytes: TBytes): TFileEncodingKind;
+begin
+  Result := DetectEncoding(ABytes, TFileEncodingKind.Utf8);
+end;
+
+class function TFileEncoding.DetectLineBreak(const AText: string; out AMixed: Boolean): TLineBreakStyle;
+begin
+  Result := DetectLineBreak(AText, AMixed, TLineBreakStyle.CRLF);
+end;
+
+class function TFileEncoding.Decode(const ABytes: TBytes; out AFormat: TFileFormat): string;
+begin
+  Result := Decode(ABytes, AFormat, TFileEncodingKind.Utf8);
+end;
 
 class function TFileEncoding.DetectEncoding(const ABytes: TBytes; ADefault: TFileEncodingKind): TFileEncodingKind;
 var

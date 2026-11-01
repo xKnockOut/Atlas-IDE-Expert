@@ -32,7 +32,9 @@ type
     /// AFallbackTag: Kennung für den Ausweichnamen; '' = kein Ausweichen.
     /// AMaxBytes = 0 schaltet die Rotation ab.</summary>
     constructor Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string;
-      AMaxBytes: Int64 = DefaultMaxBytes);
+      AMaxBytes: Int64); overload;
+    /// <summary>Wie oben mit AMaxBytes = DefaultMaxBytes.</summary>
+    constructor Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string); overload;
     destructor Destroy; override;
     /// <summary>Tatsächlich benutzte Datei (nach einem Ausweichen die mit Kennung).</summary>
     property FileName: string read FFileName;
@@ -64,6 +66,11 @@ end;
 class function TRotatingFileStream.FallbackName(const AFileName, ATag: string): string;
 begin
   Result := ChangeFileExt(AFileName, '') + '.' + ATag + ExtractFileExt(AFileName);
+end;
+
+constructor TRotatingFileStream.Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string);
+begin
+  Create(AFileName, AAppend, AFallbackTag, DefaultMaxBytes);
 end;
 
 constructor TRotatingFileStream.Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string;

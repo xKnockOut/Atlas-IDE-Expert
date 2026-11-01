@@ -94,7 +94,10 @@ type
       APriority: Boolean);
     /// <summary>ACheck False: ohne Konfliktprüfung, weil die Taste ohne Treffer ohnehin an die IDE weitergeht.</summary>
     procedure AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
-      const AAttempt: TFunc<Boolean>; ACheck: Boolean = True);
+      const AAttempt: TFunc<Boolean>; ACheck: Boolean); overload;
+    /// <summary>Wie oben mit Konfliktprüfung (ACheck = True).</summary>
+    procedure AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
+      const AAttempt: TFunc<Boolean>); overload;
     /// <summary>Wie AddAttemptKey mit Konfliktprüfung und eigenem Vorrang (#1104).</summary>
     procedure AddPriorityAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
       const AAttempt: TFunc<Boolean>; APriority: Boolean);
@@ -270,6 +273,12 @@ begin
   Key.Attempt := nil;
   FKeys := FKeys + [Key];
   FBound := FBound + IntToStr(AKey) + ';';
+end;
+
+procedure TAtlasIdeEditorKeys.AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
+  const AAttempt: TFunc<Boolean>);
+begin
+  AddAttemptKey(AFeature, AKey, AWhat, AAttempt, True);
 end;
 
 procedure TAtlasIdeEditorKeys.AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;

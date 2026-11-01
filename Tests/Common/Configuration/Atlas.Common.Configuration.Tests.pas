@@ -113,6 +113,9 @@ type
     procedure FileOverridesEditorPerKey;
     [Test]
     procedure MergesRulesPerId;
+    /// <summary>excludeTests global für alle Projekte; eine atlas.json, die den Schlüssel nennt, geht vor.</summary>
+    [Test]
+    procedure ExcludeTestsGlobalOrProject;
     [Test]
     procedure EditorOrFileAlone;
     [Test]
@@ -185,6 +188,18 @@ begin
     '{"rules": {"with-statement": "off"}}', Issues);
   Assert.IsTrue(Settings.RuleSeverity('with-statement', TRuleSeverity.Warning) = TRuleSeverity.Off);
   Assert.IsTrue(Settings.RuleSeverity('unused-variable', TRuleSeverity.Warning) = TRuleSeverity.Hint);
+end;
+
+procedure TConfigurationParserTests.ExcludeTestsGlobalOrProject;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.IsTrue(TConfigurationParser.ParseLayered('{"excludeTests": true}', '{"platform": "Win64"}',
+    Issues).ExcludeTests);
+  Assert.IsFalse(TConfigurationParser.ParseLayered('{"excludeTests": true}', '{"excludeTests": false}',
+    Issues).ExcludeTests);
+  Assert.IsTrue(TConfigurationParser.ParseLayered('', '{"excludeTests": true}', Issues).ExcludeTests);
+  Assert.IsFalse(TConfigurationParser.ParseLayered('{"platform": "Win32"}', '', Issues).ExcludeTests);
 end;
 
 procedure TConfigurationParserTests.EditorOrFileAlone;

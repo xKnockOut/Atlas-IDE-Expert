@@ -62,6 +62,8 @@ type
     FHeadersValid: Boolean;
     FBars: TAtlasOverviewBars;
     FBarsValid: Boolean;
+    /// <summary>Offset der Abbildung, mit dem FCode gezeichnet ist (Mitscrollen).</summary>
+    FCodeOffset: Integer;
     FHot: Boolean;
     FDragging: Boolean;
     FGrab: Integer;
@@ -86,6 +88,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
     procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -126,8 +129,11 @@ uses
 const
   /// <summary>Deckkraft (0–255) von Methodenband, Zeilenband und Schieber.</summary>
   MethodAlpha = 28;
+  /// <summary>Breite des Akzentstrichs der Routine am Cursor (96 DPI).</summary>
+  MethodBarWidth = 2;
   BandAlpha = 80;
-  SliderAlpha = 48;
+  // Nur ein Schatten: Bei 48 überdeckte der Schieber im dunklen Thema die Zeichen darunter.
+  SliderAlpha = 20;
   /// <summary>Mindesthöhe von Schieber und Marke bei 96 DPI.</summary>
   BaseMinSlider = 6;
   BaseMinMark = 2;
@@ -204,7 +210,8 @@ begin
     TAtlasTokenKind.Number:
       Result := AColors.Accent;
   else
-    Result := TAtlasColorMath.Mix(AColors.Text, AColors.Surface, 0.7);
+    // Kräftig wie in VS Code: Bezeichner sind der Großteil des Codes und müssen auf einen Blick lesbar sein.
+    Result := TAtlasColorMath.Mix(AColors.Text, AColors.Surface, 0.85);
   end;
 end;
 
@@ -299,6 +306,12 @@ begin
   FTopLine := ATopLine;
   FBottomLine := ABottomLine;
   FCursorLine := ACursorLine;
+  // Mitscrollen: Ändert sich der Offset, liegen Überschriften und Marken an anderer Stelle.
+  if FMapValid and FMap.Follow(FTopLine, Max(FTopLine, FBottomLine)) then
+  begin
+    FHeadersValid := False;
+    FBarsValid := False;
+  end;
   Invalidate;
 end;
 
@@ -323,6 +336,8 @@ begin
   if FMapValid then
     Exit;
   FMap := TAtlasMinimapMap.Create(Length(FRuns), FFolds, RowHeight, ClientHeight);
+  // Passt der Inhalt nicht, scrollt die Minimap mit der Lage im Editor mit (wie VS Code) statt zu stauchen.
+  FMap.Follow(FTopLine, Max(FTopLine, FBottomLine));
   FMapValid := True;
 end;
 
@@ -416,8 +431,8 @@ var
 begin
   EnsureMap;
   Same := FCodeValid and (FCodeWidth = ClientWidth) and (FCodeHeight = ClientHeight) and
-    (FCodeRows = FMap.RowCount) and (FCodeRowHeight = FMap.RowHeight) and TAtlasMinimap.SameFolds(FCodeFolds,
-    FMap.Folds);
+    (FCodeRows = FMap.RowCount) and (FCodeRowHeight = FMap.RowHeight) and (FCodeOffset = FMap.Offset) and
+    TAtlasMinimap.SameFolds(FCodeFolds, FMap.Folds);
   if Same and (FDirty = nil) then
     Exit;
   FCode.Canvas.Brush.Style := bsSolid;
@@ -442,13 +457,15 @@ begin
   FCode.SetSize(Max(1, ClientWidth), Max(1, ClientHeight));
   FCode.Canvas.Brush.Color := TColor(FColors.Surface);
   FCode.Canvas.FillRect(TRect.Create(0, 0, FCode.Width, FCode.Height));
-  for Row := 0 to FMap.RowCount - 1 do
+  // Nur die sichtbaren Zeilen: Beim Mitscrollen liegt der Rest außerhalb.
+  for Row := FMap.RowAt(0) to Min(FMap.RowCount - 1, FMap.RowAt(Max(0, ClientHeight - 1)) + 1) do
   begin
     mTop := FMap.PixelOfRow(Row);
     Bottom := Max(mTop + 1, FMap.PixelOfRow(Row + 1));
     PaintRow(FCode.Canvas, Row, mTop, Bottom - mTop);
   end;
   FCodeValid := True;
+  FCodeOffset := FMap.Offset;
   FCodeWidth := ClientWidth;
   FCodeHeight := ClientHeight;
   FCodeRows := FMap.RowCount;
@@ -470,6 +487,10 @@ begin
     mTop := FMap.PixelOfLine(First);
     Bottom := Max(mTop + 1, FMap.PixelOfRow(FMap.RowOf(Last) + 1));
     Blend(Canvas, TRect.Create(0, mTop, ClientWidth, Bottom), FColors.Accent, MethodAlpha);
+    // Akzentstrich am linken Rand: Die leichte Hinterlegung allein ging im dunklen Thema unter.
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := TColor(FColors.Accent);
+    Canvas.FillRect(TRect.Create(0, mTop, Scale(MethodBarWidth), Bottom));
   end;
   // Marken: Zeilenband bzw. Streifen am linken Rand.
   if FOptions.Markers then
@@ -536,6 +557,20 @@ begin
   FLastScroll := ATopLine;
   if Assigned(FOnScroll) then
     FOnScroll(ATopLine);
+end;
+
+function TAtlasMinimapView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+var
+  Lines, Top: Integer;
+begin
+  // Mausrad über der Minimap scrollt den Editor wie über dem Text: Zeilen je Raste aus Windows (Vorgabe 3).
+  Lines := Max(1, Mouse.WheelScrollLines);
+  Top := Max(0, FTopLine - (WheelDelta * Lines) div WHEEL_DELTA);
+  Result := True;
+  if (Top = FTopLine) or not Assigned(FOnScroll) then
+    Exit;
+  FLastScroll := Top;
+  FOnScroll(Top);
 end;
 
 procedure TAtlasMinimapView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

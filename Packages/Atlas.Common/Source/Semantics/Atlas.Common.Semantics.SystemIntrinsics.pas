@@ -2,7 +2,7 @@
 
 // Bezeichner der Unit System ohne Quelltext (#880): Compiler-Intrinsics (Assigned, Length, SetLength,
 // Inc ...), eingebaute Typen (Integer, Int64, NativeInt ..., auch Text/TextFile und die alten Typen Real48,
-// OpenString, OleVariant, LongInt, #1382), die Datei-Routinen (AssignFile, Append, Reset, CloseFile, Eof ...),
+// OpenString, OleVariant, LongInt, #1382), CompilerVersion (nur im Kommentar von System.pas), die Datei-Routinen (AssignFile, Append, Reset, CloseFile, Eof ...),
 // Speicher (GetMem, FreeMem, ReallocMem), Mathematik (Sqrt, Sin, Int, Frac ...) und RunError (#1382) sowie
 // True/False. Die Unit System ist immer eingebunden; was in System.pas steht, kommt aus dem Index, sofern
 // die RTL-Quelle indexiert ist. Diese Liste ergänzt nur, was dort fehlt, und gilt deshalb erst nach allen
@@ -53,7 +53,7 @@ uses
 
 const
   // Name|Art (R Routine, T Typ, C Konstante)|Kopf|Beschreibung
-  Entries: array[0..145] of string = (
+  Entries: array[0..146] of string = (
     'Abs|R|function Abs(X): <Typ von X>;|Betrag einer Zahl.',
     'Addr|R|function Addr(var X): Pointer;|Adresse einer Variablen oder Routine (wie @).',
     'Append|R|procedure Append(var F: Text);|Öffnet eine Textdatei zum Anhängen.',
@@ -199,7 +199,9 @@ const
     'LongWord|T|type LongWord|Ganzzahl ohne Vorzeichen, 32 Bit (unter 64-Bit-Linux und iOS 64 Bit).',
     'OleVariant|T|type OleVariant|Variant mit nur OLE-kompatiblen Typen.',
     'True|C|const True = Boolean(1);|Wahrheitswert wahr.',
-    'False|C|const False = Boolean(0);|Wahrheitswert falsch.');
+    'False|C|const False = Boolean(0);|Wahrheitswert falsch.',
+    // Steht in System.pas nur im Kommentar; der Compiler setzt den Wert (Delphi 13: 37.0).
+    'CompilerVersion|C|const CompilerVersion: Extended;|Version des Compilers (Delphi 13: 37.0), für $IF CompilerVersion >= … und im Code.');
 
 var
   GEntries: TArray<TSystemIntrinsic>;

@@ -53,6 +53,7 @@ procedure RegisterInliningRules(ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Index.NameFacts,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -94,6 +95,9 @@ type
     FCallee: TNameResolver;
     FNeeds: TDictionary<string, TInlineNeeds>;
     FCandidates: TDictionary<string, Boolean>;
+    // inline-Routinen der eigenen Unit als "container.name" (klein) und alle Namen, die dort Kandidaten sind.
+    FOwnInline: TDictionary<string, Boolean>;
+    FOwnCandidates: TDictionary<string, Boolean>;
     FReported: TDictionary<Integer, Boolean>;
     // Zyklus je gerufener Unit (#1220): '' ohne, CycleDirect für H2456, sonst die Unit für H2457. Die Breitensuche
     // lief vorher bei jedem Aufruf neu und machte die Regel auf Units mit vielen inline-Aufrufen sekundenlang.
@@ -115,6 +119,8 @@ type
     function IsImplicitAlias(const AResolved: TResolvedSymbol): Boolean;
     function NeedsOf(const ACallee: TInlineCallee): TInlineNeeds;
     function HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
+    /// <summary>Füllt FOwnInline und FOwnCandidates aus den Symbolen der eigenen Unit.</summary>
+    procedure CollectOwnCandidates;
     function IsCandidate(const AName: string): Boolean;
     function IndexSymbolOf(const AResolved: TResolvedSymbol; out ACallee: TInlineCallee): Boolean;
     function Accessor(const ACallee: TInlineCallee; AWrite: Boolean; out AResult: TInlineCallee): Boolean;
@@ -179,6 +185,44 @@ begin
       Exit(Words[Index + 1]);
 end;
 
+/// <summary>Gibt es im Index eine inline-Routine AName mit Verweisen oder eine Property AName, deren Getter bzw.
+/// Setter im selben Typ eine ist? Hängt nur vom Index ab und wird über alle Units gemerkt (TIndexNameFacts); die
+/// eigene Datei prüft der Aufrufer.</summary>
+function IndexInlineCandidate(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex;
+  const AName: string): Boolean;
+var
+  mIndex: ISymbolIndex;
+  mName: string;
+begin
+  mIndex := AIndex;
+  mName := AName;
+  Result := TIndexNameFacts.Get(AFacts, mIndex, 'inlineCandidate:' + UpperCase(mName),
+    function: Integer
+    begin
+      Result := Ord(mIndex.HasSymbol(mName,
+        function(const ASymbol: TIndexSymbol): Boolean
+        var
+          mAccessor, mContainer: string;
+          mWrite: Boolean;
+        begin
+          Result := ASymbol.InlineRefs <> nil;
+          if Result or (ASymbol.Kind <> TIndexSymbolKind.Property_) then
+            Exit;
+          mContainer := ASymbol.Container;
+          for mWrite := False to True do
+          begin
+            mAccessor := AccessorName(ASymbol.Signature, mWrite);
+            if (mAccessor <> '') and mIndex.HasSymbol(mAccessor,
+              function(const AOther: TIndexSymbol): Boolean
+              begin
+                Result := (AOther.InlineRefs <> nil) and SameText(AOther.Container, mContainer);
+              end) then
+              Exit(True);
+          end;
+        end));
+    end) <> 0;
+end;
+
 { TInlineCheck }
 
 constructor TInlineCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -195,6 +239,8 @@ begin
   FCallee.Namespaces := AContext.Namespaces;
   FNeeds := TDictionary<string, TInlineNeeds>.Create;
   FCandidates := TDictionary<string, Boolean>.Create;
+  FOwnInline := TDictionary<string, Boolean>.Create;
+  FOwnCandidates := TDictionary<string, Boolean>.Create;
   FReported := TDictionary<Integer, Boolean>.Create;
   FCycles := TDictionary<string, string>.Create;
 end;
@@ -203,6 +249,8 @@ destructor TInlineCheck.Destroy;
 begin
   FCycles.Free;
   FReported.Free;
+  FOwnCandidates.Free;
+  FOwnInline.Free;
   FCandidates.Free;
   FNeeds.Free;
   FCallee.Free;
@@ -397,7 +445,6 @@ function TInlineCheck.HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
 var
   Name, mContainer: string;
   Accessors: TArray<string>;
-  Symbol: TIndexSymbol;
 begin
   mContainer := AProperty.Container;
   Result := False;
@@ -411,35 +458,47 @@ begin
           Result := (AOther.InlineRefs <> nil) and SameText(AOther.Container, mContainer);
         end) then
         Exit(True);
-      for Symbol in FOwn.Symbols do
-        if (Symbol.InlineRefs <> nil) and SameText(Symbol.Name, Name) and
-          SameText(Symbol.Container, AProperty.Container) then
-          Exit(True);
+      if FOwnInline.ContainsKey(LowerCase(mContainer + '.' + Name)) then
+        Exit(True);
     end;
 end;
 
-function TInlineCheck.IsCandidate(const AName: string): Boolean;
+procedure TInlineCheck.CollectOwnCandidates;
 var
   Symbol: TIndexSymbol;
+begin
+  // Einmal je Unit statt je Bezeichner über alle Symbole der Datei: Units mit vielen Symbolen und vielen
+  // verschiedenen Namen (Atlas.UI.Settings.Page) brauchten sonst Sekunden.
+  for Symbol in FOwn.Symbols do
+    if Symbol.InlineRefs <> nil then
+    begin
+      FOwnInline.AddOrSetValue(LowerCase(Symbol.Container + '.' + Symbol.Name), True);
+      FOwnCandidates.AddOrSetValue(LowerCase(Symbol.Name), True);
+    end;
+  for Symbol in FOwn.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.Property_) and not FOwnCandidates.ContainsKey(LowerCase(Symbol.Name)) and
+      HasInlineAccessor(Symbol) then
+      FOwnCandidates.AddOrSetValue(LowerCase(Symbol.Name), True);
+end;
+
+function TInlineCheck.IsCandidate(const AName: string): Boolean;
 begin
   // Vorfilter wie deprecated-symbol: Gibt es im Index oder in der Datei eine gleichnamige inline-Routine mit
   // Verweisen, oder eine Property, deren Getter oder Setter eine ist?
   if FCandidates.TryGetValue(LowerCase(AName), Result) then
     Exit;
-  Result := FIndex.HasSymbol(AName,
-    function(const ASymbol: TIndexSymbol): Boolean
-    begin
-      Result := (ASymbol.InlineRefs <> nil) or
-        ((ASymbol.Kind = TIndexSymbolKind.Property_) and HasInlineAccessor(ASymbol));
-    end);
-  if not Result then
-    for Symbol in FOwn.Symbols do
-      if SameText(Symbol.Name, AName) and ((Symbol.InlineRefs <> nil) or
-        ((Symbol.Kind = TIndexSymbolKind.Property_) and HasInlineAccessor(Symbol))) then
+  if FOwnCandidates.ContainsKey(LowerCase(AName)) then
+    Result := True
+  // Ohne inline-Routinen in der eigenen Datei hängt die Antwort nur vom Index ab: über alle Units gemerkt.
+  else if FOwnInline.Count = 0 then
+    Result := IndexInlineCandidate(FContext.NameFacts, FIndex, AName)
+  else
+    Result := FIndex.HasSymbol(AName,
+      function(const ASymbol: TIndexSymbol): Boolean
       begin
-        Result := True;
-        Break;
-      end;
+        Result := (ASymbol.InlineRefs <> nil) or
+          ((ASymbol.Kind = TIndexSymbolKind.Property_) and HasInlineAccessor(ASymbol));
+      end);
   FCandidates.Add(LowerCase(AName), Result);
 end;
 
@@ -701,6 +760,7 @@ begin
   FResolver.PinTree(FContext.Tree, FContext.RelativePath);
   try
     FOwn := FResolver.ExtractedUnit(FContext.Tree, FContext.RelativePath);
+    CollectOwnCandidates;
     for Index := 0 to High(FContext.Tree.Tokens) do
       if FContext.Tree.Tokens[Index].Kind = TPascalTokenKind.Identifier then
         CheckToken(Index);

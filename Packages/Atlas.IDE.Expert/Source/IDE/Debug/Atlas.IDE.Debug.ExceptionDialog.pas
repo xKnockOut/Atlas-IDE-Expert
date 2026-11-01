@@ -23,18 +23,29 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ExtCtrls,
+  Vcl.AppEvnts,
   Atlas.Core.Debug.ExceptionDialog;
 
 type
   TAtlasDebugDialogFound = reference to procedure(const AScan: TAtlasDebugDialogScan);
+  /// <summary>Darf der erkannte Dialog unsichtbar bleiben (die Exception-Leiste ersetzt ihn)?</summary>
+  TAtlasDebugDialogMayHide = reference to function(const AScan: TAtlasDebugDialogScan): Boolean;
 
   TAtlasIdeExceptionDialog = class
   public const
     /// <summary>So lange wartet Atlas nach dem Halt auf den Dialog.</summary>
     WatchMs = 3000;
     IntervalMs = 100;
+    /// <summary>Steht ein ausgeblendeter Dialog so lange noch, wird er wieder sichtbar (die IDE nie verdeckt
+    /// blockieren).</summary>
+    HiddenSafetyMs = 1500;
   private
     FTimer: TTimer;
+    // Beginn eines modalen Fensters (vor Show): den Dialog erkennen, bevor er gezeichnet ist.
+    FEvents: TApplicationEvents;
+    FSafety: TTimer;
+    FHidden: TCustomForm;
+    FMayHide: TAtlasDebugDialogMayHide;
     FStartedAt: UInt64;
     FForm: TCustomForm;
     FScan: TAtlasDebugDialogScan;
@@ -42,6 +53,12 @@ type
     FOnFound: TAtlasDebugDialogFound;
     FOnTimeout: TProc;
     FLogged: Boolean;
+    // Bereit, während das Programm läuft: ohne Zeitlimit, nur modale Fenster (Arm).
+    FArmed: Boolean;
+    procedure ModalBegin(Sender: TObject);
+    procedure ModalEnd(Sender: TObject);
+    procedure SafetyTick(Sender: TObject);
+    procedure Unhide;
     procedure Tick(Sender: TObject);
     function ScanForm(AForm: TCustomForm): Boolean;
     procedure Collect(AControl: TWinControl; var ATexts, AButtons: TArray<string>;
@@ -54,6 +71,11 @@ type
     /// <summary>Nach einem Halt wegen einer Exception: Dialog suchen. AOnFound kommt höchstens einmal,
     /// AOnTimeout, wenn bis WatchMs keiner erschien.</summary>
     procedure Watch(const AOnFound: TAtlasDebugDialogFound; const AOnTimeout: TProc);
+    /// <summary>Während das Programm läuft: auf den Dialog warten, ohne Zeitlimit. Die IDE zeigt ihn in ihrer
+    /// Behandlung des Halts, bevor Atlas den Halt gemeldet bekommt; nur so lässt er sich ersetzen (#783).
+    /// </summary>
+    procedure Arm(const AOnFound: TAtlasDebugDialogFound);
+    function Armed: Boolean;
     procedure Cancel;
     /// <summary>Den erkannten Dialog mit „Fortsetzen“ schließen; False, wenn er nicht mehr da ist oder keinen
     /// solchen Knopf hat.</summary>
@@ -63,6 +85,8 @@ type
     /// <summary>Für das Protokoll vergessen, dass der Dialog schon beschrieben ist (neue Sitzung).</summary>
     procedure NewSession;
     function Watching: Boolean;
+    /// <summary>Ohne Rückruf bleibt der Dialog immer sichtbar.</summary>
+    property MayHide: TAtlasDebugDialogMayHide read FMayHide write FMayHide;
   end;
 
 implementation
@@ -75,6 +99,8 @@ uses
 type
   // Zugriff auf die geschützten Caption und Text von TControl.
   TControlAccess = class(TControl);
+  // Zugriff auf die geschützten AlphaBlend und AlphaBlendValue von TCustomForm.
+  TFormAccess = class(TCustomForm);
 
 { TAtlasIdeExceptionDialog }
 
@@ -85,11 +111,88 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := IntervalMs;
   FTimer.OnTimer := Tick;
+  FSafety := TTimer.Create(nil);
+  FSafety.Enabled := False;
+  FSafety.Interval := HiddenSafetyMs;
+  FSafety.OnTimer := SafetyTick;
+  FEvents := TApplicationEvents.Create(nil);
+  FEvents.OnModalBegin := ModalBegin;
+  FEvents.OnModalEnd := ModalEnd;
+end;
+
+procedure TAtlasIdeExceptionDialog.ModalBegin(Sender: TObject);
+var
+  Index: Integer;
+  Form: TCustomForm;
+begin
+  // Nur, solange Atlas auf den Dialog wartet; ShowModal hat das Fenster noch nicht gezeigt.
+  if not FArmed or (FHidden <> nil) or not Assigned(FMayHide) then
+    Exit;
+  try
+    for Index := 0 to Screen.CustomFormCount - 1 do
+    begin
+      Form := Screen.CustomForms[Index];
+      if Form.Visible or (Form = Application.MainForm) or (fsModal in Form.FormState) then
+        Continue;
+      if ScanForm(Form) then
+      begin
+        if FMayHide(FScan) then
+        begin
+          // Vor dem ersten Zeichnen durchsichtig; der Takt drückt gleich „Anhalten“ bzw. „Fortsetzen“.
+          TFormAccess(Form).AlphaBlendValue := 0;
+          TFormAccess(Form).AlphaBlend := True;
+          FHidden := Form;
+          FSafety.Enabled := True;
+        end;
+        Exit;
+      end;
+    end;
+  except
+    // Ein Fehler hier darf die IDE nicht stören: der Dialog bleibt dann einfach sichtbar.
+    on E: Exception do
+      TAtlasGuard.Log('Exception-Dialog ausblenden: ' + E.ClassName + ': ' + E.Message);
+  end;
+end;
+
+procedure TAtlasIdeExceptionDialog.ModalEnd(Sender: TObject);
+begin
+  // Nach Hide: unsichtbar zurückstellen, falls die IDE das Formular wiederverwendet.
+  Unhide;
+end;
+
+procedure TAtlasIdeExceptionDialog.SafetyTick(Sender: TObject);
+begin
+  // Der Dialog steht noch (nichts hat ihn geschlossen): wieder zeigen, damit die IDE bedienbar bleibt.
+  if FHidden <> nil then
+    TAtlasGuard.Log('Exception-Dialog: nach dem Ausblenden nicht geschlossen; wieder sichtbar');
+  Unhide;
+end;
+
+procedure TAtlasIdeExceptionDialog.Unhide;
+var
+  Index: Integer;
+begin
+  FSafety.Enabled := False;
+  if FHidden = nil then
+    Exit;
+  // Nur ein noch angemeldetes Formular anfassen.
+  for Index := 0 to Screen.CustomFormCount - 1 do
+    if Screen.CustomForms[Index] = FHidden then
+    begin
+      TFormAccess(FHidden).AlphaBlend := False;
+      TFormAccess(FHidden).AlphaBlendValue := 255;
+      Break;
+    end;
+  FHidden := nil;
 end;
 
 destructor TAtlasIdeExceptionDialog.Destroy;
 begin
   Cancel;
+  if FSafety <> nil then
+    Unhide;
+  FreeAndNil(FEvents);
+  FreeAndNil(FSafety);
   FreeAndNil(FTimer);
   inherited Destroy;
 end;
@@ -115,8 +218,22 @@ begin
   Tick(nil);
 end;
 
+procedure TAtlasIdeExceptionDialog.Arm(const AOnFound: TAtlasDebugDialogFound);
+begin
+  Cancel;
+  FOnFound := AOnFound;
+  FArmed := True;
+  FTimer.Enabled := True;
+end;
+
+function TAtlasIdeExceptionDialog.Armed: Boolean;
+begin
+  Result := FArmed and FTimer.Enabled;
+end;
+
 procedure TAtlasIdeExceptionDialog.Cancel;
 begin
+  FArmed := False;
   if FTimer <> nil then
     FTimer.Enabled := False;
   FOnFound := nil;
@@ -199,9 +316,13 @@ begin
     Form := Screen.CustomForms[Index];
     if not Form.Visible or (Form = Application.MainForm) then
       Continue;
+    // Bereit (Programm läuft): nur modale Fenster, damit der Takt die IDE nicht durchsucht.
+    if FArmed and not (fsModal in Form.FormState) then
+      Continue;
     if ScanForm(Form) then
     begin
       FTimer.Enabled := False;
+      FArmed := False;
       Found := FOnFound;
       FOnFound := nil;
       FOnTimeout := nil;
@@ -214,7 +335,7 @@ begin
       Exit;
     end;
   end;
-  if TThread.GetTickCount64 - FStartedAt >= WatchMs then
+  if not FArmed and (TThread.GetTickCount64 - FStartedAt >= WatchMs) then
   begin
     FTimer.Enabled := False;
     Timeout := FOnTimeout;

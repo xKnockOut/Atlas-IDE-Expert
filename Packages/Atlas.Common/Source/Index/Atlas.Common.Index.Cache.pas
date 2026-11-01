@@ -101,7 +101,9 @@ type
     /// <summary>Unit mit Symbolen und (AUsages) Verwendungen; False, wenn ein Block beschädigt ist.
     /// Ohne AUsages bleiben die Verwendungen auf der Platte: UsagesOffloaded ist dann gesetzt.</summary>
     class function Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex;
-      AUsages: Boolean = True): Boolean; static;
+      AUsages: Boolean): Boolean; overload; static;
+    /// <summary>Wie oben mit AUsages = True.</summary>
+    class function Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex): Boolean; overload; static;
     /// <summary>Nur die Verwendungen einer Unit (Nachladen ausgelagerter Verwendungen).</summary>
     class function ExpandUsages(const AEntry: TIndexCacheEntry; out AUsages: TArray<TIndexUsage>): Boolean;
       static;
@@ -838,6 +840,11 @@ begin
   end;
   if not Result then
     AUsages := nil;
+end;
+
+class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex): Boolean;
+begin
+  Result := Expand(AEntry, AUnit, True);
 end;
 
 class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex; AUsages: Boolean): Boolean;

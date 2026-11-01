@@ -199,7 +199,7 @@ var
   end;
 
   /// <summary>Text in der UI-Schrift umbrechend ab Y; AMaxLines = 0 ohne Grenze.</summary>
-  procedure Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles; AMaxLines: Integer = 0);
+  procedure Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles; AMaxLines: Integer); overload;
   var
     Area: TRect;
   begin
@@ -218,6 +218,12 @@ var
       DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
     Y := Area.Bottom + Scale(6);
     ACanvas.Font.Style := [];
+  end;
+
+  /// <summary>Wie oben ohne Grenze (AMaxLines = 0).</summary>
+  procedure Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles); overload;
+  begin
+    Block(AText, AColor, AStyle, 0);
   end;
 
   /// <summary>Text in der Editorschrift umbrechend ab Y (Pfad und Typen einer Unit, #469).</summary>

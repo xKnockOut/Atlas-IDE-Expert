@@ -34,7 +34,9 @@ type
     class function NormalizePath(const APath: string): string; static;
     /// <summary>Schlüssel für Wörterbücher: gleiche Datei, gleicher Schlüssel.
     /// Andere Schemata (untitled:) bleiben unverändert.</summary>
-    class function Key(const AUri: string; const ACanonicalize: TPathCanonicalizer = nil): string; static;
+    class function Key(const AUri: string; const ACanonicalize: TPathCanonicalizer): string; overload; static;
+    /// <summary>Wie oben mit ACanonicalize = nil.</summary>
+    class function Key(const AUri: string): string; overload; static;
     /// <summary>Gleiche Datei? Vergleicht die Schlüssel.</summary>
     class function SameFile(const AUriA, AUriB: string): Boolean; static;
   end;
@@ -59,6 +61,11 @@ end;
 class function TDocumentUris.NormalizePath(const APath: string): string;
 begin
   Result := TTextUris.NormalizePath(APath);
+end;
+
+class function TDocumentUris.Key(const AUri: string): string;
+begin
+  Result := Key(AUri, nil);
 end;
 
 class function TDocumentUris.Key(const AUri: string; const ACanonicalize: TPathCanonicalizer): string;

@@ -87,7 +87,10 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+      const AFiles: TReferenceFilesProvider); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Klasse, Interface, Record oder Objekt an APosition (bei Variablen deren Typ).</summary>
     class function TypeItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -115,14 +118,21 @@ type
     class function IsRoutine(const AItem: THierarchyItem): Boolean; static;
     class function IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; overload; static;
+      const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
+      const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<THierarchyCall>; overload; static;
     /// <summary>Wie oben, mit erschlossenen Aufrufen nach ASettings (#1119): je Aufrufer und Einstufung ein
     /// Eintrag.</summary>
     class function IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText; const ASettings: TReferenceSettings;
       const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>; overload; static;
     class function OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; overload; static;
+      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
+      overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
+      const AReadText: TReferenceReadText): TArray<THierarchyCall>; overload; static;
     /// <summary>Wie oben; mit AIndex sind Aufrufe über ein Interface oder eine virtuelle Methode samt Zahl der
     /// Umsetzungen gekennzeichnet (#1122).</summary>
     class function OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
@@ -397,6 +407,12 @@ begin
 end;
 
 constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+begin
+  Create(AStore, AIndex, AReadText, AFiles, nil);
+end;
+
+constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create;
@@ -537,6 +553,12 @@ begin
 end;
 
 class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<THierarchyCall>;
+begin
+  Result := IncomingCalls(AResolver, AIndex, AItem, AFiles, AReadText, nil);
+end;
+
+class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 begin
@@ -617,6 +639,12 @@ begin
     Calls.Free;
     Trees.Free;
   end;
+end;
+
+class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
+  const AReadText: TReferenceReadText): TArray<THierarchyCall>;
+begin
+  Result := OutgoingCalls(AResolver, AItem, AReadText, nil);
 end;
 
 class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;

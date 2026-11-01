@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3244] of string = (
+  Lines: array[0..3245] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -950,8 +950,10 @@ const
     '    "excludeTests": {',
     '      "type": "boolean",',
     '      "default": false,',
-    '      "description": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen.",',
-    '      "x-scope": "project",',
+    '      "description": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. Global für alle Projekte schaltbar; eine atlas.json, die den Schlüssel nen' +
+      'nt, geht vor.",',
+    '      "x-scope": "both",',
+    '      "x-area": "rules",',
     '      "x-page": "Prüfregeln",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#146"',

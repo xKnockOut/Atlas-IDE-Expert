@@ -28,6 +28,7 @@
 interface
 
 uses
+  Winapi.Messages,
   System.Classes,
   Vcl.Controls,
   Vcl.Forms,
@@ -40,6 +41,19 @@ type
     FRegistered: Boolean;
     FForm: TCustomForm;
     FFrame: TCustomFrame;
+    /// <summary>Ursprüngliche Fensterprozedur der Form (Haken für WM_CREATE beim Ab- und Andocken).</summary>
+    FOldWndProc: TWndMethod;
+    /// <summary>Formen aller Atlas-Dockfenster: Nur sie bekommen das Thema auch an der Form (schwebend).
+    /// </summary>
+    class var FDockForms: TArray<TCustomForm>;
+    class function IsDockForm(AForm: TCustomForm): Boolean; static;
+    /// <summary>Thema der IDE an der Form: Grund per ApplyTheme, bei dunklem Thema eine dunkle Titelleiste von
+    /// Windows. Kein VCL-Stil an der Form: Der zeichnete die Titelleiste selbst und verlor beim Ziehen die
+    /// Schaltflächen.</summary>
+    class procedure ThemeForm(AForm: TCustomForm); static;
+    /// <summary>Dunkle Titelleiste (DWM), solange das IDE-Thema dunkel ist; schwebend sichtbar.</summary>
+    class procedure ApplyDarkCaption(AForm: TCustomForm); static;
+    procedure FormWndProc(var AMessage: TMessage);
     procedure SetForm(AForm: TCustomForm);
     procedure FreeForm;
     procedure Reveal;
@@ -68,12 +82,18 @@ type
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.Dwmapi,
   System.SysUtils,
   Vcl.Graphics,
   Vcl.Themes,
   Vcl.ComCtrls,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Dock.Plan;
+
+type
+  // Zugriff auf das geschützte Color von TCustomForm.
+  TFormAccess = class(TCustomForm);
 
 { TAtlasIdeDockWindow }
 
@@ -112,20 +132,50 @@ begin
   if AComponent = FForm then
   begin
     // Die IDE hat die Form freigegeben; ihr Frame ist mit ihr gegangen.
-    FForm := nil;
+    SetForm(nil);
     FFrame := nil;
   end;
 end;
 
+class function TAtlasIdeDockWindow.IsDockForm(AForm: TCustomForm): Boolean;
+var
+  Form: TCustomForm;
+begin
+  Result := False;
+  if AForm = nil then
+    Exit;
+  for Form in FDockForms do
+    if Form = AForm then
+      Exit(True);
+end;
+
 procedure TAtlasIdeDockWindow.SetForm(AForm: TCustomForm);
+var
+  Index: Integer;
 begin
   if AForm = FForm then
     Exit;
   if FForm <> nil then
+  begin
     FForm.RemoveFreeNotification(Self);
+    if Assigned(FOldWndProc) then
+      FForm.WindowProc := FOldWndProc;
+    FOldWndProc := nil;
+    for Index := High(FDockForms) downto 0 do
+      if FDockForms[Index] = FForm then
+        Delete(FDockForms, Index, 1);
+  end;
   FForm := AForm;
   if FForm <> nil then
+  begin
     FForm.FreeNotification(Self);
+    if not IsDockForm(FForm) then
+      FDockForms := FDockForms + [FForm];
+    // Beim Ab- und Andocken legt die IDE das Fenster neu an; die Titelleiste muss dann neu dunkel werden.
+    FOldWndProc := FForm.WindowProc;
+    FForm.WindowProc := FormWndProc;
+    ThemeForm(FForm);
+  end;
 end;
 
 procedure TAtlasIdeDockWindow.FrameCreated(AFrame: TCustomFrame);
@@ -317,6 +367,64 @@ begin
   if StyleServices(AControl) <> Style then
     TAtlasGuard.Log(Format('Thema: %s zeichnet mit Stil "%s" statt "%s";%s', [AControl.ClassName,
       StyleServices(AControl).Name, Style.Name, Chain]));
+  // Auch die Form eines Atlas-Dockfensters (schwebend sonst Titelleiste und Grund im Systemstil).
+  if not (AControl is TCustomForm) and IsDockForm(GetParentForm(AControl, False)) then
+    ThemeForm(GetParentForm(AControl, False));
+end;
+
+class procedure TAtlasIdeDockWindow.ApplyDarkCaption(AForm: TCustomForm);
+const
+  // Fehlt in Delphi 12 (Winapi.Dwmapi): ab Windows 10 20H1.
+  DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+var
+  Theming: IOTAIDEThemingServices;
+  Window: TColor;
+  Dark: BOOL;
+begin
+  if (AForm = nil) or not AForm.HandleAllocated or
+    not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or not Theming.IDEThemingEnabled or
+    (Theming.StyleServices = nil) then
+    Exit;
+  // Dunkel, wenn der Fenstergrund des IDE-Stils dunkel ist (Helligkeit nach Rec. 601).
+  Window := ColorToRGB(Theming.StyleServices.GetSystemColor(clWindow));
+  Dark := (GetRValue(Window) * 299 + GetGValue(Window) * 587 + GetBValue(Window) * 114) div 1000 < 128;
+  // Ältere Windows-Versionen kennen den Wert nicht und lehnen ihn ab: dann bleibt die Titelleiste hell.
+  DwmSetWindowAttribute(AForm.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, @Dark, SizeOf(Dark));
+end;
+
+procedure TAtlasIdeDockWindow.FormWndProc(var AMessage: TMessage);
+begin
+  if Assigned(FOldWndProc) then
+    FOldWndProc(AMessage);
+  // Neu angelegtes Fenster (Ab- oder Andocken): Titelleiste wieder dunkel.
+  if (AMessage.Msg = WM_CREATE) and (FForm <> nil) then
+    try
+      ApplyDarkCaption(FForm);
+    except
+      on E: Exception do
+        TAtlasGuard.Log('Dunkle Titelleiste: ' + E.ClassName + ': ' + E.Message);
+    end;
+end;
+
+class procedure TAtlasIdeDockWindow.ThemeForm(AForm: TCustomForm);
+var
+  Theming: IOTAIDEThemingServices;
+begin
+  if (AForm = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
+    not Theming.IDEThemingEnabled then
+    Exit;
+  try
+    Theming.ApplyTheme(AForm);
+    // Der Frame ist durchsichtig und zeigt den Grund der Form; ApplyTheme setzt ihn nicht (schwebend hellgrau
+    // unter weißer Schrift).
+    if Theming.StyleServices <> nil then
+      TFormAccess(AForm).Color := Theming.StyleServices.GetSystemColor(clBtnFace);
+    ApplyDarkCaption(AForm);
+  except
+    // Thema ist Kosmetik: ein Fehler darf das Fenster nicht verhindern.
+    on E: Exception do
+      TAtlasGuard.Log(Format('Thema der Form %s: %s: %s', [AForm.ClassName, E.ClassName, E.Message]));
+  end;
 end;
 
 end.

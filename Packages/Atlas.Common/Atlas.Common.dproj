@@ -135,6 +135,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.TypeMembers.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.NameFacts.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.LibraryUnits.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Cache.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.CacheHousekeeping.pas"/>

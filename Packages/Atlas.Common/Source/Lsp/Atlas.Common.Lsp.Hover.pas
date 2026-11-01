@@ -144,12 +144,19 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: THoverReadText;
-      const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+      const AReadText: THoverReadText); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Hover-Inhalt an APosition; ATreeText ist der Text von ATree.</summary>
     class function InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ATreeText, AFileName: string; const APosition: TTextPosition;
-      const AReadText: THoverReadText; const ADelphiVersion: string = ''): THoverInfo; static;
+      const AReadText: THoverReadText; const ADelphiVersion: string): THoverInfo; overload; static;
+    /// <summary>Wie oben mit ADelphiVersion = ''.</summary>
+    class function InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ATreeText, AFileName: string; const APosition: TTextPosition;
+      const AReadText: THoverReadText): THoverInfo; overload; static;
     /// <summary>False, wenn der Client in initialize nur Klartext für Hover meldet.</summary>
     class function ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean; static;
     /// <summary>„Feld nicht gefunden in qryOrders“ (#461), wenn APosition im Namen eines FieldByName-, FindField-
@@ -470,6 +477,12 @@ begin
 end;
 
 constructor TLspHover.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: THoverReadText);
+begin
+  Create(AStore, AIndex, AReadText, nil);
+end;
+
+constructor TLspHover.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: THoverReadText; const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create;
@@ -554,6 +567,13 @@ begin
         Matching := Matching + IfThen(Matching <> '', #10) + Line;
     end;
   Result := IfThen(Matching <> '', Matching, All);
+end;
+
+class function TLspHover.InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ATreeText, AFileName: string; const APosition: TTextPosition;
+  const AReadText: THoverReadText): THoverInfo;
+begin
+  Result := InfoAt(AResolver, AIndex, ATree, ATreeText, AFileName, APosition, AReadText, '');
 end;
 
 class function TLspHover.InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;

@@ -85,7 +85,9 @@ type
     function IndexOf(const AId: string): Integer;
   public
     /// <summary>Liest den Katalog; AOverlay darf leer sein. Löst ERuleCatalog bei ungültigem Inhalt aus.</summary>
-    constructor Create(const ABase: string; const AOverlay: string = '');
+    constructor Create(const ABase, AOverlay: string); overload;
+    /// <summary>Wie oben ohne Overlay (AOverlay = '').</summary>
+    constructor Create(const ABase: string); overload;
     destructor Destroy; override;
     function TryFind(const AId: string; out AEntry: TRuleCatalogEntry): Boolean;
     function Entries: TArray<TRuleCatalogEntry>;
@@ -275,6 +277,11 @@ begin
 end;
 
 { TRuleCatalog }
+
+constructor TRuleCatalog.Create(const ABase: string);
+begin
+  Create(ABase, '');
+end;
 
 constructor TRuleCatalog.Create(const ABase, AOverlay: string);
 begin

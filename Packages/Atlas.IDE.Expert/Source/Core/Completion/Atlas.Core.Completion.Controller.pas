@@ -177,7 +177,8 @@ type
     procedure SelectByName(const AName: string);
     procedure Completed(AGeneration: Integer);
     procedure Refresh(AKeepSelection: Boolean);
-    procedure MoveSelection(APosition: Integer; ADirection: Integer = 1);
+    procedure MoveSelection(APosition, ADirection: Integer); overload;
+    procedure MoveSelection(APosition: Integer); overload;
     function GetVisible: Boolean;
   public
     constructor Create(const AProvider: IAtlasCompletionProvider; const AView: IAtlasCompletionView);
@@ -789,7 +790,12 @@ begin
   Refresh(False);
 end;
 
-procedure TAtlasCompletionController.MoveSelection(APosition: Integer; ADirection: Integer);
+procedure TAtlasCompletionController.MoveSelection(APosition: Integer);
+begin
+  MoveSelection(APosition, 1);
+end;
+
+procedure TAtlasCompletionController.MoveSelection(APosition, ADirection: Integer);
 begin
   // Erste Pfeiltaste ohne Auswahl (#471): die erste Deklaration wählen.
   if FPassive then

@@ -85,7 +85,10 @@ type
   public
     /// <summary>Wirksamer Schweregrad einer Regel; Off = nicht ausführen.</summary>
     class function EffectiveSeverity(const ARule: TRuleDescriptor;
-      const ASettings: TServerSettings; const ARelativePath: string = ''): TRuleSeverity; overload; static;
+      const ASettings: TServerSettings; const ARelativePath: string): TRuleSeverity; overload; static;
+    /// <summary>Wie oben ohne Dateipfad (ARelativePath = '').</summary>
+    class function EffectiveSeverity(const ARule: TRuleDescriptor;
+      const ASettings: TServerSettings): TRuleSeverity; overload; static;
     class function EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
       const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity; overload; static;
     /// <summary>Ist die Gruppe der Regel über "group:&lt;gruppe&gt;": "off" abgeschaltet (#909)?</summary>
@@ -306,6 +309,12 @@ begin
 end;
 
 { TRuleEngine }
+
+class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor;
+  const ASettings: TServerSettings): TRuleSeverity;
+begin
+  Result := EffectiveSeverity(ARule, ASettings, '');
+end;
 
 class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor;
   const ASettings: TServerSettings; const ARelativePath: string): TRuleSeverity;

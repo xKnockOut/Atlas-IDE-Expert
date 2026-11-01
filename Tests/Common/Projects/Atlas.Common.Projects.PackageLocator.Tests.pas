@@ -24,6 +24,9 @@ type
     procedure CompiledNamesAreWholeWords;
     [Test]
     procedure ResultsAreCached;
+    /// <summary>Die Projektprüfung fragt je Unit dieselben Namen: ein .dcp nur beim ersten Mal durchsuchen.</summary>
+    [Test]
+    procedure CompiledAnswersAreCached;
     [Test]
     procedure ContainedFilesAreAbsolute;
     [Test]
@@ -36,6 +39,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   System.IOUtils,
   System.Generics.Collections,
   Atlas.Common.Projects.PackageReader,
@@ -197,6 +201,41 @@ begin
   finally
     Locator.Free;
     Reads.Free;
+  end;
+end;
+
+procedure TPackageLocatorTests.CompiledAnswersAreCached;
+const
+  // Wie rtl.dcp: mehrere MB, die gesuchten Namen am Ende.
+  Size = 4 * 1024 * 1024;
+  Calls = 500;
+var
+  Locator: TPackageLocator;
+  Data: TBytes;
+  Tail: TBytes;
+  Contains: Boolean;
+  Index: Integer;
+  Watch: TStopwatch;
+begin
+  Tail := TEncoding.ASCII.GetBytes(Dcp(['System.Classes']));
+  SetLength(Data, Size);
+  FillChar(Data[0], Size, 1);
+  Move(Tail[0], Data[Size - Length(Tail)], Length(Tail));
+  Locator := TPackageLocator.Create(['Lib'], Files([TPair<string, TBytes>.Create(TPath.Combine('Lib', 'rtl.dcp'),
+    Data)], nil));
+  try
+    Watch := TStopwatch.StartNew;
+    for Index := 1 to Calls do
+    begin
+      Assert.IsTrue(Locator.Provides('rtl', 'System.Classes', Contains));
+      Assert.IsTrue(Contains);
+      Assert.IsTrue(Locator.Provides('RTL', 'vcl.forms', Contains));
+      Assert.IsFalse(Contains);
+    end;
+    // Ohne Cache 2 × 500 Läufe über 4 MB (4 GB), mehrere Sekunden; mit Cache zwei Läufe.
+    Assert.IsTrue(Watch.ElapsedMilliseconds < 1000, Format('%d ms', [Watch.ElapsedMilliseconds]));
+  finally
+    Locator.Free;
   end;
 end;
 

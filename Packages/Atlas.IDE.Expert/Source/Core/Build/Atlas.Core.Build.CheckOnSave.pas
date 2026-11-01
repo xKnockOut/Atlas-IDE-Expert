@@ -27,7 +27,11 @@ type
     FBuildRunning: Boolean;
     FDisabled: TDictionary<string, Boolean>;
   public
-    constructor Create(ADelayMs: Integer = 2000; AMaxMs: Integer = 1500);
+    constructor Create(ADelayMs, AMaxMs: Integer); overload;
+    /// <summary>Wie oben mit AMaxMs = 1500.</summary>
+    constructor Create(ADelayMs: Integer); overload;
+    /// <summary>Wie oben mit ADelayMs = 2000 und AMaxMs = 1500.</summary>
+    constructor Create; overload;
     destructor Destroy; override;
     /// <summary>AFileName gehört zu AProject (aktives Projekt) und wurde gespeichert.</summary>
     procedure Saved(const AProject: string; ANowMs: Int64);
@@ -48,6 +52,16 @@ type
 implementation
 
 { TAtlasCheckOnSave }
+
+constructor TAtlasCheckOnSave.Create(ADelayMs: Integer);
+begin
+  Create(ADelayMs, 1500);
+end;
+
+constructor TAtlasCheckOnSave.Create;
+begin
+  Create(2000, 1500);
+end;
 
 constructor TAtlasCheckOnSave.Create(ADelayMs, AMaxMs: Integer);
 begin

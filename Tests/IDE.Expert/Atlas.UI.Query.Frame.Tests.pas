@@ -45,6 +45,10 @@ type
     procedure SavedQueryRuns;
     [Test]
     procedure CsvAndMessage;
+    /// <summary>Ohne Ergebnis steht die Hilfe mit den Mengen des Katalogs an der Stelle der Liste; der Knopf
+    /// blendet sie ein und aus.</summary>
+    [Test]
+    procedure HelpWithoutAnswerAndOnButton;
   end;
 
 implementation
@@ -126,6 +130,27 @@ begin
   FOpened := '';
   FRan := '';
   FCancelled := False;
+end;
+
+procedure TAtlasCodeQueryFrameTests.HelpWithoutAnswerAndOnButton;
+var
+  mCatalog: TAtlasQueryCatalog;
+begin
+  // SetUp hat ein Ergebnis gesetzt: Liste statt Hilfe.
+  Assert.IsFalse(FFrame.HelpMemo.Visible);
+  Assert.IsTrue(FFrame.ResultList.Visible);
+  // Ohne Ergebnis: Hilfe mit Aufbau und den Mengen des Katalogs.
+  FFrame.SetMessage('', False);
+  Assert.IsTrue(FFrame.HelpMemo.Visible);
+  Assert.IsFalse(FFrame.ResultList.Visible);
+  Assert.IsTrue(string(FFrame.HelpMemo.Text).Contains('order by'));
+  TAtlasQueryCatalog.Parse(QuerySampleCatalog, mCatalog);
+  Assert.IsTrue(string(FFrame.HelpMemo.Text).Contains(mCatalog.Entities[0].Name), 'Mengen aus dem Katalog');
+  // Knopf schaltet um, auch neben einem Ergebnis.
+  FFrame.HelpButton.Click;
+  Assert.IsFalse(FFrame.HelpMemo.Visible);
+  FFrame.HelpButton.Click;
+  Assert.IsTrue(FFrame.HelpMemo.Visible);
 end;
 
 procedure TAtlasCodeQueryFrameTests.ShowsRowsAndStatus;

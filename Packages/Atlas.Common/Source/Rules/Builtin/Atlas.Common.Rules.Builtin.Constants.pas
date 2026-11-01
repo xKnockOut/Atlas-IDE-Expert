@@ -161,8 +161,10 @@ procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Index.NameFacts,
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Common.Rules.Derived,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -1233,6 +1235,7 @@ procedure TDefaultParameterInvalidRule.Check(const AContext: TRuleContext; const
 var
   FileName: string;
   Resolver: TNameResolver;
+  Cache: IRuleDerivedCache;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -1408,8 +1411,9 @@ var
     // Erst hier die Namensauflösung: Die meisten Dateien haben keinen Standardwert mit eigenem Typ.
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
   end;
@@ -1587,7 +1591,6 @@ begin
     if Resolver <> nil then
     begin
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
   end;
 end;
@@ -1607,6 +1610,7 @@ const
 var
   FileName: string;
   Resolver: TNameResolver;
+  Cache: IRuleDerivedCache;
   // Vorfilter vor der Namensauflösung: Namen mit vorzeichenlosem Typ.
   Unsigned: TTypedNames;
 
@@ -1631,8 +1635,9 @@ var
       Exit;
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
     if not OperandKind(Resolver, AContext.Tree, FileName, ANode[0], LeftKind, LeftType) or
@@ -1727,7 +1732,6 @@ begin
     if Resolver <> nil then
     begin
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
     Unsigned.Free;
   end;
@@ -1797,6 +1801,7 @@ const
 var
   FileName: string;
   Resolver: TNameResolver;
+  Cache: IRuleDerivedCache;
   Sources: TTypedNames;
   // Paare "quelle>ziel" in einheitlichen Namen.
   Pairs: TDictionary<string, Boolean>;
@@ -1810,8 +1815,9 @@ var
   begin
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
   end;
@@ -2152,7 +2158,6 @@ begin
     if Resolver <> nil then
     begin
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
     Sources.Free;
     Pairs.Free;
@@ -2279,6 +2284,7 @@ var
   FileName, LineBreak: string;
   Lines: TArray<string>;
   Resolver: TNameResolver;
+  Cache: IRuleDerivedCache;
   // Namen typisierter Konstanten (Vorfilter): aus der Datei und aus dem Index.
   LocalNames, Suspects: TDictionary<string, Boolean>;
 
@@ -2439,8 +2445,9 @@ var
   begin
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
   end;
@@ -2759,7 +2766,6 @@ begin
     if Resolver <> nil then
     begin
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
     Suspects.Free;
     LocalNames.Free;
@@ -2863,6 +2869,73 @@ begin
   end;
 end;
 
+/// <summary>N, wenn ATypeName im Index ein Alias auf string[N]/ShortString ist; 0 sonst. Hängt nur vom Index ab
+/// und wird über alle Units des Laufs gemerkt (TIndexNameFacts).</summary>
+function IndexShortAlias(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex; const ATypeName: string): Integer;
+var
+  mFacts: IIndexNameFacts;
+  mIndex: ISymbolIndex;
+  mName: string;
+begin
+  mFacts := AFacts;
+  mIndex := AIndex;
+  mName := ATypeName;
+  Result := TIndexNameFacts.Get(mFacts, mIndex, 'shortAlias:' + UpperCase(mName),
+    function: Integer
+    var
+      mLocations: TArray<TSymbolLocation>;
+      mPosition: Integer;
+    begin
+      Result := 0;
+      if mIndex = nil then
+        Exit;
+      mLocations := mIndex.FindSymbols(mName);
+      for mPosition := 0 to High(mLocations) do
+        if mLocations[mPosition].Symbol.Kind = TIndexSymbolKind.TypeAlias then
+        begin
+          Result := TStringLengthLimitRule.ShortStringLength(TypeBodyOf(mLocations[mPosition].Symbol.Signature));
+          if Result > 0 then
+            Exit;
+        end;
+    end);
+end;
+
+/// <summary>Gibt es im Index eine Variable, ein Feld oder eine Property AName vom Typ string[N]/ShortString oder
+/// einem Alias darauf aus dem Index? Wie IndexShortAlias über alle Units gemerkt; lokale Aliase prüft der Aufrufer.
+/// </summary>
+function IndexShortVariable(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex; const AName: string): Boolean;
+var
+  mFacts: IIndexNameFacts;
+  mIndex: ISymbolIndex;
+  mName: string;
+begin
+  mFacts := AFacts;
+  mIndex := AIndex;
+  mName := AName;
+  Result := TIndexNameFacts.Get(mFacts, mIndex, 'shortVariable:' + UpperCase(mName),
+    function: Integer
+    var
+      mLocations: TArray<TSymbolLocation>;
+      mPosition: Integer;
+      mTypeName: string;
+    begin
+      Result := 0;
+      if mIndex = nil then
+        Exit;
+      mLocations := mIndex.FindSymbols(mName);
+      for mPosition := 0 to High(mLocations) do
+        if mLocations[mPosition].Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+          TIndexSymbolKind.Property_] then
+        begin
+          mTypeName := mLocations[mPosition].Symbol.TypeName;
+          if (TStringLengthLimitRule.ShortStringLength(mLocations[mPosition].Symbol.Signature) > 0) or
+            ((mTypeName <> '') and ((TStringLengthLimitRule.ShortStringLength(mTypeName) > 0) or
+            (IsValidIdent(mTypeName, True) and (IndexShortAlias(mFacts, mIndex, mTypeName) > 0)))) then
+            Exit(1);
+        end;
+    end) <> 0;
+end;
+
 procedure TStringLengthLimitRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   MaxLiteral = 255;
@@ -2876,6 +2949,11 @@ var
   LocalNames, ShortTypes, Suspects: TDictionary<string, Boolean>;
   // Werte von Konstanten für string[Laenge]; erst bei Bedarf.
   Values: TConstantValues;
+  // Deklarationen dieser Datei nach Namen (klein), erst bei Bedarf (EnsureDeclarations).
+  Declarations: TObjectDictionary<string, TList<TSyntaxNode>>;
+  TypeBodies: TDictionary<string, TSyntaxNode>;
+  // Hält den Resolver des Laufs (oder einen eigenen Cache ohne Engine).
+  Cache: IRuleDerivedCache;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -2886,8 +2964,9 @@ var
   begin
     if Resolver = nil then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      Resolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      Cache := TRuleDerived.Open(AContext);
+      Resolver := TRuleDerived.Resolver(Cache, AContext);
       Resolver.PinTree(AContext.Tree, FileName);
     end;
   end;
@@ -2974,22 +3053,13 @@ var
 
   /// <summary>Ist ATypeName ein Alias auf string[N]/ShortString (eigene Datei oder Index)? Liefert N.</summary>
   function AliasLength(const ATypeName: string): Integer;
-  var
-    Location: TSymbolLocation;
   begin
     Result := ShortStringLength(ATypeName);
     if (Result > 0) or not IsValidIdent(ATypeName, True) then
       Exit;
     if ShortTypes.ContainsKey(LowerCase(ATypeName)) then
       Exit(1);
-    if AContext.Index <> nil then
-      for Location in AContext.Index.FindSymbols(ATypeName) do
-        if Location.Symbol.Kind = TIndexSymbolKind.TypeAlias then
-        begin
-          Result := ShortStringLength(TypeBodyOf(Location.Symbol.Signature));
-          if Result > 0 then
-            Exit;
-        end;
+    Result := IndexShortAlias(AContext.NameFacts, AContext.Index, ATypeName);
   end;
 
   procedure CollectTypes(ARoot: TSyntaxNode);
@@ -3052,7 +3122,10 @@ var
     if Suspects.TryGetValue(Key, Result) then
       Exit;
     Result := False;
-    if AContext.Index <> nil then
+    // Ohne eigene Aliase der Datei hängt die Antwort nur vom Index ab: über alle Units gemerkt.
+    if ShortTypes.Count = 0 then
+      Result := IndexShortVariable(AContext.NameFacts, AContext.Index, AName)
+    else if AContext.Index <> nil then
       for Location in AContext.Index.FindSymbols(AName) do
         if (Location.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
           TIndexSymbolKind.Property_]) and ((ShortStringLength(Location.Symbol.Signature) > 0) or
@@ -3064,41 +3137,57 @@ var
     Suspects.Add(Key, Result);
   end;
 
+  /// <summary>Einmal je Datei: Typdeklarationen und Deklarationen mit Typ nach Namen, in Baumreihenfolge. Vorher
+  /// durchsuchte jede verdächtige Zuweisung den ganzen Baum (Zuweisungen × Knoten, Sekunden bei großen Units).
+  /// </summary>
+  procedure EnsureDeclarations;
+  var
+    Index: Integer;
+    Name, Key: string;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
+    Nodes: TList<TSyntaxNode>;
+  begin
+    if Declarations <> nil then
+      Exit;
+    Declarations := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
+    TypeBodies := TDictionary<string, TSyntaxNode>.Create;
+    // Iterativ (Bericht M1); Vorordnung wie die frühere Suche, damit der erste Treffer gleich bleibt.
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(AContext.Tree.Root);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.ChildCount > 0) and
+          not TypeBodies.ContainsKey(LowerCase(Node.Name)) then
+          TypeBodies.Add(LowerCase(Node.Name), Node[0]);
+        if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.Field,
+          TSyntaxKind.Parameter]) and (Node.ChildCount > 0) then
+          for Name in Node.Name.Split([',']) do
+          begin
+            Key := LowerCase(Trim(Name));
+            if not Declarations.TryGetValue(Key, Nodes) then
+            begin
+              Nodes := TList<TSyntaxNode>.Create;
+              Declarations.Add(Key, Nodes);
+            end;
+            Nodes.Add(Node);
+          end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
+  end;
+
   /// <summary>Typknoten hinter "=" der Typdeklaration ATypeName in dieser Datei; nil sonst.</summary>
   function LocalTypeBody(const ATypeName: string): TSyntaxNode;
-  var
-    Found: TSyntaxNode;
-
-    procedure Search(ARoot: TSyntaxNode);
-    var
-      Index: Integer;
-      Node: TSyntaxNode;
-      Pending: TStack<TSyntaxNode>;
-    begin
-      // Iterativ (Bericht M1).
-      Pending := TStack<TSyntaxNode>.Create;
-      try
-        Pending.Push(ARoot);
-        while Pending.Count > 0 do
-        begin
-          Node := Pending.Pop;
-          if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.ChildCount > 0) and SameText(Node.Name, ATypeName) then
-          begin
-            Found := Node[0];
-            Exit;
-          end;
-          for Index := Node.ChildCount - 1 downto 0 do
-            Pending.Push(Node[Index]);
-        end;
-      finally
-        Pending.Free;
-      end;
-    end;
-
   begin
-    Found := nil;
-    Search(AContext.Tree.Root);
-    Result := Found;
+    EnsureDeclarations;
+    if not TypeBodies.TryGetValue(LowerCase(ATypeName), Result) then
+      Result := nil;
   end;
 
   // TypeNodeLength und TypeNameLength rufen sich gegenseitig auf; die Rekursion bleibt (Bericht M1): sie folgt
@@ -3137,49 +3226,26 @@ var
   /// keine Parameter).</summary>
   function DeclarationTypeNode(const ASymbol: TResolvedSymbol; out AFixable: Boolean): TSyntaxNode;
   var
-    Found: TSyntaxNode;
-
-    procedure Search(ARoot: TSyntaxNode);
-    var
-      Index: Integer;
-      Name: string;
-      Node: TSyntaxNode;
-      Pending: TStack<TSyntaxNode>;
-    begin
-      // Iterativ (Bericht M1).
-      Pending := TStack<TSyntaxNode>.Create;
-      try
-        Pending.Push(ARoot);
-        while Pending.Count > 0 do
-        begin
-          Node := Pending.Pop;
-          if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.Field,
-            TSyntaxKind.Parameter]) and (Node.ChildCount > 0) and
-            (Node.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
-            (Node.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
-            for Name in Node.Name.Split([',']) do
-              if SameText(Trim(Name), ASymbol.Name) then
-              begin
-                Found := Node[0];
-                AFixable := (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl]) and
-                  (Pos(',', Node.Name) = 0) and (Found.Kind = TSyntaxKind.TypeReference);
-                Exit;
-              end;
-          for Index := Node.ChildCount - 1 downto 0 do
-            Pending.Push(Node[Index]);
-        end;
-      finally
-        Pending.Free;
-      end;
-    end;
-
+    Nodes: TList<TSyntaxNode>;
+    Node: TSyntaxNode;
   begin
-    Found := nil;
+    Result := nil;
     AFixable := False;
-    if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
-      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName)) then
-      Search(AContext.Tree.Root);
-    Result := Found;
+    if not ((ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
+      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName))) then
+      Exit;
+    EnsureDeclarations;
+    if not Declarations.TryGetValue(LowerCase(ASymbol.Name), Nodes) then
+      Exit;
+    for Node in Nodes do
+      if (Node.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
+        (Node.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
+      begin
+        Result := Node[0];
+        AFixable := (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl]) and
+          (Pos(',', Node.Name) = 0) and (Result.Kind = TSyntaxKind.TypeReference);
+        Exit;
+      end;
   end;
 
   procedure ReportTruncated(AValue: TSyntaxNode; ALength, ALimit: Integer; ATypeNode: TSyntaxNode);
@@ -3380,6 +3446,8 @@ begin
     FileName := AContext.UnitName + '.pas';
   Resolver := nil;
   Values := nil;
+  Declarations := nil;
+  TypeBodies := nil;
   LocalNames := TDictionary<string, Boolean>.Create;
   ShortTypes := TDictionary<string, Boolean>.Create;
   Suspects := TDictionary<string, Boolean>.Create;
@@ -3391,10 +3459,9 @@ begin
   finally
     Values.Free;
     if Resolver <> nil then
-    begin
       Resolver.UnpinTree;
-      Resolver.Free;
-    end;
+    TypeBodies.Free;
+    Declarations.Free;
     Suspects.Free;
     ShortTypes.Free;
     LocalNames.Free;

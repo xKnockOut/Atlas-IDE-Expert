@@ -70,7 +70,15 @@ type
     /// <summary>ADispatcher und AClientAppliesEdits dürfen nil sein; dann schreibt der Host selbst.</summary>
     constructor Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
       const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger;
-      ADispatcher: TJsonRpcDispatcher = nil; const AClientAppliesEdits: TFunc<Boolean> = nil);
+      ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>); overload;
+    /// <summary>Wie oben mit AClientAppliesEdits = nil.</summary>
+    constructor Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
+      const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger;
+      ADispatcher: TJsonRpcDispatcher); overload;
+    /// <summary>Wie oben mit ADispatcher = nil und AClientAppliesEdits = nil.</summary>
+    constructor Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
+      const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport;
+      const ALogger: ILogger); overload;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
     function ReadFile(const AFileName: string; out AText: string): Boolean;
     function DirectoryExists(const APath: string): Boolean;
@@ -113,6 +121,19 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.ApplyEdit;
+
+constructor TShellSlashHost.Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
+  const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger;
+  ADispatcher: TJsonRpcDispatcher);
+begin
+  Create(AWorkspaceOf, AReadText, AHeaderTemplate, ATransport, ALogger, ADispatcher, nil);
+end;
+
+constructor TShellSlashHost.Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
+  const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger);
+begin
+  Create(AWorkspaceOf, AReadText, AHeaderTemplate, ATransport, ALogger, nil, nil);
+end;
 
 constructor TShellSlashHost.Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
   const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger;

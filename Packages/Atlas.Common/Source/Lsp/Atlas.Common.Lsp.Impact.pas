@@ -167,7 +167,10 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+      const AFiles: TReferenceFilesProvider); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Auswirkungen des Symbols AStart (aus TLspHierarchies.SymbolItemAt). AFiles: Projektdateien.
     /// </summary>
@@ -1013,6 +1016,12 @@ begin
 end;
 
 { TImpactAnalysis }
+
+constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+begin
+  Create(AStore, AIndex, AReadText, AFiles, nil);
+end;
 
 constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);

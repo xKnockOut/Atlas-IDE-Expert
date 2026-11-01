@@ -125,6 +125,7 @@ procedure RegisterCollectionRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -529,6 +530,7 @@ end;
 procedure TLegacyCollectionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName, Key, Reason: string;
   Reads: TArray<TLegacyCollectionRead>;
   Read, First: TLegacyCollectionRead;
@@ -548,9 +550,10 @@ begin
     FileName := AContext.UnitName + '.pas';
   Keys := nil;
   CastTypes := nil;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Reads := TLegacyCollections.Reads(AContext.Tree, FileName, Resolver, CollectionTypes, ReadMembers,
@@ -586,7 +589,6 @@ begin
   finally
     CastTypes.Free;
     Keys.Free;
-    Resolver.Free;
   end;
 end;
 

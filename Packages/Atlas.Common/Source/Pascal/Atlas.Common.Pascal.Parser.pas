@@ -56,7 +56,10 @@ type
     /// einen Abbruch, endet der Parser vorzeitig mit einem unvollständigen Baum;
     /// der Aufrufer prüft das Signal danach selbst.
     /// </summary>
-    class function Parse(const AText: string; const ACancellation: IPascalCancellation = nil): TSyntaxTree; static;
+    class function Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
+      overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function Parse(const AText: string): TSyntaxTree; overload; static;
     /// <summary>
     /// Baum nur aus den aktiven Zweigen unter ADefines (leer = Vordefinitionen, siehe
     /// TPascalPreprocessor.EditorOptions; #845). AConditionals erhält die Zweige der Datei.
@@ -297,7 +300,8 @@ type
       AStartIndex, AOperandStart: Integer; var ARun: TOperatorRun): TSyntaxNode;
   public
     constructor Create(const AText: string; const ACancellation: IPascalCancellation;
-      const ASkip: TArray<TTextRange> = nil);
+      const ASkip: TArray<TTextRange>); overload;
+    constructor Create(const AText: string; const ACancellation: IPascalCancellation); overload;
     destructor Destroy; override;
     function Run: TSyntaxTree;
   end;
@@ -350,6 +354,11 @@ begin
     if not Before(APos, Range.StartPos) and Before(APos, Range.EndPos) then
       Exit(True);
   Result := False;
+end;
+
+constructor TParser.Create(const AText: string; const ACancellation: IPascalCancellation);
+begin
+  Create(AText, ACancellation, nil);
 end;
 
 constructor TParser.Create(const AText: string; const ACancellation: IPascalCancellation;
@@ -3110,6 +3119,11 @@ const
   ValueStarts: array[0..8] of string = ('=', ':=', '(', ',', '[', '+', '-', '*', '/');
 begin
   Result := (APrevious.Kind = TPascalTokenKind.Symbol) and InWords(APrevious.Text, ValueStarts);
+end;
+
+class function TPascalParser.Parse(const AText: string): TSyntaxTree;
+begin
+  Result := Parse(AText, nil);
 end;
 
 class function TPascalParser.Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;

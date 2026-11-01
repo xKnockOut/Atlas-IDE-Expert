@@ -30,6 +30,8 @@ type
     FFolders: TArray<string>;
     FReadFile: TPackageReadFile;
     FCache: TDictionary<string, TFound>;
+    // Antworten aus .dcp je "PACKAGE|UNIT": Die Suche durchläuft alle Bytes, die Projektprüfung fragt je Unit.
+    FCompiledAnswers: TDictionary<string, Boolean>;
     FLock: TObject;
     function Find(const APackage: string): TFound;
   public
@@ -103,12 +105,14 @@ begin
   FFolders := AFolders;
   FReadFile := AReadFile;
   FCache := TDictionary<string, TFound>.Create;
+  FCompiledAnswers := TDictionary<string, Boolean>.Create;
   FLock := TObject.Create;
 end;
 
 destructor TPackageLocator.Destroy;
 begin
   FLock.Free;
+  FCompiledAnswers.Free;
   FCache.Free;
   inherited;
 end;
@@ -191,13 +195,35 @@ end;
 function TPackageLocator.Provides(const APackage, AUnitName: string; out AContains: Boolean): Boolean;
 var
   Found: TFound;
+  mKey: string;
 begin
   Found := Find(APackage);
   Result := Found.Known;
   if Found.Source.IsPackage then
-    AContains := Found.Source.ContainsIndex(AUnitName) >= 0
-  else
-    AContains := Result and CompiledContains(Found.Compiled, AUnitName);
+  begin
+    AContains := Found.Source.ContainsIndex(AUnitName) >= 0;
+    Exit;
+  end;
+  AContains := False;
+  if not Result then
+    Exit;
+  // Jede Antwort ist ein Lauf über das ganze .dcp (rtl.dcp hat mehrere MB), die Projektprüfung fragt je Unit:
+  // je Paar nur einmal suchen.
+  mKey := UpperCase(APackage) + '|' + UpperCase(AUnitName);
+  TMonitor.Enter(FLock);
+  try
+    if FCompiledAnswers.TryGetValue(mKey, AContains) then
+      Exit;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  AContains := CompiledContains(Found.Compiled, AUnitName);
+  TMonitor.Enter(FLock);
+  try
+    FCompiledAnswers.AddOrSetValue(mKey, AContains);
+  finally
+    TMonitor.Exit(FLock);
+  end;
 end;
 
 class function TPackageLocator.ContainedFiles(const AFileName: string;

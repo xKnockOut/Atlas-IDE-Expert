@@ -210,6 +210,8 @@ procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Index.NameFacts,
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.JSON,
@@ -1144,6 +1146,7 @@ end;
 procedure TCaseMissingEnumValueRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   RequireElse: Boolean;
 
@@ -1282,9 +1285,10 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Visit(AContext.Tree.Root);
@@ -1292,7 +1296,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -1652,6 +1655,7 @@ var
   LineBreak: string;
   Routines: TArray<TSyntaxNode>;
   mResolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   mFileName: string;
 
   /// <summary>Kann der Empfänger des Aufrufs AStatement eine Datenmenge sein (#1326)? Nein, wenn sein Typ bekannt
@@ -1672,8 +1676,9 @@ var
       Exit;
     if mResolver = nil then
     begin
-      mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
-      mResolver.Namespaces := AContext.Namespaces;
+      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+      mCache := TRuleDerived.Open(AContext);
+      mResolver := TRuleDerived.Resolver(mCache, AContext);
       mResolver.PinTree(AContext.Tree, mFileName);
     end;
     if not mResolver.NodeType(AContext.Tree, mFileName, mTarget[0], mSymbol, mTypeInfo, mTypeFound) or
@@ -1908,7 +1913,6 @@ begin
     if mResolver <> nil then
     begin
       mResolver.UnpinTree;
-      mResolver.Free;
     end;
   end;
 end;
@@ -2556,6 +2560,7 @@ var
 
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
@@ -2567,9 +2572,10 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
@@ -2582,7 +2588,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -2601,6 +2606,7 @@ const
     TSyntaxKind.RepeatStatement];
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Tokens: TTokens;
   Lines: TArray<string>;
@@ -2774,9 +2780,10 @@ begin
   Tokens := AContext.Tree.Tokens;
   Lines := TTextLines.SplitLines(AContext.Text);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Visit(AContext.Tree.Root);
@@ -2784,7 +2791,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -2799,6 +2805,7 @@ end;
 procedure TUntypedPointerRefcountRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Tokens: TTokens;
 
@@ -2931,9 +2938,10 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       // Ohne Rekursion durch den Baum (#1094).
@@ -2958,7 +2966,6 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
   end;
 end;
 
@@ -2996,14 +3003,51 @@ begin
   Result := AHasRead or AHasWrite;
 end;
 
+/// <summary>Properties namens AName im Index: Bit 1, wenn eine kein write hat, Bit 2, wenn eine kein read hat.
+/// Hängt nur vom Index ab und wird über alle Units des Laufs gemerkt (TIndexNameFacts).</summary>
+function IndexPropertyFlags(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex; const AName: string): Integer;
+var
+  mFacts: IIndexNameFacts;
+  mIndex: ISymbolIndex;
+  mName: string;
+begin
+  mFacts := AFacts;
+  mIndex := AIndex;
+  mName := AName;
+  Result := TIndexNameFacts.Get(mFacts, mIndex, 'propertyAccess:' + UpperCase(mName),
+    function: Integer
+    var
+      mLocations: TArray<TSymbolLocation>;
+      mPosition: Integer;
+      mHasRead, mHasWrite: Boolean;
+    begin
+      Result := 0;
+      if mIndex = nil then
+        Exit;
+      mLocations := mIndex.FindSymbols(mName);
+      for mPosition := 0 to High(mLocations) do
+        if (mLocations[mPosition].Symbol.Kind = TIndexSymbolKind.Property_) and
+          TReadonlyPropertyAssignedRule.Accessors(mLocations[mPosition].Symbol.Signature, mHasRead, mHasWrite) then
+        begin
+          if not mHasWrite then
+            Result := Result or 1;
+          if not mHasRead then
+            Result := Result or 2;
+        end;
+    end);
+end;
+
 procedure TReadonlyPropertyAssignedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
   Lines: TArray<string>;
   Local: TUnitIndex;
   // Name -> gibt es eine Property ohne write (Bit 1) bzw. ohne read (Bit 2) mit diesem Namen?
   Suspects: TDictionary<string, Integer>;
+  // Signaturen der Properties der eigenen Unit je Name (klein); erst bei Bedarf.
+  LocalProperties: TObjectDictionary<string, TList<string>>;
   Actions: TClassActionContext;
 
   function NodeText(ANode: TSyntaxNode): string;
@@ -3014,8 +3058,9 @@ var
   function SuspectFlags(const AName: string): Integer;
   var
     Symbol: TIndexSymbol;
-    Location: TSymbolLocation;
     HasRead, HasWrite: Boolean;
+    Signatures: TList<string>;
+    Signature: string;
 
     procedure Note(const ASignature: string);
     begin
@@ -3032,13 +3077,27 @@ var
     if Suspects.TryGetValue(LowerCase(AName), Result) then
       Exit;
     Result := 0;
-    for Symbol in Local.Symbols do
-      if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Name, AName) then
-        Note(Symbol.Signature);
-    if AContext.Index <> nil then
-      for Location in AContext.Index.FindSymbols(AName) do
-        if Location.Symbol.Kind = TIndexSymbolKind.Property_ then
-          Note(Location.Symbol.Signature);
+    // Properties der eigenen Unit einmal nach Namen ordnen statt je Name über alle Symbole (große Units).
+    if LocalProperties = nil then
+    begin
+      LocalProperties := TObjectDictionary<string, TList<string>>.Create([doOwnsValues]);
+      for Symbol in Local.Symbols do
+        if Symbol.Kind = TIndexSymbolKind.Property_ then
+        begin
+          if not LocalProperties.TryGetValue(LowerCase(Symbol.Name), Signatures) then
+          begin
+            Signatures := TList<string>.Create;
+            LocalProperties.Add(LowerCase(Symbol.Name), Signatures);
+          end;
+          Signatures.Add(Symbol.Signature);
+        end;
+    end;
+    if LocalProperties.TryGetValue(LowerCase(AName), Signatures) then
+      for Signature in Signatures do
+        Note(Signature);
+    // Der Teil aus dem Index hängt nur vom Namen ab: über alle Units des Laufs gemerkt (häufige Namen wie Count
+    // haben Tausende Treffer und kamen sonst in jeder Unit neu).
+    Result := Result or IndexPropertyFlags(AContext.NameFacts, AContext.Index, AName);
     Suspects.Add(LowerCase(AName), Result);
   end;
 
@@ -3231,9 +3290,11 @@ begin
   Actions.DelphiVersion := AContext.DelphiVersion;
   Actions.Style := AContext.Formatting;
   Suspects := TDictionary<string, Integer>.Create;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  LocalProperties := nil;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
@@ -3242,7 +3303,7 @@ begin
       Resolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
+    LocalProperties.Free;
     Suspects.Free;
   end;
 end;

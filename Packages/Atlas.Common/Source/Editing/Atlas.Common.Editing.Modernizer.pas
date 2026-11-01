@@ -22,7 +22,9 @@ type
     class function Apply(const ALines: TArray<string>; AKinds: TModernizations;
       out ACount: Integer): TArray<string>; static;
     /// <summary>Position von AWord als ganzes Wort in ALine ab AFrom (außerhalb von Strings); 0 ohne.</summary>
-    class function WordPos(const AWord, ALine: string; AFrom: Integer = 1): Integer; static;
+    class function WordPos(const AWord, ALine: string; AFrom: Integer): Integer; overload; static;
+    /// <summary>Wie oben mit AFrom = 1.</summary>
+    class function WordPos(const AWord, ALine: string): Integer; overload; static;
   end;
 
 implementation
@@ -32,6 +34,11 @@ uses
   System.StrUtils,
   Atlas.Text.Chars,
   Atlas.Text.Lines;
+
+class function TModernizer.WordPos(const AWord, ALine: string): Integer;
+begin
+  Result := WordPos(AWord, ALine, 1);
+end;
 
 class function TModernizer.WordPos(const AWord, ALine: string; AFrom: Integer): Integer;
 var

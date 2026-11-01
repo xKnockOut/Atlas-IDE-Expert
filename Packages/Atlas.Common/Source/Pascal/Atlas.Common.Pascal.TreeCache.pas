@@ -73,13 +73,20 @@ type
     /// Symbolstand geparst. ACancellation bricht nur den Ausweichweg ab, wenn der gemeinsame Parse von
     /// einer neueren Version überholt wurde.</summary>
     class function Get(const ADocument: ITextDocument;
-      const ACancellation: IPascalCancellation = nil): ISharedSyntaxTree; static;
+      const ACancellation: IPascalCancellation): ISharedSyntaxTree; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function Get(const ADocument: ITextDocument): ISharedSyntaxTree; overload; static;
     /// <summary>Wie Get, mit ausdrücklichen Symbolen statt denen des DefinesProvider.</summary>
     class function GetFor(const ADocument: ITextDocument; const ADefines: TArray<string>;
-      const ACancellation: IPascalCancellation = nil): ISharedSyntaxTree; static;
+      const ACancellation: IPascalCancellation): ISharedSyntaxTree; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function GetFor(const ADocument: ITextDocument; const ADefines: TArray<string>): ISharedSyntaxTree;
+      overload; static;
     /// <summary>Wie Get, aber aus allen Zweigen der bedingten Kompilierung (#845).</summary>
     class function GetAll(const ADocument: ITextDocument;
-      const ACancellation: IPascalCancellation = nil): ISharedSyntaxTree; static;
+      const ACancellation: IPascalCancellation): ISharedSyntaxTree; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function GetAll(const ADocument: ITextDocument): ISharedSyntaxTree; overload; static;
     /// <summary>Symbole, unter denen Get die Datei liest; leer = Vordefinitionen.</summary>
     class function DefinesOf(const AUri: string): TArray<string>; static;
     /// <summary>Quelle der Projektsymbole (Server: aktives Projekt der Datei); nil = Vordefinitionen.</summary>
@@ -92,7 +99,10 @@ type
     /// neu geparst.</summary>
     class procedure IncludesChanged; static;
     /// <summary>Parst ohne Cache; der Aufrufer gibt den Baum frei.</summary>
-    class function Parse(const AText: string; const ACancellation: IPascalCancellation = nil): TSyntaxTree; static;
+    class function Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
+      overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function Parse(const AText: string): TSyntaxTree; overload; static;
     /// <summary>Wie Parse, aus den aktiven Zweigen unter AOptions (Dateiname, Include-Resolver, #860); AProcessed
     /// erhält den Präprozessor-Lauf.</summary>
     class function ParseActive(const AText: string; const AOptions: TPreprocessorOptions;
@@ -342,6 +352,27 @@ begin
 end;
 
 { TSyntaxTreeCache }
+
+class function TSyntaxTreeCache.Get(const ADocument: ITextDocument): ISharedSyntaxTree;
+begin
+  Result := Get(ADocument, nil);
+end;
+
+class function TSyntaxTreeCache.GetFor(const ADocument: ITextDocument;
+  const ADefines: TArray<string>): ISharedSyntaxTree;
+begin
+  Result := GetFor(ADocument, ADefines, nil);
+end;
+
+class function TSyntaxTreeCache.GetAll(const ADocument: ITextDocument): ISharedSyntaxTree;
+begin
+  Result := GetAll(ADocument, nil);
+end;
+
+class function TSyntaxTreeCache.Parse(const AText: string): TSyntaxTree;
+begin
+  Result := Parse(AText, nil);
+end;
 
 class function TSyntaxTreeCache.Get(const ADocument: ITextDocument;
   const ACancellation: IPascalCancellation): ISharedSyntaxTree;

@@ -54,6 +54,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.Lexer,
@@ -318,6 +319,11 @@ begin
     'unit B;'#10'interface'#10'implementation'#10'uses TestFramework, SysUtils;'#10'end.')));
   Assert.IsFalse(TRuleProfiles.IsTestUnit(TPascalLexer.Tokenize(
     'unit C;'#10'interface'#10'uses System.SysUtils;'#10'implementation'#10'end.')));
+  // Dieselbe Entscheidung aus den uses-Listen des Index (Projektprüfung mit excludeTests).
+  Assert.IsTrue(TUsesClauses.UsesTestFramework(['System.SysUtils', 'dunitx.testframework']));
+  Assert.IsTrue(TUsesClauses.UsesTestFramework(['TestInsight.DUnitX']));
+  Assert.IsFalse(TUsesClauses.UsesTestFramework(['System.SysUtils', 'MyTestFrameworkHelpers']));
+  Assert.IsFalse(TUsesClauses.UsesTestFramework(nil));
 end;
 
 procedure TRuleProfilesTests.DetectsTestProjects;

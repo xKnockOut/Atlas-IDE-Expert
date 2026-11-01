@@ -52,6 +52,7 @@ procedure RegisterTypeKindRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -794,15 +795,17 @@ end;
 procedure TTypeKindRequiredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mResolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   mChecker: TTypeKindChecker;
   mFileName: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   mFileName := ResolverFileName(AContext);
-  mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    mResolver.Namespaces := AContext.Namespaces;
     mResolver.PinTree(AContext.Tree, mFileName);
     try
       mChecker := TTypeKindChecker.Create(AContext, AReport, mResolver);
@@ -815,7 +818,6 @@ begin
       mResolver.UnpinTree;
     end;
   finally
-    mResolver.Free;
   end;
 end;
 

@@ -13,6 +13,10 @@
 // Gruppen lassen sich ein- und ausklappen: Klick, Leertaste oder Enter auf der
 // Überschrift. Eingeklappt zeigt sie die Zahl ihrer Schalter. Der Zustand gilt
 // für die IDE-Sitzung (class var), das Fenster öffnet wie zuletzt verlassen.
+// Damit das Fenster handlich bleibt: beim ersten Öffnen nur die erste Seite
+// offen, Aufklappen schließt die anderen (Akkordeon), höchstens 80 % der
+// Arbeitsfläche hoch; darüber Bildlauf mit Mausrad und Pfeiltasten, rechts ein
+// schmaler Balken.
 
 interface
 
@@ -43,7 +47,13 @@ type
   private class var
     /// <summary>Eingeklappte Seiten (groß geschrieben), für die IDE-Sitzung.</summary>
     FCollapsed: TArray<string>;
+    /// <summary>Schon einmal geöffnet: Beim ersten Mal ist nur die erste Seite offen.</summary>
+    FCollapseInitialized: Boolean;
   private
+    /// <summary>Erste sichtbare Zeile (Bildlauf, wenn nicht alle Zeilen ins Fenster passen).</summary>
+    FFirst: Integer;
+    /// <summary>Zeilen, die ins Fenster passen.</summary>
+    FVisibleRows: Integer;
     FColors: TAtlasColors;
     FItems: TArray<TAtlasQuickToggleItem>;
     FRows: TArray<TRow>;
@@ -52,6 +62,9 @@ type
     FClosing: Boolean;
     FAllButton: TButton;
     FOnToggle: TProc<TAtlasQuickToggleItem>;
+    FOnOpenSetting: TProc<TAtlasQuickToggleItem>;
+    /// <summary>Maus über dem Symbol „Einstellung öffnen“ dieser Zeile; -1 ohne.</summary>
+    FHotOpen: Integer;
     FOnAllOff: TProc;
     FAnchor: TPoint;
     function RowHeight: Integer;
@@ -59,10 +72,19 @@ type
     function ButtonsHeight: Integer;
     function RowRect(AIndex: Integer): TRect;
     function RowAt(const APoint: TPoint): Integer;
+    /// <summary>Symbol „Einstellung öffnen“ rechts in einer Schalterzeile.</summary>
+    function OpenRect(ARow: Integer): TRect;
+    procedure OpenRow(ARow: Integer);
+    procedure PaintOpenIcon(const ARect: TRect; AHot: Boolean);
     function TagText(const AItem: TAtlasQuickToggleItem): string;
     procedure BuildRows;
     procedure Layout;
     procedure MoveHot(ADelta: Integer);
+    /// <summary>Unterkante am Anker, aber nie über den oberen Rand der Arbeitsfläche hinaus.</summary>
+    procedure PlaceAboveAnchor;
+    /// <summary>Bildlauf so, dass FHot sichtbar ist; Grenzen einhalten.</summary>
+    procedure ScrollToHot;
+    procedure ClampFirst;
     procedure ToggleRow(ARow: Integer);
     procedure ToggleGroup(const APage: string);
     class function IsCollapsed(const APage: string): Boolean; static;
@@ -76,6 +98,7 @@ type
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
     constructor CreateToggles(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Schalter und „Alles aus“ neu setzen (auch bei offenem Fenster).</summary>
@@ -92,11 +115,18 @@ type
     function RowItem(ARow: Integer): Integer;
     /// <summary>Alle Gruppen ausklappen (Tests).</summary>
     class procedure ExpandAll; static;
+    /// <summary>Wie beim ersten Öffnen der Sitzung (Tests).</summary>
+    class procedure ResetCollapse; static;
     property Items: TArray<TAtlasQuickToggleItem> read FItems;
     property AllButton: TButton read FAllButton;
     property HotRow: Integer read FHot;
     /// <summary>Schalter umschalten; bei Projektwerten erst nach dem Schließen.</summary>
     property OnToggle: TProc<TAtlasQuickToggleItem> read FOnToggle write FOnToggle;
+    /// <summary>Symbol rechts bzw. Strg+Enter: die Einstellung in Tools › Optionen öffnen (nach dem Schließen).
+    /// </summary>
+    property OnOpenSetting: TProc<TAtlasQuickToggleItem> read FOnOpenSetting write FOnOpenSetting;
+    /// <summary>Zum Testen: Symbol „Einstellung öffnen“ der Zeile ARow anklicken.</summary>
+    procedure ClickOpen(ARow: Integer);
     /// <summary>„Alles aus für diese Sitzung“ bzw. „Alles wieder an“.</summary>
     property OnAllOff: TProc read FOnAllOff write FOnAllOff;
   end;
@@ -121,6 +151,7 @@ begin
   inherited CreateNew(AOwner);
   FColors := AColors;
   FHot := -1;
+  FHotOpen := -1;
   BorderStyle := bsNone;
   KeyPreview := True;
   DoubleBuffered := True;
@@ -160,18 +191,113 @@ end;
 
 function TAtlasQuickToggleWindow.RowRect(AIndex: Integer): TRect;
 begin
-  Result := Rect(ScaleValue(4), HeaderHeight + AIndex * RowHeight, ClientWidth - ScaleValue(4),
-    HeaderHeight + (AIndex + 1) * RowHeight);
+  Result := Rect(ScaleValue(4), HeaderHeight + (AIndex - FFirst) * RowHeight, ClientWidth - ScaleValue(4),
+    HeaderHeight + (AIndex - FFirst + 1) * RowHeight);
 end;
 
 function TAtlasQuickToggleWindow.RowAt(const APoint: TPoint): Integer;
 var
   Index: Integer;
 begin
-  for Index := 0 to High(FRows) do
+  for Index := FFirst to Min(High(FRows), FFirst + FVisibleRows - 1) do
     if PtInRect(RowRect(Index), APoint) then
       Exit(Index);
   Result := -1;
+end;
+
+function TAtlasQuickToggleWindow.OpenRect(ARow: Integer): TRect;
+var
+  Row: TRect;
+  Size: Integer;
+begin
+  Result := TRect.Empty;
+  if (ARow < 0) or (ARow > High(FRows)) or (FRows[ARow].Item < 0) then
+    Exit;
+  Row := RowRect(ARow);
+  Size := ScaleValue(16);
+  // Rechts, mit Abstand zum Bildlaufbalken.
+  Result := Rect(Row.Right - ScaleValue(8) - Size, (Row.Top + Row.Bottom - Size) div 2, Row.Right - ScaleValue(8),
+    (Row.Top + Row.Bottom + Size) div 2);
+end;
+
+procedure TAtlasQuickToggleWindow.PaintOpenIcon(const ARect: TRect; AHot: Boolean);
+var
+  Inset, Mid: Integer;
+begin
+  // Kasten, oben rechts offen, mit Pfeil nach rechts oben: „Einstellung öffnen“.
+  if AHot then
+    Canvas.Pen.Color := ToColor(FColors.Accent)
+  else
+    Canvas.Pen.Color := ToColor(FColors.Muted);
+  Canvas.Pen.Width := Max(1, ScaleValue(1));
+  Inset := ScaleValue(3);
+  Mid := (ARect.Left + ARect.Right) div 2;
+  Canvas.MoveTo(Mid, ARect.Top + Inset);
+  Canvas.LineTo(ARect.Left + Inset, ARect.Top + Inset);
+  Canvas.LineTo(ARect.Left + Inset, ARect.Bottom - Inset);
+  Canvas.LineTo(ARect.Right - Inset, ARect.Bottom - Inset);
+  Canvas.LineTo(ARect.Right - Inset, (ARect.Top + ARect.Bottom) div 2);
+  // Pfeil.
+  Canvas.MoveTo(Mid - ScaleValue(1), (ARect.Top + ARect.Bottom) div 2 + ScaleValue(1));
+  Canvas.LineTo(ARect.Right - ScaleValue(1), ARect.Top + ScaleValue(1));
+  Canvas.MoveTo(ARect.Right - ScaleValue(1) - ScaleValue(5), ARect.Top + ScaleValue(1));
+  Canvas.LineTo(ARect.Right - ScaleValue(1), ARect.Top + ScaleValue(1));
+  Canvas.LineTo(ARect.Right - ScaleValue(1), ARect.Top + ScaleValue(1) + ScaleValue(5));
+  Canvas.Pen.Width := 1;
+end;
+
+procedure TAtlasQuickToggleWindow.OpenRow(ARow: Integer);
+var
+  Item: TAtlasQuickToggleItem;
+  Handler: TProc<TAtlasQuickToggleItem>;
+begin
+  if (ARow < 0) or (ARow > High(FRows)) or (FRows[ARow].Item < 0) or FClosing then
+    Exit;
+  Item := FItems[FRows[ARow].Item];
+  Handler := FOnOpenSetting;
+  if not Assigned(Handler) then
+    Exit;
+  // Tools › Optionen ist modal: erst schließen, dann öffnen.
+  Dismiss;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
+    procedure
+    begin
+      Handler(Item);
+    end);
+end;
+
+procedure TAtlasQuickToggleWindow.ClickOpen(ARow: Integer);
+begin
+  OpenRow(ARow);
+end;
+
+procedure TAtlasQuickToggleWindow.ClampFirst;
+begin
+  FFirst := EnsureRange(FFirst, 0, Max(0, Length(FRows) - FVisibleRows));
+end;
+
+procedure TAtlasQuickToggleWindow.ScrollToHot;
+begin
+  if FHot >= 0 then
+  begin
+    if FHot < FFirst then
+      FFirst := FHot
+    else if FHot >= FFirst + FVisibleRows then
+      FFirst := FHot - FVisibleRows + 1;
+  end;
+  ClampFirst;
+end;
+
+function TAtlasQuickToggleWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+begin
+  // Drei Zeilen je Raste, wie im Editor.
+  if WheelDelta > 0 then
+    Dec(FFirst, 3)
+  else
+    Inc(FFirst, 3);
+  ClampFirst;
+  Invalidate;
+  Result := True;
 end;
 
 function TAtlasQuickToggleWindow.TagText(const AItem: TAtlasQuickToggleItem): string;
@@ -196,6 +322,13 @@ end;
 class procedure TAtlasQuickToggleWindow.ExpandAll;
 begin
   FCollapsed := nil;
+  FCollapseInitialized := True;
+end;
+
+class procedure TAtlasQuickToggleWindow.ResetCollapse;
+begin
+  FCollapsed := nil;
+  FCollapseInitialized := False;
 end;
 
 procedure TAtlasQuickToggleWindow.BuildRows;
@@ -204,6 +337,16 @@ var
   Page: string;
   Row: TRow;
 begin
+  // Erstes Öffnen in der Sitzung: nur die erste Seite offen, sonst wird das Fenster höher als der Bildschirm.
+  if not FCollapseInitialized and (FItems <> nil) then
+  begin
+    FCollapseInitialized := True;
+    FCollapsed := nil;
+    for Index := 0 to High(FItems) do
+      if not SameText(FItems[Index].Toggle.Page, FItems[0].Toggle.Page) and
+        not IsCollapsed(FItems[Index].Toggle.Page) then
+        FCollapsed := FCollapsed + [FItems[Index].Toggle.Page];
+  end;
   FRows := nil;
   Page := #0;
   Header := -1;
@@ -238,9 +381,11 @@ var
 begin
   if IsCollapsed(APage) then
   begin
-    for Index := High(FCollapsed) downto 0 do
-      if SameText(FCollapsed[Index], APage) then
-        Delete(FCollapsed, Index, 1);
+    // Akkordeon: Aufklappen schließt die anderen Seiten, damit das Fenster handlich bleibt.
+    FCollapsed := nil;
+    for Index := 0 to High(FItems) do
+      if not SameText(FItems[Index].Toggle.Page, APage) and not IsCollapsed(FItems[Index].Toggle.Page) then
+        FCollapsed := FCollapsed + [FItems[Index].Toggle.Page];
   end
   else
     FCollapsed := FCollapsed + [APage];
@@ -251,9 +396,12 @@ begin
     if (FRows[Index].Item < 0) and SameText(FRows[Index].Text, APage) then
       FHot := Index;
   Layout;
+  // Die aufgeklappte Seite steht oben.
+  FFirst := Max(0, FHot);
+  ClampFirst;
   // Unten bleibt unten: das Fenster wächst bzw. schrumpft nach oben.
   if Visible then
-    SetBounds(Left, FAnchor.Y - Height, Width, Height);
+    PlaceAboveAnchor;
   Invalidate;
 end;
 
@@ -267,13 +415,19 @@ begin
     Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesSession)));
   Width_ := ScaleValue(280);
   for Row in FRows do
-    Width_ := Max(Width_, Canvas.TextWidth(Row.Text) + Tags + ScaleValue(64));
+    // 64: Kästchen und Ränder, 28: Symbol „Einstellung öffnen“.
+    Width_ := Max(Width_, Canvas.TextWidth(Row.Text) + Tags + ScaleValue(64 + 28));
   Width_ := Min(Width_, ScaleValue(720));
   ButtonWidth := Max(Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff)),
     Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOn))) + ScaleValue(24);
   Width_ := Max(Width_, ButtonWidth + ScaleValue(20));
   ClientWidth := Width_;
-  ClientHeight := HeaderHeight + Length(FRows) * RowHeight + ButtonsHeight;
+  // Höchstens 80 % der Arbeitsfläche hoch; der Rest per Mausrad bzw. Pfeiltasten.
+  FVisibleRows := Max(3, (Screen.MonitorFromPoint(FAnchor).WorkareaRect.Height * 4 div 5 - HeaderHeight -
+    ButtonsHeight) div RowHeight);
+  FVisibleRows := Min(FVisibleRows, Max(1, Length(FRows)));
+  ClampFirst;
+  ClientHeight := HeaderHeight + FVisibleRows * RowHeight + ButtonsHeight;
   FAllButton.SetBounds(ScaleValue(10), ClientHeight - ButtonsHeight + ScaleValue(8), ButtonWidth, ScaleValue(25));
 end;
 
@@ -290,21 +444,30 @@ begin
     FAllButton.Caption := TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff);
   Layout;
   if Visible then
-    SetBounds(Left, FAnchor.Y - Height, Width, Height);
+    PlaceAboveAnchor;
   Invalidate;
+end;
+
+procedure TAtlasQuickToggleWindow.PlaceAboveAnchor;
+var
+  Area: TRect;
+begin
+  // Wächst das Fenster (Gruppe aufgeklappt), bleibt die Unterkante am Anker, solange oben Platz ist; sonst stößt
+  // es oben an die Arbeitsfläche, statt darüber hinaus zu ragen.
+  Area := Screen.MonitorFromPoint(FAnchor).WorkareaRect;
+  SetBounds(EnsureRange(FAnchor.X, Area.Left, Max(Area.Left, Area.Right - Width)),
+    Max(Area.Top, FAnchor.Y - Height), Width, Height);
 end;
 
 procedure TAtlasQuickToggleWindow.ShowAbove(const AAnchor: TPoint);
 var
   Area: TRect;
-  Left_, Top_: Integer;
 begin
-  Layout;
+  // Erst der Anker (Monitor und Unterkante), dann das Layout: Die Höchsthöhe richtet sich nach diesem Monitor.
   Area := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
-  Left_ := EnsureRange(AAnchor.X, Area.Left, Max(Area.Left, Area.Right - Width));
-  Top_ := Max(Area.Top, AAnchor.Y - Height);
-  FAnchor := Point(Left_, Top_ + Height);
-  SetBounds(Left_, Top_, Width, Height);
+  FAnchor := Point(AAnchor.X, Min(AAnchor.Y, Area.Bottom));
+  Layout;
+  PlaceAboveAnchor;
   Show;
   SetFocus;
 end;
@@ -395,6 +558,7 @@ begin
   if Row >= Count then
     Row := 0;
   FHot := Row;
+  ScrollToHot;
   Invalidate;
 end;
 
@@ -436,6 +600,13 @@ begin
       end;
     VK_SPACE, VK_RETURN:
       begin
+        // Strg+Enter: Einstellung öffnen statt schalten.
+        if (Key = VK_RETURN) and (ssCtrl in Shift) then
+        begin
+          Key := 0;
+          OpenRow(FHot);
+          Exit;
+        end;
         Key := 0;
         ToggleRow(FHot);
         Exit;
@@ -459,6 +630,14 @@ begin
     FHot := Row;
     Invalidate;
   end;
+  // Symbol „Einstellung öffnen“ unter der Maus hervorheben.
+  if not PtInRect(OpenRect(Row), Point(X, Y)) then
+    Row := -1;
+  if Row <> FHotOpen then
+  begin
+    FHotOpen := Row;
+    Invalidate;
+  end;
 end;
 
 procedure TAtlasQuickToggleWindow.CMMouseLeave(var Message: TMessage);
@@ -470,7 +649,11 @@ end;
 procedure TAtlasQuickToggleWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
-  if Button = mbLeft then
+  if Button <> mbLeft then
+    Exit;
+  if PtInRect(OpenRect(RowAt(Point(X, Y))), Point(X, Y)) then
+    OpenRow(RowAt(Point(X, Y)))
+  else
     ToggleRow(RowAt(Point(X, Y)));
 end;
 
@@ -502,7 +685,7 @@ begin
   Canvas.MoveTo(0, HeaderHeight - ScaleValue(3));
   Canvas.LineTo(ClientWidth, HeaderHeight - ScaleValue(3));
   Box := ScaleValue(12);
-  for Index := 0 to High(FRows) do
+  for Index := FFirst to Min(High(FRows), FFirst + FVisibleRows - 1) do
   begin
     Row := RowRect(Index);
     Canvas.Brush.Style := bsClear;
@@ -556,7 +739,10 @@ begin
       Canvas.Pen.Width := 1;
     end;
     Canvas.Brush.Style := bsClear;
-    Part := Rect(Check.Right + ScaleValue(8), Row.Top, Row.Right - ScaleValue(6), Row.Bottom);
+    // Rechts in jeder Zeile das Symbol „Einstellung öffnen“, unter der Maus in Akzentfarbe.
+    if Assigned(FOnOpenSetting) then
+      PaintOpenIcon(OpenRect(Index), Index = FHotOpen);
+    Part := Rect(Check.Right + ScaleValue(8), Row.Top, OpenRect(Index).Left - ScaleValue(6), Row.Bottom);
     mText := TagText(Item);
     if mText <> '' then
     begin
@@ -567,6 +753,18 @@ begin
     Canvas.Font.Color := ToColor(FColors.Text);
     mText := FRows[Index].Text;
     DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+  end;
+  // Mehr Zeilen als Platz: schmaler Balken rechts zeigt Lage und Anteil.
+  if Length(FRows) > FVisibleRows then
+  begin
+    Part := Rect(ClientWidth - ScaleValue(5), HeaderHeight, ClientWidth - ScaleValue(2),
+      HeaderHeight + FVisibleRows * RowHeight);
+    Check := Part;
+    Check.Top := Part.Top + MulDiv(Part.Height, FFirst, Length(FRows));
+    Check.Bottom := Part.Top + MulDiv(Part.Height, FFirst + FVisibleRows, Length(FRows));
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(FColors.Muted);
+    Canvas.FillRect(Check);
   end;
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, ClientHeight - ButtonsHeight);

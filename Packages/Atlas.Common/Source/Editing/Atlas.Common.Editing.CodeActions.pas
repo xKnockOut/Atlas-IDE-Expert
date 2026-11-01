@@ -107,7 +107,10 @@ type
       const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean; overload; static;
     /// <summary>uses aufräumen (doppelte entfernen, mit ASort sortieren); False ohne Änderung.</summary>
     class function OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;
-      AByNamespace: Boolean = False): Boolean; static;
+      AByNamespace: Boolean): Boolean; overload; static;
+    /// <summary>Wie oben mit AByNamespace = False.</summary>
+    class function OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean;
+      overload; static;
     /// <summary>uses-Aktionen (#284): fehlende Unit zum Bezeichner an ARange.StartPos (Quick-Fix),
     /// interface-Units ins implementation verschieben (Rewrite). Mit ARemoveUnused zusätzlich
     /// "ungenutzte uses entfernen" (source.removeUnusedImports).</summary>
@@ -440,6 +443,11 @@ begin
   AAction.Edits := [TTextEdit.Create(TTextRange.Create(Statement.EndPos.Line, Length(Lines[Statement.EndPos.Line]),
     Last.EndPos.Line, Length(Lines[Last.EndPos.Line])), LB + Indent + 'try' + LB + Body + LB + Indent + 'end;')];
   Result := True;
+end;
+
+class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean;
+begin
+  Result := OrganizeImports(AText, ASort, AAction, False);
 end;
 
 class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;

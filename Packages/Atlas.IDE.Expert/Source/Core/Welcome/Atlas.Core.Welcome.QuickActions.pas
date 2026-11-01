@@ -131,7 +131,10 @@ type
     /// „Ordner“ und „Konsole“. AIdeBusy: in der IDE läuft schon eine Aktion eines anderen Projekts (Bauen, Tests,
     /// Start); dann gehen „Öffnen und bauen“, „Tests“ und „Startprofil“ nicht, Pull schon.</summary>
     class function Buttons(AItems: TAtlasQuickActions; const AVcs: TAtlasProjectVcs; ABusy: Boolean;
-      AIdeBusy: Boolean = False): TAtlasQuickActionButtons; static;
+      AIdeBusy: Boolean): TAtlasQuickActionButtons; overload; static;
+    /// <summary>Wie oben mit AIdeBusy = False.</summary>
+    class function Buttons(AItems: TAtlasQuickActions; const AVcs: TAtlasProjectVcs;
+      ABusy: Boolean): TAtlasQuickActionButtons; overload; static;
     /// <summary>Braucht die Aktion die IDE (Projekt öffnen)? Bauen, Tests, Startprofil.</summary>
     class function UsesIde(AAction: TAtlasQuickAction): Boolean; static;
     /// <summary>Index des Knopfs für AAction; -1 ohne.</summary>
@@ -385,6 +388,12 @@ class function TAtlasWelcomeQuickActions.UsesIde(AAction: TAtlasQuickAction): Bo
 begin
   Result := (AAction = TAtlasQuickAction.Build) or (AAction = TAtlasQuickAction.Tests) or
     (AAction = TAtlasQuickAction.Run);
+end;
+
+class function TAtlasWelcomeQuickActions.Buttons(AItems: TAtlasQuickActions; const AVcs: TAtlasProjectVcs;
+  ABusy: Boolean): TAtlasQuickActionButtons;
+begin
+  Result := Buttons(AItems, AVcs, ABusy, False);
 end;
 
 class function TAtlasWelcomeQuickActions.Buttons(AItems: TAtlasQuickActions; const AVcs: TAtlasProjectVcs;

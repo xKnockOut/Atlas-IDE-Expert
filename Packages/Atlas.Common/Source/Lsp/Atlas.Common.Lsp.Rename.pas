@@ -66,7 +66,10 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+      const AFiles: TReferenceFilesProvider); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     class function Capability: TJSONObject; static;
     /// <summary>Prüft, ob das Symbol an APosition umbenannt werden darf; AFiles sind die eigenen Dateien.</summary>
@@ -86,8 +89,17 @@ type
     class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; const ANewName: string;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken = nil; ARenameHandlers: Boolean = True): TArray<TRenameEdit>;
+      const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean): TArray<TRenameEdit>;
       overload; static;
+    /// <summary>Wie oben mit ARenameHandlers = True.</summary>
+    class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition; const ANewName: string;
+      const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TRenameEdit>; overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil, ARenameHandlers = True).</summary>
+    class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition; const ANewName: string;
+      const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<TRenameEdit>; overload; static;
     /// <summary>Wie oben; AUnchanged erhält die erschlossenen Stellen nach ASettings, die nicht geändert werden
     /// (#1119).</summary>
     class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -150,6 +162,12 @@ end;
 procedure TLspRename.SetNamespaces(const AValue: TArray<string>);
 begin
   TLspNamespaces.Write(FNamespaces, AValue);
+end;
+
+constructor TLspRename.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+begin
+  Create(AStore, AIndex, AReadText, AFiles, nil);
 end;
 
 constructor TLspRename.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -442,6 +460,21 @@ begin
     if Tree <> ATree then
       Tree.Free;
   end;
+end;
+
+class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; const ANewName: string;
+  const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+  const ACancellation: IJsonRpcCancellationToken): TArray<TRenameEdit>;
+begin
+  Result := Edits(AResolver, AIndex, ATree, AFileName, APosition, ANewName, AFiles, AReadText, ACancellation, True);
+end;
+
+class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; const ANewName: string;
+  const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<TRenameEdit>;
+begin
+  Result := Edits(AResolver, AIndex, ATree, AFileName, APosition, ANewName, AFiles, AReadText, nil, True);
 end;
 
 class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;

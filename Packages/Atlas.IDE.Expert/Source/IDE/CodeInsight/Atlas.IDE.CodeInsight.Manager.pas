@@ -332,7 +332,8 @@ type
     procedure ParameterCodeInsightAnchorPos(var EdPos: TOTAEditPos);
     function ParameterCodeInsightParamIndex(EdPos: TOTAEditPos): Integer;
     function GetHintText(HintLine, HintCol: Integer): string;
-    function GotoDefinition(out AFileName: string; out ALineNum: Integer; Index: Integer = -1): Boolean;
+    function GotoDefinition(out AFileName: string; out ALineNum: Integer; Index: Integer): Boolean; overload;
+    function GotoDefinition(out AFileName: string; out ALineNum: Integer): Boolean; overload;
     procedure Done(Accepted: Boolean; out DisplayParams: Boolean);
     { IOTACodeInsightManager }
     function GetOptionSetName: string;
@@ -1710,6 +1711,11 @@ begin
       Result := '';
     end;
   end;
+end;
+
+function TAtlasCodeInsightManager.GotoDefinition(out AFileName: string; out ALineNum: Integer): Boolean;
+begin
+  Result := GotoDefinition(AFileName, ALineNum, -1);
 end;
 
 function TAtlasCodeInsightManager.GotoDefinition(out AFileName: string; out ALineNum: Integer;

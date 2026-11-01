@@ -47,6 +47,10 @@ type
     procedure MissingBaselineFails;
     [Test]
     procedure CleanFileGivesZero;
+    /// <summary>Wie im Editor: atlas.json wird von der Datei aus nach oben gesucht bis zum Stamm des
+    /// Repositorys.</summary>
+    [Test]
+    procedure ConfigurationFoundInParentFolder;
     [Test]
     procedure SyntaxErrorGivesOne;
     [Test]
@@ -467,6 +471,23 @@ begin
   Assert.AreEqual(0, Run(['--check', Path('Idx/Lauf.dproj'), '--format', 'json', '--fail-on', 'never',
     '--units', 'Suche', '--no-index']));
   Assert.IsFalse(Pos('"legacy-stack-queue"', OutputText) > 0, OutputText);
+end;
+
+procedure TShellLinterTests.ConfigurationFoundInParentFolder;
+const
+  UnitText = 'unit Tief;'#13#10'interface'#13#10'implementation'#13#10'procedure Lauf;'#13#10'begin'#13#10 +
+    '  with TObject.Create do'#13#10'    Free;'#13#10'end;'#13#10'end.'#13#10;
+begin
+  ForceDirectories(Path('Repo/.git'));
+  ForceDirectories(Path('Repo/Src/Tief'));
+  TFile.WriteAllText(Path('Repo/Src/Tief/Tief.pas'), UnitText);
+  Assert.AreEqual(0, Run(['--check', Path('Repo/Src/Tief/Tief.pas'), '--format', 'json', '--fail-on', 'never',
+    '--no-index']));
+  Assert.IsTrue(Pos('"with-statement"', OutputText) > 0, OutputText);
+  TFile.WriteAllText(Path('Repo/atlas.json'), '{"rules": {"with-statement": "off"}}');
+  Assert.AreEqual(0, Run(['--check', Path('Repo/Src/Tief/Tief.pas'), '--format', 'json', '--fail-on', 'never',
+    '--no-index']));
+  Assert.IsFalse(Pos('"with-statement"', OutputText) > 0, OutputText);
 end;
 
 procedure TShellLinterTests.InlineCompilerVersionWithoutInstallation;

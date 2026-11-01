@@ -33,7 +33,9 @@ type
     /// </summary>
     Experimental: Boolean;
     constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
-      AExperimental: Boolean = False);
+      AExperimental: Boolean); overload;
+    /// <summary>Wie oben mit AExperimental = False.</summary>
+    constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string); overload;
   end;
 
   /// <summary>Eine Textersetzung einer Korrektur. Alias auf TTextEdit aus Documents.Contract,
@@ -70,7 +72,9 @@ type
     /// <summary>Aktion „Graph zeigen“ statt Änderung (#896): der Client öffnet die Unit-Beziehungen (#593) der
     /// geprüften Datei. Edits bleiben leer.</summary>
     ShowsUnitRelations: Boolean;
-    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
+    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean); overload;
+    /// <summary>Wie oben mit ASafe = False.</summary>
+    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>); overload;
     /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
     class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
     /// <summary>Aktion, die zu ATarget (in den Klammern eines Aufrufs) springt und dort den Parameter-Hint öffnet
@@ -112,6 +116,8 @@ type
 {$SCOPEDENUMS OFF}
   /// <summary>Gehört AUnitName zu Package APackage (aus requires)? Über dessen .dpk bzw. .dcp (#46).</summary>
   TRulePackageProvides = reference to function(const APackage, AUnitName: string): TRulePackageAnswer;
+  /// <summary>Namen aus requires des Packages APackage (aus seiner .dpk); leer ohne Quelle.</summary>
+  TRulePackageRequires = reference to function(const APackage: string): TArray<string>;
   /// <summary>Antwort der Unit-Suche (#1016): gefunden, sicher nicht gefunden oder ohne Aussage (Pfade der
   /// Installation unbekannt, Makro in einem Pfad offen, Inhalt eines Packages unbekannt).</summary>
 {$SCOPEDENUMS ON}
@@ -312,6 +318,12 @@ type
     FileName: string;
     /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt, Package-Prüfungen schweigen.</summary>
     PackageProvides: TRulePackageProvides;
+    /// <summary>requires eines Packages: dcc sieht auch die Units der Packages, die ein requires-Package
+    /// verlangt (Atlas.Windows → Atlas.Common → Atlas.Text); nil = nur die direkten.</summary>
+    PackageRequires: TRulePackageRequires;
+    /// <summary>Antworten zum Index über alle Units des Arbeitsbereichs (TIndexNameFacts); nil = je Unit neu.
+    /// </summary>
+    NameFacts: IIndexNameFacts;
     /// <summary>Unit-Suche wie beim Compiler (#1016); nil = unbekannt (Linter, Datei ohne Projekt).</summary>
     Units: IRuleUnitLookup;
     /// <summary>Anwendungsart des Projekts, zu dem die Datei gehört (#926); Unknown ohne Projekt.</summary>
@@ -383,6 +395,10 @@ type
     Units: IRuleUnitLookup;
     /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt.</summary>
     PackageProvides: TRulePackageProvides;
+    /// <summary>requires eines Packages (für die Kette der requires); nil = nur die direkten.</summary>
+    PackageRequires: TRulePackageRequires;
+    /// <summary>Antworten zum Index über alle Units des Arbeitsbereichs; nil = je Unit neu.</summary>
+    NameFacts: IIndexNameFacts;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt.</summary>
     ProjectFiles: IRuleProjectFiles;
     /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
@@ -490,6 +506,8 @@ begin
   AContext.Namespaces := Namespaces;
   AContext.Units := Units;
   AContext.PackageProvides := PackageProvides;
+  AContext.PackageRequires := PackageRequires;
+  AContext.NameFacts := NameFacts;
   AContext.ProjectFiles := ProjectFiles;
   AContext.Naming := Naming;
   AContext.ProjectWarnings := ProjectWarnings;
@@ -497,6 +515,11 @@ begin
 end;
 
 { TRuleDescriptor }
+
+constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string);
+begin
+  Self := TRuleDescriptor.Create(AId, ADefaultSeverity, ADescription, False);
+end;
 
 constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
   AExperimental: Boolean);
@@ -508,6 +531,11 @@ begin
 end;
 
 { TRuleFix }
+
+constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>);
+begin
+  Self := TRuleFix.Create(ATitle, AEdits, False);
+end;
 
 constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean);
 begin

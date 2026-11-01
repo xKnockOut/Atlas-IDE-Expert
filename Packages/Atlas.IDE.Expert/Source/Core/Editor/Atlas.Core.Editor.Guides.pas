@@ -39,7 +39,10 @@ type
     class function Compute(const AText: string; ATabWidth: Integer): TArray<TAtlasGuide>; static;
     /// <summary>Wie Compute aus schon analysierten Blöcken; ALines sind die Zeilen des Texts (an #10 getrennt).</summary>
     class function FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
-      ATabWidth: Integer; AOwners: Boolean = False): TArray<TAtlasGuide>; static;
+      ATabWidth: Integer; AOwners: Boolean): TArray<TAtlasGuide>; overload; static;
+    /// <summary>Wie oben mit AOwners = False.</summary>
+    class function FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
+      ATabWidth: Integer): TArray<TAtlasGuide>; overload; static;
     /// <summary>Stiftbreite in Pixeln: AWidth (1–3, bei 100 %) skaliert mit der Zeilenhöhe
     /// gegenüber ABaseCellHeight (Zeilenhöhe bei 100 %).</summary>
     class function PenWidth(AWidth, ACellHeight, ABaseCellHeight: Integer): Integer; static;
@@ -62,6 +65,12 @@ var
 begin
   TAtlasPairs.Analyze(AText, Blocks);
   Result := FromBlocks(AText.Split([#10]), Blocks, ATabWidth);
+end;
+
+class function TAtlasGuides.FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
+  ATabWidth: Integer): TArray<TAtlasGuide>;
+begin
+  Result := FromBlocks(ALines, ABlocks, ATabWidth, False);
 end;
 
 class function TAtlasGuides.FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
