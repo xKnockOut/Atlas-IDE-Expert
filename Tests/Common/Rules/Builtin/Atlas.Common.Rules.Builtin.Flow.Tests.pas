@@ -1140,6 +1140,9 @@ begin
     '  FStrom := THandleStream.Create(H);'));
   TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
     '  H := CreateEvent(nil, True, False, nil);'#10'  Liste.Add(H);'));
+  // Im Array gespeichert (Handles := Handles + [H]): Weitergabe.
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10'  Handles: TArray<THandle>;'#10,
+    '  H := FindFirstChangeNotification(''c:\'', False, 0);'#10'  Handles := Handles + [H];'));
   TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
     '  H := CreateEvent(nil, True, False, nil);'#10'  TThread.CreateAnonymousThread(procedure'#10 +
     '    begin'#10'      CloseHandle(H);'#10'    end).Start;'));

@@ -152,155 +152,225 @@ type
     FirstArgument: string;
   end;
 
+type
+  /// <summary>Zerlegt Zeilen in Tokens; Kommentare über Zeilen hinweg merkt es in InBrace und InParen.</summary>
+  TTokenizer = record
+    Tokens: TArray<TToken>;
+    Count: Integer;
+    Line: string;
+    LineIndex: Integer;
+    Index: Integer;
+    InBrace: Boolean;
+    InParen: Boolean;
+    procedure Add(AKind: TTokenKind; const AText: string);
+    /// <summary>Folgt auf das Zeichen an Index das Zeichen AChar?</summary>
+    function NextIs(AChar: Char): Boolean;
+    procedure SkipIdentChars;
+    /// <summary>Innerhalb eines Kommentars: ein Zeichen weiter und True; sonst False.</summary>
+    function SkipComment: Boolean;
+    procedure AddSymbol;
+    procedure SkipCharCode;
+    procedure ReadQuoted(var AValue: string);
+    procedure ReadString;
+    procedure ReadNumber;
+    procedure ReadWordOrSymbol;
+    procedure ReadToken;
+    procedure ScanLine(ALineIndex: Integer; const ALine: string);
+  end;
+
+procedure TTokenizer.Add(AKind: TTokenKind; const AText: string);
+begin
+  if Count = Length(Tokens) then
+  begin
+    SetLength(Tokens, Count * 2 + 64);
+  end;
+  Tokens[Count].Kind := AKind;
+  Tokens[Count].Text := AText;
+  Tokens[Count].Line := LineIndex;
+  Inc(Count);
+end;
+
+function TTokenizer.NextIs(AChar: Char): Boolean;
+begin
+  Result := (Index < Length(Line)) and (Line[Index + 1] = AChar);
+end;
+
+procedure TTokenizer.SkipIdentChars;
+begin
+  while (Index <= Length(Line)) and TTextChars.IsIdentChar(Line[Index]) do
+  begin
+    Inc(Index);
+  end;
+end;
+
+function TTokenizer.SkipComment: Boolean;
+begin
+  Result := InBrace or InParen;
+  if InBrace then
+  begin
+    InBrace := Line[Index] <> '}';
+  end
+  else if InParen and (Line[Index] = '*') and NextIs(')') then
+  begin
+    InParen := False;
+    Inc(Index);
+  end;
+  if Result then
+  begin
+    Inc(Index);
+  end;
+end;
+
+procedure TTokenizer.AddSymbol;
+begin
+  Add(TTokenKind.Sym, Line[Index]);
+  Inc(Index);
+end;
+
+procedure TTokenizer.SkipCharCode;
+begin
+  Inc(Index);
+  while (Index <= Length(Line)) and CharInSet(Line[Index], ['0'..'9', '$', 'A'..'F', 'a'..'f']) do
+  begin
+    Inc(Index);
+  end;
+end;
+
+procedure TTokenizer.ReadQuoted(var AValue: string);
+begin
+  Inc(Index);
+  while Index <= Length(Line) do
+  begin
+    if Line[Index] <> '''' then
+    begin
+      AValue := AValue + Line[Index];
+      Inc(Index);
+    end
+    else if NextIs('''') then
+    begin
+      AValue := AValue + '''';
+      Inc(Index, 2);
+    end
+    else
+    begin
+      Inc(Index);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TTokenizer.ReadString;
+var
+  mValue: string;
+begin
+  // Zeichenkette samt #13-Teilen als ein Token; nur der Text in Anführungszeichen zählt.
+  mValue := '';
+  while (Index <= Length(Line)) and CharInSet(Line[Index], ['''', '#']) do
+  begin
+    if Line[Index] = '#' then
+    begin
+      SkipCharCode;
+    end
+    else
+    begin
+      ReadQuoted(mValue);
+    end;
+  end;
+  Add(TTokenKind.Str, mValue);
+end;
+
+procedure TTokenizer.ReadNumber;
+var
+  mStart: Integer;
+begin
+  mStart := Index;
+  Inc(Index);
+  SkipIdentChars;
+  Add(TTokenKind.Num, Copy(Line, mStart, Index - mStart));
+end;
+
+procedure TTokenizer.ReadWordOrSymbol;
+var
+  mStart: Integer;
+begin
+  if (Line[Index] = '&') and (Index < Length(Line)) and TTextChars.IsIdentStart(Line[Index + 1]) then
+  begin
+    Inc(Index);
+  end;
+  if not TTextChars.IsIdentStart(Line[Index]) then
+  begin
+    AddSymbol;
+    Exit;
+  end;
+  mStart := Index;
+  Inc(Index);
+  SkipIdentChars;
+  Add(TTokenKind.Ident, Copy(Line, mStart, Index - mStart));
+end;
+
+procedure TTokenizer.ReadToken;
+begin
+  case Line[Index] of
+    ' ', #9, #13, #10:
+      Inc(Index);
+    '{':
+      begin
+        InBrace := True;
+        Inc(Index);
+      end;
+    '/':
+      if NextIs('/') then
+      begin
+        Index := Length(Line) + 1;
+      end
+      else
+      begin
+        AddSymbol;
+      end;
+    '(':
+      if NextIs('*') then
+      begin
+        InParen := True;
+        Inc(Index, 2);
+      end
+      else
+      begin
+        AddSymbol;
+      end;
+    '''', '#':
+      ReadString;
+    '0'..'9', '$':
+      ReadNumber;
+  else
+    ReadWordOrSymbol;
+  end;
+end;
+
+procedure TTokenizer.ScanLine(ALineIndex: Integer; const ALine: string);
+begin
+  Line := ALine;
+  LineIndex := ALineIndex;
+  Index := 1;
+  while Index <= Length(Line) do
+  begin
+    if not SkipComment then
+    begin
+      ReadToken;
+    end;
+  end;
+end;
+
 function Tokenize(const ALines: TArray<string>): TArray<TToken>;
 var
-  Count: Integer;
-  LineIndex, Index, Start: Integer;
-  Line, Value: string;
-  InBrace, InParen: Boolean;
-
-  procedure Add(AKind: TTokenKind; const AText: string; ALine: Integer);
-  begin
-    if Count = Length(Result) then
-    begin
-      SetLength(Result, Count * 2 + 64);
-    end;
-    Result[Count].Kind := AKind;
-    Result[Count].Text := AText;
-    Result[Count].Line := ALine;
-    Inc(Count);
-  end;
-
+  mTokenizer: TTokenizer;
+  mLineIndex: Integer;
 begin
-  Result := nil;
-  Count := 0;
-  InBrace := False;
-  InParen := False;
-  for LineIndex := 0 to High(ALines) do
+  mTokenizer := Default(TTokenizer);
+  for mLineIndex := 0 to High(ALines) do
   begin
-    Line := ALines[LineIndex];
-    Index := 1;
-    while Index <= Length(Line) do
-    begin
-      if InBrace then
-      begin
-        if Line[Index] = '}' then
-        begin
-          InBrace := False;
-        end;
-        Inc(Index);
-        Continue;
-      end;
-      if InParen then
-      begin
-        if (Line[Index] = '*') and (Index < Length(Line)) and (Line[Index + 1] = ')') then
-        begin
-          InParen := False;
-          Inc(Index);
-        end;
-        Inc(Index);
-        Continue;
-      end;
-      case Line[Index] of
-        ' ', #9, #13, #10:
-          Inc(Index);
-        '{':
-          begin
-            InBrace := True;
-            Inc(Index);
-          end;
-        '/':
-          if (Index < Length(Line)) and (Line[Index + 1] = '/') then
-          begin
-            Index := Length(Line) + 1;
-          end
-          else
-          begin
-            Add(TTokenKind.Sym, '/', LineIndex);
-            Inc(Index);
-          end;
-        '(':
-          if (Index < Length(Line)) and (Line[Index + 1] = '*') then
-          begin
-            InParen := True;
-            Inc(Index, 2);
-          end
-          else
-          begin
-            Add(TTokenKind.Sym, '(', LineIndex);
-            Inc(Index);
-          end;
-        '''', '#':
-          begin
-            // Zeichenkette samt #13-Teilen als ein Token; nur der Text in Anführungszeichen zählt.
-            Value := '';
-            while (Index <= Length(Line)) and ((Line[Index] = '''') or (Line[Index] = '#')) do
-            begin
-              if Line[Index] = '#' then
-              begin
-                Inc(Index);
-                while (Index <= Length(Line)) and (CharInSet(Line[Index], ['0'..'9', '$', 'A'..'F', 'a'..'f'])) do
-                begin
-                  Inc(Index);
-                end;
-              end
-              else
-              begin
-                Inc(Index);
-                while Index <= Length(Line) do
-                begin
-                  if Line[Index] = '''' then
-                  begin
-                    if (Index < Length(Line)) and (Line[Index + 1] = '''') then
-                    begin
-                      Value := Value + '''';
-                      Inc(Index, 2);
-                      Continue;
-                    end;
-                    Inc(Index);
-                    Break;
-                  end;
-                  Value := Value + Line[Index];
-                  Inc(Index);
-                end;
-              end;
-            end;
-            Add(TTokenKind.Str, Value, LineIndex);
-          end;
-        '0'..'9', '$':
-          begin
-            Start := Index;
-            Inc(Index);
-            while (Index <= Length(Line)) and TTextChars.IsIdentChar(Line[Index]) do
-            begin
-              Inc(Index);
-            end;
-            Add(TTokenKind.Num, Copy(Line, Start, Index - Start), LineIndex);
-          end;
-      else
-        if (Line[Index] = '&') and (Index < Length(Line)) and TTextChars.IsIdentStart(Line[Index + 1]) then
-        begin
-          Inc(Index);
-        end;
-        if TTextChars.IsIdentStart(Line[Index]) then
-        begin
-          Start := Index;
-          Inc(Index);
-          while (Index <= Length(Line)) and TTextChars.IsIdentChar(Line[Index]) do
-          begin
-            Inc(Index);
-          end;
-          Add(TTokenKind.Ident, Copy(Line, Start, Index - Start), LineIndex);
-        end
-        else
-        begin
-          Add(TTokenKind.Sym, Line[Index], LineIndex);
-          Inc(Index);
-        end;
-      end;
-    end;
+    mTokenizer.ScanLine(mLineIndex, ALines[mLineIndex]);
   end;
-  SetLength(Result, Count);
+  Result := Copy(mTokenizer.Tokens, 0, mTokenizer.Count);
 end;
 
 function IsWord(const AToken: TToken; const AWord: string): Boolean;
@@ -464,58 +534,91 @@ begin
   end;
 end;
 
-function TDUnitXUnit.TestAt(ALine: Integer; out AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
+// Index des [TestCase] von ATest in Zeile ALine; -1 ohne.
+function CaseIndexAt(const ATest: TDUnitXTest; ALine: Integer): Integer;
 var
-  FixtureIndex, TestIndex, CaseIndex: Integer;
-  Test: TDUnitXTest;
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ATest.CaseLines) do
+  begin
+    if ATest.CaseLines[mIndex] = ALine then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+// Liegt ALine zwischen erstem Attribut und Deklaration ([Category] …) oder im Rumpf bis zum end?
+function IsInTest(const ATest: TDUnitXTest; ALine: Integer): Boolean;
+begin
+  Result := (ALine >= ATest.AttributeLine) and (ALine <= ATest.Line);
+  if not Result and (ATest.BodyLine >= 0) and (ATest.EndLine >= ATest.BodyLine) then
+  begin
+    Result := (ALine >= ATest.BodyLine) and (ALine <= ATest.EndLine);
+  end;
+end;
+
+// Erster Test mit einem [TestCase] in Zeile ALine.
+function CaseAt(const AFixtures: TArray<TDUnitXFixture>; ALine: Integer; out AFixtureIndex, ATestIndex,
+  ACaseIndex: Integer): Boolean;
+var
+  mFixture, mTest: Integer;
 begin
   AFixtureIndex := -1;
   ATestIndex := -1;
   ACaseIndex := -1;
-  Result := True;
-  // Zeile eines [TestCase]: nur dieser Fall.
-  for FixtureIndex := 0 to High(Fixtures) do
+  for mFixture := 0 to High(AFixtures) do
   begin
-    for TestIndex := 0 to High(Fixtures[FixtureIndex].Tests) do
+    for mTest := 0 to High(AFixtures[mFixture].Tests) do
     begin
-      for CaseIndex := 0 to High(Fixtures[FixtureIndex].Tests[TestIndex].CaseLines) do
+      ACaseIndex := CaseIndexAt(AFixtures[mFixture].Tests[mTest], ALine);
+      if ACaseIndex >= 0 then
       begin
-        if Fixtures[FixtureIndex].Tests[TestIndex].CaseLines[CaseIndex] = ALine then
-        begin
-          AFixtureIndex := FixtureIndex;
-          ATestIndex := TestIndex;
-          if CaseHasOwnLine(FixtureIndex, TestIndex, CaseIndex) then
-          begin
-            ACaseIndex := CaseIndex;
-          end;
-          Exit;
-        end;
+        AFixtureIndex := mFixture;
+        ATestIndex := mTest;
+        Exit(True);
       end;
     end;
   end;
-  if AtLine(ALine, AFixtureIndex, ATestIndex) then
-  begin
-    Exit;
-  end;
-  for FixtureIndex := 0 to High(Fixtures) do
-  begin
-    for TestIndex := 0 to High(Fixtures[FixtureIndex].Tests) do
-    begin
-      Test := Fixtures[FixtureIndex].Tests[TestIndex];
-      // Zwischen erstem Attribut und Deklaration ([Category] …) oder im Rumpf bis zum end.
-      if ((ALine >= Test.AttributeLine) and (ALine <= Test.Line)) or
-        ((Test.BodyLine >= 0) and (Test.EndLine >= Test.BodyLine) and (ALine >= Test.BodyLine) and
-        (ALine <= Test.EndLine)) then
-      begin
-        AFixtureIndex := FixtureIndex;
-        ATestIndex := TestIndex;
-        Exit;
-      end;
-    end;
-  end;
+  Result := False;
+end;
+
+// Erster Test, in dessen Attributen oder Rumpf ALine liegt.
+function TestRangeAt(const AFixtures: TArray<TDUnitXFixture>; ALine: Integer; out AFixtureIndex,
+  ATestIndex: Integer): Boolean;
+var
+  mFixture, mTest: Integer;
+begin
   AFixtureIndex := -1;
   ATestIndex := -1;
+  for mFixture := 0 to High(AFixtures) do
+  begin
+    for mTest := 0 to High(AFixtures[mFixture].Tests) do
+    begin
+      if IsInTest(AFixtures[mFixture].Tests[mTest], ALine) then
+      begin
+        AFixtureIndex := mFixture;
+        ATestIndex := mTest;
+        Exit(True);
+      end;
+    end;
+  end;
   Result := False;
+end;
+
+function TDUnitXUnit.TestAt(ALine: Integer; out AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
+begin
+  // Zeile eines [TestCase]: nur dieser Fall.
+  if CaseAt(Fixtures, ALine, AFixtureIndex, ATestIndex, ACaseIndex) then
+  begin
+    if not CaseHasOwnLine(AFixtureIndex, ATestIndex, ACaseIndex) then
+    begin
+      ACaseIndex := -1;
+    end;
+    Exit(True);
+  end;
+  Result := AtLine(ALine, AFixtureIndex, ATestIndex) or TestRangeAt(Fixtures, ALine, AFixtureIndex, ATestIndex);
 end;
 
 { TDUnitXSource }
@@ -548,17 +651,21 @@ begin
   Result := TDUnitXAttribute.None;
 end;
 
+function IsUsesSeparator(const AToken: TToken): Boolean;
+begin
+  Result := IsSym(AToken, ',') or IsSym(AToken, ';') or IsWord(AToken, 'in');
+end;
+
 class function TDUnitXSource.UsesDUnitX(const ALines: TArray<string>): Boolean;
 var
-  Tokens: TArray<TToken>;
-  Index: Integer;
+  mTokens: TArray<TToken>;
+  mIndex: Integer;
 begin
-  Tokens := Tokenize(ALines);
-  for Index := 0 to High(Tokens) - 4 do
+  mTokens := Tokenize(ALines);
+  for mIndex := 0 to High(mTokens) - 4 do
   begin
-    if IsWord(Tokens[Index], 'DUnitX') and IsSym(Tokens[Index + 1], '.') and
-      IsWord(Tokens[Index + 2], 'TestFramework') and
-      (IsSym(Tokens[Index + 3], ',') or IsSym(Tokens[Index + 3], ';') or IsWord(Tokens[Index + 3], 'in')) then
+    if IsWord(mTokens[mIndex], 'DUnitX') and IsSym(mTokens[mIndex + 1], '.') and
+      IsWord(mTokens[mIndex + 2], 'TestFramework') and IsUsesSeparator(mTokens[mIndex + 3]) then
     begin
       Exit(True);
     end;
@@ -566,556 +673,708 @@ begin
   Result := False;
 end;
 
-class function TDUnitXSource.Scan(const ALines: TArray<string>): TDUnitXUnit;
+function IsMethodWord(const AToken: TToken): Boolean;
+begin
+  Result := IsWord(AToken, 'procedure') or IsWord(AToken, 'function');
+end;
+
+function IsTypeKeyword(const AToken: TToken): Boolean;
+begin
+  Result := IsWord(AToken, 'class') or IsWord(AToken, 'object') or IsWord(AToken, 'interface');
+end;
+
+function IsSectionWord(const AToken: TToken): Boolean;
+begin
+  Result := IsWord(AToken, 'implementation') or IsWord(AToken, 'initialization') or IsWord(AToken, 'finalization');
+end;
+
+function IsBlockStart(const AToken: TToken): Boolean;
+begin
+  Result := IsWord(AToken, 'begin') or IsWord(AToken, 'try') or IsWord(AToken, 'case') or IsWord(AToken, 'asm');
+end;
+
+// Attribute vor einer Methode auf ATest anwenden. AIsTest: [Test] oder [TestCase]; ANotTest: [Test(False)],
+// [Setup], [TearDown], [SetupFixture] oder [TearDownFixture].
+procedure ApplyAttributes(const APending: TArray<TPendingAttribute>; var ATest: TDUnitXTest; out AIsTest,
+  ANotTest: Boolean);
+var
+  mAttribute: TPendingAttribute;
+begin
+  AIsTest := False;
+  ANotTest := False;
+  for mAttribute in APending do
+  begin
+    case mAttribute.Kind of
+      TDUnitXAttribute.Test:
+        // [Test(False)] schaltet den Test ab.
+        if SameText(mAttribute.FirstArgument, 'False') then
+        begin
+          ANotTest := True;
+        end
+        else
+        begin
+          AIsTest := True;
+        end;
+      TDUnitXAttribute.TestCase:
+        begin
+          AIsTest := True;
+          ATest.Cases := ATest.Cases + [mAttribute.FirstArgument];
+          ATest.CaseLines := ATest.CaseLines + [mAttribute.Line];
+        end;
+      TDUnitXAttribute.Ignore:
+        ATest.Ignored := True;
+      TDUnitXAttribute.Setup, TDUnitXAttribute.TearDown, TDUnitXAttribute.SetupFixture,
+      TDUnitXAttribute.TearDownFixture:
+        ANotTest := True;
+      TDUnitXAttribute.None: ;
+      TDUnitXAttribute.TestFixture: ;
+      TDUnitXAttribute.Category: ;
+    end;
+  end;
+end;
+
 type
+  /// <summary>Klasse, die eine Fixture sein kann: zählt mit [TestFixture] oder RegisterTestFixture.</summary>
   TCandidate = record
     Fixture: TDUnitXFixture;
     HasFixtureAttribute: Boolean;
   end;
+
+  /// <summary>Zustand beim Lesen einer Klassendeklaration.</summary>
+  TClassBody = record
+    Depth: Integer;
+    IsPublished: Boolean;
+    /// <summary>„class“ vor procedure/function: Klassenmethode.</summary>
+    AfterClassWord: Boolean;
+  end;
+
+  /// <summary>Liest Fixtures und Tests aus den Tokens einer Unit; der Zustand gilt für einen Aufruf von Run.</summary>
+  TDUnitXScanner = class
+  private
+    FTokens: TArray<TToken>;
+    FCount: Integer;
+    FIndex: Integer;
+    FCandidates: TArray<TCandidate>;
+    FRegistered: TArray<string>;
+    FPending: TArray<TPendingAttribute>;
+    FInImplementation: Boolean;
+    FUnitName: string;
+    function Peek(AOffset: Integer): TToken;
+    /// <summary>Token an FIndex; hinter dem Ende ein leeres Symbol.</summary>
+    function Token: TToken;
+    function DottedName: string;
+    procedure SkipGroup(const AOpen, AClose: string);
+    procedure ReadAttributes;
+    function FirstPendingLine(ADefault: Integer): Integer;
+    function HasPending(AKind: TDUnitXAttribute): Boolean;
+    function StartsTypeWithEnd: Boolean;
+    function StartsTypeBody: Boolean;
+    function StartsLocalRoutine: Boolean;
+    procedure ReadMethod(var AFixture: TDUnitXFixture; APublished: Boolean);
+    function SkipClassHead: Boolean;
+    function ReadMember(var ABody: TClassBody; var AFixture: TDUnitXFixture): Boolean;
+    procedure ReadClassToken(var ABody: TClassBody; var AFixture: TDUnitXFixture);
+    procedure ReadClass;
+    procedure SkipHeader;
+    function SkipStatements: Integer;
+    procedure SkipTypeBody;
+    procedure ReadStatements(out ABeginLine, AEndLine: Integer);
+    procedure ReadRoutine(ADepth: Integer; out ABeginLine, AEndLine: Integer);
+    function MarkBody(const AClassName, AMethod: string; ALine: Integer; out ACandidate, ATest: Integer): Boolean;
+    procedure ReadBody;
+    function IsUnitHeader: Boolean;
+    function StartsAttributeList: Boolean;
+    function IsRegistration: Boolean;
+    function IsClassStart: Boolean;
+    function IsBodyStart: Boolean;
+    procedure ReadTopLevel;
+    function IsRegisteredName(const AName: string): Boolean;
+    function Fixtures: TArray<TDUnitXFixture>;
+  public
+    function Run(const ALines: TArray<string>): TDUnitXUnit;
+  end;
+
+function TDUnitXScanner.Peek(AOffset: Integer): TToken;
+begin
+  if (FIndex + AOffset >= 0) and (FIndex + AOffset < FCount) then
+  begin
+    Exit(FTokens[FIndex + AOffset]);
+  end;
+  Result := Default(TToken);
+  Result.Kind := TTokenKind.Sym;
+  Result.Line := -1;
+end;
+
+function TDUnitXScanner.Token: TToken;
+begin
+  Result := Peek(0);
+end;
+
+/// <summary>Punktname ab FIndex (A.B.C); FIndex steht danach hinter dem Namen.</summary>
+function TDUnitXScanner.DottedName: string;
+begin
+  Result := '';
+  while Token.Kind = TTokenKind.Ident do
+  begin
+    Result := Result + Token.Text;
+    Inc(FIndex);
+    if not IsSym(Token, '.') or (Peek(1).Kind <> TTokenKind.Ident) then
+    begin
+      Break;
+    end;
+    Result := Result + '.';
+    Inc(FIndex);
+  end;
+end;
+
+/// <summary>Überspringt bis zur passenden schließenden Klammer; FIndex steht danach dahinter.</summary>
+procedure TDUnitXScanner.SkipGroup(const AOpen, AClose: string);
 var
-  Tokens: TArray<TToken>;
-  Candidates: TArray<TCandidate>;
-  Registered: TArray<string>;
-  Pending: TArray<TPendingAttribute>;
-  Index, Count: Integer;
-  InImplementation: Boolean;
-
-  function Peek(AOffset: Integer): TToken;
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  while FIndex < FCount do
   begin
-    if (Index + AOffset >= 0) and (Index + AOffset < Count) then
+    if IsSym(Token, AOpen) then
     begin
-      Result := Tokens[Index + AOffset];
+      Inc(mDepth);
     end
-    else
+    else if IsSym(Token, AClose) then
     begin
-      Result.Kind := TTokenKind.Sym;
-      Result.Text := '';
-      Result.Line := -1;
-    end;
-  end;
-
-  /// <summary>Punktname ab Index (A.B.C); Index steht danach hinter dem Namen.</summary>
-  function DottedName: string;
-  begin
-    Result := '';
-    while (Index < Count) and (Tokens[Index].Kind = TTokenKind.Ident) do
-    begin
-      Result := Result + Tokens[Index].Text;
-      Inc(Index);
-      if (Index < Count - 1) and IsSym(Tokens[Index], '.') and (Tokens[Index + 1].Kind = TTokenKind.Ident) then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
-        Result := Result + '.';
-        Inc(Index);
-      end
-      else
-      begin
-        Break;
+        Inc(FIndex);
+        Exit;
       end;
     end;
+    Inc(FIndex);
   end;
+end;
 
-  /// <summary>Überspringt bis zur passenden schließenden Klammer; Index steht danach dahinter.</summary>
-  procedure SkipGroup(const AOpen, AClose: string);
-  var
-    Depth: Integer;
+/// <summary>Liest „[A, B('x')]“ ab FIndex (auf „[“) in FPending.</summary>
+procedure TDUnitXScanner.ReadAttributes;
+var
+  mAttribute: TPendingAttribute;
+begin
+  Inc(FIndex);
+  while (FIndex < FCount) and not IsSym(Token, ']') do
   begin
-    Depth := 0;
-    while Index < Count do
+    if Token.Kind <> TTokenKind.Ident then
     begin
-      if IsSym(Tokens[Index], AOpen) then
-      begin
-        Inc(Depth);
-      end
-      else if IsSym(Tokens[Index], AClose) then
-      begin
-        Dec(Depth);
-        if Depth = 0 then
-        begin
-          Inc(Index);
-          Exit;
-        end;
-      end;
-      Inc(Index);
+      Inc(FIndex);
+      Continue;
     end;
-  end;
-
-  /// <summary>Liest „[A, B('x')]“ ab Index (auf „[“) in Pending.</summary>
-  procedure ReadAttributes;
-  var
-    Attribute: TPendingAttribute;
-    Name: string;
-  begin
-    Inc(Index);
-    while (Index < Count) and not IsSym(Tokens[Index], ']') do
+    mAttribute := Default(TPendingAttribute);
+    mAttribute.Line := Token.Line;
+    mAttribute.Kind := TDUnitXSource.AttributeOf(DottedName);
+    if IsSym(Token, '(') then
     begin
-      if Tokens[Index].Kind = TTokenKind.Ident then
-      begin
-        Attribute := Default(TPendingAttribute);
-        Attribute.Line := Tokens[Index].Line;
-        Name := DottedName;
-        Attribute.Kind := AttributeOf(Name);
-        if (Index < Count) and IsSym(Tokens[Index], '(') then
-        begin
-          if Index + 1 < Count then
-          begin
-            Attribute.FirstArgument := Tokens[Index + 1].Text;
-          end;
-          SkipGroup('(', ')');
-        end;
-        Pending := Pending + [Attribute];
-      end
-      else
-      begin
-        Inc(Index);
-      end;
-    end;
-    if Index < Count then
-    begin
-      Inc(Index);
-    end;
-  end;
-
-  function FirstPendingLine(ADefault: Integer): Integer;
-  begin
-    if Length(Pending) > 0 then
-    begin
-      Result := Pending[0].Line;
-    end
-    else
-    begin
-      Result := ADefault;
-    end;
-  end;
-
-  function HasPending(AKind: TDUnitXAttribute): Boolean;
-  var
-    Attribute: TPendingAttribute;
-  begin
-    for Attribute in Pending do
-    begin
-      if Attribute.Kind = AKind then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  /// <summary>Methode in einer Fixture: Index steht auf procedure/function.</summary>
-  procedure ReadMethod(var AFixture: TDUnitXFixture; APublished: Boolean);
-  var
-    Test: TDUnitXTest;
-    Attribute: TPendingAttribute;
-    IsTest, NotTest: Boolean;
-  begin
-    Test := Default(TDUnitXTest);
-    Test.Line := Tokens[Index].Line;
-    Test.AttributeLine := FirstPendingLine(Test.Line);
-    Test.BodyLine := -1;
-    Test.BeginLine := -1;
-    Test.EndLine := -1;
-    Inc(Index);
-    if (Index >= Count) or (Tokens[Index].Kind <> TTokenKind.Ident) then
-    begin
-      Exit;
-    end;
-    Test.Method := Tokens[Index].Text;
-    Inc(Index);
-    IsTest := False;
-    NotTest := False;
-    for Attribute in Pending do
-      case Attribute.Kind of
-        TDUnitXAttribute.Test:
-          // [Test(False)] schaltet den Test ab.
-          if SameText(Attribute.FirstArgument, 'False') then
-          begin
-            NotTest := True;
-          end
-          else
-          begin
-            IsTest := True;
-          end;
-        TDUnitXAttribute.TestCase:
-          begin
-            IsTest := True;
-            Test.Cases := Test.Cases + [Attribute.FirstArgument];
-            Test.CaseLines := Test.CaseLines + [Attribute.Line];
-          end;
-        TDUnitXAttribute.Ignore:
-          Test.Ignored := True;
-        TDUnitXAttribute.Setup, TDUnitXAttribute.TearDown, TDUnitXAttribute.SetupFixture,
-        TDUnitXAttribute.TearDownFixture:
-          NotTest := True;
-        TDUnitXAttribute.None: ;
-        TDUnitXAttribute.TestFixture: ;
-        TDUnitXAttribute.Category: ;
-      end;
-    if APublished and (Length(Pending) = 0) then
-    begin
-      IsTest := True;
-    end;
-    if IsTest and not NotTest then
-    begin
-      AFixture.Tests := AFixture.Tests + [Test];
-    end;
-  end;
-
-  /// <summary>Klasse ab Index (auf „class“ hinter „Name =“); liest bis zum passenden end.</summary>
-  procedure ReadClass(const AName: string; ANameLine: Integer);
-  var
-    Candidate: TCandidate;
-    Depth: Integer;
-    Published, AfterClassWord: Boolean;
-  begin
-    Candidate := Default(TCandidate);
-    Candidate.Fixture.Name := AName;
-    Candidate.Fixture.Line := ANameLine;
-    Candidate.Fixture.AttributeLine := FirstPendingLine(ANameLine);
-    Candidate.HasFixtureAttribute := HasPending(TDUnitXAttribute.TestFixture);
-    Pending := nil;
-    Inc(Index);
-    // Vorwärtsdeklaration, Klassenreferenz, class helper ohne Rumpf.
-    if (Index < Count) and (IsSym(Tokens[Index], ';') or IsWord(Tokens[Index], 'of')) then
-    begin
-      Exit;
-    end;
-    while (Index < Count) and (IsWord(Tokens[Index], 'sealed') or IsWord(Tokens[Index], 'abstract')) do
-    begin
-      Inc(Index);
-    end;
-    if (Index < Count) and IsSym(Tokens[Index], '(') then
-    begin
+      mAttribute.FirstArgument := Peek(1).Text;
       SkipGroup('(', ')');
     end;
-    // „TFoo = class(TBar);“ ohne Rumpf.
-    if (Index < Count) and IsSym(Tokens[Index], ';') then
-    begin
-      Exit;
-    end;
-    // Ohne Sichtbarkeit sind Methoden mit {$M+} published; DUnitX-Fixtures haben das selten: wie public.
-    Published := False;
-    Depth := 1;
-    AfterClassWord := False;
-    while (Index < Count) and (Depth > 0) do
-    begin
-      if IsSym(Tokens[Index], '[') then
-      begin
-        ReadAttributes;
-        Continue;
-      end;
-      if IsWord(Tokens[Index], 'end') then
-      begin
-        Dec(Depth);
-        Pending := nil;
-        Inc(Index);
-        Continue;
-      end;
-      if IsWord(Tokens[Index], 'record') or
-        (IsSym(Peek(-1), '=') and (IsWord(Tokens[Index], 'class') or IsWord(Tokens[Index], 'interface')) and
-        not IsSym(Peek(1), ';') and not IsWord(Peek(1), 'of')) then
-      begin
-        Inc(Depth);
-        Inc(Index);
-        Continue;
-      end;
-      if (Depth = 1) and IsVisibility(Tokens[Index]) then
-      begin
-        Published := IsWord(Tokens[Index], 'published');
-        Pending := nil;
-        Inc(Index);
-        Continue;
-      end;
-      if (Depth = 1) and IsWord(Tokens[Index], 'class') then
-      begin
-        // class procedure/function: Klassenmethoden sind keine Tests.
-        AfterClassWord := True;
-        Inc(Index);
-        Continue;
-      end;
-      if (Depth = 1) and (IsWord(Tokens[Index], 'procedure') or IsWord(Tokens[Index], 'function')) then
-      begin
-        if AfterClassWord then
-        begin
-          Inc(Index);
-        end
-        else
-        begin
-          ReadMethod(Candidate.Fixture, Published);
-        end;
-        AfterClassWord := False;
-        Pending := nil;
-        Continue;
-      end;
-      // Alles andere zwischen Attribut und Methode (Feld, Eigenschaft, Parameter): die Attribute gehören nicht
-      // zu einer Methode.
-      AfterClassWord := False;
-      Pending := nil;
-      Inc(Index);
-    end;
-    Candidates := Candidates + [Candidate];
+    FPending := FPending + [mAttribute];
   end;
-
-  /// <summary>Kopf einer Routine bis zum ersten „;“ außerhalb von Klammern; Index steht danach dahinter.</summary>
-  procedure SkipHeader;
-  var
-    Depth: Integer;
+  if FIndex < FCount then
   begin
-    Depth := 0;
-    while Index < Count do
-    begin
-      if IsSym(Tokens[Index], '(') then
-      begin
-        Inc(Depth);
-      end
-      else if IsSym(Tokens[Index], ')') then
-      begin
-        Dec(Depth);
-      end
-      else if IsSym(Tokens[Index], ';') and (Depth <= 0) then
-      begin
-        Inc(Index);
-        Exit;
-      end;
-      Inc(Index);
-    end;
+    Inc(FIndex);
   end;
+end;
 
-  /// <summary>Anweisungsteil ab begin bzw. asm (Index darauf) bis zum passenden end; Zeile dieses end, -1 ohne.
-  /// Index steht danach dahinter.</summary>
-  function SkipStatements: Integer;
-  var
-    Depth: Integer;
-  begin
-    Result := -1;
-    Depth := 0;
-    while Index < Count do
-    begin
-      if IsWord(Tokens[Index], 'begin') or IsWord(Tokens[Index], 'try') or IsWord(Tokens[Index], 'case') or
-        IsWord(Tokens[Index], 'asm') then
-      begin
-        Inc(Depth);
-      end
-      else if IsWord(Tokens[Index], 'end') then
-      begin
-        Dec(Depth);
-        if Depth <= 0 then
-        begin
-          Result := Tokens[Index].Line;
-          Inc(Index);
-          Exit;
-        end;
-      end;
-      Inc(Index);
-    end;
-  end;
-
-  /// <summary>Typ mit end im Deklarationsteil (record, class, object, interface; Index darauf): bis hinter das
-  /// passende end. Varianten (case) haben kein eigenes end.</summary>
-  procedure SkipTypeBody;
-  var
-    Depth: Integer;
-  begin
-    Depth := 0;
-    while Index < Count do
-    begin
-      if IsWord(Tokens[Index], 'record') or
-        ((IsWord(Tokens[Index], 'class') or IsWord(Tokens[Index], 'object') or IsWord(Tokens[Index], 'interface')) and
-        IsSym(Peek(-1), '=')) then
-      begin
-        Inc(Depth);
-      end
-      else if IsWord(Tokens[Index], 'end') then
-      begin
-        Dec(Depth);
-        if Depth <= 0 then
-        begin
-          Inc(Index);
-          Exit;
-        end;
-      end;
-      Inc(Index);
-    end;
-  end;
-
-  /// <summary>Rumpf einer Routine ab dem Ende ihres Kopfs: Deklarationen samt lokalen Routinen, dann der
-  /// Anweisungsteil. ABeginLine: Zeile der ersten Anweisung, ohne Anweisung die von begin; AEndLine: Zeile des
-  /// abschließenden end. Beide -1, wenn kein Rumpf folgt (forward, external, Ende des Abschnitts).</summary>
-  procedure ReadRoutine(ADepth: Integer; out ABeginLine, AEndLine: Integer);
-  var
-    InnerBegin, InnerEnd: Integer;
-  begin
-    ABeginLine := -1;
-    AEndLine := -1;
-    while Index < Count do
-    begin
-      if IsWord(Tokens[Index], 'begin') or IsWord(Tokens[Index], 'asm') then
-      begin
-        ABeginLine := Tokens[Index].Line;
-        if (Index + 1 < Count) and not IsWord(Tokens[Index + 1], 'end') then
-        begin
-          ABeginLine := Tokens[Index + 1].Line;
-        end;
-        AEndLine := SkipStatements;
-        Exit;
-      end;
-      if IsWord(Tokens[Index], 'forward') or IsWord(Tokens[Index], 'external') then
-      begin
-        SkipHeader;
-        Exit;
-      end;
-      if IsWord(Tokens[Index], 'implementation') or IsWord(Tokens[Index], 'initialization') or
-        IsWord(Tokens[Index], 'finalization') then
-      begin
-        Exit;
-      end;
-      // Lokale Routine (nicht der Typ „procedure(…) of object“ hinter „=“, „:“ oder „to“).
-      if (ADepth < 16) and (IsWord(Tokens[Index], 'procedure') or IsWord(Tokens[Index], 'function')) and
-        (Peek(1).Kind = TTokenKind.Ident) and not IsSym(Peek(-1), '=') and not IsSym(Peek(-1), ':') and
-        not IsWord(Peek(-1), 'to') then
-      begin
-        Inc(Index);
-        SkipHeader;
-        ReadRoutine(ADepth + 1, InnerBegin, InnerEnd);
-        Continue;
-      end;
-      if IsWord(Tokens[Index], 'record') or
-        ((IsWord(Tokens[Index], 'class') or IsWord(Tokens[Index], 'object') or IsWord(Tokens[Index], 'interface')) and
-        IsSym(Peek(-1), '=') and not IsSym(Peek(1), ';') and not IsWord(Peek(1), 'of')) then
-      begin
-        SkipTypeBody;
-        Continue;
-      end;
-      Inc(Index);
-    end;
-  end;
-
-  /// <summary>„procedure TFoo.Bar“ im implementation-Teil: Zeilen von Kopf, erster Anweisung und end merken.
-  /// </summary>
-  procedure ReadBody;
-  var
-    Line, CandidateIndex, TestIndex, FoundCandidate, FoundTest, BeginLine, EndLine: Integer;
-    ClassName, Method: string;
-  begin
-    Line := Tokens[Index].Line;
-    Inc(Index);
-    if (Index + 2 >= Count) or (Tokens[Index].Kind <> TTokenKind.Ident) or not IsSym(Tokens[Index + 1], '.') or
-      (Tokens[Index + 2].Kind <> TTokenKind.Ident) then
-    begin
-      Exit;
-    end;
-    ClassName := Tokens[Index].Text;
-    Method := Tokens[Index + 2].Text;
-    Inc(Index, 3);
-    FoundCandidate := -1;
-    FoundTest := -1;
-    for CandidateIndex := 0 to High(Candidates) do
-    begin
-      if SameText(Candidates[CandidateIndex].Fixture.Name, ClassName) then
-      begin
-        for TestIndex := 0 to High(Candidates[CandidateIndex].Fixture.Tests) do
-        begin
-          if SameText(Candidates[CandidateIndex].Fixture.Tests[TestIndex].Method, Method) and
-            (Candidates[CandidateIndex].Fixture.Tests[TestIndex].BodyLine < 0) then
-          begin
-            Candidates[CandidateIndex].Fixture.Tests[TestIndex].BodyLine := Line;
-            FoundCandidate := CandidateIndex;
-            FoundTest := TestIndex;
-          end;
-        end;
-      end;
-    end;
-    if FoundCandidate < 0 then
-    begin
-      Exit;
-    end;
-    // Rumpf des Tests: Haltepunkt und Bereich für „Test am Cursor“ (#585).
-    SkipHeader;
-    ReadRoutine(0, BeginLine, EndLine);
-    Candidates[FoundCandidate].Fixture.Tests[FoundTest].BeginLine := BeginLine;
-    Candidates[FoundCandidate].Fixture.Tests[FoundTest].EndLine := EndLine;
-  end;
-
-var
-  Candidate: TCandidate;
-  Name: string;
-  NameLine: Integer;
-  IsRegistered: Boolean;
+function TDUnitXScanner.FirstPendingLine(ADefault: Integer): Integer;
 begin
-  Result := Default(TDUnitXUnit);
-  Result.Fixtures := nil;
-  Tokens := Tokenize(ALines);
-  Count := Length(Tokens);
-  Candidates := nil;
-  Registered := nil;
-  Pending := nil;
-  InImplementation := False;
-  Index := 0;
-  while Index < Count do
+  Result := ADefault;
+  if Length(FPending) > 0 then
   begin
-    if (Result.UnitName = '') and (IsWord(Tokens[Index], 'unit') or IsWord(Tokens[Index], 'program')) and
-      (Index = 0) then
-    begin
-      Inc(Index);
-      Result.UnitName := DottedName;
-      Continue;
-    end;
-    if IsWord(Tokens[Index], 'implementation') then
-    begin
-      InImplementation := True;
-      Pending := nil;
-      Inc(Index);
-      Continue;
-    end;
-    if IsSym(Tokens[Index], '[') and (IsSym(Peek(-1), ';') or IsSym(Peek(-1), ']') or IsWord(Peek(-1), 'type')) then
-    begin
-      ReadAttributes;
-      Continue;
-    end;
-    // RegisterTestFixture(TFoo)
-    if IsWord(Tokens[Index], 'RegisterTestFixture') and IsSym(Peek(1), '(') and
-      (Peek(2).Kind = TTokenKind.Ident) then
-    begin
-      Registered := Registered + [Peek(2).Text];
-      Inc(Index, 3);
-      Continue;
-    end;
-    // TFoo = class …
-    if (Tokens[Index].Kind = TTokenKind.Ident) and IsSym(Peek(1), '=') and IsWord(Peek(2), 'class') then
-    begin
-      Name := Tokens[Index].Text;
-      NameLine := Tokens[Index].Line;
-      Inc(Index, 2);
-      ReadClass(Name, NameLine);
-      Continue;
-    end;
-    if InImplementation and (IsWord(Tokens[Index], 'procedure') or IsWord(Tokens[Index], 'function')) and
-      not IsWord(Peek(-1), 'class') then
-    begin
-      ReadBody;
-      Pending := nil;
-      Continue;
-    end;
-    // Generische Fixtures (TFoo<T> = class) und alles andere: Attribute gelten nicht mehr.
-    if not IsWord(Tokens[Index], 'type') then
-    begin
-      Pending := nil;
-    end;
-    Inc(Index);
+    Result := FPending[0].Line;
   end;
-  for Candidate in Candidates do
+end;
+
+function TDUnitXScanner.HasPending(AKind: TDUnitXAttribute): Boolean;
+var
+  mAttribute: TPendingAttribute;
+begin
+  for mAttribute in FPending do
   begin
-    IsRegistered := False;
-    for Name in Registered do
+    if mAttribute.Kind = AKind then
     begin
-      if SameText(Name, Candidate.Fixture.Name) then
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Typ mit end im Deklarationsteil an FIndex: record oder „= class“, „= object“, „= interface“.</summary>
+function TDUnitXScanner.StartsTypeWithEnd: Boolean;
+begin
+  Result := IsWord(Token, 'record') or (IsTypeKeyword(Token) and IsSym(Peek(-1), '='));
+end;
+
+/// <summary>Wie StartsTypeWithEnd, aber ohne Vorwärtsdeklaration und Klassenreferenz („= class;“, „= class of“).
+/// </summary>
+function TDUnitXScanner.StartsTypeBody: Boolean;
+begin
+  Result := StartsTypeWithEnd and not IsSym(Peek(1), ';') and not IsWord(Peek(1), 'of');
+end;
+
+/// <summary>Lokale Routine an FIndex (nicht der Typ „procedure(…) of object“ hinter „=“, „:“ oder „to“).</summary>
+function TDUnitXScanner.StartsLocalRoutine: Boolean;
+begin
+  Result := IsMethodWord(Token) and (Peek(1).Kind = TTokenKind.Ident) and
+    not (IsSym(Peek(-1), '=') or IsSym(Peek(-1), ':') or IsWord(Peek(-1), 'to'));
+end;
+
+/// <summary>Methode in einer Fixture: FIndex steht auf procedure/function.</summary>
+procedure TDUnitXScanner.ReadMethod(var AFixture: TDUnitXFixture; APublished: Boolean);
+var
+  mTest: TDUnitXTest;
+  mIsTest, mNotTest: Boolean;
+begin
+  mTest := Default(TDUnitXTest);
+  mTest.Line := Token.Line;
+  mTest.AttributeLine := FirstPendingLine(mTest.Line);
+  mTest.BodyLine := -1;
+  mTest.BeginLine := -1;
+  mTest.EndLine := -1;
+  Inc(FIndex);
+  if Token.Kind <> TTokenKind.Ident then
+  begin
+    Exit;
+  end;
+  mTest.Method := Token.Text;
+  Inc(FIndex);
+  ApplyAttributes(FPending, mTest, mIsTest, mNotTest);
+  if APublished and (Length(FPending) = 0) then
+  begin
+    mIsTest := True;
+  end;
+  if mIsTest and not mNotTest then
+  begin
+    AFixture.Tests := AFixture.Tests + [mTest];
+  end;
+end;
+
+/// <summary>Kopf der Klasse ab „class“ bis zum Rumpf; False ohne Rumpf.</summary>
+function TDUnitXScanner.SkipClassHead: Boolean;
+begin
+  Inc(FIndex);
+  // Vorwärtsdeklaration, Klassenreferenz, class helper ohne Rumpf.
+  if IsSym(Token, ';') or IsWord(Token, 'of') then
+  begin
+    Exit(False);
+  end;
+  while IsWord(Token, 'sealed') or IsWord(Token, 'abstract') do
+  begin
+    Inc(FIndex);
+  end;
+  if IsSym(Token, '(') then
+  begin
+    SkipGroup('(', ')');
+  end;
+  // „TFoo = class(TBar);“ ohne Rumpf.
+  Result := not IsSym(Token, ';');
+end;
+
+/// <summary>Sichtbarkeit, „class“ vor einer Klassenmethode oder Methode auf der Ebene der Klasse; False für alles
+/// andere.</summary>
+function TDUnitXScanner.ReadMember(var ABody: TClassBody; var AFixture: TDUnitXFixture): Boolean;
+begin
+  Result := True;
+  if IsVisibility(Token) then
+  begin
+    ABody.IsPublished := IsWord(Token, 'published');
+    FPending := nil;
+    Inc(FIndex);
+  end
+  else if IsWord(Token, 'class') then
+  begin
+    // class procedure/function: Klassenmethoden sind keine Tests.
+    ABody.AfterClassWord := True;
+    Inc(FIndex);
+  end
+  else if IsMethodWord(Token) then
+  begin
+    if ABody.AfterClassWord then
+    begin
+      Inc(FIndex);
+    end
+    else
+    begin
+      ReadMethod(AFixture, ABody.IsPublished);
+    end;
+    ABody.AfterClassWord := False;
+    FPending := nil;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+procedure TDUnitXScanner.ReadClassToken(var ABody: TClassBody; var AFixture: TDUnitXFixture);
+begin
+  if IsSym(Token, '[') then
+  begin
+    ReadAttributes;
+  end
+  else if IsWord(Token, 'end') then
+  begin
+    Dec(ABody.Depth);
+    FPending := nil;
+    Inc(FIndex);
+  end
+  else if StartsTypeBody then
+  begin
+    Inc(ABody.Depth);
+    Inc(FIndex);
+  end
+  else if (ABody.Depth <> 1) or not ReadMember(ABody, AFixture) then
+  begin
+    // Alles andere zwischen Attribut und Methode (Feld, Eigenschaft, Parameter): die Attribute gehören nicht
+    // zu einer Methode.
+    ABody.AfterClassWord := False;
+    FPending := nil;
+    Inc(FIndex);
+  end;
+end;
+
+/// <summary>Klasse ab FIndex (auf dem Namen vor „= class“); liest bis zum passenden end.</summary>
+procedure TDUnitXScanner.ReadClass;
+var
+  mCandidate: TCandidate;
+  mBody: TClassBody;
+begin
+  mCandidate := Default(TCandidate);
+  mCandidate.Fixture.Name := Token.Text;
+  mCandidate.Fixture.Line := Token.Line;
+  mCandidate.Fixture.AttributeLine := FirstPendingLine(mCandidate.Fixture.Line);
+  mCandidate.HasFixtureAttribute := HasPending(TDUnitXAttribute.TestFixture);
+  FPending := nil;
+  Inc(FIndex, 2);
+  if not SkipClassHead then
+  begin
+    Exit;
+  end;
+  // Ohne Sichtbarkeit sind Methoden mit {$M+} published; DUnitX-Fixtures haben das selten: wie public.
+  mBody := Default(TClassBody);
+  mBody.Depth := 1;
+  while (FIndex < FCount) and (mBody.Depth > 0) do
+  begin
+    ReadClassToken(mBody, mCandidate.Fixture);
+  end;
+  FCandidates := FCandidates + [mCandidate];
+end;
+
+/// <summary>Kopf einer Routine bis zum ersten „;“ außerhalb von Klammern; FIndex steht danach dahinter.</summary>
+procedure TDUnitXScanner.SkipHeader;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  while FIndex < FCount do
+  begin
+    if IsSym(Token, '(') then
+    begin
+      Inc(mDepth);
+    end
+    else if IsSym(Token, ')') then
+    begin
+      Dec(mDepth);
+    end
+    else if IsSym(Token, ';') and (mDepth <= 0) then
+    begin
+      Inc(FIndex);
+      Exit;
+    end;
+    Inc(FIndex);
+  end;
+end;
+
+/// <summary>Anweisungsteil ab begin bzw. asm (FIndex darauf) bis zum passenden end; Zeile dieses end, -1 ohne.
+/// FIndex steht danach dahinter.</summary>
+function TDUnitXScanner.SkipStatements: Integer;
+var
+  mDepth: Integer;
+begin
+  Result := -1;
+  mDepth := 0;
+  while FIndex < FCount do
+  begin
+    if IsBlockStart(Token) then
+    begin
+      Inc(mDepth);
+    end
+    else if IsWord(Token, 'end') then
+    begin
+      Dec(mDepth);
+      if mDepth <= 0 then
       begin
-        IsRegistered := True;
+        Result := Token.Line;
+        Inc(FIndex);
+        Exit;
       end;
     end;
-    if Candidate.HasFixtureAttribute or IsRegistered then
+    Inc(FIndex);
+  end;
+end;
+
+/// <summary>Typ mit end im Deklarationsteil (record, class, object, interface; FIndex darauf): bis hinter das
+/// passende end. Varianten (case) haben kein eigenes end.</summary>
+procedure TDUnitXScanner.SkipTypeBody;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  while FIndex < FCount do
+  begin
+    if StartsTypeWithEnd then
     begin
-      Result.Fixtures := Result.Fixtures + [Candidate.Fixture];
+      Inc(mDepth);
+    end
+    else if IsWord(Token, 'end') then
+    begin
+      Dec(mDepth);
+      if mDepth <= 0 then
+      begin
+        Inc(FIndex);
+        Exit;
+      end;
     end;
+    Inc(FIndex);
+  end;
+end;
+
+/// <summary>Anweisungsteil ab begin bzw. asm: Zeile der ersten Anweisung (ohne Anweisung die von begin) und des
+/// abschließenden end.</summary>
+procedure TDUnitXScanner.ReadStatements(out ABeginLine, AEndLine: Integer);
+begin
+  ABeginLine := Token.Line;
+  if (FIndex + 1 < FCount) and not IsWord(Peek(1), 'end') then
+  begin
+    ABeginLine := Peek(1).Line;
+  end;
+  AEndLine := SkipStatements;
+end;
+
+/// <summary>Rumpf einer Routine ab dem Ende ihres Kopfs: Deklarationen samt lokalen Routinen, dann der
+/// Anweisungsteil. ABeginLine: Zeile der ersten Anweisung, ohne Anweisung die von begin; AEndLine: Zeile des
+/// abschließenden end. Beide -1, wenn kein Rumpf folgt (forward, external, Ende des Abschnitts).</summary>
+procedure TDUnitXScanner.ReadRoutine(ADepth: Integer; out ABeginLine, AEndLine: Integer);
+var
+  mInnerBegin, mInnerEnd: Integer;
+begin
+  ABeginLine := -1;
+  AEndLine := -1;
+  while FIndex < FCount do
+  begin
+    if IsWord(Token, 'begin') or IsWord(Token, 'asm') then
+    begin
+      ReadStatements(ABeginLine, AEndLine);
+      Exit;
+    end;
+    if IsWord(Token, 'forward') or IsWord(Token, 'external') then
+    begin
+      SkipHeader;
+      Exit;
+    end;
+    if IsSectionWord(Token) then
+    begin
+      Exit;
+    end;
+    if (ADepth < 16) and StartsLocalRoutine then
+    begin
+      Inc(FIndex);
+      SkipHeader;
+      ReadRoutine(ADepth + 1, mInnerBegin, mInnerEnd);
+    end
+    else if StartsTypeBody then
+    begin
+      SkipTypeBody;
+    end
+    else
+    begin
+      Inc(FIndex);
+    end;
+  end;
+end;
+
+/// <summary>Trägt ALine als Kopfzeile des Tests AClassName.AMethod ein (jeder noch ohne Rumpf, der passt);
+/// ACandidate und ATest nennen den letzten. False ohne passenden Test.</summary>
+function TDUnitXScanner.MarkBody(const AClassName, AMethod: string; ALine: Integer; out ACandidate,
+  ATest: Integer): Boolean;
+var
+  mCandidate, mTest: Integer;
+begin
+  ACandidate := -1;
+  ATest := -1;
+  for mCandidate := 0 to High(FCandidates) do
+  begin
+    if not SameText(FCandidates[mCandidate].Fixture.Name, AClassName) then
+    begin
+      Continue;
+    end;
+    for mTest := 0 to High(FCandidates[mCandidate].Fixture.Tests) do
+    begin
+      if SameText(FCandidates[mCandidate].Fixture.Tests[mTest].Method, AMethod) and
+        (FCandidates[mCandidate].Fixture.Tests[mTest].BodyLine < 0) then
+      begin
+        FCandidates[mCandidate].Fixture.Tests[mTest].BodyLine := ALine;
+        ACandidate := mCandidate;
+        ATest := mTest;
+      end;
+    end;
+  end;
+  Result := ACandidate >= 0;
+end;
+
+/// <summary>„procedure TFoo.Bar“ im implementation-Teil: Zeilen von Kopf, erster Anweisung und end merken.
+/// </summary>
+procedure TDUnitXScanner.ReadBody;
+var
+  mLine, mCandidate, mTest, mBeginLine, mEndLine: Integer;
+  mClassName, mMethod: string;
+begin
+  mLine := Token.Line;
+  Inc(FIndex);
+  if (FIndex + 2 >= FCount) or (Token.Kind <> TTokenKind.Ident) or not IsSym(Peek(1), '.') or
+    (Peek(2).Kind <> TTokenKind.Ident) then
+  begin
+    Exit;
+  end;
+  mClassName := Token.Text;
+  mMethod := Peek(2).Text;
+  Inc(FIndex, 3);
+  if not MarkBody(mClassName, mMethod, mLine, mCandidate, mTest) then
+  begin
+    Exit;
+  end;
+  // Rumpf des Tests: Haltepunkt und Bereich für „Test am Cursor“ (#585).
+  SkipHeader;
+  ReadRoutine(0, mBeginLine, mEndLine);
+  FCandidates[mCandidate].Fixture.Tests[mTest].BeginLine := mBeginLine;
+  FCandidates[mCandidate].Fixture.Tests[mTest].EndLine := mEndLine;
+end;
+
+function TDUnitXScanner.IsUnitHeader: Boolean;
+begin
+  Result := (FIndex = 0) and (FUnitName = '') and (IsWord(Token, 'unit') or IsWord(Token, 'program'));
+end;
+
+function TDUnitXScanner.StartsAttributeList: Boolean;
+begin
+  Result := IsSym(Token, '[') and (IsSym(Peek(-1), ';') or IsSym(Peek(-1), ']') or IsWord(Peek(-1), 'type'));
+end;
+
+// RegisterTestFixture(TFoo)
+function TDUnitXScanner.IsRegistration: Boolean;
+begin
+  Result := IsWord(Token, 'RegisterTestFixture') and IsSym(Peek(1), '(') and (Peek(2).Kind = TTokenKind.Ident);
+end;
+
+// TFoo = class …
+function TDUnitXScanner.IsClassStart: Boolean;
+begin
+  Result := (Token.Kind = TTokenKind.Ident) and IsSym(Peek(1), '=') and IsWord(Peek(2), 'class');
+end;
+
+function TDUnitXScanner.IsBodyStart: Boolean;
+begin
+  Result := FInImplementation and IsMethodWord(Token) and not IsWord(Peek(-1), 'class');
+end;
+
+procedure TDUnitXScanner.ReadTopLevel;
+begin
+  if IsUnitHeader then
+  begin
+    Inc(FIndex);
+    FUnitName := DottedName;
+  end
+  else if IsWord(Token, 'implementation') then
+  begin
+    FInImplementation := True;
+    FPending := nil;
+    Inc(FIndex);
+  end
+  else if StartsAttributeList then
+  begin
+    ReadAttributes;
+  end
+  else if IsRegistration then
+  begin
+    FRegistered := FRegistered + [Peek(2).Text];
+    Inc(FIndex, 3);
+  end
+  else if IsClassStart then
+  begin
+    ReadClass;
+  end
+  else if IsBodyStart then
+  begin
+    ReadBody;
+    FPending := nil;
+  end
+  else
+  begin
+    // Generische Fixtures (TFoo<T> = class) und alles andere: Attribute gelten nicht mehr.
+    if not IsWord(Token, 'type') then
+    begin
+      FPending := nil;
+    end;
+    Inc(FIndex);
+  end;
+end;
+
+function TDUnitXScanner.IsRegisteredName(const AName: string): Boolean;
+var
+  mName: string;
+begin
+  for mName in FRegistered do
+  begin
+    if SameText(mName, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TDUnitXScanner.Fixtures: TArray<TDUnitXFixture>;
+var
+  mCandidate: TCandidate;
+begin
+  Result := nil;
+  for mCandidate in FCandidates do
+  begin
+    if mCandidate.HasFixtureAttribute or IsRegisteredName(mCandidate.Fixture.Name) then
+    begin
+      Result := Result + [mCandidate.Fixture];
+    end;
+  end;
+end;
+
+function TDUnitXScanner.Run(const ALines: TArray<string>): TDUnitXUnit;
+begin
+  FTokens := Tokenize(ALines);
+  FCount := Length(FTokens);
+  FIndex := 0;
+  while FIndex < FCount do
+  begin
+    ReadTopLevel;
+  end;
+  Result := Default(TDUnitXUnit);
+  Result.UnitName := FUnitName;
+  Result.Fixtures := Fixtures;
+end;
+
+class function TDUnitXSource.Scan(const ALines: TArray<string>): TDUnitXUnit;
+var
+  mScanner: TDUnitXScanner;
+begin
+  mScanner := TDUnitXScanner.Create;
+  try
+    Result := mScanner.Run(ALines);
+  finally
+    mScanner.Free;
   end;
 end;
 

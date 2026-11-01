@@ -151,76 +151,85 @@ begin
   Result := Scheme + PercentEncode(Path);
 end;
 
-class function TTextUris.NormalizePath(const APath: string): string;
-var
-  Path, Prefix, Separator, Part: string;
-  Parts, Kept: TArray<string>;
-  Count: Integer;
+// Lange Pfade: \\?\C:\... und \\?\UNC\server\... in die kurze Form.
+function WithoutLongPrefix(const APath: string): string;
 begin
-  Path := APath;
-  // Lange Pfade: \\?\C:\... und \\?\UNC\server\...
-  if SameText(Copy(Path, 1, 8), '\\?\UNC\') then
+  if SameText(Copy(APath, 1, 8), '\\?\UNC\') then
   begin
-    Path := '\\' + Copy(Path, 9, MaxInt);
+    Result := '\\' + Copy(APath, 9, MaxInt);
   end
-  else if Copy(Path, 1, 4) = '\\?\' then
+  else if Copy(APath, 1, 4) = '\\?\' then
   begin
-    Path := Copy(Path, 5, MaxInt);
-  end;
-  if IsWindowsPath(StringReplace(Path, '/', '\', [rfReplaceAll])) then
-  begin
-    Separator := '\';
-    Path := StringReplace(Path, '/', '\', [rfReplaceAll]);
+    Result := Copy(APath, 5, MaxInt);
   end
   else
   begin
-    Separator := '/';
+    Result := APath;
   end;
+end;
 
-  if Copy(Path, 1, 2) = '\\' then
+// Wurzel des Pfads (\\, C:\, / oder ''); ein Laufwerk wird aus APath entfernt.
+function TakeRoot(var APath: string; const ASeparator: string): string;
+begin
+  if Copy(APath, 1, 2) = '\\' then
   begin
-    Prefix := '\\';
+    Result := '\\';
   end
-  else if (Length(Path) >= 2) and (Path[2] = ':') then
+  else if (Length(APath) >= 2) and (APath[2] = ':') then
   begin
-    Prefix := UpperCase(Path[1]) + ':' + Separator;
-    Delete(Path, 1, 2);
+    Result := UpperCase(APath[1]) + ':' + ASeparator;
+    Delete(APath, 1, 2);
   end
-  else if Copy(Path, 1, 1) = Separator then
+  else if Copy(APath, 1, 1) = ASeparator then
   begin
-    Prefix := Separator;
+    Result := ASeparator;
   end
   else
   begin
-    Prefix := '';
+    Result := '';
   end;
+end;
 
-  Parts := Path.Split([Separator]);
-  Kept := nil;
-  SetLength(Kept, Length(Parts));
-  Count := 0;
-  for Part in Parts do
+// Löst . und .. auf; mit Wurzel (ARooted) fällt .. über die Wurzel hinaus weg.
+function ResolveParts(const AParts: TArray<string>; ARooted: Boolean): TArray<string>;
+var
+  mPart: string;
+  mCount: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AParts));
+  mCount := 0;
+  for mPart in AParts do
   begin
-    if (Part = '') or (Part = '.') then
+    if (mPart = '..') and (mCount > 0) and (Result[mCount - 1] <> '..') then
     begin
-      Continue;
+      Dec(mCount);
     end
-    else if (Part = '..') and (Count > 0) and (Kept[Count - 1] <> '..') then
+    else if not ((mPart = '') or (mPart = '.') or ((mPart = '..') and ARooted)) then
     begin
-      Dec(Count);
-    end
-    else if (Part = '..') and (Prefix <> '') then
-    begin
-      Continue;
-    end // über die Wurzel hinaus
-    else
-    begin
-      Kept[Count] := Part;
-      Inc(Count);
+      Result[mCount] := mPart;
+      Inc(mCount);
     end;
   end;
-  SetLength(Kept, Count);
-  Result := Prefix + string.Join(Separator, Kept);
+  SetLength(Result, mCount);
+end;
+
+class function TTextUris.NormalizePath(const APath: string): string;
+var
+  mPath, mRoot, mSeparator: string;
+begin
+  mPath := WithoutLongPrefix(APath);
+  if IsWindowsPath(StringReplace(mPath, '/', '\', [rfReplaceAll])) then
+  begin
+    mSeparator := '\';
+    mPath := StringReplace(mPath, '/', '\', [rfReplaceAll]);
+  end
+  else
+  begin
+    mSeparator := '/';
+  end;
+  mRoot := TakeRoot(mPath, mSeparator);
+  Result := mRoot + string.Join(mSeparator, ResolveParts(mPath.Split([mSeparator]), mRoot <> ''));
 end;
 
 end.
