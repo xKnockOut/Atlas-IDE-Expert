@@ -635,13 +635,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.VisualizerKinds.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.EventBreakNames.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\StepFilter\Atlas.Text.StepFilter.pas"/>
-        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.DebugReport.pas"/>
         <DCCReference Include="Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas"/>
-        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildTools.pas"/>
-        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildPipeline.pas"/>
-        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>
-        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
-        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

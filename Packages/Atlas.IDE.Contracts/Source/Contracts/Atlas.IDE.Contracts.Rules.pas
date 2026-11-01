@@ -8,8 +8,7 @@
 // (Base, Projektverlauf #758); wer ihn zeigt, hört auf
 // IAtlasProjectSummaryListener. Den Stand der Datei liest jeder selbst über
 // TAtlasProjectBaselines.StateOnDisk (Base).
-// Nur Interfaces und Typen, kein Code. Liegt bis zum Pilot (#1456) im
-// Plugin-Package, danach in Atlas.IDE.Contracts.
+// Nur Interfaces und Typen, kein Code. Liegt im Package Atlas.IDE.Contracts (#1456).
 
 interface
 

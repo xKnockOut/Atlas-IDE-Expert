@@ -969,7 +969,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 ## Atlas.IDE.Contracts
 
-Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Bis zum Pilot (#1456) im Plugin-Package unter `Contracts/`.
+Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Eigenes Package `Packages/Atlas.IDE.Contracts` (#1456, requires rtl und vcl), Pfade relativ zu dessen `Source`.
 
 | Unit | Datei | Begründung |
 |---|---|---|

@@ -4,8 +4,7 @@
 // Debug-Sitzung kennt (der Debugger), stellt über seinen Scope eine
 // IAtlasDebugReportSource bereit; andere Module (der Tracker für „An Issue
 // anhängen …“, #1276) fragen sie über die Registry und kommen ohne
-// Debugger aus. Nur Interfaces und Records, kein Code. Liegt bis zum Pilot
-// (#1456) im Plugin-Package, danach in Atlas.IDE.Contracts.
+// Debugger aus. Nur Interfaces und Records, kein Code. Liegt im Package Atlas.IDE.Contracts (#1456).
 
 interface
 
