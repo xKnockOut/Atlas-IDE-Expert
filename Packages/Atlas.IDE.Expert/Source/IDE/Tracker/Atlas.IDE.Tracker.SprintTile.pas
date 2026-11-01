@@ -26,6 +26,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Diagnostics,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
@@ -60,6 +61,53 @@ type
     Welcome: TAtlasTrackerWelcomeLink;
   end;
 
+  /// <summary>Stand der Kachel für den Tracker des Projekts (letzte Antwort bzw. Zwischenspeicher).</summary>
+  TAtlasSprintState = record
+    HasSnapshot: Boolean;
+    Snapshot: TAtlasBoardSnapshot;
+    Calendar: TAtlasSprintCalendar;
+    Previous: TArray<TAtlasSprintSummary>;
+    // Die Vorsprints wurden mit dem Vergleich geladen (issues.sprint.compare eingeschaltet: neu laden).
+    WithPrevious: Boolean;
+    Stale: Boolean;
+    Error: TAtlasCiFetchError;
+  end;
+
+  /// <summary>Ergebnis einer Abfrage im Hintergrund.</summary>
+  TAtlasSprintResult = record
+    Succeeded: Boolean;
+    Snapshot: TAtlasBoardSnapshot;
+    Calendar: TAtlasSprintCalendar;
+    /// <summary>Arbeitstage kamen vom Tracker (sonst bleibt der Kalender des Stands).</summary>
+    CalendarKnown: Boolean;
+    Previous: TArray<TAtlasSprintSummary>;
+    WithPrevious: Boolean;
+    Error: TAtlasCiFetchError;
+    /// <summary>Fehlschlag mit AError; ACalendar bleibt.</summary>
+    class function Failed(const ACalendar: TAtlasSprintCalendar; AError: TAtlasCiFetchError): TAtlasSprintResult;
+      static;
+  end;
+
+  /// <summary>Eine Abfrage: aktueller Sprint, Arbeitstage und mit Vergleich die Vorsprints; läuft im
+  /// Hintergrund und schreibt nur in Outcome.</summary>
+  TAtlasSprintJob = record
+    Target: TAtlasTrackerTarget;
+    Boards: IAtlasTrackerBoards;
+    WorkDays: IAtlasTrackerWorkDays;
+    Transport: IAtlasCiTransport;
+    Folder: string;
+    /// <summary>Gewähltes Board ('' = das erste des Projekts).</summary>
+    BoardId: string;
+    /// <summary>issues.sprint.compare: frühere Sprints fragen.</summary>
+    Compare: Boolean;
+    Watch: TStopwatch;
+    Outcome: TAtlasSprintResult;
+    procedure Execute;
+    function LoadCurrent: Boolean;
+    procedure LoadWorkDays;
+    procedure LoadPrevious;
+  end;
+
   TAtlasIdeSprint = class(TInterfacedObject, IAtlasSprintSource)
   public const
     /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite.</summary>
@@ -82,14 +130,7 @@ type
     // Stand für den Tracker FTargetKey (Wechsel des Projekts: aus dem Zwischenspeicher neu).
     FTargetKey: string;
     FPrepared: Boolean;
-    FHasSnapshot: Boolean;
-    FSnapshot: TAtlasBoardSnapshot;
-    FCalendar: TAtlasSprintCalendar;
-    FPrevious: TArray<TAtlasSprintSummary>;
-    // Die Vorsprints wurden mit dem Vergleich geladen (issues.sprint.compare eingeschaltet: neu laden).
-    FWithPrevious: Boolean;
-    FStale: Boolean;
-    FError: TAtlasCiFetchError;
+    FState: TAtlasSprintState;
     FLoadedTick: UInt64;
     procedure Changed;
     /// <summary>Titel oder Schalter der Kachel geändert: der Willkommensseite melden.</summary>
@@ -97,9 +138,10 @@ type
     function CurrentTarget(out ATarget: TAtlasTrackerTarget): Boolean;
     procedure Prepare(const ATarget: TAtlasTrackerTarget);
     procedure Load(AForce: Boolean);
-    procedure Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
-      const ASnapshot: TAtlasBoardSnapshot; const ACalendar: TAtlasSprintCalendar; ACalendarKnown: Boolean;
-      const APrevious: TArray<TAtlasSprintSummary>; AWithPrevious: Boolean; AError: TAtlasCiFetchError);
+    /// <summary>Fällige Abfrage vorbereiten; False, wenn nichts zu fragen ist.</summary>
+    function Fetchable(AForce: Boolean; out AJob: TAtlasSprintJob): Boolean;
+    procedure Run(AGeneration: Integer; const AJob: TAtlasSprintJob);
+    procedure Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; const AResult: TAtlasSprintResult);
     procedure CancelLoad;
     function Due(const ATarget: TAtlasTrackerTarget): Boolean;
     class function NowUtc: TDateTime; static;
@@ -141,13 +183,112 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.DateUtils,
-  System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.Board;
+
+const
+  cStopWaitMs = 1000;
+  cMsPerMinute = 60000;
+  // Weniger Zeit übrig: keine weiteren Vorsprints fragen.
+  cMinLeftMs = 1000;
+  cLogAborted = 'Sprint: Abfrage mit %s abgebrochen';
+  cLogOutcome = 'Sprint: %s, %s';
+
+{ TAtlasSprintResult }
+
+class function TAtlasSprintResult.Failed(const ACalendar: TAtlasSprintCalendar;
+  AError: TAtlasCiFetchError): TAtlasSprintResult;
+begin
+  Result := Default(TAtlasSprintResult);
+  Result.Calendar := ACalendar;
+  Result.Error := AError;
+end;
+
+{ TAtlasSprintJob }
+
+procedure TAtlasSprintJob.Execute;
+begin
+  Watch := TStopwatch.StartNew;
+  Outcome.WithPrevious := Compare;
+  try
+    Outcome.Succeeded := LoadCurrent;
+    if Outcome.Succeeded then
+    begin
+      LoadWorkDays;
+    end;
+    if Outcome.Succeeded and Compare then
+    begin
+      LoadPrevious;
+    end;
+  except
+    // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
+    on E: Exception do
+    begin
+      Outcome.Succeeded := False;
+      Outcome.Error := TAtlasCiFetchError.Network;
+      TAtlasGuard.Log(Format(cLogAborted, [E.ClassName], TFormatSettings.Invariant));
+    end;
+  end;
+  Transport := nil;
+end;
+
+function TAtlasSprintJob.LoadCurrent: Boolean;
+begin
+  Result := Boards.LoadBoard(Target, Transport, BoardId, '', TAtlasTrackerBoard.TimeoutMs, Outcome.Snapshot,
+    Outcome.Error);
+  // Board weg (gelöscht, kein Zugriff mehr): das erste des Projekts.
+  if not Result and (BoardId <> '') and (Outcome.Error = TAtlasCiFetchError.NotFound) then
+  begin
+    Result := Boards.LoadBoard(Target, Transport, '', '', TAtlasTrackerBoard.TimeoutMs, Outcome.Snapshot,
+      Outcome.Error);
+  end;
+end;
+
+procedure TAtlasSprintJob.LoadWorkDays;
+var
+  mDays: TArray<Integer>;
+begin
+  if (WorkDays <> nil) and WorkDays.WorkDays(Target, Transport, TAtlasTrackerBoard.TimeoutMs, mDays) then
+  begin
+    Outcome.Calendar := TAtlasSprintCalendar.Create(mDays);
+    Outcome.CalendarKnown := True;
+  end;
+end;
+
+procedure TAtlasSprintJob.LoadPrevious;
+var
+  mSprint: TAtlasBoardSprint;
+  mSummary: TAtlasSprintSummary;
+  mOld: TAtlasBoardSnapshot;
+  mOldError: TAtlasCiFetchError;
+  mLeft: Int64;
+begin
+  for mSprint in TAtlasTrackerSprint.PreviousSprints(Outcome.Snapshot.Sprints, Outcome.Snapshot.Sprint,
+    TAtlasTrackerSprint.VelocitySprints) do
+  begin
+    // Abgeschlossene Sprints ändern sich nicht: einmal fragen, dann aus dem Zwischenspeicher.
+    mLeft := TAtlasTrackerSprint.TimeoutMs - Watch.ElapsedMilliseconds;
+    if TAtlasIdeSprint.CachedSummary(Folder, Target, Outcome.Snapshot.Board.Id, mSprint.Id, mSummary) then
+    begin
+      Outcome.Previous := Outcome.Previous + [mSummary];
+    end
+    else if mLeft < cMinLeftMs then
+    begin
+      Break;
+    end
+    else if Boards.LoadBoard(Target, Transport, Outcome.Snapshot.Board.Id, mSprint.Id, Integer(mLeft), mOld,
+      mOldError) then
+    begin
+      mSummary := TAtlasTrackerSprint.Summarize(mOld, Outcome.Calendar, TAtlasIdeSprint.NowUtc);
+      TAtlasIdeSprint.SaveSummary(Folder, Target, Outcome.Snapshot.Board.Id, mSummary);
+      Outcome.Previous := Outcome.Previous + [mSummary];
+    end;
+  end;
+end;
 
 { TAtlasIdeSprint }
 
@@ -157,7 +298,7 @@ begin
   FHooks := AHooks;
   FCacheFolder := ACacheFolder;
   FWorker := TAtlasVcsWorker.Create;
-  FCalendar := TAtlasSprintCalendar.WorkWeek;
+  FState.Calendar := TAtlasSprintCalendar.WorkWeek;
 end;
 
 destructor TAtlasIdeSprint.Destroy;
@@ -196,7 +337,7 @@ begin
   FStarted := False;
   Inc(FGeneration);
   CancelLoad;
-  FWorker.Stop(1000);
+  FWorker.Stop(cStopWaitMs);
   // Die Hooks halten den Bereich „Meine Issues“: Stop löst den Ring.
   FHooks := Default(TAtlasSprintHooks);
 end;
@@ -311,40 +452,40 @@ begin
   end;
   FPrepared := True;
   FTargetKey := ATarget.Key;
-  FStale := False;
-  FError := TAtlasCiFetchError.None;
-  FPrevious := nil;
-  FWithPrevious := False;
-  FCalendar := TAtlasSprintCalendar.WorkWeek;
-  FHasSnapshot := TAtlasTrackerBoard.Load(FCacheFolder, ATarget, cCacheName, FSnapshot);
-  if not FHasSnapshot then
+  FState.Stale := False;
+  FState.Error := TAtlasCiFetchError.None;
+  FState.Previous := nil;
+  FState.WithPrevious := False;
+  FState.Calendar := TAtlasSprintCalendar.WorkWeek;
+  FState.HasSnapshot := TAtlasTrackerBoard.Load(FCacheFolder, ATarget, cCacheName, FState.Snapshot);
+  if not FState.HasSnapshot then
   begin
-    FSnapshot := TAtlasBoardSnapshot.Empty;
+    FState.Snapshot := TAtlasBoardSnapshot.Empty;
   end;
   mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, cWorkDaysName);
   if (mFile <> '') and TAtlasTrackerBoard.ReadText(mFile, mText) then
   begin
-    FCalendar := TAtlasSprintCalendar.FromText(mText);
+    FState.Calendar := TAtlasSprintCalendar.FromText(mText);
   end;
-  if not FHasSnapshot then
+  if not FState.HasSnapshot then
   begin
     Exit;
   end;
   // Vorsprints nur aus dem Zwischenspeicher; fehlt einer, holt ihn die nächste Abfrage.
-  for mSprint in TAtlasTrackerSprint.PreviousSprints(FSnapshot.Sprints, FSnapshot.Sprint,
+  for mSprint in TAtlasTrackerSprint.PreviousSprints(FState.Snapshot.Sprints, FState.Snapshot.Sprint,
     TAtlasTrackerSprint.VelocitySprints) do
   begin
-    if CachedSummary(FCacheFolder, ATarget, FSnapshot.Board.Id, mSprint.Id, mSummary) then
+    if CachedSummary(FCacheFolder, ATarget, FState.Snapshot.Board.Id, mSprint.Id, mSummary) then
     begin
-      FPrevious := FPrevious + [mSummary];
+      FState.Previous := FState.Previous + [mSummary];
     end;
   end;
 end;
 
 function TAtlasIdeSprint.Due(const ATarget: TAtlasTrackerTarget): Boolean;
 begin
-  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasMyIssues.cDueMinutes) * 60000) or
-    (TAtlasIdeSettings.Current.IssuesSprintCompare and not FWithPrevious);
+  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasMyIssues.cDueMinutes) * cMsPerMinute) or
+    (TAtlasIdeSettings.Current.IssuesSprintCompare and not FState.WithPrevious);
 end;
 
 procedure TAtlasIdeSprint.Shown;
@@ -359,162 +500,100 @@ end;
 
 procedure TAtlasIdeSprint.Load(AForce: Boolean);
 var
+  mJob: TAtlasSprintJob;
+  mGeneration: Integer;
+begin
+  if not Fetchable(AForce, mJob) then
+  begin
+    Exit;
+  end;
+  Inc(FGeneration);
+  mGeneration := FGeneration;
+  FLoadedTick := GetTickCount64;
+  if mJob.Transport = nil then
+  begin
+    Loaded(mGeneration, mJob.Target, TAtlasSprintResult.Failed(FState.Calendar, TAtlasCiFetchError.Unauthorized));
+    Exit;
+  end;
+  if not Supports(mJob.Transport, IAtlasCiCancel, FCancel) then
+  begin
+    FCancel := nil;
+  end;
+  if not Supports(mJob.Boards, IAtlasTrackerWorkDays, mJob.WorkDays) then
+  begin
+    mJob.WorkDays := nil;
+  end;
+  FLoading := True;
+  Run(mGeneration, mJob);
+  Changed;
+end;
+
+function TAtlasIdeSprint.Fetchable(AForce: Boolean; out AJob: TAtlasSprintJob): Boolean;
+var
   mTarget: TAtlasTrackerTarget;
   mProvider: IAtlasTrackerProvider;
-  mBoards: IAtlasTrackerBoards;
-  mWorkDays: IAtlasTrackerWorkDays;
-  mTransport: IAtlasCiTransport;
-  mGeneration: Integer;
-  mKeep: IAtlasSprintSource;
-  mOwner: TAtlasIdeSprint;
-  mFolder, mBoardId: string;
-  mCompare, mOk, mCalendarKnown: Boolean;
-  mSnapshot: TAtlasBoardSnapshot;
-  mCalendar: TAtlasSprintCalendar;
-  mPrevious: TArray<TAtlasSprintSummary>;
-  mError: TAtlasCiFetchError;
 begin
+  AJob := Default(TAtlasSprintJob);
   // welcomePage.sprint aus: keine Abfrage.
-  if not FStarted or not Active or FLoading then
+  Result := FStarted and Active and not FLoading;
+  if not Result or not CurrentTarget(mTarget) or (mTarget.Server = '') then
   begin
-    Exit;
-  end;
-  if not CurrentTarget(mTarget) or (mTarget.Server = '') then
-  begin
-    Exit;
+    Exit(False);
   end;
   Prepare(mTarget);
-  if not AForce and not Due(mTarget) then
-  begin
-    Exit;
-  end;
   mProvider := nil;
   if Assigned(FHooks.Provider) then
   begin
     mProvider := FHooks.Provider(mTarget.Provider);
   end;
-  mBoards := TAtlasIdeBoard.BoardsOf(mProvider);
-  if (mProvider = nil) or (mBoards = nil) then
+  AJob.Target := mTarget;
+  AJob.Boards := TAtlasIdeBoard.BoardsOf(mProvider);
+  Result := (AForce or Due(mTarget)) and (mProvider <> nil) and (AJob.Boards <> nil);
+  if Result and Assigned(FHooks.Transport) then
   begin
-    Exit;
+    AJob.Transport := FHooks.Transport(mProvider, mTarget);
   end;
-  mTransport := nil;
-  if Assigned(FHooks.Transport) then
-  begin
-    mTransport := FHooks.Transport(mProvider, mTarget);
-  end;
-  Inc(FGeneration);
-  mGeneration := FGeneration;
-  FLoadedTick := GetTickCount64;
-  if mTransport = nil then
-  begin
-    Loaded(mGeneration, mTarget, False, TAtlasBoardSnapshot.Empty, FCalendar, False, nil, False,
-      TAtlasCiFetchError.Unauthorized);
-    Exit;
-  end;
-  if not Supports(mTransport, IAtlasCiCancel, FCancel) then
-  begin
-    FCancel := nil;
-  end;
-  if not Supports(mBoards, IAtlasTrackerWorkDays, mWorkDays) then
-  begin
-    mWorkDays := nil;
-  end;
-  FLoading := True;
+end;
+
+procedure TAtlasIdeSprint.Run(AGeneration: Integer; const AJob: TAtlasSprintJob);
+var
+  mJob: TAtlasSprintJob;
+  mGeneration: Integer;
+  mKeep: IAtlasSprintSource;
+  mOwner: TAtlasIdeSprint;
+begin
+  mJob := AJob;
+  mGeneration := AGeneration;
   mKeep := Self;
   mOwner := Self;
-  mFolder := FCacheFolder;
+  mJob.Folder := FCacheFolder;
   // Gewähltes Board behalten (das erste des Projekts, solange keins bekannt ist).
-  mBoardId := '';
-  if FHasSnapshot then
+  if FState.HasSnapshot then
   begin
-    mBoardId := FSnapshot.Board.Id;
+    mJob.BoardId := FState.Snapshot.Board.Id;
   end;
   // issues.sprint.compare aus: kein früherer Sprint wird gefragt.
-  mCompare := TAtlasIdeSettings.Current.IssuesSprintCompare;
-  mSnapshot := TAtlasBoardSnapshot.Empty;
-  mCalendar := FCalendar;
-  mCalendarKnown := False;
-  mPrevious := nil;
-  mOk := False;
-  mError := TAtlasCiFetchError.Network;
+  mJob.Compare := TAtlasIdeSettings.Current.IssuesSprintCompare;
+  mJob.Outcome := TAtlasSprintResult.Failed(FState.Calendar, TAtlasCiFetchError.Network);
   if not FWorker.Run(
     procedure
-    var
-      mWatch: TStopwatch;
-      mDays: TArray<Integer>;
-      mSprint: TAtlasBoardSprint;
-      mSummary: TAtlasSprintSummary;
-      mOld: TAtlasBoardSnapshot;
-      mOldError: TAtlasCiFetchError;
-      mLeft: Int64;
     begin
-      mWatch := TStopwatch.StartNew;
-      try
-        mOk := mBoards.LoadBoard(mTarget, mTransport, mBoardId, '', TAtlasTrackerBoard.TimeoutMs, mSnapshot, mError);
-        // Board weg (gelöscht, kein Zugriff mehr): das erste des Projekts.
-        if not mOk and (mBoardId <> '') and (mError = TAtlasCiFetchError.NotFound) then
-        begin
-          mOk := mBoards.LoadBoard(mTarget, mTransport, '', '', TAtlasTrackerBoard.TimeoutMs, mSnapshot, mError);
-        end;
-        if mOk and (mWorkDays <> nil) and
-          mWorkDays.WorkDays(mTarget, mTransport, TAtlasTrackerBoard.TimeoutMs, mDays) then
-        begin
-          mCalendar := TAtlasSprintCalendar.Create(mDays);
-          mCalendarKnown := True;
-        end;
-        if mOk and mCompare then
-        begin
-          for mSprint in TAtlasTrackerSprint.PreviousSprints(mSnapshot.Sprints, mSnapshot.Sprint,
-            TAtlasTrackerSprint.VelocitySprints) do
-          begin
-            // Abgeschlossene Sprints ändern sich nicht: einmal fragen, dann aus dem Zwischenspeicher.
-            if CachedSummary(mFolder, mTarget, mSnapshot.Board.Id, mSprint.Id, mSummary) then
-            begin
-              mPrevious := mPrevious + [mSummary];
-              Continue;
-            end;
-            mLeft := TAtlasTrackerSprint.TimeoutMs - mWatch.ElapsedMilliseconds;
-            if mLeft < 1000 then
-            begin
-              Break;
-            end;
-            if not mBoards.LoadBoard(mTarget, mTransport, mSnapshot.Board.Id, mSprint.Id, Integer(mLeft), mOld,
-              mOldError) then
-            begin
-              Continue;
-            end;
-            mSummary := TAtlasTrackerSprint.Summarize(mOld, mCalendar, NowUtc);
-            SaveSummary(mFolder, mTarget, mSnapshot.Board.Id, mSummary);
-            mPrevious := mPrevious + [mSummary];
-          end;
-        end;
-      except
-        // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
-        on E: Exception do
-        begin
-          mOk := False;
-          mError := TAtlasCiFetchError.Network;
-          TAtlasGuard.Log('Sprint: Abfrage mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      mTransport := nil;
+      mJob.Execute;
     end,
     procedure
     begin
       if mKeep <> nil then
       begin
-        mOwner.Loaded(mGeneration, mTarget, mOk, mSnapshot, mCalendar, mCalendarKnown, mPrevious, mCompare, mError);
+        mOwner.Loaded(mGeneration, mJob.Target, mJob.Outcome);
       end;
     end) then
-    Loaded(mGeneration, mTarget, False, TAtlasBoardSnapshot.Empty, FCalendar, False, nil, False,
-      TAtlasCiFetchError.Cancelled);
-  Changed;
+  begin
+    Loaded(mGeneration, mJob.Target, TAtlasSprintResult.Failed(FState.Calendar, TAtlasCiFetchError.Cancelled));
+  end;
 end;
 
-procedure TAtlasIdeSprint.Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
-  const ASnapshot: TAtlasBoardSnapshot; const ACalendar: TAtlasSprintCalendar; ACalendarKnown: Boolean;
-  const APrevious: TArray<TAtlasSprintSummary>; AWithPrevious: Boolean; AError: TAtlasCiFetchError);
+procedure TAtlasIdeSprint.Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget;
+  const AResult: TAtlasSprintResult);
 var
   mFile: string;
 begin
@@ -529,34 +608,51 @@ begin
     Exit;
   end;
   // Anonym: Anbieter und Ergebnis; nie Adresse, Board, Sprint oder Kennungen.
-  TAtlasGuard.Log('Sprint: ' + ATarget.Provider + ', ' + TAtlasCiBuild.ErrorKey(AError));
-  if ASucceeded then
+  TAtlasGuard.Log(Format(cLogOutcome, [ATarget.Provider, TAtlasCiBuild.ErrorKey(AResult.Error)],
+    TFormatSettings.Invariant));
+  if not AResult.Succeeded then
   begin
-    FSnapshot := ASnapshot;
-    FSnapshot.Fetched := NowUtc;
-    FHasSnapshot := True;
-    FStale := False;
-    FError := TAtlasCiFetchError.None;
-    FPrevious := APrevious;
-    FWithPrevious := AWithPrevious;
-    TAtlasTrackerBoard.Save(FCacheFolder, ATarget, cCacheName, FSnapshot);
-    if ACalendarKnown then
+    // Letzter Stand bleibt mit „Stand vom … · Grund“; ohne Stand der Grund allein.
+    FState.Stale := True;
+    FState.Error := AResult.Error;
+    Changed;
+    Exit;
+  end;
+  FState.Snapshot := AResult.Snapshot;
+  FState.Snapshot.Fetched := NowUtc;
+  FState.HasSnapshot := True;
+  FState.Stale := False;
+  FState.Error := TAtlasCiFetchError.None;
+  FState.Previous := AResult.Previous;
+  FState.WithPrevious := AResult.WithPrevious;
+  TAtlasTrackerBoard.Save(FCacheFolder, ATarget, cCacheName, FState.Snapshot);
+  if AResult.CalendarKnown then
+  begin
+    FState.Calendar := AResult.Calendar;
+    mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, cWorkDaysName);
+    if mFile <> '' then
     begin
-      FCalendar := ACalendar;
-      mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, cWorkDaysName);
-      if mFile <> '' then
-      begin
-        TAtlasTrackerBoard.WriteText(mFile, FCalendar.Text);
-      end;
+      TAtlasTrackerBoard.WriteText(mFile, FState.Calendar.Text);
     end;
+  end;
+  Changed;
+end;
+
+/// <summary>Status ohne Stand: lädt noch, kein Board oder fehlgeschlagen.</summary>
+function MissingStatus(const AState: TAtlasSprintState; ALoading: Boolean): TAtlasSprintTileStatus;
+begin
+  if ALoading or not AState.Stale then
+  begin
+    Result := TAtlasSprintTileStatus.Loading;
+  end
+  else if AState.Error = TAtlasCiFetchError.NotFound then
+  begin
+    Result := TAtlasSprintTileStatus.NoBoard;
   end
   else
   begin
-    // Letzter Stand bleibt mit „Stand vom … · Grund“; ohne Stand der Grund allein.
-    FStale := True;
-    FError := AError;
+    Result := TAtlasSprintTileStatus.Failed;
   end;
-  Changed;
 end;
 
 function TAtlasIdeSprint.View: TAtlasSprintTile;
@@ -587,31 +683,20 @@ begin
   end;
   Prepare(mTarget);
   Result.Loading := FLoading;
-  Result.Stale := FStale;
-  Result.Error := FError;
-  if not FHasSnapshot then
+  Result.Stale := FState.Stale;
+  Result.Error := FState.Error;
+  if not FState.HasSnapshot then
   begin
-    if FLoading or not FStale then
-    begin
-      Result.Status := TAtlasSprintTileStatus.Loading;
-    end
-    else if FError = TAtlasCiFetchError.NotFound then
-    begin
-      Result.Status := TAtlasSprintTileStatus.NoBoard;
-    end
-    else
-    begin
-      Result.Status := TAtlasSprintTileStatus.Failed;
-    end;
+    Result.Status := MissingStatus(FState, FLoading);
     Exit;
   end;
   // Ohne Vergleich keine Vorsprints (Linie, Abweichung, Velocity).
   mPrevious := nil;
   if Result.Compare then
   begin
-    mPrevious := FPrevious;
+    mPrevious := FState.Previous;
   end;
-  Result.Sprint := TAtlasTrackerSprint.View(FSnapshot, FCalendar, NowUtc, mPrevious);
+  Result.Sprint := TAtlasTrackerSprint.View(FState.Snapshot, FState.Calendar, NowUtc, mPrevious);
   if Result.Sprint.Known then
   begin
     Result.Status := TAtlasSprintTileStatus.Ready;
@@ -632,9 +717,9 @@ end;
 
 procedure TAtlasIdeSprint.BrowseBoard;
 begin
-  if FStarted and FHasSnapshot and (FSnapshot.Page <> '') then
+  if FStarted and FState.HasSnapshot and (FState.Snapshot.Page <> '') then
   begin
-    ShellExecute(0, 'open', PChar(FSnapshot.Page), nil, nil, SW_SHOWNORMAL);
+    ShellExecute(0, 'open', PChar(FState.Snapshot.Page), nil, nil, SW_SHOWNORMAL);
   end;
 end;
 

@@ -6,9 +6,10 @@
 // Initialisierung das Modul „atlas.tracker“ (Modulschalter issues, #1454) bei
 // der Registry von Base an und stellt über dessen Scope bereit:
 // - die Teile IssueLinks und BlameIssues der Feature-Tabelle,
-// - Befehle (Palette): Zugang zum Issue-Tracker, Issue anlegen, Issue anzeigen, Issues zu dieser Methode, offene Zeitbuchungen,
-//   Board, An Issue anhängen (der Zugang zum Build-Server gehört seit #1455 zur
-//   Willkommensseite, Karte Testergebnisse),
+// - Befehle (Palette): Zugang zum Issue-Tracker, Issue anlegen, Issue anzeigen,
+//   Issues zu dieser Methode, offene Zeitbuchungen, Board, An Issue anhängen
+//   (der Zugang zum Build-Server gehört seit #1455 zur Willkommensseite,
+//   Karte Testergebnisse),
 // - „An Issue anhängen …“ im Atlas-Menü, „Board“ unter Ansicht › Atlas,
 //   „Issue anlegen …“ im Kontextmenü des Editors und auf seiner Taste,
 // - den Abschnitt „Issue-Tracker“ im Optionsdialog (Atlas.IDE.Tracker.Settings,

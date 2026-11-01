@@ -746,6 +746,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.WelcomeLink.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Tiles.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssue.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssuePlace.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.SprintTile.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
