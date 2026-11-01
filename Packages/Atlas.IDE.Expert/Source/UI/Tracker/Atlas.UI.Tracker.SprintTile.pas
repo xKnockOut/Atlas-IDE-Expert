@@ -67,16 +67,16 @@ type
 
   TAtlasTrackerSprintView = class(TAtlasTrackerTileView)
   public const
-    Indent = 8;
-    HeadHeight = 22;
-    NumberHeight = 50;
-    NumberGap = 8;
-    CompareHeight = 20;
-    ChartHeight = 72;
-    StatusHeight = 20;
-    VelocityBarWidth = 8;
-    VelocityHeight = 16;
-    EmptyHeight = 40;
+    cIndent = 8;
+    cHeadHeight = 22;
+    cNumberHeight = 50;
+    cNumberGap = 8;
+    cCompareHeight = 20;
+    cChartHeight = 72;
+    cStatusHeight = 20;
+    cVelocityBarWidth = 8;
+    cVelocityHeight = 16;
+    cEmptyHeight = 40;
   private
     FSource: IAtlasSprintSource;
     FBox: TAtlasStyledCanvas;
@@ -102,11 +102,11 @@ type
     function CompareTop: Integer;
     function ChartRect(AWidth: Integer): TRect;
     function StatusTop(AWidth: Integer): Integer;
-    function HitTest(X, Y: Integer): TAtlasSprintHitKind;
+    function HitTest(AX, AY: Integer): TAtlasSprintHitKind;
     /// <summary>Klick wie mit der Maus (auch für Tests).</summary>
     procedure ClickAt(AKind: TAtlasSprintHitKind);
     /// <summary>Tag des Diagramms unter X (0 … DayCount); -1 außerhalb.</summary>
-    function DayAt(X, AWidth: Integer): Integer;
+    function DayAt(AX, AWidth: Integer): Integer;
     class function TitleText: string; static;
     /// <summary>„Sprint 12 · 27.10.–07.11. · noch 4 Tage“.</summary>
     class function HeadingText(const ATile: TAtlasSprintTile): string; static;
@@ -228,7 +228,7 @@ end;
 
 function TAtlasTrackerSprintView.CompareTop: Integer;
 begin
-  Result := ScaleValue(HeadHeight) + ScaleValue(NumberHeight) + ScaleValue(NumberGap);
+  Result := ScaleValue(cHeadHeight) + ScaleValue(cNumberHeight) + ScaleValue(cNumberGap);
 end;
 
 function TAtlasTrackerSprintView.ChartRect(AWidth: Integer): TRect;
@@ -238,14 +238,14 @@ begin
   mTop := CompareTop;
   if FTile.Compare and ((CompareText(FTile) <> '') or (Length(FTile.Sprint.Velocity) > 0)) then
   begin
-    Inc(mTop, ScaleValue(CompareHeight));
+    Inc(mTop, ScaleValue(cCompareHeight));
   end;
   if not FTile.Burndown then
   begin
-    Exit(Rect(ScaleValue(Indent), mTop, AWidth - ScaleValue(Indent), mTop));
+    Exit(Rect(ScaleValue(cIndent), mTop, AWidth - ScaleValue(cIndent), mTop));
   end;
-  Result := Rect(ScaleValue(Indent), mTop + ScaleValue(4), AWidth - ScaleValue(Indent),
-    mTop + ScaleValue(4) + ScaleValue(ChartHeight));
+  Result := Rect(ScaleValue(cIndent), mTop + ScaleValue(4), AWidth - ScaleValue(cIndent),
+    mTop + ScaleValue(4) + ScaleValue(cChartHeight));
 end;
 
 function TAtlasTrackerSprintView.StatusTop(AWidth: Integer): Integer;
@@ -257,17 +257,17 @@ function TAtlasTrackerSprintView.HeightFor(AWidth: Integer): Integer;
 begin
   if FTile.Status <> TAtlasSprintTileStatus.Ready then
   begin
-    Result := ScaleValue(EmptyHeight);
+    Result := ScaleValue(cEmptyHeight);
     if StatusText(FTile) <> '' then
     begin
-      Inc(Result, ScaleValue(StatusHeight));
+      Inc(Result, ScaleValue(cStatusHeight));
     end;
     Exit;
   end;
   Result := StatusTop(AWidth);
   if StatusText(FTile) <> '' then
   begin
-    Inc(Result, ScaleValue(StatusHeight));
+    Inc(Result, ScaleValue(cStatusHeight));
   end;
 end;
 
@@ -275,9 +275,9 @@ function TAtlasTrackerSprintView.NumberRect(AIndex, AWidth: Integer): TRect;
 var
   mWidth, mLeft: Integer;
 begin
-  mWidth := (AWidth - 2 * ScaleValue(Indent) - 2 * ScaleValue(NumberGap)) div 3;
-  mLeft := ScaleValue(Indent) + AIndex * (mWidth + ScaleValue(NumberGap));
-  Result := Rect(mLeft, ScaleValue(HeadHeight), mLeft + mWidth, ScaleValue(HeadHeight) + ScaleValue(NumberHeight));
+  mWidth := (AWidth - 2 * ScaleValue(cIndent) - 2 * ScaleValue(cNumberGap)) div 3;
+  mLeft := ScaleValue(cIndent) + AIndex * (mWidth + ScaleValue(cNumberGap));
+  Result := Rect(mLeft, ScaleValue(cHeadHeight), mLeft + mWidth, ScaleValue(cHeadHeight) + ScaleValue(cNumberHeight));
 end;
 
 class function TAtlasTrackerSprintView.NumberText(AValue: Double): string;
@@ -487,7 +487,7 @@ begin
   end;
 end;
 
-function TAtlasTrackerSprintView.DayAt(X, AWidth: Integer): Integer;
+function TAtlasTrackerSprintView.DayAt(AX, AWidth: Integer): Integer;
 var
   mArea: TRect;
   mCount: Integer;
@@ -495,7 +495,7 @@ begin
   Result := -1;
   mArea := ChartRect(AWidth);
   mCount := Length(FTile.Sprint.Ideal);
-  if (mCount = 0) or (mArea.Width <= 0) or (X < mArea.Left) or (X > mArea.Right) then
+  if (mCount = 0) or (mArea.Width <= 0) or (AX < mArea.Left) or (AX > mArea.Right) then
   begin
     Exit;
   end;
@@ -503,20 +503,20 @@ begin
   begin
     Exit(0);
   end;
-  Result := EnsureRange(Round((X - mArea.Left) * (mCount - 1) / mArea.Width), 0, mCount - 1);
+  Result := EnsureRange(Round((AX - mArea.Left) * (mCount - 1) / mArea.Width), 0, mCount - 1);
 end;
 
-function TAtlasTrackerSprintView.HitTest(X, Y: Integer): TAtlasSprintHitKind;
+function TAtlasTrackerSprintView.HitTest(AX, AY: Integer): TAtlasSprintHitKind;
 var
   mWidth, mIndex: Integer;
   mPoint: TPoint;
 begin
   Result := TAtlasSprintHitKind.None;
   mWidth := ClientWidth;
-  mPoint := Point(X, Y);
+  mPoint := Point(AX, AY);
   if FTile.Status = TAtlasSprintTileStatus.NoTracker then
   begin
-    if FTile.CanAssign and (Y < ScaleValue(EmptyHeight)) then
+    if FTile.CanAssign and (AY < ScaleValue(cEmptyHeight)) then
     begin
       Result := TAtlasSprintHitKind.Assign;
     end;
@@ -526,7 +526,7 @@ begin
   begin
     Exit;
   end;
-  if Y < ScaleValue(HeadHeight) then
+  if AY < ScaleValue(cHeadHeight) then
   begin
     if FTile.Sprint.Page <> '' then
     begin
@@ -558,7 +558,7 @@ begin
     end;
   end;
   // Übrige Kachel (Vergleich, Diagramm): öffnet das Board.
-  if Y < StatusTop(mWidth) then
+  if AY < StatusTop(mWidth) then
   begin
     Result := TAtlasSprintHitKind.Chart;
   end;
@@ -796,14 +796,14 @@ begin
   ACanvas.Font.Size := Font.Size - 1;
   ACanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
   mCaption := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintVelocity);
-  mBar := ScaleValue(VelocityBarWidth);
+  mBar := ScaleValue(cVelocityBarWidth);
   mLeft := ARect.Right - Length(FTile.Sprint.Velocity) * (mBar + ScaleValue(3));
   ACanvas.TextOut(mLeft - ACanvas.TextWidth(mCaption) - ScaleValue(6), ARect.Top + ScaleValue(2), mCaption);
   ACanvas.Pen.Style := psClear;
   ACanvas.Brush.Style := bsSolid;
   for mIndex := 0 to High(FTile.Sprint.Velocity) do
   begin
-    mHeight := Max(1, Round(FTile.Sprint.Velocity[mIndex] / mTop * ScaleValue(VelocityHeight)));
+    mHeight := Max(1, Round(FTile.Sprint.Velocity[mIndex] / mTop * ScaleValue(cVelocityHeight)));
     // Ältere Sprints blasser.
     ACanvas.Brush.Color := Blend(mColor, mBack, 50 + 50 * (mIndex + 1) div Length(FTile.Sprint.Velocity));
     ACanvas.Rectangle(mLeft, ARect.Bottom - mHeight, mLeft + mBar, ARect.Bottom);
@@ -837,12 +837,12 @@ begin
     begin
       mCanvas.Font.Color := mMuted;
     end;
-    mCanvas.TextOut(ScaleValue(Indent), ScaleValue(Indent), NoticeText(FTile));
+    mCanvas.TextOut(ScaleValue(cIndent), ScaleValue(cIndent), NoticeText(FTile));
     mText := StatusText(FTile);
     if mText <> '' then
     begin
       mCanvas.Font.Color := mMuted;
-      mCanvas.TextOut(ScaleValue(Indent), ScaleValue(EmptyHeight), mText);
+      mCanvas.TextOut(ScaleValue(cIndent), ScaleValue(cEmptyHeight), mText);
     end;
     Exit;
   end;
@@ -856,8 +856,8 @@ begin
   begin
     mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clWindowText);
   end;
-  mCanvas.TextRect(Rect(ScaleValue(Indent), 0, mWidth - ScaleValue(Indent), ScaleValue(HeadHeight)),
-    ScaleValue(Indent), ScaleValue(3), HeadingText(FTile));
+  mCanvas.TextRect(Rect(ScaleValue(cIndent), 0, mWidth - ScaleValue(cIndent), ScaleValue(cHeadHeight)),
+    ScaleValue(cIndent), ScaleValue(3), HeadingText(FTile));
   mCanvas.Font.Assign(Font);
   PaintNumbers(mCanvas, mWidth);
   mTop := CompareTop;
@@ -868,11 +868,11 @@ begin
     mCanvas.Font.Color := mMuted;
     if mText <> '' then
     begin
-      mCanvas.TextOut(ScaleValue(Indent), mTop + ScaleValue(2), mText);
+      mCanvas.TextOut(ScaleValue(cIndent), mTop + ScaleValue(2), mText);
     end;
     mCanvas.Font.Assign(Font);
-    PaintVelocity(mCanvas, Rect(ScaleValue(Indent), mTop, mWidth - ScaleValue(Indent),
-      mTop + ScaleValue(CompareHeight)));
+    PaintVelocity(mCanvas, Rect(ScaleValue(cIndent), mTop, mWidth - ScaleValue(cIndent),
+      mTop + ScaleValue(cCompareHeight)));
   end;
   if FTile.Burndown then
   begin
@@ -884,7 +884,7 @@ begin
     mCanvas.Font.Assign(Font);
     mCanvas.Font.Size := Font.Size - 1;
     mCanvas.Font.Color := mMuted;
-    mCanvas.TextOut(ScaleValue(Indent), StatusTop(mWidth), mText);
+    mCanvas.TextOut(ScaleValue(cIndent), StatusTop(mWidth), mText);
   end;
   mCanvas.Font.Assign(Font);
 end;

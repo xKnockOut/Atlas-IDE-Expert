@@ -63,12 +63,12 @@ type
   TAtlasIdeSprint = class(TInterfacedObject, IAtlasSprintSource)
   public const
     /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite.</summary>
-    TileId = 'atlas.sprint';
+    cTileId = 'atlas.sprint';
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts: direkt nach „Meine Issues“.</summary>
-    Order = 27;
+    cOrder = 27;
     /// <summary>Name des Zwischenspeichers für den aktuellen Sprint bzw. die Arbeitstage.</summary>
-    CacheName = 'sprint';
-    WorkDaysName = 'workdays';
+    cCacheName = 'sprint';
+    cWorkDaysName = 'workdays';
   private
     FHooks: TAtlasSprintHooks;
     FCacheFolder: string;
@@ -226,7 +226,7 @@ begin
     FActive := Active;
     if FHooks.Welcome <> nil then
     begin
-      FHooks.Welcome.TileInfoChanged(TileId);
+      FHooks.Welcome.TileInfoChanged(cTileId);
     end;
   end;
 end;
@@ -247,7 +247,7 @@ procedure TAtlasIdeSprint.Changed;
 begin
   if FStarted and (FHooks.Welcome <> nil) then
   begin
-    FHooks.Welcome.TileChanged(TileId);
+    FHooks.Welcome.TileChanged(cTileId);
   end;
 end;
 
@@ -316,12 +316,12 @@ begin
   FPrevious := nil;
   FWithPrevious := False;
   FCalendar := TAtlasSprintCalendar.WorkWeek;
-  FHasSnapshot := TAtlasTrackerBoard.Load(FCacheFolder, ATarget, CacheName, FSnapshot);
+  FHasSnapshot := TAtlasTrackerBoard.Load(FCacheFolder, ATarget, cCacheName, FSnapshot);
   if not FHasSnapshot then
   begin
     FSnapshot := TAtlasBoardSnapshot.Empty;
   end;
-  mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, WorkDaysName);
+  mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, cWorkDaysName);
   if (mFile <> '') and TAtlasTrackerBoard.ReadText(mFile, mText) then
   begin
     FCalendar := TAtlasSprintCalendar.FromText(mText);
@@ -343,7 +343,7 @@ end;
 
 function TAtlasIdeSprint.Due(const ATarget: TAtlasTrackerTarget): Boolean;
 begin
-  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasMyIssues.DueMinutes) * 60000) or
+  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasMyIssues.cDueMinutes) * 60000) or
     (TAtlasIdeSettings.Current.IssuesSprintCompare and not FWithPrevious);
 end;
 
@@ -539,11 +539,11 @@ begin
     FError := TAtlasCiFetchError.None;
     FPrevious := APrevious;
     FWithPrevious := AWithPrevious;
-    TAtlasTrackerBoard.Save(FCacheFolder, ATarget, CacheName, FSnapshot);
+    TAtlasTrackerBoard.Save(FCacheFolder, ATarget, cCacheName, FSnapshot);
     if ACalendarKnown then
     begin
       FCalendar := ACalendar;
-      mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, WorkDaysName);
+      mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, cWorkDaysName);
       if mFile <> '' then
       begin
         TAtlasTrackerBoard.WriteText(mFile, FCalendar.Text);

@@ -110,9 +110,9 @@ end;
 function TAtlasTrackerIssuesTile.Info: TAtlasWelcomeTileInfo;
 begin
   Result := Default(TAtlasWelcomeTileInfo);
-  Result.Id := TAtlasIdeIssues.TileId;
+  Result.Id := TAtlasIdeIssues.cTileId;
   Result.Title := FIssues.TileTitle;
-  Result.Order := TAtlasIdeIssues.Order;
+  Result.Order := TAtlasIdeIssues.cOrder;
   Result.Column := TAtlasWelcomeTileColumn.Right;
 end;
 
@@ -143,9 +143,9 @@ end;
 function TAtlasTrackerSprintTile.Info: TAtlasWelcomeTileInfo;
 begin
   Result := Default(TAtlasWelcomeTileInfo);
-  Result.Id := TAtlasIdeSprint.TileId;
+  Result.Id := TAtlasIdeSprint.cTileId;
   Result.Title := TAtlasTrackerSprintView.TitleText;
-  Result.Order := TAtlasIdeSprint.Order;
+  Result.Order := TAtlasIdeSprint.cOrder;
   Result.Column := TAtlasWelcomeTileColumn.Right;
 end;
 

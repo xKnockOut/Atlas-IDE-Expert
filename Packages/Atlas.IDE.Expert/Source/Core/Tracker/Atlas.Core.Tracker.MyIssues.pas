@@ -256,26 +256,26 @@ type
       const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
       static;
   public const
-    SectionName = 'issues';
+    cSectionName = 'issues';
     /// <summary>Höchstens so oft wird abgefragt.</summary>
-    DueMinutes = 10;
-    FetchTimeoutMs = 5000;
+    cDueMinutes = 10;
+    cFetchTimeoutMs = 5000;
     /// <summary>Höchstens so viele Issues fragt und zeigt der Bereich.</summary>
-    MaxItems = 10;
-    HookYes = 'yes';
-    HookNo = 'no';
-    HookForeign = 'foreign';
+    cMaxItems = 10;
+    cHookYes = 'yes';
+    cHookNo = 'no';
+    cHookForeign = 'foreign';
     /// <summary>Kennung des aktuellen Issues im Statusfeld (#591).</summary>
-    StatusId = 'atlas.issue';
+    cStatusId = 'atlas.issue';
     /// <summary>Nach Server, Version, Index und Datei.</summary>
-    StatusOrder = 30;
+    cStatusOrder = 30;
     /// <summary>Fortschritt der Checkliste des aktuellen Issues im Statusfeld (#1273): „ATL-131 · 3/5“.</summary>
-    ChecklistStatusId = 'atlas.issue.checklist';
+    cChecklistStatusId = 'atlas.issue.checklist';
     /// <summary>Direkt hinter dem aktuellen Issue.</summary>
-    ChecklistStatusOrder = 31;
+    cChecklistStatusOrder = 31;
     /// <summary>Zeile „An ATL-123 anhängen …“ direkt unter dem aktuellen Issue (#1276).</summary>
-    AttachStatusId = 'atlas.issue.attach';
-    AttachStatusOrder = 31;
+    cAttachStatusId = 'atlas.issue.attach';
+    cAttachStatusOrder = 31;
   public
     class function StartName(AStart: TAtlasIssueStart): string; static;
     /// <summary>Versionsverwaltung aus der Projekt-Zusammenfassung ("git", "svn", sonst None).</summary>
@@ -353,7 +353,7 @@ uses
   Atlas.Core.Tracker.Naming;
 
 const
-  StartNames: array[TAtlasIssueStart] of string = ('branch', 'remember');
+  cStartNames: array[TAtlasIssueStart] of string = ('branch', 'remember');
 
 { TAtlasActiveIssue }
 
@@ -421,15 +421,15 @@ end;
 
 function TAtlasIssuesState.Find(const AKey: string; out AIssue: TAtlasTrackerIssue): Boolean;
 var
-  Item: TAtlasTrackerIssue;
+  mItem: TAtlasTrackerIssue;
 begin
   AIssue := TAtlasTrackerIssue.Empty;
   Result := False;
-  for Item in Items do
+  for mItem in Items do
   begin
-    if SameText(Item.Key, AKey) then
+    if SameText(mItem.Key, AKey) then
     begin
-      AIssue := Item;
+      AIssue := mItem;
       Exit(True);
     end;
   end;
@@ -486,7 +486,7 @@ end;
 
 class function TAtlasMyIssues.StartName(AStart: TAtlasIssueStart): string;
 begin
-  Result := StartNames[AStart];
+  Result := cStartNames[AStart];
 end;
 
 class function TAtlasMyIssues.VcsKindOf(const AText: string): TAtlasVcsKind;
@@ -507,7 +507,7 @@ end;
 
 class function TAtlasMyIssues.StartOf(const AText: string): TAtlasIssueStart;
 begin
-  if SameText(Trim(AText), StartNames[TAtlasIssueStart.Remember]) then
+  if SameText(Trim(AText), cStartNames[TAtlasIssueStart.Remember]) then
   begin
     Result := TAtlasIssueStart.Remember;
   end
@@ -520,18 +520,18 @@ end;
 class function TAtlasMyIssues.TargetFor(const ATeamProvider, ATeamUrl, ATeamProject, ASettingTracker,
   ASettingQuery: string): TAtlasTrackerTarget;
 var
-  Provider: string;
+  mProvider: string;
 begin
-  Provider := LowerCase(Trim(ASettingTracker));
-  if Provider = '' then
+  mProvider := LowerCase(Trim(ASettingTracker));
+  if mProvider = '' then
   begin
-    Provider := LowerCase(Trim(ATeamProvider));
+    mProvider := LowerCase(Trim(ATeamProvider));
   end;
-  if (Provider <> TAtlasTrackerTarget.GitHub) and (Provider <> TAtlasTrackerTarget.YouTrack) then
+  if (mProvider <> TAtlasTrackerTarget.GitHub) and (mProvider <> TAtlasTrackerTarget.YouTrack) then
   begin
-    Provider := '';
+    mProvider := '';
   end;
-  Result := TAtlasTrackerTarget.Create(Provider, ATeamUrl, ATeamProject, ASettingQuery);
+  Result := TAtlasTrackerTarget.Create(mProvider, ATeamUrl, ATeamProject, ASettingQuery);
 end;
 
 class function TAtlasMyIssues.TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
@@ -561,16 +561,16 @@ begin
   begin
     Exit(True);
   end;
-  Result := (ANowUtc - AState.Attempt) * 24 * 60 >= DueMinutes;
+  Result := (ANowUtc - AState.Attempt) * 24 * 60 >= cDueMinutes;
 end;
 
 class procedure TAtlasMyIssues.Recorded(var AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
   ANowUtc: TDateTime; AOk: Boolean; const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
 var
-  Same: Boolean;
-  Index: Integer;
+  mSame: Boolean;
+  mIndex: Integer;
 begin
-  Same := AState.Matches(ATarget);
+  mSame := AState.Matches(ATarget);
   AState.Provider := ATarget.Provider;
   AState.Server := ATarget.Server;
   AState.Project := ATarget.Project;
@@ -581,11 +581,11 @@ begin
     AState.Error := TAtlasCiFetchError.None;
     AState.At := ANowUtc;
     AState.Items := nil;
-    for Index := 0 to High(AIssues) do
+    for mIndex := 0 to High(AIssues) do
     begin
-      if Index < MaxItems then
+      if mIndex < cMaxItems then
       begin
-        AState.Items := AState.Items + [AIssues[Index]];
+        AState.Items := AState.Items + [AIssues[mIndex]];
       end;
     end;
     Exit;
@@ -596,7 +596,7 @@ begin
     AState.Error := TAtlasCiFetchError.Network;
   end;
   // Anderes Ziel: der alte Stand gehört nicht dazu.
-  if not Same then
+  if not mSame then
   begin
     AState.At := 0;
     AState.Items := nil;
@@ -606,8 +606,8 @@ end;
 class function TAtlasMyIssues.Effective(const AState: TAtlasIssuesState; const AProvider, AProject,
   ABranch: string): TAtlasActiveIssue;
 var
-  Key: string;
-  Issue: TAtlasTrackerIssue;
+  mKey: string;
+  mIssue: TAtlasTrackerIssue;
 begin
   Result := TAtlasActiveIssue.Empty;
   if AState.Active.Active then
@@ -623,18 +623,18 @@ begin
   begin
     Exit;
   end;
-  Key := TAtlasTrackerNaming.KeyOfBranch(AProvider, AProject, ABranch);
-  if Key = '' then
+  mKey := TAtlasTrackerNaming.KeyOfBranch(AProvider, AProject, ABranch);
+  if mKey = '' then
   begin
     Exit;
   end;
-  Result.Key := Key;
+  Result.Key := mKey;
   Result.Mode := TAtlasIssueStart.Branch;
   Result.Branch := ABranch;
   Result.FromBranch := True;
-  if AState.Find(Key, Issue) then
+  if AState.Find(mKey, mIssue) then
   begin
-    Result.Title := Issue.Title;
+    Result.Title := mIssue.Title;
   end;
 end;
 
@@ -687,7 +687,7 @@ end;
 class function TAtlasMyIssues.PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
   const AIssue: TAtlasTrackerIssue): TAtlasIssueStartPlan;
 var
-  Pattern: string;
+  mPattern: string;
 begin
   Result := Default(TAtlasIssueStartPlan);
   Result.Bases := nil;
@@ -703,19 +703,19 @@ begin
   begin
     Exit;
   end;
-  Pattern := AOptions.BranchPattern;
-  if Pattern = '' then
+  mPattern := AOptions.BranchPattern;
+  if mPattern = '' then
   begin
     if AKind = TAtlasVcsKind.Svn then
     begin
-      Pattern := TAtlasTrackerNaming.SvnBranchPattern;
+      mPattern := TAtlasTrackerNaming.SvnBranchPattern;
     end
     else
     begin
-      Pattern := TAtlasTrackerNaming.GitBranchPattern;
+      mPattern := TAtlasTrackerNaming.GitBranchPattern;
     end;
   end;
-  Result.Branch := TAtlasTrackerNaming.BranchName(Pattern, AIssue);
+  Result.Branch := TAtlasTrackerNaming.BranchName(mPattern, AIssue);
   Result.Valid := Result.Branch <> '';
   Result.Bases := TAtlasVcsBranchNames.Bases(AKind = TAtlasVcsKind.Svn, AOptions.BranchBase, AOptions.MainBranch);
   Result.Svn := AOptions.Svn;
@@ -885,34 +885,34 @@ end;
 
 class function TAtlasMyIssues.NumberOfKey(const AKey: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  Index := Length(AKey);
-  while (Index >= 1) and CharInSet(AKey[Index], ['0'..'9']) do
+  mIndex := Length(AKey);
+  while (mIndex >= 1) and CharInSet(AKey[mIndex], ['0'..'9']) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  if (Index < Length(AKey)) and ((Index = 0) or CharInSet(AKey[Index], ['#', '-'])) then
+  if (mIndex < Length(AKey)) and ((mIndex = 0) or CharInSet(AKey[mIndex], ['#', '-'])) then
   begin
-    Result := StrToIntDef(Copy(AKey, Index + 1, 9), 0);
+    Result := StrToIntDef(Copy(AKey, mIndex + 1, 9), 0);
   end;
 end;
 
 class function TAtlasMyIssues.CommitPrefix(const AActive: TAtlasActiveIssue; const APattern: string): string;
 var
-  Issue: TAtlasTrackerIssue;
+  mIssue: TAtlasTrackerIssue;
 begin
   Result := '';
   if not AActive.Active then
   begin
     Exit;
   end;
-  Issue := TAtlasTrackerIssue.Empty;
-  Issue.Key := AActive.Key;
-  Issue.Number := NumberOfKey(AActive.Key);
-  Issue.Title := AActive.Title;
-  Result := TAtlasTrackerNaming.CommitPrefix(APattern, Issue);
+  mIssue := TAtlasTrackerIssue.Empty;
+  mIssue.Key := AActive.Key;
+  mIssue.Number := NumberOfKey(AActive.Key);
+  mIssue.Title := AActive.Title;
+  Result := TAtlasTrackerNaming.CommitPrefix(APattern, mIssue);
 end;
 
 class function TAtlasMyIssues.Fields(const AIssue: TAtlasTrackerIssue): TArray<string>;
@@ -941,33 +941,33 @@ end;
 
 function TextIn(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function NumberIn(AObject: TJSONObject; const AName: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := 0;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end;
   if Result < 0 then
   begin
@@ -977,30 +977,30 @@ end;
 
 function FlagIn(AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := False;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+  mValue := AObject.GetValue(AName);
+  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
 end;
 
 function ObjectIn(AObject: TJSONObject; const AName: string): TJSONObject;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONObject then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONObject then
   begin
-    Result := TJSONObject(Value);
+    Result := TJSONObject(mValue);
   end;
 end;
 
@@ -1037,11 +1037,11 @@ end;
 
 function SectionJson(const AState: TAtlasIssuesState): TJSONObject;
 var
-  Items, Labels: TJSONArray;
-  Entry, Active, Counts: TJSONObject;
-  Count: TAtlasIssuesQueryCount;
-  Item: TAtlasTrackerIssue;
-  LabelName: string;
+  mItems, mLabels: TJSONArray;
+  mEntry, mActive, mCounts: TJSONObject;
+  mCount: TAtlasIssuesQueryCount;
+  mItem: TAtlasTrackerIssue;
+  mLabelName: string;
 begin
   Result := TJSONObject.Create;
   AddText(Result, 'provider', AState.Provider);
@@ -1051,49 +1051,49 @@ begin
   AddTime(Result, 'attempt', AState.Attempt);
   AddText(Result, 'error', TAtlasCiBuild.ErrorKey(AState.Error));
   AddTime(Result, 'at', AState.At);
-  Items := TJSONArray.Create;
-  Result.AddPair('items', Items);
-  for Item in AState.Items do
+  mItems := TJSONArray.Create;
+  Result.AddPair('items', mItems);
+  for mItem in AState.Items do
   begin
-    Entry := TJSONObject.Create;
-    Items.AddElement(Entry);
-    Entry.AddPair('key', Item.Key);
-    if Item.Number > 0 then
+    mEntry := TJSONObject.Create;
+    mItems.AddElement(mEntry);
+    mEntry.AddPair('key', mItem.Key);
+    if mItem.Number > 0 then
     begin
-      Entry.AddPair('number', TJSONNumber.Create(Item.Number));
+      mEntry.AddPair('number', TJSONNumber.Create(mItem.Number));
     end;
-    Entry.AddPair('title', Item.Title);
-    if Length(Item.Labels) > 0 then
+    mEntry.AddPair('title', mItem.Title);
+    if Length(mItem.Labels) > 0 then
     begin
-      Labels := TJSONArray.Create;
-      Entry.AddPair('labels', Labels);
-      for LabelName in Item.Labels do
+      mLabels := TJSONArray.Create;
+      mEntry.AddPair('labels', mLabels);
+      for mLabelName in mItem.Labels do
       begin
-        Labels.Add(LabelName);
+        mLabels.Add(mLabelName);
       end;
     end;
-    AddText(Entry, 'state', Item.State);
-    AddText(Entry, 'priority', Item.Priority);
-    AddText(Entry, 'sprint', Item.Sprint);
-    if Item.PullRequest.Number > 0 then
+    AddText(mEntry, 'state', mItem.State);
+    AddText(mEntry, 'priority', mItem.Priority);
+    AddText(mEntry, 'sprint', mItem.Sprint);
+    if mItem.PullRequest.Number > 0 then
     begin
-      Entry.AddPair('pr', TJSONNumber.Create(Item.PullRequest.Number));
-      Entry.AddPair('checks', TAtlasTrackerPullRequest.ChecksKey(Item.PullRequest.Checks));
-      if Item.PullRequest.Draft then
+      mEntry.AddPair('pr', TJSONNumber.Create(mItem.PullRequest.Number));
+      mEntry.AddPair('checks', TAtlasTrackerPullRequest.ChecksKey(mItem.PullRequest.Checks));
+      if mItem.PullRequest.Draft then
       begin
-        Entry.AddPair('draft', TJSONBool.Create(True));
+        mEntry.AddPair('draft', TJSONBool.Create(True));
       end;
     end;
   end;
   if AState.Active.Active and not AState.Active.FromBranch then
   begin
-    Active := TJSONObject.Create;
-    Result.AddPair('active', Active);
-    Active.AddPair('key', AState.Active.Key);
-    AddText(Active, 'title', AState.Active.Title);
-    Active.AddPair('mode', TAtlasMyIssues.StartName(AState.Active.Mode));
-    AddText(Active, 'branch', AState.Active.Branch);
-    AddTime(Active, 'started', AState.Active.StartedUtc);
+    mActive := TJSONObject.Create;
+    Result.AddPair('active', mActive);
+    mActive.AddPair('key', AState.Active.Key);
+    AddText(mActive, 'title', AState.Active.Title);
+    mActive.AddPair('mode', TAtlasMyIssues.StartName(AState.Active.Mode));
+    AddText(mActive, 'branch', AState.Active.Branch);
+    AddTime(mActive, 'started', AState.Active.StartedUtc);
   end;
   AddText(Result, 'endedBranch', AState.EndedBranch);
   AddText(Result, 'hook', AState.Hook);
@@ -1101,21 +1101,21 @@ begin
   AddText(Result, 'selected', AState.Selected);
   if Length(AState.Counts) > 0 then
   begin
-    Counts := TJSONObject.Create;
-    Result.AddPair('counts', Counts);
-    for Count in AState.Counts do
+    mCounts := TJSONObject.Create;
+    Result.AddPair('counts', mCounts);
+    for mCount in AState.Counts do
     begin
-      Counts.AddPair(Count.Name, TJSONNumber.Create(Count.Count));
+      mCounts.AddPair(mCount.Name, TJSONNumber.Create(mCount.Count));
     end;
   end;
 end;
 
 function StateOf(ASection: TJSONObject; out AState: TAtlasIssuesState): Boolean;
 var
-  Items, Labels, Value, LabelValue: TJSONValue;
-  Entry, Active, Counts: TJSONObject;
-  Index: Integer;
-  Item: TAtlasTrackerIssue;
+  mItems, mLabels, mValue, mLabelValue: TJSONValue;
+  mEntry, mActive, mCounts: TJSONObject;
+  mIndex: Integer;
+  mItem: TAtlasTrackerIssue;
 begin
   AState := TAtlasIssuesState.Empty;
   Result := ASection <> nil;
@@ -1130,65 +1130,65 @@ begin
   AState.Attempt := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'attempt'));
   AState.Error := TAtlasCiBuild.ErrorOf(TextIn(ASection, 'error'));
   AState.At := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'at'));
-  Items := ASection.GetValue('items');
-  if Items is TJSONArray then
+  mItems := ASection.GetValue('items');
+  if mItems is TJSONArray then
   begin
-    for Value in TJSONArray(Items) do
+    for mValue in TJSONArray(mItems) do
     begin
-      if not (Value is TJSONObject) or (Length(AState.Items) >= TAtlasMyIssues.MaxItems) then
+      if not (mValue is TJSONObject) or (Length(AState.Items) >= TAtlasMyIssues.cMaxItems) then
       begin
         Continue;
       end;
-      Entry := TJSONObject(Value);
-      Item := TAtlasTrackerIssue.Empty;
-      Item.Key := TextIn(Entry, 'key');
-      if Item.Key = '' then
+      mEntry := TJSONObject(mValue);
+      mItem := TAtlasTrackerIssue.Empty;
+      mItem.Key := TextIn(mEntry, 'key');
+      if mItem.Key = '' then
       begin
         Continue;
       end;
-      Item.Number := NumberIn(Entry, 'number');
-      Item.Title := TextIn(Entry, 'title');
-      Labels := Entry.GetValue('labels');
-      if Labels is TJSONArray then
+      mItem.Number := NumberIn(mEntry, 'number');
+      mItem.Title := TextIn(mEntry, 'title');
+      mLabels := mEntry.GetValue('labels');
+      if mLabels is TJSONArray then
       begin
-        for LabelValue in TJSONArray(Labels) do
+        for mLabelValue in TJSONArray(mLabels) do
         begin
-          if (LabelValue is TJSONString) and (Length(Item.Labels) < TAtlasTrackerIssue.MaxLabels) then
+          if (mLabelValue is TJSONString) and (Length(mItem.Labels) < TAtlasTrackerIssue.MaxLabels) then
           begin
-            Item.Labels := Item.Labels + [TJSONString(LabelValue).Value];
+            mItem.Labels := mItem.Labels + [TJSONString(mLabelValue).Value];
           end;
         end;
       end;
-      Item.State := TextIn(Entry, 'state');
-      Item.Priority := TextIn(Entry, 'priority');
-      Item.Sprint := TextIn(Entry, 'sprint');
-      Item.PullRequest.Number := NumberIn(Entry, 'pr');
-      Item.PullRequest.Checks := TAtlasTrackerPullRequest.ChecksOf(TextIn(Entry, 'checks'));
-      Item.PullRequest.Draft := FlagIn(Entry, 'draft');
-      AState.Items := AState.Items + [Item];
+      mItem.State := TextIn(mEntry, 'state');
+      mItem.Priority := TextIn(mEntry, 'priority');
+      mItem.Sprint := TextIn(mEntry, 'sprint');
+      mItem.PullRequest.Number := NumberIn(mEntry, 'pr');
+      mItem.PullRequest.Checks := TAtlasTrackerPullRequest.ChecksOf(TextIn(mEntry, 'checks'));
+      mItem.PullRequest.Draft := FlagIn(mEntry, 'draft');
+      AState.Items := AState.Items + [mItem];
     end;
   end;
-  Active := ObjectIn(ASection, 'active');
-  if (Active <> nil) and (TextIn(Active, 'key') <> '') then
+  mActive := ObjectIn(ASection, 'active');
+  if (mActive <> nil) and (TextIn(mActive, 'key') <> '') then
   begin
-    AState.Active.Key := TextIn(Active, 'key');
-    AState.Active.Title := TextIn(Active, 'title');
-    AState.Active.Mode := TAtlasMyIssues.StartOf(TextIn(Active, 'mode'));
-    AState.Active.Branch := TextIn(Active, 'branch');
-    AState.Active.StartedUtc := TAtlasProjectSummaries.TimeOf(TextIn(Active, 'started'));
+    AState.Active.Key := TextIn(mActive, 'key');
+    AState.Active.Title := TextIn(mActive, 'title');
+    AState.Active.Mode := TAtlasMyIssues.StartOf(TextIn(mActive, 'mode'));
+    AState.Active.Branch := TextIn(mActive, 'branch');
+    AState.Active.StartedUtc := TAtlasProjectSummaries.TimeOf(TextIn(mActive, 'started'));
   end;
   AState.EndedBranch := TextIn(ASection, 'endedBranch');
   AState.Hook := TextIn(ASection, 'hook');
   AState.GitDir := TextIn(ASection, 'gitDir');
   AState.Selected := TextIn(ASection, 'selected');
-  Counts := ObjectIn(ASection, 'counts');
-  if Counts <> nil then
+  mCounts := ObjectIn(ASection, 'counts');
+  if mCounts <> nil then
   begin
-    for Index := 0 to Counts.Count - 1 do
+    for mIndex := 0 to mCounts.Count - 1 do
     begin
-      if Counts.Pairs[Index].JsonValue is TJSONNumber then
+      if mCounts.Pairs[mIndex].JsonValue is TJSONNumber then
       begin
-        AState.SetCount(Counts.Pairs[Index].JsonString.Value, TJSONNumber(Counts.Pairs[Index].JsonValue).AsInt);
+        AState.SetCount(mCounts.Pairs[mIndex].JsonString.Value, TJSONNumber(mCounts.Pairs[mIndex].JsonValue).AsInt);
       end;
     end;
   end;
@@ -1196,71 +1196,71 @@ end;
 
 class function TAtlasMyIssues.ToJson(const AState: TAtlasIssuesState): string;
 var
-  Section: TJSONObject;
+  mSection: TJSONObject;
 begin
-  Section := SectionJson(AState);
+  mSection := SectionJson(AState);
   try
-    Result := Section.ToJSON;
+    Result := mSection.ToJSON;
   finally
-    Section.Free;
+    mSection.Free;
   end;
 end;
 
 class function TAtlasMyIssues.FromJson(const AJson: string; out AState: TAtlasIssuesState): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   AState := TAtlasIssuesState.Empty;
-  Value := ParseObject(AJson);
+  mValue := ParseObject(AJson);
   try
-    Result := (Value is TJSONObject) and StateOf(TJSONObject(Value), AState);
+    Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasMyIssues.Read(const ASummary: TAtlasProjectSummary; out AState: TAtlasIssuesState): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   AState := TAtlasIssuesState.Empty;
-  Value := ParseObject(ASummary.Raw);
+  mValue := ParseObject(ASummary.Raw);
   try
-    Result := (Value is TJSONObject) and StateOf(ObjectIn(TJSONObject(Value), SectionName), AState);
+    Result := (mValue is TJSONObject) and StateOf(ObjectIn(TJSONObject(mValue), cSectionName), AState);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class procedure TAtlasMyIssues.Write(var ASummary: TAtlasProjectSummary; const AState: TAtlasIssuesState);
 var
-  Value: TJSONValue;
-  Original, Root: TJSONObject;
-  Index: Integer;
-  Pair: TJSONPair;
+  mValue: TJSONValue;
+  mOriginal, mRoot: TJSONObject;
+  mIndex: Integer;
+  mPair: TJSONPair;
 begin
-  Value := ParseObject(ASummary.Raw);
-  Root := TJSONObject.Create;
+  mValue := ParseObject(ASummary.Raw);
+  mRoot := TJSONObject.Create;
   try
     // Alles außer dem Abschnitt übernehmen; ohne Datei schreibt TAtlasProjectSummaries.ToJson die übrigen
     // Felder aus dem Datensatz.
-    if Value is TJSONObject then
+    if mValue is TJSONObject then
     begin
-      Original := TJSONObject(Value);
-      for Index := 0 to Original.Count - 1 do
+      mOriginal := TJSONObject(mValue);
+      for mIndex := 0 to mOriginal.Count - 1 do
       begin
-        Pair := Original.Pairs[Index];
-        if Pair.JsonString.Value <> SectionName then
+        mPair := mOriginal.Pairs[mIndex];
+        if mPair.JsonString.Value <> cSectionName then
         begin
-          Root.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+          mRoot.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
         end;
       end;
     end;
-    Root.AddPair(SectionName, SectionJson(AState));
-    ASummary.Raw := Root.ToJSON;
+    mRoot.AddPair(cSectionName, SectionJson(AState));
+    ASummary.Raw := mRoot.ToJSON;
   finally
-    Root.Free;
-    Value.Free;
+    mRoot.Free;
+    mValue.Free;
   end;
 end;
 

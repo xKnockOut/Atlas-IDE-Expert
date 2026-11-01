@@ -594,7 +594,7 @@ begin
   TAtlasMyIssues.Recorded(State, GitHub, Now0, True, [Item], TAtlasCiFetchError.None);
   TAtlasMyIssues.Recorded(State, GitHub, IncMinute(Now0, 30), False, nil, TAtlasCiFetchError.Timeout);
   TAtlasMyIssues.Started(State, Item, TAtlasIssueStart.Branch, 'feature/753-atlas-bereiche', Now0);
-  State.Hook := TAtlasMyIssues.HookYes;
+  State.Hook := TAtlasMyIssues.cHookYes;
   State.GitDir := 'C:\Repo\.git';
   TAtlasMyIssues.Write(Summary, State);
   Json := TAtlasProjectSummaries.ToJson(Summary);
