@@ -162,7 +162,7 @@ Verträge, die der Pilot braucht (Namen nach `docs/Architektur.md` prüfen):
 | Kompositionswurzel | `DisplayRules` (eigenes `Register`) | bleibt im Add-on; die IDE ruft `Register` jeder Unit des Add-ons selbst |
 | Kompositionswurzel | `Trace`, `Unavailable`, `InlineValues`, `ExceptionBar`, `AccessViolation`, `EventBreak` | nur Feature-Slots; wandern mit dem Modul-Deskriptor ins Add-on |
 
-`tests.debug` (Test am Cursor debuggen, #585) gehört zum Modul Tests und nutzt den Debugger der IDE direkt über die Open Tools API, nicht das Atlas-Debugger-Modul; im Modulkatalog vermerken.
+`tests.debug` (Test am Cursor debuggen, #585) gehört zum Modul Tests und nutzt den Debugger der IDE direkt über die Open Tools API, nicht das Atlas-Debugger-Modul; bleibt deshalb im Modul Tests.
 
 Abnahme, jeder Fall mit Delphi 12 und 13, Win32 und Win64. Bestanden heißt: keine Ausnahme, `TAtlasTeardown.Failures` leer, Diagnosemodus (#479) ohne Einträge, IDE beendet sich ohne Meldung. Ergebnis als Tabelle in #1456.
 
