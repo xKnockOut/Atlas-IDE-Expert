@@ -9,6 +9,15 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## Modulschalter (#1454, 01.11.2026, Branch `claude/project-thread-rc7rg9` von `Pilot-2.0.0-beta.1`)
+- Erster Schritt zu 2.0.0: je Modul ein Hauptschalter im Plugin-Schema mit `x-module` (debug, issues, analysis, tests, buildTools, bookmarks, designer, ruleChecks, search; welcome = vorhandenes `welcomePage.enabled`). Mitglieder eines Moduls sind alle Einstellungen unter dem Schalter im `x-parent`-Baum; einige Schlüssel wurden dafür umgehängt.
+- `Atlas.Core.Settings.ModuleSwitches` liest die Schalter aus dem Katalog und maskiert in `TAtlasIdeSettings.Current` die Mitglieder ausgeschalteter Module (Wahrheitswerte 0, sonst `x-offValue`); gespeicherte Werte bleiben. Die Feature-Tabelle kennt Module (`Join`, `StopOffModules`) und stoppt Teile ausgeschalteter Module ohne Neustart.
+- Server: `ruleChecks.enabled` (global, settings.json); aus = keine Regeln in der Live-Prüfung im Editor (`LiveRuleContextFor`); Baseline, Sammelkorrektur, `--check` und MCP prüfen weiter.
+- Neues Profil „Nur Code Insight“ (`Setup/Profile/nur-code-insight.json`); Minimal schaltet alle Module aus, Alles an ein; `Update-ConfigDoc.ps1` wacht darüber.
+- Optionsseiten: Modulschalter oben auf der jeweiligen Seite. Hinweis „Prüfregeln sind aus“ einmal je atlas.json und Sitzung, wenn die atlas.json Regeln festlegt und das Modul aus ist (`Atlas.Core.Settings.RuleChecksNotice`, `Atlas.IDE.Settings.RuleChecksNotice`, Quelle `ruleChecks`).
+- Nicht übersetzt: FPC trunk ließ sich in der Cloud nicht bauen. Alle Prüfskripte grün. Vor dem Merge mit Delphi bauen und Tests laufen lassen.
+- Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
+
 ## ADR 0017 fortgeschrieben: Laden, Entladen, Versionen (01.11.2026, Branch `claude/project-thread-rc7rg9` von `Pilot-2.0.0-beta.1`)
 - Auftrag von Marco: ADR 0017 um den Review-Arbeitsauftrag vom 01.11. ergänzen (Aufgabe A). Nur Doku, kein Code.
 - `docs/adr/0017-funktions-packages.md`: `Atlas.Core.Strings` → `Atlas.UI.Strings` (zweimal); neuer Abschnitt „Fortschreibung: Laden, Entladen, Versionen (Review 2026-11-01)“ mit Befund am Code, den drei Package-Mechaniken (Ladereihenfolge, Entladen, ABI), Regeln 1–9 für Module und Verträge (Status vorgeschlagen), Auffindbarkeit des Kerns (offen, Optionen a–d), weiteren Folgen (Release, Versionen, Doku, CHANGELOG, Diagnose, Prüfregeln ohne Rules-Package), Verträgen und Abnahme P1–P11 des Piloten, offenen Entscheidungen 1–8.

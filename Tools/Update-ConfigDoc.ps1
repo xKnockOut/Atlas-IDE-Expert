@@ -623,6 +623,28 @@ else {
     }
 }
 
+# Modul-Schalter (#1454): x-module nur an booleschen Plugin-Einstellungen mit Vorgabe an und eindeutiger Kennung;
+# die Profile setzen jeden Schalter (Minimal und Nur Code Insight aus, Alles an ein).
+$ModuleKeys = New-Object System.Collections.Generic.List[string]
+$ModuleIds = @{}
+foreach ($Name in $PluginSchema['properties'].PSBase.Keys) {
+    $P = $PluginSchema['properties'][$Name]
+    if (-not (Has $P 'x-module')) { continue }
+    if ($P['type'] -ne 'boolean' -or $P['default'] -ne $true) { $Problems.Add("Plugin-Katalog: Modul-Schalter ""$Name"" muss boolesch mit Vorgabe true sein") }
+    if ($ModuleIds.ContainsKey($P['x-module'])) { $Problems.Add("Plugin-Katalog: Modul ""$($P['x-module'])"" hat zwei Schalter") }
+    $ModuleIds[$P['x-module']] = $Name
+    $ModuleKeys.Add($P['x-key'])
+}
+foreach ($Wanted in @(@{ File = 'minimal.json'; On = $false }, @{ File = 'nur-code-insight.json'; On = $false },
+        @{ File = 'alles-an.json'; On = $true }, @{ File = 'alles-an-experimentell.json'; On = $true })) {
+    $ProfilePath = Join-Path $ProfileFolder $Wanted.File
+    if (-not (Test-Path $ProfilePath)) { $Problems.Add("Setup/Profile/$($Wanted.File) fehlt"); continue }
+    $ProfileSettings = (Get-Content -Raw -Encoding utf8 $ProfilePath | ConvertFrom-Json -AsHashtable)['settings']
+    foreach ($Key in $ModuleKeys) {
+        if (-not ($ProfileSettings.ContainsKey($Key) -and ($ProfileSettings[$Key] -eq $Wanted.On))) { $Problems.Add("Setup/Profile/$($Wanted.File): Modul-Schalter ""$Key"" muss $($Wanted.On.ToString().ToLowerInvariant()) sein") }
+    }
+}
+
 # --- Schreiben oder prüfen ---
 $Targets = @(
     @{ Path = $DocPath; Text = $Text; Name = 'docs/Konfiguration.md' },

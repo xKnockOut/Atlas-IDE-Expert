@@ -136,6 +136,7 @@ uses
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Settings.Experimental,
+  Atlas.IDE.Settings.RuleChecksNotice,
   Atlas.Core.Status.Contract,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
@@ -329,6 +330,8 @@ var
   // Compile-Ereignissen.
   OpenBuild: TAtlasIdeOpenBuild;
   UnitRename: TAtlasIdeUnitRename;
+  // Hinweis „Prüfregeln sind aus“ (#1454): Kern, meldet sich gerade bei ausgeschaltetem Modul Prüfregeln.
+  RuleChecksNotice: TAtlasIdeRuleChecksNotice;
   // DUnitX-Tests ausführen samt Code Lens (#69), abschaltbar über TestRun bzw. CodeLensTests.
   Tests: TAtlasIdeTests;
   // Einzelnen Test ausführen bzw. im Debugger starten (#585), lebt mit Tests; abschaltbar über TestDebug.
@@ -1456,6 +1459,18 @@ begin
   Result := TAtlasIdeSettings.Current.GenerateMenu;
 end;
 
+/// <summary>Modul Suche an (#1454): Atlas-Suche und ihre Befehle; die Suche der IDE bleibt.</summary>
+function SearchVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.ModuleOn('search');
+end;
+
+/// <summary>Unitsuche an (unitSearch.enabled; aus mit dem Modul Suche, #1454).</summary>
+function UnitSearchVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.UnitSearchEnabled;
+end;
+
 function SearchReplaceVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.SearchReplace;
@@ -1996,25 +2011,25 @@ begin
     procedure
     begin
       TAtlasIdeUnitSearch.Show;
-    end);
+    end, UnitSearchVisible);
   Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog,
     procedure
     begin
       TAtlasIdeUnitSearch.ShowIdeDialog;
     end);
   // Unit verwenden und Formulare suchen (#786), mit den Dialogen der IDE als Ausweg.
-  Add('Atlas.UseUnit', TAtlasTextId.UseUnitCommand, TAtlasIdeUnitSearch.ShowUseUnit);
+  Add('Atlas.UseUnit', TAtlasTextId.UseUnitCommand, TAtlasIdeUnitSearch.ShowUseUnit, UnitSearchVisible);
   Add('Atlas.UseUnitIde', TAtlasTextId.UseUnitIdeDialog, TAtlasIdeUnitSearch.ShowUseUnitIdeDialog);
-  Add('Atlas.Forms', TAtlasTextId.FormsCommand, TAtlasIdeUnitSearch.ShowForms);
+  Add('Atlas.Forms', TAtlasTextId.FormsCommand, TAtlasIdeUnitSearch.ShowForms, UnitSearchVisible);
   Add('Atlas.FormsIde', TAtlasTextId.FormsIdeDialog, TAtlasIdeUnitSearch.ShowFormsIdeDialog);
-  // Atlas-Suche (#877, #878).
-  Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show);
-  Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod);
+  // Atlas-Suche (#877, #878); mit dem Modul Suche aus (#1454) unsichtbar.
+  Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show, SearchVisible);
+  Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod, SearchVisible);
   // Ersetzen (#893); nur sichtbar, solange search.replace an ist.
   Add('Atlas.SearchReplace', TAtlasTextId.SearchReplaceCommand, TAtlasIdeSearch.ShowReplace, SearchReplaceVisible);
-  Add('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, TAtlasIdeSearch.FindNext);
-  Add('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, TAtlasIdeSearch.FindPrevious);
-  Add('Atlas.SearchClear', TAtlasTextId.SearchClearCommand, TAtlasIdeSearch.ClearHighlights);
+  Add('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, TAtlasIdeSearch.FindNext, SearchVisible);
+  Add('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, TAtlasIdeSearch.FindPrevious, SearchVisible);
+  Add('Atlas.SearchClear', TAtlasTextId.SearchClearCommand, TAtlasIdeSearch.ClearHighlights, SearchVisible);
   Add('Atlas.ResetHistory', TAtlasTextId.PaletteResetHistory, TAtlasIdeHistory.Reset);
   // Metrikbericht des Projekts (#66); nur sichtbar, solange die Einstellung MetricsReport an ist.
   Add('Atlas.MetricsReport', TAtlasTextId.MetricsReportCommand, MetricsReport, MetricsReportVisible);
@@ -3244,6 +3259,11 @@ begin
       if Manager <> nil then
         Manager.Report(AText);
     end);
+end;
+
+procedure StartRuleChecksNotice;
+begin
+  RuleChecksNotice := TAtlasIdeRuleChecksNotice.Create;
 end;
 
 procedure StartOpenBuild;
@@ -5217,6 +5237,12 @@ begin
     end);
 end;
 
+/// <summary>Modul-Schalter (#1454) für die Feature-Tabelle; eigene Routine statt anonymer Methode.</summary>
+function ModuleOn(const AModule: string): Boolean;
+begin
+  Result := TAtlasIdeSettings.ModuleOn(AModule);
+end;
+
 /// <summary>Teile des Plugins in Startreihenfolge (Code-Review S-03); StopAll baut sie rückwärts ab.
 /// Normal = nur im normalen Start, Safe = auch abgesichert, Minimal = immer (#722).</summary>
 procedure AddFeatures;
@@ -5334,6 +5360,17 @@ begin
     procedure
     begin
       FreeAndNil(UnitRename);
+    end);
+  // Hinweis „Prüfregeln sind aus“ (#1454): je atlas.json mit Regeln einmal, solange das Modul aus ist.
+  Features.Add('RuleChecksNotice', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := RuleChecksNotice <> nil;
+    end,
+    StartRuleChecksNotice,
+    procedure
+    begin
+      FreeAndNil(RuleChecksNotice);
     end);
   // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über BuildRunner, wenn er läuft.
   Features.AddWanted('Tests',
@@ -5893,13 +5930,29 @@ begin
     begin
       FreeAndNil(Reloader);
     end);
+  // Module (#1454): Ist der Modul-Schalter aus, startet keines dieser Teile, laufende stoppt RegisterFeatures.
+  // Die übrigen Teile eines Moduls folgen ihren eigenen Einstellungen, die bei ausgeschaltetem Modul „aus“
+  // liefern (TAtlasModuleSwitches).
+  Features.Join('debug', ['Visualizers', 'DisplayRules', 'DebugExceptions', 'DebugOwnCode', 'DebugExceptionBar',
+    'DebugInlineValues', 'DebugUnavailable', 'DebugAccessViolation', 'DebugDialogCompletion', 'DebugEvaluate',
+    'DebugStepFilter']);
+  Features.Join('buildTools', ['OpenBuild', 'Tasks', 'StartProfiles', 'CompilerSwitches']);
+  Features.Join('tests', ['Tests']);
+  Features.Join('bookmarks', ['Notes', 'Bookmarks', 'QuickBookmarks']);
+  Features.Join('issues', ['IssueLinks', 'BlameIssues']);
+  Features.ModuleOn := ModuleOn;
 end;
 
-/// <summary>Gewünschte, noch fehlende Teile starten (beim Laden und nach jeder Einstellungsänderung).</summary>
+/// <summary>Gewünschte, noch fehlende Teile starten (beim Laden und nach jeder Einstellungsänderung); zuvor die
+/// laufenden Teile ausgeschalteter Module stoppen (#1454).</summary>
 procedure RegisterFeatures;
+var
+  mFailure: string;
 begin
   if Features = nil then
     AddFeatures;
+  for mFailure in Features.StopOffModules do
+    TAtlasGuard.Log('Modul ausgeschaltet, Teil nicht sauber gestoppt: ' + mFailure);
   // Bis zur freien Nachrichtenschleife zählt jedes Teil zu den Startanteilen (Bericht N4).
   Features.Times := StartTimes;
   Features.StartWanted(Level);

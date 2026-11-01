@@ -318,6 +318,8 @@ type
     FGlobalSettings: string;
     /// <summary>Einstellungen für Dateien ohne Arbeitsbereich: global und Editor (S-02). Unter FWorkspacesLock.</summary>
     FLooseSettings: TServerSettings;
+    /// <summary>Zuletzt gesehener Stand von ruleChecks.enabled (#1454): 1 an, 0 aus; nur über TInterlocked.</summary>
+    FRuleChecksState: Integer;
     FFileWatcher: TFileWatcher;
     // Compiler-Anbindung (#40): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.
     FCompilerResults: TCompilerResults;
@@ -631,6 +633,10 @@ type
     /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
     function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+    /// <summary>Wie RuleContextFor für die Prüfung im Editor (LSP-Sitzung): ohne Regeln, solange der Modul-Schalter
+    /// ruleChecks.enabled aus ist (#1454); jeder Wechsel steht einmal im Protokoll. Baseline, Sammelkorrektur,
+    /// --check und MCP nehmen RuleContextFor.</summary>
+    function LiveRuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     /// <summary>AFileName gehört zu keinem Projekt und liegt in der Delphi-Installation oder einem Bibliothekspfad
     /// (diagnostics.librarySources). Nur unter FWorkspacesLock.</summary>
     function IsLibrarySource(const AFileName: string): Boolean;
@@ -715,6 +721,7 @@ implementation
 
 uses
   System.IOUtils,
+  System.SyncObjs,
   System.Math,
   System.StrUtils,
   Atlas.Common.Index.Adapters.DiskFileSystem,
@@ -849,6 +856,7 @@ begin
   inherited Create;
   FTransport := ATransport;
   FLogger := ALogger;
+  FRuleChecksState := 1;
   FStartedAt := Now;
   FUptime := TStopwatch.StartNew;
   WireProtocol;
@@ -6621,7 +6629,7 @@ begin
   // Sprachstand (#1126): minDelphiVersion begrenzt, was die Regeln als verfügbar ansehen.
   Result.Version := LanguageLevelFor;
   Result.BuildTarget := BuildTargetFor;
-  Result.Rules := RuleContextFor;
+  Result.Rules := LiveRuleContextFor;
   Result.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
@@ -6629,6 +6637,26 @@ begin
     end;
   // Ungenutzte uses (#621): dieselbe Analyse wie die uses-Aktionen, auch für die Diagnosen.
   Result.UsesContext := UsesContextFor;
+end;
+
+function TServerComposition.LiveRuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+var
+  mState: Integer;
+begin
+  Result := RuleContextFor(AUri, AContext);
+  if not Result then
+    Exit;
+  mState := Ord(AContext.Settings.RuleChecksEnabled);
+  if TInterlocked.Exchange(FRuleChecksState, mState) <> mState then
+  begin
+    if mState = 0 then
+      FLogger.Info('Prüfregeln aus (ruleChecks.enabled): Die Prüfung im Editor meldet nur Syntaxfehler und ' +
+        'Compilermeldungen; --check und MCP prüfen weiter nach atlas.json.')
+    else
+      FLogger.Info('Prüfregeln wieder an (ruleChecks.enabled).');
+  end;
+  if mState = 0 then
+    AContext.Rules := nil;
 end;
 
 function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;

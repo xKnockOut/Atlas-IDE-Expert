@@ -47,6 +47,9 @@ type
     NewIssue = 'newIssue';
     /// <summary>Änderungen an meinen Issues im Issue-Tracker (#1271).</summary>
     Issues = 'issues';
+    /// <summary>Modulschalter (#1454): atlas.json legt Prüfregeln fest, das Modul Prüfregeln ist aus. Wie Minimap
+    /// nicht in Known (einmal je atlas.json und Sitzung).</summary>
+    RuleChecks = 'ruleChecks';
     /// <summary>Absturzsicherung (#493): eine Funktion wurde nach wiederholten Fehlern abgeschaltet. Nicht in Known:
     /// Dieser Hinweis lässt sich nicht abstellen, sonst fiele eine abgeschaltete Funktion wieder nicht auf.</summary>
     Fuse = 'fuse';

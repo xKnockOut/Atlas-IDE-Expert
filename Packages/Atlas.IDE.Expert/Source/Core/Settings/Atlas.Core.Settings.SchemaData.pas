@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3245] of string = (
+  Lines: array[0..3262] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -908,6 +908,24 @@ const
     '      "x-page": "Prüfregeln",',
     '      "x-control": "Profil-Editor",',
     '      "x-issue": "#146"',
+    '    },',
+    '    "ruleChecks": {',
+    '      "type": "object",',
+    '      "description": "Prüfregeln in der LSP-Sitzung (#1454): Modul-Schalter „Prüfregeln“ des Plugins (Tools › Optionen › Atlas › Prüfregeln). Aus = der Server prüft in der Sitzung der IDE keine Regeln' +
+      '; es erscheinen nur Syntaxfehler und Compilermeldungen. AtlasServer --check und das MCP-Werkzeug prüfen weiter nach atlas.json.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "enabled": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Hauptschalter: false = keine Regelprüfung in der LSP-Sitzung (Mitteilung beim Start und bei jeder Änderung); --check und MCP unverändert."',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "rules",',
+    '      "x-page": "Prüfregeln",',
+    '      "x-control": "Kontrollkästchen „Prüfregeln“ (Modul-Schalter)",',
+    '      "x-issue": "#1454"',
     '    },',
     '    "overrides": {',
     '      "type": "array",',

@@ -1271,7 +1271,9 @@ type
     // Betroffene Tests (#1353).
     TestsAffectedCommand, TestsAffectedRunning, TestsAffectedFound, TestsAffectedNone, TestsAffectedAll,
     TestsAffectedFailed, TestsAffectedOff, TestsAffectedNoProject, TestsAffectedHookForeign,
-    TestsAffectedHookInstalled, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit);
+    TestsAffectedHookInstalled, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit,
+    // Modulschalter (#1454): Prüfregeln in atlas.json, Modul aus.
+    RuleChecksNoticeTitle, RuleChecksNoticeText, RuleChecksTurnOn, NotificationsSourceRuleChecks);
 
   TAtlasStrings = class
   private class var
@@ -4540,7 +4542,12 @@ const
      'Betroffene Tests vor dem Commit: pre-commit-Hook in %s angelegt.',
      'Befehl „Betroffene Tests ausführen“: nur die Tests, die die Änderungen gegenüber main bzw. BASE erreichen',
      'Ebenen von der Änderung bis zum Test (1 bis 5):',
-     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)'),
+     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)',
+     'Prüfregeln sind aus',
+     'Die atlas.json von %s legt Prüfregeln fest, das Modul Prüfregeln ist aber ausgeschaltet. Atlas prüft die '
+       + 'Regeln im Editor nicht.',
+     'Prüfregeln einschalten',
+     'Prüfregeln aus'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -7676,7 +7683,12 @@ const
      'Affected tests before commit: pre-commit hook created in %s.',
      'Command “Run affected tests”: only the tests reached by the changes against main or BASE',
      'Levels from the change to the test (1 to 5):',
-     'Offer before committing (Git pre-commit hook, Git only)'));
+     'Offer before committing (Git pre-commit hook, Git only)',
+     'Rule checks are off',
+     'The atlas.json of %s sets rules, but the Rule checks module is turned off. Atlas does not check the rules '
+       + 'in the editor.',
+     'Turn rule checks on',
+     'Rule checks off'));
 
 { TAtlasStrings }
 
