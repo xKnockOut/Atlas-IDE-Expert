@@ -40,6 +40,15 @@ type
     Depth: Integer;
   end;
 
+  /// <summary>Woraus die Analyse liest: Namensauflösung, Symbolindex und Dateitexte.</summary>
+  TShellAffectedSources = record
+    Resolver: TNameResolver;
+    Index: ISymbolIndex;
+    ReadText: TReferenceReadText;
+    class function New(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+      const AReadText: TReferenceReadText): TShellAffectedSources; static;
+  end;
+
   TShellAffectedTests = class
   public const
     DefaultGitBase = 'main';
@@ -58,8 +67,7 @@ type
     /// wird aus AQuery bzw. tests.affectedDepth gesetzt); EAffectedTestsOff, wenn die Funktion aus ist,
     /// EVcsChanges ohne Arbeitskopie.</summary>
     class function Run(const AProcess: ICompilerProcess; const ASettings: TServerSettings;
-      const AQuery: TShellAffectedQuery; AResolver: TNameResolver; const AIndex: ISymbolIndex;
-      const ARequest: TAffectedRequest; const AReadText: TReferenceReadText;
+      const AQuery: TShellAffectedQuery; const ASources: TShellAffectedSources; const ARequest: TAffectedRequest;
       const ACancellation: IJsonRpcCancellationToken): TAffectedResult; static;
   end;
 
@@ -69,6 +77,14 @@ uses
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX;
+
+class function TShellAffectedSources.New(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText): TShellAffectedSources;
+begin
+  Result.Resolver := AResolver;
+  Result.Index := AIndex;
+  Result.ReadText := AReadText;
+end;
 
 class function TShellAffectedTests.Inputs(AChanges: TVcsChanges): TArray<TAffectedInput>;
 var
@@ -119,8 +135,7 @@ begin
 end;
 
 class function TShellAffectedTests.Run(const AProcess: ICompilerProcess; const ASettings: TServerSettings;
-  const AQuery: TShellAffectedQuery; AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const ARequest: TAffectedRequest; const AReadText: TReferenceReadText;
+  const AQuery: TShellAffectedQuery; const ASources: TShellAffectedSources; const ARequest: TAffectedRequest;
   const ACancellation: IJsonRpcCancellationToken): TAffectedResult;
 var
   mChanges: TVcsChanges;
@@ -158,7 +173,8 @@ begin
     begin
       mRequest.Base := mRef;
     end;
-    Result := TAffectedTests.Determine(AResolver, AIndex, Inputs(mChanges), mRequest, AReadText, ACancellation);
+    Result := TAffectedTests.Determine(ASources.Resolver, ASources.Index, Inputs(mChanges), mRequest,
+      ASources.ReadText, ACancellation);
   finally
     mChanges.Free;
   end;

@@ -1193,7 +1193,7 @@ begin
   FFormatting.SlashCommandsFor := SlashCommandsFor;
   FFormatting.DelphiVersionFor := LanguageLevelFor;
   FFormatting.DocCommentsFor := DocCommentsFor;
-  SlashHost := TShellSlashHost.Create(
+  SlashHost := TShellSlashHost.Create(TShellSlashSources.New(
     function(const AUri: string): TShellWorkspace
     begin
       TMonitor.Enter(FWorkspacesLock);
@@ -1226,7 +1226,7 @@ begin
       begin
         Result := TFileHeaderRule.Template(TRuleEngine.RuleOptions('file-header', Settings));
       end;
-    end, FTransport, FLogger, FDispatcher,
+    end), FTransport, FLogger, FDispatcher,
     // Die .dproj geht über das Plugin in die IDE, wenn der Client applyEdit kann (#397).
     function: Boolean
     begin
@@ -7004,8 +7004,8 @@ begin
       // Eigener Prozessstarter: git/svn laufen neben einem Compilerlauf. Über eine Variable: nie ein frisches
       // Objekt an einen const-Interface-Parameter.
       mProcess := TProcessRunner.Create;
-      mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery, mResolver, FIndex, mRequest, mReadDisk,
-        ACancellation);
+      mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery,
+        TShellAffectedSources.New(mResolver, FIndex, mReadDisk), mRequest, ACancellation);
     except
       on E: EAffectedTestsOff do
         raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);
