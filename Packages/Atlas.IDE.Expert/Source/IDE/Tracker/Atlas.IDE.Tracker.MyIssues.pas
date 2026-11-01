@@ -1587,7 +1587,7 @@ begin
   begin
     mProject := CurrentProject;
   end;
-  Result := TAtlasTrackerIssuesView.TitleText(ProjectName(mProject), (mProject <> '') and
+  Result := TAtlasTrackerIssuesText.TitleText(ProjectName(mProject), (mProject <> '') and
     (Length(UnseenOf(TargetOf(mProject))) > 0));
 end;
 
@@ -1959,7 +1959,7 @@ begin
   mProject := CurrentProject;
   Result := ViewOf(mProject);
   // Anderes Projekt oder Punkt (#1271): Titel „Meine Issues · <Projekt>“ nachziehen, nicht mitten im Zeichnen.
-  if TAtlasTrackerIssuesView.TitleText(Result.ProjectName, Length(Result.Unseen) > 0) <> FTitle then
+  if TAtlasTrackerIssuesText.TitleText(Result.ProjectName, Length(Result.Unseen) > 0) <> FTitle then
   begin
     QueueTileInfo;
   end;
@@ -2739,7 +2739,7 @@ begin
     TAtlasStatusRegistry.Default.Add(FLineRef);
   end;
   mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStatusLine, [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);
-  FLine.Update(mText, TAtlasStatusState.Neutral, mData.Active.Key, TAtlasTrackerIssuesView.TileText(mData),
+  FLine.Update(mText, TAtlasStatusState.Neutral, mData.Active.Key, TAtlasTrackerIssuesText.TileText(mData),
     TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStatusHint));
   UpdateChecklistStatus(mProject, mData.Active.Key);
   UpdateAttachStatus(mData.Active.Key);

@@ -61,22 +61,22 @@ var
 begin
   mDialog := TAtlasNewIssueDialog.CreateDialog(nil, Setup(False), nil, nil);
   try
-    Assert.IsFalse(mDialog.IncludeCodeBox.Checked, 'nicht vorausgewählt');
-    Assert.IsFalse(mDialog.CodeMemo.Enabled);
+    Assert.IsFalse(mDialog.Parts.IncludeCodeBox.Checked, 'nicht vorausgewählt');
+    Assert.IsFalse(mDialog.Parts.CodeMemo.Enabled);
     Assert.AreEqual('Fundstelle: `Main.pas`, Zeile 3', mDialog.Draft.Description, 'ohne Code');
-    mDialog.IncludeCodeBox.Checked := True;
-    Assert.IsTrue(mDialog.CodeMemo.Enabled);
+    mDialog.Parts.IncludeCodeBox.Checked := True;
+    Assert.IsTrue(mDialog.Parts.CodeMemo.Enabled);
     Assert.IsTrue(mDialog.Draft.Description.EndsWith('```pascal' + #10 + '// TODO Speicherleck beim Schließen' + #10 +
       '```'), mDialog.Draft.Description);
-    Assert.IsFalse(mDialog.StartNowBox.Enabled, '„gleich beginnen“ nur mit „Meine Issues“');
+    Assert.IsFalse(mDialog.Parts.StartNowBox.Enabled, '„gleich beginnen“ nur mit „Meine Issues“');
   finally
     mDialog.Free;
   end;
   mDialog := TAtlasNewIssueDialog.CreateDialog(nil, Setup(True), nil, nil);
   try
-    Assert.IsTrue(mDialog.IncludeCodeBox.Checked, 'Vorgabe an');
+    Assert.IsTrue(mDialog.Parts.IncludeCodeBox.Checked, 'Vorgabe an');
     Assert.IsTrue(mDialog.Draft.Description.Contains('```pascal'));
-    Assert.IsFalse(mDialog.CreateButton.Enabled, 'ohne Haken OnSend kein Anlegen');
+    Assert.IsFalse(mDialog.Parts.CreateButton.Enabled, 'ohne Haken OnSend kein Anlegen');
   finally
     mDialog.Free;
   end;
@@ -103,17 +103,17 @@ begin
       mDone := ADone;
     end);
   try
-    mDialog.TypeBox.Text := 'Bug';
-    mDialog.AssignToMeBox.Checked := True;
-    Assert.IsFalse(mDialog.AssigneeBox.Enabled, '„mir zuweisen“ ersetzt Zuständig');
+    mDialog.Parts.TypeBox.Text := 'Bug';
+    mDialog.Parts.AssignToMeBox.Checked := True;
+    Assert.IsFalse(mDialog.Parts.AssigneeBox.Enabled, '„mir zuweisen“ ersetzt Zuständig');
     Assert.AreEqual(0, mSent, 'nichts ohne Klick');
-    Assert.IsTrue(mDialog.CreateButton.Enabled);
-    mDialog.ProjectEdit.Text := 'KASSE';
-    mDialog.CreateButton.Click;
+    Assert.IsTrue(mDialog.Parts.CreateButton.Enabled);
+    mDialog.Parts.ProjectEdit.Text := 'KASSE';
+    mDialog.Parts.CreateButton.Click;
     Assert.AreEqual(1, mSent);
     Assert.IsTrue(mDialog.Sending);
-    Assert.IsFalse(mDialog.CreateButton.Enabled, 'kein zweites Senden');
-    Assert.IsFalse(mDialog.CancelButton.Enabled, 'nicht schließen, solange gesendet wird');
+    Assert.IsFalse(mDialog.Parts.CreateButton.Enabled, 'kein zweites Senden');
+    Assert.IsFalse(mDialog.Parts.CancelButton.Enabled, 'nicht schließen, solange gesendet wird');
     Assert.AreEqual('KASSE', mTarget.Project, 'Projekt aus dem Feld');
     Assert.AreEqual('Speicherleck beim Schließen', mDraft.Title);
     Assert.AreEqual('Bug', mDraft.IssueType);
@@ -124,10 +124,10 @@ begin
     mDone(mResult);
     Assert.IsFalse(mDialog.Sending);
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult), 'offen');
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.NewIssueRejected, [403]), mDialog.StatusLabel.Caption);
-    Assert.IsTrue(mDialog.CreateButton.Enabled, 'erneut versuchen');
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.NewIssueRejected, [403]), mDialog.Parts.StatusLabel.Caption);
+    Assert.IsTrue(mDialog.Parts.CreateButton.Enabled, 'erneut versuchen');
     // Erfolg: schließt mit OK und merkt das Ergebnis.
-    mDialog.CreateButton.Click;
+    mDialog.Parts.CreateButton.Click;
     mResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
     mResult.Key := 'ATL-130';
     mDone(mResult);
@@ -156,30 +156,30 @@ begin
       Inc(mLoads);
     end, nil);
   try
-    Assert.AreEqual('ATL', mDialog.ProjectEdit.Text, 'Projekt aus der Zuordnung');
+    Assert.AreEqual('ATL', mDialog.Parts.ProjectEdit.Text, 'Projekt aus der Zuordnung');
     Assert.IsTrue(mDialog.Target(mTarget));
     Assert.AreEqual('youtrack', mTarget.Provider);
     // Wechsel des Trackers: Projekt des Eintrags, Listen neu.
-    mDialog.TrackerBox.Choice := 1;
-    mDialog.TrackerBox.OnChange(mDialog.TrackerBox);
-    Assert.AreEqual('', mDialog.ProjectEdit.Text);
+    mDialog.Parts.TrackerBox.Choice := 1;
+    mDialog.Parts.TrackerBox.OnChange(mDialog.Parts.TrackerBox);
+    Assert.AreEqual('', mDialog.Parts.ProjectEdit.Text);
     Assert.AreEqual(0, mLoads, 'GitHub ohne owner/repo: nichts zu laden');
-    mDialog.ProjectEdit.Text := 'acme/kasse';
+    mDialog.Parts.ProjectEdit.Text := 'acme/kasse';
     Assert.IsTrue(mDialog.Target(mTarget));
     Assert.AreEqual('acme/kasse', mTarget.Project);
     mDialog.LoadFields;
     Assert.AreEqual(1, mLoads);
     // Listen übernehmen; was eingetippt ist, bleibt.
-    mDialog.TypeBox.Text := 'eigener Typ';
+    mDialog.Parts.TypeBox.Text := 'eigener Typ';
     mFields := TAtlasNewIssueFields.Empty;
     mFields.TypeField := 'Typ';
     mFields.Types := TArray<string>.Create('Fehler', 'Aufgabe');
     mDialog.ShowFields(mFields, True);
-    Assert.AreEqual('Fehler,Aufgabe', string.Join(',', mDialog.TypeBox.Values));
-    Assert.AreEqual('eigener Typ', mDialog.TypeBox.Text);
+    Assert.AreEqual('Fehler,Aufgabe', string.Join(',', mDialog.Parts.TypeBox.Values));
+    Assert.AreEqual('eigener Typ', mDialog.Parts.TypeBox.Text);
     Assert.AreEqual('Typ', mDialog.Draft.TypeField);
     mDialog.ShowFields(TAtlasNewIssueFields.Empty, False);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NewIssueLoadFailed), mDialog.StatusLabel.Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NewIssueLoadFailed), mDialog.Parts.StatusLabel.Caption);
   finally
     mDialog.Free;
   end;
@@ -192,8 +192,8 @@ begin
     begin
     end);
   try
-    Assert.IsFalse(mDialog.CreateButton.Enabled);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NewIssueNoTracker), mDialog.StatusLabel.Caption);
+    Assert.IsFalse(mDialog.Parts.CreateButton.Enabled);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NewIssueNoTracker), mDialog.Parts.StatusLabel.Caption);
   finally
     mDialog.Free;
   end;
