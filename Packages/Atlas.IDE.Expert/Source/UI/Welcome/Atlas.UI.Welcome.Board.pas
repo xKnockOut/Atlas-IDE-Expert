@@ -207,7 +207,8 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings;
 
 const
   // Tag der Einträge im Kontextmenü eines Bereichs.
@@ -536,7 +537,7 @@ begin
     else
       Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Edit, '',
         '✎ ' + TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeCustomize),
-        TAtlasStrings.Text(TAtlasTextId.CommandWelcomeCustomize), False)];
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.CommandWelcomeCustomize), False)];
     // Umschalter im Kopf: mit mehreren Layouts immer, sonst nur beim Bearbeiten (dort Neu/Umbenennen).
     if FEditing or (Length(FLayoutNames) > 1) then
       Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Layout, '',

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.NewIssue;
+﻿unit Atlas.IDE.Tracker.NewIssue;
 
 // „Issue anlegen …“ in der IDE (#1268): aus dem Editor (Kontextmenü, Befehl
 // Atlas.CreateIssue, Taste keys.createIssue) und aus Befunden des Fensters
@@ -29,7 +29,7 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.NewIssue,
   Atlas.Core.Tracker.Attach,
-  Atlas.IDE.Welcome.Issues;
+  Atlas.IDE.Tracker.MyIssues;
 
 type
   TAtlasIdeNewIssue = class
@@ -55,14 +55,10 @@ implementation
 
 uses
   System.Classes,
-  System.UITypes,
   System.Generics.Collections,
   Winapi.Windows,
   Winapi.ShellAPI,
   Vcl.Clipbrd,
-  Vcl.Dialogs,
-  ToolsAPI,
-  Atlas.Text.Lines,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -74,30 +70,21 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Vcs.Contract,
-  Atlas.Core.Welcome.Continue,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.NewIssue,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Tracker.IssuesContext,
+  Atlas.IDE.Tracker.NewIssuePlace,
   Atlas.IDE.Vcs.Service;
 
 const
   cVcsTimeoutMs = 2000;
   cOutcomeKeys: array[TAtlasNewIssueOutcome] of string = ('created', 'noToken', 'notConfigured', 'rejected',
     'projectUnknown', 'invalid', 'unreadable', 'serverError', 'unreachable');
-
-type
-  /// <summary>Wohin die Kennung nach dem Anlegen kommt: Datei und Zeile wie beim Öffnen des Dialogs.</summary>
-  TEditorPlace = record
-    Valid: Boolean;
-    FileName: string;
-    /// <summary>Zeile ab 1.</summary>
-    Line: Integer;
-    /// <summary>Text der Zeile beim Öffnen; hat er sich geändert, schreibt Atlas nichts.</summary>
-    LineText: string;
-  end;
+  cLogAborted = 'Issue anlegen: Anfrage mit %s abgebrochen';
+  cLogClipboard = 'Issue anlegen: Zwischenablage belegt';
+  cLogOutcome = 'Issue anlegen: %s, %s';
 
 var
   Issues: TAtlasIdeIssues;
@@ -121,7 +108,9 @@ end;
 procedure Say(const AText: string);
 begin
   if Assigned(Report) then
+  begin
     Report(AText);
+  end;
 end;
 
 /// <summary>AWork im Hintergrund, danach ADone über TAtlasMainThread; beim Entladen verfällt ADone.</summary>
@@ -130,7 +119,9 @@ var
   mThread: TThread;
 begin
   if Threads = nil then
+  begin
     Threads := TList<TThread>.Create;
+  end;
   mThread := TThread.CreateAnonymousThread(
     procedure
     begin
@@ -138,15 +129,19 @@ begin
         AWork();
       except
         on E: Exception do
-          TAtlasGuard.Log('Issue anlegen: Anfrage mit ' + E.ClassName + ' abgebrochen');
+          TAtlasGuard.Log(Format(cLogAborted, [E.ClassName], TFormatSettings.Invariant));
       end;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
           if (Threads = nil) or not Threads.Contains(mThread) then
+          begin
             Exit;
+          end;
           Threads.Remove(mThread);
           mThread.WaitFor;
           mThread.Free;
@@ -163,12 +158,18 @@ var
   mProvider: string;
 begin
   if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) then
-    mProvider := 'GitHub'
+  begin
+    mProvider := 'GitHub';
+  end
   else
+  begin
     mProvider := 'YouTrack';
+  end;
   Result := mProvider + ' · ' + ATarget.Server;
   if AConnection <> '' then
+  begin
     Result := AConnection + ' (' + Result + ')';
+  end;
 end;
 
 /// <summary>Tracker des aktiven Projekts zuerst, dahinter die übrigen Verbindungen.</summary>
@@ -180,7 +181,7 @@ var
 begin
   Result := nil;
   AIndex := -1;
-  mResolved := TAtlasIdeIssues.TrackerOf(AProject, mConnection);
+  mResolved := TAtlasIdeIssuesTargets.TrackerOf(AProject, mConnection);
   mResolved.Language := TAtlasTrackerConnections.LanguageOf(
     TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections), mResolved);
   if mResolved.Provider <> '' then
@@ -191,89 +192,44 @@ begin
   for mItem in TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections) do
   begin
     if (mConnection <> '') and SameText(mItem.Name, mConnection) then
+    begin
       Continue;
+    end;
     mTarget := TAtlasTrackerTarget.Create(mItem.Provider, mItem.Url, '', '');
     mTarget.Language := mItem.Language;
     Result := Result + [TAtlasNewIssueTracker.Create(CaptionOf(mItem.Name, mTarget), mTarget)];
   end;
   if (AIndex < 0) and (Length(Result) > 0) then
-    AIndex := 0;
-end;
-
-/// <summary>Ersetzt Zeile ALine (ab 1) der Ansicht durch ANew; ein Rückgängig-Schritt der IDE.</summary>
-function WriteLine(const AView: IOTAEditView; ALine: Integer; const ANew: string): Boolean;
-var
-  mText: string;
-  mFrom, mTill: Integer;
-  mWriter: IOTAEditWriter;
-begin
-  Result := False;
-  if (AView = nil) or AView.Buffer.IsReadOnly then
-    Exit;
-  mText := TAtlasEditorBuffer.Text(AView.Buffer);
-  mFrom := TAtlasEditorBuffer.CharOffset(mText, ALine - 1, 0);
-  mTill := TAtlasEditorBuffer.CharOffset(mText, ALine - 1, MaxInt div 2);
-  mWriter := AView.Buffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(mText, 1, mFrom)));
-  if mTill > mFrom then
-    mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(mText, 1, mTill)));
-  if ANew <> '' then
-    mWriter.Insert(PAnsiChar(UTF8Encode(ANew)));
-  mWriter := nil;
-  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu (P-04).
-  TAtlasEditorSnapshots.Invalidate(AView.Buffer.FileName);
-  AView.Paint;
-  Result := True;
-end;
-
-/// <summary>Kennung in den Code: TODO ergänzen bzw. nach Rückfrage Kommentar anhängen. Nur, wenn Datei und
-/// Zeile noch so dastehen wie beim Öffnen des Dialogs.</summary>
-procedure MarkCode(const APlace: TEditorPlace; const AKey: string);
-var
-  mView: IOTAEditView;
-  mLine, mNew: string;
-  mTodo: TAtlasTodoComment;
-begin
-  if not APlace.Valid then
-    Exit;
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView = nil) or not SameText(mView.Buffer.FileName, APlace.FileName) then
-    Exit;
-  mLine := TAtlasEditorBuffer.LineText(mView, APlace.Line);
-  if mLine <> APlace.LineText then
-    Exit;
-  if TAtlasNewIssues.TodoAt(mLine, mTodo) then
   begin
-    mNew := TAtlasNewIssues.WithKey(mLine, AKey);
-    if (mNew <> mLine) and WriteLine(mView, APlace.Line, mNew) then
-      Say(TAtlasStrings.Fmt(TAtlasTextId.NewIssueTodoChanged, [Trim(mNew)]));
-    Exit;
+    AIndex := 0;
   end;
-  if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.NewIssueInsertComment, [TAtlasNewIssues.KeyComment(AKey)]),
-    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
-    Exit;
-  WriteLine(mView, APlace.Line, TAtlasNewIssues.WithKeyComment(mLine, AKey));
 end;
 
 procedure OpenPage(const APage: string);
 begin
   if APage.StartsWith('https://', True) then
+  begin
     ShellExecute(0, 'open', PChar(APage), nil, nil, SW_SHOWNORMAL);
+  end;
 end;
 
-procedure Created(const AResult: TAtlasNewIssueResult; const ATitle: string; const APlace: TEditorPlace;
+procedure Created(const AResult: TAtlasNewIssueResult; const ATitle: string; const APlace: TAtlasNewIssuePlace;
   AStartNow: Boolean);
 var
   mPage, mText: string;
   mIssue: TAtlasTrackerIssue;
 begin
-  MarkCode(APlace, AResult.Key);
+  APlace.Mark(AResult.Key,
+    procedure(AText: string)
+    begin
+      Say(AText);
+    end);
   try
     Clipboard.AsText := AResult.Key;
   except
     // Zwischenablage gerade von einem anderen Programm belegt: die Meldung nennt die Kennung trotzdem.
     on E: Exception do
-      TAtlasGuard.Log('Issue anlegen: Zwischenablage belegt');
+      TAtlasGuard.Log(cLogClipboard);
   end;
   mPage := AResult.Page;
   mText := TAtlasStrings.Fmt(TAtlasTextId.NewIssueCreated, [AResult.Key]);
@@ -284,14 +240,16 @@ begin
     begin
       OpenPage(mPage);
     end)]) = TAtlasNotificationMode.Show then
+  begin
     Say(mText + ' ' + mPage);
+  end;
   if AStartNow and (Issues <> nil) then
   begin
     mIssue := TAtlasTrackerIssue.Empty;
     mIssue.Key := AResult.Key;
     mIssue.Number := AResult.Number;
     mIssue.Title := ATitle;
-    Issues.StartIssue(mIssue);
+    Issues.Commands.StartIssue(mIssue);
   end;
 end;
 
@@ -304,8 +262,10 @@ var
   mDone: TAtlasNewIssueFieldsDone;
 begin
   if Issues = nil then
+  begin
     Exit;
-  mProvider := Issues.ProviderFor(ATarget.Provider);
+  end;
+  mProvider := Issues.Context.ProviderOf(ATarget.Provider);
   mTarget := ATarget;
   mFields := TAtlasNewIssueFields.Empty;
   mLoaded := False;
@@ -313,7 +273,8 @@ begin
   RunInBackground(
     procedure
     begin
-      mLoaded := TAtlasNewIssues.LoadFields(mProvider, mTarget, Issues.TransportFor(mProvider, mTarget), mFields);
+      mLoaded := TAtlasNewIssues.LoadFields(mProvider, mTarget, Issues.Context.TransportOf(mProvider, mTarget),
+        mFields);
     end,
     procedure
     begin
@@ -336,7 +297,7 @@ begin
     ADone(mResult);
     Exit;
   end;
-  mProvider := Issues.ProviderFor(ATarget.Provider);
+  mProvider := Issues.Context.ProviderOf(ATarget.Provider);
   mTarget := ATarget;
   LastTarget := ATarget;
   mDraft := ADraft;
@@ -345,24 +306,28 @@ begin
   RunInBackground(
     procedure
     begin
-      mResult := TAtlasNewIssues.CreateIssue(mProvider, mTarget, Issues.TransportFor(mProvider, mTarget), mDraft);
+      mResult := TAtlasNewIssues.CreateIssue(mProvider, mTarget, Issues.Context.TransportOf(mProvider, mTarget),
+        mDraft);
     end,
     procedure
     begin
       // Anonym: Anbieter und Ergebnis, nie Adresse, Projekt, Titel oder Kennung.
-      TAtlasGuard.Log('Issue anlegen: ' + mTarget.Provider + ', ' + cOutcomeKeys[mResult.Outcome]);
+      TAtlasGuard.Log(Format(cLogOutcome, [mTarget.Provider, cOutcomeKeys[mResult.Outcome]],
+        TFormatSettings.Invariant));
       mDone(mResult);
     end);
 end;
 
 /// <summary>Dialog zeigen und nach dem Anlegen die Kennung verteilen (Hauptthread).</summary>
-procedure ShowDialog(const ASetup: TAtlasNewIssueSetup; const APlace: TEditorPlace);
+procedure ShowDialog(const ASetup: TAtlasNewIssueSetup; const APlace: TAtlasNewIssuePlace);
 var
   mResult: TAtlasNewIssueResult;
   mStartNow: Boolean;
 begin
   if TAtlasNewIssueDialog.Execute(ASetup, LoadFields, Send, mResult, mStartNow) then
+  begin
     Created(mResult, ASetup.Title, APlace, mStartNow);
+  end;
 end;
 
 /// <summary>Branch und Commit des Ordners AFolder im Hintergrund, danach AThen im Hauptthread.</summary>
@@ -391,7 +356,9 @@ begin
     begin
       mThen(mBranch, mCommit);
     end) then
+  begin
     mThen('', '');
+  end;
 end;
 
 /// <summary>Wie ShowDialog, danach „An Issue anhängen“ mit AFiles für das neue Issue (#1355).</summary>
@@ -399,15 +366,19 @@ procedure ShowDialogWithFiles(const ASetup: TAtlasNewIssueSetup; const AFiles: T
 var
   mResult: TAtlasNewIssueResult;
   mStartNow: Boolean;
-  mPlace: TEditorPlace;
+  mPlace: TAtlasNewIssuePlace;
 begin
   // Aus einem Fall ändert Atlas den Code nicht.
-  mPlace := Default(TEditorPlace);
+  mPlace := TAtlasNewIssuePlace.None;
   if not TAtlasNewIssueDialog.Execute(ASetup, LoadFields, Send, mResult, mStartNow) then
+  begin
     Exit;
+  end;
   Created(mResult, ASetup.Title, mPlace, mStartNow);
   if (Length(AFiles) > 0) and (Issues <> nil) and (mResult.Key <> '') then
-    Issues.AttachFiles(LastTarget, mResult.Key, AFiles);
+  begin
+    Issues.Commands.AttachFiles(LastTarget, mResult.Key, AFiles);
+  end;
 end;
 
 function NewSetup(const AProject: string): TAtlasNewIssueSetup;
@@ -415,7 +386,7 @@ begin
   Result := TAtlasNewIssueSetup.Empty;
   Result.Trackers := TrackersOf(AProject, Result.TrackerIndex);
   Result.IncludeCode := TAtlasIdeSettings.Current.IssuesCreateIncludeCode;
-  Result.CanStart := (Issues <> nil) and Issues.CanStartIssue;
+  Result.CanStart := (Issues <> nil) and Issues.Context.CanStart;
 end;
 
 { TAtlasIdeNewIssue }
@@ -454,38 +425,19 @@ end;
 
 class procedure TAtlasIdeNewIssue.FromEditor;
 var
-  mView: IOTAEditView;
-  mText, mProject: string;
+  mProject: string;
   mContext: TAtlasNewIssueContext;
-  mPlace: TEditorPlace;
-  mBlock: IOTAEditBlock;
+  mPlace: TAtlasNewIssuePlace;
 begin
   if not Enabled then
+  begin
     Exit;
-  mView := TAtlasEditorBuffer.ActiveView;
-  if mView = nil then
+  end;
+  if not TAtlasNewIssuePlace.Capture(mPlace, mContext) then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.NewIssueNoEditor));
     Exit;
   end;
-  mText := TAtlasEditorBuffer.Text(mView.Buffer);
-  mContext := TAtlasNewIssueContext.Empty;
-  mContext.FileName := mView.Buffer.FileName;
-  mContext.Line := mView.CursorPos.Line;
-  mContext.Lines := TTextLines.SplitLines(mText);
-  mContext.Method := TAtlasWelcomeContinue.MethodAt(mText, mContext.Line);
-  mBlock := mView.Block;
-  if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) then
-  begin
-    mContext.Selection := mBlock.Text;
-    mContext.SelectionLine := mBlock.StartingRow;
-  end;
-  mPlace := Default(TEditorPlace);
-  mPlace.Valid := True;
-  mPlace.FileName := mContext.FileName;
-  mPlace.Line := mContext.Line;
-  if (mContext.Line >= 1) and (mContext.Line <= Length(mContext.Lines)) then
-    mPlace.LineText := mContext.Lines[mContext.Line - 1];
   mProject := TAtlasIdeTeamFile.ActiveProject;
   WithHead(ExtractFileDir(mContext.FileName),
     procedure(ABranch, ACommit: string)
@@ -494,7 +446,9 @@ begin
       mFull: TAtlasNewIssueContext;
     begin
       if not Enabled then
+      begin
         Exit;
+      end;
       mFull := mContext;
       mFull.Branch := ABranch;
       mFull.Commit := ACommit;
@@ -516,7 +470,9 @@ var
   mFindings: TArray<TAtlasNewIssueFinding>;
 begin
   if not Enabled or (Length(AFindings) = 0) then
+  begin
     Exit;
+  end;
   mFindings := AFindings;
   mProject := TAtlasIdeTeamFile.ActiveProject;
   WithHead(ExtractFileDir(mProject),
@@ -524,10 +480,12 @@ begin
     var
       mSetup: TAtlasNewIssueSetup;
       mContext: TAtlasNewIssueContext;
-      mPlace: TEditorPlace;
+      mPlace: TAtlasNewIssuePlace;
     begin
       if not Enabled then
+      begin
         Exit;
+      end;
       mContext := TAtlasNewIssueContext.Empty;
       mContext.Branch := ABranch;
       mContext.Commit := ACommit;
@@ -536,7 +494,7 @@ begin
       mSetup.Description := TAtlasNewIssues.DescriptionOfFindings(mFindings, mContext, Labels);
       mSetup.Code := TAtlasNewIssues.CodeOfFindings(mFindings);
       // Aus Befunden ändert Atlas den Code nicht.
-      mPlace := Default(TEditorPlace);
+      mPlace := TAtlasNewIssuePlace.None;
       TAtlasGuard.Run(TAtlasFeature.WelcomePage,
         procedure
         begin
@@ -552,7 +510,9 @@ var
   mFiles: TArray<TAtlasAttachFile>;
 begin
   if not Enabled then
+  begin
     Exit;
+  end;
   mTitle := ATitle;
   mDescription := ADescription;
   mFiles := AFiles;
