@@ -51,7 +51,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.UI.Strings;
+  Atlas.UI.Tracker.Strings;
 
 const
   Gap = 10;
@@ -64,7 +64,7 @@ var
   mButtons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Text(TAtlasTextId.BoardMoveTitle);
+  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveTitle);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
@@ -80,7 +80,7 @@ begin
   FQuestion.Margins.SetBounds(Gap, Gap, Gap, 0);
   FQuestion.Font.Style := [fsBold];
   FQuestion.WordWrap := True;
-  FQuestion.Caption := TAtlasStrings.Fmt(TAtlasTextId.BoardMoveQuestion, [AKey, AColumn]);
+  FQuestion.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveQuestion, [AKey, AColumn]);
 
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
@@ -88,7 +88,7 @@ begin
   mLabel.AlignWithMargins := True;
   mLabel.Margins.SetBounds(Gap, Gap, Gap, 0);
   mLabel.Top := FQuestion.Top + FQuestion.Height + 1;
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.BoardMoveComment);
+  mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveComment);
 
   FComment := TMemo.Create(Self);
   FComment.Parent := Self;
@@ -106,7 +106,7 @@ begin
   FDontAsk.AlignWithMargins := True;
   FDontAsk.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
   FDontAsk.Top := FComment.Top + FComment.Height + 1;
-  FDontAsk.Caption := TAtlasStrings.Text(TAtlasTextId.BoardMoveDontAsk);
+  FDontAsk.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveDontAsk);
 
   mButtons := TFlowPanel.Create(Self);
   mButtons.Parent := Self;
@@ -119,7 +119,7 @@ begin
   Canvas.Font := Font;
   FMove := TButton.Create(Self);
   FMove.Parent := mButtons;
-  FMove.Caption := TAtlasStrings.Text(TAtlasTextId.BoardMoveOk);
+  FMove.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveOk);
   FMove.Width := Canvas.TextWidth(FMove.Caption) + ScaleValue(32);
   FMove.AlignWithMargins := True;
   FMove.Margins.SetBounds(0, 0, Gap, 0);
@@ -127,7 +127,7 @@ begin
   FMove.ModalResult := mrOk;
   FCancel := TButton.Create(Self);
   FCancel.Parent := mButtons;
-  FCancel.Caption := TAtlasStrings.Text(TAtlasTextId.IssueDialogCancel);
+  FCancel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel);
   FCancel.Width := Canvas.TextWidth(FCancel.Caption) + ScaleValue(32);
   FCancel.AlignWithMargins := True;
   FCancel.Margins.SetBounds(0, 0, Gap, 0);

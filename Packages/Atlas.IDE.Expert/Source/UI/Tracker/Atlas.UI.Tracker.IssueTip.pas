@@ -61,7 +61,7 @@ implementation
 
 uses
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 class function TAtlasIssueTip.AgeText(ATime, ANow: TDateTime): string;
 var
@@ -70,17 +70,17 @@ begin
   mAge := TAtlasIssuePreview.Age(ATime, ANow);
   case mAge.UnitKind of
     TAtlasIssueAgeUnit.Minutes:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewMinutes, [mAge.Count]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewMinutes, [mAge.Count]);
     TAtlasIssueAgeUnit.Hours:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewHours, [mAge.Count]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewHours, [mAge.Count]);
     TAtlasIssueAgeUnit.Days:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewDays, [mAge.Count]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewDays, [mAge.Count]);
     TAtlasIssueAgeUnit.Months:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewMonths, [mAge.Count]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewMonths, [mAge.Count]);
     TAtlasIssueAgeUnit.Years:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewYears, [mAge.Count]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewYears, [mAge.Count]);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewJustNow);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewJustNow);
   end;
 end;
 
@@ -90,11 +90,11 @@ begin
     TAtlasCiFetchError.Unauthorized:
       Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.NotFound:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewErrorNotFound, [AKey]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AKey]);
     TAtlasCiFetchError.Timeout:
       Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorConfig);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
       Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
   else
@@ -116,27 +116,28 @@ begin
         AText := ADetails.Title;
         mFields := nil;
         if ADetails.State <> '' then
-          mFields := mFields + [TAtlasStrings.Text(TAtlasTextId.IssuePreviewFieldState) + ': ' + ADetails.State];
+          mFields := mFields
+            + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldState) + ': ' + ADetails.State];
         if ADetails.Assignee <> '' then
-          mFields := mFields + [TAtlasStrings.Text(TAtlasTextId.IssuePreviewFieldAssignee) + ': ' +
+          mFields := mFields + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldAssignee) + ': ' +
             ADetails.Assignee];
         if ADetails.Updated > 0 then
-          mFields := mFields + [TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewBadgeUpdated,
+          mFields := mFields + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated,
             [AgeText(ADetails.Updated, ANow)])];
         if Length(mFields) > 0 then
           AText := AText + #10 + string.Join(' · ', mFields);
       end;
     TAtlasIssueTipState.NotFound:
-      AText := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewErrorNotFound, [AKey]);
+      AText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AKey]);
     TAtlasIssueTipState.Failed:
       AText := ErrorText(AError, AKey);
   else
-    AText := TAtlasStrings.Text(TAtlasTextId.IssuePreviewLoading);
+    AText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading);
   end;
   if APreview then
-    mFooter := TAtlasStrings.Text(TAtlasTextId.IssueLinkTipFooter)
+    mFooter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooter)
   else
-    mFooter := TAtlasStrings.Text(TAtlasTextId.IssueLinkTipFooterBrowser);
+    mFooter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooterBrowser);
   AText := AText + #10#10 + mFooter;
 end;
 
@@ -153,40 +154,40 @@ begin
           Result := Result + ' · ' + ADetails.State;
       end;
     TAtlasIssueTipState.NotFound:
-      Result := AKey + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewErrorNotFound, [AKey]);
+      Result := AKey + ' · ' + TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AKey]);
     TAtlasIssueTipState.Failed:
       Result := AKey + ' · ' + ErrorText(AError, AKey);
   else
-    Result := AKey + ' · ' + TAtlasStrings.Text(TAtlasTextId.IssuePreviewLoading);
+    Result := AKey + ' · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading);
   end;
 end;
 
 class function TAtlasIssueTip.BlameFooter(APreview: Boolean): string;
 begin
   if APreview then
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameIssueFooter)
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssueFooter)
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameIssueFooterBrowser);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssueFooterBrowser);
 end;
 
 class function TAtlasIssueTip.ScopeLink(AMethod: Boolean; ACount: Integer): string;
 begin
   if AMethod and (ACount >= 0) then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesMethodLink, [ACount])
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesMethodLink, [ACount])
   else if AMethod then
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameIssuesMethodLinkOpen)
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesMethodLinkOpen)
   else if ACount >= 0 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesUnitLink, [ACount])
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesUnitLink, [ACount])
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameIssuesUnitLinkOpen);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesUnitLinkOpen);
 end;
 
 class function TAtlasIssueTip.CommitCount(ACount: Integer): string;
 begin
   if ACount = 1 then
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameIssuesCommit)
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesCommit)
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesCommits, [ACount]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesCommits, [ACount]);
 end;
 
 class function TAtlasIssueTip.IssueRow(const AKey: string; AKnown: Boolean; const ADetails: TAtlasTrackerDetails;
@@ -216,9 +217,9 @@ end;
 
 class function TAtlasIssueTip.ScopeTitle(const AName: string; AIssues, ACommits, AUnlinked: Integer): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesTitle, [AName, AIssues, ACommits]);
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesTitle, [AName, AIssues, ACommits]);
   if AUnlinked > 0 then
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesUnlinked, [AUnlinked]);
+    Result := Result + ' · ' + TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesUnlinked, [AUnlinked]);
 end;
 
 end.

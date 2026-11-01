@@ -127,7 +127,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Vcs.Contract,
-  Atlas.UI.Strings,
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeList,
   Atlas.IDE.Foundation.Settings,
@@ -321,7 +321,7 @@ begin
       FFileFailed := True;
       TAtlasGuard.Log('Zeiterfassung: time.json nicht geschrieben (gesperrt oder unlesbar)');
       if Assigned(FReport) then
-        FReport(TAtlasStrings.Fmt(TAtlasTextId.TimeFileFailed, [FPath]));
+        FReport(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeFileFailed, [FPath]));
     end;
     Exit;
   end;
@@ -411,12 +411,13 @@ begin
   end;
   mTotal := CurrentTotal;
   if FClock.Paused then
-    mText := TAtlasStrings.Fmt(TAtlasTextId.TimeStatusPaused, [FClock.Issue.Key,
+    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusPaused, [FClock.Issue.Key,
       TAtlasTimeRounding.ClockText(mTotal)])
   else
-    mText := TAtlasStrings.Fmt(TAtlasTextId.TimeStatusText, [FClock.Issue.Key, TAtlasTimeRounding.ClockText(mTotal)]);
+    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusText,
+      [FClock.Issue.Key, TAtlasTimeRounding.ClockText(mTotal)]);
   mOwner := Self;
-  FStatus(mText, TAtlasStrings.Fmt(TAtlasTextId.TimeStatusHint, [FClock.Issue.Key,
+  FStatus(mText, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusHint, [FClock.Issue.Key,
     TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mTotal, 1))]),
     procedure(APoint: TPoint)
     begin
@@ -430,10 +431,10 @@ procedure TAtlasIdeTrackerTime.ShowMenu(const APoint: TPoint);
 var
   mItem: TMenuItem;
 
-  procedure Add(AText: TAtlasTextId; const AClick: TNotifyEvent);
+  procedure Add(AText: TAtlasTrackerTextId; const AClick: TNotifyEvent);
   begin
     mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasStrings.Text(AText);
+    mItem.Caption := TAtlasTrackerStrings.Text(AText);
     mItem.OnClick := AClick;
     FMenu.Items.Add(mItem);
   end;
@@ -444,13 +445,13 @@ begin
     FMenu := TPopupMenu.Create(nil);
   FMenu.Items.Clear;
   if FClock.Paused then
-    Add(TAtlasTextId.TimeMenuResume, MenuPause)
+    Add(TAtlasTrackerTextId.TimeMenuResume, MenuPause)
   else
-    Add(TAtlasTextId.TimeMenuPause, MenuPause);
-  Add(TAtlasTextId.TimeMenuReset, MenuReset);
-  Add(TAtlasTextId.TimeMenuCorrect, MenuCorrect);
-  Add(TAtlasTextId.TimeMenuBook, MenuBook);
-  Add(TAtlasTextId.TimeMenuOpen, MenuOpen);
+    Add(TAtlasTrackerTextId.TimeMenuPause, MenuPause);
+  Add(TAtlasTrackerTextId.TimeMenuReset, MenuReset);
+  Add(TAtlasTrackerTextId.TimeMenuCorrect, MenuCorrect);
+  Add(TAtlasTrackerTextId.TimeMenuBook, MenuBook);
+  Add(TAtlasTrackerTextId.TimeMenuOpen, MenuOpen);
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
@@ -475,7 +476,7 @@ begin
   mIssue := FClock.Issue;
   Flush;
   mTotal := CurrentTotal;
-  if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.TimeResetConfirm, [mIssue.Key,
+  if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeResetConfirm, [mIssue.Key,
     TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mTotal, 1))]), mtConfirmation, [mbYes, mbNo],
     0) <> mrYes then
     Exit;
@@ -494,15 +495,15 @@ begin
   mIssue := FClock.Issue;
   Flush;
   mText := TAtlasTimeRounding.ClockText(CurrentTotal);
-  if not InputQuery(TAtlasStrings.Text(TAtlasTextId.TimeCorrectCaption),
-    TAtlasStrings.Fmt(TAtlasTextId.TimeCorrectPrompt, [mIssue.Key]), mText) then
+  if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeCorrectCaption),
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeCorrectPrompt, [mIssue.Key]), mText) then
     Exit;
   // 0 ist erlaubt (wie Zurücksetzen ohne Rückfrage); sonst muss die Dauer lesbar sein.
   if (Trim(mText) = '0') or (Trim(mText) = '0:00') then
     mMinutes := 0
   else if not TAtlasTimeRounding.ParseDuration(mText, mMinutes) then
   begin
-    MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.TimeCorrectInvalid, [mText]), mtWarning, [mbOK], 0);
+    MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeCorrectInvalid, [mText]), mtWarning, [mbOK], 0);
     Exit;
   end;
   FClock.Discard;
@@ -624,7 +625,8 @@ begin
       begin
         Settle(AIssue, mTotal);
         if Assigned(FReport) then
-          FReport(TAtlasStrings.Fmt(TAtlasTextId.TimeBookDone, [TAtlasTrackerWorkflow.DurationText(mItem.Minutes),
+          FReport(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeBookDone,
+            [TAtlasTrackerWorkflow.DurationText(mItem.Minutes),
             AIssue.Key]));
       end;
     TAtlasTimeDecision.Discarded:
@@ -665,7 +667,8 @@ begin
         Exit;
       end;
       // GitHub: Aufwand als Kommentar, die Beschreibung darunter.
-      mComment := TAtlasStrings.Fmt(TAtlasTextId.TimeBookComment, [TAtlasTrackerWorkflow.DurationText(AItem.Minutes)]);
+      mComment := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeBookComment,
+        [TAtlasTrackerWorkflow.DurationText(AItem.Minutes)]);
       if AItem.Text <> '' then
         mComment := mComment + #10#10 + AItem.Text;
       mOwner.FSync.Apply(mProvider, mTarget, mKey, TAtlasTrackerWrite.CommentOnly(mComment), ADone);
@@ -733,7 +736,7 @@ begin
     TAtlasTimeListAction.Book:
       Offer(mItems[mIndex].Issue, '', '', '');
     TAtlasTimeListAction.Discard:
-      if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.TimeResetConfirm, [mItems[mIndex].Issue.Key,
+      if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeResetConfirm, [mItems[mIndex].Issue.Key,
         TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mItems[mIndex].Seconds, 1))]),
         mtConfirmation, [mbYes, mbNo], 0) = mrYes then
         Settle(mItems[mIndex].Issue, mItems[mIndex].Seconds);

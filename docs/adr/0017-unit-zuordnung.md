@@ -64,10 +64,7 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 
 | Von | Nach | Behebt |
 |---|---|---|
-| `Atlas.IDE.Settings.Options` | `Atlas.IDE.Tracker` | Einstellungsteil des Moduls Tracker (Entscheidung 3, Paket 2) |
-| `Atlas.UI.Settings.Page` | `Atlas.IDE.Tracker` | Seiten der Module im Optionsdialog (Entscheidung 3, Paket 2) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Welcome` | Seiten der Module im Optionsdialog (Entscheidung 3) |
-| `Atlas.UI.Settings.QueryDialog` | `Atlas.IDE.Tracker` | Abfragedialog gehört zum Modul Tracker (Paket 2) |
 | `Atlas.IDE.Vcs.Branching` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
 | `Atlas.IDE.Vcs.WorkingCopies` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
 | `Atlas.Core.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
@@ -309,6 +306,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.ModuleSwitches` | `Core/Settings/Atlas.Core.Settings.ModuleSwitches.pas` | Ordner `Core/Settings`; Modul-Schalter (#1454) |
 | `Atlas.Core.Settings.OverviewKinds` | `Core/Settings/Atlas.Core.Settings.OverviewKinds.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Parts` | `Core/Settings/Atlas.Core.Settings.Parts.pas` | Ordner `Core/Settings`; zentrale Stelle der Einstellungsteile (#1455, Entscheidung 3) |
+| `Atlas.Core.Settings.StoreValues` | `Core/Settings/Atlas.Core.Settings.StoreValues.pas` | Ordner `Core/Settings`; Werte des zentralen Records nach Schlüssel für die Abschnitte der Module (#1455) |
 | `Atlas.Core.Settings.Plugin` | `Core/Settings/Atlas.Core.Settings.Plugin.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.PluginSchemaData` | `Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ProfileData` | `Core/Settings/Atlas.Core.Settings.ProfileData.pas` | Ordner `Core/Settings` |
@@ -566,12 +564,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Results.Frame` | `UI/Results/Atlas.UI.Results.Frame.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.RenamePreview` | `UI/Results/Atlas.UI.Results.RenamePreview.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Settings.ChoiceBox` | `UI/Settings/Atlas.UI.Settings.ChoiceBox.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Contract` | `UI/Settings/Atlas.UI.Settings.Contract.pas` | Ordner `UI/Settings`; Abschnitte der Module im Optionsdialog (#1455, Entscheidung 3) |
 | `Atlas.UI.Settings.Group` | `UI/Settings/Atlas.UI.Settings.Group.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Keys` | `UI/Settings/Atlas.UI.Settings.Keys.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Marks` | `UI/Settings/Atlas.UI.Settings.Marks.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page` | `UI/Settings/Atlas.UI.Settings.Page.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.ProjectDialog` | `UI/Settings/Atlas.UI.Settings.ProjectDialog.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.QueryDialog` | `UI/Settings/Atlas.UI.Settings.QueryDialog.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.QuickToggles` | `UI/Settings/Atlas.UI.Settings.QuickToggles.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Rules` | `UI/Settings/Atlas.UI.Settings.Rules.pas` | Seite Prüfregeln im Projektdialog (Base), bis die Einstellungsseiten über Verträge laufen, #1455 |
 | `Atlas.UI.Settings.ServerPage` | `UI/Settings/Atlas.UI.Settings.ServerPage.pas` | Ordner `UI/Settings` |
@@ -678,6 +676,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Providers.GitHub` | `Core/Tracker/Atlas.Core.Tracker.Providers.GitHub.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Queries` | `Core/Tracker/Atlas.Core.Tracker.Queries.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.SettingsTables` | `Core/Tracker/Atlas.Core.Tracker.SettingsTables.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.QueryTest` | `Core/Tracker/Atlas.Core.Tracker.QueryTest.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Sprint` | `Core/Tracker/Atlas.Core.Tracker.Sprint.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Templates` | `Core/Tracker/Atlas.Core.Tracker.Templates.pas` | Ordner `Core/Tracker` |
@@ -689,14 +688,15 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.Board` | `IDE/Tracker/Atlas.IDE.Tracker.Board.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BoardWindow` | `IDE/Tracker/Atlas.IDE.Tracker.BoardWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CodeLinks` | `IDE/Tracker/Atlas.IDE.Tracker.CodeLinks.pas` | Ordner `IDE/Tracker` |
-| `Atlas.IDE.Tracker.Composition` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CommentAssist` | `IDE/Tracker/Atlas.IDE.Tracker.CommentAssist.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Composition` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Development` | `IDE/Tracker/Atlas.IDE.Tracker.Development.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Notify` | `IDE/Tracker/Atlas.IDE.Tracker.Notify.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearch.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Session` | `IDE/Tracker/Atlas.IDE.Tracker.Session.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Settings.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.TimeTracking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.AttachDialog` | `UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas` | Ordner `UI/Tracker` |
@@ -712,6 +712,16 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.Notify` | `UI/Tracker/Atlas.UI.Tracker.Notify.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.QueryDialog` | `UI/Tracker/Atlas.UI.Tracker.QueryDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsConnections` | `UI/Tracker/Atlas.UI.Tracker.SettingsConnections.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsGeneral` | `UI/Tracker/Atlas.UI.Tracker.SettingsGeneral.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsProjects` | `UI/Tracker/Atlas.UI.Tracker.SettingsProjects.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsQueries` | `UI/Tracker/Atlas.UI.Tracker.SettingsQueries.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsRows` | `UI/Tracker/Atlas.UI.Tracker.SettingsRows.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsSection` | `UI/Tracker/Atlas.UI.Tracker.SettingsSection.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsSnippets` | `UI/Tracker/Atlas.UI.Tracker.SettingsSnippets.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsWorkflow` | `UI/Tracker/Atlas.UI.Tracker.SettingsWorkflow.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Texte des Moduls (Tracker), Sprache von Base, #1455 |
 | `Atlas.UI.Tracker.TimeDialog` | `UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.TimeList` | `UI/Tracker/Atlas.UI.Tracker.TimeList.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.ValueBox` | `UI/Tracker/Atlas.UI.Tracker.ValueBox.pas` | Ordner `UI/Tracker` |
