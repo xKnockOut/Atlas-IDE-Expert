@@ -126,7 +126,7 @@ Prüfbar in `Tools/Check-PackageDependencies.ps1` (mit #1455): Regel 8 (kein `Ge
 
 ### Auffindbarkeit des Kerns
 
-**Offen** (Entscheidung 1). Bis zur Entscheidung gilt nur: Der Kern muss für den Windows-Lader auffindbar sein, sobald ein Add-on vor ihm geladen wird; der Ordner des Add-ons reicht dafür nicht. Optionen:
+**Entschieden** (Entscheidung 1, Marco 01.11.2026): Variante b + c, siehe unten. Grundsatz: Der Kern muss für den Windows-Lader auffindbar sein, sobald ein Add-on vor ihm geladen wird; der Ordner des Add-ons reicht dafür nicht. Optionen:
 
 - a) Release-Ordner je Plattform auf den PATH: Handarbeit, zwei Ordner für zwei IDE-Bitbreiten.
 - b) BPLs nach `$(BDSCOMMONDIR)\Bpl`: liegt schon auf dem PATH, mischt sich mit fremden Packages.
@@ -182,7 +182,7 @@ Scheitert der Pilot an einem Fall ohne Abhilfe, greift Schritt 4: Es bleibt beim
 
 ### Offene Entscheidungen (Marco)
 
-1. **Auffindbarkeit des Kerns:** a PATH, b `$(BDSCOMMONDIR)\Bpl`, c Ladereihenfolge, d a oder b plus c. Empfehlung: d mit b.
+1. ~~**Auffindbarkeit des Kerns**~~ **Entschieden (Marco, 01.11.2026): b + c.** Alle Atlas-BPLs (Base, Contracts, Module) kommen in den Bpl-Ordner von RAD Studio (`$(BDSCOMMONDIR)\Bpl`, für die 64-Bit-IDE `Bpl\Win64`), der schon auf dem PATH liegt; zusätzlich soll Base vor den Modulen geladen werden. Beim Update werden alte Kopien dort ersetzt.
 2. ~~**#1455 in 1.x oder in 2.0?**~~ **Entschieden (Marco, 01.11.2026):** Der ganze Umbau ist Version 2.0.0, auch #1454 und #1455; siehe „Versionen (neu)“ unten. 1.x (`release/1.2`) bekommt davon nichts.
 3. **Einstellungen: entschieden (Marco, 01.11.2026): eine zentrale Stelle im Kern.** Der Kern führt die eine Einstellungsdatei, den einen Optionsdialog, Export, Import, Zurücksetzen und die Prüfung. Jedes Modul bringt bei seiner Anmeldung seinen Teil mit (Schlüssel mit Vorgaben, Schema-Teil, Abschnitt im Dialog, Migrationen) und meldet ihn mit Besitzer an; der Kern speichert und zeigt alles an einer Stelle. Damit braucht eine neue Moduleinstellung keinen Kern-Bau, und fremde Module (#1459) können Einstellungen haben. Werte nicht installierter Module bleiben in der Datei erhalten. Im Pilot darf der Debugger seine Felder noch im Record des Kerns lassen; die Anmeldung kommt mit #1455.
 4. **Texte:** a je Modul eigenes Enum und eigene Tabelle (`TAtlasDebugTextId`), Sprachwechsel über einen Vertrag; b Schlüssel als `string` mit Registry je Modul. Empfehlung: a; der Vertrag für den Sprachwechsel gilt auch für fremde Module.
