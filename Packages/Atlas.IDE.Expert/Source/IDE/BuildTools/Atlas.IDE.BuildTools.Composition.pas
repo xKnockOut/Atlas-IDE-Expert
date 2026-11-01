@@ -14,9 +14,10 @@
 //   (IAtlasBuildToolsSource, Atlas.IDE.Contracts); das Ende einer Aufgabe
 //   geht an jeden IAtlasTaskListener.
 // Die Build-Pipeline selbst (Läufer der Builds auf Auftrag, Prüfung vor dem
-// Kompilieren, Release-Wächter, Bewertung) gehört zu Base; das Modul nutzt
-// sie über TAtlasIdeHost und TAtlasIdeBuildRunner.Current. Seine Teilnehmer an den Compile-Ereignissen meldet
-// es beim Stoppen ab.
+// Kompilieren, Release-Wächter, Bewertung) ist ein eigenes Modul
+// (atlas.buildpipeline); dieses Modul erreicht die Builds auf Auftrag über
+// den Vertrag IAtlasBuildJobs, die Compile-Ereignisse über TAtlasIdeHost. Seine
+// Teilnehmer an den Compile-Ereignissen meldet es beim Stoppen ab.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
 
@@ -25,7 +26,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.IDE.Contracts.BuildTools;
+  Atlas.IDE.Contracts.BuildTools,
+  Atlas.IDE.Contracts.BuildPipeline;
 
 type
   TAtlasBuildModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -67,14 +69,12 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.Inbox,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.Tasks.Adapters.Process,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Tasks.Runs,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Build.Runner,
   Atlas.IDE.Build.OpenBuild,
   Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.StartProfiles.Service,
@@ -170,26 +170,39 @@ begin
         end);
 end;
 
-/// <summary>Neubau nach bestandener Prüfung über den Läufer der Builds auf Auftrag (#261) von Base.</summary>
+/// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
+function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
+var
+  mItem: IInterface;
+begin
+  AJobs := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
+    if Supports(mItem, IAtlasBuildJobs, AJobs) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Neubau nach bestandener Prüfung über die Builds auf Auftrag (#261) der Build-Pipeline.</summary>
 function RebuildAfterTasks(const AProject: TAtlasCompileProject; out AReason: string): Boolean;
 var
-  mRunner: TAtlasIdeBuildRunner;
-  mRequest: TAtlasBuildRequest;
+  mJobs: IAtlasBuildJobs;
+  mJob: TAtlasBuildJob;
 begin
-  mRunner := TAtlasIdeBuildRunner.Current;
-  if mRunner = nil then
+  if not BuildJobs(mJobs) then
   begin
     AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
     Exit(False);
   end;
-  mRequest := Default(TAtlasBuildRequest);
-  mRequest.Project := AProject.FileName;
-  mRequest.Kind := AProject.Kind;
+  mJob := Default(TAtlasBuildJob);
+  mJob.Project := AProject.FileName;
+  // Dieselbe Art wie der angehaltene Compile; Make für alles außer Build und Check.
+  mJob.Kind := TAtlasBuildJobKind.Make;
+  if AProject.Kind = TAtlasCompileKind.Build then
+    mJob.Kind := TAtlasBuildJobKind.Build
+  else if AProject.Kind = TAtlasCompileKind.Check then
+    mJob.Kind := TAtlasBuildJobKind.Check;
   // Auftraggeber '' wie ein Build des Benutzers: Tests nach dem Build und die übrigen Teilnehmer laufen mit.
-  Result := mRunner.Start(mRequest, '',
-    procedure(const AReport: TAtlasBuildReport; const AError: string)
-    begin
-    end, AReason);
+  Result := mJobs.Start(mJob, nil, AReason);
 end;
 
 procedure StartTasks;

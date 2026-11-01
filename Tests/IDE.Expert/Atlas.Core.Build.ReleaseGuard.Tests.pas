@@ -58,6 +58,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Build.Events,
+  Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Build.ReleaseGuard;
 
 const
@@ -132,9 +133,9 @@ begin
     '-memoryLeaks,versionInfo,outputFolder', Checks.ToText);
   // Sollwert bleibt auch bei einer abgeschalteten Prüfung erhalten.
   Assert.AreEqual(Checks.ToText, TAtlasReleaseChecks.Normalized(Checks.ToText));
-  Assert.IsTrue(TAtlasReleaseGuard.GateOf(' BLOCK ') = TAtlasBuildGate.Block);
-  Assert.IsTrue(TAtlasReleaseGuard.GateOf('warn') = TAtlasBuildGate.Warn);
-  Assert.IsTrue(TAtlasReleaseGuard.GateOf('irgendwas') = TAtlasBuildGate.Off);
+  Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf(' BLOCK ') = TAtlasBuildGate.Block);
+  Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf('warn') = TAtlasBuildGate.Warn);
+  Assert.IsTrue(TAtlasBuildPipelineSettings.GateOf('irgendwas') = TAtlasBuildGate.Off);
 end;
 
 procedure TAtlasReleaseGuardTests.ReleaseConfigurations;
@@ -149,8 +150,8 @@ begin
   Assert.IsTrue(Value.IsRelease('Staging'));
   Assert.IsFalse(Value.IsRelease('Debug'));
   Assert.IsFalse(Value.IsRelease(''));
-  Assert.AreEqual('Release, Ship', TAtlasReleaseGuard.NormalizedConfigurations('["Release", "Ship"]'));
-  Assert.AreEqual('Release', TAtlasReleaseGuard.NormalizedConfigurations(' Release ,, release'));
+  Assert.AreEqual('Release, Ship', TAtlasBuildPipelineSettings.NormalizedConfigurations('["Release", "Ship"]'));
+  Assert.AreEqual('Release', TAtlasBuildPipelineSettings.NormalizedConfigurations(' Release ,, release'));
 end;
 
 procedure TAtlasReleaseGuardTests.AppliesOnlyToReleaseBuilds;

@@ -677,6 +677,9 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
+        <DCCReference Include="Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>
+        <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Pipeline.pas"/>
+        <DCCReference Include="Source\Core\Versions\Atlas.Core.Versions.Project.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.TestResults.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Issues.pas"/>
@@ -968,6 +971,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Report.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.DebugReport.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildTools.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildPipeline.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas"/>

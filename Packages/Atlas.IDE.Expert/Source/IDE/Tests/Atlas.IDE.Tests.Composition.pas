@@ -13,8 +13,8 @@
 //   IAtlasTestsSource (Atlas.IDE.Contracts, Willkommensseite); das Ende eines
 //   Laufs schreibt das Modul in die Projekt-Zusammenfassung von Base
 //   (TAtlasIdeProjectSummaries, #69) und meldet es jedem IAtlasTestsListener.
-// Gebaut wird über den Läufer der Builds auf Auftrag von Base
-// (TAtlasIdeBuildRunner.Current), die Probleme gehen an das Problemfenster von
+// Gebaut wird über den Läufer der Builds auf Auftrag der Build-Pipeline
+// (IAtlasBuildJobs aus Atlas.IDE.Contracts, ohne Modul nicht), die Probleme gehen an das Problemfenster von
 // Base; die fehlgeschlagenen Tests des letzten Laufs liest das Modul aus den
 // Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
@@ -26,8 +26,10 @@ uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Build.Events,
+  Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,
-  Atlas.IDE.Contracts.Tests;
+  Atlas.IDE.Contracts.Tests,
+  Atlas.IDE.Contracts.BuildPipeline;
 
 type
   TAtlasTestsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -46,7 +48,8 @@ type
     function Commands: TArray<TAtlasModuleCommand>;
     function MenuEntries: TArray<TAtlasMenuEntry>;
     procedure ApplySettings;
-    procedure BuildEvaluated(const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
+    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      const AVerdict: TAtlasBuildVerdict);
     procedure RunTests(const AFileName: string; const ATests: TArray<string>);
     function RunProject(const ATestProject: string; out AReason: string): Boolean;
     function DebugByName(const AProject, AFullName: string; out AReason: string): Boolean;
@@ -69,7 +72,6 @@ uses
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Modules.Contributions,
-  Atlas.Core.Build.Inbox,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Adapters.ProcessRunner,
   Atlas.Core.Problems.Contract,
@@ -78,7 +80,6 @@ uses
   Atlas.Core.Tests.Debug,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Build.Runner,
   Atlas.IDE.CodeInsight.Manager,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Projects.Summaries,
@@ -125,28 +126,40 @@ begin
     end;
 end;
 
-/// <summary>Vor den Tests bauen: über den Läufer der Builds auf Auftrag (#261) von Base, Auftraggeber "tests".
+/// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
+function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
+var
+  mItem: IInterface;
+begin
+  AJobs := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
+    if Supports(mItem, IAtlasBuildJobs, AJobs) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Vor den Tests bauen: über die Builds auf Auftrag (#261) der Build-Pipeline, Auftraggeber "tests".
 /// </summary>
 function BuildForTests(const AProject: string; const ADone: TAtlasTestsBuildDone; out AReason: string): Boolean;
 var
-  mRunner: TAtlasIdeBuildRunner;
-  mRequest: TAtlasBuildRequest;
+  mJobs: IAtlasBuildJobs;
+  mJob: TAtlasBuildJob;
   mDone: TAtlasTestsBuildDone;
 begin
-  mRunner := TAtlasIdeBuildRunner.Current;
-  if mRunner = nil then
+  if not BuildJobs(mJobs) then
   begin
     AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
     Exit(False);
   end;
   mDone := ADone;
-  mRequest := Default(TAtlasBuildRequest);
-  mRequest.Project := AProject;
-  mRequest.Kind := TAtlasCompileKind.Make;
-  Result := mRunner.Start(mRequest, TAtlasTestRun.RequestedBy,
-    procedure(const AReport: TAtlasBuildReport; const AError: string)
+  mJob := Default(TAtlasBuildJob);
+  mJob.Project := AProject;
+  mJob.Kind := TAtlasBuildJobKind.Make;
+  mJob.RequestedBy := TAtlasTestRun.RequestedBy;
+  Result := mJobs.Start(mJob,
+    procedure(const AResult: TAtlasBuildJobResult)
     begin
-      mDone(AReport.Succeeded, AReport.Project.OutputFile, AError);
+      mDone(AResult.Succeeded, AResult.OutputFile, AResult.Error);
     end, AReason);
 end;
 
@@ -380,7 +393,8 @@ begin
     TAtlasIdeAffectedTests.ApplySettings;
 end;
 
-procedure TAtlasTestsModule.BuildEvaluated(const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
+procedure TAtlasTestsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
 begin
   // Tests nach dem Build (#69), nach derselben Bewertung wie Zusammenfassung und Benachrichtigung (#530).
   if GTests <> nil then

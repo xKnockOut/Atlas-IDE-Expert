@@ -381,7 +381,7 @@ begin
   if ASettings.IsRelease(Result) then
     Exit;
   for Name in TAtlasIdeProjectContext.Configurations(AProject) do
-    if SameText(Name, TAtlasReleaseGuard.ReleaseConfiguration) then
+    if SameText(Name, TAtlasBuildPipelineSettings.ReleaseConfiguration) then
       Exit(Name);
   for Name in TAtlasIdeProjectContext.Configurations(AProject) do
     if ASettings.IsRelease(Name) then
