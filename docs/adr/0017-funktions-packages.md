@@ -110,7 +110,7 @@ Wer eine dieser Mechaniken im Pilot widerlegt, schreibt das Ergebnis hier fort.
 
 ### Regeln für Module und Verträge
 
-Status: **vorgeschlagen**, gilt erst nach Marcos Bestätigung (offene Entscheidung 6). Danach Kurzfassung in `CLAUDE.md`, Begründung in `docs/Architektur.md`, bevor #1455 beginnt.
+Status: **bestätigt (Marco, 01.11.2026)**, Regel 9 in der geänderten Fassung (Modulliste aus Anmeldungen). Kurzfassung in `CLAUDE.md`, Begründung in `docs/Architektur.md` („Module und Verträge des Plugins“).
 
 1. **Registrieren ohne Reihenfolge.** Verträge und Registries des Kerns sind ab der Unit-Initialisierung verfügbar (verzögert erzeugte Singletons in `Atlas.Core.*.Contract`-Units oder einer Modul-Registry), nicht erst nach `Register` des Kerns. Das `Register` eines Add-ons startet nichts, es meldet nur einen Modul-Deskriptor an (Modul-ID, Anzeigename, Mindeststufe für den abgesicherten Start #722, `Start`, `Stop`, `IsActive`). Gestartet und gestoppt wird nur über die `TAtlasFeatureTable` des Kerns.
 2. **Spät ankommende und verschwindende Module.** Der Kern startet ein Modul auch, wenn es nach seinem eigenen Start angemeldet wird (Add-on bei laufender IDE installiert), und stoppt es bei Abmeldung. Wer Beiträge anderer Module anzeigt (Willkommensseite, Hover, Statusfeld, Palette), reagiert auf An- und Abmeldung, statt einmal beim Start zu fragen.
@@ -187,7 +187,7 @@ Scheitert der Pilot an einem Fall ohne Abhilfe, greift Schritt 4: Es bleibt beim
 3. **Einstellungen: entschieden (Marco, 01.11.2026): eine zentrale Stelle im Kern.** Der Kern führt die eine Einstellungsdatei, den einen Optionsdialog, Export, Import, Zurücksetzen und die Prüfung. Jedes Modul bringt bei seiner Anmeldung seinen Teil mit (Schlüssel mit Vorgaben, Schema-Teil, Abschnitt im Dialog, Migrationen) und meldet ihn mit Besitzer an; der Kern speichert und zeigt alles an einer Stelle. Damit braucht eine neue Moduleinstellung keinen Kern-Bau, und fremde Module (#1459) können Einstellungen haben. Werte nicht installierter Module bleiben in der Datei erhalten. Im Pilot darf der Debugger seine Felder noch im Record des Kerns lassen; die Anmeldung kommt mit #1455.
 4. **Texte:** a je Modul eigenes Enum und eigene Tabelle (`TAtlasDebugTextId`), Sprachwechsel über einen Vertrag; b Schlüssel als `string` mit Registry je Modul. Empfehlung: a; der Vertrag für den Sprachwechsel gilt auch für fremde Module.
 5. ~~**`Atlas.IDE.Expert.dproj` im Pilot behalten?**~~ **Entschieden (Marco, 01.11.2026):** Nur auf `release/1.2`; auf `main` und im Pilot wird es durch das Kern-Package ersetzt.
-6. **Regeln 1 bis 9** oben bestätigen oder ändern.
+6. ~~**Regeln 1 bis 9**~~ **Bestätigt (Marco, 01.11.2026)**, Regel 9 geändert (Modulliste aus Anmeldungen, keine eingebauten Namen); eingetragen in `CLAUDE.md` und `docs/Architektur.md`.
 7. ~~**Quellbaum**~~ **Entschieden (Marco, 01.11.2026): package-first, ab dem Pilot.** Jedes Package hat seine Quellen unter `Packages/<Package>/Source/{Core,IDE,UI}/<Feature>`; der Ordner zeigt, zu welchem Package eine Unit gehört, und das Prüfskript liest die Zuordnung daraus. Verschoben wird mit dem Pilot (#1456), vorher nur `contains` aufgeteilt.
 8. ~~**Prüfregeln nur mit `Atlas.IDE.Rules`**~~ **Bestätigt (Marco, 01.11.2026):** Regeln laufen nur mit dem Rules-Package (wie 31.10.). Die Abweichung zu `--check` in der CI ist bewusst in Kauf genommen; der Hinweis je Projekt bleibt.
 

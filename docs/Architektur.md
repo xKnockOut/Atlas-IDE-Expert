@@ -420,6 +420,22 @@ Das Plugin nutzt `Atlas.Common` nicht; es spricht mit dem Server nur über LSP.
 - **Workspace-Edits:** `Atlas.Core.Editor.WorkspacePlan` (ohne Open Tools API, getestet) plant aus einem LSP-Workspace-Edit die Schritte je Datei (Puffer, Formular, Platte, Anlegen, Umbenennen, Löschen); `Atlas.IDE.Editor.WorkspaceEdit` führt den Plan in der IDE aus und protokolliert ihn als einen Satz im Änderungsprotokoll.
 - `Tools/Check-PackageDependencies.ps1` prüft beides: Grundbausteine ohne andere `Atlas.IDE.*`-Units und Feature-Zyklen (Tarjan) in `Atlas.Core` und `Atlas.IDE`.
 
+### Module und Verträge des Plugins (ADR 0017, ab 2.0)
+
+Ab #1455 besteht das Plugin aus `Atlas.IDE.Base`, `Atlas.IDE.Contracts` und Modul-Packages (Debugger, Tracker, Welcome …). Diese Regeln gelten für jeden Code, der dafür entsteht. Begründung: Delphi lädt Known Packages in nicht garantierter Reihenfolge, ruft beim Entladen `Finalize` eines Packages auch dann, wenn ein anderes es noch importiert, und prüft die Binärschnittstelle zwischen Packages zur Laufzeit nicht (ADR 0017, Fortschreibung „Laden, Entladen, Versionen“).
+
+1. **Registrieren ohne Reihenfolge.** Registry und Verträge von Base bestehen ab der Unit-Initialisierung (verzögert erzeugte Singletons), nicht erst nach dem `Register` von Base. Das `Register` eines Moduls meldet nur einen Deskriptor an (ID, Name, Mindeststufe für den abgesicherten Start #722, `Start`, `Stop`, `IsActive`) und startet nichts; gestartet und gestoppt wird nur über die Feature-Tabelle von Base.
+2. **Spät ankommende und verschwindende Module.** Base startet ein Modul auch, wenn es sich nach dem Start von Base anmeldet, und stoppt es beim Abmelden. Wer Beiträge anderer Module zeigt (Willkommensseite, Hover, Statusfeld, Palette), hört auf die Änderungsmeldung der Registry, statt einmal beim Start zu fragen.
+3. **Abmelden ist synchron und vollständig.** Danach erreicht kein Aufruf mehr das Modul: keine Serverantwort, kein `TAtlasMainThread`-Eintrag, kein Timer, kein Ereignis (Vorbild `IAtlasCompletionProvider`, ADR 0006).
+4. **Jede Anmeldung hat einen Besitzer.** Feature-Slot, Einstellungsteil, Seite, Befehl, Menüeintrag, Statusfeldzeile, Editorleiste, Dock-Fenster, Tipp, Kachel, Hover-Beitrag: alles läuft über den `IAtlasModuleScope` des Moduls und trägt dessen ID; beim Abmelden löst Base alles in umgekehrter Reihenfolge.
+5. **Base stoppt zuerst die Module.** Die Finalisierung von Base ruft `StopAll` vor dem Abbau eigener Registries und setzt danach „Base abgebaut“; Module melden sich in ihrer Finalisierung nur ab, solange Base noch läuft.
+6. **Vertragsinhalte.** Über Package-Grenzen gehen Interfaces mit GUID, Records, `TArray<T>` und Methodenreferenzen; keine Typprüfung gegen generische Klassen (`is TList<…>`), keine `ClassName`-Vergleiche. Allgemeine Verträge (Modul, Registry, Scope, Einstellungen) liegen in Base, Verträge zwischen Modulen in `Atlas.IDE.Contracts` (nur Interfaces und Records, kein Code; Base requiret es nicht). Verträge heißen nach der Fähigkeit (`IAtlasIssueSource`), nicht nach Anbieter oder Verbraucher.
+7. **Versions-Handschlag.** Base führt eine Vertragsversion als Konstante und als exportierte Funktion `AtlasCoreContractVersion`; ein Modul prüft sie zuerst in `Register` über `GetProcAddress` und meldet sich bei Abweichung nicht an, sondern zeigt einen Hinweis.
+8. **Modul-Identität.** „Gehört das zu Atlas?“ beantwortet die Modul-Registry von Base (HMODULEs der angemeldeten Module), nie `HInstance` oder `GetModuleName(HInstance)` eines einzelnen Moduls. Ressourcen von Base über `FindClassHInstance` einer Base-Klasse, den Installationsordner über eine Funktion von Base. Ein Hook, der nur das eigene Modul betrifft (`SetWindowsHookEx` mit `HInstance`), bleibt.
+9. **Modulliste aus Anmeldungen.** Base enthält keine eingebauten Modulnamen. Ein Modul ist, was sich anmeldet, Atlas-Modul oder fremdes Modul. Base merkt sich jedes Modul, das sich einmal angemeldet hat (ID, Name, Version), und zeigt fehlende als „nicht installiert“; ihre Einstellungswerte bleiben erhalten.
+
+Dazu gelten: Kein Modul requiret ein anderes, Base verweist auf kein Modul und nicht auf `Atlas.IDE.Contracts`; Einstellungen bleiben zentral in Base, jedes Modul meldet seinen Teil (Schlüssel mit Vorgaben, Schema-Teil, Seite, Umbenennungen) an; Texte liegen je Modul in dessen Package. `Tools/Check-PackageDependencies.ps1` prüft die Package-Grenzen sowie Regel 6 und 8, soweit statisch erkennbar (mit #1455).
+
 ## Threading-Modell
 
 ### Server
