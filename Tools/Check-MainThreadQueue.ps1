@@ -9,7 +9,7 @@
     reiht deshalb nur TAtlasMainThread (Atlas.Core.Diagnostics.MainThread) ein;
     dessen Besitzer-Thread hält die Komposition beim Entladen an.
 
-    Geprüft werden alle Quelltexte unter Packages/Atlas.IDE.Expert/Source/.
+    Geprüft werden alle Quelltexte unter Packages/Atlas.IDE.*/Source/.
     Server und Atlas.Common sind ausgenommen; dort liegt kein entladbarer Code.
     Threads mit eigener Lebensdauer reihen an sich selbst ein
     (TThread.Queue(Self, …) bzw. Instanz-Queue mit RemoveQueuedEvents) und sind
@@ -37,7 +37,10 @@ $ErrorActionPreference = 'Stop'
 # "// lsp-ignore: forbidden-symbol" in derselben Zeile.
 $Exempt = '//\s*(mainthread-ok|lsp-ignore:[^\r\n]*\bforbidden-symbol\b)'
 
-$SourceDirs = @('Packages/Atlas.IDE.Expert/Source')
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
+$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+    Where-Object { Test-Path (Join-Path $_.FullName 'Source') } |
+    ForEach-Object { "Packages/$($_.Name)/Source" })
 
 function Remove-PascalNoise([string] $Text) {
     # Ersetzt Kommentare, Direktiven und Strings durch Leerzeichen und behält

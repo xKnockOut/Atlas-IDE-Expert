@@ -707,7 +707,7 @@ elseif (Test-Path $PluginSource) {
     foreach ($name in @($map.Rows.Keys | Sort-Object)) {
         $row = $map.Rows[$name]
         if (-not $pluginUnits.ContainsKey($name)) {
-            $violations += "${AssignmentFile}:$($row.Line): $name gibt es in keinem Plugin-Package mehr (Packages/Atlas.IDE.*/Source); Zeile streichen oder nachziehen"
+            $violations += "${AssignmentFile}:$($row.Line): $name gibt es nicht mehr in den Plugin-Packages (Packages/Atlas.IDE.*/Source); Zeile streichen oder nachziehen"
             continue
         }
         $actual = $pluginUnits[$name].File
