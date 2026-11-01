@@ -167,6 +167,8 @@ begin
   Assert.IsTrue(TSystemIntrinsics.IsKnown('NativeInt'));
   Assert.IsTrue(TSystemIntrinsics.IsKnown('Cardinal'));
   Assert.IsFalse(TSystemIntrinsics.IsKnown('Unbekannt'));
+  // CompilerVersion steht in System.pas nur im Kommentar; der Compiler setzt sie.
+  Assert.IsTrue(TSystemIntrinsics.Find('CompilerVersion')[0].Kind = TIndexSymbolKind.Constant);
   // Typen des Compilers ohne Deklaration in System.pas und Fail der alten object-Syntax (#1382).
   Assert.IsTrue(TSystemIntrinsics.IsType('TextFile'));
   Assert.IsTrue(TSystemIntrinsics.IsType('Text'));

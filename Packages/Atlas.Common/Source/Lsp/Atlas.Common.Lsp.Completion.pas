@@ -206,7 +206,9 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-      const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex); overload;
     destructor Destroy; override;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>CompletionList für eine Momentaufnahme außerhalb des Dokumentspeichers, etwa mit eingefügtem
@@ -228,7 +230,10 @@ type
       const APosition: TTextPosition): string; static;
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition;
-      AMatching: TCompletionMatching = TCompletionMatching.Fuzzy): TCompletionItems; overload; static;
+      AMatching: TCompletionMatching): TCompletionItems; overload; static;
+    /// <summary>Wie oben mit AMatching = Fuzzy.</summary>
+    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition): TCompletionItems; overload; static;
     /// <summary>Wie oben, mit Dokumenttext für Postfix-Vorlagen (#188).</summary>
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
@@ -426,7 +431,10 @@ type
     /// samt Fundorten der Verweise und documentationText (#654). AReadText liest andere Dateien
     /// für &lt;inheritdoc/&gt;. Der Aufrufer übernimmt das Objekt.</summary>
     class function Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
-      const APosition: TTextPosition; const AReadText: TCompletionReadText = nil): TJSONObject; static;
+      const APosition: TTextPosition; const AReadText: TCompletionReadText): TJSONObject; overload; static;
+    /// <summary>Wie oben mit AReadText = nil.</summary>
+    class function Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
+      const APosition: TTextPosition): TJSONObject; overload; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Liest Dateien für completionItem/resolve; ohne Zuweisung keine Details.</summary>
     property ReadText: TCompletionReadText read FReadText write FReadText;
@@ -783,6 +791,11 @@ end;
 procedure TLspCompletion.SetNamespaces(const AValue: TArray<string>);
 begin
   TLspNamespaces.Write(FNamespaces, AValue);
+end;
+
+constructor TLspCompletion.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+begin
+  Create(AStore, AIndex, nil);
 end;
 
 constructor TLspCompletion.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -1266,6 +1279,12 @@ class function TLspCompletion.ExpectedFullType(AResolver: TNameResolver; ATree: 
   const AFileName: string; const APosition: TTextPosition): string;
 begin
   Result := ExpectedTypeOf(AResolver, ATree, AFileName, APosition, True);
+end;
+
+class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition): TCompletionItems;
+begin
+  Result := Collect(AResolver, AIndex, ATree, AFileName, APosition, TCompletionMatching.Fuzzy);
 end;
 
 class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -2779,6 +2798,12 @@ begin
     if IndexStr(Word, Result) < 0 then
       Result := Result + [Word];
   end;
+end;
+
+class function TLspCompletion.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
+  const APosition: TTextPosition): TJSONObject;
+begin
+  Result := Details(AIndex, AFileName, AText, APosition, nil);
 end;
 
 class function TLspCompletion.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;

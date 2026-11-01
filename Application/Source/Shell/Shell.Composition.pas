@@ -89,7 +89,9 @@ uses
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
   Atlas.Common.Lsp.MethodOrder,
+  Atlas.Common.Projects.Paths,
   Atlas.Common.Editing.SuggestConst,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.VarBlock,
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Lsp.OverrideMarks,
@@ -432,6 +434,8 @@ type
     function GitStateOf(const AFileName: string): string;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
+    /// <summary>Dateien der Projektprüfung: ProjectSourceFiles ohne Testunits, wenn excludeTests gilt.</summary>
+    function CheckSourceFiles: TArray<string>;
     /// <summary>Befehl „Eigenschaftsregeln anwenden“ (#309): WorkspaceEdit über die Formulardateien.</summary>
     function ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Signatur ändern“ (#100): APrepare = Parameter und Einschränkungen, sonst das WorkspaceEdit.</summary>
@@ -1040,7 +1044,7 @@ begin
     end);
   FSyntaxDiagnostics.Attach;
   FIndexRecheck := TWorkspaceCheckIndexGate.Create;
-  FPullDiagnostics := TLspPullDiagnostics.Create(FDocuments, FSyntaxDiagnostics, FTransport, ProjectSourceFiles,
+  FPullDiagnostics := TLspPullDiagnostics.Create(FDocuments, FSyntaxDiagnostics, FTransport, CheckSourceFiles,
     function(const AFileName: string; out AStamp: Int64): Boolean
     begin
       Result := TFile.Exists(AFileName);
@@ -3819,6 +3823,45 @@ begin
     Result := Result + [TDocumentUris.ToPath(Document.Uri)];
 end;
 
+function TServerComposition.CheckSourceFiles: TArray<string>;
+var
+  Workspace: TShellWorkspace;
+  Document: ITextDocument;
+  FileName: string;
+  Indexed: TUnitIndex;
+  Seen: TDictionary<string, Boolean>;
+begin
+  // Wie ProjectSourceFiles, aber mit excludeTests ohne Testunits: Sonst stehen sie in der Warteschlange der
+  // Projektprüfung, werden gezählt und eingelesen und erst in der Regel-Engine übersprungen. Ob eine Unit eine
+  // Testunit ist, sagt ihr uses im Index; nicht indizierte Dateien bleiben drin (die Engine entscheidet dann).
+  Result := nil;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      for Workspace in FWorkspaces do
+        for FileName in Workspace.ProjectFiles do
+        begin
+          if Seen.ContainsKey(AnsiLowerCase(FileName)) then
+            Continue;
+          Seen.Add(AnsiLowerCase(FileName), True);
+          if Workspace.Configuration.Settings.ExcludeTests and (FIndex <> nil) and
+            FIndex.FindFile(FileName, Indexed) and
+            TUsesClauses.UsesTestFramework(Indexed.InterfaceUses + Indexed.ImplementationUses) then
+            Continue;
+          Result := Result + [FileName];
+        end;
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+  finally
+    Seen.Free;
+  end;
+  // Geöffnete Dateien außerhalb des Projekts zählen mit; geöffnete Testunits prüft der Editor ohnehin.
+  for Document in FDocuments.Documents do
+    Result := Result + [TDocumentUris.ToPath(Document.Uri)];
+end;
+
 function TServerComposition.ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
 var
   Uri, Scope, FileName: string;
@@ -6320,7 +6363,7 @@ end;
 
 function TServerComposition.QuerySource(out ASource: TQuerySource): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace, mCandidate: TShellWorkspace;
   mFiles, mNamespaces: TArray<string>;
   mRoot: string;
   mReferences: TReferenceSettings;
@@ -6329,11 +6372,27 @@ begin
   mFiles := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
-    mWorkspace := TShellWorkspace.Choose(nil, FWorkspaces);
+    // Projektgruppe: Choose liefert nur bei genau einem Arbeitsbereich etwas; sonst hieß es "Kein Projekt
+    // geladen". Wurzel, Namensräume und Einstellungen vom in der IDE aktiven Projekt, sonst vom ausgewählten,
+    // sonst vom ersten.
+    mWorkspace := nil;
+    for mCandidate in FWorkspaces do
+      if (mCandidate.ProjectFileName <> '') and SameText(mCandidate.ProjectFileName, FIdeProject.ActiveProject) then
+        mWorkspace := mCandidate;
+    if mWorkspace = nil then
+      for mCandidate in FWorkspaces do
+        if (mWorkspace = nil) and IsSelectedProject(mCandidate) then
+          mWorkspace := mCandidate;
+    if (mWorkspace = nil) and (FWorkspaces.Count > 0) then
+      mWorkspace := FWorkspaces[0];
     if mWorkspace = nil then
       Exit(False);
-    mRoot := mWorkspace.Root;
     mNamespaces := mWorkspace.Namespaces;
+    // Wurzel für die Spalte "Datei": gemeinsamer Ordner aller Projekte der Gruppe (bei Atlas der Stamm des
+    // Repositorys). Mit der Wurzel des aktiven Projekts stand für jede Unit der anderen Projekte der volle Pfad da.
+    mRoot := mWorkspace.Root;
+    for mCandidate in FWorkspaces do
+      mRoot := TProjectPaths.CommonFolder(mRoot, mCandidate.Root);
     mReferences := mWorkspace.Configuration.Settings.References;
     // Projektgruppe (#648): die Dateien aller geladenen Projekte.
     for mWorkspace in FWorkspaces do

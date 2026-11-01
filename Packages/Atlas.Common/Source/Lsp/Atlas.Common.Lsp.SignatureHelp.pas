@@ -96,7 +96,10 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: THoverReadText;
-      const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+      const AReadText: THoverReadText); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>signatureHelpProvider mit ( und , als Auslöser.</summary>
     class function Capability: TJSONObject; static;
@@ -194,6 +197,12 @@ end;
 procedure TLspSignatureHelp.SetNamespaces(const AValue: TArray<string>);
 begin
   TLspNamespaces.Write(FNamespaces, AValue);
+end;
+
+constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: THoverReadText);
+begin
+  Create(AStore, AIndex, AReadText, nil);
 end;
 
 constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;

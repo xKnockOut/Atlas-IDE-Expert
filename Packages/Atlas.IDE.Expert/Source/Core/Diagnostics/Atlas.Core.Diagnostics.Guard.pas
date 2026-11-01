@@ -85,7 +85,11 @@ type
     /// <summary>So lange wartet Add auf einen anderen Prozess, der gerade schreibt; danach schreibt es trotzdem.
     /// </summary>
     const LockTimeoutMs = 2000;
-    constructor Create(const AFolder: string; AMaxBytes: Int64 = 1024 * 1024; AMaxFiles: Integer = 5);
+    constructor Create(const AFolder: string; AMaxBytes: Int64; AMaxFiles: Integer); overload;
+    /// <summary>Wie oben mit AMaxFiles = 5.</summary>
+    constructor Create(const AFolder: string; AMaxBytes: Int64); overload;
+    /// <summary>Wie oben mit AMaxBytes = 1 MB und AMaxFiles = 5.</summary>
+    constructor Create(const AFolder: string); overload;
     destructor Destroy; override;
     /// <summary>Zeile mit Zeitstempel anhängen. Wirft nie; ein Schreibfehler zählt die Zeile als verloren und meldet
     /// sich über OnError.</summary>
@@ -134,7 +138,9 @@ type
     /// <summary>Zählt einen Fehler zu AStamps; True, wenn es Limit Fehler im Zeitfenster sind.</summary>
     function Count(var AStamps: TArray<TDateTime>): Boolean;
   public
-    constructor Create(const AClock: TFunc<TDateTime> = nil);
+    constructor Create(const AClock: TFunc<TDateTime>); overload;
+    /// <summary>Wie oben mit AClock = nil.</summary>
+    constructor Create; overload;
     destructor Destroy; override;
     /// <summary>Fehler zählen; True, wenn die Sicherung dadurch gerade auslöst.</summary>
     function Failed(AFeature: TAtlasFeature): Boolean; overload;
@@ -230,6 +236,16 @@ uses
   Atlas.Core.Product.Version;
 
 { TAtlasRotatingLog }
+
+constructor TAtlasRotatingLog.Create(const AFolder: string; AMaxBytes: Int64);
+begin
+  Create(AFolder, AMaxBytes, 5);
+end;
+
+constructor TAtlasRotatingLog.Create(const AFolder: string);
+begin
+  Create(AFolder, 1024 * 1024, 5);
+end;
 
 constructor TAtlasRotatingLog.Create(const AFolder: string; AMaxBytes: Int64; AMaxFiles: Integer);
 begin
@@ -380,6 +396,11 @@ begin
 end;
 
 { TAtlasFuse }
+
+constructor TAtlasFuse.Create;
+begin
+  Create(nil);
+end;
 
 constructor TAtlasFuse.Create(const AClock: TFunc<TDateTime>);
 begin

@@ -38,7 +38,9 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-      const AEnsureUnit: TEnsureUnitFunc = nil);
+      const AEnsureUnit: TEnsureUnitFunc); overload;
+    /// <summary>Wie oben mit AEnsureUnit = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Sprungziele für das Symbol bzw. das inherited an APosition.</summary>
     class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -240,6 +242,11 @@ end;
 procedure TLspImplementations.SetNamespaces(const AValue: TArray<string>);
 begin
   TLspNamespaces.Write(FNamespaces, AValue);
+end;
+
+constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+begin
+  Create(AStore, AIndex, nil);
 end;
 
 constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;

@@ -52,9 +52,14 @@ type
     class function TryParseFailOn(const AText: string; out AFailOn: TFailOn): Boolean; static;
     /// <summary>ASourceRoot: Quellwurzel für SARIF; '' = Pfade aus TCheckedFile.Path ohne uriBaseId.</summary>
     class function Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
-      const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string = ''): string; static;
+      const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string): string; overload; static;
+    /// <summary>Wie oben ohne Quellwurzel (ASourceRoot = '').</summary>
+    class function Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
+      const ARules: TArray<TRuleDescriptor>): string; overload; static;
     /// <summary>1, wenn ein Treffer AFailOn erreicht (Standard: ein Fehler), sonst 0.</summary>
-    class function ExitCode(const AFiles: TArray<TCheckedFile>; AFailOn: TFailOn = TFailOn.Error): Integer; static;
+    class function ExitCode(const AFiles: TArray<TCheckedFile>; AFailOn: TFailOn): Integer; overload; static;
+    /// <summary>Wie oben mit AFailOn = Error.</summary>
+    class function ExitCode(const AFiles: TArray<TCheckedFile>): Integer; overload; static;
     /// <summary>Nächster Ordner ab AStart aufwärts, der ".git" enthält; '' ohne.</summary>
     class function FindGitRoot(const AStart: string; const AExists: TPathExists): string; static;
     /// <summary>
@@ -511,6 +516,12 @@ begin
 end;
 
 class function TFindingsOutput.Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
+  const ARules: TArray<TRuleDescriptor>): string;
+begin
+  Result := Render(AFiles, AFormat, ARules, '');
+end;
+
+class function TFindingsOutput.Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
   const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string): string;
 begin
   case AFormat of
@@ -521,6 +532,11 @@ begin
   else
     Result := RenderText(AFiles);
   end;
+end;
+
+class function TFindingsOutput.ExitCode(const AFiles: TArray<TCheckedFile>): Integer;
+begin
+  Result := ExitCode(AFiles, TFailOn.Error);
 end;
 
 class function TFindingsOutput.ExitCode(const AFiles: TArray<TCheckedFile>; AFailOn: TFailOn): Integer;

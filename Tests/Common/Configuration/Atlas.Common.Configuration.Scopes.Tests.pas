@@ -76,8 +76,9 @@ begin
   for GlobalPath in GlobalSettingPaths do
     for ProjectPath in ProjectSettingPaths do
     begin
-      // rules und tasks (#900; x-scope "both") stehen absichtlich in beiden Listen.
-      if (GlobalPath = ProjectPath) and ((GlobalPath = 'rules') or (GlobalPath = 'tasks')) then
+      // rules, tasks (#900) und excludeTests (x-scope "both") stehen absichtlich in beiden Listen.
+      if (GlobalPath = ProjectPath) and ((GlobalPath = 'rules') or (GlobalPath = 'tasks') or
+        (GlobalPath = 'excludeTests')) then
         Continue;
       Assert.AreNotEqual(GlobalPath, ProjectPath);
       // Ein ganzes Objekt an einem Ort und eines seiner Glieder am anderen wäre widersprüchlich.

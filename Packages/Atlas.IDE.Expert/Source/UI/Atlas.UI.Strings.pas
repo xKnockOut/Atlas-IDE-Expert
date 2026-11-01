@@ -31,7 +31,7 @@ type
     ProblemsConfidence, ConfidenceHigh, ConfidenceMedium, ConfidenceLow,
     SeverityError, SeverityWarning, SeverityInformation, SeverityHint,
     SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter,
-    HelpInsightIdeOff, HelpInsightIdeOn,
+    HelpInsightIdeOff, HelpInsightIdeOn, TooltipWatchesIdeOff, TooltipWatchesIdeOn,
     ReloadDiffTitle,
     AccessCompletion, AccessSignature, AccessHover, AccessPosition, AccessParameter,
     ProjectSettingsMenu, ProjectSettingsTitle, ProjectSettingsFromProject, ProjectSettingsDefault,
@@ -1217,7 +1217,7 @@ type
     StatusBarProjectDone, StatusBarProjectPaused,
     // Code-Abfragen (#1351): Optionsseite, Fenster „Atlas-Abfrage“.
     SettingsQuery, QueryCaption, QueryCommand, QueryViewMenu, QueryRun,
-    QueryCancel, QuerySaveRule, QueryCopyCsv, QuerySavedHint, QueryInputHint,
+    QueryCancel, QuerySaveRule, QueryCopyCsv, QuerySavedHint, QueryInputHint, QueryHelp, QueryHelpIntro, QueryHelpEntities,
     QueryRunning, QueryStatus, QueryStatusTruncated, QueryStatusInferred, QueryError,
     QuerySuggestion, QueryNoProject, QueryNoServer, QueryFailed, QueryDisabled,
     QueryCancelled, QueryInferred, QueryCopied, QueryRuleTitle, QueryRuleName,
@@ -1354,6 +1354,10 @@ const
      'Atlas zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem ' +
        'nächsten Start von Delphi.',
      'Atlas hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas zeigt Werte beim Debuggen im eigenen Tooltip und hat die Ausdrucksauswertung im Kurzhinweis der IDE ' +
+       'abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas hat die Ausdrucksauswertung im Kurzhinweis der IDE wieder eingeschaltet; wirkt nach dem nächsten ' +
+       'Start von Delphi.',
      'Atlas: Unterschied in %s (- Editor, + Platte):',
      'Atlas Vervollständigung', 'Atlas Parameterhilfe', 'Atlas Tooltip', '%d von %d', 'Parameter %d: %s',
      'Projekt-Einstellungen (atlas.json)…', 'Atlas-Einstellungen des Projekts', 'aus dem Projekt', 'Standard: %s',
@@ -3664,7 +3668,13 @@ const
      'Atlas: Exceptions', 'Filtern nach Klasse, Meldung, Ort', 'Zur Stelle springen', 'Klasse künftig ignorieren',
      'Bei dieser Klasse wieder anhalten', '%s künftig ignorieren', 'Bei %s wieder anhalten',
      'Kopieren (Klasse, Meldung, Aufrufstapel)', 'Verlauf leeren', 'Zeit', 'Klasse', 'Meldung', 'Anzahl', 'Ort',
-     'Thread', 'Noch keine Exception in dieser Debug-Sitzung.', 'ignoriert', 'Hauptthread', 'Alle Klassen',
+     'Thread', 'Noch keine Exception in dieser Debug-Sitzung.'#13#10#13#10 +
+     'Hier sammelt Atlas jede Exception, die der Debugger beim Lauf Ihres Programms meldet, auch abgefangene. ' +
+     'Gleiche Exceptions (Klasse, Meldung, Ort) stehen in einer Zeile mit Anzahl.'#13#10#13#10 +
+     'Oben filtern Sie nach Text oder Klasse. Ein Doppelklick springt zur Stelle im Quelltext, darunter steht der ' +
+     'Aufrufstapel der gewählten Exception. Über das Kontextmenü ignorieren Sie eine Klasse künftig (Atlas setzt ' +
+     'dann still fort), lassen den Debugger bei ihr wieder anhalten, kopieren Klasse, Meldung und Aufrufstapel oder ' +
+     'leeren den Verlauf.', 'ignoriert', 'Hauptthread', 'Alle Klassen',
      '%d Einträge, %d Exceptions in dieser Sitzung', 'Fehler des Betriebssystems', 'Exception',
      'Atlas: %s wird künftig ignoriert; Atlas setzt bei dieser Klasse still fort.',
      'Atlas: Bei %s hält der Debugger wieder an.', 'Atlas: Quelltext %s nicht gefunden.',
@@ -4350,6 +4360,15 @@ const
      'Als CSV kopieren',
      'Gespeicherte Abfragen (queries in atlas.json)',
      'z. B. classes where inherits TForm and methods > 40 order by methods desc',
+     'Hilfe',
+     'So ist eine Abfrage aufgebaut:'#13#10'  <Menge> where <Bedingung> [order by <Feld> [asc|desc]] [limit n]'#13#10#13#10 +
+       'Beispiele:'#13#10'  classes where inherits TForm and methods > 40 order by methods desc limit 5'#13#10 +
+       '  methods where params > 3 or complexity > 10 and callers = 0'#13#10'  units where uses System.SysUtils'#13#10 +
+       '  classes where name like ''T*Frame'''#13#10#13#10 +
+       'Bedingungen verknüpfen and, or und not; Vergleiche: = != < <= > >= like (mit * als Platzhalter).'#13#10 +
+       'Strg+Leer zeigt passende Mengen, Felder und Namen. Enter führt aus, Doppelklick auf einen Treffer springt ' +
+       'hin. „Als Regel speichern …“ macht jeden Treffer zum Befund im Editor.',
+     'Mengen und ihre Felder:',
      'Abfrage läuft …',
      '%d Treffer in %d ms',
      '%d von %d Treffern in %d ms',
@@ -4557,6 +4576,10 @@ const
      'Atlas shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after ' +
        'the next start of Delphi.',
      'Atlas switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.',
+     'Atlas shows values while debugging in its own tooltip and switched off the IDE''s tooltip expression ' +
+       'evaluation; takes effect after the next start of Delphi.',
+     'Atlas switched the IDE''s tooltip expression evaluation back on; takes effect after the next start of ' +
+       'Delphi.',
      'Atlas: difference in %s (- editor, + disk):',
      'Atlas completion', 'Atlas parameter info', 'Atlas tooltip', '%d of %d', 'Parameter %d: %s',
      'Project settings (atlas.json)…', 'Atlas project settings', 'from the project', 'Default: %s',
@@ -6798,7 +6821,13 @@ const
      'Atlas: Exceptions', 'Filter by class, message, location', 'Go to location', 'Ignore class from now on',
      'Stop again on this class', 'Ignore %s from now on', 'Stop again on %s', 'Copy (class, message, call stack)',
      'Clear history', 'Time', 'Class', 'Message', 'Count', 'Location', 'Thread',
-     'No exception in this debug session yet.', 'ignored', 'Main thread', 'All classes',
+     'No exception in this debug session yet.'#13#10#13#10 +
+     'Atlas collects every exception the debugger reports while your program runs, including handled ones. ' +
+     'Identical exceptions (class, message, location) share one row with a count.'#13#10#13#10 +
+     'Filter by text or class at the top. A double-click goes to the source location; below, you see the call stack ' +
+     'of the selected exception. The context menu ignores a class from now on (Atlas then continues silently), ' +
+     'stops on it again, copies class, message and call stack, or clears the history.', 'ignored', 'Main thread',
+     'All classes',
      '%d entries, %d exceptions in this session', 'Operating system fault', 'Exception',
      'Atlas: %s is ignored from now on; Atlas continues silently on this class.',
      'Atlas: The debugger stops on %s again.', 'Atlas: Source %s not found.',
@@ -7471,6 +7500,15 @@ const
      'Copy as CSV',
      'Saved queries (queries in atlas.json)',
      'e.g. classes where inherits TForm and methods > 40 order by methods desc',
+     'Help',
+     'How a query is built:'#13#10'  <set> where <condition> [order by <field> [asc|desc]] [limit n]'#13#10#13#10 +
+       'Examples:'#13#10'  classes where inherits TForm and methods > 40 order by methods desc limit 5'#13#10 +
+       '  methods where params > 3 or complexity > 10 and callers = 0'#13#10'  units where uses System.SysUtils'#13#10 +
+       '  classes where name like ''T*Frame'''#13#10#13#10 +
+       'Combine conditions with and, or and not; comparisons: = != < <= > >= like (* as wildcard).'#13#10 +
+       'Ctrl+Space shows matching sets, fields and names. Enter runs the query, double-clicking a match jumps ' +
+       'there. “Save as rule …” turns every match into a finding in the editor.',
+     'Sets and their fields:',
      'Running query …',
      '%d matches in %d ms',
      '%d of %d matches in %d ms',

@@ -44,6 +44,8 @@ type
     [Test]
     procedure ColumnsFromQueryAndRequest;
     [Test]
+    procedure PathOutsideRootStaysReadable;
+    [Test]
     procedure ScopeExcludesLibraryAndOtherFiles;
     [Test]
     procedure CancelledReportsError;
@@ -442,6 +444,19 @@ begin
   Assert.AreEqual('C:\P\Data.Kunden.pas', mResult.Rows[0].FileName);
   Assert.AreEqual('Data.Kunden.pas', mResult.Rows[0].Path);
   Assert.AreEqual('methods', mResult.Entity);
+end;
+
+procedure TQueryEngineTests.PathOutsideRootStaysReadable;
+var
+  mSource: TQuerySource;
+  mResult: TQueryResult;
+begin
+  // Außerhalb der Wurzel bleibt der Pfad, wie er ist, statt "C:/P/Data.Kunden.pas".
+  mSource := QueryTestSource;
+  mSource.Root := 'C:\Anders';
+  mResult := TCodeQueryEngine.Run(mSource, TQueryRequest.Create('methods where complexity > 3 order by lines', 0),
+    nil);
+  Assert.AreEqual('C:\P\Data.Kunden.pas', mResult.Rows[0].Path);
 end;
 
 procedure TQueryEngineTests.ScopeExcludesLibraryAndOtherFiles;

@@ -49,13 +49,17 @@ type
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
       const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
-    constructor Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal = DefaultTimeoutMs);
+    constructor Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal); overload;
+    /// <summary>Wie oben mit ATimeoutMs = DefaultTimeoutMs.</summary>
+    constructor Create(const ASession: TAtlasSessionFunc); overload;
     /// <summary>LSP-CompletionItemKind → Art des Eintrags.</summary>
     class function KindOf(ALspKind: Integer): TAtlasItemKind; static;
     /// <summary>Ein CompletionItem des LSP; ARank ist seine Stelle in der Antwort.</summary>
     class function ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem; static;
     /// <summary>Antwort auf textDocument/completion: CompletionList, CompletionItem[] oder null.</summary>
-    class function ItemsFromLsp(AResponse: TJSONValue; AFirstRank: Integer = 0): TAtlasCompletionItems; static;
+    class function ItemsFromLsp(AResponse: TJSONValue; AFirstRank: Integer): TAtlasCompletionItems; overload; static;
+    /// <summary>Wie oben mit AFirstRank = 0.</summary>
+    class function ItemsFromLsp(AResponse: TJSONValue): TAtlasCompletionItems; overload; static;
     /// <summary>AItems ohne Code-Vorlagen des Servers (Einträge mit Snippet, #51); Postfix-Vorlagen bleiben.</summary>
     class function WithoutSnippets(const AItems: TAtlasCompletionItems): TAtlasCompletionItems; static;
     /// <summary>Hinweis bei unvollständigem Code (#457) aus "syntaxNotice" der CompletionList; Sure ohne.</summary>
@@ -87,6 +91,11 @@ uses
   Atlas.Core.Lsp.Client;
 
 { TAtlasServerCompletionProvider }
+
+constructor TAtlasServerCompletionProvider.Create(const ASession: TAtlasSessionFunc);
+begin
+  Create(ASession, DefaultTimeoutMs);
+end;
 
 constructor TAtlasServerCompletionProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);
 begin
@@ -428,6 +437,11 @@ begin
       Result := Result + [Item]
     else if Item.IsAction or (Item.MethodRef <> '') or (Item.ExceptionGroup <> '') then
       Result := Result + [Plain(Item)];
+end;
+
+class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue): TAtlasCompletionItems;
+begin
+  Result := ItemsFromLsp(AResponse, 0);
 end;
 
 class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue;

@@ -3695,6 +3695,7 @@ type
 var
   Tokens: TTokens;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName, LineBreak: string;
   Used, Lines: TArray<string>;
   Found: TArray<TModification>;
@@ -3921,9 +3922,10 @@ begin
   Lines := TTextLines.SplitLines(AContext.Text);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
   Found := nil;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(AContext);
+  Resolver := TRuleDerived.Resolver(mCache, AContext);
   try
-    Resolver.Namespaces := AContext.Namespaces;
     Visit(AContext.Tree.Root);
     for Item in Found do
     begin
@@ -3941,7 +3943,6 @@ begin
         [Subject(Item.Field)]), TRuleConfidence.High, Fixes);
     end;
   finally
-    Resolver.Free;
   end;
 end;
 

@@ -40,7 +40,11 @@ type
     procedure LogRequest(const ARequest: TDiagnosticRequest);
     procedure LogStart(const AVersion: string; const AProcess: TDiagnosticProcess);
     procedure LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
-      const AException: string = ''; const AStack: string = '');
+      const AException, AStack: string); overload;
+    procedure LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
+      const AException: string); overload;
+    procedure LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer;
+      const AProcess: TDiagnosticProcess); overload;
     procedure LogEvent(const AText: string);
     procedure Configure(AEnabled: Boolean);
     function Enabled: Boolean;
@@ -163,6 +167,18 @@ procedure TDiagnosticLog.LogStart(const AVersion: string; const AProcess: TDiagn
 begin
   Emit(Format('%s run start version %s mem %s threads %d', [TimeText(Now), AVersion,
     MegaBytes(AProcess.MemoryBytes), AProcess.Threads]));
+end;
+
+procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
+  const AException: string);
+begin
+  LogEnd(AReason, AExitCode, AProcess, AException, '');
+end;
+
+procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer;
+  const AProcess: TDiagnosticProcess);
+begin
+  LogEnd(AReason, AExitCode, AProcess, '', '');
 end;
 
 procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;

@@ -2197,7 +2197,7 @@ begin
   Result.QuickBookmarksImportIde := True;
   Result.NextBookmarkKey := 0;
   Result.PreviousBookmarkKey := 0;
-  Result.StickyScroll := False;
+  Result.StickyScroll := True;
   Result.StickyScrollMaxLines := 3;
   Result.StickyScrollTypes := True;
   Result.StickyScrollRoutines := True;
@@ -2208,9 +2208,10 @@ begin
   Result.StickyScrollWith := False;
   Result.StickyScrollBlockMinLines := 25;
   Result.Minimap := False;
-  Result.MinimapRender := 'blocks';
+  Result.MinimapRender := 'characters';
   Result.MinimapWidth := 120;
-  Result.MinimapScale := 1;
+  // 2: 4 Pixel je Zeile, Zeichen lesbar wie in VS Code (bei 1 kaum erkennbar).
+  Result.MinimapScale := 2;
   Result.MinimapMaxColumn := 120;
   Result.MinimapSide := 'right';
   Result.MinimapShowSlider := 'always';
@@ -2639,7 +2640,7 @@ begin
   ExpressionTypeKey := EnsureRange(ExpressionTypeKey, 0, $FFFF);
   MethodPlacement := Choice(MethodPlacement, AtlasMethodPlacements);
   SafeDeleteKey := EnsureRange(SafeDeleteKey, 0, $FFFF);
-  MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
+  MinimapRender := Choice(MinimapRender, ['characters', 'blocks']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
   MinimapMaxColumn := EnsureRange(MinimapMaxColumn, MinMinimapColumn, MaxMinimapColumn);

@@ -113,6 +113,7 @@ procedure RegisterTypeDeclarationRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -671,6 +672,7 @@ var
   procedure CheckNumbers;
   var
     Resolver: TNameResolver;
+    mCache: IRuleDerivedCache;
     Values: TConstantValues;
     Keys: TArray<string>;
     Known: TArray<Boolean>;
@@ -681,9 +683,10 @@ var
   begin
     SetLength(Keys, Methods.Count);
     SetLength(Known, Methods.Count);
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    mCache := TRuleDerived.Open(AContext);
+    Resolver := TRuleDerived.Resolver(mCache, AContext);
     try
-      Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
       Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
       try
@@ -721,7 +724,6 @@ var
       end;
     finally
       Resolver.UnpinTree;
-      Resolver.Free;
     end;
   end;
 

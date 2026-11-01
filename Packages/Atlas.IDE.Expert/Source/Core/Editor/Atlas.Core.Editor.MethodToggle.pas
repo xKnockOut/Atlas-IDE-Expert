@@ -47,8 +47,10 @@ type
   public
     /// <summary>Alle Deklarationen und Implementierungen in AText, in Textreihenfolge. ADefines: gesetzte Symbole
     /// der bedingten Übersetzung; nil = Delphi für Win32 (TTextDefines.Predefined).</summary>
-    class function Places(const AText: string; const ADefines: TArray<string> = nil): TArray<TAtlasMethodPlace>;
-      static;
+    class function Places(const AText: string; const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
+      overload; static;
+    /// <summary>Wie oben für Delphi für Win32 (ADefines = nil).</summary>
+    class function Places(const AText: string): TArray<TAtlasMethodPlace>; overload; static;
     /// <summary>Stelle unter dem Cursor (Zeile, Zeichen); False außerhalb jedes Kopfs und Rumpfs.</summary>
     class function PlaceAt(const APlaces: TArray<TAtlasMethodPlace>; ALine, ACharacter: Integer;
       out APlace: TAtlasMethodPlace): Boolean; static;
@@ -57,7 +59,10 @@ type
       out ATarget: TAtlasMethodPlace): Boolean; static;
     /// <summary>Gegenstück der Methode am Cursor: Deklaration ⇄ Implementierung; ADefines wie bei Places.</summary>
     class function Counterpart(const AText: string; ALine, ACharacter: Integer; out ATarget: TAtlasMethodPlace;
-      const ADefines: TArray<string> = nil): Boolean; static;
+      const ADefines: TArray<string>): Boolean; overload; static;
+    /// <summary>Wie oben für Delphi für Win32 (ADefines = nil).</summary>
+    class function Counterpart(const AText: string; ALine, ACharacter: Integer;
+      out ATarget: TAtlasMethodPlace): Boolean; overload; static;
   end;
 
 implementation
@@ -927,6 +932,11 @@ end;
 
 { TAtlasMethodToggle }
 
+class function TAtlasMethodToggle.Places(const AText: string): TArray<TAtlasMethodPlace>;
+begin
+  Result := Places(AText, nil);
+end;
+
 class function TAtlasMethodToggle.Places(const AText: string;
   const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
 var
@@ -991,6 +1001,12 @@ begin
       ATarget := Place;
       Exit;
     end;
+end;
+
+class function TAtlasMethodToggle.Counterpart(const AText: string; ALine, ACharacter: Integer;
+  out ATarget: TAtlasMethodPlace): Boolean;
+begin
+  Result := Counterpart(AText, ALine, ACharacter, ATarget, nil);
 end;
 
 class function TAtlasMethodToggle.Counterpart(const AText: string; ALine, ACharacter: Integer;

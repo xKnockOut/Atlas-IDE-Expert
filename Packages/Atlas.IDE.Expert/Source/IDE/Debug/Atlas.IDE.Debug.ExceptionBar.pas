@@ -44,6 +44,7 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionBanner,
+  Atlas.Core.Debug.ExceptionDialog,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Exceptions,
@@ -226,6 +227,13 @@ begin
     FKeys := TKeys.Create(KeyPriority);
   if FHandler = 0 then
     FHandler := TAtlasIdeDebugExceptions.AddExceptionHandler(ExceptionTaken);
+  // Ersetzt die Leiste den Dialog, darf er gar nicht erst sichtbar werden (kein Aufblitzen).
+  TAtlasIdeDebugExceptions.SetDialogMayHide(
+    function(const AScan: TAtlasDebugDialogScan): Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.DebugExceptionBanner and
+        (TAtlasDebugBannerRules.Mode(True, KnownVersion, FIdeDialog, AScan) = TAtlasDebugBannerMode.Replace);
+    end);
   if FListener = nil then
   begin
     FListener := TListener.Create;
@@ -249,6 +257,7 @@ begin
   if FHandler <> 0 then
     TAtlasIdeDebugExceptions.RemoveExceptionHandler(FHandler);
   FHandler := 0;
+  TAtlasIdeDebugExceptions.SetDialogMayHide(nil);
   if (FRegistry <> nil) and (FStatusRef <> nil) then
     FRegistry.Remove(StatusId);
   FStatusRef := nil;

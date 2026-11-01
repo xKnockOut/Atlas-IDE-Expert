@@ -58,8 +58,22 @@ type
     /// <summary>Edits nach Enter in APosition.Line für die Befehlszeile darüber. False, wenn dort kein
     /// ausführbarer Befehl steht (dann bleibt die Zeile stehen).</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex = nil;
-      const ADelphiVersion: string = ''; const AUri: string = ''; const AHost: ISlashHost = nil): Boolean; overload;
+      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
+      const ADelphiVersion, AUri: string; const AHost: ISlashHost): Boolean; overload;
+    /// <summary>Wie oben mit AHost = nil.</summary>
+    function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
+      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
+      const ADelphiVersion, AUri: string): Boolean; overload;
+    /// <summary>Wie oben mit AUri = '' und AHost = nil.</summary>
+    function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
+      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
+      const ADelphiVersion: string): Boolean; overload;
+    /// <summary>Wie oben mit ADelphiVersion = '', AUri = '' und AHost = nil.</summary>
+    function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
+      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex): Boolean; overload;
+    /// <summary>Wie oben ohne Index (AIndex = nil, ADelphiVersion = '', AUri = '', AHost = nil).</summary>
+    function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
+      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean; overload;
     /// <summary>Wie AfterEnter, mit der Einrückung nach AStyle (#43).</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
       ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string;
@@ -83,7 +97,12 @@ type
       const AStyle: TFormatStyle): TArray<TTextEdit>; static;
     /// <summary>Hinweise für Befehlszeilen, die stehen geblieben sind (unbekannt, abgeschaltet, falscher Ort).</summary>
     function Problems(const AText: string; const ADisabled: TArray<string>;
-      const AIndex: ISymbolIndex = nil; const ADelphiVersion: string = ''): TArray<TSlashProblem>;
+      const AIndex: ISymbolIndex; const ADelphiVersion: string): TArray<TSlashProblem>; overload;
+    /// <summary>Wie oben mit ADelphiVersion = ''.</summary>
+    function Problems(const AText: string; const ADisabled: TArray<string>;
+      const AIndex: ISymbolIndex): TArray<TSlashProblem>; overload;
+    /// <summary>Wie oben ohne Index (AIndex = nil, ADelphiVersion = '').</summary>
+    function Problems(const AText: string; const ADisabled: TArray<string>): TArray<TSlashProblem>; overload;
     /// <summary>Befehle, deren Name mit APrefix beginnt (ohne "/"), ohne abgeschaltete.</summary>
     function Matching(const APrefix: string; const ADisabled: TArray<string>): TArray<TSlashCommand>;
   end;
@@ -305,6 +324,32 @@ begin
 end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
+  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
+  const ADelphiVersion, AUri: string): Boolean;
+begin
+  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AEdits, AIndex, ADelphiVersion, AUri, nil);
+end;
+
+function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
+  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
+  const ADelphiVersion: string): Boolean;
+begin
+  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AEdits, AIndex, ADelphiVersion, '', nil);
+end;
+
+function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
+  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex): Boolean;
+begin
+  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AEdits, AIndex, '', '', nil);
+end;
+
+function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
+  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean;
+begin
+  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AEdits, nil, '', '', nil);
+end;
+
+function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
   ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string;
   const AHost: ISlashHost; const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>): Boolean;
 var
@@ -454,6 +499,17 @@ begin
   finally
     Context.Actions.Free;
   end;
+end;
+
+function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>;
+  const AIndex: ISymbolIndex): TArray<TSlashProblem>;
+begin
+  Result := Problems(AText, ADisabled, AIndex, '');
+end;
+
+function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>): TArray<TSlashProblem>;
+begin
+  Result := Problems(AText, ADisabled, nil, '');
 end;
 
 function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>;

@@ -20,7 +20,10 @@ type
   public
     /// <summary>Markdown zu AFinding in AText (Datei AFileName); ACatalog darf nil sein.</summary>
     class function Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
-      const ACatalog: TRuleCatalog; AContext: Integer = DefaultContext): string; static;
+      const ACatalog: TRuleCatalog; AContext: Integer): string; overload; static;
+    /// <summary>Wie oben mit AContext = DefaultContext.</summary>
+    class function Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
+      const ACatalog: TRuleCatalog): string; overload; static;
     /// <summary>Deutscher Katalog (Basis mit deutschem Overlay); der Aufrufer gibt ihn frei.</summary>
     class function GermanCatalog: TRuleCatalog; static;
     /// <summary>Gemeinsamer deutscher Katalog, einmal geladen; nicht freigeben.</summary>
@@ -53,6 +56,12 @@ end;
 class function TFindingPrompt.GermanCatalog: TRuleCatalog;
 begin
   Result := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+end;
+
+class function TFindingPrompt.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
+  const ACatalog: TRuleCatalog): string;
+begin
+  Result := Markdown(AFinding, AFileName, AText, ACatalog, DefaultContext);
 end;
 
 class function TFindingPrompt.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;

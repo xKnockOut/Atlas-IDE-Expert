@@ -32,6 +32,9 @@ type
     procedure ClickJumpsOrScrolls;
     [Test]
     procedure DragScrollsTheEditor;
+    /// <summary>Mausrad über der Minimap scrollt den Editor.</summary>
+    [Test]
+    procedure WheelScrollsTheEditor;
     [Test]
     procedure SliderOnlyOnMouseOver;
     [Test]
@@ -45,6 +48,8 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.Types,
+  Winapi.Windows,
   Winapi.Messages,
   Vcl.Controls,
   Atlas.Core.Style.Palette,
@@ -171,6 +176,30 @@ begin
   Assert.IsFalse(FView.SliderDragging);
 end;
 
+procedure TAtlasMinimapViewTests.WheelScrollsTheEditor;
+var
+  Scrolled: Integer;
+begin
+  Scrolled := -1;
+  FView.OnScroll :=
+    procedure(ATopLine: Integer)
+    begin
+      Scrolled := ATopLine;
+    end;
+  Fill(100);
+  FView.SetView(10, 29, 12);
+  // Eine Raste nach unten bzw. oben: Zeilen je Raste aus Windows.
+  Assert.IsTrue(TViewAccess(FView).DoMouseWheel([], -WHEEL_DELTA, Point(5, 5)));
+  Assert.AreEqual(10 + Mouse.WheelScrollLines, Scrolled);
+  TViewAccess(FView).DoMouseWheel([], WHEEL_DELTA, Point(5, 5));
+  Assert.AreEqual(10 - Mouse.WheelScrollLines, Scrolled);
+  // Ganz oben: nicht unter Zeile 0.
+  Scrolled := -1;
+  FView.SetView(0, 19, 0);
+  TViewAccess(FView).DoMouseWheel([], WHEEL_DELTA, Point(5, 5));
+  Assert.AreEqual(-1, Scrolled, 'oben bleibt oben');
+end;
+
 procedure TAtlasMinimapViewTests.SliderOnlyOnMouseOver;
 var
   Options: TAtlasMinimapOptions;
@@ -196,7 +225,8 @@ begin
   FView.SetMarks([TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 5005, 1),
     TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Added, 10, 2)]);
   FView.SetFolds([TAtlasMinimapFold.Create(100, 50)]);
-  Assert.IsTrue(FView.Map.Compressed, '10 000 Zeilen werden gestaucht');
+  Assert.IsFalse(FView.Map.Compressed, '10 000 Zeilen werden nicht gestaucht');
+  Assert.IsTrue(FView.Map.Offset > 0, 'die Minimap scrollt mit zur Mitte');
   Assert.AreEqual(9950, FView.Map.RowCount);
   FView.Repaint;
   Options := TAtlasMinimap.Defaults;

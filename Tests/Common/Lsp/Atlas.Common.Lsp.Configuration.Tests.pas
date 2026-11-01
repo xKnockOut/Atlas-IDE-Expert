@@ -31,6 +31,9 @@ type
     procedure LoadWorkspaceWithGlobalTextChangesOnce;
     [Test]
     procedure LoadsFileFromWorkspaceRoot;
+    /// <summary>Projekt einer Gruppe im Unterordner: atlas.json aus dem Stamm darüber.</summary>
+    [Test]
+    procedure LoadsFileFromParentFolder;
     [Test]
     procedure LoadsLegacyFileWithoutNewOne;
     [Test]
@@ -123,6 +126,17 @@ begin
   Assert.AreEqual('de', FConfiguration.Settings.Language);
   Assert.AreEqual(1, FChanges);
   Assert.AreEqual(0, Integer(FCapture.Count));
+end;
+
+procedure TLspConfigurationTests.LoadsFileFromParentFolder;
+begin
+  FDiskText := '{"platform": "Win64"}';
+  FConfiguration.LoadWorkspace(Root + '\Packages\Expert');
+  Assert.AreEqual('Win64', FConfiguration.Settings.Platform, 'atlas.json zwei Ebenen höher');
+  // Ohne Datei: Vorgaben, kein Fehler.
+  FDiskText := '';
+  FConfiguration.LoadWorkspace(Root + '\Packages\Expert');
+  Assert.AreEqual(TServerSettings.Default.Platform, FConfiguration.Settings.Platform);
 end;
 
 procedure TLspConfigurationTests.LoadsFileFromWorkspaceRoot;

@@ -247,13 +247,27 @@ end;
 // Wie im Server: globale Datei für globale Schlüssel, atlas.json für Projekt-Schlüssel (TConfigurationScopes).
 function LoadSettings(const ARoot: string): TServerSettings;
 var
-  FileName, Text, GlobalText: string;
+  FileName, Text, GlobalText, Dir, Parent: string;
   Issues, Misplaced: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
   // Ohne Logger: Eine nicht lesbare globale Datei bricht den Lauf ab (Exit-Code 3) wie bisher.
   GlobalText := TShellBootstrap.LoadGlobalSettings(nil);
+  // Wie der Editor (TLspConfiguration): nach oben suchen bis zum Stamm des Repositorys (.git/.svn) bzw. des
+  // Laufwerks. Sonst galten bei --check Datei.pas in einem Unterordner andere Regeln als im Editor.
   FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName);
+  Dir := IncludeTrailingPathDelimiter(ARoot);
+  while not FileExists(ExistingOrLegacyFile(Dir, ConfigurationFileName, LegacyConfigurationFileName)) do
+  begin
+    if DirectoryExists(Dir + '.git') or DirectoryExists(Dir + '.svn') or FileExists(Dir + '.git') then
+      Break;
+    Parent := ExtractFilePath(ExcludeTrailingPathDelimiter(Dir));
+    if (Parent = '') or SameText(Parent, Dir) then
+      Break;
+    Dir := Parent;
+  end;
+  if FileExists(ExistingOrLegacyFile(Dir, ConfigurationFileName, LegacyConfigurationFileName)) then
+    FileName := ExistingOrLegacyFile(Dir, ConfigurationFileName, LegacyConfigurationFileName);
   TShellBootstrap.ReadSourceText(FileName, Text);
   Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(GlobalText, '', Text), Misplaced);
   if Text = '' then

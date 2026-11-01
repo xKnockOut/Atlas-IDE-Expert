@@ -59,12 +59,18 @@ const
   RegistryViews: array[0..1] of LongWord = (KEY_READ, KEY_READ or KEY_WOW64_32KEY);
   EnvironmentNames: array[0..4] of string = ('PUBLIC', 'USERPROFILE', 'APPDATA', 'ProgramFiles', 'ProgramFiles(x86)');
 
-function OpenRead(ARoot: HKEY; const AKey: string; AAccess: LongWord = KEY_READ): TRegistry;
+function OpenRead(ARoot: HKEY; const AKey: string; AAccess: LongWord): TRegistry; overload;
 begin
   Result := TRegistry.Create(AAccess);
   Result.RootKey := ARoot;
   if not Result.OpenKeyReadOnly(AKey) then
     FreeAndNil(Result);
+end;
+
+// Wie oben mit AAccess = KEY_READ.
+function OpenRead(ARoot: HKEY; const AKey: string): TRegistry; overload;
+begin
+  Result := OpenRead(ARoot, AKey, KEY_READ);
 end;
 
 function FolderPath(AFolder: Integer): string;

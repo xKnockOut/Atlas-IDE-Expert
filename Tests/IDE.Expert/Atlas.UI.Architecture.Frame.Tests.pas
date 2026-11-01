@@ -96,6 +96,13 @@ begin
   finally
     TearDown;
   end;
+  // Erste Anzeige der Scrollbox mit Erklärung legt einmalige VCL-Puffer an.
+  Setup;
+  try
+    AssignmentInProfileTreeAndExplanation;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasArchitectureFrameTests.SetUp;
@@ -572,6 +579,8 @@ begin
   FFrame.Map.OnSelect(mMid);
   Assert.IsTrue(FFrame.AssignmentBox.Visible);
   Assert.IsTrue(FFrame.AssignmentBox.Height > 0);
+  // Links neben dem Diagramm, nicht darunter: Bei vielen Teilsystemen verdrängte die Liste sonst das Diagramm.
+  Assert.AreEqual(Ord(alLeft), Ord(FFrame.AssignmentBox.Align));
   FFrame.AssignmentBox.Repaint;
   FFrame.Map.SelectUnit(-1, False);
   FFrame.Map.OnSelect(-1);

@@ -720,6 +720,7 @@ var
   Ancestry: TAncestry;
   Tokens: TArray<TPascalToken>;
   Resolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   FileName: string;
 
   /// <summary>Token "default" hinter dem Semikolon der Property ASymbol; -1 ohne.</summary>
@@ -879,9 +880,10 @@ begin
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
   try
     CheckDeclarations;
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    mCache := TRuleDerived.Open(AContext);
+    Resolver := TRuleDerived.Resolver(mCache, AContext);
     try
-      Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
       try
         VisitBodies;
@@ -889,7 +891,6 @@ begin
         Resolver.UnpinTree;
       end;
     finally
-      Resolver.Free;
     end;
   finally
     Ancestry.Free;

@@ -46,7 +46,9 @@ type
       const AFileExists: TFunc<string, Boolean>);
     destructor Destroy; override;
     /// <summary>Absoluter Pfad der .pas-Datei oder '' wenn nicht gefunden.</summary>
-    function Resolve(const AUnitName: string; const AFromDirectory: string = ''): string;
+    function Resolve(const AUnitName, AFromDirectory: string): string; overload;
+    /// <summary>Wie oben ohne Ausgangsordner (AFromDirectory = '').</summary>
+    function Resolve(const AUnitName: string): string; overload;
     procedure Invalidate;
     /// <summary>Optional: alle .pas-Dateien eines Ordners (vollständige Pfade). Gesetzt, ersetzt es
     /// die Einzelabfragen per FileExists.</summary>
@@ -158,6 +160,11 @@ begin
       if FileIn(Directory, Name, Candidate) then
         Exit(Candidate);
   Result := '';
+end;
+
+function TUnitResolver.Resolve(const AUnitName: string): string;
+begin
+  Result := Resolve(AUnitName, '');
 end;
 
 function TUnitResolver.Resolve(const AUnitName, AFromDirectory: string): string;

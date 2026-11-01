@@ -139,7 +139,9 @@ type
     constructor Create(const AName, AVersion: string);
     destructor Destroy; override;
     procedure AddTool(const AName, ADescription, AInputSchema: string; const AHandler: TMcpToolHandler;
-      AKind: TMcpToolKind = TMcpToolKind.Read);
+      AKind: TMcpToolKind); overload;
+    /// <summary>Wie oben mit AKind = Read.</summary>
+    procedure AddTool(const AName, ADescription, AInputSchema: string; const AHandler: TMcpToolHandler); overload;
     procedure AddResource(const AUri, AName, ADescription, AMimeType: string; const AHandler: TFunc<string>);
     /// <summary>Wie AddResource, aber nur angeboten, solange Prompts an sind (#1357).</summary>
     procedure AddPromptResource(const AUri, AName, ADescription, AMimeType: string; const AHandler: TFunc<string>);
@@ -182,7 +184,10 @@ type
     /// <summary>EJsonRpcError(InvalidParams) bei unbekanntem Werkzeug.</summary>
     function CallTool(const AParams: TJSONValue): TJSONObject;
     /// <summary>Schema mit Pflichtparametern vom Typ string, z. B. StringSchema(['name'], ['Symbolname']).</summary>
-    class function StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer = -1): string; static;
+    class function StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer): string;
+      overload; static;
+    /// <summary>Wie oben mit ARequired = -1.</summary>
+    class function StringSchema(const ANames, ADescriptions: array of string): string; overload; static;
     /// <summary>Pflichtargument als Text; EMcpToolError wenn es fehlt oder leer ist.</summary>
     class function RequiredString(const AArguments: TJSONObject; const AName: string): string; static;
     /// <summary>Optionales Argument als Text; '' wenn es fehlt.</summary>
@@ -262,6 +267,11 @@ begin
   FResources.Free;
   FTools.Free;
   inherited;
+end;
+
+procedure TMcpServer.AddTool(const AName, ADescription, AInputSchema: string; const AHandler: TMcpToolHandler);
+begin
+  AddTool(AName, ADescription, AInputSchema, AHandler, TMcpToolKind.Read);
 end;
 
 procedure TMcpServer.AddTool(const AName, ADescription, AInputSchema: string; const AHandler: TMcpToolHandler;
@@ -794,6 +804,11 @@ begin
   finally
     Value.Free;
   end;
+end;
+
+class function TMcpServer.StringSchema(const ANames, ADescriptions: array of string): string;
+begin
+  Result := StringSchema(ANames, ADescriptions, -1);
 end;
 
 class function TMcpServer.StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer): string;

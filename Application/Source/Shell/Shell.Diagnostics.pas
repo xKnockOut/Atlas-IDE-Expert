@@ -76,7 +76,9 @@ type
     class function EndReasonText(AReason: TDiagnosticEndReason): string; static;
     /// <summary>Endzeile; AError nur bei einer unbehandelten Exception. Nur der erste Aufruf zählt.</summary>
     procedure EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;
-      const AError: Exception = nil);
+      const AError: Exception); overload;
+    /// <summary>Wie oben ohne Exception (AError = nil).</summary>
+    procedure EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64); overload;
     procedure ApplySettings(const ASettings: TServerSettings);
     /// <summary>Feste Methodennamen, die "/" enthalten dürfen.</summary>
     procedure AllowMethods(const AMethods: TArray<string>);
@@ -229,6 +231,11 @@ begin
   else
     Result := 'unbehandelte Exception';
   end;
+end;
+
+procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64);
+begin
+  EndRun(AReason, AExitCode, AMemoryBytes, nil);
 end;
 
 procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;

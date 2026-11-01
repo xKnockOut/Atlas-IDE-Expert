@@ -28,8 +28,12 @@ type
     function HandleLinks(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     /// <summary>Ohne AFileExists wird auf der Platte nachgesehen.</summary>
-    constructor Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider = nil;
-      const AFileExists: TFileExistsFunc = nil);
+    constructor Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider;
+      const AFileExists: TFileExistsFunc); overload;
+    /// <summary>Wie oben mit AFileExists = nil.</summary>
+    constructor Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider); overload;
+    /// <summary>Wie oben ohne Suchpfade (ASearchPaths = nil, AFileExists = nil).</summary>
+    constructor Create(const AStore: IDocumentStore); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     class function Capability: TJSONObject; static;
     /// <summary>Ein Verweis als LSP-DocumentLink. Der Aufrufer übernimmt das Objekt.</summary>
@@ -42,6 +46,16 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions;
+
+constructor TLspDocumentLinks.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider);
+begin
+  Create(AStore, ASearchPaths, nil);
+end;
+
+constructor TLspDocumentLinks.Create(const AStore: IDocumentStore);
+begin
+  Create(AStore, nil, nil);
+end;
 
 constructor TLspDocumentLinks.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider;
   const AFileExists: TFileExistsFunc);

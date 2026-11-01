@@ -80,7 +80,13 @@ type
     procedure LogStart(const AVersion: string; const AProcess: TDiagnosticProcess);
     /// <summary>AException: Klassenname; AStack: Adressen und Atlas-eigene Routinen, eine je Zeile.</summary>
     procedure LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
-      const AException: string = ''; const AStack: string = '');
+      const AException, AStack: string); overload;
+    /// <summary>Wie oben mit AStack = ''.</summary>
+    procedure LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
+      const AException: string); overload;
+    /// <summary>Wie oben ohne Exception (AException = '', AStack = '').</summary>
+    procedure LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer;
+      const AProcess: TDiagnosticProcess); overload;
     /// <summary>Freier Ereigniscode ohne Namen, z. B. "previous run ended without log".</summary>
     procedure LogEvent(const AText: string);
     /// <summary>Übernimmt die Einstellungen. Vorher gesammelte Zeilen werden erst jetzt geschrieben

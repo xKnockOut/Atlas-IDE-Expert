@@ -26,7 +26,9 @@ type
     function HandleColors(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandlePresentation(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
-    constructor Create(const AStore: IDocumentStore; const ASystemColors: TSystemColorProvider = nil);
+    constructor Create(const AStore: IDocumentStore; const ASystemColors: TSystemColorProvider); overload;
+    /// <summary>Wie oben mit ASystemColors = nil.</summary>
+    constructor Create(const AStore: IDocumentStore); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>LSP-Color (Anteile 0 bis 1). Der Aufrufer übernimmt das Objekt.</summary>
     class function ColorToJson(const AColor: TRgbColor): TJSONObject; static;
@@ -40,6 +42,11 @@ uses
   System.Generics.Collections,
   System.Math,
   Atlas.Common.Lsp.Positions;
+
+constructor TLspColors.Create(const AStore: IDocumentStore);
+begin
+  Create(AStore, nil);
+end;
 
 constructor TLspColors.Create(const AStore: IDocumentStore; const ASystemColors: TSystemColorProvider);
 begin

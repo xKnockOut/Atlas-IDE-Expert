@@ -65,7 +65,11 @@ type
     function GetFormClass: string;
   public
     /// <summary>Liest die Formulardatei und, falls AUnitText nicht leer ist, die Unit dazu.</summary>
-    constructor Create(const AFormText: string; const AUnitText: string = ''; const AUnitFile: string = '');
+    constructor Create(const AFormText, AUnitText, AUnitFile: string); overload;
+    /// <summary>Wie oben mit AUnitFile = ''.</summary>
+    constructor Create(const AFormText, AUnitText: string); overload;
+    /// <summary>Wie oben ohne Unit (AUnitText = '', AUnitFile = '').</summary>
+    constructor Create(const AFormText: string); overload;
     destructor Destroy; override;
     /// <summary>Binäre Formulardatei (beginnt mit TPF0)?</summary>
     class function IsBinary(const AText: string): Boolean; static;
@@ -94,6 +98,16 @@ uses
   Atlas.Common.Dfm.Parser;
 
 { TFormModel }
+
+constructor TFormModel.Create(const AFormText, AUnitText: string);
+begin
+  Create(AFormText, AUnitText, '');
+end;
+
+constructor TFormModel.Create(const AFormText: string);
+begin
+  Create(AFormText, '', '');
+end;
 
 constructor TFormModel.Create(const AFormText, AUnitText, AUnitFile: string);
 var

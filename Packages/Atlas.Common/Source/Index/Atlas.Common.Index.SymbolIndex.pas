@@ -44,6 +44,15 @@ type
     end;
     TSymbolRefs = TList<TSymbolRef>;
     TSymbolTable = TObjectDictionary<string, TSymbolRefs>;
+    /// <summary>Was die Suche nach Namen von der Unit eines Platzes braucht. FFiles.TryGetValue kopierte je
+    /// Wechsel den ganzen TUnitIndex samt verwalteter Felder; die Symbole teilt sich dieser Eintrag mit ihm
+    /// (dynamisches Array, nur gezählt).</summary>
+    TSlotUnit = record
+      Known: Boolean;
+      UnitName: string;
+      FileName: string;
+      Symbols: TArray<TIndexSymbol>;
+    end;
   public const
     /// <summary>Ab so vielen toten Verweisen (und mehr tot als lebend) werden die Tabellen neu gebaut.</summary>
     RebuildDeadRefs = 4096;
@@ -79,6 +88,8 @@ type
     // Platz → Dateischlüssel ('' = Unit ersetzt oder entfernt) und Zahl seiner Verweise.
     FSlotKeys: TList<string>;
     FSlotRefs: TList<Integer>;
+    // Platz → Unit für die Suche (Known = False, wenn ersetzt oder entfernt); parallel zu FSlotKeys.
+    FSlotUnits: TList<TSlotUnit>;
     // Dateischlüssel → aktueller Platz.
     FFileSlots: TDictionary<string, Integer>;
     FLiveRefs: Integer;
@@ -156,6 +167,7 @@ begin
   FByAncestor := TSymbolTable.Create([doOwnsValues]);
   FSlotKeys := TList<string>.Create;
   FSlotRefs := TList<Integer>.Create;
+  FSlotUnits := TList<TSlotUnit>.Create;
   FFileSlots := TDictionary<string, Integer>.Create;
   FShrinkable := TDictionary<string, Boolean>.Create;
 end;
@@ -166,6 +178,7 @@ begin
   TImportNames.Forget(Self);
   FShrinkable.Free;
   FFileSlots.Free;
+  FSlotUnits.Free;
   FSlotRefs.Free;
   FSlotKeys.Free;
   FByAncestor.Free;
@@ -254,9 +267,15 @@ var
   Slot, Position, AncestorPos, Count: Integer;
   Keys: TArray<string>;
   Key: string;
+  mSlotUnit: TSlotUnit;
 begin
   Slot := FSlotKeys.Add(AKey);
   FSlotRefs.Add(0);
+  mSlotUnit.Known := True;
+  mSlotUnit.UnitName := AUnit.UnitName;
+  mSlotUnit.FileName := AUnit.FileName;
+  mSlotUnit.Symbols := AUnit.Symbols;
+  FSlotUnits.Add(mSlotUnit);
   FFileSlots.AddOrSetValue(AKey, Slot);
   Count := 0;
   // Zugriff über den Index, damit die Symbol-Records nicht kopiert werden.
@@ -288,6 +307,7 @@ begin
     Exit;
   FFileSlots.Remove(AKey);
   FSlotKeys[Slot] := '';
+  FSlotUnits[Slot] := Default(TSlotUnit);
   Dec(FLiveRefs, FSlotRefs[Slot]);
   Inc(FDeadRefs, FSlotRefs[Slot]);
   FSlotRefs[Slot] := 0;
@@ -303,6 +323,7 @@ begin
   FByAncestor.Clear;
   FSlotKeys.Clear;
   FSlotRefs.Clear;
+  FSlotUnits.Clear;
   FFileSlots.Clear;
   FLiveRefs := 0;
   FDeadRefs := 0;
@@ -313,42 +334,39 @@ end;
 function TSymbolIndex.LocationsLocked(ATable: TSymbolTable; const AKey: string): TArray<TSymbolLocation>;
 var
   Refs: TSymbolRefs;
-  Found: TList<TSymbolLocation>;
-  Index, LastSlot: Integer;
+  Index, Count, LastSlot: Integer;
   Ref: TSymbolRef;
-  FileKey: string;
-  Owner: TUnitIndex;
-  Known: Boolean;
-  Location: TSymbolLocation;
+  Owner: TSlotUnit;
 begin
   Result := nil;
   if not ATable.TryGetValue(AKey, Refs) then
     Exit;
-  Found := TList<TSymbolLocation>.Create;
-  try
-    LastSlot := -1;
-    Known := False;
-    for Index := 0 to Refs.Count - 1 do
+  // Direkt ins Ergebnis statt über eine Liste und ToArray: jedes Symbol ist ein großer Record mit verwalteten
+  // Feldern, häufige Namen (Create, Count) haben Tausende Verweise, und die Regeln fragen je Bezeichner.
+  SetLength(Result, Refs.Count);
+  Count := 0;
+  LastSlot := -1;
+  Owner := Default(TSlotUnit);
+  for Index := 0 to Refs.Count - 1 do
+  begin
+    Ref := Refs[Index];
+    // Verweise einer Unit stehen beieinander: den Platz nur beim Wechsel lesen.
+    if Ref.Slot <> LastSlot then
     begin
-      Ref := Refs[Index];
-      // Verweise einer Unit stehen beieinander: die Unit nur beim Wechsel des Platzes nachschlagen.
-      if Ref.Slot <> LastSlot then
-      begin
-        LastSlot := Ref.Slot;
-        FileKey := FSlotKeys[Ref.Slot];
-        Known := (FileKey <> '') and FFiles.TryGetValue(FileKey, Owner);
-      end;
-      if not Known or (Ref.Position > High(Owner.Symbols)) then
-        Continue;
-      Location.UnitName := Owner.UnitName;
-      Location.FileName := Owner.SymbolFile(Owner.Symbols[Ref.Position]);
-      Location.Symbol := Owner.Symbols[Ref.Position];
-      Found.Add(Location);
+      LastSlot := Ref.Slot;
+      Owner := FSlotUnits[Ref.Slot];
     end;
-    Result := Found.ToArray;
-  finally
-    Found.Free;
+    if not Owner.Known or (Ref.Position > High(Owner.Symbols)) then
+      Continue;
+    Result[Count].UnitName := Owner.UnitName;
+    if Owner.Symbols[Ref.Position].FileName <> '' then
+      Result[Count].FileName := Owner.Symbols[Ref.Position].FileName
+    else
+      Result[Count].FileName := Owner.FileName;
+    Result[Count].Symbol := Owner.Symbols[Ref.Position];
+    Inc(Count);
   end;
+  SetLength(Result, Count);
 end;
 
 procedure TSymbolIndex.ShrinkLocked;
@@ -467,9 +485,7 @@ var
   mRefs: TSymbolRefs;
   mIndex, mLastSlot: Integer;
   mRef: TSymbolRef;
-  mFileKey: string;
-  mOwner: TUnitIndex;
-  mKnown: Boolean;
+  mOwner: TSlotUnit;
 begin
   Result := False;
   FLock.Enter;
@@ -477,18 +493,17 @@ begin
     if not FByName.TryGetValue(UpperCase(AName), mRefs) then
       Exit;
     mLastSlot := -1;
-    mKnown := False;
+    mOwner := Default(TSlotUnit);
     for mIndex := 0 to mRefs.Count - 1 do
     begin
       mRef := mRefs[mIndex];
-      // Wie LocationsLocked: die Unit nur beim Wechsel des Platzes nachschlagen.
+      // Wie LocationsLocked: der Eintrag des Platzes, nicht der ganze TUnitIndex aus FFiles.
       if mRef.Slot <> mLastSlot then
       begin
         mLastSlot := mRef.Slot;
-        mFileKey := FSlotKeys[mRef.Slot];
-        mKnown := (mFileKey <> '') and FFiles.TryGetValue(mFileKey, mOwner);
+        mOwner := FSlotUnits[mRef.Slot];
       end;
-      if mKnown and (mRef.Position <= High(mOwner.Symbols)) and AMatch(mOwner.Symbols[mRef.Position]) then
+      if mOwner.Known and (mRef.Position <= High(mOwner.Symbols)) and AMatch(mOwner.Symbols[mRef.Position]) then
         Exit(True);
     end;
   finally

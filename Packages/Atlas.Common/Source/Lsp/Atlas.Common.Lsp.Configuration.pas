@@ -78,7 +78,9 @@ type
     /// <summary>Meldet sich am Dokumentspeicher und, falls angegeben, für Editor-Einstellungen am Dispatcher an.
     /// Bei mehreren Arbeitsbereichsordnern verteilt die Komposition die Ereignisse selbst
     /// (DocumentEvent, SetEditorSettings) und ruft Attach nicht auf.</summary>
-    procedure Attach(ADispatcher: TJsonRpcDispatcher = nil);
+    procedure Attach(ADispatcher: TJsonRpcDispatcher); overload;
+    /// <summary>Wie oben ohne Dispatcher (ADispatcher = nil).</summary>
+    procedure Attach; overload;
     /// <summary>Verarbeitet ein Dokumentereignis wie nach Attach.</summary>
     procedure DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     /// <summary>Übernimmt Editor-Einstellungen (JSON des Abschnitts, '' = keine).</summary>
@@ -163,6 +165,11 @@ destructor TLspConfiguration.Destroy;
 begin
   FLock.Free;
   inherited;
+end;
+
+procedure TLspConfiguration.Attach;
+begin
+  Attach(nil);
 end;
 
 procedure TLspConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -356,7 +363,7 @@ end;
 
 procedure TLspConfiguration.LoadWorkspace(const ARootPath: string);
 var
-  Separator, Dir: string;
+  Separator, Dir, Parent, Text: string;
 begin
   FRootPath := ARootPath;
   if ARootPath = '' then
@@ -374,8 +381,25 @@ begin
       Dir := ARootPath
     else
       Dir := ARootPath + Separator;
+    // Projekte einer Gruppe liegen oft in Unterordnern (Packages\X\X.dproj), atlas.json im Stamm: nach oben
+    // suchen, bis zum Stamm des Repositorys (.git/.svn) bzw. des Laufwerks. Ohne Fund gilt die Wurzel selbst
+    // (dort legt "atlas.json anlegen" die Datei an).
     FPrimaryFileName := Dir + ConfigurationFileName;
     FLegacyFileName := Dir + LegacyConfigurationFileName;
+    while not (FReadFile(Dir + ConfigurationFileName, Text) or FReadFile(Dir + LegacyConfigurationFileName, Text)) do
+    begin
+      if DirectoryExists(Dir + '.git') or DirectoryExists(Dir + '.svn') or FileExists(Dir + '.git') then
+        Break;
+      Parent := ExtractFilePath(ExcludeTrailingPathDelimiter(Dir));
+      if (Parent = '') or SameText(Parent, Dir) then
+        Break;
+      Dir := Parent;
+    end;
+    if FReadFile(Dir + ConfigurationFileName, Text) or FReadFile(Dir + LegacyConfigurationFileName, Text) then
+    begin
+      FPrimaryFileName := Dir + ConfigurationFileName;
+      FLegacyFileName := Dir + LegacyConfigurationFileName;
+    end;
   end;
   LoadFromDisk;
 end;

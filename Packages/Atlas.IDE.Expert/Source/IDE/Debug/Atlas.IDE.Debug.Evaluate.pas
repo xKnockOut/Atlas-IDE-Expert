@@ -921,7 +921,9 @@ begin
     TAtlasIdeDebugSession.BeginInternal;
     FInternal := True;
     try
-      Value := FEvaluator.Evaluate(Node.Expression, FFileName, FLine + 1, FSideEffects, DeferredDone);
+      // ",r": Records mit Feldnamen, sonst zeigt der Baum nur [0], [1], … (Werte ohne Namen).
+      Value := FEvaluator.Evaluate(TAtlasEvalText.WithFieldNames(Node.Expression), FFileName, FLine + 1,
+        FSideEffects, DeferredDone);
     finally
       if (Value.State <> TAtlasDebugValueState.Pending) and FInternal then
       begin

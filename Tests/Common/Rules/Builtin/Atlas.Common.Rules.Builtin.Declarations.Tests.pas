@@ -174,6 +174,9 @@ type
     procedure DefaultParameterMethodWithSeveral;
     [Test]
     procedure DefaultParameterImplementationOnly;
+    /// <summary>Sicher (für --fix) nur, wo keine andere Unit die Routine sieht.</summary>
+    [Test]
+    procedure DefaultParameterSafeOnlyInsideUnit;
     [Test]
     procedure DefaultParameterWithoutFix;
     [Test]
@@ -1568,6 +1571,26 @@ begin
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'function Teil(const S: string): string; overload;'#10 +
     'begin'#10'  Result := Teil(S, 3);'#10'end;'#10#10'function Teil(const S: string; N: Integer): string; overload;'#10 +
     'begin'#10'  Result := Copy(S, 1, N);'#10'end;'#10'end.', DefaultFixed(Source));
+  // Keine andere Unit sieht Teil: sicher, auch für --fix und die Sammelkorrektur.
+  Assert.IsTrue(DefaultFindings(Source)[0].Fixes[0].Safe);
+end;
+
+procedure TDeclarationRulesTests.DefaultParameterSafeOnlyInsideUnit;
+var
+  Source: string;
+begin
+  // interface: Eine andere Unit könnte Exportieren als Methodenzeiger nehmen; nur einzeln anwendbar.
+  Source := 'unit U;'#10'interface'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean = True);'#10 +
+    'implementation'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean);'#10'begin'#10'end;'#10'end.';
+  Assert.IsFalse(DefaultFindings(Source)[0].Fixes[0].Safe);
+  // Methode einer Klasse aus dem implementation-Teil: unitintern, sicher.
+  Source := 'unit U;'#10'interface'#10'implementation'#10'type'#10'  TRechner = class'#10 +
+    '    function Summe(A: Integer; B: Integer = 1): Integer;'#10'  end;'#10 +
+    'function TRechner.Summe(A: Integer; B: Integer): Integer;'#10'begin'#10'  Result := A + B;'#10'end;'#10'end.';
+  Assert.IsTrue(DefaultFindings(Source)[0].Fixes[0].Safe);
+  // Programmdatei: niemand bindet sie ein.
+  Source := 'program P;'#10'procedure Lauf(N: Integer = 1);'#10'begin'#10'end;'#10'begin'#10'  Lauf;'#10'end.';
+  Assert.IsTrue(DefaultFindings(Source)[0].Fixes[0].Safe);
 end;
 
 procedure TDeclarationRulesTests.DefaultParameterWithoutFix;

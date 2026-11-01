@@ -102,6 +102,7 @@ contains
   Atlas.Common.Index.TypeMembers in 'Source\Index\Atlas.Common.Index.TypeMembers.pas',
   Atlas.Common.Index.SymbolIndex in 'Source\Index\Atlas.Common.Index.SymbolIndex.pas',
   Atlas.Common.Index.NameIndex in 'Source\Index\Atlas.Common.Index.NameIndex.pas',
+  Atlas.Common.Index.NameFacts in 'Source\Index\Atlas.Common.Index.NameFacts.pas',
   Atlas.Common.Index.LibraryUnits in 'Source\Index\Atlas.Common.Index.LibraryUnits.pas',
   Atlas.Common.Index.Cache in 'Source\Index\Atlas.Common.Index.Cache.pas',
   Atlas.Common.Index.CacheHousekeeping in 'Source\Index\Atlas.Common.Index.CacheHousekeeping.pas',

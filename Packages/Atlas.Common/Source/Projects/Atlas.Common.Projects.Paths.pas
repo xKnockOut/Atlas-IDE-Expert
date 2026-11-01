@@ -9,6 +9,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Math,
   System.Generics.Collections;
 
 type
@@ -22,6 +23,10 @@ type
     class function Normalize(const APath: string): string; static;
     /// <summary>Ordner der Datei ohne abschließenden Trenner.</summary>
     class function DirectoryOf(const AFileName: string): string; static;
+    /// <summary>Tiefster Ordner, der A und B enthält (ganze Ordnernamen, Groß-/Kleinschreibung egal), in der
+    /// Schreibweise von A ohne abschließenden Trenner; '' bei verschiedenen Laufwerken oder leerem A bzw. B.
+    /// </summary>
+    class function CommonFolder(const A, B: string): string; static;
     /// <summary>Dateiname ohne Ordner und ohne Endung.</summary>
     class function BaseName(const AFileName: string): string; static;
     /// <summary>Endung mit Punkt in Kleinschreibung, z. B. ".pas".</summary>
@@ -143,6 +148,35 @@ begin
     Result := Copy(AFileName, 1, 3)
   else
     Result := Copy(AFileName, 1, Index - 1);
+end;
+
+class function TProjectPaths.CommonFolder(const A, B: string): string;
+var
+  mLeft, mRight: TArray<string>;
+  mIndex, mCount: Integer;
+  mSeparator: Char;
+begin
+  Result := '';
+  if (A = '') or (B = '') then
+    Exit;
+  mSeparator := SeparatorFor(A);
+  mLeft := Normalize(A).Split(['\', '/']);
+  mRight := Normalize(B).Split(['\', '/']);
+  mCount := 0;
+  for mIndex := 0 to Min(High(mLeft), High(mRight)) do
+  begin
+    if not SameText(mLeft[mIndex], mRight[mIndex]) then
+      Break;
+    Inc(mCount);
+  end;
+  if mCount = 0 then
+    Exit;
+  Result := string.Join(mSeparator, Copy(mLeft, 0, mCount));
+  // Laufwerk allein ("C:") als Ordner "C:\"; POSIX-Wurzel ("" vor dem ersten "/") als "/".
+  if (Length(Result) = 2) and (Result[2] = ':') then
+    Result := Result + mSeparator
+  else if Result = '' then
+    Result := mSeparator;
 end;
 
 class function TProjectPaths.BaseName(const AFileName: string): string;

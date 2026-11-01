@@ -71,13 +71,19 @@ const
   Hints = 'Declarations_and_Statements_(Delphi)#Hinting_Directives';
   Expressions = 'Expressions_(Delphi)';
 
-function K(const AName, AKind, AText, ATopic: string; const AMinVersion: string = ''): TKeywordInfo;
+function K(const AName, AKind, AText, ATopic, AMinVersion: string): TKeywordInfo; overload;
 begin
   Result.Name := AName;
   Result.Kind := AKind;
   Result.Text := AText;
   Result.Topic := ATopic;
   Result.MinVersion := AMinVersion;
+end;
+
+// Wie oben ohne Mindestversion (AMinVersion = '').
+function K(const AName, AKind, AText, ATopic: string): TKeywordInfo; overload;
+begin
+  Result := K(AName, AKind, AText, ATopic, '');
 end;
 
 var
