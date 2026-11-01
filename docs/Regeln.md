@@ -1,5 +1,7 @@
 ﻿# Prüfregeln
 
+*English version: [en/Rules.md](en/Rules.md)*
+
 Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand ändern.
 
 ## Gruppen
