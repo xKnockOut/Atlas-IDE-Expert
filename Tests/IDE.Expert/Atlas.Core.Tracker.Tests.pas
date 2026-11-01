@@ -46,8 +46,6 @@ type
     procedure BranchNameIsValidRef;
     [Test]
     procedure BranchNameForYouTrackAndSvn;
-    [Test]
-    procedure ValidBranchNames;
     /// <summary>Commit-Muster: Vorgabe „{kennung} “, leer = unverändert, kein doppelter Präfix.</summary>
     [Test]
     procedure CommitPrefixAndPrefixed;
@@ -55,9 +53,6 @@ type
     procedure KeyOfGitHubBranch;
     [Test]
     procedure KeyOfYouTrackBranch;
-    /// <summary>#1286: issues.branchBase, sonst Hauptbranch des Projekts, sonst geraten.</summary>
-    [Test]
-    procedure BasesPreferBranchBaseThenMainBranch;
   end;
 
   [TestFixture]
@@ -241,6 +236,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Naming,
+  Atlas.Core.Vcs.BranchNames,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
@@ -444,21 +440,6 @@ end;
 
 { TAtlasTrackerNamingTests }
 
-procedure TAtlasTrackerNamingTests.BasesPreferBranchBaseThenMainBranch;
-var
-  mBases: TArray<string>;
-begin
-  mBases := TAtlasTrackerNaming.Bases(False, '', '');
-  Assert.AreEqual(2, Integer(Length(mBases)));
-  Assert.AreEqual('main', mBases[0]);
-  Assert.AreEqual('master', mBases[1]);
-  mBases := TAtlasTrackerNaming.Bases(True, '', '');
-  Assert.AreEqual('trunk', string.Join(',', mBases));
-  Assert.AreEqual('develop', string.Join(',', TAtlasTrackerNaming.Bases(False, '', ' develop ')));
-  Assert.AreEqual('develop', string.Join(',', TAtlasTrackerNaming.Bases(True, '', 'develop')));
-  Assert.AreEqual('release', string.Join(',', TAtlasTrackerNaming.Bases(False, 'release', 'develop')));
-end;
-
 procedure TAtlasTrackerNamingTests.BranchNameOfMockupIssue;
 begin
   Assert.AreEqual('feature/753-atlas-bereiche-und', TAtlasTrackerNaming.BranchName(
@@ -492,7 +473,7 @@ begin
   // Muster mit Leerzeichen und Zeichen, die Git verbietet.
   Name := TAtlasTrackerNaming.BranchName(' bug fix/{kennung}..{kurztitel}~^:? ', Issue('#9', 9, 'A'));
   Assert.AreEqual('bug-fix/9.a', Name);
-  Assert.IsTrue(TAtlasTrackerNaming.ValidBranchName(Name));
+  Assert.IsTrue(TAtlasVcsBranchNames.Valid(Name));
   // Ohne Kurztitel kein Strich am Ende.
   Assert.AreEqual('feature/7', TAtlasTrackerNaming.BranchName(TAtlasTrackerNaming.GitBranchPattern,
     Issue('#7', 7, '???')));
@@ -507,18 +488,6 @@ begin
   Assert.AreEqual('feature/ATL-123-tracker-im-plugin', TAtlasTrackerNaming.BranchName(
     TAtlasTrackerNaming.GitBranchPattern, Issue('ATL-123', 123, 'Tracker im Plugin anbinden')));
   Assert.AreEqual('issue/123', TAtlasTrackerNaming.BranchName('issue/{NUMMER}', Issue('ATL-123', 123, '')));
-end;
-
-procedure TAtlasTrackerNamingTests.ValidBranchNames;
-begin
-  Assert.IsTrue(TAtlasTrackerNaming.ValidBranchName('feature/753-x'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName(''));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('-x'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('a/.b'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('a.lock'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('a b'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('a@{b'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('@'));
 end;
 
 procedure TAtlasTrackerNamingTests.CommitPrefixAndPrefixed;

@@ -420,13 +420,6 @@ begin
         Result := TAtlasIdeEditorCommands.TryToggleMethod;
       end);
   end;
-  // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
-  if Settings.CreateIssueKey <> 0 then
-    AddKey(TAtlasFeature.WelcomePage, Settings.CreateIssueKey, TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand),
-      procedure
-      begin
-        TAtlasIdeEditorCommands.CreateIssue;
-      end);
   // Ausblenden am Element (#628): mit Rückfall, ohne Element behält die IDE die Taste (Strg+. = IDE Insight).
   if Settings.HideElementKey <> 0 then
     AddAttemptKey(TAtlasFeature.Hide, Settings.HideElementKey, TAtlasStrings.Text(TAtlasTextId.HideElementCommand),

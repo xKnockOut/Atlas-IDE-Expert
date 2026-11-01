@@ -353,7 +353,7 @@ TAtlasVcsBranchBase = record
     class function RulesOfText(const AText: string; out ARules: TArray<TAtlasVcsExternalRule>;
       out AInvalid: string): Boolean; static;
     /// <summary>Name taugt für git und svn (nicht leer, keine Option, kein „..“, keine Leer- und Steuerzeichen).
-    /// Die strengere Prüfung nach Git-Regeln macht der Dialog (TAtlasTrackerNaming.ValidBranchName).</summary>
+    /// Die strengere Prüfung nach Git-Regeln macht der Dialog (TAtlasVcsBranchNames.Valid).</summary>
     class function SafeName(const AName: string): Boolean; static;
     /// <summary>Git: Startpunkt für checkout (refs/…); SVN: Quelle ^/&lt;Pfad&gt;@&lt;Revision&gt;.</summary>
     class function BaseRef(AKind: TAtlasVcsKind; const ABase: TAtlasVcsBranchBase): string; static;

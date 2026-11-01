@@ -4,7 +4,7 @@
 // „Was passiert“ die Schritte in Klartext, genau so, wie Atlas sie danach
 // ausführt (TAtlasVcsBranchPlan). Jede Änderung baut die Liste neu; Schritte,
 // die den Server ändern, tragen den Zusatz „auf dem Server“. Ein ungültiger
-// Name (TAtlasTrackerNaming.ValidBranchName) sperrt „Anlegen“ mit Hinweis
+// Name (TAtlasVcsBranchNames.Valid) sperrt „Anlegen“ mit Hinweis
 // unter dem Feld. Braucht der Plan Werte vom Server (SVN: HEAD-Revision),
 // steht „wird ermittelt …“ und „Anlegen“ bleibt gesperrt, bis die IDE-Schicht
 // ServerLoaded aufruft. „Nicht mehr fragen, Vorgaben verwenden“ nur bei „Beginnen“
@@ -198,7 +198,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Tracker.Naming,
+  Atlas.Core.Vcs.BranchNames,
   Atlas.UI.Strings;
 
 const
@@ -969,7 +969,7 @@ begin
   mName := Trim(FNameEdit.Text);
   if mName = '' then
     AText := TAtlasStrings.Text(TAtlasTextId.VcsBranchNameMissing)
-  else if (mName <> FNameEdit.Text) or not TAtlasTrackerNaming.ValidBranchName(mName) or
+  else if (mName <> FNameEdit.Text) or not TAtlasVcsBranchNames.Valid(mName) or
     not TAtlasVcsBranchPlan.SafeName(mName) then
     AText := TAtlasStrings.Text(TAtlasTextId.VcsBranchNameInvalid);
   Result := AText = '';

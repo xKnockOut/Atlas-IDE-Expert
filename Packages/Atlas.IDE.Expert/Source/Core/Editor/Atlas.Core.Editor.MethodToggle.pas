@@ -54,6 +54,10 @@ type
     /// <summary>Stelle unter dem Cursor (Zeile, Zeichen); False außerhalb jedes Kopfs und Rumpfs.</summary>
     class function PlaceAt(const APlaces: TArray<TAtlasMethodPlace>; ALine, ACharacter: Integer;
       out APlace: TAtlasMethodPlace): Boolean; static;
+    /// <summary>Innerster Methodenrumpf um ALine (0-basiert); False außerhalb jeder Methode. Für Lesezeichen,
+    /// „Weiterarbeiten“ und die Issues einer Methode (#1275); bis #1455 TAtlasBookmarks.MethodAt.</summary>
+    class function BodyAt(const APlaces: TArray<TAtlasMethodPlace>; ALine: Integer;
+      out APlace: TAtlasMethodPlace): Boolean; static;
     /// <summary>Gegenstück zu ASource unter APlaces; False, wenn es keins gibt.</summary>
     class function Match(const APlaces: TArray<TAtlasMethodPlace>; const ASource: TAtlasMethodPlace;
       out ATarget: TAtlasMethodPlace): Boolean; static;
@@ -968,6 +972,22 @@ begin
     APlace := Place;
     Result := True;
   end;
+end;
+
+class function TAtlasMethodToggle.BodyAt(const APlaces: TArray<TAtlasMethodPlace>; ALine: Integer;
+  out APlace: TAtlasMethodPlace): Boolean;
+var
+  mPlace: TAtlasMethodPlace;
+begin
+  Result := False;
+  APlace := Default(TAtlasMethodPlace);
+  for mPlace in APlaces do
+    if mPlace.IsBody and (ALine >= mPlace.FirstLine) and (ALine <= mPlace.LastLine) and
+      (not Result or (mPlace.LastLine - mPlace.FirstLine < APlace.LastLine - APlace.FirstLine)) then
+    begin
+      APlace := mPlace;
+      Result := True;
+    end;
 end;
 
 class function TAtlasMethodToggle.Match(const APlaces: TArray<TAtlasMethodPlace>; const ASource: TAtlasMethodPlace;

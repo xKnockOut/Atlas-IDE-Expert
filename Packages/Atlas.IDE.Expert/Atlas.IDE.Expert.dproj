@@ -523,6 +523,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinks.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.BlameLinks.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Session.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Workflow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.TimeTracking.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.BoardWindow.pas"/>
@@ -743,6 +744,7 @@
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.ToolCheck.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.ServerCheck.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.BranchPlan.pas"/>
+        <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.BranchNames.pas"/>
         <DCCReference Include="Source\UI\Vcs\Atlas.UI.Vcs.BranchDialog.pas"/>
         <DCCReference Include="Source\UI\Vcs\Atlas.UI.Vcs.WorkingCopies.pas"/>
         <DCCReference Include="Source\IDE\Vcs\Atlas.IDE.Vcs.Branching.pas"/>
@@ -835,6 +837,7 @@
         <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
         <DCCReference Include="Source\IDE\SymbolPath\Atlas.IDE.SymbolPath.Service.pas"/>
         <DCCReference Include="Source\IDE\Analysis\Atlas.IDE.Analysis.Composition.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Cache.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
