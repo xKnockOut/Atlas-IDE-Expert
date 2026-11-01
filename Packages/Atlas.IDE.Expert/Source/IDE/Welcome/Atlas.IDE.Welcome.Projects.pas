@@ -1,168 +1,72 @@
 ﻿unit Atlas.IDE.Welcome.Projects;
 
 // Bereich „Projekte“ in der IDE (#592): Quelle des Bereichs
-// (IAtlasProjectsSource), Anmeldung als Bereich atlas.projects der
-// Willkommensseite (bzw. des Fensters „Atlas-Start“) und Pflege der
-// Projekt-Zusammenfassungen in %LOCALAPPDATA%\Atlas\projects.
+// (IAtlasProjectsSource) und Anmeldung als Bereich atlas.projects der
+// Willkommensseite (bzw. des Fensters „Atlas-Start“).
 // - Liste: zuletzt geöffnete Projekte und Projektgruppen der IDE (Registry
 //   <Basis>\Closed Projects), höchstens welcomePage.maxProjects; Schalter
 //   welcomePage.projectStatus.
-// - Geschrieben wird nach jedem Build und jeder Hintergrundprüfung (Meldungen
-//   aus dem Reiter „Build“, #528; bei einer Projektgruppe auch in deren
-//   Zusammenfassung), beim Öffnen (lastOpened, hebt „Aus Liste entfernen“
-//   auf) und beim Schließen eines Projekts (lastClosed, frischer Stand der
-//   Versionsverwaltung). Das geschieht auch, wenn der Bereich ausgeblendet
-//   ist: Spätere Bereiche (#755, #758 …) lesen dieselben Dateien.
-// - Versionsverwaltung (#571): beim Anzeigen im Hintergrund frisch abgefragt
-//   (welcomePage.refreshVcs), je Projekt höchstens einmal je Minute, mit 2 s
-//   Zeitlimit; bis dahin gilt der gespeicherte Stand („Stand vom …“).
-//   Geänderte Dateien zählen nur im Projektordner. Startet die Abfrage nicht
-//   oder kommt sie nicht binnen 5 s zurück, endet „wird abgefragt …“.
-// - Regeltreffer (#97): beim Schließen und nach jedem Build aus den Problemen,
-//   die das Plugin vom Server hat (#398, Baseline schon abgezogen), gezählt
-//   im Projektordner; nur wenn Probleme an sind und dort Dateien geprüft sind.
-// - Code-Metriken (#66): nach einem Build (nicht nach einer Hintergrund-
-//   prüfung) fragt die Composition den laufenden Server im Hintergrund nach
-//   atlas.server.metrics (Modus summary) und übergibt die Antwort an
-//   RecordMetrics; Zeitpunkt ist der des Builds. Nur in die Zusammenfassung
-//   des Projekts, nicht der Gruppe: Werte eines Projekts wären für die Gruppe
-//   irreführend. Grundlage des Projektverlaufs (#758).
-// - TODO-Übersicht (#68): im selben Hintergrundlauf fragt die Composition
-//   atlas.server.todos (Modus summary) und übergibt die Antwort an
-//   RecordTodos; ebenso nur für das Projekt, Zeitpunkt der des Builds.
-// - Baseline (#97): im selben Hintergrundlauf liest die Composition die
-//   Baseline-Datei im Projektordner (Einträge, Treffer, Einträge ohne Datei)
-//   und übergibt sie an RecordBaseline; nach „Baseline des Projekts
-//   aktualisieren“ ebenso mit den Zählern des Servers. Abschnitt "baseline"
-//   für Projektverlauf (#758) und Einrichtung (#759).
-// - Projektverlauf (#758, welcomePage.trends): nach jedem Build des Benutzers
-//   (nicht nach einer Hintergrundprüfung) ein Messpunkt im Abschnitt "trends"
-//   (TAtlasProjectTrendLog.Append, Ringpuffer mit welcomePage.trends.points),
-//   auch für die Projektgruppe. Metriken, TODOs und Baseline aus dem
-//   Hintergrundlauf danach sowie der frisch abgefragte Branch und Commit
-//   kommen mit demselben Zeitpunkt und werden in diesen Punkt nachgetragen
-//   (Fill). Die Build-Dauer steht in "build.durationMs" (Gruppe: Dauer des
-//   ganzen Laufs).
+// - Die Projekt-Zusammenfassungen schreibt der Kern
+//   (TAtlasIdeProjectSummaries, #1455), auch ohne Willkommensseite. Der Bereich
+//   hört als IAtlasProjectSummaryListener auf Änderungen und zeichnet neu;
+//   beim Anzeigen fragt er die Versionsverwaltung über den Kern frisch ab
+//   (welcomePage.refreshVcs, je Projekt höchstens einmal je Minute).
 // - Auswahl (#758): Mit eingeschaltetem Projektverlauf oder „Meine Issues“
 //   (#765) wählt ein Klick auf eine Zeile das Projekt für diese Bereiche
 //   (Doppelklick öffnet); Select meldet ihnen die Änderung.
-// - Tests (#69): nach jedem Testlauf aus der IDE übergibt die Composition den
-//   Abschnitt "tests" an RecordTests, für das Testprojekt und seine
-//   Projektgruppe (die Karte Tests #763 zeigt ihn beim Projekt, das der
-//   Benutzer öffnet). „Fehlgeschlagene Tests erneut ausführen“ des Moduls
-//   Tests liest daraus die Namen des letzten Laufs
-//   (TAtlasProjectSummaries.FailedTestsOf), auch nach einem Neustart.
-// - Schnellaktionen (#764): Die Quelle der Knopfleiste (QuickActions, aus der
-//   Composition) bekommt jeder Frame; VcsOf liefert ihr den Stand der
-//   Versionsverwaltung (frisch abgefragt, sonst gespeichert), Refresh fragt
-//   nach Pull neu ab.
+// - Schnellaktionen (#764): Die Quelle der Knopfleiste (QuickActions) bekommt
+//   jeder Frame; VcsOf liefert ihr den Stand der Versionsverwaltung, Refresh
+//   fragt nach Pull neu ab.
 // - Die Willkommensseite startet keinen Server und liest nur lokale Dateien.
 
 interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
-  ToolsAPI,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.Baseline,
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.Projects;
+  Atlas.UI.Welcome.Projects,
+  Atlas.IDE.Projects.Summaries;
 
 type
-  TAtlasIdeProjects = class(TInterfacedObject, IAtlasProjectsSource)
+  TAtlasIdeProjects = class(TInterfacedObject, IAtlasProjectsSource, IAtlasProjectSummaryListener)
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts.</summary>
     Order = 20;
-  private type
-    TIdeNotifier = class(TNotifierObject, IOTAIDENotifier)
-    private
-      FOwner: TAtlasIdeProjects;
-    public
-      procedure FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
-      procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean); overload;
-      procedure AfterCompile(Succeeded: Boolean); overload;
-    end;
   private
     FMessage: TProc<string>;
-    FNotifier: TIdeNotifier;
-    FNotifierIndex: Integer;
     FStopped: Boolean;
-    // Normierter Pfad → Zeitpunkt (GetTickCount64) bzw. Ergebnis der letzten Abfrage in dieser Sitzung.
-    FFresh: TDictionary<string, UInt64>;
-    FLive: TDictionary<string, TAtlasProjectVcs>;
-    // Normierter Pfad → Start der laufenden Abfrage (GetTickCount64).
-    FQuerying: TDictionary<string, UInt64>;
+    // Hört auf die Zusammenfassungen des Kerns (#1455), solange der Bereich läuft.
+    FListening: IAtlasRegistration;
     // Für den Projektverlauf gewähltes Projekt (#758); '' = keins.
     FSelected: string;
     // Quelle der Schnellaktionen (#764); nil = keine Knöpfe.
     FQuickActions: IAtlasQuickActionsSource;
     procedure Changed;
     procedure Report(const AText: string);
-    procedure Opened(const AProject: string);
-    procedure Closing(const AProject: string);
-    procedure Query(const AProject: string); overload;
-    /// <summary>Wie oben; mit ABuildUtc &gt; 0 trägt das Ergebnis Branch und Commit in den Messpunkt dieses Builds
-    /// ein (#758).</summary>
-    procedure Query(const AProject: string; ABuildUtc: TDateTime); overload;
-    function Querying(const AKey: string): Boolean;
-    procedure RecordRules(const AProject: string; ANowUtc: TDateTime);
-    procedure RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
-      const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64; ANowUtc: TDateTime);
-    procedure RecordTrend(const AProject: string; ANowUtc: TDateTime);
     class function TrendsOn: Boolean; static;
-    class function NowUtc: TDateTime; static;
     class function ProjectOpen(const AFileName: string): Boolean; static;
-    class function GroupOf(const AProject: string): string; static;
+    class function Summaries: TAtlasIdeProjectSummaries; static;
   public
     /// <summary>AMessage: Zeile in die Meldungsansicht.</summary>
     constructor Create(const AMessage: TProc<string>);
     destructor Destroy; override;
-    /// <summary>Bereich, Fabrik und Beobachter der IDE anmelden.</summary>
+    /// <summary>Bereich und Fabrik anmelden, auf die Zusammenfassungen hören.</summary>
     procedure Start;
     /// <summary>Alles abmelden (beim Entladen); danach wirkungslos.</summary>
     procedure Stop;
     function Section: TAtlasWelcomeSection;
-    /// <summary>Ergebnis eines Compiles aus dem Reiter „Build“ (#528); AReadable = False: Meldungen nicht
-    /// lesbar, dann bleibt die Zusammenfassung unverändert.</summary>
-    procedure Recorded(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      ASucceeded, AReadable: Boolean); overload;
-    /// <summary>Wie oben mit dem Zeitpunkt des Builds AAtUtc; denselben bekommen RecordMetrics, RecordTodos und
-    /// RecordBaseline, damit ihre Werte in den Messpunkt des Projektverlaufs kommen (#758).</summary>
-    procedure Recorded(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      ASucceeded, AReadable: Boolean; AAtUtc: TDateTime); overload;
-    /// <summary>Antwort von atlas.server.metrics (Modus summary) für AProject zum Zeitpunkt AAtUtc (#66);
-    /// ungültige oder leere Antwort: Zusammenfassung bleibt unverändert. Hauptthread.</summary>
-    procedure RecordMetrics(const AProject, AJson: string; AAtUtc: TDateTime);
-    /// <summary>Antwort von atlas.server.todos (Modus summary) für AProject zum Zeitpunkt AAtUtc (#68);
-    /// ungültige oder leere Antwort: Zusammenfassung bleibt unverändert. Hauptthread.</summary>
-    procedure RecordTodos(const AProject, AJson: string; AAtUtc: TDateTime);
-    /// <summary>Baseline des Projekts (#97) nach einem Build: Stand der Datei, das letzte Aktualisieren bleibt.
-    /// </summary>
-    procedure RecordBaseline(const AProject: string; const AState: TAtlasBaselineState; AAtUtc: TDateTime);
-      overload;
-    /// <summary>Baseline des Projekts (#97) nach dem Aktualisieren: Stand der Datei und Zähler des Servers.</summary>
-    procedure RecordBaseline(const AProject: string; const AState: TAtlasBaselineState;
-      const AUpdate: TAtlasBaselineUpdate; AAtUtc: TDateTime); overload;
-    /// <summary>Letzter Testlauf (#69) des Testprojekts AProject für die Karte Tests (#763); bei einer
-    /// Projektgruppe auch in deren Zusammenfassung. Hauptthread.</summary>
-    procedure RecordTests(const AProject: string; const ATests: TAtlasProjectTests);
-    /// <summary>Jetzt in UTC, Zeitpunkt der Einträge.</summary>
-    class function StampUtc: TDateTime; static;
     /// <summary>Stand der Versionsverwaltung von AProject: frisch abgefragt (diese Sitzung), sonst aus der
     /// Zusammenfassung; Empty ohne (#764).</summary>
     function VcsOf(const AProject: string): TAtlasProjectVcs;
     /// <summary>Branch und Änderungen von AProject jetzt neu abfragen (nach Pull, #764), auch innerhalb der Minute.
     /// </summary>
     procedure Refresh(const AProject: string);
-    /// <summary>%LOCALAPPDATA%\Atlas\projects.</summary>
-    class function Folder: string; static;
-    /// <summary>.dpr bzw. .dpk mit .dproj daneben → .dproj (so führt die IDE ihre Liste).</summary>
-    class function ProjectFileOf(const AFileName: string): string; static;
+    { IAtlasProjectSummaryListener }
+    procedure SummaryChanged(const AProject: string);
     { IAtlasProjectsSource }
     function Entries: TAtlasProjectEntries;
     procedure Open(const AProject: string);
@@ -187,56 +91,16 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.Classes,
-  System.DateUtils,
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Settings.Plugin,
-  Atlas.Core.Projects.Trends,
-  Atlas.Core.Welcome.Search,
+  Atlas.Core.Modules.Registry,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Problems.Controller,
   Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.WorkingCopies,
-  Atlas.IDE.Vcs.Service,
   Atlas.IDE.Welcome.Search;
-
-{ TAtlasIdeProjects.TIdeNotifier }
-
-procedure TAtlasIdeProjects.TIdeNotifier.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string;
-  var Cancel: Boolean);
-var
-  Owner: TAtlasIdeProjects;
-  Name: string;
-begin
-  Owner := FOwner;
-  if (Owner = nil) or not ((NotifyCode = ofnFileOpened) or (NotifyCode = ofnFileClosing)) or
-    not TAtlasWelcomeSearch.IsProjectFile(FileName) then
-    Exit;
-  Name := FileName;
-  // Keine Exception an die IDE (#493).
-  if NotifyCode = ofnFileOpened then
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        Owner.Opened(Name);
-      end)
-  else
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        Owner.Closing(Name);
-      end);
-end;
-
-procedure TAtlasIdeProjects.TIdeNotifier.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
-begin
-end;
-
-procedure TAtlasIdeProjects.TIdeNotifier.AfterCompile(Succeeded: Boolean);
-begin
-end;
 
 { TAtlasIdeProjects }
 
@@ -244,37 +108,12 @@ constructor TAtlasIdeProjects.Create(const AMessage: TProc<string>);
 begin
   inherited Create;
   FMessage := AMessage;
-  FNotifierIndex := -1;
-  FFresh := TDictionary<string, UInt64>.Create;
-  FLive := TDictionary<string, TAtlasProjectVcs>.Create;
-  FQuerying := TDictionary<string, UInt64>.Create;
 end;
 
 destructor TAtlasIdeProjects.Destroy;
 begin
   Stop;
-  FQuerying.Free;
-  FLive.Free;
-  FFresh.Free;
   inherited;
-end;
-
-class function TAtlasIdeProjects.Folder: string;
-begin
-  Result := TAtlasProjectSummaries.DefaultFolder;
-end;
-
-class function TAtlasIdeProjects.NowUtc: TDateTime;
-begin
-  Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
-
-class function TAtlasIdeProjects.ProjectFileOf(const AFileName: string): string;
-begin
-  Result := AFileName;
-  if (SameText(ExtractFileExt(Result), '.dpr') or SameText(ExtractFileExt(Result), '.dpk')) and
-    FileExists(ChangeFileExt(Result, '.dproj')) then
-    Result := ChangeFileExt(Result, '.dproj');
 end;
 
 class function TAtlasIdeProjects.ProjectOpen(const AFileName: string): Boolean;
@@ -284,28 +123,13 @@ begin
   Result := Supports(BorlandIDEServices, IOTAModuleServices, Modules) and (Modules.FindModule(AFileName) <> nil);
 end;
 
-class function TAtlasIdeProjects.GroupOf(const AProject: string): string;
-var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
+class function TAtlasIdeProjects.Summaries: TAtlasIdeProjectSummaries;
 begin
-  // Liegt das Projekt in der offenen Projektgruppe, zählt sein Build auch für die Gruppe (die Liste der IDE
-  // führt oft nur die Gruppe).
-  Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-    Exit;
-  Group := Modules.MainProjectGroup;
-  if (Group = nil) or (Group.FileName = '') or SameText(Group.FileName, AProject) then
-    Exit;
-  for Index := 0 to Group.ProjectCount - 1 do
-    if (Group.Projects[Index] <> nil) and SameText(Group.Projects[Index].FileName, AProject) then
-      Exit(Group.FileName);
+  Result := TAtlasIdeProjectSummaries.Current;
 end;
 
 procedure TAtlasIdeProjects.Start;
 var
-  Services: IOTAServices;
   Keep: IAtlasProjectsSource;
 begin
   FStopped := False;
@@ -322,30 +146,18 @@ begin
       Result := Frame;
     end);
   TAtlasWelcomeSections.Default.Add(Section);
-  if (FNotifier = nil) and Supports(BorlandIDEServices, IOTAServices, Services) then
-  begin
-    FNotifier := TIdeNotifier.Create;
-    FNotifier.FOwner := Self;
-    FNotifierIndex := Services.AddNotifier(FNotifier);
-  end;
+  // Zusammenfassungen schreibt der Kern (#1455); der Bereich zeichnet nach jeder Änderung neu.
+  FListening := AtlasModuleRegistry.Provide(IAtlasProjectSummaryListener, Self as IAtlasProjectSummaryListener);
 end;
 
 procedure TAtlasIdeProjects.Stop;
-var
-  Services: IOTAServices;
 begin
   if FStopped then
     Exit;
   FStopped := True;
-  if FNotifier <> nil then
-  begin
-    FNotifier.FOwner := nil;
-    // RemoveNotifier gibt die Referenz der IDE frei und damit den Beobachter (#493).
-    if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
-      Services.RemoveNotifier(FNotifierIndex);
-    FNotifier := nil;
-    FNotifierIndex := -1;
-  end;
+  if FListening <> nil then
+    FListening.Revoke;
+  FListening := nil;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Projects);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Projects);
   FQuickActions := nil;
@@ -409,9 +221,9 @@ function TAtlasIdeProjects.Entries: TAtlasProjectEntries;
 var
   Recent: TArray<string>;
   Index: Integer;
-  Key: string;
   Vcs: TAtlasProjectVcs;
   Root: string;
+  mSummaries: TAtlasIdeProjectSummaries;
 begin
   Result := nil;
   if FStopped then
@@ -424,390 +236,53 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
-  Root := Folder;
+  Root := TAtlasIdeProjectSummaries.Folder;
   Result := TAtlasWelcomeProjects.Entries(Recent,
     function(const AProject: string; out ASummary: TAtlasProjectSummary): Boolean
     begin
       Result := TAtlasProjectSummaries.Load(Root, AProject, ASummary);
     end,
     TAtlasIdeSettings.Current.WelcomePageMaxProjects);
+  mSummaries := Summaries;
+  if mSummaries = nil then
+    Exit;
   for Index := 0 to High(Result) do
   begin
-    Key := TAtlasProjectSummaries.NormalizedPath(Result[Index].Project);
-    if FLive.TryGetValue(Key, Vcs) then
+    if mSummaries.LiveVcs(Result[Index].Project, Vcs) then
     begin
       Result[Index].Summary.Vcs := Vcs;
       Result[Index].VcsFresh := True;
     end;
-    Result[Index].VcsQuerying := Querying(Key);
+    Result[Index].VcsQuerying := mSummaries.Querying(Result[Index].Project);
   end;
 end;
 
 procedure TAtlasIdeProjects.Shown;
 var
   Entry: TAtlasProjectEntry;
-  Last: UInt64;
-  Now_: UInt64;
 begin
-  if FStopped or not TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
+  if FStopped or (Summaries = nil) or not TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
     Exit;
-  Now_ := GetTickCount64;
   for Entry in Entries do
-    if not FFresh.TryGetValue(TAtlasProjectSummaries.NormalizedPath(Entry.Project), Last) or
-      (Now_ - Last >= TAtlasWelcomeProjects.VcsRefreshMs) then
-      Query(Entry.Project);
-end;
-
-function TAtlasIdeProjects.Querying(const AKey: string): Boolean;
-var
-  Started: UInt64;
-begin
-  // Eine Abfrage, die nicht binnen VcsQueryLimitMs zurückkam, gilt als beendet.
-  Result := FQuerying.TryGetValue(AKey, Started) and
-    TAtlasWelcomeProjects.QueryRunning(Started, GetTickCount64);
-  if not Result then
-    FQuerying.Remove(AKey);
-end;
-
-procedure TAtlasIdeProjects.Query(const AProject: string);
-begin
-  Query(AProject, 0);
+    Summaries.QueryIfStale(Entry.Project);
 end;
 
 function TAtlasIdeProjects.VcsOf(const AProject: string): TAtlasProjectVcs;
-var
-  Summary: TAtlasProjectSummary;
 begin
   Result := TAtlasProjectVcs.Empty;
-  if FStopped or (AProject = '') then
-    Exit;
-  if FLive.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), Result) then
-    Exit;
-  if TAtlasProjectSummaries.Load(Folder, AProject, Summary) then
-    Result := Summary.Vcs;
+  if not FStopped and (Summaries <> nil) then
+    Result := Summaries.VcsOf(AProject);
 end;
 
 procedure TAtlasIdeProjects.Refresh(const AProject: string);
 begin
-  if FStopped or (AProject = '') then
-    Exit;
-  // Auch ohne welcomePage.refreshVcs: Der Benutzer hat gerade geholt, der alte Stand wäre falsch.
-  FFresh.Remove(TAtlasProjectSummaries.NormalizedPath(AProject));
-  Query(AProject);
+  if not FStopped and (Summaries <> nil) then
+    Summaries.Refresh(AProject);
 end;
 
-procedure TAtlasIdeProjects.Query(const AProject: string; ABuildUtc: TDateTime);
-var
-  Keep: IAtlasProjectsSource;
-  Key, Project, Dir, Root: string;
-  Stamp: TDateTime;
-  Ok: Boolean;
-  State: TAtlasProjectVcs;
-  Started: UInt64;
-  BuildStamp: TDateTime;
+procedure TAtlasIdeProjects.SummaryChanged(const AProject: string);
 begin
-  Key := TAtlasProjectSummaries.NormalizedPath(AProject);
-  if FStopped or Querying(Key) then
-    Exit;
-  Started := GetTickCount64;
-  FQuerying.AddOrSetValue(Key, Started);
-  Keep := Self;
-  Project := AProject;
-  Dir := ExtractFileDir(AProject);
-  Root := Folder;
-  Stamp := NowUtc;
-  BuildStamp := ABuildUtc;
-  Ok := False;
-  State := TAtlasProjectVcs.Empty;
-  // Arbeit und Ergebnis teilen sich Ok und State; das Ergebnis kommt erst nach der Arbeit.
-  if not TAtlasIdeVcs.Run(
-    procedure
-    begin
-      // Geänderte Dateien nur im Projektordner: Eine Arbeitskopie kann mehrere Projekte enthalten.
-      Ok := TAtlasWelcomeProjects.Probe(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeProjects.VcsCallTimeoutMs), Dir,
-        Stamp, State);
-    end,
-    procedure
-    var
-      Current: UInt64;
-    begin
-      // Keep hält die Quelle bis hierher am Leben.
-      if (Keep = nil) or FStopped then
-        Exit;
-      // Nur die eigene Abfrage beenden, nicht eine neuere nach Ablauf des Zeitlimits.
-      if FQuerying.TryGetValue(Key, Current) and (Current = Started) then
-        FQuerying.Remove(Key);
-      FFresh.AddOrSetValue(Key, GetTickCount64);
-      if Ok then
-      begin
-        FLive.AddOrSetValue(Key, State);
-        TAtlasProjectSummaries.Update(Root, Project,
-          procedure(var ASummary: TAtlasProjectSummary)
-          begin
-            ASummary.Vcs := State;
-            // Branch und Commit zum Zeitpunkt des Builds in dessen Messpunkt (#758).
-            if BuildStamp > 0 then
-              TAtlasProjectTrendLog.Fill(ASummary, BuildStamp);
-          end);
-      end;
-      Changed;
-    end) then
-  begin
-    // Nicht gestartet (Versionsverwaltung noch nicht bereit oder beendet): kein „wird abgefragt …“, nicht
-    // bei jedem Zeichnen neu versuchen.
-    FQuerying.Remove(Key);
-    FFresh.AddOrSetValue(Key, GetTickCount64);
-  end;
-end;
-
-procedure TAtlasIdeProjects.RecordRules(const AProject: string; ANowUtc: TDateTime);
-var
-  Settings: TAtlasPluginSettings;
-  Hits: Integer;
-  Stamp: TDateTime;
-begin
-  // Nur was das Plugin vom Server hat (Probleme an); ohne geprüfte Datei im Projektordner bleibt der alte Stand.
-  Settings := TAtlasIdeSettings.Current;
-  if not (Settings.Enabled and Settings.Problems) then
-    Exit;
-  if not TAtlasWelcomeProjects.CountRuleHits(TAtlasProblemsController.Current, ExtractFileDir(AProject), Hits) then
-    Exit;
-  Stamp := ANowUtc;
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      TAtlasWelcomeProjects.RecordRules(ASummary, Hits, Stamp);
-    end);
-end;
-
-procedure TAtlasIdeProjects.Opened(const AProject: string);
-var
-  Stamp: TDateTime;
-begin
-  if FStopped then
-    Exit;
-  Stamp := NowUtc;
-  TAtlasProjectSummaries.Update(Folder, ProjectFileOf(AProject),
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      ASummary.LastOpened := Stamp;
-      // Wieder geöffnet: erscheint wieder in der Liste.
-      ASummary.Hidden := False;
-    end);
   Changed;
-end;
-
-procedure TAtlasIdeProjects.Closing(const AProject: string);
-var
-  Stamp: TDateTime;
-  Project: string;
-begin
-  if FStopped then
-    Exit;
-  Stamp := NowUtc;
-  Project := ProjectFileOf(AProject);
-  TAtlasProjectSummaries.Update(Folder, Project,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      ASummary.LastClosed := Stamp;
-    end);
-  // Regeltreffer, solange die Probleme des Projekts noch im Speicher sind.
-  RecordRules(Project, Stamp);
-  // Branch und Änderungen beim Schließen festhalten (im Hintergrund, auch wenn die Willkommensseite noch zu ist).
-  if TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
-    Query(Project);
-  Changed;
-end;
-
-procedure TAtlasIdeProjects.RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
-  const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64; ANowUtc: TDateTime);
-var
-  Messages: TArray<TAtlasCompilerMessage>;
-  Info: TAtlasCompileProject;
-  Succeeded: Boolean;
-  Stamp: TDateTime;
-  Duration: Integer;
-begin
-  Messages := AMessages;
-  Info := AInfo;
-  Succeeded := ASucceeded;
-  Stamp := ANowUtc;
-  // Mehr als 24 Tage gibt es nicht; ungültige Werte als unbekannt.
-  Duration := 0;
-  if (ADurationMs > 0) and (ADurationMs < MaxInt) then
-    Duration := Integer(ADurationMs);
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      TAtlasWelcomeProjects.RecordCompile(ASummary, Messages, Info.Background, Succeeded,
-        TAtlasCompileEvents.KindText(Info.Kind), Info.Configuration, Info.Platform, Stamp);
-      // Build-Dauer (#758); eine Hintergrundprüfung ändert den Abschnitt "build" nicht.
-      if not Info.Background then
-        ASummary.Build.DurationMs := Duration;
-    end);
-end;
-
-procedure TAtlasIdeProjects.RecordTrend(const AProject: string; ANowUtc: TDateTime);
-var
-  Stamp: TDateTime;
-  Limit: Integer;
-begin
-  Stamp := ANowUtc;
-  Limit := TAtlasIdeSettings.Current.WelcomePageTrendsPoints;
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      TAtlasProjectTrendLog.Append(ASummary, Stamp, Limit);
-    end);
-end;
-
-procedure TAtlasIdeProjects.Recorded(const AMessages: TArray<TAtlasCompilerMessage>;
-  const AProject: TAtlasCompileProject; ASucceeded, AReadable: Boolean);
-begin
-  Recorded(AMessages, AProject, ASucceeded, AReadable, NowUtc);
-end;
-
-procedure TAtlasIdeProjects.Recorded(const AMessages: TArray<TAtlasCompilerMessage>;
-  const AProject: TAtlasCompileProject; ASucceeded, AReadable: Boolean; AAtUtc: TDateTime);
-var
-  Stamp: TDateTime;
-  Group: string;
-  GroupDuration: Int64;
-  Trends: Boolean;
-begin
-  if FStopped or not AReadable or (AProject.FileName = '') then
-    Exit;
-  Stamp := AAtUtc;
-  // Projektverlauf (#758): nur Builds des Benutzers, nicht die eigene Hintergrundprüfung.
-  Trends := TrendsOn and not AProject.Background;
-  RecordInto(AProject.FileName, AMessages, AProject, ASucceeded, AProject.DurationMs, Stamp);
-  RecordRules(AProject.FileName, Stamp);
-  if Trends then
-    RecordTrend(AProject.FileName, Stamp);
-  Group := GroupOf(AProject.FileName);
-  if Group <> '' then
-  begin
-    // Die Gruppe misst den ganzen Lauf („Alle erzeugen“); ohne Angabe die Dauer des Projekts.
-    GroupDuration := AProject.GroupDurationMs;
-    if GroupDuration <= 0 then
-      GroupDuration := AProject.DurationMs;
-    RecordInto(Group, AMessages, AProject, ASucceeded, GroupDuration, Stamp);
-    RecordRules(Group, Stamp);
-    if Trends then
-      RecordTrend(Group, Stamp);
-  end;
-  // Branch und Commit des Builds frisch abfragen (im Hintergrund); bis dahin gilt der bekannte Stand.
-  if Trends and TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
-  begin
-    Query(ProjectFileOf(AProject.FileName), Stamp);
-    if Group <> '' then
-      Query(Group, Stamp);
-  end;
-  Changed;
-end;
-
-procedure TAtlasIdeProjects.RecordMetrics(const AProject, AJson: string; AAtUtc: TDateTime);
-var
-  Metrics: TAtlasProjectMetrics;
-begin
-  if FStopped or (AProject = '') then
-    Exit;
-  if not TAtlasProjectMetrics.FromServer(AJson, AAtUtc, Metrics) then
-    Exit;
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      ASummary.Metrics := Metrics;
-      // In den Messpunkt des Builds mit demselben Zeitpunkt (#758); ohne Punkt nichts.
-      TAtlasProjectTrendLog.Fill(ASummary, ASummary.Metrics.At);
-    end);
-  Changed;
-end;
-
-procedure TAtlasIdeProjects.RecordTodos(const AProject, AJson: string; AAtUtc: TDateTime);
-var
-  Todos: TAtlasProjectTodos;
-begin
-  if FStopped or (AProject = '') then
-    Exit;
-  if not TAtlasProjectTodos.FromServer(AJson, AAtUtc, Todos) then
-    Exit;
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      ASummary.Todos := Todos;
-      // In den Messpunkt des Builds mit demselben Zeitpunkt (#758); ohne Punkt nichts.
-      TAtlasProjectTrendLog.Fill(ASummary, ASummary.Todos.At);
-    end);
-  Changed;
-end;
-
-procedure TAtlasIdeProjects.RecordTests(const AProject: string; const ATests: TAtlasProjectTests);
-var
-  Tests: TAtlasProjectTests;
-  Group: string;
-begin
-  if FStopped or (AProject = '') or not ATests.Known then
-    Exit;
-  Tests := ATests;
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      ASummary.Tests := Tests;
-    end);
-  Group := GroupOf(AProject);
-  if Group <> '' then
-    TAtlasProjectSummaries.Update(Folder, Group,
-      procedure(var ASummary: TAtlasProjectSummary)
-      begin
-        ASummary.Tests := Tests;
-      end);
-  Changed;
-end;
-
-procedure TAtlasIdeProjects.RecordBaseline(const AProject: string; const AState: TAtlasBaselineState;
-  AAtUtc: TDateTime);
-var
-  State: TAtlasBaselineState;
-  Stamp: TDateTime;
-begin
-  if FStopped or (AProject = '') then
-    Exit;
-  State := AState;
-  Stamp := AAtUtc;
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      TAtlasProjectBaselines.Measured(ASummary.Baseline, State, Stamp);
-      // Ohne Baseline wird „Regeltreffer seit Baseline“ im Messpunkt dieses Builds zur Lücke (#758).
-      TAtlasProjectTrendLog.Fill(ASummary, Stamp);
-    end);
-  Changed;
-end;
-
-procedure TAtlasIdeProjects.RecordBaseline(const AProject: string; const AState: TAtlasBaselineState;
-  const AUpdate: TAtlasBaselineUpdate; AAtUtc: TDateTime);
-var
-  State: TAtlasBaselineState;
-  Update: TAtlasBaselineUpdate;
-  Stamp: TDateTime;
-begin
-  if FStopped or (AProject = '') then
-    Exit;
-  State := AState;
-  Update := AUpdate;
-  Stamp := AAtUtc;
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      TAtlasProjectBaselines.Updated(ASummary.Baseline, Update, State, Stamp);
-    end);
-  Changed;
-end;
-
-class function TAtlasIdeProjects.StampUtc: TDateTime;
-begin
-  Result := NowUtc;
 end;
 
 procedure TAtlasIdeProjects.Open(const AProject: string);
@@ -926,12 +401,8 @@ begin
     procedure
     begin
       // Nur dieser Bereich: Die Liste „Zuletzt geöffnet“ der IDE bleibt unverändert.
-      TAtlasProjectSummaries.Update(Folder, AProject,
-        procedure(var ASummary: TAtlasProjectSummary)
-        begin
-          ASummary.Hidden := True;
-        end);
-      Changed;
+      if Summaries <> nil then
+        Summaries.SetHidden(AProject, True);
     end);
 end;
 

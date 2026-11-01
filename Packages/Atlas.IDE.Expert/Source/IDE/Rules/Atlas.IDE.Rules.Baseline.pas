@@ -5,7 +5,8 @@
 //   die Einträge ohne Datei und fragt nach, dann lässt der Server
 //   (atlas.updateBaseline) alle Dateien des aktiven Projekts prüfen und die
 //   Baseline schreiben. Die Zähler stehen danach in der Meldungsansicht, den
-//   neuen Stand erfahren die IAtlasBaselineListener (Projektverlauf #758).
+//   neuen Stand schreibt das Modul in die Projekt-Zusammenfassung von Base
+//   (TAtlasIdeProjectSummaries, Projektverlauf #758).
 //   StartUpdate ist zugleich IAtlasBaselineSource für die Einrichtung (#759).
 // - „Aktuelle Compilermeldungen in die Basislinie“ (#530): Warnungen und
 //   Hinweise des letzten Builds des aktiven Projekts
@@ -50,14 +51,13 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Projects.Baseline,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Build.Summary,
   Atlas.UI.Rules.Strings;
 
@@ -115,34 +115,28 @@ begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateSetAside, [AUpdate.SetAside]));
 end;
 
-/// <summary>Hörer der Baseline (Projektverlauf); jeder Hörer für sich gesichert.</summary>
+/// <summary>Neuer Stand der Baseline in die Projekt-Zusammenfassung (Projektverlauf #758).</summary>
 procedure NotifyUpdated(const AProject: string; const AUpdate: TAtlasBaselineUpdate;
   const AState: TAtlasBaselineState);
-var
-  mItem: IInterface;
-  mListener: IAtlasBaselineListener;
 begin
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBaselineListener) do
-    if Supports(mItem, IAtlasBaselineListener, mListener) then
-      TAtlasGuard.Run(TAtlasFeature.Palette,
-        procedure
-        begin
-          mListener.BaselineUpdated(AProject, AUpdate, AState);
-        end);
+  if TAtlasIdeProjectSummaries.Current <> nil then
+    TAtlasGuard.Run(TAtlasFeature.Palette,
+      procedure
+      begin
+        TAtlasIdeProjectSummaries.Current.RecordBaseline(AProject, AState, AUpdate,
+          TAtlasIdeProjectSummaries.StampUtc);
+      end);
 end;
 
+/// <summary>Der Server schrieb außerhalb des Projektordners: nur der Stand im Projektordner.</summary>
 procedure NotifyMeasured(const AProject: string; const AState: TAtlasBaselineState);
-var
-  mItem: IInterface;
-  mListener: IAtlasBaselineListener;
 begin
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBaselineListener) do
-    if Supports(mItem, IAtlasBaselineListener, mListener) then
-      TAtlasGuard.Run(TAtlasFeature.Palette,
-        procedure
-        begin
-          mListener.BaselineMeasured(AProject, AState);
-        end);
+  if TAtlasIdeProjectSummaries.Current <> nil then
+    TAtlasGuard.Run(TAtlasFeature.Palette,
+      procedure
+      begin
+        TAtlasIdeProjectSummaries.Current.RecordBaseline(AProject, AState, TAtlasIdeProjectSummaries.StampUtc);
+      end);
 end;
 
 /// <summary>Antwort von atlas.updateBaseline auswerten (Hauptthread).</summary>

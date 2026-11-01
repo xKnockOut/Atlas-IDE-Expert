@@ -1,9 +1,7 @@
 ﻿unit Atlas.Core.Welcome.Projects;
 
 // Bereich „Projekte“ der Willkommensseite (#592), Teil ohne VCL und Open
-// Tools API: welche Projekte erscheinen, welche Marken (Pillen) sie tragen,
-// wie ein Compile in die Projekt-Zusammenfassung kommt und wie die
-// Versionsverwaltung abgefragt wird.
+// Tools API: welche Projekte erscheinen und welche Marken (Pillen) sie tragen.
 // - Liste: zuletzt geöffnete Projekte und Projektgruppen der IDE in deren
 //   Reihenfolge, jedes einmal, ohne „Aus Liste entfernte“, höchstens
 //   welcomePage.maxProjects (1–30, Vorgabe 8).
@@ -12,18 +10,10 @@
 //   „Prüfung: N Fehler“, wenn die Hintergrundprüfung (#548) nach dem letzten
 //   Build Fehler fand; gelb „N geändert“ bei offenen Änderungen; grau „↑N ↓M“
 //   gegenüber dem Upstream; gelb „N neue Treffer“ gegenüber der Baseline.
-// - Versionsverwaltung: Head und Änderungen mit je VcsCallTimeoutMs (zusammen
-//   2 s je Projekt), nur im Hintergrund. Keine Arbeitskopie oder vcs.provider
+// - Versionsverwaltung und Regeltreffer schreibt der Kern in die Zusammenfassung
+//   (Atlas.Core.Projects.Recording, #1455). Keine Arbeitskopie oder vcs.provider
 //   = off ergibt „none“ (kein Branch, keine Marke, kein Fehler); andere Fehler
-//   lassen den gespeicherten Stand stehen („Stand vom …“). Geänderte Dateien
-//   zählen nur unterhalb des Projektordners (eine Arbeitskopie kann mehrere
-//   Projekte enthalten). Kommt eine Abfrage nicht binnen VcsQueryLimitMs
-//   zurück, gilt sie als beendet (kein dauerhaftes „wird abgefragt …“).
-// - Regeltreffer (#97): Atlas-Regeltreffer, die das Plugin vom Server bekommt
-//   (Probleme #398, auch für nicht geöffnete Projektdateien über
-//   workspace/diagnostic); der Server hat die Baseline schon abgezogen. Gezählt
-//   werden Treffer in Dateien unterhalb des Projektordners, nur wenn dort
-//   mindestens eine Datei geprüft ist („sofern bekannt“).
+//   lassen den gespeicherten Stand stehen („Stand vom …“).
 // - Ohne Projekt (#1114): Ist das letzte Projekt geschlossen, öffnet sich das
 //   Fenster „Atlas-Start“ (welcomePage.openWhenNoProject), nur solange die IDE
 //   läuft und nicht beim Beenden.
@@ -32,11 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Summary,
-  Atlas.Core.Build.Messages,
-  Atlas.Core.Problems.Contract,
-  Atlas.Core.Problems.Store,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.Projects.Summary;
 
 type
 {$SCOPEDENUMS ON}
@@ -85,13 +71,6 @@ type
     DefaultMax = 8;
     MinMax = 1;
     MaxMax = 30;
-    /// <summary>Zeitlimit je Aufruf (Head, Changes); zusammen 2 s je Projekt.</summary>
-    VcsCallTimeoutMs = 1000;
-    /// <summary>Frühestens nach dieser Zeit fragt die Seite dasselbe Projekt erneut ab.</summary>
-    VcsRefreshMs = 60000;
-    /// <summary>Spätestens dann gilt eine Abfrage als beendet, auch ohne Ergebnis (zwei Aufrufe mit Zeitlimit
-    /// plus Reserve).</summary>
-    VcsQueryLimitMs = 5000;
   public
     /// <summary>Einträge zu ARecent (Reihenfolge der IDE), jedes Projekt einmal, ohne entfernte, höchstens AMax
     /// (auf MinMax..MaxMax begrenzt).</summary>
@@ -101,30 +80,6 @@ type
     class function Pills(const AEntry: TAtlasProjectEntry): TArray<TAtlasProjectPill>; static;
     /// <summary>Schlimmste Stufe der Marken; Neutral ohne Marken.</summary>
     class function Level(const APills: TArray<TAtlasProjectPill>): TAtlasProjectPillLevel; static;
-    /// <summary>Ergebnis eines Compiles in die Zusammenfassung: ABackground (Hintergrundprüfung, #548) setzt
-    /// "check", sonst "build". Fehler zählen mit schweren Fehlern (Fatal).</summary>
-    class procedure RecordCompile(var ASummary: TAtlasProjectSummary;
-      const AMessages: TArray<TAtlasCompilerMessage>; ABackground, ASucceeded: Boolean;
-      const AKind, AConfiguration, APlatform: string; ANowUtc: TDateTime); static;
-    /// <summary>Head und Änderungen abfragen (startet Prozesse: nur im Hintergrund). True mit AState, wenn das
-    /// Ergebnis gilt (auch „none“); False bei Fehler, Zeitüberschreitung oder fehlendem Programm.</summary>
-    class function Probe(const AVcs: IAtlasVersionControl; ANowUtc: TDateTime;
-      out AState: TAtlasProjectVcs): Boolean; overload; static;
-    /// <summary>Wie oben; geänderte Dateien nur unterhalb von AFolder (Projektordner; '' = alle).</summary>
-    class function Probe(const AVcs: IAtlasVersionControl; const AFolder: string; ANowUtc: TDateTime;
-      out AState: TAtlasProjectVcs): Boolean; overload; static;
-    /// <summary>Liegt AFileName in AFolder oder darunter? Groß-/Kleinschreibung und / bzw. \ egal.</summary>
-    class function InFolder(const AFileName, AFolder: string): Boolean; static;
-    /// <summary>Läuft eine Abfrage, die bei AStartedMs begann (Tick in ms), bei ANowMs noch?</summary>
-    class function QueryRunning(AStartedMs, ANowMs: UInt64): Boolean; static;
-    /// <summary>Atlas-Regeltreffer: Code einer Regel, nicht vom Compiler, kein inaktiver Bereich.</summary>
-    class function IsRuleHit(const AProblem: TAtlasProblem): Boolean; static;
-    /// <summary>Regeltreffer in den Dateien von AStore unterhalb von AFolder. False (unbekannt), wenn dort keine
-    /// Datei geprüft ist.</summary>
-    class function CountRuleHits(AStore: TAtlasProblemStore; const AFolder: string;
-      out AHits: Integer): Boolean; static;
-    /// <summary>Neue Regeltreffer gegenüber der Baseline in die Zusammenfassung ("rules").</summary>
-    class procedure RecordRules(var ASummary: TAtlasProjectSummary; AHits: Integer; ANowUtc: TDateTime); static;
     /// <summary>Pfad gekürzt auf höchstens AMaxLength Zeichen: Anfang, „…“ und so viele Ordner vom Ende wie
     /// passen.</summary>
     class function ShortPath(const APath: string; AMaxLength: Integer): string; static;
@@ -303,165 +258,6 @@ begin
   for Pill in APills do
     if Ord(Pill.Level) > Ord(Result) then
       Result := Pill.Level;
-end;
-
-class procedure TAtlasWelcomeProjects.RecordCompile(var ASummary: TAtlasProjectSummary;
-  const AMessages: TArray<TAtlasCompilerMessage>; ABackground, ASucceeded: Boolean;
-  const AKind, AConfiguration, APlatform: string; ANowUtc: TDateTime);
-var
-  Message: TAtlasCompilerMessage;
-  Errors, Warnings, Hints: Integer;
-  First: TAtlasProjectLocation;
-begin
-  Errors := 0;
-  Warnings := 0;
-  Hints := 0;
-  First := Default(TAtlasProjectLocation);
-  for Message in AMessages do
-    case Message.Severity of
-      TAtlasCompilerSeverity.Error, TAtlasCompilerSeverity.Fatal:
-        begin
-          Inc(Errors);
-          // Erste Fehlermeldung mit Datei; ohne Datei kein Sprungziel.
-          if First.IsEmpty and (Message.FileName <> '') then
-          begin
-            First.FileName := Message.FileName;
-            First.Line := Message.Line;
-            First.Column := Message.Column;
-            First.Code := Message.Code;
-            First.Text := Message.Text;
-          end;
-        end;
-      TAtlasCompilerSeverity.Warning:
-        Inc(Warnings);
-      TAtlasCompilerSeverity.Hint:
-        Inc(Hints);
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-  if ABackground then
-  begin
-    ASummary.Check := TAtlasProjectCheck.Empty;
-    ASummary.Check.Known := True;
-    ASummary.Check.At := ANowUtc;
-    ASummary.Check.Errors := Errors;
-    ASummary.Check.First := First;
-    Exit;
-  end;
-  ASummary.Build := TAtlasProjectBuild.Empty;
-  ASummary.Build.Known := True;
-  ASummary.Build.At := ANowUtc;
-  ASummary.Build.Kind := AKind;
-  ASummary.Build.Configuration := AConfiguration;
-  ASummary.Build.Platform := APlatform;
-  ASummary.Build.Succeeded := ASucceeded;
-  ASummary.Build.Errors := Errors;
-  ASummary.Build.Warnings := Warnings;
-  ASummary.Build.Hints := Hints;
-  ASummary.Build.First := First;
-end;
-
-class function TAtlasWelcomeProjects.Probe(const AVcs: IAtlasVersionControl; ANowUtc: TDateTime;
-  out AState: TAtlasProjectVcs): Boolean;
-begin
-  Result := Probe(AVcs, '', ANowUtc, AState);
-end;
-
-class function TAtlasWelcomeProjects.InFolder(const AFileName, AFolder: string): Boolean;
-var
-  Folder, FileName: string;
-begin
-  Folder := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
-  FileName := StringReplace(Trim(AFileName), '/', '\', [rfReplaceAll]);
-  if (Folder = '') or (FileName = '') then
-    Exit(False);
-  if Folder[Length(Folder)] <> '\' then
-    Folder := Folder + '\';
-  Result := SameText(Copy(FileName, 1, Length(Folder)), Folder);
-end;
-
-class function TAtlasWelcomeProjects.QueryRunning(AStartedMs, ANowMs: UInt64): Boolean;
-begin
-  // Ein Tick vor dem Start (Uhr übergelaufen o. Ä.) zählt als beendet.
-  Result := (ANowMs >= AStartedMs) and (ANowMs - AStartedMs < VcsQueryLimitMs);
-end;
-
-class function TAtlasWelcomeProjects.IsRuleHit(const AProblem: TAtlasProblem): Boolean;
-begin
-  // Fehlgeschlagene Tests (#69) sind keine Regeltreffer.
-  Result := (AProblem.Code <> '') and not AProblem.IsCompiler and not AProblem.Unnecessary and
-    not SameText(AProblem.Source, TAtlasProblemStore.TestSource);
-end;
-
-class function TAtlasWelcomeProjects.CountRuleHits(AStore: TAtlasProblemStore; const AFolder: string;
-  out AHits: Integer): Boolean;
-var
-  FileName: string;
-  Problem: TAtlasProblem;
-begin
-  AHits := 0;
-  Result := False;
-  if AStore = nil then
-    Exit;
-  for FileName in AStore.AllFiles do
-    if InFolder(FileName, AFolder) then
-    begin
-      Result := True;
-      for Problem in AStore.ForFile(FileName) do
-        if IsRuleHit(Problem) then
-          Inc(AHits);
-    end;
-end;
-
-class procedure TAtlasWelcomeProjects.RecordRules(var ASummary: TAtlasProjectSummary; AHits: Integer;
-  ANowUtc: TDateTime);
-begin
-  ASummary.Rules := TAtlasProjectRules.Empty;
-  ASummary.Rules.Known := True;
-  ASummary.Rules.At := ANowUtc;
-  ASummary.Rules.NewHits := AHits;
-end;
-
-class function TAtlasWelcomeProjects.Probe(const AVcs: IAtlasVersionControl; const AFolder: string;
-  ANowUtc: TDateTime; out AState: TAtlasProjectVcs): Boolean;
-var
-  Outcome: TAtlasVcsOutcome;
-  Head: TAtlasVcsHead;
-  Changes: TArray<TAtlasVcsChange>;
-  Change: TAtlasVcsChange;
-  Count: Integer;
-begin
-  AState := TAtlasProjectVcs.Empty;
-  Result := False;
-  if AVcs = nil then
-    Exit;
-  Outcome := AVcs.Head(Head);
-  if (Outcome = TAtlasVcsOutcome.NoWorkingCopy) or (Outcome = TAtlasVcsOutcome.Disabled) then
-  begin
-    // Keine Versionsverwaltung: kein Branch, keine Marke, kein Fehler.
-    AState.Known := True;
-    AState.At := ANowUtc;
-    AState.Kind := 'none';
-    Exit(True);
-  end;
-  if Outcome <> TAtlasVcsOutcome.Ok then
-    Exit;
-  AState.Known := True;
-  AState.At := ANowUtc;
-  AState.Kind := LowerCase(AtlasVcsKindName(AVcs.Kind));
-  AState.Branch := Head.Branch;
-  AState.Revision := Head.Revision;
-  AState.Ahead := Head.Ahead;
-  AState.Behind := Head.Behind;
-  if AVcs.Changes(Changes) = TAtlasVcsOutcome.Ok then
-  begin
-    Count := 0;
-    for Change in Changes do
-      if (AFolder = '') or InFolder(Change.Path, AFolder) or InFolder(Change.OldPath, AFolder) then
-        Inc(Count);
-    AState.Changed := Count;
-  end;
-  Result := True;
 end;
 
 class function TAtlasWelcomeProjects.ShortPath(const APath: string; AMaxLength: Integer): string;

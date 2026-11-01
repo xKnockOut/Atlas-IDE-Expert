@@ -207,7 +207,8 @@ uses
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Projects,
-  Atlas.Core.Files.TextFile;
+  Atlas.Core.Files.TextFile,
+  Atlas.IDE.Projects.Summaries;
 
 { TAtlasIdeContinue.TIdeNotifier }
 
@@ -482,7 +483,7 @@ begin
       Result := AFileName;
     Exit;
   end;
-  Project := TAtlasIdeProjects.ProjectFileOf(AFileName);
+  Project := TAtlasIdeProjectSummaries.ProjectFileOf(AFileName);
   Result := Project;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
     Exit;
@@ -491,7 +492,7 @@ begin
     Exit;
   for Index := 0 to Group.ProjectCount - 1 do
     if (Group.Projects[Index] <> nil) and
-      SameText(TAtlasIdeProjects.ProjectFileOf(Group.Projects[Index].FileName), Project) then
+      SameText(TAtlasIdeProjectSummaries.ProjectFileOf(Group.Projects[Index].FileName), Project) then
       Exit(Group.FileName);
 end;
 
@@ -509,7 +510,7 @@ begin
     Exit(Group.FileName);
   Project := Modules.GetActiveProject;
   if (Project <> nil) and (Project.FileName <> '') then
-    Result := TAtlasIdeProjects.ProjectFileOf(Project.FileName);
+    Result := TAtlasIdeProjectSummaries.ProjectFileOf(Project.FileName);
 end;
 
 class function TAtlasIdeContinue.IsPascal(const AFileName: string): Boolean;
@@ -727,7 +728,7 @@ begin
   // Ohne offene Reiter bleibt der vorige Stand (z. B. alles schon geschlossen).
   if Length(ASnapshot.Tabs) = 0 then
     Exit;
-  Root := TAtlasIdeProjects.Folder;
+  Root := TAtlasIdeProjectSummaries.Folder;
   TargetKey := Key(ATarget);
   Stamp := NowUtc;
   Old := TAtlasWorkState.Empty;
@@ -779,7 +780,7 @@ begin
   Keep := Self;
   Target := ATarget;
   Dir := ExtractFileDir(ATarget);
-  Root := TAtlasIdeProjects.Folder;
+  Root := TAtlasIdeProjectSummaries.Folder;
   Ok := False;
   Head := TAtlasWorkState.Empty;
   if not TAtlasIdeVcs.Run(
@@ -837,7 +838,7 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
-  Root := TAtlasIdeProjects.Folder;
+  Root := TAtlasIdeProjectSummaries.Folder;
   Result := TAtlasWelcomeContinue.Entries(Recent,
     function(const AProject: string; out ASummary: TAtlasProjectSummary): Boolean
     begin
@@ -1018,7 +1019,7 @@ begin
         Report(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueDisabled));
         Exit;
       end;
-      if not TAtlasProjectSummaries.Load(TAtlasIdeProjects.Folder, Project, Summary) or
+      if not TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, Project, Summary) or
         not TAtlasWelcomeContinue.Read(Summary, State) or (State.TabCount = 0) then
       begin
         Report(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueNothing));

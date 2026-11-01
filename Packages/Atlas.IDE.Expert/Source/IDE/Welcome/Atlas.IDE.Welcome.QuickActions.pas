@@ -136,7 +136,7 @@ type
     procedure Refresh;
     /// <summary>Ein Testlauf (#69) von ATestProject ist fertig; gehört er zu einer Schnellaktion, steht das
     /// Ergebnis in deren Zeile. Hauptthread.</summary>
-    procedure TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
+    procedure TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
     /// <summary>Eine Projektaufgabe von AProject ist fertig; hat die Schnellaktion sie gestartet, steht das
     /// Ergebnis in deren Zeile. Hauptthread.</summary>
     procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
@@ -189,7 +189,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Commands.ShortcutTips,
-  Atlas.Core.Files.TextFile;
+  Atlas.Core.Files.TextFile,
+  Atlas.IDE.Projects.Summaries;
 
 function Settings: TAtlasPluginSettings;
 begin
@@ -512,7 +513,7 @@ begin
   end;
   Result := TAtlasWelcomeQuickActions.ReadTargets(Text);
   // Vorgabe: zuletzt benutzt (Abschnitt "build" der Zusammenfassung), wenn das Projekt sie noch kennt.
-  if TAtlasProjectSummaries.Load(TAtlasIdeProjects.Folder, AProject, Summary) and Summary.Build.Known then
+  if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, Summary) and Summary.Build.Known then
     TAtlasWelcomeQuickActions.ChooseTarget(Result, Summary.Build.Configuration, Summary.Build.Platform,
       AConfiguration, APlatform);
 end;
@@ -650,7 +651,7 @@ begin
     FWatch.Enabled := True;
 end;
 
-procedure TAtlasIdeQuickActions.TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
+procedure TAtlasIdeQuickActions.TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
 var
   Row: string;
   Value: TAtlasQuickActionState;
@@ -660,8 +661,8 @@ begin
   FTests.Remove(Key(ATestProject));
   Value := State(Row);
   Value.Action := TAtlasQuickAction.Tests;
-  Value.Passed := ATests.Passed;
-  Value.Failed := ATests.Failed + ATests.Errors;
+  Value.Passed := APassed;
+  Value.Failed := AFailed;
   Value.Detail := '';
   if Value.Failed > 0 then
     Value.Phase := TAtlasQuickActionPhase.Failed

@@ -162,6 +162,7 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Welcome.Trends,
   Atlas.IDE.Welcome.TestResults,
   Atlas.Core.Ci.Contract,
@@ -241,6 +242,7 @@ uses
   Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Store,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Projects.Summary,
   Atlas.IDE.Problems.Controller,
@@ -276,6 +278,8 @@ var
   BuildRunner: TAtlasIdeBuildRunner;
   // Zusammenfassung und letzte Meldungen je Projekt (#530); lebt mit den Compile-Ereignissen.
   BuildSummary: TAtlasIdeBuildSummary;
+  // Projekt-Zusammenfassungen (#592, #1455): schreibt Base, auch ohne Willkommensseite.
+  ProjectSummaries: TAtlasIdeProjectSummaries;
   // Eingang des MCP-Werkzeugs build_project (#261), abschaltbar über McpBuild.
   BuildInbox: TAtlasIdeBuildInbox;
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen); lebt mit den
@@ -603,7 +607,7 @@ var
   Project: string;
   Stamp: TDateTime;
 begin
-  if (Manager = nil) or (Welcome = nil) or (Welcome.Projects = nil) or (AProject = '') or
+  if (Manager = nil) or (TAtlasIdeProjectSummaries.Current = nil) or (AProject = '') or
     not TAtlasIdeSettings.Current.Enabled then
     Exit;
   Project := AProject;
@@ -621,14 +625,14 @@ begin
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
-          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+          if TAtlasIdeProjectSummaries.Current <> nil then
             TAtlasGuard.Run(TAtlasFeature.WelcomePage,
               procedure
               begin
                 // Leere oder ungültige Antworten lassen die Zusammenfassung unverändert.
-                Welcome.Projects.RecordMetrics(Project, Answers[0], Stamp);
-                Welcome.Projects.RecordTodos(Project, Answers[1], Stamp);
-                Welcome.Projects.RecordBaseline(Project, Baseline, Stamp);
+                TAtlasIdeProjectSummaries.Current.RecordMetrics(Project, Answers[0], Stamp);
+                TAtlasIdeProjectSummaries.Current.RecordTodos(Project, Answers[1], Stamp);
+                TAtlasIdeProjectSummaries.Current.RecordBaseline(Project, Baseline, Stamp);
               end);
         end);
     end);
@@ -1366,7 +1370,7 @@ begin
   Add('Atlas.CheckRelease', TAtlasTextId.ReleaseCheckCommand, Guarded(TAtlasFeature.Build,
     procedure
     begin
-      TAtlasIdeReleaseGuard.CheckActive(TAtlasIdeProjects.Folder, ReleaseSettings());
+      TAtlasIdeReleaseGuard.CheckActive(TAtlasIdeProjectSummaries.Folder, ReleaseSettings());
     end), ReleaseGuardVisible);
   Add('Atlas.CheckNow', TAtlasTextId.PaletteCheckNow,
     procedure
@@ -1453,7 +1457,7 @@ begin
     var
       mProject: string;
     begin
-      mProject := TAtlasIdeProjects.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+      mProject := TAtlasIdeProjectSummaries.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
       if mProject = '' then
       begin
         TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchNoVcs));
@@ -1462,8 +1466,8 @@ begin
       TAtlasIdeBranching.CreateFor(mProject,
         procedure
         begin
-          if (Welcome <> nil) and (Welcome.Projects <> nil) then
-            Welcome.Projects.Refresh(mProject);
+          if TAtlasIdeProjectSummaries.Current <> nil then
+            TAtlasIdeProjectSummaries.Current.Refresh(mProject);
         end);
     end);
   // Arbeitskopien (#1292): Wurzel, Externals bzw. Submodule des aktiven Projekts; sichtbar mit vcs.externals.show.
@@ -1472,7 +1476,7 @@ begin
     var
       mProject: string;
     begin
-      mProject := TAtlasIdeProjects.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+      mProject := TAtlasIdeProjectSummaries.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
       if mProject = '' then
       begin
         TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
@@ -1481,8 +1485,8 @@ begin
       TAtlasIdeWorkingCopies.ShowFor(mProject,
         procedure
         begin
-          if (Welcome <> nil) and (Welcome.Projects <> nil) then
-            Welcome.Projects.Refresh(mProject);
+          if TAtlasIdeProjectSummaries.Current <> nil then
+            TAtlasIdeProjectSummaries.Current.Refresh(mProject);
         end);
     end,
     function: Boolean
@@ -1898,7 +1902,7 @@ begin
   Events.Add(TAtlasCompileLog.Create(Events, LogLine));
   // Release-Build-Wächter (#533): prüft vor make und build in einer Release-Konfiguration, auch für Aufträge des
   // Läufers (#261, #764); mit build.gate = block bricht er ab.
-  Events.Add(TAtlasIdeReleaseGuard.CreateParticipant(TAtlasIdeProjects.Folder,
+  Events.Add(TAtlasIdeReleaseGuard.CreateParticipant(TAtlasIdeProjectSummaries.Folder,
     function: TAtlasReleaseSettings
     begin
       Result := ReleaseSettings();
@@ -1927,17 +1931,17 @@ begin
       Stamp: TDateTime;
     begin
       Messages := TAtlasCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
-      // Projekt-Zusammenfassung für die Willkommensseite (#592): letzter Build bzw. letzte Hintergrundprüfung.
+      // Projekt-Zusammenfassung (#592, Base): letzter Build bzw. letzte Hintergrundprüfung.
       Project := AProject;
       Succeeded := ASucceeded;
       Readable := AReadable;
       // Ein Zeitpunkt je Build: Metriken, TODOs und Baseline kommen damit in den Messpunkt des Builds (#758).
-      Stamp := TAtlasIdeProjects.StampUtc;
-      if (Welcome <> nil) and (Welcome.Projects <> nil) then
+      Stamp := TAtlasIdeProjectSummaries.StampUtc;
+      if TAtlasIdeProjectSummaries.Current <> nil then
         TAtlasGuard.Run(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Welcome.Projects.Recorded(Messages, Project, Succeeded, Readable, Stamp);
+            TAtlasIdeProjectSummaries.Current.Recorded(Messages, Project, Succeeded, Readable, Stamp);
           end);
       // Code-Metriken und TODOs nach einem Build, nicht nach einer Hintergrundprüfung (#66, #68, #758).
       if AReadable and not AProject.Background then
@@ -3335,13 +3339,10 @@ end;
 type
   /// <summary>Ende einer Projektaufgabe (#900) bzw. eines Testlaufs (#69) an die Willkommensseite: Karte Tests
   /// (#763) und Schnellaktionen (#764).</summary>
-  TWelcomeListener = class(TInterfacedObject, IAtlasTaskListener, IAtlasTestsListener, IAtlasBaselineListener)
+  TWelcomeListener = class(TInterfacedObject, IAtlasTaskListener, IAtlasTestsListener)
   public
     procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
-    procedure TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
-    procedure BaselineUpdated(const AProject: string; const AUpdate: TAtlasBaselineUpdate;
-      const AState: TAtlasBaselineState);
-    procedure BaselineMeasured(const AProject: string; const AState: TAtlasBaselineState);
+    procedure TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
   end;
 
 procedure TWelcomeListener.TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
@@ -3354,37 +3355,16 @@ begin
       end);
 end;
 
-procedure TWelcomeListener.TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
-var
-  mProject: string;
-  mTests: TAtlasProjectTests;
+procedure TWelcomeListener.TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
 begin
-  if (Welcome = nil) or (Welcome.Projects = nil) then
-    Exit;
-  mProject := ATestProject;
-  mTests := ATests;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      Welcome.Projects.RecordTests(mProject, mTests);
-      // Schnellaktion „Tests“ (#764): Ergebnis in der Zeile des Projekts.
-      if Welcome.QuickActions <> nil then
-        Welcome.QuickActions.TestsFinished(mProject, mTests);
-    end);
-end;
-
-procedure TWelcomeListener.BaselineUpdated(const AProject: string; const AUpdate: TAtlasBaselineUpdate;
-  const AState: TAtlasBaselineState);
-begin
-  // Abschnitt "baseline" der Projekt-Zusammenfassung (#758).
-  if (Welcome <> nil) and (Welcome.Projects <> nil) then
-    Welcome.Projects.RecordBaseline(AProject, AState, AUpdate, TAtlasIdeProjects.StampUtc);
-end;
-
-procedure TWelcomeListener.BaselineMeasured(const AProject: string; const AState: TAtlasBaselineState);
-begin
-  if (Welcome <> nil) and (Welcome.Projects <> nil) then
-    Welcome.Projects.RecordBaseline(AProject, AState, TAtlasIdeProjects.StampUtc);
+  // Schnellaktion „Tests“ (#764): Ergebnis in der Zeile des Projekts; die Karte Tests (#763) liest die
+  // Projekt-Zusammenfassung, in die das Modul Tests den Lauf schreibt.
+  if (Welcome <> nil) and (Welcome.QuickActions <> nil) then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        Welcome.QuickActions.TestsFinished(ATestProject, APassed, AFailed);
+      end);
 end;
 
 /// <summary>Ergebnis des Moduls an die Einrichtung (#759); eigene Routine, weil die beiden gleich gebauten
@@ -3547,7 +3527,6 @@ var
   /// </summary>
   WelcomeIssuesSession: IAtlasRegistration;
   WelcomeTestsListener: IAtlasRegistration;
-  WelcomeBaselineListener: IAtlasRegistration;
 
 procedure StartWelcome;
 begin
@@ -3726,9 +3705,6 @@ begin
     TWelcomeListener.Create as IAtlasTaskListener);
   WelcomeTestsListener := AtlasModuleRegistry.Provide(IAtlasTestsListener,
     TWelcomeListener.Create as IAtlasTestsListener);
-  // Neuer Stand der Baseline (#758) aus dem Modul Prüfregeln.
-  WelcomeBaselineListener := AtlasModuleRegistry.Provide(IAtlasBaselineListener,
-    TWelcomeListener.Create as IAtlasBaselineListener);
   // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
   Welcome.ContinueWork := TAtlasIdeContinue.Create(
     procedure(AText: string)
@@ -3825,9 +3801,6 @@ begin
   if WelcomeTestsListener <> nil then
     WelcomeTestsListener.Revoke;
   WelcomeTestsListener := nil;
-  if WelcomeBaselineListener <> nil then
-    WelcomeBaselineListener.Revoke;
-  WelcomeBaselineListener := nil;
   // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
   TAtlasIdeNewIssue.Stop;
   FreeAndNil(Welcome);
@@ -3893,6 +3866,25 @@ begin
       Result := ManagerIndex >= 0;
     end,
     StartManager, StopManager);
+  // Projekt-Zusammenfassungen (#592, #1455): vor Compile, damit Builds sie finden; gehen nach Compile.
+  Features.Add('ProjectSummaries', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := ProjectSummaries <> nil;
+    end,
+    procedure
+    begin
+      ProjectSummaries := TAtlasIdeProjectSummaries.Create(
+        function: TAtlasProblemStore
+        begin
+          Result := TAtlasProblemsController.Current;
+        end);
+      ProjectSummaries.Start;
+    end,
+    procedure
+    begin
+      FreeAndNil(ProjectSummaries);
+    end);
   // Notifier und Hintergrundaufgaben nur im normalen Betrieb bzw. wenn ihr Schalter wieder an ist.
   Features.AddWanted('Compile',
     function(ALevel: TAtlasSafeLevel): Boolean
