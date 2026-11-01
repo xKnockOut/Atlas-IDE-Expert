@@ -36,8 +36,8 @@
 - Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
 ## Weitere Module als eigene Packages (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 
-- Nach dem Debugger mit demselben Werkzeug verschoben: `Atlas.IDE.Designer` (7 Units), `.Rules` (7), `.Tests` (10), `.Bookmarks` (19), `.Analysis` (21), `.Search` (25), `.Build` (20), `.BuildPipeline` (10); je Package dpk/dproj wie beim Debugger, Eintrag in `Atlas.groupproj` vor dem Testprojekt, Testpfade angepasst. Inhalt der Units unverändert.
-- Offen: Willkommensseite (zuerst ihr Abschnitt im Optionsdialog als `IAtlasSettingsSection` ins Modul, letzter bekannter Verstoß), danach Tracker (wartet auf Paket 2d), dann `Atlas.IDE.Contracts` und die Umbenennung in `Atlas.IDE.Base`.
+- Nach dem Debugger mit demselben Werkzeug verschoben: `Atlas.IDE.Designer` (7 Units), `.Rules` (7), `.Tests` (10), `.Bookmarks` (19), `.Analysis` (21), `.Search` (25), `.Build` (20), `.BuildPipeline` (10), nach Paket 2d (PR #1481, gemergt 555e65f2) auch `.Tracker` (104); je Package dpk/dproj wie beim Debugger, Eintrag in `Atlas.groupproj` vor dem Testprojekt, Testpfade angepasst. Inhalt der Units unverändert.
+- Offen: Willkommensseite (zuerst ihr Abschnitt im Optionsdialog als `IAtlasSettingsSection` ins Modul, letzter bekannter Verstoß), dann `Atlas.IDE.Contracts` und die Umbenennung in `Atlas.IDE.Base`.
 - Handtests MP1–MP4 in `handtests-v2.md`.
 
 ## Pilot: Debugger als eigenes Package (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)

@@ -19,7 +19,7 @@ AtlasServer.map         Map-Datei: Stacktraces im Server-Log mit Unit, Routine u
 Win32\Atlas.IDE.Expert370.bpl   Kern des Plugins für die klassische IDE
 Win64\Atlas.IDE.Expert370.bpl   Kern des Plugins für die 64-Bit-IDE
 Win32\Atlas.IDE.<Modul>370.bpl, Win64\…   ab 2.0 je Modul eine BPL (#1456): Debugger, Designer, Rules, Tests,
-                        Bookmarks, Analysis, Search, Build, BuildPipeline (Welcome und Tracker folgen)
+                        Bookmarks, Analysis, Search, Build, BuildPipeline, Tracker (Welcome folgt)
 Win32\Atlas.IDE.*370.map, Win64\…   Map-Dateien jeder Plugin-BPL für Stacktraces im atlas.log
 LICENSE, THIRD-PARTY-NOTICES.md
 EULA.txt                Lizenzvereinbarung
