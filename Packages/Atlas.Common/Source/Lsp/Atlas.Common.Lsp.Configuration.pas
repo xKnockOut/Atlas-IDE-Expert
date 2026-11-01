@@ -103,6 +103,9 @@ type
     class function RootPathFromInitialize(const AParams: TJSONObject): string; static;
     /// <summary>Abschnitt atlas aus den Parametern von didChangeConfiguration als JSON; sonst ''.</summary>
     class function EditorSettingsFromParams(const AParams: TJSONValue): string; static;
+    /// <summary>Sprache des Clients aus den initialize-Parametern (#1458): initializationOptions.locale (IDE-Plugin),
+    /// sonst locale (LSP 3.16); '' ohne Angabe. Gewählt wird mit TAtlasLocale.Resolve.</summary>
+    class function ClientLocaleFromInitialize(const AParams: TJSONValue): string; static;
     /// <summary>Diagnostics zu den Fehlern; der Aufrufer übernimmt das Objekt.</summary>
     class function BuildParams(const AUri: string; AVersion: Integer;
       const AIssues: TArray<TConfigurationIssue>): TJSONObject; static;
@@ -262,6 +265,21 @@ begin
   Section := TJSONObject(AParams).FindValue('settings.' + EditorSection);
   if Section is TJSONObject then
     Result := Section.ToJSON;
+end;
+
+class function TLspConfiguration.ClientLocaleFromInitialize(const AParams: TJSONValue): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := '';
+  if not (AParams is TJSONObject) then
+    Exit;
+  mValue := TJSONObject(AParams).FindValue('initializationOptions.locale');
+  if (mValue is TJSONString) and (Trim(TJSONString(mValue).Value) <> '') then
+    Exit(Trim(TJSONString(mValue).Value));
+  mValue := TJSONObject(AParams).GetValue('locale');
+  if mValue is TJSONString then
+    Result := Trim(TJSONString(mValue).Value);
 end;
 
 function TLspConfiguration.GetSettings: TServerSettings;

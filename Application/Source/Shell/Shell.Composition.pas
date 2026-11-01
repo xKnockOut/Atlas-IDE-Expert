@@ -197,6 +197,9 @@ type
     FClientProcessId: Cardinal;
     /// <summary>clientInfo.name aus initialize, für „Prozesse am Projekt“ (#62).</summary>
     FClientName: string;
+    /// <summary>Sprache des Clients aus initialize (#1458); '' ohne Angabe. Mit der Einstellung language wählt
+    /// UpdateLooseSettings die Sprache der Texte.</summary>
+    FClientLocale: string;
     FParentWatcher: TParentWatcher;
     /// <summary>Anonymisiertes Diagnoselog (#647); FDiagnosticsRef hält die Instanz am Leben.</summary>
     FDiagnostics: TShellDiagnostics;
@@ -719,6 +722,7 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Product.Version,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Query.Service,
   Atlas.Common.Query.Language,
   Atlas.Common.Configuration.Parser,
@@ -791,7 +795,6 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Index.SymbolIndex,
@@ -2662,6 +2665,8 @@ begin
       // Name des Clients für die Anmeldung am Index-Cache (#62); vor dem Anlegen der Arbeitsbereiche.
       if FLifecycle.InitializeParams <> nil then
         FClientName := FLifecycle.InitializeParams.GetValue<string>('clientInfo.name', '');
+      // Sprache des Clients (#1458) vor UpdateLooseSettings, das die Sprache der Texte wählt.
+      FClientLocale := TLspConfiguration.ClientLocaleFromInitialize(FLifecycle.InitializeParams);
       // Absturzfälle nennen den Client (#1355); der neue Client erfährt, was nach Abstürzen übersprungen wird.
       if FLifecycle.InitializeParams <> nil then
         FCrashCases.Client := Trim(FClientName + ' ' +
@@ -3318,6 +3323,8 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   Settings := TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalSettings, FEditorSettings, ''), Issues);
+  // Sprache der Texte (#1458): language ist global (settings.json bzw. Editor), sonst die Sprache des Clients.
+  TAtlasLocale.Use(TAtlasLocale.Resolve(Settings.Language, FClientLocale));
   TMonitor.Enter(FWorkspacesLock);
   try
     FLooseSettings := Settings;
@@ -6017,7 +6024,8 @@ begin
   if not Result then
     Exit;
   Tree := TSyntaxTreeCache.Parse(AText);
-  Catalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+  // Erklärung in der Sprache der Texte (#1458); der geteilte Katalog gehört dem Prozess.
+  Catalog := TRuleCatalog.Localized;
   try
     for Finding in TLspSyntaxDiagnostics.RuleFindings(AText, Tree, Context) do
     begin
@@ -6034,7 +6042,6 @@ begin
       AFindings := AFindings + [Item];
     end;
   finally
-    Catalog.Free;
     Tree.Free;
   end;
 end;

@@ -37,6 +37,9 @@ type
     procedure ReadsRestricted;
     [Test]
     procedure ReadsProfile;
+    /// <summary>#1458: --locale de|en, sonst Warnung und keine Angabe.</summary>
+    [Test]
+    procedure ReadsLocale;
     /// <summary>#1356: --timings mit und ohne Datei, unabhängig vom Regelprofil --profile.</summary>
     [Test]
     procedure ReadsTimings;
@@ -319,6 +322,22 @@ begin
   Assert.AreEqual('App.dproj', mOptions.CheckTarget);
   mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj']);
   Assert.IsFalse(mOptions.Timings);
+end;
+
+procedure TCommandLineOptionsTests.ReadsLocale;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--check', 'App.dproj', '--locale', 'en']);
+  Assert.AreEqual('en', mOptions.Locale);
+  Assert.AreEqual<NativeInt>(0, Length(mOptions.Warnings));
+  mOptions := TCommandLineOptions.Parse(['--locale=de-DE']);
+  Assert.AreEqual('de-DE', mOptions.Locale);
+  mOptions := TCommandLineOptions.Parse(['--locale', 'fr']);
+  Assert.AreEqual('', mOptions.Locale);
+  Assert.AreEqual<NativeInt>(1, Length(mOptions.Warnings));
+  mOptions := TCommandLineOptions.Parse([]);
+  Assert.AreEqual('', mOptions.Locale);
 end;
 
 procedure TCommandLineOptionsTests.ReadsProfile;

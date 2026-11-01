@@ -356,7 +356,8 @@ begin
         Row.Version := Version.Version;
         Row.Item := Item;
         Row.Title := Add(TLabel.Create(nil));
-        Row.Title.Caption := Item.Title;
+        // Englisch mit englischer IDE (#1458).
+        Row.Title.Caption := Item.TitleFor(TAtlasStrings.Language = TAtlasLanguage.English);
         Row.Title.Font.Style := [fsBold];
         KeyText := '';
         if (FSource <> nil) and (Item.Key <> '') then
@@ -372,7 +373,7 @@ begin
           Row.Text := Add(TLabel.Create(nil));
           Row.Text.AutoSize := True;
           Row.Text.WordWrap := True;
-          Row.Text.Caption := Item.Text;
+          Row.Text.Caption := Item.TextFor(TAtlasStrings.Language = TAtlasLanguage.English);
         end;
         Switch := TAtlasWhatsNewSwitch.None;
         if (FSource <> nil) and (Item.Setting <> '') then
