@@ -99,7 +99,9 @@ type
     WelcomeNewsExperimental, WelcomeQuickTasksTitle, WelcomeQuickTasking, WelcomeQuickTasksRefused,
     WelcomeQuickTasksResult, WelcomeQuickHintTasks, WelcomeQuickMenuTasks, WelcomeQuickMsgTaskRefused,
     WelcomeContinueIncomingLogin, WelcomeQuickPullLogin, WelcomeProjectsCreateBranch,
-    WelcomeQuickUpdateWithExternals, WelcomeQuickUpdateWithoutExternals, WelcomeProjectsWorkingCopies);
+    WelcomeQuickUpdateWithExternals, WelcomeQuickUpdateWithoutExternals, WelcomeProjectsWorkingCopies,
+    MenuWelcomeStart, MenuWelcomeApply, MenuWelcomeReset, CommandWelcomeCustomize, WelcomeNewsShowCurrent,
+    WelcomeSetupCommand, WelcomeNewsShowAllCommand, WelcomeContinueCommand);
 
   TAtlasWelcomeStrings = class
   public
@@ -501,7 +503,15 @@ const
      'Branch anlegen …',
      'mit Externals',
      'ohne Externals',
-     'Arbeitskopien …'),
+     'Arbeitskopien …',
+     'Atlas-Start',
+     'Atlas-Layout anwenden',
+     'Atlas-Layout zurücksetzen',
+     'Willkommensseite anpassen',
+     'Neuigkeiten dieser Version zeigen',
+     'Projekt für Atlas einrichten',
+     'Neu in Atlas: alle Versionen',
+     'Letzten Arbeitsstand fortsetzen'),
     ('Good night',
      'Good morning',
      'Good afternoon',
@@ -887,7 +897,15 @@ const
      'Create branch …',
      'with externals',
      'without externals',
-     'Working copies …'));
+     'Working copies …',
+     'Atlas Start',
+     'Apply Atlas layout',
+     'Reset Atlas layout',
+     'Customize welcome page',
+     'Show what''s new in this version',
+     'Set up project for Atlas',
+     'New in Atlas: all versions',
+     'Resume last work state'));
 
 { TAtlasWelcomeStrings }
 

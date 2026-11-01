@@ -7,7 +7,7 @@
 // eigenes Menü. Was eine Kennung ist, rechnet Atlas.Core.Tracker.CodeLinks
 // aus; hier bleiben Zeitgeber, Zeichnen, Maus und Menü.
 // - Muster aus dem Tracker des aktiven Projekts (Haken Target, in der
-//   Komposition TAtlasIdeIssues.CodeTarget: .atlas, sonst die Zuordnung
+//   Komposition TAtlasIdeIssueCommands.CodeTarget: .atlas, sonst die Zuordnung
 //   #1261). Ohne Tracker keine Erkennung.
 // - Ein Zeitgeber (TickMs) liest den Stand des Puffers der Ansicht vorn
 //   (TAtlasEditorSnapshots) und rechnet bei neuem Stand nur die Zustände der

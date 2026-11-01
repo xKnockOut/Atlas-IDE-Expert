@@ -98,6 +98,9 @@ type
     /// </summary>
     [Test]
     procedure FetchFallbackAndPushFailure;
+    /// <summary>Lokale Änderungen ohne unversionierte Dateien (vor #1455 in „Meine Issues“).</summary>
+    [Test]
+    procedure LocalChangesIgnoreUntracked;
   end;
 
 implementation
@@ -1563,6 +1566,27 @@ begin
   mFacts := TAtlasVcsBranchFacts.Empty;
   mRequest := Default(TAtlasVcsBranchRequest);
   mFallback := Default(TAtlasVcsBranchRequest);
+end;
+
+procedure TAtlasVcsBranchPlanTests.LocalChangesIgnoreUntracked;
+var
+  mChanges: TArray<TAtlasVcsChange>;
+  mChange: TAtlasVcsChange;
+begin
+  mChanges := nil;
+  Assert.AreEqual(0, TAtlasVcsBranchPlan.LocalChanges(mChanges));
+  mChange := Default(TAtlasVcsChange);
+  mChange.Path := 'neu.pas';
+  mChange.Kind := TAtlasVcsChangeKind.Untracked;
+  mChanges := mChanges + [mChange];
+  Assert.AreEqual(0, TAtlasVcsBranchPlan.LocalChanges(mChanges));
+  mChange.Path := 'App.pas';
+  mChange.Kind := TAtlasVcsChangeKind.Modified;
+  mChanges := mChanges + [mChange];
+  mChange.Path := 'Alt.pas';
+  mChange.Kind := TAtlasVcsChangeKind.Deleted;
+  mChanges := mChanges + [mChange];
+  Assert.AreEqual(2, TAtlasVcsBranchPlan.LocalChanges(mChanges));
 end;
 
 initialization
