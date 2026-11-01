@@ -103,6 +103,13 @@ type
     procedure Closed;
   end;
 
+  /// <summary>Liefert beim Öffnen der Palette eine Zusatzquelle (#1270, #1455); ein Modul stellt es über seinen
+  /// Scope bereit (etwa „Meine Issues“). nil = gerade keine Quelle. Hauptthread.</summary>
+  IAtlasPaletteSourceProvider = interface
+    ['{C737B249-C8ED-44D7-A33E-BEB867FED4B5}']
+    function PaletteSource: IAtlasPaletteSource;
+  end;
+
   /// <summary>Atlas-Befehle anmelden (Palette, #520); ohne VCL und Open Tools API. Features melden ihre Befehle
   /// darüber an, statt die Palette der IDE-Schicht zu importieren (A-09). Ohne Referenzzählung: Die Palette
   /// gehört der Composition; Empfänger speichern die Schnittstelle nicht.</summary>

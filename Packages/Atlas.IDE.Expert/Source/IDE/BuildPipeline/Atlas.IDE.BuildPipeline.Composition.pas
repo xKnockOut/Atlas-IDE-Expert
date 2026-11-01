@@ -134,7 +134,9 @@ var
 begin
   mEvents := TAtlasIdeHost.CompileEvents;
   if mEvents = nil then
+  begin
     Exit;
+  end;
   // Release-Build-Wächter (#533): prüft vor make und build in einer Release-Konfiguration, auch für Aufträge des
   // Läufers (#261, #764); mit build.gate = block bricht er ab.
   GReleaseGuard := TAtlasIdeReleaseGuard.CreateParticipant(TAtlasIdeProjectSummaries.Folder,
@@ -206,7 +208,9 @@ var
 begin
   mValue := nil;
   if AAnswer <> '' then
+  begin
     mValue := TJSONObject.ParseJSONValue(AAnswer);
+  end;
   try
     Result := TAtlasBuildVerdicts.BaselinedOf(mValue, ACount);
   finally
@@ -257,7 +261,9 @@ begin
       TAtlasIdeBuildSummary.Report(mMessages, mProject, mVerdict, TAtlasIdeSettings.Current.BuildSummary);
     end);
   for mFailure in TAtlasBuildPipeline.Announce(mMessages, mProject, mVerdict) do
+  begin
     TAtlasGuard.Log('Bewertung des Builds: ' + mFailure);
+  end;
 end;
 
 /// <summary>Ende eines Builds auf Auftrag als Ergebnis des Vertrags; eigene Routine, damit die Referenz nichts aus
@@ -266,7 +272,9 @@ function JobDone(const ADone: TAtlasBuildJobDone): TAtlasBuildDoneProc;
 begin
   Result := nil;
   if not Assigned(ADone) then
+  begin
     Exit;
+  end;
   Result :=
     procedure(const AReport: TAtlasBuildReport; const AError: string)
     var
@@ -375,7 +383,9 @@ procedure TAtlasBuildPipelineModule.MessagesRead(const AMessages: TArray<TAtlasC
 begin
   // Builds auf Auftrag (#261) warten auf ihre Meldungen.
   if GRunner <> nil then
+  begin
     GRunner.MessagesRead(AMessages, AProject);
+  end;
 end;
 
 function TAtlasBuildPipelineModule.Evaluate(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -427,7 +437,9 @@ begin
   Result := False;
   mRegistry := AtlasModuleRegistry;
   if (mRegistry = nil) or (GScope <> nil) then
+  begin
     Exit;
+  end;
   // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
@@ -439,7 +451,9 @@ begin
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
+  begin
     GScope.Provide(IAtlasFeaturePart, mPart);
+  end;
   GScope.Provide(IAtlasCommandSource, mRef);
   // Für Base: gelesene Compilermeldungen und Bewertung eines Builds des Benutzers.
   GScope.Provide(IAtlasCompilerMessagesListener, mRef);
@@ -455,13 +469,19 @@ var
   mFailure: string;
 begin
   if GScope = nil then
+  begin
     Exit;
+  end;
   GScope := nil;
   // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
+  begin
     for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    begin
       TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+    end;
+  end;
 end;
 
 initialization

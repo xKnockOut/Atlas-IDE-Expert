@@ -166,7 +166,9 @@ var
 begin
   Result := '';
   if AOutcome = TAtlasGateOutcome.Blocked then
+  begin
     Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateBlockReason, [Length(AFindings)]);
+  end;
   if not MessageServices(Messages, Group) then
     Exit;
   if Length(AFindings) > 0 then
@@ -190,8 +192,10 @@ begin
     TAtlasGateOutcome.Passed, TAtlasGateOutcome.Reported, TAtlasGateOutcome.TimedOut: ;
   end;
   if ANotifyTimeout then
+  begin
     Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateTimedOut, [ATimeoutMs]),
       Group);
+  end;
   Messages.ShowMessageView(Group);
 end;
 
