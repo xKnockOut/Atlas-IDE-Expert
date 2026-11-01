@@ -436,6 +436,30 @@ Ab #1455 besteht das Plugin aus `Atlas.IDE.Base`, `Atlas.IDE.Contracts` und Modu
 
 Dazu gelten: Kein Modul requiret ein anderes, Base verweist auf kein Modul und nicht auf `Atlas.IDE.Contracts`; Einstellungen bleiben zentral in Base, jedes Modul meldet seinen Teil (Schlüssel mit Vorgaben, Schema-Teil, Seite, Umbenennungen) an; Texte liegen je Modul in dessen Package. `Tools/Check-PackageDependencies.ps1` prüft die Package-Grenzen sowie Regel 6 und 8, soweit statisch erkennbar (mit #1455).
 
+#### Muster eines Moduls (#1455)
+
+Jedes Modul hat genau eine Kompositions-Unit `Atlas.IDE.<Modul>.Composition` (Vorlagen: `Atlas.IDE.Analysis.Composition`, `Atlas.IDE.Rules.Composition`):
+
+- Die Klasse implementiert `IAtlasModule` und die Beitragsverträge, die das Modul anbietet. `Info` liefert die Id (`atlas.<name>`), den Modulschalter (#1454) und die Mindeststufe des abgesicherten Starts.
+- `RegisterModule` läuft in der Initialisierung. Es prüft zuerst den Handschlag (Regel 7), meldet dann an und stellt alles über `GScope.Provide` bereit. `UnregisterModule` läuft in der Finalisierung und nur, solange Base läuft (Regel 5).
+- Teile der Feature-Tabelle: `TAtlasFeaturePart.AtLevel` bzw. `.When` (`Atlas.Core.Modules.FeatureParts`) mit Start und Stop. Was ein Teil bei Base setzt (Haken, Statusfeld), nimmt sein Stop zurück.
+- Beiträge, die Base einsammelt (`TAtlasModuleContributions`, nur von laufenden Modulen):
+
+| Vertrag | Fähigkeit |
+|---|---|
+| `IAtlasCommandSource` | Befehle der Palette |
+| `IAtlasMenuSource` | Atlas-Menü, Untermenü „Atlas“ im Editor, Ansicht › Atlas |
+| `IAtlasKeySource` | Tasten |
+| `IAtlasAppliesSettings`, `IAtlasFollowsTheme` | Einstellungen übernommen, Thema gewechselt |
+| `IAtlasHoverValueSource` | Werte im Tooltip |
+| `IAtlasTakenActions` | übernommene IDE-Aktionen |
+| `IAtlasGutterLayer`, `IAtlasOverviewBookmarks` | Rinne und Übersichtsleiste |
+| `IAtlasBuildVerdictListener`, `IAtlasTestRunner` | bewertete Builds, Tests ausführen |
+| `IAtlasBulkFixer` | Sammelkorrektur in „Atlas-Prüfung“ |
+
+- Dienste von Base über `TAtlasIdeHost` (`Atlas.IDE.Foundation.Host`): laufende bzw. gestartete Sitzung, Meldungsansicht, Warnung, Log, Statusfeld, Compile-Ereignisse. Serverbefehle laufen über `RunCommandAsync` (der eine Hintergrundbefehl), `RunServerCommandAsync` (nebenläufig) und `RunRequestAsync`. Die Antwort kommt im Hauptthread und nur bei offenem Scope (`TAtlasModuleAnswer`). Code eines Moduls läuft nach dem Abmelden in keinem Faden mehr.
+- Verträge zwischen Modulen liegen in `Source/Contracts`: `BuildTools`, `Tests`, `DebugReport`, `Rules`. Base ruft einen Befehl eines Moduls nur über dessen Id auf (`RunModuleCommand`).
+
 ## Threading-Modell
 
 ### Server
