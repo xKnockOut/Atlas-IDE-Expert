@@ -141,7 +141,9 @@ function FolderKey(const AFolder: string): string;
 begin
   Result := LowerCase(StringReplace(AFolder, '/', '\', [rfReplaceAll]));
   while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 function SameFolder(const A, B: string): Boolean;
@@ -161,14 +163,22 @@ var
 begin
   Result := '';
   for Pair in AProject.Properties do
+  begin
     if SameText(Pair.Key, 'DCC_DcuOutput') then
+    begin
       Result := Pair.Value;
+    end;
+  end;
   if Result = '' then
+  begin
     Exit;
+  end;
   Result := StringReplace(Result, '$(Platform)', AProject.Platform, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '$(Config)', AProject.Config, [rfReplaceAll, rfIgnoreCase]);
   if (AProject.FileName <> '') and not TProjectPaths.IsAbsolute(Result) then
+  begin
     Result := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AProject.FileName), Result);
+  end;
 end;
 
 /// <summary>Ordner aus DCC_IncludePath und DCC_ResourcePath, absolut (#1379).</summary>
@@ -179,12 +189,22 @@ var
 begin
   Result := nil;
   for mPair in AProject.Properties do
+  begin
     if SameText(mPair.Key, 'DCC_IncludePath') or SameText(mPair.Key, 'DCC_ResourcePath') then
+    begin
       for mPath in TProjectPaths.SplitList(mPair.Value) do
+      begin
         if (AProject.FileName <> '') and not TProjectPaths.IsAbsolute(mPath) and not HasMacro(mPath) then
-          Result := Result + [TProjectPaths.Combine(TProjectPaths.DirectoryOf(AProject.FileName), mPath)]
+        begin
+          Result := Result + [TProjectPaths.Combine(TProjectPaths.DirectoryOf(AProject.FileName), mPath)];
+        end
         else
+        begin
           Result := Result + [mPath];
+        end;
+      end;
+    end;
+  end;
 end;
 
 { TUnitLookup }
@@ -206,38 +226,60 @@ begin
   FGroupUnits := TDictionary<string, Boolean>.Create;
   FLateUnits := TDictionary<string, Boolean>.Create;
   for mUnit in ASetup.Project.Units do
+  begin
     FProjectUnits.AddOrSetValue(LowerCase(mUnit.Name), True);
+  end;
   Folders := TList<string>.Create;
   try
     if ASetup.Project.FileName <> '' then
+    begin
       Folders.Add(TProjectPaths.DirectoryOf(ASetup.Project.FileName));
+    end;
     for Folder in ASetup.Project.SearchPaths do
+    begin
       Folders.Add(Folder);
+    end;
     Folder := DcuOutputOf(ASetup.Project);
     if Folder <> '' then
+    begin
       Folders.Add(Folder);
+    end;
     for Folder in ASetup.LibraryPaths do
+    begin
       Folders.Add(Folder);
+    end;
     // Ein Ordner mit offenem Makro kann jede Unit enthalten.
     for Folder in Folders do
+    begin
       if HasMacro(Folder) then
+      begin
         FUncertain := True;
+      end;
+    end;
     FProjectFolders := Folders.ToArray;
     for mOutput in ASetup.GroupOutputs do
+    begin
       for Folder in FProjectFolders do
+      begin
         if (mOutput.DcuFolder <> '') and SameFolder(Folder, mOutput.DcuFolder) then
         begin
           for mName in mOutput.Units do
+          begin
             FGroupUnits.AddOrSetValue(LowerCase(mName), True);
+          end;
           Break;
         end;
+      end;
+    end;
     // dcc sucht Include- und Ressourcendateien zusätzlich in -I und -R (#1379).
     FFileFolders := FProjectFolders;
     for Folder in FileSearchPaths(ASetup.Project) do
     begin
       FFileFolders := FFileFolders + [Folder];
       if HasMacro(Folder) then
+      begin
         FUncertain := True;
+      end;
     end;
   finally
     Folders.Free;
@@ -263,16 +305,22 @@ begin
   TMonitor.Enter(FLock);
   try
     if FListings.TryGetValue(Key, Result) then
+    begin
       Exit;
+    end;
     Result := TDictionary<string, string>.Create;
     FListings.Add(Key, Result);
     if Assigned(FSetup.ListFiles) and not HasMacro(AFolder) then
+    begin
       for FileName in FSetup.ListFiles(AFolder) do
       begin
         Extension := LowerCase(TProjectPaths.Extension(FileName));
         if (Extension = '.pas') or (Extension = '.dcu') then
+        begin
           Result.AddOrSetValue(LowerCase(TProjectPaths.BaseName(FileName)), TProjectPaths.BaseName(FileName));
+        end;
       end;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -297,7 +345,9 @@ var
 begin
   Result := [AUnitName];
   for Namespace in FSetup.Project.Namespaces do
+  begin
     Result := Result + [Namespace + '.' + AUnitName];
+  end;
 end;
 
 function TUnitLookup.InProjectFolders(const AUnitName: string; const ANames: TArray<string>): Boolean;
@@ -310,7 +360,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if FFolderAnswers.TryGetValue(mKey, Result) then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -318,13 +370,17 @@ begin
   for mFolder in FProjectFolders do
   begin
     for mName in ANames do
+    begin
       if InFolder(mFolder, mName) then
       begin
         Result := True;
         Break;
       end;
+    end;
     if Result then
+    begin
       Break;
+    end;
   end;
   TMonitor.Enter(FLock);
   try
@@ -346,16 +402,30 @@ begin
   Result := True;
   Names := Candidates(AUnitName);
   for Name in Names do
+  begin
     if FProjectUnits.ContainsKey(LowerCase(Name)) then
+    begin
       Exit;
+    end;
+  end;
   if AFromFile <> '' then
+  begin
     for Name in Names do
+    begin
       if InFolder(TProjectPaths.DirectoryOf(AFromFile), Name) then
+      begin
         Exit;
+      end;
+    end;
+  end;
   if InProjectFolders(AUnitName, Names) then
+  begin
     Exit;
+  end;
   if BuiltByGroup(Names) then
+  begin
     Exit;
+  end;
   // Packages: Units der requires-Packages, auch ohne .dcu im Pfad, und die der Packages, die diese verlangen.
   if Assigned(FSetup.PackageProvides) then
   begin
@@ -363,11 +433,13 @@ begin
     mSeen := TDictionary<string, Boolean>.Create;
     try
       for Package in FSetup.RequiredPackages do
+      begin
         if not mSeen.ContainsKey(LowerCase(Package)) then
         begin
           mSeen.Add(LowerCase(Package), True);
           mPackages.Add(Package);
         end;
+      end;
       mPosition := 0;
       while mPosition < mPackages.Count do
       begin
@@ -381,12 +453,16 @@ begin
               AUnsure := True;
           end;
         if Assigned(FSetup.PackageRequires) then
+        begin
           for mRequired in FSetup.PackageRequires(Package) do
+          begin
             if not mSeen.ContainsKey(LowerCase(mRequired)) then
             begin
               mSeen.Add(LowerCase(mRequired), True);
               mPackages.Add(mRequired);
             end;
+          end;
+        end;
       end;
     finally
       mSeen.Free;
@@ -394,7 +470,9 @@ begin
     end;
   end;
   if (Length(FSetup.RequiredPackages) > 0) and not Assigned(FSetup.PackageProvides) then
+  begin
     AUnsure := True;
+  end;
   Result := False;
 end;
 
@@ -406,10 +484,16 @@ var
 begin
   Result := True;
   for mName in ANames do
+  begin
     if FGroupUnits.ContainsKey(LowerCase(mName)) then
+    begin
       Exit;
+    end;
+  end;
   if not Assigned(FSetup.GroupOutputsOf) then
+  begin
     Exit(False);
+  end;
   mOutputs := FSetup.GroupOutputsOf();
   TMonitor.Enter(FLock);
   try
@@ -419,17 +503,27 @@ begin
       FLateOutputs := mOutputs;
       FLateUnits.Clear;
       for mOutput in mOutputs do
+      begin
         for mFolder in FProjectFolders do
+        begin
           if (mOutput.DcuFolder <> '') and SameFolder(mFolder, mOutput.DcuFolder) then
           begin
             for mUnit in mOutput.Units do
+            begin
               FLateUnits.AddOrSetValue(LowerCase(mUnit), True);
+            end;
             Break;
           end;
+        end;
+      end;
     end;
     for mName in ANames do
+    begin
       if FLateUnits.ContainsKey(LowerCase(mName)) then
+      begin
         Exit;
+      end;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -444,10 +538,16 @@ begin
   for Name in Candidates(AUnitName) do
   begin
     if Assigned(FSetup.IndexKnows) and FSetup.IndexKnows(Name) then
+    begin
       Exit;
+    end;
     for Folder in FSetup.BrowsingPaths do
+    begin
       if InFolder(Folder, Name) then
+      begin
         Exit;
+      end;
+    end;
   end;
   Result := False;
 end;
@@ -462,32 +562,50 @@ begin
     // "in 'Pfad'": nur diese Datei, relativ zur verwendenden Datei. Offene Makros kennt dcc hier nicht.
     Path := AInPath;
     if not TProjectPaths.IsAbsolute(Path) and (AFromFile <> '') then
+    begin
       Path := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFromFile), Path);
+    end;
     if not Assigned(FSetup.FileExists) or not TProjectPaths.IsAbsolute(Path) then
+    begin
       Exit(TRuleUnitAnswer.Unknown);
+    end;
     if FSetup.FileExists(TProjectPaths.Normalize(Path)) then
+    begin
       Exit(TRuleUnitAnswer.Found);
+    end;
     Exit(TRuleUnitAnswer.Missing);
   end;
   Unsure := False;
   if (TRuleUnitSource.Project in ASources) and FindInProject(AUnitName, AFromFile, Unsure) then
+  begin
     Exit(TRuleUnitAnswer.Found);
+  end;
   if (TRuleUnitSource.Atlas in ASources) and FindInAtlas(AUnitName) then
+  begin
     Exit(TRuleUnitAnswer.Found);
+  end;
   if Unsure or FUncertain or not FSetup.LibraryKnown or not Assigned(FSetup.ListFiles) then
+  begin
     Exit(TRuleUnitAnswer.Unknown);
+  end;
   // Nur Atlas ohne Index: Die Units der Installation stehen dann nirgends.
   if (ASources = [TRuleUnitSource.Atlas]) and not Assigned(FSetup.IndexKnows) then
+  begin
     Exit(TRuleUnitAnswer.Unknown);
+  end;
   Result := TRuleUnitAnswer.Missing;
 end;
 
 function TUnitLookup.FindPackage(const APackage: string): TRuleUnitAnswer;
 begin
   if not Assigned(FSetup.PackageExists) or not FSetup.LibraryKnown or FUncertain then
+  begin
     Exit(TRuleUnitAnswer.Unknown);
+  end;
   if FSetup.PackageExists(APackage) then
+  begin
     Exit(TRuleUnitAnswer.Found);
+  end;
   Result := TRuleUnitAnswer.Missing;
 end;
 
@@ -496,22 +614,34 @@ var
   mFolder: string;
 begin
   if not Assigned(FSetup.FileExists) or (AFileName = '') then
+  begin
     Exit(TRuleUnitAnswer.Unknown);
+  end;
   if TProjectPaths.IsAbsolute(AFileName) then
   begin
     if FSetup.FileExists(TProjectPaths.Normalize(AFileName)) then
+    begin
       Exit(TRuleUnitAnswer.Found);
+    end;
     Exit(TRuleUnitAnswer.Missing);
   end;
   if (AFromFile <> '') and FSetup.FileExists(TProjectPaths.Normalize(
     TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFromFile), AFileName))) then
+  begin
     Exit(TRuleUnitAnswer.Found);
+  end;
   for mFolder in FFileFolders do
+  begin
     if not HasMacro(mFolder) and
       FSetup.FileExists(TProjectPaths.Normalize(TProjectPaths.Combine(mFolder, AFileName))) then
+    begin
       Exit(TRuleUnitAnswer.Found);
+    end;
+  end;
   if FUncertain or not FSetup.LibraryKnown then
+  begin
     Exit(TRuleUnitAnswer.Unknown);
+  end;
   Result := TRuleUnitAnswer.Missing;
 end;
 
@@ -539,19 +669,29 @@ begin
     if TRuleUnitSource.Project in ASources then
     begin
       for ProjectUnit in FSetup.Project.Units do
+      begin
         Add(ProjectUnit.Name);
+      end;
       Folders := FProjectFolders;
     end;
     if TRuleUnitSource.Atlas in ASources then
     begin
       Folders := Folders + FSetup.BrowsingPaths;
       if Assigned(FSetup.IndexUnits) then
+      begin
         for Name in FSetup.IndexUnits() do
+        begin
           Add(Name);
+        end;
+      end;
     end;
     for Folder in Folders do
+    begin
       for Name in Listing(Folder).Values do
+      begin
         Add(Name);
+      end;
+    end;
   finally
     Seen.Free;
   end;
@@ -580,7 +720,9 @@ var
 begin
   Result := '';
   if (FSetup.Project.FileName = '') or not Assigned(FSetup.ListFolders) then
+  begin
     Exit;
+  end;
   Root := TProjectPaths.DirectoryOf(FSetup.Project.FileName);
   Queue := TList<TQueuedFolder>.Create;
   try
@@ -592,21 +734,33 @@ begin
       Inc(Position);
       Known := False;
       for Searched in FProjectFolders do
+      begin
         if SameFolder(Searched, Item.Folder) then
+        begin
           Known := True;
+        end;
+      end;
       if not Known and (Item.Depth > 0) and InFolder(Item.Folder, AUnitName) then
       begin
         // Relativ zur .dproj, mit dem Trenner der Pfade.
         Result := Copy(Item.Folder, Length(Root) + 1, MaxInt);
         while (Result <> '') and CharInSet(Result[1], ['\', '/']) do
+        begin
           Delete(Result, 1, 1);
+        end;
         while (Result <> '') and CharInSet(Result[Length(Result)], ['\', '/']) do
+        begin
           Delete(Result, Length(Result), 1);
+        end;
         Exit;
       end;
       if Item.Depth < MaxFolderDepth then
+      begin
         for Folder in FSetup.ListFolders(Item.Folder) do
+        begin
           Queue.Add(Queued(Folder, Item.Depth + 1));
+        end;
+      end;
     end;
   finally
     Queue.Free;

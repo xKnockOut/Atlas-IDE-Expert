@@ -150,7 +150,9 @@ begin
     begin
       Disk := TDiskIndexFileSystem.Create;
       for Round := 1 to ARounds do
+      begin
         Disk.WriteText(AFile, AContent);
+      end;
     end);
   Result.FreeOnTerminate := False;
   Result.Start;
@@ -312,9 +314,13 @@ begin
   for Missing in [TPath.Combine(ARoot, 'fehlt-ziel.json'), TPath.Combine(ARoot, 'fehlt-quelle.json')] do
     try
       if Missing.Contains('ziel') then
-        TFile.Replace(Target, Missing, Target + '.bak')
+      begin
+        TFile.Replace(Target, Missing, Target + '.bak');
+      end
       else
+      begin
         TFile.Replace(Missing, Target, Target + '.bak');
+      end;
     except
       on Exception do
         ;
@@ -737,11 +743,13 @@ begin
   {$IFDEF MSWINDOWS}
   // Laufwerk nicht verbunden (USB, Netz): nicht als gelöscht werten.
   for Drive := 'Z' downto 'D' do
+  begin
     if not DirectoryExists(Drive + ':\') then
     begin
       Assert.IsTrue(TIndexCacheDirectory.OriginExists(Drive + ':\Projekte\App.dproj'));
       Break;
     end;
+  end;
   {$ENDIF}
 end;
 

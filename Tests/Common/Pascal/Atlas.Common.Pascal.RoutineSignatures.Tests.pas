@@ -41,7 +41,9 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.RoutineHeader then
+      begin
         mFound := mFound + [ANode];
+      end;
       Result := True;
     end);
   Result := mFound;

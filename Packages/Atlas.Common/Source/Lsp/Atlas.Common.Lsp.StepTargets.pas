@@ -144,7 +144,9 @@ begin
   while ANode <> nil do
   begin
     if ANode.Kind = TSyntaxKind.WithStatement then
+    begin
       Exit(True);
+    end;
     ANode := ANode.Parent;
   end;
 end;
@@ -156,7 +158,9 @@ begin
   Result := AName;
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, Dot + 1, MaxInt);
+  end;
 end;
 
 { TLspStepTargets }
@@ -188,13 +192,21 @@ var
 begin
   Result := '';
   if AWrite then
-    Key := 'write'
+  begin
+    Key := 'write';
+  end
   else
+  begin
     Key := 'read';
+  end;
   Words := ASignature.Replace(';', ' ').Replace(#9, ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
   for Index := 0 to High(Words) - 1 do
+  begin
     if SameText(Words[Index], Key) then
+    begin
       Exit(Words[Index + 1]);
+    end;
+  end;
 end;
 
 class function TLspStepTargets.LooksLikeCast(const AName: string): Boolean;
@@ -207,14 +219,20 @@ function TLspStepTargets.TextOf(ANode: TSyntaxNode): string;
 begin
   Result := '';
   if (ANode = nil) or (ANode.EndOffset <= ANode.StartOffset) or (ANode.EndOffset > Length(FText)) then
+  begin
     Exit;
+  end;
   Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   // Mehrzeilig: in eine Zeile.
   Result := Result.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' ');
   while Pos('  ', Result) > 0 do
+  begin
     Result := Result.Replace('  ', ' ');
+  end;
   if Length(Result) > MaxText then
+  begin
     Result := Copy(Result, 1, MaxText - 1) + '…';
+  end;
 end;
 
 function TLspStepTargets.OwnUnit: TUnitIndex;
@@ -242,12 +260,18 @@ var
   Text: string;
 begin
   if SameText(AFileName, FFileName) then
+  begin
     Exit(FTree);
+  end;
   if FTrees.TryGetValue(LowerCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   if Assigned(FReadText) and FReadText(AFileName, Text) then
+  begin
     Result := TSyntaxTreeCache.Parse(Text, nil);
+  end;
   FTrees.Add(LowerCase(AFileName), Result);
 end;
 
@@ -260,7 +284,9 @@ begin
   ALine := -1;
   Tree := TreeOf(AFileName);
   if (Tree = nil) or (Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Found := -1;
   // Die innerste Routine, deren Kopf die Namenszeile enthält: Anfang davor, Rumpf danach.
   Tree.Root.Walk(
@@ -270,14 +296,22 @@ begin
     begin
       Result := ANode.StartPos.Line <= ANameLine;
       if not Result or (ANode.EndPos.Line < ANameLine) then
+      begin
         Exit(False);
+      end;
       if ANode.Kind <> TSyntaxKind.RoutineDecl then
+      begin
         Exit;
+      end;
       Body := ANode.FindChild(TSyntaxKind.Block);
       if Body = nil then
+      begin
         Body := ANode.FindChild(TSyntaxKind.AsmBlock);
+      end;
       if (Body <> nil) and (Body.StartPos.Line >= ANameLine) then
+      begin
         Found := Body.StartPos.Line;
+      end;
     end);
   ALine := Found;
   Result := Found >= 0;
@@ -294,26 +328,36 @@ begin
   Matches := TList<TIndexSymbol>.Create;
   try
     for Symbol in AUnit.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName)
       then
+      begin
         Matches.Add(Symbol);
+      end;
+    end;
     if Matches.Count = 0 then
+    begin
       Exit;
+    end;
     if Matches.Count = 1 then
     begin
       // Nur ein Eintrag: Rumpf nur bei einer Routine, die allein im implementation-Teil steht.
       Result := (AContainer = '') and not Matches[0].InInterface;
       if Result then
+      begin
         ABody := Matches[0];
+      end;
       Exit;
     end;
     // Deklaration und Rumpf, bei Überladungen der letzte mit denselben Parametern.
     for Index := Matches.Count - 1 downto 1 do
+    begin
       if SameParams(Matches[Index].ParamTypes, AParamTypes) then
       begin
         ABody := Matches[Index];
         Exit(True);
       end;
+    end;
     ABody := Matches[Matches.Count - 1];
     Result := True;
   finally
@@ -336,10 +380,16 @@ var
 begin
   Result := False;
   if AContainer = '' then
+  begin
     Exit;
+  end;
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.InterfaceType) and SameText(Symbol.QualifiedName, AContainer) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TLspStepTargets.AddTargets(var ACall: TLspStepCall; const AUnit: TUnitIndex;
@@ -351,19 +401,29 @@ var
   Other: TUnitIndex;
 begin
   if FindBody(AUnit, ACall.Container, ACall.Name, AParamTypes, Body) and TargetOf(AUnit, Body, Target) then
+  begin
     ACall.Targets := ACall.Targets + [Target];
+  end;
   if not ACall.IsVirtual or (FIndex = nil) then
+  begin
     Exit;
+  end;
   // Überschreibungen in allen Nachfahren bzw. Klassen, die das Interface implementieren.
   for Location in TLspImplementations.AllDescendantsOf(FIndex, ACall.Container) do
   begin
     if Length(ACall.Targets) >= MaxTargets then
+    begin
       Break;
+    end;
     if not UnitOf(Location.FileName, Other) then
+    begin
       Continue;
+    end;
     if FindBody(Other, Location.Symbol.QualifiedName, ACall.Name, AParamTypes, Body) and
       TargetOf(Other, Body, Target) then
+    begin
       ACall.Targets := ACall.Targets + [Target];
+    end;
   end;
 end;
 
@@ -381,8 +441,11 @@ begin
   for Item in Found do
   begin
     if not UnitOf(Item.FileName, Owner) then
+    begin
       Continue;
+    end;
     for Symbol in Owner.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and (Symbol.Range.StartPos.Line = Item.Range.StartPos.Line) and
         (Symbol.SelectionRange.StartPos.Line = Item.SelectionRange.StartPos.Line) and
         (Symbol.SelectionRange.StartPos.Character = Item.SelectionRange.StartPos.Character) then
@@ -393,9 +456,12 @@ begin
         ACall.DeclFile := Item.FileName;
         ACall.DeclLine := Item.SelectionRange.StartPos.Line;
         if TargetOf(Owner, Symbol, Target) then
+        begin
           ACall.Targets := [Target];
+        end;
         Exit(True);
       end;
+    end;
   end;
 end;
 
@@ -408,12 +474,18 @@ begin
   Result := False;
   if not ASite.Explicit or (ASite.Callee = nil) or
     not (ASite.Callee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
     Exit;
+  end;
   Name := LastPart(ASite.Callee.Name);
   if (Name = '') or TSystemIntrinsics.IsKnown(Name) then
+  begin
     Exit;
+  end;
   if (ASite.Node.ChildCount = 2) and LooksLikeCast(Name) then
+  begin
     Exit;
+  end;
   ACall.Name := Name;
   ACall.Kind := 'call';
   Result := True;
@@ -436,29 +508,45 @@ begin
   ACall.DeclLine := -1;
   ACall.Text := TextOf(ASite.Node);
   if not TStepCalls.NamePosition(ASite.Callee, Position) then
+  begin
     Exit;
+  end;
   ACall.Position := Position;
   if ASite.Receiver <> nil then
+  begin
     ACall.Receiver := TextOf(ASite.Receiver);
+  end;
   if ASite.Callee.Kind = TSyntaxKind.InheritedExpr then
+  begin
     Exit(ResolveInherited(Position, ACall));
+  end;
   if ASite.Node.Kind = TSyntaxKind.IndexAccess then
   begin
     // Liste[i]: die indizierte bzw. Default-Property.
     if not FResolver.NodeType(FTree, FFileName, ASite.Node, Resolved, TypeSymbol, TypeFound) then
+    begin
       Exit;
+    end;
   end
   else
+  begin
     Resolved := FResolver.Resolve(FTree, FFileName, Position);
+  end;
   if Resolved.Kind = TResolvedKind.None then
+  begin
     Exit(ResolveUnknown(ASite, ACall));
+  end;
   if Resolved.IsType then
+  begin
     Exit;
+  end;
   // Verschachtelte Routine: Rumpf in dieser Datei.
   if Resolved.Kind = TResolvedKind.Local then
   begin
     if Resolved.SymbolKind <> TIndexSymbolKind.Routine then
+    begin
       Exit(ResolveUnknown(ASite, ACall));
+    end;
     ACall.Name := Resolved.Name;
     ACall.Kind := 'call';
     ACall.DeclFile := FFileName;
@@ -467,11 +555,15 @@ begin
     Target.Name := Resolved.Name;
     Target.FileName := FFileName;
     if BeginLine(FFileName, Resolved.SelectionRange.StartPos.Line, Target.Line) then
+    begin
       ACall.Targets := [Target];
+    end;
     Exit(True);
   end;
   if not UnitOf(Resolved.FileName, Owner) then
+  begin
     Owner := Default(TUnitIndex);
+  end;
   ACall.DeclFile := Resolved.FileName;
   ACall.DeclLine := Resolved.SelectionRange.StartPos.Line;
   case Resolved.SymbolKind of
@@ -481,15 +573,23 @@ begin
         Statement := (ASite.Node.Parent <> nil) and (ASite.Node.Parent.Kind = TSyntaxKind.CallStatement);
         if not ASite.Explicit and not Statement and (Resolved.TypeName = '') and
           (Resolved.SymbolKind <> TIndexSymbolKind.Constructor_) then
+        begin
           Exit;
+        end;
         if ASite.Assigned then
+        begin
           Exit;
+        end;
         ACall.Name := Resolved.Name;
         ACall.Container := Resolved.Container;
         if Resolved.SymbolKind = TIndexSymbolKind.Constructor_ then
-          ACall.Kind := 'constructor'
+        begin
+          ACall.Kind := 'constructor';
+        end
         else
+        begin
           ACall.Kind := 'call';
+        end;
         ACall.IsVirtual := Resolved.IsVirtual or IsInterface(Owner, Resolved.Container);
         ACall.ReceiverInterface := IsInterface(Owner, Resolved.Container);
         AddTargets(ACall, Owner, Resolved.ParamTypes);
@@ -498,15 +598,20 @@ begin
       begin
         AccessorName := Accessor(Resolved.Signature, ASite.Assigned);
         if AccessorName = '' then
+        begin
           Exit;
+        end;
         Found := False;
         Access := Default(TResolvedSymbol);
         // Getter bzw. Setter derselben Klasse; ein Feld als Zugriff ist kein Aufruf.
         for Symbol in Owner.Symbols do
+        begin
           if SameText(Symbol.Container, Resolved.Container) and SameText(Symbol.Name, AccessorName) then
           begin
             if not (Symbol.Kind in RoutineKinds) then
+            begin
               Exit;
+            end;
             if not Found then
             begin
               Access.Name := Symbol.Name;
@@ -517,24 +622,35 @@ begin
               Found := True;
             end;
           end;
+        end;
         // Zugriff in einem Vorfahren: nur ein Name mit Get/Set gilt sicher als Methode.
         if not Found and not (StartsText('Get', AccessorName) or StartsText('Set', AccessorName)) then
+        begin
           Exit;
+        end;
         ACall.Name := AccessorName;
         ACall.Container := Resolved.Container;
         if ASite.Assigned then
-          ACall.Kind := 'setter'
+        begin
+          ACall.Kind := 'setter';
+        end
         else
+        begin
           ACall.Kind := 'getter';
+        end;
         ACall.IsVirtual := Access.IsVirtual or IsInterface(Owner, Resolved.Container);
         ACall.ReceiverInterface := IsInterface(Owner, Resolved.Container);
         if Found then
+        begin
           AddTargets(ACall, Owner, Access.ParamTypes);
+        end;
       end;
   else
     // Variable, Feld, Parameter: mit Klammern ein Aufruf über einen Zeiger, Ziel unbekannt.
     if not ASite.Explicit or ASite.Assigned then
+    begin
       Exit;
+    end;
     ACall.Name := Resolved.Name;
     ACall.Kind := 'call';
     ACall.DeclFile := '';
@@ -543,7 +659,9 @@ begin
   // Methode ohne Empfänger in einer Methode: Self (in with gehört sie vielleicht zum with-Ausdruck).
   if (ACall.Receiver = '') and (ACall.Container <> '') and (ACall.Kind <> 'constructor') and
     not InWith(ASite.Node) then
+  begin
     ACall.Receiver := 'Self';
+  end;
   Result := True;
 end;
 
@@ -568,17 +686,25 @@ begin
       begin
         if (ANode.Kind = TSyntaxKind.Identifier) or
           ((ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.FindChild(TSyntaxKind.GenericArgs) = nil)) then
-          Result := TSyntaxSearchStep.Descend
+        begin
+          Result := TSyntaxSearchStep.Descend;
+        end
         else
+        begin
           Result := TSyntaxSearchStep.Found;
+        end;
       end) = nil;
     for Other := 0 to High(AAnswer.Calls) do
     begin
       if not Simple then
+      begin
         Break;
+      end;
       Node := ASites[ACallSites[Other]].Node;
       if (Node.StartOffset >= Receiver.StartOffset) and (Node.EndOffset <= Receiver.EndOffset) then
+      begin
         Simple := False;
+      end;
     end;
     AAnswer.Calls[Index].ReceiverSimple := Simple;
   end;
@@ -596,16 +722,20 @@ begin
   AAnswer.FollowLine := -1;
   Result := TStepCalls.Find(FTree, ALine, Statement);
   if not Result then
+  begin
     Exit;
+  end;
   AAnswer.Line := Statement.Node.StartPos.Line;
   AAnswer.FollowLine := Statement.FollowLine;
   CallSites := nil;
   for Index := 0 to High(Statement.Sites) do
+  begin
     if ResolveSite(Statement.Sites[Index], Call) then
     begin
       AAnswer.Calls := AAnswer.Calls + [Call];
       CallSites := CallSites + [Index];
     end;
+  end;
   MarkReceivers(AAnswer, Statement.Sites, CallSites);
 end;
 

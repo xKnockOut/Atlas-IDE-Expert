@@ -225,7 +225,9 @@ begin
   mClose := Pos('}', UriTemplate);
   Result := (mOpen > 0) and (mClose > mOpen);
   if not Result then
+  begin
     Exit;
+  end;
   mPrefix := Copy(UriTemplate, 1, mOpen - 1);
   mSuffix := Copy(UriTemplate, mClose + 1, MaxInt);
   Result := (Length(AUri) > Length(mPrefix) + Length(mSuffix)) and SameText(Copy(AUri, 1, Length(mPrefix)), mPrefix)
@@ -339,19 +341,29 @@ var
 begin
   Result := nil;
   if not PromptsEnabled then
+  begin
     Exit;
+  end;
   Result := FPrompts.ToArray;
   if not Assigned(FOnPrompts) then
+  begin
     Exit;
+  end;
   for mPrompt in FOnPrompts() do
   begin
     // Eingebaute Namen gehen vor: Ein eigener Prompt kann keinen eingebauten verdecken.
     mDuplicate := False;
     for mKnown in Result do
+    begin
       if SameText(mKnown.Name, mPrompt.Name) then
+      begin
         mDuplicate := True;
+      end;
+    end;
     if not mDuplicate then
+    begin
       Result := Result + [mPrompt];
+    end;
   end;
 end;
 
@@ -360,11 +372,13 @@ var
   mPrompt: TMcpPrompt;
 begin
   for mPrompt in Prompts do
+  begin
     if mPrompt.Name = AName then
     begin
       APrompt := mPrompt;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -428,13 +442,19 @@ var
   mMessage, mContent: TJSONObject;
 begin
   if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('name') is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Name des Prompts fehlt');
+  end;
   mName := TJSONObject(AParams).GetValue('name').Value;
   if not PromptsEnabled then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Prompts sind abgeschaltet (mcp.prompts).');
+  end;
   if not FindPrompt(mName, mPrompt) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannter Prompt "%s"', [mName]));
+  end;
   mArguments := TDictionary<string, string>.Create;
   try
     if TJSONObject(AParams).GetValue('arguments') is TJSONObject then
@@ -443,22 +463,36 @@ begin
       for mPair in mGiven do
       begin
         if mPair.JsonValue is TJSONString then
-          mValue := Trim(mPair.JsonValue.Value)
+        begin
+          mValue := Trim(mPair.JsonValue.Value);
+        end
         else if mPair.JsonValue is TJSONNull then
-          mValue := ''
+        begin
+          mValue := '';
+        end
         else
+        begin
           mValue := Trim(mPair.JsonValue.ToJSON);
+        end;
         if mValue <> '' then
+        begin
           mArguments.AddOrSetValue(mPair.JsonString.Value, mValue);
+        end;
       end;
     end;
     for mInfo in mPrompt.Arguments do
+    begin
       if mInfo.Required and not mArguments.ContainsKey(mInfo.Name) then
+      begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
           Format('Prompt "%s": Argument "%s" fehlt (%s)', [mName, mInfo.Name, mInfo.Description]));
+      end;
+    end;
     // Wie vor jedem Werkzeugaufruf: geänderte Units nachladen (#48), einmal für alle eingebetteten Werkzeuge.
     if Assigned(FOnBeforeToolCall) then
+    begin
       FOnBeforeToolCall();
+    end;
     try
       mText := mPrompt.Handler(mArguments);
     except
@@ -486,18 +520,28 @@ var
   Name: string;
 begin
   if FRestricted and (ATool.Kind <> TMcpToolKind.Read) then
+  begin
     Exit(False);
+  end;
   if Assigned(FOnDisabledTools) then
+  begin
     for Name in FOnDisabledTools() do
+    begin
       if SameText(Trim(Name), ATool.Name) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
   Result := True;
 end;
 
 procedure TMcpServer.Audit(const AText: string);
 begin
   if Assigned(FOnAudit) then
+  begin
     FOnAudit(AText);
+  end;
 end;
 
 function TMcpServer.ListResources: TJSONObject;
@@ -510,7 +554,9 @@ begin
   for Resource in FResources do
   begin
     if Resource.WithPrompts and not PromptsEnabled then
+    begin
       Continue;
+    end;
     Item := TJSONObject.Create;
     Item.AddPair('uri', Resource.Uri);
     Item.AddPair('name', Resource.Name);
@@ -544,21 +590,31 @@ var
   mTemplate: TMcpResourceTemplate;
 begin
   if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('uri') is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'uri fehlt');
+  end;
   Uri := TJSONObject(AParams).GetValue('uri').Value;
   for Resource in FResources do
+  begin
     if SameText(Resource.Uri, Uri) and (not Resource.WithPrompts or PromptsEnabled) then
     begin
       if Assigned(FOnBeforeToolCall) then
+      begin
         FOnBeforeToolCall();
+      end;
       Exit(ResourceText(Resource.Uri, Resource.MimeType, Resource.Handler()));
     end;
+  end;
   if PromptsEnabled then
+  begin
     for mTemplate in FTemplates do
+    begin
       if mTemplate.Match(Uri, mValue) then
       begin
         if Assigned(FOnBeforeToolCall) then
+        begin
           FOnBeforeToolCall();
+        end;
         try
           mText := mTemplate.Handler(mValue);
         except
@@ -568,6 +624,8 @@ begin
         end;
         Exit(ResourceText(Uri, mTemplate.MimeType, mText));
       end;
+    end;
+  end;
   raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Ressource "%s"', [Uri]));
 end;
 
@@ -577,11 +635,13 @@ var
 begin
   AText := '';
   for mResource in FResources do
+  begin
     if SameText(mResource.Uri, AUri) and (not mResource.WithPrompts or PromptsEnabled) then
     begin
       AText := mResource.Handler();
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -593,6 +653,7 @@ var
 begin
   mItems := TJSONArray.Create;
   if PromptsEnabled then
+  begin
     for mTemplate in FTemplates do
     begin
       mItem := TJSONObject.Create;
@@ -602,6 +663,7 @@ begin
       mItem.AddPair('mimeType', mTemplate.MimeType);
       mItems.Add(mItem);
     end;
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('resourceTemplates', mItems);
 end;
@@ -611,11 +673,13 @@ var
   Tool: TMcpTool;
 begin
   for Tool in FTools do
+  begin
     if Tool.Name = AName then
     begin
       ATool := Tool;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -681,24 +745,32 @@ begin
   // die in allen bisherigen Versionen gleich aussehen.
   Version := DefaultProtocolVersion;
   if (AParams is TJSONObject) and (TJSONObject(AParams).GetValue('protocolVersion') is TJSONString) then
+  begin
     Version := TJSONObject(AParams).GetValue('protocolVersion').Value;
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('protocolVersion', Version);
   Capabilities := TJSONObject.Create;
   Capabilities.AddPair('tools', TJSONObject.Create);
   if (FResources.Count > 0) or (FTemplates.Count > 0) then
+  begin
     Capabilities.AddPair('resources', TJSONObject.Create);
+  end;
   // Immer melden, wenn es Prompts geben kann: Clients fragen die Liste sonst nie ab, auch wenn mcp.prompts
   // später eingeschaltet wird (#1357).
   if (FPrompts.Count > 0) or Assigned(FOnPrompts) then
+  begin
     Capabilities.AddPair('prompts', TJSONObject.Create);
+  end;
   Result.AddPair('capabilities', Capabilities);
   Info := TJSONObject.Create;
   Info.AddPair('name', FName);
   Info.AddPair('version', FVersion);
   Result.AddPair('serverInfo', Info);
   if FInstructions <> '' then
+  begin
     Result.AddPair('instructions', FInstructions);
+  end;
 end;
 
 function TMcpServer.ListTools: TJSONObject;
@@ -712,13 +784,17 @@ begin
   for Tool in FTools do
   begin
     if not Available(Tool) then
+    begin
       Continue;
+    end;
     Item := TJSONObject.Create;
     Item.AddPair('name', Tool.Name);
     Item.AddPair('description', Tool.Description);
     Schema := TJSONObject.ParseJSONValue(Tool.InputSchema);
     if Schema = nil then
+    begin
       Schema := TJSONObject.ParseJSONValue('{"type":"object"}');
+    end;
     Item.AddPair('inputSchema', Schema);
     Tools.Add(Item);
   end;
@@ -732,18 +808,26 @@ begin
   if not Available(ATool) then
   begin
     if FRestricted and (ATool.Kind <> TMcpToolKind.Read) then
-      AText := Format('Werkzeug "%s" ist im eingeschränkten Modus aus (nur lesende Werkzeuge).', [ATool.Name])
+    begin
+      AText := Format('Werkzeug "%s" ist im eingeschränkten Modus aus (nur lesende Werkzeuge).', [ATool.Name]);
+    end
     else
+    begin
       AText := Format('Werkzeug "%s" ist in atlas.json abgeschaltet (mcp.disabledTools).', [ATool.Name]);
+    end;
     Exit(True);
   end;
   try
     if ATool.Kind <> TMcpToolKind.Read then
     begin
       if AArguments <> nil then
-        Audit(Format('MCP %s %s', [ATool.Name, AArguments.ToJSON]))
+      begin
+        Audit(Format('MCP %s %s', [ATool.Name, AArguments.ToJSON]));
+      end
       else
+      begin
         Audit(Format('MCP %s', [ATool.Name]));
+      end;
     end;
     AText := ATool.Handler(AArguments);
   except
@@ -765,17 +849,25 @@ var
   Item: TJSONObject;
 begin
   if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('name') is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Werkzeugname fehlt');
+  end;
   Name := TJSONObject(AParams).GetValue('name').Value;
   if not FindTool(Name, Tool) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekanntes Werkzeug "%s"', [Name]));
+  end;
   Arguments := nil;
   if TJSONObject(AParams).GetValue('arguments') is TJSONObject then
+  begin
     Arguments := TJSONObject(TJSONObject(AParams).GetValue('arguments'));
+  end;
   // Z. B. geänderte Units nachladen (#48); ein Fehler dort trifft den Aufruf wie einer des Werkzeugs.
   try
     if Available(Tool) and Assigned(FOnBeforeToolCall) then
+    begin
       FOnBeforeToolCall();
+    end;
     IsError := Execute(Tool, Arguments, Text);
   except
     on E: EMcpToolError do
@@ -819,19 +911,25 @@ begin
   // ARequired = -1: alle Parameter sind Pflicht, sonst nur die ersten ARequired.
   Count := ARequired;
   if Count < 0 then
+  begin
     Count := Length(ANames);
+  end;
   Properties := '';
   Required := '';
   for Index := 0 to High(ANames) do
   begin
     if Properties <> '' then
+    begin
       Properties := Properties + ',';
+    end;
     Properties := Properties + JsonText(ANames[Index]) + ':{"type":"string","description":' +
       JsonText(ADescriptions[Index]) + '}';
     if Index < Count then
     begin
       if Required <> '' then
+      begin
         Required := Required + ',';
+      end;
       Required := Required + JsonText(ANames[Index]);
     end;
   end;
@@ -844,17 +942,23 @@ var
 begin
   Result := '';
   if AArguments = nil then
+  begin
     Exit;
+  end;
   Value := AArguments.GetValue(AName);
   if (Value <> nil) and not (Value is TJSONNull) then
+  begin
     Result := Trim(Value.Value);
+  end;
 end;
 
 class function TMcpServer.RequiredString(const AArguments: TJSONObject; const AName: string): string;
 begin
   Result := OptionalString(AArguments, AName);
   if Result = '' then
+  begin
     raise EMcpToolError.CreateFmt('Parameter "%s" fehlt', [AName]);
+  end;
 end;
 
 end.

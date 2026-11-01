@@ -124,15 +124,21 @@ var
 begin
   Result := nil;
   if not AEnabled then
+  begin
     Exit;
+  end;
   Decl := TMoveClass.ClassAt(ATree, APosition);
   if Decl = nil then
+  begin
     Exit;
+  end;
   Name := TMoveClass.DefaultUnitName(Decl.Name);
   AResolver.PinTree(ATree, AFileName);
   try
     if not TMoveClass.Plan(AFileName, AText, ATree, APosition, Name, Lookup(AResolver), Plan, Reason) then
+    begin
       Exit;
+    end;
   finally
     AResolver.UnpinTree;
   end;
@@ -171,18 +177,30 @@ var
 begin
   Decl := TMoveClass.ClassAt(ATree, APosition);
   if Decl = nil then
+  begin
     raise Failed('an dieser Stelle steht keine Klasse');
+  end;
   AResolver.PinTree(ATree, AFileName);
   try
     if not TMoveClass.Plan(AFileName, AText, ATree, APosition, AUnitName, Lookup(AResolver), Plan, Reason) then
+    begin
       raise Failed(Reason);
+    end;
     NewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), Plan.NewUnit + '.pas');
     if Assigned(AContext.Exists) and AContext.Exists(NewFile) then
+    begin
       raise Failed(Format('%s gibt es schon', [ExtractFileName(NewFile)]));
+    end;
     if AContext.HasProject then
+    begin
       for Item in AContext.Project.Units do
+      begin
         if SameText(Item.Name, Plan.NewUnit) then
+        begin
           raise Failed(Format('%s steht schon im Projekt', [Plan.NewUnit]));
+        end;
+      end;
+    end;
     // Verwendende Units über die Referenzsuche (#29).
     References := TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName, Decl.StartPos, False,
       AContext.Files, AContext.ReadText);
@@ -196,31 +214,47 @@ begin
     Changes.Add(AFileName, Plan.OriginEdits);
     MainSource := '';
     if AContext.HasProject then
+    begin
       MainSource := AContext.Project.MainSource;
+    end;
     Users := nil;
     for Location in References do
     begin
       Known := SameText(Location.FileName, AFileName) or not IsSource(Location.FileName);
       for User in Users do
+      begin
         if SameText(User, Location.FileName) then
+        begin
           Known := True;
+        end;
+      end;
       if not Known then
+      begin
         Users := Users + [Location.FileName];
+      end;
     end;
     for User in Users do
     begin
       if not (Assigned(AContext.ReadText) and AContext.ReadText(User, Text)) then
+      begin
         Continue;
+      end;
       Ranges := nil;
       for Location in References do
+      begin
         if SameText(Location.FileName, User) then
+        begin
           Ranges := Ranges + [Location.Range];
+        end;
+      end;
       Tree := TSyntaxTreeCache.Parse(Text);
       try
         // Die Hauptdatei des Projekts erhält die Unit unten mit Pfad.
         if TMoveClass.UpdateUser(Text, Tree, Plan.OriginUnit, Plan.NewUnit, Plan.ClassName, Ranges,
           not SameText(User, MainSource), Edits) then
+        begin
           Changes.Add(User, Edits);
+        end;
       finally
         Tree.Free;
       end;
@@ -228,8 +262,10 @@ begin
     // Projekt: uses bzw. contains der .dpr/.dpk und DCCReference der .dproj, jeweils mit relativem Pfad.
     Changes.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, NewFile, Plan.NewUnit);
     if Plan.Unresolved <> nil then
+    begin
       Changes.Warn(Format('Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der Ursprungs-Unit.',
         [string.Join(', ', Plan.Unresolved)]));
+    end;
     Result := TJSONObject.Create;
     Result.AddPair('edit', Changes.ToJson);
     Result.AddPair('file', TDocumentUris.FromPath(NewFile));

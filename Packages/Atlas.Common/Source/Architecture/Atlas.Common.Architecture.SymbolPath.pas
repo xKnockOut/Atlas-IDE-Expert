@@ -316,8 +316,12 @@ var
   Word: string;
 begin
   for Word in TypeWords do
+  begin
     if SameText(Word, AWord) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -335,17 +339,27 @@ begin
     begin
       Start := Index;
       while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '&', '.']) do
+      begin
         Inc(Index);
+      end;
       Word := Copy(AText, Start, Index - Start);
       if (Word <> '') and (Word[1] = '&') then
+      begin
         Delete(Word, 1, 1);
+      end;
       while (Word <> '') and (Word[Length(Word)] = '.') do
+      begin
         Delete(Word, Length(Word), 1);
+      end;
       if (Word <> '') and not IsTypeWord(Word) then
+      begin
         Result := Result + [Word];
+      end;
     end
     else
+    begin
       Inc(Index);
+    end;
   end;
 end;
 
@@ -355,9 +369,13 @@ var
 begin
   Dot := LastDelimiter('.', AName);
   if Dot > 0 then
-    Result := Copy(AName, Dot + 1, MaxInt)
+  begin
+    Result := Copy(AName, Dot + 1, MaxInt);
+  end
   else
+  begin
     Result := AName;
+  end;
 end;
 
 /// <summary>Trifft der uses-Eintrag AEntry die Unit AUnitName (SysUtils → System.SysUtils)?</summary>
@@ -376,18 +394,26 @@ end;
 function TSymbolPathNode.Caption: string;
 begin
   if IsUnit then
+  begin
     Exit(UnitName);
+  end;
   Result := Symbol.QualifiedName;
   if (Symbol.Kind in ValueKinds) and (Symbol.TypeName <> '') then
+  begin
     Result := Result + ': ' + Symbol.TypeName;
+  end;
 end;
 
 function TSymbolPathNode.Position: TTextPosition;
 begin
   if IsUnit then
-    Result := TTextPosition.Create(0, 0)
+  begin
+    Result := TTextPosition.Create(0, 0);
+  end
   else
+  begin
     Result := Symbol.SelectionRange.StartPos;
+  end;
 end;
 
 { TSymbolPathRequest }
@@ -439,9 +465,13 @@ var
   List: TIndexList;
 begin
   if Members.TryGetValue(UpperCase(AContainer), List) then
-    Result := List.ToArray
+  begin
+    Result := List.ToArray;
+  end
   else
+  begin
     Result := nil;
+  end;
 end;
 
 { TSymbolPathSearch }
@@ -501,13 +531,17 @@ begin
   AKind := TSymbolPathEdgeKind.Uses_;
   AThroughLibrary := SameText(Trim(AText), 'library');
   if AThroughLibrary then
+  begin
     Exit(True);
+  end;
   for Kind := Low(TSymbolPathEdgeKind) to High(TSymbolPathEdgeKind) do
+  begin
     if SameText(Trim(AText), EdgeNames[Kind]) then
     begin
       AKind := Kind;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -519,13 +553,21 @@ end;
 function TSymbolPathSearch.Stopped: Boolean;
 begin
   if FAbortReason <> '' then
+  begin
     Exit(True);
+  end;
   if Assigned(FCancelled) and FCancelled() then
-    FAbortReason := 'abgebrochen'
+  begin
+    FAbortReason := 'abgebrochen';
+  end
   else if (FTimeoutMs > 0) and (Elapsed > FTimeoutMs) then
-    FAbortReason := 'Zeitlimit'
+  begin
+    FAbortReason := 'Zeitlimit';
+  end
   else if FVisited > FMaxNodes then
+  begin
     FAbortReason := 'Knotengrenze';
+  end;
   Result := FAbortReason <> '';
 end;
 
@@ -536,10 +578,14 @@ var
 begin
   Key := LowerCase(AUnitName);
   if FUnits.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   if not FIndex.FindUnit(AUnitName, Data) then
+  begin
     Exit;
+  end;
   Result := TPathUnit.Create(Data);
   FUnits.Add(Key, Result);
 end;
@@ -552,7 +598,9 @@ var
 begin
   Key := 'U|' + LowerCase(AUnitName);
   if FKeys.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   Node := Default(TSymbolPathNode);
   Node.IsUnit := True;
   Node.UnitName := AUnitName;
@@ -589,31 +637,45 @@ begin
   Result := AIndex;
   Symbol := AUnit.Data.Symbols[AIndex];
   if not (Symbol.Kind in RoutineKinds) then
+  begin
     Exit;
+  end;
   if Symbol.Container <> '' then
   begin
     Owner := -1;
     for Index in AUnit.Data.SymbolsNamed(Symbol.Container) do
+    begin
       if AUnit.Data.Symbols[Index].Kind in StructKinds + [TIndexSymbolKind.HelperType] then
+      begin
         Owner := Index;
+      end;
+    end;
     if (Owner < 0) or Encloses(AUnit.Data.Symbols[Owner].Range, Symbol.SelectionRange.StartPos) then
+    begin
       Exit;
+    end;
     for Index in AUnit.MembersOf(Symbol.Container) do
     begin
       Other := AUnit.Data.Symbols[Index];
       if (Index <> AIndex) and (Other.Kind in RoutineKinds) and SameText(Other.Name, Symbol.Name) and
         SameParameters(Other, Symbol) and Encloses(AUnit.Data.Symbols[Owner].Range, Other.SelectionRange.StartPos) then
+      begin
         Exit(Index);
+      end;
     end;
   end
   else if not Symbol.InInterface then
+  begin
     for Index in AUnit.Data.SymbolsNamed(Symbol.Name) do
     begin
       Other := AUnit.Data.Symbols[Index];
       if (Index <> AIndex) and (Other.Kind in RoutineKinds) and (Other.Container = '') and Other.InInterface and
         SameParameters(Other, Symbol) then
+      begin
         Exit(Index);
+      end;
     end;
+  end;
 end;
 
 function TSymbolPathSearch.SymbolNode(AUnit: TPathUnit; AIndex: Integer): Integer;
@@ -624,7 +686,9 @@ begin
   AIndex := Canonical(AUnit, AIndex);
   Key := 'S|' + LowerCase(AUnit.Data.UnitName) + '|' + IntToStr(AIndex);
   if FKeys.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   Node := Default(TSymbolPathNode);
   Node.UnitName := AUnit.Data.UnitName;
   Node.Symbol := AUnit.Data.Symbols[AIndex];
@@ -640,13 +704,19 @@ var
 begin
   Result := -1;
   for Index in AUnit.Data.SymbolsNamed(ASymbol.Name) do
+  begin
     if SameText(AUnit.Data.Symbols[Index].Container, ASymbol.Container) then
     begin
       if Result < 0 then
+      begin
         Result := Index;
+      end;
       if AUnit.Data.Symbols[Index].SelectionRange.StartPos = ASymbol.SelectionRange.StartPos then
+      begin
         Exit(Index);
+      end;
     end;
+  end;
 end;
 
 function TSymbolPathSearch.NodeOf(const ALocation: TSymbolLocation): Integer;
@@ -657,10 +727,14 @@ begin
   Result := -1;
   Data := UnitFor(ALocation.UnitName);
   if Data = nil then
+  begin
     Exit;
+  end;
   Index := IndexInUnit(Data, ALocation.Symbol);
   if Index >= 0 then
+  begin
     Result := SymbolNode(Data, Index);
+  end;
 end;
 
 function TSymbolPathSearch.NodeUnit(ANode: Integer): TPathUnit;
@@ -674,14 +748,22 @@ var
 begin
   Result := -1;
   if ASymbol.Container = '' then
+  begin
     Exit;
+  end;
   // Die letzte Deklaration gewinnt: TFoo = class; (Vorwärtsdeklaration) steht vor der vollständigen.
   Found := -1;
   for Index in AUnit.Data.SymbolsNamed(ASymbol.Container) do
+  begin
     if AUnit.Data.Symbols[Index].Kind in StructKinds + [TIndexSymbolKind.HelperType] then
+    begin
       Found := Index;
+    end;
+  end;
   if Found >= 0 then
+  begin
     Result := SymbolNode(AUnit, Found);
+  end;
 end;
 
 function TSymbolPathSearch.Visible(AUnit: TPathUnit; const AUnitName: string): Integer;
@@ -691,8 +773,12 @@ begin
   // Spätere uses-Einträge verdecken frühere: höchste Stelle zählt.
   Result := -1;
   for Index := 0 to High(AUnit.UsesNames) do
+  begin
     if UsesMatches(AUnit.UsesNames[Index], AUnitName) then
+    begin
       Result := Index;
+    end;
+  end;
 end;
 
 function TSymbolPathSearch.ResolveType(AUnit: TPathUnit; const AName: string): TTypeTarget;
@@ -706,7 +792,9 @@ var
 begin
   Key := LowerCase(AUnit.Data.UnitName) + '|' + LowerCase(AName);
   if FTypes.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   Result := Default(TTypeTarget);
   Name := AName;
   Qualifier := '';
@@ -722,16 +810,22 @@ begin
     for Location in FIndex.FindSymbols(Name) do
     begin
       if not (Location.Symbol.Kind in TypeKinds) then
+      begin
         Continue;
+      end;
       if (Qualifier <> '') and not SameText(Location.Symbol.Container, LastSegment(Qualifier)) and
         not UsesMatches(Qualifier, Location.UnitName) then
+      begin
         Continue;
+      end;
       // Vorwärtsdeklaration und vollständige Deklaration: die spätere zählt.
       Rank := 0;
       if Seen.TryGetValue(LowerCase(Location.UnitName + '|' + Location.Symbol.QualifiedName), Rank) then
       begin
         if Candidates[Rank].Symbol.SelectionRange.StartPos.Line < Location.Symbol.SelectionRange.StartPos.Line then
+        begin
           Candidates[Rank] := Location;
+        end;
         Continue;
       end;
       Seen.Add(LowerCase(Location.UnitName + '|' + Location.Symbol.QualifiedName), Candidates.Count);
@@ -748,9 +842,13 @@ begin
     for Index := 0 to Candidates.Count - 1 do
     begin
       if SameText(Candidates[Index].UnitName, AUnit.Data.UnitName) then
-        Rank := MaxInt
+      begin
+        Rank := MaxInt;
+      end
       else
+      begin
         Rank := Visible(AUnit, Candidates[Index].UnitName);
+      end;
       if Rank > BestRank then
       begin
         BestRank := Rank;
@@ -760,10 +858,14 @@ begin
     if (BestRank >= 0) or (Candidates.Count = 1) then
     begin
       if Best < 0 then
+      begin
         Best := 0;
+      end;
       Node := NodeOf(Candidates[Best]);
       if Node >= 0 then
+      begin
         Result.Nodes := [Node];
+      end;
     end
     else
     begin
@@ -772,7 +874,9 @@ begin
       begin
         Node := NodeOf(Location);
         if Node >= 0 then
+        begin
           Result.Nodes := Result.Nodes + [Node];
+        end;
       end;
     end;
   finally
@@ -791,11 +895,19 @@ begin
   Result := nil;
   Data := NodeUnit(ANode);
   if Data = nil then
+  begin
     Exit;
+  end;
   for Ancestor in FNodes[ANode].Symbol.Ancestors do
+  begin
     for Node in ResolveType(Data, Ancestor).Nodes do
+    begin
       if FNodes[Node].Symbol.Kind = TIndexSymbolKind.InterfaceType then
+      begin
         Result := Result + [Node];
+      end;
+    end;
+  end;
 end;
 
 function TSymbolPathSearch.ImplementersOf(ANode: Integer): TArray<Integer>;
@@ -804,21 +916,29 @@ var
   Node, Iface: Integer;
 begin
   if FImplementers.TryGetValue(ANode, Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   for Location in FIndex.Descendants(FNodes[ANode].Symbol.Name) do
   begin
     if Location.Symbol.Kind <> TIndexSymbolKind.ClassType then
+    begin
       Continue;
+    end;
     Node := NodeOf(Location);
     if Node < 0 then
+    begin
       Continue;
+    end;
     for Iface in InterfacesOf(Node) do
+    begin
       if Iface = ANode then
       begin
         Result := Result + [Node];
         Break;
       end;
+    end;
   end;
   FImplementers.Add(ANode, Result);
 end;
@@ -831,10 +951,16 @@ begin
   Result := -1;
   Data := NodeUnit(ATypeNode);
   if Data = nil then
+  begin
     Exit;
+  end;
   for Index in Data.MembersOf(FNodes[ATypeNode].Symbol.Name) do
+  begin
     if SameText(Data.Data.Symbols[Index].Name, AName) and (Data.Data.Symbols[Index].Kind in RoutineKinds) then
+    begin
       Exit(SymbolNode(Data, Index));
+    end;
+  end;
 end;
 
 function TSymbolPathSearch.ImplementingMember(AClass, AInterface: Integer; const AName: string): Integer;
@@ -847,12 +973,16 @@ begin
   begin
     Separator := Pos('=', Resolution);
     if Separator = 0 then
+    begin
       Continue;
+    end;
     Left := Trim(Copy(Resolution, 1, Separator - 1));
     Right := Trim(Copy(Resolution, Separator + 1, MaxInt));
     Prefix := Copy(Left, 1, LastDelimiter('.', Left) - 1);
     if SameText(LastSegment(Left), AName) and SameText(LastSegment(Prefix), FNodes[AInterface].Symbol.Name) then
+    begin
       Exit(MemberNamed(AClass, Right));
+    end;
   end;
   Result := MemberNamed(AClass, AName);
 end;
@@ -884,7 +1014,9 @@ begin
   begin
     Target := ResolveType(AUnit, Name);
     for Node in Target.Nodes do
+    begin
       AddEdge(AList, Node, AKind, Target.Inferred, AFileName, APosition);
+    end;
   end;
 end;
 
@@ -892,11 +1024,17 @@ function CompareEdges(const ALeft, ARight: TSymbolPathSearch.TPathEdge): Integer
 begin
   Result := Ord(ALeft.Kind) - Ord(ARight.Kind);
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft.SortKey, ARight.SortKey);
+  end;
   if Result = 0 then
+  begin
     Result := Ord(ALeft.Reverse) - Ord(ARight.Reverse);
+  end;
   if Result = 0 then
+  begin
     Result := CompareStr(PositionKey(ALeft.Position), PositionKey(ARight.Position));
+  end;
 end;
 
 /// <summary>Sortiert nach Rang und Ziel und lässt gleiche Kanten (Deklaration und Rumpf derselben Routine)
@@ -920,7 +1058,9 @@ begin
     begin
       Key := Format('%d|%d|%d', [Edge.Target, Ord(Edge.Kind), Ord(Edge.Reverse)]);
       if Seen.ContainsKey(Key) then
+      begin
         Continue;
+      end;
       Seen.Add(Key, True);
       Sorted := Sorted + [Edge];
     end;
@@ -946,19 +1086,26 @@ begin
   Node := FNodes[ANode];
   Data := UnitFor(Node.UnitName);
   if Data = nil then
+  begin
     Exit(nil);
+  end;
   List := TList<TPathEdge>.Create;
   try
     if Node.IsUnit then
     begin
       GraphNode := -1;
       if FGraph <> nil then
+      begin
         GraphNode := FGraph.IndexOf(Node.UnitName);
+      end;
       if GraphNode >= 0 then
+      begin
         for Item := 0 to High(FGraph.Node(GraphNode).Outgoing) do
         begin
           if not FGraph.Node(FGraph.Node(GraphNode).Outgoing[Item].Target).Active then
+          begin
             Continue;
+          end;
           Edge := Default(TPathEdge);
           Edge.Target := UnitNode(FGraph.Node(FGraph.Node(GraphNode).Outgoing[Item].Target).UnitName);
           Edge.Kind := TSymbolPathEdgeKind.Uses_;
@@ -969,9 +1116,12 @@ begin
           Edge.SortKey := Format('%.6d', [Item]);
           List.Add(Edge);
         end;
+      end;
       for Index in Data.MembersOf('') do
+      begin
         AddEdge(List, SymbolNode(Data, Index), TSymbolPathEdgeKind.Contains, False,
           Data.Data.SymbolFile(Data.Data.Symbols[Index]), Data.Data.Symbols[Index].SelectionRange.StartPos);
+      end;
     end
     else
     begin
@@ -982,13 +1132,19 @@ begin
         begin
           Resolved := ResolveType(Data, Ancestor);
           for Target in Resolved.Nodes do
+          begin
             if (FNodes[Target].Symbol.Kind = TIndexSymbolKind.InterfaceType) and
               (Node.Symbol.Kind <> TIndexSymbolKind.InterfaceType) then
+            begin
               AddEdge(List, Target, TSymbolPathEdgeKind.Implements, Resolved.Inferred, SymbolFile,
-                Node.Symbol.SelectionRange.StartPos)
+                Node.Symbol.SelectionRange.StartPos);
+            end
             else
+            begin
               AddEdge(List, Target, TSymbolPathEdgeKind.Inherits, Resolved.Inferred, SymbolFile,
                 Node.Symbol.SelectionRange.StartPos);
+            end;
+          end;
         end;
         if Node.Symbol.Kind = TIndexSymbolKind.InterfaceType then
         begin
@@ -1008,21 +1164,29 @@ begin
           AddEdge(List, SymbolNode(Data, Index), TSymbolPathEdgeKind.Contains, False, Data.Data.SymbolFile(Member),
             Member.SelectionRange.StartPos);
           if Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_] then
+          begin
             AddTypeEdges(List, Data, Member.TypeName + ' ' + Member.TypeArgs, TSymbolPathEdgeKind.HasField,
               Data.Data.SymbolFile(Member), Member.SelectionRange.StartPos);
+          end;
         end;
       end;
       if Node.Symbol.Kind in ValueKinds then
+      begin
         AddTypeEdges(List, Data, Node.Symbol.TypeName + ' ' + Node.Symbol.TypeArgs, TSymbolPathEdgeKind.HasField,
           SymbolFile, Node.Symbol.SelectionRange.StartPos);
+      end;
       if Node.Symbol.Kind in RoutineKinds then
       begin
         for ParamType in Node.Symbol.ParamTypes do
+        begin
           AddTypeEdges(List, Data, ParamType, TSymbolPathEdgeKind.Parameter, SymbolFile,
             Node.Symbol.SelectionRange.StartPos);
+        end;
         if Node.Symbol.TypeName <> '' then
+        begin
           AddTypeEdges(List, Data, Node.Symbol.TypeName + ' ' + Node.Symbol.TypeArgs, TSymbolPathEdgeKind.Result_,
             SymbolFile, Node.Symbol.SelectionRange.StartPos);
+        end;
         Container := ContainerNode(Data, Node.Symbol);
         if (Container >= 0) and (FNodes[Container].Symbol.Kind = TIndexSymbolKind.InterfaceType) then
         begin
@@ -1032,7 +1196,9 @@ begin
           begin
             Index := ImplementingMember(Target, Container, Node.Symbol.Name);
             if Index >= 0 then
+            begin
               Matches := Matches + [Index];
+            end;
           end;
           for Target in Matches do
           begin
@@ -1044,14 +1210,18 @@ begin
           end;
         end
         else if Container >= 0 then
+        begin
           for Target in InterfacesOf(Container) do
           begin
             // Klassenmethode → Interface-Methode, die sie umsetzt.
             Index := MemberNamed(Target, Node.Symbol.Name);
             if (Index >= 0) and (ImplementingMember(Container, Target, FNodes[Index].Symbol.Name) = ANode) then
+            begin
               AddEdge(List, Index, TSymbolPathEdgeKind.Implements, False, SymbolFile,
                 Node.Symbol.SelectionRange.StartPos);
+            end;
           end;
+        end;
       end;
     end;
     Result := List.ToArray;
@@ -1083,7 +1253,9 @@ var
   Reader: TReferenceReadText;
 begin
   if FCalls.TryGetValue(ANode, Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   Node := FNodes[ANode];
   Data := UnitFor(Node.UnitName);
@@ -1119,7 +1291,9 @@ begin
     begin
       CalleeUnit := UnitFor(Call.Item.UnitName);
       if CalleeUnit = nil then
+      begin
         Continue;
+      end;
       Location.UnitName := CalleeUnit.Data.UnitName;
       Location.FileName := CalleeUnit.Data.FileName;
       Location.Symbol := Default(TIndexSymbol);
@@ -1128,7 +1302,9 @@ begin
       Location.Symbol.SelectionRange := Call.Item.SelectionRange;
       Target := NodeOf(Location);
       if (Target < 0) or (Target = ANode) or (Length(Call.Ranges) = 0) then
+      begin
         Continue;
+      end;
       AddEdge(List, Target, TSymbolPathEdgeKind.Calls, False, Item.FileName, Call.Ranges[0].StartPos);
     end;
     Result := List.ToArray;
@@ -1171,22 +1347,36 @@ begin
   Scope := TDictionary<string, Boolean>.Create;
   try
     for Endpoint in FEndpoints.Keys do
+    begin
       Scope.AddOrSetValue(LowerCase(FNodes[Endpoint].UnitName), True);
+    end;
     for Item in FIndex.Units do
     begin
       if Item.Library_ and not FThroughLibrary and not Scope.ContainsKey(LowerCase(Item.UnitName)) then
+      begin
         Continue;
+      end;
       for Index := 0 to High(Item.Symbols) do
       begin
         Symbol := Item.Symbols[Index];
         if not (Symbol.Kind in ValueKinds + RoutineKinds) then
+        begin
           Continue;
+        end;
         for Name in TypeNamesIn(Symbol.TypeName + ' ' + Symbol.TypeArgs) do
+        begin
           AddRef(Name, Item.UnitName, Index);
+        end;
         if Symbol.Kind in RoutineKinds then
+        begin
           for ParamType in Symbol.ParamTypes do
+          begin
             for Name in TypeNamesIn(ParamType) do
+            begin
               AddRef(Name, Item.UnitName, Index);
+            end;
+          end;
+        end;
       end;
     end;
   finally
@@ -1199,12 +1389,22 @@ var
   Edge: TPathEdge;
 begin
   for Edge in ForwardOf(ASource) do
+  begin
     if (Edge.Target = ATarget) and (Edge.Kind in FVia) then
+    begin
       Exit(True);
+    end;
+  end;
   if AWithCalls then
+  begin
     for Edge in CallsOf(ASource) do
+    begin
       if Edge.Target = ATarget then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -1232,7 +1432,9 @@ var
 
 begin
   if FPredecessors.TryGetValue(ANode, Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   Node := FNodes[ANode];
   Data := UnitFor(Node.UnitName);
@@ -1243,61 +1445,97 @@ begin
     begin
       GraphNode := -1;
       if FGraph <> nil then
+      begin
         GraphNode := FGraph.IndexOf(Node.UnitName);
+      end;
       if GraphNode >= 0 then
+      begin
         for Source in FGraph.DirectDependents(GraphNode, AllUsesSections) do
+        begin
           Add(UnitNode(FGraph.Node(Source).UnitName));
+        end;
+      end;
     end
     else if Data <> nil then
     begin
       // contains
       if Node.Symbol.Container = '' then
-        Add(UnitNode(Node.UnitName))
+      begin
+        Add(UnitNode(Node.UnitName));
+      end
       else
+      begin
         Add(ContainerNode(Data, Node.Symbol));
+      end;
       if Node.Symbol.Kind in StructKinds then
       begin
         // inherits und implements Klasse → Interface
         for Location in FIndex.Descendants(Node.Symbol.Name) do
+        begin
           Add(NodeOf(Location));
+        end;
         // implements Interface → Klasse: die Interfaces dieser Klasse
         for Ancestor in Node.Symbol.Ancestors do
+        begin
           for Candidate in ResolveType(Data, Ancestor).Nodes do
+          begin
             Add(Candidate);
+          end;
+        end;
       end;
       if Node.Symbol.Kind in TypeKinds then
       begin
         // hasField, parameter, result: Deklarationen, deren Typangabe den Namen nennt, und ihre Typen
         if FRefs = nil then
+        begin
           BuildRefs;
+        end;
         if FRefs.TryGetValue(UpperCase(Node.Symbol.Name), Refs) then
+        begin
           for Ref in Refs do
           begin
             RefUnit := UnitFor(Ref.UnitName);
             if RefUnit = nil then
+            begin
               Continue;
+            end;
             Candidate := SymbolNode(RefUnit, Ref.Index);
             Add(Candidate);
             if FNodes[Candidate].Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_] then
+            begin
               Add(ContainerNode(RefUnit, FNodes[Candidate].Symbol));
+            end;
           end;
+        end;
       end;
       if Node.Symbol.Kind in RoutineKinds then
       begin
         // implements je Methode ist in beide Richtungen angelegt.
         for Edge in ForwardOf(ANode) do
+        begin
           if Edge.Kind = TSymbolPathEdgeKind.Implements then
+          begin
             Add(Edge.Target);
+          end;
+        end;
         Container := ContainerNode(Data, Node.Symbol);
         if Container >= 0 then
+        begin
           for Candidate in InterfacesOf(Container) do
+          begin
             Add(MemberNamed(Candidate, Node.Symbol.Name));
+          end;
+        end;
       end;
     end;
     // Nur, was wirklich eine Kante hierher hat (gleiche Kanten wie vorwärts).
     for Candidate in Candidates do
+    begin
       if Passable(Candidate) and Leads(Candidate, ANode, False) then
+      begin
         Result := Result + [Candidate];
+      end;
+    end;
   finally
     Seen.Free;
     Candidates.Free;
@@ -1310,8 +1548,12 @@ var
   Usage: TIndexUsage;
 begin
   for Usage in AUnit.Usages do
+  begin
     if SameText(Usage.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1325,7 +1567,9 @@ var
   Name: string;
 begin
   if FCallers.TryGetValue(ANode, Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   Node := FNodes[ANode];
   if Node.IsUnit or not (Node.Symbol.Kind in RoutineKinds) then
@@ -1336,36 +1580,56 @@ begin
   for Item in FIndex.Units do
   begin
     if Stopped then
+    begin
       Break;
+    end;
     if Item.Library_ and not FThroughLibrary then
+    begin
       Continue;
+    end;
     // Verwendungsindex (#492) als Vorfilter; ohne ihn jede Unit, die die Unit der Routine verwendet.
     if Item.UsagesIndexed and not Item.UsagesOffloaded then
-      Possible := HasUsage(Item, Node.Symbol.Name)
+    begin
+      Possible := HasUsage(Item, Node.Symbol.Name);
+    end
     else
     begin
       Possible := SameText(Item.UnitName, Node.UnitName);
       for Name in Item.InterfaceUses + Item.ImplementationUses do
+      begin
         if UsesMatches(Name, Node.UnitName) then
+        begin
           Possible := True;
+        end;
+      end;
     end;
     if not Possible then
+    begin
       Continue;
+    end;
     Data := UnitFor(Item.UnitName);
     if Data = nil then
+    begin
       Continue;
+    end;
     for Index := 0 to High(Data.Data.Symbols) do
     begin
       if not (Data.Data.Symbols[Index].Kind in RoutineKinds) then
+      begin
         Continue;
+      end;
       Candidate := SymbolNode(Data, Index);
       if (Candidate <> ANode) and Passable(Candidate) and Leads(Candidate, ANode, True) then
+      begin
         Result := Result + [Candidate];
+      end;
     end;
   end;
   // Abgebrochen: nicht zwischenspeichern, die Liste ist unvollständig.
   if FAbortReason = '' then
+  begin
     FCallers.Add(ANode, Result);
+  end;
 end;
 
 function TSymbolPathSearch.Passable(ANode: Integer): Boolean;
@@ -1389,9 +1653,13 @@ begin
   try
     // Unit (auch ohne Namensraum über den Graphen).
     if FIndex.FindUnit(Query, Data) then
-      List.Add(UnitNode(Data.UnitName))
+    begin
+      List.Add(UnitNode(Data.UnitName));
+    end
     else if (FGraph <> nil) and (FGraph.IndexOf(Query) >= 0) then
+    begin
       List.Add(UnitNode(FGraph.Node(FGraph.IndexOf(Query)).UnitName));
+    end;
     // Symbol wie bei find_symbol: einfach, TTyp.Name oder Unit.Name.
     Name := Query;
     Container := '';
@@ -1400,21 +1668,29 @@ begin
     begin
       Container := Copy(Name, 1, Dot - 1);
       if LastDelimiter('.', Container) > 0 then
+      begin
         Container := Copy(Container, LastDelimiter('.', Container) + 1, MaxInt);
+      end;
       Name := Copy(Name, Dot + 1, MaxInt);
     end;
     for Location in FIndex.FindSymbols(Name) do
     begin
       if (Container <> '') and not SameText(Location.Symbol.Container, Container) and
         not ((Dot > 0) and SameText(Location.UnitName, Copy(Query, 1, Dot - 1))) then
+      begin
         Continue;
+      end;
       // Deklaration und Rumpf einer Routine sind derselbe Knoten (Canonical).
       Node := NodeOf(Location);
       if Node < 0 then
+      begin
         Continue;
+      end;
       Key := IntToStr(Node);
       if Seen.ContainsKey(Key) then
+      begin
         Continue;
+      end;
       Seen.Add(Key, List.Count);
       List.Add(Node);
     end;
@@ -1433,16 +1709,24 @@ begin
   Result := [ANode];
   Data := NodeUnit(ANode);
   if Data = nil then
+  begin
     Exit;
+  end;
   // Unit: auch ihre Deklarationen; Typ: auch seine Mitglieder.
   if FNodes[ANode].IsUnit then
   begin
     for Index := 0 to High(Data.Data.Symbols) do
+    begin
       Result := Result + [SymbolNode(Data, Index)];
+    end;
   end
   else if FNodes[ANode].Symbol.Kind in StructKinds then
+  begin
     for Index in Data.MembersOf(FNodes[ANode].Symbol.Name) do
+    begin
       Result := Result + [SymbolNode(Data, Index)];
+    end;
+  end;
 end;
 
 function TSymbolPathSearch.EdgesFor(ANode: Integer; AWithCalls: Boolean): TPathEdges;
@@ -1451,8 +1735,12 @@ var
 begin
   Result := nil;
   for Edge in ForwardOf(ANode) do
+  begin
     if Edge.Kind in FVia then
+    begin
       Result := Result + [Edge];
+    end;
+  end;
   if AWithCalls then
   begin
     Result := Result + CallsOf(ANode);
@@ -1475,7 +1763,9 @@ begin
   FDistB.Clear;
   FDistF.Add(AStart, 0);
   for Node in ATargets do
+  begin
     FDistB.AddOrSetValue(Node, 0);
+  end;
   if FDistB.ContainsKey(AStart) then
   begin
     ALength := 0;
@@ -1494,14 +1784,20 @@ begin
     while DepthF + DepthB < ALimit do
     begin
       if (FrontF.Count = 0) or (FrontB.Count = 0) then
+      begin
         Exit(TOutcome.NoPath);
+      end;
       Forward_ := FrontF.Count <= FrontB.Count;
       Next := TFrontier.Create;
       try
         if Forward_ then
-          Neighbours := FrontF.ToArray
+        begin
+          Neighbours := FrontF.ToArray;
+        end
         else
+        begin
           Neighbours := FrontB.ToArray;
+        end;
         Count := 0;
         for Node in Neighbours do
         begin
@@ -1518,7 +1814,9 @@ begin
             begin
               Neighbour := Edge.Target;
               if FDistF.ContainsKey(Neighbour) or not Passable(Neighbour) then
+              begin
                 Continue;
+              end;
               FDistF.Add(Neighbour, DepthF + 1);
               Inc(FVisited);
               Next.Add(Neighbour);
@@ -1527,20 +1825,26 @@ begin
           else
           begin
             for Neighbour in PredecessorsOf(Node) do
+            begin
               if not FDistB.ContainsKey(Neighbour) then
               begin
                 FDistB.Add(Neighbour, DepthB + 1);
                 Inc(FVisited);
                 Next.Add(Neighbour);
               end;
+            end;
             if AWithCalls then
+            begin
               for Neighbour in CallersOf(Node) do
+              begin
                 if not FDistB.ContainsKey(Neighbour) then
                 begin
                   FDistB.Add(Neighbour, DepthB + 1);
                   Inc(FVisited);
                   Next.Add(Neighbour);
                 end;
+              end;
+            end;
             if FAbortReason <> '' then
             begin
               FSearchedSteps := DepthF + DepthB;
@@ -1568,13 +1872,23 @@ begin
       if Forward_ then
       begin
         for Node in FrontF do
+        begin
           if FDistB.TryGetValue(Node, Other) and ((Best < 0) or (DepthF + Other < Best)) then
+          begin
             Best := DepthF + Other;
+          end;
+        end;
       end
       else
+      begin
         for Node in FrontB do
+        begin
           if FDistF.TryGetValue(Node, Other) and ((Best < 0) or (DepthB + Other < Best)) then
+          begin
             Best := DepthB + Other;
+          end;
+        end;
+      end;
       if Best >= 0 then
       begin
         ALength := Best;
@@ -1604,10 +1918,14 @@ var
     begin
       Result := FDistF.TryGetValue(ANode, Distance) and (Distance = APosition);
       if Result and (APosition = ALength) then
+      begin
         Result := FDistB.TryGetValue(ANode, Distance) and (Distance = 0);
+      end;
     end
     else
+    begin
       Result := FDistB.TryGetValue(ANode, Distance) and (Distance = ALength - APosition);
+    end;
   end;
 
   procedure Walk(ANode, APosition: Integer);
@@ -1625,9 +1943,13 @@ var
     for Edge in EdgesFor(ANode, AWithCalls) do
     begin
       if Found.Count >= AMax then
+      begin
         Exit;
+      end;
       if Dead.ContainsKey(Edge.Target) or not Fits(Edge.Target, APosition + 1) then
+      begin
         Continue;
+      end;
       Step.Source := ANode;
       Step.Edge := Edge;
       Current.Add(Step);
@@ -1635,7 +1957,9 @@ var
       Current.Delete(Current.Count - 1);
     end;
     if Found.Count = Before then
+    begin
       Dead.AddOrSetValue(ANode, True);
+    end;
   end;
 
 begin
@@ -1702,7 +2026,9 @@ begin
   FThroughLibrary := ARequest.ThroughLibrary;
   FMaxNodes := ARequest.MaxNodes;
   if FMaxNodes <= 0 then
+  begin
     FMaxNodes := TSymbolPathRequest.DefaultNodes;
+  end;
   FTimeoutMs := ARequest.TimeoutMs;
   FCancelled := ACancelled;
   FVisited := 0;
@@ -1722,7 +2048,9 @@ begin
       Result.Status := TSymbolPathStatus.Ambiguous;
       Result.Subject := ARequest.From;
       for Node in Starts do
+      begin
         Result.Candidates := Result.Candidates + [FNodes[Node]];
+      end;
     end
     else if Length(Ends) = 0 then
     begin
@@ -1734,7 +2062,9 @@ begin
       Result.Status := TSymbolPathStatus.Ambiguous;
       Result.Subject := ARequest.To_;
       for Node in Ends do
+      begin
         Result.Candidates := Result.Candidates + [FNodes[Node]];
+      end;
     end;
     Result.ElapsedMs := Elapsed;
     Exit;
@@ -1745,21 +2075,29 @@ begin
   FEndpoints.Clear;
   FEndpoints.Add(Start, True);
   for Node in Goal do
+  begin
     FEndpoints.AddOrSetValue(Node, True);
+  end;
   // Stufe 1: Kanten aus dem Index.
   Outcome1 := Search(Start, Goal, False, Result.MaxSteps, Length1, Depth1);
   Paths := nil;
   WithCalls := False;
   if Outcome1 = TOutcome.Found then
+  begin
     Paths := Collect(Start, Length1, Depth1, False, TSymbolPathRequest.MaxRoutes + 1);
+  end;
   // Stufe 2: nur ein kürzerer Weg über Aufrufe.
   if (TSymbolPathEdgeKind.Calls in FVia) and (Outcome1 <> TOutcome.Aborted) and
     ((Outcome1 = TOutcome.NoPath) or (Length1 > 1)) then
   begin
     if Outcome1 = TOutcome.Found then
-      Outcome2 := Search(Start, Goal, True, Length1 - 1, Length2, Depth2)
+    begin
+      Outcome2 := Search(Start, Goal, True, Length1 - 1, Length2, Depth2);
+    end
     else
+    begin
       Outcome2 := Search(Start, Goal, True, Result.MaxSteps, Length2, Depth2);
+    end;
     if Outcome2 = TOutcome.Found then
     begin
       Paths := Collect(Start, Length2, Depth2, True, TSymbolPathRequest.MaxRoutes + 1);
@@ -1775,7 +2113,9 @@ begin
         Result.SearchedSteps := FSearchedSteps;
       end
       else
+      begin
         Outcome1 := TOutcome.Aborted;
+      end;
     end;
   end;
   case Outcome1 of
@@ -1787,15 +2127,23 @@ begin
         for Path in Paths do
         begin
           if Length(Result.Routes) >= Result.RouteCount then
+          begin
             Break;
+          end;
           if (Length(Result.Routes) > 0) and not ARequest.All then
+          begin
             Break;
+          end;
           Result.Routes := Result.Routes + [RouteOf(Start, Path)];
         end;
         if WithCalls then
-          Result.SearchedSteps := Length2
+        begin
+          Result.SearchedSteps := Length2;
+        end
         else
+        begin
           Result.SearchedSteps := Length1;
+        end;
       end;
     TOutcome.NoPath:
       begin
@@ -1840,21 +2188,33 @@ begin
   case AStep.Kind of
     TSymbolPathEdgeKind.Uses_:
       if AStep.Implementation_ then
-        Result := 'verwendet (implementation)'
+      begin
+        Result := 'verwendet (implementation)';
+      end
       else
+      begin
         Result := 'verwendet';
+      end;
     TSymbolPathEdgeKind.Inherits:
       Result := 'erbt von';
     TSymbolPathEdgeKind.Implements:
       if AStep.Reverse then
-        Result := 'umgesetzt von'
+      begin
+        Result := 'umgesetzt von';
+      end
       else
+      begin
         Result := 'setzt um';
+      end;
     TSymbolPathEdgeKind.HasField:
       if AFrom.IsUnit or (AFrom.Symbol.Kind in ValueKinds) then
-        Result := 'vom Typ'
+      begin
+        Result := 'vom Typ';
+      end
       else
+      begin
         Result := 'hat Feld';
+      end;
     TSymbolPathEdgeKind.Parameter:
       Result := 'Parameter vom Typ';
     TSymbolPathEdgeKind.Result_:
@@ -1873,12 +2233,18 @@ begin
   Result := AFileName;
   Root := ARoot;
   while (Root <> '') and CharInSet(Root[Length(Root)], ['\', '/']) do
+  begin
     Delete(Root, Length(Root), 1);
+  end;
   if Root = '' then
+  begin
     Exit;
+  end;
   // Beide Trenner: Pfade aus Windows-Projekten auch im Linux-Bau.
   if StartsText(Root + '\', AFileName) or StartsText(Root + '/', AFileName) then
+  begin
     Result := Copy(AFileName, Length(Root) + 2, MaxInt);
+  end;
 end;
 
 function Seconds(AMilliseconds: Int64): string;
@@ -1893,9 +2259,13 @@ end;
 function StepsText(ACount: Integer): string;
 begin
   if ACount = 1 then
-    Result := '1 Schritt'
+  begin
+    Result := '1 Schritt';
+  end
   else
+  begin
     Result := Format('%d Schritten', [ACount]);
+  end;
 end;
 
 class function TSymbolPathSearch.Text(const AResult: TSymbolPathResult; const ARoot: string): string;
@@ -1915,15 +2285,19 @@ begin
         begin
           Lines.Append(Format('"%s" ist mehrdeutig (%d Treffer):', [AResult.Subject, Length(AResult.Candidates)]));
           for Node in AResult.Candidates do
+          begin
             Lines.Append(sLineBreak).Append(Format('  %s  %s:%d', [Node.Caption, RelativePath(Node.FileName, ARoot),
               Node.Position.Line + 1]));
+          end;
           Lines.Append(sLineBreak).Append('Bitte qualifiziert angeben (TTyp.Name oder Unit.Name).');
         end;
       TSymbolPathStatus.NoPath:
         begin
           Lines.Append(Format('Kein Weg in höchstens %s.', [StepsText(AResult.MaxSteps)]));
           if AResult.Restricted then
+          begin
             Lines.Append(' Nur die erlaubten Kantenarten (via) wurden durchsucht.');
+          end;
           Lines.Append(sLineBreak).Append(Format('Durchsucht: %d Knoten, %s', [AResult.Visited,
             Seconds(AResult.ElapsedMs)]));
         end;
@@ -1936,41 +2310,61 @@ begin
       begin
         Steps := 0;
         if Length(AResult.Routes) > 0 then
+        begin
           Steps := Length(AResult.Routes[0].Steps);
+        end;
         if Steps = 1 then
-          Header := 'Kürzester Weg (1 Schritt'
+        begin
+          Header := 'Kürzester Weg (1 Schritt';
+        end
         else
+        begin
           Header := Format('Kürzester Weg (%d Schritte', [Steps]);
+        end;
         if AResult.MoreRoutes then
-          Header := Header + Format(', mehr als %d Wege gleich lang', [AResult.RouteCount])
+        begin
+          Header := Header + Format(', mehr als %d Wege gleich lang', [AResult.RouteCount]);
+        end
         else if AResult.RouteCount > 1 then
+        begin
           Header := Header + Format(', %d Wege gleich lang', [AResult.RouteCount]);
+        end;
         Lines.Append(Header + '):');
         for RouteIndex := 0 to High(AResult.Routes) do
         begin
           Route := AResult.Routes[RouteIndex];
           if Length(AResult.Routes) > 1 then
+          begin
             Lines.Append(sLineBreak).Append(Format('Weg %d:', [RouteIndex + 1]));
+          end;
           for Index := 0 to High(Route.Nodes) do
           begin
             Lines.Append(sLineBreak).Append(Format('%d. %s', [Index + 1, Route.Nodes[Index].Caption]));
             if Index > High(Route.Steps) then
+            begin
               Continue;
+            end;
             Caption := StepCaption(Route.Steps[Index], Route.Nodes[Index]);
             Location := Format('%s:%d', [RelativePath(Route.Steps[Index].FileName, ARoot),
               Route.Steps[Index].Position.Line + 1]);
             if Route.Steps[Index].Inferred then
+            begin
               Location := '[erschlossen] ' + Location;
+            end;
             Lines.Append(sLineBreak).Append('   ' + Caption + StringOfChar(' ', Max(1, 18 - Length(Caption))) +
               Location);
           end;
           Node := Route.Nodes[High(Route.Nodes)];
           if (Node.UnitName <> AResult.Target.UnitName) or (Node.Caption <> AResult.Target.Caption) then
+          begin
             Lines.Append(sLineBreak).Append(Format('   gehört zu %s', [AResult.Target.Caption]));
+          end;
         end;
         if AResult.CallsIncomplete then
+        begin
           Lines.Append(sLineBreak).Append(Format('Hinweis: Kürzere Wege über Aufrufe nur bis %s geprüft ' +
             '(Suche abgebrochen: %s).', [StepsText(AResult.SearchedSteps), AResult.AbortReason]));
+        end;
         Lines.Append(sLineBreak).Append(Format('Durchsucht: %d Knoten, %s', [AResult.Visited,
           Seconds(AResult.ElapsedMs)]));
       end;
@@ -2022,15 +2416,23 @@ begin
   Result.AddPair('callsIncomplete', TJSONBool.Create(AResult.CallsIncomplete));
   Result.AddPair('restricted', TJSONBool.Create(AResult.Restricted));
   if AResult.AbortReason <> '' then
+  begin
     Result.AddPair('abortReason', AResult.AbortReason);
+  end;
   if AResult.Subject <> '' then
+  begin
     Result.AddPair('subject', AResult.Subject);
+  end;
   if AResult.Status = TSymbolPathStatus.Found then
+  begin
     Result.AddPair('target', NodeJson(AResult.Target));
+  end;
   Candidates := TJSONArray.Create;
   Result.AddPair('candidates', Candidates);
   for Node in AResult.Candidates do
+  begin
     Candidates.AddElement(NodeJson(Node));
+  end;
   Routes := TJSONArray.Create;
   Result.AddPair('routes', Routes);
   for Route in AResult.Routes do
@@ -2040,7 +2442,9 @@ begin
     Nodes := TJSONArray.Create;
     RouteObject.AddPair('nodes', Nodes);
     for Node in Route.Nodes do
+    begin
       Nodes.AddElement(NodeJson(Node));
+    end;
     Steps := TJSONArray.Create;
     RouteObject.AddPair('steps', Steps);
     for Index := 0 to High(Route.Steps) do

@@ -73,21 +73,33 @@ uses
 function TDisableWarningSwitch.OffText: string;
 begin
   if Hint then
-    Result := '{$HINTS OFF}'
+  begin
+    Result := '{$HINTS OFF}';
+  end
   else if Identifier <> '' then
-    Result := '{$WARN ' + Identifier + ' OFF}'
+  begin
+    Result := '{$WARN ' + Identifier + ' OFF}';
+  end
   else
+  begin
     Result := '{$WARNINGS OFF}';
+  end;
 end;
 
 function TDisableWarningSwitch.OnText: string;
 begin
   if Hint then
-    Result := '{$HINTS ON}'
+  begin
+    Result := '{$HINTS ON}';
+  end
   else if Identifier <> '' then
-    Result := '{$WARN ' + Identifier + ' ON}'
+  begin
+    Result := '{$WARN ' + Identifier + ' ON}';
+  end
   else
+  begin
     Result := '{$WARNINGS ON}';
+  end;
 end;
 
 { TDisableWarning }
@@ -120,19 +132,25 @@ begin
   // Von oben nach unten absteigen; die tiefste Routine mit Rumpf (verschachtelte Routinen) gewinnt.
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Node := ATree.Root;
   repeat
     Descended := False;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (Node[Index].StartPos.Line <= ALine) and (ALine <= Node[Index].EndPos.Line) then
       begin
         Node := Node[Index];
         if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.Block) <> nil) then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
+    end;
   until not Descended;
 end;
 
@@ -144,22 +162,30 @@ var
 begin
   Result := -1;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Started := False;
   for Index := 0 to High(Tokens) do
   begin
     if Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
       Continue;
+    end;
     if not Started then
     begin
       // Der Kopf muss das erste Wort sein; sonst (Include-Datei, Ausschnitt) gibt es keinen.
       if not MatchText(Tokens[Index].Text, ['unit', 'program', 'library', 'package']) then
+      begin
         Exit;
+      end;
       Started := True;
     end
     else if Tokens[Index].IsSymbol(';') then
+    begin
       Exit(Tokens[Index].EndPos.Line);
+    end;
   end;
 end;
 
@@ -168,7 +194,9 @@ begin
   Result := StringReplace(AReason, #13#10, ' ', [rfReplaceAll]);
   Result := Trim(StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
   if Result <> '' then
+  begin
     Result := ' // ' + Result;
+  end;
 end;
 
 /// <summary>Neue Zeile vor ALine.</summary>
@@ -196,14 +224,18 @@ begin
   Lines := TTextLines.SplitLines(AText, LineBreak);
   Result := (ALine >= 0) and (ALine <= High(Lines));
   if not Result then
+  begin
     Exit;
+  end;
   case AScope of
     TDisableWarningScope.UnitWide:
       begin
         First := HeaderEndLine(ATree);
         Result := (First >= 0) and (First <= High(Lines));
         if Result then
+        begin
           AEdits := [After(First, Length(Lines[First]), ASwitch.OffText + ReasonComment(AReason), LineBreak)];
+        end;
         Exit;
       end;
     TDisableWarningScope.Routine:
@@ -211,7 +243,9 @@ begin
         Routine := RoutineAt(ATree, ALine);
         Result := Routine <> nil;
         if not Result then
+        begin
           Exit;
+        end;
         First := Routine.StartPos.Line;
         Last := Routine.EndPos.Line;
       end;
@@ -221,7 +255,9 @@ begin
   end;
   Result := Last <= High(Lines);
   if not Result then
+  begin
     Exit;
+  end;
   Indent := TTextLines.IndentOf(Lines[First]);
   AEdits := [Before(First, Indent + ASwitch.OffText + ReasonComment(AReason), LineBreak),
     After(Last, Length(Lines[Last]), Indent + ASwitch.OnText, LineBreak)];

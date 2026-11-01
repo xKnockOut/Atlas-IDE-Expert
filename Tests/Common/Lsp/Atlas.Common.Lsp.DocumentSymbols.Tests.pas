@@ -87,11 +87,15 @@ begin
   begin
     Symbol := ASymbols.Items[Index] as TJSONObject;
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Symbol.GetValue<string>('name') + ':' + IntToStr(Symbol.GetValue<Integer>('kind'));
     Children := Symbol.GetValue('children') as TJSONArray;
     if Children <> nil then
+    begin
       Result := Result + '(' + Outline(Children) + ')';
+    end;
   end;
 end;
 
@@ -107,13 +111,21 @@ begin
   for Name in APath do
   begin
     if Current = nil then
+    begin
       Exit(nil);
+    end;
     Result := nil;
     for Index := 0 to Current.Count - 1 do
+    begin
       if (Current.Items[Index] as TJSONObject).GetValue<string>('name') = Name then
+      begin
         Result := Current.Items[Index] as TJSONObject;
+      end;
+    end;
     if Result = nil then
+    begin
       Exit;
+    end;
     Current := Result.GetValue('children') as TJSONArray;
   end;
 end;
@@ -401,10 +413,14 @@ begin
   Assert.IsNotNull(Symbol, APath[High(APath)]);
   Extras := Symbol.GetValue('atlas') as TJSONObject;
   if Extras = nil then
+  begin
     Exit;
+  end;
   Value := Extras.GetValue(AKey);
   if Value <> nil then
+  begin
     Result := Value.Value;
+  end;
 end;
 
 procedure TLspDocumentSymbolsTests.MarksVisibilityAndMethodFlags;

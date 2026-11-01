@@ -50,9 +50,13 @@ var
 begin
   Id := ARule.Descriptor.Id;
   if Id = '' then
+  begin
     raise ERuleRegistry.Create('Regel ohne Kennung');
+  end;
   if Find(Id, Existing) then
+  begin
     raise ERuleRegistry.CreateFmt('Regel "%s" ist bereits registriert', [Id]);
+  end;
   FRules.Add(ARule);
 end;
 
@@ -61,11 +65,13 @@ var
   Rule: IRule;
 begin
   for Rule in FRules do
+  begin
     if SameText(Rule.Descriptor.Id, AId) then
     begin
       ARule := Rule;
       Exit(True);
     end;
+  end;
   ARule := nil;
   Result := False;
 end;

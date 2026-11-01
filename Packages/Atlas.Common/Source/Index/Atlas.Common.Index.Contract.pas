@@ -371,7 +371,9 @@ begin
   begin
     Key := UpperCase(FSymbols[Position].Name);
     if not First.TryGetValue(Key, Head) then
+    begin
       Head := -1;
+    end;
     FNext[Position] := Head;
     First.AddOrSetValue(Key, Position);
   end;
@@ -386,20 +388,26 @@ var
 begin
   APositions := nil;
   if Pointer(ASymbols) <> Pointer(FSymbols) then
+  begin
     Exit(False);
+  end;
   if FFirst = nil then
   begin
     TMonitor.Enter(Self);
     try
       if FFirst = nil then
+      begin
         Build;
+      end;
     finally
       TMonitor.Exit(Self);
     end;
   end;
   Result := True;
   if not FFirst.TryGetValue(UpperCase(AName), Position) then
+  begin
     Exit;
+  end;
   Count := 0;
   Current := Position;
   while Current >= 0 do
@@ -423,9 +431,13 @@ end;
 function TIndexSymbol.QualifiedName: string;
 begin
   if Container = '' then
-    Result := Name
+  begin
+    Result := Name;
+  end
   else
+  begin
     Result := Container + '.' + Name;
+  end;
 end;
 
 function TIndexSymbol.HasDirective(const ADirective: string): Boolean;
@@ -433,8 +445,12 @@ var
   Directive: string;
 begin
   for Directive in Directives do
+  begin
     if SameText(Directive, ADirective) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -443,9 +459,13 @@ end;
 function TUnitIndex.SymbolFile(const ASymbol: TIndexSymbol): string;
 begin
   if ASymbol.FileName <> '' then
-    Result := ASymbol.FileName
+  begin
+    Result := ASymbol.FileName;
+  end
   else
+  begin
     Result := FileName;
+  end;
 end;
 
 procedure TUnitIndex.PrepareNames;
@@ -458,18 +478,24 @@ var
   Position, Count: Integer;
 begin
   if (NameTable <> nil) and NameTable.Positions(Symbols, AName, Result) then
+  begin
     Exit;
+  end;
   // Ohne Tabelle linear; das Ergebnis wächst in Stufen statt je Treffer um eins (Code-Review P-08).
   Result := nil;
   Count := 0;
   for Position := 0 to High(Symbols) do
+  begin
     if SameText(Symbols[Position].Name, AName) then
     begin
       if Count = Length(Result) then
+      begin
         SetLength(Result, Count * 2 + 4);
+      end;
       Result[Count] := Position;
       Inc(Count);
     end;
+  end;
   SetLength(Result, Count);
 end;
 

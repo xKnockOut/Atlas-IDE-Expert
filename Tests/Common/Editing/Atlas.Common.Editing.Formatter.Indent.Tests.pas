@@ -372,7 +372,9 @@ begin
   After := TPascalLexer.Tokenize(Formatted(Text));
   Assert.AreEqual(Integer(Length(Before)), Integer(Length(After)));
   for Index := 0 to High(Before) do
+  begin
     Assert.AreEqual(Before[Index].Text, After[Index].Text);
+  end;
 end;
 
 procedure TBlockIndenterTests.IsSwitchable;

@@ -57,7 +57,9 @@ uses
 function Parsed(const ALine: string): TCompilerMessage;
 begin
   if not TCompilerOutputParser.ParseLine(ALine, 'C:\P', Result) then
+  begin
     raise Exception.Create('Keine Meldung: ' + ALine);
+  end;
 end;
 
 function MessageAt(const AFileName: string; ALine: Integer; const ACode: string): TCompilerMessage;

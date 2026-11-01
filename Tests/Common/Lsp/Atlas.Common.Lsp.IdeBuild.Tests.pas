@@ -120,9 +120,13 @@ begin
       procedure(ARunning: Boolean)
       begin
         if ARunning then
-          Events := Events + '+'
+        begin
+          Events := Events + '+';
+        end
         else
+        begin
           Events := Events + '-';
+        end;
       end;
     Build.Attach(Dispatcher);
     Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"group":true,"kind":"make"}');

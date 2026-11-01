@@ -84,8 +84,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Keywords) do
+  begin
     if SameText(Keywords[Index], AKeyword) then
+    begin
       Exit(KeywordCounts[Index]);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -109,24 +113,34 @@ begin
     begin
       HasOpen := False;
       for Entry in FileItem.Entries do
+      begin
         if Entry.Done then
-          Inc(Result.Done)
+        begin
+          Inc(Result.Done);
+        end
         else
         begin
           Inc(Result.Open);
           HasOpen := True;
           if not Counts.TryGetValue(Entry.Keyword, Count) then
+          begin
             Count := 0;
+          end;
           Counts.AddOrSetValue(Entry.Keyword, Count + 1);
         end;
+      end;
       if HasOpen then
+      begin
         Inc(Result.Files);
+      end;
     end;
     Names := Counts.Keys.ToArray;
     TArray.Sort<string>(Names);
     SetLength(Result.KeywordCounts, Length(Names));
     for Index := 0 to High(Names) do
+    begin
       Result.KeywordCounts[Index] := Counts[Names[Index]];
+    end;
     Result.Keywords := Names;
   finally
     Counts.Free;
@@ -142,7 +156,9 @@ begin
   for Index := 0 to High(ASummary.Keywords) do
   begin
     if Index > 0 then
+    begin
       Keywords := Keywords + ', ';
+    end;
     Keywords := Keywords + JsonText(ASummary.Keywords[Index]) + ': ' + IntToStr(ASummary.KeywordCounts[Index]);
   end;
   Result := '{"files": ' + IntToStr(ASummary.Files) + ', "open": ' + IntToStr(ASummary.Open) + ', "done": ' +
@@ -166,7 +182,9 @@ begin
   for Index := 0 to High(AFile.Entries) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + EntryJson(AFile.Entries[Index]);
   end;
   Result := Result + ']}';
@@ -181,12 +199,16 @@ begin
   try
     Builder.Append('{"format": ').Append(IntToStr(Format));
     if ARoot <> '' then
+    begin
       Builder.Append(', "root": ').Append(JsonText(ARoot));
+    end;
     Builder.Append(', "summary": ').Append(SummaryJson(Summarize(AFiles))).Append(', "files": [');
     for Index := 0 to High(AFiles) do
     begin
       if Index > 0 then
+      begin
         Builder.Append(',');
+      end;
       Builder.Append(LineBreak).Append('  ').Append(FileJson(AFiles[Index]));
     end;
     Builder.Append(']}').Append(LineBreak);
@@ -207,18 +229,26 @@ var
 begin
   Result := AEntry.Keyword;
   if AEntry.Priority > 0 then
+  begin
     Result := Result + ' ' + IntToStr(AEntry.Priority);
+  end;
   Details := AEntry.Category;
   if AEntry.Owner <> '' then
   begin
     if Details <> '' then
+    begin
       Details := Details + ', ';
+    end;
     Details := Details + AEntry.Owner;
   end;
   if Details <> '' then
+  begin
     Result := Result + ' [' + Details + ']';
+  end;
   if AEntry.Text <> '' then
+  begin
     Result := Result + ': ' + AEntry.Text;
+  end;
 end;
 
 /// <summary>Anzahl der Einträge je Wert (Kategorie oder Person), meiste zuerst; leere Werte als „(ohne)“.</summary>
@@ -235,35 +265,51 @@ begin
   Counts := TDictionary<string, Integer>.Create;
   try
     for FileItem in AFiles do
+    begin
       for Entry in FileItem.Entries do
       begin
         if AOwner then
-          Value := Entry.Owner
+        begin
+          Value := Entry.Owner;
+        end
         else
+        begin
           Value := Entry.Category;
+        end;
         if Value = '' then
+        begin
           Value := '(ohne)';
+        end;
         if not Counts.TryGetValue(Value, Count) then
+        begin
           Count := 0;
+        end;
         Counts.AddOrSetValue(Value, Count + 1);
       end;
+    end;
     // Nur ein Wert „(ohne)“: die Tabelle sagt nichts.
     if (Counts.Count = 0) or ((Counts.Count = 1) and Counts.ContainsKey('(ohne)')) then
+    begin
       Exit;
+    end;
     Names := Counts.Keys.ToArray;
     TArray.Sort<string>(Names, TComparer<string>.Construct(
       function(const A, B: string): Integer
       begin
         Result := Counts[B] - Counts[A];
         if Result = 0 then
+        begin
           Result := CompareText(A, B);
+        end;
       end));
     ABuilder.Append(LineBreak).Append('## ').Append(AHeading).Append(LineBreak).Append(LineBreak);
     ABuilder.Append('| ').Append(AColumn).Append(' | Einträge |').Append(LineBreak);
     ABuilder.Append('|---|---:|').Append(LineBreak);
     for Value in Names do
+    begin
       ABuilder.Append('| ').Append(Cell(Value)).Append(' | ').Append(IntToStr(Counts[Value])).Append(' |')
         .Append(LineBreak);
+    end;
   finally
     Counts.Free;
   end;
@@ -282,21 +328,29 @@ begin
   Builder := TStringBuilder.Create;
   try
     if ATitle <> '' then
-      Builder.Append('# TODOs: ').Append(ATitle).Append(LineBreak)
+    begin
+      Builder.Append('# TODOs: ').Append(ATitle).Append(LineBreak);
+    end
     else
+    begin
       Builder.Append('# TODOs').Append(LineBreak);
+    end;
     Builder.Append(LineBreak);
     Builder.Append(IntToStr(Summary.Open)).Append(' offene Einträge in ').Append(IntToStr(Summary.Files))
       .Append(' Dateien');
     if Summary.Done > 0 then
+    begin
       Builder.Append(', ').Append(IntToStr(Summary.Done)).Append(' erledigt');
+    end;
     if Length(Summary.Keywords) > 0 then
     begin
       Builder.Append(' (');
       for Index := 0 to High(Summary.Keywords) do
       begin
         if Index > 0 then
+        begin
           Builder.Append(', ');
+        end;
         Builder.Append(Summary.Keywords[Index]).Append(' ').Append(IntToStr(Summary.KeywordCounts[Index]));
       end;
       Builder.Append(')');
@@ -322,10 +376,14 @@ begin
       begin
         Kind := Entry.Keyword;
         if Entry.Done then
+        begin
           Kind := Kind + ' (erledigt)';
+        end;
         Priority := '';
         if Entry.Priority > 0 then
+        begin
           Priority := IntToStr(Entry.Priority);
+        end;
         Builder.Append('| ').Append(IntToStr(Entry.Range.StartPos.Line + 1)).Append(' | ').Append(Kind)
           .Append(' | ').Append(Priority).Append(' | ').Append(Cell(Entry.Category)).Append(' | ')
           .Append(Cell(Entry.Owner)).Append(' | ').Append(Cell(Entry.Text)).Append(' |').Append(LineBreak);

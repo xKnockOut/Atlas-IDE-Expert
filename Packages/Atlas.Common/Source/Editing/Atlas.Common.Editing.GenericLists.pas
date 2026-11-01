@@ -256,7 +256,9 @@ var
 begin
   Result := nil;
   for Index := Low(ObjectMembers) to High(ObjectMembers) do
+  begin
     Result := Result + [ObjectMembers[Index]];
+  end;
 end;
 
 { TLegacyListKind }
@@ -333,17 +335,29 @@ class function TLegacyListKind.Find(const ALegacyName: string; out AKind: TLegac
 begin
   Result := True;
   if SameText(ALegacyName, 'TList') then
-    AKind := PointerList
+  begin
+    AKind := PointerList;
+  end
   else if SameText(ALegacyName, 'TObjectList') then
-    AKind := ObjectList
+  begin
+    AKind := ObjectList;
+  end
   else if SameText(ALegacyName, 'TStack') then
-    AKind := Stack
+  begin
+    AKind := Stack;
+  end
   else if SameText(ALegacyName, 'TQueue') then
-    AKind := Queue
+  begin
+    AKind := Queue;
+  end
   else if SameText(ALegacyName, 'TObjectStack') then
-    AKind := ObjectStack
+  begin
+    AKind := ObjectStack;
+  end
   else if SameText(ALegacyName, 'TObjectQueue') then
-    AKind := ObjectQueue
+  begin
+    AKind := ObjectQueue;
+  end
   else
   begin
     AKind := Default(TLegacyListKind);
@@ -360,7 +374,9 @@ begin
   Result := Trim(AText);
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, Dot + 1, MaxInt);
+  end;
 end;
 
 function IsNil(ANode: TSyntaxNode): Boolean;
@@ -380,7 +396,9 @@ begin
   Result := ANode;
   while (Result.Parent <> nil) and (Result.Parent.Kind = TSyntaxKind.ParenExpr) and
     (Result.Parent.ChildCount = 1) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 function ContainsName(const ANames: string; const AName: string): Boolean;
@@ -388,8 +406,12 @@ var
   Name: string;
 begin
   for Name in SplitString(ANames, ',') do
+  begin
     if SameText(Trim(Name), AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -404,7 +426,9 @@ begin
     Child := ATree.Root[Index];
     if (Child.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) and
       (Child.StartOffset <= AOffset) and (Child.EndOffset >= AOffset) then
+    begin
       Exit(Child);
+    end;
   end;
 end;
 
@@ -418,7 +442,9 @@ end;
 destructor TGenericListConversion.TSourceFile.Destroy;
 begin
   if OwnsTree then
+  begin
     Tree.Free;
+  end;
   inherited;
 end;
 
@@ -438,7 +464,9 @@ var
 begin
   // Jede Datei wurde einmal gepinnt; die Bäume erst danach freigeben.
   for Index := 0 to FFiles.Count - 1 do
+  begin
     FResolver.UnpinTree;
+  end;
   FFiles.Free;
   inherited;
 end;
@@ -446,7 +474,9 @@ end;
 function TGenericListConversion.Fail(const AReason: string): Boolean;
 begin
   if FReason = '' then
+  begin
     FReason := AReason;
+  end;
   Result := False;
 end;
 
@@ -474,7 +504,9 @@ function TGenericListConversion.ItemType: string;
 begin
   Result := '';
   if FCasts <> nil then
+  begin
     Result := FCasts[0].TypeText;
+  end;
 end;
 
 function TGenericListConversion.GenericText: string;
@@ -506,7 +538,9 @@ begin
   begin
     Separator := Pos('=', Entry);
     if (Separator = 0) and SameText(Entry, AName) then
+    begin
       Exit(True);
+    end;
     if (Separator > 0) and SameText(Copy(Entry, 1, Separator - 1), AName) then
     begin
       AValue := Copy(Entry, Separator + 1, MaxInt);
@@ -521,12 +555,18 @@ begin
   // TList oder Unit.TList, ohne Typargumente.
   Result := False;
   if ANode = nil then
+  begin
     Exit;
+  end;
   if ANode.Kind = TSyntaxKind.Identifier then
-    Result := SameText(ANode.Name, FKind.LegacyName)
+  begin
+    Result := SameText(ANode.Name, FKind.LegacyName);
+  end
   else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
     (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
     Result := SameText(ANode.Name, FKind.LegacyName);
+  end;
 end;
 
 function TGenericListConversion.Resolves(AFile: TSourceFile; ANode: TSyntaxNode;
@@ -559,20 +599,32 @@ begin
   ATypeText := '';
   Result := False;
   if (ACall = nil) or (ACall.Kind <> TSyntaxKind.Call) or (ACall.ChildCount <> 2) then
+  begin
     Exit;
+  end;
   Callee := ACall[0];
   if not (Callee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
     Exit;
+  end;
   Name := LastName(NodeText(AFile, Callee));
   if MatchText(Name, ScalarTypes) or MatchText(Name, ['TObject', 'string']) then
-    Result := True
+  begin
+    Result := True;
+  end
   else if Resolves(AFile, Callee, Symbol, SymbolType, TypeFound) and Symbol.Found then
-    Result := Symbol.IsType
+  begin
+    Result := Symbol.IsType;
+  end
   else
+  begin
     // Nicht auflösbar (Typ aus einer Unit außerhalb des Index): Delphi-Konvention T… bzw. P… für Typen.
     Result := (Length(Name) >= 2) and CharInSet(Name[1], ['T', 'P']) and CharInSet(Name[2], ['A'..'Z']);
+  end;
   if Result then
+  begin
     ATypeText := NodeText(AFile, Callee);
+  end;
 end;
 
 function TGenericListConversion.Matches(AFileIndex: Integer; ANode: TSyntaxNode; const AName: string): TMatch;
@@ -593,16 +645,22 @@ begin
       FResolver.ResolveChain(SourceFile.Tree, SourceFile.FileName, [FOwnerType], ANode.StartOffset).Found and
       not FResolver.TypeDescendsFrom(SourceFile.Tree, SourceFile.FileName, ANode.StartOffset, SymbolType.Name,
       FOwnerType) then
+    begin
       Exit(TMatch.No);
+    end;
     Exit(TMatch.Unknown);
   end;
   if FIsLocal then
   begin
     if (Symbol.Kind = TResolvedKind.Local) and (Symbol.Range.StartPos.Line <= FDeclarationLine) and
       (Symbol.Range.EndPos.Line >= FDeclarationLine) then
-      Result := TMatch.Yes
+    begin
+      Result := TMatch.Yes;
+    end
     else
+    begin
       Result := TMatch.No;
+    end;
     Exit;
   end;
   if FIsField then
@@ -610,17 +668,25 @@ begin
     if (Symbol.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
       SameText(LastName(Symbol.Container), LastName(FOwnerType)) and ((AFileIndex = 0) or
       SameText(Symbol.UnitName, FUnitName)) and ((Symbol.SymbolKind = TIndexSymbolKind.Property_) = IsProperty) then
-      Result := TMatch.Yes
+    begin
+      Result := TMatch.Yes;
+    end
     else
+    begin
       Result := TMatch.No;
+    end;
     Exit;
   end;
   // Globale Variable der Unit.
   if (Symbol.SymbolKind = TIndexSymbolKind.Variable) and (Symbol.Container = '') and
     ((AFileIndex = 0) or SameText(Symbol.UnitName, FUnitName)) then
-    Result := TMatch.Yes
+  begin
+    Result := TMatch.Yes;
+  end
   else
+  begin
     Result := TMatch.No;
+  end;
 end;
 
 procedure TGenericListConversion.NoteCast(AFileIndex: Integer; const ATypeText: string; ANode: TSyntaxNode);
@@ -637,9 +703,13 @@ procedure TGenericListConversion.RemoveCast(AFile: TSourceFile; AOuter, AInner: 
 begin
   // Vor und hinter dem Inneren löschen; Edits im Inneren (Umbenennungen) bleiben unberührt.
   if AOuter.StartPos <> AInner.StartPos then
+  begin
     AddEdit(AFile, AOuter.StartPos, AInner.StartPos, '');
+  end;
   if AInner.EndPos <> AOuter.EndPos then
+  begin
     AddEdit(AFile, AInner.EndPos, AOuter.EndPos, '');
+  end;
 end;
 
 
@@ -658,26 +728,42 @@ begin
   Use.TypeName := '';
   Value := AArgument;
   while (Value.Kind = TSyntaxKind.ParenExpr) and (Value.ChildCount = 1) do
+  begin
     Value := Value[0];
+  end;
   Base := Value;
   if (Base.Kind = TSyntaxKind.Call) and (Base.ChildCount > 0) then
+  begin
     Base := Base[0];
+  end;
   if IsNil(Value) then
-    Use.TypeName := 'nil'
+  begin
+    Use.TypeName := 'nil';
+  end
   else if IsTypeCast(SourceFile, Value, TypeText) then
-    Use.TypeName := TypeText
+  begin
+    Use.TypeName := TypeText;
+  end
   else if (Value.Kind = TSyntaxKind.BinaryExpr) and SameText(Value.Name, 'as') and (Value.ChildCount = 2) then
-    Use.TypeName := NodeText(SourceFile, Value[1])
+  begin
+    Use.TypeName := NodeText(SourceFile, Value[1]);
+  end
   else if (Base.Kind = TSyntaxKind.MemberAccess) and StartsText('Create', Base.Name) and (Base.ChildCount = 1) and
     (Base[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
     // TKlasse.Create(…): der Typ steht davor. Ist es kein Typ, gilt er in CheckElements als unbekannt.
-    Use.TypeName := NodeText(SourceFile, Base[0])
+    Use.TypeName := NodeText(SourceFile, Base[0]);
+  end
   else if Resolves(SourceFile, Value, Symbol, SymbolType, TypeFound) then
   begin
     if TypeFound then
-      Use.TypeName := SymbolType.Name
+    begin
+      Use.TypeName := SymbolType.Name;
+    end
     else
+    begin
       Use.TypeName := Symbol.TypeName;
+    end;
   end;
   FElements := FElements + [Use];
 end;
@@ -690,10 +776,14 @@ begin
   // L := TList.Create bzw. TObjectList.Create(False); jede andere Zuweisung ist eine Weitergabe.
   SourceFile := FFiles[AFileIndex];
   if IsNil(AValue) then
+  begin
     Exit;
+  end;
   Member := AValue;
   if (Member.Kind = TSyntaxKind.Call) and (Member.ChildCount > 0) then
+  begin
     Member := Member[0];
+  end;
   if (Member.Kind <> TSyntaxKind.MemberAccess) or not SameText(Member.Name, 'Create') or (Member.ChildCount <> 1) then
   begin
     Fail(Format('%s bekommt in %s einen anderen Wert als ein neues %s', [FName, LineOf(AValue),
@@ -710,13 +800,19 @@ begin
   // Der Typtext folgt in Finish, wenn T feststeht.
   AddEdit(SourceFile, Member[0].StartPos, Member[0].EndPos, GenericPlaceholder);
   if FKind.CreateArguments = '' then
+  begin
     Exit;
+  end;
   if AValue.Kind = TSyntaxKind.MemberAccess then
-    AddEdit(SourceFile, AValue.EndPos, AValue.EndPos, '(' + FKind.CreateArguments + ')')
+  begin
+    AddEdit(SourceFile, AValue.EndPos, AValue.EndPos, '(' + FKind.CreateArguments + ')');
+  end
   else if AValue.ChildCount = 1 then
+  begin
     // Create(): Argument vor die schließende Klammer.
     AddEdit(SourceFile, TTextPosition.Create(AValue.EndPos.Line, AValue.EndPos.Character - 1),
       TTextPosition.Create(AValue.EndPos.Line, AValue.EndPos.Character - 1), FKind.CreateArguments);
+  end;
 end;
 
 procedure TGenericListConversion.NoteRewritten(AFile: TSourceFile; ANode: TSyntaxNode);
@@ -741,7 +837,9 @@ begin
   Outer := Unparen(ARead);
   Parent := Outer.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   // T(L[I])
   if (Parent.Kind = TSyntaxKind.Call) and (Parent.ChildCount = 2) and (Parent[1] = Outer) and
     IsTypeCast(SourceFile, Parent, TypeText) then
@@ -763,18 +861,28 @@ begin
   begin
     Other := Parent[0];
     if Other = Outer then
+    begin
       Other := Parent[1];
+    end;
     if IsNil(Other) then
+    begin
       Exit;
+    end;
   end;
   if (Parent.Kind = TSyntaxKind.Call) and (Parent.ChildCount = 2) and IsIdentifierNamed(Parent[0], 'Assigned') then
+  begin
     Exit;
+  end;
   if FKind.ClassOnly and (Parent.Kind = TSyntaxKind.MemberAccess) and MatchText(Parent.Name, ObjectMembers) then
+  begin
     Exit;
+  end;
   if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent.ChildCount = 2) and (Parent[1] = Outer) and
     Resolves(SourceFile, Parent[0], Symbol, SymbolType, TypeFound) and TypeFound and
     SameText(SymbolType.Name, 'Pointer') then
+  begin
     Exit;
+  end;
   Fail(Format('%s wird in %s ohne Cast gelesen', [AWhat, LineOf(ARead)]));
 end;
 
@@ -790,7 +898,9 @@ begin
   Parent := AMember.Parent;
   Call := nil;
   if (Parent <> nil) and (Parent.Kind = TSyntaxKind.Call) and (Parent.ChildCount > 0) and (Parent[0] = AMember) then
+  begin
     Call := Parent;
+  end;
   if ValueOf(Name, FKind.Unsupported, Value) then
   begin
     Fail(Format('%s hat in %s<T> kein Gegenstück (%s, %s)', [Value, FKind.GenericName, FName, LineOf(AMember)]));
@@ -804,22 +914,32 @@ begin
   end;
   // Umbenennen: der Name ist das letzte Wort des MemberAccess (L.Push → L.Enqueue).
   if ValueOf(Name, FKind.Renames, Value) and (AMember.EndPos.Character >= Length(Name)) then
+  begin
     AddEdit(SourceFile, TTextPosition.Create(AMember.EndPos.Line, AMember.EndPos.Character - Length(Name)),
       AMember.EndPos, Value);
+  end;
   // Count ist in TOrderedList (Contnrs) eine Funktion, generisch eine Property: Count() ohne Klammern.
   if (Call <> nil) and (Call.ChildCount = 1) and SameText(Name, 'Count') then
+  begin
     AddEdit(SourceFile, AMember.EndPos, Call.EndPos, '');
+  end;
   if ValueOf(Name, FKind.ElementArgs, Value) then
   begin
     Position := StrToIntDef(Value, 0);
     if (Call <> nil) and (Call.ChildCount > Position + 1) then
+    begin
       NoteElement(AFileIndex, Call[Position + 1]);
+    end;
   end;
   if not IsMember(Name, FKind.Reads) then
+  begin
     Exit;
+  end;
   Read := AMember;
   if Call <> nil then
-    Read := Call
+  begin
+    Read := Call;
+  end
   else if (Parent <> nil) and (Parent.Kind = TSyntaxKind.IndexAccess) and (Parent[0] = AMember) then
   begin
     Read := Parent;
@@ -833,7 +953,9 @@ begin
   end;
   // Ergebnis verworfen: L.Pop; bzw. L.Extract(X);
   if (Read.Parent <> nil) and (Read.Parent.Kind = TSyntaxKind.CallStatement) then
+  begin
     Exit;
+  end;
   ClassifyRead(AFileIndex, Read, FName);
 end;
 
@@ -841,7 +963,9 @@ function TGenericListConversion.EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNod
 begin
   Result := ANode.Parent;
   while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 function TGenericListConversion.LocalDeclaration(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode;
@@ -855,10 +979,16 @@ begin
   begin
     Child := ARoutine[Index];
     if Child.Kind <> TSyntaxKind.VarSection then
+    begin
       Continue;
+    end;
     for Inner := 0 to Child.ChildCount - 1 do
+    begin
       if (Child[Inner].Kind = TSyntaxKind.VarDecl) and ContainsName(Child[Inner].Name, AName) then
+      begin
         Exit(Child[Inner]);
+      end;
+    end;
   end;
 end;
 
@@ -874,12 +1004,18 @@ begin
   for Index := TSyntaxTree.FirstTokenOf(Tokens, ALoop.StartOffset) to High(Tokens) do
   begin
     if Tokens[Index].Offset < ALoop.StartOffset then
+    begin
       Continue;
+    end;
     if IsTrivia(Tokens[Index]) then
+    begin
       Continue;
+    end;
     Inc(Seen);
     if Seen = 2 then
+    begin
       Exit(Tokens[Index].IsKeyword('var'));
+    end;
   end;
   Result := False;
 end;
@@ -899,13 +1035,17 @@ begin
   IsInline := (TypeRef <> nil) or HasInlineVar(SourceFile, ALoop);
   Scope := ALoop;
   if TypeRef <> nil then
-    AddEdit(SourceFile, TypeRef.StartPos, TypeRef.EndPos, ItemPlaceholder)
+  begin
+    AddEdit(SourceFile, TypeRef.StartPos, TypeRef.EndPos, ItemPlaceholder);
+  end
   else if not IsInline then
   begin
     Routine := EnclosingRoutine(ALoop);
     Declaration := nil;
     if Routine <> nil then
+    begin
       Declaration := LocalDeclaration(Routine, Name);
+    end;
     if Declaration = nil then
     begin
       Fail(Format('Die Schleifenvariable %s in %s ist keine lokale Variable', [Name, LineOf(ALoop)]));
@@ -921,7 +1061,9 @@ begin
     begin
       Result := not Failed;
       if not Result then
+      begin
         Exit;
+      end;
       if (ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and (ANode <> ALoop) and
         SameText(ANode.Name, Name) then
       begin
@@ -929,7 +1071,9 @@ begin
         Exit(False);
       end;
       if not IsIdentifierNamed(ANode, Name) then
+      begin
         Exit;
+      end;
       Parent := Unparen(ANode).Parent;
       if (Parent <> nil) and (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent[0] = Unparen(ANode)) then
       begin
@@ -948,51 +1092,77 @@ var
 begin
   Parent := AUse.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   case Parent.Kind of
     TSyntaxKind.AssignStatement:
       if (Parent.ChildCount = 2) and (Parent[0] = AUse) then
-        NoteCreation(AFileIndex, Parent[1])
+      begin
+        NoteCreation(AFileIndex, Parent[1]);
+      end
       else
+      begin
         Fail(Format('%s wird in %s weitergegeben', [FName, LineOf(AUse)]));
+      end;
     TSyntaxKind.MemberAccess:
       if Parent[0] = AUse then
-        ClassifyMember(AFileIndex, Parent)
+      begin
+        ClassifyMember(AFileIndex, Parent);
+      end
       else
+      begin
         Fail(Format('Nicht unterstützte Verwendung von %s in %s', [FName, LineOf(AUse)]));
+      end;
     TSyntaxKind.IndexAccess:
       if (Parent[0] = AUse) and FKind.DefaultItems then
       begin
         Read := Parent;
         if (Read.Parent <> nil) and (Read.Parent.Kind = TSyntaxKind.AssignStatement) and
           (Read.Parent.ChildCount = 2) and (Read.Parent[0] = Read) then
-          NoteElement(AFileIndex, Read.Parent[1])
+        begin
+          NoteElement(AFileIndex, Read.Parent[1]);
+        end
         else
+        begin
           ClassifyRead(AFileIndex, Read, FName);
+        end;
       end
       else
+      begin
         Fail(Format('Nicht unterstützte Verwendung von %s in %s', [FName, LineOf(AUse)]));
+      end;
     TSyntaxKind.ForInStatement:
       begin
         Collection := nil;
         for Index := 0 to Parent.ChildCount - 1 do
+        begin
           if Parent[Index].Kind <> TSyntaxKind.TypeReference then
           begin
             Collection := Parent[Index];
             Break;
           end;
+        end;
         if Collection = AUse then
-          ClassifyLoop(AFileIndex, Parent)
+        begin
+          ClassifyLoop(AFileIndex, Parent);
+        end
         else
+        begin
           Fail(Format('Nicht unterstützte Verwendung von %s in %s', [FName, LineOf(AUse)]));
+        end;
       end;
     TSyntaxKind.Call:
       if (Parent[0] <> AUse) and (IsIdentifierNamed(Parent[0], 'FreeAndNil') or
         IsIdentifierNamed(Parent[0], 'Assigned')) then
-        Exit
+      begin
+        Exit;
+      end
       else
+      begin
         Fail(Format('%s wird in %s an %s übergeben', [FName, LineOf(AUse), NodeText(FFiles[AFileIndex],
           Parent[0])]));
+      end;
     TSyntaxKind.BinaryExpr:
       begin
         Other := nil;
@@ -1000,10 +1170,14 @@ begin
         begin
           Other := Parent[0];
           if Other = AUse then
+          begin
             Other := Parent[1];
+          end;
         end;
         if not IsNil(Other) then
+        begin
           Fail(Format('Nicht unterstützte Verwendung von %s in %s', [FName, LineOf(AUse)]));
+        end;
       end;
     TSyntaxKind.WithStatement:
       Fail(Format('%s steht in %s in einer with-Anweisung', [FName, LineOf(AUse)]));
@@ -1021,7 +1195,9 @@ begin
   while Routine <> nil do
   begin
     if StartsText(LastName(FOwnerType) + '.', Routine.Name) then
+    begin
       Exit(True);
+    end;
     Routine := EnclosingRoutine(Routine);
   end;
   Result := False;
@@ -1035,9 +1211,13 @@ var
 begin
   SourceFile := FFiles[AFileIndex];
   if AFileIndex = 0 then
-    Names := [FName] + FProperties
+  begin
+    Names := [FName] + FProperties;
+  end
   else
+  begin
     Names := ExternalNames;
+  end;
   Visit :=
     function(ANode: TSyntaxNode): Boolean
     var
@@ -1046,15 +1226,21 @@ begin
     begin
       Result := not Failed;
       if not Result then
+      begin
         Exit;
+      end;
       if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
         not MatchText(ANode.Name, Names) then
+      begin
         Exit;
+      end;
       // Mitglied der Liste selbst (L.Items, wenn eine Property der Klasse auch Items heißt).
       if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
         (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
         MatchText(ANode[0].Name, Names) and MatchText(ANode.Name, FKind.Reads + FKind.Neutral) then
+      begin
         Exit;
+      end;
       Match := Matches(AFileIndex, ANode, ANode.Name);
       if Match = TMatch.Unknown then
       begin
@@ -1064,14 +1250,20 @@ begin
         if AFileIndex = 0 then
         begin
           if FIsLocal then
+          begin
             Assumed := (ANode.Kind = TSyntaxKind.Identifier) and (FScope <> nil) and
-              (ANode.StartOffset >= FScope.StartOffset) and (ANode.EndOffset <= FScope.EndOffset)
+              (ANode.StartOffset >= FScope.StartOffset) and (ANode.EndOffset <= FScope.EndOffset);
+          end
           else if FIsField then
+          begin
             Assumed := ((ANode.Kind = TSyntaxKind.Identifier) and IsOwnMethod(ANode)) or
               ((ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
-              IsIdentifierNamed(ANode[0], 'Self') and IsOwnMethod(ANode))
+              IsIdentifierNamed(ANode[0], 'Self') and IsOwnMethod(ANode));
+          end
           else
+          begin
             Assumed := ANode.Kind = TSyntaxKind.Identifier;
+          end;
         end;
         if not Assumed then
         begin
@@ -1100,11 +1292,15 @@ var
 begin
   TypeRef := ADeclaration.FindChild(TSyntaxKind.TypeReference);
   if TypeRef = nil then
+  begin
     Exit;
+  end;
   if Pos(',', ADeclaration.Name) = 0 then
   begin
     if ALegacy then
+    begin
       NoteRewritten(AFile, TypeRef);
+    end;
     AddEdit(AFile, TypeRef.StartPos, TypeRef.EndPos, ANewType);
     Exit;
   end;
@@ -1117,12 +1313,18 @@ begin
   end;
   Others := nil;
   for Name in SplitString(ADeclaration.Name, ',') do
+  begin
     if not SameText(Trim(Name), AName) then
+    begin
       Others := Others + [Trim(Name)];
+    end;
+  end;
   Rest := Copy(AFile.Text, TypeRef.StartOffset + 1, ADeclaration.EndOffset - TypeRef.StartOffset);
   Indent := StringOfChar(' ', ADeclaration.StartPos.Character);
   if ALegacy then
+  begin
     AFile.GenericAt := AFile.GenericAt + [ADeclaration.StartOffset];
+  end;
   AddEdit(AFile, ADeclaration.StartPos, ADeclaration.EndPos, string.Join(', ', Others) + ': ' + Rest +
     AFile.LineBreak + Indent + AName + ': ' + ANewType + ';');
 end;
@@ -1136,13 +1338,19 @@ begin
   Result := 'public';
   Parent := AMember.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Parent.ChildCount - 1 do
   begin
     if Parent[Index] = AMember then
+    begin
       Break;
+    end;
     if Parent[Index].Kind = TSyntaxKind.Visibility then
+    begin
       Result := LowerCase(Parent[Index].Name);
+    end;
   end;
 end;
 
@@ -1158,10 +1366,14 @@ begin
   for Index := TSyntaxTree.FirstTokenOf(Tokens, AProperty.StartOffset) to High(Tokens) - 1 do
   begin
     if (Tokens[Index].Offset < AProperty.StartOffset) or (Tokens[Index].Offset >= AProperty.EndOffset) then
+    begin
       Continue;
+    end;
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AWord) and
       (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
+    begin
       Exit(Tokens[Index + 1].Text);
+    end;
   end;
 end;
 
@@ -1176,12 +1388,16 @@ begin
   begin
     Member := AClass[Index];
     if Member.Kind <> TSyntaxKind.PropertyDecl then
+    begin
       Continue;
+    end;
     TypeRef := Member.FindChild(TSyntaxKind.TypeReference);
     ReadName := PropertyAccessor(AFile, Member, 'read');
     WriteName := PropertyAccessor(AFile, Member, 'write');
     if not SameText(ReadName, FName) and not SameText(WriteName, FName) then
+    begin
       Continue;
+    end;
     if (TypeRef = nil) or (TypeRef.ChildCount > 0) or not SameText(LastName(TypeRef.Name), FKind.LegacyName) then
     begin
       Fail(Format('Die Property %s in %s hat einen anderen Typ', [Member.Name, LineOf(Member)]));
@@ -1204,7 +1420,9 @@ begin
     end;
     FProperties := FProperties + [Member.Name];
     if AInterface and (Pos('private', VisibilityOf(Member)) = 0) then
+    begin
       FExternalNames := FExternalNames + [Member.Name];
+    end;
     NoteRewritten(AFile, TypeRef);
     AddEdit(AFile, TypeRef.StartPos, TypeRef.EndPos, GenericPlaceholder);
   end;
@@ -1222,10 +1440,14 @@ begin
       begin
         while (Owner <> nil) and not (Owner.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType,
           TSyntaxKind.ObjectType]) do
+        begin
           Owner := Owner.Parent;
+        end;
         TypeDecl := Owner;
         while (TypeDecl <> nil) and (TypeDecl.Kind <> TSyntaxKind.TypeDecl) do
+        begin
           TypeDecl := TypeDecl.Parent;
+        end;
         if (Owner = nil) or (TypeDecl = nil) then
         begin
           Fail(Format('Die Klasse zu %s ist nicht erkennbar', [FName]));
@@ -1236,10 +1458,14 @@ begin
         Section := SectionOf(AFile.Tree, Declaration.StartOffset);
         InInterface := (Section <> nil) and (Section.Kind = TSyntaxKind.InterfaceSection);
         if InInterface and (Pos('private', VisibilityOf(Declaration)) = 0) then
+        begin
           FExternalNames := FExternalNames + [FName];
+        end;
         RetypeDeclaration(AFile, Declaration, FName, GenericPlaceholder, True);
         if not Failed then
+        begin
           ScanProperties(AFile, Owner, InInterface);
+        end;
       end;
     TSyntaxKind.VarDecl:
       begin
@@ -1247,7 +1473,9 @@ begin
         FIsLocal := FScope <> nil;
         Section := SectionOf(AFile.Tree, Declaration.StartOffset);
         if not FIsLocal and (Section <> nil) and (Section.Kind = TSyntaxKind.InterfaceSection) then
+        begin
           FExternalNames := FExternalNames + [FName];
+        end;
         RetypeDeclaration(AFile, Declaration, FName, GenericPlaceholder, True);
       end;
     TSyntaxKind.InlineVar:
@@ -1263,9 +1491,13 @@ begin
         Value := nil;
         if (Declaration.ChildCount > 0) and (Declaration[Declaration.ChildCount - 1].Kind <>
           TSyntaxKind.TypeReference) then
+        begin
           Value := Declaration[Declaration.ChildCount - 1];
+        end;
         if Value <> nil then
+        begin
           NoteCreation(0, Value);
+        end;
       end;
     TSyntaxKind.Parameter:
       Fail(Format('%s ist ein Parameter; die Signatur der Routine müsste sich ändern', [FName]));
@@ -1289,10 +1521,14 @@ begin
   Result := '';
   Tokens := ATree.Tokens;
   for Index := TSyntaxTree.FirstTokenOf(Tokens, ANode.StartOffset) to High(Tokens) - 1 do
+  begin
     if (Tokens[Index].Offset >= ANode.StartOffset) and (Tokens[Index].Offset < ANode.EndOffset) and
       (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AWord) and
       (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
+    begin
       Exit(Tokens[Index + 1].Text);
+    end;
+  end;
 end;
 
 class function TGenericListConversion.DeclarationAt(ATree: TSyntaxTree; const APosition: TTextPosition;
@@ -1307,29 +1543,43 @@ var
     Child: Integer;
   begin
     if not NotAfter(ANode.StartPos, APosition) or not NotAfter(APosition, ANode.EndPos) then
+    begin
       Exit;
+    end;
     if ANode.Kind in [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
       TSyntaxKind.PropertyDecl] then
+    begin
       Found := ANode;
+    end;
     for Child := 0 to ANode.ChildCount - 1 do
+    begin
       Visit(ANode[Child]);
+    end;
   end;
 
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Found := nil;
   Visit(ATree.Root);
   // Der Name muss an der Stelle stehen; sonst passt die Position nicht zum Text (veralteter Index).
   if (Found = nil) or not MatchText(AName, SplitString(Found.Name, ', ')) then
+  begin
     Exit;
+  end;
   if Found.Kind <> TSyntaxKind.PropertyDecl then
+  begin
     Exit(Found);
+  end;
   // Property mit read-Feld: umgewandelt wird das Feld, die Property folgt ihm (ScanProperties).
   FieldName := IdentifierAfter(ATree, Found, 'read');
   if (FieldName = '') or (Found.Parent = nil) then
+  begin
     Exit;
+  end;
   for Index := 0 to Found.Parent.ChildCount - 1 do
   begin
     Member := Found.Parent[Index];
@@ -1359,7 +1609,9 @@ begin
   FUnitName := TUsesClauses.OwnName(ATree.Tokens);
   ScanDeclaration(SourceFile);
   if not Failed then
+  begin
     CollectUses(0);
+  end;
   Result := not Failed;
 end;
 
@@ -1373,7 +1625,9 @@ var
   SourceFile: TSourceFile;
 begin
   if Failed then
+  begin
     Exit;
+  end;
   SourceFile := TSourceFile.Create;
   SourceFile.Tree := TSyntaxTreeCache.Parse(AText);
   SourceFile.OwnsTree := True;
@@ -1396,9 +1650,13 @@ begin
   for Use in FElements do
   begin
     if Failed then
+    begin
       Exit;
+    end;
     if Use.TypeName = 'nil' then
+    begin
       Continue;
+    end;
     if Use.TypeName = '' then
     begin
       FUnknown := True;
@@ -1410,7 +1668,9 @@ begin
       Exit;
     end;
     if SameText(LastName(Use.TypeName), ItemName) then
+    begin
       Continue;
+    end;
     // Nachfahre von T? Beide Namen so aufgelöst, wie sie an der Stelle stehen.
     SourceFile := FFiles[Use.FileIndex];
     Actual := FResolver.ResolveChain(SourceFile.Tree, SourceFile.FileName, Use.TypeName.Split(['.']),
@@ -1421,11 +1681,15 @@ begin
     begin
       if not FResolver.TypeDescendsFrom(SourceFile.Tree, SourceFile.FileName, Use.Node.StartOffset, Use.TypeName,
         ItemType) then
+      begin
         Fail(Format('%s nimmt in %s Werte vom Typ %s auf, nicht %s', [FName, LineOf(Use.Node),
           Use.TypeName, ItemType]));
+      end;
     end
     else
+    begin
       FUnknown := True;
+    end;
   end;
 end;
 
@@ -1440,19 +1704,31 @@ begin
   for Index := 0 to High(Tokens) do
   begin
     if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not MatchText(Tokens[Index].Text, ContnrsTypes) then
+    begin
       Continue;
+    end;
     Inside := False;
     for Range in AFile.Rewritten do
+    begin
       if (Tokens[Index].Offset >= Range.StartOffset) and (Tokens[Index].Offset < Range.EndOffset) then
+      begin
         Inside := True;
+      end;
+    end;
     if Inside then
+    begin
       Continue;
+    end;
     // TStack<T> und TObjectList<T> stammen aus System.Generics.Collections.
     Next := Index + 1;
     while (Next <= High(Tokens)) and IsTrivia(Tokens[Next]) do
+    begin
       Inc(Next);
+    end;
     if (Next <= High(Tokens)) and Tokens[Next].IsSymbol('<') then
+    begin
       Continue;
+    end;
     Exit(True);
   end;
   Result := False;
@@ -1499,35 +1775,53 @@ begin
   Implementation_ := AFile.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
   ImplementationStart := MaxInt;
   if Implementation_ <> nil then
+  begin
     ImplementationStart := Implementation_.StartOffset;
+  end;
   NeedGeneric := AFile.GenericAt <> nil;
   NeedInterface := False;
   for Offset in AFile.GenericAt do
+  begin
     if IsUnit and (Offset < ImplementationStart) then
+    begin
       NeedInterface := True;
+    end;
+  end;
   InInterface := False;
   InImplementation := False;
   for Clause in Clauses do
+  begin
     for Index := 0 to High(Clause.Names) do
+    begin
       if IsGenericUnit(Clause.Names[Index]) then
       begin
         if Clause.InInterface or not IsUnit then
-          InInterface := True
+        begin
+          InInterface := True;
+        end
         else
+        begin
           InImplementation := True;
+        end;
       end;
+    end;
+  end;
   DropLegacy := (FKind.LegacyUnit = 'Contnrs') and (AFile.Rewritten <> nil) and not LegacyUnitStillUsed(AFile);
   MoveGeneric := NeedInterface and InImplementation and not InInterface;
   AddHere := NeedGeneric and not InInterface and not (InImplementation and not NeedInterface);
   // Zielliste für System.Generics.Collections: interface, wenn der Typ dort steht, sonst die des Abschnitts.
   Target := -1;
   if AddHere then
+  begin
     for Index := 0 to High(Clauses) do
+    begin
       if not IsUnit or (Clauses[Index].InInterface = NeedInterface) then
       begin
         Target := Index;
         Break;
       end;
+    end;
+  end;
   for Index := 0 to High(Clauses) do
   begin
     Clause := Clauses[Index];
@@ -1537,21 +1831,31 @@ begin
     while Cursor < Clause.Semicolon do
     begin
       while (Cursor < Clause.Semicolon) and IsTrivia(Tokens[Cursor]) do
+      begin
         Inc(Cursor);
+      end;
       if Cursor >= Clause.Semicolon then
+      begin
         Break;
+      end;
       Item.FirstToken := Cursor;
       Item.LastToken := Cursor;
       Item.Name := '';
       while (Cursor < Clause.Semicolon) and not Tokens[Cursor].IsSymbol(',') do
       begin
         if Tokens[Cursor].IsKeyword('in') then
-          Item.Name := Item.Name + ' '
+        begin
+          Item.Name := Item.Name + ' ';
+        end
         else if (Pos(' ', Item.Name) = 0) and ((Tokens[Cursor].Kind = TPascalTokenKind.Identifier) or
           Tokens[Cursor].IsSymbol('.')) then
+        begin
           Item.Name := Item.Name + Tokens[Cursor].Text;
+        end;
         if not IsTrivia(Tokens[Cursor]) then
+        begin
           Item.LastToken := Cursor;
+        end;
         Inc(Cursor);
       end;
       Item.Name := Trim(Item.Name);
@@ -1563,16 +1867,24 @@ begin
     Kept := nil;
     AddAt := -1;
     for Item in Items do
+    begin
       if (DropLegacy and IsLegacyUnit(Item.Name)) or (MoveGeneric and IsUnit and not Clause.InInterface and
         IsGenericUnit(Item.Name)) then
       begin
         if AddAt < 0 then
+        begin
           AddAt := Length(Kept);
+        end;
       end
       else
+      begin
         Kept := Kept + [Item];
+      end;
+    end;
     if (Length(Kept) = Length(Items)) and (Index <> Target) and not (MoveGeneric and Clause.InInterface) then
+    begin
       Continue;
+    end;
     Removed := Length(Kept) <> Length(Items);
     if Removed then
     begin
@@ -1580,7 +1892,9 @@ begin
       begin
         // Listen mit Direktiven oder Kommentaren bleiben unangetastet; Contnrs bleibt dann stehen.
         if MoveGeneric then
+        begin
           Fail(Format('%s steht nur im implementation-uses (Liste mit Direktiven)', [GenericUnit]));
+        end;
         Kept := Items;
         AddAt := -1;
         Removed := False;
@@ -1592,14 +1906,18 @@ begin
       Item := Default(TItem);
       Item.Text := GenericUnit;
       if (AddAt < 0) or (AddAt > Length(Kept)) then
+      begin
         AddAt := Length(Kept);
+      end;
       Insert(Item, Kept, AddAt);
     end;
     if not Removed then
     begin
       // Nur ergänzen: hinter den letzten Eintrag wie TUsesClauses.AddUnit.
       if TUsesClauses.AddUnit(Tokens, Tokens[Clause.UsesIndex].Offset + 1, GenericUnit, AFile.LineBreak, Edit) then
+      begin
         AFile.Edits := AFile.Edits + [Edit];
+      end;
       Continue;
     end;
     if Kept = nil then
@@ -1608,13 +1926,19 @@ begin
       Continue;
     end;
     if Tokens[Items[High(Items)].LastToken].StartPos.Line > Tokens[Clause.UsesIndex].StartPos.Line then
-      Separator := ',' + AFile.LineBreak + StringOfChar(' ', Tokens[Items[0].FirstToken].StartPos.Character)
+    begin
+      Separator := ',' + AFile.LineBreak + StringOfChar(' ', Tokens[Items[0].FirstToken].StartPos.Character);
+    end
     else
+    begin
       Separator := ', ';
+    end;
     for Item in Kept do
     begin
       if NewText <> '' then
+      begin
         NewText := NewText + Separator;
+      end;
       NewText := NewText + Item.Text;
     end;
     AddEdit(AFile, Tokens[Items[0].FirstToken].StartPos, Tokens[Items[High(Items)].LastToken].EndPos, NewText);
@@ -1624,14 +1948,20 @@ begin
   begin
     Offset := AFile.GenericAt[0];
     if NeedInterface then
+    begin
       for Index := 0 to High(AFile.GenericAt) do
+      begin
         if AFile.GenericAt[Index] < ImplementationStart then
         begin
           Offset := AFile.GenericAt[Index];
           Break;
         end;
+      end;
+    end;
     if TUsesClauses.AddUnit(Tokens, Offset, GenericUnit, AFile.LineBreak, Edit) then
+    begin
       AFile.Edits := AFile.Edits + [Edit];
+    end;
   end;
 end;
 
@@ -1651,8 +1981,10 @@ begin
   // Platzhalter einsetzen, sortieren, doppelte entfernen und Überlappungen ausschließen.
   Edits := nil;
   for Edit in AFile.Edits do
+  begin
     Edits := Edits + [TTextEdit.Create(Edit.Range, StringReplace(StringReplace(Edit.NewText, GenericPlaceholder,
       GenericText, [rfReplaceAll]), ItemPlaceholder, ItemType, [rfReplaceAll]))];
+  end;
   for Index := 1 to High(Edits) do
   begin
     Edit := Edits[Index];
@@ -1670,13 +2002,17 @@ begin
     if (AFile.Edits <> nil) and (AFile.Edits[High(AFile.Edits)].Range.StartPos = Edits[Index].Range.StartPos) and
       (AFile.Edits[High(AFile.Edits)].Range.EndPos = Edits[Index].Range.EndPos) and
       (AFile.Edits[High(AFile.Edits)].NewText = Edits[Index].NewText) then
+    begin
       Continue;
+    end;
     if AFile.Edits <> nil then
     begin
       Before := AFile.Edits[High(AFile.Edits)].Range.EndPos;
       After := Edits[Index].Range.StartPos;
       if (Before.Line > After.Line) or ((Before.Line = After.Line) and (Before.Character > After.Character)) then
+      begin
         Exit(Fail(Format('Die Änderungen in %s überschneiden sich', [ExtractFileName(AFile.FileName)])));
+      end;
     end;
     AFile.Edits := AFile.Edits + [Edits[Index]];
   end;
@@ -1695,54 +2031,84 @@ var
 begin
   APlan := Default(TGenericListPlan);
   if Failed then
+  begin
     Exit(False);
+  end;
   if FCasts = nil then
+  begin
     Exit(Fail(Format('%s wird nirgends mit Cast gelesen; der Elementtyp ist unbekannt', [FName])));
+  end;
   Distinct := nil;
   for Cast in FCasts do
+  begin
     if not MatchText(LastName(Cast.TypeText), Distinct) then
+    begin
       Distinct := Distinct + [LastName(Cast.TypeText)];
+    end;
+  end;
   if Length(Distinct) > 1 then
+  begin
     Exit(Fail(Format('%s wird mit verschiedenen Casts gelesen: %s', [FName, string.Join(', ', Distinct)])));
+  end;
   if MatchText(LastName(ItemType), ScalarTypes) then
+  begin
     Exit(Fail(Format('%s enthält Werte vom Typ %s statt Objekte', [FName, LastName(ItemType)])));
+  end;
   CheckElements;
   if Failed then
+  begin
     Exit(False);
+  end;
   if (FKind.CreateArguments <> '') and not FCreated then
+  begin
     Exit(Fail(Format('%s wird hier nicht erzeugt; ohne Create lässt sich nicht festlegen, dass %s<T> die Objekte ' +
       'nicht besitzt', [FName, FKind.GenericName])));
+  end;
   for Index := 1 to FFiles.Count - 1 do
   begin
     SourceFile := FFiles[Index];
     if SourceFile.GenericAt = nil then
+    begin
       Continue;
+    end;
     // Der neue Typtext nennt T: dort muss T bekannt sein.
     Known := False;
     for Token in SourceFile.Tree.Tokens do
+    begin
       if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, LastName(ItemType)) then
+      begin
         Known := True;
+      end;
+    end;
     if not Known then
+    begin
       Exit(Fail(Format('%s ist in %s nicht bekannt', [ItemType, ExtractFileName(SourceFile.FileName)])));
+    end;
   end;
   for Index := 0 to FFiles.Count - 1 do
   begin
     SourceFile := FFiles[Index];
     if (SourceFile.GenericAt <> nil) or (SourceFile.Rewritten <> nil) then
+    begin
       AddUsesEdits(SourceFile);
+    end;
     if Failed or not Finalize(SourceFile) then
+    begin
       Exit(False);
+    end;
   end;
   APlan.Title := Format('In %s umwandeln', [GenericText]);
   APlan.ItemType := ItemType;
   APlan.Edits := FFiles[0].Edits;
   for Index := 1 to FFiles.Count - 1 do
+  begin
     if FFiles[Index].Edits <> nil then
     begin
       FileEdits.FileName := FFiles[Index].FileName;
       FileEdits.Edits := FFiles[Index].Edits;
       APlan.FileEdits := APlan.FileEdits + [FileEdits];
     end;
+  end;
   APlan.Safe := not FUnknown and (APlan.FileEdits = nil);
   Result := True;
 end;

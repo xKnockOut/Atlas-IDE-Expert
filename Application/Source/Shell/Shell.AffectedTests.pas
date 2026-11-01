@@ -94,9 +94,13 @@ var
 begin
   Result := nil;
   for mFile in AFiles do
+  begin
     if SameText(ExtractFileExt(mFile), '.dpr') and Assigned(AReadText) and AReadText(mFile, mText) and
       TDUnitXSource.UsesDUnitX(TTextLines.SplitLines(mText)) then
+    begin
       Result := Result + [mFile];
+    end;
+  end;
 end;
 
 class function TShellAffectedTests.TestScope(const APattern: string; const APrograms: TArray<string>;
@@ -106,8 +110,12 @@ var
 begin
   Result := TImpactTestScope.FromProgram(APattern, '');
   for mProgram in APrograms do
+  begin
     if Assigned(AReadText) and AReadText(mProgram, mText) then
+    begin
       Result.Units := Result.Units + TImpactTestScope.FromProgram(APattern, mText).Units;
+    end;
+  end;
 end;
 
 class function TShellAffectedTests.Run(const AProcess: ICompilerProcess; const ASettings: TServerSettings;
@@ -120,24 +128,36 @@ var
   mRef: string;
 begin
   if not ASettings.Tests.Affected then
+  begin
     raise EAffectedTestsOff.Create(OffMessage);
+  end;
   mRequest := ARequest;
   if AQuery.Depth > 0 then
-    mRequest.Options.Depth := TImpactAnalysis.ClampDepth(AQuery.Depth)
+  begin
+    mRequest.Options.Depth := TImpactAnalysis.ClampDepth(AQuery.Depth);
+  end
   else
+  begin
     mRequest.Options.Depth := TImpactAnalysis.ClampDepth(ASettings.Tests.AffectedDepth);
+  end;
   mChanges := TVcsChanges.Detect(AProcess, AQuery.WorkingDir, ASettings.VcsProvider, ASettings.VcsGitPath,
     ASettings.VcsSvnPath, ASettings.VcsTimeoutSeconds);
   try
     mRef := AQuery.Base;
     if mRef = '' then
+    begin
       mRef := DefaultGitBase;
+    end;
     // Wie --changed: ohne eigene Basis vergleicht SVN mit BASE (svn status), Git mit der Merge-Base.
     mChanges.Load(mRef, True, AQuery.Base = '', AQuery.IncludeUncommitted, True);
     if (AQuery.Base = '') and (mChanges is TSvnChanges) then
-      mRequest.Base := SvnBase
+    begin
+      mRequest.Base := SvnBase;
+    end
     else
+    begin
       mRequest.Base := mRef;
+    end;
     Result := TAffectedTests.Determine(AResolver, AIndex, Inputs(mChanges), mRequest, AReadText, ACancellation);
   finally
     mChanges.Free;

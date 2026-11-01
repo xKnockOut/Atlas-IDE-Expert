@@ -42,14 +42,18 @@ begin
   Lines := nil;
   Start := 1;
   for Index := 1 to Length(AText) + 1 do
+  begin
     if (Index > Length(AText)) or (AText[Index] = #10) then
     begin
       Lines := Lines + [Copy(AText, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   Result := '';
   for Line in TModernizer.Apply(Lines, AKinds, ACount) do
+  begin
     Result := Result + Line + #10;
+  end;
   // Wie die Eingabe: ohne angehängtes Zeilenende.
   Result := Copy(Result, 1, Length(Result) - 1);
 end;

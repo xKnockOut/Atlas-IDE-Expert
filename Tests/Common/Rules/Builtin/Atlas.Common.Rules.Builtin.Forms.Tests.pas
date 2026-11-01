@@ -125,8 +125,12 @@ begin
     begin
       AData := nil;
       for Name in AFiles do
+      begin
         if SameText(Name, AName) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
 end;
@@ -176,14 +180,18 @@ begin
   Result.ProjectName := 'Projekt';
   Result.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(ProjektDpr);
   if AMainSource = '' then
+  begin
     Exit;
+  end;
   Result.ProjectMainSource := 'C:\P\Projekt.dpr';
   Result.ReadFile :=
     function(const AName: string; out AData: TBytes): Boolean
     begin
       Result := SameText(AName, 'C:\P\Projekt.dpr');
       if Result then
+      begin
         AData := TEncoding.UTF8.GetBytes(AMainSource);
+      end;
     end;
 end;
 
@@ -240,11 +248,13 @@ begin
       Index: Integer;
     begin
       for Index := 0 to High(ANames) do
+      begin
         if SameText(ANames[Index], AName) then
         begin
           AData := TEncoding.UTF8.GetBytes(ATexts[Index]);
           Exit(True);
         end;
+      end;
       Result := False;
     end;
 end;
@@ -312,7 +322,9 @@ var
   begin
     Position := 0;
     for Line := 1 to APosition.Line do
+    begin
       Position := Pos(#10, AText, Position + 1);
+    end;
     Result := Position + APosition.Character;
   end;
 

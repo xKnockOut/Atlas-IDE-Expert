@@ -147,7 +147,9 @@ var
   begin
     Position := 0;
     for Line := 1 to APosition.Line do
+    begin
       Position := Pos(#10, AText, Position + 1);
+    end;
     Result := Position + APosition.Character;
   end;
 

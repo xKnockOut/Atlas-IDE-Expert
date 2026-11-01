@@ -110,8 +110,12 @@ var
 begin
   Version := ParseVersion(ABdsVersion);
   for Product in Products do
+  begin
     if ParseVersion(Product.Bds) = Version then
+    begin
       Exit(Product.Name);
+    end;
+  end;
   Result := 'BDS ' + ABdsVersion;
 end;
 
@@ -134,7 +138,9 @@ begin
   end;
   if not TryStrToInt(MajorText, Major) or not TryStrToInt(MinorText, Minor) or
     (Major < 0) or (Minor < 0) or (Minor > 999) then
+  begin
     Exit(-1);
+  end;
   Result := Major * 1000 + Minor;
 end;
 
@@ -161,11 +167,17 @@ begin
   Version := ParseVersion(AVersion);
   Minimum := ParseVersion(AMinimum);
   if (Minimum >= 0) and ((Version < 0) or (Minimum < Version)) then
-    Result := Trim(AMinimum)
+  begin
+    Result := Trim(AMinimum);
+  end
   else if Version >= 0 then
-    Result := Trim(AVersion)
+  begin
+    Result := Trim(AVersion);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 procedure AddFinding(AList: TList<TLanguageFeatureFinding>; AFeature: TLanguageFeature;
@@ -199,7 +211,9 @@ begin
     Found := False;
   end;
   if Found and not TLanguageFeatures.IsAvailable(Feature, AVersion) then
+  begin
     AddFinding(AList, Feature, ANode.StartPos, ANode.EndPos, AVersion);
+  end;
 end;
 
 procedure WalkNodes(ANode: TSyntaxNode; AList: TList<TLanguageFeatureFinding>; const AVersion: string);
@@ -224,9 +238,13 @@ begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
     TPascalTokenKind.Directive]) do
+  begin
     Inc(Result);
+  end;
   if Result > High(ATokens) then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure WalkTokens(const ATokens: TArray<TPascalToken>; AList: TList<TLanguageFeatureFinding>;
@@ -235,7 +253,9 @@ procedure WalkTokens(const ATokens: TArray<TPascalToken>; AList: TList<TLanguage
   procedure Report(AFeature: TLanguageFeature; AFirst, ALast: Integer);
   begin
     if not TLanguageFeatures.IsAvailable(AFeature, AVersion) then
+    begin
       AddFinding(AList, AFeature, ATokens[AFirst].StartPos, ATokens[ALast].EndPos, AVersion);
+    end;
   end;
 
 var
@@ -246,27 +266,39 @@ begin
     if ATokens[Index].Kind = TPascalTokenKind.Number then
     begin
       if Pos('_', ATokens[Index].Text) > 0 then
+      begin
         Report(TLanguageFeature.DigitSeparator, Index, Index);
+      end;
       if Copy(ATokens[Index].Text, 1, 1) = '%' then
+      begin
         Report(TLanguageFeature.BinaryLiteral, Index, Index);
+      end;
     end;
     Next := NextCode(ATokens, Index);
     if (Next >= 0) and ATokens[Index].IsKeyword('is') and ATokens[Next].IsKeyword('not') then
+    begin
       Report(TLanguageFeature.IsNotOperator, Index, Next);
+    end;
     if (Next >= 0) and ATokens[Index].IsKeyword('not') and ATokens[Next].IsKeyword('in') then
+    begin
       Report(TLanguageFeature.NotInOperator, Index, Next);
+    end;
     if (ATokens[Index].Kind = TPascalTokenKind.StringLiteral) and
       (Copy(ATokens[Index].Text, 1, 3) = '''''''') and
       (ATokens[Index].StartPos.Line <> ATokens[Index].EndPos.Line) and
       not TLanguageFeatures.IsAvailable(TLanguageFeature.MultilineString, AVersion) then
+    begin
       AddFinding(AList, TLanguageFeature.MultilineString, ATokens[Index].StartPos,
         ATokens[Index].EndPos, AVersion);
+    end;
     if (Index + 2 <= High(ATokens)) and ATokens[Index].IsKeyword('class') and
       SameText(ATokens[Index + 1].Text, 'operator') and
       (SameText(ATokens[Index + 2].Text, 'Initialize') or SameText(ATokens[Index + 2].Text, 'Finalize')) and
       not TLanguageFeatures.IsAvailable(TLanguageFeature.ManagedRecord, AVersion) then
+    begin
       AddFinding(AList, TLanguageFeature.ManagedRecord, ATokens[Index].StartPos,
         ATokens[Index + 2].EndPos, AVersion);
+    end;
   end;
 end;
 
@@ -280,10 +312,14 @@ var
   Range: TTextRange;
 begin
   for Range in ARanges do
+  begin
     if ((APosition.Line > Range.StartPos.Line) or ((APosition.Line = Range.StartPos.Line) and
       (APosition.Character >= Range.StartPos.Character))) and ((APosition.Line < Range.EndPos.Line) or
       ((APosition.Line = Range.EndPos.Line) and (APosition.Character <= Range.EndPos.Character))) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -296,7 +332,9 @@ var
   List: TList<TLanguageFeatureFinding>;
 begin
   if ParseVersion(AVersion) < 0 then
+  begin
     Exit(nil);
+  end;
   List := TList<TLanguageFeatureFinding>.Create;
   try
     WalkNodes(ATree.Root, List, AVersion);
@@ -304,8 +342,12 @@ begin
     Active := TList<TLanguageFeatureFinding>.Create;
     try
       for Finding in List do
+      begin
         if not Inside(Finding.StartPos, AInactive) then
+        begin
           Active.Add(Finding);
+        end;
+      end;
       Result := Active.ToArray;
     finally
       Active.Free;

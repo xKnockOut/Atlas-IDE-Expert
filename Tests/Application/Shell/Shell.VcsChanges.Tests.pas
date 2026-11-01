@@ -137,12 +137,18 @@ begin
   FExecutables.Add(ARequest.Executable);
   Result := 0;
   if FExitCodes.ContainsKey(Arguments) then
+  begin
     Result := FExitCodes[Arguments];
+  end;
   Output := nil;
   if FOutputs.ContainsKey(Arguments) then
+  begin
     Output := FOutputs[Arguments];
+  end;
   for Line in Output do
+  begin
     AOnLine(Line);
+  end;
 end;
 
 procedure TFakeProcess.Cancel;
@@ -218,7 +224,9 @@ procedure TShellVcsChangesTests.TearDown;
 begin
   TAtlasVcsTools.Forget;
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;

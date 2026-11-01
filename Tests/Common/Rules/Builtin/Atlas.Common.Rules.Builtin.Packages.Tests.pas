@@ -61,7 +61,9 @@ function UnitText(const AName, AUses: string): string;
 begin
   Result := 'unit ' + AName + ';'#10'interface'#10;
   if AUses <> '' then
+  begin
     Result := Result + 'uses ' + AUses + ';'#10;
+  end;
   Result := Result + 'implementation'#10'end.';
 end;
 
@@ -90,13 +92,19 @@ begin
     begin
       Result := TRulePackageAnswer.No;
       if SameText(APackage, 'rtl') and AUnitName.StartsWith('System.') then
-        Result := TRulePackageAnswer.Yes
+      begin
+        Result := TRulePackageAnswer.Yes;
+      end
       else if SameText(APackage, 'Basis') then
       begin
         if AUnknown then
-          Result := TRulePackageAnswer.Unknown
+        begin
+          Result := TRulePackageAnswer.Unknown;
+        end
         else if SameText(AUnitName, 'uBasis') then
+        begin
           Result := TRulePackageAnswer.Yes;
+        end;
       end;
     end;
 end;
@@ -151,8 +159,10 @@ var
 begin
   Result := '';
   for Finding in AFindings do
+  begin
     Result := Result + Format('%d:%d %s|', [Finding.Range.StartPos.Line, Finding.Range.StartPos.Character,
       Finding.Message]);
+  end;
 end;
 
 { TPackageRulesTests }
@@ -204,7 +214,9 @@ begin
     begin
       Result := nil;
       if SameText(APackage, 'Mitte') then
+      begin
         Result := ['Basis'];
+      end;
     end;
   Assert.IsFalse(Messages(Run(mSource, Provides(False), mRequires)).Contains('uBasis'));
   // Ohne die Kette (nur direkte requires) wäre uBasis implizit.
@@ -237,8 +249,12 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = ImplicitPackageImportRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 

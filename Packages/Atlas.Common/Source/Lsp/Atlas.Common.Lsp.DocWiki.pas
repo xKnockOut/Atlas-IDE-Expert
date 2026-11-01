@@ -47,8 +47,12 @@ var
   Release: TRelease;
 begin
   for Release in Releases do
+  begin
     if SameText(Release.Version, Trim(ADelphiVersion)) then
+    begin
       Exit(Release.Name);
+    end;
+  end;
   Result := Releases[High(Releases)].Name;
 end;
 
@@ -60,12 +64,18 @@ end;
 class function TDocWiki.Url(const ADelphiVersion, AUnitName, AContainer, AName: string): string;
 begin
   if not IsLibraryUnit(AUnitName) then
+  begin
     Exit('');
+  end;
   Result := BaseUri + ReleaseName(ADelphiVersion) + '/en/' + AUnitName;
   if AContainer <> '' then
+  begin
     Result := Result + '.' + AContainer;
+  end;
   if AName <> '' then
+  begin
     Result := Result + '.' + AName;
+  end;
 end;
 
 end.

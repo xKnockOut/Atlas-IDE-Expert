@@ -277,7 +277,9 @@ begin
   try
     Builder.Append('unit U;'#10'interface'#10'type'#10'  TBig = class'#10);
     for Index := 0 to 499 do
+    begin
       Builder.Append('    procedure M' + IntToStr(Index) + ';'#10);
+    end;
     Builder.Append('  end;'#10'implementation'#10);
     // 500 Methoden zu je neun Zeilen; jede ruft die nächste, jede fünfte schließt einen Kreis.
     for Index := 0 to 499 do
@@ -285,9 +287,13 @@ begin
       Builder.Append('procedure TBig.M' + IntToStr(Index) + ';'#10'var'#10'  I: Integer;'#10'begin'#10);
       Builder.Append('  for I := 0 to 3 do'#10'    M' + IntToStr((Index + 1) mod 500) + ';'#10);
       if Index mod 5 = 4 then
-        Builder.Append('  M' + IntToStr(Index - 3) + ';'#10)
+      begin
+        Builder.Append('  M' + IntToStr(Index - 3) + ';'#10);
+      end
       else
+      begin
         Builder.Append('  Writeln(I);'#10);
+      end;
       Builder.Append('  I := 0;'#10'end;'#10);
     end;
     Builder.Append('end.');

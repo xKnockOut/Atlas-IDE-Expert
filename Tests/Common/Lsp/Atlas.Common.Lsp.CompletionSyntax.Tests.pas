@@ -79,13 +79,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := StringReplace(AMarked, '|', '', []);
 end;

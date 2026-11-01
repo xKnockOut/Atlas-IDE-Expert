@@ -72,9 +72,13 @@ end;
 class function TSetterRecursionRule.Message(const ATrap: TAccessorTrap): string;
 begin
   if ATrap.IsSetter then
-    Result := Format('Zuweisung an die Property %s im eigenen Setter: Endlosrekursion.', [ATrap.PropertyName])
+  begin
+    Result := Format('Zuweisung an die Property %s im eigenen Setter: Endlosrekursion.', [ATrap.PropertyName]);
+  end
   else
+  begin
     Result := Format('Lesen der Property %s im eigenen Getter: Endlosrekursion.', [ATrap.PropertyName]);
+  end;
 end;
 
 procedure TSetterRecursionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -82,13 +86,21 @@ var
   Trap: TAccessorTrap;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   for Trap in TRecursionAnalysis.AccessorTraps(AContext.Tree) do
+  begin
     if Trap.Field <> '' then
+    begin
       AReport.Add(Trap.Range, Message(Trap), [TRuleFix.Create(Format('Feld %s verwenden', [Trap.Field]),
-        [TRuleEdit.Create(Trap.Range, Trap.Field)])])
+        [TRuleEdit.Create(Trap.Range, Trap.Field)])]);
+    end
     else
+    begin
       AReport.Add(Trap.Range, Message(Trap));
+    end;
+  end;
 end;
 
 { TUnconditionalRecursionRule }
@@ -140,9 +152,13 @@ var
   Site: TTextPosition;
 begin
   for Site in FSites do
+  begin
     if ((AFrom.Line < Site.Line) or ((AFrom.Line = Site.Line) and (AFrom.Character <= Site.Character))) and
       ((Site.Line < ATo.Line) or ((Site.Line = ATo.Line) and (Site.Character < ATo.Character))) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -166,32 +182,42 @@ begin
         TSyntaxKind.Identifier:
           begin
             if SiteIn(Node.StartPos, Node.EndPos) then
+            begin
               Exit(True);
+            end;
             Continue;
           end;
         TSyntaxKind.MemberAccess:
           // Self.Name: der Name hinter dem Empfänger.
           if (Node.ChildCount > 0) and SiteIn(Node[0].EndPos, Node.EndPos) then
+          begin
             Exit(True);
+          end;
         TSyntaxKind.BinaryExpr:
           // Kurzschluss: rechts von and/or nicht auf jedem Weg.
           if (Node.Name = 'and') or (Node.Name = 'or') then
           begin
             if Node.ChildCount > 0 then
+            begin
               Pending.Push(Node[0]);
+            end;
             Continue;
           end;
         TSyntaxKind.IfExpr:
           begin
             if Node.ChildCount > 0 then
+            begin
               Pending.Push(Node[0]);
+            end;
             Continue;
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -227,7 +253,9 @@ begin
           begin
             Name := Node.Name;
             if MatchText(Name, LeavingCalls) or (Loop and MatchText(Name, ['Break', 'Continue'])) then
+            begin
               Exit(True);
+            end;
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -252,9 +280,13 @@ begin
   for Index := AFirst to ALast do
   begin
     if Always(AParent[Index], ALoop) then
+    begin
       Exit(True);
+    end;
     if Leaves(AParent[Index], ALoop) then
+    begin
       Exit(False);
+    end;
   end;
   Result := False;
 end;
@@ -284,28 +316,42 @@ begin
         if Node.ChildCount > 0 then
         begin
           if InExpression(Node[0]) then
-            Result := True
+          begin
+            Result := True;
+          end
           else if (Node.ChildCount = 3) and Always(Node[1], ALoop) then
+          begin
             Next := Node[2];
+          end;
         end;
       TSyntaxKind.CaseStatement:
         begin
           if Node.ChildCount = 0 then
+          begin
             Exit;
+          end;
           if InExpression(Node[0]) then
+          begin
             Exit(True);
+          end;
           if Node.FindChild(TSyntaxKind.CaseElse) = nil then
+          begin
             Exit;
+          end;
           for Index := 1 to Node.ChildCount - 1 do
           begin
             Part := Node[Index];
             if Part.Kind = TSyntaxKind.CaseElse then
             begin
               if not AlwaysList(Part, 0, Part.ChildCount - 1, ALoop) then
+              begin
                 Exit;
+              end;
             end
             else if (Part.ChildCount = 0) or not Always(Part[Part.ChildCount - 1], ALoop) then
+            begin
               Exit;
+            end;
           end;
           Result := True;
         end;
@@ -313,19 +359,29 @@ begin
         Result := (Node.ChildCount > 0) and InExpression(Node[0]);
       TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
         for Index := 0 to Node.ChildCount - 2 do
+        begin
           if InExpression(Node[Index]) then
+          begin
             Exit(True);
+          end;
+        end;
       TSyntaxKind.RepeatStatement:
         Result := (Node.ChildCount > 0) and (AlwaysList(Node, 0, Node.ChildCount - 2, True) or
           (not Leaves(Node, True) and InExpression(Node[Node.ChildCount - 1])));
       TSyntaxKind.WithStatement:
         begin
           for Index := 0 to Node.ChildCount - 2 do
+          begin
             if InExpression(Node[Index]) then
+            begin
               Exit(True);
+            end;
+          end;
           // Rumpf als nächster Durchlauf statt rekursiv.
           if Node.ChildCount > 0 then
+          begin
             Next := Node[Node.ChildCount - 1];
+          end;
         end;
       TSyntaxKind.TryStatement:
         begin
@@ -333,7 +389,9 @@ begin
           Index := 0;
           while (Index < Node.ChildCount) and not (Node[Index].Kind in [TSyntaxKind.ExceptBlock,
             TSyntaxKind.FinallyBlock]) do
+          begin
             Inc(Index);
+          end;
           Result := AlwaysList(Node, 0, Index - 1, ALoop) or ((Index < Node.ChildCount) and
             (Node[Index].Kind = TSyntaxKind.FinallyBlock) and Always(Node[Index], ALoop));
         end;
@@ -353,28 +411,44 @@ begin
   Result := '';
   Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
   if Header = nil then
+  begin
     Exit;
+  end;
   Parameters := Header.FindChild(TSyntaxKind.Parameters);
   if (Parameters = nil) or (Parameters.ChildCount = 0) then
+  begin
     Exit;
+  end;
   Parameter := Parameters[0];
   Name := Parameter.Name.Split([','])[0];
   TypeNode := Parameter.FindChild(TSyntaxKind.TypeReference);
   if TypeNode <> nil then
-    TypeName := TypeNode.Name
+  begin
+    TypeName := TypeNode.Name;
+  end
   else
+  begin
     TypeName := '';
+  end;
   if MatchText(TypeName, ['Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Byte', 'Word',
     'SmallInt', 'ShortInt', 'LongInt', 'LongWord']) then
-    Result := Name + ' <= 0'
+  begin
+    Result := Name + ' <= 0';
+  end
   else if MatchText(TypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString']) then
-    Result := Name + ' = '''''
+  begin
+    Result := Name + ' = ''''';
+  end
   else if SameText(TypeName, 'TArray') or StartsText('TArray<', TypeName) or
     (Parameter.FindChild(TSyntaxKind.ArrayType) <> nil) then
-    Result := 'Length(' + Name + ') = 0'
+  begin
+    Result := 'Length(' + Name + ') = 0';
+  end
   else if (Length(TypeName) > 1) and CharInSet(TypeName[1], ['T', 'P', 'I']) and
     CharInSet(TypeName[2], ['A'..'Z']) then
+  begin
     Result := Name + ' = nil';
+  end;
 end;
 
 procedure TUnconditionalRecursionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -397,13 +471,17 @@ var
     begin
       Next := nil;
       for Index := 0 to Node.ChildCount - 1 do
+      begin
         if Inside(APosition, Node[Index]) then
         begin
           Next := Node[Index];
           Break;
         end;
+      end;
       if (Next <> nil) and (Next.Kind = TSyntaxKind.RoutineDecl) and (Next.FindChild(TSyntaxKind.Block) <> nil) then
+      begin
         Result := Next;
+      end;
       Node := Next;
     end;
   end;
@@ -420,7 +498,9 @@ var
     Pending := TStack<TSyntaxNode>.Create;
     try
       for Index := ANode.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(ANode[Index]);
+      end;
       while Pending.Count > 0 do
       begin
         Child := Pending.Pop;
@@ -428,23 +508,37 @@ var
         begin
           Key := LowerCase(Child.Name);
           if Key.Contains('.') then
+          begin
             Key := Copy(Key, Key.LastIndexOf('.') + 2, MaxInt);
+          end;
           Header := Child;
           if Child.Kind = TSyntaxKind.RoutineDecl then
+          begin
             Header := Child.FindChild(TSyntaxKind.RoutineHeader);
+          end;
           if Header <> nil then
+          begin
             for Item := 0 to Header.ChildCount - 1 do
+            begin
               if (Header[Item].Kind = TSyntaxKind.Directive) and SameText(Header[Item].Name, 'overload') then
+              begin
                 Overloaded := Overloaded + [Key];
+              end;
+            end;
+          end;
           if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) then
           begin
             if IndexStr(LowerCase(Child.Name), ABodies) >= 0 then
+            begin
               Overloaded := Overloaded + [Key];
+            end;
             ABodies := ABodies + [LowerCase(Child.Name)];
           end;
         end;
         for Index := Child.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Child[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -462,10 +556,14 @@ var
   Skip: Boolean;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Calls := TRecursionAnalysis.Calls(AContext.Tree, 1);
   if Calls = nil then
+  begin
     Exit;
+  end;
   Traps := TRecursionAnalysis.AccessorTraps(AContext.Tree);
   Overloaded := nil;
   Reported := nil;
@@ -475,10 +573,14 @@ begin
   begin
     Routine := RoutineAt(AContext.Tree.Root, Call.Range.StartPos);
     if Routine = nil then
+    begin
       Continue;
+    end;
     Key := LowerCase(Routine.Name);
     if (IndexStr(Key, Reported) >= 0) or (IndexStr(Copy(Key, Key.LastIndexOf('.') + 2, MaxInt), Overloaded) >= 0) then
+    begin
       Continue;
+    end;
     Reported := Reported + [Key];
     // Alle Selbstaufrufe dieser Routine, ohne Property-Zugriffe (setter-recursion).
     Sites := nil;
@@ -486,30 +588,46 @@ begin
     begin
       Skip := RoutineAt(AContext.Tree.Root, Calls[Index].Range.StartPos) <> Routine;
       for Trap in Traps do
+      begin
         if Trap.Range.StartPos = Calls[Index].Range.StartPos then
+        begin
           Skip := True;
+        end;
+      end;
       if not Skip then
+      begin
         Sites := Sites + [Calls[Index].Range.StartPos];
+      end;
     end;
     if Sites = nil then
+    begin
       Continue;
+    end;
     Analysis := TSelfCalls.Create(Sites);
     try
       if not Analysis.Always(Routine.FindChild(TSyntaxKind.Block), False) then
+      begin
         Continue;
+      end;
     finally
       Analysis.Free;
     end;
     Name := Call.Chain[0].Name;
     if Name.Contains('.') then
+    begin
       Name := Copy(Name, Name.LastIndexOf('.') + 2, MaxInt);
+    end;
     Hint := StopHint(Routine);
     if Hint <> '' then
+    begin
       AReport.Add(Call.Chain[0].Range, Format('%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch ' +
-        '(z. B. %s).', [Name, Hint]), TRuleConfidence.High)
+        '(z. B. %s).', [Name, Hint]), TRuleConfidence.High);
+    end
     else
+    begin
       AReport.Add(Call.Chain[0].Range, Format('%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch.',
         [Name]), TRuleConfidence.High);
+    end;
   end;
 end;
 

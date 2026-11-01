@@ -63,7 +63,9 @@ begin
   try
     mProfiler.BeginRun(EncodeDate(2026, 10, 29));
     for mIndex := 1 to 12 do
+    begin
       mProfiler.AddUnit(Format('C:\P\Unit%.2d.pas', [mIndex]), mIndex * 1000);
+    end;
     mProfiler.FinishRun(80);
     mProfile := mProfiler.Snapshot(TCheckRunProfile.cTop);
     Assert.AreEqual(10, Integer(Length(mProfile.SlowUnits)));

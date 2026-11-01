@@ -56,10 +56,16 @@ var
 begin
   Result := nil;
   if not ASettings.QueryEnabled then
+  begin
     Exit;
+  end;
   for mQuery in ASettings.Queries do
+  begin
     if mQuery.FailIfAny then
+    begin
       Result := Result + [TSavedQueryRule.Create(mQuery) as IRule];
+    end;
+  end;
 end;
 
 function TSavedQueryRule.Descriptor: TRuleDescriptor;
@@ -68,7 +74,9 @@ var
 begin
   mDescription := FQuery.Description;
   if mDescription = '' then
+  begin
     mDescription := Format('Gespeicherte Abfrage: %s', [FQuery.Query]);
+  end;
   Result := TRuleDescriptor.Create(RuleId(FQuery.Name), FQuery.Severity, mDescription, False);
 end;
 
@@ -79,17 +87,25 @@ var
   mRow: TQueryRow;
 begin
   if (AContext.Queries = nil) or (AContext.FileName = '') then
+  begin
     Exit;
+  end;
   mRequest := TQueryRequest.Create(FQuery.Query, 0);
   // Felder der Meldung als Spalten, damit {methods} auch ohne Bedingung auf methods einen Wert hat.
   mRequest.Fields := TQueryResult.Placeholders(FQuery.Message);
   mResult := AContext.Queries.Execute(mRequest);
   // Eine fehlerhafte Abfrage meldet die Konfiguration (atlas.json) mit Spalte, nicht jede Datei.
   if mResult.Failed then
+  begin
     Exit;
+  end;
   for mRow in mResult.Rows do
+  begin
     if SameText(mRow.FileName, AContext.FileName) then
+    begin
       AReport.Add(mRow.Range, mResult.Message(FQuery.Message, mRow));
+    end;
+  end;
 end;
 
 end.

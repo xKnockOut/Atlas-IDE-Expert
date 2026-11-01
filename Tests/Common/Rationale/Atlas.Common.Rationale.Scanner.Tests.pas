@@ -43,7 +43,9 @@ var
 begin
   Result := '';
   for mEntry in AEntries do
+  begin
     Result := Result + Format('%s@%d:%s|', [mEntry.Marker, mEntry.Line, mEntry.Text]);
+  end;
 end;
 
 function FirstNode(ANode: TSyntaxNode; AKind: TSyntaxKind; const AName: string): TSyntaxNode;
@@ -51,12 +53,16 @@ var
   mIndex: Integer;
 begin
   if (ANode.Kind = AKind) and SameText(ANode.Name, AName) then
+  begin
     Exit(ANode);
+  end;
   for mIndex := 0 to ANode.ChildCount - 1 do
   begin
     Result := FirstNode(ANode[mIndex], AKind, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;

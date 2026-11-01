@@ -89,8 +89,12 @@ begin
   Lines := AText.Split([#10]);
   Position := TTextPosition.Create(0, 0);
   for Line := 0 to High(Lines) do
+  begin
     if Pos(AMarker, Lines[Line]) > 0 then
+    begin
       Position := TTextPosition.Create(Line, Pos(AMarker, Lines[Line]) - 1 + Length(AMarker));
+    end;
+  end;
   Tree := TPascalParser.Parse(AText);
   Resolver := TNameResolver.Create(AIndex);
   Request := TCompletionRequest.Create(AText, HauptFile, Position);
@@ -114,11 +118,13 @@ var
   Item: TCompletionItem;
 begin
   for Item in AItems.Items do
+  begin
     if SameText(Item.Name, AName) and SameText(Item.UnitName, AUnit) then
     begin
       AItem := Item;
       Exit(True);
     end;
+  end;
   AItem := Default(TCompletionItem);
   Result := False;
 end;
@@ -129,7 +135,9 @@ var
 begin
   Result := '';
   for Item in AItems.Items do
+  begin
     Result := Result + Item.Name + '@' + Item.UnitName + ' ';
+  end;
   Result := Result.Trim;
 end;
 

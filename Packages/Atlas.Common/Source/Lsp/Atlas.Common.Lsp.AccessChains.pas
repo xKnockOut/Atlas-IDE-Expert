@@ -178,15 +178,21 @@ begin
   Result := '';
   Space := False;
   for Index := 1 to Length(AText) do
+  begin
     if CharInSet(AText[Index], [#9, #10, #13, ' ']) then
-      Space := Result <> ''
+    begin
+      Space := Result <> '';
+    end
     else
     begin
       if Space then
+      begin
         Result := Result + ' ';
+      end;
       Space := False;
       Result := Result + AText[Index];
     end;
+  end;
 end;
 
 function IsPointerText(const AText: string): Boolean;
@@ -214,36 +220,56 @@ var
 begin
   Name := LowerCase(Trim(ATypeName));
   if Name.StartsWith('system.') then
+  begin
     Name := Copy(Name, 8, MaxInt);
+  end;
   if (Name = 'byte') or (Name = 'shortint') or (Name = 'boolean') or (Name = 'bytebool') or (Name = 'ansichar') or
     (Name = 'int8') or (Name = 'uint8') then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else if (Name = 'word') or (Name = 'smallint') or (Name = 'char') or (Name = 'widechar') or (Name = 'wordbool') or
     (Name = 'int16') or (Name = 'uint16') then
-    Result := 2
+  begin
+    Result := 2;
+  end
   else if (Name = 'integer') or (Name = 'cardinal') or (Name = 'longint') or (Name = 'longword') or
     (Name = 'longbool') or (Name = 'single') or (Name = 'int32') or (Name = 'uint32') or (Name = 'dword') then
-    Result := 4
+  begin
+    Result := 4;
+  end
   else if (Name = 'int64') or (Name = 'uint64') or (Name = 'double') or (Name = 'currency') or (Name = 'comp') or
     (Name = 'tdatetime') or (Name = 'tdate') or (Name = 'ttime') then
-    Result := 8
+  begin
+    Result := 8;
+  end
   else if (Name = 'nativeint') or (Name = 'nativeuint') or (Name = 'string') or (Name = 'unicodestring') or
     (Name = 'ansistring') or (Name = 'widestring') or (Name = 'rawbytestring') or (Name = 'utf8string') or
     (Name = 'tobject') or (Name = 'iinterface') or (Name = 'iunknown') or (Name = 'tclass') or
     IsPointerText(Name) or IsDynArrayText(Name) then
-    Result := APointerSize
+  begin
+    Result := APointerSize;
+  end
   else if Name = 'extended' then
   begin
     // Win64 rechnet Extended als Double.
     if APointerSize = 8 then
-      Result := 8
+    begin
+      Result := 8;
+    end
     else
+    begin
       Result := 10;
+    end;
   end
   else if Name = 'variant' then
-    Result := 16
+  begin
+    Result := 16;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 { TCollector }
@@ -283,11 +309,17 @@ end;
 function TCollector.FileText(const AFileName: string): string;
 begin
   if (AFileName = '') or SameText(AFileName, FFileName) then
+  begin
     Exit(FText);
+  end;
   if FTexts.TryGetValue(AnsiUpperCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   if not (Assigned(FReadText) and FReadText(AFileName, Result)) then
+  begin
     Result := '';
+  end;
   FTexts.Add(AnsiUpperCase(AFileName), Result);
 end;
 
@@ -299,20 +331,30 @@ var
 begin
   Result := AType.TypeName;
   if (Result <> '') or (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) then
+  begin
     Exit;
+  end;
   Lines := FileText(AType.FileName).Split([#13#10, #10]);
   Text := '';
   // Die Deklaration steht im Bereich des Symbols; mehrzeilig zusammengefügt.
   for Line := AType.Range.StartPos.Line to Min(AType.Range.EndPos.Line, AType.Range.StartPos.Line + 5) do
+  begin
     if (Line >= 0) and (Line <= High(Lines)) then
+    begin
       Text := Text + ' ' + Lines[Line];
+    end;
+  end;
   Start := Pos('=', Text);
   if Start = 0 then
+  begin
     Exit;
+  end;
   Text := Copy(Text, Start + 1, MaxInt);
   Stop := Pos(';', Text);
   if Stop > 0 then
+  begin
     Text := Copy(Text, 1, Stop - 1);
+  end;
   Result := SingleLine(Text);
 end;
 
@@ -321,9 +363,13 @@ begin
   case ANode.Kind of
     TSyntaxKind.Dereference:
       if ANode.ChildCount > 0 then
-        Result := NameOf(ANode[0])
+      begin
+        Result := NameOf(ANode[0]);
+      end
       else
+      begin
         Result := '';
+      end;
     TSyntaxKind.ParenExpr:
       Result := TextOf(ANode);
   else
@@ -342,9 +388,13 @@ begin
       end;
     TSyntaxKind.IndexAccess, TSyntaxKind.Call, TSyntaxKind.Dereference:
       if ANode.ChildCount > 0 then
-        Result := NamePositionOf(ANode[0])
+      begin
+        Result := NamePositionOf(ANode[0]);
+      end
       else
+      begin
         Result := ANode.StartPos;
+      end;
   else
     Result := ANode.StartPos;
   end;
@@ -384,6 +434,7 @@ var
 begin
   Result := BuiltinSize(ATypeName, FPointerSize);
   if Result = 0 then
+  begin
     if FResolver.ResolveTypeTextFrom(AUnit, ATypeName, Resolved) then
       case Resolved.SymbolKind of
         TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
@@ -395,26 +446,39 @@ begin
           begin
             Alias := AliasText(Resolved);
             if IsPointerText(Alias) or IsDynArrayText(Alias) then
-              Result := FPointerSize
+            begin
+              Result := FPointerSize;
+            end
             else if LowerCase(Alias).StartsWith('procedure') or LowerCase(Alias).StartsWith('function') then
             begin
               // Methodenzeiger (of object) sind zwei Zeiger, einfache Routinenzeiger einer.
               if Pos('of object', LowerCase(Alias)) > 0 then
-                Result := 2 * FPointerSize
+              begin
+                Result := 2 * FPointerSize;
+              end
               else
+              begin
                 Result := FPointerSize;
+              end;
             end
             else
+            begin
               Result := BuiltinSize(Alias, FPointerSize);
+            end;
           end;
       else
         // Übrige Arten: nichts zu tun.
       end;
+  end;
   AAlign := Min(Max(Result, 1), 8);
   if Result = 2 * FPointerSize then
+  begin
     AAlign := FPointerSize;
+  end;
   if Result = 10 then
+  begin
     AAlign := 8;
+  end;
 end;
 
 function TCollector.FieldsOf(const AType: TResolvedSymbol): TArray<TAccessField>;
@@ -438,7 +502,9 @@ begin
     while (Types.Count < 32) and FResolver.AncestorOf(Current, Ancestor) do
     begin
       if SameText(Ancestor.Name, 'TObject') then
+      begin
         Break;
+      end;
       Types.Insert(0, Ancestor);
       Current := Ancestor;
     end;
@@ -455,14 +521,20 @@ begin
         Continue;
       end;
       for Symbol in TypeUnit.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, Types[Index].Name) then
+        begin
           Own.Add(Symbol);
+        end;
+      end;
       Own.Sort(TComparer<TIndexSymbol>.Construct(
         function(const A, B: TIndexSymbol): Integer
         begin
           Result := CompareValue(A.Range.StartPos.Line, B.Range.StartPos.Line);
           if Result = 0 then
+          begin
             Result := CompareValue(A.Range.StartPos.Character, B.Range.StartPos.Character);
+          end;
         end));
       for Symbol in Own do
       begin
@@ -473,7 +545,9 @@ begin
         begin
           Size := FieldSize(TypeUnit, Symbol.TypeName, Align);
           if Size = 0 then
-            Known := False
+          begin
+            Known := False;
+          end
           else
           begin
             Offset := ((Offset + Align - 1) div Align) * Align;
@@ -483,7 +557,9 @@ begin
         end;
         Result := Result + [Field];
         if Length(Result) >= TLspAccessChains.MaxFields then
+        begin
           Exit;
+        end;
       end;
     end;
   finally
@@ -508,20 +584,30 @@ begin
         begin
           Text := AliasText(AType);
           if IsDynArrayText(Text) then
+          begin
             Exit(TAccessLinkKind.DynArray);
+          end;
           if IsPointerText(Text) then
+          begin
             Exit(TAccessLinkKind.Pointer);
+          end;
         end;
     else
       // Übrige Arten: nichts zu tun.
     end;
   Text := ASymbol.TypeName;
   if IsDynArrayText(Text) then
-    Result := TAccessLinkKind.DynArray
+  begin
+    Result := TAccessLinkKind.DynArray;
+  end
   else if IsPointerText(Text) then
-    Result := TAccessLinkKind.Pointer
-  else if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Dereference) then
+  begin
     Result := TAccessLinkKind.Pointer;
+  end
+  else if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Dereference) then
+  begin
+    Result := TAccessLinkKind.Pointer;
+  end;
 end;
 
 function TCollector.ElementType(ABase: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
@@ -535,18 +621,30 @@ begin
   Result := False;
   FResolver.NodeType(FTree, FFileName, ABase, Symbol, BaseType, Found);
   if Found then
-    Text := AliasText(BaseType)
+  begin
+    Text := AliasText(BaseType);
+  end
   else
+  begin
     Text := Symbol.TypeName;
+  end;
   Text := Trim(Text);
   if LowerCase(Text).StartsWith('array of') then
-    Text := Trim(Copy(Text, 9, MaxInt))
+  begin
+    Text := Trim(Copy(Text, 9, MaxInt));
+  end
   else if LowerCase(Text).StartsWith('tarray<') and Text.EndsWith('>') then
-    Text := Trim(Copy(Text, 8, Length(Text) - 8))
+  begin
+    Text := Trim(Copy(Text, 8, Length(Text) - 8));
+  end
   else
+  begin
     Exit;
+  end;
   if not (Found and UnitFor(BaseType, FromUnit)) then
+  begin
     FromUnit := FResolver.ExtractedUnit(FTree, FFileName);
+  end;
   Result := FResolver.ResolveTypeTextFrom(FromUnit, Text, AType);
 end;
 
@@ -555,7 +653,9 @@ var
   ReadsField: Boolean;
 begin
   if ANode.Kind = TSyntaxKind.Call then
+  begin
     Exit(True);
+  end;
   case ASymbol.SymbolKind of
     TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_:
       // Funktion ohne Klammern.
@@ -579,13 +679,17 @@ begin
       Symbol: TResolvedSymbol;
     begin
       if AChild.Kind in [TSyntaxKind.Call, TSyntaxKind.AnonymousMethod, TSyntaxKind.InheritedExpr] then
-        Plain := False
+      begin
+        Plain := False;
+      end
       else if AChild.Kind = TSyntaxKind.Identifier then
       begin
         Symbol := FResolver.Resolve(FTree, FFileName, AChild.StartPos);
         if not ((Symbol.Kind = TResolvedKind.Local) or (Symbol.SymbolKind in [TIndexSymbolKind.Variable,
           TIndexSymbolKind.Field, TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember])) then
+        begin
           Plain := False;
+        end;
       end;
       Result := Plain;
     end);
@@ -602,14 +706,20 @@ begin
   ALink := Default(TAccessLink);
   Result := False;
   if (ARoot.Kind <> TSyntaxKind.Identifier) or SameText(ARoot.Name, 'Self') then
+  begin
     Exit;
+  end;
   Symbol := FResolver.Resolve(FTree, FFileName, ARoot.StartPos);
   if (Symbol.Kind <> TResolvedKind.Symbol) or (Symbol.Container = '') or
     not (Symbol.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method]) then
+  begin
     Exit;
+  end;
   // In with gehört der Name vielleicht zu einem Element, nicht zu Self.
   if FResolver.WithMember(FTree, FFileName, ARoot.Name, ARoot.StartOffset, With_, Element, Unknown) or Unknown then
+  begin
     Exit;
+  end;
   ALink.Expression := 'Self';
   ALink.Name := 'Self';
   ALink.Range := TTextRange.Create(ARoot.StartPos, ARoot.EndPos);
@@ -620,7 +730,9 @@ begin
   ALink.Member := ARoot.Name;
   if FResolver.ResolveTypeFrom(FResolver.ExtractedUnit(FTree, FFileName), Symbol.Container, ClassType) and
     (ClassType.SymbolKind = TIndexSymbolKind.ClassType) then
+  begin
     ALink.Fields := FieldsOf(ClassType);
+  end;
   Result := True;
 end;
 
@@ -635,7 +747,9 @@ var
   Index, Last: Integer;
 begin
   if FChains.Count >= TLspAccessChains.MaxChains then
+  begin
     Exit;
+  end;
   Path := TList<TSyntaxNode>.Create;
   try
     Node := ATop;
@@ -643,42 +757,62 @@ begin
     begin
       Path.Insert(0, Node);
       if (Node.Kind in ChainKinds) and (Node.ChildCount > 0) then
-        Node := Node[0]
+      begin
+        Node := Node[0];
+      end
       else
+      begin
         Node := nil;
+      end;
     end;
     Chain := Default(TAccessChain);
     Chain.Text := TextOf(ATop);
     Called := False;
     if ImplicitSelf(Path[0], Link) then
+    begin
       Chain.Links := Chain.Links + [Link];
+    end;
     Last := Path.Count - 2;
     if AWithElement then
+    begin
       Last := Path.Count - 1;
+    end;
     for Index := 0 to Last do
     begin
       Node := Path[Index];
       // Beim with-Element steht hinter dem letzten Glied kein Knoten; es zählt wie ein Mitgliedszugriff.
       WithLast := Index = Path.Count - 1;
       if WithLast then
-        Next := Node
+      begin
+        Next := Node;
+      end
       else
+      begin
         Next := Path[Index + 1];
+      end;
       // Der Name vor einem Aufruf ist kein Wert; der Aufruf selbst ist das Glied.
       if (not WithLast) and (Next.Kind = TSyntaxKind.Call) and (Next[0] = Node) and
         (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+      begin
         Continue;
+      end;
       // Literale und inherited sind nie nil; X^ ist der Wert hinter dem schon geprüften Zeiger.
       if Node.Kind in [TSyntaxKind.Literal, TSyntaxKind.InheritedExpr, TSyntaxKind.Dereference] then
+      begin
         Continue;
+      end;
       Symbol := Default(TResolvedSymbol);
       AType := Default(TResolvedSymbol);
       TypeFound := False;
       if Node.Kind <> TSyntaxKind.ParenExpr then
+      begin
         FResolver.NodeType(FTree, FFileName, Node, Symbol, AType, TypeFound);
+      end;
       // Element eines dynamischen Arrays: Typ aus der Deklaration des Arrays.
       if (Node.Kind = TSyntaxKind.IndexAccess) and not TypeFound and (Node.ChildCount > 0) then
+      begin
         TypeFound := ElementType(Node[0], AType);
+      end;
       // Self liefert die Klasse selbst.
       if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, 'Self') and Symbol.IsType then
       begin
@@ -689,11 +823,15 @@ begin
       end;
       // Nicht auflösbare Namen (etwa Unit-Präfixe ohne Index): nichts zu sagen.
       if (Node.Kind = TSyntaxKind.Identifier) and not Symbol.Found and not TypeFound then
+      begin
         Continue;
+      end;
       // Unit- und Typnamen, Konstanten und Aufzählungswerte sind keine Werte, die nil sein können.
       if (Symbol.Kind = TResolvedKind.UnitName) or Symbol.IsType or
         (Symbol.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember]) then
+      begin
         Continue;
+      end;
       Link := Default(TAccessLink);
       Link.Expression := TextOf(Node);
       Link.Name := NameOf(Node);
@@ -703,20 +841,32 @@ begin
       // Records und andere Werte werden nicht dereferenziert (außer über ^, dann ist es ein Zeiger).
       if TypeFound and (AType.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType,
         TIndexSymbolKind.EnumType]) and (WithLast or (Next.Kind <> TSyntaxKind.Dereference)) then
+      begin
         Continue;
+      end;
       if (not TypeFound) and (Symbol.TypeName <> '') and (BuiltinSize(Symbol.TypeName, FPointerSize) > 0) and
         (Link.Kind = TAccessLinkKind.Unknown) then
+      begin
         Continue;
+      end;
       if TypeFound then
-        Link.TypeName := AType.Name
+      begin
+        Link.TypeName := AType.Name;
+      end
       else
+      begin
         Link.TypeName := Symbol.TypeName;
+      end;
       Called := Called or IsCallLink(Node, Symbol);
       Link.Call := Called;
       if WithLast then
-        Link.Member := 'with'
+      begin
+        Link.Member := 'with';
+      end
       else
+      begin
         Link.Member := MemberAfter(Next);
+      end;
       if (not WithLast) and (Link.Kind = TAccessLinkKind.DynArray) and (Next.Kind = TSyntaxKind.IndexAccess) and
         (Next.ChildCount = 2) then
       begin
@@ -724,11 +874,15 @@ begin
         Link.IndexPlain := PlainIndex(Next[1]);
       end;
       if (Link.Kind = TAccessLinkKind.ClassRef) and TypeFound then
+      begin
         Link.Fields := FieldsOf(AType);
+      end;
       Chain.Links := Chain.Links + [Link];
     end;
     if Chain.Links <> nil then
+    begin
       FChains.Add(Chain);
+    end;
   finally
     Path.Free;
   end;
@@ -741,12 +895,18 @@ var
   Chain: TAccessChain;
 begin
   if ANode = nil then
+  begin
     Exit;
+  end;
   // Rümpfe anonymer Methoden laufen hier nicht.
   if ANode.Kind = TSyntaxKind.AnonymousMethod then
+  begin
     Exit;
+  end;
   if (ANode.Kind in ChainKinds) and not AAsBase then
-    AddChain(ANode, False)
+  begin
+    AddChain(ANode, False);
+  end
   else if (ANode.Kind = TSyntaxKind.Identifier) and not AAsBase then
   begin
     // Ein Feld allein (FCount := 1) liest über Self.
@@ -759,7 +919,9 @@ begin
     end;
   end;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     Visit(ANode[Index], (Index = 0) and (ANode.Kind in ChainKinds));
+  end;
 end;
 
 procedure TCollector.VisitExpression(ANode: TSyntaxNode);
@@ -772,12 +934,18 @@ var
   Index: Integer;
 begin
   if ANode.Kind = TSyntaxKind.AnonymousMethod then
+  begin
     Exit;
+  end;
   AddChain(ANode, True);
   // Ausdrücke im Element (Argumente, Indizes) wie sonst.
   if ANode.Kind in ChainKinds then
+  begin
     for Index := 0 to ANode.ChildCount - 1 do
+    begin
       Visit(ANode[Index], Index = 0);
+    end;
+  end;
 end;
 
 { TLspAccessChains }
@@ -823,7 +991,9 @@ var
 begin
   Result := Default(TAccessChainsResult);
   if (APointerSize <> 4) and (APointerSize <> 8) then
+  begin
     APointerSize := 4;
+  end;
   Count := 0;
   Collector := TCollector.Create(AResolver, AIndex, AReadText, ATree, AText, AFileName, APointerSize);
   AResolver.PinTree(ATree, AFileName);
@@ -837,13 +1007,19 @@ begin
       begin
         Result := ANode.Kind <> TSyntaxKind.AnonymousMethod;
         if not Result then
+        begin
           Exit;
+        end;
         if (ANode.Kind in SimpleStatements) and (ANode.StartPos.Line = ALine) then
         begin
           Inc(Count);
           for Index := 0 to ANode.ChildCount - 1 do
+          begin
             if ANode[Index].Kind in ExpressionKinds then
+            begin
               Collector.VisitExpression(ANode[Index]);
+            end;
+          end;
         end
         else if ANode.Kind in CompoundStatements then
         begin
@@ -854,12 +1030,18 @@ begin
             if (Child.Kind in ExpressionKinds) and (Child.StartPos.Line = ALine) then
             begin
               if not Counted then
+              begin
                 Inc(Count);
+              end;
               Counted := True;
               if ANode.Kind = TSyntaxKind.WithStatement then
-                Collector.VisitWithElement(Child)
+              begin
+                Collector.VisitWithElement(Child);
+              end
               else
+              begin
                 Collector.VisitExpression(Child);
+              end;
             end;
           end;
         end;
@@ -936,12 +1118,18 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<Integer>('line', Line)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "line" fehlen in ' + Method);
+  end;
   if not TJSONObject(AParams).TryGetValue<Integer>('pointerSize', PointerSize) then
+  begin
     PointerSize := 4;
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);

@@ -53,8 +53,10 @@ var
 begin
   mAnswer := ARunner.Run(AExecutable, AArguments, AWorkingDir, 60000);
   if (mAnswer.Outcome <> TAtlasVcsOutcome.Ok) or (mAnswer.ExitCode <> 0) then
+  begin
     raise Exception.CreateFmt('%s %s: Exit-Code %d', [ExtractFileName(AExecutable), string.Join(' ', AArguments),
       mAnswer.ExitCode]);
+  end;
   Result := Trim(TEncoding.UTF8.GetString(mAnswer.Output));
 end;
 
@@ -71,7 +73,9 @@ var
 {$ENDIF}
 begin
   if not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   {$IFDEF MSWINDOWS}
   // git und svn legen schreibgeschützte Dateien an.
   for mFileName in TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories) do
@@ -99,7 +103,9 @@ begin
   Result := 'unit ' + AName + ';'#10#10'interface'#10#10'implementation'#10#10'procedure Rechne(A: Integer);'#10 +
     'begin'#10'  // ' + ATag + #10;
   for mIndex := 1 to AIfs do
+  begin
     Result := Result + '  if A > ' + IntToStr(mIndex) + ' then'#10'    A := A - 1;'#10;
+  end;
   Result := Result + 'end;'#10#10'end.'#10;
 end;
 
@@ -141,8 +147,10 @@ var
 begin
   Result := TSymbolIndex.Create;
   for mName in TArray<string>.Create('Src/Neu.pas', 'Src/Andere.pas') do
+  begin
     Result.AddUnit(TIndexExtractor.ExtractText(TFile.ReadAllText(TPath.Combine(AFolder, mName), TEncoding.UTF8),
       TPath.Combine(AFolder, mName), nil, nil));
+  end;
 end;
 
 function Analyze(const AFolder: string; const AVcs: IHotspotVcs): THotspotResult;
@@ -155,7 +163,9 @@ begin
     begin
       Result := TFile.Exists(AFileName);
       if Result then
+      begin
         AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+      end;
     end);
   try
     mRequest := THotspotRequest.FromSettings(TServerSettings.Default);
@@ -172,8 +182,12 @@ var
   mEntry: THotspotEntry;
 begin
   for mEntry in AEntries do
+  begin
     if SameText(mEntry.UnitName, AUnit) then
+    begin
       Exit(mEntry);
+    end;
+  end;
   Result := Default(THotspotEntry);
 end;
 
@@ -223,7 +237,9 @@ begin
   mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
   // Ohne git keine Prüfung. Exit statt Assert.Pass: Der Leckmonitor zählte die Meldung als Leck.
   if mGit = '' then
+  begin
     Exit;
+  end;
   mRunner := TShellPlatform.CreateVcsRunner(True, nil);
   mFolder := NewFolder('git');
   try
@@ -235,9 +251,13 @@ begin
     for mStep := 1 to 5 do
     begin
       if mStep = 3 then
-        Exec(mRunner, mGit, ['mv', 'Src/Alt.pas', 'Src/Neu.pas'], mFolder)
+      begin
+        Exec(mRunner, mGit, ['mv', 'Src/Alt.pas', 'Src/Neu.pas'], mFolder);
+      end
       else
+      begin
         WriteStep(mFolder, mStep);
+      end;
       Exec(mRunner, mGit, ['add', '-A'], mFolder);
       Exec(mRunner, mGit, ['commit', '-q', '-m', 'Schritt ' + IntToStr(mStep)], mFolder);
     end;
@@ -295,10 +315,14 @@ begin
   mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
   mSvn := TVcsChanges.ToolFor(TAtlasVcsKind.Svn, '');
   if (mGit = '') or (mSvn = '') then
+  begin
     Exit;
+  end;
   mSvnAdmin := TPath.Combine(ExtractFilePath(mSvn), 'svnadmin' + ExtractFileExt(mSvn));
   if not TFile.Exists(mSvnAdmin) then
+  begin
     Exit;
+  end;
   mRunner := TShellPlatform.CreateVcsRunner(True, nil);
   mFolder := NewFolder('svn');
   try
@@ -314,7 +338,9 @@ begin
     Exec(mRunner, mSvnAdmin, ['create', mRepository], mFolder);
     mUrl := 'file:///' + StringReplace(mRepository, '\', '/', [rfReplaceAll]);
     if mUrl.StartsWith('file:////') then
+    begin
       mUrl := 'file://' + Copy(mUrl, 9, MaxInt);
+    end;
     Exec(mRunner, mSvn, ['mkdir', '-q', '-m', 'Ablage', mUrl + '/trunk', '--non-interactive', '--username', 'atlas'],
       mFolder);
     Exec(mRunner, mSvn, ['checkout', '-q', mUrl + '/trunk', mWorkingCopy, '--non-interactive'], mFolder);
@@ -331,7 +357,9 @@ begin
         WriteStep(mGitFolder, mStep);
         WriteStep(mWorkingCopy, mStep);
         if mStep = 1 then
+        begin
           Exec(mRunner, mSvn, ['add', '-q', 'Src'], mWorkingCopy);
+        end;
       end;
       Exec(mRunner, mGit, ['add', '-A'], mGitFolder);
       Exec(mRunner, mGit, ['commit', '-q', '-m', 'Schritt ' + IntToStr(mStep)], mGitFolder);
@@ -359,8 +387,10 @@ begin
     end;
     Assert.AreEqual(Integer(Length(mGitResult.Methods)), Integer(Length(mSvnResult.Methods)));
     for mIndex := 0 to High(mGitResult.Methods) do
+    begin
       Assert.AreEqual(mGitResult.Methods[mIndex].Changes.Changes, mSvnResult.Methods[mIndex].Changes.Changes,
         mGitResult.Methods[mIndex].UnitName);
+    end;
     Assert.AreEqual(Integer(Length(mGitResult.Coupling)), Integer(Length(mSvnResult.Coupling)));
   finally
     mGitVcs := nil;

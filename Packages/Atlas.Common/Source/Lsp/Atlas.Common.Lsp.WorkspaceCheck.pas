@@ -315,9 +315,13 @@ end;
 procedure TCheckToken.ThrowIfCancellationRequested;
 begin
   if FOwner.Interrupted(FInterruptible) then
+  begin
     raise EWorkspaceCheckInterrupted.Create('Projektprüfung unterbrochen');
+  end;
   if Expired then
+  begin
     raise EWorkspaceCheckDeadline.Create('Frist der Datei abgelaufen');
+  end;
 end;
 
 { TWorkspaceCheckRun }
@@ -443,7 +447,9 @@ procedure TLspWorkspaceCheck.EnsureWorker;
 begin
   // Unter FLock aufgerufen.
   if (FWorker <> nil) or FStopping then
+  begin
     Exit;
+  end;
   FWorker := TWorker.Create(Self);
   FWorker.Start;
 end;
@@ -452,19 +458,25 @@ function TLspWorkspaceCheck.LabelOf(const AFileName: string): string;
 begin
   Result := 'unit';
   if Assigned(FFileLabel) then
+  begin
     Result := FFileLabel(AFileName);
+  end;
 end;
 
 procedure TLspWorkspaceCheck.Log(const AMessage: string);
 begin
   if Assigned(FLog) then
+  begin
     FLog(AMessage);
+  end;
 end;
 
 procedure TLspWorkspaceCheck.BeginRunLocked;
 begin
   if FRun.Active then
+  begin
     Exit;
+  end;
   Inc(FRun.Serial);
   FRun.Active := True;
   FRun.Done := 0;
@@ -480,7 +492,9 @@ function TLspWorkspaceCheck.FinishRunLocked: string;
 begin
   Result := '';
   if not FRun.Active then
+  begin
     Exit;
+  end;
   FRun.Active := False;
   FRun.ElapsedMs := FRunClock.ElapsedMilliseconds;
   FProfiler.FinishRun(FRun.ElapsedMs);
@@ -503,6 +517,7 @@ begin
     begin
       FQueued[mKey] := True;
       for mIndex := 0 to FQueue.Count - 1 do
+      begin
         if KeyOf(FQueue[mIndex].FileName) = mKey then
         begin
           mEntry := FQueue[mIndex];
@@ -510,6 +525,7 @@ begin
           FQueue[mIndex] := mEntry;
           Break;
         end;
+      end;
     end;
     Exit;
   end;
@@ -535,7 +551,9 @@ begin
     TMonitor.Exit(FLock);
   end;
   if mFirst then
+  begin
     Start(False);
+  end;
 end;
 
 procedure TLspWorkspaceCheck.Start(AForce: Boolean);
@@ -545,11 +563,15 @@ var
   mStale: TList<string>;
 begin
   if not Assigned(FFiles) then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FLock);
   try
     if not FWanted or FStopping then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -566,21 +588,29 @@ begin
       FQueued.Clear;
       FRun.Active := False;
       if FCurrent <> '' then
+      begin
         FInterrupt := True;
+      end;
     end;
     FProject.Clear;
     for mFileName in mFiles do
     begin
       mKey := KeyOf(mFileName);
       if FProject.ContainsKey(mKey) then
+      begin
         Continue;
+      end;
       FProject.Add(mKey, True);
       EnqueueLocked(mFileName, AForce);
     end;
     // Nicht mehr zum Projekt gehörende Dateien melden sich nie wieder; ihre Befunde verwerfen.
     for mUri in FIds.Keys do
+    begin
       if not FProject.ContainsKey(KeyOf(TDocumentUris.ToPath(mUri))) then
+      begin
         mStale.Add(mUri);
+      end;
+    end;
     for mUri in mStale do
     begin
       FIds.Remove(mUri);
@@ -603,19 +633,29 @@ begin
   TMonitor.Enter(FLock);
   try
     if not FWanted or FStopping then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
   mFiles := AFiles;
   if AWithDependents and Assigned(FDependents) then
+  begin
     for mFileName in AFiles do
+    begin
       mFiles := mFiles + FDependents(mFileName);
+    end;
+  end;
   TMonitor.Enter(FLock);
   try
     for mFileName in mFiles do
+    begin
       if FProject.ContainsKey(KeyOf(mFileName)) then
+      begin
         EnqueueLocked(mFileName, True);
+      end;
+    end;
     EnsureWorker;
     Changed;
   finally
@@ -635,14 +675,22 @@ begin
     if AOn then
     begin
       if ALimitMs = 0 then
-        FPauses.AddOrSetValue(AReason, High(Int64))
+      begin
+        FPauses.AddOrSetValue(AReason, High(Int64));
+      end
       else
+      begin
         FPauses.AddOrSetValue(AReason, Now_ + ALimitMs);
+      end;
       if FCurrent <> '' then
+      begin
         FInterrupt := True;
+      end;
     end
     else
+    begin
       FPauses.Remove(AReason);
+    end;
     TMonitor.PulseAll(FLock);
   finally
     TMonitor.Exit(FLock);
@@ -655,7 +703,9 @@ begin
   try
     FTypedAt := Now_;
     if FCurrent <> '' then
+    begin
       FInterrupt := True;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -676,7 +726,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if FForeground > 0 then
+    begin
       Dec(FForeground);
+    end;
     TMonitor.PulseAll(FLock);
   finally
     TMonitor.Exit(FLock);
@@ -704,10 +756,16 @@ begin
   mExpired := TList<string>.Create;
   try
     for mPair in FPauses do
+    begin
       if mPair.Value < Now_ then
-        mExpired.Add(mPair.Key)
+      begin
+        mExpired.Add(mPair.Key);
+      end
       else if (Result = '') or (mPair.Key < Result) then
+      begin
         Result := mPair.Key;
+      end;
+    end;
     // Sicherheitsnetz: Das Ende der Pause kam nie an.
     for mReason in mExpired do
     begin
@@ -718,15 +776,23 @@ begin
     mExpired.Free;
   end;
   if (Result = '') and ABusy then
+  begin
     Result := cPauseIndex;
+  end;
   AShown := Result;
   if Result <> '' then
+  begin
     Exit;
+  end;
   // Vorrang des Benutzers: kurz, darum nicht in der Statusleiste.
   if FForeground > 0 then
+  begin
     Exit('foreground');
+  end;
   if (FTypedAt >= 0) and (Now_ - FTypedAt < FTypingQuietMs) then
+  begin
     Exit('typing');
+  end;
 end;
 
 function TLspWorkspaceCheck.NextEntry(out AEntry: TEntry): Boolean;
@@ -742,7 +808,9 @@ begin
     TMonitor.Enter(FLock);
     try
       if FStopping then
+      begin
         Exit(False);
+      end;
       mReason := HindranceLocked(mBusy, mShown);
       if mShown <> FRun.Paused then
       begin
@@ -762,15 +830,21 @@ begin
       begin
         mFinished := FinishRunLocked;
         if mFinished = '' then
+        begin
           TMonitor.Wait(FLock, cIdleWaitMs);
+        end;
       end
       else
+      begin
         TMonitor.Wait(FLock, cSliceMs);
+      end;
     finally
       TMonitor.Exit(FLock);
     end;
     if mFinished <> '' then
+    begin
       Log(mFinished);
+    end;
   end;
 end;
 
@@ -780,10 +854,14 @@ begin
   try
     FCurrent := '';
     if FStopping then
+    begin
       Exit;
+    end;
     // Inzwischen neu eingestellt (Start, Affected): der neue Eintrag genügt.
     if FQueued.ContainsKey(KeyOf(AEntry.FileName)) then
+    begin
       Exit;
+    end;
     // Ein erzwungener Neustart hat den Lauf beendet; die Datei gehört in den neuen.
     if not FRun.Active then
     begin
@@ -791,9 +869,13 @@ begin
       Inc(FRun.Total);
     end;
     if AFront then
-      FQueue.Insert(0, AEntry)
+    begin
+      FQueue.Insert(0, AEntry);
+    end
     else
+    begin
       FQueue.Add(AEntry);
+    end;
     FQueued.Add(KeyOf(AEntry.FileName), AEntry.Forced);
   finally
     TMonitor.Exit(FLock);
@@ -808,7 +890,9 @@ begin
     FCurrent := '';
     // Höchstens Total: Eine nicht unterbrechbare Datei kann nach einem Neustart noch im alten Lauf enden.
     if FRun.Active and (FRun.Done < FRun.Total) then
+    begin
       Inc(FRun.Done);
+    end;
     Changed;
   finally
     TMonitor.Exit(FLock);
@@ -829,7 +913,9 @@ begin
   try
     FCurrent := '';
     if FStopping then
+    begin
       Exit;
+    end;
     Inc(FSerial);
     FReports.AddOrSetValue(AUri, mPacked);
     FIds.AddOrSetValue(AUri, Format('w%d.%d:t%d', [FSession, FSerial, AStamp]));
@@ -840,10 +926,14 @@ begin
       Inc(FRun.Done);
       Inc(FRunComputed);
       if AFailed then
+      begin
         Inc(FRun.Skipped);
+      end;
     end;
     if AFailed then
+    begin
       Inc(FSkipped);
+    end;
     Changed;
   finally
     TMonitor.Exit(FLock);
@@ -885,7 +975,9 @@ begin
   mDocument := TTextDocument.Create(mUri, 'objectpascal', 0, mText);
   mLimit := FFileLimitMs;
   if AEntry.Unlimited then
+  begin
     mLimit := 0;
+  end;
   mToken := TCheckToken.Create(Self, mLimit, not AEntry.Unlimited);
   try
     // Zeitprofil (#1356): Die Engine meldet ihre Regelzeiten an den Profiler dieses Threads.
@@ -936,7 +1028,9 @@ var
   mEntry: TEntry;
 begin
   while NextEntry(mEntry) do
+  begin
     Process(mEntry);
+  end;
 end;
 
 function TLspWorkspaceCheck.Collect(const APrevious: TDictionary<string, string>; AMax: Integer): TJSONArray;
@@ -956,9 +1050,13 @@ begin
       for mPair in FIds do
       begin
         if APrevious.TryGetValue(mPair.Key, mKnown) and (mKnown = mPair.Value) then
+        begin
           Continue;
+        end;
         if not FReports.TryGetValue(mPair.Key, mCandidate.Items) then
+        begin
           Continue;
+        end;
         mCandidate.Uri := mPair.Key;
         mCandidate.Id := mPair.Value;
         mCandidates.Add(mCandidate);
@@ -970,9 +1068,13 @@ begin
     for mCandidate in mCandidates do
     begin
       if Result.Count >= AMax then
+      begin
         Break;
+      end;
       if Assigned(FIsOpen) and FIsOpen(mCandidate.Uri) then
+      begin
         Continue;
+      end;
       mReport := TJSONObject.Create;
       mReport.AddPair('uri', mCandidate.Uri);
       mReport.AddPair('version', TJSONNull.Create);
@@ -1002,7 +1104,9 @@ begin
   try
     // Unter der Sperre prüfen: Eine Änderung zwischen Prüfung und Wait geht nicht verloren.
     if (FChange = AChange) and not FStopping then
+    begin
       TMonitor.Wait(FLock, AWaitMs);
+    end;
     Result := FChange;
   finally
     TMonitor.Exit(FLock);
@@ -1015,7 +1119,9 @@ begin
   try
     Result := FRun;
     if FRun.Active then
+    begin
       Result.ElapsedMs := FRunClock.ElapsedMilliseconds;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1029,7 +1135,9 @@ begin
   try
     mRunning := -1;
     if FRun.Active then
+    begin
       mRunning := FRunClock.ElapsedMilliseconds;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1047,10 +1155,16 @@ begin
     mNow := Now_;
     Result.Waiting := FQueue.Count;
     if FCurrent <> '' then
+    begin
       Result.Running := 1;
+    end;
     for mEntry in FQueue do
+    begin
       if mNow - mEntry.Queued > Result.OldestWaitMs then
+      begin
         Result.OldestWaitMs := mNow - mEntry.Queued;
+      end;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1065,7 +1179,9 @@ begin
   try
     while (FRun.Active or (FQueue.Count > 0) or (FCurrent <> '')) and
       (mClock.ElapsedMilliseconds < Int64(ATimeoutMs)) do
+    begin
       TMonitor.Wait(FLock, cSliceMs);
+    end;
     Result := not (FRun.Active or (FQueue.Count > 0) or (FCurrent <> ''));
   finally
     TMonitor.Exit(FLock);
@@ -1085,23 +1201,29 @@ begin
   for mUnit in AUnits do
   begin
     if mUnit.Library_ or (mUnit.FileName = '') or SameFileName(mUnit.FileName, AFileName) then
+    begin
       Continue;
+    end;
     if mIsInclude then
     begin
       for mInclude in mUnit.Includes do
+      begin
         if SameFileName(mInclude, AFileName) then
         begin
           Result := Result + [mUnit.FileName];
           Break;
         end;
+      end;
       Continue;
     end;
     for mUsed in mUnit.InterfaceUses + mUnit.ImplementationUses do
+    begin
       if SameText(mUsed, mName) then
       begin
         Result := Result + [mUnit.FileName];
         Break;
       end;
+    end;
   end;
 end;
 

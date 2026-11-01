@@ -528,33 +528,57 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = ConstantExpressionErrorRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, ConstantExpressionErrorRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = DefaultParameterInvalidRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, DefaultParameterInvalidRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = SignedUnsignedMixRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, SignedUnsignedMixRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = NarrowingAssignmentRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, NarrowingAssignmentRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = TypedConstantModifiedRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, TypedConstantModifiedRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = StringLengthLimitRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, StringLengthLimitRuleId);
 end;
 
@@ -568,7 +592,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -583,13 +609,17 @@ var
 begin
   Edits := Copy(AFix.Edits);
   for Index := 0 to High(Edits) do
+  begin
     for Inner := Index + 1 to High(Edits) do
+    begin
       if OffsetIn(AText, Edits[Inner].Range.StartPos) > OffsetIn(AText, Edits[Index].Range.StartPos) then
       begin
         Swap := Edits[Index];
         Edits[Index] := Edits[Inner];
         Edits[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index := 0 to High(Edits) do
   begin
@@ -989,7 +1019,9 @@ var
 begin
   Result := '';
   for Finding in AFindings do
+  begin
     Result := Result + Finding.Message + #10;
+  end;
 end;
 
 procedure TTypedConstantModifiedTests.IssueExampleWithFix;
@@ -1069,7 +1101,9 @@ begin
     begin
       Result := SameText(AFileName, AName);
       if Result then
+      begin
         AData := TEncoding.UTF8.GetBytes(AText);
+      end;
     end;
 end;
 

@@ -108,18 +108,26 @@ class function TStepCalls.ReceiverOf(ACallee: TSyntaxNode): TSyntaxNode;
 begin
   Result := nil;
   if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.MemberAccess) or (ACallee.ChildCount = 0) then
+  begin
     Exit;
+  end;
   if IsGeneric(ACallee) then
-    Result := ReceiverOf(ACallee[0])
+  begin
+    Result := ReceiverOf(ACallee[0]);
+  end
   else
+  begin
     Result := ACallee[0];
+  end;
 end;
 
 class function TStepCalls.NamePosition(ACallee: TSyntaxNode; out APosition: TTextPosition): Boolean;
 begin
   Result := False;
   if ACallee = nil then
+  begin
     Exit;
+  end;
   case ACallee.Kind of
     TSyntaxKind.Identifier, TSyntaxKind.InheritedExpr:
       begin
@@ -128,7 +136,9 @@ begin
       end;
     TSyntaxKind.MemberAccess:
       if IsGeneric(ACallee) then
-        Result := NamePosition(ACallee[0], APosition)
+      begin
+        Result := NamePosition(ACallee[0], APosition);
+      end
       else if (ACallee.Name <> '') and (ACallee.EndPos.Character >= Length(ACallee.Name)) then
       begin
         // Der Name steht am Ende des Knotens (A.B: B endet mit dem Knoten).
@@ -156,15 +166,21 @@ end;
 class procedure TStepCalls.VisitReceiver(ACallee: TSyntaxNode; var ASites: TArray<TStepCallSite>);
 begin
   if ACallee = nil then
+  begin
     Exit;
+  end;
   case ACallee.Kind of
     TSyntaxKind.Identifier, TSyntaxKind.InheritedExpr:
       ;
     TSyntaxKind.MemberAccess:
       if IsGeneric(ACallee) then
-        VisitReceiver(ACallee[0], ASites)
+      begin
+        VisitReceiver(ACallee[0], ASites);
+      end
       else if ACallee.ChildCount > 0 then
+      begin
         Visit(ACallee[0], ASites);
+      end;
   else
     Visit(ACallee, ASites);
   end;
@@ -175,15 +191,21 @@ var
   Index: Integer;
 begin
   if ANode = nil then
+  begin
     Exit;
+  end;
   case ANode.Kind of
     TSyntaxKind.Call:
       begin
         if ANode.ChildCount = 0 then
+        begin
           Exit;
+        end;
         VisitReceiver(ANode[0], ASites);
         for Index := 1 to ANode.ChildCount - 1 do
+        begin
           Visit(ANode[Index], ASites);
+        end;
         AddSite(ASites, ANode, ANode[0], False, True);
       end;
     TSyntaxKind.Identifier, TSyntaxKind.InheritedExpr:
@@ -196,10 +218,14 @@ begin
     TSyntaxKind.IndexAccess:
       begin
         if ANode.ChildCount = 0 then
+        begin
           Exit;
+        end;
         VisitReceiver(ANode[0], ASites);
         for Index := 1 to ANode.ChildCount - 1 do
+        begin
           Visit(ANode[Index], ASites);
+        end;
         // Liste[i] bzw. Kunde.Items[i]: Getter der indizierten oder der Default-Property.
         AddSite(ASites, ANode, ANode[0], False, False);
       end;
@@ -208,8 +234,12 @@ begin
       ;
   else
     for Index := 0 to ANode.ChildCount - 1 do
+    begin
       if ANode[Index].Kind in ExpressionKinds then
+      begin
         Visit(ANode[Index], ASites);
+      end;
+    end;
   end;
 end;
 
@@ -230,7 +260,9 @@ begin
       begin
         VisitReceiver(ATarget[0], ASites);
         for Index := 1 to ATarget.ChildCount - 1 do
+        begin
           Visit(ATarget[Index], ASites);
+        end;
         AddSite(ASites, ATarget, ATarget[0], True, False);
       end;
   else
@@ -249,9 +281,13 @@ begin
   begin
     // Rechte Seite zuerst, dann das Ziel (Empfänger, Setter).
     if AStatement.ChildCount > 1 then
+    begin
       Visit(AStatement[1], ASites);
+    end;
     if AStatement.ChildCount > 0 then
+    begin
       VisitTarget(AStatement[0], ASites);
+    end;
     Exit;
   end;
   for Index := 0 to AStatement.ChildCount - 1 do
@@ -260,21 +296,29 @@ begin
     if Child.Kind in ExpressionKinds then
     begin
       if not APartial or ((Child.StartPos.Line <= ALine) and (Child.EndPos.Line >= ALine)) then
+      begin
         Visit(Child, ASites);
+      end;
     end
     else if APartial then
-      Continue
+    begin
+      Continue;
+    end
     else if Child.Kind in StatementKinds then
     begin
       // Nur, was in derselben Zeile beginnt: if A then B; zählt B mit.
       if Child.StartPos.Line = AStatement.StartPos.Line then
+      begin
         CollectStatement(Child, ALine, False, ASites);
+      end;
     end
     else if Child.Kind in [TSyntaxKind.Block, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse, TSyntaxKind.ExceptBlock,
       TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptionHandler] then
     begin
       if Child.StartPos.Line = AStatement.StartPos.Line then
+      begin
         CollectStatement(Child, ALine, False, ASites);
+      end;
     end;
   end;
 end;
@@ -287,7 +331,9 @@ begin
   AStatement.FollowLine := -1;
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Starting := nil;
   Containing := nil;
   ATree.Root.Walk(
@@ -295,12 +341,16 @@ begin
     begin
       Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
       if not Result then
+      begin
         Exit;
+      end;
       if ANode.Kind in StatementKinds then
       begin
         // Vorordnung: Die erste, die in der Zeile beginnt, ist die äußerste.
         if (Starting = nil) and (ANode.StartPos.Line = ALine) then
+        begin
           Starting := ANode;
+        end;
         Containing := ANode;
       end;
     end);
@@ -325,7 +375,9 @@ begin
     CollectStatement(Containing, ALine, not (Containing.Kind in SimpleKinds), AStatement.Sites);
   end
   else
+  begin
     Exit;
+  end;
   AStatement.FollowLine := FollowLine(AStatement.Node);
   Result := True;
 end;
@@ -336,14 +388,20 @@ var
 begin
   Result := nil;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if ANode[Index].Kind in StatementKinds then
-      Exit(ANode[Index])
+    begin
+      Exit(ANode[Index]);
+    end
     else if ANode[Index].Kind = TSyntaxKind.Block then
     begin
       Result := FirstStatement(ANode[Index]);
       if Result <> nil then
+      begin
         Exit;
+      end;
     end;
+  end;
 end;
 
 class function TStepCalls.NextStatement(ANode: TSyntaxNode): TSyntaxNode;
@@ -354,26 +412,38 @@ begin
   Result := nil;
   Parent := ANode.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   Own := -1;
   for Index := 0 to Parent.ChildCount - 1 do
+  begin
     if Parent[Index] = ANode then
     begin
       Own := Index;
       Break;
     end;
+  end;
   if Own < 0 then
+  begin
     Exit;
+  end;
   for Index := Own + 1 to Parent.ChildCount - 1 do
+  begin
     if Parent[Index].Kind in StatementKinds then
-      Exit(Parent[Index])
+    begin
+      Exit(Parent[Index]);
+    end
     else if Parent[Index].Kind = TSyntaxKind.Block then
     begin
       // begin … end als Anweisung: seine erste Anweisung, sonst weiter.
       Result := FirstStatement(Parent[Index]);
       if Result <> nil then
+      begin
         Exit;
+      end;
     end;
+  end;
 end;
 
 class function TStepCalls.FollowLine(AStatement: TSyntaxNode): Integer;
@@ -396,16 +466,22 @@ begin
     end;
     Next := NextStatement(Current);
     if Next <> nil then
+    begin
       Exit(Next.StartPos.Line);
+    end;
     case Parent.Kind of
       TSyntaxKind.Block:
         if (Parent.Parent <> nil) and (Parent.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod])
         then
+        begin
           // Ende der Routine: Ihr end trägt Code (Aufräumen, Rücksprung).
           Exit(Parent.EndPos.Line);
+        end;
       TSyntaxKind.RepeatStatement:
         if (Parent.ChildCount > 0) and (Parent[Parent.ChildCount - 1].Kind in ExpressionKinds) then
+        begin
           Exit(Parent[Parent.ChildCount - 1].StartPos.Line);
+        end;
       TSyntaxKind.TryStatement:
         begin
           // Ende des try-Teils: Der finally-Teil läuft als Nächstes.
@@ -414,7 +490,9 @@ begin
           begin
             Next := FirstStatement(Part);
             if Next <> nil then
+            begin
               Exit(Next.StartPos.Line);
+            end;
           end;
         end;
       TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection:

@@ -87,9 +87,15 @@ begin
   // OnXyz, BeforeXyz oder AfterXyz mit einem Bezeichner als Wert.
   Result := IsEventName(Name) and (Value <> '') and CharInSet(Value[1], ['A'..'Z', 'a'..'z', '_']);
   if Result then
+  begin
     for Index := 2 to Length(Value) do
+    begin
       if not CharInSet(Value[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 { TDfmObject }

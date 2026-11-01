@@ -49,10 +49,16 @@ begin
   Context := TRttiContext.Create;
   try
     for Attribute in Context.GetType(TBeispiel).GetAttributes do
+    begin
       if Attribute is AtlasDebugDisplayAttribute then
-        Template := AtlasDebugDisplayAttribute(Attribute).Template
+      begin
+        Template := AtlasDebugDisplayAttribute(Attribute).Template;
+      end
       else if Attribute is AtlasDebugChildrenAttribute then
+      begin
         Names := AtlasDebugChildrenAttribute(Attribute).Names;
+      end;
+    end;
   finally
     Context.Free;
   end;

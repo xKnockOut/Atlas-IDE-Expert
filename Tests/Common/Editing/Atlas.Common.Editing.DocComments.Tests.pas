@@ -82,11 +82,13 @@ begin
   Result := nil;
   Start := 1;
   for Index := 1 to Length(AText) + 1 do
+  begin
     if (Index > Length(AText)) or (AText[Index] = #10) then
     begin
       Result := Result + [Copy(AText, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
 end;
 
 function Joined(const ALines: TArray<string>): string;
@@ -95,7 +97,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + '|';
+  end;
 end;
 
 function SkeletonAt(ALine: Integer): string;

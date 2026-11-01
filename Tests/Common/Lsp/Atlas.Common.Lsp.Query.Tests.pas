@@ -289,11 +289,17 @@ function ReadWorkFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, cHauptFile) then
-    AText := cHaupt
+  begin
+    AText := cHaupt;
+  end
   else if SameText(AFileName, cWerkzeugFile) then
-    AText := cWerkzeug
+  begin
+    AText := cWerkzeug;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 procedure TLspQueryTests.CallsFromCallHierarchy;

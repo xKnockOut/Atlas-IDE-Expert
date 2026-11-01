@@ -143,7 +143,9 @@ begin
   Result.Category := TExpressionTypes.CategoryOf(AName, mWidth, mSigned);
   Result.Kind := TValueKind.Builtin;
   if Result.Category in [TExpressionCategory.Unknown, TExpressionCategory.Other] then
+  begin
     Result.Kind := TValueKind.Other;
+  end;
 end;
 
 class function TValueType.Create(const AName: string; ACategory: TExpressionCategory; AKind: TValueKind): TValueType;
@@ -163,22 +165,30 @@ var
 begin
   Result := False;
   if not ATarget.Known or not ASource.Known then
+  begin
     Exit;
+  end;
   mSourceDecided := IsDecided(ASource);
   // Klassen, Interfaces und Aufzählungen haben keine Umwandlung in eingebaute Typen (Records schon: Implicit).
   mSourceObject := ASource.Kind in [TValueKind.ClassLike, TValueKind.Enum];
   if not mSourceDecided and not mSourceObject then
+  begin
     Exit;
+  end;
   mSource := ASource.Category;
   if not mSourceDecided then
+  begin
     mSource := TExpressionCategory.Other;
+  end;
   case ATarget.Kind of
     TValueKind.Builtin:
       begin
         if mSourceObject then
+        begin
           Exit(ATarget.Category in [TExpressionCategory.Integer_, TExpressionCategory.Float,
             TExpressionCategory.Currency_, TExpressionCategory.Boolean_, TExpressionCategory.Char_,
             TExpressionCategory.String_]);
+        end;
         case ATarget.Category of
           TExpressionCategory.Integer_:
             Result := mSource in [TExpressionCategory.Float, TExpressionCategory.Currency_,
@@ -227,15 +237,23 @@ var
 begin
   Result := TOperatorFit.Unknown;
   if not IsDecided(ALeft) or not IsDecided(ARight) then
+  begin
     Exit;
+  end;
   if not MatchStr(AOperator, ['+', '-', '*', '/', 'div', 'mod', 'and', 'or', 'xor', 'shl', 'shr']) then
+  begin
     Exit;
+  end;
   // Zeiger und nil: Zeigerarithmetik hängt an {$POINTERMATH}.
   if (ALeft.Category in [TExpressionCategory.Pointer_, TExpressionCategory.Nil_]) or
     (ARight.Category in [TExpressionCategory.Pointer_, TExpressionCategory.Nil_]) then
+  begin
     Exit;
+  end;
   if not OperatorDefined(AOperator, ALeft.Category) or not OperatorDefined(AOperator, ARight.Category) then
+  begin
     Exit(TOperatorFit.NotApplicable);
+  end;
   if IsNumeric(ALeft.Category) and IsNumeric(ARight.Category) then
   begin
     // div, mod, and … nur mit Ganzzahlen; die Gleitkommaseite ist oben schon ausgeschieden.
@@ -243,13 +261,19 @@ begin
     Exit;
   end;
   if (ALeft.Category = TExpressionCategory.Boolean_) and (ARight.Category = TExpressionCategory.Boolean_) then
+  begin
     Exit(TOperatorFit.Fits);
+  end;
   if IsText(ALeft.Category) and IsText(ARight.Category) then
+  begin
     Exit(TOperatorFit.Fits);
+  end;
   // string + Integer: + ist für beide definiert, aber nicht zusammen (wie E2010). Char + Integer bleibt offen.
   if (AOperator = '+') and (((ALeft.Category = TExpressionCategory.String_) and IsNumeric(ARight.Category)) or
     (IsNumeric(ALeft.Category) and (ARight.Category = TExpressionCategory.String_))) then
+  begin
     Exit(TOperatorFit.Incompatible);
+  end;
   if (ALeft.Category = TExpressionCategory.Set_) and (ARight.Category = TExpressionCategory.Set_) then
   begin
     // Mengen aus Zahlen und aus Zeichen: [1] + ['a'] (wie E2010).
@@ -259,7 +283,9 @@ begin
       (mLeftElement.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_]) and
       (mRightElement.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_]) and
       (mLeftElement.Category <> mRightElement.Category) then
+    begin
       Exit(TOperatorFit.Incompatible);
+    end;
     Exit(TOperatorFit.Fits);
   end;
   // Übrige Mischungen (Integer and Boolean, Menge + Zahl): offen.
@@ -269,29 +295,41 @@ class function TTypeCompatibility.UnaryNotApplicable(const AOperator: string; co
 begin
   Result := False;
   if not IsDecided(AOperand) then
+  begin
     Exit;
+  end;
   if SameText(AOperator, 'not') then
+  begin
     Result := AOperand.Category in [TExpressionCategory.Float, TExpressionCategory.Currency_,
-      TExpressionCategory.Char_, TExpressionCategory.String_, TExpressionCategory.Set_]
+      TExpressionCategory.Char_, TExpressionCategory.String_, TExpressionCategory.Set_];
+  end
   else if (AOperator = '-') or (AOperator = '+') then
+  begin
     Result := AOperand.Category in [TExpressionCategory.Boolean_, TExpressionCategory.Char_,
       TExpressionCategory.String_, TExpressionCategory.Set_];
+  end;
 end;
 
 class function TTypeCompatibility.VarParamDiffers(const AFormal, AActual: TValueType): Boolean;
 begin
   Result := False;
   if not IsDecided(AFormal) or not IsDecided(AActual) then
+  begin
     Exit;
+  end;
   if not (AFormal.Category in [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_,
     TExpressionCategory.Boolean_, TExpressionCategory.Char_, TExpressionCategory.String_]) or
     not (AActual.Category in [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_,
     TExpressionCategory.Boolean_, TExpressionCategory.Char_, TExpressionCategory.String_]) then
+  begin
     Exit;
+  end;
   // Nur eingebaute Namen: Ein Alias TFloat = Single ist derselbe Typ wie Single, TZahl = type Integer ein anderer.
   if PlatformDependent(AFormal.Name) or PlatformDependent(AActual.Name) or
     (FromBuiltinKind(AFormal.Name) <> TValueKind.Builtin) or (FromBuiltinKind(AActual.Name) <> TValueKind.Builtin) then
+  begin
     Exit;
+  end;
   Result := not TTypeIdentity.Same(AFormal.Name, AActual.Name);
 end;
 
@@ -301,7 +339,9 @@ var
 begin
   mName := AName;
   if StartsText('System.', mName) then
+  begin
     mName := Copy(mName, 8, MaxInt);
+  end;
   Result := MatchText(mName, cPlatformTypes);
 end;
 
@@ -314,7 +354,9 @@ class function TTypeCompatibility.SetElement(const ASetName: string): string;
 begin
   Result := '';
   if StartsText('set of ', ASetName) then
+  begin
     Result := Trim(Copy(ASetName, 8, MaxInt));
+  end;
 end;
 
 end.

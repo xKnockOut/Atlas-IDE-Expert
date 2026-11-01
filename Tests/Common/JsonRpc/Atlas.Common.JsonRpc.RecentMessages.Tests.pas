@@ -71,7 +71,9 @@ var
 begin
   mRecent := TJsonRpcRecentMessages.Create;
   for mIndex := 1 to TJsonRpcRecentMessages.Capacity + 5 do
+  begin
     AddJson(mRecent, Format('{"method":"m%d"}', [mIndex]));
+  end;
   mLast := mRecent.Last(1000);
   Assert.AreEqual(TJsonRpcRecentMessages.Capacity, Integer(Length(mLast)));
   Assert.AreEqual('{"method":"m6"}', mLast[0]);
@@ -104,7 +106,9 @@ begin
   mValue := mArray;
   try
     for mIndex := 1 to 500 do
+    begin
       mArray.Add('abc');
+    end;
     mText := TJsonRpcRecentMessages.Shortened(mValue, 200, 100);
   finally
     mValue.Free;
@@ -153,7 +157,9 @@ var
 begin
   mRecent := TJsonRpcRecentMessages.Create;
   for mIndex := 1 to TJsonRpcRecentMessages.Capacity + 1 do
+  begin
     AddJson(mRecent, Format('{"id":%d,"method":"m"}', [mIndex]));
+  end;
   Assert.IsFalse(mRecent.FindRequest('1', mMethod, mParams));
   Assert.IsTrue(mRecent.FindRequest('2', mMethod, mParams));
 end;

@@ -53,13 +53,21 @@ function TextOf(const AFileName: string; out AText_: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, AFile) then
-    AText_ := AText
+  begin
+    AText_ := AText;
+  end
   else if SameText(AFileName, BFile) then
-    AText_ := BText
+  begin
+    AText_ := BText;
+  end
   else if SameText(AFileName, CFile) then
-    AText_ := CText
+  begin
+    AText_ := CText;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 function NewIndex: ISymbolIndex;

@@ -57,9 +57,13 @@ const
 class function TUnitTemplates.InstanceName(const AClassName: string): string;
 begin
   if (Length(AClassName) > 1) and CharInSet(AClassName[1], ['T', 't']) then
-    Result := Copy(AClassName, 2, MaxInt)
+  begin
+    Result := Copy(AClassName, 2, MaxInt);
+  end
   else
+  begin
     Result := AClassName;
+  end;
 end;
 
 class function TUnitTemplates.DefaultAncestor(AKind: TFormKind): string;
@@ -81,13 +85,21 @@ var
 begin
   Ancestor := AAncestor;
   if Ancestor = '' then
+  begin
     Ancestor := DefaultAncestor(AKind);
+  end;
   if AKind = TFormKind.DataModule then
-    UsesList := DataModuleUses
+  begin
+    UsesList := DataModuleUses;
+  end
   else
+  begin
     UsesList := StringReplace(FormUses, '|', ALineBreak, []);
+  end;
   if AAncestorUnit <> '' then
+  begin
     UsesList := UsesList + ',' + ALineBreak + '  ' + AAncestorUnit;
+  end;
   Result := 'unit ' + AUnitName + ';' + ALineBreak + ALineBreak +
     'interface' + ALineBreak + ALineBreak +
     'uses' + ALineBreak + '  ' + UsesList + ';' + ALineBreak + ALineBreak +
@@ -97,8 +109,10 @@ begin
     '  public' + ALineBreak + '    { Public-Deklarationen }' + ALineBreak +
     '  end;' + ALineBreak + ALineBreak;
   if AGlobalVariable then
+  begin
     Result := Result + 'var' + ALineBreak + Format('  %s: %s;', [InstanceName(AClassName), AClassName]) +
       ALineBreak + ALineBreak;
+  end;
   Result := Result + 'implementation' + ALineBreak + ALineBreak + '{$R *.dfm}' + ALineBreak + ALineBreak +
     'end.' + ALineBreak;
 end;
@@ -110,9 +124,13 @@ var
 begin
   Name := InstanceName(AClassName);
   if AInherited then
-    Result := Format('inherited %s: %s', [Name, AClassName]) + ALineBreak
+  begin
+    Result := Format('inherited %s: %s', [Name, AClassName]) + ALineBreak;
+  end
   else
+  begin
     Result := Format('object %s: %s', [Name, AClassName]) + ALineBreak;
+  end;
   // Geerbte Formulare übernehmen alle Werte vom Vorfahren.
   if not AInherited then
     case AKind of
@@ -136,7 +154,9 @@ var
 begin
   UsesList := 'System.SysUtils, System.Classes';
   if AAncestorUnit <> '' then
+  begin
     UsesList := UsesList + ', ' + AAncestorUnit;
+  end;
   Result := 'unit ' + AUnitName + ';' + ALineBreak + ALineBreak +
     'interface' + ALineBreak + ALineBreak +
     'uses' + ALineBreak + '  ' + UsesList + ';' + ALineBreak + ALineBreak +
@@ -163,18 +183,24 @@ begin
   Tokens := TPascalLexer.Tokenize(AText);
   Semicolon := -1;
   for Index := 0 to High(Tokens) do
+  begin
     if Tokens[Index].IsKeyword('uses') then
     begin
       for Next := Index + 1 to High(Tokens) do
+      begin
         if Tokens[Next].IsSymbol(';') then
         begin
           Semicolon := Next;
           Break;
         end;
+      end;
       Break;
     end;
+  end;
   if Semicolon < 0 then
+  begin
     Exit(False);
+  end;
   case AKind of
     TFormKind.Frame:
       Comment := Format('{%s: TFrame}', [TUnitTemplates.InstanceName(AClassName)]);
@@ -187,7 +213,9 @@ begin
     Format(',%s  %s in %s %s', [LB, AUnitName, QuotedStr(AFileName), Comment]))];
   // Frames erzeugt die Anwendung nicht automatisch.
   if AKind <> TFormKind.Frame then
+  begin
     for Index := 0 to High(Tokens) - 2 do
+    begin
       if SameText(Tokens[Index].Text, 'Application') and Tokens[Index + 1].IsSymbol('.') and
         SameText(Tokens[Index + 2].Text, 'Run') then
       begin
@@ -196,6 +224,8 @@ begin
           StringOfChar(' ', Tokens[Index].StartPos.Character)]))];
         Break;
       end;
+    end;
+  end;
   Result := True;
 end;
 
@@ -214,13 +244,16 @@ begin
   // Packages führen ihre Units unter contains, Programme unter uses.
   List := 'uses';
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
       SameText(Tokens[Index].Text, 'contains') then
     begin
       List := 'contains';
       Break;
     end;
+  end;
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
       SameText(Tokens[Index].Text, List) then
     begin
@@ -232,7 +265,9 @@ begin
         if Tokens[Next].IsSymbol(';') or Tokens[Next].IsSymbol(',') then
         begin
           if SameText(Name, AUnitName) then
+          begin
             Exit(False);
+          end;
           Name := '';
           InName := True;
           if Tokens[Next].IsSymbol(';') then
@@ -242,16 +277,25 @@ begin
           end;
         end
         else if Tokens[Next].IsKeyword('in') then
-          InName := False
+        begin
+          InName := False;
+        end
         else if InName and (Tokens[Next].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
-          Name := Name + Tokens[Next].Text
+        begin
+          Name := Name + Tokens[Next].Text;
+        end
         else if InName and Tokens[Next].IsSymbol('.') then
+        begin
           Name := Name + '.';
+        end;
       end;
       Break;
     end;
+  end;
   if Semicolon < 0 then
+  begin
     Exit(False);
+  end;
   AEdit := TTextEdit.Create(TTextRange.Create(Tokens[Semicolon].StartPos, Tokens[Semicolon].StartPos),
     Format(',%s  %s in %s', [LB, AUnitName, QuotedStr(AFileName)]));
   Result := True;
@@ -268,18 +312,23 @@ begin
   Lines := AText.Split([LB]);
   Last := -1;
   for Index := 0 to High(Lines) do
+  begin
     if Pos('<DCCReference ', Lines[Index]) > 0 then
     begin
       Last := Index;
       // Mehrzeiliger Eintrag: bis zum schließenden Tag.
       while (Last < High(Lines)) and not EndsText('/>', TrimRight(Lines[Last])) and
         (Pos('</DCCReference>', Lines[Last]) = 0) do
+      begin
         Inc(Last);
+      end;
     end;
+  end;
   if Last < 0 then
   begin
     // Projekt ohne Units (Konsolenprogramm): vor die erste BuildConfiguration im selben ItemGroup.
     for Index := 0 to High(Lines) do
+    begin
       if Pos('<BuildConfiguration ', Lines[Index]) > 0 then
       begin
         Indent := Copy(Lines[Index], 1, Pos('<', Lines[Index]) - 1);
@@ -287,18 +336,23 @@ begin
           Format('%s<DCCReference Include="%s"/>', [Indent, AFileName]) + LB);
         Exit(True);
       end;
+    end;
     Exit(False);
   end;
   Indent := Copy(Lines[Last], 1, Pos('<', Lines[Last]) - 1);
   if not AWithForm then
-    Text := Format('%s<DCCReference Include="%s"/>', [Indent, AFileName])
+  begin
+    Text := Format('%s<DCCReference Include="%s"/>', [Indent, AFileName]);
+  end
   else
   begin
     Text := Format('%s<DCCReference Include="%s">', [Indent, AFileName]) + LB +
       Format('%s    <Form>%s</Form>', [Indent, TUnitTemplates.InstanceName(AClassName)]);
     if AKind <> TFormKind.Form then
+    begin
       Text := Text + LB + Format('%s    <FormType>dfm</FormType>', [Indent]) + LB +
         Format('%s    <DesignClass>%s</DesignClass>', [Indent, TUnitTemplates.DefaultAncestor(AKind)]);
+    end;
     Text := Text + LB + Indent + '</DCCReference>';
   end;
   AEdit := TTextEdit.Create(TTextRange.Create(Last, Length(Lines[Last]), Last, Length(Lines[Last])), LB + Text);

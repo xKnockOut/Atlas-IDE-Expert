@@ -33,8 +33,12 @@ var
 begin
   Result := '?';
   for Index := 0 to High(ATokens) do
+  begin
     if ATokens[Index].Text = AText then
+    begin
       Exit(TConditionalBranches.PathAt(APaths, Index));
+    end;
+  end;
 end;
 
 procedure TConditionalBranchesTests.PathsPerToken;

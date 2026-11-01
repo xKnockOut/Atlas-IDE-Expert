@@ -129,7 +129,9 @@ begin
   FLock := TObject.Create;
   FMessages := TObjectList<TJSONObject>.Create(True);
   for mMessage in AMessages do
+  begin
     FMessages.Add(mMessage);
+  end;
   FRequestIndex := ARequestIndex;
   FAnswerMs := AAnswerMs;
   FAnswered := TEvent.Create(nil, True, False, '');
@@ -162,7 +164,9 @@ begin
       System.TMonitor.Exit(FLock);
     end;
     if (mOpen <= 0) and (TThread.GetTickCount64 - mLast >= TShellReplay.SettleQuietMs) then
+    begin
       Exit;
+    end;
     TThread.Sleep(100);
   end;
 end;
@@ -179,12 +183,18 @@ begin
     System.TMonitor.Exit(FLock);
   end;
   if mIndex >= FMessages.Count then
+  begin
     raise EJsonRpcTransportClosed.Create('Nachstellen beendet');
+  end;
   if mIndex = FRequestIndex then
+  begin
     Settle;
+  end;
   // Nach der Anfrage erst weiter, wenn sie beantwortet ist (oder die Zeit abläuft): shutdown käme sonst zu früh.
   if mIndex = FRequestIndex + 1 then
+  begin
     FAnswered.WaitFor(FAnswerMs);
+  end;
   Result := TJSONObject(FMessages[mIndex].Clone);
 end;
 
@@ -193,14 +203,18 @@ var
   mId, mValue, mKind: TJSONValue;
 begin
   if AMessage = nil then
+  begin
     Exit;
+  end;
   mId := AMessage.GetValue('id');
   if (mId is TJSONString) and (mId.Value = cRequestId) and (AMessage.GetValue('method') = nil) then
   begin
     System.TMonitor.Enter(FLock);
     try
       if FAnswer = nil then
+      begin
         FAnswer := TJSONObject(AMessage.Clone);
+      end;
     finally
       System.TMonitor.Exit(FLock);
     end;
@@ -216,7 +230,9 @@ begin
     begin
       mValue := TJSONObject(mValue).GetValue('value');
       if mValue is TJSONObject then
+      begin
         mKind := TJSONObject(mValue).GetValue('kind');
+      end;
     end;
     System.TMonitor.Enter(FLock);
     try
@@ -224,9 +240,13 @@ begin
       if mKind is TJSONString then
       begin
         if mKind.Value = 'begin' then
-          Inc(FOpenProgress)
+        begin
+          Inc(FOpenProgress);
+        end
         else if mKind.Value = 'end' then
+        begin
           Dec(FOpenProgress);
+        end;
       end;
     finally
       System.TMonitor.Exit(FLock);
@@ -252,9 +272,13 @@ var
   mPlace: string;
 begin
   if Original then
-    mPlace := 'mit den Projekten des Absturzes'
+  begin
+    mPlace := 'mit den Projekten des Absturzes';
+  end
   else
+  begin
     mPlace := 'isoliert';
+  end;
   case Outcome of
     TReplayOutcome.Reproduced:
       Result := 'reproduziert (' + mPlace + '): ' + Detail;
@@ -272,10 +296,14 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('jsonrpc', TJsonRpcMessages.Version);
   if AId <> '' then
+  begin
     Result.AddPair('id', AId);
+  end;
   Result.AddPair('method', AMethod);
   if AParams <> nil then
+  begin
     Result.AddPair('params', AParams);
+  end;
 end;
 
 /// <summary>Ersetzt in AValue jede Zeichenkette AFrom durch ATo (Uri der Anfrage).</summary>
@@ -289,6 +317,7 @@ begin
   begin
     mObject := TJSONObject(AValue);
     for mIndex := mObject.Count - 1 downto 0 do
+    begin
       if (mObject.Pairs[mIndex].JsonValue is TJSONString) and
         not (mObject.Pairs[mIndex].JsonValue is TJSONNumber) and
         SameText(mObject.Pairs[mIndex].JsonValue.Value, AFrom) then
@@ -298,11 +327,18 @@ begin
         mObject.AddPair(mName, ATo);
       end
       else
+      begin
         ReplaceStrings(mObject.Pairs[mIndex].JsonValue, AFrom, ATo);
+      end;
+    end;
   end
   else if AValue is TJSONArray then
+  begin
     for mIndex := 0 to TJSONArray(AValue).Count - 1 do
+    begin
       ReplaceStrings(TJSONArray(AValue).Items[mIndex], AFrom, ATo);
+    end;
+  end;
 end;
 
 function IsolatedInitialize(const AFolder: string; const AOriginal: TJSONValue): TJSONObject;
@@ -323,11 +359,17 @@ begin
   // Fähigkeiten des Clients wie beim Absturz (Pull-Diagnosen, Fortschritt, Markdown), ohne seine Projekte.
   mCapabilities := nil;
   if AOriginal is TJSONObject then
+  begin
     mCapabilities := TJSONObject(AOriginal).GetValue('capabilities');
+  end;
   if mCapabilities <> nil then
-    Result.AddPair('capabilities', TJSONValue(mCapabilities.Clone))
+  begin
+    Result.AddPair('capabilities', TJSONValue(mCapabilities.Clone));
+  end
   else
+  begin
     Result.AddPair('capabilities', TJSONObject.Create);
+  end;
 end;
 
 function OriginalInitialize(const AOriginal: TJSONValue): TJSONObject;
@@ -360,17 +402,25 @@ begin
   mCode := 0;
   mValue := TJSONObject(mError).GetValue('code');
   if mValue is TJSONNumber then
+  begin
     mCode := TJSONNumber(mValue).AsInt;
+  end;
   mText := '';
   mValue := TJSONObject(mError).GetValue('message');
   if mValue is TJSONString then
+  begin
     mText := mValue.Value;
+  end;
   ADetail := Format('Fehler %d: %s', [mCode, mText]);
   if ACase.Kind = TCrashCaseKind.Timeout then
-    Result := mCode = TJsonRpcErrorCode.RequestCancelled
+  begin
+    Result := mCode = TJsonRpcErrorCode.RequestCancelled;
+  end
   else
+  begin
     Result := (mCode = TJsonRpcErrorCode.InternalError) and
       ((ACase.ExceptionClass = '') or StartsText(ACase.ExceptionClass + ':', mText));
+  end;
 end;
 
 class function TShellReplay.Run(const ACase: TCrashCase; APlace: TReplayPlace; const ALogger: ILogger;
@@ -392,13 +442,19 @@ begin
   Result.Outcome := TReplayOutcome.Unreadable;
   mLogger := ALogger;
   if mLogger = nil then
+  begin
     mLogger := TLogger.Create;
+  end;
   mInitialize := nil;
   if ACase.Initialize <> '' then
+  begin
     mInitialize := TCrashCases.ParseOrNil(ACase.Initialize);
+  end;
   mParams := nil;
   if ACase.Params <> '' then
+  begin
     mParams := TCrashCases.ParseOrNil(ACase.Params);
+  end;
   mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas' + PathDelim + 'replay' + PathDelim +
     FormatDateTime('yyyymmdd"-"hhnnsszzz', Now) + '-' + IntToStr(Random(1000000)));
   try
@@ -406,8 +462,12 @@ begin
     mSettingsFile := TPath.Combine(mFolder, 'settings.json');
     TFile.WriteAllText(mSettingsFile, '{}', TEncoding.UTF8);
     for mSetting in ACase.Settings do
+    begin
       if SameText(mSetting.Name, 'settings.json') then
+      begin
         TFile.WriteAllText(mSettingsFile, mSetting.Text, TEncoding.UTF8);
+      end;
+    end;
     Result.Original := (APlace = TReplayPlace.Automatic) and (mInitialize is TJSONObject) and
       (ACase.FileName <> '') and TFile.Exists(ACase.FileName);
     mUri := ACase.Uri;
@@ -415,24 +475,40 @@ begin
     begin
       // Eigener Ordner mit Schnappschuss und atlas.json des Falls; die Anfrage zeigt auf die Kopie.
       for mSetting in ACase.Settings do
+      begin
         if SameText(mSetting.Name, 'atlas.json') then
+        begin
           TFile.WriteAllText(TPath.Combine(mFolder, 'atlas.json'), mSetting.Text, TEncoding.UTF8);
+        end;
+      end;
       mFileName := ACase.SnapshotName;
       if mFileName = '' then
+      begin
         mFileName := TCrashCases.BufferName;
+      end;
       mFileName := TPath.Combine(mFolder, mFileName);
       if ACase.HasText then
+      begin
         TFile.WriteAllText(mFileName, ACase.Text, TEncoding.UTF8);
+      end;
       if (mUri <> '') and (mParams <> nil) then
+      begin
         ReplaceStrings(mParams, mUri, TDocumentUris.FromPath(mFileName));
+      end;
       if mUri <> '' then
+      begin
         mUri := TDocumentUris.FromPath(mFileName);
+      end;
     end;
     mMessages := nil;
     if Result.Original then
-      mMessages := mMessages + [NewMessage(cInitializeId, 'initialize', OriginalInitialize(mInitialize))]
+    begin
+      mMessages := mMessages + [NewMessage(cInitializeId, 'initialize', OriginalInitialize(mInitialize))];
+    end
     else
+    begin
       mMessages := mMessages + [NewMessage(cInitializeId, 'initialize', IsolatedInitialize(mFolder, mInitialize))];
+    end;
     mMessages := mMessages + [NewMessage('', 'initialized', TJSONObject.Create)];
     if ACase.HasText and (mUri <> '') then
     begin
@@ -454,9 +530,13 @@ begin
     mAnswer := mTransport.TakeAnswer;
     try
       if Reproduces(ACase, mAnswer, mDetail) then
-        Result.Outcome := TReplayOutcome.Reproduced
+      begin
+        Result.Outcome := TReplayOutcome.Reproduced;
+      end
       else
+      begin
         Result.Outcome := TReplayOutcome.NotReproduced;
+      end;
       Result.Detail := mDetail;
     finally
       mAnswer.Free;

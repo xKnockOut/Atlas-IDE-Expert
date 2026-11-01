@@ -43,7 +43,9 @@ var
 begin
   SetLength(Result, Length(AValues));
   for Index := 0 to High(AValues) do
+  begin
     Result[Index] := AValues[Index];
+  end;
 end;
 
 /// <summary>Kurzer String mit Längenbyte.</summary>
@@ -216,7 +218,9 @@ begin
     S('TButton') + S('Button1') + S('OnClick') + Ident('Button1Click') + B([0, 0]) + B([0]);
   Decoded := '';
   for Index := 0 to High(Bytes) do
+  begin
     Decoded := Decoded + Char(Bytes[Index]);
+  end;
   Document := TDfmParser.Parse(Decoded);
   try
     Assert.AreEqual(0, Integer(Length(Document.Errors)));

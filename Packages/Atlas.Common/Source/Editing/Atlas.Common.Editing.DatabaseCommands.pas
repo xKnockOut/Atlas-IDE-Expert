@@ -42,7 +42,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(AArguments)) and (AArguments[Index] > ' ') do
+  begin
     Inc(Index);
+  end;
   AName := Copy(AArguments, 1, Index - 1);
   ARest := Trim(Copy(AArguments, Index, MaxInt));
   Result := (AName <> '') and IsValidIdent(AName, True);
@@ -56,7 +58,9 @@ var
 begin
   First := AName;
   if Pos('.', First) > 0 then
+  begin
     First := Copy(First, 1, Pos('.', First) - 1);
+  end;
   Types := TDeclaredTypes.Create(ASource.Tree, ASource.Text);
   try
     Result := Types.DeclaredType(First, TTextPosition.Create(ASource.Line, 0));
@@ -65,7 +69,9 @@ begin
   end;
   // Bei DM.Q ist der Typ von DM nicht der der Query.
   if Pos('.', AName) > 0 then
+  begin
     Result := '';
+  end;
 end;
 
 function IsAdo(const ATypeName: string): Boolean;
@@ -77,9 +83,13 @@ end;
 function ParamLine(const AIndent, AName, ATypeName, AParam: string): string;
 begin
   if IsAdo(ATypeName) then
-    Result := Format('%s%s.Parameters.ParamByName(%s).Value := ;', [AIndent, AName, QuotedStr(AParam)])
+  begin
+    Result := Format('%s%s.Parameters.ParamByName(%s).Value := ;', [AIndent, AName, QuotedStr(AParam)]);
+  end
   else
+  begin
     Result := Format('%s%s.ParamByName(%s).Value := ;', [AIndent, AName, QuotedStr(AParam)]);
+  end;
 end;
 
 { /sql }
@@ -92,16 +102,22 @@ var
 begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, Name, Sql) or (Sql = '') then
+  begin
     Exit(Fail('Erwartet werden Query und SQL, z. B. /sql Q select * from Kunde where Nr = :Nr', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if Source.RoutineAt = nil then
+    begin
       Exit(Fail('/sql gilt nur im Rumpf einer Routine', AReason));
+    end;
     Indent := Source.Indent(Source.Line);
     TypeName := TypeOfName(Source, Name);
     Single := Format('%s%s.SQL.Text := %s;', [Indent, Name, TStringLiterals.Quote(Sql)]);
     if Length(Single) <= MaxSqlLine then
-      Lines := [Single]
+    begin
+      Lines := [Single];
+    end
     else
     begin
       // Lange Abfragen: eine Zeile je Klausel, ab Delphi 12 als '''-String, sonst mit sLineBreak.
@@ -111,7 +127,9 @@ begin
       Lines := [Format('%s%s.SQL.Text :=', [Indent, Name]), Literal + ';'];
     end;
     for Param in TSqlText.Params(Sql) do
+    begin
       Lines := Lines + [ParamLine(Indent, Name, TypeName, Param)];
+    end;
     AEdits := [Source.ReplaceWithLines(Lines)];
     Result := True;
   finally
@@ -128,15 +146,21 @@ var
 begin
   Result := TSqlText.FromSource(ASource.Text, AName);
   if (Result <> '') or (AContext.Host = nil) or (AContext.Uri = '') then
+  begin
     Exit;
+  end;
   FileName := TDocumentUris.ToPath(AContext.Uri);
   for Extension in TArray<string>.Create('.dfm', '.fmx') do
+  begin
     if AContext.Host.ReadFile(ChangeFileExt(FileName, Extension), FormText) then
     begin
       Result := TSqlText.FromForm(FormText, AName);
       if Result <> '' then
+      begin
         Exit;
+      end;
     end;
+  end;
 end;
 
 function ExecuteParams(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -149,32 +173,48 @@ var
 begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
+  begin
     Exit(Fail('Erwartet wird eine Query, z. B. /params Q', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit(Fail('/params gilt nur im Rumpf einer Routine', AReason));
+    end;
     Sql := SqlOf(AContext, Source, Name);
     if Sql = '' then
+    begin
       Exit(Fail(Format('Für %s steht kein SQL-Text in der Unit oder Formulardatei', [Name]), AReason));
+    end;
     Params := TSqlText.Params(Sql);
     RoutineText := '';
     for Index := Routine.StartPos.Line to Routine.EndPos.Line do
+    begin
       if Index <> Source.Line then
+      begin
         RoutineText := RoutineText + Source.Lines[Index] + #10;
+      end;
+    end;
     Assigned := TSqlText.AssignedParams(RoutineText, Name);
     Missing := TSqlText.Missing(Params, Assigned);
     Extra := TSqlText.Missing(Assigned, Params);
     if Extra <> nil then
+    begin
       Exit(Fail(Format('Nicht im SQL von %s: %s', [Name, string.Join(', ', Extra)]), AReason));
+    end;
     if Missing = nil then
+    begin
       Exit(Fail(Format('Alle Parameter von %s sind gesetzt', [Name]), AReason));
+    end;
     Indent := Source.Indent(Source.Line);
     TypeName := TypeOfName(Source, Name);
     Lines := nil;
     for Param in Missing do
+    begin
       Lines := Lines + [ParamLine(Indent, Name, TypeName, Param)];
+    end;
     AEdits := [Source.ReplaceWithLines(Lines)];
     Result := True;
   finally
@@ -191,7 +231,9 @@ var
 begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
+  begin
     Exit(Fail('Erwartet wird eine Datenmenge, z. B. /loop Q', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     // Next steht fest am Ende der Schleife: keine Endlosschleife durch ein vergessenes Next.
@@ -214,7 +256,9 @@ var
 begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
+  begin
     Exit(Fail('Erwartet wird eine Verbindung, z. B. /transaction Con', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Routine := Source.RoutineAt;

@@ -351,8 +351,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ATree.Tokens) do
+  begin
     if (ATree.Tokens[Index].StartPos.Line >= ALine) and SameText(ATree.Tokens[Index].Text, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 

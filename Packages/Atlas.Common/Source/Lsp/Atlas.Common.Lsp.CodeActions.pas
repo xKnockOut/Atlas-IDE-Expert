@@ -199,9 +199,13 @@ begin
   Changes := TJSONObject.Create;
   // Nur Edits in anderen Dateien (Formulardatei, #309): das Dokument bleibt unverändert.
   if (AAction.Edits <> nil) or (AAction.FileEdits = nil) then
+  begin
     Changes.AddPair(AUri, EditsToJson(AAction.Edits));
+  end;
   for FileEdits in AAction.FileEdits do
+  begin
     Changes.AddPair(TDocumentUris.FromPath(FileEdits.FileName), EditsToJson(FileEdits.Edits));
+  end;
   WorkspaceEdit := TJSONObject.Create;
   WorkspaceEdit.AddPair('changes', Changes);
   Result := TJSONObject.Create;
@@ -214,25 +218,35 @@ begin
     Command.AddPair('command', AAction.Command);
     Arguments := TJSONArray.Create;
     for Argument in AAction.CommandArguments do
+    begin
       Arguments.Add(Argument);
+    end;
     Command.AddPair('arguments', Arguments);
     Result.AddPair('command', Command);
   end;
   if AAction.IsPreferred then
+  begin
     Result.AddPair('isPreferred', TJSONBool.Create(True));
+  end;
   // Kennung für Clients, die eine bestimmte Aktion suchen (#621), Vorschau vor dem Übernehmen (#663).
   if (AAction.Tag <> '') or (AAction.Preview <> '') then
   begin
     Data := TJSONObject.Create;
     if AAction.Tag <> '' then
+    begin
       Data.AddPair('tag', AAction.Tag);
+    end;
     if AAction.Preview <> '' then
+    begin
       Data.AddPair('preview', AAction.Preview);
+    end;
     Result.AddPair('data', Data);
   end;
   // Hinweis statt Aktion (LSP 3.16 disabled).
   if AAction.Disabled <> '' then
+  begin
     Result.AddPair('disabled', TJSONObject.Create(TJSONPair.Create('reason', AAction.Disabled)));
+  end;
   if AAction.RuleId <> '' then
   begin
     Diagnostic := TJSONObject.Create;
@@ -254,7 +268,9 @@ var
   FileName: string;
 begin
   if not AHasRules or (ARules.Services.Index = nil) then
+  begin
     Exit(nil);
+  end;
   Index := ARules.Services.Index;
   FileName := TDocumentUris.ToPath(AUri);
   Result :=
@@ -299,23 +315,35 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "range" fehlen in ' + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONArray.Create);
+  end;
   Range := TLspPositions.ReadRange(RangeValue);
   if TDfmParser.IsFormFile(TDocumentUris.ToPath(Uri)) then
   begin
     Result := TJSONArray.Create;
     if Assigned(FFormActions) then
+    begin
       for Action in FFormActions(Uri, Document.Text, Range) do
+      begin
         TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+      end;
+    end;
     Exit;
   end;
   Only := nil;
   if TJSONObject(AParams).TryGetValue<TJSONArray>('context.only', OnlyValue) then
+  begin
     for Item in OnlyValue do
+    begin
       Only := Only + [Item.Value];
+    end;
+  end;
   WantsEditing := TCodeActions.KindRequested(QuickFixKind, Only) or TCodeActions.KindRequested(RewriteKind, Only) or
     TCodeActions.KindRequested(ExtractKind, Only);
   // source.* nur auf ausdrückliche Anfrage, nicht bei jeder Cursorbewegung.
@@ -328,23 +356,33 @@ begin
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
   if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) then
+  begin
     HasRules := True;
+  end;
   // Derselbe Regelkontext wie in den Diagnosen (#1112).
   if HasRules then
+  begin
     Findings := TLspSyntaxDiagnostics.RuleFindings(Document.Text, Tree, Rules);
+  end;
   // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Prüfregeln; Schweregrad und Abschalten wie
   // in den Diagnosen.
   if HasRules then
-    Findings := TFileChecker.SyntaxFindings(Tree.Diagnostics, Rules.Settings) + Findings
+  begin
+    Findings := TFileChecker.SyntaxFindings(Tree.Diagnostics, Rules.Settings) + Findings;
+  end
   else
+  begin
     Findings := TFileChecker.SyntaxFindings(Tree.Diagnostics, Default(TServerSettings));
+  end;
   HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
   UsesActions := nil;
   if (WantsEditing or WantsRemoveUnused) and Assigned(FUsesContextFor) and FUsesContextFor(Uri, UsesContext) then
   begin
     Inactive := nil;
     if WantsEditing and Assigned(FDefinesFor) and FDefinesFor(Uri, Defines) then
+    begin
       Inactive := TLspInactiveRegions.Ranges(Document.Text, Defines);
+    end;
     UsesActions := TCodeActions.UsesActions(Document.Text, Tree, Range, UsesContext, Inactive, WantsEditing,
       WantsRemoveUnused);
   end;
@@ -354,24 +392,40 @@ begin
   if WantsEditing then
   begin
     if Assigned(FFormatStyleFor) then
-      Style := FFormatStyleFor(Uri)
+    begin
+      Style := FFormatStyleFor(Uri);
+    end
     else
+    begin
       Style := TFormatStyle.Default;
+    end;
     if Assigned(FRefactoringFor) then
-      Refactoring := FRefactoringFor(Uri)
+    begin
+      Refactoring := FRefactoringFor(Uri);
+    end
     else
+    begin
       Refactoring := TRefactoringSettings.Default;
+    end;
     if Refactoring.TryFinally then
-      RangeActions := TRuleCodeActions.ForRange(Findings, Document.Text, Tree, Range, Style)
+    begin
+      RangeActions := TRuleCodeActions.ForRange(Findings, Document.Text, Tree, Range, Style);
+    end
     else
+    begin
       RangeActions := TRuleCodeActions.ForFindings(Findings, Document.Text, Range);
+    end;
     for Action in RangeActions do
+    begin
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    end;
     // Klassen-Aktionen (#42): Getter/Setter/Feld, Interface-Methoden, Überschreiben.
     if Refactoring.ClassActions then
     begin
       if Assigned(FClassActionContextFor) then
-        ClassContext := FClassActionContextFor(Uri)
+      begin
+        ClassContext := FClassActionContextFor(Uri);
+      end
       else
       begin
         ClassContext := TClassActionContext.Default;
@@ -379,26 +433,38 @@ begin
       end;
       ClassContext.Style := Style;
       for Action in TClassActions.Actions(Document.Text, Tree, Range.StartPos.Line, ClassContext) do
+      begin
         TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+      end;
     end;
     // Felder im Destruktor freigeben (#666): Die Aktion am Feld bringt die Regel mit, wenn sie läuft.
     if Refactoring.FreeFields then
     begin
       FieldIndex := nil;
       if HasRules then
+      begin
         FieldIndex := Rules.Services.Index;
+      end;
       RuleOffersField := False;
       for Finding in Findings do
+      begin
         if (Finding.RuleId = 'field-not-freed') and (Finding.Range.StartPos.Line = Range.StartPos.Line) then
+        begin
           RuleOffersField := True;
+        end;
+      end;
       for Action in TFreeFields.Actions(Tree, Document.Text, FieldIndex, Range.StartPos.Line,
         TFreeFields.StyleOf(Refactoring.FreeFieldsStyle), not RuleOffersField) do
+      begin
         TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+      end;
     end;
   end;
   // Befund als Prompt kopieren (#158): den Text kopiert der Client (Befehl atlas.copyText).
   if WantsEditing then
+  begin
     for Finding in Findings do
+    begin
       if (Finding.Range.StartPos.Line <= Range.EndPos.Line) and (Finding.Range.EndPos.Line >= Range.StartPos.Line) then
       begin
         Action := Default(TCodeAction);
@@ -409,34 +475,56 @@ begin
           TFindingPrompt.SharedCatalog)];
         TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
       end;
+    end;
+  end;
   if HasCompletion then
+  begin
     TJSONArray(Result).AddElement(ActionToJson(Uri, Completion));
+  end;
   if WantsEditing and TCodeActions.SwapAssignments(Document.Text, Range, ReadOnlyCheck(HasRules, Rules, Uri,
     Document.Text), Action) then
+  begin
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  end;
   if WantsEditing then
   begin
     Multiline := False;
     if Assigned(FStringLiteralFor) then
-      LiteralSettings := FStringLiteralFor(Uri, Multiline)
+    begin
+      LiteralSettings := FStringLiteralFor(Uri, Multiline);
+    end
     else
+    begin
       LiteralSettings := TStringLiteralSettings.Default;
+    end;
     for Action in TCodeActions.StringLiteralActions(Document.Text, Range, LiteralSettings, Multiline) do
+    begin
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    end;
   end;
   for Action in UsesActions do
+  begin
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  end;
   // Dokumentationskommentar erzeugen bzw. an die Signatur anpassen (#88), abschaltbar.
   if WantsEditing and (not Assigned(FDocCommentsFor) or FDocCommentsFor(Uri)) then
+  begin
     for Action in TDocComments.Actions(Document.Text, Tree, Range.StartPos.Line) do
+    begin
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    end;
+  end;
   // Klassenmitglieder ordnen (#89).
   if WantsEditing then
   begin
     if Assigned(FMemberOrderFor) then
-      OrderSettings := FMemberOrderFor(Uri)
+    begin
+      OrderSettings := FMemberOrderFor(Uri);
+    end
     else
+    begin
       OrderSettings := TMemberOrderSettings.Default;
+    end;
     if TMemberOrder.Sort(Document.Text, Tree, Range.StartPos.Line, OrderSettings, OrderEdit) then
     begin
       Action := Default(TCodeAction);
@@ -448,12 +536,20 @@ begin
   end;
   if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),
     Action, Assigned(FSortUsesByNamespaceFor) and FSortUsesByNamespaceFor(Uri)) then
+  begin
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  end;
   if WantsFixAll and TRuleCodeActions.FixAll(Findings, Action) then
+  begin
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  end;
   if WantsEditing and Assigned(FExtraActions) then
+  begin
     for Extra in FExtraActions(Uri, Range) do
+    begin
       TJSONArray(Result).AddElement(Extra);
+    end;
+  end;
 end;
 
 end.

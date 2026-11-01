@@ -103,7 +103,9 @@ var
 begin
   Node := ANode;
   while (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) do
+  begin
     Node := Node[0];
+  end;
   Result := Node.Kind = TSyntaxKind.Identifier;
 end;
 
@@ -118,9 +120,13 @@ begin
   begin
     Middle := (Low + High) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High := Middle;
+    end;
   end;
   Result := Low;
 end;
@@ -145,10 +151,14 @@ begin
     begin
       Node := Pending.Pop;
       if AOwnRoutineOnly and (Node <> ARoot) and (Node.Kind = TSyntaxKind.RoutineDecl) then
+      begin
         Continue;
+      end;
       AList.Add(Node);
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -178,13 +188,17 @@ var
 begin
   Result := nil;
   for Node in NodesOf(ARoot, False) do
+  begin
     if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader] then
     begin
       Name := Node.Name;
       if Pos('.', Name) > 0 then
+      begin
         Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+      end;
       Result := Result + [Name];
     end;
+  end;
 end;
 
 /// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor? Iterativ (Bericht M1).</summary>
@@ -202,9 +216,13 @@ begin
     begin
       Node := Pending.Pop;
       if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+      begin
         Exit(True);
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -221,7 +239,9 @@ begin
   Used := TUsesClauses.UsedUnits(ATokens);
   Short := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
   if TUsesClauses.IsUsed(Used, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(Used, Short, nil) then
+  begin
     Exit(False);
+  end;
   Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
 end;
 
@@ -262,8 +282,12 @@ var
     Ancestry := TAncestry.Create(AContext.Index, Local);
     try
       for Symbol in Local.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.ClassType) and Ancestry.DescendsFrom(Symbol.Name, 'TService') then
+        begin
           Exit(True);
+        end;
+      end;
     finally
       Ancestry.Free;
     end;
@@ -279,7 +303,9 @@ var
     begin
       if (Parent.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement]) and (Parent.ChildCount > 0) and
         Mentions(Parent[0], 'IsConsole') then
+      begin
         Exit(True);
+      end;
       Parent := Parent.Parent;
     end;
     Result := False;
@@ -289,17 +315,25 @@ var
   function IsDialog(ACallee: TSyntaxNode): Boolean;
   begin
     if ACallee.Kind = TSyntaxKind.Identifier then
+    begin
       Exit(MatchText(ACallee.Name, DialogRoutines) and not MatchText(ACallee.Name, Declared));
+    end;
     Result := False;
     if (ACallee.Kind <> TSyntaxKind.MemberAccess) or (ACallee.ChildCount <> 1) then
+    begin
       Exit;
+    end;
     // Vcl.Dialogs.ShowMessage, Dialogs.MessageDlg
     if MatchText(ACallee.Name, DialogRoutines) and IsQualifiedName(ACallee[0]) and
       IsName(ACallee[0], 'Dialogs') then
+    begin
       Exit(True);
+    end;
     // Application.MessageBox, auch Vcl.Forms.Application.MessageBox
     if SameText(ACallee.Name, 'MessageBox') and IsQualifiedName(ACallee[0]) and IsName(ACallee[0], 'Application') then
+    begin
       Exit(True);
+    end;
     // TDialogService.ShowMessage
     Result := MatchText(ACallee.Name, DialogServiceMethods) and IsQualifiedName(ACallee[0]) and
       MatchText(ACallee[0].Name, DialogServices);
@@ -323,11 +357,15 @@ var
         begin
           Callee := Node[0];
           if IsDialog(Callee) and not Guarded(Node) then
+          begin
             AReport.Add(NodeRange(Callee), Format('%s %s %s', [NodeText(AContext, Callee), Place, Advice]),
               Confidence);
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -336,20 +374,30 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Kind := AContext.Application;
   // Ohne Projekt nur die .dpr selbst.
   if Kind = TRuleApplicationKind.Unknown then
+  begin
     Kind := TWritelnInGuiAppRule.ApplicationKind('', AContext.Text);
+  end;
   Confidence := TRuleConfidence.High;
   Advice := 'protokollieren statt anzeigen.';
   if (Kind = TRuleApplicationKind.Service) or DeclaresService then
-    Place := 'in einem Windows-Dienst blockiert unsichtbar;'
+  begin
+    Place := 'in einem Windows-Dienst blockiert unsichtbar;';
+  end
   // Units mit Formular zeigen Fenster bewusst, auch in einem Konsolenprogramm oder einer DLL.
   else if AContext.FormText <> '' then
-    Exit
+  begin
+    Exit;
+  end
   else if Kind = TRuleApplicationKind.Console then
-    Place := 'in einem Konsolenprogramm wartet auf einen Klick, wenn das Programm unbeaufsichtigt läuft;'
+  begin
+    Place := 'in einem Konsolenprogramm wartet auf einen Klick, wenn das Programm unbeaufsichtigt läuft;';
+  end
   else if Kind = TRuleApplicationKind.Library_ then
   begin
     // Ob der Host eine Oberfläche hat, weiß nur das aufrufende Programm.
@@ -358,7 +406,9 @@ begin
     Advice := 'protokollieren oder einen Fehler zurückgeben.';
   end
   else
+  begin
     Exit;
+  end;
   Declared := DeclaredRoutines(AContext.Tree.Root);
   Visit(AContext.Tree.Root);
 end;
@@ -409,7 +459,9 @@ var
   begin
     Result := ANode.Parent;
     while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+    begin
       Result := Result.Parent;
+    end;
   end;
 
   // Empfänger.DefaultEncoding := … in der Datei oder Laden mit Kodierung vor ACall in derselben Routine.
@@ -418,18 +470,28 @@ var
     Node, Routine: TSyntaxNode;
   begin
     for Node in NodesOf(AContext.Tree.Root, False) do
+    begin
       if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
         (Node[0].Kind = TSyntaxKind.MemberAccess) and SameText(Node[0].Name, 'DefaultEncoding') and
         (Node[0].ChildCount = 1) and SameText(NodeText(AContext, Node[0][0]), AReceiver) then
+      begin
         Exit(True);
+      end;
+    end;
     Routine := RoutineOf(ACall);
     if Routine <> nil then
+    begin
       // LoadFromFile(Datei, Kodierung) merkt sich die Kodierung für SaveToFile.
       for Node in NodesOf(Routine, True) do
+      begin
         if (Node.Kind = TSyntaxKind.Call) and (Node.StartOffset < ACall.StartOffset) and (Node.ChildCount = 3) and
           (Node[0].Kind = TSyntaxKind.MemberAccess) and StartsText('LoadFrom', Node[0].Name) and
           (Node[0].ChildCount = 1) and SameText(NodeText(AContext, Node[0][0]), AReceiver) then
+        begin
           Exit(True);
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -442,7 +504,9 @@ var
     Last := ACall[ACall.ChildCount - 1];
     Edits := [TRuleEdit.Create(TTextRange.Create(Last.EndPos, Last.EndPos), ', TEncoding.' + Encoding)];
     if UsesEdit(AContext, Tokens, ACall.StartOffset, 'System.SysUtils', Extra) then
+    begin
       Edits := Edits + [Extra];
+    end;
     Result := [TRuleFix.Create(Format('TEncoding.%s ergänzen', [Encoding]), Edits)];
   end;
 
@@ -453,7 +517,9 @@ var
   begin
     Callee := ACall[0];
     if (Callee.Kind <> TSyntaxKind.MemberAccess) or (Callee.ChildCount <> 1) or (ACall.ChildCount <> 2) then
+    begin
       Exit;
+    end;
     Method := Callee.Name;
     if MatchText(Method, ReadAllMethods) and IsQualifiedName(Callee[0]) and IsName(Callee[0], 'TFile') then
     begin
@@ -462,35 +528,51 @@ var
       Exit;
     end;
     if not MatchText(Method, TextFileMethods) or not IsStringList(Callee[0]) then
+    begin
       Exit;
+    end;
     Receiver := NodeText(AContext, Callee[0]);
     if StartsText('Load', Method) then
     begin
       if not EncodingKnown(ACall, Receiver) then
+      begin
         AReport.Add(NodeRange(Callee), Format('%s ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.',
           [Method]), TRuleConfidence.Medium, Fix(ACall));
+      end;
     end
     else if not EncodingKnown(ACall, Receiver) then
+    begin
       AReport.Add(NodeRange(Callee), Format('%s ohne Kodierung schreibt mit der ANSI-Codepage; Umlaute gehen ' +
         'auf anderen Rechnern verloren.', [Method]), TRuleConfidence.Medium, Fix(ACall));
+    end;
   end;
 
 var
   Node: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Encoding := TRuleOptions.Text(AContext.Options, 'defaultEncoding', DefaultEncoding);
   if IndexText(Encoding, Encodings) < 0 then
-    Encoding := DefaultEncoding
+  begin
+    Encoding := DefaultEncoding;
+  end
   else
+  begin
     Encoding := Encodings[IndexText(Encoding, Encodings)];
+  end;
   Tokens := AContext.Tree.Tokens;
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     for Node in NodesOf(AContext.Tree.Root, False) do
+    begin
       if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+      begin
         CheckCall(Node);
+      end;
+    end;
   finally
     Types.Free;
   end;
@@ -528,13 +610,19 @@ var
   begin
     Result := '';
     if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount = 0) then
+    begin
       Exit;
+    end;
     Callee := ANode[0];
     if (Callee.Kind <> TSyntaxKind.MemberAccess) or (Callee.ChildCount <> 1) then
+    begin
       Exit;
+    end;
     if MatchText(Callee.Name, RegistryWrites) or (SameText(Callee.Name, 'OpenKey') and (ANode.ChildCount = 3) and
       IsName(ANode[2], 'True')) then
+    begin
       Result := NodeText(AContext, Callee[0]);
+    end;
   end;
 
   procedure CheckRoutine(ARoutine: TSyntaxNode);
@@ -549,13 +637,19 @@ var
     Events := nil;
     // Lokale Routinen prüft CheckRoutine für sich.
     for Event in NodesOf(ARoutine, True) do
+    begin
       if IsRootKeyAssign(Event) or (WriteReceiver(Event) <> '') then
+      begin
         Events := Events + [Event];
+      end;
+    end;
     for Index := 0 to High(Events) do
     begin
       Assign := Events[Index];
       if not IsRootKeyAssign(Assign) or not IsName(Assign[1], 'HKEY_LOCAL_MACHINE') then
+      begin
         Continue;
+      end;
       Receiver := NodeText(AContext, Assign[0][0]);
       Written := False;
       for Later := Index + 1 to High(Events) do
@@ -566,7 +660,9 @@ var
         begin
           if SameText(NodeText(AContext, Event[0][0]), Receiver) and
             TConditionalBranches.Implies(PathOf(Paths, Tokens, Event), PathOf(Paths, Tokens, Assign)) then
+          begin
             Break;
+          end;
         end
         else if SameText(WriteReceiver(Event), Receiver) and
           not TConditionalBranches.Exclusive(PathOf(Paths, Tokens, Event), PathOf(Paths, Tokens, Assign)) then
@@ -576,10 +672,12 @@ var
         end;
       end;
       if Written then
+      begin
         AReport.Add(NodeRange(Assign[1]), 'Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ' +
           'ohne sie schlägt es fehl oder landet in der Virtualisierung.', TRuleConfidence.High,
           [TRuleFix.Create('HKEY_CURRENT_USER verwenden', [TRuleEdit.Create(NodeRange(Assign[1]),
           'HKEY_CURRENT_USER')])]);
+      end;
     end;
   end;
 
@@ -587,11 +685,15 @@ var
   Routine: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);
   for Routine in TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext) do
+  begin
     CheckRoutine(Routine);
+  end;
 end;
 
 { TNowForElapsedTimeRule }
@@ -625,7 +727,9 @@ var
   function IsNow(ANode: TSyntaxNode): Boolean;
   begin
     if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 1) then
+    begin
       ANode := ANode[0];
+    end;
     Result := IsName(ANode, 'Now') and IsQualifiedName(ANode);
   end;
 
@@ -634,8 +738,12 @@ var
     Node: TSyntaxNode;
   begin
     for Node in ANodes do
+    begin
       if (AOffset >= Node.StartOffset) and (AOffset < Node.EndOffset) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -655,11 +763,17 @@ var
     begin
       Result := -1;
       if ANode.Kind <> TSyntaxKind.Identifier then
+      begin
         Exit;
+      end;
       for Item := 0 to High(Starts) do
+      begin
         if SameText(Starts[Item].Name, ANode.Name) and (Starts[Item].Node.StartOffset < AAt.StartOffset) and
           not TConditionalBranches.Exclusive(PathOf(Paths, Tokens, Starts[Item].Node), PathOf(Paths, Tokens, AAt)) then
+        begin
           Result := Item;
+        end;
+      end;
     end;
 
     // Now - Start, Ende - Start, MilliSecondsBetween(Now, Start): Index des Starts, sonst -1.
@@ -680,11 +794,17 @@ var
         B := ANode[2];
       end
       else
+      begin
         Exit;
+      end;
       if IsNow(A) or (StartOf(A, ANode) >= 0) then
+      begin
         Result := StartOf(B, ANode);
+      end;
       if (Result < 0) and (IsNow(B) or (StartOf(B, ANode) >= 0)) then
+      begin
         Result := StartOf(A, ANode);
+      end;
     end;
 
     // Korrektur nur, wenn Start eine lokale TDateTime-Variable allein für Messungen wie
@@ -702,63 +822,103 @@ var
       Result := nil;
       Name := Starts[AStart].Name;
       for Item := 0 to High(Starts) do
+      begin
         if (Item <> AStart) and SameText(Starts[Item].Name, Name) then
+        begin
           Exit;
+        end;
+      end;
       Decl := nil;
       for Node in NodesOf(ARoutine, True) do
+      begin
         if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar]) and SameText(Node.Name, Name) then
+        begin
           Decl := Node;
+        end;
+      end;
       if Decl = nil then
+      begin
         Exit;
+      end;
       TypeNode := Decl.FindChild(TSyntaxKind.TypeReference);
       if (TypeNode <> nil) and not SameText(TypeNode.Name, 'TDateTime') then
+      begin
         Exit;
+      end;
       if (Decl.Kind = TSyntaxKind.VarDecl) and (TypeNode = nil) then
+      begin
         Exit;
+      end;
       if (Decl.Kind = TSyntaxKind.InlineVar) and (Decl <> Starts[AStart].Node) then
+      begin
         Exit;
+      end;
       // Jede andere Erwähnung muss eine Messung sein, die sich umschreiben lässt.
       Measured := nil;
       Clean := True;
       for Node in NodesOf(ARoutine, True) do
       begin
         if InsideAny(Node.StartOffset, Measured) then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount = 3) and IsQualifiedName(Node[0]) and
           (IndexText(Node[0].Name, StopwatchFunctions) >= 0) and IsNow(Node[1]) and
           (Node[2].Kind = TSyntaxKind.Identifier) and SameText(Node[2].Name, Name) then
-          Measured := Measured + [Node]
+        begin
+          Measured := Measured + [Node];
+        end
         else if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, Name) and
           not ((Node.Parent = Starts[AStart].Node) and (Node.Parent[0] = Node)) then
+        begin
           Clean := False;
+        end;
       end;
       if not Clean or (Measured = nil) then
+      begin
         Exit;
+      end;
       // Wie im Issue heißt Start danach Uhr, wenn der Name in der Datei frei ist.
       NewName := 'Uhr';
       for Item := 0 to High(Tokens) do
+      begin
         if (Tokens[Item].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Item].Text, NewName) then
+        begin
           NewName := Name;
+        end;
+      end;
       Edits := nil;
       if TypeNode <> nil then
+      begin
         Edits := Edits + [TRuleEdit.Create(NodeRange(TypeNode), 'TStopwatch')];
+      end;
       Value := Starts[AStart].Node[Starts[AStart].Node.ChildCount - 1];
       Edits := Edits + [TRuleEdit.Create(NodeRange(Value), 'TStopwatch.StartNew')];
       for Use in Measured do
+      begin
         Edits := Edits + [TRuleEdit.Create(NodeRange(Use), NewName + '.ElapsedMilliseconds' +
           StopwatchDivisors[IndexText(Use[0].Name, StopwatchFunctions)])];
+      end;
       if not SameText(NewName, Name) then
+      begin
         for Item := TokenAt(Tokens, ARoutine.StartOffset) to High(Tokens) do
         begin
           if Tokens[Item].Offset >= ARoutine.EndOffset then
+          begin
             Break;
+          end;
           if (Tokens[Item].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Item].Text, Name) and
             not InsideAny(Tokens[Item].Offset, Measured) then
+          begin
             Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Tokens[Item].StartPos, Tokens[Item].EndPos),
               NewName)];
+          end;
         end;
+      end;
       if UsesEdit(AContext, Tokens, ARoutine.StartOffset, 'System.Diagnostics', Extra) then
+      begin
         Edits := Edits + [Extra];
+      end;
       Result := [TRuleFix.Create('In TStopwatch umwandeln', Edits)];
     end;
 
@@ -766,6 +926,7 @@ var
     Starts := nil;
     Measures := nil;
     for Node in NodesOf(ARoutine, True) do
+    begin
       if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
         (Node[0].Kind = TSyntaxKind.Identifier) and IsNow(Node[1]) then
       begin
@@ -780,12 +941,19 @@ var
         Item.Node := Node;
         Starts := Starts + [Item];
       end;
+    end;
     if Starts = nil then
+    begin
       Exit;
+    end;
     // Teilausdrücke einer Messung nicht noch einmal melden.
     for Node in NodesOf(ARoutine, True) do
+    begin
       if not InsideAny(Node.StartOffset, Measures) and (MeasuredStart(Node) >= 0) then
+      begin
         Measures := Measures + [Node];
+      end;
+    end;
     for Index := 0 to High(Measures) do
     begin
       Start := MeasuredStart(Measures[Index]);
@@ -799,11 +967,15 @@ var
   Routine: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);
   for Routine in TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext) do
+  begin
     CheckRoutine(Routine);
+  end;
 end;
 
 procedure RegisterPlatformRules(const ARegistry: TRuleRegistry);

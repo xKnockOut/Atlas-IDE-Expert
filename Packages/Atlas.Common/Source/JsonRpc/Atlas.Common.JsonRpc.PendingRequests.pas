@@ -116,13 +116,19 @@ begin
   Result := '';
   Params := AMessage.GetValue('params');
   if not (Params is TJSONObject) then
+  begin
     Exit;
+  end;
   Document := TJSONObject(Params).GetValue('textDocument');
   if not (Document is TJSONObject) then
+  begin
     Exit;
+  end;
   Uri := TJSONObject(Document).GetValue('uri');
   if Uri is TJSONString then
+  begin
     Result := Uri.Value;
+  end;
 end;
 
 { TJsonRpcCancellation }
@@ -182,9 +188,13 @@ class function TJsonRpcPendingRequests.KeyOf(const AId: TJSONValue): string;
 begin
   // ToJSON unterscheidet die id 1 von der id "1".
   if AId = nil then
-    Result := 'null'
+  begin
+    Result := 'null';
+  end
   else
+  begin
     Result := AId.ToJSON;
+  end;
 end;
 
 function TJsonRpcPendingRequests.Observe(const AMessage: TJSONObject): Boolean;
@@ -201,8 +211,12 @@ var
     FLock.Enter;
     try
       for Name in FChangeMethods do
+      begin
         if Name = AName then
+        begin
           Exit(True);
+        end;
+      end;
     finally
       FLock.Leave;
     end;
@@ -213,7 +227,9 @@ begin
   Result := False;
   Method := AMessage.GetValue('method');
   if not (Method is TJSONString) then
+  begin
     Exit;
+  end;
   Id := AMessage.GetValue('id');
   if Id <> nil then
   begin
@@ -236,7 +252,9 @@ begin
     begin
       Id := TJSONObject(Params).GetValue('id');
       if Id <> nil then
+      begin
         Cancel(Id);
+      end;
     end;
     Result := True;
   end
@@ -247,7 +265,9 @@ begin
     begin
       Id := TJSONObject(Params).GetValue('requestId');
       if Id <> nil then
+      begin
         Cancel(Id);
+      end;
     end;
     Result := True;
   end
@@ -255,7 +275,9 @@ begin
   begin
     Uri := DocumentUri(AMessage);
     if Uri <> '' then
+    begin
       CancelForUri(Uri);
+    end;
   end;
 end;
 
@@ -304,7 +326,9 @@ begin
   FLock.Enter;
   try
     if FRequests.TryGetValue(KeyOf(AId), Source) then
+    begin
       Source.Cancel;
+    end;
   finally
     FLock.Leave;
   end;
@@ -317,7 +341,9 @@ begin
   FLock.Enter;
   try
     for Source in FRequests.Values do
+    begin
       Source.Cancel;
+    end;
   finally
     FLock.Leave;
   end;
@@ -328,7 +354,9 @@ var
   Source: IJsonRpcCancellationSource;
 begin
   if not Supports(AToken, IJsonRpcCancellationSource, Source) then
+  begin
     Exit(False);
+  end;
   Source.Cancel;
   Result := Source.TryAnswer;
 end;
@@ -339,7 +367,9 @@ var
 begin
   // Fremde Token (Tests, eigene Implementierungen) kennen keine Antwortsperre.
   if not Supports(AToken, IJsonRpcCancellationSource, Source) then
+  begin
     Exit(True);
+  end;
   Result := Source.TryAnswer;
 end;
 
@@ -361,8 +391,12 @@ begin
   FLock.Enter;
   try
     for Pair in FUris do
+    begin
       if (Pair.Value = AUri) and FRequests.TryGetValue(Pair.Key, Source) then
+      begin
         Source.CancelModified;
+      end;
+    end;
   finally
     FLock.Leave;
   end;
@@ -374,7 +408,9 @@ begin
   try
     Inc(FWorkCount);
     if FWorkCount = 1 then
+    begin
       FIdle.ResetEvent;
+    end;
   finally
     FLock.Leave;
   end;
@@ -386,7 +422,9 @@ begin
   try
     Dec(FWorkCount);
     if FWorkCount = 0 then
+    begin
       FIdle.SetEvent;
+    end;
   finally
     FLock.Leave;
   end;

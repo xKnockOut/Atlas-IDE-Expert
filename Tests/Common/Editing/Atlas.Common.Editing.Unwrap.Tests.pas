@@ -76,7 +76,9 @@ begin
   for Index := 0 to High(ALines) do
   begin
     if Index > 0 then
+    begin
       Result := Result + #13#10;
+    end;
     Result := Result + ALines[Index];
   end;
 end;
@@ -92,7 +94,9 @@ begin
   begin
     Column := Pos(ANeedle, Lines[Index]);
     if Column > 0 then
+    begin
       Exit(TTextPosition.Create(5 + Index, Column - 1));
+    end;
   end;
   raise Exception.Create('nicht gefunden: ' + ANeedle);
 end;
@@ -149,7 +153,9 @@ begin
   for Range in ARanges do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + TextOf(ABody, Range);
   end;
 end;
@@ -386,11 +392,17 @@ begin
   AElement := -1;
   Result := TWithOwner.Other;
   if SameText(AIdentifier.Name, 'Caption') then
-    AElement := 0
+  begin
+    AElement := 0;
+  end
   else if SameText(AIdentifier.Name, 'Width') then
+  begin
     AElement := 1;
+  end;
   if AElement >= 0 then
+  begin
     Result := TWithOwner.Element;
+  end;
 end;
 
 procedure TUnwrapTests.WithTwoObjects;

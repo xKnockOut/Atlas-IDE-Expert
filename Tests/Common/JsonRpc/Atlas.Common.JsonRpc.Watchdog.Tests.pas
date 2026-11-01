@@ -53,7 +53,9 @@ begin
   while not ACondition() do
   begin
     if TThread.GetTickCount64 > Due then
+    begin
       Exit(False);
+    end;
     TThread.Sleep(5);
   end;
   Result := True;

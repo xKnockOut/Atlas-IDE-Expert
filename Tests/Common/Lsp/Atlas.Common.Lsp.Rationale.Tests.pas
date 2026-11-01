@@ -192,9 +192,13 @@ begin
   mUnit := TIndexExtractor.ExtractText(cSource, 'C:\P\U.pas', nil);
   mFound := nil;
   for mSymbol in mUnit.Symbols do
+  begin
     if (mSymbol.Name = 'P') and mSymbol.InInterface and (Length(mSymbol.ParamTypes) = 1) and
       SameText(mSymbol.ParamTypes[0], 'Integer') then
+    begin
       mFound := TLspRationale.OfSymbol(mUnit, mSymbol);
+    end;
+  end;
   Assert.AreEqual(2, Integer(Length(mFound)));
   Assert.AreEqual('Zahl.', mFound[0].Text);
   Assert.AreEqual('Zahl im Rumpf.', mFound[1].Text);

@@ -188,8 +188,10 @@ var
   Command: string;
 begin
   for Command in TArray<string>.Create('/sql Q select 1', '/params Q', '/loop Q', '/transaction Con') do
+  begin
     Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(Format(Outside, [Command]), TTextPosition.Create(4, 0),
       nil, nil, Edits), Command);
+  end;
   Assert.IsFalse(Run('/sql Q', Edits));
 end;
 

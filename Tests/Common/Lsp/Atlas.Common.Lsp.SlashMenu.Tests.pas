@@ -167,7 +167,9 @@ var
 begin
   Result := '';
   for Item in TJSONObject(AResult).GetValue<TJSONArray>('commands') do
+  begin
     Result := Result + ',' + Item.GetValue<string>('name');
+  end;
   Result := Result + ',';
 end;
 
@@ -295,7 +297,9 @@ begin
     Assert.IsTrue(Edits.Count > 0);
     NewText := '';
     for Item in Edits do
+    begin
       NewText := NewText + Item.GetValue<string>('newText');
+    end;
     Assert.IsTrue(Pos('constructor Create(const AName: string);', NewText) > 0, NewText);
   finally
     Answer.Free;
@@ -408,7 +412,9 @@ begin
           Edits := List(Answer, 'edits');
           NewText := '';
           for Item in Edits do
+          begin
             NewText := NewText + Item.GetValue<string>('newText');
+          end;
           Assert.IsTrue(Pos('procedure Flush;', NewText) > 0, NewText);
           Assert.IsTrue(Pos('procedure TExporter.Flush;', NewText) > 0, NewText);
           // Die Deklaration kommt vor das end der Klasse (Zeile 7 ohne die gedachte Zeile).

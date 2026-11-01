@@ -97,11 +97,17 @@ begin
   Path := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
   Root := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
   if (Root <> '') and (Root[Length(Root)] <> '/') then
+  begin
     Root := Root + '/';
+  end;
   if (Root <> '/') and (Root <> '') and SameText(Copy(Path, 1, Length(Root)), Root) then
-    Result := Copy(Path, Length(Root) + 1, MaxInt)
+  begin
+    Result := Copy(Path, Length(Root) + 1, MaxInt);
+  end
   else
+  begin
     Result := AFileName;
+  end;
 end;
 
 function TMetricsCollector.CachedCount: Integer;
@@ -125,7 +131,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if FCache.TryGetValue(Key, Entry) and (Entry.Size = Length(AText)) and (Entry.Checksum = Sum) then
+    begin
       Exit(Entry.Routines);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -136,7 +144,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if (FCache.Count >= MaxEntries) and not FCache.ContainsKey(Key) then
+    begin
       FCache.Clear;
+    end;
     FCache.AddOrSetValue(Key, Entry);
   finally
     TMonitor.Exit(FLock);
@@ -156,10 +166,14 @@ begin
     for FileName in AFiles do
     begin
       if not IsSource(FileName) or Seen.ContainsKey(UpperCase(FileName)) then
+      begin
         Continue;
+      end;
       Seen.Add(UpperCase(FileName), True);
       if not Assigned(AReadText) or not AReadText(FileName, Text) then
+      begin
         Continue;
+      end;
       List.Add(TFileMetrics.Create(RelativePath(ARoot, FileName), FileRoutines(FileName, Text)));
     end;
     Result := List.ToArray;

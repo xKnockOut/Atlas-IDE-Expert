@@ -90,7 +90,9 @@ var
 begin
   Settings := TServerSettings.Default;
   if AConfig <> '' then
+  begin
     Settings := TConfigurationParser.Parse(AConfig, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -136,7 +138,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -187,10 +191,16 @@ var
 begin
   Result := TRuleUnitAnswer.Missing;
   if FUnknown then
+  begin
     Result := TRuleUnitAnswer.Unknown;
+  end;
   for Known in FKnown do
+  begin
     if SameText(Known, AUnitName) then
+    begin
       Result := TRuleUnitAnswer.Found;
+    end;
+  end;
 end;
 
 function TFakeUnits.FindPackage(const APackage: string): TRuleUnitAnswer;

@@ -63,9 +63,13 @@ begin
   begin
     Middle := (Low + High) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High := Middle;
+    end;
   end;
   Result := Low;
 end;
@@ -82,18 +86,26 @@ begin
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
       if ACandidate = Root then
+      begin
         Exit(TSyntaxSearchStep.Descend);
+      end;
       if (ACandidate.Kind = TSyntaxKind.TypeDecl) and SameText(ACandidate.Name, TypeName) and
         (ACandidate.FindChild(TSyntaxKind.ClassType) <> nil) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       // Routinen enthalten keine Klassen, die hier gemeint sind.
       if ACandidate.Kind = TSyntaxKind.RoutineDecl then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
   Result := nil;
   if Found <> nil then
+  begin
     Result := Found.FindChild(TSyntaxKind.ClassType);
+  end;
 end;
 
 /// <summary>Botschaftsbehandler aus dem Methodenkopf AHeader (Direktive message) in AList.</summary>
@@ -108,7 +120,9 @@ begin
   begin
     Directive := AHeader[Inner];
     if (Directive.Kind <> TSyntaxKind.Directive) or (Directive.Name <> 'message') then
+    begin
       Continue;
+    end;
     Handler := Default(TMessageHandler);
     Handler.MethodName := AHeader.Name;
     Handler.TypeName := ATypeName;
@@ -119,7 +133,9 @@ begin
     while (TokenIndex <= High(ATokens)) and (ATokens[TokenIndex].Offset < Directive.EndOffset) do
     begin
       if not (ATokens[TokenIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      begin
         Handler.Message := Handler.Message + ATokens[TokenIndex].Text;
+      end;
       Inc(TokenIndex);
     end;
     // Auswahl auf den Methodennamen.
@@ -134,7 +150,9 @@ begin
       Inc(TokenIndex);
     end;
     if Handler.Message <> '' then
+    begin
       AList.Add(Handler);
+    end;
   end;
 end;
 
@@ -156,12 +174,18 @@ begin
     function(AChild: TSyntaxNode): Boolean
     begin
       if AChild = Root then
+      begin
         Exit(True);
+      end;
       // Verschachtelte Typen gehören nicht zur Klasse.
       if AChild.Kind = TSyntaxKind.TypeDecl then
+      begin
         Exit(False);
+      end;
       if AChild.Kind <> TSyntaxKind.RoutineHeader then
+      begin
         Exit(True);
+      end;
       AddHandlers(Tokens, AChild, FileName, TypeName, List);
       Result := False;
     end);
@@ -184,18 +208,24 @@ begin
   for Index := 0 to High(Own) do
   begin
     if Result <> '' then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + Own[Index].Message;
     if Inherited_[Index].TypeName <> '' then
     begin
       if Also <> '' then
+      begin
         Also := Also + ', ';
+      end;
       Also := Also + Own[Index].Message + ' auch in ' + Inherited_[Index].TypeName;
     end;
   end;
   Result := 'behandelt ' + Result;
   if Also <> '' then
+  begin
     Result := Result + ' (' + Also + ')';
+  end;
 end;
 
 function TMessageOverview.ToMarkdown: string;
@@ -204,13 +234,17 @@ var
 begin
   Result := '';
   if not Found then
+  begin
     Exit;
+  end;
   Result := '**Nachrichten**' + #10;
   for Index := 0 to High(Own) do
   begin
     Result := Result + #10 + '- `' + Own[Index].Message + '` → `' + Own[Index].MethodName + '`';
     if Inherited_[Index].TypeName <> '' then
+    begin
       Result := Result + ', auch in `' + Inherited_[Index].TypeName + '.' + Inherited_[Index].MethodName + '`';
+    end;
   end;
 end;
 
@@ -223,10 +257,14 @@ var
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
+  end;
   ClassNode := FindClassNode(ATree.Root, ATypeName);
   if ClassNode = nil then
+  begin
     Exit;
+  end;
   List := TList<TMessageHandler>.Create;
   try
     CollectHandlers(ATree, ClassNode, AFileName, ATypeName, List);
@@ -254,7 +292,9 @@ begin
   Result.Own := InTree(ATree, AFileName, ATypeName);
   SetLength(Result.Inherited_, Length(Result.Own));
   if not Result.Found then
+  begin
     Exit;
+  end;
   Trees := TObjectDictionary<string, TSyntaxTree>.Create([doOwnsValues]);
   try
     CurrentTree := ATree;
@@ -266,43 +306,67 @@ begin
       Found := False;
       ClassSymbol := Default(TIndexSymbol);
       for Symbol in CurrentUnit.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, CurrentName) then
         begin
           ClassSymbol := Symbol;
           Found := True;
           Break;
         end;
+      end;
       if not Found then
+      begin
         Break;
+      end;
       if Length(ClassSymbol.Ancestors) > 0 then
-        AncestorName := ClassSymbol.Ancestors[0]
+      begin
+        AncestorName := ClassSymbol.Ancestors[0];
+      end
       else if not SameText(CurrentName, 'TObject') then
-        AncestorName := 'TObject'
+      begin
+        AncestorName := 'TObject';
+      end
       else
+      begin
         Break;
+      end;
       if (Pos('<', AncestorName) > 0) or not AResolver.ResolveTypeFrom(CurrentUnit, AncestorName, Ancestor) or
         (Ancestor.SymbolKind <> TIndexSymbolKind.ClassType) then
+      begin
         Break;
+      end;
       if SameText(Ancestor.FileName, AFileName) then
-        Tree := ATree
+      begin
+        Tree := ATree;
+      end
       else if not Trees.TryGetValue(UpperCase(Ancestor.FileName), Tree) then
       begin
         if not (Assigned(AReadText) and AReadText(Ancestor.FileName, Text)) then
+        begin
           Break;
+        end;
         Tree := TSyntaxTreeCache.Parse(Text);
         Trees.Add(UpperCase(Ancestor.FileName), Tree);
       end;
       Handlers := InTree(Tree, Ancestor.FileName, Ancestor.Name);
       for Index := 0 to High(Result.Own) do
+      begin
         if Result.Inherited_[Index].TypeName = '' then
+        begin
           for Handler in Handlers do
+          begin
             if SameText(Handler.Message, Result.Own[Index].Message) then
             begin
               Result.Inherited_[Index] := Handler;
               Break;
             end;
+          end;
+        end;
+      end;
       if Tree <> CurrentTree then
+      begin
         CurrentUnit := TIndexExtractor.Extract(Tree, Ancestor.FileName);
+      end;
       CurrentTree := Tree;
       CurrentName := Ancestor.Name;
     end;
