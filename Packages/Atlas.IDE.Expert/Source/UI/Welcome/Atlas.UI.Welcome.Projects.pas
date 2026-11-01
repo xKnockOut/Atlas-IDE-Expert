@@ -177,7 +177,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 { TAtlasWelcomeProjectsFrame }
 
@@ -198,26 +198,26 @@ begin
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FOpenItem := TMenuItem.Create(Self);
-  FOpenItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsOpen);
+  FOpenItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsOpen);
   FOpenItem.Default := True;
   FOpenItem.OnClick := OpenClick;
   FMenu.Items.Add(FOpenItem);
   FOpenFolderItem := TMenuItem.Create(Self);
-  FOpenFolderItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsOpenFolder);
+  FOpenFolderItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsOpenFolder);
   FOpenFolderItem.OnClick := OpenFolderClick;
   FMenu.Items.Add(FOpenFolderItem);
   // Branch anlegen (#1288): nur für Zeilen mit Arbeitskopie.
   FCreateBranchItem := TMenuItem.Create(Self);
-  FCreateBranchItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsCreateBranch);
+  FCreateBranchItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsCreateBranch);
   FCreateBranchItem.OnClick := CreateBranchClick;
   FMenu.Items.Add(FCreateBranchItem);
   // Arbeitskopien (#1292): Wurzel, Externals und Submodule; nur mit vcs.externals.show.
   FWorkingCopiesItem := TMenuItem.Create(Self);
-  FWorkingCopiesItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsWorkingCopies);
+  FWorkingCopiesItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsWorkingCopies);
   FWorkingCopiesItem.OnClick := WorkingCopiesClick;
   FMenu.Items.Add(FWorkingCopiesItem);
   FRemoveItem := TMenuItem.Create(Self);
-  FRemoveItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsRemove);
+  FRemoveItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsRemove);
   FRemoveItem.OnClick := RemoveClick;
   FMenu.Items.Add(FRemoveItem);
   FBox.PopupMenu := FMenu;
@@ -348,17 +348,17 @@ class function TAtlasWelcomeProjectsFrame.PillText(const APill: TAtlasProjectPil
 begin
   case APill.Kind of
     TAtlasProjectPillKind.Build:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsBuild, [APill.A, APill.B, APill.C]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsBuild, [APill.A, APill.B, APill.C]);
     TAtlasProjectPillKind.BuildErrors:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsErrors, [APill.A]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsErrors, [APill.A]);
     TAtlasProjectPillKind.CheckErrors:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsCheckErrors, [APill.A]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsCheckErrors, [APill.A]);
     TAtlasProjectPillKind.Changes:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsChanged, [APill.A]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsChanged, [APill.A]);
     TAtlasProjectPillKind.Sync:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsSync, [APill.A, APill.B]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsSync, [APill.A, APill.B]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsRules, [APill.A]);
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsRules, [APill.A]);
   end;
 end;
 
@@ -389,12 +389,12 @@ class function TAtlasWelcomeProjectsFrame.DetailText(const AEntry: TAtlasProject
 begin
   Result := TAtlasWelcomeProjects.ShortPath(AEntry.Project, PathLength);
   if AEntry.Summary.LastOpened > 0 then
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsOpened,
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsOpened,
       [LocalText(AEntry.Summary.LastOpened)]);
   if AEntry.VcsQuerying and not AEntry.Summary.Vcs.InWorkingCopy then
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsQuerying)
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsQuerying)
   else if AEntry.VcsStale and (AEntry.Summary.Vcs.At > 0) then
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsStale,
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsStale,
       [LocalText(AEntry.Summary.Vcs.At)]);
 end;
 
@@ -411,7 +411,7 @@ var
   procedure AddFirst(const ALocation: TAtlasProjectLocation);
   begin
     if not ALocation.IsEmpty then
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsHintFirst,
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintFirst,
         [ExtractFileName(ALocation.FileName), ALocation.Line, Trim(ALocation.Code + ' ' + ALocation.Text)]));
   end;
 
@@ -422,36 +422,37 @@ begin
     Lines.Add(AEntry.Project);
     if Summary.Vcs.InWorkingCopy then
     begin
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsHintVcs,
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintVcs,
         [UpperCase(Summary.Vcs.Kind), AEntry.Branch, Summary.Vcs.Revision]));
       if Summary.Vcs.Changed >= 0 then
-        Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsHintChanged, [Summary.Vcs.Changed]));
+        Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintChanged, [Summary.Vcs.Changed]));
       if (Summary.Vcs.Ahead >= 0) and (Summary.Vcs.Behind >= 0) then
-        Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsHintSync, [Summary.Vcs.Ahead, Summary.Vcs.Behind]));
+        Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintSync,
+          [Summary.Vcs.Ahead, Summary.Vcs.Behind]));
       if AEntry.VcsStale and (Summary.Vcs.At > 0) then
-        Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsStale, [LocalText(Summary.Vcs.At)]));
+        Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsStale, [LocalText(Summary.Vcs.At)]));
     end;
     if Summary.Build.Known then
     begin
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsHintBuild, [LocalText(Summary.Build.At),
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintBuild, [LocalText(Summary.Build.At),
         Summary.Build.Kind, Summary.Build.Configuration, Summary.Build.Platform, Summary.Build.Errors,
         Summary.Build.Warnings, Summary.Build.Hints]));
       AddFirst(Summary.Build.First);
     end
     else
-      Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintNoBuild));
+      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintNoBuild));
     if Summary.Check.Known then
     begin
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsHintCheck, [LocalText(Summary.Check.At),
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintCheck, [LocalText(Summary.Check.At),
         Summary.Check.Errors]));
       AddFirst(Summary.Check.First);
     end;
     if Summary.Rules.Known then
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsHintRules, [Summary.Rules.NewHits]));
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintRules, [Summary.Rules.NewHits]));
     if ASelectable then
-      Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintSelect))
+      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintSelect))
     else
-      Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintClick));
+      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintClick));
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -506,7 +507,7 @@ begin
   begin
     Canvas.Font.Color := MutedColor;
     Canvas.TextOut(ScaleValue(Indent), RowTop(0) + ScaleValue(4),
-      TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsEmpty));
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsEmpty));
     Exit;
   end;
   LayoutPills;
@@ -740,9 +741,10 @@ begin
       if (State <> '') and (FQuick.StateOf(Hit.Row).Detail <> '') then
         State := State + ': ' + FQuick.StateOf(Hit.Row).Detail;
       if State <> '' then
-        FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickHintState, [State]);
+        FBox.Hint := FBox.Hint + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintState,
+          [State]);
       if FQuick.Active then
-        FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintKeys);
+        FBox.Hint := FBox.Hint + sLineBreak + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintKeys);
     end;
   end
   else

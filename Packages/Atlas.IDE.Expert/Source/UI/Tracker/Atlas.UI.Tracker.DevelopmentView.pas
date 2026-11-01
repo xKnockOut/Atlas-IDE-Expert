@@ -126,7 +126,7 @@ uses
   System.DateUtils,
   Vcl.Graphics,
   Atlas.Core.Style.Color,
-  Atlas.UI.Strings;
+  Atlas.UI.Tracker.Strings;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -246,7 +246,7 @@ begin
   FHasDevelopment := False;
   FDevelopment := TAtlasIssueDevelopment.Empty;
   Clear;
-  FStatus := AddNote(TAtlasStrings.Text(TAtlasTextId.IssueDevLoading));
+  FStatus := AddNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLoading));
 end;
 
 procedure TAtlasIssueDevelopmentView.ShowNote(const AText: string);
@@ -270,13 +270,15 @@ begin
     TAtlasVcsOutcome.Ok, TAtlasVcsOutcome.Cancelled:
       Result := '';
     TAtlasVcsOutcome.NoWorkingCopy:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssueDevNoVcs);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoVcs);
     TAtlasVcsOutcome.Disabled:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssueDevVcsOff);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevVcsOff);
     TAtlasVcsOutcome.ToolMissing:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssueDevToolMissing, [AtlasVcsKindName(FDevelopment.VcsKind)]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevToolMissing,
+        [AtlasVcsKindName(FDevelopment.VcsKind)]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.IssueDevVcsFailed, [AtlasVcsOutcomeName(FDevelopment.VcsOutcome)]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevVcsFailed,
+      [AtlasVcsOutcomeName(FDevelopment.VcsOutcome)]);
   end;
 end;
 
@@ -324,33 +326,35 @@ var
   mWhere, mState: string;
   mTools: TPanel;
 begin
-  AddLabel(TAtlasStrings.Fmt(TAtlasTextId.IssueDevBranches, [Length(FDevelopment.Branches)]), True);
+  AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevBranches, [Length(FDevelopment.Branches)]), True);
   if Length(FDevelopment.Branches) = 0 then
   begin
-    AddNote(TAtlasStrings.Fmt(TAtlasTextId.IssueDevNoBranch, [FDevelopment.Key]));
+    AddNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevNoBranch, [FDevelopment.Key]));
     Exit;
   end;
-  FBranches := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssueDevColumnBranch),
-    TAtlasStrings.Text(TAtlasTextId.IssueDevColumnWhere), TAtlasStrings.Text(TAtlasTextId.IssueDevColumnState)),
+  FBranches := AddList(TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnBranch),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnWhere),
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnState)),
     Length(FDevelopment.Branches));
   FBranches.Items.BeginUpdate;
   try
     for mBranch in FDevelopment.Branches do
     begin
       if mBranch.Local and mBranch.Remote then
-        mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevLocalRemote)
+        mWhere := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLocalRemote)
       else if mBranch.Local then
-        mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevLocal)
+        mWhere := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLocal)
       else
-        mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevRemote);
+        mWhere := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevRemote);
       mState := '';
       if (mBranch.Base <> '') and (mBranch.Ahead >= 0) and (mBranch.Behind >= 0) then
-        mState := TAtlasStrings.Fmt(TAtlasTextId.IssueDevAheadBehind, [mBranch.Ahead, mBranch.Behind, mBranch.Base]);
+        mState := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevAheadBehind,
+          [mBranch.Ahead, mBranch.Behind, mBranch.Base]);
       if mBranch.Current then
       begin
         if mState <> '' then
           mState := ', ' + mState;
-        mState := TAtlasStrings.Text(TAtlasTextId.IssueDevCurrent) + mState;
+        mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevCurrent) + mState;
       end;
       mItem := FBranches.Items.Add;
       mItem.Caption := mBranch.Name;
@@ -369,7 +373,7 @@ begin
   FSwitch := TButton.Create(Self);
   FSwitch.Parent := mTools;
   FSwitch.Align := alLeft;
-  FSwitch.Caption := TAtlasStrings.Text(TAtlasTextId.IssueDevSwitch);
+  FSwitch.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevSwitch);
   FSwitch.Width := MulDiv(100, CurrentPPI, 96);
   FSwitch.Enabled := False;
   FSwitch.OnClick := SwitchClick;
@@ -381,17 +385,18 @@ var
   mItem: TListItem;
 begin
   if FDevelopment.Truncated then
-    AddLabel(TAtlasStrings.Fmt(TAtlasTextId.IssueDevCommitsMore, [Length(FDevelopment.Commits)]), True)
+    AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevCommitsMore, [Length(FDevelopment.Commits)]), True)
   else
-    AddLabel(TAtlasStrings.Fmt(TAtlasTextId.IssueDevCommits, [Length(FDevelopment.Commits)]), True);
+    AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevCommits, [Length(FDevelopment.Commits)]), True);
   if Length(FDevelopment.Commits) = 0 then
   begin
-    AddNote(TAtlasStrings.Fmt(TAtlasTextId.IssueDevNoCommits, [FDevelopment.Key]));
+    AddNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevNoCommits, [FDevelopment.Key]));
     Exit;
   end;
-  FCommits := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssueDevColumnCommit),
-    TAtlasStrings.Text(TAtlasTextId.IssueDevColumnSubject), TAtlasStrings.Text(TAtlasTextId.IssueDevColumnAuthor),
-    TAtlasStrings.Text(TAtlasTextId.IssueDevColumnTime)), Length(FDevelopment.Commits));
+  FCommits := AddList(TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnCommit),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnSubject),
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnAuthor),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnTime)), Length(FDevelopment.Commits));
   FCommits.Items.BeginUpdate;
   try
     for mEntry in FDevelopment.Commits do
@@ -405,12 +410,12 @@ begin
   finally
     FCommits.Items.EndUpdate;
   end;
-  FCommits.Hint := TAtlasStrings.Text(TAtlasTextId.IssueDevCommitHint);
+  FCommits.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevCommitHint);
   FCommits.ShowHint := True;
   FCommits.OnClick := CommitsClick;
   FCommits.OnDblClick := CommitsDblClick;
   FCommits.OnKeyDown := CommitsKeyDown;
-  AddNote(TAtlasStrings.Text(TAtlasTextId.IssueDevCommitHint));
+  AddNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevCommitHint));
 end;
 
 procedure TAtlasIssueDevelopmentView.AddTracker(const ATrackerNote: string);
@@ -422,7 +427,7 @@ var
 begin
   if ATrackerNote <> '' then
   begin
-    AddNote(TAtlasStrings.Fmt(TAtlasTextId.IssueDevTrackerFailed, [ATrackerNote]));
+    AddNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevTrackerFailed, [ATrackerNote]));
     Exit;
   end;
   if not FDevelopment.TrackerLoaded then
@@ -430,10 +435,12 @@ begin
   // YouTrack kennt keine Pull Requests, aber verknüpfte Änderungen.
   if Length(FDevelopment.Tracker.Changes) > 0 then
   begin
-    AddLabel(TAtlasStrings.Fmt(TAtlasTextId.IssueDevTrackerChanges, [Length(FDevelopment.Tracker.Changes)]), True);
-    FChanges := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssueDevColumnCommit),
-      TAtlasStrings.Text(TAtlasTextId.IssueDevColumnSubject), TAtlasStrings.Text(TAtlasTextId.IssueDevColumnAuthor),
-      TAtlasStrings.Text(TAtlasTextId.IssueDevColumnTime)), Length(FDevelopment.Tracker.Changes));
+    AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevTrackerChanges,
+      [Length(FDevelopment.Tracker.Changes)]), True);
+    FChanges := AddList(TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnCommit),
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnSubject),
+        TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnAuthor),
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnTime)), Length(FDevelopment.Tracker.Changes));
     FChanges.Items.BeginUpdate;
     try
       for mChange in FDevelopment.Tracker.Changes do
@@ -450,38 +457,39 @@ begin
     if Length(FDevelopment.Tracker.Pulls) = 0 then
       Exit;
   end;
-  AddLabel(TAtlasStrings.Fmt(TAtlasTextId.IssueDevPulls, [Length(FDevelopment.Tracker.Pulls)]), True);
+  AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevPulls, [Length(FDevelopment.Tracker.Pulls)]), True);
   if Length(FDevelopment.Tracker.Pulls) = 0 then
   begin
-    AddNote(TAtlasStrings.Fmt(TAtlasTextId.IssueDevNoPulls, [FDevelopment.Key]));
+    AddNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevNoPulls, [FDevelopment.Key]));
     Exit;
   end;
-  FPulls := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssueDevColumnNumber),
-    TAtlasStrings.Text(TAtlasTextId.IssueDevColumnSubject), TAtlasStrings.Text(TAtlasTextId.IssueDevColumnState),
-    TAtlasStrings.Text(TAtlasTextId.IssueDevColumnChecks)), Length(FDevelopment.Tracker.Pulls));
+  FPulls := AddList(TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnNumber),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnSubject),
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnState),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevColumnChecks)), Length(FDevelopment.Tracker.Pulls));
   FPulls.Items.BeginUpdate;
   try
     for mPull in FDevelopment.Tracker.Pulls do
     begin
       case mPull.State of
         TAtlasTrackerPullState.Draft:
-          mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullDraft);
+          mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevPullDraft);
         TAtlasTrackerPullState.Merged:
-          mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullMerged);
+          mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevPullMerged);
         TAtlasTrackerPullState.Closed:
-          mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullClosed);
+          mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevPullClosed);
       else
-        mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullOpen);
+        mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevPullOpen);
       end;
       case mPull.Checks of
         TAtlasTrackerChecks.Pending:
-          mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksPending);
+          mChecks := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevChecksPending);
         TAtlasTrackerChecks.Success:
-          mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksSuccess);
+          mChecks := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevChecksSuccess);
         TAtlasTrackerChecks.Failure:
-          mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksFailure);
+          mChecks := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevChecksFailure);
       else
-        mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksUnknown);
+        mChecks := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevChecksUnknown);
       end;
       mItem := FPulls.Items.Add;
       mItem.Caption := '#' + IntToStr(mPull.Number);
@@ -509,7 +517,7 @@ begin
       Result := Copy(AUnit.Path, Length(mFolder) + 1, MaxInt);
   end;
   if AUnit.Deleted then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.IssueDevDeleted, [Result]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevDeleted, [Result]);
 end;
 
 procedure TAtlasIssueDevelopmentView.AddUnits;
@@ -520,10 +528,10 @@ var
   mCaption: string;
   mRows: Integer;
 begin
-  AddLabel(TAtlasStrings.Fmt(TAtlasTextId.IssueDevUnits, [FDevelopment.UnitCount]), True);
+  AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevUnits, [FDevelopment.UnitCount]), True);
   if FDevelopment.UnitCount = 0 then
   begin
-    AddNote(TAtlasStrings.Text(TAtlasTextId.IssueDevNoUnits));
+    AddNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoUnits));
     Exit;
   end;
   FUnits := TTreeView.Create(Self);
@@ -538,7 +546,7 @@ begin
     begin
       mCaption := mGroup.Project;
       if mCaption = '' then
-        mCaption := TAtlasStrings.Text(TAtlasTextId.IssueDevOtherFiles);
+        mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevOtherFiles);
       mNode := FUnits.Items.AddChildObject(nil, Format('%s (%d)', [mCaption, Length(mGroup.Units)]), Pointer(-1));
       Inc(mRows);
       for mUnit in mGroup.Units do

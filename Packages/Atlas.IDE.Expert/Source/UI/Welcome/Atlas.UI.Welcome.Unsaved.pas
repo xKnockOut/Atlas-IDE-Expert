@@ -130,7 +130,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 const
   Separator = ' · ';
@@ -152,11 +152,11 @@ begin
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FOpenFolderItem := TMenuItem.Create(Self);
-  FOpenFolderItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedOpenFolder);
+  FOpenFolderItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedOpenFolder);
   FOpenFolderItem.OnClick := OpenFolderClick;
   FMenu.Items.Add(FOpenFolderItem);
   FIgnoreItem := TMenuItem.Create(Self);
-  FIgnoreItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedIgnore);
+  FIgnoreItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedIgnore);
   FIgnoreItem.OnClick := IgnoreClick;
   FMenu.Items.Add(FIgnoreItem);
   FBox.PopupMenu := FMenu;
@@ -242,42 +242,44 @@ begin
       if (AItem.Added = 0) and (AItem.Deleted = 0) then
       begin
         if AItem.Count = 1 then
-          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedFileOne)
+          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedFileOne)
         else
-          Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedFiles, [AItem.Count]);
+          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedFiles, [AItem.Count]);
       end
       else
       begin
         Parts := nil;
         if AItem.Modified > 0 then
-          Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPartModified, [AItem.Modified])];
+          Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartModified, [AItem.Modified])];
         if AItem.Added > 0 then
-          Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPartAdded, [AItem.Added])];
+          Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartAdded, [AItem.Added])];
         if AItem.Deleted > 0 then
-          Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPartDeleted, [AItem.Deleted])];
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedFilesMixed, [AItem.Count, Joined(Parts)]);
+          Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartDeleted, [AItem.Deleted])];
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedFilesMixed, [AItem.Count, Joined(Parts)]);
       end;
     TAtlasUnsavedKind.Conflicts:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedConflicts, [AItem.Count]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedConflicts, [AItem.Count]);
     TAtlasUnsavedKind.Commits:
       if AItem.Count = 1 then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedCommitOne, [Joined(AItem.Branches)])
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommitOne, [Joined(AItem.Branches)])
       else
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedCommits, [AItem.Count, Joined(AItem.Branches)]);
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommits,
+          [AItem.Count, Joined(AItem.Branches)]);
     TAtlasUnsavedKind.NoUpstream:
       begin
         if AItem.Count = 1 then
-          Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedNoUpstreamOne, [Joined(AItem.Branches)])
+          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstreamOne, [Joined(AItem.Branches)])
         else
-          Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedNoUpstream, [AItem.Count, Joined(AItem.Branches)]);
+          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstream,
+            [AItem.Count, Joined(AItem.Branches)]);
         if AItem.Commits > 0 then
-          Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedLocalCommits, [Result, AItem.Commits]);
+          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedLocalCommits, [Result, AItem.Commits]);
       end;
   else
     if AItem.Count = 1 then
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedStash, [AItem.Name, LocalDate(AItem.Since)])
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStash, [AItem.Name, LocalDate(AItem.Since)])
     else
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedStashes, [AItem.Count, AItem.Name,
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStashes, [AItem.Count, AItem.Name,
         LocalDate(AItem.Since)]);
   end;
 end;
@@ -293,14 +295,14 @@ begin
   TAtlasWelcomeUnsaved.Age(ASince, ANowUtc, Value, AgeUnit);
   case AgeUnit of
     TAtlasUnsavedAgeUnit.Minutes:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedSinceMinutes, [Value]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedSinceMinutes, [Value]);
     TAtlasUnsavedAgeUnit.Hours:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedSinceHours, [Value]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedSinceHours, [Value]);
   else
     if Value = 1 then
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedSinceDayOne)
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedSinceDayOne)
     else
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedSinceDays, [Value]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedSinceDays, [Value]);
   end;
 end;
 
@@ -321,19 +323,19 @@ end;
 class function TAtlasWelcomeUnsavedFrame.ButtonText(const AItem: TAtlasUnsavedItem): string;
 begin
   if AItem.CanPush then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedPush)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPush)
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedView);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedView);
 end;
 
 class function TAtlasWelcomeUnsavedFrame.EmptyText(const AView: TAtlasUnsavedView): string;
 begin
   if AView.Hidden > 0 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedHiddenOnly, [AView.Hidden])
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedHiddenOnly, [AView.Hidden])
   else if AView.Querying and not AView.Known then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedQuerying)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedQuerying)
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedClean);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedClean);
 end;
 
 class function TAtlasWelcomeUnsavedFrame.LevelColor(ALevel: TAtlasUnsavedLevel): TColor;
@@ -358,15 +360,15 @@ begin
     Lines.Add(ARow.Project);
     Lines.Add(WhatText(ARow.Item));
     if Length(ARow.Item.Branches) > 0 then
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedHintBranches, [Joined(ARow.Item.Branches)]));
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedHintBranches, [Joined(ARow.Item.Branches)]));
     if ARow.Item.Since > 0 then
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedHintSince, [LocalText(ARow.Item.Since)]));
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedHintSince, [LocalText(ARow.Item.Since)]));
     if ARow.Stale and (ARow.At > 0) then
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsStale, [LocalText(ARow.At)]));
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsStale, [LocalText(ARow.At)]));
     if ARow.Item.CanPush then
-      Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedHintPush))
+      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedHintPush))
     else
-      Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedHintView));
+      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedHintView));
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;

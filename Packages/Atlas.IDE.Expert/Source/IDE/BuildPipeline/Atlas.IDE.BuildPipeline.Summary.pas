@@ -56,13 +56,19 @@ begin
       Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryRejected, [Name, Counts]);
   else
     if Counts = '' then
-      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryClean, [Name])
+    begin
+      Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryClean, [Name]);
+    end
     else
+    begin
       Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryCounts, [Name, Counts]);
+    end;
   end;
   if AVerdict.Baselined > 0 then
+  begin
     Result := Result + TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.BuildSummaryBaselined,
       [AVerdict.Baselined]);
+  end;
 end;
 
 class procedure TAtlasIdeBuildSummary.Report(const AMessages: TArray<TAtlasCompilerMessage>;

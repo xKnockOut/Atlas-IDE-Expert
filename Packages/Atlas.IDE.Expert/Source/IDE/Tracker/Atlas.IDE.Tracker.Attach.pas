@@ -108,7 +108,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.Capture,
   Atlas.UI.Tracker.IssueTip,
   Atlas.UI.Tracker.AttachDialog,
@@ -323,7 +323,7 @@ begin
         Exit;
       if Busy then
       begin
-        Report(TAtlasStrings.Text(TAtlasTextId.AttachBusy));
+        Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachBusy));
         Exit;
       end;
       mProvider := nil;
@@ -414,7 +414,7 @@ begin
   end;
   if not Supports(mTransport, IAtlasCiCancel, FCancel) then
     FCancel := nil;
-  Report(TAtlasStrings.Fmt(TAtlasTextId.AttachSending, [ARequest.Key]));
+  Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachSending, [ARequest.Key]));
   mKeep := Self;
   mOwner := Self;
   FThread := TThread.CreateAnonymousThread(
@@ -466,10 +466,10 @@ begin
   if not AOutcome.Succeeded then
   begin
     if AOutcome.Uploaded > 0 then
-      Report(TAtlasStrings.Fmt(TAtlasTextId.AttachCommentFailed, [ARequest.Key,
+      Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachCommentFailed, [ARequest.Key,
         TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]))
     else
-      Report(TAtlasStrings.Fmt(TAtlasTextId.AttachFailed, [ARequest.Key,
+      Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachFailed, [ARequest.Key,
         TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
     Exit;
   end;
@@ -479,11 +479,11 @@ begin
     Exit;
   end;
   if (AOutcome.Uploaded > 0) and AOutcome.Commented then
-    Report(TAtlasStrings.Fmt(TAtlasTextId.AttachDoneComment, [ARequest.Key, AOutcome.Uploaded]))
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachDoneComment, [ARequest.Key, AOutcome.Uploaded]))
   else if AOutcome.Uploaded > 0 then
-    Report(TAtlasStrings.Fmt(TAtlasTextId.AttachDone, [ARequest.Key, AOutcome.Uploaded]))
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachDone, [ARequest.Key, AOutcome.Uploaded]))
   else if AOutcome.Commented then
-    Report(TAtlasStrings.Fmt(TAtlasTextId.AttachCommented, [ARequest.Key]));
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachCommented, [ARequest.Key]));
 end;
 
 procedure TAtlasIdeIssueAttach.Fallback(const ARequest: TAtlasAttachRequest; const AOutcome: TAtlasAttachOutcome);
@@ -494,7 +494,7 @@ var
   mText: string;
 begin
   if AOutcome.Commented then
-    Report(TAtlasStrings.Fmt(TAtlasTextId.AttachCommented, [ARequest.Key]));
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachCommented, [ARequest.Key]));
   if Length(AOutcome.Images) > 0 then
   begin
     mBitmaps := nil;
@@ -517,7 +517,7 @@ begin
         mBitmap.Free;
     end;
     // Erst der Hinweis, dann der Browser: Der Nutzer weiß, was er dort tun soll.
-    mText := TAtlasStrings.Fmt(TAtlasTextId.AttachPasteHint, [Length(mBitmaps), ARequest.Key]);
+    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachPasteHint, [Length(mBitmaps), ARequest.Key]);
     Report(mText);
     MessageDlg(mText, mtInformation, [mbOK], 0);
   end;

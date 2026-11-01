@@ -50,7 +50,9 @@ end;
 destructor TAtlasIdeLastBuildMessages.Destroy;
 begin
   if FCurrent = Self then
+  begin
     FCurrent := nil;
+  end;
   FLast.Free;
   inherited;
 end;
@@ -67,10 +69,16 @@ var
 begin
   Result := nil;
   if not FLast.TryGetValue(AnsiLowerCase(AProject), mMessages) then
+  begin
     Exit;
+  end;
   for mMessage in mMessages do
+  begin
     if TAtlasBuildVerdicts.Baselinable(mMessage) then
+    begin
       Result := Result + [mMessage];
+    end;
+  end;
 end;
 
 end.

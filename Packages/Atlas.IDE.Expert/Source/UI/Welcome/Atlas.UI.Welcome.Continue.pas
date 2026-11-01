@@ -209,7 +209,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 const
   Separator = ' · ';
@@ -223,8 +223,8 @@ begin
   inherited;
   if FTabs.Tabs.Count = 0 then
   begin
-    FTabs.Tabs.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueTabRecent));
-    FTabs.Tabs.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueTabSaved));
+    FTabs.Tabs.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueTabRecent));
+    FTabs.Tabs.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueTabSaved));
     FTabs.TabIndex := PageRecent;
   end;
 end;
@@ -262,7 +262,7 @@ begin
   FFilter.Parent := FSavedPanel;
   FFilter.Align := alTop;
   FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedFilter);
+  FFilter.TextHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedFilter);
   FFilter.OnChange := FilterChange;
   FFilter.OnKeyDown := FilterKeyDown;
 
@@ -289,16 +289,16 @@ begin
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
   Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedColKind);
+  Column.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedColKind);
   Column.Width := ScaleValue(80);
   Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedColText);
+  Column.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedColText);
   Column.Width := ScaleValue(220);
   Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedColPlace);
+  Column.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedColPlace);
   Column.Width := ScaleValue(140);
   Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedColProject);
+  Column.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedColProject);
   Column.Width := ScaleValue(120);
 
   // Schnellaktionen (#764): Knopfleiste, Tastatur und Kontextmenü der Zeilen.
@@ -306,7 +306,7 @@ begin
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FResumeItem := TMenuItem.Create(Self);
-  FResumeItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueResume);
+  FResumeItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueResume);
   FResumeItem.Default := True;
   FResumeItem.OnClick := ResumeClick;
   FMenu.Items.Add(FResumeItem);
@@ -518,9 +518,9 @@ begin
   end;
   FSavedEmpty.Visible := Length(FShownSaved) = 0;
   if Length(FSaved) = 0 then
-    FSavedEmpty.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedEmpty)
+    FSavedEmpty.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedEmpty)
   else
-    FSavedEmpty.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedNoMatch);
+    FSavedEmpty.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedNoMatch);
   FList.Visible := not FSavedEmpty.Visible;
 end;
 
@@ -651,9 +651,9 @@ end;
 class function TAtlasWelcomeContinueFrame.TabsText(ACount: Integer): string;
 begin
   if ACount = 1 then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueTabsOne)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueTabsOne)
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueTabs, [ACount]);
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueTabs, [ACount]);
 end;
 
 class function TAtlasWelcomeContinueFrame.AgeText(AAtUtc, ANowUtc: TDateTime): string;
@@ -667,13 +667,13 @@ begin
   AtLocal := TTimeZone.Local.ToLocalTime(AAtUtc);
   case TAtlasWelcomeContinue.Age(AtLocal, TTimeZone.Local.ToLocalTime(ANowUtc), Value) of
     TAtlasContinueAge.JustNow:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueJustNow);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueJustNow);
     TAtlasContinueAge.Minutes:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueMinutes, [Value]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMinutes, [Value]);
     TAtlasContinueAge.Hours:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueHours, [Value]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHours, [Value]);
     TAtlasContinueAge.Yesterday:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueYesterday, [FormatDateTime('t', AtLocal)]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueYesterday, [FormatDateTime('t', AtLocal)]);
   else
     Result := FormatDateTime('ddddd t', AtLocal);
   end;
@@ -714,10 +714,12 @@ begin
   Lines := TStringList.Create;
   try
     Lines.Add(ACommit.Commit.ShortHash + ' ' + ACommit.Commit.Summary);
-    Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueCommitAuthor, [ACommit.Commit.Author]));
-    Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueCommitDate, [LocalText(ACommit.Commit.Date)]));
-    Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueCommitAffects, [string.Join(', ', ACommit.Files)]));
-    Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueCommitClick));
+    Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitAuthor, [ACommit.Commit.Author]));
+    Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitDate,
+      [LocalText(ACommit.Commit.Date)]));
+    Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitAffects,
+      [string.Join(', ', ACommit.Files)]));
+    Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueCommitClick));
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -733,7 +735,7 @@ begin
   Lines := TStringList.Create;
   try
     Lines.Add(AEntry.Project);
-    Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueHintSaved, [TabsText(AEntry.State.TabCount),
+    Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHintSaved, [TabsText(AEntry.State.TabCount),
       LocalText(AEntry.State.At)]));
     Tab := AEntry.LastTab;
     if Tab.FileName <> '' then
@@ -743,9 +745,9 @@ begin
         Place := Place + ':' + IntToStr(Tab.Line);
       if Tab.Method <> '' then
         Place := Place + Arrow + Tab.Method;
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueHintLast, [Place]));
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHintLast, [Place]));
     end;
-    Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueHintResume));
+    Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueHintResume));
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -756,11 +758,11 @@ class function TAtlasWelcomeContinueFrame.KindText(AKind: TAtlasSavedKind): stri
 begin
   case AKind of
     TAtlasSavedKind.Note:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedNote);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedNote);
     TAtlasSavedKind.Bookmark:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedBookmark);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedBookmark);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedFavorite);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedFavorite);
   end;
 end;
 
@@ -770,10 +772,10 @@ var
 begin
   mText := AItem.Text;
   if AItem.Lost then
-    mText := mText + ' ' + TAtlasStrings.Text(TAtlasTextId.WelcomeSavedLost);
+    mText := mText + ' ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedLost);
   Project := AItem.ProjectName;
   if AItem.Kind = TAtlasSavedKind.Favorite then
-    Project := TAtlasStrings.Text(TAtlasTextId.WelcomeSavedAllProjects);
+    Project := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedAllProjects);
   Result := [KindText(AItem.Kind), mText, AItem.Place, Project];
 end;
 
@@ -787,7 +789,7 @@ begin
   SetLength(FButtonRects, Length(FEntries));
   Canvas := FBox.Canvas;
   Canvas.Font.Assign(Font);
-  mText := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueResume);
+  mText := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueResume);
   Right := FBox.Width - ScaleValue(Indent);
   for Row := 0 to High(FEntries) do
   begin
@@ -819,7 +821,8 @@ begin
   if Length(FEntries) = 0 then
   begin
     Canvas.Font.Color := MutedColor;
-    Canvas.TextOut(ScaleValue(Indent), RowTop(0) + ScaleValue(4), TAtlasStrings.Text(TAtlasTextId.WelcomeContinueEmpty));
+    Canvas.TextOut(ScaleValue(Indent), RowTop(0) + ScaleValue(4),
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueEmpty));
   end;
   LayoutButtons;
   Stamp := NowUtc;
@@ -902,7 +905,7 @@ begin
     Canvas.Brush.Style := bsClear;
     Canvas.RoundRect(Button.Left, Button.Top, Button.Right, Button.Bottom, ScaleValue(6), ScaleValue(6));
     Canvas.Font.Color := TextColor;
-    mText := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueResume);
+    mText := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueResume);
     Canvas.TextOut(Button.Left + (Button.Width - Canvas.TextWidth(mText)) div 2,
       Button.Top + (Button.Height - Canvas.TextHeight(mText)) div 2, mText);
     if Row = Active then
@@ -923,9 +926,9 @@ begin
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := TextColor;
     if FIncoming.Upstream <> '' then
-      mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueIncomingTitle, [FIncoming.Upstream])
+      mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueIncomingTitle, [FIncoming.Upstream])
     else
-      mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeContinueIncomingTitle, ['…']);
+      mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueIncomingTitle, ['…']);
     Canvas.TextRect(Rect(mLeft, mTop, Limit, mTop + ScaleValue(LineHeight)), mLeft, mTop, mText);
     Inc(Line);
     Canvas.Font.Style := [];
@@ -940,9 +943,9 @@ begin
     if Length(FIncoming.Commits) = 0 then
     begin
       if FQuerying then
-        mText := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingQuerying)
+        mText := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueIncomingQuerying)
       else
-        mText := TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingNone);
+        mText := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueIncomingNone);
       Canvas.TextRect(Rect(mLeft, mTop + Line * ScaleValue(LineHeight), Limit, mTop + (Line + 1) * ScaleValue(LineHeight)),
         mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight), mText);
       Inc(Line);
@@ -950,7 +953,7 @@ begin
     if FIncoming.More then
     begin
       Canvas.TextOut(mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight),
-        TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingMore));
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueIncomingMore));
       Inc(Line);
     end;
     // Fehlt die Anmeldung, die Ursache als Link statt nur „ohne Abruf“ (#1287).
@@ -958,14 +961,14 @@ begin
     begin
       Canvas.Font.Color := LinkColor;
       Canvas.TextOut(mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight),
-        TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingLogin));
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueIncomingLogin));
       Canvas.Font.Color := MutedColor;
       Inc(Line);
     end
     else if FIncoming.FetchFailed then
     begin
       Canvas.TextOut(mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight),
-        TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingFetchFailed));
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueIncomingFetchFailed));
       Inc(Line);
     end;
   end;
@@ -1087,9 +1090,10 @@ begin
     if (State <> '') and (FQuick.StateOf(Hit.Row).Detail <> '') then
       State := State + ': ' + FQuick.StateOf(Hit.Row).Detail;
     if State <> '' then
-      FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickHintState, [State]);
+      FBox.Hint := FBox.Hint + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintState,
+        [State]);
     if FQuick.Active then
-      FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintKeys);
+      FBox.Hint := FBox.Hint + sLineBreak + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintKeys);
   end
   else if Hit.Commit >= 0 then
     FBox.Hint := CommitHint(FIncoming.Commits[Hit.Commit])

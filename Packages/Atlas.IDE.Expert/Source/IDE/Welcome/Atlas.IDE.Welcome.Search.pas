@@ -79,7 +79,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Session,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
@@ -280,7 +280,7 @@ begin
         Seen.Add(AnsiUpperCase(Entry.FileName), True);
         Detail := ProjectName;
         if TAtlasWelcomeIndexFiles.FormOf(Entry.FileName) <> '' then
-          Detail := Detail + ' · ' + TAtlasStrings.Text(TAtlasTextId.WelcomeSearchForm);
+          Detail := Detail + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchForm);
         Hit := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Files, ExtractFileName(Entry.FileName), Detail,
           Entry.FileName);
         Hit.Project := Project;
@@ -295,7 +295,7 @@ begin
   begin
     Session := TAtlasIdeResults.Session;
     if Session = nil then
-      ASymbolHint := TAtlasStrings.Text(TAtlasTextId.WelcomeSearchNoServer)
+      ASymbolHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchNoServer)
     else if Length(Trim(APattern)) >= 2 then
     begin
       try

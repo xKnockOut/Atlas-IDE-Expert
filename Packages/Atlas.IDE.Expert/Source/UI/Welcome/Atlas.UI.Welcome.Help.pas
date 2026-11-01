@@ -73,7 +73,7 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 { TAtlasWelcomeHelpFrame }
 
@@ -94,27 +94,27 @@ begin
   FNote.Parent := Body;
   FNote.ShowAccelChar := False;
   FNote.Font.Color := clGrayText;
-  FNote.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpNote);
+  FNote.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpNote);
   Body.OnResize := BodyResize;
   UpdateContent;
 end;
 
 class function TAtlasWelcomeHelpFrame.TitleText: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpTitle);
+  Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpTitle);
 end;
 
 class function TAtlasWelcomeHelpFrame.ButtonCaption(AButton: TAtlasHelpButton): string;
 begin
   case AButton of
     TAtlasHelpButton.Docs:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpDocs);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpDocs);
     TAtlasHelpButton.Keys:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpKeys);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpKeys);
     TAtlasHelpButton.Donate:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpDonate);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpDonate);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpReport);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpReport);
   end;
 end;
 

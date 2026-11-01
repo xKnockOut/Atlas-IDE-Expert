@@ -90,7 +90,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands;
@@ -333,13 +333,13 @@ begin
         if Assigned(FCommandExists) and FCommandExists(AItem.Command) and Assigned(FRun) then
           FRun(AItem.Command)
         else
-          Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeNewsNoCommand, [AItem.Command]));
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoCommand, [AItem.Command]));
         Exit;
       end;
       FileName := SamplePath(FFolder, AItem.Sample);
       if (FileName = '') or not FileExists(FileName) then
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeNewsNoSample, [AItem.Sample]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoSample, [AItem.Sample]));
         Exit;
       end;
       // whatsnew.json zählt Zeilen ab 1, der Editor ab 0.
@@ -385,7 +385,7 @@ begin
         Exit;
       if Length(TAtlasWhatsNew.VersionsFor(AView, FVersions, FSeen, FCurrent)) = 0 then
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeNewsMissing, [TAtlasWhatsNew.FileName]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsMissing, [TAtlasWhatsNew.FileName]));
         Exit;
       end;
       FManual := True;

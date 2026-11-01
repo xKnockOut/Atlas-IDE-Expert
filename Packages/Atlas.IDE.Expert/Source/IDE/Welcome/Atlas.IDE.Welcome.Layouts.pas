@@ -81,7 +81,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Welcome.Sections,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeWelcomeLayouts }
@@ -92,34 +92,46 @@ begin
   FRefresh := ARefresh;
 end;
 
+/// <summary>Beschreibung, die der Bereich selbst mitbringt (Kacheln anderer Module, #1455); '' ohne.</summary>
+function DescriptionOfSection(const AId: string): string;
+var
+  mSection: TAtlasWelcomeSection;
+begin
+  Result := '';
+  if TAtlasWelcomeSections.Default.Find(AId, mSection) then
+  begin
+    Result := mSection.Description;
+  end;
+end;
+
 class function TAtlasIdeWelcomeLayouts.Description(const AId: string): string;
 begin
   if SameText(AId, TAtlasWelcomeIds.Continue) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescContinue)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescContinue)
   else if SameText(AId, TAtlasWelcomeIds.Projects) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescProjects)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescProjects)
   else if SameText(AId, TAtlasWelcomeIds.History) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescHistory)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHistory)
   else if SameText(AId, TAtlasWelcomeIds.Tests) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescTests)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescTests)
   else if SameText(AId, TAtlasWelcomeIds.State) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescState)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescState)
   else if SameText(AId, TAtlasWelcomeIds.Unsaved) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescUnsaved)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescUnsaved)
   else if SameText(AId, TAtlasWelcomeIds.News) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescNews)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescNews)
   else if SameText(AId, TAtlasWelcomeIds.Discover) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescDiscover)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescDiscover)
   else if SameText(AId, TAtlasWelcomeIds.Setup) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescSetup)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSetup)
   else if SameText(AId, TAtlasWelcomeIds.Issues) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescIssues)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescIssues)
   else if SameText(AId, TAtlasWelcomeIds.Sprint) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescSprint)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSprint)
   else if SameText(AId, TAtlasWelcomeIds.Help) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescHelp)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHelp)
   else
-    Result := '';
+    Result := DescriptionOfSection(AId);
 end;
 
 function TAtlasIdeWelcomeLayouts.Registered: TArray<string>;

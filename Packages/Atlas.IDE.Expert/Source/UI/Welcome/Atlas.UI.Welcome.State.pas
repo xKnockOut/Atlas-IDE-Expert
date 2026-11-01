@@ -102,7 +102,7 @@ uses
   System.Math,
   Vcl.Themes,
   Atlas.Core.Product.Version,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 { TAtlasWelcomeStateFrame }
 
@@ -149,13 +149,13 @@ class function TAtlasWelcomeStateFrame.ButtonCaption(AButton: TAtlasStateButton)
 begin
   case AButton of
     TAtlasStateButton.Restart:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStateRestart);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateRestart);
     TAtlasStateButton.Settings:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStateSettings);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateSettings);
     TAtlasStateButton.LogFolder:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStateLogFolder);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateLogFolder);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStateUpdate);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateUpdate);
   end;
 end;
 
@@ -283,15 +283,15 @@ begin
     Exit(ARow.Text);
   case ARow.Kind of
     TAtlasStateRowKind.Server:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStateServerMissing);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateServerMissing);
     TAtlasStateRowKind.Version:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeStateVersion, [TAtlasPluginVersion.Version]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeStateVersion, [TAtlasPluginVersion.Version]);
     TAtlasStateRowKind.Index:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStateIndexMissing);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateIndexMissing);
     TAtlasStateRowKind.Setup:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStateSetupMissing);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateSetupMissing);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStateDiagnosticOff);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateDiagnosticOff);
   end;
 end;
 

@@ -183,7 +183,7 @@ uses
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -738,11 +738,11 @@ procedure TAtlasIdeCodeLinks.ShowMenu(const AHit: THit; const APoint: TPoint);
 begin
   FMenu.Items.Clear;
   FMenuHit := AHit;
-  AddMenuItem(TAtlasStrings.Text(TAtlasTextId.IssueLinkMenuShow), MenuShow).Default := True;
-  AddMenuItem(TAtlasStrings.Text(TAtlasTextId.IssuePreviewBrowse), MenuBrowse);
-  AddMenuItem(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCopyKey), MenuCopy);
+  AddMenuItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow), MenuShow).Default := True;
+  AddMenuItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse), MenuBrowse);
+  AddMenuItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey), MenuCopy);
   AddMenuItem('-', 0).OnClick := nil;
-  AddMenuItem(TAtlasStrings.Text(TAtlasTextId.IssuePreviewStart), MenuStart).Enabled := CanStart;
+  AddMenuItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart), MenuStart).Enabled := CanStart;
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 

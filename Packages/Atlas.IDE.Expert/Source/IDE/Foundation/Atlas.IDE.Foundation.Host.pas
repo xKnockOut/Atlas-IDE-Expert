@@ -3,7 +3,10 @@
 // Dienste von Base für die Module (#1455, ADR 0017): Serversitzung (laufend
 // bzw. bei Bedarf gestartet), Befehle im Hintergrund an den Server,
 // Meldungsansicht „Atlas“, Warnungen, Bericht und Diagnoselog, Felder im
-// Atlas-Statusfeld und Compile-Ereignisse. Builds auf Auftrag stellt das
+// Atlas-Statusfeld und Compile-Ereignisse; für Bereiche wie die
+// Willkommensseite außerdem Zustand des Servers, Befehle der Palette,
+// Tastenübersicht, Ausblenden über das Kontextmenü (#628), eigene Snippets
+// und Knöpfe für Neustart, Optionen, Logordner und Update. Builds auf Auftrag stellt das
 // Modul Build-Pipeline über IAtlasBuildJobs (Atlas.IDE.Contracts) bereit.
 // Teilnehmer, die ein Modul an den Compile-Ereignissen anmeldet, und Felder im
 // Statusfeld nimmt es beim Stoppen selbst zurück (Remove, leerer Text). Die Kompositionswurzel setzt die Quellen beim Start
@@ -21,7 +24,10 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Build.Events,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  Atlas.Core.Status.Lines,
+  Atlas.Core.Commands.Palette,
+  Atlas.Core.Completion.Snippets;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server; ADone bekommt das
@@ -38,6 +44,13 @@ type
 
   /// <summary>Feld AId im Atlas-Statusfeld: Text, Hinweis, Klick (nil = keiner); leerer Text entfernt es.</summary>
   TAtlasHostStatusExtra = reference to procedure(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+
+  /// <summary>Indiziert der Server gerade? APercent -1 = unbekannt.</summary>
+  TAtlasHostIndexing = reference to function(out APercent: Integer): Boolean;
+
+  /// <summary>Einstellung AKey über das Kontextmenü an APoint ausblenden (#628, mit „Rückgängig“); False, wenn
+  /// Ausblenden aus ist oder der Schlüssel nicht abschaltbar.</summary>
+  TAtlasHostHideSetting = reference to function(const AKey: string; APoint: TPoint): Boolean;
 
   /// <summary>Quellen der Dienste; jedes Feld darf fehlen.</summary>
   TAtlasHostServices = record
@@ -57,6 +70,26 @@ type
     RunRequest: TAtlasHostRequestRunner;
     StatusExtra: TAtlasHostStatusExtra;
     CompileEvents: TFunc<TAtlasCompileEvents>;
+    /// <summary>Zustand des Servers (Version, Pfad, Sitzung) wie im Statusfeld.</summary>
+    ServerInfo: TFunc<TAtlasServerInfo>;
+    ServerIndexing: TAtlasHostIndexing;
+    /// <summary>Units im Index; -1 = unbekannt.</summary>
+    IndexedUnits: TFunc<Integer>;
+    /// <summary>Atlas-Befehle der Palette (auch die der Module) mit Taste.</summary>
+    PaletteCommands: TFunc<TArray<TAtlasCommand>>;
+    ExecuteCommand: TProc<string>;
+    ShowPalette: TProc;
+    /// <summary>Übersicht aller Tastenkürzel (#520).</summary>
+    ShowKeyMap: TProc;
+    HideSetting: TAtlasHostHideSetting;
+    /// <summary>Eigene Snippets für neue Dateien (#759).</summary>
+    FileSnippets: TFunc<TAtlasSnippetList>;
+    RestartServer: TProc;
+    OpenOptions: TProc;
+    OpenLogFolder: TProc;
+    OpenUpdate: TProc;
+    /// <summary>Meldungsansicht der IDE nach vorn holen.</summary>
+    ShowMessages: TProc;
   end;
 
   TAtlasIdeHost = class
@@ -99,6 +132,23 @@ type
     class function RunRequestAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
       const AMethod, AParamsJson: string; ATimeoutMs: Cardinal; const ACancelled: TFunc<Boolean>;
       const ADone: TProc<string>): Boolean; static;
+    /// <summary>Zustand des Servers; Default ohne Quelle.</summary>
+    class function ServerInfo: TAtlasServerInfo; static;
+    class function ServerIndexing(out APercent: Integer): Boolean; static;
+    class function IndexedUnits: Integer; static;
+    /// <summary>Atlas-Befehle der Palette; nil ohne Palette.</summary>
+    class function PaletteCommands: TArray<TAtlasCommand>; static;
+    /// <summary>Befehl der Palette ausführen; ohne Palette nichts.</summary>
+    class procedure ExecuteCommand(const AId: string); static;
+    class procedure ShowPalette; static;
+    class procedure ShowKeyMap; static;
+    class function HideSetting(const AKey: string; APoint: TPoint): Boolean; static;
+    class function FileSnippets: TAtlasSnippetList; static;
+    class procedure RestartServer; static;
+    class procedure OpenOptions; static;
+    class procedure OpenLogFolder; static;
+    class procedure OpenUpdate; static;
+    class procedure ShowMessages; static;
   end;
 
 implementation
@@ -181,6 +231,117 @@ begin
   Result := nil;
   if Assigned(FServices.CompileEvents) then
     Result := FServices.CompileEvents();
+end;
+
+class function TAtlasIdeHost.ServerInfo: TAtlasServerInfo;
+begin
+  Result := Default(TAtlasServerInfo);
+  if Assigned(FServices.ServerInfo) then
+  begin
+    Result := FServices.ServerInfo();
+  end;
+end;
+
+class function TAtlasIdeHost.ServerIndexing(out APercent: Integer): Boolean;
+begin
+  APercent := -1;
+  Result := Assigned(FServices.ServerIndexing) and FServices.ServerIndexing(APercent);
+end;
+
+class function TAtlasIdeHost.IndexedUnits: Integer;
+begin
+  Result := -1;
+  if Assigned(FServices.IndexedUnits) then
+  begin
+    Result := FServices.IndexedUnits();
+  end;
+end;
+
+class function TAtlasIdeHost.PaletteCommands: TArray<TAtlasCommand>;
+begin
+  Result := nil;
+  if Assigned(FServices.PaletteCommands) then
+  begin
+    Result := FServices.PaletteCommands();
+  end;
+end;
+
+class procedure TAtlasIdeHost.ExecuteCommand(const AId: string);
+begin
+  if Assigned(FServices.ExecuteCommand) then
+  begin
+    FServices.ExecuteCommand(AId);
+  end;
+end;
+
+class procedure TAtlasIdeHost.ShowPalette;
+begin
+  if Assigned(FServices.ShowPalette) then
+  begin
+    FServices.ShowPalette();
+  end;
+end;
+
+class procedure TAtlasIdeHost.ShowKeyMap;
+begin
+  if Assigned(FServices.ShowKeyMap) then
+  begin
+    FServices.ShowKeyMap();
+  end;
+end;
+
+class function TAtlasIdeHost.HideSetting(const AKey: string; APoint: TPoint): Boolean;
+begin
+  Result := Assigned(FServices.HideSetting) and FServices.HideSetting(AKey, APoint);
+end;
+
+class function TAtlasIdeHost.FileSnippets: TAtlasSnippetList;
+begin
+  Result := nil;
+  if Assigned(FServices.FileSnippets) then
+  begin
+    Result := FServices.FileSnippets();
+  end;
+end;
+
+class procedure TAtlasIdeHost.RestartServer;
+begin
+  if Assigned(FServices.RestartServer) then
+  begin
+    FServices.RestartServer();
+  end;
+end;
+
+class procedure TAtlasIdeHost.OpenOptions;
+begin
+  if Assigned(FServices.OpenOptions) then
+  begin
+    FServices.OpenOptions();
+  end;
+end;
+
+class procedure TAtlasIdeHost.OpenLogFolder;
+begin
+  if Assigned(FServices.OpenLogFolder) then
+  begin
+    FServices.OpenLogFolder();
+  end;
+end;
+
+class procedure TAtlasIdeHost.OpenUpdate;
+begin
+  if Assigned(FServices.OpenUpdate) then
+  begin
+    FServices.OpenUpdate();
+  end;
+end;
+
+class procedure TAtlasIdeHost.ShowMessages;
+begin
+  if Assigned(FServices.ShowMessages) then
+  begin
+    FServices.ShowMessages();
+  end;
 end;
 
 /// <summary>Weiterreichen in den Hauptthread; eigene Routine, damit der Rahmen nur die Antwort hält.</summary>
