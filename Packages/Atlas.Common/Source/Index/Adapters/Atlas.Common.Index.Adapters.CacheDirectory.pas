@@ -43,6 +43,8 @@ type
     CachePattern = '*.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
+    /// <summary>Gemeinsame Caches der Suchpfad-Units (Speicher, Rückmeldung 01.11.2026).</summary>
+    SearchFolder = 'Suchpfade';
     /// <summary>Ordnername ohne bekannte Delphi-Version.</summary>
     NoVersion = 'ohne-Delphi';
     LockExtension = '.lock';
@@ -70,6 +72,9 @@ type
     class function FileFor(const ARoot, AIdeVersion, ASignature: string): string; static;
     /// <summary>Gemeinsamer Bibliotheks-Cache (TIndexProjectFiles.LibrarySignature), getrennt vom Projekt.</summary>
     class function LibraryFileFor(const ARoot, AIdeVersion, ASignature: string): string; static;
+    /// <summary>Gemeinsamer Cache der Suchpfad-Units aller Projekte mit gleicher ASignature (Suchpfade, Defines,
+    /// Include-Pfade), getrennt vom Projekt.</summary>
+    class function SearchFileFor(const ARoot, AIdeVersion, ASignature: string): string; static;
     /// <summary>Datei des letzten IDE-Builds für den Arbeitsordner AWorkspace (#556), gleich für LSP- und
     /// MCP-Prozess; bewusst kein Index-Cache, damit das Aufräumen sie nicht erfasst.</summary>
     class function BuildFileFor(const ARoot, AWorkspace: string): string; static;
@@ -187,6 +192,12 @@ begin
     KeyHash(ASignature)), CacheFileName);
 end;
 
+class function TIndexCacheDirectory.SearchFileFor(const ARoot, AIdeVersion, ASignature: string): string;
+begin
+  Result := TPath.Combine(TPath.Combine(TPath.Combine(VersionFolder(ARoot, AIdeVersion), SearchFolder),
+    KeyHash(ASignature)), CacheFileName);
+end;
+
 class function TIndexCacheDirectory.BuildFileFor(const ARoot, AWorkspace: string): string;
 var
   Key: string;
@@ -300,9 +311,13 @@ begin
 end;
 
 function IsLibraryCache(const AFileName: string): Boolean;
+var
+  mFolder: string;
 begin
-  // <Version>\Bibliothek\<Hash>\index-<Format>.atlasidx
-  Result := SameText(ExtractFileName(ExtractFileDir(ExtractFileDir(AFileName))), TIndexCacheDirectory.LibraryFolder);
+  // Gemeinsame Caches ohne Projekt als Herkunft: <Version>\Bibliothek\<Hash>\index-<Format>.atlasidx und
+  // <Version>\Suchpfade\<Hash>\… (mehrere Projekte teilen sie).
+  mFolder := ExtractFileName(ExtractFileDir(ExtractFileDir(AFileName)));
+  Result := SameText(mFolder, TIndexCacheDirectory.LibraryFolder) or SameText(mFolder, TIndexCacheDirectory.SearchFolder);
 end;
 
 /// <summary>Projekt-Units eines Caches ohne projekt.txt (Caches vor dieser Änderung).</summary>
