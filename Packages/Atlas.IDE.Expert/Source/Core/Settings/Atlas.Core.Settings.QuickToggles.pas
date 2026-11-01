@@ -125,6 +125,8 @@ begin
   Result := '';
   if AEnglish then
     Result := ASchema.GetValue<string>('x-captionEn', '');
+  if (Result = '') and AEnglish then
+    Result := ASchema.GetValue<string>('x-description-en', '');
   if Result = '' then
     Result := ASchema.GetValue<string>('x-caption', '');
   if Result = '' then

@@ -28,6 +28,9 @@ type
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
+    /// <summary>language "" folgt dem Client (#1458).</summary>
+    [Test]
+    procedure EmptyLanguageFollowsClient;
     [Test]
     procedure AllowsCommentsAndTrailingCommas;
     [Test]
@@ -208,7 +211,8 @@ var
 begin
   Assert.AreEqual('Win32', TConfigurationParser.ParseLayered('{"platform": "Win32"}', '', Issues).Platform);
   Assert.AreEqual('Win64', TConfigurationParser.ParseLayered('', '{"platform": "Win64"}', Issues).Platform);
-  Assert.AreEqual('de', TConfigurationParser.ParseLayered('', '', Issues).Language);
+  // Ohne Angabe entscheidet der Client (#1458).
+  Assert.AreEqual('', TConfigurationParser.ParseLayered('', '', Issues).Language);
   // Meldungen gelten nur der Datei.
   TConfigurationParser.ParseLayered('{"language": "fr"}', '{"language": "xx"}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
@@ -527,8 +531,20 @@ var
 begin
   Settings := Parse('{}', Issues);
   Assert.AreEqual<NativeInt>(0, Length(Issues));
-  Assert.AreEqual('de', Settings.Language);
+  Assert.AreEqual('', Settings.Language);
   Assert.AreEqual('', Settings.DelphiVersion);
+end;
+
+procedure TConfigurationParserTests.EmptyLanguageFollowsClient;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"language": ""}', mIssues);
+  Assert.AreEqual<NativeInt>(0, Length(mIssues));
+  Assert.AreEqual('', mSettings.Language);
+  mSettings := Parse('{"language": "en"}', mIssues);
+  Assert.AreEqual('en', mSettings.Language);
 end;
 
 procedure TConfigurationParserTests.AllowsCommentsAndTrailingCommas;
@@ -563,7 +579,7 @@ var
 begin
   Settings := Parse('{"language": "fr", "platform": 64, "config": "Debug", "rules": {"a": "laut"}}', Issues);
   Assert.AreEqual<NativeInt>(3, Length(Issues));
-  Assert.AreEqual('de', Settings.Language);
+  Assert.AreEqual('', Settings.Language);
   Assert.AreEqual('', Settings.Platform);
   Assert.AreEqual('Debug', Settings.Config);
   Assert.AreEqual<NativeInt>(0, Length(Settings.Rules));

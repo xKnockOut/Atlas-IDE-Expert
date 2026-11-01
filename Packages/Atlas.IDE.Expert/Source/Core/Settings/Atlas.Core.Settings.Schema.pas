@@ -31,6 +31,8 @@ type
     Path: string;
     Page: string;
     Description: string;
+    /// <summary>x-description-en (#1458): englische Beschreibung; leer, wenn das Schema keine hat.</summary>
+    DescriptionEn: string;
     Kind: TAtlasSettingKind;
     /// <summary>Bei Choice: erlaubte Werte als JSON-Text ("\"de\"", "true").</summary>
     Choices: TArray<string>;
@@ -50,6 +52,8 @@ type
     Experimental: Boolean;
     /// <summary>x-control verlangt eine Dateiauswahl.</summary>
     function PicksFile: Boolean;
+    /// <summary>Beschreibung in der Sprache der IDE (#1458); ohne englischen Text die deutsche.</summary>
+    function DescriptionFor(AEnglish: Boolean): string;
     /// <summary>Passt AJson (JSON-Text) zur Art des Felds? Sonst bleibt der Wert unangetastet.</summary>
     function Accepts(const AJson: string): Boolean;
   end;
@@ -90,6 +94,11 @@ begin
   Result := ASchema.GetValue<string>('description', '');
   if Result = '' then
     Result := ASchema.GetValue<string>('markdownDescription', '');
+end;
+
+function DescriptionEnOf(ASchema: TJSONObject): string;
+begin
+  Result := ASchema.GetValue<string>('x-description-en', '');
 end;
 
 /// <summary>Art eines Schemas; Complex, wenn kein einfaches Bedienelement passt.</summary>
@@ -179,6 +188,15 @@ begin
   end;
 end;
 
+function TAtlasSettingField.DescriptionFor(AEnglish: Boolean): string;
+begin
+  Result := '';
+  if AEnglish then
+    Result := DescriptionEn;
+  if Result = '' then
+    Result := Description;
+end;
+
 function TAtlasSettingField.PicksFile: Boolean;
 begin
   Result := Pos('Datei wählen', Control) > 0;
@@ -194,7 +212,8 @@ var
   Simple: Boolean;
   Choices: TArray<string>;
 
-  function Make(const APath, APage: string; ASchema: TJSONObject; const AFallback, AScope: string): TAtlasSettingField;
+  function Make(const APath, APage: string; ASchema: TJSONObject; const AFallback, AFallbackEn, AScope: string):
+    TAtlasSettingField;
   var
     Default_, Examples, Example, Restart, Experimental: TJSONValue;
   begin
@@ -204,6 +223,9 @@ var
     Result.Description := DescriptionOf(ASchema);
     if Result.Description = '' then
       Result.Description := AFallback;
+    Result.DescriptionEn := DescriptionEnOf(ASchema);
+    if Result.DescriptionEn = '' then
+      Result.DescriptionEn := AFallbackEn;
     Result.Kind := KindOf(ASchema, Result.Choices);
     Default_ := ASchema.GetValue('default');
     if Default_ <> nil then
@@ -253,12 +275,13 @@ begin
           for Sub in TJSONObject(Children) do
             Result := Result + [Make(Pair.JsonString.Value + '.' + Sub.JsonString.Value,
               TJSONObject(Child).GetValue<string>('x-page', ''), TJSONObject(Sub.JsonValue),
-              DescriptionOf(TJSONObject(Child)), TJSONObject(Child).GetValue<string>('x-scope', ''))];
+              DescriptionOf(TJSONObject(Child)), DescriptionEnOf(TJSONObject(Child)),
+              TJSONObject(Child).GetValue<string>('x-scope', ''))];
           Continue;
         end;
       end;
       Field := Make(Pair.JsonString.Value, TJSONObject(Child).GetValue<string>('x-page', ''),
-        TJSONObject(Child), '', '');
+        TJSONObject(Child), '', '', '');
       Result := Result + [Field];
     end;
   finally

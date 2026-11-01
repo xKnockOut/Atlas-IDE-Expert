@@ -53,7 +53,7 @@ const
     '"FixCase":{"type":"boolean","x-page":"Editor","x-caption":"ohne Schnellschalter"},' +
     '"VisibleRows":{"type":"integer","x-page":"Editor","x-quickToggle":true},' +
     '"PairGuides":{"type":"boolean","x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"description":"Blocklinien"}' +
+      '"description":"Blocklinien","x-description-en":"Block guides"}' +
     '}}';
   Project =
     '{"properties":{' +
@@ -97,6 +97,8 @@ begin
   Toggles := TAtlasQuickToggles.Build(Catalog, '', True);
   Assert.AreEqual('Bracket colors', Toggles[0].Caption);
   Assert.AreEqual('Hover', Toggles[2].Caption);
+  // Ohne x-captionEn die englische Beschreibung (#1458).
+  Assert.AreEqual('Block guides', Toggles[1].Caption);
   Assert.AreEqual(0, Integer(Length(TAtlasQuickToggles.Build('kein JSON', ''))));
 end;
 
