@@ -67,7 +67,7 @@ function LoadProject(const AFileName, AConfiguration, APlatform: string; out AIn
 function IsTestProject(const AFileName: string): Boolean;
 /// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
 function ProjectFilesUnder(const ARoot: string): TArray<string>;
-/// <summary>AGroup.Main.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
+/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
 /// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
@@ -155,7 +155,7 @@ begin
   end;
 end;
 
-/// <summary>AGroup.Main.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
+/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an der
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
 /// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
@@ -164,7 +164,7 @@ begin
   Result :=
     function(const AFileName: string): TCheckSource
     begin
-      Result := AGroup.Main.CheckSource(AFileName);
+      Result := AGroup.Main.State.CheckSource(AFileName);
     end;
 end;
 

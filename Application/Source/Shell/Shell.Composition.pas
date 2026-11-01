@@ -741,6 +741,9 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.IncludeFiles,
   Shell.SlashHost,
+  Shell.Workspace.Setup,
+  Shell.Workspace.Jobs,
+  Shell.Workspace.RuleProjects,
   Shell.VcsChanges,
   Shell.AffectedTests,
   Atlas.Common.Lsp.AffectedTests,
@@ -1572,7 +1575,7 @@ begin
       Context: TIdeProjectContext;
     begin
       Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-      if (Workspace <> nil) and Workspace.Project(Project) and FIdeProject.Find(Project.FileName, Context) and
+      if (Workspace <> nil) and Workspace.State.Project(Project) and FIdeProject.Find(Project.FileName, Context) and
         Context.HasNaming[AKind] then
       begin
         Exit(Context.Naming[AKind]);
@@ -1925,7 +1928,7 @@ begin
         if Workspace <> nil then
         begin
           AContext.Keep := Workspace.Configuration.Settings.UsesKeep;
-          AContext.Namespaces := Workspace.Namespaces;
+          AContext.Namespaces := Workspace.State.Namespaces;
         end;
       finally
         TMonitor.Exit(FWorkspacesLock);
@@ -2011,7 +2014,7 @@ begin
         Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
         begin
-          Result := Workspace.IncludePaths;
+          Result := Workspace.State.IncludePaths;
         end;
       finally
         TMonitor.Exit(FWorkspacesLock);
@@ -2625,7 +2628,7 @@ begin
       begin
         for Workspace in Targets do
         begin
-          if Workspace.Project(Project) and
+          if Workspace.State.Project(Project) and
             not Workspace.SelectBuild(Args.Config, Args.Platform, Args.Defines, Args.HasDefines, Error) then
           begin
             raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
@@ -2635,7 +2638,7 @@ begin
       Items := TJSONArray.Create;
       for Workspace in Targets do
       begin
-        if Workspace.Project(Project) then
+        if Workspace.State.Project(Project) then
         begin
           Items.AddElement(TBuildCommands.ProjectItem(Workspace.Name, Project, Args));
         end;
@@ -2658,7 +2661,7 @@ begin
         Targets := nil;
         for Index := 0 to FWorkspaces.Count - 1 do
         begin
-          if FWorkspaces[Index].ProjectFileName <> '' then
+          if FWorkspaces[Index].State.ProjectFileName <> '' then
           begin
             Targets := Targets + [FWorkspaces[Index]];
           end;
@@ -2671,14 +2674,14 @@ begin
       for Index := 0 to High(Targets) do
       begin
         Items[Index].Name := Targets[Index].Name;
-        Items[Index].Project := Targets[Index].ProjectFileName;
+        Items[Index].Project := Targets[Index].State.ProjectFileName;
         Items[Index].Active := SameText(Items[Index].Project, Active);
       end;
       if Args.HasProject and (Args.Project = '') then
       begin
         for Index := 0 to High(Targets) do
         begin
-          FProjectSelection.SetProject(Targets[Index].Origin, '');
+          FProjectSelection.SetProject(Targets[Index].Setup.Origin, '');
         end;
         FLogger.Info('Projektwahl aufgehoben');
       end
@@ -2690,7 +2693,7 @@ begin
           raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
             Format('Projekt %s ist nicht geladen.', [Args.Project]));
         end;
-        FProjectSelection.SetProject(Targets[Index].Origin, Items[Index].Project);
+        FProjectSelection.SetProject(Targets[Index].Setup.Origin, Items[Index].Project);
         FLogger.Info(Format('Projekt %s ausgewählt', [Items[Index].Name]));
       end;
       for Index := 0 to High(Targets) do
@@ -2817,8 +2820,8 @@ begin
       try
         for Workspace in FWorkspaces do
         begin
-          if SameText(Workspace.ProjectFile, AContext.Project) or
-            (Workspace.Project(Project) and SameText(Project.FileName, AContext.Project)) then
+          if SameText(Workspace.Setup.ProjectFile, AContext.Project) or
+            (Workspace.State.Project(Project) and SameText(Project.FileName, AContext.Project)) then
           begin
             Affected := Affected + [Workspace];
           end;
@@ -3198,7 +3201,7 @@ begin
     try
       for Existing in FWorkspaces do
       begin
-        if SameText(Existing.ProjectFile, AProjectFile) then
+        if SameText(Existing.Setup.ProjectFile, AProjectFile) then
         begin
           Exit;
         end;
@@ -3213,24 +3216,24 @@ begin
       ChangeFileExt(ExtractFileName(AProjectFile), '')]);
   end;
   Inc(FWorkspaceCounter);
-  Workspace := TShellWorkspace.Create(ARoot, AName, FDocuments, FTransport, FLogger, FIndex,
-    Format('atlas-index-%d', [FWorkspaceCounter]));
-  Workspace.ProjectFile := AProjectFile;
-  Workspace.Priority := FWorkspacePriority;
+  Workspace := TShellWorkspace.Create(ARoot, AName, TShellWorkspaceServices.Create(FDocuments, FTransport, FLogger,
+    FIndex, Format('atlas-index-%d', [FWorkspaceCounter])));
+  Workspace.Setup.ProjectFile := AProjectFile;
+  Workspace.Setup.Priority := FWorkspacePriority;
   Inc(FWorkspacePriority);
-  Workspace.Scheduler := FIndexScheduler;
-  Workspace.Deferred := ADeferred;
-  Workspace.IdeProjects := FIdeProject;
-  Workspace.Origin := AOrigin;
-  Workspace.Selection := FProjectSelection;
+  Workspace.Setup.Scheduler := FIndexScheduler;
+  Workspace.Setup.Deferred := ADeferred;
+  Workspace.Setup.IdeProjects := FIdeProject;
+  Workspace.Setup.Origin := AOrigin;
+  Workspace.Setup.Selection := FProjectSelection;
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).
   Identity := Default(TIndexProcessInfo);
   Identity.Pid := TShellPlatform.CurrentProcessId;
   Identity.Kind := TIndexProcessInfo.KindLsp;
   Identity.Client := FClientName;
-  Workspace.ProcessIdentity := Identity;
+  Workspace.Setup.ProcessIdentity := Identity;
   // uses-unit-not-found: Was ein Projekt der Gruppe in einen Suchpfad übersetzt, gibt es beim Bau der Gruppe.
-  Workspace.OnGroupProjects :=
+  Workspace.Setup.OnGroupProjects :=
     function: TArray<string>
     var
       Other: TShellWorkspace;
@@ -3241,9 +3244,9 @@ begin
         Result := FGroupProjectFiles;
         for Other in FWorkspaces do
         begin
-          if Other.ProjectFile <> '' then
+          if Other.Setup.ProjectFile <> '' then
           begin
-            Result := Result + [Other.ProjectFile];
+            Result := Result + [Other.Setup.ProjectFile];
           end;
         end;
       finally
@@ -3251,7 +3254,7 @@ begin
       end;
     end;
   // requires-Packages als Quelle zuerst bei den Projekten der Gruppe suchen (#46).
-  Workspace.OnPackageFolders :=
+  Workspace.Setup.OnPackageFolders :=
     function: TArray<string>
     var
       Other: TShellWorkspace;
@@ -3261,9 +3264,9 @@ begin
       try
         for Other in FWorkspaces do
         begin
-          if Other.ProjectFile <> '' then
+          if Other.Setup.ProjectFile <> '' then
           begin
-            Result := Result + [ExtractFileDir(Other.ProjectFile)];
+            Result := Result + [ExtractFileDir(Other.Setup.ProjectFile)];
           end;
         end;
       finally
@@ -3272,12 +3275,12 @@ begin
     end;
   // Ordner entstehen in der Nachrichtenschleife (initialized, didChangeWorkspaceFolders, didOpen):
   // Reload ist nur dort erlaubt (Code-Review A-03).
-  Workspace.LoopThreadId := TThread.Current.ThreadID;
-  Workspace.OnProjectLoaded := ProjectLoaded;
-  Workspace.OnIndexFinished := IndexFinished;
-  Workspace.OnProjectReady := ProjectReady;
+  Workspace.Setup.LoopThreadId := TThread.Current.ThreadID;
+  Workspace.Events.OnProjectLoaded := ProjectLoaded;
+  Workspace.Events.OnIndexFinished := IndexFinished;
+  Workspace.Events.OnProjectReady := ProjectReady;
   // Projekt- und Unit-Namen erscheinen im Server-Log nicht im Klartext (#647).
-  Workspace.OnNames :=
+  Workspace.Events.OnNames :=
     procedure(ANames: TArray<string>)
     begin
       if FLogAnonymizer <> nil then
@@ -3285,7 +3288,7 @@ begin
         FLogAnonymizer.AddNames(ANames);
       end;
     end;
-  Workspace.OnIndexEvent :=
+  Workspace.Events.OnIndexEvent :=
     procedure(AText: string)
     begin
       // Absicherung: Beim Beenden ist das Diagnoselog schon fort (Code-Review A-05).
@@ -3295,7 +3298,7 @@ begin
       end;
     end;
   // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
-  Workspace.OnSettingsChanged :=
+  Workspace.Events.OnSettingsChanged :=
     procedure(ASettings: TServerSettings)
     begin
       FDispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
@@ -3356,8 +3359,8 @@ end;
 // sonst alles unter dem Ordner.
 function OwnsFile(AWorkspace: TShellWorkspace; const AFileName: string): Boolean;
 begin
-  Result := AWorkspace.ContainsFile(AFileName);
-  if not Result and (AWorkspace.ProjectFile = '') then
+  Result := AWorkspace.State.ContainsFile(AFileName);
+  if not Result and (AWorkspace.Setup.ProjectFile = '') then
   begin
     Result := TLspWorkspaceFolders.FolderOf([TWorkspaceFolder.Create(AWorkspace.Root, '')], AFileName) = 0;
   end;
@@ -3379,7 +3382,7 @@ begin
   try
     for mIndex := FWorkspaces.Count - 1 downto 0 do
     begin
-      if SameText(FWorkspaces[mIndex].Origin, AFolder.Key) then
+      if SameText(FWorkspaces[mIndex].Setup.Origin, AFolder.Key) then
       begin
         Removed := Removed + [FWorkspaces.Extract(FWorkspaces[mIndex])];
       end;
@@ -3498,7 +3501,7 @@ begin
   begin
     for Workspace in FWorkspaces do
     begin
-      if SameText(Workspace.ProjectFileName, AFileName) then
+      if SameText(Workspace.State.ProjectFileName, AFileName) then
       begin
         Exit(Workspace);
       end;
@@ -3509,7 +3512,7 @@ begin
   Candidates := nil;
   for Workspace in FWorkspaces do
   begin
-    if Workspace.ContainsFile(AFileName) then
+    if Workspace.State.ContainsFile(AFileName) then
     begin
       Candidates := Candidates + [Workspace];
     end;
@@ -3542,8 +3545,8 @@ function TServerComposition.IsSelectedProject(AWorkspace: TShellWorkspace): Bool
 var
   Selected: string;
 begin
-  Selected := FProjectSelection.Project(AWorkspace.Origin);
-  Result := (Selected <> '') and SameText(Selected, AWorkspace.ProjectFileName);
+  Selected := FProjectSelection.Project(AWorkspace.Setup.Origin);
+  Result := (Selected <> '') and SameText(Selected, AWorkspace.State.ProjectFileName);
 end;
 
 function TServerComposition.ChooseProject(const AFileName: string;
@@ -3568,7 +3571,7 @@ begin
   begin
     for Workspace in ACandidates do
     begin
-      if SameText(Workspace.ProjectFileName, Active) then
+      if SameText(Workspace.State.ProjectFileName, Active) then
       begin
         Result := Workspace;
         Reason := 'aktiv in der IDE';
@@ -3600,16 +3603,16 @@ begin
   mProjectRoots := nil;
   for mWorkspace in FWorkspaces do
   begin
-    if mWorkspace.ContainsFile(AFileName) then
+    if mWorkspace.State.ContainsFile(AFileName) then
     begin
       Exit(False);
     end;
     mProjectRoots := mProjectRoots + [mWorkspace.Root];
-    if mWorkspace.BdsRoot <> '' then
+    if mWorkspace.State.BdsRoot <> '' then
     begin
-      mRoots := mRoots + [mWorkspace.BdsRoot];
+      mRoots := mRoots + [mWorkspace.State.BdsRoot];
     end;
-    mRoots := mRoots + mWorkspace.LibraryPaths;
+    mRoots := mRoots + mWorkspace.State.Install.LibraryPaths;
   end;
   mSources := TLibrarySources.Create(mRoots, mProjectRoots);
   Result := mSources.IsLibraryFile(AFileName);
@@ -3617,7 +3620,7 @@ end;
 
 function TServerComposition.PickWorkspace(const AFileName: string): TShellWorkspace;
 begin
-  Result := TShellWorkspace.Choose(WorkspaceOf(AFileName), FWorkspaces);
+  Result := TShellWorkspaces.Choose(WorkspaceOf(AFileName), FWorkspaces);
 end;
 
 function TServerComposition.SettingsFor(const AUri: string): TServerSettings;
@@ -3807,7 +3810,7 @@ begin
   try
     for Workspace in FWorkspaces do
     begin
-      if Workspace.ProjectPending then
+      if Workspace.State.ProjectPending then
       begin
         Exit(True);
       end;
@@ -3837,7 +3840,7 @@ begin
     Stamp := FWorkspacesStamp;
     for Workspace in FWorkspaces do
     begin
-      if Workspace.RuleProject(Project, MainSource) then
+      if Workspace.State.RuleProject(Project, MainSource) then
       begin
         Built := Built + [Project];
         MainSources := MainSources + [MainSource];
@@ -3897,7 +3900,7 @@ begin
     Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
     if Workspace <> nil then
     begin
-      IncludePaths := Workspace.IncludePaths;
+      IncludePaths := Workspace.State.IncludePaths;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -3914,12 +3917,12 @@ begin
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    Result := (Workspace <> nil) and Workspace.Defines(ADefines);
+    Result := (Workspace <> nil) and Workspace.State.Defines(ADefines);
     // Datei keinem Projekt zugeordnet oder dessen Projekt noch nicht geladen (Projektgruppe): wie das
     // aktive Projekt, das die IDE zuerst meldet. Sonst blieben inaktive Zweige dort ungedimmt (#615).
     if not Result and (FWorkspaces.Count > 0) then
     begin
-      Result := FWorkspaces[0].Defines(ADefines);
+      Result := FWorkspaces[0].State.Defines(ADefines);
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -4016,7 +4019,7 @@ begin
     // Projekte der Gruppe zuerst, dann .dpr in der Wurzel und eine Ebene darunter.
     for Other in FWorkspaces do
     begin
-      if Other.Project(Info) and (Info.MainSource <> '') then
+      if Other.State.Project(Info) and (Info.MainSource <> '') then
       begin
         Candidates := Candidates + [Info.MainSource];
       end;
@@ -4115,8 +4118,8 @@ begin
     for Workspace in FWorkspaces do
     begin
       Project := Default(TUnitSearchProject);
-      Project.Files := Workspace.ProjectFiles;
-      if Workspace.Project(Info) then
+      Project.Files := Workspace.State.ProjectFiles;
+      if Workspace.State.Project(Info) then
       begin
         Project.FileName := Info.FileName;
         Project.Name := ChangeFileExt(ExtractFileName(Info.FileName), '');
@@ -4232,7 +4235,7 @@ begin
   try
     for Workspace in FWorkspaces do
     begin
-      for FileName in Workspace.ProjectFiles do
+      for FileName in Workspace.State.ProjectFiles do
       begin
         Result := Result + [FileName];
       end;
@@ -4265,7 +4268,7 @@ begin
     try
       for Workspace in FWorkspaces do
       begin
-        for FileName in Workspace.ProjectFiles do
+        for FileName in Workspace.State.ProjectFiles do
         begin
           if Seen.ContainsKey(AnsiLowerCase(FileName)) then
           begin
@@ -4327,7 +4330,7 @@ begin
       begin
         if SameText(Scope, TLspDfmPropertyRules.ScopeGroup) or (Workspace = Picked) then
         begin
-          Units := Units + Workspace.ProjectFiles;
+          Units := Units + Workspace.State.ProjectFiles;
         end;
       end;
     finally
@@ -5493,7 +5496,7 @@ begin
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := PickWorkspace(FileName);
-    Context.HasProject := (Workspace <> nil) and Workspace.Project(Context.Project);
+    Context.HasProject := (Workspace <> nil) and Workspace.State.Project(Context.Project);
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -5520,7 +5523,7 @@ begin
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := PickWorkspace(AFileName);
-    Result := (Workspace <> nil) and Workspace.Project(AProject);
+    Result := (Workspace <> nil) and Workspace.State.Project(AProject);
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -5956,7 +5959,7 @@ var
   Workspace, Other: TShellWorkspace;
   Group: TArray<TMissingUnitProject>;
   Member: TMissingUnitProject;
-  OtherProject: TProjectInfo;
+  OtherProject, mProject: TProjectInfo;
   Users: Integer;
 begin
   ASetup := Default(TMissingUnitSetup);
@@ -5971,8 +5974,8 @@ begin
     end;
     for Other in FWorkspaces do
     begin
-      if (Other <> Workspace) and Other.Project(OtherProject) and
-        not SameFileName(OtherProject.FileName, Workspace.ProjectFileName) then
+      if (Other <> Workspace) and Other.State.Project(OtherProject) and
+        not SameFileName(OtherProject.FileName, Workspace.State.ProjectFileName) then
       begin
         Member.FileName := OtherProject.FileName;
         Member.SearchPaths := OtherProject.SearchPaths;
@@ -5991,7 +5994,11 @@ begin
     TMonitor.Exit(FWorkspacesLock);
   end;
   try
-    Result := Workspace.MissingUnitSetup(ASetup);
+    Result := Workspace.State.Project(mProject);
+    if Result then
+    begin
+      ASetup := TShellWorkspaceJobs.MissingUnitSetupOf(mProject, Workspace.State.Install);
+    end;
   finally
     TMonitor.Enter(FWorkspacesLock);
     try
@@ -6510,7 +6517,7 @@ begin
   for Workspace in Targets do
   begin
     Item := Default(TLspProcessWorkspace);
-    if not Workspace.Processes(Item.CacheFile, Item.Processes) then
+    if not Workspace.Cache.Processes(Item.CacheFile, Item.Processes) then
     begin
       Continue;
     end;
@@ -6551,8 +6558,8 @@ begin
     begin
       Result.Workspaces := Result.Workspaces + [Workspace.IndexStatus];
       // Projektwahl (#46): aktiv in der IDE und per selectProject ausgewählt.
-      Result.Workspaces[High(Result.Workspaces)].Active := (Workspace.ProjectFileName <> '') and
-        SameText(Workspace.ProjectFileName, FIdeProject.ActiveProject);
+      Result.Workspaces[High(Result.Workspaces)].Active := (Workspace.State.ProjectFileName <> '') and
+        SameText(Workspace.State.ProjectFileName, FIdeProject.ActiveProject);
       Result.Workspaces[High(Result.Workspaces)].Selected := IsSelectedProject(Workspace);
     end;
   finally
@@ -6862,7 +6869,7 @@ begin
     else
     begin
       // Tatsächlich gewählte Installation (#47), sonst die konfigurierte Version.
-      Result := Workspace.DelphiVersion;
+      Result := Workspace.State.DelphiVersion;
       if Result = '' then
       begin
         Result := Workspace.Configuration.Settings.DelphiVersion;
@@ -6900,7 +6907,7 @@ begin
     end;
   end;
   Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-  if (Workspace <> nil) and Workspace.Project(Project) and FIdeProject.Find(Project.FileName, Context) then
+  if (Workspace <> nil) and Workspace.State.Project(Project) and FIdeProject.Find(Project.FileName, Context) then
   begin
     Result := Result + Context.FormatFunctions;
   end;
@@ -7048,9 +7055,9 @@ begin
     begin
       for Candidate in FWorkspaces do
       begin
-        if (Candidate.Project(Project) and (SameText(Project.FileName, AFileName) or
+        if (Candidate.State.Project(Project) and (SameText(Project.FileName, AFileName) or
           SameText(Project.MainSource, AFileName) or SameText(ChangeFileExt(Project.FileName, '.dproj'),
-          ChangeFileExt(AFileName, '.dproj')))) or SameText(Candidate.ProjectFile, AFileName) then
+          ChangeFileExt(AFileName, '.dproj')))) or SameText(Candidate.Setup.ProjectFile, AFileName) then
         begin
           Workspace := Candidate;
           Break;
@@ -7061,14 +7068,14 @@ begin
     begin
       Workspace := WorkspaceOf(AFileName);
     end;
-    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces);
     if Workspace = nil then
     begin
       Exit(False);
     end;
     ASource.Settings := Workspace.Configuration.Settings;
     ASource.Root := Workspace.Root;
-    if Workspace.Project(Project) then
+    if Workspace.State.Project(Project) then
     begin
       ASource.Title := ChangeFileExt(ExtractFileName(Project.FileName), '');
     end
@@ -7078,7 +7085,7 @@ begin
     end;
     if AProject then
     begin
-      ASource.Files := Workspace.ProjectFiles;
+      ASource.Files := Workspace.State.ProjectFiles;
     end;
     Result := True;
   finally
@@ -7107,10 +7114,10 @@ begin
     begin
       Workspace := WorkspaceOf(AFileName);
     end;
-    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces);
     if Workspace <> nil then
     begin
-      ANamespaces := Workspace.Namespaces;
+      ANamespaces := Workspace.State.Namespaces;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -7154,7 +7161,7 @@ begin
     try
       for Workspace in FWorkspaces do
       begin
-        Files := Files + Workspace.ProjectFiles;
+        Files := Files + Workspace.State.ProjectFiles;
       end;
     finally
       TMonitor.Exit(FWorkspacesLock);
@@ -7168,10 +7175,10 @@ begin
     begin
       Workspace := WorkspaceOf(AFileName);
     end;
-    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces);
     if Workspace <> nil then
     begin
-      ARequest.Namespaces := Workspace.Namespaces;
+      ARequest.Namespaces := Workspace.State.Namespaces;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -7223,7 +7230,7 @@ begin
     mWorkspace := nil;
     for mCandidate in FWorkspaces do
     begin
-      if (mCandidate.ProjectFileName <> '') and SameText(mCandidate.ProjectFileName, FIdeProject.ActiveProject) then
+      if (mCandidate.State.ProjectFileName <> '') and SameText(mCandidate.State.ProjectFileName, FIdeProject.ActiveProject) then
       begin
         mWorkspace := mCandidate;
       end;
@@ -7246,7 +7253,7 @@ begin
     begin
       Exit(False);
     end;
-    mNamespaces := mWorkspace.Namespaces;
+    mNamespaces := mWorkspace.State.Namespaces;
     // Wurzel für die Spalte "Datei": gemeinsamer Ordner aller Projekte der Gruppe (bei Atlas der Stamm des
     // Repositorys). Mit der Wurzel des aktiven Projekts stand für jede Unit der anderen Projekte der volle Pfad da.
     mRoot := mWorkspace.Root;
@@ -7258,7 +7265,7 @@ begin
     // Projektgruppe (#648): die Dateien aller geladenen Projekte.
     for mWorkspace in FWorkspaces do
     begin
-      mFiles := mFiles + mWorkspace.ProjectFiles;
+      mFiles := mFiles + mWorkspace.State.ProjectFiles;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -7300,11 +7307,11 @@ begin
     begin
       Workspace := WorkspaceOf(AFileName);
     end;
-    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces);
     if Workspace <> nil then
     begin
       Result.Root := Workspace.Root;
-      Result.Namespaces := Workspace.Namespaces;
+      Result.Namespaces := Workspace.State.Namespaces;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -7373,8 +7380,8 @@ begin
     Workspace := PickWorkspace(Result.FileName);
     if Workspace <> nil then
     begin
-      IncludePaths := Workspace.IncludePaths;
-      HasProject := Workspace.Project(Project);
+      IncludePaths := Workspace.State.IncludePaths;
+      HasProject := Workspace.State.Project(Project);
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -7424,8 +7431,8 @@ begin
     Workspace := PickWorkspace(Result.FileName);
     if Workspace <> nil then
     begin
-      IncludePaths := Workspace.IncludePaths;
-      Result.HasProject := Workspace.Project(Project);
+      IncludePaths := Workspace.State.IncludePaths;
+      Result.HasProject := Workspace.State.Project(Project);
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -7494,7 +7501,7 @@ begin
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-    Result := (Workspace <> nil) and Workspace.Project(Project);
+    Result := (Workspace <> nil) and Workspace.State.Project(Project);
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -7581,7 +7588,7 @@ begin
       AContext.Services := Workspace.RuleServices;
       // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
       AContext.Services.Queries := FQueries;
-      if Workspace.Project(Project) then
+      if Workspace.State.Project(Project) then
       begin
         Projects := Projects + [Project];
       end;
@@ -7589,7 +7596,7 @@ begin
       // eindeutige Anwendungsart (MergeRuleProjects).
       for Other in FWorkspaces do
       begin
-        if (Other <> Workspace) and Other.ContainsFile(FileName) and Other.Project(Project) then
+        if (Other <> Workspace) and Other.State.ContainsFile(FileName) and Other.State.Project(Project) then
         begin
           Projects := Projects + [Project];
         end;
@@ -7604,7 +7611,7 @@ begin
   // Anwendungsart, Projektname und Formulare der .dpr (#926, #943, #956, #1055), wie bei MCP und Linter.
   if Projects <> nil then
   begin
-    RuleProject := TShellWorkspace.RuleProjectOf(Projects, FileName, ReadSourceText);
+    RuleProject := TShellRuleProjects.RuleProjectOf(Projects, FileName, ReadSourceText);
     AContext.Application := RuleProject.Application;
     AContext.ProjectName := RuleProject.Name;
     AContext.AutoCreateForms := RuleProject.AutoCreateForms;
@@ -7710,7 +7717,7 @@ begin
     Inc(FWorkspacesStamp);
     for Workspace in FWorkspaces do
     begin
-      for Namespace in Workspace.Namespaces do
+      for Namespace in Workspace.State.Namespaces do
       begin
         if IndexText(Namespace, Namespaces) < 0 then
         begin
@@ -7718,9 +7725,9 @@ begin
         end;
       end;
       // Units der Delphi-Installation erscheinen im Diagnoselog mit Namen (#647).
-      if (Workspace.BdsRoot <> '') and (IndexText(Workspace.BdsRoot, LibraryRoots) < 0) then
+      if (Workspace.State.BdsRoot <> '') and (IndexText(Workspace.State.BdsRoot, LibraryRoots) < 0) then
       begin
-        LibraryRoots := LibraryRoots + [Workspace.BdsRoot];
+        LibraryRoots := LibraryRoots + [Workspace.State.BdsRoot];
       end;
     end;
   finally
@@ -7805,7 +7812,7 @@ begin
       TMonitor.Exit(FWorkspacesLock);
     end;
     // Nur der Thread der Nachrichtenschleife entfernt Arbeitsbereiche; Workspace bleibt gültig.
-    if (Workspace <> nil) and Workspace.Deferred then
+    if (Workspace <> nil) and Workspace.Setup.Deferred then
     begin
       Workspace.Activate;
     end;
@@ -7931,7 +7938,7 @@ begin
     begin
       Workspace := WorkspaceOf(AFileName);
     end;
-    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces);
     if Workspace = nil then
     begin
       Error := 'Kein Ordner mit Projekt geöffnet';

@@ -119,7 +119,7 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Shell.CommandLine,
   Shell.Linter,
-  Shell.Workspace;
+  Shell.Workspace.Listings;
 
 const
   CleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
@@ -168,7 +168,7 @@ begin
   // Der Leckmonitor misst den Saldo von Setup und TearDown; Run merkt sich den Ordner in den Encoding-Vorgaben.
   TFileEncodingDefaults.Clear;
   // Ebenso die Ordnerlisten der .pas-/.dcu-Dateien: je Testordner ein Eintrag (IndexKnowsTypesOfOtherUnits).
-  TShellWorkspace.ClearSharedListings;
+  TSharedUnitListings.Clear;
   FFolder := '';
   FOutput := '';
 end;
