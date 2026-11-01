@@ -164,7 +164,7 @@ var
   Workspace: TShellWorkspace;
 begin
   Workspace := FSources.WorkspaceOf(AUri);
-  Result := (Workspace <> nil) and Workspace.Project(AProject);
+  Result := (Workspace <> nil) and Workspace.State.Project(AProject);
 end;
 
 function TShellSlashHost.ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -359,7 +359,7 @@ var
   Uri: string;
 begin
   Workspace := FSources.WorkspaceOf(AUri);
-  if (Workspace = nil) or not Workspace.Project(Info) then
+  if (Workspace = nil) or not Workspace.State.Project(Info) then
   begin
     Exit;
   end;

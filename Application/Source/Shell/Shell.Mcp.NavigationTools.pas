@@ -107,7 +107,7 @@ end;
 
 function ToolFindReferences(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  AContext.Code.Namespaces := AContext.Group.Main.Namespaces;
+  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
   Result := AContext.Code.References(TMcpServer.RequiredString(AArguments, 'name'));
 end;
 
@@ -121,7 +121,7 @@ end;
 
 function ToolGetCallHierarchy(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  AContext.Code.Namespaces := AContext.Group.Main.Namespaces;
+  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
   Result := AContext.Code.CallHierarchy(TMcpServer.RequiredString(AArguments, 'name'),
     TMcpCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction')));
 end;
@@ -146,7 +146,7 @@ begin
   begin
     raise EMcpToolError.Create('"format" ist text oder json');
   end;
-  AContext.Code.Namespaces := AContext.Group.Main.Namespaces;
+  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
   if AArguments.TryGetValue<Integer>('depth', Depth) then
   begin
     Result := AContext.Code.Impact(Name, Depth, SameText(Format, 'json'));
@@ -187,7 +187,7 @@ begin
   begin
     WithParameters := False;
   end;
-  AContext.Code.Namespaces := AContext.Group.Main.Namespaces;
+  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
   Result := AContext.Code.QualifiedName(FileName, Line, Column, WithParameters);
 end;
 

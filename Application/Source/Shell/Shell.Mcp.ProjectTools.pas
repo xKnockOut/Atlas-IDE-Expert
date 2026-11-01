@@ -226,14 +226,14 @@ begin
   end
   else
   begin
-    Files := AContext.Group.Main.ProjectFiles;
+    Files := AContext.Group.Main.State.ProjectFiles;
   end;
   if Length(Files) = 0 then
   begin
     raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
   end;
   Result := TMcpDeadCodeTools.FindUnused(BuiltinRules, AContext.Group.Main.Configuration.Settings, AContext.Root, Files,
-    AContext.Index, AContext.Group.RuleProjectFiles, AContext.Group.Main.Namespaces, SameText(Format, 'json'));
+    AContext.Index, AContext.Group.RuleProjectFiles, AContext.Group.Main.State.Namespaces, SameText(Format, 'json'));
 end;
 
 procedure AddFindUnusedCode(const AContext: TMcpToolContext);
