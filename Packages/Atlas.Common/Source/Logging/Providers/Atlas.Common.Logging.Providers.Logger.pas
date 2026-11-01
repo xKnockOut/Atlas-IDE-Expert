@@ -78,12 +78,14 @@ begin
   FLock.Enter;
   try
     for SinkEntry in FSinks do
+    begin
       if ALevel >= SinkEntry.MinLevel then
         try
           SinkEntry.Sink.Write(LogEntry);
         except
           // Fehler einer Senke dürfen weder andere Senken noch den Aufrufer stören.
         end;
+    end;
   finally
     FLock.Leave;
   end;

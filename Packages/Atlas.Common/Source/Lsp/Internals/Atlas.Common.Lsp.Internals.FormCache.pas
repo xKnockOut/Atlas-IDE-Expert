@@ -84,12 +84,16 @@ begin
   for Child in AObject.Children do
   begin
     if (Child.Kind = TDfmObjectKind.Item) or (Child.Name = '') or (Child.TypeName = '') then
+    begin
       Continue;
+    end;
     Component.Name := Child.Name;
     Component.TypeName := Child.TypeName;
     AList.Add(Component);
     if Child.Kind <> TDfmObjectKind.Inline_ then
+    begin
       CollectComponents(Child, AList);
+    end;
   end;
 end;
 
@@ -104,6 +108,7 @@ begin
   Own := AObjectIndex;
   Inc(AObjectIndex);
   for Prop in AObject.Properties do
+  begin
     if Prop.IsEvent then
     begin
       Handler.ObjectIndex := Own;
@@ -112,8 +117,11 @@ begin
       Handler.MethodName := Prop.Value;
       AList.Add(Handler);
     end;
+  end;
   for Child in AObject.Children do
+  begin
     CollectHandlers(Child, AObjectIndex, AList);
+  end;
 end;
 
 { TFormSnapshotCache }
@@ -140,7 +148,9 @@ var
 begin
   Index := FOrder.IndexOf(AKey);
   if Index >= 0 then
+  begin
     FOrder.Delete(Index);
+  end;
   FOrder.Add(AKey);
 end;
 
@@ -205,7 +215,9 @@ begin
   Result := Default(TFormSnapshot);
   Result.FormFile := AFormFile;
   if (ADocument = nil) or (ADocument.Root = nil) then
+  begin
     Exit;
+  end;
   Result.RootName := ADocument.Root.Name;
   Result.RootType := ADocument.Root.TypeName;
   Components := TList<TFormSnapshotComponent>.Create;

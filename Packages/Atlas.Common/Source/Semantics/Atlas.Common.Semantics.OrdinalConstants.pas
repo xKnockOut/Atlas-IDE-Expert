@@ -132,14 +132,18 @@ begin
   FIndex := AFirst;
   FLast := ALast;
   if FLast > High(FTokens) then
+  begin
     FLast := High(FTokens);
+  end;
   FLookup := ALookup;
 end;
 
 procedure TEvaluator.SkipTrivia;
 begin
   while (FIndex <= FLast) and (FTokens[FIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Inc(FIndex);
+  end;
 end;
 
 function TEvaluator.AtEnd: Boolean;
@@ -152,16 +156,22 @@ function TEvaluator.Current: TPascalToken;
 begin
   SkipTrivia;
   if FIndex <= FLast then
-    Result := FTokens[FIndex]
+  begin
+    Result := FTokens[FIndex];
+  end
   else
+  begin
     Result := Default(TPascalToken);
+  end;
 end;
 
 procedure TEvaluator.Advance;
 begin
   SkipTrivia;
   if FIndex <= FLast then
+  begin
     Inc(FIndex);
+  end;
 end;
 
 function TEvaluator.IsSym(const ASymbol: string): Boolean;
@@ -184,7 +194,9 @@ procedure TEvaluator.FailWith(AStatus: TOrdinalStatus);
 begin
   // Der erste Grund zählt.
   if not FFailed then
+  begin
     FStatus := AStatus;
+  end;
   FFailed := True;
 end;
 
@@ -195,11 +207,17 @@ begin
   // Erst grob schätzen: Liegt das Ergebnis sicher außerhalb dessen, was Delphi rechnet, ist es ein Überlauf.
   Result := 0;
   if AOperation = '+' then
-    Estimate := ALeft + Double(ARight)
+  begin
+    Estimate := ALeft + Double(ARight);
+  end
   else if AOperation = '-' then
-    Estimate := ALeft - Double(ARight)
+  begin
+    Estimate := ALeft - Double(ARight);
+  end
   else
+  begin
     Estimate := ALeft * Double(ARight);
+  end;
   if (Estimate < OverflowBelow) or (Estimate > OverflowAbove) then
   begin
     FailWith(TOrdinalStatus.Overflow);
@@ -217,19 +235,29 @@ begin
   // rechnet dcc in Int64 und meldet E2099 (#1372); mit einem möglichen UInt64-Operanden bleibt es unbekannt.
   try
     if AOperation = '+' then
-      Result := ALeft + ARight
+    begin
+      Result := ALeft + ARight;
+    end
     else if AOperation = '-' then
-      Result := ALeft - ARight
+    begin
+      Result := ALeft - ARight;
+    end
     else
+    begin
       Result := ALeft * ARight;
+    end;
   except
     on EIntOverflow do
     begin
       Result := 0;
       if FMaybeUnsigned then
-        Fail
+      begin
+        Fail;
+      end
       else
+      begin
         FailWith(TOrdinalStatus.Overflow);
+      end;
     end;
   end;
 end;
@@ -239,7 +267,9 @@ begin
   AValue := 0;
   FStatus := TOrdinalStatus.Unknown;
   if AtEnd then
+  begin
     Exit(TOrdinalStatus.Unknown);
+  end;
   try
     AValue := Expression;
   except
@@ -250,13 +280,21 @@ begin
       Fail;
   end;
   if FFailed then
-    Result := FStatus
+  begin
+    Result := FStatus;
+  end
   else if AtEnd then
-    Result := TOrdinalStatus.Value
+  begin
+    Result := TOrdinalStatus.Value;
+  end
   else
+  begin
     Result := TOrdinalStatus.Unknown;
+  end;
   if Result <> TOrdinalStatus.Value then
+  begin
     AValue := 0;
+  end;
 end;
 
 function TEvaluator.Expression: Int64;
@@ -271,7 +309,9 @@ begin
       Advance;
       Right := Term;
       if FFailed then
+      begin
         Exit;
+      end;
       Result := Arith('+', Result, Right);
     end
     else if IsSym('-') then
@@ -279,7 +319,9 @@ begin
       Advance;
       Right := Term;
       if FFailed then
+      begin
         Exit;
+      end;
       Result := Arith('-', Result, Right);
     end
     else if IsWord('or') then
@@ -310,9 +352,13 @@ begin
     Advance;
     Right := Factor;
     if FFailed then
+    begin
       Exit;
+    end;
     if Operation = '*' then
-      Result := Arith('*', Result, Right)
+    begin
+      Result := Arith('*', Result, Right);
+    end
     else if (Operation = 'div') or (Operation = 'mod') then
     begin
       if Right = 0 then
@@ -321,18 +367,30 @@ begin
         Exit;
       end;
       if Operation = 'div' then
-        Result := Result div Right
+      begin
+        Result := Result div Right;
+      end
       else
+      begin
         Result := Result mod Right;
+      end;
     end
     else if Operation = 'and' then
-      Result := Result and Right
+    begin
+      Result := Result and Right;
+    end
     else if (Right < 0) or (Right > 63) then
-      Fail
+    begin
+      Fail;
+    end
     else if Operation = 'shl' then
-      Result := Result shl Right
+    begin
+      Result := Result shl Right;
+    end
     else
+    begin
       Result := Result shr Right;
+    end;
   end;
 end;
 
@@ -354,7 +412,9 @@ begin
     Result := not Factor;
   end
   else
+  begin
     Result := Primary;
+  end;
 end;
 
 function TEvaluator.Arguments: Int64;
@@ -386,9 +446,13 @@ begin
   // Umwandlung eines konstanten Werts (#1324): Delphi schneidet auf die Größe des Zieltyps ab.
   Result := AValue;
   if SameText(ATypeName, 'Ord') then
+  begin
     Exit;
+  end;
   if UnsignedWide(ATypeName) then
+  begin
     FMaybeUnsigned := True;
+  end;
   if not TOrdinalConstants.FixedType(ATypeName, mLow, mHigh, mHighKnown, mSize) then
   begin
     // NativeInt, LongInt, NativeUInt, LongWord: 32 oder 64 Bit je Plattform. Werte, die in 32 Bit passen,
@@ -404,21 +468,29 @@ begin
       mHigh := 4294967295;
     end;
     if (AValue < mLow) or (AValue > mHigh) then
+    begin
       Fail;
+    end;
     Exit;
   end;
   if mSize >= 8 then
   begin
     // UInt64(-1) liegt über High(Int64) und lässt sich als Int64 nicht darstellen.
     if not mHighKnown and (AValue < 0) then
+    begin
       Fail;
+    end;
     Exit;
   end;
   mBits := UInt64(AValue) and (UInt64(mHigh - mLow));
   if (mLow < 0) and (mBits > UInt64(mHigh)) then
-    Result := Int64(mBits) + mLow * 2
+  begin
+    Result := Int64(mBits) + mLow * 2;
+  end
   else
+  begin
     Result := Int64(mBits);
+  end;
 end;
 
 function TEvaluator.TypeArgument(out AName: string): Boolean;
@@ -430,7 +502,9 @@ begin
   AName := '';
   Start := FIndex;
   if not IsSym('(') then
+  begin
     Exit;
+  end;
   Advance;
   if AtEnd or not (Current.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
   begin
@@ -465,10 +539,14 @@ begin
   Result := False;
   AValue := 0;
   if (Length(AText) < 3) or (AText[1] <> '''') or (AText[Length(AText)] <> '''') then
+  begin
     Exit;
+  end;
   Inner := StringReplace(Copy(AText, 2, Length(AText) - 2), '''''', '''', [rfReplaceAll]);
   if Length(Inner) <> 1 then
+  begin
     Exit;
+  end;
   AValue := Ord(Inner[1]);
   Result := True;
 end;
@@ -501,25 +579,35 @@ begin
       TPascalTokenKind.Number:
         begin
           if not TOrdinalConstants.TryNumber(Token.Text, Result) then
+          begin
             Fail;
+          end;
           Advance;
         end;
       TPascalTokenKind.CharLiteral:
         begin
           if not CharValue(Token.Text, Result) then
+          begin
             Fail;
+          end;
           Advance;
           // 'a'#13 und #13#10 sind Strings, keine Zeichen.
           if not AtEnd and (Current.Kind in [TPascalTokenKind.CharLiteral, TPascalTokenKind.StringLiteral]) then
+          begin
             Fail;
+          end;
         end;
       TPascalTokenKind.StringLiteral:
         begin
           if not StringValue(Token.Text, Result) then
+          begin
             Fail;
+          end;
           Advance;
           if not AtEnd and (Current.Kind in [TPascalTokenKind.CharLiteral, TPascalTokenKind.StringLiteral]) then
+          begin
             Fail;
+          end;
         end;
       TPascalTokenKind.Symbol:
         if Token.IsSymbol('(') then
@@ -527,12 +615,18 @@ begin
           Advance;
           Result := Expression;
           if not IsSym(')') then
-            Fail
+          begin
+            Fail;
+          end
           else
+          begin
             Advance;
+          end;
         end
         else
+        begin
           Fail;
+        end;
       TPascalTokenKind.Identifier, TPascalTokenKind.Keyword:
         begin
           Start := FIndex;
@@ -545,29 +639,49 @@ begin
               TypeArgument(TypeName) then
             begin
               if not SameText(Name, 'SizeOf') and UnsignedWide(TypeName) then
+              begin
                 FMaybeUnsigned := True;
+              end;
               if not TOrdinalConstants.FixedType(TypeName, Lowest, Highest, HighKnown, Size) or
                 (SameText(Name, 'High') and not HighKnown) then
-                Fail
+              begin
+                Fail;
+              end
               else if SameText(Name, 'SizeOf') then
-                Result := Size
+              begin
+                Result := Size;
+              end
               else if SameText(Name, 'High') then
-                Result := Highest
+              begin
+                Result := Highest;
+              end
               else
+              begin
                 Result := Lowest;
+              end;
               Exit;
             end;
             // Ord, Chr, Succ, Pred und Typumwandlungen.
             if SameText(Name, 'Succ') then
-              Result := Arguments + 1
+            begin
+              Result := Arguments + 1;
+            end
             else if SameText(Name, 'Pred') then
-              Result := Arguments - 1
+            begin
+              Result := Arguments - 1;
+            end
             else if SameText(Name, 'Chr') then
-              Result := Arguments
+            begin
+              Result := Arguments;
+            end
             else if IndexText(Name, OrdinalCasts) >= 0 then
-              Result := Cast(Name, Arguments)
+            begin
+              Result := Cast(Name, Arguments);
+            end
             else
+            begin
               Fail;
+            end;
             Exit;
           end;
           Names := [Name];
@@ -589,14 +703,22 @@ begin
             Exit;
           end;
           if (Length(Names) = 1) and SameText(Name, 'True') then
-            Result := 1
+          begin
+            Result := 1;
+          end
           else if (Length(Names) = 1) and SameText(Name, 'False') then
-            Result := 0
+          begin
+            Result := 0;
+          end
           // Konstanten aus System mit festem Wert auf allen Plattformen (#1083).
           else if (Length(Names) = 1) and (SameText(Name, 'MaxInt') or SameText(Name, 'MaxLongint')) then
-            Result := 2147483647
+          begin
+            Result := 2147483647;
+          end
           else
+          begin
             Fail;
+          end;
         end;
     else
       Fail;
@@ -625,32 +747,54 @@ begin
   AHighKnown := True;
   Name := LowerCase(ATypeName);
   if StartsText('system.', Name) then
+  begin
     Name := Copy(Name, Length('system.') + 1, MaxInt);
+  end;
   if (Name = 'byte') or (Name = 'uint8') or (Name = 'ansichar') then
-    Put(0, 255, 1)
+  begin
+    Put(0, 255, 1);
+  end
   else if (Name = 'shortint') or (Name = 'int8') then
-    Put(-128, 127, 1)
+  begin
+    Put(-128, 127, 1);
+  end
   else if (Name = 'word') or (Name = 'uint16') or (Name = 'char') or (Name = 'widechar') then
-    Put(0, 65535, 2)
+  begin
+    Put(0, 65535, 2);
+  end
   else if (Name = 'smallint') or (Name = 'int16') then
-    Put(-32768, 32767, 2)
+  begin
+    Put(-32768, 32767, 2);
+  end
   else if (Name = 'integer') or (Name = 'int32') or (Name = 'fixedint') then
-    Put(-2147483648, 2147483647, 4)
+  begin
+    Put(-2147483648, 2147483647, 4);
+  end
   else if (Name = 'cardinal') or (Name = 'uint32') or (Name = 'dword') or (Name = 'fixeduint') then
-    Put(0, 4294967295, 4)
+  begin
+    Put(0, 4294967295, 4);
+  end
   else if Name = 'int64' then
-    Put(Low(Int64), High(Int64), 8)
+  begin
+    Put(Low(Int64), High(Int64), 8);
+  end
   else if Name = 'uint64' then
   begin
     Put(0, 0, 8);
     AHighKnown := False;
   end
   else if (Name = 'boolean') or (Name = 'bytebool') then
-    Put(0, 1, 1)
+  begin
+    Put(0, 1, 1);
+  end
   else if Name = 'single' then
-    Put(0, 0, 4)
+  begin
+    Put(0, 0, 4);
+  end
   else if (Name = 'double') or (Name = 'currency') or (Name = 'comp') then
-    Put(0, 0, 8)
+  begin
+    Put(0, 0, 8);
+  end
   else
   begin
     Put(0, 0, 0);
@@ -659,7 +803,9 @@ begin
   end;
   // Gleitkomma hat nur eine Größe, keinen ordinalen Bereich.
   if (Name = 'single') or (Name = 'double') or (Name = 'currency') or (Name = 'comp') then
+  begin
     AHighKnown := False;
+  end;
 end;
 
 class function TOrdinalConstants.TryNumber(const AText: string; out AValue: Int64): Boolean;
@@ -672,7 +818,9 @@ begin
   Result := False;
   Text := StringReplace(AText, '_', '', [rfReplaceAll]);
   if Text = '' then
+  begin
     Exit;
+  end;
   Base := 10;
   case Text[1] of
     '$':
@@ -683,9 +831,13 @@ begin
       Base := 8;
   end;
   if Base <> 10 then
+  begin
     Text := Copy(Text, 2, MaxInt);
+  end;
   if Text = '' then
+  begin
     Exit;
+  end;
   Value := 0;
   for Index := 1 to Length(Text) do
   begin
@@ -700,10 +852,14 @@ begin
       Exit;
     end;
     if Digit >= Base then
+    begin
       Exit;
+    end;
     // Mehr als Int64 fasst: nicht auswertbar.
     if Value > (UInt64(High(Int64)) - UInt64(Digit)) div UInt64(Base) then
+    begin
       Exit;
+    end;
     Value := Value * UInt64(Base) + UInt64(Digit);
   end;
   AValue := Int64(Value);
@@ -717,7 +873,9 @@ var
 begin
   AValue := 0;
   if (AFirst < 0) or (AFirst > ALast) then
+  begin
     Exit(TOrdinalStatus.Unknown);
+  end;
   Evaluator := TEvaluator.Create(ATokens, AFirst, ALast, ALookup);
   try
     Result := Evaluator.Run(AValue);

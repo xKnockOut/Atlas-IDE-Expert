@@ -97,8 +97,12 @@ var
   Ch: Char;
 begin
   for Ch in AText do
+  begin
     if Ord(Ch) > 127 then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -107,7 +111,9 @@ function BareTypeName(const AName: string): string;
 begin
   Result := AName;
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   Result := Trim(Copy(Result, LastDelimiter('.', Result) + 1, MaxInt));
 end;
 
@@ -120,19 +126,29 @@ begin
   Result := '';
   Depth := 0;
   for Index := 1 to Length(ASignature) do
+  begin
     if ASignature[Index] = '<' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ASignature[Index] = '>' then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (ASignature[Index] = '=') and (Depth = 0) then
     begin
       Result := Trim(Copy(ASignature, Index + 1, MaxInt));
       Break;
     end;
+  end;
   if StartsText('type ', Result) then
+  begin
     Result := Trim(Copy(Result, 6, MaxInt));
+  end;
   if StartsText('packed ', Result) then
+  begin
     Result := Trim(Copy(Result, 8, MaxInt));
+  end;
 end;
 
 /// <summary>Nur ein Typname wie "TArray&lt;TVektor&gt;" oder "System.Integer" (der Index trennt Token durch
@@ -143,8 +159,12 @@ var
 begin
   Result := (AText <> '') and CharInSet(AText[1], ['A'..'Z', 'a'..'z', '_']);
   for Ch in AText do
+  begin
     if not CharInSet(Ch, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '<', '>', ',', ' ']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 /// <summary>Ordinalwert eines Literals (Zahl oder Zeichen 'a'); False, wenn es keins ist.</summary>
@@ -188,9 +208,13 @@ var
     begin
       Middle := (Low + High) div 2;
       if Tokens[Middle].Offset < AOffset then
-        Low := Middle + 1
+      begin
+        Low := Middle + 1;
+      end
       else
+      begin
         High := Middle;
+      end;
     end;
     Result := Low;
   end;
@@ -219,7 +243,9 @@ var
     while (Index < Length(Tokens)) and (Tokens[Index].Offset < ANode.EndOffset) do
     begin
       if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+      begin
         Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+      end;
       Inc(Index);
     end;
     Result := NodeRange(ANode);
@@ -234,14 +260,18 @@ var
   begin
     Count := 0;
     for Symbol in Ancestry.Local.Symbols do
+    begin
       if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
         TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias,
         TIndexSymbolKind.HelperType]) and SameText(Symbol.Name, AName) then
       begin
         if (Symbol.Container <> '') or Symbol.Unavailable then
+        begin
           Exit(True);
+        end;
         Inc(Count);
       end;
+    end;
     Result := Count > 1;
   end;
 
@@ -257,23 +287,37 @@ var
     Bare := BareTypeName(AName);
     Lower := LowerCase(Bare);
     if (Bare = '') or (ADepth > 8) or MatchText(Bare, AWildcards) or Ambiguous(Bare) then
+    begin
       Exit;
+    end;
     if not Ancestry.FindAnyType(Bare, Location) then
     begin
       if MatchText(Lower, SimpleTypes) then
-        Result := TPublishKind.Simple
+      begin
+        Result := TPublishKind.Simple;
+      end
       else if MatchText(Lower, PointerTypes) then
-        Result := TPublishKind.PointerKind
+      begin
+        Result := TPublishKind.PointerKind;
+      end
       else if Lower = 'real48' then
-        Result := TPublishKind.Real48Kind
+      begin
+        Result := TPublishKind.Real48Kind;
+      end
       else if (Lower = 'tguid') or (UsesTypes and MatchText(Lower, TypesRecords)) then
-        Result := TPublishKind.RecordKind
+      begin
+        Result := TPublishKind.RecordKind;
+      end
       else if (Lower = 'tarray') and (Pos('<', AName) > 0) then
+      begin
         Result := TPublishKind.DynArrayKind;
+      end;
       Exit;
     end;
     if Location.Symbol.Unavailable then
+    begin
       Exit;
+    end;
     case Location.Symbol.Kind of
       TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
         Result := TPublishKind.ClassOrInterface;
@@ -285,33 +329,53 @@ var
         begin
           Target := AliasTarget(Location.Symbol.Signature);
           if Target = '' then
+          begin
             Exit;
+          end;
           if Target[1] = '^' then
-            Result := TPublishKind.PointerKind
+          begin
+            Result := TPublishKind.PointerKind;
+          end
           else if StartsText('array', Target) and ((Length(Target) = 5) or not CharInSet(Target[6], ['A'..'Z',
             'a'..'z', '0'..'9', '_'])) then
           begin
             if StartsText('of ', Trim(Copy(Target, 6, MaxInt))) then
-              Result := TPublishKind.DynArrayKind
+            begin
+              Result := TPublishKind.DynArrayKind;
+            end
             else
+            begin
               Result := TPublishKind.ArrayKind;
+            end;
           end
           else if StartsText('set ', Target) and StartsText('of ', Trim(Copy(Target, 5, MaxInt))) then
-            Result := SetKind(Trim(Copy(Trim(Copy(Target, 5, MaxInt)), 4, MaxInt)), ADepth + 1)
+          begin
+            Result := SetKind(Trim(Copy(Trim(Copy(Target, 5, MaxInt)), 4, MaxInt)), ADepth + 1);
+          end
           else if StartsText('reference ', Target) or Location.Symbol.HasDirective('reference to') then
-            Result := TPublishKind.ProcedureKind
+          begin
+            Result := TPublishKind.ProcedureKind;
+          end
           else if StartsText('procedure', Target) or StartsText('function', Target) then
           begin
             // Das Merkmal aus dem Index gilt auch, wenn die Signatur vor "of object" abgeschnitten ist (#1326).
             if Location.Symbol.HasDirective('of object') or ContainsText(Target, ' of object') then
-              Result := TPublishKind.Simple
+            begin
+              Result := TPublishKind.Simple;
+            end
             else
+            begin
               Result := TPublishKind.ProcedureKind;
+            end;
           end
           else if StartsText('string[', Target) or (Pos('..', Target) > 0) then
-            Result := TPublishKind.Simple
+          begin
+            Result := TPublishKind.Simple;
+          end
           else if IsTypeName(Target) then
+          begin
             Result := NamedKind(StringReplace(Target, ' ', '', [rfReplaceAll]), nil, ADepth + 1);
+          end;
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
@@ -329,60 +393,86 @@ var
     Result := TPublishKind.Unknown;
     Base := Trim(ABase);
     if (Base = '') or (ADepth > 8) then
+    begin
       Exit;
+    end;
     if Base[1] = '(' then
     begin
       if Pos('=', Base) > 0 then
+      begin
         Exit;
+      end;
       Count := Length(Base.Split([',']));
     end
     else if Pos('..', Base) > 0 then
     begin
       if not OrdinalLiteral(Copy(Base, 1, Pos('..', Base) - 1), Low_) or
         not OrdinalLiteral(Copy(Base, Pos('..', Base) + 2, MaxInt), High_) or (High_ < Low_) then
+      begin
         Exit;
+      end;
       // Eine Menge belegt die Bytes von Low div 8 bis High div 8.
       if High_ div 8 - Low_ div 8 + 1 > 4 then
-        Result := TPublishKind.LargeSet
+      begin
+        Result := TPublishKind.LargeSet;
+      end
       else
+      begin
         Result := TPublishKind.Simple;
+      end;
       Exit;
     end
     else
     begin
       Lower := LowerCase(BareTypeName(Base));
       if Ambiguous(BareTypeName(Base)) then
+      begin
         Exit;
+      end;
       if not Ancestry.FindAnyType(BareTypeName(Base), Location) then
       begin
         if MatchText(Lower, ['byte', 'ansichar', 'shortint']) then
+        begin
           Result := TPublishKind.LargeSet;
+        end;
         Exit;
       end;
       if Location.Symbol.Unavailable then
+      begin
         Exit;
+      end;
       if Location.Symbol.Kind = TIndexSymbolKind.EnumType then
       begin
         Target := AliasTarget(Location.Symbol.Signature);
         if (Target = '') or (Target[1] <> '(') or (Pos('=', Target) > 0) then
+        begin
           Exit;
+        end;
         Count := Length(Target.Split([',']));
       end
       else if Location.Symbol.Kind = TIndexSymbolKind.TypeAlias then
       begin
         Target := AliasTarget(Location.Symbol.Signature);
         if (Target <> '') and ((Target[1] = '(') or (Pos('..', Target) > 0) or IsTypeName(Target)) then
+        begin
           Result := SetKind(Target, ADepth + 1);
+        end;
         Exit;
       end
       else
+      begin
         Exit;
+      end;
     end;
     // Aufzählung mit Count Werten ab 0: Bytes 0 bis (Count - 1) div 8.
     if (Count - 1) div 8 + 1 > 4 then
-      Result := TPublishKind.LargeSet
+    begin
+      Result := TPublishKind.LargeSet;
+    end
     else
+    begin
       Result := TPublishKind.Simple;
+    end;
   end;
 
   /// <summary>Art des Typknotens ATypeNode (Typverweis oder Typ im Feld selbst).</summary>
@@ -391,9 +481,13 @@ var
     case ATypeNode.Kind of
       TSyntaxKind.TypeReference:
         if ATypeNode.Name = 'string' then
-          Result := TPublishKind.Simple
+        begin
+          Result := TPublishKind.Simple;
+        end
         else
+        begin
           Result := NamedKind(SourceOf(ATypeNode), AWildcards, 0);
+        end;
       TSyntaxKind.ArrayType:
         Result := TPublishKind.ArrayKind;
       TSyntaxKind.RecordType:
@@ -421,16 +515,24 @@ var
       not SameText(Trim(Lines[APublished.StartPos.Line]), 'published') or
       (Trim(Copy(Lines[First], 1, AMember.StartPos.Character)) <> '') or
       (Trim(Copy(Lines[Last], AMember.EndPos.Character + 1, MaxInt)) <> '') then
+    begin
       Exit;
+    end;
     // Attribute über dem Mitglied gehören dazu: dann lieber keine Korrektur als eine halbe.
     if StartsStr('[', Trim(Lines[First - 1])) then
+    begin
       Exit;
+    end;
     Moved := '';
     for Line := First to Last do
+    begin
       Moved := Moved + Lines[Line] + LineBreak;
+    end;
     Insert := Moved;
     if not APreviousPublic then
+    begin
       Insert := TTextLines.IndentOf(Lines[APublished.StartPos.Line]) + 'public' + LineBreak + Moved;
+    end;
     Result := [TRuleFix.Create('In den public-Abschnitt verschieben', [
       TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(APublished.StartPos.Line, 0),
       TTextPosition.Create(APublished.StartPos.Line, 0)), Insert),
@@ -442,9 +544,13 @@ var
     Index: Integer;
   begin
     for Index := 0 to AMember.ChildCount - 1 do
+    begin
       if not (AMember[Index].Kind in [TSyntaxKind.Parameters, TSyntaxKind.Parameter, TSyntaxKind.Attribute,
         TSyntaxKind.Directive, TSyntaxKind.GenericParams]) then
+      begin
         Exit(AMember[Index]);
+      end;
+    end;
     Result := nil;
   end;
 
@@ -461,8 +567,12 @@ var
     Wildcards := nil;
     Params := ADecl.FindChild(TSyntaxKind.GenericParams);
     if Params <> nil then
+    begin
       for Index := 0 to Params.ChildCount - 1 do
+      begin
         Wildcards := Wildcards + [Params[Index].Name];
+      end;
+    end;
     Section := nil;
     Previous := nil;
     for Index := 0 to ABody.ChildCount - 1 do
@@ -477,7 +587,9 @@ var
       if not (Member.Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader]) or
         (Section = nil) or (Section.Name <> 'published') or
         not TConditionalBranches.Implies(PathOf(Member), PathOf(Section)) then
+      begin
         Continue;
+      end;
       Fixes := MoveToPublic(Member, Section, (Previous <> nil) and (Previous.Name = 'public') and
         TConditionalBranches.Implies(PathOf(Section), PathOf(Previous)));
       Name := Member.Name;
@@ -493,7 +605,9 @@ var
             // "class property": das Token vor "property" (Kommentare übersprungen).
             Token := TokenAt(Member.StartOffset) - 1;
             while (Token >= 0) and (Tokens[Token].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+            begin
               Dec(Token);
+            end;
             if (Token >= 0) and Tokens[Token].IsKeyword('class') then
             begin
               AReport.Add(NameRange(Member, Name), Format('Die Klassen-Property %s kann nicht published sein ' +
@@ -502,10 +616,14 @@ var
             end;
             // Array-Properties und Properties ohne Typ (neu veröffentlicht) prüft die Regel nicht.
             if Member.FindChild(TSyntaxKind.Parameters) <> nil then
+            begin
               Continue;
+            end;
             TypeNode := Member.FindChild(TSyntaxKind.TypeReference);
             if TypeNode = nil then
+            begin
               Continue;
+            end;
             Kind := TypeKind(TypeNode, Wildcards);
             TypeText := SourceOf(TypeNode);
             case Kind of
@@ -536,10 +654,14 @@ var
           begin
             TypeNode := TypeNodeOf(Member);
             if TypeNode = nil then
+            begin
               Continue;
+            end;
             Kind := TypeKind(TypeNode, Wildcards);
             if Kind in [TPublishKind.Unknown, TPublishKind.ClassOrInterface] then
+            begin
               Continue;
+            end;
             AReport.Add(NameRange(Member, Name.Split([','])[0]), Format('Das published-Feld %s ist vom Typ %s; ' +
               'published-Felder müssen Klassen oder Interfaces sein (wie E2217).',
               [StringReplace(Name, ',', ', ', [rfReplaceAll]), SourceOf(TypeNode)]), TRuleConfidence.High, Fixes);
@@ -550,15 +672,23 @@ var
             Overloaded := False;
             Scan := nil;
             for Other := 0 to Index - 1 do
+            begin
               if ABody[Other].Kind = TSyntaxKind.Visibility then
-                Scan := ABody[Other]
+              begin
+                Scan := ABody[Other];
+              end
               else if (ABody[Other].Kind = TSyntaxKind.RoutineHeader) and (Scan <> nil) and
                 (Scan.Name = 'published') and SameText(ABody[Other].Name, Name) and
                 not TConditionalBranches.Exclusive(PathOf(ABody[Other]), PathOf(Member)) then
+              begin
                 Overloaded := True;
+              end;
+            end;
             if Overloaded then
+            begin
               AReport.Add(NameRange(Member, Name), Format('Nur eine Überladung von %s darf published sein ' +
                 '(wie E2266).', [Name]), TRuleConfidence.High, Fixes);
+            end;
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -590,9 +720,13 @@ var
         end;
         // Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Klassen (#1094).
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
             TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
+          begin
             Pending.Push(Node[Index]);
+          end;
+        end;
       end;
     finally
       Pending.Free;
@@ -606,17 +740,25 @@ var
     Index: Integer;
   begin
     if (ANode.Kind = TSyntaxKind.UsedUnit) and MatchText(ANode.Name, TypesUnits) then
+    begin
       Exit(True);
+    end;
     for Index := 0 to ANode.ChildCount - 1 do
+    begin
       if (ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
         TSyntaxKind.UsesClause, TSyntaxKind.UsedUnit]) and FindTypesUnit(ANode[Index]) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);

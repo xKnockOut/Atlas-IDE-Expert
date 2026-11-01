@@ -50,7 +50,9 @@ function FindIndexed(const AContext: TRuleContext; const AUnitName: string; out 
 begin
   Result := AContext.Index.FindUnit(AUnitName, AUnit);
   if not Result and Assigned(AContext.EnsureUnit) and AContext.EnsureUnit(AUnitName) then
+  begin
     Result := AContext.Index.FindUnit(AUnitName, AUnit);
+  end;
 end;
 
 /// <summary>requires des Packages und, über PackageRequires, die Packages, die diese verlangen: dcc sieht deren
@@ -67,20 +69,24 @@ begin
   mList := TList<string>.Create;
   try
     for mEntry in ASource.Requires do
+    begin
       if not mSeen.ContainsKey(UpperCase(mEntry.Name)) then
       begin
         mSeen.Add(UpperCase(mEntry.Name), True);
         mList.Add(mEntry.Name);
       end;
+    end;
     mPosition := 0;
     while Assigned(AContext.PackageRequires) and (mPosition < mList.Count) do
     begin
       for mRequired in AContext.PackageRequires(mList[mPosition]) do
+      begin
         if not mSeen.ContainsKey(UpperCase(mRequired)) then
         begin
           mSeen.Add(UpperCase(mRequired), True);
           mList.Add(mRequired);
         end;
+      end;
       Inc(mPosition);
     end;
     Result := mList.ToArray;
@@ -110,10 +116,14 @@ var
   Fix: TRuleFix;
 begin
   if (AContext.Index = nil) or not Assigned(AContext.PackageProvides) then
+  begin
     Exit;
+  end;
   Source := TPackageReader.Read(AContext.Text);
   if not Source.IsPackage or not Source.HasContains then
+  begin
     Exit;
+  end;
   Required := RequiredClosure(AContext, Source);
   Seen := TDictionary<string, Boolean>.Create;
   Pending := TQueue<TPending>.Create;
@@ -129,27 +139,39 @@ begin
     begin
       Item := Pending.Dequeue;
       if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+      begin
         Exit;
+      end;
       // Bibliotheks-Units gehören zu Packages der Installation; ihnen wird nicht gefolgt.
       if not FindIndexed(AContext, Item.UnitName, Indexed) or Indexed.Library_ then
+      begin
         Continue;
+      end;
       for Name in Indexed.InterfaceUses + Indexed.ImplementationUses do
       begin
         if Seen.ContainsKey(UpperCase(Name)) then
+        begin
           Continue;
+        end;
         Seen.Add(UpperCase(Name), True);
         Provided := False;
         for Package in Required do
+        begin
           if AContext.PackageProvides(Package, Name) <> TRulePackageAnswer.No then
           begin
             Provided := True;
             Break;
           end;
+        end;
         if Provided or not FindIndexed(AContext, Name, Used) or Used.Library_ then
+        begin
           Continue;
+        end;
         Path := Used.FileName;
         if AContext.FileName <> '' then
+        begin
           Path := ExtractRelativePath(ExtractFilePath(AContext.FileName), Used.FileName);
+        end;
         Fix := TRuleFix.Create(Format('"%s" in contains aufnehmen', [Name]),
           [TRuleEdit.Create(TTextRange.Create(Source.ContainsEnd, Source.ContainsEnd),
           TPackageReader.ContainsInsertion(Name, Path, TTextLines.LineBreakOf(AContext.Text)))]);

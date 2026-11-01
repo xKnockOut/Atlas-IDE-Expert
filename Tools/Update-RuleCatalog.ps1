@@ -180,7 +180,7 @@ foreach ($Language in $Overlays.Keys) {
 [void]$Unit.Append("function RuleCatalogBaseJson: string;`r`nbegin`r`n  Result := Joined(BaseLines);`r`nend;`r`n`r`n")
 [void]$Unit.Append("function RuleCatalogOverlayJson(const ALanguage: string): string;`r`nbegin`r`n")
 foreach ($Language in $Overlays.Keys) {
-    [void]$Unit.Append("  if SameText(ALanguage, '$Language') then`r`n    Exit(Joined(OverlayLines_$Language));`r`n")
+    [void]$Unit.Append("  if SameText(ALanguage, '$Language') then`r`n  begin`r`n    Exit(Joined(OverlayLines_$Language));`r`n  end;`r`n")
 }
 [void]$Unit.Append("  Result := '';`r`nend;`r`n`r`nend.`r`n")
 $UnitText = $Unit.ToString()

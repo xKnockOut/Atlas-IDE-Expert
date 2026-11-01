@@ -208,7 +208,9 @@ implementation
 procedure TSlashContext.Defer(const AAction: TProc);
 begin
   if Actions <> nil then
+  begin
     Actions.Add(AAction);
+  end;
 end;
 
 { TSlashFile }

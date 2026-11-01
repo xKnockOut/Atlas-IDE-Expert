@@ -64,7 +64,9 @@ end;
 procedure TLspCommands.Register(const ACommand: string; const AHandler: TLspCommandHandler);
 begin
   if not FHandlers.ContainsKey(ACommand) then
+  begin
     FNames.Add(ACommand);
+  end;
   FHandlers.AddOrSetValue(ACommand, AHandler);
   FConcurrent.Remove(ACommand);
 end;
@@ -96,7 +98,9 @@ var
 begin
   Commands := TJSONArray.Create;
   for Name in FNames do
+  begin
     Commands.Add(Name);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('commands', Commands);
 end;
@@ -106,10 +110,14 @@ var
   Handler: TLspCommandHandler;
 begin
   if not FHandlers.TryGetValue(ACommand, Handler) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Unbekannter Befehl: ' + ACommand);
+  end;
   Result := Handler(AArguments);
   if Result = nil then
+  begin
     Result := TJSONNull.Create;
+  end;
 end;
 
 function TLspCommands.HandleExecute(const AParams: TJSONValue): TJSONValue;
@@ -118,12 +126,18 @@ var
   Arguments: TJSONValue;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', Command)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "command" fehlt in ' + Method);
+  end;
   Arguments := TJSONObject(AParams).GetValue('arguments');
   if Arguments is TJSONArray then
-    Result := Execute(Command, TJSONArray(Arguments))
+  begin
+    Result := Execute(Command, TJSONArray(Arguments));
+  end
   else
+  begin
     Result := Execute(Command, nil);
+  end;
 end;
 
 end.

@@ -106,7 +106,9 @@ begin
   Result := AName;
   Position := Pos('<', Result);
   if Position > 0 then
+  begin
     Result := Copy(Result, 1, Position - 1);
+  end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
 
@@ -166,10 +168,14 @@ begin
       N := StarN;
     end
     else
+    begin
       Exit(False);
+    end;
   end;
   while (P <= Length(Pattern)) and (Pattern[P] = '*') do
+  begin
     Inc(P);
+  end;
   Result := P > Length(Pattern);
 end;
 
@@ -232,13 +238,19 @@ begin
     Middle := (Low + High_) div 2;
     if (ATokens[Middle].StartPos.Line < APosition.Line) or ((ATokens[Middle].StartPos.Line = APosition.Line) and
       (ATokens[Middle].StartPos.Character < APosition.Character)) then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High_ := Middle;
+    end;
   end;
   Result := Low;
   if Result > High(ATokens) then
+  begin
     Result := -1;
+  end;
 end;
 
 function TConsideredUsed.AttributesBefore(const APosition: TTextPosition): TArray<string>;
@@ -261,19 +273,25 @@ begin
     while At >= 0 do
     begin
       if ATokens[At].IsSymbol(']') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if ATokens[At].IsSymbol('[') then
       begin
         Dec(Depth);
         if Depth = 0 then
+        begin
           Break;
+        end;
       end
       else if (Depth = 1) and (ATokens[At].Kind = TPascalTokenKind.Identifier) and (At > 0) and
         (ATokens[At - 1].IsSymbol('[') or ATokens[At - 1].IsSymbol(',')) then
       begin
         Name := ATokens[At].Text;
         if EndsText('Attribute', Name) and (Length(Name) > Length('Attribute')) then
+        begin
           Name := Copy(Name, 1, Length(Name) - Length('Attribute'));
+        end;
         Result := Result + [Name];
       end;
       Dec(At);
@@ -287,12 +305,14 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in FUnit.Symbols do
+  begin
     if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and SameText(Symbol.QualifiedName, AContainer) then
     begin
       AOwner := Symbol;
       Exit(True);
     end;
+  end;
   AOwner := Default(TIndexSymbol);
   Result := False;
 end;
@@ -306,20 +326,26 @@ begin
   Short := ShortName(AName);
   // Zuerst die eigene Unit, dann der Index.
   for Symbol in FUnit.Symbols do
+  begin
     if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType,
       TIndexSymbolKind.RecordType]) and SameText(Symbol.Name, Short) then
     begin
       AType := Symbol;
       Exit(True);
     end;
+  end;
   if FIndex <> nil then
+  begin
     for Location in FIndex.FindSymbols(Short) do
+    begin
       if Location.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
         TIndexSymbolKind.InterfaceType, TIndexSymbolKind.RecordType] then
       begin
         AType := Location.Symbol;
         Exit(True);
       end;
+    end;
+  end;
   AType := Default(TIndexSymbol);
   Result := False;
 end;
@@ -340,7 +366,9 @@ begin
     Exit(False);
   end;
   if FChains.TryGetValue(Key, AChain) then
+  begin
     Exit(True);
+  end;
   Collected := nil;
   Known := True;
   Pending := TList<TIndexSymbol>.Create;
@@ -354,7 +382,9 @@ begin
       for Ancestor in Current.Ancestors do
       begin
         if Seen.ContainsKey(LowerCase(ShortName(Ancestor))) then
+        begin
           Continue;
+        end;
         Seen.Add(LowerCase(ShortName(Ancestor)), True);
         if not FindType(Ancestor, Found) then
         begin
@@ -385,8 +415,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AChain do
+  begin
     if SameText(Symbol.Name, ATypeName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -398,28 +432,44 @@ var
   At, Last: Integer;
 begin
   for Symbol in AChain do
+  begin
     if Symbol.Kind = TIndexSymbolKind.InterfaceType then
     begin
       if FIndex <> nil then
+      begin
         for Location in FIndex.FindSymbols(AName) do
+        begin
           if SameText(Location.Symbol.Container, Symbol.QualifiedName) or
             SameText(Location.Symbol.Container, Symbol.Name) then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
       // Interface aus der eigenen Unit, die (noch) nicht im Index steht.
       for Member in FUnit.Symbols do
+      begin
         if SameText(Member.Name, AName) and SameText(Member.Container, Symbol.QualifiedName) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
+  end;
   // Methodenzuordnung im Typ: procedure IFoo.Bar = Baz;
   At := TokenAt(AOwner.Range.StartPos);
   Last := TokenAt(AOwner.Range.EndPos);
   if (At < 0) or (Last < 0) then
+  begin
     Last := High(FTokens);
+  end;
   while (At >= 0) and (At <= Last) and (At < High(FTokens)) do
   begin
     if (At >= 3) and SameText(FTokens[At].Text, AName) and FTokens[At - 1].IsSymbol('=') and
       (FTokens[At - 2].Kind = TPascalTokenKind.Identifier) and FTokens[At - 3].IsSymbol('.') then
+    begin
       Exit(True);
+    end;
     Inc(At);
   end;
   Result := False;
@@ -432,14 +482,20 @@ var
   Index: Integer;
 begin
   for Symbol in FUnit.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Container, ASymbol.Container) then
     begin
       Words := Symbol.Signature.Replace(';', ' ').Replace(':', ' ').Split([' '],
         TStringSplitOptions.ExcludeEmpty);
       for Index := 0 to High(Words) - 1 do
+      begin
         if (IndexText(Words[Index], AccessorWords) >= 0) and SameText(Words[Index + 1], ASymbol.Name) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
+  end;
   Result := False;
 end;
 
@@ -452,12 +508,18 @@ begin
   for Index := 0 to High(FTokens) do
   begin
     if FTokens[Index].IsKeyword('exports') then
-      InExports := True
+    begin
+      InExports := True;
+    end
     else if InExports and FTokens[Index].IsSymbol(';') then
-      InExports := False
+    begin
+      InExports := False;
+    end
     else if InExports and (FTokens[Index].Kind = TPascalTokenKind.Identifier) and (Index > 0) and
       (FTokens[Index - 1].IsKeyword('exports') or FTokens[Index - 1].IsSymbol(',')) then
+    begin
       FExported.AddOrSetValue(LowerCase(FTokens[Index].Text), True);
+    end;
   end;
 end;
 
@@ -469,56 +531,100 @@ var
   Ancestors: TArray<TIndexSymbol>;
 begin
   for Directive in KeptDirectives do
+  begin
     if ASymbol.HasDirective(Directive) then
+    begin
       Exit(TConsideredUsedReason.Directive);
+    end;
+  end;
   Signature := TrimLeft(ASymbol.Signature);
   if (ASymbol.Kind = TIndexSymbolKind.Constructor_) or StartsText('constructor', Signature) or
     StartsText('destructor', Signature) or StartsText('class constructor', Signature) or
     StartsText('class destructor', Signature) then
+  begin
     Exit(TConsideredUsedReason.Constructor_);
+  end;
   if StartsText('class operator', Signature) then
+  begin
     Exit(TConsideredUsedReason.Operator);
+  end;
   if (ASymbol.Container <> '') and (IndexText(ASymbol.Name, EnumeratorNames) >= 0) then
+  begin
     Exit(TConsideredUsedReason.Enumerator);
+  end;
   if (ASymbol.Kind = TIndexSymbolKind.Property_) and ASymbol.IsDefault then
+  begin
     Exit(TConsideredUsedReason.DefaultProperty);
+  end;
   if (ASymbol.Kind = TIndexSymbolKind.Property_) and ContainsText(' ' + Signature + ' ', ' implements ') then
+  begin
     Exit(TConsideredUsedReason.Implements);
+  end;
   if AttributesBefore(ASymbol.Range.StartPos) <> nil then
+  begin
     Exit(TConsideredUsedReason.Attribute);
+  end;
   for Pattern in FKeepPatterns do
+  begin
     if Matches(Pattern, ASymbol.Name) or ((ASymbol.Container <> '') and
       Matches(Pattern, ASymbol.Container + '.' + ASymbol.Name)) then
+    begin
       Exit(TConsideredUsedReason.KeepPattern);
+    end;
+  end;
   if (ASymbol.Container = '') and FExported.ContainsKey(LowerCase(ASymbol.Name)) then
+  begin
     Exit(TConsideredUsedReason.Exported);
+  end;
   if ASymbol.Container = '' then
+  begin
     Exit(TConsideredUsedReason.None);
+  end;
   HasOwner := Owner(ASymbol.Container, OwnerSymbol);
   if not HasOwner then
+  begin
     Exit(TConsideredUsedReason.UnknownAncestor);
+  end;
   if OwnerSymbol.Kind = TIndexSymbolKind.InterfaceType then
+  begin
     Exit(TConsideredUsedReason.InterfaceMember);
+  end;
   if OwnerSymbol.Kind = TIndexSymbolKind.HelperType then
+  begin
     Exit(TConsideredUsedReason.HelperMember);
+  end;
   for Attribute in AttributesBefore(OwnerSymbol.Range.StartPos) do
   begin
     if SameText(Attribute, 'TestFixture') then
+    begin
       Exit(TConsideredUsedReason.TestFixture);
+    end;
     if IndexText(Attribute, FKeepAttributes) >= 0 then
+    begin
       Exit(TConsideredUsedReason.KeepAttribute);
+    end;
   end;
   if (ASymbol.Kind = TIndexSymbolKind.Method) and IsAccessor(ASymbol) then
+  begin
     Exit(TConsideredUsedReason.Accessor);
+  end;
   if not Chain(OwnerSymbol, Ancestors) then
+  begin
     Exit(TConsideredUsedReason.UnknownAncestor);
+  end;
   if (ASymbol.Visibility = TIndexVisibility.Published) and ChainHas(Ancestors, 'TTestCase') then
+  begin
     Exit(TConsideredUsedReason.TestFixture);
+  end;
   if (ASymbol.Visibility = TIndexVisibility.Published) and (ASymbol.Kind = TIndexSymbolKind.Property_) and
     ChainHas(Ancestors, 'TPersistent') then
+  begin
     Exit(TConsideredUsedReason.Streamed);
+  end;
   if (ASymbol.Kind = TIndexSymbolKind.Method) and ImplementsName(OwnerSymbol, Ancestors, ASymbol.Name) then
+  begin
     Exit(TConsideredUsedReason.InterfaceMethod);
+  end;
   Result := TConsideredUsedReason.None;
 end;
 

@@ -184,8 +184,10 @@ begin
   begin
     ALocation := Found[0];
     if Length(Found) > 1 then
+    begin
       AHint := Format('Hinweis: %d Symbole dieses Namens, ausgewertet wird %s in %s. ' +
         'Mit TTyp.Name genauer fassen.', [Length(Found), ALocation.Symbol.QualifiedName, ALocation.UnitName]);
+    end;
   end;
 end;
 
@@ -196,12 +198,16 @@ var
 begin
   Result := '';
   if not FReadText(AFileName, Text) then
+  begin
     Exit;
+  end;
   Lines := TStringList.Create;
   try
     Lines.Text := Text;
     if (ALine >= 0) and (ALine < Lines.Count) then
+    begin
       Result := Trim(Lines[ALine]);
+    end;
   finally
     Lines.Free;
   end;
@@ -210,9 +216,13 @@ end;
 function TMcpCodeTools.SettingsOf(const AFileName: string): TReferenceSettings;
 begin
   if Assigned(FSettingsFor) then
-    Result := FSettingsFor(TDocumentUris.FromPath(AFileName))
+  begin
+    Result := FSettingsFor(TDocumentUris.FromPath(AFileName));
+  end
   else
+  begin
     Result := TReferenceSettings.Default;
+  end;
 end;
 
 /// <summary>Aufruf über Interface bzw. virtuelle Methode (#1122): " [über Interface, 3 Umsetzungen]".</summary>
@@ -220,26 +230,42 @@ function DispatchSuffix(const ACall: THierarchyCall): string;
 begin
   Result := '';
   if ACall.Dispatch = TReferenceReason.Interface_ then
-    Result := 'über Interface'
+  begin
+    Result := 'über Interface';
+  end
   else if ACall.Dispatch = TReferenceReason.Virtual then
-    Result := 'virtuell'
+  begin
+    Result := 'virtuell';
+  end
   else
+  begin
     Exit;
+  end;
   if ACall.Implementations <= 0 then
-    Result := ' [' + Result + ']'
+  begin
+    Result := ' [' + Result + ']';
+  end
   else if ACall.Implementations = 1 then
-    Result := ' [' + Result + ', 1 Umsetzung]'
+  begin
+    Result := ' [' + Result + ', 1 Umsetzung]';
+  end
   else
+  begin
     Result := Format(' [%s, %d Umsetzungen]', [Result, ACall.Implementations]);
+  end;
 end;
 
 /// <summary>" – erschlossen (interface): Aufruf über …" für erschlossene Treffer, sonst ''.</summary>
 function ConfidenceSuffix(const AConfidence: TReferenceConfidence): string;
 begin
   if AConfidence.IsSure then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := Format(' – erschlossen (%s): %s', [AConfidence.ReasonName, AConfidence.Detail]);
+  end;
 end;
 
 function TMcpCodeTools.QualifiedName(const AFileName: string; ALine, AColumn: Integer;
@@ -250,9 +276,13 @@ var
   Resolver: TNameResolver;
 begin
   if (ALine < 1) or (AColumn < 1) then
+  begin
     raise EMcpToolError.Create('line und column zählen ab 1');
+  end;
   if not FReadText(AFileName, Text) then
+  begin
     raise EMcpToolError.CreateFmt('Datei %s nicht lesbar', [AFileName]);
+  end;
   Tree := TSyntaxTreeCache.Parse(Text);
   try
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
@@ -260,7 +290,9 @@ begin
       Resolver.Namespaces := FNamespaces;
       if not TQualifiedNames.At(Resolver, FIndex, Tree, AFileName, TTextPosition.Create(ALine - 1, AColumn - 1),
         AWithParameters, Result, Error) then
+      begin
         raise EMcpToolError.Create(Error);
+      end;
     finally
       Resolver.Free;
     end;
@@ -283,12 +315,18 @@ var
   Pass: Boolean;
 begin
   if not Locate(AName, Location, Hint) then
+  begin
     Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+  end;
   if not FReadText(Location.FileName, Text) then
+  begin
     Exit(Format('Datei %s nicht lesbar.', [Location.FileName]));
+  end;
   Files := nil;
   if Assigned(FFiles) then
+  begin
     Files := FFiles();
+  end;
   Tree := TSyntaxTreeCache.Parse(Text);
   try
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
@@ -306,8 +344,12 @@ begin
   try
     Sure := 0;
     for Reference in Found do
+    begin
       if Reference.Confidence.IsSure then
+      begin
         Inc(Sure);
+      end;
+    end;
     Lines.Add(Format('%d Verwendungen von %s (%s:%d), %d sicher, %d erschlossen:', [Length(Found),
       Location.Symbol.QualifiedName, Location.FileName, Location.Symbol.SelectionRange.StartPos.Line + 1, Sure,
       Length(Found) - Sure]));
@@ -317,22 +359,32 @@ begin
     begin
       Pass := Round = 0;
       if not Pass and (Sure < Length(Found)) and (Count < MaxReferences) then
+      begin
         Lines.Add('Erschlossen, vor dem Umbenennen prüfen:');
+      end;
       for Reference in Found do
       begin
         if Reference.Confidence.IsSure <> Pass then
+        begin
           Continue;
+        end;
         if Count >= MaxReferences then
+        begin
           Break;
+        end;
         Inc(Count);
         Lines.Add(Format('%s:%d: %s%s', [Reference.FileName, Reference.Range.StartPos.Line + 1,
           LineText(Reference.FileName, Reference.Range.StartPos.Line), ConfidenceSuffix(Reference.Confidence)]));
       end;
     end;
     if Count < Length(Found) then
+    begin
       Lines.Add(Format('… %d weitere', [Length(Found) - Count]));
+    end;
     if Hint <> '' then
+    begin
       Lines.Add(Hint);
+    end;
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -343,7 +395,9 @@ function DescribeItem(const AItem: THierarchyItem): string;
 begin
   Result := AItem.Name;
   if AItem.Container <> '' then
+  begin
     Result := AItem.Container + '.' + Result;
+  end;
   Result := Format('%s – Unit %s, %s:%d', [Result, AItem.UnitName, AItem.FileName,
     AItem.SelectionRange.StartPos.Line + 1]);
 end;
@@ -355,19 +409,33 @@ var
 begin
   ALines.Add(ATitle);
   if Length(ACalls) = 0 then
+  begin
     ALines.Add('  (keine)');
+  end;
   Sure := 0;
   for Call in ACalls do
+  begin
     if Call.Confidence.IsSure then
+    begin
       Inc(Sure);
+    end;
+  end;
   // Sichere Aufrufer zuerst, erschlossene mit Grund danach (#1119).
   for Round := 0 to 1 do
+  begin
     for Call in ACalls do
+    begin
       if Call.Confidence.IsSure = (Round = 0) then
+      begin
         ALines.Add(Format('  %s %s (%d×)%s%s', [AArrow, DescribeItem(Call.Item), Length(Call.Ranges),
           DispatchSuffix(Call), ConfidenceSuffix(Call.Confidence)]));
+      end;
+    end;
+  end;
   if Sure < Length(ACalls) then
+  begin
     ALines.Add(Format('  %d sicher, %d erschlossen', [Sure, Length(ACalls) - Sure]));
+  end;
 end;
 
 function TMcpCodeTools.CallHierarchy(const AName: string; ADirection: TMcpCallDirection): string;
@@ -381,12 +449,18 @@ var
   Lines: TStringList;
 begin
   if not Locate(AName, Location, Hint) then
+  begin
     Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+  end;
   if not FReadText(Location.FileName, Text) then
+  begin
     Exit(Format('Datei %s nicht lesbar.', [Location.FileName]));
+  end;
   Files := nil;
   if Assigned(FFiles) then
+  begin
     Files := FFiles();
+  end;
   Lines := TStringList.Create;
   try
     Tree := TSyntaxTreeCache.Parse(Text);
@@ -396,13 +470,19 @@ begin
         Resolver.Namespaces := FNamespaces;
         if not TLspHierarchies.CallItemAt(Resolver, Tree, Location.FileName,
           Location.Symbol.SelectionRange.StartPos, Item) then
+        begin
           Exit(Format('%s ist keine Routine oder Methode.', [Location.Symbol.QualifiedName]));
+        end;
         Lines.Add(DescribeItem(Item));
         if ADirection in [TMcpCallDirection.Incoming, TMcpCallDirection.Both] then
+        begin
           AddCalls(Lines, 'Aufgerufen von:', '←',
             TLspHierarchies.IncomingCalls(Resolver, FIndex, Item, Files, FReadText, SettingsOf(Item.FileName), nil));
+        end;
         if ADirection in [TMcpCallDirection.Outgoing, TMcpCallDirection.Both] then
+        begin
           AddCalls(Lines, 'Ruft auf:', '→', TLspHierarchies.OutgoingCalls(Resolver, FIndex, Item, FReadText, nil));
+        end;
       finally
         Resolver.Free;
       end;
@@ -410,7 +490,9 @@ begin
       Tree.Free;
     end;
     if Hint <> '' then
+    begin
       Lines.Add(Hint);
+    end;
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -421,7 +503,9 @@ function ImpactOptionsOf(const ATools: TMcpCodeTools; const AProvider: TImpactOp
   const AFileName: string): TImpactOptions;
 begin
   if Assigned(AProvider) then
-    Result := AProvider(TDocumentUris.FromPath(AFileName))
+  begin
+    Result := AProvider(TDocumentUris.FromPath(AFileName));
+  end
   else
   begin
     Result := TImpactOptions.Default;
@@ -435,7 +519,9 @@ var
   Hint: string;
 begin
   if not Locate(AName, Location, Hint) then
+  begin
     Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+  end;
   Result := Impact(AName, ImpactOptionsOf(Self, FImpactOptionsFor, Location.FileName).Depth, AJson);
 end;
 
@@ -451,9 +537,13 @@ var
   Json: TJSONObject;
 begin
   if not Locate(AName, Location, Hint) then
+  begin
     Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+  end;
   if not FReadText(Location.FileName, Text) then
+  begin
     Exit(Format('Datei %s nicht lesbar.', [Location.FileName]));
+  end;
   Options := ImpactOptionsOf(Self, FImpactOptionsFor, Location.FileName);
   Options.Depth := TImpactAnalysis.ClampDepth(ADepth);
   Tree := TSyntaxTreeCache.Parse(Text);
@@ -463,11 +553,17 @@ begin
       Resolver.Namespaces := FNamespaces;
       if not TLspHierarchies.SymbolItemAt(Resolver, Tree, Location.FileName,
         Location.Symbol.SelectionRange.StartPos, Start) then
+      begin
         Exit(Format('Zu %s gibt es keine Deklaration.', [Location.Symbol.QualifiedName]));
+      end;
       if Assigned(FFiles) then
-        Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, FFiles(), FReadText, Options, nil)
+      begin
+        Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, FFiles(), FReadText, Options, nil);
+      end
       else
+      begin
         Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, nil, FReadText, Options, nil);
+      end;
     finally
       Resolver.Free;
     end;
@@ -475,7 +571,9 @@ begin
     Tree.Free;
   end;
   if not AJson then
+  begin
     Exit(ImpactReport(Found, Hint));
+  end;
   Json := TImpactAnalysis.ToJson(Found);
   try
     Result := Json.ToJSON;
@@ -502,19 +600,31 @@ begin
   Place := AResult.Places[AIndex];
   Extra := ImpactEdgeText(Place.Edge);
   if Length(Place.Ranges) > 0 then
+  begin
     Extra := Format('%s, %d×', [Extra, Length(Place.Ranges)]);
+  end;
   if Place.Terminal then
+  begin
     Extra := Extra + ', Unit-Ebene';
+  end;
   if Place.Test >= 0 then
+  begin
     Extra := Extra + ', Test';
+  end;
   ALines.Add(Format('%s← %s (%s)%s', [AIndent, DescribeItem(Place.Item), Extra, ConfidenceSuffix(Place.Confidence)]));
   for Binding in Place.Forms do
+  begin
     ALines.Add(Format('%s    Formular: %s (%s:%d)', [AIndent, Binding.Text, Binding.FileName,
       Binding.Range.StartPos.Line + 1]));
+  end;
   // Jede Stelle hat genau eine Ursache: Der Baum endet.
   for Child := AIndex + 1 to High(AResult.Places) do
+  begin
     if AResult.Places[Child].Cause = AIndex then
+    begin
       AddImpactPlace(ALines, AResult, Child, AIndent + '  ');
+    end;
+  end;
 end;
 
 class function TMcpCodeTools.ImpactReport(const AResult: TImpactResult; const AHint: string): string;
@@ -531,31 +641,51 @@ begin
       [DescribeItem(AResult.Symbol), AResult.Depth, Length(AResult.Places), AResult.LevelCount(1),
       Length(AResult.Places) - AResult.LevelCount(1), Length(AResult.Tests)]));
     for Binding in AResult.SymbolForms do
+    begin
       Lines.Add(Format('  Formular: %s (%s:%d)', [Binding.Text, Binding.FileName, Binding.Range.StartPos.Line + 1]));
+    end;
     if Length(AResult.Places) = 0 then
+    begin
       Lines.Add('Nichts verwendet das Symbol.');
+    end;
     for Index := 0 to High(AResult.Places) do
+    begin
       if AResult.Places[Index].Cause < 0 then
+      begin
         AddImpactPlace(Lines, AResult, Index, '  ');
+      end;
+    end;
     if Length(AResult.Tests) > 0 then
     begin
       Lines.Add('Betroffene Tests:');
       for Test in AResult.Tests do
+      begin
         Lines.Add(Format('  %s (%s:%d, Ebene %d)', [Test.Name, Test.FileName, Test.Line + 1, Test.Level]));
+      end;
       Names := AResult.RunNames;
       Lines.Add('run_tests tests: ' + string.Join(', ', Names));
     end
     else
+    begin
       Lines.Add('Keine betroffenen Tests.');
+    end;
     if TImpactLimit.Depth in AResult.Limits then
+    begin
       Lines.Add(Format('Tiefe %d erreicht: %d Stellen nicht weiter verfolgt (größere "depth" geht weiter).',
         [AResult.Depth, AResult.Unexpanded]));
+    end;
     if TImpactLimit.Count in AResult.Limits then
+    begin
       Lines.Add(Format('Höchstzahl von %d Stellen erreicht, Ergebnis unvollständig.', [AResult.MaxPlaces]));
+    end;
     if TImpactLimit.Time in AResult.Limits then
+    begin
       Lines.Add(Format('Zeitlimit von %d ms erreicht, Ergebnis unvollständig.', [AResult.TimeoutMs]));
+    end;
     if AHint <> '' then
+    begin
       Lines.Add(AHint);
+    end;
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -581,9 +711,13 @@ begin
     Collector.Free;
   end;
   if AJson then
-    Result := TMetricsReport.Json(Files, Limits)
+  begin
+    Result := TMetricsReport.Json(Files, Limits);
+  end
   else
+  begin
     Result := TMetricsReport.Markdown(Files, Limits, ExtractFileName(ExcludeTrailingPathDelimiter(ARoot)));
+  end;
 end;
 
 class function TMcpCodeTools.Todos(const ASettings: TServerSettings; const ARoot: string;
@@ -598,9 +732,13 @@ begin
       Result := Assigned(AReadText) and AReadText(AFileName, AText);
     end, TTodoRules.Keywords(ASettings)), AFilter);
   if AJson then
-    Result := TTodoReport.Json(Files)
+  begin
+    Result := TTodoReport.Json(Files);
+  end
   else
+  begin
     Result := TTodoReport.Markdown(Files, ExtractFileName(ExcludeTrailingPathDelimiter(ARoot)));
+  end;
 end;
 
 class function TMcpCodeTools.Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -640,19 +778,25 @@ begin
       Inc(Checked);
       RelativePath := FileName;
       if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), FileName) then
+      begin
         RelativePath := Copy(FileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+      end;
       for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, Text,
         TFileChecker.ProjectOf(AProject, FileName), TFileChecker.SourceOf(ASource, FileName), Scopes) do
       begin
         Inc(Count);
         if Count <= MaxFindings then
+        begin
           Lines.Add(Format('%s:%d:%d: %s [%s] [Konfidenz %s] %s', [FileName, Finding.Range.StartPos.Line + 1,
             Finding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(Finding.Severity),
             Finding.RuleId, ConfidenceText(Finding.Confidence), Finding.Message]));
+        end;
       end;
     end;
     if Count > MaxFindings then
+    begin
       Lines.Add(Format('… %d weitere Befunde', [Count - MaxFindings]));
+    end;
     Lines.Insert(0, Format('%d Befunde in %d Dateien.', [Count, Checked]));
     Result := TrimRight(Lines.Text);
   finally
@@ -675,13 +819,19 @@ begin
   Result := '';
   Extension := ExtractFileExt(AFileName);
   if not MatchText(Extension, PascalExtensions) then
+  begin
     Exit;
+  end;
   if not (Assigned(AReadText) and AReadText(AFileName, Text)) then
+  begin
     Exit;
+  end;
   // Wie get_diagnostics: Regeln und overrides aus atlas.json gelten für den Pfad relativ zum Projekt.
   RelativePath := AFileName;
   if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
+  begin
     RelativePath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+  end;
   Lines := TStringList.Create;
   try
     Count := 0;
@@ -689,17 +839,25 @@ begin
       TFileChecker.ProjectOf(AProject, AFileName), TFileChecker.SourceOf(ASource, AFileName), Scopes) do
     begin
       if Finding.Severity < ASeverity then
+      begin
         Continue;
+      end;
       Inc(Count);
       if Count <= MaxFindings then
+      begin
         Lines.Add(Format('%d:%d: %s [%s] %s', [Finding.Range.StartPos.Line + 1,
           Finding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId,
           Finding.Message]));
+      end;
     end;
     if Count = 0 then
+    begin
       Exit;
+    end;
     if Count > MaxFindings then
+    begin
       Lines.Add(Format('… %d weitere Befunde', [Count - MaxFindings]));
+    end;
     Context := Format('Atlas hat in %s nach der Änderung %d Befunde gefunden (Zeile:Spalte):', [AFileName, Count]) +
       #10 + TrimRight(Lines.Text) + #10 +
       'Ursache im Code beheben; Erklärung mit explain_finding, Korrektur mit apply_code_action.';
@@ -713,15 +871,25 @@ end;
 class function TMcpCodeTools.ParseHookSeverity(const AText: string): TRuleSeverity;
 begin
   if (AText = '') or SameText(AText, 'warning') then
-    Result := TRuleSeverity.Warning
+  begin
+    Result := TRuleSeverity.Warning;
+  end
   else if SameText(AText, 'error') then
-    Result := TRuleSeverity.Error
+  begin
+    Result := TRuleSeverity.Error;
+  end
   else if SameText(AText, 'information') then
-    Result := TRuleSeverity.Information
+  begin
+    Result := TRuleSeverity.Information;
+  end
   else if SameText(AText, 'hint') then
-    Result := TRuleSeverity.Hint
+  begin
+    Result := TRuleSeverity.Hint;
+  end
   else
+  begin
     raise EMcpToolError.Create('"severity" ist error, warning, information oder hint');
+  end;
 end;
 
 function SplitKeepingBreaks(const AText: string): TArray<string>;
@@ -732,13 +900,17 @@ begin
   Result := nil;
   Start := 1;
   for Index := 1 to Length(AText) do
+  begin
     if AText[Index] = #10 then
     begin
       Result := Result + [Copy(AText, Start, Index - Start + 1)];
       Start := Index + 1;
     end;
+  end;
   if Start <= Length(AText) then
+  begin
     Result := Result + [Copy(AText, Start, MaxInt)];
+  end;
 end;
 
 class function TMcpCodeTools.ReplaceLines(const AOriginal, AText: string; AStartLine, AEndLine: Integer): string;
@@ -750,18 +922,26 @@ begin
   Lines := SplitKeepingBreaks(AOriginal);
   if (AStartLine < 1) or (AStartLine > Length(Lines) + 1) or (AEndLine < AStartLine - 1) or
     (AEndLine > Length(Lines)) then
+  begin
     raise EMcpToolError.CreateFmt('Ungültiger Bereich %d-%d; die Datei hat %d Zeilen',
       [AStartLine, AEndLine, Length(Lines)]);
+  end;
   Inserted := AText;
   // Der ersetzte Bereich endet mit einem Zeilenwechsel, wenn danach noch etwas kommt.
   if (Inserted <> '') and (AEndLine < Length(Lines)) and not EndsStr(#10, Inserted) then
+  begin
     Inserted := Inserted + TTextLines.LineBreakOf(AOriginal);
+  end;
   Result := '';
   for Index := 0 to AStartLine - 2 do
+  begin
     Result := Result + Lines[Index];
+  end;
   Result := Result + Inserted;
   for Index := AEndLine to High(Lines) do
+  begin
     Result := Result + Lines[Index];
+  end;
 end;
 
 function TMcpCodeTools.CheckCode(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -783,14 +963,20 @@ begin
   if AStartLine > 0 then
   begin
     if not (Assigned(FReadText) and FReadText(AFileName, Original)) then
+    begin
       raise EMcpToolError.CreateFmt('%s ist nicht lesbar; ohne Bereich den ganzen Text angeben', [AFileName]);
+    end;
     NewText := ReplaceLines(Original, AText, AStartLine, AEndLine);
   end
   else
+  begin
     NewText := AText;
+  end;
   RelativePath := AFileName;
   if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
+  begin
     RelativePath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+  end;
   Lines := TStringList.Create;
   try
     Count := 0;
@@ -800,9 +986,11 @@ begin
     begin
       Inc(Count);
       if Count <= MaxFindings then
+      begin
         Lines.Add(Format('%d:%d: %s [%s] [Konfidenz %s] %s', [Finding.Range.StartPos.Line + 1,
           Finding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId,
           ConfidenceText(Finding.Confidence), Finding.Message]));
+      end;
     end;
     CheckNames := TUnresolvedNames.Available(FIndex);
     if CheckNames then
@@ -824,28 +1012,44 @@ begin
       begin
         Inc(Count);
         if (Count <= MaxFindings) and (Name.Code <> '') then
+        begin
           Lines.Add(Format('%d:%d: warning [unresolved-identifier] %s', [Name.Range.StartPos.Line + 1,
-            Name.Range.StartPos.Character + 1, TUnresolvedNames.Describe(Name)]))
+            Name.Range.StartPos.Character + 1, TUnresolvedNames.Describe(Name)]));
+        end
         else if (Count <= MaxFindings) and (Name.Suggestion <> '') then
+        begin
           Lines.Add(Format('%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar; gemeint ist %s? ' +
             '({$SCOPEDENUMS ON})', [Name.Range.StartPos.Line + 1, Name.Range.StartPos.Character + 1, Name.Name,
-            Name.Suggestion]))
+            Name.Suggestion]));
+        end
         else if Count <= MaxFindings then
+        begin
           Lines.Add(Format('%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar', [Name.Range.StartPos.Line + 1,
             Name.Range.StartPos.Character + 1, Name.Name]));
+        end;
       end;
     end;
     if Count > MaxFindings then
+    begin
       Lines.Add(Format('… %d weitere Befunde', [Count - MaxFindings]));
+    end;
     if Count = 0 then
-      Lines.Insert(0, Format('Keine Befunde in %s.', [ExtractFileName(AFileName)]))
+    begin
+      Lines.Insert(0, Format('Keine Befunde in %s.', [ExtractFileName(AFileName)]));
+    end
     else
+    begin
       Lines.Insert(0, Format('%d Befunde in %s (Positionen im neuen Text, Zeile:Spalte):', [Count, ExtractFileName(AFileName)]));
+    end;
     if not CheckNames then
-      Lines.Add('Hinweis: Unit System ist nicht im Index, Bezeichner wurden nicht geprüft.')
+    begin
+      Lines.Add('Hinweis: Unit System ist nicht im Index, Bezeichner wurden nicht geprüft.');
+    end
     else
+    begin
       Lines.Add('Hinweis: Die Namensprüfung kennt keine Überladungen, Generics, Class Helper und with; ' +
         'einzelne Meldungen können Fehlalarme sein.');
+    end;
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -855,11 +1059,17 @@ end;
 class function TMcpCodeTools.ParseDirection(const AText: string): TMcpCallDirection;
 begin
   if SameText(AText, 'incoming') then
-    Result := TMcpCallDirection.Incoming
+  begin
+    Result := TMcpCallDirection.Incoming;
+  end
   else if SameText(AText, 'outgoing') then
-    Result := TMcpCallDirection.Outgoing
+  begin
+    Result := TMcpCallDirection.Outgoing;
+  end
   else
+  begin
     Result := TMcpCallDirection.Both;
+  end;
 end;
 
 end.

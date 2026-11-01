@@ -54,9 +54,13 @@ begin
   Result := nil;
   if (AContext.Host = nil) or
     SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.SortUsesRemoveUnused), 'false') then
+  begin
     Exit;
+  end;
   if AContext.Host.UsesContext(AContext.Uri, Uses_) and Assigned(Uses_.Info) then
+  begin
     Result := TUsesActions.UnusedUnits(ATokens, Uses_.Info, Uses_.Keep);
+  end;
 end;
 
 function ExecuteSortUses(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -78,7 +82,9 @@ begin
     Options.Sort := True;
     Options.Drop := UnusedUnitsOf(AContext, Tokens);
     if not TUsesClauses.Rewrite(Tokens, Text, Options, Source.LineBreak, Edits) then
+    begin
       Edits := nil;
+    end;
     AEdits := Edits + [Source.RemoveCommand];
     Result := True;
   finally
@@ -98,7 +104,9 @@ var
 begin
   AEdits := nil;
   if (AContext.Host = nil) or not AContext.Host.UsesContext(AContext.Uri, Uses_) or not Assigned(Uses_.Info) then
+  begin
     Exit(Fail(CleanUsesNoIndexHint, AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Text := Source.Text;
@@ -106,7 +114,9 @@ begin
     // Nur streichen, nicht sortieren: Die gewählte Reihenfolge bleibt.
     if not TUsesActions.RemoveUnits(Tokens, Text, TUsesActions.UnusedUnits(Tokens, Uses_.Info, Uses_.Keep),
       Source.LineBreak, Edits) then
+    begin
       Edits := nil;
+    end;
     AEdits := Edits + [Source.RemoveCommand];
     Result := True;
   finally
@@ -122,8 +132,12 @@ var
 begin
   Result := AId <> '';
   for Index := 1 to Length(AId) do
+  begin
     if not CharInSet(AId[Index], ['a'..'z', 'A'..'Z', '0'..'9', '-', '_', '*']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function ExecuteIgnore(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -136,22 +150,32 @@ begin
   AEdits := nil;
   Space := Pos(' ', AContext.Arguments);
   if Space = 0 then
+  begin
     Space := Length(AContext.Arguments) + 1;
+  end;
   Id := LowerCase(Copy(AContext.Arguments, 1, Space - 1));
   Reason := Trim(Copy(AContext.Arguments, Space + 1, MaxInt));
   if not IsRuleId(Id) then
+  begin
     Exit(Fail('Erwartet wird /ignore regel [Begründung]', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if (Source.Line >= High(Source.Lines)) or (Trim(Source.Lines[Source.Line + 1]) = '') then
+    begin
       Exit(Fail('Unter /ignore steht keine Zeile, die unterdrückt werden kann', AReason));
+    end;
     // Nur Regeln, die dort treffen; Muster mit * prüfen wir nicht.
     if (AContext.Host <> nil) and (Pos('*', Id) = 0) and
       AContext.Host.RuleIdsAt(AContext.Uri, Source.Text, Source.Line + 1, Ids) and not MatchText(Id, Ids) then
+    begin
       Exit(Fail(Format(IgnoreNoHitHint, [Id]), AReason));
+    end;
     Comment := '// lsp-ignore: ' + Id;
     if Reason <> '' then
+    begin
       Comment := Comment + ' -- ' + Reason;
+    end;
     AEdits := [Source.ReplaceWithIndentedLines([Comment])];
     Result := True;
   finally
@@ -170,19 +194,27 @@ begin
   Host := AContext.Host;
   Result := Trim(Host.Setting(AContext.Uri, TSlashSettings.TodoOwner));
   if Result <> '' then
+  begin
     Exit;
+  end;
   Folder := '';
   if AContext.Uri <> '' then
+  begin
     Folder := ExtractFileDir(TDocumentUris.ToPath(AContext.Uri));
+  end;
   Result := TGitUser.NameFor(Folder, TGitUser.HomeFolder,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := Host.ReadFile(AFileName, AText);
     end);
   if Result = '' then
+  begin
     Result := GetEnvironmentVariable('USERNAME');
+  end;
   if Result = '' then
+  begin
     Result := GetEnvironmentVariable('USER');
+  end;
 end;
 
 /// <summary>Zerlegt führende -oName und -cKat; AText ist der Rest. -o ohne Namen nimmt den Standardnamen,
@@ -200,10 +232,14 @@ begin
   begin
     Space := Pos(' ', Rest);
     if Space = 0 then
+    begin
       Space := Length(Rest) + 1;
+    end;
     Word := Copy(Rest, 3, Space - 3);
     if CharInSet(Rest[2], ['o', 'O']) then
-      AOwner := Word
+    begin
+      AOwner := Word;
+    end
     else
     begin
       ACategory := Word;
@@ -223,20 +259,30 @@ begin
   AEdits := nil;
   SplitTodo(AContext.Arguments, Owner, Category, Text, HasCategory);
   if Text = '' then
+  begin
     Exit(Fail('Erwartet wird /todo Text', AReason));
+  end;
   // Ohne Host (Prüfung stehen gebliebener Zeilen) nur die Angaben aus der Zeile.
   if AContext.Host <> nil then
   begin
     if Owner = '' then
+    begin
       Owner := DefaultOwner(AContext);
+    end;
     if not HasCategory then
+    begin
       Category := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.TodoCategory));
+    end;
   end;
   Comment := '// TODO';
   if Owner <> '' then
+  begin
     Comment := Comment + ' -o' + Owner;
+  end;
   if Category <> '' then
+  begin
     Comment := Comment + ' -c' + Category;
+  end;
   Comment := Comment + ' : ' + Text;
   Source := TCommandSource.Create(AContext);
   try
@@ -255,7 +301,9 @@ var
 begin
   Line := LowerCase(Trim(ALine));
   if StartsStr('class ', Line) then
+  begin
     Line := Trim(Copy(Line, 7, MaxInt));
+  end;
   Result := StartsStr('procedure ', Line) or StartsStr('function ', Line) or StartsStr('constructor ', Line) or
     StartsStr('destructor ', Line) or StartsStr('operator ', Line);
 end;
@@ -272,9 +320,13 @@ begin
   try
     Next := Source.Line + 1;
     while (Next <= High(Source.Lines)) and (Trim(Source.Lines[Next]) = '') do
+    begin
       Inc(Next);
+    end;
     if (Next > High(Source.Lines)) or not IsRoutineStart(Source.Lines[Next]) then
+    begin
       Exit(Fail('/doc gilt nur über einer Routine', AReason));
+    end;
     // Kopf kann über mehrere Zeilen gehen.
     Declaration := '';
     for Index := Next to High(Source.Lines) do
@@ -284,16 +336,24 @@ begin
       begin
         Signature := RoutineSignature(Declaration);
         if (Pos('(', Signature) = 0) or (Pos(')', Signature) > 0) then
+        begin
           Break;
+        end;
       end;
     end;
     Signature := RoutineSignature(Declaration);
     Lines := ['/// <summary></summary>'];
     for Name in ParameterNames(Signature).Split([', ']) do
+    begin
       if Name <> '' then
+      begin
         Lines := Lines + [Format('/// <param name="%s"></param>', [Name])];
+      end;
+    end;
     if StartsText('function ', Signature) or StartsText('class function ', Signature) then
+    begin
       Lines := Lines + ['/// <returns></returns>'];
+    end;
     AEdits := [Source.ReplaceWithIndentedLines(Lines)];
     Result := True;
   finally
@@ -314,12 +374,18 @@ begin
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit(Fail('/log gilt nur im Rumpf einer Routine', AReason));
+    end;
     Name := Routine.Name;
     if Source.Tree.Root.Name <> '' then
+    begin
       Name := Source.Tree.Root.Name + '.' + Name;
+    end;
     if AContext.Arguments <> '' then
+    begin
       Name := Name + ': ' + AContext.Arguments;
+    end;
     AEdits := [Source.ReplaceWithIndentedLines([LogStatement(AContext, QuotedStr(Name))])];
     Result := True;
   finally

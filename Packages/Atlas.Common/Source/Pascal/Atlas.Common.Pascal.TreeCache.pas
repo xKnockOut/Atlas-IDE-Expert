@@ -254,17 +254,25 @@ var
   Index: Integer;
 begin
   if All then
+  begin
     Exit(AllKey);
+  end;
   // Ohne bedingte Direktive und $I ist der Baum für alle Symbole gleich: kein neuer Parse beim Plattformwechsel.
   if not TPascalPreprocessor.HasConditionals(AText) and not ReadsIncludes(AText) then
+  begin
     Exit(TreeKey);
+  end;
   Sorted := Copy(Defines);
   for Index := 0 to High(Sorted) do
+  begin
     Sorted[Index] := UpperCase(Trim(Sorted[Index]));
+  end;
   TArray.Sort<string>(Sorted);
   Result := TreeKey + '|' + string.Join(';', Sorted);
   if ReadsIncludes(AText) then
+  begin
     Result := Result + '|inc' + IntToStr(TInterlocked.CompareExchange(IncludeGeneration, 0, 0));
+  end;
 end;
 
 function TTreeMode.ReadsIncludes(const AText: string): Boolean;
@@ -281,10 +289,14 @@ var
 begin
   Processed := Default(TPreprocessorResult);
   if AMode.All then
-    Tree := TPascalParser.Parse(AText, ACancellation)
+  begin
+    Tree := TPascalParser.Parse(AText, ACancellation);
+  end
   else
+  begin
     Tree := TPascalParser.ParseActive(AText, TPascalPreprocessor.EditorOptions(AMode.Defines, AMode.FileName,
       AMode.Resolver), ACancellation, Processed);
+  end;
   Result := TSharedSyntaxTree.Create(Tree, Processed, AMode.ReadsIncludes(AText));
 end;
 
@@ -303,7 +315,9 @@ begin
   RunLock.Enter;
   try
     if not Running.TryGetValue(RunKey, Previous) then
-      Running.Add(RunKey, Signal)
+    begin
+      Running.Add(RunKey, Signal);
+    end
     else if (Previous as TParseRun).Version < ADocument.Version then
     begin
       (Previous as TParseRun).Cancel;
@@ -318,12 +332,16 @@ begin
   RunLock.Enter;
   try
     if Running.TryGetValue(RunKey, Previous) and (Previous = Signal) then
+    begin
       Running.Remove(RunKey);
+    end;
   finally
     RunLock.Leave;
   end;
   if Run.IsCancelled then
+  begin
     Exit(nil);
+  end;
   Result := Shared;
 end;
 
@@ -346,7 +364,9 @@ begin
       Result := ParseShared(Document, Mode, Key);
     end);
   if Supports(Value, ISharedSyntaxTree, Result) then
+  begin
     Exit;
+  end;
   // Von einer neueren Version überholt: für diese (veraltete) Anfrage ohne Cache parsen.
   Result := ParseFor(Document.Text, Mode, ACancellation);
 end;
@@ -416,7 +436,9 @@ begin
   end;
   Result := nil;
   if Assigned(Provider) and not Provider(AUri, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 class procedure TSyntaxTreeCache.SetDefinesProvider(const AProvider: TTreeDefinesProvider);
@@ -451,7 +473,9 @@ begin
   end;
   Result := nil;
   if Assigned(Provider) then
+  begin
     Result := Provider(AUri);
+  end;
 end;
 
 class procedure TSyntaxTreeCache.IncludesChanged;
@@ -487,9 +511,13 @@ function StringBytes(const AValue: string): Int64;
 begin
   // Kopf (Referenzzähler, Länge, Codepage) plus UTF-16-Zeichen und Endnull, wie Index.Memory.
   if AValue = '' then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := 12 + (Length(AValue) + 1) * SizeOf(Char);
+  end;
 end;
 
 class function TSyntaxTreeCache.EstimatedBytes(ATree: TSyntaxTree): Int64;
@@ -499,20 +527,28 @@ var
 begin
   Result := 0;
   if ATree = nil then
+  begin
     Exit;
+  end;
   mBytes := TSyntaxTree.InstanceSize + 16 + Int64(Length(ATree.Tokens)) * SizeOf(TPascalToken);
   for mToken in ATree.Tokens do
+  begin
     Inc(mBytes, StringBytes(mToken.Text));
+  end;
   if ATree.Root <> nil then
+  begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         Inc(mBytes, TSyntaxNode.InstanceSize + StringBytes(ANode.Name));
         // Kinderliste: Objekt und Array der Zeiger.
         if ANode.ChildCount > 0 then
+        begin
           Inc(mBytes, 48 + Int64(ANode.ChildCount) * SizeOf(Pointer));
+        end;
         Result := True;
       end);
+  end;
   Result := mBytes;
 end;
 
@@ -521,10 +557,14 @@ end;
 function TSyntaxTreeCacheStats.HitPercent: Integer;
 begin
   if Lookups <= 0 then
+  begin
     Exit(-1);
+  end;
   Result := Round((Lookups - Parses) * 100 / Lookups);
   if Result < 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 initialization

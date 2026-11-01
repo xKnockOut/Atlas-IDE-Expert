@@ -178,15 +178,21 @@ function CompareNames(const ALeft, ARight: string): Integer;
 begin
   Result := CompareText(ALeft, ARight);
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft, ARight);
+  end;
 end;
 
 function SectionText(AInterface: Boolean): string;
 begin
   if AInterface then
-    Result := 'interface'
+  begin
+    Result := 'interface';
+  end
   else
+  begin
     Result := 'implementation';
+  end;
 end;
 
 function RoleText(ARole: TOverviewUnitRole): string;
@@ -217,7 +223,9 @@ var
 begin
   SetLength(Names, Length(Units));
   for Index := 0 to High(Units) do
+  begin
     Names[Index] := LowerCase(Units[Index]);
+  end;
   TArray.Sort<string>(Names);
   Result := string.Join(#1, Names);
 end;
@@ -229,8 +237,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Units) do
+  begin
     if SameText(Units[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -240,8 +252,12 @@ var
 begin
   Result := 0;
   for Cycle in Cycles do
+  begin
     if Cycle.InterfaceOnly then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 { TArchitectureSnapshots }
@@ -256,9 +272,13 @@ end;
 function SubsystemOf(const AOverview: TArchitectureOverview; ASubsystem: Integer): string;
 begin
   if (ASubsystem >= 0) and (ASubsystem < Length(AOverview.Subsystems)) then
-    Result := AOverview.Subsystems[ASubsystem].Name
+  begin
+    Result := AOverview.Subsystems[ASubsystem].Name;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TArchitectureSnapshots.FromOverview(const AOverview: TArchitectureOverview): TArchitectureSnapshot;
@@ -292,19 +312,27 @@ begin
   end;
   SetLength(Result.Edges, Length(AOverview.Edges));
   for Index := 0 to High(AOverview.Edges) do
+  begin
     Result.Edges[Index] := EdgeOf(AOverview, AOverview.Edges[Index]);
+  end;
   SetLength(Result.Central, Length(AOverview.Central));
   for Index := 0 to High(AOverview.Central) do
+  begin
     Result.Central[Index] := AOverview.Units[AOverview.Central[Index]].Name;
+  end;
   SetLength(Result.Subsystems, Length(AOverview.Subsystems));
   for Index := 0 to High(AOverview.Subsystems) do
   begin
     Subsystem := AOverview.Subsystems[Index];
     Result.Subsystems[Index].Name := Subsystem.Name;
     for Member in Subsystem.Units do
+    begin
       Result.Subsystems[Index].Units := Result.Subsystems[Index].Units + [AOverview.Units[Member].Name];
+    end;
     if Subsystem.Central >= 0 then
+    begin
       Result.Subsystems[Index].Central := AOverview.Units[Subsystem.Central].Name;
+    end;
     Result.Subsystems[Index].Inner := Subsystem.InnerEdges;
     Result.Subsystems[Index].Outer := Subsystem.OuterEdges;
     Result.Subsystems[Index].Cohesion := Subsystem.Cohesion;
@@ -321,9 +349,13 @@ begin
     Result.Outliers[Index].Unit_ := AOverview.Units[AOverview.Outliers[Index].Unit_].Name;
     Result.Outliers[Index].Suggested := SubsystemOf(AOverview, AOverview.Outliers[Index].Suggested);
     if AOverview.Outliers[Index].Reason = TOverviewOutlierReason.Namespace then
-      Result.Outliers[Index].Reason := 'namespace'
+    begin
+      Result.Outliers[Index].Reason := 'namespace';
+    end
     else
+    begin
       Result.Outliers[Index].Reason := 'edges';
+    end;
   end;
   SetLength(Result.Cycles, Length(AOverview.Cycles));
   for Index := 0 to High(AOverview.Cycles) do
@@ -331,9 +363,13 @@ begin
     Cycle := AOverview.Cycles[Index];
     Result.Cycles[Index].InterfaceOnly := Cycle.InterfaceOnly;
     for Member in Cycle.Units do
+    begin
       Result.Cycles[Index].Units := Result.Cycles[Index].Units + [AOverview.Units[Member].Name];
+    end;
     for Edge in Cycle.Edges do
+    begin
       Result.Cycles[Index].Edges := Result.Cycles[Index].Edges + [EdgeOf(AOverview, Edge)];
+    end;
   end;
   SetLength(Result.CrossLinks, Length(AOverview.CrossLinks));
   for Index := 0 to High(AOverview.CrossLinks) do
@@ -343,9 +379,13 @@ begin
     Result.CrossLinks[Index].FromSubsystem := SubsystemOf(AOverview, Link.FromSubsystem);
     Result.CrossLinks[Index].ToSubsystem := SubsystemOf(AOverview, Link.ToSubsystem);
     if Link.Reason = TOverviewCrossReason.Rare then
-      Result.CrossLinks[Index].Reason := 'rare'
+    begin
+      Result.CrossLinks[Index].Reason := 'rare';
+    end
     else
+    begin
       Result.CrossLinks[Index].Reason := 'againstDirection';
+    end;
     Result.CrossLinks[Index].Forward := Link.Forward;
     Result.CrossLinks[Index].Backward := Link.Backward;
   end;
@@ -356,10 +396,14 @@ function CompareEdges(const ALeft, ARight: TSnapshotEdge): Integer;
 begin
   Result := CompareNames(ALeft.Source, ARight.Source);
   if Result = 0 then
+  begin
     Result := CompareNames(ALeft.Target, ARight.Target);
+  end;
   // interface vor implementation.
   if Result = 0 then
+  begin
     Result := Ord(ARight.Interface_) - Ord(ALeft.Interface_);
+  end;
 end;
 
 function CompareCycles(const ALeft, ARight: TSnapshotCycle): Integer;
@@ -367,9 +411,13 @@ begin
   // Reine interface-Zyklen zuerst wie in der Übersicht.
   Result := Ord(ARight.InterfaceOnly) - Ord(ALeft.InterfaceOnly);
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft.Key, ARight.Key);
+  end;
   if Result = 0 then
+  begin
     Result := CompareStr(string.Join(#1, ALeft.Units), string.Join(#1, ARight.Units));
+  end;
 end;
 
 class procedure TArchitectureSnapshots.Normalize(var ASnapshot: TArchitectureSnapshot);
@@ -387,11 +435,13 @@ begin
       Result := CompareEdges(ALeft, ARight);
     end));
   for Index := 0 to High(ASnapshot.Subsystems) do
+  begin
     TArray.Sort<string>(ASnapshot.Subsystems[Index].Units, TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
       begin
         Result := CompareNames(ALeft, ARight);
       end));
+  end;
   TArray.Sort<TSnapshotOutlier>(ASnapshot.Outliers, TComparer<TSnapshotOutlier>.Construct(
     function(const ALeft, ARight: TSnapshotOutlier): Integer
     begin
@@ -417,9 +467,13 @@ end;
 function Bool(AValue: Boolean): string;
 begin
   if AValue then
-    Result := 'true'
+  begin
+    Result := 'true';
+  end
   else
+  begin
     Result := 'false';
+  end;
 end;
 
 function Number(AValue: Double): string;
@@ -435,7 +489,9 @@ begin
   for Index := 0 to High(AValues) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + Text(AValues[Index]);
   end;
   Result := Result + ']';
@@ -458,7 +514,9 @@ var
   procedure Separate(AIndex: Integer);
   begin
     if AIndex > 0 then
+    begin
       Builder.Append(',');
+    end;
     Builder.Append(LineBreak).Append('  ');
   end;
 
@@ -517,12 +575,18 @@ begin
         .Append(', "isolated": ').Append(Bool(Subsystem.Isolated));
       // Nur bei nachgeteilten Teilsystemen: Stände ohne Nachteilung bleiben wie vor #1364.
       if Subsystem.Foundation then
+      begin
         Builder.Append(', "foundation": true');
+      end;
       if Subsystem.Parent <> '' then
+      begin
         Builder.Append(', "parent": ').Append(Text(Subsystem.Parent));
+      end;
       // Farbe für die Angleichung (#1367); ältere Stände ohne sie liest Parse weiter.
       if Subsystem.HasColor then
+      begin
         Builder.Append(', "color": ').Append(Subsystem.ColorSlot).Append(', "shade": ').Append(Subsystem.Shade);
+      end;
       Builder.Append('}');
     end;
     Builder.Append(LineBreak).Append('],').Append(LineBreak).Append('"outliers": [');
@@ -544,7 +608,9 @@ begin
       for Inner := 0 to High(Cycle.Edges) do
       begin
         if Inner > 0 then
+        begin
           Builder.Append(', ');
+        end;
         Builder.Append(EdgeJson(Cycle.Edges[Inner]));
       end;
       Builder.Append(']}');
@@ -616,7 +682,9 @@ function TSnapshotReader.Field(AObject: TJSONObject; const AName: string): TJSON
 begin
   Result := nil;
   if AObject <> nil then
+  begin
     Result := AObject.GetValue(AName);
+  end;
 end;
 
 function TSnapshotReader.TextOf(AObject: TJSONObject; const AName: string): string;
@@ -625,9 +693,13 @@ var
 begin
   Value := Field(AObject, AName);
   if (Value is TJSONString) and not (Value is TJSONNumber) then
-    Result := Value.Value
+  begin
+    Result := Value.Value;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TSnapshotReader.IntOf(AObject: TJSONObject; const AName: string): Integer;
@@ -636,9 +708,13 @@ var
 begin
   Value := Field(AObject, AName);
   if Value is TJSONNumber then
-    Result := TJSONNumber(Value).AsInt
+  begin
+    Result := TJSONNumber(Value).AsInt;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 function TSnapshotReader.FloatOf(AObject: TJSONObject; const AName: string): Double;
@@ -647,9 +723,13 @@ var
 begin
   Value := Field(AObject, AName);
   if Value is TJSONNumber then
-    Result := TJSONNumber(Value).AsDouble
+  begin
+    Result := TJSONNumber(Value).AsDouble;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 function TSnapshotReader.FlagOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -666,16 +746,22 @@ var
 begin
   Value := Field(AObject, AName);
   if Value = nil then
+  begin
     Exit(nil);
+  end;
   if not (Value is TJSONArray) then
+  begin
     Fail('"' + AName + '" ist keine Liste');
+  end;
   Result := TJSONArray(Value);
 end;
 
 function TSnapshotReader.ObjectAt(AItems: TJSONArray; AIndex: Integer; const AWhat: string): TJSONObject;
 begin
   if not (AItems.Items[AIndex] is TJSONObject) then
+  begin
     Fail(AWhat + ' ' + IntToStr(AIndex + 1) + ' ist kein Objekt');
+  end;
   Result := TJSONObject(AItems.Items[AIndex]);
 end;
 
@@ -686,14 +772,20 @@ begin
   if FFormat = 1 then
   begin
     if not (AValue is TJSONNumber) then
+    begin
       Fail(AWhat + ': Nummer einer Unit erwartet');
+    end;
     Number := TJSONNumber(AValue).AsInt;
     if (Number < 0) or (Number > High(FUnitNames)) then
+    begin
       Fail(AWhat + ': Unit ' + IntToStr(Number) + ' fehlt');
+    end;
     Exit(FUnitNames[Number]);
   end;
   if not (AValue is TJSONString) or (AValue is TJSONNumber) or (AValue.Value = '') then
+  begin
     Fail(AWhat + ': Name einer Unit erwartet');
+  end;
   Result := AValue.Value;
 end;
 
@@ -704,19 +796,29 @@ begin
   if FFormat = 1 then
   begin
     if not (AValue is TJSONNumber) then
+    begin
       Fail(AWhat + ': Nummer eines Teilsystems erwartet');
+    end;
     Number := TJSONNumber(AValue).AsInt;
     // -1: ohne Teilsystem (z. B. Ausreißer ohne Vorschlag).
     if Number < 0 then
+    begin
       Exit('');
+    end;
     if Number > High(FSubsystemNames) then
+    begin
       Fail(AWhat + ': Teilsystem ' + IntToStr(Number) + ' fehlt');
+    end;
     Exit(FSubsystemNames[Number]);
   end;
   if (AValue is TJSONString) and not (AValue is TJSONNumber) then
-    Result := AValue.Value
+  begin
+    Result := AValue.Value;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TSnapshotReader.UnitNames(AItems: TJSONArray; const AWhat: string): TArray<string>;
@@ -725,10 +827,14 @@ var
 begin
   Result := nil;
   if AItems = nil then
+  begin
     Exit;
+  end;
   SetLength(Result, AItems.Count);
   for Index := 0 to AItems.Count - 1 do
+  begin
     Result[Index] := UnitName(AItems.Items[Index], AWhat);
+  end;
 end;
 
 function TSnapshotReader.EdgeOf(AValue: TJSONValue; const AWhat: string): TSnapshotEdge;
@@ -741,7 +847,9 @@ begin
   begin
     Items := TJSONArray(AValue);
     if Items.Count < 3 then
+    begin
       Fail(AWhat + ': [Quelle, Ziel, Abschnitt] erwartet');
+    end;
     Result.Source := UnitName(Items.Items[0], AWhat);
     Result.Target := UnitName(Items.Items[1], AWhat);
     Section := Items.Items[2].Value;
@@ -753,7 +861,9 @@ begin
     Section := TextOf(TJSONObject(AValue), 'section');
   end
   else
+  begin
     Fail(AWhat + ': Kante erwartet');
+  end;
   Result.Interface_ := (Section = 'interface') or (Section = 'i');
 end;
 
@@ -776,17 +886,25 @@ begin
   begin
     Item := TJSONObject(Field(FData, 'grouping'));
     if Field(Item, 'resolution') is TJSONNumber then
+    begin
       Result.Grouping.Resolution := FloatOf(Item, 'resolution');
+    end;
     Result.Grouping := Result.Grouping.Clamped;
   end;
   Items := ArrayOf(FData, 'excludes');
   if Items <> nil then
+  begin
     for Value in Items do
+    begin
       Result.Excludes := Result.Excludes + [Value.Value];
+    end;
+  end;
   // Format 1 nennt Units und Teilsysteme bei der Nummer: erst die Namen lesen.
   Items := ArrayOf(FData, 'units');
   if Items = nil then
+  begin
     Fail('"units" fehlt');
+  end;
   SetLength(FUnitNames, Items.Count);
   SetLength(Units, Items.Count);
   for Index := 0 to Items.Count - 1 do
@@ -794,14 +912,18 @@ begin
     Item := ObjectAt(Items, Index, 'Unit');
     FUnitNames[Index] := TextOf(Item, 'name');
     if FUnitNames[Index] = '' then
+    begin
       Fail('Unit ' + IntToStr(Index + 1) + ' ohne Namen');
+    end;
   end;
   Inner := ArrayOf(FData, 'subsystems');
   if Inner <> nil then
   begin
     SetLength(FSubsystemNames, Inner.Count);
     for Index := 0 to Inner.Count - 1 do
+    begin
       FSubsystemNames[Index] := TextOf(ObjectAt(Inner, Index, 'Teilsystem'), 'name');
+    end;
   end;
   for Index := 0 to Items.Count - 1 do
   begin
@@ -821,7 +943,9 @@ begin
   begin
     SetLength(Result.Edges, Items.Count);
     for Index := 0 to Items.Count - 1 do
+    begin
       Result.Edges[Index] := EdgeOf(Items.Items[Index], 'Kante ' + IntToStr(Index + 1));
+    end;
   end;
   Result.Central := UnitNames(ArrayOf(FData, 'central'), 'zentrale Units');
   if Inner <> nil then
@@ -835,7 +959,9 @@ begin
       Value := Field(Item, 'central');
       if (Value <> nil) and not ((FFormat = 1) and (Value is TJSONNumber) and (TJSONNumber(Value).AsInt < 0)) and
         not ((FFormat <> 1) and (Value.Value = '')) then
+      begin
         Result.Subsystems[Index].Central := UnitName(Value, 'Teilsystem ' + FSubsystemNames[Index]);
+      end;
       Result.Subsystems[Index].Inner := IntOf(Item, 'inner');
       Result.Subsystems[Index].Outer := IntOf(Item, 'outer');
       Result.Subsystems[Index].Cohesion := FloatOf(Item, 'cohesion');
@@ -870,11 +996,13 @@ begin
       Result.Cycles[Index].Units := UnitNames(ArrayOf(Item, 'units'), 'Zyklus');
       Inner := ArrayOf(Item, 'edges');
       if Inner <> nil then
+      begin
         for Member := 0 to Inner.Count - 1 do
         begin
           Edge := Inner.Items[Member];
           Result.Cycles[Index].Edges := Result.Cycles[Index].Edges + [EdgeOf(Edge, 'Zyklus')];
         end;
+      end;
     end;
   end;
   Items := ArrayOf(FData, 'crossLinks');
@@ -920,7 +1048,9 @@ begin
     Data := TJSONObject(Root);
     // Antwort von atlas/architecture ("format": "json"): Die Daten stehen unter "data".
     if not (Data.GetValue('format') is TJSONNumber) and (Data.GetValue('data') is TJSONObject) then
+    begin
       Data := TJSONObject(Data.GetValue('data'));
+    end;
     Version := Data.GetValue('format');
     if not (Version is TJSONNumber) then
     begin
@@ -978,9 +1108,13 @@ begin
     Bytes := TFile.ReadAllBytes(AFileName);
     // UTF-8, ein BOM fällt weg.
     if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
-      Text := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3)
+    begin
+      Text := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3);
+    end
     else
+    begin
       Text := TEncoding.UTF8.GetString(Bytes);
+    end;
   except
     on E: Exception do
     begin
@@ -990,7 +1124,9 @@ begin
   end;
   Result := Parse(Text, ASnapshot, AError);
   if not Result then
+  begin
     AError := AFileName + ': ' + AError;
+  end;
 end;
 
 class procedure TArchitectureSnapshots.Save(const AFileName: string; const ASnapshot: TArchitectureSnapshot);
@@ -999,7 +1135,9 @@ var
 begin
   Folder := ExtractFileDir(TPath.GetFullPath(AFileName));
   if Folder <> '' then
+  begin
     ForceDirectories(Folder);
+  end;
   TFile.WriteAllBytes(AFileName, TEncoding.UTF8.GetBytes(Json(ASnapshot)));
 end;
 

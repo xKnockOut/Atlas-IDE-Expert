@@ -154,7 +154,9 @@ begin
   Frame.Column := Max(AColumn, 0);
   Frame.Depth := S.Depth;
   if S.Count = Length(S.Frames) then
+  begin
     SetLength(S.Frames, S.Count * 2 + 8);
+  end;
   S.Frames[S.Count] := Frame;
   Inc(S.Count);
 end;
@@ -163,7 +165,9 @@ procedure TIndenter.Pop;
 begin
   // Der unterste Rahmen (Datei) bleibt.
   if S.Count > 1 then
+  begin
     Dec(S.Count);
+  end;
 end;
 
 function TIndenter.TopKind: TFrameKind;
@@ -185,20 +189,26 @@ end;
 procedure TIndenter.PopPending;
 begin
   while (S.Count > 1) and IsPending(TopKind) do
+  begin
     Pop;
+  end;
 end;
 
 procedure TIndenter.PopSections;
 begin
   while (S.Count > 1) and (TopKind = TFrameKind.Section) do
+  begin
     Pop;
+  end;
 end;
 
 function TIndenter.DeclIndex: Integer;
 begin
   Result := S.Count - 1;
   while (Result > 0) and (S.Frames[Result].Kind = TFrameKind.Section) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function TIndenter.DeclKind: TFrameKind;
@@ -211,7 +221,9 @@ begin
   Result := TopKind in [TFrameKind.Block, TFrameKind.TryBlock, TFrameKind.RepeatBlock, TFrameKind.InitBlock,
     TFrameKind.IfPending, TFrameKind.ElsePending, TFrameKind.DoPending, TFrameKind.LabelPending];
   if (TopKind = TFrameKind.CaseBlock) and not TopFrame.Variant then
+  begin
     Result := True;
+  end;
 end;
 
 function TIndenter.StatementColumn: Integer;
@@ -224,9 +236,13 @@ begin
       Result := 0;
     TFrameKind.Routine:
       if Frame.Anonymous then
-        Result := Frame.Column + FStep
+      begin
+        Result := Frame.Column + FStep;
+      end
       else
+      begin
         Result := Frame.Column;
+      end;
   else
     Result := Frame.Column + FStep;
   end;
@@ -242,20 +258,26 @@ begin
   Result := AIndex + 1;
   while (Result <= High(FTokens)) and (FTokens[Result].Kind in [TPascalTokenKind.Comment,
     TPascalTokenKind.Directive]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function TIndenter.WordOf(AIndex: Integer): string;
 begin
   if (AIndex < 0) or (AIndex > High(FTokens)) then
+  begin
     Exit('');
+  end;
   Result := LowerCase(FTokens[AIndex].Text);
 end;
 
 procedure TIndenter.Place(AColumn: Integer);
 begin
   if not FFirst then
+  begin
     Exit;
+  end;
   FResult[FLine] := Max(AColumn, 0);
   FResolved[FLine] := Max(AColumn, 0);
   FPlaced[FLine] := True;
@@ -266,15 +288,21 @@ var
   Delta: Integer;
 begin
   if not FFirst then
+  begin
     Exit;
+  end;
   if S.AtStart then
-    Place(StatementColumn)
+  begin
+    Place(StatementColumn);
+  end
   else
   begin
     // Fortsetzung: Abstand zur ersten Zeile der Anweisung bleibt.
     Delta := 0;
     if (S.StmtLine >= 0) and (S.StmtLine < FLine) then
+    begin
       Delta := FResolved[S.StmtLine] - FOriginal[S.StmtLine];
+    end;
     Place(FOriginal[FLine] + Delta);
   end;
 end;
@@ -287,7 +315,9 @@ begin
     S.AtStart := False;
     S.AfterHeader := False;
     if (TopKind = TFrameKind.CaseBlock) and not TopFrame.InElse then
+    begin
       S.Frames[S.Count - 1].InLabel := True;
+    end;
   end;
 end;
 
@@ -298,9 +328,13 @@ var
 begin
   Text := UpperCase(AToken.Text);
   if StartsStr('(*$', Text) then
-    Text := Copy(Text, 4, MaxInt)
+  begin
+    Text := Copy(Text, 4, MaxInt);
+  end
   else
+  begin
     Text := Copy(Text, 3, MaxInt);
+  end;
   if StartsStr('IF', Text) and not StartsStr('IFEND', Text) then
   begin
     Branch.Saved := S;
@@ -341,16 +375,22 @@ begin
   AEnd := AIndex;
   Next := NextSignificant(AIndex);
   if MatchStr(WordOf(Next), ['of', ';', '>', ',', ')', '=']) then
+  begin
     Exit(False);
+  end;
   if AWord = 'record' then
   begin
     if WordOf(Next) = 'helper' then
     begin
       while (Next <= High(FTokens)) and (WordOf(Next) <> 'for') do
+      begin
         Next := NextSignificant(Next);
+      end;
       AEnd := NextSignificant(Next);
       while (WordOf(NextSignificant(AEnd)) = '.') do
+      begin
         AEnd := NextSignificant(NextSignificant(AEnd));
+      end;
     end;
     Exit(True);
   end;
@@ -362,10 +402,14 @@ begin
   if WordOf(Next) = 'helper' then
   begin
     while (Next <= High(FTokens)) and (WordOf(Next) <> 'for') do
+    begin
       Next := NextSignificant(Next);
+    end;
     AEnd := NextSignificant(Next);
     while (WordOf(NextSignificant(AEnd)) = '.') do
+    begin
       AEnd := NextSignificant(NextSignificant(AEnd));
+    end;
     Exit(True);
   end;
   if WordOf(Next) = '(' then
@@ -373,14 +417,20 @@ begin
     Depth := 0;
     repeat
       if WordOf(Next) = '(' then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if WordOf(Next) = ')' then
+      begin
         Dec(Depth);
+      end;
       AEnd := Next;
       Next := NextSignificant(Next);
     until (Depth = 0) or (Next > High(FTokens));
     if WordOf(Next) = ';' then
+    begin
       Exit(False);
+    end;
   end;
   Result := True;
 end;
@@ -465,7 +515,9 @@ begin
   if MatchStr(AWord, ['finally', 'except']) then
   begin
     while (S.Count > 1) and not (TopKind in [TFrameKind.TryBlock, TFrameKind.Routine]) do
+    begin
       Pop;
+    end;
     Place(TopFrame.Column);
     S.AtStart := True;
     Exit;
@@ -473,10 +525,14 @@ begin
   if AWord = 'until' then
   begin
     while (S.Count > 1) and not (TopKind in [TFrameKind.RepeatBlock, TFrameKind.Routine]) do
+    begin
       Pop;
+    end;
     Place(TopFrame.Column);
     if TopKind = TFrameKind.RepeatBlock then
+    begin
       Pop;
+    end;
     S.StmtLine := FLine;
     S.AtStart := False;
     Exit;
@@ -495,14 +551,22 @@ begin
     else if S.AtStart then
     begin
       if DeclKind = TFrameKind.Top then
+      begin
         PopSections;
+      end;
       Frame := TopFrame;
       if Frame.Kind in [TFrameKind.IfPending, TFrameKind.ElsePending, TFrameKind.DoPending] then
-        Column := Frame.Column
+      begin
+        Column := Frame.Column;
+      end
       else if Frame.Kind = TFrameKind.Top then
-        Column := 0
+      begin
+        Column := 0;
+      end
       else
+      begin
         Column := StatementColumn;
+      end;
       Place(Column);
       Push(TFrameKind.Block, Column);
     end
@@ -527,9 +591,13 @@ begin
     else
     begin
       if S.AtStart then
-        Place(StatementColumn)
+      begin
+        Place(StatementColumn);
+      end
       else
+      begin
         PlaceStatement;
+      end;
       StartStatement;
       Push(TFrameKind.AsmBlock, LineColumn);
     end;
@@ -540,16 +608,22 @@ begin
     PlaceStatement;
     StartStatement;
     if AWord = 'try' then
-      Push(TFrameKind.TryBlock, LineColumn)
+    begin
+      Push(TFrameKind.TryBlock, LineColumn);
+    end
     else
+    begin
       Push(TFrameKind.RepeatBlock, LineColumn);
+    end;
     S.AtStart := True;
     Exit;
   end;
   if MatchStr(AWord, ['initialization', 'finalization']) then
   begin
     while S.Count > 1 do
+    begin
       Pop;
+    end;
     Place(0);
     Push(TFrameKind.InitBlock, 0);
     S.AtStart := True;
@@ -558,10 +632,14 @@ begin
   if (AWord = 'implementation') or ((AWord = 'interface') and S.AtStart and (DeclKind = TFrameKind.Top)) then
   begin
     while S.Count > 1 do
+    begin
       Pop;
+    end;
     Place(0);
     if AWord = 'implementation' then
+    begin
       S.InImplementation := True;
+    end;
     S.AtStart := True;
     Exit;
   end;
@@ -569,7 +647,9 @@ begin
   begin
     Place(0);
     if AWord <> 'unit' then
+    begin
       S.HasBodies := AWord <> 'package';
+    end;
     StartStatement;
     Exit;
   end;
@@ -589,9 +669,13 @@ begin
       Column := Frame.Column + FStep;
     end;
     if FFirst then
-      Place(Column)
+    begin
+      Place(Column);
+    end
     else
+    begin
       Column := LineColumn;
+    end;
     Push(TFrameKind.Section, Column);
     S.AtStart := True;
     S.ClassPrefix := False;
@@ -612,9 +696,13 @@ begin
       PlaceStatement;
       StartStatement;
       if FFirst then
-        Column := LineColumn
+      begin
+        Column := LineColumn;
+      end
       else
+      begin
         Column := LineColumn + FStep;
+      end;
       Push(TFrameKind.Routine, Column);
       S.Frames[S.Count - 1].Anonymous := True;
       S.Frames[S.Count - 1].OuterStmtLine := S.StmtLine;
@@ -642,7 +730,9 @@ begin
         S.AtStart := False;
       end
       else
+      begin
         Column := FResolved[S.StmtLine];
+      end;
       S.AfterHeader := True;
       S.ClassPrefix := False;
       Frame := TopFrame;
@@ -661,7 +751,9 @@ begin
     if MatchStr(Previous, RoutineWords) or MatchStr(Previous, ['var', 'property', 'threadvar']) then
     begin
       if MatchStr(Previous, RoutineWords) then
+      begin
         PopSections;
+      end;
       PlaceStatement;
       StartStatement;
       S.ClassPrefix := MatchStr(Previous, RoutineWords) or (Previous = 'operator');
@@ -674,7 +766,9 @@ begin
     // Direktiven setzen den Kopf fort: Abstand zu dessen erster Zeile.
     if MatchStr(AWord, ['forward', 'external']) and (TopKind = TFrameKind.Routine) and not TopFrame.HasBody and
       not TopFrame.Anonymous then
+    begin
       S.Frames[S.Count - 1].NoBody := True;
+    end;
     S.AtStart := False;
     PlaceStatement;
     Exit;
@@ -684,13 +778,17 @@ begin
   begin
     Index := FIndex - 1;
     while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    begin
       Dec(Index);
+    end;
     Previous := WordOf(Index);
     if Previous = 'packed' then
     begin
       Dec(Index);
       while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      begin
         Dec(Index);
+      end;
       Previous := WordOf(Index);
     end;
     if ((Previous = '=') or ((Previous = ':') and (AWord = 'record'))) and
@@ -699,9 +797,13 @@ begin
       PlaceStatement;
       StartStatement;
       if S.StmtLine >= 0 then
-        Push(TFrameKind.ClassBody, FResolved[S.StmtLine])
+      begin
+        Push(TFrameKind.ClassBody, FResolved[S.StmtLine]);
+      end
       else
+      begin
         Push(TFrameKind.ClassBody, LineColumn);
+      end;
       S.HeaderEnd := HeaderEnd;
       Exit;
     end;
@@ -720,7 +822,9 @@ begin
     S.PendingCase := False;
     Push(TFrameKind.CaseBlock, S.CaseColumn);
     if DeclKind = TFrameKind.ClassBody then
+    begin
       S.Frames[S.Count - 1].Variant := True;
+    end;
     S.AtStart := True;
     Exit;
   end;
@@ -741,7 +845,9 @@ begin
   PlaceStatement;
   StartStatement;
   if AWord = 'property' then
+  begin
     S.AfterHeader := True;
+  end;
 end;
 
 procedure TIndenter.Symbol(const AText: string);
@@ -752,7 +858,9 @@ begin
   if (AText = '(') or (AText = '[') then
   begin
     if S.AtStart and (AText = '[') and not InStatements then
+    begin
       S.Attribute := True;
+    end;
     PlaceStatement;
     StartStatement;
     Inc(S.Depth);
@@ -762,7 +870,9 @@ begin
   begin
     PlaceStatement;
     if S.Depth > 0 then
+    begin
       Dec(S.Depth);
+    end;
     if S.Attribute and (AText = ']') and (S.Depth = Base) then
     begin
       S.Attribute := False;
@@ -783,9 +893,13 @@ begin
       Push(TFrameKind.Routine, S.RoutineColumn);
     end
     else if (TopKind = TFrameKind.Routine) and TopFrame.NoBody then
-      Pop
+    begin
+      Pop;
+    end
     else
+    begin
       PopPending;
+    end;
     S.AtStart := True;
     Exit;
   end;
@@ -824,7 +938,9 @@ begin
   begin
     Line := ATokens[Index].StartPos.Line;
     if (Line <= High(FFirstToken)) and (FFirstToken[Line] < 0) then
+    begin
       FFirstToken[Line] := Index;
+    end;
   end;
   S := Default(TIndentState);
   S.StmtLine := -1;
@@ -839,7 +955,9 @@ begin
     FIndex := Index;
     FLine := Token.StartPos.Line;
     if FLine > High(FFirstToken) then
+    begin
       Break;
+    end;
     FFirst := (FFirstToken[FLine] = Index) and (FAlternatives = 0);
     InAsm := TopKind = TFrameKind.AsmBlock;
     if Token.Kind = TPascalTokenKind.Directive then
@@ -850,19 +968,27 @@ begin
     if Token.Kind = TPascalTokenKind.Comment then
     begin
       if FFirst and not InAsm then
+      begin
         FFollow[FLine] := True;
+      end;
       Continue;
     end;
     if InAsm then
     begin
       if (Token.Kind = TPascalTokenKind.Keyword) and Token.IsKeyword('end') then
+      begin
         CloseEnd;
+      end;
       Continue;
     end;
     if Token.Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier] then
-      Word(LowerCase(Token.Text))
+    begin
+      Word(LowerCase(Token.Text));
+    end
     else if Token.Kind = TPascalTokenKind.Symbol then
-      Symbol(Token.Text)
+    begin
+      Symbol(Token.Text);
+    end
     else
     begin
       PlaceStatement;
@@ -876,14 +1002,19 @@ begin
   end;
   // Kommentarzeilen folgen der nächsten Codezeile.
   for Line := High(FFollow) downto 0 do
+  begin
     if FFollow[Line] and not FPlaced[Line] then
     begin
       Next := Line + 1;
       while (Next <= High(FFollow)) and not FPlaced[Next] and (FFirstToken[Next] < 0) do
+      begin
         Inc(Next);
+      end;
       Delta := 0;
       if (Next <= High(FFollow)) and FPlaced[Next] then
+      begin
         Delta := FResolved[Next] - FOriginal[Next];
+      end;
       if Delta <> 0 then
       begin
         FResult[Line] := Max(FOriginal[Line] + Delta, 0);
@@ -891,6 +1022,7 @@ begin
         FPlaced[Line] := True;
       end;
     end;
+  end;
   Result := FResult;
 end;
 

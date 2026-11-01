@@ -186,32 +186,50 @@ end;
 class function THotspots.TrendOf(const AKey: string): THotspotTrend;
 begin
   if SameText(AKey, 'rising') then
-    Result := THotspotTrend.Rising
+  begin
+    Result := THotspotTrend.Rising;
+  end
   else if SameText(AKey, 'steady') then
-    Result := THotspotTrend.Steady
+  begin
+    Result := THotspotTrend.Steady;
+  end
   else if SameText(AKey, 'falling') then
-    Result := THotspotTrend.Falling
+  begin
+    Result := THotspotTrend.Falling;
+  end
   else if SameText(AKey, 'new') then
-    Result := THotspotTrend.New
+  begin
+    Result := THotspotTrend.New;
+  end
   else
+  begin
     Result := THotspotTrend.Unknown;
+  end;
 end;
 
 class function THotspots.LevelKey(ALevel: THotspotLevel): string;
 begin
   if ALevel = THotspotLevel.Methods then
-    Result := 'method'
+  begin
+    Result := 'method';
+  end
   else
+  begin
     Result := 'unit';
+  end;
 end;
 
 class function THotspots.TryLevelOf(const AKey: string; out ALevel: THotspotLevel): Boolean;
 begin
   Result := True;
   if (AKey = '') or SameText(AKey, 'unit') then
-    ALevel := THotspotLevel.Units
+  begin
+    ALevel := THotspotLevel.Units;
+  end
   else if SameText(AKey, 'method') then
-    ALevel := THotspotLevel.Methods
+  begin
+    ALevel := THotspotLevel.Methods;
+  end
   else
   begin
     ALevel := THotspotLevel.Units;

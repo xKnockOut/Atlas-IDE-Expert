@@ -91,29 +91,39 @@ end;
 function TScanner.Current: Char;
 begin
   if AtEnd then
-    Result := #0
+  begin
+    Result := #0;
+  end
   else
+  begin
     Result := FText[FIndex];
+  end;
 end;
 
 procedure TScanner.Advance;
 begin
   if AtEnd then
+  begin
     Exit;
+  end;
   if FText[FIndex] = #10 then
   begin
     Inc(FLine);
     FColumn := 0;
   end
   else if FText[FIndex] <> #13 then
+  begin
     Inc(FColumn);
+  end;
   Inc(FIndex);
 end;
 
 procedure TScanner.SkipBlanks;
 begin
   while not AtEnd and CharInSet(Current, [' ', #9, #10, #13, #12]) do
+  begin
     Advance;
+  end;
 end;
 
 function TScanner.Position: TTextPosition;
@@ -133,7 +143,9 @@ end;
 procedure TScanner.SkipLine;
 begin
   while not AtEnd and (Current <> #10) do
+  begin
     Advance;
+  end;
 end;
 
 function TScanner.PeekWord: string;
@@ -142,7 +154,9 @@ var
 begin
   Index := FIndex;
   while (Index <= Length(FText)) and TTextChars.IsAsciiIdentChar(FText[Index]) do
+  begin
     Inc(Index);
+  end;
   Result := LowerCase(Copy(FText, FIndex, Index - FIndex));
 end;
 
@@ -152,7 +166,9 @@ var
 begin
   Start := FIndex;
   while not AtEnd and TTextChars.IsAsciiIdentChar(Current) do
+  begin
     Advance;
+  end;
   Result := Copy(FText, Start, FIndex - Start);
 end;
 
@@ -162,7 +178,9 @@ var
 begin
   Start := FIndex;
   while not AtEnd and (TTextChars.IsAsciiIdentChar(Current) or (Current = '.')) do
+  begin
     Advance;
+  end;
   Result := Copy(FText, Start, FIndex - Start);
 end;
 
@@ -171,6 +189,7 @@ begin
   // Folge aus 'Text' und #13 bzw. #$0D, mit "+" auch über Zeilen.
   repeat
     while not AtEnd and CharInSet(Current, ['''', '#']) do
+    begin
       if Current = '''' then
       begin
         Advance;
@@ -180,7 +199,9 @@ begin
           begin
             Advance;
             if Current <> '''' then
+            begin
               Break;
+            end;
           end;
           Advance;
         end;
@@ -189,16 +210,23 @@ begin
       begin
         Advance;
         while not AtEnd and (TTextChars.IsAsciiIdentChar(Current) or (Current = '$')) do
+        begin
           Advance;
+        end;
       end;
+    end;
     // "+" am Zeilenende verbindet mit der nächsten Zeile.
     if Current = ' ' then
     begin
       while Current = ' ' do
+      begin
         Advance;
+      end;
     end;
     if Current <> '+' then
+    begin
       Break;
+    end;
     Advance;
     SkipBlanks;
   until not CharInSet(Current, ['''', '#']);
@@ -211,16 +239,26 @@ begin
   while not AtEnd and (Current <> AClose) do
   begin
     if CharInSet(Current, ['''', '#']) and (AOpen <> '{') then
-      ReadString
+    begin
+      ReadString;
+    end
     else if (Current = '(') and (AOpen = '(') then
-      ReadBracketed('(', ')')
+    begin
+      ReadBracketed('(', ')');
+    end
     else
+    begin
       Advance;
+    end;
   end;
   if AtEnd then
-    Error(Format('"%s" fehlt', [AClose]))
+  begin
+    Error(Format('"%s" fehlt', [AClose]));
+  end
   else
+  begin
     Advance;
+  end;
 end;
 
 procedure TScanner.ReadCollection(AOwner: TDfmObject);
@@ -251,9 +289,13 @@ begin
     SkipBlanks;
   end;
   if AtEnd then
-    Error('">" fehlt')
+  begin
+    Error('">" fehlt');
+  end
   else
+  begin
     Advance;
+  end;
 end;
 
 procedure TScanner.ReadValue(AOwner: TDfmObject);
@@ -272,7 +314,9 @@ begin
   else
     // Zahl, Bezeichner, True/False, -1, 1.5E2 ...
     while not AtEnd and not CharInSet(Current, [#10, #13]) do
+    begin
       Advance;
+    end;
   end;
 end;
 
@@ -311,7 +355,9 @@ begin
         end;
         Child := ReadObject;
         if Child <> nil then
+        begin
           AObject.Children.Add(Child);
+        end;
         Continue;
       end;
       if not (TTextChars.IsAsciiIdentChar(Current)) then
@@ -326,7 +372,9 @@ begin
       Item.Name := ReadQualifiedName;
       Item.NameRange.EndPos := Position;
       while CharInSet(Current, [' ', #9]) do
+      begin
         Advance;
+      end;
       if Current <> '=' then
       begin
         Error(Format('"=" nach "%s" erwartet', [Item.Name]));
@@ -335,10 +383,14 @@ begin
       end;
       Advance;
       while CharInSet(Current, [' ', #9]) do
+      begin
         Advance;
+      end;
       // Lange Strings schreibt Delphi in die nächste Zeile ("Hint = " und darunter "'Bla'#123 +", #1235).
       if CharInSet(Current, [#13, #10]) then
+      begin
         SkipBlanks;
+      end;
       Item.ValueRange.StartPos := Position;
       Start := FIndex;
       ReadValue(AObject);
@@ -363,18 +415,28 @@ begin
     Result.Range.StartPos := Position;
     Word := LowerCase(ReadWord);
     if Word = 'inherited' then
-      Result.Kind := TDfmObjectKind.Inherited_
+    begin
+      Result.Kind := TDfmObjectKind.Inherited_;
+    end
     else if Word = 'inline' then
-      Result.Kind := TDfmObjectKind.Inline_
+    begin
+      Result.Kind := TDfmObjectKind.Inline_;
+    end
     else
+    begin
       Result.Kind := TDfmObjectKind.Object_;
+    end;
     while CharInSet(Current, [' ', #9]) do
+    begin
       Advance;
+    end;
     FirstRange.StartPos := Position;
     First := ReadQualifiedName;
     FirstRange.EndPos := Position;
     while CharInSet(Current, [' ', #9]) do
+    begin
       Advance;
+    end;
     if Current = ':' then
     begin
       // object Name: TKlasse
@@ -382,7 +444,9 @@ begin
       Result.NameRange := FirstRange;
       Advance;
       while CharInSet(Current, [' ', #9]) do
+      begin
         Advance;
+      end;
       Result.TypeRange.StartPos := Position;
       Result.TypeName := ReadQualifiedName;
       Result.TypeRange.EndPos := Position;
@@ -395,12 +459,18 @@ begin
       Result.NameRange := FirstRange;
     end;
     if Result.TypeName = '' then
+    begin
       Error('Klassenname erwartet');
+    end;
     // Optionaler Index: [2]
     while CharInSet(Current, [' ', #9]) do
+    begin
       Advance;
+    end;
     if Current = '[' then
+    begin
       ReadBracketed('[', ']');
+    end;
     ReadBody(Result, 'end');
   except
     Result.Free;
@@ -427,15 +497,21 @@ begin
   Text := AText;
   if (StartsStr('TPF0', AText) or StartsStr(#$FF#$0A#$00, AText)) and
     not TDfmBinary.FromDecodedText(AText, Text) then
+  begin
     Text := AText;
+  end;
   Scanner := TScanner.Create(Text);
   try
     Scanner.SkipBlanks;
     Word := Scanner.PeekWord;
     if (Word = 'object') or (Word = 'inherited') or (Word = 'inline') then
-      Result.Root := Scanner.ReadObject
+    begin
+      Result.Root := Scanner.ReadObject;
+    end
     else if not Scanner.AtEnd then
+    begin
       Scanner.Error('"object" erwartet (binäre DFM?)');
+    end;
     Result.Errors := Scanner.FErrors.ToArray;
   finally
     Scanner.Free;

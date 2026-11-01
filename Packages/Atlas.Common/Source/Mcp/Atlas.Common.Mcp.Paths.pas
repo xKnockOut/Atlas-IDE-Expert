@@ -68,7 +68,9 @@ function TMcpPathGuard.Normalize(const APath: string): string;
 begin
   Result := ExcludeTrailingPathDelimiter(TPath.GetFullPath(APath.Replace('/', '\')));
   if Assigned(FCanonicalize) then
+  begin
     Result := ExcludeTrailingPathDelimiter(FCanonicalize(Result));
+  end;
 end;
 
 class function TMcpPathGuard.IsInside(const AFolder, APath: string): Boolean;
@@ -81,17 +83,31 @@ var
   Folder: string;
 begin
   if Trim(APath) = '' then
+  begin
     raise EMcpToolError.Create('Pfad fehlt');
+  end;
   if TPath.IsRelativePath(APath) then
-    Result := Normalize(TPath.Combine(FRoot, APath))
+  begin
+    Result := Normalize(TPath.Combine(FRoot, APath));
+  end
   else
+  begin
     Result := Normalize(APath);
+  end;
   if IsInside(FRoot, Result) then
+  begin
     Exit;
+  end;
   if Assigned(FExtraRoots) then
+  begin
     for Folder in FExtraRoots() do
+    begin
       if (Trim(Folder) <> '') and IsInside(Normalize(Folder), Result) then
+      begin
         Exit;
+      end;
+    end;
+  end;
   raise EMcpToolError.CreateFmt('"%s" liegt außerhalb des Arbeitsbereichs (%s) und seiner Bibliothekspfade; ' +
     'MCP-Werkzeuge lesen nur dort (#99).', [Result, FRoot]);
 end;

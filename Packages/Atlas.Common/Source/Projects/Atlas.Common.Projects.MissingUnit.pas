@@ -103,7 +103,9 @@ var
 begin
   Index := Length(APath);
   while (Index > 0) and not CharInSet(APath[Index], ['\', '/']) do
+  begin
     Dec(Index);
+  end;
   Result := Copy(APath, Index + 1, MaxInt);
 end;
 
@@ -112,14 +114,18 @@ function WithoutSeparator(const AFolder: string): string;
 begin
   Result := AFolder;
   while (Length(Result) > 1) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 function FolderKey(const AFolder: string): string;
 begin
   Result := LowerCase(StringReplace(AFolder, '/', '\', [rfReplaceAll]));
   while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TMissingUnitSearch.KnownPlatforms: TArray<string>;
@@ -135,17 +141,23 @@ begin
   Result := '';
   First := Pos('''', AText);
   if First = 0 then
+  begin
     Exit;
+  end;
   Last := Pos('''', AText, First + 1);
   if Last = 0 then
+  begin
     Exit;
+  end;
   Result := Trim(Copy(AText, First + 1, Last - First - 1));
   // F1026 nennt die Datei (Foo.dcu, Foo.pas): ohne Endung, ohne Ordner.
   if SameText(Trim(ACode), 'F1026') then
   begin
     Result := NameOf(Result);
     if MatchText(ExtractFileExt(Result), ['.dcu', '.pas', '.dcp', '.o']) then
+    begin
       Result := ChangeFileExt(Result, '');
+    end;
   end;
 end;
 
@@ -178,16 +190,28 @@ var
 begin
   Result := '';
   if not Assigned(FSetup.ListFiles) then
+  begin
     Exit;
+  end;
   Candidates := [FSetup.UnitName];
   for Namespace in FSetup.Namespaces do
+  begin
     Candidates := Candidates + [Namespace + '.' + FSetup.UnitName];
+  end;
   Files := FSetup.ListFiles(AFolder);
   for Wanted in Extensions do
+  begin
     for Name in Candidates do
+    begin
       for FileName in Files do
+      begin
         if SameText(NameOf(FileName), Name + Wanted) then
+        begin
           Exit(FileName);
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure TSearch.Look(const AFolder: string; APlace: TMissingUnitPlace; const ADetail: string);
@@ -196,19 +220,27 @@ var
   Hit: TMissingUnitHit;
 begin
   if (AFolder = '') or (Pos('$(', AFolder) > 0) then
+  begin
     Exit;
+  end;
   Key := FolderKey(AFolder);
   if IndexStr(Key, FSeen) >= 0 then
+  begin
     Exit;
+  end;
   FSeen := FSeen + [Key];
   FileName := FileIn(AFolder);
   if FileName = '' then
+  begin
     Exit;
+  end;
   Hit.Place := APlace;
   Hit.FileName := FileName;
   Hit.Folder := TProjectPaths.DirectoryOf(FileName);
   if Hit.Folder = '' then
+  begin
     Hit.Folder := AFolder;
+  end;
   Hit.Detail := ADetail;
   FHits := FHits + [Hit];
 end;
@@ -226,7 +258,9 @@ begin
   // Was der Compiler schon durchsucht hat, zählt nicht als Fund.
   ActiveSearch := FSetup.Project.SearchPaths + FSetup.ActiveLibraryPaths;
   for Folder in ActiveSearch do
+  begin
     FSeen := FSeen + [FolderKey(Folder)];
+  end;
   // 1. Projektordner und Unterordner, Breitensuche.
   Root := TProjectPaths.DirectoryOf(FSetup.Project.FileName);
   if Root <> '' then
@@ -240,13 +274,17 @@ begin
     while Position < Length(Queue) do
     begin
       if Depths[Position] > 0 then
+      begin
         Look(Queue[Position], TMissingUnitPlace.ProjectFolder, NameOf(FSetup.Project.FileName));
+      end;
       if (Depths[Position] < TMissingUnitSearch.MaxDepth) and Assigned(FSetup.ListFolders) then
+      begin
         for Folder in FSetup.ListFolders(Queue[Position]) do
         begin
           Queue := Queue + [Folder];
           Depths := Depths + [Depths[Position] + 1];
         end;
+      end;
       Inc(Position);
     end;
   end;
@@ -257,34 +295,48 @@ begin
     Look(TProjectPaths.DirectoryOf(Project.FileName), TMissingUnitPlace.GroupProject,
       NameOf(Project.FileName));
     for Folder in Project.SearchPaths do
+    begin
       Look(Folder, TMissingUnitPlace.GroupProject, NameOf(Project.FileName));
+    end;
   end;
   // 3. Suchpfade der anderen Konfigurationen und Plattformen.
   for Target in FSetup.Targets do
   begin
     if SameText(Target.Config, FSetup.Project.Config) and SameText(Target.Platform, FSetup.Project.Platform) then
+    begin
       Continue;
+    end;
     FSearched := FSearched + [Format('Suchpfade von %s, %s', [Target.Config, Target.Platform])];
     for Folder in Target.SearchPaths do
+    begin
       Look(Folder, TMissingUnitPlace.OtherTarget, Target.Config + ', ' + Target.Platform);
+    end;
   end;
   // 4. Bibliothekspfade anderer Plattformen.
   if Assigned(FSetup.LibraryPaths) then
+  begin
     for Platform in FSetup.Platforms do
     begin
       if SameText(Platform, FSetup.Project.Platform) then
+      begin
         Continue;
+      end;
       FSearched := FSearched + [Format('Bibliothek %s', [Platform])];
       for Folder in FSetup.LibraryPaths(Platform) do
+      begin
         Look(Folder, TMissingUnitPlace.OtherPlatformLibrary, Platform);
+      end;
     end;
+  end;
   // 5. Index.
   if Assigned(FSetup.IndexFile) then
   begin
     FSearched := FSearched + ['Index'];
     IndexFile := FSetup.IndexFile(FSetup.UnitName);
     if IndexFile <> '' then
+    begin
       Look(TProjectPaths.DirectoryOf(IndexFile), TMissingUnitPlace.Index, 'Index');
+    end;
   end;
 end;
 
@@ -296,7 +348,9 @@ begin
   ASearched := nil;
   Result := nil;
   if Trim(ASetup.UnitName) = '' then
+  begin
     Exit;
+  end;
   Search := TSearch.Create(ASetup);
   try
     Search.Run;
@@ -316,19 +370,31 @@ begin
   Target := StringReplace(WithoutSeparator(AFolder), '/', '\', [rfReplaceAll]).Split(['\']);
   // Anderes Laufwerk bzw. andere Wurzel: absolut lassen.
   if (Length(Base) = 0) or (Length(Target) = 0) or not SameText(Base[0], Target[0]) then
+  begin
     Exit(StringReplace(WithoutSeparator(AFolder), '/', '\', [rfReplaceAll]));
+  end;
   Common := 0;
   while (Common < Length(Base)) and (Common < Length(Target)) and SameText(Base[Common], Target[Common]) do
+  begin
     Inc(Common);
+  end;
   Result := '';
   for Index := Common to High(Base) do
+  begin
     Result := Result + '..\';
+  end;
   for Index := Common to High(Target) do
+  begin
     Result := Result + Target[Index] + '\';
+  end;
   if Result = '' then
-    Result := '.'
+  begin
+    Result := '.';
+  end
   else
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 end.

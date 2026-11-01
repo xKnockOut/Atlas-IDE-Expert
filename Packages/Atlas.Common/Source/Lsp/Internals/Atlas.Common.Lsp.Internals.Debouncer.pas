@@ -127,7 +127,9 @@ begin
     begin
       Ticks := TThread.GetTickCount64;
       if Ticks >= Deadline then
+      begin
         Exit(False);
+      end;
       TMonitor.Wait(FPending, Cardinal(Deadline - Ticks));
     end;
     Result := True;
@@ -150,16 +152,22 @@ begin
     FirstKey := '';
     FirstDue := High(UInt64);
     for Pair in FPending do
+    begin
       if Pair.Value.Due < FirstDue then
       begin
         FirstKey := Pair.Key;
         FirstDue := Pair.Value.Due;
       end;
+    end;
     Ticks := TThread.GetTickCount64;
     if FirstDue = High(UInt64) then
-      TMonitor.Wait(FPending, WaitForever)
+    begin
+      TMonitor.Wait(FPending, WaitForever);
+    end
     else if FirstDue > Ticks then
-      TMonitor.Wait(FPending, Cardinal(FirstDue - Ticks))
+    begin
+      TMonitor.Wait(FPending, Cardinal(FirstDue - Ticks));
+    end
     else
     begin
       AAction := FPending[FirstKey].Action;
@@ -206,7 +214,9 @@ begin
   except
     on E: Exception do
       if Assigned(FOnError) then
+      begin
         FOnError(E);
+      end;
   end;
 end;
 

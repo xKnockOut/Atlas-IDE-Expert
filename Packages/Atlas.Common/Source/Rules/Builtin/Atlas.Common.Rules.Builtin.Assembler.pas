@@ -72,7 +72,9 @@ var
 begin
   mIndex := 1;
   while (mIndex <= Length(ADigits)) and (ADigits[mIndex] = '0') do
+  begin
     Inc(mIndex);
+  end;
   Result := Copy(ADigits, mIndex, MaxInt);
 end;
 
@@ -83,8 +85,12 @@ var
 begin
   Result := AText <> '';
   for mChar in AText do
+  begin
     if not CharInSet(mChar, AAllowed) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 /// <summary>Ganze Zahl ohne Nachsilbe: dezimal oder $-Hex. AHex = Ziffern zur Basis 16.</summary>
@@ -92,13 +98,21 @@ function PlainInteger(const AText: string; out ADigits: string; out AHex: Boolea
 begin
   AHex := AText.StartsWith('$');
   if AHex then
-    ADigits := Copy(AText, 2, MaxInt)
+  begin
+    ADigits := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     ADigits := AText;
+  end;
   if AHex then
-    Result := OnlyOf(ADigits, ['0'..'9', 'A'..'F', 'a'..'f'])
+  begin
+    Result := OnlyOf(ADigits, ['0'..'9', 'A'..'F', 'a'..'f']);
+  end
   else
+  begin
     Result := OnlyOf(ADigits, ['0'..'9']);
+  end;
 end;
 
 { TAsmInvalidRule }
@@ -133,7 +147,9 @@ var
     Result := 0;
     if (Length(AOperand.Tokens) = 1) and (mTokens[AOperand.Tokens[0]].Kind in [TPascalTokenKind.Identifier,
       TPascalTokenKind.Keyword]) then
+    begin
       Result := TAsmStatements.RegisterSize(TokenText(AOperand.Tokens[0]));
+    end;
   end;
 
   /// <summary>Besteht der Operand aus genau einer Zahl ohne Nachsilbe?</summary>
@@ -160,13 +176,19 @@ var
     Result := False;
     if (mTokens[AIndex].Kind <> TPascalTokenKind.Number) or HasSuffix(AIndex) or
       not PlainInteger(TokenText(AIndex), mDigits, mHex) then
+    begin
       Exit;
+    end;
     mDigits := WithoutLeadingZeros(mDigits);
     if mHex then
-      Result := Length(mDigits) > 16
+    begin
+      Result := Length(mDigits) > 16;
+    end
     else
+    begin
       Result := (Length(mDigits) > Length(cMaxUInt64)) or
         (Length(mDigits) = Length(cMaxUInt64)) and (mDigits > cMaxUInt64);
+    end;
   end;
 
   function Range(const AStatement: TAsmStatement): TTextRange;
@@ -185,9 +207,13 @@ var
     Result := TDictionary<string, Boolean>.Create;
     mRoutine := ANode.Parent;
     while (mRoutine <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
+    begin
       mRoutine := mRoutine.Parent;
+    end;
     if mRoutine = nil then
+    begin
       Exit;
+    end;
     mHidden := TList<string>.Create;
     try
       for mIndex := 0 to mRoutine.ChildCount - 1 do
@@ -199,14 +225,20 @@ var
           if (mSection.Kind = TSyntaxKind.VarSection) and (mDecl.Kind = TSyntaxKind.VarDecl) then
           begin
             for mName in mDecl.Name.Split([',']) do
+            begin
               Result.AddOrSetValue(LowerCase(Trim(mName)), True);
+            end;
           end
           else if mDecl.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.TypeDecl] then
+          begin
             mHidden.Add(LowerCase(mDecl.Name));
+          end;
         end;
       end;
       for mName in mHidden do
+      begin
         Result.Remove(mName);
+      end;
     finally
       mHidden.Free;
     end;
@@ -227,32 +259,43 @@ var
     if TAsmStatements.IsDataDirective(AStatement.Mnemonic) then
     begin
       if AStatement.Mnemonic <> 'db' then
+      begin
         Exit;
+      end;
       mLocals := LocalVariables(ANode);
       try
         for mOperand in mOperands do
+        begin
           if (Length(mOperand.Tokens) = 1) and (mTokens[mOperand.Tokens[0]].Kind = TPascalTokenKind.Identifier) and
             mLocals.ContainsKey(LowerCase(TokenText(mOperand.Tokens[0]))) then
           begin
             ACode := 'E2109';
             Exit(Format('%s ist eine lokale Variable; db braucht eine Konstante', [TokenText(mOperand.Tokens[0])]));
           end;
+        end;
       finally
         mLocals.Free;
       end;
       Exit;
     end;
     if AStatement.Mnemonic.StartsWith('.') then
+    begin
       Exit;
+    end;
     // E2105: fehlender Operand, esp mit Faktor
     if Length(mOperands) >= 2 then
+    begin
       for mOperand in mOperands do
+      begin
         if mOperand.Tokens = nil then
         begin
           ACode := 'E2105';
           Exit(Format('Hinter %s fehlt ein Operand', [AStatement.Mnemonic]));
         end;
+      end;
+    end;
     for mOperand in mOperands do
+    begin
       for mPosition := 0 to High(mOperand.Tokens) do
       begin
         mToken := mOperand.Tokens[mPosition];
@@ -261,9 +304,13 @@ var
           mLeft := -1;
           mRight := -1;
           if (mPosition >= 2) and mTokens[mOperand.Tokens[mPosition - 1]].IsSymbol('*') then
+          begin
             mLeft := mOperand.Tokens[mPosition - 2];
+          end;
           if (mPosition + 2 <= High(mOperand.Tokens)) and mTokens[mOperand.Tokens[mPosition + 1]].IsSymbol('*') then
+          begin
             mRight := mOperand.Tokens[mPosition + 2];
+          end;
           if ((mLeft >= 0) and (mTokens[mLeft].Kind = TPascalTokenKind.Number) and (TokenText(mLeft) <> '1')) or
             ((mRight >= 0) and (mTokens[mRight].Kind = TPascalTokenKind.Number) and (TokenText(mRight) <> '1')) then
           begin
@@ -272,8 +319,10 @@ var
           end;
         end;
       end;
+    end;
     // E2113, E2118, E2111 in den Ausdrücken der Operanden
     for mOperand in mOperands do
+    begin
       for mPosition := 0 to High(mOperand.Tokens) do
       begin
         mToken := mOperand.Tokens[mPosition];
@@ -295,7 +344,9 @@ var
           mLeft := mPosition - 1;
           while (mLeft >= 0) and ((mTokens[mOperand.Tokens[mLeft]].Kind = TPascalTokenKind.Identifier) and
             not SameText(TokenText(mOperand.Tokens[mLeft]), 'offset') or mTokens[mOperand.Tokens[mLeft]].IsSymbol('.')) do
+          begin
             Dec(mLeft);
+          end;
           if (mLeft >= 0) and (mLeft < mPosition - 1) and SameText(TokenText(mOperand.Tokens[mLeft]), 'offset') then
           begin
             ACode := 'E2111';
@@ -303,8 +354,11 @@ var
           end;
         end;
       end;
+    end;
     if Length(mOperands) <> 2 then
+    begin
       Exit;
+    end;
     // E2114: Stringkonstante an einem 32-Bit-Register
     if (OperandRegister(mOperands[0]) = 4) and (Length(mOperands[1].Tokens) = 1) and
       (mTokens[mOperands[1].Tokens[0]].Kind = TPascalTokenKind.StringLiteral) then
@@ -348,14 +402,20 @@ var
     // Unvollständiger Block (ohne end): nichts sagen.
     if (mFirst > High(mTokens)) or (mLast <= mFirst) or not mTokens[mFirst].IsKeyword('asm') or
       not mTokens[mLast].IsKeyword('end') then
+    begin
       Exit;
+    end;
     for mStatement in TAsmStatements.Split(mTokens, mPaths, mFirst, mFirst + 1, mLast - 1) do
     begin
       if mStatement.Uncertain or (mStatement.Mnemonic = '') then
+      begin
         Continue;
+      end;
       mMessage := Problem(ANode, mStatement, mCode);
       if mMessage <> '' then
+      begin
         AReport.Add(Range(mStatement), Format('%s (wie %s).', [mMessage, mCode]), TRuleConfidence.High);
+      end;
     end;
   end;
 
@@ -366,16 +426,22 @@ var
   mName: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mTokens := AContext.Tree.Tokens;
   // Quelltext für Free Pascal: dessen Assembler-Modi übersetzt dcc nie.
   for mIndex := 0 to High(mTokens) do
+  begin
     if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
     begin
       mName := TPascalLexer.DirectiveName(mTokens[mIndex].Text);
       if (mName = 'MODE') or (mName = 'ASMMODE') then
+      begin
         Exit;
+      end;
     end;
+  end;
   mPaths := TConditionalBranches.Paths(mTokens);
   // Iterativ (Bericht M1).
   mPending := TStack<TSyntaxNode>.Create;
@@ -385,10 +451,16 @@ begin
     begin
       mNode := mPending.Pop;
       if mNode.Kind = TSyntaxKind.AsmBlock then
-        CheckBlock(mNode)
+      begin
+        CheckBlock(mNode);
+      end
       else
+      begin
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
+      end;
     end;
   finally
     mPending.Free;

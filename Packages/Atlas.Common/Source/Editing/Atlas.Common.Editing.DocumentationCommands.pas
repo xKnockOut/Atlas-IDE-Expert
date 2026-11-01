@@ -53,14 +53,18 @@ function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and not IsCode(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function PrevCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and not IsCode(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function Before(const A, B: TTextPosition): Boolean;
@@ -77,7 +81,9 @@ var
 begin
   Author := GetEnvironmentVariable('USERNAME');
   if Author = '' then
+  begin
     Author := GetEnvironmentVariable('USER');
+  end;
   Result := StringReplace(ATemplate, '{unit}', AUnitName, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{jahr}', IntToStr(CurrentYear), [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{autor}', Author, [rfReplaceAll, rfIgnoreCase]);
@@ -92,6 +98,7 @@ begin
   Result := 0;
   AYear := 0;
   for Index := 1 to Length(AText) - 3 do
+  begin
     if CharInSet(AText[Index], ['1', '2']) and CharInSet(AText[Index + 1], ['0', '9']) and
       CharInSet(AText[Index + 2], ['0'..'9']) and CharInSet(AText[Index + 3], ['0'..'9']) and
       ((Index = 1) or not CharInSet(AText[Index - 1], ['0'..'9'])) and
@@ -100,6 +107,7 @@ begin
       Result := Index;
       AYear := StrToInt(Copy(AText, Index, 4));
     end;
+  end;
 end;
 
 function ExecuteHeader(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -115,21 +123,33 @@ begin
     Tokens := Source.Tree.Tokens;
     First := 0;
     while (First <= High(Tokens)) and not IsCode(Tokens[First]) do
+    begin
       Inc(First);
+    end;
     if (First > High(Tokens)) or (Source.Tree.Root = nil) or (Source.Tree.Root.Name = '') then
+    begin
       Exit(Fail('/header gilt nur in einer Unit', AReason));
+    end;
     // Kommentare vor "unit" bilden den vorhandenen Kopf; dort nur das Jahr fortschreiben.
     HeaderText := '';
     for Index := 0 to First - 1 do
+    begin
       if Tokens[Index].Kind = TPascalTokenKind.Comment then
+      begin
         HeaderText := HeaderText + Tokens[Index].Text + #10;
+      end;
+    end;
     if HeaderText <> '' then
     begin
       // Kommentar mit der letzten Jahreszahl im Kopf.
       Last := -1;
       for Index := 0 to First - 1 do
+      begin
         if (Tokens[Index].Kind = TPascalTokenKind.Comment) and (LastYear(Tokens[Index].Text, Year) > 0) then
+        begin
           Last := Index;
+        end;
+      end;
       if Last >= 0 then
       begin
         YearPos := LastYear(Tokens[Last].Text, Year);
@@ -137,11 +157,15 @@ begin
         begin
           // 2019 wird 2019-2026, 2019-2025 wird 2019-2026.
           if (YearPos > 1) and (Tokens[Last].Text[YearPos - 1] = '-') then
+          begin
             Updated := Copy(Tokens[Last].Text, 1, YearPos - 1) + IntToStr(CurrentYear) +
-              Copy(Tokens[Last].Text, YearPos + 4, MaxInt)
+              Copy(Tokens[Last].Text, YearPos + 4, MaxInt);
+          end
           else
+          begin
             Updated := Copy(Tokens[Last].Text, 1, YearPos + 3) + '-' + IntToStr(CurrentYear) +
               Copy(Tokens[Last].Text, YearPos + 4, MaxInt);
+          end;
           AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Last].StartPos, Tokens[Last].EndPos), Updated)];
         end;
       end;
@@ -150,14 +174,22 @@ begin
     end;
     Template := '';
     if AContext.Host <> nil then
+    begin
       Template := AContext.Host.HeaderTemplate(AContext.Uri);
+    end;
     if Template = '' then
+    begin
       Template := DefaultHeaderTemplate;
+    end;
     Header := ExpandHeader(Template, Source.Tree.Root.Name, Source.LineBreak) + Source.LineBreak;
     if Source.Line = 0 then
-      AEdits := [TTextEdit.Create(TTextRange.Create(0, 0, 1, 0), Header)]
+    begin
+      AEdits := [TTextEdit.Create(TTextRange.Create(0, 0, 1, 0), Header)];
+    end
     else
+    begin
       AEdits := [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0), Header), Source.RemoveCommand];
+    end;
     Result := True;
   finally
     Source.Free;
@@ -177,26 +209,40 @@ begin
   while Index <= High(ATokens) do
   begin
     if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and ATokens[Index].IsSymbol(';') then
+    begin
       Break;
+    end;
     Inc(Index);
   end;
   if Index > High(ATokens) then
+  begin
     Exit(-1);
+  end;
   Result := Index;
   Next := NextCode(ATokens, Result);
   while (Next <= High(ATokens)) and MatchText(ATokens[Next].Text, Directives) do
   begin
     if SameText(ATokens[Next].Text, 'deprecated') then
+    begin
       ADeprecated := True;
+    end;
     Index := Next;
     while (Index <= High(ATokens)) and not ATokens[Index].IsSymbol(';') do
+    begin
       Inc(Index);
+    end;
     if Index > High(ATokens) then
+    begin
       Break;
+    end;
     Result := Index;
     Next := NextCode(ATokens, Result);
   end;
@@ -208,8 +254,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ATokens) do
+  begin
     if (ATokens[Index].StartPos.Line = ALine) and MatchText(ATokens[Index].Text, RoutineKeywords) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -220,14 +270,18 @@ var
 begin
   Index := AStart;
   while (Index <= High(ATokens)) and MatchText(ATokens[Index].Text, RoutineKeywords) do
+  begin
     Index := NextCode(ATokens, Index);
+  end;
   Result := '';
   while Index <= High(ATokens) do
   begin
     Result := Result + ATokens[Index].Text;
     Index := NextCode(ATokens, Index);
     if (Index > High(ATokens)) or not ATokens[Index].IsSymbol('.') then
+    begin
       Break;
+    end;
     Result := Result + '.';
     Index := NextCode(ATokens, Index);
   end;
@@ -244,14 +298,20 @@ begin
   Dot := LastDelimiter('.', AName);
   Container := Copy(AName, 1, Dot - 1);
   if LastDelimiter('.', Container) > 0 then
+  begin
     Container := Copy(Container, LastDelimiter('.', Container) + 1, MaxInt);
+  end;
   Name := Copy(AName, Dot + 1, MaxInt);
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) and
       SameText(Symbol.Name, Name) and SameText(Symbol.Container, Container) and
       (Symbol.Range.StartPos.Line < AImplLine) and
       ((Container <> '') or Symbol.InInterface) then
+    begin
       Exit(Symbol.Range.StartPos.Line);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -267,10 +327,14 @@ begin
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
       if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
       if (ACandidate.Kind = TSyntaxKind.TypeDecl) and (ACandidate.StartPos.Line = Line) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end);
 end;
 
@@ -292,69 +356,101 @@ begin
     // Erstes Code-Token unter dem Befehl; Attribute [..] davor überspringen.
     Target := -1;
     for Index := 0 to High(Tokens) do
+    begin
       if (Tokens[Index].StartPos.Line > Source.Line) and IsCode(Tokens[Index]) then
       begin
         Target := Index;
         Break;
       end;
+    end;
     while (Target >= 0) and (Target <= High(Tokens)) and Tokens[Target].IsSymbol('[') do
     begin
       while (Target <= High(Tokens)) and not Tokens[Target].IsSymbol(']') do
+      begin
         Inc(Target);
+      end;
       Target := NextCode(Tokens, Target);
     end;
     if (Target < 0) or (Target > High(Tokens)) then
+    begin
       Exit(Fail('/deprecated gehört über eine Routine oder einen Typ', AReason));
+    end;
     Hint := ' deprecated';
     if AContext.Arguments <> '' then
+    begin
       Hint := Hint + ' ' + QuotedStr(AContext.Arguments);
+    end;
     if MatchText(Tokens[Target].Text, RoutineKeywords) then
     begin
       Name := RoutineName(Tokens, Target);
       DeclLine := DeclarationLine(Source, Name, Tokens[Target].StartPos.Line);
       // Die Direktive steht nur an der Deklaration, nie an der Implementierung.
       if DeclLine >= 0 then
+      begin
         Target := RoutineTokenAt(Tokens, DeclLine);
+      end;
       if Target < 0 then
+      begin
         Exit(Fail('Deklaration von ' + Name + ' nicht gefunden', AReason));
+      end;
       Stop := RoutineEnd(Tokens, Target, Present);
       if Stop < 0 then
+      begin
         Exit(Fail('Deklaration von ' + Name + ' ist unvollständig', AReason));
+      end;
       Directive := TTextEdit.Create(TTextRange.Create(Tokens[Stop].EndPos, Tokens[Stop].EndPos), Hint + ';');
     end
     else
     begin
       TypeNode := FindTypeDecl(Source.Tree.Root, Tokens[Target].StartPos.Line);
       if TypeNode = nil then
+      begin
         Exit(Fail('/deprecated gehört über eine Routine oder einen Typ', AReason));
+      end;
       Stop := -1;
       for Index := Target to High(Tokens) do
       begin
         if Before(TypeNode.EndPos, Tokens[Index].EndPos) then
+        begin
           Break;
+        end;
         if Tokens[Index].IsSymbol(';') then
+        begin
           Stop := Index;
+        end;
       end;
       if Stop < 0 then
+      begin
         Exit(Fail('Typdeklaration ist unvollständig', AReason));
+      end;
       Prev := PrevCode(Tokens, Stop);
       if (Prev >= 0) and (Tokens[Prev].Kind = TPascalTokenKind.StringLiteral) then
+      begin
         Prev := PrevCode(Tokens, Prev);
+      end;
       Present := (Prev >= 0) and SameText(Tokens[Prev].Text, 'deprecated');
       Directive := TTextEdit.Create(TTextRange.Create(Tokens[Stop].StartPos, Tokens[Stop].StartPos), Hint);
     end;
     if Present then
+    begin
       Exit(Fail('Die Deklaration ist schon als deprecated markiert', AReason));
+    end;
     DeclLine := Tokens[Target].StartPos.Line;
     Remark := Source.Indent(DeclLine) + '/// <remarks>Veraltet';
     if AContext.Arguments <> '' then
+    begin
       Remark := Remark + ': ' + AContext.Arguments;
+    end;
     Remark := Remark + '</remarks>' + Source.LineBreak;
     if DeclLine = Source.Line + 1 then
-      AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Remark), Directive]
+    begin
+      AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Remark), Directive];
+    end
     else
+    begin
       AEdits := [TTextEdit.Create(TTextRange.Create(DeclLine, 0, DeclLine, 0), Remark), Directive,
         Source.RemoveCommand];
+    end;
     Result := True;
   finally
     Source.Free;
@@ -384,13 +480,22 @@ begin
   Name := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
   Header := '';
   for Index := ARoutine.StartPos.Line to ARoutine.StartPos.Line + 2 do
+  begin
     if Index <= High(ASource.Lines) then
+    begin
       Header := Header + ASource.Lines[Index];
+    end;
+  end;
   if ContainsText(Header, 'Sender: TObject') then
+  begin
     Exit(0);
+  end;
   if (Length(Name) > 3) and (StartsText('Get', Name) or StartsText('Set', Name)) and CharInSet(Name[4], ['A'..'Z']) then
+  begin
     Exit(5);
+  end;
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if SameText(Symbol.Name, Name) and SameText(Symbol.Container, AClass.Name) and
       (Symbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
       (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
@@ -404,6 +509,7 @@ begin
       else
         Exit(4);
       end;
+  end;
   Result := 4;
 end;
 
@@ -423,11 +529,15 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(AClass) then
+    begin
       Exit(Fail('/region-all gehört in die Deklaration der Klasse', AReason));
+    end;
     Section := Source.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
     Bodies := nil;
     if Section <> nil then
+    begin
       for Index := 0 to Section.ChildCount - 1 do
+      begin
         if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and StartsText(AClass.Name + '.', Section[Index].Name) and
           (Pos('.', Copy(Section[Index].Name, Length(AClass.Name) + 2, MaxInt)) = 0) then
         begin
@@ -439,35 +549,59 @@ begin
             (StartsStr('//', TrimLeft(Source.Lines[Body.FirstLine - 1])) or
             StartsStr('{', TrimLeft(Source.Lines[Body.FirstLine - 1])) and
             not StartsText('{$', TrimLeft(Source.Lines[Body.FirstLine - 1]))) do
+          begin
             Dec(Body.FirstLine);
+          end;
           Body.Group := GroupOf(Source, AClass, Section[Index]);
           Bodies := Bodies + [Body];
         end;
+      end;
+    end;
     if Length(Bodies) < 2 then
+    begin
       Exit(Fail(Format('%s hat zu wenige Methoden für Regionen', [AClass.Name]), AReason));
+    end;
     for Line := Bodies[0].FirstLine to Bodies[High(Bodies)].LastLine do
+    begin
       if StartsText('{$REGION', TrimLeft(Source.Lines[Line])) then
+      begin
         Exit(Fail(Format('Die Methoden von %s stehen schon in Regionen', [AClass.Name]), AReason));
+      end;
+    end;
     for Body in Bodies do
+    begin
       if (Source.Line >= Body.FirstLine) and (Source.Line <= Body.LastLine) then
+      begin
         Exit(Fail('/region-all gehört in die Deklaration der Klasse', AReason));
+      end;
+    end;
     Text := '';
     First := True;
     for Group := 0 to High(GroupNames) do
     begin
       Block := '';
       for Body in Bodies do
+      begin
         if Body.Group = Group then
         begin
           if Block <> '' then
+          begin
             Block := Block + Source.LineBreak;
+          end;
           for Line := Body.FirstLine to Body.LastLine do
+          begin
             Block := Block + Source.Lines[Line] + Source.LineBreak;
+          end;
         end;
+      end;
       if Block = '' then
+      begin
         Continue;
+      end;
       if not First then
+      begin
         Text := Text + Source.LineBreak;
+      end;
       First := False;
       Text := Text + Format('{$REGION ''%s''}', [GroupNames[Group]]) + Source.LineBreak + Block + '{$ENDREGION}' +
         Source.LineBreak;
@@ -478,11 +612,17 @@ begin
       Stop := Bodies[Index].LastLine + 1;
       if (Index > 0) and (Stop <= High(Source.Lines)) and (Trim(Source.Lines[Stop]) = '') and
         (Stop <> Source.Line) then
+      begin
         Inc(Stop);
+      end;
       if Index = 0 then
-        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Bodies[0].FirstLine, 0, Stop, 0), Text)]
+      begin
+        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Bodies[0].FirstLine, 0, Stop, 0), Text)];
+      end
       else
+      begin
         AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Bodies[Index].FirstLine, 0, Stop, 0), '')];
+      end;
     end;
     AEdits := AEdits + [Source.RemoveCommand];
     Result := True;

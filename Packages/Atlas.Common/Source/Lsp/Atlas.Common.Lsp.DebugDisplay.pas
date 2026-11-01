@@ -114,10 +114,14 @@ begin
   Result := Trim(ATypeName);
   Angle := Pos('<', Result);
   if Angle > 0 then
+  begin
     Result := Copy(Result, 1, Angle - 1);
+  end;
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, Dot + 1, MaxInt);
+  end;
 end;
 
 class function TLspDebugDisplay.RulesOfUnit(const AUnit: TUnitIndex;
@@ -129,15 +133,21 @@ var
 begin
   Result := nil;
   if not MayContainRules(AText) then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AText);
   for Symbol in AUnit.Symbols do
   begin
     if not (Symbol.Kind in RuleKinds) or (Symbol.FileName <> '') then
+    begin
       Continue;
+    end;
     Rule := Default(TLspDebugDisplayRule);
     if not TDebugDisplayText.RuleAbove(Lines, Symbol.Range.StartPos.Line, Rule.Source) then
+    begin
       Continue;
+    end;
     Rule.Name := Symbol.QualifiedName;
     Rule.TypeName := AUnit.UnitName + '.' + Rule.Name;
     Rule.FileName := AUnit.FileName;
@@ -150,7 +160,9 @@ function FirstAncestor(const ASymbol: TIndexSymbol): string;
 begin
   Result := '';
   if Length(ASymbol.Ancestors) > 0 then
+  begin
     Result := TLspDebugDisplay.ShortName(ASymbol.Ancestors[0]);
+  end;
 end;
 
 class function TLspDebugDisplay.InheritsOf(const AIndex: ISymbolIndex; const AUnits: TArray<TUnitIndex>;
@@ -171,44 +183,66 @@ begin
   Owners := TDictionary<string, string>.Create;
   try
     for Name in AExternal do
+    begin
       if ShortName(Name) <> '' then
+      begin
         Owners.AddOrSetValue(LowerCase(ShortName(Name)), Name);
+      end;
+    end;
     for Rule in ARules do
+    begin
       Owners.AddOrSetValue(LowerCase(ShortName(Rule.Name)), Rule.TypeName);
+    end;
     if Owners.Count = 0 then
+    begin
       Exit;
+    end;
     for UnitIndex in AUnits do
+    begin
       for Symbol in UnitIndex.Symbols do
       begin
         if not (Symbol.Kind in ClassKinds) or Owners.ContainsKey(LowerCase(Symbol.Name)) then
+        begin
           Continue;
+        end;
         Ancestor := FirstAncestor(Symbol);
         From := '';
         Depth := 0;
         while (Ancestor <> '') and (Depth < MaxDepth) do
         begin
           if Owners.TryGetValue(LowerCase(Ancestor), From) then
+          begin
             Break;
+          end;
           Inc(Depth);
           Next := False;
           if AIndex <> nil then
+          begin
             for Location in AIndex.FindSymbols(Ancestor) do
+            begin
               if Location.Symbol.Kind in ClassKinds then
               begin
                 Ancestor := FirstAncestor(Location.Symbol);
                 Next := True;
                 Break;
               end;
+            end;
+          end;
           if not Next then
+          begin
             Ancestor := '';
+          end;
         end;
         if From = '' then
+        begin
           Continue;
+        end;
         Inherit.Name := Symbol.QualifiedName;
         Inherit.TypeName := UnitIndex.UnitName + '.' + Inherit.Name;
         Inherit.From := From;
         Result := Result + [Inherit];
       end;
+    end;
   finally
     Owners.Free;
   end;
@@ -224,21 +258,37 @@ begin
   Result := nil;
   AInherits := nil;
   if FIndex = nil then
+  begin
     Exit;
+  end;
   Units := nil;
   if Length(AFiles) > 0 then
   begin
     for FileName in AFiles do
+    begin
       if SameText(ExtractFileExt(FileName), '.pas') and FIndex.FindFile(FileName, UnitIndex) then
+      begin
         Units := Units + [UnitIndex];
+      end;
+    end;
   end
   else
+  begin
     for UnitIndex in FIndex.Units do
+    begin
       if not UnitIndex.Library_ then
+      begin
         Units := Units + [UnitIndex];
+      end;
+    end;
+  end;
   for UnitIndex in Units do
+  begin
     if Assigned(FReadText) and FReadText(UnitIndex.FileName, Text) then
+    begin
       Result := Result + RulesOfUnit(UnitIndex, Text);
+    end;
+  end;
   AInherits := InheritsOf(FIndex, Units, Result, AExternal);
 end;
 
@@ -263,12 +313,16 @@ begin
       Item.AddPair('type', Rule.TypeName);
       Item.AddPair('name', Rule.Name);
       if Rule.Source.HasTemplate then
+      begin
         Item.AddPair('template', Rule.Source.Template);
+      end;
       if Rule.Source.Children <> nil then
       begin
         Children := TJSONArray.Create;
         for Name in Rule.Source.Children do
+        begin
           Children.Add(Name);
+        end;
         Item.AddPair('children', Children);
       end;
       Item.AddPair('origin', OriginNames[Rule.Source.Origin]);
@@ -303,13 +357,23 @@ begin
   FileName := '';
   Foreign := nil;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONArray) then
+  begin
     for Item := 0 to TJSONArray(AArguments.Items[1]).Count - 1 do
+    begin
       if TJSONArray(AArguments.Items[1]).Items[Item] is TJSONString then
+      begin
         Foreign := Foreign + [TJSONArray(AArguments.Items[1]).Items[Item].Value];
+      end;
+    end;
+  end;
   if not (Assigned(FSourceFor) and FSourceFor(FileName, True, Source)) then
+  begin
     Source := Default(TLspMetricsSource);
+  end;
   Rules := Collect(Source.Files, Foreign, Inherits);
   Result := TJSONObject.ParseJSONValue(ToJson(Rules, Inherits));
 end;

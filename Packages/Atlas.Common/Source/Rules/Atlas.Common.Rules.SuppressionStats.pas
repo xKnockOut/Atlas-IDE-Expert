@@ -67,7 +67,9 @@ function CompareCounts(const ALeft, ARight: TSuppressionCount): Integer;
 begin
   Result := ARight.Total - ALeft.Total;
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.RuleId, ARight.RuleId);
+  end;
 end;
 
 { TSuppressionStats }
@@ -106,9 +108,13 @@ begin
         // Ungenutzt meldet die Engine je Kommentar mit Beginn in seiner Zeile.
         Unused := False;
         for Finding in AFindings do
+        begin
           if SameText(Finding.RuleId, UnusedSuppressionRuleId) and
             (Finding.Range.StartPos.Line = Entry.Range.StartPos.Line) then
+          begin
             Unused := True;
+          end;
+        end;
         for Id in Entry.Ids do
         begin
           if not FCounts.TryGetValue(Id, Count) then
@@ -117,11 +123,17 @@ begin
             Count.RuleId := Id;
           end;
           if Entry.TargetLine < 0 then
-            Inc(Count.FileCount)
+          begin
+            Inc(Count.FileCount);
+          end
           else
+          begin
             Inc(Count.LineCount);
+          end;
           if Unused then
+          begin
             Inc(Count.UnusedCount);
+          end;
           if not Seen.Contains(Id) then
           begin
             Seen.Add(Id);
@@ -164,9 +176,11 @@ begin
     if AFormat = TFindingsFormat.Text then
     begin
       for Count in Counts do
+      begin
         Builder.Append(Format('%-30s %5d  (Zeile %d, Datei %d, ungenutzt %d, in %d Dateien)',
           [Count.RuleId, Count.Total, Count.LineCount, Count.FileCount, Count.UnusedCount, Count.Files]))
           .Append(sLineBreak);
+      end;
       Builder.Append(Format('%d Dateien ausgewertet, %d Regeln unterdrückt', [FFiles, FCounts.Count]))
         .Append(sLineBreak);
     end
@@ -177,7 +191,9 @@ begin
       for Count in Counts do
       begin
         if not First then
+        begin
           Builder.Append(',');
+        end;
         First := False;
         Builder.Append('{"rule":').Append(TFindingsOutput.JsonString(Count.RuleId));
         Builder.Append(Format(',"total":%d,"line":%d,"file":%d,"unused":%d,"files":%d}',

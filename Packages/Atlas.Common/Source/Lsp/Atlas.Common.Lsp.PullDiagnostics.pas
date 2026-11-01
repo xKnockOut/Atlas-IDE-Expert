@@ -199,11 +199,13 @@ var
 begin
   Cancelled := nil;
   if ACancellation <> nil then
+  begin
     Cancelled :=
       function: Boolean
       begin
         Result := ACancellation.IsCancellationRequested;
       end;
+  end;
   try
     Params := ADiagnostics.Compute(ADocument, Cancelled);
   except
@@ -211,7 +213,9 @@ begin
     begin
       // Liefert EJsonRpcRequestCancelled bzw. EJsonRpcContentModified wie jede abgebrochene Anfrage.
       if ACancellation <> nil then
+      begin
         ACancellation.ThrowIfCancellationRequested;
+      end;
       raise;
     end;
   end;
@@ -337,35 +341,49 @@ var
   Half, Reserved: Int64;
 begin
   if ATimeoutMs = 0 then
+  begin
     Exit(High(Cardinal));
+  end;
   Half := Int64(ATimeoutMs) div 2;
   Reserved := Int64(ATimeoutMs) - 2000;
   if Reserved > Half then
-    Result := Cardinal(Reserved)
+  begin
+    Result := Cardinal(Reserved);
+  end
   else
+  begin
     Result := Cardinal(Half);
+  end;
 end;
 
 class function TLspPullDiagnostics.LongPollMs(AWaitMs, ATimeoutMs: Cardinal): Cardinal;
 begin
   Result := TimeLimitMs(ATimeoutMs);
   if AWaitMs < Result then
+  begin
     Result := AWaitMs;
+  end;
 end;
 
 function TLspPullDiagnostics.LabelOf(const AFileName: string): string;
 begin
   Result := 'unit';
   if Assigned(FFileLabel) then
+  begin
     Result := FFileLabel(AFileName);
+  end;
 end;
 
 function TLspPullDiagnostics.TimeLimit: Cardinal;
 begin
   if Assigned(FRequestTimeout) then
-    Result := TimeLimitMs(FRequestTimeout())
+  begin
+    Result := TimeLimitMs(FRequestTimeout());
+  end
   else
+  begin
     Result := High(Cardinal);
+  end;
 end;
 
 procedure TLspPullDiagnostics.NextGeneration;
@@ -375,7 +393,9 @@ var
 begin
   TInterlocked.Increment(FGeneration);
   if not FRefreshSupport or (FTransport = nil) then
+  begin
     Exit;
+  end;
   // Geöffnete Dokumente holt der Client nach refresh neu ab (z. B. nach einem Compilerlauf).
   Counter := TInterlocked.Increment(FRefreshCounter);
   Request := TJSONObject.Create;
@@ -414,7 +434,9 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('reason', mReason)) or
     (mReason = '') then
+  begin
     Exit;
+  end;
   FCheck.Pause(mReason, TJSONObject(AParams).GetValue<Boolean>('paused', False));
 end;
 
@@ -435,10 +457,14 @@ begin
   while not Claim(AUri, AResultId, Key, Cached) do
   begin
     if Cached <> nil then
+    begin
       Exit(Cached);
+    end;
     // Dieselbe Datei im selben Stand rechnet schon eine andere Anfrage: auf ihr Ergebnis warten.
     if ACancellation <> nil then
+    begin
       ACancellation.ThrowIfCancellationRequested;
+    end;
     Sleep(RunningPollMs);
   end;
   try
@@ -482,7 +508,9 @@ begin
     end;
     Result := not FRunning.ContainsKey(AKey);
     if Result then
+    begin
       FRunning.Add(AKey, True);
+    end;
   finally
     TMonitor.Exit(FCacheLock);
   end;
@@ -503,16 +531,22 @@ begin
   FileName := TDocumentUris.ToPath(AUri);
   // atlas.json prüft TLspConfiguration und meldet weiter per publishDiagnostics.
   if SameText(ExtractFileExt(FileName), '.json') then
-    ResultId := ''
+  begin
+    ResultId := '';
+  end
   else if FStore.TryGet(AUri, Document) then
-    ResultId := Format('%d:v%d', [FGeneration, Document.Version])
+  begin
+    ResultId := Format('%d:v%d', [FGeneration, Document.Version]);
+  end
   else if Assigned(FStamp) and FStamp(FileName, Stamp) and FReadText(FileName, Text) then
   begin
     ResultId := Format('%d:t%d', [FGeneration, Stamp]);
     Document := TTextDocument.Create(AUri, 'objectpascal', 0, Text);
   end
   else
+  begin
     ResultId := '';
+  end;
   Result := TJSONObject.Create;
   if (ResultId <> '') and (ResultId = APreviousResultId) then
   begin
@@ -522,9 +556,13 @@ begin
   end;
   Result.AddPair('kind', 'full');
   if ResultId <> '' then
+  begin
     Result.AddPair('resultId', ResultId);
+  end;
   if Document = nil then
-    Result.AddPair('items', TJSONArray.Create)
+  begin
+    Result.AddPair('items', TJSONArray.Create);
+  end
   else
   begin
     TRequestDiagnostics.Subject(LabelOf(FileName));
@@ -550,9 +588,13 @@ var
   Uri, Previous: string;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + DocumentMethod);
+  end;
   if not TJSONObject(AParams).TryGetValue<string>('previousResultId', Previous) then
+  begin
     Previous := '';
+  end;
   ACancellation.ThrowIfCancellationRequested;
   Result := DocumentReport(Uri, Previous, ACancellation);
 end;
@@ -575,16 +617,24 @@ begin
   mClock := TStopwatch.StartNew;
   mPollMs := FWaitMs;
   if TimeLimit < mPollMs then
+  begin
     mPollMs := TimeLimit;
+  end;
   // Die erste Anfrage startet die Projektprüfung.
   FCheck.Want;
   mPrevious := TDictionary<string, string>.Create;
   try
     if (AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('previousResultIds',
       mPreviousIds) then
+    begin
       for mEntry in mPreviousIds do
+      begin
         if mEntry.TryGetValue<string>('uri', mUri) and mEntry.TryGetValue<string>('value', mValue) then
+        begin
           mPrevious.AddOrSetValue(mUri, mValue);
+        end;
+      end;
+    end;
     mChange := FCheck.ChangeCount;
     mStart := FCheck.Run;
     mItems := FCheck.Collect(mPrevious, MaxWorkspaceReports);
@@ -595,10 +645,14 @@ begin
       // einzeln, der Client fragte sofort neu, und das Plugin baute seine Ansicht je Unit neu auf.
       if (mItems.Count > 0) and ((mClock.ElapsedMilliseconds >= BatchMs) or
         (mItems.Count >= MaxWorkspaceReports) or not FCheck.Run.Active) then
+      begin
         Break;
+      end;
       mNext := FCheck.WaitForChange(mChange, ChangeSliceMs);
       if mNext = mChange then
+      begin
         Continue;
+      end;
       mChange := mNext;
       mItems.Free;
       mItems := FCheck.Collect(mPrevious, MaxWorkspaceReports);
@@ -606,15 +660,21 @@ begin
       // Anfang, Ende, Pause sofort melden; bloßen Fortschritt höchstens alle ProgressMs.
       if mNow.StateDiffers(mStart) or ((mNow.Done <> mStart.Done) and
         (mClock.ElapsedMilliseconds >= ProgressMs)) then
+      begin
         Break;
+      end;
     end;
     mNow := FCheck.Run;
     if mItems.Count = 0 then
     begin
       if (mNow.Paused = TLspWorkspaceCheck.cPauseIndex) or IsBusy then
-        TRequestDiagnostics.Reason(ReasonIndexLoading)
+      begin
+        TRequestDiagnostics.Reason(ReasonIndexLoading);
+      end
       else
+      begin
         TRequestDiagnostics.DefaultReason(ReasonNoChanges);
+      end;
     end;
     Result := TJSONObject.Create;
     TJSONObject(Result).AddPair('items', mItems);

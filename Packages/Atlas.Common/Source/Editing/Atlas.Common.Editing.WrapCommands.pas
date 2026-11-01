@@ -46,16 +46,24 @@ begin
   Result := '';
   Line := Trim(ALine);
   if StartsText('var ', Line) then
+  begin
     Line := Trim(Copy(Line, 5, MaxInt));
+  end;
   Assign := Pos(':=', Line);
   if (Assign = 0) or (Pos('.create', LowerCase(Copy(Line, Assign, MaxInt))) = 0) then
+  begin
     Exit;
+  end;
   Result := Trim(Copy(Line, 1, Assign - 1));
   // Inline-Variable mit Typ: "Liste: TStringList".
   if Pos(':', Result) > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Pos(':', Result) - 1));
+  end;
   if not IsValidIdent(Result) then
+  begin
     Result := '';
+  end;
 end;
 
 function IsField(ASource: TCommandSource; const AName: string): Boolean;
@@ -63,8 +71,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -80,23 +92,33 @@ begin
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit(Fail('/try gilt nur im Rumpf einer Routine', AReason));
+    end;
     Variable := '';
     for Index := Source.Line - 1 downto Routine.StartPos.Line do
     begin
       Variable := CreatedVariable(Source.Lines[Index]);
       if Variable <> '' then
+      begin
         Break;
+      end;
     end;
     if (Variable = '') or IsField(Source, Variable) then
+    begin
       Exit(Fail('Vor /try wird kein lokales Objekt erzeugt', AReason));
+    end;
     // Result gehört dem Aufrufer: nur bei einer Ausnahme freigeben.
     if SameText(Variable, 'Result') then
+    begin
       Result := Wrap(Source, 'try', ['try'], ['except', '  Result.Free;', '  raise;', 'end;'], '  ', AEdits,
-        AReason)
+        AReason);
+    end
     else
+    begin
       Result := Wrap(Source, 'try', ['try'], ['finally', '  ' + Variable + '.Free;', 'end;'], '  ', AEdits,
         AReason);
+    end;
   finally
     Source.Free;
   end;
@@ -114,19 +136,27 @@ begin
   try
     Section := '';
     if Source.ClassAt(ClassSymbol) then
+    begin
       for Symbol in Source.UnitIndex.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
           (SameText(Symbol.TypeName, 'TCriticalSection') or SameText(Symbol.TypeName, 'TSyncObjs.TCriticalSection')) then
         begin
           Section := Symbol.Name;
           Break;
         end;
+      end;
+    end;
     if Section <> '' then
+    begin
       Result := Wrap(Source, 'lock', [Section + '.Enter;', 'try'], ['finally', '  ' + Section + '.Leave;', 'end;'],
-        '  ', AEdits, AReason)
+        '  ', AEdits, AReason);
+    end
     else
+    begin
       Result := Wrap(Source, 'lock', ['TMonitor.Enter(Self);', 'try'], ['finally', '  TMonitor.Exit(Self);',
         'end;'], '  ', AEdits, AReason);
+    end;
   finally
     Source.Free;
   end;
@@ -154,7 +184,9 @@ var
 begin
   AEdits := nil;
   if not IsValidIdent(AContext.Arguments) then
+  begin
     Exit(Fail('Erwartet wird /ifdef SYMBOL', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Result := Wrap(Source, 'ifdef', ['{$IFDEF ' + AContext.Arguments + '}'], ['{$ENDIF}'], '', AEdits, AReason);
@@ -169,7 +201,9 @@ var
 begin
   AEdits := nil;
   if AContext.Arguments = '' then
+  begin
     Exit(Fail('Erwartet wird /region Name', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Result := Wrap(Source, 'region', ['{$REGION ''' + StringReplace(AContext.Arguments, '''', '''''',
@@ -225,19 +259,27 @@ begin
   for Step := 1 to 4 do
   begin
     if not AType.Found or not AType.IsType or not OwnerOf(AResolver, ASource, AIndex, AFileName, AType, Owner) then
+    begin
       Exit;
+    end;
     if AType.SymbolKind = TIndexSymbolKind.EnumType then
     begin
       for Symbol in Owner.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.EnumMember) and (SameText(Symbol.Container, AType.QualifiedName) or
           SameText(Symbol.Container, AType.Name)) then
+        begin
           AValues := AValues + [Symbol.Name];
+        end;
+      end;
       AName := AType.Name;
       Exit(AValues <> nil);
     end;
     if (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) or (AType.TypeName = '') or
       not AResolver.ResolveTypeFrom(Owner, AType.TypeName, AType) then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -251,20 +293,32 @@ var
 begin
   Result := False;
   if SameText(AType.FileName, AFileName) then
-    Text := ASource.Text
+  begin
+    Text := ASource.Text;
+  end
   else if (AContext.Host = nil) or not AContext.Host.ReadFile(AType.FileName, Text) then
+  begin
     Exit;
+  end;
   for Token in TPascalLexer.Tokenize(Text) do
   begin
     if (Token.StartPos.Line > AType.Range.StartPos.Line) then
+    begin
       Break;
+    end;
     if Token.Kind <> TPascalTokenKind.Directive then
+    begin
       Continue;
+    end;
     Directive := UpperCase(StringReplace(Token.Text, ' ', '', [rfReplaceAll]));
     if StartsStr('{$SCOPEDENUMSON', Directive) then
-      Result := True
+    begin
+      Result := True;
+    end
     else if StartsStr('{$SCOPEDENUMSOFF', Directive) then
+    begin
       Result := False;
+    end;
   end;
 end;
 
@@ -273,7 +327,9 @@ begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
     TPascalTokenKind.Directive]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function ExecuteCase(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -293,58 +349,88 @@ var
 begin
   AEdits := nil;
   if AContext.Arguments <> '' then
+  begin
     Exit(Fail('/case hat keine Argumente', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if Source.RoutineAt = nil then
+    begin
       Exit(Fail('/case gilt nur im Rumpf einer Routine', AReason));
+    end;
     Tokens := TPascalLexer.Tokenize(Source.Text);
     // Erstes Token unter der Befehlszeile muss "case" sein.
     CaseIndex := 0;
     while (CaseIndex <= High(Tokens)) and ((Tokens[CaseIndex].StartPos.Line <= Source.Line) or
       (Tokens[CaseIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
+    begin
       Inc(CaseIndex);
+    end;
     if (CaseIndex > High(Tokens)) or not Tokens[CaseIndex].IsKeyword('case') then
+    begin
       Exit(Fail(Usage, AReason));
+    end;
     // Auswahlausdruck: nur Namen und Punkte (A, Self.FArt, Kunde.Art).
     Names := nil;
     OfIndex := NextCode(Tokens, CaseIndex);
     while (OfIndex <= High(Tokens)) and not Tokens[OfIndex].IsKeyword('of') do
     begin
       if Tokens[OfIndex].Kind = TPascalTokenKind.Identifier then
-        Names := Names + [Tokens[OfIndex].Text]
+      begin
+        Names := Names + [Tokens[OfIndex].Text];
+      end
       else if not Tokens[OfIndex].IsSymbol('.') then
+      begin
         Exit(Fail('/case versteht als Auswahl nur einen Namen wie Art oder Kunde.Art', AReason));
+      end;
       OfIndex := NextCode(Tokens, OfIndex);
     end;
     if (OfIndex > High(Tokens)) or (Names = nil) then
+    begin
       Exit(Fail(Usage, AReason));
+    end;
     FileName := '';
     if AContext.Uri <> '' then
+    begin
       FileName := TDocumentUris.ToPath(AContext.Uri);
+    end;
     Resolver := TNameResolver.Create(AContext.Index);
     try
       if not Resolver.ChainType(Source.Tree, FileName, Names, Tokens[CaseIndex].Offset, Owner, EnumType,
         TypeFound) or not TypeFound or
         not EnumValues(Resolver, Source, AContext.Index, FileName, EnumType, EnumName, Values) then
+      begin
         Exit(Fail(Format('Der Typ von %s ist keine bekannte Aufzählung', [string.Join('.', Names)]), AReason));
+      end;
       Scoped := ScopedEnum(AContext, Source, FileName, EnumType);
     finally
       Resolver.Free;
     end;
     // Vorhandene Marken und Einrückung wie bei der Vervollständigung (#449).
     if not TCaseCompletion.BranchSlot(Source.Text, Tokens, Tokens[OfIndex].EndPos, Slot) then
+    begin
       Exit(Fail(Usage, AReason));
+    end;
     if not TCaseCompletion.Missing(Values, Slot.Labels, Missing) then
+    begin
       Exit(Fail(Format('Eine Marke im case ist kein Wert von %s', [EnumName]), AReason));
+    end;
     if Missing = nil then
+    begin
       Exit(Fail(Format('Der case behandelt schon alle Werte von %s', [EnumName]), AReason));
+    end;
     for Label_ in Slot.Labels do
+    begin
       if Pos('.', Label_) > 0 then
+      begin
         Scoped := True;
+      end;
+    end;
     Prefix := '';
     if Scoped then
+    begin
       Prefix := EnumName + '.';
+    end;
     // Letztes Token der Zweige: vor else bzw. end des case auf Ebene 0.
     LastIndex := OfIndex;
     Depth := 0;
@@ -355,24 +441,36 @@ begin
       begin
         if Tokens[Index].IsKeyword('end') or (Tokens[Index].IsKeyword('else') and
           (Tokens[LastIndex].IsSymbol(';') or (LastIndex = OfIndex))) then
+        begin
           Break;
+        end;
       end;
       if Tokens[Index].IsKeyword('begin') or Tokens[Index].IsKeyword('try') or Tokens[Index].IsKeyword('case') or
         Tokens[Index].IsKeyword('repeat') or Tokens[Index].IsKeyword('asm') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Tokens[Index].IsKeyword('end') or Tokens[Index].IsKeyword('until') then
+      begin
         Dec(Depth);
+      end;
       LastIndex := Index;
       Index := NextCode(Tokens, Index);
     end;
     InsertAt := Tokens[LastIndex].EndPos;
     Text := '';
     if (LastIndex <> OfIndex) and not Tokens[LastIndex].IsSymbol(';') then
+    begin
       Text := ';';
+    end;
     for Label_ in Missing do
+    begin
       Text := Text + Source.LineBreak + Slot.BranchIndent + Prefix + Label_ + ': ;';
+    end;
     if not Slot.HasEnd then
+    begin
       Text := Text + Source.LineBreak + Slot.CaseIndent + 'end;';
+    end;
     AEdits := [TTextEdit.Create(TTextRange.Create(InsertAt, InsertAt), Text), Source.RemoveCommand];
     Result := True;
   finally

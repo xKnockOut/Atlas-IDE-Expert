@@ -35,14 +35,20 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   if SameText(AObject.Name, AName) then
+  begin
     Exit(AObject);
+  end;
   for Child in AObject.Children do
   begin
     Result := FindObject(Child, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -59,19 +65,29 @@ begin
     // Nur "<Komponente><Ereignis>", nicht der Komponentenname allein.
     if not Item.IsEvent or (Length(Item.Value) <= Length(AOldName)) or
       not SameText(Copy(Item.Value, 1, Length(AOldName)), AOldName) then
+    begin
       Continue;
+    end;
     Seen := False;
     for Known in AResult do
+    begin
       if SameText(Known.OldName, Item.Value) then
+      begin
         Seen := True;
+      end;
+    end;
     if Seen then
+    begin
       Continue;
+    end;
     Rename.OldName := Item.Value;
     Rename.NewName := ANewName + Copy(Item.Value, Length(AOldName) + 1, MaxInt);
     AResult := AResult + [Rename];
   end;
   for Child in AObject.Children do
+  begin
     Collect(Child, AOldName, ANewName, AResult);
+  end;
 end;
 
 class function TDfmComponentRename.Handlers(const ADfmText, AOldName, ANewName: string): TArray<THandlerRename>;
@@ -80,13 +96,17 @@ var
 begin
   Result := nil;
   if (AOldName = '') or SameText(AOldName, ANewName) then
+  begin
     Exit;
+  end;
   Document := TDfmParser.Parse(ADfmText);
   try
     // Das Formular selbst ist keine Komponente; sein Name ist die Klasse ohne T.
     if (Document.Root = nil) or (FindObject(Document.Root, AOldName) = nil) or
       SameText(Document.Root.Name, AOldName) then
+    begin
       Exit;
+    end;
     Collect(Document.Root, AOldName, ANewName, Result);
   finally
     Document.Free;

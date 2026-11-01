@@ -36,14 +36,20 @@ var
 begin
   Result := nil;
   if Trim(AOptions) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Pair := TJSONObject(Value).Get(AName);
     if Pair <> nil then
+    begin
       Result := Pair.JsonValue.Clone as TJSONValue;
+    end;
   finally
     Value.Free;
   end;
@@ -59,7 +65,9 @@ begin
   Value := Member(AOptions, AName);
   try
     if Value is TJSONBool then
+    begin
       Result := TJSONBool(Value).AsBoolean;
+    end;
   finally
     Value.Free;
   end;
@@ -73,7 +81,9 @@ begin
   Value := Member(AOptions, AName);
   try
     if (Value is TJSONNumber) and not TryStrToInt(Value.Value, Result) then
+    begin
       Result := ADefault;
+    end;
   finally
     Value.Free;
   end;
@@ -90,9 +100,13 @@ begin
     begin
       Result := nil;
       for Item in TJSONArray(Value) do
+      begin
         // TJSONNumber erbt von TJSONString: Zahlen gehören nicht in eine Textliste.
         if (Item is TJSONString) and not (Item is TJSONNumber) then
+        begin
           Result := Result + [Item.Value];
+        end;
+      end;
     end;
   finally
     Value.Free;
@@ -110,8 +124,12 @@ begin
     begin
       Result := nil;
       for Item in TJSONArray(Value) do
+      begin
         if Item is TJSONNumber then
+        begin
           Result := Result + [TJSONNumber(Item).AsDouble];
+        end;
+      end;
     end;
   finally
     Value.Free;
@@ -127,7 +145,9 @@ begin
   try
     // TJSONNumber erbt von TJSONString.
     if (Value is TJSONString) and not (Value is TJSONNumber) and (Trim(Value.Value) <> '') then
+    begin
       Result := Trim(Value.Value);
+    end;
   finally
     Value.Free;
   end;

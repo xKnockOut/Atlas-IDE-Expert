@@ -46,7 +46,9 @@ begin
   TMonitor.Enter(SharedLock);
   try
     if Shared = nil then
+    begin
       Shared := GermanCatalog;
+    end;
     Result := Shared;
   finally
     TMonitor.Exit(SharedLock);
@@ -80,9 +82,13 @@ begin
   Builder := TStringBuilder.Create;
   try
     if Known and (Entry.Name <> '') then
-      Builder.AppendFormat('## Befund %s: %s', [AFinding.RuleId, Entry.Name]).AppendLine
+    begin
+      Builder.AppendFormat('## Befund %s: %s', [AFinding.RuleId, Entry.Name]).AppendLine;
+    end
     else
+    begin
       Builder.AppendFormat('## Befund %s', [AFinding.RuleId]).AppendLine;
+    end;
     Builder.AppendLine;
     Builder.AppendFormat('- Datei: `%s`, Zeile %d, Spalte %d', [AFileName, Line + 1,
       AFinding.Range.StartPos.Character + 1]).AppendLine;
@@ -107,9 +113,13 @@ begin
       for Index := First to Last do
       begin
         if Index = Line then
-          Marker := '>'
+        begin
+          Marker := '>';
+        end
         else
+        begin
           Marker := ' ';
+        end;
         Builder.AppendFormat('%s %4d | %s', [Marker, Index + 1, Lines[Index]]).AppendLine;
       end;
       Builder.AppendLine('```');

@@ -105,9 +105,13 @@ const
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function InRange(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
@@ -118,9 +122,13 @@ end;
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function Classify(const ASymbol: TResolvedSymbol; out AType: TSemanticTokenType;
@@ -133,12 +141,16 @@ begin
       begin
         AType := TSemanticTokenType.Namespace;
         if TLibraryUnits.IsLibraryUnit(ASymbol.UnitName) then
+        begin
           Include(AModifiers, TSemanticTokenModifier.DefaultLibrary);
+        end;
         Exit;
       end;
     TResolvedKind.Symbol:
       if TLibraryUnits.IsLibraryUnit(ASymbol.UnitName) then
+      begin
         Include(AModifiers, TSemanticTokenModifier.DefaultLibrary);
+      end;
     TResolvedKind.Local:
       ;
   else
@@ -167,18 +179,26 @@ begin
     TIndexSymbolKind.Property_:
       // Ereignisse: Properties mit Methodentyp wie TNotifyEvent.
       if EndsText('Event', ASymbol.TypeName) or EndsText('EventHandler', ASymbol.TypeName) then
-        AType := TSemanticTokenType.Event
+      begin
+        AType := TSemanticTokenType.Event;
+      end
       else
+      begin
         AType := TSemanticTokenType.Property_;
+      end;
     TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_:
       AType := TSemanticTokenType.Method;
     TIndexSymbolKind.Routine:
       AType := TSemanticTokenType.Function_;
   else
     if ASymbol.IsParameter then
-      AType := TSemanticTokenType.Parameter
+    begin
+      AType := TSemanticTokenType.Parameter;
+    end
     else
+    begin
       AType := TSemanticTokenType.Variable;
+    end;
   end;
 end;
 
@@ -228,10 +248,14 @@ var
 begin
   Types := TJSONArray.Create;
   for TokenType := Low(TSemanticTokenType) to High(TSemanticTokenType) do
+  begin
     Types.Add(TypeNames[TokenType]);
+  end;
   Modifiers := TJSONArray.Create;
   for Modifier := Low(TSemanticTokenModifier) to High(TSemanticTokenModifier) do
+  begin
     Modifiers.Add(ModifierNames[Modifier]);
+  end;
   Legend := TJSONObject.Create;
   Legend.AddPair('tokenTypes', Types);
   Legend.AddPair('tokenModifiers', Modifiers);
@@ -276,13 +300,17 @@ var
   begin
     Result := AIndex - 1;
     while (Result >= 0) and (Tokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    begin
       Dec(Result);
+    end;
   end;
 
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Declarations := TDictionary<string, TIndexSymbol>.Create;
   UnitNames := TDictionary<string, Boolean>.Create;
@@ -292,24 +320,36 @@ begin
   try
     // Namen von Deklarationen (auch Methoden in Klassen, die Resolve nicht als Verwendung kennt).
     for Symbol in TIndexExtractor.Extract(ATree, AFileName).Symbols do
+    begin
       Declarations.AddOrSetValue(Key(Symbol.SelectionRange.StartPos), Symbol);
+    end;
     // Unit-Namen und ihre Präfixe (System, System.SysUtils): Teile einer gepunkteten Unit.
     if AIndex <> nil then
+    begin
       for UnitInfo in AIndex.Units do
       begin
         Parts := UnitInfo.UnitName.Split(['.']);
         for Count := 1 to Length(Parts) do
+        begin
           UnitNames.AddOrSetValue(UpperCase(string.Join('.', Copy(Parts, 0, Count))), True);
+        end;
       end;
+    end;
     for Index := 0 to High(Tokens) do
     begin
       // C in ^C ist ein Steuerzeichen, kein Name (#862).
       if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or ATree.IsControlCharPart(Index) then
+      begin
         Continue;
+      end;
       if AWithRange and not InRange(ARange, Tokens[Index].StartPos) then
+      begin
         Continue;
+      end;
       if Assigned(ACancellation) and ((Index and 255) = 0) then
+      begin
         ACancellation.ThrowIfCancellationRequested;
+      end;
       Item := Default(TSemanticToken);
       Item.Position := Tokens[Index].StartPos;
       Item.Length := Length(Tokens[Index].Text);
@@ -341,7 +381,9 @@ begin
       end;
       // Foo(1).Bar: Ergebnis eines Ausdrucks, nicht auflösbar.
       if (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
+      begin
         Continue;
+      end;
       if (Names.Count = 1) and SameText(Names[0], 'Self') then
       begin
         Item.TokenType := TSemanticTokenType.Variable;
@@ -363,7 +405,9 @@ begin
         Item.TokenType := TSemanticTokenType.Namespace;
         Item.Modifiers := [];
         if TLibraryUnits.IsLibraryUnit(Chain) then
+        begin
           Include(Item.Modifiers, TSemanticTokenModifier.DefaultLibrary);
+        end;
         List.Add(Item);
       end;
     end;
@@ -386,17 +430,27 @@ var
   Index: Integer;
 begin
   if ASymbols = nil then
+  begin
     Exit;
+  end;
   Places := TDictionary<string, Boolean>.Create;
   try
     for Symbol in ASymbols do
+    begin
       for Occurrence in Symbol.Occurrences do
+      begin
         Places.AddOrSetValue(IntToStr(Occurrence.Range.StartPos.Line) + ':' +
           IntToStr(Occurrence.Range.StartPos.Character), True);
+      end;
+    end;
     for Index := 0 to High(ATokens) do
+    begin
       if Places.ContainsKey(IntToStr(ATokens[Index].Position.Line) + ':' +
         IntToStr(ATokens[Index].Position.Character)) then
+      begin
         Include(ATokens[Index].Modifiers, TSemanticTokenModifier.Reassigned);
+      end;
+    end;
   finally
     Places.Free;
   end;
@@ -414,14 +468,20 @@ begin
   begin
     Result[Index * 5] := ATokens[Index].Position.Line - Line;
     if ATokens[Index].Position.Line = Line then
-      Result[Index * 5 + 1] := ATokens[Index].Position.Character - Character
+    begin
+      Result[Index * 5 + 1] := ATokens[Index].Position.Character - Character;
+    end
     else
+    begin
       Result[Index * 5 + 1] := ATokens[Index].Position.Character;
+    end;
     Result[Index * 5 + 2] := ATokens[Index].Length;
     Result[Index * 5 + 3] := Ord(ATokens[Index].TokenType);
     Bits := 0;
     for Modifier in ATokens[Index].Modifiers do
+    begin
       Bits := Bits or (1 shl Ord(Modifier));
+    end;
     Result[Index * 5 + 4] := Bits;
     Line := ATokens[Index].Position.Line;
     Character := ATokens[Index].Position.Character;
@@ -445,16 +505,22 @@ var
   Value: Integer;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
+  end;
   Range := Default(TTextRange);
   if AWithRange then
   begin
     if not TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) then
+    begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "range" fehlt');
+    end;
     Range := TLspPositions.ReadRange(RangeValue);
   end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
@@ -473,7 +539,9 @@ begin
   end;
   Data := TJSONArray.Create;
   for Value in Values do
+  begin
     Data.Add(Value);
+  end;
   Result := TJSONObject.Create;
   TJSONObject(Result).AddPair('data', Data);
 end;

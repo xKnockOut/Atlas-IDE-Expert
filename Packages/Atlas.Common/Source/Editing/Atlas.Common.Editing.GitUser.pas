@@ -37,10 +37,16 @@ var
 begin
   Quoted := False;
   for Index := 1 to Length(ALine) do
+  begin
     if ALine[Index] = '"' then
-      Quoted := not Quoted
+    begin
+      Quoted := not Quoted;
+    end
     else if not Quoted and CharInSet(ALine[Index], [';', '#']) then
+    begin
       Exit(Copy(ALine, 1, Index - 1));
+    end;
+  end;
   Result := ALine;
 end;
 
@@ -48,7 +54,9 @@ function Unquote(const AValue: string): string;
 begin
   Result := AValue;
   if (Length(Result) >= 2) and (Result[1] = '"') and (Result[Length(Result)] = '"') then
+  begin
     Result := Copy(Result, 2, Length(Result) - 2);
+  end;
 end;
 
 class function TGitUser.NameIn(const AConfig: string): string;
@@ -63,7 +71,9 @@ begin
   begin
     Key := Trim(StripComment(Line));
     if Key = '' then
+    begin
       Continue;
+    end;
     if Key[1] = '[' then
     begin
       InUser := SameText(Key, '[user]');
@@ -71,7 +81,9 @@ begin
     end;
     Equal := Pos('=', Key);
     if InUser and (Equal > 0) and SameText(Trim(Copy(Key, 1, Equal - 1)), 'name') then
+    begin
       Result := Unquote(Trim(Copy(Key, Equal + 1, MaxInt)));
+    end;
   end;
 end;
 
@@ -79,18 +91,26 @@ end;
 function SeparatorOf(const APath: string): string;
 begin
   if Pos('\', APath) > 0 then
-    Result := '\'
+  begin
+    Result := '\';
+  end
   else if Pos('/', APath) > 0 then
-    Result := '/'
+  begin
+    Result := '/';
+  end
   else
+  begin
     Result := PathDelim;
+  end;
 end;
 
 function Join(const AFolder, AName: string): string;
 begin
   Result := AFolder;
   if (Result <> '') and not CharInSet(Result[Length(Result)], ['/', '\']) then
+  begin
     Result := Result + SeparatorOf(AFolder);
+  end;
   Result := Result + AName;
 end;
 
@@ -102,19 +122,27 @@ var
 begin
   Folder := AFolder;
   while (Length(Folder) > 1) and CharInSet(Folder[Length(Folder)], ['/', '\']) do
+  begin
     Delete(Folder, Length(Folder), 1);
+  end;
   Result := '';
   for Index := Length(Folder) downto 1 do
+  begin
     if CharInSet(Folder[Index], ['/', '\']) then
     begin
       Result := Copy(Folder, 1, Index - 1);
       // "C:" bzw. "/" bleiben als Wurzel stehen.
       if (Result = '') or ((Length(Result) = 2) and (Result[2] = ':')) then
+      begin
         Result := Copy(Folder, 1, Index);
+      end;
       Break;
     end;
+  end;
   if Result = AFolder then
+  begin
     Result := '';
+  end;
 end;
 
 class function TGitUser.NameFor(const AFolder, AHome: string; const AReadFile: TGitReadFile): string;
@@ -131,7 +159,9 @@ begin
     begin
       Result := NameIn(Text);
       if Result <> '' then
+      begin
         Exit;
+      end;
       // Das Repository gefunden, aber ohne Namen: dann gilt die globale Angabe.
       Break;
     end;
@@ -139,14 +169,18 @@ begin
     Inc(Level);
   end;
   if (AHome <> '') and AReadFile(Join(AHome, '.gitconfig'), Text) then
+  begin
     Result := NameIn(Text);
+  end;
 end;
 
 class function TGitUser.HomeFolder: string;
 begin
   Result := GetEnvironmentVariable('USERPROFILE');
   if Result = '' then
+  begin
     Result := GetEnvironmentVariable('HOME');
+  end;
 end;
 
 end.
