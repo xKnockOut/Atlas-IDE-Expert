@@ -52,7 +52,8 @@ uses
   Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Contracts.Rules,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings;
 
 function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
 var
@@ -178,7 +179,7 @@ function RunTests(const ATestProject: string; out AReason: string): Boolean;
 var
   mTests: IAtlasTestsSource;
 begin
-  AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
+  AReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonTestsOff);
   Result := TestsSource(mTests) and mTests.RunProject(ATestProject, AReason);
 end;
 
@@ -213,7 +214,7 @@ var
   mTools: IAtlasBuildToolsSource;
 begin
   Result := False;
-  AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
+  AReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonTasksOff);
   if BuildTools(mTools) then
   begin
     Result := mTools.RunStartProfile(AProject, AProfile, AReason);
@@ -236,7 +237,7 @@ var
   mTools: IAtlasBuildToolsSource;
 begin
   Result := False;
-  AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
+  AReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonTasksOff);
   if BuildTools(mTools) then
   begin
     Result := mTools.RunTask(AProject, AName, AReason);

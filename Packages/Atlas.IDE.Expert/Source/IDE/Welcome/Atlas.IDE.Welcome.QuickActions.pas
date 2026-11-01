@@ -437,7 +437,7 @@ begin
     Actions.OpenProject(AProject, True);
   Result := ProjectOpen(AProject);
   if not Result then
-    AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonNotOpened);
+    AReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNotOpened);
 end;
 
 procedure TAtlasIdeQuickActions.CountUse(const AId: string);
@@ -633,11 +633,11 @@ begin
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
         Actions.OpenProject(ATestProject, False);
       if not ProjectOpen(ATestProject) then
-        Reason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonNotOpened);
+        Reason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNotOpened);
     end;
   end;
   if (Reason = '') and not Assigned(FOnTests) then
-    Reason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
+    Reason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonTestsOff);
   // Vor dem Start eintragen: Das Ergebnis (TestsFinished) findet so die Zeile in jedem Fall.
   if Reason = '' then
     FTests.AddOrSetValue(Key(ATestProject), AProject);
@@ -744,9 +744,9 @@ begin
     if TAtlasWelcomeQuickActions.IsGroup(AProject) then
       Target := ActiveProjectOf(AProject);
     if Target = '' then
-      Reason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonNotOpened)
+      Reason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNotOpened)
     else if not Assigned(FOnRun) then
-      Reason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonNotOpened)
+      Reason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNotOpened)
     else if not FOnRun(Target, AProfile, Reason) and (Reason = '') then
       Reason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonSeeMessages);
   end;
@@ -777,7 +777,7 @@ begin
   // Vor dem Start eintragen: Ein sofort scheiternder Lauf meldet sein Ende schon im Start.
   FTasks.AddOrSetValue(Key(AProject), AName);
   if not Assigned(FOnRunTask) then
-    Reason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff)
+    Reason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonTasksOff)
   else if not FOnRunTask(AProject, AName, Reason) and (Reason = '') then
     Reason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonSeeMessages);
   if Reason = '' then

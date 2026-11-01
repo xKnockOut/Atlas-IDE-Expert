@@ -207,7 +207,6 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings;
 
 const
@@ -289,12 +288,12 @@ begin
   FSectionMenu := TPopupMenu.Create(Self);
   FSectionMenu.OnPopup := SectionMenuPopup;
   Item := TMenuItem.Create(FSectionMenu);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeHide);
+  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeHide);
   Item.Tag := TagHide;
   Item.OnClick := SectionMenuHide;
   FSectionMenu.Items.Add(Item);
   Item := TMenuItem.Create(FSectionMenu);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeSettings);
+  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeSettings);
   Item.Tag := TagSettings;
   Item.OnClick := SectionMenuSettings;
   FSectionMenu.Items.Add(Item);
@@ -302,7 +301,7 @@ begin
   Item.Caption := '-';
   FSectionMenu.Items.Add(Item);
   Item := TMenuItem.Create(FSectionMenu);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeCustomize);
+  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeCustomize);
   Item.Tag := TagCustomize;
   Item.OnClick := SectionMenuCustomize;
   FSectionMenu.Items.Add(Item);
@@ -533,44 +532,45 @@ begin
   begin
     if FEditing then
       Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Edit, '',
-        TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDone), '', True)]
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDone), '', True)]
     else
       Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Edit, '',
-        '✎ ' + TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeCustomize),
+        '✎ ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeCustomize),
         TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.CommandWelcomeCustomize), False)];
     // Umschalter im Kopf: mit mehreren Layouts immer, sonst nur beim Bearbeiten (dort Neu/Umbenennen).
     if FEditing or (Length(FLayoutNames) > 1) then
       Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Layout, '',
-        TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayout, [FActiveLayout]) + ' ▾', '', False)];
+        TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayout, [FActiveLayout]) + ' ▾', '', False)];
     if FEditing then
     begin
       Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
-        TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeColumns), '', False)];
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeColumns), '', False)];
       for Count := TAtlasWelcomeLayout.MinColumns to TAtlasWelcomeLayout.MaxColumns do
         Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Column, IntToStr(Count), IntToStr(Count),
           '', FLayout.Columns = Count)];
       Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Add, '',
-        TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeAdd) + ' ▾', '', False),
-        TAtlasArrangePart.Create(TAtlasArrangePartKind.Reset, '', TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeReset),
-        TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeResetHint), False)];
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeAdd) + ' ▾', '', False),
+        TAtlasArrangePart.Create(TAtlasArrangePartKind.Reset, '',
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeReset),
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeResetHint), False)];
     end;
   end;
   FBar.SetParts(Parts);
   FBar.Visible := Length(Parts) > 0;
   // Ausgeblendet: angemeldete Bereiche, deren Einstellung aus ist.
   Parts := [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
-    TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeHidden), '', False)];
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeHidden), '', False)];
   Any := False;
   for Entry in FCatalog do
     if not Entry.Shown then
     begin
       Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Hidden, Entry.Id, Entry.Title + ' +',
-        TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeShowHint), False)];
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeShowHint), False)];
       Any := True;
     end;
   if not Any then
     Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
-      TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeHiddenNone), '', False)];
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeHiddenNone), '', False)];
   FHiddenBar.SetParts(Parts);
   FHiddenBar.Visible := FEditing;
   FInsertLine.Visible := FEditing;
@@ -1107,15 +1107,15 @@ begin
   Item.Caption := '-';
   FBarMenu.Items.Add(Item);
   Item := TMenuItem.Create(FBarMenu);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeNewLayout);
+  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNewLayout);
   Item.OnClick := LayoutMenuNew;
   FBarMenu.Items.Add(Item);
   Item := TMenuItem.Create(FBarMenu);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeRenameLayout);
+  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeRenameLayout);
   Item.OnClick := LayoutMenuRename;
   FBarMenu.Items.Add(Item);
   Item := TMenuItem.Create(FBarMenu);
-  Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeDeleteLayout, [FActiveLayout]);
+  Item.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeDeleteLayout, [FActiveLayout]);
   Item.Enabled := Length(FLayoutNames) > 1;
   Item.OnClick := LayoutMenuDelete;
   FBarMenu.Items.Add(Item);
@@ -1188,11 +1188,14 @@ var
   mName: string;
 begin
   mName := '';
-  if not AskName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), mName) or (Trim(mName) = '') then
+  if not AskName(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeLayoutName), mName) or
+    (Trim(mName) = '') then
+  begin
     Exit;
+  end;
   if NameTaken(mName) then
   begin
-    Confirm(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
+    Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
     Exit;
   end;
   mName := Trim(mName);
@@ -1208,12 +1211,14 @@ var
   mName: string;
 begin
   mName := FActiveLayout;
-  if not AskName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), mName) or (Trim(mName) = '') or
-    SameText(Trim(mName), FActiveLayout) then
+  if not AskName(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeLayoutName), mName) or
+    (Trim(mName) = '') or SameText(Trim(mName), FActiveLayout) then
+  begin
     Exit;
+  end;
   if NameTaken(mName) then
   begin
-    Confirm(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
+    Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
     Exit;
   end;
   mName := Trim(mName);
@@ -1227,7 +1232,7 @@ end;
 procedure TAtlasWelcomeBoardFrame.LayoutMenuDelete(Sender: TObject);
 begin
   if (Length(FLayoutNames) < 2) or
-    not Confirm(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeDeleteConfirm, [FActiveLayout]), True) then
+    not Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeDeleteConfirm, [FActiveLayout]), True) then
     Exit;
   Later(
     procedure(ASource: IAtlasWelcomeArrangeSource)
@@ -1240,7 +1245,7 @@ function TAtlasWelcomeBoardFrame.AskName(const APrompt: string; var AName: strin
 begin
   if Assigned(FOnAskName) then
     Exit(FOnAskName(APrompt, AName));
-  Result := InputQuery(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeCustomize), APrompt, AName);
+  Result := InputQuery(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeCustomize), APrompt, AName);
 end;
 
 function TAtlasWelcomeBoardFrame.Confirm(const AText: string; AQuestion: Boolean): Boolean;

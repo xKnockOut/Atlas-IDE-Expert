@@ -53,10 +53,6 @@ type
     ResetHistory: TProc;
     /// <summary>Befehl an den Server (#492).</summary>
     Command: TAtlasServerCommand;
-    /// <summary>Zählung der Befehle zurücksetzen (#757).</summary>
-    ResetUsage: TProc;
-    /// <summary>Gesperrte Tipps wieder zeigen (#757).</summary>
-    UnblockTips: TProc;
     /// <summary>Atlas-Befehle der Palette für „Leiste anpassen …“ der Editorleiste (#1101).</summary>
     ToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     /// <summary>Pfad der AtlasServer.exe nach den Einstellungen.</summary>
@@ -522,27 +518,6 @@ begin
       Result := nil;
       if Assigned(Hooks.ToolbarCommands) then
         Result := Hooks.ToolbarCommands();
-    end;
-  // Karte „Atlas entdecken“ (#757): Zählung zurücksetzen, gesperrte Tipps wieder zeigen.
-  FPage.OnResetUsage :=
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          if Assigned(Hooks.ResetUsage) then
-            Hooks.ResetUsage();
-        end);
-    end;
-  FPage.OnUnblockTips :=
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          if Assigned(Hooks.UnblockTips) then
-            Hooks.UnblockTips();
-        end);
     end;
   // Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.
   FPage.OnIndexMetrics :=

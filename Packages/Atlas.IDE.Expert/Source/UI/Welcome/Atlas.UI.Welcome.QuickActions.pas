@@ -249,6 +249,9 @@ type
     property OnSelectRow: TAtlasQuickRowProc read FOnSelectRow write FOnSelectRow;
   end;
 
+/// <summary>Beschriftung der Aktion AAction (Knopf, Kontextmenü, Optionsdialog) ohne Zustand.</summary>
+function QuickActionTitle(AAction: TAtlasQuickAction): string;
+
 implementation
 
 uses
@@ -1079,15 +1082,15 @@ begin
   FContextSeparator := TMenuItem.Create(AMenu);
   FContextSeparator.Caption := '-';
   AMenu.Items.Add(FContextSeparator);
-  Add(AMenu.Items, TAtlasQuickAction.Build, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBuild));
+  Add(AMenu.Items, TAtlasQuickAction.Build, QuickActionTitle(TAtlasQuickAction.Build));
   FBuildWithItem := TMenuItem.Create(AMenu);
   FBuildWithItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuBuildWith);
   AMenu.Items.Add(FBuildWithItem);
-  Add(AMenu.Items, TAtlasQuickAction.Tests, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTests));
+  Add(AMenu.Items, TAtlasQuickAction.Tests, QuickActionTitle(TAtlasQuickAction.Tests));
   FRunWithItem := TMenuItem.Create(AMenu);
   FRunWithItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuRunWith);
   AMenu.Items.Add(FRunWithItem);
-  Add(AMenu.Items, TAtlasQuickAction.Pull, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull));
+  Add(AMenu.Items, TAtlasQuickAction.Pull, QuickActionTitle(TAtlasQuickAction.Pull));
   Add(AMenu.Items, TAtlasQuickAction.Console, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuConsole));
   FTasksItem := TMenuItem.Create(AMenu);
   FTasksItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuTasks);
@@ -1295,28 +1298,44 @@ class function TAtlasQuickActionsBar.Caption(const AButton: TAtlasQuickActionBut
 begin
   if AState.Running and (AState.Action = AButton.Action) then
     Exit(StateText(AState, ANowMs, AButton.Update));
-  case AButton.Action of
-    TAtlasQuickAction.Build:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBuild);
-    TAtlasQuickAction.Tests:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTests);
-    TAtlasQuickAction.Run:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickRun);
-    TAtlasQuickAction.Pull:
-      begin
-        if AButton.Update then
-          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate)
-        else
-          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
-        if AButton.AskExternals then
-          Result := Result + ' ' + MenuArrow;
-      end;
-    TAtlasQuickAction.Folder:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickFolder);
-    TAtlasQuickAction.Tasks:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTasks);
+  if AButton.Action = TAtlasQuickAction.Pull then
+  begin
+    if AButton.Update then
+    begin
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate);
+    end
+    else
+    begin
+      Result := QuickActionTitle(TAtlasQuickAction.Pull);
+    end;
+    if AButton.AskExternals then
+    begin
+      Result := Result + ' ' + MenuArrow;
+    end;
+  end
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsole);
+  begin
+    Result := QuickActionTitle(AButton.Action);
+  end;
+end;
+
+function QuickActionTitle(AAction: TAtlasQuickAction): string;
+begin
+  case AAction of
+    TAtlasQuickAction.Build:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuild);
+    TAtlasQuickAction.Tests:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTests);
+    TAtlasQuickAction.Run:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRun);
+    TAtlasQuickAction.Pull:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+    TAtlasQuickAction.Folder:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickFolder);
+    TAtlasQuickAction.Tasks:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTasks);
+  else
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickConsole);
   end;
 end;
 

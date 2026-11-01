@@ -3,7 +3,8 @@
 // Ereignisse anderer Module für die Willkommensseite (#1455): Ende einer
 // Projektaufgabe (#900, Modul Build-Werkzeuge) und eines Testlaufs (#69,
 // Modul Tests) an die Schnellaktionen (#764), zurückgesetzte Befehlsnutzung
-// und entsperrte Tipps an „Atlas entdecken“ (#757). Das Modul stellt den
+// an „Atlas entdecken“ (#757); entsperrte Tipps meldet der eigene Abschnitt
+// der Einstellungen direkt (Atlas.IDE.Welcome.Settings). Das Modul stellt den
 // Hörer über seinen Scope bereit; er fragt die laufende Seite bei jedem
 // Aufruf neu und tut ohne sie nichts.
 
@@ -27,7 +28,6 @@ type
     procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
     procedure TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
     procedure UsageReset;
-    procedure TipsUnblocked;
   end;
 
 implementation
@@ -89,11 +89,6 @@ begin
   begin
     mWelcome.Discover.Refresh;
   end;
-end;
-
-procedure TAtlasWelcomeListener.TipsUnblocked;
-begin
-  TAtlasIdeDiscover.UnblockAll;
 end;
 
 end.
