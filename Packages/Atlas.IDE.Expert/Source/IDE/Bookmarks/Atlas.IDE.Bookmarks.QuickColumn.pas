@@ -64,7 +64,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Bookmarks.Store,
-  Atlas.UI.Notes.Tip;
+  Atlas.UI.Popup.TitledTip;
 
 type
   TAtlasIdeQuickColumn = class
@@ -112,7 +112,7 @@ type
     FTimer: TTimer;
     /// <summary>Anmeldung bei TAtlasIdeGutterColumns: Spalte vor dem Abbau eines Editorfensters abgeben (#1233).</summary>
     FColumnsHandle: Integer;
-    FTip: TAtlasNoteTip;
+    FTip: TAtlasTitledTip;
     FAppEvents: TApplicationEvents;
     FMenu: TPopupMenu;
     FMenuRow: TRow;
@@ -252,7 +252,7 @@ begin
   FPaintedRows := TDictionary<HWND, TPainted>.Create;
   FFirstEditorLine := MaxInt;
   FLastEditorLine := -1;
-  FTip := TAtlasNoteTip.Create(nil);
+  FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.QuickBookmarks;
   FMenu := TPopupMenu.Create(nil);
   FEvents := TEvents.Create;

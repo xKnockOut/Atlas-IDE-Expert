@@ -4,6 +4,7 @@
 // - Marken (TAtlasOverviewMark) für die ganze Datei: Fehler, Warnungen und
 //   Hinweise (#398), Treffer des markierten Texts, Änderungen gegenüber dem
 //   Repository (#507), Haltepunkte, Lesezeichen der IDE und der Cursor.
+//   Eigene Lesezeichen eines Moduls kommen über IAtlasOverviewBookmarks.
 // - Kinds liest und schreibt editor.overviewRulerKinds ("diagnostics,
 //   search, changes, breakpoints, bookmarks, cursor"); unbekannte Namen
 //   fallen weg, die Reihenfolge ist fest.
@@ -50,6 +51,14 @@ type
   end;
 
   TAtlasOverviewMarks = TArray<TAtlasOverviewMark>;
+
+  /// <summary>Eigene Lesezeichen eines Moduls für die Übersichtsleiste (#1104, #1455): Das Modul stellt die Quelle
+  /// über seinen Scope bereit; die Leiste fragt bei jedem Sammeln die Registry. Nur im Hauptthread.</summary>
+  IAtlasOverviewBookmarks = interface
+    ['{CF205299-AA82-4210-8294-D1E4064066BA}']
+    /// <summary>Lesezeichen für AFileName; False: keine eigenen, die Leiste zeigt die der IDE.</summary>
+    function Marks(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
+  end;
 
   /// <summary>Gezeichneter Balken: Pixel von Top bis Bottom (ausschließlich) in seiner Spur.</summary>
   TAtlasOverviewBar = record

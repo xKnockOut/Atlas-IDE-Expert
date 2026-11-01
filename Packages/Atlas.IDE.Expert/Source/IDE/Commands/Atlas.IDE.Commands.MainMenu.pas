@@ -25,11 +25,10 @@
 // qualifizierter Name (#399) gehen an TAtlasIdeEditorCommands.
 // Letzte Atlas-Änderung zurücknehmen bzw. wiederherstellen und die Liste
 // „Atlas-Änderungen“ (#721) gehen an TAtlasIdeUndo.
-// Persönliche Notizen (#545) gehen an TAtlasIdeNotes; sichtbar nur bei
-// eingeschalteter Einstellung „Notizen“. Benannte Lesezeichen (#622) gehen an
-// TAtlasIdeBookmarks; sichtbar nur bei bookmarks.named, das Fenster auch bei
-// bookmarks.quick. Schnelle Lesezeichen (#1104: setzen/entfernen, nächstes,
-// voriges) sichtbar nur bei bookmarks.quick. „Gliederung …“ (#537)
+// Einträge der Module (#1455, etwa Notizen und Lesezeichen) baut
+// UpdateModuleItems bei jedem Öffnen aus IAtlasMenuSource; Untermenüs nach
+// Section, Trennlinien aus „-“, ein Untermenü ohne sichtbaren Eintrag fehlt.
+// „Gliederung …“ (#537)
 // öffnet TAtlasIdeOutline; sichtbar nur bei outline.enabled.
 // Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
 // und Optionen; UpdateImage wählt nach einem Themenwechsel die passende Variante.
@@ -100,10 +99,7 @@ type
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
     FViewStart: TMenuItem;
-    FNoteItems: TArray<TMenuItem>;
     FCallDiagramItem: TMenuItem;
-    FBookmarkItems: TArray<TMenuItem>;
-    FQuickItems: TArray<TMenuItem>;
     /// <summary>„Erzeugen…“ (#719), sichtbar nach keys.generateMenu.</summary>
     FGenerateItem: TMenuItem;
     /// <summary>„Formatieren“ (#43), nur mit editor.format.</summary>
@@ -112,8 +108,6 @@ type
     FMethodOrderItem: TMenuItem;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
     FOutlineItem: TMenuItem;
-    /// <summary>Untermenü „Notizen und Lesezeichen“ (#545, #622).</summary>
-    FNotesGroup: TMenuItem;
     /// <summary>„Atlas-Prüfung“ (#909) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FProblemsItem: TMenuItem;
     /// <summary>Ab hier stehen die Einträge der Module (#1455, IAtlasMenuSource); unsichtbare Marke.</summary>
@@ -158,8 +152,6 @@ type
     procedure EditorClick(Sender: TObject);
     procedure SectionClick(Sender: TObject);
     procedure UndoClick(Sender: TObject);
-    procedure NotesClick(Sender: TObject);
-    procedure BookmarksClick(Sender: TObject);
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
@@ -173,6 +165,8 @@ type
     /// <summary>Einträge der Module nach der Marke neu aufbauen (Regel 2: sie kommen und gehen mit dem Modul).
     /// </summary>
     procedure UpdateModuleItems;
+    /// <summary>Trennlinien und Sichtbarkeit eines Untermenüs der Module.</summary>
+    class procedure TidyModuleSection(AGroup: TMenuItem); static;
     procedure IssueAttachClick(Sender: TObject);
     procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
@@ -243,8 +237,6 @@ uses
   Atlas.IDE.Results.Impact,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Notes.Service,
-  Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
   Atlas.IDE.Query.Service,
@@ -284,9 +276,6 @@ const
   SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
     'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
   UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
-  NoteIds: array[0..2] of string = ('Atlas.NoteAdd', 'Atlas.NoteDelete', 'Atlas.NoteList');
-  BookmarkIds: array[0..5] of string = ('Atlas.BookmarkAdd', 'Atlas.BookmarkGoTo', 'Atlas.BookmarkWindow',
-    'Atlas.QuickBookmarkToggle', 'Atlas.NextBookmark', 'Atlas.PreviousBookmark');
   WelcomeIds: array[TAtlasWelcomeCommand] of string = ('Atlas.WelcomeStart', 'Atlas.WelcomeApply',
     'Atlas.WelcomeReset');
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
@@ -409,20 +398,6 @@ begin
   AddItem(TAtlasTextId.UndoMenu, 0, UndoClick);
   AddItem(TAtlasTextId.RedoMenu, 1, UndoClick);
   AddItem(TAtlasTextId.UndoListMenu, 2, UndoClick);
-  // Persönliche Notizen (#545) und benannte Lesezeichen (#622) in einem Untermenü; Tag wählt den Befehl in
-  // NotesClick bzw. BookmarksClick. Das Untermenü ist sichtbar, solange eins von beiden an ist.
-  FNotesGroup := AddGroup(TAtlasTextId.MenuGroupNotes);
-  FNoteItems := [AddItem(TAtlasTextId.NotesMenuAdd, 0, NotesClick)];
-  FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuDelete, 1, NotesClick)];
-  FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuList, 2, NotesClick)];
-  FBookmarkItems := [NewLine];
-  FParent.Add(FBookmarkItems[0]);
-  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuAdd, 0, BookmarksClick)];
-  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuGoTo, 1, BookmarksClick)];
-  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuWindow, 2, BookmarksClick)];
-  FQuickItems := [AddItem(TAtlasTextId.QuickBookmarkToggleCommand, 3, BookmarksClick)];
-  FQuickItems := FQuickItems + [AddItem(TAtlasTextId.NextBookmarkCommand, 4, BookmarksClick)];
-  FQuickItems := FQuickItems + [AddItem(TAtlasTextId.PreviousBookmarkCommand, 5, BookmarksClick)];
   // Schalter und Willkommensseite (#753); Tag wählt den Befehl in ToggleClick bzw. WelcomeClick.
   AddGroup(TAtlasTextId.MenuGroupView);
   for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
@@ -798,7 +773,6 @@ end;
 procedure TAtlasMainMenu.UpdateKeyMap;
 var
   Item: TMenuItem;
-  Marks: Boolean;
 begin
   if FKeyMapItem <> nil then
     FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
@@ -811,9 +785,6 @@ begin
   // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
   if FCallDiagramItem <> nil then
     FCallDiagramItem.Visible := TAtlasIdeSettings.Current.CallHierarchyDiagram;
-  // Notizen (#545) nach ihrer Einstellung.
-  for Item in FNoteItems do
-    Item.Visible := TAtlasIdeSettings.Current.Notes;
   // Erzeugen-Menü (#719) nach keys.generateMenu.
   if FGenerateItem <> nil then
     FGenerateItem.Visible := TAtlasIdeSettings.Current.GenerateMenu;
@@ -872,20 +843,6 @@ begin
   // Compiler-Schalter (#558) nach build.compilerSwitches.
   if FCompilerSwitchesItem <> nil then
     FCompilerSwitchesItem.Visible := TAtlasIdeSettings.Current.BuildCompilerSwitches;
-  // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
-  // beide.
-  Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
-  for Item in FBookmarkItems do
-    Item.Visible := TAtlasIdeSettings.Current.BookmarksNamed;
-  if Length(FBookmarkItems) > 3 then
-    FBookmarkItems[3].Visible := Marks;
-  for Item in FQuickItems do
-    Item.Visible := TAtlasIdeSettings.Current.QuickBookmarks;
-  // Trennlinie zwischen Notizen und Lesezeichen nur, wenn beide sichtbar sind.
-  if Length(FBookmarkItems) > 0 then
-    FBookmarkItems[0].Visible := TAtlasIdeSettings.Current.Notes and Marks;
-  if FNotesGroup <> nil then
-    FNotesGroup.Visible := TAtlasIdeSettings.Current.Notes or Marks;
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
@@ -1019,51 +976,6 @@ begin
     end);
 end;
 
-procedure TAtlasMainMenu.NotesClick(Sender: TObject);
-var
-  Command: Integer;
-begin
-  Command := TMenuItem(Sender).Tag;
-  if (Command >= Low(NoteIds)) and (Command <= High(NoteIds)) then
-    TAtlasIdeShortcutTips.Invoked(NoteIds[Command]);
-  TAtlasGuard.Run(TAtlasFeature.Notes,
-    procedure
-    begin
-      case Command of
-        0: TAtlasIdeNotes.AddOrEdit;
-        1: TAtlasIdeNotes.DeleteAtLine;
-      else
-        TAtlasIdeNotes.ShowList;
-      end;
-    end);
-end;
-
-procedure TAtlasMainMenu.BookmarksClick(Sender: TObject);
-var
-  Command: Integer;
-  Feature: TAtlasFeature;
-begin
-  Command := TMenuItem(Sender).Tag;
-  if (Command >= Low(BookmarkIds)) and (Command <= High(BookmarkIds)) then
-    TAtlasIdeShortcutTips.Invoked(BookmarkIds[Command]);
-  Feature := TAtlasFeature.Bookmarks;
-  if Command >= 3 then
-    Feature := TAtlasFeature.QuickBookmarks;
-  TAtlasGuard.Run(Feature,
-    procedure
-    begin
-      case Command of
-        0: TAtlasIdeBookmarks.AddBookmark;
-        1: TAtlasIdeBookmarks.GoToBookmark;
-        3: TAtlasIdeBookmarks.QuickToggle;
-        4: TAtlasIdeBookmarks.NextBookmark;
-        5: TAtlasIdeBookmarks.PreviousBookmark;
-      else
-        TAtlasIdeBookmarks.ShowWindow;
-      end;
-    end);
-end;
-
 procedure TAtlasMainMenu.ProblemsClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked('Atlas.ProblemsWindow');
@@ -1182,7 +1094,23 @@ begin
   mPosition := FModuleAnchor.MenuIndex + 1;
   for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.AtlasMenu) do
   begin
-    if not TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
+    mItem := nil;
+    if mEntry.CommandId = '-' then
+    begin
+      // Trennlinie; TidyModuleSection blendet sie am Rand und doppelt aus.
+      mItem := TMenuItem.Create(FRoot);
+      mItem.Caption := '-';
+    end
+    else if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
+    begin
+      mItem := TMenuItem.Create(FRoot);
+      mItem.Caption := mCommand.Caption;
+      mItem.Tag := Length(FModuleIds);
+      mItem.OnClick := ModuleItemClick;
+      mItem.Visible := TAtlasModuleContributions.IsVisible(mCommand);
+      FModuleIds := FModuleIds + [mCommand.Id];
+    end;
+    if mItem = nil then
       Continue;
     mParent := FRoot;
     if mEntry.Section <> '' then
@@ -1201,12 +1129,6 @@ begin
         FModuleItems := FModuleItems + [mParent];
       end;
     end;
-    mItem := TMenuItem.Create(FRoot);
-    mItem.Caption := mCommand.Caption;
-    mItem.Tag := Length(FModuleIds);
-    mItem.OnClick := ModuleItemClick;
-    mItem.Visible := TAtlasModuleContributions.IsVisible(mCommand);
-    FModuleIds := FModuleIds + [mCommand.Id];
     if mParent = FRoot then
     begin
       FRoot.Insert(mPosition, mItem);
@@ -1216,6 +1138,42 @@ begin
     else
       mParent.Add(mItem);
   end;
+  for mGroup in mGroups do
+    TidyModuleSection(mGroup);
+end;
+
+class procedure TAtlasMainMenu.TidyModuleSection(AGroup: TMenuItem);
+var
+  mIndex: Integer;
+  mItem: TMenuItem;
+  mSeenItem, mPendingLine: Boolean;
+  mLine: TMenuItem;
+begin
+  // Trennlinien nur zwischen sichtbaren Einträgen; das Untermenü nur mit mindestens einem.
+  mSeenItem := False;
+  mPendingLine := False;
+  mLine := nil;
+  for mIndex := 0 to AGroup.Count - 1 do
+  begin
+    mItem := AGroup.Items[mIndex];
+    if mItem.IsLine then
+    begin
+      mItem.Visible := False;
+      if mSeenItem then
+      begin
+        mPendingLine := True;
+        mLine := mItem;
+      end;
+    end
+    else if mItem.Visible then
+    begin
+      if mPendingLine and (mLine <> nil) then
+        mLine.Visible := True;
+      mPendingLine := False;
+      mSeenItem := True;
+    end;
+  end;
+  AGroup.Visible := mSeenItem;
 end;
 
 procedure TAtlasMainMenu.IssueAttachClick(Sender: TObject);

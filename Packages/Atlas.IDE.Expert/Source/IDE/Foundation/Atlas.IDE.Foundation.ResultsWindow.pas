@@ -20,7 +20,6 @@ uses
   Vcl.Forms,
   Atlas.Core.Results.Model,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Notes.Store,
   Atlas.Core.SymbolPath.Model,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.DataFlow,
@@ -37,9 +36,6 @@ type
     OnChangeUndo: TAtlasChangeSetAction;
     OnChangeRedo: TAtlasChangeSetAction;
     OnChangeDiff: TAtlasChangeDiff;
-    /// <summary>Liste der Notizen (#545): bearbeiten, löschen.</summary>
-    OnNoteEdit: TAtlasNoteAction;
-    OnNoteDelete: TAtlasNoteAction;
     /// <summary>Aufrufdiagramm erlaubt (#1122, callHierarchy.diagram); nil = nein. Setzt die Composition.</summary>
     DiagramAllowed: TFunc<Boolean>;
     /// <summary>Datei gehört zu einem Projekt der Gruppe („Nur Projekt-Units“ im Diagramm); nil = alle.</summary>
@@ -70,9 +66,13 @@ type
     class procedure ApplySettings; static;
     /// <summary>Liste „Atlas-Änderungen“ (#721), neueste Sätze zuerst.</summary>
     class procedure ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>); static;
-    /// <summary>Notizen des Projekts (#545); ASelectId: diese Notiz wählen.</summary>
-    class procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
-      const ASelectId: string); static;
+    /// <summary>Liste mit Kennungen eines Moduls (#1455, etwa die Notizen #545); die Aktionen kommen mit der
+    /// Liste.</summary>
+    class procedure ShowItems(const AList: TAtlasResultsItemList); static;
+    /// <summary>Zeigt das Fenster gerade die Liste von AOwner? Legt das Fenster nicht an.</summary>
+    class function ShowsItemsOf(const AOwner: string): Boolean; static;
+    /// <summary>Aktionen der Liste von AOwner vergessen (Modul stoppt, Regel 3).</summary>
+    class procedure ReleaseItems(const AOwner: string); static;
     /// <summary>Weg zwischen Symbolen (#1117) als gezeichnete Kette.</summary>
     class procedure ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;
       AMapAvailable: Boolean); static;
@@ -188,18 +188,6 @@ begin
     begin
       if Assigned(TAtlasIdeResultsWindow.OnChangeDiff) then
         TAtlasIdeResultsWindow.OnChangeDiff(ASetId, AFileName);
-    end;
-  ResultsFrame.OnNoteEdit :=
-    procedure(const ANoteId: string)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnNoteEdit) then
-        TAtlasIdeResultsWindow.OnNoteEdit(ANoteId);
-    end;
-  ResultsFrame.OnNoteDelete :=
-    procedure(const ANoteId: string)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnNoteDelete) then
-        TAtlasIdeResultsWindow.OnNoteDelete(ANoteId);
     end;
   ResultsFrame.OnShowRoute :=
     procedure(const AUnits: TArray<string>)
@@ -378,14 +366,24 @@ begin
     Target.ShowChanges(ATitle, ASets, Now, False);
 end;
 
-class procedure TAtlasIdeResultsWindow.ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
-  const ASelectId: string);
+class procedure TAtlasIdeResultsWindow.ShowItems(const AList: TAtlasResultsItemList);
 var
   Target: TAtlasResultsFrame;
 begin
   Target := Frame;
   if Target <> nil then
-    Target.ShowNotes(ATitle, AGroups, ASelectId);
+    Target.ShowItems(AList);
+end;
+
+class function TAtlasIdeResultsWindow.ShowsItemsOf(const AOwner: string): Boolean;
+begin
+  Result := (ResultsFrame <> nil) and ResultsFrame.ShowsItemsOf(AOwner);
+end;
+
+class procedure TAtlasIdeResultsWindow.ReleaseItems(const AOwner: string);
+begin
+  if ResultsFrame <> nil then
+    ResultsFrame.ReleaseItems(AOwner);
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;
@@ -489,8 +487,6 @@ begin
   OnChangeUndo := nil;
   OnChangeRedo := nil;
   OnChangeDiff := nil;
-  OnNoteEdit := nil;
-  OnNoteDelete := nil;
   OnShowRoute := nil;
   OnImpactDepth := nil;
   OnImpactRunTests := nil;

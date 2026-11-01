@@ -21,7 +21,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 
 Ausnahmen:
 
-- `Atlas.UI.Notes.Tip` bleibt im Kern (allgemeiner Tooltip, wandert vor dem Schnitt nach Foundation).
+- Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
 - Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
 - `Atlas.IDE.Rules` hat keinen eigenen Ordner. Die sieben Units mit „Rules“ in der Spalte Begründung sind ein **Vorschlag** aus Namen und Inhalt; die Analyse nannte 8 Units und rund 3 400 Zeilen. Vor #1455 prüfen und hier festschreiben.
 - `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen (ADR 0017, Fortschreibung).
@@ -196,7 +196,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Modules.FeatureParts` | `Core/Modules/Atlas.Core.Modules.FeatureParts.pas` | Teile eines Moduls für die Feature-Tabelle, #1455 |
 | `Atlas.Core.Modules.Handshake` | `Core/Modules/Atlas.Core.Modules.Handshake.pas` | Vertragsversion von Base (Regel 7), #1455 |
 | `Atlas.Core.Modules.Registration` | `Core/Modules/Atlas.Core.Modules.Registration.pas` | Ordner `Core/Modules`, #1455 |
+| `Atlas.Core.Modules.Answer` | `Core/Modules/Atlas.Core.Modules.Answer.pas` | späte Antwort an ein Modul nur bei offenem Scope (Regel 3), #1455 |
 | `Atlas.Core.Modules.Registry` | `Core/Modules/Atlas.Core.Modules.Registry.pas` | Registry der Module (Regel 1), #1455 |
+| `Atlas.Core.Modules.Watch` | `Core/Modules/Atlas.Core.Modules.Watch.pas` | Liste bereitgestellter Objekte, folgt der Registry, #1455 |
 | `Atlas.Core.Notifications.Build` | `Core/Notifications/Atlas.Core.Notifications.Build.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Center` | `Core/Notifications/Atlas.Core.Notifications.Center.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Contract` | `Core/Notifications/Atlas.Core.Notifications.Contract.pas` | Ordner `Core/Notifications` |
@@ -395,7 +397,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.Files` | `IDE/Foundation/Atlas.IDE.Foundation.Files.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterColumns` | `IDE/Foundation/Atlas.IDE.Foundation.GutterColumns.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterMarks` | `IDE/Foundation/Atlas.IDE.Foundation.GutterMarks.pas` | Ordner `IDE/Foundation` |
-| `Atlas.IDE.Foundation.Host` | `IDE/Foundation/Atlas.IDE.Foundation.Host.pas` | Dienste von Base für die Module (Sitzung, Meldungen, Log), #1455 |
+| `Atlas.IDE.Foundation.Host` | `IDE/Foundation/Atlas.IDE.Foundation.Host.pas` | Dienste von Base für die Module (Sitzung, Serverbefehle, Meldungen, Warnungen, Log, Statusfeld), #1455 |
 | `Atlas.IDE.Foundation.KeyHook` | `IDE/Foundation/Atlas.IDE.Foundation.KeyHook.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Keys` | `IDE/Foundation/Atlas.IDE.Foundation.Keys.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Navigation` | `IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas` | Ordner `IDE/Foundation` |
@@ -471,7 +473,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.EditorToolbar.Glyphs` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Glyphs.pas` | Ordner `UI/EditorToolbar` |
 | `Atlas.UI.Generate.Window` | `UI/Generate/Atlas.UI.Generate.Window.pas` | Ordner `UI/Generate` |
 | `Atlas.UI.Hover.Tip` | `UI/Hover/Atlas.UI.Hover.Tip.pas` | Ordner `UI/Hover` |
-| `Atlas.UI.Notes.Tip` | `UI/Notes/Atlas.UI.Notes.Tip.pas` | allgemeiner Tooltip, wandert nach Foundation (ADR 0017) |
+| `Atlas.UI.Popup.TitledTip` | `UI/Popup/Atlas.UI.Popup.TitledTip.pas` | allgemeiner Tooltip, bis #1455 `Atlas.UI.Notes.Tip` |
 | `Atlas.UI.Notifications.Notice` | `UI/Notifications/Atlas.UI.Notifications.Notice.pas` | Ordner `UI/Notifications` |
 | `Atlas.UI.Notifications.Window` | `UI/Notifications/Atlas.UI.Notifications.Window.pas` | Ordner `UI/Notifications` |
 | `Atlas.UI.Outline.Breadcrumbs` | `UI/Outline/Atlas.UI.Outline.Breadcrumbs.pas` | Ordner `UI/Outline` |
@@ -834,6 +836,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Bookmarks.Store` | `Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas` | Ordner `Core/Bookmarks` |
 | `Atlas.Core.Notes.Store` | `Core/Notes/Atlas.Core.Notes.Store.pas` | Ordner `Core/Notes` |
 | `Atlas.IDE.Bookmarks.Gutter` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Gutter.pas` | Ordner `IDE/Bookmarks` |
+| `Atlas.IDE.Bookmarks.Composition` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.pas` | Anmeldung des Moduls `atlas.bookmarks`, #1455 |
 | `Atlas.IDE.Bookmarks.QuickChord` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickChord.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.QuickColumn` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickColumn.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.Service` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Service.pas` | Ordner `IDE/Bookmarks` |
@@ -843,6 +846,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Bookmarks.Dialog` | `UI/Bookmarks/Atlas.UI.Bookmarks.Dialog.pas` | Ordner `UI/Bookmarks` |
 | `Atlas.UI.Bookmarks.Frame` | `UI/Bookmarks/Atlas.UI.Bookmarks.Frame.pas` | Ordner `UI/Bookmarks` |
 | `Atlas.UI.Notes.Dialog` | `UI/Notes/Atlas.UI.Notes.Dialog.pas` | Ordner `UI/Notes` |
+| `Atlas.UI.Notes.List` | `UI/Notes/Atlas.UI.Notes.List.pas` | Notizen als Einträge der Ergebnisliste, #1455 |
 | `Atlas.UI.Todos.Dialog` | `UI/Todos/Atlas.UI.Todos.Dialog.pas` | Ordner `UI/Todos` |
 
 ## Atlas.IDE.Contracts

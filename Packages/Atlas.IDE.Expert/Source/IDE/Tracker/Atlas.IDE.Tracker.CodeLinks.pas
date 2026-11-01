@@ -46,7 +46,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
-  Atlas.UI.Notes.Tip,
+  Atlas.UI.Popup.TitledTip,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview;
 
@@ -106,7 +106,7 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FTimer: TTimer;
-    FTip: TAtlasNoteTip;
+    FTip: TAtlasTitledTip;
     FAppEvents: TApplicationEvents;
     FMenu: TPopupMenu;
     FMenuHit: THit;
@@ -221,7 +221,7 @@ begin
   FInstance := Self;
   FMatches := TDictionary<Integer, TArray<TAtlasIssueKeyMatch>>.Create;
   FHits := TDictionary<Integer, TArray<THit>>.Create;
-  FTip := TAtlasNoteTip.Create(nil);
+  FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.IssueLinks;
   FMenu := TPopupMenu.Create(nil);
   FEvents := TEvents.Create;

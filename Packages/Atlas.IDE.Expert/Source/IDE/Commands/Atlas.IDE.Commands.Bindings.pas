@@ -7,8 +7,7 @@
 // Atlas-Änderung zurücknehmen (Strg+Alt+Z) und wiederherstellen
 // (Strg+Alt+Umschalt+Z, #721) sowie Deklaration ⇄ Implementierung
 // (Strg+Umschalt+↑/↓, #775), Unit ⇄ Testunit (#189), Units suchen (#777,
-// nur solange unitSearch.enabled an ist) und „Lesezeichen setzen…“ (#622,
-// Strg+Alt+K, nur solange bookmarks.named an ist) sowie die Liste der
+// nur solange unitSearch.enabled an ist) sowie die Liste der
 // Benachrichtigungen (#601, Strg+Umschalt+Alt+N, nur solange
 // notifications.enabled an ist) und die Brotkrumenleiste (#590,
 // Strg+Umschalt+., nur solange editor.breadcrumbs an ist) sowie der Sprung
@@ -21,12 +20,9 @@
 // keys.toggleBlockComment an ist), Neue Zeile ober- oder unterhalb (#700,
 // Umschalt+Enter und Strg+Alt+Enter, nur solange keys.newLineAround an
 // ist) und Umschließung entfernen (#657, Strg+Umschalt+Entf, nur solange
-// keys.unwrap an ist) sowie die schnellen Lesezeichen (#1104, nur solange
-// bookmarks.quick an ist): Strg+Umschalt+1…9 und Strg+1…9 aus einer
-// Grundtaste mit eigenem Vorrang (bookmarks.quick.numberedKeys), Strg+Umschalt+K
-// als erster Teil neben den Faltungsakkorden der IDE (TAtlasIdeQuickChord,
-// mit Rückfall an die IDE für den selbst weitergereichten Akkord) und
-// nächstes/voriges Lesezeichen ohne Vorgabe. Jede Taste wird wie
+// keys.unwrap an ist) sowie die Tasten der Module (#1455, IAtlasKeySource:
+// etwa Lesezeichen samt Zifferntasten und Akkord, „Gezielt hineinspringen“).
+// Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Jede Taste läuft unter der Sicherung
 // (#493) ihrer Funktion; Fehler einer Funktion schalten die Tasten der
@@ -101,8 +97,8 @@ type
     /// <summary>Wie AddAttemptKey mit Konfliktprüfung und eigenem Vorrang (#1104).</summary>
     procedure AddPriorityAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
       const AAttempt: TFunc<Boolean>; APriority: Boolean);
-    /// <summary>Strg+Umschalt+1…9 bzw. Strg+1…9 aus der Grundtaste ABase (#1104).</summary>
-    procedure AddNumberKeys(ABase: Integer; APriority, AJump: Boolean);
+    /// <summary>Taste eines Moduls (#1455) nach ihrem Vorrang.</summary>
+    procedure AddModuleKey(const AKey: TAtlasModuleKey);
   public
     constructor Create;
     destructor Destroy; override;
@@ -127,9 +123,6 @@ uses
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Search.Commands,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Bookmarks.Service,
-  Atlas.IDE.Bookmarks.QuickChord,
-  Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.Editor.ExitPoints,
@@ -164,6 +157,24 @@ begin
       for mKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
         if SameText(mKey.Id, AId) then
           Exit(mKey.Attempt());
+    end;
+end;
+
+/// <summary>Taste AId eines Moduls ohne Rückfall (#1455): läuft nach der Tastenverarbeitung, sucht die Taste dann
+/// neu (Regel 3).</summary>
+function ModuleRun(const AId: string): TProc;
+begin
+  Result :=
+    procedure
+    var
+      mKey: TAtlasModuleKey;
+    begin
+      for mKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
+        if SameText(mKey.Id, AId) and Assigned(mKey.Run) then
+        begin
+          mKey.Run();
+          Exit;
+        end;
     end;
 end;
 
@@ -341,40 +352,27 @@ begin
   FBound := FBound + IntToStr(AKey) + ';';
 end;
 
-/// <summary>Befehl für Nummer ANumber: eigene Funktion, damit jede anonyme Methode ihre Nummer behält.</summary>
-function NumberProc(ANumber: Integer; AJump: Boolean): TProc;
+procedure TAtlasIdeEditorKeys.AddModuleKey(const AKey: TAtlasModuleKey);
 begin
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
-        procedure
-        begin
-          if AJump then
-            TAtlasIdeBookmarks.QuickJump(ANumber)
-          else
-            TAtlasIdeBookmarks.QuickSetNumber(ANumber);
-        end);
-    end;
-end;
-
-procedure TAtlasIdeEditorKeys.AddNumberKeys(ABase: Integer; APriority, AJump: Boolean);
-var
-  Number: Integer;
-  Key: Word;
-  What: string;
-begin
-  for Number := 1 to TAtlasQuickBookmarks.MaxNumber do
-  begin
-    Key := TAtlasQuickBookmarks.KeyFor(Word(ABase), Number);
-    if Key = 0 then
-      Exit;
-    if AJump then
-      What := TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkJumpN, [Number])
+  // Fehler im Modul schalten nur die Editorbefehle ab, nicht das Modul; Module sichern ihre Befehle selbst.
+  if Assigned(AKey.Attempt) then
+    case AKey.Priority of
+      TAtlasKeyPriority.Take:
+        AddPriorityAttemptKey(TAtlasFeature.EditorCommands, AKey.Key, AKey.Caption, ModuleAttempt(AKey.Id), True);
+      TAtlasKeyPriority.Yield:
+        AddPriorityAttemptKey(TAtlasFeature.EditorCommands, AKey.Key, AKey.Caption, ModuleAttempt(AKey.Id), False);
     else
-      What := TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkSetN, [Number]);
-    AddPriorityKey(TAtlasFeature.QuickBookmarks, Key, What, NumberProc(Number, AJump), APriority);
-  end;
+      AddAttemptKey(TAtlasFeature.EditorCommands, AKey.Key, AKey.Caption, ModuleAttempt(AKey.Id));
+    end
+  else
+    case AKey.Priority of
+      TAtlasKeyPriority.Take:
+        AddPriorityKey(TAtlasFeature.EditorCommands, AKey.Key, AKey.Caption, ModuleRun(AKey.Id), True);
+      TAtlasKeyPriority.Yield:
+        AddPriorityKey(TAtlasFeature.EditorCommands, AKey.Key, AKey.Caption, ModuleRun(AKey.Id), False);
+    else
+      AddKey(TAtlasFeature.EditorCommands, AKey.Key, AKey.Caption, ModuleRun(AKey.Id));
+    end;
 end;
 
 procedure TAtlasIdeEditorKeys.Rebind;
@@ -600,8 +598,9 @@ begin
           end);
       end);
   // Tasten der Module (#1455), z. B. „Gezielt hineinspringen“ des Debuggers: ohne Treffer an die IDE.
+  // Lesezeichen (#622, #1104) samt Akkord und Zifferntasten kommen ebenso vom Modul.
   for mModuleKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
-    AddAttemptKey(TAtlasFeature.EditorCommands, mModuleKey.Key, mModuleKey.Caption, ModuleAttempt(mModuleKey.Id));
+    AddModuleKey(mModuleKey);
   // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; mit Vorrang
   // übernommen. Aus = das Kürzel gehört der IDE.
   if Settings.ExpressionType then
@@ -693,48 +692,6 @@ begin
           end);
       end);
   end;
-  // Benannte Lesezeichen (#622): aus = keine Taste, die IDE-Lesezeichen bleiben unberührt.
-  if Settings.BookmarksNamed then
-    AddKey(TAtlasFeature.Bookmarks, Settings.BookmarkKey, TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Bookmarks,
-          procedure
-          begin
-            TAtlasIdeBookmarks.AddBookmark;
-          end);
-      end);
-  // Schnelle Lesezeichen (#1104): aus = alle Tasten gehören wieder der IDE.
-  if Settings.QuickBookmarks then
-  begin
-    if Settings.QuickBookmarksNumberedKeys then
-    begin
-      AddNumberKeys(Settings.QuickBookmarkSetKey, Settings.QuickBookmarkSetKeyPriority, False);
-      AddNumberKeys(Settings.QuickBookmarkJumpKey, Settings.QuickBookmarkJumpKeyPriority, True);
-    end;
-    // Wartezeit 0: Strg+Umschalt+K bleibt bei der IDE.
-    if Settings.QuickBookmarkChordWait > 0 then
-      AddPriorityAttemptKey(TAtlasFeature.QuickBookmarks, Settings.QuickBookmarkKey,
-        TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand),
-        function: Boolean
-        begin
-          Result := TAtlasIdeQuickChord.Pressed;
-        end,
-        Settings.QuickBookmarkKeyPriority);
-    AddKey(TAtlasFeature.QuickBookmarks, Settings.NextBookmarkKey, TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand),
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.NextBookmark);
-      end);
-    AddKey(TAtlasFeature.QuickBookmarks, Settings.PreviousBookmarkKey,
-      TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand),
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.PreviousBookmark);
-      end);
-  end
-  else
-    TAtlasIdeQuickChord.Release;
   // Erzeugen-Menü (#719): aus = Alt+Einfg bleibt frei.
   if Settings.GenerateMenu then
     AddKey(TAtlasFeature.Generate, Settings.GenerateMenuKey, TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),

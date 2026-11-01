@@ -292,6 +292,7 @@ end;
 procedure TAtlasModuleScope.Own(const ARegistration: IAtlasRegistration);
 var
   mOpen: Boolean;
+  mIndex: Integer;
 begin
   if ARegistration = nil then
     Exit;
@@ -299,7 +300,13 @@ begin
   try
     mOpen := FOpen;
     if mOpen then
+    begin
+      // Schon gelöste Anmeldungen (etwa gelieferte Antworten) fallen weg, damit die Liste nicht wächst.
+      for mIndex := FOwned.Count - 1 downto 0 do
+        if FOwned[mIndex].IsRevoked then
+          FOwned.Delete(mIndex);
       FOwned.Add(ARegistration);
+    end;
   finally
     FLock.Release;
   end;

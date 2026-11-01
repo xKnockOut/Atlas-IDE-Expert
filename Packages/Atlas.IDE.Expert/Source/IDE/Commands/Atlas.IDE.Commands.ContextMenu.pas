@@ -176,7 +176,7 @@ var
   mCommand: TAtlasModuleCommand;
 begin
   // Befehl neu suchen: Seit dem Belegen kann sich das Modul abgemeldet haben (Regel 3).
-  if (ASlot > High(FModuleIds)) or (FModuleIds[ASlot] = '') or
+  if (ASlot > High(FModuleIds)) or (FModuleIds[ASlot] = '') or (FModuleIds[ASlot] = '-') or
     not TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, FModuleIds[ASlot], mCommand) or
     not Assigned(mCommand.Run) then
   begin
@@ -190,20 +190,51 @@ end;
 procedure TAtlasIdeContextMenu.UpdateModuleSlots;
 var
   mCommands: TArray<TAtlasModuleCommand>;
+  mVisible: TArray<Boolean>;
   mEntry: TAtlasMenuEntry;
   mCommand: TAtlasModuleCommand;
-  mIndex, mSlot, mKey: Integer;
+  mIndex, mSlot, mKey, mLast: Integer;
   mCaption: string;
+  mSeen: Boolean;
 begin
   if Length(FModuleIds) = 0 then
     Exit;
   mCommands := nil;
   for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.EditorContext) do
-    if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
+    if mEntry.CommandId = '-' then
+    begin
+      mCommand := Default(TAtlasModuleCommand);
+      mCommand.Id := '-';
+      mCommand.Caption := '-';
+      mCommands := mCommands + [mCommand];
+    end
+    else if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
       mCommands := mCommands + [mCommand];
   if Length(mCommands) > Length(FModuleIds) then
     TAtlasGuard.Log(Format('Kontextmenü: %d Einträge der Module, nur %d Plätze',
       [Length(mCommands), Length(FModuleIds)]));
+  // Sichtbarkeit: Befehle nach Visible, Trennlinien nur zwischen sichtbaren Befehlen.
+  SetLength(mVisible, Length(mCommands));
+  mSeen := False;
+  mLast := -1;
+  for mIndex := 0 to High(mCommands) do
+    if mCommands[mIndex].Id = '-' then
+    begin
+      mVisible[mIndex] := False;
+      if mSeen then
+        mLast := mIndex;
+    end
+    else
+    begin
+      mVisible[mIndex] := TAtlasModuleContributions.IsVisible(mCommands[mIndex]);
+      if mVisible[mIndex] then
+      begin
+        if mLast >= 0 then
+          mVisible[mLast] := True;
+        mLast := -1;
+        mSeen := True;
+      end;
+    end;
   for mIndex := 0 to Min(High(FEntries), High(FItems)) do
   begin
     mSlot := FEntries[mIndex].Slot;
@@ -225,7 +256,7 @@ begin
         mCaption := mCaption + #9 + ShortCutToText(TShortCut(mKey));
     end;
     TAction(FItems[mIndex]).Caption := mCaption;
-    TAction(FItems[mIndex]).Visible := TAtlasModuleContributions.IsVisible(mCommand);
+    TAction(FItems[mIndex]).Visible := mVisible[mSlot];
   end;
 end;
 

@@ -2,7 +2,9 @@
 
 // Gemeinsame Zeichenschicht der Rinne (#401) für Markierungen an Codezeilen,
 // genutzt von den persönlichen Notizen (#545) und den benannten Lesezeichen
-// (#622). Jede Art meldet sich als Schicht (TAtlasGutterLayer) an; ein
+// (#622). Jede Art meldet sich als Schicht (IAtlasGutterLayer) an: Base
+// über Add, Module über ihren Scope (#1455; die Liste folgt der Registry
+// sofort, ein abgemeldetes Modul erreicht keine Zeichnung mehr); ein
 // einziger Editor-Notifier zeichnet, zeigt Tooltips und merkt Rechtsklicks:
 // - Zeichnen: am Ende des Zeichnens jeder Rinnenzeile (letzte Stufe von
 //   TPaintGutterStage, nach der IDE) je Schicht mit Markierung an der Zeile
@@ -10,7 +12,7 @@
 //   Schichten (IconRect). Rechteck, Zeile und Symbole jeder gezeichneten
 //   Rinnenzeile werden gemerkt.
 // - Überfahren eines Symbols zeigt nach HoverMs den Tooltip seiner Schicht
-//   (TAtlasNoteTip), auf Wunsch der Schicht mit anklickbaren Links darunter
+//   (TAtlasTitledTip), auf Wunsch der Schicht mit anklickbaren Links darunter
 //   (TipLinks, OpenLink; etwa die Kette der Rekursionssymbole #623).
 // - Rechtsklick in die Rinne merkt die Zeile für die Befehle im
 //   Atlas-Untermenü des Kontextmenüs (TakeLine, höchstens LineMs alt, gleiche
@@ -41,36 +43,55 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Elements,
-  Atlas.UI.Notes.Tip;
+  Atlas.Core.Modules.Watch,
+  Atlas.UI.Popup.TitledTip;
 
 type
   /// <summary>Eine Art von Markierung in der Rinne. Alle Aufrufe im Hauptthread; Ausnahmen fängt
-  /// TAtlasIdeGutterMarks ab und meldet sie an Feature.</summary>
-  TAtlasGutterLayer = class abstract
-  public
+  /// TAtlasIdeGutterMarks ab und meldet sie an Feature. Module stellen ihre Schichten über den Scope bereit
+  /// (#1455).</summary>
+  IAtlasGutterLayer = interface
+    ['{786A046F-579E-44EA-AF15-1EBA159AF606}']
     /// <summary>Sicherung (#493): Fehler gehen an dieses Feature; ist es abgeschaltet, ruht die Schicht.</summary>
-    function Feature: TAtlasFeature; virtual; abstract;
+    function Feature: TAtlasFeature;
     /// <summary>Gezeichnetes Element für „Ausblenden“ (#628).</summary>
-    function Element: TAtlasDrawnElement; virtual; abstract;
+    function Element: TAtlasDrawnElement;
     /// <summary>Einstellung an.</summary>
-    function Wanted: Boolean; virtual; abstract;
+    function Wanted: Boolean;
     /// <summary>Oberer Editor zeigt AFileName mit AText: neu verankern. AOpened: Datei ist gerade nach vorn
     /// gekommen (sonst nach einer Tipp-Pause, nur bei HasMarks).</summary>
-    procedure Track(const AFileName, AText: string; AOpened: Boolean); virtual; abstract;
+    procedure Track(const AFileName, AText: string; AOpened: Boolean);
     /// <summary>Hat AFileName Markierungen (ohne IDE-Aufrufe, zum Zeichnen)?</summary>
-    function HasMarks(const AFileName: string): Boolean; virtual; abstract;
+    function HasMarks(const AFileName: string): Boolean;
     /// <summary>Markierung an ALine (0-basiert)? ALineText ist der Text der Zeile im Editor, sofern AHasText:
     /// Passt er nicht mehr zum Anker, wartet das Symbol auf die nächste Verankerung.</summary>
     function MarkAt(const AFileName: string; ALine: Integer; const ALineText: string;
-      AHasText: Boolean): Boolean; virtual; abstract;
+      AHasText: Boolean): Boolean;
     /// <summary>Symbol in AIcon zeichnen; AColors passt zum Grund ABack.</summary>
     procedure PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
-      ABack: TAtlasColor); virtual; abstract;
+      ABack: TAtlasColor);
     /// <summary>Überschrift und Text des Tooltips; False ohne Markierung.</summary>
-    function TipText(const AFileName: string; ALine: Integer; out ATitle, AText: string): Boolean; virtual; abstract;
+    function TipText(const AFileName: string; ALine: Integer; out ATitle, AText: string): Boolean;
     /// <summary>Links unter dem Text des Tooltips; ohne Überschreiben keine.</summary>
-    function TipLinks(const AFileName: string; ALine: Integer): TArray<string>; virtual;
+    function TipLinks(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>Klick auf Link Nummer AIndex (ab 0) des Tooltips an ALine.</summary>
+    procedure OpenLink(const AFileName: string; ALine, AIndex: Integer);
+  end;
+
+  /// <summary>Grundlage einer Schicht: ohne Links im Tooltip.</summary>
+  TAtlasGutterLayer = class abstract(TInterfacedObject, IAtlasGutterLayer)
+  public
+    function Feature: TAtlasFeature; virtual; abstract;
+    function Element: TAtlasDrawnElement; virtual; abstract;
+    function Wanted: Boolean; virtual; abstract;
+    procedure Track(const AFileName, AText: string; AOpened: Boolean); virtual; abstract;
+    function HasMarks(const AFileName: string): Boolean; virtual; abstract;
+    function MarkAt(const AFileName: string; ALine: Integer; const ALineText: string;
+      AHasText: Boolean): Boolean; virtual; abstract;
+    procedure PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
+      ABack: TAtlasColor); virtual; abstract;
+    function TipText(const AFileName: string; ALine: Integer; out ATitle, AText: string): Boolean; virtual; abstract;
+    function TipLinks(const AFileName: string; ALine: Integer): TArray<string>; virtual;
     procedure OpenLink(const AFileName: string; ALine, AIndex: Integer); virtual;
   end;
 
@@ -106,12 +127,16 @@ type
     FClickLine: Integer;
     FClickAt: UInt64;
   private
-    FLayers: TObjectList<TAtlasGutterLayer>;
+    /// <summary>Schichten von Base (Add) und der Module (FWatch); FLayers ist beides in dieser Reihenfolge:
+    /// Module zuerst, wie bis #1455 Notizen und Lesezeichen vor den Rekursionssymbolen.</summary>
+    FOwn: TArray<IAtlasGutterLayer>;
+    FWatch: TAtlasProvidedWatch;
+    FLayers: TArray<IAtlasGutterLayer>;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FTimer: TTimer;
-    FTip: TAtlasNoteTip;
+    FTip: TAtlasTitledTip;
     /// <summary>Je Bildschirmzeile des Editors (EditorLineNum) die zuletzt gezeichnete Rinnenzeile.</summary>
     FRows: TDictionary<Integer, TRow>;
     FFileName: string;
@@ -125,7 +150,8 @@ type
     FHoverSince: UInt64;
     FHoverScreen: TRect;
     FShowing: Boolean;
-    function Active(ALayer: TAtlasGutterLayer): Boolean;
+    function Active(const ALayer: IAtlasGutterLayer): Boolean;
+    procedure LayersChanged;
     function AnyActive: Boolean;
     function GuardFeature: TAtlasFeature;
     function TopView: IOTAEditView;
@@ -142,8 +168,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    /// <summary>Schicht anmelden; gehört danach diesem Objekt. Die Reihenfolge bestimmt die Lage der Symbole.</summary>
-    procedure Add(ALayer: TAtlasGutterLayer);
+    /// <summary>Schicht von Base anmelden. Die Reihenfolge bestimmt die Lage der Symbole.</summary>
+    procedure Add(const ALayer: IAtlasGutterLayer);
+    /// <summary>Will eine der Schichten der Module zeichnen (für den abgesicherten Start, #722)?</summary>
+    class function ModuleLayersWanted: Boolean; static;
     /// <summary>Editor neu zeichnen (etwa nach einer Änderung über einen Befehl).</summary>
     class procedure Invalidate; static;
     /// <summary>Rechteck des Symbols Nummer ASlot (0 = ganz links) in einer Rinnenzeile AGutter: senkrecht
@@ -163,6 +191,7 @@ uses
   Winapi.Windows,
   System.Math,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Modules.Registry,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
@@ -202,9 +231,10 @@ begin
   inherited Create;
   FIndex := -1;
   FHoverLayer := -1;
-  FLayers := TObjectList<TAtlasGutterLayer>.Create(True);
+  FWatch := TAtlasProvidedWatch.Create(AtlasModuleRegistry, IAtlasGutterLayer);
+  FWatch.OnChanged := LayersChanged;
   FRows := TDictionary<Integer, TRow>.Create;
-  FTip := TAtlasNoteTip.Create(nil);
+  FTip := TAtlasTitledTip.Create(nil);
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintGutter := PaintGutter;
@@ -216,6 +246,8 @@ begin
   FTimer.Interval := 100;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
+  // Schichten der schon angemeldeten Module.
+  LayersChanged;
 end;
 
 destructor TAtlasIdeGutterMarks.Destroy;
@@ -236,17 +268,54 @@ begin
   FTip.OnLink := nil;
   FTip.Free;
   FRows.Free;
-  FLayers.Free;
+  FreeAndNil(FWatch);
+  FLayers := nil;
+  FOwn := nil;
   ForgetLine;
   inherited Destroy;
 end;
 
-procedure TAtlasIdeGutterMarks.Add(ALayer: TAtlasGutterLayer);
+procedure TAtlasIdeGutterMarks.Add(const ALayer: IAtlasGutterLayer);
 begin
-  FLayers.Add(ALayer);
-  FRows.Clear;
-  // Die neue Schicht soll die Datei vorn sofort kennen.
+  FOwn := FOwn + [ALayer];
+  LayersChanged;
+end;
+
+procedure TAtlasIdeGutterMarks.LayersChanged;
+var
+  mItem: IInterface;
+  mLayer: IAtlasGutterLayer;
+begin
+  // Gemerkte Zeilen und der Tooltip zeigen auf Schichten nach ihrer Nummer; nach einer Änderung gilt keine mehr.
+  HideTip;
+  if FTip <> nil then
+    FTip.OnLink := nil;
+  FHovering := False;
+  FHoverLayer := -1;
+  FLayers := nil;
+  if FWatch <> nil then
+    for mItem in FWatch.Items do
+      if Supports(mItem, IAtlasGutterLayer, mLayer) then
+        FLayers := FLayers + [mLayer];
+  FLayers := FLayers + FOwn;
+  if FRows <> nil then
+    FRows.Clear;
+  // Eine neue Schicht soll die Datei vorn sofort kennen.
   FFileName := '';
+  Invalidate;
+end;
+
+class function TAtlasIdeGutterMarks.ModuleLayersWanted: Boolean;
+var
+  mItem: IInterface;
+  mLayer: IAtlasGutterLayer;
+begin
+  Result := False;
+  if AtlasModuleRegistry = nil then
+    Exit;
+  for mItem in AtlasModuleRegistry.FindAll(IAtlasGutterLayer) do
+    if Supports(mItem, IAtlasGutterLayer, mLayer) and mLayer.Wanted then
+      Exit(True);
 end;
 
 class procedure TAtlasIdeGutterMarks.Invalidate;
@@ -292,14 +361,14 @@ begin
   ForgetLine;
 end;
 
-function TAtlasIdeGutterMarks.Active(ALayer: TAtlasGutterLayer): Boolean;
+function TAtlasIdeGutterMarks.Active(const ALayer: IAtlasGutterLayer): Boolean;
 begin
   Result := not TAtlasGuard.Disabled(ALayer.Feature) and ALayer.Wanted;
 end;
 
 function TAtlasIdeGutterMarks.AnyActive: Boolean;
 var
-  Layer: TAtlasGutterLayer;
+  Layer: IAtlasGutterLayer;
 begin
   Result := False;
   for Layer in FLayers do
@@ -318,13 +387,13 @@ end;
 
 function TAtlasIdeGutterMarks.GuardFeature: TAtlasFeature;
 var
-  Layer: TAtlasGutterLayer;
+  Layer: IAtlasGutterLayer;
 begin
   // Fehler außerhalb einer Schicht (Puffer lesen, Tooltip) gehen an die erste aktive Schicht.
   for Layer in FLayers do
     if Active(Layer) then
       Exit(Layer.Feature);
-  if FLayers.Count > 0 then
+  if Length(FLayers) > 0 then
     Result := FLayers[0].Feature
   else
     Result := TAtlasFeature.Notes;
@@ -359,7 +428,7 @@ procedure TAtlasIdeGutterMarks.Track;
 var
   View: IOTAEditView;
   Text: string;
-  Layer: TAtlasGutterLayer;
+  Layer: IAtlasGutterLayer;
   Tracked: Boolean;
 begin
   View := TopView;
@@ -451,7 +520,7 @@ var
   OldBrush: TBrush;
   OldPen: TPen;
   Index: Integer;
-  Layer: TAtlasGutterLayer;
+  Layer: IAtlasGutterLayer;
   Prepared: Boolean;
 begin
   if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (Context = nil) or (Context.EditView = nil) then
@@ -470,7 +539,7 @@ begin
   Colors := TAtlasColors.Light;
   Back := 0;
   Prepared := False;
-  for Index := 0 to FLayers.Count - 1 do
+  for Index := 0 to High(FLayers) do
   begin
     Layer := FLayers[Index];
     if TAtlasGuard.Disabled(Layer.Feature) then
@@ -597,11 +666,11 @@ end;
 
 procedure TAtlasIdeGutterMarks.ShowTip;
 var
-  Layer: TAtlasGutterLayer;
+  Layer: IAtlasGutterLayer;
   Title, Text, FileName: string;
   Line: Integer;
 begin
-  if (FHoverLayer < 0) or (FHoverLayer >= FLayers.Count) then
+  if (FHoverLayer < 0) or (FHoverLayer > High(FLayers)) then
   begin
     FHovering := False;
     Exit;
