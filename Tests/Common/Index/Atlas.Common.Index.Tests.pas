@@ -190,6 +190,14 @@ type
     procedure ReadOnlyServiceWaitsForOtherWriter;
     [Test]
     procedure ServiceSharesLibraryCache;
+    /// <summary>Speicher (Rückmeldung 01.11.2026): Suchpfad-Units stehen in einem gemeinsamen Cache statt im Cache
+    /// jedes Projekts; ein zweites Projekt mit denselben Suchpfaden liest sie von dort.</summary>
+    [Test]
+    procedure ServiceSharesSearchPathCache;
+    /// <summary>Speicher (Rückmeldung 01.11.2026): Ein weiteres Projekt der Gruppe übernimmt Units, die mit gleichem
+    /// Stand und gleichen Defines schon im Index stehen, nicht noch einmal; mit anderen Defines liest es neu.</summary>
+    [Test]
+    procedure BuilderSkipsUnitsAlreadyIndexed;
     /// <summary>Ergänzt ein anderer Schreiber den Bibliotheks-Cache, nachdem dieser Aufbau ihn gelesen hat,
     /// bleiben dessen Units erhalten (Bericht N1).</summary>
     [Test]
@@ -2381,6 +2389,76 @@ begin
   finally
     Names.Free;
   end;
+end;
+
+procedure TIndexBuilderTests.ServiceSharesSearchPathCache;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Data: TBytes;
+  FromCache: Integer;
+begin
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.SearchFiles := ['C:\Lib\F.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\projekt1.json';
+    Request.LibraryCacheFile := 'C:\Cache\bibliothek.json';
+    Request.SearchCacheFile := 'C:\Cache\suchpfade.json';
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt1.json', Data));
+  Assert.AreEqual('A.PAS,P.DPR', CachedNames(Data), 'Suchpfad-Unit nicht im Projekt-Cache');
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\suchpfade.json', Data));
+  Assert.AreEqual('F.PAS', CachedNames(Data));
+  // Zweites Projekt mit denselben Suchpfaden: F kommt aus dem gemeinsamen Cache.
+  FIndex := TSymbolIndex.Create;
+  FromCache := -1;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnFinished :=
+      procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+      begin
+        FromCache := AResult.FromCache;
+      end;
+    Request.CacheFile := 'C:\Cache\projekt2.json';
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  Assert.AreEqual(4, FromCache, 'Bibliothek und Suchpfad-Unit aus den gemeinsamen Caches');
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt2.json', Data));
+  Assert.AreEqual('A.PAS,P.DPR', CachedNames(Data));
+end;
+
+procedure TIndexBuilderTests.BuilderSkipsUnitsAlreadyIndexed;
+
+  function Parsed(const ADefines: TArray<string>): Integer;
+  var
+    mBuilder: TIndexBuilder;
+  begin
+    mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, ADefines, Resolve);
+    try
+      Result := mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], nil, nil, nil, nil).Parsed;
+    finally
+      mBuilder.Free;
+    end;
+  end;
+
+begin
+  Assert.IsTrue(Parsed(['WIN64']) > 0);
+  // Der zweite Lauf findet über die implementation-uses der Bibliothek noch Units (E); danach ist alles da.
+  Parsed(['WIN64']);
+  Assert.AreEqual(0, Parsed(['WIN64']), 'gleiche Defines: nichts erneut übernehmen');
+  // Projektdateien (P, A) mit anderen Defines neu. Suchpfad-Units (F) und über uses erreichte überspringt der
+  // Aufbau wie bisher, sobald sie im Index stehen.
+  Assert.AreEqual(2, Parsed(['WIN64', 'DEBUG']), 'andere Defines: Projektdateien neu einlesen');
 end;
 
 procedure TIndexBuilderTests.ServiceKeepsLibraryUnitsOfOtherWriters;
