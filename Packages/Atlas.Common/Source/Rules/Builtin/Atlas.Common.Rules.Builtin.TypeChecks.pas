@@ -625,18 +625,15 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-      for Node in PreOrder(AContext.Tree.Root) do
-        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and
-          MatchText(Node[0].Name, ['New', 'Dispose', 'SetLength']) then
-          CheckCall(Node);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+    for Node in PreOrder(AContext.Tree.Root) do
+      if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and
+        MatchText(Node[0].Name, ['New', 'Dispose', 'SetLength']) then
+        CheckCall(Node);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -881,19 +878,16 @@ begin
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
     Resolver := TRuleDerived.Resolver(mCache, AContext);
+    Resolver.PinTree(AContext.Tree, FileName);
     try
-      Resolver.PinTree(AContext.Tree, FileName);
-      try
-        Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-        for Node in Nodes do
-          if (Node.Kind = TSyntaxKind.Identifier) and (Names.IndexOf(Node.Name) >= 0) then
-            CheckName(Node)
-          else if Node.Kind = TSyntaxKind.ConstDecl then
-            CheckConstant(Node);
-      finally
-        Resolver.UnpinTree;
-      end;
+      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      for Node in Nodes do
+        if (Node.Kind = TSyntaxKind.Identifier) and (Names.IndexOf(Node.Name) >= 0) then
+          CheckName(Node)
+        else if Node.Kind = TSyntaxKind.ConstDecl then
+          CheckConstant(Node);
     finally
+      Resolver.UnpinTree;
     end;
   finally
     Names.Free;
@@ -1099,18 +1093,15 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-      Nodes := PreOrder(AContext.Tree.Root);
-      for Symbol in Local.Symbols do
-        if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Length(Symbol.Ancestors) > 0) then
-          CheckClass(Symbol);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+    Nodes := PreOrder(AContext.Tree.Root);
+    for Symbol in Local.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Length(Symbol.Ancestors) > 0) then
+        CheckClass(Symbol);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -1443,19 +1434,16 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-      for Node in PreOrder(AContext.Tree.Root) do
-        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 1) then
-          CheckCall(Node)
-        else if Node.Kind = TSyntaxKind.AddressOf then
-          CheckAddress(Node);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+    for Node in PreOrder(AContext.Tree.Root) do
+      if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 1) then
+        CheckCall(Node)
+      else if Node.Kind = TSyntaxKind.AddressOf then
+        CheckAddress(Node);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -1544,26 +1532,23 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-      for Node in PreOrder(AContext.Tree.Root) do
-        case Node.Kind of
-          TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.IfExpr:
-            if Node.ChildCount > 0 then
-              CheckCondition(Node[0]);
-          TSyntaxKind.RepeatStatement:
-            // Die Bedingung hinter until ist das letzte Kind.
-            if Node.ChildCount > 0 then
-              CheckCondition(Node[Node.ChildCount - 1]);
-        else
-          // Übrige Werte bewusst ohne Wirkung.
-        end;
-    finally
-      Resolver.UnpinTree;
-    end;
+    Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+    for Node in PreOrder(AContext.Tree.Root) do
+      case Node.Kind of
+        TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.IfExpr:
+          if Node.ChildCount > 0 then
+            CheckCondition(Node[0]);
+        TSyntaxKind.RepeatStatement:
+          // Die Bedingung hinter until ist das letzte Kind.
+          if Node.ChildCount > 0 then
+            CheckCondition(Node[Node.ChildCount - 1]);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -1683,16 +1668,13 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      for Node in PreOrder(AContext.Tree.Root) do
-        if Node.Kind = TSyntaxKind.ForInStatement then
-          CheckLoop(Node);
-    finally
-      Resolver.UnpinTree;
-    end;
+    for Node in PreOrder(AContext.Tree.Root) do
+      if Node.Kind = TSyntaxKind.ForInStatement then
+        CheckLoop(Node);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 

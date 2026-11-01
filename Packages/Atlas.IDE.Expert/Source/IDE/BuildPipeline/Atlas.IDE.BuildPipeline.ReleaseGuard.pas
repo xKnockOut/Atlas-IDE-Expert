@@ -1,7 +1,7 @@
-﻿unit Atlas.IDE.Build.ReleaseGuard;
+﻿unit Atlas.IDE.BuildPipeline.ReleaseGuard;
 
 // Release-Build-Wächter in der IDE (#533); Entscheidung und Prüfungen in
-// Atlas.Core.Build.ReleaseGuard.
+// Atlas.Core.BuildPipeline.ReleaseGuard.
 // - Optionen: aus der laufenden IDE (#396) über TAtlasIdeProjectContext für
 //   die Konfiguration und Plattform des Builds, mit geerbten Werten und
 //   ungespeicherten Änderungen, nicht aus der .dproj auf der Platte. Der
@@ -27,7 +27,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.ReleaseGuard;
+  Atlas.Core.BuildPipeline.ReleaseGuard;
 
 type
   TAtlasIdeReleaseGuard = class
@@ -67,7 +67,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Projects.Context,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.BuildPipeline.Strings;
 
 function NowUtc: TDateTime;
 begin
@@ -180,7 +181,8 @@ begin
           TAtlasGuard.Report(TAtlasFeature.Build, E);
       end;
       if not Result then
-        Say(TAtlasStrings.Fmt(TAtlasTextId.ReleaseUnreadable, [ExtractFileName(AProject.FileName)]));
+        Say(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseUnreadable,
+          [ExtractFileName(AProject.FileName)]));
     end,
     function(const AOptions: TAtlasReleaseOptions; const AFindings: TAtlasReleaseFindings;
       AOutcome: TAtlasReleaseOutcome): string
@@ -241,15 +243,17 @@ end;
 class function TAtlasIdeReleaseGuard.FindingText(const AOptions: TAtlasReleaseOptions;
   const AFinding: TAtlasReleaseFinding): string;
 const
-  Ids: array[TAtlasReleaseIssue] of TAtlasTextId = (TAtlasTextId.ReleaseIssueDebugDefine,
-    TAtlasTextId.ReleaseIssueDebugInfo, TAtlasTextId.ReleaseIssueDebugInfoInExe, TAtlasTextId.ReleaseIssueStackFrames,
-    TAtlasTextId.ReleaseIssueAssertions, TAtlasTextId.ReleaseIssueRangeChecks,
-    TAtlasTextId.ReleaseIssueOverflowChecks, TAtlasTextId.ReleaseIssueMemoryLeaks,
-    TAtlasTextId.ReleaseIssueVersionMissing, TAtlasTextId.ReleaseIssueVersionUnchanged,
-    TAtlasTextId.ReleaseIssueOutputFolder);
-  States: array[Boolean] of TAtlasTextId = (TAtlasTextId.ReleaseOff, TAtlasTextId.ReleaseOn);
+  Ids: array[TAtlasReleaseIssue] of TAtlasBuildPipelineTextId = (
+    TAtlasBuildPipelineTextId.ReleaseIssueDebugDefine, TAtlasBuildPipelineTextId.ReleaseIssueDebugInfo,
+    TAtlasBuildPipelineTextId.ReleaseIssueDebugInfoInExe, TAtlasBuildPipelineTextId.ReleaseIssueStackFrames,
+    TAtlasBuildPipelineTextId.ReleaseIssueAssertions, TAtlasBuildPipelineTextId.ReleaseIssueRangeChecks,
+    TAtlasBuildPipelineTextId.ReleaseIssueOverflowChecks, TAtlasBuildPipelineTextId.ReleaseIssueMemoryLeaks,
+    TAtlasBuildPipelineTextId.ReleaseIssueVersionMissing, TAtlasBuildPipelineTextId.ReleaseIssueVersionUnchanged,
+    TAtlasBuildPipelineTextId.ReleaseIssueOutputFolder);
+  States: array[Boolean] of TAtlasBuildPipelineTextId = (TAtlasBuildPipelineTextId.ReleaseOff,
+    TAtlasBuildPipelineTextId.ReleaseOn);
 var
-  Id: TAtlasTextId;
+  Id: TAtlasBuildPipelineTextId;
   Configuration, Platform, Text: string;
 begin
   Id := Ids[AFinding.Issue];
@@ -258,14 +262,14 @@ begin
   case AFinding.Issue of
     TAtlasReleaseIssue.DebugInfo, TAtlasReleaseIssue.StackFrames, TAtlasReleaseIssue.Assertions,
     TAtlasReleaseIssue.RangeChecks, TAtlasReleaseIssue.OverflowChecks:
-      Text := TAtlasStrings.Fmt(Id, [TAtlasStrings.Text(States[not AFinding.Expected]),
-        TAtlasStrings.Text(States[AFinding.Expected]), Configuration, Platform]);
+      Text := TAtlasBuildPipelineStrings.Fmt(Id, [TAtlasBuildPipelineStrings.Text(States[not AFinding.Expected]),
+        TAtlasBuildPipelineStrings.Text(States[AFinding.Expected]), Configuration, Platform]);
     TAtlasReleaseIssue.MemoryLeaks:
-      Text := TAtlasStrings.Text(Id);
+      Text := TAtlasBuildPipelineStrings.Text(Id);
     TAtlasReleaseIssue.VersionUnchanged, TAtlasReleaseIssue.OutputFolder:
-      Text := TAtlasStrings.Fmt(Id, [AFinding.Value, Configuration, Platform]);
+      Text := TAtlasBuildPipelineStrings.Fmt(Id, [AFinding.Value, Configuration, Platform]);
   else
-    Text := TAtlasStrings.Fmt(Id, [Configuration, Platform]);
+    Text := TAtlasBuildPipelineStrings.Fmt(Id, [Configuration, Platform]);
   end;
   Result := '[' + TAtlasReleaseGuard.RuleIds[AFinding.Check] + '] ' + Text;
 end;
@@ -307,7 +311,8 @@ begin
   Count := Length(AFindings);
   Blocked := AOutcome = TAtlasReleaseOutcome.Blocked;
   if Blocked then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ReleaseBlockReason, [Count]) + ': ' + string.Join(', ', Rules);
+    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseBlockReason,
+      [Count]) + ': ' + string.Join(', ', Rules);
   // Projekt-Zusammenfassung (#592): letzte Prüfung, auch ohne Befund.
   Options := AOptions;
   Stamp := NowUtc;
@@ -329,7 +334,7 @@ begin
       end);
   if (Count = 0) or not MessageServices(Messages, Group) then
     Exit;
-  Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.ReleaseFindings, [Count,
+  Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseFindings, [Count,
     ExtractFileName(AOptions.Project), AOptions.Configuration, AOptions.Platform]), Group);
   for Finding in AFindings do
     if (Finding.FileName <> '') and (Finding.Line > 0) then
@@ -339,9 +344,9 @@ begin
       Messages.AddTitleMessage('  ' + FindingText(AOptions, Finding), Group);
   case AOutcome of
     TAtlasReleaseOutcome.Blocked:
-      Messages.AddTitleMessage(TAtlasStrings.Text(TAtlasTextId.ReleaseBlocked), Group);
+      Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.ReleaseBlocked), Group);
     TAtlasReleaseOutcome.Overridden:
-      Messages.AddTitleMessage(TAtlasStrings.Text(TAtlasTextId.ReleaseOverridden), Group);
+      Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.ReleaseOverridden), Group);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -381,7 +386,7 @@ begin
   if ASettings.IsRelease(Result) then
     Exit;
   for Name in TAtlasIdeProjectContext.Configurations(AProject) do
-    if SameText(Name, TAtlasReleaseGuard.ReleaseConfiguration) then
+    if SameText(Name, TAtlasBuildPipelineSettings.ReleaseConfiguration) then
       Exit(Name);
   for Name in TAtlasIdeProjectContext.Configurations(AProject) do
     if ASettings.IsRelease(Name) then
@@ -402,23 +407,26 @@ begin
     Project := Modules.GetActiveProject;
   if Project = nil then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.ReleaseNoProject));
+    Say(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.ReleaseNoProject));
     Exit;
   end;
   Configuration := CheckConfiguration(Project, ASettings);
   if Configuration = '' then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.ReleaseNoConfiguration, [ExtractFileName(Project.FileName)]));
+    Say(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseNoConfiguration,
+      [ExtractFileName(Project.FileName)]));
     Exit;
   end;
   if not ReadOptions(Project, Configuration, Project.CurrentPlatform, AFolder, Options) then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.ReleaseUnreadable, [ExtractFileName(Project.FileName)]));
+    Say(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseUnreadable,
+      [ExtractFileName(Project.FileName)]));
     Exit;
   end;
   Findings := TAtlasReleaseGuard.Evaluate(ASettings, Options);
   if Length(Findings) = 0 then
-    Say(TAtlasStrings.Fmt(TAtlasTextId.ReleaseClean, [ExtractFileName(Options.Project), Options.Configuration,
+    Say(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseClean,
+      [ExtractFileName(Options.Project), Options.Configuration,
       Options.Platform]));
   Report(AFolder, Options, Findings, TAtlasReleaseOutcome.Reported);
 end;

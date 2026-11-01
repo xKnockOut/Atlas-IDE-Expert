@@ -75,7 +75,8 @@ type
   /// etwa die Tests nach dem Build (#69). Hauptthread, nach Zusammenfassung und Benachrichtigung.</summary>
   IAtlasBuildVerdictListener = interface
     ['{5F6C837F-1473-4EC8-B2F9-1A81BF8A7DAD}']
-    procedure BuildEvaluated(const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
+    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      const AVerdict: TAtlasBuildVerdict);
   end;
 
   TAtlasBuildVerdicts = class

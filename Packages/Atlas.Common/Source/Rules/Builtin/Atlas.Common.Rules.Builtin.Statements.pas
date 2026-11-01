@@ -14,7 +14,8 @@
 //   collection-modified-in-loop
 //                     Delete, Remove, Add … auf der Liste, über die die Schleife
 //                     gerade vorwärts per Index oder mit for … in läuft (#914).
-//                     Ein Break oder Exit direkt nach dem Aufruf beendet die
+//                     Ein Break oder Exit ohne Bedingung danach im selben Block
+//                     (Break nicht aus einer inneren Schleife) beendet die
 //                     Schleife und bleibt still; die Methoden nennt die Option
 //                     mutatingMethods.
 //   destroy-called-directly
@@ -894,16 +895,48 @@ var
         Inc(Result);
   end;
 
-  // Folgt auf die Anweisung mit dem Aufruf (ab ACall) direkt Break oder Exit?
-  function LeavesLoop(ACall, AStop: Integer): Boolean;
+  // Verlässt der Block mit dem Aufruf (ab ACall) die Schleife? Ja, wenn nach der Anweisung im selben Block ohne
+  // Bedingung Break oder Exit steht, auch nach weiteren Anweisungen (Merker setzen, Schlüssel austragen). Break zählt
+  // nur, wenn zwischen dem Rumpfanfang ABody und dem Aufruf keine innere Schleife beginnt; sonst verlässt es nur diese.
+  function LeavesLoop(ABody, ACall, AStop: Integer): Boolean;
   var
-    Semicolon, Next: Integer;
+    Index, Depth, Previous: Integer;
+    InnerLoop: Boolean;
   begin
-    Semicolon := DepthZero(Tokens, ACall, AStop, ';', False);
-    if Semicolon < 0 then
-      Exit(False);
-    Next := NextCode(Tokens, Semicolon + 1);
-    Result := (Next < AStop) and MatchText(Tokens[Next].Text, ['Break', 'Exit']);
+    Result := False;
+    InnerLoop := False;
+    for Index := ABody to ACall - 1 do
+      if (Tokens[Index].Kind = TPascalTokenKind.Keyword) and MatchText(Tokens[Index].Text, ['for', 'while', 'repeat']) then
+        InnerLoop := True;
+    Index := DepthZero(Tokens, ACall, AStop, ';', False);
+    if Index < 0 then
+      Exit;
+    Depth := 0;
+    Inc(Index);
+    while Index < AStop do
+    begin
+      if Tokens[Index].Kind = TPascalTokenKind.Keyword then
+      begin
+        if MatchText(Tokens[Index].Text, ['begin', 'try', 'case', 'repeat', 'asm']) then
+          Inc(Depth)
+        else if MatchText(Tokens[Index].Text, ['end', 'until']) then
+        begin
+          // Ende des Blocks mit dem Aufruf: kein Break, kein Exit.
+          if Depth = 0 then
+            Exit;
+          Dec(Depth);
+        end;
+      end
+      else if (Depth = 0) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
+        MatchText(Tokens[Index].Text, ['Break', 'Exit']) then
+      begin
+        // Nur am Anfang einer Anweisung; "if … then Break" ist bedingt.
+        Previous := PreviousCode(Tokens, Index);
+        if (Previous >= 0) and Tokens[Previous].IsSymbol(';') then
+          Exit(SameText(Tokens[Index].Text, 'Exit') or not InnerLoop);
+      end;
+      Inc(Index);
+    end;
   end;
 
   // Basis der Obergrenze: X in X.Count - 1, X.Count, High(X), Pred(X.Count), Length(X) - 1; sonst False.
@@ -964,7 +997,7 @@ var
       // Clear ohne Klammern ist auch ein Aufruf; sonst muss "(" folgen.
       if not SameText(Tokens[Index].Text, 'Clear') and ((Open >= AStop) or not Tokens[Open].IsSymbol('(')) then
         Continue;
-      if LeavesLoop(Index, AStop) then
+      if LeavesLoop(AFrom, Index, AStop) then
         Continue;
       Method := Tokens[Index].Text;
       Fixes := nil;
@@ -1288,14 +1321,11 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -2575,19 +2605,16 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
+    Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
     try
-      Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
-      try
-        Visit(AContext.Tree.Root);
-      finally
-        Values.Free;
-      end;
+      Visit(AContext.Tree.Root);
     finally
-      Resolver.UnpinTree;
+      Values.Free;
     end;
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -2783,14 +2810,11 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -2941,31 +2965,28 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      // Ohne Rekursion durch den Baum (#1094).
-      SetLength(Stack, 64);
-      Stack[0] := AContext.Tree.Root;
-      Count := 1;
-      while Count > 0 do
+    // Ohne Rekursion durch den Baum (#1094).
+    SetLength(Stack, 64);
+    Stack[0] := AContext.Tree.Root;
+    Count := 1;
+    while Count > 0 do
+    begin
+      Dec(Count);
+      Node := Stack[Count];
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
+        CheckAssignment(Node);
+      if Count + Node.ChildCount > Length(Stack) then
+        SetLength(Stack, 2 * (Count + Node.ChildCount));
+      for Index := Node.ChildCount - 1 downto 0 do
       begin
-        Dec(Count);
-        Node := Stack[Count];
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
-          CheckAssignment(Node);
-        if Count + Node.ChildCount > Length(Stack) then
-          SetLength(Stack, 2 * (Count + Node.ChildCount));
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Stack[Count] := Node[Index];
-          Inc(Count);
-        end;
+        Stack[Count] := Node[Index];
+        Inc(Count);
       end;
-    finally
-      Resolver.UnpinTree;
     end;
   finally
+    Resolver.UnpinTree;
   end;
 end;
 

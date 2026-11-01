@@ -147,17 +147,14 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
-  try
-    for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
-      if Name.Code <> '' then
-        AReport.Add(Name.Range, TUnresolvedNames.Describe(Name), TRuleConfidence.Medium)
-      else if Name.Suggestion <> '' then
-        AReport.Add(Name.Range, Format('"%s" ist nicht deklariert; gemeint ist %s? ({$SCOPEDENUMS ON})',
-          [Name.Name, Name.Suggestion]), TRuleConfidence.Medium)
-      else
-        AReport.Add(Name.Range, Format('"%s" ist nicht deklariert', [Name.Name]), TRuleConfidence.Medium);
-  finally
-  end;
+  for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
+    if Name.Code <> '' then
+      AReport.Add(Name.Range, TUnresolvedNames.Describe(Name), TRuleConfidence.Medium)
+    else if Name.Suggestion <> '' then
+      AReport.Add(Name.Range, Format('"%s" ist nicht deklariert; gemeint ist %s? ({$SCOPEDENUMS ON})',
+        [Name.Name, Name.Suggestion]), TRuleConfidence.Medium)
+    else
+      AReport.Add(Name.Range, Format('"%s" ist nicht deklariert', [Name.Name]), TRuleConfidence.Medium);
 end;
 
 { TUsesUnitNotFoundRule }
@@ -753,14 +750,11 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, AContext.RelativePath);
   try
-    Resolver.PinTree(AContext.Tree, AContext.RelativePath);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 

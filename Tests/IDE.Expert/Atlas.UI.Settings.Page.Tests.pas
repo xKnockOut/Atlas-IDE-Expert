@@ -217,7 +217,7 @@ uses
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Text.StepFilter,
   Atlas.Core.Settings.Reassigned,
-  Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Vcs,
   Atlas.Core.Welcome.QuickActions,

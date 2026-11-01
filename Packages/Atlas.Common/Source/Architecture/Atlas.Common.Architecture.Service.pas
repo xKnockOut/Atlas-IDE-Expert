@@ -146,7 +146,7 @@ begin
     Exit;
   mFileName := TArchitectureComparer.ResolvePath(ARequest.Root, ARequest.Baseline);
   if (mFileName <> '') and FileExists(mFileName) then
-    Result := FloatToStr(TFile.GetLastWriteTime(mFileName));
+    Result := FloatToStr(TFile.GetLastWriteTime(mFileName), TFormatSettings.Invariant);
 end;
 
 { TArchitectureRequest }

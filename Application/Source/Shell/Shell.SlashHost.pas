@@ -27,7 +27,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Shell.Workspace;
 

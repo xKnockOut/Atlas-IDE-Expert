@@ -1,8 +1,8 @@
-﻿unit Atlas.Core.Build.Inbox;
+﻿unit Atlas.Core.BuildPipeline.Inbox;
 
 // Builds für Claude Code über die IDE (#261, MCP-Werkzeug build_project), ohne
 // Open Tools API. Ohne Kommandozeilen-Compiler (Starter Edition) baut das
-// Plugin selbst über IOTAProjectBuilder (Atlas.IDE.Build.Runner). Der
+// Plugin selbst über IOTAProjectBuilder (Atlas.IDE.BuildPipeline.Runner). Der
 // MCP-Server legt den Auftrag in den Eingang des Plugins:
 //   %LOCALAPPDATA%\Atlas\ide-builds\<pid>\<id>.json
 //   {"project": Pfad der .dproj, "mode": "make"|"build"|"check",
@@ -37,7 +37,7 @@ type
     Platform: string;
   end;
 
-  /// <summary>Ergebnis eines Builds für die Antwort.</summary>
+  /// <summary>Ergebnis eines Builds auf Auftrag.</summary>
   TAtlasBuildReport = record
     /// <summary>Projekt, Art, Konfiguration und Plattform des Laufs.</summary>
     Project: TAtlasCompileProject;
@@ -47,6 +47,9 @@ type
     FinishedAt: TDateTime;
     Messages: TArray<TAtlasCompilerMessage>;
   end;
+
+  /// <summary>Ende eines Auftrags; AError &lt;&gt; '' = nicht gebaut (Grund), sonst Ergebnis in AReport.</summary>
+  TAtlasBuildDoneProc = reference to procedure(const AReport: TAtlasBuildReport; const AError: string);
 
   TAtlasBuildInbox = class
   public const

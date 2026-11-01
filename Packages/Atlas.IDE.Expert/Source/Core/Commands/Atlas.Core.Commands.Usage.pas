@@ -46,6 +46,16 @@ uses
   System.Generics.Collections;
 
 type
+  /// <summary>Hörer der Zählung (#757, #1455), etwa die Karte „Atlas entdecken“ eines Moduls; ein Modul stellt ihn
+  /// über seinen Scope bereit. Hauptthread.</summary>
+  IAtlasCommandUsageListener = interface
+    ['{F66EA46F-1AE5-4CD7-94C5-3BACEC4433D8}']
+    /// <summary>„Zählung zurücksetzen“ (Einstellungen): Zähler sind leer.</summary>
+    procedure UsageReset;
+    /// <summary>„Gesperrte Tipps wieder zeigen“ (Einstellungen): eigene Sperren aufheben und speichern.</summary>
+    procedure TipsUnblocked;
+  end;
+
   {$SCOPEDENUMS ON}
   /// <summary>Wie ein Befehl aufgerufen wurde: Mouse = Menü, Kontextmenü, Werkzeugleiste, Palette;
   /// Keyboard = über sein Tastenkürzel.</summary>

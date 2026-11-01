@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Gate.Tests;
+﻿unit Atlas.Core.BuildPipeline.Gate.Tests;
 
 // Tests für die Prüfung vor dem Kompilieren (#529) ohne IDE: wann geprüft
 // wird, welche Units als geändert gelten, welche Treffer zählen, die Modi warn
@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.BuildPipeline')]
   TAtlasBuildGateTests = class
   public
     /// <summary>off, Syntaxprüfung, Clean, Hintergrundprüfung und Aufträge: keine Prüfung.</summary>
@@ -56,8 +57,9 @@ uses
   System.Generics.Collections,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.ReleaseGuard,
-  Atlas.Core.Build.Gate;
+  Atlas.Core.Build.PipelineSettings,
+  Atlas.Core.BuildPipeline.ReleaseGuard,
+  Atlas.Core.BuildPipeline.Gate;
 
 const
   ProjectFile = 'C:\P\Kasse.dproj';
@@ -200,8 +202,8 @@ end;
 
 procedure TAtlasBuildGateTests.SettingsClampTimeout;
 begin
-  Assert.AreEqual(TAtlasBuildGateCheck.MinTimeoutMs, TAtlasGateSettings.Create('block', 0).TimeoutMs);
-  Assert.AreEqual(TAtlasBuildGateCheck.MaxTimeoutMs, TAtlasGateSettings.Create('block', 999999).TimeoutMs);
+  Assert.AreEqual(TAtlasBuildPipelineSettings.GateMinTimeoutMs, TAtlasGateSettings.Create('block', 0).TimeoutMs);
+  Assert.AreEqual(TAtlasBuildPipelineSettings.GateMaxTimeoutMs, TAtlasGateSettings.Create('block', 999999).TimeoutMs);
   Assert.AreEqual(300, TAtlasGateSettings.Create('block', 300).TimeoutMs);
   Assert.IsTrue(TAtlasGateSettings.Create('BLOCK', 300).Gate = TAtlasBuildGate.Block);
   Assert.IsTrue(TAtlasGateSettings.Create('streng', 300).Gate = TAtlasBuildGate.Off);

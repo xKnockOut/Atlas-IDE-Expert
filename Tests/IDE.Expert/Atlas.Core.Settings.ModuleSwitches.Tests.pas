@@ -172,8 +172,8 @@ end;
 
 procedure TAtlasModuleSwitchesTests.RealCatalogKnowsAllModules;
 const
-  cModules: array[0..9] of string = ('debug', 'issues', 'analysis', 'tests', 'buildTools', 'bookmarks',
-    'designer', 'ruleChecks', 'search', 'welcome');
+  cModules: array[0..10] of string = ('debug', 'issues', 'analysis', 'tests', 'buildTools', 'buildPipeline',
+    'bookmarks', 'designer', 'ruleChecks', 'search', 'welcome');
 var
   mCatalog: TAtlasSettingsCatalog;
   mSwitches: TArray<TAtlasModuleSwitch>;
@@ -207,6 +207,9 @@ begin
   Assert.AreEqual('tests', TAtlasModuleSwitches.ModuleOf(mSwitches, 'tests.debug'));
   Assert.AreEqual('buildTools', TAtlasModuleSwitches.ModuleOf(mSwitches, 'startProfiles.statusField'));
   Assert.AreEqual('buildTools', TAtlasModuleSwitches.ModuleOf(mSwitches, 'taskRunner.beforeBuild'));
+  Assert.AreEqual('buildPipeline', TAtlasModuleSwitches.ModuleOf(mSwitches, 'build.gate'));
+  Assert.AreEqual('buildPipeline', TAtlasModuleSwitches.ModuleOf(mSwitches, 'build.releaseGuard'));
+  Assert.AreEqual('buildPipeline', TAtlasModuleSwitches.ModuleOf(mSwitches, 'compiler.mcpBuild'));
   Assert.AreEqual('bookmarks', TAtlasModuleSwitches.ModuleOf(mSwitches, 'notes.enabled'));
   Assert.AreEqual('analysis', TAtlasModuleSwitches.ModuleOf(mSwitches, 'navigation.symbolPath'));
   Assert.AreEqual('designer', TAtlasModuleSwitches.ModuleOf(mSwitches, 'editor.designerBar'));

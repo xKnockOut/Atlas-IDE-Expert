@@ -1,5 +1,13 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Befunde im eigenen Repo, Teil 1 (01.11.2026, Branch `claude/project-thread-jz4idl` von `claude/project-thread-rc7rg9`)
+
+- Lauf: `AtlasServer --check . --units 'Packages/**,Application/**'` mit eingeschalteten `metric-*` (13 min): 7064 Metrik-Warnungen, 56421 `missing-begin-end`, 54 sonstige. Wie der Metrik-Bestand abgebaut wird, entscheidet Marco; `atlas.json` bleibt bis dahin unverändert.
+- Behoben: 26 leere `finally` in den Regel-Units (Reste des früheren `Resolver.Free`, der Resolver gehört dem Cache), unbenutztes `Atlas.Common.Editing.UsesActions` in `Shell.SlashHost`, Zahlen in Hotspot-Berichten (Dateien) und Cache-Schlüsseln von Hotspots und Architektur mit `TFormatSettings.Invariant`.
+- Fehlalarm `collection-modified-in-loop` in `Modules.Registry` und `Settings.Parts` (nach `Delete` folgen Anweisungen, dann `Break`) in der Regel behoben: Break oder Exit ohne Bedingung später im selben Block beendet die Schleife; Break zählt nicht, wenn zwischen Schleifenkopf und Aufruf eine innere Schleife beginnt. Test `LaterBreakLeavesLoop` (FPC-Harness: 67 von 67 grün).
+- Fehlalarm, nur gemeldet: `format-without-settings` bei Datumsanzeigen in der Oberfläche (gewollt im Gebietsschema des Benutzers).
+- Geprüft: AtlasServer mit FPC trunk gebaut; erneuter `--check` der geänderten Units ohne neue Befunde. Delphi-Build offen.
+
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
 - Projektgruppe `Atlas.groupproj`: `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` (Packages), `AtlasServer` (Anwendung), `Atlas.IDE.Expert` (Design-Time-Package, Win32, ADR 0006; bis #406 `Atlas.IdePlugin`), `Atlas.Tests` (DUnitX, nur Win64).
@@ -36,6 +44,15 @@
 - Abschnitt „Issue-Tracker“ ohne Atlas-Befunde (Regel von Marco 01.11.2026: neuer und geänderter Code ohne Befunde, Metriken an, Werte unverändert): Der Abschnitt `Atlas.UI.Tracker.SettingsSection` fügt nur zusammen. Tabellenregeln in `Atlas.Core.Tracker.SettingsTables` (Verbindungen, Projekte, Abfragen, Textbausteine; Test `Atlas.Core.Tracker.SettingsTables.Tests`, FPC 10/10), Teile `UI.Tracker.SettingsRows/Connections/Projects/Queries/Workflow/Snippets/General` mit je einem View-Record, Haken in `TAtlasTrackerSettingsHooks` (`Section.Hooks.OnState` usw., gesetzt von `IDE.Tracker.Settings`). `UI.Tracker.QueryDialog` hat jetzt `View` statt `NameEdit`/`OkButton` …; `TAtlasTrackerModule.cModuleId`/`cSwitch`. Alte Befunde in großen gemeinsamen Units (`UI.Settings.Page`, `CodeInsight.Composition`, `Settings.Options`) nur auf den geänderten Zeilen behoben, der Rest gehört dem Thread „Atlas-Findings im Repo beheben“.
 - Noch offen im Tracker: „Issue anlegen“ aus Absturzfall und „Atlas-Prüfung“ (Wurzel), Zugang und Anbieter (`TAtlasComposedTrackerAccess`, Jenkins) in der Wurzel, Palettenquelle der Issues.
 - Nicht mit Delphi übersetzt; FPC: MethodToggle- und BranchNames-Tests 19/19 grün (`Atlas.Core.Tracker.Tests` läuft im FPC-Gerüst nicht: `TArray` in `Core.Tracker.Markdown`). Alle Prüfskripte grün. Handtests MK1–MK10 in `handtests-v2.md`.
+
+## Build-Pipeline als eigenes Modul (#1455, Entscheidung Marco 01.11.2026 14:36, Branch `claude/project-thread-rc7rg9`, PR #1465)
+
+- Neues Modul `atlas.buildpipeline` (Package `Atlas.IDE.BuildPipeline`, Schalter `buildPipeline.enabled`, Registry `BuildPipelineEnabled`, ab abgesichertem Start): `Atlas.IDE.BuildPipeline.Composition` erzeugt Läufer der Builds auf Auftrag (#261), MCP-Eingang `build_project` (Teil `McpBuild`, nur normaler Start), Prüfung vor dem Kompilieren (#529), Release-Build-Wächter (#533, Befehl `Atlas.CheckRelease`) und Bewertung mit Zusammenfassung (#530). Teilnehmer an den Compile-Ereignissen meldet es beim Stoppen ab; der Läufer meldet seinen Wächter in `Destroy` ab (vorher blieb er in den Ereignissen).
+- Umbenannt nach Ordner `Core/BuildPipeline` bzw. `IDE/BuildPipeline`: `Gate`, `Inbox`, `ReleaseGuard` (Core und IDE), `Runner`, `Summary`; Tests `Atlas.Core.BuildPipeline.*.Tests` mit Kategorie `Atlas.IDE.BuildPipeline`. `TAtlasIdeBuildRunner.Current` entfällt; `TAtlasBuildDoneProc` gibt es nur noch in `Core.BuildPipeline.Inbox` (vorher doppelt, E2010-Falle unter Delphi 12).
+- In Base bleiben Compile-Ereignisse, Compilermeldungen, CheckOnSave, `Build.Target`, `Build.IdleGate`, `Build.Verdict` und neu `Atlas.IDE.Build.LastMessages` (Meldungen des letzten Builds für `Atlas.CompilerBaseline`, früher in der Zusammenfassung). Verträge in `Atlas.Core.Build.Pipeline`: `IAtlasCompilerMessagesListener`, `IAtlasBuildEvaluator`, `TAtlasBuildPipeline.MessagesRead/Evaluate/Announce/CompilerVerdict`. Ist das Modul aus, bewertet Base nur nach dem Compiler (ohne Basislinie, `build.zeroHints`, `build.warningsAsErrors`); Benachrichtigung und Tests nach dem Build laufen dann weiter. Die Benachrichtigungszentrale hört über einen eigenen `IAtlasBuildVerdictListener` der Wurzel.
+- Module und Willkommensseite bauen über `IAtlasBuildJobs` (`Atlas.IDE.Contracts.BuildPipeline`), nie über das Modul selbst.
+- Texte: `Atlas.UI.BuildPipeline.Strings` (36 Texte) mit Testunit.
+- Geprüft: alle Prüfskripte grün, FPC 42/42 (Pipeline, Gate, ReleaseGuard, Texte, ModuleSwitches 6/6), `AtlasServer --check` nur `missing-begin-end` neu (und der bekannte Fehlalarm `dunitx-test-without-assert`, wenn das Assert in einem Helfer einer anderen Unit steht). Inbox-Tests unter FPC nicht übersetzbar (Winapi). Offen: Delphi-Build, Handtests BP1–BP6.
 
 ## Projekt-Zusammenfassungen in Base (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 

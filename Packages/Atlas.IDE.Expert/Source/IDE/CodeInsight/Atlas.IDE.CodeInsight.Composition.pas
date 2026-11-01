@@ -66,11 +66,7 @@ uses
   Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Files.EditInbox,
   Atlas.IDE.Build.CheckOnSave,
-  Atlas.IDE.Build.Runner,
-  Atlas.IDE.Build.Inbox,
-  Atlas.IDE.Build.ReleaseGuard,
-  Atlas.IDE.Build.Gate,
-  Atlas.IDE.Build.Summary,
+  Atlas.IDE.Build.LastMessages,
   Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
@@ -159,6 +155,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.Frame,
   Atlas.Core.Commands.Palette,
+  Atlas.Core.Commands.Usage,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
@@ -237,9 +234,7 @@ uses
   Atlas.Core.Diagnostics.FeatureTable,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Teardown,
-  Atlas.Core.Build.Inbox,
-  Atlas.Core.Build.ReleaseGuard,
-  Atlas.Core.Build.Gate,
+  Atlas.Core.Build.Pipeline,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
@@ -249,7 +244,8 @@ uses
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Contracts.Rules,
-  Atlas.IDE.Contracts.Tests;
+  Atlas.IDE.Contracts.Tests,
+  Atlas.IDE.Contracts.BuildPipeline;
 
 var
   ManagerIndex: Integer = -1;
@@ -274,14 +270,12 @@ var
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
   EditInbox: TAtlasIdeEditInbox;
   CheckOnSave: TAtlasIdeCheckOnSave;
-  // Bauen auf Auftrag über IOTAProjectBuilder (#261), z. B. für Claude Code; lebt mit den Compile-Ereignissen.
-  BuildRunner: TAtlasIdeBuildRunner;
-  // Zusammenfassung und letzte Meldungen je Projekt (#530); lebt mit den Compile-Ereignissen.
-  BuildSummary: TAtlasIdeBuildSummary;
+  // Meldungen des letzten Builds je Projekt (#530) für Atlas.CompilerBaseline; lebt mit den Compile-Ereignissen.
+  LastBuildMessages: TAtlasIdeLastBuildMessages;
+  // Bewertung eines Builds (#530) an die Benachrichtigungszentrale (#601); lebt mit den Compile-Ereignissen.
+  NotificationsVerdict: IAtlasRegistration;
   // Projekt-Zusammenfassungen (#592, #1455): schreibt Base, auch ohne Willkommensseite.
   ProjectSummaries: TAtlasIdeProjectSummaries;
-  // Eingang des MCP-Werkzeugs build_project (#261), abschaltbar über McpBuild.
-  BuildInbox: TAtlasIdeBuildInbox;
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen); lebt mit den
   // Compile-Ereignissen.
   UnitRename: TAtlasIdeUnitRename;
@@ -966,117 +960,58 @@ begin
   Result := TAtlasIdeSettings.Current.TeamFile;
 end;
 
-/// <summary>Einstellungen des Release-Build-Wächters (#533) aus den aktuellen Plugin-Einstellungen.</summary>
-function ReleaseSettings: TAtlasReleaseSettings;
-var
-  Settings: TAtlasPluginSettings;
-begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasReleaseSettings.Create(Settings.ReleaseGuard, Settings.BuildGate, Settings.ReleaseConfigs,
-    Settings.ReleaseChecks);
-end;
+type
+  /// <summary>Bewertung eines Builds (#530) aus dem Modul Build-Pipeline bzw. nur nach dem Compiler (Modul aus) an
+  /// die Benachrichtigungszentrale (#601).</summary>
+  TNotificationsVerdictListener = class(TInterfacedObject, IAtlasBuildVerdictListener)
+  public
+    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      const AVerdict: TAtlasBuildVerdict);
+  end;
 
-/// <summary>Einstellungen der Prüfung vor dem Kompilieren (#529) aus den aktuellen Plugin-Einstellungen.</summary>
-function GateSettings: TAtlasGateSettings;
+procedure TNotificationsVerdictListener.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
 var
-  Settings: TAtlasPluginSettings;
+  mMessages: TArray<TAtlasCompilerMessage>;
+  mProject: TAtlasCompileProject;
+  mVerdict: TAtlasBuildVerdict;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasGateSettings.Create(Settings.BuildGate, Settings.BuildGateTimeoutMs);
-end;
-
-/// <summary>Fragt den laufenden Server (#530), welche Meldungen eines Builds von AProjectFile in der Basislinie
-/// stehen; ohne laufenden Server nicht (False), dann zählt alles.</summary>
-function BaselineClassifier(const AProjectFile: string): TAtlasBuildClassify;
-var
-  FileName: string;
-begin
-  FileName := AProjectFile;
-  Result :=
-    function(const AMessages: TArray<TAtlasCompilerMessage>; const ADone: TAtlasBuildBaselined): Boolean
-    var
-      Count: Integer;
-      Done: TAtlasBuildBaselined;
-    begin
-      // Den Server startet Atlas dafür nicht (#874).
-      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
-      if not Result then
-        Exit;
-      Count := Length(AMessages);
-      Done := ADone;
-      Manager.RunServerCommandAsync(TAtlasBuildVerdicts.ClassifyCommand,
-        TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(FileName), AMessages),
-        TAtlasBuildVerdicts.ClassifyTimeoutMs,
-        procedure(AAnswer: TJSONValue)
-        begin
-          // nil (Zeitlimit, älterer Server): BaselinedOf liefert nil, dann zählt alles.
-          Done(TAtlasBuildVerdicts.BaselinedOf(AAnswer, Count));
-        end);
-    end;
-end;
-
-/// <summary>Folgen eines bewerteten Builds (#530): Zusammenfassung, Eintrag der Benachrichtigungszentrale (#601) und
-/// Tests nach dem Build (#69), alle nach derselben Bewertung.</summary>
-procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-  const AVerdict: TAtlasBuildVerdict);
-var
-  Messages: TArray<TAtlasCompilerMessage>;
-  Project: TAtlasCompileProject;
-  Verdict: TAtlasBuildVerdict;
-  mItem: IInterface;
-  mListener: IAtlasBuildVerdictListener;
-begin
-  Messages := AMessages;
-  Project := AProject;
-  Verdict := AVerdict;
-  TAtlasGuard.Run(TAtlasFeature.Build,
+  if Notifications = nil then
+  begin
+    Exit;
+  end;
+  mMessages := AMessages;
+  mProject := AProject;
+  mVerdict := AVerdict;
+  TAtlasGuard.Run(TAtlasFeature.Notifications,
     procedure
     begin
-      TAtlasIdeBuildSummary.Report(Messages, Project, Verdict, TAtlasIdeSettings.Current.BuildSummary);
+      Notifications.BuildEvaluated(mMessages, mProject, mVerdict);
     end);
-  if Notifications <> nil then
-    TAtlasGuard.Run(TAtlasFeature.Notifications,
-      procedure
-      begin
-        Notifications.BuildEvaluated(Messages, Project, Verdict);
-      end);
-  // Module, etwa die Tests nach dem Build (#69, #1455).
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildVerdictListener) do
-    if Supports(mItem, IAtlasBuildVerdictListener, mListener) then
-      TAtlasGuard.Run(TAtlasFeature.Build,
-        procedure
-        begin
-          mListener.BuildEvaluated(Project, Verdict);
-        end);
 end;
 
-/// <summary>Bewertet einen Build des Benutzers mit lesbaren Meldungen (#530): Basislinie über den Server,
-/// build.zeroHints und build.warningsAsErrors; dann BuildEvaluated (bei Server-Frage später im Hauptthread).
-/// </summary>
+/// <summary>Build des Benutzers mit lesbaren Meldungen (#530): Meldungen merken, dann bewerten lassen. Übernimmt das
+/// Modul Build-Pipeline die Bewertung nicht (aus), bewertet Base nur nach dem Compiler; die Folgen
+/// (Benachrichtigung, Tests nach dem Build) gehen in beiden Fällen an jeden IAtlasBuildVerdictListener.</summary>
 procedure EvaluateBuild(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
   ASucceeded: Boolean);
 var
-  Settings: TAtlasPluginSettings;
-  Messages: TArray<TAtlasCompilerMessage>;
-  Project: TAtlasCompileProject;
+  mFailures: TArray<string>;
+  mFailure: string;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  if BuildSummary <> nil then
-    BuildSummary.Remember(AProject.FileName, AMessages);
-  Messages := AMessages;
-  Project := AProject;
-  TAtlasBuildVerdicts.Run(Messages, ASucceeded,
-    TAtlasBuildVerdictSettings.Create(Settings.BuildZeroHints, Settings.BuildWarningsAsErrors),
-    BaselineClassifier(Project.FileName),
-    procedure(const AVerdict: TAtlasBuildVerdict)
-    begin
-      BuildEvaluated(Messages, Project, AVerdict);
-    end);
-end;
-
-function ReleaseGuardVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.ReleaseGuard;
+  if LastBuildMessages <> nil then
+  begin
+    LastBuildMessages.Remember(AProject.FileName, AMessages);
+  end;
+  if not TAtlasBuildPipeline.Evaluate(AMessages, AProject, ASucceeded, mFailures) then
+  begin
+    mFailures := mFailures + TAtlasBuildPipeline.Announce(AMessages, AProject,
+      TAtlasBuildPipeline.CompilerVerdict(AMessages, ASucceeded));
+  end;
+  for mFailure in mFailures do
+  begin
+    TAtlasGuard.Log('Bewertung des Builds: ' + mFailure);
+  end;
 end;
 
 /// <summary>Testläufer des Moduls Tests (#69, #1455); False ohne laufendes Modul.</summary>
@@ -1115,6 +1050,18 @@ begin
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run) and
     TAtlasModuleContributions.IsVisible(mCommand) then
     TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+end;
+
+/// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
+function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
+var
+  mItem: IInterface;
+begin
+  AJobs := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
+    if Supports(mItem, IAtlasBuildJobs, AJobs) then
+      Exit(True);
+  Result := False;
 end;
 
 /// <summary>Testprojekte und einzelne Tests des Moduls Tests (#1455); False ohne laufendes Modul. Zieht mit der
@@ -1366,12 +1313,7 @@ begin
   // Liste der Benachrichtigungen (#601); nur sichtbar, solange die Zentrale an ist.
   Add('Atlas.Notifications', TAtlasTextId.NotificationsCommand,
     Guarded(TAtlasFeature.Notifications, TAtlasIdeNotifications.ShowList), NotificationsVisible);
-  // Release-Build prüfen (#533) ohne Build; nur sichtbar, solange die Einstellung ReleaseGuard an ist.
-  Add('Atlas.CheckRelease', TAtlasTextId.ReleaseCheckCommand, Guarded(TAtlasFeature.Build,
-    procedure
-    begin
-      TAtlasIdeReleaseGuard.CheckActive(TAtlasIdeProjectSummaries.Folder, ReleaseSettings());
-    end), ReleaseGuardVisible);
+  // „Release-Build prüfen“ (#533) stellt das Modul Build-Pipeline bereit.
   Add('Atlas.CheckNow', TAtlasTextId.PaletteCheckNow,
     procedure
     begin
@@ -1612,18 +1554,22 @@ begin
   Actions.Restart :=
     procedure
     begin
-      if Manager <> nil then
-        Manager.RestartServer;
-      if StatusField <> nil then
-        StatusField.RequestRefresh;
+      TAtlasIdeHost.RestartServer;
     end;
-  Actions.Settings := OpenAtlasOptions;
-  Actions.LogFolder := OpenLogFolder;
+  Actions.Settings :=
+    procedure
+    begin
+      TAtlasIdeHost.OpenOptions;
+    end;
+  Actions.LogFolder :=
+    procedure
+    begin
+      TAtlasIdeHost.OpenLogFolder;
+    end;
   Actions.Update :=
     procedure
     begin
-      if Updates <> nil then
-        Updates.OpenUpdate;
+      TAtlasIdeHost.OpenUpdate;
     end;
   Result := TAtlasIdeWelcomeState.Create(TAtlasStatusRegistry.Default, Actions);
 end;
@@ -1900,26 +1846,8 @@ begin
     end;
   Events.OnLog := LogLine;
   Events.Add(TAtlasCompileLog.Create(Events, LogLine));
-  // Release-Build-Wächter (#533): prüft vor make und build in einer Release-Konfiguration, auch für Aufträge des
-  // Läufers (#261, #764); mit build.gate = block bricht er ab.
-  Events.Add(TAtlasIdeReleaseGuard.CreateParticipant(TAtlasIdeProjectSummaries.Folder,
-    function: TAtlasReleaseSettings
-    begin
-      Result := ReleaseSettings();
-    end));
-  // Projektaufgaben vor dem Build (#900) meldet das Modul Build selbst an und ab (#1455).
-  // Prüfung vor dem Kompilieren (#529): geänderte Units über den laufenden Server, nur Builds des Benutzers.
-  Events.Add(TAtlasIdeBuildGate.CreateParticipant(
-    function: TAtlasGateSettings
-    begin
-      Result := GateSettings();
-    end,
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end));
+  // Release-Build-Wächter (#533), Prüfung vor dem Kompilieren (#529) und Läufer der Builds auf Auftrag (#261)
+  // meldet das Modul Build-Pipeline an und ab, die Projektaufgaben vor dem Build (#900) das Modul Build (#1455).
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(
     procedure(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
@@ -1929,6 +1857,7 @@ begin
       Project: TAtlasCompileProject;
       Succeeded, Readable: Boolean;
       Stamp: TDateTime;
+      Failure: string;
     begin
       Messages := TAtlasCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
       // Projekt-Zusammenfassung (#592, Base): letzter Build bzw. letzte Hintergrundprüfung.
@@ -1950,15 +1879,14 @@ begin
           begin
             RecordProjectMetrics(Project.FileName, Stamp);
           end);
-      // Builds auf Auftrag (#261) warten auf ihre Meldungen.
-      if BuildRunner <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Build,
-          procedure
-          begin
-            BuildRunner.MessagesRead(Messages, Project);
-          end);
-      // Build des Benutzers mit lesbaren Meldungen (#530): erst bewerten (Basislinie, build.zeroHints,
-      // build.warningsAsErrors), dann Zusammenfassung, Benachrichtigung (#601) und Tests nach dem Build (#69).
+      // Gelesene Meldungen an die Module, etwa die Builds auf Auftrag (#261) der Build-Pipeline.
+      for Failure in TAtlasBuildPipeline.MessagesRead(Messages, Project) do
+      begin
+        TAtlasGuard.Log('Compilermeldungen: ' + Failure);
+      end;
+      // Build des Benutzers mit lesbaren Meldungen (#530): erst bewerten (Modul Build-Pipeline: Basislinie,
+      // build.zeroHints, build.warningsAsErrors, Zusammenfassung), dann Benachrichtigung (#601) und Tests nach dem
+      // Build (#69).
       if AReadable and not AProject.Background then
         TAtlasGuard.Run(TAtlasFeature.Build,
           procedure
@@ -1984,8 +1912,9 @@ begin
         AProject.Background));
     end));
   Compile := TAtlasIdeCompileEvents.Create(Events);
-  BuildRunner := TAtlasIdeBuildRunner.Create(Events);
-  BuildSummary := TAtlasIdeBuildSummary.Create;
+  LastBuildMessages := TAtlasIdeLastBuildMessages.Create;
+  NotificationsVerdict := AtlasModuleRegistry.Provide(IAtlasBuildVerdictListener,
+    TNotificationsVerdictListener.Create as IAtlasBuildVerdictListener);
 end;
 
 /// <summary>Sprache der IDE (#446): Eintrag für bds.exe unter HKCU\Software\Embarcadero\Locales (von
@@ -2266,6 +2195,45 @@ begin
   FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
 end;
 
+/// <summary>Zählung zurückgesetzt (#757): an jeden IAtlasCommandUsageListener der laufenden Module.</summary>
+procedure UsageResetInModules;
+var
+  mItem: IInterface;
+  mListener: IAtlasCommandUsageListener;
+begin
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasCommandUsageListener) do
+  begin
+    if Supports(mItem, IAtlasCommandUsageListener, mListener) then
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Palette,
+        procedure
+        begin
+          mListener.UsageReset;
+        end);
+    end;
+  end;
+end;
+
+/// <summary>„Gesperrte Tipps wieder zeigen“ (#757): an jeden IAtlasCommandUsageListener der laufenden Module.
+/// </summary>
+procedure TipsUnblockedInModules;
+var
+  mItem: IInterface;
+  mListener: IAtlasCommandUsageListener;
+begin
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasCommandUsageListener) do
+  begin
+    if Supports(mItem, IAtlasCommandUsageListener, mListener) then
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          mListener.TipsUnblocked;
+        end);
+    end;
+  end;
+end;
+
 /// <summary>Optionsseiten (#227) mit ihren Haken (A-09): Die Seiten importieren die Features nicht, die sie
 /// bedienen.</summary>
 procedure RegisterOptions;
@@ -2292,11 +2260,7 @@ begin
     begin
       TAtlasIdeCommandUsage.ResetCounts;
     end;
-  Hooks.UnblockTips :=
-    procedure
-    begin
-      TAtlasIdeDiscover.UnblockAll;
-    end;
+  Hooks.UnblockTips := TipsUnblockedInModules;
   Hooks.ToolbarCommands :=
     function: TArray<TAtlasToolbarCommandInfo>
     begin
@@ -2905,13 +2869,8 @@ end;
 procedure StartCommandUsage;
 begin
   CommandUsage := TAtlasIdeCommandUsage.Create;
-  // Nach „Zählung zurücksetzen“: „Noch nie benutzt“ auf der Karte sofort.
-  CommandUsage.OnReset :=
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.Discover <> nil) then
-        Welcome.Discover.Refresh;
-    end;
+  // Nach „Zählung zurücksetzen“: „Noch nie benutzt“ auf der Karte eines Moduls sofort.
+  CommandUsage.OnReset := UsageResetInModules;
 end;
 
 procedure StartShortcutTips;
@@ -2921,6 +2880,26 @@ begin
     TAtlasIdeSettings.Current.TipsUsageTracking;
 end;
 
+
+/// <summary>Erste Zusatzquelle der laufenden Module für die Palette; nil ohne.</summary>
+function PaletteSourceOfModules: IAtlasPaletteSource;
+var
+  mItem: IInterface;
+  mProvider: IAtlasPaletteSourceProvider;
+begin
+  Result := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasPaletteSourceProvider) do
+  begin
+    if Supports(mItem, IAtlasPaletteSourceProvider, mProvider) then
+    begin
+      Result := mProvider.PaletteSource;
+      if Result <> nil then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+end;
 
 procedure StartPalette;
 begin
@@ -2939,15 +2918,9 @@ begin
     Setup.RegisterCommands(Palette);
   if KeyMap <> nil then
     KeyMap.RegisterCommands(Palette);
-  // Issues in der Palette (#1270): die Quelle aus „Meine Issues“, erst beim Öffnen gefragt (Willkommensseite
-  // entsteht ggf. später, Stop löst sie).
-  Palette.SourceOf :=
-    function: IAtlasPaletteSource
-    begin
-      Result := nil;
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Result := Welcome.Issues.PaletteSearch;
-    end;
+  // Zusatzquelle der Palette (#1270), etwa Issues aus „Meine Issues“: erst beim Öffnen gefragt, von einem
+  // laufenden Modul (#1455).
+  Palette.SourceOf := PaletteSourceOfModules;
 end;
 
 /// <summary>Fenster „Atlas-Prüfung“ (#909): Code-Aktionen, Optionsseite, Serverbefehle und Meldungen über
@@ -3346,11 +3319,27 @@ end;
 type
   /// <summary>Ende einer Projektaufgabe (#900) bzw. eines Testlaufs (#69) an die Willkommensseite: Karte Tests
   /// (#763) und Schnellaktionen (#764).</summary>
-  TWelcomeListener = class(TInterfacedObject, IAtlasTaskListener, IAtlasTestsListener)
+  TWelcomeListener = class(TInterfacedObject, IAtlasTaskListener, IAtlasTestsListener, IAtlasCommandUsageListener)
   public
     procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
     procedure TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
+    /// <summary>Karte „Atlas entdecken“ (#757): „Noch nie benutzt“ sofort bzw. Sperren aufheben.</summary>
+    procedure UsageReset;
+    procedure TipsUnblocked;
   end;
+
+procedure TWelcomeListener.UsageReset;
+begin
+  if (Welcome <> nil) and (Welcome.Discover <> nil) then
+  begin
+    Welcome.Discover.Refresh;
+  end;
+end;
+
+procedure TWelcomeListener.TipsUnblocked;
+begin
+  TAtlasIdeDiscover.UnblockAll;
+end;
 
 procedure TWelcomeListener.TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
 begin
@@ -3415,8 +3404,10 @@ type
   /// <summary>Übergang (#1455): „Meine Issues“ der Willkommensseite für das Modul Tracker
   /// (Atlas.IDE.Tracker.Session), bis der Umbau der Willkommensseite den Kern ins Modul holt. Fragt Welcome bei jedem
   /// Aufruf neu; ohne den Bereich wirkungslos.</summary>
-  TWelcomeIssuesSession = class(TInterfacedObject, IAtlasIssuesSession)
+  TWelcomeIssuesSession = class(TInterfacedObject, IAtlasIssuesSession, IAtlasPaletteSourceProvider)
   public
+    /// <summary>Issues in der Palette (#1270) aus „Meine Issues“.</summary>
+    function PaletteSource: IAtlasPaletteSource;
     function Available: Boolean;
     function CodeTarget(out ATarget: TAtlasTrackerTarget): Boolean;
     function IssuePreview: TAtlasIdeIssuePreview;
@@ -3438,6 +3429,15 @@ type
 function TWelcomeIssuesSession.Available: Boolean;
 begin
   Result := (Welcome <> nil) and (Welcome.Issues <> nil);
+end;
+
+function TWelcomeIssuesSession.PaletteSource: IAtlasPaletteSource;
+begin
+  Result := nil;
+  if Available then
+  begin
+    Result := Welcome.Issues.PaletteSearch;
+  end;
 end;
 
 function TWelcomeIssuesSession.CodeTarget(out ATarget: TAtlasTrackerTarget): Boolean;
@@ -3533,45 +3533,38 @@ var
   /// <summary>„Meine Issues“ für das Modul Tracker (TWelcomeIssuesSession), solange die Willkommensseite läuft.
   /// </summary>
   WelcomeIssuesSession: IAtlasRegistration;
+  WelcomePaletteSource: IAtlasRegistration;
   WelcomeTestsListener: IAtlasRegistration;
+  WelcomeUsageListener: IAtlasRegistration;
 
 procedure StartWelcome;
 begin
   Welcome := TAtlasIdeWelcome.Create(
     function: TAtlasServerInfo
     begin
-      if Manager <> nil then
-        Result := Manager.ServerInfo
-      else
-        Result := Default(TAtlasServerInfo);
+      Result := TAtlasIdeHost.ServerInfo;
     end,
     function(out APercent: Integer): Boolean
     begin
-      APercent := -1;
-      Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+      Result := TAtlasIdeHost.ServerIndexing(APercent);
     end,
     function: Integer
     begin
-      Result := -1;
-      if StatusLines <> nil then
-        Result := StatusLines.Units;
+      Result := TAtlasIdeHost.IndexedUnits;
     end,
     procedure(AText: string)
     begin
-      GuardWarning(AText);
+      TAtlasIdeHost.Warning(AText);
     end);
   // Suchfeld im Kopf (#760): Befehle aus der Palette, sobald es sie gibt.
   Welcome.Search := TAtlasIdeWelcomeSearch.Create(
     function: TArray<TAtlasCommand>
     begin
-      Result := nil;
-      if Palette <> nil then
-        Result := Palette.AtlasCommands;
+      Result := TAtlasIdeHost.PaletteCommands;
     end,
     procedure(AId: string)
     begin
-      if Palette <> nil then
-        Palette.Execute(AId);
+      TAtlasIdeHost.ExecuteCommand(AId);
     end);
   // Karte „Neu in Atlas“ (#756): „Ausprobieren“ führt Atlas-Befehle der Palette aus.
   Welcome.WhatsNew := TAtlasIdeWhatsNew.Create(
@@ -3580,25 +3573,27 @@ begin
       Command: TAtlasCommand;
     begin
       Result := False;
-      if Palette <> nil then
-        for Command in Palette.AtlasCommands do
-          if SameText(Command.Id, AId) then
-            Exit(True);
+      for Command in TAtlasIdeHost.PaletteCommands do
+      begin
+        if SameText(Command.Id, AId) then
+        begin
+          Exit(True);
+        end;
+      end;
     end,
     procedure(AId: string)
     begin
-      if Palette <> nil then
-        Palette.Execute(AId);
+      TAtlasIdeHost.ExecuteCommand(AId);
     end,
     procedure(AText: string)
     begin
-      GuardWarning(AText);
+      TAtlasIdeHost.Warning(AText);
     end);
   // Bereich „Projekte“ (#592): Zustand je Projekt aus den Projekt-Zusammenfassungen.
   Welcome.Projects := TAtlasIdeProjects.Create(
     procedure(AText: string)
     begin
-      GuardWarning(AText);
+      TAtlasIdeHost.Warning(AText);
     end);
   // Bereich „Projektverlauf“ (#758): Linien über die letzten Builds des in „Projekte“ gewählten Projekts.
   Welcome.Trends := TAtlasIdeTrends.Create(Welcome.Projects);
@@ -3611,16 +3606,18 @@ begin
   TAtlasIdeNewIssue.Start(Welcome.Issues,
     procedure(AText: string)
     begin
-      MessageLine(AText);
+      TAtlasIdeHost.Message(AText);
     end);
   // Befehle, Kennungen im Code und Zeilenhistorie des Moduls Tracker fragen „Meine Issues“ hierüber (#1455).
   WelcomeIssuesSession := AtlasModuleRegistry.Provide(IAtlasIssuesSession,
     TWelcomeIssuesSession.Create as IAtlasIssuesSession);
+  WelcomePaletteSource := AtlasModuleRegistry.Provide(IAtlasPaletteSourceProvider,
+    TWelcomeIssuesSession.Create as IAtlasPaletteSourceProvider);
   // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
   Welcome.Unsaved := TAtlasIdeUnsaved.Create(
     procedure(AText: string)
     begin
-      GuardWarning(AText);
+      TAtlasIdeHost.Warning(AText);
     end);
   // Schnellaktionen je Projekt (#764) in „Projekte“ und „Weiterarbeiten“: bauen über den Läufer der Builds auf
   // Auftrag (#261, Release-Wächter #533), Tests über #69, Startprofile über #575. Meldungen tragen Pfade und gehen
@@ -3628,28 +3625,30 @@ begin
   Welcome.QuickActions := TAtlasIdeQuickActions.Create(Welcome.Projects,
     procedure(AText: string)
     begin
-      MessageLine(AText);
+      TAtlasIdeHost.Message(AText);
     end);
   Welcome.QuickActions.OnBuild :=
     function(const AProject, AConfiguration, APlatform: string; const ADone: TAtlasQuickBuildDone;
       out AReason: string): Boolean
     var
-      Request: TAtlasBuildRequest;
+      mJob: TAtlasBuildJob;
+      mJobs: IAtlasBuildJobs;
     begin
-      if BuildRunner = nil then
+      if not BuildJobs(mJobs) then
       begin
         AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
         Exit(False);
       end;
-      Request := Default(TAtlasBuildRequest);
-      Request.Project := AProject;
-      Request.Kind := TAtlasCompileKind.Build;
-      Request.Configuration := AConfiguration;
-      Request.Platform := APlatform;
-      Result := BuildRunner.Start(Request, TAtlasWelcomeQuickActions.RequestedBy,
-        procedure(const AReport: TAtlasBuildReport; const AError: string)
+      mJob := Default(TAtlasBuildJob);
+      mJob.Project := AProject;
+      mJob.Kind := TAtlasBuildJobKind.Build;
+      mJob.Configuration := AConfiguration;
+      mJob.Platform := APlatform;
+      mJob.RequestedBy := TAtlasWelcomeQuickActions.RequestedBy;
+      Result := mJobs.Start(mJob,
+        procedure(const AResult: TAtlasBuildJobResult)
         begin
-          ADone(AReport.Succeeded, AError);
+          ADone(AResult.Succeeded, AResult.Error);
         end, AReason);
     end;
   Welcome.QuickActions.OnTests :=
@@ -3663,8 +3662,10 @@ begin
   Welcome.QuickActions.OnTestsBusy := TestsBusy;
   Welcome.QuickActions.OnIdeBusy :=
     function: Boolean
+    var
+      mJobs: IAtlasBuildJobs;
     begin
-      Result := ((BuildRunner <> nil) and BuildRunner.Busy) or TestsBusy;
+      Result := (BuildJobs(mJobs) and mJobs.Busy) or TestsBusy;
     end;
   // Startprofile (#575) und Knopf „Aufgaben ▾“ (#900) über das Modul Build (IAtlasBuildToolsSource, #1455);
   // ohne Modul keine Profile und keine Aufgaben. Zieht mit der Willkommensseite in ihr Modul.
@@ -3712,11 +3713,13 @@ begin
     TWelcomeListener.Create as IAtlasTaskListener);
   WelcomeTestsListener := AtlasModuleRegistry.Provide(IAtlasTestsListener,
     TWelcomeListener.Create as IAtlasTestsListener);
+  WelcomeUsageListener := AtlasModuleRegistry.Provide(IAtlasCommandUsageListener,
+    TWelcomeListener.Create as IAtlasCommandUsageListener);
   // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
   Welcome.ContinueWork := TAtlasIdeContinue.Create(
     procedure(AText: string)
     begin
-      GuardWarning(AText);
+      TAtlasIdeHost.Warning(AText);
     end);
   // „Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung, Zeile des Ordners prüfen.
   Welcome.ContinueWork.OnServerAccess :=
@@ -3730,53 +3733,47 @@ begin
   Welcome.Discover := TAtlasIdeDiscover.Create(
     function: TArray<TAtlasCommand>
     begin
-      Result := nil;
-      if Palette <> nil then
-        Result := Palette.AtlasCommands;
+      Result := TAtlasIdeHost.PaletteCommands;
     end,
     procedure(AId: string)
     begin
-      if Palette = nil then
-        Exit;
       // Tipp zur Befehlspalette: „Ausprobieren“ öffnet sie.
       if SameText(AId, TAtlasShortcutTips.PaletteCommandId) then
-        Palette.Show
+      begin
+        TAtlasIdeHost.ShowPalette;
+      end
       else
-        Palette.Execute(AId);
+      begin
+        TAtlasIdeHost.ExecuteCommand(AId);
+      end;
     end,
     procedure(AText: string)
     begin
-      GuardWarning(AText);
+      TAtlasIdeHost.Warning(AText);
     end);
   // Bereich „Hilfe und Rückmeldung“ (#766): „Tastenkürzel“ zeigt die Übersicht aus #520 mit allen Kürzeln.
   Welcome.Help := TAtlasIdeHelp.Create(
     procedure
     begin
-      if KeyMap <> nil then
-        KeyMap.ShowAll;
+      TAtlasIdeHost.ShowKeyMap;
     end);
   // Bereich „Projekt für Atlas einrichten“ (#759): atlas.json, Baseline (#97), Suchpfade und „Neu mit Atlas“.
   Welcome.Setup := TAtlasIdeSetup.Create(
     procedure(AText: string)
     begin
       // Nur Meldungsansicht: Die Zeilen enthalten Pfade.
-      MessageLine(AText);
+      TAtlasIdeHost.Message(AText);
     end,
     function(const AProject: string; const ADone: TAtlasSetupBaselineDone): string
     begin
       Result := StartBaselineOfModule(AProject, ADone);
     end,
     procedure(AKind: TAtlasNewFileKind)
-    var
-      User: TAtlasSnippetList;
     begin
-      User := nil;
-      if (Manager <> nil) and (Manager.Completion <> nil) then
-        User := Manager.Completion.FileSnippets;
-      TAtlasIdeNewFile.Show(AKind, User,
+      TAtlasIdeNewFile.Show(AKind, TAtlasIdeHost.FileSnippets,
         procedure(AText: string)
         begin
-          MessageLine(AText);
+          TAtlasIdeHost.Message(AText);
         end);
     end);
   // Seite anpassen (#767): Rechtsklick „Ausblenden“ über den Weg von #628 (mit „Rückgängig“), „Einstellungen
@@ -3784,7 +3781,7 @@ begin
   Welcome.Layouts.OnHideSetting :=
     function(AKey: string; APoint: TPoint): Boolean
     begin
-      Result := HideStarted and TAtlasIdeHide.HideSetting(AKey, APoint);
+      Result := TAtlasIdeHost.HideSetting(AKey, APoint);
     end;
   Welcome.Layouts.OnShowSetting :=
     procedure(AKey: string)
@@ -3802,12 +3799,22 @@ begin
   if WelcomeIssuesSession <> nil then
     WelcomeIssuesSession.Revoke;
   WelcomeIssuesSession := nil;
+  if WelcomePaletteSource <> nil then
+  begin
+    WelcomePaletteSource.Revoke;
+  end;
+  WelcomePaletteSource := nil;
   if WelcomeTaskListener <> nil then
     WelcomeTaskListener.Revoke;
   WelcomeTaskListener := nil;
   if WelcomeTestsListener <> nil then
     WelcomeTestsListener.Revoke;
   WelcomeTestsListener := nil;
+  if WelcomeUsageListener <> nil then
+  begin
+    WelcomeUsageListener.Revoke;
+  end;
+  WelcomeUsageListener := nil;
   // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
   TAtlasIdeNewIssue.Stop;
   FreeAndNil(Welcome);
@@ -3905,12 +3912,15 @@ begin
     RegisterCompileEvents,
     procedure
     begin
-      // Der Läufer meldet sich bei den Ereignissen von Compile an; vorher gehen (Bauen beim Öffnen stoppt mit
-      // seinem Modul vorher).
-      FreeAndNil(BuildInbox);
-      FreeAndNil(BuildRunner);
+      // Läufer, Wächter und Prüfung (Modul Build-Pipeline) und Bauen beim Öffnen (Modul Build) stoppen mit ihren
+      // Modulen vorher.
+      if NotificationsVerdict <> nil then
+      begin
+        NotificationsVerdict.Revoke;
+      end;
+      NotificationsVerdict := nil;
       FreeAndNil(Compile);
-      FreeAndNil(BuildSummary);
+      FreeAndNil(LastBuildMessages);
     end);
   Features.Add('Watchdog', TAtlasSafeLevel.Normal,
     function: Boolean
@@ -3950,28 +3960,7 @@ begin
       Result := TAtlasIdeTeamFile.Started;
     end,
     TAtlasIdeTeamFile.Start, TAtlasIdeTeamFile.Stop);
-  // Builds für Claude Code (#261): nur im normalen Start, mit den Compile-Ereignissen und solange McpBuild an ist.
-  Features.AddWanted('McpBuild',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.McpBuild and (BuildRunner <> nil);
-    end,
-    function: Boolean
-    begin
-      Result := BuildInbox <> nil;
-    end,
-    procedure
-    begin
-      BuildInbox := TAtlasIdeBuildInbox.Create(BuildRunner,
-        procedure(const AText: string)
-        begin
-          GuardWarning(AText);
-        end);
-    end,
-    procedure
-    begin
-      FreeAndNil(BuildInbox);
-    end);
+  // Builds für Claude Code (#261, McpBuild) startet das Modul Build-Pipeline.
   // uses nachziehen nach dem Umbenennen einer Unit (#512): ob es angeboten wird, entscheidet der Server
   // (refactoring.unitRenameFollowUp).
   Features.Add('UnitRename', TAtlasSafeLevel.Normal,
@@ -4437,6 +4426,119 @@ begin
   end;
 end;
 
+/// <summary>Dienste von Base für Bereiche wie die Willkommensseite (#1455): Zustand des Servers, Palette,
+/// Tastenübersicht, Ausblenden, Snippets und die Knöpfe der Zustandskachel. Fragt die Quellen bei jedem Aufruf neu.
+/// </summary>
+procedure InstallServerServices(var AServices: TAtlasHostServices);
+begin
+  AServices.ServerInfo :=
+    function: TAtlasServerInfo
+    begin
+      Result := Default(TAtlasServerInfo);
+      if Manager <> nil then
+      begin
+        Result := Manager.ServerInfo;
+      end;
+    end;
+  AServices.ServerIndexing :=
+    function(out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end;
+  AServices.IndexedUnits :=
+    function: Integer
+    begin
+      Result := -1;
+      if StatusLines <> nil then
+      begin
+        Result := StatusLines.Units;
+      end;
+    end;
+  AServices.RestartServer :=
+    procedure
+    begin
+      if Manager <> nil then
+      begin
+        Manager.RestartServer;
+      end;
+      if StatusField <> nil then
+      begin
+        StatusField.RequestRefresh;
+      end;
+    end;
+end;
+
+/// <summary>Palette, Tastenübersicht und Ausblenden über das Kontextmenü (#628) für die Module.</summary>
+procedure InstallPaletteServices(var AServices: TAtlasHostServices);
+begin
+  AServices.PaletteCommands :=
+    function: TArray<TAtlasCommand>
+    begin
+      Result := nil;
+      if Palette <> nil then
+      begin
+        Result := Palette.AtlasCommands;
+      end;
+    end;
+  AServices.ExecuteCommand :=
+    procedure(AId: string)
+    begin
+      if Palette <> nil then
+      begin
+        Palette.Execute(AId);
+      end;
+    end;
+  AServices.ShowPalette :=
+    procedure
+    begin
+      if Palette <> nil then
+      begin
+        Palette.Show;
+      end;
+    end;
+  AServices.ShowKeyMap :=
+    procedure
+    begin
+      if KeyMap <> nil then
+      begin
+        KeyMap.ShowAll;
+      end;
+    end;
+  AServices.HideSetting :=
+    function(const AKey: string; APoint: TPoint): Boolean
+    begin
+      Result := HideStarted and TAtlasIdeHide.HideSetting(AKey, APoint);
+    end;
+end;
+
+/// <summary>Snippets, Optionen, Logordner, Update und Meldungsansicht für die Module.</summary>
+procedure InstallShellServices(var AServices: TAtlasHostServices);
+begin
+  InstallServerServices(AServices);
+  InstallPaletteServices(AServices);
+  AServices.FileSnippets :=
+    function: TAtlasSnippetList
+    begin
+      Result := nil;
+      if (Manager <> nil) and (Manager.Completion <> nil) then
+      begin
+        Result := Manager.Completion.FileSnippets;
+      end;
+    end;
+  AServices.OpenOptions := OpenAtlasOptions;
+  AServices.OpenLogFolder := OpenLogFolder;
+  AServices.OpenUpdate :=
+    procedure
+    begin
+      if Updates <> nil then
+      begin
+        Updates.OpenUpdate;
+      end;
+    end;
+  AServices.ShowMessages := ShowAtlasMessages;
+end;
+
 /// <summary>Dienste von Base für die Module (#1455): laufende Sitzung des Managers und dessen Diagnoselog.</summary>
 procedure InstallHost;
 var
@@ -4510,6 +4612,7 @@ begin
       if Compile <> nil then
         Result := Compile.Events;
     end;
+  InstallShellServices(mServices);
   TAtlasIdeHost.Install(mServices);
 end;
 
