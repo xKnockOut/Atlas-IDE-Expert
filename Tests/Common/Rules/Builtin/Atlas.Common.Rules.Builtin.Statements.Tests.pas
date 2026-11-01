@@ -69,6 +69,8 @@ type
     [Test]
     procedure SafeModificationsAreSilent;
     [Test]
+    procedure LaterBreakLeavesLoop;
+    [Test]
     procedure MutatingMethodsOption;
     [Test]
     procedure CollectionModifiedOffAndExclude;
@@ -524,6 +526,27 @@ begin
     '  for var Kunde in Kunden do'#10'    Ausgabe(Kunden.IndexOf(Kunde));'#10 +
     // Feste Obergrenze: keine Schleife über die Liste.
     '  for I := 0 to 9 do'#10'    Kunden.Delete(0);'#10));
+end;
+
+procedure TStatementRulesTests.LaterBreakLeavesLoop;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Break oder Exit später im selben Block, nach einem Merker und nach einer inneren for-Schleife hinter dem Aufruf
+  // (Modules.Registry, Settings.Parts).
+  TRuleAssert.Silent(TCollectionModifiedInLoopRule.Create,
+    ListBody('  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'    begin'#10 +
+    '      Kunden.Delete(I);'#10'      Gefunden := True;'#10'      Break;'#10'    end;'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'    begin'#10 +
+    '      Kunden.Delete(I);'#10'      for var Name in Namen do'#10'        Schluessel.Remove(Name);'#10 +
+    '      Exit;'#10'    end;'#10));
+  // Bedingtes Break und Break nur der inneren Schleife lassen die Meldung stehen.
+  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
+    ListBody('  for I := 0 to Kunden.Count - 1 do'#10'  begin'#10'    Kunden.Delete(I);'#10 +
+    '    if Fertig then'#10'      Break;'#10'  end;'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    while Weiter do'#10'    begin'#10'      Kunden.Delete(I);'#10 +
+    '      Break;'#10'    end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
 end;
 
 procedure TStatementRulesTests.MutatingMethodsOption;
