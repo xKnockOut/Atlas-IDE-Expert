@@ -1,11 +1,11 @@
 ﻿unit Atlas.IDE.Tracker.Tiles;
 
 // Kacheln des Trackers auf der Willkommensseite (#1455, Vertrag
-// Atlas.IDE.Contracts.WelcomeTiles): „Meine Issues“ (#765) und „Sprint“
-// (#1277). Die Komposition stellt sie über den Scope des Moduls bereit; die
+// Atlas.IDE.Contracts.WelcomeTiles): „Meine Issues“ (#765), „Sprint“
+// (#1277) und „Testergebnisse“ (#763). Die Komposition stellt sie über den Scope des Moduls bereit; die
 // Willkommensseite zeigt sie mit Titelzeile, Griff und Spalte und legt die
 // Ansicht in ihren Rahmen. Kennungen wie früher als Bereiche (atlas.issues,
-// atlas.sprint), damit gespeicherte Layouts gelten. Hauptthread.
+// atlas.sprint, atlas.tests), damit gespeicherte Layouts gelten. Hauptthread.
 
 interface
 
@@ -14,7 +14,8 @@ uses
   Vcl.Controls,
   Atlas.UI.Tracker.TileView,
   Atlas.IDE.Contracts.WelcomeTiles,
-  Atlas.IDE.Tracker.MyIssues;
+  Atlas.IDE.Tracker.MyIssues,
+  Atlas.IDE.Tracker.TestResults;
 
 type
   /// <summary>Ansicht einer Kachel für die Seite; reicht an das Steuerelement weiter. Gibt die Seite das Steuerelement
@@ -53,6 +54,18 @@ type
     function CreateView(AOwner: TComponent; const AHost: IAtlasWelcomeTileHost): IAtlasWelcomeTileView;
   end;
 
+  /// <summary>Kachel „Testergebnisse“; zeigt die Quelle ATests.</summary>
+  TAtlasTrackerTestsTile = class(TInterfacedObject, IAtlasWelcomeTile)
+  private
+    FTests: TAtlasIdeTestResults;
+    FTestsRef: IInterface;
+  public
+    constructor Create(ATests: TAtlasIdeTestResults);
+    function Info: TAtlasWelcomeTileInfo;
+    function Enabled: Boolean;
+    function CreateView(AOwner: TComponent; const AHost: IAtlasWelcomeTileHost): IAtlasWelcomeTileView;
+  end;
+
 implementation
 
 uses
@@ -60,7 +73,8 @@ uses
   Atlas.IDE.Tracker.SprintTile,
   Atlas.IDE.Tracker.IssuesServices,
   Atlas.UI.Tracker.MyIssues,
-  Atlas.UI.Tracker.SprintTile;
+  Atlas.UI.Tracker.SprintTile,
+  Atlas.UI.Tracker.TestResults;
 
 /// <summary>Höhe an die Seite melden; eigene Routine, damit die Methodenreferenz nur den Host hält.</summary>
 function HeightToHost(const AHost: IAtlasWelcomeTileHost): TProc;
@@ -168,6 +182,39 @@ begin
   mView := TAtlasTrackerSprintView.Create(AOwner);
   Result := TAtlasTrackerTileViewLink.Create(mView, AHost);
   mView.Source := FIssues.Services.Sprint;
+end;
+
+{ TAtlasTrackerTestsTile }
+
+constructor TAtlasTrackerTestsTile.Create(ATests: TAtlasIdeTestResults);
+begin
+  inherited Create;
+  FTests := ATests;
+  FTestsRef := ATests as IAtlasTestResultsSource;
+end;
+
+function TAtlasTrackerTestsTile.Info: TAtlasWelcomeTileInfo;
+begin
+  Result := Default(TAtlasWelcomeTileInfo);
+  Result.Id := TAtlasIdeTestResults.cTileId;
+  Result.Title := TAtlasIdeTestResults.Title;
+  Result.Order := TAtlasIdeTestResults.cOrder;
+  Result.Column := TAtlasWelcomeTileColumn.Left;
+end;
+
+function TAtlasTrackerTestsTile.Enabled: Boolean;
+begin
+  Result := TAtlasIdeTestResults.Active;
+end;
+
+function TAtlasTrackerTestsTile.CreateView(AOwner: TComponent;
+  const AHost: IAtlasWelcomeTileHost): IAtlasWelcomeTileView;
+var
+  mView: TAtlasTrackerTestResultsView;
+begin
+  mView := TAtlasTrackerTestResultsView.Create(AOwner);
+  Result := TAtlasTrackerTileViewLink.Create(mView, AHost);
+  mView.Source := FTests;
 end;
 
 end.

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Welcome.TestResults;
+﻿unit Atlas.Core.Tracker.TestResults;
 
 // Bereich „Testergebnisse“ der Willkommensseite (#763), Teil ohne VCL und
 // Open Tools API: welche Projekte erscheinen, ihre Ampel lokal und auf dem
@@ -100,24 +100,45 @@ type
     function SelectedRow(out ARow: TAtlasTestRow): Boolean;
   end;
 
-  TAtlasWelcomeTestResults = class
+  TAtlasTestResults = class
   public const
-    DefaultMaxFailures = 5;
-    MinMaxFailures = 1;
-    MaxMaxFailures = 50;
-    DefaultIntervalMinutes = 10;
-    MinIntervalMinutes = 1;
+    cDefaultMaxFailures = 5;
+    cMinMaxFailures = 1;
+    cMaxMaxFailures = 50;
+    cDefaultIntervalMinutes = 10;
+    cMinIntervalMinutes = 1;
     /// <summary>Höchstens einmal am Tag.</summary>
-    MaxIntervalMinutes = 1440;
+    cMaxIntervalMinutes = 1440;
     /// <summary>Zeitlimit einer Abfrage beim Server (beide Aufrufe zusammen).</summary>
-    FetchTimeoutMs = 5000;
-    DefaultProvider = 'jenkins';
+    cFetchTimeoutMs = 5000;
+    cDefaultProvider = 'jenkins';
+  private const
+    cKeySeparator = '|';
+    /// <summary>Spielraum von einer Sekunde (1/60 Minute), damit eine knapp frühe Abfrage schon zählt.</summary>
+    cSecondsPerMinute = 60;
+  private
+    /// <summary>Index des Fehlschlags ATest in AItems (ASame: SameTest, sonst gleicher Name); -1 ohne.</summary>
+    class function IndexOfTest(const AItems: TArray<TAtlasTestFailureItem>; const ATest: string;
+      ASame: Boolean): Integer; static;
+    /// <summary>Lokale Fehlschläge ohne leere und doppelte Namen.</summary>
+    class function LocalFailures(const ALocal: TAtlasProjectTests): TArray<TAtlasTestFailureItem>; static;
+    /// <summary>Fehlschläge nur auf dem Server; markiert die lokalen, die auch dort fehlschlagen.</summary>
+    class function ServerOnlyFailures(var ALocals: TArray<TAtlasTestFailureItem>;
+      const AServer: TAtlasCiBuild): TArray<TAtlasTestFailureItem>; static;
+    /// <summary>Gezählte, aber nicht gespeicherte Fehlschläge.</summary>
+    class function HiddenBeyond(const ALocal: TAtlasProjectTests; const AServer: TAtlasCiBuild;
+      AUseServer: Boolean): Integer; static;
+    /// <summary>Schlüssel einer Zeile: Testprojekt bzw. Projekt, mit Server samt Job.</summary>
+    class function RowKey(const ARow: TAtlasTestRow): string; static;
+    /// <summary>Zeilen mit lokalem Lauf oder Server, jeder Schlüssel einmal.</summary>
+    class function Rows(const AProjects: TArray<TAtlasTestProject>; ACiEnabled: Boolean): TArray<TAtlasTestRow>;
+      static;
   public
     class function LocalLevel(const ATests: TAtlasProjectTests): TAtlasTestLevel; static;
     class function CiLevel(const ABuild: TAtlasCiBuild): TAtlasTestLevel; static;
     class function Compare(ALocal, AServer: TAtlasTestLevel): TAtlasTestMismatch; static;
     /// <summary>Gleicher Test: gleicher voller Name, oder einer endet mit „.“ + dem anderen.</summary>
-    class function SameTest(const A, B: string): Boolean; static;
+    class function SameTest(const AA, AB: string): Boolean; static;
     /// <summary>Liste der Fehlschläge; AServer nur mit AUseServer. AMore zählt, was nicht hineinpasst.</summary>
     class function MergeFailures(const ALocal: TAtlasProjectTests; const AServer: TAtlasCiBuild;
       AUseServer: Boolean; AMax: Integer; out AMore: Integer): TArray<TAtlasTestFailureItem>; static;
@@ -149,6 +170,7 @@ implementation
 
 uses
   System.Math,
+  System.StrUtils,
   System.DateUtils;
 
 { TAtlasTestRow }
@@ -157,7 +179,9 @@ function TAtlasTestRow.Level: TAtlasTestLevel;
 begin
   Result := LocalLevel;
   if Ord(CiLevel) > Ord(Result) then
+  begin
     Result := CiLevel;
+  end;
 end;
 
 { TAtlasTestResultsView }
@@ -171,32 +195,48 @@ function TAtlasTestResultsView.SelectedRow(out ARow: TAtlasTestRow): Boolean;
 begin
   Result := (Selected >= 0) and (Selected < Length(Rows));
   if Result then
-    ARow := Rows[Selected]
+  begin
+    ARow := Rows[Selected];
+  end
   else
+  begin
     ARow := Default(TAtlasTestRow);
+  end;
 end;
 
-{ TAtlasWelcomeTestResults }
+{ TAtlasTestResults }
 
-class function TAtlasWelcomeTestResults.LocalLevel(const ATests: TAtlasProjectTests): TAtlasTestLevel;
+class function TAtlasTestResults.LocalLevel(const ATests: TAtlasProjectTests): TAtlasTestLevel;
 begin
   if not ATests.Known then
-    Result := TAtlasTestLevel.Unknown
+  begin
+    Result := TAtlasTestLevel.Unknown;
+  end
   else if (ATests.Failed > 0) or (ATests.Errors > 0) or (Length(ATests.Failures) > 0) then
-    Result := TAtlasTestLevel.Failed
+  begin
+    Result := TAtlasTestLevel.Failed;
+  end
   else if ATests.Passed > 0 then
-    Result := TAtlasTestLevel.Passed
+  begin
+    Result := TAtlasTestLevel.Passed;
+  end
   else
+  begin
     Result := TAtlasTestLevel.Warning;
+  end;
 end;
 
-class function TAtlasWelcomeTestResults.CiLevel(const ABuild: TAtlasCiBuild): TAtlasTestLevel;
+class function TAtlasTestResults.CiLevel(const ABuild: TAtlasCiBuild): TAtlasTestLevel;
 begin
   if ABuild.Number <= 0 then
+  begin
     Exit(TAtlasTestLevel.Unknown);
+  end;
   if (ABuild.TestsKnown and ((ABuild.Failed > 0) or (Length(ABuild.Failures) > 0))) or
     (ABuild.Outcome = TAtlasCiOutcome.Failure) then
+  begin
     Exit(TAtlasTestLevel.Failed);
+  end;
   case ABuild.Outcome of
     TAtlasCiOutcome.Success:
       Result := TAtlasTestLevel.Passed;
@@ -205,16 +245,20 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeTestResults.Compare(ALocal, AServer: TAtlasTestLevel): TAtlasTestMismatch;
+class function TAtlasTestResults.Compare(ALocal, AServer: TAtlasTestLevel): TAtlasTestMismatch;
 begin
   Result := TAtlasTestMismatch.None;
   if (ALocal = TAtlasTestLevel.Passed) and (AServer = TAtlasTestLevel.Failed) then
-    Result := TAtlasTestMismatch.LocalGreenServerRed
+  begin
+    Result := TAtlasTestMismatch.LocalGreenServerRed;
+  end
   else if (ALocal = TAtlasTestLevel.Failed) and (AServer = TAtlasTestLevel.Passed) then
+  begin
     Result := TAtlasTestMismatch.LocalRedServerGreen;
+  end;
 end;
 
-class function TAtlasWelcomeTestResults.SameTest(const A, B: string): Boolean;
+class function TAtlasTestResults.SameTest(const AA, AB: string): Boolean;
 
   function EndsWithName(const ALong, AShort: string): Boolean;
   begin
@@ -223,130 +267,199 @@ class function TAtlasWelcomeTestResults.SameTest(const A, B: string): Boolean;
   end;
 
 begin
-  if (A = '') or (B = '') then
+  if (AA = '') or (AB = '') then
+  begin
     Exit(False);
+  end;
   // Der JUnit-Bericht von DUnitX kann den Unit-Namen weglassen; dann passt das Ende.
-  Result := SameText(A, B) or EndsWithName(A, B) or EndsWithName(B, A);
+  Result := SameText(AA, AB) or EndsWithName(AA, AB) or EndsWithName(AB, AA);
 end;
 
-class function TAtlasWelcomeTestResults.MergeFailures(const ALocal: TAtlasProjectTests;
-  const AServer: TAtlasCiBuild; AUseServer: Boolean; AMax: Integer; out AMore: Integer): TArray<TAtlasTestFailureItem>;
+class function TAtlasTestResults.IndexOfTest(const AItems: TArray<TAtlasTestFailureItem>; const ATest: string;
+  ASame: Boolean): Integer;
 var
-  Locals, ServerOnly: TArray<TAtlasTestFailureItem>;
-  Item: TAtlasTestFailureItem;
-  Failure: TAtlasProjectTestFailure;
-  CiFailure: TAtlasCiFailure;
-  Index, Reserve, LocalTake, ServerTake, Known, Hidden: Integer;
-  Found: Boolean;
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(AItems) do
+  begin
+    if (ASame and SameTest(AItems[mIndex].Test, ATest)) or (not ASame and SameText(AItems[mIndex].Test, ATest)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+class function TAtlasTestResults.LocalFailures(const ALocal: TAtlasProjectTests): TArray<TAtlasTestFailureItem>;
+var
+  mItem: TAtlasTestFailureItem;
+  mFailure: TAtlasProjectTestFailure;
 begin
   Result := nil;
-  AMore := 0;
-  Locals := nil;
-  ServerOnly := nil;
-  if ALocal.Known then
-    for Failure in ALocal.Failures do
+  if not ALocal.Known then
+  begin
+    Exit;
+  end;
+  for mFailure in ALocal.Failures do
+  begin
+    if (mFailure.Test <> '') and (IndexOfTest(Result, mFailure.Test, False) < 0) then
     begin
-      if Failure.Test = '' then
-        Continue;
-      Found := False;
-      for Index := 0 to High(Locals) do
-        if SameText(Locals[Index].Test, Failure.Test) then
-          Found := True;
-      if Found then
-        Continue;
-      Item := Default(TAtlasTestFailureItem);
-      Item.Test := Failure.Test;
-      Item.Message := Failure.Message;
-      Item.FileName := Failure.FileName;
-      Item.Line := Failure.Line;
-      Item.Local := True;
-      Locals := Locals + [Item];
+      mItem := Default(TAtlasTestFailureItem);
+      mItem.Test := mFailure.Test;
+      mItem.Message := mFailure.Message;
+      mItem.FileName := mFailure.FileName;
+      mItem.Line := mFailure.Line;
+      mItem.Local := True;
+      Result := Result + [mItem];
     end;
-  if AUseServer and AServer.TestsKnown then
-    for CiFailure in AServer.Failures do
+  end;
+end;
+
+class function TAtlasTestResults.ServerOnlyFailures(var ALocals: TArray<TAtlasTestFailureItem>;
+  const AServer: TAtlasCiBuild): TArray<TAtlasTestFailureItem>;
+var
+  mItem: TAtlasTestFailureItem;
+  mCiFailure: TAtlasCiFailure;
+  mIndex: Integer;
+  mFound: Boolean;
+begin
+  Result := nil;
+  for mCiFailure in AServer.Failures do
+  begin
+    if mCiFailure.Test = '' then
     begin
-      if CiFailure.Test = '' then
-        Continue;
-      Found := False;
-      for Index := 0 to High(Locals) do
-        if SameTest(Locals[Index].Test, CiFailure.Test) then
-        begin
-          Locals[Index].Server := True;
-          Found := True;
-        end;
-      for Index := 0 to High(ServerOnly) do
-        if SameText(ServerOnly[Index].Test, CiFailure.Test) then
-          Found := True;
-      if Found then
-        Continue;
-      Item := Default(TAtlasTestFailureItem);
-      Item.Test := CiFailure.Test;
-      Item.Message := CiFailure.Message;
-      Item.Server := True;
-      ServerOnly := ServerOnly + [Item];
+      Continue;
     end;
-  AMax := Max(AMax, 0);
-  Reserve := Min(Length(ServerOnly), AMax div 2);
-  LocalTake := Min(Length(Locals), AMax - Reserve);
-  ServerTake := Min(Length(ServerOnly), AMax - LocalTake);
-  for Index := 0 to LocalTake - 1 do
-    Result := Result + [Locals[Index]];
-  for Index := 0 to ServerTake - 1 do
-    Result := Result + [ServerOnly[Index]];
-  Hidden := Length(Locals) + Length(ServerOnly) - LocalTake - ServerTake;
+    // Lokal schon bekannt: dort als „auch auf dem Server“ markieren (jeder passende Eintrag).
+    mFound := False;
+    for mIndex := 0 to High(ALocals) do
+    begin
+      if SameTest(ALocals[mIndex].Test, mCiFailure.Test) then
+      begin
+        ALocals[mIndex].Server := True;
+        mFound := True;
+      end;
+    end;
+    if not mFound and (IndexOfTest(Result, mCiFailure.Test, False) < 0) then
+    begin
+      mItem := Default(TAtlasTestFailureItem);
+      mItem.Test := mCiFailure.Test;
+      mItem.Message := mCiFailure.Message;
+      mItem.Server := True;
+      Result := Result + [mItem];
+    end;
+  end;
+end;
+
+class function TAtlasTestResults.HiddenBeyond(const ALocal: TAtlasProjectTests; const AServer: TAtlasCiBuild;
+  AUseServer: Boolean): Integer;
+var
+  mKnown: Integer;
+begin
   // Über die gespeicherten hinaus gezählte Fehlschläge (je Datei höchstens 50).
+  Result := 0;
   if ALocal.Known then
   begin
-    Known := ALocal.Failed + ALocal.Errors;
-    if Known > Length(ALocal.Failures) then
-      Inc(Hidden, Known - Length(ALocal.Failures));
+    mKnown := ALocal.Failed + ALocal.Errors;
+    if mKnown > Length(ALocal.Failures) then
+    begin
+      Inc(Result, mKnown - Length(ALocal.Failures));
+    end;
   end;
   if AUseServer and AServer.TestsKnown and (AServer.Failed > Length(AServer.Failures)) then
-    Inc(Hidden, AServer.Failed - Length(AServer.Failures));
-  AMore := Hidden;
-end;
-
-class function TAtlasWelcomeTestResults.RerunNames(const ALocal: TAtlasProjectTests; const AServer: TAtlasCiBuild;
-  AUseServer: Boolean): TArray<string>;
-var
-  Name: string;
-  Failure: TAtlasCiFailure;
-  Seen: Boolean;
-begin
-  Result := nil;
-  if ALocal.Known then
-    Result := ALocal.FailedTests;
-  if not (AUseServer and AServer.TestsKnown) then
-    Exit;
-  for Failure in AServer.Failures do
   begin
-    if Failure.Test = '' then
-      Continue;
-    Seen := False;
-    for Name in Result do
-      if SameTest(Name, Failure.Test) then
-        Seen := True;
-    if not Seen then
-      Result := Result + [Failure.Test];
+    Inc(Result, AServer.Failed - Length(AServer.Failures));
   end;
 end;
 
-class function TAtlasWelcomeTestResults.Due(ALastAttemptUtc, ANowUtc: TDateTime; AIntervalMinutes: Integer): Boolean;
+class function TAtlasTestResults.MergeFailures(const ALocal: TAtlasProjectTests;
+  const AServer: TAtlasCiBuild; AUseServer: Boolean; AMax: Integer; out AMore: Integer): TArray<TAtlasTestFailureItem>;
+var
+  mLocals, mServerOnly: TArray<TAtlasTestFailureItem>;
+  mIndex, mReserve, mLocalTake, mServerTake: Integer;
 begin
-  if ALastAttemptUtc <= 0 then
-    Exit(True);
-  // Uhr zurückgestellt: nicht bis dahin warten.
-  if ALastAttemptUtc > ANowUtc + OneMinute then
-    Exit(True);
-  // Eine Sekunde Spielraum gegen Rundung der Gleitkommazeit.
-  Result := (ANowUtc - ALastAttemptUtc) * MinsPerDay + 1 / 60 >= NormalizedInterval(AIntervalMinutes);
+  Result := nil;
+  mLocals := LocalFailures(ALocal);
+  mServerOnly := nil;
+  if AUseServer and AServer.TestsKnown then
+  begin
+    mServerOnly := ServerOnlyFailures(mLocals, AServer);
+  end;
+  // Server-Fehlschläge bekommen bis zur Hälfte der Plätze, der Rest geht an die lokalen.
+  AMax := Max(AMax, 0);
+  mReserve := Min(Length(mServerOnly), AMax div 2);
+  mLocalTake := Min(Length(mLocals), AMax - mReserve);
+  mServerTake := Min(Length(mServerOnly), AMax - mLocalTake);
+  for mIndex := 0 to mLocalTake - 1 do
+  begin
+    Result := Result + [mLocals[mIndex]];
+  end;
+  for mIndex := 0 to mServerTake - 1 do
+  begin
+    Result := Result + [mServerOnly[mIndex]];
+  end;
+  AMore := Length(mLocals) + Length(mServerOnly) - mLocalTake - mServerTake + HiddenBeyond(ALocal, AServer, AUseServer);
 end;
 
-class function TAtlasWelcomeTestResults.Recorded(const AOld: TAtlasProjectCi; const AJob: TAtlasCiJob;
+class function TAtlasTestResults.RerunNames(const ALocal: TAtlasProjectTests; const AServer: TAtlasCiBuild;
+  AUseServer: Boolean): TArray<string>;
+var
+  mName: string;
+  mFailure: TAtlasCiFailure;
+  mSeen: Boolean;
+begin
+  Result := nil;
+  if ALocal.Known then
+  begin
+    Result := ALocal.FailedTests;
+  end;
+  if not (AUseServer and AServer.TestsKnown) then
+  begin
+    Exit;
+  end;
+  for mFailure in AServer.Failures do
+  begin
+    if mFailure.Test = '' then
+    begin
+      Continue;
+    end;
+    mSeen := False;
+    for mName in Result do
+    begin
+      if SameTest(mName, mFailure.Test) then
+      begin
+        mSeen := True;
+      end;
+    end;
+    if not mSeen then
+    begin
+      Result := Result + [mFailure.Test];
+    end;
+  end;
+end;
+
+class function TAtlasTestResults.Due(ALastAttemptUtc, ANowUtc: TDateTime; AIntervalMinutes: Integer): Boolean;
+begin
+  if ALastAttemptUtc <= 0 then
+  begin
+    Exit(True);
+  end;
+  // Uhr zurückgestellt: nicht bis dahin warten.
+  if ALastAttemptUtc > ANowUtc + OneMinute then
+  begin
+    Exit(True);
+  end;
+  // Eine Sekunde Spielraum gegen Rundung der Gleitkommazeit.
+  Result := (ANowUtc - ALastAttemptUtc) * MinsPerDay + 1 / cSecondsPerMinute >= NormalizedInterval(AIntervalMinutes);
+end;
+
+class function TAtlasTestResults.Recorded(const AOld: TAtlasProjectCi; const AJob: TAtlasCiJob;
   ASucceeded: Boolean; const ABuild: TAtlasCiBuild; AError: TAtlasCiFetchError; ANowUtc: TDateTime): TAtlasProjectCi;
 begin
   if AOld.Matches(AJob) then
-    Result := AOld
+  begin
+    Result := AOld;
+  end
   else
   begin
     Result := TAtlasProjectCi.Empty;
@@ -367,11 +480,13 @@ begin
   begin
     Result.Error := AError;
     if Result.Error = TAtlasCiFetchError.None then
+    begin
       Result.Error := TAtlasCiFetchError.Network;
+    end;
   end;
 end;
 
-class function TAtlasWelcomeTestResults.TurnedRed(const AOld: TAtlasProjectCi; const AJob: TAtlasCiJob;
+class function TAtlasTestResults.TurnedRed(const AOld: TAtlasProjectCi; const AJob: TAtlasCiJob;
   const ANew: TAtlasCiBuild): Boolean;
 begin
   Result := AOld.Matches(AJob) and AOld.HasBuild and (ANew.Number > 0) and
@@ -379,52 +494,66 @@ begin
     (CiLevel(ANew) = TAtlasTestLevel.Failed);
 end;
 
-class function TAtlasWelcomeTestResults.CiFor(const ASummary: TAtlasProjectSummary;
+class function TAtlasTestResults.CiFor(const ASummary: TAtlasProjectSummary;
   const AJob: TAtlasCiJob): TAtlasProjectCi;
 begin
   if ASummary.Ci.Matches(AJob) then
-    Result := ASummary.Ci
+  begin
+    Result := ASummary.Ci;
+  end
   else
+  begin
     Result := TAtlasProjectCi.Empty;
+  end;
 end;
 
 function NameOfPath(const APath: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Ohne ExtractFileName: Der Pfad hat immer „\“, auch wenn die Tests nicht unter Windows laufen.
   Result := APath;
-  for Index := Length(Result) downto 1 do
-    if CharInSet(Result[Index], ['\', '/']) then
+  for mIndex := Length(Result) downto 1 do
+  begin
+    if CharInSet(Result[mIndex], ['\', '/']) then
     begin
-      Result := Copy(Result, Index + 1, MaxInt);
+      Result := Copy(Result, mIndex + 1, MaxInt);
       Break;
     end;
-  for Index := Length(Result) downto 1 do
-    if Result[Index] = '.' then
+  end;
+  for mIndex := Length(Result) downto 1 do
+  begin
+    if Result[mIndex] = '.' then
     begin
-      Result := Copy(Result, 1, Index - 1);
+      Result := Copy(Result, 1, mIndex - 1);
       Break;
     end;
+  end;
 end;
 
-class function TAtlasWelcomeTestResults.Row(const AProject: TAtlasTestProject; ACiEnabled: Boolean): TAtlasTestRow;
+class function TAtlasTestResults.Row(const AProject: TAtlasTestProject; ACiEnabled: Boolean): TAtlasTestRow;
 begin
   Result := Default(TAtlasTestRow);
   Result.Project := AProject.Project;
   Result.Local := AProject.Summary.Tests;
   Result.LocalLevel := LocalLevel(Result.Local);
   if Result.Local.Known then
+  begin
     Result.TestProject := Result.Local.Project;
+  end;
   Result.Name := NameOfPath(Result.TestProject);
   if Result.Name = '' then
+  begin
     Result.Name := NameOfPath(AProject.Project);
+  end;
   Result.Job := AProject.Job;
   Result.HasCi := ACiEnabled and AProject.Job.Configured;
   Result.Ci := TAtlasProjectCi.Empty;
   Result.CiLevel := TAtlasTestLevel.Unknown;
   if not Result.HasCi then
+  begin
     Exit;
+  end;
   Result.Ci := CiFor(AProject.Summary, AProject.Job);
   Result.CiQuerying := AProject.Querying;
   if Result.Ci.HasBuild then
@@ -435,79 +564,104 @@ begin
   Result.Mismatch := Compare(Result.LocalLevel, Result.CiLevel);
 end;
 
-class function TAtlasWelcomeTestResults.View(const AProjects: TArray<TAtlasTestProject>; const ASelected: string;
+class function TAtlasTestResults.RowKey(const ARow: TAtlasTestRow): string;
+begin
+  // Eine Projektgruppe und ihr Testprojekt tragen denselben Lauf: nur einmal zeigen.
+  if ARow.Local.Known and (ARow.TestProject <> '') then
+  begin
+    Result := LowerCase(ARow.TestProject);
+  end
+  else
+  begin
+    Result := LowerCase(ARow.Project);
+  end;
+  if ARow.HasCi then
+  begin
+    Result := Result + cKeySeparator + ARow.Job.Key;
+  end;
+end;
+
+class function TAtlasTestResults.Rows(const AProjects: TArray<TAtlasTestProject>;
+  ACiEnabled: Boolean): TArray<TAtlasTestRow>;
+var
+  mProject: TAtlasTestProject;
+  mItem: TAtlasTestRow;
+  mKeys: TArray<string>;
+  mKey: string;
+begin
+  Result := nil;
+  mKeys := nil;
+  for mProject in AProjects do
+  begin
+    mItem := Row(mProject, ACiEnabled);
+    if mItem.Local.Known or mItem.HasCi then
+    begin
+      mKey := RowKey(mItem);
+      if IndexStr(mKey, mKeys) < 0 then
+      begin
+        mKeys := mKeys + [mKey];
+        Result := Result + [mItem];
+      end;
+    end;
+  end;
+end;
+
+class function TAtlasTestResults.View(const AProjects: TArray<TAtlasTestProject>; const ASelected: string;
   AMaxFailures: Integer; ACiEnabled: Boolean): TAtlasTestResultsView;
 var
-  Project: TAtlasTestProject;
-  Item: TAtlasTestRow;
-  Keys: TArray<string>;
-  Key, Seen: string;
-  Duplicate: Boolean;
-  Index: Integer;
-  Chosen: TAtlasTestRow;
-  UseServer: Boolean;
+  mIndex: Integer;
+  mChosen: TAtlasTestRow;
+  mUseServer: Boolean;
 begin
   Result := Default(TAtlasTestResultsView);
-  Result.Rows := nil;
+  Result.Rows := Rows(AProjects, ACiEnabled);
   Result.Failures := nil;
   Result.Rerun := nil;
   Result.Selected := -1;
-  Keys := nil;
-  for Project in AProjects do
-  begin
-    Item := Row(Project, ACiEnabled);
-    if not Item.Local.Known and not Item.HasCi then
-      Continue;
-    // Eine Projektgruppe und ihr Testprojekt tragen denselben Lauf: nur einmal zeigen.
-    if Item.Local.Known and (Item.TestProject <> '') then
-      Key := LowerCase(Item.TestProject)
-    else
-      Key := LowerCase(Item.Project);
-    if Item.HasCi then
-      Key := Key + '|' + Item.Job.Key;
-    Duplicate := False;
-    for Seen in Keys do
-      if Seen = Key then
-        Duplicate := True;
-    if Duplicate then
-      Continue;
-    Keys := Keys + [Key];
-    Result.Rows := Result.Rows + [Item];
-  end;
   if Length(Result.Rows) = 0 then
+  begin
     Exit;
+  end;
   Result.Selected := 0;
-  for Index := 0 to High(Result.Rows) do
-    if (ASelected <> '') and SameText(Result.Rows[Index].Project, ASelected) then
+  for mIndex := 0 to High(Result.Rows) do
+  begin
+    if (ASelected <> '') and SameText(Result.Rows[mIndex].Project, ASelected) then
     begin
-      Result.Selected := Index;
+      Result.Selected := mIndex;
       Break;
     end;
-  Chosen := Result.Rows[Result.Selected];
-  UseServer := Chosen.HasCi and Chosen.Ci.HasBuild;
-  Result.Failures := MergeFailures(Chosen.Local, Chosen.Ci.Build, UseServer, NormalizedMaxFailures(AMaxFailures),
+  end;
+  mChosen := Result.Rows[Result.Selected];
+  mUseServer := mChosen.HasCi and mChosen.Ci.HasBuild;
+  Result.Failures := MergeFailures(mChosen.Local, mChosen.Ci.Build, mUseServer, NormalizedMaxFailures(AMaxFailures),
     Result.More);
-  Result.Rerun := RerunNames(Chosen.Local, Chosen.Ci.Build, UseServer);
+  Result.Rerun := RerunNames(mChosen.Local, mChosen.Ci.Build, mUseServer);
 end;
 
-class function TAtlasWelcomeTestResults.ProviderCaption(const AProvider: string): string;
+class function TAtlasTestResults.ProviderCaption(const AProvider: string): string;
 begin
   if SameText(AProvider, 'jenkins') then
-    Result := 'Jenkins'
+  begin
+    Result := 'Jenkins';
+  end
   else if AProvider = '' then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := UpperCase(Copy(AProvider, 1, 1)) + Copy(AProvider, 2, MaxInt);
+  end;
 end;
 
-class function TAtlasWelcomeTestResults.NormalizedMaxFailures(AValue: Integer): Integer;
+class function TAtlasTestResults.NormalizedMaxFailures(AValue: Integer): Integer;
 begin
-  Result := EnsureRange(AValue, MinMaxFailures, MaxMaxFailures);
+  Result := EnsureRange(AValue, cMinMaxFailures, cMaxMaxFailures);
 end;
 
-class function TAtlasWelcomeTestResults.NormalizedInterval(AValue: Integer): Integer;
+class function TAtlasTestResults.NormalizedInterval(AValue: Integer): Integer;
 begin
-  Result := EnsureRange(AValue, MinIntervalMinutes, MaxIntervalMinutes);
+  Result := EnsureRange(AValue, cMinIntervalMinutes, cMaxIntervalMinutes);
 end;
 
 end.

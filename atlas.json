@@ -35,7 +35,8 @@
         "Atlas.IDE.CodeInsight.Composition -> Atlas.Core.*",
         "Atlas.IDE.Debug.Composition -> Atlas.Core.*",
         "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Tests.Composition -> Atlas.Core.*"
+        "Atlas.IDE.Tests.Composition -> Atlas.Core.*",
+        "Atlas.IDE.Tracker.Composition -> Atlas.Core.*"
       ]
     },
     "architecture-contract-content": {

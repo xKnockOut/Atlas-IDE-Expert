@@ -141,7 +141,7 @@ type
     MinTrendPoints = 2;
     MaxTrendPoints = 100;
     /// <summary>Grenzen für welcomePage.tests.maxFailures und welcomePage.tests.ci.intervalMinutes (#763); wie
-    /// TAtlasWelcomeTestResults (Test prüft Gleichheit).</summary>
+    /// TAtlasTestResults (Test prüft Gleichheit).</summary>
     MinTestFailures = 1;
     MaxTestFailures = 50;
     MinCiIntervalMinutes = 1;

@@ -72,6 +72,14 @@ type
       out AText: string; out AError: TAtlasCiFetchError): Boolean;
   end;
 
+  /// <summary>IAtlasCiTransports über TAtlasCiHttpTransport (#1455); erzeugt nur die Komposition des Moduls
+  /// Tracker.</summary>
+  TAtlasCiHttpTransports = class(TInterfacedObject, IAtlasCiTransports)
+  public
+    function Basic(const AServer, AUser, AToken: string): IAtlasCiTransport;
+    function Bearer(const AServer, AToken: string): IAtlasCiTransport;
+  end;
+
 implementation
 
 uses
@@ -365,6 +373,18 @@ begin
     Content.Free;
     Client.Free;
   end;
+end;
+
+{ TAtlasCiHttpTransports }
+
+function TAtlasCiHttpTransports.Basic(const AServer, AUser, AToken: string): IAtlasCiTransport;
+begin
+  Result := TAtlasCiHttpTransport.Create(AServer, AUser, AToken);
+end;
+
+function TAtlasCiHttpTransports.Bearer(const AServer, AToken: string): IAtlasCiTransport;
+begin
+  Result := TAtlasCiHttpTransport.CreateBearer(AServer, AToken);
 end;
 
 end.

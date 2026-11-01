@@ -195,6 +195,35 @@ type
     procedure RunTests(const AFileName: string; const ATests: TArray<string>);
   end;
 
+  /// <summary>Ein Befund für „Issue anlegen“ (#1268) aus dem Fenster „Atlas-Prüfung“: Regelkennung bzw.
+  /// Meldungsnummer, Meldung, Fundstelle („Unit1.pas:12:5“) und betroffene Zeile ('' = unbekannt).</summary>
+  TAtlasIssueFinding = record
+    Rule: string;
+    Message: string;
+    Location: string;
+    LineText: string;
+  end;
+
+  /// <summary>Textdatei für ein neues Issue (#1355): Name beim Tracker und Inhalt; nach dem Anlegen zum Anhängen
+  /// vorgewählt (#1276).</summary>
+  TAtlasIssueTextFile = record
+    Name: string;
+    Text: string;
+  end;
+
+  /// <summary>„Issue anlegen“ (#1268) für Base: aus Befunden des Fensters „Atlas-Prüfung“ und aus einem
+  /// Absturzfall des Servers (#1355). Stellt das Modul Tracker bereit; ohne Anbieter oder mit Enabled = False
+  /// zeigt Base die Einträge nicht bzw. öffnet den Ordner des Falls. Hauptthread.</summary>
+  IAtlasIssueCreation = interface
+    ['{09578943-8085-41BC-BFA2-8C20E7D2CCB8}']
+    /// <summary>issues.create an und das Modul bereit.</summary>
+    function Enabled: Boolean;
+    /// <summary>Dialog mit den Befunden; mehrere ergeben ein Issue mit Liste.</summary>
+    procedure FromFindings(const AFindings: TArray<TAtlasIssueFinding>);
+    /// <summary>Dialog mit ATitle und ADescription; AFiles nach dem Anlegen zum Anhängen vorgewählt.</summary>
+    procedure FromCrash(const ATitle, ADescription: string; const AFiles: TArray<TAtlasIssueTextFile>);
+  end;
+
   /// <summary>Wert eines Ausdrucks im Tooltip beim Debuggen (Visualisierer, eigene Darstellungen): '' = kein Beitrag.
   /// ATypeChain: Typ und seine Vorfahren, AText: Wert der IDE.</summary>
   IAtlasHoverValueSource = interface
