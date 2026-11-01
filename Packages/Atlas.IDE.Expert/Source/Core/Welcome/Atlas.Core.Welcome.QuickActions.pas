@@ -12,9 +12,8 @@
 //   (wie die Marke „N geändert“ des Bereichs „Projekte“, #592) mit dem Tooltip
 //   „Erst lokale Änderungen sichern“, ohne Arbeitskopie und solange auf dem
 //   Projekt schon eine Aktion läuft. Unbekannter Stand sperrt nicht: Pull
-//   prüft vor dem Holen die ganze Arbeitskopie noch einmal (geänderte
-//   versionierte Dateien sperren, unversionierte nicht) und holt dann nur
-//   vorwärts (Git: pull --ff-only, SVN: update; IAtlasVcsUpdate). Bei SVN
+//   prüft vor dem Holen die ganze Arbeitskopie noch einmal (TAtlasVcsPull in
+//   Atlas.Core.Vcs.Pull, Base). Bei SVN
 //   heißt der Knopf „Aktualisieren“. vcs.externals.update (#1292) wählt bei
 //   SVN mit Externals bzw. ohne (--ignore-externals); „fragen“ gibt dem Knopf
 //   die Auswahl „mit Externals“/„ohne Externals“ (AskExternals).
@@ -39,7 +38,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Pull;
 
 type
 {$SCOPEDENUMS ON}
@@ -48,9 +48,6 @@ type
   TAtlasQuickActionPhase = (Idle, Running, Succeeded, Failed, Refused);
   /// <summary>Grund, aus dem „Pull“ gesperrt ist.</summary>
   TAtlasPullBlock = (None, LocalChanges, NoWorkingCopy, Busy);
-  /// <summary>Ergebnis von Pull: neue Commits geholt, schon aktuell, wegen lokaler Änderungen nicht geholt, keine
-  /// Arbeitskopie, Fehler (auch Zeitüberschreitung oder fehlendes Programm).</summary>
-  TAtlasPullOutcome = (Updated, UpToDate, Blocked, NoWorkingCopy, Failed);
 {$SCOPEDENUMS OFF}
   TAtlasQuickActions = set of TAtlasQuickAction;
 
@@ -168,19 +165,6 @@ type
     /// Namen. '' ohne bzw. bei mehreren gleichwertigen (ACandidates nennt sie dann; die IDE fragt).</summary>
     class function TestProjectFor(const AProject: string; const AExists: TAtlasQuickFileExists;
       const AReadLines: TAtlasQuickReadLines; out ACandidates: TArray<string>): string; static;
-    /// <summary>Sperren die Änderungen der Arbeitskopie Pull? Ja bei jeder Änderung außer unversionierten Dateien.
-    /// </summary>
-    class function ChangesBlockPull(const AChanges: TArray<TAtlasVcsChange>): Boolean; static;
-    /// <summary>Pull bzw. svn update (startet Prozesse: nur im Hintergrund).</summary>
-    class function Pull(const AVcs: IAtlasVersionControl): TAtlasPullOutcome; overload; static;
-    /// <summary>Wie oben; AReason ist das Ergebnis des gescheiterten Aufrufs (für die Meldung bei Failed), sonst
-    /// Ok.</summary>
-    class function Pull(const AVcs: IAtlasVersionControl; out AReason: TAtlasVcsOutcome): TAtlasPullOutcome;
-      overload; static;
-    /// <summary>Wie oben; AIgnoreExternals: SVN ohne Externals (svn update --ignore-externals, #1292), sonst wie
-    /// Pull. Git kennt das nicht und holt wie immer.</summary>
-    class function Pull(const AVcs: IAtlasVersionControl; AIgnoreExternals: Boolean;
-      out AReason: TAtlasVcsOutcome): TAtlasPullOutcome; overload; static;
     /// <summary>Pull-Knöpfe unter SVN mit vcs.externals.update = ask bekommen die Auswahl (#1292).</summary>
     class procedure AskExternals(var AButtons: TAtlasQuickActionButtons); static;
     /// <summary>„a\..\b“ und doppelte Trenner auflösen (Windows-Pfade, auch unter Linux in den Tests).</summary>
@@ -696,29 +680,6 @@ begin
     Result := ACandidates[0];
 end;
 
-class function TAtlasWelcomeQuickActions.ChangesBlockPull(const AChanges: TArray<TAtlasVcsChange>): Boolean;
-var
-  Change: TAtlasVcsChange;
-begin
-  Result := False;
-  for Change in AChanges do
-    if Change.Kind <> TAtlasVcsChangeKind.Untracked then
-      Exit(True);
-end;
-
-class function TAtlasWelcomeQuickActions.Pull(const AVcs: IAtlasVersionControl): TAtlasPullOutcome;
-var
-  Reason: TAtlasVcsOutcome;
-begin
-  Result := Pull(AVcs, Reason);
-end;
-
-class function TAtlasWelcomeQuickActions.Pull(const AVcs: IAtlasVersionControl;
-  out AReason: TAtlasVcsOutcome): TAtlasPullOutcome;
-begin
-  Result := Pull(AVcs, False, AReason);
-end;
-
 class procedure TAtlasWelcomeQuickActions.AskExternals(var AButtons: TAtlasQuickActionButtons);
 var
   mIndex: Integer;
@@ -729,46 +690,6 @@ begin
       AButtons[mIndex].AskExternals := True;
       AButtons[mIndex].HasMenu := True;
     end;
-end;
-
-class function TAtlasWelcomeQuickActions.Pull(const AVcs: IAtlasVersionControl; AIgnoreExternals: Boolean;
-  out AReason: TAtlasVcsOutcome): TAtlasPullOutcome;
-var
-  Before, After: TAtlasVcsHead;
-  Changes: TArray<TAtlasVcsChange>;
-  Outcome: TAtlasVcsOutcome;
-  Update: IAtlasVcsUpdate;
-  mExternals: IAtlasVcsSvnExternals;
-begin
-  AReason := TAtlasVcsOutcome.Ok;
-  if AVcs = nil then
-    Exit(TAtlasPullOutcome.NoWorkingCopy);
-  Outcome := AVcs.Head(Before);
-  if (Outcome = TAtlasVcsOutcome.NoWorkingCopy) or (Outcome = TAtlasVcsOutcome.Disabled) then
-    Exit(TAtlasPullOutcome.NoWorkingCopy);
-  AReason := Outcome;
-  if Outcome <> TAtlasVcsOutcome.Ok then
-    Exit(TAtlasPullOutcome.Failed);
-  // Vor dem Holen frisch prüfen: Der gezeigte Stand kann älter sein.
-  AReason := AVcs.Changes(Changes);
-  if AReason <> TAtlasVcsOutcome.Ok then
-    Exit(TAtlasPullOutcome.Failed);
-  if ChangesBlockPull(Changes) then
-    Exit(TAtlasPullOutcome.Blocked);
-  if AIgnoreExternals and Supports(AVcs, IAtlasVcsSvnExternals, mExternals) then
-    AReason := mExternals.Update(True)
-  else if Supports(AVcs, IAtlasVcsUpdate, Update) then
-    AReason := Update.Pull
-  else
-  begin
-    AReason := TAtlasVcsOutcome.Failed;
-    Exit(TAtlasPullOutcome.Failed);
-  end;
-  if AReason <> TAtlasVcsOutcome.Ok then
-    Exit(TAtlasPullOutcome.Failed);
-  Result := TAtlasPullOutcome.UpToDate;
-  if (AVcs.Head(After) = TAtlasVcsOutcome.Ok) and (After.Revision <> Before.Revision) then
-    Result := TAtlasPullOutcome.Updated;
 end;
 
 end.

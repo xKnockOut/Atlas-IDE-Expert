@@ -255,7 +255,8 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Vcs.Pull;
 
 const
   Separator = ' · ';

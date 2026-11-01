@@ -77,6 +77,8 @@ uses
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Bookmarks.QuickColumn,
   Atlas.IDE.Bookmarks.QuickChord,
+  Atlas.IDE.Bookmarks.SavedPlaces,
+  Atlas.Core.SavedPlaces.Contract,
   Atlas.UI.Todos.Dialog,
   Atlas.UI.Strings,
   Atlas.UI.Bookmarks.Strings;
@@ -654,6 +656,8 @@ begin
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasFollowsTheme, mRef);
   GScope.Provide(IAtlasOverviewBookmarks, mRef);
+  // Reiter „Gemerkt“ der Willkommensseite (#755) über den Vertrag (#1456).
+  GScope.Provide(IAtlasSavedPlacesSource, TAtlasIdeSavedPlaces.Create as IAtlasSavedPlacesSource);
   // Schichten der Rinne (#545, #622): vor den Rekursionssymbolen von Base.
   GScope.Provide(IAtlasGutterLayer, TAtlasIdeNotesGutter.Create as IAtlasGutterLayer);
   GScope.Provide(IAtlasGutterLayer, TAtlasIdeBookmarksGutter.Create as IAtlasGutterLayer);
