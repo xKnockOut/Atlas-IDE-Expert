@@ -76,10 +76,10 @@ uses
   System.Classes,
   System.Actions,
   Vcl.ActnList,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.IDE.Foundation.Host;
 
 const
-  MessageGroup = 'Atlas';
   RunAction = 'RunRunCommand';
   RunNoDebugAction = 'RunRunNoDebugCommand';
 
@@ -92,16 +92,8 @@ begin
 end;
 
 class procedure TAtlasIdeStartOptions.Say(const AText: string);
-var
-  mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-    Exit;
-  mGroup := mMessages.GetGroup(MessageGroup);
-  if mGroup = nil then
-    mGroup := mMessages.AddMessageGroup(MessageGroup);
-  mMessages.AddTitleMessage(AText, mGroup);
+  TAtlasIdeHost.Message(AText);
 end;
 
 class function TAtlasIdeStartOptions.Debugging: Boolean;
