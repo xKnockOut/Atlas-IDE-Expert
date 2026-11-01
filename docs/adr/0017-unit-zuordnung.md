@@ -775,6 +775,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Query.Service` | `IDE/Query/Atlas.IDE.Query.Service.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Query.Window` | `IDE/Query/Atlas.IDE.Query.Window.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Search.Commands` | `IDE/Search/Atlas.IDE.Search.Commands.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Composition` | `IDE/Search/Atlas.IDE.Search.Composition.pas` | Anmeldung des Moduls `atlas.search`, #1455 |
 | `Atlas.IDE.Search.FileSearch` | `IDE/Search/Atlas.IDE.Search.FileSearch.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.MessageList` | `IDE/Search/Atlas.IDE.Search.MessageList.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.ReplaceWindow` | `IDE/Search/Atlas.IDE.Search.ReplaceWindow.pas` | Ordner `IDE/Search` |

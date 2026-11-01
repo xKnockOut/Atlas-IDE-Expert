@@ -17,6 +17,12 @@
 - Optionsseiten: Modulschalter oben auf der jeweiligen Seite. Hinweis „Prüfregeln sind aus“ einmal je atlas.json und Sitzung, wenn die atlas.json Regeln festlegt und das Modul aus ist (`Atlas.Core.Settings.RuleChecksNotice`, `Atlas.IDE.Settings.RuleChecksNotice`, Quelle `ruleChecks`).
 - Nicht übersetzt: FPC trunk ließ sich in der Cloud nicht bauen. Alle Prüfskripte grün. Vor dem Merge mit Delphi bauen und Tests laufen lassen.
 - Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
+## Suche meldet sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
+- `Atlas.IDE.Search.Composition` meldet `atlas.search` an (Schalter `search`, ab abgesichertem Start): Teile Search, UnitSearch, Query; Befehle; Atlas-Menü „Units suchen“, „IDE-Dialog Units“, „Atlas-Abfrage“ (jetzt bei den Einträgen der Module) und Ansicht › Atlas › „Atlas-Abfrage“; alle Tasten der Suche und Strg+F12 kommen vom Modul.
+- Base neu: `TAtlasMenuPlace.ViewMenu` (Ansicht › Atlas, `UpdateViewModuleItems` beim Öffnen, Test), `IAtlasTakenActions` (`Atlas.Core.Commands.KeyMap`, ersetzt `TAtlasIdeUnitSearch.HookedAction` in der Tastenkürzel-Übersicht), `TAtlasIdeHost.RunRequestAsync` (abbrechbare Anfrage, Antwort nur bei offenem Scope).
+- F3/Umschalt+F3: Die Suche bindet sie mit Austrittspunkten und Markierungssuche im Versuch; die Bindung von Base dafür steht jetzt nach den Tasten der Module und greift nur ohne Suche. Suchtasten laufen mit Vorrang `Take` (vorher ohne Konfliktprüfung).
+- Vertragsversion bleibt 1 bis zum Pilot (#1456), obwohl Records und Aufzählungen dazukamen: Noch gibt es kein ausgeliefertes Modul.
+
 ## Designer meldet sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 - `Atlas.IDE.Designer.Composition` meldet `atlas.designer` an (Schalter `designer`, ab abgesichertem Start): Teil DesignerBar (startet nur mit editor.designerBar, vorher immer installiert und ausgeblendet), Hörer für Einstellungen und Thema. Die Benachrichtigungen des Designers (Teil Forms, #722) bleiben in Base.
 - `TAtlasIdeStartOptions.Say` nutzt `TAtlasIdeHost.Message` (keine zweite Meldungsroutine).

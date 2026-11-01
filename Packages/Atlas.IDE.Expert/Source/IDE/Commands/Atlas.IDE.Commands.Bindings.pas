@@ -6,8 +6,7 @@
 // (Strg+Alt+I), Gehe zu Typdefinition (ohne Vorgabe), letzte
 // Atlas-Änderung zurücknehmen (Strg+Alt+Z) und wiederherstellen
 // (Strg+Alt+Umschalt+Z, #721) sowie Deklaration ⇄ Implementierung
-// (Strg+Umschalt+↑/↓, #775), Unit ⇄ Testunit (#189), Units suchen (#777,
-// nur solange unitSearch.enabled an ist) sowie die Liste der
+// (Strg+Umschalt+↑/↓, #775), Unit ⇄ Testunit (#189) sowie die Liste der
 // Benachrichtigungen (#601, Strg+Umschalt+Alt+N, nur solange
 // notifications.enabled an ist) und die Brotkrumenleiste (#590,
 // Strg+Umschalt+., nur solange editor.breadcrumbs an ist) sowie der Sprung
@@ -36,12 +35,9 @@
 // bleibt es bei „Erneut suchen“ der IDE. Strg+. (HideElementKey, #628) öffnet
 // das Menü „Ausblenden“ zu den Elementen der Zeile; ohne Element geht die Taste
 // an die IDE (IDE Insight).
-// Atlas-Suche (#878, search.replaceIdeSearch): Strg+F öffnet die
-// Suchleiste unter dem Editor, F3/Umschalt+F3 springen in der letzten Atlas-Suche; ohne
-// letzte Atlas-Suche bleibt es bei Markierung suchen bzw. der IDE. Die Tasten
-// sind bewusst übernommen (ohne Konfliktprüfung, wie Strg+F12 bei „Units
-// suchen“); mit dem Schalter aus belegt Atlas sie nicht. „In Methode suchen“
-// (#877, SearchMethodKey) ist ein gewöhnlicher Editorbefehl.
+// Die Tasten der Atlas-Suche (#877, #878) und von „Units suchen“ (#777)
+// kommen vom Modul Suche (#1455); F3/Umschalt+F3 hier gelten nur, wenn es sie
+// nicht belegt.
 
 interface
 
@@ -120,8 +116,6 @@ uses
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.Results.Peek,
-  Atlas.IDE.UnitSearch.Commands,
-  Atlas.IDE.Search.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
@@ -426,68 +420,6 @@ begin
         Result := TAtlasIdeEditorCommands.TryToggleMethod;
       end);
   end;
-  // Atlas-Suche (#878): vor F3 der Markierungssuche angemeldet, damit sie bei gleicher Taste gewinnt (AddAttemptKey
-  // bindet jede Taste nur einmal); ohne letzte Atlas-Suche weiter wie bisher.
-  if Settings.SearchReplaceIde then
-  begin
-    if Settings.SearchKey <> 0 then
-      AddAttemptKey(TAtlasFeature.Search, Settings.SearchKey, TAtlasStrings.Text(TAtlasTextId.SearchCommand),
-        function: Boolean
-        begin
-          // Die Leiste erst nach der Tastenverarbeitung (sie nimmt den Fokus).
-          TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
-            procedure
-            begin
-              TAtlasGuard.Run(TAtlasFeature.Search, TAtlasIdeSearch.Show);
-            end);
-          Result := True;
-        end, False);
-    // Strg+H (#893): nur mit search.replace, sonst gehört die Taste der IDE.
-    if Settings.SearchReplace and (Settings.SearchReplaceKey <> 0) then
-      AddAttemptKey(TAtlasFeature.Search, Settings.SearchReplaceKey,
-        TAtlasStrings.Text(TAtlasTextId.SearchReplaceCommand),
-        function: Boolean
-        begin
-          TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
-            procedure
-            begin
-              TAtlasGuard.Run(TAtlasFeature.Search, TAtlasIdeSearch.ShowReplace);
-            end);
-          Result := True;
-        end, False);
-    if Settings.SearchNextKey <> 0 then
-      AddAttemptKey(TAtlasFeature.Search, Settings.SearchNextKey, TAtlasStrings.Text(TAtlasTextId.SearchNextCommand),
-        function: Boolean
-        begin
-          Result := TAtlasIdeExitPoints.TryJump(False) or TAtlasIdeSearch.TryNext(False) or
-            TAtlasIdeEditorCommands.TryFindSelection(False);
-        end, False);
-    if Settings.SearchPreviousKey <> 0 then
-      AddAttemptKey(TAtlasFeature.Search, Settings.SearchPreviousKey, TAtlasStrings.Text(TAtlasTextId.SearchPreviousCommand),
-        function: Boolean
-        begin
-          Result := TAtlasIdeExitPoints.TryJump(True) or TAtlasIdeSearch.TryNext(True) or
-            TAtlasIdeEditorCommands.TryFindSelection(True);
-        end, False);
-  end;
-  AddKey(TAtlasFeature.Search, Settings.SearchMethodKey, TAtlasStrings.Text(TAtlasTextId.SearchInMethodCommand),
-    procedure
-    begin
-      TAtlasIdeSearch.ShowInMethod;
-    end);
-  // Austrittspunkte (#698): F3 bzw. Umschalt+F3 springt reihum, solange die Hervorhebung steht und der Cursor auf
-  // einer ihrer Stellen liegt (dann gibt es keine Markierung). Markierung suchen: mit einzeiliger Markierung; sonst
-  // „Erneut suchen“ der IDE.
-  AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, []), 'F3',
-    function: Boolean
-    begin
-      Result := TAtlasIdeExitPoints.TryJump(False) or TAtlasIdeEditorCommands.TryFindSelection(False);
-    end, False);
-  AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, [ssShift]), 'Umschalt+F3',
-    function: Boolean
-    begin
-      Result := TAtlasIdeExitPoints.TryJump(True) or TAtlasIdeEditorCommands.TryFindSelection(True);
-    end, False);
   // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
   if Settings.CreateIssueKey <> 0 then
     AddKey(TAtlasFeature.WelcomePage, Settings.CreateIssueKey, TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand),
@@ -601,6 +533,21 @@ begin
   // Lesezeichen (#622, #1104) samt Akkord und Zifferntasten kommen ebenso vom Modul.
   for mModuleKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
     AddModuleKey(mModuleKey);
+  // Nach den Tasten der Module: Belegt die Suche (#878) F3 bzw. Umschalt+F3, schließt ihr Versuch Austrittspunkte
+  // und Markierungssuche mit ein; sonst gelten diese hier.
+  // Austrittspunkte (#698): F3 bzw. Umschalt+F3 springt reihum, solange die Hervorhebung steht und der Cursor auf
+  // einer ihrer Stellen liegt (dann gibt es keine Markierung). Markierung suchen: mit einzeiliger Markierung; sonst
+  // „Erneut suchen“ der IDE.
+  AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, []), 'F3',
+    function: Boolean
+    begin
+      Result := TAtlasIdeExitPoints.TryJump(False) or TAtlasIdeEditorCommands.TryFindSelection(False);
+    end, False);
+  AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, [ssShift]), 'Umschalt+F3',
+    function: Boolean
+    begin
+      Result := TAtlasIdeExitPoints.TryJump(True) or TAtlasIdeEditorCommands.TryFindSelection(True);
+    end, False);
   // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; mit Vorrang
   // übernommen. Aus = das Kürzel gehört der IDE.
   if Settings.ExpressionType then
@@ -620,13 +567,6 @@ begin
       procedure
       begin
         TAtlasIdeEditorCommands.SafeDelete;
-      end);
-  // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
-  if Settings.UnitSearchEnabled then
-    AddKey(TAtlasFeature.UnitSearch, Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),
-      procedure
-      begin
-        TAtlasIdeUnitSearch.Show;
       end);
   // Schnell öffnen (#503): aus = Strg+P bleibt der IDE.
   if Settings.QuickOpen then

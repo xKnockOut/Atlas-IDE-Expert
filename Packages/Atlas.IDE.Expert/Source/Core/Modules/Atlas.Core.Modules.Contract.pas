@@ -33,9 +33,9 @@ type
   /// Einstellungen, Palette, Menü); Minimal: nur Einstellungsseite und Statusfeld. Steht im Vertrag, weil ein Modul
   /// seine Mindeststufe angibt (TAtlasModuleInfo.MinLevel).</summary>
   TAtlasSafeLevel = (Normal, Safe, Minimal);
-  /// <summary>Wo ein Menüeintrag eines Moduls erscheint: Atlas-Menü der IDE oder Untermenü „Atlas“ im
-  /// Kontextmenü des Editors.</summary>
-  TAtlasMenuPlace = (AtlasMenu, EditorContext);
+  /// <summary>Wo ein Menüeintrag eines Moduls erscheint: Atlas-Menü der IDE, Untermenü „Atlas“ im Kontextmenü des
+  /// Editors oder Ansicht › Atlas (Fenster).</summary>
+  TAtlasMenuPlace = (AtlasMenu, EditorContext, ViewMenu);
   /// <summary>Vorrang einer Taste eines Moduls vor fremden Belegungen: Shared folgt keys.editorPriority wie die
   /// Editorbefehle von Base, Take übernimmt die Taste, Yield lässt eine fremde Belegung aktiv.</summary>
   TAtlasKeyPriority = (Shared, Take, Yield);
