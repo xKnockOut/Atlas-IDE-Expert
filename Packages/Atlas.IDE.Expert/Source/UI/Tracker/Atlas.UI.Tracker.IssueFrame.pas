@@ -436,7 +436,7 @@ uses
   System.UITypes,
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Checklist,
-  Atlas.UI.Strings,
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip;
 
 {$R *.dfm}
@@ -479,7 +479,7 @@ procedure TAtlasIssueImageBox.SetGraphic(AGraphic: TGraphic);
 begin
   FreeAndNil(FGraphic);
   FGraphic := AGraphic;
-  Hint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewImageHint);
+  Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewImageHint);
   ShowHint := True;
   Fit;
   Invalidate;
@@ -519,7 +519,7 @@ begin
     // Noch nicht geladen bzw. nicht ladbar: Alternativtext gedämpft.
     Canvas.Font := Font;
     Canvas.Font.Color := ToColor(FColors.Muted);
-    mText := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewImageLink, [FAlt]);
+    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewImageLink, [FAlt]);
     Canvas.TextOut(0, ScaleValue(2), mText);
     Exit;
   end;
@@ -664,29 +664,29 @@ begin
   FTools.Height := 32;
   FTools.ShowCaption := False;
   FBack := AddButton('◀', BackClick);
-  FBack.Hint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewBack);
+  FBack.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBack);
   FBack.Width := 32;
   FForward := AddButton('▶', ForwardClick);
-  FForward.Hint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewForward);
+  FForward.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewForward);
   FForward.Width := 32;
-  FStart := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewStart), StartClick);
-  FEnd := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewEnd), EndClick);
-  FEnd.Hint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewEndHint);
+  FStart := AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart), StartClick);
+  FEnd := AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEnd), EndClick);
+  FEnd.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEndHint);
   FEnd.Visible := False;
-  FBrowse := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewBrowse), BrowseClick);
-  FCopyKey := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCopyKey), CopyKeyClick);
-  FAttach := AddButton(TAtlasStrings.Text(TAtlasTextId.AttachPreviewButton), AttachClick);
+  FBrowse := AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse), BrowseClick);
+  FCopyKey := AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey), CopyKeyClick);
+  FAttach := AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachPreviewButton), AttachClick);
   FAttach.Hint := TAtlasStrings.Text(TAtlasTextId.AttachStatusHint);
   FAttach.Visible := False;
   // Kontextmenü des Fensters (#1276): Kinder ohne eigenes Menü übernehmen es.
   FMenu := TPopupMenu.Create(Self);
   FAttachItem := TMenuItem.Create(FMenu);
-  FAttachItem.Caption := TAtlasStrings.Text(TAtlasTextId.AttachCommand);
+  FAttachItem.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand);
   FAttachItem.OnClick := AttachClick;
   FAttachItem.Visible := False;
   FMenu.Items.Add(FAttachItem);
   PopupMenu := FMenu;
-  FRefresh := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRefresh), RefreshClick);
+  FRefresh := AddButton(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRefresh), RefreshClick);
 
   FProgress := TProgressBar.Create(Self);
   FProgress.Parent := Self;
@@ -731,7 +731,7 @@ begin
   FCommentHint.Align := alTop;
   FCommentHint.AlignWithMargins := True;
   FCommentHint.ShowAccelChar := False;
-  FCommentHint.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentHint);
+  FCommentHint.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentHint);
   FCommentNote := TLabel.Create(Self);
   FCommentNote.Parent := FCommentPanel;
   FCommentNote.Align := alBottom;
@@ -743,7 +743,7 @@ begin
   FCommentSend.Align := alRight;
   FCommentSend.AlignWithMargins := True;
   FCommentSend.Width := 90;
-  FCommentSend.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentSend);
+  FCommentSend.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentSend);
   FCommentSend.OnClick := CommentSendClick;
   // Kommentar-Editor (#1278): Strg+Enter sendet; Vorschläge, Textbausteine und Entwurf, sobald die IDE ihn bindet.
   FComment := TAtlasCommentEditor.Create(Self);
@@ -761,11 +761,11 @@ begin
   FDetailsSheet := TTabSheet.Create(Self);
   FDetailsSheet.TabVisible := False;
   FDetailsSheet.PageControl := FPages;
-  FDetailsSheet.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDetails);
+  FDetailsSheet.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewTabDetails);
   FDevelopmentSheet := TTabSheet.Create(Self);
   FDevelopmentSheet.TabVisible := False;
   FDevelopmentSheet.PageControl := FPages;
-  FDevelopmentSheet.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDevelopment);
+  FDevelopmentSheet.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewTabDevelopment);
   FPages.OnChange := PagesChange;
   FDevelopment := TAtlasIssueDevelopmentView.Create(Self);
   FDevelopment.Parent := FDevelopmentSheet;
@@ -786,7 +786,7 @@ begin
   FEmpty.AlignWithMargins := True;
   FEmpty.WordWrap := True;
   FEmpty.ShowAccelChar := False;
-  FEmpty.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewEmpty);
+  FEmpty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEmpty);
 
   FActions := TActionList.Create(Self);
   FBackAction := TAction.Create(Self);
@@ -950,9 +950,9 @@ begin
       begin
         mDoc.TasksLocked := FChecklistReadOnly;
         if FChecklistReadOnly then
-          mDoc.TaskHint := TAtlasStrings.Text(TAtlasTextId.IssueChecklistReadOnly)
+          mDoc.TaskHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistReadOnly)
         else
-          mDoc.TaskHint := TAtlasStrings.Text(TAtlasTextId.IssueChecklistToggleHint);
+          mDoc.TaskHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistToggleHint);
         if (FTaskBox = nil) and mDoc.HasTasks then
           FTaskBox := mDoc;
       end;
@@ -1066,29 +1066,29 @@ begin
     begin
       case mBadge.Kind of
         TAtlasIssueBadgeKind.State:
-          mHint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFieldState);
+          mHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldState);
         TAtlasIssueBadgeKind.Priority:
-          mHint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFieldPriority);
+          mHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldPriority);
         TAtlasIssueBadgeKind.Kind:
-          mHint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFieldKind);
+          mHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldKind);
         TAtlasIssueBadgeKind.Assignee:
-          mHint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFieldAssignee);
+          mHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldAssignee);
         TAtlasIssueBadgeKind.Sprint:
-          mHint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFieldSprint);
+          mHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldSprint);
         TAtlasIssueBadgeKind.LabelName:
-          mHint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFieldLabel);
+          mHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldLabel);
       else
         mHint := '';
       end;
       mText := mBadge.Text;
       if mBadge.Kind = TAtlasIssueBadgeKind.Created then
       begin
-        mText := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewBadgeCreated, [AgeText(mBadge.Time)]);
+        mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeCreated, [AgeText(mBadge.Time)]);
         mHint := AbsoluteText(mBadge.Time);
       end
       else if mBadge.Kind = TAtlasIssueBadgeKind.Updated then
       begin
-        mText := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewBadgeUpdated, [AgeText(mBadge.Time)]);
+        mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated, [AgeText(mBadge.Time)]);
         mHint := AbsoluteText(mBadge.Time);
       end
       else
@@ -1105,13 +1105,13 @@ begin
     if FChecklists then
       mTasks := TAtlasMarkdownTasks.Clickable;
     if Trim(FDetails.Description) = '' then
-      AddLabel(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoDescription), False).Font.Color :=
+      AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoDescription), False).Font.Color :=
         ToColor(FColors.Muted)
     else
       AddMarkdown(FDetails.Description, mTasks);
     if mProgress.Any and not FChecklistReadOnly then
     begin
-      FAddTask := AddLabel(TAtlasStrings.Text(TAtlasTextId.IssueChecklistAdd), False);
+      FAddTask := AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAdd), False);
       FAddTask.Font.Color := ToColor(FColors.Accent);
       FAddTask.Font.Style := [fsUnderline];
       FAddTask.Cursor := crHandPoint;
@@ -1123,10 +1123,12 @@ begin
       mTasks := TAtlasMarkdownTasks.Boxes;
     // Kommentare: neueste unten, ältere eingeklappt.
     if FCommentsOff then
-      AddLabel(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentsOff), False).Font.Color := ToColor(FColors.Muted)
+      AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentsOff),
+        False).Font.Color := ToColor(FColors.Muted)
     else if Length(FDetails.Comments) > 0 then
     begin
-      AddLabel(AnsiUpperCase(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewComments, [Length(FDetails.Comments)])),
+      AddLabel(AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewComments,
+        [Length(FDetails.Comments)])),
         True).Font.Color := ToColor(FColors.Muted);
       mComments := FDetails.Comments;
       mAnchor := TAtlasIssuePreview.CommentAt(mComments, FAnchor);
@@ -1137,9 +1139,9 @@ begin
       if mCollapsed > 0 then
       begin
         if mCollapsed = 1 then
-          mText := TAtlasStrings.Text(TAtlasTextId.IssuePreviewOlderComment)
+          mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment)
         else
-          mText := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewOlderComments, [mCollapsed]);
+          mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewOlderComments, [mCollapsed]);
         FOlder := AddLabel(mText, False);
         FOlder.Font.Color := ToColor(FColors.Accent);
         FOlder.Font.Style := [fsUnderline];
@@ -1163,10 +1165,11 @@ begin
     // Anhänge: Name und Größe; Doppelklick öffnet.
     if Length(FDetails.Attachments) > 0 then
     begin
-      AddLabel(AnsiUpperCase(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewAttachments,
+      AddLabel(AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewAttachments,
         [Length(FDetails.Attachments)])), True).Font.Color := ToColor(FColors.Muted);
-      FAttachments := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnName),
-        TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnSize)));
+      FAttachments := AddList(TArray<string>.Create(
+        TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnName),
+        TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnSize)));
       FAttachments.Items.BeginUpdate;
       try
         for mAttachment in FDetails.Attachments do
@@ -1209,11 +1212,11 @@ var
 begin
   if Length(FDetails.Links) = 0 then
     Exit;
-  AddLabel(AnsiUpperCase(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewLinks, [Length(FDetails.Links)])),
+  AddLabel(AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewLinks, [Length(FDetails.Links)])),
     True).Font.Color := ToColor(FColors.Muted);
-  FLinks := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnKey),
-    TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnTitle),
-    TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnRelation)));
+  FLinks := AddList(TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnKey),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnTitle),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnRelation)));
   FLinks.Items.BeginUpdate;
   try
     for mLink in FDetails.Links do
@@ -1222,9 +1225,9 @@ begin
       mItem.Caption := mLink.Key;
       mItem.SubItems.Add(mLink.Title);
       if mLink.Relation = 'cross-referenced' then
-        mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationMentioned))
+        mItem.SubItems.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRelationMentioned))
       else if mLink.Relation = 'pull request' then
-        mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationPull))
+        mItem.SubItems.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRelationPull))
       else
         mItem.SubItems.Add(mLink.Relation);
     end;
@@ -1251,15 +1254,15 @@ begin
   end;
   // Zustand wie im Tracker, sonst offen bzw. erledigt; dazu, ob es dieses Issue blockiert.
   if not ALink.StateKnown then
-    mState := TAtlasStrings.Text(TAtlasTextId.IssueLinksUnknown)
+    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksUnknown)
   else if ALink.State <> '' then
     mState := ALink.State
   else if ALink.Resolved then
-    mState := TAtlasStrings.Text(TAtlasTextId.IssueLinksDone)
+    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksDone)
   else
-    mState := TAtlasStrings.Text(TAtlasTextId.IssueLinksOpen);
+    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksOpen);
   if ALink.Blocking then
-    mState := mState + ' · ' + TAtlasStrings.Text(TAtlasTextId.IssueLinksBlocking);
+    mState := mState + ' · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksBlocking);
   Result := mSymbol + '  ' + ALink.Key;
   if ALink.Title <> '' then
     Result := Result + '  ' + ALink.Title;
@@ -1268,32 +1271,32 @@ end;
 
 class function TAtlasIssueFrame.LinkGroupText(const AGroup: TAtlasTrackerLinkGroup): string;
 var
-  mId: TAtlasTextId;
+  mId: TAtlasTrackerTextId;
 begin
   if AGroup.Kind = TAtlasTrackerLinkKind.Subtask then
-    Exit(TAtlasStrings.Fmt(TAtlasTextId.IssueLinksSubtasks, [TAtlasTrackerLinks.ProgressText(AGroup.Done,
+    Exit(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinksSubtasks, [TAtlasTrackerLinks.ProgressText(AGroup.Done,
       AGroup.Total)]));
   case AGroup.Kind of
     TAtlasTrackerLinkKind.DependsOn:
-      mId := TAtlasTextId.IssueLinksDependsOn;
+      mId := TAtlasTrackerTextId.IssueLinksDependsOn;
     TAtlasTrackerLinkKind.Blocks:
-      mId := TAtlasTextId.IssueLinksBlocks;
+      mId := TAtlasTrackerTextId.IssueLinksBlocks;
     TAtlasTrackerLinkKind.Parent:
-      mId := TAtlasTextId.IssueLinksParent;
+      mId := TAtlasTrackerTextId.IssueLinksParent;
     TAtlasTrackerLinkKind.Duplicates:
-      mId := TAtlasTextId.IssueLinksDuplicates;
+      mId := TAtlasTrackerTextId.IssueLinksDuplicates;
     TAtlasTrackerLinkKind.DuplicatedBy:
-      mId := TAtlasTextId.IssueLinksDuplicatedBy;
+      mId := TAtlasTrackerTextId.IssueLinksDuplicatedBy;
     TAtlasTrackerLinkKind.Relates:
-      mId := TAtlasTextId.IssueLinksRelates;
+      mId := TAtlasTrackerTextId.IssueLinksRelates;
     TAtlasTrackerLinkKind.Mentioned:
-      mId := TAtlasTextId.IssueLinksMentioned;
+      mId := TAtlasTrackerTextId.IssueLinksMentioned;
     TAtlasTrackerLinkKind.PullRequest:
-      mId := TAtlasTextId.IssueLinksPulls;
+      mId := TAtlasTrackerTextId.IssueLinksPulls;
   else
-    mId := TAtlasTextId.IssueLinksOther;
+    mId := TAtlasTrackerTextId.IssueLinksOther;
   end;
-  Result := TAtlasStrings.Text(mId) + ' (' + IntToStr(AGroup.Total) + ')';
+  Result := TAtlasTrackerStrings.Text(mId) + ' (' + IntToStr(AGroup.Total) + ')';
 end;
 
 procedure TAtlasIssueFrame.AddLinkTree;
@@ -1307,7 +1310,7 @@ begin
   mGroups := TAtlasTrackerLinks.Groups(FDetails.Links);
   if (Length(mGroups) = 0) and not FCanWriteLinks then
     Exit;
-  AddLabel(AnsiUpperCase(TAtlasStrings.Fmt(TAtlasTextId.IssueLinksCaption, [Length(FDetails.Links)])),
+  AddLabel(AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinksCaption, [Length(FDetails.Links)])),
     True).Font.Color := ToColor(FColors.Muted);
   if FCanWriteLinks then
   begin
@@ -1321,7 +1324,7 @@ begin
     FCreateSubtask.Parent := mTools;
     FCreateSubtask.Align := alLeft;
     FCreateSubtask.AlignWithMargins := True;
-    FCreateSubtask.Caption := TAtlasStrings.Text(TAtlasTextId.IssueLinksCreateSubtask);
+    FCreateSubtask.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksCreateSubtask);
     FCreateSubtask.Width := Max(120, Length(FCreateSubtask.Caption) * 8);
     FCreateSubtask.OnClick := CreateSubtaskClick;
     FAddLink := TButton.Create(Self);
@@ -1329,7 +1332,7 @@ begin
     FAddLink.Align := alLeft;
     FAddLink.AlignWithMargins := True;
     FAddLink.Left := FCreateSubtask.Left + FCreateSubtask.Width + 1;
-    FAddLink.Caption := TAtlasStrings.Text(TAtlasTextId.IssueLinksAddLink);
+    FAddLink.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksAddLink);
     FAddLink.Width := Max(100, Length(FAddLink.Caption) * 8);
     FAddLink.OnClick := AddLinkClick;
   end;
@@ -1449,9 +1452,9 @@ begin
   FAttachItem.Enabled := FHasDetails;
   FRefresh.Enabled := FHasDetails or FLoading;
   if FLoading then
-    FRefresh.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCancel)
+    FRefresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCancel)
   else
-    FRefresh.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewRefresh);
+    FRefresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRefresh);
   FBackAction.Enabled := FBack.Enabled;
   FForwardAction.Enabled := FForward.Enabled;
 end;
@@ -1471,7 +1474,7 @@ begin
   FProgress.Visible := AValue;
   if AValue then
   begin
-    FStatusText.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewLoading);
+    FStatusText.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading);
     FFix.Visible := False;
     FStatus.Visible := not FHasDetails;
   end;
@@ -1532,11 +1535,11 @@ begin
   FChecklistBusy := AValue;
   if AValue then
   begin
-    FStatusText.Caption := TAtlasStrings.Text(TAtlasTextId.IssueChecklistSaving);
+    FStatusText.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistSaving);
     FFix.Visible := False;
     FStatus.Visible := True;
   end
-  else if FStatusText.Caption = TAtlasStrings.Text(TAtlasTextId.IssueChecklistSaving) then
+  else if FStatusText.Caption = TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistSaving) then
     FStatus.Visible := False;
 end;
 
@@ -1599,13 +1602,13 @@ begin
   FFix.Visible := AFix <> TAtlasIssueFix.None;
   case AFix of
     TAtlasIssueFix.EnterToken:
-      FFix.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFixToken);
+      FFix.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixToken);
     TAtlasIssueFix.Settings:
-      FFix.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFixSettings);
+      FFix.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixSettings);
     TAtlasIssueFix.Browser:
-      FFix.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewBrowse);
+      FFix.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse);
     TAtlasIssueFix.Retry:
-      FFix.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFixRetry);
+      FFix.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixRetry);
     TAtlasIssueFix.None: ;
   end;
   FStatus.Visible := True;
@@ -1802,7 +1805,7 @@ begin
   FCommentSending := AValue;
   FCommentEdit.ReadOnly := AValue;
   if AValue then
-    FCommentNote.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentSending);
+    FCommentNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentSending);
   UpdateButtons;
 end;
 

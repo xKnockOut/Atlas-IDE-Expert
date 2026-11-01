@@ -48,7 +48,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -85,7 +85,7 @@ end;
 
 function TStartDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.WelcomeStartCaption);
+  Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStartCaption);
 end;
 
 function TStartDock.GetIdentifier: string;

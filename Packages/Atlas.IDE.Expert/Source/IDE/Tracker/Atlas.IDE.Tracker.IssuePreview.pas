@@ -306,7 +306,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.IssueTip,
   Atlas.UI.Tracker.CommentEditor,
   Atlas.IDE.Foundation.EditorStyle,
@@ -784,9 +784,9 @@ var
 begin
   mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ADetails.Fetched));
   if AReason = '' then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewStale, [mWhen])
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStale, [mWhen])
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewStaleOffline, [mWhen, AReason]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStaleOffline, [mWhen, AReason]);
 end;
 
 procedure TAtlasIdeIssuePreview.UpdateWrite;
@@ -1096,8 +1096,8 @@ begin
     mFrame.ChecklistReadOnly then
     Exit;
   mText := '';
-  if not InputQuery(TAtlasStrings.Text(TAtlasTextId.IssueChecklistAdd),
-    TAtlasStrings.Text(TAtlasTextId.IssueChecklistAddPrompt), mText) or (Trim(mText) = '') then
+  if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAdd),
+    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAddPrompt), mText) or (Trim(mText) = '') then
     Exit;
   // Während des Dialogs kann das Fenster gewechselt haben.
   if FStarted and FHasCurrent and not FWriting then
@@ -1238,16 +1238,17 @@ begin
   else if AChanged then
   begin
     // Nichts angewendet: neu laden, danach der Hinweis.
-    FPendingNotice := TAtlasStrings.Text(TAtlasTextId.IssueChecklistChanged);
+    FPendingNotice := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistChanged);
     Load(AEntry);
   end
   else if ADenied then
   begin
     mFrame.ChecklistReadOnly := True;
-    mFrame.ShowNotice(TAtlasStrings.Text(TAtlasTextId.IssueChecklistDenied));
+    mFrame.ShowNotice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistDenied));
   end
   else if AError <> TAtlasCiFetchError.Cancelled then
-    mFrame.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistFailed, [TAtlasIssueTip.ErrorText(AError, AEntry.Key)]));
+    mFrame.ShowNotice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistFailed,
+      [TAtlasIssueTip.ErrorText(AError, AEntry.Key)]));
 end;
 
 procedure TAtlasIdeIssuePreview.ShowChecklist(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -1409,12 +1410,13 @@ begin
       if mKeep = nil then
         Exit;
       if ASucceeded then
-        mOwner.Written(TAtlasStrings.Fmt(TAtlasTextId.IssueSubtaskCreated, [AKey]))
+        mOwner.Written(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskCreated, [AKey]))
       else if AKey <> '' then
-        mOwner.WriteFailed(TAtlasStrings.Fmt(TAtlasTextId.IssueSubtaskNotLinked, [AKey,
+        mOwner.WriteFailed(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskNotLinked, [AKey,
           TAtlasIssueTip.ErrorText(AError, mParent)]), AError)
       else
-        mOwner.WriteFailed(TAtlasStrings.Fmt(TAtlasTextId.IssueSubtaskFailed, [TAtlasIssueTip.ErrorText(AError, mParent)]),
+        mOwner.WriteFailed(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskFailed,
+          [TAtlasIssueTip.ErrorText(AError, mParent)]),
           AError);
     end);
 end;
@@ -1449,9 +1451,10 @@ begin
       if mKeep = nil then
         Exit;
       if ASucceeded then
-        mOwner.Written(TAtlasStrings.Fmt(TAtlasTextId.IssueLinkAdded, [mKey, mOther]))
+        mOwner.Written(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkAdded, [mKey, mOther]))
       else
-        mOwner.WriteFailed(TAtlasStrings.Fmt(TAtlasTextId.IssueLinkFailed, [TAtlasIssueTip.ErrorText(AError, mOther)]),
+        mOwner.WriteFailed(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkFailed,
+          [TAtlasIssueTip.ErrorText(AError, mOther)]),
           AError);
     end);
 end;
@@ -1480,7 +1483,7 @@ begin
   end;
   mFrame := Frame;
   if mFrame <> nil then
-    mFrame.ShowError(TAtlasStrings.Text(TAtlasTextId.IssueLinkWorking), TAtlasIssueFix.None);
+    mFrame.ShowError(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkWorking), TAtlasIssueFix.None);
   ReleaseThreads(False);
   mThread := TThread.CreateAnonymousThread(
     procedure
@@ -1987,7 +1990,7 @@ begin
   begin
     mFrame := Frame;
     if mFrame <> nil then
-      mFrame.ShowError(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewAttachmentFailed, [AName]),
+      mFrame.ShowError(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewAttachmentFailed, [AName]),
         TAtlasIssueFix.None);
     Exit;
   end;

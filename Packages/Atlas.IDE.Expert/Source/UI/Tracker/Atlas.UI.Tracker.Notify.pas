@@ -38,14 +38,14 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.UI.Tracker.Strings;
 
 class function TAtlasTrackerNoticeText.StateText(const AState: string): string;
 begin
   if SameText(AState, 'open') then
-    Result := TAtlasStrings.Text(TAtlasTextId.IssueNotifyStateOpen)
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyStateOpen)
   else if SameText(AState, 'closed') then
-    Result := TAtlasStrings.Text(TAtlasTextId.IssueNotifyStateClosed)
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyStateClosed)
   else
     Result := AState;
 end;
@@ -57,22 +57,22 @@ var
 begin
   mParts := nil;
   if ANotice.AssignedToMe then
-    mParts := mParts + [TAtlasStrings.Text(TAtlasTextId.IssueNotifyAssignedMe)]
+    mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyAssignedMe)]
   else if ANotice.AssignedTo <> '' then
-    mParts := mParts + [TAtlasStrings.Fmt(TAtlasTextId.IssueNotifyAssignedOther, [ANotice.AssignedTo])];
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyAssignedOther, [ANotice.AssignedTo])];
   if ANotice.Comments = 1 then
-    mParts := mParts + [TAtlasStrings.Fmt(TAtlasTextId.IssueNotifyComment, [string.Join(', ',
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyComment, [string.Join(', ',
       ANotice.CommentAuthors)])]
   else if ANotice.Comments > 1 then
-    mParts := mParts + [TAtlasStrings.Fmt(TAtlasTextId.IssueNotifyComments, [ANotice.Comments,
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyComments, [ANotice.Comments,
       string.Join(', ', ANotice.CommentAuthors)])];
   if ANotice.State <> '' then
-    mParts := mParts + [TAtlasStrings.Fmt(TAtlasTextId.IssueNotifyState, [StateText(ANotice.State)])];
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyState, [StateText(ANotice.State)])];
   // „ATL-123 dir zugewiesen“, „ATL-123 geändert“ lesen sich ohne Doppelpunkt.
   mPlain := ANotice.AssignedToMe;
   if Length(mParts) = 0 then
   begin
-    mParts := [TAtlasStrings.Text(TAtlasTextId.IssueNotifyChanged)];
+    mParts := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyChanged)];
     mPlain := True;
   end;
   if mPlain then
@@ -83,18 +83,18 @@ end;
 
 class function TAtlasTrackerNoticeText.MoreTitle(ACount: Integer): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.IssueNotifyMore, [ACount]);
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyMore, [ACount]);
 end;
 
 class function TAtlasTrackerNoticeText.ErrorTitle(AError: TAtlasCiFetchError; const AServer: string): string;
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssueNotifyErrorToken, [AServer]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyErrorToken, [AServer]);
     TAtlasCiFetchError.Network, TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssueNotifyErrorNetwork, [AServer]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyErrorNetwork, [AServer]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.IssueNotifyErrorOther, [AServer]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyErrorOther, [AServer]);
   end;
 end;
 

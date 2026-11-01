@@ -71,7 +71,7 @@ uses
   System.Classes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings;
 
@@ -163,7 +163,8 @@ end;
 
 function TAtlasIdeWelcomeState.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.State, TAtlasStrings.Text(TAtlasTextId.WelcomeStateTitle),
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.State,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateTitle),
     Order, TAtlasWelcomeColumn.Right,
     function: Boolean
     begin

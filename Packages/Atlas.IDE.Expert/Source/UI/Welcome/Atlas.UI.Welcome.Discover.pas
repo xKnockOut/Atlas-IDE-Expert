@@ -135,7 +135,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Vcl.Imaging.pngimage,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 { TAtlasWelcomeDiscoverFrame }
 
@@ -170,7 +170,7 @@ begin
   FPosition.Font.Color := clGrayText;
   FEmpty := NewLabel;
   FEmpty.Font.Color := clGrayText;
-  FEmpty.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverEmpty);
+  FEmpty.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverEmpty);
   for Kind := Low(TAtlasDiscoverButton) to High(TAtlasDiscoverButton) do
   begin
     FButtons[Kind] := TButton.Create(Self);
@@ -191,35 +191,35 @@ end;
 
 class function TAtlasWelcomeDiscoverFrame.TitleText: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverTitle);
+  Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverTitle);
 end;
 
 class function TAtlasWelcomeDiscoverFrame.AgeText(const AAge: TAtlasDiscoverAge): string;
 begin
   case AAge.Kind of
     TAtlasDiscoverAgeKind.Never:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverNever);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverNever);
     TAtlasDiscoverAgeKind.Today:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverToday);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverToday);
     TAtlasDiscoverAgeKind.Yesterday:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverYesterday);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverYesterday);
     TAtlasDiscoverAgeKind.Days:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverDays, [AAge.Count]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverDays, [AAge.Count]);
     TAtlasDiscoverAgeKind.Weeks:
       if AAge.Count = 1 then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverWeek)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverWeek)
       else
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverWeeks, [AAge.Count]);
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverWeeks, [AAge.Count]);
     TAtlasDiscoverAgeKind.Months:
       if AAge.Count = 1 then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverMonth)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverMonth)
       else
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverMonths, [AAge.Count]);
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverMonths, [AAge.Count]);
     TAtlasDiscoverAgeKind.Years:
       if AAge.Count = 1 then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverYear)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverYear)
       else
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverYears, [AAge.Count]);
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverYears, [AAge.Count]);
   else
     Result := '';
   end;
@@ -229,18 +229,18 @@ class function TAtlasWelcomeDiscoverFrame.PositionText(APosition, ACount: Intege
 begin
   Result := '';
   if (ACount > 1) and (APosition > 0) then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverPosition, [APosition, ACount]);
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPosition, [APosition, ACount]);
 end;
 
 class function TAtlasWelcomeDiscoverFrame.ButtonCaption(AButton: TAtlasDiscoverButton): string;
 begin
   case AButton of
     TAtlasDiscoverButton.TryIt:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverTry);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverTry);
     TAtlasDiscoverButton.Next:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverNext);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverNext);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDiscoverBlock);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverBlock);
   end;
 end;
 

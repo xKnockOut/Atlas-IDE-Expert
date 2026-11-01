@@ -88,6 +88,7 @@ var
 begin
   Result := nil;
   for mItem in TAtlasModuleContributions.Active(ARegistry, IAtlasCompilerMessagesListener) do
+  begin
     if Supports(mItem, IAtlasCompilerMessagesListener, mListener) then
       try
         mListener.MessagesRead(AMessages, AProject);
@@ -95,6 +96,7 @@ begin
         on E: Exception do
           Result := Result + [E.ClassName + ': ' + E.Message];
       end;
+  end;
 end;
 
 class function TAtlasBuildPipeline.Evaluate(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -113,14 +115,18 @@ begin
   Result := False;
   AFailures := nil;
   for mItem in TAtlasModuleContributions.Active(ARegistry, IAtlasBuildEvaluator) do
+  begin
     if Supports(mItem, IAtlasBuildEvaluator, mEvaluator) then
       try
         if mEvaluator.Evaluate(AMessages, AProject, ASucceeded) then
+        begin
           Exit(True);
+        end;
       except
         on E: Exception do
           AFailures := AFailures + [E.ClassName + ': ' + E.Message];
       end;
+  end;
 end;
 
 class function TAtlasBuildPipeline.CompilerVerdict(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -144,6 +150,7 @@ var
 begin
   Result := nil;
   for mItem in TAtlasModuleContributions.Active(ARegistry, IAtlasBuildVerdictListener) do
+  begin
     if Supports(mItem, IAtlasBuildVerdictListener, mListener) then
       try
         mListener.BuildEvaluated(AMessages, AProject, AVerdict);
@@ -151,6 +158,7 @@ begin
         on E: Exception do
           Result := Result + [E.ClassName + ': ' + E.Message];
       end;
+  end;
 end;
 
 end.

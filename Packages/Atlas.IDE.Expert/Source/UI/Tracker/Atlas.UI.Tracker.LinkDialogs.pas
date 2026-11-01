@@ -106,7 +106,7 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings;
+  Atlas.UI.Tracker.Strings;
 
 const
   Gap = 8;
@@ -168,9 +168,9 @@ var
   mBottom: TPanel;
 begin
   inherited CreateNew(AOwner);
-  SetupForm(Self, TAtlasStrings.Fmt(TAtlasTextId.IssueSubtaskTitle, [AParentKey]));
-  FProject := AddLabel(TAtlasStrings.Fmt(TAtlasTextId.IssueSubtaskProject, [AProject]), 0);
-  FTitleLabel := AddLabel(TAtlasStrings.Text(TAtlasTextId.IssueSubtaskSummary), 100);
+  SetupForm(Self, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskTitle, [AParentKey]));
+  FProject := AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskProject, [AProject]), 0);
+  FTitleLabel := AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskSummary), 100);
 
   FTitle := TEdit.Create(Self);
   FTitle.Parent := Self;
@@ -182,7 +182,7 @@ begin
   FTitle.OnChange := TitleChange;
   FTitleLabel.FocusControl := FTitle;
 
-  FDescriptionLabel := AddLabel(TAtlasStrings.Text(TAtlasTextId.IssueSubtaskDescription), 300);
+  FDescriptionLabel := AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskDescription), 300);
   FDescription := TMemo.Create(Self);
   FDescription.Parent := Self;
   FDescription.Align := alTop;
@@ -195,10 +195,10 @@ begin
   FDescriptionLabel.FocusControl := FDescription;
 
   mBottom := AddBottom(Self);
-  FCancel := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.IssueDialogCancel), CancelClick);
+  FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel), CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FOk := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.IssueSubtaskOk), OkClick);
+  FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
 
@@ -280,7 +280,7 @@ begin
   inherited CreateNew(AOwner);
   FKey := AKey;
   FProvider := AProvider;
-  SetupForm(Self, TAtlasStrings.Fmt(TAtlasTextId.IssueLinkTitle, [AKey]));
+  SetupForm(Self, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkTitle, [AKey]));
 
   FDependsOn := TRadioButton.Create(Self);
   FDependsOn.Parent := Self;
@@ -288,7 +288,7 @@ begin
   FDependsOn.AlignWithMargins := True;
   FDependsOn.Margins.SetBounds(Gap, Gap, Gap, 0);
   FDependsOn.Top := 0;
-  FDependsOn.Caption := TAtlasStrings.Fmt(TAtlasTextId.IssueLinkDependsOn, [AKey]);
+  FDependsOn.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkDependsOn, [AKey]);
   FDependsOn.Checked := True;
 
   FBlocks := TRadioButton.Create(Self);
@@ -297,7 +297,7 @@ begin
   FBlocks.AlignWithMargins := True;
   FBlocks.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
   FBlocks.Top := 100;
-  FBlocks.Caption := TAtlasStrings.Fmt(TAtlasTextId.IssueLinkBlocks, [AKey]);
+  FBlocks.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkBlocks, [AKey]);
 
   FOtherLabel := TLabel.Create(Self);
   FOtherLabel.Parent := Self;
@@ -306,7 +306,8 @@ begin
   FOtherLabel.Margins.SetBounds(Gap, Gap, Gap, Gap div 2);
   FOtherLabel.Top := 200;
   FOtherLabel.ShowAccelChar := False;
-  FOtherLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.IssueLinkKey, [TAtlasIssuePreview.KeyExample(AProvider)]);
+  FOtherLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkKey,
+    [TAtlasIssuePreview.KeyExample(AProvider)]);
 
   FOther := TEdit.Create(Self);
   FOther.Parent := Self;
@@ -318,10 +319,10 @@ begin
   FOtherLabel.FocusControl := FOther;
 
   mBottom := AddBottom(Self);
-  FCancel := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.IssueDialogCancel), CancelClick);
+  FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel), CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FOk := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.IssueLinkOk), OkClick);
+  FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
 
@@ -394,9 +395,9 @@ class function TAtlasBlockedPrompt.Text(const ABlockers: TArray<TAtlasTrackerLin
 begin
   Result := '';
   if Length(ABlockers) = 1 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.IssueBlockedOne, [ABlockers[0].Key])
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedOne, [ABlockers[0].Key])
   else if Length(ABlockers) > 1 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.IssueBlockedMore, [ABlockers[0].Key, Length(ABlockers) - 1]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedMore, [ABlockers[0].Key, Length(ABlockers) - 1]);
 end;
 
 class function TAtlasBlockedPrompt.Ask(const ABlockers: TArray<TAtlasTrackerLink>): TAtlasBlockedChoice;
@@ -413,15 +414,15 @@ begin
   mDialog := TTaskDialog.Create(nil);
   try
     mDialog.Caption := 'Atlas';
-    mDialog.Title := TAtlasStrings.Text(TAtlasTextId.IssueBlockedCaption);
+    mDialog.Title := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueBlockedCaption);
     mDialog.Text := Text(ABlockers);
     mDialog.MainIcon := tdiWarning;
     mDialog.CommonButtons := [tcbCancel];
     mButton := mDialog.Buttons.Add;
-    mButton.Caption := TAtlasStrings.Text(TAtlasTextId.IssueBlockedStart);
+    mButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueBlockedStart);
     mButton.ModalResult := AnswerStart;
     mButton := mDialog.Buttons.Add;
-    mButton.Caption := TAtlasStrings.Fmt(TAtlasTextId.IssueBlockedShow, [ABlockers[0].Key]);
+    mButton.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedShow, [ABlockers[0].Key]);
     mButton.ModalResult := AnswerShow;
     mButton.Default := True;
     if not mDialog.Execute then

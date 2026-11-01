@@ -94,7 +94,7 @@ implementation
 uses
   System.Math,
   System.UITypes,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 const
   Gap = 8;
@@ -189,14 +189,14 @@ var
   mTool: TAtlasMarkupTool;
   mLeft: Integer;
 const
-  ToolText: array[TAtlasMarkupTool] of TAtlasTextId = (TAtlasTextId.AttachMarkupRectangle,
-    TAtlasTextId.AttachMarkupArrow, TAtlasTextId.AttachMarkupBlacken);
+  ToolText: array[TAtlasMarkupTool] of TAtlasTrackerTextId = (TAtlasTrackerTextId.AttachMarkupRectangle,
+    TAtlasTrackerTextId.AttachMarkupArrow, TAtlasTrackerTextId.AttachMarkupBlacken);
 begin
   inherited CreateNew(AOwner);
   FBitmap := TBitmap.Create;
   FBitmap.Assign(ABitmap);
   FTool := TAtlasMarkupTool.Rectangle;
-  Caption := TAtlasStrings.Text(TAtlasTextId.AttachMarkupCaption);
+  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkupCaption);
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
   KeyPreview := True;
@@ -214,7 +214,7 @@ begin
     FToolButtons[mTool] := TButton.Create(Self);
     FToolButtons[mTool].Parent := mTop;
     FToolButtons[mTool].SetBounds(mLeft, 6, 110, 28);
-    FToolButtons[mTool].Caption := TAtlasStrings.Text(ToolText[mTool]);
+    FToolButtons[mTool].Caption := TAtlasTrackerStrings.Text(ToolText[mTool]);
     FToolButtons[mTool].Tag := Ord(mTool);
     FToolButtons[mTool].OnClick := ToolClick;
     Inc(mLeft, 110 + Gap div 2);
@@ -222,7 +222,7 @@ begin
   FUndo := TButton.Create(Self);
   FUndo.Parent := mTop;
   FUndo.SetBounds(mLeft + Gap, 6, 110, 28);
-  FUndo.Caption := TAtlasStrings.Text(TAtlasTextId.AttachMarkupUndo);
+  FUndo.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkupUndo);
   FUndo.OnClick := UndoClick;
 
   mBottom := TPanel.Create(Self);
@@ -234,7 +234,7 @@ begin
   mButton.Parent := mBottom;
   mButton.SetBounds(mBottom.Width - 2 * (110 + Gap), 8, 110, 28);
   mButton.Anchors := [akTop, akRight];
-  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.AttachMarkupApply);
+  mButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkupApply);
   mButton.Default := True;
   mButton.ModalResult := mrOk;
   mButton := TButton.Create(Self);

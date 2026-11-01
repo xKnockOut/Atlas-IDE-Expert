@@ -180,7 +180,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.PaletteSearch,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.DocBox;
 
 function ToColor(AColor: TAtlasColor): TColor;
@@ -222,7 +222,7 @@ begin
   FPreviewButton.Align := alLeft;
   FPreviewButton.AlignWithMargins := True;
   FPreviewButton.Width := 90;
-  FPreviewButton.Caption := TAtlasStrings.Text(TAtlasTextId.CommentEditorPreview);
+  FPreviewButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreview);
   FPreviewButton.OnClick := PreviewClick;
   FSnippetButton := TButton.Create(Self);
   FSnippetButton.Parent := FBar;
@@ -230,7 +230,7 @@ begin
   FSnippetButton.AlignWithMargins := True;
   FSnippetButton.Left := 100;
   FSnippetButton.Width := 120;
-  FSnippetButton.Caption := TAtlasStrings.Text(TAtlasTextId.CommentEditorSnippets);
+  FSnippetButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorSnippets);
   FSnippetButton.OnClick := SnippetClick;
   FDraftButton := TButton.Create(Self);
   FDraftButton.Parent := FBar;
@@ -255,7 +255,7 @@ begin
   FMemo.ScrollBars := ssVertical;
   FMemo.WantReturns := True;
   FMemo.WantTabs := False;
-  FMemo.Hint := TAtlasStrings.Text(TAtlasTextId.CommentEditorHint);
+  FMemo.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorHint);
   FMemo.ShowHint := True;
   FMemo.OnChange := MemoChange;
   FMemo.OnKeyDown := MemoKeyDown;
@@ -366,15 +366,15 @@ begin
       FChanging := False;
     end;
     FDraftRestored := True;
-    ShowDraftNote(TAtlasStrings.Fmt(TAtlasTextId.CommentEditorDraftRestored, [mWhen]),
-      TAtlasStrings.Text(TAtlasTextId.CommentEditorDraftDiscard));
+    ShowDraftNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorDraftRestored, [mWhen]),
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorDraftDiscard));
   end
   else
   begin
     // Vorgefülltes Feld (Vorlage beim Beenden): Entwurf nur anbieten.
     FOfferedDraft := mText;
-    ShowDraftNote(TAtlasStrings.Fmt(TAtlasTextId.CommentEditorDraftOffered, [mWhen]),
-      TAtlasStrings.Text(TAtlasTextId.CommentEditorDraftApply));
+    ShowDraftNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorDraftOffered, [mWhen]),
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorDraftApply));
   end;
 end;
 
@@ -464,7 +464,7 @@ begin
     Exit;
   KeepDraft;
   if not FDraftButton.Visible then
-    ShowDraftNote(TAtlasStrings.Text(TAtlasTextId.CommentEditorDraftSaved), '');
+    ShowDraftNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorDraftSaved), '');
 end;
 
 procedure TAtlasCommentEditor.SetEnhanced(AValue: Boolean);
@@ -834,7 +834,7 @@ begin
   if Length(mSnippets) = 0 then
   begin
     mItem := TMenuItem.Create(FSnippetMenu);
-    mItem.Caption := TAtlasStrings.Text(TAtlasTextId.CommentEditorNoSnippets);
+    mItem.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorNoSnippets);
     mItem.Enabled := False;
     FSnippetMenu.Items.Add(mItem);
   end;
@@ -881,10 +881,10 @@ begin
   FMemo.Visible := not AValue;
   FSnippetButton.Enabled := not AValue;
   if AValue then
-    FPreviewButton.Caption := TAtlasStrings.Text(TAtlasTextId.CommentEditorEdit)
+    FPreviewButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorEdit)
   else
   begin
-    FPreviewButton.Caption := TAtlasStrings.Text(TAtlasTextId.CommentEditorPreview);
+    FPreviewButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreview);
     if FMemo.CanFocus and FMemo.Showing then
       FMemo.SetFocus;
   end;
@@ -931,7 +931,7 @@ begin
     begin
       mLabel := TLabel.Create(Self);
       Place(mLabel);
-      mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.CommentEditorPreviewEmpty);
+      mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreviewEmpty);
       mLabel.Font.Color := ToColor(FColors.Muted);
       Exit;
     end;
@@ -949,9 +949,9 @@ begin
       mLabel.ShowAccelChar := False;
       mLabel.Font.Color := ToColor(FColors.Muted);
       if mSegment.Image.Text <> '' then
-        mLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.CommentEditorImage, [mSegment.Image.Text])
+        mLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorImage, [mSegment.Image.Text])
       else
-        mLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.CommentEditorImage, [mSegment.Image.Url]);
+        mLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorImage, [mSegment.Image.Url]);
     end;
   finally
     FPreview.EnableAlign;

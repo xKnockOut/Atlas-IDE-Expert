@@ -130,7 +130,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -401,7 +401,7 @@ begin
     TAtlasCiFetchError.Timeout:
       Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorTimeout);
     TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorConfig);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server, TAtlasCiFetchError.NotFound:
       Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
   else
@@ -550,7 +550,7 @@ begin
     begin
       FShown := True;
       mView.ShowDevelopment(mDevelopment, TrackerNote(mDevelopment),
-        TAtlasStrings.Text(TAtlasTextId.IssueDevNoProject));
+        TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject));
     end;
     Exit;
   end;
@@ -638,16 +638,17 @@ begin
     mShort := Copy(mShort, 1, 7);
   if AOutcome <> TAtlasVcsOutcome.Ok then
   begin
-    Notice(TAtlasStrings.Fmt(TAtlasTextId.IssueDevDiffFailed, [mShort, AtlasVcsOutcomeName(AOutcome)]));
+    Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevDiffFailed, [mShort, AtlasVcsOutcomeName(AOutcome)]));
     Exit;
   end;
   mLines := TAtlasIssueDevelopmentQuery.DiffLines(AFiles);
   if Length(mLines) = 0 then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.IssueDevDiffEmpty));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevDiffEmpty));
     Exit;
   end;
-  TAtlasUndoDiffView.Execute(TAtlasStrings.Fmt(TAtlasTextId.IssueDevDiffTitle, [mShort, AEntry.Summary]), mLines);
+  TAtlasUndoDiffView.Execute(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevDiffTitle,
+    [mShort, AEntry.Summary]), mLines);
 end;
 
 procedure TAtlasIdeIssueDevelopment.OpenCommit(const AEntry: TAtlasVcsLogEntry);
@@ -664,12 +665,12 @@ begin
     Exit;
   if not TAtlasIssueDevelopmentQuery.OpenTarget(AEntry, mFile) then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.IssueDevDiffEmpty));
+    Notice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevDiffEmpty));
     Exit;
   end;
   if not FileExists(mFile.Path) then
   begin
-    Notice(TAtlasStrings.Fmt(TAtlasTextId.IssueDevUnitMissing, [ExtractFileName(mFile.Path)]));
+    Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevUnitMissing, [ExtractFileName(mFile.Path)]));
     Exit;
   end;
   mEntry := AEntry;
@@ -702,7 +703,7 @@ begin
     Exit;
   if not FileExists(AUnit.Path) then
   begin
-    Notice(TAtlasStrings.Fmt(TAtlasTextId.IssueDevUnitMissing, [ExtractFileName(AUnit.Path)]));
+    Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevUnitMissing, [ExtractFileName(AUnit.Path)]));
     Exit;
   end;
   TAtlasIdeNavigation.GoToLocation(AUnit.Path, 0, 0);
@@ -749,7 +750,8 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  if (AChanges > 0) and (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.IssueDevSwitchAsk, [AChanges, ABranch.Name]),
+  if (AChanges > 0) and (MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevSwitchAsk,
+    [AChanges, ABranch.Name]),
     mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
     Exit;
   mFolder := ExtractFileDir(ProjectFile);
@@ -781,10 +783,11 @@ begin
   TAtlasGuard.Log('Issue-Entwicklung: Wechseln ' + AtlasVcsOutcomeName(AOutcome));
   if AOutcome <> TAtlasVcsOutcome.Ok then
   begin
-    Notice(TAtlasStrings.Fmt(TAtlasTextId.IssueDevSwitchFailed, [ABranch.Name, AtlasVcsOutcomeName(AOutcome)]));
+    Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevSwitchFailed,
+      [ABranch.Name, AtlasVcsOutcomeName(AOutcome)]));
     Exit;
   end;
-  Notice(TAtlasStrings.Fmt(TAtlasTextId.IssueDevSwitched, [ABranch.Name]));
+  Notice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevSwitched, [ABranch.Name]));
   // Aktueller Branch und Abstand haben sich geändert.
   FShown := False;
   Load(True);

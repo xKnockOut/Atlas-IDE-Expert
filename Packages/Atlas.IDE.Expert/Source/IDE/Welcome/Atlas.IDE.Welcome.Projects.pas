@@ -94,7 +94,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
@@ -166,7 +166,7 @@ end;
 function TAtlasIdeProjects.Section: TAtlasWelcomeSection;
 begin
   Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Projects,
-    TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsTitle), Order, TAtlasWelcomeColumn.Left,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsTitle), Order, TAtlasWelcomeColumn.Left,
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.WelcomePageProjectStatus;
@@ -294,7 +294,7 @@ begin
     begin
       if not FileExists(AProject) then
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsMissing, [AProject]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
         Exit;
       end;
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
@@ -315,7 +315,7 @@ begin
     begin
       if not FileExists(AProject) then
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsMissing, [AProject]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
         Exit;
       end;
       // Erst das Projekt (wie die Liste der IDE), dann die erste Meldung.
@@ -345,7 +345,7 @@ begin
       else if DirectoryExists(ExtractFileDir(AProject)) then
         ShellExecute(0, 'open', PChar(ExtractFileDir(AProject)), nil, nil, SW_SHOWNORMAL)
       else
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsMissing, [AProject]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
     end);
 end;
 
