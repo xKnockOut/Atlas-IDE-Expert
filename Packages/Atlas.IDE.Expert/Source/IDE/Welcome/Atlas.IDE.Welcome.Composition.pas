@@ -13,7 +13,8 @@
 //   Build-Server (#763) gehört seit #1455 mit der Kachel „Testergebnisse“
 //   zum Modul Tracker,
 // - die Einträge im Atlas-Menü und unter Ansicht › Atlas,
-// - Einstellungen und Thema an die laufende Seite.
+// - Einstellungen und Thema an die laufende Seite,
+// - den Abschnitt der Optionsseite (Atlas.IDE.Welcome.Settings).
 // Andere Module erreicht die Seite nur über Verträge (TAtlasWelcomeNeighbors,
 // Kacheln über Atlas.IDE.Contracts.WelcomeTiles). Abmelden in der
 // Finalisierung, solange Base läuft (Regel 5); passt die Vertragsversion von
@@ -63,8 +64,10 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Welcome.Layouts,
+  Atlas.IDE.Welcome.Settings,
   Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Startup,
+  Atlas.UI.Settings.Contract,
   Atlas.UI.Welcome.Strings;
 
 var
@@ -352,6 +355,8 @@ begin
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasFollowsTheme, mRef);
+  // Ab der Anmeldung: Die Seite lässt sich auch bei ausgeschaltetem Modul einstellen.
+  GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeWelcomeSettings.Create as IAtlasSettingsSectionProvider);
   Result := True;
 end;
 

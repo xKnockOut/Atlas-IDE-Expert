@@ -34,10 +34,19 @@
 - Optionsseiten: Modulschalter oben auf der jeweiligen Seite. Hinweis „Prüfregeln sind aus“ einmal je atlas.json und Sitzung, wenn die atlas.json Regeln festlegt und das Modul aus ist (`Atlas.Core.Settings.RuleChecksNotice`, `Atlas.IDE.Settings.RuleChecksNotice`, Quelle `ruleChecks`).
 - Nicht übersetzt: FPC trunk ließ sich in der Cloud nicht bauen. Alle Prüfskripte grün. Vor dem Merge mit Delphi bauen und Tests laufen lassen.
 - Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
+## Einstellungen der Willkommensseite im Modul (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
+
+- Letzter bekannter Verstoß behoben (`Atlas.UI.Settings.Page` → Willkommensseite): Der Reiter Willkommensseite zeigt in Base nur noch den Modulschalter (`AddModuleSwitch('WelcomePage')`). Alle übrigen Einstellungen baut das Modul als `IAtlasSettingsSection` (`Atlas.UI.Welcome.SettingsSection`, Layouts in `Atlas.UI.Welcome.SettingsLayouts`), sein Anbieter `Atlas.IDE.Welcome.Settings` meldet sich in `Atlas.IDE.Welcome.Composition` ab der Anmeldung an (auch bei ausgeschaltetem Modul einstellbar). Die Tabelle „Bekannte Verstöße“ der Zuordnung ist leer.
+- „Zählung zurücksetzen“ und „Gesperrte Tipps wieder zeigen“ laufen über die Haken des Abschnitts (`TAtlasIdeCommandUsage.ResetCounts`, `TAtlasIdeDiscover.UnblockAll`); die Haken in `TAtlasOptionsHooks` und der Root-Composition entfallen, ebenso `IAtlasCommandUsageListener.TipsUnblocked` (einziger Hörer war die Willkommensseite). Die Auswahl des Layouts ist jetzt eine `TAtlasChoiceBox` (füllbar ohne Fenster).
+- `ciLogin` und `tips.usageTracking` stehen weiter im Abschnitt der Willkommensseite: Ohne das Modul sind sie im Optionsdialog nicht sichtbar, obwohl der Tracker `ciLogin` nutzt (Vorgabe an). Bei Bedarf später auf eine Seite von Base ziehen.
+- Der Link „prüfen …“ der Versionsverwaltung und „Meine Issues“ führen ohne das jeweilige Modul zu dessen Schalter (`SelectModulePage`).
+- 93 Texte nach `Atlas.UI.Welcome.Strings` verschoben; in Base bleiben die drei Tastentexte (Tastenbelegung) und die Pull-Texte (Arbeitskopien).
+- Tests: `Atlas.UI.Welcome.SettingsSection.Tests` (Werte laden/speichern, Layouts, Zählknöpfe, Lage und Link), die alten Welcome-Tests der Seite und die Welcome-Teile im Tracker-Abschnitt entfernt. Prüfskripte und Atlas (Metriken an) ohne neue Befunde; Texte-Tests unter FPC grün, die VCL-Tests nicht in der Cloud lauffähig. Handtests WS1–WS6.
+
 ## Weitere Module als eigene Packages (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 
 - Nach dem Debugger mit demselben Werkzeug verschoben: `Atlas.IDE.Designer` (7 Units), `.Rules` (7), `.Tests` (10), `.Bookmarks` (19), `.Analysis` (21), `.Search` (25), `.Build` (20), `.BuildPipeline` (10), nach Paket 2d (PR #1481, gemergt 555e65f2) auch `.Tracker` (104); je Package dpk/dproj wie beim Debugger, Eintrag in `Atlas.groupproj` vor dem Testprojekt, Testpfade angepasst. Inhalt der Units unverändert.
-- Offen: Willkommensseite (zuerst ihr Abschnitt im Optionsdialog als `IAtlasSettingsSection` ins Modul, letzter bekannter Verstoß), dann `Atlas.IDE.Contracts` und die Umbenennung in `Atlas.IDE.Base`.
+- Offen: Willkommensseite als Package (ihr Abschnitt im Optionsdialog ist seit dem folgenden Abschnitt im Modul), dann `Atlas.IDE.Contracts` und die Umbenennung in `Atlas.IDE.Base`.
 - Handtests MP1–MP4 in `handtests-v2.md`.
 
 ## Pilot: Debugger als eigenes Package (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)

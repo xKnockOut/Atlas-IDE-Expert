@@ -59,7 +59,8 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 
 | Von | Nach | Behebt |
 |---|---|---|
-| `Atlas.UI.Settings.Page` | `Atlas.IDE.Welcome` | Seiten der Module im Optionsdialog (Entscheidung 3) |
+
+Seit #1456 leer: Die Einstellungen der Willkommensseite baut das Modul als Abschnitt (`Atlas.UI.Welcome.SettingsSection`, Anbieter `Atlas.IDE.Welcome.Settings`), Base zeigt auf dem Reiter nur den Modulschalter.
 
 ## Summen
 
@@ -772,6 +773,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Welcome.TileProjects` | `IDE/Welcome/Atlas.IDE.Welcome.TileProjects.pas` | Bereich „Projekte“ für Kacheln anderer Module (IAtlasWelcomeProjects), #1455 |
 | `Atlas.IDE.Welcome.Tiles` | `IDE/Welcome/Atlas.IDE.Welcome.Tiles.pas` | Kacheln anderer Module über `Atlas.IDE.Contracts.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455 |
 | `Atlas.IDE.Welcome.Listener` | `IDE/Welcome/Atlas.IDE.Welcome.Listener.pas` | Ende von Projektaufgaben, Testläufen und Befehlsnutzung an die Seite, #1455 |
+| `Atlas.IDE.Welcome.Settings` | `IDE/Welcome/Atlas.IDE.Welcome.Settings.pas` | Anbieter des Abschnitts im Optionsdialog mit seinen Haken, #1456 |
 | `Atlas.IDE.Welcome.Neighbors` | `IDE/Welcome/Atlas.IDE.Welcome.Neighbors.pas` | Schnellaktionen und Einrichtung über die Verträge der Module Build-Pipeline, Tests, Build und Prüfregeln, #1455 |
 | `Atlas.IDE.Welcome.Page` | `IDE/Welcome/Atlas.IDE.Welcome.Page.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Projects` | `IDE/Welcome/Atlas.IDE.Welcome.Projects.pas` | Ordner `IDE/Welcome` |
@@ -795,6 +797,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Welcome.Projects` | `UI/Welcome/Atlas.UI.Welcome.Projects.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Push` | `UI/Welcome/Atlas.UI.Welcome.Push.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.QuickActions` | `UI/Welcome/Atlas.UI.Welcome.QuickActions.pas` | Ordner `UI/Welcome` |
+| `Atlas.UI.Welcome.SettingsLayouts` | `UI/Welcome/Atlas.UI.Welcome.SettingsLayouts.pas` | Ordner `UI/Welcome` |
+| `Atlas.UI.Welcome.SettingsSection` | `UI/Welcome/Atlas.UI.Welcome.SettingsSection.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Search` | `UI/Welcome/Atlas.UI.Welcome.Search.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Setup` | `UI/Welcome/Atlas.UI.Welcome.Setup.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.SetupPreview` | `UI/Welcome/Atlas.UI.Welcome.SetupPreview.pas` | Ordner `UI/Welcome` |

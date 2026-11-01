@@ -1971,26 +1971,6 @@ begin
   end;
 end;
 
-/// <summary>„Gesperrte Tipps wieder zeigen“ (#757): an jeden IAtlasCommandUsageListener der laufenden Module.
-/// </summary>
-procedure TipsUnblockedInModules;
-var
-  mItem: IInterface;
-  mListener: IAtlasCommandUsageListener;
-begin
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasCommandUsageListener) do
-  begin
-    if Supports(mItem, IAtlasCommandUsageListener, mListener) then
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          mListener.TipsUnblocked;
-        end);
-    end;
-  end;
-end;
-
 /// <summary>Optionsseiten (#227) mit ihren Haken (A-09): Die Seiten importieren die Features nicht, die sie
 /// bedienen.</summary>
 procedure RegisterOptions;
@@ -2012,12 +1992,6 @@ begin
       else
         ADone(nil);
     end;
-  Hooks.ResetUsage :=
-    procedure
-    begin
-      TAtlasIdeCommandUsage.ResetCounts;
-    end;
-  Hooks.UnblockTips := TipsUnblockedInModules;
   Hooks.ToolbarCommands :=
     function: TArray<TAtlasToolbarCommandInfo>
     begin

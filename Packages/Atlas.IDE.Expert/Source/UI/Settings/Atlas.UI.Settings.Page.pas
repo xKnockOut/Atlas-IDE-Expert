@@ -58,8 +58,6 @@ uses
   Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Vcs,
-  Atlas.Core.Welcome.QuickActions,
-  Atlas.Core.Welcome.Layouts,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
@@ -104,11 +102,6 @@ type
   /// <summary>„Alles zurücksetzen“ (#723) mit Rückfrage; True, wenn AResult gilt.</summary>
   TAtlasSettingsResetEvent = reference to function(const ACurrent: TAtlasPluginSettings;
     out AResult: TAtlasPluginSettings): Boolean;
-
-  /// <summary>Name eines Layouts der Willkommensseite erfragen (#767); False = abgebrochen.</summary>
-  TAtlasSettingsAskName = reference to function(const APrompt: string; var AName: string): Boolean;
-  /// <summary>Meldung (AQuestion False) oder Rückfrage mit Ja/Nein; True = Ja bzw. gelesen.</summary>
-  TAtlasSettingsConfirm = reference to function(const AText: string; AQuestion: Boolean): Boolean;
 
   /// <summary>„Hinzufügen …“ der Tabelle Projekte der Versionsverwaltung (#1286): .dproj bzw. .groupproj (AFolder
   /// False) oder Ordner wählen; False bei Abbruch.</summary>
@@ -664,49 +657,6 @@ type
     FSearchHistory: TEdit;
     FSearchMultiFile: TCheckBox;
     FSearchFromFirst: TCheckBox;
-    FWelcomeEnabled: TCheckBox;
-    FWelcomeIdePage: TCheckBox;
-    FWelcomeLayout: TCheckBox;
-    FWelcomeOpenOnStart: TCheckBox;
-    FWelcomeOpenWhenNoProject: TCheckBox;
-    // Freies Layout (#767): Schalter, Spalten, aktives Layout und dessen Verwaltung. FPageLayouts ist das
-    // Modell der Seite; erst OK schreibt es in die Einstellungen.
-    FWelcomeCustomLayout: TCheckBox;
-    FWelcomeColumns: TEdit;
-    FWelcomeActiveLayout: TAtlasChoiceBox;
-    FWelcomeLayoutNew: TButton;
-    FWelcomeLayoutRename: TButton;
-    FWelcomeLayoutDelete: TButton;
-    FPageLayouts: TAtlasWelcomeLayouts;
-    FOnAskLayoutName: TAtlasSettingsAskName;
-    FOnConfirmLayout: TAtlasSettingsConfirm;
-    FWelcomeHeader: TCheckBox;
-    FWelcomeGreeting: TCheckBox;
-    FWelcomeSearch: TCheckBox;
-    FWelcomeSearchSymbols: TCheckBox;
-    FWelcomeSearchKey: TEdit;
-    FWelcomeWhatsNew: TAtlasChoiceBox;
-    FWelcomeContinue: TCheckBox;
-    FWelcomeContinueCount: TEdit;
-    FWelcomeContinueIncoming: TCheckBox;
-    FWelcomeContinueFetch: TCheckBox;
-    FWelcomeSaved: TCheckBox;
-    FWelcomeProjects: TCheckBox;
-    FWelcomeMaxProjects: TEdit;
-    FWelcomeRefreshVcs: TCheckBox;
-    FWelcomeTrends: TCheckBox;
-    FWelcomeTrendsPoints: TEdit;
-    FWelcomeTrendsSeries: array[TAtlasTrendSeries] of TCheckBox;
-    FWelcomeTests: TCheckBox;
-    FWelcomeTestsMaxFailures: TEdit;
-    FWelcomeTestsCi: TCheckBox;
-    FWelcomeTestsCiProvider: TAtlasChoiceBox;
-    FWelcomeTestsCiInterval: TEdit;
-    FWelcomeTestsCiNotify: TCheckBox;
-    FCiLogin: TCheckBox;
-    FWelcomeIssues: TCheckBox;
-    FWelcomeIssuesLink: TButton;
-    FWelcomeSprint: TCheckBox;
     FOnBrowseProject: TAtlasProjectBrowseEvent;
     // Versionsverwaltung (#1285): Art, je Programm Pfad, „…“, „Prüfen“ und Zustand, Zeitlimit, aktuelles Projekt.
     FVcsProvider: TAtlasChoiceBox;
@@ -775,30 +725,6 @@ type
     FOnVcsServerState: TFunc<string, TAtlasVcsServerCheck>;
     FOnVcsServerCheck: TAtlasVcsServerCheckEvent;
     FOnVcsServerLogin: TAtlasVcsServerLoginEvent;
-    FWelcomeQuickActions: TCheckBox;
-    FWelcomeQuickActionsItems: array[TAtlasQuickAction] of TCheckBox;
-    FWelcomeQuickActionsConsole: TEdit;
-    FWelcomeQuickActionsBuildKey: TEdit;
-    FWelcomeQuickActionsTestKey: TEdit;
-    FWelcomeUnsaved: TCheckBox;
-    FWelcomeUnsavedMinAge: TEdit;
-    FWelcomeUnsavedWarn: TEdit;
-    FWelcomeUnsavedAlert: TEdit;
-    FWelcomeUnsavedHideClean: TCheckBox;
-    FWelcomeStatusTile: TCheckBox;
-    FWelcomeStatusTileOnlyProblems: TCheckBox;
-    FWelcomeDiscover: TCheckBox;
-    FTipsUsageTracking: TCheckBox;
-    FResetUsage: TButton;
-    FUnblockTips: TButton;
-    FOnResetUsage: TProc;
-    FOnUnblockTips: TProc;
-    FWelcomeHelp: TCheckBox;
-    FWelcomeHelpReportUrl: TEdit;
-    FWelcomeHelpReportFolder: TEdit;
-    FWelcomeHelpFolderBrowse: TButton;
-    FWelcomeProjectSetup: TCheckBox;
-    FWelcomeNewFromTemplate: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     // Favoriten (#458): Schalter, Liste und Schlüssel je Zeile.
@@ -929,25 +855,16 @@ type
     procedure FavoritesRemoveClick(Sender: TObject);
     procedure FavoritesRemoveAllClick(Sender: TObject);
     procedure SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
-    procedure ResetUsageClick(Sender: TObject);
     procedure EditorToolbarCustomizeClick(Sender: TObject);
-    procedure UnblockTipsClick(Sender: TObject);
     procedure AddTeamFileSection;
     procedure TeamFileClick(Sender: TObject);
     procedure TeamFileOpenClick(Sender: TObject);
     procedure SetOnTeamFile(const AValue: TFunc<TAtlasTeamSettings>);
     /// <summary>Beschriftung über die ganze Breite mit Zeilenumbruch.</summary>
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
-    procedure HelpFolderBrowseClick(Sender: TObject);
-    /// <summary>Knöpfe „Neu …“, „Umbenennen …“ und „Löschen“ rechts neben der Auswahl des Layouts (#767).
+    /// <summary>Seite der Einstellung AName eines Moduls; ohne das Modul die Seite seines Schalters AFallback.
     /// </summary>
-    procedure AddWelcomeLayoutButtons;
-    procedure WelcomeLayoutChange(Sender: TObject);
-    procedure WelcomeLayoutNewClick(Sender: TObject);
-    /// <summary>„Tracker-Einstellungen …“ (#1280): zeigt die Seite Issue-Tracker.</summary>
-    procedure WelcomeIssuesLinkClick(Sender: TObject);
-    /// <summary>Seite Issue-Tracker beim Element der Einstellung AName, ohne Modul beim Modulschalter.</summary>
-    procedure SelectIssuesPage(const AName: string);
+    procedure SelectModulePage(const AName, AFallback: string);
     /// <summary>Zeile mit Beschriftung links und AControl rechts daneben (Verbindungen, Projekte).</summary>
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
@@ -955,19 +872,6 @@ type
     class procedure AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer); static;
     /// <summary>„Hinzufügen …“ ohne OnBrowseProject: Datei- bzw. Ordnerauswahl von Windows.</summary>
     function BrowseProject(AFolder: Boolean; out APath: string): Boolean;
-    procedure WelcomeLayoutRenameClick(Sender: TObject);
-    procedure WelcomeLayoutDeleteClick(Sender: TObject);
-    /// <summary>Ob das Häkchen bzw. die Auswahl des Bereichs AId ihn zeigt („Neu in Atlas“: nicht „Aus“).
-    /// </summary>
-    function WelcomeSectionShown(const AId: string; out AShown: Boolean): Boolean;
-    procedure ShowWelcomeSection(const AId: string; AShown: Boolean);
-    /// <summary>Spalten und Sichtbarkeit der Steuerelemente ins aktive Layout von FPageLayouts.</summary>
-    procedure KeepWelcomeLayout;
-    /// <summary>FPageLayouts auf die Seite: Namen, Auswahl, Spalten; AVisibility auch die Häkchen der
-    /// Bereiche.</summary>
-    procedure ShowWelcomeLayouts(AVisibility: Boolean);
-    function AskLayoutName(var AName: string): Boolean;
-    function ConfirmLayout(const AText: string; AQuestion: Boolean): Boolean;
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
     function AddTextLine(const ACaption: string): TEdit;
     procedure ResetWidthsClick(Sender: TObject);
@@ -999,7 +903,6 @@ type
     procedure SaveRelease(var ASettings: TAtlasPluginSettings);
     procedure AddUndoSection;
     procedure AddUnitSearchSection;
-    procedure AddWelcomeSection;
     /// <summary>Seite Versionsverwaltung (#1285).</summary>
     procedure AddVcsSection;
     procedure AddVcsExternalsSection;
@@ -1283,85 +1186,11 @@ type
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
-    /// <summary>Zum Testen: Willkommensseite (#753).</summary>
-    property WelcomeEnabled: TCheckBox read FWelcomeEnabled;
-    property WelcomeIdePage: TCheckBox read FWelcomeIdePage;
-    property WelcomeLayout: TCheckBox read FWelcomeLayout;
-    property WelcomeOpenOnStart: TCheckBox read FWelcomeOpenOnStart;
-    property WelcomeOpenWhenNoProject: TCheckBox read FWelcomeOpenWhenNoProject;
-    /// <summary>Zum Testen: freies Layout (#767).</summary>
-    property WelcomeCustomLayout: TCheckBox read FWelcomeCustomLayout;
-    property WelcomeColumns: TEdit read FWelcomeColumns;
-    property WelcomeActiveLayout: TAtlasChoiceBox read FWelcomeActiveLayout;
-    property WelcomeLayoutNew: TButton read FWelcomeLayoutNew;
-    property WelcomeLayoutRename: TButton read FWelcomeLayoutRename;
-    property WelcomeLayoutDelete: TButton read FWelcomeLayoutDelete;
-    property PageLayouts: TAtlasWelcomeLayouts read FPageLayouts;
-    /// <summary>Wählt das Layout AIndex wie die Auswahlliste (#767).</summary>
-    procedure SelectWelcomeLayout(AIndex: Integer);
-    /// <summary>Namensabfrage für „Neu …“ und „Umbenennen …“; Standard: InputQuery.</summary>
-    property OnAskLayoutName: TAtlasSettingsAskName read FOnAskLayoutName write FOnAskLayoutName;
-    /// <summary>Rückfrage vor „Löschen“ und Meldung bei doppeltem Namen; Standard: Dialog.</summary>
-    property OnConfirmLayout: TAtlasSettingsConfirm read FOnConfirmLayout write FOnConfirmLayout;
-    property WelcomeHeader: TCheckBox read FWelcomeHeader;
-    property WelcomeGreeting: TCheckBox read FWelcomeGreeting;
-    property WelcomeSearch: TCheckBox read FWelcomeSearch;
-    property WelcomeSearchSymbols: TCheckBox read FWelcomeSearchSymbols;
-    property WelcomeSearchKey: TEdit read FWelcomeSearchKey;
-    property WelcomeWhatsNew: TAtlasChoiceBox read FWelcomeWhatsNew;
-    property WelcomeContinue: TCheckBox read FWelcomeContinue;
-    property WelcomeContinueCount: TEdit read FWelcomeContinueCount;
-    property WelcomeContinueIncoming: TCheckBox read FWelcomeContinueIncoming;
-    property WelcomeContinueFetch: TCheckBox read FWelcomeContinueFetch;
-    property WelcomeSaved: TCheckBox read FWelcomeSaved;
-    property WelcomeProjects: TCheckBox read FWelcomeProjects;
-    property WelcomeMaxProjects: TEdit read FWelcomeMaxProjects;
-    property WelcomeRefreshVcs: TCheckBox read FWelcomeRefreshVcs;
-    /// <summary>Zum Testen: Bereich „Projektverlauf“ (#758).</summary>
-    property WelcomeTrends: TCheckBox read FWelcomeTrends;
-    property WelcomeTrendsPoints: TEdit read FWelcomeTrendsPoints;
-    function WelcomeTrendsSeries(ASeries: TAtlasTrendSeries): TCheckBox;
-    /// <summary>Zum Testen: Bereich „Testergebnisse“ (#763).</summary>
-    property WelcomeTests: TCheckBox read FWelcomeTests;
-    property WelcomeTestsMaxFailures: TEdit read FWelcomeTestsMaxFailures;
-    property WelcomeTestsCi: TCheckBox read FWelcomeTestsCi;
-    property WelcomeTestsCiProvider: TAtlasChoiceBox read FWelcomeTestsCiProvider;
-    property WelcomeTestsCiInterval: TEdit read FWelcomeTestsCiInterval;
-    property WelcomeTestsCiNotify: TCheckBox read FWelcomeTestsCiNotify;
-    property CiLogin: TCheckBox read FCiLogin;
-    property WelcomeIssues: TCheckBox read FWelcomeIssues;
-    property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
-    property WelcomeSprint: TCheckBox read FWelcomeSprint;
-    /// <summary>Zum Testen: Schnellaktionen je Projekt (#764).</summary>
-    property WelcomeQuickActions: TCheckBox read FWelcomeQuickActions;
-    function WelcomeQuickActionsItem(AAction: TAtlasQuickAction): TCheckBox;
-    property WelcomeQuickActionsConsole: TEdit read FWelcomeQuickActionsConsole;
-    property WelcomeQuickActionsBuildKey: TEdit read FWelcomeQuickActionsBuildKey;
-    property WelcomeQuickActionsTestKey: TEdit read FWelcomeQuickActionsTestKey;
-    property WelcomeUnsaved: TCheckBox read FWelcomeUnsaved;
-    property WelcomeUnsavedMinAge: TEdit read FWelcomeUnsavedMinAge;
-    property WelcomeUnsavedWarn: TEdit read FWelcomeUnsavedWarn;
-    property WelcomeUnsavedAlert: TEdit read FWelcomeUnsavedAlert;
-    property WelcomeUnsavedHideClean: TCheckBox read FWelcomeUnsavedHideClean;
-    property WelcomeStatusTile: TCheckBox read FWelcomeStatusTile;
-    property WelcomeStatusTileOnlyProblems: TCheckBox read FWelcomeStatusTileOnlyProblems;
-    /// <summary>Zum Testen: Karte „Atlas entdecken“ und Zählung (#757).</summary>
-    property WelcomeDiscover: TCheckBox read FWelcomeDiscover;
-    property TipsUsageTracking: TCheckBox read FTipsUsageTracking;
-    property ResetUsageButton: TButton read FResetUsage;
     /// <summary>Zum Testen: Editorleiste (#1101).</summary>
     property EditorToolbarItemsEdit: TEdit read FEditorToolbarItems;
     property EditorToolbarPositionBox: TAtlasChoiceBox read FEditorToolbarPosition;
     property EditorToolbarCustomizeButton: TButton read FEditorToolbarCustomize;
     property EditorStatusBarItemsEdit: TEdit read FEditorStatusBarItems;
-    property UnblockTipsButton: TButton read FUnblockTips;
-    /// <summary>Zum Testen: Bereich „Hilfe und Rückmeldung“ (#766).</summary>
-    property WelcomeHelp: TCheckBox read FWelcomeHelp;
-    property WelcomeHelpReportUrl: TEdit read FWelcomeHelpReportUrl;
-    property WelcomeHelpReportFolder: TEdit read FWelcomeHelpReportFolder;
-    /// <summary>Zum Testen: Einrichtungskarte und „Neu mit Atlas“ (#759).</summary>
-    property WelcomeProjectSetup: TCheckBox read FWelcomeProjectSetup;
-    property WelcomeNewFromTemplate: TCheckBox read FWelcomeNewFromTemplate;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen im Hintergrund holen; den Text liefert IndexAnswered. nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TProc read FOnIndexMetrics write FOnIndexMetrics;
@@ -1567,13 +1396,9 @@ type
     property FavoritesList: TListBox read FFavoritesList;
     property FavoritesRemove: TButton read FFavoritesRemove;
     property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
-    /// <summary>„Zählung zurücksetzen“ der Nutzung je Befehl (#757).</summary>
-    property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
     /// <summary>Befehle für „Leiste anpassen …“ der Editorleiste (#1101): Atlas-Befehle der Palette.</summary>
     property OnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>> read FOnToolbarCommands
       write FOnToolbarCommands;
-    /// <summary>„Gesperrte Tipps wieder zeigen“ der Karte „Atlas entdecken“ (#757).</summary>
-    property OnUnblockTips: TProc read FOnUnblockTips write FOnUnblockTips;
     /// <summary>Projektdatei .atlas des aktiven Projekts (#486) für die Anzeige „aus .atlas“; nil = keine.</summary>
     property OnTeamFile: TFunc<TAtlasTeamSettings> read FOnTeamFile write SetOnTeamFile;
     /// <summary>„Projektdatei öffnen“: anlegen, falls es sie nicht gibt, und im Editor öffnen (#486).</summary>
@@ -1715,10 +1540,6 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Undo.Names,
-  Atlas.Core.Welcome.WhatsNew,
-  Atlas.Core.Welcome.Trends,
-  Atlas.Core.Welcome.Sections,
-  Atlas.Core.Welcome.Layout,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
@@ -1759,45 +1580,6 @@ const
   cRowButtonTop = 3;
   cSectionKeyMissing = 'Einstellung %s ist keine Plugin-Einstellung';
   cSectionChoiceMismatch = 'Auswahl %s: Anzeige und Werte verschieden lang';
-
-/// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
-function QuickActionTitle(AAction: TAtlasQuickAction): string;
-begin
-  // Beschriftung des Knopfs ohne „ ▾“ (#764).
-  case AAction of
-    TAtlasQuickAction.Build:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBuild);
-    TAtlasQuickAction.Tests:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTests);
-    TAtlasQuickAction.Run:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickRun);
-    TAtlasQuickAction.Pull:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
-    TAtlasQuickAction.Folder:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickFolder);
-    TAtlasQuickAction.Tasks:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTasks);
-  else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsole);
-  end;
-  Result := Trim(StringReplace(Result, #$25BE, '', [rfReplaceAll]));
-end;
-
-function TrendSeriesTitle(ASeries: TAtlasTrendSeries): string;
-begin
-  case ASeries of
-    TAtlasTrendSeries.Warnings:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsWarnings);
-    TAtlasTrendSeries.RuleHits:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsRuleHits);
-    TAtlasTrendSeries.Todos:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsTodos);
-    TAtlasTrendSeries.Duration:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsDuration);
-  else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsMethodLength);
-  end;
-end;
 
 { TAtlasSettingsRow }
 
@@ -2847,8 +2629,10 @@ begin
   AddModuleSwitch('SearchEnabled');
   AddUnitSearchSection;
 
+  // Willkommensseite (#753): Base zeigt nur den Modulschalter; die Einstellungen der Seite baut das Modul als
+  // Abschnitt (#1456, Atlas.UI.Welcome.SettingsSection).
   AddSheet(TAtlasTextId.SettingsTabWelcome);
-  AddWelcomeSection;
+  AddModuleSwitch('WelcomePage');
 
   // Issue-Tracker (#1280): eigener Bereich; die Willkommensseite schaltet nur, ob „Meine Issues“ erscheint.
   // Die Einstellungen darin baut das Modul Tracker als Abschnitt (#1455, Atlas.UI.Tracker.SettingsSection).
@@ -2902,25 +2686,6 @@ begin
   Bind('Preview', FPreview);
   Bind('HideElementKey', FHideElementKey);
   Bind('ContinuePattern', FContinuePattern);
-  Bind('WelcomePage', FWelcomeEnabled);
-  Bind('WelcomePageHeader', FWelcomeHeader);
-  Bind('WelcomePageSearch', FWelcomeSearch);
-  Bind('WelcomePageWhatsNew', FWelcomeWhatsNew);
-  Bind('WelcomePageContinue', FWelcomeContinue);
-  Bind('WelcomePageProjectStatus', FWelcomeProjects);
-  Bind('WelcomePageTrends', FWelcomeTrends);
-  Bind('WelcomePageTests', FWelcomeTests);
-  Bind('WelcomePageUnsaved', FWelcomeUnsaved);
-  Bind('WelcomePageStatusTile', FWelcomeStatusTile);
-  Bind('WelcomePageDiscover', FWelcomeDiscover);
-  Bind('WelcomePageHelp', FWelcomeHelp);
-  Bind('WelcomePageProjectSetup', FWelcomeProjectSetup);
-  Bind('WelcomePageIssues', FWelcomeIssues);
-  Bind('WelcomePageSprint', FWelcomeSprint);
-  Bind('WelcomePageCustomLayout', FWelcomeCustomLayout);
-  Bind('WelcomePageColumns', FWelcomeColumns);
-  Bind('WelcomePageActiveLayout', FWelcomeActiveLayout);
-  Bind('WelcomePageLayouts', FWelcomeActiveLayout);
   Bind('ExperimentalEnabled', FExperimentalEnabled);
   for mIndex := 0 to High(FModuleChecks) do
     Bind(FModuleNames[mIndex], FModuleChecks[mIndex]);
@@ -3071,131 +2836,6 @@ begin
   if (Control is TWinControl) and TWinControl(Control).CanFocus and (GetParentForm(Control) <> nil) and
     GetParentForm(Control).Visible then
     TWinControl(Control).SetFocus;
-end;
-
-procedure TAtlasSettingsPage.AddWelcomeSection;
-var
-  Series: TAtlasTrendSeries;
-  mAction: TAtlasQuickAction;
-  Panel: TWinControl;
-begin
-  // Atlas-Willkommensseite (#753): auf der Willkommensseite der IDE und im Fenster „Atlas-Start“, beides
-  // unabhängig (#761).
-  FWelcomeEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeEnabled));
-  FWelcomeIdePage := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIdePage));
-  FWelcomeLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeLayout));
-  FWelcomeOpenOnStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeOpenOnStart));
-  FWelcomeOpenWhenNoProject := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeOpenWhenNoProject));
-  // Freies Layout (#767): Bearbeitungsmodus „Seite anpassen“, Spalten, benannte Layouts.
-  FWelcomeCustomLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeCustomLayout));
-  FWelcomeColumns := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeColumns));
-  FWelcomeActiveLayout := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeActiveLayout),
-    [TAtlasWelcomeLayout.DefaultName]);
-  FWelcomeActiveLayout.OnChange := WelcomeLayoutChange;
-  AddWelcomeLayoutButtons;
-  FPageLayouts := TAtlasWelcomeLayouts.Defaults;
-  FWelcomeHeader := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHeader));
-  FWelcomeGreeting := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeGreeting));
-  FWelcomeSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearch));
-  FWelcomeSearchSymbols := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearchSymbols));
-  FWelcomeSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearchKey));
-  // Karte „Neu in Atlas“ (#756); Reihenfolge wie TAtlasWhatsNewMode: off, afterUpdate, always.
-  FWelcomeWhatsNew := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNew),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewOff),
-    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAfterUpdate),
-    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAlways)]);
-  // Bereich „Weiterarbeiten“ (#755).
-  FWelcomeContinue := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinue));
-  FWelcomeContinueCount := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueCount));
-  FWelcomeContinueIncoming := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueIncoming));
-  FWelcomeContinueFetch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueFetch));
-  FWelcomeSaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSaved));
-  // Bereich „Projekte“ (#592).
-  FWelcomeProjects := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjects));
-  FWelcomeMaxProjects := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeMaxProjects));
-  FWelcomeRefreshVcs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeRefreshVcs));
-  // Bereich „Projektverlauf“ (#758): Schalter, Anzahl der Builds und je Reihe ein Kontrollkästchen.
-  FWelcomeTrends := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTrends));
-  FWelcomeTrendsPoints := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTrendsPoints));
-  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
-    FWelcomeTrendsSeries[Series] := AddCheck(TAtlasStrings.Fmt(TAtlasTextId.SettingsWelcomeTrendsSeries,
-      [TrendSeriesTitle(Series)]));
-  // Bereich „Testergebnisse“ (#763): lokal und vom Build-Server; Anbieter in der Reihenfolge von
-  // TAtlasPluginSettings (bisher nur Jenkins).
-  FWelcomeTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTests));
-  FWelcomeTestsMaxFailures := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsMaxFailures));
-  FWelcomeTestsCi := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCi));
-  FWelcomeTestsCiProvider := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiProvider),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiJenkins)]);
-  FWelcomeTestsCiInterval := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiInterval));
-  FWelcomeTestsCiNotify := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiNotify));
-  FCiLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCiLogin));
-  // Meine Issues (#765): nur der Bereich; Tracker, Abfrage und Muster stehen auf der Seite Issue-Tracker (#1280).
-  FWelcomeIssues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssues));
-  Panel := AddPanel(32);
-  FWelcomeIssuesLink := TButton.Create(Self);
-  FWelcomeIssuesLink.Parent := Panel;
-  FWelcomeIssuesLink.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesLink);
-  FWelcomeIssuesLink.Left := 0;
-  FWelcomeIssuesLink.Top := 3;
-  FWelcomeIssuesLink.Width := 200;
-  FWelcomeIssuesLink.OnClick := WelcomeIssuesLinkClick;
-  Attach(Panel, FWelcomeIssues);
-  // Sprint-Kachel (#1277): nur der Bereich; Burndown und Vergleich auf der Seite Issue-Tracker.
-  FWelcomeSprint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSprint));
-  // Schnellaktionen je Projekt (#764): Schalter, je Knopf ein Häkchen, Programm für „Konsole“, zwei Tasten.
-  FWelcomeQuickActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActions));
-  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
-    FWelcomeQuickActionsItems[mAction] := AddCheck(TAtlasStrings.Fmt(TAtlasTextId.SettingsWelcomeQuickActionsItem,
-      [QuickActionTitle(mAction)]));
-  FWelcomeQuickActionsConsole := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsConsole));
-  FWelcomeQuickActionsBuildKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsBuildKey));
-  FWelcomeQuickActionsTestKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsTestKey));
-  // Bereich „Nicht gesichert“ (#762).
-  FWelcomeUnsaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsaved));
-  FWelcomeUnsavedMinAge := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedMinAge));
-  FWelcomeUnsavedWarn := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedWarn));
-  FWelcomeUnsavedAlert := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedAlert));
-  FWelcomeUnsavedHideClean := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedHideClean));
-  // Zustandskachel „Atlas“ (#754).
-  FWelcomeStatusTile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeStatusTile));
-  FWelcomeStatusTileOnlyProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeStatusTileOnlyProblems));
-  // Karte „Atlas entdecken“ und Nutzungszählung (#757).
-  FWelcomeDiscover := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeDiscover));
-  FTipsUsageTracking := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTipsUsageTracking));
-  Panel := AddPanel(32);
-  FResetUsage := TButton.Create(Self);
-  FResetUsage.Parent := Panel;
-  FResetUsage.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsResetUsage);
-  FResetUsage.Left := 0;
-  FResetUsage.Top := 3;
-  FResetUsage.Width := 180;
-  FResetUsage.OnClick := ResetUsageClick;
-  FUnblockTips := TButton.Create(Self);
-  FUnblockTips.Parent := Panel;
-  FUnblockTips.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsUnblockTips);
-  FUnblockTips.Left := 190;
-  FUnblockTips.Top := 3;
-  FUnblockTips.Width := 200;
-  FUnblockTips.OnClick := UnblockTipsClick;
-  Attach(Panel, FWelcomeDiscover);
-  // Bereich „Hilfe und Rückmeldung“ (#766): Schalter, Ziel der Issue-Seite, Ordner der ZIP.
-  FWelcomeHelp := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelp));
-  FWelcomeHelpReportUrl := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpReportUrl));
-  FWelcomeHelpReportFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpReportFolder));
-  FWelcomeHelpReportFolder.TextHint := TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpDesktop);
-  FWelcomeHelpReportFolder.Width := FWelcomeHelpReportFolder.Width - 36;
-  FWelcomeHelpFolderBrowse := TButton.Create(Self);
-  FWelcomeHelpFolderBrowse.Parent := FWelcomeHelpReportFolder.Parent;
-  FWelcomeHelpFolderBrowse.Caption := '…';
-  FWelcomeHelpFolderBrowse.Left := FWelcomeHelpReportFolder.Left + FWelcomeHelpReportFolder.Width + 6;
-  FWelcomeHelpFolderBrowse.Top := 0;
-  FWelcomeHelpFolderBrowse.Width := 30;
-  FWelcomeHelpFolderBrowse.Anchors := [akTop, akRight];
-  FWelcomeHelpFolderBrowse.OnClick := HelpFolderBrowseClick;
-  // Karte „Projekt für Atlas einrichten“ und Knöpfe „Neu mit Atlas“ (#759).
-  FWelcomeProjectSetup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjectSetup));
-  FWelcomeNewFromTemplate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeNewFromTemplate));
 end;
 
 procedure TAtlasSettingsPage.AddVcsSection;
@@ -3579,9 +3219,9 @@ begin
   if Sender = FVcsLinkEditor then
     SelectPage(PageOf(FGitGutter))
   else if Sender = FVcsLinkWelcome then
-    SelectPage(PageOf(FWelcomeRefreshVcs))
+    SelectModulePage('WelcomePageRefreshVcs', 'WelcomePage')
   else if Sender = FVcsLinkIssues then
-    SelectIssuesPage('IssuesBranchPattern');
+    SelectModulePage('IssuesBranchPattern', 'IssuesEnabled');
 end;
 
 // Art und Hauptbranch je Projekt (#1286): wie die Tabelle Projekte der Seite Issue-Tracker (#1261), dieselbe
@@ -4231,21 +3871,16 @@ begin
   VcsServerFillButtons;
 end;
 
-procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
-begin
-  // Hauptknoten der Seite Issue-Tracker: dort steht der Anbieter.
-  SelectIssuesPage('IssuesTracker');
-end;
-
-procedure TAtlasSettingsPage.SelectIssuesPage(const AName: string);
+procedure TAtlasSettingsPage.SelectModulePage(const AName, AFallback: string);
 var
   mControl: TControl;
 begin
-  // Die Einstellungen baut das Modul Tracker (#1455); fehlt es, bleibt der Reiter mit seinem Modulschalter.
+  // Die Einstellungen baut das Modul (Tracker #1455, Willkommensseite #1456); fehlt es, bleibt der Reiter mit
+  // seinem Modulschalter.
   mControl := ControlOfSetting(AName);
   if mControl = nil then
   begin
-    mControl := ControlOfSetting('IssuesEnabled');
+    mControl := ControlOfSetting(AFallback);
   end;
   if mControl <> nil then
   begin
@@ -4330,225 +3965,6 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsPage.AddWelcomeLayoutButtons;
-
-  function AddButton(ALeft: Integer; AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
-  begin
-    Result := TButton.Create(Self);
-    Result.Parent := FWelcomeActiveLayout.Parent;
-    Result.Caption := TAtlasStrings.Text(AId);
-    Result.Left := ALeft;
-    Result.Top := 0;
-    Result.Width := 96;
-    Result.OnClick := AClick;
-  end;
-
-var
-  mLeft: Integer;
-begin
-  mLeft := FWelcomeActiveLayout.Left + FWelcomeActiveLayout.Width + 6;
-  FWelcomeLayoutNew := AddButton(mLeft, TAtlasTextId.SettingsWelcomeLayoutNew, WelcomeLayoutNewClick);
-  FWelcomeLayoutRename := AddButton(mLeft + 102, TAtlasTextId.SettingsWelcomeLayoutRename,
-    WelcomeLayoutRenameClick);
-  FWelcomeLayoutDelete := AddButton(mLeft + 204, TAtlasTextId.SettingsWelcomeLayoutDelete,
-    WelcomeLayoutDeleteClick);
-end;
-
-function TAtlasSettingsPage.WelcomeSectionShown(const AId: string; out AShown: Boolean): Boolean;
-var
-  Check: TCheckBox;
-begin
-  Result := True;
-  AShown := False;
-  if AId = TAtlasWelcomeIds.News then
-  begin
-    AShown := FWelcomeWhatsNew.Choice > 0;
-    Exit;
-  end;
-  Check := nil;
-  if AId = TAtlasWelcomeIds.Continue then
-    Check := FWelcomeContinue
-  else if AId = TAtlasWelcomeIds.Projects then
-    Check := FWelcomeProjects
-  else if AId = TAtlasWelcomeIds.History then
-    Check := FWelcomeTrends
-  else if AId = TAtlasWelcomeIds.Tests then
-    Check := FWelcomeTests
-  else if AId = TAtlasWelcomeIds.State then
-    Check := FWelcomeStatusTile
-  else if AId = TAtlasWelcomeIds.Unsaved then
-    Check := FWelcomeUnsaved
-  else if AId = TAtlasWelcomeIds.Discover then
-    Check := FWelcomeDiscover
-  else if AId = TAtlasWelcomeIds.Setup then
-    Check := FWelcomeProjectSetup
-  else if AId = TAtlasWelcomeIds.Issues then
-    Check := FWelcomeIssues
-  else if AId = TAtlasWelcomeIds.Sprint then
-    Check := FWelcomeSprint
-  else if AId = TAtlasWelcomeIds.Help then
-    Check := FWelcomeHelp;
-  Result := Check <> nil;
-  if Result then
-    AShown := Check.Checked;
-end;
-
-procedure TAtlasSettingsPage.ShowWelcomeSection(const AId: string; AShown: Boolean);
-var
-  Shown: Boolean;
-begin
-  if not WelcomeSectionShown(AId, Shown) or (Shown = AShown) then
-    Exit;
-  if AId = TAtlasWelcomeIds.News then
-  begin
-    // Einschalten heißt „nach einem Update“, wie die Vorgabe.
-    FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNewMode.AfterUpdate);
-    if not AShown then
-      FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNewMode.Off);
-  end
-  else if AId = TAtlasWelcomeIds.Continue then
-    FWelcomeContinue.Checked := AShown
-  else if AId = TAtlasWelcomeIds.Projects then
-    FWelcomeProjects.Checked := AShown
-  else if AId = TAtlasWelcomeIds.History then
-    FWelcomeTrends.Checked := AShown
-  else if AId = TAtlasWelcomeIds.Tests then
-    FWelcomeTests.Checked := AShown
-  else if AId = TAtlasWelcomeIds.State then
-    FWelcomeStatusTile.Checked := AShown
-  else if AId = TAtlasWelcomeIds.Unsaved then
-    FWelcomeUnsaved.Checked := AShown
-  else if AId = TAtlasWelcomeIds.Discover then
-    FWelcomeDiscover.Checked := AShown
-  else if AId = TAtlasWelcomeIds.Setup then
-    FWelcomeProjectSetup.Checked := AShown
-  else if AId = TAtlasWelcomeIds.Issues then
-    FWelcomeIssues.Checked := AShown
-  else if AId = TAtlasWelcomeIds.Sprint then
-    FWelcomeSprint.Checked := AShown
-  else if AId = TAtlasWelcomeIds.Help then
-    FWelcomeHelp.Checked := AShown;
-end;
-
-procedure TAtlasSettingsPage.KeepWelcomeLayout;
-var
-  Layout: TAtlasWelcomeLayout;
-  Item: TAtlasWelcomeCatalogItem;
-  Shown: Boolean;
-begin
-  Layout := FPageLayouts.Current;
-  Layout := Layout.WithColumns(EnsureRange(StrToIntDef(Trim(FWelcomeColumns.Text), Layout.Columns),
-    TAtlasWelcomeLayout.MinColumns, TAtlasWelcomeLayout.MaxColumns));
-  for Item in TAtlasWelcomeCustomizing.Catalog do
-    if WelcomeSectionShown(Item.Id, Shown) and (Layout.IndexOf(Item.Id) >= 0) then
-      Layout := Layout.WithVisible(Item.Id, Shown);
-  FPageLayouts := FPageLayouts.WithCurrent(Layout);
-end;
-
-procedure TAtlasSettingsPage.ShowWelcomeLayouts(AVisibility: Boolean);
-var
-  Layout: TAtlasWelcomeLayout;
-  Slot: TAtlasWelcomeSlot;
-begin
-  Layout := FPageLayouts.Current;
-  FWelcomeActiveLayout.SetChoices(FPageLayouts.Names);
-  FWelcomeActiveLayout.Choice := FPageLayouts.Active;
-  FWelcomeColumns.Text := IntToStr(Layout.Columns);
-  Allow(FWelcomeLayoutDelete, Length(FPageLayouts.Items) > 1);
-  if AVisibility then
-    for Slot in Layout.Slots do
-      ShowWelcomeSection(Slot.Id, Slot.Visible);
-end;
-
-procedure TAtlasSettingsPage.SelectWelcomeLayout(AIndex: Integer);
-var
-  Layouts: TAtlasWelcomeLayouts;
-begin
-  if (AIndex < 0) or (AIndex > High(FPageLayouts.Items)) or (AIndex = FPageLayouts.Active) then
-    Exit;
-  // Das bisherige Layout merkt sich Spalten und Sichtbarkeit, das neue setzt seine.
-  KeepWelcomeLayout;
-  if FPageLayouts.Activated(FPageLayouts.Items[AIndex].Name, Layouts) then
-    FPageLayouts := Layouts;
-  ShowWelcomeLayouts(True);
-end;
-
-procedure TAtlasSettingsPage.WelcomeLayoutChange(Sender: TObject);
-begin
-  SelectWelcomeLayout(FWelcomeActiveLayout.Choice);
-end;
-
-procedure TAtlasSettingsPage.WelcomeLayoutNewClick(Sender: TObject);
-var
-  mName: string;
-  Layouts: TAtlasWelcomeLayouts;
-begin
-  mName := '';
-  if not AskLayoutName(mName) or (Trim(mName) = '') then
-    Exit;
-  KeepWelcomeLayout;
-  if not FPageLayouts.Added(Trim(mName), Layouts) then
-  begin
-    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
-    Exit;
-  end;
-  // Die Kopie übernimmt die Sichtbarkeit; die Häkchen bleiben.
-  FPageLayouts := Layouts;
-  ShowWelcomeLayouts(False);
-end;
-
-procedure TAtlasSettingsPage.WelcomeLayoutRenameClick(Sender: TObject);
-var
-  mName: string;
-  Layouts: TAtlasWelcomeLayouts;
-begin
-  mName := FPageLayouts.ActiveName;
-  if not AskLayoutName(mName) or (Trim(mName) = '') or (Trim(mName) = FPageLayouts.ActiveName) then
-    Exit;
-  if not FPageLayouts.Renamed(Trim(mName), Layouts) then
-  begin
-    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
-    Exit;
-  end;
-  FPageLayouts := Layouts;
-  ShowWelcomeLayouts(False);
-end;
-
-procedure TAtlasSettingsPage.WelcomeLayoutDeleteClick(Sender: TObject);
-var
-  Layouts: TAtlasWelcomeLayouts;
-begin
-  if (Length(FPageLayouts.Items) < 2) or
-    not ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeDeleteConfirm, [FPageLayouts.ActiveName]),
-    True) then
-    Exit;
-  if not FPageLayouts.Deleted(Layouts) then
-    Exit;
-  FPageLayouts := Layouts;
-  ShowWelcomeLayouts(True);
-end;
-
-function TAtlasSettingsPage.AskLayoutName(var AName: string): Boolean;
-begin
-  if Assigned(FOnAskLayoutName) then
-    Exit(FOnAskLayoutName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), AName));
-  Result := InputQuery(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeCustomize),
-    TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), AName);
-end;
-
-function TAtlasSettingsPage.ConfirmLayout(const AText: string; AQuestion: Boolean): Boolean;
-begin
-  if Assigned(FOnConfirmLayout) then
-    Exit(FOnConfirmLayout(AText, AQuestion));
-  if AQuestion then
-    Result := MessageDlg(AText, mtConfirmation, [mbYes, mbNo], 0) = mrYes
-  else
-  begin
-    MessageDlg(AText, mtInformation, [mbOK], 0);
-    Result := True;
-  end;
-end;
-
 function TAtlasSettingsPage.ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;
 begin
   Result := FReassignedTargets[ATarget];
@@ -4573,22 +3989,6 @@ begin
   Result.Top := 1;
   Result.Width := 466;
   Result.Anchors := [akLeft, akTop, akRight];
-end;
-
-procedure TAtlasSettingsPage.HelpFolderBrowseClick(Sender: TObject);
-var
-  Dialog: TFileOpenDialog;
-begin
-  Dialog := TFileOpenDialog.Create(Self);
-  try
-    Dialog.Options := Dialog.Options + [fdoPickFolders, fdoPathMustExist];
-    if FWelcomeHelpReportFolder.Text <> '' then
-      Dialog.DefaultFolder := FWelcomeHelpReportFolder.Text;
-    if Dialog.Execute then
-      FWelcomeHelpReportFolder.Text := Dialog.FileName;
-  finally
-    Dialog.Free;
-  end;
 end;
 
 const
@@ -4823,8 +4223,6 @@ end;
 procedure TAtlasSettingsPage.BindControls;
 var
   Check: TAtlasReleaseCheck;
-  Series: TAtlasTrendSeries;
-  mAction: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   VisualizerKind: TAtlasVisualizerKind;
   StepFilterKind: TStepFilterKind;
@@ -5206,56 +4604,6 @@ begin
   FMarks.Bind(FSearchHistory, ['SearchHistory']);
   FMarks.Bind(FSearchMultiFile, ['SearchMultiFile']);
   FMarks.Bind(FSearchFromFirst, ['SearchFromFirstHit']);
-  FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
-  FMarks.Bind(FWelcomeIdePage, ['WelcomePageIdePage']);
-  FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
-  FMarks.Bind(FWelcomeOpenOnStart, ['WelcomePageOpenOnStart']);
-  FMarks.Bind(FWelcomeOpenWhenNoProject, ['WelcomePageOpenWhenNoProject']);
-  FMarks.Bind(FWelcomeCustomLayout, ['WelcomePageCustomLayout']);
-  FMarks.Bind(FWelcomeColumns, ['WelcomePageColumns']);
-  FMarks.Bind(FWelcomeActiveLayout, ['WelcomePageActiveLayout', 'WelcomePageLayouts']);
-  FMarks.Bind(FWelcomeHeader, ['WelcomePageHeader']);
-  FMarks.Bind(FWelcomeGreeting, ['WelcomePageGreeting']);
-  FMarks.Bind(FWelcomeSearch, ['WelcomePageSearch']);
-  FMarks.Bind(FWelcomeSearchSymbols, ['WelcomePageSearchSymbols']);
-  FMarks.Bind(FWelcomeSearchKey, ['WelcomePageSearchKey']);
-  FMarks.Bind(FWelcomeWhatsNew, ['WelcomePageWhatsNew']);
-  FMarks.Bind(FWelcomeContinue, ['WelcomePageContinue']);
-  FMarks.Bind(FWelcomeContinueCount, ['WelcomePageContinueCount']);
-  FMarks.Bind(FWelcomeContinueIncoming, ['WelcomePageContinueIncoming']);
-  FMarks.Bind(FWelcomeContinueFetch, ['WelcomePageContinueFetch']);
-  FMarks.Bind(FWelcomeSaved, ['WelcomePageSaved']);
-  FMarks.Bind(FWelcomeProjects, ['WelcomePageProjectStatus']);
-  FMarks.Bind(FWelcomeMaxProjects, ['WelcomePageMaxProjects']);
-  FMarks.Bind(FWelcomeRefreshVcs, ['WelcomePageRefreshVcs']);
-  FMarks.Bind(FWelcomeTrends, ['WelcomePageTrends']);
-  FMarks.Bind(FWelcomeTrendsPoints, ['WelcomePageTrendsPoints']);
-  FMarks.Bind(FWelcomeTests, ['WelcomePageTests']);
-  FMarks.Bind(FWelcomeTestsMaxFailures, ['WelcomePageTestsMaxFailures']);
-  FMarks.Bind(FWelcomeTestsCi, ['WelcomePageTestsCi']);
-  FMarks.Bind(FWelcomeTestsCiInterval, ['WelcomePageTestsCiIntervalMinutes']);
-  FMarks.Bind(FWelcomeTestsCiNotify, ['WelcomePageTestsCiNotify']);
-  FMarks.Bind(FCiLogin, ['CiLogin']);
-  FMarks.Bind(FWelcomeQuickActions, ['WelcomePageQuickActions']);
-  FMarks.Bind(FWelcomeQuickActionsConsole, ['WelcomePageQuickActionsConsole']);
-  FMarks.Bind(FWelcomeQuickActionsBuildKey, ['WelcomePageQuickActionsBuildKey']);
-  FMarks.Bind(FWelcomeQuickActionsTestKey, ['WelcomePageQuickActionsTestKey']);
-  FMarks.Bind(FWelcomeUnsaved, ['WelcomePageUnsaved']);
-  FMarks.Bind(FWelcomeUnsavedMinAge, ['WelcomePageUnsavedMinAgeHours']);
-  FMarks.Bind(FWelcomeUnsavedWarn, ['WelcomePageUnsavedWarnHours']);
-  FMarks.Bind(FWelcomeUnsavedAlert, ['WelcomePageUnsavedAlertHours']);
-  FMarks.Bind(FWelcomeUnsavedHideClean, ['WelcomePageUnsavedHideWhenClean']);
-  FMarks.Bind(FWelcomeStatusTile, ['WelcomePageStatusTile']);
-  FMarks.Bind(FWelcomeStatusTileOnlyProblems, ['WelcomePageStatusTileOnlyProblems']);
-  FMarks.Bind(FWelcomeDiscover, ['WelcomePageDiscover']);
-  FMarks.Bind(FTipsUsageTracking, ['TipsUsageTracking']);
-  FMarks.Bind(FWelcomeHelp, ['WelcomePageHelp']);
-  FMarks.Bind(FWelcomeHelpReportUrl, ['WelcomePageHelpReportUrl']);
-  FMarks.Bind(FWelcomeHelpReportFolder, ['WelcomePageHelpReportFolder']);
-  FMarks.Bind(FWelcomeProjectSetup, ['WelcomePageProjectSetup']);
-  FMarks.Bind(FWelcomeNewFromTemplate, ['WelcomePageNewFromTemplate']);
-  FMarks.Bind(FWelcomeIssues, ['WelcomePageIssues']);
-  FMarks.Bind(FWelcomeSprint, ['WelcomePageSprint']);
   FMarks.Bind(FVcsProvider, ['VcsProvider']);
   FMarks.Bind(FVcsProjectList, ['VcsProjects']);
   FMarks.Bind(FVcsPaths[TAtlasVcsKind.Git], ['VcsGitPath']);
@@ -5301,10 +4649,6 @@ begin
     FMarks.Bind(FReleaseCheckBoxes[Check], ['ReleaseChecks'], False);
     FMarks.Bind(FReleaseCheckChoices[Check], ['ReleaseChecks'], False);
   end;
-  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
-    FMarks.Bind(FWelcomeTrendsSeries[Series], ['WelcomePageTrendsSeries'], False);
-  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
-    FMarks.Bind(FWelcomeQuickActionsItems[mAction], ['WelcomePageQuickActionsItems'], False);
   // Modul-Schalter (#1454).
   for mIndex := 0 to High(FModuleChecks) do
     FMarks.Bind(FModuleChecks[mIndex], [FModuleNames[mIndex]]);
@@ -5685,9 +5029,11 @@ end;
 
 procedure TAtlasSettingsPage.BaselineDeleteClick(Sender: TObject);
 begin
-  if Assigned(FOnBaselineDelete) and ConfirmLayout(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm),
-    True) then
+  if Assigned(FOnBaselineDelete) and (MessageDlg(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm),
+    mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
+  begin
     FBaselineInfo.Caption := FOnBaselineDelete();
+  end;
 end;
 
 procedure TAtlasSettingsPage.Place(AControl: TControl; AHolder: TWinControl);
@@ -7079,16 +6425,6 @@ begin
   Result.NumbersOnly := True;
 end;
 
-function TAtlasSettingsPage.WelcomeTrendsSeries(ASeries: TAtlasTrendSeries): TCheckBox;
-begin
-  Result := FWelcomeTrendsSeries[ASeries];
-end;
-
-function TAtlasSettingsPage.WelcomeQuickActionsItem(AAction: TAtlasQuickAction): TCheckBox;
-begin
-  Result := FWelcomeQuickActionsItems[AAction];
-end;
-
 procedure TAtlasSettingsPage.LoadFrom(const ASettings: TAtlasPluginSettings);
 begin
   // Während des Ladens lösen die Elemente keine Neuberechnung der Punkte aus.
@@ -7104,10 +6440,6 @@ end;
 
 procedure TAtlasSettingsPage.LoadControls(const ASettings: TAtlasPluginSettings);
 var
-  Shown: TAtlasTrendSeriesList;
-  Series, Wanted: TAtlasTrendSeries;
-  Items: TAtlasQuickActions;
-  mAction: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
   VisualizerKind: TAtlasVisualizerKind;
@@ -7545,45 +6877,6 @@ begin
   FSearchHistory.Text := IntToStr(ASettings.SearchHistory);
   FSearchMultiFile.Checked := ASettings.SearchMultiFile;
   FSearchFromFirst.Checked := ASettings.SearchFromFirstHit;
-  FWelcomeEnabled.Checked := ASettings.WelcomePage;
-  FWelcomeIdePage.Checked := ASettings.WelcomePageIdePage;
-  FWelcomeLayout.Checked := ASettings.WelcomePageLayout = 'atlas';
-  FWelcomeOpenOnStart.Checked := ASettings.WelcomePageOpenOnStart;
-  FWelcomeOpenWhenNoProject.Checked := ASettings.WelcomePageOpenWhenNoProject;
-  FWelcomeHeader.Checked := ASettings.WelcomePageHeader;
-  FWelcomeGreeting.Checked := ASettings.WelcomePageGreeting;
-  FWelcomeSearch.Checked := ASettings.WelcomePageSearch;
-  FWelcomeSearchSymbols.Checked := ASettings.WelcomePageSearchSymbols;
-  FWelcomeSearchKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageSearchKey));
-  FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNew.ModeOf(ASettings.WelcomePageWhatsNew));
-  FWelcomeContinue.Checked := ASettings.WelcomePageContinue;
-  FWelcomeContinueCount.Text := IntToStr(ASettings.WelcomePageContinueCount);
-  FWelcomeContinueIncoming.Checked := ASettings.WelcomePageContinueIncoming;
-  FWelcomeContinueFetch.Checked := ASettings.WelcomePageContinueFetch;
-  FWelcomeSaved.Checked := ASettings.WelcomePageSaved;
-  FWelcomeProjects.Checked := ASettings.WelcomePageProjectStatus;
-  FWelcomeMaxProjects.Text := IntToStr(ASettings.WelcomePageMaxProjects);
-  FWelcomeRefreshVcs.Checked := ASettings.WelcomePageRefreshVcs;
-  FWelcomeTrends.Checked := ASettings.WelcomePageTrends;
-  FWelcomeTrendsPoints.Text := IntToStr(ASettings.WelcomePageTrendsPoints);
-  Shown := TAtlasWelcomeTrends.ParseSeries(ASettings.WelcomePageTrendsSeries);
-  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
-  begin
-    FWelcomeTrendsSeries[Series].Checked := False;
-    for Wanted in Shown do
-      if Wanted = Series then
-        FWelcomeTrendsSeries[Series].Checked := True;
-  end;
-  FWelcomeTests.Checked := ASettings.WelcomePageTests;
-  FWelcomeTestsMaxFailures.Text := IntToStr(ASettings.WelcomePageTestsMaxFailures);
-  FWelcomeTestsCi.Checked := ASettings.WelcomePageTestsCi;
-  // Einziger Anbieter bisher: jenkins.
-  FWelcomeTestsCiProvider.Choice := 0;
-  FWelcomeTestsCiInterval.Text := IntToStr(ASettings.WelcomePageTestsCiIntervalMinutes);
-  FWelcomeTestsCiNotify.Checked := ASettings.WelcomePageTestsCiNotify;
-  FCiLogin.Checked := ASettings.CiLogin;
-  FWelcomeIssues.Checked := ASettings.WelcomePageIssues;
-  FWelcomeSprint.Checked := ASettings.WelcomePageSprint;
   FVcsProvider.Choice := Max(0, IndexText(ASettings.VcsProvider, ['auto', 'git', 'svn', 'off']));
   FVcsPaths[TAtlasVcsKind.Git].Text := ASettings.VcsGitPath;
   FVcsPaths[TAtlasVcsKind.Svn].Text := ASettings.VcsSvnPath;
@@ -7612,31 +6905,6 @@ begin
   if Length(FVcsProjects) > 0 then
     FVcsProjectSelected := 0;
   RefreshVcsProjects;
-  FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
-  Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
-  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
-    FWelcomeQuickActionsItems[mAction].Checked := mAction in Items;
-  FWelcomeQuickActionsConsole.Text := ASettings.WelcomePageQuickActionsConsole;
-  FWelcomeQuickActionsBuildKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageQuickActionsBuildKey));
-  FWelcomeQuickActionsTestKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageQuickActionsTestKey));
-  FWelcomeUnsaved.Checked := ASettings.WelcomePageUnsaved;
-  FWelcomeUnsavedMinAge.Text := IntToStr(ASettings.WelcomePageUnsavedMinAgeHours);
-  FWelcomeUnsavedWarn.Text := IntToStr(ASettings.WelcomePageUnsavedWarnHours);
-  FWelcomeUnsavedAlert.Text := IntToStr(ASettings.WelcomePageUnsavedAlertHours);
-  FWelcomeUnsavedHideClean.Checked := ASettings.WelcomePageUnsavedHideWhenClean;
-  FWelcomeStatusTile.Checked := ASettings.WelcomePageStatusTile;
-  FWelcomeStatusTileOnlyProblems.Checked := ASettings.WelcomePageStatusTileOnlyProblems;
-  FWelcomeDiscover.Checked := ASettings.WelcomePageDiscover;
-  FTipsUsageTracking.Checked := ASettings.TipsUsageTracking;
-  FWelcomeHelp.Checked := ASettings.WelcomePageHelp;
-  FWelcomeHelpReportUrl.Text := ASettings.WelcomePageHelpReportUrl;
-  FWelcomeHelpReportFolder.Text := ASettings.WelcomePageHelpReportFolder;
-  FWelcomeProjectSetup.Checked := ASettings.WelcomePageProjectSetup;
-  FWelcomeNewFromTemplate.Checked := ASettings.WelcomePageNewFromTemplate;
-  // Freies Layout (#767): die Häkchen der Bereiche stehen schon; das Modell liest sie aus ASettings.
-  FWelcomeCustomLayout.Checked := ASettings.WelcomePageCustomLayout;
-  FPageLayouts := TAtlasWelcomeCustomizing.Load(ASettings);
-  ShowWelcomeLayouts(False);
   FSettingsExportImport.Checked := ASettings.SettingsExportImport;
   FSettingsMarkModified.Checked := ASettings.SettingsMarkModified;
   FSettingsBackupBeforeImport.Checked := ASettings.SettingsBackupBeforeImport;
@@ -7651,10 +6919,6 @@ end;
 
 procedure TAtlasSettingsPage.SaveTo(var ASettings: TAtlasPluginSettings);
 var
-  Shown: TAtlasTrendSeriesList;
-  Series: TAtlasTrendSeries;
-  Items: TAtlasQuickActions;
-  mAction: TAtlasQuickAction;
   Kind: TAtlasOverviewKind;
   Kinds: TAtlasOverviewKinds;
   VisualizerKind: TAtlasVisualizerKind;
@@ -8147,48 +7411,6 @@ begin
   ASettings.SearchHistory := StrToIntDef(FSearchHistory.Text, ASettings.SearchHistory);
   ASettings.SearchMultiFile := FSearchMultiFile.Checked;
   ASettings.SearchFromFirstHit := FSearchFromFirst.Checked;
-  ASettings.WelcomePage := FWelcomeEnabled.Checked;
-  ASettings.WelcomePageIdePage := FWelcomeIdePage.Checked;
-  ASettings.WelcomePageLayout := 'off';
-  if FWelcomeLayout.Checked then
-    ASettings.WelcomePageLayout := 'atlas';
-  ASettings.WelcomePageOpenOnStart := FWelcomeOpenOnStart.Checked;
-  ASettings.WelcomePageOpenWhenNoProject := FWelcomeOpenWhenNoProject.Checked;
-  ASettings.WelcomePageHeader := FWelcomeHeader.Checked;
-  ASettings.WelcomePageGreeting := FWelcomeGreeting.Checked;
-  ASettings.WelcomePageSearch := FWelcomeSearch.Checked;
-  ASettings.WelcomePageSearchSymbols := FWelcomeSearchSymbols.Checked;
-  ASettings.WelcomePageSearchKey := Integer(TextToShortCut(Trim(FWelcomeSearchKey.Text)));
-  ASettings.WelcomePageWhatsNew := TAtlasWhatsNew.ModeName(TAtlasWhatsNewMode(EnsureRange(FWelcomeWhatsNew.Choice,
-    Ord(Low(TAtlasWhatsNewMode)), Ord(High(TAtlasWhatsNewMode)))));
-  ASettings.WelcomePageContinue := FWelcomeContinue.Checked;
-  ASettings.WelcomePageContinueCount := StrToIntDef(Trim(FWelcomeContinueCount.Text),
-    ASettings.WelcomePageContinueCount);
-  ASettings.WelcomePageContinueIncoming := FWelcomeContinueIncoming.Checked;
-  ASettings.WelcomePageContinueFetch := FWelcomeContinueFetch.Checked;
-  ASettings.WelcomePageSaved := FWelcomeSaved.Checked;
-  ASettings.WelcomePageProjectStatus := FWelcomeProjects.Checked;
-  ASettings.WelcomePageMaxProjects := StrToIntDef(Trim(FWelcomeMaxProjects.Text), ASettings.WelcomePageMaxProjects);
-  ASettings.WelcomePageRefreshVcs := FWelcomeRefreshVcs.Checked;
-  ASettings.WelcomePageTrends := FWelcomeTrends.Checked;
-  ASettings.WelcomePageTrendsPoints := StrToIntDef(Trim(FWelcomeTrendsPoints.Text),
-    ASettings.WelcomePageTrendsPoints);
-  Shown := nil;
-  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
-    if FWelcomeTrendsSeries[Series].Checked then
-      Shown := Shown + [Series];
-  ASettings.WelcomePageTrendsSeries := TAtlasWelcomeTrends.SeriesText(Shown);
-  ASettings.WelcomePageTests := FWelcomeTests.Checked;
-  ASettings.WelcomePageTestsMaxFailures := StrToIntDef(Trim(FWelcomeTestsMaxFailures.Text),
-    ASettings.WelcomePageTestsMaxFailures);
-  ASettings.WelcomePageTestsCi := FWelcomeTestsCi.Checked;
-  ASettings.WelcomePageTestsCiProvider := TAtlasPluginSettings.DefaultCiProvider;
-  ASettings.WelcomePageTestsCiIntervalMinutes := StrToIntDef(Trim(FWelcomeTestsCiInterval.Text),
-    ASettings.WelcomePageTestsCiIntervalMinutes);
-  ASettings.WelcomePageTestsCiNotify := FWelcomeTestsCiNotify.Checked;
-  ASettings.CiLogin := FCiLogin.Checked;
-  ASettings.WelcomePageIssues := FWelcomeIssues.Checked;
-  ASettings.WelcomePageSprint := FWelcomeSprint.Checked;
   case FVcsProvider.Choice of
     1:
       ASettings.VcsProvider := 'git';
@@ -8253,37 +7475,6 @@ begin
   ASettings.VcsBranchGitWorktree := FVcsBranchGitWorktree.Checked;
   ASettings.VcsBranchGitWorktreeFolder := Trim(FVcsBranchGitWorktreeFolder.Text);
   ASettings.VcsProjects := VcsProjectsJson;
-  ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
-  Items := [];
-  for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
-    if FWelcomeQuickActionsItems[mAction].Checked then
-      Include(Items, mAction);
-  ASettings.WelcomePageQuickActionsItems := TAtlasWelcomeQuickActions.ItemsText(Items);
-  ASettings.WelcomePageQuickActionsConsole := TAtlasWelcomeQuickActions.NormalizedConsole(
-    FWelcomeQuickActionsConsole.Text);
-  ASettings.WelcomePageQuickActionsBuildKey := Integer(TextToShortCut(Trim(FWelcomeQuickActionsBuildKey.Text)));
-  ASettings.WelcomePageQuickActionsTestKey := Integer(TextToShortCut(Trim(FWelcomeQuickActionsTestKey.Text)));
-  ASettings.WelcomePageUnsaved := FWelcomeUnsaved.Checked;
-  ASettings.WelcomePageUnsavedMinAgeHours := StrToIntDef(Trim(FWelcomeUnsavedMinAge.Text),
-    ASettings.WelcomePageUnsavedMinAgeHours);
-  ASettings.WelcomePageUnsavedWarnHours := StrToIntDef(Trim(FWelcomeUnsavedWarn.Text),
-    ASettings.WelcomePageUnsavedWarnHours);
-  ASettings.WelcomePageUnsavedAlertHours := StrToIntDef(Trim(FWelcomeUnsavedAlert.Text),
-    ASettings.WelcomePageUnsavedAlertHours);
-  ASettings.WelcomePageUnsavedHideWhenClean := FWelcomeUnsavedHideClean.Checked;
-  ASettings.WelcomePageStatusTile := FWelcomeStatusTile.Checked;
-  ASettings.WelcomePageStatusTileOnlyProblems := FWelcomeStatusTileOnlyProblems.Checked;
-  ASettings.WelcomePageDiscover := FWelcomeDiscover.Checked;
-  ASettings.TipsUsageTracking := FTipsUsageTracking.Checked;
-  ASettings.WelcomePageHelp := FWelcomeHelp.Checked;
-  ASettings.WelcomePageHelpReportUrl := Trim(FWelcomeHelpReportUrl.Text);
-  ASettings.WelcomePageHelpReportFolder := Trim(FWelcomeHelpReportFolder.Text);
-  ASettings.WelcomePageProjectSetup := FWelcomeProjectSetup.Checked;
-  ASettings.WelcomePageNewFromTemplate := FWelcomeNewFromTemplate.Checked;
-  // Freies Layout (#767): nach allen Häkchen, denn Stored liest die Sichtbarkeit aus ASettings.
-  ASettings.WelcomePageCustomLayout := FWelcomeCustomLayout.Checked;
-  KeepWelcomeLayout;
-  ASettings := TAtlasWelcomeCustomizing.Stored(ASettings, FPageLayouts);
   ASettings.SettingsExportImport := FSettingsExportImport.Checked;
   ASettings.SettingsMarkModified := FSettingsMarkModified.Checked;
   ASettings.SettingsBackupBeforeImport := FSettingsBackupBeforeImport.Checked;
@@ -8396,20 +7587,6 @@ begin
   FEditorToolbarItems.Text := TAtlasToolbarItems.Format(Config.Items);
   FEditorToolbarLabels.Checked := Config.Labels;
   FEditorToolbarPosition.Choice := Max(0, IndexText(Config.Position, AtlasToolbarPositions));
-end;
-
-procedure TAtlasSettingsPage.ResetUsageClick(Sender: TObject);
-begin
-  if Assigned(FOnResetUsage) then
-    FOnResetUsage();
-  Allow(FResetUsage, False);
-end;
-
-procedure TAtlasSettingsPage.UnblockTipsClick(Sender: TObject);
-begin
-  if Assigned(FOnUnblockTips) then
-    FOnUnblockTips();
-  Allow(FUnblockTips, False);
 end;
 
 function TAtlasSettingsPage.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;

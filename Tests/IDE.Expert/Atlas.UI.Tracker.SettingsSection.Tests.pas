@@ -190,8 +190,6 @@ begin
     Assert.IsTrue(SheetOf(FSection.General.View.BoardOnlyMine) = Tracker);
     Assert.IsTrue(SheetOf(FSection.General.View.SprintBurndown) = Tracker);
     Assert.IsTrue(SheetOf(FSection.General.View.SprintCompare) = Tracker);
-    // Sprint-Kachel (#1277): der Bereich auf der Willkommensseite, eigener Knoten welcome.sprint (Schema).
-    Assert.IsTrue(SheetOf(Page.WelcomeSprint) = Page.NodeSheet('welcome.sprint'));
     Assert.IsTrue(SheetOf(FSection.General.View.PaletteSearch) = Tracker, 'Palettensuche (#1270)');
     Assert.IsTrue(SheetOf(FSection.General.View.PreviewDevelopment) = Tracker);
     Assert.IsTrue(SheetOf(FSection.General.View.Notify) = Tracker, 'Meldungen (#1271)');
@@ -200,13 +198,6 @@ begin
     Assert.IsTrue(SheetOf(FSection.General.View.Attach) = Tracker, 'Anhängen (#1276)');
     Assert.IsTrue(SheetOf(FSection.General.View.AttachLogFiles) = Tracker);
     Assert.IsTrue(SheetOf(FSection.General.View.AttachMaxImageWidth) = Tracker);
-    // Die Willkommensseite behält nur den Schalter, daneben der Weg zur Seite.
-    Assert.IsFalse(SheetOf(Page.WelcomeIssues) = Tracker);
-    Assert.IsTrue(SheetOf(Page.WelcomeIssuesLink) = SheetOf(Page.WelcomeIssues));
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesLink), Page.WelcomeIssuesLink.Caption);
-    Page.Pages.ActivePage := SheetOf(Page.WelcomeIssues);
-    Page.WelcomeIssuesLink.Click;
-    Assert.IsTrue(Page.Pages.ActivePage = Tracker, 'Link zeigt die Seite Issue-Tracker');
   finally
     Host.Free;
   end;

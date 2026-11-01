@@ -270,15 +270,15 @@ class function TAtlasWelcomeTrendsFrame.SeriesTitle(ASeries: TAtlasTrendSeries):
 begin
   case ASeries of
     TAtlasTrendSeries.Warnings:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsWarnings);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsWarnings);
     TAtlasTrendSeries.RuleHits:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsRuleHits);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsRuleHits);
     TAtlasTrendSeries.Todos:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsTodos);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsTodos);
     TAtlasTrendSeries.Duration:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsDuration);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsDuration);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsMethodLength);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsMethodLength);
   end;
 end;
 
