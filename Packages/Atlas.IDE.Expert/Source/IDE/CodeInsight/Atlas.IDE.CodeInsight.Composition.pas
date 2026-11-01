@@ -145,6 +145,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHosting,
+  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Foundation.Host,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.IDE.Diagnostics.SafeMode,
   Atlas.IDE.Diagnostics.StackCapture,
@@ -223,14 +225,6 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Bookmarks.Gutter,
-  Atlas.IDE.Debug.Exceptions,
-  Atlas.IDE.Debug.OwnCode,
-  Atlas.IDE.Debug.ExceptionBar,
-  Atlas.IDE.Debug.InlineValues,
-  Atlas.IDE.Debug.Unavailable,
-  Atlas.IDE.Debug.DialogCompletion,
-  Atlas.IDE.Debug.Evaluate,
-  Atlas.IDE.Debug.AccessViolation,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Providers.Expression,
   Atlas.IDE.Build.CompilerSwitches,
@@ -239,19 +233,11 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.StartProfiles.Service,
-  Atlas.IDE.Debug.Visualizers,
-  Atlas.IDE.Debug.DisplayRules,
-  Atlas.IDE.Debug.StepInto,
-  Atlas.IDE.Debug.EventBreak,
-  Atlas.IDE.Debug.Trace,
-  Atlas.IDE.Debug.StepFilter,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
-  Atlas.IDE.Hover.DebugValue,
-  Atlas.Core.Hover.DebugValue,
   Atlas.Core.Lsp.TextChanges,
   Atlas.IDE.Completion.Editor,
   Atlas.Core.Undo.Contract,
@@ -1128,24 +1114,9 @@ begin
   Result := TAtlasIdeSettings.Current.BuildCompilerSwitches;
 end;
 
-function DebugExceptionsVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.DebugExceptionHistory;
-end;
-
-function DebugEvaluateVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.DebugEvaluateWindow;
-end;
-
 function DataFlowVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DataFlow;
-end;
-
-function DebugExceptionBarVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.DebugExceptionHistory and TAtlasIdeSettings.Current.DebugExceptionBanner;
 end;
 
 function ProblemsWindowVisible: Boolean;
@@ -1359,31 +1330,6 @@ end;
 procedure Unwrap;
 begin
   TAtlasIdeUnwrap.Run;
-end;
-
-function StepIntoTargetVisible: Boolean;
-begin
-  Result := TAtlasIdeStepInto.Enabled;
-end;
-
-procedure StepIntoTarget;
-begin
-  TAtlasIdeStepInto.Run;
-end;
-
-function BreakOnNextEventVisible: Boolean;
-begin
-  Result := TAtlasIdeEventBreak.Enabled;
-end;
-
-procedure BreakOnNextEvent;
-begin
-  TAtlasIdeEventBreak.Run;
-end;
-
-function StepFilterRunning: Boolean;
-begin
-  Result := TAtlasIdeDebugStepFilter.Started;
 end;
 
 function ExpressionTypeVisible: Boolean;
@@ -1714,15 +1660,6 @@ begin
     end;
 end;
 
-procedure ToggleDebugJustMyCode;
-begin
-  TAtlasIdeDebugOwnCode.ToggleSetting(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-end;
-
 procedure RegisterPalette;
 
   procedure Add(const AId: string; ATextId: TAtlasTextId; const AProc: TProc); overload;
@@ -1876,18 +1813,6 @@ begin
     NewLineAroundVisible);
   // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
   Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
-  // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
-  Add('Atlas.StepIntoTarget', TAtlasTextId.StepIntoTargetCommand,
-    Guarded(TAtlasFeature.Debugger, StepIntoTarget), StepIntoTargetVisible);
-  // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
-  Add('Atlas.BreakOnNextEvent', TAtlasTextId.EventBreakCommand,
-    Guarded(TAtlasFeature.Debugger, BreakOnNextEvent), BreakOnNextEventVisible);
-  // Schrittfilter (#850): Das Fenster schaltet debug.stepFilters selbst, deshalb immer sichtbar; „Trotzdem
-  // hineinspringen“ nur, solange der Ablauf läuft.
-  Add('Atlas.StepFilters', TAtlasTextId.StepFilterWindowCommand,
-    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugStepFilter.ShowWindow));
-  Add('Atlas.StepIntoAnyway', TAtlasTextId.StepFilterStepIntoAnywayCommand,
-    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugStepFilter.StepIntoAnyway), StepFilterRunning);
   Add('Atlas.ExpressionType', TAtlasTextId.ExpressionTypeCommand,
     Guarded(TAtlasFeature.ExpressionType, ShowExpressionType), ExpressionTypeVisible);
   Add('Atlas.MethodOrder', TAtlasTextId.MethodOrderCommand, Guarded(TAtlasFeature.MethodPlacement, ArrangeMethods),
@@ -1945,20 +1870,7 @@ begin
   // Wirksame Compiler-Schalter (#558); nur sichtbar, solange build.compilerSwitches an ist.
   Add('Atlas.CompilerSwitches', TAtlasTextId.CompilerSwitchesCommand,
     Guarded(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible);
-  // Exception-Verlauf beim Debuggen (#517); nur sichtbar, solange debug.exceptionHistory an ist.
-  Add('Atlas.DebugExceptions', TAtlasTextId.DebugExceptionsCommand,
-    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptions.ShowWindow), DebugExceptionsVisible);
-  // Fenster „Auswerten“ (#784) und der Dialog der IDE daneben; nur sichtbar, solange debug.evaluateWindow an ist.
-  Add('Atlas.DebugEvaluate', TAtlasTextId.DebugEvaluateCommand,
-    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugEvaluate.ShowWindow), DebugEvaluateVisible);
-  Add('Atlas.DebugEvaluateIdeDialog', TAtlasTextId.DebugEvaluateIdeDialogCommand,
-    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugEvaluate.OpenIdeDialog), DebugEvaluateVisible);
-  // Nur eigener Code beim Debuggen (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
-  Add('Atlas.DebugJustMyCode', TAtlasTextId.DebugJustMyCodeCommand,
-    Guarded(TAtlasFeature.Debugger, ToggleDebugJustMyCode));
-  // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung; nur mit debug.exceptionBanner.
-  Add('Atlas.DebugExceptionIdeDialog', TAtlasTextId.DebugBannerIdeDialogCommand,
-    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptionBar.ToggleIdeDialog), DebugExceptionBarVisible);
+  // Befehle der Module (Debugger u. a., #1455) fragt die Palette selbst bei der Registry.
   // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
   Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
     Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.ShowWindow), ProblemsWindowVisible);
@@ -3461,14 +3373,12 @@ begin
       TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
         AProblem.EndLine, AProblem.EndCharacter), ATag);
     end;
-  // Werte im Tooltip (#835, #854): eigene Regel des Typs vor den Visualisierern für Bibliothekstypen; beide
-  // liefern '', solange ihr Teil nicht läuft. Der Tooltip kennt die Debug-Schicht nicht (A-09).
+  // Werte im Tooltip (#835, #854): Beiträge der Module (IAtlasHoverValueSource, z. B. Darstellungen und
+  // Visualisierer des Debuggers); '' ohne. Der Tooltip kennt die Module nicht (A-09, #1455).
   TAtlasEditorHover.OnVisualize :=
     function(const AExpression: string; const ATypeChain: TArray<string>; const AText: string): string
     begin
-      Result := TAtlasIdeDisplayRules.HoverText(AExpression, ATypeChain);
-      if Result = '' then
-        Result := TAtlasIdeVisualizers.HoverText(AExpression, ATypeChain, AText);
+      Result := TAtlasModuleContributions.HoverValue(AtlasModuleRegistry, AExpression, ATypeChain, AText);
     end;
   // Nächster/vorheriger Befund (#509): alle Befunde der Datei aus dem Problemspeicher.
   TAtlasIdeEditorCommands.OnProblemsOf :=
@@ -3750,42 +3660,6 @@ begin
     begin
       MessageLine(AText);
     end);
-  // Gezielt hineinspringen (#836): Liste der Aufrufe am Ausführungspunkt; Meldungen in der Meldungsansicht.
-  TAtlasIdeStepInto.Install(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end,
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-  // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start; Meldungen in der Meldungsansicht.
-  TAtlasIdeEventBreak.Install(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end,
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-  // Schrittfilter (#850): Fenster und Befehle; den Ablauf startet Features (debug.stepFilters).
-  TAtlasIdeDebugStepFilter.Install(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end,
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
   // Typ des markierten Ausdrucks (#689): Tooltip und Hervorhebung; Fehler in der Meldungsansicht.
   TAtlasIdeExpressionType.Install(
     function: TLspSession
@@ -3874,9 +3748,6 @@ begin
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;
-  TAtlasIdeStepInto.Uninstall;
-  TAtlasIdeEventBreak.Uninstall;
-  TAtlasIdeDebugStepFilter.Uninstall;
   TAtlasIdeExpressionType.Uninstall;
   TAtlasIdeMethodPlacement.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
@@ -4157,18 +4028,6 @@ begin
   TAtlasIdeStartProfiles.Start;
 end;
 
-procedure StartDisplayRules;
-begin
-  // Nur eine laufende Sitzung; die Regeln warten sonst auf den nächsten Versuch.
-  TAtlasIdeDisplayRules.Start(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end);
-end;
-
 procedure StopStartProfiles;
 begin
   // Stop meldet noch Text '' und entfernt so das Feld; danach kein Empfänger mehr.
@@ -4240,155 +4099,6 @@ procedure StopBookmarks;
 begin
   TAtlasIdeBookmarks.Release;
   BookmarksStarted := False;
-end;
-
-procedure StartDebugExceptions;
-begin
-  TAtlasIdeDebugExceptions.Start(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-end;
-
-procedure StartDebugOwnCode;
-begin
-  TAtlasIdeDebugOwnCode.Start(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-end;
-
-procedure StartDebugExceptionBar;
-begin
-  TAtlasIdeDebugExceptionBar.Start(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end, TAtlasStatusRegistry.Default);
-end;
-
-procedure StartDebugInlineValues;
-begin
-  // Fragt den Server nur, wenn er ohnehin läuft.
-  TAtlasIdeDebugInlineValues.Start(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end);
-end;
-
-/// <summary>„kein Zugriff auf Wert“ erklären (#840): Erklärung und Korrekturen im Hover; der Tooltip kennt die
-/// Debug-Schicht nicht (A-09).</summary>
-procedure StartDebugUnavailable;
-begin
-  // Fragt den Server nur, wenn er ohnehin läuft.
-  TAtlasIdeDebugUnavailable.Start(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end,
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-  TAtlasEditorHover.OnExplain :=
-    function(const AValue: TAtlasDebugValue; const ADone: TAtlasDebugValueEvent): TAtlasDebugValue
-    begin
-      Result := TAtlasIdeDebugUnavailable.Explain(AValue, ADone);
-    end;
-  TAtlasEditorHover.OnDebugFix :=
-    procedure(const AValue: TAtlasDebugValue; AFix: Integer)
-    begin
-      TAtlasIdeDebugUnavailable.Fix(AValue, AFix);
-    end;
-end;
-
-procedure StartDebugDialogCompletion;
-begin
-  // Fragt den Server nur, wenn er ohnehin läuft.
-  TAtlasIdeDebugDialogCompletion.Start(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end,
-    procedure(AText: string)
-    begin
-      LogLine(AText);
-    end,
-    function(const AHistory: TFunc<TArray<string>>): IAtlasCompletionProvider
-    var
-      Provider: TAtlasExpressionCompletionProvider;
-    begin
-      Provider := TAtlasExpressionCompletionProvider.Create(
-        function: TLspSession
-        begin
-          Result := nil;
-          if Manager <> nil then
-            Result := Manager.RunningSession;
-        end, AHistory,
-        function(AResponse: TJSONValue): TAtlasCompletionItems
-        begin
-          Result := TAtlasServerCompletionProvider.ItemsFromLsp(AResponse);
-        end, TAtlasExpressionCompletionProvider.DefaultTimeoutMs);
-      Provider.HistoryCaption := TAtlasStrings.Text(TAtlasTextId.DebugExpressionHistory);
-      Result := Provider;
-    end);
-  TAtlasIdeDebugDialogCompletion.ApplySettings;
-end;
-
-procedure StartDebugEvaluate;
-begin
-  // Fragt den Server nur, wenn er ohnehin läuft.
-  TAtlasIdeDebugEvaluate.Start(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end);
-end;
-
-/// <summary>Zugriffsverletzung erklären (#865): Knöpfe der Leiste über den Datenfluss (#690) und das Fenster
-/// „Auswerten“ (#784); die Debug-Schicht kennt beide nicht.</summary>
-procedure StartDebugAccessViolation;
-begin
-  // Fragt den Server nur, wenn er ohnehin läuft.
-  TAtlasIdeDebugAccessViolation.Start(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end,
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-  TAtlasIdeDebugAccessViolation.SetWhereAssigned(
-    procedure(const AFileName: string; ALine, ACharacter: Integer; const AName: string)
-    begin
-      TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources, AFileName, ALine, ACharacter, AName);
-    end);
-  TAtlasIdeDebugAccessViolation.SetEvaluate(
-    procedure(const AExpression: string)
-    begin
-      TAtlasIdeDebugEvaluate.ShowWindow(AExpression);
-    end);
-end;
-
-procedure ReleaseDebugUnavailable;
-begin
-  TAtlasEditorHover.OnExplain := nil;
-  TAtlasEditorHover.OnDebugFix := nil;
-  TAtlasIdeDebugUnavailable.Release;
 end;
 
 const
@@ -5410,39 +5120,6 @@ begin
       Result := TAtlasIdeStartProfiles.Started;
     end,
     StartStartProfiles, StopStartProfiles);
-  // Visualisierer für häufige Typen (#835): nur im normalen Start und solange debug.visualizers an ist.
-  Features.AddWanted('Visualizers',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugVisualizers;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeVisualizers.Started;
-    end,
-    procedure
-    begin
-      TAtlasIdeVisualizers.Start;
-    end,
-    procedure
-    begin
-      TAtlasIdeVisualizers.Stop;
-    end);
-  // Eigene Wertdarstellungen (#854): nur im normalen Start und solange debug.displayRules an ist.
-  Features.AddWanted('DisplayRules',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugDisplayRules;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDisplayRules.Started;
-    end,
-    StartDisplayRules,
-    procedure
-    begin
-      TAtlasIdeDisplayRules.Stop;
-    end);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -5666,105 +5343,6 @@ begin
       Result := QuickColumn <> nil;
     end,
     StartQuickColumn, StopQuickColumn);
-  // Exception-Verlauf beim Debuggen (#517): Zuhörer der Debug-Sitzung; aus = kein Notifier beim Debugger.
-  Features.AddWanted('DebugExceptions',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExceptionHistory;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugExceptions.Started;
-    end,
-    StartDebugExceptions, TAtlasIdeDebugExceptions.Release);
-  // Nur eigener Code beim Debuggen (#578): Zuhörer der Debug-Sitzung und Haken an „Einzelne Anweisung“ (F7).
-  Features.AddWanted('DebugOwnCode',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugJustMyCode;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugOwnCode.Started;
-    end,
-    StartDebugOwnCode, TAtlasIdeDebugOwnCode.Release);
-  // Exception-Leiste (#783): baut auf dem Exception-Verlauf auf; aus = Dialog der IDE unverändert.
-  Features.AddWanted('DebugExceptionBar',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and DebugExceptionBarVisible;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugExceptionBar.Started;
-    end,
-    StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release);
-  // Werte im Editor beim Debuggen (#508): Zuhörer der Debug-Sitzung und Zeichner; aus = nichts angemeldet.
-  Features.AddWanted('DebugInlineValues',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugInlineValues;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugInlineValues.Started;
-    end,
-    StartDebugInlineValues, TAtlasIdeDebugInlineValues.Release);
-  // „kein Zugriff auf Wert“ erklären (#840): Hover und Werte im Editor; aus = Fehler wie bisher ausgeblendet.
-  Features.AddWanted('DebugUnavailable',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExplainUnavailable;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugUnavailable.Started;
-    end,
-    StartDebugUnavailable, ReleaseDebugUnavailable);
-  // Zugriffsverletzung erklären (#865): Zuhörer des Exception-Verlaufs und Zeichner; aus = nur die Meldung.
-  Features.AddWanted('DebugAccessViolation',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExplainAccessViolation;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugAccessViolation.Started;
-    end,
-    StartDebugAccessViolation, TAtlasIdeDebugAccessViolation.Release);
-  // Vervollständigung in Debugger-Dialogen (#538): aus = kein Zeitgeber, kein Tastatur-Hook.
-  Features.AddWanted('DebugDialogCompletion',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugCompletionInDialogs;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugDialogCompletion.Started;
-    end,
-    StartDebugDialogCompletion, TAtlasIdeDebugDialogCompletion.Release);
-  // Fenster „Auswerten“ (#784): aus = kein Fenster, kein Zuhörer, Strg+F7 bleibt bei der IDE.
-  Features.AddWanted('DebugEvaluate',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugEvaluateWindow;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugEvaluate.Started;
-    end,
-    StartDebugEvaluate, TAtlasIdeDebugEvaluate.Release);
-  // Schrittfilter beim Hineinspringen (#850): Zuhörer der Debug-Sitzung und Empfänger von F7; aus = F7 wie bisher.
-  Features.AddWanted('DebugStepFilter',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugStepFilters;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugStepFilter.Started;
-    end,
-    TAtlasIdeDebugStepFilter.Start, TAtlasIdeDebugStepFilter.Release);
   // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
   Features.AddWanted('CompilerSwitches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -5937,10 +5515,7 @@ begin
     end);
   // Module (#1454): Ist der Modul-Schalter aus, startet keines dieser Teile, laufende stoppt RegisterFeatures.
   // Die übrigen Teile eines Moduls folgen ihren eigenen Einstellungen, die bei ausgeschaltetem Modul „aus“
-  // liefern (TAtlasModuleSwitches).
-  Features.Join('debug', ['Visualizers', 'DisplayRules', 'DebugExceptions', 'DebugOwnCode', 'DebugExceptionBar',
-    'DebugInlineValues', 'DebugUnavailable', 'DebugAccessViolation', 'DebugDialogCompletion', 'DebugEvaluate',
-    'DebugStepFilter']);
+  // liefern (TAtlasModuleSwitches). Angemeldete Module (Debugger, #1455) bringen ihren Schalter selbst mit.
   Features.Join('buildTools', ['OpenBuild', 'Tasks', 'StartProfiles', 'CompilerSwitches']);
   Features.Join('tests', ['Tests']);
   Features.Join('bookmarks', ['Notes', 'Bookmarks', 'QuickBookmarks']);
@@ -6060,6 +5635,40 @@ begin
   end;
 end;
 
+/// <summary>Dienste von Base für die Module (#1455): laufende Sitzung des Managers und dessen Diagnoselog.</summary>
+procedure InstallHost;
+begin
+  TAtlasIdeHost.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      LogLine(AText);
+    end);
+end;
+
+/// <summary>Thema an die angemeldeten Module weitergeben (#1455); Fehler eines Moduls ins Protokoll.</summary>
+procedure ModulesThemeChanged;
+var
+  mFailure: string;
+begin
+  for mFailure in TAtlasModuleContributions.ThemeChanged(AtlasModuleRegistry) do
+    TAtlasGuard.Log('Thema im Modul nicht übernommen: ' + mFailure);
+end;
+
+/// <summary>Geänderte Einstellungen an die angemeldeten Module weitergeben (#1455), z. B. debug.* des Debuggers.</summary>
+procedure ModulesApplySettings;
+var
+  mFailure: string;
+begin
+  for mFailure in TAtlasModuleContributions.ApplySettings(AtlasModuleRegistry) do
+    TAtlasGuard.Log('Einstellungen im Modul nicht übernommen: ' + mFailure);
+end;
+
 procedure Register;
 begin
   LoadedAt := TAtlasWatchdog.Timestamp;
@@ -6070,6 +5679,8 @@ begin
   TAtlasShutdown.Reset;
   // Einreihen in den Hauptthread wieder annehmen (nach einem früheren Unregister, Code-Review A-02).
   TAtlasMainThread.Start;
+  // Vor den Modulen: Sie fragen Sitzung und Protokoll über TAtlasIdeHost (#1455).
+  InstallHost;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasGuard.OnTripped := GuardTripped;
@@ -6115,11 +5726,9 @@ begin
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
       TAtlasIdeMinimap.ThemeChanged;
-      TAtlasIdeDebugExceptions.ThemeChanged;
       TAtlasIdeCompilerSwitches.ThemeChanged;
-      TAtlasIdeDebugExceptionBar.ThemeChanged;
-      TAtlasIdeDebugEvaluate.ThemeChanged;
-      TAtlasIdeDebugStepFilter.ThemeChanged;
+      // Fenster der Module (#1455).
+      ModulesThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -6184,8 +5793,6 @@ begin
       TAtlasIdeEditorToolbar.ApplySettings;
       // editor.statusBar* (#1155); das Atlas-Feld zieht um oder zurück (RequestRefresh unten).
       TAtlasIdeStatusBar.ApplySettings;
-      // debug.breakOnNextEvent (#856).
-      TAtlasIdeEventBreak.ApplySettings;
       // editor.designerBar (#1442).
       TAtlasIdeDesignerBar.ApplySettings;
       // search.resultsInMessages (#878).
@@ -6195,20 +5802,8 @@ begin
         ProjectTasks.ApplySettings;
       // editor.stickyScroll* (#506).
       TAtlasIdeStickyScroll.ApplySettings;
-      // debug.exceptionHistory (#517).
-      TAtlasIdeDebugExceptions.ApplySettings;
       // build.compilerSwitches, build.showSwitchesInStatusBar (#558).
       TAtlasIdeCompilerSwitches.ApplySettings;
-      // debug.exceptionBanner* (#783).
-      TAtlasIdeDebugExceptionBar.ApplySettings;
-      // debug.explainUnavailable (#840): Ergänzungen der Fehlertexte neu lesen.
-      TAtlasIdeDebugUnavailable.ApplySettings;
-      // debug.completionInDialogs (#538): Breiten des Popups.
-      TAtlasIdeDebugDialogCompletion.ApplySettings;
-      // debug.evaluateWindow.replaceCtrlF7 (#784): Strg+F7 an- bzw. abhängen.
-      TAtlasIdeDebugEvaluate.ApplySettings;
-      // debug.stepFilters* (#850): Fenster mit dem gespeicherten Stand, Treffer neuer Muster zählen.
-      TAtlasIdeDebugStepFilter.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).
@@ -6222,10 +5817,8 @@ begin
       TAtlasIdeTeamFile.Refresh;
       // Wirksame experimentelle Funktionen im Statusfeld und im Protokoll (#834).
       TAtlasIdeExperimental.ApplySettings;
-      // debug.visualizers aus: abmelden; Arten geändert: neu anmelden (#835).
-      TAtlasIdeVisualizers.ApplySettings;
-      // debug.displayRules aus: abmelden; an: Regeln beim nächsten Takt neu lesen (#854).
-      TAtlasIdeDisplayRules.ApplySettings;
+      // Einstellungen der Module (#1455), z. B. debug.* des Debuggers.
+      ModulesApplySettings;
       // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
       // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
       if not TAtlasIdeSettings.Current.StartProfiles then
@@ -6500,14 +6093,14 @@ begin
         if AtlasModuleRegistryInstance <> nil then
           Teardown.AddFailures(AtlasModuleRegistryInstance.ShutDown);
       end);
-    if Features <> nil then
-      Teardown.AddFailures(Features.StopAll);
-    // Nach den Debugger-Funktionen: Sie melden sich dort ab; was übrig bleibt, hängt Atlas hier von F7 ab (#850).
-    Teardown.Step('DebugTrace',
+    // Erst nach den Modulen: Bis zu ihrem Stopp dürfen sie Sitzung und Protokoll von Base fragen.
+    Teardown.Step('Host',
       procedure
       begin
-        TAtlasIdeDebugTrace.Release;
+        TAtlasIdeHost.Uninstall;
       end);
+    if Features <> nil then
+      Teardown.AddFailures(Features.StopAll);
     Teardown.Step('QuickToggles',
       procedure
       begin

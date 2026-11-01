@@ -145,9 +145,27 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.Unwrap,
-  Atlas.IDE.Debug.StepInto,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
   Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Problems.Service;
+
+/// <summary>Taste AId eines Moduls (#1455): sucht sie beim Drücken neu, so erreicht die Taste ein abgemeldetes
+/// Modul nicht mehr (Regel 3); ohne Modul geht sie an die IDE.</summary>
+function ModuleAttempt(const AId: string): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    var
+      mKey: TAtlasModuleKey;
+    begin
+      Result := False;
+      for mKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
+        if SameText(mKey.Id, AId) then
+          Exit(mKey.Attempt());
+    end;
+end;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
 procedure RunLineMove(AKind: TAtlasLineMoveKind);
@@ -363,6 +381,7 @@ procedure TAtlasIdeEditorKeys.Rebind;
 var
   Settings: TAtlasPluginSettings;
   Previous: string;
+  mModuleKey: TAtlasModuleKey;
 begin
   if FBinding = nil then
     Exit;
@@ -580,14 +599,9 @@ begin
             TAtlasIdeUnwrap.Run;
           end);
       end);
-  // Gezielt hineinspringen (#836): nur im angehaltenen Zustand; sonst geht die Taste an die IDE weiter.
-  if Settings.DebugStepIntoTarget then
-    AddAttemptKey(TAtlasFeature.Debugger, Settings.DebugStepIntoTargetKey,
-      TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand),
-      function: Boolean
-      begin
-        Result := TAtlasIdeStepInto.TryRun;
-      end);
+  // Tasten der Module (#1455), z. B. „Gezielt hineinspringen“ des Debuggers: ohne Treffer an die IDE.
+  for mModuleKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
+    AddAttemptKey(TAtlasFeature.EditorCommands, mModuleKey.Key, mModuleKey.Caption, ModuleAttempt(mModuleKey.Id));
   // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; mit Vorrang
   // übernommen. Aus = das Kürzel gehört der IDE.
   if Settings.ExpressionType then

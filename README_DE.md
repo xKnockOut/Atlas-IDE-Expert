@@ -233,7 +233,7 @@ Noch nicht in `main`, als Issues angelegt:
 
 - Weitere Prüfregeln (Unter-Issues von #1086)
 - Debuggen (#614) und Designer-Funktionen für spätere Versionen
-- Aufteilung des Plugins in `Atlas.IDE.Base` und Modul-Packages (2.0, ADR 0017); die Verträge dafür stehen (#1455, siehe Aufbau), die Verdrahtung folgt
+- Aufteilung des Plugins in `Atlas.IDE.Base` und Modul-Packages (2.0, ADR 0017); der Debugger meldet sich schon als Modul über die Verträge an (#1455, siehe Aufbau), die übrigen Module und die eigenen Packages folgen
 
 ## Installation
 
@@ -288,7 +288,7 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 
 Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
 
-Verträge für die Module ab 2.0 (#1455, ADR 0017): `Atlas.Core.Modules.Contract` (Modul, Scope, Registry mit `Provide`/`FindAll` nach Interface-GUID, Änderungsmeldung, Vertragsversion), `Atlas.Core.Modules.Registry` (Modulliste aus Anmeldungen, Abmelden rückwärts über den Scope), `Atlas.Core.Modules.Handshake` (exportierte `AtlasCoreContractVersion`), `Atlas.Core.Settings.Contract` und `Atlas.Core.Settings.Parts` (Einstellungsteile der Module, zentral in Base; Werte fehlender Module bleiben erhalten).
+Verträge für die Module ab 2.0 (#1455, ADR 0017): `Atlas.Core.Modules.Contract` (Modul, Scope, Registry mit `Provide`/`FindAll` nach Interface-GUID, Änderungsmeldung, Vertragsversion), `Atlas.Core.Modules.Registry` (Modulliste aus Anmeldungen, Abmelden rückwärts über den Scope), `Atlas.Core.Modules.Handshake` (exportierte `AtlasCoreContractVersion`), `Atlas.Core.Settings.Contract` und `Atlas.Core.Settings.Parts` (Einstellungsteile der Module, zentral in Base; Werte fehlender Module bleiben erhalten). Was Module beitragen, sammelt Base über `Atlas.Core.Modules.Contributions` ein (Befehle, Einträge im Atlas-Menü und im Kontextmenü des Editors, Tasten, Hörer für Einstellungen, Thema und Ansichtswechsel, Werte im Hover); ihre Teile laufen in der Feature-Tabelle (`Atlas.Core.Diagnostics.ModuleHosting`); `Atlas.IDE.Foundation.Host` gibt den Modulen Serversitzung, Meldungsansicht und Log. Erstes Modul ist der Debugger (`Atlas.IDE.Debug.Composition`, Id `atlas.debugger`); Verträge zwischen Modulen liegen unter `Source/Contracts` (`IAtlasDebugReportSource` für die Debug-Notiz beim Anhängen an ein Issue).
 
 ## Voraussetzungen
 

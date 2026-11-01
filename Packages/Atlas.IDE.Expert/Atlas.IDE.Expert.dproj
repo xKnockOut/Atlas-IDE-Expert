@@ -128,6 +128,7 @@
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Controller.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Contract.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Contract.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Declaration.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
@@ -261,6 +262,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Settings.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Host.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Options.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Schema.pas"/>
@@ -524,6 +526,7 @@
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Registration.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Registry.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.FeatureParts.pas"/>
+        <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Contributions.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Handshake.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Contract.pas"/>
@@ -934,6 +937,9 @@
         </DCCReference>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Report.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.DebugReport.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>

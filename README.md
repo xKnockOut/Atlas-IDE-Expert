@@ -233,7 +233,7 @@ Not yet in `main`, tracked as issues:
 
 - Further check rules (sub-issues of #1086)
 - Debugging (#614) and designer features for later versions
-- Splitting the plugin into `Atlas.IDE.Base` and module packages (2.0, ADR 0017); the contracts are in place (#1455, see Structure), the wiring follows
+- Splitting the plugin into `Atlas.IDE.Base` and module packages (2.0, ADR 0017); the debugger already registers as a module through the contracts (#1455, see Structure), the other modules and the separate packages follow
 
 ## Installation
 
@@ -288,7 +288,7 @@ More: [docs/Installation.md](docs/Installation.md).
 
 Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
-Contracts for the modules from 2.0 on (#1455, ADR 0017): `Atlas.Core.Modules.Contract` (module, scope, registry with `Provide`/`FindAll` by interface GUID, change notification, contract version), `Atlas.Core.Modules.Registry` (module list built from registrations, unregistering in reverse through the scope), `Atlas.Core.Modules.Handshake` (exported `AtlasCoreContractVersion`), `Atlas.Core.Settings.Contract` and `Atlas.Core.Settings.Parts` (settings parts of the modules, kept centrally in Base; values of missing modules are preserved).
+Contracts for the modules from 2.0 on (#1455, ADR 0017): `Atlas.Core.Modules.Contract` (module, scope, registry with `Provide`/`FindAll` by interface GUID, change notification, contract version), `Atlas.Core.Modules.Registry` (module list built from registrations, unregistering in reverse through the scope), `Atlas.Core.Modules.Handshake` (exported `AtlasCoreContractVersion`), `Atlas.Core.Settings.Contract` and `Atlas.Core.Settings.Parts` (settings parts of the modules, kept centrally in Base; values of missing modules are preserved). Base collects what modules contribute through `Atlas.Core.Modules.Contributions` (commands, Atlas menu and editor context menu entries, keys, settings, theme and editor view listeners, hover values) and hosts their feature parts in the feature table (`Atlas.Core.Diagnostics.ModuleHosting`); `Atlas.IDE.Foundation.Host` gives modules the server session, the message view and the log. The debugger is the first module (`Atlas.IDE.Debug.Composition`, id `atlas.debugger`); contracts between modules live under `Source/Contracts` (`IAtlasDebugReportSource` for the debug note when attaching to an issue).
 
 ## Requirements
 

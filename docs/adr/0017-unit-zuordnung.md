@@ -16,6 +16,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 | `Tests` | `Atlas.IDE.Tests` |
 | `Build`, `Tasks`, `StartProfiles` | `Atlas.IDE.Build` |
 | `Bookmarks`, `Notes`, `Todos` | `Atlas.IDE.Bookmarks` |
+| `Contracts` (direkt unter `Source/`) | `Atlas.IDE.Contracts` |
 | alle übrigen | `Atlas.IDE.Base` |
 
 Ausnahmen:
@@ -28,6 +29,8 @@ Ausnahmen:
 Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später als Daten führen (#1455). Bis dahin wird die Tabelle von Hand nachgezogen, wenn Units dazukommen oder umziehen.
 
 ## Summen
+
+Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Package | Units | Zeilen |
 |---|---:|---:|
@@ -89,6 +92,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Diagnostics.Guard` | `Core/Diagnostics/Atlas.Core.Diagnostics.Guard.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Hangs` | `Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.MainThread` | `Core/Diagnostics/Atlas.Core.Diagnostics.MainThread.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.ModuleHosting` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas` | Module und ihre Teile in der Feature-Tabelle, #1455 |
 | `Atlas.Core.Diagnostics.Package` | `Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Processes` | `Core/Diagnostics/Atlas.Core.Diagnostics.Processes.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.SafeMode` | `Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas` | Ordner `Core/Diagnostics` |
@@ -171,6 +175,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Generate.Protocol` | `Core/Generate/Atlas.Core.Generate.Protocol.pas` | Ordner `Core/Generate` |
 | `Atlas.Core.Hover.Contract` | `Core/Hover/Atlas.Core.Hover.Contract.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.DebugValue` | `Core/Hover/Atlas.Core.Hover.DebugValue.pas` | Ordner `Core/Hover` |
+| `Atlas.Core.Hover.Declaration` | `Core/Hover/Atlas.Core.Hover.Declaration.pas` | Ordner `Core/Hover`; Typ aus der Hover-Deklaration, bis #1455 im Debugger-Kern |
 | `Atlas.Core.Hover.History` | `Core/Hover/Atlas.Core.Hover.History.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Layout` | `Core/Hover/Atlas.Core.Hover.Layout.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.InlayHints.Store` | `Core/InlayHints/Atlas.Core.InlayHints.Store.pas` | Ordner `Core/InlayHints` |
@@ -186,6 +191,12 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Lsp.TextChanges` | `Core/Lsp/Atlas.Core.Lsp.TextChanges.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Uris` | `Core/Lsp/Atlas.Core.Lsp.Uris.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.WorkspaceEdits` | `Core/Lsp/Atlas.Core.Lsp.WorkspaceEdits.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Modules.Contract` | `Core/Modules/Atlas.Core.Modules.Contract.pas` | Allgemeine Verträge (Modul, Registry, Scope, Beiträge), #1455 |
+| `Atlas.Core.Modules.Contributions` | `Core/Modules/Atlas.Core.Modules.Contributions.pas` | Beiträge der Module einsammeln, #1455 |
+| `Atlas.Core.Modules.FeatureParts` | `Core/Modules/Atlas.Core.Modules.FeatureParts.pas` | Teile eines Moduls für die Feature-Tabelle, #1455 |
+| `Atlas.Core.Modules.Handshake` | `Core/Modules/Atlas.Core.Modules.Handshake.pas` | Vertragsversion von Base (Regel 7), #1455 |
+| `Atlas.Core.Modules.Registration` | `Core/Modules/Atlas.Core.Modules.Registration.pas` | Ordner `Core/Modules`, #1455 |
+| `Atlas.Core.Modules.Registry` | `Core/Modules/Atlas.Core.Modules.Registry.pas` | Registry der Module (Regel 1), #1455 |
 | `Atlas.Core.Notifications.Build` | `Core/Notifications/Atlas.Core.Notifications.Build.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Center` | `Core/Notifications/Atlas.Core.Notifications.Center.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Contract` | `Core/Notifications/Atlas.Core.Notifications.Contract.pas` | Ordner `Core/Notifications` |
@@ -231,6 +242,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Settings.QuickToggles` | `Core/Settings/Atlas.Core.Settings.QuickToggles.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Reassigned` | `Core/Settings/Atlas.Core.Settings.Reassigned.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Renames` | `Core/Settings/Atlas.Core.Settings.Renames.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.RuleChecksNotice` | `Core/Settings/Atlas.Core.Settings.RuleChecksNotice.pas` | Hinweis „Prüfregeln sind aus“, #1454 |
 | `Atlas.Core.Settings.Schema` | `Core/Settings/Atlas.Core.Settings.Schema.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.SchemaCheck` | `Core/Settings/Atlas.Core.Settings.SchemaCheck.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.SchemaData` | `Core/Settings/Atlas.Core.Settings.SchemaData.pas` | Ordner `Core/Settings` |
@@ -383,6 +395,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Foundation.Files` | `IDE/Foundation/Atlas.IDE.Foundation.Files.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterColumns` | `IDE/Foundation/Atlas.IDE.Foundation.GutterColumns.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterMarks` | `IDE/Foundation/Atlas.IDE.Foundation.GutterMarks.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.Host` | `IDE/Foundation/Atlas.IDE.Foundation.Host.pas` | Dienste von Base für die Module (Sitzung, Meldungen, Log), #1455 |
 | `Atlas.IDE.Foundation.KeyHook` | `IDE/Foundation/Atlas.IDE.Foundation.KeyHook.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Keys` | `IDE/Foundation/Atlas.IDE.Foundation.Keys.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Navigation` | `IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas` | Ordner `IDE/Foundation` |
@@ -416,6 +429,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Settings.Options` | `IDE/Settings/Atlas.IDE.Settings.Options.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.Project` | `IDE/Settings/Atlas.IDE.Settings.Project.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.QuickToggles` | `IDE/Settings/Atlas.IDE.Settings.QuickToggles.pas` | Ordner `IDE/Settings` |
+| `Atlas.IDE.Settings.RuleChecksNotice` | `IDE/Settings/Atlas.IDE.Settings.RuleChecksNotice.pas` | Hinweis „Prüfregeln sind aus“, #1454 |
 | `Atlas.IDE.Settings.ServerTool` | `IDE/Settings/Atlas.IDE.Settings.ServerTool.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.Transfer` | `IDE/Settings/Atlas.IDE.Settings.Transfer.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Setup.Checklist` | `IDE/Setup/Atlas.IDE.Setup.Checklist.pas` | Ordner `IDE/Setup` |
@@ -520,6 +534,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Debug.Visualizers` | `Core/Debug/Atlas.Core.Debug.Visualizers.pas` | Ordner `Core/Debug` |
 | `Atlas.IDE.Debug.AccessViolation` | `IDE/Debug/Atlas.IDE.Debug.AccessViolation.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Breakpoints.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.Composition` | `IDE/Debug/Atlas.IDE.Debug.Composition.pas` | Anmeldung des Moduls `atlas.debugger`, #1455 |
 | `Atlas.IDE.Debug.DialogCompletion` | `IDE/Debug/Atlas.IDE.Debug.DialogCompletion.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DisplayRules` | `IDE/Debug/Atlas.IDE.Debug.DisplayRules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Evaluate` | `IDE/Debug/Atlas.IDE.Debug.Evaluate.pas` | Ordner `IDE/Debug` |
@@ -532,6 +547,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Debug.ExceptionsWindow` | `IDE/Debug/Atlas.IDE.Debug.ExceptionsWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.InlineValues` | `IDE/Debug/Atlas.IDE.Debug.InlineValues.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.OwnCode` | `IDE/Debug/Atlas.IDE.Debug.OwnCode.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.Report` | `IDE/Debug/Atlas.IDE.Debug.Report.pas` | Bericht über die Debug-Sitzung (IAtlasDebugReportSource), #1455 |
 | `Atlas.IDE.Debug.Session` | `IDE/Debug/Atlas.IDE.Debug.Session.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Sources` | `IDE/Debug/Atlas.IDE.Debug.Sources.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.StepFilter` | `IDE/Debug/Atlas.IDE.Debug.StepFilter.pas` | Ordner `IDE/Debug` |
@@ -828,3 +844,11 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.UI.Bookmarks.Frame` | `UI/Bookmarks/Atlas.UI.Bookmarks.Frame.pas` | Ordner `UI/Bookmarks` |
 | `Atlas.UI.Notes.Dialog` | `UI/Notes/Atlas.UI.Notes.Dialog.pas` | Ordner `UI/Notes` |
 | `Atlas.UI.Todos.Dialog` | `UI/Todos/Atlas.UI.Todos.Dialog.pas` | Ordner `UI/Todos` |
+
+## Atlas.IDE.Contracts
+
+Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Bis zum Pilot (#1456) im Plugin-Package unter `Contracts/`.
+
+| Unit | Datei | Begründung |
+|---|---|---|
+| `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), #1455 |

@@ -231,7 +231,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Hover.Declaration,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
@@ -472,7 +472,7 @@ begin
   if Key <> FVisualizedKey then
   begin
     FVisualizedKey := Key;
-    Chain := TArray<string>.Create(TAtlasVisualizers.DeclaredType(Data.Declaration));
+    Chain := TArray<string>.Create(TAtlasHoverDeclaration.DeclaredType(Data.Declaration));
     for Ancestor in Data.Ancestors do
       Chain := Chain + [Ancestor.Name];
     FVisualized := FOnVisualize(FDebugValue.Expression, Chain, FDebugValue.Text);
