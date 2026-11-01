@@ -1255,6 +1255,33 @@ type
     MultiCursorLineEndsKey: Integer;
     MultiCursorAboveKey: Integer;
     MultiCursorBelowKey: Integer;
+    /// <summary>Modul-Schalter debug.enabled (#1454): Debugger; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    DebugEnabled: Boolean;
+    /// <summary>Modul-Schalter issues.enabled (#1454): Issue-Tracker und Build-Server; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    IssuesEnabled: Boolean;
+    /// <summary>Modul-Schalter analysis.enabled (#1454): Analysefenster (Architektur, Unit-Beziehungen, Symbolpfad, Hotspots); aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    AnalysisEnabled: Boolean;
+    /// <summary>Modul-Schalter tests.enabled (#1454): DUnitX-Tests; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    TestsEnabled: Boolean;
+    /// <summary>Modul-Schalter buildTools.enabled (#1454): Build-Werkzeuge; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    BuildToolsEnabled: Boolean;
+    /// <summary>Modul-Schalter bookmarks.enabled (#1454): Lesezeichen und Notizen; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    BookmarksEnabled: Boolean;
+    /// <summary>Modul-Schalter designer.enabled (#1454): Designer-Werkzeuge; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    DesignerEnabled: Boolean;
+    /// <summary>Modul-Schalter ruleChecks.enabled (#1454): Prüfregeln; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    RuleChecksEnabled: Boolean;
+    /// <summary>Modul-Schalter search.enabled (#1454): Suche (Atlas-Suche, Unitsuche, Abfragen); aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    SearchEnabled: Boolean;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -2298,6 +2325,15 @@ begin
   Result.MultiCursorLineEndsKey := $A049; // Alt+Umschalt+I
   Result.MultiCursorAboveKey := $C026; // Strg+Alt+↑
   Result.MultiCursorBelowKey := $C028; // Strg+Alt+↓
+  Result.DebugEnabled := True;
+  Result.IssuesEnabled := True;
+  Result.AnalysisEnabled := True;
+  Result.TestsEnabled := True;
+  Result.BuildToolsEnabled := True;
+  Result.BookmarksEnabled := True;
+  Result.DesignerEnabled := True;
+  Result.RuleChecksEnabled := True;
+  Result.SearchEnabled := True;
   Result.WelcomePage := True;
   Result.WelcomePageIdePage := True;
   Result.WelcomePageLayout := 'off';
@@ -3226,6 +3262,15 @@ begin
   MultiCursorLineEndsKey := AStore.ReadInteger('MultiCursorLineEndsKey', Default.MultiCursorLineEndsKey);
   MultiCursorAboveKey := AStore.ReadInteger('MultiCursorAboveKey', Default.MultiCursorAboveKey);
   MultiCursorBelowKey := AStore.ReadInteger('MultiCursorBelowKey', Default.MultiCursorBelowKey);
+  DebugEnabled := AStore.ReadInteger('DebugEnabled', BoolValue(Default.DebugEnabled)) <> 0;
+  IssuesEnabled := AStore.ReadInteger('IssuesEnabled', BoolValue(Default.IssuesEnabled)) <> 0;
+  AnalysisEnabled := AStore.ReadInteger('AnalysisEnabled', BoolValue(Default.AnalysisEnabled)) <> 0;
+  TestsEnabled := AStore.ReadInteger('TestsEnabled', BoolValue(Default.TestsEnabled)) <> 0;
+  BuildToolsEnabled := AStore.ReadInteger('BuildToolsEnabled', BoolValue(Default.BuildToolsEnabled)) <> 0;
+  BookmarksEnabled := AStore.ReadInteger('BookmarksEnabled', BoolValue(Default.BookmarksEnabled)) <> 0;
+  DesignerEnabled := AStore.ReadInteger('DesignerEnabled', BoolValue(Default.DesignerEnabled)) <> 0;
+  RuleChecksEnabled := AStore.ReadInteger('RuleChecksEnabled', BoolValue(Default.RuleChecksEnabled)) <> 0;
+  SearchEnabled := AStore.ReadInteger('SearchEnabled', BoolValue(Default.SearchEnabled)) <> 0;
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageIdePage := AStore.ReadInteger('WelcomePageIdePage', BoolValue(Default.WelcomePageIdePage)) <> 0;
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -3810,6 +3855,15 @@ begin
   AStore.WriteInteger('MultiCursorLineEndsKey', MultiCursorLineEndsKey);
   AStore.WriteInteger('MultiCursorAboveKey', MultiCursorAboveKey);
   AStore.WriteInteger('MultiCursorBelowKey', MultiCursorBelowKey);
+  AStore.WriteInteger('DebugEnabled', BoolValue(DebugEnabled));
+  AStore.WriteInteger('IssuesEnabled', BoolValue(IssuesEnabled));
+  AStore.WriteInteger('AnalysisEnabled', BoolValue(AnalysisEnabled));
+  AStore.WriteInteger('TestsEnabled', BoolValue(TestsEnabled));
+  AStore.WriteInteger('BuildToolsEnabled', BoolValue(BuildToolsEnabled));
+  AStore.WriteInteger('BookmarksEnabled', BoolValue(BookmarksEnabled));
+  AStore.WriteInteger('DesignerEnabled', BoolValue(DesignerEnabled));
+  AStore.WriteInteger('RuleChecksEnabled', BoolValue(RuleChecksEnabled));
+  AStore.WriteInteger('SearchEnabled', BoolValue(SearchEnabled));
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteInteger('WelcomePageIdePage', BoolValue(WelcomePageIdePage));
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

@@ -8,6 +8,9 @@
 //   - StopAll stoppt rückwärts jedes laufende Teil
 //   - Times: Beim Start misst StartWanted jedes Teil für die Startanteile
 //     (Bericht N4); danach nil
+//   - Module (#1454): Join ordnet Teile einem Modul zu (Debugger, Tests …).
+//     Ist das Modul laut ModuleOn aus, startet StartWanted seine Teile nicht,
+//     und StopOffModules stoppt rückwärts die laufenden (ohne Neustart).
 // Ein Fehler in Start geht an den Aufrufer (wie zuvor in RegisterFeatures).
 // Ein Fehler in Stop hält den Abbau nicht an (#886): Die übrigen Teile werden
 // trotzdem gestoppt, StopAll liefert die fehlgeschlagenen mit Ausnahmeklasse.
@@ -24,6 +27,8 @@ uses
 type
   /// <summary>Bedingung je Stufe des abgesicherten Starts (#722) und Einstellung.</summary>
   TAtlasFeatureWanted = reference to function(ALevel: TAtlasSafeLevel): Boolean;
+  /// <summary>Ist das Modul AModule an (Modul-Schalter, #1454)?</summary>
+  TAtlasModuleIsOn = reference to function(const AModule: string): Boolean;
 
   TAtlasFeatureTable = class
   private type
@@ -33,10 +38,14 @@ type
       IsActive: TFunc<Boolean>;
       Start: TProc;
       Stop: TProc;
+      /// <summary>Kennung des Moduls (#1454); '' = Kern.</summary>
+      Module: string;
     end;
   private
     FSlots: TList<TSlot>;
     FTimes: TAtlasStartTimes;
+    FModuleOn: TAtlasModuleIsOn;
+    function SlotModuleOn(const ASlot: TSlot): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -52,11 +61,20 @@ type
     /// <summary>Rückwärts jedes aktive Feature stoppen, auch wenn ein Stop eine Ausnahme wirft (#886);
     /// Ergebnis: die fehlgeschlagenen Teile als „Name: Klasse“.</summary>
     function StopAll: TArray<string>;
+    /// <summary>Ordnet die Teile ANames dem Modul AModule zu (#1454); unbekannte Namen sind ein Fehler.</summary>
+    procedure Join(const AModule: string; const ANames: array of string);
+    /// <summary>Rückwärts jedes aktive Teil eines ausgeschalteten Moduls stoppen (#1454), auch wenn ein Stop eine
+    /// Ausnahme wirft; Ergebnis wie StopAll.</summary>
+    function StopOffModules: TArray<string>;
+    /// <summary>Modul des Teils AName; '' = Kern oder unbekannt.</summary>
+    function ModuleOf(const AName: string): string;
     /// <summary>Namen in Startreihenfolge.</summary>
     function Names: TArray<string>;
     /// <summary>Gesetzt: StartWanted addiert die Dauer jedes Starts unter dem Namen des Teils (Startanteile,
     /// Bericht N4). Gehört dem Aufrufer; vor dessen Freigabe auf nil setzen.</summary>
     property Times: TAtlasStartTimes read FTimes write FTimes;
+    /// <summary>Zustand der Modul-Schalter; nil = alle Module an.</summary>
+    property ModuleOn: TAtlasModuleIsOn read FModuleOn write FModuleOn;
   end;
 
 implementation
@@ -96,6 +114,7 @@ begin
   Slot.IsActive := AIsActive;
   Slot.Start := AStart;
   Slot.Stop := AStop;
+  Slot.Module := '';
   FSlots.Add(Slot);
 end;
 
@@ -108,7 +127,7 @@ begin
   for Index := 0 to FSlots.Count - 1 do
   begin
     Slot := FSlots[Index];
-    if not Slot.IsActive() and Slot.Wanted(ALevel) then
+    if SlotModuleOn(Slot) and not Slot.IsActive() and Slot.Wanted(ALevel) then
     begin
       if FTimes <> nil then
         FTimes.Measure(Slot.Name, Slot.Start)
@@ -137,6 +156,66 @@ begin
       end);
   end;
   Result := Teardown.Failures;
+end;
+
+function TAtlasFeatureTable.SlotModuleOn(const ASlot: TSlot): Boolean;
+begin
+  Result := (ASlot.Module = '') or not Assigned(FModuleOn) or FModuleOn(ASlot.Module);
+end;
+
+procedure TAtlasFeatureTable.Join(const AModule: string; const ANames: array of string);
+var
+  mName: string;
+  mIndex: Integer;
+  mFound: Boolean;
+  mSlot: TSlot;
+begin
+  for mName in ANames do
+  begin
+    mFound := False;
+    for mIndex := 0 to FSlots.Count - 1 do
+      if FSlots[mIndex].Name = mName then
+      begin
+        mSlot := FSlots[mIndex];
+        mSlot.Module := AModule;
+        FSlots[mIndex] := mSlot;
+        mFound := True;
+      end;
+    if not mFound then
+      raise EArgumentException.CreateFmt('Teil "%s" für Modul "%s" unbekannt', [mName, AModule]);
+  end;
+end;
+
+function TAtlasFeatureTable.StopOffModules: TArray<string>;
+var
+  mIndex: Integer;
+  mSlot: TSlot;
+  mTeardown: TAtlasTeardown;
+begin
+  mTeardown := TAtlasTeardown.Create;
+  for mIndex := FSlots.Count - 1 downto 0 do
+  begin
+    mSlot := FSlots[mIndex];
+    if SlotModuleOn(mSlot) then
+      Continue;
+    mTeardown.Step(mSlot.Name,
+      procedure
+      begin
+        if mSlot.IsActive() then
+          mSlot.Stop();
+      end);
+  end;
+  Result := mTeardown.Failures;
+end;
+
+function TAtlasFeatureTable.ModuleOf(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to FSlots.Count - 1 do
+    if FSlots[mIndex].Name = AName then
+      Exit(FSlots[mIndex].Module);
 end;
 
 function TAtlasFeatureTable.Names: TArray<string>;

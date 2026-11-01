@@ -213,6 +213,8 @@ begin
     TAtlasNotificationsWindow.SourceCaption('hidden'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle),
     TAtlasNotificationsWindow.SourceCaption('unitRename'));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceRuleChecks),
+    TAtlasNotificationsWindow.SourceCaption('ruleChecks'), 'Modulschalter (#1454)');
   Assert.AreEqual('tracker', TAtlasNotificationsWindow.SourceCaption('tracker'), 'unbekannt: Kennung');
   Day := EncodeDateTime(2026, 10, 16, 14, 3, 0, 0);
   Assert.AreEqual('14:03', TAtlasNotificationsWindow.TimeText(Day, IncHour(Day, 2)));

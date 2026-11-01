@@ -215,6 +215,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 
 - *Tools › Optionen › Drittanbieter › Atlas* als Baum: Bereiche oben, jede Funktion mit eigenem Hauptschalter, der ihre Unteroptionen mit abschaltet; daneben die Seiten *Snippets*, *Tastenkonflikte* und *Server*
 - Jede sichtbare Funktion lässt sich einzeln abschalten; experimentelle Funktionen sind gekennzeichnet
+- **Modulschalter** für ganze Bereiche: Debuggen, Issue-Tracker, Analyse, Tests, Build-Werkzeuge, Lesezeichen, Designer, Prüfregeln, Suche und Willkommensseite (`debug.enabled` … `search.enabled`, `ruleChecks.enabled`, `welcomePage.enabled`); ein ausgeschaltetes Modul schaltet seine Funktionen und Befehle ohne Neustart ab, die gespeicherten Werte bleiben. Profil *Nur Code Insight* lässt nur den Kern an. Legt die `atlas.json` eines Projekts Prüfregeln fest, während das Modul Prüfregeln aus ist, weist Atlas einmal darauf hin
 - Einstellungen exportieren, importieren, Profile laden und zurücksetzen
 - Teamweite Werte in der Projektdatei `.atlas` (neben der .dproj, in einem Ordner darüber bis zur Wurzel von Git oder SVN oder neben der .groupproj), Server- und Regeleinstellungen in `atlas.json` (*Atlas › Projekt-Einstellungen*), globale Werte in `%APPDATA%\Atlas\settings.json`
 

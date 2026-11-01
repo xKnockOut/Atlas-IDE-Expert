@@ -77,6 +77,11 @@ type
     /// <summary>x-node (#890): Unterpunkt der Optionsseite; nur mit HasNode gesetzt ('' = Hauptknoten).</summary>
     Node: string;
     HasNode: Boolean;
+    /// <summary>x-module (#1454): Kennung des Moduls, wenn die Einstellung dessen Modul-Schalter ist; sonst ''.
+    /// Alles unter dem Schalter (x-parent bzw. Präfixregel) gehört zum Modul.</summary>
+    Module: string;
+    /// <summary>x-offValue als JSON-Text: Wert für „aus“ einer nicht booleschen Einstellung; '' ohne.</summary>
+    OffJson: string;
     /// <summary>Wird exportiert, importiert und zurückgesetzt (weder Zustand noch Rechnerwert).</summary>
     function Transferable: Boolean;
   end;
@@ -240,12 +245,13 @@ begin
   end;
 end;
 
-function DefaultOf(ASchema: TJSONObject): string;
+/// <summary>Wert des Schlüssels AName als JSON-Text ('default', 'x-offValue'); '' ohne.</summary>
+function JsonOf(ASchema: TJSONObject; const AName: string): string;
 var
   Value: TJSONValue;
 begin
   Result := '';
-  Value := ASchema.GetValue('default');
+  Value := ASchema.GetValue(AName);
   if Value <> nil then
     Result := Value.ToJSON;
 end;
@@ -370,7 +376,7 @@ begin
       Entry.Page := TextOf(Schema, 'x-page');
       Entry.Caption := TextOf(Schema, 'x-caption');
       Entry.CaptionEn := TextOf(Schema, 'x-captionEn');
-      Entry.DefaultJson := DefaultOf(Schema);
+      Entry.DefaultJson := JsonOf(Schema, 'default');
       Entry.State := Flag(Schema, 'x-state');
       Entry.Machine := Flag(Schema, 'x-machine');
       Entry.IsPath := Flag(Schema, 'x-path');
@@ -384,6 +390,8 @@ begin
       Entry.Experimental := Flag(Schema, 'x-experimental');
       Entry.Parent := OptionalText(Schema, 'x-parent', Entry.HasParent);
       Entry.Node := OptionalText(Schema, 'x-node', Entry.HasNode);
+      Entry.Module := TextOf(Schema, 'x-module');
+      Entry.OffJson := JsonOf(Schema, 'x-offValue');
       FEntries.Add(Entry);
     end;
   finally
@@ -434,7 +442,7 @@ begin
   Index := Pos('. ', Entry.Caption);
   if Index > 0 then
     Entry.Caption := Copy(Entry.Caption, 1, Index);
-  Entry.DefaultJson := DefaultOf(ASchema);
+  Entry.DefaultJson := JsonOf(ASchema, 'default');
   Entry.Machine := Flag(ASchema, 'x-machine') or Flag(AParent, 'x-machine');
   Entry.State := Flag(ASchema, 'x-state');
   Entry.IsPath := Flag(ASchema, 'x-path');

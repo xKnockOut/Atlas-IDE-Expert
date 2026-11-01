@@ -211,6 +211,8 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.NewIssueCreatedTitle)
   else if SameText(ASource, TAtlasNotificationSources.Issues) then
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceIssues)
+  else if SameText(ASource, TAtlasNotificationSources.RuleChecks) then
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceRuleChecks)
   else
     Result := ASource;
 end;

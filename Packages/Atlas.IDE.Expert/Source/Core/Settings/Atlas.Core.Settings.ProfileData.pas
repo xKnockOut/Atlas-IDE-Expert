@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  Profile0: array[0..58] of string = (
+  Profile0: array[0..67] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -73,10 +73,19 @@ const
     '    "completion.assignAllFields": true,',
     '    "editor.minimap": true,',
     '    "editor.designerBar.tabOrderClick": true,',
-    '    "editor.designerBar.align": true',
+    '    "editor.designerBar.align": true,',
+    '    "debug.enabled": true,',
+    '    "issues.enabled": true,',
+    '    "analysis.enabled": true,',
+    '    "tests.enabled": true,',
+    '    "buildTools.enabled": true,',
+    '    "bookmarks.enabled": true,',
+    '    "designer.enabled": true,',
+    '    "ruleChecks.enabled": true,',
+    '    "search.enabled": true',
     '  }',
     '}');
-  Profile1: array[0..48] of string = (
+  Profile1: array[0..57] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -123,7 +132,16 @@ const
     '    "welcomePage.tests.ci.login": true,',
     '    "welcomePage.quickActions": true,',
     '    "shortcutTips.enabled": true,',
-    '    "notifications.enabled": true',
+    '    "notifications.enabled": true,',
+    '    "debug.enabled": true,',
+    '    "issues.enabled": true,',
+    '    "analysis.enabled": true,',
+    '    "tests.enabled": true,',
+    '    "buildTools.enabled": true,',
+    '    "bookmarks.enabled": true,',
+    '    "designer.enabled": true,',
+    '    "ruleChecks.enabled": true,',
+    '    "search.enabled": true',
     '  }',
     '}');
   Profile2: array[0..10] of string = (
@@ -138,7 +156,7 @@ const
     '  "mode": "replace",',
     '  "settings": {}',
     '}');
-  Profile3: array[0..48] of string = (
+  Profile3: array[0..57] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -185,7 +203,41 @@ const
     '    "welcomePage.tests.ci.login": false,',
     '    "welcomePage.quickActions": false,',
     '    "shortcutTips.enabled": false,',
-    '    "notifications.enabled": false',
+    '    "notifications.enabled": false,',
+    '    "debug.enabled": false,',
+    '    "issues.enabled": false,',
+    '    "analysis.enabled": false,',
+    '    "tests.enabled": false,',
+    '    "buildTools.enabled": false,',
+    '    "bookmarks.enabled": false,',
+    '    "designer.enabled": false,',
+    '    "ruleChecks.enabled": false,',
+    '    "search.enabled": false',
+    '  }',
+    '}');
+  Profile4: array[0..21] of string = (
+    '{',
+    '  "format": "atlas-settings",',
+    '  "formatVersion": 1,',
+    '  "schemaVersion": 1,',
+    '  "name": "Nur Code Insight",',
+    '  "nameEn": "Code Insight only",',
+    '  "description": "Alle Module aus (Debugger, Issue-Tracker, Analyse, Tests, Build-Werkzeuge, Lesezeichen, Designer, Prüfregeln, Suche, Willkommensseite, #1454); der Kern mit Vervollständigung, Hover, ' +
+      'Diagnosen und Editor wie „Atlas-Standard“ (Ersetzen). Projekt- und Teamwerte bleiben unberührt.",',
+    '  "descriptionEn": "All modules off (debugger, issue tracker, analysis, tests, build tools, bookmarks, designer, rule checks, search, welcome page, #1454); the core with completion, hover, diagnostics' +
+      ' and editor as in “Atlas default” (replace). Project and team values stay untouched.",',
+    '  "mode": "replace",',
+    '  "settings": {',
+    '    "debug.enabled": false,',
+    '    "issues.enabled": false,',
+    '    "analysis.enabled": false,',
+    '    "tests.enabled": false,',
+    '    "buildTools.enabled": false,',
+    '    "bookmarks.enabled": false,',
+    '    "designer.enabled": false,',
+    '    "ruleChecks.enabled": false,',
+    '    "search.enabled": false,',
+    '    "welcomePage.enabled": false',
     '  }',
     '}');
 
@@ -200,11 +252,12 @@ end;
 
 function AtlasProfileFiles: TArray<string>;
 begin
-  SetLength(Result, 4);
+  SetLength(Result, 5);
   Result[0] := 'alles-an-experimentell.json';
   Result[1] := 'alles-an.json';
   Result[2] := 'atlas-standard.json';
   Result[3] := 'minimal.json';
+  Result[4] := 'nur-code-insight.json';
 end;
 
 function AtlasProfileJson(const AFileName: string): string;
@@ -218,6 +271,8 @@ begin
     Result := Joined(Profile2);
   if SameText(AFileName, 'minimal.json') then
     Result := Joined(Profile3);
+  if SameText(AFileName, 'nur-code-insight.json') then
+    Result := Joined(Profile4);
 end;
 
 end.

@@ -135,6 +135,8 @@ begin
     Setting('ArchitectureCentralUnits', 'architecture.centralUnits', False),
     // Code-Abfragen (#1351): Server (query_code, --query, Regeln query:<name>) und Plugin lesen denselben Wert.
     Setting('QueryEnabled', 'query.enabled', True),
+    // Modul-Schalter Prüfregeln (#1454): Der Server prüft in der LSP-Sitzung nur damit Regeln.
+    Setting('RuleChecksEnabled', 'ruleChecks.enabled', True),
     // Hotspots (#1354): Server (Bericht, get_hotspots, atlas/hotspots) und Plugin lesen dieselben Werte.
     Setting('HotspotsEnabled', 'hotspots.enabled', True),
     Setting('HotspotsMonths', 'hotspots.months', False),

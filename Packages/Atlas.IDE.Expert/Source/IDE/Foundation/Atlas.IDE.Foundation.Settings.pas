@@ -19,6 +19,9 @@
 // Experimentelle Funktionen (#834): Ohne Hauptschalter experimental.enabled
 // liefert Current für jede Einstellung mit x-experimental die Vorgabe; Stored
 // behält den gespeicherten Wert.
+// Modul-Schalter (#1454): Ist ein Modul aus, liefert Current für jede
+// Einstellung des Moduls „aus“ (TAtlasModuleSwitches); Stored behält die
+// gespeicherten Werte.
 // Umbenannte Einstellungen (#1280, x-renamedFrom): Vor dem ersten Lesen
 // übernimmt TAtlasSettingsRenames frühere Registry-Namen (z. B.
 // WelcomePageIssuesTracker → IssuesTracker) und entfernt sie; jede Übernahme
@@ -39,6 +42,7 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
+  Atlas.Core.Settings.ModuleSwitches,
   Atlas.Core.Settings.QueryMigration;
 
 type
@@ -58,6 +62,8 @@ type
     FLoaded: Boolean;
     FExperimental: TArray<TAtlasCatalogEntry>;
     FExperimentalRead: Boolean;
+    FModules: TArray<TAtlasModuleSwitch>;
+    FModulesRead: Boolean;
     class procedure EnsureLoaded; static;
     /// <summary>Umbenannte Einstellungen (x-renamedFrom, #1280) in der Registry übernehmen; jede Übernahme steht
     /// einmal im Protokoll.</summary>
@@ -67,7 +73,8 @@ type
     class function MigrateQuery(const ARouted: IAtlasSettingsStore; out AMigration: TAtlasSettingsQueryMigration):
       Boolean; static;
     class procedure RemoveLegacyQuery(const AMigration: TAtlasSettingsQueryMigration); static;
-    /// <summary>Gespeichert, darüber Sitzungswerte, ohne Hauptschalter experimentelle Werte auf Vorgabe.</summary>
+    /// <summary>Gespeichert, darüber Sitzungswerte, Einstellungen ausgeschalteter Module auf „aus“ (#1454), ohne
+    /// Hauptschalter experimentelle Werte auf Vorgabe.</summary>
     class function Effective: TAtlasPluginSettings; static;
     class procedure Changed; static;
     class function HistoryFile: string; static;
@@ -140,6 +147,11 @@ type
     class function SessionFlag(const AKey: string; out AValue: Boolean): Boolean; static;
     /// <summary>Schnellschalter aus Plugin-Katalog und atlas.schema.json in der Sprache der Oberfläche.</summary>
     class function QuickToggles: TArray<TAtlasQuickToggle>; static;
+    /// <summary>Modul-Schalter aus dem Katalog (#1454), einmal gelesen.</summary>
+    class function ModuleSwitches: TArray<TAtlasModuleSwitch>; static;
+    /// <summary>Ist das Modul AModule (x-module, z. B. "debug") wirksam an, auch nach Schnellschaltern? Unbekannte
+    /// Kennung = an.</summary>
+    class function ModuleOn(const AModule: string): Boolean; static;
     /// <summary>Experimentelle Plugin-Einstellungen aus dem Katalog (#834), einmal gelesen.</summary>
     class function ExperimentalEntries: TArray<TAtlasCatalogEntry>; static;
     /// <summary>Schlüssel der experimentellen Schalter, die gerade wirken (Plugin und settings.json); leer ohne
@@ -431,7 +443,32 @@ end;
 
 class function TAtlasIdeSettings.Effective: TAtlasPluginSettings;
 begin
-  Result := TAtlasExperimental.Apply(FSession.Apply(FStored, QuickToggles), ExperimentalEntries);
+  Result := TAtlasExperimental.Apply(TAtlasModuleSwitches.Apply(FSession.Apply(FStored, QuickToggles),
+    ModuleSwitches), ExperimentalEntries);
+end;
+
+class function TAtlasIdeSettings.ModuleSwitches: TArray<TAtlasModuleSwitch>;
+var
+  mCatalog: TAtlasSettingsCatalog;
+begin
+  if not FModulesRead then
+  begin
+    mCatalog := TAtlasSettingsCatalog.CreateDefault;
+    try
+      FModules := TAtlasModuleSwitches.Read(mCatalog);
+    finally
+      mCatalog.Free;
+    end;
+    FModulesRead := True;
+  end;
+  Result := FModules;
+end;
+
+class function TAtlasIdeSettings.ModuleOn(const AModule: string): Boolean;
+begin
+  EnsureLoaded;
+  // Der Schalter selbst gehört nicht zu seinen Mitgliedern: In FEffective steht sein Wert samt Sitzungswert.
+  Result := TAtlasModuleSwitches.IsOn(FEffective, ModuleSwitches, AModule);
 end;
 
 class function TAtlasIdeSettings.ActiveExperimental: TArray<string>;
@@ -690,6 +727,8 @@ begin
   FreeAndNil(FHistory);
   FExperimental := nil;
   FExperimentalRead := False;
+  FModules := nil;
+  FModulesRead := False;
 end;
 
 class function TAtlasIdeSettings.QuickToggles: TArray<TAtlasQuickToggle>;

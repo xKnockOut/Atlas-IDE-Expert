@@ -280,6 +280,10 @@ type
     FServerStatusWindow: TCheckBox;
     // Architekturübersicht (#1118).
     FArchitecture: TCheckBox;
+    /// <summary>Modul-Schalter (#1454) mit ihren Namen in TAtlasPluginSettings.Load/Save, gleiche Reihenfolge.
+    /// </summary>
+    FModuleChecks: TArray<TCheckBox>;
+    FModuleNames: TArray<string>;
     FArchitectureScope: TAtlasChoiceBox;
     FArchitectureLibrary: TCheckBox;
     FArchitectureCentral: TEdit;
@@ -1036,6 +1040,9 @@ type
     /// <summary>Neuer Reiter; die folgenden Add… setzen ihre Elemente darauf.</summary>
     procedure AddSheet(AId: TAtlasTextId);
     function AddCheck(const ACaption: string): TCheckBox;
+    /// <summary>Modul-Schalter AName (#1454) auf der aktuellen Seite; Beschriftung aus dem Plugin-Katalog
+    /// (x-caption bzw. x-captionEn).</summary>
+    function AddModuleSwitch(const AName: string): TCheckBox;
     function AddPanel(AHeight: Integer): TWinControl;
     function AddNumber(const ACaption: string): TEdit;
     function AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
@@ -2029,6 +2036,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
+  Atlas.Core.Settings.History,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems,
   Atlas.UI.Notifications.Window;
@@ -2124,6 +2132,7 @@ var
   Panel: TWinControl;
   Title: TLabel;
   Button: TButton;
+  mIndex: Integer;
 begin
   inherited Create(AOwner);
   FAttached := TDictionary<TControl, TControl>.Create;
@@ -2174,6 +2183,8 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabGeneral);
   FEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled));
+  // Modul-Schalter (#1454): je Modul auf dem Hauptknoten seines Bereichs, ganz oben.
+  AddModuleSwitch('AnalysisEnabled');
   // Wo der Server liegt; leer gilt der Standard neben dem Plugin.
   Panel := AddPanel(20);
   Title := TLabel.Create(Self);
@@ -2330,6 +2341,8 @@ begin
   FTeamSnippets := AddWrappedLabel(20, '');
 
   AddSheet(TAtlasTextId.SettingsTabEditor);
+  AddModuleSwitch('BookmarksEnabled');
+  AddModuleSwitch('DesignerEnabled');
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
   // Aktionszeile unter Befunden im Hover (#909).
   FHoverProblemActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions));
@@ -2589,6 +2602,8 @@ begin
   // Probleme im Editor und eine Aktion nach dem Speichern (#398, #548): Syntaxprüfung der IDE oder
   // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
   AddSheet(TAtlasTextId.SettingsTabCompiler);
+  AddModuleSwitch('BuildToolsEnabled');
+  AddModuleSwitch('TestsEnabled');
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
   FProblemsStatusCounter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsStatusCounter));
@@ -2634,6 +2649,7 @@ begin
   // entsteht in AddRulePages.
   AddSheet(TAtlasTextId.SettingsTabRules);
   FRulesArea := High(FSheets);
+  AddModuleSwitch('RuleChecksEnabled');
   AddRulesLinks;
   FProblemsWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindow));
   FProblemsWindowScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowScope),
@@ -2666,6 +2682,7 @@ begin
 
   // Einzelnen Test im Debugger starten (#585); die Code Lens dazu steht unter Editor (codeLens.tests).
   AddSheet(TAtlasTextId.SettingsTabDebug);
+  AddModuleSwitch('DebugEnabled');
   FTestDebug := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestDebug));
   FTestBreakAtStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestBreakAtStart));
   // Variablenwerte im Hover beim Debuggen (#891).
@@ -2875,6 +2892,7 @@ begin
   AddUndoSection;
 
   AddSheet(TAtlasTextId.SettingsTabUnitSearch);
+  AddModuleSwitch('SearchEnabled');
   AddUnitSearchSection;
 
   AddSheet(TAtlasTextId.SettingsTabWelcome);
@@ -2882,6 +2900,7 @@ begin
 
   // Issue-Tracker (#1280): eigener Bereich; die Willkommensseite schaltet nur, ob „Meine Issues“ erscheint.
   AddSheet(TAtlasTextId.SettingsTabIssues);
+  AddModuleSwitch('IssuesEnabled');
   AddIssuesSection;
 
   // Versionsverwaltung (#1285): neben dem Issue-Tracker; Verhalten unter vcs.*.
@@ -2951,6 +2970,8 @@ begin
   Bind('WelcomePageActiveLayout', FWelcomeActiveLayout);
   Bind('WelcomePageLayouts', FWelcomeActiveLayout);
   Bind('ExperimentalEnabled', FExperimentalEnabled);
+  for mIndex := 0 to High(FModuleChecks) do
+    Bind(FModuleNames[mIndex], FModuleChecks[mIndex]);
   BindControls;
   AddFilterRow;
   BuildNodes;
@@ -6337,6 +6358,7 @@ var
   VisualizerKind: TAtlasVisualizerKind;
   StepFilterKind: TStepFilterKind;
   Target: TAtlasReassignedTarget;
+  mIndex: Integer;
 begin
   // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
@@ -6859,6 +6881,9 @@ begin
     FMarks.Bind(FWelcomeTrendsSeries[Series], ['WelcomePageTrendsSeries'], False);
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
     FMarks.Bind(FWelcomeQuickActionsItems[mAction], ['WelcomePageQuickActionsItems'], False);
+  // Modul-Schalter (#1454).
+  for mIndex := 0 to High(FModuleChecks) do
+    FMarks.Bind(FModuleChecks[mIndex], [FModuleNames[mIndex]]);
 end;
 
 destructor TAtlasSettingsPage.Destroy;
@@ -8436,6 +8461,25 @@ begin
   Inc(FNextTop, 100);
 end;
 
+function TAtlasSettingsPage.AddModuleSwitch(const AName: string): TCheckBox;
+var
+  mIndex: Integer;
+  mCaption: string;
+begin
+  mCaption := AName;
+  mIndex := Catalog.IndexOfName(AName);
+  if mIndex >= 0 then
+  begin
+    if TAtlasStrings.Language = TAtlasLanguage.English then
+      mCaption := Catalog[mIndex].CaptionEn
+    else
+      mCaption := Catalog[mIndex].Caption;
+  end;
+  Result := AddCheck(mCaption);
+  FModuleChecks := FModuleChecks + [Result];
+  FModuleNames := FModuleNames + [AName];
+end;
+
 function TAtlasSettingsPage.AddPanel(AHeight: Integer): TWinControl;
 begin
   // Kein TPanel: Das zeichnet im IDE-Thema einen eigenen Hintergrund (dunkle Streifen im Reiter).
@@ -8652,6 +8696,8 @@ var
   StepFilterKinds: TStepFilterKinds;
   Target: TAtlasReassignedTarget;
   Targets: TAtlasReassignedTargets;
+  mStore: IAtlasMemorySettingsStore;
+  mIndex: Integer;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -9251,6 +9297,10 @@ begin
   FSettingsMarkModified.Checked := ASettings.SettingsMarkModified;
   FSettingsBackupBeforeImport.Checked := ASettings.SettingsBackupBeforeImport;
   FSettingsExportSecrets.Choice := Ord(ASettings.SettingsExportSecrets = 'placeholder');
+  // Modul-Schalter (#1454) über ihre Namen; ohne Eintrag an.
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  for mIndex := 0 to High(FModuleChecks) do
+    FModuleChecks[mIndex].Checked := mStore.ReadInteger(FModuleNames[mIndex], 1) <> 0;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -9271,6 +9321,8 @@ var
   Targets: TAtlasReassignedTargets;
   mRules: TArray<TAtlasVcsExternalRule>;
   mInvalid: string;
+  mStore: IAtlasMemorySettingsStore;
+  mIndex: Integer;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -9964,6 +10016,14 @@ begin
     ASettings.SettingsExportSecrets := 'placeholder';
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
+  // Modul-Schalter (#1454) über ihre Namen.
+  if Length(FModuleChecks) > 0 then
+  begin
+    mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+    for mIndex := 0 to High(FModuleChecks) do
+      mStore.WriteInteger(FModuleNames[mIndex], Ord(FModuleChecks[mIndex].Checked));
+    ASettings.Load(mStore);
+  end;
   ASettings.Normalize;
 end;
 

@@ -121,6 +121,7 @@ type
     procedure ReadIndex(ANode: TJsonNode);
     procedure ReadArchitecture(ANode: TJsonNode);
     procedure ReadQuery(ANode: TJsonNode);
+    procedure ReadRuleChecks(ANode: TJsonNode);
     procedure ReadQueries(ANode: TJsonNode);
     function ReadSavedQuery(ANode: TJsonNode; out AQuery: TSavedQuery): Boolean;
     procedure ReadHotspots(ANode: TJsonNode);
@@ -2509,6 +2510,27 @@ begin
   end;
 end;
 
+procedure TValidator.ReadRuleChecks(ANode: TJsonNode);
+var
+  mIndex: Integer;
+  mKey: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"ruleChecks" muss ein Objekt sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mKey := ANode.Keys[mIndex];
+    if mKey = 'enabled' then
+      ExpectBoolean(ANode[mIndex], mKey, FSettings.RuleChecksEnabled)
+    else
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
+        Format('Unbekannte Einstellung "ruleChecks.%s"', [mKey]), False);
+  end;
+end;
+
 procedure TValidator.ReadQueries(ANode: TJsonNode);
 var
   mIndex, mOther: Integer;
@@ -3358,6 +3380,8 @@ begin
         ReadArchitecture(Value)
       else if Key = 'query' then
         ReadQuery(Value)
+      else if Key = 'ruleChecks' then
+        ReadRuleChecks(Value)
       else if Key = 'queries' then
         ReadQueries(Value)
       else if Key = 'hotspots' then
@@ -3816,6 +3840,8 @@ begin
     end
     else if Key = 'query' then
       Result.QueryEnabled := FileSettings.QueryEnabled
+    else if Key = 'ruleChecks' then
+      Result.RuleChecksEnabled := FileSettings.RuleChecksEnabled
     else if Key = 'queries' then
       Result.Queries := FileSettings.Queries
     else if Key = 'usesCommand' then
