@@ -1288,14 +1288,11 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -2575,19 +2572,16 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
+    Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
     try
-      Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
-      try
-        Visit(AContext.Tree.Root);
-      finally
-        Values.Free;
-      end;
+      Visit(AContext.Tree.Root);
     finally
-      Resolver.UnpinTree;
+      Values.Free;
     end;
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -2783,14 +2777,11 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -2941,31 +2932,28 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      // Ohne Rekursion durch den Baum (#1094).
-      SetLength(Stack, 64);
-      Stack[0] := AContext.Tree.Root;
-      Count := 1;
-      while Count > 0 do
+    // Ohne Rekursion durch den Baum (#1094).
+    SetLength(Stack, 64);
+    Stack[0] := AContext.Tree.Root;
+    Count := 1;
+    while Count > 0 do
+    begin
+      Dec(Count);
+      Node := Stack[Count];
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
+        CheckAssignment(Node);
+      if Count + Node.ChildCount > Length(Stack) then
+        SetLength(Stack, 2 * (Count + Node.ChildCount));
+      for Index := Node.ChildCount - 1 downto 0 do
       begin
-        Dec(Count);
-        Node := Stack[Count];
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
-          CheckAssignment(Node);
-        if Count + Node.ChildCount > Length(Stack) then
-          SetLength(Stack, 2 * (Count + Node.ChildCount));
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Stack[Count] := Node[Index];
-          Inc(Count);
-        end;
+        Stack[Count] := Node[Index];
+        Inc(Count);
       end;
-    finally
-      Resolver.UnpinTree;
     end;
   finally
+    Resolver.UnpinTree;
   end;
 end;
 

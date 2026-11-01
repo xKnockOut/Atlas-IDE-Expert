@@ -883,14 +883,11 @@ begin
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
     Resolver := TRuleDerived.Resolver(mCache, AContext);
+    Resolver.PinTree(AContext.Tree, FileName);
     try
-      Resolver.PinTree(AContext.Tree, FileName);
-      try
-        VisitBodies;
-      finally
-        Resolver.UnpinTree;
-      end;
+      VisitBodies;
     finally
+      Resolver.UnpinTree;
     end;
   finally
     Ancestry.Free;

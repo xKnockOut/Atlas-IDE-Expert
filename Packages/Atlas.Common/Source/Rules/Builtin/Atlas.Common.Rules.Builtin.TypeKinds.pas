@@ -805,19 +805,16 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    mResolver.PinTree(AContext.Tree, mFileName);
+    mChecker := TTypeKindChecker.Create(AContext, AReport, mResolver);
     try
-      mChecker := TTypeKindChecker.Create(AContext, AReport, mResolver);
-      try
-        mChecker.Run;
-      finally
-        mChecker.Free;
-      end;
+      mChecker.Run;
     finally
-      mResolver.UnpinTree;
+      mChecker.Free;
     end;
   finally
+    mResolver.UnpinTree;
   end;
 end;
 
