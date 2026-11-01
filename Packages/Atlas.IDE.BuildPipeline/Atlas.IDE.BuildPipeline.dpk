@@ -31,7 +31,7 @@
 
 // Modul Build-Pipeline (#1456, ADR 0017): Build-Aufträge über IAtlasBuildJobs für andere Module.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.BuildPipeline.Composition über die Registry
-// des Kern-Packages Atlas.IDE.Expert an und lässt sich ohne Neustart der IDE laden und entladen
+// des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
 // (Regeln 1 bis 4). Requiret nur das Kern-Package und
 // Atlas.IDE.Contracts, kein anderes Modul (Regel 9).
 
@@ -40,7 +40,7 @@ requires
   vcl,
   vclwinx,
   designide,
-  Atlas.IDE.Expert,
+  Atlas.IDE.Base,
   Atlas.IDE.Contracts;
 
 contains

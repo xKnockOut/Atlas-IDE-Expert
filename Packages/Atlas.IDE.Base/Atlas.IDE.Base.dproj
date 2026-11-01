@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{6E1B3C52-7F0A-4C1D-9B8E-2A5D4F7C9E31}</ProjectGuid>
-        <MainSource>Atlas.IDE.Expert.dpk</MainSource>
+        <MainSource>Atlas.IDE.Base.dpk</MainSource>
         <ProjectVersion>20.3</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <AppType>Package</AppType>
@@ -9,7 +9,7 @@
         <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>3</TargetedPlatforms>
-        <ProjectName Condition="'$(ProjectName)'==''">Atlas.IDE.Expert</ProjectName>
+        <ProjectName Condition="'$(ProjectName)'==''">Atlas.IDE.Base</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -40,7 +40,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <SanitizedProjectName>Atlas_IDE_Expert</SanitizedProjectName>
+        <SanitizedProjectName>Atlas_IDE_Base</SanitizedProjectName>
         <DCC_MapFile>3</DCC_MapFile>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
         <GenPackage>true</GenPackage>
@@ -50,7 +50,7 @@
         <DCC_Description>Atlas IDE Expert (Code Insight-Manager)</DCC_Description>
         <DCC_Namespace>System;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
         <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
-        <DCC_DcuOutput>..\..\Output\$(Platform)\$(Config)\Dcu\Atlas.IDE.Expert</DCC_DcuOutput>
+        <DCC_DcuOutput>..\..\Output\$(Platform)\$(Config)\Dcu\Atlas.IDE.Base</DCC_DcuOutput>
         <DCC_DcpOutput>..\..\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
         <DCC_BplOutput>..\..\Output\$(Platform)\$(Config)\Bpl</DCC_BplOutput>
     </PropertyGroup>
@@ -655,7 +655,7 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">Atlas.IDE.Expert.dpk</Source>
+                    <Source Name="MainSource">Atlas.IDE.Base.dpk</Source>
                 </Source>
             </Delphi.Personality>
             <Platforms>

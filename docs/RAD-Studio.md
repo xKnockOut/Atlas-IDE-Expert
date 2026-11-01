@@ -2,22 +2,22 @@
 
 Es gibt zwei Wege:
 
-- **Empfohlen: das IDE-Plugin** `Atlas.IDE.Expert` (ADR 0006) für RAD Studio 13 und 12. Es meldet sich als eigener Code Insight-Manager an und bringt eigene Fenster für Vervollständigung, Parameter-Hint und Hover sowie Probleme im Editor, Klammerpaare, Befehlspalette und Compilerprüfung mit (Übersicht in der [README](../README_DE.md)).
+- **Empfohlen: das IDE-Plugin** `Atlas.IDE.Base` (ADR 0006) für RAD Studio 13 und 12. Es meldet sich als eigener Code Insight-Manager an und bringt eigene Fenster für Vervollständigung, Parameter-Hint und Hover sowie Probleme im Editor, Klammerpaare, Befehlspalette und Compilerprüfung mit (Übersicht in der [README](../README_DE.md)).
 - **Eingebauter LSP-Client** (Abschnitt unten). Damit funktionieren Gliederung und Error Insight. Den Hover fremder Server zeigt RAD Studio auf diesem Weg aber nicht an.
 
 ## IDE-Plugin
 
-**Aus dem Release-Paket:** `atlas-ide-expert-<Version>.zip` aus dem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) in einen festen Ordner entpacken (z. B. `%LOCALAPPDATA%\Programs\Atlas`) und `Win32\Atlas.IDE.Expert370.bpl` (64-Bit-IDE: `Win64\…`) wie in Schritt 2 unten eintragen; den Server findet das Plugin eine Ebene über der BPL. Einzelheiten in [Installation.md](Installation.md#rad-studio-release-paket). Den Installer `AtlasSetup.exe` (bis 1.1.0) gibt es seit 1.2.0 nicht mehr ([ADR 0016](adr/0016-kein-installer.md)). Die Schritte unten sind der Weg mit einem eigenen Bau.
+**Aus dem Release-Paket:** `atlas-ide-expert-<Version>.zip` aus dem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) in einen festen Ordner entpacken (z. B. `%LOCALAPPDATA%\Programs\Atlas`) und `Win32\Atlas.IDE.Base370.bpl` (64-Bit-IDE: `Win64\…`) wie in Schritt 2 unten eintragen; den Server findet das Plugin eine Ebene über der BPL. Einzelheiten in [Installation.md](Installation.md#rad-studio-release-paket). Den Installer `AtlasSetup.exe` (bis 1.1.0) gibt es seit 1.2.0 nicht mehr ([ADR 0016](adr/0016-kein-installer.md)). Die Schritte unten sind der Weg mit einem eigenen Bau.
 
 Von Hand:
 
-1. Das Package `Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj` (in der Projektgruppe enthalten) mit der Delphi-Version bauen, in der es laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE (ab Delphi 12.3) **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` bzw. `Output\Win64\…`; die Zahl ist die Package-Version (`370` Delphi 13, `290` Delphi 12). Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
+1. Das Package `Packages\Atlas.IDE.Base\Atlas.IDE.Base.dproj` (in der Projektgruppe enthalten) mit der Delphi-Version bauen, in der es laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE (ab Delphi 12.3) **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Base370.bpl` bzw. `Output\Win64\…`; die Zahl ist die Package-Version (`370` Delphi 13, `290` Delphi 12). Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
 2. In RAD Studio: *Komponente > Packages installieren > Hinzufügen*, die BPL auswählen.
 3. Den Server (`AtlasServer.exe`) mit bauen: Common, Windows und Server für dieselbe Plattform (Win64 empfohlen). Der Server ist ein eigenes Programm und hängt nicht von der Delphi-Version ab.
 4. Den Server findet das Plugin in dieser Reihenfolge:
    - *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“ (Registry `HKCU\Software\Atlas\IdePlugin`, Wert `ServerPath`; optional `ServerArguments`, z. B. `--log C:\Temp\atlas.log`). Darunter zeigt die Seite, welcher Server verwendet wird und ob er gefunden wurde.
    - `AtlasServer.exe` neben der BPL
-   - `AtlasServer.exe` eine Ebene über der BPL (Aufbau des Release-Pakets: `…\Atlas\Win32\Atlas.IDE.Expert370.bpl`, `…\Atlas\AtlasServer.exe`)
+   - `AtlasServer.exe` eine Ebene über der BPL (Aufbau des Release-Pakets: `…\Atlas\Win32\Atlas.IDE.Base370.bpl`, `…\Atlas\AtlasServer.exe`)
    - `..\..\..\Win64\Debug\Bin\AtlasServer.exe`, sonst `..\..\..\Win32\Debug\Bin\AtlasServer.exe`, im Repo also die Build-Ausgabe
 
 Fehlt der Server, meldet das Plugin das im Meldungsfenster und überlässt Vervollständigung und Hinweise der eingebauten Code Insight. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.

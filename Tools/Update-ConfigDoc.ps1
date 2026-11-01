@@ -67,7 +67,7 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $Schema = Get-Content -Raw -Encoding utf8 $SchemaPath | ConvertFrom-Json -AsHashtable
 $PluginSchemaPath = Join-Path $Root 'schemas/atlas-plugin.schema.json'
 $PluginSchema = Get-Content -Raw -Encoding utf8 $PluginSchemaPath | ConvertFrom-Json -AsHashtable
-$PluginPath = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Settings/Atlas.Core.Settings.Plugin.pas'
+$PluginPath = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.Plugin.pas'
 $ProfileFolder = Join-Path $Root 'Setup/Profile'
 
 function Has([hashtable] $Node, [string] $Key) { $Node.ContainsKey($Key) -and $null -ne $Node[$Key] }
@@ -696,7 +696,7 @@ function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [
         @('', "function $FunctionName`: string;", 'var', '  Line: string;', 'begin', "  Result := '';",
         '  for Line in Lines do', '    Result := Result + Line + #10;', 'end;', '', 'end.')
 }
-$SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Settings'
+$SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 
 # Schema für den Einstellungsdialog im Plugin (#227)
 Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.SchemaData.pas') (Text-Unit 'Atlas.Core.Settings.SchemaData' @(

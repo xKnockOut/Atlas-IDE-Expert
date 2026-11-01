@@ -92,7 +92,7 @@
         <DCCReference Include="vcl.dcp"/>
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
-        <DCCReference Include="Atlas.IDE.Expert.dcp"/>
+        <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Atlas.IDE.Contracts.dcp"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas"/>
