@@ -557,6 +557,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.FeatureTable.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registry.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registration.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Handshake.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Parts.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Teardown.Tests.pas"/>

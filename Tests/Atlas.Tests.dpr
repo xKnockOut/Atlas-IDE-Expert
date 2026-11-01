@@ -419,6 +419,7 @@ uses
   Atlas.Core.Lsp.Adapters.ServerProcess in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas',
   Atlas.Core.Diagnostics.FeatureTable.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.FeatureTable.Tests.pas',
   Atlas.Core.Modules.Registry.Tests in 'IDE.Expert\Atlas.Core.Modules.Registry.Tests.pas',
+  Atlas.Core.Modules.Registration.Tests in 'IDE.Expert\Atlas.Core.Modules.Registration.Tests.pas',
   Atlas.Core.Modules.Handshake.Tests in 'IDE.Expert\Atlas.Core.Modules.Handshake.Tests.pas',
   Atlas.Core.Settings.Parts.Tests in 'IDE.Expert\Atlas.Core.Settings.Parts.Tests.pas',
   Atlas.Core.Diagnostics.Teardown.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.Teardown.Tests.pas',
