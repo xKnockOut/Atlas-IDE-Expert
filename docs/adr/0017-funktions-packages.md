@@ -183,10 +183,14 @@ Scheitert der Pilot an einem Fall ohne Abhilfe, greift Schritt 4: Es bleibt beim
 ### Offene Entscheidungen (Marco)
 
 1. **Auffindbarkeit des Kerns:** a PATH, b `$(BDSCOMMONDIR)\Bpl`, c Ladereihenfolge, d a oder b plus c. Empfehlung: d mit b.
-2. **#1455 in 1.x oder in 2.0?** a wie oben unter „Versionen“ (1.x); b `release/1.2` als Wartungslinie, #1455 auf `main` Richtung 2.0. Bei b bleibt 1.x ruhig und 2.0 trägt das Regressionsrisiko; #1454 kann trotzdem in 1.x erscheinen.
+2. ~~**#1455 in 1.x oder in 2.0?**~~ **Entschieden (Marco, 01.11.2026):** Der ganze Umbau ist Version 2.0.0, auch #1454 und #1455; siehe „Versionen (neu)“ unten. 1.x (`release/1.2`) bekommt davon nichts.
 3. **Einstellungs-Record und Schema:** a bleiben ganz im Kern (Daten, kein Code; jede neue Moduleinstellung erzwingt Kern- und damit alle Add-on-Bauten; ein fremdes Add-on hätte keine Einstellungen); b je Modul eigener Abschnitt mit Record, Schema-Teil, Migration und Validierung, der Kern speichert Abschnitte generisch. Empfehlung: a für den Pilot, b als vermerkter Schnitt danach.
 4. **Texte:** a je Modul eigenes Enum und eigene Tabelle (`TAtlasDebugTextId`), Sprachwechsel über einen Vertrag; b Schlüssel als `string` mit Registry je Modul. Empfehlung: a.
 5. **`Atlas.IDE.Expert.dproj` im Pilot behalten?** Empfehlung: nur auf `release/1.2`, auf `main` und im Pilot entfernen.
 6. **Regeln 1 bis 9** oben bestätigen oder ändern.
 7. **Quellbaum:** schicht-first wie heute (`Source/{Core,IDE,UI}/<Feature>`) oder package-first (`Packages/Atlas.IDE.Debugger/Source/{Core,IDE,UI}`). Package-first macht die Zuordnung zur Ordnerfrage und vereinfacht das Prüfskript, verschiebt aber viele Dateien. Bis zur Entscheidung werden keine Dateien verschoben, nur `contains` aufgeteilt.
 8. **Prüfregeln nur mit `Atlas.IDE.Rules`:** bestätigen, obwohl IDE und `--check` sich widersprechen können, oder Regeln im Kern laufen lassen und nur die Regelseite ins Add-on legen.
+
+### Versionen (neu, Marco 01.11.2026)
+
+Ersetzt die ersten beiden Punkte unter „Versionen“ oben: Der ganze Umbau erscheint mit **2.0.0**, auch die Modul-Schalter (#1454) und die Verträge (#1455). 1.x (`release/1.2`) bleibt Wartungslinie für Fehlerbehebungen und bekommt nichts davon. Meilenstein auf GitHub: `v2.0.0` mit #1454, #1455, #1456. Der Pilot erscheint weiter als Vorabversion `2.0.0-beta.1`.
