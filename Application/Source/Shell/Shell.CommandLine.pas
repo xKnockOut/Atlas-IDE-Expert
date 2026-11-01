@@ -208,15 +208,25 @@ begin
   Text := AText.Trim.ToLower;
   Result := True;
   if Text = 'debug' then
-    ALevel := TLogLevel.Debug
+  begin
+    ALevel := TLogLevel.Debug;
+  end
   else if Text = 'info' then
-    ALevel := TLogLevel.Info
+  begin
+    ALevel := TLogLevel.Info;
+  end
   else if (Text = 'warning') or (Text = 'warn') then
-    ALevel := TLogLevel.Warning
+  begin
+    ALevel := TLogLevel.Warning;
+  end
   else if Text = 'error' then
-    ALevel := TLogLevel.Error
+  begin
+    ALevel := TLogLevel.Error;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 /// <summary>"-log" und "–log" (Gedankenstrich, z. B. aus Word oder Chat kopiert) gelten als "--log" (#647).</summary>
@@ -224,9 +234,13 @@ function NormalizeDashes(const AArg: string): string;
 begin
   Result := AArg;
   if (Result <> '') and ((Result[1] = #$2013) or (Result[1] = #$2014)) then
-    Result := '--' + Result.Substring(1)
+  begin
+    Result := '--' + Result.Substring(1);
+  end
   else if (Length(Result) > 1) and (Result[1] = '-') and CharInSet(Result[2], ['A'..'Z', 'a'..'z']) then
+  begin
     Result := '-' + Result;
+  end;
 end;
 
 type
@@ -274,7 +288,9 @@ var
   function TakeValue: Boolean;
   begin
     if HasValue then
+    begin
       Exit(True);
+    end;
     if Index < High(AArgs) then
     begin
       Inc(Index);
@@ -339,31 +355,45 @@ begin
 
     Found := False;
     for StringHit in Strings do
+    begin
       if StringHit.Name = Name then
       begin
         Found := True;
         if TakeValue then
+        begin
           StringHit.Target^ := Value;
+        end;
         Break;
       end;
+    end;
     if not Found then
+    begin
       for FlagHit in Flags do
+      begin
         if FlagHit.Name = Name then
         begin
           Found := True;
           FlagHit.Target^ := True;
           Break;
         end;
+      end;
+    end;
 
     if Found then
       // schon erledigt
     else if Name = '--log-level' then
     begin
       if TakeValue then
+      begin
         if TryParseLogLevel(Value, Level) then
-          Result.LogLevel := Level
+        begin
+          Result.LogLevel := Level;
+        end
         else
+        begin
           AddWarning(Format('Unbekannte Log-Stufe "%s", verwendet wird info', [Value]));
+        end;
+      end;
     end
     else if Name = '--format' then
     begin
@@ -372,7 +402,9 @@ begin
         Result.FormatText := Value;
         // diff gibt es nur beim Formatieren (#1358); die Prüfung dort lehnt es ohne --format-check ab.
         if SameText(Value.Trim, 'diff') then
-          Result.FormatDiff := True
+        begin
+          Result.FormatDiff := True;
+        end
         else if TFindingsOutput.TryParseFormat(Value, CheckFormat) then
         begin
           Result.CheckFormat := CheckFormat;
@@ -380,18 +412,24 @@ begin
         end
         // dunitx gibt es nur für --affected-tests (#1353), csv nur für --query (#1351); dort wird der Wert geprüft.
         else if not SameText(Value, 'dunitx') and not SameText(Value, 'csv') then
+        begin
           AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
+        end;
       end;
     end
     else if Name = '--rules' then
     begin
       if TakeValue then
+      begin
         Result.RuleFilter := TFindingFilter.SplitList(Value);
+      end;
     end
     else if Name = '--units' then
     begin
       if TakeValue then
+      begin
         Result.UnitFilter := TFindingFilter.SplitList(Value);
+      end;
     end
     else if Name = '--fix' then
     begin
@@ -399,16 +437,24 @@ begin
       begin
         Result.FixRules := TFindingFilter.SplitList(Value);
         if Result.FixRules = nil then
+        begin
           AddWarning('--fix erwartet Regeln, z. B. --fix redundant-cast oder --fix all');
+        end;
       end;
     end
     else if Name = '--min-severity' then
     begin
       if TakeValue then
+      begin
         if TConfigurationParser.TryParseSeverity(Value, Severity) and (Severity <> TRuleSeverity.Off) then
-          Result.MinSeverity := Severity
+        begin
+          Result.MinSeverity := Severity;
+        end
         else
+        begin
           AddWarning(Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [Value]));
+        end;
+      end;
     end
     else if Name = '--fail-on' then
     begin
@@ -416,10 +462,14 @@ begin
       begin
         Result.FailOnText := Value;
         if TFindingsOutput.TryParseFailOn(Value, FailOn) then
-          Result.FailOn := FailOn
+        begin
+          Result.FailOn := FailOn;
+        end
         // Abweichungsarten für --compare (#1121) prüft der Architekturbericht.
         else if not TArchitectureComparer.ParseKindList(Value, Kinds, KindError) then
+        begin
           AddWarning(Format('Unbekannter Wert "%s" für --fail-on, verwendet wird error', [Value]));
+        end;
       end;
     end
     else if Name = '--changed' then
@@ -427,21 +477,27 @@ begin
       // Basis optional: --changed, --changed=dev oder --changed dev
       Result.ChangedMergeBase := True;
       if HasValue then
-        Result.ChangedRef := Value
+      begin
+        Result.ChangedRef := Value;
+      end
       else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
       begin
         Inc(Index);
         Result.ChangedRef := AArgs[Index];
       end
       else
+      begin
         Result.ChangedRef := DefaultChangedBase;
+      end;
     end
     else if Name = '--affected-tests' then
     begin
       // Basis optional wie bei --changed: --affected-tests, --affected-tests=dev oder --affected-tests dev
       Result.AffectedTests := True;
       if HasValue then
-        Result.AffectedBase := Value
+      begin
+        Result.AffectedBase := Value;
+      end
       else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
       begin
         Inc(Index);
@@ -453,7 +509,9 @@ begin
       // Datei optional: --timings, --timings=profil.md oder --timings profil.md
       Result.Timings := True;
       if HasValue then
-        Result.TimingsFile := Value
+      begin
+        Result.TimingsFile := Value;
+      end
       else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
       begin
         Inc(Index);
@@ -471,15 +529,23 @@ begin
     else if Name = '--clientprocessid' then
     begin
       if TakeValue then
+      begin
         if TryStrToUInt(Value, ProcessId) then
-          Result.ClientProcessId := ProcessId
+        begin
+          Result.ClientProcessId := ProcessId;
+        end
         else
+        begin
           AddWarning(Format('Ungültige Prozess-ID "%s" wird ignoriert', [Value]));
+        end;
+      end;
     end
     else if Name = '--stdio' then
       // von Editoren angehängt, ohne Bedeutung für den Server
     else
+    begin
       AddWarning(Format('Unbekannter Parameter "%s" wird ignoriert', [Arg]));
+    end;
 
     Inc(Index);
   end;
@@ -499,7 +565,9 @@ var
 begin
   SetLength(Args, ParamCount);
   for I := 1 to ParamCount do
+  begin
     Args[I - 1] := ParamStr(I);
+  end;
   Result := Parse(Args);
 end;
 

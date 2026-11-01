@@ -47,21 +47,29 @@ begin
   Handle := CreateFile(PChar(AFileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
     nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0);
   if Handle = INVALID_HANDLE_VALUE then
+  begin
     raise EFOpenError.CreateResFmt(@SFOpenErrorEx, [ExpandFileName(AFileName), SysErrorMessage(GetLastError)]);
+  end;
   try
     Size := FileSeek(Handle, Int64(0), 2);
     if (Size < 0) or (Size > MaxInt) or (FileSeek(Handle, Int64(0), 0) <> 0) then
+    begin
       raise EReadError.CreateRes(@SReadError);
+    end;
     SetLength(Result, Integer(Size));
     Total := 0;
     while Total < Length(Result) do
     begin
       Count := FileRead(Handle, Result[Total], Length(Result) - Total);
       if Count < 0 then
+      begin
         raise EReadError.CreateRes(@SReadError);
+      end;
       // Kürzer geworden (jemand schreibt an Ort und Stelle): lesen, was da ist.
       if Count = 0 then
+      begin
         Break;
+      end;
       Inc(Total, Count);
     end;
     SetLength(Result, Total);

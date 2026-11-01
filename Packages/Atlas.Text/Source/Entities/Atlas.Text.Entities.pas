@@ -24,9 +24,13 @@ uses
 class function TTextEntities.CodePointText(ACode: Integer): string;
 begin
   if (ACode <= 0) or (ACode > $10FFFF) or ((ACode >= $D800) and (ACode <= $DFFF)) then
+  begin
     Exit('');
+  end;
   if ACode <= $FFFF then
+  begin
     Exit(Char(ACode));
+  end;
   Dec(ACode, $10000);
   Result := Char($D800 + (ACode shr 10)) + Char($DC00 + (ACode and $3FF));
 end;
@@ -38,7 +42,9 @@ var
   Builder: TStringBuilder;
 begin
   if Pos('&', AText) = 0 then
+  begin
     Exit(AText);
+  end;
   Builder := TStringBuilder.Create(Length(AText));
   try
     Index := 1;
@@ -52,24 +58,38 @@ begin
           Name := Copy(AText, Index + 1, Close - Index - 1);
           Replacement := '';
           if Name = 'lt' then
-            Replacement := '<'
+          begin
+            Replacement := '<';
+          end
           else if Name = 'gt' then
-            Replacement := '>'
+          begin
+            Replacement := '>';
+          end
           else if Name = 'amp' then
-            Replacement := '&'
+          begin
+            Replacement := '&';
+          end
           else if Name = 'quot' then
-            Replacement := '"'
+          begin
+            Replacement := '"';
+          end
           else if Name = 'apos' then
-            Replacement := ''''
+          begin
+            Replacement := '''';
+          end
           else if (Length(Name) > 2) and ((Name[2] = 'x') or (Name[2] = 'X')) and (Name[1] = '#') then
           begin
             if TryStrToInt('$' + Copy(Name, 3, MaxInt), Code) then
+            begin
               Replacement := CodePointText(Code);
+            end;
           end
           else if (Length(Name) > 1) and (Name[1] = '#') then
           begin
             if TryStrToInt(Copy(Name, 2, MaxInt), Code) then
+            begin
               Replacement := CodePointText(Code);
+            end;
           end;
           if Replacement <> '' then
           begin
