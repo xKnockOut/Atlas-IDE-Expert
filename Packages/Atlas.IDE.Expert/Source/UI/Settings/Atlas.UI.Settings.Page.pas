@@ -2030,7 +2030,7 @@ uses
   Atlas.Core.Commands.ShortcutTips,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
-  Atlas.Core.Build.OpenBuild,
+  Atlas.Core.Build.OpenBuildSettings,
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Settings.Transfer,
@@ -6131,7 +6131,7 @@ const
 procedure TAtlasSettingsPage.AddOpenBuildSection;
 begin
   AddTitle(TAtlasTextId.SettingsOpenBuildTitle);
-  // Reihenfolge: nicht bauen, dann wie TAtlasOpenBuild.KindNames (check, make, build).
+  // Reihenfolge: nicht bauen, dann wie TAtlasOpenBuildSettings.KindNames (check, make, build).
   FOpenBuild := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuild),
     [TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildNone), TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildCheck),
     TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildMake), TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildBuild)]);
@@ -6152,17 +6152,17 @@ var
 begin
   FOpenBuild.Choice := 0;
   if ASettings.BuildOnOpen then
-    for Index := Low(TAtlasOpenBuild.KindNames) to High(TAtlasOpenBuild.KindNames) do
-      if SameText(TAtlasOpenBuild.KindNames[Index],
-        TAtlasOpenBuild.KindName(TAtlasOpenBuild.KindOf(ASettings.BuildOnOpenKind))) then
+    for Index := Low(TAtlasOpenBuildSettings.KindNames) to High(TAtlasOpenBuildSettings.KindNames) do
+      if SameText(TAtlasOpenBuildSettings.KindNames[Index],
+        TAtlasOpenBuildSettings.KindName(TAtlasOpenBuildSettings.KindOf(ASettings.BuildOnOpenKind))) then
         FOpenBuild.Choice := Index + 1;
-  FOpenBuildScope.Choice := Ord(TAtlasOpenBuild.ScopeOf(ASettings.BuildOnOpenScope));
+  FOpenBuildScope.Choice := Ord(TAtlasOpenBuildSettings.ScopeOf(ASettings.BuildOnOpenScope));
   FOpenBuildDelay.Text := IntToStr(ASettings.BuildOnOpenDelayMs);
-  FOpenBuildExclude.Text := TAtlasOpenBuild.NormalizedExclude(ASettings.BuildOnOpenExclude);
+  FOpenBuildExclude.Text := TAtlasOpenBuildSettings.NormalizedExclude(ASettings.BuildOnOpenExclude);
   FOpenBuildConfig.Text := ASettings.BuildOnOpenConfig;
   FOpenBuildPlatform.Choice := 0;
   for Index := 1 to High(OpenBuildPlatforms) do
-    if TAtlasOpenBuild.PickTarget(ASettings.BuildOnOpenPlatform, [OpenBuildPlatforms[Index]]) <> '' then
+    if TAtlasOpenBuildSettings.PickTarget(ASettings.BuildOnOpenPlatform, [OpenBuildPlatforms[Index]]) <> '' then
       FOpenBuildPlatform.Choice := Index;
 end;
 
@@ -6170,13 +6170,13 @@ procedure TAtlasSettingsPage.SaveOpenBuild(var ASettings: TAtlasPluginSettings);
 begin
   // „nicht bauen“ behält die Art für das nächste Einschalten (Schnellschalter).
   ASettings.BuildOnOpen := FOpenBuild.Choice > 0;
-  if (FOpenBuild.Choice > 0) and (FOpenBuild.Choice - 1 <= High(TAtlasOpenBuild.KindNames)) then
-    ASettings.BuildOnOpenKind := TAtlasOpenBuild.KindNames[FOpenBuild.Choice - 1];
+  if (FOpenBuild.Choice > 0) and (FOpenBuild.Choice - 1 <= High(TAtlasOpenBuildSettings.KindNames)) then
+    ASettings.BuildOnOpenKind := TAtlasOpenBuildSettings.KindNames[FOpenBuild.Choice - 1];
   if (FOpenBuildScope.Choice >= Ord(Low(TAtlasOpenBuildScope))) and
     (FOpenBuildScope.Choice <= Ord(High(TAtlasOpenBuildScope))) then
-    ASettings.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope(FOpenBuildScope.Choice)];
+    ASettings.BuildOnOpenScope := TAtlasOpenBuildSettings.ScopeNames[TAtlasOpenBuildScope(FOpenBuildScope.Choice)];
   ASettings.BuildOnOpenDelayMs := StrToIntDef(FOpenBuildDelay.Text, ASettings.BuildOnOpenDelayMs);
-  ASettings.BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(FOpenBuildExclude.Text);
+  ASettings.BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(FOpenBuildExclude.Text);
   ASettings.BuildOnOpenConfig := Trim(FOpenBuildConfig.Text);
   ASettings.BuildOnOpenPlatform := '';
   if (FOpenBuildPlatform.Choice > 0) and (FOpenBuildPlatform.Choice <= High(OpenBuildPlatforms)) then

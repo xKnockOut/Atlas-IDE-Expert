@@ -41,7 +41,8 @@ uses
   PlatformAPI,
   ToolsAPI,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.OpenBuild;
+  Atlas.Core.Build.OpenBuild,
+  Atlas.Core.Build.OpenBuildSettings;
 
 type
   TAtlasIdeOpenBuild = class
@@ -425,7 +426,7 @@ var
   Skip: Boolean;
 begin
   Settings := TAtlasIdeSettings.Current;
-  Scope := TAtlasOpenBuild.ScopeOf(Settings.BuildOnOpenScope);
+  Scope := TAtlasOpenBuildSettings.ScopeOf(Settings.BuildOnOpenScope);
   Files := FCore.Take;
   Candidates := nil;
   Covered := nil;
@@ -457,7 +458,7 @@ begin
     else
       FCore.Retry(FileName, NowMs);
   end;
-  Selected := FCore.Select(Candidates, TAtlasOpenBuild.ParseExclude(Settings.BuildOnOpenExclude));
+  Selected := FCore.Select(Candidates, TAtlasOpenBuildSettings.ParseExclude(Settings.BuildOnOpenExclude));
   Projects := nil;
   Built := nil;
   for FileName in Selected do
@@ -471,7 +472,7 @@ begin
   end;
   if Length(Projects) = 0 then
     Exit;
-  FKind := TAtlasOpenBuild.KindOf(Settings.BuildOnOpenKind);
+  FKind := TAtlasOpenBuildSettings.KindOf(Settings.BuildOnOpenKind);
   Compile(Projects, Built);
 end;
 
@@ -503,20 +504,20 @@ begin
       if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
         for Index := 0 to Configurations.ConfigurationCount - 1 do
           Names := Names + [Configurations.Configurations[Index].Name];
-      Configuration := TAtlasOpenBuild.PickTarget(Settings.BuildOnOpenConfig, Names);
+      Configuration := TAtlasOpenBuildSettings.PickTarget(Settings.BuildOnOpenConfig, Names);
       if Configuration = '' then
         FTargetNotes := FTargetNotes + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTargetMissing,
-          [TAtlasOpenBuild.NameOf(Project.FileName), Settings.BuildOnOpenConfig])];
+          [TAtlasOpenBuildSettings.NameOf(Project.FileName), Settings.BuildOnOpenConfig])];
     end;
     Platform := '';
     if Settings.BuildOnOpenPlatform <> '' then
     begin
       // Nur aktivierte Plattformen, in der Schreibweise des Projekts (auch „Win 64“ trifft Win64).
       if Supports(Project, IOTAProjectPlatforms, Platforms) then
-        Platform := TAtlasOpenBuild.PickTarget(Settings.BuildOnOpenPlatform, Platforms.EnabledPlatforms);
+        Platform := TAtlasOpenBuildSettings.PickTarget(Settings.BuildOnOpenPlatform, Platforms.EnabledPlatforms);
       if Platform = '' then
         FTargetNotes := FTargetNotes + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTargetMissing,
-          [TAtlasOpenBuild.NameOf(Project.FileName), Settings.BuildOnOpenPlatform])];
+          [TAtlasOpenBuildSettings.NameOf(Project.FileName), Settings.BuildOnOpenPlatform])];
     end;
     // Nur für diesen Lauf; über IOTAProject, denn die Hilfsschnittstellen lesen nur (wie der Läufer).
     if ((Configuration <> '') and not SameText(Configuration, Switch.Configuration)) or
@@ -603,7 +604,7 @@ begin
   if SameText(FEvents.RequestedBy, TAtlasOpenBuild.RequestedBy) then
     FEvents.RequestedBy := '';
   Outcome := FCore.RunFinished;
-  Kind := TAtlasOpenBuild.KindName(FKind);
+  Kind := TAtlasOpenBuildSettings.KindName(FKind);
   if Assigned(FReport) then
     FReport(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildReport, [Kind, Outcome.Total, Outcome.Succeeded,
       Outcome.Failed, Outcome.NotBuilt, NowMs - FStartedAt]));

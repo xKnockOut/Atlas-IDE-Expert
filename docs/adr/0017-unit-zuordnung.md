@@ -23,7 +23,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 Ausnahmen:
 
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
-- Aus `Build/` bleibt auch die Build-Pipeline im Kern (#1455, von Marco am 01.11.2026 bestätigt): Läufer der Builds auf Auftrag (`Build.Runner`, MCP `Build.Inbox`), Prüfung vor dem Kompilieren (`Build.Gate`, `Build.IdleGate`), Release-Wächter, Bewertung (`Build.Verdict`, `Build.Summary`) und `IDE.Build.Target`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
+- Aus `Build/` bleibt auch die Build-Pipeline im Kern (#1455, von Marco am 01.11.2026 bestätigt): Läufer der Builds auf Auftrag (`Build.Runner`, MCP `Build.Inbox`), Prüfung vor dem Kompilieren (`Build.Gate`, `Build.IdleGate`), Release-Wächter, Bewertung (`Build.Verdict`, `Build.Summary`) und `IDE.Build.Target`, dazu die Werte der Einstellungen „Bauen beim Öffnen“ (`Build.OpenBuildSettings`). Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
 - Aus `SymbolPath/` liegen das Modell eines Wegs (`Core.SymbolPath.Model`) und seine Kette (`UI.SymbolPath.Chain`) im Kern (#1455): Das Ergebnisfenster von Base zeigt den Weg; Suche, Dialog und Befehle gehören zum Modul Analyse.
 - Aus `StartProfiles/` liegt die lokale Datei (`Core.StartProfiles.Store`) im Kern, dazu `IDE.Foundation.StartOptions` (#1455): Startoptionen schreiben und „Start“ auslösen brauchen die Startprofile (Modul Build) und „Test debuggen“ (Modul Tests); kein Modul kennt das andere.
 - Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
@@ -62,9 +62,7 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 | Von | Nach | Behebt |
 |---|---|---|
 | `Atlas.Core.Projects.Summary` | `Atlas.IDE.Tracker` | CI-Stand (`Atlas.Core.Ci.Contract`) als Vertrag in Contracts oder Base |
-| `Atlas.Core.Settings.Plugin` | `Atlas.IDE.Build` | Einstellungsteil des Moduls Build (Entscheidung 3) |
 | `Atlas.IDE.Settings.Options` | `Atlas.IDE.Tracker` | Einstellungsteil des Moduls Tracker (Entscheidung 3, Paket 2) |
-| `Atlas.UI.Settings.Page` | `Atlas.IDE.Build` | Seiten der Module im Optionsdialog (Entscheidung 3) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Tracker` | Seiten der Module im Optionsdialog (Entscheidung 3, Paket 2) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Welcome` | Seiten der Module im Optionsdialog (Entscheidung 3) |
 | `Atlas.UI.Settings.QueryDialog` | `Atlas.IDE.Tracker` | Abfragedialog gehört zum Modul Tracker (Paket 2) |
@@ -115,6 +113,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.CheckOnSave` | `Core/Build/Atlas.Core.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.Core.Build.OpenBuildSettings` | `Core/Build/Atlas.Core.Build.OpenBuildSettings.pas` | Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455 |
 | `Atlas.Core.Build.Target` | `Core/Build/Atlas.Core.Build.Target.pas` | Konfiguration und Symbole für den Server ({$IFDEF}-Zweige, #615) |
 | `Atlas.Core.Build.Gate` | `Core/Build/Atlas.Core.Build.Gate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |

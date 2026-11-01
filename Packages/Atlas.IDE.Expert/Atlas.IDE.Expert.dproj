@@ -655,6 +655,7 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Gate.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Summary.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.OpenBuild.pas"/>
+        <DCCReference Include="Source\Core\Build\Atlas.Core.Build.OpenBuildSettings.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas"/>
         <DCCReference Include="Source\IDE\BuildTools\Atlas.IDE.BuildTools.Composition.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.IdleGate.pas"/>

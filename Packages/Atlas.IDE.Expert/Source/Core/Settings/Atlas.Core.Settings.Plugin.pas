@@ -1673,7 +1673,7 @@ uses
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
-  Atlas.Core.Build.OpenBuild,
+  Atlas.Core.Build.OpenBuildSettings,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Settings.EventBreakNames,
@@ -2004,9 +2004,9 @@ begin
   Result.CheckOnSaveMaxMs := 1500;
   Result.McpBuild := True;
   Result.BuildOnOpen := False;
-  Result.BuildOnOpenKind := TAtlasOpenBuild.KindName(TAtlasCompileKind.Make);
-  Result.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope.All];
-  Result.BuildOnOpenDelayMs := TAtlasOpenBuild.DefaultDelayMs;
+  Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
+  Result.BuildOnOpenScope := TAtlasOpenBuildSettings.ScopeNames[TAtlasOpenBuildScope.All];
+  Result.BuildOnOpenDelayMs := TAtlasOpenBuildSettings.DefaultDelayMs;
   Result.BuildOnOpenExclude := '';
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
@@ -2482,12 +2482,13 @@ begin
   ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, MinProviderTimeLimit, MaxProviderTimeLimit);
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
-  BuildOnOpenKind := TAtlasOpenBuild.KindName(TAtlasOpenBuild.KindOf(BuildOnOpenKind));
+  BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasOpenBuildSettings.KindOf(BuildOnOpenKind));
   CompletionListMode := Choice(CompletionListMode, CompletionListModeNames);
   CompletionListScope := Choice(CompletionListScope, CompletionListScopeNames);
-  BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuild.ScopeOf(BuildOnOpenScope)];
-  BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuild.MinDelayMs, TAtlasOpenBuild.MaxDelayMs);
-  BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(BuildOnOpenExclude);
+  BuildOnOpenScope := TAtlasOpenBuildSettings.ScopeNames[TAtlasOpenBuildSettings.ScopeOf(BuildOnOpenScope)];
+  BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuildSettings.MinDelayMs,
+    TAtlasOpenBuildSettings.MaxDelayMs);
+  BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(BuildOnOpenExclude);
   BuildOnOpenConfig := Trim(BuildOnOpenConfig);
   BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
