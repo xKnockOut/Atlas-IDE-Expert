@@ -9,7 +9,7 @@
       Atlas.Common.Architecture.MapTemplate mit der Funktion
       ArchitectureMapHtml; TArchitectureReport.Html setzt Titel ({{TITLE}})
       und Daten ({{DATA}}) ein.
-    - Packages/Atlas.IDE.Expert/Source/Core/Results/Aufrufdiagramm.html wird
+    - Packages/Atlas.IDE.Base/Source/Core/Results/Aufrufdiagramm.html wird
       Atlas.Core.Results.CallDiagramTemplate mit der Funktion
       CallDiagramHtml; TAtlasCallDiagram.Html setzt Titel und Daten ein.
     Jede Zeile der Vorlage wird ein Element eines Feldes, lange Zeilen in
@@ -36,7 +36,7 @@ $Templates = @(
     @{ Folder = 'Packages/Atlas.Common/Source/Architecture'; Source = 'Architekturkarte.html';
        Unit = 'Atlas.Common.Architecture.MapTemplate'; Function = 'ArchitectureMapHtml';
        Purpose = 'Vorlage des HTML-Berichts der Architekturübersicht (#1118).' },
-    @{ Folder = 'Packages/Atlas.IDE.Expert/Source/Core/Results'; Source = 'Aufrufdiagramm.html';
+    @{ Folder = 'Packages/Atlas.IDE.Base/Source/Core/Results'; Source = 'Aufrufdiagramm.html';
        Unit = 'Atlas.Core.Results.CallDiagramTemplate'; Function = 'CallDiagramHtml';
        Purpose = 'Vorlage des Aufrufdiagramms als HTML (#1122).' }
 )

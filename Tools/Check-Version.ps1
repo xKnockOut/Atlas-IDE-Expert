@@ -29,7 +29,7 @@ $Server = [regex]::Match((Get-Content -Raw $Unit), "Version\s*=\s*'([^']+)'").Gr
 # Server und IDE-Plugin verweisen auf TAtlasVersion; eine eigene Zeichenkette wäre eine zweite Quelle.
 $Copies = @(
     'Packages/Atlas.Common/Source/Product/Atlas.Common.Product.Version.pas',
-    'Packages/Atlas.IDE.Expert/Source/Core/Product/Atlas.Core.Product.Version.pas'
+    'Packages/Atlas.IDE.Base/Source/Core/Product/Atlas.Core.Product.Version.pas'
 )
 $Changelog = Get-Content -Raw (Join-Path $Root 'CHANGELOG.md')
 $Plugin = (Get-Content -Raw (Join-Path $Root 'Editors/ClaudeCode/atlas/.claude-plugin/plugin.json') | ConvertFrom-Json).version

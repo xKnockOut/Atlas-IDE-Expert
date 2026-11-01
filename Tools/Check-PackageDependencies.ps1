@@ -8,7 +8,7 @@
     - Atlas.Common  : frei von Windows und VCL (nur plattformunabhängige RTL,
         Atlas.Text)
     - Atlas.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Atlas.Common)
-    - Atlas.IDE.Expert (Base, wird Atlas.IDE.Base): eigenständig; darin Schichten (#406):
+    - Atlas.IDE.Base (Kern des Plugins, bis #1456 Atlas.IDE.Expert): eigenständig; darin Schichten (#406):
         Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
     - Atlas.Core.Vcs.* (Versionsverwaltung, #571): übersetzt auch der Server
@@ -99,13 +99,12 @@ $LegacyWindowsUnits = @(
     'WinInet', 'IniFiles'
 )
 
-# Plugin-Packages (#1456, ADR 0017): Base heißt bis zur Umbenennung noch Atlas.IDE.Expert; jedes weitere
+# Plugin-Packages (#1456, ADR 0017): Base ist Atlas.IDE.Base; jedes weitere
 # Packages/Atlas.IDE.* ist ein Modul oder die Verträge (Atlas.IDE.Contracts) mit eigenen Quellen unter Source.
-$PluginBaseFolder = 'Atlas.IDE.Expert'
-if (Test-Path (Join-Path $Root 'Packages/Atlas.IDE.Base')) { $PluginBaseFolder = 'Atlas.IDE.Base' }
+$PluginBaseFolder = 'Atlas.IDE.Base'
 $PluginFolders = @($PluginBaseFolder)
 foreach ($dir in @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' | Sort-Object Name)) {
-    if ($dir.Name -ne $PluginBaseFolder -and $dir.Name -ne 'Atlas.IDE.Expert') { $PluginFolders += $dir.Name }
+    if ($dir.Name -ne $PluginBaseFolder) { $PluginFolders += $dir.Name }
 }
 
 $Packages = @(

@@ -79,7 +79,7 @@ jobs:
         with:
           name: dunitx-ergebnisse
           path: dunitx-ergebnisse.xml
-      # Dateiname je IDE-Version (LIBSUFFIX AUTO), z. B. Atlas.IDE.Expert370.bpl (#281); dazu jedes Modul-Package
+      # Dateiname je IDE-Version (LIBSUFFIX AUTO), z. B. Atlas.IDE.Base370.bpl (#281, bis #1456 Atlas.IDE.Expert370.bpl); dazu jedes Modul-Package
       # (Atlas.IDE.Debugger370.bpl …, #1456).
       - name: Plugin-BPL ablegen (Win32, klassische IDE)
         uses: actions/upload-artifact@v4

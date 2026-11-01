@@ -31,15 +31,17 @@
 
 // Modul Tests (#1456, ADR 0017): Testläufe, betroffene Tests, Test-Linsen und Test am Cursor debuggen.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Tests.Composition über die Registry
-// des Kern-Packages Atlas.IDE.Expert an und lässt sich ohne Neustart der IDE laden und entladen
-// (Regeln 1 bis 4). Requiret nur das Kern-Package, kein anderes Modul (Regel 9).
+// des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
+// (Regeln 1 bis 4). Requiret nur das Kern-Package und
+// Atlas.IDE.Contracts, kein anderes Modul (Regel 9).
 
 requires
   rtl,
   vcl,
   vclwinx,
   designide,
-  Atlas.IDE.Expert;
+  Atlas.IDE.Base,
+  Atlas.IDE.Contracts;
 
 contains
   Atlas.UI.Tests.Strings in 'Source\UI\Tests\Atlas.UI.Tests.Strings.pas',
