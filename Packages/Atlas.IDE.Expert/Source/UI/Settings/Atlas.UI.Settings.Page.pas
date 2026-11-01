@@ -2016,7 +2016,6 @@ uses
   System.StrUtils,
   Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
-  Atlas.Core.Debug.OwnCode,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Projects.Matching,
   Atlas.Core.Problems.InlineHints,
@@ -2032,7 +2031,7 @@ uses
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Build.OpenBuild,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Settings.FolderList,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
@@ -6189,7 +6188,7 @@ begin
   AddTitle(TAtlasTextId.SettingsTasksTitle);
   FTasksEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTasksEnabled));
   FTasksProblemsFromOutput := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTasksProblemsFromOutput));
-  // Reihenfolge wie TAtlasTaskBeforeBuild: off, warn, block.
+  // Reihenfolge wie TasksBeforeBuildNames: off, warn, block.
   FTasksBeforeBuild := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsTasksBeforeBuild),
     [TAtlasStrings.Text(TAtlasTextId.SettingsTasksBeforeBuildOff),
     TAtlasStrings.Text(TAtlasTextId.SettingsTasksBeforeBuildWarn),
@@ -6201,12 +6200,15 @@ end;
 
 procedure TAtlasSettingsPage.LoadTasks(const ASettings: TAtlasPluginSettings);
 var
-  Mode: TAtlasTaskBeforeBuild;
+  mIndex: Integer;
 begin
   FTasksEnabled.Checked := ASettings.TasksEnabled;
   FTasksProblemsFromOutput.Checked := ASettings.TasksProblemsFromOutput;
-  TAtlasTasks.TryBeforeBuild(ASettings.TasksBeforeBuild, Mode);
-  FTasksBeforeBuild.Choice := Ord(Mode);
+  // Unbekannt = „off“ wie beim Lesen der Einstellungen.
+  FTasksBeforeBuild.Choice := 0;
+  for mIndex := Low(TasksBeforeBuildNames) to High(TasksBeforeBuildNames) do
+    if SameText(Trim(ASettings.TasksBeforeBuild), TasksBeforeBuildNames[mIndex]) then
+      FTasksBeforeBuild.Choice := mIndex;
   FTasksSaveBeforeRun.Checked := ASettings.TasksSaveBeforeRun;
   FTasksRunChecksParallel.Checked := ASettings.TasksRunChecksParallel;
   FTasksOnlyFindings.Checked := ASettings.TasksOnlyFindings;
@@ -6216,9 +6218,9 @@ procedure TAtlasSettingsPage.SaveTasks(var ASettings: TAtlasPluginSettings);
 begin
   ASettings.TasksEnabled := FTasksEnabled.Checked;
   ASettings.TasksProblemsFromOutput := FTasksProblemsFromOutput.Checked;
-  if (FTasksBeforeBuild.Choice >= Ord(Low(TAtlasTaskBeforeBuild))) and
-    (FTasksBeforeBuild.Choice <= Ord(High(TAtlasTaskBeforeBuild))) then
-    ASettings.TasksBeforeBuild := TAtlasTasks.BeforeBuildNames[TAtlasTaskBeforeBuild(FTasksBeforeBuild.Choice)];
+  if (FTasksBeforeBuild.Choice >= Low(TasksBeforeBuildNames)) and
+    (FTasksBeforeBuild.Choice <= High(TasksBeforeBuildNames)) then
+    ASettings.TasksBeforeBuild := TasksBeforeBuildNames[FTasksBeforeBuild.Choice];
   ASettings.TasksSaveBeforeRun := FTasksSaveBeforeRun.Checked;
   ASettings.TasksRunChecksParallel := FTasksRunChecksParallel.Checked;
   ASettings.TasksOnlyFindings := FTasksOnlyFindings.Checked;
@@ -9754,8 +9756,7 @@ begin
   ASettings.DebugExceptionBannerIgnoreAtLocation := FDebugExceptionBannerIgnoreAtLocation.Checked;
   ASettings.DebugInlineValues := FDebugInlineValues.Checked;
   ASettings.DebugInlineValuesPerLine := StrToIntDef(FDebugInlineValuesPerLine.Text, ASettings.DebugInlineValuesPerLine);
-  ASettings.DebugOwnCodeFolders := TAtlasDebugOwnCode.FoldersText(TAtlasDebugOwnCode.ParseFolders(
-    FDebugOwnCodeFolders.Text));
+  ASettings.DebugOwnCodeFolders := TAtlasFolderList.Text(FDebugOwnCodeFolders.Text);
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of
