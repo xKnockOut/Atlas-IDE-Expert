@@ -45,6 +45,24 @@ type
   /// <summary>Benachrichtigung an den Client; AParams geht über.</summary>
   TShellCrashNotify = reference to procedure(const AMethod: string; AParams: TJSONObject);
 
+  /// <summary>Angaben zu Server und Client, die jeder Fall mitbekommt.</summary>
+  TShellCrashInfo = record
+    ServerPath: string;
+    AtlasVersion: string;
+    Client: string;
+    /// <summary>Parameter von initialize als JSON-Text; darf fehlen.</summary>
+    Initialize: TFunc<string>;
+  end;
+
+  /// <summary>Testschalter TShellCrashCases.TestVariable: Methode, die künstlich abstürzt ('' = keine).</summary>
+  TShellCrashTest = record
+    Method: string;
+    /// <summary>Als echter Stapelüberlauf statt ECrashTest.</summary>
+    Overflow: Boolean;
+    /// <summary>Künstlicher Absturz in AMethod, wenn sie die Methode des Schalters ist.</summary>
+    procedure Check(const ALogger: ILogger; const AMethod: string);
+  end;
+
   TShellCrashCases = class
   public const
     CaseNotification = 'atlas/crashCase';
@@ -65,25 +83,17 @@ type
     FEnabled: Boolean;
     FSkipEnabled: Boolean;
     FSettingsFiles: TShellCrashSettingsFunc;
-    FInitialize: TFunc<string>;
     FNotify: TShellCrashNotify;
-    FServerPath: string;
-    FAtlasVersion: string;
-    FClient: string;
-    FTestMethod: string;
-    FTestOverflow: Boolean;
+    FInfo: TShellCrashInfo;
+    FTest: TShellCrashTest;
     /// <summary>Überspringen nach Absturz für AMethod an AUri (Guard).</summary>
     procedure CheckSkip(const AMethod, AUri: string);
-    /// <summary>Künstlicher Absturz des Testschalters.</summary>
-    procedure TestCrash(const AMethod: string);
     function NewCase(AKind: TCrashCaseKind; const AMethod, AId, AParams: string): TCrashCase;
     /// <summary>Schreibt den Fall (bei AOverflow im reservierten Thread); '' bei einem Fehler.</summary>
     function Store(const ACase: TCrashCase; AOverflow: Boolean): string;
-    function CurrentText(const AUri: string; out AText: string): Boolean;
     procedure SaveSkips;
     procedure SendCase(const ACase: TCrashCase; const AFolder: string; ASkipping: Boolean);
     procedure SendSkip(const AEntry: TCrashSkipEntry; AActive: Boolean);
-    function SkipsFile: string;
   public
     /// <summary>ARoot: Ordner der Fälle ('' = DefaultRoot). ARecent: die letzten Nachrichten des Dispatchers.
     /// </summary>
@@ -117,16 +127,16 @@ type
     property SkipEnabled: Boolean read FSkipEnabled write FSkipEnabled;
     property SettingsFiles: TShellCrashSettingsFunc read FSettingsFiles write FSettingsFiles;
     /// <summary>Parameter von initialize als JSON-Text.</summary>
-    property Initialize: TFunc<string> read FInitialize write FInitialize;
+    property Initialize: TFunc<string> read FInfo.Initialize write FInfo.Initialize;
     property Notify: TShellCrashNotify read FNotify write FNotify;
-    property ServerPath: string read FServerPath write FServerPath;
-    property AtlasVersion: string read FAtlasVersion write FAtlasVersion;
+    property ServerPath: string read FInfo.ServerPath write FInfo.ServerPath;
+    property AtlasVersion: string read FInfo.AtlasVersion write FInfo.AtlasVersion;
     /// <summary>clientInfo aus initialize, etwa „RAD Studio 37.0“.</summary>
-    property Client: string read FClient write FClient;
+    property Client: string read FInfo.Client write FInfo.Client;
     /// <summary>Testschalter: Methode, die künstlich abstürzt ('' = keine); Vorgabe aus TestVariable.</summary>
-    property TestMethod: string read FTestMethod write FTestMethod;
+    property TestMethod: string read FTest.Method write FTest.Method;
     /// <summary>Testschalter: als echter Stapelüberlauf statt ECrashTest.</summary>
-    property TestOverflow: Boolean read FTestOverflow write FTestOverflow;
+    property TestOverflow: Boolean read FTest.Overflow write FTest.Overflow;
   end;
 
 implementation
@@ -149,6 +159,79 @@ begin
   {$ENDIF}
 end;
 
+function SkipsFileOf(const ARoot: string): string;
+begin
+  Result := TPath.Combine(ARoot, TShellCrashCases.SkipsFileName);
+end;
+
+/// <summary>Text von AUri: aus dem Editor, sonst von der Platte.</summary>
+function CurrentText(const ADocuments: IDocumentStore; const AUri: string; out AText: string): Boolean;
+var
+  mDocument: ITextDocument;
+begin
+  AText := '';
+  if (ADocuments <> nil) and ADocuments.TryGet(AUri, mDocument) then
+  begin
+    AText := mDocument.Text;
+    Exit(True);
+  end;
+  Result := StartsText('file:', AUri) and TShellBootstrap.ReadSourceText(TDocumentUris.ToPath(AUri), AText);
+end;
+
+/// <summary>Datei, Zeile und Text der Anfrage aus AParams (JSON-Text) in ACase.</summary>
+procedure AddDocument(var ACase: TCrashCase; const ADocuments: IDocumentStore; const AParams: string);
+var
+  mParams: TJSONValue;
+  mText: string;
+begin
+  mParams := nil;
+  if AParams <> '' then
+  begin
+    mParams := TCrashCases.ParseOrNil(AParams);
+  end;
+  try
+    if not TCrashCases.DocumentOf(mParams, ACase.Uri, ACase.Line) then
+    begin
+      Exit;
+    end;
+    if StartsText('file:', ACase.Uri) then
+    begin
+      ACase.FileName := TDocumentUris.ToPath(ACase.Uri);
+    end;
+    ACase.HasText := CurrentText(ADocuments, ACase.Uri, mText);
+    if ACase.HasText then
+    begin
+      ACase.Text := mText;
+    end;
+  finally
+    mParams.Free;
+  end;
+end;
+
+/// <summary>Inhalt der lesbaren Einstellungsdateien zu AUri; unlesbare fehlen (Warnung ins Log).</summary>
+function SettingsOf(const ALogger: ILogger; const ASettingsFiles: TShellCrashSettingsFunc;
+  const AUri: string): TArray<TCrashCaseSetting>;
+var
+  mFile: string;
+begin
+  Result := nil;
+  if not Assigned(ASettingsFiles) then
+  begin
+    Exit;
+  end;
+  for mFile in ASettingsFiles(AUri) do
+  begin
+    if (mFile <> '') and TFile.Exists(mFile) then
+      try
+        Result := Result + [TCrashCaseSetting.Create(ExtractFileName(mFile), TFile.ReadAllText(mFile, TEncoding.UTF8))];
+      except
+        // Gesperrt oder unlesbar: der Fall ohne diese Datei.
+        on E: Exception do
+          ALogger.Warning('Absturzfall: Einstellungen nicht lesbar (' + ExtractFileName(mFile) + ')');
+      end;
+  end;
+end;
+
 { TShellCrashCases }
 
 constructor TShellCrashCases.Create(const ARoot: string; const ALogger: ILogger; const ADocuments: IDocumentStore;
@@ -167,24 +250,24 @@ begin
   FSkipEnabled := True;
   FSkips := TCrashSkips.Create;
   try
-    if TFile.Exists(SkipsFile) then
+    if TFile.Exists(SkipsFileOf(FRoot)) then
     begin
-      FSkips.Load(TFile.ReadAllText(SkipsFile, TEncoding.UTF8));
+      FSkips.Load(TFile.ReadAllText(SkipsFileOf(FRoot), TEncoding.UTF8));
     end;
   except
     on E: Exception do
       FLogger.Warning('Absturzfälle: Merker nicht lesbar, beginne leer: ' + E.ClassName);
   end;
   FReserve := TCrashReserve.Create;
-  FTestMethod := GetEnvironmentVariable(TestVariable);
-  FTestOverflow := EndsText(':overflow', FTestMethod);
-  if FTestOverflow then
+  FTest.Method := GetEnvironmentVariable(TestVariable);
+  FTest.Overflow := EndsText(':overflow', FTest.Method);
+  if FTest.Overflow then
   begin
-    FTestMethod := Copy(FTestMethod, 1, Length(FTestMethod) - Length(':overflow'));
+    FTest.Method := Copy(FTest.Method, 1, Length(FTest.Method) - Length(':overflow'));
   end;
-  if FTestMethod <> '' then
+  if FTest.Method <> '' then
   begin
-    FLogger.Warning(Format('Testschalter %s gesetzt: %s stürzt künstlich ab', [TestVariable, FTestMethod]));
+    FLogger.Warning(Format('Testschalter %s gesetzt: %s stürzt künstlich ab', [TestVariable, FTest.Method]));
   end;
 end;
 
@@ -211,29 +294,7 @@ begin
   end;
 end;
 
-function TShellCrashCases.SkipsFile: string;
-begin
-  Result := TPath.Combine(FRoot, SkipsFileName);
-end;
-
-function TShellCrashCases.CurrentText(const AUri: string; out AText: string): Boolean;
-var
-  mDocument: ITextDocument;
-begin
-  AText := '';
-  if (FDocuments <> nil) and FDocuments.TryGet(AUri, mDocument) then
-  begin
-    AText := mDocument.Text;
-    Exit(True);
-  end;
-  Result := StartsText('file:', AUri) and TShellBootstrap.ReadSourceText(TDocumentUris.ToPath(AUri), AText);
-end;
-
 function TShellCrashCases.NewCase(AKind: TCrashCaseKind; const AMethod, AId, AParams: string): TCrashCase;
-var
-  mParams: TJSONValue;
-  mFile: string;
-  mText: string;
 begin
   Result := TCrashCase.Empty;
   Result.Kind := AKind;
@@ -242,54 +303,20 @@ begin
   Result.Method := AMethod;
   Result.Id := AId;
   Result.Params := AParams;
-  Result.AtlasVersion := FAtlasVersion;
+  Result.AtlasVersion := FInfo.AtlasVersion;
   Result.BuildCompiler := BuildCompilerText;
-  Result.Client := FClient;
-  Result.ServerPath := FServerPath;
+  Result.Client := FInfo.Client;
+  Result.ServerPath := FInfo.ServerPath;
   if FRecent <> nil then
   begin
     Result.Recent := FRecent.Last(TJsonRpcRecentMessages.ReportCount);
   end;
-  if Assigned(FInitialize) then
+  if Assigned(FInfo.Initialize) then
   begin
-    Result.Initialize := FInitialize();
+    Result.Initialize := FInfo.Initialize();
   end;
-  mParams := nil;
-  if AParams <> '' then
-  begin
-    mParams := TCrashCases.ParseOrNil(AParams);
-  end;
-  try
-    if TCrashCases.DocumentOf(mParams, Result.Uri, Result.Line) then
-    begin
-      if StartsText('file:', Result.Uri) then
-      begin
-        Result.FileName := TDocumentUris.ToPath(Result.Uri);
-      end;
-      Result.HasText := CurrentText(Result.Uri, mText);
-      if Result.HasText then
-      begin
-        Result.Text := mText;
-      end;
-    end;
-  finally
-    mParams.Free;
-  end;
-  if Assigned(FSettingsFiles) then
-  begin
-    for mFile in FSettingsFiles(Result.Uri) do
-    begin
-      if (mFile <> '') and TFile.Exists(mFile) then
-        try
-          Result.Settings := Result.Settings + [TCrashCaseSetting.Create(ExtractFileName(mFile),
-            TFile.ReadAllText(mFile, TEncoding.UTF8))];
-        except
-          // Gesperrt oder unlesbar: der Fall ohne diese Datei.
-          on E: Exception do
-            FLogger.Warning('Absturzfall: Einstellungen nicht lesbar (' + ExtractFileName(mFile) + ')');
-        end;
-    end;
-  end;
+  AddDocument(Result, FDocuments, AParams);
+  Result.Settings := SettingsOf(FLogger, FSettingsFiles, Result.Uri);
 end;
 
 function TShellCrashCases.Store(const ACase: TCrashCase; AOverflow: Boolean): string;
@@ -402,12 +429,12 @@ end;
 procedure TShellCrashCases.SaveSkips;
 begin
   try
-    if (FSkips.Count = 0) and not TFile.Exists(SkipsFile) then
+    if (FSkips.Count = 0) and not TFile.Exists(SkipsFileOf(FRoot)) then
     begin
       Exit;
     end;
     TDirectory.CreateDirectory(FRoot);
-    TFile.WriteAllText(SkipsFile, FSkips.ToJson, TEncoding.UTF8);
+    TFile.WriteAllText(SkipsFileOf(FRoot), FSkips.ToJson, TEncoding.UTF8);
   except
     on E: Exception do
       FLogger.Warning('Überspringen: Merker nicht gespeichert: ' + E.ClassName);
@@ -517,14 +544,18 @@ begin
   Result := Deeper(ADepth + 1) + mPad[ADepth mod Length(mPad)];
 end;
 
-procedure TShellCrashCases.TestCrash(const AMethod: string);
+procedure TShellCrashTest.Check(const ALogger: ILogger; const AMethod: string);
 begin
-  FLogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TestVariable, AMethod]));
-  if FTestOverflow then
+  if (Method = '') or not SameText(AMethod, Method) then
+  begin
+    Exit;
+  end;
+  ALogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TShellCrashCases.TestVariable, AMethod]));
+  if Overflow then
   begin
     Deeper(0);
   end;
-  raise ECrashTest.Create('Künstlicher Absturz (Testschalter ' + TestVariable + ')');
+  raise ECrashTest.Create('Künstlicher Absturz (Testschalter ' + TShellCrashCases.TestVariable + ')');
 end;
 
 procedure TShellCrashCases.Guard(const AMethod: string; const AParams: TJSONValue);
@@ -538,10 +569,7 @@ begin
   begin
     CheckSkip(AMethod, mUri);
   end;
-  if (FTestMethod <> '') and SameText(AMethod, FTestMethod) then
-  begin
-    TestCrash(AMethod);
-  end;
+  FTest.Check(FLogger, AMethod);
 end;
 
 procedure TShellCrashCases.CheckSkip(const AMethod, AUri: string);
@@ -552,7 +580,7 @@ var
 begin
   mUri := AUri;
   // Erst jetzt die Prüfsumme: nur für Anfragen, die schon einmal an dieser Datei abgestürzt sind.
-  if not CurrentText(mUri, mText) then
+  if not CurrentText(FDocuments, mUri, mText) then
   begin
     mText := '';
   end;
