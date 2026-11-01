@@ -7,12 +7,15 @@
 // jedem Aufruf neu (Regel 2): Fehlt ein Modul oder ist es aus, meldet die
 // Schnellaktion den Grund, statt etwas zu tun. Vorher klebte die
 // Kompositionswurzel diese Verbindungen. Die Einrichtung (#759) bekommt hier
-// die Baseline und „Neu mit Atlas“ (Dateivorlagen von Base).
+// die Baseline und „Neu mit Atlas“ (Dateivorlagen von Base). Notizen und
+// Lesezeichen für den Reiter „Gemerkt“ (#755) kommen vom Modul Lesezeichen
+// (#1456).
 
 interface
 
 uses
   System.SysUtils,
+  Atlas.Core.SavedPlaces.Contract,
   Atlas.IDE.Welcome.QuickActions,
   Atlas.IDE.Welcome.Setup;
 
@@ -29,6 +32,11 @@ type
     class function CreateSetup(const AMessage: TProc<string>): TAtlasIdeSetup; static;
     /// <summary>Läuft gerade ein Testlauf des Moduls Tests?</summary>
     class function TestsBusy: Boolean; static;
+    /// <summary>Notizen und Lesezeichen neben AProjects vom Modul Lesezeichen; leer ohne das Modul.</summary>
+    class function SavedPlaces(const AProjects: TArray<string>): TAtlasSavedPlaces; static;
+    /// <summary>Lesezeichen über das Modul Lesezeichen öffnen (#622); False, wenn es fehlt oder das gerade nicht
+    /// kann: dann öffnet die Seite Datei und Zeile selbst.</summary>
+    class function OpenBookmark(const AProject, AId: string): Boolean; static;
   end;
 
 implementation
@@ -87,6 +95,21 @@ begin
     if not Result then
     begin
       Result := Supports(mItem, IAtlasBuildToolsSource, ATools);
+    end;
+  end;
+end;
+
+function SavedSource(out ASource: IAtlasSavedPlacesSource): Boolean;
+var
+  mItem: IInterface;
+begin
+  ASource := nil;
+  Result := False;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasSavedPlacesSource) do
+  begin
+    if not Result then
+    begin
+      Result := Supports(mItem, IAtlasSavedPlacesSource, ASource);
     end;
   end;
 end;
@@ -270,6 +293,24 @@ end;
 class function TAtlasWelcomeNeighbors.TestsBusy: Boolean;
 begin
   Result := TestsRunning;
+end;
+
+class function TAtlasWelcomeNeighbors.SavedPlaces(const AProjects: TArray<string>): TAtlasSavedPlaces;
+var
+  mSource: IAtlasSavedPlacesSource;
+begin
+  Result := nil;
+  if SavedSource(mSource) then
+  begin
+    Result := mSource.Places(AProjects);
+  end;
+end;
+
+class function TAtlasWelcomeNeighbors.OpenBookmark(const AProject, AId: string): Boolean;
+var
+  mSource: IAtlasSavedPlacesSource;
+begin
+  Result := SavedSource(mSource) and mSource.OpenBookmark(AProject, AId);
 end;
 
 end.

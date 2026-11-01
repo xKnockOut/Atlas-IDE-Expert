@@ -190,8 +190,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Vcs.Contract,
-  Atlas.Core.Notes.Store,
-  Atlas.Core.Bookmarks.Store,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Welcome.Search,
   Atlas.Core.Welcome.IndexFiles,
@@ -203,7 +201,7 @@ uses
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Welcome.Neighbors,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Projects,
@@ -1169,87 +1167,78 @@ begin
   Result := Enabled and TAtlasIdeSettings.Current.WelcomePageSaved;
 end;
 
-function TAtlasIdeContinue.Saved: TAtlasSavedItems;
+/// <summary>Zuletzt geöffnete Projekte, bei Projektgruppen dahinter auch deren Projekte (für die Lesezeichen,
+/// #622).</summary>
+function RecentWithMembers: TArray<string>;
 var
-  Books: TArray<TAtlasNoteBook>;
-  Lists: TArray<TAtlasBookmarkList>;
-  List: TAtlasBookmarkList;
-  Favorites: TAtlasFavorites;
-  Items: TArray<TAtlasFavorite>;
-  Recent, Projects: TArray<string>;
-  Seen: TDictionary<string, Boolean>;
-  Project, Member: string;
-  Shared: Boolean;
+  mRecent: TArray<string>;
+  mProject, mMember: string;
 begin
   Result := nil;
-  if not SavedEnabled then
-    Exit;
-  Books := nil;
-  Lists := nil;
-  Items := nil;
-  // Notizen (#545): alle Notizbücher im Ordner der Notizen.
+  mRecent := nil;
   try
-    Books := TAtlasNotes.LoadAll(TAtlasNotes.DefaultFolder);
+    mRecent := TAtlasIdeWelcomeSearch.RecentProjects;
   except
     on E: Exception do
+    begin
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+    end;
   end;
-  // Lesezeichen (#622): neben den zuletzt geöffneten Projekten; bei Projektgruppen auch neben deren Projekten.
-  Recent := nil;
-  try
-    Recent := TAtlasIdeWelcomeSearch.RecentProjects;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
-  end;
-  Projects := nil;
-  for Project in Recent do
+  for mProject in mRecent do
   begin
-    Projects := Projects + [Project];
-    if SameText(ExtractFileExt(Project), '.groupproj') and FileExists(Project) then
+    Result := Result + [mProject];
+    if SameText(ExtractFileExt(mProject), '.groupproj') and FileExists(mProject) then
+    begin
       try
-        for Member in TAtlasWelcomeSaved.GroupProjects(Project, TAtlasTextFile.LoadText(Project)) do
-          Projects := Projects + [Member];
+        for mMember in TAtlasWelcomeSaved.GroupProjects(mProject, TAtlasTextFile.LoadText(mProject)) do
+        begin
+          Result := Result + [mMember];
+        end;
       except
         // Gruppe nicht lesbar: nur ihr eigener Ordner.
         on E: Exception do
+        begin
           TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
-      end;
-  end;
-  Shared := TAtlasIdeSettings.Current.BookmarksShared;
-  Seen := TDictionary<string, Boolean>.Create;
-  try
-    for Project in Projects do
-    begin
-      if SameText(ExtractFileExt(Project), '.groupproj') or Seen.ContainsKey(Key(Project)) then
-        Continue;
-      Seen.Add(Key(Project), True);
-      try
-        if FileExists(Project) and TAtlasBookmarks.Load(Project, Shared, List) and (List.Count > 0) then
-          Lists := Lists + [List];
-      except
-        on E: Exception do
-          TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+        end;
       end;
     end;
-  finally
-    Seen.Free;
   end;
-  // Favoriten (#458): eigene Instanz, damit die der Vervollständigung unberührt bleibt.
-  Favorites := TAtlasFavorites.Create;
+end;
+
+/// <summary>Angeheftete Favoriten (#458) aus einer eigenen Instanz, damit die der Vervollständigung unberührt
+/// bleibt.</summary>
+function LoadFavorites: TArray<TAtlasFavorite>;
+var
+  mFavorites: TAtlasFavorites;
+begin
+  Result := nil;
+  mFavorites := TAtlasFavorites.Create;
   try
     try
       if FileExists(TAtlasIdeFavorites.FileName) then
-        Favorites.LoadFromFile(TAtlasIdeFavorites.FileName);
-      Items := Favorites.Items;
+      begin
+        mFavorites.LoadFromFile(TAtlasIdeFavorites.FileName);
+      end;
+      Result := mFavorites.Items;
     except
       on E: Exception do
+      begin
         TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+      end;
     end;
   finally
-    Favorites.Free;
+    mFavorites.Free;
   end;
-  Result := TAtlasWelcomeSaved.Collect(Books, Lists, Items);
+end;
+
+function TAtlasIdeContinue.Saved: TAtlasSavedItems;
+begin
+  Result := nil;
+  if SavedEnabled then
+  begin
+    // Notizen (#545) und Lesezeichen (#622) vom Modul Lesezeichen (#1456), Favoriten von Base.
+    Result := TAtlasWelcomeSaved.Collect(TAtlasWelcomeNeighbors.SavedPlaces(RecentWithMembers), LoadFavorites);
+  end;
 end;
 
 class function TAtlasIdeContinue.FileText(const AFileName: string): string;
@@ -1347,9 +1336,8 @@ begin
         Exit;
       end;
       // Lesezeichen mit eingeschalteter Funktion: über #622 (findet die Stelle vor dem Sprung wieder).
-      if (Item.Kind = TAtlasSavedKind.Bookmark) and TAtlasIdeSettings.Current.BookmarksNamed then
+      if (Item.Kind = TAtlasSavedKind.Bookmark) and TAtlasWelcomeNeighbors.OpenBookmark(Item.Project, Item.Id) then
       begin
-        TAtlasIdeBookmarks.OpenBookmark(Item.Project, Item.Id);
         Exit;
       end;
       Line := Item.Line;
