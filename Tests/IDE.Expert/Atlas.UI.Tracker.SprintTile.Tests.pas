@@ -12,7 +12,7 @@ uses
 type
   [TestFixture]
   [Category('Atlas.IDE.Welcome')]
-  TAtlasWelcomeSprintFrameTests = class
+  TAtlasTrackerSprintViewTests = class
   public
     /// <summary>„Sprint 12 · 27.10.–07.11. · noch 4 Tage“, „noch 1 Tag“, „beendet“, „beginnt am …“.</summary>
     [Test]
@@ -138,9 +138,9 @@ begin
   Result.Sprint.Dates := TArray<TDateTime>.Create(EncodeDate(2026, 10, 27), EncodeDate(2026, 10, 28));
 end;
 
-{ TAtlasWelcomeSprintFrameTests }
+{ TAtlasTrackerSprintViewTests }
 
-procedure TAtlasWelcomeSprintFrameTests.HeadingWithDaysLeft;
+procedure TAtlasTrackerSprintViewTests.HeadingWithDaysLeft;
 var
   mSaved: TAtlasLanguage;
   mTile: TAtlasSprintTile;
@@ -152,23 +152,23 @@ begin
     mTile := Running;
     // Ende ist exklusiv: als letzten Tag den davor.
     mRange := Day(mTile.Sprint.Start) + '–' + Day(mTile.Sprint.Finish - OneSecond);
-    Assert.AreEqual('Sprint 12 · ' + mRange + ' · noch 4 Tage', TAtlasWelcomeSprintFrame.HeadingText(mTile));
+    Assert.AreEqual('Sprint 12 · ' + mRange + ' · noch 4 Tage', TAtlasTrackerSprintView.HeadingText(mTile));
     mTile.Sprint.DaysLeft := 1;
-    Assert.AreEqual('Sprint 12 · ' + mRange + ' · noch 1 Tag', TAtlasWelcomeSprintFrame.HeadingText(mTile));
+    Assert.AreEqual('Sprint 12 · ' + mRange + ' · noch 1 Tag', TAtlasTrackerSprintView.HeadingText(mTile));
     mTile.Sprint.DaysLeft := 0;
-    Assert.AreEqual('Sprint 12 · ' + mRange + ' · beendet', TAtlasWelcomeSprintFrame.HeadingText(mTile));
+    Assert.AreEqual('Sprint 12 · ' + mRange + ' · beendet', TAtlasTrackerSprintView.HeadingText(mTile));
     mTile.Sprint.Start := DateOf(NowUtc) + 2;
     mRange := Day(mTile.Sprint.Start) + '–' + Day(mTile.Sprint.Finish - OneSecond);
     Assert.AreEqual('Sprint 12 · ' + mRange + ' · beginnt am ' + Day(mTile.Sprint.Start),
-      TAtlasWelcomeSprintFrame.HeadingText(mTile));
+      TAtlasTrackerSprintView.HeadingText(mTile));
     mTile.Sprint.Known := False;
-    Assert.AreEqual('', TAtlasWelcomeSprintFrame.HeadingText(mTile));
+    Assert.AreEqual('', TAtlasTrackerSprintView.HeadingText(mTile));
   finally
     TAtlasStrings.Language := mSaved;
   end;
 end;
 
-procedure TAtlasWelcomeSprintFrameTests.NumbersInPointsOrIssues;
+procedure TAtlasTrackerSprintViewTests.NumbersInPointsOrIssues;
 var
   mSaved: TAtlasLanguage;
   mTile: TAtlasSprintTile;
@@ -177,25 +177,25 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     mTile := Running;
-    Assert.AreEqual('meine offen', TAtlasWelcomeSprintFrame.NumberCaption(0));
-    Assert.AreEqual('Team übrig', TAtlasWelcomeSprintFrame.NumberCaption(2));
-    Assert.AreEqual('2', TAtlasWelcomeSprintFrame.NumberValue(mTile, 0));
-    Assert.AreEqual('1', TAtlasWelcomeSprintFrame.NumberValue(mTile, 1));
-    Assert.AreEqual('21 Punkte', TAtlasWelcomeSprintFrame.NumberValue(mTile, 2));
+    Assert.AreEqual('meine offen', TAtlasTrackerSprintView.NumberCaption(0));
+    Assert.AreEqual('Team übrig', TAtlasTrackerSprintView.NumberCaption(2));
+    Assert.AreEqual('2', TAtlasTrackerSprintView.NumberValue(mTile, 0));
+    Assert.AreEqual('1', TAtlasTrackerSprintView.NumberValue(mTile, 1));
+    Assert.AreEqual('21 Punkte', TAtlasTrackerSprintView.NumberValue(mTile, 2));
     mTile.Sprint.UsesPoints := False;
     mTile.Sprint.TeamLeft := 3.5;
-    Assert.AreEqual('3,5 Issues', TAtlasWelcomeSprintFrame.NumberValue(mTile, 2));
+    Assert.AreEqual('3,5 Issues', TAtlasTrackerSprintView.NumberValue(mTile, 2));
     // Ohne Anmeldename sind die eigenen Zahlen unbekannt.
     mTile.Sprint.MineKnown := False;
-    Assert.AreEqual('–', TAtlasWelcomeSprintFrame.NumberValue(mTile, 0));
-    Assert.AreEqual('–', TAtlasWelcomeSprintFrame.NumberValue(mTile, 1));
-    Assert.AreEqual('12', TAtlasWelcomeSprintFrame.NumberText(12.02));
+    Assert.AreEqual('–', TAtlasTrackerSprintView.NumberValue(mTile, 0));
+    Assert.AreEqual('–', TAtlasTrackerSprintView.NumberValue(mTile, 1));
+    Assert.AreEqual('12', TAtlasTrackerSprintView.NumberText(12.02));
   finally
     TAtlasStrings.Language := mSaved;
   end;
 end;
 
-procedure TAtlasWelcomeSprintFrameTests.CompareLine;
+procedure TAtlasTrackerSprintViewTests.CompareLine;
 var
   mSaved: TAtlasLanguage;
   mTile: TAtlasSprintTile;
@@ -204,24 +204,24 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     mTile := Running;
-    Assert.AreEqual('', TAtlasWelcomeSprintFrame.CompareText(mTile), 'ohne Vorsprint');
+    Assert.AreEqual('', TAtlasTrackerSprintView.CompareText(mTile), 'ohne Vorsprint');
     mTile.Sprint.HasPrevious := True;
     mTile.Sprint.DoneToday := 5;
     mTile.Sprint.PreviousDone := 4;
-    Assert.AreEqual('erledigt 5 · Vorsprint 4 am selben Tag ▲1', TAtlasWelcomeSprintFrame.CompareText(mTile));
+    Assert.AreEqual('erledigt 5 · Vorsprint 4 am selben Tag ▲1', TAtlasTrackerSprintView.CompareText(mTile));
     mTile.Sprint.PreviousDone := 7;
-    Assert.AreEqual('erledigt 5 · Vorsprint 7 am selben Tag ▼2', TAtlasWelcomeSprintFrame.CompareText(mTile));
+    Assert.AreEqual('erledigt 5 · Vorsprint 7 am selben Tag ▼2', TAtlasTrackerSprintView.CompareText(mTile));
     mTile.Sprint.PreviousDone := 5;
-    Assert.AreEqual('erledigt 5 · Vorsprint 5 am selben Tag =', TAtlasWelcomeSprintFrame.CompareText(mTile));
+    Assert.AreEqual('erledigt 5 · Vorsprint 5 am selben Tag =', TAtlasTrackerSprintView.CompareText(mTile));
     // issues.sprint.compare aus.
     mTile.Compare := False;
-    Assert.AreEqual('', TAtlasWelcomeSprintFrame.CompareText(mTile));
+    Assert.AreEqual('', TAtlasTrackerSprintView.CompareText(mTile));
   finally
     TAtlasStrings.Language := mSaved;
   end;
 end;
 
-procedure TAtlasWelcomeSprintFrameTests.NoticesAndStatus;
+procedure TAtlasTrackerSprintViewTests.NoticesAndStatus;
 var
   mSaved: TAtlasLanguage;
   mTile: TAtlasSprintTile;
@@ -231,37 +231,37 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     mTile := Default(TAtlasSprintTile);
     mTile.Status := TAtlasSprintTileStatus.NoTracker;
-    Assert.AreEqual('Kein Board für dieses Projekt – zuordnen …', TAtlasWelcomeSprintFrame.NoticeText(mTile));
+    Assert.AreEqual('Kein Board für dieses Projekt – zuordnen …', TAtlasTrackerSprintView.NoticeText(mTile));
     mTile.Status := TAtlasSprintTileStatus.NoProject;
-    Assert.AreEqual('Kein Projekt geöffnet.', TAtlasWelcomeSprintFrame.NoticeText(mTile));
+    Assert.AreEqual('Kein Projekt geöffnet.', TAtlasTrackerSprintView.NoticeText(mTile));
     mTile.Status := TAtlasSprintTileStatus.Loading;
-    Assert.AreEqual('Wird geladen …', TAtlasWelcomeSprintFrame.NoticeText(mTile));
+    Assert.AreEqual('Wird geladen …', TAtlasTrackerSprintView.NoticeText(mTile));
     // Nie geladen und keine Antwort: der Grund statt „lädt“, ohne zweite Zeile.
     mTile.Status := TAtlasSprintTileStatus.Failed;
     mTile.Stale := True;
     mTile.Error := TAtlasCiFetchError.Unauthorized;
-    Assert.AreEqual(TAtlasWelcomeSprintFrame.ErrorText(TAtlasCiFetchError.Unauthorized),
-      TAtlasWelcomeSprintFrame.NoticeText(mTile));
-    Assert.AreEqual('', TAtlasWelcomeSprintFrame.StatusText(mTile));
+    Assert.AreEqual(TAtlasTrackerSprintView.ErrorText(TAtlasCiFetchError.Unauthorized),
+      TAtlasTrackerSprintView.NoticeText(mTile));
+    Assert.AreEqual('', TAtlasTrackerSprintView.StatusText(mTile));
     // Mit Stand: lädt bzw. „Stand vom … · Grund“.
     mTile := Running;
-    Assert.AreEqual('', TAtlasWelcomeSprintFrame.NoticeText(mTile));
-    Assert.AreEqual('', TAtlasWelcomeSprintFrame.StatusText(mTile));
+    Assert.AreEqual('', TAtlasTrackerSprintView.NoticeText(mTile));
+    Assert.AreEqual('', TAtlasTrackerSprintView.StatusText(mTile));
     mTile.Loading := True;
-    Assert.AreEqual('Wird geladen …', TAtlasWelcomeSprintFrame.StatusText(mTile));
+    Assert.AreEqual('Wird geladen …', TAtlasTrackerSprintView.StatusText(mTile));
     mTile.Loading := False;
     mTile.Stale := True;
     mTile.Error := TAtlasCiFetchError.Network;
     mTile.Sprint.Fetched := EncodeDateTime(2026, 10, 28, 8, 12, 0, 0);
     Assert.AreEqual('Stand vom ' + FormatDateTime('dd.mm. hh:nn', TTimeZone.Local.ToLocalTime(mTile.Sprint.Fetched)) +
-      ' · ' + TAtlasWelcomeSprintFrame.ErrorText(TAtlasCiFetchError.Network),
-      TAtlasWelcomeSprintFrame.StatusText(mTile));
+      ' · ' + TAtlasTrackerSprintView.ErrorText(TAtlasCiFetchError.Network),
+      TAtlasTrackerSprintView.StatusText(mTile));
   finally
     TAtlasStrings.Language := mSaved;
   end;
 end;
 
-procedure TAtlasWelcomeSprintFrameTests.DayHintWithValues;
+procedure TAtlasTrackerSprintViewTests.DayHintWithValues;
 var
   mSaved: TAtlasLanguage;
   mTile: TAtlasSprintTile;
@@ -270,20 +270,20 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     mTile := Running;
-    Assert.AreEqual('Tag 1 (27.10.): Rest 21 · ideal 15', TAtlasWelcomeSprintFrame.DayHint(mTile, 1));
+    Assert.AreEqual('Tag 1 (27.10.): Rest 21 · ideal 15', TAtlasTrackerSprintView.DayHint(mTile, 1));
     // Künftiger Tag: noch kein Ist-Wert.
-    Assert.AreEqual('Tag 2 (28.10.): Rest – · ideal 0', TAtlasWelcomeSprintFrame.DayHint(mTile, 2));
-    Assert.AreEqual('', TAtlasWelcomeSprintFrame.DayHint(mTile, 3));
-    Assert.AreEqual('', TAtlasWelcomeSprintFrame.DayHint(mTile, -1));
+    Assert.AreEqual('Tag 2 (28.10.): Rest – · ideal 0', TAtlasTrackerSprintView.DayHint(mTile, 2));
+    Assert.AreEqual('', TAtlasTrackerSprintView.DayHint(mTile, 3));
+    Assert.AreEqual('', TAtlasTrackerSprintView.DayHint(mTile, -1));
     mTile.Sprint.HasPrevious := True;
     mTile.Sprint.Previous := TArray<Double>.Create(30, 18, 0);
-    Assert.AreEqual('Tag 1 (27.10.): Rest 21 · ideal 15 · Vorsprint 18', TAtlasWelcomeSprintFrame.DayHint(mTile, 1));
+    Assert.AreEqual('Tag 1 (27.10.): Rest 21 · ideal 15 · Vorsprint 18', TAtlasTrackerSprintView.DayHint(mTile, 1));
   finally
     TAtlasStrings.Language := mSaved;
   end;
 end;
 
-procedure TAtlasWelcomeSprintFrameTests.EnglishTexts;
+procedure TAtlasTrackerSprintViewTests.EnglishTexts;
 var
   mSaved: TAtlasLanguage;
   mTile: TAtlasSprintTile;
@@ -292,29 +292,29 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.English;
     mTile := Running;
-    Assert.EndsWith('4 days left', TAtlasWelcomeSprintFrame.HeadingText(mTile));
-    Assert.AreEqual('21 points', TAtlasWelcomeSprintFrame.NumberValue(mTile, 2));
+    Assert.EndsWith('4 days left', TAtlasTrackerSprintView.HeadingText(mTile));
+    Assert.AreEqual('21 points', TAtlasTrackerSprintView.NumberValue(mTile, 2));
     mTile.Sprint.UsesPoints := False;
     mTile.Sprint.TeamLeft := 3.5;
-    Assert.AreEqual('3.5 issues', TAtlasWelcomeSprintFrame.NumberValue(mTile, 2));
+    Assert.AreEqual('3.5 issues', TAtlasTrackerSprintView.NumberValue(mTile, 2));
     mTile.Sprint.HasPrevious := True;
     mTile.Sprint.DoneToday := 5;
     mTile.Sprint.PreviousDone := 4;
-    Assert.AreEqual('done 5 · previous sprint 4 on the same day ▲1', TAtlasWelcomeSprintFrame.CompareText(mTile));
+    Assert.AreEqual('done 5 · previous sprint 4 on the same day ▲1', TAtlasTrackerSprintView.CompareText(mTile));
     mTile.Status := TAtlasSprintTileStatus.NoTracker;
-    Assert.AreEqual('No board for this project – assign …', TAtlasWelcomeSprintFrame.NoticeText(mTile));
-    Assert.AreEqual('Sprint', TAtlasWelcomeSprintFrame.TitleText);
+    Assert.AreEqual('No board for this project – assign …', TAtlasTrackerSprintView.NoticeText(mTile));
+    Assert.AreEqual('Sprint', TAtlasTrackerSprintView.TitleText);
   finally
     TAtlasStrings.Language := mSaved;
   end;
 end;
 
-procedure TAtlasWelcomeSprintFrameTests.ClicksReachSource;
+procedure TAtlasTrackerSprintViewTests.ClicksReachSource;
 var
   mHost: TForm;
   mFake: TFakeSprint;
   mSource: IAtlasSprintSource;
-  mFrame: TAtlasWelcomeSprintFrame;
+  mFrame: TAtlasTrackerSprintView;
   mRect: TRect;
 begin
   mFake := TFakeSprint.Create;
@@ -322,7 +322,7 @@ begin
   mHost := TForm.CreateNew(nil);
   try
     mFake.FTile := Running;
-    mFrame := TAtlasWelcomeSprintFrame.Create(mHost);
+    mFrame := TAtlasTrackerSprintView.Create(mHost);
     mFrame.Parent := mHost;
     mFrame.Width := 600;
     mFrame.Source := mSource;
@@ -364,6 +364,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TAtlasWelcomeSprintFrameTests);
+  TDUnitX.RegisterTestFixture(TAtlasTrackerSprintViewTests);
 
 end.

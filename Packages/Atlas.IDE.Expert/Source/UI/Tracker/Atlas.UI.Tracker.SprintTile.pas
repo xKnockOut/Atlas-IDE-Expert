@@ -27,7 +27,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Sprint,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Style.Canvas,
+  Atlas.UI.Tracker.TileView;
 
 type
 {$SCOPEDENUMS ON}
@@ -64,7 +65,7 @@ type
     procedure AssignProject;
   end;
 
-  TAtlasWelcomeSprintFrame = class(TAtlasWelcomeSectionFrame)
+  TAtlasTrackerSprintView = class(TAtlasTrackerTileView)
   public const
     Indent = 8;
     HeadHeight = 22;
@@ -78,7 +79,7 @@ type
     EmptyHeight = 40;
   private
     FSource: IAtlasSprintSource;
-    FBox: TAtlasWelcomeCanvas;
+    FBox: TAtlasStyledCanvas;
     FTile: TAtlasSprintTile;
     FHintKey: string;
     FContentHeight: Integer;
@@ -92,10 +93,9 @@ type
     procedure PaintNumbers(ACanvas: TCanvas; AWidth: Integer);
     procedure PaintChart(ACanvas: TCanvas; const ARect: TRect);
     procedure PaintVelocity(ACanvas: TCanvas; const ARect: TRect);
-  protected
-    function BodyHeight: Integer; override;
   public
     constructor Create(AOwner: TComponent); override;
+    function BodyHeight: Integer; override;
     procedure UpdateContent; override;
     /// <summary>Zeilen von oben: Kopf, Zahlen, Vergleich, Diagramm, Stand (Breite AWidth).</summary>
     function NumberRect(AIndex, AWidth: Integer): TRect;
@@ -126,7 +126,7 @@ type
     class function ErrorText(AError: TAtlasCiFetchError): string; static;
     property Source: IAtlasSprintSource read FSource write SetSource;
     property Tile: TAtlasSprintTile read FTile;
-    property PaintBox: TAtlasWelcomeCanvas read FBox;
+    property PaintBox: TAtlasStyledCanvas read FBox;
   end;
 
 implementation
@@ -159,27 +159,27 @@ begin
   Result := FormatDateTime('dd.mm.', TTimeZone.Local.ToLocalTime(AUtc));
 end;
 
-{ TAtlasWelcomeSprintFrame }
+{ TAtlasTrackerSprintView }
 
-constructor TAtlasWelcomeSprintFrame.Create(AOwner: TComponent);
+constructor TAtlasTrackerSprintView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FBox := TAtlasWelcomeCanvas.Create(Self);
-  FBox.Parent := Body;
+  FBox := TAtlasStyledCanvas.Create(Self);
+  FBox.Parent := Self;
   FBox.Align := alClient;
   FBox.ShowHint := True;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
   FBox.OnMouseUp := BoxMouseUp;
-  Body.OnResize := BodyResize;
+  OnResize := BodyResize;
 end;
 
-class function TAtlasWelcomeSprintFrame.TitleText: string;
+class function TAtlasTrackerSprintView.TitleText: string;
 begin
   Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintTitle);
 end;
 
-procedure TAtlasWelcomeSprintFrame.SetSource(const AValue: IAtlasSprintSource);
+procedure TAtlasTrackerSprintView.SetSource(const AValue: IAtlasSprintSource);
 begin
   FSource := AValue;
   UpdateContent;
@@ -187,7 +187,7 @@ begin
     FSource.Shown;
 end;
 
-procedure TAtlasWelcomeSprintFrame.UpdateContent;
+procedure TAtlasTrackerSprintView.UpdateContent;
 var
   mOldHeight: Integer;
 begin
@@ -202,7 +202,7 @@ begin
     HeightChanged;
 end;
 
-procedure TAtlasWelcomeSprintFrame.BodyResize(Sender: TObject);
+procedure TAtlasTrackerSprintView.BodyResize(Sender: TObject);
 var
   mOldHeight: Integer;
 begin
@@ -212,18 +212,18 @@ begin
     HeightChanged;
 end;
 
-function TAtlasWelcomeSprintFrame.BodyHeight: Integer;
+function TAtlasTrackerSprintView.BodyHeight: Integer;
 begin
   FContentHeight := HeightFor(ClientWidth);
   Result := FContentHeight;
 end;
 
-function TAtlasWelcomeSprintFrame.CompareTop: Integer;
+function TAtlasTrackerSprintView.CompareTop: Integer;
 begin
   Result := ScaleValue(HeadHeight) + ScaleValue(NumberHeight) + ScaleValue(NumberGap);
 end;
 
-function TAtlasWelcomeSprintFrame.ChartRect(AWidth: Integer): TRect;
+function TAtlasTrackerSprintView.ChartRect(AWidth: Integer): TRect;
 var
   mTop: Integer;
 begin
@@ -236,12 +236,12 @@ begin
     mTop + ScaleValue(4) + ScaleValue(ChartHeight));
 end;
 
-function TAtlasWelcomeSprintFrame.StatusTop(AWidth: Integer): Integer;
+function TAtlasTrackerSprintView.StatusTop(AWidth: Integer): Integer;
 begin
   Result := ChartRect(AWidth).Bottom + ScaleValue(4);
 end;
 
-function TAtlasWelcomeSprintFrame.HeightFor(AWidth: Integer): Integer;
+function TAtlasTrackerSprintView.HeightFor(AWidth: Integer): Integer;
 begin
   if FTile.Status <> TAtlasSprintTileStatus.Ready then
   begin
@@ -255,7 +255,7 @@ begin
     Inc(Result, ScaleValue(StatusHeight));
 end;
 
-function TAtlasWelcomeSprintFrame.NumberRect(AIndex, AWidth: Integer): TRect;
+function TAtlasTrackerSprintView.NumberRect(AIndex, AWidth: Integer): TRect;
 var
   mWidth, mLeft: Integer;
 begin
@@ -264,7 +264,7 @@ begin
   Result := Rect(mLeft, ScaleValue(HeadHeight), mLeft + mWidth, ScaleValue(HeadHeight) + ScaleValue(NumberHeight));
 end;
 
-class function TAtlasWelcomeSprintFrame.NumberText(AValue: Double): string;
+class function TAtlasTrackerSprintView.NumberText(AValue: Double): string;
 var
   mSettings: TFormatSettings;
 begin
@@ -278,7 +278,7 @@ begin
     Result := FormatFloat('0.0', AValue, mSettings);
 end;
 
-class function TAtlasWelcomeSprintFrame.HeadingText(const ATile: TAtlasSprintTile): string;
+class function TAtlasTrackerSprintView.HeadingText(const ATile: TAtlasSprintTile): string;
 var
   mDays: string;
   mNow: TDateTime;
@@ -300,7 +300,7 @@ begin
     LocalDay(ATile.Sprint.Finish - OneSecond) + ' · ' + mDays;
 end;
 
-class function TAtlasWelcomeSprintFrame.ErrorText(AError: TAtlasCiFetchError): string;
+class function TAtlasTrackerSprintView.ErrorText(AError: TAtlasCiFetchError): string;
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
@@ -314,7 +314,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSprintFrame.NoticeText(const ATile: TAtlasSprintTile): string;
+class function TAtlasTrackerSprintView.NoticeText(const ATile: TAtlasSprintTile): string;
 begin
   case ATile.Status of
     TAtlasSprintTileStatus.NoProject:
@@ -335,7 +335,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSprintFrame.StatusText(const ATile: TAtlasSprintTile): string;
+class function TAtlasTrackerSprintView.StatusText(const ATile: TAtlasSprintTile): string;
 begin
   Result := '';
   if ATile.Loading and (ATile.Status = TAtlasSprintTileStatus.Ready) then
@@ -347,7 +347,7 @@ begin
     Result := ErrorText(ATile.Error);
 end;
 
-class function TAtlasWelcomeSprintFrame.CompareText(const ATile: TAtlasSprintTile): string;
+class function TAtlasTrackerSprintView.CompareText(const ATile: TAtlasSprintTile): string;
 var
   mDelta: Double;
   mArrow: string;
@@ -366,7 +366,7 @@ begin
     NumberText(ATile.Sprint.PreviousDone), mArrow]);
 end;
 
-class function TAtlasWelcomeSprintFrame.NumberCaption(AIndex: Integer): string;
+class function TAtlasTrackerSprintView.NumberCaption(AIndex: Integer): string;
 begin
   case AIndex of
     0:
@@ -378,7 +378,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSprintFrame.NumberValue(const ATile: TAtlasSprintTile; AIndex: Integer): string;
+class function TAtlasTrackerSprintView.NumberValue(const ATile: TAtlasSprintTile; AIndex: Integer): string;
 begin
   case AIndex of
     0, 1:
@@ -402,7 +402,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSprintFrame.DayHint(const ATile: TAtlasSprintTile; ADay: Integer): string;
+class function TAtlasTrackerSprintView.DayHint(const ATile: TAtlasSprintTile; ADay: Integer): string;
 var
   mLeft, mDate: string;
 begin
@@ -423,7 +423,7 @@ begin
       [NumberText(ATile.Sprint.Previous[ADay])]);
 end;
 
-function TAtlasWelcomeSprintFrame.DayAt(X, AWidth: Integer): Integer;
+function TAtlasTrackerSprintView.DayAt(X, AWidth: Integer): Integer;
 var
   mArea: TRect;
   mCount: Integer;
@@ -438,7 +438,7 @@ begin
   Result := EnsureRange(Round((X - mArea.Left) * (mCount - 1) / mArea.Width), 0, mCount - 1);
 end;
 
-function TAtlasWelcomeSprintFrame.HitTest(X, Y: Integer): TAtlasSprintHitKind;
+function TAtlasTrackerSprintView.HitTest(X, Y: Integer): TAtlasSprintHitKind;
 var
   mWidth, mIndex: Integer;
   mPoint: TPoint;
@@ -480,13 +480,13 @@ begin
     Result := TAtlasSprintHitKind.Chart;
 end;
 
-procedure TAtlasWelcomeSprintFrame.Post(const AAction: TThreadProcedure);
+procedure TAtlasTrackerSprintView.Post(const AAction: TThreadProcedure);
 begin
   // Die Quelle füllt Bereiche danach neu: nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, AAction);
 end;
 
-procedure TAtlasWelcomeSprintFrame.ClickAt(AKind: TAtlasSprintHitKind);
+procedure TAtlasTrackerSprintView.ClickAt(AKind: TAtlasSprintHitKind);
 var
   mSource: IAtlasSprintSource;
 begin
@@ -529,7 +529,7 @@ begin
   end;
 end;
 
-procedure TAtlasWelcomeSprintFrame.PaintNumbers(ACanvas: TCanvas; AWidth: Integer);
+procedure TAtlasTrackerSprintView.PaintNumbers(ACanvas: TCanvas; AWidth: Integer);
 var
   mIndex, mPad: Integer;
   mRect: TRect;
@@ -568,7 +568,7 @@ begin
   ACanvas.Font.Assign(Font);
 end;
 
-procedure TAtlasWelcomeSprintFrame.PaintChart(ACanvas: TCanvas; const ARect: TRect);
+procedure TAtlasTrackerSprintView.PaintChart(ACanvas: TCanvas; const ARect: TRect);
 var
   mSprint: TAtlasSprintView;
   mTop, mValue: Double;
@@ -668,7 +668,7 @@ begin
   ACanvas.Pen.Width := 1;
 end;
 
-procedure TAtlasWelcomeSprintFrame.PaintVelocity(ACanvas: TCanvas; const ARect: TRect);
+procedure TAtlasTrackerSprintView.PaintVelocity(ACanvas: TCanvas; const ARect: TRect);
 var
   mIndex, mLeft, mHeight, mBar: Integer;
   mTop: Double;
@@ -704,7 +704,7 @@ begin
   ACanvas.Font.Assign(Font);
 end;
 
-procedure TAtlasWelcomeSprintFrame.BoxPaint(Sender: TObject);
+procedure TAtlasTrackerSprintView.BoxPaint(Sender: TObject);
 var
   mCanvas: TCanvas;
   mWidth, mTop: Integer;
@@ -767,7 +767,7 @@ begin
   mCanvas.Font.Assign(Font);
 end;
 
-procedure TAtlasWelcomeSprintFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasTrackerSprintView.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
   mHit: TAtlasSprintHitKind;
   mDay: Integer;
@@ -807,7 +807,7 @@ begin
   Application.CancelHint;
 end;
 
-procedure TAtlasWelcomeSprintFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
+procedure TAtlasTrackerSprintView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
   Y: Integer);
 begin
   if Button = mbLeft then

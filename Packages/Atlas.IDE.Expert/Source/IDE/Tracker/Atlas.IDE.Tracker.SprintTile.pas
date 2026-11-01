@@ -32,8 +32,8 @@ uses
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Vcs.Worker,
-  Atlas.Core.Welcome.Sections,
-  Atlas.UI.Tracker.SprintTile;
+  Atlas.UI.Tracker.SprintTile,
+  Atlas.IDE.Tracker.WelcomeLink;
 
 type
   TAtlasSprintProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -56,10 +56,14 @@ type
     CanAssign: TFunc<Boolean>;
     /// <summary>„zuordnen …“ (#1261).</summary>
     Assign: TProc;
+    /// <summary>Meldungen an die Willkommensseite (gehört dem Aufrufer); nil ohne.</summary>
+    Welcome: TAtlasTrackerWelcomeLink;
   end;
 
   TAtlasIdeSprint = class(TInterfacedObject, IAtlasSprintSource)
   public const
+    /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite.</summary>
+    TileId = 'atlas.sprint';
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts: direkt nach „Meine Issues“.</summary>
     Order = 27;
     /// <summary>Name des Zwischenspeichers für den aktuellen Sprint bzw. die Arbeitstage.</summary>
@@ -88,7 +92,8 @@ type
     FError: TAtlasCiFetchError;
     FLoadedTick: UInt64;
     procedure Changed;
-    procedure RegisterSection;
+    /// <summary>Titel oder Schalter der Kachel geändert: der Willkommensseite melden.</summary>
+    procedure UpdateTileInfo;
     function CurrentTarget(out ATarget: TAtlasTrackerTarget): Boolean;
     procedure Prepare(const ATarget: TAtlasTrackerTarget);
     procedure Load(AForce: Boolean);
@@ -102,16 +107,15 @@ type
     /// <summary>ACacheFolder: Ordner des Zwischenspeichers ('' = keiner).</summary>
     constructor Create(const AHooks: TAtlasSprintHooks; const ACacheFolder: string);
     destructor Destroy; override;
-    /// <summary>Bereich und Fabrik anmelden.</summary>
+    /// <summary>Starten; die Kachel stellt die Komposition bereit.</summary>
     procedure Start;
-    /// <summary>Abbrechen, Bereich abmelden, Hooks lösen; danach wirkungslos.</summary>
+    /// <summary>Abbrechen, Hooks lösen; danach wirkungslos.</summary>
     procedure Stop;
     /// <summary>Nach geänderten Einstellungen oder anderem Projekt: Sichtbarkeit, Titel und Inhalt neu.</summary>
     procedure Refresh;
     /// <summary>Nach einer Abfrage von „Meine Issues“ (#765): laden, wenn fällig; AForce bei „Jetzt abfragen“.
     /// </summary>
     procedure IssuesFetched(AForce: Boolean);
-    function Section: TAtlasWelcomeSection;
     /// <summary>welcomePage.sprint an?</summary>
     class function Active: Boolean; static;
     /// <summary>Zusammenfassung des abgeschlossenen Sprints ASprintId aus dem Zwischenspeicher; False ohne
@@ -142,7 +146,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.Board;
 
@@ -174,24 +177,14 @@ begin
 end;
 
 procedure TAtlasIdeSprint.Start;
-var
-  mKeep: IAtlasSprintSource;
 begin
   if FStarted then
+  begin
     Exit;
+  end;
   FStarted := True;
-  mKeep := Self;
-  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.Sprint,
-    function(AOwner: TComponent): TAtlasWelcomeSectionFrame
-    var
-      mFrame: TAtlasWelcomeSprintFrame;
-    begin
-      mFrame := TAtlasWelcomeSprintFrame.Create(AOwner);
-      mFrame.Source := mKeep;
-      Result := mFrame;
-    end);
   FTitle := '';
-  RegisterSection;
+  UpdateTileInfo;
 end;
 
 procedure TAtlasIdeSprint.Stop;
@@ -202,8 +195,6 @@ begin
   Inc(FGeneration);
   CancelLoad;
   FWorker.Stop(1000);
-  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Sprint);
-  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Sprint);
   // Die Hooks halten den Bereich „Meine Issues“: Stop löst den Ring.
   FHooks := Default(TAtlasSprintHooks);
 end;
@@ -215,48 +206,34 @@ begin
   FCancel := nil;
 end;
 
-function TAtlasIdeSprint.Section: TAtlasWelcomeSection;
-begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Sprint, TAtlasWelcomeSprintFrame.TitleText, Order,
-    TAtlasWelcomeColumn.Right,
-    function: Boolean
-    begin
-      Result := Active;
-    end);
-end;
-
-procedure TAtlasIdeSprint.RegisterSection;
-var
-  mNext: TAtlasWelcomeSection;
-begin
-  if not FStarted then
-    Exit;
-  mNext := Section;
-  // Nur beim ersten Mal bzw. nach einem Sprachwechsel: Add meldet allen Beobachtern.
-  if mNext.Title <> FTitle then
-  begin
-    FTitle := mNext.Title;
-    FActive := Active;
-    TAtlasWelcomeSections.Default.Add(mNext);
-  end;
-end;
-
-procedure TAtlasIdeSprint.Refresh;
+procedure TAtlasIdeSprint.UpdateTileInfo;
 var
   mTitle: string;
 begin
   if not FStarted then
-    Exit;
-  mTitle := FTitle;
-  RegisterSection;
-  if mTitle <> FTitle then
-    Exit;
-  // welcomePage.sprint umgeschaltet: Auswahl der Bereiche neu; sonst nur der Inhalt.
-  if FActive <> Active then
   begin
-    FActive := Active;
-    TAtlasWelcomeSections.Default.Changed;
+    Exit;
   end;
+  mTitle := TAtlasTrackerSprintView.TitleText;
+  // Nur beim ersten Mal, nach einem Sprachwechsel bzw. mit umgeschaltetem welcomePage.sprint.
+  if (mTitle <> FTitle) or (FActive <> Active) then
+  begin
+    FTitle := mTitle;
+    FActive := Active;
+    if FHooks.Welcome <> nil then
+    begin
+      FHooks.Welcome.TileInfoChanged(TileId);
+    end;
+  end;
+end;
+
+procedure TAtlasIdeSprint.Refresh;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  UpdateTileInfo;
   // Anderes Projekt bzw. andere Zuordnung: Stand aus dem Zwischenspeicher des neuen Trackers.
   FPrepared := False;
   Changed;
@@ -264,8 +241,10 @@ end;
 
 procedure TAtlasIdeSprint.Changed;
 begin
-  if FStarted then
-    TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Sprint);
+  if FStarted and (FHooks.Welcome <> nil) then
+  begin
+    FHooks.Welcome.TileChanged(TileId);
+  end;
 end;
 
 function TAtlasIdeSprint.CurrentTarget(out ATarget: TAtlasTrackerTarget): Boolean;
@@ -342,7 +321,7 @@ end;
 
 function TAtlasIdeSprint.Due(const ATarget: TAtlasTrackerTarget): Boolean;
 begin
-  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasWelcomeIssues.DueMinutes) * 60000) or
+  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasMyIssues.DueMinutes) * 60000) or
     (TAtlasIdeSettings.Current.IssuesSprintCompare and not FWithPrevious);
 end;
 

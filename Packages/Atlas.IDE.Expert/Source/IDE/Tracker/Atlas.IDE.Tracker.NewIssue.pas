@@ -74,7 +74,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Vcs.Contract,
-  Atlas.Core.Welcome.Continue,
+  Atlas.Core.Editor.MethodToggle,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -473,7 +473,7 @@ begin
   mContext.FileName := mView.Buffer.FileName;
   mContext.Line := mView.CursorPos.Line;
   mContext.Lines := TTextLines.SplitLines(mText);
-  mContext.Method := TAtlasWelcomeContinue.MethodAt(mText, mContext.Line);
+  mContext.Method := TAtlasMethodToggle.MethodNameAt(mText, mContext.Line);
   mBlock := mView.Block;
   if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) then
   begin

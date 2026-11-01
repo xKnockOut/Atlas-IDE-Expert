@@ -148,7 +148,7 @@ type
     MaxCiIntervalMinutes = 1440;
     /// <summary>Vorgabe für welcomePage.tests.ci.provider (#763).</summary>
     DefaultCiProvider = 'jenkins';
-    /// <summary>Werte von issues.start (#765); wie TAtlasWelcomeIssues.StartName.</summary>
+    /// <summary>Werte von issues.start (#765); wie TAtlasMyIssues.StartName.</summary>
     IssuesStartBranch = 'branch';
     IssuesStartRemember = 'remember';
     /// <summary>Vorgabe für issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
