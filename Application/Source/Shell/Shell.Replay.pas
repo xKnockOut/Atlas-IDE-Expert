@@ -198,16 +198,51 @@ begin
   Result := TJSONObject(FMessages[mIndex].Clone);
 end;
 
+/// <summary>Ist AMessage die Antwort des Servers auf die nachgestellte Anfrage?</summary>
+function IsRequestAnswer(const AMessage: TJSONObject): Boolean;
+var
+  mId: TJSONValue;
+begin
+  mId := AMessage.GetValue('id');
+  Result := (mId is TJSONString) and (mId.Value = cRequestId) and (AMessage.GetValue('method') = nil);
+end;
+
+/// <summary>Art einer $/progress-Meldung (begin, report, end; '' ohne); False bei anderen Nachrichten.</summary>
+function ProgressKind(const AMessage: TJSONObject; out AKind: string): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AKind := '';
+  mValue := AMessage.GetValue('method');
+  Result := (mValue is TJSONString) and (mValue.Value = '$/progress');
+  if not Result then
+  begin
+    Exit;
+  end;
+  mValue := AMessage.GetValue('params');
+  if mValue is TJSONObject then
+  begin
+    mValue := TJSONObject(mValue).GetValue('value');
+  end;
+  if mValue is TJSONObject then
+  begin
+    mValue := TJSONObject(mValue).GetValue('kind');
+  end;
+  if mValue is TJSONString then
+  begin
+    AKind := mValue.Value;
+  end;
+end;
+
 procedure TReplayTransport.WriteMessage(const AMessage: TJSONObject);
 var
-  mId, mValue, mKind: TJSONValue;
+  mKind: string;
 begin
   if AMessage = nil then
   begin
     Exit;
   end;
-  mId := AMessage.GetValue('id');
-  if (mId is TJSONString) and (mId.Value = cRequestId) and (AMessage.GetValue('method') = nil) then
+  if IsRequestAnswer(AMessage) then
   begin
     System.TMonitor.Enter(FLock);
     try
@@ -221,36 +256,23 @@ begin
     FAnswered.SetEvent;
     Exit;
   end;
-  mValue := AMessage.GetValue('method');
-  if (mValue is TJSONString) and (mValue.Value = '$/progress') then
+  if not ProgressKind(AMessage, mKind) then
   begin
-    mKind := nil;
-    mValue := AMessage.GetValue('params');
-    if mValue is TJSONObject then
+    Exit;
+  end;
+  System.TMonitor.Enter(FLock);
+  try
+    FLastProgress := TThread.GetTickCount64;
+    if mKind = 'begin' then
     begin
-      mValue := TJSONObject(mValue).GetValue('value');
-      if mValue is TJSONObject then
-      begin
-        mKind := TJSONObject(mValue).GetValue('kind');
-      end;
+      Inc(FOpenProgress);
+    end
+    else if mKind = 'end' then
+    begin
+      Dec(FOpenProgress);
     end;
-    System.TMonitor.Enter(FLock);
-    try
-      FLastProgress := TThread.GetTickCount64;
-      if mKind is TJSONString then
-      begin
-        if mKind.Value = 'begin' then
-        begin
-          Inc(FOpenProgress);
-        end
-        else if mKind.Value = 'end' then
-        begin
-          Dec(FOpenProgress);
-        end;
-      end;
-    finally
-      System.TMonitor.Exit(FLock);
-    end;
+  finally
+    System.TMonitor.Exit(FLock);
   end;
 end;
 
@@ -423,20 +445,165 @@ begin
   end;
 end;
 
+type
+  /// <summary>Was das Nachstellen eines Falls vorbereitet: Ordner, Einstellungen, Dokument und Anfrage.</summary>
+  TReplaySetup = record
+    Folder: string;
+    SettingsFile: string;
+    Uri: string;
+    /// <summary>Im Originalordner des Falls statt in einer Kopie.</summary>
+    Original: Boolean;
+    Initialize: TJSONValue;
+    Params: TJSONValue;
+  end;
+
+/// <summary>JSON aus AText; nil bei '' oder ungültigem Text.</summary>
+function ParseOrNilText(const AText: string): TJSONValue;
+begin
+  Result := nil;
+  if AText <> '' then
+  begin
+    Result := TCrashCases.ParseOrNil(AText);
+  end;
+end;
+
+function NewReplayFolder: string;
+begin
+  Result := TPath.Combine(TPath.GetTempPath, 'Atlas' + PathDelim + 'replay' + PathDelim +
+    FormatDateTime('yyyymmdd"-"hhnnsszzz', Now) + '-' + IntToStr(Random(1000000)));
+end;
+
+/// <summary>Schreibt die Einstellungsdatei AName des Falls nach AFolder; False, wenn der Fall keine hat.</summary>
+function WriteCaseSetting(const ACase: TCrashCase; const AName, AFolder: string): Boolean;
+var
+  mSetting: TCrashCaseSetting;
+begin
+  Result := False;
+  for mSetting in ACase.Settings do
+  begin
+    if SameText(mSetting.Name, AName) then
+    begin
+      TFile.WriteAllText(TPath.Combine(AFolder, AName), mSetting.Text, TEncoding.UTF8);
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>settings.json des Falls (ohne: leer) in AFolder; liefert den Pfad.</summary>
+function WriteSettingsFile(const ACase: TCrashCase; const AFolder: string): string;
+begin
+  Result := TPath.Combine(AFolder, 'settings.json');
+  if not WriteCaseSetting(ACase, 'settings.json', AFolder) then
+  begin
+    TFile.WriteAllText(Result, '{}', TEncoding.UTF8);
+  end;
+end;
+
+/// <summary>Eigener Ordner mit Schnappschuss und atlas.json des Falls; Uri und Params zeigen danach auf die Kopie.
+/// </summary>
+procedure IsolateCase(const ACase: TCrashCase; var ASetup: TReplaySetup);
+var
+  mFileName: string;
+begin
+  WriteCaseSetting(ACase, 'atlas.json', ASetup.Folder);
+  mFileName := ACase.SnapshotName;
+  if mFileName = '' then
+  begin
+    mFileName := TCrashCases.BufferName;
+  end;
+  mFileName := TPath.Combine(ASetup.Folder, mFileName);
+  if ACase.HasText then
+  begin
+    TFile.WriteAllText(mFileName, ACase.Text, TEncoding.UTF8);
+  end;
+  if ASetup.Uri = '' then
+  begin
+    Exit;
+  end;
+  if ASetup.Params <> nil then
+  begin
+    ReplaceStrings(ASetup.Params, ASetup.Uri, TDocumentUris.FromPath(mFileName));
+  end;
+  ASetup.Uri := TDocumentUris.FromPath(mFileName);
+end;
+
+function DidOpenMessage(const AUri, AText: string): TJSONObject;
+var
+  mDocument: TJSONObject;
+begin
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('languageId', 'pascal');
+  mDocument.AddPair('version', TJSONNumber.Create(1));
+  mDocument.AddPair('text', AText);
+  Result := NewMessage('', 'textDocument/didOpen', TJSONObject.Create(TJSONPair.Create('textDocument', mDocument)));
+end;
+
+/// <summary>Die Nachrichten des Nachstellens; ASetup.Params geht in die Anfrage über (danach nil).</summary>
+function ReplayMessages(const ACase: TCrashCase; var ASetup: TReplaySetup; out ARequestIndex: Integer):
+  TArray<TJSONObject>;
+var
+  mInitialize: TJSONObject;
+begin
+  if ASetup.Original then
+  begin
+    mInitialize := OriginalInitialize(ASetup.Initialize);
+  end
+  else
+  begin
+    mInitialize := IsolatedInitialize(ASetup.Folder, ASetup.Initialize);
+  end;
+  Result := TArray<TJSONObject>.Create(NewMessage(cInitializeId, 'initialize', mInitialize),
+    NewMessage('', 'initialized', TJSONObject.Create));
+  if ACase.HasText and (ASetup.Uri <> '') then
+  begin
+    Result := Result + [DidOpenMessage(ASetup.Uri, ACase.Text)];
+  end;
+  ARequestIndex := Length(Result);
+  Result := Result + [NewMessage(cRequestId, ACase.Method, ASetup.Params)];
+  ASetup.Params := nil;
+  Result := Result + [NewMessage(cShutdownId, 'shutdown', nil), NewMessage('', 'exit', nil)];
+end;
+
+/// <summary>Ergebnis aus der Antwort auf die Anfrage des Falls.</summary>
+procedure Judge(const ACase: TCrashCase; ATransport: TReplayTransport; var AResult: TReplayResult);
+var
+  mAnswer: TJSONObject;
+  mDetail: string;
+begin
+  mAnswer := ATransport.TakeAnswer;
+  try
+    AResult.Outcome := TReplayOutcome.NotReproduced;
+    if TShellReplay.Reproduces(ACase, mAnswer, mDetail) then
+    begin
+      AResult.Outcome := TReplayOutcome.Reproduced;
+    end;
+    AResult.Detail := mDetail;
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+procedure DeleteReplayFolder(const AFolder: string);
+begin
+  try
+    TDirectory.Delete(AFolder, True);
+  except
+    // Noch gesperrt (Index-Threads): bleibt im Temp-Ordner liegen.
+    on Exception do
+      ;
+  end;
+end;
+
 class function TShellReplay.Run(const ACase: TCrashCase; APlace: TReplayPlace; const ALogger: ILogger;
   const AServer: TReplayServer): TReplayResult;
 var
-  mFolder, mUri, mSettingsFile, mFileName: string;
-  mInitialize, mParams: TJSONValue;
-  mSetting: TCrashCaseSetting;
-  mMessages: TArray<TJSONObject>;
+  mSetup: TReplaySetup;
   mTransport: TReplayTransport;
   mTransportRef: IJsonRpcTransport;
-  mDocument: TJSONObject;
-  mAnswer: TJSONObject;
   mLogger: ILogger;
-  mDetail: string;
   mRequestIndex: Integer;
+  mMessages: TArray<TJSONObject>;
 begin
   Result := Default(TReplayResult);
   Result.Outcome := TReplayOutcome.Unreadable;
@@ -445,112 +612,30 @@ begin
   begin
     mLogger := TLogger.Create;
   end;
-  mInitialize := nil;
-  if ACase.Initialize <> '' then
-  begin
-    mInitialize := TCrashCases.ParseOrNil(ACase.Initialize);
-  end;
-  mParams := nil;
-  if ACase.Params <> '' then
-  begin
-    mParams := TCrashCases.ParseOrNil(ACase.Params);
-  end;
-  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas' + PathDelim + 'replay' + PathDelim +
-    FormatDateTime('yyyymmdd"-"hhnnsszzz', Now) + '-' + IntToStr(Random(1000000)));
+  mSetup := Default(TReplaySetup);
+  mSetup.Initialize := ParseOrNilText(ACase.Initialize);
+  mSetup.Params := ParseOrNilText(ACase.Params);
+  mSetup.Folder := NewReplayFolder;
   try
-    TDirectory.CreateDirectory(mFolder);
-    mSettingsFile := TPath.Combine(mFolder, 'settings.json');
-    TFile.WriteAllText(mSettingsFile, '{}', TEncoding.UTF8);
-    for mSetting in ACase.Settings do
-    begin
-      if SameText(mSetting.Name, 'settings.json') then
-      begin
-        TFile.WriteAllText(mSettingsFile, mSetting.Text, TEncoding.UTF8);
-      end;
-    end;
-    Result.Original := (APlace = TReplayPlace.Automatic) and (mInitialize is TJSONObject) and
+    TDirectory.CreateDirectory(mSetup.Folder);
+    mSetup.SettingsFile := WriteSettingsFile(ACase, mSetup.Folder);
+    mSetup.Original := (APlace = TReplayPlace.Automatic) and (mSetup.Initialize is TJSONObject) and
       (ACase.FileName <> '') and TFile.Exists(ACase.FileName);
-    mUri := ACase.Uri;
-    if not Result.Original then
+    Result.Original := mSetup.Original;
+    mSetup.Uri := ACase.Uri;
+    if not mSetup.Original then
     begin
-      // Eigener Ordner mit Schnappschuss und atlas.json des Falls; die Anfrage zeigt auf die Kopie.
-      for mSetting in ACase.Settings do
-      begin
-        if SameText(mSetting.Name, 'atlas.json') then
-        begin
-          TFile.WriteAllText(TPath.Combine(mFolder, 'atlas.json'), mSetting.Text, TEncoding.UTF8);
-        end;
-      end;
-      mFileName := ACase.SnapshotName;
-      if mFileName = '' then
-      begin
-        mFileName := TCrashCases.BufferName;
-      end;
-      mFileName := TPath.Combine(mFolder, mFileName);
-      if ACase.HasText then
-      begin
-        TFile.WriteAllText(mFileName, ACase.Text, TEncoding.UTF8);
-      end;
-      if (mUri <> '') and (mParams <> nil) then
-      begin
-        ReplaceStrings(mParams, mUri, TDocumentUris.FromPath(mFileName));
-      end;
-      if mUri <> '' then
-      begin
-        mUri := TDocumentUris.FromPath(mFileName);
-      end;
+      IsolateCase(ACase, mSetup);
     end;
-    mMessages := nil;
-    if Result.Original then
-    begin
-      mMessages := mMessages + [NewMessage(cInitializeId, 'initialize', OriginalInitialize(mInitialize))];
-    end
-    else
-    begin
-      mMessages := mMessages + [NewMessage(cInitializeId, 'initialize', IsolatedInitialize(mFolder, mInitialize))];
-    end;
-    mMessages := mMessages + [NewMessage('', 'initialized', TJSONObject.Create)];
-    if ACase.HasText and (mUri <> '') then
-    begin
-      mDocument := TJSONObject.Create;
-      mDocument.AddPair('uri', mUri);
-      mDocument.AddPair('languageId', 'pascal');
-      mDocument.AddPair('version', TJSONNumber.Create(1));
-      mDocument.AddPair('text', ACase.Text);
-      mMessages := mMessages + [NewMessage('', 'textDocument/didOpen',
-        TJSONObject.Create(TJSONPair.Create('textDocument', mDocument)))];
-    end;
-    mRequestIndex := Length(mMessages);
-    mMessages := mMessages + [NewMessage(cRequestId, ACase.Method, mParams)];
-    mParams := nil;
-    mMessages := mMessages + [NewMessage(cShutdownId, 'shutdown', nil), NewMessage('', 'exit', nil)];
+    mMessages := ReplayMessages(ACase, mSetup, mRequestIndex);
     mTransport := TReplayTransport.Create(mMessages, mRequestIndex, AnswerMs + 2 * ACase.TimeoutMs);
     mTransportRef := mTransport;
-    AServer(mTransportRef, mLogger, mSettingsFile);
-    mAnswer := mTransport.TakeAnswer;
-    try
-      if Reproduces(ACase, mAnswer, mDetail) then
-      begin
-        Result.Outcome := TReplayOutcome.Reproduced;
-      end
-      else
-      begin
-        Result.Outcome := TReplayOutcome.NotReproduced;
-      end;
-      Result.Detail := mDetail;
-    finally
-      mAnswer.Free;
-    end;
+    AServer(mTransportRef, mLogger, mSetup.SettingsFile);
+    Judge(ACase, mTransport, Result);
   finally
-    mParams.Free;
-    mInitialize.Free;
-    try
-      TDirectory.Delete(mFolder, True);
-    except
-      // Noch gesperrt (Index-Threads): bleibt im Temp-Ordner liegen.
-      on Exception do
-        ;
-    end;
+    mSetup.Params.Free;
+    mSetup.Initialize.Free;
+    DeleteReplayFolder(mSetup.Folder);
   end;
 end;
 
