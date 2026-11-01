@@ -257,7 +257,8 @@ begin
     mTile.Stale := True;
     mTile.Error := TAtlasCiFetchError.Network;
     mTile.Sprint.Fetched := EncodeDateTime(2026, 10, 28, 8, 12, 0, 0);
-    Assert.AreEqual('Stand vom ' + FormatDateTime('dd.mm. hh:nn', TTimeZone.Local.ToLocalTime(mTile.Sprint.Fetched)) +
+    Assert.AreEqual('Stand vom ' + FormatDateTime('dd.mm. hh:nn', TTimeZone.Local.ToLocalTime(mTile.Sprint.Fetched),
+      FormatSettings) +
       ' · ' + TAtlasTrackerSprintView.ErrorText(TAtlasCiFetchError.Network),
       TAtlasTrackerSprintView.StatusText(mTile));
   finally

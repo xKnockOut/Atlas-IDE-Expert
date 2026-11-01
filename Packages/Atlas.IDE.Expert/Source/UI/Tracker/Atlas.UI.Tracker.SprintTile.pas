@@ -89,7 +89,7 @@ type
     procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure BodyResize(Sender: TObject);
     function HeightFor(AWidth: Integer): Integer;
-    procedure Post(const AAction: TThreadProcedure);
+    class procedure Post(const AAction: TThreadProcedure); static;
     procedure PaintNumbers(ACanvas: TCanvas; AWidth: Integer);
     procedure PaintChart(ACanvas: TCanvas; const ARect: TRect);
     procedure PaintVelocity(ACanvas: TCanvas; const ARect: TRect);
@@ -140,23 +140,198 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.UI.Strings;
 
+const
+  cFullPercent = 100;
+  /// <summary>Drei Zahlen nebeneinander: meine offen, meine erledigt, Team übrig.</summary>
+  cNumberCount = 3;
+  cTeamLeftIndex = 2;
+  /// <summary>Gleichstand bzw. ganze Zahl bis auf diese Abweichung.</summary>
+  cWholeTolerance = 0.05;
+  cDayFormat = 'dd.mm.';
+  cStaleFormat = 'dd.mm. hh:nn';
+  cHintKeyFormat = '%d:%d';
+  cPartSeparator = ' · ';
+  cRangeSeparator = '–';
+  cUnknownValue = '–';
+  cEqualMark = '=';
+  cUpMark = '▲';
+  cDownMark = '▼';
+  /// <summary>Text zum Messen der Zeilenhöhe der Beschriftung.</summary>
+  cMeasureText = 'Ag';
+  // Abstände in logischen Pixeln.
+  cChartGap = 4;
+  cHeadTextTop = 3;
+  cNumberPad = 8;
+  cNumberRadius = 8;
+  cCaptionTop = 4;
+  cValueTop = 20;
+  cValueFontGrow = 3;
+  cDotRadius = 3;
+  cVelocityBarGap = 3;
+  cVelocityCaptionGap = 6;
+  // Anteile der Vordergrundfarbe in Prozent.
+  cFramePercent = 35;
+  cBaselinePercent = 40;
+  cPreviousPercent = 45;
+  cTodayPercent = 60;
+  cVelocityMinPercent = 50;
+
 /// <summary>Mischfarbe: APercent Prozent von AFore auf ABack.</summary>
 function Blend(AFore, ABack: TColor; APercent: Integer): TColor;
 var
-  mFore, mBack: Integer;
-  mR, mG, mB: Integer;
+  mFore, mBack, mResult: TColorRec;
 begin
-  mFore := ColorToRGB(AFore);
-  mBack := ColorToRGB(ABack);
-  mR := ((mFore and $FF) * APercent + (mBack and $FF) * (100 - APercent)) div 100;
-  mG := (((mFore shr 8) and $FF) * APercent + ((mBack shr 8) and $FF) * (100 - APercent)) div 100;
-  mB := (((mFore shr 16) and $FF) * APercent + ((mBack shr 16) and $FF) * (100 - APercent)) div 100;
-  Result := TColor(mR or (mG shl 8) or (mB shl 16));
+  mFore.Color := TColor(ColorToRGB(AFore));
+  mBack.Color := TColor(ColorToRGB(ABack));
+  mResult.Color := 0;
+  mResult.R := (mFore.R * APercent + mBack.R * (cFullPercent - APercent)) div cFullPercent;
+  mResult.G := (mFore.G * APercent + mBack.G * (cFullPercent - APercent)) div cFullPercent;
+  mResult.B := (mFore.B * APercent + mBack.B * (cFullPercent - APercent)) div cFullPercent;
+  Result := mResult.Color;
 end;
 
 function LocalDay(AUtc: TDateTime): string;
 begin
-  Result := FormatDateTime('dd.mm.', TTimeZone.Local.ToLocalTime(AUtc));
+  Result := FormatDateTime(cDayFormat, TTimeZone.Local.ToLocalTime(AUtc), FormatSettings);
+end;
+
+type
+  /// <summary>Burndown-Diagramm einer Zeichnung: Skala, Farben und die Linien.</summary>
+  TAtlasSprintChart = record
+    Canvas: TCanvas;
+    Area: TRect;
+    Sprint: TAtlasSprintView;
+    Compare: Boolean;
+    Count: Integer;
+    Top: Double;
+    Wide: Integer;
+    Dot: Integer;
+    LineColor, MutedColor, BackColor, TextColor: TColor;
+    function PointOf(ADay: Integer; AValue: Double): TPoint;
+    function LineOf(const AValues: TArray<Double>): TArray<TPoint>;
+    procedure Scale;
+    procedure PaintPrevious;
+    procedure PaintIdeal;
+    procedure PaintActual;
+    procedure PaintToday;
+  end;
+
+function TAtlasSprintChart.PointOf(ADay: Integer; AValue: Double): TPoint;
+begin
+  Result.X := Area.Left;
+  if Count > 1 then
+  begin
+    Result.X := Area.Left + Round(ADay * Area.Width / (Count - 1));
+  end;
+  Result.Y := Area.Bottom - Round(EnsureRange(AValue / Top, 0, 1) * Area.Height);
+end;
+
+function TAtlasSprintChart.LineOf(const AValues: TArray<Double>): TArray<TPoint>;
+var
+  mDay: Integer;
+begin
+  Result := nil;
+  for mDay := 0 to Min(High(AValues), Count - 1) do
+  begin
+    Result := Result + [PointOf(mDay, AValues[mDay])];
+  end;
+end;
+
+procedure TAtlasSprintChart.Scale;
+var
+  mValue: Double;
+begin
+  // Eine Skala für alle Linien: der größte Wert, mindestens 1.
+  Top := 1;
+  for mValue in Sprint.Ideal do
+  begin
+    Top := Max(Top, mValue);
+  end;
+  for mValue in Sprint.Actual do
+  begin
+    Top := Max(Top, mValue);
+  end;
+  if Compare then
+  begin
+    for mValue in Sprint.Previous do
+    begin
+      Top := Max(Top, mValue);
+    end;
+  end;
+end;
+
+procedure TAtlasSprintChart.PaintPrevious;
+var
+  mPoints: TArray<TPoint>;
+begin
+  // Vorsprint blass.
+  if Compare and Sprint.HasPrevious then
+  begin
+    mPoints := LineOf(Sprint.Previous);
+    if Length(mPoints) > 1 then
+    begin
+      Canvas.Pen.Color := Blend(MutedColor, BackColor, cPreviousPercent);
+      Canvas.Pen.Width := Wide;
+      Canvas.Polyline(mPoints);
+    end;
+  end;
+end;
+
+procedure TAtlasSprintChart.PaintIdeal;
+var
+  mPoints: TArray<TPoint>;
+begin
+  // Ideallinie gestrichelt (Stiftbreite 1, sonst zeichnet Windows durchgezogen).
+  mPoints := LineOf(Sprint.Ideal);
+  if Length(mPoints) > 1 then
+  begin
+    Canvas.Pen.Width := 1;
+    Canvas.Pen.Style := psDash;
+    Canvas.Pen.Color := MutedColor;
+    Canvas.Brush.Style := bsClear;
+    Canvas.Polyline(mPoints);
+    Canvas.Pen.Style := psSolid;
+  end;
+end;
+
+procedure TAtlasSprintChart.PaintActual;
+var
+  mPoints: TArray<TPoint>;
+  mLast: TPoint;
+  mRadius: Integer;
+begin
+  mPoints := LineOf(Sprint.Actual);
+  Canvas.Pen.Color := LineColor;
+  Canvas.Pen.Width := Wide;
+  if Length(mPoints) > 1 then
+  begin
+    Canvas.Polyline(mPoints);
+  end;
+  if Length(mPoints) > 0 then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := LineColor;
+    mLast := mPoints[High(mPoints)];
+    mRadius := Dot;
+    Canvas.Ellipse(mLast.X - mRadius, mLast.Y - mRadius, mLast.X + mRadius + 1, mLast.Y + mRadius + 1);
+    Canvas.Brush.Style := bsClear;
+  end;
+end;
+
+procedure TAtlasSprintChart.PaintToday;
+var
+  mX: Integer;
+begin
+  if (Sprint.Today >= 0) and (Sprint.Today < Count) then
+  begin
+    mX := PointOf(Sprint.Today, 0).X;
+    Canvas.Pen.Width := 1;
+    Canvas.Pen.Style := psDot;
+    Canvas.Pen.Color := Blend(TextColor, BackColor, cTodayPercent);
+    Canvas.MoveTo(mX, Area.Top);
+    Canvas.LineTo(mX, Area.Bottom);
+    Canvas.Pen.Style := psSolid;
+  end;
 end;
 
 { TAtlasTrackerSprintView }
@@ -240,17 +415,20 @@ begin
   begin
     Inc(mTop, ScaleValue(cCompareHeight));
   end;
-  if not FTile.Burndown then
+  if FTile.Burndown then
   begin
-    Exit(Rect(ScaleValue(cIndent), mTop, AWidth - ScaleValue(cIndent), mTop));
+    Inc(mTop, ScaleValue(cChartGap));
+    Result := Rect(ScaleValue(cIndent), mTop, AWidth - ScaleValue(cIndent), mTop + ScaleValue(cChartHeight));
+  end
+  else
+  begin
+    Result := Rect(ScaleValue(cIndent), mTop, AWidth - ScaleValue(cIndent), mTop);
   end;
-  Result := Rect(ScaleValue(cIndent), mTop + ScaleValue(4), AWidth - ScaleValue(cIndent),
-    mTop + ScaleValue(4) + ScaleValue(cChartHeight));
 end;
 
 function TAtlasTrackerSprintView.StatusTop(AWidth: Integer): Integer;
 begin
-  Result := ChartRect(AWidth).Bottom + ScaleValue(4);
+  Result := ChartRect(AWidth).Bottom + ScaleValue(cChartGap);
 end;
 
 function TAtlasTrackerSprintView.HeightFor(AWidth: Integer): Integer;
@@ -275,7 +453,7 @@ function TAtlasTrackerSprintView.NumberRect(AIndex, AWidth: Integer): TRect;
 var
   mWidth, mLeft: Integer;
 begin
-  mWidth := (AWidth - 2 * ScaleValue(cIndent) - 2 * ScaleValue(cNumberGap)) div 3;
+  mWidth := (AWidth - 2 * ScaleValue(cIndent) - (cNumberCount - 1) * ScaleValue(cNumberGap)) div cNumberCount;
   mLeft := ScaleValue(cIndent) + AIndex * (mWidth + ScaleValue(cNumberGap));
   Result := Rect(mLeft, ScaleValue(cHeadHeight), mLeft + mWidth, ScaleValue(cHeadHeight) + ScaleValue(cNumberHeight));
 end;
@@ -290,7 +468,7 @@ begin
     mSettings.DecimalSeparator := ',';
   end;
   // Ganze Zahlen ohne Nachkommastelle, sonst eine.
-  if SameValue(AValue, Round(AValue), 0.05) then
+  if SameValue(AValue, Round(AValue), cWholeTolerance) then
   begin
     Result := IntToStr(Round(AValue));
   end
@@ -328,8 +506,8 @@ begin
     mDays := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDaysLeft, [ATile.Sprint.DaysLeft]);
   end;
   // Ende ist exklusiv (Mitternacht danach): als letzten Tag den davor zeigen.
-  Result := ATile.Sprint.Name + ' · ' + LocalDay(ATile.Sprint.Start) + '–' +
-    LocalDay(ATile.Sprint.Finish - OneSecond) + ' · ' + mDays;
+  Result := ATile.Sprint.Name + cPartSeparator + LocalDay(ATile.Sprint.Start) + cRangeSeparator +
+    LocalDay(ATile.Sprint.Finish - OneSecond) + cPartSeparator + mDays;
 end;
 
 class function TAtlasTrackerSprintView.ErrorText(AError: TAtlasCiFetchError): string;
@@ -376,8 +554,8 @@ begin
   end;
   if ATile.Stale and (ATile.Sprint.Fetched > 0) then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintStale, [FormatDateTime('dd.mm. hh:nn',
-      TTimeZone.Local.ToLocalTime(ATile.Sprint.Fetched)), ErrorText(ATile.Error)]);
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintStale, [FormatDateTime(cStaleFormat,
+      TTimeZone.Local.ToLocalTime(ATile.Sprint.Fetched), FormatSettings), ErrorText(ATile.Error)]);
   end
   else if ATile.Stale and not (ATile.Status in [TAtlasSprintTileStatus.Loading, TAtlasSprintTileStatus.Failed]) then
   begin
@@ -396,17 +574,17 @@ begin
     Exit;
   end;
   mDelta := ATile.Sprint.DoneToday - ATile.Sprint.PreviousDone;
-  if SameValue(mDelta, 0, 0.05) then
+  if SameValue(mDelta, 0, cWholeTolerance) then
   begin
-    mArrow := '=';
+    mArrow := cEqualMark;
   end
   else if mDelta > 0 then
   begin
-    mArrow := '▲' + NumberText(mDelta);
+    mArrow := cUpMark + NumberText(mDelta);
   end
   else
   begin
-    mArrow := '▼' + NumberText(-mDelta);
+    mArrow := cDownMark + NumberText(-mDelta);
   end;
   Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintCompare, [NumberText(ATile.Sprint.DoneToday),
     NumberText(ATile.Sprint.PreviousDone), mArrow]);
@@ -432,7 +610,7 @@ begin
         // Ohne Anmeldename sind „meine“ Zahlen unbekannt.
         if not ATile.Sprint.MineKnown then
         begin
-          Exit('–');
+          Exit(cUnknownValue);
         end;
         if AIndex = 0 then
         begin
@@ -467,7 +645,7 @@ begin
   begin
     Exit;
   end;
-  mLeft := '–';
+  mLeft := cUnknownValue;
   if ADay <= High(ATile.Sprint.Actual) then
   begin
     mLeft := NumberText(ATile.Sprint.Actual[ADay]);
@@ -476,13 +654,13 @@ begin
   mDate := LocalDay(ATile.Sprint.Start);
   if (ADay > 0) and (ADay <= Length(ATile.Sprint.Dates)) then
   begin
-    mDate := FormatDateTime('dd.mm.', ATile.Sprint.Dates[ADay - 1]);
+    mDate := FormatDateTime(cDayFormat, ATile.Sprint.Dates[ADay - 1], FormatSettings);
   end;
   Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDayHint, [ADay, mDate, mLeft,
     NumberText(ATile.Sprint.Ideal[ADay])]);
   if ATile.Compare and ATile.Sprint.HasPrevious and (ADay <= High(ATile.Sprint.Previous)) then
   begin
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDayHintPrevious,
+    Result := Result + cPartSeparator + TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDayHintPrevious,
       [NumberText(ATile.Sprint.Previous[ADay])]);
   end;
 end;
@@ -506,65 +684,79 @@ begin
   Result := EnsureRange(Round((AX - mArea.Left) * (mCount - 1) / mArea.Width), 0, mCount - 1);
 end;
 
-function TAtlasTrackerSprintView.HitTest(AX, AY: Integer): TAtlasSprintHitKind;
-var
-  mWidth, mIndex: Integer;
-  mPoint: TPoint;
+/// <summary>Treffer in der Zahl AIndex; „meine“ nur mit bekanntem Anmeldenamen.</summary>
+function NumberHit(const ATile: TAtlasSprintTile; AIndex: Integer): TAtlasSprintHitKind;
 begin
   Result := TAtlasSprintHitKind.None;
-  mWidth := ClientWidth;
-  mPoint := Point(AX, AY);
+  if AIndex = cTeamLeftIndex then
+  begin
+    Result := TAtlasSprintHitKind.TeamLeft;
+  end
+  else if ATile.Sprint.MineKnown and (AIndex = 0) then
+  begin
+    Result := TAtlasSprintHitKind.MineOpen;
+  end
+  else if ATile.Sprint.MineKnown then
+  begin
+    Result := TAtlasSprintHitKind.MineDone;
+  end;
+end;
+
+/// <summary>Treffer unter dem Kopf einer bereiten Kachel: Zahlen, sonst Vergleich und Diagramm (Board).</summary>
+function BodyHit(AView: TAtlasTrackerSprintView; const APoint: TPoint): TAtlasSprintHitKind;
+var
+  mIndex, mFound: Integer;
+begin
+  mFound := -1;
+  for mIndex := 0 to cNumberCount - 1 do
+  begin
+    if AView.NumberRect(mIndex, AView.ClientWidth).Contains(APoint) then
+    begin
+      mFound := mIndex;
+    end;
+  end;
+  if mFound >= 0 then
+  begin
+    Result := NumberHit(AView.Tile, mFound);
+  end
+  else if APoint.Y < AView.StatusTop(AView.ClientWidth) then
+  begin
+    Result := TAtlasSprintHitKind.Chart;
+  end
+  else
+  begin
+    Result := TAtlasSprintHitKind.None;
+  end;
+end;
+
+function TAtlasTrackerSprintView.HitTest(AX, AY: Integer): TAtlasSprintHitKind;
+begin
+  Result := TAtlasSprintHitKind.None;
   if FTile.Status = TAtlasSprintTileStatus.NoTracker then
   begin
     if FTile.CanAssign and (AY < ScaleValue(cEmptyHeight)) then
     begin
       Result := TAtlasSprintHitKind.Assign;
     end;
-    Exit;
-  end;
-  if FTile.Status <> TAtlasSprintTileStatus.Ready then
+  end
+  else if FTile.Status <> TAtlasSprintTileStatus.Ready then
   begin
-    Exit;
-  end;
-  if AY < ScaleValue(cHeadHeight) then
+    Result := TAtlasSprintHitKind.None;
+  end
+  else if AY < ScaleValue(cHeadHeight) then
   begin
     if FTile.Sprint.Page <> '' then
     begin
       Result := TAtlasSprintHitKind.Title;
     end;
-    Exit;
-  end;
-  for mIndex := 0 to 2 do
+  end
+  else
   begin
-    if NumberRect(mIndex, mWidth).Contains(mPoint) then
-    begin
-      case mIndex of
-        0:
-          if FTile.Sprint.MineKnown then
-          begin
-            Result := TAtlasSprintHitKind.MineOpen;
-          end;
-        1:
-          if FTile.Sprint.MineKnown then
-          begin
-            Result := TAtlasSprintHitKind.MineDone;
-          end
-      else
-      begin
-        Result := TAtlasSprintHitKind.TeamLeft;
-      end;
-      end;
-      Exit;
-    end;
-  end;
-  // Übrige Kachel (Vergleich, Diagramm): öffnet das Board.
-  if AY < StatusTop(mWidth) then
-  begin
-    Result := TAtlasSprintHitKind.Chart;
+    Result := BodyHit(Self, Point(AX, AY));
   end;
 end;
 
-procedure TAtlasTrackerSprintView.Post(const AAction: TThreadProcedure);
+class procedure TAtlasTrackerSprintView.Post(const AAction: TThreadProcedure);
 begin
   // Die Quelle füllt Bereiche danach neu: nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, AAction);
@@ -625,26 +817,27 @@ begin
   mMuted := StyleServices(Self).GetSystemColor(clGrayText);
   mBack := StyleServices(Self).GetSystemColor(clWindow);
   mAccent := StyleServices(Self).GetSystemColor(clHighlight);
-  mPad := ScaleValue(8);
-  for mIndex := 0 to 2 do
+  mPad := ScaleValue(cNumberPad);
+  for mIndex := 0 to cNumberCount - 1 do
   begin
     mRect := NumberRect(mIndex, AWidth);
     ACanvas.Brush.Style := bsClear;
     ACanvas.Pen.Style := psSolid;
     ACanvas.Pen.Width := 1;
-    ACanvas.Pen.Color := Blend(mMuted, mBack, 35);
-    ACanvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, ScaleValue(8), ScaleValue(8));
+    ACanvas.Pen.Color := Blend(mMuted, mBack, cFramePercent);
+    ACanvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, ScaleValue(cNumberRadius),
+      ScaleValue(cNumberRadius));
     ACanvas.Font.Assign(Font);
     ACanvas.Font.Size := Font.Size - 1;
     ACanvas.Font.Color := mMuted;
-    ACanvas.TextRect(Rect(mRect.Left + mPad, mRect.Top + ScaleValue(4), mRect.Right - mPad,
-      mRect.Top + ScaleValue(4) + ACanvas.TextHeight('Ag')), mRect.Left + mPad, mRect.Top + ScaleValue(4),
-      AnsiUpperCase(NumberCaption(mIndex)));
+    ACanvas.TextRect(Rect(mRect.Left + mPad, mRect.Top + ScaleValue(cCaptionTop), mRect.Right - mPad,
+      mRect.Top + ScaleValue(cCaptionTop) + ACanvas.TextHeight(cMeasureText)), mRect.Left + mPad,
+      mRect.Top + ScaleValue(cCaptionTop), AnsiUpperCase(NumberCaption(mIndex)));
     ACanvas.Font.Assign(Font);
-    ACanvas.Font.Size := Font.Size + 3;
+    ACanvas.Font.Size := Font.Size + cValueFontGrow;
     ACanvas.Font.Style := [fsBold];
     // Klickbare Zahlen in Akzentfarbe.
-    if (mIndex = 2) or FTile.Sprint.MineKnown then
+    if (mIndex = cTeamLeftIndex) or FTile.Sprint.MineKnown then
     begin
       ACanvas.Font.Color := mAccent;
     end
@@ -652,125 +845,44 @@ begin
     begin
       ACanvas.Font.Color := mText;
     end;
-    ACanvas.TextRect(Rect(mRect.Left + mPad, mRect.Top + ScaleValue(20), mRect.Right - mPad, mRect.Bottom - 2),
-      mRect.Left + mPad, mRect.Top + ScaleValue(20), NumberValue(FTile, mIndex));
+    ACanvas.TextRect(Rect(mRect.Left + mPad, mRect.Top + ScaleValue(cValueTop), mRect.Right - mPad,
+      mRect.Bottom - 2), mRect.Left + mPad, mRect.Top + ScaleValue(cValueTop), NumberValue(FTile, mIndex));
   end;
   ACanvas.Font.Assign(Font);
 end;
 
 procedure TAtlasTrackerSprintView.PaintChart(ACanvas: TCanvas; const ARect: TRect);
 var
-  mSprint: TAtlasSprintView;
-  mTop, mValue: Double;
-  mCount, mIndex, mX: Integer;
-  mPoints: TArray<TPoint>;
-  mLine, mMuted, mBack, mText: TColor;
-
-  function PointOf(ADay: Integer; AValue: Double): TPoint;
-  begin
-    Result.X := ARect.Left;
-    if mCount > 1 then
-    begin
-      Result.X := ARect.Left + Round(ADay * ARect.Width / (mCount - 1));
-    end;
-    Result.Y := ARect.Bottom - Round(EnsureRange(AValue / mTop, 0, 1) * ARect.Height);
-  end;
-
-  function LineOf(const AValues: TArray<Double>): TArray<TPoint>;
-  var
-    mDay: Integer;
-  begin
-    Result := nil;
-    for mDay := 0 to Min(High(AValues), mCount - 1) do
-    begin
-      Result := Result + [PointOf(mDay, AValues[mDay])];
-    end;
-  end;
-
+  mChart: TAtlasSprintChart;
 begin
-  mSprint := FTile.Sprint;
-  mCount := Length(mSprint.Ideal);
-  if (mCount = 0) or (ARect.Height <= 0) then
+  mChart := Default(TAtlasSprintChart);
+  mChart.Canvas := ACanvas;
+  mChart.Area := ARect;
+  mChart.Sprint := FTile.Sprint;
+  mChart.Compare := FTile.Compare;
+  mChart.Count := Length(FTile.Sprint.Ideal);
+  if (mChart.Count = 0) or (ARect.Height <= 0) then
   begin
     Exit;
   end;
-  mLine := StyleServices(Self).GetSystemColor(clHighlight);
-  mMuted := StyleServices(Self).GetSystemColor(clGrayText);
-  mBack := StyleServices(Self).GetSystemColor(clWindow);
-  mText := StyleServices(Self).GetSystemColor(clWindowText);
-  // Eine Skala für alle Linien: der größte Wert, mindestens 1.
-  mTop := 1;
-  for mValue in mSprint.Ideal do
-  begin
-    mTop := Max(mTop, mValue);
-  end;
-  for mValue in mSprint.Actual do
-  begin
-    mTop := Max(mTop, mValue);
-  end;
-  if FTile.Compare then
-  begin
-    for mValue in mSprint.Previous do
-    begin
-      mTop := Max(mTop, mValue);
-    end;
-  end;
+  mChart.Wide := ScaleValue(2);
+  mChart.Dot := ScaleValue(cDotRadius);
+  mChart.LineColor := StyleServices(Self).GetSystemColor(clHighlight);
+  mChart.MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
+  mChart.BackColor := StyleServices(Self).GetSystemColor(clWindow);
+  mChart.TextColor := StyleServices(Self).GetSystemColor(clWindowText);
+  mChart.Scale;
   // Grundlinie.
   ACanvas.Pen.Style := psSolid;
   ACanvas.Pen.Width := 1;
-  ACanvas.Pen.Color := Blend(mMuted, mBack, 40);
+  ACanvas.Pen.Color := Blend(mChart.MutedColor, mChart.BackColor, cBaselinePercent);
   ACanvas.MoveTo(ARect.Left, ARect.Bottom);
   ACanvas.LineTo(ARect.Right, ARect.Bottom);
-  // Vorsprint blass.
-  if FTile.Compare and mSprint.HasPrevious then
-  begin
-    mPoints := LineOf(mSprint.Previous);
-    if Length(mPoints) > 1 then
-    begin
-      ACanvas.Pen.Color := Blend(mMuted, mBack, 45);
-      ACanvas.Pen.Width := ScaleValue(2);
-      ACanvas.Polyline(mPoints);
-    end;
-  end;
-  // Ideallinie gestrichelt (Stiftbreite 1, sonst zeichnet Windows durchgezogen).
-  mPoints := LineOf(mSprint.Ideal);
-  if Length(mPoints) > 1 then
-  begin
-    ACanvas.Pen.Width := 1;
-    ACanvas.Pen.Style := psDash;
-    ACanvas.Pen.Color := mMuted;
-    ACanvas.Brush.Style := bsClear;
-    ACanvas.Polyline(mPoints);
-    ACanvas.Pen.Style := psSolid;
-  end;
-  // Ist-Linie.
-  mPoints := LineOf(mSprint.Actual);
-  ACanvas.Pen.Color := mLine;
-  ACanvas.Pen.Width := ScaleValue(2);
-  if Length(mPoints) > 1 then
-  begin
-    ACanvas.Polyline(mPoints);
-  end;
-  if Length(mPoints) > 0 then
-  begin
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := mLine;
-    mIndex := ScaleValue(3);
-    ACanvas.Ellipse(mPoints[High(mPoints)].X - mIndex, mPoints[High(mPoints)].Y - mIndex,
-      mPoints[High(mPoints)].X + mIndex + 1, mPoints[High(mPoints)].Y + mIndex + 1);
-    ACanvas.Brush.Style := bsClear;
-  end;
+  mChart.PaintPrevious;
+  mChart.PaintIdeal;
+  mChart.PaintActual;
   // Marke „heute“.
-  if (mSprint.Today >= 0) and (mSprint.Today < mCount) then
-  begin
-    mX := PointOf(mSprint.Today, 0).X;
-    ACanvas.Pen.Width := 1;
-    ACanvas.Pen.Style := psDot;
-    ACanvas.Pen.Color := Blend(mText, mBack, 60);
-    ACanvas.MoveTo(mX, ARect.Top);
-    ACanvas.LineTo(mX, ARect.Bottom);
-    ACanvas.Pen.Style := psSolid;
-  end;
+  mChart.PaintToday;
   ACanvas.Pen.Width := 1;
 end;
 
@@ -797,80 +909,104 @@ begin
   ACanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
   mCaption := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintVelocity);
   mBar := ScaleValue(cVelocityBarWidth);
-  mLeft := ARect.Right - Length(FTile.Sprint.Velocity) * (mBar + ScaleValue(3));
-  ACanvas.TextOut(mLeft - ACanvas.TextWidth(mCaption) - ScaleValue(6), ARect.Top + ScaleValue(2), mCaption);
+  mLeft := ARect.Right - Length(FTile.Sprint.Velocity) * (mBar + ScaleValue(cVelocityBarGap));
+  ACanvas.TextOut(mLeft - ACanvas.TextWidth(mCaption) - ScaleValue(cVelocityCaptionGap), ARect.Top + ScaleValue(2),
+    mCaption);
   ACanvas.Pen.Style := psClear;
   ACanvas.Brush.Style := bsSolid;
   for mIndex := 0 to High(FTile.Sprint.Velocity) do
   begin
     mHeight := Max(1, Round(FTile.Sprint.Velocity[mIndex] / mTop * ScaleValue(cVelocityHeight)));
     // Ältere Sprints blasser.
-    ACanvas.Brush.Color := Blend(mColor, mBack, 50 + 50 * (mIndex + 1) div Length(FTile.Sprint.Velocity));
+    ACanvas.Brush.Color := Blend(mColor, mBack, cVelocityMinPercent + (cFullPercent - cVelocityMinPercent) *
+      (mIndex + 1) div Length(FTile.Sprint.Velocity));
     ACanvas.Rectangle(mLeft, ARect.Bottom - mHeight, mLeft + mBar, ARect.Bottom);
-    Inc(mLeft, mBar + ScaleValue(3));
+    Inc(mLeft, mBar + ScaleValue(cVelocityBarGap));
   end;
   ACanvas.Pen.Style := psSolid;
   ACanvas.Brush.Style := bsClear;
   ACanvas.Font.Assign(Font);
 end;
 
+/// <summary>Kachel ohne Sprint: Hinweis bzw. Link „zuordnen …“ in Akzentfarbe, darunter der Stand.</summary>
+procedure PaintNotice(AView: TAtlasTrackerSprintView; ACanvas: TCanvas);
+var
+  mText: string;
+  mMuted: TColor;
+begin
+  mMuted := StyleServices(AView).GetSystemColor(clGrayText);
+  if (AView.Tile.Status = TAtlasSprintTileStatus.NoTracker) and AView.Tile.CanAssign then
+  begin
+    ACanvas.Font.Color := StyleServices(AView).GetSystemColor(clHotLight);
+  end
+  else
+  begin
+    ACanvas.Font.Color := mMuted;
+  end;
+  ACanvas.TextOut(AView.ScaleValue(TAtlasTrackerSprintView.cIndent), AView.ScaleValue(TAtlasTrackerSprintView.cIndent),
+    TAtlasTrackerSprintView.NoticeText(AView.Tile));
+  mText := TAtlasTrackerSprintView.StatusText(AView.Tile);
+  if mText <> '' then
+  begin
+    ACanvas.Font.Color := mMuted;
+    ACanvas.TextOut(AView.ScaleValue(TAtlasTrackerSprintView.cIndent),
+      AView.ScaleValue(TAtlasTrackerSprintView.cEmptyHeight), mText);
+  end;
+end;
+
+/// <summary>Kopf: Name, Zeitraum, Resttage; mit Seite als Link.</summary>
+procedure PaintHead(AView: TAtlasTrackerSprintView; ACanvas: TCanvas);
+var
+  mIndent: Integer;
+begin
+  mIndent := AView.ScaleValue(TAtlasTrackerSprintView.cIndent);
+  ACanvas.Font.Style := [fsBold];
+  if AView.Tile.Sprint.Page <> '' then
+  begin
+    ACanvas.Font.Color := StyleServices(AView).GetSystemColor(clHotLight);
+  end
+  else
+  begin
+    ACanvas.Font.Color := StyleServices(AView).GetSystemColor(clWindowText);
+  end;
+  ACanvas.TextRect(Rect(mIndent, 0, AView.ClientWidth - mIndent, AView.ScaleValue(TAtlasTrackerSprintView.cHeadHeight)),
+    mIndent, AView.ScaleValue(cHeadTextTop), TAtlasTrackerSprintView.HeadingText(AView.Tile));
+  ACanvas.Font.Assign(AView.Font);
+end;
+
+/// <summary>Kleine graue Zeile ab ATop.</summary>
+procedure PaintSmall(AView: TAtlasTrackerSprintView; ACanvas: TCanvas; ATop: Integer; const AText: string);
+begin
+  ACanvas.Font.Assign(AView.Font);
+  ACanvas.Font.Size := AView.Font.Size - 1;
+  ACanvas.Font.Color := StyleServices(AView).GetSystemColor(clGrayText);
+  if AText <> '' then
+  begin
+    ACanvas.TextOut(AView.ScaleValue(TAtlasTrackerSprintView.cIndent), ATop, AText);
+  end;
+  ACanvas.Font.Assign(AView.Font);
+end;
+
 procedure TAtlasTrackerSprintView.BoxPaint(Sender: TObject);
 var
   mCanvas: TCanvas;
   mWidth, mTop: Integer;
-  mText: string;
-  mMuted: TColor;
 begin
   mCanvas := FBox.Canvas;
   mCanvas.Brush.Style := bsClear;
   mCanvas.Font.Assign(Font);
-  mMuted := StyleServices(Self).GetSystemColor(clGrayText);
   mWidth := ClientWidth;
   if FTile.Status <> TAtlasSprintTileStatus.Ready then
   begin
-    // Link „zuordnen …“ in Akzentfarbe, sonst grauer Hinweis.
-    if (FTile.Status = TAtlasSprintTileStatus.NoTracker) and FTile.CanAssign then
-    begin
-      mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
-    end
-    else
-    begin
-      mCanvas.Font.Color := mMuted;
-    end;
-    mCanvas.TextOut(ScaleValue(cIndent), ScaleValue(cIndent), NoticeText(FTile));
-    mText := StatusText(FTile);
-    if mText <> '' then
-    begin
-      mCanvas.Font.Color := mMuted;
-      mCanvas.TextOut(ScaleValue(cIndent), ScaleValue(cEmptyHeight), mText);
-    end;
+    PaintNotice(Self, mCanvas);
     Exit;
   end;
-  // Kopf: Name, Zeitraum, Resttage; mit Seite als Link.
-  mCanvas.Font.Style := [fsBold];
-  if FTile.Sprint.Page <> '' then
-  begin
-    mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
-  end
-  else
-  begin
-    mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clWindowText);
-  end;
-  mCanvas.TextRect(Rect(ScaleValue(cIndent), 0, mWidth - ScaleValue(cIndent), ScaleValue(cHeadHeight)),
-    ScaleValue(cIndent), ScaleValue(3), HeadingText(FTile));
-  mCanvas.Font.Assign(Font);
+  PaintHead(Self, mCanvas);
   PaintNumbers(mCanvas, mWidth);
   mTop := CompareTop;
   if FTile.Compare then
   begin
-    mText := CompareText(FTile);
-    mCanvas.Font.Size := Font.Size - 1;
-    mCanvas.Font.Color := mMuted;
-    if mText <> '' then
-    begin
-      mCanvas.TextOut(ScaleValue(cIndent), mTop + ScaleValue(2), mText);
-    end;
-    mCanvas.Font.Assign(Font);
+    PaintSmall(Self, mCanvas, mTop + ScaleValue(2), CompareText(FTile));
     PaintVelocity(mCanvas, Rect(ScaleValue(cIndent), mTop, mWidth - ScaleValue(cIndent),
       mTop + ScaleValue(cCompareHeight)));
   end;
@@ -878,15 +1014,7 @@ begin
   begin
     PaintChart(mCanvas, ChartRect(mWidth));
   end;
-  mText := StatusText(FTile);
-  if mText <> '' then
-  begin
-    mCanvas.Font.Assign(Font);
-    mCanvas.Font.Size := Font.Size - 1;
-    mCanvas.Font.Color := mMuted;
-    mCanvas.TextOut(ScaleValue(cIndent), StatusTop(mWidth), mText);
-  end;
-  mCanvas.Font.Assign(Font);
+  PaintSmall(Self, mCanvas, StatusTop(mWidth), StatusText(FTile));
 end;
 
 procedure TAtlasTrackerSprintView.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -909,7 +1037,7 @@ begin
   begin
     mDay := DayAt(X, ClientWidth);
   end;
-  mKey := IntToStr(Ord(mHit)) + ':' + IntToStr(mDay);
+  mKey := Format(cHintKeyFormat, [Ord(mHit), mDay], TFormatSettings.Invariant);
   if mKey = FHintKey then
   begin
     Exit;

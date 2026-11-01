@@ -354,6 +354,177 @@ uses
 
 const
   cStartNames: array[TAtlasIssueStart] of string = ('branch', 'remember');
+  cMinutesPerDay = 24 * 60;
+  cNumberDigits = 9;
+
+type
+  /// <summary>Ein Lauf von TAtlasMyIssues.Start in Stufen; jede Stufe liefert False, wenn der Lauf damit endet
+  /// (Outcome steht dann fest).</summary>
+  TAtlasIssueStartRun = record
+    Vcs: IAtlasVersionControl;
+    Branching: IAtlasVcsBranching;
+    Plan: TAtlasIssueStartPlan;
+    UseRequest: Boolean;
+    Request: TAtlasVcsBranchRequest;
+    Outcome: TAtlasIssueStartResult;
+    class function Create(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+      AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest): TAtlasIssueStartRun; static;
+    /// <summary>Nur merken endet hier; sonst gültiger Name und Arbeitskopie mit Branches.</summary>
+    function Named: Boolean;
+    /// <summary>Gibt es den Branch schon, wird auf ihn geschaltet und der Lauf endet.</summary>
+    function Missing: Boolean;
+    /// <summary>Ohne Dialog die Vorgabe aus dem Plan (#1288): erster Kandidat, den es gibt.</summary>
+    function Resolved: Boolean;
+    /// <summary>Eigener Ordner (#1289): gibt es ihn schon, nichts anlegen; ohne Schritte ebenso.</summary>
+    function FolderFree: Boolean;
+    procedure Run(const AProgress: TAtlasVcsBranchProgress);
+  end;
+
+{ TAtlasIssueStartRun }
+
+class function TAtlasIssueStartRun.Create(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+  AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest): TAtlasIssueStartRun;
+var
+  mHooks, mGitDir: string;
+begin
+  Result := Default(TAtlasIssueStartRun);
+  Result.Vcs := AVcs;
+  Result.Plan := APlan;
+  Result.UseRequest := AUseRequest;
+  Result.Request := ARequest;
+  Result.Outcome := Default(TAtlasIssueStartResult);
+  Result.Outcome.Reason := TAtlasVcsOutcome.Ok;
+  Result.Outcome.Steps := nil;
+  Result.Outcome.Run.Outcome := TAtlasVcsOutcome.Ok;
+  Result.Outcome.Run.Done := 0;
+  Result.Outcome.Run.Failed := -1;
+  Result.Branching := nil;
+  if AVcs <> nil then
+  begin
+    Supports(AVcs, IAtlasVcsBranching, Result.Branching);
+  end;
+  // Git: Ordner für Hook und Präfix-Datei, auch beim bloßen Merken (das Präfix gilt dann ebenso).
+  if (Result.Branching <> nil) and (AVcs.Kind = TAtlasVcsKind.Git) and
+    (Result.Branching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) then
+  begin
+    Result.Outcome.Hooks := mHooks;
+    Result.Outcome.GitDir := mGitDir;
+  end;
+end;
+
+function TAtlasIssueStartRun.Named: Boolean;
+begin
+  Result := False;
+  if Plan.Mode = TAtlasIssueStart.Remember then
+  begin
+    Outcome.Outcome := TAtlasIssueStartOutcome.Remembered;
+  end
+  else
+  begin
+    if not UseRequest then
+    begin
+      Request.Name := Plan.Branch;
+    end;
+    if not Plan.Valid or not TAtlasVcsBranchPlan.SafeName(Request.Name) then
+    begin
+      Outcome.Outcome := TAtlasIssueStartOutcome.InvalidName;
+    end
+    else
+    begin
+      Outcome.Branch := Request.Name;
+      Outcome.Outcome := TAtlasIssueStartOutcome.Failed;
+      Result := Branching <> nil;
+      if not Result then
+      begin
+        Outcome.Reason := TAtlasVcsOutcome.NoWorkingCopy;
+      end;
+    end;
+  end;
+end;
+
+function TAtlasIssueStartRun.Missing: Boolean;
+var
+  mSvn: TAtlasVcsSvnBranchOptions;
+  mExists: Boolean;
+begin
+  // SVN sucht und schaltet am Ort aus den Optionen (#1290), an dem auch angelegt wird; mit Dialog am Ort der
+  // Anfrage.
+  mSvn := Plan.Svn;
+  if UseRequest and (Request.Kind = TAtlasVcsKind.Svn) and (Request.Location <> '') then
+  begin
+    mSvn.Location := '^/' + Request.Location;
+  end;
+  mExists := False;
+  Outcome.Reason := Branching.BranchExists(Request.Name, mSvn, mExists);
+  Result := (Outcome.Reason = TAtlasVcsOutcome.Ok) and not mExists;
+  if (Outcome.Reason = TAtlasVcsOutcome.Ok) and mExists then
+  begin
+    Outcome.Reason := Branching.SwitchBranch(Request.Name, mSvn);
+    if Outcome.Reason = TAtlasVcsOutcome.Ok then
+    begin
+      Outcome.Outcome := TAtlasIssueStartOutcome.Switched;
+    end;
+  end;
+end;
+
+function TAtlasIssueStartRun.Resolved: Boolean;
+var
+  mFacts: TAtlasVcsBranchFacts;
+begin
+  Result := True;
+  if not UseRequest then
+  begin
+    mFacts := TAtlasVcsBranchPlan.Inspect(Vcs, Plan.Bases);
+    Outcome.Reason := mFacts.Outcome;
+    Result := Outcome.Reason = TAtlasVcsOutcome.Ok;
+    if Result and not TAtlasVcsBranchPlan.DefaultRequest(mFacts, Plan.Branch, Plan.Message, Plan.Svn, Request) then
+    begin
+      Outcome.Reason := TAtlasVcsOutcome.Failed;
+      Result := False;
+    end;
+  end;
+end;
+
+function TAtlasIssueStartRun.FolderFree: Boolean;
+begin
+  if (Request.WorktreeFolder <> '') and DirectoryExists(Request.WorktreeFolder) then
+  begin
+    Outcome.FolderTaken := True;
+    Outcome.Folder := Request.WorktreeFolder;
+    Outcome.Reason := TAtlasVcsOutcome.Failed;
+    Result := False;
+  end
+  else
+  begin
+    Outcome.Steps := TAtlasVcsBranchPlan.Steps(Request);
+    Result := Length(Outcome.Steps) > 0;
+    if not Result then
+    begin
+      Outcome.Reason := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+procedure TAtlasIssueStartRun.Run(const AProgress: TAtlasVcsBranchProgress);
+begin
+  // Mit der Anfrage: Der Arbeitsordner für das Umschreiben der Externals (#1291) wird davor und danach gelöscht.
+  Outcome.Run := TAtlasVcsBranchPlan.Execute(Branching, Request, Outcome.Steps, AProgress);
+  Outcome.Reason := Outcome.Run.Outcome;
+  // Scheitert nur der Push danach, ist der Branch trotzdem angelegt und ausgecheckt.
+  if Outcome.Run.Succeeded or TAtlasVcsBranchPlan.OnlyPushFailed(Outcome.Steps, Outcome.Run) then
+  begin
+    Outcome.Base := TAtlasVcsBranchPlan.BaseName(Request.Kind, Request.Base);
+    Outcome.Outcome := TAtlasIssueStartOutcome.Started;
+    Outcome.IndexRebuild := TAtlasVcsBranchPlan.ChangesExternals(Request);
+    if (Request.Kind = TAtlasVcsKind.Svn) and (Request.After = TAtlasVcsSvnAfter.Checkout) then
+    begin
+      Outcome.CheckoutFolder := Request.CheckoutFolder;
+    end;
+    Outcome.WorkingRoot := Vcs.WorkingCopy.Root;
+    Outcome.PushFailed := not Outcome.Run.Succeeded;
+    Outcome.Folder := Request.WorktreeFolder;
+  end;
+end;
 
 { TAtlasActiveIssue }
 
@@ -561,7 +732,7 @@ begin
   begin
     Exit(True);
   end;
-  Result := (ANowUtc - AState.Attempt) * 24 * 60 >= cDueMinutes;
+  Result := (ANowUtc - AState.Attempt) * cMinutesPerDay >= cDueMinutes;
 end;
 
 class procedure TAtlasMyIssues.Recorded(var AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
@@ -746,120 +917,14 @@ class function TAtlasMyIssues.Start(const AVcs: IAtlasVersionControl; const APla
   AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest;
   const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
 var
-  mBranching: IAtlasVcsBranching;
-  mExists: Boolean;
-  mHooks, mGitDir: string;
-  mFacts: TAtlasVcsBranchFacts;
-  mRequest: TAtlasVcsBranchRequest;
-  mSvn: TAtlasVcsSvnBranchOptions;
+  mRun: TAtlasIssueStartRun;
 begin
-  Result := Default(TAtlasIssueStartResult);
-  Result.Reason := TAtlasVcsOutcome.Ok;
-  Result.Steps := nil;
-  Result.Run.Outcome := TAtlasVcsOutcome.Ok;
-  Result.Run.Done := 0;
-  Result.Run.Failed := -1;
-  mBranching := nil;
-  if AVcs <> nil then
+  mRun := TAtlasIssueStartRun.Create(AVcs, APlan, AUseRequest, ARequest);
+  if mRun.Named and mRun.Missing and mRun.Resolved and mRun.FolderFree then
   begin
-    Supports(AVcs, IAtlasVcsBranching, mBranching);
+    mRun.Run(AProgress);
   end;
-  // Git: Ordner für Hook und Präfix-Datei, auch beim bloßen Merken (das Präfix gilt dann ebenso).
-  if (mBranching <> nil) and (AVcs.Kind = TAtlasVcsKind.Git) and
-    (mBranching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) then
-  begin
-    Result.Hooks := mHooks;
-    Result.GitDir := mGitDir;
-  end;
-  if APlan.Mode = TAtlasIssueStart.Remember then
-  begin
-    Result.Outcome := TAtlasIssueStartOutcome.Remembered;
-    Exit;
-  end;
-  mRequest := ARequest;
-  if not AUseRequest then
-  begin
-    mRequest.Name := APlan.Branch;
-  end;
-  if not APlan.Valid or not TAtlasVcsBranchPlan.SafeName(mRequest.Name) then
-  begin
-    Result.Outcome := TAtlasIssueStartOutcome.InvalidName;
-    Exit;
-  end;
-  Result.Branch := mRequest.Name;
-  Result.Outcome := TAtlasIssueStartOutcome.Failed;
-  if mBranching = nil then
-  begin
-    Result.Reason := TAtlasVcsOutcome.NoWorkingCopy;
-    Exit;
-  end;
-  // SVN sucht und schaltet am Ort aus den Optionen (#1290), an dem auch angelegt wird; mit Dialog am Ort der
-  // Anfrage.
-  mSvn := APlan.Svn;
-  if AUseRequest and (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.Location <> '') then
-  begin
-    mSvn.Location := '^/' + mRequest.Location;
-  end;
-  Result.Reason := mBranching.BranchExists(mRequest.Name, mSvn, mExists);
-  if Result.Reason <> TAtlasVcsOutcome.Ok then
-  begin
-    Exit;
-  end;
-  if mExists then
-  begin
-    Result.Reason := mBranching.SwitchBranch(mRequest.Name, mSvn);
-    if Result.Reason = TAtlasVcsOutcome.Ok then
-    begin
-      Result.Outcome := TAtlasIssueStartOutcome.Switched;
-    end;
-    Exit;
-  end;
-  // Ohne Dialog die Vorgabe aus dem Plan (#1288): erster Kandidat, den es gibt; sonst Fehler.
-  if not AUseRequest then
-  begin
-    mFacts := TAtlasVcsBranchPlan.Inspect(AVcs, APlan.Bases);
-    Result.Reason := mFacts.Outcome;
-    if Result.Reason <> TAtlasVcsOutcome.Ok then
-    begin
-      Exit;
-    end;
-    if not TAtlasVcsBranchPlan.DefaultRequest(mFacts, APlan.Branch, APlan.Message, APlan.Svn, mRequest) then
-    begin
-      Result.Reason := TAtlasVcsOutcome.Failed;
-      Exit;
-    end;
-  end;
-  // Eigener Ordner (#1289): gibt es ihn schon, nichts anlegen.
-  if (mRequest.WorktreeFolder <> '') and DirectoryExists(mRequest.WorktreeFolder) then
-  begin
-    Result.FolderTaken := True;
-    Result.Folder := mRequest.WorktreeFolder;
-    Result.Reason := TAtlasVcsOutcome.Failed;
-    Exit;
-  end;
-  Result.Steps := TAtlasVcsBranchPlan.Steps(mRequest);
-  if Length(Result.Steps) = 0 then
-  begin
-    Result.Reason := TAtlasVcsOutcome.Failed;
-    Exit;
-  end;
-  // Mit der Anfrage: Der Arbeitsordner für das Umschreiben der Externals (#1291) wird davor und danach gelöscht.
-  Result.Run := TAtlasVcsBranchPlan.Execute(mBranching, mRequest, Result.Steps, AProgress);
-  Result.Reason := Result.Run.Outcome;
-  // Scheitert nur der Push danach, ist der Branch trotzdem angelegt und ausgecheckt.
-  if Result.Run.Succeeded or TAtlasVcsBranchPlan.OnlyPushFailed(Result.Steps, Result.Run) then
-  begin
-    Result.Base := TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base);
-    Result.Outcome := TAtlasIssueStartOutcome.Started;
-    Result.IndexRebuild := TAtlasVcsBranchPlan.ChangesExternals(mRequest);
-    if (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.After = TAtlasVcsSvnAfter.Checkout) then
-    begin
-      Result.CheckoutFolder := mRequest.CheckoutFolder;
-    end;
-    Result.WorkingRoot := AVcs.WorkingCopy.Root;
-    Result.PushFailed := not Result.Run.Succeeded;
-    Result.Folder := mRequest.WorktreeFolder;
-  end;
+  Result := mRun.Outcome;
 end;
 
 class procedure TAtlasMyIssues.Started(var AState: TAtlasIssuesState; const AIssue: TAtlasTrackerIssue;
@@ -895,7 +960,7 @@ begin
   end;
   if (mIndex < Length(AKey)) and ((mIndex = 0) or CharInSet(AKey[mIndex], ['#', '-'])) then
   begin
-    Result := StrToIntDef(Copy(AKey, mIndex + 1, 9), 0);
+    Result := StrToIntDef(Copy(AKey, mIndex + 1, cNumberDigits), 0);
   end;
 end;
 
@@ -1035,13 +1100,66 @@ begin
   end;
 end;
 
+function ItemJson(const AItem: TAtlasTrackerIssue): TJSONObject;
+var
+  mLabels: TJSONArray;
+  mLabelName: string;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('key', AItem.Key);
+  if AItem.Number > 0 then
+  begin
+    Result.AddPair('number', TJSONNumber.Create(AItem.Number));
+  end;
+  Result.AddPair('title', AItem.Title);
+  if Length(AItem.Labels) > 0 then
+  begin
+    mLabels := TJSONArray.Create;
+    Result.AddPair('labels', mLabels);
+    for mLabelName in AItem.Labels do
+    begin
+      mLabels.Add(mLabelName);
+    end;
+  end;
+  AddText(Result, 'state', AItem.State);
+  AddText(Result, 'priority', AItem.Priority);
+  AddText(Result, 'sprint', AItem.Sprint);
+  if AItem.PullRequest.Number > 0 then
+  begin
+    Result.AddPair('pr', TJSONNumber.Create(AItem.PullRequest.Number));
+    Result.AddPair('checks', TAtlasTrackerPullRequest.ChecksKey(AItem.PullRequest.Checks));
+    if AItem.PullRequest.Draft then
+    begin
+      Result.AddPair('draft', TJSONBool.Create(True));
+    end;
+  end;
+end;
+
+function ActiveJson(const AActive: TAtlasActiveIssue): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('key', AActive.Key);
+  AddText(Result, 'title', AActive.Title);
+  Result.AddPair('mode', TAtlasMyIssues.StartName(AActive.Mode));
+  AddText(Result, 'branch', AActive.Branch);
+  AddTime(Result, 'started', AActive.StartedUtc);
+end;
+
+function CountsJson(const ACounts: TArray<TAtlasIssuesQueryCount>): TJSONObject;
+var
+  mCount: TAtlasIssuesQueryCount;
+begin
+  Result := TJSONObject.Create;
+  for mCount in ACounts do
+  begin
+    Result.AddPair(mCount.Name, TJSONNumber.Create(mCount.Count));
+  end;
+end;
+
 function SectionJson(const AState: TAtlasIssuesState): TJSONObject;
 var
-  mItems, mLabels: TJSONArray;
-  mEntry, mActive, mCounts: TJSONObject;
-  mCount: TAtlasIssuesQueryCount;
+  mItems: TJSONArray;
   mItem: TAtlasTrackerIssue;
-  mLabelName: string;
 begin
   Result := TJSONObject.Create;
   AddText(Result, 'provider', AState.Provider);
@@ -1055,45 +1173,11 @@ begin
   Result.AddPair('items', mItems);
   for mItem in AState.Items do
   begin
-    mEntry := TJSONObject.Create;
-    mItems.AddElement(mEntry);
-    mEntry.AddPair('key', mItem.Key);
-    if mItem.Number > 0 then
-    begin
-      mEntry.AddPair('number', TJSONNumber.Create(mItem.Number));
-    end;
-    mEntry.AddPair('title', mItem.Title);
-    if Length(mItem.Labels) > 0 then
-    begin
-      mLabels := TJSONArray.Create;
-      mEntry.AddPair('labels', mLabels);
-      for mLabelName in mItem.Labels do
-      begin
-        mLabels.Add(mLabelName);
-      end;
-    end;
-    AddText(mEntry, 'state', mItem.State);
-    AddText(mEntry, 'priority', mItem.Priority);
-    AddText(mEntry, 'sprint', mItem.Sprint);
-    if mItem.PullRequest.Number > 0 then
-    begin
-      mEntry.AddPair('pr', TJSONNumber.Create(mItem.PullRequest.Number));
-      mEntry.AddPair('checks', TAtlasTrackerPullRequest.ChecksKey(mItem.PullRequest.Checks));
-      if mItem.PullRequest.Draft then
-      begin
-        mEntry.AddPair('draft', TJSONBool.Create(True));
-      end;
-    end;
+    mItems.AddElement(ItemJson(mItem));
   end;
   if AState.Active.Active and not AState.Active.FromBranch then
   begin
-    mActive := TJSONObject.Create;
-    Result.AddPair('active', mActive);
-    mActive.AddPair('key', AState.Active.Key);
-    AddText(mActive, 'title', AState.Active.Title);
-    mActive.AddPair('mode', TAtlasMyIssues.StartName(AState.Active.Mode));
-    AddText(mActive, 'branch', AState.Active.Branch);
-    AddTime(mActive, 'started', AState.Active.StartedUtc);
+    Result.AddPair('active', ActiveJson(AState.Active));
   end;
   AddText(Result, 'endedBranch', AState.EndedBranch);
   AddText(Result, 'hook', AState.Hook);
@@ -1101,73 +1185,71 @@ begin
   AddText(Result, 'selected', AState.Selected);
   if Length(AState.Counts) > 0 then
   begin
-    mCounts := TJSONObject.Create;
-    Result.AddPair('counts', mCounts);
-    for mCount in AState.Counts do
+    Result.AddPair('counts', CountsJson(AState.Counts));
+  end;
+end;
+
+function LabelsOf(AEntry: TJSONObject): TArray<string>;
+var
+  mLabels, mLabelValue: TJSONValue;
+begin
+  Result := nil;
+  mLabels := AEntry.GetValue('labels');
+  if mLabels is TJSONArray then
+  begin
+    for mLabelValue in TJSONArray(mLabels) do
     begin
-      mCounts.AddPair(mCount.Name, TJSONNumber.Create(mCount.Count));
+      if (mLabelValue is TJSONString) and (Length(Result) < TAtlasTrackerIssue.MaxLabels) then
+      begin
+        Result := Result + [TJSONString(mLabelValue).Value];
+      end;
     end;
   end;
 end;
 
-function StateOf(ASection: TJSONObject; out AState: TAtlasIssuesState): Boolean;
+/// <summary>Ein Eintrag aus "items"; False ohne Schlüssel.</summary>
+function ItemOf(AEntry: TJSONObject; out AItem: TAtlasTrackerIssue): Boolean;
+begin
+  AItem := TAtlasTrackerIssue.Empty;
+  AItem.Key := TextIn(AEntry, 'key');
+  Result := AItem.Key <> '';
+  if Result then
+  begin
+    AItem.Number := NumberIn(AEntry, 'number');
+    AItem.Title := TextIn(AEntry, 'title');
+    AItem.Labels := LabelsOf(AEntry);
+    AItem.State := TextIn(AEntry, 'state');
+    AItem.Priority := TextIn(AEntry, 'priority');
+    AItem.Sprint := TextIn(AEntry, 'sprint');
+    AItem.PullRequest.Number := NumberIn(AEntry, 'pr');
+    AItem.PullRequest.Checks := TAtlasTrackerPullRequest.ChecksOf(TextIn(AEntry, 'checks'));
+    AItem.PullRequest.Draft := FlagIn(AEntry, 'draft');
+  end;
+end;
+
+procedure ItemsOf(ASection: TJSONObject; var AState: TAtlasIssuesState);
 var
-  mItems, mLabels, mValue, mLabelValue: TJSONValue;
-  mEntry, mActive, mCounts: TJSONObject;
-  mIndex: Integer;
+  mItems, mValue: TJSONValue;
   mItem: TAtlasTrackerIssue;
 begin
-  AState := TAtlasIssuesState.Empty;
-  Result := ASection <> nil;
-  if not Result then
-  begin
-    Exit;
-  end;
-  AState.Provider := TextIn(ASection, 'provider');
-  AState.Server := TextIn(ASection, 'server');
-  AState.Project := TextIn(ASection, 'project');
-  AState.Query := TextIn(ASection, 'query');
-  AState.Attempt := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'attempt'));
-  AState.Error := TAtlasCiBuild.ErrorOf(TextIn(ASection, 'error'));
-  AState.At := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'at'));
   mItems := ASection.GetValue('items');
   if mItems is TJSONArray then
   begin
     for mValue in TJSONArray(mItems) do
     begin
-      if not (mValue is TJSONObject) or (Length(AState.Items) >= TAtlasMyIssues.cMaxItems) then
+      if (mValue is TJSONObject) and (Length(AState.Items) < TAtlasMyIssues.cMaxItems) and
+        ItemOf(TJSONObject(mValue), mItem) then
       begin
-        Continue;
+        AState.Items := AState.Items + [mItem];
       end;
-      mEntry := TJSONObject(mValue);
-      mItem := TAtlasTrackerIssue.Empty;
-      mItem.Key := TextIn(mEntry, 'key');
-      if mItem.Key = '' then
-      begin
-        Continue;
-      end;
-      mItem.Number := NumberIn(mEntry, 'number');
-      mItem.Title := TextIn(mEntry, 'title');
-      mLabels := mEntry.GetValue('labels');
-      if mLabels is TJSONArray then
-      begin
-        for mLabelValue in TJSONArray(mLabels) do
-        begin
-          if (mLabelValue is TJSONString) and (Length(mItem.Labels) < TAtlasTrackerIssue.MaxLabels) then
-          begin
-            mItem.Labels := mItem.Labels + [TJSONString(mLabelValue).Value];
-          end;
-        end;
-      end;
-      mItem.State := TextIn(mEntry, 'state');
-      mItem.Priority := TextIn(mEntry, 'priority');
-      mItem.Sprint := TextIn(mEntry, 'sprint');
-      mItem.PullRequest.Number := NumberIn(mEntry, 'pr');
-      mItem.PullRequest.Checks := TAtlasTrackerPullRequest.ChecksOf(TextIn(mEntry, 'checks'));
-      mItem.PullRequest.Draft := FlagIn(mEntry, 'draft');
-      AState.Items := AState.Items + [mItem];
     end;
   end;
+end;
+
+procedure ActiveOf(ASection: TJSONObject; var AState: TAtlasIssuesState);
+var
+  mActive: TJSONObject;
+begin
   mActive := ObjectIn(ASection, 'active');
   if (mActive <> nil) and (TextIn(mActive, 'key') <> '') then
   begin
@@ -1177,10 +1259,13 @@ begin
     AState.Active.Branch := TextIn(mActive, 'branch');
     AState.Active.StartedUtc := TAtlasProjectSummaries.TimeOf(TextIn(mActive, 'started'));
   end;
-  AState.EndedBranch := TextIn(ASection, 'endedBranch');
-  AState.Hook := TextIn(ASection, 'hook');
-  AState.GitDir := TextIn(ASection, 'gitDir');
-  AState.Selected := TextIn(ASection, 'selected');
+end;
+
+procedure CountsOf(ASection: TJSONObject; var AState: TAtlasIssuesState);
+var
+  mCounts: TJSONObject;
+  mIndex: Integer;
+begin
   mCounts := ObjectIn(ASection, 'counts');
   if mCounts <> nil then
   begin
@@ -1191,6 +1276,29 @@ begin
         AState.SetCount(mCounts.Pairs[mIndex].JsonString.Value, TJSONNumber(mCounts.Pairs[mIndex].JsonValue).AsInt);
       end;
     end;
+  end;
+end;
+
+function StateOf(ASection: TJSONObject; out AState: TAtlasIssuesState): Boolean;
+begin
+  AState := TAtlasIssuesState.Empty;
+  Result := ASection <> nil;
+  if Result then
+  begin
+    AState.Provider := TextIn(ASection, 'provider');
+    AState.Server := TextIn(ASection, 'server');
+    AState.Project := TextIn(ASection, 'project');
+    AState.Query := TextIn(ASection, 'query');
+    AState.Attempt := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'attempt'));
+    AState.Error := TAtlasCiBuild.ErrorOf(TextIn(ASection, 'error'));
+    AState.At := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'at'));
+    ItemsOf(ASection, AState);
+    ActiveOf(ASection, AState);
+    AState.EndedBranch := TextIn(ASection, 'endedBranch');
+    AState.Hook := TextIn(ASection, 'hook');
+    AState.GitDir := TextIn(ASection, 'gitDir');
+    AState.Selected := TextIn(ASection, 'selected');
+    CountsOf(ASection, AState);
   end;
 end;
 
