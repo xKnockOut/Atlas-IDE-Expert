@@ -232,8 +232,8 @@ uses
   System.Character,
   System.DateUtils,
   System.Generics.Collections,
-  System.IOUtils,
   System.JSON,
+  Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.IssueCache;
 
 { TAtlasBoardColumn }
@@ -738,36 +738,26 @@ begin
   for mIndex := 1 to Length(AName) do
     if not CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
       Exit;
-  Result := TPath.Combine(AFolder, TAtlasTrackerIssueCache.TrackerId(ATarget) + '-' + AName + '.json');
+  Result := TAtlasTrackerFiles.Join(AFolder, TAtlasTrackerIssueCache.TrackerId(ATarget) + '-' + AName + '.json');
 end;
 
 class procedure TAtlasTrackerBoard.WriteText(const AFile, AText: string);
 begin
   if AFile = '' then
+  begin
     Exit;
-  try
-    TDirectory.CreateDirectory(ExtractFileDir(AFile));
-    TFile.WriteAllText(AFile, AText, TEncoding.UTF8);
-  except
-    // Kein Platz, keine Rechte: Ohne Netz fehlt dann eben der letzte Stand.
-    on Exception do
-      Exit;
   end;
+  // Kein Platz, keine Rechte: Ohne Netz fehlt dann eben der letzte Stand.
+  TAtlasTrackerFiles.Files.WriteText(AFile, AText);
 end;
 
 class function TAtlasTrackerBoard.ReadText(const AFile: string; out AText: string): Boolean;
 begin
-  AText := '';
-  Result := False;
-  if (AFile = '') or not TFile.Exists(AFile) then
-    Exit;
-  try
-    AText := TFile.ReadAllText(AFile, TEncoding.UTF8);
-    Result := True;
-  except
-    // Gesperrte oder kaputte Datei: als fehlend werten.
-    on Exception do
-      AText := '';
+  // Fehlende, gesperrte oder kaputte Datei: als fehlend werten.
+  Result := (AFile <> '') and TAtlasTrackerFiles.Files.ReadText(AFile, AText);
+  if not Result then
+  begin
+    AText := '';
   end;
 end;
 

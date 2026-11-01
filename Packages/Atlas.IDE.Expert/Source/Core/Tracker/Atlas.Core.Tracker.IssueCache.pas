@@ -63,9 +63,10 @@ type
 implementation
 
 uses
-  System.IOUtils,
   System.DateUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Tracker.Contract.Files,
+  Atlas.Core.Tracker.Files;
 
 function MemoryKey(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
@@ -147,7 +148,7 @@ begin
   mName := SafeName(AKey);
   if (FFolder = '') or (mName = '') or (ATarget.Server = '') then
     Exit;
-  Result := TPath.Combine(TPath.Combine(FFolder, TrackerId(ATarget)), mName + '.json');
+  Result := TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Join(FFolder, TrackerId(ATarget)), mName + '.json');
 end;
 
 class function TAtlasTrackerIssueCache.ToJson(const ADetails: TAtlasTrackerDetails): string;
@@ -350,21 +351,15 @@ begin
   mFile := FileOf(ATarget, ADetails.Key);
   if mFile = '' then
     Exit;
-  try
-    ForceDirectories(ExtractFilePath(mFile));
-    TFile.WriteAllText(mFile, ToJson(ADetails), TEncoding.UTF8);
-  except
-    // Kein Platz, keine Rechte: dann eben nur im Speicher.
-    on Exception do
-      Exit;
-  end;
+  // Kein Platz, keine Rechte: dann eben nur im Speicher.
+  TAtlasTrackerFiles.Files.WriteText(mFile, ToJson(ADetails));
 end;
 
 function TAtlasTrackerIssueCache.Get(const ATarget: TAtlasTrackerTarget; const AKey: string; ANow: TDateTime;
   out ADetails: TAtlasTrackerDetails): Boolean;
 var
   mEntry: TEntry;
-  mFile, mKey: string;
+  mFile, mKey, mText: string;
 begin
   ADetails := TAtlasTrackerDetails.Empty;
   mKey := MemoryKey(ATarget, AKey);
@@ -378,14 +373,7 @@ begin
   end;
   Result := False;
   mFile := FileOf(ATarget, AKey);
-  if (mFile = '') or not FileExists(mFile) then
-    Exit;
-  try
-    Result := FromJson(TFile.ReadAllText(mFile, TEncoding.UTF8), ADetails);
-  except
-    on Exception do
-      Result := False;
-  end;
+  Result := (mFile <> '') and TAtlasTrackerFiles.Files.ReadText(mFile, mText) and FromJson(mText, ADetails);
   if Result and ((ADetails.Fetched <= 0) or (ANow - ADetails.Fetched > MaxAgeDays)) then
     Result := False;
   if not Result then
@@ -400,39 +388,37 @@ begin
   Shrink;
 end;
 
+/// <summary>Datei des Caches gilt noch: lesbar, mit Abrufzeit und nicht älter als AMaxAge Tage.</summary>
+function IsFresh(const AFiles: IAtlasTrackerFiles; const AFile: string; ANow: TDateTime; AMaxAge: Integer): Boolean;
+var
+  mText: string;
+  mDetails: TAtlasTrackerDetails;
+begin
+  Result := AFiles.ReadText(AFile, mText) and TAtlasTrackerIssueCache.FromJson(mText, mDetails) and
+    (mDetails.Fetched > 0) and (ANow - mDetails.Fetched <= AMaxAge);
+end;
+
 procedure TAtlasTrackerIssueCache.Prune(ANow: TDateTime);
 var
+  mFiles: IAtlasTrackerFiles;
   mFolder, mFile: string;
-  mDetails: TAtlasTrackerDetails;
-  mFresh: Boolean;
 begin
-  if (FFolder = '') or not DirectoryExists(FFolder) then
+  mFiles := TAtlasTrackerFiles.Files;
+  if (FFolder = '') or not mFiles.FolderExists(FFolder) then
+  begin
     Exit;
-  try
-    for mFolder in TDirectory.GetDirectories(FFolder) do
+  end;
+  // Aufräumen ist nur Pflege; gesperrte Dateien bleiben bis zum nächsten Mal, kaputte gelten als alt.
+  for mFolder in mFiles.Folders(FFolder) do
+  begin
+    for mFile in mFiles.Files(mFolder, '*.json') do
     begin
-      for mFile in TDirectory.GetFiles(mFolder, '*.json') do
+      if not IsFresh(mFiles, mFile, ANow, MaxAgeDays) then
       begin
-        mFresh := False;
-        try
-          if FromJson(TFile.ReadAllText(mFile, TEncoding.UTF8), mDetails) and (mDetails.Fetched > 0) and
-            (ANow - mDetails.Fetched <= MaxAgeDays) then
-            mFresh := True;
-        except
-          // Kaputte Datei: bleibt nicht frisch.
-          on Exception do
-            ;
-        end;
-        if not mFresh then
-          System.SysUtils.DeleteFile(mFile);
+        mFiles.DeleteFile(mFile);
       end;
-      if Length(TDirectory.GetFileSystemEntries(mFolder)) = 0 then
-        RemoveDir(mFolder);
     end;
-  except
-    // Aufräumen ist nur Pflege; gesperrte Dateien bleiben bis zum nächsten Mal.
-    on Exception do
-      Exit;
+    mFiles.RemoveEmptyFolder(mFolder);
   end;
 end;
 

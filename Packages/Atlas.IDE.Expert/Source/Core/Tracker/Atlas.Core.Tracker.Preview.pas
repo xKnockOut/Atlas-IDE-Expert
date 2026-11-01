@@ -84,6 +84,9 @@ type
     MaxAttachmentBytes = 64 * 1024 * 1024;
     /// <summary>Spielraum zwischen dem Anker einer Meldung und der Zeit des Kommentars.</summary>
     AnchorSlackMs = 2000;
+    /// <summary>Endungen, die Atlas nicht startet, sondern im Explorer zeigt.</summary>
+    cRiskyExtensions = '.exe.com.bat.cmd.scr.pif.msi.msp.ps1.psm1.vbs.vbe.js.jse.wsf.wsh.hta.lnk.reg.cpl.jar.dll.' +
+      'appref-ms.application.';
   public
     class function Badges(const ADetails: TAtlasTrackerDetails): TArray<TAtlasIssueBadge>; static;
     /// <summary>Abstand von AThen bis ANow (beide UTC).</summary>
@@ -101,6 +104,17 @@ type
     class function MayLoad(const AUrl, AApiServer: string): Boolean; static;
     /// <summary>Darf im Browser geöffnet werden: http(s) ohne Benutzer in der Adresse.</summary>
     class function MayBrowse(const AUrl: string): Boolean; static;
+    /// <summary>AUrl im Browser öffnen, nur wenn MayBrowse (#1455 Paket 2d: über IAtlasTrackerShell); False
+    /// sonst.</summary>
+    class function Browse(const AUrl: string): Boolean; static;
+    /// <summary>Seite des Issues AKey aus der eingetragenen Adresse (AProvider.IssuePage, nie eine aus der Antwort)
+    /// über Browse öffnen; False ohne Anbieter.</summary>
+    class function BrowseIssue(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+      const AKey: string): Boolean; static;
+    /// <summary>Ausführbares (cRiskyExtensions, auch ohne Endung) nie starten.</summary>
+    class function IsRisky(const AFileName: string): Boolean; static;
+    /// <summary>Geladenen Anhang öffnen; Ausführbares (IsRisky) nur im Explorer zeigen.</summary>
+    class function OpenDownloaded(const AFileName: string): Boolean; static;
     class function FixOf(AError: TAtlasCiFetchError): TAtlasIssueFix; static;
     /// <summary>Kennung aus einer Eingabe ("ATL-12", "#753", "753", Adresse eines Issues); '' ungültig.
     /// </summary>
@@ -115,7 +129,8 @@ implementation
 
 uses
   System.DateUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Core.Tracker.Files;
 
 { TAtlasIssueHistoryEntry }
 
@@ -311,6 +326,35 @@ class function TAtlasIssuePreview.MayBrowse(const AUrl: string): Boolean;
 begin
   Result := (StartsText('https://', AUrl) or StartsText('http://', AUrl)) and
     (TAtlasTrackerTarget.Create('', AUrl, '', '').Server <> '');
+end;
+
+class function TAtlasIssuePreview.Browse(const AUrl: string): Boolean;
+begin
+  // Nur Web-Adressen ohne Benutzer; nie eine Datei oder ein anderes Schema aus dem Issue-Text.
+  Result := MayBrowse(AUrl) and TAtlasTrackerFiles.Shell.Open(AUrl);
+end;
+
+class function TAtlasIssuePreview.BrowseIssue(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget; const AKey: string): Boolean;
+begin
+  Result := (AProvider <> nil) and Browse(AProvider.IssuePage(ATarget, AKey));
+end;
+
+class function TAtlasIssuePreview.IsRisky(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '') or (Pos(mExtension + '.', cRiskyExtensions) > 0);
+end;
+
+class function TAtlasIssuePreview.OpenDownloaded(const AFileName: string): Boolean;
+begin
+  if IsRisky(AFileName) then
+  begin
+    Exit(TAtlasTrackerFiles.Shell.Reveal(AFileName));
+  end;
+  Result := TAtlasTrackerFiles.Shell.OpenFile(AFileName);
 end;
 
 class function TAtlasIssuePreview.FixOf(AError: TAtlasCiFetchError): TAtlasIssueFix;

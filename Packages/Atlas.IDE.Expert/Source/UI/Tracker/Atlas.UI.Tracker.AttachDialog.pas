@@ -171,9 +171,9 @@ type
 implementation
 
 uses
-  Winapi.ShellAPI,
   System.UITypes,
   Vcl.Dialogs,
+  Atlas.Core.Tracker.Files,
   Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.ImageMarkup;
 
@@ -183,6 +183,25 @@ class function TAtlasAttachDialogInput.Empty: TAtlasAttachDialogInput;
 begin
   Result := Default(TAtlasAttachDialogInput);
   Result.MaxImageWidth := 1920;
+end;
+
+/// <summary>Ende der Logdatei ALog als Anhang (ALines Zeilen, &lt;= 0 = alle); False, wenn sie fehlt oder nicht
+/// lesbar ist.</summary>
+function LogAttachment(const ALog: string; ALines: Integer; out AFile: TAtlasAttachFile): Boolean;
+var
+  mText: string;
+begin
+  AFile := Default(TAtlasAttachFile);
+  Result := TAtlasAttachLog.ReadTail(ALog, ALines, TAtlasAttachLog.MaxBytes, mText);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AFile := TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, ExtractFileName(ALog), mText);
+  if ALines > 0 then
+  begin
+    AFile.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachLogCaption, [ExtractFileName(ALog), ALines]);
+  end;
 end;
 
 { TAtlasAttachDialog }
@@ -581,7 +600,9 @@ begin
     Exit;
   mIndex := FList.Selected.Index;
   if (mIndex >= 0) and (mIndex < Length(FPaths)) and (FPaths[mIndex] <> '') then
-    ShellExecute(Handle, 'open', PChar(FPaths[mIndex]), nil, nil, SW_SHOWNORMAL);
+  begin
+    TAtlasTrackerFiles.Shell.Open(FPaths[mIndex]);
+  end;
 end;
 
 procedure TAtlasAttachDialog.Changed(Sender: TObject);
@@ -623,8 +644,7 @@ var
   mFiles: TAtlasAttachFiles;
   mFile: TAtlasAttachFile;
   mItem: TListItem;
-  mLog, mText: string;
-  mLines: Integer;
+  mLog: string;
 begin
   if not FFilled then
     Exit;
@@ -643,20 +663,14 @@ begin
   mLog := Trim(FLogBox.Text);
   if FLog.Checked and (mLog <> '') then
   begin
-    mLines := LogLineCount;
-    try
-      mText := TAtlasAttachLog.ReadTail(mLog, mLines, TAtlasAttachLog.MaxBytes);
-      mFile := TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, ExtractFileName(mLog), mText);
-      if mLines > 0 then
-        mFile.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachLogCaption,
-          [ExtractFileName(mLog), mLines]);
+    if LogAttachment(mLog, LogLineCount, mFile) then
+    begin
       mFiles := mFiles + [mFile];
-    except
+    end
+    else
+    begin
       // Nicht lesbar (fehlt, gesperrt): nur der Hinweis, kein Dialog.
-      on E: EInOutError do
-        FLogInfo.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachLogMissing, [ExtractFileName(mLog)]);
-      on E: EFileStreamError do
-        FLogInfo.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachLogMissing, [ExtractFileName(mLog)]);
+      FLogInfo.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachLogMissing, [ExtractFileName(mLog)]);
     end;
   end;
   if FDebugNote.Checked and (FInput.DebugNote <> '') then

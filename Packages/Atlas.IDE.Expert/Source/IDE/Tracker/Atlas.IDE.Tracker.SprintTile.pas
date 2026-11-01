@@ -181,8 +181,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.ShellAPI,
   System.DateUtils,
+  Atlas.Core.Tracker.Files,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.MyIssues,
@@ -719,7 +719,7 @@ procedure TAtlasIdeSprint.BrowseBoard;
 begin
   if FStarted and FState.HasSnapshot and (FState.Snapshot.Page <> '') then
   begin
-    ShellExecute(0, 'open', PChar(FState.Snapshot.Page), nil, nil, SW_SHOWNORMAL);
+    TAtlasTrackerFiles.Shell.Open(FState.Snapshot.Page);
   end;
 end;
 
