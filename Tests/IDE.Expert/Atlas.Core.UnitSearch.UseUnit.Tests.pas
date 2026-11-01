@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasUseUnitTests = class
   public
     [Test]

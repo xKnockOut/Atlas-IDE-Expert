@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasArchitectureAssignmentTests = class
   private
     FLanguage: TAtlasLanguage;

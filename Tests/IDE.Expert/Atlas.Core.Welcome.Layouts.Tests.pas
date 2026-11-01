@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeArrangeTests = class
   public
     [Test]
@@ -36,6 +37,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeFlowTests = class
   public
     [Test]
@@ -47,6 +49,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeLayoutsTests = class
   public
     [Test]
@@ -62,6 +65,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeCustomizingTests = class
   public
     [Test]

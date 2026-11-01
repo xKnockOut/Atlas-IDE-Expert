@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerTargetTests = class
   public
     [Test]
@@ -31,6 +32,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerNamingTests = class
   public
     /// <summary>Abnahme: „Beginnen“ auf #753 ergibt feature/753-atlas-bereiche-und.</summary>
@@ -59,6 +61,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasGitHubTrackerTests = class
   public
     [Test]
@@ -80,6 +83,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasYouTrackTrackerTests = class
   public
     /// <summary>Abnahme: dieselbe Abfrage wie in der YouTrack-Oberfläche, mit Projekt.</summary>
@@ -97,6 +101,7 @@ type
   /// <summary>Issue-Vorschau (#1264): ein Issue mit Beschreibung, Feldern, Kommentaren, Anhängen und Verweisen.
   /// </summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerDetailsTests = class
   public
     [Test]
@@ -119,6 +124,7 @@ type
   /// <summary>Checklisten (#1273): Beschreibung ungekürzt lesen und zurückschreiben (GitHub PATCH, YouTrack POST).
   /// </summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerDescriptionsTests = class
   public
     [Test]
@@ -137,6 +143,7 @@ type
   /// <summary>Abhängigkeiten und Unteraufgaben (#1279): Linktypen aus Fixtures (deutsch und englisch),
   /// Beziehungen von GitHub, Abhängigkeiten aus dem Text und die Anfragen beim Anlegen und Verknüpfen.</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerLinkProviderTests = class
   public
     [Test]
@@ -166,6 +173,7 @@ type
 
   /// <summary>Reiter „Entwicklung“ (#1269): was der Tracker zur Entwicklung eines Issues liefert.</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerDevelopmentTests = class
   public
     /// <summary>Abnahme: PR ↔ Kennung über Branch, „Closes #N“ und „#N“ im Titel, mit Zustand und Ampel.</summary>
@@ -179,6 +187,7 @@ type
 
   /// <summary>Meldungen zu meinen Issues (#1271): Änderungen seit der letzten Abfrage je Anbieter.</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerChangesTests = class
   public
     [Test]
@@ -204,6 +213,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCommitHookTests = class
   private
     FDir: string;

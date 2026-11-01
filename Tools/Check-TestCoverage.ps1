@@ -16,6 +16,14 @@
        einbindet, muss samt allen Plugin-Units, die sie ihrerseits einbindet, in
        Tests/Atlas.Tests.dpr stehen. Das Testprojekt hat keinen Suchpfad auf die
        Plugin-Quellen; Delphi fände sie sonst nicht.
+    5. Testkategorie je Modul (#1455, ADR 0017): Jede Testklasse einer Testunit,
+       deren Unit zu einem Modul gehört, trägt [Category('<Package>')], z. B.
+       [Category('Atlas.IDE.Debugger')]; damit laufen die Tests eines Moduls
+       allein (--include:Atlas.IDE.Debugger). Das Package der Unit "<Unit>"
+       steht in docs/adr/0017-unit-zuordnung.md; fehlt dort eine Zeile, gilt
+       die Ordnertabelle nach dem dritten Namensteil (Atlas.Core.Notes → Notes),
+       sofern die Testunit eine Unit dieses Moduls nennt. Tests des Kerns
+       tragen keine Modulkategorie.
 
     IDE- und UI-Units (Packages/Atlas.IDE.Expert/Source/IDE, .../UI) brauchen die
     laufende IDE bzw. ein Fenster; ihre Logik gehört in den Kern (Core) und wird
@@ -134,6 +142,61 @@ foreach ($key in $needed.Keys) {
     $unit = $pluginFiles[$key].BaseName
     if (-not [regex]::IsMatch($dpr, '(?m)^\s*' + [regex]::Escape($unit) + '\s+in\s', 'IgnoreCase')) {
         $problems += "${unit}: eingebunden von $($needed[$key]), fehlt in Tests/Atlas.Tests.dpr"
+    }
+}
+
+# Testkategorie je Modul (#1455, ADR 0017).
+$assignmentPath = Join-Path $Root 'docs/adr/0017-unit-zuordnung.md'
+if (Test-Path $assignmentPath) {
+    $unitPackage = @{}
+    $folderPackage = @{}
+    $section = ''
+    foreach ($line in [IO.File]::ReadAllLines($assignmentPath)) {
+        if ($line -match '^##\s+(.+?)\s*$' -and -not $line.StartsWith('###')) { $section = $Matches[1]; continue }
+        if (-not $line.StartsWith('|') -or $line -match '^\|\s*-') { continue }
+        $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
+        if ($section -eq '') {
+            if ($cells.Count -eq 2 -and $cells[1] -match '^`(Atlas\.IDE\.\w+)`$') {
+                $package = $Matches[1]
+                foreach ($m in [regex]::Matches($cells[0], '`(\w+)`')) { $folderPackage[$m.Groups[1].Value] = $package }
+            }
+            continue
+        }
+        if ($section -match '^Atlas\.IDE\.\w+$' -and $cells.Count -ge 3 -and $cells[0] -match '^`([\w.]+)`$') {
+            $unitPackage[$Matches[1]] = $section
+        }
+    }
+    foreach ($file in $testFiles | Where-Object { $_.Name -like '*.Tests.pas' }) {
+        $unit = $file.BaseName.Substring(0, $file.BaseName.Length - '.Tests'.Length)
+        $text = [IO.File]::ReadAllText($file.FullName)
+        $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
+        $package = $null
+        if ($unitPackage.ContainsKey($unit)) {
+            $package = $unitPackage[$unit]
+        } else {
+            $parts = $unit.Split('.')
+            if ($parts.Count -ge 3 -and @('Core', 'IDE', 'UI') -contains $parts[1] -and $folderPackage.ContainsKey($parts[2])) {
+                $candidate = $folderPackage[$parts[2]]
+                foreach ($m in [regex]::Matches($text, '\bAtlas\.[\w.]+')) {
+                    if ($unitPackage[$m.Value] -eq $candidate) { $package = $candidate; break }
+                }
+            }
+        }
+        if ($package -eq 'Atlas.IDE.Base') { $package = $null }
+        foreach ($m in [regex]::Matches($text, '(?m)^[ \t]*\[TestFixture[^\]\r\n]*\]\s*((?:\[[^\]\r\n]*\]\s*)*)(\w+)\s*=\s*class\b')) {
+            $attributes = $m.Groups[1].Value
+            $class = $m.Groups[2].Value
+            $categories = @([regex]::Matches($attributes, "Category\('(Atlas\.IDE\.\w+)'\)") | ForEach-Object { $_.Groups[1].Value })
+            if ($package -and $categories -notcontains $package) {
+                $problems += "${relative}: $class ohne [Category('$package')] (Testkategorie je Modul, #1455)"
+            }
+            foreach ($category in $categories) {
+                if ($category -ne $package) {
+                    $expected = if ($package) { $package } else { 'Kern, ohne Modulkategorie' }
+                    $problems += "${relative}: $class trägt [Category('$category')], gehört aber zu $expected"
+                }
+            }
+        }
     }
 }
 

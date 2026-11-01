@@ -17,6 +17,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeIssuesFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen (Warteschlange des Hauptthreads, Menüs).</summary>

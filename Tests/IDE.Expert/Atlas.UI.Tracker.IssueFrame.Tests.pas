@@ -18,6 +18,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssueFrameTests = class
   private
     FLanguage: TAtlasLanguage;

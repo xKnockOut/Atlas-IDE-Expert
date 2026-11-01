@@ -30,7 +30,9 @@
 - Jedes Modul hat seine Tabelle `Atlas.UI.<Modul>.Strings` (`TAtlas<Modul>TextId`, `TAtlas<Modul>Strings.Text/Fmt`): Rules, Designer, Debug, Analysis, Bookmarks, Build, Search, Tests. Verschoben sind nur Texte, die genau ein Modul nutzt (979); gemeinsam genutzte bleiben in `Atlas.UI.Strings`. Die Sprache liest jede Tabelle bei jedem Aufruf aus `TAtlasStrings.Language`, ein Sprachwechsel braucht keine Meldung.
 - Befehlshelfer in den Kompositionen von Lesezeichen, Debugger und Suche nehmen den fertigen Text (Texte aus Base und Modul gemischt).
 - Werkzeug: Skripte im Cloud-Container (`/tmp/h/pipeline.sh`) gehen mit dem Container verloren; neue Texte eines Moduls gleich in dessen Tabelle eintragen. Tracker und Welcome folgen mit ihren Paketen.
-- Offen: Delphi-Build (nur FPC: `Atlas.UI.Strings.Tests` 16/16 grün; VCL-Rahmentests laufen unter FPC nicht).
+- Je Modul eine Testunit `Atlas.UI.<Modul>.Strings.Tests` (beide Sprachen, gleiche Platzhalter, folgt der Sprache von Base); FPC 24/24 grün.
+- Testkategorie je Modul: 120 Testunits tragen `[Category('<Package>')]` an jeder Testklasse, auch Tracker und Welcome; `Check-TestCoverage` Punkt 5 prüft fehlende und falsche Kategorien (Package nach der Zuordnung, sonst Ordnertabelle, wenn die Testunit eine Unit des Moduls nennt).
+- Offen: Delphi-Build; Handtests MT1–MT3 (Kategorien in DUnitX unter Windows).
 
 ## Optionsdialog ohne Debugger und Build (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 - `UI.Settings.Page` nutzt nicht mehr `Core.Debug.OwnCode` und `Core.Tasks.Definitions`: Ordnerliste über `Atlas.Core.Settings.FolderList` (neu, Base, Test; `TAtlasDebugOwnCode.ParseFolders` delegiert dorthin), tasks.beforeBuild über das jetzt öffentliche `TasksBeforeBuildNames` (`Core.Settings.Plugin`, Test `BeforeBuildNamesMatchSettings` hält es gleich mit `TAtlasTasks.BeforeBuildNames`).

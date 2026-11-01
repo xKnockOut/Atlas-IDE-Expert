@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasTaskTextsTests = class
   private
     FLanguage: TAtlasLanguage;

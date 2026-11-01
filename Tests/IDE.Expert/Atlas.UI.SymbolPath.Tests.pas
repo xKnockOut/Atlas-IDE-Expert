@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasSymbolPathUiTests = class
   private
     FForm: TForm;

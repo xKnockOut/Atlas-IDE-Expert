@@ -10,6 +10,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasTaskDefinitionsTests = class
   public
     /// <summary>Der Optionsdialog (Base) kennt das Modul Build nicht und nimmt TasksBeforeBuildNames (#1455).

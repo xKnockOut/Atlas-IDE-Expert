@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerNotifyTests = class
   private
     FDir: string;

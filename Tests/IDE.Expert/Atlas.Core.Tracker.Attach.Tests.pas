@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasAttachTests = class
   private
     FDir: string;

@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerQueryTestTests = class
   public
     /// <summary>Abnahme: Antworten aus Beispieldateien → Meldungen.</summary>

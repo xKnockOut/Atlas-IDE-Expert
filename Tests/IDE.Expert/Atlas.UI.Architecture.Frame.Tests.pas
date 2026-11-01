@@ -16,6 +16,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasArchitectureFrameTests = class
   private
     FForm: TForm;

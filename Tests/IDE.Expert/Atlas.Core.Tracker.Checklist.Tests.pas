@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerChecklistTests = class
   public
     [Test]

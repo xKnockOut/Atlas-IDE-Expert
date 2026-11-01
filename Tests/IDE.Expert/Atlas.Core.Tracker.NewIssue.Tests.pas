@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasNewIssueTests = class
   public
     /// <summary>Abnahme: Die Kennung kommt in alle drei TODO-Schreibweisen, auch mit Optionen der IDE.</summary>

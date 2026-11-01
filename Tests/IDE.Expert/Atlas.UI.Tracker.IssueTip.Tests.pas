@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssueTipTests = class
   private
     FLanguage: TAtlasLanguage;

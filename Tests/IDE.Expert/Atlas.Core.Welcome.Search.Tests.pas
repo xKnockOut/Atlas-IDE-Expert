@@ -18,6 +18,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeIndexFilesTests = class
   public
     [Test]
@@ -45,6 +46,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSearchTests = class
   public
     [Test]

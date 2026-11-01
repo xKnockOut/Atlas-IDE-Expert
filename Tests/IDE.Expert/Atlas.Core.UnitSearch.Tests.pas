@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasUnitSearchTests = class
   private
     function Entries: TAtlasUnitEntries;

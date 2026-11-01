@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCodeLinksTests = class
   public
     /// <summary>Ohne Tracker, GitHub ohne owner/repo und YouTrack ohne Kürzel: keine Erkennung.</summary>

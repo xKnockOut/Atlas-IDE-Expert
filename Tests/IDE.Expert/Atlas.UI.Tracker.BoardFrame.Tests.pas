@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasBoardFrameTests = class
   private
     FSaved: Integer;

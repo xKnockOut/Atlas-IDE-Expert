@@ -56,6 +56,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasQuickActionsBarTests = class
   private
     FLanguage: TAtlasLanguage;

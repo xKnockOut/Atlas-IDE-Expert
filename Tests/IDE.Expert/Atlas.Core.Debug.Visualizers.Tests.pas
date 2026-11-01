@@ -16,6 +16,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TVisualizerTests = class
   private
     FValues: TDictionary<string, string>;

@@ -459,6 +459,8 @@ Jedes Modul hat genau eine Kompositions-Unit `Atlas.IDE.<Modul>.Composition` (Vo
 
 - Dienste von Base über `TAtlasIdeHost` (`Atlas.IDE.Foundation.Host`): laufende bzw. gestartete Sitzung, Meldungsansicht, Warnung, Log, Statusfeld, Compile-Ereignisse. Serverbefehle laufen über `RunCommandAsync` (der eine Hintergrundbefehl), `RunServerCommandAsync` (nebenläufig) und `RunRequestAsync`. Die Antwort kommt im Hauptthread und nur bei offenem Scope (`TAtlasModuleAnswer`). Code eines Moduls läuft nach dem Abmelden in keinem Faden mehr.
 - Verträge zwischen Modulen liegen in `Source/Contracts`: `BuildTools`, `Tests`, `DebugReport`, `Rules`. Base ruft einen Befehl eines Moduls nur über dessen Id auf (`RunModuleCommand`).
+- Texte: eigene Tabelle `Atlas.UI.<Modul>.Strings` mit `TAtlas<Modul>TextId` und `TAtlas<Modul>Strings.Text/Fmt` für Texte, die nur das Modul braucht; die Sprache liest jeder Aufruf aus `TAtlasStrings.Language` (Base). Gemeinsam genutzte Texte bleiben in `Atlas.UI.Strings`.
+- Tests: jede Testklasse einer Unit des Moduls trägt `[Category('<Package>')]`, z. B. `[Category('Atlas.IDE.Debugger')]`; `Check-TestCoverage` prüft das. Die Tests eines Moduls laufen allein mit `--include:Atlas.IDE.Debugger`.
 
 ## Threading-Modell
 

@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugEvaluateTests = class
   public
     [Test]

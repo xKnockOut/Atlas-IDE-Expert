@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerBoardTests = class
   public
     [Test]
@@ -38,6 +39,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasYouTrackBoardTests = class
   public
     /// <summary>Board zum Projekt des Ziels, Spalten mit deutschen Werten wie auf dem Server.</summary>
@@ -70,6 +72,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasGitHubBoardTests = class
   public
     [Test]

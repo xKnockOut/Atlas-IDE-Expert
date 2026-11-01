@@ -16,6 +16,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeProjectsTests = class
   public
     [Test]

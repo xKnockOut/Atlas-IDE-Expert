@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasSearchBarTests = class
   private
     FLanguage: TAtlasLanguage;

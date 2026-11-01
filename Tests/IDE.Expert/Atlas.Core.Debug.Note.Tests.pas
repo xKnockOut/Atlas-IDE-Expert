@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugNoteTests = class
   public
     [Test]

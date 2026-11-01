@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasHotspotsFrameTests = class
   private
     FForm: TForm;
