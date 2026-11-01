@@ -74,6 +74,7 @@ uses
   Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.NewIssuePlace,
   Atlas.IDE.Vcs.Service;
 
@@ -180,7 +181,7 @@ var
 begin
   Result := nil;
   AIndex := -1;
-  mResolved := TAtlasIdeIssues.TrackerOf(AProject, mConnection);
+  mResolved := TAtlasIdeIssuesTargets.TrackerOf(AProject, mConnection);
   mResolved.Language := TAtlasTrackerConnections.LanguageOf(
     TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections), mResolved);
   if mResolved.Provider <> '' then
@@ -248,7 +249,7 @@ begin
     mIssue.Key := AResult.Key;
     mIssue.Number := AResult.Number;
     mIssue.Title := ATitle;
-    Issues.StartIssue(mIssue);
+    Issues.Commands.StartIssue(mIssue);
   end;
 end;
 
@@ -264,7 +265,7 @@ begin
   begin
     Exit;
   end;
-  mProvider := Issues.ProviderFor(ATarget.Provider);
+  mProvider := Issues.Context.ProviderOf(ATarget.Provider);
   mTarget := ATarget;
   mFields := TAtlasNewIssueFields.Empty;
   mLoaded := False;
@@ -272,7 +273,8 @@ begin
   RunInBackground(
     procedure
     begin
-      mLoaded := TAtlasNewIssues.LoadFields(mProvider, mTarget, Issues.TransportFor(mProvider, mTarget), mFields);
+      mLoaded := TAtlasNewIssues.LoadFields(mProvider, mTarget, Issues.Context.TransportOf(mProvider, mTarget),
+        mFields);
     end,
     procedure
     begin
@@ -295,7 +297,7 @@ begin
     ADone(mResult);
     Exit;
   end;
-  mProvider := Issues.ProviderFor(ATarget.Provider);
+  mProvider := Issues.Context.ProviderOf(ATarget.Provider);
   mTarget := ATarget;
   LastTarget := ATarget;
   mDraft := ADraft;
@@ -304,7 +306,8 @@ begin
   RunInBackground(
     procedure
     begin
-      mResult := TAtlasNewIssues.CreateIssue(mProvider, mTarget, Issues.TransportFor(mProvider, mTarget), mDraft);
+      mResult := TAtlasNewIssues.CreateIssue(mProvider, mTarget, Issues.Context.TransportOf(mProvider, mTarget),
+        mDraft);
     end,
     procedure
     begin
@@ -374,7 +377,7 @@ begin
   Created(mResult, ASetup.Title, mPlace, mStartNow);
   if (Length(AFiles) > 0) and (Issues <> nil) and (mResult.Key <> '') then
   begin
-    Issues.AttachFiles(LastTarget, mResult.Key, AFiles);
+    Issues.Commands.AttachFiles(LastTarget, mResult.Key, AFiles);
   end;
 end;
 
@@ -383,7 +386,7 @@ begin
   Result := TAtlasNewIssueSetup.Empty;
   Result.Trackers := TrackersOf(AProject, Result.TrackerIndex);
   Result.IncludeCode := TAtlasIdeSettings.Current.IssuesCreateIncludeCode;
-  Result.CanStart := (Issues <> nil) and Issues.CanStartIssue;
+  Result.CanStart := (Issues <> nil) and Issues.Context.CanStart;
 end;
 
 { TAtlasIdeNewIssue }
