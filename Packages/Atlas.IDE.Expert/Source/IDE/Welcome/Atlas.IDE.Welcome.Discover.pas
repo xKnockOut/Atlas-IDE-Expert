@@ -88,6 +88,9 @@ type
     /// <summary>„Gesperrte Tipps wieder zeigen“ (Einstellungen): Sperren aufheben und sofort speichern; ohne
     /// gemeinsame Zählung direkt in der Datei.</summary>
     class procedure UnblockAll; static;
+    /// <summary>„Ausprobieren“ über die Dienste von Base (#1455): Befehl AId ausführen, beim Tipp zur
+    /// Befehlspalette diese öffnen.</summary>
+    class procedure TryCommand(AId: string); static;
     { IAtlasDiscoverSource }
     function Card(out ACard: TAtlasDiscoverCard): Boolean;
     procedure TryTip(const AId: string);
@@ -109,7 +112,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips,
-  Atlas.IDE.Results.Commands;
+  Atlas.IDE.Results.Commands,
+  Atlas.IDE.Foundation.Host;
 
 function English: Boolean;
 begin
@@ -505,6 +509,18 @@ begin
     end;
   end;
   TAtlasGuard.Log('Atlas entdecken (#757): Sperren aufgehoben');
+end;
+
+class procedure TAtlasIdeDiscover.TryCommand(AId: string);
+begin
+  if SameText(AId, TAtlasShortcutTips.PaletteCommandId) then
+  begin
+    TAtlasIdeHost.ShowPalette;
+  end
+  else
+  begin
+    TAtlasIdeHost.ExecuteCommand(AId);
+  end;
 end;
 
 end.

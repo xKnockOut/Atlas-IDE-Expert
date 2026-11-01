@@ -38,6 +38,9 @@ type
     Refresh: TProc<string>;
   end;
 
+  /// <summary>Stellt ein Objekt bereit: über den Scope des Moduls, in Tests über die Registry.</summary>
+  TAtlasWelcomeProvide = reference to function(const AIID: TGUID; const AObject: IInterface): IAtlasRegistration;
+
   /// <summary>Bereichsrahmen einer Kachel: Titelzeile von der Seite, Inhalt von der Kachel.</summary>
   TAtlasWelcomeTileFrame = class(TAtlasWelcomeSectionFrame)
   private type
@@ -86,6 +89,7 @@ type
     end;
   private
     FRegistry: IAtlasModuleRegistry;
+    FProvide: TAtlasWelcomeProvide;
     FSections: TAtlasWelcomeSections;
     FWatch: TAtlasProvidedWatch;
     FTiles: TDictionary<string, IAtlasWelcomeTile>;
@@ -105,7 +109,10 @@ type
     procedure RevokeServices;
   public
     /// <summary>ARegistry darf nil sein (dann keine Kacheln); ASections: Bereiche, in Tests eigene.</summary>
-    constructor Create(const ARegistry: IAtlasModuleRegistry; ASections: TAtlasWelcomeSections);
+    constructor Create(const ARegistry: IAtlasModuleRegistry; ASections: TAtlasWelcomeSections); overload;
+    /// <summary>Wie oben; Board und Projekte stellt AProvide bereit (Scope des Moduls, Regel 4).</summary>
+    constructor Create(const ARegistry: IAtlasModuleRegistry; const AProvide: TAtlasWelcomeProvide;
+      ASections: TAtlasWelcomeSections); overload;
     destructor Destroy; override;
     /// <summary>Kacheln anmelden, auf die Registry hören, Board und Projekte bereitstellen.</summary>
     procedure Start(const AProjects: TAtlasWelcomeProjectsAccess);
@@ -270,9 +277,23 @@ end;
 { TAtlasIdeWelcomeTiles }
 
 constructor TAtlasIdeWelcomeTiles.Create(const ARegistry: IAtlasModuleRegistry; ASections: TAtlasWelcomeSections);
+var
+  mRegistry: IAtlasModuleRegistry;
+begin
+  mRegistry := ARegistry;
+  Create(ARegistry,
+    function(const AIID: TGUID; const AObject: IInterface): IAtlasRegistration
+    begin
+      Result := mRegistry.Provide(AIID, AObject);
+    end, ASections);
+end;
+
+constructor TAtlasIdeWelcomeTiles.Create(const ARegistry: IAtlasModuleRegistry; const AProvide: TAtlasWelcomeProvide;
+  ASections: TAtlasWelcomeSections);
 begin
   inherited Create;
   FRegistry := ARegistry;
+  FProvide := AProvide;
   FSections := ASections;
   FTiles := TDictionary<string, IAtlasWelcomeTile>.Create;
   FFrames := TList<TAtlasWelcomeTileFrame>.Create;
@@ -283,6 +304,7 @@ begin
   Stop;
   FFrames.Free;
   FTiles.Free;
+  FProvide := nil;
   inherited Destroy;
 end;
 
@@ -323,7 +345,7 @@ end;
 
 procedure TAtlasIdeWelcomeTiles.ProvideServices(const AProjects: TAtlasWelcomeProjectsAccess);
 begin
-  if FRegistry = nil then
+  if (FRegistry = nil) or not Assigned(FProvide) then
   begin
     Exit;
   end;
@@ -333,8 +355,7 @@ begin
   FProjects := TProjects.Create;
   FProjects.FAccess := AProjects;
   FProjectsRef := FProjects;
-  FProvided := [FRegistry.Provide(IAtlasWelcomeBoard, FBoardRef), FRegistry.Provide(IAtlasWelcomeProjects,
-    FProjectsRef)];
+  FProvided := [FProvide(IAtlasWelcomeBoard, FBoardRef), FProvide(IAtlasWelcomeProjects, FProjectsRef)];
 end;
 
 procedure TAtlasIdeWelcomeTiles.RevokeServices;
