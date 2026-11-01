@@ -17,7 +17,8 @@
 - Entscheidungen Marcos vom 01.11. (im ADR): Auffindbarkeit b + c (Bpl-Ordner von RAD Studio, Base zuerst); ganzer Umbau ist 2.0.0, Meilenstein `v2.0.0` mit #1454, #1455, #1456; Einstellungen zentral in Base, Module melden ihren Teil an; `Atlas.IDE.Expert.dproj` nur auf `release/1.2`; Quellbaum package-first; Prüfregeln nur mit Rules-Package; Kern heißt `Atlas.IDE.Base`; Verträge zwischen Modulen im eigenen Package `Atlas.IDE.Contracts` (Base requiret es nicht); Regeln 1–9 bestätigt, Regel 9 geändert (Modulliste aus Anmeldungen).
 - Aufgabe B erledigt: Regeln 1–9 als Kurzfassung in `CLAUDE.md`, Begründung in `docs/Architektur.md` („Module und Verträge des Plugins“).
 - Veranschaulichungen: Einstellungs-Mockup https://claude.ai/artifact/J6cVnZrWqsrGxX4dmixSpN, UML Base/Welcome/Tracker https://claude.ai/artifact/Y5yvCQ1XiSiwvNDvZk5B1U, Varianten für den Ort der Verträge https://claude.ai/artifact/HibezT66dgw2jBophwasJN.
-- Offen: Entscheidung 4 (Texte je Modul, Sprachwechsel über Base; Empfehlung a); Korrektur des Satzes zu „1.x“ in #1456 (nur mit Marcos OK); Merge von PR #1462 nach `Pilot-2.0.0-beta.1`.
+- Entscheidung 4 (Texte) entschieden: a, je Modul eigene Texttabelle, Sprachwechsel über einen Vertrag in Base. Damit sind alle Entscheidungen 1–8 getroffen.
+- Offen: Korrektur des Satzes zu „1.x“ in #1456 (nur mit Marcos OK); Merge von PR #1462 nach `Pilot-2.0.0-beta.1`.
 
 ## Plugin in Funktions-Packages aufteilen (31.10.2026, Branch `claude/project-thread-ewwfb4`)
 - Marco fragte, ob Atlas-Funktionen in eigene Packages gehören. Analyse mit Varianten A bis D und Package-Diagramm: https://claude.ai/artifact/MYjWn34YhgeVw5PPA7eHu3.
