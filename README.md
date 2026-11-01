@@ -334,7 +334,8 @@ Tests\Tests.bat alle         :: both
 Check scripts (also run as GitHub Actions):
 
 ```powershell
-pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies
+pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies, module boundaries from ADR 0017
+pwsh Tools/Test-PackageDependencies.ps1    # self-test of the module boundaries with deliberate violations
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
 pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use their shared hosts
