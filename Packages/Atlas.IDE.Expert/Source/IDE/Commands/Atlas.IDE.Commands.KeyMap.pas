@@ -115,6 +115,7 @@ uses
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.IDE.Commands.Usage,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions;
 
@@ -171,6 +172,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    function AtlasModuleOf(AModule: HMODULE): string;
     function OfModule(AModule: HMODULE; out AName: string): TAtlasKeyOrigin;
     function OfAddress(AAddress: Pointer; out AName: string): TAtlasKeyOrigin;
   end;
@@ -189,6 +191,20 @@ begin
   inherited;
 end;
 
+/// <summary>Regel 8 (#1456): Tasten aus Base und aus jedem angemeldeten Modul (eigenes Package) gelten als
+/// Atlas-Tasten; dafür bekommt OriginOfModule den Namen des Moduls selbst, sonst den von Base.</summary>
+function TOrigins.AtlasModuleOf(AModule: HMODULE): string;
+var
+  mRegistry: IAtlasModuleRegistry;
+begin
+  Result := FAtlasModule;
+  mRegistry := AtlasModuleRegistry;
+  if (mRegistry <> nil) and mRegistry.IsModuleHandle(NativeUInt(AModule)) then
+  begin
+    Result := GetModuleName(AModule);
+  end;
+end;
+
 function TOrigins.OfModule(AModule: HMODULE; out AName: string): TAtlasKeyOrigin;
 var
   Entry: TOrigin;
@@ -201,7 +217,8 @@ begin
       Entry.Name := TAtlasKeyMap.IdeName;
     end
     else
-      Entry.Origin := TAtlasKeyMap.OriginOfModule(GetModuleName(AModule), FIdeFolder, FAtlasModule, Entry.Name);
+      Entry.Origin := TAtlasKeyMap.OriginOfModule(GetModuleName(AModule), FIdeFolder, AtlasModuleOf(AModule),
+        Entry.Name);
     FCache.Add(AModule, Entry);
   end;
   AName := Entry.Name;

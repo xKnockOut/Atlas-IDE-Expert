@@ -93,7 +93,8 @@ uses
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Results.Commands;
+  Atlas.IDE.Results.Commands,
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Textdatei als UTF-8 ohne Byte-Order-Mark; '' bei Fehler.</summary>
 function ReadText(const AFileName: string): string;
@@ -153,7 +154,7 @@ var
   Stored: TAtlasPluginSettings;
   Current: string;
 begin
-  FFolder := FindFolder(ExtractFilePath(GetModuleName(HInstance)));
+  FFolder := FindFolder(TAtlasIdeHost.InstallFolder);
   FVersions := nil;
   if FFolder <> '' then
     FVersions := TAtlasWhatsNew.Parse(ReadText(FFolder + TAtlasWhatsNew.FileName));
