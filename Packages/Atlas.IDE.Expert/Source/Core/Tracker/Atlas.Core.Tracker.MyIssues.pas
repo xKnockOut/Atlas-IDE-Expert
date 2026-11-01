@@ -249,7 +249,7 @@ type
     function IsUnseen(const AKey: string): Boolean;
   end;
 
-  TAtlasWelcomeIssues = class
+  TAtlasMyIssues = class
   private
     /// <summary>Gemeinsamer Teil von Execute; AUseRequest False: Vorgabe aus TAtlasVcsBranchPlan.</summary>
     class function Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan; AUseRequest: Boolean;
@@ -324,9 +324,6 @@ type
     class function Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
       const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
       overload; static;
-    /// <summary>Anzahl lokaler Änderungen, die ein Wechsel des Branchs betrifft (ohne unversionierte Dateien).
-    /// </summary>
-    class function LocalChanges(const AChanges: TArray<TAtlasVcsChange>): Integer; static;
     /// <summary>Nach „Beginnen“: aktiv setzen, EndedBranch löschen.</summary>
     class procedure Started(var AState: TAtlasIssuesState; const AIssue: TAtlasTrackerIssue;
       AMode: TAtlasIssueStart; const ABranch: string; ANowUtc: TDateTime); static;
@@ -469,14 +466,14 @@ begin
   Result.Svn := TAtlasVcsSvnBranchOptions.Default;
 end;
 
-{ TAtlasWelcomeIssues }
+{ TAtlasMyIssues }
 
-class function TAtlasWelcomeIssues.StartName(AStart: TAtlasIssueStart): string;
+class function TAtlasMyIssues.StartName(AStart: TAtlasIssueStart): string;
 begin
   Result := StartNames[AStart];
 end;
 
-class function TAtlasWelcomeIssues.VcsKindOf(const AText: string): TAtlasVcsKind;
+class function TAtlasMyIssues.VcsKindOf(const AText: string): TAtlasVcsKind;
 begin
   if SameText(Trim(AText), 'git') then
     Result := TAtlasVcsKind.Git
@@ -486,7 +483,7 @@ begin
     Result := TAtlasVcsKind.None;
 end;
 
-class function TAtlasWelcomeIssues.StartOf(const AText: string): TAtlasIssueStart;
+class function TAtlasMyIssues.StartOf(const AText: string): TAtlasIssueStart;
 begin
   if SameText(Trim(AText), StartNames[TAtlasIssueStart.Remember]) then
     Result := TAtlasIssueStart.Remember
@@ -494,7 +491,7 @@ begin
     Result := TAtlasIssueStart.Branch;
 end;
 
-class function TAtlasWelcomeIssues.TargetFor(const ATeamProvider, ATeamUrl, ATeamProject, ASettingTracker,
+class function TAtlasMyIssues.TargetFor(const ATeamProvider, ATeamUrl, ATeamProject, ASettingTracker,
   ASettingQuery: string): TAtlasTrackerTarget;
 var
   Provider: string;
@@ -507,7 +504,7 @@ begin
   Result := TAtlasTrackerTarget.Create(Provider, ATeamUrl, ATeamProject, ASettingQuery);
 end;
 
-class function TAtlasWelcomeIssues.TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
+class function TAtlasMyIssues.TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
   ASettingQuery: string): TAtlasTrackerTarget;
 begin
   case AResolution.Match of
@@ -523,7 +520,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeIssues.Due(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
+class function TAtlasMyIssues.Due(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
   ANowUtc: TDateTime; AForce: Boolean): Boolean;
 begin
   if not ATarget.Configured then
@@ -533,7 +530,7 @@ begin
   Result := (ANowUtc - AState.Attempt) * 24 * 60 >= DueMinutes;
 end;
 
-class procedure TAtlasWelcomeIssues.Recorded(var AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
+class procedure TAtlasMyIssues.Recorded(var AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
   ANowUtc: TDateTime; AOk: Boolean; const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
 var
   Same: Boolean;
@@ -566,7 +563,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeIssues.Effective(const AState: TAtlasIssuesState; const AProvider, AProject,
+class function TAtlasMyIssues.Effective(const AState: TAtlasIssuesState; const AProvider, AProject,
   ABranch: string): TAtlasActiveIssue;
 var
   Key: string;
@@ -593,7 +590,7 @@ begin
     Result.Title := Issue.Title;
 end;
 
-class function TAtlasWelcomeIssues.View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
+class function TAtlasMyIssues.View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
   const ABranch: string): TAtlasIssuesView;
 begin
   Result := Default(TAtlasIssuesView);
@@ -621,7 +618,7 @@ begin
     Result.Status := TAtlasIssuesStatus.Failed;
 end;
 
-class function TAtlasWelcomeIssues.QueryCounts(const AState: TAtlasIssuesState;
+class function TAtlasMyIssues.QueryCounts(const AState: TAtlasIssuesState;
   const AQueries: TArray<TAtlasTrackerQuery>): TArray<Integer>;
 var
   mIndex: Integer;
@@ -631,7 +628,7 @@ begin
     Result[mIndex] := AState.CountOf(AQueries[mIndex].Name);
 end;
 
-class function TAtlasWelcomeIssues.PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
+class function TAtlasMyIssues.PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
   const AIssue: TAtlasTrackerIssue): TAtlasIssueStartPlan;
 var
   Pattern: string;
@@ -663,25 +660,25 @@ begin
   Result.Message := TAtlasVcsBranchPlan.SvnMessage(Result.Svn, Result.Branch);
 end;
 
-class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl;
+class function TAtlasMyIssues.Execute(const AVcs: IAtlasVersionControl;
   const APlan: TAtlasIssueStartPlan): TAtlasIssueStartResult;
 begin
   Result := Start(AVcs, APlan, False, Default(TAtlasVcsBranchRequest), nil);
 end;
 
-class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+class function TAtlasMyIssues.Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
   const ARequest: TAtlasVcsBranchRequest): TAtlasIssueStartResult;
 begin
   Result := Start(AVcs, APlan, True, ARequest, nil);
 end;
 
-class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+class function TAtlasMyIssues.Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
   const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
 begin
   Result := Start(AVcs, APlan, True, ARequest, AProgress);
 end;
 
-class function TAtlasWelcomeIssues.Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+class function TAtlasMyIssues.Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
   AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest;
   const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
 var
@@ -787,17 +784,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeIssues.LocalChanges(const AChanges: TArray<TAtlasVcsChange>): Integer;
-var
-  Change: TAtlasVcsChange;
-begin
-  Result := 0;
-  for Change in AChanges do
-    if Change.Kind <> TAtlasVcsChangeKind.Untracked then
-      Inc(Result);
-end;
-
-class procedure TAtlasWelcomeIssues.Started(var AState: TAtlasIssuesState; const AIssue: TAtlasTrackerIssue;
+class procedure TAtlasMyIssues.Started(var AState: TAtlasIssuesState; const AIssue: TAtlasTrackerIssue;
   AMode: TAtlasIssueStart; const ABranch: string; ANowUtc: TDateTime);
 begin
   AState.Active := TAtlasActiveIssue.Empty;
@@ -810,13 +797,13 @@ begin
   AState.EndedBranch := '';
 end;
 
-class procedure TAtlasWelcomeIssues.Ended(var AState: TAtlasIssuesState; const ABranch: string);
+class procedure TAtlasMyIssues.Ended(var AState: TAtlasIssuesState; const ABranch: string);
 begin
   AState.Active := TAtlasActiveIssue.Empty;
   AState.EndedBranch := ABranch;
 end;
 
-class function TAtlasWelcomeIssues.NumberOfKey(const AKey: string): Integer;
+class function TAtlasMyIssues.NumberOfKey(const AKey: string): Integer;
 var
   Index: Integer;
 begin
@@ -828,7 +815,7 @@ begin
     Result := StrToIntDef(Copy(AKey, Index + 1, 9), 0);
 end;
 
-class function TAtlasWelcomeIssues.CommitPrefix(const AActive: TAtlasActiveIssue; const APattern: string): string;
+class function TAtlasMyIssues.CommitPrefix(const AActive: TAtlasActiveIssue; const APattern: string): string;
 var
   Issue: TAtlasTrackerIssue;
 begin
@@ -842,7 +829,7 @@ begin
   Result := TAtlasTrackerNaming.CommitPrefix(APattern, Issue);
 end;
 
-class function TAtlasWelcomeIssues.Fields(const AIssue: TAtlasTrackerIssue): TArray<string>;
+class function TAtlasMyIssues.Fields(const AIssue: TAtlasTrackerIssue): TArray<string>;
 begin
   Result := nil;
   if Length(AIssue.Labels) > 0 then
@@ -982,7 +969,7 @@ begin
     Result.AddPair('active', Active);
     Active.AddPair('key', AState.Active.Key);
     AddText(Active, 'title', AState.Active.Title);
-    Active.AddPair('mode', TAtlasWelcomeIssues.StartName(AState.Active.Mode));
+    Active.AddPair('mode', TAtlasMyIssues.StartName(AState.Active.Mode));
     AddText(Active, 'branch', AState.Active.Branch);
     AddTime(Active, 'started', AState.Active.StartedUtc);
   end;
@@ -1021,7 +1008,7 @@ begin
   if Items is TJSONArray then
     for Value in TJSONArray(Items) do
     begin
-      if not (Value is TJSONObject) or (Length(AState.Items) >= TAtlasWelcomeIssues.MaxItems) then
+      if not (Value is TJSONObject) or (Length(AState.Items) >= TAtlasMyIssues.MaxItems) then
         Continue;
       Entry := TJSONObject(Value);
       Item := TAtlasTrackerIssue.Empty;
@@ -1048,7 +1035,7 @@ begin
   begin
     AState.Active.Key := TextIn(Active, 'key');
     AState.Active.Title := TextIn(Active, 'title');
-    AState.Active.Mode := TAtlasWelcomeIssues.StartOf(TextIn(Active, 'mode'));
+    AState.Active.Mode := TAtlasMyIssues.StartOf(TextIn(Active, 'mode'));
     AState.Active.Branch := TextIn(Active, 'branch');
     AState.Active.StartedUtc := TAtlasProjectSummaries.TimeOf(TextIn(Active, 'started'));
   end;
@@ -1063,7 +1050,7 @@ begin
         AState.SetCount(Counts.Pairs[Index].JsonString.Value, TJSONNumber(Counts.Pairs[Index].JsonValue).AsInt);
 end;
 
-class function TAtlasWelcomeIssues.ToJson(const AState: TAtlasIssuesState): string;
+class function TAtlasMyIssues.ToJson(const AState: TAtlasIssuesState): string;
 var
   Section: TJSONObject;
 begin
@@ -1075,7 +1062,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeIssues.FromJson(const AJson: string; out AState: TAtlasIssuesState): Boolean;
+class function TAtlasMyIssues.FromJson(const AJson: string; out AState: TAtlasIssuesState): Boolean;
 var
   Value: TJSONValue;
 begin
@@ -1088,7 +1075,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeIssues.Read(const ASummary: TAtlasProjectSummary; out AState: TAtlasIssuesState): Boolean;
+class function TAtlasMyIssues.Read(const ASummary: TAtlasProjectSummary; out AState: TAtlasIssuesState): Boolean;
 var
   Value: TJSONValue;
 begin
@@ -1101,7 +1088,7 @@ begin
   end;
 end;
 
-class procedure TAtlasWelcomeIssues.Write(var ASummary: TAtlasProjectSummary; const AState: TAtlasIssuesState);
+class procedure TAtlasMyIssues.Write(var ASummary: TAtlasProjectSummary; const AState: TAtlasIssuesState);
 var
   Value: TJSONValue;
   Original, Root: TJSONObject;
