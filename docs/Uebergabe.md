@@ -17,6 +17,10 @@
 - Optionsseiten: Modulschalter oben auf der jeweiligen Seite. Hinweis „Prüfregeln sind aus“ einmal je atlas.json und Sitzung, wenn die atlas.json Regeln festlegt und das Modul aus ist (`Atlas.Core.Settings.RuleChecksNotice`, `Atlas.IDE.Settings.RuleChecksNotice`, Quelle `ruleChecks`).
 - Nicht übersetzt: FPC trunk ließ sich in der Cloud nicht bauen. Alle Prüfskripte grün. Vor dem Merge mit Delphi bauen und Tests laufen lassen.
 - Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
+## Designer meldet sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
+- `Atlas.IDE.Designer.Composition` meldet `atlas.designer` an (Schalter `designer`, ab abgesichertem Start): Teil DesignerBar (startet nur mit editor.designerBar, vorher immer installiert und ausgeblendet), Hörer für Einstellungen und Thema. Die Benachrichtigungen des Designers (Teil Forms, #722) bleiben in Base.
+- `TAtlasIdeStartOptions.Say` nutzt `TAtlasIdeHost.Message` (keine zweite Meldungsroutine).
+
 ## Tests melden sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 - `Atlas.IDE.Tests.Composition` meldet `atlas.tests` an (Schalter `tests`, nur normaler Start): Teil Tests (Läufer, Test am Cursor, Lens, betroffene Tests), Befehle, Atlas-Menü „Betroffene Tests ausführen“ (jetzt bei den Einträgen der Module), Kontextmenü „Test ausführen“/„Test debuggen“ (jetzt aus dem Modul; ausgeschaltet fehlen sie statt zu melden, dass es aus ist).
 - Base neu: `IAtlasBuildVerdictListener` (`Atlas.Core.Build.Verdict`, Tests nach dem Build), `IAtlasTestRunner` (`Atlas.Core.Modules.Contract`, Auswirkungsanalyse und Willkommensseite starten Tests), `Atlas.IDE.Foundation.StartOptions` (Startoptionen, „Start“, vorübergehende Startparameter; vorher in `TAtlasIdeStartProfiles`, Tests.Debug griff damit ins Modul Build), `TAtlasProjectSummaries.DefaultFolder/FailedTestsOf` (Test; das Modul liest die fehlgeschlagenen Tests ohne Willkommensseite).
