@@ -51,6 +51,9 @@ type
     /// <summary>Zeile im Bericht des Managers (Diagnose), ohne Meldungsansicht.</summary>
     Report: TProc<string>;
     RunCommand: TAtlasHostCommandRunner;
+    /// <summary>Wie RunCommand, aber nebenläufig zu anderen Befehlen (für Fenster, die regelmäßig nachfragen);
+    /// False nur ohne laufenden Server.</summary>
+    RunServerCommand: TAtlasHostCommandRunner;
     RunRequest: TAtlasHostRequestRunner;
     StatusExtra: TAtlasHostStatusExtra;
     CompileEvents: TFunc<TAtlasCompileEvents>;
@@ -84,6 +87,11 @@ type
     /// <summary>Befehl im Hintergrund an den laufenden Server. ADone läuft im Hauptthread, gesichert über AFeature,
     /// und nur, solange AScope offen ist. False = nicht gestartet.</summary>
     class function RunCommandAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
+      const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean; static;
+    /// <summary>Wie RunCommandAsync, aber nebenläufig zu anderen Befehlen: belegt nicht den einen
+    /// Hintergrundbefehl, den RunCommandAsync teilt. Startet keinen Server (vorher ActiveSession fragen, wenn er
+    /// starten soll). False = nicht gestartet.</summary>
+    class function RunServerCommandAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
       const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean; static;
     /// <summary>Anfrage im Hintergrund an den laufenden Server (startet keinen), abbrechbar über ACancelled. ADone
     /// läuft im Hauptthread, gesichert über AFeature, und nur, solange AScope offen ist. False = nicht gestartet.
@@ -203,6 +211,20 @@ begin
   mAnswer := TAtlasModuleAnswer.Open(AScope, ADone);
   Result := FServices.RunCommand(ACommand, AArgumentsJson, ATimeoutMs, DeliverInMainThread(mAnswer, AFeature));
   // Nicht gestartet: Der Rückruf des Moduls kommt nie, also gleich lösen.
+  if not Result then
+    mAnswer.Revoke;
+end;
+
+class function TAtlasIdeHost.RunServerCommandAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
+  const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean;
+var
+  mAnswer: IAtlasModuleAnswer;
+begin
+  Result := False;
+  if not Assigned(FServices.RunServerCommand) or (AScope = nil) or not AScope.IsOpen then
+    Exit;
+  mAnswer := TAtlasModuleAnswer.Open(AScope, ADone);
+  Result := FServices.RunServerCommand(ACommand, AArgumentsJson, ATimeoutMs, DeliverInMainThread(mAnswer, AFeature));
   if not Result then
     mAnswer.Revoke;
 end;

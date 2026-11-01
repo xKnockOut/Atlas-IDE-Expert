@@ -17,6 +17,13 @@
 - Optionsseiten: Modulschalter oben auf der jeweiligen Seite. Hinweis „Prüfregeln sind aus“ einmal je atlas.json und Sitzung, wenn die atlas.json Regeln festlegt und das Modul aus ist (`Atlas.Core.Settings.RuleChecksNotice`, `Atlas.IDE.Settings.RuleChecksNotice`, Quelle `ruleChecks`).
 - Nicht übersetzt: FPC trunk ließ sich in der Cloud nicht bauen. Alle Prüfskripte grün. Vor dem Merge mit Delphi bauen und Tests laufen lassen.
 - Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
+## Analyse meldet sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
+- `Atlas.IDE.Analysis.Composition` (neuer Ordner `IDE/Analysis`) meldet `atlas.analysis` an (Schalter `analysis`, ab abgesichertem Start): Teile Architecture, UnitRelations, Hotspots, SymbolPath; sieben Befehle (neu `Atlas.SymbolPathFromHere` für das Kontextmenü); Atlas-Menü Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen (jetzt bei den Einträgen der Module), Ansicht › Atlas mit eigenen Texten, Kontextmenü „Weg von hier nach …“.
+- Base neu: `TAtlasIdeHost.RunServerCommandAsync` (nebenläufig zum einen Hintergrundbefehl, Dienst `RunServerCommand`), eigener Text für Einträge unter Ansicht › Atlas (`TAtlasMenuEntry.Caption`), 24 statt 12 Plätze für Module im Kontextmenü (es waren schon 14 Einträge).
+- Feld „interface-Änderung“ (#554) setzt das Modul über `TAtlasIdeHost.SetStatusField` und nimmt es beim Stoppen zurück. „Graph zeigen“ an einem Unit-Zyklus (Hover-Aktion und Code-Aktion) ruft in der Wurzel den Modulbefehl `Atlas.UnitDependencies` über `RunModuleCommand`.
+- `Core.SymbolPath.Model` und `UI.SymbolPath.Chain` bleiben in Base (ADR-Tabelle): Das Ergebnisfenster zeigt den Weg.
+- Antworten an Architektur, Hotspots und Weg kommen jetzt im Hauptthread (über `TAtlasModuleAnswer`); die Dienste reihen sie wie bisher noch einmal über `TAtlasMainThread` ein.
+
 ## Suche meldet sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 - `Atlas.IDE.Search.Composition` meldet `atlas.search` an (Schalter `search`, ab abgesichertem Start): Teile Search, UnitSearch, Query; Befehle; Atlas-Menü „Units suchen“, „IDE-Dialog Units“, „Atlas-Abfrage“ (jetzt bei den Einträgen der Module) und Ansicht › Atlas › „Atlas-Abfrage“; alle Tasten der Suche und Strg+F12 kommen vom Modul.
 - Base neu: `TAtlasMenuPlace.ViewMenu` (Ansicht › Atlas, `UpdateViewModuleItems` beim Öffnen, Test), `IAtlasTakenActions` (`Atlas.Core.Commands.KeyMap`, ersetzt `TAtlasIdeUnitSearch.HookedAction` in der Tastenkürzel-Übersicht), `TAtlasIdeHost.RunRequestAsync` (abbrechbare Anfrage, Antwort nur bei offenem Scope).
