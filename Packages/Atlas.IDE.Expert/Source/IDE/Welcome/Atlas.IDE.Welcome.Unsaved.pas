@@ -122,7 +122,8 @@ uses
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.Projects;
+  Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Projects.Summaries;
 
 { TAtlasIdeUnsaved.TIdeNotifier }
 
@@ -352,7 +353,7 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
-  Root := TAtlasIdeProjects.Folder;
+  Root := TAtlasIdeProjectSummaries.Folder;
   // Dieselbe Liste wie der Bereich „Projekte“ (#592).
   Entries := TAtlasWelcomeProjects.Entries(Recent,
     function(const AProject: string; out ASummary: TAtlasProjectSummary): Boolean
@@ -438,7 +439,7 @@ begin
   Keep := Self;
   Project := AProject;
   Dir := ExtractFileDir(AProject);
-  Root := TAtlasIdeProjects.Folder;
+  Root := TAtlasIdeProjectSummaries.Folder;
   Stamp := NowUtc;
   Ok := False;
   State := TAtlasUnsavedState.Empty;
@@ -498,7 +499,7 @@ begin
   // Beim Schließen bleibt oft etwas liegen: frisch abfragen, auch wenn die Willkommensseite zu ist.
   if FStopped or not TAtlasIdeSettings.Current.WelcomePageUnsaved then
     Exit;
-  Query(TAtlasIdeProjects.ProjectFileOf(AProject));
+  Query(TAtlasIdeProjectSummaries.ProjectFileOf(AProject));
 end;
 
 procedure TAtlasIdeUnsaved.OpenProject(const AProject: string);
@@ -739,7 +740,7 @@ begin
       Key := TAtlasProjectSummaries.NormalizedPath(Row.Project);
       // Bis Mitternacht Ortszeit.
       UntilUtc := TTimeZone.Local.ToUniversalTime(TAtlasWelcomeUnsaved.Tomorrow(Now));
-      TAtlasProjectSummaries.Update(TAtlasIdeProjects.Folder, Row.Project,
+      TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Row.Project,
         procedure(var ASummary: TAtlasProjectSummary)
         var
           Stored: TAtlasUnsavedState;

@@ -159,7 +159,8 @@ uses
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Projects,
-  Atlas.Core.Files.TextFile;
+  Atlas.Core.Files.TextFile,
+  Atlas.IDE.Projects.Summaries;
 
 function FileThere(const AFileName: string): Boolean;
 begin
@@ -379,7 +380,7 @@ begin
   if Project <> nil then
   begin
     // Noch nie gespeichert: kein Ordner für atlas.json, keine Karte.
-    Result := TAtlasIdeProjects.ProjectFileOf(Project.FileName);
+    Result := TAtlasIdeProjectSummaries.ProjectFileOf(Project.FileName);
     AOpen := FileExists(Result);
     if not AOpen then
       Result := '';
@@ -388,11 +389,11 @@ begin
   try
     for Recent in TAtlasIdeWelcomeSearch.ClosedProjects do
     begin
-      Result := TAtlasIdeProjects.ProjectFileOf(Recent);
+      Result := TAtlasIdeProjectSummaries.ProjectFileOf(Recent);
       if not FileExists(Result) then
         Continue;
       // „Aus Liste entfernen“ (#592) gilt auch hier.
-      if TAtlasProjectSummaries.Load(TAtlasIdeProjects.Folder, Result, Summary) and Summary.Hidden then
+      if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, Result, Summary) and Summary.Hidden then
         Continue;
       AOpen := OpenProjectOf(Result) <> nil;
       Exit;
@@ -419,7 +420,7 @@ begin
     begin
       Result := FileExists(AFileName);
     end) <> '';
-  if TAtlasProjectSummaries.Load(TAtlasIdeProjects.Folder, AProject, ASummary) then
+  if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, ASummary) then
     Result.Setup := ASummary.Setup;
 end;
 
@@ -494,7 +495,7 @@ begin
       Item.Setup := TAtlasProjectSetup.Empty;
       if SameText(Member, Result.Project) then
         Item.Setup := Result.Facts.Setup
-      else if TAtlasProjectSummaries.Load(TAtlasIdeProjects.Folder, Member, Other) then
+      else if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, Member, Other) then
         Item.Setup := Other.Setup;
       Combined := Combined + [Item];
     end;
@@ -655,9 +656,9 @@ begin
     Exit;
   if ASucceeded then
   begin
-    Stamp := TAtlasIdeProjects.StampUtc;
+    Stamp := TAtlasIdeProjectSummaries.StampUtc;
     // Abnahme: Nach der Baseline sind die neuen Treffer 0 (alle stehen in der Baseline).
-    TAtlasProjectSummaries.Update(TAtlasIdeProjects.Folder, AProject,
+    TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, AProject,
       procedure(var ASummary: TAtlasProjectSummary)
       begin
         TAtlasWelcomeSetup.BaselineWritten(ASummary.Rules, Stamp);
@@ -697,7 +698,7 @@ var
   Group: IOTAProjectGroup;
 begin
   Result := Default(TAtlasSetupPathJob);
-  Result.Project := TAtlasIdeProjects.ProjectFileOf(AIde.FileName);
+  Result.Project := TAtlasIdeProjectSummaries.ProjectFileOf(AIde.FileName);
   Context := TAtlasIdeProjectContext.Read(AIde);
   Result.Input.Project := Result.Project;
   // Hauptdatei: .dpr bei Programmen und Bibliotheken, .dpk bei Packages.
@@ -727,7 +728,7 @@ begin
       for Index := 0 to Group.ProjectCount - 1 do
         if Group.Projects[Index] <> nil then
           Result.Input.GroupProjects := Result.Input.GroupProjects +
-            [TAtlasIdeProjects.ProjectFileOf(Group.Projects[Index].FileName)];
+            [TAtlasIdeProjectSummaries.ProjectFileOf(Group.Projects[Index].FileName)];
     end;
   end;
   // Build-Skripte (-dX) neben dem Projekt, neben der Gruppe und in üblichen Unterordnern der Gruppe.
@@ -900,7 +901,7 @@ begin
   Defines := 0;
   Uncertain := 0;
   Files := 0;
-  Stamp := TAtlasIdeProjects.StampUtc;
+  Stamp := TAtlasIdeProjectSummaries.StampUtc;
   for Run in ARuns do
   begin
     if Run.Error <> '' then
@@ -913,7 +914,7 @@ begin
     Check := Run.Check;
     Member := Run.Project;
     // Funde je Projekt in dessen Zusammenfassung; die Karte einer Gruppe fasst sie zusammen.
-    TAtlasProjectSummaries.Update(TAtlasIdeProjects.Folder, Member,
+    TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Member,
       procedure(var ASummary: TAtlasProjectSummary)
       begin
         ASummary.Setup := TAtlasWelcomeSetup.Checked(ASummary.Setup, Member, Check, Stamp);
@@ -995,9 +996,9 @@ begin
       Project := Target(Open);
       if Project = '' then
         Exit;
-      Stamp := TAtlasIdeProjects.StampUtc;
+      Stamp := TAtlasIdeProjectSummaries.StampUtc;
       // Abnahme: „Nicht mehr fragen“ wirkt dauerhaft (Projekt-Zusammenfassung, nicht die Sitzung).
-      TAtlasProjectSummaries.Update(TAtlasIdeProjects.Folder, Project,
+      TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Project,
         procedure(var ASummary: TAtlasProjectSummary)
         begin
           ASummary.Setup.Known := True;
@@ -1022,7 +1023,7 @@ begin
         Report(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNoProject));
         Exit;
       end;
-      TAtlasProjectSummaries.Update(TAtlasIdeProjects.Folder, Project,
+      TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Project,
         procedure(var ASummary: TAtlasProjectSummary)
         begin
           ASummary.Setup.Dismissed := False;

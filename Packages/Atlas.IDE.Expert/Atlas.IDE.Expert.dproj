@@ -677,6 +677,7 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Search.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.TestResults.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Issues.pas"/>
@@ -719,6 +720,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas"/>
+        <DCCReference Include="Source\IDE\Projects\Atlas.IDE.Projects.Summaries.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.TestResults.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Issues.pas"/>

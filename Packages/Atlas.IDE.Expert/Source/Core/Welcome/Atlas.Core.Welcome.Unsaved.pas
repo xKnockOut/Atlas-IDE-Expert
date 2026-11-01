@@ -276,7 +276,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Welcome.Projects;
+  Atlas.Core.Projects.Recording;
 
 const
   KindNames: array[TAtlasUnsavedKind] of string = ('changes', 'conflicts', 'commits', 'noUpstream', 'stashes');
@@ -470,8 +470,8 @@ var
 begin
   Result := nil;
   for Change in AChanges do
-    if (AFolder = '') or TAtlasWelcomeProjects.InFolder(Change.Path, AFolder) or
-      TAtlasWelcomeProjects.InFolder(Change.OldPath, AFolder) then
+    if (AFolder = '') or TAtlasProjectRecording.InFolder(Change.Path, AFolder) or
+      TAtlasProjectRecording.InFolder(Change.OldPath, AFolder) then
       Result := Result + [Change];
 end;
 
