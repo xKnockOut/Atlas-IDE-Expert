@@ -170,7 +170,9 @@ begin
   begin
     Assert.AreNotEqual('IssuesBoardOnlyMine', mKey);
     if mKey = 'issues.board.onlyMine' then
+    begin
       mFound := True;
+    end;
   end;
   Assert.IsTrue(mFound, 'issues.board.onlyMine fehlt');
 end;

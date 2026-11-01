@@ -63,22 +63,22 @@ begin
   try
     // Wie in der IDE mit Fenster: Die Klapplisten füllen sich erst dann.
     mDialog.HandleNeeded;
-    Assert.AreEqual('Sprint', mDialog.NameEdit.Text);
-    Assert.AreEqual(1, mDialog.ConnectionBox.Choice);
-    Assert.AreEqual('ATL', mDialog.ProjectEdit.Text);
-    Assert.IsTrue(mDialog.OkButton.Enabled);
-    Assert.IsFalse(mDialog.TestButton.Enabled, 'ohne Haken kein Testen');
-    mDialog.QueryEdit.Text := '  zwei' + #10 + 'Zeilen ';
+    Assert.AreEqual('Sprint', mDialog.View.Name.Text);
+    Assert.AreEqual(1, mDialog.View.Connection.Choice);
+    Assert.AreEqual('ATL', mDialog.View.Project.Text);
+    Assert.IsTrue(mDialog.View.Ok.Enabled);
+    Assert.IsFalse(mDialog.View.Test.Enabled, 'ohne Haken kein Testen');
+    mDialog.View.Query.Text := '  zwei' + #10 + 'Zeilen ';
     mQuery := mDialog.Query;
     Assert.AreEqual('zwei Zeilen', mQuery.Query, 'einzeilig');
     Assert.AreEqual('Firma', mQuery.Connection);
     // Doppelter Name: OK gesperrt, mit Hinweis.
-    mDialog.NameEdit.Text := 'standard';
-    Assert.IsFalse(mDialog.OkButton.Enabled);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken), mDialog.ResultMemo.Text);
-    mDialog.NameEdit.Text := 'Neu';
-    mDialog.QueryEdit.Text := '';
-    Assert.IsFalse(mDialog.OkButton.Enabled, 'ohne Abfrage');
+    mDialog.View.Name.Text := 'standard';
+    Assert.IsFalse(mDialog.View.Ok.Enabled);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken), mDialog.View.Result.Text);
+    mDialog.View.Name.Text := 'Neu';
+    mDialog.View.Query.Text := '';
+    Assert.IsFalse(mDialog.View.Ok.Enabled, 'ohne Abfrage');
     // „(alle)“ = ohne Verbindung.
     mDialog.SelectConnection(0);
     Assert.AreEqual('', mDialog.Query.Connection);
@@ -89,7 +89,7 @@ begin
   mDialog := TAtlasTrackerQueryDialog.CreateDialog(nil, TAtlasTrackerQuery.Create('A', 'a', 'Alt', ''), Connections,
     nil, nil);
   try
-    Assert.AreEqual(3, mDialog.ConnectionBox.Choice);
+    Assert.AreEqual(3, mDialog.View.Connection.Choice);
     Assert.AreEqual('Alt', mDialog.Query.Connection);
   finally
     mDialog.Free;
@@ -108,20 +108,22 @@ begin
     // YouTrack mit erkannter deutscher Oberfläche: nur die deutschen Vorlagen.
     Assert.AreEqual(4, Integer(Length(mDialog.Templates)));
     for mTemplate in mDialog.Templates do
+    begin
       Assert.AreEqual('de', mTemplate.Language);
+    end;
     Assert.AreEqual('YouTrack · ' + TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryDefault) + ' (' +
       TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageGerman) + ')',
       TAtlasTrackerQueryDialog.TemplateCaption(mDialog.Templates[0]));
     mDialog.ApplyTemplate(0);
-    Assert.AreEqual('assignee: meine #Ungelöst', mDialog.QueryEdit.Text);
-    Assert.AreEqual(0, mDialog.TemplateBox.Choice, 'wieder „(Vorlage einsetzen …)“');
+    Assert.AreEqual('assignee: meine #Ungelöst', mDialog.View.Query.Text);
+    Assert.AreEqual(0, mDialog.View.Template.Choice, 'wieder „(Vorlage einsetzen …)“');
     // GitHub: englische Begriffe, ohne Sprint und ohne Sprachangabe.
     mDialog.SelectConnection(2);
     Assert.AreEqual(3, Integer(Length(mDialog.Templates)));
     Assert.AreEqual('GitHub · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTemplateCreatedByMe),
       TAtlasTrackerQueryDialog.TemplateCaption(mDialog.Templates[1]));
     mDialog.ApplyTemplate(1);
-    Assert.AreEqual('author:@me state:open', mDialog.QueryEdit.Text);
+    Assert.AreEqual('author:@me state:open', mDialog.View.Query.Text);
     // „(alle)“: Vorlagen beider Anbieter.
     mDialog.SelectConnection(0);
     Assert.AreEqual(7, Integer(Length(mDialog.Templates)));
@@ -159,18 +161,18 @@ begin
     end);
   try
     mDialog.HandleNeeded;
-    Assert.IsTrue(mDialog.TestButton.Enabled);
-    mDialog.TestButton.Click;
+    Assert.IsTrue(mDialog.View.Test.Enabled);
+    mDialog.View.Test.Click;
     Assert.AreEqual('Firma', mSeenConnection);
     Assert.AreEqual('ATL', mSeen.Project);
     Assert.AreEqual('assignee: me #Unresolved', mSeen.Query);
     Assert.AreEqual('de', mSeen.Language, 'Sprache der Verbindung');
-    Assert.IsTrue(string(mDialog.ResultMemo.Text).Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestEmpty, [120])),
-      mDialog.ResultMemo.Text);
-    Assert.IsTrue(string(mDialog.ResultMemo.Text).Contains('assignee: meine #Ungelöst'), 'Tipp');
-    Assert.IsTrue(string(mDialog.ResultMemo.Text).Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestSent,
+    Assert.IsTrue(string(mDialog.View.Result.Text).Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestEmpty, [120])),
+      mDialog.View.Result.Text);
+    Assert.IsTrue(string(mDialog.View.Result.Text).Contains('assignee: meine #Ungelöst'), 'Tipp');
+    Assert.IsTrue(string(mDialog.View.Result.Text).Contains(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestSent,
       ['Firma', 'project: ATL assignee: me #Unresolved'])), 'gesendete Abfrage');
-    Assert.IsTrue(mDialog.TestButton.Enabled, 'nach dem Ergebnis wieder frei');
+    Assert.IsTrue(mDialog.View.Test.Enabled, 'nach dem Ergebnis wieder frei');
   finally
     mDialog.Free;
   end;

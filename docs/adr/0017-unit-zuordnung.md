@@ -677,6 +677,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Providers.GitHub` | `Core/Tracker/Atlas.Core.Tracker.Providers.GitHub.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Queries` | `Core/Tracker/Atlas.Core.Tracker.Queries.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.SettingsTables` | `Core/Tracker/Atlas.Core.Tracker.SettingsTables.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.QueryTest` | `Core/Tracker/Atlas.Core.Tracker.QueryTest.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Sprint` | `Core/Tracker/Atlas.Core.Tracker.Sprint.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Templates` | `Core/Tracker/Atlas.Core.Tracker.Templates.pas` | Ordner `Core/Tracker` |
@@ -713,7 +714,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.Notify` | `UI/Tracker/Atlas.UI.Tracker.Notify.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.QueryDialog` | `UI/Tracker/Atlas.UI.Tracker.QueryDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsConnections` | `UI/Tracker/Atlas.UI.Tracker.SettingsConnections.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsGeneral` | `UI/Tracker/Atlas.UI.Tracker.SettingsGeneral.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsProjects` | `UI/Tracker/Atlas.UI.Tracker.SettingsProjects.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsQueries` | `UI/Tracker/Atlas.UI.Tracker.SettingsQueries.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsRows` | `UI/Tracker/Atlas.UI.Tracker.SettingsRows.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SettingsSection` | `UI/Tracker/Atlas.UI.Tracker.SettingsSection.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsSnippets` | `UI/Tracker/Atlas.UI.Tracker.SettingsSnippets.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsWorkflow` | `UI/Tracker/Atlas.UI.Tracker.SettingsWorkflow.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Texte des Moduls (Tracker), Sprache von Base, #1455 |
 | `Atlas.UI.Tracker.TimeDialog` | `UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.TimeList` | `UI/Tracker/Atlas.UI.Tracker.TimeList.pas` | Ordner `UI/Tracker` |

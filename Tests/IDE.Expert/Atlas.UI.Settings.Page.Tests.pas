@@ -287,7 +287,9 @@ end;
 function Inside(AControl, AParent: TControl): Boolean;
 begin
   while (AControl <> nil) and (AControl <> AParent) do
+  begin
     AControl := AControl.Parent;
+  end;
   Result := AControl <> nil;
 end;
 
@@ -295,7 +297,9 @@ end;
 function SheetOf(AControl: TControl): TTabSheet;
 begin
   while (AControl <> nil) and not (AControl is TTabSheet) do
+  begin
     AControl := AControl.Parent;
+  end;
   Result := TTabSheet(AControl);
 end;
 
@@ -304,7 +308,9 @@ function FrameAround(AControl: TControl): TAtlasSettingsGroup;
 begin
   AControl := AControl.Parent;
   while (AControl <> nil) and not (AControl is TAtlasSettingsGroup) do
+  begin
     AControl := AControl.Parent;
+  end;
   Result := TAtlasSettingsGroup(AControl);
 end;
 
@@ -318,7 +324,9 @@ begin
     Result := APage.Navigation.Items[Index];
     APage.Navigation.OnChange(APage.Navigation, Result);
     if APage.Pages.ActivePage = ASheet then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -329,8 +337,12 @@ var
 begin
   Result := nil;
   for Index := 0 to APage.Navigation.Items.Count - 1 do
+  begin
     if APage.Navigation.Items[Index].Level = 0 then
+    begin
       Result := Result + [APage.Navigation.Items[Index]];
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsPageTests.TreeShowsAreasAndNodes;
@@ -420,19 +432,29 @@ begin
       Binding := Page.Marks.Bindings[Index];
       Known := '';
       for Name in Binding.Names do
+      begin
         if (Known = '') and Page.Groups.Contains(Name) then
+        begin
           Known := Name;
+        end;
+      end;
       if Known = '' then
+      begin
         Continue;
+      end;
       Sheet := SheetOf(Binding.Control);
       Assert.IsNotNull(Sheet, Known);
       Assert.AreEqual(Page.Groups.NodeOf(Known), Page.NodeOfSheet(Sheet), Known);
       Frame := FrameAround(Binding.Control);
       // Ohne Rahmen (Einstellung ohne Hauptschalter, z. B. debug.hoverValues) ist nichts weiter zu prüfen.
       if (Frame <> nil) and Inside(Binding.Control, Frame.Master) then
+      begin
         Frame := FrameAround(Frame);
+      end;
       if Frame = nil then
+      begin
         Continue;
+      end;
       Ancestors := Page.Groups.AncestorsOf(Known);
       Assert.IsTrue(Frame.MasterName <> '', Known);
       Assert.IsTrue(MatchText(Frame.MasterName, Ancestors), Known + ' in ' + Frame.MasterName);
@@ -1328,7 +1350,9 @@ begin
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.IsTrue(Page.DebugVisualizersCheck.Checked);
     for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+    begin
       Assert.IsTrue(Page.DebugVisualizerKindCheck(Kind).Checked);
+    end;
     Assert.AreEqual('Name,Caption,Text', Page.DebugVisualizerNameFieldsEdit.Text);
     Assert.AreEqual('120', Page.DebugVisualizerMaxLengthEdit.Text);
     Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Properties), Page.DebugVisualizerEvaluationBox.Choice);
@@ -1978,7 +2002,9 @@ begin
           Result.Source := TAtlasVcsToolSource.KnownDir;
         end
         else
+        begin
           Result.Source := TAtlasVcsToolSource.ConfiguredMissing;
+        end;
       end;
     mPage.OnVcsCheck :=
       procedure(AKind: TAtlasVcsKind; const APath: string)
@@ -2693,7 +2719,9 @@ begin
         Key: string;
       begin
         for Key in AKeys do
+        begin
           Favorites.Remove(Key);
+        end;
       end;
     Page.OnFavorites :=
       function: TArray<TAtlasFavorite>
@@ -3412,7 +3440,9 @@ begin
       begin
         Control := Box.Controls[Index];
         if (Control <> Editor) and (Control.Top > Editor.Top) then
+        begin
           Spacing := Min(Spacing, Control.Top - (Editor.Top + Editor.Height));
+        end;
       end;
       Assert.IsTrue(Spacing < MaxInt, 'Zustand und Zurücksetzen von "rules" stehen unter dem Editor');
       Assert.IsTrue(Spacing >= 0);
@@ -3424,7 +3454,9 @@ begin
       begin
         Control := Box.Controls[Index];
         if (Control <> Editor) and (Control.Top > Editor.Top) then
+        begin
           Below := Min(Below, Control.Top - (Editor.Top + Editor.Height));
+        end;
       end;
       Assert.AreEqual(Spacing, Below, 'Felder darunter rücken mit dem Editor nach unten');
       // Zurück zu einer Regel ohne Optionen: Die Felder rücken wieder hoch.
@@ -3434,7 +3466,9 @@ begin
       begin
         Control := Box.Controls[Index];
         if (Control <> Editor) and (Control.Top > Editor.Top) then
+        begin
           Below := Min(Below, Control.Top - (Editor.Top + Editor.Height));
+        end;
       end;
       Assert.AreEqual(Spacing, Below, 'Felder darunter rücken mit dem Editor wieder hoch');
     finally

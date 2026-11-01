@@ -614,7 +614,9 @@ begin
   FPage.LoadFrom(TAtlasIdeSettings.Stored);
   // Vorgabe für den Abschnitt eines Moduls (#1455), z. B. „zuordnen …“ aus „Meine Issues“: nach dem Laden.
   if (PendingReveal <> '') and (PendingArgument <> '') then
+  begin
     FPage.ShowSettingArgument(PendingReveal, PendingArgument);
+  end;
   // „Anmeldung am Server nötig – prüfen …“ der Willkommensseite (#1287): Zeile zeigen und prüfen.
   if PendingVcsServer <> '' then
     FPage.RevealVcsServer(PendingVcsServer);

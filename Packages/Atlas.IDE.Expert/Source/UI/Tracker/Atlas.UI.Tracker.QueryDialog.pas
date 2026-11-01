@@ -42,21 +42,28 @@ type
 
   /// <summary>Verbindung vom laufenden Test zum Dialog; nil, sobald der Dialog weg ist.</summary>
   TAtlasQueryDialogLink = class(TInterfacedObject)
+  private
+    FDialog: TAtlasTrackerQueryDialog;
   public
-    Dialog: TAtlasTrackerQueryDialog;
+    property Dialog: TAtlasTrackerQueryDialog read FDialog write FDialog;
+  end;
+
+  /// <summary>Steuerelemente des Dialogs.</summary>
+  TAtlasQueryDialogView = record
+    Name: TEdit;
+    Connection: TAtlasChoiceBox;
+    Project: TEdit;
+    Query: TEdit;
+    Template: TAtlasChoiceBox;
+    Test: TButton;
+    Result: TMemo;
+    Ok: TButton;
+    Cancel: TButton;
   end;
 
   TAtlasTrackerQueryDialog = class(TForm)
   private
-    FName: TEdit;
-    FConnection: TAtlasChoiceBox;
-    FProject: TEdit;
-    FQuery: TEdit;
-    FTemplate: TAtlasChoiceBox;
-    FTest: TButton;
-    FResult: TMemo;
-    FOk: TButton;
-    FCancel: TButton;
+    FView: TAtlasQueryDialogView;
     FConnections: TArray<TAtlasTrackerConnection>;
     FTemplates: TArray<TAtlasTrackerTemplate>;
     FTaken: TArray<string>;
@@ -66,8 +73,15 @@ type
     FLink: TAtlasQueryDialogLink;
     FLinkRef: IInterface;
     FTesting: Boolean;
+    procedure BuildFields;
+    procedure BuildTest;
+    procedure BuildButtons;
+    procedure FillConnections(const AConnection: string);
     function AddRow(const ACaption: string; AControl: TWinControl): TPanel;
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
+    /// <summary>AProvider in die Liste; bei verschiedenen Sprachen desselben Anbieters gelten alle Vorlagen.</summary>
+    class procedure AddProvider(var AProviders, ALanguages: TArray<string>; const AProvider, ALanguage: string);
+      static;
     procedure FillTemplates;
     procedure Changed(Sender: TObject);
     procedure ConnectionChange(Sender: TObject);
@@ -104,37 +118,38 @@ type
     /// <summary>Modal; True mit geänderter AQuery bei OK.</summary>
     class function Execute(var AQuery: TAtlasTrackerQuery; const AConnections: TArray<TAtlasTrackerConnection>;
       const ATaken: TArray<string>; const AOnTest: TAtlasQueryTestEvent): Boolean; static;
-    property NameEdit: TEdit read FName;
-    property ConnectionBox: TAtlasChoiceBox read FConnection;
-    property ProjectEdit: TEdit read FProject;
-    property QueryEdit: TEdit read FQuery;
-    property TemplateBox: TAtlasChoiceBox read FTemplate;
-    property TestButton: TButton read FTest;
-    property ResultMemo: TMemo read FResult;
-    property OkButton: TButton read FOk;
+    property View: TAtlasQueryDialogView read FView;
     property Templates: TArray<TAtlasTrackerTemplate> read FTemplates;
   end;
 
 implementation
 
 uses
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings;
 
 const
   cGap = 8;
   cLabelWidth = 110;
   cDialogWidth = 560;
+  cFontName = 'Segoe UI';
+  cFontSize = 9;
+  cRowHeight = 30;
+  cControlTop = 4;
+  cTestRowHeight = 36;
+  cResultHeight = 84;
+  cBottomHeight = 44;
+  cButtonPadding = 32;
+  cMinButtonWidth = 90;
+  cButtonHeight = 28;
+  cGitHubCaption = 'GitHub';
+  cYouTrackCaption = 'YouTrack';
 
 { TAtlasTrackerQueryDialog }
 
 constructor TAtlasTrackerQueryDialog.CreateDialog(AOwner: TComponent; const AQuery: TAtlasTrackerQuery;
   const AConnections: TArray<TAtlasTrackerConnection>; const ATaken: TArray<string>;
   const AOnTest: TAtlasQueryTestEvent);
-var
-  mBottom, mTestRow: TPanel;
-  mNames: TArray<string>;
-  mConnection: TAtlasTrackerConnection;
-  mChoice, mIndex: Integer;
 begin
   inherited CreateNew(AOwner);
   FConnections := AConnections;
@@ -147,94 +162,120 @@ begin
   BorderStyle := bsDialog;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
+  Font.Name := cFontName;
+  Font.Size := cFontSize;
   ClientWidth := ScaleValue(cDialogWidth);
+  BuildFields;
+  BuildTest;
+  BuildButtons;
+  FillConnections(AQuery.Connection);
+  FView.Name.Text := AQuery.Name;
+  FView.Project.Text := AQuery.Project;
+  FView.Query.Text := AQuery.Query;
+  FillTemplates;
+  FView.Name.OnChange := Changed;
+  FView.Query.OnChange := Changed;
+  FView.Project.OnChange := Changed;
+  FView.Connection.OnChange := ConnectionChange;
+  FView.Template.OnChange := TemplateChange;
+  ActiveControl := FView.Query;
+  Changed(nil);
+end;
 
-  FName := TEdit.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryName), FName);
-  FConnection := TAtlasChoiceBox.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectConnection), FConnection);
-  FProject := TEdit.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject), FProject);
-  FTemplate := TAtlasChoiceBox.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTemplate), FTemplate);
-  FQuery := TEdit.Create(Self);
-  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQuery), FQuery);
+procedure TAtlasTrackerQueryDialog.BuildFields;
+begin
+  FView.Name := TEdit.Create(Self);
+  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryName), FView.Name);
+  FView.Connection := TAtlasChoiceBox.Create(Self);
+  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectConnection), FView.Connection);
+  FView.Project := TEdit.Create(Self);
+  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesProjectProject), FView.Project);
+  FView.Template := TAtlasChoiceBox.Create(Self);
+  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTemplate), FView.Template);
+  FView.Query := TEdit.Create(Self);
+  AddRow(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQuery), FView.Query);
+end;
 
+procedure TAtlasTrackerQueryDialog.BuildTest;
+var
+  mTestRow: TPanel;
+begin
   mTestRow := TPanel.Create(Self);
   mTestRow.Parent := Self;
   mTestRow.Align := alTop;
   mTestRow.Top := ClientHeight;
-  mTestRow.Height := ScaleValue(36);
+  mTestRow.Height := ScaleValue(cTestRowHeight);
   mTestRow.BevelOuter := bvNone;
-  FTest := AddButton(mTestRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTest), TestClick);
-  FTest.Left := ScaleValue(cGap + cLabelWidth);
-  FTest.Anchors := [akTop, akLeft];
+  FView.Test := AddButton(mTestRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTest), TestClick);
+  FView.Test.Left := ScaleValue(cGap + cLabelWidth);
+  FView.Test.Anchors := [akTop, akLeft];
+  FView.Result := TMemo.Create(Self);
+  FView.Result.Parent := Self;
+  FView.Result.Align := alTop;
+  FView.Result.Top := ClientHeight;
+  FView.Result.AlignWithMargins := True;
+  FView.Result.Margins.SetBounds(ScaleValue(cGap + cLabelWidth), 0, ScaleValue(cGap), ScaleValue(cGap));
+  FView.Result.Height := ScaleValue(cResultHeight);
+  FView.Result.ReadOnly := True;
+  FView.Result.WordWrap := True;
+  FView.Result.ScrollBars := ssVertical;
+  FView.Result.TabStop := False;
+end;
 
-  FResult := TMemo.Create(Self);
-  FResult.Parent := Self;
-  FResult.Align := alTop;
-  FResult.Top := ClientHeight;
-  FResult.AlignWithMargins := True;
-  FResult.Margins.SetBounds(ScaleValue(cGap + cLabelWidth), 0, ScaleValue(cGap), ScaleValue(cGap));
-  FResult.Height := ScaleValue(84);
-  FResult.ReadOnly := True;
-  FResult.WordWrap := True;
-  FResult.ScrollBars := ssVertical;
-  FResult.TabStop := False;
-
+procedure TAtlasTrackerQueryDialog.BuildButtons;
+var
+  mBottom: TPanel;
+begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := ScaleValue(44);
+  mBottom.Height := ScaleValue(cBottomHeight);
   mBottom.BevelOuter := bvNone;
-  FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogCancel), CancelClick);
-  FCancel.Cancel := True;
-  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
-  FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogOk), OkClick);
-  FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
-  ClientHeight := FResult.Top + FResult.Height + ScaleValue(cGap) + mBottom.Height;
+  FView.Cancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogCancel), CancelClick);
+  FView.Cancel.Cancel := True;
+  FView.Cancel.Left := mBottom.ClientWidth - FView.Cancel.Width - ScaleValue(cGap);
+  FView.Ok := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogOk), OkClick);
+  FView.Ok.Default := True;
+  FView.Ok.Left := FView.Cancel.Left - FView.Ok.Width - ScaleValue(cGap);
+  ClientHeight := FView.Result.Top + FView.Result.Height + ScaleValue(cGap) + mBottom.Height;
+end;
 
+procedure TAtlasTrackerQueryDialog.FillConnections(const AConnection: string);
+var
+  mNames: TArray<string>;
+  mChoice: Integer;
+  mIndex: Integer;
+begin
   // Auswahl: „(alle)“, dann die Verbindungen (wie die Tabelle).
   mNames := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryAny));
   mChoice := 0;
   for mIndex := 0 to High(FConnections) do
   begin
-    mConnection := FConnections[mIndex];
-    mNames := mNames + [mConnection.Name];
-    if (AQuery.Connection <> '') and SameText(mConnection.Name, AQuery.Connection) then
+    mNames := mNames + [FConnections[mIndex].Name];
+    if (AConnection <> '') and SameText(FConnections[mIndex].Name, AConnection) then
+    begin
       mChoice := mIndex + 1;
+    end;
   end;
   // Eine Verbindung, die es nicht mehr gibt, bleibt sichtbar, bis der Benutzer eine andere wählt.
   FMissingConnection := '';
-  if (AQuery.Connection <> '') and (mChoice = 0) then
+  if (AConnection <> '') and (mChoice = 0) then
   begin
-    FMissingConnection := AQuery.Connection;
-    mNames := mNames + [AQuery.Connection];
+    FMissingConnection := AConnection;
+    mNames := mNames + [AConnection];
     mChoice := High(mNames);
   end;
-  FConnection.SetChoices(mNames);
-  FConnection.Choice := mChoice;
-  FName.Text := AQuery.Name;
-  FProject.Text := AQuery.Project;
-  FQuery.Text := AQuery.Query;
-  FillTemplates;
-  FName.OnChange := Changed;
-  FQuery.OnChange := Changed;
-  FProject.OnChange := Changed;
-  FConnection.OnChange := ConnectionChange;
-  FTemplate.OnChange := TemplateChange;
-  ActiveControl := FQuery;
-  Changed(nil);
+  FView.Connection.SetChoices(mNames);
+  FView.Connection.Choice := mChoice;
 end;
 
 destructor TAtlasTrackerQueryDialog.Destroy;
 begin
   // Ein Test, der danach fertig wird, findet keinen Dialog mehr.
   if FLink <> nil then
+  begin
     FLink.Dialog := nil;
+  end;
   FLinkRef := nil;
   ClearFields;
   inherited Destroy;
@@ -256,7 +297,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.Top := ClientHeight;
-  Result.Height := ScaleValue(30);
+  Result.Height := ScaleValue(cRowHeight);
   Result.BevelOuter := bvNone;
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Result;
@@ -266,7 +307,7 @@ begin
   mLabel.ShowAccelChar := False;
   AControl.Parent := Result;
   AControl.Left := ScaleValue(cGap + cLabelWidth);
-  AControl.Top := ScaleValue(4);
+  AControl.Top := ScaleValue(cControlTop);
   AControl.Width := Result.ClientWidth - AControl.Left - ScaleValue(cGap);
   AControl.Anchors := [akLeft, akTop, akRight];
   mLabel.FocusControl := AControl;
@@ -280,46 +321,58 @@ begin
   Result.Caption := ACaption;
   Result.OnClick := AClick;
   Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  if Result.Width < ScaleValue(90) then
-    Result.Width := ScaleValue(90);
+  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
+  if Result.Width < ScaleValue(cMinButtonWidth) then
+  begin
+    Result.Width := ScaleValue(cMinButtonWidth);
+  end;
   Result.Top := ScaleValue(cGap div 2);
-  Result.Height := ScaleValue(28);
+  Result.Height := ScaleValue(cButtonHeight);
   Result.Anchors := [akTop, akRight];
+end;
+
+class procedure TAtlasTrackerQueryDialog.AddProvider(var AProviders, ALanguages: TArray<string>;
+  const AProvider, ALanguage: string);
+var
+  mOther: Integer;
+begin
+  for mOther := 0 to High(AProviders) do
+  begin
+    if SameText(AProviders[mOther], AProvider) then
+    begin
+      // Verschiedene Sprachen beim selben Anbieter: alle Vorlagen.
+      if not SameText(ALanguages[mOther], ALanguage) then
+      begin
+        ALanguages[mOther] := '';
+      end;
+      Exit;
+    end;
+  end;
+  AProviders := AProviders + [AProvider];
+  ALanguages := ALanguages + [ALanguage];
 end;
 
 class function TAtlasTrackerQueryDialog.TemplatesFor(const AConnections: TArray<TAtlasTrackerConnection>;
   AChoice: Integer): TArray<TAtlasTrackerTemplate>;
 var
-  mProviders, mLanguages: TArray<string>;
-  mIndex, mOther: Integer;
-  mSeen: Boolean;
+  mProviders: TArray<string>;
+  mLanguages: TArray<string>;
+  mIndex: Integer;
 begin
   Result := nil;
   mProviders := nil;
   mLanguages := nil;
   if (AChoice >= 1) and (AChoice <= Length(AConnections)) then
   begin
-    mProviders := [AConnections[AChoice - 1].Provider];
-    mLanguages := [AConnections[AChoice - 1].Language];
+    AddProvider(mProviders, mLanguages, AConnections[AChoice - 1].Provider, AConnections[AChoice - 1].Language);
   end
   else
+  begin
     for mIndex := 0 to High(AConnections) do
     begin
-      mSeen := False;
-      for mOther := 0 to High(mProviders) do
-        if SameText(mProviders[mOther], AConnections[mIndex].Provider) then
-        begin
-          // Verschiedene Sprachen beim selben Anbieter: alle Vorlagen.
-          if not SameText(mLanguages[mOther], AConnections[mIndex].Language) then
-            mLanguages[mOther] := '';
-          mSeen := True;
-        end;
-      if mSeen then
-        Continue;
-      mProviders := mProviders + [AConnections[mIndex].Provider];
-      mLanguages := mLanguages + [AConnections[mIndex].Language];
+      AddProvider(mProviders, mLanguages, AConnections[mIndex].Provider, AConnections[mIndex].Language);
     end;
+  end;
   // Ohne Verbindung: alle Vorlagen beider Anbieter.
   if Length(mProviders) = 0 then
   begin
@@ -327,7 +380,9 @@ begin
     mLanguages := TArray<string>.Create('', '');
   end;
   for mIndex := 0 to High(mProviders) do
+  begin
     Result := Result + TAtlasTrackerTemplates.Templates(mProviders[mIndex], mLanguages[mIndex]);
+  end;
 end;
 
 class function TAtlasTrackerQueryDialog.TemplateCaption(const ATemplate: TAtlasTrackerTemplate): string;
@@ -335,9 +390,13 @@ var
   mProvider, mKind: string;
 begin
   if ATemplate.Provider = TAtlasTrackerTarget.GitHub then
-    mProvider := 'GitHub'
+  begin
+    mProvider := cGitHubCaption;
+  end
   else
-    mProvider := 'YouTrack';
+  begin
+    mProvider := cYouTrackCaption;
+  end;
   case ATemplate.Kind of
     TAtlasTrackerTemplateKind.CurrentSprint:
       mKind := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTemplateCurrentSprint);
@@ -351,11 +410,17 @@ begin
   Result := mProvider + ' · ' + mKind;
   // GitHub kennt nur englische Suchbegriffe; die Sprache zu nennen hilft nur bei YouTrack.
   if ATemplate.Provider = TAtlasTrackerTarget.GitHub then
+  begin
     Exit;
+  end;
   if ATemplate.Language = TAtlasTrackerTemplates.German then
-    Result := Result + ' (' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageGerman) + ')'
+  begin
+    Result := Result + ' (' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageGerman) + ')';
+  end
   else
+  begin
     Result := Result + ' (' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLanguageEnglish) + ')';
+  end;
 end;
 
 procedure TAtlasTrackerQueryDialog.FillTemplates;
@@ -363,12 +428,14 @@ var
   mCaptions: TArray<string>;
   mTemplate: TAtlasTrackerTemplate;
 begin
-  FTemplates := TemplatesFor(FConnections, FConnection.Choice);
+  FTemplates := TemplatesFor(FConnections, FView.Connection.Choice);
   mCaptions := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTemplatePick));
   for mTemplate in FTemplates do
+  begin
     mCaptions := mCaptions + [TemplateCaption(mTemplate)];
-  FTemplate.SetChoices(mCaptions);
-  FTemplate.Choice := 0;
+  end;
+  FView.Template.SetChoices(mCaptions);
+  FView.Template.Choice := 0;
 end;
 
 function TAtlasTrackerQueryDialog.Query: TAtlasTrackerQuery;
@@ -376,31 +443,43 @@ var
   mChoice: Integer;
   mConnection: string;
 begin
-  mChoice := FConnection.Choice;
+  mChoice := FView.Connection.Choice;
   mConnection := '';
   if (mChoice >= 1) and (mChoice <= Length(FConnections)) then
-    mConnection := FConnections[mChoice - 1].Name
+  begin
+    mConnection := FConnections[mChoice - 1].Name;
+  end
   else if mChoice > Length(FConnections) then
+  begin
     // Verbindung, die es nicht mehr gibt: unverändert lassen.
     mConnection := FMissingConnection;
-  Result := TAtlasTrackerQuery.Create(FName.Text, FQuery.Text, mConnection, FProject.Text);
+  end;
+  Result := TAtlasTrackerQuery.Create(FView.Name.Text, FView.Query.Text, mConnection, FView.Project.Text);
 end;
 
 function TAtlasTrackerQueryDialog.TestConnection(out AConnection: TAtlasTrackerConnection): Boolean;
 var
   mChoice: Integer;
 begin
-  mChoice := FConnection.Choice;
+  mChoice := FView.Connection.Choice;
   Result := Length(FConnections) > 0;
   if not Result then
+  begin
     Exit;
+  end;
   if (mChoice >= 1) and (mChoice <= Length(FConnections)) then
-    AConnection := FConnections[mChoice - 1]
+  begin
+    AConnection := FConnections[mChoice - 1];
+  end
   else if mChoice = 0 then
+  begin
     // „(alle)“: getestet wird über die erste Verbindung.
-    AConnection := FConnections[0]
+    AConnection := FConnections[0];
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 procedure TAtlasTrackerQueryDialog.Changed(Sender: TObject);
@@ -413,12 +492,18 @@ begin
   mQuery := Query;
   mTaken := False;
   for mName in FTaken do
+  begin
     if SameText(mName, mQuery.Name) then
+    begin
       mTaken := True;
-  FOk.Enabled := (mQuery.Name <> '') and not mTaken and (mQuery.Query <> '');
-  FTest.Enabled := not FTesting and Assigned(FOnTest) and TestConnection(mConnection);
+    end;
+  end;
+  FView.Ok.Enabled := (mQuery.Name <> '') and not mTaken and (mQuery.Query <> '');
+  FView.Test.Enabled := not FTesting and Assigned(FOnTest) and TestConnection(mConnection);
   if mTaken then
-    FResult.Text := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken);
+  begin
+    FView.Result.Text := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesQueryNameTaken);
+  end;
 end;
 
 procedure TAtlasTrackerQueryDialog.ConnectionChange(Sender: TObject);
@@ -429,23 +514,25 @@ end;
 
 procedure TAtlasTrackerQueryDialog.SelectConnection(AChoice: Integer);
 begin
-  FConnection.Choice := AChoice;
-  ConnectionChange(FConnection);
+  FView.Connection.Choice := AChoice;
+  ConnectionChange(FView.Connection);
 end;
 
 procedure TAtlasTrackerQueryDialog.TemplateChange(Sender: TObject);
 begin
-  ApplyTemplate(FTemplate.Choice - 1);
+  ApplyTemplate(FView.Template.Choice - 1);
 end;
 
 procedure TAtlasTrackerQueryDialog.ApplyTemplate(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FTemplates)) then
+  begin
     Exit;
-  FQuery.Text := FTemplates[AIndex].Query;
+  end;
+  FView.Query.Text := FTemplates[AIndex].Query;
   // Zurück auf „(Vorlage einsetzen …)“, damit dieselbe Vorlage noch einmal wählbar bleibt.
-  FTemplate.Choice := 0;
-  Changed(FTemplate);
+  FView.Template.Choice := 0;
+  Changed(FView.Template);
 end;
 
 procedure TAtlasTrackerQueryDialog.TestClick(Sender: TObject);
@@ -458,13 +545,15 @@ var
   mName: string;
 begin
   if FTesting or not Assigned(FOnTest) or not TestConnection(mConnection) then
+  begin
     Exit;
+  end;
   mQuery := Query;
   // Wie in „Meine Issues“: Projekt aus dem Feld, Abfrage leer = Vorgabe in der Sprache der Verbindung.
   mTarget := TAtlasTrackerTarget.Create(mConnection.Provider, mConnection.Url, mQuery.Project, mQuery.Query);
   mTarget.Language := mConnection.Language;
   FTesting := True;
-  FResult.Text := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTesting);
+  FView.Result.Text := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryDialogTesting);
   Changed(Sender);
   mLinkRef := FLinkRef;
   mLink := FLink;
@@ -473,7 +562,9 @@ begin
     procedure(const AResult: TAtlasTrackerQueryTestResult)
     begin
       if (mLinkRef <> nil) and (mLink.Dialog <> nil) then
+      begin
         mLink.Dialog.ShowResult(AResult, mName);
+      end;
     end);
 end;
 
@@ -481,7 +572,7 @@ procedure TAtlasTrackerQueryDialog.ShowResult(const AResult: TAtlasTrackerQueryT
   const AConnectionName: string);
 begin
   FTesting := False;
-  FResult.Text := ResultText(AResult, AConnectionName);
+  FView.Result.Text := ResultText(AResult, AConnectionName);
   Changed(nil);
 end;
 
@@ -493,11 +584,15 @@ begin
   case AResult.Outcome of
     TAtlasTrackerQueryOutcome.Found:
       if AResult.More then
+      begin
         mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestFoundMore, [AResult.Count, AResult.ElapsedMs,
-          string.Join(', ', AResult.Keys)])]
+          string.Join(', ', AResult.Keys)])];
+      end
       else
+      begin
         mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestFound, [AResult.Count, AResult.ElapsedMs,
           string.Join(', ', AResult.Keys)])];
+      end;
     TAtlasTrackerQueryOutcome.Empty:
       mLines := [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestEmpty, [AResult.ElapsedMs])];
     TAtlasTrackerQueryOutcome.NoToken:
@@ -519,16 +614,23 @@ begin
     mLines := [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.QueryTestUnreachable)];
   end;
   if AResult.SuggestedQuery <> '' then
+  begin
     mLines := mLines + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestTipGerman, [AResult.SuggestedQuery])];
+  end;
   if AResult.SentQuery <> '' then
-    mLines := mLines + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestSent, [AConnectionName, AResult.SentQuery])];
+  begin
+    mLines := mLines + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.QueryTestSent,
+      [AConnectionName, AResult.SentQuery])];
+  end;
   Result := string.Join(sLineBreak, mLines);
 end;
 
 procedure TAtlasTrackerQueryDialog.OkClick(Sender: TObject);
 begin
-  if not FOk.Enabled then
+  if not FView.Ok.Enabled then
+  begin
     Exit;
+  end;
   ModalResult := mrOk;
 end;
 
@@ -547,7 +649,9 @@ begin
   try
     Result := mDialog.ShowModal = mrOk;
     if Result then
+    begin
       AQuery := mDialog.Query;
+    end;
   finally
     mDialog.Free;
   end;
