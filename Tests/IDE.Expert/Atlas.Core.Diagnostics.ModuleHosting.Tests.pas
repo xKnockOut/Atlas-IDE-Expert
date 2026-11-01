@@ -22,6 +22,10 @@ type
     procedure MinLevelAndSwitchApply;
     [Test]
     procedure TableContainsAndRemove;
+    [Test]
+    procedure ProvidedPartsFollowTheModule;
+    [Test]
+    procedure LatePartStartsViaOnChanged;
   end;
 
 implementation
@@ -30,6 +34,7 @@ uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Diagnostics.ModuleHosting,
   Atlas.Core.Diagnostics.FeatureTable;
 
@@ -91,6 +96,26 @@ end;
 function TFakeModule.IsActive: Boolean;
 begin
   Result := FActive;
+end;
+
+/// <summary>Teil, das sein Starten und Stoppen in ALog schreibt; AActive hält den Zustand.</summary>
+function LoggedPart(ALog: TLog; const AName: string; AActive: PBoolean): IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.AtLevel(AName, TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := AActive^;
+    end,
+    procedure
+    begin
+      AActive^ := True;
+      ALog.Add('start:' + AName);
+    end,
+    procedure
+    begin
+      AActive^ := False;
+      ALog.Add('stop:' + AName);
+    end);
 end;
 
 function Module(ALog: TLog; const AId: string): IAtlasModule;
@@ -256,6 +281,85 @@ begin
     Assert.AreEqual(0, Integer(Length(mTable.Names)));
   finally
     mTable.Free;
+  end;
+end;
+
+procedure TModuleHostingTests.ProvidedPartsFollowTheModule;
+var
+  mLog: TLog;
+  mRegistry: IAtlasModuleRegistry;
+  mTable: TAtlasFeatureTable;
+  mHost: TAtlasModuleHosting;
+  mScope: IAtlasModuleScope;
+  mActive: array[0..1] of Boolean;
+begin
+  mLog := TLog.Create;
+  mTable := TAtlasFeatureTable.Create;
+  try
+    mActive[0] := False;
+    mActive[1] := False;
+    mRegistry := TAtlasModuleRegistry.Create;
+    mScope := mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.dbg', TAtlasSafeLevel.Normal, 'debug')
+      as IAtlasModule);
+    mScope.Provide(IAtlasFeaturePart, LoggedPart(mLog, 'Visualizers', @mActive[0]));
+    mScope.Provide(IAtlasFeaturePart, LoggedPart(mLog, 'DisplayRules', @mActive[1]));
+    mHost := TAtlasModuleHosting.Create(mRegistry, mTable);
+    try
+      Assert.AreEqual('module:atlas.dbg,Visualizers,DisplayRules', string.Join(',', mTable.Names));
+      Assert.AreEqual('debug', mTable.ModuleOf('Visualizers'), 'Schalter des Besitzers');
+      mTable.StartWanted(TAtlasSafeLevel.Normal);
+      Assert.AreEqual('start:atlas.dbg,start:Visualizers,start:DisplayRules', mLog.Text);
+      mLog.Text := '';
+      mScope := nil;
+      mRegistry.UnregisterModule('atlas.dbg');
+      Assert.AreEqual('stop:atlas.dbg,stop:DisplayRules,stop:Visualizers', mLog.Text, 'Teile rückwärts');
+      Assert.AreEqual(0, Integer(Length(mTable.Names)));
+      Assert.AreEqual(0, Integer(Length(mHost.TakeFailures)));
+    finally
+      mHost.Free;
+    end;
+    mRegistry := nil;
+  finally
+    mTable.Free;
+    mLog.Free;
+  end;
+end;
+
+procedure TModuleHostingTests.LatePartStartsViaOnChanged;
+var
+  mLog: TLog;
+  mRegistry: IAtlasModuleRegistry;
+  mTable: TAtlasFeatureTable;
+  mHost: TAtlasModuleHosting;
+  mScope: IAtlasModuleScope;
+  mActive: Boolean;
+begin
+  mLog := TLog.Create;
+  mTable := TAtlasFeatureTable.Create;
+  try
+    mActive := False;
+    mRegistry := TAtlasModuleRegistry.Create;
+    mHost := TAtlasModuleHosting.Create(mRegistry, mTable);
+    try
+      mHost.OnChanged :=
+        procedure
+        begin
+          mTable.StartWanted(TAtlasSafeLevel.Normal);
+        end;
+      mScope := mRegistry.RegisterModule(Module(mLog, 'atlas.late'));
+      mScope.Provide(IAtlasFeaturePart, LoggedPart(mLog, 'Late', @mActive));
+      Assert.AreEqual('start:atlas.late,start:Late', mLog.Text);
+      mHost.OnChanged := nil;
+      mScope := nil;
+      mRegistry.UnregisterModule('atlas.late');
+      Assert.IsFalse(mActive);
+    finally
+      mHost.Free;
+    end;
+    mRegistry := nil;
+  finally
+    mTable.Free;
+    mLog.Free;
   end;
 end;
 

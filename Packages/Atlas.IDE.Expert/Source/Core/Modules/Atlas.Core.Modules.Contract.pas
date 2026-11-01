@@ -35,6 +35,10 @@ type
   TAtlasSafeLevel = (Normal, Safe, Minimal);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Bedingung eines Teils der Feature-Tabelle je Stufe des abgesicherten Starts und Einstellung. Ein Typ
+  /// für Base und Module: Delphi 12 hält gleich gebaute Methodenreferenztypen auseinander.</summary>
+  TAtlasFeatureWanted = reference to function(ALevel: TAtlasSafeLevel): Boolean;
+
   /// <summary>Angaben eines Moduls. Id ist dauerhaft und eindeutig (z. B. „atlas.debugger“), Name die Anzeige,
   /// Version die des Moduls. Handle ist das HMODULE des Packages (HInstance des Moduls) für die Frage „gehört
   /// das zu Atlas?“ (Regel 8); 0, wenn unbekannt. MinLevel: ab welcher Stufe des abgesicherten Starts das Modul
@@ -74,6 +78,26 @@ type
     Kind: TAtlasRegistryChangeKind;
     ModuleId: string;
     IID: TGUID;
+  end;
+
+  /// <summary>Ein bereitgestelltes Objekt mit seinem Besitzer ('' für Base).</summary>
+  TAtlasProvided = record
+    OwnerId: string;
+    Instance: IInterface;
+  end;
+
+  /// <summary>Ein Teil der Feature-Tabelle von Base (Regel 4: ein Feature-Slot mit Besitzer). Ein Modul stellt
+  /// seine Teile über seinen Scope bereit (Provide mit IAtlasFeaturePart); Base trägt sie in Reihenfolge der
+  /// Bereitstellung hinter seinen eigenen Teilen ein, startet sie, wenn Wanted es will und der Modulschalter des
+  /// Besitzers an ist, und stoppt sie beim Abmelden. Name ist je Tabelle eindeutig.</summary>
+  IAtlasFeaturePart = interface
+    ['{6F0B7E2A-58C4-4D1B-9E37-2A4C8D51F6B0}']
+    function Name: string;
+    /// <summary>Soll das Teil in der Stufe ALevel und mit den aktuellen Einstellungen laufen?</summary>
+    function Wanted(ALevel: TAtlasSafeLevel): Boolean;
+    function IsActive: Boolean;
+    procedure Start;
+    procedure Stop;
   end;
 
   /// <summary>Hört auf die Änderungsmeldung der Registry (Regel 2). Wird im Thread der Änderung gerufen (Hauptthread
@@ -133,6 +157,8 @@ type
     function Provide(const AIID: TGUID; const AObject: IInterface): IAtlasRegistration;
     /// <summary>Alle unter AIID bereitgestellten Objekte in Reihenfolge der Bereitstellung.</summary>
     function FindAll(const AIID: TGUID): TArray<IInterface>;
+    /// <summary>Wie FindAll, mit dem Besitzer jedes Objekts.</summary>
+    function Provisions(const AIID: TGUID): TArray<TAtlasProvided>;
     /// <summary>Auf Änderungen hören; Module nehmen IAtlasModuleScope.Subscribe.</summary>
     function Subscribe(const AListener: IAtlasRegistryListener): IAtlasRegistration;
   end;
