@@ -58,6 +58,9 @@ type
     /// „Weiterarbeiten“ und die Issues einer Methode (#1275); bis #1455 TAtlasBookmarks.MethodAt.</summary>
     class function BodyAt(const APlaces: TArray<TAtlasMethodPlace>; ALine: Integer;
       out APlace: TAtlasMethodPlace): Boolean; static;
+    /// <summary>Name der Methode um ALine (ab 1) in AText; '' außerhalb jeder Methode. Für „Issue anlegen“ (#1268).
+    /// </summary>
+    class function MethodNameAt(const AText: string; ALine: Integer): string; static;
     /// <summary>Gegenstück zu ASource unter APlaces; False, wenn es keins gibt.</summary>
     class function Match(const APlaces: TArray<TAtlasMethodPlace>; const ASource: TAtlasMethodPlace;
       out ATarget: TAtlasMethodPlace): Boolean; static;
@@ -971,6 +974,17 @@ begin
       Continue;
     APlace := Place;
     Result := True;
+  end;
+end;
+
+class function TAtlasMethodToggle.MethodNameAt(const AText: string; ALine: Integer): string;
+var
+  mPlace: TAtlasMethodPlace;
+begin
+  Result := '';
+  if (AText <> '') and (ALine >= 1) and BodyAt(Places(AText), ALine - 1, mPlace) then
+  begin
+    Result := mPlace.Name;
   end;
 end;
 

@@ -50,6 +50,10 @@ type
     /// jeder Methode False.</summary>
     [Test]
     procedure BodyAtFindsImplementationAroundLine;
+    /// <summary>MethodNameAt (#1455, vorher TAtlasWelcomeContinue.MethodAt): Name um die Zeile ab 1; leer ohne Text,
+    /// vor Zeile 1 und außerhalb jeder Methode.</summary>
+    [Test]
+    procedure MethodNameAtLine;
   end;
 
 implementation
@@ -650,6 +654,17 @@ begin
   Assert.AreEqual('', mPlace.Name);
   Assert.IsFalse(TAtlasMethodToggle.BodyAt(mPlaces, 12, mPlace), 'zwischen zwei Methoden');
   Assert.IsFalse(TAtlasMethodToggle.BodyAt(nil, 10, mPlace));
+end;
+
+procedure TAtlasMethodToggleTests.MethodNameAtLine;
+var
+  mText: string;
+begin
+  mText := 'unit U;'#10'interface'#10'implementation'#10'procedure Run;'#10'begin'#10'  X;'#10'end;'#10'end.';
+  Assert.AreEqual('Run', TAtlasMethodToggle.MethodNameAt(mText, 6));
+  Assert.AreEqual('', TAtlasMethodToggle.MethodNameAt(mText, 2));
+  Assert.AreEqual('', TAtlasMethodToggle.MethodNameAt(mText, 0));
+  Assert.AreEqual('', TAtlasMethodToggle.MethodNameAt('', 6));
 end;
 
 initialization

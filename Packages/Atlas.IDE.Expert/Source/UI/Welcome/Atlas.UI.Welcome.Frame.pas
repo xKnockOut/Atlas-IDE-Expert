@@ -1,6 +1,7 @@
 ﻿unit Atlas.UI.Welcome.Frame;
 
 // Frames der Atlas-Willkommensseite (#753):
+// - TAtlasWelcomeCanvas: Zeichenfläche, Alias von TAtlasStyledCanvas aus Base.
 // - TAtlasWelcomeFrame: Basis mit .dfm; abgeleitete Frames (Kopf, Bereiche,
 //   Atlas-Layout) brauchen dadurch keine eigene. Der Name aus der .dfm wird
 //   gelöscht, damit mehrere Frames denselben Besitzer haben dürfen.
@@ -14,7 +15,6 @@
 interface
 
 uses
-  Winapi.Messages,
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
@@ -22,32 +22,12 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Vcl.Graphics;
+  Vcl.Graphics,
+  Atlas.UI.Style.Canvas;
 
 type
-  /// <summary>Zeichenfläche der Bereiche ohne Flackern. Eine TPaintBox auf Panels mit ParentBackground lässt
-  /// Windows vor jedem Neuzeichnen den Hintergrund der Eltern holen; beim Hovern (Schnellaktionen #764) blitzt
-  /// das. Hier kommen Hintergrund der Eltern und Inhalt zusammen in einen Puffer, gelöscht wird nie.</summary>
-  TAtlasWelcomeCanvas = class(TCustomControl)
-  private
-    FOnPaint: TNotifyEvent;
-    procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
-  protected
-    procedure Paint; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    /// <summary>Hintergrund im aktuellen IDE-Thema (clWindow des Stils).</summary>
-    class function BackgroundOf(AControl: TControl): TColor; static;
-    property Canvas;
-    property ShowHint;
-    property PopupMenu;
-    property OnPaint: TNotifyEvent read FOnPaint write FOnPaint;
-    property OnDblClick;
-    property OnMouseDown;
-    property OnMouseMove;
-    property OnMouseUp;
-    property OnMouseLeave;
-  end;
+  /// <summary>Zeichenfläche der Bereiche ohne Flackern; seit #1455 in Base (Atlas.UI.Style.Canvas).</summary>
+  TAtlasWelcomeCanvas = TAtlasStyledCanvas;
 
   TAtlasWelcomeFrame = class(TFrame)
   private
@@ -118,63 +98,6 @@ type
 implementation
 
 {$R *.dfm}
-
-uses
-  Vcl.Themes;
-
-{ TAtlasWelcomeCanvas }
-
-constructor TAtlasWelcomeCanvas.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  DoubleBuffered := True;
-end;
-
-procedure TAtlasWelcomeCanvas.WMEraseBkgnd(var Message: TWMEraseBkgnd);
-begin
-  // Paint deckt alles ab, auch den Hintergrund.
-  Message.Result := 1;
-end;
-
-type
-  TColoredControl = class(TControl);
-  TBackgroundControl = class(TWinControl);
-
-class function TAtlasWelcomeCanvas.BackgroundOf(AControl: TControl): TColor;
-begin
-  // Direkt aus dem Stil, wie die Schriftfarben der Bereiche (clWindowText). Die Farbe der Vorfahren war nach
-  // einem Wechsel veraltet und bei „Windows-Design anpassen“ fest weiß.
-  Result := StyleServices(AControl).GetSystemColor(clWindow);
-end;
-
-procedure TAtlasWelcomeCanvas.Paint;
-var
-  Color_: TColor;
-  Owner_: TWinControl;
-begin
-  Color_ := BackgroundOf(Self);
-  // Panels, Frames und den Rollbereich darüber auf dieselbe Farbe: Mit ParentBackground blieb unter den
-  // IDE-Stilen nach einem Themenwechsel (und bei „Windows-Design anpassen“) das alte Bild stehen. Beim
-  // Zeichnen, weil der Stil erst dann sicher feststeht; geändert wird nur, was abweicht.
-  Owner_ := Parent;
-  while (Owner_ is TCustomPanel) or (Owner_ is TScrollBox) or (Owner_ is TCustomFrame) do
-  begin
-    if TBackgroundControl(Owner_).ParentBackground or (TColoredControl(Owner_).Color <> Color_) then
-    begin
-      TBackgroundControl(Owner_).ParentBackground := False;
-      Owner_.StyleElements := Owner_.StyleElements - [seClient];
-      TColoredControl(Owner_).Color := Color_;
-    end;
-    if Owner_ is TScrollBox then
-      Break;
-    Owner_ := Owner_.Parent;
-  end;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := Color_;
-  Canvas.FillRect(ClientRect);
-  if Assigned(FOnPaint) then
-    FOnPaint(Self);
-end;
 
 { TAtlasWelcomeFrame }
 
