@@ -9,6 +9,14 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## Sprache wie die IDE, Fundament (#1458, 01.11.2026, Branch `claude/project-thread-wry6sp` auf `release/1.2`)
+- Sprache: `TAtlasLocale` in `Atlas.Common.Localization.Texts` (global, Startwert Deutsch für Tests). Server: `Resolve(language, Client-Locale)` nach `initialize` (Shell.Composition), `--check` über `TShellBootstrap.UseTextLanguage(--locale)`. Plugin schickt `locale` (CodeInsight.Manager → `TLspSession.Locale`).
+- Texte: je Unit `cTexts: array[TXyzText] of TAtlasText = ((De: …; En: …), …)` im implementation-Teil, Aufruf `cTexts[TXyzText.Id].Text`/`.Fmt([…])`, Anmeldung `TAtlasTextTables.Add('<Unit>', cTexts)` im initialization-Teil; der Test `AllTablesComplete` prüft alle angemeldeten Tabellen. Umgestellt: Rules.Catalog (Erklärung), Rules.Engine. Benutzertexte des Katalogs über `TRuleCatalog.Localized`; SARIF bleibt bei `Shared` (englisch).
+- Schema: jede `description` hat `x-description-en` (Wächter in Update-ConfigDoc, erzeugt `docs/en/Configuration.md`); Plugin über `TAtlasSettingField.DescriptionFor(AEnglish)`. whatsnew: `titleEn`/`textEn` Pflicht.
+- `Tools/Check-GermanText.ps1` mit Altliste `Tools/GermanText.baseline.json` (5051 Literale in 491 Dateien); nach dem Umstellen einer Gruppe `-Update`.
+- Falle für die Folgestufen: Deprecated-Regel prüft `ContainsStr(AMessage, '(wie W1000).')`, Pascal.Parser/SyntaxChecks `' (wie %s).'`: diese Textabhängigkeit beim Umstellen durch eine Kennung ersetzen.
+- Offen: Regeln, Code-Aktionen, Hover, Vorschauen, Servermeldungen gruppenweise; englische Seitennamen (`x-page`) im Plugin; Delphi-Build 0/0/0.
+
 ## Unit-Zyklen aufgelöst (#1450, 31.10.2026, Branch `claude/project-thread-r4qz3t`, PR #1453)
 - `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet 0 statt 76 Befunde (Cloud, FPC; Lauf rund 13 Minuten). Schnell prüfen ohne Server: uses aller Units als Graph, Tarjan (so in der Cloud gemacht).
 - Schnellbefehle: Typen in `Atlas.Common.Editing.Contract` (auch `TUsesContext`), `RegisterXCommands(const ARegister: TSlashRegister)`, `TSlashSettings` ist ein Record, `TSlashActions` entfällt (`TSlashContext.Actions: TList<TProc>`). Das Register `Editing.SlashCommands` bleibt Root, weil Lsp, Rules und ClassActions `Shared` nutzen (Composition dürften sie nicht einbinden).

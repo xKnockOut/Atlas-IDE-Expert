@@ -434,6 +434,11 @@ begin
   Index := Pos('. ', Entry.Caption);
   if Index > 0 then
     Entry.Caption := Copy(Entry.Caption, 1, Index);
+  // Englisch aus x-description-en (#1458), ebenso gekürzt.
+  Entry.CaptionEn := TextOf(ASchema, 'x-description-en');
+  Index := Pos('. ', Entry.CaptionEn);
+  if Index > 0 then
+    Entry.CaptionEn := Copy(Entry.CaptionEn, 1, Index);
   Entry.DefaultJson := DefaultOf(ASchema);
   Entry.Machine := Flag(ASchema, 'x-machine') or Flag(AParent, 'x-machine');
   Entry.State := Flag(ASchema, 'x-state');

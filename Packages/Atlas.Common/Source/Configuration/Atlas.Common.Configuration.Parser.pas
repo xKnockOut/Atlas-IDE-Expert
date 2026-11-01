@@ -3252,10 +3252,10 @@ begin
       else if Key = 'language' then
       begin
         if ExpectString(Value, Key, Text) then
-          if (Text = 'de') or (Text = 'en') then
+          if (Text = '') or (Text = 'de') or (Text = 'en') then
             FSettings.Language := Text
           else
-            ReportNode(Value, 'Erlaubt sind "de" und "en"');
+            ReportNode(Value, 'Erlaubt sind "de", "en" und "" (wie die IDE)');
       end
       else if Key = 'encoding' then
       begin
