@@ -82,6 +82,7 @@ uses
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
+  Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.MyIssues,
   Atlas.IDE.Tracker.NewIssue,
   Atlas.IDE.Tracker.Settings,
@@ -169,7 +170,7 @@ end;
 function SessionTarget(out ATarget: TAtlasTrackerTarget): Boolean;
 begin
   ATarget := TAtlasTrackerTarget.Create('', '', '', '');
-  Result := SessionAvailable and GIssues.CodeTarget(ATarget);
+  Result := SessionAvailable and GIssues.Commands.CodeTarget(ATarget);
 end;
 
 function CommitPattern: string;
@@ -182,7 +183,7 @@ begin
   Result := nil;
   if SessionAvailable then
   begin
-    Result := GIssues.IssuePreview;
+    Result := GIssues.Services.Preview;
   end;
 end;
 
@@ -190,7 +191,7 @@ procedure SessionShow(const ATarget: TAtlasTrackerTarget; const AKey: string);
 begin
   if SessionAvailable then
   begin
-    GIssues.ShowIssue(ATarget, AKey);
+    GIssues.Commands.ShowIssue(ATarget, AKey);
   end;
 end;
 
@@ -198,7 +199,7 @@ procedure SessionBrowse(const ATarget: TAtlasTrackerTarget; const AKey: string);
 begin
   if SessionAvailable then
   begin
-    GIssues.BrowseIssue(ATarget, AKey);
+    GIssues.Commands.BrowseIssue(ATarget, AKey);
   end;
 end;
 
@@ -206,13 +207,13 @@ procedure SessionStart(const ATarget: TAtlasTrackerTarget; const AKey: string);
 begin
   if SessionAvailable then
   begin
-    GIssues.StartIssue(ATarget, AKey);
+    GIssues.Commands.StartIssue(ATarget, AKey);
   end;
 end;
 
 function SessionCanStart: Boolean;
 begin
-  Result := SessionAvailable and GIssues.CanStartIssue;
+  Result := SessionAvailable and GIssues.Context.CanStart;
 end;
 
 /// <summary>Haken der Kennungen im Code und der Zeilenhistorie: alles über „Meine Issues“ (Tracker wie dort,
@@ -320,15 +321,19 @@ begin
 end;
 
 function CreateIssues: TAtlasIdeIssues;
+var
+  mHooks: TAtlasIdeIssuesHooks;
 begin
   Result := TAtlasIdeIssues.Create(GWelcome, IssuesMessage);
-  Result.ProviderFactory := ProviderOf;
-  Result.TransportFactory := TransportOf;
-  Result.OnCredentials := CredentialsOf;
-  Result.OnTimeStatus := TimeStatus;
-  Result.OnSettings := ShowTrackerSettings;
-  Result.OnAssignProject := AssignProject;
-  Result.OnEditQueries := EditQueries;
+  mHooks := Default(TAtlasIdeIssuesHooks);
+  mHooks.Provider := ProviderOf;
+  mHooks.Transport := TransportOf;
+  mHooks.Credentials := CredentialsOf;
+  mHooks.TimeStatus := TimeStatus;
+  mHooks.Settings := ShowTrackerSettings;
+  mHooks.AssignProject := AssignProject;
+  mHooks.EditQueries := EditQueries;
+  Result.Context.Hooks := mHooks;
 end;
 
 procedure StartMyIssues;
@@ -427,7 +432,7 @@ procedure EnterCredentials;
 begin
   if SessionAvailable then
   begin
-    GIssues.EnterCredentialsForActive;
+    GIssues.Query.EnterCredentialsForActive;
   end;
 end;
 
@@ -464,7 +469,7 @@ procedure ShowPreviewPrompt;
 begin
   if SessionAvailable then
   begin
-    GIssues.ShowPreviewPrompt;
+    GIssues.Commands.ShowPreviewPrompt;
   end;
 end;
 
@@ -490,7 +495,7 @@ procedure ShowTimeOpen;
 begin
   if SessionAvailable then
   begin
-    GIssues.ShowTimeOpen;
+    GIssues.Services.ShowTimeOpen;
   end;
 end;
 
@@ -501,9 +506,9 @@ end;
 
 procedure ShowBoard;
 begin
-  if SessionAvailable and (GIssues.Board <> nil) then
+  if SessionAvailable and (GIssues.Services.Board <> nil) then
   begin
-    GIssues.Board.Show;
+    GIssues.Services.Board.Show;
   end;
 end;
 
@@ -516,7 +521,7 @@ procedure AttachPrompt;
 begin
   if SessionAvailable then
   begin
-    GIssues.AttachPrompt;
+    GIssues.Commands.AttachPrompt;
   end;
 end;
 
@@ -597,7 +602,7 @@ begin
   Result := nil;
   if SessionAvailable then
   begin
-    Result := GIssues.PaletteSearch;
+    Result := GIssues.Services.PaletteSearch;
   end;
 end;
 

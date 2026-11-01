@@ -58,6 +58,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.IDE.Tracker.SprintTile,
+  Atlas.IDE.Tracker.IssuesServices,
   Atlas.UI.Tracker.MyIssues,
   Atlas.UI.Tracker.SprintTile;
 
@@ -151,7 +152,7 @@ end;
 
 function TAtlasTrackerSprintTile.Enabled: Boolean;
 begin
-  Result := TAtlasIdeSprint.Active and (FIssues.Sprint <> nil);
+  Result := TAtlasIdeSprint.Active and (FIssues.Services.Sprint <> nil);
 end;
 
 function TAtlasTrackerSprintTile.CreateView(AOwner: TComponent;
@@ -160,13 +161,13 @@ var
   mView: TAtlasTrackerSprintView;
 begin
   Result := nil;
-  if FIssues.Sprint = nil then
+  if FIssues.Services.Sprint = nil then
   begin
     Exit;
   end;
   mView := TAtlasTrackerSprintView.Create(AOwner);
   Result := TAtlasTrackerTileViewLink.Create(mView, AHost);
-  mView.Source := FIssues.Sprint;
+  mView.Source := FIssues.Services.Sprint;
 end;
 
 end.
