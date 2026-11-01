@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Welcome.Sprint;
+﻿unit Atlas.UI.Tracker.SprintTile;
 
 // Bereich „Sprint“ der Willkommensseite (#1277, Mockup IX5), ohne Open Tools
 // API. Selbst gezeichnet:

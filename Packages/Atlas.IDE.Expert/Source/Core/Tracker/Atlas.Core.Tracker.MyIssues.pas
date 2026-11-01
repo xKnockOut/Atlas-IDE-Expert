@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Welcome.Issues;
+﻿unit Atlas.Core.Tracker.MyIssues;
 
 // Bereich „Meine Issues“ der Willkommensseite (#765), Teil ohne VCL und Open
 // Tools API: was abgefragt wird, wann, was der Bereich zeigt, welches Issue

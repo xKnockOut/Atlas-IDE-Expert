@@ -67,16 +67,16 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Welcome` | Seiten der Module im Optionsdialog (Entscheidung 3) |
 | `Atlas.IDE.Vcs.Branching` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
 | `Atlas.IDE.Vcs.WorkingCopies` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
-| `Atlas.Core.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.Core.Tracker.MyIssues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.Core.Welcome.Saved` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
 | `Atlas.IDE.Welcome.Continue` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
-| `Atlas.IDE.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
-| `Atlas.IDE.Welcome.NewIssue` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
-| `Atlas.IDE.Welcome.Sprint` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.IDE.Tracker.MyIssues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.IDE.Tracker.NewIssue` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.IDE.Tracker.SprintTile` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.IDE.Welcome.TestResults` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
-| `Atlas.UI.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
-| `Atlas.UI.Welcome.NewIssue` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
-| `Atlas.UI.Welcome.Sprint` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.UI.Tracker.MyIssues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.UI.Tracker.NewIssueDialog` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.UI.Tracker.SprintTile` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 
 ## Summen
 
@@ -667,6 +667,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.IssueCache` | `Core/Tracker/Atlas.Core.Tracker.IssueCache.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Links` | `Core/Tracker/Atlas.Core.Tracker.Links.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Markdown` | `Core/Tracker/Atlas.Core.Tracker.Markdown.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.MyIssues` | `Core/Tracker/Atlas.Core.Tracker.MyIssues.pas` | Ordner `Core/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.Core.Tracker.Naming` | `Core/Tracker/Atlas.Core.Tracker.Naming.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.NewIssue` | `Core/Tracker/Atlas.Core.Tracker.NewIssue.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Notify` | `Core/Tracker/Atlas.Core.Tracker.Notify.pas` | Ordner `Core/Tracker` |
@@ -676,8 +677,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Providers.GitHub` | `Core/Tracker/Atlas.Core.Tracker.Providers.GitHub.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Queries` | `Core/Tracker/Atlas.Core.Tracker.Queries.pas` | Ordner `Core/Tracker` |
-| `Atlas.Core.Tracker.SettingsTables` | `Core/Tracker/Atlas.Core.Tracker.SettingsTables.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.QueryTest` | `Core/Tracker/Atlas.Core.Tracker.QueryTest.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.SettingsTables` | `Core/Tracker/Atlas.Core.Tracker.SettingsTables.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Sprint` | `Core/Tracker/Atlas.Core.Tracker.Sprint.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Templates` | `Core/Tracker/Atlas.Core.Tracker.Templates.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.TimeClock` | `Core/Tracker/Atlas.Core.Tracker.TimeClock.pas` | Ordner `Core/Tracker` |
@@ -693,10 +694,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.Development` | `IDE/Tracker/Atlas.IDE.Tracker.Development.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.NewIssue` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssue.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.Notify` | `IDE/Tracker/Atlas.IDE.Tracker.Notify.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearch.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Session` | `IDE/Tracker/Atlas.IDE.Tracker.Session.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Settings.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.SprintTile` | `IDE/Tracker/Atlas.IDE.Tracker.SprintTile.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.TimeTracking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.AttachDialog` | `UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas` | Ordner `UI/Tracker` |
@@ -711,6 +715,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.IssueTip` | `UI/Tracker/Atlas.UI.Tracker.IssueTip.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.MyIssues` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.NewIssueDialog` | `UI/Tracker/Atlas.UI.Tracker.NewIssueDialog.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.Notify` | `UI/Tracker/Atlas.UI.Tracker.Notify.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.QueryDialog` | `UI/Tracker/Atlas.UI.Tracker.QueryDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SettingsConnections` | `UI/Tracker/Atlas.UI.Tracker.SettingsConnections.pas` | Ordner `UI/Tracker` |
@@ -721,6 +727,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.SettingsSection` | `UI/Tracker/Atlas.UI.Tracker.SettingsSection.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SettingsSnippets` | `UI/Tracker/Atlas.UI.Tracker.SettingsSnippets.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SettingsWorkflow` | `UI/Tracker/Atlas.UI.Tracker.SettingsWorkflow.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SprintTile` | `UI/Tracker/Atlas.UI.Tracker.SprintTile.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Texte des Moduls (Tracker), Sprache von Base, #1455 |
 | `Atlas.UI.Tracker.TimeDialog` | `UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.TimeList` | `UI/Tracker/Atlas.UI.Tracker.TimeList.pas` | Ordner `UI/Tracker` |
@@ -737,7 +744,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Help` | `Core/Welcome/Atlas.Core.Welcome.Help.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.HostLayout` | `Core/Welcome/Atlas.Core.Welcome.HostLayout.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.IndexFiles` | `Core/Welcome/Atlas.Core.Welcome.IndexFiles.pas` | Ordner `Core/Welcome` |
-| `Atlas.Core.Welcome.Issues` | `Core/Welcome/Atlas.Core.Welcome.Issues.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Layout` | `Core/Welcome/Atlas.Core.Welcome.Layout.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Layouts` | `Core/Welcome/Atlas.Core.Welcome.Layouts.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Projects` | `Core/Welcome/Atlas.Core.Welcome.Projects.pas` | Ordner `Core/Welcome` |
@@ -756,17 +762,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Welcome.Continue` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Discover` | `IDE/Welcome/Atlas.IDE.Welcome.Discover.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Help` | `IDE/Welcome/Atlas.IDE.Welcome.Help.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Issues` | `IDE/Welcome/Atlas.IDE.Welcome.Issues.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Layouts` | `IDE/Welcome/Atlas.IDE.Welcome.Layouts.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Tiles` | `IDE/Welcome/Atlas.IDE.Welcome.Tiles.pas` | Kacheln anderer Module über `Atlas.IDE.Contracts.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455 |
-| `Atlas.IDE.Welcome.NewIssue` | `IDE/Welcome/Atlas.IDE.Welcome.NewIssue.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Page` | `IDE/Welcome/Atlas.IDE.Welcome.Page.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Projects` | `IDE/Welcome/Atlas.IDE.Welcome.Projects.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.QuickActions` | `IDE/Welcome/Atlas.IDE.Welcome.QuickActions.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Registry` | `IDE/Welcome/Atlas.IDE.Welcome.Registry.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Search` | `IDE/Welcome/Atlas.IDE.Welcome.Search.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Setup` | `IDE/Welcome/Atlas.IDE.Welcome.Setup.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Sprint` | `IDE/Welcome/Atlas.IDE.Welcome.Sprint.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.State` | `IDE/Welcome/Atlas.IDE.Welcome.State.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.TestResults` | `IDE/Welcome/Atlas.IDE.Welcome.TestResults.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Trends` | `IDE/Welcome/Atlas.IDE.Welcome.Trends.pas` | Ordner `IDE/Welcome` |
@@ -780,15 +783,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Welcome.Frame` | `UI/Welcome/Atlas.UI.Welcome.Frame.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Header` | `UI/Welcome/Atlas.UI.Welcome.Header.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Help` | `UI/Welcome/Atlas.UI.Welcome.Help.pas` | Ordner `UI/Welcome` |
-| `Atlas.UI.Welcome.Issues` | `UI/Welcome/Atlas.UI.Welcome.Issues.pas` | Ordner `UI/Welcome` |
-| `Atlas.UI.Welcome.NewIssue` | `UI/Welcome/Atlas.UI.Welcome.NewIssue.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Projects` | `UI/Welcome/Atlas.UI.Welcome.Projects.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Push` | `UI/Welcome/Atlas.UI.Welcome.Push.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.QuickActions` | `UI/Welcome/Atlas.UI.Welcome.QuickActions.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Search` | `UI/Welcome/Atlas.UI.Welcome.Search.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Setup` | `UI/Welcome/Atlas.UI.Welcome.Setup.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.SetupPreview` | `UI/Welcome/Atlas.UI.Welcome.SetupPreview.pas` | Ordner `UI/Welcome` |
-| `Atlas.UI.Welcome.Sprint` | `UI/Welcome/Atlas.UI.Welcome.Sprint.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.State` | `UI/Welcome/Atlas.UI.Welcome.State.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.TestResults` | `UI/Welcome/Atlas.UI.Welcome.TestResults.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Trends` | `UI/Welcome/Atlas.UI.Welcome.Trends.pas` | Ordner `UI/Welcome` |

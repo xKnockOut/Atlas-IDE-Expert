@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Welcome.Issues.Tests;
+﻿unit Atlas.Core.Tracker.MyIssues.Tests;
 
 // Tests des Bereichs „Meine Issues“ ohne IDE und Netz (#765): Ziel aus .atlas
 // und Einstellungen, Abstand der Abfragen, letzter Stand ohne Netz, aktives
@@ -80,7 +80,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.BranchPlan,
   Atlas.Core.Vcs.Internals.SvnLayout,
-  Atlas.Core.Welcome.Issues;
+  Atlas.Core.Tracker.MyIssues;
 
 var
   /// <summary>Aufrufe von CountingProgress.</summary>

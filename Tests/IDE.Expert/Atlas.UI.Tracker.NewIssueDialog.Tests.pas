@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Welcome.NewIssue.Tests;
+﻿unit Atlas.UI.Tracker.NewIssueDialog.Tests;
 
 // Tests des Dialogs „Issue anlegen“ (#1268) ohne Netz: Vorbelegung, Häkchen
 // „Codeausschnitt“ nach issues.create.includeCode, nichts gesendet ohne Klick
@@ -36,7 +36,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.NewIssue,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.NewIssue;
+  Atlas.UI.Tracker.NewIssueDialog;
 
 function Setup(AIncludeCode: Boolean): TAtlasNewIssueSetup;
 begin

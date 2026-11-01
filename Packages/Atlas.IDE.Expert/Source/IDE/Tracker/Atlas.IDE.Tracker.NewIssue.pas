@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.NewIssue;
+﻿unit Atlas.IDE.Tracker.NewIssue;
 
 // „Issue anlegen …“ in der IDE (#1268): aus dem Editor (Kontextmenü, Befehl
 // Atlas.CreateIssue, Taste keys.createIssue) und aus Befunden des Fensters
@@ -29,7 +29,7 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.NewIssue,
   Atlas.Core.Tracker.Attach,
-  Atlas.IDE.Welcome.Issues;
+  Atlas.IDE.Tracker.MyIssues;
 
 type
   TAtlasIdeNewIssue = class
@@ -76,7 +76,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Continue,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.NewIssue,
+  Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,

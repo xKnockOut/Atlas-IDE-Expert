@@ -93,7 +93,7 @@ uses
   Atlas.IDE.Welcome.QuickActions,
   Atlas.IDE.Welcome.Trends,
   Atlas.IDE.Welcome.TestResults,
-  Atlas.IDE.Welcome.Issues,
+  Atlas.IDE.Tracker.MyIssues,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,

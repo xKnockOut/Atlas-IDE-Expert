@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Sprint;
+﻿unit Atlas.IDE.Tracker.SprintTile;
 
 // Bereich „Sprint“ in der IDE (#1277): Quelle der Kachel (IAtlasSprintSource)
 // und Anmeldung als Bereich atlas.sprint der Willkommensseite.
@@ -33,7 +33,7 @@ uses
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Vcs.Worker,
   Atlas.Core.Welcome.Sections,
-  Atlas.UI.Welcome.Sprint;
+  Atlas.UI.Tracker.SprintTile;
 
 type
   TAtlasSprintProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -140,7 +140,7 @@ uses
   System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Welcome.Issues,
+  Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,

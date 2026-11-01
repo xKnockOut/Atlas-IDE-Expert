@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Welcome.Issues;
+﻿unit Atlas.UI.Tracker.MyIssues;
 
 // Bereich „Meine Issues“ der Willkommensseite (#765, Mockup #ws12), ohne
 // Open Tools API. Selbst gezeichnet, je Issue zwei Zeilen im Raster:
@@ -43,7 +43,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Welcome.Issues,
+  Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Welcome.Frame;
 
 type
