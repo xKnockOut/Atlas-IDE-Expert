@@ -145,6 +145,7 @@ uses
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.IDE.Foundation.Files,
   Atlas.Core.Projects.Vcs,

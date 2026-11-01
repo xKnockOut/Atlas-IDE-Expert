@@ -123,7 +123,7 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Vcs.Contract,

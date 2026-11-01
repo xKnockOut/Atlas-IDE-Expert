@@ -56,7 +56,7 @@ uses
   System.Classes,
   System.DateUtils,
   Vcl.Forms,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Vcs.Contract,

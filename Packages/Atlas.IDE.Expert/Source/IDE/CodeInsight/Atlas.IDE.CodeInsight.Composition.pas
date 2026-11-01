@@ -165,6 +165,7 @@ uses
   Atlas.IDE.Welcome.Trends,
   Atlas.IDE.Welcome.TestResults,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Ci.Providers.Jenkins,
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Adapters.Credentials,

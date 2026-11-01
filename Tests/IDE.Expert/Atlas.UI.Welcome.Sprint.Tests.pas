@@ -43,7 +43,7 @@ uses
   System.Types,
   System.DateUtils,
   Vcl.Forms,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Sprint,
   Atlas.UI.Strings,

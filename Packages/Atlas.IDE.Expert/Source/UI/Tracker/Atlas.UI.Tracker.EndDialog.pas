@@ -115,7 +115,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.UI.Strings;
 
 const

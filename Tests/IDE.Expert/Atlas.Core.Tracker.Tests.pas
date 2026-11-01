@@ -234,6 +234,7 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Vcs.BranchNames,

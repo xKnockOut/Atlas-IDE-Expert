@@ -23,6 +23,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.Preview,

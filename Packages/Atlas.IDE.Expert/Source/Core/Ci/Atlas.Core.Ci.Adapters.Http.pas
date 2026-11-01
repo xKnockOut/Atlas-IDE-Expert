@@ -29,7 +29,8 @@ interface
 uses
   System.SysUtils,
   System.Net.URLClient,
-  Atlas.Core.Ci.Contract;
+  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract;
 
 type
   TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiPost,

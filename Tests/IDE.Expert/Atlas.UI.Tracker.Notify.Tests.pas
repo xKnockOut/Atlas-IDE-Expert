@@ -26,7 +26,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Notify;

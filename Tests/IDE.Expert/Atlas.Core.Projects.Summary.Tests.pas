@@ -91,7 +91,7 @@ uses
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.Summary;
 

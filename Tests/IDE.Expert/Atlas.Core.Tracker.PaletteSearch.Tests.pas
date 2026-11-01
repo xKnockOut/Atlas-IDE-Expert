@@ -67,6 +67,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,

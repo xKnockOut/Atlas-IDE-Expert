@@ -13,7 +13,7 @@
 interface
 
 uses
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Notify;
 
 type

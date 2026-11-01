@@ -74,7 +74,7 @@ uses
   System.DateUtils,
   System.Generics.Collections,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.TestResults;
 

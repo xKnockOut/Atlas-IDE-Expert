@@ -39,7 +39,7 @@ uses
   System.Classes,
   System.DateUtils,
   Vcl.Forms,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.TestResults,
   Atlas.UI.Strings,

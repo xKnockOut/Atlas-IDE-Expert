@@ -106,6 +106,7 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,

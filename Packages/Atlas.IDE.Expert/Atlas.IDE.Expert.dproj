@@ -462,6 +462,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Renames.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.QueryMigration.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas"/>
+        <DCCReference Include="Source\Core\CiBuild\Atlas.Core.CiBuild.Contract.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Contract.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Internals.Addresses.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Providers.Jenkins.pas"/>

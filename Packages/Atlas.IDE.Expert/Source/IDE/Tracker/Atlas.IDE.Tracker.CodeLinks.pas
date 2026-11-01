@@ -43,7 +43,7 @@ uses
   Vcl.Menus,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
   Atlas.UI.Popup.TitledTip,
