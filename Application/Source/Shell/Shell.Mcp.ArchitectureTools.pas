@@ -18,10 +18,10 @@ uses
 /// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
 function FindPathOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
   AWorkspace: TShellWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
-/// <summary>Meldet get_architecture und find_path an.</summary>
 /// <summary>get_architecture über AArchitecture für den Ordner von AWorkspace.</summary>
 function ArchitectureOf(AWorkspace: TShellWorkspace; AArchitecture: TArchitectureService;
   const AAllFiles: TFunc<TArray<string>>; const ARoot: string): TMcpArchitectureFunc;
+/// <summary>Meldet get_architecture und find_path an.</summary>
 procedure RegisterArchitectureTools(const AContext: TMcpToolContext);
 
 implementation
@@ -70,11 +70,11 @@ begin
   end;
   Result.Title := ExtractFileName(ARoot);
   Result.Root := ARoot;
-  Result.Namespaces := AWorkspace.Namespaces;
+  Result.Namespaces := AWorkspace.State.Namespaces;
   // Projektgruppe (#648): die Dateien aller geladenen Projekte, sonst nur die des Hauptprojekts.
   if Result.Scope = 'project' then
   begin
-    Result.Files := AWorkspace.ProjectFiles;
+    Result.Files := AWorkspace.State.ProjectFiles;
   end
   else
   begin
@@ -154,7 +154,7 @@ begin
       Request := ARequest;
       // Grenze requestTimeoutMs; Abbruch über notifications/cancelled des MCP-Clients.
       Request.TimeoutMs := AWorkspace.Configuration.Settings.RequestTimeoutMs;
-      Namespaces := AWorkspace.Namespaces;
+      Namespaces := AWorkspace.State.Namespaces;
       if string.Join(',', AGraphs.Options.Namespaces) <> string.Join(',', Namespaces) then
       begin
         Options := AGraphs.Options;
