@@ -20,7 +20,9 @@
 //
 // Pfade in der Baseline sind relativ zum Ordner der Datei und mit „/“
 // getrennt; zum Prüfen setzt StateOf sie mit „\“ an den Ordner (das Plugin
-// läuft nur unter Windows). Dateizugriffe kommen von außen (Tests ohne Platte).
+// läuft nur unter Windows). Dateizugriffe kommen von außen (Tests ohne Platte);
+// StateOnDisk ist die dünne Hülle mit der Platte für Base und das Modul
+// Prüfregeln (#1455).
 //
 // Antwort von atlas.updateBaseline (Format 1):
 //   {"format": 1, "file": "C:\\Projekte\\Kasse\\atlas-baseline.json",
@@ -99,6 +101,9 @@ type
     /// <summary>Zustand der Baseline in AFolder; Einträge ohne Datei über AExists (AFolder\Pfad).</summary>
     class function StateOf(const AFolder: string; const AExists: TAtlasBaselineFileExists;
       const ARead: TAtlasBaselineReadText): TAtlasBaselineState; static;
+    /// <summary>StateOf mit der Platte (FileExists, UTF-8); auch im Hintergrund. Eine unlesbare Datei zählt als
+    /// vorhanden, aber ungültig.</summary>
+    class function StateOnDisk(const AFolder: string): TAtlasBaselineState; static;
     /// <summary>Wie StateOf, aber aus dem Text AText einer Datei in AFolder.</summary>
     class function StateOfText(const AFolder, AText: string; const AExists: TAtlasBaselineFileExists):
       TAtlasBaselineState; static;
@@ -122,6 +127,7 @@ type
 implementation
 
 uses
+  System.IOUtils,
   System.Generics.Collections,
   System.JSON;
 
@@ -316,6 +322,28 @@ begin
   else
     Result.Exists := True;
   Result.FileName := Name;
+end;
+
+function FileOnDisk(const AFileName: string): Boolean;
+begin
+  Result := FileExists(AFileName);
+end;
+
+function ReadFromDisk(const AFileName: string; out AText: string): Boolean;
+begin
+  AText := '';
+  try
+    AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+    Result := True;
+  except
+    on Exception do
+      Result := False;
+  end;
+end;
+
+class function TAtlasProjectBaselines.StateOnDisk(const AFolder: string): TAtlasBaselineState;
+begin
+  Result := StateOf(AFolder, FileOnDisk, ReadFromDisk);
 end;
 
 class function TAtlasProjectBaselines.Arguments(const AProjectUri: string): string;

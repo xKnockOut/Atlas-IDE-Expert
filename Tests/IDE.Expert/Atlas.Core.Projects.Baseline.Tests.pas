@@ -28,6 +28,10 @@ type
     procedure StateListsOrphansOncePerPath;
     [Test]
     procedure StateOfInvalidFile;
+    /// <summary>StateOnDisk (#1455): ohne Ordner und ohne Datei nichts; unter Windows Einträge der echten Datei.
+    /// </summary>
+    [Test]
+    procedure StateOnDiskReadsFolder;
     [Test]
     procedure ArgumentsAreProjectUri;
     [Test]
@@ -47,6 +51,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   System.Generics.Collections,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Baseline;
@@ -165,6 +170,31 @@ begin
   State := TAtlasProjectBaselines.StateOfText(Folder, Baseline, nil);
   Assert.IsTrue(State.Valid);
   Assert.AreEqual(0, State.OrphanCount);
+end;
+
+procedure TAtlasProjectBaselinesTests.StateOnDiskReadsFolder;
+var
+  mFolder: string;
+  mState: TAtlasBaselineState;
+begin
+  Assert.IsFalse(TAtlasProjectBaselines.StateOnDisk('').Exists);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasBaseline' + IntToStr(Random(MaxInt)));
+  ForceDirectories(mFolder);
+  try
+    mState := TAtlasProjectBaselines.StateOnDisk(mFolder);
+    Assert.IsFalse(mState.Exists);
+    Assert.AreEqual('', mState.FileName);
+    {$IFDEF MSWINDOWS}
+    // Die Pfade setzt StateOf mit „\“ an den Ordner: nur unter Windows eine echte Datei.
+    TFile.WriteAllText(mFolder + '\atlas-baseline.json', Baseline, TEncoding.UTF8);
+    mState := TAtlasProjectBaselines.StateOnDisk(mFolder);
+    Assert.IsTrue(mState.Valid);
+    Assert.AreEqual(5, mState.Entries);
+    Assert.AreEqual(11, mState.Hits);
+    {$ENDIF}
+  finally
+    TDirectory.Delete(mFolder, True);
+  end;
 end;
 
 procedure TAtlasProjectBaselinesTests.ArgumentsAreProjectUri;
