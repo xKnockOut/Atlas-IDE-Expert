@@ -366,6 +366,7 @@ type
     SettingsBaselineUpdate, BaselineUpdateCommand, BaselineUpdateNoProject, BaselineUpdateFailed,
     BaselineUpdateRunning, BaselineUpdateBusy, BaselineUpdateDone, BaselineUpdateCompleted, BaselineUpdateSetAside,
     BaselineUpdateOrphans, BaselineUpdateOrphanLine, BaselineUpdateOrphansMore, BaselineUpdateConfirm,
+    BaselineUpdateModuleOff,
     WelcomeTrendsTitle, WelcomeTrendsHeading, WelcomeTrendsNoProject, WelcomeTrendsNoPoints,
     WelcomeTrendsNoSeries, WelcomeTrendsWarnings, WelcomeTrendsRuleHits, WelcomeTrendsTodos,
     WelcomeTrendsDuration, WelcomeTrendsMethodLength, WelcomeTrendsSeconds, WelcomeTrendsLines,
@@ -2018,6 +2019,7 @@ const
      '  … und %d weitere',
      'Die Baseline enthält %d Einträge ohne Datei (umbenannt, verschoben oder gelöscht):%sBeim Aktualisieren ' +
      'fallen sie heraus; die Treffer unter dem neuen Pfad nimmt die Baseline neu auf. Jetzt aktualisieren?',
+     'Baseline aktualisieren: Das Modul Prüfregeln ist ausgeschaltet (Einstellungen, Seite Prüfregeln).',
      'Projektverlauf', '%s · letzte %d Builds',
      'Noch kein Projekt. Nach dem ersten Build erscheint hier der Verlauf.',
      '%s: noch keine Builds aufgezeichnet. Nach dem nächsten Build erscheint hier der Verlauf.',
@@ -5226,6 +5228,7 @@ const
      '  … and %d more',
      'The baseline contains %d entries without a file (renamed, moved or deleted):%sUpdating removes them; ' +
      'findings under the new path are added again. Update now?',
+     'Update baseline: the rule checks module is switched off (Settings, page Rule checks).',
      'Project history', '%s · last %d builds', 'No project yet. The history appears here after the first build.',
      '%s: no builds recorded yet. The history appears here after the next build.',
      'No series selected (Tools › Options › Atlas › Welcome page).', 'Warnings + hints',

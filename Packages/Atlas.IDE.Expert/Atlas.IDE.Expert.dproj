@@ -213,6 +213,9 @@
         <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.NewFile.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas"/>
+        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Composition.pas"/>
+        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.BulkFix.pas"/>
+        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Baseline.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExtractInterface.pas"/>
@@ -950,6 +953,7 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.DebugReport.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildTools.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>

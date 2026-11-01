@@ -10,7 +10,8 @@
 //   dann holt Atlas die Gruppe auch nach vorn, sonst bleibt der Reiter „Build“
 //   der IDE vorn.
 // - Merkt sich die Meldungen des letzten Builds je Projekt für den Befehl
-//   „Aktuelle Compilermeldungen in die Basislinie“.
+//   „Aktuelle Compilermeldungen in die Basislinie“ (Modul Prüfregeln, #1455:
+//   es fragt Current).
 // Nur im Hauptthread.
 
 interface
@@ -26,9 +27,14 @@ type
   TAtlasIdeBuildSummary = class
   public const
     MessageGroup = 'Atlas';
+  private class var
+    FCurrent: TAtlasIdeBuildSummary;
   private
     FLast: TDictionary<string, TArray<TAtlasCompilerMessage>>;
   public
+    /// <summary>Die laufende Zusammenfassung (die zuletzt angelegte, bis zu ihrer Freigabe); nil ohne. Module fragen
+    /// sie bei jedem Aufruf neu (#1455).</summary>
+    class function Current: TAtlasIdeBuildSummary; static;
     constructor Create;
     destructor Destroy; override;
     /// <summary>Meldungen des letzten Builds von AProject merken.</summary>
@@ -50,14 +56,22 @@ uses
 
 { TAtlasIdeBuildSummary }
 
+class function TAtlasIdeBuildSummary.Current: TAtlasIdeBuildSummary;
+begin
+  Result := FCurrent;
+end;
+
 constructor TAtlasIdeBuildSummary.Create;
 begin
   inherited Create;
   FLast := TDictionary<string, TArray<TAtlasCompilerMessage>>.Create;
+  FCurrent := Self;
 end;
 
 destructor TAtlasIdeBuildSummary.Destroy;
 begin
+  if FCurrent = Self then
+    FCurrent := nil;
   FLast.Free;
   inherited;
 end;

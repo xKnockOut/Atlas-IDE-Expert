@@ -19,12 +19,8 @@
 // rules.<id> = "off" in atlas.json des Projekts bzw. ohne Projekt in die
 // globale Datei, „Regel erklären“ zeigt den Katalogtext (Hook Command,
 // atlas.server.settingsCatalog im Hintergrund, #874). „Alle sicheren Treffer
-// von <Regel> korrigieren …“ (#1352, nur mit fix.bulk): Dateien der angezeigten
-// Befunde dieser Regel an atlas.server.fixFindings (Hook FixFindings), Vorschau
-// (TAtlasBulkFixDialog), die gewählten Dateien über den Hook ApplyEdit
-// (TAtlasIdeWorkspaceEdit: ein Rückgängig-Schritt je Datei, ein Satz im
-// Änderungsprotokoll); Regel,
-// Anzahl und Dateien stehen danach in der Meldungsansicht.
+// von <Regel> korrigieren …“ (#1352) bietet das Modul Prüfregeln über
+// IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag.
 // Markierung folgt dem Cursor (problems.window.followCursor); F8/Umschalt+F8
 // gehen bei sichtbarem Fenster durch dessen gefilterte Liste (StepWindow).
 // Offene Units zuerst (#1108): Der Takt gibt dem Frame die Datei des oberen
@@ -43,20 +39,12 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings;
 
 type
   TAtlasProblemsCommandProc = reference to procedure(const ACommand, AArgumentsJson: string;
     const ADone: TProc<TJSONValue>);
-  /// <summary>Befehl atlas.server.fixFindings (#1352) im Hintergrund mit längerer Frist; ADone im Hauptthread.
-  /// </summary>
-  TAtlasProblemsFixFindingsProc = reference to procedure(const AArgumentsJson: string;
-    const ADone: TProc<TJSONValue>);
-  /// <summary>Änderungen in die Puffer der IDE (#397); AAction für das Änderungsprotokoll. '' bei Erfolg, sonst
-  /// warum nichts geändert wurde.</summary>
-  TAtlasProblemsApplyEditFunc = reference to function(const AEdit: TLspWorkspaceEdit; const AAction: string): string;
   /// <summary>Baut der Server gerade den Index auf? APercent: Fortschritt, -1 = unbekannt.</summary>
   TAtlasProblemsIndexingFunc = reference to function(out APercent: Integer): Boolean;
 
@@ -78,9 +66,6 @@ type
     CreateIssue: TProc<TArray<TAtlasFinding>>;
     /// <summary>Eintrag sichtbar (issues.create).</summary>
     CanCreateIssue: TFunc<Boolean>;
-    /// <summary>Sammelkorrektur (#1352); nil = kein Eintrag im Kontextmenü.</summary>
-    FixFindings: TAtlasProblemsFixFindingsProc;
-    ApplyEdit: TAtlasProblemsApplyEditFunc;
   end;
 
   TAtlasIdeProblems = class
@@ -123,8 +108,9 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain,
-  Atlas.UI.Problems.BulkFix,
-  Atlas.Core.Problems.BulkFix,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.Window,
   Atlas.IDE.Settings.Project,
@@ -509,73 +495,16 @@ begin
     end);
 end;
 
-/// <summary>Vorschau zur Antwort von atlas.server.fixFindings und die gewählten Dateien anwenden.</summary>
-procedure ShowBulkFix(const ARule: string; AAnswer: TJSONValue);
+/// <summary>Sammelkorrektur (#1352) eines laufenden Moduls; False ohne.</summary>
+function BulkFixer(out AFixer: IAtlasBulkFixer): Boolean;
 var
-  mPreview: TAtlasBulkFixPreview;
-  mError: string;
-  mFixes, mCount, mIndex: Integer;
-  mNames: TArray<string>;
+  mItem: IInterface;
 begin
-  mPreview := TAtlasBulkFixPreview.Create(ARule, AAnswer);
-  try
-    if mPreview.Count = 0 then
-    begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllNothing, [ARule, mPreview.Summary]));
-      Exit;
-    end;
-    if not TAtlasBulkFixDialog.Execute(mPreview) then
-      Exit;
-    mFixes := mPreview.SelectedFixes;
-    mCount := mPreview.SelectedCount;
-    mNames := nil;
-    for mIndex := 0 to mPreview.Count - 1 do
-      if mPreview.Files[mIndex].Checked then
-        mNames := mNames + [ExtractFileName(mPreview.Files[mIndex].FileName)];
-    if (State = nil) or not Assigned(State.Hooks.ApplyEdit) then
-      Exit;
-    mError := State.Hooks.ApplyEdit(mPreview.SelectedEdit, TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllAction,
-      [ARule]));
-    if mError <> '' then
-      Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllFailed, [ARule, mError]))
-    else
-      Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllDone, [ARule, mFixes, mCount, string.Join(', ', mNames)]));
-  finally
-    mPreview.Free;
-  end;
-end;
-
-/// <summary>„Alle sicheren Treffer von … korrigieren …“ (#1352): Dateien aus den angezeigten Befunden.</summary>
-procedure FixAll(const AFinding: TAtlasFinding; const AFindings: TArray<TAtlasFinding>);
-var
-  mRule: string;
-  mFiles: TArray<string>;
-begin
-  mRule := AFinding.Rule;
-  mFiles := TAtlasBulkFixPreview.FilesOf(AFindings, mRule);
-  if mFiles = nil then
-  begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllNoFiles, [mRule]));
-    Exit;
-  end;
-  if not Assigned(State.Hooks.FixFindings) then
-    Exit;
-  State.Hooks.FixFindings(TAtlasBulkFixPreview.ArgumentsJson(mRule, mFiles),
-    procedure(AValue: TJSONValue)
-    begin
-      if State = nil then
-        Exit;
-      if AValue = nil then
-      begin
-        Say(TAtlasStrings.Text(TAtlasTextId.ProblemsNoServer));
-        Exit;
-      end;
-      TAtlasGuard.Run(TAtlasFeature.Problems,
-        procedure
-        begin
-          ShowBulkFix(mRule, AValue);
-        end);
-    end);
+  AFixer := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBulkFixer) do
+    if Supports(mItem, IAtlasBulkFixer, AFixer) then
+      Exit(True);
+  Result := False;
 end;
 
 procedure Wire(AFrame: TAtlasProblemsFrame);
@@ -611,15 +540,20 @@ begin
     begin
       TAtlasGuard.Run(TAtlasFeature.Problems,
         procedure
+        var
+          mFixer: IAtlasBulkFixer;
         begin
-          if State <> nil then
-            FixAll(AFinding, AFrame.View.Visible);
+          // Beim Klick neu fragen (Regel 3): Das Modul kann inzwischen fort sein.
+          if (State <> nil) and BulkFixer(mFixer) then
+            mFixer.FixAll(AFinding.Rule, AFrame.View.Visible);
         end);
     end;
   AFrame.CanFixAll :=
     function: Boolean
+    var
+      mFixer: IAtlasBulkFixer;
     begin
-      Result := (State <> nil) and Assigned(State.Hooks.FixFindings) and TAtlasIdeSettings.Current.FixBulk;
+      Result := (State <> nil) and BulkFixer(mFixer) and mFixer.CanFixAll;
     end;
   AFrame.OnSuppress :=
     procedure(const AFinding: TAtlasFinding)

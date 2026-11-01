@@ -31,6 +31,8 @@
 //   Befunde (problems.window.showCleanActive). Trennzeilen sind weder Gruppen
 //   noch Befunde: nicht klappbar, nicht wählbar, nicht in Visible, Step,
 //   SelectAt und beim Kopieren. .pas und .dfm/.fmx einer Unit zählen als eine.
+// - IAtlasBulkFixer: Vertrag der Sammelkorrektur (#1352) für das Modul
+//   Prüfregeln (#1455).
 
 interface
 
@@ -77,6 +79,17 @@ type
     function CompilerText: string;
     /// <summary>Meldung; ohne AShowCompilerCode (problems.showCompilerCode aus) ohne „(wie E2035)“.</summary>
     function MessageText(AShowCompilerCode: Boolean): string;
+  end;
+
+  /// <summary>Sammelkorrektur (#1352) im Kontextmenü von „Atlas-Prüfung“; ein Modul stellt sie bereit (#1455, Modul
+  /// Prüfregeln), das Fenster fragt laufende Module. Ohne Modul fehlt der Eintrag.</summary>
+  IAtlasBulkFixer = interface
+    ['{3B7E2D91-5A4C-4F68-9E13-C82D6A0F7B54}']
+    /// <summary>Eintrag sichtbar (fix.bulk an).</summary>
+    function CanFixAll: Boolean;
+    /// <summary>Alle sicheren Treffer von ARule in den Dateien von AFindings (den angezeigten Befunden) korrigieren:
+    /// Vorschau, dann die gewählten Dateien. Nur im Hauptthread.</summary>
+    procedure FixAll(const ARule: string; const AFindings: TArray<TAtlasFinding>);
   end;
 
   TAtlasFindingColumnState = record
