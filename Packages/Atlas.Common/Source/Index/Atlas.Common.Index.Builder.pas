@@ -92,6 +92,11 @@ type
     /// <summary>Symbole für AFileName: Dateien der Installation mit LibraryDefines, alle anderen mit
     /// denen des Projekts.</summary>
     function DefinesFor(const AFileName: string): TArray<string>;
+    /// <summary>Schlüssel der Defines für AFileName (TUnitIndex.DefinesKey).</summary>
+    function DefinesKeyFor(const AFileName: string): string;
+    /// <summary>Steht AFileName mit Stand AStamp schon passend im Index, z. B. von einem anderen Projekt der
+    /// Gruppe mit denselben Defines? Dann nicht noch einmal übernehmen.</summary>
+    function AlreadyIndexed(const AFileName: string; AStamp: Int64; ALibrary: Boolean): Boolean;
     function IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
     function IncludesUnchanged(const ACached: TUnitIndex): Boolean;
     /// <summary>Indiziert AFileName; liest ein anderer Thread die Datei gerade, wartet es auf ihn und übernimmt sein
@@ -208,6 +213,25 @@ begin
   begin
     Result := FDefines;
   end;
+end;
+
+function TIndexBuilder.DefinesKeyFor(const AFileName: string): string;
+begin
+  Result := AnsiUpperCase(String.Join(';', DefinesFor(AFileName)));
+end;
+
+function TIndexBuilder.AlreadyIndexed(const AFileName: string; AStamp: Int64; ALibrary: Boolean): Boolean;
+var
+  mExisting: TUnitIndex;
+begin
+  // Ohne diese Prüfung übernahm jedes Projekt einer Gruppe die gemeinsamen Units erneut (aus dem Cache oder
+  // geparst) und ersetzte die des vorigen; die Namenslisten des Index behielten die ersetzten Einträge, bis es
+  // mehr tote als lebende gab (Speicher, Rückmeldung 01.11.2026). Bedingungen wie bei CacheFits.
+  Result := FIndex.FindFile(AFileName, mExisting) and (mExisting.Stamp = AStamp) and
+    (mExisting.DefinesKey <> '') and (mExisting.DefinesKey = DefinesKeyFor(AFileName)) and
+    (mExisting.Library_ = ALibrary) and IncludesUnchanged(mExisting) and
+    (mExisting.UsagesIndexed or not WantsUsages(ALibrary)) and
+    (not mExisting.Compact or (ALibrary and (FIndex.Budget > 0)));
 end;
 
 destructor TIndexBuilder.Destroy;
@@ -453,6 +477,11 @@ begin
     Inc(AResult.Missing);
     Exit(False);
   end;
+  if AlreadyIndexed(AFileName, Stamp, ALibrary) then
+  begin
+    Inc(AResult.FromCache);
+    Exit(True);
+  end;
   TMonitor.Enter(FCacheLock);
   try
     HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Entry);
@@ -469,6 +498,7 @@ begin
   if HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached) then
   begin
     Cached.Library_ := ALibrary;
+    Cached.DefinesKey := DefinesKeyFor(AFileName);
     FIndex.AddUnit(Cached);
     Inc(AResult.FromCache);
     Exit(True);
@@ -485,6 +515,7 @@ begin
     begin
       Cached.Stamp := Stamp;
       Cached.Library_ := ALibrary;
+      Cached.DefinesKey := DefinesKeyFor(AFileName);
       FIndex.AddUnit(Cached);
       Inc(AResult.FromCache);
       Exit(True);
@@ -503,6 +534,7 @@ begin
   UnitIndex.Hash := Hash;
   UnitIndex.IncludeStamps := IncludeStampsOf(UnitIndex.Includes);
   UnitIndex.Library_ := ALibrary;
+  UnitIndex.DefinesKey := DefinesKeyFor(AFileName);
   FIndex.AddUnit(UnitIndex);
   Inc(AResult.Parsed);
   Inc(AResult.Misses[Miss]);

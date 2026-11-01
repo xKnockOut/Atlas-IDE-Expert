@@ -163,10 +163,10 @@ type
     /// <summary>Sperrt ACacheFile, gibt eine alte Sperre frei; False = nur lesen. Vermerkt Herkunft (AOrigin)
     /// und Benutzung und räumt den Cache-Ordner nach ASettings auf (#905); dabei bleiben ACacheFile und
     /// ALibraryCacheFile stehen (#616).</summary>
-    function LockCache(const ACacheFile, ALibraryCacheFile, AOrigin: string;
+    function LockCache(const ACacheFile, ALibraryCacheFile, ASearchCacheFile, AOrigin: string;
       const ASettings: TServerSettings): Boolean;
     /// <summary>Löscht Projekt- und Bibliotheks-Cache; läuft als TIndexRequest.Prepare im Index-Thread.</summary>
-    function DiscardCacheFiles(const ACacheFile, ALibraryCacheFile: string): TProc;
+    function DiscardCacheFiles(const ACacheFile, ALibraryCacheFile, ASearchCacheFile: string): TProc;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
     procedure Touch;
@@ -905,6 +905,10 @@ begin
       if Pos(PathDelim + TIndexCacheDirectory.LibraryFolder + PathDelim, AFileName) > 0 then
       begin
         Kind := 'library';
+      end
+      else if Pos(PathDelim + TIndexCacheDirectory.SearchFolder + PathDelim, AFileName) > 0 then
+      begin
+        Kind := 'search';
       end;
       FLogger.Info(Format('Index-Cache verworfen (%s); wird neu aufgebaut', [AReason]));
       IndexEvent(Format('index project#%d cache rejected %s reason %s', [FPriority, Kind, AReason]));
@@ -920,6 +924,10 @@ begin
       if Pos(PathDelim + TIndexCacheDirectory.LibraryFolder + PathDelim, AFileName) > 0 then
       begin
         Kind := 'Bibliothek';
+      end
+      else if Pos(PathDelim + TIndexCacheDirectory.SearchFolder + PathDelim, AFileName) > 0 then
+      begin
+        Kind := 'Suchpfade';
       end;
       FLogger.Warning(Format('Index-Cache (%s) nicht geschrieben: %s', [Kind, AReason]));
       IndexEvent('index cache not written ' + Kind);
@@ -1170,7 +1178,7 @@ begin
   end;
 end;
 
-function TShellWorkspace.LockCache(const ACacheFile, ALibraryCacheFile, AOrigin: string;
+function TShellWorkspace.LockCache(const ACacheFile, ALibraryCacheFile, ASearchCacheFile, AOrigin: string;
   const ASettings: TServerSettings): Boolean;
 var
   Removed: Integer;
@@ -1196,7 +1204,7 @@ begin
   end;
   // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt; ohne ihn hier zu nennen, löschte das Aufräumen
   // ihn bei jedem Start, sobald der Ordner über der Höchstgröße lag (#616: "0 aus dem Cache").
-  Keep := TArray<string>.Create(ACacheFile, ALibraryCacheFile);
+  Keep := TArray<string>.Create(ACacheFile, ALibraryCacheFile, ASearchCacheFile);
   try
     // Herkunft und Benutzung vermerken (#905): Danach erkennt jede Instanz verwaiste und ungenutzte Caches.
     if Result then
@@ -1205,6 +1213,10 @@ begin
     end;
     TIndexCacheDirectory.TouchUse(ACacheFile);
     TIndexCacheDirectory.TouchUse(ALibraryCacheFile);
+    if ASearchCacheFile <> '' then
+    begin
+      TIndexCacheDirectory.TouchUse(ASearchCacheFile);
+    end;
     // Im Log nur Anzahlen, keine Pfade (anonymes Server-Log).
     if ASettings.IndexRemoveOrphans then
     begin
@@ -1237,14 +1249,15 @@ begin
   end;
 end;
 
-function TShellWorkspace.DiscardCacheFiles(const ACacheFile, ALibraryCacheFile: string): TProc;
+function TShellWorkspace.DiscardCacheFiles(const ACacheFile, ALibraryCacheFile, ASearchCacheFile: string): TProc;
 var
   Logger: ILogger;
-  CacheFile, LibraryCacheFile: string;
+  CacheFile, LibraryCacheFile, SearchCacheFile: string;
 begin
   Logger := FLogger;
   CacheFile := ACacheFile;
   LibraryCacheFile := ALibraryCacheFile;
+  SearchCacheFile := ASearchCacheFile;
   Result :=
     procedure
     begin
@@ -1257,6 +1270,10 @@ begin
         if TFile.Exists(LibraryCacheFile) then
         begin
           TFile.Delete(LibraryCacheFile);
+        end;
+        if (SearchCacheFile <> '') and TFile.Exists(SearchCacheFile) then
+        begin
+          TFile.Delete(SearchCacheFile);
         end;
         Logger.Info('Index-Cache verworfen: ' + ExtractFileName(CacheFile));
       except
@@ -2448,6 +2465,12 @@ begin
   // RTL/VCL/FMX einmal je Compilerversion und Plattform, geteilt mit allen Projekten (#492, #647).
   Request.LibraryCacheFile := TIndexCacheDirectory.LibraryFileFor(FCacheRoot, Version,
     TIndexProjectFiles.LibrarySignature(Project, Version));
+  // Suchpfad-Units einmal für alle Projekte mit denselben Suchpfaden, Defines und Include-Pfaden (Speicher,
+  // Rückmeldung 01.11.2026); sie werden mit den Defines des Projekts gelesen, die gehören in den Schlüssel.
+  if Length(SearchFiles) > 0 then
+    Request.SearchCacheFile := TIndexCacheDirectory.SearchFileFor(FCacheRoot, Version, AnsiUpperCase('search|' +
+      String.Join(';', Request.Defines) + '|' + String.Join(';', Project.SearchPaths) + '|' +
+      String.Join(';', Request.IncludePaths) + '|' + String.Join(';', Project.Namespaces)));
   Request.Usages := ASettings.IndexUsages;
   // Herkunft für das Aufräumen (#905): die Projektdatei, ohne sie der Arbeitsordner.
   CacheOrigin := Project.FileName;
@@ -2455,7 +2478,8 @@ begin
   begin
     CacheOrigin := FRoot;
   end;
-  Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile, CacheOrigin, ASettings);
+  Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile, Request.SearchCacheFile, CacheOrigin,
+    ASettings);
   if Request.ReadOnlyCache then
   begin
     FLogger.Info(Format('Cache %s wird von einer anderen Instanz geschrieben und hier nur gelesen', [CacheFile]));
@@ -2473,7 +2497,7 @@ begin
     // Im Index-Thread nach dem Ende des alten Aufbaus löschen: Sonst schriebe er den Cache danach wieder.
     if not Request.ReadOnlyCache then
     begin
-      Request.Prepare := DiscardCacheFiles(CacheFile, Request.LibraryCacheFile);
+      Request.Prepare := DiscardCacheFiles(CacheFile, Request.LibraryCacheFile, Request.SearchCacheFile);
     end;
   end;
   TMonitor.Enter(FLock);
