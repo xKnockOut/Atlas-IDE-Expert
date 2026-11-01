@@ -8,7 +8,7 @@
     - Atlas.Common  : frei von Windows und VCL (nur plattformunabhängige RTL,
         Atlas.Text)
     - Atlas.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Atlas.Common)
-    - Atlas.IDE.Expert: eigenständig; darin Schichten (#406):
+    - Atlas.IDE.Expert (Base, wird Atlas.IDE.Base): eigenständig; darin Schichten (#406):
         Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
     - Atlas.Core.Vcs.* (Versionsverwaltung, #571): übersetzt auch der Server
@@ -99,6 +99,15 @@ $LegacyWindowsUnits = @(
     'WinInet', 'IniFiles'
 )
 
+# Plugin-Packages (#1456, ADR 0017): Base heißt bis zur Umbenennung noch Atlas.IDE.Expert; jedes weitere
+# Packages/Atlas.IDE.* ist ein Modul oder die Verträge (Atlas.IDE.Contracts) mit eigenen Quellen unter Source.
+$PluginBaseFolder = 'Atlas.IDE.Expert'
+if (Test-Path (Join-Path $Root 'Packages/Atlas.IDE.Base')) { $PluginBaseFolder = 'Atlas.IDE.Base' }
+$PluginFolders = @($PluginBaseFolder)
+foreach ($dir in @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' | Sort-Object Name)) {
+    if ($dir.Name -ne $PluginBaseFolder -and $dir.Name -ne 'Atlas.IDE.Expert') { $PluginFolders += $dir.Name }
+}
+
 $Packages = @(
     @{
         # ADR 0012: wird auch als Quelltext ins Plugin übersetzt, darum nur RTL.
@@ -130,14 +139,27 @@ $Packages = @(
         # ADR 0012: eigenständig, damit die IDE nur ein BPL laden muss; Atlas.Text kommt als Quelltext
         # hinein (contains), nicht über requires. vclwinx (TImageCollection,
         # TVirtualImageList für das Atlas-Symbol, #751) gehört zur IDE und ist immer geladen.
-        Name             = 'Atlas.IDE.Expert'
-        Path             = 'Packages/Atlas.IDE.Expert'
+        Name             = $PluginBaseFolder
+        Path             = "Packages/$PluginBaseFolder"
         AllowedRequires  = @('rtl', 'vcl', 'vclwinx', 'designide')
         ForbiddenPrefix  = @('Atlas.Common', 'Atlas.Windows', 'FMX.')
         ForbiddenUnits   = @()
         Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'
     }
 )
+# Module requiren Base und die Verträge, die Verträge nur rtl und vcl (ADR 0017, Regel 9).
+foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
+    $requires = @('rtl', 'vcl')
+    if ($folder -ne 'Atlas.IDE.Contracts') { $requires += @('vclwinx', 'designide', $PluginBaseFolder, 'Atlas.IDE.Contracts') }
+    $Packages += @{
+        Name             = $folder
+        Path             = "Packages/$folder"
+        AllowedRequires  = $requires
+        ForbiddenPrefix  = @('Atlas.Common', 'Atlas.Windows', 'FMX.')
+        ForbiddenUnits   = @()
+        Reason           = 'ohne Atlas.Common und Atlas.Windows'
+    }
+}
 
 # Units der Open Tools API und des Designers (designide)
 $OpenToolsPrefix = @('ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows', 'PropInspAPI', 'DockForm')
@@ -387,25 +409,40 @@ foreach ($package in $Packages) {
 
 # Atlas.Text im Plugin (ADR 0012)
 $textDpk = Join-Path $Root 'Packages/Atlas.Text/Atlas.Text.dpk'
-$pluginDpk = Join-Path $Root 'Packages/Atlas.IDE.Expert/Atlas.IDE.Expert.dpk'
+$pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
+$pluginDpk = Join-Path $Root $pluginDpkName
 if ((Test-Path $textDpk) -and (Test-Path $pluginDpk)) {
     $textUnits = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($textDpk))) | ForEach-Object { $_.Name })
     $pluginEntries = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($pluginDpk))))
     foreach ($entry in $pluginEntries) {
         $path = $entry.Path -replace '/', '\'
         if ($path -ne '' -and -not $path.StartsWith('Source\') -and -not $path.StartsWith('..\Atlas.Text\Source\')) {
-            $violations += "Packages/Atlas.IDE.Expert/Atlas.IDE.Expert.dpk: contains $($entry.Name) in '$($entry.Path)' – das Plugin bindet fremde Units nur aus Atlas.Text ein (ADR 0012)"
+            $violations += "${pluginDpkName}: contains $($entry.Name) in '$($entry.Path)' – das Plugin bindet fremde Units nur aus Atlas.Text ein (ADR 0012)"
         }
         if ($path.StartsWith('..\Atlas.Text\') -and -not $entry.Name.StartsWith('Atlas.Text.')) {
-            $violations += "Packages/Atlas.IDE.Expert/Atlas.IDE.Expert.dpk: contains $($entry.Name) – unter Atlas.Text nur Atlas.Text.*-Units"
+            $violations += "${pluginDpkName}: contains $($entry.Name) – unter Atlas.Text nur Atlas.Text.*-Units"
         }
     }
     $pluginTextUnits = @($pluginEntries | Where-Object { $_.Name.StartsWith('Atlas.Text.') } | ForEach-Object { $_.Name })
     foreach ($name in $textUnits | Where-Object { $pluginTextUnits -notcontains $_ }) {
-        $violations += "Packages/Atlas.IDE.Expert/Atlas.IDE.Expert.dpk: $name fehlt unter contains (steht in Atlas.Text.dpk; sonst W1033)"
+        $violations += "${pluginDpkName}: $name fehlt unter contains (steht in Atlas.Text.dpk; sonst W1033)"
     }
     foreach ($name in $pluginTextUnits | Where-Object { $textUnits -notcontains $_ }) {
-        $violations += "Packages/Atlas.IDE.Expert/Atlas.IDE.Expert.dpk: $name steht nicht in Atlas.Text.dpk"
+        $violations += "${pluginDpkName}: $name steht nicht in Atlas.Text.dpk"
+    }
+}
+# Module und Verträge enthalten nur eigene Quellen; Atlas.Text kommt über requires Base (#1456).
+foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
+    $dpkName = "Packages/$folder/$folder.dpk"
+    $dpkPath = Join-Path $Root $dpkName
+    if (-not (Test-Path $dpkPath)) {
+        $violations += "${dpkName}: fehlt; jedes Plugin-Package unter Packages/Atlas.IDE.* braucht sein dpk"
+        continue
+    }
+    foreach ($entry in Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($dpkPath)))) {
+        if (-not ($entry.Path -replace '/', '\').StartsWith('Source\')) {
+            $violations += "${dpkName}: contains $($entry.Name) in '$($entry.Path)' – ein Modul enthält nur Units aus seinem Ordner Source"
+        }
     }
 }
 foreach ($program in @('Tests/Atlas.Tests.dpr', 'Application/AtlasServer.dpr')) {
@@ -468,7 +505,8 @@ if (Test-Path $editingDir) {
 # - Die Features von Atlas.Core und Atlas.IDE bilden keinen Zyklus (Tarjan über die uses aller Units).
 #   Nicht mitgezählt: Atlas.IDE.Foundation.*, die Kompositionswurzel und Verweise auf *.Contract (Contracts
 #   verwenden nur Contracts und schließen darum keinen Zyklus).
-$PluginSource = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source'
+$PluginSource = Join-Path $Root "Packages/$PluginBaseFolder/Source"
+$PluginSources = @($PluginFolders | ForEach-Object { Join-Path $Root "Packages/$_/Source" } | Where-Object { Test-Path $_ })
 $CompositionRoots = @('Atlas.IDE.CodeInsight.Composition')
 if (Test-Path $PluginSource) {
     $featureEdges = @{}
@@ -478,7 +516,7 @@ if (Test-Path $PluginSource) {
         if (-not $match.Success) { return $null }
         return "Atlas.$($match.Groups[1].Value).$($match.Groups[2].Value)"
     }
-    foreach ($file in Get-ChildItem -Path $PluginSource -Recurse -File -Include '*.pas') {
+    foreach ($file in Get-ChildItem -Path $PluginSources -Recurse -File -Include '*.pas') {
         $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
         $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
@@ -614,8 +652,10 @@ function Read-ModuleAssignment([string] $Path) {
     return $result
 }
 
-function Get-FolderPackage($Map, [string] $Relative) {
-    # Package nach der Ordnertabelle: <Schicht>/<Ordner>/… oder direkt unter Source/ (Contracts).
+function Get-FolderPackage($Map, [string] $Relative, [string] $Folder = '') {
+    # Package nach dem Ordner unter Packages (#1456, package-first), in Base nach der Ordnertabelle:
+    # <Schicht>/<Ordner>/… oder direkt unter Source/ (Contracts).
+    if ($Folder -ne '' -and $Folder -ne $PluginBaseFolder) { return $Folder }
     $parts = $Relative.Split('/')
     if ($parts.Count -ge 3 -and @('Core', 'IDE', 'UI') -contains $parts[0] -and $Map.Folders.ContainsKey($parts[1])) {
         return $Map.Folders[$parts[1]]
@@ -638,32 +678,50 @@ if ((Test-Path $PluginSource) -and -not (Test-Path $assignmentPath)) {
 elseif (Test-Path $PluginSource) {
     $map = Read-ModuleAssignment $assignmentPath
     $violations += $map.Problems
-    $sourceRoot = (Resolve-Path $PluginSource).Path.TrimEnd('\', '/')
     $pluginUnits = @{}
-    foreach ($file in Get-ChildItem -Path $PluginSource -Recurse -File -Include '*.pas') {
-        $pluginUnits[[IO.Path]::GetFileNameWithoutExtension($file.Name)] = [pscustomobject]@{
-            File = $file.FullName.Substring($sourceRoot.Length + 1) -replace '\\', '/'
-            Path = $file.FullName
+    foreach ($folder in $PluginFolders) {
+        $sourceDir = Join-Path $Root "Packages/$folder/Source"
+        if (-not (Test-Path $sourceDir)) { continue }
+        $sourceRoot = (Resolve-Path $sourceDir).Path.TrimEnd('\', '/')
+        foreach ($file in Get-ChildItem -Path $sourceDir -Recurse -File -Include '*.pas') {
+            $name = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+            $file = [pscustomobject]@{
+                File   = $file.FullName.Substring($sourceRoot.Length + 1) -replace '\\', '/'
+                Path   = $file.FullName
+                Folder = $folder
+            }
+            if ($pluginUnits.ContainsKey($name)) {
+                $violations += "Packages/$folder/Source/$($file.File): $name gibt es auch in Packages/$($pluginUnits[$name].Folder)/Source"
+                continue
+            }
+            $pluginUnits[$name] = $file
         }
     }
 
     # Vollständigkeit und Abweichungen von der Ordnertabelle
     foreach ($name in @($pluginUnits.Keys | Sort-Object)) {
         if (-not $map.Rows.ContainsKey($name)) {
-            $violations += "${AssignmentFile}: $name ($($pluginUnits[$name].File)) fehlt in der Zuordnung; Zeile unter ## $(Get-FolderPackage $map $pluginUnits[$name].File) eintragen"
+            $violations += "${AssignmentFile}: $name ($($pluginUnits[$name].File)) fehlt in der Zuordnung; Zeile unter ## $(Get-FolderPackage $map $pluginUnits[$name].File $pluginUnits[$name].Folder) eintragen"
         }
     }
     foreach ($name in @($map.Rows.Keys | Sort-Object)) {
         $row = $map.Rows[$name]
         if (-not $pluginUnits.ContainsKey($name)) {
-            $violations += "${AssignmentFile}:$($row.Line): $name gibt es nicht mehr unter Packages/Atlas.IDE.Expert/Source; Zeile streichen oder nachziehen"
+            $violations += "${AssignmentFile}:$($row.Line): $name gibt es in keinem Plugin-Package mehr (Packages/Atlas.IDE.*/Source); Zeile streichen oder nachziehen"
             continue
         }
         $actual = $pluginUnits[$name].File
         if ($row.File -ne $actual) {
             $violations += "${AssignmentFile}:$($row.Line): $name liegt in $actual, nicht in $($row.File)"
         }
-        $folderPackage = Get-FolderPackage $map $actual
+        $folderPackage = Get-FolderPackage $map $actual $pluginUnits[$name].Folder
+        # Package-first (#1456): Hat das Package schon einen eigenen Ordner, liegen seine Units dort.
+        if ($row.Package -ne $pluginUnits[$name].Folder -and $PluginFolders -contains $row.Package) {
+            $violations += "${AssignmentFile}:$($row.Line): $name gehört zu $($row.Package) und liegt darum unter Packages/$($row.Package)/Source, nicht unter Packages/$($pluginUnits[$name].Folder)/Source"
+        }
+        elseif ($pluginUnits[$name].Folder -ne $PluginBaseFolder -and $row.Package -ne $pluginUnits[$name].Folder) {
+            $violations += "${AssignmentFile}:$($row.Line): $name liegt unter Packages/$($pluginUnits[$name].Folder)/Source und steht darum unter ## $($pluginUnits[$name].Folder), nicht unter ## $($row.Package)"
+        }
         if ($row.Package -ne $folderPackage -and $row.Reason -match '^Ordner\s') {
             $violations += "${AssignmentFile}:$($row.Line): $name steht unter $($row.Package), die Ordnertabelle sagt $folderPackage; eine Ausnahme braucht eine eigene Begründung"
         }
@@ -671,13 +729,13 @@ elseif (Test-Path $PluginSource) {
 
     function Get-AssignedPackage([string] $Name) {
         if ($map.Rows.ContainsKey($Name)) { return $map.Rows[$Name].Package }
-        return Get-FolderPackage $map $pluginUnits[$Name].File
+        return Get-FolderPackage $map $pluginUnits[$Name].File $pluginUnits[$Name].Folder
     }
 
     # Grenzen
     foreach ($name in @($pluginUnits.Keys | Sort-Object)) {
         $from = Get-AssignedPackage $name
-        $relative = "Packages/Atlas.IDE.Expert/Source/$($pluginUnits[$name].File)"
+        $relative = "Packages/$($pluginUnits[$name].Folder)/Source/$($pluginUnits[$name].File)"
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($pluginUnits[$name].Path))
         foreach ($unit in Get-ClauseEntries $text 'uses') {
             if (-not $pluginUnits.ContainsKey($unit.Name)) { continue }
