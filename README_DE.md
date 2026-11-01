@@ -233,6 +233,7 @@ Noch nicht in `main`, als Issues angelegt:
 
 - Weitere Prüfregeln (Unter-Issues von #1086)
 - Debuggen (#614) und Designer-Funktionen für spätere Versionen
+- Aufteilung des Plugins in `Atlas.IDE.Base` und Modul-Packages (2.0, ADR 0017); die Verträge dafür stehen (#1455, siehe Aufbau), die Verdrahtung folgt
 
 ## Installation
 
@@ -286,6 +287,8 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 | `Tests/Atlas.Tests` | DUnitX-Tests |
 
 Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
+
+Verträge für die Module ab 2.0 (#1455, ADR 0017): `Atlas.Core.Modules.Contract` (Modul, Scope, Registry mit `Provide`/`FindAll` nach Interface-GUID, Änderungsmeldung, Vertragsversion), `Atlas.Core.Modules.Registry` (Modulliste aus Anmeldungen, Abmelden rückwärts über den Scope), `Atlas.Core.Modules.Handshake` (exportierte `AtlasCoreContractVersion`), `Atlas.Core.Settings.Contract` und `Atlas.Core.Settings.Parts` (Einstellungsteile der Module, zentral in Base; Werte fehlender Module bleiben erhalten).
 
 ## Voraussetzungen
 

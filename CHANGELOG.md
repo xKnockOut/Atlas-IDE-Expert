@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Geändert
+- Plugin: Grundstock der Modul-Verträge für 2.0 (#1455, ADR 0017): Modul, Scope und Registry mit `Provide`/`FindAll` nach Interface-GUID und Änderungsmeldung (`Atlas.Core.Modules.Contract`, `.Registry`); die Modulliste entsteht nur aus Anmeldungen und merkt sich jedes einmal angemeldete Modul; Abmelden stoppt das Modul und löst alle seine Anmeldungen rückwärts. Versions-Handschlag über die exportierte Funktion `AtlasCoreContractVersion` (`.Handshake`). Einstellungsteile der Module (`Atlas.Core.Settings.Contract`, `.Parts`): Schlüssel mit Vorgaben, Schema-Teil, Seite und Umbenennungen, zentral in Base; Werte fehlender und fremder Module bleiben erhalten. Noch nicht verdrahtet.
+
 ## [1.2.0] - 2026-11-01
 
 ### Neu
