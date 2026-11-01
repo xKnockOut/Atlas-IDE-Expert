@@ -249,7 +249,15 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ChoiceBox.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.QueryDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.QueryDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsRows.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsConnections.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsProjects.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsQueries.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsSnippets.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsWorkflow.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsGeneral.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsSection.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Rules.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Group.pas"/>
@@ -473,6 +481,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Connections.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Queries.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.SettingsTables.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Templates.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.QueryTest.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.NewIssue.pas"/>
@@ -509,6 +518,7 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.EndDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TimeDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TimeList.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Strings.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas">
             <Form>AtlasBoardFrame</Form>
             <FormType>dfm</FormType>
@@ -549,6 +559,8 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Contract.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Parts.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.StoreValues.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Contract.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ThreadList.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Processes.pas"/>
@@ -847,6 +859,7 @@
         <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
         <DCCReference Include="Source\IDE\SymbolPath\Atlas.IDE.SymbolPath.Service.pas"/>
         <DCCReference Include="Source\IDE\Analysis\Atlas.IDE.Analysis.Composition.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Settings.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Cache.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>

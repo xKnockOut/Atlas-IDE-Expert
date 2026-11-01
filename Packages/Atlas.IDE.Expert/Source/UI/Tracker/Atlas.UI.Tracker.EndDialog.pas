@@ -116,7 +116,7 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
-  Atlas.UI.Strings;
+  Atlas.UI.Tracker.Strings;
 
 const
   Gap = 8;
@@ -135,7 +135,7 @@ begin
   FKey := AKey;
   FOptions := AOptions;
   FChange := TAtlasTrackerWrite.Empty;
-  Caption := TAtlasStrings.Fmt(TAtlasTextId.TrackerEndCaption, [AKey]);
+  Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndCaption, [AKey]);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
@@ -148,7 +148,7 @@ begin
   mRow := AddRow(26);
   mLabel := TLabel.Create(Self);
   mLabel.Parent := mRow;
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.TrackerEndState);
+  mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndState);
   mLabel.Left := 0;
   mLabel.Top := ScaleValue(4);
   FState := TAtlasValueBox.Create(Self);
@@ -167,7 +167,7 @@ begin
   mRow := AddRow(20);
   mLabel := TLabel.Create(Self);
   mLabel.Parent := mRow;
-  mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.TrackerEndComment);
+  mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndComment);
   mLabel.Left := 0;
   mLabel.Top := ScaleValue(2);
   // Kommentar-Editor (#1278) mit seiner Leiste unter dem Feld; die Vorlage ist kein Entwurf.
@@ -187,7 +187,7 @@ begin
   mRow.Top := FEditor.Top + FEditor.Height + 1;
   FHandOver := TCheckBox.Create(Self);
   FHandOver.Parent := mRow;
-  FHandOver.Caption := TAtlasStrings.Text(TAtlasTextId.TrackerEndHandOver);
+  FHandOver.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndHandOver);
   FHandOver.Left := 0;
   FHandOver.Top := ScaleValue(3);
   FHandOver.Width := ScaleValue(176);
@@ -213,10 +213,10 @@ begin
   mButtons.AlignWithMargins := True;
   mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   mButtons.Top := mRow.Top + mRow.Height + 1;
-  FSend := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.TrackerEndSend));
+  FSend := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend));
   FSend.OnClick := SendClick;
   FSend.Default := True;
-  FCancel := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.TrackerEndCancel));
+  FCancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel));
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   ActiveControl := FComment;
@@ -257,7 +257,8 @@ end;
 
 class function TAtlasTrackerEndDialog.StateChoices(const AOptions: TAtlasTrackerSyncOptions): TArray<string>;
 begin
-  Result := TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.TrackerEndKeepState)) + Copy(AOptions.EndStates);
+  Result := TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState))
+    + Copy(AOptions.EndStates);
 end;
 
 procedure TAtlasTrackerEndDialog.SetStates(const AStates: TArray<string>);
@@ -296,7 +297,7 @@ var
   mState: string;
 begin
   mState := FState.Value;
-  if SameText(mState, TAtlasStrings.Text(TAtlasTextId.TrackerEndKeepState)) then
+  if SameText(mState, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState)) then
     mState := '';
   Result := TAtlasTrackerWorkflow.EndChange(FOptions, mState,
     StringReplace(FComment.Text, #13#10, #10, [rfReplaceAll]), FHandOver.Checked, FAssignee.Value);
@@ -329,7 +330,7 @@ begin
     Exit;
   end;
   FNote.Font.Color := clWindowText;
-  FNote.Caption := TAtlasStrings.Text(TAtlasTextId.TrackerEndSending);
+  FNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSending);
   SetBusy(True);
   mDialog := Self;
   FOnSend(FChange,
@@ -388,26 +389,26 @@ begin
       Exit('');
     TAtlasCiFetchError.Unauthorized:
       if AResult.Status = 403 then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerWriteForbidden, [AKey, AResult.Status])
+        Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteForbidden, [AKey, AResult.Status])
       else
-        Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerWriteUnauthorized, [AKey, AResult.Status]);
+        Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteUnauthorized, [AKey, AResult.Status]);
     TAtlasCiFetchError.NotFound:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerWriteNotFound, [AKey, AResult.Status]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteNotFound, [AKey, AResult.Status]);
     TAtlasCiFetchError.Invalid:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerWriteInvalid, [AKey, AResult.Status]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteInvalid, [AKey, AResult.Status]);
     TAtlasCiFetchError.Server:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerWriteServer, [AKey, AResult.Status]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteServer, [AKey, AResult.Status]);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.TrackerWriteTimeout);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteTimeout);
     TAtlasCiFetchError.NotConfigured:
-      Result := TAtlasStrings.Text(TAtlasTextId.TrackerWriteNotConfigured);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteNotConfigured);
     TAtlasCiFetchError.UnknownProvider:
-      Result := TAtlasStrings.Text(TAtlasTextId.TrackerWriteUnsupported);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteUnsupported);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.TrackerWriteNetwork);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteNetwork);
   end;
   if AResult.Message <> '' then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerWriteReason, [Result, AResult.Message]);
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteReason, [Result, AResult.Message]);
 end;
 
 class function TAtlasTrackerEndDialog.SummaryText(const AChange: TAtlasTrackerWrite): string;
@@ -416,17 +417,17 @@ var
 begin
   mParts := nil;
   if AChange.State <> '' then
-    mParts := mParts + [TAtlasStrings.Fmt(TAtlasTextId.TrackerPartState, [AChange.State])];
+    mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartState, [AChange.State])];
   case AChange.Assign of
     TAtlasTrackerAssign.Me:
-      mParts := mParts + [TAtlasStrings.Text(TAtlasTextId.TrackerPartAssigned)];
+      mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerPartAssigned)];
     TAtlasTrackerAssign.User:
-      mParts := mParts + [TAtlasStrings.Fmt(TAtlasTextId.TrackerPartHandedOver, [AChange.Assignee])];
+      mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartHandedOver, [AChange.Assignee])];
   else
     // Keep: Zuständigkeit bleibt.
   end;
   if AChange.Comment <> '' then
-    mParts := mParts + [TAtlasStrings.Text(TAtlasTextId.TrackerPartComment)];
+    mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerPartComment)];
   Result := string.Join(', ', mParts);
 end;
 

@@ -2090,6 +2090,9 @@ type
 
 var
   TrackerAccessInstance: IAtlasTrackerAccess;
+  /// <summary>Zugang für den Abschnitt Issue-Tracker des Moduls Tracker (#1455), solange die Optionen angemeldet
+  /// sind.</summary>
+  TrackerAccessRegistration: IAtlasRegistration;
 
 function TrackerAccess: IAtlasTrackerAccess;
 begin
@@ -2288,9 +2291,13 @@ begin
     begin
       Result := TAtlasEditorCompletion.SnippetFolder;
     end;
-  // Seite Issue-Tracker (#1260): Anbieter, Token und „Verbindung prüfen“.
-  Hooks.Tracker := TrackerAccess;
   TAtlasOptionsRegistration.Register(Hooks);
+  // Abschnitt Issue-Tracker des Moduls Tracker (#1260, #1455): Anbieter, Token und „Verbindung prüfen“ über die
+  // Registry; das Modul kennt die Kompositionswurzel nicht.
+  if TrackerAccessRegistration = nil then
+  begin
+    TrackerAccessRegistration := AtlasModuleRegistry.Provide(IAtlasTrackerAccess, TrackerAccess);
+  end;
 end;
 
 /// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
@@ -3302,7 +3309,7 @@ begin
   Result.OnAssignProject :=
     procedure(AMatch: string)
     begin
-      TAtlasOptionsRegistration.ShowTrackerProject(AMatch);
+      TAtlasOptionsRegistration.ShowSetting('IssuesProjects', AMatch);
     end;
   // „Abfragen bearbeiten …“ (#1262): Seite Issue-Tracker bei der Tabelle Abfragen.
   Result.OnEditQueries :=
@@ -5115,6 +5122,11 @@ begin
       procedure
       begin
         TAtlasOptionsRegistration.Unregister;
+        if TrackerAccessRegistration <> nil then
+        begin
+          TrackerAccessRegistration.Revoke;
+        end;
+        TrackerAccessRegistration := nil;
       end);
     TAtlasProjectSettings.Command := nil;
     Teardown.Step('History',

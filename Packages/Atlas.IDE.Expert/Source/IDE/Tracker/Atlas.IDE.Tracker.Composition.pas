@@ -10,7 +10,9 @@
 //   anlegen, Issue anzeigen, Issues zu dieser Methode, offene Zeitbuchungen,
 //   Board, An Issue anhängen,
 // - „An Issue anhängen …“ im Atlas-Menü, „Board“ unter Ansicht › Atlas,
-//   „Issue anlegen …“ im Kontextmenü des Editors und auf seiner Taste.
+//   „Issue anlegen …“ im Kontextmenü des Editors und auf seiner Taste,
+// - den Abschnitt „Issue-Tracker“ im Optionsdialog (Atlas.IDE.Tracker.Settings,
+//   auch bei ausgeschaltetem Modul, damit man es einstellen kann).
 // Alles, was „Meine Issues“ braucht (Tracker des Projekts, Vorschau,
 // Beginnen, Board, Zeiterfassung, Anhängen, Issue anlegen), fragt das Modul bei
 // jedem Gebrauch über IAtlasIssuesSession (Atlas.IDE.Tracker.Session) aus der
@@ -30,8 +32,8 @@ type
   TAtlasTrackerModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasKeySource)
   public const
-    ModuleId = 'atlas.tracker';
-    Switch = 'issues';
+    cModuleId = 'atlas.tracker';
+    cSwitch = 'issues';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -64,7 +66,15 @@ uses
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
-  Atlas.UI.Strings;
+  Atlas.IDE.Tracker.Settings,
+  Atlas.UI.Settings.Contract,
+  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings;
+
+const
+  // Protokoll beim An- und Abmelden.
+  cLogContractMismatch = 'Modul %s: Vertragsversion von Base passt nicht, nicht angemeldet';
+  cLogUnregisterFailed = 'Modul %s nicht sauber abgemeldet: %s';
 
 var
   GScope: IAtlasModuleScope;
@@ -80,10 +90,16 @@ var
 begin
   Result := nil;
   if AtlasModuleRegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in AtlasModuleRegistry.FindAll(IAtlasIssuesSession) do
+  begin
     if Supports(mItem, IAtlasIssuesSession, Result) and Result.Available then
+    begin
       Exit;
+    end;
+  end;
   Result := nil;
 end;
 
@@ -113,7 +129,9 @@ begin
   Result := nil;
   mSession := Session;
   if mSession <> nil then
+  begin
     Result := mSession.IssuePreview;
+  end;
 end;
 
 procedure SessionShow(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -122,7 +140,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.ShowIssue(ATarget, AKey);
+  end;
 end;
 
 procedure SessionBrowse(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -131,7 +151,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.BrowseIssue(ATarget, AKey);
+  end;
 end;
 
 procedure SessionStart(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -140,7 +162,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.StartIssue(ATarget, AKey);
+  end;
 end;
 
 function SessionCanStart: Boolean;
@@ -211,12 +235,12 @@ end;
 
 { Befehle }
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId, ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := ACaption;
   Result.Run := ARun;
   Result.Visible := AVisible;
 end;
@@ -227,7 +251,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.EnterCredentials;
+  end;
 end;
 
 function TrackerLoginVisible: Boolean;
@@ -241,7 +267,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.EnterCiCredentials;
+  end;
 end;
 
 function CiLoginVisible: Boolean;
@@ -258,7 +286,9 @@ var
 begin
   mSession := Session;
   if (mSession <> nil) and mSession.CanCreateIssue then
+  begin
     mSession.CreateIssueFromEditor;
+  end;
 end;
 
 procedure CreateIssue;
@@ -286,7 +316,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.ShowPreviewPrompt;
+  end;
 end;
 
 function PreviewVisible: Boolean;
@@ -297,7 +329,9 @@ end;
 procedure ShowBlameScope;
 begin
   if GBlameIssues <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.BlameIssues, GBlameIssues.ShowScope);
+  end;
 end;
 
 function BlameVisible: Boolean;
@@ -311,7 +345,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.ShowTimeOpen;
+  end;
 end;
 
 function TimeVisible: Boolean;
@@ -325,7 +361,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.ShowBoard;
+  end;
 end;
 
 function BoardVisible: Boolean;
@@ -339,7 +377,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.AttachPrompt;
+  end;
 end;
 
 function AttachVisible: Boolean;
@@ -352,13 +392,13 @@ end;
 function TAtlasTrackerModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Issue-Tracker';
   Result.Version := TAtlasVersion.Version;
   Result.Handle := HInstance;
   // Lief mit der Willkommensseite schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasTrackerModule.Start;
@@ -381,24 +421,30 @@ var
   mCreate: TAtlasModuleCommand;
 begin
   // Issue anlegen (#1268): aus Auswahl bzw. TODO im Editor; sichtbar mit issues.create.
-  mCreate := Command('Atlas.CreateIssue', TAtlasTextId.CreateIssueCommand, CreateIssue, CreateIssueVisible);
+  mCreate := Command('Atlas.CreateIssue', TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand),
+    CreateIssue, CreateIssueVisible);
   mCreate.Key := CreateIssueKey;
   Result := [
     // Zugang zum Build-Server (#763): für die .atlas des aktiven Projekts; sichtbar mit CiLogin.
-    Command('Atlas.CiLogin', TAtlasTextId.CiLoginCommand, EnterCiCredentials, CiLoginVisible),
+    Command('Atlas.CiLogin', TAtlasStrings.Text(TAtlasTextId.CiLoginCommand), EnterCiCredentials, CiLoginVisible),
     // Zugang zum Issue-Tracker (#765): für die .atlas des aktiven Projekts; sichtbar mit TrackerLogin.
-    Command('Atlas.TrackerLogin', TAtlasTextId.TrackerLoginCommand, EnterCredentials, TrackerLoginVisible),
+    Command('Atlas.TrackerLogin', TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand),
+      EnterCredentials, TrackerLoginVisible),
     mCreate,
     // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
-    Command('Atlas.IssueShow', TAtlasTextId.IssuePreviewCommand, ShowPreviewPrompt, PreviewVisible),
+    Command('Atlas.IssueShow', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommand), ShowPreviewPrompt,
+      PreviewVisible),
     // Issues zu dieser Methode (#1275); sichtbar mit issues.blameLinks.
-    Command('Atlas.BlameIssues', TAtlasTextId.BlameIssuesCommand, ShowBlameScope, BlameVisible),
+    Command('Atlas.BlameIssues', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesCommand), ShowBlameScope,
+      BlameVisible),
     // Offene Zeitbuchungen (#1267): sichtbar mit issues.timeTracking.
-    Command('Atlas.IssueTimeOpen', TAtlasTextId.TimeMenuOpen, ShowTimeOpen, TimeVisible),
+    Command('Atlas.IssueTimeOpen', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeMenuOpen), ShowTimeOpen,
+      TimeVisible),
     // Atlas-Board (#1272): Sprint als Spalten nach Zustand; sichtbar mit issues.board.
-    Command('Atlas.Board', TAtlasTextId.BoardCommand, ShowBoard, BoardVisible),
+    Command('Atlas.Board', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardCommand), ShowBoard, BoardVisible),
     // An Issue anhängen (#1276): Bildschirmfoto, Formular, Log, Debug-Notiz; sichtbar mit issues.attach.
-    Command('Atlas.IssueAttach', TAtlasTextId.AttachCommand, AttachPrompt, AttachVisible)];
+    Command('Atlas.IssueAttach', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), AttachPrompt,
+      AttachVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -414,7 +460,7 @@ var
 begin
   // Ansicht › Atlas › Board (#1272) mit dem bisherigen Text.
   mBoard := MenuEntry('Atlas.Board', TAtlasMenuPlace.ViewMenu);
-  mBoard.Caption := TAtlasStrings.Text(TAtlasTextId.BoardViewMenu);
+  mBoard.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardViewMenu);
   Result := [
     MenuEntry('Atlas.IssueAttach', TAtlasMenuPlace.AtlasMenu),
     mBoard,
@@ -429,7 +475,9 @@ begin
   Result := nil;
   // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
   if TAtlasIdeSettings.Current.CreateIssueKey = 0 then
+  begin
     Exit;
+  end;
   mKey := Default(TAtlasModuleKey);
   mKey.Id := 'Atlas.CreateIssue';
   mKey.Caption := TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand);
@@ -457,22 +505,27 @@ begin
   Result := False;
   mRegistry := AtlasModuleRegistry;
   if (mRegistry = nil) or (GScope <> nil) then
+  begin
     Exit;
+  end;
   // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log(Format(cLogContractMismatch, [cModuleId], TFormatSettings.Invariant));
     Exit;
   end;
   mModule := TAtlasTrackerModule.Create;
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
+  begin
     GScope.Provide(IAtlasFeaturePart, mPart);
+  end;
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasKeySource, mRef);
+  GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeTrackerSettings.Create as IAtlasSettingsSectionProvider);
   Result := True;
 end;
 
@@ -482,13 +535,21 @@ var
   mFailure: string;
 begin
   if GScope = nil then
+  begin
     Exit;
+  end;
   GScope := nil;
   // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+  begin
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
+    begin
+      TAtlasGuard.Log(Format(cLogUnregisterFailed, [cModuleId, mFailure], TFormatSettings.Invariant));
+    end;
+  end;
+  // Laufende Prüfungen der Optionsseite: Ihre Antwort erreicht das Modul danach nicht mehr (Regel 3).
+  TAtlasIdeTrackerSettings.Release;
 end;
 
 initialization

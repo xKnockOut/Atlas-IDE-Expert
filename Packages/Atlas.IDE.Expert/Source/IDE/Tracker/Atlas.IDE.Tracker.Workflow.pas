@@ -130,7 +130,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Vcs.Contract,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Vcs.Service;
 
@@ -324,10 +324,10 @@ begin
     begin
       Logged(mProvider, 'Beginnen', AResult);
       if AResult.Succeeded then
-        mOwner.Report(TAtlasStrings.Fmt(TAtlasTextId.TrackerStartSynced,
+        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
           [mKey, TAtlasTrackerEndDialog.SummaryText(mChange)]))
       else
-        mOwner.Report(TAtlasStrings.Fmt(TAtlasTextId.TrackerStartFailed,
+        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartFailed,
           [mKey, TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
     end);
 end;
@@ -401,7 +401,8 @@ begin
   if not mDone or FStopped then
     Exit;
   if mChange.HasWork then
-    Report(TAtlasStrings.Fmt(TAtlasTextId.TrackerEndSent, [AInput.Key, TAtlasTrackerEndDialog.SummaryText(mChange)]));
+    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndSent,
+      [AInput.Key, TAtlasTrackerEndDialog.SummaryText(mChange)]));
   AEnded(mChange);
 end;
 
@@ -650,7 +651,7 @@ begin
     begin
       Logged(mProvider, 'Kommentar', AResult);
       if AResult.Succeeded then
-        mOwner.Report(TAtlasStrings.Fmt(TAtlasTextId.TrackerCommentSent, [mKey]));
+        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerCommentSent, [mKey]));
       mDone(AResult);
     end);
 end;

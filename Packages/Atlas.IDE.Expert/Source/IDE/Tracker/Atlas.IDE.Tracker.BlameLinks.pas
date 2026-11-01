@@ -136,7 +136,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -632,10 +632,13 @@ begin
       mParent := AddMenuItem(FMenu.Items, mMatches[mIndex].Key, 0);
       mParent.OnClick := nil;
     end;
-    AddMenuItem(mParent, TAtlasStrings.Text(TAtlasTextId.IssueLinkMenuShow), mIndex * MenuStride + MenuShow).Default :=
+    AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow),
+      mIndex * MenuStride + MenuShow).Default :=
       True;
-    AddMenuItem(mParent, TAtlasStrings.Text(TAtlasTextId.IssuePreviewBrowse), mIndex * MenuStride + MenuBrowse);
-    AddMenuItem(mParent, TAtlasStrings.Text(TAtlasTextId.IssuePreviewCopyKey), mIndex * MenuStride + MenuCopy);
+    AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse),
+      mIndex * MenuStride + MenuBrowse);
+    AddMenuItem(mParent, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey),
+      mIndex * MenuStride + MenuCopy);
   end;
   if Length(mMatches) > 0 then
     AddMenuItem(FMenu.Items, '-', 0).OnClick := nil;
@@ -667,7 +670,7 @@ begin
   if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
   begin
     Inc(FList);
-    TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Text(TAtlasTextId.BlameIssuesNoEditor), FList, nil);
+    TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesNoEditor), FList, nil);
     Exit;
   end;
   ShowScopeAt(mView.Buffer.FileName, mView.CursorPos.Line - 1);
@@ -688,27 +691,28 @@ begin
   mList := FList;
   if not BufferLines(AFileName, mLines, mText) then
   begin
-    TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Text(TAtlasTextId.BlameIssuesNoEditor), mList, nil);
+    TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesNoEditor), mList, nil);
     Exit;
   end;
   if not PatternOf(mTarget, mPattern) then
   begin
-    TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Text(TAtlasTextId.BlameIssuesNoTracker), mList, nil);
+    TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesNoTracker), mList, nil);
     Exit;
   end;
   mVcs := TAtlasIdeVcs.ForFolder(ExtractFileDir(AFileName));
   if (mVcs = nil) or (mVcs.Kind = TAtlasVcsKind.None) then
   begin
-    TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Text(TAtlasTextId.BlameIssuesNoVcs), mList, nil);
+    TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesNoVcs), mList, nil);
     Exit;
   end;
   if not TAtlasBlameLinks.Scope(mText, ALine, mFirst, mLast, mName) then
-    mName := TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesUnitName, [ExtractFileName(AFileName)]);
+    mName := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesUnitName, [ExtractFileName(AFileName)]);
   mKind := mVcs.Kind;
   mMax := TAtlasIdeSettings.Current.IssuesBlameMaxRevisions;
   mSerial := FSerialOf;
   mHistory := Default(TAtlasBlameHistory);
-  TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesSearching, [mName]), mList, nil);
+  TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesSearching, [mName]),
+    mList, nil);
   if not TAtlasIdeVcs.Run(
     procedure
     begin
@@ -725,7 +729,7 @@ begin
           end);
     end) then
     // Versionsverwaltung beendet (Entladen): kein Ergebnis mehr.
-    TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesFailed,
+    TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesFailed,
       [mName, AtlasVcsOutcomeName(TAtlasVcsOutcome.Cancelled)]), mList, nil);
 end;
 
@@ -752,13 +756,14 @@ begin
   case AHistory.Outcome of
     TAtlasBlameHistoryOutcome.NotCommitted:
       begin
-        TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesNotCommitted, [AName]), AList,
+        TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesNotCommitted,
+          [AName]), AList,
           nil);
         Exit;
       end;
     TAtlasBlameHistoryOutcome.Failed:
       begin
-        TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesFailed,
+        TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesFailed,
           [AName, AtlasVcsOutcomeName(AHistory.VcsOutcome)]), AList, nil);
         Exit;
       end;
@@ -769,7 +774,7 @@ begin
   FListResult := TAtlasBlameLinks.Group(APattern, AHistory.Commits);
   if Length(FListResult.Issues) = 0 then
   begin
-    TAtlasIdeResultsWindow.ShowIssues(TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesNone,
+    TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesNone,
       [AName, Length(FListResult.Commits)]), AList, nil);
     Exit;
   end;
@@ -854,7 +859,7 @@ begin
   // Nachricht, Leerzeile, dann der Unterschied des Bereichs.
   mLines := TTextLines.SplitLines(TrimRight(mCommit.Message));
   mLines := mLines + [''] + mCommit.Patch;
-  TAtlasUndoDiffView.Execute(TAtlasStrings.Fmt(TAtlasTextId.BlameIssuesDiffTitle,
+  TAtlasUndoDiffView.Execute(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesDiffTitle,
     [TAtlasBlameLinks.ShortRevision(FListKind, mCommit.Revision), TAtlasBlameLinks.Subject(mCommit.Message)]),
     mLines);
 end;

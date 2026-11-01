@@ -64,7 +64,7 @@ implementation
 
 uses
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Strings;
+  Atlas.UI.Tracker.Strings;
 
 const
   Gap = 8;
@@ -79,7 +79,7 @@ begin
   FItems := Copy(AItems);
   FAction := TAtlasTimeListAction.Close;
   FChosen := -1;
-  Caption := TAtlasStrings.Text(TAtlasTextId.TimeOpenCaption);
+  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenCaption);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
@@ -91,7 +91,7 @@ begin
   FEmpty.Align := alTop;
   FEmpty.AlignWithMargins := True;
   FEmpty.Margins.SetBounds(Gap, Gap, Gap, 0);
-  FEmpty.Caption := TAtlasStrings.Text(TAtlasTextId.TimeOpenEmpty);
+  FEmpty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenEmpty);
   FEmpty.Visible := Length(FItems) = 0;
 
   FList := TListBox.Create(Self);
@@ -112,12 +112,12 @@ begin
   mButtons.AlignWithMargins := True;
   mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   mButtons.Top := FList.Top + FList.Height + 1;
-  FBook := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.TimeOpenBook));
+  FBook := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenBook));
   FBook.OnClick := BookClick;
   FBook.Default := True;
-  FDiscard := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.TimeOpenDiscard));
+  FDiscard := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenDiscard));
   FDiscard.OnClick := DiscardClick;
-  FClose := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.TimeOpenClose));
+  FClose := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeOpenClose));
   FClose.ModalResult := mrCancel;
   FClose.Cancel := True;
   ClientHeight := mButtons.Top + mButtons.Height + Gap;
@@ -197,7 +197,7 @@ begin
   mDays := DateToStr(AItem.FirstDay);
   if AItem.LastDay <> AItem.FirstDay then
     mDays := mDays + ' – ' + DateToStr(AItem.LastDay);
-  Result := TAtlasStrings.Fmt(TAtlasTextId.TimeOpenRow, [AItem.Issue.Key,
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeOpenRow, [AItem.Issue.Key,
     TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(AItem.Seconds, 1)), mDays]);
 end;
 
