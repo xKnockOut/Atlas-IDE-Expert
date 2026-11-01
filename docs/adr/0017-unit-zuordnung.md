@@ -14,7 +14,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 | `Designer` | `Atlas.IDE.Designer` |
 | `Search`, `UnitSearch`, `Query` | `Atlas.IDE.Search` |
 | `Tests` | `Atlas.IDE.Tests` |
-| `Build`, `Tasks`, `StartProfiles` | `Atlas.IDE.Build` |
+| `Build`, `BuildTools`, `Tasks`, `StartProfiles` | `Atlas.IDE.Build` |
 | `Bookmarks`, `Notes`, `Todos` | `Atlas.IDE.Bookmarks` |
 | `Contracts` (direkt unter `Source/`) | `Atlas.IDE.Contracts` |
 | alle übrigen | `Atlas.IDE.Base` |
@@ -22,6 +22,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 Ausnahmen:
 
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
+- Aus `Build/` bleibt auch die Build-Pipeline im Kern (#1455, Vorschlag an Marco vom 01.11.2026): Läufer der Builds auf Auftrag (`Build.Runner`, MCP `Build.Inbox`), Prüfung vor dem Kompilieren (`Build.Gate`, `Build.IdleGate`), Release-Wächter, Bewertung (`Build.Verdict`, `Build.Summary`) und `IDE.Build.Target`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
 - Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
 - `Atlas.IDE.Rules` hat keinen eigenen Ordner. Die sieben Units mit „Rules“ in der Spalte Begründung sind ein **Vorschlag** aus Namen und Inhalt; die Analyse nannte 8 Units und rund 3 400 Zeilen. Vor #1455 prüfen und hier festschreiben.
 - `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen (ADR 0017, Fortschreibung).
@@ -55,6 +56,18 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
 | `Atlas.Core.Build.Target` | `Core/Build/Atlas.Core.Build.Target.pas` | Konfiguration und Symbole für den Server ({$IFDEF}-Zweige, #615) |
+| `Atlas.Core.Build.Gate` | `Core/Build/Atlas.Core.Build.Gate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.Core.Build.Inbox` | `Core/Build/Atlas.Core.Build.Inbox.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.Core.Build.ReleaseGuard` | `Core/Build/Atlas.Core.Build.ReleaseGuard.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.IDE.Build.Gate` | `IDE/Build/Atlas.IDE.Build.Gate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.IDE.Build.Inbox` | `IDE/Build/Atlas.IDE.Build.Inbox.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.IDE.Build.ReleaseGuard` | `IDE/Build/Atlas.IDE.Build.ReleaseGuard.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.IDE.Build.Runner` | `IDE/Build/Atlas.IDE.Build.Runner.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.IDE.Build.Summary` | `IDE/Build/Atlas.IDE.Build.Summary.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.Core.Commands.KeyConflicts` | `Core/Commands/Atlas.Core.Commands.KeyConflicts.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyMap` | `Core/Commands/Atlas.Core.Commands.KeyMap.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.Palette` | `Core/Commands/Atlas.Core.Commands.Palette.pas` | Ordner `Core/Commands` |
@@ -797,12 +810,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Build.CompilerSwitches` | `Core/Build/Atlas.Core.Build.CompilerSwitches.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.Gate` | `Core/Build/Atlas.Core.Build.Gate.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.Inbox` | `Core/Build/Atlas.Core.Build.Inbox.pas` | Ordner `Core/Build` |
 | `Atlas.Core.Build.OpenBuild` | `Core/Build/Atlas.Core.Build.OpenBuild.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.ReleaseGuard` | `Core/Build/Atlas.Core.Build.ReleaseGuard.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Ordner `Core/Build` |
 | `Atlas.Core.StartProfiles.Store` | `Core/StartProfiles/Atlas.Core.StartProfiles.Store.pas` | Ordner `Core/StartProfiles` |
 | `Atlas.Core.Tasks.Adapters.Process` | `Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Commands` | `Core/Tasks/Atlas.Core.Tasks.Commands.pas` | Ordner `Core/Tasks` |
@@ -813,15 +821,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tasks.Reports` | `Core/Tasks/Atlas.Core.Tasks.Reports.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Runs` | `Core/Tasks/Atlas.Core.Tasks.Runs.pas` | Ordner `Core/Tasks` |
 | `Atlas.IDE.Build.CompilerSwitches` | `IDE/Build/Atlas.IDE.Build.CompilerSwitches.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Gate` | `IDE/Build/Atlas.IDE.Build.Gate.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Inbox` | `IDE/Build/Atlas.IDE.Build.Inbox.pas` | Ordner `IDE/Build` |
+| `Atlas.IDE.BuildTools.Composition` | `IDE/BuildTools/Atlas.IDE.BuildTools.Composition.pas` | Anmeldung des Moduls `atlas.build`, #1455 |
 | `Atlas.IDE.Build.OpenBuild` | `IDE/Build/Atlas.IDE.Build.OpenBuild.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.ReleaseGuard` | `IDE/Build/Atlas.IDE.Build.ReleaseGuard.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Runner` | `IDE/Build/Atlas.IDE.Build.Runner.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Summary` | `IDE/Build/Atlas.IDE.Build.Summary.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.Build.SwitchesWindow` | `IDE/Build/Atlas.IDE.Build.SwitchesWindow.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.StartProfiles.Service` | `IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas` | Ordner `IDE/StartProfiles` |
 | `Atlas.IDE.Tasks.Output` | `IDE/Tasks/Atlas.IDE.Tasks.Output.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Runner` | `IDE/Tasks/Atlas.IDE.Tasks.Runner.pas` | Ordner `IDE/Tasks` |
@@ -855,4 +857,5 @@ Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Bis zum Pilot 
 
 | Unit | Datei | Begründung |
 |---|---|---|
+| `Atlas.IDE.Contracts.BuildTools` | `Contracts/Atlas.IDE.Contracts.BuildTools.pas` | Startprofile und Projektaufgaben für andere Module, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), #1455 |

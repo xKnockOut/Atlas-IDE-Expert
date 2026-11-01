@@ -16,6 +16,9 @@
 //   der IDE melden denselben Lauf).
 // - Ausnahmen eines Teilnehmers gehen ins Protokoll; der Build und die
 //   übrigen Teilnehmer laufen weiter.
+// - Remove meldet einen Teilnehmer ab und gibt ihn frei (Module, #1455:
+//   nach dem Abmelden erreicht ihn kein Ereignis mehr). Während einer
+//   Verteilung bekommt er keine weiteren Aufrufe und wird danach frei.
 
 interface
 
@@ -72,6 +75,9 @@ type
     end;
   private
     FParticipants: TObjectList<TAtlasCompileParticipant>;
+    /// <summary>Während einer Verteilung abgemeldet; frei nach deren Ende.</summary>
+    FRetired: TObjectList<TAtlasCompileParticipant>;
+    FDispatching: Integer;
     FRunning: TList<TRunning>;
     FClock: TAtlasClockFunc;
     FOnNotify: TAtlasNotifyProc;
@@ -87,6 +93,10 @@ type
     function RunningIndex(const AFileName: string): Integer;
     procedure Notify(const AMethod: string; AParams: TJSONObject);
     procedure Guard(const AWhat: string; const AAction: TProc);
+    /// <summary>Teilnehmer zu Beginn einer Verteilung; mit LeaveDispatch paaren.</summary>
+    function EnterDispatch: TArray<TAtlasCompileParticipant>;
+    procedure LeaveDispatch;
+    function IsLive(AParticipant: TAtlasCompileParticipant): Boolean;
   public
     constructor Create(const AClock: TAtlasClockFunc); overload;
     /// <summary>Wie oben mit AClock = nil.</summary>
@@ -94,6 +104,8 @@ type
     destructor Destroy; override;
     /// <summary>Der Dienst übernimmt AParticipant.</summary>
     procedure Add(AParticipant: TAtlasCompileParticipant);
+    /// <summary>AParticipant abmelden und freigeben; unbekannte Teilnehmer: nichts.</summary>
+    procedure Remove(AParticipant: TAtlasCompileParticipant);
     procedure GroupStarted(AKind: TAtlasCompileKind);
     procedure GroupFinished(ASucceeded: Boolean);
     /// <summary>Vor einem Compile: True = abbrechen, AReason nennt den Grund. Code Insight bricht nie ab.</summary>
@@ -208,6 +220,7 @@ constructor TAtlasCompileEvents.Create(const AClock: TAtlasClockFunc);
 begin
   inherited Create;
   FParticipants := TObjectList<TAtlasCompileParticipant>.Create(True);
+  FRetired := TObjectList<TAtlasCompileParticipant>.Create(True);
   FRunning := TList<TRunning>.Create;
   FClock := AClock;
 end;
@@ -216,6 +229,7 @@ destructor TAtlasCompileEvents.Destroy;
 begin
   FRunning.Free;
   FParticipants.Free;
+  FRetired.Free;
   inherited;
 end;
 
@@ -230,6 +244,35 @@ end;
 procedure TAtlasCompileEvents.Add(AParticipant: TAtlasCompileParticipant);
 begin
   FParticipants.Add(AParticipant);
+end;
+
+procedure TAtlasCompileEvents.Remove(AParticipant: TAtlasCompileParticipant);
+begin
+  if (AParticipant = nil) or not FParticipants.Contains(AParticipant) then
+    Exit;
+  FParticipants.Extract(AParticipant);
+  if FDispatching > 0 then
+    FRetired.Add(AParticipant)
+  else
+    AParticipant.Free;
+end;
+
+function TAtlasCompileEvents.EnterDispatch: TArray<TAtlasCompileParticipant>;
+begin
+  Inc(FDispatching);
+  Result := FParticipants.ToArray;
+end;
+
+procedure TAtlasCompileEvents.LeaveDispatch;
+begin
+  Dec(FDispatching);
+  if FDispatching = 0 then
+    FRetired.Clear;
+end;
+
+function TAtlasCompileEvents.IsLive(AParticipant: TAtlasCompileParticipant): Boolean;
+begin
+  Result := FParticipants.Contains(AParticipant);
 end;
 
 class function TAtlasCompileEvents.KindText(AKind: TAtlasCompileKind): string;
@@ -268,19 +311,27 @@ end;
 
 procedure TAtlasCompileEvents.GroupStarted(AKind: TAtlasCompileKind);
 var
+  Participants: TArray<TAtlasCompileParticipant>;
   Participant: TAtlasCompileParticipant;
 begin
   // Ein neuer Gruppenlauf ersetzt einen nicht beendeten (z. B. Hintergrund-Compile ohne Ende).
   FInGroup := True;
   FGroupStarted := Now_;
-  for Participant in FParticipants do
-    Guard(Participant.ClassName, procedure begin Participant.GroupStarted(AKind); end);
+  Participants := EnterDispatch;
+  try
+    for Participant in Participants do
+      if IsLive(Participant) then
+        Guard(Participant.ClassName, procedure begin Participant.GroupStarted(AKind); end);
+  finally
+    LeaveDispatch;
+  end;
   Notify('atlas/compileStarted', TJSONObject.Create.AddPair('group', TJSONBool.Create(True))
     .AddPair('kind', KindText(AKind)));
 end;
 
 procedure TAtlasCompileEvents.GroupFinished(ASucceeded: Boolean);
 var
+  Participants: TArray<TAtlasCompileParticipant>;
   Participant: TAtlasCompileParticipant;
   Duration: Int64;
 begin
@@ -288,8 +339,14 @@ begin
     Exit;
   FInGroup := False;
   Duration := Now_ - FGroupStarted;
-  for Participant in FParticipants do
-    Guard(Participant.ClassName, procedure begin Participant.GroupFinished(ASucceeded, Duration); end);
+  Participants := EnterDispatch;
+  try
+    for Participant in Participants do
+      if IsLive(Participant) then
+        Guard(Participant.ClassName, procedure begin Participant.GroupFinished(ASucceeded, Duration); end);
+  finally
+    LeaveDispatch;
+  end;
   Notify('atlas/compileFinished', TJSONObject.Create.AddPair('group', TJSONBool.Create(True))
     .AddPair('success', TJSONBool.Create(ASucceeded)).AddPair('durationMs', TJSONNumber.Create(Duration)));
 end;
@@ -297,6 +354,7 @@ end;
 function TAtlasCompileEvents.BeforeCompile(const AProject: TAtlasCompileProject; AIsCodeInsight: Boolean;
   out AReason: string): Boolean;
 var
+  Participants: TArray<TAtlasCompileParticipant>;
   Participant: TAtlasCompileParticipant;
   Cancel: Boolean;
   Reason, Text: string;
@@ -314,23 +372,36 @@ begin
   Info := AProject;
   Info.Background := FBackground;
   Info.RequestedBy := FRequestedBy;
-  for Participant in FParticipants do
-  begin
-    Cancel := False;
-    Reason := '';
-    Guard(Participant.ClassName, procedure begin Cancel := Participant.CancelCompile(Info, Reason); end);
-    if Cancel then
+  Participants := EnterDispatch;
+  try
+    for Participant in Participants do
     begin
-      AReason := Format('%s: %s', [ExtractFileName(AProject.FileName), Reason]);
-      Result := True;
-      Break;
+      if not IsLive(Participant) then
+        Continue;
+      Cancel := False;
+      Reason := '';
+      Guard(Participant.ClassName, procedure begin Cancel := Participant.CancelCompile(Info, Reason); end);
+      if Cancel then
+      begin
+        AReason := Format('%s: %s', [ExtractFileName(AProject.FileName), Reason]);
+        Result := True;
+        Break;
+      end;
     end;
+  finally
+    LeaveDispatch;
   end;
   if not Result then
     Exit;
   Text := AReason;
-  for Participant in FParticipants do
-    Guard(Participant.ClassName, procedure begin Participant.CompileCancelled(Info, Text); end);
+  Participants := EnterDispatch;
+  try
+    for Participant in Participants do
+      if IsLive(Participant) then
+        Guard(Participant.ClassName, procedure begin Participant.CompileCancelled(Info, Text); end);
+  finally
+    LeaveDispatch;
+  end;
 end;
 
 procedure TAtlasCompileEvents.CodeInsightFinished;
@@ -357,6 +428,7 @@ end;
 
 procedure TAtlasCompileEvents.ProjectStarted(const AProject: TAtlasCompileProject);
 var
+  Participants: TArray<TAtlasCompileParticipant>;
   Participant: TAtlasCompileParticipant;
   Running: TRunning;
 begin
@@ -367,13 +439,20 @@ begin
   Running.Project.RequestedBy := FRequestedBy;
   Running.Started := Now_;
   FRunning.Add(Running);
-  for Participant in FParticipants do
-    Guard(Participant.ClassName, procedure begin Participant.ProjectStarted(Running.Project); end);
+  Participants := EnterDispatch;
+  try
+    for Participant in Participants do
+      if IsLive(Participant) then
+        Guard(Participant.ClassName, procedure begin Participant.ProjectStarted(Running.Project); end);
+  finally
+    LeaveDispatch;
+  end;
   Notify('atlas/compileStarted', ProjectJson(Running.Project));
 end;
 
 procedure TAtlasCompileEvents.ProjectFinished(const AFileName: string; ASucceeded: Boolean);
 var
+  Participants: TArray<TAtlasCompileParticipant>;
   Participant: TAtlasCompileParticipant;
   Index: Integer;
   Running: TRunning;
@@ -386,12 +465,18 @@ begin
   Running := FRunning[Index];
   FRunning.Delete(Index);
   Duration := Now_ - Running.Started;
-  for Participant in FParticipants do
-    Guard(Participant.ClassName,
-      procedure
-      begin
-        Participant.ProjectFinished(Running.Project, ASucceeded, Duration);
-      end);
+  Participants := EnterDispatch;
+  try
+    for Participant in Participants do
+      if IsLive(Participant) then
+        Guard(Participant.ClassName,
+          procedure
+          begin
+            Participant.ProjectFinished(Running.Project, ASucceeded, Duration);
+          end);
+  finally
+    LeaveDispatch;
+  end;
   Params := ProjectJson(Running.Project);
   Params.AddPair('success', TJSONBool.Create(ASucceeded));
   Params.AddPair('durationMs', TJSONNumber.Create(Duration));

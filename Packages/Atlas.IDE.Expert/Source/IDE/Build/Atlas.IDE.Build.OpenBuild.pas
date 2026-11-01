@@ -236,7 +236,7 @@ begin
   FCore := TAtlasOpenBuild.Create;
   FWatcher := TWatcher.Create;
   FWatcher.FOwner := Self;
-  // Der Dienst übernimmt den Wächter; Destroy trennt ihn nur von uns.
+  // Der Dienst übernimmt den Wächter; Destroy meldet ihn ab (danach erreicht ihn kein Ereignis mehr, #1455).
   FEvents.Add(FWatcher);
   FNotifierIndex := -1;
   if Supports(BorlandIDEServices, IOTAServices, Services) then
@@ -279,6 +279,8 @@ begin
     Services.RemoveNotifier(FNotifierIndex);
   FNotifierRef := nil;
   FWatcher.FOwner := nil;
+  FEvents.Remove(FWatcher);
+  FWatcher := nil;
   RestoreTargets;
   if FCore.Running and SameText(FEvents.RequestedBy, TAtlasOpenBuild.RequestedBy) then
     FEvents.RequestedBy := '';

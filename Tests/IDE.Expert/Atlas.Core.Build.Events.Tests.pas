@@ -28,6 +28,12 @@ type
     /// erfahren alle den Grund (Läufer #261, Schnellaktion #764).</summary>
     [Test]
     procedure CancelSeesRunAndIsAnnounced;
+    /// <summary>#1455: Ein abgemeldeter Teilnehmer bekommt nichts mehr; Abmelden während einer Verteilung gibt ihn
+    /// erst danach frei und lässt die übrigen weiterlaufen.</summary>
+    [Test]
+    procedure RemovedParticipantHearsNothing;
+    [Test]
+    procedure RemoveDuringDispatch;
   end;
 
 implementation
@@ -302,6 +308,92 @@ begin
     // Der zweite wird nach dem Abbruch nicht mehr gefragt, erfährt ihn aber.
     Assert.AreEqual('C X(App.dproj: Hinweise vorhanden) ', First.Trace);
     Assert.AreEqual('X(App.dproj: Hinweise vorhanden) ', Second.Trace);
+  finally
+    Events.Free;
+    Sent := '';
+  end;
+end;
+
+type
+  /// <summary>Meldet beim Gruppenstart AVictim ab.</summary>
+  TRemover = class(TAtlasCompileParticipant)
+  public
+    Events: TAtlasCompileEvents;
+    Victim: TAtlasCompileParticipant;
+    procedure GroupStarted(AKind: TAtlasCompileKind); override;
+  end;
+
+  /// <summary>Meldet seine Freigabe.</summary>
+  TFreeRecorder = class(TRecorder)
+  public
+    Freed: PBoolean;
+    destructor Destroy; override;
+  end;
+
+procedure TRemover.GroupStarted(AKind: TAtlasCompileKind);
+begin
+  Events.Remove(Victim);
+end;
+
+destructor TFreeRecorder.Destroy;
+begin
+  if Freed <> nil then
+    Freed^ := True;
+  inherited;
+end;
+
+procedure TAtlasCompileEventsTests.RemovedParticipantHearsNothing;
+var
+  Events: TAtlasCompileEvents;
+  Kept: TRecorder;
+  Gone: TFreeRecorder;
+  WasFreed: Boolean;
+begin
+  Events := MakeEvents;
+  try
+    Kept := TRecorder.Create;
+    Gone := TFreeRecorder.Create;
+    WasFreed := False;
+    Gone.Freed := @WasFreed;
+    Events.Add(Kept);
+    Events.Add(Gone);
+    Events.Remove(Gone);
+    Assert.IsTrue(WasFreed, 'sofort frei');
+    Events.Remove(Gone);
+    Events.GroupStarted(TAtlasCompileKind.Make);
+    Assert.AreEqual('G+make ', Kept.Trace);
+  finally
+    Events.Free;
+    Sent := '';
+  end;
+end;
+
+procedure TAtlasCompileEventsTests.RemoveDuringDispatch;
+var
+  Events: TAtlasCompileEvents;
+  Remover: TRemover;
+  Victim: TFreeRecorder;
+  Last: TRecorder;
+  WasFreed: Boolean;
+begin
+  Events := MakeEvents;
+  try
+    Remover := TRemover.Create;
+    Victim := TFreeRecorder.Create;
+    Last := TRecorder.Create;
+    WasFreed := False;
+    Victim.Freed := @WasFreed;
+    Remover.Events := Events;
+    Remover.Victim := Victim;
+    Events.Add(Remover);
+    Events.Add(Victim);
+    Events.Add(Last);
+    Events.GroupStarted(TAtlasCompileKind.Build);
+    Assert.IsTrue(WasFreed, 'nach der Verteilung frei');
+    Assert.AreEqual('G+build ', Last.Trace, 'die übrigen laufen weiter');
+    Remover.Victim := nil;
+    Events.GroupStarted(TAtlasCompileKind.Make);
+    Assert.AreEqual('G+build G+make ', Last.Trace);
   finally
     Events.Free;
     Sent := '';

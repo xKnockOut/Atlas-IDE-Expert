@@ -26,8 +26,8 @@
 //   oder mit Auswahl am Knopf (AskExternals). Den Index der geholten Ordner
 //   frischt die Dateiüberwachung (#395) auf, sie umfasst die Projektordner.
 // - „Aufgaben ▾“ (#900): Namen über OnTaskNames, Start über OnRunTask (der
-//   Aufgabenläufer, im Hintergrund); das Ende meldet TaskFinished mit dem
-//   Ergebnis („Delphi-12-Prüfung: 2 Fehler 14:03“). Ohne tasks.enabled bzw.
+//   Aufgabenläufer des Moduls Build, im Hintergrund); das Ende meldet
+//   TaskFinished (IAtlasTaskListener) mit dem Ergebnis („Delphi-12-Prüfung: 2 Fehler 14:03“). Ohne tasks.enabled bzw.
 //   ohne Aufgaben im Projekt gibt es den Knopf nicht.
 // - „Ordner“: Explorer wie im Kontextmenü von „Projekte“. „Konsole“:
 //   welcomePage.quickActions.console im Projektordner, ohne Windows-Terminal
@@ -50,7 +50,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.AppEvnts,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Tasks.Runs,
+  Atlas.IDE.Contracts.BuildTools,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
   Atlas.IDE.Welcome.Projects;
@@ -139,7 +139,7 @@ type
     procedure TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
     /// <summary>Eine Projektaufgabe von AProject ist fertig; hat die Schnellaktion sie gestartet, steht das
     /// Ergebnis in deren Zeile. Hauptthread.</summary>
-    procedure TaskFinished(const AProject: string; const ARun: TAtlasTaskRun);
+    procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
     { IAtlasQuickActionsSource }
     function Enabled: Boolean;
     function Buttons(const AProject: string): TAtlasQuickActionButtons;
@@ -186,7 +186,6 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Strings,
-  Atlas.UI.Tasks.Texts,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Commands.ShortcutTips,
@@ -783,20 +782,20 @@ begin
   Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgTaskRefused, [AName, NameOf(AProject), Reason]));
 end;
 
-procedure TAtlasIdeQuickActions.TaskFinished(const AProject: string; const ARun: TAtlasTaskRun);
+procedure TAtlasIdeQuickActions.TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
 var
   Name: string;
   Phase: TAtlasQuickActionPhase;
 begin
-  if FStopped or not FTasks.TryGetValue(Key(AProject), Name) or not SameText(Name, ARun.Name) then
+  if FStopped or not FTasks.TryGetValue(Key(AProject), Name) or not SameText(Name, AResult.Name) then
     Exit;
   FTasks.Remove(Key(AProject));
-  if ARun.Passed then
+  if AResult.Passed then
     Phase := TAtlasQuickActionPhase.Succeeded
   else
     Phase := TAtlasQuickActionPhase.Failed;
   Finish(AProject, TAtlasQuickAction.Tasks, Phase, TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTasksResult,
-    [ARun.Name, TAtlasTaskTexts.LastResult(TAtlasTaskLastRun.From(ARun), True)]));
+    [AResult.Name, AResult.Summary]));
 end;
 
 procedure TAtlasIdeQuickActions.Pull(const AProject: string);

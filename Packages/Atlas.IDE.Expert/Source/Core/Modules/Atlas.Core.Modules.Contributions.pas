@@ -33,6 +33,9 @@ type
     /// <summary>Menüeinträge für APlace in Reihenfolge der Bereitstellung.</summary>
     class function MenuEntries(const ARegistry: IAtlasModuleRegistry;
       APlace: TAtlasMenuPlace): TArray<TAtlasMenuEntry>; static;
+    /// <summary>Eintrag ohne Befehl mit der Kennung AId an APlace (Caption gesetzt); False ohne.</summary>
+    class function FindMenuEntry(const ARegistry: IAtlasModuleRegistry; APlace: TAtlasMenuPlace; const AId: string;
+      out AEntry: TAtlasMenuEntry): Boolean; static;
     /// <summary>Tastenkürzel aller Module; Einträge ohne Taste (0) oder ohne Attempt und Run fehlen.</summary>
     class function Keys(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleKey>; static;
     class function EditorViewActivated(const ARegistry: IAtlasModuleRegistry): TArray<string>; static;
@@ -107,6 +110,21 @@ begin
       for mEntry in mSource.MenuEntries do
         if mEntry.Place = APlace then
           Result := Result + [mEntry];
+end;
+
+class function TAtlasModuleContributions.FindMenuEntry(const ARegistry: IAtlasModuleRegistry;
+  APlace: TAtlasMenuPlace; const AId: string; out AEntry: TAtlasMenuEntry): Boolean;
+var
+  mEntry: TAtlasMenuEntry;
+begin
+  Result := False;
+  AEntry := Default(TAtlasMenuEntry);
+  for mEntry in MenuEntries(ARegistry, APlace) do
+    if (mEntry.Caption <> '') and SameText(mEntry.CommandId, AId) then
+    begin
+      AEntry := mEntry;
+      Exit(True);
+    end;
 end;
 
 class function TAtlasModuleContributions.Keys(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleKey>;

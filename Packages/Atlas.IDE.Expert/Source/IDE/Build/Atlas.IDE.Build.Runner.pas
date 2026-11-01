@@ -71,7 +71,12 @@ type
     procedure Tick(Sender: TObject);
     procedure Finish;
     class function Debugging: Boolean; static;
+  private class var
+    FCurrent: TAtlasIdeBuildRunner;
   public
+    /// <summary>Der laufende Läufer (der zuletzt angelegte, bis zu seiner Freigabe); nil ohne. Module fragen ihn
+    /// bei jedem Auftrag neu (#1455).</summary>
+    class function Current: TAtlasIdeBuildRunner; static;
     /// <summary>AEvents gehört dem Aufrufer und muss länger leben; der Wächter wird dort angemeldet.</summary>
     constructor Create(AEvents: TAtlasCompileEvents);
     destructor Destroy; override;
@@ -137,9 +142,15 @@ end;
 
 { TAtlasIdeBuildRunner }
 
+class function TAtlasIdeBuildRunner.Current: TAtlasIdeBuildRunner;
+begin
+  Result := FCurrent;
+end;
+
 constructor TAtlasIdeBuildRunner.Create(AEvents: TAtlasCompileEvents);
 begin
   inherited Create;
+  FCurrent := Self;
   FEvents := AEvents;
   FWatcher := TWatcher.Create;
   FWatcher.FOwner := Self;
@@ -153,6 +164,8 @@ end;
 
 destructor TAtlasIdeBuildRunner.Destroy;
 begin
+  if FCurrent = Self then
+    FCurrent := nil;
   FTimer.Free;
   FWatcher.FOwner := nil;
   // Offener Auftrag: ohne Ergebnis abschließen, damit der Auftraggeber nicht wartet.
