@@ -232,6 +232,7 @@ Not yet in `main`, tracked as issues:
 
 - Further check rules (sub-issues of #1086)
 - Debugging (#614) and designer features for later versions
+- Splitting the plugin into `Atlas.IDE.Base` and module packages (2.0, ADR 0017); the contracts are in place (#1455, see Structure), the wiring follows
 
 ## Installation
 
@@ -285,6 +286,8 @@ More: [docs/Installation.md](docs/Installation.md).
 | `Tests/Atlas.Tests` | DUnitX tests |
 
 Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
+
+Contracts for the modules from 2.0 on (#1455, ADR 0017): `Atlas.Core.Modules.Contract` (module, scope, registry with `Provide`/`FindAll` by interface GUID, change notification, contract version), `Atlas.Core.Modules.Registry` (module list built from registrations, unregistering in reverse through the scope), `Atlas.Core.Modules.Handshake` (exported `AtlasCoreContractVersion`), `Atlas.Core.Settings.Contract` and `Atlas.Core.Settings.Parts` (settings parts of the modules, kept centrally in Base; values of missing modules are preserved).
 
 ## Requirements
 
