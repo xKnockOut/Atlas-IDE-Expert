@@ -20,7 +20,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Teardown;
 
@@ -66,6 +66,11 @@ type
     /// <summary>Rückwärts jedes aktive Teil eines ausgeschalteten Moduls stoppen (#1454), auch wenn ein Stop eine
     /// Ausnahme wirft; Ergebnis wie StopAll.</summary>
     function StopOffModules: TArray<string>;
+    /// <summary>Gibt es ein Teil AName?</summary>
+    function Contains(const AName: string): Boolean;
+    /// <summary>Teil AName aus der Tabelle nehmen, ohne es zu stoppen (ein abgemeldetes Modul, #1455); False, wenn
+    /// es fehlt. Nicht aus einem Start oder Stop der Tabelle heraus aufrufen.</summary>
+    function Remove(const AName: string): Boolean;
     /// <summary>Modul des Teils AName; '' = Kern oder unbekannt.</summary>
     function ModuleOf(const AName: string): string;
     /// <summary>Namen in Startreihenfolge.</summary>
@@ -206,6 +211,29 @@ begin
       end);
   end;
   Result := mTeardown.Failures;
+end;
+
+function TAtlasFeatureTable.Contains(const AName: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to FSlots.Count - 1 do
+    if FSlots[mIndex].Name = AName then
+      Exit(True);
+end;
+
+function TAtlasFeatureTable.Remove(const AName: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := FSlots.Count - 1 downto 0 do
+    if FSlots[mIndex].Name = AName then
+    begin
+      FSlots.Delete(mIndex);
+      Result := True;
+    end;
 end;
 
 function TAtlasFeatureTable.ModuleOf(const AName: string): string;

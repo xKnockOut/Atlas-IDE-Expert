@@ -524,6 +524,7 @@
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Registration.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Registry.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Handshake.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Contract.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Parts.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>

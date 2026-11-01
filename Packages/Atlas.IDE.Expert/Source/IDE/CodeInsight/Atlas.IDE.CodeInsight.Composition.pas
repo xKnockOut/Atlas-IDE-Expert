@@ -142,6 +142,9 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.IDE.Notifications.Service,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Diagnostics.ModuleHosting,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.IDE.Diagnostics.SafeMode,
   Atlas.IDE.Diagnostics.StackCapture,
@@ -332,6 +335,8 @@ var
   UnitRename: TAtlasIdeUnitRename;
   // Hinweis „Prüfregeln sind aus“ (#1454): Kern, meldet sich gerade bei ausgeschaltetem Modul Prüfregeln.
   RuleChecksNotice: TAtlasIdeRuleChecksNotice;
+  // Angemeldete Module als Teile der Feature-Tabelle (#1455, ADR 0017 Regeln 1, 2); lebt mit Features.
+  ModuleHosting: TAtlasModuleHosting;
   // DUnitX-Tests ausführen samt Code Lens (#69), abschaltbar über TestRun bzw. CodeLensTests.
   Tests: TAtlasIdeTests;
   // Einzelnen Test ausführen bzw. im Debugger starten (#585), lebt mit Tests; abschaltbar über TestDebug.
@@ -5941,6 +5946,8 @@ begin
   Features.Join('bookmarks', ['Notes', 'Bookmarks', 'QuickBookmarks']);
   Features.Join('issues', ['IssueLinks', 'BlameIssues']);
   Features.ModuleOn := ModuleOn;
+  // Module zuletzt: Sie bauen auf den Teilen von Base auf und gehen beim Abbau zuerst (#1455).
+  ModuleHosting := TAtlasModuleHosting.Create(AtlasModuleRegistry, Features);
 end;
 
 /// <summary>Gewünschte, noch fehlende Teile starten (beim Laden und nach jeder Einstellungsänderung); zuvor die
@@ -5951,6 +5958,9 @@ var
 begin
   if Features = nil then
     AddFeatures;
+  // Ein Modul, das sich nach dem Start anmeldet, startet über denselben Weg (Regel 2).
+  if (ModuleHosting <> nil) and not Assigned(ModuleHosting.OnChanged) then
+    ModuleHosting.OnChanged := RegisterFeatures;
   for mFailure in Features.StopOffModules do
     TAtlasGuard.Log('Modul ausgeschaltet, Teil nicht sauber gestoppt: ' + mFailure);
   // Bis zur freien Nachrichtenschleife zählt jedes Teil zu den Startanteilen (Bericht N4).
@@ -6477,6 +6487,19 @@ begin
     // Tastenkürzel-Tipps und Willkommensseite vor der Zählung, Rinne vor Notizen und Lesezeichen, Prüfung beim
     // Speichern vor den Compiler-Ereignissen, der Manager zuletzt. Alles vor dem Statusfeld: Diagnosemodus,
     // Einrichtung, Update-Prüfung und Willkommensseite haben Zeilen in dessen Registry (#479, #625, #754).
+    // Regel 5 (ADR 0017): zuerst alle Module stoppen und abmelden, dann die Teile von Base.
+    Teardown.Step('ModuleHosting',
+      procedure
+      begin
+        if ModuleHosting <> nil then
+          ModuleHosting.OnChanged := nil;
+      end);
+    Teardown.Step('Modules',
+      procedure
+      begin
+        if AtlasModuleRegistryInstance <> nil then
+          Teardown.AddFailures(AtlasModuleRegistryInstance.ShutDown);
+      end);
     if Features <> nil then
       Teardown.AddFailures(Features.StopAll);
     // Nach den Debugger-Funktionen: Sie melden sich dort ab; was übrig bleibt, hängt Atlas hier von F7 ab (#850).
@@ -6541,6 +6564,7 @@ begin
     Teardown.Step('Features',
       procedure
       begin
+        FreeAndNil(ModuleHosting);
         FreeAndNil(Features);
       end);
     Teardown.Step('StackCapture',

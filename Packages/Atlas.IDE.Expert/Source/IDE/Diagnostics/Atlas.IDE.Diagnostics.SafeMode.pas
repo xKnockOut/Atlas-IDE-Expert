@@ -24,6 +24,7 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,

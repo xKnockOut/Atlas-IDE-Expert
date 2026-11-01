@@ -452,6 +452,7 @@ contains
   Atlas.Core.Modules.Registration in 'Source\Core\Modules\Atlas.Core.Modules.Registration.pas',
   Atlas.Core.Modules.Registry in 'Source\Core\Modules\Atlas.Core.Modules.Registry.pas',
   Atlas.Core.Modules.Handshake in 'Source\Core\Modules\Atlas.Core.Modules.Handshake.pas',
+  Atlas.Core.Diagnostics.ModuleHosting in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas',
   Atlas.Core.Settings.Contract in 'Source\Core\Settings\Atlas.Core.Settings.Contract.pas',
   Atlas.Core.Settings.Parts in 'Source\Core\Settings\Atlas.Core.Settings.Parts.pas',
   Atlas.Core.Diagnostics.Teardown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas',

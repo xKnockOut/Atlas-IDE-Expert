@@ -28,14 +28,25 @@ const
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
 
 type
+{$SCOPEDENUMS ON}
+  /// <summary>Stufe des abgesicherten Starts (#722). Normal: alles; Safe: Grundfunktionen (Server, Statusfeld,
+  /// Einstellungen, Palette, Menü); Minimal: nur Einstellungsseite und Statusfeld. Steht im Vertrag, weil ein Modul
+  /// seine Mindeststufe angibt (TAtlasModuleInfo.MinLevel).</summary>
+  TAtlasSafeLevel = (Normal, Safe, Minimal);
+{$SCOPEDENUMS OFF}
+
   /// <summary>Angaben eines Moduls. Id ist dauerhaft und eindeutig (z. B. „atlas.debugger“), Name die Anzeige,
   /// Version die des Moduls. Handle ist das HMODULE des Packages (HInstance des Moduls) für die Frage „gehört
-  /// das zu Atlas?“ (Regel 8); 0, wenn unbekannt.</summary>
+  /// das zu Atlas?“ (Regel 8); 0, wenn unbekannt. MinLevel: ab welcher Stufe des abgesicherten Starts das Modul
+  /// läuft (Normal = nur im normalen Start, Safe = nicht minimal, Minimal = immer; Regel 1). Switch: Kennung des
+  /// Modulschalters (x-module, #1454), z. B. „debug“; '' = ohne Schalter, immer an.</summary>
   TAtlasModuleInfo = record
     Id: string;
     Name: string;
     Version: string;
     Handle: NativeUInt;
+    MinLevel: TAtlasSafeLevel;
+    Switch: string;
   end;
 
   /// <summary>Ein Modul, das sich einmal angemeldet hat (Regel 9): Installed, solange es angemeldet ist; sonst
