@@ -1040,6 +1040,9 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.NewIssue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.Sprint.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Sprint.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.IDE.Welcome.Tiles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Status\Atlas.UI.Status.Window.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Status.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Status\Atlas.UI.Status.ServerFrame.pas"/>

@@ -56,6 +56,7 @@ Genehmigt im Auftrag zu #1455 (Paket 1, 01.11.2026). Das Skript übergeht diese 
 | `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Tests` | Kompositionswurzel klebt Willkommensseite und Tests, bis die Willkommensseite ein Modul ist |
 | `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Rules` | Kompositionswurzel klebt Willkommensseite und Prüfregeln, bis die Willkommensseite ein Modul ist |
 | `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.BuildPipeline` | Kompositionswurzel klebt Willkommensseite und Builds auf Auftrag, bis die Willkommensseite ein Modul ist |
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.WelcomeTiles` | Kompositionswurzel gibt den Kacheln anderer Module die Projekte der Willkommensseite, bis die Willkommensseite ein Modul ist |
 
 ### Bekannte Verstöße
 
@@ -747,6 +748,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Welcome.Help` | `IDE/Welcome/Atlas.IDE.Welcome.Help.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Issues` | `IDE/Welcome/Atlas.IDE.Welcome.Issues.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Layouts` | `IDE/Welcome/Atlas.IDE.Welcome.Layouts.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Tiles` | `IDE/Welcome/Atlas.IDE.Welcome.Tiles.pas` | Kacheln anderer Module über `Atlas.IDE.Contracts.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455 |
 | `Atlas.IDE.Welcome.NewIssue` | `IDE/Welcome/Atlas.IDE.Welcome.NewIssue.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Page` | `IDE/Welcome/Atlas.IDE.Welcome.Page.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Projects` | `IDE/Welcome/Atlas.IDE.Welcome.Projects.pas` | Ordner `IDE/Welcome` |
@@ -948,6 +950,7 @@ Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Bis zum Pilot 
 |---|---|---|
 | `Atlas.IDE.Contracts.BuildTools` | `Contracts/Atlas.IDE.Contracts.BuildTools.pas` | Startprofile und Projektaufgaben für andere Module, #1455 |
 | `Atlas.IDE.Contracts.BuildPipeline` | `Contracts/Atlas.IDE.Contracts.BuildPipeline.pas` | Builds auf Auftrag (Build-Pipeline → Tests, Build-Werkzeuge, Willkommensseite), #1455 |
+| `Atlas.IDE.Contracts.WelcomeTiles` | `Contracts/Atlas.IDE.Contracts.WelcomeTiles.pas` | Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), #1455 |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), #1455 |
 | `Atlas.IDE.Contracts.Rules` | `Contracts/Atlas.IDE.Contracts.Rules.pas` | Baseline aktualisieren (Prüfregeln → Willkommensseite), #1455 |

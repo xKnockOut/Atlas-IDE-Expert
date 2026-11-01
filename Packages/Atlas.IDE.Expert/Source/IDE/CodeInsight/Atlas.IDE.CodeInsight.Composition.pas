@@ -153,6 +153,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.Frame,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.Usage,
@@ -191,6 +192,8 @@ uses
   Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Welcome.Layouts,
+  Atlas.IDE.Welcome.Tiles,
+  Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.WorkingCopies,
   Atlas.IDE.Vcs.Service,
@@ -3529,6 +3532,64 @@ var
   WelcomePaletteSource: IAtlasRegistration;
   WelcomeTestsListener: IAtlasRegistration;
   WelcomeUsageListener: IAtlasRegistration;
+  /// <summary>Kacheln anderer Module (#1455), solange die Willkommensseite läuft.</summary>
+  WelcomeTiles: TAtlasIdeWelcomeTiles;
+
+function WelcomeProjectList: TArray<TAtlasWelcomeProject>;
+var
+  mEntry: TAtlasProjectEntry;
+  mProject: TAtlasWelcomeProject;
+begin
+  Result := nil;
+  if (Welcome = nil) or (Welcome.Projects = nil) then
+  begin
+    Exit;
+  end;
+  for mEntry in Welcome.Projects.Entries do
+  begin
+    mProject.Project := mEntry.Project;
+    mProject.Name := mEntry.Name;
+    Result := Result + [mProject];
+  end;
+end;
+
+/// <summary>Was Kacheln anderer Module über IAtlasWelcomeProjects vom Bereich „Projekte“ erreichen.</summary>
+function WelcomeProjectsAccess: TAtlasWelcomeProjectsAccess;
+begin
+  Result := Default(TAtlasWelcomeProjectsAccess);
+  Result.Projects := WelcomeProjectList;
+  Result.Selected :=
+    function: string
+    begin
+      Result := '';
+      if (Welcome <> nil) and (Welcome.Projects <> nil) then
+      begin
+        Result := Welcome.Projects.Selected;
+      end;
+    end;
+  Result.Open :=
+    procedure(AProject: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Projects <> nil) then
+      begin
+        Welcome.Projects.Open(AProject);
+      end;
+    end;
+  Result.Refresh :=
+    procedure(AProject: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Projects <> nil) then
+      begin
+        Welcome.Projects.Refresh(AProject);
+      end;
+    end;
+end;
+
+procedure StartWelcomeTiles;
+begin
+  WelcomeTiles := TAtlasIdeWelcomeTiles.Create(AtlasModuleRegistry, TAtlasWelcomeSections.Default);
+  WelcomeTiles.Start(WelcomeProjectsAccess);
+end;
 
 procedure StartWelcome;
 begin
@@ -3785,10 +3846,13 @@ begin
           TAtlasOptionsRegistration.ShowSetting(AKey);
         end);
     end;
+  StartWelcomeTiles;
 end;
 
 procedure StopWelcome;
 begin
+  // Zuerst die Kacheln anderer Module: Ihre Steuerelemente gehen, solange die Seite noch steht.
+  FreeAndNil(WelcomeTiles);
   if WelcomeIssuesSession <> nil then
     WelcomeIssuesSession.Revoke;
   WelcomeIssuesSession := nil;
