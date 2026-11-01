@@ -477,6 +477,8 @@ contains
   Atlas.Core.Diagnostics.ModuleHosting in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas',
   Atlas.Core.Settings.Contract in 'Source\Core\Settings\Atlas.Core.Settings.Contract.pas',
   Atlas.Core.Settings.Parts in 'Source\Core\Settings\Atlas.Core.Settings.Parts.pas',
+  Atlas.Core.Settings.StoreValues in 'Source\Core\Settings\Atlas.Core.Settings.StoreValues.pas',
+  Atlas.UI.Settings.Contract in 'Source\UI\Settings\Atlas.UI.Settings.Contract.pas',
   Atlas.Core.Diagnostics.Teardown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas',
   Atlas.Core.Diagnostics.ThreadList in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.ThreadList.pas',
   Atlas.Core.Diagnostics.Processes in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Processes.pas',

@@ -311,6 +311,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.ModuleSwitches` | `Core/Settings/Atlas.Core.Settings.ModuleSwitches.pas` | Ordner `Core/Settings`; Modul-Schalter (#1454) |
 | `Atlas.Core.Settings.OverviewKinds` | `Core/Settings/Atlas.Core.Settings.OverviewKinds.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Parts` | `Core/Settings/Atlas.Core.Settings.Parts.pas` | Ordner `Core/Settings`; zentrale Stelle der Einstellungsteile (#1455, Entscheidung 3) |
+| `Atlas.Core.Settings.StoreValues` | `Core/Settings/Atlas.Core.Settings.StoreValues.pas` | Ordner `Core/Settings`; Werte des zentralen Records nach Schlüssel für die Abschnitte der Module (#1455) |
 | `Atlas.Core.Settings.Plugin` | `Core/Settings/Atlas.Core.Settings.Plugin.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.PluginSchemaData` | `Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ProfileData` | `Core/Settings/Atlas.Core.Settings.ProfileData.pas` | Ordner `Core/Settings` |
@@ -567,6 +568,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Results.Frame` | `UI/Results/Atlas.UI.Results.Frame.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.RenamePreview` | `UI/Results/Atlas.UI.Results.RenamePreview.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Settings.ChoiceBox` | `UI/Settings/Atlas.UI.Settings.ChoiceBox.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Contract` | `UI/Settings/Atlas.UI.Settings.Contract.pas` | Ordner `UI/Settings`; Abschnitte der Module im Optionsdialog (#1455, Entscheidung 3) |
 | `Atlas.UI.Settings.Group` | `UI/Settings/Atlas.UI.Settings.Group.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Keys` | `UI/Settings/Atlas.UI.Settings.Keys.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Marks` | `UI/Settings/Atlas.UI.Settings.Marks.pas` | Ordner `UI/Settings` |
