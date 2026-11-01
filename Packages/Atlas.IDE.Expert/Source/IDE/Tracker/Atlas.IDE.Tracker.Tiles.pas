@@ -11,10 +11,24 @@ interface
 
 uses
   System.Classes,
+  Vcl.Controls,
+  Atlas.UI.Tracker.TileView,
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Tracker.MyIssues;
 
 type
+  /// <summary>Ansicht einer Kachel für die Seite; reicht an das Steuerelement weiter. Gibt die Seite das Steuerelement
+  /// frei, lässt sie auch diese Ansicht los.</summary>
+  TAtlasTrackerTileViewLink = class(TInterfacedObject, IAtlasWelcomeTileView)
+  private
+    FView: TAtlasTrackerTileView;
+  public
+    constructor Create(AView: TAtlasTrackerTileView; const AHost: IAtlasWelcomeTileHost);
+    function Control: TWinControl;
+    function BodyHeight: Integer;
+    procedure UpdateContent;
+  end;
+
   /// <summary>Kachel „Meine Issues“; zeigt die Quelle AIssues.</summary>
   TAtlasTrackerIssuesTile = class(TInterfacedObject, IAtlasWelcomeTile)
   private
@@ -42,9 +56,47 @@ type
 implementation
 
 uses
+  System.SysUtils,
   Atlas.IDE.Tracker.SprintTile,
   Atlas.UI.Tracker.MyIssues,
   Atlas.UI.Tracker.SprintTile;
+
+/// <summary>Höhe an die Seite melden; eigene Routine, damit die Methodenreferenz nur den Host hält.</summary>
+function HeightToHost(const AHost: IAtlasWelcomeTileHost): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      if AHost <> nil then
+      begin
+        AHost.HeightChanged;
+      end;
+    end;
+end;
+
+{ TAtlasTrackerTileViewLink }
+
+constructor TAtlasTrackerTileViewLink.Create(AView: TAtlasTrackerTileView; const AHost: IAtlasWelcomeTileHost);
+begin
+  inherited Create;
+  FView := AView;
+  FView.OnHeightChanged := HeightToHost(AHost);
+end;
+
+function TAtlasTrackerTileViewLink.Control: TWinControl;
+begin
+  Result := FView;
+end;
+
+function TAtlasTrackerTileViewLink.BodyHeight: Integer;
+begin
+  Result := FView.BodyHeight;
+end;
+
+procedure TAtlasTrackerTileViewLink.UpdateContent;
+begin
+  FView.UpdateContent;
+end;
 
 { TAtlasTrackerIssuesTile }
 
@@ -75,9 +127,8 @@ var
   mView: TAtlasTrackerIssuesView;
 begin
   mView := TAtlasTrackerIssuesView.Create(AOwner);
-  mView.Host := AHost;
+  Result := TAtlasTrackerTileViewLink.Create(mView, AHost);
   mView.Source := FIssues;
-  Result := mView;
 end;
 
 { TAtlasTrackerSprintTile }
@@ -114,9 +165,8 @@ begin
     Exit;
   end;
   mView := TAtlasTrackerSprintView.Create(AOwner);
-  mView.Host := AHost;
+  Result := TAtlasTrackerTileViewLink.Create(mView, AHost);
   mView.Source := FIssues.Sprint;
-  Result := mView;
 end;
 
 end.

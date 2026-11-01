@@ -12,7 +12,7 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.Welcome')]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasNewIssueDialogTests = class
   public
     /// <summary>Abnahme: Mit issues.create.includeCode aus ist der Codeausschnitt nicht vorausgewählt.</summary>

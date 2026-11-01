@@ -1,44 +1,44 @@
 ﻿unit Atlas.UI.Tracker.TileView;
 
-// Grundlage der Kacheln des Trackers auf der Willkommensseite (#1455,
-// Vertrag Atlas.IDE.Contracts.WelcomeTiles): ein Panel, das die Seite in die
-// Inhaltsfläche ihres Bereichsrahmens legt. Titelzeile, Griff und Spalte
-// gehören der Seite; die Kachel zeichnet nur ihren Inhalt, nennt ihre Höhe
-// (BodyHeight) und meldet Änderungen der Höhe über den Host. Ohne Fenster
-// misst sie keinen Text und holt UpdateContent in CreateWnd nach. Als
-// Steuerelement zählt die Ansicht keine Referenzen; ihr Besitzer gibt sie frei.
+// Grundlage der Kacheln des Trackers auf der Willkommensseite (#1455): ein
+// Panel, das die Seite in die Inhaltsfläche ihres Bereichsrahmens legt.
+// Titelzeile, Griff und Spalte gehören der Seite; die Kachel zeichnet nur
+// ihren Inhalt, nennt ihre Höhe (BodyHeight) und meldet Änderungen der Höhe
+// über OnHeightChanged. Den Vertrag Atlas.IDE.Contracts.WelcomeTiles setzt
+// Atlas.IDE.Tracker.Tiles darauf um (UI kennt Atlas.IDE nicht). Ohne Fenster
+// misst sie keinen Text und holt UpdateContent in CreateWnd nach.
 
 interface
 
 uses
   System.Classes,
   Vcl.Controls,
-  Vcl.ExtCtrls,
-  Atlas.IDE.Contracts.WelcomeTiles;
+  System.SysUtils,
+  Vcl.ExtCtrls;
 
 type
-  TAtlasTrackerTileView = class(TCustomPanel, IAtlasWelcomeTileView)
+  TAtlasTrackerTileView = class(TCustomPanel)
   public const
     /// <summary>Höhe ohne eigene Angabe (logische Pixel).</summary>
-    DefaultBodyHeight = 120;
+    cDefaultBodyHeight = 120;
   private
-    FHost: IAtlasWelcomeTileHost;
+    FOnHeightChanged: TProc;
     FPendingUpdate: Boolean;
   protected
     procedure CreateWnd; override;
-    /// <summary>Der Inhalt braucht eine andere Höhe: die Seite ordnet die Spalten neu.</summary>
+    /// <summary>Der Inhalt braucht eine andere Höhe: meldet OnHeightChanged.</summary>
     procedure HeightChanged;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Hängt die Ansicht an einem Fenster? Vorher kein Messen von Text („kein übergeordnetes Fenster“);
     /// ohne Fenster holt CreateWnd das UpdateContent nach.</summary>
     function HasWindow: Boolean;
-    { IAtlasWelcomeTileView }
-    function Control: TWinControl;
+    /// <summary>Höhe des Inhalts in Pixeln bei der aktuellen Skalierung.</summary>
     function BodyHeight: Integer; virtual;
+    /// <summary>Inhalt neu lesen und zeichnen.</summary>
     procedure UpdateContent; virtual;
-    /// <summary>Gibt die Seite mit; nil in Tests und nach dem Abmelden.</summary>
-    property Host: IAtlasWelcomeTileHost read FHost write FHost;
+    /// <summary>Die Seite ordnet daraufhin die Spalten neu; nil in Tests.</summary>
+    property OnHeightChanged: TProc read FOnHeightChanged write FOnHeightChanged;
   end;
 
 implementation
@@ -56,14 +56,9 @@ begin
   ParentBackground := True;
 end;
 
-function TAtlasTrackerTileView.Control: TWinControl;
-begin
-  Result := Self;
-end;
-
 function TAtlasTrackerTileView.BodyHeight: Integer;
 begin
-  Result := DefaultBodyHeight;
+  Result := cDefaultBodyHeight;
 end;
 
 procedure TAtlasTrackerTileView.UpdateContent;
@@ -73,9 +68,9 @@ end;
 
 procedure TAtlasTrackerTileView.HeightChanged;
 begin
-  if FHost <> nil then
+  if Assigned(FOnHeightChanged) then
   begin
-    FHost.HeightChanged;
+    FOnHeightChanged();
   end;
 end;
 

@@ -17,7 +17,7 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.Welcome')]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerIssuesViewTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen (Warteschlange des Hauptthreads, Menüs).</summary>

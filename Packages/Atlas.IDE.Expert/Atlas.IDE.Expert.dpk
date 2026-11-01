@@ -465,7 +465,6 @@ contains
   Atlas.IDE.Tracker.IssuePreview in 'Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas',
   Atlas.IDE.Tracker.CodeLinks in 'Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinks.pas',
   Atlas.IDE.Tracker.BlameLinks in 'Source\IDE\Tracker\Atlas.IDE.Tracker.BlameLinks.pas',
-  Atlas.IDE.Tracker.Session in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Session.pas',
   Atlas.IDE.Tracker.Workflow in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Workflow.pas',
   Atlas.IDE.Tracker.TimeTracking in 'Source\IDE\Tracker\Atlas.IDE.Tracker.TimeTracking.pas',
   Atlas.IDE.Tracker.BoardWindow in 'Source\IDE\Tracker\Atlas.IDE.Tracker.BoardWindow.pas',
