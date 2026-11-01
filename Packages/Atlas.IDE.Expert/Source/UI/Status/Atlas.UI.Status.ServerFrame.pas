@@ -247,7 +247,9 @@ begin
     mColumn.Caption := AColumns[mIndex];
     mColumn.Width := AWidths[mIndex];
     if mIndex > 0 then
+    begin
       mColumn.Alignment := taRightJustify;
+    end;
   end;
 end;
 
@@ -275,6 +277,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryTrees);
     TAtlasServerMemoryPart.Documents:
       Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryDocuments);
+    TAtlasServerMemoryPart.Packages:
+      Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryPackages);
   else
     Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryRest);
   end;
@@ -297,9 +301,13 @@ end;
 function PercentText(APercent: Integer): string;
 begin
   if APercent < 0 then
-    Result := TAtlasStrings.Text(TAtlasTextId.ServerWindowUnknownValue)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ServerWindowUnknownValue);
+  end
   else
+  begin
     Result := IntToStr(APercent) + ' %';
+  end;
 end;
 
 procedure TAtlasServerFrame.UpdateTexts;
@@ -307,11 +315,17 @@ begin
   FQueue.Caption := '';
   FCheckRun.Caption := '';
   if not FRunning then
-    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowNoServer)
+  begin
+    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowNoServer);
+  end
   else if not FSnapshot.Valid then
-    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowWaiting)
+  begin
+    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowWaiting);
+  end
   else if not FSnapshot.Known then
-    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowOldServer)
+  begin
+    FHeader.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowOldServer);
+  end
   else
   begin
     FHeader.Caption := TAtlasStrings.Fmt(TAtlasTextId.ServerWindowHeader, [FSnapshot.ProcessId, FSnapshot.Version,
@@ -322,13 +336,19 @@ begin
       TAtlasStrings.Fmt(TAtlasTextId.ServerWindowCacheHits, [PercentText(FSnapshot.IndexHitPercent),
       PercentText(FSnapshot.TreeHitPercent), Max(FSnapshot.Units, 0)]);
     if FSnapshot.CheckActive then
-      FCheckRun.Caption := TAtlasStrings.Fmt(TAtlasTextId.ServerWindowCheckRunning, [FSnapshot.CheckUnits])
+    begin
+      FCheckRun.Caption := TAtlasStrings.Fmt(TAtlasTextId.ServerWindowCheckRunning, [FSnapshot.CheckUnits]);
+    end
     else if FSnapshot.CheckSerial = 0 then
-      FCheckRun.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowNoCheckRun)
+    begin
+      FCheckRun.Caption := TAtlasStrings.Text(TAtlasTextId.ServerWindowNoCheckRun);
+    end
     else
+    begin
       FCheckRun.Caption := TAtlasStrings.Fmt(TAtlasTextId.ServerWindowCheckRun,
         [FormatDateTime('hh":"nn', FSnapshot.CheckStarted), FSnapshot.CheckUnits,
         TAtlasServerTexts.Duration(FSnapshot.CheckDurationMs)]);
+    end;
   end;
   FOverBudget.Visible := FRunning and FSnapshot.OverBudget;
   FOverBudget.Font.Color := ToColor(FColors.Warn);
@@ -349,9 +369,13 @@ procedure TAtlasServerFrame.SetSnapshot(const ASnapshot: TAtlasServerSnapshot; A
 begin
   FRunning := ARunning;
   if ARunning then
-    FSnapshot := ASnapshot
+  begin
+    FSnapshot := ASnapshot;
+  end
   else
+  begin
     FSnapshot := Default(TAtlasServerSnapshot);
+  end;
   FRestarts := ARestarts;
   FRebuild.Enabled := ARunning;
   UpdateTexts;
@@ -381,7 +405,9 @@ var
   mUnit: TAtlasServerSlowUnit;
 begin
   if (Item.Index < 0) or (Item.Index > High(FSnapshot.SlowUnits)) then
+  begin
     Exit;
+  end;
   mUnit := FSnapshot.SlowUnits[Item.Index];
   Item.Caption := mUnit.Name;
   Item.SubItems.Add(TAtlasServerTexts.Milliseconds(mUnit.Ms, FormatSettings));
@@ -392,7 +418,9 @@ var
   mRule: TAtlasServerSlowRule;
 begin
   if (Item.Index < 0) or (Item.Index > High(FSnapshot.SlowRules)) then
+  begin
     Exit;
+  end;
   mRule := FSnapshot.SlowRules[Item.Index];
   Item.Caption := mRule.Id;
   Item.SubItems.Add(TAtlasServerTexts.Milliseconds(mRule.Ms, FormatSettings));
@@ -404,7 +432,9 @@ var
   mRequest: TAtlasServerRequest;
 begin
   if (Item.Index < 0) or (Item.Index > High(FSnapshot.Requests)) then
+  begin
     Exit;
+  end;
   mRequest := FSnapshot.Requests[Item.Index];
   Item.Caption := mRequest.Method;
   Item.SubItems.Add(IntToStr(mRequest.Count));
@@ -416,45 +446,59 @@ end;
 procedure TAtlasServerFrame.OpenUnit(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FSnapshot.SlowUnits)) or not Assigned(FOnOpenUnit) then
+  begin
     Exit;
+  end;
   FOnOpenUnit(FSnapshot.SlowUnits[AIndex]);
 end;
 
 procedure TAtlasServerFrame.OpenRule(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FSnapshot.SlowRules)) or not Assigned(FOnOpenRule) then
+  begin
     Exit;
+  end;
   FOnOpenRule(FSnapshot.SlowRules[AIndex].Id);
 end;
 
 procedure TAtlasServerFrame.UnitsDblClick(Sender: TObject);
 begin
   if FUnits.Selected <> nil then
+  begin
     OpenUnit(FUnits.Selected.Index);
+  end;
 end;
 
 procedure TAtlasServerFrame.RulesDblClick(Sender: TObject);
 begin
   if FRules.Selected <> nil then
+  begin
     OpenRule(FRules.Selected.Index);
+  end;
 end;
 
 procedure TAtlasServerFrame.RefreshClick(Sender: TObject);
 begin
   if Assigned(FOnRefresh) then
+  begin
     FOnRefresh();
+  end;
 end;
 
 procedure TAtlasServerFrame.RebuildClick(Sender: TObject);
 begin
   if Assigned(FOnRebuild) then
+  begin
     FOnRebuild();
+  end;
 end;
 
 procedure TAtlasServerFrame.PackageClick(Sender: TObject);
 begin
   if Assigned(FOnPackage) then
+  begin
     FOnPackage();
+  end;
 end;
 
 procedure TAtlasServerFrame.MemoryPaint(Sender: TObject);
@@ -484,7 +528,9 @@ var
     mBar := Rect(mRow.Left + mLabelWidth, mRow.Top + Scale(4), mRow.Right - mValueWidth - Scale(8),
       mRow.Bottom - Scale(4));
     if mBar.Right <= mBar.Left then
+    begin
       Exit;
+    end;
     mCanvas.Brush.Style := bsSolid;
     mCanvas.Brush.Color := ToColor(FColors.Gutter);
     mCanvas.FillRect(mBar);
@@ -493,9 +539,13 @@ var
     if mFill.Right > mFill.Left then
     begin
       if AWarnColor then
-        mCanvas.Brush.Color := ToColor(FColors.Warn)
+      begin
+        mCanvas.Brush.Color := ToColor(FColors.Warn);
+      end
       else
+      begin
         mCanvas.Brush.Color := ToColor(FColors.Accent);
+      end;
       mCanvas.FillRect(mFill);
     end;
     // Budget als senkrechter Strich, wenn es kleiner als der Maßstab ist.
@@ -516,7 +566,9 @@ begin
   mCanvas.Brush.Color := ToColor(FColors.Surface);
   mCanvas.FillRect(mBounds);
   if not FRunning or not FSnapshot.Valid then
+  begin
     Exit;
+  end;
   mLabelWidth := Scale(130);
   mValueWidth := Scale(150);
   mIndex := 0;
@@ -530,12 +582,16 @@ begin
     Inc(mIndex);
   end;
   if FSnapshot.MemoryBudget > 0 then
+  begin
     mText := TAtlasServerTexts.Megabytes(FSnapshot.MemoryTotal, FormatSettings) + ' / ' +
       TAtlasStrings.Fmt(TAtlasTextId.ServerWindowBudget, [TAtlasServerTexts.Megabytes(FSnapshot.MemoryBudget,
-      FormatSettings)])
+      FormatSettings)]);
+  end
   else
+  begin
     mText := TAtlasServerTexts.Megabytes(FSnapshot.MemoryTotal, FormatSettings) + ' / ' +
       TAtlasStrings.Text(TAtlasTextId.ServerWindowNoBudget);
+  end;
   mCanvas.Font.Style := [fsBold];
   DrawRow(TAtlasStrings.Text(TAtlasTextId.ServerMemoryTotal), mText, FSnapshot.TotalFraction, FSnapshot.OverBudget);
   mCanvas.Font.Style := [];
