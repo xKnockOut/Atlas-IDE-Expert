@@ -35,7 +35,7 @@ Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen un
 
 Bis 1.1.0 lag dem Paket der Installer `AtlasSetup.exe` bei; seit 1.2.0 gibt es ihn nicht mehr. Einzelheiten: [docs/Installation.md](docs/Installation.md).
 
-**Weg B – heute: selbst bauen und das Package in der IDE installieren:**
+**Weg B – selbst bauen und das Package in der IDE installieren:**
 
 1. Delphi ab 12 installieren und dieses Repository klonen.
 2. `Atlas.groupproj` in Delphi öffnen und alle Projekte für **Win64** erstellen (*Alle erstellen*). Für die klassische 32-Bit-IDE zusätzlich `Atlas.IDE.Expert` für **Win32** erstellen.
@@ -230,6 +230,7 @@ Neue Werkzeuge entwickeln: `pwsh Tools/Start-McpInspector.ps1` öffnet den [MCP 
 
 Noch nicht in `main`, als Issues angelegt:
 
+- Englische Befunde, Code-Aktionen, Hover-Texte, Einstellungsbeschreibungen und „Neu in Atlas“ (#1458; Menüs, Dialoge und Fenster sind schon englisch)
 - Weitere Prüfregeln (Unter-Issues von #1086)
 - Debuggen (#614) und Designer-Funktionen für spätere Versionen
 
