@@ -26,13 +26,12 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Settings.QuickToggles;
+  Atlas.Core.Settings.QuickToggles,
+  // TAtlasSafeLevel (Stufe des abgesicherten Starts) steht im Modulvertrag (#1455).
+  Atlas.Core.Modules.Contract;
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Normal: alles; Safe: Grundfunktionen (Server, Statusfeld, Einstellungen, Palette, Menü);
-  /// Minimal: nur Einstellungsseite und Statusfeld.</summary>
-  TAtlasSafeLevel = (Normal, Safe, Minimal);
   /// <summary>Warum nicht normal: nach einem Absturz (Rückfrage offen), nach wiederholtem Absturz, Taste beim
   /// Start, Kommandozeile bzw. Umgebungsvariable.</summary>
   TAtlasSafeReason = (None, Crash, RepeatedCrash, StartupKey, Forced);

@@ -40,7 +40,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.FeatureTable;
 
