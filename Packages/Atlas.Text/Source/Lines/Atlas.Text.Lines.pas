@@ -309,38 +309,47 @@ begin
   Result := DominantOf(AText, TTextLineBreak.CRLF, AMixed);
 end;
 
+type
+  TBreakCounts = array[TTextLineBreak] of Integer;
+
+// Anzahl je Umbruchart; CR LF zählt als ein CRLF.
+function BreakCounts(const AText: string): TBreakCounts;
+var
+  mKind: TTextLineBreak;
+  mIndex: Integer;
+begin
+  for mKind := Low(TTextLineBreak) to High(TTextLineBreak) do
+  begin
+    Result[mKind] := 0;
+  end;
+  mIndex := 1;
+  while mIndex <= Length(AText) do
+  begin
+    if (AText[mIndex] = #13) and (mIndex < Length(AText)) and (AText[mIndex + 1] = #10) then
+    begin
+      Inc(Result[TTextLineBreak.CRLF]);
+      Inc(mIndex);
+    end
+    else if AText[mIndex] = #13 then
+    begin
+      Inc(Result[TTextLineBreak.CR]);
+    end
+    else if AText[mIndex] = #10 then
+    begin
+      Inc(Result[TTextLineBreak.LF]);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
 class function TTextLines.DominantOf(const AText: string; APreferred: TTextLineBreak;
   out AMixed: Boolean): TTextLineBreak;
 var
-  Counts: array[TTextLineBreak] of Integer;
+  Counts: TBreakCounts;
   Kind: TTextLineBreak;
-  Index, Kinds: Integer;
+  Kinds: Integer;
 begin
-  for Kind := Low(TTextLineBreak) to High(TTextLineBreak) do
-  begin
-    Counts[Kind] := 0;
-  end;
-  Index := 1;
-  while Index <= Length(AText) do
-  begin
-    if AText[Index] = #13 then
-    begin
-      if (Index < Length(AText)) and (AText[Index + 1] = #10) then
-      begin
-        Inc(Counts[TTextLineBreak.CRLF]);
-        Inc(Index);
-      end
-      else
-      begin
-        Inc(Counts[TTextLineBreak.CR]);
-      end;
-    end
-    else if AText[Index] = #10 then
-    begin
-      Inc(Counts[TTextLineBreak.LF]);
-    end;
-    Inc(Index);
-  end;
+  Counts := BreakCounts(AText);
   // Der bevorzugte Umbruch gewinnt Gleichstände, andere gewinnen nur mit echter Mehrheit.
   Result := TTextLineBreak.None;
   if (APreferred in [TTextLineBreak.CRLF, TTextLineBreak.LF, TTextLineBreak.CR]) and (Counts[APreferred] > 0) then

@@ -55,8 +55,9 @@
 //                             Paare stehen in BuiltinHandlePairs, eigene über
 //                             die Option pairs. Zurückgeben, Speichern und
 //                             Übergabe an unbekannte Routinen gelten als
-//                             Weitergabe; Zweige, in denen das Öffnen laut
-//                             if-Prüfung misslang, und Ausnahmewege
+//                             Weitergabe, ebenso [H] in einem Array-Ausdruck;
+//                             Zweige, in denen das Öffnen laut if-Prüfung
+//                             misslang, und Ausnahmewege
 //                             (pair-without-finally) zählen nicht. Korrektur:
 //                             die Anweisungen danach in try … finally mit dem
 //                             Schließen einschließen.
@@ -3953,6 +3954,11 @@ var
         if E.Kind = TSyntaxKind.RoutineDecl then
         begin
           Continue;
+        end;
+        // [H] in einem Ausdruck (Handles := Handles + [H]): Das Handle landet in einem Array.
+        if (E.Kind = TSyntaxKind.SetConstructor) and Mentions(E, AHandle) then
+        begin
+          Exit(True);
         end;
         if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and IsHandleValue(E[1], AHandle) then
         begin
