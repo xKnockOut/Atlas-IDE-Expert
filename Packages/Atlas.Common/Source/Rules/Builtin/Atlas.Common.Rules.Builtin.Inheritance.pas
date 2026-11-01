@@ -2442,17 +2442,14 @@ begin
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
     Resolver := TRuleDerived.Resolver(mCache, AContext);
+    Resolver.PinTree(AContext.Tree, FileName);
     try
-      Resolver.PinTree(AContext.Tree, FileName);
-      try
-        for Index := 0 to High(Tokens) - 1 do
-          if Calls.TryGetValue(Tokens[Index].Offset, Node) and
-            (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
-            CheckCall(Node, Index + 1);
-      finally
-        Resolver.UnpinTree;
-      end;
+      for Index := 0 to High(Tokens) - 1 do
+        if Calls.TryGetValue(Tokens[Index].Offset, Node) and
+          (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
+          CheckCall(Node, Index + 1);
     finally
+      Resolver.UnpinTree;
     end;
   finally
     Calls.Free;
@@ -2677,16 +2674,13 @@ begin
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
     Resolver := TRuleDerived.Resolver(mCache, AContext);
+    Resolver.PinTree(AContext.Tree, FileName);
     try
-      Resolver.PinTree(AContext.Tree, FileName);
-      try
-        Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-        for Node in Calls do
-          CheckCall(Node);
-      finally
-        Resolver.UnpinTree;
-      end;
+      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      for Node in Calls do
+        CheckCall(Node);
     finally
+      Resolver.UnpinTree;
     end;
   finally
     Ancestry.Free;

@@ -1043,47 +1043,44 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Lookup := TIfCaseLookup.FromResolver(Resolver, AContext.Tree, FileName);
-      for Node in NodesOf(AContext.Tree.Root) do
+    Lookup := TIfCaseLookup.FromResolver(Resolver, AContext.Tree, FileName);
+    for Node in NodesOf(AContext.Tree.Root) do
+    begin
+      if not TIfCase.IsChainHead(Node) then
+        Continue;
+      Conditions := TIfCase.ConvertibleConditions(AContext.Text, AContext.Tree, Node, Lookup);
+      if Conditions = 0 then
+        Continue;
+      // Zweige: die Bedingungen und ein abschließendes else.
+      Branches := Conditions;
+      Last := Node;
+      while (Last.ChildCount = 3) and (Last[2].Kind = TSyntaxKind.IfStatement) do
+        Last := Last[2];
+      if Last.ChildCount = 3 then
+        Inc(Branches);
+      if Branches < Min then
+        Continue;
+      HasDirective := False;
+      Index := TokenAt(Tokens, Node.StartOffset);
+      while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) do
       begin
-        if not TIfCase.IsChainHead(Node) then
-          Continue;
-        Conditions := TIfCase.ConvertibleConditions(AContext.Text, AContext.Tree, Node, Lookup);
-        if Conditions = 0 then
-          Continue;
-        // Zweige: die Bedingungen und ein abschließendes else.
-        Branches := Conditions;
-        Last := Node;
-        while (Last.ChildCount = 3) and (Last[2].Kind = TSyntaxKind.IfStatement) do
-          Last := Last[2];
-        if Last.ChildCount = 3 then
-          Inc(Branches);
-        if Branches < Min then
-          Continue;
-        HasDirective := False;
-        Index := TokenAt(Tokens, Node.StartOffset);
-        while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) do
-        begin
-          if Tokens[Index].Kind = TPascalTokenKind.Directive then
-            HasDirective := True;
-          Inc(Index);
-        end;
-        if HasDirective then
-          Continue;
-        Fixes := nil;
-        if TIfCase.ToCase(AContext.Text, AContext.Tree, Node.StartPos, Lookup, Layout, Conversion) then
-          Fixes := [TRuleFix.Create(Conversion.Title, [Conversion.Edit])];
-        AReport.Add(TTextRange.Create(Node.StartPos, Node[0].EndPos),
-          Format('%s Zweige vergleichen denselben Ausdruck mit Konstanten; als case ist die Kette kürzer.',
-          [TStringIfChainRule.CountWord(Branches)]), TRuleConfidence.High, Fixes);
+        if Tokens[Index].Kind = TPascalTokenKind.Directive then
+          HasDirective := True;
+        Inc(Index);
       end;
-    finally
-      Resolver.UnpinTree;
+      if HasDirective then
+        Continue;
+      Fixes := nil;
+      if TIfCase.ToCase(AContext.Text, AContext.Tree, Node.StartPos, Lookup, Layout, Conversion) then
+        Fixes := [TRuleFix.Create(Conversion.Title, [Conversion.Edit])];
+      AReport.Add(TTextRange.Create(Node.StartPos, Node[0].EndPos),
+        Format('%s Zweige vergleichen denselben Ausdruck mit Konstanten; als case ist die Kette kürzer.',
+        [TStringIfChainRule.CountWord(Branches)]), TRuleConfidence.High, Fixes);
     end;
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
