@@ -15,6 +15,9 @@
 // - TAtlasCiJob, TAtlasCiBuild und die Fehlerart liegen als Daten in Base
 //   (Atlas.Core.CiBuild.Contract, #1455), weil die Projekt-Zusammenfassung sie
 //   speichert.
+// - IAtlasCiCredentialStore und IAtlasCiTransports (#1455, Rolle Adapters):
+//   Anmeldespeicher und Transporte als Schnittstellen; die Umsetzungen
+//   erzeugt nur Atlas.IDE.Tracker.Composition.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -91,6 +94,28 @@ type
       out ABuild: TAtlasCiBuild; out AError: TAtlasCiFetchError): Boolean;
     /// <summary>Seite des Builds ANumber für den Browser; '' ohne.</summary>
     function BuildPage(const AJob: TAtlasCiJob; ANumber: Integer): string;
+  end;
+
+  /// <summary>Zugänge im Anmeldespeicher (Ziel wie TAtlasCiJob.CredentialTarget); Lesen auch im Hintergrund.
+  /// </summary>
+  IAtlasCiCredentialStore = interface
+    ['{5B55F5F5-5096-42DC-888A-6C79045AB11D}']
+    /// <summary>Eintrag zu ATarget lesen; False ohne Eintrag.</summary>
+    function Read(const ATarget: string; out AUser, AToken: string): Boolean;
+    /// <summary>Eintrag anlegen oder ersetzen, AComment für die Anmeldeinformationsverwaltung ('' = Vorgabe);
+    /// False bei Fehler oder zu langem Token.</summary>
+    function Write(const ATarget, AUser, AToken, AComment: string): Boolean;
+    /// <summary>Eintrag entfernen; True auch, wenn es keinen gab.</summary>
+    function Delete(const ATarget: string): Boolean;
+  end;
+
+  /// <summary>Transporte zum Build-Server bzw. zur API eines Trackers; im Hintergrund.</summary>
+  IAtlasCiTransports = interface
+    ['{93BA3560-1066-45CA-ABA7-0FAF3535C8DB}']
+    /// <summary>Anmeldung mit Benutzer und Token (Basic); beide leer = ohne Anmeldung.</summary>
+    function Basic(const AServer, AUser, AToken: string): IAtlasCiTransport;
+    /// <summary>Anmeldung mit „Authorization: Bearer“ (#765); AToken leer = ohne Anmeldung.</summary>
+    function Bearer(const AServer, AToken: string): IAtlasCiTransport;
   end;
 
 implementation

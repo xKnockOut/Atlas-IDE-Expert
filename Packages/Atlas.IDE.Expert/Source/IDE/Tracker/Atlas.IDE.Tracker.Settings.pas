@@ -6,7 +6,7 @@
 // seinen Scope anmeldet: Für jede Optionsseite entsteht ein
 // TAtlasTrackerSettingsSection mit den Haken dazu (Hooks).
 // - Anbieter, Token und Transport kommen über IAtlasTrackerAccess aus der
-//   Registry (setzt die Kompositionswurzel um); ohne ihn keine Token und keine
+//   Registry (stellt die Komposition des Moduls ab der Anmeldung bereit); ohne ihn keine Token und keine
 //   Prüfung, die Seite bleibt bedienbar.
 // - „Verbindung prüfen“ (#1260), „Testen“ einer Abfrage (#1263) und „Werte vom
 //   Tracker laden“ (#1266) laufen im Hintergrund (höchstens 5 s,

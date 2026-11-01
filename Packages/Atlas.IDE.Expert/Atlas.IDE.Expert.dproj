@@ -697,7 +697,7 @@
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Pipeline.pas"/>
         <DCCReference Include="Source\Core\Versions\Atlas.Core.Versions.Project.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
-        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.TestResults.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.TestResults.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
@@ -719,7 +719,8 @@
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Trends.pas"/>
-        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.TestResults.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TestResults.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.CiLogin.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TileView.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.NewIssueDialog.pas"/>
@@ -741,7 +742,10 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas"/>
         <DCCReference Include="Source\IDE\Projects\Atlas.IDE.Projects.Summaries.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.TestResults.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.TestResults.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.TestActions.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Access.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Parts.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesContext.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesServices.pas"/>
