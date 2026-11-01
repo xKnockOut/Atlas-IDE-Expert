@@ -28,6 +28,7 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.PaletteSearch,

@@ -35,6 +35,7 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.UI.Notifications.Notice,

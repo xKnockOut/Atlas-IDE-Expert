@@ -27,6 +27,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,

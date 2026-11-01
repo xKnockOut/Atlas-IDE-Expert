@@ -673,6 +673,7 @@ uses
   Atlas.Core.Files.EncodingDefault.Tests in 'IDE.Expert\Atlas.Core.Files.EncodingDefault.Tests.pas',
   Atlas.Core.Projects.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Contract.pas',
   Atlas.Core.Projects.Contract.Tests in 'IDE.Expert\Atlas.Core.Projects.Contract.Tests.pas',
+  Atlas.Core.CiBuild.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\CiBuild\Atlas.Core.CiBuild.Contract.pas',
   Atlas.Core.Ci.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Ci\Atlas.Core.Ci.Contract.pas',
   Atlas.Core.Ci.Internals.Addresses in '..\Packages\Atlas.IDE.Expert\Source\Core\Ci\Atlas.Core.Ci.Internals.Addresses.pas',
   Atlas.Core.Ci.Providers.Jenkins in '..\Packages\Atlas.IDE.Expert\Source\Core\Ci\Atlas.Core.Ci.Providers.Jenkins.pas',

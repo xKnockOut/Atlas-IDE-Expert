@@ -74,7 +74,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Vcs.Contract,

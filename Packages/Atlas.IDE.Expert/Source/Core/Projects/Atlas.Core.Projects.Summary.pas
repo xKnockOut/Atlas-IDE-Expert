@@ -145,7 +145,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Ci.Contract;
+  Atlas.Core.CiBuild.Contract;
 
 type
   /// <summary>Stelle einer Meldung; Zeile und Spalte ab 1, 0 = ohne.</summary>

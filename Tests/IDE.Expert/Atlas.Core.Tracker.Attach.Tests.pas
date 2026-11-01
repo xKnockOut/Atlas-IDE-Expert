@@ -83,6 +83,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Attach,
   Atlas.Core.Tracker.Providers.GitHub,

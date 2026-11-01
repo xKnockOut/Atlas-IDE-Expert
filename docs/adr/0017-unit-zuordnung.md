@@ -61,7 +61,6 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 
 | Von | Nach | Behebt |
 |---|---|---|
-| `Atlas.Core.Projects.Summary` | `Atlas.IDE.Tracker` | CI-Stand (`Atlas.Core.Ci.Contract`) als Vertrag in Contracts oder Base |
 | `Atlas.IDE.Settings.Options` | `Atlas.IDE.Tracker` | Einstellungsteil des Moduls Tracker (Entscheidung 3, Paket 2) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Tracker` | Seiten der Module im Optionsdialog (Entscheidung 3, Paket 2) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Welcome` | Seiten der Module im Optionsdialog (Entscheidung 3) |
@@ -72,7 +71,6 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 | `Atlas.IDE.Contracts.Tests` | `Atlas.IDE.Base` | Vertrag ohne `Atlas.Core.Projects.Summary` (eigener Record im Vertrag) |
 | `Atlas.Core.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.Core.Welcome.Saved` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
-| `Atlas.Core.Welcome.TestResults` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.IDE.Welcome.Continue` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
 | `Atlas.IDE.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.IDE.Welcome.NewIssue` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
@@ -81,7 +79,6 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 | `Atlas.UI.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.UI.Welcome.NewIssue` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.UI.Welcome.Sprint` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
-| `Atlas.UI.Welcome.TestResults` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 
 ## Summen
 
@@ -116,6 +113,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Inbox` | `Core/Build/Atlas.Core.Build.Inbox.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.Core.Build.ReleaseGuard` | `Core/Build/Atlas.Core.Build.ReleaseGuard.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.Core.CiBuild.Contract` | `Core/CiBuild/Atlas.Core.CiBuild.Contract.pas` | CI-Stand als Daten (Lauf, Job, Fehler); Projektzusammenfassung, Willkommensseite und Modul Tracker lesen ihn, #1455 |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
 | `Atlas.Core.Settings.Baseline` | `Core/Settings/Atlas.Core.Settings.Baseline.pas` | Format der Baseline-Datei; Einstellungsdialog und Stand der Datei, #1455 |
 | `Atlas.Core.Settings.FolderList` | `Core/Settings/Atlas.Core.Settings.FolderList.pas` | Ordnerliste als Einstellungswert; Optionsdialog ohne Debugger, #1455 |

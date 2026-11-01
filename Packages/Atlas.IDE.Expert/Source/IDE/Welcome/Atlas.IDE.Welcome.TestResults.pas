@@ -39,6 +39,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.TestResults,

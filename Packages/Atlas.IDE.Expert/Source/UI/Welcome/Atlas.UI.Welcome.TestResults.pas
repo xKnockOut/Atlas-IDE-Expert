@@ -31,7 +31,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   Vcl.Graphics,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Welcome.TestResults,
   Atlas.UI.Welcome.Frame;
 
