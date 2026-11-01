@@ -156,7 +156,7 @@ constructor TAtlasWhatsNewMenu.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FCurrentItem := TMenuItem.Create(Self);
-  FCurrentItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsShowCurrent);
+  FCurrentItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsShowCurrent);
   FCurrentItem.Tag := Ord(TAtlasWhatsNewView.Current);
   FCurrentItem.OnClick := ItemClick;
   Items.Add(FCurrentItem);

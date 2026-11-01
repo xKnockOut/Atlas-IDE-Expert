@@ -90,6 +90,8 @@ type
     OpenUpdate: TProc;
     /// <summary>Meldungsansicht der IDE nach vorn holen.</summary>
     ShowMessages: TProc;
+    /// <summary>Zeilen des Statusfelds (#591) laufen; die Willkommensseite (#754) beobachtet sie.</summary>
+    StatusLinesReady: TFunc<Boolean>;
   end;
 
   TAtlasIdeHost = class
@@ -149,6 +151,8 @@ type
     class procedure OpenLogFolder; static;
     class procedure OpenUpdate; static;
     class procedure ShowMessages; static;
+    /// <summary>Laufen die Zeilen des Statusfelds? False vor Install und nach Uninstall.</summary>
+    class function StatusLinesReady: Boolean; static;
   end;
 
 implementation
@@ -404,6 +408,11 @@ begin
     DeliverInMainThread(mAnswer, AFeature));
   if not Result then
     mAnswer.Revoke;
+end;
+
+class function TAtlasIdeHost.StatusLinesReady: Boolean;
+begin
+  Result := Assigned(FServices.StatusLinesReady) and FServices.StatusLinesReady();
 end;
 
 end.
