@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     1. Jede Unit unter Packages/Atlas.Text, Packages/Atlas.Common/Source,
-       Packages/Atlas.Windows/Source, Packages/Atlas.IDE.Expert/Source/Core und
+       Packages/Atlas.Windows/Source, Packages/Atlas.IDE.*/Source/Core und
        Application/Source muss in einer Datei unter Tests/ vorkommen (in uses
        oder als Name ihrer Testunit "<Unit>.Tests"). Ausnahmen stehen unten mit
        Grund: dünne Adapter auf Betriebssystem, Netz oder Prozess, reine
@@ -12,7 +12,7 @@
     2. Jede Testunit Tests/**/*.Tests.pas muss in Tests/Atlas.Tests.dpr stehen,
        sonst läuft sie nie.
     3. Eine Ausnahme, die inzwischen Tests hat, ist zu streichen.
-    4. Jede Plugin-Unit (Packages/Atlas.IDE.Expert/Source), die eine Testunit
+    4. Jede Plugin-Unit (Packages/Atlas.IDE.*/Source), die eine Testunit
        einbindet, muss samt allen Plugin-Units, die sie ihrerseits einbindet, in
        Tests/Atlas.Tests.dpr stehen. Das Testprojekt hat keinen Suchpfad auf die
        Plugin-Quellen; Delphi fände sie sonst nicht.
@@ -25,7 +25,7 @@
        sofern die Testunit eine Unit dieses Moduls nennt. Tests des Kerns
        tragen keine Modulkategorie.
 
-    IDE- und UI-Units (Packages/Atlas.IDE.Expert/Source/IDE, .../UI) brauchen die
+    IDE- und UI-Units (Packages/Atlas.IDE.*/Source/IDE, .../UI) brauchen die
     laufende IDE bzw. ein Fenster; ihre Logik gehört in den Kern (Core) und wird
     dort getestet.
 
@@ -46,9 +46,12 @@ $SourceDirs = @(
     'Packages/Atlas.Text',
     'Packages/Atlas.Common/Source',
     'Packages/Atlas.Windows/Source',
-    'Packages/Atlas.IDE.Expert/Source/Core',
     'Application/Source'
 )
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
+$PluginSources = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+    ForEach-Object { "Packages/$($_.Name)/Source" } | Where-Object { Test-Path (Join-Path $Root $_) })
+$SourceDirs += @($PluginSources | ForEach-Object { "$_/Core" })
 
 # Unit → Grund. Nur, was sich ohne Betriebssystem, Netz oder IDE nicht sinnvoll prüfen lässt.
 $Exempt = @{
@@ -114,7 +117,7 @@ function Get-UsedUnits([string] $Text) {
 }
 
 $pluginFiles = @{}
-foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages/Atlas.IDE.Expert/Source') -Recurse -File -Filter '*.pas') {
+foreach ($file in $PluginSources | ForEach-Object { Get-ChildItem -Path (Join-Path $Root $_) -Recurse -File -Filter '*.pas' }) {
     $pluginFiles[$file.BaseName.ToLowerInvariant()] = $file
 }
 $needed = @{}
