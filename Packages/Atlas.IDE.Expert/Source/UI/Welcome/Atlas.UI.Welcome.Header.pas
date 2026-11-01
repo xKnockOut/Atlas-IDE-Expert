@@ -82,7 +82,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings;
 
 { TAtlasWelcomeHeaderFrame }
 
@@ -127,7 +128,7 @@ begin
   if AInfo.Greeting then
     FGreeting.Caption := GreetingText(AInfo.Hour, AInfo.FirstName)
   else
-    FGreeting.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeHeaderTitle);
+    FGreeting.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle);
   FInfo.Caption := InfoText(AInfo);
   Arrange;
   // Symbol neu zeichnen: Die Variante folgt dem Hintergrund (Themenwechsel).
@@ -207,13 +208,13 @@ class function TAtlasWelcomeHeaderFrame.GreetingText(AHour: Integer; const AFirs
 begin
   case TAtlasWelcomeGreeting.DayTimeOf(AHour) of
     TAtlasDayTime.Morning:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeMorning);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeMorning);
     TAtlasDayTime.Day:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeDay);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDay);
     TAtlasDayTime.Evening:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeEvening);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeEvening);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeNight);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNight);
   end;
   if AFirstName <> '' then
     Result := Result + ', ' + AFirstName;
@@ -242,30 +243,30 @@ class function TAtlasWelcomeHeaderFrame.StatusText(APhase: TAtlasServerPhase; AU
 begin
   case APhase of
     TAtlasServerPhase.Starting:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeServerStarting);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeServerStarting);
     TAtlasServerPhase.Running:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeServerRunning);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeServerRunning);
     TAtlasServerPhase.Stopped:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeServerStopped);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeServerStopped);
     TAtlasServerPhase.Failed:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeServerFailed);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeServerFailed);
   else
     // Die Willkommensseite startet keinen Server; er kommt mit dem ersten Projekt.
-    Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeServerIdle));
+    Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeServerIdle));
   end;
   if APhase <> TAtlasServerPhase.Running then
     Exit;
   if AIndexing and (APercent >= 0) then
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeIndexingPercent, [APercent])
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeIndexingPercent, [APercent])
   else if AIndexing then
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.WelcomeIndexing)
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeIndexing)
   else if AUnits >= 0 then
-    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnits, [Thousands(AUnits)]);
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnits, [Thousands(AUnits)]);
 end;
 
 class function TAtlasWelcomeHeaderFrame.InfoText(const AInfo: TAtlasWelcomeHeaderInfo): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeVersion, [AInfo.Version]) + ' · ' +
+  Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeVersion, [AInfo.Version]) + ' · ' +
     StatusText(AInfo.Phase, AInfo.Units, AInfo.Indexing, AInfo.Percent);
 end;
 

@@ -707,6 +707,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Favorites.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Atlas.UI.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tests\Atlas.UI.Tests.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Search\Atlas.UI.Search.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Build\Atlas.UI.Build.Strings.pas"/>
@@ -721,6 +722,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Build.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.BuildPipeline.Strings.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Bookmarks.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Analysis.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.Strings.Tests.pas"/>

@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 const
   Gap = 8;
@@ -57,7 +57,7 @@ var
   Buttons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupPreviewTitle, [AConfigName]);
+  Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewTitle, [AConfigName]);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
@@ -71,7 +71,7 @@ begin
   FIntro.Margins.SetBounds(Gap, Gap, Gap, 0);
   FIntro.WordWrap := True;
   FIntro.ShowAccelChar := False;
-  FIntro.Caption := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupPreviewIntro, [AConfigName, AProjectName,
+  FIntro.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewIntro, [AConfigName, AProjectName,
     ATemplate]);
 
   FContent := TMemo.Create(Self);
@@ -95,10 +95,10 @@ begin
   Buttons.AlignWithMargins := True;
   Buttons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   Buttons.Top := FContent.Top + FContent.Height + 1;
-  FCreate := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.WelcomeSetupPreviewCreate));
+  FCreate := AddButton(Buttons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCreate));
   FCreate.ModalResult := mrOk;
   FCreate.Default := True;
-  FCancel := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.WelcomeSetupPreviewCancel));
+  FCancel := AddButton(Buttons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCancel));
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   ActiveControl := FCreate;

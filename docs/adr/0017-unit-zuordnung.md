@@ -790,6 +790,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Welcome.SetupPreview` | `UI/Welcome/Atlas.UI.Welcome.SetupPreview.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Sprint` | `UI/Welcome/Atlas.UI.Welcome.Sprint.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.State` | `UI/Welcome/Atlas.UI.Welcome.State.pas` | Ordner `UI/Welcome` |
+| `Atlas.UI.Welcome.Strings` | `UI/Welcome/Atlas.UI.Welcome.Strings.pas` | Texte des Moduls (Willkommensseite), Sprache von Base, #1455 |
 | `Atlas.UI.Welcome.TestResults` | `UI/Welcome/Atlas.UI.Welcome.TestResults.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Trends` | `UI/Welcome/Atlas.UI.Welcome.Trends.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Unsaved` | `UI/Welcome/Atlas.UI.Welcome.Unsaved.pas` | Ordner `UI/Welcome` |
