@@ -115,7 +115,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Search,
   Atlas.Core.Welcome.Projects,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Push,
   Atlas.IDE.Foundation.Settings,
@@ -217,17 +217,17 @@ class function TAtlasIdeUnsaved.KindText(AKind: Integer): string;
 begin
   case TAtlasVcsChangeKind(AKind) of
     TAtlasVcsChangeKind.Added:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedKindAdded);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindAdded);
     TAtlasVcsChangeKind.Untracked:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedKindUntracked);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindUntracked);
     TAtlasVcsChangeKind.Deleted, TAtlasVcsChangeKind.Missing:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedKindDeleted);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindDeleted);
     TAtlasVcsChangeKind.Renamed, TAtlasVcsChangeKind.Copied:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedKindRenamed);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindRenamed);
     TAtlasVcsChangeKind.Conflicted:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedKindConflicted);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindConflicted);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedKindModified);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindModified);
   end;
 end;
 
@@ -279,7 +279,7 @@ end;
 function TAtlasIdeUnsaved.Section: TAtlasWelcomeSection;
 begin
   Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Unsaved,
-    TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedTitle), Order, TAtlasWelcomeColumn.Right,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedTitle), Order, TAtlasWelcomeColumn.Right,
     function: Boolean
     begin
       Result := IsVisible;
@@ -509,7 +509,7 @@ var
 begin
   if not FileExists(AProject) then
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsMissing, [AProject]));
+    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
     Exit;
   end;
   // Schon offen: nicht neu laden.
@@ -573,7 +573,7 @@ begin
           for Change in Changes do
           begin
             Entry := TAtlasResultEntry.Create(Change.Path, 0, 0);
-            Entry.Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedInStash, [Stashes[Index].Message,
+            Entry.Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedInStash, [Stashes[Index].Message,
               KindText(Ord(Change.Kind))]);
             Entries := Entries + [Entry];
           end;
@@ -598,14 +598,15 @@ begin
         Exit;
       if Outcome <> TAtlasVcsOutcome.Ok then
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedQueryFailed, [Row.Name, AtlasVcsOutcomeName(Outcome)]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedQueryFailed,
+          [Row.Name, AtlasVcsOutcomeName(Outcome)]));
         Exit;
       end;
       if Row.Item.Kind = TAtlasUnsavedKind.Stashes then
-        TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedStashTitle,
+        TAtlasIdeResultsWindow.ShowEntries(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStashTitle,
           [Row.Name, Length(Entries)]), Entries)
       else
-        TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedChangesTitle,
+        TAtlasIdeResultsWindow.ShowEntries(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedChangesTitle,
           [Row.Name, Length(Entries)]), Entries);
     end);
 end;
@@ -644,10 +645,10 @@ begin
         procedure
         begin
           if Outcome <> TAtlasVcsOutcome.Ok then
-            Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedQueryFailed, [Row.Name,
+            Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedQueryFailed, [Row.Name,
               AtlasVcsOutcomeName(Outcome)]))
           else if Length(Plans) = 0 then
-            Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPushNothing, [Row.Name]))
+            Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushNothing, [Row.Name]))
           else if TAtlasPushDialog.Confirm(Row.Name, Plans, nil) then
             RunPush(Row, Plans);
         end);
@@ -692,13 +693,13 @@ begin
         Exit;
       for Index := 0 to High(Plans) do
         if (Index <= High(Outcomes)) and (Outcomes[Index] = TAtlasVcsOutcome.Ok) then
-          Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPushDone, [Row.Name, Plans[Index].Branch,
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushDone, [Row.Name, Plans[Index].Branch,
             Plans[Index].Target]))
         else if Index <= High(Outcomes) then
-          Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPushFailed, [Row.Name, Plans[Index].Branch,
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushFailed, [Row.Name, Plans[Index].Branch,
             Plans[Index].Target, AtlasVcsOutcomeName(Outcomes[Index])]))
         else
-          Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPushFailed, [Row.Name, Plans[Index].Branch,
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushFailed, [Row.Name, Plans[Index].Branch,
             Plans[Index].Target, AtlasVcsOutcomeName(TAtlasVcsOutcome.Failed)]));
       // Neuer Stand für die Zeile.
       FFresh.Remove(TAtlasProjectSummaries.NormalizedPath(Row.Project));
@@ -721,7 +722,7 @@ begin
       else if DirectoryExists(ExtractFileDir(Project)) then
         ShellExecute(0, 'open', PChar(ExtractFileDir(Project)), nil, nil, SW_SHOWNORMAL)
       else
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsMissing, [Project]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [Project]));
     end);
 end;
 
