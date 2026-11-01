@@ -186,9 +186,9 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.ShellAPI,
   System.DateUtils,
   System.IOUtils,
+  Atlas.Core.Tracker.Files,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
@@ -208,7 +208,6 @@ const
   cLocalAppData = 'LOCALAPPDATA';
   cHttps = 'https://';
   cHttp = 'http://';
-  cOpenVerb = 'open';
 
 { TAtlasIssuesCachedTarget }
 
@@ -314,7 +313,7 @@ begin
   // Nur Web-Adressen aus der eingetragenen Adresse, nie etwas aus der Antwort des Trackers.
   if AUrl.StartsWith(cHttps, True) or AUrl.StartsWith(cHttp, True) then
   begin
-    ShellExecute(0, cOpenVerb, PChar(AUrl), nil, nil, SW_SHOWNORMAL);
+    TAtlasTrackerFiles.Shell.Open(AUrl);
   end;
 end;
 

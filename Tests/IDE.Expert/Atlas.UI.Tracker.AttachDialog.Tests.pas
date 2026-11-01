@@ -50,7 +50,9 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.Attach,
   Atlas.UI.Tracker.Capture,
-  Atlas.UI.Tracker.AttachDialog;
+  Atlas.UI.Tracker.AttachDialog,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 function Input: TAtlasAttachDialogInput;
 begin
@@ -92,6 +94,7 @@ end;
 
 procedure TAtlasAttachDialogTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FLanguage := TAtlasStrings.Language;
   TAtlasStrings.Language := TAtlasLanguage.German;
   FDir := TPath.Combine(TPath.GetTempPath, 'AtlasAttachDialogTests-' + TGUID.NewGuid.ToString);
@@ -99,6 +102,7 @@ end;
 
 procedure TAtlasAttachDialogTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   TAtlasStrings.Language := FLanguage;
   if TDirectory.Exists(FDir) then
     TDirectory.Delete(FDir, True);

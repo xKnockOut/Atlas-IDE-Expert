@@ -18,6 +18,10 @@ type
   [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerBoardTests = class
   public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
     [Test]
     procedure InitialsFromNames;
     [Test]
@@ -120,7 +124,9 @@ uses
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.Providers.GitHub;
+  Atlas.Core.Tracker.Providers.GitHub,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang (GET) bzw. Adressanfang und Textstück im Inhalt
@@ -260,6 +266,16 @@ begin
 end;
 
 { TAtlasTrackerBoardTests }
+
+procedure TAtlasTrackerBoardTests.Setup;
+begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
+end;
+
+procedure TAtlasTrackerBoardTests.TearDown;
+begin
+  TAtlasTrackerFiles.Uninstall;
+end;
 
 procedure TAtlasTrackerBoardTests.InitialsFromNames;
 begin

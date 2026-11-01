@@ -69,8 +69,8 @@ uses
   System.Classes,
   System.Generics.Collections,
   Winapi.Windows,
-  Winapi.ShellAPI,
   Vcl.Clipbrd,
+  Atlas.Core.Tracker.Files,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -221,7 +221,7 @@ procedure OpenPage(const APage: string);
 begin
   if APage.StartsWith('https://', True) then
   begin
-    ShellExecute(0, 'open', PChar(APage), nil, nil, SW_SHOWNORMAL);
+    TAtlasTrackerFiles.Shell.Open(APage);
   end;
 end;
 

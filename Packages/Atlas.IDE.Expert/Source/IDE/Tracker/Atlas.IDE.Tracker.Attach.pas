@@ -94,7 +94,6 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.ShellAPI,
   System.UITypes,
   System.IOUtils,
   ToolsAPI,
@@ -521,8 +520,7 @@ begin
     Report(mText);
     MessageDlg(mText, mtInformation, [mbOK], 0);
   end;
-  if TAtlasIssuePreview.MayBrowse(AOutcome.Page) then
-    ShellExecute(0, 'open', PChar(AOutcome.Page), nil, nil, SW_SHOWNORMAL);
+  TAtlasIssuePreview.Browse(AOutcome.Page);
 end;
 
 end.
