@@ -18,7 +18,28 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 
 Der Linter lädt denselben Symbolindex wie der Editor (#1112): das Projekt des Ziels und mit `index.projectGroup` die übrigen Projekte der Gruppe, aus dem Index-Cache, wenn er aktuell ist. Regeln, die Typen aus anderen Units brauchen (etwa der Besitz von Feldern, deren Typ anderswo deklariert ist, oder `case` über eine Aufzählung aus einer anderen Unit), melden darum dasselbe wie in der IDE. Ohne Projektdatei prüft er ohne Index (Hinweis auf stderr). Der MCP-Server prüft mit demselben Index (`get_diagnostics`, `check_code`, `explain_finding`); solange er noch lädt, sagt `get_diagnostics`, dass Befunde, die den Index brauchen, noch fehlen können.
 
-Ein Prüflauf wertet jede Unit einmal aus und teilt das Ergebnis mit allen Regeln (#1322). Vorher extrahierten Regeln, die für viele Ausdrücke den Typ erfragen (Besitz, Typumwandlungen, typisierte Ausdrücke), die ganze Unit bei jeder Frage neu, und große Units brauchten quadratisch lange; in der IDE kostete das bei jeder Änderung ebenfalls CPU. Das Token an einer Position sucht Atlas binär statt ab Dateianfang (#1323); auch das machte große Konstanten-Arrays quadratisch. Gemessen mit dem Linux-Bau (vorher → #1322 → #1323): SynEdit 353 s → 135 s → 113 s, VirtualTreeView 676 s → 93 s → 78 s, HtmlViewer 987 s → 708 s → 116 s, Befunde unverändert. Suchen, die ein Prüflauf ständig wiederholt, beginnen nicht mehr von vorn (#1342): Projekt-Units und die Typsuche über die uses-Units laufen über Namenstabellen und werden je Resolver gemerkt, Ja/Nein-Fragen an den Symbolindex enden beim ersten Treffer, und Token-Suchen springen binär an den Anfang ihres Bereichs. Ein Prüflauf über die Atlas-Quellen selbst (1.917 Units, Linux-Bau) brauchte 912 s und braucht jetzt 594 s, weiter auf einem Kern und mit denselben Befunden.
+### Laufzeit
+
+- Ein Prüflauf wertet jede Unit einmal aus und teilt das Ergebnis mit allen Regeln (#1322).
+  - Vorher extrahierten Regeln, die für viele Ausdrücke den Typ erfragen (Besitz, Typumwandlungen, typisierte Ausdrücke), die ganze Unit bei jeder Frage neu, und große Units brauchten quadratisch lange.
+  - In der IDE kostete das bei jeder Änderung ebenfalls CPU.
+- Das Token an einer Position sucht Atlas binär statt ab Dateianfang (#1323); auch das machte große Konstanten-Arrays quadratisch.
+- Suchen, die ein Prüflauf ständig wiederholt, beginnen nicht mehr von vorn (#1342):
+  - Projekt-Units und die Typsuche über die uses-Units laufen über Namenstabellen und werden je Resolver gemerkt.
+  - Ja/Nein-Fragen an den Symbolindex enden beim ersten Treffer.
+  - Token-Suchen springen binär an den Anfang ihres Bereichs.
+
+Gemessen mit dem Linux-Bau (vorher → #1322 → #1323), Befunde unverändert:
+
+| Projekt | vorher | #1322 | #1323 |
+|---|---|---|---|
+| SynEdit | 353 s | 135 s | 113 s |
+| VirtualTreeView | 676 s | 93 s | 78 s |
+| HtmlViewer | 987 s | 708 s | 116 s |
+
+Ein Prüflauf über die Atlas-Quellen selbst (1.917 Units, Linux-Bau) brauchte 912 s und braucht jetzt 594 s, weiter auf einem Kern und mit denselben Befunden.
+
+### Parameter
 
 | Parameter | Bedeutung |
 |---|---|
@@ -53,13 +74,40 @@ Ein Prüflauf wertet jede Unit einmal aus und teilt das Ergebnis mit allen Regel
 
 Exit-Code: 1, wenn ein Treffer `--fail-on` erreicht (Standard: mindestens ein Fehler), sonst 0; 3 bei Aufruf- oder Lesefehlern. Treffer aus der Baseline zählen nie.
 
-Baseline (#97): Ein Eintrag in `atlas-baseline.json` merkt sich Datei, Regel, die umgebende Routine (voll qualifiziert wie `TFoo.Bar`, außerhalb einer Routine der Abschnitt wie `implementation`), einen Fingerabdruck der Zeile ohne Leerraum und einen Fingerabdruck des Codes ±2 Zeilen darum. Dieselbe Zeile in einer anderen Routine gilt deshalb als neu, ebenso ein Treffer, der in eine andere Routine wandert. Neu Einrücken, verschobene Zeilen und eine umbenannte Routine (Kontext gleich, alter Name nicht mehr in der Datei) überstehen die Baseline. Eine umbenannte oder verschobene Datei verliert ihre Einträge: Ihre Treffer erscheinen als neu, bis die Baseline aktualisiert ist. Ältere Dateien ohne Routine bleiben lesbar und werden beim nächsten Aktualisieren ergänzt. Unterdrückungskommentare für Treffer aus der Baseline melden kein `unused-suppression`. In Editoren aktualisiert der Befehl `atlas.updateBaseline` (`workspace/executeCommand`, Argument: URI des Projekts oder Ordners) die Baseline und antwortet mit den Zählern; er prüft dafür alle Dateien des Projekts und hält den Server so lange auf. In SARIF trägt jedes Ergebnis `partialFingerprints` (`atlasBaseline/v1` aus Regel, Routine und Zeile, `atlasContext/v1` aus dem Kontext, je mit laufender Nummer `:n` bei gleichen Werten in einer Datei); mit Baseline kommt `baselineState` hinzu: `new`, `unchanged` (als externe Unterdrückung) oder `absent` (Eintrag ohne Treffer). Text, JSON und Exit-Code enthalten nur die neuen Treffer.
+### Baseline (#97)
+
+- Ein Eintrag in `atlas-baseline.json` merkt sich:
+  - Datei, Regel
+  - die umgebende Routine (voll qualifiziert wie `TFoo.Bar`, außerhalb einer Routine der Abschnitt wie `implementation`)
+  - einen Fingerabdruck der Zeile ohne Leerraum
+  - einen Fingerabdruck des Codes ±2 Zeilen darum
+- Dieselbe Zeile in einer anderen Routine gilt deshalb als neu, ebenso ein Treffer, der in eine andere Routine wandert.
+- Neu Einrücken, verschobene Zeilen und eine umbenannte Routine (Kontext gleich, alter Name nicht mehr in der Datei) überstehen die Baseline.
+- Eine umbenannte oder verschobene Datei verliert ihre Einträge: Ihre Treffer erscheinen als neu, bis die Baseline aktualisiert ist.
+- Ältere Dateien ohne Routine bleiben lesbar und werden beim nächsten Aktualisieren ergänzt.
+- Unterdrückungskommentare für Treffer aus der Baseline melden kein `unused-suppression`.
+- In Editoren aktualisiert der Befehl `atlas.updateBaseline` (`workspace/executeCommand`, Argument: URI des Projekts oder Ordners) die Baseline und antwortet mit den Zählern; er prüft dafür alle Dateien des Projekts und hält den Server so lange auf.
+- In SARIF trägt jedes Ergebnis `partialFingerprints` (`atlasBaseline/v1` aus Regel, Routine und Zeile, `atlasContext/v1` aus dem Kontext, je mit laufender Nummer `:n` bei gleichen Werten in einer Datei).
+  - Mit Baseline kommt `baselineState` hinzu: `new`, `unchanged` (als externe Unterdrückung) oder `absent` (Eintrag ohne Treffer).
+- Text, JSON und Exit-Code enthalten nur die neuen Treffer.
+
+### SARIF und Konfidenz
 
 In SARIF steht als `message.text` der englische Name der Regel aus dem Katalog, ohne Konfidenz-Zusatz. Die Konfidenz steht in `properties.confidence`, die deutsche Meldung des Treffers in `properties.detail`.
 
 Jeder Regeltreffer hat eine Konfidenz (hoch, mittel, niedrig). Sie begrenzt den Schweregrad, auch wenn `rules` ihn höher einstellt: mittlere Konfidenz höchstens Warnung, niedrige höchstens Hinweis. Treffer unter `minConfidence` (Standard `medium`) bleiben aus. Die Konfidenz steht nie im Meldungstext, sondern als eigene Spalte in der Textausgabe (`[Konfidenz mittel]`), in JSON als `confidence`, im LSP als `data.confidence` und im Tooltip des Plugins als eigene Zeile.
 
-In einer SVN-Arbeitskopie vergleicht `--changed` ohne Basis die Arbeitskopie mit BASE (`svn status`), `--changed <Rev>` und `--diff <Rev>` mit der Revision (`svn diff -r`); `--include-uncommitted` nimmt unversionierte Dateien dazu. Es gilt die nächstliegende Arbeitskopie über dem Ordner der Konfiguration (`.git` oder `.svn`), bei Gleichstand Git; `vcs.provider` in `%APPDATA%\Atlas\settings.json` legt die Art fest (`auto`, `git`, `svn`) oder schaltet ab (`off`). svn muss als Kommandozeilenwerkzeug installiert sein (TortoiseSVN mit Kommandozeilenwerkzeugen genügt). `vcs.git.path` und `vcs.svn.path` legen das Programm fest (wie auf der Seite *Versionsverwaltung*), `vcs.timeoutSeconds` das Zeitlimit je Aufruf; fehlt die Datei unter einem eigenen Pfad, bricht `--changed` mit dieser Ursache ab.
+### SVN
+
+- In einer SVN-Arbeitskopie vergleicht `--changed` ohne Basis die Arbeitskopie mit BASE (`svn status`), `--changed <Rev>` und `--diff <Rev>` mit der Revision (`svn diff -r`).
+- `--include-uncommitted` nimmt unversionierte Dateien dazu.
+- Es gilt die nächstliegende Arbeitskopie über dem Ordner der Konfiguration (`.git` oder `.svn`), bei Gleichstand Git.
+- `vcs.provider` in `%APPDATA%\Atlas\settings.json` legt die Art fest (`auto`, `git`, `svn`) oder schaltet ab (`off`).
+- svn muss als Kommandozeilenwerkzeug installiert sein (TortoiseSVN mit Kommandozeilenwerkzeugen genügt).
+- `vcs.git.path` und `vcs.svn.path` legen das Programm fest (wie auf der Seite *Versionsverwaltung*), `vcs.timeoutSeconds` das Zeitlimit je Aufruf.
+- Fehlt die Datei unter einem eigenen Pfad, bricht `--changed` mit dieser Ursache ab.
+
+### Beispiele
 
 Beispiele für einen Pre-Commit-Hook und eine GitHub Action, die nur Geändertes prüfen, und eine GitHub Action, die nur die betroffenen Tests ausführt (nachts alle), liegen in [docs/Beispiele](../../../docs/Beispiele).
 
