@@ -134,7 +134,7 @@ uses
   Atlas.UI.Strings;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasTrackerTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasTrackerTextId] of string = (
     ('Issue anzeigen …',
      'Kein Issue gewählt. Klick auf ein Issue in „Meine Issues“ oder Befehl „Issue anzeigen …“.',
      'Zurück (Alt+Links)',
@@ -1140,12 +1140,12 @@ const
 
 class function TAtlasTrackerStrings.Text(AId: TAtlasTrackerTextId): string;
 begin
-  Result := Texts[TAtlasStrings.Language, AId];
+  Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
 class function TAtlasTrackerStrings.Fmt(AId: TAtlasTrackerTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+  Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
 end;
 
 end.

@@ -103,7 +103,9 @@ begin
   AHost.AddTitle('Testabschnitt');
   Switch := AHost.AddSwitch('issues.board.onlyMine', 'Nur meine');
   if Broken then
+  begin
     raise EAtlasSettingsKey.Create('kaputt');
+  end;
   Row := AHost.AddRow(26, ['issues.tracker']);
   // Eigenes Element des Moduls in der Zeile der Seite; das Modul gibt es in Close frei.
   Edit := TEdit.Create(nil);
@@ -143,9 +145,13 @@ var
   mSection: TTestSection;
 begin
   if Broken then
+  begin
     raise EAtlasSettingsKey.Create('Anbieter kaputt');
+  end;
   if Created < Length(Sections) then
-    Result := Sections[Created]
+  begin
+    Result := Sections[Created];
+  end
   else
   begin
     mSection := TTestSection.Create;
@@ -167,12 +173,18 @@ var
 begin
   Result := nil;
   if AControl = nil then
+  begin
     Exit;
+  end;
   mParent := AControl.Parent;
   while (mParent <> nil) and not (mParent is TTabSheet) do
+  begin
     mParent := mParent.Parent;
+  end;
   if mParent <> nil then
+  begin
     Result := TTabSheet(mParent);
+  end;
 end;
 
 function Provided(ASection: TTestSection): IAtlasRegistration;

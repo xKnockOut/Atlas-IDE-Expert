@@ -4,7 +4,7 @@
 // (#1455; vorher Atlas.IDE.Settings.Options). TAtlasIdeTrackerSettings ist
 // der IAtlasSettingsSectionProvider, den die Composition des Moduls über
 // seinen Scope anmeldet: Für jede Optionsseite entsteht ein
-// TAtlasTrackerSettingsSection mit den Haken dazu.
+// TAtlasTrackerSettingsSection mit den Haken dazu (Hooks).
 // - Anbieter, Token und Transport kommen über IAtlasTrackerAccess aus der
 //   Registry (setzt die Kompositionswurzel um); ohne ihn keine Token und keine
 //   Prüfung, die Seite bleibt bedienbar.
@@ -57,17 +57,45 @@ uses
   Atlas.UI.Tracker.SettingsSection,
   Atlas.UI.Tracker.Strings;
 
+const
+  // Protokoll: anonym, nur Anbieter, Zustand und Anzahl.
+  cLogCheckAborted = 'Issue-Tracker: Prüfung mit %s abgebrochen';
+  cLogValuesAborted = 'Issue-Tracker: Werte mit %s abgebrochen';
+  cLogQueryAborted = 'Issue-Tracker: Test der Abfrage mit %s abgebrochen';
+  cLogValuesLoaded = 'Issue-Tracker: Werte geladen (%s, %d Zustände)';
+  cLogChecked = 'Issue-Tracker: Verbindung geprüft (%s)';
+  cLogQueryTested = 'Issue-Tracker: Abfrage getestet (%s, %s)';
+  cTrackerStateKeys: array[TAtlasTrackerTokenState] of string = ('missing', 'saved', 'verified', 'rejected',
+    'unreachable', 'unexpected');
+  cOutcomeKeys: array[TAtlasTrackerQueryOutcome] of string = ('found', 'empty', 'noToken', 'notConfigured',
+    'rejected', 'projectUnknown', 'queryRejected', 'unreadable', 'serverError', 'unreachable');
+
 type
+  /// <summary>Arbeit eines Hintergrundthreads; AThread ist der Thread selbst.</summary>
+  TAtlasTrackerWork = reference to procedure(AThread: TThread);
+
   /// <summary>„Verbindung prüfen“ der Seite Issue-Tracker (#1260): eine Abfrage je Klick im Hintergrund, Ergebnis
   /// je Server (CredentialTarget) für diese Sitzung.</summary>
   TAtlasTrackerChecks = class
   private class var
     FStates: TDictionary<string, TAtlasTrackerTokenStatus>;
     FThreads: TList<TThread>;
-    class procedure Finished(AThread: TThread; const AKey: string; const AStatus: TAtlasTrackerTokenStatus;
-      const ADone: TProc); static;
-    class procedure ValuesLoaded(AThread: TThread; const AValues: TAtlasTrackerValueSet;
-      const ADone: TProc<TAtlasTrackerValueSet, string>); static;
+    class procedure Launch(const AWork: TAtlasTrackerWork); static;
+    /// <summary>Im Hauptthread: AThread aufräumen und ADone rufen, wenn er noch zu den laufenden gehört.</summary>
+    class procedure Deliver(AThread: TThread; const ADone: TProc); static;
+    class function CheckStatus(const AAccess: IAtlasTrackerAccess; const AProvider: IAtlasTrackerProvider;
+      const ATarget: TAtlasTrackerTarget): TAtlasTrackerTokenStatus; static;
+    class function ValuesOf(const AAccess: IAtlasTrackerAccess; const AProvider: IAtlasTrackerProvider;
+      const ATarget: TAtlasTrackerTarget; const AStateField: string): TAtlasTrackerValueSet; static;
+    class function QueryResult(const AAccess: IAtlasTrackerAccess; const AProvider: IAtlasTrackerProvider;
+      const ATarget: TAtlasTrackerTarget): TAtlasTrackerQueryTestResult; static;
+    class procedure Checked(const AKey: string; const AStatus: TAtlasTrackerTokenStatus); static;
+    class function CheckedDone(const AKey: string; const AStatus: TAtlasTrackerTokenStatus;
+      const ADone: TProc): TProc; static;
+    class function ValuesDelivered(const AValues: TAtlasTrackerValueSet;
+      const ADone: TProc<TAtlasTrackerValueSet, string>): TProc; static;
+    class function QueryDelivered(const AProviderName: string; const AResult: TAtlasTrackerQueryTestResult;
+      const ADone: TAtlasQueryTestDone): TProc; static;
   public
     /// <summary>Zustand ohne Netz: ohne Token „fehlt“, sonst das Ergebnis der letzten Prüfung oder „gespeichert“.
     /// </summary>
@@ -90,9 +118,20 @@ type
     class procedure Release; static;
   end;
 
-const
-  TrackerStateKeys: array[TAtlasTrackerTokenState] of string = ('missing', 'saved', 'verified', 'rejected',
-    'unreachable', 'unexpected');
+  /// <summary>Haken eines Abschnitts zur IDE.</summary>
+  TAtlasTrackerSettingsWiring = class
+  public
+    /// <summary>Verbindung und Projekt aus der .atlas; ohne Zugang.</summary>
+    class procedure WireTeam(ASection: TAtlasTrackerSettingsSection); static;
+    class procedure WireProviders(ASection: TAtlasTrackerSettingsSection; const AAccess: IAtlasTrackerAccess);
+      static;
+    /// <summary>Zustand, Token hinterlegen und entfernen.</summary>
+    class procedure WireTokens(ASection: TAtlasTrackerSettingsSection; const AAccess: IAtlasTrackerAccess); static;
+    /// <summary>Prüfung, Test einer Abfrage und Werte vom Tracker im Hintergrund.</summary>
+    class procedure WireChecks(ASection: TAtlasTrackerSettingsSection; const AAccess: IAtlasTrackerAccess); static;
+  end;
+
+{ TAtlasTrackerChecks }
 
 class function TAtlasTrackerChecks.State(const AAccess: IAtlasTrackerAccess;
   const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus;
@@ -101,16 +140,109 @@ var
 begin
   mTarget := AConnection.Target;
   if (AAccess = nil) or not AAccess.HasToken(mTarget) then
+  begin
     Exit(TAtlasTrackerTokenStatus.Stored(False));
+  end;
   if (FStates <> nil) and FStates.TryGetValue(LowerCase(mTarget.CredentialTarget), Result) then
+  begin
     Exit;
+  end;
   Result := TAtlasTrackerTokenStatus.Stored(True);
 end;
 
 class procedure TAtlasTrackerChecks.Forget(const AConnection: TAtlasTrackerConnection);
 begin
   if FStates <> nil then
+  begin
     FStates.Remove(LowerCase(AConnection.Target.CredentialTarget));
+  end;
+end;
+
+class procedure TAtlasTrackerChecks.Launch(const AWork: TAtlasTrackerWork);
+var
+  mWork: TAtlasTrackerWork;
+  mThread: TThread;
+begin
+  mWork := AWork;
+  if FThreads = nil then
+  begin
+    FThreads := TList<TThread>.Create;
+  end;
+  mThread := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      mWork(mThread);
+    end);
+  mThread.FreeOnTerminate := False;
+  FThreads.Add(mThread);
+  mThread.Start;
+end;
+
+class procedure TAtlasTrackerChecks.Deliver(AThread: TThread; const ADone: TProc);
+var
+  mDone: TProc;
+begin
+  // Beim Beenden der IDE kommt nichts mehr an (Release wartet auf den Thread).
+  if TAtlasShutdown.Signalled then
+  begin
+    Exit;
+  end;
+  mDone := ADone;
+  TAtlasMainThread.Queue(TAtlasFeature.Settings,
+    procedure
+    begin
+      if (FThreads = nil) or not FThreads.Contains(AThread) then
+      begin
+        Exit;
+      end;
+      FThreads.Remove(AThread);
+      AThread.WaitFor;
+      AThread.Free;
+      mDone();
+    end);
+end;
+
+class function TAtlasTrackerChecks.CheckStatus(const AAccess: IAtlasTrackerAccess;
+  const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): TAtlasTrackerTokenStatus;
+begin
+  try
+    // Token aus dem Anmeldespeicher ohne Dialog; ohne Token kein Netz („fehlt“).
+    Result := TAtlasTrackerConnections.Check(AProvider, ATarget, AAccess.Transport(AProvider, ATarget), Now);
+  except
+    on E: Exception do
+    begin
+      Result := TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Unreachable, Now, 0);
+      TAtlasGuard.Log(Format(cLogCheckAborted, [E.ClassName], TFormatSettings.Invariant));
+    end;
+  end;
+end;
+
+class procedure TAtlasTrackerChecks.Checked(const AKey: string; const AStatus: TAtlasTrackerTokenStatus);
+begin
+  if FStates = nil then
+  begin
+    FStates := TDictionary<string, TAtlasTrackerTokenStatus>.Create;
+  end;
+  FStates.AddOrSetValue(AKey, AStatus);
+  TAtlasGuard.Log(Format(cLogChecked, [cTrackerStateKeys[AStatus.State]], TFormatSettings.Invariant));
+end;
+
+class function TAtlasTrackerChecks.CheckedDone(const AKey: string; const AStatus: TAtlasTrackerTokenStatus;
+  const ADone: TProc): TProc;
+var
+  mKey: string;
+  mStatus: TAtlasTrackerTokenStatus;
+  mDone: TProc;
+begin
+  mKey := AKey;
+  mStatus := AStatus;
+  mDone := ADone;
+  Result :=
+    procedure
+    begin
+      Checked(mKey, mStatus);
+      mDone();
+    end;
 end;
 
 class procedure TAtlasTrackerChecks.Start(const AAccess: IAtlasTrackerAccess;
@@ -121,37 +253,66 @@ var
   mProvider: IAtlasTrackerProvider;
   mKey: string;
   mDone: TProc;
-  mThread: TThread;
 begin
   mAccess := AAccess;
   mTarget := AConnection.Target;
   mProvider := AAccess.Provider(AConnection.Provider);
   mKey := LowerCase(mTarget.CredentialTarget);
   mDone := ADone;
-  if FThreads = nil then
-    FThreads := TList<TThread>.Create;
-  mThread := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mStatus: TAtlasTrackerTokenStatus;
+  Launch(
+    procedure(AThread: TThread)
     begin
-      try
-        // Token aus dem Anmeldespeicher ohne Dialog; ohne Token kein Netz („fehlt“).
-        mStatus := TAtlasTrackerConnections.Check(mProvider, mTarget, mAccess.Transport(mProvider, mTarget), Now);
-      except
-        on E: Exception do
-        begin
-          mStatus := TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Unreachable, Now, 0);
-          TAtlasGuard.Log('Issue-Tracker: Prüfung mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      if TAtlasShutdown.Signalled then
-        Exit;
-      Finished(mThread, mKey, mStatus, mDone);
+      Deliver(AThread, CheckedDone(mKey, CheckStatus(mAccess, mProvider, mTarget), mDone));
     end);
-  mThread.FreeOnTerminate := False;
-  FThreads.Add(mThread);
-  mThread.Start;
+end;
+
+class function TAtlasTrackerChecks.ValuesOf(const AAccess: IAtlasTrackerAccess;
+  const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+  const AStateField: string): TAtlasTrackerValueSet;
+var
+  mWriter: IAtlasTrackerWriter;
+  mTransport: IAtlasCiTransport;
+begin
+  Result := Default(TAtlasTrackerValueSet);
+  if (AProvider = nil) or not Supports(AProvider, IAtlasTrackerWriter, mWriter) then
+  begin
+    Result.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, '');
+    Exit;
+  end;
+  // Token aus dem Anmeldespeicher ohne Dialog; ohne Token kein Netz.
+  mTransport := AAccess.Transport(AProvider, ATarget);
+  if mTransport = nil then
+  begin
+    Result.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '');
+    Exit;
+  end;
+  try
+    Result := TAtlasTrackerWorkflow.LoadValues(mWriter, ATarget, mTransport, AStateField);
+  except
+    on E: Exception do
+    begin
+      Result := Default(TAtlasTrackerValueSet);
+      Result.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+      TAtlasGuard.Log(Format(cLogValuesAborted, [E.ClassName], TFormatSettings.Invariant));
+    end;
+  end;
+end;
+
+class function TAtlasTrackerChecks.ValuesDelivered(const AValues: TAtlasTrackerValueSet;
+  const ADone: TProc<TAtlasTrackerValueSet, string>): TProc;
+var
+  mValues: TAtlasTrackerValueSet;
+  mDone: TProc<TAtlasTrackerValueSet, string>;
+begin
+  mValues := AValues;
+  mDone := ADone;
+  Result :=
+    procedure
+    begin
+      TAtlasGuard.Log(Format(cLogValuesLoaded, [TAtlasCiBuild.ErrorKey(mValues.Outcome.Error),
+        Length(mValues.States)], TFormatSettings.Invariant));
+      mDone(mValues, TAtlasTrackerEndDialog.ErrorText('', mValues.Outcome));
+    end;
 end;
 
 class procedure TAtlasTrackerChecks.Values(const AAccess: IAtlasTrackerAccess; const AProviderName: string;
@@ -162,141 +323,70 @@ var
   mProvider: IAtlasTrackerProvider;
   mField: string;
   mDone: TProc<TAtlasTrackerValueSet, string>;
-  mThread: TThread;
 begin
   mAccess := AAccess;
   mTarget := ATarget;
   mProvider := AAccess.Provider(AProviderName);
   mField := AStateField;
   mDone := ADone;
-  if FThreads = nil then
-    FThreads := TList<TThread>.Create;
-  mThread := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mValues: TAtlasTrackerValueSet;
-      mWriter: IAtlasTrackerWriter;
-      mTransport: IAtlasCiTransport;
+  Launch(
+    procedure(AThread: TThread)
     begin
-      mValues := Default(TAtlasTrackerValueSet);
-      try
-        if (mProvider = nil) or not Supports(mProvider, IAtlasTrackerWriter, mWriter) then
-          mValues.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, '')
-        else
-        begin
-          // Token aus dem Anmeldespeicher ohne Dialog; ohne Token kein Netz.
-          mTransport := mAccess.Transport(mProvider, mTarget);
-          if mTransport = nil then
-            mValues.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '')
-          else
-            mValues := TAtlasTrackerWorkflow.LoadValues(mWriter, mTarget, mTransport, mField);
-        end;
-      except
-        on E: Exception do
-        begin
-          mValues.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
-          TAtlasGuard.Log('Issue-Tracker: Werte mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      if TAtlasShutdown.Signalled then
-        Exit;
-      ValuesLoaded(mThread, mValues, mDone);
-    end);
-  mThread.FreeOnTerminate := False;
-  FThreads.Add(mThread);
-  mThread.Start;
-end;
-
-class procedure TAtlasTrackerChecks.ValuesLoaded(AThread: TThread; const AValues: TAtlasTrackerValueSet;
-  const ADone: TProc<TAtlasTrackerValueSet, string>);
-begin
-  TAtlasMainThread.Queue(TAtlasFeature.Settings,
-    procedure
-    begin
-      if (FThreads = nil) or not FThreads.Contains(AThread) then
-        Exit;
-      FThreads.Remove(AThread);
-      AThread.WaitFor;
-      AThread.Free;
-      // Anonym: Ergebnis und Anzahl, nie Adresse, Werte oder Token.
-      TAtlasGuard.Log(Format('Issue-Tracker: Werte geladen (%s, %d Zustände)',
-        [TAtlasCiBuild.ErrorKey(AValues.Outcome.Error), Length(AValues.States)]));
-      ADone(AValues, TAtlasTrackerEndDialog.ErrorText('', AValues.Outcome));
+      Deliver(AThread, ValuesDelivered(ValuesOf(mAccess, mProvider, mTarget, mField), mDone));
     end);
 end;
 
-class procedure TAtlasTrackerChecks.Finished(AThread: TThread; const AKey: string;
-  const AStatus: TAtlasTrackerTokenStatus; const ADone: TProc);
+class function TAtlasTrackerChecks.QueryResult(const AAccess: IAtlasTrackerAccess;
+  const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): TAtlasTrackerQueryTestResult;
 begin
-  TAtlasMainThread.Queue(TAtlasFeature.Settings,
+  try
+    // Token aus dem Anmeldespeicher ohne Dialog; ohne Token „kein Token“ und kein Netz.
+    Result := TAtlasTrackerQueryTest.Run(AProvider, ATarget, AAccess.Transport(AProvider, ATarget));
+  except
+    on E: Exception do
+    begin
+      Result := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreachable, '');
+      TAtlasGuard.Log(Format(cLogQueryAborted, [E.ClassName], TFormatSettings.Invariant));
+    end;
+  end;
+end;
+
+class function TAtlasTrackerChecks.QueryDelivered(const AProviderName: string;
+  const AResult: TAtlasTrackerQueryTestResult; const ADone: TAtlasQueryTestDone): TProc;
+var
+  mProviderName: string;
+  mResult: TAtlasTrackerQueryTestResult;
+  mDone: TAtlasQueryTestDone;
+begin
+  mProviderName := AProviderName;
+  mResult := AResult;
+  mDone := ADone;
+  Result :=
     procedure
     begin
-      if (FThreads = nil) or not FThreads.Contains(AThread) then
-        Exit;
-      FThreads.Remove(AThread);
-      AThread.WaitFor;
-      AThread.Free;
-      if FStates = nil then
-        FStates := TDictionary<string, TAtlasTrackerTokenStatus>.Create;
-      FStates.AddOrSetValue(AKey, AStatus);
-      // Anonym: Zustand, nie Adresse oder Token.
-      TAtlasGuard.Log('Issue-Tracker: Verbindung geprüft (' + TrackerStateKeys[AStatus.State] + ')');
-      ADone();
-    end);
+      TAtlasGuard.Log(Format(cLogQueryTested, [mProviderName, cOutcomeKeys[mResult.Outcome]],
+        TFormatSettings.Invariant));
+      mDone(mResult);
+    end;
 end;
 
 class procedure TAtlasTrackerChecks.StartQueryTest(const AAccess: IAtlasTrackerAccess;
   const AConnection: TAtlasTrackerConnection; const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone);
-const
-  OutcomeKeys: array[TAtlasTrackerQueryOutcome] of string = ('found', 'empty', 'noToken', 'notConfigured',
-    'rejected', 'projectUnknown', 'queryRejected', 'unreadable', 'serverError', 'unreachable');
 var
   mAccess: IAtlasTrackerAccess;
   mTarget: TAtlasTrackerTarget;
   mProvider: IAtlasTrackerProvider;
   mDone: TAtlasQueryTestDone;
-  mThread: TThread;
 begin
   mAccess := AAccess;
   mTarget := ATarget;
   mProvider := AAccess.Provider(AConnection.Provider);
   mDone := ADone;
-  if FThreads = nil then
-    FThreads := TList<TThread>.Create;
-  mThread := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mResult: TAtlasTrackerQueryTestResult;
+  Launch(
+    procedure(AThread: TThread)
     begin
-      try
-        // Token aus dem Anmeldespeicher ohne Dialog; ohne Token „kein Token“ und kein Netz.
-        mResult := TAtlasTrackerQueryTest.Run(mProvider, mTarget, mAccess.Transport(mProvider, mTarget));
-      except
-        on E: Exception do
-        begin
-          mResult := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreachable, '');
-          TAtlasGuard.Log('Issue-Tracker: Test der Abfrage mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      if TAtlasShutdown.Signalled then
-        Exit;
-      TAtlasMainThread.Queue(TAtlasFeature.Settings,
-        procedure
-        begin
-          if (FThreads = nil) or not FThreads.Contains(mThread) then
-            Exit;
-          FThreads.Remove(mThread);
-          mThread.WaitFor;
-          mThread.Free;
-          // Anonym: Anbieter und Ergebnis, nie Adresse, Abfrage oder Token.
-          TAtlasGuard.Log('Issue-Tracker: Abfrage getestet (' + mTarget.Provider + ', ' +
-            OutcomeKeys[mResult.Outcome] + ')');
-          mDone(mResult);
-        end);
+      Deliver(AThread, QueryDelivered(mTarget.Provider, QueryResult(mAccess, mProvider, mTarget), mDone));
     end);
-  mThread.FreeOnTerminate := False;
-  FThreads.Add(mThread);
-  mThread.Start;
 end;
 
 class procedure TAtlasTrackerChecks.Release;
@@ -316,60 +406,70 @@ begin
   FreeAndNil(FStates);
 end;
 
+/// <summary>Tracker aus der .atlas des aktiven Projekts; False ohne Projekt oder ohne Abschnitt tracker.</summary>
+function TeamTracker(out AProject: string; out ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mTeam: TAtlasTeamSettings;
+begin
+  ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+  AProject := TAtlasIdeTeamFile.ActiveProject;
+  Result := False;
+  if AProject <> '' then
+  begin
+    mTeam := TAtlasIdeTeamFile.Read(AProject);
+    Result := mTeam.Tracker.Configured;
+    ATarget := TAtlasTrackerTarget.Create(mTeam.Tracker.Provider, mTeam.Tracker.Url, mTeam.Tracker.Project, '');
+  end;
+end;
+
 /// <summary>Ziel für „Werte vom Tracker laden“: mit dem Projekt aus der .atlas des aktiven Projekts, wenn deren
 /// Tracker derselbe Server ist (GitHub braucht owner/repo, YouTrack liest dann die Felder dieses Projekts).</summary>
 function TrackerValuesTarget(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTarget;
 var
   mProject: string;
-  mTeam: TAtlasTeamSettings;
   mTeamTarget: TAtlasTrackerTarget;
 begin
   Result := AConnection.Target;
-  mProject := TAtlasIdeTeamFile.ActiveProject;
-  if mProject = '' then
-    Exit;
-  mTeam := TAtlasIdeTeamFile.Read(mProject);
-  if not mTeam.Tracker.Configured then
-    Exit;
-  mTeamTarget := TAtlasTrackerTarget.Create(mTeam.Tracker.Provider, mTeam.Tracker.Url, mTeam.Tracker.Project, '');
-  if SameText(mTeamTarget.Provider, Result.Provider) and SameText(mTeamTarget.Server, Result.Server) then
+  if TeamTracker(mProject, mTeamTarget) and SameText(mTeamTarget.Provider, Result.Provider) and
+    SameText(mTeamTarget.Server, Result.Server) then
+  begin
     Result := mTeamTarget;
+  end;
 end;
 
 /// <summary>Verbindung aus dem Abschnitt tracker der .atlas des aktiven Projekts (#486); leer ohne.</summary>
 function TeamTrackerConnections: TArray<TAtlasTrackerConnection>;
 var
   mProject: string;
-  mTeam: TAtlasTeamSettings;
+  mTarget: TAtlasTrackerTarget;
 begin
   Result := nil;
-  mProject := TAtlasIdeTeamFile.ActiveProject;
-  if mProject = '' then
-    Exit;
-  mTeam := TAtlasIdeTeamFile.Read(mProject);
-  if not mTeam.Tracker.Configured then
-    Exit;
-  Result := [TAtlasTrackerConnection.FromTeamFile(ChangeFileExt(ExtractFileName(mProject), ''),
-    TAtlasTrackerTarget.Create(mTeam.Tracker.Provider, mTeam.Tracker.Url, mTeam.Tracker.Project, ''))];
+  if TeamTracker(mProject, mTarget) then
+  begin
+    Result := TArray<TAtlasTrackerConnection>.Create(
+      TAtlasTrackerConnection.FromTeamFile(ChangeFileExt(ExtractFileName(mProject), ''), mTarget));
+  end;
 end;
 
 /// <summary>Aktives Projekt, geöffnete .groupproj (wenn es darin ist) und die Zeile aus dessen .atlas (#1261).
 /// </summary>
 function TrackerProjectContext: TAtlasTrackerProjectContext;
 var
-  mTeam: TAtlasTeamSettings;
+  mProject: string;
+  mTarget: TAtlasTrackerTarget;
 begin
   Result := TAtlasTrackerProjectContext.Empty;
-  Result.ProjectFile := TAtlasIdeTeamFile.ActiveProject;
-  if Result.ProjectFile = '' then
-    Exit;
-  Result.GroupFile := TAtlasIdeFiles.GroupOfProject(Result.ProjectFile);
-  mTeam := TAtlasIdeTeamFile.Read(Result.ProjectFile);
-  if mTeam.Tracker.Configured then
-    Result.Team := [TAtlasTrackerProjectMapping.FromTeamFile(Result.ProjectFile,
-      ChangeFileExt(ExtractFileName(Result.ProjectFile), ''), mTeam.Tracker.Project)];
+  if TeamTracker(mProject, mTarget) then
+  begin
+    Result.Team := TArray<TAtlasTrackerProjectMapping>.Create(TAtlasTrackerProjectMapping.FromTeamFile(mProject,
+      ChangeFileExt(ExtractFileName(mProject), ''), mTarget.Project));
+  end;
+  Result.ProjectFile := mProject;
+  if mProject <> '' then
+  begin
+    Result.GroupFile := TAtlasIdeFiles.GroupOfProject(mProject);
+  end;
 end;
-
 
 /// <summary>Anbieter, Token und Transport aus der Registry; nil ohne Kompositionswurzel.</summary>
 function Access: IAtlasTrackerAccess;
@@ -378,12 +478,16 @@ var
 begin
   Result := nil;
   for mItem in AtlasModuleRegistry.FindAll(IAtlasTrackerAccess) do
+  begin
     if Supports(mItem, IAtlasTrackerAccess, Result) then
+    begin
       Exit;
+    end;
+  end;
 end;
 
 /// <summary>Ergebnis der Prüfung für ASection; hält den Abschnitt (AKeep), bis die Antwort da ist. Eigene Routine:
-/// Der Rahmen der Haken in CreateSection hielte sonst den Abschnitt über seine eigenen Haken fest.</summary>
+/// Der Rahmen der Haken hielte sonst den Abschnitt über seine eigenen Haken fest.</summary>
 function CheckDone(const AKeep: IAtlasSettingsSection; ASection: TAtlasTrackerSettingsSection;
   const AConnection: TAtlasTrackerConnection): TProc;
 begin
@@ -392,7 +496,9 @@ begin
     begin
       // Nur an den Abschnitt, für den geprüft wurde, solange seine Seite offen ist.
       if (AKeep <> nil) and not ASection.Closed then
+      begin
         ASection.TrackerCheckDone(AConnection);
+      end;
     end;
 end;
 
@@ -404,7 +510,104 @@ begin
     procedure(AValues: TAtlasTrackerValueSet; AError: string)
     begin
       if (AKeep <> nil) and not ASection.Closed then
+      begin
         ASection.TrackerValuesDone(AValues, AError);
+      end;
+    end;
+end;
+
+{ TAtlasTrackerSettingsWiring }
+
+class procedure TAtlasTrackerSettingsWiring.WireTeam(ASection: TAtlasTrackerSettingsSection);
+begin
+  ASection.Hooks.OnTeam :=
+    function: TArray<TAtlasTrackerConnection>
+    begin
+      Result := TeamTrackerConnections;
+    end;
+  ASection.Hooks.OnContext :=
+    function: TAtlasTrackerProjectContext
+    begin
+      Result := TrackerProjectContext;
+    end;
+end;
+
+class procedure TAtlasTrackerSettingsWiring.WireProviders(ASection: TAtlasTrackerSettingsSection;
+  const AAccess: IAtlasTrackerAccess);
+var
+  mNames: TArray<string>;
+  mCaptions: TArray<string>;
+  mProvider: IAtlasTrackerProvider;
+begin
+  mNames := nil;
+  mCaptions := nil;
+  for mProvider in AAccess.Providers do
+  begin
+    mNames := mNames + [mProvider.Name];
+    mCaptions := mCaptions + [mProvider.Caption];
+  end;
+  ASection.SetTrackerProviders(mNames, mCaptions);
+end;
+
+class procedure TAtlasTrackerSettingsWiring.WireTokens(ASection: TAtlasTrackerSettingsSection;
+  const AAccess: IAtlasTrackerAccess);
+var
+  mAccess: IAtlasTrackerAccess;
+begin
+  mAccess := AAccess;
+  ASection.Hooks.OnState :=
+    function(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus
+    begin
+      Result := TAtlasTrackerChecks.State(mAccess, AConnection);
+    end;
+  ASection.Hooks.OnToken :=
+    procedure(const AConnection: TAtlasTrackerConnection)
+    begin
+      // Derselbe verdeckte Dialog wie Atlas.TrackerLogin; leer entfernt das Token.
+      if (mAccess.Provider(AConnection.Provider) <> nil) and
+        mAccess.EnterToken(mAccess.Provider(AConnection.Provider), AConnection.Target) then
+      begin
+        TAtlasTrackerChecks.Forget(AConnection);
+      end;
+    end;
+  ASection.Hooks.OnRemove :=
+    procedure(const AConnection: TAtlasTrackerConnection)
+    begin
+      if mAccess.HasToken(AConnection.Target) and (MessageDlg(TAtlasTrackerStrings.Fmt(
+        TAtlasTrackerTextId.SettingsIssuesConnectionRemoveToken, [AConnection.Target.Server]), mtConfirmation,
+        [mbYes, mbNo], 0) = mrYes) then
+      begin
+        mAccess.RemoveToken(AConnection.Target);
+        TAtlasTrackerChecks.Forget(AConnection);
+      end;
+    end;
+end;
+
+class procedure TAtlasTrackerSettingsWiring.WireChecks(ASection: TAtlasTrackerSettingsSection;
+  const AAccess: IAtlasTrackerAccess);
+var
+  mAccess: IAtlasTrackerAccess;
+  mSection: TAtlasTrackerSettingsSection;
+begin
+  mAccess := AAccess;
+  mSection := ASection;
+  ASection.Hooks.OnCheck :=
+    procedure(const AConnection: TAtlasTrackerConnection)
+    begin
+      TAtlasTrackerChecks.Start(mAccess, AConnection, CheckDone(mSection, mSection, AConnection));
+    end;
+  ASection.Hooks.OnQueryTest :=
+    procedure(const AConnection: TAtlasTrackerConnection; const ATarget: TAtlasTrackerTarget;
+      const ADone: TAtlasQueryTestDone)
+    begin
+      // Der Dialog prüft selbst, ob er noch offen ist.
+      TAtlasTrackerChecks.StartQueryTest(mAccess, AConnection, ATarget, ADone);
+    end;
+  ASection.Hooks.OnValues :=
+    procedure(const AConnection: TAtlasTrackerConnection; const AStateField: string)
+    begin
+      TAtlasTrackerChecks.Values(mAccess, AConnection.Provider, TrackerValuesTarget(AConnection), AStateField,
+        ValuesDone(mSection, mSection));
     end;
 end;
 
@@ -418,83 +621,19 @@ end;
 function TAtlasIdeTrackerSettings.CreateSection: IAtlasSettingsSection;
 var
   mSection: TAtlasTrackerSettingsSection;
-  mKeep: IAtlasSettingsSection;
   mAccess: IAtlasTrackerAccess;
-  mNames, mCaptions: TArray<string>;
-  mProvider: IAtlasTrackerProvider;
 begin
   mSection := TAtlasTrackerSettingsSection.Create;
-  mKeep := mSection;
-  Result := mKeep;
+  Result := mSection;
   // Verbindung und Projekt aus der .atlas immer, Token und Prüfung nur mit dem Zugang der Kompositionswurzel.
-  mSection.OnTrackerTeam :=
-    function: TArray<TAtlasTrackerConnection>
-    begin
-      Result := TeamTrackerConnections;
-    end;
-  mSection.OnTrackerContext :=
-    function: TAtlasTrackerProjectContext
-    begin
-      Result := TrackerProjectContext;
-    end;
+  TAtlasTrackerSettingsWiring.WireTeam(mSection);
   mAccess := Access;
-  if mAccess = nil then
-    Exit;
-  mNames := nil;
-  mCaptions := nil;
-  for mProvider in mAccess.Providers do
+  if mAccess <> nil then
   begin
-    mNames := mNames + [mProvider.Name];
-    mCaptions := mCaptions + [mProvider.Caption];
+    TAtlasTrackerSettingsWiring.WireProviders(mSection, mAccess);
+    TAtlasTrackerSettingsWiring.WireTokens(mSection, mAccess);
+    TAtlasTrackerSettingsWiring.WireChecks(mSection, mAccess);
   end;
-  mSection.SetTrackerProviders(mNames, mCaptions);
-  mSection.OnTrackerState :=
-    function(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus
-    begin
-      Result := TAtlasTrackerChecks.State(mAccess, AConnection);
-    end;
-  mSection.OnTrackerToken :=
-    procedure(const AConnection: TAtlasTrackerConnection)
-    var
-      mTokenProvider: IAtlasTrackerProvider;
-    begin
-      mTokenProvider := mAccess.Provider(AConnection.Provider);
-      if mTokenProvider = nil then
-        Exit;
-      // Derselbe verdeckte Dialog wie Atlas.TrackerLogin; leer entfernt das Token.
-      if mAccess.EnterToken(mTokenProvider, AConnection.Target) then
-        TAtlasTrackerChecks.Forget(AConnection);
-    end;
-  mSection.OnTrackerCheck :=
-    procedure(const AConnection: TAtlasTrackerConnection)
-    begin
-      TAtlasTrackerChecks.Start(mAccess, AConnection, CheckDone(mSection, mSection, AConnection));
-    end;
-  mSection.OnTrackerQueryTest :=
-    procedure(const AConnection: TAtlasTrackerConnection; const ATarget: TAtlasTrackerTarget;
-      const ADone: TAtlasQueryTestDone)
-    begin
-      // Der Dialog prüft selbst, ob er noch offen ist.
-      TAtlasTrackerChecks.StartQueryTest(mAccess, AConnection, ATarget, ADone);
-    end;
-  mSection.OnTrackerValues :=
-    procedure(const AConnection: TAtlasTrackerConnection; const AStateField: string)
-    begin
-      TAtlasTrackerChecks.Values(mAccess, AConnection.Provider, TrackerValuesTarget(AConnection), AStateField,
-        ValuesDone(mSection, mSection));
-    end;
-  mSection.OnTrackerRemove :=
-    procedure(const AConnection: TAtlasTrackerConnection)
-    begin
-      if not mAccess.HasToken(AConnection.Target) then
-        Exit;
-      if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesConnectionRemoveToken, [AConnection.Target.Server]),
-        mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-      begin
-        mAccess.RemoveToken(AConnection.Target);
-        TAtlasTrackerChecks.Forget(AConnection);
-      end;
-    end;
 end;
 
 end.

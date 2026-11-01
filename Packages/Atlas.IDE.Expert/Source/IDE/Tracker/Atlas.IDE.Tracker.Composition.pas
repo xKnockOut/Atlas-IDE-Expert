@@ -32,8 +32,8 @@ type
   TAtlasTrackerModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasKeySource)
   public const
-    ModuleId = 'atlas.tracker';
-    Switch = 'issues';
+    cModuleId = 'atlas.tracker';
+    cSwitch = 'issues';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -71,6 +71,11 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
 
+const
+  // Protokoll beim An- und Abmelden.
+  cLogContractMismatch = 'Modul %s: Vertragsversion von Base passt nicht, nicht angemeldet';
+  cLogUnregisterFailed = 'Modul %s nicht sauber abgemeldet: %s';
+
 var
   GScope: IAtlasModuleScope;
   GIssueLinks: TAtlasIdeCodeLinks;
@@ -85,10 +90,16 @@ var
 begin
   Result := nil;
   if AtlasModuleRegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in AtlasModuleRegistry.FindAll(IAtlasIssuesSession) do
+  begin
     if Supports(mItem, IAtlasIssuesSession, Result) and Result.Available then
+    begin
       Exit;
+    end;
+  end;
   Result := nil;
 end;
 
@@ -118,7 +129,9 @@ begin
   Result := nil;
   mSession := Session;
   if mSession <> nil then
+  begin
     Result := mSession.IssuePreview;
+  end;
 end;
 
 procedure SessionShow(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -127,7 +140,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.ShowIssue(ATarget, AKey);
+  end;
 end;
 
 procedure SessionBrowse(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -136,7 +151,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.BrowseIssue(ATarget, AKey);
+  end;
 end;
 
 procedure SessionStart(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -145,7 +162,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.StartIssue(ATarget, AKey);
+  end;
 end;
 
 function SessionCanStart: Boolean;
@@ -232,7 +251,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.EnterCredentials;
+  end;
 end;
 
 function TrackerLoginVisible: Boolean;
@@ -246,7 +267,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.EnterCiCredentials;
+  end;
 end;
 
 function CiLoginVisible: Boolean;
@@ -263,7 +286,9 @@ var
 begin
   mSession := Session;
   if (mSession <> nil) and mSession.CanCreateIssue then
+  begin
     mSession.CreateIssueFromEditor;
+  end;
 end;
 
 procedure CreateIssue;
@@ -291,7 +316,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.ShowPreviewPrompt;
+  end;
 end;
 
 function PreviewVisible: Boolean;
@@ -302,7 +329,9 @@ end;
 procedure ShowBlameScope;
 begin
   if GBlameIssues <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.BlameIssues, GBlameIssues.ShowScope);
+  end;
 end;
 
 function BlameVisible: Boolean;
@@ -316,7 +345,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.ShowTimeOpen;
+  end;
 end;
 
 function TimeVisible: Boolean;
@@ -330,7 +361,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.ShowBoard;
+  end;
 end;
 
 function BoardVisible: Boolean;
@@ -344,7 +377,9 @@ var
 begin
   mSession := Session;
   if mSession <> nil then
+  begin
     mSession.AttachPrompt;
+  end;
 end;
 
 function AttachVisible: Boolean;
@@ -357,13 +392,13 @@ end;
 function TAtlasTrackerModule.Info: TAtlasModuleInfo;
 begin
   Result := Default(TAtlasModuleInfo);
-  Result.Id := ModuleId;
+  Result.Id := cModuleId;
   Result.Name := 'Issue-Tracker';
   Result.Version := TAtlasVersion.Version;
   Result.Handle := HInstance;
   // Lief mit der Willkommensseite schon im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := Switch;
+  Result.Switch := cSwitch;
 end;
 
 procedure TAtlasTrackerModule.Start;
@@ -440,7 +475,9 @@ begin
   Result := nil;
   // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
   if TAtlasIdeSettings.Current.CreateIssueKey = 0 then
+  begin
     Exit;
+  end;
   mKey := Default(TAtlasModuleKey);
   mKey.Id := 'Atlas.CreateIssue';
   mKey.Caption := TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand);
@@ -468,19 +505,23 @@ begin
   Result := False;
   mRegistry := AtlasModuleRegistry;
   if (mRegistry = nil) or (GScope <> nil) then
+  begin
     Exit;
+  end;
   // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
   begin
-    TAtlasGuard.Log('Modul ' + ModuleId + ': Vertragsversion von Base passt nicht, nicht angemeldet');
+    TAtlasGuard.Log(Format(cLogContractMismatch, [cModuleId], TFormatSettings.Invariant));
     Exit;
   end;
   mModule := TAtlasTrackerModule.Create;
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
+  begin
     GScope.Provide(IAtlasFeaturePart, mPart);
+  end;
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasKeySource, mRef);
@@ -494,13 +535,19 @@ var
   mFailure: string;
 begin
   if GScope = nil then
+  begin
     Exit;
+  end;
   GScope := nil;
   // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
-    for mFailure in mRegistry.UnregisterModule(ModuleId) do
-      TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+  begin
+    for mFailure in mRegistry.UnregisterModule(cModuleId) do
+    begin
+      TAtlasGuard.Log(Format(cLogUnregisterFailed, [cModuleId, mFailure], TFormatSettings.Invariant));
+    end;
+  end;
   // Laufende Prüfungen der Optionsseite: Ihre Antwort erreicht das Modul danach nicht mehr (Regel 3).
   TAtlasIdeTrackerSettings.Release;
 end;

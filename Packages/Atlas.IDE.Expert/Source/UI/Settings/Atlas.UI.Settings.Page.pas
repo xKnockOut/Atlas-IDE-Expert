@@ -952,7 +952,7 @@ type
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
       AClick: TNotifyEvent): TButton;
-    procedure AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer);
+    class procedure AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer); static;
     /// <summary>„Hinzufügen …“ ohne OnBrowseProject: Datei- bzw. Ordnerauswahl von Windows.</summary>
     function BrowseProject(AFolder: Boolean; out APath: string): Boolean;
     procedure WelcomeLayoutRenameClick(Sender: TObject);
@@ -1740,6 +1740,26 @@ const
   cVcsGitBases: array[0..2] of string = ('remote', 'local', 'current');
   cVcsGitPushes: array[0..1] of string = ('later', 'now');
   cVcsGitUncommitted: array[0..2] of string = ('carry', 'stash', 'ask');
+  /// <summary>Spalten, Felder und Knöpfe der Tabellen Projekte und Server der Versionsverwaltung (#1286, #1287).
+  /// </summary>
+  cVcsMatchColumn = 230;
+  cVcsKindColumn = 90;
+  cVcsBranchColumn = 100;
+  cVcsSourceColumn = 150;
+  cVcsWideField = 376;
+  cVcsField = 180;
+  cVcsButtonGap = 6;
+  cVcsAddCurrentWidth = 180;
+  cVcsAddWidth = 110;
+  cVcsRemoveWidth = 100;
+  cVcsServerProjectColumn = 170;
+  cVcsServerServerColumn = 200;
+  cVcsServerStateColumn = 180;
+  cVcsCheckWidth = 100;
+  cVcsCheckAllWidth = 110;
+  cRowButtonTop = 3;
+  cSectionKeyMissing = 'Einstellung %s ist keine Plugin-Einstellung';
+  cSectionChoiceMismatch = 'Auswahl %s: Anzeige und Werte verschieden lang';
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
 function QuickActionTitle(AAction: TAtlasQuickAction): string;
@@ -1876,20 +1896,26 @@ function TAtlasSettingsSectionHost.NameOf(const AKey: string): string;
 begin
   Result := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
   if Result = '' then
-    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist keine Plugin-Einstellung', [AKey]);
+  begin
+    raise EAtlasSettingsKey.CreateFmt(cSectionKeyMissing, [AKey]);
+  end;
 end;
 
 procedure TAtlasSettingsSectionHost.AddTitle(const ACaption: string);
 begin
   if FPage <> nil then
+  begin
     FPage.AddTitleText(ACaption);
+  end;
 end;
 
 function TAtlasSettingsSectionHost.AddHint(const AText: string; AHeight: Integer): TControl;
 begin
   Result := nil;
   if FPage <> nil then
+  begin
     Result := FPage.AddWrappedLabel(AHeight, AText);
+  end;
 end;
 
 function TAtlasSettingsSectionHost.AddSwitch(const AKey, ACaption: string): TControl;
@@ -1898,7 +1924,9 @@ var
 begin
   Result := nil;
   if FPage = nil then
+  begin
     Exit;
+  end;
   mName := NameOf(AKey);
   Result := FPage.AddCheck(ACaption);
   FPage.AddSectionBinding(mName, Result, nil);
@@ -1910,7 +1938,9 @@ var
 begin
   Result := nil;
   if FPage = nil then
+  begin
     Exit;
+  end;
   mName := NameOf(AKey);
   Result := FPage.AddNumber(ACaption);
   FPage.AddSectionBinding(mName, Result, nil);
@@ -1922,7 +1952,9 @@ var
 begin
   Result := nil;
   if FPage = nil then
+  begin
     Exit;
+  end;
   mName := NameOf(AKey);
   Result := FPage.AddTextLine(ACaption);
   FPage.AddSectionBinding(mName, Result, nil);
@@ -1935,9 +1967,13 @@ var
 begin
   Result := nil;
   if FPage = nil then
+  begin
     Exit;
+  end;
   if Length(ACaptions) <> Length(AValues) then
-    raise EAtlasSettingsKey.CreateFmt('Auswahl %s: Anzeige und Werte verschieden lang', [AKey]);
+  begin
+    raise EAtlasSettingsKey.CreateFmt(cSectionChoiceMismatch, [AKey]);
+  end;
   mName := NameOf(AKey);
   Result := FPage.AddChoice(ACaption, ACaptions);
   FPage.AddSectionBinding(mName, Result, AValues);
@@ -1950,36 +1986,48 @@ var
 begin
   Result := nil;
   if FPage = nil then
+  begin
     Exit;
+  end;
   mNames := nil;
   for mKey in AKeys do
+  begin
     mNames := mNames + [NameOf(mKey)];
+  end;
   Result := FPage.AddPanel(AHeight);
   if Length(mNames) > 0 then
   begin
     // Die Bindung hängt an der Zeile der Seite, nie an Elementen des Moduls: Die gibt das Modul in Close frei.
     FPage.FMarks.Bind(Result, mNames);
     for mName in mNames do
+    begin
       FPage.Bind(mName, Result);
+    end;
   end;
 end;
 
 procedure TAtlasSettingsSectionHost.Attach(ARow, AAnchor: TControl);
 begin
   if FPage <> nil then
+  begin
     FPage.Attach(ARow, AAnchor);
+  end;
 end;
 
 procedure TAtlasSettingsSectionHost.Changed;
 begin
   if FPage <> nil then
+  begin
     FPage.RefreshMarks;
+  end;
 end;
 
 procedure TAtlasSettingsSectionHost.Allow(AControl: TControl; AEnabled: Boolean);
 begin
   if (FPage <> nil) and (AControl <> nil) then
+  begin
     FPage.Allow(AControl, AEnabled);
+  end;
 end;
 
 function TAtlasSettingsSectionHost.ListReady(AControl: TWinControl): Boolean;
@@ -1993,7 +2041,9 @@ var
 begin
   Result := False;
   if FPage = nil then
+  begin
     Exit;
+  end;
   mName := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
   Result := (mName <> '') and FPage.Reveal(mName);
 end;
@@ -2014,13 +2064,16 @@ end;
 procedure TAtlasSettingsSectionWatch.RegistryChanged(const AChange: TAtlasRegistryChange);
 begin
   if (FPage <> nil) and IsEqualGUID(AChange.IID, IAtlasSettingsSectionProvider) then
+  begin
     FPage.DropMissingSections;
+  end;
 end;
 
-/// <summary>Zeigen A und B auf dasselbe Objekt (Vergleich über IInterface, nicht über die Schnittstelle)?</summary>
-function SameInstance(const A, B: IInterface): Boolean;
+/// <summary>Zeigen AFirst und ASecond auf dasselbe Objekt (Vergleich über IInterface, nicht über die
+/// Schnittstelle)?</summary>
+function SameInstance(const AFirst, ASecond: IInterface): Boolean;
 begin
-  Result := (A as IInterface) = (B as IInterface);
+  Result := (AFirst as IInterface) = (ASecond as IInterface);
 end;
 
 { TAtlasSettingsPage }
@@ -3563,24 +3616,24 @@ begin
   FVcsProjectList.HideSelection := False;
   FVcsProjectList.OnSelectItem := VcsProjectSelectItem;
   FVcsProjectList.OnCustomDrawItem := VcsProjectDrawItem;
-  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectMatch, 230);
-  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsKind, 90);
-  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsMainBranch, 100);
-  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectSource, 150);
+  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectMatch, cVcsMatchColumn);
+  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsKind, cVcsKindColumn);
+  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsVcsProjectsMainBranch, cVcsBranchColumn);
+  AddListColumn(FVcsProjectList, TAtlasTextId.SettingsIssuesProjectSource, cVcsSourceColumn);
   FVcsProjectMatch := TEdit.Create(Self);
   FVcsProjectMatch.OnChange := VcsProjectMatchChange;
-  mPanel := AddFieldRow(TAtlasTextId.SettingsIssuesProjectMatch, FVcsProjectMatch, 376);
+  mPanel := AddFieldRow(TAtlasTextId.SettingsIssuesProjectMatch, FVcsProjectMatch, cVcsWideField);
   FVcsProjectMatch.Anchors := [akLeft, akTop, akRight];
   Attach(mPanel, FVcsProjectList);
   // Reihenfolge wie die Werte von vcs.projects[].provider (auto, git, svn, off).
   FVcsProjectProvider := TAtlasChoiceBox.Create(Self);
   FVcsProjectProvider.OnChange := VcsProjectProviderChange;
-  Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsKind, FVcsProjectProvider, 180), FVcsProjectList);
+  Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsKind, FVcsProjectProvider, cVcsField), FVcsProjectList);
   FVcsProjectProvider.SetChoices(TArray<string>.Create(VcsProviderCaption('auto'), VcsProviderCaption('git'),
     VcsProviderCaption('svn'), VcsProviderCaption('off')));
   FVcsProjectMainBranch := TEdit.Create(Self);
   FVcsProjectMainBranch.OnChange := VcsProjectMainBranchChange;
-  Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsMainBranch, FVcsProjectMainBranch, 180),
+  Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsMainBranch, FVcsProjectMainBranch, cVcsField),
     FVcsProjectList);
   FVcsProjectMainBranch.TextHint := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess);
   // Grund, warum eine Zeile nicht greift oder nicht übernommen wird (.atlas, Pfad doppelt, Leerraum).
@@ -3592,10 +3645,12 @@ begin
   FVcsProjectNote.Font.Color := clRed;
   Attach(mPanel, FVcsProjectList);
   mPanel := AddPanel(32);
-  FVcsProjectAddCurrent := AddRowButton(mPanel, 0, 180, TAtlasTextId.SettingsIssuesProjectAddCurrent,
+  FVcsProjectAddCurrent := AddRowButton(mPanel, 0, cVcsAddCurrentWidth, TAtlasTextId.SettingsIssuesProjectAddCurrent,
     VcsProjectAddCurrentClick);
-  FVcsProjectAdd := AddRowButton(mPanel, 186, 110, TAtlasTextId.SettingsIssuesProjectAdd, VcsProjectAddClick);
-  FVcsProjectRemove := AddRowButton(mPanel, 302, 100, TAtlasTextId.SettingsIssuesConnectionRemove,
+  FVcsProjectAdd := AddRowButton(mPanel, cVcsAddCurrentWidth + cVcsButtonGap, cVcsAddWidth,
+    TAtlasTextId.SettingsIssuesProjectAdd, VcsProjectAddClick);
+  FVcsProjectRemove := AddRowButton(mPanel, cVcsAddCurrentWidth + cVcsAddWidth + cVcsButtonGap + cVcsButtonGap,
+    cVcsRemoveWidth, TAtlasTextId.SettingsIssuesConnectionRemove,
     VcsProjectRemoveClick);
   Attach(mPanel, FVcsProjectList);
   // „Hinzufügen …“: Projektdatei oder Ordner (z. B. ein Paketordner aus SVN-Externals).
@@ -3881,7 +3936,9 @@ var
   mPath: string;
 begin
   if BrowseProject(False, mPath) then
+  begin
     VcsProjectAdd(mPath, 'auto');
+  end;
 end;
 
 procedure TAtlasSettingsPage.VcsProjectAddFolderClick(Sender: TObject);
@@ -3889,7 +3946,9 @@ var
   mPath: string;
 begin
   if BrowseProject(True, mPath) then
+  begin
     VcsProjectAdd(mPath, 'auto');
+  end;
 end;
 
 procedure TAtlasSettingsPage.VcsProjectRemoveClick(Sender: TObject);
@@ -3932,14 +3991,15 @@ begin
   FVcsServerList.RowSelect := True;
   FVcsServerList.HideSelection := False;
   FVcsServerList.OnSelectItem := VcsServerSelectItem;
-  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject, 170);
-  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerServer, 200);
-  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerState, 180);
+  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject, cVcsServerProjectColumn);
+  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerServer, cVcsServerServerColumn);
+  AddListColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerState, cVcsServerStateColumn);
   mPanel := AddPanel(32);
-  FVcsServerCheck := AddRowButton(mPanel, 0, 100, TAtlasTextId.SettingsVcsServerCheck, VcsServerCheckClick);
-  FVcsServerCheckAll := AddRowButton(mPanel, 106, 110, TAtlasTextId.SettingsVcsServerCheckAll,
-    VcsServerCheckAllClick);
-  FVcsServerLogin := AddRowButton(mPanel, 222, 110, TAtlasTextId.SettingsVcsServerLogin, VcsServerLoginClick);
+  FVcsServerCheck := AddRowButton(mPanel, 0, cVcsCheckWidth, TAtlasTextId.SettingsVcsServerCheck, VcsServerCheckClick);
+  FVcsServerCheckAll := AddRowButton(mPanel, cVcsCheckWidth + cVcsButtonGap, cVcsCheckAllWidth,
+    TAtlasTextId.SettingsVcsServerCheckAll, VcsServerCheckAllClick);
+  FVcsServerLogin := AddRowButton(mPanel, cVcsCheckWidth + cVcsCheckAllWidth + cVcsButtonGap + cVcsButtonGap,
+    cVcsCheckAllWidth, TAtlasTextId.SettingsVcsServerLogin, VcsServerLoginClick);
   Attach(mPanel, FVcsServerList);
   mPanel := AddPanel(18);
   FVcsServerNote := TLabel.Create(Self);
@@ -4141,7 +4201,9 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(FVcsServerRows) do
+  begin
     VcsServerStart(mIndex);
+  end;
 end;
 
 procedure TAtlasSettingsPage.VcsServerLoginClick(Sender: TObject);
@@ -4149,10 +4211,14 @@ var
   mRow: TAtlasVcsServerRow;
 begin
   if (FVcsServerSelected < 0) or (FVcsServerSelected > High(FVcsServerRows)) or not Assigned(FOnVcsServerLogin) then
+  begin
     Exit;
+  end;
   mRow := FVcsServerRows[FVcsServerSelected];
   if not mRow.Check.CanLogin then
+  begin
     Exit;
+  end;
   if FOnVcsServerLogin(mRow.Folder, mRow.Check) then
   begin
     // Nach dem Schließen der Konsole prüft der Aufrufer erneut und meldet VcsServerDone.
@@ -4178,9 +4244,13 @@ begin
   // Die Einstellungen baut das Modul Tracker (#1455); fehlt es, bleibt der Reiter mit seinem Modulschalter.
   mControl := ControlOfSetting(AName);
   if mControl = nil then
+  begin
     mControl := ControlOfSetting('IssuesEnabled');
+  end;
   if mControl <> nil then
+  begin
     SelectPage(PageOf(mControl));
+  end;
 end;
 
 function TAtlasSettingsPage.AddFieldRow(AId: TAtlasTextId; AControl: TWinControl;
@@ -4207,12 +4277,12 @@ begin
   Result.Parent := AParent;
   Result.Caption := TAtlasStrings.Text(AId);
   Result.Left := ALeft;
-  Result.Top := 3;
+  Result.Top := cRowButtonTop;
   Result.Width := AWidth;
   Result.OnClick := AClick;
 end;
 
-procedure TAtlasSettingsPage.AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer);
+class procedure TAtlasSettingsPage.AddListColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer);
 var
   mColumn: TListColumn;
 begin
@@ -4228,7 +4298,9 @@ var
 begin
   APath := '';
   if Assigned(FOnBrowseProject) then
+  begin
     Exit(FOnBrowseProject(AFolder, APath));
+  end;
   if AFolder then
   begin
     mFolder := TFileOpenDialog.Create(nil);
@@ -4236,7 +4308,9 @@ begin
       mFolder.Options := mFolder.Options + [fdoPickFolders, fdoPathMustExist];
       Result := mFolder.Execute;
       if Result then
+      begin
         APath := mFolder.FileName;
+      end;
     finally
       mFolder.Free;
     end;
@@ -4248,7 +4322,9 @@ begin
     mFile.Options := mFile.Options + [ofFileMustExist];
     Result := mFile.Execute;
     if Result then
+    begin
       APath := mFile.FileName;
+    end;
   finally
     mFile.Free;
   end;
@@ -8489,15 +8565,23 @@ var
 begin
   // Reiter eines Bereichs: der erste, auf dem eine Einstellung dieses Bereichs (x-area) steht.
   for mSheet := 0 to High(FBoxes) do
+  begin
     for mName in FMarks.NamesIn(FBoxes[mSheet]) do
     begin
       mIndex := Catalog.IndexOfName(mName);
       if (mIndex >= 0) and SameText(Catalog[mIndex].Area, AArea) then
+      begin
         Exit(mSheet);
+      end;
     end;
+  end;
   for mSheet := 0 to High(FSectionAreas) do
+  begin
     if SameText(FSectionAreas[mSheet].Key, AArea) then
+    begin
       Exit(FSectionAreas[mSheet].Value);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -8508,8 +8592,12 @@ var
 begin
   // Abschnitte der Module (#1455): in den Reiter ihres Bereichs, hinter die Einstellungen von Base.
   for mItem in AtlasModuleRegistry.FindAll(IAtlasSettingsSectionProvider) do
+  begin
     if Supports(mItem, IAtlasSettingsSectionProvider, mProvider) then
+    begin
       AddModuleSection(mProvider);
+    end;
+  end;
   FSectionWatch := TAtlasSettingsSectionWatch.Create(Self);
   FSectionWatchRegistration := AtlasModuleRegistry.Subscribe(FSectionWatch);
 end;
@@ -8528,7 +8616,9 @@ begin
     end;
   end;
   if mSection = nil then
+  begin
     Exit;
+  end;
   AddBuiltSection(AProvider, mSection);
 end;
 
@@ -8605,21 +8695,31 @@ var
   mText: string;
 begin
   if (Length(FSections) = 0) and (Length(FSectionBindings) = 0) then
+  begin
     Exit;
+  end;
   mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
   for mBinding in FSectionBindings do
   begin
     mText := mStore.Text(mBinding.Name);
     if mBinding.Control is TCheckBox then
-      TCheckBox(mBinding.Control).Checked := mStore.ReadInteger(mBinding.Name, 0) <> 0
+    begin
+      TCheckBox(mBinding.Control).Checked := mStore.ReadInteger(mBinding.Name, 0) <> 0;
+    end
     else if mBinding.Control is TAtlasChoiceBox then
-      TAtlasChoiceBox(mBinding.Control).Choice := ChoiceOf(mText, mBinding.Values)
+    begin
+      TAtlasChoiceBox(mBinding.Control).Choice := ChoiceOf(mText, mBinding.Values);
+    end
     else if mBinding.Control is TEdit then
+    begin
       TEdit(mBinding.Control).Text := mText;
+    end;
   end;
   mValues := SectionValues(mStore);
   for mSection in FSections do
+  begin
     mSection.Load(mValues);
+  end;
 end;
 
 procedure TAtlasSettingsPage.SaveSections(var ASettings: TAtlasPluginSettings);
@@ -8631,22 +8731,34 @@ var
   mValues: IAtlasSettingsValues;
 begin
   if (Length(FSections) = 0) and (Length(FSectionBindings) = 0) then
+  begin
     Exit;
+  end;
   mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
   for mBinding in FSectionBindings do
+  begin
     if mBinding.Control is TCheckBox then
-      mStore.WriteInteger(mBinding.Name, Ord(TCheckBox(mBinding.Control).Checked))
+    begin
+      mStore.WriteInteger(mBinding.Name, Ord(TCheckBox(mBinding.Control).Checked));
+    end
     else if mBinding.Control is TAtlasChoiceBox then
     begin
       mChoice := TAtlasChoiceBox(mBinding.Control).Choice;
       if (mChoice >= 0) and (mChoice <= High(mBinding.Values)) then
+      begin
         WriteText(mStore, mBinding.Name, mBinding.Values[mChoice]);
+      end;
     end
     else if mBinding.Control is TEdit then
+    begin
       WriteText(mStore, mBinding.Name, Trim(TEdit(mBinding.Control).Text));
+    end;
+  end;
   mValues := SectionValues(mStore);
   for mSection in FSections do
+  begin
     mSection.Save(mValues);
+  end;
   ASettings.Load(mStore);
 end;
 
@@ -8658,10 +8770,14 @@ begin
   if AStore.HasInteger(AName) then
   begin
     if TryStrToInt(AText, mValue) then
+    begin
       AStore.WriteInteger(AName, mValue);
+    end;
   end
   else
+  begin
     AStore.WriteString(AName, AText);
+  end;
 end;
 
 procedure TAtlasSettingsPage.DropMissingSections;
@@ -8684,8 +8800,12 @@ begin
   begin
     mFound := False;
     for mItem in mCurrent do
+    begin
       if SameInstance(mItem, FSectionProviders[mIndex]) then
+      begin
         mFound := True;
+      end;
+    end;
     if mFound then
     begin
       mKeep := mKeep + [FSections[mIndex]];
@@ -8708,9 +8828,13 @@ var
   mIndex: Integer;
 begin
   if FSectionWatch <> nil then
+  begin
     (FSectionWatch as IAtlasSettingsDetachable).Detach;
+  end;
   if FSectionWatchRegistration <> nil then
+  begin
     FSectionWatchRegistration.Revoke;
+  end;
   FSectionWatchRegistration := nil;
   FSectionWatch := nil;
   for mIndex := 0 to High(FSections) do
@@ -8729,7 +8853,9 @@ var
   mSection: IAtlasSettingsSection;
 begin
   for mSection in FSections do
+  begin
     mSection.WindowReady;
+  end;
 end;
 
 function TAtlasSettingsPage.ShowSettingArgument(const AName, AArgument: string): Boolean;
@@ -8741,11 +8867,17 @@ begin
   Result := False;
   mIndex := Catalog.IndexOfName(AName);
   if mIndex < 0 then
+  begin
     Exit;
+  end;
   mKey := Catalog[mIndex].Key;
   for mSection in FSections do
+  begin
     if mSection.Show(mKey, AArgument) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasSettingsPage.ControlOfSetting(const AName: string): TControl;

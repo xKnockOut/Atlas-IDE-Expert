@@ -2328,7 +2328,9 @@ begin
   // Abschnitt Issue-Tracker des Moduls Tracker (#1260, #1455): Anbieter, Token und „Verbindung prüfen“ über die
   // Registry; das Modul kennt die Kompositionswurzel nicht.
   if TrackerAccessRegistration = nil then
+  begin
     TrackerAccessRegistration := AtlasModuleRegistry.Provide(IAtlasTrackerAccess, TrackerAccess);
+  end;
 end;
 
 /// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
@@ -4954,7 +4956,9 @@ begin
       begin
         TAtlasOptionsRegistration.Unregister;
         if TrackerAccessRegistration <> nil then
+        begin
           TrackerAccessRegistration.Revoke;
+        end;
         TrackerAccessRegistration := nil;
       end);
     TAtlasProjectSettings.Command := nil;
