@@ -11,7 +11,7 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.Welcome')]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerSprintViewTests = class
   public
     /// <summary>„Sprint 12 · 27.10.–07.11. · noch 4 Tage“, „noch 1 Tag“, „beendet“, „beginnt am …“.</summary>

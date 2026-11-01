@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.Welcome')]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasMyIssuesTests = class
   public
     [Test]

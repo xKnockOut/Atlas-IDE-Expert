@@ -162,12 +162,9 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.IDE.Tracker.MyIssues,
   Atlas.IDE.Tracker.NewIssue,
   Atlas.Core.Tracker.NewIssue,
   Atlas.Core.Problems.Findings,
-  Atlas.IDE.Tracker.IssuePreview,
-  Atlas.IDE.Tracker.Session,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -3122,250 +3119,13 @@ begin
   Result.OnCredentials := EnterCiCredentials;
 end;
 
-const
-  IssueTimeExtra = 'issueTime';
-
-function CreateWelcomeIssues(AProjects: TAtlasIdeProjects): TAtlasIdeIssues;
-begin
-  Result := TAtlasIdeIssues.Create(AProjects,
-    procedure(AText: string)
-    begin
-      // Nur Meldungsansicht: Die Zeilen können Branch-Namen enthalten. Jede Meldung folgt auf eine Aktion des
-      // Benutzers (Zugang, Beginnen, Git-Hook), deshalb sichtbar machen.
-      MessageLine(AText);
-      ShowAtlasMessages;
-    end);
-  // Anbieter, Transport und Zugang wie auf der Optionsseite (#1260): dieselbe Umsetzung (TrackerAccess).
-  Result.ProviderFactory :=
-    function(const AName: string): IAtlasTrackerProvider
-    begin
-      Result := TrackerAccess.Provider(AName);
-    end;
-  // Im Hintergrund-Thread: Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Transport (kein Netz).
-  Result.TransportFactory :=
-    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
-    begin
-      Result := TrackerAccess.Transport(AProvider, ATarget);
-    end;
-  Result.OnCredentials :=
-    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean
-    begin
-      Result := TrackerAccess.EnterToken(AProvider, ATarget);
-    end;
-  // Zeiterfassung (#1267): „ATL-123 · 1:25“ als Zusatzfeld im Statusfeld, Klick öffnet das Menü der Uhr.
-  Result.OnTimeStatus :=
-    procedure(const AText, AHint: string; const AOnClick: TProc<TPoint>)
-    begin
-      if StatusField <> nil then
-        StatusField.SetExtra(IssueTimeExtra, AText, AHint, AOnClick);
-    end;
-  // Knopf „Tracker-Einstellungen …“ der Issue-Vorschau (#1264).
-  Result.OnSettings :=
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          TAtlasOptionsRegistration.ShowSetting('IssuesConnections');
-        end);
-    end;
-  // „zuordnen …“ (#1261): Seite Issue-Tracker mit vorbefüllter Zeile der Tabelle Projekte.
-  Result.OnAssignProject :=
-    procedure(AMatch: string)
-    begin
-      TAtlasOptionsRegistration.ShowSetting('IssuesProjects', AMatch);
-    end;
-  // „Abfragen bearbeiten …“ (#1262): Seite Issue-Tracker bei der Tabelle Abfragen.
-  Result.OnEditQueries :=
-    procedure
-    begin
-      TAtlasOptionsRegistration.ShowSetting('IssuesQueries');
-    end;
-end;
-
 /// <summary>Die laufende Willkommensseite des Moduls atlas.welcome; nil ohne Modul.</summary>
 function Welcome: TAtlasIdeWelcome;
 begin
   Result := TAtlasIdeWelcomeStartup.Current;
 end;
 
-type
-  /// <summary>Übergang (#1455): „Meine Issues“ der Willkommensseite für das Modul Tracker
-  /// (Atlas.IDE.Tracker.Session), bis der Umbau der Willkommensseite den Kern ins Modul holt. Fragt Welcome bei jedem
-  /// Aufruf neu; ohne den Bereich wirkungslos.</summary>
-  TWelcomeIssuesSession = class(TInterfacedObject, IAtlasIssuesSession, IAtlasPaletteSourceProvider)
-  public
-    /// <summary>Issues in der Palette (#1270) aus „Meine Issues“.</summary>
-    function PaletteSource: IAtlasPaletteSource;
-    function Available: Boolean;
-    function CodeTarget(out ATarget: TAtlasTrackerTarget): Boolean;
-    function IssuePreview: TAtlasIdeIssuePreview;
-    procedure ShowIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
-    procedure BrowseIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
-    procedure StartIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
-    function CanStartIssue: Boolean;
-    procedure EnterCredentials;
-    function CanEnterCiCredentials: Boolean;
-    procedure EnterCiCredentials;
-    procedure ShowPreviewPrompt;
-    procedure ShowTimeOpen;
-    procedure ShowBoard;
-    procedure AttachPrompt;
-    function CanCreateIssue: Boolean;
-    procedure CreateIssueFromEditor;
-  end;
-
-function TWelcomeIssuesSession.Available: Boolean;
-begin
-  Result := (Welcome <> nil) and (Welcome.Issues <> nil);
-end;
-
-function TWelcomeIssuesSession.PaletteSource: IAtlasPaletteSource;
-begin
-  Result := nil;
-  if Available then
-  begin
-    Result := Welcome.Issues.PaletteSearch;
-  end;
-end;
-
-function TWelcomeIssuesSession.CodeTarget(out ATarget: TAtlasTrackerTarget): Boolean;
-begin
-  ATarget := TAtlasTrackerTarget.Create('', '', '', '');
-  Result := Available and Welcome.Issues.CodeTarget(ATarget);
-end;
-
-function TWelcomeIssuesSession.IssuePreview: TAtlasIdeIssuePreview;
-begin
-  Result := nil;
-  if Available then
-    Result := Welcome.Issues.IssuePreview;
-end;
-
-procedure TWelcomeIssuesSession.ShowIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
-begin
-  if Available then
-    Welcome.Issues.ShowIssue(ATarget, AKey);
-end;
-
-procedure TWelcomeIssuesSession.BrowseIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
-begin
-  if Available then
-    Welcome.Issues.BrowseIssue(ATarget, AKey);
-end;
-
-procedure TWelcomeIssuesSession.StartIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
-begin
-  if Available then
-    Welcome.Issues.StartIssue(ATarget, AKey);
-end;
-
-function TWelcomeIssuesSession.CanStartIssue: Boolean;
-begin
-  Result := Available and Welcome.Issues.CanStartIssue;
-end;
-
-procedure TWelcomeIssuesSession.EnterCredentials;
-begin
-  if Available then
-    Welcome.Issues.EnterCredentialsForActive;
-end;
-
-function TWelcomeIssuesSession.CanEnterCiCredentials: Boolean;
-begin
-  Result := (Welcome <> nil) and (Welcome.TestResults <> nil);
-end;
-
-procedure TWelcomeIssuesSession.EnterCiCredentials;
-begin
-  if CanEnterCiCredentials then
-    Welcome.TestResults.EnterCredentialsForActive;
-end;
-
-procedure TWelcomeIssuesSession.ShowPreviewPrompt;
-begin
-  if Available then
-    Welcome.Issues.ShowPreviewPrompt;
-end;
-
-procedure TWelcomeIssuesSession.ShowTimeOpen;
-begin
-  if Available then
-    Welcome.Issues.ShowTimeOpen;
-end;
-
-procedure TWelcomeIssuesSession.ShowBoard;
-begin
-  if Available and (Welcome.Issues.Board <> nil) then
-    Welcome.Issues.Board.Show;
-end;
-
-procedure TWelcomeIssuesSession.AttachPrompt;
-begin
-  if Available then
-    Welcome.Issues.AttachPrompt;
-end;
-
-function TWelcomeIssuesSession.CanCreateIssue: Boolean;
-begin
-  Result := TAtlasIdeNewIssue.Enabled;
-end;
-
-procedure TWelcomeIssuesSession.CreateIssueFromEditor;
-begin
-  TAtlasIdeNewIssue.FromEditor;
-end;
-
-var
-  /// <summary>„Meine Issues“ für das Modul Tracker (TWelcomeIssuesSession), solange die Willkommensseite läuft.
-  /// </summary>
-  WelcomeIssuesSession: IAtlasRegistration;
-  WelcomePaletteSource: IAtlasRegistration;
-
-/// <summary>Übergang (#1455): „Meine Issues“ (#765) und „Issue anlegen …“ (#1268) baut noch die Wurzel; das Modul
-/// Willkommensseite ruft das über TAtlasIdeWelcomeStartup.RootHooks nach „Testergebnisse“, bis das Modul Tracker
-/// sie als Kacheln bereitstellt.</summary>
-procedure StartWelcomeIssues;
-var
-  mWelcome: TAtlasIdeWelcome;
-begin
-  mWelcome := TAtlasIdeWelcomeStartup.Current;
-  if mWelcome = nil then
-  begin
-    Exit;
-  end;
-  // Offene Issues aus GitHub bzw. YouTrack (Tracker aus .atlas), „Beginnen“ über die VCS-Schnittstelle (#571),
-  // aktuelles Issue im Statusfeld (#591); Token im Anmeldespeicher wie #763.
-  mWelcome.Issues := CreateWelcomeIssues(mWelcome.Projects);
-  // „Issue anlegen …“ (#1268): Tracker, Transport und „Beginnen“ wie „Meine Issues“.
-  TAtlasIdeNewIssue.Start(mWelcome.Issues,
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Message(AText);
-    end);
-  // Befehle, Kennungen im Code und Zeilenhistorie des Moduls Tracker fragen „Meine Issues“ hierüber (#1455).
-  WelcomeIssuesSession := AtlasModuleRegistry.Provide(IAtlasIssuesSession,
-    TWelcomeIssuesSession.Create as IAtlasIssuesSession);
-  WelcomePaletteSource := AtlasModuleRegistry.Provide(IAtlasPaletteSourceProvider,
-    TWelcomeIssuesSession.Create as IAtlasPaletteSourceProvider);
-end;
-
-procedure StopWelcomeIssues;
-begin
-  if WelcomeIssuesSession <> nil then
-    WelcomeIssuesSession.Revoke;
-  WelcomeIssuesSession := nil;
-  if WelcomePaletteSource <> nil then
-  begin
-    WelcomePaletteSource.Revoke;
-  end;
-  WelcomePaletteSource := nil;
-  // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
-  TAtlasIdeNewIssue.Stop;
-end;
-
-/// <summary>Befristet (#1455): Teile der Willkommensseite, die noch die Wurzel baut („Testergebnisse“ mit den
-/// CI-Anbietern, „Meine Issues“).</summary>
+/// <summary>Befristet (#1455): „Testergebnisse“ mit den CI-Anbietern baut noch die Wurzel.</summary>
 procedure InstallWelcomeHooks;
 var
   mHooks: TAtlasWelcomeRootHooks;
@@ -3376,8 +3136,6 @@ begin
     begin
       Result := CreateWelcomeTestResults(AProjects);
     end;
-  mHooks.StartIssues := StartWelcomeIssues;
-  mHooks.StopIssues := StopWelcomeIssues;
   TAtlasIdeWelcomeStartup.RootHooks := mHooks;
 end;
 
