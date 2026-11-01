@@ -194,3 +194,11 @@ Scheitert der Pilot an einem Fall ohne Abhilfe, greift Schritt 4: Es bleibt beim
 ### Versionen (neu, Marco 01.11.2026)
 
 Ersetzt die ersten beiden Punkte unter „Versionen“ oben: Der ganze Umbau erscheint mit **2.0.0**, auch die Modul-Schalter (#1454) und die Verträge (#1455). 1.x (`release/1.2`) bleibt Wartungslinie für Fehlerbehebungen und bekommt nichts davon. Meilenstein auf GitHub: `v2.0.0` mit #1454, #1455, #1456. Der Pilot erscheint weiter als Vorabversion `2.0.0-beta.1`.
+
+### Verträge zwischen Modulen (Marco, 01.11.2026)
+
+- Base (`Atlas.IDE.Core` bzw. später `Atlas.IDE.Base`) enthält nur allgemeine Verträge: Modul, Registry, Scope, Einstellungen. Die Registry reicht Objekte nur nach Interface-GUID weiter (`Provide(IID, Obj)`, `FindAll(IID)`) und versteht nicht, was dahinter steckt.
+- Verträge zwischen Modulen (z. B. `IAtlasWelcomeTile`, `IAtlasIssueSource`, `IAtlasDebugReportSource`) liegen in einem eigenen Package **`Atlas.IDE.Contracts`**: nur Interfaces und Records, kein Code, kein Zustand; requires nur `rtl` und, wo ein Vertrag ein Steuerelement übergibt, `vcl`. Base requiret Contracts nicht; die Module requiren Base und Contracts. `Tools/Check-PackageDependencies.ps1` prüft beides.
+- Verworfen: Verträge in Base (Base trüge die Begriffe der Module, jeder neue Vertrag hieße Base und alle Module neu bauen) und je Anbieter ein Vertrags-Package (bis zu elf weitere BPLs). Gegenseitige `requires` zwischen Modulen sind in Delphi nicht möglich (Kreis) und schon in einer Richtung eine harte Kopplung.
+- Folgen: zwölf Packages statt elf (48 Builds je Release); Installation Base, Contracts, dann Module. Fremde Module (#1459) bringen eigene Verträge in einem eigenen Vertrags-Package mit.
+- Inhalte, die heute in einem Modul stecken, aber einem anderen gehören, ziehen mit um: Die Kachel „Meine Issues“ (`Atlas.IDE.Welcome.Issues`), Sprint und „Neues Issue“ gehören zum Tracker und erscheinen über `IAtlasWelcomeTile` auf der Willkommensseite. Skizze: https://claude.ai/artifact/Y5yvCQ1XiSiwvNDvZk5B1U, Varianten: https://claude.ai/artifact/HibezT66dgw2jBophwasJN.
