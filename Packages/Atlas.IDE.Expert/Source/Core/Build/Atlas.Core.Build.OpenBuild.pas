@@ -19,7 +19,7 @@
 // - RunStarted/ProjectFinished/ProjectCancelled/RunFinished zählen das
 //   Ergebnis des eigenen Laufs für die Benachrichtigung.
 // - Vorgaben für Konfiguration und Plattform (#1293, build.onOpenConfig,
-//   build.onOpenPlatform): PickTarget wählt je Projekt die Konfiguration in
+//   build.onOpenPlatform): TAtlasOpenBuildSettings.PickTarget wählt je Projekt die Konfiguration in
 //   der Schreibweise des Projekts; fehlt sie dort, bleibt es bei der
 //   Einstellung des Projekts. Die Plattform prüft die IDE-Schicht über die
 //   im Projekt aktivierten Plattformen.
@@ -31,12 +31,10 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Build.Events;
+  Atlas.Core.Build.Events,
+  Atlas.Core.Build.OpenBuildSettings;
 
 type
-  /// <summary>Welche Projekte einer Projektgruppe gebaut werden (build.onOpenScope).</summary>
-  TAtlasOpenBuildScope = (All, Active);
-
   /// <summary>Ergebnis eines Laufs beim Öffnen.</summary>
   TAtlasOpenBuildResult = record
     Total: Integer;
@@ -59,13 +57,8 @@ type
     /// dem Build (#69).</summary>
     RequestedBy = 'open';
     MaxAttempts = 10;
-    DefaultDelayMs = 3000;
-    MinDelayMs = 500;
-    MaxDelayMs = 60000;
     /// <summary>Ein Lauf im Hintergrund der IDE gilt nach dieser Zeit ohne Ende als beendet.</summary>
     MaxRunMs = 30 * 60 * 1000;
-    KindNames: array[0..2] of string = ('check', 'make', 'build');
-    ScopeNames: array[TAtlasOpenBuildScope] of string = ('all', 'active');
   private
     FPending: TList<string>;
     /// <summary>Versuche je vorgemerkter Datei (Schlüssel KeyOf), auch über Take hinweg.</summary>
@@ -108,34 +101,16 @@ type
     /// <summary>Der eigene Lauf dauert länger als MaxRunMs (Ende nie gemeldet).</summary>
     function RunOverdue(ANowMs: Int64): Boolean;
     function RunFinished: TAtlasOpenBuildResult;
-    /// <summary>AFileName ohne Endung .dproj, .dpr, .dpk bzw. .groupproj; andere Endungen bleiben.</summary>
-    class function StripProjectExt(const AFileName: string): string; static;
     /// <summary>Schlüssel eines Projekts: Pfad ohne Endung, klein.</summary>
     class function KeyOf(const AFileName: string): string; static;
-    /// <summary>Projektname ohne Pfad und Endung (beide Trenner, auch unter Linux).</summary>
-    class function NameOf(const AFileName: string): string; static;
     class function IsGroupFile(const AFileName: string): Boolean; static;
     class function IsProjectFile(const AFileName: string): Boolean; static;
-    /// <summary>check, make oder build; sonst Make.</summary>
-    class function KindOf(const AName: string): TAtlasCompileKind; static;
-    class function KindName(AKind: TAtlasCompileKind): string; static;
-    class function ScopeOf(const AName: string): TAtlasOpenBuildScope; static;
-    /// <summary>Namen aus build.onOpenExclude (Komma, Semikolon oder Zeilenumbruch), ohne Endung und Leerraum.
-    /// </summary>
-    class function ParseExclude(const AText: string): TArray<string>; static;
-    class function NormalizedExclude(const AText: string): string; static;
-    /// <summary>Vorgabe AWanted (Konfiguration oder Plattform, #1293) in der Schreibweise aus AAvailable; '' ohne
-    /// Vorgabe oder wenn das Projekt sie nicht kennt (dann gilt die Einstellung des Projekts).</summary>
-    class function PickTarget(const AWanted: string; const AAvailable: TArray<string>): string; static;
     property Running: Boolean read FRunning;
     property BuildRunning: Boolean read FBuildRunning;
     property LastOpened: Int64 read FLastOpened;
   end;
 
 implementation
-
-uses
-  System.Character;
 
 { TAtlasOpenBuildResult }
 
@@ -166,34 +141,9 @@ begin
   inherited;
 end;
 
-class function TAtlasOpenBuild.StripProjectExt(const AFileName: string): string;
-var
-  Ext: string;
-begin
-  // Nur Endungen von Projekten: Namen wie "Atlas.IDE.Expert" behalten ihre Punkte.
-  Result := AFileName;
-  Ext := LowerCase(ExtractFileExt(Result));
-  if (Ext = '.dproj') or (Ext = '.dpr') or (Ext = '.dpk') or (Ext = '.groupproj') then
-    Result := Copy(Result, 1, Length(Result) - Length(Ext));
-end;
-
-class function TAtlasOpenBuild.NameOf(const AFileName: string): string;
-var
-  Index: Integer;
-begin
-  Result := AFileName;
-  for Index := Length(Result) downto 1 do
-    if (Result[Index] = '\') or (Result[Index] = '/') then
-    begin
-      Result := Copy(Result, Index + 1, MaxInt);
-      Break;
-    end;
-  Result := StripProjectExt(Result);
-end;
-
 class function TAtlasOpenBuild.KeyOf(const AFileName: string): string;
 begin
-  Result := StripProjectExt(LowerCase(Trim(AFileName)));
+  Result := TAtlasOpenBuildSettings.StripProjectExt(LowerCase(Trim(AFileName)));
 end;
 
 class function TAtlasOpenBuild.IsGroupFile(const AFileName: string): Boolean;
@@ -207,89 +157,6 @@ var
 begin
   Ext := LowerCase(ExtractFileExt(AFileName));
   Result := (Ext = '.dproj') or (Ext = '.dpr') or (Ext = '.dpk') or (Ext = '.groupproj');
-end;
-
-class function TAtlasOpenBuild.KindOf(const AName: string): TAtlasCompileKind;
-var
-  Name: string;
-begin
-  Name := LowerCase(Trim(AName));
-  if Name = 'check' then
-    Result := TAtlasCompileKind.Check
-  else if Name = 'build' then
-    Result := TAtlasCompileKind.Build
-  else
-    Result := TAtlasCompileKind.Make;
-end;
-
-class function TAtlasOpenBuild.KindName(AKind: TAtlasCompileKind): string;
-begin
-  case AKind of
-    TAtlasCompileKind.Check:
-      Result := KindNames[0];
-    TAtlasCompileKind.Build:
-      Result := KindNames[2];
-  else
-    Result := KindNames[1];
-  end;
-end;
-
-class function TAtlasOpenBuild.ScopeOf(const AName: string): TAtlasOpenBuildScope;
-begin
-  if SameText(Trim(AName), ScopeNames[TAtlasOpenBuildScope.Active]) then
-    Result := TAtlasOpenBuildScope.Active
-  else
-    Result := TAtlasOpenBuildScope.All;
-end;
-
-class function TAtlasOpenBuild.ParseExclude(const AText: string): TArray<string>;
-var
-  Part, Name: string;
-  Known: TDictionary<string, Boolean>;
-begin
-  Result := nil;
-  Known := TDictionary<string, Boolean>.Create;
-  try
-    for Part in AText.Split([',', ';', #13, #10]) do
-    begin
-      Name := NameOf(Trim(Part));
-      if (Name = '') or Known.ContainsKey(LowerCase(Name)) then
-        Continue;
-      Known.Add(LowerCase(Name), True);
-      Result := Result + [Name];
-    end;
-  finally
-    Known.Free;
-  end;
-end;
-
-class function TAtlasOpenBuild.NormalizedExclude(const AText: string): string;
-begin
-  Result := string.Join(', ', ParseExclude(AText));
-end;
-
-// Vergleichsschlüssel: nur Buchstaben und Ziffern, damit „Win 64“ oder „win-64“ die Plattform Win64 treffen.
-function TargetKey(const AName: string): string;
-var
-  C: Char;
-begin
-  Result := '';
-  for C in AName do
-    if C.IsLetterOrDigit then
-      Result := Result + C.ToLower;
-end;
-
-class function TAtlasOpenBuild.PickTarget(const AWanted: string; const AAvailable: TArray<string>): string;
-var
-  Wanted, Name: string;
-begin
-  Result := '';
-  Wanted := TargetKey(AWanted);
-  if Wanted = '' then
-    Exit;
-  for Name in AAvailable do
-    if TargetKey(Name) = Wanted then
-      Exit(Name);
 end;
 
 function TAtlasOpenBuild.PendingIndex(const AFileName: string): Integer;
@@ -373,7 +240,7 @@ begin
       Continue;
     Skip := False;
     for Excluded in AExclude do
-      if SameText(NameOf(Project), Excluded) then
+      if SameText(TAtlasOpenBuildSettings.NameOf(Project), Excluded) then
         Skip := True;
     // Auch ausgeschlossene gelten als erledigt: bis zum Schließen nicht noch einmal prüfen.
     FDone.Add(Key, True);
@@ -461,14 +328,14 @@ begin
     if not FRunResults.TryGetValue(KeyOf(Project), Succeeded) then
     begin
       Inc(Result.NotBuilt);
-      Result.NotBuiltNames := Result.NotBuiltNames + [NameOf(Project)];
+      Result.NotBuiltNames := Result.NotBuiltNames + [TAtlasOpenBuildSettings.NameOf(Project)];
     end
     else if Succeeded then
       Inc(Result.Succeeded)
     else
     begin
       Inc(Result.Failed);
-      Result.FailedNames := Result.FailedNames + [NameOf(Project)];
+      Result.FailedNames := Result.FailedNames + [TAtlasOpenBuildSettings.NameOf(Project)];
     end;
   end;
   FRunning := False;
