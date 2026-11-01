@@ -57,7 +57,7 @@ Genehmigt im Auftrag zu #1455 (Paket 1, 01.11.2026). Das Skript übergeht diese 
 
 ### Bekannte Verstöße
 
-Stand 01.11.2026 (ef9b9d95). Das sind echte Verstöße, nicht genehmigt. Das Skript nennt jeden bei jedem Lauf und schlägt nur bei neuen fehl. Wer einen behebt, streicht die Zeile.
+Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skript nennt jeden bei jedem Lauf und schlägt nur bei neuen fehl. Wer einen behebt, streicht die Zeile.
 
 | Von | Nach | Behebt |
 |---|---|---|
@@ -65,7 +65,6 @@ Stand 01.11.2026 (ef9b9d95). Das sind echte Verstöße, nicht genehmigt. Das Skr
 | `Atlas.Core.Settings.Plugin` | `Atlas.IDE.Build` | Einstellungsteil des Moduls Build (Entscheidung 3) |
 | `Atlas.IDE.Settings.Options` | `Atlas.IDE.Tracker` | Einstellungsteil des Moduls Tracker (Entscheidung 3, Paket 2) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Build` | Seiten der Module im Optionsdialog (Entscheidung 3) |
-| `Atlas.UI.Settings.Page` | `Atlas.IDE.Debugger` | Seiten der Module im Optionsdialog (Entscheidung 3) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Tracker` | Seiten der Module im Optionsdialog (Entscheidung 3, Paket 2) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Welcome` | Seiten der Module im Optionsdialog (Entscheidung 3) |
 | `Atlas.UI.Settings.QueryDialog` | `Atlas.IDE.Tracker` | Abfragedialog gehört zum Modul Tracker (Paket 2) |
