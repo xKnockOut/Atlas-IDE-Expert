@@ -46,6 +46,16 @@
     und Atlas.IDE bilden keinen Zyklus (ohne Foundation, Kompositionswurzel
     und Verweise auf *.Contract).
 
+    Modulgrenzen (#1455, ADR 0017): Welche Unit des Plugins in welches
+    Package gehört, steht als Daten in docs/adr/0017-unit-zuordnung.md
+    (Ordnertabelle, Einzelzeilen je Package). Jede Unit braucht dort eine
+    Zeile. Verboten sind Base -> Modul, Base -> Atlas.IDE.Contracts,
+    Modul -> anderes Modul und Contracts -> Base oder Modul. Befristete
+    Ausnahmen und bekannte Verstöße stehen im Abschnitt "Grenzen zwischen
+    Base, Modulen und Verträgen"; bekannte Verstöße werden bei jedem Lauf
+    genannt, neue sind Fehler, nicht mehr vorkommende Zeilen ebenso.
+    Tools/Test-PackageDependencies.ps1 prüft das mit absichtlichen Verstößen.
+
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
     requires-Klausel der .dpk-Datei jedes Packages. Kommentare, Strings und
     Compiler-Direktiven werden vorher entfernt.
@@ -542,6 +552,169 @@ if (Test-Path $PluginSource) {
     }
 }
 
+# Modulgrenzen (#1455, ADR 0017): Die Zuordnung der Units zu Packages steht als Daten in
+# docs/adr/0017-unit-zuordnung.md (Ordnertabelle, Einzelzeilen je Package, Ausnahmen und bekannte Verstöße).
+# Verboten: Base -> Modul, Base -> Contracts, Modul -> anderes Modul, Contracts -> Base oder Modul.
+# Erlaubt: Modul -> Base, Modul -> Contracts und alles innerhalb eines Packages.
+$BasePackage = 'Atlas.IDE.Base'
+$ContractsPackage = 'Atlas.IDE.Contracts'
+$AssignmentFile = 'docs/adr/0017-unit-zuordnung.md'
+$BoundarySection = 'Grenzen zwischen Base, Modulen und Verträgen'
+$KnownReport = @()
+
+function Read-ModuleAssignment([string] $Path) {
+    # Liest die Tabellen der Zuordnung. Zellen mit Namen stehen in Backticks.
+    $result = [pscustomobject]@{
+        Folders = @{}; Default = ''; Rows = @{}; Allowed = @(); Known = @(); Problems = @(); Packages = @()
+    }
+    $section = ''
+    $subsection = ''
+    $lineNo = 0
+    foreach ($line in [IO.File]::ReadAllLines($Path)) {
+        $lineNo++
+        if ($line -match '^###\s+(.+?)\s*$') { $subsection = $Matches[1]; continue }
+        if ($line -match '^##\s+(.+?)\s*$') {
+            $section = $Matches[1]
+            $subsection = ''
+            if ($section -match '^Atlas\.IDE\.\w+$') { $result.Packages += $section }
+            continue
+        }
+        if (-not $line.StartsWith('|') -or $line -match '^\|\s*-') { continue }
+        $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
+        if ($section -eq '') {
+            # Ordnertabelle: | `Debug` | `Atlas.IDE.Debugger` |, "alle übrigen" ohne Backticks ist die Vorgabe.
+            if ($cells.Count -ne 2 -or $cells[1] -notmatch '^`(Atlas\.IDE\.\w+)`$') { continue }
+            $package = $Matches[1]
+            $folders = @([regex]::Matches($cells[0], '`(\w+)`') | ForEach-Object { $_.Groups[1].Value })
+            if ($folders.Count -eq 0) { $result.Default = $package }
+            foreach ($folder in $folders) { $result.Folders[$folder] = $package }
+            continue
+        }
+        if ($cells.Count -lt 3 -or $cells[0] -notmatch '^`([\w.]+)`$') { continue }
+        $first = $Matches[1]
+        if ($cells[1] -notmatch '^`([^`]+)`$') { continue }
+        $second = $Matches[1]
+        if ($section -match '^Atlas\.IDE\.\w+$') {
+            if ($result.Rows.ContainsKey($first)) {
+                $result.Problems += "${AssignmentFile}:${lineNo}: $first steht doppelt in der Zuordnung (auch Zeile $($result.Rows[$first].Line))"
+                continue
+            }
+            $result.Rows[$first] = [pscustomobject]@{ Package = $section; File = $second; Reason = $cells[2]; Line = $lineNo }
+        }
+        elseif ($section -eq $BoundarySection) {
+            $entry = [pscustomobject]@{ From = $first; To = $second; Note = $cells[2]; Line = $lineNo; Uses = 0 }
+            if ($subsection -eq 'Befristete Ausnahmen') { $result.Allowed += $entry }
+            elseif ($subsection -eq 'Bekannte Verstöße') { $result.Known += $entry }
+        }
+    }
+    if ($result.Default -eq '') { $result.Problems += "${AssignmentFile}: Ordnertabelle ohne Zeile für alle übrigen Ordner" }
+    foreach ($name in @($BasePackage, $ContractsPackage)) {
+        if ($result.Packages -notcontains $name) { $result.Problems += "${AssignmentFile}: Abschnitt ## $name fehlt" }
+    }
+    return $result
+}
+
+function Get-FolderPackage($Map, [string] $Relative) {
+    # Package nach der Ordnertabelle: <Schicht>/<Ordner>/… oder direkt unter Source/ (Contracts).
+    $parts = $Relative.Split('/')
+    if ($parts.Count -ge 3 -and @('Core', 'IDE', 'UI') -contains $parts[0] -and $Map.Folders.ContainsKey($parts[1])) {
+        return $Map.Folders[$parts[1]]
+    }
+    if ($parts.Count -eq 2 -and $Map.Folders.ContainsKey($parts[0])) { return $Map.Folders[$parts[0]] }
+    return $Map.Default
+}
+
+function Find-BoundaryEntry($Entries, [string] $Source, [string] $Target, [string] $TargetPackage) {
+    foreach ($entry in $Entries) {
+        if ($entry.From -ieq $Source -and ($entry.To -ieq $TargetPackage -or $entry.To -ieq $Target)) { return $entry }
+    }
+    return $null
+}
+
+$assignmentPath = Join-Path $Root $AssignmentFile
+if ((Test-Path $PluginSource) -and -not (Test-Path $assignmentPath)) {
+    $violations += "${AssignmentFile}: fehlt; die Modulgrenzen (#1455) lassen sich ohne Zuordnung nicht prüfen"
+}
+elseif (Test-Path $PluginSource) {
+    $map = Read-ModuleAssignment $assignmentPath
+    $violations += $map.Problems
+    $sourceRoot = (Resolve-Path $PluginSource).Path.TrimEnd('\', '/')
+    $pluginUnits = @{}
+    foreach ($file in Get-ChildItem -Path $PluginSource -Recurse -File -Include '*.pas') {
+        $pluginUnits[[IO.Path]::GetFileNameWithoutExtension($file.Name)] = [pscustomobject]@{
+            File = $file.FullName.Substring($sourceRoot.Length + 1) -replace '\\', '/'
+            Path = $file.FullName
+        }
+    }
+
+    # Vollständigkeit und Abweichungen von der Ordnertabelle
+    foreach ($name in @($pluginUnits.Keys | Sort-Object)) {
+        if (-not $map.Rows.ContainsKey($name)) {
+            $violations += "${AssignmentFile}: $name ($($pluginUnits[$name].File)) fehlt in der Zuordnung; Zeile unter ## $(Get-FolderPackage $map $pluginUnits[$name].File) eintragen"
+        }
+    }
+    foreach ($name in @($map.Rows.Keys | Sort-Object)) {
+        $row = $map.Rows[$name]
+        if (-not $pluginUnits.ContainsKey($name)) {
+            $violations += "${AssignmentFile}:$($row.Line): $name gibt es nicht mehr unter Packages/Atlas.IDE.Expert/Source; Zeile streichen oder nachziehen"
+            continue
+        }
+        $actual = $pluginUnits[$name].File
+        if ($row.File -ne $actual) {
+            $violations += "${AssignmentFile}:$($row.Line): $name liegt in $actual, nicht in $($row.File)"
+        }
+        $folderPackage = Get-FolderPackage $map $actual
+        if ($row.Package -ne $folderPackage -and $row.Reason -match '^Ordner\s') {
+            $violations += "${AssignmentFile}:$($row.Line): $name steht unter $($row.Package), die Ordnertabelle sagt $folderPackage; eine Ausnahme braucht eine eigene Begründung"
+        }
+    }
+
+    function Get-AssignedPackage([string] $Name) {
+        if ($map.Rows.ContainsKey($Name)) { return $map.Rows[$Name].Package }
+        return Get-FolderPackage $map $pluginUnits[$Name].File
+    }
+
+    # Grenzen
+    foreach ($name in @($pluginUnits.Keys | Sort-Object)) {
+        $from = Get-AssignedPackage $name
+        $relative = "Packages/Atlas.IDE.Expert/Source/$($pluginUnits[$name].File)"
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($pluginUnits[$name].Path))
+        foreach ($unit in Get-ClauseEntries $text 'uses') {
+            if (-not $pluginUnits.ContainsKey($unit.Name)) { continue }
+            $to = Get-AssignedPackage $unit.Name
+            if ($to -eq $from) { continue }
+            $reason = ''
+            if ($from -eq $BasePackage -and $to -eq $ContractsPackage) {
+                $reason = "Base verwendet keinen Vertrag aus $ContractsPackage (Base requiret Contracts nicht)"
+            }
+            elseif ($from -eq $BasePackage) {
+                $reason = "Base verwendet kein Modul ($to); über einen Vertrag oder eine Anmeldung lösen"
+            }
+            elseif ($from -eq $ContractsPackage) {
+                $reason = "$ContractsPackage verwendet weder Base noch Module ($to); Verträge requiren nur rtl und vcl"
+            }
+            elseif ($to -ne $BasePackage -and $to -ne $ContractsPackage) {
+                $reason = "Modul $from verwendet kein anderes Modul ($to); Querbezug über $ContractsPackage"
+            }
+            if ($reason -eq '') { continue }
+            $entry = Find-BoundaryEntry $map.Allowed $name $unit.Name $to
+            if ($entry) { $entry.Uses++; continue }
+            $entry = Find-BoundaryEntry $map.Known $name $unit.Name $to
+            if ($entry) {
+                $entry.Uses++
+                $KnownReport += "${relative}:$($unit.Line): uses $($unit.Name) – $reason"
+                continue
+            }
+            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Modulgrenze (ADR 0017): $reason"
+        }
+    }
+    foreach ($entry in @($map.Allowed) + @($map.Known)) {
+        if ($entry.Uses -eq 0) {
+            $violations += "${AssignmentFile}:$($entry.Line): $($entry.From) -> $($entry.To) kommt nicht mehr vor; Zeile streichen"
+        }
+    }
+}
+
 # Kopien-Sperre (D-03)
 $lockPattern = '(?im)^\s*(?:class\s+)?function\s+((?:\w+\.)?(?:' + ($CopyLockNames -join '|') + '))\b'
 foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -File -Include '*.pas') {
@@ -558,6 +731,11 @@ foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -Fil
             $violations += "${relative}:${line}: $($match.Groups[1].Value) – gibt es in Atlas.Text (Kopien-Sperre, ADR 0012); dort verwenden oder in `$AllowedLocal begründen"
         }
     }
+}
+
+if ($KnownReport.Count -gt 0) {
+    Write-Host "Bekannte Verstöße gegen die Modulgrenzen ($($KnownReport.Count), offen laut $AssignmentFile):" -ForegroundColor Yellow
+    $KnownReport | ForEach-Object { Write-Host "  $_" }
 }
 
 if ($violations.Count -gt 0) {

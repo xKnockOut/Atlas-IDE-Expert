@@ -1,6 +1,6 @@
 # ADR 0017: Zuordnung der Units zu Packages
 
-- Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), Quellen unter `Packages/Atlas.IDE.Expert/Source`
+- Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Expert/Source`
 - Bezug: [ADR 0017](0017-funktions-packages.md), Abschnitt „Fortschreibung: Laden, Entladen, Versionen“; #1455, #1456
 
 Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Dokument). Die Analyse enthielt nur Summen je Package, keine Liste je Unit. Die Liste hier ist aus dem Quellbaum erzeugt, nach diesen Regeln:
@@ -30,7 +30,65 @@ Ausnahmen:
 - `Atlas.IDE.Rules` (#1455, festgeschrieben): Ordner `IDE/Rules`, dazu Sammelkorrektur (`Core/UI.Problems.BulkFix`) und Eigenschaftsregeln (`IDE.Editor.DfmPropertyRules`). Im Kern bleiben Fenster „Atlas-Prüfung“ mit Erklären, Unterdrücken und Abschalten, Regeltabelle und Seite Prüfregeln, Stand und Format der Baseline-Datei und der Hinweis bei abgeschaltetem Modul (`RuleChecksNotice`): Sie laufen auch ohne das Modul.
 - `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen (ADR 0017, Fortschreibung).
 
-Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später als Daten führen (#1455). Bis dahin wird die Tabelle von Hand nachgezogen, wenn Units dazukommen oder umziehen.
+Das Prüfskript `Tools/Check-PackageDependencies.ps1` liest diese Datei als Daten (#1455): die Ordnertabelle oben, die Tabellen je Package unten (Einzelzeilen) und die Tabellen unter „Grenzen zwischen Base, Modulen und Verträgen“. Maßgeblich ist die Einzelzeile. Weicht sie von der Ordnertabelle ab, ist sie eine der Ausnahmen oben und braucht eine eigene Begründung (nicht nur „Ordner …“). Eine neue Unit unter `Packages/Atlas.IDE.Expert/Source` braucht eine Zeile hier, sonst schlägt das Skript fehl; ebenso eine Zeile, deren Datei es nicht mehr gibt.
+
+## Grenzen zwischen Base, Modulen und Verträgen
+
+Regeln (ADR 0017, Abschnitt Verträge; Regel 9 „Base kennt kein Modul“), geprüft über alle `uses` der Units unter `Packages/Atlas.IDE.Expert/Source`:
+
+- Base verwendet kein Modul und keinen Vertrag aus `Atlas.IDE.Contracts` (Base requiret Contracts nicht).
+- Ein Modul verwendet kein anderes Modul; Querbezüge laufen über `Atlas.IDE.Contracts`.
+- `Atlas.IDE.Contracts` verwendet weder Base noch Module (requires nur `rtl` und `vcl`).
+- Erlaubt: Modul → Base, Modul → Contracts, alles innerhalb eines Packages.
+
+In den beiden Tabellen steht unter „Von“ eine Unit, unter „Nach“ ein Package oder eine Unit. Eine Zeile, die nicht mehr vorkommt, meldet das Skript als Fehler: Sie wird dann gestrichen, die Listen sollen nur schrumpfen.
+
+### Befristete Ausnahmen
+
+Genehmigt im Auftrag zu #1455 (Paket 1, 01.11.2026). Das Skript übergeht diese Verweise.
+
+| Von | Nach | Grund |
+|---|---|---|
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Welcome` | Kompositionswurzel, bis die Willkommensseite ein eigenes Modul ist |
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Tracker` | Kompositionswurzel, bis der Tracker ein eigenes Modul ist (Paket 2) |
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.BuildTools` | Kompositionswurzel klebt Willkommensseite und Startprofile, bis die Willkommensseite ein Modul ist |
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Tests` | Kompositionswurzel klebt Willkommensseite und Tests, bis die Willkommensseite ein Modul ist |
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Rules` | Kompositionswurzel klebt Willkommensseite und Prüfregeln, bis die Willkommensseite ein Modul ist |
+
+### Bekannte Verstöße
+
+Stand 01.11.2026 (ef9b9d95). Das sind echte Verstöße, nicht genehmigt. Das Skript nennt jeden bei jedem Lauf und schlägt nur bei neuen fehl. Wer einen behebt, streicht die Zeile.
+
+| Von | Nach | Behebt |
+|---|---|---|
+| `Atlas.Core.Projects.Summary` | `Atlas.IDE.Tracker` | CI-Stand (`Atlas.Core.Ci.Contract`) als Vertrag in Contracts oder Base |
+| `Atlas.Core.Settings.Plugin` | `Atlas.IDE.Build` | Einstellungsteil des Moduls Build (Entscheidung 3) |
+| `Atlas.IDE.Settings.Options` | `Atlas.IDE.Tracker` | Einstellungsteil des Moduls Tracker (Entscheidung 3, Paket 2) |
+| `Atlas.UI.Settings.Page` | `Atlas.IDE.Build` | Seiten der Module im Optionsdialog (Entscheidung 3) |
+| `Atlas.UI.Settings.Page` | `Atlas.IDE.Debugger` | Seiten der Module im Optionsdialog (Entscheidung 3) |
+| `Atlas.UI.Settings.Page` | `Atlas.IDE.Tracker` | Seiten der Module im Optionsdialog (Entscheidung 3, Paket 2) |
+| `Atlas.UI.Settings.Page` | `Atlas.IDE.Welcome` | Seiten der Module im Optionsdialog (Entscheidung 3) |
+| `Atlas.UI.Settings.QueryDialog` | `Atlas.IDE.Tracker` | Abfragedialog gehört zum Modul Tracker (Paket 2) |
+| `Atlas.IDE.Vcs.Branching` | `Atlas.IDE.Tracker` | Branch-Namen aus Issues über einen Vertrag (Paket 2) |
+| `Atlas.IDE.Vcs.Branching` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
+| `Atlas.UI.Vcs.BranchDialog` | `Atlas.IDE.Tracker` | Branch-Namen aus Issues über einen Vertrag (Paket 2) |
+| `Atlas.IDE.Vcs.WorkingCopies` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
+| `Atlas.IDE.Contracts.Rules` | `Atlas.IDE.Base` | Vertrag ohne `Atlas.Core.Projects.Baseline` (eigener Record im Vertrag) |
+| `Atlas.IDE.Contracts.Tests` | `Atlas.IDE.Base` | Vertrag ohne `Atlas.Core.Projects.Summary` (eigener Record im Vertrag) |
+| `Atlas.Core.Tracker.BlameLinks` | `Atlas.IDE.Bookmarks` | Vertrag oder Base-Funktion für `MethodAt` (Paket 2) |
+| `Atlas.Core.Welcome.Continue` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
+| `Atlas.Core.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.Core.Welcome.Saved` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
+| `Atlas.Core.Welcome.TestResults` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.IDE.Welcome.Continue` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
+| `Atlas.IDE.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.IDE.Welcome.NewIssue` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.IDE.Welcome.Sprint` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.IDE.Welcome.TestResults` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.UI.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.UI.Welcome.NewIssue` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.UI.Welcome.Sprint` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
+| `Atlas.UI.Welcome.TestResults` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 
 ## Summen
 
@@ -249,6 +307,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Results.Model` | `Core/Results/Atlas.Core.Results.Model.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Settings.Catalog` | `Core/Settings/Atlas.Core.Settings.Catalog.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Choices` | `Core/Settings/Atlas.Core.Settings.Choices.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Contract` | `Core/Settings/Atlas.Core.Settings.Contract.pas` | Ordner `Core/Settings`; Vertrag für die Einstellungsteile der Module (#1455, Entscheidung 3) |
 | `Atlas.Core.Settings.EventBreakNames` | `Core/Settings/Atlas.Core.Settings.EventBreakNames.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Experimental` | `Core/Settings/Atlas.Core.Settings.Experimental.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Groups` | `Core/Settings/Atlas.Core.Settings.Groups.pas` | Ordner `Core/Settings` |
@@ -256,7 +315,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.History` | `Core/Settings/Atlas.Core.Settings.History.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.JsonText` | `Core/Settings/Atlas.Core.Settings.JsonText.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Layers` | `Core/Settings/Atlas.Core.Settings.Layers.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.ModuleSwitches` | `Core/Settings/Atlas.Core.Settings.ModuleSwitches.pas` | Ordner `Core/Settings`; Modul-Schalter (#1454) |
 | `Atlas.Core.Settings.OverviewKinds` | `Core/Settings/Atlas.Core.Settings.OverviewKinds.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Parts` | `Core/Settings/Atlas.Core.Settings.Parts.pas` | Ordner `Core/Settings`; zentrale Stelle der Einstellungsteile (#1455, Entscheidung 3) |
 | `Atlas.Core.Settings.Plugin` | `Core/Settings/Atlas.Core.Settings.Plugin.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.PluginSchemaData` | `Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ProfileData` | `Core/Settings/Atlas.Core.Settings.ProfileData.pas` | Ordner `Core/Settings` |
