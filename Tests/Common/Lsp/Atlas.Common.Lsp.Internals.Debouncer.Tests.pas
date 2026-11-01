@@ -76,7 +76,9 @@ begin
         TMonitor.Exit(FValues);
       end;
       if not FDone.IsSet then
+      begin
         FDone.Signal;
+      end;
     end;
 end;
 
@@ -127,7 +129,9 @@ begin
   Debouncer := TDebouncer.Create(50);
   try
     for Index := 1 to 5 do
+    begin
       Debouncer.Schedule('a', Recorder.Action(IntToStr(Index)));
+    end;
     Assert.IsTrue(Recorder.WaitFor(2000));
     Sleep(150);
     Assert.AreEqual('5', Recorder.Text);

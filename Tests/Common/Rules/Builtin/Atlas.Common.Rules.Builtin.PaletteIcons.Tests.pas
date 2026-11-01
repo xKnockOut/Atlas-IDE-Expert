@@ -66,19 +66,27 @@ begin
   AddCardinal(Result, 0);
   AddCardinal(Result, 32);
   for Index := 1 to 6 do
+  begin
     AddCardinal(Result, $0000FFFF * Ord(Index <= 2));
+  end;
   for Name in ANames do
   begin
     Header := nil;
     AddWord(Header, $FFFF);
     AddWord(Header, 2);
     for Index := 1 to Length(Name) do
+    begin
       AddWord(Header, Ord(Name[Index]));
+    end;
     AddWord(Header, 0);
     while (Length(Header) + 8) mod 4 <> 0 do
+    begin
       AddWord(Header, 0);
+    end;
     for Index := 1 to 4 do
+    begin
       AddCardinal(Header, 0);
+    end;
     AddCardinal(Result, 2);
     AddCardinal(Result, Length(Header) + 8);
     Result := Result + Header + [1, 2, 0, 0];

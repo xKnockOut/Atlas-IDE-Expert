@@ -160,7 +160,9 @@ begin
   for Line := 1 to APosition.Line do
   begin
     while (Index <= Length(AText)) and (AText[Index] <> #10) do
+    begin
       Inc(Index);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -474,7 +476,9 @@ var
 begin
   Result := '';
   for Finding in AFound do
+  begin
     Result := Result + Finding.Message + #10;
+  end;
 end;
 
 function ImplementsFindings(const ASource: string): TArray<TRuleFinding>; overload;

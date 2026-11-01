@@ -57,7 +57,9 @@ begin
     for Range in Ranges do
     begin
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Format('%d:%d', [Range.StartPos.Line, Range.StartPos.Character]);
     end;
   finally

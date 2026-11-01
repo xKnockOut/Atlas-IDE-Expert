@@ -234,7 +234,9 @@ begin
     Assert.IsFalse(TFile.Exists(TPath.Combine(Root, 'index-abc.json')));
   finally
     if TDirectory.Exists(Root) then
+    begin
       TDirectory.Delete(Root, True);
+    end;
   end;
 end;
 

@@ -237,7 +237,9 @@ begin
   mPrevious := TPath.Combine(TPath.Combine(mFolder, 'Cache'), 'architecture-last.json');
   mIndex := TSymbolIndex.Create;
   for mItem in AlignmentSample(False) do
+  begin
     mIndex.AddUnit(mItem);
+  end;
   mService := NewService(mIndex);
   try
     mRequest := Default(TArchitectureRequest);
@@ -290,7 +292,9 @@ begin
   finally
     mService.Free;
     if TDirectory.Exists(mFolder) then
+    begin
       TDirectory.Delete(mFolder, True);
+    end;
   end;
 end;
 

@@ -107,7 +107,9 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
@@ -512,9 +514,13 @@ begin
     begin
       Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
       if TFile.Exists(Result) then
+      begin
         Exit;
+      end;
       if ExtractFileDir(Directory) = Directory then
+      begin
         Break;
+      end;
       Directory := ExtractFileDir(Directory);
     end;
   end;
@@ -530,7 +536,9 @@ begin
   Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden');
   Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Golden <> '') and (Golden[1] = #$FEFF) then
+  begin
     Delete(Golden, 1, 1);
+  end;
   Assert.AreEqual(Golden, Expand(JsonBefore, 20));
 end;
 

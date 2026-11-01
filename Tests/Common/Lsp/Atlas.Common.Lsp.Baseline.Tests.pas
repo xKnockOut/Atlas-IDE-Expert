@@ -106,7 +106,9 @@ begin
       ATarget := AFileName + '.defekt';
       Result := not Locked and Disk.TryGetValue(AFileName, Text);
       if not Result then
+      begin
         Exit;
+      end;
       Disk.AddOrSetValue(ATarget, Text);
       Disk.Remove(AFileName);
     end;
@@ -121,9 +123,12 @@ begin
   ACheck := Default(TLspBaselineCheck);
   Result := Disk.TryGetValue(AFileName, ACheck.Text);
   if not Result then
+  begin
     Exit;
+  end;
   ACheck.RelativePath := Copy(AFileName, Length(Root) + 2, MaxInt);
   if Hits.TryGetValue(AFileName, Lines) then
+  begin
     for Line in Lines do
     begin
       Finding := Default(TRuleFinding);
@@ -131,6 +136,7 @@ begin
       Finding.Range := TTextRange.Create(TTextPosition.Create(Line, 2), TTextPosition.Create(Line, 8));
       ACheck.Findings := ACheck.Findings + [Finding];
     end;
+  end;
 end;
 
 function MakeCommand(const AFiles: TArray<string>): TLspBaseline;

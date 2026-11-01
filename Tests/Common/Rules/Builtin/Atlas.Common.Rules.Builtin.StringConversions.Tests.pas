@@ -92,7 +92,9 @@ var
 begin
   Result := '';
   for mFinding in AFound do
+  begin
     Result := Result + mFinding.Message + ' | ';
+  end;
 end;
 
 function Applied(const ASource: string; const AFix: TRuleFix): string;

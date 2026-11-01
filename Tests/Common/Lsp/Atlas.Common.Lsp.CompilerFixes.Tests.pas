@@ -70,7 +70,9 @@ begin
     begin
       Result := nil;
       if SameText(AName, 'TStringList') then
+      begin
         Result := TArray<string>.Create('System.Classes');
+      end;
     end;
 end;
 

@@ -58,11 +58,15 @@ begin
       if (mNode.Kind = AKind) and ((ANamed = '') or SameText(mNode.Name, ANamed)) then
       begin
         if mSkip = 0 then
+        begin
           Exit(mNode);
+        end;
         Dec(mSkip);
       end;
       for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
         mPending.Push(mNode[mIndex]);
+      end;
     end;
   finally
     mPending.Free;

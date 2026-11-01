@@ -45,8 +45,10 @@ var
 begin
   Versions := TDelphiInstallation.Versions;
   for Index := 1 to High(Versions) do
+  begin
     Assert.IsTrue(StrToFloat(Versions[Index - 1], TFormatSettings.Invariant) <
       StrToFloat(Versions[Index], TFormatSettings.Invariant));
+  end;
 end;
 
 procedure TDelphiInstallationTests.LatestProvidesExpandedLibraryPaths;
@@ -58,14 +60,22 @@ var
 begin
   Installation := TDelphiInstallation.Latest;
   if Installation = nil then
+  begin
     Exit;
+  end;
   HasBds := False;
   for Variable in Installation.Variables do
+  begin
     if SameText(Variable.Key, 'BDS') then
+    begin
       HasBds := DirectoryExists(Variable.Value);
+    end;
+  end;
   Assert.IsTrue(HasBds, '$(BDS) zeigt auf einen vorhandenen Ordner');
   for Path in Installation.LibraryPaths('Win64') do
+  begin
     Assert.IsFalse(Path.Contains('$(BDSLIB)') or Path.Contains('$(Platform)'), Path);
+  end;
 end;
 
 procedure TDelphiInstallationTests.UnknownVersionRaises;

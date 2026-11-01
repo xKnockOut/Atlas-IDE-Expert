@@ -128,8 +128,12 @@ begin
     begin
       Result := nil;
       for mIndex := 1 to Length(AText) - 1 do
+      begin
         if (AText[mIndex] = 'X') and (AText[mIndex + 1] = 'X') then
+        begin
           Result := Result + [Finding(0, mIndex - 1, mIndex + 1, 'X', TRuleConfidence.High, True)];
+        end;
+      end;
     end;
 end;
 
@@ -171,8 +175,12 @@ var
 begin
   Result := 0;
   for mFinding in TFileChecker.CheckText(BuiltinRules, TServerSettings.Default, 'U.pas', AText) do
+  begin
     if SameText(mFinding.RuleId, ARule) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 const
@@ -349,8 +357,12 @@ begin
     begin
       Result := 0;
       for mChar in AText do
+      begin
         if mChar = '!' then
+        begin
           Inc(Result);
+        end;
+      end;
     end);
   Assert.IsTrue(mResult.Rejected);
   Assert.IsFalse(mResult.Changed);
@@ -425,11 +437,13 @@ begin
             Continue;
           end;
           for mIndex := 1 to Length(mLines[mLine]) - 1 do
+          begin
             if (mLines[mLine][mIndex] = 'X') and (mLines[mLine][mIndex + 1] = 'X') then
             begin
               mSeen.Add(ALines.Original(mLine));
               Result := Result + [Finding(mLine, mIndex - 1, mIndex + 1, 'X', TRuleConfidence.High, True)];
             end;
+          end;
         end;
       end, NoErrors());
     Assert.AreEqual('a'#10'X'#10'b', mResult.NewText);
@@ -466,7 +480,9 @@ begin
           procedure(const AFileName, AText: string)
           begin
             if AFileName = 'B.pas' then
+            begin
               raise EInOutError.Create('gesperrt');
+            end;
             mLog.Add(AFileName + '=' + AText);
           end);
       end, EBulkFixWrite);
@@ -587,14 +603,20 @@ var
 begin
   // safeFix nur bei Regeln, die es gibt (eingebaut, im Checker oder in der Engine).
   for mEntry in TRuleCatalog.Shared.Entries do
+  begin
     if mEntry.SafeFix then
     begin
       mKnown := MatchText(mEntry.Id, ['syntax', 'unused-suppression', 'unknown-rule-id']);
       for mRule in BuiltinRules do
+      begin
         if SameText(mRule.Descriptor.Id, mEntry.Id) then
+        begin
           mKnown := True;
+        end;
+      end;
       Assert.IsTrue(mKnown, mEntry.Id);
     end;
+  end;
 end;
 
 procedure TBulkFixTests.BuiltinRedundantAssignedFree;

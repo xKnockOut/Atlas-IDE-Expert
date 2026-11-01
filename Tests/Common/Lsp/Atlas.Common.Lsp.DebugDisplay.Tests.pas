@@ -100,11 +100,17 @@ begin
     begin
       Result := True;
       if SameText(AFileName, KundenFile) then
-        AText := KundenText
+      begin
+        AText := KundenText;
+      end
       else if SameText(AFileName, FirmenFile) then
-        AText := FirmenText
+      begin
+        AText := FirmenText;
+      end
       else
+      begin
         Result := False;
+      end;
     end);
   Result.Index := NewIndex;
 end;
@@ -115,8 +121,12 @@ var
 begin
   Result := '';
   for Inherit in AInherits do
+  begin
     if Inherit.Name = AName then
+    begin
       Exit(Inherit.From);
+    end;
+  end;
 end;
 
 { TLspDebugDisplayTests }

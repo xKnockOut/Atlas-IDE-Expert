@@ -589,23 +589,39 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = EmptyStatementRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = LoopOffByOneRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, LoopOffByOneRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = CollectionModifiedInLoopRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, CollectionModifiedInLoopRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = DestroyCalledDirectlyRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, DestroyCalledDirectlyRuleId);
 end;
 
@@ -1245,7 +1261,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -1260,13 +1278,17 @@ var
 begin
   Edits := Copy(AFix.Edits);
   for Index := 0 to High(Edits) do
+  begin
     for Inner := Index + 1 to High(Edits) do
+    begin
       if OffsetIn(AText, Edits[Inner].Range.StartPos) > OffsetIn(AText, Edits[Index].Range.StartPos) then
       begin
         Swap := Edits[Index];
         Edits[Index] := Edits[Inner];
         Edits[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index := 0 to High(Edits) do
   begin

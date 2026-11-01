@@ -61,8 +61,12 @@ var
   Count: TSuppressionCount;
 begin
   for Count in AStats.Counts do
+  begin
     if Count.RuleId = AId then
+    begin
       Exit(Count);
+    end;
+  end;
   Result := Default(TSuppressionCount);
 end;
 

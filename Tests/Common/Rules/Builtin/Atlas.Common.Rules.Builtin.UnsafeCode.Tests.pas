@@ -89,8 +89,10 @@ var
 begin
   Result := '';
   for mFinding in AFindings do
+  begin
     Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
       mFinding.Message]);
+  end;
 end;
 
 { TUnsafeCodeTests }
@@ -283,8 +285,12 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'Fall.pas'))));
   mFound := False;
   for mRule in BuiltinRules do
+  begin
     if mRule.Descriptor.Id = UnsafeCodeRuleId then
+    begin
       mFound := True;
+    end;
+  end;
   Assert.IsTrue(mFound);
 end;
 

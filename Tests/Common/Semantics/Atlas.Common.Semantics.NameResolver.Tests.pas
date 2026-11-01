@@ -157,17 +157,21 @@ begin
   repeat
     Index := Pos(AMarker, AText, Index + 1);
     if Index = 0 then
+    begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    end;
     Inc(Found);
   until Found = AOccurrence;
   Line := 0;
   LineStart := 1;
   for Found := 1 to Index - 1 do
+  begin
     if AText[Found] = #10 then
     begin
       Inc(Line);
       LineStart := Found + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -518,6 +522,7 @@ begin
   end;
   Found := 0;
   for Candidate in Candidates do
+  begin
     if SameText(Candidate.Name, 'Wert') then
     begin
       Inc(Found);
@@ -525,6 +530,7 @@ begin
       Assert.AreEqual(1, Integer(Length(Candidate.Hides)));
       Assert.AreEqual('Feld TKunde.Wert', Candidate.Hides[0]);
     end;
+  end;
   Assert.AreEqual(1, Found);
 end;
 
@@ -1063,7 +1069,9 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.Kind = TSyntaxKind.MemberAccess) and MatchText(ANode.Name, ['Pos', 'Mitte']) then
+        begin
           Receivers := Receivers + [ANode];
+        end;
         Result := True;
       end);
     Assert.AreEqual(2, Integer(Length(Receivers)));

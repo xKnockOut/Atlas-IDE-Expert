@@ -76,7 +76,9 @@ var
 begin
   FileName := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'AtlasAuswahlTest'), 'projektauswahl.json');
   if TFile.Exists(FileName) then
+  begin
     TFile.Delete(FileName);
+  end;
   Selection := TProjectSelection.Create(FileName);
   try
     Selection.SetBuild('C:\P\App.dproj', 'Debug', 'Win32');

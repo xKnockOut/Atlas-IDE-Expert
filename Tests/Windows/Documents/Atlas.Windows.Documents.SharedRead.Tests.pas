@@ -61,7 +61,9 @@ procedure TWindowsSharedReadTests.TearDown;
 begin
   TWindowsSharedRead.Uninstall;
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
   FFile := '';
 end;

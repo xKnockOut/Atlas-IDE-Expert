@@ -185,7 +185,9 @@ end;
 procedure TShellDiagnosticsTests.TearDown;
 begin
   if TDirectory.Exists(FRoot) then
+  begin
     TDirectory.Delete(FRoot, True);
+  end;
   // Strings aus Setup freigeben, sonst zählt der Lecktest sie mit.
   FRoot := '';
   FLogFolder := '';
@@ -266,7 +268,9 @@ var
 begin
   Result := '';
   for FileName in TDirectory.GetFiles(FLogFolder, '*', TSearchOption.soAllDirectories) do
+  begin
     Result := Result + ExtractFileName(FileName) + #13#10 + TFile.ReadAllText(FileName, TEncoding.UTF8);
+  end;
 end;
 
 procedure TShellDiagnosticsTests.NoMarkerReachesLogOrExport;
@@ -307,7 +311,9 @@ begin
   end;
   Assert.DoesNotContain(Text, 'FehltBeiAllenYc9', False);
   if Length(GetEnvironmentVariable('USERNAME')) >= 3 then
+  begin
     Assert.DoesNotContain(Text, GetEnvironmentVariable('USERNAME'), False);
+  end;
 end;
 
 procedure TShellDiagnosticsTests.EveryEmptyAnswerHasReason;
@@ -318,11 +324,13 @@ begin
   RunSession(True);
   Empty := 0;
   for Line in AllLogText.Split([#13#10, #10]) do
+  begin
     if Line.Contains(' empty') then
     begin
       Inc(Empty);
       Assert.DoesNotContain(Line, 'empty:unspecified', False, Line);
     end;
+  end;
   Assert.IsTrue(Empty >= 3, Format('%d leere Antworten', [Empty]));
 end;
 
@@ -397,7 +405,9 @@ begin
   begin
     Assert.AreNotEqual('', TShellDiagnostics.EndReasonText(Reason));
     for Other := Succ(Reason) to High(TDiagnosticEndReason) do
+    begin
       Assert.AreNotEqual(TShellDiagnostics.EndReasonText(Reason), TShellDiagnostics.EndReasonText(Other));
+    end;
   end;
   Assert.Contains(TShellDiagnostics.EndReasonText(TDiagnosticEndReason.InputClosed), 'ohne exit');
 end;

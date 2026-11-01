@@ -69,8 +69,12 @@ var
 begin
   Result := ArchitectureSampleUnits;
   for Index := 0 to High(Result) do
+  begin
     if Result[Index].UnitName = AName then
+    begin
       Result[Index] := UsesUnit(AName, AInterface, AImplementation);
+    end;
+  end;
 end;
 
 procedure AddUnit(var ASnapshot: TArchitectureSnapshot; const AName, ASubsystem: string; ATotal: Integer);
@@ -86,11 +90,13 @@ begin
   ASnapshot.Units := ASnapshot.Units + [Item];
   Found := False;
   for Index := 0 to High(ASnapshot.Subsystems) do
+  begin
     if ASnapshot.Subsystems[Index].Name = ASubsystem then
     begin
       ASnapshot.Subsystems[Index].Units := ASnapshot.Subsystems[Index].Units + [AName];
       Found := True;
     end;
+  end;
   if not Found then
   begin
     SetLength(ASnapshot.Subsystems, Length(ASnapshot.Subsystems) + 1);

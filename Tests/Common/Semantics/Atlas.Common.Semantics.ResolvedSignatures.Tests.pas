@@ -125,13 +125,17 @@ begin
   Tree := TPascalParser.Parse(UnitMain);
   try
     if AWithResolver then
+    begin
       Resolver := TNameResolver.Create(FIndex, nil);
+    end;
     Lookup := TResolvedSignatures.Lookup(Resolver, Tree, MainFile);
     Tree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if ANode.Kind = TSyntaxKind.Call then
+        begin
           Calls.Add(ANode);
+        end;
         Result := True;
       end);
     for Call in Calls do
@@ -140,11 +144,15 @@ begin
       for Argument := 0 to Call.ChildCount - 2 do
       begin
         if Argument > 0 then
+        begin
           Item := Item + ',';
+        end;
         Item := Item + ModeNames[Lookup(Call, Argument)];
       end;
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Item;
     end;
   finally

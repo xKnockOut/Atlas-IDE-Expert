@@ -119,15 +119,25 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, IntfFile) then
-    Result := UnitIntf
+  begin
+    Result := UnitIntf;
+  end
   else if SameText(AFileName, ModelFile) then
-    Result := UnitModel
+  begin
+    Result := UnitModel;
+  end
   else if SameText(AFileName, UseFile) then
-    Result := UnitUse
+  begin
+    Result := UnitUse;
+  end
   else if SameText(AFileName, OtherFile) then
-    Result := UnitOther
+  begin
+    Result := UnitOther;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function Context(const AIndex: ISymbolIndex): TInlineAccessorContext;
@@ -158,7 +168,9 @@ begin
     Document := TJSONObject(Item);
     Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
     if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    begin
       Continue;
+    end;
     Edits := nil;
     for Edit in Document.GetValue('edits') as TJSONArray do
     begin
@@ -204,7 +216,9 @@ var
 begin
   Result := '';
   for Item in AAnswer.GetValue('warnings') as TJSONArray do
+  begin
     Result := Result + Item.Value + '|';
+  end;
 end;
 
 procedure TLspInlineAccessorTests.Setup;

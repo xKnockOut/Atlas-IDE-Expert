@@ -72,7 +72,9 @@ begin
   Position.AddPair('character', TJSONNumber.Create(ACharacter));
   Result.AddElement(Position);
   if AText <> '' then
+  begin
     Result.Add(AText);
+  end;
 end;
 
 function ToLiteral(const AStore: IDocumentStore; ALine: Integer; const AText: string; AMultiline: Boolean): string;

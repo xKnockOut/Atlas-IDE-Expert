@@ -40,7 +40,9 @@ begin
     begin
       Result := SameText(ExtractFileExt(AFileName), '.fmx');
       if Result then
+      begin
         AText := 'object Button1: TButton' + sLineBreak + '  OnClick = Button1Click' + sLineBreak + 'end';
+      end;
     end;
 end;
 
