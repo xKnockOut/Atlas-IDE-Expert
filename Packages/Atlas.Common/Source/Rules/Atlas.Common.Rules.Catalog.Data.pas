@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4865] of string = (
+  BaseLines: array[0..4866] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -3993,7 +3993,8 @@ const
     '          "default": false,',
     '          "description": "Allow a single statement on the same line as the condition or loop header."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "inherited-constructor-after-try",',

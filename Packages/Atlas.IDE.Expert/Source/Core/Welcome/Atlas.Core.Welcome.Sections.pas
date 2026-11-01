@@ -33,6 +33,9 @@ type
     Column: TAtlasWelcomeColumn;
     /// <summary>Schalter des Bereichs (z. B. welcomePage.state); nil = immer an.</summary>
     Enabled: TFunc<Boolean>;
+    /// <summary>Ein Satz für „Seite anpassen“ (#767), wenn TAtlasIdeWelcomeLayouts den Bereich nicht kennt
+    /// (Kacheln anderer Module, #1455); '' = keiner.</summary>
+    Description: string;
     function IsEnabled: Boolean;
     class function Create(const AId, ATitle: string; AOrder: Integer; AColumn: TAtlasWelcomeColumn;
       const AEnabled: TFunc<Boolean>): TAtlasWelcomeSection; static;
@@ -124,6 +127,7 @@ begin
   Result.Order := AOrder;
   Result.Column := AColumn;
   Result.Enabled := AEnabled;
+  Result.Description := '';
 end;
 
 { TAtlasWelcomeIds }
