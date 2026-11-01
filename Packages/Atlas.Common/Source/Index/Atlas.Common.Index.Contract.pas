@@ -165,6 +165,10 @@ type
     Library_: Boolean;
     /// <summary>Nur interface-Symbole behalten, um das Speicherbudget einzuhalten (#185).</summary>
     Compact: Boolean;
+    /// <summary>Defines, mit denen die Unit gelesen wurde; nur im Speicher, nicht im Cache. Ein weiteres Projekt
+    /// der Gruppe übernimmt eine Unit mit gleichem Stand und gleichem Schlüssel nicht noch einmal (Speicher,
+    /// Rückmeldung 01.11.2026). '' = unbekannt, dann wird sie wie bisher neu übernommen.</summary>
+    DefinesKey: string;
     /// <summary>Eingebundene Include-Dateien (#264); ändert sich eine davon, wird die Unit neu eingelesen.</summary>
     Includes: TArray<string>;
     /// <summary>Zeitstempel der Include-Dateien beim Einlesen, parallel zu Includes (#617).</summary>
