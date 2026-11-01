@@ -112,7 +112,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Strings;
+  Atlas.UI.Build.Strings;
 
 {$R *.dfm}
 
@@ -124,7 +124,7 @@ begin
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
   FLine := -1;
-  FMessage := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesEmpty);
+  FMessage := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty);
 
   FWhere := TLabel.Create(Self);
   FWhere.Parent := Self;
@@ -144,9 +144,9 @@ begin
 
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
-  FJumpItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesGoTo), JumpClick);
-  FOptionsItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesOptions), OptionsClick);
-  FCopyItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesCopy), CopyClick);
+  FJumpItem := AddMenuItem(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesGoTo), JumpClick);
+  FOptionsItem := AddMenuItem(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOptions), OptionsClick);
+  FCopyItem := AddMenuItem(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesCopy), CopyClick);
 
   FList := TListView.Create(Self);
   FList.Parent := Self;
@@ -159,10 +159,10 @@ begin
   FList.MultiSelect := False;
   FList.ColumnClick := False;
   FList.PopupMenu := FMenu;
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesColumnName), 170);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesColumnValue), 60);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesColumnProject), 60);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesColumnOrigin), 220);
+  AddColumn(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnName), 170);
+  AddColumn(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnValue), 60);
+  AddColumn(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnProject), 60);
+  AddColumn(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnOrigin), 220);
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;
@@ -235,13 +235,13 @@ class function TAtlasBuildSwitchesFrame.SectionText(ASection: TAtlasSwitchSectio
 begin
   case ASection of
     TAtlasSwitchSection.Switches:
-      Result := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesSectionSwitches);
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionSwitches);
     TAtlasSwitchSection.Messages:
-      Result := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesSectionMessages);
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionMessages);
     TAtlasSwitchSection.Defines:
-      Result := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesSectionDefines);
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionDefines);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesSectionTarget);
+    Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionTarget);
   end;
 end;
 
@@ -249,9 +249,9 @@ class function TAtlasBuildSwitchesFrame.OriginText(const ARow: TAtlasSwitchRow):
 begin
   case ARow.Kind of
     TAtlasSwitchOriginKind.Directive:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.CompilerSwitchesOriginLine, [ARow.Line + 1]);
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginLine, [ARow.Line + 1]);
     TAtlasSwitchOriginKind.Include:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.CompilerSwitchesOriginInclude,
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginInclude,
         [ExtractFileName(ARow.FileName), ARow.Line + 1]);
     TAtlasSwitchOriginKind.Project:
       begin
@@ -261,15 +261,15 @@ begin
         else if (ARow.Section = TAtlasSwitchSection.Defines) and (ARow.OriginText <> '') then
           Result := ARow.OriginText
         else if ARow.OriginText <> '' then
-          Result := TAtlasStrings.Fmt(TAtlasTextId.CompilerSwitchesOriginProjectNamed, [ARow.OriginText])
+          Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginProjectNamed, [ARow.OriginText])
         else
-          Result := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesOriginProject);
+          Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOriginProject);
       end;
   else
     if (ARow.Section = TAtlasSwitchSection.Defines) and (ARow.OriginText <> '') then
       Result := ARow.OriginText
     else
-      Result := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesOriginDefault);
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOriginDefault);
   end;
 end;
 
@@ -281,9 +281,9 @@ begin
   if ARow.Section = TAtlasSwitchSection.Target then
   begin
     if ARow.Name = 'platform' then
-      Name := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesPlatform)
+      Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesPlatform)
     else
-      Name := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesConfiguration);
+      Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesConfiguration);
     Result := TArray<string>.Create(Name, ARow.Value, '', '');
     Exit;
   end;
@@ -353,23 +353,25 @@ begin
     Exit;
   end;
   if FFileName <> '' then
-    FWhere.Caption := TAtlasStrings.Fmt(TAtlasTextId.CompilerSwitchesAt, [ExtractFileName(FFileName), FLine + 1])
+    FWhere.Caption := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesAt,
+      [ExtractFileName(FFileName), FLine + 1])
   else
     FWhere.Caption := '';
   FLines := Lines(FView);
   Deviations := FView.Deviations;
   if Length(Deviations) = 0 then
-    FSummary.Caption := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesNoDeviations)
+    FSummary.Caption := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoDeviations)
   else
   begin
     Names := FView.Summary;
     if Names = '' then
       for Row in Deviations do
         Names := Trim(Names + ' ' + Row.Name);
-    FSummary.Caption := TAtlasStrings.Fmt(TAtlasTextId.CompilerSwitchesDeviations, [Names]);
+    FSummary.Caption := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesDeviations, [Names]);
   end;
   if not FView.HasProject then
-    FSummary.Caption := FSummary.Caption + sLineBreak + TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesNoProject);
+    FSummary.Caption := FSummary.Caption + sLineBreak + TAtlasBuildStrings.Text(
+      TAtlasBuildTextId.CompilerSwitchesNoProject);
   // Liste erst mit Fenster füllen (TListView.Items braucht eins); CreateWnd holt es nach.
   if not HandleAllocated then
     Exit;

@@ -65,7 +65,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Strings;
+  Atlas.UI.Analysis.Strings;
 
 const
   /// <summary>Teilstriche je Achse.</summary>
@@ -132,7 +132,8 @@ begin
   if (AEntry < 0) or (AEntry > High(FEntries)) then
     Exit;
   mEntry := FEntries[AEntry];
-  Result := TAtlasStrings.Fmt(TAtlasTextId.HotspotsBubbleHint, [mEntry.Caption, mEntry.Changes, mEntry.Complexity,
+  Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsBubbleHint,
+    [mEntry.Caption, mEntry.Changes, mEntry.Complexity,
     mEntry.Lines, FormatFloat('0.00', mEntry.Score)]);
 end;
 
@@ -187,10 +188,11 @@ begin
     mSize := Canvas.TextExtent(mCaption);
     Canvas.TextOut(mLeft - mSize.cx - Round(4 * Scale), mY - mSize.cy div 2, mCaption);
   end;
-  mCaption := TAtlasStrings.Text(TAtlasTextId.HotspotsColChanges);
+  mCaption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColChanges);
   mSize := Canvas.TextExtent(mCaption);
   Canvas.TextOut(mRight - mSize.cx, mBottom - mSize.cy - Round(2 * Scale), mCaption);
-  Canvas.TextOut(mLeft + Round(4 * Scale), mTop, TAtlasStrings.Text(TAtlasTextId.HotspotsColComplexity));
+  Canvas.TextOut(mLeft + Round(4 * Scale), mTop,
+    TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColComplexity));
   // Blasen: größte zuerst, damit kleine sichtbar bleiben; gewählte und überfahrene mit Rahmen.
   Canvas.Brush.Style := bsSolid;
   for mBubble in FBubbles do

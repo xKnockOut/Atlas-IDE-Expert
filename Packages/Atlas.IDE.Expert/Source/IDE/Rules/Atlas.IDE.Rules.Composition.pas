@@ -61,7 +61,8 @@ uses
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.IDE.Rules.Baseline,
   Atlas.IDE.Rules.BulkFix,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Rules.Strings;
 
 var
   GScope: IAtlasModuleScope;
@@ -121,12 +122,12 @@ end;
 
 { Befehle }
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId: string; ACaption: TAtlasRulesTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := TAtlasRulesStrings.Text(ACaption);
   Result.Run := ARun;
   Result.Visible := AVisible;
 end;
@@ -164,15 +165,15 @@ function TAtlasRulesModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     // Baseline des Projekts aktualisieren (#97); nur sichtbar, solange baseline.update an ist.
-    Command('Atlas.UpdateBaseline', TAtlasTextId.BaselineUpdateCommand, UpdateBaseline, BaselineVisible),
+    Command('Atlas.UpdateBaseline', TAtlasRulesTextId.BaselineUpdateCommand, UpdateBaseline, BaselineVisible),
     // Compilermeldungen des letzten Builds in die Baseline (#530); mit derselben Einstellung abschaltbar.
-    Command('Atlas.CompilerBaseline', TAtlasTextId.CompilerBaselineCommand, AddCompilerMessages, BaselineVisible),
+    Command('Atlas.CompilerBaseline', TAtlasRulesTextId.CompilerBaselineCommand, AddCompilerMessages, BaselineVisible),
     // Eigenschaftsregeln anwenden (#309); nur sichtbar, solange dfmRules.apply an ist.
-    Command('Atlas.ApplyDfmRulesForm', TAtlasTextId.DfmRulesFormCommand, ApplyDfmRulesForm,
+    Command('Atlas.ApplyDfmRulesForm', TAtlasRulesTextId.DfmRulesFormCommand, ApplyDfmRulesForm,
       DfmPropertyRulesVisible),
-    Command('Atlas.ApplyDfmRulesProject', TAtlasTextId.DfmRulesProjectCommand, ApplyDfmRulesProject,
+    Command('Atlas.ApplyDfmRulesProject', TAtlasRulesTextId.DfmRulesProjectCommand, ApplyDfmRulesProject,
       DfmPropertyRulesVisible),
-    Command('Atlas.ApplyDfmRulesGroup', TAtlasTextId.DfmRulesGroupCommand, ApplyDfmRulesGroup,
+    Command('Atlas.ApplyDfmRulesGroup', TAtlasRulesTextId.DfmRulesGroupCommand, ApplyDfmRulesGroup,
       DfmPropertyRulesVisible)];
 end;
 

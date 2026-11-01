@@ -97,7 +97,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.SwitchesWindow,
-  Atlas.UI.Strings;
+  Atlas.UI.Build.Strings;
 
 function Enabled: Boolean;
 var
@@ -118,7 +118,7 @@ begin
   FFollow := TAtlasSwitchFollow.Create;
   FWorkers := TList<TThread>.Create;
   FViewLine := -1;
-  FMessage := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesEmpty);
+  FMessage := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := Tick;
@@ -212,7 +212,7 @@ var
   Row: TAtlasSwitchRow;
   Value: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesStatusHint);
+  Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesStatusHint);
   for Row in AView.Deviations do
   begin
     Value := TAtlasCompilerSwitchTexts.Value(Row.Value);
@@ -287,7 +287,7 @@ begin
         begin
           FHasView := False;
           Inc(FRequest);
-          ShowMessageText(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesEmpty));
+          ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty));
         end;
         Exit;
       end;
@@ -317,7 +317,7 @@ begin
   if Session = nil then
   begin
     FHasView := False;
-    ShowMessageText(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesNoServer));
+    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
     Exit;
   end;
   View := TAtlasEditorBuffer.ActiveView;
@@ -332,7 +332,7 @@ begin
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   Session.Sync(FileName, TAtlasEditorBuffer.Text(Buffer));
   if not FHasView then
-    ShowMessageText(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesWaiting));
+    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesWaiting));
   Inc(FRequest);
   Request := FRequest;
   Worker := TThread.CreateAnonymousThread(
@@ -392,7 +392,7 @@ begin
   begin
     // Datei dem Server unbekannt oder Server zu langsam: Hinweis, beim nächsten Halt des Cursors wieder.
     FHasView := False;
-    ShowMessageText(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesNoServer));
+    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
     Exit;
   end;
   FHasView := True;

@@ -66,7 +66,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Query.Model,
-  Atlas.UI.Strings,
+  Atlas.UI.Search.Strings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
@@ -284,7 +284,7 @@ begin
     Exit;
   if not ProjectUri(mUri) then
   begin
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryNoProject), True);
+    mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoProject), True);
     Exit;
   end;
   Inc(TAtlasIdeCodeQuery.FCurrent);
@@ -303,13 +303,13 @@ begin
       if mCurrent = nil then
         Exit;
       if not TAtlasQueryAnswer.Parse(AAnswer, mAnswer) then
-        mCurrent.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryFailed), True)
+        mCurrent.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryFailed), True)
       else if not mAnswer.Enabled then
-        mCurrent.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryDisabled), False)
+        mCurrent.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryDisabled), False)
       else
         mCurrent.SetAnswer(mAnswer);
     end) then
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryNoServer), True);
+    mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoServer), True);
 end;
 
 procedure TCodeQueryState.Cancel;
@@ -320,7 +320,7 @@ begin
   Inc(TAtlasIdeCodeQuery.FCurrent);
   mFrame := TAtlasIdeCodeQueryWindow.ExistingFrame;
   if mFrame <> nil then
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryCancelled), True);
+    mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancelled), True);
 end;
 
 procedure TCodeQueryState.SaveRule(const AQuery: string);
@@ -337,15 +337,16 @@ begin
     Exit;
   if TAtlasProjectSettings.SettingsFile = '' then
   begin
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryRuleNoProject), True);
+    mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleNoProject), True);
     Exit;
   end;
   mValues[0] := '';
   mValues[1] := '';
   mValues[2] := '';
-  if not InputQuery(TAtlasStrings.Text(TAtlasTextId.QueryRuleTitle),
-    [TAtlasStrings.Text(TAtlasTextId.QueryRuleName), TAtlasStrings.Text(TAtlasTextId.QueryRuleDescription),
-    TAtlasStrings.Text(TAtlasTextId.QueryRuleMessage)], mValues) then
+  if not InputQuery(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleTitle),
+    [TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleName),
+      TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleDescription),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleMessage)], mValues) then
     Exit;
   mSaved := Default(TAtlasSavedQuery);
   mSaved.Name := Trim(mValues[0]);
@@ -354,7 +355,7 @@ begin
   mSaved.FailIfAny := True;
   if not TAtlasSavedQueries.ValidName(mSaved.Name) then
   begin
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryRuleBadName), True);
+    mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleBadName), True);
     Exit;
   end;
   mExistingJson := '';
@@ -372,10 +373,10 @@ begin
   if not TAtlasProjectSettings.WriteValue('queries',
     TAtlasSavedQueries.WithQuery(mExistingJson, mSaved, cSeverity, Trim(mValues[2]))) then
   begin
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryRuleNoProject), True);
+    mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleNoProject), True);
     Exit;
   end;
-  mFrame.SetMessage(TAtlasStrings.Fmt(TAtlasTextId.QueryRuleSaved,
+  mFrame.SetMessage(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryRuleSaved,
     [ExtractFileName(TAtlasProjectSettings.SettingsFile), mSaved.Name]), True);
   // Die neue Abfrage gleich in der Auswahl zeigen (der Server liest atlas.json über seinen Dateibeobachter).
   LoadCatalog;

@@ -131,7 +131,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.CheckOnSave,
-  Atlas.UI.Strings;
+  Atlas.UI.Build.Strings;
 
 { TAtlasIdeOpenBuild.TIdeNotifier }
 
@@ -505,7 +505,7 @@ begin
           Names := Names + [Configurations.Configurations[Index].Name];
       Configuration := TAtlasOpenBuild.PickTarget(Settings.BuildOnOpenConfig, Names);
       if Configuration = '' then
-        FTargetNotes := FTargetNotes + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildTargetMissing,
+        FTargetNotes := FTargetNotes + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTargetMissing,
           [TAtlasOpenBuild.NameOf(Project.FileName), Settings.BuildOnOpenConfig])];
     end;
     Platform := '';
@@ -515,7 +515,7 @@ begin
       if Supports(Project, IOTAProjectPlatforms, Platforms) then
         Platform := TAtlasOpenBuild.PickTarget(Settings.BuildOnOpenPlatform, Platforms.EnabledPlatforms);
       if Platform = '' then
-        FTargetNotes := FTargetNotes + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildTargetMissing,
+        FTargetNotes := FTargetNotes + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTargetMissing,
           [TAtlasOpenBuild.NameOf(Project.FileName), Settings.BuildOnOpenPlatform])];
     end;
     // Nur für diesen Lauf; über IOTAProject, denn die Hilfsschnittstellen lesen nur (wie der Läufer).
@@ -605,7 +605,7 @@ begin
   Outcome := FCore.RunFinished;
   Kind := TAtlasOpenBuild.KindName(FKind);
   if Assigned(FReport) then
-    FReport(TAtlasStrings.Fmt(TAtlasTextId.OpenBuildReport, [Kind, Outcome.Total, Outcome.Succeeded,
+    FReport(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildReport, [Kind, Outcome.Total, Outcome.Succeeded,
       Outcome.Failed, Outcome.NotBuilt, NowMs - FStartedAt]));
   // Ein einzelnes gebautes Projekt meldet schon „Build fertig“ (#535); die Zusammenfassung lohnt nur sonst.
   if (Outcome.Total <= 1) and (Outcome.NotBuilt = 0) and (Length(FTargetNotes) = 0) then
@@ -617,18 +617,20 @@ begin
     Severity := TAtlasNotificationSeverity.Error;
   Lines := nil;
   if Outcome.Failed > 0 then
-    Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildFailed, [string.Join(', ', Outcome.FailedNames)])];
+    Lines := Lines + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildFailed,
+      [string.Join(', ', Outcome.FailedNames)])];
   if Outcome.NotBuilt > 0 then
-    Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildNotBuilt, [string.Join(', ', Outcome.NotBuiltNames)])];
+    Lines := Lines + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildNotBuilt,
+      [string.Join(', ', Outcome.NotBuiltNames)])];
   if Outcome.CancelReason <> '' then
-    Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildReason, [Outcome.CancelReason])];
+    Lines := Lines + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildReason, [Outcome.CancelReason])];
   if Length(Lines) = 0 then
-    Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildSucceeded, [Kind])];
+    Lines := Lines + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildSucceeded, [Kind])];
   // Vorgaben, die ein Projekt nicht kennt (#1293): gebaut wie im Projekt eingestellt.
   Lines := Lines + FTargetNotes;
   Text := string.Join(sLineBreak, Lines);
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.OpenBuild, Severity,
-    TAtlasStrings.Fmt(TAtlasTextId.OpenBuildTitle, [Outcome.Succeeded, Outcome.Total]), Text);
+    TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTitle, [Outcome.Succeeded, Outcome.Total]), Text);
 end;
 
 end.

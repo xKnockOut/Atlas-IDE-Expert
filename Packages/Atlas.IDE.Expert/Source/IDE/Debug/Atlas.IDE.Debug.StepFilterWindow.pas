@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -81,7 +81,7 @@ end;
 
 function TStepFilterDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.StepFilterCaption);
+  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterCaption);
 end;
 
 function TStepFilterDock.GetIdentifier: string;

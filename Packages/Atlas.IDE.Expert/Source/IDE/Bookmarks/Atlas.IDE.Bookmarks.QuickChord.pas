@@ -40,7 +40,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Bookmarks.Quick,
-  Atlas.UI.Strings,
+  Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
@@ -228,7 +228,7 @@ begin
   if SendInput(Length(Inputs), Inputs[0], SizeOf(TInput)) <> Cardinal(Length(Inputs)) then
   begin
     FPassAt := 0;
-    TAtlasIdeKeys.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkChordFailed, [Char(AKey)]));
+    TAtlasIdeKeys.AddMessage(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkChordFailed, [Char(AKey)]));
   end;
 end;
 

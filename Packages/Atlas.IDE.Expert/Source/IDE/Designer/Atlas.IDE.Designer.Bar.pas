@@ -70,6 +70,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
+  Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.Search,
   Atlas.UI.Designer.TabOverlay,
@@ -423,19 +424,21 @@ end;
 function TDesignerBarState.AlignCaption(AKind: TAtlasAlignKind): string;
 begin
   case AKind of
-    TAtlasAlignKind.Rights: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignRights);
-    TAtlasAlignKind.Tops: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignTops);
-    TAtlasAlignKind.Bottoms: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignBottoms);
-    TAtlasAlignKind.CentersH: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignCentersH);
-    TAtlasAlignKind.CentersV: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignCentersV);
-    TAtlasAlignKind.CenterInParentH: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignCenterInParentH);
-    TAtlasAlignKind.CenterInParentV: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignCenterInParentV);
-    TAtlasAlignKind.SameWidth: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignSameWidth);
-    TAtlasAlignKind.SameHeight: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignSameHeight);
-    TAtlasAlignKind.SpaceH: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignSpaceH);
-    TAtlasAlignKind.SpaceV: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignSpaceV);
+    TAtlasAlignKind.Rights: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignRights);
+    TAtlasAlignKind.Tops: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignTops);
+    TAtlasAlignKind.Bottoms: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignBottoms);
+    TAtlasAlignKind.CentersH: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignCentersH);
+    TAtlasAlignKind.CentersV: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignCentersV);
+    TAtlasAlignKind.CenterInParentH: Result := TAtlasDesignerStrings.Text(
+      TAtlasDesignerTextId.DesignerAlignCenterInParentH);
+    TAtlasAlignKind.CenterInParentV: Result := TAtlasDesignerStrings.Text(
+      TAtlasDesignerTextId.DesignerAlignCenterInParentV);
+    TAtlasAlignKind.SameWidth: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignSameWidth);
+    TAtlasAlignKind.SameHeight: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignSameHeight);
+    TAtlasAlignKind.SpaceH: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignSpaceH);
+    TAtlasAlignKind.SpaceV: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignSpaceV);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignLefts);
+    Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAlignLefts);
   end;
 end;
 
@@ -453,12 +456,12 @@ begin
   Result := TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create(IdSearch,
     TAtlasToolbarIcon.ComponentSearch, mHint));
   mButton := TAtlasDesignerButton.Create(IdNonVisual, TAtlasToolbarIcon.NonVisual,
-    TAtlasStrings.Text(TAtlasTextId.DesignerBarNonVisualHint));
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNonVisualHint));
   mAction := FindNonVisualAction;
   if mAction = nil then
   begin
     mButton.Enabled := False;
-    mButton.Hint := TAtlasStrings.Text(TAtlasTextId.DesignerBarNonVisualMissing);
+    mButton.Hint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNonVisualMissing);
   end
   else
   begin
@@ -474,20 +477,20 @@ begin
   end;
   Result := Result + [mButton];
   mButton := TAtlasDesignerButton.Create(IdParent, TAtlasToolbarIcon.SelectParent,
-    TAtlasStrings.Text(TAtlasTextId.DesignerBarParentHint));
+    TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarParentHint));
   mButton.GapBefore := True;
   Result := Result + [mButton];
   if mSettings.DesignerTabOrderClick then
-    mHint := TAtlasStrings.Text(TAtlasTextId.DesignerBarTabOrderClickHint)
+    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderClickHint)
   else
-    mHint := TAtlasStrings.Text(TAtlasTextId.DesignerBarTabOrderHint);
+    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint);
   mButton := TAtlasDesignerButton.Create(IdTabOrder, TAtlasToolbarIcon.TabOrder, mHint);
   mButton.Pressed := FTabOrder;
   Result := Result + [mButton];
   if mSettings.DesignerAlign then
   begin
     mButton := TAtlasDesignerButton.Create(IdAlign, TAtlasToolbarIcon.AlignControls,
-      TAtlasStrings.Fmt(TAtlasTextId.DesignerBarAlignHint, [AlignCaption(FLastAlign)]));
+      TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerBarAlignHint, [AlignCaption(FLastAlign)]));
     mButton.Menu := True;
     Result := Result + [mButton];
   end;
@@ -616,7 +619,7 @@ begin
   mAction := FindNonVisualAction;
   if mAction = nil then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarNonVisualMissing));
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNonVisualMissing));
     Exit;
   end;
   mAction.Update;
@@ -659,12 +662,12 @@ begin
   mSelected := Selection(mEditor, mRoot);
   if (mDesigner = nil) or (Length(mSelected) = 0) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarNoSelection));
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNoSelection));
     Exit;
   end;
   if not (mSelected[0] is TControl) or (TControl(mSelected[0]).Parent = nil) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarNoParent));
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNoParent));
     Exit;
   end;
   mDesigner.SelectComponent(TControl(mSelected[0]).Parent);
@@ -785,7 +788,8 @@ begin
   // Der Setter der VCL schiebt die übrigen Geschwister weiter: Der Zähler je Elternelement genügt.
   TWinControl(mComponent).TabOrder := mOrder;
   mDesigner.Modified;
-  Say(TAtlasStrings.Fmt(TAtlasTextId.DesignerBarTabOrderSet, [AName, TWinControl(mComponent).TabOrder]));
+  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerBarTabOrderSet,
+    [AName, TWinControl(mComponent).TabOrder]));
   UpdateOverlay;
 end;
 
@@ -820,7 +824,7 @@ begin
     end;
   if (mParent = nil) or not TAtlasDesignerAlign.Applicable(AKind, Length(mControls)) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarAlignNeeds));
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarAlignNeeds));
     Exit;
   end;
   SetLength(mRects, Length(mControls));
@@ -906,7 +910,7 @@ var
 begin
   if not Current(mEditor, mRoot) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.DesignerSearchNoForm));
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchNoForm));
     Exit;
   end;
   // Schon offen: neu aufbauen, das Formular kann ein anderes sein.

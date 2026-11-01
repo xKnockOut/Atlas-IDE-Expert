@@ -88,7 +88,7 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Atlas.UI.Strings;
+  Atlas.UI.Analysis.Strings;
 
 const
   /// <summary>Pause nach dem letzten Tastendruck, bevor Vorschläge geholt werden.</summary>
@@ -120,7 +120,7 @@ var
     Result.Left := Gap + LabelWidth;
     Result.Top := ATop;
     Result.Width := EditWidth;
-    Result.TextHint := TAtlasStrings.Text(TAtlasTextId.SymbolPathInputHint);
+    Result.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathInputHint);
     Result.OnChange := EditChange;
     Result.OnKeyDown := EditKeyDown;
     Result.OnEnter := ControlEnter;
@@ -129,7 +129,7 @@ var
 begin
   inherited CreateNew(AOwner);
   FSuggest := ASuggest;
-  Caption := TAtlasStrings.Text(TAtlasTextId.SymbolPathCaption);
+  Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCaption);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
   Gap := MulDiv(12, CurrentPPI, 96);
@@ -138,10 +138,10 @@ begin
   ClientWidth := Gap * 2 + LabelWidth + EditWidth;
   Y := Gap;
   FFrom := NewEdit(Y);
-  AddLabel(TAtlasStrings.Text(TAtlasTextId.SymbolPathFrom), Y, FFrom);
+  AddLabel(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFrom), Y, FFrom);
   Inc(Y, FFrom.Height + MulDiv(8, CurrentPPI, 96));
   FTo := NewEdit(Y);
-  AddLabel(TAtlasStrings.Text(TAtlasTextId.SymbolPathTo), Y, FTo);
+  AddLabel(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathTo), Y, FTo);
   Inc(Y, FTo.Height + MulDiv(8, CurrentPPI, 96));
   FSteps := TEdit.Create(Self);
   FSteps.Parent := Self;
@@ -156,14 +156,14 @@ begin
   FStepsUpDown.Min := 1;
   FStepsUpDown.Max := MaxSteps;
   FStepsUpDown.Position := DefaultSteps;
-  AddLabel(TAtlasStrings.Text(TAtlasTextId.SymbolPathMaxSteps), Y, FSteps);
+  AddLabel(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMaxSteps), Y, FSteps);
   Inc(Y, FSteps.Height + MulDiv(8, CurrentPPI, 96));
   FAll := TCheckBox.Create(Self);
   FAll.Parent := Self;
   FAll.Left := Gap + LabelWidth;
   FAll.Top := Y;
   FAll.Width := EditWidth;
-  FAll.Caption := TAtlasStrings.Text(TAtlasTextId.SymbolPathAll);
+  FAll.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathAll);
   FAll.OnEnter := ControlEnter;
   Inc(Y, FAll.Height + MulDiv(8, CurrentPPI, 96));
   FMessage := TLabel.Create(Self);
@@ -175,14 +175,14 @@ begin
   Inc(Y, FMessage.Height + MulDiv(8, CurrentPPI, 96));
   FCancel := TButton.Create(Self);
   FCancel.Parent := Self;
-  FCancel.Caption := TAtlasStrings.Text(TAtlasTextId.SymbolPathCancel);
+  FCancel.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCancel);
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
   FCancel.Top := Y;
   FCancel.Left := ClientWidth - Gap - FCancel.Width;
   FSearch := TButton.Create(Self);
   FSearch.Parent := Self;
-  FSearch.Caption := TAtlasStrings.Text(TAtlasTextId.SymbolPathSearch);
+  FSearch.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathSearch);
   FSearch.Default := True;
   FSearch.Top := Y;
   FSearch.Left := FCancel.Left - MulDiv(8, CurrentPPI, 96) - FSearch.Width;
@@ -382,7 +382,7 @@ begin
   Result := (Trim(FFrom.Text) <> '') and (Trim(FTo.Text) <> '');
   if Result then
     Exit;
-  FMessage.Caption := TAtlasStrings.Text(TAtlasTextId.SymbolPathMissing);
+  FMessage.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMissing);
   if Trim(FFrom.Text) = '' then
     ActiveControl := FFrom
   else

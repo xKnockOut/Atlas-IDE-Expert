@@ -49,7 +49,7 @@ uses
   System.Math,
   System.DateUtils,
   Atlas.Core.Editor.LineAnchor,
-  Atlas.UI.Strings,
+  Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Foundation.Settings;
 
@@ -140,11 +140,12 @@ begin
     Stamp := ANotes[0].Changed;
     if Stamp = 0 then
       Stamp := ANotes[0].Created;
-    ATitle := TAtlasStrings.Fmt(TAtlasTextId.NotesTipTitle, [DateToStr(TTimeZone.Local.ToLocalTime(Stamp), FormatSettings)]);
+    ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesTipTitle,
+      [DateToStr(TTimeZone.Local.ToLocalTime(Stamp), FormatSettings)]);
     AText := ANotes[0].Text;
     Exit;
   end;
-  ATitle := TAtlasStrings.Fmt(TAtlasTextId.NotesTipMore, [Length(ANotes)]);
+  ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesTipMore, [Length(ANotes)]);
   for Note in ANotes do
   begin
     if AText <> '' then

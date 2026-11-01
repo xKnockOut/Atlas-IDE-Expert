@@ -54,7 +54,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Bookmarks.Strings;
 
 const
   Gap = 8;
@@ -69,7 +69,7 @@ var
   Bottom: TPanel;
 begin
   inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Text(TAtlasTextId.TodoFilterTitle);
+  Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterTitle);
   BorderStyle := bsDialog;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
@@ -78,14 +78,18 @@ begin
   ClientWidth := ScaleValue(DialogWidth);
   FNextTop := ScaleValue(Gap);
 
-  FCategory := AddCombo(TAtlasStrings.Text(TAtlasTextId.TodoFilterCategory), AChoices.Categories, AFilter.Category);
-  FOwner := AddCombo(TAtlasStrings.Text(TAtlasTextId.TodoFilterOwner), AChoices.Owners, AFilter.Owner);
-  FUnit := AddCombo(TAtlasStrings.Text(TAtlasTextId.TodoFilterUnit), AChoices.Units, AFilter.UnitName);
-  FKeyword := AddCombo(TAtlasStrings.Text(TAtlasTextId.TodoFilterKeyword), AChoices.Keywords, AFilter.Keyword);
+  FCategory := AddCombo(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCategory), AChoices.Categories,
+    AFilter.Category);
+  FOwner := AddCombo(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterOwner), AChoices.Owners,
+    AFilter.Owner);
+  FUnit := AddCombo(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterUnit), AChoices.Units,
+    AFilter.UnitName);
+  FKeyword := AddCombo(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterKeyword), AChoices.Keywords,
+    AFilter.Keyword);
 
   FIncludeDone := TCheckBox.Create(Self);
   FIncludeDone.Parent := Self;
-  FIncludeDone.Caption := TAtlasStrings.Text(TAtlasTextId.TodoFilterDone);
+  FIncludeDone.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterDone);
   FIncludeDone.Checked := AFilter.IncludeDone;
   FIncludeDone.SetBounds(ScaleValue(Gap + LabelWidth), FNextTop, ClientWidth - ScaleValue(2 * Gap + LabelWidth),
     ScaleValue(20));
@@ -96,7 +100,7 @@ begin
   FHint.ShowAccelChar := False;
   FHint.WordWrap := True;
   FHint.AutoSize := False;
-  FHint.Caption := TAtlasStrings.Text(TAtlasTextId.TodoFilterHint);
+  FHint.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterHint);
   FHint.SetBounds(ScaleValue(Gap), FNextTop, ClientWidth - ScaleValue(2 * Gap), ScaleValue(32));
   FNextTop := FHint.Top + FHint.Height;
 
@@ -106,13 +110,13 @@ begin
   Bottom.Height := ScaleValue(44);
   Bottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Anzeigen“; ganz links „Zurücksetzen“.
-  FCancel := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.TodoFilterCancel), CancelClick);
+  FCancel := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCancel), CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FOk := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.TodoFilterOk), OkClick);
+  FOk := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
-  FReset := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.TodoFilterReset), ResetClick);
+  FReset := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterReset), ResetClick);
   FReset.Anchors := [akTop, akLeft];
   FReset.Left := ScaleValue(Gap);
 

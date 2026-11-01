@@ -165,7 +165,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.UI.Debug.AccessViolation,
-  Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings,
   Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasIdeDebugAccessViolation.TListener }
@@ -462,7 +462,7 @@ begin
     Session := FSession();
   if Session = nil then
   begin
-    Publish(TAtlasAvTexts.Failed(TAtlasStrings.Text(TAtlasTextId.DebugAvNoServer), Header));
+    Publish(TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoServer), Header));
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
@@ -523,12 +523,12 @@ begin
   end;
   if not AChains.Found then
   begin
-    Publish(TAtlasAvTexts.Failed(TAtlasStrings.Text(TAtlasTextId.DebugAvNoServer), Header));
+    Publish(TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoServer), Header));
     Exit;
   end;
   if AChains.Chains = nil then
   begin
-    Publish(TAtlasAvTexts.Failed(TAtlasStrings.Text(TAtlasTextId.DebugAvNoChains), Header));
+    Publish(TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoChains), Header));
     Exit;
   end;
   FAnalysis := TAtlasAvAnalysis.Create(AChains, FAccess, FPointerSize,
@@ -558,7 +558,7 @@ begin
     FEvaluator.Cancel;
     EndInternal;
     FDeferred := False;
-    FAnalysis.Answer(False, TAtlasStrings.Text(TAtlasTextId.DebugEvaluateTimeout));
+    FAnalysis.Answer(False, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateTimeout));
   end;
   StartedAt := TThread.GetTickCount64;
   while TThread.GetTickCount64 - StartedAt < SliceMs do

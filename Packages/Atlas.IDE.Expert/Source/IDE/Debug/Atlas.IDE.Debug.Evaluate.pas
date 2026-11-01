@@ -212,7 +212,7 @@ uses
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.DialogCompletion,
   Atlas.IDE.Debug.EvaluateWindow,
-  Atlas.UI.Strings;
+  Atlas.UI.Debug.Strings;
 
 const
   // Name der IDE-Aktion „Auswerten/Ändern“ je Delphi-Version; ungeprüft, siehe Handtest AW15.
@@ -906,7 +906,7 @@ begin
     Node := FList.Find(FDeferredKey);
     FDeferredKey := '';
     if Node <> nil then
-      FList.SetResult(Node, False, TAtlasStrings.Text(TAtlasTextId.DebugEvaluateTimeout));
+      FList.SetResult(Node, False, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateTimeout));
     Refresh;
   end;
   Changed := False;
@@ -1173,8 +1173,8 @@ begin
   Key := ANode.Key;
   Expression := ANode.Expression;
   NewValue := ANode.Value;
-  if not InputQuery(TAtlasStrings.Text(TAtlasTextId.DebugEvaluateModifyTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.DebugEvaluateModifyPrompt, [Expression]), NewValue) then
+  if not InputQuery(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateModifyTitle),
+    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateModifyPrompt, [Expression]), NewValue) then
     Exit;
   // Der Dialog ist modal: Danach kann der Knoten weg sein.
   if not StillStopped then
@@ -1182,7 +1182,7 @@ begin
   TAtlasIdeDebugSession.BeginInternal;
   try
     if not TAtlasIdeDebugValues.Modify(Expression, FFileName, FLine + 1, NewValue, Outcome) then
-      MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.DebugEvaluateModifyFailed, [Expression, Outcome]), mtWarning,
+      MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateModifyFailed, [Expression, Outcome]), mtWarning,
         [mbOK], 0);
   finally
     TAtlasIdeDebugSession.EndInternal;

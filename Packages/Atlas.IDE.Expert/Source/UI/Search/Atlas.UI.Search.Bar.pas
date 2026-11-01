@@ -234,7 +234,7 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.UI.Strings;
+  Atlas.UI.Search.Strings;
 
 const
   BarHeight = 30;
@@ -308,14 +308,15 @@ begin
   FClose.Margins.SetBounds(Gap, 3, Gap, 3);
   FClose.Width := ScaleValue(ButtonWidth);
   FClose.Caption := '×';
-  FClose.Hint := TAtlasStrings.Text(TAtlasTextId.SearchCloseHint);
+  FClose.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCloseHint);
   FClose.OnClick := CloseClick;
   FClose.OnKeyDown := ControlKeyDown;
   FClose.OnEnter := ControlEnter;
 
-  FToggle := AddButton(FSearchRow, '▸', TAtlasStrings.Text(TAtlasTextId.SearchToggleReplaceHint), ToggleWidth);
+  FToggle := AddButton(FSearchRow, '▸', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchToggleReplaceHint),
+    ToggleWidth);
   FToggle.OnClick := ToggleClick;
-  FTextLabel := AddLabel(FSearchRow, TAtlasStrings.Text(TAtlasTextId.SearchTextLabel));
+  FTextLabel := AddLabel(FSearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchTextLabel));
   // Rahmen um das Suchfeld: rot bei ungültigem Ausdruck.
   FTextFrame := TPanel.Create(Self);
   FTextFrame.Parent := FSearchRow;
@@ -335,15 +336,15 @@ begin
   FText.OnDropDown := HistoryDropDown;
   FTextLabel.FocusControl := FText;
 
-  FCase := AddCheck(TAtlasStrings.Text(TAtlasTextId.SearchCaseSensitive),
-    TAtlasStrings.Text(TAtlasTextId.SearchCaseHint));
-  FWhole := AddCheck(TAtlasStrings.Text(TAtlasTextId.SearchWholeWord),
-    TAtlasStrings.Text(TAtlasTextId.SearchWholeHint));
-  FIdentifier := AddCheck(TAtlasStrings.Text(TAtlasTextId.SearchIdentifier),
-    TAtlasStrings.Text(TAtlasTextId.SearchIdentifierHint));
-  FRegex := AddCheck('.*', TAtlasStrings.Text(TAtlasTextId.SearchRegexHint));
+  FCase := AddCheck(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCaseSensitive),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCaseHint));
+  FWhole := AddCheck(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchWholeWord),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchWholeHint));
+  FIdentifier := AddCheck(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchIdentifier),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchIdentifierHint));
+  FRegex := AddCheck('.*', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchRegexHint));
 
-  FScopeLabel := AddLabel(FSearchRow, TAtlasStrings.Text(TAtlasTextId.SearchScopeLabel));
+  FScopeLabel := AddLabel(FSearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeLabel));
   FScope := AddCombo(FSearchRow, csDropDownList, ScopeWidth);
   FScope.OnChange := Changed;
   FScopeLabel.FocusControl := FScope;
@@ -351,15 +352,15 @@ begin
   FLevel.OnChange := Changed;
 
   FCounter := AddLabel(FSearchRow, '');
-  FPrevious := AddButton(FSearchRow, '↑', TAtlasStrings.Text(TAtlasTextId.SearchPreviousHint), ButtonWidth);
+  FPrevious := AddButton(FSearchRow, '↑', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviousHint), ButtonWidth);
   FPrevious.OnClick := PreviousClick;
-  FNext := AddButton(FSearchRow, '↓', TAtlasStrings.Text(TAtlasTextId.SearchNextHint), ButtonWidth);
+  FNext := AddButton(FSearchRow, '↓', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNextHint), ButtonWidth);
   FNext.OnClick := NextClick;
-  FList := AddButton(FSearchRow, TAtlasStrings.Text(TAtlasTextId.SearchListButton),
-    TAtlasStrings.Text(TAtlasTextId.SearchListHint), 100);
+  FList := AddButton(FSearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListButton),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListHint), 100);
   FList.OnClick := ListClick;
-  FCancel := AddButton(FSearchRow, TAtlasStrings.Text(TAtlasTextId.SearchCancelButton),
-    TAtlasStrings.Text(TAtlasTextId.SearchCancelHint), 90);
+  FCancel := AddButton(FSearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCancelButton),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCancelHint), 90);
   FCancel.OnClick := CancelClick;
   FCancel.Visible := False;
 
@@ -370,19 +371,19 @@ begin
   FReplaceSpacer.Caption := '';
   FReplaceSpacer.ShowCaption := False;
   Place(FReplaceRow, FReplaceSpacer, ToggleWidth);
-  FReplaceLabel := AddLabel(FReplaceRow, TAtlasStrings.Text(TAtlasTextId.SearchReplaceLabel));
+  FReplaceLabel := AddLabel(FReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceLabel));
   FReplaceText := AddCombo(FReplaceRow, csDropDown, TextBoxWidth) as TAtlasSearchCombo;
   FReplaceText.OnChange := ReplaceChanged;
   FReplaceText.OnDropDown := HistoryDropDown;
   FReplaceLabel.FocusControl := FReplaceText;
-  FReplaceOne := AddButton(FReplaceRow, TAtlasStrings.Text(TAtlasTextId.SearchReplaceButton),
-    TAtlasStrings.Text(TAtlasTextId.SearchReplaceHint), 90);
+  FReplaceOne := AddButton(FReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceButton),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceHint), 90);
   FReplaceOne.OnClick := ReplaceOneClick;
-  FReplaceAll := AddButton(FReplaceRow, TAtlasStrings.Text(TAtlasTextId.SearchReplaceAllButton),
-    TAtlasStrings.Text(TAtlasTextId.SearchReplaceAllHint), 110);
+  FReplaceAll := AddButton(FReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceAllButton),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceAllHint), 110);
   FReplaceAll.OnClick := ReplaceAllClick;
-  FChoose := AddButton(FReplaceRow, TAtlasStrings.Text(TAtlasTextId.SearchChooseButton),
-    TAtlasStrings.Text(TAtlasTextId.SearchChooseHint), 90);
+  FChoose := AddButton(FReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchChooseButton),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchChooseHint), 90);
   FChoose.OnClick := ChooseClick;
 
   FInfo := TPaintBox.Create(Self);
@@ -561,17 +562,17 @@ class function TAtlasSearchBar.ScopeCaption(AScope: TAtlasSearchScope): string;
 begin
   case AScope of
     TAtlasSearchScope.Method:
-      Result := TAtlasStrings.Text(TAtlasTextId.SearchScopeMethod);
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeMethod);
     TAtlasSearchScope.Selection:
-      Result := TAtlasStrings.Text(TAtlasTextId.SearchScopeSelection);
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeSelection);
     TAtlasSearchScope.OpenFiles:
-      Result := TAtlasStrings.Text(TAtlasTextId.SearchScopeOpenFiles);
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeOpenFiles);
     TAtlasSearchScope.Project:
-      Result := TAtlasStrings.Text(TAtlasTextId.SearchScopeProject);
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeProject);
     TAtlasSearchScope.ProjectGroup:
-      Result := TAtlasStrings.Text(TAtlasTextId.SearchScopeProjectGroup);
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeProjectGroup);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SearchScopeUnit);
+    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeUnit);
   end;
 end;
 
@@ -677,7 +678,7 @@ begin
   if AText <> '' then
   begin
     FInfoKind := TInfoKind.Error;
-    FInfoText := TAtlasStrings.Fmt(TAtlasTextId.SearchRegexError, [AText]);
+    FInfoText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchRegexError, [AText]);
     FTextFrame.ParentBackground := False;
     FTextFrame.StyleElements := FTextFrame.StyleElements - [seClient];
     FTextFrame.Color := ErrorColor;
@@ -743,7 +744,7 @@ begin
     TInfoKind.Notice:
       begin
         if FHasPreview then
-          Result := TAtlasStrings.Text(TAtlasTextId.SearchPreviewLabel) + ' ' + FPreviewBefore + ' → ' +
+          Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ' + FPreviewBefore + ' → ' +
             FPreviewAfter;
         if (Result <> '') and (FInfoText <> '') then
           Result := Result + '   ·   ';
@@ -778,7 +779,7 @@ begin
   end;
   if FHasPreview then
   begin
-    Put(TAtlasStrings.Text(TAtlasTextId.SearchPreviewLabel) + ' ', []);
+    Put(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ', []);
     Put(FPreviewBefore, [fsStrikeOut]);
     Put(' → ', []);
     Put(FPreviewAfter, [fsBold]);

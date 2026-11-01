@@ -10,7 +10,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Search.Strings;
 
 type
   [TestFixture]
@@ -335,7 +336,7 @@ begin
     Assert.IsTrue(Bar.ToggleButton.Visible);
     Assert.IsTrue(Bar.RegexBox.Visible);
     Assert.AreEqual(5, Integer(Bar.ScopeBox.Items.Count), 'Unit, Methode, offene Dateien, Projekt, Projektgruppe');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SearchScopeProject), Bar.ScopeBox.Items[3]);
+    Assert.AreEqual(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeProject), Bar.ScopeBox.Items[3]);
     Bar.ReplaceShown := True;
     Assert.IsTrue(Bar.ReplaceRow.Visible);
     Bar.RegexBox.Checked := True;

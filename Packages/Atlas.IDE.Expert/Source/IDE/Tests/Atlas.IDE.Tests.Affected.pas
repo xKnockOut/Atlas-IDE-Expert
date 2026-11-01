@@ -78,6 +78,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Tests.AffectedHook,
   Atlas.UI.Strings,
+  Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Vcs.Service;
@@ -152,7 +153,7 @@ var
 begin
   if not Enabled then
   begin
-    TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.TestsAffectedOff));
+    TAtlasIdeResults.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsAffectedOff));
     Exit;
   end;
   mSession := TAtlasIdeResults.Session;
@@ -164,14 +165,14 @@ begin
   mFileName := ActiveProject;
   if mFileName = '' then
   begin
-    TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.TestsAffectedNoProject));
+    TAtlasIdeResults.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsAffectedNoProject));
     Exit;
   end;
   // git bzw. svn vergleichen die gespeicherten Dateien; der Server liest sie für die Zuordnung ebenfalls von der
   // Platte. Ungespeicherte Änderungen zählen erst nach dem Speichern.
   Inc(FRequest);
   mRequest := FRequest;
-  TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.TestsAffectedRunning));
+  TAtlasIdeResults.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsAffectedRunning));
   Spawn(
     procedure
     var
@@ -200,10 +201,10 @@ var
   mTest: TAtlasAffectedTest;
 begin
   if AFound.All then
-    Exit(TArray<string>.Create(TAtlasStrings.Fmt(TAtlasTextId.TestsAffectedAll, [AFound.AllReason])));
+    Exit(TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedAll, [AFound.AllReason])));
   if Length(AFound.Tests) = 0 then
-    Exit(TArray<string>.Create(TAtlasStrings.Fmt(TAtlasTextId.TestsAffectedNone, [AFound.Base])));
-  Result := TArray<string>.Create(TAtlasStrings.Fmt(TAtlasTextId.TestsAffectedFound,
+    Exit(TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedNone, [AFound.Base])));
+  Result := TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedFound,
     [AFound.Base, AFound.Depth, Length(AFound.Tests)]));
   for mTest in AFound.Tests do
     if Length(mTest.Reasons) > 0 then
@@ -222,7 +223,7 @@ begin
     Exit;
   if AError <> '' then
   begin
-    TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.TestsAffectedFailed, [AError]));
+    TAtlasIdeResults.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedFailed, [AError]));
     Exit;
   end;
   for mLine in Lines(AFound) do
@@ -281,10 +282,10 @@ begin
         (mBranching.HookFolders(mHooks, mGitDir) <> TAtlasVcsOutcome.Ok) then
         Exit;
       if TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Foreign then
-        mText := TAtlasStrings.Fmt(TAtlasTextId.TestsAffectedHookForeign, [mHooks])
+        mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedHookForeign, [mHooks])
       else if (TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Missing) and
         TAtlasAffectedHook.Install(mHooks, mGitDir, mConfig) then
-        mText := TAtlasStrings.Fmt(TAtlasTextId.TestsAffectedHookInstalled, [mHooks])
+        mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedHookInstalled, [mHooks])
       else
       begin
         // Eigener Hook: Skript und Angaben auf den Stand bringen (Testprojekt, Serverpfad).

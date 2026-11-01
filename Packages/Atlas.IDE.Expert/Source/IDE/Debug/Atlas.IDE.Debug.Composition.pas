@@ -91,7 +91,8 @@ uses
   Atlas.IDE.Debug.StepFilter,
   Atlas.IDE.Debug.Report,
   Atlas.IDE.Contracts.DebugReport,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings;
 
 var
   GScope: IAtlasModuleScope;
@@ -252,7 +253,7 @@ begin
     begin
       Result := TAtlasServerCompletionProvider.ItemsFromLsp(AResponse);
     end, TAtlasExpressionCompletionProvider.DefaultTimeoutMs);
-  mProvider.HistoryCaption := TAtlasStrings.Text(TAtlasTextId.DebugExpressionHistory);
+  mProvider.HistoryCaption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExpressionHistory);
   Result := mProvider;
 end;
 
@@ -313,19 +314,19 @@ begin
     end;
 end;
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := ACaption;
   Result.Run := Guarded(ARun);
   Result.Visible := AVisible;
 end;
 
 /// <summary>Wie Command, mit Tastenkürzel zur Anzeige. Eigener Name statt Überladung: anonyme Methoden als
 /// Argument vertragen keine Überladungen.</summary>
-function CommandWithKey(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function CommandWithKey(const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>; const AKey: TFunc<Integer>): TAtlasModuleCommand;
 begin
   Result := Command(AId, ACaption, ARun, AVisible);
@@ -403,33 +404,41 @@ function TAtlasDebugModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
-    CommandWithKey('Atlas.StepIntoTarget', TAtlasTextId.StepIntoTargetCommand, TAtlasIdeStepInto.Run,
+    CommandWithKey('Atlas.StepIntoTarget', TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand),
+      TAtlasIdeStepInto.Run,
       StepIntoTargetVisible, StepIntoTargetKey),
     // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
-    Command('Atlas.BreakOnNextEvent', TAtlasTextId.EventBreakCommand, TAtlasIdeEventBreak.Run,
+    Command('Atlas.BreakOnNextEvent', TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCommand),
+      TAtlasIdeEventBreak.Run,
       BreakOnNextEventVisible),
     // Schrittfilter (#850): Das Fenster schaltet debug.stepFilters selbst, deshalb immer sichtbar.
-    Command('Atlas.StepFilters', TAtlasTextId.StepFilterWindowCommand, TAtlasIdeDebugStepFilter.ShowWindow,
+    Command('Atlas.StepFilters', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterWindowCommand),
+      TAtlasIdeDebugStepFilter.ShowWindow,
       nil),
-    Command('Atlas.StepIntoAnyway', TAtlasTextId.StepFilterStepIntoAnywayCommand,
+    Command('Atlas.StepIntoAnyway', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterStepIntoAnywayCommand),
       TAtlasIdeDebugStepFilter.StepIntoAnyway, StepFilterRunning),
     // Routine an der Schreibmarke in debug.stepFilters.patterns aufnehmen bzw. entfernen (#850); der Aufruf meldet,
     // was danach noch filtert.
-    Command('Atlas.StepFilterSkip', TAtlasTextId.StepFilterSkipCommand, TAtlasIdeDebugStepFilter.SkipAtCursor, nil),
-    Command('Atlas.StepFilterUnskip', TAtlasTextId.StepFilterUnskipCommand, TAtlasIdeDebugStepFilter.UnskipAtCursor,
+    Command('Atlas.StepFilterSkip', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterSkipCommand),
+      TAtlasIdeDebugStepFilter.SkipAtCursor, nil),
+    Command('Atlas.StepFilterUnskip', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterUnskipCommand),
+      TAtlasIdeDebugStepFilter.UnskipAtCursor,
       nil),
     // Exception-Verlauf (#517); nur sichtbar, solange debug.exceptionHistory an ist.
-    Command('Atlas.DebugExceptions', TAtlasTextId.DebugExceptionsCommand, TAtlasIdeDebugExceptions.ShowWindow,
+    Command('Atlas.DebugExceptions', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsCommand),
+      TAtlasIdeDebugExceptions.ShowWindow,
       DebugExceptionsVisible),
     // Fenster „Auswerten“ (#784) und der Dialog der IDE daneben.
-    Command('Atlas.DebugEvaluate', TAtlasTextId.DebugEvaluateCommand, TAtlasIdeDebugEvaluate.ShowWindow,
+    Command('Atlas.DebugEvaluate', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateCommand),
+      TAtlasIdeDebugEvaluate.ShowWindow,
       DebugEvaluateVisible),
-    Command('Atlas.DebugEvaluateIdeDialog', TAtlasTextId.DebugEvaluateIdeDialogCommand,
+    Command('Atlas.DebugEvaluateIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialogCommand),
       TAtlasIdeDebugEvaluate.OpenIdeDialog, DebugEvaluateVisible),
     // Nur eigener Code (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
-    Command('Atlas.DebugJustMyCode', TAtlasTextId.DebugJustMyCodeCommand, ToggleDebugJustMyCode, nil),
+    Command('Atlas.DebugJustMyCode', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeCommand),
+      ToggleDebugJustMyCode, nil),
     // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung.
-    Command('Atlas.DebugExceptionIdeDialog', TAtlasTextId.DebugBannerIdeDialogCommand,
+    Command('Atlas.DebugExceptionIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogCommand),
       TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible)];
 end;
 

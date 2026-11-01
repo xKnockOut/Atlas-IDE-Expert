@@ -80,7 +80,8 @@ uses
   Atlas.IDE.StartProfiles.Service,
   Atlas.IDE.Tasks.Runner,
   Atlas.UI.Tasks.Texts,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Build.Strings;
 
 const
   StartProfileExtra = 'startProfile';
@@ -346,12 +347,12 @@ begin
     end;
 end;
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId: string; ACaption: TAtlasBuildTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := TAtlasBuildStrings.Text(ACaption);
   Result.Run := ARun;
   Result.Visible := AVisible;
 end;
@@ -419,18 +420,18 @@ function TAtlasBuildModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     // Wirksame Compiler-Schalter (#558); nur sichtbar, solange build.compilerSwitches an ist.
-    Command('Atlas.CompilerSwitches', TAtlasTextId.CompilerSwitchesCommand,
+    Command('Atlas.CompilerSwitches', TAtlasBuildTextId.CompilerSwitchesCommand,
       Guarded(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible),
     // Projektaufgaben (#900): sichtbar, solange tasks.enabled an ist und der Läufer läuft.
-    Command('Atlas.RunTask', TAtlasTextId.TasksRunCommand, TasksCommand(ChooseTask), TasksVisible),
-    Command('Atlas.RunChecks', TAtlasTextId.TasksRunChecksCommand, TasksCommand(RunChecks), TasksVisible),
-    Command('Atlas.RepeatTask', TAtlasTextId.TasksRepeatCommand, TasksCommand(RepeatTask), TasksVisible),
-    Command('Atlas.CancelTasks', TAtlasTextId.TasksCancelCommand, TasksCommand(CancelTasks), TasksVisible),
-    Command('Atlas.TasksOutput', TAtlasTextId.TasksOutputCommand, TasksCommand(ToggleTasksOutput), TasksVisible),
-    Command('Atlas.TasksFindings', TAtlasTextId.TasksFindingsCommand, TasksCommand(ChooseTaskFindings),
+    Command('Atlas.RunTask', TAtlasBuildTextId.TasksRunCommand, TasksCommand(ChooseTask), TasksVisible),
+    Command('Atlas.RunChecks', TAtlasBuildTextId.TasksRunChecksCommand, TasksCommand(RunChecks), TasksVisible),
+    Command('Atlas.RepeatTask', TAtlasBuildTextId.TasksRepeatCommand, TasksCommand(RepeatTask), TasksVisible),
+    Command('Atlas.CancelTasks', TAtlasBuildTextId.TasksCancelCommand, TasksCommand(CancelTasks), TasksVisible),
+    Command('Atlas.TasksOutput', TAtlasBuildTextId.TasksOutputCommand, TasksCommand(ToggleTasksOutput), TasksVisible),
+    Command('Atlas.TasksFindings', TAtlasBuildTextId.TasksFindingsCommand, TasksCommand(ChooseTaskFindings),
       TasksVisible),
     // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
-    Command('Atlas.StartProfile', TAtlasTextId.StartProfilesCommand,
+    Command('Atlas.StartProfile', TAtlasBuildTextId.StartProfilesCommand,
       Guarded(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible)];
 end;
 
@@ -445,7 +446,7 @@ end;
 function TaskEntry(const AId, ACaption: string; const ARun: TProc): TAtlasMenuEntry;
 begin
   Result := MenuEntry(AId);
-  Result.Section := TAtlasStrings.Text(TAtlasTextId.MenuGroupTasks);
+  Result.Section := TAtlasBuildStrings.Text(TAtlasBuildTextId.MenuGroupTasks);
   Result.Caption := ACaption;
   Result.Run := ARun;
 end;
@@ -469,7 +470,7 @@ begin
   for mItem in mItems do
     Result := Result + [TaskEntry(TaskEntryPrefix + mItem.Name, mItem.Caption, TaskMenuRun(mItem.Name))];
   if Length(mItems) = 0 then
-    Result := Result + [TaskEntry(TaskEntryPrefix, TAtlasStrings.Text(TAtlasTextId.TasksMenuEmpty), nil)];
+    Result := Result + [TaskEntry(TaskEntryPrefix, TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksMenuEmpty), nil)];
 end;
 
 procedure TAtlasBuildModule.ApplySettings;

@@ -116,7 +116,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Tests.Run,
-  Atlas.UI.Strings,
+  Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
@@ -311,23 +311,23 @@ begin
   AFailed := False;
   APassed := False;
   if FTests.Busy then
-    Exit(TAtlasStrings.Text(TAtlasTextId.TestsLensRunning));
+    Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
   if AItem.Selection.Method = '' then
-    Result := TAtlasStrings.Text(TAtlasTextId.TestsLensRunFixture)
+    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunFixture)
   else if AItem.Selection.CaseName <> '' then
-    Result := TAtlasStrings.Text(TAtlasTextId.TestsLensRunCase)
+    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunCase)
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.TestsLensRun);
+    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRun);
   Status := FTests.StatusOf(FUnitName, AItem.Selection.Fixture, AItem.Selection.Method, AItem.Selection.CaseName);
   if Status = TAtlasTestStatus.Failed then
   begin
     AFailed := True;
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TestsLensFailed, [Result]);
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensFailed, [Result]);
   end
   else if Status = TAtlasTestStatus.Passed then
   begin
     APassed := True;
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TestsLensPassed, [Result]);
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPassed, [Result]);
   end;
 end;
 
@@ -417,7 +417,7 @@ begin
       FItems[Index].DebugRect := TRect.Empty;
       // „Debuggen“ (#585) rechts daneben; nicht während eines Laufs.
       if TAtlasTestDebug.LensDebugWanted(TAtlasIdeSettings.Current) and not FTests.Busy then
-        FItems[Index].DebugRect := DrawPill(TAtlasStrings.Text(TAtlasTextId.TestsLensDebug), Colors.Accent,
+        FItems[Index].DebugRect := DrawPill(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDebug), Colors.Accent,
           Pill.Right + 6);
       FItems[Index].TopRow := Context.EditView.TopRow;
       TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTests, Context.FileName, FItems[Index].Line,

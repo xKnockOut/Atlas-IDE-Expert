@@ -48,7 +48,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.Core.Dock.Plan,
   Atlas.Core.Settings.Plugin,
@@ -92,7 +92,7 @@ end;
 
 function THotspotsDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.HotspotsCaption);
+  Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsCaption);
 end;
 
 function THotspotsDock.GetIdentifier: string;

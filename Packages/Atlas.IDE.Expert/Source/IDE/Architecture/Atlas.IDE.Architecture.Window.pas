@@ -48,7 +48,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.Core.Dock.Plan,
   Atlas.Core.Settings.Plugin,
@@ -92,7 +92,7 @@ end;
 
 function TArchitectureDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.ArchitectureCaption);
+  Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCaption);
 end;
 
 function TArchitectureDock.GetIdentifier: string;

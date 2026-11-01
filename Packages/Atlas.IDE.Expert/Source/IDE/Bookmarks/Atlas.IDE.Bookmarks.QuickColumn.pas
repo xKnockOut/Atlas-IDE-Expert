@@ -199,7 +199,7 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Bookmarks.Quick,
-  Atlas.UI.Strings,
+  Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.GutterColumns,
@@ -479,11 +479,11 @@ begin
   if Length(AMarks) = 0 then
     Exit;
   if Length(AMarks) > 1 then
-    ATitle := TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkTipMore, [Length(AMarks)])
+    ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkTipMore, [Length(AMarks)])
   else if AMarks[0].Number > 0 then
-    ATitle := TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkTipTitle, [AMarks[0].Number])
+    ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkTipTitle, [AMarks[0].Number])
   else
-    ATitle := TAtlasStrings.Text(TAtlasTextId.QuickBookmarkTipUnnumbered);
+    ATitle := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkTipUnnumbered);
   for Mark in AMarks do
   begin
     Line := Mark.DisplayName;
@@ -492,7 +492,8 @@ begin
       Line := IntToStr(Mark.Number) + ' · ' + Line;
       Key := TAtlasQuickBookmarks.KeyFor(AJumpKey, Mark.Number);
       if Key <> 0 then
-        Line := Line + ' — ' + TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkTipJump, [ShortCutToText(TShortCut(Key))]);
+        Line := Line + ' — ' + TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkTipJump,
+          [ShortCutToText(TShortCut(Key))]);
     end;
     if AText <> '' then
       AText := AText + #10;
@@ -943,7 +944,7 @@ begin
   begin
     if not TAtlasIdeSettings.Current.QuickBookmarksGutterClick then
       Exit;
-    Text := TAtlasStrings.Text(TAtlasTextId.QuickBookmarkTipFree);
+    Text := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkTipFree);
   end;
   FTip.ShowNote(Title, Text, Point(FHoverScreen.Right + 4, FHoverScreen.Bottom + 2));
 end;
@@ -1031,25 +1032,27 @@ begin
   if Length(ARow.Marks) > 0 then
     Current := ARow.Marks[0].Number;
   Targets := TAtlasIdeBookmarks.NumberTargets(ARow.FileName);
-  Numbers := AddMenuItem(FMenu.Items, TAtlasStrings.Text(TAtlasTextId.QuickBookmarkMenuNumber), 0);
+  Numbers := AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuNumber), 0);
   Numbers.OnClick := nil;
   for Number := 1 to TAtlasQuickBookmarks.MaxNumber do
   begin
     // Belegte Nummern zeigen ihr Ziel; die eigene ist abgehakt (Klick nimmt sie weg).
     if (Number < Length(Targets)) and (Targets[Number] <> '') and (Number <> Current) then
-      Item := AddMenuItem(Numbers, TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkMenuNumberUsed,
+      Item := AddMenuItem(Numbers, TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkMenuNumberUsed,
         [Number, Targets[Number]]), Number)
     else
       Item := AddMenuItem(Numbers, '&' + IntToStr(Number), Number);
     Item.Checked := Number = Current;
   end;
-  AddMenuItem(FMenu.Items, TAtlasStrings.Text(TAtlasTextId.QuickBookmarkMenuName), MenuName);
-  Item := AddMenuItem(FMenu.Items, TAtlasStrings.Text(TAtlasTextId.QuickBookmarkMenuRemove), MenuRemove);
+  AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuName), MenuName);
+  Item := AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuRemove),
+    MenuRemove);
   Item.Enabled := Length(ARow.Marks) > 0;
-  Item := AddMenuItem(FMenu.Items, TAtlasStrings.Text(TAtlasTextId.QuickBookmarkMenuRemoveFile), MenuRemoveFile);
+  Item := AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuRemoveFile),
+    MenuRemoveFile);
   Item.Enabled := TAtlasIdeBookmarks.HasColumnMarks(ARow.FileName);
   AddMenuItem(FMenu.Items, '-', -1).OnClick := nil;
-  AddMenuItem(FMenu.Items, TAtlasStrings.Text(TAtlasTextId.QuickBookmarkMenuWindow), MenuWindow);
+  AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuWindow), MenuWindow);
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 

@@ -104,7 +104,7 @@ implementation
 uses
   System.Math,
   Vcl.Forms,
-  Atlas.UI.Strings;
+  Atlas.UI.Debug.Strings;
 
 const
   /// <summary>Knöpfe der dritten Zeile in Reihenfolge.</summary>
@@ -255,21 +255,21 @@ function TAtlasDebugExceptionBar.ActionCaption(AAction: TAtlasDebugBarAction): s
 begin
   case AAction of
     TAtlasDebugBarAction.BreakHere:
-      Result := TAtlasStrings.Text(TAtlasTextId.DebugBannerBreak);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerBreak);
     TAtlasDebugBarAction.Continue:
-      Result := TAtlasStrings.Text(TAtlasTextId.DebugBannerContinue);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerContinue);
     TAtlasDebugBarAction.IgnoreClass:
-      Result := TAtlasStrings.Text(TAtlasTextId.DebugBannerIgnoreClass);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIgnoreClass);
     TAtlasDebugBarAction.IgnoreLocation:
-      Result := TAtlasStrings.Text(TAtlasTextId.DebugBannerIgnoreLocation);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIgnoreLocation);
     TAtlasDebugBarAction.Copy:
-      Result := TAtlasStrings.Text(TAtlasTextId.DebugBannerCopy);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerCopy);
     TAtlasDebugBarAction.WhereAssigned:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.DebugAvWhereAssigned, [FExplanation.WhereName]);
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvWhereAssigned, [FExplanation.WhereName]);
     TAtlasDebugBarAction.Evaluate:
-      Result := TAtlasStrings.Text(TAtlasTextId.DebugAvEvaluate);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvEvaluate);
     TAtlasDebugBarAction.CopyExplanation:
-      Result := TAtlasStrings.Text(TAtlasTextId.DebugAvCopy);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopy);
   else
     Result := '';
   end;
@@ -282,9 +282,9 @@ var
 begin
   Parts := nil;
   if FInfo.ThreadText <> '' then
-    Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.DebugBannerThread, [FInfo.ThreadText])];
+    Parts := Parts + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerThread, [FInfo.ThreadText])];
   if FInfo.Hidden > 0 then
-    Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.DebugBannerHidden, [FInfo.Hidden])];
+    Parts := Parts + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerHidden, [FInfo.Hidden])];
   Place := FInfo.Routine;
   if FInfo.LocationText <> '' then
     if Place <> '' then
@@ -449,7 +449,7 @@ begin
   Right := Frame.Right - Scale(Gap);
   if FInfo.Count > 1 then
   begin
-    Text := TAtlasStrings.Fmt(TAtlasTextId.DebugBannerCount, [FInfo.Count]);
+    Text := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerCount, [FInfo.Count]);
     Canvas.Font.Color := ToColor(FColors.Warn);
     Line := Rect(Frame.Left, Frame.Top, Right, Frame.Top + RowHeight);
     DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
@@ -492,7 +492,7 @@ begin
   Canvas.Font := Font;
   Canvas.Font.Color := ToColor(FColors.Muted);
   Canvas.Brush.Style := bsClear;
-  Text := TAtlasStrings.Text(TAtlasTextId.DebugBannerKeys);
+  Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerKeys);
   Line := Rect(FRects[TAtlasDebugBarAction.Copy].Right + Scale(Gap), RowTop(Rows - 1), Frame.Right - Scale(Gap),
     Frame.Bottom);
   if Line.Width > Canvas.TextWidth(Text) then
@@ -570,7 +570,7 @@ begin
   begin
     Line := Rect(AFrame.Left + Scale(2 * Gap) + Indent, RowTop(Row), AFrame.Right - Scale(Gap), RowTop(Row + 1));
     Canvas.Font.Color := ToColor(FColors.Muted);
-    Text := TAtlasStrings.Fmt(TAtlasTextId.DebugAvMore, [Length(FExplanation.Lines) - MaxExplanationLines]);
+    Text := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMore, [Length(FExplanation.Lines) - MaxExplanationLines]);
     DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   end;
   for Action in ExplanationButtons do
@@ -592,7 +592,7 @@ begin
     Cursor := crDefault;
   Application.CancelHint;
   if Hot = TAtlasDebugBarAction.Open then
-    Hint := TAtlasStrings.Text(TAtlasTextId.DebugBannerOpenHint)
+    Hint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerOpenHint)
   else
     Hint := FInfo.Message;
   Invalidate;

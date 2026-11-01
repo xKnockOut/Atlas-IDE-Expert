@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Build.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -81,7 +81,7 @@ end;
 
 function TSwitchesDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesCaption);
+  Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesCaption);
 end;
 
 function TSwitchesDock.GetIdentifier: string;

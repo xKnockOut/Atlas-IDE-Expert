@@ -59,7 +59,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.Summary,
-  Atlas.UI.Strings;
+  Atlas.UI.Rules.Strings;
 
 const
   /// <summary>Höchstens so viele Pfade in Rückfrage und Meldung; der Rest als „… und n weitere“.</summary>
@@ -85,10 +85,11 @@ begin
   begin
     if mIndex = OrphanLines then
     begin
-      Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateOrphansMore, [Length(AOrphans) - mIndex])];
+      Result := Result + [TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateOrphansMore,
+        [Length(AOrphans) - mIndex])];
       Break;
     end;
-    Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateOrphanLine, [AOrphans[mIndex].Path,
+    Result := Result + [TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateOrphanLine, [AOrphans[mIndex].Path,
       AOrphans[mIndex].Count])];
   end;
 end;
@@ -101,17 +102,17 @@ var
 begin
   if AUpdate.OrphanCount > 0 then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateOrphans, [AUpdate.OrphanCount]));
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateOrphans, [AUpdate.OrphanCount]));
     for mLine in OrphanText(AUpdate.Orphans) do
       TAtlasIdeHost.Message(mLine);
   end;
-  TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateDone, [AUpdate.FileName, AUpdate.Total,
+  TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateDone, [AUpdate.FileName, AUpdate.Total,
     AUpdate.Files, AUpdate.Added, AUpdate.Removed, AUpdate.Unchanged]));
   if AUpdate.Completed > 0 then
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateCompleted, [AUpdate.Completed]));
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateCompleted, [AUpdate.Completed]));
   // Bericht N3: Die unbrauchbare bisherige Datei wurde nicht still ersetzt.
   if AUpdate.SetAside <> '' then
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateSetAside, [AUpdate.SetAside]));
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateSetAside, [AUpdate.SetAside]));
 end;
 
 /// <summary>Hörer der Baseline (Projektverlauf); jeder Hörer für sich gesichert.</summary>
@@ -152,22 +153,23 @@ var
 begin
   if not TAtlasProjectBaselines.FromServer(AAnswer, mUpdate) then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateFailed));
     if Assigned(ADone) then
-      ADone(False, 0, 0, TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+      ADone(False, 0, 0, TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateFailed));
     Exit;
   end;
   ReportUpdate(mUpdate);
   // Nicht im Projektordner geschrieben (#758): Verlauf und Einrichtung lesen weiter dort.
   if TAtlasProjectBaselines.WrittenElsewhere(AProject, mUpdate.FileName) then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateElsewhere, [ExtractFileDir(mUpdate.FileName),
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateElsewhere,
+      [ExtractFileDir(mUpdate.FileName),
       ExtractFileDir(AProject)]));
     // Zähler des Servers gehören zur anderen Datei: nur den Stand im Projektordner melden.
     mState := TAtlasProjectBaselines.StateOnDisk(ExtractFileDir(AProject));
     NotifyMeasured(AProject, mState);
     if Assigned(ADone) then
-      ADone(False, 0, 0, TAtlasStrings.Text(TAtlasTextId.WelcomeSetupBaselineElsewhere));
+      ADone(False, 0, 0, TAtlasRulesStrings.Text(TAtlasRulesTextId.WelcomeSetupBaselineElsewhere));
     Exit;
   end;
   mState := TAtlasProjectBaselines.StateOnDisk(ExtractFileDir(mUpdate.FileName));
@@ -216,12 +218,12 @@ begin
   Result := '';
   // Startet den Server bei Bedarf; der Befehl selbst läuft im Hintergrund.
   if (FScope = nil) or (TAtlasIdeHost.ActiveSession = nil) then
-    Exit(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+    Exit(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateFailed));
   if not TAtlasIdeHost.RunCommandAsync(FScope, TAtlasFeature.Menu, TAtlasProjectBaselines.Command,
     TAtlasProjectBaselines.Arguments(TLspSession.PathToUri(AProject)), TAtlasProjectBaselines.TimeoutMs,
     UpdateAnswer(AProject, ADone)) then
     // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
-    Result := TAtlasStrings.Text(TAtlasTextId.BaselineUpdateBusy);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateBusy);
 end;
 
 class procedure TAtlasIdeRulesBaseline.UpdateActiveProject;
@@ -235,23 +237,23 @@ begin
   mFileName := ActiveProjectFile;
   if mFileName = '' then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateNoProject));
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateNoProject));
     Exit;
   end;
   if TAtlasIdeHost.ActiveSession = nil then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateFailed));
     Exit;
   end;
   // Einträge ohne Datei nennen, bevor das Aktualisieren sie entfernt (umbenannte oder verschobene Dateien).
   mState := TAtlasProjectBaselines.StateOnDisk(ExtractFileDir(mFileName));
-  if (mState.OrphanCount > 0) and (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateConfirm,
+  if (mState.OrphanCount > 0) and (MessageDlg(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateConfirm,
     [mState.OrphanCount, sLineBreak + string.Join(sLineBreak, OrphanText(mState.Orphans)) + sLineBreak +
     sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
     Exit;
   mReason := StartUpdate(mFileName, nil);
   if mReason = '' then
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateRunning))
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateRunning))
   else
     TAtlasIdeHost.Warning(mReason);
 end;
@@ -273,13 +275,13 @@ begin
   end;
   if not mValid then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineFailed));
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.CompilerBaselineFailed));
     Exit;
   end;
-  TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineDone, [mAdded.FileName, mAdded.Total,
+  TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.CompilerBaselineDone, [mAdded.FileName, mAdded.Total,
     mAdded.Added, mAdded.Removed, mAdded.Unchanged]));
   if mAdded.Skipped > 0 then
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineSkipped, [mAdded.Skipped]));
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.CompilerBaselineSkipped, [mAdded.Skipped]));
 end;
 
 class procedure TAtlasIdeRulesBaseline.AddCompilerMessages;
@@ -294,20 +296,20 @@ begin
   mFileName := ActiveProjectFile;
   if mFileName = '' then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineNoProject));
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.CompilerBaselineNoProject));
     Exit;
   end;
   mMessages := mSummary.Baselinable(mFileName);
   if Length(mMessages) = 0 then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineNone, [ExtractFileName(mFileName)]));
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.CompilerBaselineNone, [ExtractFileName(mFileName)]));
     Exit;
   end;
   // Startet den Server bei Bedarf; der Befehl selbst läuft nebenläufig im Hintergrund.
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Menu,
     TAtlasBuildVerdicts.AddCommand, TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(mFileName), mMessages),
     TAtlasBuildVerdicts.AddTimeoutMs, ReportCompilerBaseline) then
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineFailed));
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.CompilerBaselineFailed));
 end;
 
 end.

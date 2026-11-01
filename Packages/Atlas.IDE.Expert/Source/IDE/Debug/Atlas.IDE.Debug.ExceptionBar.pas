@@ -141,7 +141,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.UI.Strings;
+  Atlas.UI.Debug.Strings;
 
 { TAtlasIdeDebugExceptionBar.TListener }
 
@@ -341,8 +341,8 @@ begin
   Line := TAtlasStatusLine.Create(FRegistry, StatusId, StatusOrder);
   FStatusRef := Line;
   // Gelb: Die Einstellung ist an, wirkt aber nur als Rückfall.
-  Line.Update(TAtlasStrings.Text(TAtlasTextId.DebugBannerUnknownVersion), TAtlasStatusState.Yellow,
-    TAtlasStrings.Text(TAtlasTextId.DebugBannerUnknownVersionSummary));
+  Line.Update(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerUnknownVersion), TAtlasStatusState.Yellow,
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerUnknownVersionSummary));
   FRegistry.Add(FStatusRef);
 end;
 
@@ -351,9 +351,9 @@ begin
   FIdeDialog := not FIdeDialog;
   if Assigned(FMessage) then
     if FIdeDialog then
-      FMessage(TAtlasStrings.Text(TAtlasTextId.DebugBannerIdeDialogOn))
+      FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogOn))
     else
-      FMessage(TAtlasStrings.Text(TAtlasTextId.DebugBannerIdeDialogOff));
+      FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogOff));
 end;
 
 class procedure TAtlasIdeDebugExceptionBar.ExceptionTaken(const AStop: TAtlasDebugExceptionStop);
@@ -422,7 +422,7 @@ begin
     TAtlasIdeDebugExceptions.History.TryFind(FShown.Key, Found) then
     FShown.Count := Found.Count;
   FShownInfo := TAtlasDebugBannerRules.Info(FShown, TAtlasIdeSettings.Current.DebugJustMyCode,
-    TAtlasIdeDebugSession.LaunchProject, TAtlasStrings.Text(TAtlasTextId.DebugExceptionsThread),
+    TAtlasIdeDebugSession.LaunchProject, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread),
     TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation);
   // Zur gezeigten Zeile und markieren; öffnet die Unit im obersten Editorfenster.
   if FShownInfo.HasLocation then

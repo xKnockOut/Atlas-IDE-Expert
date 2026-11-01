@@ -246,6 +246,7 @@ uses
   Atlas.Core.Search.Results,
   Atlas.Text.Lines,
   Atlas.UI.Strings,
+  Atlas.UI.Search.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
@@ -267,20 +268,20 @@ const
   HistoryKind = 'Suchverlauf';
 
 /// <summary>„1 Datei“, „3 Dateien“.</summary>
-function Plural(ACount: Integer; AOne, AMany: TAtlasTextId): string;
+function Plural(ACount: Integer; AOne, AMany: TAtlasSearchTextId): string;
 begin
   if ACount = 1 then
-    Result := TAtlasStrings.Text(AOne)
+    Result := TAtlasSearchStrings.Text(AOne)
   else
-    Result := TAtlasStrings.Text(AMany);
+    Result := TAtlasSearchStrings.Text(AMany);
 end;
 
 /// <summary>„12 Ersetzungen in 3 Dateien“.</summary>
 function ReplacedText(AReplacements, AFiles: Integer): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.SearchReplaced, [AReplacements,
-    Plural(AReplacements, TAtlasTextId.SearchReplacementOne, TAtlasTextId.SearchReplacementMany), AFiles,
-    Plural(AFiles, TAtlasTextId.SearchFileOne, TAtlasTextId.SearchFileMany)]);
+  Result := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaced, [AReplacements,
+    Plural(AReplacements, TAtlasSearchTextId.SearchReplacementOne, TAtlasSearchTextId.SearchReplacementMany), AFiles,
+    Plural(AFiles, TAtlasSearchTextId.SearchFileOne, TAtlasSearchTextId.SearchFileMany)]);
 end;
 
 /// <summary>Schreibgeschützt: offener Puffer der IDE, sonst die Datei auf der Platte.</summary>
@@ -963,9 +964,9 @@ begin
     FHighlight := False;
     Repaint;
     if Query.Scope = TAtlasSearchScope.Method then
-      FBar.SetCounter(TAtlasStrings.Text(TAtlasTextId.SearchNoMethod))
+      FBar.SetCounter(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoMethod))
     else
-      FBar.SetCounter(TAtlasStrings.Text(TAtlasTextId.SearchNoSelection));
+      FBar.SetCounter(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoSelection));
     Exit;
   end;
   // Gemerkt wird der Bereich beim Suchen (Auswahl; Methode als Rückfall außerhalb jeder Routine).
@@ -1016,11 +1017,11 @@ begin
     Count := FFiles.HitCount;
     Files := Length(FFiles.Results);
     if FFilesDone then
-      FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesCounter,
-        [Count, Files, Plural(Files, TAtlasTextId.SearchFileOne, TAtlasTextId.SearchFileMany)]))
+      FBar.SetCounter(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesCounter,
+        [Count, Files, Plural(Files, TAtlasSearchTextId.SearchFileOne, TAtlasSearchTextId.SearchFileMany)]))
     else
-      FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesRunning,
-        [Count, Files, Plural(Files, TAtlasTextId.SearchFileOne, TAtlasTextId.SearchFileMany)]));
+      FBar.SetCounter(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesRunning,
+        [Count, Files, Plural(Files, TAtlasSearchTextId.SearchFileOne, TAtlasSearchTextId.SearchFileMany)]));
     Exit;
   end;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
@@ -1033,14 +1034,14 @@ begin
     Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
   if Length(Hits) = 0 then
   begin
-    FBar.SetCounter(TAtlasStrings.Text(TAtlasTextId.SearchNoHits));
+    FBar.SetCounter(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoHits));
     Exit;
   end;
   Index := TAtlasSearchResults.IndexAt(Hits, At);
   if Index >= 0 then
-    FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchHitPosition, [Index + 1, Length(Hits)]))
+    FBar.SetCounter(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchHitPosition, [Index + 1, Length(Hits)]))
   else
-    FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchHitCount, [Length(Hits)]));
+    FBar.SetCounter(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchHitCount, [Length(Hits)]));
 end;
 
 class procedure TAtlasIdeSearch.BarStep(ABackward: Boolean);
@@ -1091,22 +1092,22 @@ begin
   Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
   Mode := '';
   if FLast.Options.Identifier then
-    Mode := TAtlasStrings.Text(TAtlasTextId.SearchListIdentifier);
+    Mode := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListIdentifier);
   Place := '';
   case FLast.Scope of
     TAtlasSearchScope.Method:
       begin
         Routines := TAtlasSearchScopes.RoutinesAt(Text, Area.Start);
         if Length(Routines) > 0 then
-          Place := TAtlasStrings.Fmt(TAtlasTextId.SearchListScopeMethod,
+          Place := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchListScopeMethod,
             [TAtlasSearchResults.RoutineName(Routines[0].Caption)]);
       end;
     TAtlasSearchScope.Selection:
-      Place := ', ' + TAtlasStrings.Text(TAtlasTextId.SearchScopeSelection);
+      Place := ', ' + TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeSelection);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
-  TAtlasIdeSearchMessages.Show(FFileName, TAtlasStrings.Fmt(TAtlasTextId.SearchListTitle,
+  TAtlasIdeSearchMessages.Show(FFileName, TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchListTitle,
     [FLast.Text, Mode, ExtractFileName(FFileName), Place, Length(Hits)]),
     TAtlasSearchResults.Entries(Lines, Hits, TAtlasEditorBuffer.TabWidth(View.Buffer)), Length(Hits));
   // Das Meldungsfenster nimmt beim Zeigen den Fokus; zurück in die Leiste.
@@ -1270,8 +1271,8 @@ begin
   begin
     Mode := '';
     if FLast.Options.Identifier then
-      Mode := TAtlasStrings.Text(TAtlasTextId.SearchListIdentifier);
-    TAtlasIdeSearchMessages.Start(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesTitle,
+      Mode := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListIdentifier);
+    TAtlasIdeSearchMessages.Start(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesTitle,
       [FLast.Text, Mode, TAtlasSearchBar.ScopeCaption(FLast.Scope)]));
   end;
   Files := TAtlasIdeFileSearch.FilesOf(FLast.Scope);
@@ -1288,11 +1289,11 @@ begin
     // Keine Datei im Bereich (kein Projekt geöffnet): fertig mit nichts.
     FFilesDone := True;
     if FFilesListed then
-      TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Text(TAtlasTextId.SearchNoFiles));
+      TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoFiles));
     After := FAfterFiles;
     FAfterFiles := nil;
     if FBar <> nil then
-      FBar.SetCounter(TAtlasStrings.Text(TAtlasTextId.SearchNoFiles));
+      FBar.SetCounter(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoFiles));
     if Assigned(After) then
       After();
     Exit;
@@ -1324,16 +1325,18 @@ begin
     FBar.SetSearching(False);
   if FFilesListed then
   begin
-    TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesDone,
+    TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesDone,
       [ASummary.Hits, ASummary.FilesWithHits, ASummary.Files]));
     if ASummary.Skipped > 0 then
-      TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesSkipped, [ASummary.Skipped]));
+      TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesSkipped,
+        [ASummary.Skipped]));
     if ASummary.Cancelled then
-      TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesCancelled, [ASummary.Files]));
+      TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesCancelled,
+        [ASummary.Files]));
   end;
   UpdateCounter;
   if ASummary.Cancelled and (FBar <> nil) then
-    FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesCancelled, [ASummary.Files]));
+    FBar.SetCounter(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesCancelled, [ASummary.Files]));
   RefreshReplaceWindow('');
   // Was auf die fertige Suche gewartet hat (Alle ersetzen, F3); nicht nach einem Abbruch.
   After := FAfterFiles;
@@ -1354,16 +1357,16 @@ begin
   FFilesListed := True;
   Mode := '';
   if FLast.Options.Identifier then
-    Mode := TAtlasStrings.Text(TAtlasTextId.SearchListIdentifier);
-  TAtlasIdeSearchMessages.Start(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesTitle,
+    Mode := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListIdentifier);
+  TAtlasIdeSearchMessages.Start(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesTitle,
     [FLast.Text, Mode, TAtlasSearchBar.ScopeCaption(FLast.Scope)]));
   Width := TabWidth;
   for Item in FFiles.Results do
     TAtlasIdeSearchMessages.AddFile(Item.FileName, TAtlasSearchResults.Entries(Item.Lines, Item.Hits, Width));
   if FFilesDone then
-    TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesCounter, [FFiles.HitCount,
-      Length(FFiles.Results), Plural(Length(FFiles.Results), TAtlasTextId.SearchFileOne,
-      TAtlasTextId.SearchFileMany)]));
+    TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesCounter, [FFiles.HitCount,
+      Length(FFiles.Results), Plural(Length(FFiles.Results), TAtlasSearchTextId.SearchFileOne,
+      TAtlasSearchTextId.SearchFileMany)]));
 end;
 
 /// <summary>Suche über Dateien beenden und vergessen (Thread beendet, Fenster leer).</summary>
@@ -1448,7 +1451,7 @@ begin
   end;
   if not FFilesDone and (Length(FFiles.Results) = 0) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.SearchFilesWait));
+    Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchFilesWait));
     Exit;
   end;
   // Die aktive Datei mit ihrem aktuellen Text, die übrigen wie gefunden.
@@ -1466,11 +1469,11 @@ begin
   if not TAtlasFileSearch.NextLocation(Results, View.Buffer.FileName, From, ABackward, FileIndex, HitIndex,
     Wrapped) then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchNothing, [FLast.Text]));
+    Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchNothing, [FLast.Text]));
     Exit;
   end;
   if Wrapped then
-    Say(TAtlasStrings.Text(TAtlasTextId.SearchWrapped));
+    Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchWrapped));
   if SameText(Results[FileIndex].FileName, View.Buffer.FileName) then
   begin
     SelectHit(View, Lines, Results[FileIndex].Hits[HitIndex]);
@@ -1584,7 +1587,7 @@ begin
   end;
   if View.Buffer.IsReadOnly then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceReadOnly, [ExtractFileName(View.Buffer.FileName)]));
+    Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceReadOnly, [ExtractFileName(View.Buffer.FileName)]));
     Exit;
   end;
   Hit := Hits[Index];
@@ -1593,7 +1596,7 @@ begin
   NewText := Changes.Edits[0].NewText;
   Edit := Default(TLspWorkspaceEdit);
   Edit.Files := [Changes];
-  Error := ApplyEdit(Edit, TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceAction, [FLast.Text, ReplaceText]));
+  Error := ApplyEdit(Edit, TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceAction, [FLast.Text, ReplaceText]));
   if Error <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Error]));
@@ -1651,19 +1654,19 @@ begin
     Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, FLast.Area);
   if Length(Hits) = 0 then
   begin
-    Notice(TAtlasStrings.Text(TAtlasTextId.SearchReplaceNone));
+    Notice(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceNone));
     Exit;
   end;
   if View.Buffer.IsReadOnly then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceReadOnly, [ExtractFileName(View.Buffer.FileName)]));
+    Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceReadOnly, [ExtractFileName(View.Buffer.FileName)]));
     Exit;
   end;
   Changes.FileName := View.Buffer.FileName;
   Changes.Edits := TAtlasSearchReplace.Edits(Lines, Hits, FLast, ReplaceText);
   Edit := Default(TLspWorkspaceEdit);
   Edit.Files := [Changes];
-  Error := ApplyEdit(Edit, TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceAction, [FLast.Text, ReplaceText]));
+  Error := ApplyEdit(Edit, TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceAction, [FLast.Text, ReplaceText]));
   if Error <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Error]));
@@ -1749,14 +1752,14 @@ begin
     end);
   // Vorab melden, was übersprungen wird.
   for FileName in Plan.ReadOnly do
-    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceReadOnly, [FileName]));
+    Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceReadOnly, [FileName]));
   for FileName in Plan.Changed do
-    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceChanged, [FileName]));
+    Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceChanged, [FileName]));
   if Plan.Replacements = 0 then
-    Report := TAtlasStrings.Text(TAtlasTextId.SearchReplaceNone)
+    Report := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceNone)
   else
   begin
-    Error := ApplyEdit(Plan.Edit, TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceAction, [FFiles.Query.Text,
+    Error := ApplyEdit(Plan.Edit, TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceAction, [FFiles.Query.Text,
       FFiles.Replace]));
     if Error <> '' then
     begin
@@ -1767,7 +1770,7 @@ begin
       Report := ReplacedText(Plan.Replacements, Plan.Files);
   end;
   if Length(Plan.ReadOnly) + Length(Plan.Changed) > 0 then
-    Report := Report + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceSkipped,
+    Report := Report + ' · ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceSkipped,
       [Length(Plan.ReadOnly) + Length(Plan.Changed)]);
   Say(Report);
   Notice(Report);
@@ -1840,23 +1843,23 @@ begin
   begin
     if FLast.Scope <> TAtlasSearchScope.Method then
     begin
-      Say(TAtlasStrings.Text(TAtlasTextId.SearchNoSelection));
+      Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoSelection));
       Exit(True);
     end;
     // Außerhalb jeder Routine: die ganze Unit statt gar nichts.
-    Say(TAtlasStrings.Text(TAtlasTextId.SearchOutsideMethod));
+    Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchOutsideMethod));
     Area := TAtlasSearchArea.Whole(Lines);
   end;
   Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
   Result := True;
   if Length(Hits) = 0 then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchNothing, [FLast.Text]));
+    Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchNothing, [FLast.Text]));
     Exit;
   end;
   Index := TAtlasTextSearch.Next(Hits, From, ABackward, Wrapped);
   if Wrapped then
-    Say(TAtlasStrings.Text(TAtlasTextId.SearchWrapped));
+    Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchWrapped));
   SelectHit(View, Lines, Hits[Index]);
   UpdateCounter;
 end;

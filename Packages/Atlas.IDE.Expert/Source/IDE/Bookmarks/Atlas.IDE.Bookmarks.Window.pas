@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Bookmarks.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -81,7 +81,7 @@ end;
 
 function TBookmarksDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.BookmarksCaption);
+  Result := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksCaption);
 end;
 
 function TBookmarksDock.GetIdentifier: string;

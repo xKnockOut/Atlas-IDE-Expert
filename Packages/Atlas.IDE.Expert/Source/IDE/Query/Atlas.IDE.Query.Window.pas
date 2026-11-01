@@ -46,7 +46,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Search.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -83,7 +83,7 @@ end;
 
 function TCodeQueryDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.QueryCaption);
+  Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCaption);
 end;
 
 function TCodeQueryDock.GetIdentifier: string;

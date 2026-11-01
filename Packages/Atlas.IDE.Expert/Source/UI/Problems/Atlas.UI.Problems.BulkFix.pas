@@ -56,7 +56,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Rules.Strings;
 
 const
   Gap = 8;
@@ -70,7 +70,7 @@ var
 begin
   inherited CreateNew(AOwner);
   FPreview := APreview;
-  Caption := TAtlasStrings.Fmt(TAtlasTextId.FixPreviewTitle, [APreview.Rule]);
+  Caption := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.FixPreviewTitle, [APreview.Rule]);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMaximize];
   Position := poMainFormCenter;
@@ -103,7 +103,7 @@ begin
   mBottom.ShowCaption := False;
   FCancel := TButton.Create(Self);
   FCancel.Parent := mBottom;
-  FCancel.Caption := TAtlasStrings.Text(TAtlasTextId.FixPreviewCancel);
+  FCancel.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.FixPreviewCancel);
   FCancel.Width := ScaleValue(100);
   FCancel.Height := ScaleValue(28);
   FCancel.Top := ScaleValue(Gap);
@@ -113,7 +113,7 @@ begin
   FCancel.OnClick := CancelClick;
   FApply := TButton.Create(Self);
   FApply.Parent := mBottom;
-  FApply.Caption := TAtlasStrings.Text(TAtlasTextId.FixPreviewApply);
+  FApply.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.FixPreviewApply);
   FApply.Width := ScaleValue(100);
   FApply.Height := ScaleValue(28);
   FApply.Top := ScaleValue(Gap);
@@ -158,7 +158,7 @@ var
 begin
   mFile := FPreview.Files[AIndex];
   if mFile.Rejected then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.FixPreviewRejected, [ExtractFileName(mFile.FileName)])
+    Result := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.FixPreviewRejected, [ExtractFileName(mFile.FileName)])
   else
     Result := Format('%s (%d)', [ExtractFileName(mFile.FileName), mFile.Fixes]);
 end;
@@ -208,7 +208,7 @@ end;
 
 procedure TAtlasBulkFixDialog.UpdateSelection;
 begin
-  FSelection.Caption := TAtlasStrings.Fmt(TAtlasTextId.FixPreviewSelection, [FPreview.SelectedFixes,
+  FSelection.Caption := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.FixPreviewSelection, [FPreview.SelectedFixes,
     FPreview.SelectedCount]);
   FApply.Enabled := FPreview.SelectedCount > 0;
 end;

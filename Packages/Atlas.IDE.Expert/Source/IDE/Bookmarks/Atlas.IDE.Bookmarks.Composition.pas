@@ -78,7 +78,8 @@ uses
   Atlas.IDE.Bookmarks.QuickColumn,
   Atlas.IDE.Bookmarks.QuickChord,
   Atlas.UI.Todos.Dialog,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Bookmarks.Strings;
 
 const
   /// <summary>Feld der schnellen Lesezeichen im Atlas-Statusfeld (#1104).</summary>
@@ -246,21 +247,21 @@ var
 begin
   if not TAtlasTodoList.Entries(AAnswer, mEntries) then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
+    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListFailed));
     Exit;
   end;
   // Vorschläge nur aus der ungefilterten Liste: sonst schrumpfen sie mit jedem Filter.
   if AFilter.IsEmpty and TAtlasTodoList.Choices(AAnswer, mChoices) then
     GTodoChoices := mChoices;
   if (Length(mEntries) = 0) and (ADescribed = '') then
-    TAtlasIdeHost.Warning(TAtlasStrings.Fmt(TAtlasTextId.TodoListEmpty, [AName]))
+    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListEmpty, [AName]))
   else if Length(mEntries) = 0 then
-    TAtlasIdeHost.Warning(TAtlasStrings.Fmt(TAtlasTextId.TodoListNoMatch, [AName, ADescribed]))
+    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListNoMatch, [AName, ADescribed]))
   else if ADescribed = '' then
-    TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListTitle,
+    TAtlasIdeResultsWindow.ShowEntries(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListTitle,
       [AName, Length(mEntries)]), mEntries)
   else
-    TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListFilteredTitle,
+    TAtlasIdeResultsWindow.ShowEntries(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListFilteredTitle,
       [AName, ADescribed, Length(mEntries)]), mEntries);
 end;
 
@@ -289,7 +290,7 @@ begin
   mProject := GetActiveProject;
   if (mProject = nil) or (mProject.FileName = '') then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TodoListNoProject));
+    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListNoProject));
     Exit;
   end;
   mName := ChangeFileExt(ExtractFileName(mProject.FileName), '');
@@ -297,13 +298,13 @@ begin
   mDescribed := mFilter.Describe;
   if TAtlasIdeHost.ActiveSession = nil then
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
+    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListFailed));
     Exit;
   end;
   if not TAtlasIdeHost.RunCommandAsync(GScope, TAtlasFeature.Palette, TodosCommand,
     TodoArguments(mProject.FileName, mFilter), TodosTimeoutMs, TodosDone(mName, mDescribed, mFilter)) then
     // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TodoListBusy));
+    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListBusy));
 end;
 
 procedure AllProjectTodos;
@@ -337,19 +338,19 @@ begin
     end;
 end;
 
-function Command(AFeature: TAtlasFeature; const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(AFeature: TAtlasFeature; const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := ACaption;
   Result.Run := Guarded(AFeature, ARun);
   Result.Visible := AVisible;
 end;
 
 /// <summary>Wie Command, mit Tastenkürzel zur Anzeige. Eigener Name statt Überladung: anonyme Methoden als
 /// Argument vertragen keine Überladungen.</summary>
-function CommandWithKey(AFeature: TAtlasFeature; const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function CommandWithKey(AFeature: TAtlasFeature; const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>; const AKey: TFunc<Integer>): TAtlasModuleCommand;
 begin
   Result := Command(AFeature, AId, ACaption, ARun, AVisible);
@@ -410,12 +411,12 @@ begin
     if AJump then
     begin
       mId := 'Atlas.QuickBookmarkJump' + IntToStr(mNumber);
-      mWhat := TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkJumpN, [mNumber]);
+      mWhat := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkJumpN, [mNumber]);
     end
     else
     begin
       mId := 'Atlas.QuickBookmarkSet' + IntToStr(mNumber);
-      mWhat := TAtlasStrings.Fmt(TAtlasTextId.QuickBookmarkSetN, [mNumber]);
+      mWhat := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkSetN, [mNumber]);
     end;
     Result := Result + [ModuleKey(mId, mWhat, mKey, PriorityOf(ATake), NumberProc(mNumber, AJump))];
   end;
@@ -460,33 +461,43 @@ begin
   Result := [
     // Persönliche Notizen (#545); nur sichtbar, solange notes.enabled an ist. Nach Rechtsklick in die Rinne für
     // die angeklickte Zeile, sonst für den Cursor.
-    Command(TAtlasFeature.Notes, 'Atlas.NoteAdd', TAtlasTextId.NotesMenuAdd, TAtlasIdeNotes.AddOrEdit,
+    Command(TAtlasFeature.Notes, 'Atlas.NoteAdd', TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesMenuAdd),
+      TAtlasIdeNotes.AddOrEdit,
       NotesVisible),
-    Command(TAtlasFeature.Notes, 'Atlas.NoteDelete', TAtlasTextId.NotesMenuDelete, TAtlasIdeNotes.DeleteAtLine,
+    Command(TAtlasFeature.Notes, 'Atlas.NoteDelete',
+      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesMenuDelete), TAtlasIdeNotes.DeleteAtLine,
       NotesVisible),
-    Command(TAtlasFeature.Notes, 'Atlas.NoteList', TAtlasTextId.NotesMenuList, TAtlasIdeNotes.ShowList,
+    Command(TAtlasFeature.Notes, 'Atlas.NoteList', TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesMenuList),
+      TAtlasIdeNotes.ShowList,
       NotesVisible),
     // Benannte Lesezeichen (#622); nur sichtbar, solange bookmarks.named an ist, das Fenster auch mit
     // bookmarks.quick.
-    CommandWithKey(TAtlasFeature.Bookmarks, 'Atlas.BookmarkAdd', TAtlasTextId.BookmarksMenuAdd,
+    CommandWithKey(TAtlasFeature.Bookmarks, 'Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
       TAtlasIdeBookmarks.AddBookmark, BookmarksNamedVisible, BookmarkKey),
-    Command(TAtlasFeature.Bookmarks, 'Atlas.BookmarkGoTo', TAtlasTextId.BookmarksMenuGoTo,
+    Command(TAtlasFeature.Bookmarks, 'Atlas.BookmarkGoTo',
+      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo),
       TAtlasIdeBookmarks.GoToBookmark, BookmarksNamedVisible),
-    Command(TAtlasFeature.Bookmarks, 'Atlas.BookmarkWindow', TAtlasTextId.BookmarksMenuWindow,
+    Command(TAtlasFeature.Bookmarks, 'Atlas.BookmarkWindow',
+      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuWindow),
       TAtlasIdeBookmarks.ShowWindow, BookmarksWindowVisible),
     // Schnelle Lesezeichen (#1104); nur sichtbar, solange bookmarks.quick an ist.
     CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.QuickBookmarkToggle',
-      TAtlasTextId.QuickBookmarkToggleCommand, TAtlasIdeBookmarks.QuickToggle, QuickBookmarksVisible,
+      TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand), TAtlasIdeBookmarks.QuickToggle,
+        QuickBookmarksVisible,
       QuickBookmarkKey),
-    CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.NextBookmark', TAtlasTextId.NextBookmarkCommand,
+    CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.NextBookmark',
+      TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand),
       TAtlasIdeBookmarks.NextBookmark, QuickBookmarksVisible, NextBookmarkKey),
-    CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.PreviousBookmark', TAtlasTextId.PreviousBookmarkCommand,
+    CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.PreviousBookmark',
+      TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand),
       TAtlasIdeBookmarks.PreviousBookmark, QuickBookmarksVisible, PreviousBookmarkKey),
     // TODO-Liste des Projekts (#68): ohne Filter (alle offenen) und mit Filterdialog; nur sichtbar, solange die
     // Einstellung TodoList an ist.
-    Command(TAtlasFeature.Palette, 'Atlas.TodoList', TAtlasTextId.TodoListCommand, AllProjectTodos,
+    Command(TAtlasFeature.Palette, 'Atlas.TodoList',
+      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListCommand), AllProjectTodos,
       TodoListVisible),
-    Command(TAtlasFeature.Palette, 'Atlas.TodoListFilter', TAtlasTextId.TodoFilterCommand, FilterProjectTodos,
+    Command(TAtlasFeature.Palette, 'Atlas.TodoListFilter',
+      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCommand), FilterProjectTodos,
       TodoListVisible)];
 end;
 
@@ -501,7 +512,7 @@ end;
 function NotesMenuEntry(const ACommandId: string): TAtlasMenuEntry;
 begin
   Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
-  Result.Section := TAtlasStrings.Text(TAtlasTextId.MenuGroupNotes);
+  Result.Section := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.MenuGroupNotes);
 end;
 
 function TAtlasBookmarksModule.MenuEntries: TArray<TAtlasMenuEntry>;

@@ -117,6 +117,7 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -212,12 +213,12 @@ begin
     Exit;
   if not Enabled then
   begin
-    FInstance.Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetOff));
+    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetOff));
     Exit;
   end;
   if not Stopped then
   begin
-    FInstance.Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNotStopped));
+    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
     Exit;
   end;
   FInstance.Execute;
@@ -310,12 +311,12 @@ begin
   Process := TAtlasIdeBreakpoints.StoppedProcess;
   if Process = nil then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNotStopped));
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
     Exit;
   end;
   if not TAtlasIdeBreakpoints.Position(Process.CurrentThread, FFileName, Line) or not SourceText(FFileName, Text) then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNoSourceAt));
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNoSourceAt));
     Exit;
   end;
   Session := nil;
@@ -339,7 +340,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasStrings.Fmt(TAtlasTextId.StepIntoTargetFailed, [E.Message]));
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetFailed, [E.Message]));
       Exit;
     end;
   end;
@@ -360,7 +361,7 @@ begin
   end;
   if TAtlasStepInto.NextAvailable(FRows, 0, 1) < 0 then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNothing));
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNothing));
     StepInto;
     Exit;
   end;
@@ -427,7 +428,7 @@ begin
   Process := TAtlasIdeBreakpoints.StoppedProcess;
   if Process = nil then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNotStopped));
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
     Exit;
   end;
   TAtlasIdeBreakpoints.Position(Process.CurrentThread, FStartFile, FStartLine);
@@ -494,9 +495,10 @@ begin
       if SameText(FileName, FTarget.FileName) and (Line = FTarget.Line) then
         Exit;
       if SameText(FileName, FFileName) and (Line = FFollowLine) then
-        Report(TAtlasStrings.Fmt(TAtlasTextId.StepIntoTargetNotCalled, [FCaption, FFollowLine + 1]))
+        Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetNotCalled, [FCaption, FFollowLine + 1]))
       else if Process.ProcessState = psStopped then
-        Report(TAtlasStrings.Fmt(TAtlasTextId.StepIntoTargetElsewhere, [ExtractFileName(FileName), Line + 1]));
+        Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetElsewhere,
+          [ExtractFileName(FileName), Line + 1]));
     end);
 end;
 

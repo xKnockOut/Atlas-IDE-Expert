@@ -113,7 +113,7 @@ uses
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Visualizers,
-  Atlas.UI.Strings;
+  Atlas.UI.Debug.Strings;
 
 const
   VisualizerIdentifier = 'Atlas.Visualizer.DisplayRules';
@@ -169,12 +169,12 @@ end;
 
 function TAtlasIdeDisplayVisualizer.GetVisualizerName: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.DebugDisplayName);
+  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugDisplayName);
 end;
 
 function TAtlasIdeDisplayVisualizer.GetVisualizerDescription: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.DebugDisplayDescription);
+  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugDisplayDescription);
 end;
 
 function TAtlasIdeDisplayVisualizer.GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
@@ -195,7 +195,7 @@ end;
 
 function TAtlasIdeDisplayVisualizer.GetMenuText: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.DebugViewerMenu);
+  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerMenu);
 end;
 
 /// <summary>Quelle des Ansichtsfensters; eigene Routine, damit der Rahmen keine anderen Methodenreferenzen hält.

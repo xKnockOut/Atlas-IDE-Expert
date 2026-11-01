@@ -138,6 +138,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
@@ -464,7 +465,7 @@ class procedure TAtlasIdeDebugStepFilter.StepIntoAnyway;
 begin
   if TAtlasIdeDebugSession.StoppedThread = nil then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.StepFilterNotStopped));
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterNotStopped));
     Exit;
   end;
   // Ohne Ablauf (debug.stepFilters aus) ist es ein gewöhnliches F7.
@@ -485,7 +486,7 @@ begin
   mView := TAtlasEditorBuffer.ActiveView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.StepFilterNoRoutine));
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterNoRoutine));
     Exit;
   end;
   mSession := nil;
@@ -509,12 +510,12 @@ begin
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasStrings.Fmt(TAtlasTextId.StepFilterFailed, [E.Message]));
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterFailed, [E.Message]));
       Exit;
     end;
   end;
   if not Result then
-    Report(TAtlasStrings.Text(TAtlasTextId.StepFilterNoRoutine));
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterNoRoutine));
 end;
 
 class procedure TAtlasIdeDebugStepFilter.SaveOptions(AEnabled: Boolean; AKinds: TStepFilterKinds;
@@ -542,16 +543,16 @@ begin
   mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
   mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
   if mVerdict.Filtered then
-    Report(TAtlasStrings.Fmt(TAtlasTextId.StepFilterAlready,
+    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAlready,
       [mRoutine.Name, TAtlasDebugStepFilterFrame.VerdictText(mVerdict)]))
   else
   begin
     SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, TStepFilterNames.WithPattern(mOptions.Patterns,
       mRoutine.Name));
-    Report(TAtlasStrings.Fmt(TAtlasTextId.StepFilterAdded, [mRoutine.Name]));
+    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAdded, [mRoutine.Name]));
   end;
   if not mStored.DebugStepFilters then
-    Report(TAtlasStrings.Text(TAtlasTextId.StepFilterOff));
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterOff));
 end;
 
 class procedure TAtlasIdeDebugStepFilter.UnskipAtCursor;
@@ -576,15 +577,15 @@ begin
   mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
   case mVerdict.Kind of
     TAtlasStepVerdictKind.Pattern:
-      Report(TAtlasStrings.Fmt(TAtlasTextId.StepFilterStillByPattern, [mRoutine.Name, mVerdict.Pattern]));
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByPattern, [mRoutine.Name, mVerdict.Pattern]));
     TAtlasStepVerdictKind.Kind:
-      Report(TAtlasStrings.Fmt(TAtlasTextId.StepFilterStillByKind,
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByKind,
         [mRoutine.Name, TAtlasDebugStepFilterFrame.VerdictText(mVerdict)]));
   else
     if mRemoved then
-      Report(TAtlasStrings.Fmt(TAtlasTextId.StepFilterRemoved, [mRoutine.Name]))
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterRemoved, [mRoutine.Name]))
     else
-      Report(TAtlasStrings.Fmt(TAtlasTextId.StepFilterNotSkipped, [mRoutine.Name]));
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterNotSkipped, [mRoutine.Name]));
   end;
 end;
 
