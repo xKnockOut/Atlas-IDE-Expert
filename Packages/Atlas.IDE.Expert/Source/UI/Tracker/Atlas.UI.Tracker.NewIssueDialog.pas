@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Welcome.NewIssue;
+﻿unit Atlas.UI.Tracker.NewIssueDialog;
 
 // Dialog „Issue anlegen“ (#1268) mit Vorschau des Textes, bevor etwas an den
 // Tracker geht: Tracker (Klappliste bei mehreren Verbindungen), Projekt,
@@ -88,12 +88,17 @@ type
 
   /// <summary>Verbindung von laufenden Anfragen zum Dialog; nil, sobald der Dialog weg ist.</summary>
   TAtlasNewIssueLink = class(TInterfacedObject)
+  private
+    FDialog: TAtlasNewIssueDialog;
   public
-    Dialog: TAtlasNewIssueDialog;
+    property Dialog: TAtlasNewIssueDialog read FDialog write FDialog;
   end;
 
-  TAtlasNewIssueDialog = class(TForm)
+  /// <summary>Steuerelemente des Dialogs und ihr Aufbau (Zeilen mit Beschriftung, Häkchen, Stand, Knöpfe).
+  /// </summary>
+  TAtlasNewIssueParts = class
   private
+    FForm: TForm;
     FTracker: TAtlasNewIssueBox;
     FProject: TEdit;
     FTitle: TEdit;
@@ -108,6 +113,36 @@ type
     FStatus: TLabel;
     FCreate: TButton;
     FCancel: TButton;
+    function Scaled(AValue: Integer): Integer;
+    function AddRow(const ACaption: string; AControl: TWinControl; AHeight: Integer): TPanel;
+    function AddBox(const ACaption: string; AStyle: TComboBoxStyle): TAtlasNewIssueBox;
+    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
+    procedure CreateRows;
+    procedure CreateOptions;
+    procedure CreateStatus;
+    procedure CreateButtons;
+  public
+    /// <summary>Baut alle Steuerelemente in AForm (Besitzer und Eltern ist AForm).</summary>
+    constructor Create(AForm: TForm);
+    property TrackerBox: TAtlasNewIssueBox read FTracker;
+    property ProjectEdit: TEdit read FProject;
+    property TitleEdit: TEdit read FTitle;
+    property DescriptionMemo: TMemo read FDescription;
+    property IncludeCodeBox: TCheckBox read FIncludeCode;
+    property CodeMemo: TMemo read FCode;
+    property TypeBox: TAtlasNewIssueBox read FType;
+    property PriorityBox: TAtlasNewIssueBox read FPriority;
+    property AssigneeBox: TAtlasNewIssueBox read FAssignee;
+    property AssignToMeBox: TCheckBox read FAssignToMe;
+    property StartNowBox: TCheckBox read FStartNow;
+    property StatusLabel: TLabel read FStatus;
+    property CreateButton: TButton read FCreate;
+    property CancelButton: TButton read FCancel;
+  end;
+
+  TAtlasNewIssueDialog = class(TForm)
+  private
+    FParts: TAtlasNewIssueParts;
     FSetup: TAtlasNewIssueSetup;
     FFields: TAtlasNewIssueFields;
     FResult: TAtlasNewIssueResult;
@@ -118,8 +153,8 @@ type
     FSending: Boolean;
     /// <summary>Zählt Ladevorgänge; ein älteres Ergebnis nach einem Wechsel des Trackers verfällt.</summary>
     FLoadTicket: Integer;
-    function AddRow(const ACaption: string; AControl: TWinControl; AHeight: Integer): TPanel;
-    function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
+    /// <summary>Vorbelegung aus FSetup in die Felder und Ereignisse verbinden.</summary>
+    procedure ApplySetup;
     procedure Changed(Sender: TObject);
     procedure TrackerChange(Sender: TObject);
     procedure CreateClick(Sender: TObject);
@@ -150,20 +185,7 @@ type
     class function Execute(const ASetup: TAtlasNewIssueSetup; const AOnLoad: TAtlasNewIssueLoadEvent;
       const AOnSend: TAtlasNewIssueSendEvent; out AResult: TAtlasNewIssueResult; out AStartNow: Boolean): Boolean;
       static;
-    property TrackerBox: TAtlasNewIssueBox read FTracker;
-    property ProjectEdit: TEdit read FProject;
-    property TitleEdit: TEdit read FTitle;
-    property DescriptionMemo: TMemo read FDescription;
-    property IncludeCodeBox: TCheckBox read FIncludeCode;
-    property CodeMemo: TMemo read FCode;
-    property TypeBox: TAtlasNewIssueBox read FType;
-    property PriorityBox: TAtlasNewIssueBox read FPriority;
-    property AssigneeBox: TAtlasNewIssueBox read FAssignee;
-    property AssignToMeBox: TCheckBox read FAssignToMe;
-    property StartNowBox: TCheckBox read FStartNow;
-    property StatusLabel: TLabel read FStatus;
-    property CreateButton: TButton read FCreate;
-    property CancelButton: TButton read FCancel;
+    property Parts: TAtlasNewIssueParts read FParts;
     property Sending: Boolean read FSending;
     property IssueResult: TAtlasNewIssueResult read FResult;
   end;
@@ -171,6 +193,7 @@ type
 implementation
 
 uses
+  System.Math,
   Atlas.UI.Strings;
 
 const
@@ -178,6 +201,20 @@ const
   cLabelWidth = 110;
   cDialogWidth = 640;
   cRowHeight = 30;
+  cFontName = 'Segoe UI';
+  cFontSize = 9;
+  cCodeFontName = 'Consolas';
+  cMemoHeight = 120;
+  cCheckHeight = 26;
+  cOptionsHeight = 28;
+  cControlTop = 4;
+  cAssignToMeWidth = 180;
+  cStartNowWidth = 200;
+  cBottomHeight = 44;
+  cStatusSpace = 40;
+  cButtonExtra = 32;
+  cButtonMinWidth = 90;
+  cButtonHeight = 28;
 
 { TAtlasNewIssueBox }
 
@@ -199,20 +236,28 @@ var
 begin
   FValues := AValues;
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   mText := Text;
   Items.BeginUpdate;
   try
     Items.Clear;
     for mValue in FValues do
+    begin
       Items.Add(mValue);
+    end;
   finally
     Items.EndUpdate;
   end;
   if Style = csDropDownList then
-    ItemIndex := FChoice
+  begin
+    ItemIndex := FChoice;
+  end
   else
+  begin
     Text := mText;
+  end;
 end;
 
 procedure TAtlasNewIssueBox.CreateWnd;
@@ -222,34 +267,50 @@ begin
   mText := Text;
   inherited CreateWnd;
   if Items.Count = 0 then
+  begin
     for mValue in FValues do
+    begin
       Items.Add(mValue);
+    end;
+  end;
   if Style = csDropDownList then
-    ItemIndex := FChoice
+  begin
+    ItemIndex := FChoice;
+  end
   else
+  begin
     Text := mText;
+  end;
 end;
 
 procedure TAtlasNewIssueBox.DestroyWnd;
 begin
   if Style = csDropDownList then
+  begin
     FChoice := ItemIndex;
+  end;
   inherited DestroyWnd;
 end;
 
 function TAtlasNewIssueBox.GetChoice: Integer;
 begin
   if HandleAllocated then
-    Result := ItemIndex
+  begin
+    Result := ItemIndex;
+  end
   else
+  begin
     Result := FChoice;
+  end;
 end;
 
 procedure TAtlasNewIssueBox.SetChoice(AValue: Integer);
 begin
   FChoice := AValue;
   if HandleAllocated then
+  begin
     ItemIndex := AValue;
+  end;
 end;
 
 { TAtlasNewIssueTracker }
@@ -272,12 +333,163 @@ end;
 
 { TAtlasNewIssueDialog }
 
+{ TAtlasNewIssueParts }
+
+constructor TAtlasNewIssueParts.Create(AForm: TForm);
+begin
+  inherited Create;
+  FForm := AForm;
+  CreateRows;
+  CreateOptions;
+  CreateStatus;
+  CreateButtons;
+end;
+
+function TAtlasNewIssueParts.Scaled(AValue: Integer): Integer;
+begin
+  Result := FForm.ScaleValue(AValue);
+end;
+
+function TAtlasNewIssueParts.AddBox(const ACaption: string; AStyle: TComboBoxStyle): TAtlasNewIssueBox;
+begin
+  Result := TAtlasNewIssueBox.Create(FForm);
+  Result.Style := AStyle;
+  AddRow(ACaption, Result, cRowHeight);
+end;
+
+procedure TAtlasNewIssueParts.CreateRows;
+begin
+  FTracker := AddBox(TAtlasStrings.Text(TAtlasTextId.NewIssueTracker), csDropDownList);
+  FProject := TEdit.Create(FForm);
+  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueProject), FProject, cRowHeight);
+  FTitle := TEdit.Create(FForm);
+  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueSummary), FTitle, cRowHeight);
+  FDescription := TMemo.Create(FForm);
+  FDescription.ScrollBars := ssVertical;
+  FDescription.WantReturns := True;
+  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueDescription), FDescription, cMemoHeight);
+  FIncludeCode := TCheckBox.Create(FForm);
+  FIncludeCode.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueIncludeCode);
+  AddRow('', FIncludeCode, cCheckHeight);
+  FCode := TMemo.Create(FForm);
+  FCode.ScrollBars := ssBoth;
+  FCode.WordWrap := False;
+  FCode.WantReturns := True;
+  FCode.Font.Name := cCodeFontName;
+  AddRow('', FCode, cMemoHeight);
+  FType := AddBox(TAtlasStrings.Text(TAtlasTextId.NewIssueType), csDropDown);
+  FPriority := AddBox(TAtlasStrings.Text(TAtlasTextId.NewIssuePriority), csDropDown);
+  FAssignee := AddBox(TAtlasStrings.Text(TAtlasTextId.NewIssueAssignee), csDropDown);
+end;
+
+procedure TAtlasNewIssueParts.CreateOptions;
+var
+  mOptions: TPanel;
+begin
+  mOptions := TPanel.Create(FForm);
+  mOptions.Parent := FForm;
+  mOptions.Align := alTop;
+  mOptions.Top := FForm.ClientHeight;
+  mOptions.Height := Scaled(cOptionsHeight);
+  mOptions.BevelOuter := bvNone;
+  FAssignToMe := TCheckBox.Create(FForm);
+  FAssignToMe.Parent := mOptions;
+  FAssignToMe.Left := Scaled(cGap + cLabelWidth);
+  FAssignToMe.Top := Scaled(cControlTop);
+  FAssignToMe.Width := Scaled(cAssignToMeWidth);
+  FAssignToMe.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueAssignToMe);
+  FStartNow := TCheckBox.Create(FForm);
+  FStartNow.Parent := mOptions;
+  FStartNow.Left := FAssignToMe.Left + FAssignToMe.Width + Scaled(cGap);
+  FStartNow.Top := Scaled(cControlTop);
+  FStartNow.Width := Scaled(cStartNowWidth);
+  FStartNow.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueStartNow);
+end;
+
+procedure TAtlasNewIssueParts.CreateStatus;
+begin
+  FStatus := TLabel.Create(FForm);
+  FStatus.Parent := FForm;
+  FStatus.Align := alTop;
+  FStatus.Top := FForm.ClientHeight;
+  FStatus.AlignWithMargins := True;
+  FStatus.Margins.SetBounds(Scaled(cGap + cLabelWidth), Scaled(cControlTop), Scaled(cGap), Scaled(cControlTop));
+  FStatus.WordWrap := True;
+  FStatus.ShowAccelChar := False;
+  FStatus.Caption := '';
+end;
+
+procedure TAtlasNewIssueParts.CreateButtons;
+var
+  mBottom: TPanel;
+begin
+  mBottom := TPanel.Create(FForm);
+  mBottom.Parent := FForm;
+  mBottom.Align := alBottom;
+  mBottom.Height := Scaled(cBottomHeight);
+  mBottom.BevelOuter := bvNone;
+  FCancel := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.NewIssueCancel));
+  FCancel.Cancel := True;
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - Scaled(cGap);
+  FCreate := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.NewIssueCreate));
+  FCreate.Left := FCancel.Left - FCreate.Width - Scaled(cGap);
+  // Kein Default-Knopf: Enter in der Beschreibung ist ein Zeilenumbruch, nie ein Senden.
+  FForm.ClientHeight := FStatus.Top + Scaled(cStatusSpace) + mBottom.Height;
+  FForm.Constraints.MinWidth := FForm.Width;
+  FForm.Constraints.MinHeight := FForm.Height;
+end;
+
+function TAtlasNewIssueParts.AddRow(const ACaption: string; AControl: TWinControl; AHeight: Integer): TPanel;
+var
+  mLabel: TLabel;
+begin
+  Result := TPanel.Create(FForm);
+  Result.Parent := FForm;
+  Result.Align := alTop;
+  Result.Top := FForm.ClientHeight;
+  Result.Height := Scaled(AHeight);
+  Result.BevelOuter := bvNone;
+  AControl.Parent := Result;
+  AControl.Left := Scaled(cGap + cLabelWidth);
+  AControl.Top := Scaled(cControlTop);
+  AControl.Width := Result.ClientWidth - AControl.Left - Scaled(cGap);
+  if AHeight > cRowHeight then
+  begin
+    AControl.Height := Result.ClientHeight - Scaled(cGap);
+    AControl.Anchors := [akLeft, akTop, akRight, akBottom];
+  end
+  else
+  begin
+    AControl.Anchors := [akLeft, akTop, akRight];
+  end;
+  if ACaption <> '' then
+  begin
+    mLabel := TLabel.Create(FForm);
+    mLabel.Parent := Result;
+    mLabel.Left := Scaled(cGap);
+    mLabel.Top := Scaled(cGap);
+    mLabel.Caption := ACaption;
+    mLabel.ShowAccelChar := False;
+    mLabel.FocusControl := AControl;
+  end;
+end;
+
+function TAtlasNewIssueParts.AddButton(AParent: TWinControl; const ACaption: string): TButton;
+begin
+  Result := TButton.Create(FForm);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  FForm.Canvas.Font := FForm.Font;
+  Result.Width := Max(FForm.Canvas.TextWidth(ACaption) + Scaled(cButtonExtra), Scaled(cButtonMinWidth));
+  Result.Top := Scaled(cGap div 2);
+  Result.Height := Scaled(cButtonHeight);
+  Result.Anchors := [akTop, akRight];
+end;
+
+{ TAtlasNewIssueDialog }
+
 constructor TAtlasNewIssueDialog.CreateDialog(AOwner: TComponent; const ASetup: TAtlasNewIssueSetup;
   const AOnLoad: TAtlasNewIssueLoadEvent; const AOnSend: TAtlasNewIssueSendEvent);
-var
-  mBottom, mOptions: TPanel;
-  mTracker: TAtlasNewIssueTracker;
-  mCaptions: TArray<string>;
 begin
   inherited CreateNew(AOwner);
   FSetup := ASetup;
@@ -292,120 +504,72 @@ begin
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
+  Font.Name := cFontName;
+  Font.Size := cFontSize;
   ClientWidth := ScaleValue(cDialogWidth);
   OnCloseQuery := FormCloseQuery;
+  FParts := TAtlasNewIssueParts.Create(Self);
+  FParts.CancelButton.OnClick := CancelClick;
+  FParts.CreateButton.OnClick := CreateClick;
+  ApplySetup;
+  Changed(nil);
+end;
 
-  FTracker := TAtlasNewIssueBox.Create(Self);
-  FTracker.Style := csDropDownList;
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueTracker), FTracker, cRowHeight);
-  FProject := TEdit.Create(Self);
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueProject), FProject, cRowHeight);
-  FTitle := TEdit.Create(Self);
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueSummary), FTitle, cRowHeight);
-  FDescription := TMemo.Create(Self);
-  FDescription.ScrollBars := ssVertical;
-  FDescription.WantReturns := True;
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueDescription), FDescription, 120);
-  FIncludeCode := TCheckBox.Create(Self);
-  FIncludeCode.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueIncludeCode);
-  AddRow('', FIncludeCode, 26);
-  FCode := TMemo.Create(Self);
-  FCode.ScrollBars := ssBoth;
-  FCode.WordWrap := False;
-  FCode.WantReturns := True;
-  FCode.Font.Name := 'Consolas';
-  AddRow('', FCode, 120);
-  FType := TAtlasNewIssueBox.Create(Self);
-  FType.Style := csDropDown;
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueType), FType, cRowHeight);
-  FPriority := TAtlasNewIssueBox.Create(Self);
-  FPriority.Style := csDropDown;
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssuePriority), FPriority, cRowHeight);
-  FAssignee := TAtlasNewIssueBox.Create(Self);
-  FAssignee.Style := csDropDown;
-  AddRow(TAtlasStrings.Text(TAtlasTextId.NewIssueAssignee), FAssignee, cRowHeight);
-
-  mOptions := TPanel.Create(Self);
-  mOptions.Parent := Self;
-  mOptions.Align := alTop;
-  mOptions.Top := ClientHeight;
-  mOptions.Height := ScaleValue(28);
-  mOptions.BevelOuter := bvNone;
-  FAssignToMe := TCheckBox.Create(Self);
-  FAssignToMe.Parent := mOptions;
-  FAssignToMe.Left := ScaleValue(cGap + cLabelWidth);
-  FAssignToMe.Top := ScaleValue(4);
-  FAssignToMe.Width := ScaleValue(180);
-  FAssignToMe.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueAssignToMe);
-  FStartNow := TCheckBox.Create(Self);
-  FStartNow.Parent := mOptions;
-  FStartNow.Left := FAssignToMe.Left + FAssignToMe.Width + ScaleValue(cGap);
-  FStartNow.Top := ScaleValue(4);
-  FStartNow.Width := ScaleValue(200);
-  FStartNow.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueStartNow);
-
-  FStatus := TLabel.Create(Self);
-  FStatus.Parent := Self;
-  FStatus.Align := alTop;
-  FStatus.Top := ClientHeight;
-  FStatus.AlignWithMargins := True;
-  FStatus.Margins.SetBounds(ScaleValue(cGap + cLabelWidth), ScaleValue(4), ScaleValue(cGap), ScaleValue(4));
-  FStatus.WordWrap := True;
-  FStatus.ShowAccelChar := False;
-  FStatus.Caption := '';
-
-  mBottom := TPanel.Create(Self);
-  mBottom.Parent := Self;
-  mBottom.Align := alBottom;
-  mBottom.Height := ScaleValue(44);
-  mBottom.BevelOuter := bvNone;
-  FCancel := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.NewIssueCancel), CancelClick);
-  FCancel.Cancel := True;
-  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
-  FCreate := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.NewIssueCreate), CreateClick);
-  FCreate.Left := FCancel.Left - FCreate.Width - ScaleValue(cGap);
-  // Kein Default-Knopf: Enter in der Beschreibung ist ein Zeilenumbruch, nie ein Senden.
-  ClientHeight := FStatus.Top + ScaleValue(40) + mBottom.Height;
-  Constraints.MinWidth := Width;
-  Constraints.MinHeight := Height;
-
+procedure TAtlasNewIssueDialog.ApplySetup;
+var
+  mTracker: TAtlasNewIssueTracker;
+  mCaptions: TArray<string>;
+begin
   mCaptions := nil;
   for mTracker in FSetup.Trackers do
+  begin
     mCaptions := mCaptions + [mTracker.Caption];
-  FTracker.SetValues(mCaptions);
+  end;
+  FParts.TrackerBox.SetValues(mCaptions);
   if (FSetup.TrackerIndex >= 0) and (FSetup.TrackerIndex <= High(FSetup.Trackers)) then
-    FTracker.Choice := FSetup.TrackerIndex
+  begin
+    FParts.TrackerBox.Choice := FSetup.TrackerIndex;
+  end
   else if Length(FSetup.Trackers) > 0 then
-    FTracker.Choice := 0;
-  if FTracker.Choice >= 0 then
-    FProject.Text := FSetup.Trackers[FTracker.Choice].Target.Project;
-  FTitle.Text := FSetup.Title;
-  FDescription.Text := StringReplace(FSetup.Description, #10, sLineBreak, [rfReplaceAll]);
-  FCode.Text := StringReplace(FSetup.Code, #10, sLineBreak, [rfReplaceAll]);
-  FIncludeCode.Checked := FSetup.IncludeCode and (Trim(FSetup.Code) <> '');
-  FIncludeCode.Enabled := Trim(FSetup.Code) <> '';
-  FStartNow.Enabled := FSetup.CanStart;
-  FTracker.OnChange := TrackerChange;
-  FTitle.OnChange := Changed;
-  FProject.OnChange := Changed;
-  FIncludeCode.OnClick := Changed;
-  FAssignToMe.OnClick := Changed;
+  begin
+    FParts.TrackerBox.Choice := 0;
+  end;
+  if FParts.TrackerBox.Choice >= 0 then
+  begin
+    FParts.ProjectEdit.Text := FSetup.Trackers[FParts.TrackerBox.Choice].Target.Project;
+  end;
+  FParts.TitleEdit.Text := FSetup.Title;
+  FParts.DescriptionMemo.Text := StringReplace(FSetup.Description, #10, sLineBreak, [rfReplaceAll]);
+  FParts.CodeMemo.Text := StringReplace(FSetup.Code, #10, sLineBreak, [rfReplaceAll]);
+  FParts.IncludeCodeBox.Checked := FSetup.IncludeCode and (Trim(FSetup.Code) <> '');
+  FParts.IncludeCodeBox.Enabled := Trim(FSetup.Code) <> '';
+  FParts.StartNowBox.Enabled := FSetup.CanStart;
+  FParts.TrackerBox.OnChange := TrackerChange;
+  FParts.TitleEdit.OnChange := Changed;
+  FParts.ProjectEdit.OnChange := Changed;
+  FParts.IncludeCodeBox.OnClick := Changed;
+  FParts.AssignToMeBox.OnClick := Changed;
   if FSetup.Title = '' then
-    ActiveControl := FTitle
+  begin
+    ActiveControl := FParts.TitleEdit;
+  end
   else
-    ActiveControl := FDescription;
-  Changed(nil);
+  begin
+    ActiveControl := FParts.DescriptionMemo;
+  end;
 end;
 
 destructor TAtlasNewIssueDialog.Destroy;
 begin
   // Antworten, die danach kommen, finden keinen Dialog mehr.
   if FLink <> nil then
+  begin
     FLink.Dialog := nil;
+  end;
   FLinkRef := nil;
   ClearFields;
+  // Die Steuerelemente gehören dem Formular; hier geht nur die Hülle.
+  FreeAndNil(FParts);
   inherited Destroy;
 end;
 
@@ -414,54 +578,6 @@ begin
   FSetup := TAtlasNewIssueSetup.Empty;
   FFields := TAtlasNewIssueFields.Empty;
   FResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NotConfigured);
-end;
-
-function TAtlasNewIssueDialog.AddRow(const ACaption: string; AControl: TWinControl; AHeight: Integer): TPanel;
-var
-  mLabel: TLabel;
-begin
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.Top := ClientHeight;
-  Result.Height := ScaleValue(AHeight);
-  Result.BevelOuter := bvNone;
-  AControl.Parent := Result;
-  AControl.Left := ScaleValue(cGap + cLabelWidth);
-  AControl.Top := ScaleValue(4);
-  AControl.Width := Result.ClientWidth - AControl.Left - ScaleValue(cGap);
-  if AHeight > cRowHeight then
-  begin
-    AControl.Height := Result.ClientHeight - ScaleValue(8);
-    AControl.Anchors := [akLeft, akTop, akRight, akBottom];
-  end
-  else
-    AControl.Anchors := [akLeft, akTop, akRight];
-  if ACaption = '' then
-    Exit;
-  mLabel := TLabel.Create(Self);
-  mLabel.Parent := Result;
-  mLabel.Left := ScaleValue(cGap);
-  mLabel.Top := ScaleValue(cGap);
-  mLabel.Caption := ACaption;
-  mLabel.ShowAccelChar := False;
-  mLabel.FocusControl := AControl;
-end;
-
-function TAtlasNewIssueDialog.AddButton(AParent: TWinControl; const ACaption: string;
-  AClick: TNotifyEvent): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  if Result.Width < ScaleValue(90) then
-    Result.Width := ScaleValue(90);
-  Result.Top := ScaleValue(cGap div 2);
-  Result.Height := ScaleValue(28);
-  Result.Anchors := [akTop, akRight];
 end;
 
 procedure TAtlasNewIssueDialog.DoShow;
@@ -475,7 +591,7 @@ var
   mIndex: Integer;
   mLanguage: string;
 begin
-  mIndex := FTracker.Choice;
+  mIndex := FParts.TrackerBox.Choice;
   Result := (mIndex >= 0) and (mIndex <= High(FSetup.Trackers));
   if not Result then
   begin
@@ -485,19 +601,20 @@ begin
   ATarget := FSetup.Trackers[mIndex].Target;
   // Projekt aus dem Feld; Create normiert (GitHub owner/repo, Schrägstriche).
   mLanguage := ATarget.Language;
-  ATarget := TAtlasTrackerTarget.Create(ATarget.Provider, ATarget.Url, FProject.Text, ATarget.Query);
+  ATarget := TAtlasTrackerTarget.Create(ATarget.Provider, ATarget.Url, FParts.ProjectEdit.Text, ATarget.Query);
   ATarget.Language := mLanguage;
 end;
 
 function TAtlasNewIssueDialog.Draft: TAtlasNewIssueDraft;
 begin
   Result := TAtlasNewIssueDraft.Empty;
-  Result.Title := Trim(FTitle.Text);
-  Result.Description := TAtlasNewIssues.Compose(FDescription.Text, FCode.Text, FIncludeCode.Checked);
-  Result.IssueType := Trim(FType.Text);
-  Result.Priority := Trim(FPriority.Text);
-  Result.Assignee := Trim(FAssignee.Text);
-  Result.AssignToMe := FAssignToMe.Checked;
+  Result.Title := Trim(FParts.TitleEdit.Text);
+  Result.Description := TAtlasNewIssues.Compose(FParts.DescriptionMemo.Text, FParts.CodeMemo.Text,
+    FParts.IncludeCodeBox.Checked);
+  Result.IssueType := Trim(FParts.TypeBox.Text);
+  Result.Priority := Trim(FParts.PriorityBox.Text);
+  Result.Assignee := Trim(FParts.AssigneeBox.Text);
+  Result.AssignToMe := FParts.AssignToMeBox.Checked;
   Result.TypeField := FFields.TypeField;
   Result.PriorityField := FFields.PriorityField;
   Result.AssigneeField := FFields.AssigneeField;
@@ -509,21 +626,26 @@ var
   mHasTarget: Boolean;
 begin
   mHasTarget := Target(mTarget) and mTarget.Configured;
-  FCreate.Enabled := not FSending and mHasTarget and (Trim(FTitle.Text) <> '') and Assigned(FOnSend);
-  FCancel.Enabled := not FSending;
-  FCode.Enabled := FIncludeCode.Checked;
-  FAssignee.Enabled := not FAssignToMe.Checked;
+  FParts.CreateButton.Enabled := not FSending and mHasTarget and (Trim(FParts.TitleEdit.Text) <> '') and
+    Assigned(FOnSend);
+  FParts.CancelButton.Enabled := not FSending;
+  FParts.CodeMemo.Enabled := FParts.IncludeCodeBox.Checked;
+  FParts.AssigneeBox.Enabled := not FParts.AssignToMeBox.Checked;
   if not FSending and (Length(FSetup.Trackers) = 0) then
-    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueNoTracker);
+  begin
+    FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueNoTracker);
+  end;
 end;
 
 procedure TAtlasNewIssueDialog.TrackerChange(Sender: TObject);
 var
   mIndex: Integer;
 begin
-  mIndex := FTracker.Choice;
+  mIndex := FParts.TrackerBox.Choice;
   if (mIndex >= 0) and (mIndex <= High(FSetup.Trackers)) then
-    FProject.Text := FSetup.Trackers[mIndex].Target.Project;
+  begin
+    FParts.ProjectEdit.Text := FSetup.Trackers[mIndex].Target.Project;
+  end;
   Changed(Sender);
   LoadFields;
 end;
@@ -536,32 +658,42 @@ var
   mTicket: Integer;
 begin
   if not Assigned(FOnLoad) or not Target(mTarget) or not mTarget.Configured then
+  begin
     Exit;
+  end;
   Inc(FLoadTicket);
   mTicket := FLoadTicket;
   mLinkRef := FLinkRef;
   mLink := FLink;
-  FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueLoading);
+  FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueLoading);
   FOnLoad(mTarget,
     procedure(const AFields: TAtlasNewIssueFields; ALoaded: Boolean)
     begin
       if (mLinkRef <> nil) and (mLink.Dialog <> nil) and (mLink.Dialog.FLoadTicket = mTicket) then
+      begin
         mLink.Dialog.ShowFields(AFields, ALoaded);
+      end;
     end);
 end;
 
 procedure TAtlasNewIssueDialog.ShowFields(const AFields: TAtlasNewIssueFields; ALoaded: Boolean);
 begin
   FFields := AFields;
-  FType.SetValues(AFields.Types);
-  FPriority.SetValues(AFields.Priorities);
-  FAssignee.SetValues(AFields.Assignees);
+  FParts.TypeBox.SetValues(AFields.Types);
+  FParts.PriorityBox.SetValues(AFields.Priorities);
+  FParts.AssigneeBox.SetValues(AFields.Assignees);
   if FSending then
+  begin
     Exit;
+  end;
   if ALoaded then
-    FStatus.Caption := ''
+  begin
+    FParts.StatusLabel.Caption := '';
+  end
   else
-    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueLoadFailed);
+  begin
+    FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueLoadFailed);
+  end;
 end;
 
 procedure TAtlasNewIssueDialog.CreateClick(Sender: TObject);
@@ -571,14 +703,16 @@ var
   mLink: TAtlasNewIssueLink;
 begin
   if FSending or not Assigned(FOnSend) or not Target(mTarget) then
-    Exit;
-  if Trim(FTitle.Text) = '' then
   begin
-    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueNoTitle);
+    Exit;
+  end;
+  if Trim(FParts.TitleEdit.Text) = '' then
+  begin
+    FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueNoTitle);
     Exit;
   end;
   FSending := True;
-  FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueSending);
+  FParts.StatusLabel.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueSending);
   Changed(Sender);
   mLinkRef := FLinkRef;
   mLink := FLink;
@@ -586,7 +720,9 @@ begin
     procedure(const AResult: TAtlasNewIssueResult)
     begin
       if (mLinkRef <> nil) and (mLink.Dialog <> nil) then
+      begin
         mLink.Dialog.ShowResult(AResult);
+      end;
     end);
 end;
 
@@ -602,7 +738,7 @@ begin
     Exit;
   end;
   Target(mTarget);
-  FStatus.Caption := ResultText(AResult, mTarget.Project, mTarget.Server);
+  FParts.StatusLabel.Caption := ResultText(AResult, mTarget.Project, mTarget.Server);
   Changed(nil);
 end;
 
@@ -634,7 +770,9 @@ end;
 procedure TAtlasNewIssueDialog.CancelClick(Sender: TObject);
 begin
   if FSending then
+  begin
     Exit;
+  end;
   ModalResult := mrCancel;
 end;
 
@@ -658,7 +796,7 @@ begin
     if Result then
     begin
       AResult := mDialog.IssueResult;
-      AStartNow := mDialog.StartNowBox.Checked and mDialog.StartNowBox.Enabled;
+      AStartNow := mDialog.Parts.StartNowBox.Checked and mDialog.Parts.StartNowBox.Enabled;
     end;
   finally
     mDialog.Free;

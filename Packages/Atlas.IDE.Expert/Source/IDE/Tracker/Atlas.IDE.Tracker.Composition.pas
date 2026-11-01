@@ -6,19 +6,25 @@
 // Initialisierung das Modul „atlas.tracker“ (Modulschalter issues, #1454) bei
 // der Registry von Base an und stellt über dessen Scope bereit:
 // - die Teile IssueLinks und BlameIssues der Feature-Tabelle,
-// - Befehle (Palette): Zugang zum Issue-Tracker und zum Build-Server, Issue
-//   anlegen, Issue anzeigen, Issues zu dieser Methode, offene Zeitbuchungen,
-//   Board, An Issue anhängen,
+// - Befehle (Palette): Zugang zum Issue-Tracker, Issue anlegen, Issue anzeigen,
+//   Issues zu dieser Methode, offene Zeitbuchungen, Board, An Issue anhängen
+//   (der Zugang zum Build-Server gehört seit #1455 zur Willkommensseite,
+//   Karte Testergebnisse),
 // - „An Issue anhängen …“ im Atlas-Menü, „Board“ unter Ansicht › Atlas,
 //   „Issue anlegen …“ im Kontextmenü des Editors und auf seiner Taste,
 // - den Abschnitt „Issue-Tracker“ im Optionsdialog (Atlas.IDE.Tracker.Settings,
 //   auch bei ausgeschaltetem Modul, damit man es einstellen kann).
-// Alles, was „Meine Issues“ braucht (Tracker des Projekts, Vorschau,
-// Beginnen, Board, Zeiterfassung, Anhängen, Issue anlegen), fragt das Modul bei
-// jedem Gebrauch über IAtlasIssuesSession (Atlas.IDE.Tracker.Session) aus der
-// Registry; ohne den Bereich sind die Befehle unsichtbar und die Teile starten
-// nicht. Die Zeilenhistorie (Base) hält die Haken des Moduls nur, solange
-// BlameIssues läuft (Regel 3).
+// - „Meine Issues“ (#765) als Teil MyIssues: Tracker des Projekts, Vorschau,
+//   Beginnen, Board, Zeiterfassung, Anhängen und „Issue anlegen“ (#1268);
+//   die Kacheln „Meine Issues“ und „Sprint“ der Willkommensseite über
+//   Atlas.IDE.Contracts.WelcomeTiles (Atlas.IDE.Tracker.Tiles), Projekte und
+//   Meldungen an die Seite über Atlas.IDE.Tracker.WelcomeLink, Issues in der
+//   Befehlspalette (#1270). Ohne Willkommensseite laufen Statuszeile,
+//   Commit-Präfix und Befehle mit dem aktiven Projekt der IDE weiter.
+// Anbieter, Token und Transport kommen über IAtlasTrackerAccess aus der
+// Registry. Ohne MyIssues sind die Befehle unsichtbar und Kennungen im Code
+// und Zeilenhistorie starten nicht. Die Zeilenhistorie (Base) hält die Haken
+// des Moduls nur, solange BlameIssues läuft (Regel 3).
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
 
@@ -26,11 +32,12 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Commands.Palette,
   Atlas.Core.Modules.Contract;
 
 type
   TAtlasTrackerModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
-    IAtlasKeySource)
+    IAtlasKeySource, IAtlasAppliesSettings, IAtlasPaletteSourceProvider)
   public const
     cModuleId = 'atlas.tracker';
     cSwitch = 'issues';
@@ -45,6 +52,10 @@ type
     function Commands: TArray<TAtlasModuleCommand>;
     function MenuEntries: TArray<TAtlasMenuEntry>;
     function Keys: TArray<TAtlasModuleKey>;
+    /// <summary>Geänderte Einstellungen an „Meine Issues“ und den Sprint (Sichtbarkeit, Titel, Inhalt).</summary>
+    procedure ApplySettings;
+    /// <summary>Issues in der Befehlspalette (#1270); nil ohne „Meine Issues“.</summary>
+    function PaletteSource: IAtlasPaletteSource;
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
     class function RegisterModule: Boolean; static;
@@ -54,19 +65,29 @@ type
 implementation
 
 uses
+  System.Types,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Modules.FeatureParts,
+  Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Connections,
+  Atlas.IDE.Contracts.WelcomeTiles,
+  Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.LineChanges,
-  Atlas.IDE.Tracker.Session,
+  Atlas.IDE.Settings.Options,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
+  Atlas.IDE.Tracker.IssuesContext,
+  Atlas.IDE.Tracker.MyIssues,
+  Atlas.IDE.Tracker.NewIssue,
   Atlas.IDE.Tracker.Settings,
+  Atlas.IDE.Tracker.Tiles,
+  Atlas.IDE.Tracker.WelcomeLink,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
@@ -75,46 +96,81 @@ const
   // Protokoll beim An- und Abmelden.
   cLogContractMismatch = 'Modul %s: Vertragsversion von Base passt nicht, nicht angemeldet';
   cLogUnregisterFailed = 'Modul %s nicht sauber abgemeldet: %s';
+  // Zusatzfeld der Zeiterfassung im Statusfeld (#1267).
+  cIssueTimeExtra = 'issueTime';
+  // Seiten und Tabellen des Abschnitts Issue-Tracker für „Einstellungen“, „zuordnen …“ und „Abfragen bearbeiten …“.
+  cSettingConnections = 'IssuesConnections';
+  cSettingProjects = 'IssuesProjects';
+  cSettingQueries = 'IssuesQueries';
 
 var
   GScope: IAtlasModuleScope;
   GIssueLinks: TAtlasIdeCodeLinks;
   GBlameIssues: TAtlasIdeBlameLinks;
+  GWelcome: TAtlasTrackerWelcomeLink;
+  GIssues: TAtlasIdeIssues;
+  GIssuesRef: IInterface;
+  /// <summary>Zugang zum Tracker; im Hauptthread einmal geholt, der Transport liest ihn im Hintergrund.</summary>
+  GAccess: IAtlasTrackerAccess;
+  /// <summary>Kacheln der Willkommensseite, solange MyIssues läuft.</summary>
+  GTiles: TArray<IAtlasRegistration>;
 
-{ „Meine Issues“ }
+{ Dienste aus der Registry }
 
-/// <summary>Der laufende Bereich „Meine Issues“; nil ohne.</summary>
-function Session: IAtlasIssuesSession;
+/// <summary>Erstes unter AIID bereitgestelltes Objekt; nil ohne.</summary>
+function Provided(const AIID: TGUID): IInterface;
 var
-  mItem: IInterface;
+  mItems: TArray<IInterface>;
 begin
   Result := nil;
   if AtlasModuleRegistry = nil then
   begin
     Exit;
   end;
-  for mItem in AtlasModuleRegistry.FindAll(IAtlasIssuesSession) do
+  mItems := AtlasModuleRegistry.FindAll(AIID);
+  if Length(mItems) > 0 then
   begin
-    if Supports(mItem, IAtlasIssuesSession, Result) and Result.Available then
-    begin
-      Exit;
-    end;
+    Result := mItems[0];
   end;
-  Result := nil;
 end;
+
+/// <summary>Zugang zum Tracker der Kompositionswurzel; im Hauptthread.</summary>
+function TrackerAccess: IAtlasTrackerAccess;
+begin
+  if (GAccess = nil) and not Supports(Provided(IAtlasTrackerAccess), IAtlasTrackerAccess, GAccess) then
+  begin
+    GAccess := nil;
+  end;
+  Result := GAccess;
+end;
+
+function WelcomeProjects: IAtlasWelcomeProjects;
+begin
+  if not Supports(Provided(IAtlasWelcomeProjects), IAtlasWelcomeProjects, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+function WelcomeBoard: IAtlasWelcomeBoard;
+begin
+  if not Supports(Provided(IAtlasWelcomeBoard), IAtlasWelcomeBoard, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+{ „Meine Issues“ }
 
 function SessionAvailable: Boolean;
 begin
-  Result := Session <> nil;
+  Result := GIssues <> nil;
 end;
 
 function SessionTarget(out ATarget: TAtlasTrackerTarget): Boolean;
-var
-  mSession: IAtlasIssuesSession;
 begin
   ATarget := TAtlasTrackerTarget.Create('', '', '', '');
-  mSession := Session;
-  Result := (mSession <> nil) and mSession.CodeTarget(ATarget);
+  Result := SessionAvailable and GIssues.Commands.CodeTarget(ATarget);
 end;
 
 function CommitPattern: string;
@@ -123,56 +179,41 @@ begin
 end;
 
 function SessionPreview: TAtlasIdeIssuePreview;
-var
-  mSession: IAtlasIssuesSession;
 begin
   Result := nil;
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable then
   begin
-    Result := mSession.IssuePreview;
+    Result := GIssues.Services.Preview;
   end;
 end;
 
 procedure SessionShow(const ATarget: TAtlasTrackerTarget; const AKey: string);
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable then
   begin
-    mSession.ShowIssue(ATarget, AKey);
+    GIssues.Commands.ShowIssue(ATarget, AKey);
   end;
 end;
 
 procedure SessionBrowse(const ATarget: TAtlasTrackerTarget; const AKey: string);
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable then
   begin
-    mSession.BrowseIssue(ATarget, AKey);
+    GIssues.Commands.BrowseIssue(ATarget, AKey);
   end;
 end;
 
 procedure SessionStart(const ATarget: TAtlasTrackerTarget; const AKey: string);
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable then
   begin
-    mSession.StartIssue(ATarget, AKey);
+    GIssues.Commands.StartIssue(ATarget, AKey);
   end;
 end;
 
 function SessionCanStart: Boolean;
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  Result := (mSession <> nil) and mSession.CanStartIssue;
+  Result := SessionAvailable and GIssues.Context.CanStart;
 end;
 
 /// <summary>Haken der Kennungen im Code und der Zeilenhistorie: alles über „Meine Issues“ (Tracker wie dort,
@@ -191,10 +232,152 @@ end;
 
 { Teile }
 
-/// <summary>Wie bisher nach „Meine Issues“ und nicht in der Stufe Minimal.</summary>
+/// <summary>Nach „Meine Issues“ und nicht in der Stufe Minimal.</summary>
 function WithSession(ALevel: TAtlasSafeLevel): Boolean;
 begin
   Result := (ALevel <> TAtlasSafeLevel.Minimal) and SessionAvailable;
+end;
+
+function ProviderOf(const AName: string): IAtlasTrackerProvider;
+var
+  mAccess: IAtlasTrackerAccess;
+begin
+  Result := nil;
+  mAccess := TrackerAccess;
+  if mAccess <> nil then
+  begin
+    Result := mAccess.Provider(AName);
+  end;
+end;
+
+// Im Hintergrund-Thread: Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Transport (kein Netz).
+function TransportOf(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+var
+  mAccess: IAtlasTrackerAccess;
+begin
+  Result := nil;
+  mAccess := GAccess;
+  if mAccess <> nil then
+  begin
+    Result := mAccess.Transport(AProvider, ATarget);
+  end;
+end;
+
+function CredentialsOf(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mAccess: IAtlasTrackerAccess;
+begin
+  mAccess := TrackerAccess;
+  Result := (mAccess <> nil) and mAccess.EnterToken(AProvider, ATarget);
+end;
+
+// Nur Meldungsansicht: Die Zeilen können Branch-Namen enthalten. Jede Meldung folgt auf eine Aktion des Benutzers
+// (Zugang, Beginnen, Git-Hook), deshalb sichtbar machen.
+procedure IssuesMessage(AText: string);
+begin
+  TAtlasIdeHost.Message(AText);
+  TAtlasIdeHost.ShowMessages;
+end;
+
+procedure NewIssueMessage(AText: string);
+begin
+  TAtlasIdeHost.Message(AText);
+end;
+
+// Zeiterfassung (#1267): „ATL-123 · 1:25“ als Zusatzfeld im Statusfeld, Klick öffnet das Menü der Uhr.
+procedure TimeStatus(const AText, AHint: string; const AOnClick: TProc<TPoint>);
+begin
+  TAtlasIdeHost.SetStatusField(cIssueTimeExtra, AText, AHint, AOnClick);
+end;
+
+procedure ShowConnections;
+begin
+  TAtlasOptionsRegistration.ShowSetting(cSettingConnections);
+end;
+
+// Knopf „Tracker-Einstellungen …“ der Issue-Vorschau (#1264).
+procedure ShowTrackerSettings;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Settings, ShowConnections);
+end;
+
+// „zuordnen …“ (#1261): Seite Issue-Tracker mit vorbefüllter Zeile der Tabelle Projekte.
+procedure AssignProject(AMatch: string);
+begin
+  TAtlasOptionsRegistration.ShowSetting(cSettingProjects, AMatch);
+end;
+
+// „Abfragen bearbeiten …“ (#1262): Seite Issue-Tracker bei der Tabelle Abfragen.
+procedure EditQueries;
+begin
+  TAtlasOptionsRegistration.ShowSetting(cSettingQueries);
+end;
+
+function WelcomeLookup: TAtlasTrackerWelcomeLookup;
+begin
+  Result := Default(TAtlasTrackerWelcomeLookup);
+  Result.Projects := WelcomeProjects;
+  Result.Board := WelcomeBoard;
+end;
+
+function CreateIssues: TAtlasIdeIssues;
+var
+  mHooks: TAtlasIdeIssuesHooks;
+begin
+  Result := TAtlasIdeIssues.Create(GWelcome, IssuesMessage);
+  mHooks := Default(TAtlasIdeIssuesHooks);
+  mHooks.Provider := ProviderOf;
+  mHooks.Transport := TransportOf;
+  mHooks.Credentials := CredentialsOf;
+  mHooks.TimeStatus := TimeStatus;
+  mHooks.Settings := ShowTrackerSettings;
+  mHooks.AssignProject := AssignProject;
+  mHooks.EditQueries := EditQueries;
+  Result.Context.Hooks := mHooks;
+end;
+
+procedure StartMyIssues;
+begin
+  TrackerAccess;
+  GWelcome := TAtlasTrackerWelcomeLink.Create(WelcomeLookup);
+  GIssues := CreateIssues;
+  GIssuesRef := GIssues as IInterface;
+  GIssues.Start;
+  // „Issue anlegen …“ (#1268): Tracker, Transport und „Beginnen“ wie „Meine Issues“.
+  TAtlasIdeNewIssue.Start(GIssues, NewIssueMessage);
+  GTiles := [GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerIssuesTile.Create(GIssues) as IAtlasWelcomeTile),
+    GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerSprintTile.Create(GIssues) as IAtlasWelcomeTile)];
+end;
+
+procedure StopMyIssues;
+var
+  mIndex: Integer;
+begin
+  // Zuerst die Kacheln: Die Seite gibt ihre Ansichten frei, solange die Quelle noch läuft.
+  for mIndex := High(GTiles) downto 0 do
+  begin
+    GTiles[mIndex].Revoke;
+  end;
+  GTiles := nil;
+  // Vor „Meine Issues“: wartet auf laufende Anfragen.
+  TAtlasIdeNewIssue.Stop;
+  if GIssues <> nil then
+  begin
+    GIssues.Stop;
+  end;
+  GIssues := nil;
+  GIssuesRef := nil;
+  if GWelcome <> nil then
+  begin
+    GWelcome.Release;
+  end;
+  FreeAndNil(GWelcome);
+  GAccess := nil;
+end;
+
+function MyIssuesStarted: Boolean;
+begin
+  Result := SessionAvailable;
 end;
 
 // Issue-Kennungen im Code (#1265): issues.codeLinks prüft der Zeitgeber selbst (Schnellschalter ohne Neustart).
@@ -246,13 +429,10 @@ begin
 end;
 
 procedure EnterCredentials;
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable then
   begin
-    mSession.EnterCredentials;
+    GIssues.Query.EnterCredentialsForActive;
   end;
 end;
 
@@ -261,33 +441,11 @@ begin
   Result := TAtlasIdeSettings.Current.TrackerLogin and SessionAvailable;
 end;
 
-procedure EnterCiCredentials;
-var
-  mSession: IAtlasIssuesSession;
-begin
-  mSession := Session;
-  if mSession <> nil then
-  begin
-    mSession.EnterCiCredentials;
-  end;
-end;
-
-function CiLoginVisible: Boolean;
-var
-  mSession: IAtlasIssuesSession;
-begin
-  mSession := Session;
-  Result := TAtlasIdeSettings.Current.CiLogin and (mSession <> nil) and mSession.CanEnterCiCredentials;
-end;
-
 procedure CreateIssueNow;
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if (mSession <> nil) and mSession.CanCreateIssue then
+  if SessionAvailable and TAtlasIdeNewIssue.Enabled then
   begin
-    mSession.CreateIssueFromEditor;
+    TAtlasIdeNewIssue.FromEditor;
   end;
 end;
 
@@ -298,11 +456,8 @@ begin
 end;
 
 function CreateIssueVisible: Boolean;
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  Result := (mSession <> nil) and mSession.CanCreateIssue;
+  Result := SessionAvailable and TAtlasIdeNewIssue.Enabled;
 end;
 
 function CreateIssueKey: Integer;
@@ -311,13 +466,10 @@ begin
 end;
 
 procedure ShowPreviewPrompt;
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable then
   begin
-    mSession.ShowPreviewPrompt;
+    GIssues.Commands.ShowPreviewPrompt;
   end;
 end;
 
@@ -340,13 +492,10 @@ begin
 end;
 
 procedure ShowTimeOpen;
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable then
   begin
-    mSession.ShowTimeOpen;
+    GIssues.Services.ShowTimeOpen;
   end;
 end;
 
@@ -356,13 +505,10 @@ begin
 end;
 
 procedure ShowBoard;
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable and (GIssues.Services.Board <> nil) then
   begin
-    mSession.ShowBoard;
+    GIssues.Services.Board.Show;
   end;
 end;
 
@@ -372,13 +518,10 @@ begin
 end;
 
 procedure AttachPrompt;
-var
-  mSession: IAtlasIssuesSession;
 begin
-  mSession := Session;
-  if mSession <> nil then
+  if SessionAvailable then
   begin
-    mSession.AttachPrompt;
+    GIssues.Commands.AttachPrompt;
   end;
 end;
 
@@ -425,8 +568,6 @@ begin
     CreateIssue, CreateIssueVisible);
   mCreate.Key := CreateIssueKey;
   Result := [
-    // Zugang zum Build-Server (#763): für die .atlas des aktiven Projekts; sichtbar mit CiLogin.
-    Command('Atlas.CiLogin', TAtlasStrings.Text(TAtlasTextId.CiLoginCommand), EnterCiCredentials, CiLoginVisible),
     // Zugang zum Issue-Tracker (#765): für die .atlas des aktiven Projekts; sichtbar mit TrackerLogin.
     Command('Atlas.TrackerLogin', TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand),
       EnterCredentials, TrackerLoginVisible),
@@ -445,6 +586,24 @@ begin
     // An Issue anhängen (#1276): Bildschirmfoto, Formular, Log, Debug-Notiz; sichtbar mit issues.attach.
     Command('Atlas.IssueAttach', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), AttachPrompt,
       AttachVisible)];
+end;
+
+procedure TAtlasTrackerModule.ApplySettings;
+begin
+  // welcomePage.issues, issues.tracker, .query, die Muster, issues.notify, welcomePage.sprint (#765, #1277).
+  if SessionAvailable then
+  begin
+    GIssues.Refresh;
+  end;
+end;
+
+function TAtlasTrackerModule.PaletteSource: IAtlasPaletteSource;
+begin
+  Result := nil;
+  if SessionAvailable then
+  begin
+    Result := GIssues.Services.PaletteSearch;
+  end;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -489,8 +648,9 @@ end;
 
 class function TAtlasTrackerModule.Parts: TArray<IAtlasFeaturePart>;
 begin
-  // Nach „Meine Issues“ (Tracker und Vorschau); Abbau vor der Willkommensseite, weil Module zuerst gehen.
+  // Zuerst „Meine Issues“ (Tracker und Vorschau), danach die Teile, die es brauchen; Abbau rückwärts.
   Result := [
+    TAtlasFeaturePart.AtLevel('MyIssues', TAtlasSafeLevel.Safe, MyIssuesStarted, StartMyIssues, StopMyIssues),
     TAtlasFeaturePart.When('IssueLinks', WithSession, IssueLinksStarted, StartIssueLinks, StopIssueLinks),
     TAtlasFeaturePart.When('BlameIssues', WithSession, BlameIssuesStarted, StartBlameIssues, StopBlameIssues)];
 end;
@@ -525,6 +685,8 @@ begin
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasKeySource, mRef);
+  GScope.Provide(IAtlasAppliesSettings, mRef);
+  GScope.Provide(IAtlasPaletteSourceProvider, mRef);
   GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeTrackerSettings.Create as IAtlasSettingsSectionProvider);
   Result := True;
 end;
