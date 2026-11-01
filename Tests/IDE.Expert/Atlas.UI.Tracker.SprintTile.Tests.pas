@@ -86,9 +86,13 @@ end;
 procedure TFakeSprint.FilterIssues(ADone: Boolean);
 begin
   if ADone then
-    Calls := Calls + ['filter done']
+  begin
+    Calls := Calls + ['filter done'];
+  end
   else
+  begin
     Calls := Calls + ['filter open'];
+  end;
 end;
 
 procedure TFakeSprint.AssignProject;

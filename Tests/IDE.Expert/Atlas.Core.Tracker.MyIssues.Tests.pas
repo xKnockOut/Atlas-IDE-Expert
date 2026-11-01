@@ -152,8 +152,12 @@ var
 begin
   Result := False;
   for Name in AList do
+  begin
     if Name = AName then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TFakeBranchingVcs.Kind: TAtlasVcsKind;
@@ -211,7 +215,9 @@ var
   mPath: string;
 begin
   if (VcsKind <> TAtlasVcsKind.Svn) or (SvnUrl = '') then
+  begin
     Exit(BranchExists(AName, AExists));
+  end;
   AExists := False;
   if not TAtlasSvnLayout.Resolve(AOptions, SvnUrl, AName, mPath) then
   begin
@@ -229,9 +235,13 @@ var
   mPath: string;
 begin
   if (VcsKind <> TAtlasVcsKind.Svn) or (SvnUrl = '') then
+  begin
     Exit(SwitchBranch(AName));
+  end;
   if not TAtlasSvnLayout.Resolve(AOptions, SvnUrl, AName, mPath) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Calls := Calls + ['switch ^/' + mPath];
   Current := mPath;
   Result := TAtlasVcsOutcome.Ok;
@@ -260,7 +270,9 @@ function TFakeBranchingVcs.RepositoryPath(out APath: string): TAtlasVcsOutcome;
 begin
   APath := Current;
   if SvnUrl <> '' then
+  begin
     APath := SvnUrl;
+  end;
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -272,7 +284,9 @@ begin
   mArgs := AStep.Arguments;
   Calls := Calls + ['run ' + string.Join(' ', mArgs)];
   if mArgs[0] = FailOn then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   // Git: checkout --quiet --no-track -b <Name> <Start> --; SVN checkout <Ort> <Ordner> (#1290) ändert hier nichts.
   if (mArgs[0] = 'checkout') and (SvnUrl = '') and (Length(mArgs) > 4) then
   begin
@@ -281,15 +295,19 @@ begin
     Current := mName;
   end
   else if (mArgs[0] = 'switch') and (SvnUrl <> '') then
+  begin
     // copy ^/<Ort>@: voller Ort ohne ^/ und @ (#1290).
-    Current := Copy(mArgs[1], 3, Length(mArgs[1]) - 3)
+    Current := Copy(mArgs[1], 3, Length(mArgs[1]) - 3);
+  end
   else if mArgs[0] = 'switch' then
   begin
     mName := Copy(mArgs[1], Length('^/branches/') + 1, Length(mArgs[1]) - Length('^/branches/') - 1);
     Current := mName;
   end
   else if (mArgs[0] = 'copy') and (SvnUrl <> '') then
+  begin
     Branches := Branches + [Copy(mArgs[2], 3, Length(mArgs[2]) - 3)];
+  end;
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -305,7 +323,9 @@ begin
   AHooks := '';
   AGitDir := '';
   if VcsKind <> TAtlasVcsKind.Git then
+  begin
     Exit(TAtlasVcsOutcome.Ok);
+  end;
   AHooks := 'C:\Repo\.git\hooks';
   AGitDir := 'C:\Repo\.git';
   Result := TAtlasVcsOutcome.Ok;
