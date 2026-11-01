@@ -87,7 +87,6 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
-  Atlas.IDE.Query.Service,
   Atlas.IDE.Hotspots.Service,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Foundation.Navigation,
@@ -116,8 +115,6 @@ uses
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.Editor.Minimap,
-  Atlas.IDE.UnitSearch.Commands,
-  Atlas.IDE.Search.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
   Atlas.Core.Generate.FileTemplates,
@@ -234,7 +231,6 @@ uses
   Atlas.Core.Vcs.Adapters.ProcessRunner,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Query.Model,
   Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Files.Adapters.FolderWatcher,
@@ -1016,14 +1012,9 @@ begin
   Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
 end;
 
-const
-  /// <summary>Symbolnamen beim Tippen im Fenster „Atlas-Abfrage“: lieber keine Vorschläge als die IDE aufhalten.
-  /// </summary>
-  QuerySymbolTimeoutMs = 1500;
-
 /// <summary>Antwort als JSON-Text an ADone ('' ohne Antwort); der Manager gibt den Wert nach dem Aufruf frei.
 /// </summary>
-function QueryAnswerText(const ADone: TProc<string>): TProc<TJSONValue>;
+function AnswerText(const ADone: TProc<string>): TProc<TJSONValue>;
 begin
   Result :=
     procedure(AValue: TJSONValue)
@@ -1033,28 +1024,6 @@ begin
       else
         ADone(AValue.ToJSON([]));
     end;
-end;
-
-/// <summary>Symbolnamen hinter APredicate für das Fenster „Atlas-Abfrage“ (#1351); nur mit laufendem Server.</summary>
-function QuerySymbols(const APredicate, APrefix: string): TArray<string>;
-var
-  mSymbols: TArray<TAtlasSymbol>;
-begin
-  Result := nil;
-  if (Manager = nil) or (Manager.RunningSession = nil) then
-    Exit;
-  try
-    mSymbols := Manager.RunningSession.WorkspaceSymbols(APrefix, QuerySymbolTimeoutMs);
-  except
-    on ELspClientError do
-      mSymbols := nil;
-  end;
-  Result := TAtlasQueryCompletion.SymbolNames(APredicate, mSymbols);
-end;
-
-function QueryVisible: Boolean;
-begin
-  Result := TAtlasIdeCodeQuery.Enabled;
 end;
 
 function HotspotsVisible: Boolean;
@@ -1253,23 +1222,6 @@ end;
 function GenerateMenuVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.GenerateMenu;
-end;
-
-/// <summary>Modul Suche an (#1454): Atlas-Suche und ihre Befehle; die Suche der IDE bleibt.</summary>
-function SearchVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.ModuleOn('search');
-end;
-
-/// <summary>Unitsuche an (unitSearch.enabled; aus mit dem Modul Suche, #1454).</summary>
-function UnitSearchVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.UnitSearchEnabled;
-end;
-
-function SearchReplaceVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.SearchReplace;
 end;
 
 function MetricsReportVisible: Boolean;
@@ -1539,9 +1491,6 @@ begin
   // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
   Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
     Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
-  // Code-Abfragen (#1351); nur sichtbar, solange query.enabled an ist.
-  Add('Atlas.Query', TAtlasTextId.QueryCommand,
-    Guarded(TAtlasFeature.Query, TAtlasIdeCodeQuery.ShowWindow), QueryVisible);
   // Hotspots (#1354); nur sichtbar, solange hotspots.enabled an ist.
   Add('Atlas.Hotspots', TAtlasTextId.HotspotsCommand,
     Guarded(TAtlasFeature.Hotspots, TAtlasIdeHotspots.ShowWindow), HotspotsVisible);
@@ -1697,29 +1646,6 @@ begin
       TAtlasIdeEditorCommands.CopyQualifiedName(True);
     end);
   Add('Atlas.SwitchTestUnit', TAtlasTextId.EditorTestUnit, TAtlasIdeEditorCommands.SwitchTestUnit);
-  Add('Atlas.UnitSearch', TAtlasTextId.UnitSearchTitle,
-    procedure
-    begin
-      TAtlasIdeUnitSearch.Show;
-    end, UnitSearchVisible);
-  Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog,
-    procedure
-    begin
-      TAtlasIdeUnitSearch.ShowIdeDialog;
-    end);
-  // Unit verwenden und Formulare suchen (#786), mit den Dialogen der IDE als Ausweg.
-  Add('Atlas.UseUnit', TAtlasTextId.UseUnitCommand, TAtlasIdeUnitSearch.ShowUseUnit, UnitSearchVisible);
-  Add('Atlas.UseUnitIde', TAtlasTextId.UseUnitIdeDialog, TAtlasIdeUnitSearch.ShowUseUnitIdeDialog);
-  Add('Atlas.Forms', TAtlasTextId.FormsCommand, TAtlasIdeUnitSearch.ShowForms, UnitSearchVisible);
-  Add('Atlas.FormsIde', TAtlasTextId.FormsIdeDialog, TAtlasIdeUnitSearch.ShowFormsIdeDialog);
-  // Atlas-Suche (#877, #878); mit dem Modul Suche aus (#1454) unsichtbar.
-  Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show, SearchVisible);
-  Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod, SearchVisible);
-  // Ersetzen (#893); nur sichtbar, solange search.replace an ist.
-  Add('Atlas.SearchReplace', TAtlasTextId.SearchReplaceCommand, TAtlasIdeSearch.ShowReplace, SearchReplaceVisible);
-  Add('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, TAtlasIdeSearch.FindNext, SearchVisible);
-  Add('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, TAtlasIdeSearch.FindPrevious, SearchVisible);
-  Add('Atlas.SearchClear', TAtlasTextId.SearchClearCommand, TAtlasIdeSearch.ClearHighlights, SearchVisible);
   Add('Atlas.ResetHistory', TAtlasTextId.PaletteResetHistory, TAtlasIdeHistory.Reset);
   // Metrikbericht des Projekts (#66); nur sichtbar, solange die Einstellung MetricsReport an ist.
   Add('Atlas.MetricsReport', TAtlasTextId.MetricsReportCommand, MetricsReport, MetricsReportVisible);
@@ -3126,20 +3052,6 @@ begin
       Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
         Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
     end);
-  // Fenster „Atlas-Abfrage“ (#1351): abbrechbare Anfrage an den laufenden Server (startet keinen), Symbolnamen
-  // für die Vervollständigung aus der Symbolsuche.
-  TAtlasIdeCodeQuery.Install(
-    function(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal; const ACancelled: TFunc<Boolean>;
-      const ADone: TProc<string>): Boolean
-    begin
-      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
-      if Result then
-        Manager.RunServerRequestAsync(AMethod, AParamsJson, ATimeoutMs, ACancelled, QueryAnswerText(ADone));
-    end,
-    function(const APredicate, APrefix: string): TArray<string>
-    begin
-      Result := QuerySymbols(APredicate, APrefix);
-    end);
   // Fenster „Unit-Beziehungen“ (#593): fragt regelmäßig nach, daher nicht über den einen Hintergrundbefehl von
   // RunCommandAsync (der bliebe sonst für Architektur und Co. belegt), und startet keinen Server.
   TAtlasIdeUnitRelations.Install(
@@ -3358,24 +3270,6 @@ begin
       if Manager <> nil then
         Result := Manager.ActiveSession;
     end);
-  // Units suchen (#777): übernimmt Strg+F12, solange die Einstellungen es wollen.
-  TAtlasIdeUnitSearch.Install(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.ActiveSession;
-    end,
-    procedure(AText: string)
-    begin
-      GuardWarning(AText);
-    end);
-  // Atlas-Suche (#877, #878): Hervorhebung der Treffer und Meldungen.
-  TAtlasIdeSearch.Install(
-    procedure(AText: string)
-    begin
-      GuardWarning(AText);
-    end);
 end;
 
 procedure StopCommands;
@@ -3404,13 +3298,10 @@ begin
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeSymbolPath.Uninstall;
   TAtlasIdeArchitecture.Uninstall;
-  TAtlasIdeCodeQuery.Uninstall;
   TAtlasIdeHotspots.Uninstall;
   TAtlasIdeUnitRelations.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
-  TAtlasIdeSearch.Uninstall;
-  TAtlasIdeUnitSearch.Uninstall;
   TAtlasIdeGenerate.Uninstall;
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
   TAtlasEditorHover.OnProblemAction := nil;
@@ -5011,6 +4902,15 @@ begin
     begin
       GuardWarning(AText);
     end;
+  // Anfragen der Module, etwa der Abfrage (#1351): abbrechbar, nur an den laufenden Server.
+  mServices.RunRequest :=
+    function(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal; const ACancelled: TFunc<Boolean>;
+      const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
+      if Result then
+        Manager.RunServerRequestAsync(AMethod, AParamsJson, ATimeoutMs, ACancelled, AnswerText(ADone));
+    end;
   mServices.RunCommand :=
     function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
     begin
@@ -5102,13 +5002,11 @@ begin
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeArchitecture.ThemeChanged;
-      TAtlasIdeCodeQuery.ThemeChanged;
       TAtlasIdeHotspots.ThemeChanged;
       TAtlasIdeUnitRelations.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
       TAtlasIdeStatusBar.ThemeChanged;
-      TAtlasIdeSearch.ThemeChanged;
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
       TAtlasIdeMinimap.ThemeChanged;
@@ -5157,8 +5055,6 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // architecture.* (#1118).
       TAtlasIdeArchitecture.ApplySettings;
-      // query.enabled (#1351).
-      TAtlasIdeCodeQuery.ApplySettings;
       // hotspots.* (#1354).
       TAtlasIdeHotspots.ApplySettings;
       TAtlasIdeUnitRelations.ApplySettings;
@@ -5174,8 +5070,6 @@ begin
       TAtlasIdeEditorToolbar.ApplySettings;
       // editor.statusBar* (#1155); das Atlas-Feld zieht um oder zurück (RequestRefresh unten).
       TAtlasIdeStatusBar.ApplySettings;
-      // search.resultsInMessages (#878).
-      TAtlasIdeSearch.ApplySettings;
       // editor.stickyScroll* (#506).
       TAtlasIdeStickyScroll.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).

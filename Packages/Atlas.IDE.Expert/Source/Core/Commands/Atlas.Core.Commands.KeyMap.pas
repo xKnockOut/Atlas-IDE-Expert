@@ -46,6 +46,22 @@ type
     NoneActive);
   {$SCOPEDENUMS OFF}
 
+  /// <summary>Aktion der IDE, die ein Modul übernommen hat, etwa Strg+F12 „Units“ für „Units suchen“ (#777).
+  /// </summary>
+  TAtlasTakenAction = record
+    /// <summary>Atlas-Funktion, die an Stelle der Aktion läuft.</summary>
+    Func: TAtlasKeyFunction;
+    /// <summary>Name der Aktion in der Aktionsliste der IDE.</summary>
+    ActionName: string;
+  end;
+
+  /// <summary>Übernommene Aktionen eines Moduls für die Tastenkürzel-Übersicht (#520, #1455); Hauptthread.
+  /// </summary>
+  IAtlasTakenActions = interface
+    ['{CA511338-4188-48A9-B7C7-E5B6CC0FFD28}']
+    function TakenActions: TArray<TAtlasTakenAction>;
+  end;
+
   /// <summary>Eine Belegung einer Taste.</summary>
   TAtlasKeyItem = record
     ShortCut: Word;

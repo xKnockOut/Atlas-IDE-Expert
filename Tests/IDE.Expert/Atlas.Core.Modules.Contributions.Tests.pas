@@ -133,6 +133,9 @@ begin
   mEntry.Place := TAtlasMenuPlace.EditorContext;
   mEntry.Section := '';
   Result := Result + [mEntry];
+  mEntry.Place := TAtlasMenuPlace.ViewMenu;
+  mEntry.CommandId := FPrefix + '.Window';
+  Result := Result + [mEntry];
 end;
 
 function TSource.Keys: TArray<TAtlasModuleKey>;
@@ -239,6 +242,10 @@ begin
   mEntries := TAtlasModuleContributions.MenuEntries(mRegistry, TAtlasMenuPlace.EditorContext);
   Assert.AreEqual(1, Integer(Length(mEntries)), 'je Ort getrennt');
   Assert.AreEqual('', mEntries[0].Section);
+  mEntries := TAtlasModuleContributions.MenuEntries(mRegistry, TAtlasMenuPlace.ViewMenu);
+  Assert.AreEqual(1, Integer(Length(mEntries)), 'Ansicht › Atlas getrennt');
+  Assert.AreEqual('A.Window', mEntries[0].CommandId);
+  mEntries := TAtlasModuleContributions.MenuEntries(mRegistry, TAtlasMenuPlace.EditorContext);
   TAtlasModuleContributions.FindCommand(mRegistry, mEntries[0].CommandId, mCommand);
   Assert.IsFalse(TAtlasModuleContributions.IsVisible(mCommand));
   mCommand.Visible := nil;

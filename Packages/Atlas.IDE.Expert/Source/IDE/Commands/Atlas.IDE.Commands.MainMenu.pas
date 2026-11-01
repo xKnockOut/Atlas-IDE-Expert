@@ -28,6 +28,8 @@
 // Einträge der Module (#1455, etwa Notizen und Lesezeichen) baut
 // UpdateModuleItems bei jedem Öffnen aus IAtlasMenuSource; Untermenüs nach
 // Section, Trennlinien aus „-“, ein Untermenü ohne sichtbaren Eintrag fehlt.
+// Einträge der Module unter Ansicht › Atlas (TAtlasMenuPlace.ViewMenu, etwa
+// „Atlas-Abfrage“ der Suche) baut UpdateViewModuleItems beim Öffnen dort.
 // „Gliederung …“ (#537)
 // öffnet TAtlasIdeOutline; sichtbar nur bei outline.enabled.
 // Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
@@ -125,8 +127,9 @@ type
     /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FArchitectureItem: TMenuItem;
     FViewArchitecture: TMenuItem;
-    FQueryItem: TMenuItem;
-    FViewQuery: TMenuItem;
+    /// <summary>Einträge der Module unter Ansicht › Atlas und ihre Befehls-Ids (Index = Tag).</summary>
+    FViewModuleItems: TArray<TMenuItem>;
+    FViewModuleIds: TArray<string>;
     /// <summary>Fenster „Atlas-Hotspots“ (#1354) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FHotspotsItem: TMenuItem;
     FViewHotspots: TMenuItem;
@@ -149,7 +152,12 @@ type
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
-    procedure QueryClick(Sender: TObject);
+    procedure ViewAtlasClick(Sender: TObject);
+    procedure ViewModuleItemClick(Sender: TObject);
+    /// <summary>Einträge der Module unter Ansicht › Atlas neu aufbauen.</summary>
+    procedure UpdateViewModuleItems;
+    /// <summary>Hat ein laufendes Modul einen sichtbaren Eintrag unter Ansicht › Atlas?</summary>
+    class function HasViewModuleItems: Boolean; static;
     procedure HotspotsClick(Sender: TObject);
     procedure UnitRelationsClick(Sender: TObject);
     procedure BoardClick(Sender: TObject);
@@ -228,7 +236,6 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
-  Atlas.IDE.Query.Service,
   Atlas.IDE.Hotspots.Service,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.SymbolPath.Service,
@@ -239,7 +246,6 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Editor.MethodPlacement,
-  Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.ShortcutTips,
@@ -255,7 +261,7 @@ const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
   EditorIds: array[0..12] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
-    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode',
+    'Atlas.SwitchTestUnit', '', '', 'Atlas.GenerateMenu', 'Atlas.FormatCode',
     'Atlas.MethodOrder');
   ResultsIds: array[0..11] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram',
@@ -324,13 +330,9 @@ begin
   FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, 11, EditorClick);
   // Methodenrümpfe wie die Klasse ordnen (#660).
   FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, 12, EditorClick);
-  // Units suchen (#777).
-  AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
-  // Code-Abfragen (#1351).
-  FQueryItem := AddItem(TAtlasTextId.QueryCommand, 0, QueryClick);
   FHotspotsItem := AddItem(TAtlasTextId.HotspotsCommand, 0, HotspotsClick);
   FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
   // Weg zwischen Symbolen (#1117).
@@ -353,8 +355,6 @@ begin
   AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
   AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
   FOutlineItem := AddItem(TAtlasTextId.OutlineCommand, 0, OutlineClick);
-  // Der IDE-Dialog, falls Atlas Strg+F12 übernimmt.
-  AddItem(TAtlasTextId.UnitSearchIdeDialog, 9, EditorClick);
   AddGroup(TAtlasTextId.MenuGroupSearch);
   AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
   AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
@@ -442,10 +442,6 @@ begin
       FViewArchitecture.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureViewMenu);
       FViewArchitecture.OnClick := ArchitectureClick;
       FViewAtlas.Add(FViewArchitecture);
-      FViewQuery := TMenuItem.Create(FViewAtlas);
-      FViewQuery.Caption := TAtlasStrings.Text(TAtlasTextId.QueryViewMenu);
-      FViewQuery.OnClick := QueryClick;
-      FViewAtlas.Add(FViewQuery);
       FViewHotspots := TMenuItem.Create(FViewAtlas);
       FViewHotspots.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsViewMenu);
       FViewHotspots.OnClick := HotspotsClick;
@@ -458,6 +454,8 @@ begin
       FViewBoard.Caption := TAtlasStrings.Text(TAtlasTextId.BoardViewMenu);
       FViewBoard.OnClick := BoardClick;
       FViewAtlas.Add(FViewBoard);
+      // Einträge der Module (#1455) kommen beim Öffnen dazu.
+      FViewAtlas.OnClick := ViewAtlasClick;
       Services.MainMenu.Items[Index].Add(FViewAtlas);
       Break;
     end;
@@ -781,11 +779,6 @@ begin
     FArchitectureItem.Visible := TAtlasIdeArchitecture.Enabled;
   if FViewArchitecture <> nil then
     FViewArchitecture.Visible := TAtlasIdeArchitecture.Enabled;
-  // Code-Abfragen (#1351) nach query.enabled.
-  if FQueryItem <> nil then
-    FQueryItem.Visible := TAtlasIdeCodeQuery.Enabled;
-  if FViewQuery <> nil then
-    FViewQuery.Visible := TAtlasIdeCodeQuery.Enabled;
   // Hotspots (#1354) nach hotspots.enabled.
   if FHotspotsItem <> nil then
     FHotspotsItem.Visible := TAtlasIdeHotspots.Enabled;
@@ -802,7 +795,7 @@ begin
   if FViewAtlas <> nil then
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled or
       TAtlasIdeHotspots.Enabled or TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard or
-        TAtlasIdeCodeQuery.Enabled;
+        HasViewModuleItems;
   // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
   if FSymbolPathItem <> nil then
     FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
@@ -893,8 +886,6 @@ begin
         4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
         6: TAtlasIdeEditorCommands.ToggleMethod;
         7: TAtlasIdeEditorCommands.SwitchTestUnit;
-        8: TAtlasIdeUnitSearch.Show;
-        9: TAtlasIdeUnitSearch.ShowIdeDialog;
         10: TAtlasIdeGenerate.Show;
         11: TAtlasIdeEditorCommands.FormatCode;
         12: TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
@@ -965,14 +956,64 @@ begin
     end);
 end;
 
-procedure TAtlasMainMenu.QueryClick(Sender: TObject);
+procedure TAtlasMainMenu.ViewAtlasClick(Sender: TObject);
 begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.Query');
-  TAtlasGuard.Run(TAtlasFeature.Query,
-    procedure
+  TAtlasGuard.Run(TAtlasFeature.Menu, UpdateViewModuleItems);
+end;
+
+procedure TAtlasMainMenu.UpdateViewModuleItems;
+var
+  mItem: TMenuItem;
+  mEntry: TAtlasMenuEntry;
+  mCommand: TAtlasModuleCommand;
+begin
+  if FViewAtlas = nil then
+    Exit;
+  for mItem in FViewModuleItems do
+    mItem.Free;
+  FViewModuleItems := nil;
+  FViewModuleIds := nil;
+  for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.ViewMenu) do
+    if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
     begin
-      TAtlasIdeCodeQuery.ShowWindow;
-    end);
+      mItem := TMenuItem.Create(FViewAtlas);
+      mItem.Caption := mCommand.Caption;
+      mItem.Tag := Length(FViewModuleIds);
+      mItem.OnClick := ViewModuleItemClick;
+      mItem.Visible := TAtlasModuleContributions.IsVisible(mCommand);
+      FViewAtlas.Add(mItem);
+      FViewModuleItems := FViewModuleItems + [mItem];
+      FViewModuleIds := FViewModuleIds + [mCommand.Id];
+    end;
+end;
+
+class function TAtlasMainMenu.HasViewModuleItems: Boolean;
+var
+  mEntry: TAtlasMenuEntry;
+  mCommand: TAtlasModuleCommand;
+begin
+  for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.ViewMenu) do
+    if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) and
+      TAtlasModuleContributions.IsVisible(mCommand) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TAtlasMainMenu.ViewModuleItemClick(Sender: TObject);
+var
+  mIndex: Integer;
+  mCommand: TAtlasModuleCommand;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex < 0) or (mIndex > High(FViewModuleIds)) then
+    Exit;
+  // Beim Klick neu suchen (Regel 3).
+  if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, FViewModuleIds[mIndex], mCommand) and
+    Assigned(mCommand.Run) then
+  begin
+    TAtlasIdeShortcutTips.Invoked(mCommand.Id);
+    TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
+  end;
 end;
 
 procedure TAtlasMainMenu.HotspotsClick(Sender: TObject);

@@ -29,7 +29,7 @@
 // - Abgeschaltete Funktionen (TAtlasKeyEntry.Disabled, etwa #775 aus oder
 //   „Units suchen“ aus) bekommen keine Zeile und sind kein Konflikt.
 // - Strg+F12 (#777): Die IDE-Aktion „Units“, an die sich „Units suchen“ hängt
-//   (TAtlasIdeUnitSearch.HookedAction), erscheint bei unitSearch.enabled und
+//   (das Modul Suche meldet sie über IAtlasTakenActions, #1455), erscheint bei unitSearch.enabled und
 //   unitSearch.replaceIdeDialog als Atlas-Zeile mit ihren echten Tasten, sonst
 //   als Aktion der IDE (ihr Handler liegt dann zwar in Atlas, ruft aber nur
 //   den Dialog der IDE).
@@ -115,7 +115,8 @@ uses
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.IDE.Commands.Usage,
-  Atlas.IDE.UnitSearch.Commands;
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions;
 
 const
   KeyIdPrefix = 'Atlas.Key.';
@@ -253,6 +254,27 @@ begin
   end;
 end;
 
+/// <summary>Aktion der IDE, die ein laufendes Modul für AFunc übernommen hat; nil ohne.</summary>
+function TakenAction(AFunc: TAtlasKeyFunction): TBasicAction;
+var
+  mServices: INTAServices;
+  mItem: IInterface;
+  mSource: IAtlasTakenActions;
+  mTaken: TAtlasTakenAction;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+    Exit;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTakenActions) do
+    if Supports(mItem, IAtlasTakenActions, mSource) then
+      for mTaken in mSource.TakenActions do
+        if (mTaken.Func = AFunc) and (mTaken.ActionName <> '') then
+          for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
+            if SameText(mServices.ActionList.Actions[mIndex].Name, mTaken.ActionName) then
+              Exit(mServices.ActionList.Actions[mIndex]);
+end;
+
 procedure AddAction(AItems: TList<TAtlasKeyItem>; AOrigins: TOrigins; AAction: TCustomAction;
   AShortCut: TShortCut; AOrder: Integer; AHooked: Boolean);
 var
@@ -328,7 +350,7 @@ var
 begin
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
     Exit;
-  Hooked := TAtlasIdeUnitSearch.HookedAction;
+  Hooked := TakenAction(TAtlasKeyFunction.UnitSearchIde);
   TakenOver := False;
   for Entry in AEntries do
     if Entry.Func = TAtlasKeyFunction.UnitSearchIde then
@@ -579,7 +601,7 @@ var
   Hooked: TBasicAction;
 begin
   Result := TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current);
-  Hooked := TAtlasIdeUnitSearch.HookedAction;
+  Hooked := TakenAction(TAtlasKeyFunction.UnitSearchIde);
   for Index := 0 to High(Result) do
     if Result[Index].Func = TAtlasKeyFunction.UnitSearchIde then
     begin

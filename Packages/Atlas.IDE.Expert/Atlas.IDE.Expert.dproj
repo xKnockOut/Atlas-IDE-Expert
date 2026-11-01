@@ -432,6 +432,7 @@
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.FileSearch.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.ReplaceWindow.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Commands.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Composition.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StructureSwitch.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Registry.pas"/>

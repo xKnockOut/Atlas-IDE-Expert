@@ -30,6 +30,12 @@ type
   TAtlasHostCommandRunner = reference to function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
     const ADone: TProc<string>): Boolean;
 
+  /// <summary>Anfrage (LSP-Methode mit Parametern als JSON-Objekt) im Hintergrund an den laufenden Server, abbrechbar
+  /// über ACancelled; ADone bekommt die Antwort als JSON ('' bei Fehler, Abbruch oder Zeitlimit) in einem beliebigen
+  /// Thread. False = nicht gestartet (kein Server).</summary>
+  TAtlasHostRequestRunner = reference to function(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
+    const ACancelled: TFunc<Boolean>; const ADone: TProc<string>): Boolean;
+
   /// <summary>Feld AId im Atlas-Statusfeld: Text, Hinweis, Klick (nil = keiner); leerer Text entfernt es.</summary>
   TAtlasHostStatusExtra = reference to procedure(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
 
@@ -45,6 +51,7 @@ type
     /// <summary>Zeile im Bericht des Managers (Diagnose), ohne Meldungsansicht.</summary>
     Report: TProc<string>;
     RunCommand: TAtlasHostCommandRunner;
+    RunRequest: TAtlasHostRequestRunner;
     StatusExtra: TAtlasHostStatusExtra;
     CompileEvents: TFunc<TAtlasCompileEvents>;
   end;
@@ -78,6 +85,12 @@ type
     /// und nur, solange AScope offen ist. False = nicht gestartet.</summary>
     class function RunCommandAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
       const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean; static;
+    /// <summary>Anfrage im Hintergrund an den laufenden Server (startet keinen), abbrechbar über ACancelled. ADone
+    /// läuft im Hauptthread, gesichert über AFeature, und nur, solange AScope offen ist. False = nicht gestartet.
+    /// </summary>
+    class function RunRequestAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
+      const AMethod, AParamsJson: string; ATimeoutMs: Cardinal; const ACancelled: TFunc<Boolean>;
+      const ADone: TProc<string>): Boolean; static;
   end;
 
 implementation
@@ -190,6 +203,22 @@ begin
   mAnswer := TAtlasModuleAnswer.Open(AScope, ADone);
   Result := FServices.RunCommand(ACommand, AArgumentsJson, ATimeoutMs, DeliverInMainThread(mAnswer, AFeature));
   // Nicht gestartet: Der Rückruf des Moduls kommt nie, also gleich lösen.
+  if not Result then
+    mAnswer.Revoke;
+end;
+
+class function TAtlasIdeHost.RunRequestAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
+  const AMethod, AParamsJson: string; ATimeoutMs: Cardinal; const ACancelled: TFunc<Boolean>;
+  const ADone: TProc<string>): Boolean;
+var
+  mAnswer: IAtlasModuleAnswer;
+begin
+  Result := False;
+  if not Assigned(FServices.RunRequest) or (AScope = nil) or not AScope.IsOpen then
+    Exit;
+  mAnswer := TAtlasModuleAnswer.Open(AScope, ADone);
+  Result := FServices.RunRequest(AMethod, AParamsJson, ATimeoutMs, ACancelled,
+    DeliverInMainThread(mAnswer, AFeature));
   if not Result then
     mAnswer.Revoke;
 end;
