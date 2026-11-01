@@ -70,7 +70,7 @@ uses
   Vcl.Controls,
   Vcl.Dialogs,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Vcs.Pull,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Foundation.Files,
@@ -277,7 +277,7 @@ begin
   if not TAtlasIdeVcs.Run(
     procedure
     begin
-      mOutcome := TAtlasWelcomeQuickActions.Pull(TAtlasIdeVcs.ForFolder(mFolder,
+      mOutcome := TAtlasVcsPull.Pull(TAtlasIdeVcs.ForFolder(mFolder,
         TAtlasIdeVcs.AtLeast(ServerTimeoutMs)), mIgnore, mReason);
     end,
     procedure

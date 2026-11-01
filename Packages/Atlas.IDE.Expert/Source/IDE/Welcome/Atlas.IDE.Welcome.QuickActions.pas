@@ -184,6 +184,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Pull,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings,
@@ -840,7 +841,7 @@ begin
   if not TAtlasIdeVcs.Run(
     procedure
     begin
-      Outcome := TAtlasWelcomeQuickActions.Pull(TAtlasIdeVcs.ForFolder(Dir,
+      Outcome := TAtlasVcsPull.Pull(TAtlasIdeVcs.ForFolder(Dir,
         TAtlasIdeVcs.AtLeast(TAtlasWelcomeQuickActions.PullTimeoutMs)), mIgnore, Reason);
     end,
     procedure
