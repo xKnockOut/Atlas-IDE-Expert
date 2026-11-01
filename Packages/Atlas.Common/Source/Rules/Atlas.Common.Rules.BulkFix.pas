@@ -7,9 +7,10 @@
 // - Ein Treffer zählt nur mit Konfidenz ab MinConfidence (fix.minConfidence,
 //   Vorgabe hoch) und nur mit genau einer Korrektur, die Text der geprüften
 //   Datei ändert, als sicher markiert ist (TRuleFix.Safe) und zu einer Regel
-//   gehört, die der Katalog mit "safeFix" kennzeichnet. Korrekturen mit Auswahl
-//   (mehrere Kandidaten, Alternative), in anderen Dateien oder in der
-//   Formulardatei sind nie sicher.
+//   gehört, die der Katalog mit "safeFix" kennzeichnet. Weitere, nicht sichere
+//   Korrekturen daneben (begin … end in der ganzen Methode) stören nicht, wie
+//   bei source.fixAll. Korrekturen mit Auswahl (mehrere sichere, Alternative),
+//   in anderen Dateien oder in der Formulardatei sind nie sicher.
 // - Je Durchgang werden die Korrekturen nach Position von hinten nach vorn
 //   genommen; überlappt eine eine schon genommene, bleibt sie für den nächsten
 //   Durchgang, der den geänderten Text neu prüft. Höchstens MaxPasses
@@ -439,7 +440,7 @@ class function TBulkFix.SafeFixOf(const AFinding: TRuleFinding; const AOptions: 
   out ASkip: TBulkFixSkip): Boolean;
 var
   mFix: TRuleFix;
-  mCount: Integer;
+  mCount, mTextFixes: Integer;
 begin
   Result := False;
   AFix := Default(TRuleFix);
@@ -448,23 +449,33 @@ begin
     ASkip := TBulkFixSkip.Confidence;
     Exit;
   end;
-  // Nur Korrekturen, die Text ändern: Sprünge und „Graph zeigen“ zählen nicht.
+  // Nur Korrekturen, die Text ändern: Sprünge und „Graph zeigen“ zählen nicht. Genommen wird die eine sichere
+  // Korrektur wie bei source.fixAll; weitere, nicht sichere (begin … end in der ganzen Methode) bleiben eine
+  // Auswahl für den Benutzer. Zwei sichere sind selbst eine Auswahl.
+  mTextFixes := 0;
   mCount := 0;
   for mFix in AFinding.Fixes do
     if (mFix.Edits <> nil) or (mFix.OtherFiles <> nil) then
     begin
-      Inc(mCount);
-      AFix := mFix;
+      Inc(mTextFixes);
+      if mFix.Safe and not mFix.Alternative then
+      begin
+        Inc(mCount);
+        AFix := mFix;
+      end;
     end;
-  if mCount = 0 then
+  if mTextFixes = 0 then
   begin
     ASkip := TBulkFixSkip.NoFix;
     Exit;
   end;
   ASkip := TBulkFixSkip.Unsafe;
-  if (mCount > 1) or (IndexText(AFinding.RuleId, AOptions.SafeRules) < 0) or not AFix.Safe or AFix.Alternative or
-    (AFix.OtherFiles <> nil) or (AFix.FileName <> '') or (AFix.Edits = nil) then
+  if (mCount <> 1) or (IndexText(AFinding.RuleId, AOptions.SafeRules) < 0) or (AFix.OtherFiles <> nil) or
+    (AFix.FileName <> '') or (AFix.Edits = nil) then
+  begin
+    AFix := Default(TRuleFix);
     Exit;
+  end;
   Result := True;
 end;
 

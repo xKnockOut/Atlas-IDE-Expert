@@ -773,6 +773,9 @@ begin
   Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
   Assert.AreEqual(Expected, Applied(Source, FixTitled(Findings[0], 'ganzen Methode')));
   AssertParses(Expected);
+  // Sammelkorrektur (--fix missing-begin-end): nur die Stelle ist sicher, die Methode bleibt eine Auswahl.
+  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Assert.IsFalse(Findings[0].Fixes[1].Safe);
   // Nur die Stelle: ; vor else wandert in den Block (kein E2153).
   Assert.AreEqual(InRoutine('  I: Integer;',
     '  if Kunde.Gesperrt then'#10'  begin'#10'    Protokoll.Warnung(''Gesperrt'');'#10'  end'#10'  else'#10 +
