@@ -190,7 +190,9 @@ end;
 procedure TAtlasIdeSprint.Stop;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   FStarted := False;
   Inc(FGeneration);
   CancelLoad;
@@ -202,7 +204,9 @@ end;
 procedure TAtlasIdeSprint.CancelLoad;
 begin
   if FCancel <> nil then
+  begin
     FCancel.Cancel;
+  end;
   FCancel := nil;
 end;
 
@@ -254,10 +258,14 @@ begin
   ATarget := TAtlasTrackerTarget.Create('', '', '', '');
   mProject := '';
   if Assigned(FHooks.Project) then
+  begin
     mProject := FHooks.Project();
+  end;
   Result := mProject <> '';
   if Result and Assigned(FHooks.Target) then
+  begin
     ATarget := FHooks.Target(mProject);
+  end;
 end;
 
 class function TAtlasIdeSprint.CachedSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget;
@@ -278,7 +286,9 @@ var
 begin
   mFile := TAtlasTrackerBoard.CacheFile(AFolder, ATarget, TAtlasTrackerSprint.SummaryName(ABoardId, ASummary.Id));
   if mFile <> '' then
+  begin
     TAtlasTrackerBoard.WriteText(mFile, TAtlasTrackerSprint.SummaryToJson(ASummary));
+  end;
 end;
 
 procedure TAtlasIdeSprint.Prepare(const ATarget: TAtlasTrackerTarget);
@@ -288,7 +298,9 @@ var
   mFile, mText: string;
 begin
   if FPrepared and SameText(FTargetKey, ATarget.Key) then
+  begin
     Exit;
+  end;
   // Anderer Tracker: laufende Abfrage gilt nicht mehr, letzter Stand aus dem Zwischenspeicher.
   if not SameText(FTargetKey, ATarget.Key) then
   begin
@@ -306,17 +318,27 @@ begin
   FCalendar := TAtlasSprintCalendar.WorkWeek;
   FHasSnapshot := TAtlasTrackerBoard.Load(FCacheFolder, ATarget, CacheName, FSnapshot);
   if not FHasSnapshot then
+  begin
     FSnapshot := TAtlasBoardSnapshot.Empty;
+  end;
   mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, WorkDaysName);
   if (mFile <> '') and TAtlasTrackerBoard.ReadText(mFile, mText) then
+  begin
     FCalendar := TAtlasSprintCalendar.FromText(mText);
+  end;
   if not FHasSnapshot then
+  begin
     Exit;
+  end;
   // Vorsprints nur aus dem Zwischenspeicher; fehlt einer, holt ihn die nächste Abfrage.
   for mSprint in TAtlasTrackerSprint.PreviousSprints(FSnapshot.Sprints, FSnapshot.Sprint,
     TAtlasTrackerSprint.VelocitySprints) do
+  begin
     if CachedSummary(FCacheFolder, ATarget, FSnapshot.Board.Id, mSprint.Id, mSummary) then
+    begin
       FPrevious := FPrevious + [mSummary];
+    end;
+  end;
 end;
 
 function TAtlasIdeSprint.Due(const ATarget: TAtlasTrackerTarget): Boolean;
@@ -354,21 +376,33 @@ var
 begin
   // welcomePage.sprint aus: keine Abfrage.
   if not FStarted or not Active or FLoading then
+  begin
     Exit;
+  end;
   if not CurrentTarget(mTarget) or (mTarget.Server = '') then
+  begin
     Exit;
+  end;
   Prepare(mTarget);
   if not AForce and not Due(mTarget) then
+  begin
     Exit;
+  end;
   mProvider := nil;
   if Assigned(FHooks.Provider) then
+  begin
     mProvider := FHooks.Provider(mTarget.Provider);
+  end;
   mBoards := TAtlasIdeBoard.BoardsOf(mProvider);
   if (mProvider = nil) or (mBoards = nil) then
+  begin
     Exit;
+  end;
   mTransport := nil;
   if Assigned(FHooks.Transport) then
+  begin
     mTransport := FHooks.Transport(mProvider, mTarget);
+  end;
   Inc(FGeneration);
   mGeneration := FGeneration;
   FLoadedTick := GetTickCount64;
@@ -379,9 +413,13 @@ begin
     Exit;
   end;
   if not Supports(mTransport, IAtlasCiCancel, FCancel) then
+  begin
     FCancel := nil;
+  end;
   if not Supports(mBoards, IAtlasTrackerWorkDays, mWorkDays) then
+  begin
     mWorkDays := nil;
+  end;
   FLoading := True;
   mKeep := Self;
   mOwner := Self;
@@ -389,7 +427,9 @@ begin
   // Gewähltes Board behalten (das erste des Projekts, solange keins bekannt ist).
   mBoardId := '';
   if FHasSnapshot then
+  begin
     mBoardId := FSnapshot.Board.Id;
+  end;
   // issues.sprint.compare aus: kein früherer Sprint wird gefragt.
   mCompare := TAtlasIdeSettings.Current.IssuesSprintCompare;
   mSnapshot := TAtlasBoardSnapshot.Empty;
@@ -414,7 +454,9 @@ begin
         mOk := mBoards.LoadBoard(mTarget, mTransport, mBoardId, '', TAtlasTrackerBoard.TimeoutMs, mSnapshot, mError);
         // Board weg (gelöscht, kein Zugriff mehr): das erste des Projekts.
         if not mOk and (mBoardId <> '') and (mError = TAtlasCiFetchError.NotFound) then
+        begin
           mOk := mBoards.LoadBoard(mTarget, mTransport, '', '', TAtlasTrackerBoard.TimeoutMs, mSnapshot, mError);
+        end;
         if mOk and (mWorkDays <> nil) and
           mWorkDays.WorkDays(mTarget, mTransport, TAtlasTrackerBoard.TimeoutMs, mDays) then
         begin
@@ -422,6 +464,7 @@ begin
           mCalendarKnown := True;
         end;
         if mOk and mCompare then
+        begin
           for mSprint in TAtlasTrackerSprint.PreviousSprints(mSnapshot.Sprints, mSnapshot.Sprint,
             TAtlasTrackerSprint.VelocitySprints) do
           begin
@@ -433,14 +476,19 @@ begin
             end;
             mLeft := TAtlasTrackerSprint.TimeoutMs - mWatch.ElapsedMilliseconds;
             if mLeft < 1000 then
+            begin
               Break;
+            end;
             if not mBoards.LoadBoard(mTarget, mTransport, mSnapshot.Board.Id, mSprint.Id, Integer(mLeft), mOld,
               mOldError) then
+            begin
               Continue;
+            end;
             mSummary := TAtlasTrackerSprint.Summarize(mOld, mCalendar, NowUtc);
             SaveSummary(mFolder, mTarget, mSnapshot.Board.Id, mSummary);
             mPrevious := mPrevious + [mSummary];
           end;
+        end;
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
@@ -455,7 +503,9 @@ begin
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.Loaded(mGeneration, mTarget, mOk, mSnapshot, mCalendar, mCalendarKnown, mPrevious, mCompare, mError);
+      end;
     end) then
     Loaded(mGeneration, mTarget, False, TAtlasBoardSnapshot.Empty, FCalendar, False, nil, False,
       TAtlasCiFetchError.Cancelled);
@@ -469,11 +519,15 @@ var
   mFile: string;
 begin
   if AGeneration <> FGeneration then
+  begin
     Exit;
+  end;
   FCancel := nil;
   FLoading := False;
   if not FStarted then
+  begin
     Exit;
+  end;
   // Anonym: Anbieter und Ergebnis; nie Adresse, Board, Sprint oder Kennungen.
   TAtlasGuard.Log('Sprint: ' + ATarget.Provider + ', ' + TAtlasCiBuild.ErrorKey(AError));
   if ASucceeded then
@@ -491,7 +545,9 @@ begin
       FCalendar := ACalendar;
       mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, WorkDaysName);
       if mFile <> '' then
+      begin
         TAtlasTrackerBoard.WriteText(mFile, FCalendar.Text);
+      end;
     end;
   end
   else
@@ -511,7 +567,9 @@ var
 begin
   Result := Default(TAtlasSprintTile);
   if not FStarted or not Active then
+  begin
     Exit;
+  end;
   mSettings := TAtlasIdeSettings.Current;
   Result.Burndown := mSettings.IssuesSprintBurndown;
   Result.Compare := mSettings.IssuesSprintCompare;
@@ -534,34 +592,50 @@ begin
   if not FHasSnapshot then
   begin
     if FLoading or not FStale then
-      Result.Status := TAtlasSprintTileStatus.Loading
+    begin
+      Result.Status := TAtlasSprintTileStatus.Loading;
+    end
     else if FError = TAtlasCiFetchError.NotFound then
-      Result.Status := TAtlasSprintTileStatus.NoBoard
+    begin
+      Result.Status := TAtlasSprintTileStatus.NoBoard;
+    end
     else
+    begin
       Result.Status := TAtlasSprintTileStatus.Failed;
+    end;
     Exit;
   end;
   // Ohne Vergleich keine Vorsprints (Linie, Abweichung, Velocity).
   mPrevious := nil;
   if Result.Compare then
+  begin
     mPrevious := FPrevious;
+  end;
   Result.Sprint := TAtlasTrackerSprint.View(FSnapshot, FCalendar, NowUtc, mPrevious);
   if Result.Sprint.Known then
-    Result.Status := TAtlasSprintTileStatus.Ready
+  begin
+    Result.Status := TAtlasSprintTileStatus.Ready;
+  end
   else
+  begin
     Result.Status := TAtlasSprintTileStatus.NoSprint;
+  end;
 end;
 
 procedure TAtlasIdeSprint.OpenBoard;
 begin
   if FStarted and Assigned(FHooks.OpenBoard) then
+  begin
     FHooks.OpenBoard();
+  end;
 end;
 
 procedure TAtlasIdeSprint.BrowseBoard;
 begin
   if FStarted and FHasSnapshot and (FSnapshot.Page <> '') then
+  begin
     ShellExecute(0, 'open', PChar(FSnapshot.Page), nil, nil, SW_SHOWNORMAL);
+  end;
 end;
 
 procedure TAtlasIdeSprint.FilterIssues(ADone: Boolean);
@@ -569,20 +643,30 @@ var
   mTile: TAtlasSprintTile;
 begin
   if not FStarted or not Assigned(FHooks.Filter) then
+  begin
     Exit;
+  end;
   mTile := View;
   if mTile.Status <> TAtlasSprintTileStatus.Ready then
+  begin
     Exit;
+  end;
   if ADone then
-    FHooks.Filter(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesFilterDone, [mTile.Sprint.Name]), mTile.Sprint.MineDone)
+  begin
+    FHooks.Filter(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesFilterDone, [mTile.Sprint.Name]), mTile.Sprint.MineDone);
+  end
   else
+  begin
     FHooks.Filter(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesFilterOpen, [mTile.Sprint.Name]), mTile.Sprint.MineOpen);
+  end;
 end;
 
 procedure TAtlasIdeSprint.AssignProject;
 begin
   if FStarted and Assigned(FHooks.Assign) then
+  begin
     FHooks.Assign();
+  end;
 end;
 
 end.

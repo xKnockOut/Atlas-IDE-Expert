@@ -199,20 +199,28 @@ var
 begin
   FValues := AValues;
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   mText := Text;
   Items.BeginUpdate;
   try
     Items.Clear;
     for mValue in FValues do
+    begin
       Items.Add(mValue);
+    end;
   finally
     Items.EndUpdate;
   end;
   if Style = csDropDownList then
-    ItemIndex := FChoice
+  begin
+    ItemIndex := FChoice;
+  end
   else
+  begin
     Text := mText;
+  end;
 end;
 
 procedure TAtlasNewIssueBox.CreateWnd;
@@ -222,34 +230,50 @@ begin
   mText := Text;
   inherited CreateWnd;
   if Items.Count = 0 then
+  begin
     for mValue in FValues do
+    begin
       Items.Add(mValue);
+    end;
+  end;
   if Style = csDropDownList then
-    ItemIndex := FChoice
+  begin
+    ItemIndex := FChoice;
+  end
   else
+  begin
     Text := mText;
+  end;
 end;
 
 procedure TAtlasNewIssueBox.DestroyWnd;
 begin
   if Style = csDropDownList then
+  begin
     FChoice := ItemIndex;
+  end;
   inherited DestroyWnd;
 end;
 
 function TAtlasNewIssueBox.GetChoice: Integer;
 begin
   if HandleAllocated then
-    Result := ItemIndex
+  begin
+    Result := ItemIndex;
+  end
   else
+  begin
     Result := FChoice;
+  end;
 end;
 
 procedure TAtlasNewIssueBox.SetChoice(AValue: Integer);
 begin
   FChoice := AValue;
   if HandleAllocated then
+  begin
     ItemIndex := AValue;
+  end;
 end;
 
 { TAtlasNewIssueTracker }
@@ -373,14 +397,22 @@ begin
 
   mCaptions := nil;
   for mTracker in FSetup.Trackers do
+  begin
     mCaptions := mCaptions + [mTracker.Caption];
+  end;
   FTracker.SetValues(mCaptions);
   if (FSetup.TrackerIndex >= 0) and (FSetup.TrackerIndex <= High(FSetup.Trackers)) then
-    FTracker.Choice := FSetup.TrackerIndex
+  begin
+    FTracker.Choice := FSetup.TrackerIndex;
+  end
   else if Length(FSetup.Trackers) > 0 then
+  begin
     FTracker.Choice := 0;
+  end;
   if FTracker.Choice >= 0 then
+  begin
     FProject.Text := FSetup.Trackers[FTracker.Choice].Target.Project;
+  end;
   FTitle.Text := FSetup.Title;
   FDescription.Text := StringReplace(FSetup.Description, #10, sLineBreak, [rfReplaceAll]);
   FCode.Text := StringReplace(FSetup.Code, #10, sLineBreak, [rfReplaceAll]);
@@ -393,9 +425,13 @@ begin
   FIncludeCode.OnClick := Changed;
   FAssignToMe.OnClick := Changed;
   if FSetup.Title = '' then
-    ActiveControl := FTitle
+  begin
+    ActiveControl := FTitle;
+  end
   else
+  begin
     ActiveControl := FDescription;
+  end;
   Changed(nil);
 end;
 
@@ -403,7 +439,9 @@ destructor TAtlasNewIssueDialog.Destroy;
 begin
   // Antworten, die danach kommen, finden keinen Dialog mehr.
   if FLink <> nil then
+  begin
     FLink.Dialog := nil;
+  end;
   FLinkRef := nil;
   ClearFields;
   inherited Destroy;
@@ -436,9 +474,13 @@ begin
     AControl.Anchors := [akLeft, akTop, akRight, akBottom];
   end
   else
+  begin
     AControl.Anchors := [akLeft, akTop, akRight];
+  end;
   if ACaption = '' then
+  begin
     Exit;
+  end;
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Result;
   mLabel.Left := ScaleValue(cGap);
@@ -458,7 +500,9 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   if Result.Width < ScaleValue(90) then
+  begin
     Result.Width := ScaleValue(90);
+  end;
   Result.Top := ScaleValue(cGap div 2);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
@@ -514,7 +558,9 @@ begin
   FCode.Enabled := FIncludeCode.Checked;
   FAssignee.Enabled := not FAssignToMe.Checked;
   if not FSending and (Length(FSetup.Trackers) = 0) then
+  begin
     FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueNoTracker);
+  end;
 end;
 
 procedure TAtlasNewIssueDialog.TrackerChange(Sender: TObject);
@@ -523,7 +569,9 @@ var
 begin
   mIndex := FTracker.Choice;
   if (mIndex >= 0) and (mIndex <= High(FSetup.Trackers)) then
+  begin
     FProject.Text := FSetup.Trackers[mIndex].Target.Project;
+  end;
   Changed(Sender);
   LoadFields;
 end;
@@ -536,7 +584,9 @@ var
   mTicket: Integer;
 begin
   if not Assigned(FOnLoad) or not Target(mTarget) or not mTarget.Configured then
+  begin
     Exit;
+  end;
   Inc(FLoadTicket);
   mTicket := FLoadTicket;
   mLinkRef := FLinkRef;
@@ -546,7 +596,9 @@ begin
     procedure(const AFields: TAtlasNewIssueFields; ALoaded: Boolean)
     begin
       if (mLinkRef <> nil) and (mLink.Dialog <> nil) and (mLink.Dialog.FLoadTicket = mTicket) then
+      begin
         mLink.Dialog.ShowFields(AFields, ALoaded);
+      end;
     end);
 end;
 
@@ -557,11 +609,17 @@ begin
   FPriority.SetValues(AFields.Priorities);
   FAssignee.SetValues(AFields.Assignees);
   if FSending then
+  begin
     Exit;
+  end;
   if ALoaded then
-    FStatus.Caption := ''
+  begin
+    FStatus.Caption := '';
+  end
   else
+  begin
     FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueLoadFailed);
+  end;
 end;
 
 procedure TAtlasNewIssueDialog.CreateClick(Sender: TObject);
@@ -571,7 +629,9 @@ var
   mLink: TAtlasNewIssueLink;
 begin
   if FSending or not Assigned(FOnSend) or not Target(mTarget) then
+  begin
     Exit;
+  end;
   if Trim(FTitle.Text) = '' then
   begin
     FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.NewIssueNoTitle);
@@ -586,7 +646,9 @@ begin
     procedure(const AResult: TAtlasNewIssueResult)
     begin
       if (mLinkRef <> nil) and (mLink.Dialog <> nil) then
+      begin
         mLink.Dialog.ShowResult(AResult);
+      end;
     end);
 end;
 
@@ -634,7 +696,9 @@ end;
 procedure TAtlasNewIssueDialog.CancelClick(Sender: TObject);
 begin
   if FSending then
+  begin
     Exit;
+  end;
   ModalResult := mrCancel;
 end;
 

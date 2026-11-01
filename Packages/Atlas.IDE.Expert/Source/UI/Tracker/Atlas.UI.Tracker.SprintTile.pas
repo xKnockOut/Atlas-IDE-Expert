@@ -184,7 +184,9 @@ begin
   FSource := AValue;
   UpdateContent;
   if FSource <> nil then
+  begin
     FSource.Shown;
+  end;
 end;
 
 procedure TAtlasTrackerSprintView.UpdateContent;
@@ -194,12 +196,16 @@ begin
   mOldHeight := HeightFor(ClientWidth);
   FTile := Default(TAtlasSprintTile);
   if FSource <> nil then
+  begin
     FTile := FSource.View;
+  end;
   FHintKey := '';
   FBox.Invalidate;
   inherited;
   if mOldHeight <> HeightFor(ClientWidth) then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasTrackerSprintView.BodyResize(Sender: TObject);
@@ -209,7 +215,9 @@ begin
   mOldHeight := FContentHeight;
   FContentHeight := HeightFor(ClientWidth);
   if mOldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 function TAtlasTrackerSprintView.BodyHeight: Integer;
@@ -229,9 +237,13 @@ var
 begin
   mTop := CompareTop;
   if FTile.Compare and ((CompareText(FTile) <> '') or (Length(FTile.Sprint.Velocity) > 0)) then
+  begin
     Inc(mTop, ScaleValue(CompareHeight));
+  end;
   if not FTile.Burndown then
+  begin
     Exit(Rect(ScaleValue(Indent), mTop, AWidth - ScaleValue(Indent), mTop));
+  end;
   Result := Rect(ScaleValue(Indent), mTop + ScaleValue(4), AWidth - ScaleValue(Indent),
     mTop + ScaleValue(4) + ScaleValue(ChartHeight));
 end;
@@ -247,12 +259,16 @@ begin
   begin
     Result := ScaleValue(EmptyHeight);
     if StatusText(FTile) <> '' then
+    begin
       Inc(Result, ScaleValue(StatusHeight));
+    end;
     Exit;
   end;
   Result := StatusTop(AWidth);
   if StatusText(FTile) <> '' then
+  begin
     Inc(Result, ScaleValue(StatusHeight));
+  end;
 end;
 
 function TAtlasTrackerSprintView.NumberRect(AIndex, AWidth: Integer): TRect;
@@ -270,12 +286,18 @@ var
 begin
   mSettings := TFormatSettings.Invariant;
   if TAtlasStrings.Language = TAtlasLanguage.German then
+  begin
     mSettings.DecimalSeparator := ',';
+  end;
   // Ganze Zahlen ohne Nachkommastelle, sonst eine.
   if SameValue(AValue, Round(AValue), 0.05) then
-    Result := IntToStr(Round(AValue))
+  begin
+    Result := IntToStr(Round(AValue));
+  end
   else
+  begin
     Result := FormatFloat('0.0', AValue, mSettings);
+  end;
 end;
 
 class function TAtlasTrackerSprintView.HeadingText(const ATile: TAtlasSprintTile): string;
@@ -285,16 +307,26 @@ var
 begin
   Result := '';
   if not ATile.Sprint.Known then
+  begin
     Exit;
+  end;
   mNow := TTimeZone.Local.ToUniversalTime(Now);
   if mNow < ATile.Sprint.Start then
-    mDays := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintNotStarted, [LocalDay(ATile.Sprint.Start)])
+  begin
+    mDays := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintNotStarted, [LocalDay(ATile.Sprint.Start)]);
+  end
   else if ATile.Sprint.DaysLeft <= 0 then
-    mDays := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintEnded)
+  begin
+    mDays := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintEnded);
+  end
   else if ATile.Sprint.DaysLeft = 1 then
-    mDays := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintDayLeft)
+  begin
+    mDays := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintDayLeft);
+  end
   else
+  begin
     mDays := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDaysLeft, [ATile.Sprint.DaysLeft]);
+  end;
   // Ende ist exklusiv (Mitternacht danach): als letzten Tag den davor zeigen.
   Result := ATile.Sprint.Name + ' · ' + LocalDay(ATile.Sprint.Start) + '–' +
     LocalDay(ATile.Sprint.Finish - OneSecond) + ' · ' + mDays;
@@ -339,12 +371,18 @@ class function TAtlasTrackerSprintView.StatusText(const ATile: TAtlasSprintTile)
 begin
   Result := '';
   if ATile.Loading and (ATile.Status = TAtlasSprintTileStatus.Ready) then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeSprintLoading));
+  end;
   if ATile.Stale and (ATile.Sprint.Fetched > 0) then
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintStale, [FormatDateTime('dd.mm. hh:nn',
-      TTimeZone.Local.ToLocalTime(ATile.Sprint.Fetched)), ErrorText(ATile.Error)])
+      TTimeZone.Local.ToLocalTime(ATile.Sprint.Fetched)), ErrorText(ATile.Error)]);
+  end
   else if ATile.Stale and not (ATile.Status in [TAtlasSprintTileStatus.Loading, TAtlasSprintTileStatus.Failed]) then
+  begin
     Result := ErrorText(ATile.Error);
+  end;
 end;
 
 class function TAtlasTrackerSprintView.CompareText(const ATile: TAtlasSprintTile): string;
@@ -354,14 +392,22 @@ var
 begin
   Result := '';
   if not ATile.Compare or not ATile.Sprint.HasPrevious then
+  begin
     Exit;
+  end;
   mDelta := ATile.Sprint.DoneToday - ATile.Sprint.PreviousDone;
   if SameValue(mDelta, 0, 0.05) then
-    mArrow := '='
+  begin
+    mArrow := '=';
+  end
   else if mDelta > 0 then
-    mArrow := '▲' + NumberText(mDelta)
+  begin
+    mArrow := '▲' + NumberText(mDelta);
+  end
   else
+  begin
     mArrow := '▼' + NumberText(-mDelta);
+  end;
   Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintCompare, [NumberText(ATile.Sprint.DoneToday),
     NumberText(ATile.Sprint.PreviousDone), mArrow]);
 end;
@@ -385,19 +431,29 @@ begin
       begin
         // Ohne Anmeldename sind „meine“ Zahlen unbekannt.
         if not ATile.Sprint.MineKnown then
+        begin
           Exit('–');
+        end;
         if AIndex = 0 then
-          Result := IntToStr(Length(ATile.Sprint.MineOpen))
+        begin
+          Result := IntToStr(Length(ATile.Sprint.MineOpen));
+        end
         else
+        begin
           Result := IntToStr(Length(ATile.Sprint.MineDone));
+        end;
       end;
   else
     begin
       Result := NumberText(ATile.Sprint.TeamLeft) + ' ';
       if ATile.Sprint.UsesPoints then
-        Result := Result + TAtlasStrings.Text(TAtlasTextId.WelcomeSprintPoints)
+      begin
+        Result := Result + TAtlasStrings.Text(TAtlasTextId.WelcomeSprintPoints);
+      end
       else
+      begin
         Result := Result + TAtlasStrings.Text(TAtlasTextId.WelcomeSprintIssues);
+      end;
     end;
   end;
 end;
@@ -408,19 +464,27 @@ var
 begin
   Result := '';
   if (ADay < 0) or (ADay > High(ATile.Sprint.Ideal)) then
+  begin
     Exit;
+  end;
   mLeft := '–';
   if ADay <= High(ATile.Sprint.Actual) then
+  begin
     mLeft := NumberText(ATile.Sprint.Actual[ADay]);
+  end;
   // Tag k ist das Ende des k-ten Arbeitstags; k = 0 der Start.
   mDate := LocalDay(ATile.Sprint.Start);
   if (ADay > 0) and (ADay <= Length(ATile.Sprint.Dates)) then
+  begin
     mDate := FormatDateTime('dd.mm.', ATile.Sprint.Dates[ADay - 1]);
+  end;
   Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDayHint, [ADay, mDate, mLeft,
     NumberText(ATile.Sprint.Ideal[ADay])]);
   if ATile.Compare and ATile.Sprint.HasPrevious and (ADay <= High(ATile.Sprint.Previous)) then
+  begin
     Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeSprintDayHintPrevious,
       [NumberText(ATile.Sprint.Previous[ADay])]);
+  end;
 end;
 
 function TAtlasTrackerSprintView.DayAt(X, AWidth: Integer): Integer;
@@ -432,9 +496,13 @@ begin
   mArea := ChartRect(AWidth);
   mCount := Length(FTile.Sprint.Ideal);
   if (mCount = 0) or (mArea.Width <= 0) or (X < mArea.Left) or (X > mArea.Right) then
+  begin
     Exit;
+  end;
   if mCount = 1 then
+  begin
     Exit(0);
+  end;
   Result := EnsureRange(Round((X - mArea.Left) * (mCount - 1) / mArea.Width), 0, mCount - 1);
 end;
 
@@ -449,35 +517,51 @@ begin
   if FTile.Status = TAtlasSprintTileStatus.NoTracker then
   begin
     if FTile.CanAssign and (Y < ScaleValue(EmptyHeight)) then
+    begin
       Result := TAtlasSprintHitKind.Assign;
+    end;
     Exit;
   end;
   if FTile.Status <> TAtlasSprintTileStatus.Ready then
+  begin
     Exit;
+  end;
   if Y < ScaleValue(HeadHeight) then
   begin
     if FTile.Sprint.Page <> '' then
+    begin
       Result := TAtlasSprintHitKind.Title;
+    end;
     Exit;
   end;
   for mIndex := 0 to 2 do
+  begin
     if NumberRect(mIndex, mWidth).Contains(mPoint) then
     begin
       case mIndex of
         0:
           if FTile.Sprint.MineKnown then
+          begin
             Result := TAtlasSprintHitKind.MineOpen;
+          end;
         1:
           if FTile.Sprint.MineKnown then
+          begin
             Result := TAtlasSprintHitKind.MineDone;
+          end
       else
+      begin
         Result := TAtlasSprintHitKind.TeamLeft;
+      end;
       end;
       Exit;
     end;
+  end;
   // Übrige Kachel (Vergleich, Diagramm): öffnet das Board.
   if Y < StatusTop(mWidth) then
+  begin
     Result := TAtlasSprintHitKind.Chart;
+  end;
 end;
 
 procedure TAtlasTrackerSprintView.Post(const AAction: TThreadProcedure);
@@ -491,7 +575,9 @@ var
   mSource: IAtlasSprintSource;
 begin
   if FSource = nil then
+  begin
     Exit;
+  end;
   mSource := FSource;
   case AKind of
     TAtlasSprintHitKind.Title:
@@ -559,9 +645,13 @@ begin
     ACanvas.Font.Style := [fsBold];
     // Klickbare Zahlen in Akzentfarbe.
     if (mIndex = 2) or FTile.Sprint.MineKnown then
-      ACanvas.Font.Color := mAccent
+    begin
+      ACanvas.Font.Color := mAccent;
+    end
     else
+    begin
       ACanvas.Font.Color := mText;
+    end;
     ACanvas.TextRect(Rect(mRect.Left + mPad, mRect.Top + ScaleValue(20), mRect.Right - mPad, mRect.Bottom - 2),
       mRect.Left + mPad, mRect.Top + ScaleValue(20), NumberValue(FTile, mIndex));
   end;
@@ -580,7 +670,9 @@ var
   begin
     Result.X := ARect.Left;
     if mCount > 1 then
+    begin
       Result.X := ARect.Left + Round(ADay * ARect.Width / (mCount - 1));
+    end;
     Result.Y := ARect.Bottom - Round(EnsureRange(AValue / mTop, 0, 1) * ARect.Height);
   end;
 
@@ -590,14 +682,18 @@ var
   begin
     Result := nil;
     for mDay := 0 to Min(High(AValues), mCount - 1) do
+    begin
       Result := Result + [PointOf(mDay, AValues[mDay])];
+    end;
   end;
 
 begin
   mSprint := FTile.Sprint;
   mCount := Length(mSprint.Ideal);
   if (mCount = 0) or (ARect.Height <= 0) then
+  begin
     Exit;
+  end;
   mLine := StyleServices(Self).GetSystemColor(clHighlight);
   mMuted := StyleServices(Self).GetSystemColor(clGrayText);
   mBack := StyleServices(Self).GetSystemColor(clWindow);
@@ -605,12 +701,20 @@ begin
   // Eine Skala für alle Linien: der größte Wert, mindestens 1.
   mTop := 1;
   for mValue in mSprint.Ideal do
+  begin
     mTop := Max(mTop, mValue);
+  end;
   for mValue in mSprint.Actual do
+  begin
     mTop := Max(mTop, mValue);
+  end;
   if FTile.Compare then
+  begin
     for mValue in mSprint.Previous do
+    begin
       mTop := Max(mTop, mValue);
+    end;
+  end;
   // Grundlinie.
   ACanvas.Pen.Style := psSolid;
   ACanvas.Pen.Width := 1;
@@ -644,7 +748,9 @@ begin
   ACanvas.Pen.Color := mLine;
   ACanvas.Pen.Width := ScaleValue(2);
   if Length(mPoints) > 1 then
+  begin
     ACanvas.Polyline(mPoints);
+  end;
   if Length(mPoints) > 0 then
   begin
     ACanvas.Brush.Style := bsSolid;
@@ -676,12 +782,16 @@ var
   mCaption: string;
 begin
   if Length(FTile.Sprint.Velocity) = 0 then
+  begin
     Exit;
+  end;
   mColor := StyleServices(Self).GetSystemColor(clHighlight);
   mBack := StyleServices(Self).GetSystemColor(clWindow);
   mTop := 1;
   for mIndex := 0 to High(FTile.Sprint.Velocity) do
+  begin
     mTop := Max(mTop, FTile.Sprint.Velocity[mIndex]);
+  end;
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
   ACanvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
@@ -720,9 +830,13 @@ begin
   begin
     // Link „zuordnen …“ in Akzentfarbe, sonst grauer Hinweis.
     if (FTile.Status = TAtlasSprintTileStatus.NoTracker) and FTile.CanAssign then
-      mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight)
+    begin
+      mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
+    end
     else
+    begin
       mCanvas.Font.Color := mMuted;
+    end;
     mCanvas.TextOut(ScaleValue(Indent), ScaleValue(Indent), NoticeText(FTile));
     mText := StatusText(FTile);
     if mText <> '' then
@@ -735,9 +849,13 @@ begin
   // Kopf: Name, Zeitraum, Resttage; mit Seite als Link.
   mCanvas.Font.Style := [fsBold];
   if FTile.Sprint.Page <> '' then
-    mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight)
+  begin
+    mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
+  end
   else
+  begin
     mCanvas.Font.Color := StyleServices(Self).GetSystemColor(clWindowText);
+  end;
   mCanvas.TextRect(Rect(ScaleValue(Indent), 0, mWidth - ScaleValue(Indent), ScaleValue(HeadHeight)),
     ScaleValue(Indent), ScaleValue(3), HeadingText(FTile));
   mCanvas.Font.Assign(Font);
@@ -749,13 +867,17 @@ begin
     mCanvas.Font.Size := Font.Size - 1;
     mCanvas.Font.Color := mMuted;
     if mText <> '' then
+    begin
       mCanvas.TextOut(ScaleValue(Indent), mTop + ScaleValue(2), mText);
+    end;
     mCanvas.Font.Assign(Font);
     PaintVelocity(mCanvas, Rect(ScaleValue(Indent), mTop, mWidth - ScaleValue(Indent),
       mTop + ScaleValue(CompareHeight)));
   end;
   if FTile.Burndown then
+  begin
     PaintChart(mCanvas, ChartRect(mWidth));
+  end;
   mText := StatusText(FTile);
   if mText <> '' then
   begin
@@ -775,15 +897,23 @@ var
 begin
   mHit := HitTest(X, Y);
   if mHit <> TAtlasSprintHitKind.None then
-    FBox.Cursor := crHandPoint
+  begin
+    FBox.Cursor := crHandPoint;
+  end
   else
+  begin
     FBox.Cursor := crDefault;
+  end;
   mDay := -1;
   if (mHit = TAtlasSprintHitKind.Chart) and FTile.Burndown and (Y >= ChartRect(ClientWidth).Top) then
+  begin
     mDay := DayAt(X, ClientWidth);
+  end;
   mKey := IntToStr(Ord(mHit)) + ':' + IntToStr(mDay);
   if mKey = FHintKey then
+  begin
     Exit;
+  end;
   FHintKey := mKey;
   case mHit of
     TAtlasSprintHitKind.Title:
@@ -796,9 +926,13 @@ begin
       FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintBoard);
     TAtlasSprintHitKind.Chart:
       if mDay >= 0 then
-        FBox.Hint := DayHint(FTile, mDay)
+      begin
+        FBox.Hint := DayHint(FTile, mDay);
+      end
       else
+      begin
         FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintBoard);
+      end;
     TAtlasSprintHitKind.Assign:
       FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeSprintHintAssign);
   else
@@ -811,7 +945,9 @@ procedure TAtlasTrackerSprintView.BoxMouseUp(Sender: TObject; Button: TMouseButt
   Y: Integer);
 begin
   if Button = mbLeft then
+  begin
     ClickAt(HitTest(X, Y));
+  end;
 end;
 
 end.
