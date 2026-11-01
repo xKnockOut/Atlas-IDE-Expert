@@ -34,6 +34,13 @@
 - Noch offen im Tracker: Seiten im Optionsdialog (`UI.Settings.Page`, `IDE.Settings.Options`, `UI.Settings.QueryDialog`; über Einstellungsteile, Entscheidung 3), Texte nach `Atlas.UI.Tracker.Strings`, „Issue anlegen“ aus Absturzfall und „Atlas-Prüfung“ (Wurzel), Zugang und Anbieter (`TAtlasComposedTrackerAccess`, Jenkins) in der Wurzel, Palettenquelle der Issues.
 - Nicht mit Delphi übersetzt; FPC: MethodToggle- und BranchNames-Tests 19/19 grün (`Atlas.Core.Tracker.Tests` läuft im FPC-Gerüst nicht: `TArray` in `Core.Tracker.Markdown`). Alle Prüfskripte grün. Handtests MK1–MK10 in `handtests-v2.md`.
 
+## Projekt-Zusammenfassungen in Base (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
+
+- Base pflegt die Zusammenfassungen unter %LOCALAPPDATA%\Atlas\projects selbst, auch ohne Willkommensseite: `Atlas.IDE.Projects.Summaries` (`TAtlasIdeProjectSummaries.Current`, Feature `ProjectSummaries` vor `Compile`), reine Logik in `Atlas.Core.Projects.Recording` (aus `Atlas.Core.Welcome.Projects`, Tests in `Atlas.Core.Projects.Recording.Tests`). Die Probleme bekommt die Unit als Funktion aus der Wurzel (sonst Feature-Zyklus A-09 Projects → Problems → Build → Projects).
+- Wer Zusammenfassungen zeigt, stellt `IAtlasProjectSummaryListener` bereit; der Bereich „Projekte“ (`TAtlasIdeProjects`) liest nur noch und hört darauf.
+- Modul Tests schreibt den Lauf selbst (`RecordTests`), `IAtlasTestsListener.TestsFinished` hat nur noch Name, bestanden, fehlgeschlagen. Modul Prüfregeln schreibt die Baseline selbst, `IAtlasBaselineListener` entfällt. Damit sind die Verträge `Contracts.Rules`/`Contracts.Tests` frei von Base-Typen (Zeilen unter „Bekannte Verstöße“ gestrichen).
+- Offen: Unter FPC nicht testbar (`Core.Projects.Summary` braucht Winapi); Delphi-Build und Handtests PS1–PS4.
+
 ## Texte je Modul (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 - Jedes Modul hat seine Tabelle `Atlas.UI.<Modul>.Strings` (`TAtlas<Modul>TextId`, `TAtlas<Modul>Strings.Text/Fmt`): Rules, Designer, Debug, Analysis, Bookmarks, Build, Search, Tests. Verschoben sind nur Texte, die genau ein Modul nutzt (979); gemeinsam genutzte bleiben in `Atlas.UI.Strings`. Die Sprache liest jede Tabelle bei jedem Aufruf aus `TAtlasStrings.Language`, ein Sprachwechsel braucht keine Meldung.
 - Befehlshelfer in den Kompositionen von Lesezeichen, Debugger und Suche nehmen den fertigen Text (Texte aus Base und Modul gemischt).
@@ -48,7 +55,7 @@
 
 ## Prüfregeln melden sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 - `Atlas.IDE.Rules.Composition` (Ordner `IDE/Rules`) meldet `atlas.rules` an (Schalter `ruleChecks`, ab abgesichertem Start): Befehle Baseline aktualisieren, Compilermeldungen in die Baseline (`Atlas.IDE.Rules.Baseline`), Eigenschaftsregeln für Formular/Projekt/Gruppe; Sammelkorrektur (`Atlas.IDE.Rules.BulkFix`) über `IAtlasBulkFixer` (Base, `Core.Problems.Findings`), Baseline für die Einrichtung über `IAtlasBaselineSource` (`Contracts/Atlas.IDE.Contracts.Rules`).
-- Base neu: `TAtlasProjectBaselines.StateOnDisk` (ersetzt `BaselineState` der Wurzel, Test `StateOnDiskReadsFolder`, unter FPC hier nicht lauffähig: `Core.Projects.Summary` braucht Winapi), `TAtlasIdeBuildSummary.Current`, Text `BaselineUpdateModuleOff`. Die Wurzel hört über `TWelcomeListener` als `IAtlasBaselineListener` (bis zum Modul Willkommensseite).
+- Base neu: `TAtlasProjectBaselines.StateOnDisk` (ersetzt `BaselineState` der Wurzel, Test `StateOnDiskReadsFolder`, unter FPC hier nicht lauffähig: `Core.Projects.Summary` braucht Winapi), `TAtlasIdeBuildSummary.Current`, Text `BaselineUpdateModuleOff`. Den neuen Stand schreibt das Modul selbst in die Projekt-Zusammenfassung (`TAtlasIdeProjectSummaries`); `IAtlasBaselineListener` ist entfallen.
 - Im Kern bleiben (ADR-Tabelle festgeschrieben): Fenster „Atlas-Prüfung“ mit Erklären/Unterdrücken/Abschalten, Regeltabelle, Seite Prüfregeln, Stand und Format der Baseline-Datei, `RuleChecksNotice`.
 - Den Stand der Baseline nach dem Aktualisieren liest das Modul jetzt im Hauptthread (vorher Hintergrund): Code eines Moduls darf nach dem Abmelden nicht mehr in einem Faden laufen (Regel 3). Einmal je Aktualisieren.
 

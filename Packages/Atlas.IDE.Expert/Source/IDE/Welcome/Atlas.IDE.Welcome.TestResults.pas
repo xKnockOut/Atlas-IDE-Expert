@@ -173,7 +173,8 @@ uses
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Welcome.Projects;
+  Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Projects.Summaries;
 
 { TAtlasIdeTestResults }
 
@@ -508,7 +509,7 @@ begin
     FQuerying.Remove(TAtlasProjectSummaries.NormalizedPath(Project));
   if not FStarted then
     Exit;
-  Root := TAtlasIdeProjects.Folder;
+  Root := TAtlasIdeProjectSummaries.Folder;
   Stamp := NowUtc;
   Job := AFetch.Job;
   Build := ABuild;

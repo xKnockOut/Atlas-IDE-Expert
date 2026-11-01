@@ -11,7 +11,8 @@
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
 //   IAtlasTestsSource (Atlas.IDE.Contracts, Willkommensseite); das Ende eines
-//   Laufs geht an jeden IAtlasTestsListener.
+//   Laufs schreibt das Modul in die Projekt-Zusammenfassung von Base
+//   (TAtlasIdeProjectSummaries, #69) und meldet es jedem IAtlasTestsListener.
 // Gebaut wird über den Läufer der Builds auf Auftrag von Base
 // (TAtlasIdeBuildRunner.Current), die Probleme gehen an das Problemfenster von
 // Base; die fehlgeschlagenen Tests des letzten Laufs liest das Modul aus den
@@ -80,6 +81,7 @@ uses
   Atlas.IDE.Build.Runner,
   Atlas.IDE.CodeInsight.Manager,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
@@ -154,19 +156,28 @@ begin
     TAtlasProblemsController.Current.SetTests(AProblems);
 end;
 
-/// <summary>Ende eines Laufs an jeden IAtlasTestsListener (Karte Tests und Schnellaktionen der Willkommensseite).
-/// </summary>
+/// <summary>Ende eines Laufs in die Projekt-Zusammenfassung (#69, Karte Tests) und an jeden IAtlasTestsListener
+/// (Schnellaktionen der Willkommensseite).</summary>
 procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
 var
   mItem: IInterface;
   mListener: IAtlasTestsListener;
+  mPassed, mFailed: Integer;
 begin
+  if TAtlasIdeProjectSummaries.Current <> nil then
+    TAtlasGuard.Run(TAtlasFeature.Build,
+      procedure
+      begin
+        TAtlasIdeProjectSummaries.Current.RecordTests(AProject, ATests);
+      end);
+  mPassed := ATests.Passed;
+  mFailed := ATests.Failed + ATests.Errors;
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestsListener) do
     if Supports(mItem, IAtlasTestsListener, mListener) then
       TAtlasGuard.Run(TAtlasFeature.Build,
         procedure
         begin
-          mListener.TestsFinished(AProject, ATests);
+          mListener.TestsFinished(AProject, mPassed, mFailed);
         end);
 end;
 
