@@ -39,7 +39,7 @@ Up to 1.1.0 the package contained the installer `AtlasSetup.exe`; it was removed
 
 1. Install Delphi 12 or later and clone this repository.
 2. Open `Atlas.groupproj` in Delphi and build all projects for **Win64** (*Build All*). For the classic 32-bit IDE, also build `Atlas.IDE.Expert` for **Win32**.
-3. In Delphi, *Component › Install Packages › Add* and select the BPL: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` for the classic IDE (Delphi 12: `…290.bpl`), `Output\Win64\Debug\Bpl\…` for the 64-bit IDE. The plugin finds the server `Output\Win64\Debug\Bin\AtlasServer.exe` there on its own.
+3. In Delphi, *Component › Install Packages › Add* and select the BPL: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` for the classic IDE (Delphi 12: `…290.bpl`), `Output\Win64\Debug\Bpl\…` for the 64-bit IDE. The plugin finds the server `Output\Win64\Debug\Bin\AtlasServer.exe` there on its own. From 2.0, then add every module package from the same folder, e.g. `Atlas.IDE.Debugger370.bpl` (#1456); always the core package `Atlas.IDE.Expert` first.
 4. Restart Delphi once.
 
 More: [Installation](#installation).
@@ -242,7 +242,7 @@ Not yet in `main`, tracked as issues:
 1. Clone the repository and open `Atlas.groupproj` in RAD Studio.
 2. Build `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` and `AtlasServer` for **Win64** (all four for the same platform). Result: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternatively take `AtlasServer.exe` from a [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); the server does not depend on the Delphi version.
 3. Build `Atlas.IDE.Expert` with the Delphi version the plugin is meant to run in: **Win32** for the classic IDE, **Win64** for the 64-bit IDE. Result: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-bit IDE: `Output\Win64\…`).
-4. *Component › Install Packages › Add* and select the BPL.
+4. *Component › Install Packages › Add* and select the BPL. From 2.0 every module lives in its own package (so far `Atlas.IDE.Debugger`, #1456), compiled against the core package: build it after `Atlas.IDE.Expert` and install it after it.
 5. If the server is neither in `Output\…\Bin` nor next to the BPL: *Tools › Options › Third Party › Atlas*, field "Atlas-Server". The page shows whether the server is found.
 6. Restart Delphi once: Atlas switches off the IDE's Help Insight and structural highlighting so nothing appears twice; the IDE reads these switches only at startup.
 

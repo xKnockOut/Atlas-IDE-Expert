@@ -60,10 +60,14 @@ function Reset-Copy {
 }
 
 function Add-Unit([string] $Folder, [string] $Name, [string[]] $Uses) {
-    # Neue Unit unter Source/<Folder> mit den angegebenen uses-Einträgen.
+    Add-UnitIn $Source $Folder $Name $Uses
+}
+
+function Add-UnitIn([string] $Base, [string] $Folder, [string] $Name, [string[]] $Uses) {
+    # Neue Unit unter <Base>/<Folder> mit den angegebenen uses-Einträgen.
     $Clause = ''
     if ($Uses.Count -gt 0) { $Clause = "uses`r`n  " + ($Uses -join ",`r`n  ") + ";`r`n`r`n" }
-    Set-CopyText "$Source/$Folder/$Name.pas" "unit $Name;`r`n`r`ninterface`r`n`r`n${Clause}implementation`r`n`r`nend.`r`n"
+    Set-CopyText "$Base/$Folder/$Name.pas" "unit $Name;`r`n`r`ninterface`r`n`r`n${Clause}implementation`r`n`r`nend.`r`n"
 }
 
 function Add-TableRow([string] $Heading, [string] $Row) {
@@ -79,7 +83,10 @@ function Add-TableRow([string] $Heading, [string] $Row) {
 }
 
 function Add-Assigned([string] $Package, [string] $Folder, [string] $Name, [string[]] $Uses) {
-    Add-Unit $Folder $Name $Uses
+    # Ein Modul mit eigenem Package-Ordner (#1456) hat seine Quellen dort, sonst liegen sie noch im Kern.
+    $Base = $Source
+    if (Test-Path (Join-Path $CopyRoot "Packages/$Package/Source")) { $Base = "Packages/$Package/Source" }
+    Add-UnitIn $Base $Folder $Name $Uses
     Add-TableRow "## $Package" "| ``$Name`` | ``$Folder/$Name.pas`` | Probe für Test-PackageDependencies |"
 }
 
