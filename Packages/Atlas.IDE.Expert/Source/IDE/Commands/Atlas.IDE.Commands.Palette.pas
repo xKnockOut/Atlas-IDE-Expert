@@ -60,6 +60,11 @@ type
     procedure Run(const ACommand: TAtlasCommand);
     class function MenuPaths: TDictionary<TBasicAction, string>; static;
     function IsVisible(const AId: string): Boolean;
+    /// <summary>Sichtbare Befehle der angemeldeten Module (#1455, IAtlasCommandSource), bei jedem Aufruf neu
+    /// gefragt: Sie kommen und gehen mit ihrem Modul.</summary>
+    function ModuleCommands: TArray<TAtlasCommand>;
+    /// <summary>Befehl AId eines Moduls ausführen; False, wenn ihn keins anbietet.</summary>
+    function RunModuleCommand(const AId: string): Boolean;
     /// <summary>Atlas-Befehl mit seiner Taste aus ShortCutOf.</summary>
     function WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
     /// <summary>Zusatzquelle an das Fenster hängen (#1270); eigene Routine, damit die anonymen Methoden nur
@@ -93,6 +98,9 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
   System.IOUtils,
   System.Types,
   System.Actions,
@@ -230,6 +238,33 @@ begin
   Result := not FVisible.TryGetValue(AId, Visible) or Visible();
 end;
 
+function TAtlasIdePalette.ModuleCommands: TArray<TAtlasCommand>;
+var
+  mModuleCommand: TAtlasModuleCommand;
+  mCommand: TAtlasCommand;
+begin
+  Result := nil;
+  for mModuleCommand in TAtlasModuleContributions.Commands(AtlasModuleRegistry) do
+    if TAtlasModuleContributions.IsVisible(mModuleCommand) then
+    begin
+      mCommand := Default(TAtlasCommand);
+      mCommand.Id := mModuleCommand.Id;
+      mCommand.Caption := 'Atlas: ' + mModuleCommand.Caption;
+      mCommand.Description := mModuleCommand.Description;
+      mCommand.IsAtlas := True;
+      Result := Result + [WithShortCut(mCommand)];
+    end;
+end;
+
+function TAtlasIdePalette.RunModuleCommand(const AId: string): Boolean;
+var
+  mCommand: TAtlasModuleCommand;
+begin
+  Result := TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run);
+  if Result then
+    mCommand.Run();
+end;
+
 function TAtlasIdePalette.WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
 begin
   Result := ACommand;
@@ -281,6 +316,7 @@ begin
   for Pair in FAtlasCommands do
     if IsVisible(Pair.Key.Id) then
       Result := Result + [WithShortCut(Pair.Key)];
+  Result := Result + ModuleCommands;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
     Exit;
   Paths := MenuPaths;
@@ -319,16 +355,24 @@ begin
   for Pair in FAtlasCommands do
     if IsVisible(Pair.Key.Id) then
       Result := Result + [WithShortCut(Pair.Key)];
+  Result := Result + ModuleCommands;
 end;
 
 procedure TAtlasIdePalette.Execute(const AId: string);
 var
   Pair: TPair<TAtlasCommand, TProc>;
+  mCommand: TAtlasCommand;
 begin
   for Pair in FAtlasCommands do
     if Pair.Key.Id = AId then
     begin
       Run(Pair.Key);
+      Exit;
+    end;
+  for mCommand in ModuleCommands do
+    if mCommand.Id = AId then
+    begin
+      Run(mCommand);
       Exit;
     end;
 end;
@@ -339,6 +383,7 @@ var
   Services: INTAServices;
   Index: Integer;
   Action: TContainedAction;
+  mFound: Boolean;
 begin
   FHistory.Executed(ACommand.Id);
   try
@@ -352,9 +397,15 @@ begin
   TAtlasIdeShortcutTips.Invoked(ACommand.Id);
   if ACommand.IsAtlas then
   begin
+    mFound := False;
     for Pair in FAtlasCommands do
       if Pair.Key.Id = ACommand.Id then
+      begin
         Pair.Value();
+        mFound := True;
+      end;
+    if not mFound then
+      RunModuleCommand(ACommand.Id);
     Exit;
   end;
   // Die Aktion neu suchen: Sie kann inzwischen freigegeben sein.

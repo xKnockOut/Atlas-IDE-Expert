@@ -19,6 +19,12 @@
 // nach navigation.symbolPath, #1117, oder „Auswirkungen anzeigen“ nach
 // navigation.impact, #1120) blendet UpdateVisibility aus bzw. ein; aufgerufen
 // beim Registrieren und nach jeder Einstellungsänderung, nie aus OnUpdate.
+// Einträge der Module (#1455, TAtlasMenuPlace.EditorContext) belegen an der
+// Stelle von AddModuleSlots einen festen Vorrat ausgeblendeter Aktionen: Die
+// IDE kennt nur die einmal registrierte Liste, Module kommen und gehen aber.
+// UpdateVisibility (auch nach jeder Änderung der Registry) setzt Text und
+// Sichtbarkeit der Plätze aus den Befehlen der Module; der Aufruf sucht den
+// Befehl über seine Id neu, ein abgemeldetes Modul erreicht er nicht mehr.
 
 interface
 
@@ -42,6 +48,8 @@ type
       Feature: TAtlasFeature;
       /// <summary>Sichtbar, solange das True liefert; nil = immer.</summary>
       Visible: TFunc<Boolean>;
+      /// <summary>Platz für einen Eintrag eines Moduls (Index in FModuleIds); -1 = eigener Eintrag.</summary>
+      Slot: Integer;
     end;
   private const
     Category = 'Atlas';
@@ -52,7 +60,11 @@ type
     /// <summary>Aktion je Eintrag (gleicher Index wie FEntries); die IDE überschreibt Tag.</summary>
     FItems: TArray<TBasicAction>;
     FRegistered: Boolean;
+    /// <summary>Befehls-Id je Platz der Module; '' = Platz frei.</summary>
+    FModuleIds: TArray<string>;
     function CaptionOf(AIndex: Integer): string;
+    procedure UpdateModuleSlots;
+    procedure RunModuleSlot(ASlot: Integer);
     procedure ItemExecute(Sender: TObject);
     procedure RootExecute(Sender: TObject);
     procedure Register;
@@ -73,7 +85,11 @@ type
     /// UpdateVisibility).</summary>
     procedure AddWhen(AFeature: TAtlasFeature; const AId, ACaption: string; const AKey: TFunc<Integer>;
       const AProc: TProc; const AVisible: TFunc<Boolean>);
-    /// <summary>Sichtbarkeit der Einträge aus AddWhen neu setzen (nach geänderten Einstellungen).</summary>
+    /// <summary>Plätze für Einträge der Module (#1455) an dieser Stelle; mehr Einträge, als Plätze da sind, fehlen
+    /// (Protokollzeile).</summary>
+    procedure AddModuleSlots(ACount: Integer);
+    /// <summary>Sichtbarkeit der Einträge aus AddWhen und die Plätze der Module neu setzen (nach geänderten
+    /// Einstellungen und nach jeder Änderung der Registry).</summary>
     procedure UpdateVisibility;
     /// <summary>Registriert das Untermenü bei der IDE, einmal nach allen Add.</summary>
     procedure EnsureAll;
@@ -86,6 +102,9 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.UI.Strings,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
   Atlas.IDE.Commands.ShortcutTips;
 
 constructor TAtlasIdeContextMenu.Create;
@@ -133,7 +152,81 @@ begin
   Entry.Proc := AProc;
   Entry.Feature := AFeature;
   Entry.Visible := AVisible;
+  Entry.Slot := -1;
   FEntries := FEntries + [Entry];
+end;
+
+procedure TAtlasIdeContextMenu.AddModuleSlots(ACount: Integer);
+var
+  mEntry: TEntry;
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ACount - 1 do
+  begin
+    mEntry := Default(TEntry);
+    mEntry.Feature := TAtlasFeature.EditorCommands;
+    mEntry.Slot := Length(FModuleIds);
+    FModuleIds := FModuleIds + [''];
+    FEntries := FEntries + [mEntry];
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.RunModuleSlot(ASlot: Integer);
+var
+  mCommand: TAtlasModuleCommand;
+begin
+  // Befehl neu suchen: Seit dem Belegen kann sich das Modul abgemeldet haben (Regel 3).
+  if (ASlot > High(FModuleIds)) or (FModuleIds[ASlot] = '') or
+    not TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, FModuleIds[ASlot], mCommand) or
+    not Assigned(mCommand.Run) then
+  begin
+    TAtlasGuard.Log(Format('Kontextmenü: Platz %d ohne Befehl eines Moduls', [ASlot]));
+    Exit;
+  end;
+  TAtlasIdeShortcutTips.Invoked(mCommand.Id);
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+end;
+
+procedure TAtlasIdeContextMenu.UpdateModuleSlots;
+var
+  mCommands: TArray<TAtlasModuleCommand>;
+  mEntry: TAtlasMenuEntry;
+  mCommand: TAtlasModuleCommand;
+  mIndex, mSlot, mKey: Integer;
+  mCaption: string;
+begin
+  if Length(FModuleIds) = 0 then
+    Exit;
+  mCommands := nil;
+  for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.EditorContext) do
+    if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
+      mCommands := mCommands + [mCommand];
+  if Length(mCommands) > Length(FModuleIds) then
+    TAtlasGuard.Log(Format('Kontextmenü: %d Einträge der Module, nur %d Plätze',
+      [Length(mCommands), Length(FModuleIds)]));
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    mSlot := FEntries[mIndex].Slot;
+    if (mSlot < 0) or not (FItems[mIndex] is TAction) then
+      Continue;
+    if mSlot > High(mCommands) then
+    begin
+      FModuleIds[mSlot] := '';
+      TAction(FItems[mIndex]).Visible := False;
+      Continue;
+    end;
+    mCommand := mCommands[mSlot];
+    FModuleIds[mSlot] := mCommand.Id;
+    mCaption := mCommand.Caption;
+    if Assigned(mCommand.Key) then
+    begin
+      mKey := mCommand.Key();
+      if mKey <> 0 then
+        mCaption := mCaption + #9 + ShortCutToText(TShortCut(mKey));
+    end;
+    TAction(FItems[mIndex]).Caption := mCaption;
+    TAction(FItems[mIndex]).Visible := TAtlasModuleContributions.IsVisible(mCommand);
+  end;
 end;
 
 procedure TAtlasIdeContextMenu.UpdateVisibility;
@@ -143,6 +236,7 @@ begin
   for Index := 0 to Min(High(FEntries), High(FItems)) do
     if Assigned(FEntries[Index].Visible) and (FItems[Index] is TAction) then
       TAction(FItems[Index]).Visible := FEntries[Index].Visible();
+  UpdateModuleSlots;
 end;
 
 function TAtlasIdeContextMenu.CaptionOf(AIndex: Integer): string;
@@ -183,6 +277,9 @@ begin
     begin
       Item.OnExecute := ItemExecute;
     end;
+    // Plätze der Module bleiben aus, bis UpdateModuleSlots sie belegt.
+    if FEntries[Index].Slot >= 0 then
+      Item.Visible := False;
   end;
   UpdateVisibility;
   Services.GetEditorLocalMenu.RegisterActionList(FActions, Category, cEdMenuCatLast);
@@ -229,6 +326,11 @@ begin
   Index := High(FItems);
   while (Index >= 0) and (FItems[Index] <> Action) do
     Dec(Index);
+  if (Index >= 0) and (Index <= High(FEntries)) and (FEntries[Index].Slot >= 0) then
+  begin
+    RunModuleSlot(FEntries[Index].Slot);
+    Exit;
+  end;
   if (Index < 0) or (Index > High(FEntries)) or not Assigned(FEntries[Index].Proc) then
   begin
     TAtlasGuard.Log(Format('Kontextmenü: Eintrag %d ohne Befehl', [Index]));

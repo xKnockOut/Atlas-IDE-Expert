@@ -261,8 +261,8 @@ uses
   Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.Unwrap,
-  Atlas.IDE.Debug.StepInto,
-  Atlas.IDE.Debug.StepFilter,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
   Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.EditorToolbar.Service,
@@ -278,6 +278,8 @@ const
   CommandTimeoutMs = 30000;
   // Beim Tippen: lieber nichts tun als die IDE aufhalten.
   SlashTimeoutMs = 3000;
+  // Plätze im Kontextmenü für Einträge der Module (#1455); der Debugger braucht drei.
+  ModuleSlotCount = 12;
   CopyTextCommand = 'atlas.copyText';
   OpenFileCommand = 'atlas.openFile';
   GoToPositionCommand = 'atlas.goToPosition';
@@ -326,6 +328,8 @@ begin
 end;
 
 procedure TEditorNotifier.EditorViewActivated(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
+var
+  mFailure: string;
 begin
   // Je Funktion mit ihrer eigenen Sicherung: Ein Fehler beim Schließen der einen lässt die übrigen nicht aus.
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
@@ -362,12 +366,9 @@ begin
     begin
       TAtlasIdeUnwrap.Dismiss;
     end);
-  // Gezielt hineinspringen (#836): die Liste gehört zum Ausführungspunkt in der bisherigen Ansicht.
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
-    begin
-      TAtlasIdeStepInto.Dismiss;
-    end);
+  // Module (#1455), z. B. „Gezielt hineinspringen“: Listen gehören zur bisherigen Ansicht.
+  for mFailure in TAtlasModuleContributions.EditorViewActivated(AtlasModuleRegistry) do
+    TAtlasGuard.Log('Ansichtswechsel im Modul: ' + mFailure);
   // Typ des Ausdrucks (#689): Der Tooltip gilt nur in seiner Ansicht.
   TAtlasGuard.Run(TAtlasFeature.ExpressionType,
     procedure
@@ -565,33 +566,8 @@ begin
     begin
       FormatCode;
     end);
-  // Gezielt hineinspringen (#836); aus oder ohne angehaltenes Programm meldet der Aufruf das.
-  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepIntoTarget',
-    TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand),
-    function: Integer
-    begin
-      Result := 0;
-      if TAtlasIdeSettings.Current.DebugStepIntoTarget then
-        Result := TAtlasIdeSettings.Current.DebugStepIntoTargetKey;
-    end,
-    procedure
-    begin
-      TAtlasIdeStepInto.Run;
-    end);
-  // Schrittfilter (#850): Routine an der Schreibmarke als Muster in debug.stepFilters.patterns aufnehmen bzw.
-  // entfernen; der Aufruf meldet, was danach noch filtert.
-  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepFilterSkip',
-    TAtlasStrings.Text(TAtlasTextId.StepFilterSkipCommand), nil,
-    procedure
-    begin
-      TAtlasIdeDebugStepFilter.SkipAtCursor;
-    end);
-  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepFilterUnskip',
-    TAtlasStrings.Text(TAtlasTextId.StepFilterUnskipCommand), nil,
-    procedure
-    begin
-      TAtlasIdeDebugStepFilter.UnskipAtCursor;
-    end);
+  // Einträge der Module (#1455), z. B. „Gezielt hineinspringen“ und die Befehle des Schrittfilters des Debuggers.
+  FContextMenu.AddModuleSlots(ModuleSlotCount);
   // Methodenrümpfe wie die Klasse ordnen (#660); abgeschaltet meldet der Aufruf das.
   FContextMenu.AddGuarded(TAtlasFeature.MethodPlacement, 'Atlas.MethodOrder',
     TAtlasStrings.Text(TAtlasTextId.MethodOrderCommand), nil,

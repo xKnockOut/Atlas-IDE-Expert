@@ -33,6 +33,9 @@ type
   /// Einstellungen, Palette, Menü); Minimal: nur Einstellungsseite und Statusfeld. Steht im Vertrag, weil ein Modul
   /// seine Mindeststufe angibt (TAtlasModuleInfo.MinLevel).</summary>
   TAtlasSafeLevel = (Normal, Safe, Minimal);
+  /// <summary>Wo ein Menüeintrag eines Moduls erscheint: Atlas-Menü der IDE oder Untermenü „Atlas“ im
+  /// Kontextmenü des Editors.</summary>
+  TAtlasMenuPlace = (AtlasMenu, EditorContext);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Bedingung eines Teils der Feature-Tabelle je Stufe des abgesicherten Starts und Einstellung. Ein Typ
@@ -98,6 +101,82 @@ type
     function IsActive: Boolean;
     procedure Start;
     procedure Stop;
+  end;
+
+  /// <summary>Ein Befehl eines Moduls für Palette, Atlas-Menü und Tastenkürzel. Id ist eindeutig
+  /// („Atlas.DebugEvaluate“), Caption ohne „Atlas: “; Visible nil = immer sichtbar. Run läuft im Hauptthread.
+  /// </summary>
+  TAtlasModuleCommand = record
+    Id: string;
+    Caption: string;
+    Description: string;
+    Run: TProc;
+    Visible: TFunc<Boolean>;
+    /// <summary>Tastenkürzel (TShortCut) zur Anzeige in Palette und Kontextmenü; nil oder 0 = keins.</summary>
+    Key: TFunc<Integer>;
+  end;
+
+  /// <summary>Befehle eines Moduls (Regel 4); Base fragt sie bei jedem Öffnen der Palette bzw. des Menüs.</summary>
+  IAtlasCommandSource = interface
+    ['{0C9E4B7D-3A61-4F2E-8D05-B6A1E97C2F44}']
+    function Commands: TArray<TAtlasModuleCommand>;
+  end;
+
+  /// <summary>Ein Eintrag im Atlas-Menü: Befehl CommandId (aus einer IAtlasCommandSource) im Untermenü Section
+  /// ('' = oberste Ebene); Text und Sichtbarkeit kommen vom Befehl.</summary>
+  TAtlasMenuEntry = record
+    CommandId: string;
+    Section: string;
+    Place: TAtlasMenuPlace;
+  end;
+
+  /// <summary>Einträge eines Moduls im Atlas-Menü.</summary>
+  IAtlasMenuSource = interface
+    ['{7D2F91A3-6B48-4C0E-A5D7-1E83F4C69B21}']
+    function MenuEntries: TArray<TAtlasMenuEntry>;
+  end;
+
+  /// <summary>Tastenkürzel eines Moduls im Editor: Key (TShortCut, 0 = keins) ruft Attempt; liefert Attempt False,
+  /// geht die Taste an die nächste Bindung der IDE. Id ist die Befehls-Id (Tastenkürzel-Tipps, Konflikte).</summary>
+  TAtlasModuleKey = record
+    Id: string;
+    Caption: string;
+    Key: Integer;
+    Attempt: TFunc<Boolean>;
+  end;
+
+  /// <summary>Tastenkürzel eines Moduls; Base fragt sie bei jedem Neubelegen der Tasten (nach Einstellungen und
+  /// nach jeder Änderung der Registry).</summary>
+  IAtlasKeySource = interface
+    ['{5E1A7C93-2B06-4D8F-91E4-C3A0F68B2D57}']
+    function Keys: TArray<TAtlasModuleKey>;
+  end;
+
+  /// <summary>Wird gerufen, wenn der Editor eine andere Ansicht zeigt (Listen und Tooltips der alten schließen).
+  /// </summary>
+  IAtlasFollowsEditorView = interface
+    ['{9F4D2B61-E8A3-47C5-B02E-6A17D3C85F90}']
+    procedure EditorViewActivated;
+  end;
+
+  /// <summary>Übernimmt geänderte Einstellungen (nach jedem Speichern der Optionen und jedem Schnellschalter).
+  /// </summary>
+  IAtlasAppliesSettings = interface
+    ['{A41C6E08-95D3-4B7F-8E2A-0F6D3B9C7E15}']
+    procedure ApplySettings;
+  end;
+
+  /// <summary>Folgt dem Thema der IDE (hell, dunkel, eigene Farben).</summary>
+  IAtlasFollowsTheme = interface
+    ['{E6B8302D-4F17-49A5-B3C1-82D0A7F5E946}']
+    procedure ThemeChanged;
+  end;
+
+  /// <summary>Wert eines Ausdrucks im Tooltip beim Debuggen (Visualisierer, eigene Darstellungen): '' = kein Beitrag.
+  /// ATypeChain: Typ und seine Vorfahren, AText: Wert der IDE.</summary>
+  IAtlasHoverValueSource = interface
+    ['{3B57C0E9-1D82-4A6F-9C34-D7E2058AB613}']
+    function HoverValue(const AExpression: string; const ATypeChain: TArray<string>; const AText: string): string;
   end;
 
   /// <summary>Hört auf die Änderungsmeldung der Registry (Regel 2). Wird im Thread der Änderung gerufen (Hauptthread

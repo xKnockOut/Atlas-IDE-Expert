@@ -51,6 +51,9 @@
 // Untermenü „Aufgaben“ (#900): Beim Öffnen des Atlas-Menüs füllt
 // OnTasksMenu es mit den Projektaufgaben bzw. blendet es aus (ohne Haken oder
 // mit tasks.enabled aus).
+// Einträge der Module (#1455): Jedes Modul nennt sie über IAtlasMenuSource
+// (Befehl und Untermenü); RootClick baut sie bei jedem Öffnen neu auf, so
+// kommen und gehen sie mit ihrem Modul.
 // Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
 // Kopieren, Änderungen, Anzeige mit den Schaltern, Index, Hilfe und Diagnose).
 
@@ -113,9 +116,12 @@ type
     FNotesGroup: TMenuItem;
     /// <summary>„Atlas-Prüfung“ (#909) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FProblemsItem: TMenuItem;
-    /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
-    FDebugExceptionsItem: TMenuItem;
-    FDebugEvaluateItem: TMenuItem;
+    /// <summary>Ab hier stehen die Einträge der Module (#1455, IAtlasMenuSource); unsichtbare Marke.</summary>
+    FModuleAnchor: TMenuItem;
+    /// <summary>Einträge und Untermenüs der Module; RootClick baut sie bei jedem Öffnen neu.</summary>
+    FModuleItems: TArray<TMenuItem>;
+    /// <summary>Befehls-Id je Eintrag (Index = Tag).</summary>
+    FModuleIds: TArray<string>;
     /// <summary>„An Issue anhängen …“ (#1276), sichtbar nach issues.attach.</summary>
     FIssueAttachItem: TMenuItem;
     FOnIssueAttach: TProc;
@@ -163,8 +169,10 @@ type
     procedure BoardClick(Sender: TObject);
     procedure SymbolPathClick(Sender: TObject);
     procedure AffectedTestsClick(Sender: TObject);
-    procedure DebugExceptionsClick(Sender: TObject);
-    procedure DebugEvaluateClick(Sender: TObject);
+    procedure ModuleItemClick(Sender: TObject);
+    /// <summary>Einträge der Module nach der Marke neu aufbauen (Regel 2: sie kommen und gehen mit dem Modul).
+    /// </summary>
+    procedure UpdateModuleItems;
     procedure IssueAttachClick(Sender: TObject);
     procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
@@ -245,8 +253,9 @@ uses
   Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
-  Atlas.IDE.Debug.Exceptions,
-  Atlas.IDE.Debug.Evaluate,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
   Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Editor.MethodPlacement,
@@ -349,9 +358,9 @@ begin
   FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
   // Weg zwischen Symbolen (#1117).
   FSymbolPathItem := AddItem(TAtlasTextId.SymbolPathCommand, 0, SymbolPathClick);
-  // Exception-Verlauf beim Debuggen (#517).
-  FDebugExceptionsItem := AddItem(TAtlasTextId.DebugExceptionsCommand, 0, DebugExceptionsClick);
-  FDebugEvaluateItem := AddItem(TAtlasTextId.DebugEvaluateCommand, 0, DebugEvaluateClick);
+  // Einträge der Module (#1455), z. B. Exception-Verlauf und „Auswerten“ des Debuggers.
+  FModuleAnchor := AddItem('', 0, nil);
+  FModuleAnchor.Visible := False;
   FIssueAttachItem := AddItem(TAtlasTextId.AttachCommand, 0, IssueAttachClick);
   // Wirksame Compiler-Schalter an der Cursorposition (#558).
   FCompilerSwitchesItem := AddItem(TAtlasTextId.CompilerSwitchesCommand, 0, CompilerSwitchesClick);
@@ -595,6 +604,7 @@ begin
     UpdateImage;
     UpdateWelcome;
     UpdateKeyMap;
+    UpdateModuleItems;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
     if FTasksGroup <> nil then
@@ -856,11 +866,6 @@ begin
     FImpactItem.Visible := TAtlasIdeImpact.Enabled;
   if FAffectedTestsItem <> nil then
     FAffectedTestsItem.Visible := TAtlasIdeAffectedTests.Enabled;
-  // Exception-Verlauf (#517) nach debug.exceptionHistory.
-  if FDebugExceptionsItem <> nil then
-    FDebugExceptionsItem.Visible := TAtlasIdeSettings.Current.DebugExceptionHistory;
-  if FDebugEvaluateItem <> nil then
-    FDebugEvaluateItem.Visible := TAtlasIdeSettings.Current.DebugEvaluateWindow;
   // Datenfluss (#690) nach navigation.dataFlow.
   for Item in FDataFlowItems do
     Item.Visible := TAtlasIdeSettings.Current.DataFlow;
@@ -1141,14 +1146,76 @@ begin
     end);
 end;
 
-procedure TAtlasMainMenu.DebugExceptionsClick(Sender: TObject);
+procedure TAtlasMainMenu.ModuleItemClick(Sender: TObject);
+var
+  mIndex: Integer;
+  mId: string;
+  mCommand: TAtlasModuleCommand;
 begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.DebugExceptions');
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex < 0) or (mIndex > High(FModuleIds)) then
+    Exit;
+  mId := FModuleIds[mIndex];
+  if not TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mId, mCommand) or not Assigned(mCommand.Run) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked(mId);
+  TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
+end;
+
+procedure TAtlasMainMenu.UpdateModuleItems;
+var
+  mItem, mParent, mGroup: TMenuItem;
+  mEntry: TAtlasMenuEntry;
+  mCommand: TAtlasModuleCommand;
+  mGroups: TArray<TMenuItem>;
+  mPosition: Integer;
+begin
+  if (FRoot = nil) or (FModuleAnchor = nil) then
+    Exit;
+  // Rückwärts freigeben: Untermenüs geben ihre Einträge mit frei.
+  for mItem in FModuleItems do
+    if mItem.Parent = FRoot then
+      mItem.Free;
+  FModuleItems := nil;
+  FModuleIds := nil;
+  mGroups := nil;
+  mPosition := FModuleAnchor.MenuIndex + 1;
+  for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.AtlasMenu) do
+  begin
+    if not TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
+      Continue;
+    mParent := FRoot;
+    if mEntry.Section <> '' then
     begin
-      TAtlasIdeDebugExceptions.ShowWindow;
-    end);
+      mParent := nil;
+      for mGroup in mGroups do
+        if mGroup.Caption = mEntry.Section then
+          mParent := mGroup;
+      if mParent = nil then
+      begin
+        mParent := TMenuItem.Create(FRoot);
+        mParent.Caption := mEntry.Section;
+        FRoot.Insert(mPosition, mParent);
+        Inc(mPosition);
+        mGroups := mGroups + [mParent];
+        FModuleItems := FModuleItems + [mParent];
+      end;
+    end;
+    mItem := TMenuItem.Create(FRoot);
+    mItem.Caption := mCommand.Caption;
+    mItem.Tag := Length(FModuleIds);
+    mItem.OnClick := ModuleItemClick;
+    mItem.Visible := TAtlasModuleContributions.IsVisible(mCommand);
+    FModuleIds := FModuleIds + [mCommand.Id];
+    if mParent = FRoot then
+    begin
+      FRoot.Insert(mPosition, mItem);
+      Inc(mPosition);
+      FModuleItems := FModuleItems + [mItem];
+    end
+    else
+      mParent.Add(mItem);
+  end;
 end;
 
 procedure TAtlasMainMenu.IssueAttachClick(Sender: TObject);
@@ -1163,15 +1230,6 @@ begin
     end);
 end;
 
-procedure TAtlasMainMenu.DebugEvaluateClick(Sender: TObject);
-begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.DebugEvaluate');
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
-    begin
-      TAtlasIdeDebugEvaluate.ShowWindow;
-    end);
-end;
 
 procedure TAtlasMainMenu.CompilerSwitchesClick(Sender: TObject);
 begin

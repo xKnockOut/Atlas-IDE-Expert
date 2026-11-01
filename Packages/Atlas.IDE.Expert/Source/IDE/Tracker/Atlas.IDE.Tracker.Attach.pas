@@ -29,7 +29,6 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Attach,
-  Atlas.Core.Debug.Note,
   Atlas.IDE.Tracker.IssuePreview;
 
 type
@@ -66,7 +65,6 @@ type
     procedure Fallback(const ARequest: TAtlasAttachRequest; const AOutcome: TAtlasAttachOutcome);
     procedure DropTemp;
     function ProjectFile: string;
-    class function NoteTexts: TAtlasDebugNoteTexts; static;
   public
     constructor Create(const AHooks: TAtlasIssueAttachHooks);
     destructor Destroy; override;
@@ -84,8 +82,9 @@ type
     function Busy: Boolean;
     /// <summary>issues.attach an?</summary>
     class function Active: Boolean; static;
-    /// <summary>Debug-Notiz des aktuellen Halts; False, wenn das Programm nicht angehalten ist.</summary>
-    class function DebugNote(out AMarkdown: string): Boolean; static;
+    /// <summary>Debug-Notiz des aktuellen Halts mit Dateiname; False, wenn das Programm nicht angehalten ist oder
+    /// kein Modul eine Debug-Sitzung kennt.</summary>
+    class function DebugNote(out AMarkdown, AFileName: string): Boolean; static;
     /// <summary>Exception-Verlauf der Sitzung als Text, neueste zuerst; '' ohne Einträge.</summary>
     class function ExceptionsText(out ACount: Integer): string; static;
   end;
@@ -107,17 +106,14 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Debug.CallStack,
-  Atlas.Core.Debug.Exceptions,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Capture,
   Atlas.UI.Tracker.IssueTip,
   Atlas.UI.Tracker.AttachDialog,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Debug.Session,
-  Atlas.IDE.Debug.Sources,
-  Atlas.IDE.Debug.Exceptions;
+  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Contracts.DebugReport;
 
 // Bild des Formulars im Designer des aktiven Moduls; nil ohne (Datenmodul, FMX, kein Designer).
 function DesignerImage(out AName: string): TBitmap;
@@ -160,14 +156,27 @@ begin
     end;
 end;
 
+/// <summary>Bericht des Debuggers (#1455); nil, solange kein Modul eine Debug-Sitzung kennt.</summary>
+function DebugReport: IAtlasDebugReportSource;
+var
+  mItem: IInterface;
+begin
+  Result := nil;
+  if AtlasModuleRegistry = nil then
+    Exit;
+  for mItem in AtlasModuleRegistry.FindAll(IAtlasDebugReportSource) do
+    if Supports(mItem, IAtlasDebugReportSource, Result) then
+      Exit;
+end;
+
 function DebugProcessId: DWORD;
 var
-  mProcess: IOTAProcess;
+  mReport: IAtlasDebugReportSource;
 begin
   Result := 0;
-  mProcess := TAtlasIdeDebugSession.Process;
-  if mProcess <> nil then
-    Result := mProcess.ProcessId;
+  mReport := DebugReport;
+  if mReport <> nil then
+    Result := mReport.DebuggedProcessId;
 end;
 
 { TAtlasIdeIssueAttach }
@@ -251,109 +260,37 @@ begin
 end;
 
 function TAtlasIdeIssueAttach.ProjectFile: string;
+var
+  mReport: IAtlasDebugReportSource;
 begin
   // Beim Debuggen das gestartete Projekt, sonst das aktive.
-  Result := TAtlasIdeDebugSession.LaunchProject;
+  Result := '';
+  mReport := DebugReport;
+  if mReport <> nil then
+    Result := mReport.LaunchProject;
   if (Result = '') and Assigned(FHooks.Project) then
     Result := FHooks.Project();
 end;
 
-class function TAtlasIdeIssueAttach.NoteTexts: TAtlasDebugNoteTexts;
-begin
-  Result.Title := TAtlasStrings.Text(TAtlasTextId.DebugNoteTitle);
-  Result.Project := TAtlasStrings.Text(TAtlasTextId.DebugNoteProject);
-  Result.Configuration := TAtlasStrings.Text(TAtlasTextId.DebugNoteConfiguration);
-  Result.TargetPlatform := TAtlasStrings.Text(TAtlasTextId.DebugNotePlatform);
-  Result.Time := TAtlasStrings.Text(TAtlasTextId.DebugNoteTime);
-  Result.Thread := TAtlasStrings.Text(TAtlasTextId.DebugNoteThread);
-  Result.Location := TAtlasStrings.Text(TAtlasTextId.DebugNoteLocation);
-  Result.CallStack := TAtlasStrings.Text(TAtlasTextId.DebugNoteCallStack);
-  Result.LastException := TAtlasStrings.Text(TAtlasTextId.DebugNoteLastException);
-  Result.Count := TAtlasStrings.Text(TAtlasTextId.DebugNoteCount);
-  Result.NoLocation := TAtlasStrings.Text(TAtlasTextId.DebugNoteNoLocation);
-end;
-
-class function TAtlasIdeIssueAttach.DebugNote(out AMarkdown: string): Boolean;
+class function TAtlasIdeIssueAttach.DebugNote(out AMarkdown, AFileName: string): Boolean;
 var
-  mThread: IOTAThread;
-  mData: TAtlasDebugNoteData;
-  mFrames: TAtlasDebugFrames;
-  mHistory: TAtlasDebugExceptionHistory;
-  mNewest: TArray<Integer>;
-  mFile: string;
+  mReport: IAtlasDebugReportSource;
 begin
   AMarkdown := '';
-  mThread := TAtlasIdeDebugSession.StoppedThread;
-  if mThread = nil then
-    Exit(False);
-  mData := TAtlasDebugNoteData.Empty;
-  mData.Project := TAtlasIdeDebugSession.LaunchProject;
-  mData.Configuration := TAtlasIdeDebugSession.LaunchConfiguration;
-  mData.TargetPlatform := TAtlasIdeDebugSession.LaunchPlatform;
-  mData.Time := Now;
-  mData.Thread := TAtlasDebugException.Create(0, '', '', mThread.GetOSThreadID,
-    TAtlasIdeDebugSession.ThreadName(mThread), '', 0, '').ThreadText(
-    TAtlasStrings.Text(TAtlasTextId.DebugExceptionsThread));
-  mData.FileName := mThread.CurrentFile;
-  mData.Line := Integer(mThread.CurrentLine);
-  if TAtlasIdeDebugSession.ReadStack(mThread, TAtlasDebugNote.MaxFrames, mFrames) = TAtlasDebugStackRead.Ready then
-  begin
-    TAtlasIdeDebugSources.MarkFrames(mFrames);
-    mData.Frames := mFrames;
-    if Length(mFrames) > 0 then
-      mData.Routine := TAtlasDebugCallStack.RoutineOf(mFrames[0].Header);
-  end;
-  // Ausschnitt von der Platte; ohne Datei bleibt der Ort ohne Code.
-  if mData.FileName <> '' then
-  begin
-    mFile := TAtlasIdeDebugSources.Resolve(mData.FileName);
-    if mFile <> '' then
-      try
-        mData.Source := TTextLines.SplitLines(TAtlasAttachLog.Decode(TFile.ReadAllBytes(mFile)));
-        mData.SourceFirstLine := 1;
-      except
-        on E: EInOutError do
-          mData.Source := nil;
-        on E: EFileStreamError do
-          mData.Source := nil;
-      end;
-  end;
-  mHistory := TAtlasIdeDebugExceptions.History;
-  if mHistory <> nil then
-  begin
-    mNewest := mHistory.Filter('', '');
-    if Length(mNewest) > 0 then
-    begin
-      mData.HasException := True;
-      mData.Exception := mHistory[mNewest[0]];
-    end;
-  end;
-  AMarkdown := TAtlasDebugNote.Markdown(mData, NoteTexts);
-  Result := True;
+  AFileName := '';
+  mReport := DebugReport;
+  Result := (mReport <> nil) and mReport.DebugNote(AMarkdown, AFileName);
 end;
 
 class function TAtlasIdeIssueAttach.ExceptionsText(out ACount: Integer): string;
 var
-  mHistory: TAtlasDebugExceptionHistory;
-  mIndexes: TArray<Integer>;
-  mItems: TAtlasDebugExceptions;
-  mIndex: Integer;
+  mReport: IAtlasDebugReportSource;
 begin
   Result := '';
   ACount := 0;
-  mHistory := TAtlasIdeDebugExceptions.History;
-  if mHistory = nil then
-    Exit;
-  mIndexes := mHistory.Filter('', '');
-  ACount := Length(mIndexes);
-  mItems := nil;
-  for mIndex in mIndexes do
-  begin
-    if Length(mItems) >= MaxExceptions then
-      Break;
-    mItems := mItems + [mHistory[mIndex]];
-  end;
-  Result := TAtlasDebugNote.HistoryText(mItems, MaxExceptions);
+  mReport := DebugReport;
+  if mReport <> nil then
+    Result := mReport.ExceptionsText(MaxExceptions, ACount);
 end;
 
 procedure TAtlasIdeIssueAttach.Execute(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -410,8 +347,7 @@ begin
         end;
       mInput.ProcessId := DebugProcessId;
       mInput.LogFiles := TAtlasAttachLog.Candidates(TAtlasIdeSettings.Current.IssuesAttachLogFiles, ProjectFile);
-      DebugNote(mInput.DebugNote);
-      mInput.DebugNoteName := TAtlasDebugNote.FileName(Now);
+      DebugNote(mInput.DebugNote, mInput.DebugNoteName);
       mInput.ExceptionsText := ExceptionsText(mInput.ExceptionCount);
       mInput.MaxImageWidth := TAtlasIdeSettings.Current.IssuesAttachMaxImageWidth;
       mInput.Extra := mExtra;

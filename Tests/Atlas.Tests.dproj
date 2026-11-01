@@ -558,6 +558,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.FeatureTable.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registry.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.FeatureParts.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Contributions.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registration.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Handshake.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ModuleHosting.Tests.pas"/>
@@ -579,9 +580,11 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Controller.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Declaration.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Declaration.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas"/>
@@ -1111,6 +1114,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.Registration.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.Registry.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.FeatureParts.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.Contributions.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Modules\Atlas.Core.Modules.Handshake.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Contract.pas"/>
