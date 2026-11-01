@@ -1167,7 +1167,8 @@ begin
     begin
       AddLabel(AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewAttachments,
         [Length(FDetails.Attachments)])), True).Font.Color := ToColor(FColors.Muted);
-      FAttachments := AddList(TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnName),
+      FAttachments := AddList(TArray<string>.Create(
+        TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnName),
         TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnSize)));
       FAttachments.Items.BeginUpdate;
       try
