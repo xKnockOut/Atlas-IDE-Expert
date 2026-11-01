@@ -1184,6 +1184,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.ToolCheck.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.ServerCheck.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.BranchPlan.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.BranchNames.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Null.pas"/>
@@ -1198,6 +1199,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.ToolCheck.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.ServerCheck.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.BranchPlan.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.BranchNames.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.Internals.SvnLayout.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.Internals.SvnExternals.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.WorkingCopies.Tests.pas"/>

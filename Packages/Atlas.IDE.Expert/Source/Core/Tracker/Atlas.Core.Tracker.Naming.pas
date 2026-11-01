@@ -9,9 +9,7 @@
 //   {kurztitel}; danach nach den Regeln von git check-ref-format bereinigt,
 //   damit der Name für Git und SVN gültig ist.
 // - Commit-Präfix aus issues.commitPattern ({kennung} mit „#“).
-// - Basen für „Beginnen“ (#1286): issues.branchBase, sonst der Hauptbranch des
-//   Projekts (vcs.projects bzw. Abschnitt vcs der .atlas), sonst geraten
-//   (Git main, dann master; SVN trunk).
+// - Gültigkeit und Basen eines Branchs: Atlas.Core.Vcs.BranchNames (Base).
 // - Kennung aus einem Branch-Namen (Branch → Ticket): GitHub die Nummer als
 //   eigenes Stück („feature/753-x“ → #753), YouTrack „ATL-123“.
 
@@ -30,14 +28,8 @@ type
     SvnBranchPattern = '{kennung}-{kurztitel}';
     /// <summary>Vorgabe für issues.commitPattern.</summary>
     CommitPattern = '{kennung} ';
-    GitBase = 'main';
-    /// <summary>Zweiter Versuch unter Git, wenn es main nicht gibt.</summary>
-    GitBaseFallback = 'master';
-    SvnBase = 'trunk';
     /// <summary>Höchstens so viele Wörter im Kurztitel.</summary>
     ShortTitleWords = 3;
-    /// <summary>Höchstlänge eines Branch-Namens.</summary>
-    MaxBranchLength = 100;
   public
     /// <summary>Erste drei Wörter, klein, nur a–z, 0–9 und „-“; '' ohne Wörter.</summary>
     class function ShortTitle(const ATitle: string): string; static;
@@ -52,13 +44,6 @@ type
     /// <summary>APrefix vor AMessage; unverändert, wenn APrefix leer ist oder AMessage schon damit (oder mit der
     /// Kennung ohne Leerzeichen) beginnt.</summary>
     class function Prefixed(const AMessage, APrefix: string): string; static;
-    /// <summary>Name nach git check-ref-format: nicht leer, ohne Leer- und Steuerzeichen, ~ ^ : ? * [ \, "..",
-    /// "@{", "//"; kein "/", "-" oder "." am Anfang, kein "/" oder "." am Ende, kein ".lock" am Ende eines Stücks.
-    /// </summary>
-    class function ValidBranchName(const AName: string): Boolean; static;
-    /// <summary>Basen der Reihe nach: ABranchBase (issues.branchBase, ausdrücklich), sonst AMainBranch (Hauptbranch
-    /// des Projekts, #1286), sonst geraten: ASvn trunk, Git main und master.</summary>
-    class function Bases(ASvn: Boolean; const ABranchBase, AMainBranch: string): TArray<string>; static;
     /// <summary>Kennung des Issues, an dem der Branch arbeitet; '' ohne. AProvider "github": Nummer als eigenes
     /// Stück (nach Anfang, "/", "-", "_" oder "#", vor Ende, "-" oder "_") → "#753". "youtrack": "&lt;Projekt&gt;-
     /// &lt;Nummer&gt;" (AProject leer: jedes Kürzel aus Buchstaben und Ziffern).</summary>
@@ -66,6 +51,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Vcs.BranchNames;
 
 const
   // Paare: Zeichen und Ersatz. Großbuchstaben mit, weil LowerCase nur ASCII kennt.
@@ -77,18 +65,6 @@ const
   FoldingMore: array[0..27] of string = (
     'û', 'u', 'ý', 'y', 'ÿ', 'y', 'À', 'a', 'Á', 'a', 'Â', 'a', 'Ç', 'c', 'È', 'e',
     'É', 'e', 'Ê', 'e', 'Î', 'i', 'Ñ', 'n', 'Ó', 'o', 'Ô', 'o');
-
-class function TAtlasTrackerNaming.Bases(ASvn: Boolean; const ABranchBase, AMainBranch: string): TArray<string>;
-begin
-  if Trim(ABranchBase) <> '' then
-    Result := TArray<string>.Create(Trim(ABranchBase))
-  else if Trim(AMainBranch) <> '' then
-    Result := TArray<string>.Create(Trim(AMainBranch))
-  else if ASvn then
-    Result := TArray<string>.Create(SvnBase)
-  else
-    Result := TArray<string>.Create(GitBase, GitBaseFallback);
-end;
 
 function IsAsciiAlnum(AChar: Char): Boolean;
 begin
@@ -241,9 +217,9 @@ begin
       Result := Result + '/';
     Result := Result + Part;
   end;
-  if Length(Result) > TAtlasTrackerNaming.MaxBranchLength then
+  if Length(Result) > TAtlasVcsBranchNames.MaxLength then
   begin
-    Result := Copy(Result, 1, TAtlasTrackerNaming.MaxBranchLength);
+    Result := Copy(Result, 1, TAtlasVcsBranchNames.MaxLength);
     while (Result <> '') and CharInSet(Result[Length(Result)], ['.', '-', '/']) do
       Delete(Result, Length(Result), 1);
   end;
@@ -252,7 +228,7 @@ end;
 class function TAtlasTrackerNaming.BranchName(const APattern: string; const AIssue: TAtlasTrackerIssue): string;
 begin
   Result := Sanitize(Fill(Trim(APattern), BranchKey(AIssue.Key), AIssue));
-  if not ValidBranchName(Result) then
+  if not TAtlasVcsBranchNames.Valid(Result) then
     Result := '';
 end;
 
@@ -278,27 +254,6 @@ begin
   then
     Exit;
   Result := APrefix + AMessage;
-end;
-
-class function TAtlasTrackerNaming.ValidBranchName(const AName: string): Boolean;
-var
-  Index: Integer;
-  Part: string;
-begin
-  Result := False;
-  if (AName = '') or CharInSet(AName[1], ['/', '-', '.']) or CharInSet(AName[Length(AName)], ['/', '.']) then
-    Exit;
-  if (Pos('..', AName) > 0) or (Pos('@{', AName) > 0) or (Pos('//', AName) > 0) or (AName = '@') then
-    Exit;
-  for Index := 1 to Length(AName) do
-    case AName[Index] of
-      #0..' ', '~', '^', ':', '?', '*', '[', '\', #127:
-        Exit;
-    end;
-  for Part in AName.Split(['/']) do
-    if (Part = '') or (Part[1] = '.') or SameText(Copy(Part, Length(Part) - 4, 5), '.lock') then
-      Exit;
-  Result := True;
 end;
 
 function GitHubKeyOf(const ABranch: string): string;

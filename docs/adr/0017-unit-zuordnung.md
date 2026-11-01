@@ -68,14 +68,10 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Tracker` | Seiten der Module im Optionsdialog (Entscheidung 3, Paket 2) |
 | `Atlas.UI.Settings.Page` | `Atlas.IDE.Welcome` | Seiten der Module im Optionsdialog (Entscheidung 3) |
 | `Atlas.UI.Settings.QueryDialog` | `Atlas.IDE.Tracker` | Abfragedialog gehört zum Modul Tracker (Paket 2) |
-| `Atlas.IDE.Vcs.Branching` | `Atlas.IDE.Tracker` | Branch-Namen aus Issues über einen Vertrag (Paket 2) |
 | `Atlas.IDE.Vcs.Branching` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
-| `Atlas.UI.Vcs.BranchDialog` | `Atlas.IDE.Tracker` | Branch-Namen aus Issues über einen Vertrag (Paket 2) |
 | `Atlas.IDE.Vcs.WorkingCopies` | `Atlas.IDE.Welcome` | Umbau der Willkommensseite |
 | `Atlas.IDE.Contracts.Rules` | `Atlas.IDE.Base` | Vertrag ohne `Atlas.Core.Projects.Baseline` (eigener Record im Vertrag) |
 | `Atlas.IDE.Contracts.Tests` | `Atlas.IDE.Base` | Vertrag ohne `Atlas.Core.Projects.Summary` (eigener Record im Vertrag) |
-| `Atlas.Core.Tracker.BlameLinks` | `Atlas.IDE.Bookmarks` | Vertrag oder Base-Funktion für `MethodAt` (Paket 2) |
-| `Atlas.Core.Welcome.Continue` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
 | `Atlas.Core.Welcome.Issues` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
 | `Atlas.Core.Welcome.Saved` | `Atlas.IDE.Bookmarks` | Umbau der Willkommensseite |
 | `Atlas.Core.Welcome.TestResults` | `Atlas.IDE.Tracker` | Umbau der Willkommensseite |
@@ -366,6 +362,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Updates.Check` | `Core/Updates/Atlas.Core.Updates.Check.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Contract` | `Core/Updates/Atlas.Core.Updates.Contract.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Vcs.Adapters.ProcessRunner` | `Core/Vcs/Atlas.Core.Vcs.Adapters.ProcessRunner.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.BranchNames` | `Core/Vcs/Atlas.Core.Vcs.BranchNames.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.BranchPlan` | `Core/Vcs/Atlas.Core.Vcs.BranchPlan.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.Composition` | `Core/Vcs/Atlas.Core.Vcs.Composition.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.Contract` | `Core/Vcs/Atlas.Core.Vcs.Contract.pas` | Ordner `Core/Vcs` |
@@ -696,12 +693,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.Board` | `IDE/Tracker/Atlas.IDE.Tracker.Board.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BoardWindow` | `IDE/Tracker/Atlas.IDE.Tracker.BoardWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CodeLinks` | `IDE/Tracker/Atlas.IDE.Tracker.CodeLinks.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Composition` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CommentAssist` | `IDE/Tracker/Atlas.IDE.Tracker.CommentAssist.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Development` | `IDE/Tracker/Atlas.IDE.Tracker.Development.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Notify` | `IDE/Tracker/Atlas.IDE.Tracker.Notify.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearch.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Session` | `IDE/Tracker/Atlas.IDE.Tracker.Session.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.TimeTracking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.AttachDialog` | `UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas` | Ordner `UI/Tracker` |

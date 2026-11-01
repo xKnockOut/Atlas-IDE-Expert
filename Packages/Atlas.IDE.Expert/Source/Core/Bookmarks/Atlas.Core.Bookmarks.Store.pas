@@ -171,9 +171,6 @@ type
     /// </summary>
     class function SameFile(const A, B: string): Boolean; static;
     class function NewId: string; static;
-    /// <summary>Innerster Methodenrumpf um ALine (0-basiert); False außerhalb jeder Methode.</summary>
-    class function MethodAt(const APlaces: TArray<TAtlasMethodPlace>; ALine: Integer;
-      out APlace: TAtlasMethodPlace): Boolean; static;
     /// <summary>Anker, Methode, Parametertypen und Abstand für ALine von AText in ABookmark.</summary>
     class procedure Capture(const AText: string; ALine: Integer; var ABookmark: TAtlasBookmark); static;
     /// <summary>Sucht ABookmark in AText (Ablauf oben). ALine ist die gefundene Zeile, bei Orphaned („nicht
@@ -436,7 +433,7 @@ begin
   ABookmark.Method := '';
   ABookmark.Signature := '';
   ABookmark.Offset := 0;
-  if TAtlasBookmarks.MethodAt(AText.Places, ALine, Place) then
+  if TAtlasMethodToggle.BodyAt(AText.Places, ALine, Place) then
   begin
     ABookmark.Method := Place.Name;
     ABookmark.Signature := Place.Signature;
@@ -854,22 +851,6 @@ begin
     Exit(LowerCase(IntToHex(Trunc(Now * 86400000), 12) + IntToHex(Random(MaxInt), 8)));
   Result := LowerCase(GUIDToString(Guid));
   Result := Copy(Result, 2, Length(Result) - 2);
-end;
-
-class function TAtlasBookmarks.MethodAt(const APlaces: TArray<TAtlasMethodPlace>; ALine: Integer;
-  out APlace: TAtlasMethodPlace): Boolean;
-var
-  Place: TAtlasMethodPlace;
-begin
-  Result := False;
-  APlace := Default(TAtlasMethodPlace);
-  for Place in APlaces do
-    if Place.IsBody and (ALine >= Place.FirstLine) and (ALine <= Place.LastLine) and
-      (not Result or (Place.LastLine - Place.FirstLine < APlace.LastLine - APlace.FirstLine)) then
-    begin
-      APlace := Place;
-      Result := True;
-    end;
 end;
 
 class procedure TAtlasBookmarks.Capture(const AText: string; ALine: Integer; var ABookmark: TAtlasBookmark);
