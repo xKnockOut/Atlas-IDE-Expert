@@ -47,11 +47,9 @@
 // issues.board.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
 // der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
-// Untermenü „Aufgaben“ (#900): Beim Öffnen des Atlas-Menüs füllt
-// OnTasksMenu es mit den Projektaufgaben bzw. blendet es aus (ohne Haken oder
-// mit tasks.enabled aus).
 // Einträge der Module (#1455): Jedes Modul nennt sie über IAtlasMenuSource
-// (Befehl und Untermenü); RootClick baut sie bei jedem Öffnen neu auf, so
+// (Befehl oder eigener Eintrag, Untermenü; etwa „Compiler-Schalter“ und das
+// Untermenü „Aufgaben“ des Moduls Build); RootClick baut sie bei jedem Öffnen neu auf, so
 // kommen und gehen sie mit ihrem Modul.
 // Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
 // Kopieren, Änderungen, Anzeige mit den Schaltern, Index, Hilfe und Diagnose).
@@ -122,7 +120,6 @@ type
     /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
     FDataFlowItems: TArray<TMenuItem>;
     /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
-    FCompilerSwitchesItem: TMenuItem;
     FViewAtlas: TMenuItem;
     FViewProblems: TMenuItem;
     /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
@@ -144,8 +141,6 @@ type
     FImpactItem: TMenuItem;
     FAffectedTestsItem: TMenuItem;
     /// <summary>Untermenü „Aufgaben“ (#900).</summary>
-    FTasksGroup: TMenuItem;
-    FOnTasksMenu: TProc<TMenuItem>;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
@@ -168,7 +163,6 @@ type
     /// <summary>Trennlinien und Sichtbarkeit eines Untermenüs der Module.</summary>
     class procedure TidyModuleSection(AGroup: TMenuItem); static;
     procedure IssueAttachClick(Sender: TObject);
-    procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -203,8 +197,6 @@ type
     property OnSetup: TProc read FOnSetup write FOnSetup;
     /// <summary>„Tastenkürzel-Übersicht…“ (#520).</summary>
     property OnKeyMap: TProc read FOnKeyMap write FOnKeyMap;
-    /// <summary>Untermenü „Aufgaben“ beim Öffnen füllen bzw. ausblenden (#900); ohne Haken ausgeblendet.</summary>
-    property OnTasksMenu: TProc<TMenuItem> read FOnTasksMenu write FOnTasksMenu;
     /// <summary>Eintrag „Tastenkürzel-Übersicht…“ nach keys.overview ein- oder ausblenden.</summary>
     procedure UpdateKeyMap;
     /// <summary>„An Issue anhängen …“ (#1276).</summary>
@@ -248,7 +240,6 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.UnitSearch.Commands,
@@ -351,8 +342,6 @@ begin
   FModuleAnchor := AddItem('', 0, nil);
   FModuleAnchor.Visible := False;
   FIssueAttachItem := AddItem(TAtlasTextId.AttachCommand, 0, IssueAttachClick);
-  // Wirksame Compiler-Schalter an der Cursorposition (#558).
-  FCompilerSwitchesItem := AddItem(TAtlasTextId.CompilerSwitchesCommand, 0, CompilerSwitchesClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -386,10 +375,6 @@ begin
     AddItem(TAtlasTextId.MenuDataFlowTargets, 11, ResultsClick)];
   FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
-  // Projektaufgaben (#900): Inhalt beim Öffnen (RootClick); ein Platzhalter, damit der Pfeil erscheint.
-  FTasksGroup := AddGroup(TAtlasTextId.MenuGroupTasks);
-  AddItem(TAtlasTextId.TasksMenuEmpty, 0, nil).Enabled := False;
-  FTasksGroup.Visible := False;
   AddGroup(TAtlasTextId.MenuGroupCopy);
   AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
@@ -582,12 +567,6 @@ begin
     UpdateModuleItems;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
-    if FTasksGroup <> nil then
-    begin
-      FTasksGroup.Visible := Assigned(FOnTasksMenu);
-      if Assigned(FOnTasksMenu) then
-        FOnTasksMenu(FTasksGroup);
-    end;
     // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
     FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
     Names := '';
@@ -840,9 +819,6 @@ begin
   // Datenfluss (#690) nach navigation.dataFlow.
   for Item in FDataFlowItems do
     Item.Visible := TAtlasIdeSettings.Current.DataFlow;
-  // Compiler-Schalter (#558) nach build.compilerSwitches.
-  if FCompilerSwitchesItem <> nil then
-    FCompilerSwitchesItem.Visible := TAtlasIdeSettings.Current.BuildCompilerSwitches;
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
@@ -1063,15 +1039,23 @@ var
   mIndex: Integer;
   mId: string;
   mCommand: TAtlasModuleCommand;
+  mEntry: TAtlasMenuEntry;
 begin
   mIndex := TMenuItem(Sender).Tag;
   if (mIndex < 0) or (mIndex > High(FModuleIds)) then
     Exit;
   mId := FModuleIds[mIndex];
-  if not TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mId, mCommand) or not Assigned(mCommand.Run) then
-    Exit;
-  TAtlasIdeShortcutTips.Invoked(mId);
-  TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
+  // Beim Klick neu suchen (Regel 3): Befehl, sonst Eintrag ohne Befehl.
+  if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mId, mCommand) then
+  begin
+    if not Assigned(mCommand.Run) then
+      Exit;
+    TAtlasIdeShortcutTips.Invoked(mId);
+    TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
+  end
+  else if TAtlasModuleContributions.FindMenuEntry(AtlasModuleRegistry, TAtlasMenuPlace.AtlasMenu, mId, mEntry) and
+    Assigned(mEntry.Run) then
+    TAtlasGuard.Run(TAtlasFeature.Menu, mEntry.Run);
 end;
 
 procedure TAtlasMainMenu.UpdateModuleItems;
@@ -1109,6 +1093,16 @@ begin
       mItem.OnClick := ModuleItemClick;
       mItem.Visible := TAtlasModuleContributions.IsVisible(mCommand);
       FModuleIds := FModuleIds + [mCommand.Id];
+    end
+    else if mEntry.Caption <> '' then
+    begin
+      // Eintrag ohne Befehl (etwa je Projektaufgabe, #900); ohne Run ausgegraut.
+      mItem := TMenuItem.Create(FRoot);
+      mItem.Caption := mEntry.Caption;
+      mItem.Tag := Length(FModuleIds);
+      mItem.OnClick := ModuleItemClick;
+      mItem.Enabled := Assigned(mEntry.Run);
+      FModuleIds := FModuleIds + [mEntry.CommandId];
     end;
     if mItem = nil then
       Continue;
@@ -1188,16 +1182,6 @@ begin
     end);
 end;
 
-
-procedure TAtlasMainMenu.CompilerSwitchesClick(Sender: TObject);
-begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.CompilerSwitches');
-  TAtlasGuard.Run(TAtlasFeature.Build,
-    procedure
-    begin
-      TAtlasIdeCompilerSwitches.ShowWindow;
-    end);
-end;
 
 procedure TAtlasMainMenu.OutlineClick(Sender: TObject);
 begin

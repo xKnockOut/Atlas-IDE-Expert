@@ -6,7 +6,8 @@
 //   Zeitgeber merkt Projektwechsel und geänderte Dateien und lädt neu; dann
 //   werden Tasten und Statuszeilen neu angelegt. Verworfene Einträge stehen
 //   einmal in der Meldungsansicht (Gruppe Atlas).
-// - Start über Befehlspalette (Choose), Menü Atlas › Aufgaben (FillMenu),
+// - Start über Befehlspalette (Choose), Menü Atlas › Aufgaben (MenuItems,
+//   RunFromMenu; das Modul Build baut daraus Einträge ohne Befehl, #1455),
 //   Taste je Aufgabe (key; Konflikte meldet TAtlasIdeKeyBinding), „Alle
 //   Prüfungen ausführen“ (Gruppe check nacheinander bzw. mit
 //   tasks.runChecksParallel gleichzeitig), „Letzte Aufgabe wiederholen“,
@@ -39,7 +40,6 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Vcl.Menus,
   Vcl.ExtCtrls,
   Atlas.Core.Build.Events,
   Atlas.Core.Status.Contract,
@@ -52,6 +52,12 @@ uses
   Atlas.IDE.Tasks.Output;
 
 type
+  /// <summary>Eintrag im Untermenü Atlas › Aufgaben.</summary>
+  TAtlasTaskMenuItem = record
+    Name: string;
+    Caption: string;
+  end;
+
   /// <summary>Führt die (mit Variablen eingesetzte) Aufgabe aus, nicht im Hauptthread. ACancelled wird im Takt
   /// gefragt; ACodePage für Ausgaben, die kein UTF-8 sind (0 = OEM-Codepage); jede Zeile geht an AOnLine. Die
   /// Kompositionswurzel reicht den Adapter (Atlas.Core.Tasks.Adapters.Process) hinein (Rollenmatrix).</summary>
@@ -145,8 +151,6 @@ type
     FLastProject: string;
     FOnRebuild: TAtlasTasksRebuildFunc;
     FOnFinished: TAtlasTasksFinishedProc;
-    /// <summary>Namen der Einträge im Untermenü Aufgaben, je Tag.</summary>
-    FMenuNames: TArray<string>;
     /// <summary>TaskNamesOf: Projekt (klein) → Stand der Dateien und Namen, damit die Willkommensseite nicht bei
     /// jedem Neuaufbau die atlas.json liest.</summary>
     FNameSignatures: TDictionary<string, string>;
@@ -180,7 +184,6 @@ type
     procedure WorkerFinished(AId: Integer; const ARun: TAtlasTaskRun);
     procedure ApplyProblems(const ARun: TAtlasTaskRun; const AProject: string);
     function LastText(const AProject, AName: string): string;
-    procedure MenuItemClick(Sender: TObject);
   public
     /// <summary>AProcess startet den Prozess einer Aufgabe (Kompositionswurzel: TAtlasTaskProcess.Run).</summary>
     constructor Create(const AProcess: TAtlasTaskProcessRun);
@@ -206,12 +209,18 @@ type
     procedure ToggleOutput;
     /// <summary>Palette: Befunde je Aufgabe ein- oder ausblenden.</summary>
     procedure ChooseFindings;
-    /// <summary>Untermenü Atlas › Aufgaben neu füllen.</summary>
-    procedure FillMenu(AMenu: TMenuItem);
+    /// <summary>Einträge des Untermenüs Atlas › Aufgaben für das aktive Projekt: Name und Text („Gruppe: Name
+    /// (letzter Lauf)“ mit Taste).</summary>
+    function MenuItems: TArray<TAtlasTaskMenuItem>;
+    /// <summary>Aufgabe AName aus dem Menü starten; ein Grund für „nicht gestartet“ erscheint in der
+    /// Meldungsansicht.</summary>
+    procedure RunFromMenu(const AName: string);
     /// <summary>Vor einem Compile (Compile-Ereignisse): True bricht ab, AReason für das Meldungsfenster.</summary>
     function BeforeCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean;
     /// <summary>Einstellungen übernehmen (tasks.onlyFindings, Tasten).</summary>
     procedure ApplySettings;
+    /// <summary>Befunde aller Aufgaben aus dem Problemspeicher entfernen (beim Stoppen der Aufgaben).</summary>
+    class procedure ClearFindings; static;
     /// <summary>Läuft eine Aufgabe?</summary>
     function Busy: Boolean;
     /// <summary>Teilnehmer der Compile-Ereignisse, der an AGet() weitergibt (nil = nichts).</summary>
@@ -1438,54 +1447,41 @@ begin
   Window.ShowOver(PaletteArea);
 end;
 
-procedure TAtlasIdeTasks.MenuItemClick(Sender: TObject);
-var
-  Index: Integer;
-  Reason: string;
+class procedure TAtlasIdeTasks.ClearFindings;
 begin
-  Index := TMenuItem(Sender).Tag;
-  if (Index < 0) or (Index > High(FMenuNames)) then
-    Exit;
-  TAtlasGuard.Run(TAtlasFeature.Tasks,
-    procedure
-    begin
-      if not RunByName(FMenuNames[Index], Reason) and (Reason <> '') then
-        Say(Reason, True);
-    end);
+  if TAtlasProblemsController.Current <> nil then
+    TAtlasProblemsController.Current.ClearTasks;
 end;
 
-procedure TAtlasIdeTasks.FillMenu(AMenu: TMenuItem);
+procedure TAtlasIdeTasks.RunFromMenu(const AName: string);
+var
+  Reason: string;
+begin
+  if not RunByName(AName, Reason) and (Reason <> '') then
+    Say(Reason, True);
+end;
+
+function TAtlasIdeTasks.MenuItems: TArray<TAtlasTaskMenuItem>;
 var
   Tasks: TAtlasTaskDefinitions;
   Task: TAtlasTaskDefinition;
-  Item: TMenuItem;
+  Item: TAtlasTaskMenuItem;
   Key: string;
 begin
-  AMenu.Clear;
+  Result := nil;
   Tasks := Definitions;
   Key := FProject;
   if Key = '' then
     Key := NoProject;
-  FMenuNames := nil;
   for Task in Tasks do
   begin
     // Ohne ShortCut am Eintrag: Die Taste belegt TAtlasIdeKeyBinding (Konfliktmeldung), hier steht sie nur.
-    Item := TMenuItem.Create(AMenu);
+    Item.Name := Task.Name;
     Item.Caption := TAtlasTaskTexts.GroupName(Task.Group) + ': ' + Task.Name + ' (' + LastText(Key, Task.Name) +
       ')';
     if Task.KeyText <> '' then
       Item.Caption := Item.Caption + #9 + Task.KeyText;
-    Item.Tag := Length(FMenuNames);
-    Item.OnClick := MenuItemClick;
-    FMenuNames := FMenuNames + [Task.Name];
-    AMenu.Add(Item);
-  end;
-  if Length(Tasks) = 0 then
-  begin
-    Item := TMenuItem.Create(AMenu);
-    Item.Caption := TAtlasStrings.Text(TAtlasTextId.TasksMenuEmpty);
-    Item.Enabled := False;
-    AMenu.Add(Item);
+    Result := Result + [Item];
   end;
 end;
 

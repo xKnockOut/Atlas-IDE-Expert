@@ -28,6 +28,8 @@ type
     procedure EditorViewListenersRun;
     [Test]
     procedure StoppedModuleContributesNothing;
+    [Test]
+    procedure MenuEntriesWithoutCommand;
   end;
 
 implementation
@@ -340,6 +342,61 @@ begin
   mFailures := nil;
   mScope := nil;
   mRegistry.UnregisterModule('atlas.a');
+  mRegistry := nil;
+end;
+
+type
+  /// <summary>Einträge ohne Befehl, etwa je Projektaufgabe.</summary>
+  TDynamicSource = class(TInterfacedObject, IAtlasMenuSource)
+  public
+    Runs: Integer;
+    function MenuEntries: TArray<TAtlasMenuEntry>;
+  end;
+
+function TDynamicSource.MenuEntries: TArray<TAtlasMenuEntry>;
+var
+  mEntry: TAtlasMenuEntry;
+begin
+  mEntry := Default(TAtlasMenuEntry);
+  mEntry.CommandId := 'task:Prüfen';
+  mEntry.Section := 'Aufgaben';
+  mEntry.Caption := 'Prüfen';
+  mEntry.Run :=
+    procedure
+    begin
+      Inc(Runs);
+    end;
+  Result := [mEntry];
+end;
+
+procedure TModuleContributionsTests.MenuEntriesWithoutCommand;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mDynamic: TDynamicSource;
+  mRef: IInterface;
+  mEntry: TAtlasMenuEntry;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  Provide(mScope, TSource.Create('A', False, ''));
+  mDynamic := TDynamicSource.Create;
+  mRef := mDynamic as IAtlasMenuSource;
+  mScope.Provide(IAtlasMenuSource, mRef);
+  Assert.IsTrue(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'TASK:prüfen', mEntry));
+  Assert.AreEqual('Prüfen', mEntry.Caption);
+  mEntry.Run();
+  Assert.AreEqual(1, mDynamic.Runs);
+  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'A.Run', mEntry),
+    'Einträge mit Befehl zählen nicht');
+  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.EditorContext, 'task:Prüfen',
+    mEntry), 'nur am eigenen Platz');
+  mEntry := Default(TAtlasMenuEntry);
+  mDynamic := nil;
+  mRef := nil;
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.AtlasMenu, 'task:Prüfen', mEntry));
   mRegistry := nil;
 end;
 

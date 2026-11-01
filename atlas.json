@@ -33,7 +33,8 @@
         "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
         "Atlas.IDE.CodeInsight.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Debug.Composition -> Atlas.Core.*"
+        "Atlas.IDE.Debug.Composition -> Atlas.Core.*",
+        "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*"
       ]
     },
     "architecture-contract-content": {

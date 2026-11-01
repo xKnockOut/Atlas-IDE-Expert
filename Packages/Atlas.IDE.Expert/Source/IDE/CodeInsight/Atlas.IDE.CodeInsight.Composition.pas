@@ -71,7 +71,6 @@ uses
   Atlas.IDE.Build.ReleaseGuard,
   Atlas.IDE.Build.Gate,
   Atlas.IDE.Build.Summary,
-  Atlas.IDE.Build.OpenBuild,
   Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
@@ -168,7 +167,6 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.QuickActions,
-  Atlas.Core.StartProfiles.Store,
   Atlas.UI.Welcome.Frame,
   Atlas.Core.Commands.Palette,
   Atlas.IDE.Welcome.Search,
@@ -217,12 +215,10 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Providers.Expression,
-  Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Editor.Hide,
-  Atlas.IDE.StartProfiles.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.IDE.Editor.WorkspaceEdit,
@@ -264,10 +260,7 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Tests.Runner,
-  Atlas.IDE.Tasks.Runner,
-  Atlas.Core.Tasks.Definitions,
-  Atlas.Core.Tasks.Runs,
-  Atlas.Core.Tasks.Adapters.Process,
+  Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens;
 
@@ -306,7 +299,6 @@ var
   BuildInbox: TAtlasIdeBuildInbox;
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen); lebt mit den
   // Compile-Ereignissen.
-  OpenBuild: TAtlasIdeOpenBuild;
   UnitRename: TAtlasIdeUnitRename;
   // Hinweis „Prüfregeln sind aus“ (#1454): Kern, meldet sich gerade bei ausgeschaltetem Modul Prüfregeln.
   RuleChecksNotice: TAtlasIdeRuleChecksNotice;
@@ -318,7 +310,6 @@ var
   TestDebugger: TAtlasIdeTestDebugger;
   TestsLens: TAtlasIdeTestsLens;
   // Projektaufgaben aus atlas.json (#900), abschaltbar über tasks.enabled.
-  ProjectTasks: TAtlasIdeTasks;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
   // Tastenkürzel der Editorbefehle (#399).
@@ -979,11 +970,6 @@ begin
   Result := TAtlasIdeSettings.Current.BaselineUpdate;
 end;
 
-function CompilerSwitchesVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.BuildCompilerSwitches;
-end;
-
 function DataFlowVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DataFlow;
@@ -1493,33 +1479,6 @@ begin
   Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current) and (TestDebugger <> nil);
 end;
 
-/// <summary>Befehl „Startprofil: …“ (#575) sichtbar?</summary>
-function StartProfilesVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.StartProfiles and TAtlasIdeStartProfiles.Started;
-end;
-
-/// <summary>Befehle der Projektaufgaben (#900) sichtbar?</summary>
-function TasksVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TasksEnabled and (ProjectTasks <> nil);
-end;
-
-/// <summary>AProc der Projektaufgaben (#900), abgesichert; ohne Läufer nichts.</summary>
-function TasksCommand(const AProc: TProc<TAtlasIdeTasks>): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      if ProjectTasks <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Tasks,
-          procedure
-          begin
-            AProc(ProjectTasks);
-          end);
-    end;
-end;
-
 procedure RegisterPalette;
 
   procedure Add(const AId: string; ATextId: TAtlasTextId; const AProc: TProc); overload;
@@ -1706,9 +1665,6 @@ begin
   Add('Atlas.UndoChange', TAtlasTextId.UndoMenu, TAtlasIdeUndo.UndoLast);
   Add('Atlas.RedoChange', TAtlasTextId.RedoMenu, TAtlasIdeUndo.RedoLast);
   Add('Atlas.ChangeList', TAtlasTextId.UndoListMenu, TAtlasIdeUndo.ShowList);
-  // Wirksame Compiler-Schalter (#558); nur sichtbar, solange build.compilerSwitches an ist.
-  Add('Atlas.CompilerSwitches', TAtlasTextId.CompilerSwitchesCommand,
-    Guarded(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible);
   // Befehle der Module (Debugger u. a., #1455) fragt die Palette selbst bei der Registry.
   // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
   Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
@@ -2059,46 +2015,6 @@ begin
       if TestDebugger <> nil then
         TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.DebugAtCursor);
     end, TestDebugVisible);
-  // Projektaufgaben (#900): sichtbar, solange tasks.enabled an ist und der Läufer läuft.
-  Add('Atlas.RunTask', TAtlasTextId.TasksRunCommand,
-    TasksCommand(
-      procedure(ATasks: TAtlasIdeTasks)
-      begin
-        ATasks.Choose;
-      end), TasksVisible);
-  Add('Atlas.RunChecks', TAtlasTextId.TasksRunChecksCommand,
-    TasksCommand(
-      procedure(ATasks: TAtlasIdeTasks)
-      begin
-        ATasks.RunChecks;
-      end), TasksVisible);
-  Add('Atlas.RepeatTask', TAtlasTextId.TasksRepeatCommand,
-    TasksCommand(
-      procedure(ATasks: TAtlasIdeTasks)
-      begin
-        ATasks.RepeatLast;
-      end), TasksVisible);
-  Add('Atlas.CancelTasks', TAtlasTextId.TasksCancelCommand,
-    TasksCommand(
-      procedure(ATasks: TAtlasIdeTasks)
-      begin
-        ATasks.CancelAll;
-      end), TasksVisible);
-  Add('Atlas.TasksOutput', TAtlasTextId.TasksOutputCommand,
-    TasksCommand(
-      procedure(ATasks: TAtlasIdeTasks)
-      begin
-        ATasks.ToggleOutput;
-      end), TasksVisible);
-  Add('Atlas.TasksFindings', TAtlasTextId.TasksFindingsCommand,
-    TasksCommand(
-      procedure(ATasks: TAtlasIdeTasks)
-      begin
-        ATasks.ChooseFindings;
-      end), TasksVisible);
-  // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
-  Add('Atlas.StartProfile', TAtlasTextId.StartProfilesCommand,
-    Guarded(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible);
   // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
   // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
   Add('Atlas.Continue', TAtlasTextId.WelcomeContinueCommand,
@@ -2515,12 +2431,7 @@ begin
     begin
       Result := ReleaseSettings();
     end));
-  // Projektaufgaben vor dem Build (#900, tasks.beforeBuild); ohne Läufer (tasks.enabled aus) nichts.
-  Events.Add(TAtlasIdeTasks.CreateParticipant(
-    function: TAtlasIdeTasks
-    begin
-      Result := ProjectTasks;
-    end));
+  // Projektaufgaben vor dem Build (#900) meldet das Modul Build selbst an und ab (#1455).
   // Prüfung vor dem Kompilieren (#529): geänderte Units über den laufenden Server, nur Builds des Benutzers.
   Events.Add(TAtlasIdeBuildGate.CreateParticipant(
     function: TAtlasGateSettings
@@ -3012,16 +2923,6 @@ end;
 procedure StartRuleChecksNotice;
 begin
   RuleChecksNotice := TAtlasIdeRuleChecksNotice.Create;
-end;
-
-procedure StartOpenBuild;
-begin
-  OpenBuild := TAtlasIdeOpenBuild.Create(Compile.Events,
-    procedure(AText: string)
-    begin
-      if Manager <> nil then
-        Manager.Report(AText);
-    end);
 end;
 
 /// <summary>Atlas-Editorleiste (#1101): Palette, Befunde, Verlauf und Meldungen über Hooks (kein Feature-Zyklus).
@@ -3760,99 +3661,6 @@ begin
     TAtlasProblemsController.Current.ClearTests;
 end;
 
-/// <summary>Prozessstart der Projektaufgaben (Adapter, #900); eigene Routine, damit die Referenz nichts aus
-/// StartTasks einfängt.</summary>
-function TaskProcess: TAtlasTaskProcessRun;
-begin
-  Result :=
-    function(const ATask: TAtlasTaskDefinition; ACodePage: Integer; const ACancelled: TFunc<Boolean>;
-      const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult
-    begin
-      Result := TAtlasTaskProcess.Run(ATask, ACodePage, ACancelled, AOnLine);
-    end;
-end;
-
-/// <summary>Projektaufgaben (#900): Läufer mit Neubau nach bestandener Prüfung über den Build-Läufer (#261) und
-/// Ergebnis für die Schnellaktion „Aufgaben“ (#764).</summary>
-procedure StartTasks;
-begin
-  ProjectTasks := TAtlasIdeTasks.Create(TaskProcess());
-  ProjectTasks.OnRebuild :=
-    function(const AProject: TAtlasCompileProject; out AReason: string): Boolean
-    var
-      Request: TAtlasBuildRequest;
-    begin
-      if BuildRunner = nil then
-      begin
-        AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
-        Exit(False);
-      end;
-      Request := Default(TAtlasBuildRequest);
-      Request.Project := AProject.FileName;
-      Request.Kind := AProject.Kind;
-      // Auftraggeber '' wie ein Build des Benutzers: Tests nach dem Build und die übrigen Teilnehmer laufen mit.
-      Result := BuildRunner.Start(Request, '',
-        procedure(const AReport: TAtlasBuildReport; const AError: string)
-        begin
-        end, AReason);
-    end;
-  ProjectTasks.OnFinished :=
-    procedure(const AProject: string; const ARun: TAtlasTaskRun)
-    begin
-      if (Welcome <> nil) and (Welcome.QuickActions <> nil) and (AProject <> '') then
-        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-          procedure
-          begin
-            Welcome.QuickActions.TaskFinished(AProject, ARun);
-          end);
-    end;
-end;
-
-procedure StopTasks;
-begin
-  // Laufende Aufgaben enden mit dem Läufer; ihre Befunde verschwinden mit ihm. Schutznetz: Die Befunde
-  // gehen auch dann weg, wenn der Abbau des Läufers scheitert.
-  try
-    FreeAndNil(ProjectTasks);
-  finally
-    if TAtlasProblemsController.Current <> nil then
-      TAtlasProblemsController.Current.ClearTasks;
-  end;
-end;
-
-const
-  StartProfileExtra = 'startProfile';
-
-/// <summary>Startprofil im Zusatzfeld der Statusleiste (#575); ohne startProfiles.statusField kein Feld.</summary>
-procedure ShowStartProfileStatus(const AText, AHint: string);
-begin
-  if StatusField = nil then
-    Exit;
-  if (AText = '') or not TAtlasIdeSettings.Current.StartProfilesStatusField then
-  begin
-    StatusField.SetExtra(StartProfileExtra, '', '', nil);
-    Exit;
-  end;
-  StatusField.SetExtra(StartProfileExtra, AText, AHint,
-    procedure(APoint: TPoint)
-    begin
-      TAtlasIdeStartProfiles.ShowPicker;
-    end);
-end;
-
-procedure StartStartProfiles;
-begin
-  TAtlasIdeStartProfiles.SetStatusHandler(ShowStartProfileStatus);
-  TAtlasIdeStartProfiles.Start;
-end;
-
-procedure StopStartProfiles;
-begin
-  // Stop meldet noch Text '' und entfernt so das Feld; danach kein Empfänger mehr.
-  TAtlasIdeStartProfiles.Stop;
-  TAtlasIdeStartProfiles.SetStatusHandler(nil);
-end;
-
 procedure StartPalette;
 begin
   RegisterPalette;
@@ -3879,38 +3687,6 @@ begin
       if (Welcome <> nil) and (Welcome.Issues <> nil) then
         Result := Welcome.Issues.PaletteSearch;
     end;
-end;
-
-const
-  CompilerSwitchesExtra = 'compilerSwitches';
-
-/// <summary>Wirksame Compiler-Schalter (#558): Fenster und Zusatzfeld der Statusleiste mit den Abweichungen.
-/// </summary>
-procedure StartCompilerSwitches;
-begin
-  // Fragt den Server nur, wenn er ohnehin läuft.
-  TAtlasIdeCompilerSwitches.Start(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end,
-    procedure(const AText, AHint: string)
-    begin
-      if StatusField = nil then
-        Exit;
-      if AText = '' then
-      begin
-        StatusField.SetExtra(CompilerSwitchesExtra, '', '', nil);
-        Exit;
-      end;
-      StatusField.SetExtra(CompilerSwitchesExtra, AText, AHint,
-        procedure(APoint: TPoint)
-        begin
-          TAtlasIdeCompilerSwitches.ShowWindow;
-        end);
-    end);
 end;
 
 /// <summary>Fenster „Atlas-Prüfung“ (#909): Code-Aktionen, Optionsseite, Serverbefehle und Meldungen über
@@ -4323,6 +4099,39 @@ begin
     end;
 end;
 
+type
+  /// <summary>Ende einer Projektaufgabe an die Schnellaktionen der Willkommensseite (#764, #900).</summary>
+  TWelcomeTaskListener = class(TInterfacedObject, IAtlasTaskListener)
+  public
+    procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
+  end;
+
+procedure TWelcomeTaskListener.TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
+begin
+  if (Welcome <> nil) and (Welcome.QuickActions <> nil) then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        Welcome.QuickActions.TaskFinished(AProject, AResult);
+      end);
+end;
+
+/// <summary>Startprofile und Projektaufgaben des Moduls Build (#1455); False ohne laufendes Modul.</summary>
+function BuildTools(out ATools: IAtlasBuildToolsSource): Boolean;
+var
+  mItem: IInterface;
+begin
+  ATools := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildToolsSource) do
+    if Supports(mItem, IAtlasBuildToolsSource, ATools) then
+      Exit(True);
+  Result := False;
+end;
+
+var
+  /// <summary>Anmeldung von TWelcomeTaskListener, solange die Willkommensseite läuft.</summary>
+  WelcomeTaskListener: IAtlasRegistration;
+
 procedure StartWelcome;
 begin
   Welcome := TAtlasIdeWelcome.Create(
@@ -4457,40 +4266,50 @@ begin
     begin
       Result := ((BuildRunner <> nil) and BuildRunner.Busy) or ((Tests <> nil) and Tests.Busy);
     end;
+  // Startprofile (#575) und Knopf „Aufgaben ▾“ (#900) über das Modul Build (IAtlasBuildToolsSource, #1455);
+  // ohne Modul keine Profile und keine Aufgaben. Zieht mit der Willkommensseite in ihr Modul.
   Welcome.QuickActions.OnProfiles :=
     function(const AProject: string; out AActive: string): TArray<string>
     var
-      Entry: TAtlasStartProfileEntry;
+      mTools: IAtlasBuildToolsSource;
     begin
       Result := nil;
-      for Entry in TAtlasIdeStartProfiles.Profiles(AProject) do
-        Result := Result + [Entry.Profile.Name];
-      AActive := TAtlasIdeStartProfiles.ActiveName(AProject);
+      AActive := '';
+      if BuildTools(mTools) then
+        Result := mTools.StartProfiles(AProject, AActive);
     end;
   Welcome.QuickActions.OnRun :=
     function(const AProject, AProfile: string; out AReason: string): Boolean
+    var
+      mTools: IAtlasBuildToolsSource;
     begin
-      Result := TAtlasIdeStartProfiles.Run(AProject, AProfile, True, AReason);
+      Result := False;
+      AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
+      if BuildTools(mTools) then
+        Result := mTools.RunStartProfile(AProject, AProfile, AReason);
     end;
-  // Knopf „Aufgaben ▾“ (#900): Projektaufgaben aus der atlas.json des Projekts über den Aufgabenläufer.
   Welcome.QuickActions.OnTaskNames :=
     function(const AProject: string): TArray<string>
+    var
+      mTools: IAtlasBuildToolsSource;
     begin
       Result := nil;
-      if TasksVisible then
-        Result := ProjectTasks.TaskNamesOf(AProject);
+      if BuildTools(mTools) then
+        Result := mTools.TaskNames(AProject);
     end;
   Welcome.QuickActions.OnRunTask :=
     function(const AProject, AName: string; out AReason: string): Boolean
+    var
+      mTools: IAtlasBuildToolsSource;
     begin
-      AReason := '';
-      if not TasksVisible then
-      begin
-        AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
-        Exit(False);
-      end;
-      Result := ProjectTasks.RunInProject(AProject, AName, AReason);
+      Result := False;
+      AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
+      if BuildTools(mTools) then
+        Result := mTools.RunTask(AProject, AName, AReason);
     end;
+  // Ende einer Projektaufgabe (#900) aus dem Modul Build.
+  WelcomeTaskListener := AtlasModuleRegistry.Provide(IAtlasTaskListener,
+    TWelcomeTaskListener.Create as IAtlasTaskListener);
   // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
   Welcome.ContinueWork := TAtlasIdeContinue.Create(
     procedure(AText: string)
@@ -4646,6 +4465,9 @@ end;
 
 procedure StopWelcome;
 begin
+  if WelcomeTaskListener <> nil then
+    WelcomeTaskListener.Revoke;
+  WelcomeTaskListener := nil;
   // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
   TAtlasIdeNewIssue.Stop;
   FreeAndNil(Welcome);
@@ -4668,18 +4490,6 @@ begin
     begin
       if KeyMap <> nil then
         KeyMap.ShowWindow;
-    end;
-  // Untermenü Aufgaben (#900): ohne Läufer bzw. mit tasks.enabled aus ausgeblendet.
-  MainMenu.OnTasksMenu :=
-    procedure(AMenu: TMenuItem)
-    begin
-      AMenu.Visible := TasksVisible;
-      if AMenu.Visible then
-        TAtlasGuard.Run(TAtlasFeature.Tasks,
-          procedure
-          begin
-            ProjectTasks.FillMenu(AMenu);
-          end);
     end;
   MainMenu.OnWelcome :=
     procedure(ACommand: TAtlasWelcomeCommand)
@@ -4749,8 +4559,8 @@ begin
     RegisterCompileEvents,
     procedure
     begin
-      // Läufer und Bauen beim Öffnen melden sich bei den Ereignissen von Compile an; vorher gehen.
-      FreeAndNil(OpenBuild);
+      // Der Läufer meldet sich bei den Ereignissen von Compile an; vorher gehen (Bauen beim Öffnen stoppt mit
+      // seinem Modul vorher).
       FreeAndNil(BuildInbox);
       FreeAndNil(BuildRunner);
       FreeAndNil(Compile);
@@ -4816,21 +4626,6 @@ begin
     begin
       FreeAndNil(BuildInbox);
     end);
-  // Beim Öffnen bauen: nur im normalen Start, mit den Compile-Ereignissen und solange BuildOnOpen an ist.
-  Features.AddWanted('OpenBuild',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.BuildOnOpen and (Compile <> nil);
-    end,
-    function: Boolean
-    begin
-      Result := OpenBuild <> nil;
-    end,
-    StartOpenBuild,
-    procedure
-    begin
-      FreeAndNil(OpenBuild);
-    end);
   // uses nachziehen nach dem Umbenennen einer Unit (#512): ob es angeboten wird, entscheidet der Server
   // (refactoring.unitRenameFollowUp).
   Features.Add('UnitRename', TAtlasSafeLevel.Normal,
@@ -4865,28 +4660,6 @@ begin
       Result := Tests <> nil;
     end,
     StartTests, StopTests);
-  // Projektaufgaben (#900): nur im normalen Start und solange tasks.enabled an ist.
-  Features.AddWanted('Tasks',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TasksEnabled;
-    end,
-    function: Boolean
-    begin
-      Result := ProjectTasks <> nil;
-    end,
-    StartTasks, StopTasks);
-  // Startprofile (#575): nur im normalen Start und solange StartProfiles an ist; liest .atlas über TeamFile.
-  Features.AddWanted('StartProfiles',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.StartProfiles;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeStartProfiles.Started;
-    end,
-    StartStartProfiles, StopStartProfiles);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -5080,17 +4853,6 @@ begin
     begin
       FreeAndNil(GutterColumn);
     end);
-  // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
-  Features.AddWanted('CompilerSwitches',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.BuildCompilerSwitches;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeCompilerSwitches.Started;
-    end,
-    StartCompilerSwitches, TAtlasIdeCompilerSwitches.Release);
   // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
   Features.AddWanted('SelectionMatches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -5253,7 +5015,6 @@ begin
   // Module (#1454): Ist der Modul-Schalter aus, startet keines dieser Teile, laufende stoppt RegisterFeatures.
   // Die übrigen Teile eines Moduls folgen ihren eigenen Einstellungen, die bei ausgeschaltetem Modul „aus“
   // liefern (TAtlasModuleSwitches). Angemeldete Module (Debugger, #1455) bringen ihren Schalter selbst mit.
-  Features.Join('buildTools', ['OpenBuild', 'Tasks', 'StartProfiles', 'CompilerSwitches']);
   Features.Join('tests', ['Tests']);
   Features.Join('issues', ['IssueLinks', 'BlameIssues']);
   Features.ModuleOn := ModuleOn;
@@ -5406,12 +5167,25 @@ begin
     begin
       Result := (Manager <> nil) and Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
     end;
+  mServices.Report :=
+    procedure(AText: string)
+    begin
+      if Manager <> nil then
+        Manager.Report(AText);
+    end;
   // Felder der Module im Atlas-Statusfeld, etwa Hinweise der schnellen Lesezeichen (#1104).
   mServices.StatusExtra :=
-    procedure(AId, AText: string)
+    procedure(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>)
     begin
       if StatusField <> nil then
-        StatusField.SetExtra(AId, AText, '', nil);
+        StatusField.SetExtra(AId, AText, AHint, AOnClick);
+    end;
+  mServices.CompileEvents :=
+    function: TAtlasCompileEvents
+    begin
+      Result := nil;
+      if Compile <> nil then
+        Result := Compile.Events;
     end;
   TAtlasIdeHost.Install(mServices);
 end;
@@ -5490,7 +5264,6 @@ begin
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
       TAtlasIdeMinimap.ThemeChanged;
-      TAtlasIdeCompilerSwitches.ThemeChanged;
       // Fenster der Module (#1455).
       ModulesThemeChanged;
     end;
@@ -5559,13 +5332,8 @@ begin
       TAtlasIdeDesignerBar.ApplySettings;
       // search.resultsInMessages (#878).
       TAtlasIdeSearch.ApplySettings;
-      // tasks.onlyFindings und Tasten der Projektaufgaben (#900).
-      if ProjectTasks <> nil then
-        ProjectTasks.ApplySettings;
       // editor.stickyScroll* (#506).
       TAtlasIdeStickyScroll.ApplySettings;
-      // build.compilerSwitches, build.showSwitchesInStatusBar (#558).
-      TAtlasIdeCompilerSwitches.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).
@@ -5581,12 +5349,6 @@ begin
       TAtlasIdeExperimental.ApplySettings;
       // Einstellungen der Module (#1455), z. B. debug.* des Debuggers.
       ModulesApplySettings;
-      // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
-      // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
-      if not TAtlasIdeSettings.Current.StartProfiles then
-        StopStartProfiles
-      else
-        TAtlasIdeStartProfiles.Refresh;
       // tips.usageTracking (#757).
       if CommandUsage <> nil then
         CommandUsage.ApplySettings;

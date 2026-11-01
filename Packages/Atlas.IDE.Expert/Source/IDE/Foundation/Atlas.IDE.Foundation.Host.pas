@@ -2,8 +2,11 @@
 
 // Dienste von Base für die Module (#1455, ADR 0017): Serversitzung (laufend
 // bzw. bei Bedarf gestartet), Befehle im Hintergrund an den Server,
-// Meldungsansicht „Atlas“, Warnungen, Diagnoselog und Felder im
-// Atlas-Statusfeld. Die Kompositionswurzel setzt die Quellen beim Start
+// Meldungsansicht „Atlas“, Warnungen, Bericht und Diagnoselog, Felder im
+// Atlas-Statusfeld und Compile-Ereignisse. Den Läufer der Builds auf Auftrag
+// liefert TAtlasIdeBuildRunner.Current.
+// Teilnehmer, die ein Modul an den Compile-Ereignissen anmeldet, und Felder im
+// Statusfeld nimmt es beim Stoppen selbst zurück (Remove, leerer Text). Die Kompositionswurzel setzt die Quellen beim Start
 // (Install) und nimmt sie beim Entladen zurück (Uninstall); danach liefern
 // sie nil bzw. tun nichts. Ein Modul fragt die Sitzung bei jedem Aufruf
 // neu, statt sie zu speichern: Der Server kann neu starten.
@@ -14,7 +17,9 @@ interface
 
 uses
   System.SysUtils,
+  System.Types,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Build.Events,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Lsp.Session;
 
@@ -25,6 +30,9 @@ type
   TAtlasHostCommandRunner = reference to function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
     const ADone: TProc<string>): Boolean;
 
+  /// <summary>Feld AId im Atlas-Statusfeld: Text, Hinweis, Klick (nil = keiner); leerer Text entfernt es.</summary>
+  TAtlasHostStatusExtra = reference to procedure(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+
   /// <summary>Quellen der Dienste; jedes Feld darf fehlen.</summary>
   TAtlasHostServices = record
     /// <summary>Laufende Sitzung, startet keinen Server.</summary>
@@ -34,9 +42,11 @@ type
     Log: TProc<string>;
     /// <summary>Warnung an Benutzer (Meldungsansicht und Bericht des Managers).</summary>
     Warning: TProc<string>;
+    /// <summary>Zeile im Bericht des Managers (Diagnose), ohne Meldungsansicht.</summary>
+    Report: TProc<string>;
     RunCommand: TAtlasHostCommandRunner;
-    /// <summary>Feld mit Id und Text im Atlas-Statusfeld; leerer Text entfernt es.</summary>
-    StatusExtra: TProc<string, string>;
+    StatusExtra: TAtlasHostStatusExtra;
+    CompileEvents: TFunc<TAtlasCompileEvents>;
   end;
 
   TAtlasIdeHost = class
@@ -55,8 +65,15 @@ type
     class procedure Warning(const AText: string); static;
     /// <summary>Zeile im Diagnoselog des Servers; ohne Server nichts.</summary>
     class procedure Log(const AText: string); static;
+    /// <summary>Zeile im Bericht des Managers (Diagnose); vor Install nichts.</summary>
+    class procedure Report(const AText: string); static;
     /// <summary>Feld AId im Atlas-Statusfeld setzen; leerer Text entfernt es.</summary>
     class procedure SetStatusExtra(const AId, AText: string); static;
+    /// <summary>Wie SetStatusExtra mit Hinweis und Klick. Das Modul entfernt sein Feld beim Stoppen (leerer
+    /// Text), damit Base keinen Klick des Moduls mehr hält (Regel 3).</summary>
+    class procedure SetStatusField(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>); static;
+    /// <summary>Compile-Ereignisse von Base (#527); nil vor Install und nach Uninstall.</summary>
+    class function CompileEvents: TAtlasCompileEvents; static;
     /// <summary>Befehl im Hintergrund an den laufenden Server. ADone läuft im Hauptthread, gesichert über AFeature,
     /// und nur, solange AScope offen ist. False = nicht gestartet.</summary>
     class function RunCommandAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
@@ -121,10 +138,28 @@ begin
     FServices.Log(AText);
 end;
 
+class procedure TAtlasIdeHost.Report(const AText: string);
+begin
+  if Assigned(FServices.Report) then
+    FServices.Report(AText);
+end;
+
 class procedure TAtlasIdeHost.SetStatusExtra(const AId, AText: string);
 begin
+  SetStatusField(AId, AText, '', nil);
+end;
+
+class procedure TAtlasIdeHost.SetStatusField(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+begin
   if Assigned(FServices.StatusExtra) then
-    FServices.StatusExtra(AId, AText);
+    FServices.StatusExtra(AId, AText, AHint, AOnClick);
+end;
+
+class function TAtlasIdeHost.CompileEvents: TAtlasCompileEvents;
+begin
+  Result := nil;
+  if Assigned(FServices.CompileEvents) then
+    Result := FServices.CompileEvents();
 end;
 
 /// <summary>Weiterreichen in den Hauptthread; eigene Routine, damit der Rahmen nur die Antwort hält.</summary>

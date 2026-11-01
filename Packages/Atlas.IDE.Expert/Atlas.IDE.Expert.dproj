@@ -643,6 +643,7 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Summary.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.OpenBuild.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas"/>
+        <DCCReference Include="Source\IDE\BuildTools\Atlas.IDE.BuildTools.Composition.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.IdleGate.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.IdleGate.pas"/>
         <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
@@ -943,6 +944,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Report.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.DebugReport.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildTools.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
