@@ -35,7 +35,7 @@ You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [rele
 
 Up to 1.1.0 the package contained the installer `AtlasSetup.exe`; it was removed in 1.2.0. Details (German): [docs/Installation.md](docs/Installation.md).
 
-**Option B – today: build it yourself and install the package in the IDE:**
+**Option B – build it yourself and install the package in the IDE:**
 
 1. Install Delphi 12 or later and clone this repository.
 2. Open `Atlas.groupproj` in Delphi and build all projects for **Win64** (*Build All*). For the classic 32-bit IDE, also build `Atlas.IDE.Expert` for **Win32**.
@@ -230,6 +230,7 @@ Developing new tools: `pwsh Tools/Start-McpInspector.ps1` opens the [MCP Inspect
 
 Not yet in `main`, tracked as issues:
 
+- English diagnostics, code actions, hover texts, settings descriptions and "What's new" (#1458; menus, dialogs and windows are already in English)
 - Further check rules (sub-issues of #1086)
 - Debugging (#614) and designer features for later versions
 
