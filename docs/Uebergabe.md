@@ -34,6 +34,12 @@
 - Optionsseiten: Modulschalter oben auf der jeweiligen Seite. Hinweis „Prüfregeln sind aus“ einmal je atlas.json und Sitzung, wenn die atlas.json Regeln festlegt und das Modul aus ist (`Atlas.Core.Settings.RuleChecksNotice`, `Atlas.IDE.Settings.RuleChecksNotice`, Quelle `ruleChecks`).
 - Nicht übersetzt: FPC trunk ließ sich in der Cloud nicht bauen. Alle Prüfskripte grün. Vor dem Merge mit Delphi bauen und Tests laufen lassen.
 - Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
+## Weitere Module als eigene Packages (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
+
+- Nach dem Debugger mit demselben Werkzeug verschoben: `Atlas.IDE.Designer` (7 Units), `.Rules` (7), `.Tests` (10), `.Bookmarks` (19), `.Analysis` (21), `.Search` (25), `.Build` (20), `.BuildPipeline` (10); je Package dpk/dproj wie beim Debugger, Eintrag in `Atlas.groupproj` vor dem Testprojekt, Testpfade angepasst. Inhalt der Units unverändert.
+- Offen: Willkommensseite (zuerst ihr Abschnitt im Optionsdialog als `IAtlasSettingsSection` ins Modul, letzter bekannter Verstoß), danach Tracker (wartet auf Paket 2d), dann `Atlas.IDE.Contracts` und die Umbenennung in `Atlas.IDE.Base`.
+- Handtests MP1–MP4 in `handtests-v2.md`.
+
 ## Pilot: Debugger als eigenes Package (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 
 - Die 50 Units des Abschnitts `Atlas.IDE.Debugger` der Zuordnung (Core/IDE/UI `Debug`, drei Frames mit .dfm) liegen jetzt unter `Packages/Atlas.IDE.Debugger/Source` (package-first, Pfade in der Zuordnung relativ dazu). Neues `Atlas.IDE.Debugger.dpk`/`.dproj`: `DESIGNONLY`, `IMPLICITBUILD OFF`, `LIBSUFFIX AUTO`, requires rtl, vcl, vclwinx, designide und das Kern-Package `Atlas.IDE.Expert`; Suchpfad auf `Output\$(Platform)\$(Config)\Dcp`. In `Atlas.groupproj` nach dem Kern (Abhängigkeit), Testprojekt mit neuen Pfaden. Der Kern hat jetzt ebenfalls `IMPLICITBUILD OFF` (ADR 0017).
