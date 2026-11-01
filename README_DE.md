@@ -334,7 +334,8 @@ Tests\Tests.bat alle         :: beides
 Prüfskripte (laufen auch als GitHub Action):
 
 ```powershell
-pwsh Tools/Check-PackageDependencies.ps1   # Packages halten ihre Abhängigkeiten ein
+pwsh Tools/Check-PackageDependencies.ps1   # Packages halten ihre Abhängigkeiten ein, Modulgrenzen aus ADR 0017
+pwsh Tools/Test-PackageDependencies.ps1    # Selbsttest der Modulgrenzen mit absichtlichen Verstößen
 pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede Testunit läuft
 pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die gemeinsamen Hüllen
