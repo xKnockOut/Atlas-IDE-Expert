@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCommentEditorUiTests = class
   private
     FSaved: Integer;

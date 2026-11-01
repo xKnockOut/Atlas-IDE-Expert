@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeTestResultsTests = class
   public
     [Test]
@@ -54,6 +55,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasTestResultsSettingsTests = class
   public
     /// <summary>welcomePage.tests an (5), welcomePage.tests.ci aus, jenkins, 10 Minuten, Meldung an.</summary>

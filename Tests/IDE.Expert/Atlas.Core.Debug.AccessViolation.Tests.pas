@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasAccessViolationTests = class
   private
     FAnswers: TDictionary<string, string>;

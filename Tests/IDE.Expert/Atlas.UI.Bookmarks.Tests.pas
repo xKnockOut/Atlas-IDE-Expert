@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasBookmarkDialogTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -31,6 +32,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasBookmarksFrameTests = class
   private
     FLanguage: TAtlasLanguage;

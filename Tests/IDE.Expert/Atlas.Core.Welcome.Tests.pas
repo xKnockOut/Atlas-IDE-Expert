@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSectionsTests = class
   public
     [Test]
@@ -29,6 +30,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeLayoutTests = class
   public
     [Test]
@@ -48,6 +50,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeGreetingTests = class
   public
     [Test]
@@ -61,6 +64,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeBackupTests = class
   public
     [Test]
@@ -76,6 +80,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasHostLayoutTests = class
   public
     [Test]
@@ -105,6 +110,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasIdePageStepsTests = class
   public
     [Test]
@@ -118,6 +124,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeRetireTests = class
   public
     [Test]
@@ -131,6 +138,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSettingsTests = class
   public
     [Test]

@@ -10,6 +10,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerNoticeTextTests = class
   public
     /// <summary>Abnahme: „ATL-123: neuer Kommentar von …“, „… dir zugewiesen“, „Zustand → …“.</summary>

@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasInterfaceCostTests = class
   public
     [Test]

@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerWorkflowTests = class
   public
     [Test]
@@ -45,6 +46,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerWriterTests = class
   public
     /// <summary>Namen mit Leerzeichen oder Satzzeichen in {}, Umlaute ohne.</summary>

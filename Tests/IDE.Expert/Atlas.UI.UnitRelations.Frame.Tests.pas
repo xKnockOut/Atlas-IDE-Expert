@@ -17,6 +17,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasUnitRelationsFrameTests = class
   private
     FForm: TForm;

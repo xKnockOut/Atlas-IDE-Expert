@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCommentEditorTests = class
   public
     /// <summary>"@an" am Ende und mitten im Satz; Start und Länge wie SelStart eines Memos.</summary>

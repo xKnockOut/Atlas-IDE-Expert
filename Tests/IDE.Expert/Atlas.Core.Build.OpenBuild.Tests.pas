@@ -7,6 +7,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasOpenBuildTests = class
   public
     /// <summary>Fällig erst nach der Wartezeit seit dem letzten Öffnen und der letzten Eingabe.</summary>

@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasCodeQueryFrameTests = class
   private
     FForm: TForm;

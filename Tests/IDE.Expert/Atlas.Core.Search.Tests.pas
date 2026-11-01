@@ -10,6 +10,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasSearchTests = class
   public
     [Test]

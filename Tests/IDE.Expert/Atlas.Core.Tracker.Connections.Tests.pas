@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerConnectionsTests = class
   public
     /// <summary>Abnahme: zwei Verbindungen (YouTrack selbst gehostet, GitHub) hin und zurück.</summary>

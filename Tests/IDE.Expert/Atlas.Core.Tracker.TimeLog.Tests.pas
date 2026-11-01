@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeClockTests = class
   private
     FNow: TDateTime;
@@ -48,6 +49,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeLogTests = class
   private
     FFolder: string;
@@ -78,6 +80,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeRoundingTests = class
   public
     [Test]
@@ -89,6 +92,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerTimeWriterTests = class
   public
     [Test]

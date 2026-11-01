@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeStateTests = class
   public
     [Test]
@@ -41,6 +42,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasStateLinesTests = class
   public
     [Test]
@@ -70,6 +72,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasIndexStoreTests = class
   public
     [Test]
@@ -91,6 +94,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasStateUpdateTests = class
   public
     [Test]

@@ -37,6 +37,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeHeaderTests = class
   public
     [Test]
@@ -52,6 +53,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeBoardTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -74,6 +76,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeArrangeBoardTests = class
   public
     /// <summary>Erste Benutzung (Menüs, Bearbeitungsleiste) ungemessen vorwegnehmen.</summary>
@@ -96,6 +99,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSearchBoxTests = class
   public
     [Test]
@@ -111,6 +115,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeWhatsNewFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -131,6 +136,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeProjectsFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -157,6 +163,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeContinueFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -179,6 +186,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeUnsavedFrameTests = class
   public
     [Test]
@@ -192,6 +200,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeStateFrameTests = class
   public
     [Test]
@@ -205,6 +214,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeDiscoverFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -221,6 +231,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeHelpFrameTests = class
   public
     [Test]
@@ -233,6 +244,7 @@ type
 
   /// <summary>Bereich „&lt;Projekt&gt; für Atlas einrichten“ (#759).</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSetupFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -263,6 +275,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeTrendsFrameTests = class
   public
     /// <summary>Abnahme: 12, 9, 6, 3, 0 Hinweise ergeben „0“ und „vorher 3“; Einheiten je Sprache.</summary>

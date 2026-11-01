@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasBuildSwitchesFrameTests = class
   private
     FLanguage: TAtlasLanguage;

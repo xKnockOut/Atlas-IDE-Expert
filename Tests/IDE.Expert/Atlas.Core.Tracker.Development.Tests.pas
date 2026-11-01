@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssueDevelopmentTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>

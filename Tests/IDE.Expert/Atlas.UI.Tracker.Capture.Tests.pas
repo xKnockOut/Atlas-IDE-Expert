@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasAttachImagesTests = class
   public
     /// <summary>Abnahme: Ein Bild über der Höchstbreite wird mit Seitenverhältnis verkleinert.</summary>
