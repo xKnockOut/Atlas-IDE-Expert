@@ -39,9 +39,9 @@ type
     /// <summary>AProject öffnen: über die Willkommensseite, ohne sie direkt in der IDE.</summary>
     procedure Open(const AProject: string);
     /// <summary>Stand der Versionsverwaltung von AProject neu abfragen (nach „Beginnen“).</summary>
-    procedure Refresh(const AProject: string);
+    class procedure Refresh(const AProject: string); static;
     /// <summary>Branch und Art der Versionsverwaltung von AProject aus der Zusammenfassung.</summary>
-    function VcsOf(const AProject: string): TAtlasProjectVcs;
+    class function VcsOf(const AProject: string): TAtlasProjectVcs; static;
     /// <summary>Inhalt der Kachel AId geändert.</summary>
     procedure TileChanged(const AId: string);
     /// <summary>Titel oder Schalter der Kachel AId geändert.</summary>
@@ -146,7 +146,7 @@ begin
   end;
 end;
 
-procedure TAtlasTrackerWelcomeLink.Refresh(const AProject: string);
+class procedure TAtlasTrackerWelcomeLink.Refresh(const AProject: string);
 var
   mSummaries: TAtlasIdeProjectSummaries;
 begin
@@ -157,7 +157,7 @@ begin
   end;
 end;
 
-function TAtlasTrackerWelcomeLink.VcsOf(const AProject: string): TAtlasProjectVcs;
+class function TAtlasTrackerWelcomeLink.VcsOf(const AProject: string): TAtlasProjectVcs;
 var
   mSummaries: TAtlasIdeProjectSummaries;
 begin

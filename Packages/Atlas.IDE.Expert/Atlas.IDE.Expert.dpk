@@ -654,6 +654,7 @@ contains
   Atlas.IDE.Tracker.WelcomeLink in 'Source\IDE\Tracker\Atlas.IDE.Tracker.WelcomeLink.pas',
   Atlas.IDE.Tracker.Tiles in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Tiles.pas',
   Atlas.IDE.Tracker.NewIssue in 'Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssue.pas',
+  Atlas.IDE.Tracker.NewIssuePlace in 'Source\IDE\Tracker\Atlas.IDE.Tracker.NewIssuePlace.pas',
   Atlas.IDE.Tracker.SprintTile in 'Source\IDE\Tracker\Atlas.IDE.Tracker.SprintTile.pas',
   Atlas.IDE.Welcome.Unsaved in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas',
   Atlas.IDE.Welcome.Continue in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas',
