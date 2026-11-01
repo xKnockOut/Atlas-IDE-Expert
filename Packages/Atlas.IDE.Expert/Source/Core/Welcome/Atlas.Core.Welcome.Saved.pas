@@ -5,10 +5,9 @@
 // Lesezeichen (#622) und angeheftete Favoriten (#458) aller Projekte in einer
 // Liste mit Art, Text bzw. Name, Datei und Zeile sowie Projekt, dazu Filter
 // und das Sprungziel eines Favoriten.
-// - Gelesen werden nur die Dateien dieser Funktionen, ohne Server:
-//   %LOCALAPPDATA%\Atlas\Notes\*.json (TAtlasNotes.LoadAll), die Lesezeichen
-//   neben den .dproj der zuletzt geöffneten Projekte (TAtlasBookmarks.Load)
-//   und %APPDATA%\Atlas\favorites.json (TAtlasFavorites.LoadFromFile).
+// - Notizen und Lesezeichen liefert das Modul Lesezeichen über den Vertrag
+//   IAtlasSavedPlacesSource (#1456); fehlt es, bleiben die Favoriten aus
+//   %APPDATA%\Atlas\favorites.json (TAtlasFavorites.LoadFromFile).
 // - Reihenfolge: je Projekt (nach Name) erst die Notizen, dann die
 //   Lesezeichen, jeweils nach Datei und Zeile; Favoriten gelten für alle
 //   Projekte und stehen am Ende in der Reihenfolge des Anheftens.
@@ -22,9 +21,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Notes.Store,
-  Atlas.Core.Bookmarks.Store,
   Atlas.Core.Completion.Favorites,
+  Atlas.Core.SavedPlaces.Contract,
   Atlas.Core.Welcome.IndexFiles;
 
 type
@@ -62,13 +60,12 @@ type
 
   TAtlasWelcomeSaved = class
   public
-    class function FromNotes(const ABooks: TArray<TAtlasNoteBook>): TAtlasSavedItems; static;
-    /// <summary>Lesezeichen; dieselbe Datei (Projekte im selben Ordner) zählt einmal.</summary>
-    class function FromBookmarks(const ALists: TArray<TAtlasBookmarkList>): TAtlasSavedItems; static;
+    /// <summary>Notizen und Lesezeichen des Moduls Lesezeichen als Einträge.</summary>
+    class function FromPlaces(const APlaces: TAtlasSavedPlaces): TAtlasSavedItems; static;
     class function FromFavorites(const AFavorites: TArray<TAtlasFavorite>): TAtlasSavedItems; static;
     /// <summary>Alle Einträge in der Reihenfolge der Liste (siehe Kopf der Unit).</summary>
-    class function Collect(const ABooks: TArray<TAtlasNoteBook>; const ALists: TArray<TAtlasBookmarkList>;
-      const AFavorites: TArray<TAtlasFavorite>): TAtlasSavedItems; static;
+    class function Collect(const APlaces: TAtlasSavedPlaces; const AFavorites: TArray<TAtlasFavorite>):
+      TAtlasSavedItems; static;
     /// <summary>Einträge, deren Text, Datei, Projekt, Detail oder Unit jedes Wort von APattern enthält
     /// (Groß/klein egal); leeres Muster: alle.</summary>
     class function Filter(const AItems: TAtlasSavedItems; const APattern: string): TAtlasSavedItems; static;
@@ -162,60 +159,29 @@ end;
 
 { TAtlasWelcomeSaved }
 
-class function TAtlasWelcomeSaved.FromNotes(const ABooks: TArray<TAtlasNoteBook>): TAtlasSavedItems;
+class function TAtlasWelcomeSaved.FromPlaces(const APlaces: TAtlasSavedPlaces): TAtlasSavedItems;
 var
-  Book: TAtlasNoteBook;
-  Note: TAtlasNote;
-  Item: TAtlasSavedItem;
-  Lines: TArray<string>;
+  mPlace: TAtlasSavedPlace;
+  mItem: TAtlasSavedItem;
 begin
   Result := nil;
-  for Book in ABooks do
-    for Note in Book.Notes do
+  for mPlace in APlaces do
+  begin
+    mItem := Default(TAtlasSavedItem);
+    mItem.Kind := TAtlasSavedKind.Note;
+    if mPlace.Kind = TAtlasSavedPlaceKind.Bookmark then
     begin
-      Item := Default(TAtlasSavedItem);
-      Item.Kind := TAtlasSavedKind.Note;
-      Item.Id := Note.Id;
-      Item.Text := Note.Title;
-      Item.FileName := Note.FileName;
-      Item.Line := Note.Line;
-      Item.Project := Book.Project;
-      Item.Lost := Note.Orphaned;
-      Lines := Note.Text.Split([#10]);
-      if Length(Lines) > 1 then
-        Item.Detail := Trim(string.Join(' ', Lines));
-      Result := Result + [Item];
+      mItem.Kind := TAtlasSavedKind.Bookmark;
     end;
-end;
-
-class function TAtlasWelcomeSaved.FromBookmarks(const ALists: TArray<TAtlasBookmarkList>): TAtlasSavedItems;
-var
-  List: TAtlasBookmarkList;
-  Mark: TAtlasBookmark;
-  Item, Known: TAtlasSavedItem;
-  Duplicate: Boolean;
-begin
-  Result := nil;
-  for List in ALists do
-    for Mark in List.Bookmarks do
-    begin
-      Duplicate := False;
-      for Known in Result do
-        if SameText(Known.Id, Mark.Id) and TAtlasBookmarks.SameFile(Known.FileName, Mark.FileName) then
-          Duplicate := True;
-      if Duplicate then
-        Continue;
-      Item := Default(TAtlasSavedItem);
-      Item.Kind := TAtlasSavedKind.Bookmark;
-      Item.Id := Mark.Id;
-      Item.Text := Mark.Name;
-      Item.FileName := Mark.FileName;
-      Item.Line := Mark.Line;
-      Item.Project := List.Project;
-      Item.Detail := Mark.Method;
-      Item.Lost := Mark.Lost;
-      Result := Result + [Item];
-    end;
+    mItem.Id := mPlace.Id;
+    mItem.Text := mPlace.Text;
+    mItem.FileName := mPlace.FileName;
+    mItem.Line := mPlace.Line;
+    mItem.Project := mPlace.Project;
+    mItem.Detail := mPlace.Detail;
+    mItem.Lost := mPlace.Lost;
+    Result := Result + [mItem];
+  end;
 end;
 
 class function TAtlasWelcomeSaved.FromFavorites(const AFavorites: TArray<TAtlasFavorite>): TAtlasSavedItems;
@@ -239,10 +205,10 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSaved.Collect(const ABooks: TArray<TAtlasNoteBook>;
-  const ALists: TArray<TAtlasBookmarkList>; const AFavorites: TArray<TAtlasFavorite>): TAtlasSavedItems;
+class function TAtlasWelcomeSaved.Collect(const APlaces: TAtlasSavedPlaces;
+  const AFavorites: TArray<TAtlasFavorite>): TAtlasSavedItems;
 begin
-  Result := FromNotes(ABooks) + FromBookmarks(ALists);
+  Result := FromPlaces(APlaces);
   SortItems(Result);
   Result := Result + FromFavorites(AFavorites);
 end;
