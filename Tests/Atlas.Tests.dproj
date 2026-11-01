@@ -803,6 +803,11 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Ci\Atlas.Core.Ci.Providers.Jenkins.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Ci.Providers.Jenkins.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Contract.Files.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Files.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Files.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Adapters.LocalFiles.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Adapters.LocalFiles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Connections.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Queries.pas"/>

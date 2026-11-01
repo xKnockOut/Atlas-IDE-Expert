@@ -91,8 +91,9 @@ type
     class function Decode(const ABytes: TBytes): string; static;
     /// <summary>Ende von AFileName: höchstens AMaxBytes von hinten (die angeschnittene erste Zeile entfällt),
     /// davon die letzten ALines Zeilen (&lt;= 0 = alle). Liest auch Dateien, in die gerade geschrieben wird.
-    /// </summary>
-    class function ReadTail(const AFileName: string; ALines, AMaxBytes: Integer): string; static;
+    /// False, wenn die Datei fehlt oder nicht lesbar ist.</summary>
+    class function ReadTail(const AFileName: string; ALines, AMaxBytes: Integer; out AText: string): Boolean;
+      static;
     /// <summary>$(ProjectDir) (ohne „\“ am Ende), $(ProjectName) und Umgebungsvariablen $(NAME) einsetzen;
     /// unbekannte bleiben stehen.</summary>
     class function Expand(const APattern, AProjectFile: string): string; static;
@@ -196,7 +197,7 @@ type
     class function DefaultRoot: string; static;
     /// <summary>Ordner dieses Laufs; wird beim ersten Aufruf angelegt.</summary>
     function Folder: string;
-    /// <summary>AFile in den Ordner schreiben; liefert den Pfad.</summary>
+    /// <summary>AFile in den Ordner schreiben; liefert den Pfad, '' wenn das Schreiben scheitert.</summary>
     function Write(const AFile: TAtlasAttachFile): string;
     /// <summary>Ordner dieses Laufs samt Inhalt löschen; danach legt Folder einen neuen an.</summary>
     procedure Cleanup;
@@ -208,7 +209,6 @@ implementation
 
 uses
   System.Classes,
-  System.IOUtils,
   System.StrUtils,
   System.DateUtils,
   System.Generics.Collections,
@@ -216,7 +216,18 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.Encoding,
   Atlas.Text.Anonymize,
+  Atlas.Core.Tracker.Contract.Files,
+  Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.Preview;
+
+const
+  cLineFeed = 10;
+  cAtlasFolder = 'Atlas';
+  cAttachFolder = 'attach';
+  /// <summary>Name eines Laufs: Zeitstempel und die ersten acht Zeichen einer GUID ohne „{“.</summary>
+  cRunStamp = 'yyyymmdd-hhnnss';
+  cGuidStart = 2;
+  cGuidLength = 8;
 
 { TAtlasAttachFile }
 
@@ -400,42 +411,42 @@ begin
   end;
 end;
 
-class function TAtlasAttachLog.ReadTail(const AFileName: string; ALines, AMaxBytes: Integer): string;
+/// <summary>Ohne die angeschnittene erste Zeile (auch mitten in einem UTF-8-Zeichen): ab dem ersten
+/// Zeilenumbruch.</summary>
+function WithoutCutLine(const ABytes: TBytes): TBytes;
 var
-  mStream: TFileStream;
-  mBytes: TBytes;
-  mSize, mStart: Int64;
   mCut, mIndex: Integer;
 begin
-  // Das laufende Programm hält die Datei oft offen und schreibt hinein.
-  mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
-  try
-    mSize := mStream.Size;
-    mStart := 0;
-    if (AMaxBytes > 0) and (mSize > AMaxBytes) then
-      mStart := mSize - AMaxBytes;
-    SetLength(mBytes, mSize - mStart);
-    mStream.Position := mStart;
-    if Length(mBytes) > 0 then
-      mStream.ReadBuffer(mBytes[0], Length(mBytes));
-  finally
-    mStream.Free;
-  end;
-  if mStart > 0 then
+  mCut := 0;
+  for mIndex := 0 to High(ABytes) do
   begin
-    // Die erste Zeile ist angeschnitten (auch mitten in einem UTF-8-Zeichen): ab dem ersten Zeilenumbruch.
-    mCut := -1;
-    for mIndex := 0 to High(mBytes) do
-      if mBytes[mIndex] = 10 then
-      begin
-        mCut := mIndex + 1;
-        Break;
-      end;
-    if mCut < 0 then
-      mCut := 0;
-    mBytes := Copy(mBytes, mCut, Length(mBytes) - mCut);
+    if ABytes[mIndex] = cLineFeed then
+    begin
+      mCut := mIndex + 1;
+      Break;
+    end;
   end;
-  Result := LastLines(Decode(mBytes), ALines);
+  Result := Copy(ABytes, mCut, Length(ABytes) - mCut);
+end;
+
+class function TAtlasAttachLog.ReadTail(const AFileName: string; ALines, AMaxBytes: Integer;
+  out AText: string): Boolean;
+var
+  mBytes: TBytes;
+  mCut: Boolean;
+begin
+  AText := '';
+  // Das laufende Programm hält die Datei oft offen und schreibt hinein.
+  Result := TAtlasTrackerFiles.Files.ReadTail(AFileName, AMaxBytes, mBytes, mCut);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if mCut then
+  begin
+    mBytes := WithoutCutLine(mBytes);
+  end;
+  AText := LastLines(Decode(mBytes), ALines);
 end;
 
 class function TAtlasAttachLog.Expand(const APattern, AProjectFile: string): string;
@@ -458,7 +469,7 @@ begin
         else if SameText(mName, 'ProjectName') then
           mValue := ChangeFileExt(ExtractFileName(AProjectFile), '')
         else
-          mValue := GetEnvironmentVariable(mName);
+          mValue := TAtlasTrackerFiles.Files.Environment(mName);
         // Ohne Wert bleibt der Platzhalter stehen: Die Datei gibt es dann nicht, statt eines falschen Pfads.
         if mValue = '' then
           mValue := Copy(APattern, mStart, mEnd - mStart + 1);
@@ -475,6 +486,7 @@ end;
 /// <summary>Neueste Datei zu einer Maske mit * oder ?; '' ohne Treffer.</summary>
 function NewestMatch(const APath: string): string;
 var
+  mFiles: IAtlasTrackerFiles;
   mFolder, mMask, mFile: string;
   mBest: TDateTime;
   mTime: TDateTime;
@@ -482,12 +494,15 @@ begin
   Result := '';
   mFolder := ExtractFileDir(APath);
   mMask := ExtractFileName(APath);
-  if (mFolder = '') or (mMask = '') or not TDirectory.Exists(mFolder) then
-    Exit;
-  mBest := 0;
-  for mFile in TDirectory.GetFiles(mFolder, mMask) do
+  mFiles := TAtlasTrackerFiles.Files;
+  if (mFolder = '') or (mMask = '') or not mFiles.FolderExists(mFolder) then
   begin
-    mTime := TFile.GetLastWriteTime(mFile);
+    Exit;
+  end;
+  mBest := 0;
+  for mFile in mFiles.Files(mFolder, mMask) do
+  begin
+    mTime := mFiles.WriteTime(mFile);
     // Bei gleicher Zeit gewinnt der Name (stabil).
     if (Result = '') or (mTime > mBest) or ((mTime = mBest) and (CompareText(mFile, Result) < 0)) then
     begin
@@ -520,9 +535,13 @@ begin
         mPath := IncludeTrailingPathDelimiter(mFolder) + mPath;
       end;
       if (Pos('*', mPath) > 0) or (Pos('?', mPath) > 0) then
-        mPath := NewestMatch(mPath)
-      else if not TFile.Exists(mPath) then
+      begin
+        mPath := NewestMatch(mPath);
+      end
+      else if not TAtlasTrackerFiles.Files.FileExists(mPath) then
+      begin
         mPath := '';
+      end;
       if (mPath = '') or mSeen.ContainsKey(LowerCase(mPath)) then
         Continue;
       mSeen.Add(LowerCase(mPath), True);
@@ -777,7 +796,8 @@ end;
 
 class function TAtlasAttachTemp.DefaultRoot: string;
 begin
-  Result := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'Atlas'), 'attach');
+  Result := TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Files.TempFolder, cAtlasFolder),
+    cAttachFolder);
 end;
 
 function TAtlasAttachTemp.Folder: string;
@@ -787,47 +807,50 @@ begin
   if FFolder = '' then
   begin
     CreateGUID(mGuid);
-    FFolder := TPath.Combine(FRoot, FormatDateTime('yyyymmdd-hhnnss', Now) + '-' + Copy(GUIDToString(mGuid), 2, 8));
-    ForceDirectories(FFolder);
+    FFolder := TAtlasTrackerFiles.Join(FRoot, FormatDateTime(cRunStamp, Now, TFormatSettings.Invariant) + '-' +
+      Copy(GUIDToString(mGuid), cGuidStart, cGuidLength));
+    TAtlasTrackerFiles.Files.ForceFolder(FFolder);
   end;
   Result := FFolder;
 end;
 
 function TAtlasAttachTemp.Write(const AFile: TAtlasAttachFile): string;
 begin
-  Result := TPath.Combine(Folder, TAtlasAttachFile.SafeName(AFile.Name));
-  TFile.WriteAllBytes(Result, AFile.Data);
+  Result := TAtlasTrackerFiles.Join(Folder, TAtlasAttachFile.SafeName(AFile.Name));
+  // Kein Platz, keine Rechte: Die Datei geht trotzdem an den Tracker, nur Doppelklick öffnet nichts.
+  if not TAtlasTrackerFiles.Files.WriteBytes(Result, AFile.Data) then
+  begin
+    Result := '';
+  end;
 end;
 
 procedure TAtlasAttachTemp.Cleanup;
 begin
   if FFolder = '' then
     Exit;
-  try
-    if TDirectory.Exists(FFolder) then
-      TDirectory.Delete(FFolder, True);
-  except
-    // Eine Datei ist noch offen (z. B. im Bildbetrachter): PruneStale räumt beim nächsten Start auf.
-    on EInOutError do;
-    on EOSError do;
-  end;
+  // Eine Datei ist noch offen (z. B. im Bildbetrachter): PruneStale räumt beim nächsten Start auf.
+  TAtlasTrackerFiles.Files.DeleteFolder(FFolder);
   FFolder := '';
 end;
 
 class procedure TAtlasAttachTemp.PruneStale(const ARoot: string; ANow: TDateTime; AMaxAgeHours: Integer);
 var
+  mFiles: IAtlasTrackerFiles;
   mFolder: string;
 begin
-  if (ARoot = '') or not TDirectory.Exists(ARoot) then
+  mFiles := TAtlasTrackerFiles.Files;
+  if (ARoot = '') or not mFiles.FolderExists(ARoot) then
+  begin
     Exit;
-  for mFolder in TDirectory.GetDirectories(ARoot) do
-    if HoursBetween(ANow, TDirectory.GetLastWriteTime(mFolder)) >= AMaxAgeHours then
-      try
-        TDirectory.Delete(mFolder, True);
-      except
-        on EInOutError do;
-        on EOSError do;
-      end;
+  end;
+  // Gesperrte Ordner bleiben bis zum nächsten Start.
+  for mFolder in mFiles.Folders(ARoot) do
+  begin
+    if HoursBetween(ANow, mFiles.WriteTime(mFolder)) >= AMaxAgeHours then
+    begin
+      mFiles.DeleteFolder(mFolder);
+    end;
+  end;
 end;
 
 end.

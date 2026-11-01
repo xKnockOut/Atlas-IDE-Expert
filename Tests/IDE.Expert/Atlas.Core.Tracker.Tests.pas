@@ -242,7 +242,9 @@ uses
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommitHook,
-  Atlas.Text.Uris;
+  Atlas.Text.Uris,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang; zählt die Aufrufe.</summary>
@@ -770,12 +772,14 @@ end;
 
 procedure TAtlasCommitHookTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FDir := TPath.Combine(TPath.GetTempPath, 'atlas-hook-' + IntToStr(Random(1000000)));
   ForceDirectories(FDir);
 end;
 
 procedure TAtlasCommitHookTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FDir) then
     TDirectory.Delete(FDir, True);
   FDir := '';

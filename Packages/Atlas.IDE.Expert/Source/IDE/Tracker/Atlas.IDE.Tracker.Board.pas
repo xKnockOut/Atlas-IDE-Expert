@@ -119,7 +119,6 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.ShellAPI,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -656,8 +655,7 @@ begin
   if (Pos('/', mFrame.Card(ACard).Key) = 0) and (mProvider <> nil) and
     (mProvider.IssuePage(FTarget, mFrame.Card(ACard).Key) <> '') then
     mPage := mProvider.IssuePage(FTarget, mFrame.Card(ACard).Key);
-  if TAtlasIssuePreview.MayBrowse(mPage) then
-    ShellExecute(0, 'open', PChar(mPage), nil, nil, SW_SHOWNORMAL);
+  TAtlasIssuePreview.Browse(mPage);
 end;
 
 procedure TAtlasIdeBoard.AssignCard(ACard: Integer);
