@@ -8833,7 +8833,9 @@ end;
 function RuleCatalogOverlayJson(const ALanguage: string): string;
 begin
   if SameText(ALanguage, 'de') then
+  begin
     Exit(Joined(OverlayLines_de));
+  end;
   Result := '';
 end;
 

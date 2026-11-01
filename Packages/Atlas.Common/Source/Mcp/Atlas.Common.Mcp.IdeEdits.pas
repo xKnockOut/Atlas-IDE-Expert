@@ -113,18 +113,24 @@ begin
   while AClock() - Started < AnswerMs do
   begin
     if FileExists(Answer) then
+    begin
       Break;
+    end;
     AWait();
   end;
   if not FileExists(Answer) then
   begin
     // Nicht übernommen: zurückziehen und selbst schreiben.
     if DeleteFile(Request) then
+    begin
       Exit(TMcpIdeEditOutcome.WriteYourself);
+    end;
     // Übernommen, aber noch nicht fertig.
     Started := AClock();
     while (AClock() - Started < TakenMs) and not FileExists(Answer) do
+    begin
       AWait();
+    end;
     if not FileExists(Answer) then
     begin
       AReason := 'Die IDE hat die Änderung angenommen, aber nicht bestätigt.';
@@ -137,11 +143,17 @@ begin
     Exit(TMcpIdeEditOutcome.Failed);
   end;
   if WasApplied then
-    Result := TMcpIdeEditOutcome.Applied
+  begin
+    Result := TMcpIdeEditOutcome.Applied;
+  end
   else if NotOpen then
-    Result := TMcpIdeEditOutcome.WriteYourself
+  begin
+    Result := TMcpIdeEditOutcome.WriteYourself;
+  end
   else
+  begin
     Result := TMcpIdeEditOutcome.Failed;
+  end;
 end;
 
 end.

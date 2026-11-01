@@ -34,9 +34,15 @@ var
 begin
   Result := IndexText(ASegment, ViewNames) >= 0;
   if not Result then
+  begin
     for Prefix in ViewPrefixes do
+    begin
       if StartsText(Prefix, ASegment) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 class function TFormFiles.UnitFile(const AFormFile: string): string;
@@ -48,7 +54,9 @@ begin
   begin
     Segment := ExtractFileExt(Base);
     if (Segment <> '') and IsView(Copy(Segment, 2, MaxInt)) then
+    begin
       Base := ChangeFileExt(Base, '');
+    end;
   end;
   Result := Base + '.pas';
 end;
@@ -58,7 +66,9 @@ class function TFormFiles.FormFiles(const AUnitFile, AUnitText: string): TArray<
   procedure Add(const AFileName: string);
   begin
     if IndexText(AFileName, Result) < 0 then
+    begin
       Result := Result + [AFileName];
+    end;
   end;
 
 var
@@ -75,17 +85,25 @@ begin
   begin
     Stop := PosEx('}', AUnitText, At);
     if Stop = 0 then
+    begin
       Break;
+    end;
     Text := Trim(Copy(AUnitText, At + 4, Stop - At - 4));
     if Pos(' ', Text) > 0 then
+    begin
       Text := Copy(Text, 1, Pos(' ', Text) - 1);
+    end;
     Text := StringReplace(Text, '''', '', [rfReplaceAll]);
     if EndsText('.fmx', Text) then
     begin
       if StartsText('*', Text) then
-        Name := ChangeFileExt(AUnitFile, '') + Copy(Text, 2, MaxInt)
+      begin
+        Name := ChangeFileExt(AUnitFile, '') + Copy(Text, 2, MaxInt);
+      end
       else
+      begin
         Name := Folder + Text;
+      end;
       Add(Name);
     end;
     At := PosEx('{$R ', Upper, Stop);

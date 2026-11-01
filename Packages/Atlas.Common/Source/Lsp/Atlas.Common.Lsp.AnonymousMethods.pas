@@ -86,19 +86,29 @@ begin
   begin
     Result := TAnonymousMethods.KindOfTypeText(Name);
     if (Result <> TProcTypeKind.Unknown) or (Name = '') then
+    begin
       Exit;
+    end;
     if Pos('<', Name) > 0 then
+    begin
       Name := Copy(Name, 1, Pos('<', Name) - 1);
+    end;
     if (Pos(' ', Trim(Name)) > 0) or (Pos('^', Name) > 0) then
+    begin
       Exit;
+    end;
     Resolved := AResolver.ResolveChain(ATree, AFileName, Trim(Name).Split(['.']), AOffset);
     if not Resolved.Found or (Resolved.SymbolKind <> TIndexSymbolKind.TypeAlias) or (Pos('=', Resolved.Signature) = 0)
     then
+    begin
       Exit;
+    end;
     // "TAktion = reference to procedure(…)": der Teil hinter '='.
     Name := Trim(Copy(Resolved.Signature, Pos('=', Resolved.Signature) + 1, MaxInt));
     if EndsStr(';', Name) then
+    begin
       Name := Trim(Copy(Name, 1, Length(Name) - 1));
+    end;
   end;
   Result := TProcTypeKind.Unknown;
 end;
@@ -110,13 +120,17 @@ var
 begin
   Index := TRoutineBody.TokenAt(ATokens, ANode.StartOffset);
   if (Index <= High(ATokens)) and SameText(ATokens[Index].Text, 'reference') then
+  begin
     Exit(TProcTypeKind.Reference);
+  end;
   Result := TProcTypeKind.Plain;
   while (Index <= High(ATokens)) and (ATokens[Index].Offset < ANode.EndOffset) do
   begin
     Next := TRoutineBody.NextToken(ATokens, Index);
     if SameText(ATokens[Index].Text, 'of') and (Next <= High(ATokens)) and SameText(ATokens[Next].Text, 'object') then
+    begin
       Exit(TProcTypeKind.MethodPointer);
+    end;
     Inc(Index);
   end;
 end;
@@ -137,45 +151,67 @@ begin
   Result := TProcTypeKind.Unknown;
   Parent := AValue.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   case Parent.Kind of
     TSyntaxKind.AssignStatement:
       begin
         if not AResolver.NodeType(ATree, AFileName, Parent[0], Symbol, TypeSymbol, TypeFound) then
+        begin
           Exit;
+        end;
         if TypeFound then
+        begin
           Result := KindOfType(AResolver, ATree, AFileName, TypeSymbol.Name, AValue.StartOffset);
+        end;
         if (Result = TProcTypeKind.Unknown) and (Symbol.TypeName <> '') then
         begin
           TypeText := Symbol.TypeName;
           if Symbol.TypeArgs <> '' then
+          begin
             TypeText := TypeText + '<' + Symbol.TypeArgs + '>';
+          end;
           Result := KindOfType(AResolver, ATree, AFileName, TypeText, AValue.StartOffset);
         end;
       end;
     TSyntaxKind.InlineVar:
       if (Parent.ChildCount > 1) and (Parent[0].Kind = TSyntaxKind.TypeReference) then
-        Result := KindOfType(AResolver, ATree, AFileName, Parent[0].Name, AValue.StartOffset)
+      begin
+        Result := KindOfType(AResolver, ATree, AFileName, Parent[0].Name, AValue.StartOffset);
+      end
       else if (Parent.ChildCount > 1) and (Parent[0].Kind = TSyntaxKind.ProcedureType) then
+      begin
         Result := KindOfProcedureType(ATree.Tokens, Parent[0]);
+      end;
     TSyntaxKind.Call:
       begin
         Index := 1;
         while (Index < Parent.ChildCount) and (Parent[Index] <> AValue) do
+        begin
           Inc(Index);
+        end;
         if Index >= Parent.ChildCount then
+        begin
           Exit;
+        end;
         Candidates := AResolver.CallCandidates(ATree, AFileName, Parent[0]);
         // Alle Überladungen müssen dasselbe sagen.
         for Candidate in Candidates do
         begin
           if Index - 1 > High(Candidate.ParamTypes) then
+          begin
             Continue;
+          end;
           Kind := KindOfType(AResolver, ATree, AFileName, Candidate.ParamTypes[Index - 1], AValue.StartOffset);
           if Kind = TProcTypeKind.Unknown then
+          begin
             Exit(TProcTypeKind.Unknown);
+          end;
           if (Result <> TProcTypeKind.Unknown) and (Kind <> Result) then
+          begin
             Exit(TProcTypeKind.Unknown);
+          end;
           Result := Kind;
         end;
       end;
@@ -209,9 +245,13 @@ end;
 class function TLspAnonymousMethods.CaptureOf(const ASetting: string): TDeferredCapture;
 begin
   if SameText(ASetting, 'fields') then
-    Result := TDeferredCapture.Fields
+  begin
+    Result := TDeferredCapture.Fields;
+  end
   else
+  begin
     Result := TDeferredCapture.Forward;
+  end;
 end;
 
 class function TLspAnonymousMethods.Actions(ATree: TSyntaxTree; const AText, AUri: string;
@@ -242,7 +282,9 @@ begin
     Result := Result + [Action];
   end;
   if TAnonymousMethods.Embed(AText, ATree, APosition, ALookup, AStyle, Embedded, Reason) then
+  begin
     Result := Result + [TLspCodeActions.ActionToJson(AUri, Embedded)];
+  end;
 end;
 
 class function TLspAnonymousMethods.Execute(ATree: TSyntaxTree; const AText, AUri: string;
@@ -254,10 +296,14 @@ var
   Warnings: TJSONArray;
 begin
   if not TAnonymousMethods.Execute(AText, ATree, APosition, ALookup, ACapture, AStyle, AName, Converted, Reason) then
+  begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
+  end;
   Warnings := TJSONArray.Create;
   for Warning in Converted.Warnings do
+  begin
     Warnings.Add(Warning);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, Converted.Edits));
   Result.AddPair('warnings', Warnings);

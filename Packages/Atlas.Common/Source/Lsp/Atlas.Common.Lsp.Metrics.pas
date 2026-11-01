@@ -103,13 +103,21 @@ class function TLspMetrics.TryParseMode(const AText: string; out AMode: TLspMetr
 begin
   Result := True;
   if (AText = '') or SameText(AText, 'file') then
-    AMode := TLspMetricsMode.FileValues
+  begin
+    AMode := TLspMetricsMode.FileValues;
+  end
   else if SameText(AText, 'summary') then
-    AMode := TLspMetricsMode.Summary
+  begin
+    AMode := TLspMetricsMode.Summary;
+  end
   else if SameText(AText, 'json') then
-    AMode := TLspMetricsMode.Json
+  begin
+    AMode := TLspMetricsMode.Json;
+  end
   else if SameText(AText, 'markdown') then
-    AMode := TLspMetricsMode.Markdown
+  begin
+    AMode := TLspMetricsMode.Markdown;
+  end
   else
   begin
     AMode := TLspMetricsMode.FileValues;
@@ -146,14 +154,18 @@ begin
     try
       Items := TMetricsCalculator.Structure(Tree);
       if FIndex <> nil then
+      begin
         Items := Items + TMetricRules.InheritanceDepths(Tree, FIndex, TIndexExtractor.Extract(Tree, AFileName));
+      end;
     finally
       Tree.Free;
     end;
     Structure := TMetricsReport.StructureJson(Items, Limits);
   end
   else
+  begin
     FileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName), nil);
+  end;
   // {"file": …, "methods": […]} um "enabled" und "limits" ergänzt.
   Methods := TMetricsReport.FileJson(FileItem, Limits);
   Result := '{"enabled": ' + LowerCase(BoolToStr(ASource.Settings.Metrics and ASource.Settings.CodeLens.Metrics, True)) + ', "limits": ' +
@@ -188,26 +200,40 @@ begin
   FileName := '';
   ModeText := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
+  begin
     ModeText := AArguments.Items[1].Value;
+  end;
   if not TryParseMode(ModeText, Mode) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       Format('Unbekannter Modus "%s"; erlaubt: file, summary, json, markdown', [ModeText]));
+  end;
   if (Mode = TLspMetricsMode.FileValues) and IsProject(FileName) then
+  begin
     Mode := TLspMetricsMode.Summary;
+  end;
   if not (Assigned(FSourceFor) and FSourceFor(FileName, Mode <> TLspMetricsMode.FileValues, Source)) then
   begin
     Source := Default(TLspMetricsSource);
     Source.Settings := TServerSettings.Default;
   end;
   if Mode = TLspMetricsMode.FileValues then
-    Text := FileJson(FileName, Source)
+  begin
+    Text := FileJson(FileName, Source);
+  end
   else
+  begin
     Text := ProjectJson(Source, Mode);
+  end;
   Result := TJSONObject.ParseJSONValue(Text);
   if Result = nil then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Metrikdaten sind kein gültiges JSON');
+  end;
 end;
 
 end.

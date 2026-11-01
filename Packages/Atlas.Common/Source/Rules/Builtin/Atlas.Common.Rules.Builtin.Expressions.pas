@@ -139,14 +139,18 @@ function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Quelltext der Token AFirst..ALast wie geschrieben.</summary>
@@ -178,7 +182,9 @@ var
   Prev, Next: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(ATokens)) or (ATokens[AIndex].Kind <> TPascalTokenKind.Identifier) then
+  begin
     Exit(False);
+  end;
   Prev := PreviousCode(ATokens, AIndex);
   Next := NextCode(ATokens, AIndex + 1);
   Result := not ((Prev >= 0) and (ATokens[Prev].IsSymbol('.') or ATokens[Prev].IsSymbol('@'))) and
@@ -202,11 +208,15 @@ begin
     if not IsTrivia(Token) then
     begin
       if Token.IsSymbol('(') or Token.IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token.IsSymbol(')') or Token.IsSymbol(']') then
       begin
         if Depth = 0 then
+        begin
           Exit;
+        end;
         Dec(Depth);
       end
       else if Depth = 0 then
@@ -215,7 +225,9 @@ begin
           'until', 'end', 'to', 'downto', 'and', 'or', 'xor', 'in', 'begin', 'except', 'finally'])) or
           Token.IsSymbol(';') or Token.IsSymbol(',') or Token.IsSymbol(':=') or Token.IsSymbol(':') or
           IsComparison(Token) then
+        begin
           Exit;
+        end;
       end;
       Result := Index;
     end;
@@ -237,7 +249,9 @@ function InStatements(ATree: TSyntaxTree; const APosition: TTextPosition): Boole
     Pending := TStack<TSyntaxNode>.Create;
     try
       for Index := ARoot.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(ARoot[Index]);
+      end;
       while Pending.Count > 0 do
       begin
         Child := Pending.Pop;
@@ -246,9 +260,13 @@ function InStatements(ATree: TSyntaxTree; const APosition: TTextPosition): Boole
           (Child.StartPos.Character <= APosition.Character))) and
           ((Child.EndPos.Line > APosition.Line) or ((Child.EndPos.Line = APosition.Line) and
           (Child.EndPos.Character > APosition.Character))) then
+        begin
           Exit(True);
+        end;
         for Index := Child.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Child[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -276,44 +294,66 @@ var
   IsSet: Boolean;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     for Index := 0 to High(Tokens) do
     begin
       if not Tokens[Index].IsKeyword('not') then
+      begin
         Continue;
+      end;
       Operand := NextCode(Tokens, Index + 1);
       if not IsPlainIdentifier(Tokens, Operand) then
+      begin
         Continue;
+      end;
       Op := NextCode(Tokens, Operand + 1);
       if (Op > High(Tokens)) or not (Tokens[Op].IsKeyword('in') or IsComparison(Tokens[Op])) then
+      begin
         Continue;
+      end;
       Right := NextCode(Tokens, Op + 1);
       Last := OperandEnd(Tokens, Right);
       if (Last < Right) or not InStatements(AContext.Tree, Tokens[Index].StartPos) then
+      begin
         Continue;
+      end;
       TypeName := Types.DeclaredType(Tokens[Operand].Text, Tokens[Operand].StartPos);
       if (TypeName = '') or IsLogical(TypeName) then
+      begin
         Continue;
+      end;
       Name := Tokens[Operand].Text;
       RightText := Trim(SourceText(AContext.Text, Tokens, Right, Last));
       IsSet := Tokens[Right].IsSymbol('[');
       if IsSet then
-        Shown := '[…]'
+      begin
+        Shown := '[…]';
+      end
       else
+      begin
         Shown := RightText;
+      end;
       Shown := Name + ' ' + Tokens[Op].Text + ' ' + Shown;
       if Tokens[Op].IsKeyword('in') then
+      begin
         Message := Format('„not“ gilt nur für %s, nicht für den in-Ausdruck. Gemeint ist vermutlich not (%s).',
-          [Name, Shown])
+          [Name, Shown]);
+      end
       else if TDeclaredTypes.IsInt32(TypeName) or TDeclaredTypes.IsInt64(TypeName) then
+      begin
         Message := Format('„not“ kehrt die Ganzzahl %s bitweise um, nicht den Vergleich. ' +
-          'Gemeint ist vermutlich not (%s).', [Name, Shown])
+          'Gemeint ist vermutlich not (%s).', [Name, Shown]);
+      end
       else
+      begin
         Message := Format('„not“ gilt nur für %s, nicht für den Vergleich. Gemeint ist vermutlich not (%s).',
           [Name, Shown]);
+      end;
       AReport.Add(RangeOf(Tokens, Index, Last), Message, TRuleConfidence.High,
         [TRuleFix.Create(Format('Klammern setzen: not (%s)', [Shown]),
         [TRuleEdit.Create(RangeOf(Tokens, Operand, Last),
@@ -354,9 +394,13 @@ var
     begin
       Middle := (Lo + Hi) div 2;
       if Tokens[Middle].Offset < AOffset then
-        Lo := Middle + 1
+      begin
+        Lo := Middle + 1;
+      end
       else
+      begin
         Hi := Middle;
+      end;
     end;
     Result := Lo;
   end;
@@ -365,7 +409,9 @@ var
   begin
     Result := ANode;
     while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+    begin
       Result := Result[0];
+    end;
   end;
 
   // Vergleichsschlüssel: Token ohne Kommentare, Bezeichner und Schlüsselwörter klein.
@@ -380,10 +426,16 @@ var
     while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) do
     begin
       if not IsTrivia(Tokens[Index]) then
+      begin
         if Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
-          Result := Result + LowerCase(Tokens[Index].Text) + ' '
+        begin
+          Result := Result + LowerCase(Tokens[Index].Text) + ' ';
+        end
         else
+        begin
           Result := Result + Tokens[Index].Text + ' ';
+        end;
+      end;
       Inc(Index);
     end;
   end;
@@ -412,13 +464,21 @@ var
         Node := Pending.Pop;
         if (Node.Kind in [TSyntaxKind.Call, TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
           MatchText(Node.Name, ImpureCalls) then
+        begin
           Exit(True);
+        end;
         if (Node.Kind = TSyntaxKind.Call) and not TPureRoutines.IsPure(Node.Name) then
+        begin
           Exit(True);
+        end;
         if Node.Kind = TSyntaxKind.AnonymousMethod then
+        begin
           Exit(True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -438,16 +498,26 @@ var
     begin
       Conditions := Conditions + [Current[0]];
       if (Current.ChildCount = 3) and (Current[2].Kind = TSyntaxKind.IfStatement) then
-        Current := Current[2]
+      begin
+        Current := Current[2];
+      end
       else
+      begin
         Current := nil;
+      end;
     end;
     // Ein Aufruf in der Kette kann den Zustand ändern, den eine spätere Bedingung liest.
     for Index := 0 to High(Conditions) do
+    begin
       if Impure(Conditions[Index]) then
+      begin
         Exit;
+      end;
+    end;
     for Index := 1 to High(Conditions) do
+    begin
       for Earlier := 0 to Index - 1 do
+      begin
           if Key(Conditions[Earlier]) = Key(Conditions[Index]) then
           begin
             AReport.Add(TTextRange.Create(Conditions[Index].StartPos, Conditions[Index].EndPos),
@@ -456,13 +526,17 @@ var
               [TRuleFix.Jump('Zum ersten Vorkommen springen', Conditions[Earlier].StartPos)]);
             Break;
           end;
+      end;
+    end;
   end;
 
   procedure CheckBranches(AIf: TSyntaxNode);
   begin
     if (AIf.ChildCount <> 3) or (AIf[2].Kind = TSyntaxKind.IfStatement) or (Key(AIf[1]) = '') or
       (Key(AIf[1]) <> Key(AIf[2])) then
+    begin
       Exit;
+    end;
     AReport.Add(TTextRange.Create(AIf[0].StartPos, AIf[0].EndPos), 'then- und else-Zweig sind gleich; ' +
       'die Bedingung hat keine Wirkung.', TRuleConfidence.High,
       [TRuleFix.Jump('Zum then-Zweig springen', AIf[1].StartPos)]);
@@ -487,7 +561,9 @@ var
           Pending.Push(Node[0]);
         end
         else
+        begin
           AList := AList + [Node];
+        end;
       end;
     finally
       Pending.Free;
@@ -504,17 +580,27 @@ var
     // Nur am Anfang der Kette prüfen, auch durch Klammern hindurch.
     Parent := ANode.Parent;
     while (Parent <> nil) and (Parent.Kind = TSyntaxKind.ParenExpr) do
+    begin
       Parent := Parent.Parent;
+    end;
     if (Parent <> nil) and (Parent.Kind = TSyntaxKind.BinaryExpr) and SameText(Parent.Name, ANode.Name) then
+    begin
       Exit;
+    end;
     Op := LowerCase(ANode.Name);
     List := nil;
     Operands(ANode, Op, List);
     for Index := 0 to High(List) do
+    begin
       if Impure(List[Index]) then
+      begin
         Exit;
+      end;
+    end;
     for Index := 1 to High(List) do
+    begin
       for Earlier := 0 to Index - 1 do
+      begin
           if Key(List[Earlier]) = Key(List[Index]) then
           begin
             AReport.Add(TTextRange.Create(List[Index].StartPos, List[Index].EndPos),
@@ -523,6 +609,8 @@ var
               [TRuleFix.Jump('Zum ersten Vorkommen springen', List[Earlier].StartPos)]);
             Break;
           end;
+      end;
+    end;
   end;
 
   function IsFloat(ANode: TSyntaxNode): Boolean;
@@ -552,9 +640,13 @@ var
         if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount > 0) and
           (Node[0].Kind = TSyntaxKind.Identifier) and (Length(Node[0].Name) > 1) and (Node[0].Name[1] = 'T') and
           CharInSet(Node[0].Name[2], ['A'..'Z']) then
+        begin
           Exit(True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -566,14 +658,22 @@ var
     Outcome: string;
   begin
     if (ANode.ChildCount <> 2) or (Key(ANode[0]) <> Key(ANode[1])) or Impure(ANode) or OnClass(ANode) then
+    begin
       Exit;
+    end;
     // X <> X ist bei Gleitkommazahlen die Prüfung auf NaN.
     if IsFloat(ANode[0]) then
+    begin
       Exit;
+    end;
     if MatchStr(ANode.Name, ['=', '<=', '>=']) then
-      Outcome := 'True'
+    begin
+      Outcome := 'True';
+    end
     else
+    begin
       Outcome := 'False';
+    end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s wird mit sich selbst verglichen; ' +
       'das Ergebnis ist immer %s.', [Display(ANode[0]), Outcome]), TRuleConfidence.High);
   end;
@@ -596,18 +696,26 @@ var
           // Kette nur vom ersten if aus.
           if not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.IfStatement) and
             (Node.Parent.ChildCount = 3) and (Node.Parent[2] = Node)) then
+          begin
             CheckChain(Node);
+          end;
           CheckBranches(Node);
         end
         else if Node.Kind = TSyntaxKind.BinaryExpr then
         begin
           if MatchText(Node.Name, ['and', 'or', 'xor']) then
-            CheckLogical(Node)
+          begin
+            CheckLogical(Node);
+          end
           else if MatchStr(Node.Name, ['=', '<>', '<', '>', '<=', '>=']) then
+          begin
             CheckComparison(Node);
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -616,7 +724,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
@@ -640,7 +750,9 @@ var
 begin
   Name := LowerCase(Trim(AType));
   if Pos('[', Name) > 0 then
+  begin
     Name := Trim(Copy(Name, 1, Pos('[', Name) - 1));
+  end;
   Result := MatchText(Name, ['string', 'unicodestring', 'ansistring', 'widestring', 'rawbytestring', 'utf8string',
     'shortstring', 'tcaption', 'system.string']);
 end;
@@ -673,14 +785,20 @@ var
   begin
     Depth := 0;
     for Result := AOpen to High(Code) do
+    begin
       if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
       begin
         Dec(Depth);
         if Depth = 0 then
+        begin
           Exit;
+        end;
       end;
+    end;
     Result := -1;
   end;
 
@@ -692,12 +810,20 @@ var
     Result := [AOpen + 1];
     Depth := 0;
     for Position := AOpen + 1 to AClose - 1 do
+    begin
       if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
-        Dec(Depth)
+      begin
+        Dec(Depth);
+      end
       else if (Depth = 0) and Token(Position).IsSymbol(',') then
+      begin
         Result := Result + [Position + 1];
+      end;
+    end;
   end;
 
   // Ist das Argument ab AFirst bis vor ANext sicher ein String? Deklarierter Typ, Literal oder .Text/.Caption.
@@ -707,14 +833,22 @@ var
   begin
     Last := ANext - 1;
     if Last < AFirst then
+    begin
       Exit(False);
+    end;
     if (AFirst = Last) and (Token(AFirst).Kind = TPascalTokenKind.StringLiteral) then
+    begin
       Exit(True);
+    end;
     if (Token(Last).Kind = TPascalTokenKind.Identifier) and IsSym(Last - 1, '.') and
       MatchText(Token(Last).Text, ['Text', 'Caption']) then
+    begin
       Exit(True);
+    end;
     if IsName(AFirst, 'Self') and IsSym(AFirst + 1, '.') then
+    begin
       Inc(AFirst, 2);
+    end;
     Result := (AFirst = Last) and (Token(AFirst).Kind = TPascalTokenKind.Identifier) and
       IsStringType(Types.DeclaredType(Token(AFirst).Text, Token(AFirst).StartPos));
   end;
@@ -735,23 +869,35 @@ var
     Literal: TPascalToken;
   begin
     if not IsSym(APosition + 1, '(') or not IsRtlCall(APosition) then
+    begin
       Exit;
+    end;
     Close := Closing(APosition + 1);
     if Close < 0 then
+    begin
       Exit;
+    end;
     Args := Arguments(APosition + 1, Close);
     Args := Args + [Close + 1];
     Name := Token(APosition).Text;
     if SameText(Name, 'Insert') then
-      Index := 2
+    begin
+      Index := 2;
+    end
     else
+    begin
       Index := 1;
+    end;
     if Length(Args) < Index + 2 then
+    begin
       Exit;
+    end;
     // Das Argument muss genau "0" sein; der String steht bei Insert an zweiter, sonst an erster Stelle.
     if (Args[Index + 1] - Args[Index] <> 2) or (Token(Args[Index]).Text <> '0') or
       not IsStringArgument(Args[Index - 1], Args[Index] - 1) then
+    begin
       Exit;
+    end;
     Literal := Token(Args[Index]);
     if SameText(Name, 'Delete') then
     begin
@@ -774,7 +920,9 @@ var
     if (AAfter > High(Code)) or not (Token(AAfter).IsSymbol('>') or Token(AAfter).IsSymbol('>=') or
       Token(AAfter).IsSymbol('<') or Token(AAfter).IsSymbol('<=') or Token(AAfter).IsSymbol('=') or
       Token(AAfter).IsSymbol('<>')) then
+    begin
       Exit;
+    end;
     AOperator := AAfter;
     if IsSym(AAfter + 1, '-') and (AAfter + 2 <= High(Code)) and
       (Token(AAfter + 2).Kind = TPascalTokenKind.Number) then
@@ -788,11 +936,15 @@ var
       AText := Token(AAfter).Text + Token(AAfter + 1).Text;
     end
     else
+    begin
       Exit;
+    end;
     // "Pos(…) > 1 + X" vergleicht mit einem anderen Wert.
     if IsSym(ALast + 1, '+') or IsSym(ALast + 1, '-') or IsSym(ALast + 1, '*') or
       ((ALast + 1 <= High(Code)) and (Token(ALast + 1).IsKeyword('div') or Token(ALast + 1).IsKeyword('mod'))) then
+    begin
       Exit;
+    end;
     Result := True;
   end;
 
@@ -805,7 +957,9 @@ var
   function InArithmetic(APosition: Integer): Boolean;
   begin
     if IsSym(APosition - 1, '.') then
+    begin
       Dec(APosition, 2);
+    end;
     Result := IsSym(APosition - 1, '+') or IsSym(APosition - 1, '-') or IsSym(APosition - 1, '*') or
       ((APosition > 0) and (Token(APosition - 1).IsKeyword('div') or Token(APosition - 1).IsKeyword('mod')));
   end;
@@ -827,18 +981,26 @@ var
     Compare, Name: string;
   begin
     if not IsSym(APosition + 1, '(') or not IsRtlCall(APosition) or InArithmetic(APosition) then
+    begin
       Exit;
+    end;
     Close := Closing(APosition + 1);
     // "Pos(…) > -1", aber nicht "Pos(…) - 1 > 0" oder "X.Pos".
     if (Close < 0) or not Comparison(Close + 1, Operator, Last, Compare) then
+    begin
       Exit;
+    end;
     Name := Token(APosition).Text;
     if (Compare = '>-1') or (Compare = '>=0') or (Compare = '<>-1') then
+    begin
       ReportComparison(Operator, Last, Format('%s liefert 0 bei keinem Treffer; der Vergleich %s ist immer wahr.',
-        [Name, TextOf(Operator, Last)]), '> 0', TRuleConfidence.High)
+        [Name, TextOf(Operator, Last)]), '> 0', TRuleConfidence.High);
+    end
     else if (Compare = '=-1') or (Compare = '<0') or (Compare = '<=-1') then
+    begin
       ReportComparison(Operator, Last, Format('%s liefert 0 bei keinem Treffer; der Vergleich %s ist nie wahr.',
         [Name, TextOf(Operator, Last)]), '= 0', TRuleConfidence.High);
+    end;
   end;
 
   // S.IndexOf(…) > 0 bzw. >= 1 übersieht den Treffer am Anfang; < 1 bzw. <= 0 zählt ihn als "nicht gefunden".
@@ -848,43 +1010,65 @@ var
     Compare, Name: string;
   begin
     if not IsSym(APosition - 1, '.') or not IsSym(APosition + 1, '(') then
+    begin
       Exit;
+    end;
     Close := Closing(APosition + 1);
     if (Close < 0) or not Comparison(Close + 1, Operator, Last, Compare) then
+    begin
       Exit;
+    end;
     Name := Token(APosition).Text;
     if (Compare = '>0') or (Compare = '>=1') then
+    begin
       ReportComparison(Operator, Last, Format('%s zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich %s ' +
-        'übersieht den Treffer am Anfang.', [Name, TextOf(Operator, Last)]), '>= 0', TRuleConfidence.Medium)
+        'übersieht den Treffer am Anfang.', [Name, TextOf(Operator, Last)]), '>= 0', TRuleConfidence.Medium);
+    end
     else if (Compare = '<1') or (Compare = '<=0') then
+    begin
       ReportComparison(Operator, Last, Format('%s zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich %s ' +
         'zählt den Treffer am Anfang als nicht gefunden.', [Name, TextOf(Operator, Last)]), '< 0',
         TRuleConfidence.Medium);
+    end;
   end;
 
 var
   Index, Position: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not IsTrivia(Tokens[Index]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     for Position := 0 to High(Code) do
     begin
       if Token(Position).Kind <> TPascalTokenKind.Identifier then
+      begin
         Continue;
+      end;
       if MatchText(Token(Position).Text, ['Copy', 'Delete', 'Insert']) then
-        CheckStartIndex(Position)
+      begin
+        CheckStartIndex(Position);
+      end
       else if MatchText(Token(Position).Text, ['Pos', 'PosEx', 'AnsiPos']) then
-        CheckPos(Position)
+      begin
+        CheckPos(Position);
+      end
       // LastIndexOf(…) > 0 heißt meist bewusst "Trenner nicht am Anfang" (Name.LastIndexOf('.') > 0).
       else if MatchText(Token(Position).Text, ['IndexOf', 'IndexOfAny']) then
+      begin
         CheckIndexOf(Position);
+      end;
     end;
   finally
     Types.Free;
@@ -959,18 +1143,28 @@ var
         Depth := 0;
         repeat
           if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
-            Inc(Depth)
+          begin
+            Inc(Depth);
+          end
           else if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+          begin
             Dec(Depth);
+          end;
           Dec(Position);
         until (Depth = 0) or (Position < 0);
         if Position < 0 then
+        begin
           Exit;
+        end;
       end;
       if not IsWord(Position) then
+      begin
         Exit;
+      end;
       if not IsSym(Position - 1, '.') then
+      begin
         Exit(Position);
+      end;
       Dec(Position, 2);
     end;
   end;
@@ -990,17 +1184,25 @@ var
         Depth := 0;
         repeat
           if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
-            Inc(Depth)
+          begin
+            Inc(Depth);
+          end
           else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+          begin
             Dec(Depth);
+          end;
           Inc(Position);
         until (Depth = 0) or (Position > High(Code));
         if Depth <> 0 then
+        begin
           Exit(-1);
+        end;
         Result := Position - 1;
       end;
       if not IsSym(Position, '.') then
+      begin
         Exit;
+      end;
       Inc(Position);
     end;
     Result := -1;
@@ -1028,14 +1230,20 @@ var
   begin
     Result := False;
     if (ALast - AFirst < 2) or not IsName(ALast, 'Value') or not IsSym(ALast - 1, '.') then
+    begin
       Exit;
+    end;
     ABase := TextOf(AFirst, ALast - 2);
     // FieldByName('…'), FindField, Fields[…], ParamByName, Params[…] in der Kette.
     for Position := AFirst to ALast - 2 do
+    begin
       if IsName(Position, 'FieldByName') or IsName(Position, 'FindField') or IsName(Position, 'ParamByName') or
         IsName(Position, 'FindParam') or ((IsName(Position, 'Fields') or IsName(Position, 'Params')) and
         IsSym(Position + 1, '[')) then
+      begin
         Exit(True);
+      end;
+    end;
     // Feld mit deklariertem Typ TStringField, TIntegerField, TParam …
     Result := (ALast - 2 = AFirst) and IsDataType(Types.DeclaredType(Token(AFirst).Text, Token(AFirst).StartPos));
   end;
@@ -1045,9 +1253,13 @@ var
     Base, Replacement, Message, Prefix: string;
   begin
     if Token(AOperator).IsSymbol('<>') then
-      Prefix := 'not '
+    begin
+      Prefix := 'not ';
+    end
     else
+    begin
       Prefix := '';
+    end;
     if DataValue(AExprFirst, AExprLast, Base) then
     begin
       Replacement := Prefix + Base + '.IsNull';
@@ -1062,11 +1274,15 @@ var
     end;
     // "not X = Null" bindet als "(not X) = Null": dann keine Korrektur, die Bedeutung ist unklar.
     if IsKey(AFirst - 1, 'not') then
-      AReport.Add(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Message)
+    begin
+      AReport.Add(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Message);
+    end
     else
+    begin
       AReport.Add(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Message,
         [TRuleFix.Create(Format('Durch "%s" ersetzen', [Replacement]),
         [TRuleEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Replacement)])]);
+    end;
   end;
 
   procedure CheckAt(APosition: Integer);
@@ -1078,14 +1294,18 @@ var
     begin
       First := ChainStart(APosition - 2);
       if (First >= 0) and OpensExpression(First - 1) and ClosesExpression(APosition + 1) then
+      begin
         ReportAt(First, APosition, APosition - 1, First, APosition - 2);
+      end;
     end
     // Null = X bzw. Null <> X
     else if (IsSym(APosition + 1, '=') or IsSym(APosition + 1, '<>')) and OpensExpression(APosition - 1) then
     begin
       Last := ChainEnd(APosition + 2);
       if (Last >= 0) and ClosesExpression(Last + 1) then
+      begin
         ReportAt(APosition, Last, APosition + 1, APosition + 2, Last);
+      end;
     end;
   end;
 
@@ -1093,19 +1313,29 @@ var
   Index, Position: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Null') then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not IsTrivia(Tokens[Index]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     for Position := 0 to High(Code) do
+    begin
       // Null als Wert: nicht Teil einer Kette (X.Null) und kein Aufruf.
       if IsName(Position, 'Null') and not IsSym(Position - 1, '.') and not IsSym(Position + 1, '.') and
         not IsSym(Position + 1, '(') then
+      begin
         CheckAt(Position);
+      end;
+    end;
   finally
     Types.Free;
   end;
@@ -1127,6 +1357,7 @@ begin
   Result := 0;
   Index := 1;
   while Index <= Length(ALiteral) do
+  begin
     if ALiteral[Index] = '''' then
     begin
       Inc(Index);
@@ -1136,9 +1367,13 @@ begin
         begin
           // '' im Literal ist ein Apostroph, sonst endet der Abschnitt.
           if (Index < Length(ALiteral)) and (ALiteral[Index + 1] = '''') then
-            Inc(Index)
+          begin
+            Inc(Index);
+          end
           else
+          begin
             Break;
+          end;
         end;
         Inc(Result);
         Inc(Index);
@@ -1152,15 +1387,22 @@ begin
       while (Index <= Length(ALiteral)) and CharInSet(ALiteral[Index], ['$', '0'..'9', 'A'..'F', 'a'..'f', '_']) do
       begin
         if ALiteral[Index] <> '_' then
+        begin
           Digits := Digits + ALiteral[Index];
+        end;
         Inc(Index);
       end;
       if not TryStrToInt(Digits, Value) then
+      begin
         Exit(-1);
+      end;
       Inc(Result);
     end
     else
+    begin
       Exit(-1);
+    end;
+  end;
 end;
 
 procedure TPosArgumentsSwappedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1192,14 +1434,20 @@ var
   begin
     Depth := 0;
     for Result := AOpen to High(Code) do
+    begin
       if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
       begin
         Dec(Depth);
         if Depth = 0 then
+        begin
           Exit;
+        end;
       end;
+    end;
     Result := -1;
   end;
 
@@ -1211,12 +1459,20 @@ var
     Result := [AOpen + 1];
     Depth := 0;
     for Position := AOpen + 1 to AClose - 1 do
+    begin
       if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
-        Dec(Depth)
+      begin
+        Dec(Depth);
+      end
       else if (Depth = 0) and Token(Position).IsSymbol(',') then
+      begin
         Result := Result + [Position + 1];
+      end;
+    end;
     Result := Result + [AClose + 1];
   end;
 
@@ -1232,13 +1488,17 @@ var
     Text: string;
   begin
     if ALast < AFirst then
+    begin
       Exit(-1);
+    end;
     Text := '';
     for Position := AFirst to ALast do
     begin
       if not (Token(Position).Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]) or
         (Pos(#10, Token(Position).Text) > 0) then
+      begin
         Exit(-1);
+      end;
       Text := Text + Token(Position).Text;
     end;
     Result := LiteralLength(Text);
@@ -1249,18 +1509,26 @@ var
   function IsStringPart(AFirst, ALast: Integer): Boolean;
   begin
     if ALast < AFirst then
+    begin
       Exit(False);
+    end;
     if (Token(ALast).Kind = TPascalTokenKind.Identifier) and IsSym(ALast - 1, '.') and
       MatchText(Token(ALast).Text, ['Text', 'Caption']) then
+    begin
       Exit(True);
+    end;
     if (Token(AFirst).Kind = TPascalTokenKind.Identifier) and IsSym(AFirst + 1, '(') and
       not IsSym(AFirst - 1, '.') and MatchText(Token(AFirst).Text, ['Trim', 'TrimLeft', 'TrimRight', 'UpperCase',
       'LowerCase', 'AnsiUpperCase', 'AnsiLowerCase', 'IntToStr', 'Format', 'QuotedStr', 'StringReplace',
       'ExtractFileName', 'ExtractFilePath', 'ExtractFileExt', 'ChangeFileExt', 'IncludeTrailingPathDelimiter',
       'ExcludeTrailingPathDelimiter', 'LeftStr', 'RightStr', 'MidStr', 'ReverseString', 'DupeString']) then
+    begin
       Exit(Closing(AFirst + 1) = ALast);
+    end;
     if IsName(AFirst, 'Self') and IsSym(AFirst + 1, '.') then
+    begin
       Inc(AFirst, 2);
+    end;
     Result := (AFirst = ALast) and (Token(AFirst).Kind = TPascalTokenKind.Identifier) and
       TStringIndexBaseRule.IsStringType(Types.DeclaredType(Token(AFirst).Text, Token(AFirst).StartPos));
   end;
@@ -1279,20 +1547,30 @@ var
       Plus := -1;
       Depth := 0;
       for Position := Start to ALast do
+      begin
         if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
-          Inc(Depth)
+        begin
+          Inc(Depth);
+        end
         else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
-          Dec(Depth)
+        begin
+          Dec(Depth);
+        end
         else if (Depth = 0) and Token(Position).IsSymbol('+') then
         begin
           Plus := Position;
           Break;
         end;
+      end;
       if Plus < 0 then
+      begin
         Exit(IsStringPart(Start, ALast));
+      end;
       // Zeichen + Zeichen ist schon ein String, Zahl + Zahl nicht: ein Teil muss sicher String sein.
       if IsStringPart(Start, Plus - 1) or (Literal(Start, Plus - 1) >= 2) or (Literal(Plus + 1, ALast) >= 2) then
+      begin
         Exit(True);
+      end;
       Start := Plus + 1;
     end;
   end;
@@ -1307,17 +1585,25 @@ var
     Range: TTextRange;
   begin
     if not IsSym(APosition + 1, '(') then
+    begin
       Exit;
+    end;
     // Nur die RTL-Routine: ohne Punkt davor oder mit System. bzw. StrUtils. (auch System.StrUtils.).
     if IsSym(APosition - 1, '.') and not IsName(APosition - 2, 'System') and
       not IsName(APosition - 2, 'StrUtils') then
+    begin
       Exit;
+    end;
     Close := Closing(APosition + 1);
     if Close < 0 then
+    begin
       Exit;
+    end;
     Args := Arguments(APosition + 1, Close);
     if Length(Args) < 3 then
+    begin
       Exit;
+    end;
     if ATextFirst then
     begin
       TextArg := 0;
@@ -1331,12 +1617,18 @@ var
     Size := Literal(Args[TextArg], Args[TextArg + 1] - 2);
     if (Size < 1) or (Size > MaxLength) or (Literal(Args[PartArg], Args[PartArg + 1] - 2) >= 0) or
       not IsStringArgument(Args[PartArg], Args[PartArg + 1] - 2) then
+    begin
       Exit;
+    end;
     Name := Token(APosition).Text;
     if ATextFirst then
-      Message := '%s(Text, Teil): vermutlich vertauscht, gesucht wird %s in %s.'
+    begin
+      Message := '%s(Text, Teil): vermutlich vertauscht, gesucht wird %s in %s.';
+    end
     else
+    begin
       Message := '%s(Teil, Text): vermutlich vertauscht, gesucht wird %s in %s.';
+    end;
     Message := Format(Message, [Name, TextOf(Args[TextArg], Args[TextArg + 1] - 2),
       TextOf(Args[PartArg], Args[PartArg + 1] - 2)]);
     // Eine Änderung über beide Argumente (ein Undo-Schritt); Komma, Leerraum und Kommentare dazwischen bleiben.
@@ -1351,25 +1643,37 @@ var
   Index, Position: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   MaxLength := TRuleOptions.Int(AContext.Options, 'maxLiteralLength', 3);
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not IsTrivia(Tokens[Index]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     for Position := 0 to High(Code) do
     begin
       if Token(Position).Kind <> TPascalTokenKind.Identifier then
+      begin
         Continue;
+      end;
       if MatchText(Token(Position).Text, ['Pos', 'PosEx', 'AnsiPos', 'StartsText', 'StartsStr', 'EndsText',
         'EndsStr', 'AnsiStartsText', 'AnsiStartsStr', 'AnsiEndsText', 'AnsiEndsStr']) then
-        CheckCall(Position, False)
+      begin
+        CheckCall(Position, False);
+      end
       else if MatchText(Token(Position).Text, ['ContainsText', 'ContainsStr', 'AnsiContainsText',
         'AnsiContainsStr']) then
+      begin
         CheckCall(Position, True);
+      end;
     end;
   finally
     Types.Free;
@@ -1403,15 +1707,23 @@ var
   begin
     Result := '';
     while (ANode <> nil) and not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+    begin
       ANode := ANode.Parent;
+    end;
     if (ANode = nil) or (ANode.Kind <> TSyntaxKind.RoutineDecl) then
+    begin
       Exit;
+    end;
     Header := ANode.FindChild(TSyntaxKind.RoutineHeader);
     if Header = nil then
+    begin
       Exit;
+    end;
     Reference := Header.FindChild(TSyntaxKind.TypeReference);
     if Reference <> nil then
+    begin
       Result := Trim(Copy(AContext.Text, Reference.StartOffset + 1, Reference.EndOffset - Reference.StartOffset));
+    end;
   end;
 
   // Steht ANode in einem with-Block? Dann kann der Name ein Feld des with-Objekts sein.
@@ -1420,7 +1732,9 @@ var
     while ANode <> nil do
     begin
       if ANode.Kind = TSyntaxKind.WithStatement then
+      begin
         Exit(True);
+      end;
       ANode := ANode.Parent;
     end;
     Result := False;
@@ -1432,12 +1746,14 @@ var
     Index: Integer;
   begin
     for Index := TSyntaxTree.FirstTokenOf(Tokens, ADivision[0].EndOffset) to High(Tokens) do
+    begin
       if (Tokens[Index].Offset >= ADivision[0].EndOffset) and (Tokens[Index].Offset < ADivision[1].StartOffset) and
         Tokens[Index].IsKeyword('div') then
       begin
         AToken := Tokens[Index];
         Exit(True);
       end;
+    end;
     Result := False;
   end;
 
@@ -1446,7 +1762,9 @@ var
   function IsExplicitInteger(AOperand: TSyntaxNode): Boolean;
   begin
     while (AOperand.Kind = TSyntaxKind.ParenExpr) and (AOperand.ChildCount = 1) do
+    begin
       AOperand := AOperand[0];
+    end;
     Result := (AOperand.Kind = TSyntaxKind.Call) and (AOperand.ChildCount > 0) and
       (AOperand[0].Kind = TSyntaxKind.Identifier) and MatchText(AOperand[0].Name, ['Trunc', 'Round', 'Floor', 'Ceil']);
   end;
@@ -1470,20 +1788,30 @@ var
         case Node.Kind of
           TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr:
             if (Node.Kind = TSyntaxKind.ParenExpr) or (Node.Name = '-') or (Node.Name = '+') then
+            begin
               for Index := Node.ChildCount - 1 downto 0 do
+              begin
                 Pending.Push(Node[Index]);
+              end;
+            end;
           TSyntaxKind.BinaryExpr:
             if SameText(Node.Name, 'div') and (Node.ChildCount = 2) then
             begin
               if not IsExplicitInteger(Node[0]) and not IsExplicitInteger(Node[1]) and DivToken(Node, Token) then
+              begin
                 AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos),
                   Format('div rechnet ganzzahlig; %s ist %s und verliert die Nachkommastellen.', [ATarget, AType]),
                   TRuleConfidence.High, [TRuleFix.Create('div durch / ersetzen',
                   [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), '/')])]);
+              end;
             end
             else if MatchStr(Node.Name, ['+', '-', '*', '/']) then
+            begin
               for Index := Node.ChildCount - 1 downto 0 do
+              begin
                 Pending.Push(Node[Index]);
+              end;
+            end;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
@@ -1499,26 +1827,40 @@ var
     Name, TypeName: string;
   begin
     if (ANode.ChildCount <> 2) or InWith(ANode) then
+    begin
       Exit;
+    end;
     Target := ANode[0];
     // Self.X wie X.
     if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
       (Target[0].Kind = TSyntaxKind.Identifier) and SameText(Target[0].Name, 'Self') then
-      Name := Target.Name
+    begin
+      Name := Target.Name;
+    end
     else if Target.Kind = TSyntaxKind.Identifier then
-      Name := Target.Name
+    begin
+      Name := Target.Name;
+    end
     else
+    begin
       Exit;
+    end;
     if SameText(Name, 'Result') then
     begin
       TypeName := Types.DeclaredType(Name, Target.StartPos);
       if TypeName = '' then
+      begin
         TypeName := ResultType(ANode);
+      end;
     end
     else
+    begin
       TypeName := Types.DeclaredType(Name, Target.StartPos);
+    end;
     if IsFractional(TypeName) then
+    begin
       Search(ANode[1], Name, TypeName);
+    end;
   end;
 
   // var Schnitt: Double := Summe div Anzahl;
@@ -1528,11 +1870,17 @@ var
     TypeName: string;
   begin
     if (ANode.ChildCount <> 2) or (Pos(',', ANode.Name) > 0) or (ANode[0].Kind <> TSyntaxKind.TypeReference) then
+    begin
       Exit;
+    end;
     TypeName := Trim(Copy(AContext.Text, ANode[0].StartOffset + 1, ANode[0].EndOffset - ANode[0].StartOffset));
     if IsFractional(TypeName) then
+    begin
       for Index := 1 to ANode.ChildCount - 1 do
+      begin
         Search(ANode[Index], Trim(ANode.Name), TypeName);
+      end;
+    end;
   end;
 
   // Iterativ (Bericht M1).
@@ -1549,11 +1897,17 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.AssignStatement then
-          CheckAssignment(Node)
+        begin
+          CheckAssignment(Node);
+        end
         else if Node.Kind = TSyntaxKind.InlineVar then
+        begin
           CheckInlineVar(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1562,7 +1916,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
@@ -1623,7 +1979,9 @@ begin
   for Token in ATokens do
   begin
     if Token.Kind <> TPascalTokenKind.Directive then
+    begin
       Continue;
+    end;
     Name := TPascalLexer.DirectiveName(Token.Text);
     if (Name = 'IF') or (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IFOPT') then
     begin
@@ -1666,25 +2024,35 @@ var
   begin
     Result := False;
     for Range in Blocks do
+    begin
       if (AOffset >= Range.Start) and (AOffset < Range.Stop) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
 begin
   // Ohne bekannte Version (IsAvailable liefert dann True) oder ab Delphi 13 still.
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
     TLanguageFeatures.IsAvailable(TLanguageFeature.IfExpression, AContext.DelphiVersion) then
+  begin
     Exit;
+  end;
   Found := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := True;
       if (ANode.Kind = TSyntaxKind.IfExpr) and (TConditionalExpression.Outermost(ANode) = ANode) then
+      begin
         Found := Found + [ANode];
+      end;
     end);
   if Found = nil then
+  begin
     Exit;
+  end;
   Blocks := VersionBlocks(AContext.Tree.Tokens);
   Layout := TStatementLayout.Create('', TRoutineBody.IndentUnit(AContext.Formatting),
     TTextLines.LineBreakOf(AContext.Text));
@@ -1694,10 +2062,14 @@ begin
   for Node in Found do
   begin
     if Guarded(Node.StartOffset) then
+    begin
       Continue;
+    end;
     Fixes := nil;
     if TConditionalExpression.ToStatement(AContext.Text, AContext.Tree, Node, Layout, Rewrite) then
+    begin
       Fixes := [TRuleFix.Create(Rewrite.Title, [TRuleEdit.Create(Rewrite.Edit.Range, Rewrite.Edit.NewText)])];
+    end;
     AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Message, TRuleConfidence.High, Fixes);
   end;
 end;

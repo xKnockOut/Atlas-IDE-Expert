@@ -69,11 +69,17 @@ begin
     Middle := (Low + High_) div 2;
     Order := CompareStr(UpperCase(AUsages[Middle].Name), Key);
     if Order = 0 then
+    begin
       Exit(True);
+    end;
     if Order < 0 then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High_ := Middle - 1;
+    end;
   end;
   Result := False;
 end;
@@ -86,11 +92,17 @@ end;
 class function TIndexUsages.Lookup(const AUnit: TUnitIndex; const AName: string): TIndexUsageAnswer;
 begin
   if not AUnit.UsagesIndexed or AUnit.UsagesOffloaded or (AUnit.Includes <> nil) or not Counted(AName) then
+  begin
     Exit(TIndexUsageAnswer.Unknown);
+  end;
   if Has(AUnit.Usages, AName) then
-    Result := TIndexUsageAnswer.Present
+  begin
+    Result := TIndexUsageAnswer.Present;
+  end
   else
+  begin
     Result := TIndexUsageAnswer.Absent;
+  end;
 end;
 
 class function TIndexUsages.Lookup(const AIndex: ISymbolIndex; const AFileName, AName: string): TIndexUsageAnswer;
@@ -98,7 +110,9 @@ var
   Indexed: TUnitIndex;
 begin
   if (AIndex = nil) or not AIndex.FindFile(AFileName, Indexed) then
+  begin
     Exit(TIndexUsageAnswer.Unknown);
+  end;
   Result := Lookup(Indexed, AName);
 end;
 

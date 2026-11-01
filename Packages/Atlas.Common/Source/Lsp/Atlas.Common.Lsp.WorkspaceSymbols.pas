@@ -115,26 +115,34 @@ begin
   Result := nil;
   Query := LowerCase(Trim(AQuery));
   if Query = '' then
+  begin
     Exit;
+  end;
   Candidates := TList<TCandidate>.Create;
   Seen := TDictionary<string, Boolean>.Create;
   try
     for UnitIndex in AIndex.Units do
     begin
       if ACancellation <> nil then
+      begin
         ACancellation.ThrowIfCancellationRequested;
+      end;
       for Symbol in UnitIndex.Symbols do
       begin
         Rank := TFuzzyMatch.Score(Symbol.Name, Query);
         if Rank = TFuzzyMatch.NoMatch then
+        begin
           Continue;
+        end;
         // Deklaration und Implementierung derselben Routine nur einmal.
         Key := LowerCase(UnitIndex.FileName + '|' + Symbol.Container + '|' + Symbol.Name + '|' +
           IntToStr(Ord(Symbol.Kind)));
         if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) then
         begin
           if Seen.ContainsKey(Key) then
+          begin
             Continue;
+          end;
           Seen.Add(Key, True);
         end;
         Candidate.Item.Symbol := Symbol;
@@ -144,7 +152,9 @@ begin
         // Höhere Punktzahl zuerst; bei Gleichstand Typen vor anderen Symbolen.
         Candidate.Rank := -Rank * 2;
         if not (Symbol.Kind in TypeKinds) then
+        begin
           Inc(Candidate.Rank);
+        end;
         Candidates.Add(Candidate);
       end;
     end;
@@ -153,17 +163,27 @@ begin
       begin
         Result := A.Rank - B.Rank;
         if Result = 0 then
+        begin
           Result := CompareText(A.Item.Symbol.Name, B.Item.Symbol.Name);
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(A.Item.Symbol.Container, B.Item.Symbol.Container);
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(A.Item.UnitName, B.Item.UnitName);
+        end;
       end));
     if Candidates.Count < AMax then
+    begin
       AMax := Candidates.Count;
+    end;
     SetLength(Result, AMax);
     for Index := 0 to AMax - 1 do
+    begin
       Result[Index] := Candidates[Index].Item;
+    end;
   finally
     Seen.Free;
     Candidates.Free;
@@ -182,14 +202,18 @@ begin
   Result := nil;
   Query := LowerCase(Trim(AQuery));
   if Query = '' then
+  begin
     Exit;
+  end;
   Candidates := TList<TCandidate>.Create;
   try
     for Hit in AHits do
     begin
       Rank := TFuzzyMatch.Score(Hit.Bookmark.Name, Query);
       if Rank = TFuzzyMatch.NoMatch then
+      begin
         Continue;
+      end;
       Candidate.Item.Symbol := Default(TIndexSymbol);
       Candidate.Item.Symbol.Name := Hit.Bookmark.Name;
       Candidate.Item.Symbol.Range := Hit.Bookmark.Range;
@@ -205,10 +229,14 @@ begin
       begin
         Result := A.Rank - B.Rank;
         if Result = 0 then
+        begin
           Result := CompareText(A.Item.Symbol.Name, B.Item.Symbol.Name);
+        end;
       end));
     for Candidate in Candidates do
+    begin
       Result := Result + [Candidate.Item];
+    end;
   finally
     Candidates.Free;
   end;
@@ -256,13 +284,21 @@ begin
     Info := TJSONObject.Create;
     Info.AddPair('name', Item.Symbol.Name);
     if Item.Bookmark then
-      Info.AddPair('kind', TJSONNumber.Create(BookmarkKind))
+    begin
+      Info.AddPair('kind', TJSONNumber.Create(BookmarkKind));
+    end
     else
+    begin
       Info.AddPair('kind', TJSONNumber.Create(LspKind(Item.Symbol.Kind)));
+    end;
     if Item.Symbol.Container <> '' then
-      Info.AddPair('containerName', Item.UnitName + '.' + Item.Symbol.Container)
+    begin
+      Info.AddPair('containerName', Item.UnitName + '.' + Item.Symbol.Container);
+    end
     else
+    begin
       Info.AddPair('containerName', Item.UnitName);
+    end;
     Location := TJSONObject.Create;
     Location.AddPair('uri', TDocumentUris.FromPath(Item.FileName));
     Location.AddPair('range', TLspPositions.RangeToJson(Item.Symbol.SelectionRange));
@@ -278,13 +314,19 @@ var
   Found: TArray<TWorkspaceSymbol>;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('query', Query)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "query" fehlt in ' + Method);
+  end;
   Found := nil;
   if Assigned(FBookmarksFor) then
+  begin
     Found := SearchBookmarks(FBookmarksFor(), Query);
+  end;
   Found := Found + Search(FIndex, Query, MaxResults, ACancellation);
   if Length(Found) > MaxResults then
+  begin
     SetLength(Found, MaxResults);
+  end;
   Result := ToJson(Found);
 end;
 

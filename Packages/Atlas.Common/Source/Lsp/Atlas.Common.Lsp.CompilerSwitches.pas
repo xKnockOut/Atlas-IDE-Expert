@@ -85,7 +85,9 @@ begin
   if AWithValue then
   begin
     if AEntry.LongName <> '' then
+    begin
       Result.AddPair('longName', AEntry.LongName);
+    end;
     Result.AddPair('value', AEntry.Value);
     Result.AddPair('projectValue', AEntry.ProjectValue);
     Result.AddPair('deviates', TJSONBool.Create(AEntry.Deviates));
@@ -99,7 +101,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Entry in AEntries do
+  begin
     Result.AddElement(EntryJson(Entry, AWithValue));
+  end;
 end;
 
 { TLspCompilerSwitches }
@@ -158,13 +162,19 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Context := Default(TCompilerSwitchContext);
   if Assigned(FContextFor) then
+  begin
     Context := FContextFor(Uri);
+  end;
   ACancellation.ThrowIfCancellationRequested;
   Result := ToJson(StateAt(Document.Text, TLspPositions.ReadPosition(PositionValue), Context), Context);
 end;

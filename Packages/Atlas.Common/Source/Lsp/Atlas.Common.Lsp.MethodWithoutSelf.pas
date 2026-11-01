@@ -92,7 +92,9 @@ var
 begin
   Result := nil;
   if not TMethodWithoutSelf.Target(AText, ATree, APosition, ALookup, Target, Reason) then
+  begin
     Exit;
+  end;
   for Conversion in Target.Conversions do
   begin
     Title := Target.Title(Conversion);
@@ -153,7 +155,9 @@ type
 destructor TUseFile.Destroy;
 begin
   if OwnsTree then
+  begin
     Source.Tree.Free;
+  end;
   inherited;
 end;
 
@@ -180,12 +184,16 @@ var
   Lines: TLineTable;
 begin
   if not TMethodWithoutSelf.ConversionOf(AConversion, Conversion) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Umwandlung "%s"', [AConversion]));
+  end;
   AResolver.PinTree(ATree, AFileName);
   try
     MethodLookup := Lookup(AResolver, ATree, AFileName, AContext.ReadText);
     if not TMethodWithoutSelf.Target(AText, ATree, APosition, MethodLookup, Target, Reason) then
+    begin
       raise Fail('Umwandeln geht nicht: ' + Reason);
+    end;
   finally
     AResolver.UnpinTree;
   end;
@@ -198,7 +206,9 @@ begin
     for Location in Locations do
     begin
       if MatchText(ExtractFileExt(Location.FileName), ['.dfm', '.fmx']) then
+      begin
         raise Fail(Format('Umwandeln geht nicht: %s steht in %s', [Target.Name, ExtractFileName(Location.FileName)]));
+      end;
       if SameText(Location.FileName, AFileName) then
       begin
         Declaring.Offsets := Declaring.Offsets + [Lines.OffsetAt(Location.Range.StartPos)];
@@ -206,15 +216,21 @@ begin
       end;
       Found := False;
       for UseFile in Files do
+      begin
         if SameText(UseFile.Source.FileName, Location.FileName) then
         begin
           UseFile.Source.Offsets := UseFile.Source.Offsets + [UseFile.Lines.OffsetAt(Location.Range.StartPos)];
           Found := True;
         end;
+      end;
       if Found then
+      begin
         Continue;
+      end;
       if not Assigned(AContext.ReadText) or not AContext.ReadText(Location.FileName, Text) then
+      begin
         raise Fail(Format('Umwandeln geht nicht: %s lässt sich nicht lesen', [ExtractFileName(Location.FileName)]));
+      end;
       UseFile := TUseFile.Create;
       Files := Files + [UseFile];
       UseFile.OwnsTree := True;
@@ -224,18 +240,24 @@ begin
     end;
     Others := nil;
     for UseFile in Files do
+    begin
       Others := Others + [UseFile.Source];
+    end;
     AResolver.PinTree(ATree, AFileName);
     try
       if not TMethodWithoutSelf.Execute(Declaring, Others, APosition, Conversion, AContext.WithStatic, MethodLookup, AStyle,
         Converted, Reason) then
+      begin
         raise Fail('Umwandeln geht nicht: ' + Reason);
+      end;
     finally
       AResolver.UnpinTree;
     end;
   finally
     for UseFile in Files do
+    begin
       UseFile.Free;
+    end;
   end;
   Places := 0;
   Changes := TJSONArray.Create;
@@ -256,7 +278,9 @@ begin
   Edit.AddPair('changeAnnotations', Annotations);
   Warnings := TJSONArray.Create;
   for Warning in Converted.Warnings do
+  begin
     Warnings.Add(Warning);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('edit', Edit);
   Result.AddPair('warnings', Warnings);
@@ -273,8 +297,12 @@ var
 begin
   Result := nil;
   for Target in TMethodWithoutSelf.Candidates(AText, ATree, ALookup) do
+  begin
     if (Target.HeaderEnd.Line >= ARange.StartPos.Line) and (Target.HeaderEnd.Line <= ARange.EndPos.Line) then
+    begin
       Result := Result + [Target.HeaderEnd];
+    end;
+  end;
 end;
 
 end.

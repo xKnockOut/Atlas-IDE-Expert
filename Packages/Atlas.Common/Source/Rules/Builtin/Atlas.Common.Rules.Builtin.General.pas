@@ -103,7 +103,9 @@ function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer
 begin
   Result := AIndex;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 /// <summary>Vorheriges Token vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
@@ -111,7 +113,9 @@ function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Int
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Einrückung der Zeile ALine von AText.</summary>
@@ -123,10 +127,14 @@ begin
   Lines := StringReplace(AText, #13#10, #10, [rfReplaceAll]).Split([#10]);
   Result := '';
   if ALine > High(Lines) then
+  begin
     Exit;
+  end;
   Index := 1;
   while (Index <= Length(Lines[ALine])) and CharInSet(Lines[ALine][Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(Lines[ALine], 1, Index - 1);
 end;
 
@@ -135,7 +143,9 @@ var
   Guid: TGUID;
 begin
   if CreateGUID(Guid) <> 0 then
+  begin
     raise EOSError.Create('GUID konnte nicht erzeugt werden');
+  end;
   Result := '[''' + GUIDToString(Guid) + ''']';
 end;
 
@@ -154,23 +164,31 @@ var
   Indent: string;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
     if (Tokens[Index].Kind <> TPascalTokenKind.Keyword) or not Tokens[Index].IsKeyword('except') then
+    begin
       Continue;
+    end;
     // Zwischen except und end steht nichts außer Kommentaren und Direktiven.
     Next := Index + 1;
     Commented := False;
     while (Next <= High(Tokens)) and IsTrivia(Tokens[Next]) do
     begin
       if Tokens[Next].Kind = TPascalTokenKind.Comment then
+      begin
         Commented := True;
+      end;
       Inc(Next);
     end;
     if (Next > High(Tokens)) or not Tokens[Next].IsKeyword('end') or Commented then
+    begin
       Continue;
+    end;
     Indent := LineIndent(AContext.Text, Tokens[Index].StartPos.Line);
     AReport.Add(TokenRange(Tokens[Index]), 'Leerer except-Block verschluckt jede Ausnahme; behandeln, ' +
       'weiterwerfen oder mit einem Kommentar begründen', TRuleConfidence.High,
@@ -197,8 +215,12 @@ var
     Index: Integer;
   begin
     for Index := 0 to ABlock.ChildCount - 1 do
+    begin
       if ABlock[Index].Kind <> TSyntaxKind.EmptyStatement then
+      begin
         Exit(False);
+      end;
+    end;
     Result := True;
   end;
 
@@ -206,16 +228,24 @@ var
   function FirstKeyword(const AWord: string; AFrom: Integer): Integer;
   begin
     for Result := 0 to High(Tokens) do
+    begin
       if (Tokens[Result].Offset >= AFrom) and Tokens[Result].IsKeyword(AWord) then
+      begin
         Exit;
+      end;
+    end;
     Result := -1;
   end;
 
   function LastKeyword(const AWord: string; ABefore: Integer): Integer;
   begin
     for Result := High(Tokens) downto 0 do
+    begin
       if (Tokens[Result].Offset < ABefore) and Tokens[Result].IsKeyword(AWord) then
+      begin
         Exit;
+      end;
+    end;
     Result := -1;
   end;
 
@@ -228,19 +258,31 @@ var
     Result := '';
     Parent := ATry.Parent;
     if Parent = nil then
+    begin
       Exit;
+    end;
     Previous := nil;
     for Index := 1 to Parent.ChildCount - 1 do
+    begin
       if Parent[Index] = ATry then
+      begin
         Previous := Parent[Index - 1];
+      end;
+    end;
     if (Previous = nil) or (Previous.Kind <> TSyntaxKind.AssignStatement) or (Previous.ChildCount <> 2) or
       (Previous[0].Kind <> TSyntaxKind.Identifier) then
+    begin
       Exit;
+    end;
     Value := Previous[1];
     if (Value.Kind = TSyntaxKind.Call) and (Value.ChildCount > 0) then
+    begin
       Value := Value[0];
+    end;
     if (Value.Kind = TSyntaxKind.MemberAccess) and SameText(Value.Name, 'Create') then
+    begin
       Result := Previous[0].Name;
+    end;
   end;
 
   // Steht ATry in einer Anweisungsliste (begin … end, try, repeat …)? Sonst ist sie die einzige Anweisung
@@ -266,20 +308,30 @@ var
     FinallyLine := Tokens[AFinallyToken].StartPos.Line;
     EndLine := Tokens[AEndToken].StartPos.Line;
     if (EndLine > High(Lines)) or (Trim(Lines[TryLine]) <> 'try') or (Trim(Lines[FinallyLine]) <> 'finally') then
+    begin
       Exit;
+    end;
     Ending := Trim(Lines[EndLine]);
     if (Ending <> 'end') and (Ending <> 'end;') then
+    begin
       Exit;
+    end;
     Statements := 0;
     for Index := 0 to ATry.ChildCount - 1 do
+    begin
       if not (ATry[Index].Kind in [TSyntaxKind.FinallyBlock, TSyntaxKind.EmptyStatement]) then
+      begin
         Inc(Statements);
+      end;
+    end;
     Range := TTextRange.Create(TTextPosition.Create(TryLine, 0), TTextPosition.Create(EndLine, Length(Lines[EndLine])));
     if not InStatementList(ATry) and (Statements > 1) then
     begin
       Body := [TTextLines.IndentOf(Lines[TryLine]) + 'begin'];
       for Line := TryLine + 1 to FinallyLine - 1 do
+      begin
         Body := Body + [Lines[Line]];
+      end;
       Body := Body + [Lines[EndLine]];
       AFix := TRuleFix.Create('try … finally end durch begin … end ersetzen',
         [TRuleEdit.Create(Range, TTextLines.JoinLines(Body, LineBreak))]);
@@ -288,22 +340,38 @@ var
     // Rumpf um den Unterschied zwischen seiner Einrückung und der von try ausrücken.
     Shift := MaxInt;
     for Line := TryLine + 1 to FinallyLine - 1 do
+    begin
       if Trim(Lines[Line]) <> '' then
+      begin
         Shift := Min(Shift, TTextLines.IndentLength(Lines[Line]) - TTextLines.IndentLength(Lines[TryLine]));
+      end;
+    end;
     if (Shift = MaxInt) or (Shift < 0) then
+    begin
       Shift := 0;
+    end;
     Body := nil;
     for Line := TryLine + 1 to FinallyLine - 1 do
+    begin
       if Trim(Lines[Line]) = '' then
-        Body := Body + ['']
+      begin
+        Body := Body + [''];
+      end
       else
+      begin
         Body := Body + [Copy(Lines[Line], Shift + 1, MaxInt)];
+      end;
+    end;
     if Body = nil then
+    begin
       Exit;
+    end;
     // end; trennte die Anweisung von der folgenden: Das Semikolon wandert an die letzte Zeile des Rumpfs.
     Text := TrimRight(Body[High(Body)]);
     if (Ending = 'end;') and not EndsStr(';', Text) then
+    begin
       Body[High(Body)] := Text + ';';
+    end;
     AFix := TRuleFix.Create('try … finally end entfernen (Rumpf bleibt)',
       [TRuleEdit.Create(Range, TTextLines.JoinLines(Body, LineBreak))]);
     Result := True;
@@ -318,25 +386,41 @@ var
   begin
     Block := ATry[ATry.ChildCount - 1];
     if (Block.Kind <> TSyntaxKind.FinallyBlock) or not IsEmptyBlock(Block) then
+    begin
       Exit;
+    end;
     TryToken := FirstKeyword('try', ATry.StartOffset);
     FinallyToken := LastKeyword('finally', ATry.EndOffset);
     EndToken := LastKeyword('end', ATry.EndOffset);
     if (TryToken < 0) or (FinallyToken < 0) or (EndToken <= FinallyToken) then
+    begin
       Exit;
+    end;
     // Ein Kommentar begründet den leeren Block; eine Direktive kann Code eines anderen Zweigs enthalten.
     for Index := FinallyToken + 1 to EndToken - 1 do
+    begin
       if Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      begin
         Exit;
+      end;
+    end;
     Variable := CreatedVariable(ATry);
     if Variable <> '' then
-      Message := Format('Leerer finally-Block; fehlt hier %s.Free?', [Variable])
+    begin
+      Message := Format('Leerer finally-Block; fehlt hier %s.Free?', [Variable]);
+    end
     else
+    begin
       Message := 'Leerer finally-Block; die Freigabe fehlt oder try … finally ist überflüssig.';
+    end;
     if Fix(ATry, TryToken, FinallyToken, EndToken, RuleFix) then
-      AReport.Add(TokenRange(Tokens[FinallyToken]), Message, TRuleConfidence.High, [RuleFix])
+    begin
+      AReport.Add(TokenRange(Tokens[FinallyToken]), Message, TRuleConfidence.High, [RuleFix]);
+    end
     else
+    begin
       AReport.Add(TokenRange(Tokens[FinallyToken]), Message, TRuleConfidence.High, []);
+    end;
   end;
 
   // Iterativ (Bericht M1).
@@ -353,9 +437,13 @@ var
       begin
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.TryStatement) and (Node.ChildCount > 0) then
+        begin
           CheckTry(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -364,7 +452,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   Walk(AContext.Tree.Root);
@@ -394,14 +484,20 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if not (ATokens[Index].IsKeyword('interface') or ATokens[Index].IsKeyword('dispinterface')) then
+    begin
       Continue;
+    end;
     // "IFoo = interface": vor dem Schlüsselwort steht "=", davor der Name.
     Equals := PreviousCode(ATokens, Index);
     if (Equals < 0) or not ATokens[Equals].IsSymbol('=') then
+    begin
       Continue;
+    end;
     Name := PreviousCode(ATokens, Equals);
     if (Name < 0) or (ATokens[Name].Kind <> TPascalTokenKind.Identifier) then
+    begin
       Continue;
+    end;
     Declaration := Default(TInterfaceDeclaration);
     Declaration.Name := ATokens[Name].Text;
     Declaration.NameToken := Name;
@@ -411,11 +507,15 @@ begin
     Next := NextCode(ATokens, Index + 1);
     // Vorwärtsdeklaration "IFoo = interface;" hat keine GUID.
     if (Next <= High(ATokens)) and ATokens[Next].IsSymbol(';') then
+    begin
       Continue;
+    end;
     if (Next <= High(ATokens)) and ATokens[Next].IsSymbol('(') then
     begin
       while (Next <= High(ATokens)) and not ATokens[Next].IsSymbol(')') do
+      begin
         Inc(Next);
+      end;
       Declaration.HeaderEnd := Next;
       Next := NextCode(ATokens, Next + 1);
     end;
@@ -426,8 +526,10 @@ begin
       Declaration.GuidToken := Next + 1;
     end
     else if (Next + 2 <= High(ATokens)) and ATokens[Next].IsSymbol('[') then
+    begin
       // GUID über eine Konstante: vorhanden, aber nicht vergleichbar.
       Declaration.GuidToken := Next;
+    end;
     Result := Result + [Declaration];
   end;
 end;
@@ -447,17 +549,27 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if (ATokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(ATokens[Index].Text, AName) then
+    begin
       Continue;
+    end;
     Previous := PreviousCode(ATokens, Index);
     if (Previous >= 0) and ATokens[Previous].IsKeyword('as') then
+    begin
       Exit(True);
+    end;
     // Supports(X, IFoo, …) bzw. QueryInterface(IFoo, …): der Name steht in der Argumentliste.
     for Inner := Index - 1 downto Max(0, Index - 8) do
+    begin
       if (ATokens[Inner].Kind = TPascalTokenKind.Identifier) and
         (SameText(ATokens[Inner].Text, 'Supports') or SameText(ATokens[Inner].Text, 'QueryInterface')) then
-        Exit(True)
+      begin
+        Exit(True);
+      end
       else if ATokens[Inner].IsSymbol(';') then
+      begin
         Break;
+      end;
+    end;
   end;
   Result := False;
 end;
@@ -470,13 +582,17 @@ var
   Indent, mCode: string;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Declaration in InterfaceDeclarations(Tokens) do
   begin
     // Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid als Fehler (wie E2229, #1374).
     if (Declaration.GuidToken >= 0) or Declaration.IsDispinterface then
+    begin
       Continue;
+    end;
     // Nur die Abfrage meldet dcc, an ihrer Stelle (E2232, #1382).
     mCode := '';
     if IsQueried(Tokens, Declaration.Name) then
@@ -485,7 +601,9 @@ begin
       mCode := ' (wie E2232).';
     end
     else
+    begin
       Confidence := TRuleConfidence.Low;
+    end;
     Indent := LineIndent(AContext.Text, Tokens[Declaration.NameToken].StartPos.Line);
     AReport.Add(TokenRange(Tokens[Declaration.NameToken]), Format('Interface %s hat keine GUID; Supports, as ' +
       'und QueryInterface brauchen eine%s', [Declaration.Name, mCode]), Confidence,
@@ -511,14 +629,19 @@ var
   Token: TPascalToken;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Declarations := InterfaceDeclarations(Tokens);
   for Index := 0 to High(Declarations) do
   begin
     if Declarations[Index].Guid = '' then
+    begin
       Continue;
+    end;
     for Other := 0 to High(Declarations) do
+    begin
       if (Other <> Index) and (Declarations[Other].Guid = Declarations[Index].Guid) then
       begin
         Token := Tokens[Declarations[Index].GuidToken];
@@ -528,6 +651,7 @@ begin
             Copy(GuidLine, 2, Length(GuidLine) - 2))])]);
         Break;
       end;
+    end;
   end;
 end;
 
@@ -548,22 +672,40 @@ var
 begin
   Result := '';
   if not AGuid.StartsWith('{') and not AGuid.EndsWith('}') then
+  begin
     Exit('Der GUID fehlen die geschweiften Klammern');
+  end;
   if not AGuid.StartsWith('{') then
+  begin
     Exit('Der GUID fehlt die öffnende geschweifte Klammer');
+  end;
   if not AGuid.EndsWith('}') or (Length(AGuid) < 2) then
+  begin
     Exit('Der GUID fehlt die schließende geschweifte Klammer');
+  end;
   Blocks := Copy(AGuid, 2, Length(AGuid) - 2).Split(['-']);
   if Length(Blocks) <> Length(Lengths) then
+  begin
     Exit(Format('Die GUID hat %d statt 5 Blöcke', [Length(Blocks)]));
+  end;
   for Index := 0 to High(Blocks) do
+  begin
     if Length(Blocks[Index]) <> Lengths[Index] then
+    begin
       Exit(Format('Der %s Block der GUID hat %d statt %d Zeichen', [Ordinals[Index], Length(Blocks[Index]),
         Lengths[Index]]));
+    end;
+  end;
   for Index := 0 to High(Blocks) do
+  begin
     for Position := 1 to Length(Blocks[Index]) do
+    begin
       if not CharInSet(Blocks[Index][Position], ['0'..'9', 'A'..'F', 'a'..'f']) then
+      begin
         Exit(Format('Die GUID enthält „%s“, das ist keine Hexadezimalziffer', [Blocks[Index][Position]]));
+      end;
+    end;
+  end;
 end;
 
 procedure TGuidSyntaxInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -579,18 +721,26 @@ var
     Text := Tokens[AIndex].Text;
     // Nur ein einzelnes Literal ohne #-Zeichen; Verkettungen wertet erst der Compiler aus.
     if not Text.StartsWith('''') or not Text.EndsWith('''') or (Length(Text) < 2) then
+    begin
       Exit;
+    end;
     Next := NextCode(Tokens, AIndex + 1);
     if (Next > High(Tokens)) or not (Tokens[Next].IsSymbol(']') or Tokens[Next].IsSymbol(';')) then
+    begin
       Exit;
+    end;
     Guid := AnsiDequotedStr(Text, '''');
     Message := TGuidSyntaxInvalidRule.Problem(Guid);
     if Message = '' then
+    begin
       Exit;
+    end;
     Fixes := nil;
     if TGuidSyntaxInvalidRule.Problem('{' + Guid + '}') = '' then
+    begin
       Fixes := [TRuleFix.Create('Geschweifte Klammern ergänzen', [TRuleEdit.Create(TokenRange(Tokens[AIndex]),
         '''{' + Guid + '}''')], True)];
+    end;
     Fixes := Fixes + [TRuleFix.Create('Neue GUID erzeugen', [TRuleEdit.Create(TokenRange(Tokens[AIndex]),
       Copy(GuidLine, 2, Length(GuidLine) - 2))])];
     AReport.Add(TokenRange(Tokens[AIndex]), Message + ' (wie E2204).', TRuleConfidence.High, Fixes);
@@ -601,23 +751,35 @@ var
   Index, Colon, Equals: Integer;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Declaration in InterfaceDeclarations(Tokens) do
+  begin
     if (Declaration.GuidToken >= 0) and (Tokens[Declaration.GuidToken].Kind = TPascalTokenKind.StringLiteral) then
+    begin
       CheckLiteral(Declaration.GuidToken);
+    end;
+  end;
   // Typisierte Konstanten: Name: TGUID = '…';
   for Index := 0 to High(Tokens) do
   begin
     if (Tokens[Index].Kind <> TPascalTokenKind.StringLiteral) then
+    begin
       Continue;
+    end;
     Equals := PreviousCode(Tokens, Index);
     if (Equals < 0) or not Tokens[Equals].IsSymbol('=') then
+    begin
       Continue;
+    end;
     Colon := PreviousCode(Tokens, PreviousCode(Tokens, Equals));
     if (Colon >= 0) and Tokens[Colon].IsSymbol(':') and
       SameText(Tokens[PreviousCode(Tokens, Equals)].Text, 'TGUID') then
+    begin
       CheckLiteral(Index);
+    end;
   end;
 end;
 
@@ -634,11 +796,15 @@ var
 begin
   Result := '';
   if Trim(AOptions) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if Value is TJSONObject then
+    begin
       TJSONObject(Value).TryGetValue<string>('template', Result);
+    end;
   finally
     Value.Free;
   end;
@@ -650,14 +816,20 @@ var
 begin
   Header := Template(AContext.Options);
   if Header = '' then
+  begin
     Exit;
+  end;
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
   Header := StringReplace(StringReplace(Header, #13#10, #10, [rfReplaceAll]), #10, LineBreak, [rfReplaceAll]);
   Text := AContext.Text;
   if (Text <> '') and (Text[1] = #$FEFF) then
+  begin
     Delete(Text, 1, 1);
+  end;
   if StartsStr(Header, Text) then
+  begin
     Exit;
+  end;
   AReport.Add(TTextRange.Create(0, 0, 0, 0), 'Der Dateikopf entspricht nicht der Vorlage', TRuleConfidence.High,
     [TRuleFix.Create('Dateikopf einfügen', [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0), Header + LineBreak)])]);
 end;
@@ -677,8 +849,12 @@ var
 begin
   Letters := 0;
   for Index := 1 to Length(AValue) do
+  begin
     if AValue[Index].IsLetter then
+    begin
       Inc(Letters);
+    end;
+  end;
   Result := (Letters >= 3) and (Pos(' ', Trim(AValue)) > 0);
 end;
 
@@ -688,7 +864,9 @@ var
   Index, Depth: Integer;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Depth := 0;
   for Index := 0 to High(Tokens) do
@@ -696,20 +874,30 @@ begin
     if Tokens[Index].Kind = TPascalTokenKind.Keyword then
     begin
       if Tokens[Index].IsKeyword('begin') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if (Depth > 0) and (Tokens[Index].IsKeyword('try') or Tokens[Index].IsKeyword('case') or
         Tokens[Index].IsKeyword('asm')) then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if (Depth > 0) and Tokens[Index].IsKeyword('end') then
+      begin
         Dec(Depth);
+      end;
       Continue;
     end;
     // Nur Anweisungen: Konstanten- und resourcestring-Abschnitte stehen außerhalb von begin … end.
     if (Depth = 0) or (Tokens[Index].Kind <> TPascalTokenKind.StringLiteral) then
+    begin
       Continue;
+    end;
     if LooksLikeText(AnsiDequotedStr(Tokens[Index].Text, '''')) then
+    begin
       AReport.Add(TokenRange(Tokens[Index]), 'Text im Code; für Übersetzungen in einen resourcestring auslagern',
         TRuleConfidence.Low);
+    end;
   end;
 end;
 

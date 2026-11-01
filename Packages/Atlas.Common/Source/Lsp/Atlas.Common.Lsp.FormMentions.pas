@@ -46,7 +46,9 @@ begin
   begin
     if ((mStart = 1) or not TTextChars.IsIdentChar(mText[mStart - 1])) and
       ((mStart + Length(mName) > Length(mText)) or not TTextChars.IsIdentChar(mText[mStart + Length(mName)])) then
+    begin
       Exit(True);
+    end;
     mStart := PosEx(mName, mText, mStart + 1);
   end;
   Result := False;
@@ -67,10 +69,16 @@ begin
     begin
       Result := False;
       if not Assigned(mReadText) then
+      begin
         Exit;
+      end;
       for mExtension in cFormExtensions do
+      begin
         if mReadText(ChangeFileExt(mFileName, mExtension), mForm) and MentionsWord(mForm, AName) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
 end;
 

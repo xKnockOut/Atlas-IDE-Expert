@@ -53,19 +53,27 @@ begin
   AEdit := Default(TTextEdit);
   Tokens := TPascalLexer.Tokenize(AText);
   for Entry in TResourceStrings.Entries(AText, Tokens) do
+  begin
     if SameText(Entry.Name, AName) then
     begin
       if Entry.Value = AValue then
+      begin
         Exit(False);
+      end;
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
         Format('%s gibt es dort schon mit anderem Text', [AName]));
     end;
+  end;
   LineBreak := #10;
   if Pos(#13#10, AText) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   if not TResourceStrings.Insertion(AText, Tokens, True, -1, Format('%s = %s;', [AName, AValue]), LineBreak,
     AEdit) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Die Unit hat keinen implementation-Teil');
+  end;
   Result := True;
 end;
 
@@ -80,7 +88,9 @@ class function TResourceStringCommands.Applied(const AText: string; const AEdit:
     while (Line < APosition.Line) and (Index <= Length(AText)) do
     begin
       if AText[Index] = #10 then
+      begin
         Inc(Line);
+      end;
       Inc(Index);
     end;
     Result := Index - 1 + APosition.Character;
@@ -102,14 +112,20 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONString) or not (AArguments.Items[2] is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden Datei, Name und Wert');
+  end;
   FileName := AArguments.Items[0].Value;
   Name := AArguments.Items[1].Value;
   Value := AArguments.Items[2].Value;
   if not IsValidIdent(Name) or (Value = '') then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Ungültiger Name oder leerer Wert');
+  end;
   if not ARead(FileName, Text) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Datei nicht lesbar: ' + ExtractFileName(FileName));
+  end;
   if AddEdit(Text, Name, Value, Edit) then
   begin
     AWrite(FileName, Applied(Text, Edit), Edit);

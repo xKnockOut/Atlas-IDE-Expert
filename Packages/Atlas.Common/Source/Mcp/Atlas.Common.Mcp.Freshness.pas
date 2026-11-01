@@ -36,11 +36,17 @@ begin
     Indexed := AIndex.FindFile(FileName, UnitIndex);
     Exists := AFileSystem.FileStamp(FileName, Stamp);
     if Indexed and not Exists then
-      Result := Result + [TFileChange.Create(FileName, TFileChangeKind.Deleted)]
+    begin
+      Result := Result + [TFileChange.Create(FileName, TFileChangeKind.Deleted)];
+    end
     else if Indexed and (Stamp <> UnitIndex.Stamp) then
-      Result := Result + [TFileChange.Create(FileName, TFileChangeKind.Changed)]
+    begin
+      Result := Result + [TFileChange.Create(FileName, TFileChangeKind.Changed)];
+    end
     else if not Indexed and Exists then
+    begin
       Result := Result + [TFileChange.Create(FileName, TFileChangeKind.Created)];
+    end;
   end;
 end;
 

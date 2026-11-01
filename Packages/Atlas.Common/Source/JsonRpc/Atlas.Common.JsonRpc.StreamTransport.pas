@@ -86,7 +86,9 @@ end;
 function TJsonRpcStreamTransport.TryReadByte(out AByte: Byte): Boolean;
 begin
   if (FBufferPos >= FBufferLen) and not FillBuffer then
+  begin
     Exit(False);
+  end;
   AByte := FBuffer[FBufferPos];
   Inc(FBufferPos);
   Result := True;
@@ -105,17 +107,27 @@ begin
     if not TryReadByte(B) then
     begin
       if AAtMessageStart and (Len = 0) then
+      begin
         raise EJsonRpcTransportClosed.Create('Eingabe geschlossen');
+      end;
       raise EJsonRpcTransportError.Create('Eingabe innerhalb eines Headers geschlossen');
     end;
     if B = 10 then
+    begin
       Break;
+    end;
     if B = 13 then
+    begin
       Continue;
+    end;
     if Len >= MaxHeaderLineLength then
+    begin
       raise EJsonRpcTransportError.Create('Headerzeile zu lang');
+    end;
     if Len = Length(Line) then
+    begin
       SetLength(Line, Len * 2);
+    end;
     Line[Len] := B;
     Inc(Len);
   end;
@@ -136,7 +148,9 @@ begin
     begin
       // Leerzeilen vor dem ersten Header werden übersprungen.
       if HeaderSeen then
+      begin
         Break;
+      end;
       Continue;
     end;
     HeaderSeen := True;
@@ -144,12 +158,16 @@ begin
     begin
       if not TryStrToInt(Line.Substring(Length(ContentLengthHeader)).Trim, Result)
         or (Result < 0) or (Result > MaxContentLength) then
+      begin
         raise EJsonRpcTransportError.CreateFmt('Ungültiger Header "%s"', [Line]);
+      end;
     end;
     // Weitere Header (z. B. Content-Type) werden ignoriert.
   end;
   if Result < 0 then
+  begin
     raise EJsonRpcTransportError.Create('Header Content-Length fehlt');
+  end;
 end;
 
 function TJsonRpcStreamTransport.ReadBody(ACount: Integer): TBytes;
@@ -162,7 +180,9 @@ begin
   while Offset < ACount do
   begin
     if (FBufferPos >= FBufferLen) and not FillBuffer then
+    begin
       raise EJsonRpcTransportError.Create('Eingabe innerhalb einer Nachricht geschlossen');
+    end;
     Count := Min(ACount - Offset, FBufferLen - FBufferPos);
     Move(FBuffer[FBufferPos], Result[Offset], Count);
     Inc(FBufferPos, Count);
@@ -177,11 +197,15 @@ var
 begin
   Body := ReadBody(ReadContentLength);
   if Length(Body) = 0 then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, 'Leere Nachricht');
+  end;
 
   Value := TJSONObject.ParseJSONValue(Body, 0, True);
   if Value = nil then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, 'Nachricht ist kein gültiges JSON');
+  end;
   if not (Value is TJSONObject) then
   begin
     Value.Free;

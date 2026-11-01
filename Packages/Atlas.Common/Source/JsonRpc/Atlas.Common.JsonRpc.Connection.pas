@@ -169,7 +169,9 @@ function TJsonRpcInboxItem.WaitedMs: Int64;
 begin
   Result := 0;
   if Received <> 0 then
+  begin
     Result := Int64(TThread.GetTickCount64 - Received);
+  end;
 end;
 
 procedure TJsonRpcInboxItem.Release;
@@ -242,13 +244,21 @@ begin
   TMonitor.Enter(FQueue);
   try
     while (FQueue.Count = 0) and (FFirst.Count = 0) and not FClosed do
+    begin
       TMonitor.Wait(FQueue, WaitForever);
+    end;
     if FFirst.Count > 0 then
-      Result := FFirst.Dequeue
+    begin
+      Result := FFirst.Dequeue;
+    end
     else if FQueue.Count > 0 then
-      Result := FQueue.Dequeue
+    begin
+      Result := FQueue.Dequeue;
+    end
     else
+    begin
       Result := InboxItem(ikClosed);
+    end;
   finally
     TMonitor.Exit(FQueue);
   end;
@@ -382,7 +392,9 @@ end;
 procedure ReleaseReader(AReader: TThread; const AInbox: IJsonRpcInbox; ATimeout: Cardinal);
 begin
   if AReader = nil then
+  begin
     Exit;
+  end;
   if AInbox.WaitForReader(ATimeout) then
   begin
     // ReaderDone kommt im finally des Threads: Danach endet er sofort.
@@ -390,7 +402,9 @@ begin
     AReader.Free;
   end
   else
+  begin
     AReader.FreeOnTerminate := True;
+  end;
 end;
 
 function ThreadPoolScheduler: TJsonRpcScheduler;
@@ -453,7 +467,9 @@ end;
 procedure TJsonRpcConnection.ReportError(const AError: Exception);
 begin
   if Assigned(FOnError) then
+  begin
     FOnError(AError);
+  end;
 end;
 
 procedure TJsonRpcConnection.ReportProblem(const AText: string);
@@ -523,7 +539,9 @@ begin
     end;
   end;
   if Response <> nil then
+  begin
     Send(Response);
+  end;
 end;
 
 procedure TJsonRpcConnection.Run;
@@ -543,10 +561,14 @@ begin
 
   OwnScheduler := not Assigned(FDispatcher.Scheduler);
   if OwnScheduler then
+  begin
     FDispatcher.Scheduler := ThreadPoolScheduler();
+  end;
   OwnResponder := not Assigned(FDispatcher.Responder);
   if OwnResponder then
+  begin
     FDispatcher.Responder := CreateResponder();
+  end;
 
   Failure := nil;
   Reader := nil;
@@ -590,7 +612,9 @@ begin
       end;
     end;
     if (Failure = nil) and Assigned(FOnLoopEnded) then
+    begin
       FOnLoopEnded();
+    end;
   finally
     SetInbox(nil);
     Inbox.Close;
@@ -601,14 +625,20 @@ begin
       ReportProblem('Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig');
     end;
     if OwnScheduler then
+    begin
       FDispatcher.Scheduler := nil;
+    end;
     if OwnResponder then
+    begin
       FDispatcher.Responder := nil;
+    end;
     ReleaseReader(Reader, Inbox, DefaultReaderTimeout);
   end;
 
   if Failure <> nil then
+  begin
     raise Failure;
+  end;
 end;
 
 function TJsonRpcConnection.Post(AMessage: TJSONObject): Boolean;
@@ -619,7 +649,9 @@ begin
   Item := InboxItem(ikMessage);
   Item.Message := AMessage;
   if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
-    Result := Inbox.PutFirst(Item)
+  begin
+    Result := Inbox.PutFirst(Item);
+  end
   else
   begin
     Item.Release;
@@ -635,7 +667,9 @@ begin
   Item := InboxItem(ikWork);
   Item.Work := AWork;
   if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
-    Result := Inbox.PutFirst(Item)
+  begin
+    Result := Inbox.PutFirst(Item);
+  end
   else
   begin
     Item.Release;
@@ -649,7 +683,9 @@ var
 begin
   FStopped := True;
   if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
+  begin
     Inbox.Put(InboxItem(ikWakeUp));
+  end;
 end;
 
 end.

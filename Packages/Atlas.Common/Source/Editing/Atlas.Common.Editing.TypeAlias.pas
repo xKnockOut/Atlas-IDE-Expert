@@ -174,14 +174,18 @@ function LastPart(const AName: string): string;
 begin
   Result := AName;
   if Pos('.', Result) > 0 then
+  begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
 end;
 
 function Capitalized(const AName: string): string;
 begin
   Result := AName;
   if Result <> '' then
+  begin
     Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+  end;
 end;
 
 function IsUpper(AChar: Char): Boolean;
@@ -194,7 +198,9 @@ function Bare(const AName: string): string;
 begin
   Result := LastPart(Trim(AName));
   if (Length(Result) >= 2) and CharInSet(Result[1], ['T', 'F', 'L', 'A', 'G', 'I']) and IsUpper(Result[2]) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
   Result := Capitalized(Result);
 end;
 
@@ -213,12 +219,14 @@ begin
   repeat
     Found := False;
     for Index := 0 to Result.ChildCount - 1 do
+    begin
       if (AOffset >= Result[Index].StartOffset) and (AOffset < Result[Index].EndOffset) then
       begin
         Result := Result[Index];
         Found := True;
         Break;
       end;
+    end;
   until not Found;
 end;
 
@@ -261,8 +269,12 @@ var
 begin
   Result := -1;
   for Index := 0 to AParent.ChildCount - 1 do
+  begin
     if AParent[Index] = AChild then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 /// <summary>Darf ANode ein Alias werden? Nicht als ganze Typdeklaration (das ist schon einer) und nicht als offenes
@@ -275,7 +287,9 @@ begin
   Result := (Parent <> nil) and (Parent.Kind <> TSyntaxKind.TypeDecl) and
     not ((ANode.Kind = TSyntaxKind.ArrayType) and (Parent.Kind = TSyntaxKind.Parameter));
   if Result and not IsTypeNode(Parent) and (Parent.Kind <> TSyntaxKind.GenericArgs) then
+  begin
     Result := Parent.Kind in DeclarationContexts;
+  end;
 end;
 
 /// <summary>Generische Parameter der umgebenden Typen und Routinen von ANode.</summary>
@@ -290,13 +304,21 @@ begin
   begin
     Params := nil;
     if Current.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineHeader] then
+    begin
       Params := Current.FindChild(TSyntaxKind.GenericParams);
+    end;
     if (Params = nil) and (Current.Kind = TSyntaxKind.RoutineDecl) and
       (Current.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    begin
       Params := Current.FindChild(TSyntaxKind.RoutineHeader).FindChild(TSyntaxKind.GenericParams);
+    end;
     if Params <> nil then
+    begin
       for Index := 0 to Params.ChildCount - 1 do
+      begin
         Result := Result + [Params[Index].Name];
+      end;
+    end;
     Current := Current.Parent;
   end;
 end;
@@ -309,21 +331,31 @@ var
 begin
   Result := '';
   if AParams = nil then
+  begin
     Exit;
+  end;
   Used := nil;
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
       if (AChild.Kind = TSyntaxKind.TypeReference) and (Pos('.', AChild.Name) = 0) and
         (IndexText(AChild.Name, AParams) >= 0) and (IndexText(AChild.Name, Used) < 0) then
+      begin
         Used := Used + [AChild.Name];
+      end;
       Result := True;
     end);
   for Name in Used do
+  begin
     if Result = '' then
-      Result := Name
+    begin
+      Result := Name;
+    end
     else
+    begin
       Result := Result + ', ' + Name;
+    end;
+  end;
 end;
 
 /// <summary>Innerster benannter Typ: letztes Typargument bzw. Element, sonst der Name selbst.</summary>
@@ -338,13 +370,19 @@ begin
       begin
         Args := ANode.FindChild(TSyntaxKind.GenericArgs);
         if (Args <> nil) and (Args.ChildCount > 0) then
+        begin
           Exit(ElementName(Args[Args.ChildCount - 1]));
+        end;
         Result := Bare(ANode.Name);
       end;
     TSyntaxKind.ArrayType, TSyntaxKind.SetType:
       for Index := ANode.ChildCount - 1 downto 0 do
+      begin
         if IsTypeNode(ANode[Index]) and (ANode[Index].Kind <> TSyntaxKind.SubrangeType) then
+        begin
           Exit(ElementName(ANode[Index]));
+        end;
+      end;
   else
     // Übrige Arten: nichts zu tun.
   end;
@@ -360,7 +398,9 @@ begin
     Inc(Result);
     Index := ANode.ChildCount - 1;
     if Index < 0 then
+    begin
       Break;
+    end;
     ANode := ANode[Index];
   end;
 end;
@@ -373,14 +413,20 @@ begin
   Result := '';
   Owner := ANode.Parent;
   if (Owner = nil) or not (Owner.Kind in DeclarationContexts) then
+  begin
     Exit;
+  end;
   Result := Trim(Owner.Name);
   if Pos(',', Result) > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Pos(',', Result) - 1));
+  end;
   Result := Bare(Result);
   // Kurze Namen (A, I, LX) sagen nichts über den Typ.
   if Length(Result) < 3 then
+  begin
     Result := '';
+  end;
 end;
 
 function Suggest(ANode: TSyntaxNode): string;
@@ -394,42 +440,68 @@ begin
     TSyntaxKind.ProcedureType:
       begin
         if Base = '' then
+        begin
           Base := 'Callback';
+        end;
         if ANode.FindChild(TSyntaxKind.TypeReference) <> nil then
-          Result := 'T' + Base + 'Func'
+        begin
+          Result := 'T' + Base + 'Func';
+        end
         else
+        begin
           Result := 'T' + Base + 'Proc';
+        end;
         if EndsText('FuncFunc', Result) or EndsText('ProcProc', Result) then
+        begin
           Result := Copy(Result, 1, Length(Result) - 4);
+        end;
       end;
     TSyntaxKind.TypeReference:
       begin
         Own := Bare(ANode.Name);
         if Base = '' then
-          Result := 'T' + Element + Own
+        begin
+          Result := 'T' + Element + Own;
+        end
         else if ContainsText(Base, Element) then
-          Result := 'T' + Base
+        begin
+          Result := 'T' + Base;
+        end
         else
+        begin
           Result := 'T' + Element + Base;
+        end;
       end;
     TSyntaxKind.ArrayType:
       if Base <> '' then
-        Result := 'T' + Base
+      begin
+        Result := 'T' + Base;
+      end
       else
       begin
         Depth := ArrayDepth(ANode);
         if Depth = 2 then
-          Result := 'T' + Element + 'Matrix'
+        begin
+          Result := 'T' + Element + 'Matrix';
+        end
         else if Depth > 2 then
-          Result := Format('T%sArray%dD', [Element, Depth])
+        begin
+          Result := Format('T%sArray%dD', [Element, Depth]);
+        end
         else
+        begin
           Result := 'T' + Element + 'Array';
+        end;
       end;
   else
     if Base <> '' then
-      Result := 'T' + Base
+    begin
+      Result := 'T' + Base;
+    end
     else
+    begin
       Result := 'T' + Element + 'Set';
+    end;
   end;
 end;
 
@@ -440,8 +512,12 @@ begin
   Result := (AName <> '') and CharInSet(AName[1], ['A'..'Z', 'a'..'z', '_']) and
     not TPascalLexer.IsReservedWord(AName);
   for Index := 2 to Length(AName) do
+  begin
     if not CharInSet(AName[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 /// <summary>Abschnitt (interface, implementation) bzw. Wurzel, in dem ANode steht.</summary>
@@ -450,7 +526,9 @@ begin
   Result := ANode;
   while (Result.Parent <> nil) and not (Result.Kind in [TSyntaxKind.InterfaceSection,
     TSyntaxKind.ImplementationSection]) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 /// <summary>Deklaration direkt unter dem Abschnitt, die ANode enthält.</summary>
@@ -459,7 +537,9 @@ begin
   Result := ANode;
   while (Result.Parent <> nil) and (Result.Parent.Parent <> nil) and
     not (Result.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 function InInterface(ANode: TSyntaxNode): Boolean;
@@ -488,7 +568,9 @@ begin
           if (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl,
             TSyntaxKind.RoutineDecl, TSyntaxKind.Field, TSyntaxKind.PropertyDecl]) and
             SameText(LastPart(ANode.Name), AName) then
+          begin
             Taken := True;
+          end;
           Result := not Taken;
         end);
       Result := Taken;
@@ -535,11 +617,17 @@ class function TTypeAlias.ScopeOf(const AName: string; out AScope: TTypeAliasSco
 begin
   Result := True;
   if SameText(AName, 'here') then
-    AScope := TTypeAliasScope.Here
+  begin
+    AScope := TTypeAliasScope.Here;
+  end
   else if SameText(AName, 'unit') then
-    AScope := TTypeAliasScope.InUnit
+  begin
+    AScope := TTypeAliasScope.InUnit;
+  end
   else if SameText(AName, 'project') then
-    AScope := TTypeAliasScope.Project
+  begin
+    AScope := TTypeAliasScope.Project;
+  end
   else
   begin
     AScope := TTypeAliasScope.InUnit;
@@ -563,16 +651,22 @@ begin
   begin
     Name := '';
     if Assigned(ALookup.Key) then
+    begin
       Name := ALookup.Key(ATree, AFileName, ANode);
+    end;
     if Name = '' then
+    begin
       Name := LastPart(ANode.Name);
+    end;
     Result := LowerCase(Name);
     Args := ANode.FindChild(TSyntaxKind.GenericArgs);
     if Args <> nil then
     begin
       Parts := nil;
       for Index := 0 to Args.ChildCount - 1 do
+      begin
         Parts := Parts + [KeyOf(ATree, AFileName, Args[Index], ALookup)];
+      end;
       Result := Result + '<' + string.Join(',', Parts) + '>';
     end;
     Exit;
@@ -596,18 +690,26 @@ begin
     Token := ATree.Tokens[mIndex];
     if (Token.Offset < ANode.StartOffset) or (Token.Offset >= ANode.EndOffset) or (Token.Offset < Skip) or
       (Token.Kind = TPascalTokenKind.Comment) then
+    begin
       Continue;
+    end;
     Child := nil;
     for Index := 0 to High(Inner) do
+    begin
       if (Token.Offset >= Inner[Index].StartOffset) and (Token.Offset < Inner[Index].EndOffset) then
+      begin
         Child := Inner[Index];
+      end;
+    end;
     if Child <> nil then
     begin
       Parts := Parts + [KeyOf(ATree, AFileName, Child, ALookup)];
       Skip := Child.EndOffset;
     end
     else
+    begin
       Parts := Parts + [LowerCase(Token.Text)];
+    end;
   end;
   Result := string.Join(' ', Parts);
 end;
@@ -648,7 +750,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Lines := TLineTable.Build(AText);
   Node := NodeAt(ATree.Root, Lines.OffsetAt(APosition));
   Outer := nil;
@@ -658,16 +762,22 @@ begin
     if (Node.Kind in TypeKinds) and Worth(Node) and Allowed(Node) then
     begin
       if Inner = nil then
+      begin
         Inner := Node;
+      end;
       Outer := Node;
     end;
     Node := Node.Parent;
   end;
   if Outer = nil then
+  begin
     Exit;
+  end;
   Result := [MakeTarget(AText, ATree, AFileName, Outer, ALookup)];
   if Inner <> Outer then
+  begin
     Result := Result + [MakeTarget(AText, ATree, AFileName, Inner, ALookup)];
+  end;
 end;
 
 type
@@ -695,7 +805,9 @@ begin
       if (ANode.Kind <> AKind) or not Allowed(ANode) or
         (UsedParams(ANode, GenericParamsAround(ANode)) <> '') or
         (TTypeAlias.KeyOf(ATree, AFileName, ANode, ALookup) <> AKey) then
+      begin
         Exit;
+      end;
       Site.Node := ANode;
       Site.Start := ANode.StartOffset;
       Site.Stop := ANode.EndOffset;
@@ -718,7 +830,9 @@ begin
       ALines.LineStart(Line - 1)));
     if not (StartsStr('//', Content) or StartsStr('{', Content) and not StartsStr('{$', Content) or
       StartsStr('(*', Content)) then
+    begin
       Break;
+    end;
     Dec(Line);
   end;
   Result := ALines.LineStart(Line);
@@ -743,10 +857,14 @@ begin
         if ANode.FindChild(TSyntaxKind.ForwardType) <> nil then
         begin
           if ForwardEnd < 0 then
+          begin
             ForwardEnd := ANode.EndOffset;
+          end;
         end
         else if Found = nil then
+        begin
           Found := ANode;
+        end;
       end;
     end);
   AForwardEnd := ForwardEnd;
@@ -763,7 +881,9 @@ begin
     function(AChild: TSyntaxNode): Boolean
     begin
       if AChild.Kind = TSyntaxKind.TypeReference then
+      begin
         Names := Names + [AChild];
+      end;
       Result := True;
     end);
   Result := Names;
@@ -783,12 +903,16 @@ begin
   begin
     if (Reference.List <> TUsesListKind.UsesList) or not (SameText(Reference.Name, AUnitName) or
       EndsText('.' + AUnitName, Reference.Name)) then
+    begin
       Continue;
+    end;
     Before := (Implementation_ = nil) or (Reference.Range.StartPos.Line < Implementation_.StartPos.Line) or
       (Reference.Range.StartPos.Line = Implementation_.StartPos.Line) and
       (Reference.Range.StartPos.Character < Implementation_.StartPos.Character);
     if InImplementation or Before then
+    begin
       Exit(True);
+    end;
   end;
 end;
 
@@ -811,13 +935,17 @@ begin
   for Change in AChanges do
   begin
     if Change.Edits = nil then
+    begin
       Continue;
+    end;
     Tree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(Change.Text, Change.Edits));
     try
       if Length(Tree.Diagnostics) > Length(Change.Tree.Diagnostics) then
+      begin
         Exit(Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)',
           [ExtractFileName(Change.FileName), Tree.Diagnostics[0].StartPos.Line + 1, Tree.Diagnostics[0].Message]),
           AReason));
+      end;
     finally
       Tree.Free;
     end;
@@ -856,23 +984,37 @@ begin
   AResult := Default(TTypeAliasResult);
   AReason := '';
   if not IsIdentifier(AName) then
+  begin
     Exit(Fail(Format('"%s" ist kein gültiger Bezeichner', [AName]), AReason));
+  end;
   Lines := TLineTable.Build(ADeclaring.Text);
   Candidates := Targets(ADeclaring.Text, ADeclaring.Tree, ADeclaring.FileName, APosition, ALookup);
   if Candidates = nil then
+  begin
     Exit(Fail('Hier steht kein Typausdruck, für den ein Alias lohnt', AReason));
+  end;
   Target := Candidates[0];
   for Index := 1 to High(Candidates) do
+  begin
     if Candidates[Index].StartOffset = Lines.OffsetAt(APosition) then
+    begin
       Target := Candidates[Index];
+    end;
+  end;
   if Target.OpenParams <> '' then
+  begin
     Exit(Fail(Format(OpenParamsReason, [Target.OpenParams]), AReason));
+  end;
   Node := NodeAt(ADeclaring.Tree.Root, Target.StartOffset);
   while (Node <> nil) and not ((Node.Kind = Target.Kind) and (Node.StartOffset = Target.StartOffset) and
     (Node.EndOffset = Target.EndOffset)) do
+  begin
     Node := Node.Parent;
+  end;
   if Node = nil then
+  begin
     Exit(Fail('Hier steht kein Typausdruck, für den ein Alias lohnt', AReason));
+  end;
   Key := KeyOf(ADeclaring.Tree, ADeclaring.FileName, Node, ALookup);
   // Stellen der Unit.
   if AScope = TTypeAliasScope.Here then
@@ -883,18 +1025,28 @@ begin
     Sites := [Site];
   end
   else
+  begin
     Sites := SitesIn(ADeclaring.Tree, ADeclaring.FileName, Key, Node.Kind, ALookup);
+  end;
   First := Node;
   for Site in Sites do
+  begin
     if Site.Start < First.StartOffset then
+    begin
       First := Site.Node;
+    end;
+  end;
   // Im Projekt steht der Alias im interface-Teil, sonst sehen ihn andere Units nicht.
   ExportNeeded := (AScope = TTypeAliasScope.Project) and (AOthers <> nil) and not InInterface(First);
   AllInInterface := True;
   for NameNode in NamesIn(Node) do
+  begin
     if (LocalType(ADeclaring.Tree, LastPart(NameNode.Name), ForwardEnd) <> nil) and
       not InInterface(LocalType(ADeclaring.Tree, LastPart(NameNode.Name), ForwardEnd)) then
+    begin
       AllInInterface := False;
+    end;
+  end;
   if ExportNeeded and not AllInInterface then
   begin
     ExportNeeded := False;
@@ -904,7 +1056,9 @@ begin
   end;
   if Assigned(ALookup.NameTaken) and ALookup.NameTaken(ADeclaring.Tree, ADeclaring.FileName, AName,
     First.StartOffset) then
+  begin
     Exit(Fail(Format('Der Name %s ist schon vergeben', [AName]), AReason));
+  end;
   // Einfügestelle: vor der Typdeklaration mit der ersten Verwendung, sonst ein neuer type-Abschnitt.
   LineBreak := TTextLines.LineBreakOf(ADeclaring.Text);
   Section := SectionOf(First);
@@ -912,13 +1066,19 @@ begin
   begin
     Section := ADeclaring.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
     if Section = nil then
+    begin
       Exit(Fail('Die Unit hat keinen interface-Teil', AReason));
+    end;
     Top := nil;
     if Section.ChildCount > 0 then
+    begin
       Top := Section[Section.ChildCount - 1];
+    end;
   end
   else
+  begin
     Top := TopLevelOf(First);
+  end;
   Forwards := '';
   Indent := '  ';
   if ExportNeeded then
@@ -935,7 +1095,9 @@ begin
     begin
       Insert := Lines.LineStart(Lines.PositionAt(Section.EndOffset).Line);
       if (Top <> nil) then
+      begin
         Insert := Lines.LineStart(Lines.PositionAt(Top.EndOffset).Line + 1);
+      end;
       Declaration := LineBreak + 'type' + LineBreak + Indent + AName + ' = ' + Target.TypeText + ';' + LineBreak;
     end;
   end
@@ -943,11 +1105,13 @@ begin
   begin
     // Die Typdeklaration des Abschnitts, in der die erste Verwendung steht.
     for Index := 0 to Top.ChildCount - 1 do
+    begin
       if (First.StartOffset >= Top[Index].StartOffset) and (First.StartOffset < Top[Index].EndOffset) then
       begin
         Top := Top[Index];
         Break;
       end;
+    end;
     Insert := LineAbove(Lines, ADeclaring.Text, Top.StartOffset);
     Indent := TTextLines.IndentOf(ADeclaring.Text, Lines.PositionAt(Top.StartOffset).Line);
     Declaration := Indent + AName + ' = ' + Target.TypeText + ';' + LineBreak;
@@ -957,7 +1121,9 @@ begin
     Previous := nil;
     Index := ChildIndex(Section, Top);
     if Index > 0 then
+    begin
       Previous := Section[Index - 1];
+    end;
     if (Previous <> nil) and (Previous.Kind = TSyntaxKind.TypeSection) and (Previous.ChildCount > 0) then
     begin
       Insert := Lines.LineStart(Lines.PositionAt(Previous[Previous.ChildCount - 1].EndOffset).Line + 1);
@@ -977,18 +1143,28 @@ begin
   begin
     Local := LocalType(ADeclaring.Tree, LastPart(NameNode.Name), ForwardEnd);
     if (Local = nil) or (Local.EndOffset <= Insert) or (ForwardEnd >= 0) and (ForwardEnd <= Insert) then
+    begin
       Continue;
+    end;
     if (Local.StartOffset <= First.StartOffset) and (First.StartOffset < Local.EndOffset) and
       (Top <> nil) and (Local = Top) and (Local.FindChild(TSyntaxKind.ClassType) <> nil) then
-      ForwardKind := 'class'
+    begin
+      ForwardKind := 'class';
+    end
     else if (Local.StartOffset <= First.StartOffset) and (First.StartOffset < Local.EndOffset) and
       (Top <> nil) and (Local = Top) and (Local.FindChild(TSyntaxKind.InterfaceType) <> nil) then
-      ForwardKind := 'interface'
+    begin
+      ForwardKind := 'interface';
+    end
     else
+    begin
       Exit(Fail(Format('%s ist vor der ersten Verwendung von %s noch nicht deklariert', [Local.Name,
         Target.TypeText]), AReason));
+    end;
     if not ContainsText(Forwards, ' ' + Local.Name + ' = ') then
+    begin
       Forwards := Forwards + Indent + Local.Name + ' = ' + ForwardKind + ';' + LineBreak;
+    end;
     AResult.Warnings := AResult.Warnings + [Format('%s bekommt eine Vorwärtsdeklaration vor dem Alias',
       [Local.Name])];
   end;
@@ -997,7 +1173,9 @@ begin
   Change.Text := ADeclaring.Text;
   Change.Tree := ADeclaring.Tree;
   if Forwards <> '' then
+  begin
     Declaration := Forwards + Declaration;
+  end;
   Change.Edits := [Edit(Lines, Insert, Insert, Declaration)];
   PreviewLines := nil;
   for Site in Sites do
@@ -1014,10 +1192,14 @@ begin
     for Other in AOthers do
     begin
       if SameText(Other.FileName, ADeclaring.FileName) or (Other.Tree = nil) then
+      begin
         Continue;
+      end;
       OtherSites := SitesIn(Other.Tree, Other.FileName, Key, Node.Kind, ALookup);
       if OtherSites = nil then
+      begin
         Continue;
+      end;
       Change := Default(TFileChange);
       Change.FileName := Other.FileName;
       Change.Text := Other.Text;
@@ -1037,25 +1219,37 @@ begin
         Inc(AResult.Places);
       end;
       if Skipped > 0 then
+      begin
         AResult.Warnings := AResult.Warnings + [Format('%s: %d gleiche Ausdrücke bleiben (%s nicht eingebunden ' +
           'oder %s dort vergeben)', [ExtractFileName(Other.FileName), Skipped, UnitName, AName])];
+      end;
       if Change.Edits <> nil then
+      begin
         Changes := Changes + [Change];
+      end;
     end;
   end
   else if (AScope = TTypeAliasScope.Project) and (AOthers <> nil) then
+  begin
     AResult.Warnings := AResult.Warnings + [Format('%s steht im implementation-Teil; andere Units sehen ihn nicht',
       [AName])];
+  end;
   if not Finish(Changes, AResult, AReason) then
+  begin
     Exit;
+  end;
   FileCount := Length(AResult.Files);
   Visible := 'implementation-Teil';
   if InInterface(First) or ExportNeeded then
+  begin
     Visible := 'interface-Teil';
+  end;
   AResult.Preview := Format('%s = %s; im %s, %d Stellen in %d Dateien.', [AName, Target.TypeText, Visible,
     AResult.Places, FileCount]) + sLineBreak + CompatibilityNote;
   if PreviewLines <> nil then
+  begin
     AResult.Preview := AResult.Preview + sLineBreak + string.Join(sLineBreak, PreviewLines);
+  end;
   Result := True;
 end;
 
@@ -1070,28 +1264,46 @@ begin
   ATarget := Default(TInlineAliasTarget);
   AReason := '';
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit(Fail('kein Baum', AReason));
+  end;
   Lines := TLineTable.Build(AText);
   Offset := Lines.OffsetAt(APosition);
   Node := NodeAt(ATree.Root, Offset);
   while (Node <> nil) and (Node.Kind <> TSyntaxKind.TypeDecl) do
+  begin
     Node := Node.Parent;
+  end;
   if (Node = nil) or (Offset >= Node.StartOffset + Length(Node.Name)) then
+  begin
     Exit(Fail('Hier steht kein Typ-Alias', AReason));
+  end;
   if Node.FindChild(TSyntaxKind.GenericParams) <> nil then
+  begin
     Exit(Fail(Format('%s ist generisch', [Node.Name]), AReason));
+  end;
   Expression := nil;
   for Index := 0 to Node.ChildCount - 1 do
+  begin
     if Node[Index].Kind in TypeKinds then
+    begin
       Expression := Node[Index];
+    end;
+  end;
   if (Expression = nil) or (Node.ChildCount <> 1) then
+  begin
     Exit(Fail(Format('%s ist kein Alias', [Node.Name]), AReason));
+  end;
   // X = type Y: eigener Typ.
   for mIndex := ATree.FirstTokenFrom(Node.StartOffset + 1) to High(ATree.Tokens) do
+  begin
     if (ATree.Tokens[mIndex].Offset > Node.StartOffset) and (ATree.Tokens[mIndex].Offset < Expression.StartOffset) and
       ATree.Tokens[mIndex].IsKeyword('type') then
+    begin
       Exit(Fail(Format('%s = type … ist ein eigener Typ; Auflösen würde die Bedeutung ändern', [Node.Name]),
         AReason));
+    end;
+  end;
   ATarget.Name := Node.Name;
   ATarget.TypeText := NodeText(AText, Expression);
   ATarget.Kind := Expression.Kind;
@@ -1107,9 +1319,13 @@ begin
   ATypePosition := False;
   while (Result <> nil) and not (Result.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.Identifier,
     TSyntaxKind.MemberAccess]) do
+  begin
     Result := Result.Parent;
+  end;
   if Result = nil then
+  begin
     Exit;
+  end;
   ATypePosition := Result.Kind = TSyntaxKind.TypeReference;
   // Unit.X als Ausdruck liefert NodeAt als MemberAccess selbst, X.Create dagegen den Bezeichner X darin.
 end;
@@ -1135,11 +1351,15 @@ begin
   Result := False;
   AResult := Default(TTypeAliasResult);
   if not InlineTarget(ADeclaring.Text, ADeclaring.Tree, APosition, Target, AReason) then
+  begin
     Exit;
+  end;
   Lines := TLineTable.Build(ADeclaring.Text);
   Decl := NodeAt(ADeclaring.Tree.Root, Lines.OffsetAt(Target.NamePosition));
   while (Decl <> nil) and (Decl.Kind <> TSyntaxKind.TypeDecl) do
+  begin
     Decl := Decl.Parent;
+  end;
   Expression := Decl[0];
   Named := Expression.Kind = TSyntaxKind.TypeReference;
   // Units der Typen im Ausdruck, für andere Units; Typen aus dem implementation-Teil sehen sie nicht.
@@ -1150,11 +1370,17 @@ begin
     UnitName := '';
     Implementation_ := False;
     if Assigned(ALookup.UnitOf) then
+    begin
       UnitName := ALookup.UnitOf(ADeclaring.Tree, ADeclaring.FileName, NameNode, Implementation_);
+    end;
     if Implementation_ then
+    begin
       Hidden := True;
+    end;
     if (UnitName <> '') and (IndexText(UnitName, Units) < 0) then
+    begin
       Units := Units + [UnitName];
+    end;
   end;
   Sources := TArray<TTypeAliasSource>.Create(ADeclaring) + AOthers;
   Changes := nil;
@@ -1164,7 +1390,9 @@ begin
   begin
     Own := SameText(Source.FileName, ADeclaring.FileName);
     if (Source.Tree = nil) or (Source.Offsets = nil) then
+    begin
       Continue;
+    end;
     if not Own and Hidden then
     begin
       Inc(Kept, Length(Source.Offsets));
@@ -1179,7 +1407,9 @@ begin
     for Offset in Source.Offsets do
     begin
       if Own and (Offset >= Decl.StartOffset) and (Offset < Decl.StartOffset + Length(Decl.Name)) then
+      begin
         Continue;
+      end;
       Use := UseNode(Source.Tree, Offset, TypePosition);
       if Use = nil then
       begin
@@ -1196,29 +1426,39 @@ begin
       Start := Use.StartOffset;
       Stop := Use.EndOffset;
       if Use.Kind = TSyntaxKind.TypeReference then
+      begin
         Stop := Use.StartOffset + Length(Use.Name);
+      end;
       Change.Edits := Change.Edits + [Edit(FileLines, Start, Stop, Target.TypeText)];
       PreviewLines := PreviewLines + [Where(Source.FileName, FileLines.PositionAt(Start).Line)];
       Inc(AResult.Places);
       if (FirstSite < 0) or InInterface(Use) and not InInterface(NodeAt(Source.Tree.Root, FirstSite)) then
+      begin
         FirstSite := Start;
+      end;
     end;
     // Fehlende uses für die Typen des Ausdrucks.
     if not Own and (FirstSite >= 0) then
     begin
       LineBreak := TTextLines.LineBreakOf(Source.Text);
       for UnitName in Units do
+      begin
         if not SameText(UnitName, TUsesClauses.OwnName(Source.Tree.Tokens)) and
           not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), UnitName, nil) then
         begin
           if not TUsesClauses.AddUnit(Source.Tree.Tokens, FirstSite, UnitName, LineBreak, UsesEdit) then
+          begin
             Exit(Fail(Format('%s: uses für %s lässt sich nicht ergänzen', [ExtractFileName(Source.FileName),
               UnitName]), AReason));
+          end;
           Change.Edits := Change.Edits + [UsesEdit];
         end;
+      end;
     end;
     if Change.Edits <> nil then
+    begin
       Changes := Changes + [Change];
+    end;
   end;
   // Ohne verbliebene Verwendung fällt der Alias weg, mit seinem type-Abschnitt, wenn er der einzige war.
   if Kept = 0 then
@@ -1235,11 +1475,17 @@ begin
       Stop := Lines.LineStart(Decl.EndPos.Line + 1);
     end;
     if Decl.EndPos.Line + 1 >= Lines.LineCount then
+    begin
       Stop := Length(ADeclaring.Text);
+    end;
     Index := -1;
     for Offset := 0 to High(Changes) do
+    begin
       if SameText(Changes[Offset].FileName, ADeclaring.FileName) then
+      begin
         Index := Offset;
+      end;
+    end;
     if Index < 0 then
     begin
       Change := Default(TFileChange);
@@ -1252,23 +1498,39 @@ begin
     Changes[Index].Edits := Changes[Index].Edits + [Edit(Lines, Start, Stop, '')];
   end
   else
+  begin
     AResult.Warnings := AResult.Warnings + [Format('%d Verwendungen behalten %s (Parameter, Ergebnis, Property, ' +
       'Typargument, Ausdruck oder eine Unit, die den Typ nicht sieht); der Alias bleibt', [Kept, Target.Name])];
+  end;
   if AResult.Places = 0 then
+  begin
     if Kept = 0 then
-      AResult.Warnings := AResult.Warnings + [Format('%s wird nirgends verwendet', [Target.Name])]
+    begin
+      AResult.Warnings := AResult.Warnings + [Format('%s wird nirgends verwendet', [Target.Name])];
+    end
     else
+    begin
       Exit(Fail(Format('Keine Verwendung von %s lässt sich ersetzen', [Target.Name]), AReason));
+    end;
+  end;
   if not Finish(Changes, AResult, AReason) then
+  begin
     Exit;
+  end;
   AResult.Preview := Format('%s wird durch %s ersetzt, %d Stellen in %d Dateien', [Target.Name, Target.TypeText,
     AResult.Places, Length(AResult.Files)]);
   if Kept = 0 then
-    AResult.Preview := AResult.Preview + '; der Alias entfällt.'
+  begin
+    AResult.Preview := AResult.Preview + '; der Alias entfällt.';
+  end
   else
+  begin
     AResult.Preview := AResult.Preview + '.';
+  end;
   if PreviewLines <> nil then
+  begin
     AResult.Preview := AResult.Preview + sLineBreak + string.Join(sLineBreak, PreviewLines);
+  end;
   Result := True;
 end;
 

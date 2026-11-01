@@ -63,11 +63,17 @@ function CommentBody(const AText: string): string;
 begin
   Result := AText;
   if StartsText('//', Result) then
-    Result := Copy(Result, 3, MaxInt)
+  begin
+    Result := Copy(Result, 3, MaxInt);
+  end
   else if StartsText('{', Result) then
-    Result := Copy(Result, 2, Length(Result) - 2)
+  begin
+    Result := Copy(Result, 2, Length(Result) - 2);
+  end
   else if StartsText('(*', Result) then
+  begin
     Result := Copy(Result, 3, Length(Result) - 4);
+  end;
   Result := Trim(Result);
 end;
 
@@ -84,11 +90,15 @@ begin
     begin
       // Begründung nach "--" gehört nicht zu den Kennungen.
       if (I = Start) and (Copy(AText, I, 2) = '--') then
+      begin
         Break;
+      end;
       if (I > Length(AText)) or CharInSet(AText[I], [',', ' ', #9]) then
       begin
         if I > Start then
+        begin
           List.Add(LowerCase(Copy(AText, Start, I - Start)));
+        end;
         Start := I + 1;
       end;
     end;
@@ -112,12 +122,16 @@ begin
     Result[Index] := TTextRange.Create(AToken.StartPos, AToken.EndPos);
     Found := PosEx(AIds[Index], Lower, Cursor);
     if Found = 0 then
+    begin
       Continue;
+    end;
     Cursor := Found + Length(AIds[Index]);
     // Nur einzeilige Kommentare genau; sonst bleibt der ganze Kommentar.
     if (AToken.StartPos.Line = AToken.EndPos.Line) and (Pos(#10, Copy(AToken.Text, 1, Found)) = 0) then
+    begin
       Result[Index] := TTextRange.Create(AToken.StartPos.Line, AToken.StartPos.Character + Found - 1,
         AToken.StartPos.Line, AToken.StartPos.Character + Found - 1 + Length(AIds[Index]));
+    end;
   end;
 end;
 
@@ -130,7 +144,9 @@ begin
   SetLength(Previous, Length(B) + 1);
   SetLength(Current, Length(B) + 1);
   for J := 0 to Length(B) do
+  begin
     Previous[J] := J;
+  end;
   for I := 1 to Length(A) do
   begin
     Current[0] := I;
@@ -138,7 +154,9 @@ begin
     begin
       Cost := 1;
       if UpCase(A[I]) = UpCase(B[J]) then
+      begin
         Cost := 0;
+      end;
       Current[J] := Min(Min(Previous[J] + 1, Current[J - 1] + 1), Previous[J - 1] + Cost);
     end;
     Previous := Copy(Current);
@@ -211,16 +229,24 @@ begin
       Entry.Ids := SplitIds(Copy(Body, Length(LineMarker) + 1, MaxInt));
       Entry.IdRanges := IdRangesOf(ATokens[I], LineMarker, Entry.Ids);
       if LastCodeLine = ATokens[I].StartPos.Line then
-        Entry.TargetLine := ATokens[I].StartPos.Line
+      begin
+        Entry.TargetLine := ATokens[I].StartPos.Line;
+      end
       else
+      begin
         Entry.TargetLine := ATokens[I].EndPos.Line + 1;
+      end;
     end
     else
+    begin
       Continue;
+    end;
     CodeAfter := False;
     J := I + 1;
     if (J <= High(ATokens)) and (ATokens[J].StartPos.Line = ATokens[I].EndPos.Line) then
+    begin
       CodeAfter := True;
+    end;
     Entry.OwnLine := (LastCodeLine <> ATokens[I].StartPos.Line) and not CodeAfter;
     FEntries.Add(Entry);
   end;
@@ -237,8 +263,12 @@ var
   Id: string;
 begin
   for Id in AIds do
+  begin
     if (Id = '*') or SameText(TRuleIdAliases.Current(Id), TRuleIdAliases.Current(ARuleId)) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -271,8 +301,12 @@ var
 begin
   Result := nil;
   for Entry in FEntries do
+  begin
     if not Entry.Used then
+    begin
       Result := Result + [Entry];
+    end;
+  end;
 end;
 
 end.

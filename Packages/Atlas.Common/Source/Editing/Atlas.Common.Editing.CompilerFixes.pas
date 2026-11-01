@@ -115,12 +115,16 @@ begin
   while (Line < ALine) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index - 1;
   if Line < ALine then
+  begin
     Result := -1;
+  end;
 end;
 
 /// <summary>Alle Knoten der Art AKind, die in Zeile ALine beginnen, in Baumreihenfolge.</summary>
@@ -130,13 +134,17 @@ var
 begin
   Found := nil;
   if ARoot <> nil then
+  begin
     ARoot.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
         if Result and (ANode.Kind = AKind) and (ANode.StartPos.Line = ALine) then
+        begin
           Found := Found + [ANode];
+        end;
       end);
+  end;
   Result := Found;
 end;
 
@@ -161,7 +169,9 @@ var
 begin
   SetLength(Result, Length(FixCodes));
   for Index := 0 to High(FixCodes) do
+  begin
     Result[Index] := FixCodes[Index];
+  end;
 end;
 
 class function TCompilerFixes.CanFixAll(const ACode: string): Boolean;
@@ -182,9 +192,13 @@ begin
       Start := Index + 1;
       Index := Start;
       while (Index <= Length(AText)) and (AText[Index] <> '''') do
+      begin
         Inc(Index);
+      end;
       if Index > Length(AText) then
+      begin
         Break;
+      end;
       Result := Result + [Copy(AText, Start, Index - Start)];
     end;
     Inc(Index);
@@ -198,7 +212,9 @@ begin
   Dot := Pos('.', AUnit);
   Result := 1;
   if (Dot > 0) and MatchText(Copy(AUnit, 1, Dot - 1), LibraryNamespaces) then
+  begin
     Result := 0;
+  end;
 end;
 
 class function TCompilerFixes.RankUnits(const AUnits: TArray<string>): TArray<string>;
@@ -210,11 +226,17 @@ begin
     begin
       Result := LibraryRank(ALeft) - LibraryRank(ARight);
       if Result = 0 then
+      begin
         Result := Length(ALeft) - Length(ARight);
+      end;
       if Result = 0 then
+      begin
         Result := CompareText(ALeft, ARight);
+      end;
       if Result = 0 then
+      begin
         Result := CompareStr(ALeft, ARight);
+      end;
     end));
 end;
 
@@ -227,7 +249,9 @@ begin
   Offset := OffsetOf(AText, AMessage.Line);
   Result := (Offset >= 0) and TUsesClauses.AddUnit(ATokens, Offset, AUnit, TTextLines.LineBreakOf(AText), Edit);
   if Result then
+  begin
     AFix := Fix(AMessage.Code, ATitle, [Edit], APreferred);
+  end;
 end;
 
 function IsUsed(ATokens: TArray<TPascalToken>; const AUnit: string; const ANamespaces: TArray<string>): Boolean;
@@ -245,13 +269,19 @@ begin
   Result := nil;
   Names := TCompilerFixes.QuotedNames(AMessage.Text);
   if Length(Names) < 2 then
+  begin
     Exit;
+  end;
   UnitName := Names[High(Names)];
   if IsUsed(ATokens, UnitName, AContext.Namespaces) then
+  begin
     Exit;
+  end;
   if AddUnitFix(AText, ATokens, AMessage, UnitName, True, Format('uses %s ergänzen (%s)', [UnitName,
     AMessage.Code]), Item) then
+  begin
     Result := [Item];
+  end;
 end;
 
 function E2003Fixes(const AText: string; ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
@@ -267,12 +297,15 @@ begin
   Result := nil;
   Names := TCompilerFixes.QuotedNames(AMessage.Text);
   if (Length(Names) = 0) or not Assigned(AContext.Declaring) then
+  begin
     Exit;
+  end;
   Name := Names[0];
   // Den Bezeichner in der Zeile suchen; MissingUnits prüft, ob er schon deklariert oder eingebunden ist.
   Found := False;
   Position := TTextPosition.Create(AMessage.Line, 0);
   for Token in ATokens do
+  begin
     if (Token.StartPos.Line = AMessage.Line) and (Token.Kind = TPascalTokenKind.Identifier) and
       SameText(Token.Text, Name) and ((AMessage.Column < 0) or not Found or
       (Token.StartPos.Character <= AMessage.Column)) then
@@ -280,21 +313,30 @@ begin
       Position := Token.StartPos;
       Found := True;
     end;
+  end;
   if not Found then
+  begin
     Exit;
+  end;
   Units := TCompilerFixes.RankUnits(TUsesActions.MissingUnits(ATokens, ATree, Position, AContext.Declaring,
     AContext.Namespaces));
   for UnitName in Units do
+  begin
     if AddUnitFix(AText, ATokens, AMessage, UnitName, Length(Result) = 0, Format('uses %s ergänzen (%s: %s)',
       [UnitName, AMessage.Code, Name]), Item) then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode;
   while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 /// <summary>Namen, die in ARoutine (und umschließenden Routinen) als Variable, Parameter oder Konstante
@@ -315,7 +357,9 @@ begin
         Result := not (ANode.Kind in [TSyntaxKind.Block]) and
           ((ANode = Routine) or (ANode.Kind <> TSyntaxKind.RoutineDecl));
         if ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.ConstDecl] then
+        begin
           Names := Names + [ANode.Name];
+        end;
       end);
     Routine := RoutineOf(Routine.Parent);
   end;
@@ -337,8 +381,12 @@ begin
       begin
         // Klassenoperatoren könnten Nebenwirkungen haben; is/as und Mengen sind harmlos genug, Aufrufe nicht.
         for Index := 0 to ANode.ChildCount - 1 do
+        begin
           if not IsPure(ANode[Index], ALocals) then
+          begin
             Exit(False);
+          end;
+        end;
         Exit(True);
       end;
   else
@@ -361,14 +409,18 @@ begin
     Index := TRoutineBody.TokenAt(ATokens, AStatement.EndOffset);
     Last := TRoutineBody.NextToken(ATokens, Index - 1);
     if (Last >= 0) and (Last < Length(ATokens)) and ATokens[Last].IsSymbol(';') then
+    begin
       EndPos := ATokens[Last].EndPos;
+    end;
     Lines := TTextLines.SplitLines(AText);
     if (AStatement.StartPos.Line = EndPos.Line) and (EndPos.Line < High(Lines)) then
     begin
       Line := Lines[EndPos.Line];
       if (Trim(Copy(Line, 1, AStatement.StartPos.Character)) = '') and
         (Trim(Copy(Line, EndPos.Character + 1, MaxInt)) = '') then
+      begin
         Exit(TTextEdit.Create(TTextRange.Create(EndPos.Line, 0, EndPos.Line + 1, 0), ''));
+      end;
     end;
   end;
   Result := TTextEdit.Create(TTextRange.Create(AStatement.StartPos, EndPos), '');
@@ -384,13 +436,17 @@ begin
   Result := nil;
   Names := TCompilerFixes.QuotedNames(AMessage.Text);
   if Length(Names) = 0 then
+  begin
     Exit;
+  end;
   Name := Names[0];
   for Statement in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.AssignStatement) do
   begin
     if (Statement.ChildCount < 2) or (Statement[0].Kind <> TSyntaxKind.Identifier) or
       not SameText(Statement[0].Name, Name) then
+    begin
       Continue;
+    end;
     Value := Statement[1];
     // Erst Result, dann Exit: Exit([...]) liest Delphi als Menge (E2001).
     if IsPure(Value, LocalNames(RoutineOf(Statement))) then
@@ -421,22 +477,34 @@ begin
   // Die Meldung steht auf dem end der Funktion (oder ihrem Kopf): innerste Routine um die Zeile.
   Routine := TDisableWarning.RoutineAt(ATree, AMessage.Line);
   if Routine = nil then
+  begin
     Exit;
+  end;
   Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
   Body := TRoutineBody.BodyOf(Routine);
   if (Header = nil) or (Body = nil) then
+  begin
     Exit;
+  end;
   ResultType := nil;
   for Index := 0 to Header.ChildCount - 1 do
+  begin
     if Header[Index].Kind = TSyntaxKind.TypeReference then
+    begin
       ResultType := Header[Index];
+    end;
+  end;
   if ResultType = nil then
+  begin
     Exit;
+  end;
   TypeText := TRoutineBody.TextOf(AText, ResultType);
   Lines := TTextLines.SplitLines(AText, LineBreak);
   Indent := TTextLines.IndentOf(Lines[Body.StartPos.Line]) + '  ';
   if (Body.ChildCount > 0) and (Body[0].StartPos.Line > Body.StartPos.Line) then
+  begin
     Indent := TTextLines.IndentOf(Lines[Body[0].StartPos.Line]);
+  end;
   Result := [Fix(AMessage.Code, Format('Result := Default(%s); am Anfang einfügen (%s)', [TypeText,
     AMessage.Code]), [Insertion(TTextPosition.Create(Body.StartPos.Line, Body.StartPos.Character + Length('begin')),
     LineBreak + Indent + Format('Result := Default(%s);', [TypeText]))], True)];
@@ -453,38 +521,62 @@ begin
   Result := nil;
   Names := TCompilerFixes.QuotedNames(AMessage.Text);
   if Length(Names) < 2 then
+  begin
     Exit;
+  end;
   Target := Names[High(Names)];
   // Kandidaten: rechte Seiten von Zuweisungen und Argumente von Aufrufen in der Zeile.
   Candidates := nil;
   for Node in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.AssignStatement) do
+  begin
     if Node.ChildCount >= 2 then
+    begin
       Candidates := Candidates + [Node[1]];
+    end;
+  end;
   for Node in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.Call) do
+  begin
     for Index := 1 to Node.ChildCount - 1 do
+    begin
       if Node[Index].StartPos.Line = AMessage.Line then
+      begin
         Candidates := Candidates + [Node[Index]];
+      end;
+    end;
+  end;
   Chosen := nil;
   if AMessage.Column >= 0 then
   begin
     for Node in Candidates do
+    begin
       if (Node.StartPos.Character <= AMessage.Column) and ((Node.EndPos.Line > AMessage.Line) or
         (AMessage.Column <= Node.EndPos.Character)) and ((Chosen = nil) or
         (Node.EndOffset - Node.StartOffset < Chosen.EndOffset - Chosen.StartOffset)) then
+      begin
         Chosen := Node;
+      end;
+    end;
   end
   else
   begin
     // Ohne Spalte nur eindeutig: genau eine Zuweisung in der Zeile.
     Candidates := nil;
     for Node in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.AssignStatement) do
+    begin
       if Node.ChildCount >= 2 then
+      begin
         Candidates := Candidates + [Node[1]];
+      end;
+    end;
     if Length(Candidates) = 1 then
+    begin
       Chosen := Candidates[0];
+    end;
   end;
   if Chosen = nil then
+  begin
     Exit;
+  end;
   Result := [Fix(AMessage.Code, Format('Explizit umwandeln: %s(…) (%s)', [Target, AMessage.Code]),
     [Insertion(Chosen.StartPos, Target + '('), Insertion(Chosen.EndPos, ')')], True)];
 end;
@@ -496,25 +588,39 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (AMessage.Line < 0) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   if AMessage.Code = 'H2443' then
-    Result := H2443Fixes(AText, Tokens, AMessage, AContext)
+  begin
+    Result := H2443Fixes(AText, Tokens, AMessage, AContext);
+  end
   else if AMessage.Code = 'E2003' then
-    Result := E2003Fixes(AText, Tokens, ATree, AMessage, AContext)
+  begin
+    Result := E2003Fixes(AText, Tokens, ATree, AMessage, AContext);
+  end
   else if AMessage.Code = 'H2077' then
-    Result := H2077Fixes(AText, Tokens, ATree, AMessage)
+  begin
+    Result := H2077Fixes(AText, Tokens, ATree, AMessage);
+  end
   else if AMessage.Code = 'W1035' then
-    Result := W1035Fixes(AText, ATree, AMessage)
+  begin
+    Result := W1035Fixes(AText, ATree, AMessage);
+  end
   else if (AMessage.Code = 'W1057') or (AMessage.Code = 'W1058') then
+  begin
     Result := StringCastFixes(ATree, AMessage);
+  end;
 end;
 
 function Compare(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 /// <summary>Überschneidet sich AEdit mit einer Änderung aus AEdits? Zwei Einfügungen an verschiedenen Stellen
@@ -524,13 +630,17 @@ var
   Other: TTextEdit;
 begin
   for Other in AEdits do
+  begin
     if (Compare(AEdit.Range.StartPos, Other.Range.EndPos) <= 0) and
       (Compare(Other.Range.StartPos, AEdit.Range.EndPos) <= 0) and
       not ((Compare(AEdit.Range.StartPos, Other.Range.EndPos) = 0) and
       (Compare(AEdit.Range.StartPos, AEdit.Range.EndPos) <> 0)) and
       not ((Compare(Other.Range.StartPos, AEdit.Range.EndPos) = 0) and
       (Compare(Other.Range.StartPos, Other.Range.EndPos) <> 0)) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -539,8 +649,12 @@ var
   Edit: TTextEdit;
 begin
   for Edit in AEdits do
+  begin
     if Overlaps(Edit, AOthers) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -559,7 +673,9 @@ begin
   Code := UpperCase(Trim(ACode));
   Result := False;
   if (ATree = nil) or not CanFixAll(Code) then
+  begin
     Exit;
+  end;
   Edits := nil;
   Count := 0;
   if Code = 'H2443' then
@@ -567,21 +683,31 @@ begin
     // Alle Units in einem Schritt, jede einmal; AddUnits verteilt sie auf interface und implementation.
     Units := nil;
     for Message in AMessages do
+    begin
       if Message.Code = Code then
       begin
         Names := QuotedNames(Message.Text);
         if (Length(Names) >= 2) and (IndexText(Names[High(Names)], Units) < 0) then
+        begin
           Units := Units + [Names[High(Names)]];
+        end;
       end;
+    end;
     if Length(Units) < 2 then
+    begin
       Exit;
+    end;
     if not TUsesActions.AddUnits(ATree.Tokens, Units, AContext.Declaring, AContext.Namespaces,
       TTextLines.LineBreakOf(AText), Edits, Added) then
+    begin
       Exit;
+    end;
     Count := Length(Added);
   end
   else
+  begin
     for Message in AMessages do
+    begin
       if Message.Code = Code then
       begin
         // Nur die erste (bevorzugte) Korrektur je Meldung, ohne Überschneidung mit schon gesammelten.
@@ -592,9 +718,13 @@ begin
           Inc(Count);
         end;
       end;
+    end;
+  end;
   Result := Count >= 2;
   if Result then
+  begin
     AFix := Fix(Code, Format('Alle %s in der Datei beheben (%d)', [Code, Count]), Edits, False);
+  end;
 end;
 
 end.

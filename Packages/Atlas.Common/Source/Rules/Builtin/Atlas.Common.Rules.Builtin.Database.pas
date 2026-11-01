@@ -132,7 +132,9 @@ var
   procedure Add(AKind: TSqlTokenKind; AStart, AEnd: Integer);
   begin
     if Count = Length(Result) then
+    begin
       SetLength(Result, Count * 2 + 8);
+    end;
     Result[Count].Kind := AKind;
     Result[Count].Text := Copy(ASql, AStart, AEnd - AStart + 1);
     Result[Count].Offset := AStart;
@@ -150,20 +152,26 @@ begin
     Ch := ASql[Index];
     Start := Index;
     if Ch = Hole then
-      Add(TSqlTokenKind.Hole, Index, Index)
+    begin
+      Add(TSqlTokenKind.Hole, Index, Index);
+    end
     else if Ch <= ' ' then
       // Leerraum
     else if (Ch = '-') and (Index < Length(ASql)) and (ASql[Index + 1] = '-') then
     begin
       while (Index <= Length(ASql)) and not CharInSet(ASql[Index], [#10, #13]) do
+      begin
         Inc(Index);
+      end;
       Continue;
     end
     else if (Ch = '/') and (Index < Length(ASql)) and (ASql[Index + 1] = '*') then
     begin
       Index := PosEx('*/', ASql, Index + 2);
       if Index = 0 then
+      begin
         Break;
+      end;
       Inc(Index, 2);
       Continue;
     end
@@ -171,28 +179,42 @@ begin
     begin
       Close := Ch;
       if Ch = '[' then
+      begin
         Close := ']';
+      end;
       Inc(Index);
       while (Index <= Length(ASql)) and (ASql[Index] <> Close) do
+      begin
         Inc(Index);
+      end;
       if Ch = '''' then
-        Add(TSqlTokenKind.Literal, Start, Index)
+      begin
+        Add(TSqlTokenKind.Literal, Start, Index);
+      end
       else
+      begin
         Add(TSqlTokenKind.Quoted, Start, Index);
+      end;
     end
     else if TTextChars.IsIdentChar(Ch) then
     begin
       while (Index < Length(ASql)) and (TTextChars.IsIdentChar(ASql[Index + 1]) or (ASql[Index + 1] = '$')) do
+      begin
         Inc(Index);
+      end;
       Add(TSqlTokenKind.Word, Start, Index);
     end
     else
     begin
       if Ch = ')' then
+      begin
         Dec(Depth);
+      end;
       Add(TSqlTokenKind.Symbol, Start, Index);
       if Ch = '(' then
+      begin
         Inc(Depth);
+      end;
     end;
     Inc(Index);
   end;
@@ -236,32 +258,50 @@ begin
   AWrite := Default(TSqlWrite);
   IsDelete := IsWord(ATokens, AFirst, ALast, 'DELETE');
   if not IsDelete and not IsWord(ATokens, AFirst, ALast, 'UPDATE') then
+  begin
     Exit;
+  end;
   if AStrictCase and (ATokens[AFirst].Text <> UpperCase(ATokens[AFirst].Text)) then
+  begin
     Exit;
+  end;
   Level := ATokens[AFirst].Depth;
   Index := AFirst + 1;
   if IsDelete then
   begin
     if IsWord(ATokens, Index, ALast, 'TOP') then
+    begin
       Exit;
+    end;
     if IsWord(ATokens, Index, ALast, 'FROM') then
-      Inc(Index)
+    begin
+      Inc(Index);
+    end
     else if AStrictCase then
+    begin
       Exit;
+    end;
   end
   else
   begin
     // UPDATE OR INSERT (Firebird) und UPDATE STATISTICS ändern keine bestehenden Zeilen pauschal.
     if IsWordIn(ATokens, Index, ALast, ['OR', 'STATISTICS', 'TOP']) then
+    begin
       Exit;
+    end;
     if IsWord(ATokens, Index, ALast, 'ONLY') then
+    begin
       Inc(Index);
+    end;
   end;
   if Index > ALast then
+  begin
     Exit;
+  end;
   if ATokens[Index].Kind = TSqlTokenKind.Hole then
-    Inc(Index)
+  begin
+    Inc(Index);
+  end
   else if IsTableName(ATokens[Index]) then
   begin
     AWrite.Table := ATokens[Index].Text;
@@ -273,26 +313,40 @@ begin
     end;
   end
   else
+  begin
     Exit;
+  end;
   // Alias
   if IsWord(ATokens, Index, ALast, 'AS') then
-    Inc(Index, 2)
+  begin
+    Inc(Index, 2);
+  end
   else if (Index <= ALast) and IsTableName(ATokens[Index]) then
+  begin
     Inc(Index);
+  end;
   if IsDelete then
   begin
     // Folgt kein SQL, ist es kein SQL (Meldungstext).
     if (Index <= ALast) and not IsWordIn(ATokens, Index, ALast, ClauseWords) then
+    begin
       Exit;
+    end;
   end
   else if not IsWord(ATokens, Index, ALast, 'SET') then
+  begin
     Exit;
+  end;
   for Scan := Index to ALast do
   begin
     if (ATokens[Scan].Depth = Level) and IsWordIn(ATokens, Scan, ALast, RestrictWords) then
+    begin
       Exit;
+    end;
     if (ATokens[Scan].Kind = TSqlTokenKind.Hole) and not IsValueHole(ATokens, Scan) then
+    begin
       Exit;
+    end;
   end;
   AWrite.Kind := UpperCase(ATokens[AFirst].Text);
   AWrite.Offset := ATokens[AFirst].Offset;
@@ -343,7 +397,9 @@ var
   Piece: TSqlPiece;
 begin
   if AText = '' then
+  begin
     Exit;
+  end;
   Piece.Offset := Length(Text) + 1;
   Piece.Token := AToken;
   Piece.Direct := False;
@@ -355,7 +411,9 @@ procedure TSqlBuild.AddLiteral(const AText: string; AToken: Integer);
 begin
   AddText(AText, AToken);
   if AText <> '' then
+  begin
     Pieces[High(Pieces)].Direct := True;
+  end;
 end;
 
 procedure TSqlBuild.AddHole(AToken: Integer);
@@ -369,23 +427,31 @@ var
   Index: Integer;
 begin
   if ABuild.Unknown then
+  begin
     Unknown := True;
+  end;
   if AToken >= 0 then
   begin
     AddText(ABuild.Text, AToken);
     Exit;
   end;
   for Piece in ABuild.Pieces do
+  begin
     Pieces := Pieces + [Piece];
+  end;
   for Index := Length(Pieces) - Length(ABuild.Pieces) to High(Pieces) do
+  begin
     Inc(Pieces[Index].Offset, Length(Text));
+  end;
   Text := Text + ABuild.Text;
 end;
 
 procedure TSqlBuild.NewLine;
 begin
   if Text <> '' then
+  begin
     Text := Text + #13#10;
+  end;
 end;
 
 function TSqlBuild.TokenAt(AOffset: Integer): Integer;
@@ -394,8 +460,12 @@ var
 begin
   Result := -1;
   for Piece in Pieces do
+  begin
     if (Piece.Offset <= AOffset) or (Result < 0) then
+    begin
       Result := Piece.Token;
+    end;
+  end;
 end;
 
 function TSqlBuild.PieceAt(AOffset: Integer; out APiece: TSqlPiece): Boolean;
@@ -405,11 +475,13 @@ begin
   Result := False;
   APiece := Default(TSqlPiece);
   for Piece in Pieces do
+  begin
     if Piece.Offset <= AOffset then
     begin
       APiece := Piece;
       Result := True;
     end;
+  end;
 end;
 
 type
@@ -511,21 +583,33 @@ var
   Table: string;
 begin
   if AWrite.Table = '' then
-    Table := 'der Tabelle'
+  begin
+    Table := 'der Tabelle';
+  end
   else
+  begin
     Table := 'von ' + AWrite.Table;
+  end;
   if AWrite.Kind = 'DELETE' then
-    Result := Format('DELETE ohne WHERE löscht alle Zeilen %s%s.', [Table, ASuffix])
+  begin
+    Result := Format('DELETE ohne WHERE löscht alle Zeilen %s%s.', [Table, ASuffix]);
+  end
   else
+  begin
     Result := Format('UPDATE ohne WHERE ändert alle Zeilen %s%s.', [Table, ASuffix]);
+  end;
 end;
 
 function WriteConfidence(const AWrite: TSqlWrite): TRuleConfidence;
 begin
   if AWrite.Table = '' then
-    Result := TRuleConfidence.Medium
+  begin
+    Result := TRuleConfidence.Medium;
+  end
   else
+  begin
     Result := TRuleConfidence.High;
+  end;
 end;
 
 /// <summary>Formatangaben (%s, %0:d) als unbekannte Teile; die Länge bleibt gleich.</summary>
@@ -542,14 +626,20 @@ begin
       Start := Index;
       Inc(Index);
       if Result[Index] = '%' then
-        Result[Index] := ' '
+      begin
+        Result[Index] := ' ';
+      end
       else
       begin
         while (Index < Length(Result)) and CharInSet(Result[Index], ['0'..'9', ':', '-', '.', '*']) do
+        begin
           Inc(Index);
+        end;
         Result[Start] := Hole;
         for Blank := Start + 1 to Index do
+        begin
           Result[Blank] := ' ';
+        end;
       end;
     end;
     Inc(Index);
@@ -636,7 +726,9 @@ begin
   Next := ALast + 1;
   AKey := '';
   if Next > High(FTokens) then
+  begin
     Exit;
+  end;
   if FTokens[Next].IsSymbol(':=') and SameText(Member, 'CommandText') then
   begin
     AKey := Full;
@@ -658,7 +750,9 @@ begin
     Result := TCarrier.Clear;
   end
   else if FTokens[Next].IsSymbol('(') and MatchText(Member, SqlCalls) then
+  begin
     Result := TCarrier.Execute;
+  end;
   AKey := LowerCase(AKey);
 end;
 
@@ -668,14 +762,20 @@ var
 begin
   Depth := 0;
   for Result := AOpen to High(FTokens) do
+  begin
     if FTokens[Result].IsSymbol('(') or FTokens[Result].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if FTokens[Result].IsSymbol(')') or FTokens[Result].IsSymbol(']') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
+  end;
   Result := High(FTokens);
 end;
 
@@ -689,10 +789,14 @@ begin
   begin
     Token := FTokens[Index];
     if Token.IsSymbol('(') or Token.IsSymbol('[') then
-      Index := MatchingClose(Index)
+    begin
+      Index := MatchingClose(Index);
+    end
     else if (Token.Kind = TPascalTokenKind.Keyword) or
       ((Token.Kind = TPascalTokenKind.Symbol) and not Token.IsSymbol('+') and not Token.IsSymbol('.')) then
+    begin
       Break;
+    end;
     Inc(Index);
   end;
   Result := Index - 1;
@@ -710,13 +814,19 @@ var
   Rest: string;
 begin
   if SameText(AChain, AKey) then
+  begin
     // Die Eigenschaft CommandText selbst lesen ändert nichts; X.SQL weitergeben schon.
     Exit(not EndsText('commandtext', AKey));
+  end;
   if not StartsText(AKey + '.', AChain) then
+  begin
     Exit(False);
+  end;
   Rest := Copy(AChain, Length(AKey) + 2, MaxInt);
   if Pos('.', Rest) > 0 then
+  begin
     Rest := Copy(Rest, 1, Pos('.', Rest) - 1);
+  end;
   Result := not MatchText(Rest, HarmlessMembers);
 end;
 
@@ -725,7 +835,9 @@ var
   Index: Integer;
 begin
   for Index := AFirst to ALast do
+  begin
     FConsumed[Index] := True;
+  end;
 end;
 
 procedure TSqlScan.Evaluate(AFirst, ALast: Integer; ABuild: TSqlBuild);
@@ -743,9 +855,13 @@ begin
     if FTokens[Index].Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral] then
     begin
       if TStringLiterals.PlainText(FTokens[Index].Text, Plain) then
-        ABuild.AddLiteral(Plain, Index)
+      begin
+        ABuild.AddLiteral(Plain, Index);
+      end
       else
+      begin
         ABuild.AddHole(Index);
+      end;
     end
     else if FTokens[Index].IsSymbol('+') then
       // verkettet
@@ -807,6 +923,7 @@ begin
           Found := True;
         end
         else
+        begin
           for Receiver in FReceivers do
           begin
             Key := Receiver.Key;
@@ -818,13 +935,18 @@ begin
               Break;
             end;
           end;
+        end;
         if not Found then
+        begin
           ABuild.AddHole(Index);
+        end;
         Index := Last;
       end;
     end
     else
+    begin
       ABuild.AddHole(Index);
+    end;
     Inc(Index);
   end;
 end;
@@ -837,12 +959,16 @@ var
   Piece: TSqlPiece;
 begin
   if ABuild.Unknown then
+  begin
     Exit;
+  end;
   for Hit in FFinder(ABuild.Text, not ABuild.SqlContext, '') do
   begin
     Token := ABuild.TokenAt(Hit.Offset);
     if Token < 0 then
+    begin
       Continue;
+    end;
     Found.Range := TTextRange.Create(FTokens[Token].StartPos, FTokens[Token].EndPos);
     Found.Message := Hit.Message;
     Found.Confidence := Hit.Confidence;
@@ -851,7 +977,9 @@ begin
     Found.Token := Token;
     Found.LiteralOffset := 0;
     if ABuild.PieceAt(Hit.Offset, Piece) and Piece.Direct and (Piece.Token = Token) then
+    begin
       Found.LiteralOffset := Hit.Offset - Piece.Offset + 1;
+    end;
     FFound.Add(Found);
   end;
 end;
@@ -868,15 +996,21 @@ begin
   begin
     Used := False;
     for Index := AFirst to ALast do
+    begin
       if IsChainStart(Index) and SameText(FTokens[Index].Text, Pair.Key) and
         not Pair.Value.Definitions.Contains(Index) then
       begin
         Used := True;
         Break;
       end;
+    end;
     if not Used then
+    begin
       for Build in Pair.Value.Builds do
+      begin
         Finish(Build, '');
+      end;
+    end;
   end;
 end;
 
@@ -885,7 +1019,9 @@ var
   Pair: TPair<string, TSqlBuild>;
 begin
   for Pair in FReceivers do
+  begin
     Finish(Pair.Value, Pair.Key);
+  end;
   FReceivers.Clear;
   FinishNamed(FLocals, AFirst, ALast);
   FLocals.Clear;
@@ -901,7 +1037,9 @@ begin
     FTouched.Add(AKey, Segments);
   end;
   if not Segments.Contains(ASegment) then
+  begin
     Segments.Add(ASegment);
+  end;
 end;
 
 procedure TSqlScan.ComputeSegments;
@@ -921,7 +1059,9 @@ begin
       FTokens[Index - 1].IsSymbol('(') or FTokens[Index - 1].IsSymbol(',') or FTokens[Index - 1].IsSymbol('=') or
       FTokens[Index - 1].IsSymbol(':') or FTokens[Index - 1].IsKeyword('to') or
       FTokens[Index - 1].IsKeyword('of'))) then
+    begin
       Inc(Segment);
+    end;
     FSegments[Index] := Segment;
   end;
 end;
@@ -939,23 +1079,33 @@ begin
   while Index < High(FTokens) do
   begin
     if FTokens[Index].IsSymbol('(') or FTokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if FTokens[Index].IsSymbol(')') or FTokens[Index].IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if Depth > 0 then
       // "const" in Parameterlisten ist kein Konstantenabschnitt.
     else if FTokens[Index].IsKeyword('const') or FTokens[Index].IsKeyword('resourcestring') then
-      InConst := True
+    begin
+      InConst := True;
+    end
     else if FTokens[Index].IsKeyword('var') or FTokens[Index].IsKeyword('type') or
       FTokens[Index].IsKeyword('begin') or FTokens[Index].IsKeyword('procedure') or
       FTokens[Index].IsKeyword('function') or FTokens[Index].IsKeyword('implementation') then
-      InConst := False
+    begin
+      InConst := False;
+    end
     else if InConst and IsChainStart(Index) and (FTokens[Index + 1].IsSymbol('=') or
       FTokens[Index + 1].IsSymbol(':')) then
     begin
       First := Index + 1;
       while (First <= High(FTokens)) and not FTokens[First].IsSymbol('=') and not FTokens[First].IsSymbol(';') do
+      begin
         Inc(First);
+      end;
       Inc(First);
       if StartsLiteral(First) then
       begin
@@ -984,10 +1134,15 @@ var
   Full: string;
 begin
   for Index := 0 to High(FTokens) do
+  begin
     if IsChainStart(Index) and (Carrier(Index, Key, Last) in [TCarrier.Assign, TCarrier.Append, TCarrier.Clear]) then
+    begin
       FKeys.AddOrSetValue(Key, True);
+    end;
+  end;
   // Ergänzt oder weitergegeben: gilt in den anderen Routinen als unbekannt.
   for Index := 0 to High(FTokens) do
+  begin
     if IsChainStart(Index) then
       case Carrier(Index, Key, Last) of
         TCarrier.Append:
@@ -996,10 +1151,15 @@ begin
           begin
             Full := Chain(Index, Last);
             for Pair in FKeys do
+            begin
               if ChangesReceiver(Full, Pair.Key) then
+              begin
                 Touch(Pair.Key, FSegments[Index]);
+              end;
+            end;
           end;
       end;
+  end;
 end;
 
 procedure TSqlScan.Scan;
@@ -1037,7 +1197,9 @@ begin
             FReceiverRead := '';
             Evaluate(First, Close, Build);
             if FReceivers.TryGetValue(Key, Old) and (FReceiverRead <> Key) then
+            begin
               Finish(Old, Key);
+            end;
             FReceivers.AddOrSetValue(Key, Build);
             Consume(First, Close);
             Index := Close + 1;
@@ -1063,7 +1225,9 @@ begin
               end;
             end
             else
+            begin
               Build.Unknown := True;
+            end;
             Consume(Last + 1, Close);
             Index := Close + 1;
             Continue;
@@ -1117,12 +1281,18 @@ begin
           Continue;
         end;
         if FLocals.TryGetValue(Name, Value) then
+        begin
           Value.Current := nil;
+        end;
       end;
       Key := Chain(Index, Last);
       for Pair in FReceivers do
+      begin
         if ChangesReceiver(Key, Pair.Key) then
+        begin
           Pair.Value.Unknown := True;
+        end;
+      end;
       Index := Last + 1;
       Continue;
     end;
@@ -1150,7 +1320,9 @@ end;
 procedure TSqlScan.Run;
 begin
   if Length(FTokens) = 0 then
+  begin
     Exit;
+  end;
   ComputeSegments;
   CollectConstants;
   CollectKeys;
@@ -1172,19 +1344,33 @@ begin
     begin
       Foreign := False;
       if (Found.Key <> '') and FTouched.TryGetValue(Found.Key, Segments) then
+      begin
         for Segment in Segments do
+        begin
           if Segment <> Found.Segment then
+          begin
             Foreign := True;
+          end;
+        end;
+      end;
       if Foreign then
+      begin
         Continue;
+      end;
       Id := Format('%d:%d:%s', [Found.Range.StartPos.Line, Found.Range.StartPos.Character, Found.Message]);
       if Seen.ContainsKey(Id) then
+      begin
         Continue;
+      end;
       Seen.Add(Id, True);
       if Assigned(AFixer) then
-        AReport.Add(Found.Range, Found.Message, Found.Confidence, AFixer(Found))
+      begin
+        AReport.Add(Found.Range, Found.Message, Found.Confidence, AFixer(Found));
+      end
       else
+      begin
         AReport.Add(Found.Range, Found.Message, Found.Confidence);
+      end;
     end;
   finally
     Seen.Free;
@@ -1212,9 +1398,13 @@ begin
     Last := First;
     while (Last <= High(Tokens)) and not ((Tokens[Last].Kind = TSqlTokenKind.Symbol) and
       (Tokens[Last].Text = ';') and (Tokens[Last].Depth = Tokens[First].Depth)) do
+    begin
       Inc(Last);
+    end;
     if StatementWrite(Tokens, First, Last - 1, AStrictCase, Write) then
+    begin
       Result := Result + [Write];
+    end;
     First := Last + 1;
   end;
 end;
@@ -1225,11 +1415,17 @@ var
 begin
   Name := ATable;
   for Item in QuoteChars do
+  begin
     Name := StringReplace(Name, Item, '', [rfReplaceAll]);
+  end;
   Last := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
   for Item in AAllowed do
+  begin
     if SameText(Item, Name) or SameText(Item, Last) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1241,15 +1437,23 @@ begin
   for Index := 0 to High(ATokens) - 1 do
   begin
     if ATokens[Index].IsKeyword('implementation') then
+    begin
       Break;
+    end;
     if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[Index].Text, AName) and
       ATokens[Index + 1].IsSymbol(':') then
+    begin
       Exit(Index);
+    end;
   end;
   for Index := 0 to High(ATokens) - 1 do
+  begin
     if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[Index].Text, AFormClass) and
       ATokens[Index + 1].IsSymbol('=') then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -1260,6 +1464,7 @@ var
   Full: string;
 begin
   for Index := 0 to High(ATokens) do
+  begin
     if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and ((Index = 0) or not ATokens[Index - 1].IsSymbol('.')) then
     begin
       Full := ATokens[Index].Text;
@@ -1271,8 +1476,11 @@ begin
         Inc(Last, 2);
       end;
       if SameText(Full, APrefix) or StartsText(APrefix + '.', Full) then
+      begin
         Exit(True);
+      end;
     end;
+  end;
   Result := False;
 end;
 
@@ -1292,25 +1500,37 @@ var
   Anchor: Integer;
 begin
   if AObject.Name <> '' then
+  begin
     for Prop in AObject.Properties do
     begin
       if not IsSqlProperty(Prop.Name) or not TSqlText.FormValue(Prop.Value, Text) then
+      begin
         Continue;
+      end;
       Root := Prop.Name;
       if EndsText('.Strings', Root) then
+      begin
         Root := Copy(Root, 1, Length(Root) - Length('.Strings'));
+      end;
       if SourceTouches(ATokens, AObject.Name + '.' + Root) then
+      begin
         Continue;
+      end;
       for Hit in AFinder(Text, False, Format(' (%s.%s in der Formulardatei)', [AObject.Name, Root])) do
       begin
         Anchor := FormAnchor(ATokens, AObject.Name, AFormClass);
         if Anchor >= 0 then
+        begin
           AReport.Add(TTextRange.Create(ATokens[Anchor].StartPos, ATokens[Anchor].EndPos), Hit.Message,
             Hit.Confidence);
+        end;
       end;
     end;
+  end;
   for Child in AObject.Children do
+  begin
     CheckForm(ATokens, Child, AFormClass, AFinder, AReport);
+  end;
 end;
 
 /// <summary>Läuft TSqlScan mit AFinder über die Unit und die Formulardatei.</summary>
@@ -1330,11 +1550,15 @@ begin
     Scan.Free;
   end;
   if AContext.FormText = '' then
+  begin
     Exit;
+  end;
   Document := TDfmParser.Parse(AContext.FormText);
   try
     if Document.Root <> nil then
+    begin
       CheckForm(Tokens, Document.Root, Document.Root.TypeName, AFinder, AReport);
+    end;
   finally
     Document.Free;
   end;
@@ -1356,7 +1580,9 @@ begin
       for Write in TSqlWriteWithoutWhereRule.Writes(ASql, AStrictCase) do
       begin
         if (Write.Table <> '') and TSqlWriteWithoutWhereRule.Allowed(Write.Table, Allowed) then
+        begin
           Continue;
+        end;
         Hit.Offset := Write.Offset;
         Hit.Message := WriteMessage(Write, ASuffix);
         Hit.Confidence := WriteConfidence(Write);
@@ -1394,39 +1620,59 @@ begin
   for Index := 0 to High(Tokens) do
   begin
     if not IsWord(Tokens, Index, High(Tokens), 'SELECT') then
+    begin
       Continue;
+    end;
     if AStrictCase and (Tokens[Index].Text <> 'SELECT') then
+    begin
       Continue;
+    end;
     // EXISTS (SELECT * …) fragt nur nach Zeilen; der Stern ist dort üblich.
     if (Index >= 2) and (Tokens[Index - 1].Text = '(') and IsWord(Tokens, Index - 2, High(Tokens), 'EXISTS') then
+    begin
       Continue;
+    end;
     Level := Tokens[Index].Depth;
     Scan := Index + 1;
     while Scan <= High(Tokens) do
+    begin
       if IsWordIn(Tokens, Scan, High(Tokens), SelectModifiers) then
-        Inc(Scan)
+      begin
+        Inc(Scan);
+      end
       else if IsWordIn(Tokens, Scan, High(Tokens), SelectLimits) and (Scan < High(Tokens)) then
       begin
         Inc(Scan);
         if Tokens[Scan].Text = '(' then
         begin
           while (Scan <= High(Tokens)) and not ((Tokens[Scan].Text = ')') and (Tokens[Scan].Depth = Level)) do
+          begin
             Inc(Scan);
+          end;
           Inc(Scan);
         end
         else
         begin
           if Tokens[Scan].Text = ':' then
+          begin
             Inc(Scan);
+          end;
           Inc(Scan);
         end;
         if IsWord(Tokens, Scan, High(Tokens), 'PERCENT') then
+        begin
           Inc(Scan);
+        end;
         if IsWord(Tokens, Scan, High(Tokens), 'WITH') and IsWord(Tokens, Scan + 1, High(Tokens), 'TIES') then
+        begin
           Inc(Scan, 2);
+        end;
       end
       else
+      begin
         Break;
+      end;
+    end;
     // Spaltenliste bis FROM auf derselben Ebene
     Found := nil;
     ItemStart := True;
@@ -1435,7 +1681,9 @@ begin
     while Scan <= High(Tokens) do
     begin
       if Tokens[Scan].Depth < Level then
+      begin
         Break;
+      end;
       if Tokens[Scan].Depth = Level then
       begin
         if IsWord(Tokens, Scan, High(Tokens), 'FROM') then
@@ -1444,9 +1692,13 @@ begin
           Break;
         end;
         if (Tokens[Scan].Kind = TSqlTokenKind.Symbol) and (Tokens[Scan].Text = ';') then
+        begin
           Break;
+        end;
         if Tokens[Scan].Kind = TSqlTokenKind.Hole then
+        begin
           SawHole := True;
+        end;
         if ItemStart then
         begin
           Star := Default(TSqlStar);
@@ -1469,7 +1721,9 @@ begin
     end;
     // Ohne FROM ist es kein SQL (Meldungstext); im SQL-Text darf ein unbekannter Teil das FROM bringen.
     if SawFrom or (not AStrictCase and (SawHole or (Scan > High(Tokens)))) then
+    begin
       Result := Result + Found;
+    end;
   end;
 end;
 
@@ -1481,17 +1735,25 @@ var
 begin
   Result := -1;
   if (Length(ARaw) < 2) or (ARaw[1] <> '''') or (ARaw[Length(ARaw)] <> '''') or StartsStr('''''''', ARaw) then
+  begin
     Exit;
+  end;
   Index := 2;
   Plain := 1;
   while Index < Length(ARaw) do
   begin
     if Plain = APlain then
+    begin
       Exit(Index - 1);
+    end;
     if (ARaw[Index] = '''') and (ARaw[Index + 1] = '''') then
-      Inc(Index, 2)
+    begin
+      Inc(Index, 2);
+    end
     else
+    begin
       Inc(Index);
+    end;
     Inc(Plain);
   end;
 end;
@@ -1501,12 +1763,16 @@ var
   Child: TDfmObject;
 begin
   if SameText(AObject.Name, AName) then
+  begin
     Exit(AObject);
+  end;
   for Child in AObject.Children do
   begin
     Result := FindDfmObject(Child, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -1525,12 +1791,20 @@ begin
     Name := '';
     Computed := False;
     for Prop in Child.Properties do
+    begin
       if SameText(Prop.Name, 'FieldName') then
-        Name := AnsiDequotedStr(Trim(Prop.Value), '''')
+      begin
+        Name := AnsiDequotedStr(Trim(Prop.Value), '''');
+      end
       else if SameText(Prop.Name, 'FieldKind') and MatchText(Trim(Prop.Value), ComputedFieldKinds) then
+      begin
         Computed := True;
+      end;
+    end;
     if (Name <> '') and not Computed then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 
@@ -1552,17 +1826,23 @@ begin
       begin
         Hit.Offset := Star.Offset;
         if Star.Qualifier = '' then
-          Hit.Message := Format('SELECT * holt alle Spalten%s; neue Spalten ändern still die Datenmenge.', [ASuffix])
+        begin
+          Hit.Message := Format('SELECT * holt alle Spalten%s; neue Spalten ändern still die Datenmenge.', [ASuffix]);
+        end
         else
+        begin
           Hit.Message := Format('SELECT %s.* holt alle Spalten von %0:s%s; neue Spalten ändern still die Datenmenge.',
             [Star.Qualifier, ASuffix]);
+        end;
         Hit.Confidence := TRuleConfidence.High;
         Result := Result + [Hit];
       end;
     end;
   Document := nil;
   if AContext.FormText <> '' then
+  begin
     Document := TDfmParser.Parse(AContext.FormText);
+  end;
   try
     Tokens := TRuleDerived.CodeTokens(TRuleDerived.Open(AContext), AContext);
     Fixer :=
@@ -1578,19 +1858,27 @@ begin
         // Nur der Stern ohne Alias in einem einzeiligen Literal; die Felder kommen aus der Formulardatei.
         if (AFound.LiteralOffset = 0) or (Document = nil) or (Document.Root = nil) or
           not EndsText('.sql', AFound.Key) then
+        begin
           Exit;
+        end;
         Token := Tokens[AFound.Token];
         Column := RawLiteralColumn(Token.Text, AFound.LiteralOffset);
         if (Column < 0) or (Token.StartPos.Line <> Token.EndPos.Line) or (Token.Text[Column + 1] <> '*') then
+        begin
           Exit;
+        end;
         Name := Copy(AFound.Key, 1, Length(AFound.Key) - Length('.sql'));
         Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
         DataSet := FindDfmObject(Document.Root, Name);
         if DataSet = nil then
+        begin
           Exit;
+        end;
         Fields := PersistentFields(DataSet);
         if Fields = nil then
+        begin
           Exit;
+        end;
         Result := [TRuleFix.Create('* durch die persistenten Felder ersetzen',
           [TRuleEdit.Create(TTextRange.Create(Token.StartPos.Line, Token.StartPos.Character + Column,
           Token.StartPos.Line, Token.StartPos.Character + Column + 1), string.Join(', ', Fields))])];

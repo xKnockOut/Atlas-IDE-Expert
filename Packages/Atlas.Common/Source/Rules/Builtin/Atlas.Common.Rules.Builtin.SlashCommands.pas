@@ -52,7 +52,9 @@ var
   Problem: TSlashProblem;
 begin
   for Problem in TSlashCommandRegistry.Shared.Problems(AContext.Text, nil, AContext.Index, AContext.DelphiVersion) do
+  begin
     AReport.Add(Problem.Range, Problem.Message);
+  end;
 end;
 
 function HitsLine(const AFindings: TArray<TRuleFinding>; const AId: string; ALine: Integer): Boolean;
@@ -60,8 +62,12 @@ var
   Finding: TRuleFinding;
 begin
   for Finding in AFindings do
+  begin
     if (Finding.Range.StartPos.Line = ALine) and SameText(Finding.RuleId, AId) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -74,28 +80,40 @@ var
   Name, Arguments, Id: string;
 begin
   if Pos('/ignore', AContext.Text) = 0 then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text);
   Tokens := nil;
   for Index := 0 to High(Lines) - 1 do
   begin
     if not TSlashCommandRegistry.Split(Lines[Index], Name, Arguments) or not SameText(Name, 'ignore') or
       (Trim(Lines[Index + 1]) = '') then
+    begin
       Continue;
+    end;
     Space := Pos(' ', Arguments + ' ');
     Id := LowerCase(Copy(Arguments, 1, Space - 1));
     if (Id = '') or (Pos('*', Id) > 0) or not MatchText(Id, ARanIds) or HitsLine(AFindings, Id, Index + 1) then
+    begin
       Continue;
+    end;
     if Tokens = nil then
     begin
       if AContext.Tree <> nil then
-        Tokens := AContext.Tree.Tokens
+      begin
+        Tokens := AContext.Tree.Tokens;
+      end
       else
+      begin
         Tokens := TPascalLexer.Tokenize(AContext.Text);
+      end;
     end;
     if TSlashCommandRegistry.IsCodeLine(Tokens, Index) then
+    begin
       AReport.Add(TTextRange.Create(TTextPosition.Create(Index, 0), TTextPosition.Create(Index, Length(Lines[Index]))),
         Format(IgnoreNoHitHint, [Id]));
+    end;
   end;
 end;
 

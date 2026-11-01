@@ -219,9 +219,13 @@ uses
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 /// <summary>Deklaration von ARange bis zum Ende der letzten Zeile (dort stehen Direktiven wie deprecated).</summary>
@@ -233,11 +237,17 @@ begin
   for Line := ARange.StartPos.Line to ARange.EndPos.Line do
   begin
     if (Line < 0) or (Line > High(ALines)) then
+    begin
       Break;
+    end;
     if Line = ARange.StartPos.Line then
-      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt)
+    begin
+      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt);
+    end
     else
+    begin
       Result := Result + ' ' + Trim(ALines[Line]);
+    end;
   end;
 end;
 
@@ -248,12 +258,16 @@ var
 begin
   Result := 0;
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, AMember.Container) then
     begin
       if Symbol.SelectionRange.StartPos = AMember.SelectionRange.StartPos then
+      begin
         Exit;
+      end;
       Inc(Result);
     end;
+  end;
 end;
 
 /// <summary>Bei Mengentypen "set of TBar · 4 mögliche Elemente" (#38); Aufzählungen über den Index gezählt.
@@ -269,21 +283,31 @@ var
 begin
   Result := '';
   if not THoverValues.SetBaseType(ADeclaration, BaseType) then
+  begin
     Exit;
+  end;
   Count := THoverValues.BaseTypeCount(BaseType);
   if (Count < 0) and AResolver.ResolveTypeFrom(AUnit, BaseType, Resolved) and
     (Resolved.SymbolKind = TIndexSymbolKind.EnumType) and AResolver.DeclaringUnit(Resolved, EnumUnit) then
   begin
     Count := 0;
     for Symbol in EnumUnit.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Resolved.Name) then
+      begin
         Inc(Count);
+      end;
+    end;
   end;
   Result := 'set of ' + BaseType;
   if Count = 1 then
-    Result := Result + ' · 1 mögliches Element'
+  begin
+    Result := Result + ' · 1 mögliches Element';
+  end
   else if Count >= 0 then
+  begin
     Result := Result + ' · ' + IntToStr(Count) + ' mögliche Elemente';
+  end;
 end;
 
 // Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
@@ -303,7 +327,9 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('name', ARef.Name);
   if ARef.UnitName <> '' then
+  begin
     Result.AddPair('unit', ARef.UnitName);
+  end;
   Result.AddPair('file', ARef.FileName);
   Result.AddPair('line', TJSONNumber.Create(ARef.Line));
   Result.AddPair('character', TJSONNumber.Create(ARef.Character));
@@ -321,7 +347,9 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('declaration', AInfo.Declaration);
   if AInfo.UnitName <> '' then
+  begin
     Result.AddPair('unit', AInfo.UnitName);
+  end;
   // Strukturiert für die volle Anzeige, Klartext für die Kurzform (#654).
   Documentation := nil;
   if not AInfo.Doc.IsEmpty then
@@ -331,7 +359,9 @@ begin
     Result.AddPair('documentationText', AInfo.Doc.ToPlainText);
   end
   else if AInfo.Documentation <> '' then
+  begin
     Result.AddPair('documentationText', StripMarkdown(AInfo.Documentation));
+  end;
   // Begründungen als eigene Abschnitte hinter der XMLDoc (#1123), auch ohne XMLDoc.
   if Length(AInfo.Rationale) > 0 then
   begin
@@ -344,13 +374,21 @@ begin
     TLspRationale.AddSections(TJSONArray(Documentation.GetValue('sections')), AInfo.Rationale, AInfo.AdrFiles);
   end;
   if AInfo.Value <> '' then
+  begin
     Result.AddPair('value', AInfo.Value);
+  end;
   if AInfo.Deprecation <> '' then
+  begin
     Result.AddPair('deprecation', StripMarkdown(AInfo.Deprecation));
+  end;
   if AInfo.Kind <> '' then
+  begin
     Result.AddPair('kind', AInfo.Kind);
+  end;
   if AInfo.Origin <> '' then
+  begin
     Result.AddPair('origin', AInfo.Origin);
+  end;
   if AInfo.FileName <> '' then
   begin
     Result.AddPair('file', AInfo.FileName);
@@ -358,7 +396,9 @@ begin
     Result.AddPair('character', TJSONNumber.Create(AInfo.Character));
   end;
   if AInfo.DocWikiUrl <> '' then
+  begin
     Result.AddPair('docWiki', AInfo.DocWikiUrl);
+  end;
   if Length(AInfo.Links) > 0 then
   begin
     Links := TJSONArray.Create;
@@ -374,13 +414,17 @@ begin
   // published-Properties und Ereignisse (#110).
   Members := TPublishedMembers.ToJson(AInfo.PublishedItems, AInfo.DefaultProperty);
   if Members <> nil then
+  begin
     Result.AddPair('published', Members);
+  end;
   if Length(AInfo.Ancestors) > 0 then
   begin
     Result.AddPair('chainOf', AInfo.ChainOf);
     Ancestors := TJSONArray.Create;
     for Ancestor in AInfo.Ancestors do
+    begin
       Ancestors.AddElement(TypeRefJson(Ancestor));
+    end;
     Result.AddPair('ancestors', Ancestors);
   end;
   if AInfo.ReassignedTarget <> '' then
@@ -390,7 +434,9 @@ begin
     Item.AddPair('writes', TJSONNumber.Create(AInfo.ReassignedWrites));
     Written := TJSONArray.Create;
     for Line in AInfo.ReassignedLines do
+    begin
       Written.Add(Line);
+    end;
     Item.AddPair('lines', Written);
     Result.AddPair('reassigned', Item);
   end;
@@ -403,7 +449,9 @@ var
 begin
   if not TReassigned.SymbolAt(TLspReassigned.Analyze(AResolver, ATree, AFileName, AText), APosition, Symbol) or
     not Symbol.IsReassigned then
+  begin
     Exit;
+  end;
   AInfo.ReassignedTarget := TReassigned.TargetNames[Symbol.Target];
   AInfo.ReassignedWrites := Symbol.WriteCount;
   AInfo.ReassignedLines := Symbol.WriteLines;
@@ -418,50 +466,90 @@ function THoverInfo.ToMarkdown: string;
 begin
   Result := '```pascal' + #10 + Declaration + #10 + '```';
   if Deprecation <> '' then
+  begin
     Result := Result + #10#10 + Deprecation;
+  end;
   if Value <> '' then
+  begin
     Result := Result + #10#10 + 'Wert: `' + Value + '`';
+  end;
   if Documentation <> '' then
+  begin
     Result := Result + #10#10 + Documentation;
+  end;
   if Length(Rationale) > 0 then
+  begin
     Result := Result + #10#10 + TLspRationale.ToMarkdown(Rationale);
+  end;
   if UnitName <> '' then
+  begin
     Result := Result + #10#10 + 'Unit `' + UnitName + '`';
+  end;
   if DocWikiUrl <> '' then
+  begin
     Result := Result + #10#10 + '[DocWiki](' + DocWikiUrl + ')';
+  end;
   if WinApi <> '' then
+  begin
     Result := Result + #10#10 + WinApi;
+  end;
   if Members <> '' then
+  begin
     Result := Result + #10#10 + '---' + #10#10 + Members;
+  end;
   if Messages <> '' then
+  begin
     Result := Result + #10#10 + '---' + #10#10 + Messages;
+  end;
   if FormValues <> '' then
+  begin
     Result := Result + #10#10 + '---' + #10#10 + FormValues;
+  end;
   if Constructors <> '' then
+  begin
     Result := Result + #10#10 + '```pascal' + #10 + Constructors + #10 + '```';
+  end;
 end;
 
 function THoverInfo.ToPlainText: string;
 begin
   Result := Declaration;
   if Deprecation <> '' then
+  begin
     Result := Result + #10#10 + StripMarkdown(Deprecation);
+  end;
   if Value <> '' then
+  begin
     Result := Result + #10#10 + 'Wert: ' + Value;
+  end;
   if not Doc.IsEmpty then
-    Result := Result + #10#10 + Doc.ToPlainText
+  begin
+    Result := Result + #10#10 + Doc.ToPlainText;
+  end
   else if Documentation <> '' then
+  begin
     Result := Result + #10#10 + StripMarkdown(Documentation);
+  end;
   if Length(Rationale) > 0 then
+  begin
     Result := Result + #10#10 + TLspRationale.ToPlainText(Rationale);
+  end;
   if UnitName <> '' then
+  begin
     Result := Result + #10#10 + 'Unit ' + UnitName;
+  end;
   if DocWikiUrl <> '' then
+  begin
     Result := Result + #10#10 + 'DocWiki: ' + DocWikiUrl;
+  end;
   if Members <> '' then
+  begin
     Result := Result + #10#10 + StripMarkdown(Members);
+  end;
   if Messages <> '' then
+  begin
     Result := Result + #10#10 + StripMarkdown(Messages);
+  end;
 end;
 
 { TLspHover }
@@ -507,10 +595,16 @@ begin
   if (AInitializeParams = nil) or
     not AInitializeParams.TryGetValue<TJSONArray>('capabilities.textDocument.hover.contentFormat', Formats) or
     (Formats.Count = 0) then
+  begin
     Exit(True);
+  end;
   for Item in Formats do
+  begin
     if SameText(Item.Value, 'markdown') then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -529,19 +623,29 @@ begin
   begin
     FormFile := ChangeFileExt(AUnitFile, Extension);
     if SameText(FormFile, AOpenFile) then
-      FormText := AOpenText
+    begin
+      FormText := AOpenText;
+    end
     else if not (Assigned(AReadText) and AReadText(FormFile, FormText)) then
+    begin
       FormText := '';
+    end;
     if FormText <> '' then
+    begin
       Break;
+    end;
   end;
   if FormText = '' then
+  begin
     Exit;
+  end;
   Document := TDfmParser.Parse(FormText);
   try
     Obj := TFormInfo.FindComponent(Document, AFormClass, AFieldName);
     if Obj <> nil then
+    begin
       Result := TFormInfo.ComponentMarkdown(Obj, FormFile);
+    end;
   finally
     Document.Free;
   end;end;
@@ -557,6 +661,7 @@ begin
   All := '';
   Matching := '';
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClass.Name) and
       (Symbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
       (Symbol.Range.StartPos.Line < AClass.Range.EndPos.Line) and (Symbol.Range.StartPos.Line <= High(ALines)) then
@@ -564,8 +669,11 @@ begin
       Line := Trim(ALines[Symbol.Range.StartPos.Line]);
       All := All + IfThen(All <> '', #10) + Line;
       if (AArgCount >= Symbol.MinArgs) and (AArgCount <= Symbol.MaxArgs) then
+      begin
         Matching := Matching + IfThen(Matching <> '', #10) + Line;
+      end;
     end;
+  end;
   Result := IfThen(Matching <> '', Matching, All);
 end;
 
@@ -600,6 +708,7 @@ begin
   Result := Default(THoverInfo);
   // Zahlenliteral unter dem Cursor: Schreibweisen statt Deklaration.
   for Token in ATree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Number) and (ComparePositions(Token.StartPos, APosition) <= 0) and
       (ComparePositions(APosition, Token.EndPos) < 0) then
     begin
@@ -609,9 +718,12 @@ begin
         Result.Value := THoverValues.FormatNumber(Number);
       end
       else
+      begin
         TRequestDiagnostics.Reason('numberUnparsed');
+      end;
       Exit;
     end;
+  end;
   Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
   // Bezeichner von System ohne Quelltext (#880): Kopf und Beschreibung aus der eingebauten Liste.
   if (Length(Targets) = 0) and TSystemIntrinsics.NameAt(ATree, APosition, IntrinsicName) then
@@ -619,10 +731,14 @@ begin
     for Intrinsic in TSystemIntrinsics.Find(IntrinsicName) do
     begin
       if Result.Declaration <> '' then
+      begin
         Result.Declaration := Result.Declaration + #10;
+      end;
       Result.Declaration := Result.Declaration + Intrinsic.Declaration;
       if Result.Documentation = '' then
+      begin
         Result.Documentation := Intrinsic.Documentation;
+      end;
     end;
     Result.UnitName := 'System';
     Exit;
@@ -649,7 +765,9 @@ begin
     Exit;
   end;
   if SameText(Targets[0].FileName, AFileName) then
-    Text := ATreeText
+  begin
+    Text := ATreeText;
+  end
   else if not (Assigned(AReadText) and AReadText(Targets[0].FileName, Text)) then
   begin
     TRequestDiagnostics.Reason('declarationUnreadable');
@@ -671,22 +789,31 @@ begin
   // Aus einer Include-Datei (#500): die einbindende Unit, die Datei dahinter. Die eigene Datei
   // auch ohne Index (noch nicht gespeichert bzw. nicht im Projekt) aus dem Baum.
   if not TIndexFiles.UnitOf(AIndex, Targets[0].FileName, OwnerUnit) then
+  begin
     if SameText(Targets[0].FileName, AFileName) then
-      OwnerUnit := TIndexExtractor.Extract(ATree, AFileName)
+    begin
+      OwnerUnit := TIndexExtractor.Extract(ATree, AFileName);
+    end
     else
     begin
       TRequestDiagnostics.Reason('unitNotIndexed');
       Exit;
     end;
+  end;
   if not SameText(Targets[0].FileName, OwnerUnit.FileName) then
-    Result.UnitName := OwnerUnit.UnitName + ' (' + ExtractFileName(Targets[0].FileName) + ')'
+  begin
+    Result.UnitName := OwnerUnit.UnitName + ' (' + ExtractFileName(Targets[0].FileName) + ')';
+  end
   else if not SameText(Targets[0].FileName, AFileName) then
+  begin
     Result.UnitName := OwnerUnit.UnitName;
+  end;
   SelfName := '';
   TypeSymbol := False;
   DocSymbol := Default(TResolvedSymbol);
   DocContainer := '';
   for Symbol in OwnerUnit.Symbols do
+  begin
     if (Symbol.SelectionRange.StartPos = Targets[0].SelectionRange.StartPos) and
       SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
     begin
@@ -694,26 +821,39 @@ begin
       DocSymbol := AResolver.SymbolFrom(OwnerUnit, Symbol);
       DocContainer := Symbol.Container;
       if DocContainer = '' then
+      begin
         DocContainer := Symbol.Name;
+      end;
       Result.Kind := TLspHoverTypes.KindOf(Symbol.Kind, Result.Declaration);
       Result.Rationale := TLspRationale.OfSymbol(OwnerUnit, Symbol);
       TypeSymbol := (Symbol.Container = '') and (Symbol.Kind in [TIndexSymbolKind.ClassType,
         TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType]);
       Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, Symbol.Container, Symbol.Name);
       if (Symbol.Container = '') and TWinApiDocs.IsWinApiUnit(OwnerUnit.UnitName) then
+      begin
         Result.WinApi := TWinApiDocs.HoverText(Symbol.Name);
+      end;
       if Symbol.Kind = TIndexSymbolKind.Constant then
+      begin
         // Ganze Deklaration: Mengen und Texte über mehrere Zeilen (Resourcestrings, #38).
-        Result.Value := THoverValues.ConstantValue(DeclarationText(Lines, Targets[0].Range))
+        Result.Value := THoverValues.ConstantValue(DeclarationText(Lines, Targets[0].Range));
+      end
       else if Symbol.Kind = TIndexSymbolKind.TypeAlias then
-        Result.Value := SetTypeValue(AResolver, OwnerUnit, DeclarationText(Lines, Targets[0].Range))
+      begin
+        Result.Value := SetTypeValue(AResolver, OwnerUnit, DeclarationText(Lines, Targets[0].Range));
+      end
       else if Symbol.Kind = TIndexSymbolKind.EnumMember then
-        Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol))
+      begin
+        Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol));
+      end
       else if (Symbol.Kind = TIndexSymbolKind.Field) and (Symbol.Container <> '') then
+      begin
         Result.FormValues := FormFieldValues(Targets[0].FileName, Symbol.Container, Symbol.Name,
           AFileName, ATreeText, AReadText);
+      end;
       Break;
     end;
+  end;
   // XMLDoc mit <inheritdoc/> und den Fundorten der cref-Verweise (#654).
   if Result.Doc.InheritDoc then
   begin
@@ -729,7 +869,9 @@ begin
   begin
     ChainName := TLspHoverTypes.ClassRefTarget(Result.Declaration);
     if ChainName = '' then
+    begin
       ChainName := SelfName;
+    end;
     if AResolver.ResolveTypeFrom(OwnerUnit, ChainName, Resolved) then
     begin
       Result.ChainOf := Resolved.Name;
@@ -737,12 +879,15 @@ begin
     end;
   end;
   for Symbol in OwnerUnit.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
       ((Symbol.Range.StartPos = Start) or (Symbol.SelectionRange.StartPos = Start)) and
       SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
     begin
       if TAttributes.At(ATree, APosition, Use) then
+      begin
         Result.Constructors := AttributeConstructors(OwnerUnit, Symbol, Lines, Use.ArgCount);
+      end;
       // Die eigene Datei kommt aus dem Editor, nicht von der Platte.
       ReadText :=
         function(const AName: string; out AText: string): Boolean
@@ -758,11 +903,13 @@ begin
       Result.DefaultProperty := TPublishedMembers.DefaultProperty(AIndex, Symbol.Name, ReadText);
       Result.Members := TPublishedMembers.ToMarkdown(Result.PublishedItems, Result.DefaultProperty);
       if SameText(Targets[0].FileName, AFileName) then
+      begin
         Result.Messages := TMessageHandlers.Overview(AResolver, ATree, AFileName, Symbol.Name,
           function(const AName: string; out AText: string): Boolean
           begin
             Result := ReadText(AName, AText);
-          end).ToMarkdown
+          end).ToMarkdown;
+      end
       else
       begin
         ClassTree := TSyntaxTreeCache.Parse(Text);
@@ -781,6 +928,7 @@ begin
       ReadText := nil;
       Break;
     end;
+  end;
 end;
 
 class function TLspHover.DataNameHint(const AIndex: ISymbolIndex; const AText, AFileName: string;
@@ -798,7 +946,9 @@ begin
   if (APosition.Line < 0) or (APosition.Line > High(Lines)) or not Assigned(AReadText) or
     not TDataFieldNames.CallAt(Lines[APosition.Line].TrimRight([#13]), APosition.Character, Call) or
     (Call.Content = '') then
+  begin
     Exit;
+  end;
   Names := TDataFieldNames.Lookup(AText, AFileName, Call, AIndex,
     function(const AName: string; out AContent: string): Boolean
     begin
@@ -806,11 +956,17 @@ begin
     end, Sql, Found);
   // Ohne bekannte Namen (select * ohne Schema) lässt sich nichts sagen.
   if not Found or (Length(Names) = 0) or TDataFieldNames.Contains(Names, Call.Content) then
+  begin
     Exit;
+  end;
   if Call.Kind = TDataNameKind.Param then
-    AHint := Format('Parameter nicht gefunden in %s', [Call.DisplayName])
+  begin
+    AHint := Format('Parameter nicht gefunden in %s', [Call.DisplayName]);
+  end
   else
+  begin
     AHint := Format('Feld nicht gefunden in %s', [Call.DisplayName]);
+  end;
   Result := True;
 end;
 
@@ -833,8 +989,10 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   OwnTree := nil;
@@ -861,14 +1019,20 @@ begin
   try
     TRequestDiagnostics.Note('syntaxErr', Length(Tree.Diagnostics));
     if Assigned(FVersionProvider) then
-      DelphiVersion := FVersionProvider(Uri)
+    begin
+      DelphiVersion := FVersionProvider(Uri);
+    end
     else
+    begin
       DelphiVersion := '';
+    end;
     ACancellation.ThrowIfCancellationRequested;
     // Compiler-Direktiven wie {$R+} oder {$WARN …} und bedingte Symbole mit Zustand und Herkunft (#102).
     Symbols := TConditionalContext.Default;
     if Assigned(FSymbolsFor) then
+    begin
       Symbols := FSymbolsFor(Uri);
+    end;
     HasSymbol := False;
     HasDirective := False;
     if Symbols.HoverEnabled then
@@ -880,18 +1044,26 @@ begin
         ConditionMarkdown) then
       begin
         if HasSymbol then
-          SymbolMarkdown := ConditionMarkdown + #10#10'---'#10#10 + SymbolMarkdown
+        begin
+          SymbolMarkdown := ConditionMarkdown + #10#10'---'#10#10 + SymbolMarkdown;
+        end
         else
+        begin
           SymbolMarkdown := ConditionMarkdown;
+        end;
         HasSymbol := True;
       end;
       HasDirective := TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
         mMarkdown);
     end;
     if HasSymbol and HasDirective then
-      mMarkdown := SymbolMarkdown + #10#10'---'#10#10 + mMarkdown
+    begin
+      mMarkdown := SymbolMarkdown + #10#10'---'#10#10 + mMarkdown;
+    end
     else if HasSymbol then
+    begin
       mMarkdown := SymbolMarkdown;
+    end;
     if HasSymbol or HasDirective then
     begin
       Contents := TJSONObject.Create;
@@ -919,8 +1091,10 @@ begin
         TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
       // Wie oft der Name geschrieben wird, für die Unterstreichung im Plugin (#712).
       if Info.Found then
+      begin
         AddReassigned(Resolver, Tree, TDocumentUris.ToPath(Uri), Text, TLspPositions.ReadPosition(PositionValue),
           Info);
+      end;
     finally
       Resolver.Free;
     end;
@@ -933,12 +1107,18 @@ begin
     end;
     // Begründungen nach hints.rationale, hints.rationaleMarkers und hints.adrFolder (#1123).
     if Assigned(FRationaleFor) then
-      Rationale := FRationaleFor(Uri)
+    begin
+      Rationale := FRationaleFor(Uri);
+    end
     else
+    begin
       Rationale := TRationaleOptions.Default;
+    end;
     Info.Rationale := TLspRationale.Select(Info.Rationale, Rationale);
     if Length(Info.Rationale) > 0 then
+    begin
       Info.AdrFiles := TLspRationale.AdrFiles(Rationale.AdrFolder);
+    end;
     if not Info.Found then
     begin
       // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
@@ -964,14 +1144,18 @@ begin
       TJSONObject(Result).AddPair('contents', Contents);
     end
     else
+    begin
       // Klartext als einfacher String und ohne "range", genau wie DelphiLSP
       // antwortet. RAD Studio zeigt den Hover benutzerdefinierter Server trotzdem
       // nicht als Tooltip an; dafür braucht es ein IDE-Plugin (#175).
       TJSONObject(Result).AddPair('contents', Info.ToPlainText);
+    end;
     // Für den Atlas-Tooltip (#442, #588) die Teile einzeln; andere Clients ignorieren das Feld.
     Atlas := AtlasJson(Info);
     if Assigned(FHintsFor) then
+    begin
       Atlas.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHintsFor(Uri)));
+    end;
     TJSONObject(Result).AddPair('atlas', Atlas);
   finally
     OwnTree.Free;

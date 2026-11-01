@@ -35,12 +35,16 @@ var
 begin
   Result := '';
   for Item in AItems do
+  begin
     if Item <> '' then
     begin
       if Result <> '' then
+      begin
         Result := Result + ';';
+      end;
       Result := Result + Item;
     end;
+  end;
 end;
 
 { TCompilerCommandLine }
@@ -48,11 +52,17 @@ end;
 class function TCompilerCommandLine.ExecutableFor(const ABdsRoot, APlatform: string): string;
 begin
   if SameText(APlatform, 'Win32') then
-    Result := TProjectPaths.Combine(ABdsRoot, 'bin\dcc32.exe')
+  begin
+    Result := TProjectPaths.Combine(ABdsRoot, 'bin\dcc32.exe');
+  end
   else if SameText(APlatform, 'Win64') then
-    Result := TProjectPaths.Combine(ABdsRoot, 'bin\dcc64.exe')
+  begin
+    Result := TProjectPaths.Combine(ABdsRoot, 'bin\dcc64.exe');
+  end
   else
+  begin
     raise ECompilerError.CreateFmt('Plattform %s wird beim Kompilieren noch nicht unterstützt', [APlatform]);
+  end;
 end;
 
 class function TCompilerCommandLine.BdsRoot(const AVariables: TArray<TPair<string, string>>): string;
@@ -61,8 +71,12 @@ var
 begin
   Result := '';
   for Variable in AVariables do
+  begin
     if SameText(Variable.Key, 'BDS') then
+    begin
       Exit(Variable.Value);
+    end;
+  end;
 end;
 
 class function TCompilerCommandLine.Build(const AProject: TProjectInfo; const ALibraryPaths: TArray<string>;
@@ -72,7 +86,9 @@ var
   Arguments: TList<string>;
 begin
   if AProject.MainSource = '' then
+  begin
     raise ECompilerError.CreateFmt('Projekt %s hat keine Hauptdatei', [AProject.FileName]);
+  end;
   Result := Default(TCompilerRequest);
   Result.Executable := ExecutableFor(ABdsRoot, AProject.Platform);
   Result.WorkingDir := TProjectPaths.DirectoryOf(AProject.FileName);
@@ -95,9 +111,13 @@ begin
       Arguments.Add('-O' + Paths);
     end;
     if Length(AProject.Defines) > 0 then
+    begin
       Arguments.Add('-D' + JoinList(AProject.Defines));
+    end;
     if Length(AProject.Namespaces) > 0 then
+    begin
       Arguments.Add('-NS' + JoinList(AProject.Namespaces));
+    end;
     Arguments.Add(AProject.MainSource);
     Result.Arguments := Arguments.ToArray;
   finally

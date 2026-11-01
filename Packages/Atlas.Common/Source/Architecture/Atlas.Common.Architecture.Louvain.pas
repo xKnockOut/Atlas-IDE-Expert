@@ -88,22 +88,30 @@ begin
   Result.Total := 0;
   SetLength(Maps, ANodeCount);
   for Node := 0 to ANodeCount - 1 do
+  begin
     Maps[Node] := TDictionary<Integer, Double>.Create;
+  end;
   try
     for Edge in AEdges do
     begin
       if (Edge.Weight <= 0) or (Edge.A < 0) or (Edge.B < 0) or (Edge.A >= ANodeCount) or (Edge.B >= ANodeCount) then
+      begin
         Continue;
+      end;
       if Edge.A = Edge.B then
       begin
         Result.SelfWeight[Edge.A] := Result.SelfWeight[Edge.A] + Edge.Weight;
         Continue;
       end;
       if not Maps[Edge.A].TryGetValue(Edge.B, Weight) then
+      begin
         Weight := 0;
+      end;
       Maps[Edge.A].AddOrSetValue(Edge.B, Weight + Edge.Weight);
       if not Maps[Edge.B].TryGetValue(Edge.A, Weight) then
+      begin
         Weight := 0;
+      end;
       Maps[Edge.B].AddOrSetValue(Edge.A, Weight + Edge.Weight);
     end;
     for Node := 0 to ANodeCount - 1 do
@@ -124,7 +132,9 @@ begin
     end;
   finally
     for Node := 0 to ANodeCount - 1 do
+    begin
       Maps[Node].Free;
+    end;
   end;
 end;
 
@@ -144,10 +154,14 @@ begin
   Count := Length(AGraph.Neighbors);
   TwoM := AGraph.Total;
   if TwoM <= 0 then
+  begin
     Exit;
+  end;
   SetLength(Tot, Count);
   for Node := 0 to Count - 1 do
+  begin
     Tot[ACommunity[Node]] := Tot[ACommunity[Node]] + AGraph.Degree[Node];
+  end;
   Links := TDictionary<Integer, Double>.Create;
   try
     repeat
@@ -171,7 +185,9 @@ begin
         // Knoten herausnehmen, dann die beste Gruppe suchen (die eigene steht dabei mit ihrem Gewinn).
         Tot[Current] := Tot[Current] - Ki;
         if not Links.TryGetValue(Current, Weight) then
+        begin
           Weight := 0;
+        end;
         Best := Current;
         BestGain := Weight - AResolution * Tot[Current] * Ki / TwoM;
         TArray.Sort<Integer>(Candidates);
@@ -179,7 +195,9 @@ begin
         begin
           Candidate := Candidates[Index];
           if Candidate = Current then
+          begin
             Continue;
+          end;
           Gain := Links[Candidate] - AResolution * Tot[Candidate] * Ki / TwoM;
           if Gain > BestGain + Epsilon then
           begin
@@ -247,7 +265,9 @@ begin
       begin
         // Jede ungerichtete Kante steht zweimal in den Listen; nur einmal übernehmen.
         if Neighbor.Node < Node then
+        begin
           Continue;
+        end;
         Edge.A := ACommunity[Node];
         Edge.B := ACommunity[Neighbor.Node];
         Edge.Weight := Neighbor.Weight;
@@ -277,7 +297,9 @@ var
 begin
   SetLength(Result, ANodeCount);
   for Node := 0 to ANodeCount - 1 do
+  begin
     Result[Node] := Node;
+  end;
   Edges := AEdges;
   Count := ANodeCount;
   while Count > 0 do
@@ -285,16 +307,24 @@ begin
     Graph := BuildGraph(Count, Edges);
     SetLength(Level, Count);
     for Node := 0 to Count - 1 do
+    begin
       Level[Node] := Node;
+    end;
     if not MoveNodes(Graph, AResolution, Level) then
+    begin
       Break;
+    end;
     Merged := Renumber(Level);
     // Zuordnung der ursprünglichen Knoten nachführen.
     for Node := 0 to ANodeCount - 1 do
+    begin
       Result[Node] := Level[Result[Node]];
+    end;
     // Keine Gruppe verschmolzen: weitere Stufen ändern nichts mehr.
     if Merged >= Count then
+    begin
       Break;
+    end;
     Edges := Aggregate(Graph, Level);
     Count := Merged;
   end;
@@ -319,11 +349,17 @@ begin
   Result := 0;
   Graph := BuildGraph(ANodeCount, AEdges);
   if Graph.Total <= 0 then
+  begin
     Exit;
+  end;
   Count := 0;
   for Community in ACommunities do
+  begin
     if Community + 1 > Count then
+    begin
       Count := Community + 1;
+    end;
+  end;
   SetLength(Inside, Count);
   SetLength(Tot, Count);
   for Node := 0 to ANodeCount - 1 do
@@ -331,11 +367,17 @@ begin
     Tot[ACommunities[Node]] := Tot[ACommunities[Node]] + Graph.Degree[Node];
     Inside[ACommunities[Node]] := Inside[ACommunities[Node]] + 2 * Graph.SelfWeight[Node];
     for Neighbor in Graph.Neighbors[Node] do
+    begin
       if ACommunities[Neighbor.Node] = ACommunities[Node] then
+      begin
         Inside[ACommunities[Node]] := Inside[ACommunities[Node]] + Neighbor.Weight;
+      end;
+    end;
   end;
   for Community := 0 to Count - 1 do
+  begin
     Result := Result + Inside[Community] / Graph.Total - AResolution * Sqr(Tot[Community] / Graph.Total);
+  end;
 end;
 
 end.

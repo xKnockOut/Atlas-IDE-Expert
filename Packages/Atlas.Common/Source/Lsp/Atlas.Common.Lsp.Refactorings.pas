@@ -180,28 +180,38 @@ begin
       try
         for Found in TLspInlayHints.Inferred(Resolver, Tree, Context.FileName, TTextRange.Create(ANamePos.Line, 0,
           ANamePos.Line, MaxInt)) do
+        begin
           if (Found.NameStart.Line = ANamePos.Line) and (Found.NameStart.Character = ANamePos.Character) then
           begin
             Result.Name := Found.TypeName;
             Result.TypeUnit := Found.TypeUnit;
             Base := Found.TypeName;
             if Pos('<', Base) > 0 then
+            begin
               Base := Copy(Base, 1, Pos('<', Base) - 1);
+            end;
             Offset := TLineTable.Build(AText).OffsetAt(ANamePos);
             Resolved := Resolver.ResolveChain(Tree, Context.FileName, Base.Split(['.']), Offset);
             if Resolved.Found and Resolved.IsType then
+            begin
               // Sichtbar: kein uses nötig.
-              Result.UnitName := ''
+              Result.UnitName := '';
+            end
             else
             begin
               Result.UnitName := Found.TypeUnit;
               if not ((Found.Origin.Name <> '') and Resolver.DeclaringUnit(Found.Origin, Owner) and
                 Resolver.ResolveTypeFrom(Owner, Base, Resolved)) then
+              begin
                 Resolved := Default(TResolvedSymbol);
+              end;
             end;
             if Resolved.Found and Resolved.IsType then
+            begin
               if Resolved.Builtin then
-                Result.IsValue := True
+              begin
+                Result.IsValue := True;
+              end
               else
                 case Resolved.SymbolKind of
                   TIndexSymbolKind.ClassType:
@@ -221,10 +231,14 @@ begin
                 else
                   // Übrige Werte bewusst ohne Wirkung.
                 end;
+            end;
             if (Result.TypeUnit = '') and Resolved.Found and not Resolved.Builtin then
+            begin
               Result.TypeUnit := Resolved.UnitName;
+            end;
             Break;
           end;
+        end;
       finally
         Resolver.Free;
         Tree.Free;
@@ -249,14 +263,22 @@ begin
         Unknown) then
       begin
         if Owner = AWith then
-          Result := TWithOwner.Element
+        begin
+          Result := TWithOwner.Element;
+        end
         else
+        begin
           Result := TWithOwner.Other;
+        end;
       end
       else if Unknown then
-        Result := TWithOwner.Unknown
+      begin
+        Result := TWithOwner.Unknown;
+      end
       else
+      begin
         Result := TWithOwner.Other;
+      end;
     end;
 end;
 
@@ -278,9 +300,13 @@ begin
     not TLspCompletion.CaseValues(AResolver, AContext.Index, ATree, AText, AContext.FileName, OfPos,
     AContext.ReadText, Values, Prefix) or
     not TCaseCompletion.Complete(AText, ATree, CaseNode, Values, Prefix, Edits, Count, HasElse) then
+  begin
     Exit;
+  end;
   if HasElse then
-    AAction.Title := 'Fehlende Werte vor else ergänzen'
+  begin
+    AAction.Title := 'Fehlende Werte vor else ergänzen';
+  end
   else
   begin
     AAction.Title := Format('case vervollständigen (%d fehlende Werte)', [Count]);
@@ -338,13 +364,19 @@ begin
   ACreated := Default(TCreatedMethod);
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   if not TCreateMethod.Site(Tokens, APosition, Site) then
+  begin
     Exit;
+  end;
   Routine := TRoutineBody.RoutineAt(ATree, Tokens[Site.NameIndex].Offset);
   if (Routine = nil) or AResolver.Resolve(ATree, AContext.FileName, Site.NameRange.StartPos).Found then
+  begin
     Exit;
+  end;
   Probe := TLspRefactorings.Probe(AContext);
   StatementOffset := Tokens[Site.StatementStart].Offset;
   StatementPos := Tokens[Site.StatementStart].StartPos;
@@ -366,15 +398,21 @@ begin
       Probed := ProbeOf(Site.Arguments[Index].Text);
       Parameter.TypeName := Probed.Name;
       if Probed.TypeUnit <> '' then
+      begin
         Units := Units + [Probed.TypeUnit];
+      end;
     end;
     if Parameter.TypeName = '' then
+    begin
       Parameter.TypeName := TCreateMethod.TypePlaceholder;
+    end;
     Parameter.IsConst := AContext.Settings.ConstParameters and TCreateMethod.WantsConst(Parameter.TypeName,
       Probed.IsRecord, Probed.IsInterface);
     Parameter.Name := TCreateMethod.ArgumentName(Tokens, Site.Arguments[Index]);
     if Parameter.Name = '' then
+    begin
       Parameter.Name := TCreateMethod.NameFromType(Parameter.TypeName);
+    end;
     // Präfix der Namensregel (APreis statt Preis), sonst meldet naming-prefix die neue Methode gleich.
     Parameter.Name := AContext.NewNames.Parameter(Parameter.Name);
     Names := Names + [Parameter.Name];
@@ -382,7 +420,9 @@ begin
   end;
   Names := TCreateMethod.UniqueNames(Names);
   for Index := 0 to High(Plan.Parameters) do
+  begin
     Plan.Parameters[Index].Name := Names[Index];
+  end;
   // Rückgabe: Prozedur als eigene Anweisung, Boolean in Bedingungen, sonst der erwartete Typ.
   case Site.Context of
     TCallContext.Statement:
@@ -396,10 +436,14 @@ begin
       Probed := ProbeOf(Site.Target);
       Plan.ResultType := Probed.Name;
       if Probed.TypeUnit <> '' then
+      begin
         Units := Units + [Probed.TypeUnit];
+      end;
     end;
     if Plan.ResultType = '' then
+    begin
       Plan.ResultType := TCreateMethod.TypePlaceholder;
+    end;
   end;
   // Ziel: ohne Qualifizierer (oder Self) die eigene Klasse bzw. eine Routine davor.
   if (Site.Qualifier = '') or SameText(Site.Qualifier, 'Self') then
@@ -410,11 +454,15 @@ begin
       Index := TRoutineBody.TokenAt(Tokens, Routine.StartOffset);
       Plan.IsClassMethod := (Index <= High(Tokens)) and Tokens[Index].IsKeyword('class');
       if not TCreateMethod.MethodEdits(AText, ATree, Plan, ACreated.Edits) then
+      begin
         Exit;
+      end;
       ACreated.Title := Format('Methode %s anlegen', [Plan.Name]);
     end
     else if SameText(Site.Qualifier, 'Self') then
-      Exit
+    begin
+      Exit;
+    end
     else
     begin
       ACreated.Edits := [TCreateMethod.RoutineEdit(AText, Routine, Plan)];
@@ -426,38 +474,53 @@ begin
   // Mit Qualifizierer: Klasse bzw. Record des Objekts, nur aus dem Projekt.
   Owner := ProbeOf(Site.Qualifier);
   if (Owner.Name = '') or Owner.IsInterface or not (Owner.IsReference or Owner.IsRecord) then
+  begin
     Exit;
+  end;
   OwnerName := Owner.Name;
   if Pos('<', OwnerName) > 0 then
+  begin
     Exit;
+  end;
   Offset := Tokens[Site.CallStart].Offset;
   Resolved := AResolver.ResolveChain(ATree, AContext.FileName, OwnerName.Split(['.']), Offset);
   if not (Resolved.Found and Resolved.IsType) or Resolved.Builtin or
     not AResolver.DeclaringUnit(Resolved, OwnerUnit) or OwnerUnit.Library_ then
+  begin
     Exit;
+  end;
   Plan.TypeName := Resolved.Name;
   if (Resolved.Container <> '') and (Pos('.', Plan.TypeName) = 0) then
+  begin
     Plan.TypeName := Resolved.Container + '.' + Plan.TypeName;
+  end;
   ACreated.Title := Format('Methode %s in %s anlegen', [Plan.Name, Plan.TypeName]);
   if SameText(OwnerUnit.FileName, AContext.FileName) then
   begin
     if not TCreateMethod.MethodEdits(AText, ATree, Plan, ACreated.Edits) then
+    begin
       Exit;
+    end;
   end
   else
   begin
     // Andere Unit: public, damit der Aufruf übersetzt; fehlende Units der Parametertypen ins uses.
     if not (Assigned(AContext.ReadText) and AContext.ReadText(OwnerUnit.FileName, OtherText)) then
+    begin
       Exit;
+    end;
     Plan.Section := 'public';
     Plan.CaretInBody := False;
     OtherTree := TSyntaxTreeCache.Parse(OtherText);
     try
       if not TCreateMethod.MethodEdits(OtherText, OtherTree, Plan, Edits) then
+      begin
         Exit;
+      end;
       LineBreak := TTextLines.LineBreakOf(OtherText);
       ClassBody := TRoutineBody.TypeBody(OtherTree.Root, Resolved.Name);
       for UnitName in Units do
+      begin
         if not SameText(UnitName, OwnerUnit.UnitName) and
           not TUsesClauses.IsUsed(OwnerUnit.InterfaceUses, UnitName, AContext.Namespaces) and
           TUsesClauses.AddUnit(OtherTree.Tokens, ClassBody.StartOffset, UnitName, LineBreak, Edit) then
@@ -465,6 +528,7 @@ begin
           Edits := Edits + [Edit];
           OwnerUnit.InterfaceUses := OwnerUnit.InterfaceUses + [UnitName];
         end;
+      end;
     finally
       OtherTree.Free;
     end;
@@ -487,7 +551,9 @@ begin
       Result := Default(TInlineMeaning);
       Resolved := AResolver.ResolveChain(ATree, AFileName, ANames, AOffset);
       if not Resolved.Found then
+      begin
         Exit;
+      end;
       Result.Found := True;
       // Gleiche Deklaration: gleiche Art, Unit, Datei, Name und Stelle.
       Result.Key := LowerCase(Format('%d|%s|%s|%s|%d:%d', [Ord(Resolved.Kind), Resolved.UnitName, Resolved.FileName,
@@ -525,15 +591,21 @@ begin
   Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
   Parameters := nil;
   if Header <> nil then
+  begin
     Parameters := Header.FindChild(TSyntaxKind.Parameters);
+  end;
   if Parameters <> nil then
+  begin
     for Index := 0 to Parameters.ChildCount - 1 do
     begin
       Names := Length(Parameters[Index].Name.Split([',']));
       Inc(Total, Names);
       if Parameters[Index].ChildCount < 2 then
+      begin
         Inc(Required, Names);
+      end;
     end;
+  end;
   Result := (ACount >= Required) and (ACount <= Total);
 end;
 
@@ -558,25 +630,37 @@ begin
   Options.Lookup := InlineLookup(AResolver);
   Source := TInlineSource.Create(AContext.FileName, AText, ATree);
   if TInlineRefactoring.InlineVariable(Source, APosition, Options, Action) then
+  begin
     Result := Result + [Action];
+  end;
   if not TInlineRefactoring.CallAt(ATree, AText, APosition, Call) then
+  begin
     Exit;
+  end;
   Resolved := AResolver.Resolve(ATree, AContext.FileName, Call.NamePos);
   if not Resolved.Found or (Resolved.Kind <> TResolvedKind.Symbol) or
     not (Resolved.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
     not AResolver.DeclaringUnit(Resolved, Owner) or Owner.Library_ then
+  begin
     Exit;
+  end;
   Name := Resolved.Name;
   if Resolved.Container <> '' then
+  begin
     Name := Resolved.Container + '.' + Name;
+  end;
   CalleeTree := nil;
   try
     if SameText(Owner.FileName, AContext.FileName) then
-      Callee := Source
+    begin
+      Callee := Source;
+    end
     else
     begin
       if not (Assigned(AContext.ReadText) and AContext.ReadText(Owner.FileName, CalleeText)) then
+      begin
         Exit;
+      end;
       CalleeTree := TSyntaxTreeCache.Parse(CalleeText);
       Callee := TInlineSource.Create(Owner.FileName, CalleeText, CalleeTree);
       AResolver.PinTree(CalleeTree, Owner.FileName);
@@ -586,16 +670,22 @@ begin
       Routine := nil;
       Count := 0;
       for Candidate in TInlineRefactoring.FindRoutines(Callee.Tree, Name) do
+      begin
         if AcceptsArguments(Candidate, Length(Call.Arguments)) then
         begin
           Routine := Candidate;
           Inc(Count);
         end;
+      end;
       if (Count = 1) and TInlineRefactoring.InlineMethod(Source, APosition, Callee, Routine, Options, Action) then
+      begin
         Result := Result + [Action];
+      end;
     finally
       if CalleeTree <> nil then
+      begin
         AResolver.UnpinTree;
+      end;
     end;
   finally
     CalleeTree.Free;
@@ -625,9 +715,13 @@ begin
   Lookup := TIfCaseLookup.FromResolver(AResolver, ATree, AContext.FileName);
   Layout := TStatementLayout.Create('', TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText));
   if TIfCase.ToCase(AText, ATree, APosition, Lookup, Layout, Conversion) then
+  begin
     Add;
+  end;
   if TIfCase.ToIf(AText, ATree, APosition, Lookup, Layout, Conversion) then
+  begin
     Add;
+  end;
 end;
 
 class function TLspRefactorings.ConditionActions(ATree: TSyntaxTree; const AText: string;
@@ -671,13 +765,19 @@ begin
   if AContext.IfExpression then
   begin
     if TConditionalExpression.ToExpression(AText, ATree, APosition, Lookup, Rewrite) then
+    begin
       Add;
+    end;
     if TConditionalExpression.ReplaceIfThen(AText, ATree, APosition, Lookup, Rewrite) then
+    begin
       Add;
+    end;
   end;
   if TConditionalExpression.ToStatement(AText, ATree, APosition, TStatementLayout.Create('',
     TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText)), Rewrite) then
+  begin
     Add;
+  end;
 end;
 
 class function TLspRefactorings.NestedRoutineActions(AResolver: TNameResolver; ATree: TSyntaxTree;
@@ -696,23 +796,35 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   if AContext.Settings.Extract then
+  begin
     Result := Result + TExtractRefactoring.Actions(AText, ATree, ARange, OptionsOf(AContext));
+  end;
   if AContext.Settings.Conditions then
+  begin
     Result := Result + ConditionActions(ATree, AText, ARange.StartPos, AContext);
+  end;
   if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith or AContext.Settings.CreateMethod or
     AContext.Settings.InlineCode or AContext.Settings.IfCase or AContext.Settings.ConditionalExpression or
     AContext.Settings.NestedRoutine) then
+  begin
     Exit;
+  end;
   Resolver := NewResolver(AContext);
   try
     Resolver.PinTree(ATree, AContext.FileName);
     try
       if AContext.Settings.CompleteCase and CaseAction(Resolver, ATree, AText, ARange.StartPos, AContext, Action) then
+      begin
         Result := Result + [Action];
+      end;
       if AContext.Settings.ResolveWith and WithAction(Resolver, ATree, AText, ARange.StartPos, AContext, Action) then
+      begin
         Result := Result + [Action];
+      end;
       if AContext.Settings.CreateMethod and CreateMethod(Resolver, ATree, AText, ARange.StartPos, AContext, False,
         Created) then
       begin
@@ -724,13 +836,21 @@ begin
         Result := Result + [Action];
       end;
       if AContext.Settings.InlineCode then
+      begin
         Result := Result + InlineActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      end;
       if AContext.Settings.IfCase then
+      begin
         Result := Result + IfCaseActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      end;
       if AContext.Settings.ConditionalExpression then
+      begin
         Result := Result + ConditionalExpressionActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      end;
       if AContext.Settings.NestedRoutine then
+      begin
         Result := Result + NestedRoutineActions(Resolver, ATree, AText, ARange.StartPos, AContext);
+      end;
     finally
       Resolver.UnpinTree;
     end;

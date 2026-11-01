@@ -108,7 +108,9 @@ begin
   FGroupOf := TDictionary<Integer, Integer>.Create;
   BuildBlocks;
   if ADirectives then
+  begin
     BuildDirectives;
+  end;
 end;
 
 destructor TGroups.Destroy;
@@ -137,7 +139,9 @@ var
 begin
   Result := FGroupOf.TryGetValue(AToken, Group);
   if Result then
+  begin
     ATokens := FGroups[Group].ToArray;
+  end;
 end;
 
 function Significant(const AToken: TPascalToken): Boolean;
@@ -156,9 +160,13 @@ var
   function TokenAtPos(APosition: Integer): TPascalToken;
   begin
     if (APosition >= 0) and (APosition < Significants.Count) then
-      Result := FTokens[Significants[APosition]]
+    begin
+      Result := FTokens[Significants[APosition]];
+    end
     else
+    begin
       Result := Default(TPascalToken);
+    end;
   end;
 
   /// <summary>Beginnt class/interface/object an dieser Stelle einen Typrumpf mit end?</summary>
@@ -169,25 +177,37 @@ var
     Token: TPascalToken;
   begin
     if not TokenAtPos(APosition - 1).IsSymbol('=') then
+    begin
       Exit(False);
+    end;
     Next := APosition + 1;
     // class abstract, class sealed, class helper for TFoo
     while TokenAtPos(Next).IsKeyword('abstract') or TokenAtPos(Next).IsKeyword('sealed') or
       SameText(TokenAtPos(Next).Text, 'abstract') or SameText(TokenAtPos(Next).Text, 'sealed') do
+    begin
       Inc(Next);
+    end;
     if SameText(TokenAtPos(Next).Text, 'helper') then
+    begin
       Exit(True);
+    end;
     if TokenAtPos(Next).IsKeyword('of') then
+    begin
       Exit(False);
+    end;
     if TokenAtPos(Next).IsSymbol('(') then
     begin
       Depth := 0;
       repeat
         Token := TokenAtPos(Next);
         if Token.IsSymbol('(') then
-          Inc(Depth)
+        begin
+          Inc(Depth);
+        end
         else if Token.IsSymbol(')') then
+        begin
           Dec(Depth);
+        end;
         Inc(Next);
       until (Depth = 0) or (Next >= Significants.Count);
     end;
@@ -205,8 +225,12 @@ begin
   Significants := TList<Integer>.Create;
   try
     for Index := 0 to High(FTokens) do
+    begin
       if Significant(FTokens[Index]) then
+      begin
         Significants.Add(Index);
+      end;
+    end;
     Stack.Push(TFrame.Create(TFrameKind.Root, -1));
     for Position := 0 to Significants.Count - 1 do
     begin
@@ -218,28 +242,44 @@ begin
         Continue;
       end;
       if FTokens[Index].Kind <> TPascalTokenKind.Keyword then
+      begin
         Continue;
+      end;
       Word := LowerCase(FTokens[Index].Text);
       if Word = 'begin' then
-        Push(TFrameKind.Begin_)
+      begin
+        Push(TFrameKind.Begin_);
+      end
       else if Word = 'try' then
-        Push(TFrameKind.Try_)
+      begin
+        Push(TFrameKind.Try_);
+      end
       else if Word = 'case' then
       begin
         // Varianter Teil eines Records: das end des Records schließt ihn.
         if Top.Kind <> TFrameKind.Record_ then
+        begin
           Push(TFrameKind.Case_);
+        end;
       end
       else if Word = 'repeat' then
-        Push(TFrameKind.Repeat_)
+      begin
+        Push(TFrameKind.Repeat_);
+      end
       else if Word = 'asm' then
-        Push(TFrameKind.Asm_)
+      begin
+        Push(TFrameKind.Asm_);
+      end
       else if Word = 'record' then
-        Push(TFrameKind.Record_)
+      begin
+        Push(TFrameKind.Record_);
+      end
       else if MatchText(Word, ['class', 'interface', 'dispinterface', 'object']) then
       begin
         if StartsTypeBody(Position) then
+        begin
           Push(TFrameKind.TypeBody);
+        end;
       end
       else if Word = 'end' then
       begin
@@ -260,19 +300,27 @@ begin
       else if (Word = 'finally') or (Word = 'except') then
       begin
         if Top.Kind = TFrameKind.Try_ then
+        begin
           AddTo(Top.Group, Index);
+        end;
       end
       else if Word = 'of' then
       begin
         if (Top.Kind = TFrameKind.Case_) and (FGroups[Top.Group].Count = 1) then
+        begin
           AddTo(Top.Group, Index);
+        end;
       end
       else if Word = 'if' then
-        Top.PendingIfs.Add(NewGroup(Index))
+      begin
+        Top.PendingIfs.Add(NewGroup(Index));
+      end
       else if Word = 'then' then
       begin
         if (Top.PendingIfs.Count > 0) and (FGroups[Top.PendingIfs.Last].Count = 1) then
+        begin
           AddTo(Top.PendingIfs.Last, Index);
+        end;
       end
       else if Word = 'else' then
       begin
@@ -282,7 +330,9 @@ begin
           Top.PendingIfs.Delete(Top.PendingIfs.Count - 1);
         end
         else if Top.Kind in [TFrameKind.Case_, TFrameKind.Try_] then
+        begin
           AddTo(Top.Group, Index);
+        end;
       end;
     end;
   finally
@@ -303,26 +353,38 @@ begin
     for Index := 0 to High(FTokens) do
     begin
       if FTokens[Index].Kind <> TPascalTokenKind.Directive then
+      begin
         Continue;
+      end;
       Name := TPascalLexer.DirectiveName(FTokens[Index].Text);
       if MatchText(Name, ['IF', 'IFDEF', 'IFNDEF', 'IFOPT']) then
-        Conditions.Push(NewGroup(Index))
+      begin
+        Conditions.Push(NewGroup(Index));
+      end
       else if MatchText(Name, ['ELSEIF', 'ELSE']) then
       begin
         if Conditions.Count > 0 then
+        begin
           AddTo(Conditions.Peek, Index);
+        end;
       end
       else if MatchText(Name, ['ENDIF', 'IFEND']) then
       begin
         if Conditions.Count > 0 then
+        begin
           AddTo(Conditions.Pop, Index);
+        end;
       end
       else if Name = 'REGION' then
-        Regions.Push(NewGroup(Index))
+      begin
+        Regions.Push(NewGroup(Index));
+      end
       else if Name = 'ENDREGION' then
       begin
         if Regions.Count > 0 then
+        begin
           AddTo(Regions.Pop, Index);
+        end;
       end;
     end;
   finally
@@ -343,10 +405,14 @@ begin
     Token := ATokens[Index];
     if (Token.StartPos.Line > APosition.Line) or
       ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    begin
       Break;
+    end;
     if (Token.EndPos.Line = APosition.Line) and (APosition.Character <= Token.EndPos.Character) and
       (Token.Kind <> TPascalTokenKind.Symbol) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -356,7 +422,9 @@ begin
   // Binär statt ab Dateianfang (#1342).
   Result := TSyntaxTree.FirstTokenOf(ATokens, AOffset);
   if (Result > High(ATokens)) or (ATokens[Result].Offset <> AOffset) then
+  begin
     Result := -1;
+  end;
 end;
 
 /// <summary>Letztes Schlüsselwort AWord vor AEndOffset ab AStartOffset; -1 wenn keins.</summary>
@@ -369,9 +437,13 @@ begin
   for Index := TSyntaxTree.FirstTokenOf(ATokens, AStartOffset) to High(ATokens) do
   begin
     if ATokens[Index].Offset >= AEndOffset then
+    begin
       Break;
+    end;
     if (ATokens[Index].Offset >= AStartOffset) and ATokens[Index].IsKeyword(AWord) then
+    begin
       Result := Index;
+    end;
   end;
 end;
 
@@ -400,17 +472,27 @@ begin
         begin
           Child := Entry.Node[Index];
           if (AOffset >= Child.StartOffset) and (AOffset < Child.EndOffset) then
+          begin
             Pending.Push(TSyntaxPostOrderEntry.Create(Child, False));
+          end;
         end;
         Continue;
       end;
       if Entry.Node = ANode then
+      begin
         Continue;
+      end;
       if Entry.Node.Kind in AKinds then
+      begin
         Exit(Entry.Node);
+      end;
       if Entry.Node.Kind in ABoundaries then
+      begin
         while (Pending.Count > 0) and not Pending.Peek.Done do
+        begin
           Pending.Pop;
+        end;
+      end;
     end;
   finally
     Pending.Free;
@@ -437,7 +519,9 @@ begin
   Options.Keywords := ASettings.ExitKeywords;
   Found := TExitPoints.Find(ATree, APosition, Options, nil, nil);
   for Point in Found.Points do
+  begin
     Result := Result + [Point.Range];
+  end;
 end;
 
 /// <summary>RoutineDecl mit Rumpf, in deren Kopf AOffset liegt.</summary>
@@ -455,13 +539,17 @@ begin
       Header: TSyntaxNode;
     begin
       if (ACandidate <> Root) and ((Offset < ACandidate.StartOffset) or (Offset >= ACandidate.EndOffset)) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
       if (ACandidate.Kind = TSyntaxKind.RoutineDecl) and (ACandidate.FindChild(TSyntaxKind.Block) <> nil) then
       begin
         Header := ACandidate.FindChild(TSyntaxKind.RoutineHeader);
         if (Header <> nil) and (Offset >= Header.StartOffset) and (Offset < Header.EndOffset) then
+        begin
           Result := TSyntaxSearchStep.Found;
+        end;
       end;
     end);
 end;
@@ -483,16 +571,22 @@ begin
     begin
       Result := A.StartPos.Line - B.StartPos.Line;
       if Result = 0 then
+      begin
         Result := A.StartPos.Character - B.StartPos.Character;
+      end;
     end));
   try
     for Range in ARanges do
     begin
       Known := False;
       for Index := 0 to List.Count - 1 do
+      begin
         Known := Known or (List[Index].StartPos = Range.StartPos);
+      end;
       if not Known then
+      begin
         List.Add(Range);
+      end;
     end;
     List.Sort;
     Result := List.ToArray;
@@ -520,11 +614,15 @@ begin
   ARanges := nil;
   Result := False;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Index := TokenAt(Tokens, APosition);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Token := Tokens[Index];
   // Ausstiegspunkte: Exit, raise, Abort, Halt …
   if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
@@ -532,9 +630,13 @@ begin
   begin
     Routine := Innermost(ATree.Root, Token.Offset, Routines, []);
     if Routine = nil then
+    begin
       Exit;
+    end;
     if ASettings.ExitPoints then
+    begin
       ARanges := ByPosition(ExitRanges(ATree, APosition, ASettings));
+    end;
     Exit(True);
   end;
   // Break und Continue: die Schleife
@@ -542,9 +644,13 @@ begin
   begin
     Loop := Innermost(ATree.Root, Token.Offset, Loops, Routines);
     if Loop = nil then
+    begin
       Exit;
+    end;
     if ASettings.ExitPoints then
+    begin
       ARanges := ByPosition(ExitRanges(ATree, APosition, ASettings));
+    end;
     Exit(True);
   end;
   // Routinenname im Kopf einer Implementierung: Ausstiegspunkte
@@ -552,22 +658,32 @@ begin
   begin
     Routine := RoutineOfHeader(ATree.Root, Token.Offset);
     if (Routine = nil) or not SameText(Token.Text, ShortName(Routine.Name)) or not ASettings.ExitPoints then
+    begin
       Exit;
+    end;
     ARanges := ByPosition(ExitRanges(ATree, APosition, ASettings));
     Exit(True);
   end;
   if Token.Kind = TPascalTokenKind.Directive then
   begin
     if TPascalLexer.DirectiveName(Token.Text) = '' then
+    begin
       Exit;
+    end;
     Groups := TGroups.Create(Tokens, True);
     try
       if not Groups.GroupTokens(Index, Members) then
+      begin
         Exit;
+      end;
       Result := True;
       if ASettings.Directives then
+      begin
         for Member in Members do
+        begin
           AddToken(ARanges, Tokens[Member]);
+        end;
+      end;
     finally
       Groups.Free;
     end;
@@ -575,40 +691,60 @@ begin
     Exit;
   end;
   if Token.Kind <> TPascalTokenKind.Keyword then
+  begin
     Exit;
+  end;
   // procedure/function/… einer Implementierung: Kopf, begin und end
   if MatchText(Token.Text, RoutineKeywords) then
   begin
     Routine := RoutineOfHeader(ATree.Root, Token.Offset);
     if Routine = nil then
+    begin
       Exit;
+    end;
     Result := True;
     if not ASettings.BlockPairs then
+    begin
       Exit;
+    end;
     AddToken(ARanges, Token);
     Block := Routine.FindChild(TSyntaxKind.Block);
     Index := IndexOfOffset(Tokens, Block.StartOffset);
     if Index >= 0 then
+    begin
       AddToken(ARanges, Tokens[Index]);
+    end;
     EndToken := LastKeywordBefore(Tokens, Block.StartOffset, Block.EndOffset, 'end');
     if EndToken >= 0 then
+    begin
       AddToken(ARanges, Tokens[EndToken]);
+    end;
     ARanges := ByPosition(ARanges);
     Exit;
   end;
   if not MatchText(Token.Text, BlockKeywords) then
+  begin
     Exit;
+  end;
   Result := True;
   if not ASettings.BlockPairs then
+  begin
     Exit;
+  end;
   Groups := TGroups.Create(Tokens, False);
   try
     if Groups.GroupTokens(Index, Members) then
+    begin
       for Member in Members do
-        AddToken(ARanges, Tokens[Member])
+      begin
+        AddToken(ARanges, Tokens[Member]);
+      end;
+    end
     else
+    begin
       // Ohne Gegenstück nur das Schlüsselwort selbst.
       AddToken(ARanges, Token);
+    end;
   finally
     Groups.Free;
   end;

@@ -73,9 +73,13 @@ uses
 function PathOf(const AText: string): string;
 begin
   if StartsText('file:', AText) then
-    Result := TDocumentUris.ToPath(AText)
+  begin
+    Result := TDocumentUris.ToPath(AText);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function StringsOf(const AValue: TJSONValue): TArray<string>;
@@ -84,10 +88,16 @@ var
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   for mItem in TJSONArray(AValue) do
+  begin
     if (mItem is TJSONString) and (Trim(mItem.Value) <> '') then
+    begin
       Result := Result + [Trim(mItem.Value)];
+    end;
+  end;
 end;
 
 constructor TLspBulkFix.Create(const AInputFor: TLspBulkFixInputFunc);
@@ -111,24 +121,34 @@ var
   mItems, mRules: TJSONArray;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONObject) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Argumente: [{"rules": [...], "files": [...], "minConfidence": "high"}]');
+  end;
   mArguments := TJSONObject(AArguments.Items[0]);
   mFixRules := StringsOf(mArguments.GetValue('rules'));
   if mFixRules = nil then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"rules" fehlt: Regelkennungen oder "all"');
+  end;
   mFiles := StringsOf(mArguments.GetValue('files'));
   mRequested := '';
   if mArguments.GetValue('minConfidence') is TJSONString then
+  begin
     mRequested := mArguments.GetValue('minConfidence').Value;
+  end;
   mResults := nil;
   for mName in mFiles do
   begin
     mFileName := PathOf(mName);
     if not Assigned(FInputFor) or not FInputFor(mFileName, mInput) then
+    begin
       Continue;
+    end;
     if not TBulkFix.MinConfidenceOf(mInput.Settings.FixMinConfidence, mRequested, mConfidence, mError) then
+    begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, mError);
+    end;
     mOptions := TBulkFixOptions.Create(mFixRules, mConfidence, TRuleCatalog.Shared.Entries);
     mResult := TBulkFix.Run(mFileName, mInput.Text, mOptions, TBulkFix.CheckWith(TBulkFix.RulesFor(mInput.Rules,
       mFixRules), mInput.Settings, mInput.RelativePath, mInput.Project, mInput.Source, mInput.Baseline),
@@ -143,7 +163,9 @@ begin
     for mResult in mResults do
     begin
       if not mResult.Changed and not mResult.Rejected then
+      begin
         Continue;
+      end;
       mItem := TJSONObject.Create;
       mItems.AddElement(mItem);
       mItem.AddPair('file', mResult.FileName);
@@ -159,7 +181,9 @@ begin
         mRules.AddElement(mRule);
       end;
       if not mResult.Changed then
+      begin
         Continue;
+      end;
       mItem.AddPair('diff', TBulkFix.Diff(ExtractFileName(mResult.FileName), mResult));
       mItem.AddPair('edit', TLspApplyEdit.TextEdits(mResult.FileName, TTextChanges.Diff(mResult.OldText,
         mResult.NewText)));

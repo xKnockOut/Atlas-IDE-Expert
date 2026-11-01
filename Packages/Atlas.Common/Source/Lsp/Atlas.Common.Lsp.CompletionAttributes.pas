@@ -64,7 +64,9 @@ var
 begin
   Result := nil;
   for Name in KnownNames do
+  begin
     Result := Result + [Name + 'Attribute'];
+  end;
 end;
 
 class function TCompletionAttributes.SiteAt(const ATokens: TArray<TPascalToken>; ALast: Integer): Boolean;
@@ -90,17 +92,25 @@ begin
   Result := '';
   Open := Pos('(', ASignature);
   if Open = 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   for Index := Open to Length(ASignature) do
+  begin
     if ASignature[Index] = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ASignature[Index] = ')' then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit(Copy(ASignature, Open, Index - Open + 1));
+      end;
     end;
+  end;
 end;
 
 /// <summary>Rang eines bekannten Attributs (0 …), -1 sonst.</summary>
@@ -109,11 +119,19 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(TCompletionAttributes.KnownNames) do
+  begin
     if SameText(AName, TCompletionAttributes.KnownNames[Index]) then
+    begin
       Exit(Index);
+    end;
+  end;
   for Index := 0 to High(TCompletionAttributes.CompilerNames) do
+  begin
     if SameText(AName, TCompletionAttributes.CompilerNames[Index]) then
+    begin
       Exit(Length(TCompletionAttributes.KnownNames) + Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -150,10 +168,14 @@ begin
     begin
       if not TCompletionGenerics.ItemSymbol(ARequest, Units, Item, Symbol) or
         not ARequest.Resolver.AttributeClassOf(Symbol, AttributeClass) then
+      begin
         Continue;
+      end;
       Name := TAttributes.ShortName(Item.Name);
       if MatchScore(Name, AContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch then
+      begin
         Continue;
+      end;
       Entry := Default(TAttributeEntry);
       Entry.Item := Item;
       Entry.Item.Name := Name;
@@ -163,18 +185,30 @@ begin
       Params := '';
       if ARequest.Resolver.DeclaredMember(AttributeClass, 'Create', Ctor) and
         not SameText(Ctor.Container, 'TCustomAttribute') and not SameText(Ctor.Container, 'TObject') then
+      begin
         Params := ParameterText(Ctor.Signature);
+      end;
       if Params <> '' then
-        Entry.Item.Detail := Params
+      begin
+        Entry.Item.Detail := Params;
+      end
       else
+      begin
         Entry.Item.Detail := AttributeClass.UnitName;
+      end;
       Entry.Key := UpperCase(AttributeClass.UnitName + '.' + AttributeClass.QualifiedName);
       if Length(Item.AdditionalEdits) = 0 then
-        Entry.Preference := 0
+      begin
+        Entry.Preference := 0;
+      end
       else if Symbol.SymbolKind = TIndexSymbolKind.TypeAlias then
-        Entry.Preference := 1
+      begin
+        Entry.Preference := 1;
+      end
       else
+      begin
         Entry.Preference := 2;
+      end;
       Entry.Rank := KnownRank(Name);
       Entry.Order := Order;
       Inc(Order);
@@ -194,7 +228,9 @@ begin
     for Name in CompilerNames do
     begin
       if MatchScore(Name, AContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch then
+      begin
         Continue;
+      end;
       Entry := Default(TAttributeEntry);
       Entry.Item.Name := Name;
       Entry.Item.Detail := 'Compiler';
@@ -213,18 +249,28 @@ begin
         if (A.Rank >= 0) <> (B.Rank >= 0) then
         begin
           if A.Rank >= 0 then
-            Result := -1
+          begin
+            Result := -1;
+          end
           else
+          begin
             Result := 1;
+          end;
         end
         else if (A.Rank >= 0) and (A.Rank <> B.Rank) then
-          Result := A.Rank - B.Rank
+        begin
+          Result := A.Rank - B.Rank;
+        end
         else
+        begin
           Result := A.Order - B.Order;
+        end;
       end));
     SetLength(Result, Length(Sorted));
     for Index := 0 to High(Sorted) do
+    begin
       Result[Index] := Sorted[Index].Item;
+    end;
   finally
     Entries.Free;
     ByKey.Free;

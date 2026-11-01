@@ -33,11 +33,17 @@ var
   UnitName: string;
 begin
   if Length(Units) = 0 then
+  begin
     Exit(True);
+  end;
   UnitName := ChangeFileExt(ExtractFileName(StringReplace(APath, '/', '\', [rfReplaceAll])), '');
   for Pattern in Units do
+  begin
     if SameText(Pattern, UnitName) or MatchesGlob(Pattern, APath) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -46,12 +52,20 @@ var
   Id: string;
 begin
   if (Ord(MinSeverity) > Ord(TRuleSeverity.Off)) and (Ord(AFinding.Severity) < Ord(MinSeverity)) then
+  begin
     Exit(False);
+  end;
   if Length(Rules) = 0 then
+  begin
     Exit(True);
+  end;
   for Id in Rules do
+  begin
     if SameText(Id, AFinding.RuleId) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -61,8 +75,12 @@ var
 begin
   Result := nil;
   for Finding in AFindings do
+  begin
     if AcceptsFinding(Finding) then
+    begin
       Result := Result + [Finding];
+    end;
+  end;
 end;
 
 class function TFindingFilter.SplitList(const AText: string): TArray<string>;
@@ -73,13 +91,17 @@ begin
   Result := nil;
   Start := 1;
   for I := 1 to Length(AText) + 1 do
+  begin
     if (I > Length(AText)) or (AText[I] = ',') then
     begin
       Part := Trim(Copy(AText, Start, I - Start));
       if Part <> '' then
+      begin
         Result := Result + [Part];
+      end;
       Start := I + 1;
     end;
+  end;
 end;
 
 end.

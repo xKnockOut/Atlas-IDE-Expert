@@ -48,7 +48,9 @@ function LeadingOf(const ALine: string): Integer;
 begin
   Result := 0;
   while (Result < Length(ALine)) and CharInSet(ALine[Result + 1], [' ', #9]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 { /extract }
@@ -65,28 +67,40 @@ begin
   AEdits := nil;
   Name := Trim(AContext.Arguments);
   if not IsValidIdent(Name) then
+  begin
     Exit(Fail('Erwartet wird /extract Name', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if Source.RoutineAt = nil then
+    begin
       Exit(Fail('/extract gilt nur im Rumpf einer Routine', AReason));
+    end;
     First := Source.Line + 1;
     if (First > High(Source.Lines)) or (Trim(Source.Lines[First]) = '') then
+    begin
       Exit(Fail('Unter /extract stehen keine Anweisungen', AReason));
+    end;
     // Bis zur nächsten Leerzeile; eine weniger eingerückte Zeile (end des Blocks) beendet die Auswahl.
     Indent := LeadingOf(Source.Lines[First]);
     Last := First;
     while (Last < High(Source.Lines)) and (Trim(Source.Lines[Last + 1]) <> '') and
       (LeadingOf(Source.Lines[Last + 1]) >= Indent) do
+    begin
       Inc(Last);
+    end;
     Options := TExtractOptions.Default;
     Options.Style := AContext.Style;
     if not TExtractRefactoring.ExtractMethod(Source.Text, Source.Tree, TTextRange.Create(First, Indent, Last,
       Length(Source.Lines[Last])), Options, Action, Why) then
+    begin
       Exit(Fail('/extract: ' + Why, AReason));
+    end;
     for Edit in Action.Edits do
+    begin
       AEdits := AEdits + [TTextEdit.Create(Edit.Range, TRegEx.Replace(Edit.NewText,
         '\b' + TExtractRefactoring.MethodName + '\b', Name))];
+    end;
     AEdits := AEdits + [Source.RemoveCommand];
     Result := True;
   finally
@@ -114,17 +128,27 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if Source.RoutineAt = nil then
+    begin
       Exit(Fail('/inline gilt nur im Rumpf einer Routine', AReason));
+    end;
     Next := Source.Line + 1;
     if (Next > High(Source.Lines)) or (Trim(Source.Lines[Next]) = '') then
+    begin
       Exit(Fail('Unter /inline steht keine Anweisung', AReason));
+    end;
     Names := nil;
     for Token in Source.Tree.Tokens do
+    begin
       if (Token.StartPos.Line = Next) and (Token.Kind = TPascalTokenKind.Identifier) then
+      begin
         Names := Names + [Token];
+      end;
+    end;
     FileName := '';
     if AContext.Uri <> '' then
+    begin
       FileName := TDocumentUris.ToPath(AContext.Uri);
+    end;
     Inline_ := TInlineSource.Create(FileName, Source.Text, Source.Tree);
     Options := TInlineOptions.Default;
     Options.Style := AContext.Style;
@@ -132,6 +156,7 @@ begin
     Found := False;
     // Erst ein Aufruf einer Routine dieser Datei, dann eine Variable.
     for Token in Names do
+    begin
       if TInlineRefactoring.CallAt(Source.Tree, Source.Text, Token.StartPos, Call) then
       begin
         Routines := TInlineRefactoring.FindRoutines(Source.Tree, Call.Name);
@@ -140,20 +165,29 @@ begin
           Found := TInlineRefactoring.InlineMethod(Inline_, Token.StartPos, Inline_, Routines[0], Options, Action,
             Why);
           if Found then
+          begin
             Break;
+          end;
         end;
       end;
+    end;
     if not Found then
+    begin
       for Token in Names do
       begin
         Found := TInlineRefactoring.InlineVariable(Inline_, Token.StartPos, Options, Action);
         if Found then
+        begin
           Break;
+        end;
       end;
+    end;
     if not Found then
     begin
       if Why = '' then
+      begin
         Why := 'In der Zeile darunter steht kein Aufruf einer Routine dieser Datei und keine einbettbare Variable';
+      end;
       Exit(Fail('/inline: ' + Why, AReason));
     end;
     AEdits := Action.Edits + [Source.RemoveCommand];
@@ -171,13 +205,21 @@ function FindingsBelow(const AContext: TSlashContext; ASource: TCommandSource; o
 begin
   AFindings := nil;
   if (ASource.Line >= High(ASource.Lines)) or (Trim(ASource.Lines[ASource.Line + 1]) = '') then
+  begin
     Exit(Fail(Format('Unter /%s steht keine Zeile', [AContext.Name]), AReason));
+  end;
   if AContext.Host = nil then
+  begin
     Exit(Fail(Format('/%s braucht den Editor', [AContext.Name]), AReason));
+  end;
   if not AContext.Host.FindingsAt(AContext.Uri, ASource.Text, ASource.Line + 1, AFindings) then
+  begin
     Exit(Fail('Für diese Datei laufen keine Prüfregeln', AReason));
+  end;
   if AFindings = nil then
+  begin
     Exit(Fail(NoFindingBelowHint, AReason));
+  end;
   Result := True;
 end;
 
@@ -191,11 +233,17 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if not FindingsBelow(AContext, Source, Findings, AReason) then
+    begin
       Exit(False);
+    end;
     for Finding in Findings do
+    begin
       AEdits := AEdits + Finding.SafeFix;
+    end;
     if AEdits = nil then
+    begin
       Exit(Fail(NoSafeFixHint, AReason));
+    end;
     AEdits := AEdits + [Source.RemoveCommand];
     Result := True;
   finally
@@ -215,15 +263,21 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if not FindingsBelow(AContext, Source, Findings, AReason) then
+    begin
       Exit(False);
+    end;
     Text := '';
     for Finding in Findings do
     begin
       if Text <> '' then
+      begin
         Text := Text + #10#10;
+      end;
       Text := Text + Finding.Message;
       if Finding.Explanation <> '' then
+      begin
         Text := Text + #10 + Finding.Explanation;
+      end;
     end;
     // Der Code bleibt; nur die Befehlszeile geht. Die Erklärung kommt nach den Änderungen.
     Host := AContext.Host;
@@ -254,13 +308,19 @@ begin
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit(Fail('/fmt gilt nur im Rumpf einer Routine', AReason));
+    end;
     // Formatiert wird der Text ohne Befehlszeile; deren Zeile entfernt RemoveCommand.
     Text := Source.Text;
     for Edit in TFormatter.Edits(Text, TPascalLexer.Tokenize(Text), AContext.Style, Routine.StartPos.Line,
       Routine.EndPos.Line) do
+    begin
       if (Edit.Range.StartPos.Line <> Source.Line) and (Edit.Range.EndPos.Line <> Source.Line) then
+      begin
         AEdits := AEdits + [Edit];
+      end;
+    end;
     AEdits := AEdits + [Source.RemoveCommand];
     Result := True;
   finally
@@ -281,18 +341,26 @@ begin
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit(Fail('/measure gilt nur im Rumpf einer Routine', AReason));
+    end;
     Name := Routine.Name;
     if Source.Tree.Root.Name <> '' then
+    begin
       Name := Source.Tree.Root.Name + '.' + Name;
+    end;
     if AContext.Arguments <> '' then
+    begin
       Name := Name + ' ' + AContext.Arguments;
+    end;
     // Name als Format-Argument: Prozentzeichen im Namen stören so nicht.
     Result := Wrap(Source, 'measure', ['var SW := TStopwatch.StartNew;', 'try'],
       ['finally', '  ' + LogStatement(AContext, Format('Format(''%%s: %%d ms'', [%s, SW.ElapsedMilliseconds])',
       [QuotedStr(Name)])), 'end;'], '  ', AEdits, AReason);
     if Result then
+    begin
       AddUses(Source, AContext, Source.Line, ['System.Diagnostics'], AEdits);
+    end;
   finally
     Source.Free;
   end;

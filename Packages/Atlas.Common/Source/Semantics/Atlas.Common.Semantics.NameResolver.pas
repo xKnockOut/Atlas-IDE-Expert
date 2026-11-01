@@ -623,9 +623,15 @@ begin
   TIndexExtractor.ParamInfo(ARoutine, MinArgs, MaxArgs, Types);
   Result := Length(Types) = Length(ADeclared.ParamTypes);
   if Result then
+  begin
     for Index := 0 to High(Types) do
+    begin
       if not SameText(Trim(Types[Index]), Trim(ADeclared.ParamTypes[Index])) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Knoten mit Parametern und Ergebnistyp einer Routine: der Kopf einer benannten Routine,
@@ -633,9 +639,13 @@ end;
 function RoutineHeaderOf(ARoutine: TSyntaxNode): TSyntaxNode;
 begin
   if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
-    Result := ARoutine
+  begin
+    Result := ARoutine;
+  end
   else
+  begin
     Result := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  end;
 end;
 
 function Contains(ANode: TSyntaxNode; AOffset: Integer): Boolean;
@@ -651,9 +661,13 @@ var
 begin
   Count := 0;
   while (Count < ANode.ChildCount) and (ANode[Count].StartOffset <= AOffset) do
+  begin
     Inc(Count);
+  end;
   for Index := Count - 1 downto 0 do
+  begin
     APending.Push(ANode[Index]);
+  end;
 end;
 
 /// <summary>Legt die Kinder von ANode, die vor AOffset beginnen und nicht vor AOffset enden, rückwärts auf
@@ -667,7 +681,9 @@ begin
   begin
     Child := ANode[Index];
     if (Child.StartOffset < AOffset) and (AOffset <= Child.EndOffset) then
+    begin
       APending.Push(Child);
+    end;
   end;
 end;
 
@@ -678,19 +694,27 @@ var
 begin
   Result := nil;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   Depth := 0;
   Start := 1;
   for Index := 1 to Length(AText) + 1 do
+  begin
     if (Index > Length(AText)) or ((AText[Index] = ',') and (Depth = 0)) then
     begin
       Result := Result + [Trim(Copy(AText, Start, Index - Start))];
       Start := Index + 1;
     end
     else if AText[Index] = '<' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if AText[Index] = '>' then
+    begin
       Dec(Depth);
+    end;
+  end;
 end;
 
 /// <summary>'TList&lt;TKunde&gt;' → 'TList' und 'TKunde'.</summary>
@@ -714,9 +738,13 @@ end;
 function FullType(const ATypeName, ATypeArgs: string): string;
 begin
   if ATypeArgs = '' then
-    Result := ATypeName
+  begin
+    Result := ATypeName;
+  end
   else
+  begin
     Result := ATypeName + '<' + ATypeArgs + '>';
+  end;
 end;
 
 /// <summary>Bindet Typparameter 'T,U' an Typargumente.</summary>
@@ -728,8 +756,12 @@ begin
   Result := nil;
   Params := SplitArgs(AParams);
   for Index := 0 to High(Params) do
+  begin
     if Index <= High(AArgs) then
+    begin
       Result := Result + [Params[Index] + '=' + AArgs[Index]];
+    end;
+  end;
 end;
 
 /// <summary>Setzt gebundene Typparameter in einen Typtext ein; spätere Bindungen gewinnen.</summary>
@@ -739,7 +771,9 @@ var
   Word, Replacement: string;
 begin
   if Length(ABindings) = 0 then
+  begin
     Exit(AText);
+  end;
   Result := '';
   Index := 1;
   while Index <= Length(AText) do
@@ -748,7 +782,9 @@ begin
     begin
       Start := Index;
       while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_', '0'..'9', '.']) do
+      begin
         Inc(Index);
+      end;
       Word := Copy(AText, Start, Index - Start);
       Replacement := Word;
       for Binding := High(ABindings) downto 0 do
@@ -798,17 +834,27 @@ end;
 function ArgFits(const AParam, AArg: string): Boolean;
 begin
   if (AParam = '') or (AArg = '') or SameText(AParam, 'Variant') or SameText(AParam, 'OleVariant') then
+  begin
     Exit(True);
+  end;
   // nil (#498): Zeiger, Klassen, Interfaces, Methodenzeiger, dynamische Arrays, aber keine einfachen Typen.
   if SameText(AArg, 'nil') then
+  begin
     Exit(SameText(AParam, 'Pointer') or MatchText(AParam, PCharTypes) or not IsBuiltinName(AParam));
+  end;
   // String-Literal an PChar.
   if MatchText(AParam, PCharTypes) and (MatchText(AArg, StringTypes) or MatchText(AArg, CharTypes)) then
+  begin
     Exit(True);
+  end;
   if AArg = '[]' then
+  begin
     Exit(StartsText('array of', AParam) or StartsText('set of', AParam) or (Pos('<', AParam) = 0));
+  end;
   if StartsText('array of', AParam) then
+  begin
     Exit(False);
+  end;
   Result := SameFamily(AParam, AArg) or
     // Ganzzahl an Gleitkomma, Char an string.
     (MatchText(AParam, FloatTypes) and (MatchText(AArg, IntegerTypes) or MatchText(AArg, FloatTypes))) or
@@ -824,9 +870,15 @@ begin
   Result := (A.SymbolKind = B.SymbolKind) and (A.MinArgs = B.MinArgs) and (A.MaxArgs = B.MaxArgs) and
     (Length(A.ParamTypes) = Length(B.ParamTypes));
   if Result then
+  begin
     for Index := 0 to High(A.ParamTypes) do
+    begin
       if not SameText(A.ParamTypes[Index], B.ParamTypes[Index]) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Deklaration und Rumpf derselben Routine nur einmal; die Deklaration zuerst.</summary>
@@ -835,8 +887,12 @@ var
   Existing: TResolvedSymbol;
 begin
   for Existing in AList do
+  begin
     if SameSignature(Existing, ASymbol) then
+    begin
       Exit;
+    end;
+  end;
   AList := AList + [ASymbol];
 end;
 
@@ -855,16 +911,22 @@ end;
 function TResolvedSymbol.QualifiedName: string;
 begin
   if Container = '' then
-    Result := Name
+  begin
+    Result := Name;
+  end
   else
+  begin
     Result := Container + '.' + Name;
+  end;
 end;
 
 function TResolvedSymbol.AncestorText(AIndex: Integer): string;
 begin
   Result := Ancestors[AIndex];
   if AIndex <= High(AncestorArgs) then
+  begin
     Result := FullType(Result, AncestorArgs[AIndex]);
+  end;
 end;
 
 { TNameResolver }
@@ -918,26 +980,38 @@ begin
   // die gemerkten Antworten behalten.
   mSame := Length(AValue) = Length(FNamespaces);
   if mSame then
+  begin
     for mIndex := 0 to High(AValue) do
+    begin
       if not SameText(AValue[mIndex], FNamespaces[mIndex]) then
       begin
         mSame := False;
         Break;
       end;
+    end;
+  end;
   if mSame then
+  begin
     Exit;
+  end;
   FNamespaces := AValue;
   // Die gemerkten Antworten hängen an den Namespaces.
   if FUnitAnswers <> nil then
+  begin
     FUnitAnswers.Clear;
+  end;
   if FQualifierAnswers <> nil then
+  begin
     FQualifierAnswers.Clear;
+  end;
 end;
 
 function TNameResolver.HoldUnit(const AUnit: TUnitIndex): TUnitHolder;
 begin
   if FUnitHolders = nil then
+  begin
     FUnitHolders := TObjectList<TUnitHolder>.Create(True);
+  end;
   Result := TUnitHolder.Create;
   Result.Value := AUnit;
   FUnitHolders.Add(Result);
@@ -950,13 +1024,19 @@ var
 begin
   mKey := UpperCase(AName);
   if FUnitAnswers = nil then
-    FUnitAnswers := TDictionary<string, TUnitAnswer>.Create
+  begin
+    FUnitAnswers := TDictionary<string, TUnitAnswer>.Create;
+  end
   else if FUnitAnswers.TryGetValue(mKey, Result) then
+  begin
     Exit;
+  end;
   Result.Found := SearchUnit(AName, mUnit);
   Result.Holder := nil;
   if Result.Found then
+  begin
     Result.Holder := HoldUnit(mUnit);
+  end;
   FUnitAnswers.Add(mKey, Result);
 end;
 
@@ -972,13 +1052,19 @@ begin
   end;
   // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
   if FIndex = nil then
+  begin
     Exit(False);
+  end;
   mAnswer := UnitAnswer(AName);
   Result := mAnswer.Found;
   if Result then
-    AUnit := mAnswer.Holder.Value
+  begin
+    AUnit := mAnswer.Holder.Value;
+  end
   else
+  begin
     AUnit := Default(TUnitIndex);
+  end;
 end;
 
 function TNameResolver.FindUnitRef(const AName: string; out AUnit: PUnitIndex): Boolean;
@@ -994,11 +1080,15 @@ begin
     Exit(True);
   end;
   if FIndex = nil then
+  begin
     Exit(False);
+  end;
   mAnswer := UnitAnswer(AName);
   Result := mAnswer.Found;
   if Result then
+  begin
     AUnit := @mAnswer.Holder.Value;
+  end;
 end;
 
 function TNameResolver.SearchUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
@@ -1008,17 +1098,27 @@ var
 begin
   AUnit := Default(TUnitIndex);
   if FIndex.FindUnit(AName, AUnit) then
+  begin
     Exit(True);
+  end;
   // Erst alle Schreibweisen im Index (uses SysUtils mit Namespace System → System.SysUtils), dann
   // erst nachladen: EnsureUnit durchsucht die Suchpfade aller Projekte und ist viel teurer (#647).
   for Namespace in FNamespaces do
+  begin
     if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+    begin
       Exit(True);
+    end;
+  end;
   if not Assigned(FEnsureUnit) then
+  begin
     Exit(False);
+  end;
   Key := UpperCase(AName);
   if (FMissingUnits <> nil) and FMissingUnits.ContainsKey(Key) then
+  begin
     Exit(False);
+  end;
   Watch := TStopwatch.StartNew;
   try
     // Der Unit-Resolver probiert die Namespaces selbst (SysUtils → System.SysUtils). Findet er AName
@@ -1027,10 +1127,16 @@ begin
     if FEnsureUnit(AName) then
     begin
       if FIndex.FindUnit(AName, AUnit) then
+      begin
         Exit(True);
+      end;
       for Namespace in FNamespaces do
+      begin
         if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
   finally
     Inc(FEnsureMs, Watch.ElapsedMilliseconds);
@@ -1038,7 +1144,9 @@ begin
   end;
   // Diagnoselog (#647): Unit weder im Index noch über die Suchpfade gefunden; je Unit einmal.
   if FMissingUnits = nil then
+  begin
     FMissingUnits := TDictionary<string, Boolean>.Create;
+  end;
   FMissingUnits.Add(Key, True);
   TRequestDiagnostics.Increment('missingUnits');
   TRequestDiagnostics.ResolveFailed('unitNotFound');
@@ -1059,19 +1167,27 @@ begin
   end;
   mKey := UpperCase(AName) + '|' + FCurrent.FileName + '|' + FCurrent.UnitName + '|' + BoolToStr(FInImplementation);
   if FQualifierAnswers = nil then
-    FQualifierAnswers := TDictionary<string, TUnitAnswer>.Create
+  begin
+    FQualifierAnswers := TDictionary<string, TUnitAnswer>.Create;
+  end
   else if FQualifierAnswers.TryGetValue(mKey, mAnswer) then
   begin
     if mAnswer.Found then
-      AUnit := mAnswer.Holder.Value
+    begin
+      AUnit := mAnswer.Holder.Value;
+    end
     else
+    begin
       AUnit := Default(TUnitIndex);
+    end;
     Exit(mAnswer.Found);
   end;
   mAnswer.Found := SearchQualifierUnit(AName, AUnit);
   mAnswer.Holder := nil;
   if mAnswer.Found then
+  begin
     mAnswer.Holder := HoldUnit(AUnit);
+  end;
   FQualifierAnswers.Add(mKey, mAnswer);
   Result := mAnswer.Found;
 end;
@@ -1086,10 +1202,16 @@ begin
   for Used in ScopeUnits(FCurrent, FInImplementation) do
   begin
     if SameText(Used, AName) then
+    begin
       Exit(FindUnit(AName, AUnit));
+    end;
     for Namespace in FNamespaces do
+    begin
       if SameText(Namespace + '.' + Used, AName) then
+      begin
         Exit(FindUnit(AName, AUnit));
+      end;
+    end;
   end;
   if SameText(AName, FCurrent.UnitName) then
   begin
@@ -1098,12 +1220,20 @@ begin
   end;
   // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
   if FIndex = nil then
+  begin
     Exit(False);
+  end;
   if FIndex.FindUnit(AName, AUnit) then
+  begin
     Exit(True);
+  end;
   for Namespace in FNamespaces do
+  begin
     if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1132,16 +1262,20 @@ begin
   if FScopeValid and (Pointer(AUnit.InterfaceUses) = Pointer(FScopeInterfaceUses)) and
     (Pointer(AUnit.ImplementationUses) = Pointer(FScopeImplementationUses)) and
     (AWithImplementation = FScopeWithImplementation) and SameText(AUnit.UnitName, FScopeUnitName) then
+  begin
     Exit(FScopeResult);
+  end;
   // Höchste Priorität zuerst: letzte uses-Einträge gewinnen.
   SetLength(Result, Length(AUnit.ImplementationUses) + Length(AUnit.InterfaceUses) + 1);
   Count := 0;
   if AWithImplementation then
+  begin
     for Index := High(AUnit.ImplementationUses) downto 0 do
     begin
       Result[Count] := AUnit.ImplementationUses[Index];
       Inc(Count);
     end;
+  end;
   for Index := High(AUnit.InterfaceUses) downto 0 do
   begin
     Result[Count] := AUnit.InterfaceUses[Index];
@@ -1170,15 +1304,21 @@ var
 begin
   Key := UpperCase(AUnit.FileName + '|' + AUnit.UnitName);
   if FUnitHelpers.TryGetValue(Key, Entry) and (Pointer(Entry.Symbols) = Pointer(AUnit.Symbols)) then
+  begin
     Exit(Entry.Positions);
+  end;
   // Über den Index statt for-in: jede Kopie eines Symbol-Records kostet, und hier laufen alle
   // Symbole aller Units der uses-Liste durch (Diagnoselog 15.10.2026).
   Positions := TList<Integer>.Create;
   try
     for Position := 0 to High(AUnit.Symbols) do
+    begin
       if (AUnit.Symbols[Position].Kind = TIndexSymbolKind.HelperType) and (AUnit.Symbols[Position].Container = '') and
         (Length(AUnit.Symbols[Position].Ancestors) > 0) then
+      begin
         Positions.Add(Position);
+      end;
+    end;
     Result := Positions.ToArray;
   finally
     Positions.Free;
@@ -1202,9 +1342,12 @@ begin
   for Depth := 0 to MaxDepth do
   begin
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
+    begin
       Exit(False);
+    end;
     TypeName := Current.QualifiedName;
     for Position := 0 to High(OwnerUnit.Symbols) do
+    begin
       if (OwnerUnit.Symbols[Position].Kind = TIndexSymbolKind.Property_) and
         (OwnerUnit.Symbols[Position].TypeName <> '') and SameText(OwnerUnit.Symbols[Position].Container, TypeName) and
         SameText(OwnerUnit.Symbols[Position].Name, AName) then
@@ -1213,8 +1356,11 @@ begin
         ADepth := Depth;
         Exit(True);
       end;
+    end;
     if not AncestorOf(Current, Ancestor) then
+    begin
       Exit(False);
+    end;
     Current := Ancestor;
   end;
   Result := False;
@@ -1258,10 +1404,14 @@ var
 begin
   Result := False;
   for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
     if ANode[mIndex].Kind in [TSyntaxKind.ArrayType, TSyntaxKind.PointerType, TSyntaxKind.ClassOfType,
       TSyntaxKind.SetType, TSyntaxKind.RecordType, TSyntaxKind.ProcedureType, TSyntaxKind.FileType,
       TSyntaxKind.EnumType, TSyntaxKind.SubrangeType] then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TNameResolver.FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
@@ -1281,7 +1431,9 @@ begin
   for Index := FTree.FirstTokenFrom(ANode.StartOffset) to High(FTree.Tokens) do
   begin
     if FTree.Tokens[Index].Offset >= ANode.EndOffset then
+    begin
       Break;
+    end;
     if (FTree.Tokens[Index].Kind = TPascalTokenKind.Identifier) and
       (SameText(FTree.Tokens[Index].Text, AName) or SameText(FTree.Tokens[Index].Text, '&' + AName)) then
     begin
@@ -1292,18 +1444,26 @@ begin
   Result.SymbolKind := AKind;
   Result.TypeName := TIndexExtractor.DeclaredType(ANode);
   if Result.TypeName <> '' then
-    Result.TypeArgs := TIndexExtractor.GenericArgsText(TIndexExtractor.DeclaredTypeNode(ANode))
+  begin
+    Result.TypeArgs := TIndexExtractor.GenericArgsText(TIndexExtractor.DeclaredTypeNode(ANode));
+  end
   // var X := TFoo.Create; const C = 5; for var I := 0 ...: Typ aus dem Ausdruck. Eine Typangabe ohne Namen
   // (const Klassen: array[0..1] of TFooClass = (TFoo, TBar)) hat keinen Typ des Ausdrucks: Das erste Element
   // der Liste ist nicht der Typ der Konstanten (#1326).
   else if (ANode.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ConstDecl]) and
     (ANode.ChildCount > 0) and not HasAnonymousType(ANode) then
-    Result.Initializer := ANode[ANode.ChildCount - 1]
+  begin
+    Result.Initializer := ANode[ANode.ChildCount - 1];
+  end
   else if (ANode.Kind = TSyntaxKind.ForStatement) and (ANode.ChildCount > 0) then
+  begin
     Result.Initializer := ANode[0];
+  end;
   Result.IsParameter := AIsParameter;
   if AKind in RoutineKinds then
+  begin
     TIndexExtractor.ParamInfo(ANode, Result.MinArgs, Result.MaxArgs, Result.ParamTypes);
+  end;
 end;
 
 function TNameResolver.LookupInUnit(const AUnit: TUnitIndex; const AName: string;
@@ -1340,21 +1500,33 @@ begin
     begin
       Symbol := AUnit.Symbols[Position];
       if AOnlyInterface and not Symbol.InInterface then
+      begin
         Continue;
+      end;
       if AOnlyTypes and not (Symbol.Kind in TypeKinds) then
+      begin
         Continue;
+      end;
       // Unit-Ebene; Enum-Werte sind ohne SCOPEDENUMS auch dort sichtbar (#849).
       if (Symbol.Container <> '') and ((Symbol.Kind <> TIndexSymbolKind.EnumMember) or Symbol.ScopedEnum) then
+      begin
         Continue;
+      end;
       if AOnlyTypes and (AArity > 0) and (Length(SplitArgs(Symbol.TypeParams)) <> AArity) then
+      begin
         Continue;
+      end;
       if AOnlyTypes and ((AArity = 0) and (Pass = 0) or (AArity = NonGenericArity)) and (Symbol.TypeParams <> '') then
+      begin
         Continue;
+      end;
       AResult := FromSymbol(AUnit, Symbol);
       Exit(True);
     end;
     if not (AOnlyTypes and (AArity = 0)) then
+    begin
       Break;
+    end;
   end;
   Result := False;
 end;
@@ -1368,13 +1540,21 @@ begin
   // Ohne Typargumente gewinnt ein nicht generischer Typ jeder Unit vor einem generischen gleichen Namens, wie im
   // Compiler: TList ist mit System.Classes und System.Generics.Collections in uses immer System.Classes.TList (#981).
   if AOnlyTypes and (AArity = 0) and LookupGlobal(AUnit, AName, AWithImplementation, True, AResult, NonGenericArity) then
+  begin
     Exit(True);
+  end;
   if LookupInUnit(AUnit, AName, not AWithImplementation, AOnlyTypes, AResult, AArity) then
+  begin
     Exit(True);
+  end;
   // Je Bezeichner über alle uses-Units: nur Verweise, keine Kopien der Units.
   for UnitName in ScopeUnits(AUnit, AWithImplementation) do
+  begin
     if FindUnitRef(UnitName, Used) and LookupInUnit(Used^, AName, True, AOnlyTypes, AResult, AArity) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1386,14 +1566,18 @@ var
 begin
   Result := False;
   if ATypeName = '' then
+  begin
     Exit;
+  end;
   // Unit.Typ
   Dot := LastDelimiter('.', ATypeName);
   if Dot > 0 then
   begin
     if FindUnit(Copy(ATypeName, 1, Dot - 1), Qualifier) then
+    begin
       Exit(LookupInUnit(Qualifier, Copy(ATypeName, Dot + 1, MaxInt), not SameText(Qualifier.FileName, FCurrent.FileName),
         True, AResult, AArity));
+    end;
     Exit;
   end;
   Result := LookupGlobal(AFromUnit, ATypeName, AWithImplementation, True, AResult, AArity);
@@ -1422,7 +1606,9 @@ begin
   begin
     // Typargumente gelten dort, wo sie stehen: vor dem Einsetzen in fremden Units qualifizieren.
     for Index := 0 to High(ArgList) do
+    begin
       ArgList[Index] := QualifyType(ArgList[Index], AFromUnit, AWithImplementation);
+    end;
     AResult.Bindings := Bind(AResult.TypeParams, ArgList);
   end;
 end;
@@ -1440,11 +1626,15 @@ begin
   Result := Base;
   if (Pos('.', Base) = 0) and ResolveTypeName(Base, AFromUnit, AWithImplementation, Resolved, Length(ArgList)) and
     (Resolved.Kind = TResolvedKind.Symbol) and (Resolved.Container = '') then
+  begin
     Result := Resolved.UnitName + '.' + Resolved.Name;
+  end;
   if Length(ArgList) > 0 then
   begin
     for Index := 0 to High(ArgList) do
+    begin
       ArgList[Index] := QualifyType(ArgList[Index], AFromUnit, AWithImplementation);
+    end;
     Result := Result + '<' + string.Join(',', ArgList) + '>';
   end;
 end;
@@ -1459,31 +1649,43 @@ var
 begin
   Result := False;
   if AResolved.IsTypeParameter then
+  begin
     Exit;
+  end;
   // Typen sind ihr eigener Typ; Aliase werden verfolgt.
   if AResolved.IsType then
-    Current := AResolved
+  begin
+    Current := AResolved;
+  end
   else if Length(AResolved.Constructed) > 0 then
-    Current := AResolved.Constructed[0]
+  begin
+    Current := AResolved.Constructed[0];
+  end
   else if (AResolved.SymbolKind = TIndexSymbolKind.Constructor_) and (AResolved.Container <> '') then
   begin
     // TFoo.Create liefert ein TFoo.
     if not UnitOf(AResolved, FromUnit) or
       not ResolveTypeName(AResolved.Container, FromUnit, SameText(FromUnit.FileName, FCurrent.FileName), Current) then
+    begin
       Exit;
+    end;
     Current.Bindings := AResolved.Bindings;
   end
   else if AResolved.TypeName = '' then
   begin
     // Inline-Variable ohne Typangabe: Typ des Ausdrucks.
     if (AResolved.Initializer = nil) or (FInferDepth >= MaxInferDepth) or (FTree = nil) then
+    begin
       Exit;
+    end;
     SavedOffset := FOffset;
     Inc(FInferDepth);
     try
       FOffset := AResolved.Initializer.StartOffset;
       if not ExprSymbol(AResolved.Initializer, Value) or not TypeOf(Value, Current) then
+      begin
         Exit;
+      end;
     finally
       Dec(FInferDepth);
       FOffset := SavedOffset;
@@ -1492,12 +1694,16 @@ begin
   else
   begin
     if not UnitOf(AResolved, FromUnit) then
+    begin
       Exit;
+    end;
     WithImplementation := (AResolved.Kind = TResolvedKind.Local) or
       (SameText(FromUnit.FileName, FCurrent.FileName) and FInImplementation);
     if not ResolveTypeText(Substitute(FullType(AResolved.TypeName, AResolved.TypeArgs), AResolved.Bindings),
       FromUnit, WithImplementation, Current) then
+    begin
       Exit;
+    end;
   end;
   Depth := 0;
   while not Current.Builtin and (Current.SymbolKind = TIndexSymbolKind.TypeAlias) and (Current.TypeName <> '') and
@@ -1507,7 +1713,9 @@ begin
     if not UnitOf(Current, FromUnit) or
       not ResolveTypeText(Substitute(FullType(Current.TypeName, Current.TypeArgs), Current.Bindings), FromUnit,
         SameText(FromUnit.FileName, FCurrent.FileName), Next) then
+    begin
       Exit;
+    end;
     Current := Next;
     Inc(Depth);
   end;
@@ -1523,29 +1731,45 @@ var
 begin
   Result := False;
   if AType.Builtin or not UnitOf(AType, FromUnit) then
+  begin
     Exit;
+  end;
   if Length(AType.Ancestors) > 0 then
-    Name := Substitute(AType.AncestorText(0), AType.Bindings)
+  begin
+    Name := Substitute(AType.AncestorText(0), AType.Bindings);
+  end
   else if (AType.SymbolKind = TIndexSymbolKind.ClassType) and not SameText(AType.Name, 'TObject') then
-    Name := 'TObject'
+  begin
+    Name := 'TObject';
+  end
   else if (AType.SymbolKind = TIndexSymbolKind.InterfaceType) and not SameText(AType.Name, 'IInterface') then
-    Name := 'IInterface'
+  begin
+    Name := 'IInterface';
+  end
   else
+  begin
     Exit;
+  end;
   // Helfer: der "Vorfahr" ist der erweiterte Typ, nicht der Elterntyp.
   if AType.SymbolKind = TIndexSymbolKind.HelperType then
+  begin
     Exit;
+  end;
   // Die Sichtbarkeit des implementation-Teils gehört zum Schlüssel: Der Cache überdauert ResolveTypeFrom
   // (Code-Review P-17), dort ist FCurrent eine andere Unit.
   WithImplementation := SameText(FromUnit.FileName, FCurrent.FileName);
   Key := UpperCase(FromUnit.FileName + '|' + AType.QualifiedName + '|' + Name) + '|' +
     BoolToStr(WithImplementation, True);
   if FAncestors.TryGetValue(Key, AAncestor) then
+  begin
     Exit(AAncestor.Found);
+  end;
   Result := ResolveTypeText(Name, FromUnit, WithImplementation, AAncestor) and
     not AAncestor.Builtin and not SameText(AAncestor.QualifiedName, AType.QualifiedName);
   if not Result then
+  begin
     AAncestor := NoResult;
+  end;
   FAncestors.AddOrSetValue(Key, AAncestor);
 end;
 
@@ -1557,8 +1781,12 @@ begin
   Result := '';
   mWords := ASignature.Replace(';', ' ').Split([' ', #9, #10, #13, '='], TStringSplitOptions.ExcludeEmpty);
   for mIndex := 0 to High(mWords) - 2 do
+  begin
     if SameText(mWords[mIndex], 'class') and SameText(mWords[mIndex + 1], 'of') then
+    begin
       Exit(mWords[mIndex + 2]);
+    end;
+  end;
 end;
 
 function TNameResolver.ClassRefTargetOf(const AType: TResolvedSymbol; out ATarget: TResolvedSymbol): Boolean;
@@ -1569,15 +1797,21 @@ begin
   Result := False;
   ATarget := NoResult;
   if AType.Builtin or (AType.SymbolKind <> TIndexSymbolKind.ClassType) or (Length(AType.Ancestors) > 0) then
+  begin
     Exit;
+  end;
   mName := ClassRefTarget(AType.Signature);
   if (mName = '') or not UnitOf(AType, mUnit) then
+  begin
     Exit;
+  end;
   Result := ResolveTypeText(mName, mUnit, SameText(mUnit.FileName, FCurrent.FileName), ATarget) and
     not ATarget.Builtin and (ATarget.SymbolKind = TIndexSymbolKind.ClassType) and
     not SameText(ATarget.QualifiedName, AType.QualifiedName);
   if not Result then
+  begin
     ATarget := NoResult;
+  end;
 end;
 
 /// <summary>Stammt die Klasse von TCustomAttribute ab? Bricht die Kette an einem unbekannten Vorfahren ab,
@@ -1591,12 +1825,18 @@ begin
   for Depth := 0 to MaxDepth do
   begin
     if SameText(Current.Name, 'TCustomAttribute') then
+    begin
       Exit(True);
+    end;
     if (Length(Current.Ancestors) = 0) or SameText(Current.Ancestors[0], 'TObject') or
       SameText(Current.Ancestors[0], 'System.TObject') then
+    begin
       Exit(False);
+    end;
     if not AncestorOf(Current, Next) then
+    begin
       Exit(True);
+    end;
     Current := Next;
   end;
   Result := True;
@@ -1611,17 +1851,25 @@ begin
   AClass := NoResult;
   if not ASymbol.Found or not ASymbol.IsType or not TypeOf(ASymbol, Current) or
     (Current.SymbolKind <> TIndexSymbolKind.ClassType) or SameText(Current.Name, 'TCustomAttribute') then
+  begin
     Exit;
+  end;
   AClass := Current;
   for Depth := 0 to MaxDepth do
   begin
     if SameText(Current.Name, 'TCustomAttribute') then
+    begin
       Exit(True);
+    end;
     if (Length(Current.Ancestors) = 0) or SameText(Current.Ancestors[0], 'TObject') or
       SameText(Current.Ancestors[0], 'System.TObject') then
+    begin
       Exit;
+    end;
     if not AncestorOf(Current, Next) then
+    begin
       Exit(EndsText('Attribute', Current.Ancestors[0]));
+    end;
     Current := Next;
   end;
 end;
@@ -1644,17 +1892,25 @@ begin
   AClass := NoResult;
   if not ASymbol.Found or not ASymbol.IsType or not TypeOf(ASymbol, Current) or
     (Current.SymbolKind <> TIndexSymbolKind.ClassType) then
+  begin
     Exit;
+  end;
   AClass := Current;
   for Depth := 0 to MaxDepth do
   begin
     if SameText(Current.Name, 'Exception') then
+    begin
       Exit(True);
+    end;
     if (Length(Current.Ancestors) = 0) or SameText(Current.Ancestors[0], 'TObject') or
       SameText(Current.Ancestors[0], 'System.TObject') then
+    begin
       Exit;
+    end;
     if not AncestorOf(Current, Next) then
+    begin
       Exit(LooksLikeException(Current.Ancestors[0]));
+    end;
     Current := Next;
   end;
 end;
@@ -1674,7 +1930,9 @@ begin
   Result := nil;
   AComplete := False;
   if not AClass.Found then
+  begin
     Exit;
+  end;
   Current := AClass;
   for Depth := 0 to MaxDepth do
   begin
@@ -1711,9 +1969,13 @@ begin
     FClassState := 3;
     try
       if (FTree <> nil) and MethodClass(FClass) then
-        FClassState := 2
+      begin
+        FClassState := 2;
+      end
       else
+      begin
         FClassState := 1;
+      end;
     except
       // Abbruch der Anfrage: beim nächsten Aufruf neu ermitteln, nicht als Rekursion werten.
       FClassState := 0;
@@ -1733,9 +1995,13 @@ begin
   for Depth := 0 to MaxDepth do
   begin
     if SameText(Current.QualifiedName, AAncestor.QualifiedName) and SameText(Current.UnitName, AAncestor.UnitName) then
+    begin
       Exit(True);
+    end;
     if not AncestorOf(Current, Next) then
+    begin
       Exit(False);
+    end;
     Current := Next;
   end;
   Result := False;
@@ -1750,7 +2016,9 @@ begin
   SameUnit := SameText(AOwnerUnit.FileName, FCurrent.FileName);
   // Aus anderen Units sind nur Deklarationen im interface sichtbar, keine Rümpfe.
   if not SameUnit and not ASymbol.InInterface then
+  begin
     Exit(False);
+  end;
   case ASymbol.Visibility of
     TIndexVisibility.Private:
       Result := SameUnit;
@@ -1790,26 +2058,34 @@ begin
   Key := UpperCase(AType.UnitName + '.' + AType.QualifiedName + '|' + FCurrent.FileName + '|' +
     FCurrent.UnitName) + '|' + BoolToStr(FInImplementation, True);
   if FHelpers.TryGetValue(Key, AHelper) then
+  begin
     Exit(AHelper.Found);
+  end;
   AHelper := NoResult;
   // Nur der zuletzt sichtbare Helfer wirkt: eigene Unit, dann uses von hinten; in einer Unit der letzte.
   Units := TList<TUnitIndex>.Create;
   try
     Units.Add(FCurrent);
     for UnitName in ScopeUnits(FCurrent, FInImplementation) do
+    begin
       if FindUnit(UnitName, Used) then
+      begin
         Units.Add(Used);
+      end;
+    end;
     for Used in Units do
     begin
       Found := False;
       // Nur die vorab ermittelten Helfer-Typen der Unit prüfen statt aller Symbole (Code-Review P-17).
       for Position in HelperPositions(Used) do
+      begin
         if Matches(Used.Symbols[Position].Ancestors[High(Used.Symbols[Position].Ancestors)]) and
           (Used.Symbols[Position].InInterface or SameText(Used.FileName, FCurrent.FileName)) then
         begin
           Candidate := FromSymbol(Used, Used.Symbols[Position]);
           Found := True;
         end;
+      end;
       if Found then
       begin
         AHelper := Candidate;
@@ -1830,7 +2106,9 @@ var
 begin
   AHelper := NoResult;
   if (ATree = nil) or (Trim(ATypeName) = '') then
+  begin
     Exit(False);
+  end;
   Prepare(ATree, AFileName, AOffset);
   if not ResolveTypeName(Trim(ATypeName), FCurrent, FInImplementation, Target) then
   begin
@@ -1848,12 +2126,16 @@ begin
   AParent := NoResult;
   if (AHelper.SymbolKind <> TIndexSymbolKind.HelperType) or (Length(AHelper.Ancestors) < 2) or
     not UnitOf(AHelper, FromUnit) then
+  begin
     Exit(False);
+  end;
   Result := ResolveTypeText(AHelper.Ancestors[0], FromUnit, SameText(FromUnit.FileName, FCurrent.FileName),
     AParent) and (AParent.SymbolKind = TIndexSymbolKind.HelperType) and
     not SameText(AParent.QualifiedName, AHelper.QualifiedName);
   if not Result then
+  begin
     AParent := NoResult;
+  end;
 end;
 
 /// <summary>Verdecken die Methoden AMembers ab AFrom die gleichnamigen der Vorfahren nicht? So ist es, wenn jede
@@ -1866,10 +2148,14 @@ var
 begin
   Result := True;
   for mIndex := AFrom to High(AMembers) do
+  begin
     if not (AMembers[mIndex].SymbolKind in RoutineKinds) or
       ((IndexText('overload', AMembers[mIndex].Directives) < 0) and
       (IndexText('override', AMembers[mIndex].Directives) < 0)) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 /// <summary>Wort hinter AKeyword (read, write) in der Signatur einer Property; '' ohne.</summary>
@@ -1881,8 +2167,12 @@ begin
   Result := '';
   mWords := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
   for mIndex := 0 to High(mWords) - 1 do
+  begin
     if SameText(mWords[mIndex], AKeyword) then
+    begin
       Exit(mWords[mIndex + 1]);
+    end;
+  end;
 end;
 
 /// <summary>Signatur einer Property bis vor das erste read bzw. write ("property Items: TStrings").</summary>
@@ -1896,9 +2186,13 @@ begin
   for mIndex := 0 to High(mWords) do
   begin
     if MatchText(mWords[mIndex], ['read', 'write']) then
+    begin
       Break;
+    end;
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + mWords[mIndex];
   end;
 end;
@@ -1912,13 +2206,17 @@ begin
   Result := AOwn;
   if (AOwn.SymbolKind <> TIndexSymbolKind.Property_) or (AOwn.TypeName <> '') or
     not AncestorOf(AOwner, mAncestor) then
+  begin
     Exit;
+  end;
   // Die Vorfahren können selbst nur neu deklarieren (property Items; im published-Teil): FindMembers führt sie
   // ebenso zusammen.
   mCandidates := FindMembers(mAncestor, AOwn.Name);
   if (Length(mCandidates) = 0) or (mCandidates[0].SymbolKind <> TIndexSymbolKind.Property_) or
     (mCandidates[0].TypeName = '') then
+  begin
     Exit;
+  end;
   mInherited := mCandidates[0];
   Result.TypeName := mInherited.TypeName;
   Result.TypeArgs := mInherited.TypeArgs;
@@ -1928,15 +2226,23 @@ begin
   Result.IsDefault := AOwn.IsDefault or mInherited.IsDefault;
   mRead := PropertyAccessor(AOwn.Signature, 'read');
   if mRead = '' then
+  begin
     mRead := PropertyAccessor(mInherited.Signature, 'read');
+  end;
   mWrite := PropertyAccessor(AOwn.Signature, 'write');
   if mWrite = '' then
+  begin
     mWrite := PropertyAccessor(mInherited.Signature, 'write');
+  end;
   Result.Signature := PropertyHead(mInherited.Signature);
   if mRead <> '' then
+  begin
     Result.Signature := Result.Signature + ' read ' + mRead;
+  end;
   if mWrite <> '' then
+  begin
     Result.Signature := Result.Signature + ' write ' + mWrite;
+  end;
 end;
 
 /// <summary>Steht AMember (aus AOwnerUnit) als Rumpf hinter der Deklaration des Typs AType? In einer anderen
@@ -1947,7 +2253,9 @@ var
 begin
   if not SameText(AOwnerUnit.SymbolFile(AMember), AType.FileName) or
     ((AType.Range.EndPos.Line = 0) and (AType.Range.EndPos.Character = 0)) then
+  begin
     Exit(not AMember.InInterface);
+  end;
   mEnd := AType.Range.EndPos;
   mStart := AMember.Range.StartPos;
   Result := (mStart.Line > mEnd.Line) or ((mStart.Line = mEnd.Line) and (mStart.Character >= mEnd.Character));
@@ -1971,9 +2279,11 @@ begin
   begin
     // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs; danach die Vorfahr-Helfer (#848).
     if not mOverloads and HelperFor(Current, Helper) then
+    begin
       for HelperDepth := 0 to MaxDepth do
       begin
         if UnitOf(Helper, HelperUnit) then
+        begin
           for Position in HelperUnit.SymbolsNamed(AName) do
           begin
             Symbol := HelperUnit.Symbols[Position];
@@ -1984,14 +2294,22 @@ begin
               AddDistinct(Result, Found);
             end;
           end;
+        end;
         if Result <> nil then
+        begin
           Exit;
+        end;
         if not HelperParent(Helper, Parent) then
+        begin
           Break;
+        end;
         Helper := Parent;
       end;
+    end;
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
+    begin
       Exit;
+    end;
     LocalChain := LocalChain or SameText(OwnerUnit.FileName, FCurrent.FileName);
     TypeName := Current.QualifiedName;
     Hidden := False;
@@ -2008,7 +2326,9 @@ begin
         // hinter dem Typ; InInterface allein trennt das nicht bei Typen im implementation-Teil (Skia4Delphi,
         // #1328).
         if Hidden and IsBodyOf(OwnerUnit, Symbol, Current) then
+        begin
           Continue;
+        end;
         if not IsVisible(Symbol, OwnerUnit, Current, LocalChain) then
         begin
           Hidden := True;
@@ -2017,7 +2337,9 @@ begin
         Found := FromSymbol(OwnerUnit, Symbol);
         Found.Bindings := Current.Bindings;
         if Found.SymbolKind = TIndexSymbolKind.Property_ then
+        begin
           Found := MergedProperty(Current, Found);
+        end;
         AddDistinct(Result, Found);
       end;
     end;
@@ -2025,11 +2347,15 @@ begin
     if Length(Result) > mLevelStart then
     begin
       if not KeepsAncestorOverloads(Result, mLevelStart) then
+      begin
         Exit;
+      end;
       mOverloads := True;
     end;
     if not AncestorOf(Current, Ancestor) then
+    begin
       Exit;
+    end;
     Current := Ancestor;
   end;
 end;
@@ -2042,7 +2368,9 @@ begin
   Members := FindMembers(AType, AName);
   Result := Length(Members) > 0;
   if Result then
+  begin
     AResult := Members[0];
+  end;
 end;
 
 function TNameResolver.NestedType(const AOuter: TResolvedSymbol; const AName: string;
@@ -2054,7 +2382,9 @@ var
 begin
   Result := False;
   if AOuter.Builtin or not UnitOf(AOuter, OwnerUnit) then
+  begin
     Exit;
+  end;
   for Position in OwnerUnit.SymbolsNamed(AName) do
   begin
     Symbol := OwnerUnit.Symbols[Position];
@@ -2077,9 +2407,12 @@ begin
   for Depth := 0 to MaxDepth do
   begin
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
+    begin
       Exit(False);
+    end;
     // Über den Index: for-in kopierte bei jedem X[i] jedes Symbol der Unit (System.Classes: Tausende).
     for Index := 0 to High(OwnerUnit.Symbols) do
+    begin
       if OwnerUnit.Symbols[Index].IsDefault and (OwnerUnit.Symbols[Index].Kind = TIndexSymbolKind.Property_) and
         SameText(OwnerUnit.Symbols[Index].Container, Current.QualifiedName) and
         IsVisible(OwnerUnit.Symbols[Index], OwnerUnit, Current, False) then
@@ -2088,8 +2421,11 @@ begin
         AResult.Bindings := Current.Bindings;
         Exit(True);
       end;
+    end;
     if not AncestorOf(Current, Ancestor) then
+    begin
       Exit(False);
+    end;
     Current := Ancestor;
   end;
   Result := False;
@@ -2104,17 +2440,23 @@ var
 begin
   // Überladene freie Routinen derselben Unit; bei verschachtelten Routinen die der umgebenden Routine (#881).
   if (ASymbol.Kind = TResolvedKind.Local) and (ASymbol.SymbolKind = TIndexSymbolKind.Routine) then
+  begin
     Exit(LocalOverloads(ASymbol));
+  end;
   Result := [ASymbol];
   if (ASymbol.Kind <> TResolvedKind.Symbol) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) or
     (ASymbol.Container <> '') or not UnitOf(ASymbol, Owner) then
+  begin
     Exit;
+  end;
   SameUnit := SameText(Owner.FileName, FCurrent.FileName);
   for Position in Owner.SymbolsNamed(ASymbol.Name) do
   begin
     Symbol := Owner.Symbols[Position];
     if (Symbol.Kind = TIndexSymbolKind.Routine) and (Symbol.Container = '') and (SameUnit or Symbol.InInterface) then
+    begin
       AddDistinct(Result, FromSymbol(Owner, Symbol));
+    end;
   end;
 end;
 
@@ -2127,7 +2469,9 @@ var
 begin
   Result := [ASymbol];
   if (ASymbol.Kind <> TResolvedKind.Local) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) or (FTree = nil) then
+  begin
     Exit;
+  end;
   StartPos := ASymbol.Range.StartPos;
   Name := ASymbol.Name;
   // Iterativ (Bericht M1).
@@ -2136,11 +2480,15 @@ begin
     begin
       if (AVisited.Kind = TSyntaxKind.RoutineDecl) and (AVisited.StartPos = StartPos) and
         SameText(AVisited.Name, Name) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
   if (Node = nil) or (Node.Parent = nil) then
+  begin
     Exit;
+  end;
   Parent := Node.Parent;
   // Überladungen stehen in derselben umgebenden Routine, vor oder hinter ASymbol; in der Reihenfolge der
   // Deklaration, unabhängig davon, welche die Auflösung gewählt hat.
@@ -2149,9 +2497,13 @@ begin
   begin
     Sibling := Parent[Index];
     if Sibling = Node then
-      AddDistinct(Result, ASymbol)
+    begin
+      AddDistinct(Result, ASymbol);
+    end
     else if (Sibling.Kind = TSyntaxKind.RoutineDecl) and SameText(Sibling.Name, ASymbol.Name) then
+    begin
       AddDistinct(Result, FromNode(Sibling, Sibling.Name, TIndexSymbolKind.Routine, False));
+    end;
   end;
 end;
 
@@ -2170,14 +2522,18 @@ begin
     repeat
       Descended := False;
       for Index := 0 to Node.ChildCount - 1 do
+      begin
         if Contains(Node[Index], FOffset) then
         begin
           Node := Node[Index];
           if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          begin
             Path.Insert(0, Node);
+          end;
           Descended := True;
           Break;
         end;
+      end;
     until not Descended;
     Result := Path.ToArray;
   finally
@@ -2206,20 +2562,28 @@ begin
         begin
           AResult := Inner;
           if not (Inner.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) then
+          begin
             Exit(True);
+          end;
           Result := True;
         end;
       TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl:
         for Name in Child.Name.Split([',']) do
+        begin
           if SameText(Name.Trim, AName) then
           begin
             if Child.Kind = TSyntaxKind.VarDecl then
-              Kind := TIndexSymbolKind.Variable
+            begin
+              Kind := TIndexSymbolKind.Variable;
+            end
             else
+            begin
               Kind := TIndexSymbolKind.Constant;
+            end;
             AResult := FromNode(Child, Name.Trim, Kind, False);
             Result := True;
           end;
+        end;
       TSyntaxKind.TypeDecl:
         if not Result and SameText(Child.Name, AName) then
         begin
@@ -2266,11 +2630,13 @@ begin
       if Child.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
       begin
         for Name in Child.Name.Split([',']) do
+        begin
           if SameText(Name.Trim, AName) then
           begin
             AResult := FromNode(Child, Name.Trim, TIndexSymbolKind.Variable, False);
             Exit(True);
           end;
+        end;
       end
       else if (Child.Kind <> TSyntaxKind.RoutineDecl) and Contains(Child, FOffset) then
       begin
@@ -2300,27 +2666,37 @@ begin
   for Routine in EnclosingRoutines do
   begin
     if LookupInlineVars(Routine, AName, AResult) then
+    begin
       Exit(True);
+    end;
     Header := RoutineHeaderOf(Routine);
     if Header <> nil then
     begin
       Params := Header.FindChild(TSyntaxKind.Parameters);
       if Params <> nil then
+      begin
         for Index := 0 to Params.ChildCount - 1 do
         begin
           Param := Params[Index];
           if Param.Kind <> TSyntaxKind.Parameter then
+          begin
             Continue;
+          end;
           for Name in Param.Name.Split([',']) do
+          begin
             if SameText(Name.Trim, AName) then
             begin
               AResult := FromNode(Param, Name.Trim, TIndexSymbolKind.Variable, True);
               Exit(True);
             end;
+          end;
         end;
+      end;
       // Typparameter aus dem Kopf: die des Typs (TFoo<K, V>.Bar) und die der Methode (Bar<T>).
       for Group := 0 to Header.ChildCount - 1 do
+      begin
         if Header[Group].Kind = TSyntaxKind.GenericParams then
+        begin
           for Index := 0 to Header[Group].ChildCount - 1 do
           begin
             Param := Header[Group][Index];
@@ -2331,6 +2707,8 @@ begin
               Exit(True);
             end;
           end;
+        end;
+      end;
       if SameText(AName, 'Result') and (Header.FindChild(TSyntaxKind.TypeReference) <> nil) then
       begin
         AResult := FromNode(Header, 'Result', TIndexSymbolKind.Variable, False);
@@ -2349,7 +2727,9 @@ begin
       end;
     end;
     if LookupInDeclarations(Routine, AName, AResult) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -2361,7 +2741,9 @@ begin
   Classes := MethodClasses;
   Result := Length(Classes) > 0;
   if Result then
+  begin
     AType := Classes[0];
+  end;
 end;
 
 function TNameResolver.MethodClasses: TArray<TResolvedSymbol>;
@@ -2375,14 +2757,18 @@ begin
   // Äußerste Routine mit Punkt im Namen: procedure TFoo.Bar
   Result := nil;
   if FTree = nil then
+  begin
     Exit;
+  end;
   Routines := EnclosingRoutines;
   if Length(Routines) > 0 then
   begin
     Name := Routines[High(Routines)].Name;
     Dot := LastDelimiter('.', Name);
     if Dot = 0 then
+    begin
       Exit;
+    end;
     TypeName := Copy(Name, 1, Dot - 1);
   end
   else
@@ -2391,7 +2777,9 @@ begin
     // sie unaufgelöst, und Referenzsuche, Umbenennen und Datenfluss übersahen sie.
     TypeName := PropertyClassName;
     if TypeName = '' then
+    begin
       Exit;
+    end;
   end;
   // Verschachtelte Typen zuerst (procedure TAussen.TInnen.Methode): TAussen.TInnen sonst als Unit
   // TAussen gesucht, mit Nachladen über alle Suchpfade, und die Felder blieben unaufgelöst (#647).
@@ -2413,10 +2801,14 @@ begin
       Result := [Current] + Result;
     end;
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   if ResolveTypeName(TypeName, FCurrent, True, Current) then
+  begin
     Result := [Current];
+  end;
 end;
 
 function TNameResolver.PropertyClassName: string;
@@ -2429,14 +2821,22 @@ begin
   while Node <> nil do
   begin
     if Node.Kind = TSyntaxKind.PropertyDecl then
+    begin
       Exit(Node.EnclosingTypeName);
+    end;
     // Rümpfe enthalten keine Property-Deklarationen.
     if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+    begin
       Exit;
+    end;
     Inner := nil;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if Contains(Node[Index], FOffset) then
+      begin
         Inner := Node[Index];
+      end;
+    end;
     Node := Inner;
   end;
 end;
@@ -2458,9 +2858,13 @@ begin
     begin
       if (Length(Next.Ancestors) = 0) or SameText(Next.Ancestors[0], 'TObject') or
         SameText(Next.Ancestors[0], 'System.TObject') then
+      begin
         Break;
+      end;
       if not AncestorOf(Next, Ancestor) then
+      begin
         Exit(True);
+      end;
       Next := Ancestor;
     end;
   end;
@@ -2472,14 +2876,22 @@ var
   UnitName, Namespace: string;
 begin
   if StartsText(AName + '.', FCurrent.UnitName) then
+  begin
     Exit(True);
+  end;
   for UnitName in ScopeUnits(FCurrent, FInImplementation) do
   begin
     if StartsText(AName + '.', UnitName) then
+    begin
       Exit(True);
+    end;
     for Namespace in FNamespaces do
+    begin
       if StartsText(AName + '.', Namespace + '.' + UnitName) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
   Result := False;
 end;
@@ -2495,7 +2907,9 @@ var
 begin
   AConsumed := 1;
   if LookupLocal(ANames[0], AResult) then
+  begin
     Exit(True);
+  end;
   Classes := MethodClasses;
   if Length(Classes) > 0 then
   begin
@@ -2506,8 +2920,12 @@ begin
     end;
     // Innerster Typ zuerst, dann die äußeren (verschachtelte Typen sehen deren Mitglieder).
     for ClassType in Classes do
+    begin
       if FindMember(ClassType, ANames[0], AResult) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
   // Unit-Namen mit Punkten: längstes Präfix zuerst (System.SysUtils.Foo). Der
   // ganze Ausdruck zählt mit, sonst bleibt "Vcl.Werkzeug" in uses unaufgelöst.
@@ -2526,7 +2944,9 @@ begin
     end;
   end;
   if LookupGlobal(FCurrent, ANames[0], FInImplementation, False, AResult) then
+  begin
     Exit(True);
+  end;
   if FindQualifierUnit(ANames[0], Found) then
   begin
     AResult := NoResult;
@@ -2552,7 +2972,9 @@ begin
     begin
       Node := Pending.Pop;
       if (Node.Kind in ExpressionKinds) and (Node.EndOffset = AEndOffset) then
+      begin
         Exit(Node);
+      end;
       PushChildrenAround(Pending, Node, AEndOffset);
     end;
   finally
@@ -2574,7 +2996,9 @@ begin
     begin
       Node := Pending.Pop;
       if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and (Node[0].EndOffset = ACalleeEnd) then
+      begin
         Exit(Node);
+      end;
       PushChildrenAround(Pending, Node, ACalleeEnd);
     end;
   finally
@@ -2595,12 +3019,18 @@ begin
   begin
     Arg := ANode[Index];
     if Arg.Kind = TSyntaxKind.GenericArgs then
+    begin
       Continue;
+    end;
     Text := '';
     if Arg.Kind = TSyntaxKind.SetConstructor then
-      Text := '[]'
+    begin
+      Text := '[]';
+    end
     else if ExprSymbol(Arg, Value) and TypeOf(Value, TypeInfo) then
+    begin
       Text := TypeInfo.Name;
+    end;
     Result := Result + [Text];
   end;
 end;
@@ -2618,7 +3048,9 @@ begin
   if Result or IsBuiltinName(mParam) or not UnitOf(ACandidate, mOwner) or
     not ResolveTypeText(mParam, mOwner, True, mDeclared) or not TypeOf(mDeclared, mBase) or
     SameText(mBase.Name, mParam) then
+  begin
     Exit;
+  end;
   Result := ArgFits(mBase.Name, AArgType);
   ASame := Result and SameFamily(mBase.Name, AArgType);
 end;
@@ -2633,37 +3065,55 @@ var
   mSame: Boolean;
 begin
   if (AArgCount < 0) or (Length(ACandidates) <= 1) then
+  begin
     Exit(ACandidates);
+  end;
   Fitting := nil;
   Scores := nil;
   for Candidate in ACandidates do
   begin
     if (Candidate.SymbolKind in RoutineKinds) and
       ((AArgCount < Candidate.MinArgs) or (AArgCount > Candidate.MaxArgs)) then
+    begin
       Continue;
+    end;
     Score := 0;
     for Arg := 0 to Min(AArgCount, Length(Candidate.ParamTypes)) - 1 do
+    begin
       if Arg <= High(AArgTypes) then
+      begin
         if not ParamFits(Candidate, Arg, AArgTypes[Arg], mSame) then
         begin
           Score := -1;
           Break;
         end
         else if mSame then
+        begin
           Inc(Score);
+        end;
+      end;
+    end;
     if Score < 0 then
+    begin
       Continue;
+    end;
     Fitting := Fitting + [Candidate];
     Scores := Scores + [Score];
   end;
   // Passt keine, lieber alle zeigen als eine falsche.
   if Length(Fitting) = 0 then
+  begin
     Exit(ACandidates);
+  end;
   Best := MaxIntValue(Scores);
   Result := nil;
   for Index := 0 to High(Fitting) do
+  begin
     if Scores[Index] = Best then
+    begin
       Result := Result + [Fitting[Index]];
+    end;
+  end;
 end;
 
 function TNameResolver.ExprCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
@@ -2680,7 +3130,9 @@ begin
         FOffset := ANode.StartOffset;
         try
           if not ResolveFirstAll([ANode.Name], Consumed, Result) then
+          begin
             Result := nil;
+          end;
         finally
           FOffset := SavedOffset;
         end;
@@ -2689,12 +3141,16 @@ begin
       if (ANode.FindChild(TSyntaxKind.GenericArgs) = nil) and (ANode.ChildCount > 0) then
       begin
         if not ExprSymbol(ANode[0], Owner) then
+        begin
           Exit;
+        end;
         if Owner.Kind = TResolvedKind.UnitName then
         begin
           if FindUnit(Owner.UnitName, OwnerUnit) and
             LookupInUnit(OwnerUnit, ANode.Name, not SameText(OwnerUnit.FileName, FCurrent.FileName), False, Single) then
+          begin
             Result := UnitRoutines(Single);
+          end;
         end
         else if TypeOf(Owner, TypeInfo) then
         begin
@@ -2705,23 +3161,37 @@ begin
           begin
             Result := FindMembers(Target, ANode.Name);
             for Index := 0 to High(Result) do
+            begin
               if Result[Index].SymbolKind = TIndexSymbolKind.Constructor_ then
+              begin
                 Result[Index].Constructed := [Target];
+              end;
+            end;
             Exit;
           end;
           Result := FindMembers(TypeInfo, ANode.Name);
           // TKunde.Create liefert TKunde, auch wenn Create aus TObject stammt.
           if Owner.IsType then
+          begin
             for Index := 0 to High(Result) do
+            begin
               if Result[Index].SymbolKind = TIndexSymbolKind.Constructor_ then
+              begin
                 Result[Index].Constructed := [TypeInfo];
+              end;
+            end;
+          end;
         end;
       end
       else if ExprSymbol(ANode, Single) then
+      begin
         Result := [Single];
+      end;
   else
     if ExprSymbol(ANode, Single) then
+    begin
       Result := [Single];
+    end;
   end;
 end;
 
@@ -2737,7 +3207,9 @@ var
 begin
   Result := False;
   if (ANode = nil) or (FInferDepth > MaxInferDepth * 4) then
+  begin
     Exit;
+  end;
   Inc(FInferDepth);
   try
     case ANode.Kind of
@@ -2746,7 +3218,9 @@ begin
           Candidates := ExprCandidates(ANode);
           Result := Length(Candidates) > 0;
           if Result then
+          begin
             AResult := Candidates[0];
+          end;
         end;
       TSyntaxKind.MemberAccess:
         begin
@@ -2759,28 +3233,40 @@ begin
             Candidates := ExprCandidates(ANode[0]);
             Index := 0;
             while (Index <= High(Candidates)) and (Candidates[Index].TypeParams = '') do
+            begin
               Inc(Index);
+            end;
             if Index > High(Candidates) then
+            begin
               Exit;
+            end;
             AResult := Candidates[Index];
             Arguments := nil;
             for Index := 0 to Args.ChildCount - 1 do
+            begin
               Arguments := Arguments + [QualifyType(TIndexExtractor.TypeText(Args[Index]), FCurrent, FInImplementation)];
+            end;
             AResult.Bindings := AResult.Bindings + Bind(AResult.TypeParams, Arguments);
             Exit(True);
           end;
           Candidates := ExprCandidates(ANode);
           Result := Length(Candidates) > 0;
           if Result then
+          begin
             AResult := Candidates[0];
+          end;
         end;
       TSyntaxKind.Call:
         begin
           if ANode.ChildCount = 0 then
+          begin
             Exit;
+          end;
           Candidates := ExprCandidates(ANode[0]);
           if Length(Candidates) = 0 then
+          begin
             Exit;
+          end;
           // TFoo(X) ist eine Typumwandlung.
           if Candidates[0].IsType then
           begin
@@ -2794,7 +3280,9 @@ begin
       TSyntaxKind.IndexAccess:
         begin
           if (ANode.ChildCount = 0) or not ExprSymbol(ANode[0], Base) then
+          begin
             Exit;
+          end;
           // Liste.Items[i]: die indizierte Property selbst. Bei Lines[i][j] ist Base schon der Wert von Lines[i]
           // (ein string), nicht die Property (#1369, SynEdit).
           if (Base.SymbolKind = TIndexSymbolKind.Property_) and (Base.MaxArgs > 0) and
@@ -2804,9 +3292,13 @@ begin
             Exit(True);
           end;
           if not TypeOf(Base, TypeInfo) then
+          begin
             Exit;
+          end;
           if DefaultProperty(TypeInfo, AResult) then
+          begin
             Exit(True);
+          end;
           if TypeInfo.Builtin and MatchText(TypeInfo.Name, StringTypes) then
           begin
             AResult := BuiltinType('Char');
@@ -2829,25 +3321,37 @@ begin
       TSyntaxKind.BinaryExpr:
         // (X as TBar): der Zieltyp.
         if SameText(ANode.Name, 'as') and (ANode.ChildCount = 2) then
+        begin
           Result := ExprSymbol(ANode[1], AResult) and AResult.IsType;
+        end;
       TSyntaxKind.IfExpr:
         Result := (ANode.ChildCount >= 2) and ExprSymbol(ANode[1], AResult);
       TSyntaxKind.Literal:
         begin
           Text := ANode.Name;
           if Text = '' then
+          begin
             Exit;
+          end;
           if CharInSet(Text[1], ['''', '#']) then
-            AResult := BuiltinType('string')
+          begin
+            AResult := BuiltinType('string');
+          end
           else if CharInSet(Text[1], ['0'..'9', '$', '%']) then
           begin
             if (Text[1] <> '$') and ((Pos('.', Text) > 0) or (Pos('E', UpperCase(Text)) > 0)) then
-              AResult := BuiltinType('Double')
+            begin
+              AResult := BuiltinType('Double');
+            end
             else
+            begin
               AResult := BuiltinType('Integer');
+            end;
           end
           else
+          begin
             Exit;
+          end;
           Result := True;
         end;
     else
@@ -2889,8 +3393,11 @@ begin
   AWith := nil;
   AElement := -1;
   if FTree = nil then
+  begin
     Exit;
+  end;
   for WithNode in EnclosingWiths do
+  begin
     for Index := WithNode.ChildCount - 2 downto 0 do
     begin
       if not WithElementType(WithNode, Index, TypeInfo) then
@@ -2907,6 +3414,7 @@ begin
         Exit(True);
       end;
     end;
+  end;
 end;
 
 function TNameResolver.EnclosingWiths: TArray<TSyntaxNode>;
@@ -2917,20 +3425,26 @@ var
 begin
   Result := nil;
   if FTree = nil then
+  begin
     Exit;
+  end;
   Node := FTree.Root;
   repeat
     Descended := False;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if Contains(Node[Index], FOffset) then
       begin
         Node := Node[Index];
         if (Node.Kind = TSyntaxKind.WithStatement) and (Node.ChildCount >= 2) and
           Contains(Node[Node.ChildCount - 1], FOffset) then
+        begin
           Result := [Node] + Result;
+        end;
         Descended := True;
         Break;
       end;
+    end;
   until not Descended;
 end;
 
@@ -2961,11 +3475,17 @@ begin
   for mIndex := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
     if ATree.Tokens[mIndex].Offset >= ANode.EndOffset then
+    begin
       Break;
+    end;
     if ATree.Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
       Continue;
+    end;
     if (mLastEnd >= 0) and (ATree.Tokens[mIndex].Offset > mLastEnd) then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + ATree.Tokens[mIndex].Text;
     mLastEnd := ATree.Tokens[mIndex].Offset + Length(ATree.Tokens[mIndex].Text);
   end;
@@ -2984,11 +3504,14 @@ begin
   Seen := TDictionary<string, Boolean>.Create;
   try
     for WithNode in EnclosingWiths do
+    begin
       for Index := WithNode.ChildCount - 2 downto 0 do
       begin
         // Unbekannter Typ: keine Mitglieder; Namen weiter außen bleiben dann ohne Hinweis.
         if not WithElementType(WithNode, Index, TypeInfo) then
+        begin
           Continue;
+        end;
         // Eigene Sammlung: Unsichtbare Mitglieder des with-Typs dürfen äußere Namen nicht ausblenden.
         Members.Clear;
         Seen.Clear;
@@ -3001,6 +3524,7 @@ begin
           AddCandidate(AList, ASeen, TypeInfo);
         end;
       end;
+    end;
   finally
     Seen.Free;
     Members.Free;
@@ -3016,25 +3540,39 @@ begin
   AConsumed := 1;
   AResults := nil;
   if LookupWith(ANames[0], AResults, Stop) then
+  begin
     Exit(True);
+  end;
   if Stop then
+  begin
     Exit(False);
+  end;
   if not ResolveFirst(ANames, AConsumed, First) then
+  begin
     Exit(False);
+  end;
   Result := True;
   // Überladungen: Mitglieder der eigenen Klasse oder freie Routinen derselben Unit.
   // Verschachtelte Routinen (#881): ihre Überladungen in der umgebenden Routine.
   if (AConsumed = 1) and (First.Kind = TResolvedKind.Local) and (First.SymbolKind = TIndexSymbolKind.Routine) then
-    AResults := LocalOverloads(First)
+  begin
+    AResults := LocalOverloads(First);
+  end
   else if (AConsumed = 1) and (First.Kind = TResolvedKind.Symbol) and (First.SymbolKind in RoutineKinds) then
   begin
     if (First.Container <> '') and CurrentClass(ClassType) then
+    begin
       AResults := FindMembers(ClassType, ANames[0]);
+    end;
     if Length(AResults) = 0 then
+    begin
       AResults := UnitRoutines(First);
+    end;
   end
   else
+  begin
     AResults := [First];
+  end;
 end;
 
 function TNameResolver.ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -3047,14 +3585,18 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (Length(ANames) = 0) then
+  begin
     Exit;
+  end;
   Prepare(ATree, AFileName, AOffset);
 
   if AReceiver <> nil then
   begin
     // Foo(1).Bar, Liste[i].Bar, (X as TBar).Bar: alle Namen sind Mitglieder.
     if not ExprSymbol(AReceiver, Current) then
+    begin
       Exit;
+    end;
     Consumed := 0;
     Candidates := [Current];
   end
@@ -3062,17 +3604,23 @@ begin
   begin
     // inherited Create: im Vorfahren der Klasse der umgebenden Methode suchen.
     if not MethodClass(Current) or not AncestorOf(Current, Ancestor) then
+    begin
       Exit;
+    end;
     Candidates := FindMembers(Ancestor, ANames[0]);
     if Length(Candidates) = 0 then
+    begin
       Exit;
+    end;
     Current := Candidates[0];
     Consumed := 1;
   end
   else
   begin
     if not ResolveFirstAll(ANames, Consumed, Candidates) or (Length(Candidates) = 0) then
+    begin
       Exit;
+    end;
     Current := Candidates[0];
   end;
 
@@ -3082,25 +3630,37 @@ begin
     begin
       if not FindUnit(Current.UnitName, Owner) or
         not LookupInUnit(Owner, ANames[Index], not SameText(Owner.FileName, FCurrent.FileName), False, Single) then
+      begin
         Exit;
+      end;
       Candidates := UnitRoutines(Single);
     end
     else
     begin
       if not TypeOf(Current, TypeInfo) then
+      begin
         Exit;
+      end;
       Candidates := FindMembers(TypeInfo, ANames[Index]);
       if Length(Candidates) = 0 then
+      begin
         Exit;
+      end;
     end;
     Current := Candidates[0];
   end;
   if ACall <> nil then
+  begin
     Candidates := SelectOverloads(Candidates, ACall.ChildCount - 1, ArgTypes(ACall, 1));
+  end;
   // Eingebaute Typen haben keine Deklaration, zu der man springen könnte.
   for Current in Candidates do
+  begin
     if not Current.Builtin then
+    begin
       Result := Result + [Current];
+    end;
+  end;
 end;
 
 function TNameResolver.ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -3116,9 +3676,13 @@ var
 begin
   Results := ResolveNames(ATree, AFileName, ANames, AOffset, AInherited, nil, nil);
   if Length(Results) > 0 then
-    Result := Results[0]
+  begin
+    Result := Results[0];
+  end
   else
+  begin
     Result := NoResult;
+  end;
 end;
 
 function TNameResolver.ScopedEnumValue(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer;
@@ -3129,12 +3693,14 @@ function TNameResolver.ScopedEnumValue(ATree: TSyntaxTree; const AFileName, ANam
     Position: Integer;
   begin
     for Position in AUnit.SymbolsNamed(AName) do
+    begin
       if (AUnit.Symbols[Position].Kind = TIndexSymbolKind.EnumMember) and AUnit.Symbols[Position].ScopedEnum and
         (not AOnlyInterface or AUnit.Symbols[Position].InInterface) then
       begin
         AQualified := AUnit.Symbols[Position].Container + '.' + AUnit.Symbols[Position].Name;
         Exit(True);
       end;
+    end;
     Result := False;
   end;
 
@@ -3145,10 +3711,16 @@ begin
   AQualified := '';
   Prepare(ATree, AFileName, AOffset);
   if Find(FCurrent, False) then
+  begin
     Exit(True);
+  end;
   for UnitName in ScopeUnits(FCurrent, FInImplementation) do
+  begin
     if FindUnitRef(UnitName, Used) and Find(Used^, True) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -3193,10 +3765,14 @@ end;
 function IsOtherDeclaration(const ANear, AOuter: TResolvedSymbol): Boolean;
 begin
   if (ANear.Kind = TResolvedKind.Local) and (AOuter.Kind = TResolvedKind.Local) then
-    Result := not (ANear.SelectionRange.StartPos = AOuter.SelectionRange.StartPos)
+  begin
+    Result := not (ANear.SelectionRange.StartPos = AOuter.SelectionRange.StartPos);
+  end
   else
+  begin
     Result := (ANear.Kind <> AOuter.Kind) or not SameText(ANear.Container, AOuter.Container) or
       not SameText(ANear.FileName, AOuter.FileName);
+  end;
 end;
 
 class function TNameResolver.ArgumentFits(const AParam, AArg: string): Boolean;
@@ -3209,9 +3785,13 @@ begin
   if ASymbol.Kind = TResolvedKind.Local then
   begin
     if ASymbol.IsParameter then
-      Result := 'Parameter ' + ASymbol.Name
+    begin
+      Result := 'Parameter ' + ASymbol.Name;
+    end
     else
+    begin
       Result := 'lokale Variable ' + ASymbol.Name;
+    end;
   end
   else if ASymbol.Container <> '' then
   begin
@@ -3225,9 +3805,13 @@ begin
     Result := Result + ASymbol.Container + '.' + ASymbol.Name;
   end
   else if ASymbol.UnitName <> '' then
-    Result := ASymbol.UnitName + '.' + ASymbol.Name
+  begin
+    Result := ASymbol.UnitName + '.' + ASymbol.Name;
+  end
   else
+  begin
     Result := ASymbol.Name;
+  end;
 end;
 
 procedure TNameResolver.AddCandidate(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>;
@@ -3241,10 +3825,13 @@ begin
   // ihre Positionen merkt sich der erste Eintrag (#425).
   Key := UpperCase(ASymbol.Name);
   if Key = '' then
+  begin
     Exit;
+  end;
   if ASeen.ContainsKey(Key) then
   begin
     for Index := AList.Count - 1 downto 0 do
+    begin
       if SameText(AList[Index].Name, ASymbol.Name) then
       begin
         // Gleiche Klasse und Datei, gleicher Abschnitt (Rümpfe in implementation zählen nicht) und andere
@@ -3266,7 +3853,9 @@ begin
           Existing := AList[Index];
           Params := ShadowText(ASymbol);
           if not MatchText(Params, Existing.Hides) then
+          begin
             Existing.Hides := Existing.Hides + [Params];
+          end;
           // with-Mitglied über einem lokalen Namen oder einem Mitglied von Self (#481): Warnung in der Liste.
           if Existing.WithOrigin <> '' then
           begin
@@ -3277,12 +3866,15 @@ begin
               Params := '';
             end;
             if (Params <> '') and not MatchText(Params, Existing.WithShadows) then
+            begin
               Existing.WithShadows := Existing.WithShadows + [Params];
+            end;
           end;
           AList[Index] := Existing;
         end;
         Break;
       end;
+    end;
     Exit;
   end;
   ASeen.Add(Key, True);
@@ -3320,24 +3912,38 @@ begin
     // keine Kopie des Symbol-Records je geprüftem Symbol (Code-Review P-05).
     // Vorfahr-Helfer danach (#848); gleichnamige verdeckt der abgeleitete.
     if HelperFor(Current, Helper) then
+    begin
       for HelperDepth := 0 to MaxDepth do
       begin
         if UnitOf(Helper, HelperUnit) then
+        begin
           for Position := 0 to High(HelperUnit.Symbols) do
+          begin
             if SameText(HelperUnit.Symbols[Position].Container, Helper.QualifiedName) and
               IsVisible(HelperUnit.Symbols[Position], HelperUnit, Helper, False) and
               NameWanted(HelperUnit.Symbols[Position].Name) then
+            begin
               AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, HelperUnit.Symbols[Position]), Depth, True));
+            end;
+          end;
+        end;
         if not HelperParent(Helper, Parent) then
+        begin
           Break;
+        end;
         Helper := Parent;
       end;
+    end;
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
+    begin
       Exit;
+    end;
     LocalChain := LocalChain or SameText(OwnerUnit.FileName, FCurrent.FileName);
     TypeName := Current.QualifiedName;
     for Position := 0 to High(OwnerUnit.Symbols) do
+    begin
       if SameText(OwnerUnit.Symbols[Position].Container, TypeName) then
+      begin
         if IsVisible(OwnerUnit.Symbols[Position], OwnerUnit, Current, LocalChain) then
         begin
           if NameWanted(OwnerUnit.Symbols[Position].Name) then
@@ -3349,10 +3955,16 @@ begin
           end;
         end
         else
+        begin
           // Unsichtbare Deklaration: auch ihren Rumpf aus implementation nicht anbieten.
           ASeen.AddOrSetValue(UpperCase(OwnerUnit.Symbols[Position].Name), True);
+        end;
+      end;
+    end;
     if not AncestorOf(Current, Ancestor) then
+    begin
       Exit;
+    end;
     Current := Ancestor;
   end;
 end;
@@ -3366,12 +3978,18 @@ begin
   for Position := 0 to High(AUnit.Symbols) do
   begin
     if AOnlyInterface and not AUnit.Symbols[Position].InInterface then
+    begin
       Continue;
+    end;
     if (AUnit.Symbols[Position].Container <> '') and ((AUnit.Symbols[Position].Kind <> TIndexSymbolKind.EnumMember) or
       AUnit.Symbols[Position].ScopedEnum) then
+    begin
       Continue;
+    end;
     if not NameWanted(AUnit.Symbols[Position].Name) then
+    begin
       Continue;
+    end;
     AddCandidate(AList, ASeen, FromSymbol(AUnit, AUnit.Symbols[Position]));
   end;
 end;
@@ -3393,11 +4011,17 @@ begin
       TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl:
         begin
           if Child.Kind = TSyntaxKind.VarDecl then
-            Kind := TIndexSymbolKind.Variable
+          begin
+            Kind := TIndexSymbolKind.Variable;
+          end
           else
+          begin
             Kind := TIndexSymbolKind.Constant;
+          end;
           for Name in Child.Name.Split([',']) do
+          begin
             AddCandidate(AList, ASeen, FromNode(Child, Name.Trim, Kind, False));
+          end;
         end;
       TSyntaxKind.TypeDecl:
         AddCandidate(AList, ASeen, FromNode(Child, Child.Name, TIndexSymbolKind.TypeAlias, False));
@@ -3426,11 +4050,17 @@ begin
       if Child.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
       begin
         if Child.EndOffset <= FOffset then
+        begin
           for Name in Child.Name.Split([',']) do
+          begin
             AddCandidate(AList, ASeen, FromNode(Child, Name.Trim, TIndexSymbolKind.Variable, False));
+          end;
+        end;
       end
       else if (Child.Kind <> TSyntaxKind.RoutineDecl) and Contains(Child, FOffset) then
+      begin
         PushChildrenBefore(Pending, Child, FOffset);
+      end;
     end;
   finally
     Pending.Free;
@@ -3456,10 +4086,14 @@ begin
   Result := nil;
   FScopeOpen := False;
   if FScopeSeen = nil then
+  begin
     FScopeSeen := TDictionary<string, Boolean>.Create;
+  end;
   FScopeSeen.Clear;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Prepare(ATree, AFileName, AOffset);
   List := TList<TResolvedSymbol>.Create;
   try
@@ -3478,13 +4112,19 @@ begin
       begin
         Params := Header.FindChild(TSyntaxKind.Parameters);
         if Params <> nil then
+        begin
           for Index := 0 to Params.ChildCount - 1 do
           begin
             Param := Params[Index];
             if Param.Kind = TSyntaxKind.Parameter then
+            begin
               for Name in Param.Name.Split([',']) do
+              begin
                 AddCandidate(List, FScopeSeen, FromNode(Param, Name.Trim, TIndexSymbolKind.Variable, True));
+              end;
+            end;
           end;
+        end;
         if Header.FindChild(TSyntaxKind.TypeReference) <> nil then
         begin
           ResultSymbol := FromNode(Header, 'Result', TIndexSymbolKind.Variable, False);
@@ -3544,16 +4184,24 @@ var
 begin
   Result := nil;
   if not FScopeOpen then
+  begin
     Exit;
+  end;
   FScopeOpen := False;
   List := TList<TResolvedSymbol>.Create;
   try
     for UnitName in ScopeUnits(FScopeUnit, FScopeInImplementation) do
+    begin
       if FindUnitRef(UnitName, Used) then
+      begin
         CollectUnit(Used^, True, List, FScopeSeen);
+      end;
+    end;
     // Zuletzt, was System ohne Quelltext mitbringt: Indexiertes und Eigenes verdeckt gleichnamige Einträge.
     if AWithIntrinsics then
+    begin
       for Intrinsic in TSystemIntrinsics.All do
+      begin
         if not FScopeSeen.ContainsKey(UpperCase(Intrinsic.Name)) and NameWanted(Intrinsic.Name) then
         begin
           Symbol := IntrinsicSymbol(Intrinsic);
@@ -3568,6 +4216,8 @@ begin
           Symbol.MaxArgs := Intrinsic.MaxArgs;
           List[List.Count - 1] := Symbol;
         end;
+      end;
+    end;
     Result := List.ToArray;
   finally
     List.Free;
@@ -3584,13 +4234,19 @@ var
 begin
   Result := nil;
   if not FScopeOpen then
+  begin
     Exit;
+  end;
   List := TList<TResolvedSymbol>.Create;
   Seen := TDictionary<string, Boolean>.Create;
   try
     for UnitName in ScopeUnits(FScopeUnit, FScopeInImplementation) do
+    begin
       if FindUnitRef(UnitName, Used) then
+      begin
         CollectUnit(Used^, True, List, Seen);
+      end;
+    end;
     Result := List.ToArray;
   finally
     Seen.Free;
@@ -3610,17 +4266,23 @@ begin
   // ResolveChain bereitet den Zustand (aktuelle Unit, Abschnitt) vor.
   Owner := ResolveChain(ATree, AFileName, ANames, AOffset);
   if not Owner.Found then
+  begin
     Exit;
+  end;
   List := TList<TResolvedSymbol>.Create;
   Seen := TDictionary<string, Boolean>.Create;
   try
     if Owner.Kind = TResolvedKind.UnitName then
     begin
       if FindUnit(Owner.UnitName, OwnerUnit) then
+      begin
         CollectUnit(OwnerUnit, not SameText(OwnerUnit.FileName, FCurrent.FileName), List, Seen);
+      end;
     end
     else if TypeOf(Owner, TypeInfo) then
+    begin
       CollectMembers(TypeInfo, List, Seen);
+    end;
     Result := List.ToArray;
   finally
     Seen.Free;
@@ -3631,9 +4293,13 @@ end;
 function TNameResolver.TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
 begin
   if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
-    Result := FTreeUnits.Merged(FIndex, AFileName)
+  begin
+    Result := FTreeUnits.Merged(FIndex, AFileName);
+  end
   else
+  begin
     Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
+  end;
 end;
 
 function TNameResolver.MergedUnit(const AExtracted: TUnitIndex; const AFileName: string): TUnitIndex;
@@ -3646,8 +4312,12 @@ var
   Index: Integer;
 begin
   for Index := FPins.Count - 1 downto 0 do
+  begin
     if (FPins[Index].Tree = ATree) and SameText(FPins[Index].FileName, AFileName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -3657,11 +4327,17 @@ var
 begin
   PinIndex := PinnedIndex(ATree, AFileName);
   if PinIndex >= 0 then
-    Result := FPins[PinIndex].Extracted
+  begin
+    Result := FPins[PinIndex].Extracted;
+  end
   else if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
-    Result := FTreeUnits.Extracted(AFileName)
+  begin
+    Result := FTreeUnits.Extracted(AFileName);
+  end
   else
+  begin
     Result := TIndexExtractor.Extract(ATree, AFileName);
+  end;
 end;
 
 function TNameResolver.ReceiverTypes(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -3673,12 +4349,16 @@ var
 begin
   Result := nil;
   if not ChainType(ATree, AFileName, ANames, AOffset, Owner, Current, Found) or not Found then
+  begin
     Exit;
+  end;
   for Depth := 0 to MaxDepth do
   begin
     Result := Result + [Current];
     if Current.Builtin or not AncestorOf(Current, Ancestor) then
+    begin
       Break;
+    end;
     Current := Ancestor;
   end;
 end;
@@ -3700,7 +4380,9 @@ begin
   AOwner := ResolveChain(ATree, AFileName, ANames, AOffset);
   Result := AOwner.Found;
   if Result and (AOwner.Kind <> TResolvedKind.UnitName) then
+  begin
     ATypeFound := TypeOf(AOwner, AType);
+  end;
 end;
 
 function TNameResolver.NodeType(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
@@ -3711,11 +4393,15 @@ begin
   ATypeFound := False;
   Result := False;
   if ANode = nil then
+  begin
     Exit;
+  end;
   Prepare(ATree, AFileName, ANode.StartOffset);
   Result := ExprSymbol(ANode, ASymbol);
   if Result and (ASymbol.Kind <> TResolvedKind.UnitName) then
+  begin
     ATypeFound := TypeOf(ASymbol, AType);
+  end;
 end;
 
 function TNameResolver.CallCandidates(ATree: TSyntaxTree; const AFileName: string;
@@ -3723,7 +4409,9 @@ function TNameResolver.CallCandidates(ATree: TSyntaxTree; const AFileName: strin
 begin
   Result := nil;
   if ACallee = nil then
+  begin
     Exit;
+  end;
   Prepare(ATree, AFileName, ACallee.StartOffset);
   Result := ExprCandidates(ACallee);
 end;
@@ -3738,22 +4426,34 @@ var
 begin
   Result := False;
   if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.Identifier) then
+  begin
     Exit;
+  end;
   Prepare(ATree, AFileName, ACallee.StartOffset);
   // with-Objekte verdecken alles weiter außen, innerstes zuerst (wie LookupWithOwner).
   for mWith in EnclosingWiths do
+  begin
     for mIndex := mWith.ChildCount - 2 downto 0 do
     begin
       if not WithElementType(mWith, mIndex, mType) then
+      begin
         Exit(True);
+      end;
       if Length(FindMembers(mType, ACallee.Name)) > 0 then
+      begin
         Exit;
+      end;
       AncestorNames(mType, mComplete);
       if not mComplete then
+      begin
         Exit(True);
+      end;
     end;
+  end;
   if (ACandidate.Kind = TResolvedKind.Local) or (ACandidate.Container <> '') then
+  begin
     Exit;
+  end;
   Result := HasUnknownAncestor;
 end;
 
@@ -3770,20 +4470,28 @@ begin
   AReadsField := False;
   Result := False;
   if (AProperty.SymbolKind <> TIndexSymbolKind.Property_) or (AProperty.Container = '') then
+  begin
     Exit;
+  end;
   // "property Rect: TRect read FRect write SetRect": das Wort hinter read, bei read FPunkt.X das Feld FPunkt.
   Name := '';
   Words := AProperty.Signature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
   for Index := 0 to High(Words) - 1 do
+  begin
     if SameText(Words[Index], 'read') then
     begin
       Name := Words[Index + 1];
       Break;
     end;
+  end;
   if Pos('.', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('.', Name) - 1);
+  end;
   if (Name = '') or not UnitOf(AProperty, FromUnit) then
+  begin
     Exit;
+  end;
   // Zuerst im Typ selbst, auch private: Der Zugriff steht meist privat neben der Property.
   for Position in FromUnit.SymbolsNamed(Name) do
   begin
@@ -3796,7 +4504,9 @@ begin
     end;
   end;
   if not ResolveTypeName(AProperty.Container, FromUnit, True, Owner) or not FindMember(Owner, Name, Member) then
+  begin
     Exit;
+  end;
   AReadsField := Member.SymbolKind = TIndexSymbolKind.Field;
   Result := True;
 end;
@@ -3843,15 +4553,21 @@ var
   PinIndex: Integer;
 begin
   if FPinCalls.Count = 0 then
+  begin
     Exit;
+  end;
   Call := FPinCalls[FPinCalls.Count - 1];
   FPinCalls.Delete(FPinCalls.Count - 1);
   PinIndex := PinnedIndex(Call.Tree, Call.FileName);
   if PinIndex < 0 then
+  begin
     Exit;
+  end;
   Dec(FPins.List[PinIndex].Depth);
   if FPins.List[PinIndex].Depth > 0 then
+  begin
     Exit;
+  end;
   Pin := FPins[PinIndex];
   FPins.Delete(PinIndex);
   // Die Plätze dahinter rücken auf: Prepare setzt FCurrent beim nächsten Mal neu.
@@ -3859,9 +4575,13 @@ begin
   // Der Aufrufer gibt den Baum danach frei: keine Bezüge behalten, die eine wiederverwendete Adresse
   // treffen könnten. Ohne FHelperTree leert das nächste Prepare die baumbezogenen Caches.
   if FHelperTree = Pin.Tree then
+  begin
     FHelperTree := nil;
+  end;
   if FTree = Pin.Tree then
+  begin
     FTree := nil;
+  end;
 end;
 
 function TNameResolver.ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string;
@@ -3914,12 +4634,18 @@ begin
   Name := Trim(ACref);
   // Parameterliste weg: "TFoo.Bar(System.Int32)" → "TFoo.Bar".
   if Pos('(', Name) > 0 then
+  begin
     Name := Trim(Copy(Name, 1, Pos('(', Name) - 1));
+  end;
   if Name = '' then
+  begin
     Exit;
+  end;
   // Typ (auch qualifiziert, z. B. System.Classes.TList).
   if ResolveTypeFrom(AFromUnit, Name, AResult) and not AResult.Builtin and AResult.IsType then
+  begin
     Exit(True);
+  end;
   // Typ.Mitglied
   Dot := LastDelimiter('.', Name);
   if Dot > 0 then
@@ -3928,12 +4654,16 @@ begin
     Member := Copy(Name, Dot + 1, MaxInt);
     if ResolveTypeFrom(AFromUnit, TypePart, Owner) and not Owner.Builtin and
       DeclaredMember(Owner, Member, AResult) then
+    begin
       Exit(True);
+    end;
   end;
   // Mitglied der eigenen Klasse.
   if (AContainer <> '') and (Dot = 0) and ResolveTypeFrom(AFromUnit, AContainer, Owner) and
     DeclaredMember(Owner, Name, AResult) then
+  begin
     Exit(True);
+  end;
   // Globale Routine, Konstante, Variable.
   Result := ResolveNameFrom(AFromUnit, Name, AResult) and (AResult.FileName <> '');
 end;
@@ -3949,16 +4679,22 @@ begin
   for Depth := 0 to MaxDepth do
   begin
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
+    begin
       Exit(False);
+    end;
     // Über die Namenstabelle statt aller Symbole je Vorfahrstufe (Code-Review P-05).
     for Position in OwnerUnit.SymbolsNamed(AName) do
+    begin
       if SameText(OwnerUnit.Symbols[Position].Container, Current.QualifiedName) then
       begin
         AResult := FromSymbol(OwnerUnit, OwnerUnit.Symbols[Position]);
         Exit(True);
       end;
+    end;
     if not AncestorOf(Current, Ancestor) then
+    begin
       Exit(False);
+    end;
     Current := Ancestor;
   end;
   Result := False;
@@ -3983,18 +4719,26 @@ var
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Prepare(ATree, AFileName, AOffset);
   if not MethodClass(Current) or not AncestorOf(Current, Ancestor) then
+  begin
     Exit;
+  end;
   List := TList<TResolvedSymbol>.Create;
   Seen := TDictionary<string, Boolean>.Create;
   try
     // Wie Mitglieder des Vorfahren, gesehen aus der eigenen Methode (protected sichtbar).
     CollectMembers(Ancestor, List, Seen);
     for Candidate in List do
+    begin
       if Candidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
+      begin
         Result := Result + [MemberOf(Candidate, Candidate.Depth + 1, Candidate.IsHelper)];
+      end;
+    end;
   finally
     Seen.Free;
     List.Free;
@@ -4014,18 +4758,25 @@ begin
   ADepths := nil;
   AStart := -1;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Prepare(ATree, AFileName, AOffset);
   if not MethodClass(Current) then
+  begin
     Exit;
+  end;
   Routines := EnclosingRoutines;
   AStart := Routines[High(Routines)].StartOffset;
   for Depth := 1 to MaxDepth do
   begin
     if not AncestorOf(Current, Ancestor) or not UnitOf(Ancestor, OwnerUnit) then
+    begin
       Break;
+    end;
     // Sichtbar wie aus der eigenen Methode: protected ja, private nur aus derselben Datei.
     for Symbol in OwnerUnit.Symbols do
+    begin
       if SameText(Symbol.Container, Ancestor.QualifiedName) and
         (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and not Symbol.Unavailable and
         (Symbol.Visibility <> TIndexVisibility.StrictPrivate) and
@@ -4034,6 +4785,7 @@ begin
         Result := Result + [Symbol];
         ADepths := ADepths + [Depth];
       end;
+    end;
     Current := Ancestor;
   end;
 end;
@@ -4052,6 +4804,7 @@ begin
   try
     // Eigener Typ aus dem aktuellen Stand der Datei: jede Sichtbarkeit.
     for Symbol in AFromUnit.Symbols do
+    begin
       if SameText(Symbol.Container, ATypeName) and
         (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) and
         not Seen.ContainsKey(UpperCase(Symbol.Name)) then
@@ -4059,14 +4812,20 @@ begin
         Seen.Add(UpperCase(Symbol.Name), True);
         Result := Result + [FromSymbol(AFromUnit, Symbol)];
       end;
+    end;
     if not ResolveTypeFrom(AFromUnit, ATypeName, Own) then
+    begin
       Exit;
+    end;
     Current := Own;
     for Depth := 1 to MaxDepth do
     begin
       if not AncestorOf(Current, Ancestor) or not UnitOf(Ancestor, OwnerUnit) then
+      begin
         Break;
+      end;
       for Symbol in OwnerUnit.Symbols do
+      begin
         if SameText(Symbol.Container, Ancestor.QualifiedName) and
           (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) and
           (Symbol.Visibility <> TIndexVisibility.StrictPrivate) and
@@ -4078,6 +4837,7 @@ begin
           Candidate.Depth := Depth;
           Result := Result + [Candidate];
         end;
+      end;
       Current := Ancestor;
     end;
   finally
@@ -4097,20 +4857,29 @@ var
 begin
   Result := nil;
   if not ResolveTypeFrom(AFromUnit, ATypeName, Own) or not UnitOf(Own, OwnerUnit) then
+  begin
     Exit;
+  end;
   Seen := TDictionary<string, Boolean>.Create;
   List := TList<TResolvedSymbol>.Create;
   try
     // Im Typ selbst Deklariertes ist schon überschrieben bzw. verdeckt.
     for Symbol in OwnerUnit.Symbols do
+    begin
       if SameText(Symbol.Container, Own.QualifiedName) then
+      begin
         Seen.AddOrSetValue(UpperCase(Symbol.Name), True);
+      end;
+    end;
     Current := Own;
     for Depth := 1 to MaxDepth do
     begin
       if not AncestorOf(Current, Ancestor) or not UnitOf(Ancestor, OwnerUnit) then
+      begin
         Break;
+      end;
       for Symbol in OwnerUnit.Symbols do
+      begin
         if SameText(Symbol.Container, Ancestor.QualifiedName) and Symbol.IsVirtual and
           (Symbol.Kind in [TIndexSymbolKind.Method]) and (Symbol.Visibility <> TIndexVisibility.StrictPrivate) and
           (Symbol.Visibility <> TIndexVisibility.Private) and not Seen.ContainsKey(UpperCase(Symbol.Name)) then
@@ -4120,6 +4889,7 @@ begin
           Candidate.Depth := Depth;
           List.Add(Candidate);
         end;
+      end;
       Current := Ancestor;
     end;
     Result := List.ToArray;
@@ -4140,9 +4910,13 @@ begin
   begin
     TypeText := AParamTypes[Index];
     if (Pos('<', TypeText) = 0) and (LastDelimiter('.', TypeText) > 0) then
+    begin
       TypeText := Copy(TypeText, LastDelimiter('.', TypeText) + 1, MaxInt);
+    end;
     if Index > 0 then
+    begin
       Result := Result + ';';
+    end;
     Result := Result + UpperCase(TypeText);
   end;
   Result := Result + ')';
@@ -4162,11 +4936,14 @@ begin
   Result := '';
   Index := 1;
   while Index <= Length(AText) do
+  begin
     if CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_', '&']) then
     begin
       Start := Index;
       while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_', '0'..'9', '.', '&']) do
+      begin
         Inc(Index);
+      end;
       Chain := Copy(AText, Start, Index - Start);
       // Längstes Präfix, das eine Unit ist, entfernen.
       Dot := LastDelimiter('.', Chain);
@@ -4187,6 +4964,7 @@ begin
       Result := Result + AText[Index];
       Inc(Index);
     end;
+  end;
 end;
 
 function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex;
@@ -4220,7 +4998,9 @@ function BareTypeName(const AText: string): string;
 begin
   Result := Trim(AText);
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
 
@@ -4249,7 +5029,9 @@ function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex; cons
   begin
     Types := Copy(ASymbol.ParamTypes);
     for Index := 0 to High(Types) do
+    begin
       Types[Index] := UnqualifyType(Substitute(Types[Index], ABindings));
+    end;
     Result := SignatureKey(ASymbol.Name, Types);
   end;
 
@@ -4261,12 +5043,20 @@ function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex; cons
     Result := (ABase = '') or SameText(BareTypeName(ABase), 'TObject') or
       MatchText(BareTypeName(ABase), InterfacedRoots);
     if not Result then
+    begin
       Exit;
+    end;
     for Method in ObjectMethods do
+    begin
       ANames.AddOrSetValue(LowerCase(Method), True);
+    end;
     if (ABase <> '') and MatchText(BareTypeName(ABase), InterfacedRoots) then
+    begin
       for Method in InterfaceMethods do
+      begin
         ANames.AddOrSetValue(LowerCase(Method), True);
+      end;
+    end;
   end;
 
   /// <summary>Interface AName und seine Vorfahren als übernommen eintragen.</summary>
@@ -4277,12 +5067,16 @@ function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex; cons
   begin
     ASkipped.AddOrSetValue(UpperCase(BareTypeName(AName)), True);
     if not ResolveTypeText(AName, AUnit, True, Delegate) then
+    begin
       Exit;
+    end;
     for Level := 0 to MaxDepth do
     begin
       ASkipped.AddOrSetValue(UpperCase(Delegate.Name), True);
       if not AncestorOf(Delegate, Parent) or (Parent.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+      begin
         Break;
+      end;
       Delegate := Parent;
     end;
   end;
@@ -4300,7 +5094,9 @@ begin
   Result := nil;
   AComplete := False;
   if not ResolveTypeFrom(AFromUnit, ATypeName, Own) or not UnitOf(Own, OwnerUnit) then
+  begin
     Exit;
+  end;
   AComplete := True;
   Implemented := TDictionary<string, Boolean>.Create;
   SeenInterfaces := TDictionary<string, Boolean>.Create;
@@ -4320,9 +5116,13 @@ begin
       end;
       Bindings := Unqualified(Current.Bindings);
       for Symbol in IntfUnit.Symbols do
+      begin
         if SameText(Symbol.Container, Current.QualifiedName) and (Symbol.Kind in RoutineKinds) then
-          Implemented.AddOrSetValue(KeyOf(Symbol, Bindings), True)
+        begin
+          Implemented.AddOrSetValue(KeyOf(Symbol, Bindings), True);
+        end
         else if SameText(Symbol.QualifiedName, Current.QualifiedName) then
+        begin
           for Name in Symbol.Resolutions do
           begin
             // "IFoo.Bar=Baz": Schlüssel ifoo.bar ohne Unit-Präfix vor IFoo.
@@ -4330,6 +5130,8 @@ begin
             Resolutions.AddOrSetValue(LowerCase(BareTypeName(Copy(Key, 1, LastDelimiter('.', Key) - 1)) +
               Copy(Key, LastDelimiter('.', Key), MaxInt)), True);
           end;
+        end;
+      end;
       if AncestorOf(Current, Ancestor) and (Ancestor.SymbolKind <> TIndexSymbolKind.InterfaceType) then
       begin
         Current := Ancestor;
@@ -4339,45 +5141,67 @@ begin
       Parent := '';
       if (Length(Current.Ancestors) > 0) and not (AncestorOf(Current, Ancestor) and
         (Ancestor.SymbolKind = TIndexSymbolKind.InterfaceType)) then
+      begin
         Parent := Current.Ancestors[0];
+      end;
       if not AddRoot(Parent, ByName) then
+      begin
         AComplete := False;
+      end;
       Break;
     end;
     for Name in ADelegated do
+    begin
       AddDelegated(Name, OwnerUnit, Delegated);
+    end;
     // Interfaces der Vorfahrenliste, jeweils mit ihren Vorfahren. Mit Typargumenten: Erst sie binden die
     // Typparameter des Interfaces (IComparer<TKunde>: T=TKunde), sonst weichen alle Köpfe mit T ab.
     Names := AAncestors;
     if Length(Names) = 0 then
+    begin
       for Depth := 0 to High(Own.Ancestors) do
+      begin
         Names := Names + [Substitute(Own.AncestorText(Depth), Own.Bindings)];
+      end;
+    end;
     for Name in Names do
     begin
       if not ResolveTypeText(Name, OwnerUnit, True, Intf) or (Intf.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+      begin
         Continue;
+      end;
       for Depth := 0 to MaxDepth do
       begin
         if SeenInterfaces.ContainsKey(UpperCase(Intf.QualifiedName)) or not UnitOf(Intf, IntfUnit) then
+        begin
           Break;
+        end;
         SeenInterfaces.Add(UpperCase(Intf.QualifiedName), True);
         if Delegated.ContainsKey(UpperCase(Intf.Name)) then
+        begin
           Break;
+        end;
         Bindings := Unqualified(Intf.Bindings);
         for Symbol in IntfUnit.Symbols do
+        begin
           if SameText(Symbol.Container, Intf.QualifiedName) and (Symbol.Kind in RoutineKinds) then
           begin
             Key := KeyOf(Symbol, Bindings);
             if Implemented.ContainsKey(Key) or ByName.ContainsKey(LowerCase(Symbol.Name)) or
               Resolutions.ContainsKey(LowerCase(BareTypeName(Intf.Name) + '.' + Symbol.Name)) then
+            begin
               Continue;
+            end;
             Implemented.Add(Key, True);
             Member := FromSymbol(IntfUnit, Symbol);
             Member.Bindings := Bindings;
             List.Add(Member);
           end;
+        end;
         if not AncestorOf(Intf, Ancestor) or (Ancestor.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+        begin
           Break;
+        end;
         Intf := Ancestor;
       end;
     end;
@@ -4401,9 +5225,13 @@ begin
   Symbol := Resolve(ATree, AFileName, APosition);
   if (Symbol.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and TypeOf(Symbol, TypeInfo) and
     not TypeInfo.Builtin then
-    Result := TypeInfo
+  begin
+    Result := TypeInfo;
+  end
   else
+  begin
     Result := NoResult;
+  end;
 end;
 
 /// <summary>Typ, dessen Methodenzuordnung (procedure IFoo.Bar = MyBar) an AOffset ihr Ziel nennt (#849);
@@ -4414,13 +5242,17 @@ var
 begin
   Result := '';
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if (ANode[Index].StartOffset <= AOffset) and (AOffset < ANode[Index].EndOffset) then
     begin
       if (ANode[Index].Kind = TSyntaxKind.Identifier) and (ANode.Kind = TSyntaxKind.Directive) and
         (ANode.Name = 'resolution') then
+      begin
         Exit(ANode.EnclosingTypeName);
+      end;
       Exit(ResolutionOwner(ANode[Index], AOffset));
     end;
+  end;
 end;
 
 function TNameResolver.ResolveAt(ATree: TSyntaxTree; const AFileName: string;
@@ -4443,20 +5275,28 @@ var
   begin
     // &Begin → Begin
     if (AText <> '') and (AText[1] = '&') then
-      Result := Copy(AText, 2, MaxInt)
+    begin
+      Result := Copy(AText, 2, MaxInt);
+    end
     else
+    begin
       Result := AText;
+    end;
   end;
 
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
+  end;
   FTree := ATree;
   Tokens := ATree.Tokens;
   Index := ATree.IdentifierAt(APosition);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Names := TList<string>.Create;
   try
     Names.Add(Clean(Tokens[Index].Text));
@@ -4474,7 +5314,9 @@ begin
       Before := Tokens[First - 2];
       Receiver := FindReceiver(Before.Offset + Length(Before.Text));
       if Receiver = nil then
+      begin
         Exit;
+      end;
     end
     else
     begin
@@ -4508,7 +5350,9 @@ begin
     // Aufruf mit Klammern: Argumente bestimmen die Überladung.
     Call := nil;
     if (Index < High(Tokens)) and Tokens[Index + 1].IsSymbol('(') then
+    begin
       Call := FindCall(Tokens[Index].Offset + Length(Tokens[Index].Text));
+    end;
     IsInherited := (Receiver = nil) and (First >= 1) and Tokens[First - 1].IsKeyword('inherited');
     // Ziel einer Methodenzuordnung procedure IFoo.Bar = MyBar (#849): Methode des umgebenden Typs.
     if (Receiver = nil) and (First >= 1) and Tokens[First - 1].IsSymbol('=') then
@@ -4530,7 +5374,9 @@ begin
       Result := ResolveNames(ATree, AFileName, AttributeNames, Tokens[Index].Offset, False, nil, nil);
       if (Length(Result) > 0) and (Result[0].SymbolKind = TIndexSymbolKind.ClassType) and
         IsAttributeClass(Result[0]) then
+      begin
         Exit;
+      end;
       Result := ResolveNames(ATree, AFileName, Names.ToArray, Tokens[Index].Offset, False, nil, nil);
       Exit;
     end;
@@ -4553,9 +5399,13 @@ var
 begin
   Results := ResolveAt(ATree, AFileName, APosition);
   if Length(Results) > 0 then
-    Result := Results[0]
+  begin
+    Result := Results[0];
+  end
   else
+  begin
     Result := NoResult;
+  end;
 end;
 
 function TNameResolver.TypeDescendsFrom(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;

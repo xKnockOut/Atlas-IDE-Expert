@@ -63,7 +63,9 @@ function FirstString(const AArguments: TJSONArray): string;
 begin
   Result := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     Result := AArguments.Items[0].Value;
+  end;
 end;
 
 /// <summary>Spalten einer Option der Art "object-list" (#1133): [{"name": …, "list": true}].</summary>
@@ -78,7 +80,9 @@ begin
     mObject := TJSONObject.Create;
     mObject.AddPair('name', mColumn.Name);
     if mColumn.List then
+    begin
       mObject.AddPair('list', TJSONBool.Create(True));
+    end;
     Result.AddElement(mObject);
   end;
 end;
@@ -96,7 +100,9 @@ begin
   Scope := TConfigurationScope.Project;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) and
     SameText(AArguments.Items[1].Value, 'global') then
+  begin
     Scope := TConfigurationScope.Global;
+  end;
   TConfigurationScopes.Filter(FirstString(AArguments), Scope, Misplaced);
   Issues := Issues + Misplaced;
   Items := TJSONArray.Create;
@@ -110,7 +116,9 @@ begin
     Item.AddPair('error', TJSONBool.Create(Issue.IsError));
     Items.AddElement(Item);
     if Issue.IsError then
+    begin
       Valid := False;
+    end;
   end;
   Result := TJSONObject.Create;
   Result.AddPair('valid', TJSONBool.Create(Valid));
@@ -165,12 +173,18 @@ begin
       OptionObject.AddPair('name', Option.Name);
       OptionObject.AddPair('type', Option.Kind);
       if Option.Columns <> nil then
+      begin
         OptionObject.AddPair('columns', ColumnsJson(Option.Columns));
+      end;
       DefaultValue := nil;
       if Option.DefaultJson <> '' then
+      begin
         DefaultValue := TJSONObject.ParseJSONValue(Option.DefaultJson);
+      end;
       if DefaultValue <> nil then
+      begin
         OptionObject.AddPair('default', DefaultValue);
+      end;
       OptionObject.AddPair('description', Option.Description);
       Options.AddElement(OptionObject);
     end;
@@ -179,18 +193,28 @@ begin
     begin
       Overrides := TJSONArray.Create;
       for Id in Entry.OverriddenBy do
+      begin
         Overrides.Add(Id);
+      end;
       Rule.AddPair('overriddenBy', Overrides);
     end;
     Experimental := False;
     for Id in AExperimental do
+    begin
       if SameText(Id, Entry.Id) then
+      begin
         Experimental := True;
+      end;
+    end;
     if Experimental then
+    begin
       Rule.AddPair('experimental', TJSONBool.Create(True));
+    end;
     // Sammelkorrektur (#1352): Das Plugin bietet „Alle sicheren Treffer korrigieren …“ nur dafür an.
     if Entry.SafeFix then
+    begin
       Rule.AddPair('safeFix', TJSONBool.Create(True));
+    end;
     Rules.AddElement(Rule);
   end;
   Result := TJSONObject.Create;

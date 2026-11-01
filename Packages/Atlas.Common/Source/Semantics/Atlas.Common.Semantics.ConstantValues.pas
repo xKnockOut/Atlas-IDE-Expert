@@ -86,12 +86,20 @@ var
 begin
   Depth := 0;
   for Index := AFrom to AStop - 1 do
+  begin
     if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and ATokens[Index].IsSymbol(AText) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -142,9 +150,13 @@ begin
     Middle := (Low + High) div 2;
     if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
       (FTokens[Middle].StartPos.Character < APosition.Character)) then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High := Middle;
+    end;
   end;
   Result := Low;
 end;
@@ -160,17 +172,24 @@ begin
   Result := False;
   AValue := 0;
   if (ASymbol.Container = '') or not OwnerUnit(ASymbol, Owner) then
+  begin
     Exit;
+  end;
   for Symbol in Owner.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.EnumType) and SameText(Symbol.QualifiedName, ASymbol.Container) then
     begin
       Signature := Symbol.Signature;
       if (Signature = '') or (Pos('=', Copy(Signature, Pos('(', Signature) + 1, MaxInt)) > 0) or
         Signature.EndsWith('…') then
+      begin
         Exit;
+      end;
     end;
+  end;
   Position := 0;
   for Symbol in Owner.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, ASymbol.Container) then
     begin
       if SameText(Symbol.Name, ASymbol.Name) then
@@ -180,6 +199,7 @@ begin
       end;
       Inc(Position);
     end;
+  end;
 end;
 
 function TConstantValues.ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol;
@@ -194,14 +214,20 @@ begin
   Result := False;
   AValue := 0;
   if ASymbol.Signature.EndsWith('…') then
+  begin
     Exit;
+  end;
   Tokens := TPascalLexer.Tokenize(ASymbol.Signature);
   Index := SymbolAtDepthZero(Tokens, 0, Length(Tokens), '=');
   if Index < 0 then
+  begin
     Exit;
+  end;
   Last := High(Tokens);
   if (Last > Index) and Tokens[Last].IsSymbol(';') then
+  begin
     Dec(Last);
+  end;
   Owner := AOwner;
   Lookup :=
     function(const AParts: TArray<string>; AAt: Integer; out AResult: Int64): Boolean
@@ -212,13 +238,21 @@ begin
       Result := (Length(AParts) = 1) and FResolver.ResolveNameFrom(Owner, AParts[0], Resolved) and
         Resolved.Found;
       if not Result then
+      begin
         Exit;
+      end;
       if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
-        Result := EnumOrdinal(Resolved, AResult)
+      begin
+        Result := EnumOrdinal(Resolved, AResult);
+      end
       else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
-        Result := ConstantValue(Resolved, AResult)
+      begin
+        Result := ConstantValue(Resolved, AResult);
+      end
       else
+      begin
         Result := False;
+      end;
     end;
   Result := TOrdinalConstants.Evaluate(Tokens, Index + 1, Last, Lookup, AValue);
 end;
@@ -233,7 +267,9 @@ begin
   AValue := 0;
   // Konstanten, die aufeinander verweisen, enden hier.
   if FDepth >= 8 then
+  begin
     Exit;
+  end;
   Inc(FDepth);
   try
     if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
@@ -242,26 +278,40 @@ begin
       First := TokenAt(ASymbol.Range.StartPos);
       Last := TokenAt(ASymbol.Range.EndPos) - 1;
       if (First > High(FTokens)) or (Last < First) then
+      begin
         Exit;
+      end;
       // Steht die Deklaration in einem {$IF}-Zweig, den die geprüfte Stelle nicht sicher mit übersetzt, kann
       // in der anderen Konfiguration ein anderer Wert gelten.
       if FCheckPaths and not TConditionalBranches.Implies(FSitePath, TConditionalBranches.PathAt(FPaths, First)) then
+      begin
         Exit;
+      end;
       if FTokens[Last].IsSymbol(';') then
+      begin
         Dec(Last);
+      end;
       Equals := SymbolAtDepthZero(FTokens, First, Last + 1, '=');
       if Equals < 0 then
+      begin
         Exit;
+      end;
       Result := Evaluate(Equals + 1, Last, AValue);
       Exit;
     end;
     if not OwnerUnit(ASymbol, Owner) then
+    begin
       Exit;
+    end;
     for Symbol in Owner.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.Constant) and SameText(Symbol.Name, ASymbol.Name) and
         (Symbol.Range.StartPos.Line = ASymbol.Range.StartPos.Line) and
         (Symbol.Range.StartPos.Character = ASymbol.Range.StartPos.Character) then
+      begin
         Exit(ForeignValue(Owner, Symbol, AValue));
+      end;
+    end;
   finally
     Dec(FDepth);
   end;
@@ -274,14 +324,22 @@ begin
   Result := False;
   AValue := 0;
   if (ATokenIndex < 0) or (ATokenIndex > High(FTokens)) then
+  begin
     Exit;
+  end;
   Resolved := FResolver.ResolveChain(FTree, FFileName, ANames, FTokens[ATokenIndex].Offset);
   if not Resolved.Found then
+  begin
     Exit;
+  end;
   if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
-    Result := EnumOrdinal(Resolved, AValue)
+  begin
+    Result := EnumOrdinal(Resolved, AValue);
+  end
   else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
+  begin
     Result := ConstantValue(Resolved, AValue);
+  end;
 end;
 
 class function TConstantValues.TokenFrom(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
@@ -294,9 +352,13 @@ begin
   begin
     Middle := (Lower + Upper) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Lower := Middle + 1
+    begin
+      Lower := Middle + 1;
+    end
     else
+    begin
       Upper := Middle;
+    end;
   end;
   Result := Lower;
 end;
@@ -327,22 +389,31 @@ begin
   ANames := nil;
   Result := False;
   if (AEnum.SymbolKind <> TIndexSymbolKind.EnumType) or not OwnerUnit(AEnum, Owner) then
+  begin
     Exit;
+  end;
   Container := AEnum.QualifiedName;
   Known := False;
   for Symbol in Owner.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.EnumType) and SameText(Symbol.QualifiedName, Container) then
     begin
       Signature := Symbol.Signature;
       // Eigene Werte (a = 3) oder gekürzte Signatur: Positionen und Anzahl sind nicht sicher.
       if (Signature = '') or (Pos('=', Copy(Signature, Pos('(', Signature) + 1, MaxInt)) > 0) or
         Signature.EndsWith('…') then
+      begin
         Exit;
+      end;
       Known := True;
     end;
+  end;
   if not Known then
+  begin
     Exit;
+  end;
   for Symbol in Owner.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Container) then
     begin
       // Werte in {$IFDEF}: Anzahl und Positionen hängen von der Konfiguration ab.
@@ -353,6 +424,7 @@ begin
       end;
       ANames := ANames + [Symbol.Name];
     end;
+  end;
   Result := Length(ANames) > 0;
 end;
 
@@ -428,7 +500,9 @@ var
 begin
   AValue := 0;
   if not TokenRange(ANode, First, Last) then
+  begin
     Exit(TOrdinalStatus.Unknown);
+  end;
   Result := Check(First, Last, AValue);
 end;
 

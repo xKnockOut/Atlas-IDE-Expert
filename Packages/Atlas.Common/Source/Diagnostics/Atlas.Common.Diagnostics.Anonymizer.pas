@@ -176,8 +176,12 @@ var
 begin
   Roots := nil;
   for Root in ARoots do
+  begin
     if Trim(Root) <> '' then
+    begin
       Roots := Roots + [IncludeTrailingPathDelimiter(NormalizedPath(Trim(Root))).Replace('/', '\')];
+    end;
+  end;
   TMonitor.Enter(FLock);
   try
     FLibraryRoots := Roots;
@@ -199,17 +203,25 @@ begin
   end;
   Name := NormalizedPath(AFileName);
   for Root in Roots do
+  begin
     if Name.StartsWith(Root) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
 function TDiagnosticIds.UnitLabel(const AUnitName, AFileName: string): string;
 begin
   if (AFileName <> '') and IsLibraryFile(AFileName) then
-    Result := AUnitName
+  begin
+    Result := AUnitName;
+  end
   else
+  begin
     Result := IdOf(TDiagnosticIdKind.UnitFile, AFileName);
+  end;
 end;
 
 function TDiagnosticIds.MapLines: TArray<string>;
@@ -221,8 +233,12 @@ begin
   TMonitor.Enter(FLock);
   try
     for Kind := Low(TDiagnosticIdKind) to High(TDiagnosticIdKind) do
+    begin
       for Index := 0 to FNames[Kind].Count - 1 do
+      begin
         Result := Result + [IdPrefixes[Kind] + '#' + IntToStr(Index + 1) + #9 + FNames[Kind][Index]];
+      end;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -237,8 +253,12 @@ begin
   inherited Create;
   FForbidden := nil;
   for Value in AForbidden do
+  begin
     if Length(Trim(Value)) >= 3 then
+    begin
       FForbidden := FForbidden + [AnsiLowerCase(Trim(Value))];
+    end;
+  end;
 end;
 
 function TDiagnosticFilter.Clean(const ALine: string): string;
@@ -247,8 +267,12 @@ var
 begin
   Result := ALine;
   for Token in FAllowed do
+  begin
     if Token <> '' then
+    begin
       Result := Result.Replace(Token, ' ', [rfReplaceAll]);
+    end;
+  end;
 end;
 
 function IsLetter(ACh: Char): Boolean;
@@ -262,10 +286,14 @@ var
   Index: Integer;
 begin
   for Index := 1 to Length(ALine) - 1 do
+  begin
     // Bewusst ASCII: Ein Umlaut davor hebt die Erkennung nicht auf, im Zweifel gilt die Zeile als Pfad.
     if (ALine[Index + 1] = ':') and IsLetter(ALine[Index]) and
       ((Index = 1) or not TTextChars.IsAsciiIdentChar(ALine[Index - 1])) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -277,21 +305,31 @@ begin
   Lower := AnsiLowerCase(Line);
   Result := (Pos('\', Line) = 0) and (Pos('/', Line) = 0) and (Pos('@', Line) = 0) and not HasDriveLetter(Line);
   if Result then
+  begin
     for Value in ForbiddenExtensions do
+    begin
       if Pos(Value, Lower) > 0 then
       begin
         Result := False;
         Break;
       end;
+    end;
+  end;
   if Result then
+  begin
     for Value in FForbidden do
+    begin
       if Pos(Value, Lower) > 0 then
       begin
         Result := False;
         Break;
       end;
+    end;
+  end;
   if not Result then
+  begin
     AtomicIncrement(FDropped);
+  end;
 end;
 
 class function TDiagnosticFilter.StackFrame(const AFrame: string): string;
@@ -366,8 +404,12 @@ begin
   FDrive := TRegEx.Create(DrivePattern, [roNotEmpty, roCompiled]);
   FIdentity := nil;
   for Value in AIdentity do
+  begin
     if Length(Trim(Value)) >= 3 then
+    begin
       FIdentity := FIdentity + [Trim(Value)];
+    end;
+  end;
 end;
 
 destructor TLogAnonymizer.Destroy;
@@ -387,7 +429,9 @@ begin
   Key := AnsiLowerCase(Trim(AName));
   // Kurze Namen wie "A" oder "UI" kämen sonst in jedem Satz vor.
   if (Length(Key) < 3) or FNames.ContainsKey(Key) then
+  begin
     Exit;
+  end;
   FNames.Add(Key, FNames.Count + 1);
 end;
 
@@ -398,7 +442,9 @@ begin
   TMonitor.Enter(FLock);
   try
     for Name in ANames do
+    begin
       AddNameLocked(Name);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -407,7 +453,9 @@ end;
 procedure TLogAnonymizer.AddUnit(const AUnitName, AFileName: string);
 begin
   if (AFileName <> '') and FIds.IsLibraryFile(AFileName) then
+  begin
     Exit;
+  end;
   AddNames([AUnitName]);
 end;
 
@@ -421,9 +469,13 @@ var
   Number: Integer;
 begin
   if FNames.TryGetValue(AnsiLowerCase(AName), Number) then
-    Result := 'name#' + IntToStr(Number)
+  begin
+    Result := 'name#' + IntToStr(Number);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TLogAnonymizer.PathLabel(const APath: string): string;
@@ -436,11 +488,15 @@ begin
   begin
     Path := TNetEncoding.URL.Decode(Copy(Path, 6, MaxInt));
     while StartsStr('/', Path) do
+    begin
       Delete(Path, 1, 1);
+    end;
     Path := Path.Replace('/', '\');
   end;
   if FIds.IsLibraryFile(Path) then
+  begin
     Exit(ExtractFileName(Path));
+  end;
   // Der Dateiname ist oft ein Unit- oder Projektname: auch im übrigen Text verbergen.
   AddNameLocked(ChangeFileExt(ExtractFileName(Path), ''));
   Key := AnsiUpperCase(Path.Replace('/', '\'));
@@ -451,7 +507,9 @@ begin
   end;
   Extension := AnsiLowerCase(ExtractFileExt(Path));
   if not FExtension.IsMatch(Extension) then
+  begin
     Extension := '';
+  end;
   Result := 'datei#' + IntToStr(Number) + Extension;
 end;
 
@@ -460,12 +518,18 @@ var
   Number: Integer;
 begin
   if FNumber.IsMatch(AInner) or FMethod.IsMatch(AInner) then
+  begin
     Exit(AInner);
+  end;
   if LooksLikePath(AInner) then
+  begin
     Exit(PathLabel(AInner));
+  end;
   Result := NameLabel(Trim(AInner));
   if Result <> '' then
+  begin
     Exit;
+  end;
   if not FValues.TryGetValue(AInner, Number) then
   begin
     Number := FValues.Count + 1;
@@ -498,11 +562,17 @@ begin
   begin
     Part := NameLabel(Parts[Index]);
     if Part = '' then
+    begin
       Part := Parts[Index];
+    end;
     if Result = '' then
-      Result := Part
+    begin
+      Result := Part;
+    end
     else
+    begin
       Result := Result + '.' + Part;
+    end;
   end;
 end;
 
@@ -514,8 +584,10 @@ begin
   TMonitor.Enter(FLock);
   try
     for Index := 0 to High(FIdentity) do
+    begin
       Result := StringReplace(Result, FIdentity[Index], 'benutzer#' + IntToStr(Index + 1),
         [rfReplaceAll, rfIgnoreCase]);
+    end;
     Result := ReplaceMatches(Result, FQuoted,
       function(const AMatch: string): string
       var

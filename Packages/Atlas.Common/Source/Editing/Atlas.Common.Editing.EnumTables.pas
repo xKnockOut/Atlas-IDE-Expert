@@ -142,7 +142,9 @@ function Bare(const ATypeName: string): string;
 begin
   Result := ATypeName;
   if (Length(Result) > 1) and (Result[1] = 'T') and Result[2].IsUpper then
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 { TEnumTableValues }
@@ -160,17 +162,29 @@ end;
 function TEnumTableRepair.Title: string;
 begin
   if (Added <> nil) and (Removed <> nil) then
-    Result := Format(TEnumTables.AdjustTitle, [string.Join(', ', Added)])
+  begin
+    Result := Format(TEnumTables.AdjustTitle, [string.Join(', ', Added)]);
+  end
   else if Length(Added) = 1 then
-    Result := Format(TEnumTables.AddTitle, [Added[0]])
+  begin
+    Result := Format(TEnumTables.AddTitle, [Added[0]]);
+  end
   else if Added <> nil then
-    Result := Format(TEnumTables.AddManyTitle, [string.Join(', ', Added)])
+  begin
+    Result := Format(TEnumTables.AddManyTitle, [string.Join(', ', Added)]);
+  end
   else if Length(Removed) = 1 then
-    Result := Format(TEnumTables.RemoveTitle, [Removed[0]])
+  begin
+    Result := Format(TEnumTables.RemoveTitle, [Removed[0]]);
+  end
   else
+  begin
     Result := Format(TEnumTables.RemoveManyTitle, [Length(Removed)]);
+  end;
   if Uncertain then
+  begin
     Result := Result + TEnumTables.UncertainSuffix;
+  end;
 end;
 
 { TEnumTables }
@@ -182,22 +196,32 @@ var
 begin
   Result := '';
   if ANames = nil then
+  begin
     Exit;
+  end;
   // Kleinbuchstaben am Anfang des ersten Namens, dann kürzen, bis alle passen.
   Length_ := 0;
   while (Length_ < Length(ANames[0])) and ANames[0][Length_ + 1].IsLower do
+  begin
     Inc(Length_);
+  end;
   for Name in ANames do
   begin
     Index := 0;
     while (Index < Length_) and (Index < Length(Name)) and (Name[Index + 1] = ANames[0][Index + 1]) do
+    begin
       Inc(Index);
+    end;
     Length_ := Index;
   end;
   // Nach dem Präfix muss in jedem Namen noch etwas Großes folgen (osNew, nicht open/other).
   for Name in ANames do
+  begin
     if (Length(Name) <= Length_) or not (Name[Length_ + 1].IsUpper or Name[Length_ + 1].IsDigit) then
+    begin
       Exit;
+    end;
+  end;
   Result := Copy(ANames[0], 1, Length_);
 end;
 
@@ -217,33 +241,45 @@ var
 begin
   Rest := AName;
   if (APrefix <> '') and StartsStr(APrefix, Rest) then
+  begin
     Delete(Rest, 1, Length(APrefix));
+  end;
   Rest := StringReplace(Rest, '_', ' ', [rfReplaceAll]);
   Words := nil;
   Start := 1;
   for Index := 2 to Length(Rest) do
+  begin
     if (Rest[Index] <> ' ') and (Rest[Index - 1] <> ' ') and Breaks(Index) then
     begin
       Words := Words + [Copy(Rest, Start, Index - Start)];
       Start := Index;
     end;
+  end;
   Words := Words + [Copy(Rest, Start, MaxInt)];
   Result := '';
   for Index := 0 to High(Words) do
   begin
     Word := Trim(Words[Index]);
     if Word = '' then
+    begin
       Continue;
+    end;
     // Abkürzungen (HTTP) bleiben groß, sonst nur das erste Wort mit großem Anfang.
     if (Length(Word) = 1) or (UpperCase(Word) <> Word) then
     begin
       if Result = '' then
-        Word := UpperCase(Copy(Word, 1, 1)) + LowerCase(Copy(Word, 2, MaxInt))
+      begin
+        Word := UpperCase(Copy(Word, 1, 1)) + LowerCase(Copy(Word, 2, MaxInt));
+      end
       else
+      begin
         Word := LowerCase(Word);
+      end;
     end;
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Word;
   end;
 end;
@@ -259,7 +295,9 @@ var
 begin
   Rest := AName;
   if (APrefix <> '') and StartsStr(APrefix, Rest) then
+  begin
     Delete(Rest, 1, Length(APrefix));
+  end;
   Result := 'S' + Bare(ATypeName) + UpperCase(Copy(Rest, 1, 1)) + Copy(Rest, 2, MaxInt);
 end;
 
@@ -279,7 +317,9 @@ begin
   for Index := 0 to AEnum.ChildCount - 1 do
   begin
     if (AEnum[Index].Kind <> TSyntaxKind.Identifier) or (AEnum[Index].ChildCount > 0) then
+    begin
       Exit(False);
+    end;
     ANames := ANames + [AEnum[Index].Name];
   end;
   Result := ANames <> nil;
@@ -296,22 +336,32 @@ begin
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       if not Contains(ANode, APosition) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.EnumType) <> nil) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
   if Decl = nil then
+  begin
     Exit(Fail('Kein Aufzählungstyp an dieser Stelle', AReason));
+  end;
   Enum := Decl.FindChild(TSyntaxKind.EnumType);
   // Nur Typen der Unit: In Klassen und Routinen fehlt der Platz für eine Konstante dahinter.
   if (Decl.Parent = nil) or (Decl.Parent.Kind <> TSyntaxKind.TypeSection) or (Decl.Parent.Parent = nil) or
     not (Decl.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
     TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) then
+  begin
     Exit(Fail(Format('%s steht nicht direkt im interface- oder implementation-Teil', [Decl.Name]), AReason));
+  end;
   if not PlainNames(Enum, ATarget.Names) then
+  begin
     Exit(Fail(Format('%s hat Elemente mit festen Werten; eine Tabelle darüber hätte Lücken', [Decl.Name]),
       AReason));
+  end;
   ATarget.TypeName := Decl.Name;
   ATarget.NamePosition := Decl.StartPos;
   ATarget.InInterface := Decl.Parent.Parent.Kind = TSyntaxKind.InterfaceSection;
@@ -328,7 +378,9 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl] then
+      begin
         Names := Names + [ANode.Name];
+      end;
       Result := not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl]);
     end);
   Result := Names;
@@ -340,8 +392,12 @@ var
 begin
   Result := (AName <> '') and (AName[1].IsLetter or (AName[1] = '_')) and not TPascalLexer.IsReservedWord(AName);
   for Index := 2 to Length(AName) do
+  begin
     if not (AName[Index].IsLetterOrDigit or (AName[Index] = '_')) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function Joined(const AHead: string; const AItems: TArray<string>; const AIndent, ALineBreak: string): string;
@@ -351,13 +407,17 @@ var
 begin
   Line := AHead + '(' + string.Join(', ', AItems) + ');';
   if Length(AIndent + Line) <= LineLimit then
+  begin
     Exit(AIndent + Line);
+  end;
   Result := AIndent + AHead + '(';
   for Index := 0 to High(AItems) do
   begin
     Result := Result + ALineBreak + AIndent + '  ' + AItems[Index];
     if Index < High(AItems) then
+    begin
       Result := Result + ',';
+    end;
   end;
   Result := Result + ');';
 end;
@@ -376,21 +436,31 @@ var
 begin
   AEdits := nil;
   if not Target(ATree, APosition, Info, AReason) then
+  begin
     Exit(False);
+  end;
   if not IsIdentifier(AName) then
+  begin
     Exit(Fail(Format('%s ist kein gültiger Name', [AName]), AReason));
+  end;
   Taken := DeclaredNames(ATree);
   if IndexText(AName, Taken) >= 0 then
+  begin
     Exit(Fail(Format('Der Name %s ist schon vergeben', [AName]), AReason));
+  end;
   Lines := TLineTable.Build(AText);
   LineBreak := TTextLines.LineBreakOf(AText);
   Decl := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       if not Contains(ANode, APosition) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.EnumType) <> nil) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
   Section := Decl.Parent;
@@ -399,47 +469,65 @@ begin
   Items := nil;
   Resources := nil;
   for Name in Info.Names do
+  begin
     if AResourceStrings then
     begin
       ResourceName_ := ResourceName(Info.TypeName, Name, Prefix);
       if IndexText(ResourceName_, Taken + Resources) >= 0 then
+      begin
         Exit(Fail(Format('Der Name %s ist schon vergeben', [ResourceName_]), AReason));
+      end;
       Resources := Resources + [ResourceName_];
       Items := Items + ['@' + ResourceName_];
     end
     else
+    begin
       Items := Items + [QuotedStr(DisplayText(Name, Prefix))];
+    end;
+  end;
   Text := '';
   if AResourceStrings then
   begin
     Text := Indent + 'resourcestring';
     for Index := 0 to High(Resources) do
+    begin
       Text := Text + LineBreak + Indent + '  ' + Resources[Index] + ' = ' +
         QuotedStr(DisplayText(Info.Names[Index], Prefix)) + ';';
+    end;
     Text := Text + LineBreak + LineBreak + Indent + 'const' + LineBreak +
       Joined(AName + ': array[' + Info.TypeName + '] of PResStringRec = ', Items, Indent + '  ', LineBreak);
   end
   else
+  begin
     Text := Indent + 'const' + LineBreak + Joined(AName + ': array[' + Info.TypeName + '] of string = ', Items,
       Indent + '  ', LineBreak);
+  end;
   if (APlacement = TEnumTablePlacement.AfterType) or not Info.InInterface then
   begin
     // Direkt hinter der Deklaration; folgen im Abschnitt weitere Typen, beginnt für sie ein neuer.
     Offset := Lines.LineContentEnd(Lines.PositionAt(Decl.EndOffset).Line);
     Text := LineBreak + LineBreak + Text;
     if Section[Section.ChildCount - 1] <> Decl then
+    begin
       Text := Text + LineBreak + LineBreak + Indent + 'type';
+    end;
   end
   else
   begin
     Implementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
     if Implementation_ = nil then
+    begin
       Exit(Fail('Die Unit hat keinen implementation-Teil', AReason));
+    end;
     UsesNode := Implementation_.FindChild(TSyntaxKind.UsesClause);
     if UsesNode <> nil then
-      Offset := Lines.LineContentEnd(Lines.PositionAt(UsesNode.EndOffset).Line)
+    begin
+      Offset := Lines.LineContentEnd(Lines.PositionAt(UsesNode.EndOffset).Line);
+    end
     else
+    begin
       Offset := Lines.LineContentEnd(Lines.PositionAt(Implementation_.StartOffset).Line);
+    end;
     Text := LineBreak + LineBreak + Text;
   end;
   Position := Lines.PositionAt(Offset);
@@ -454,13 +542,17 @@ begin
   Result := False;
   ATable := Default(TEnumTable);
   if not (ANode.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) then
+  begin
     Exit;
+  end;
   ArrayNode := ANode.FindChild(TSyntaxKind.ArrayType);
   Value := ANode.FindChild(TSyntaxKind.ParenExpr);
   // Eine Dimension über einen benannten Typ: array[TTyp] of X.
   if (ArrayNode = nil) or (Value = nil) or (ArrayNode.ChildCount <> 2) or
     (ArrayNode[0].Kind <> TSyntaxKind.TypeReference) or (ArrayNode[0].ChildCount > 0) then
+  begin
     Exit;
+  end;
   ATable.Decl := ANode;
   ATable.IndexType := ArrayNode[0];
   ATable.ElementType := ArrayNode[1];
@@ -479,7 +571,9 @@ begin
       Table: TEnumTable;
     begin
       if TableOf(ANode, Table) then
+      begin
         Found := Found + [Table];
+      end;
       Result := not (ANode.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]);
     end);
   Result := Found;
@@ -492,11 +586,13 @@ var
 begin
   ATable := Default(TEnumTable);
   for Table in Tables(ATree) do
+  begin
     if Contains(Table.Decl, APosition) then
     begin
       ATable := Table;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -507,22 +603,38 @@ begin
   Name := LowerCase(ATypeName);
   if MatchText(Name, ['string', 'unicodestring', 'ansistring', 'widestring', 'shortstring', 'rawbytestring',
     'utf8string']) then
-    Result := TEnumTableElement.Text
+  begin
+    Result := TEnumTableElement.Text;
+  end
   else if MatchText(Name, ['integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'longint', 'longword',
     'shortint', 'smallint', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32']) then
-    Result := TEnumTableElement.Number
+  begin
+    Result := TEnumTableElement.Number;
+  end
   else if MatchText(Name, ['double', 'single', 'extended', 'real', 'currency']) then
-    Result := TEnumTableElement.Float
+  begin
+    Result := TEnumTableElement.Float;
+  end
   else if MatchText(Name, ['boolean', 'bytebool', 'wordbool', 'longbool']) then
-    Result := TEnumTableElement.Boolean_
+  begin
+    Result := TEnumTableElement.Boolean_;
+  end
   else if MatchText(Name, ['char', 'widechar', 'ansichar']) then
-    Result := TEnumTableElement.Char_
+  begin
+    Result := TEnumTableElement.Char_;
+  end
   else if MatchText(Name, ['pointer', 'tclass', 'pchar', 'pansichar', 'pwidechar']) then
-    Result := TEnumTableElement.Pointer_
+  begin
+    Result := TEnumTableElement.Pointer_;
+  end
   else if SameText(Name, 'presstringrec') then
-    Result := TEnumTableElement.ResourceString_
+  begin
+    Result := TEnumTableElement.ResourceString_;
+  end
   else
+  begin
     Result := TEnumTableElement.Other;
+  end;
 end;
 
 type
@@ -563,21 +675,29 @@ begin
     begin
       Stop := PosEx('}', AText, Index + 2);
       if Stop = 0 then
+      begin
         Stop := AStop;
+      end;
     end
     else if (AText[Index + 1] = '(') and (Index + 1 < AStop) and (AText[Index + 2] = '*') then
     begin
       Stop := PosEx('*)', AText, Index + 3);
       if Stop = 0 then
-        Stop := AStop
+      begin
+        Stop := AStop;
+      end
       else
+      begin
         Inc(Stop);
+      end;
     end
     else if (AText[Index + 1] = '/') and (Index + 1 < AStop) and (AText[Index + 2] = '/') then
     begin
       Stop := Index + 1;
       while (Stop < AStop) and not CharInSet(AText[Stop + 1], [#13, #10]) do
+      begin
         Inc(Stop);
+      end;
       Comment.IsLine := True;
     end;
     if Stop < 0 then
@@ -586,17 +706,27 @@ begin
       Continue;
     end;
     if Stop > AStop then
+    begin
       Stop := AStop;
+    end;
     Comment.Text := Copy(AText, Index + 1, Stop - Index);
     if not AHasNext then
-      Comment.ToPrevious := True
+    begin
+      Comment.ToPrevious := True;
+    end
     else if not AHasPrevious then
-      Comment.ToPrevious := False
+    begin
+      Comment.ToPrevious := False;
+    end
     else if not AfterComma then
-      Comment.ToPrevious := True
+    begin
+      Comment.ToPrevious := True;
+    end
     else
+    begin
       Comment.ToPrevious := (PosEx(#10, Copy(AText, Stop + 1, AStop - Stop)) > 0) or
         (Pos(#13, Copy(AText, Stop + 1, AStop - Stop)) > 0);
+    end;
     Result := Result + [Comment];
     Index := Stop;
   end;
@@ -612,7 +742,9 @@ begin
     if ((Index = 1) or not (AText[Index - 1].IsLetterOrDigit or (AText[Index - 1] = '_'))) and
       ((Index + Length(AWord) > Length(AText)) or not (AText[Index + Length(AWord)].IsLetterOrDigit or
       (AText[Index + Length(AWord)] = '_'))) then
+    begin
       Exit(True);
+    end;
     Index := PosEx(LowerCase(AWord), LowerCase(AText), Index + 1);
   end;
   Result := False;
@@ -623,7 +755,9 @@ begin
   Result := (ANode.Kind = TSyntaxKind.Literal) and (Length(ANode.Name) >= 2) and (ANode.Name[1] = '''') and
     (ANode.Name[Length(ANode.Name)] = '''');
   if Result then
+  begin
     AValue := StringReplace(Copy(ANode.Name, 2, Length(ANode.Name) - 2), '''''', '''', [rfReplaceAll]);
+  end;
 end;
 
 /// <summary>Element, zu dem der Eintrag AEntry passt; -1 ohne. AStrong: über einen Kommentar.</summary>
@@ -637,35 +771,61 @@ var
 begin
   AStrong := True;
   for Comment in AComments do
+  begin
     for Index := 0 to High(ANames) do
+    begin
       if HasWord(Comment, ANames[Index]) then
+      begin
         Exit(Index);
+      end;
+    end;
+  end;
   AStrong := False;
   // Texte im Eintrag selbst oder in einem Record (A: 'Neu'; B: 1).
   Candidates := [AEntry];
   if AEntry.Kind = TSyntaxKind.ParenExpr then
+  begin
     for Index := 0 to AEntry.ChildCount - 1 do
+    begin
       Candidates := Candidates + [AEntry[Index]];
+    end;
+  end;
   for Candidate in Candidates do
+  begin
     if LiteralText(Candidate, Value) then
+    begin
       for Index := 0 to High(ANames) do
+      begin
         if SameText(Trim(Value), ATexts[Index]) or SameText(Trim(Value), ANames[Index]) then
+        begin
           Exit(Index);
+        end;
+      end;
+    end;
+  end;
   // Bezeichner: @SOrderStatePaid, osPaid.
   Identifier := '';
   if (AEntry.Kind = TSyntaxKind.AddressOf) and (AEntry.ChildCount = 1) and
     (AEntry[0].Kind = TSyntaxKind.Identifier) then
-    Identifier := AEntry[0].Name
+  begin
+    Identifier := AEntry[0].Name;
+  end
   else if AEntry.Kind = TSyntaxKind.Identifier then
+  begin
     Identifier := AEntry.Name;
+  end;
   if Identifier = '' then
+  begin
     Exit(-1);
+  end;
   Best := -1;
   BestLength := 0;
   for Index := 0 to High(ANames) do
   begin
     if SameText(Identifier, ANames[Index]) then
+    begin
       Exit(Index);
+    end;
     Rest := Copy(ANames[Index], Length(APrefix) + 1, MaxInt);
     if (Rest <> '') and EndsText(Rest, Identifier) and (Length(Rest) > BestLength) then
     begin
@@ -693,17 +853,23 @@ begin
     Lengths[Index] := 0;
     Previous[Index] := -1;
     if AMatches[Index] < 0 then
+    begin
       Continue;
+    end;
     Lengths[Index] := 1;
     for Earlier := 0 to Index - 1 do
+    begin
       if (AMatches[Earlier] >= 0) and (AMatches[Earlier] < AMatches[Index]) and
         (Lengths[Earlier] + 1 > Lengths[Index]) then
       begin
         Lengths[Index] := Lengths[Earlier] + 1;
         Previous[Index] := Earlier;
       end;
+    end;
     if (Best < 0) or (Lengths[Index] > Lengths[Best]) then
+    begin
       Best := Index;
+    end;
   end;
   while Best >= 0 do
   begin
@@ -719,7 +885,9 @@ var
 begin
   Index := AOffset;
   while (Index > 0) and CharInSet(AText[Index], [' ', #9]) do
+  begin
     Dec(Index);
+  end;
   Result := (Index = 0) or CharInSet(AText[Index], [#13, #10]);
 end;
 
@@ -728,15 +896,21 @@ function ResourceDecl(ATree: TSyntaxTree; const AName: string): TSyntaxNode;
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Result := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       if (ANode.Kind = TSyntaxKind.ConstDecl) and SameText(ANode.Name, AName) and (ANode.Parent <> nil) and
         SameText(ANode.Parent.Name, 'resourcestring') then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl] then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
 end;
@@ -781,11 +955,13 @@ var
     Item: Integer;
   begin
     for Item := 0 to High(ResourceOffsets) do
+    begin
       if ResourceOffsets[Item] = AOffset then
       begin
         ResourceTexts[Item] := ResourceTexts[Item] + ANewText;
         Exit;
       end;
+    end;
     ResourceOffsets := ResourceOffsets + [AOffset];
     ResourceTexts := ResourceTexts + [ANewText];
   end;
@@ -816,11 +992,17 @@ var
           ResourceNode := nil;
           if (ANeighbor >= 0) and (Entries(ANeighbor).Kind = TSyntaxKind.AddressOf) and
             (Entries(ANeighbor).ChildCount = 1) then
+          begin
             ResourceNode := ResourceDecl(ATree, Entries(ANeighbor)[0].Name);
+          end;
           if ResourceNode = nil then
+          begin
             Exit('nil' + Todo);
+          end;
           if Taken = nil then
+          begin
             Taken := DeclaredNames(ATree);
+          end;
           ResourceName_ := TResourceStrings.UniqueName(ResourceName(AValues.IndexType, AName, Prefix), Taken);
           Taken := Taken + [ResourceName_];
           ResourceIndent := TTextLines.IndentOf(AText, At(ResourceNode.StartOffset).Line);
@@ -831,10 +1013,14 @@ var
     else
       // Kopie des Nachbarn als Muster (Records, eigene Typen).
       if ANeighbor >= 0 then
+      begin
         Result := Copy(AText, Entries(ANeighbor).StartOffset + 1, Entries(ANeighbor).EndOffset -
-          Entries(ANeighbor).StartOffset) + Todo
+          Entries(ANeighbor).StartOffset) + Todo;
+      end
       else
+      begin
         Result := 'Default' + Todo;
+      end;
     end;
   end;
 
@@ -842,7 +1028,9 @@ var
   begin
     Result := AText_;
     if LineComments and MultiLine then
+    begin
       Result := Result + ' // ' + AName;
+    end;
   end;
 
   /// <summary>Fügt die Werte ANew nach dem Eintrag AAfter (-1: vor dem ersten) ein.</summary>
@@ -855,9 +1043,13 @@ var
     if not MultiLine then
     begin
       if AAfter >= 0 then
-        AddEdit(Entries(AAfter).EndOffset, Entries(AAfter).EndOffset, ', ' + string.Join(', ', ANew))
+      begin
+        AddEdit(Entries(AAfter).EndOffset, Entries(AAfter).EndOffset, ', ' + string.Join(', ', ANew));
+      end
       else
+      begin
         AddEdit(Entries(0).StartOffset, Entries(0).StartOffset, string.Join(', ', ANew) + ', ');
+      end;
       Exit;
     end;
     if (AAfter >= 0) and (AAfter < Count - 1) then
@@ -865,7 +1057,9 @@ var
       // Vor die Zeile des nächsten Eintrags.
       Text_ := '';
       for Item := 0 to High(ANew) do
+      begin
         Text_ := Text_ + Indent + WithComment(ANew[Item] + ',', ANewNames[Item]) + LineBreak;
+      end;
       AddEdit(Lines.LineStart(At(Entries(AAfter + 1).StartOffset).Line),
         Lines.LineStart(At(Entries(AAfter + 1).StartOffset).Line), Text_);
     end
@@ -873,12 +1067,18 @@ var
     begin
       Text_ := '';
       for Item := 0 to High(ANew) do
+      begin
         Text_ := Text_ + WithComment(ANew[Item] + ',', ANewNames[Item]) + LineBreak + Indent;
+      end;
       if StartsLine(AText, Entries(0).StartOffset) then
+      begin
         AddEdit(Lines.LineStart(At(Entries(0).StartOffset).Line), Lines.LineStart(At(Entries(0).StartOffset).Line),
-          Indent + Copy(Text_, 1, Length(Text_) - Length(Indent)))
+          Indent + Copy(Text_, 1, Length(Text_) - Length(Indent)));
+      end
       else
+      begin
         AddEdit(Entries(0).StartOffset, Entries(0).StartOffset, Text_);
+      end;
     end
     else
     begin
@@ -889,7 +1089,9 @@ var
       begin
         Text_ := '';
         for Item := 0 to High(ANew) do
+        begin
           Text_ := Text_ + ',' + LineBreak + Indent + ANew[Item];
+        end;
         AddEdit(Entries(AAfter).EndOffset, Entries(AAfter).EndOffset, Text_);
       end
       else
@@ -899,12 +1101,16 @@ var
         begin
           Close := '';
           if Item < High(ANew) then
+          begin
             Close := ',';
+          end;
           Text_ := Text_ + LineBreak + Indent + WithComment(ANew[Item] + Close, ANewNames[Item]);
         end;
         // Ein Eintrag an derselben Stelle: Reihenfolge gleicher Stellen ist nicht festgelegt.
         if LineEnd = Entries(AAfter).EndOffset then
-          AddEdit(LineEnd, LineEnd, ',' + Text_)
+        begin
+          AddEdit(LineEnd, LineEnd, ',' + Text_);
+        end
         else
         begin
           AddEdit(Entries(AAfter).EndOffset, Entries(AAfter).EndOffset, ',');
@@ -920,15 +1126,21 @@ var
     Item, CommaAt: Integer;
   begin
     for Item := AFirst to ALast do
+    begin
       ARepair.Removed := ARepair.Removed + [Copy(AText, Entries(Item).StartOffset + 1, Entries(Item).EndOffset -
         Entries(Item).StartOffset)];
+    end;
     if ALast < Count - 1 then
     begin
       if MultiLine and StartsLine(AText, Entries(AFirst).StartOffset) then
+      begin
         AddEdit(Lines.LineStart(At(Entries(AFirst).StartOffset).Line),
-          Lines.LineStart(At(Entries(ALast + 1).StartOffset).Line), '')
+          Lines.LineStart(At(Entries(ALast + 1).StartOffset).Line), '');
+      end
       else
+      begin
         AddEdit(Entries(AFirst).StartOffset, Entries(ALast + 1).StartOffset, '');
+      end;
       Exit;
     end;
     // Am Ende: das Komma hinter dem vorigen Eintrag fällt mit weg.
@@ -940,10 +1152,14 @@ var
     end;
     AddEdit(CommaAt, CommaAt + 1, '');
     if (AValue.EndOffset - 1) < Lines.LineContentEnd(At(Entries(ALast).EndOffset).Line) then
-      AddEdit(Entries(AFirst).StartOffset, AValue.EndOffset - 1, '')
+    begin
+      AddEdit(Entries(AFirst).StartOffset, AValue.EndOffset - 1, '');
+    end
     else
+    begin
       AddEdit(Lines.LineContentEnd(At(Entries(AFirst).StartOffset).Line - 1),
         Lines.LineContentEnd(At(Entries(ALast).EndOffset).Line), '');
+    end;
   end;
 
 begin
@@ -952,7 +1168,9 @@ begin
   Count := AValue.ChildCount;
   Total := Length(ANames);
   if (AValue.Kind <> TSyntaxKind.ParenExpr) or (Count = 0) or (Total = 0) then
+  begin
     Exit;
+  end;
   ResourceOffsets := nil;
   ResourceTexts := nil;
   Taken := nil;
@@ -961,45 +1179,75 @@ begin
   Prefix := CommonPrefix(ANames);
   Texts := nil;
   for Index := 0 to Total - 1 do
+  begin
     Texts := Texts + [DisplayText(ANames[Index], Prefix)];
+  end;
   // Kommentare je Eintrag.
   SetLength(EntryComments, Count);
   LineComments := False;
   for Gap := 0 to Count do
   begin
     if Gap = 0 then
-      Gaps := GapComments(AText, AValue.StartOffset + 1, Entries(0).StartOffset, False, True, Comma)
+    begin
+      Gaps := GapComments(AText, AValue.StartOffset + 1, Entries(0).StartOffset, False, True, Comma);
+    end
     else if Gap = Count then
-      Gaps := GapComments(AText, Entries(Count - 1).EndOffset, AValue.EndOffset - 1, True, False, Comma)
+    begin
+      Gaps := GapComments(AText, Entries(Count - 1).EndOffset, AValue.EndOffset - 1, True, False, Comma);
+    end
     else
+    begin
       Gaps := GapComments(AText, Entries(Gap - 1).EndOffset, Entries(Gap).StartOffset, True, True, Comma);
+    end;
     for GapComment in Gaps do
+    begin
       if GapComment.ToPrevious then
-        EntryComments[Gap - 1] := EntryComments[Gap - 1] + [GapComment.Text]
+      begin
+        EntryComments[Gap - 1] := EntryComments[Gap - 1] + [GapComment.Text];
+      end
       else
+      begin
         EntryComments[Gap] := EntryComments[Gap] + [GapComment.Text];
+      end;
+    end;
   end;
   SetLength(Matches, Count);
   for Entry := 0 to Count - 1 do
   begin
     Matches[Entry] := MatchOf(Entries(Entry), EntryComments[Entry], ANames, Texts, Prefix, Strong);
     if Strong then
+    begin
       for Value in EntryComments[Entry] do
+      begin
         if StartsStr('//', Value) then
+        begin
           LineComments := True;
+        end;
+      end;
+    end;
     // Jedes Element nur einmal.
     for Index := 0 to Entry - 1 do
+    begin
       if (Matches[Entry] >= 0) and (Matches[Index] = Matches[Entry]) then
+      begin
         Matches[Entry] := -1;
+      end;
+    end;
   end;
   Aligned := Increasing(Matches);
   MultiLine := Count >= 2;
   for Entry := 1 to Count - 1 do
+  begin
     if not StartsLine(AText, Entries(Entry).StartOffset) then
+    begin
       MultiLine := False;
+    end;
+  end;
   Indent := '';
   if MultiLine then
+  begin
     Indent := TTextLines.IndentOf(AText, At(Entries(1).StartOffset).Line);
+  end;
   // Lücken zwischen zugeordneten Einträgen: der Reihe nach, Rest einfügen bzw. entfernen.
   PreviousName := -1;
   PreviousEntry := -1;
@@ -1007,15 +1255,23 @@ begin
   begin
     NextEntry := PreviousEntry + 1;
     while (NextEntry < Count) and (Aligned[NextEntry] < 0) do
+    begin
       Inc(NextEntry);
+    end;
     if NextEntry < Count then
-      NextName := Aligned[NextEntry]
+    begin
+      NextName := Aligned[NextEntry];
+    end
     else
+    begin
       NextName := Total;
+    end;
     Kept := NextEntry - PreviousEntry - 1;
     Missing := NextName - PreviousName - 1;
     if (Kept > 0) and (Missing > 0) and (Kept <> Missing) then
+    begin
       ARepair.Uncertain := True;
+    end;
     if Missing > Kept then
     begin
       NewValues := nil;
@@ -1023,9 +1279,13 @@ begin
       for Index := PreviousName + 1 + Kept to NextName - 1 do
       begin
         if PreviousEntry + Kept >= 0 then
-          Entry := PreviousEntry + Kept
+        begin
+          Entry := PreviousEntry + Kept;
+        end
         else
+        begin
           Entry := NextEntry;
+        end;
         NewValues := NewValues + [ValueFor(ANames[Index], Entry)];
         Comments := Comments + [ANames[Index]];
         ARepair.Added := ARepair.Added + [ANames[Index]];
@@ -1033,12 +1293,16 @@ begin
       Insert(PreviousEntry + Kept, NewValues, Comments);
     end
     else if Kept > Missing then
+    begin
       Remove(PreviousEntry + 1 + Missing, NextEntry - 1);
+    end;
     PreviousName := NextName;
     PreviousEntry := NextEntry;
   end;
   for Index := 0 to High(ResourceOffsets) do
+  begin
     AddEdit(ResourceOffsets[Index], ResourceOffsets[Index], ResourceTexts[Index]);
+  end;
   Result := ARepair.Edits <> nil;
 end;
 

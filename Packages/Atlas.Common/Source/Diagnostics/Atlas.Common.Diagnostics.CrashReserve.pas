@@ -78,14 +78,18 @@ begin
   begin
     FOwner.FStart.WaitFor(cForever);
     if FOwner.FStopping then
+    begin
       Exit;
+    end;
     mWork := FOwner.FWork;
     FOwner.FFailure := '';
     // Erst die Reserve abgeben, damit das Schreiben auch bei knappem Speicher Platz findet.
     FOwner.FReserve := nil;
     try
       if Assigned(mWork) then
+      begin
         mWork();
+      end;
     except
       on E: Exception do
         FOwner.FFailure := E.ClassName + ': ' + E.Message;
@@ -145,7 +149,9 @@ begin
   System.TMonitor.Enter(FLock);
   try
     if FStopping then
+    begin
       Exit(False);
+    end;
     if FFinished < FPosted then
     begin
       AFailure := 'Der vorige Fall wird noch geschrieben';
@@ -161,7 +167,9 @@ begin
       // Der Arbeiter zählt FFinished erst nach dem Signal hoch; sonst hielte ein sofort folgender Run den Fall
       // noch für laufend.
       while AtomicCmpExchange(FFinished, 0, 0) < FPosted do
+      begin
         TThread.Yield;
+      end;
       AFailure := FFailure;
       Result := AFailure = '';
       FWork := nil;

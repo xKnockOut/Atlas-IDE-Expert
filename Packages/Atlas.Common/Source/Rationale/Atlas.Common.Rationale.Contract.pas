@@ -101,8 +101,12 @@ var
   mMarker: string;
 begin
   for mMarker in AMarkers do
+  begin
     if SameText(Trim(mMarker), AMarker) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -113,8 +117,12 @@ var
 begin
   Result := nil;
   for mEntry in AEntries do
+  begin
     if HasMarker(AMarkers, mEntry.Marker) and not HasMarker(AExcluded, mEntry.Marker) then
+    begin
       Result := Result + [mEntry];
+    end;
+  end;
 end;
 
 class function TRationale.Encode(const AEntry: TRationaleEntry): string;
@@ -132,7 +140,9 @@ begin
   Result := (mFirst > 1) and (mSecond > mFirst) and
     TryStrToInt(Copy(AValue, mFirst + 1, mSecond - mFirst - 1), mLine);
   if Result then
+  begin
     AEntry := TRationaleEntry.Create(Copy(AValue, 1, mFirst - 1), Copy(AValue, mSecond + 1, MaxInt), mLine);
+  end;
 end;
 
 class function TRationale.EncodeAll(const AEntries: TArray<TRationaleEntry>): TArray<string>;
@@ -141,7 +151,9 @@ var
 begin
   SetLength(Result, Length(AEntries));
   for mIndex := 0 to High(AEntries) do
+  begin
     Result[mIndex] := Encode(AEntries[mIndex]);
+  end;
 end;
 
 class function TRationale.DecodeAll(const AValues: TArray<string>): TArray<TRationaleEntry>;
@@ -151,8 +163,12 @@ var
 begin
   Result := nil;
   for mValue in AValues do
+  begin
     if TryDecode(mValue, mEntry) then
+    begin
       Result := Result + [mEntry];
+    end;
+  end;
 end;
 
 

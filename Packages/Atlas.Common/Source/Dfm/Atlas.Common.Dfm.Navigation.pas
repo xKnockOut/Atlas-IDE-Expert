@@ -71,14 +71,18 @@ begin
     Result := Current;
     Found := False;
     for Child in Current.Children do
+    begin
       if Contains(Child.Range, APosition) then
       begin
         Current := Child;
         Found := True;
         Break;
       end;
+    end;
     if not Found then
+    begin
       Break;
+    end;
   end;
 end;
 
@@ -98,51 +102,71 @@ begin
   Document := TDfmParser.Parse(ADfmText);
   try
     if Document.Root = nil then
+    begin
       Exit;
+    end;
     FormClass := Document.Root.TypeName;
     Current := ObjectAt(Document, APosition);
     if Current = nil then
+    begin
       Exit;
+    end;
     Wanted := '';
     WantedKinds := [];
     for Item in Current.Properties do
+    begin
       if Item.IsEvent and Contains(Item.ValueRange, APosition) then
       begin
         Wanted := Item.Value;
         WantedKinds := [TIndexSymbolKind.Method];
         Break;
       end;
+    end;
     if (Wanted = '') and (Current.Name <> '') and Contains(Current.NameRange, APosition) then
     begin
       Wanted := Current.Name;
       if Current = Document.Root then
-        WantedKinds := [TIndexSymbolKind.ClassType]
+      begin
+        WantedKinds := [TIndexSymbolKind.ClassType];
+      end
       else
+      begin
         WantedKinds := [TIndexSymbolKind.Field];
+      end;
     end;
   finally
     Document.Free;
   end;
   if (Wanted = '') or not Assigned(AReadText) then
+  begin
     Exit;
+  end;
   UnitFile := TFormFiles.UnitFile(ADfmFileName);
   if not AReadText(UnitFile, UnitText) then
+  begin
     Exit;
+  end;
   UnitIndex := TIndexExtractor.ExtractText(UnitText, UnitFile, nil);
   HasBest := False;
   Best := Default(TIndexSymbol);
   for Symbol in UnitIndex.Symbols do
   begin
     if not (Symbol.Kind in WantedKinds) then
+    begin
       Continue;
+    end;
     if WantedKinds = [TIndexSymbolKind.ClassType] then
     begin
       // Formularklasse: Name im DFM ist der Komponentenname, gesucht ist die Klasse.
       if not SameText(Symbol.Name, FormClass) then
+      begin
         Continue;
+      end;
     end
     else if not SameText(Symbol.Name, Wanted) or not SameText(Symbol.Container, FormClass) then
+    begin
       Continue;
+    end;
     // Bei Methoden gewinnt die Implementierung (die letzte Fundstelle).
     if not HasBest or (Symbol.Range.StartPos.Line > Best.Range.StartPos.Line) then
     begin
@@ -151,7 +175,9 @@ begin
     end;
   end;
   if HasBest then
+  begin
     Result := [Target(UnitFile, Best)];
+  end;
 end;
 
 end.

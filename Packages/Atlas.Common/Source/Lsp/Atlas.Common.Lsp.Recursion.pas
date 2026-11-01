@@ -92,9 +92,13 @@ begin
   FileName := '';
   Depth := TRecursionAnalysis.DefaultDepth;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONNumber) then
+  begin
     Depth := TJSONNumber(AArguments.Items[1]).AsInt;
+  end;
   if (FileName = '') or not Assigned(FReadText) or not FReadText(FileName, Text) then
   begin
     Result := TJSONObject.Create(TJSONPair.Create('calls', TJSONArray.Create));

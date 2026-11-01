@@ -76,7 +76,9 @@ begin
     mStart := mStart + Length(mOpen);
     mStop := PosEx(mClose, ADproj, mStart);
     if mStop = 0 then
+    begin
       Break;
+    end;
     Result := Result + [Trim(Copy(ADproj, mStart, mStop - mStart))];
     mStart := PosEx(mOpen, ADproj, mStop);
   end;
@@ -95,12 +97,22 @@ var
   mValue, mSwitch: string;
 begin
   for mValue in ElementValues(ADproj, 'DCC_CBuilderOutput') do
+  begin
     if (mValue <> '') and not SameText(mValue, 'None') then
+    begin
       Exit(True);
+    end;
+  end;
   for mValue in ElementValues(ADproj, 'DCC_AdditionalSwitches') do
+  begin
     for mSwitch in mValue.Split([' ', #9]) do
+    begin
       if StartsText('-J', mSwitch) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -124,7 +136,9 @@ var
   begin
     Result := AContext.Tree.FirstTokenFrom(ANode.StartOffset);
     while (Result < Length(Tokens)) and IsTrivia(Tokens[Result]) do
+    begin
       Inc(Result);
+    end;
   end;
 
   /// <summary>Code-Token vor AIndex; -1 ohne.</summary>
@@ -132,7 +146,9 @@ var
   begin
     Result := AIndex - 1;
     while (Result >= 0) and IsTrivia(Tokens[Result]) do
+    begin
       Dec(Result);
+    end;
   end;
 
   function HasDirective(AHeader: TSyntaxNode; const AName: string; out ADirective: TSyntaxNode): Boolean;
@@ -140,11 +156,13 @@ var
     mIndex: Integer;
   begin
     for mIndex := 0 to AHeader.ChildCount - 1 do
+    begin
       if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, AName) then
       begin
         ADirective := AHeader[mIndex];
         Exit(True);
       end;
+    end;
     ADirective := nil;
     Result := False;
   end;
@@ -164,11 +182,15 @@ var
     mBefore: Integer;
   begin
     if MatchText(AReference.Name, ['string', 'file']) then
+    begin
       Exit;
+    end;
     mBefore := PreviousCode(FirstCode(AReference));
     if (mBefore >= 0) and IsWord(Tokens[mBefore], 'packed') then
+    begin
       AReport.Add(TokenRange(mBefore), Format('packed gilt nur für array, record, object, class, set und file, ' +
         'nicht für %s (wie E2006).', [AReference.Name]), TRuleConfidence.High);
+    end;
   end;
 
   /// <summary>E2024: function … : file.</summary>
@@ -177,9 +199,13 @@ var
     mIndex: Integer;
   begin
     for mIndex := 0 to AHeader.ChildCount - 1 do
+    begin
       if (AHeader[mIndex].Kind = TSyntaxKind.TypeReference) and SameText(AHeader[mIndex].Name, 'file') then
+      begin
         AReport.Add(NodeRange(AHeader[mIndex]), Format('%s kann keine Datei liefern; der Ergebnistyp file ist ' +
           'nicht erlaubt (wie E2024).', [AHeader.Name]), TRuleConfidence.High);
+      end;
+    end;
   end;
 
   /// <summary>E2062: virtueller Konstruktor in einem object-Typ.</summary>
@@ -189,10 +215,14 @@ var
     mVirtual: TSyntaxNode;
   begin
     for mIndex := 0 to AObject.ChildCount - 1 do
+    begin
       if (AObject[mIndex].Kind = TSyntaxKind.RoutineHeader) and IsConstructor(AObject[mIndex]) and
         HasDirective(AObject[mIndex], 'virtual', mVirtual) then
+      begin
         AReport.Add(NodeRange(mVirtual), Format('Der Konstruktor %s eines object-Typs darf nicht virtual sein ' +
           '(wie E2062).', [AObject[mIndex].Name]), TRuleConfidence.High);
+      end;
+    end;
   end;
 
   /// <summary>Steht read, write oder index in der Property AProperty?</summary>
@@ -204,7 +234,9 @@ var
     while (mIndex < Length(Tokens)) and (Tokens[mIndex].Offset < AProperty.EndOffset) do
     begin
       if IsWord(Tokens[mIndex], 'read') or IsWord(Tokens[mIndex], 'write') or IsWord(Tokens[mIndex], 'index') then
+      begin
         Exit(True);
+      end;
       Inc(mIndex);
     end;
     Result := False;
@@ -216,9 +248,13 @@ var
     Result := FirstCode(ANode);
     while (Result < Length(Tokens)) and (Tokens[Result].Offset < ANode.EndOffset) and
       not ((Tokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Result].Text, ANode.Name)) do
+    begin
       Inc(Result);
+    end;
     if (Result >= Length(Tokens)) or (Tokens[Result].Offset >= ANode.EndOffset) then
+    begin
       Result := FirstCode(ANode);
+    end;
   end;
 
   /// <summary>E2128: Property ohne read und write in einem Interface (nicht dispinterface) bzw. im Abschnitt
@@ -233,22 +269,32 @@ var
     begin
       mFirst := FirstCode(AType);
       if (mFirst < Length(Tokens)) and IsWord(Tokens[mFirst], 'dispinterface') then
+      begin
         Exit;
+      end;
     end;
     mAutomated := False;
     for mIndex := 0 to AType.ChildCount - 1 do
     begin
       mChild := AType[mIndex];
       if mChild.Kind = TSyntaxKind.Visibility then
-        mAutomated := SameText(mChild.Name, 'automated')
+      begin
+        mAutomated := SameText(mChild.Name, 'automated');
+      end
       else if (mChild.Kind = TSyntaxKind.PropertyDecl) and (AInterface or mAutomated) and
         not HasAccessor(mChild) then
+      begin
         if AInterface then
+        begin
           AReport.Add(TokenRange(NameToken(mChild)), Format('Die Property %s braucht read oder write; ein ' +
-            'Interface kennt keine Property ohne Zugriff (wie E2128).', [mChild.Name]), TRuleConfidence.High)
+            'Interface kennt keine Property ohne Zugriff (wie E2128).', [mChild.Name]), TRuleConfidence.High);
+        end
         else
+        begin
           AReport.Add(TokenRange(NameToken(mChild)), Format('Die Property %s im Abschnitt automated braucht ' +
             'read oder write (wie E2128).', [mChild.Name]), TRuleConfidence.High);
+        end;
+      end;
     end;
   end;
 
@@ -262,7 +308,9 @@ var
     while (mIndex < Length(Tokens)) and (Tokens[mIndex].Offset < ANode.EndOffset) do
     begin
       if not IsTrivia(Tokens[mIndex]) then
+      begin
         Result := Result + LowerCase(Tokens[mIndex].Text);
+      end;
       Inc(mIndex);
     end;
   end;
@@ -283,24 +331,36 @@ var
     Result := '';
     mParams := AHeader.FindChild(TSyntaxKind.Parameters);
     if mParams = nil then
+    begin
       Exit;
+    end;
     for mIndex := 0 to mParams.ChildCount - 1 do
     begin
       mParam := mParams[mIndex];
       if mParam.Kind <> TSyntaxKind.Parameter then
+      begin
         Continue;
+      end;
       // Der Modifizierer steht vor dem Namen; je nach Knoten gehört er schon zum Parameter.
       mModifier := '';
       mBefore := FirstCode(mParam);
       if (mBefore < Length(Tokens)) and not IsModifier(Tokens[mBefore]) then
+      begin
         mBefore := PreviousCode(mBefore);
+      end;
       if (mBefore >= 0) and (mBefore < Length(Tokens)) and IsModifier(Tokens[mBefore]) then
+      begin
         mModifier := LowerCase(Tokens[mBefore].Text);
+      end;
       mType := '';
       if mParam.ChildCount > 0 then
+      begin
         mType := CodeText(mParam[0]);
+      end;
       for mName := 0 to High(mParam.Name.Split([','])) do
+      begin
         Result := Result + mModifier + ':' + mType + ';';
+      end;
     end;
   end;
 
@@ -327,21 +387,27 @@ var
     mHeaders := nil;
     mKeys := nil;
     for mIndex := 0 to AClass.ChildCount - 1 do
+    begin
       if (AClass[mIndex].Kind = TSyntaxKind.RoutineHeader) and IsConstructor(AClass[mIndex]) then
       begin
         mKey := ParameterKey(AClass[mIndex]);
         for mEarlier := 0 to High(mHeaders) do
+        begin
           if (mKeys[mEarlier] = mKey) and not SameText(mHeaders[mEarlier].Name, AClass[mIndex].Name) then
           begin
             if CppProject then
+            begin
               AReport.Add(TokenRange(NameToken(AClass[mIndex])), Format('Die Konstruktoren %s und %s haben ' +
                 'dieselben Parametertypen; aus C++ ist %s nicht erreichbar (wie W1029).',
                 [mHeaders[mEarlier].Name, AClass[mIndex].Name, AClass[mIndex].Name]), TRuleConfidence.High);
+            end;
             Break;
           end;
+        end;
         mHeaders := mHeaders + [AClass[mIndex]];
         mKeys := mKeys + [mKey];
       end;
+    end;
   end;
 
   // Iterativ (Bericht M1): nur Deklarationen, keine Anweisungen.
@@ -375,9 +441,13 @@ var
           // Übrige Arten: nichts zu tun.
         end;
         if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
+        begin
           Continue;
+        end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
@@ -386,7 +456,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   mCppKnown := False;
   mCpp := False;

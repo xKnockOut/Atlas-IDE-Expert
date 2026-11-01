@@ -48,13 +48,17 @@ begin
   // AIndex ab 1 im Tokentext; Kommentare und Strings können mehrzeilig sein.
   Result := AToken.StartPos;
   for I := 1 to AIndex - 1 do
+  begin
     if AToken.Text[I] = #10 then
     begin
       Result.Line := Result.Line + 1;
       Result.Character := 0;
     end
     else
+    begin
       Result.Character := Result.Character + 1;
+    end;
+  end;
 end;
 
 function RangeIn(const AToken: TPascalToken; AStart, ALength: Integer): TTextRange;
@@ -93,51 +97,79 @@ begin
   Text := AToken.Text;
   // {$ oder (*$
   if StartsText('{$', Text) then
-    I := 3
+  begin
+    I := 3;
+  end
   else if StartsText('(*$', Text) then
-    I := 4
+  begin
+    I := 4;
+  end
   else
+  begin
     Exit;
+  end;
   Start := I;
   while (I <= Length(Text)) and CharInSet(Text[I], ['A'..'Z', 'a'..'z']) do
+  begin
     Inc(I);
+  end;
   Word := UpperCase(Copy(Text, Start, I - Start));
   if not ((Word = 'I') or (Word = 'INCLUDE') or (Word = 'R') or (Word = 'RESOURCE')) then
+  begin
     Exit;
+  end;
   // {$I+} und {$R-} sind Schalter, keine Dateien.
   if (I > Length(Text)) or not CharInSet(Text[I], [' ', #9]) then
+  begin
     Exit;
+  end;
   while (I <= Length(Text)) and CharInSet(Text[I], [' ', #9]) do
+  begin
     Inc(I);
+  end;
   if (I <= Length(Text)) and (Text[I] = '''') then
   begin
     Start := I + 1;
     Stop := PosEx('''', Text, Start);
     if Stop = 0 then
+    begin
       Exit;
+    end;
   end
   else
   begin
     Start := I;
     Stop := Start;
     while (Stop <= Length(Text)) and IsPathChar(Text[Stop]) do
+    begin
       Inc(Stop);
+    end;
     // Das Ende von (*$I datei*) gehört nicht zum Namen.
     if (Stop - Start >= 2) and (Copy(Text, Stop - 2, 2) = '*)') then
+    begin
       Dec(Stop, 2);
+    end;
   end;
   Name := Copy(Text, Start, Stop - Start);
   if Name = '' then
+  begin
     Exit;
+  end;
   // {$R *.dfm}: "*" ist der Dateiname der Unit ohne Endung.
   Name := StringReplace(Name, '*', ChangeFileExt(ExtractFileName(AFileName), ''), [rfReplaceAll]);
   // Dieselbe Suche wie Präprozessor und Index (#264): $I ergänzt ".inc"/".pas".
   if (Word = 'I') or (Word = 'INCLUDE') then
-    Found := TIncludeFiles.FindInclude(Name, AFileName, ASearchPaths, AFileExists, Path)
+  begin
+    Found := TIncludeFiles.FindInclude(Name, AFileName, ASearchPaths, AFileExists, Path);
+  end
   else
+  begin
     Found := TIncludeFiles.FindFile(Name, ExtractFileDir(AFileName), ASearchPaths, AFileExists, Path);
+  end;
   if Found then
+  begin
     AddLink(ALinks, RangeIn(AToken, Start, Stop - Start), Path, False);
+  end;
 end;
 
 procedure FindUrls(const AToken: TPascalToken; var ALinks: TArray<TDocumentLink>);
@@ -155,15 +187,21 @@ begin
       Start := I;
       Stop := I;
       while (Stop <= Length(Text)) and IsUrlChar(Text[Stop]) do
+      begin
         Inc(Stop);
+      end;
       // Satzzeichen am Ende gehören selten zur URL.
       while (Stop > Start) and CharInSet(Text[Stop - 1], ['.', ',', ';', ':', ')', ']', '!', '?', '*']) do
+      begin
         Dec(Stop);
+      end;
       AddLink(ALinks, RangeIn(AToken, Start, Stop - Start), Copy(Text, Start, Stop - Start), True);
       I := Stop;
     end
     else
+    begin
       Inc(I);
+    end;
   end;
 end;
 
@@ -175,16 +213,26 @@ var
 begin
   Text := AToken.Text;
   if (Length(Text) < 3) or (Text[1] <> '''') or (Text[Length(Text)] <> '''') then
+  begin
     Exit;
+  end;
   Name := Copy(Text, 2, Length(Text) - 2);
   // Nur einfache Dateinamen mit Endung; Formatstrings und Sätze fallen heraus.
   if (ExtractFileExt(Name) = '') or (Pos('''', Name) > 0) or ContainsText(Name, '://') then
+  begin
     Exit;
+  end;
   for C in Name do
+  begin
     if not IsPathChar(C) or (C = '*') or (C = '%') then
+    begin
       Exit;
+    end;
+  end;
   if TIncludeFiles.FindFile(Name, ExtractFileDir(AFileName), ASearchPaths, AFileExists, Path) then
+  begin
     AddLink(ALinks, RangeIn(AToken, 2, Length(Name)), Path, False);
+  end;
 end;
 
 class function TDocumentLinks.Find(const AText, AFileName: string; const ASearchPaths: TArray<string>;

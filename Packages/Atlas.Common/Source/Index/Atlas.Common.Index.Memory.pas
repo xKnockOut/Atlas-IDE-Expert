@@ -50,9 +50,13 @@ function StringBytes(const AValue: string): Int64;
 begin
   // Kopf (Referenzzähler, Länge, Codepage) plus UTF-16-Zeichen und Endnull.
   if AValue = '' then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := 12 + (Length(AValue) + 1) * SizeOf(Char);
+  end;
 end;
 
 function ArrayBytes(const AValues: TArray<string>): Int64;
@@ -61,9 +65,13 @@ var
 begin
   Result := 0;
   if Length(AValues) > 0 then
+  begin
     Result := 16 + Length(AValues) * SizeOf(Pointer);
+  end;
   for Value in AValues do
+  begin
     Inc(Result, StringBytes(Value));
+  end;
 end;
 
 { TStringPool }
@@ -83,7 +91,9 @@ end;
 function TStringPool.Intern(const AValue: string): string;
 begin
   if AValue = '' then
+  begin
     Exit('');
+  end;
   if not FStrings.TryGetValue(AValue, Result) then
   begin
     Result := AValue;
@@ -97,9 +107,13 @@ var
 begin
   AUnit.UnitName := Intern(AUnit.UnitName);
   for Index := 0 to High(AUnit.InterfaceUses) do
+  begin
     AUnit.InterfaceUses[Index] := Intern(AUnit.InterfaceUses[Index]);
+  end;
   for Index := 0 to High(AUnit.ImplementationUses) do
+  begin
     AUnit.ImplementationUses[Index] := Intern(AUnit.ImplementationUses[Index]);
+  end;
   for Index := 0 to High(AUnit.Symbols) do
   begin
     // Die Vorfahren-Arrays teilt sich der Eintrag noch mit dem Aufrufer.
@@ -110,17 +124,25 @@ begin
     AUnit.Symbols[Index].TypeArgs := Intern(AUnit.Symbols[Index].TypeArgs);
     AUnit.Symbols[Index].AncestorArgs := Copy(AUnit.Symbols[Index].AncestorArgs);
     for Inner := 0 to High(AUnit.Symbols[Index].AncestorArgs) do
+    begin
       AUnit.Symbols[Index].AncestorArgs[Inner] := Intern(AUnit.Symbols[Index].AncestorArgs[Inner]);
+    end;
     AUnit.Symbols[Index].TypeParams := Intern(AUnit.Symbols[Index].TypeParams);
     AUnit.Symbols[Index].FileName := Intern(AUnit.Symbols[Index].FileName);
     AUnit.Symbols[Index].Directives := Copy(AUnit.Symbols[Index].Directives);
     for Inner := 0 to High(AUnit.Symbols[Index].Directives) do
+    begin
       AUnit.Symbols[Index].Directives[Inner] := Intern(AUnit.Symbols[Index].Directives[Inner]);
+    end;
     AUnit.Symbols[Index].ParamTypes := Copy(AUnit.Symbols[Index].ParamTypes);
     for Inner := 0 to High(AUnit.Symbols[Index].ParamTypes) do
+    begin
       AUnit.Symbols[Index].ParamTypes[Inner] := Intern(AUnit.Symbols[Index].ParamTypes[Inner]);
+    end;
     for Inner := 0 to High(AUnit.Symbols[Index].Ancestors) do
+    begin
       AUnit.Symbols[Index].Ancestors[Inner] := Intern(AUnit.Symbols[Index].Ancestors[Inner]);
+    end;
   end;
 end;
 
@@ -139,12 +161,16 @@ begin
     StringBytes(AUnit.Hash) + ArrayBytes(AUnit.InterfaceUses) + ArrayBytes(AUnit.ImplementationUses) +
     ArrayBytes(AUnit.Directives) + StringBytes(AUnit.DeprecatedText) + ArrayBytes(AUnit.Rationale);
   if Length(AUnit.Symbols) > 0 then
+  begin
     Inc(Result, 16);
+  end;
   for Symbol in AUnit.Symbols do
+  begin
     Inc(Result, SizeOf(TIndexSymbol) + StringBytes(Symbol.Name) + StringBytes(Symbol.Container) +
       StringBytes(Symbol.TypeName) + ArrayBytes(Symbol.Ancestors) + StringBytes(Symbol.Signature) +
       StringBytes(Symbol.Summary) + ArrayBytes(Symbol.Directives) + StringBytes(Symbol.DeprecatedText) +
       ArrayBytes(Symbol.InlineRefs) + ArrayBytes(Symbol.Resolutions) + ArrayBytes(Symbol.Rationale));
+  end;
   Inc(Result, UsageBytes(AUnit));
 end;
 
@@ -154,16 +180,22 @@ var
 begin
   Result := 0;
   if Length(AUnit.Usages) > 0 then
+  begin
     Result := 16;
+  end;
   for Usage in AUnit.Usages do
+  begin
     Inc(Result, SizeOf(TIndexUsage) + StringBytes(Usage.Name) + 16 + Length(Usage.Positions) * SizeOf(TTextPosition));
+  end;
 end;
 
 class function TIndexMemory.WithoutUsages(const AUnit: TUnitIndex): TUnitIndex;
 begin
   Result := AUnit;
   if Length(AUnit.Usages) = 0 then
+  begin
     Exit;
+  end;
   Result.Usages := nil;
   Result.UsagesOffloaded := True;
 end;
@@ -179,11 +211,13 @@ begin
   SetLength(Kept, Length(AUnit.Symbols));
   Count := 0;
   for Symbol in AUnit.Symbols do
+  begin
     if Symbol.InInterface then
     begin
       Kept[Count] := Symbol;
       Inc(Count);
     end;
+  end;
   SetLength(Kept, Count);
   Result.Symbols := Kept;
 end;

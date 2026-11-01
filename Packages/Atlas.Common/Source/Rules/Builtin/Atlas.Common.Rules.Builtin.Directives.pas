@@ -140,17 +140,25 @@ begin
   Result := '';
   Space := False;
   for Ch in Trim(AText) do
+  begin
     if CharInSet(Ch, [' ', #9, #10, #13]) then
-      Space := True
+    begin
+      Space := True;
+    end
     else
     begin
       if Space then
+      begin
         Result := Result + ' ';
+      end;
       Space := False;
       Result := Result + Ch;
     end;
+  end;
   if Length(Result) > AMax then
+  begin
     Result := Copy(Result, 1, AMax - 1) + '…';
+  end;
 end;
 
 /// <summary>Erstes Wort bis Leerraum oder Komma.</summary>
@@ -160,7 +168,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(AText)) and not CharInSet(AText[Index], [' ', #9, #10, #13, ',']) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(AText, 1, Index - 1);
 end;
 
@@ -176,12 +186,18 @@ begin
     begin
       Start := Index;
       while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      begin
         Inc(Index);
+      end;
       if StartsText('FPC', Copy(AText, Start, Index - Start)) then
+      begin
         Exit(True);
+      end;
     end
     else
+    begin
       Inc(Index);
+    end;
   end;
   Result := False;
 end;
@@ -190,9 +206,13 @@ end;
 function LikeOriginal(const AOriginal, AReplacement: string): string;
 begin
   if AOriginal = UpperCase(AOriginal) then
-    Result := UpperCase(AReplacement)
+  begin
+    Result := UpperCase(AReplacement);
+  end
   else
+  begin
     Result := LowerCase(AReplacement);
+  end;
 end;
 
 { TConditionalDirectiveUnbalancedRule }
@@ -233,7 +253,9 @@ var
     At := PosEx(AWord, Tokens[AIndex].Text, AFrom);
     Result := (At > 0) and (Tokens[AIndex].StartPos.Line = Tokens[AIndex].EndPos.Line);
     if not Result then
+    begin
       Exit;
+    end;
     Start := TTextPosition.Create(Tokens[AIndex].StartPos.Line, Tokens[AIndex].StartPos.Character + At - 1);
     AFix := TRuleFix.Create(Format('Tippfehler korrigieren: %s', [AShown]),
       [TRuleEdit.Create(TTextRange.Create(Start, TTextPosition.Create(Start.Line, Start.Character + Length(AWord))),
@@ -249,13 +271,21 @@ var
     Line := Tokens[AIndex].StartPos.Line;
     Alone := Tokens[AIndex].EndPos.Line = Line;
     if Alone and (AIndex > 0) then
+    begin
       Alone := Tokens[AIndex - 1].EndPos.Line < Line;
+    end;
     if Alone and (AIndex < High(Tokens)) then
+    begin
       Alone := Tokens[AIndex + 1].StartPos.Line > Line;
+    end;
     if Alone then
-      Result := TRuleFix.Create(ATitle, [TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '')])
+    begin
+      Result := TRuleFix.Create(ATitle, [TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '')]);
+    end
     else
+    begin
       Result := TRuleFix.Create(ATitle, [TRuleEdit.Create(RangeOf(AIndex), '')]);
+    end;
   end;
 
   /// <summary>{$ENDIF} vor der ersten Leerzeile hinter der Kette; False ohne Leerzeile.</summary>
@@ -265,6 +295,7 @@ var
   begin
     AFix := Default(TRuleFix);
     for Index := AOpen.Last + 1 to High(Tokens) do
+    begin
       if Tokens[Index].StartPos.Line > Tokens[Index - 1].EndPos.Line + 1 then
       begin
         Line := Tokens[Index - 1].EndPos.Line;
@@ -273,6 +304,7 @@ var
           StringOfChar(' ', Tokens[AOpen.Opening].StartPos.Character) + '{$ENDIF}' + LineBreak)]);
         Exit(True);
       end;
+    end;
     Result := False;
   end;
 
@@ -288,22 +320,34 @@ var
   begin
     Symbol := FirstWord(ARest);
     if Symbol = '' then
-      AReport.Add(RangeOf(AIndex), Format('{$%s} ohne Symbol (wie E2173).', [AName]), TRuleConfidence.High)
+    begin
+      AReport.Add(RangeOf(AIndex), Format('{$%s} ohne Symbol (wie E2173).', [AName]), TRuleConfidence.High);
+    end
     else if not IsValidIdent(Symbol) then
+    begin
       AReport.Add(RangeOf(AIndex), Format('%s ist kein gültiges Symbol für {$%s} (wie E2173).', [Symbol, AName]),
         TRuleConfidence.High);
+    end;
   end;
 
   procedure CheckAlignValue(AIndex: Integer; const AValue: string; ALong: Boolean);
   begin
     if AValue = '' then
+    begin
       Exit;
+    end;
     if MatchText(AValue, ['1', '2', '4', '8', '16']) then
+    begin
       Exit;
+    end;
     if ALong and MatchText(AValue, ['ON', 'OFF']) then
+    begin
       Exit;
+    end;
     if not ALong and not CharInSet(AValue[1], ['0'..'9']) then
+    begin
       Exit;
+    end;
     AReport.Add(RangeOf(AIndex), Format('Ungültiger Wert %s für {$ALIGN}; erlaubt sind ON, OFF, 1, 2, 4, 8 und 16 ' +
       '(wie E2573).', [AValue]), TRuleConfidence.High);
   end;
@@ -313,8 +357,12 @@ var
     Part: string;
   begin
     for Part in SplitString(ABody, ',') do
+    begin
       if SameText(TDirectiveNames.LeadingName(Trim(Part)), 'A') then
+      begin
         CheckAlignValue(AIndex, Trim(Copy(Trim(Part), 2, MaxInt)), False);
+      end;
+    end;
   end;
 
   procedure CheckUnknown(AIndex: Integer; const AName: string);
@@ -323,14 +371,20 @@ var
     Fix: TRuleFix;
   begin
     if InFpcBranch or TDirectiveNames.IsDirective(AName) then
+    begin
       Exit;
+    end;
     Closest := TTextFuzzy.Closest(AName, TDirectiveNames.Directives);
     if (Closest <> '') and ReplaceFix(AIndex, AName, Closest, '{$' + Closest + '}', 1, Fix) then
+    begin
       AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s}; gemeint ist wohl {$%s} (wie %s).',
-        [AName, Closest, mUnknownCode]), TRuleConfidence.High, [Fix])
+        [AName, Closest, mUnknownCode]), TRuleConfidence.High, [Fix]);
+    end
     else
+    begin
       AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s} (wie %s).', [AName, mUnknownCode]),
         TRuleConfidence.High);
+    end;
   end;
 
   /// <summary>AFrom: erstes Zeichen hinter WARN in der Direktive.</summary>
@@ -341,14 +395,20 @@ var
   begin
     Id := TDirectiveNames.LeadingName(ARest);
     if (Id = '') or InFpcBranch or TDirectiveNames.IsWarning(Id) then
+    begin
       Exit;
+    end;
     Closest := TTextFuzzy.Closest(Id, TDirectiveNames.Warnings);
     if (Closest <> '') and ReplaceFix(AIndex, Id, Closest, Closest, AFrom, Fix) then
+    begin
       AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN}; gemeint ist wohl %s (wie %s).',
-        [Id, Closest, mUnknownCode]), TRuleConfidence.High, [Fix])
+        [Id, Closest, mUnknownCode]), TRuleConfidence.High, [Fix]);
+    end
     else
+    begin
       AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN} (wie %s).', [Id, mUnknownCode]),
         TRuleConfidence.High);
+    end;
   end;
 
   procedure Open(AIndex: Integer; const AName, ARest: string);
@@ -361,11 +421,17 @@ var
     Item.HadElse := False;
     Item.Fpc := InFpcBranch or MentionsFpc(ARest);
     if AName = 'IFNDEF' then
-      Item.Condition := 'not ' + FirstWord(ARest)
+    begin
+      Item.Condition := 'not ' + FirstWord(ARest);
+    end
     else if AName = 'IFDEF' then
-      Item.Condition := FirstWord(ARest)
+    begin
+      Item.Condition := FirstWord(ARest);
+    end
     else
+    begin
       Item.Condition := Compact(ARest, 40);
+    end;
     Stack := Stack + [Item];
   end;
 
@@ -377,13 +443,19 @@ var
   begin
     Code := 'E2095';
     if AItem.Name = 'IF' then
+    begin
       Code := 'E2280';
+    end;
     Message := Format('%s wird nie geschlossen; der Rest der Datei hängt an %s (wie %s).',
       [Compact(Tokens[AItem.Opening].Text, 60), AItem.Condition, Code]);
     if ATop and EndifFix(AItem, Fix) then
-      AReport.Add(RangeOf(AItem.Opening), Message, TRuleConfidence.High, [Fix])
+    begin
+      AReport.Add(RangeOf(AItem.Opening), Message, TRuleConfidence.High, [Fix]);
+    end
     else
+    begin
       AReport.Add(RangeOf(AItem.Opening), Message, TRuleConfidence.High);
+    end;
   end;
 
   procedure Visit(AIndex: Integer);
@@ -394,51 +466,75 @@ var
     Name := UpperCase(TDirectiveNames.LeadingName(Body));
     Rest := Trim(Copy(Body, Length(Name) + 1, MaxInt));
     if Name = '' then
+    begin
       Exit;
+    end;
     if (Name = 'IF') or (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IFOPT') then
     begin
       if (Name = 'IFDEF') or (Name = 'IFNDEF') then
+      begin
         CheckSymbol(AIndex, Name, Rest);
+      end;
       Open(AIndex, Name, Rest);
     end
     else if (Name = 'ELSE') or (Name = 'ELSEIF') then
     begin
       if Stack = nil then
-        Stray(AIndex, Name)
+      begin
+        Stray(AIndex, Name);
+      end
       else if Stack[High(Stack)].HadElse then
+      begin
         AReport.Add(RangeOf(AIndex), Format('{$%s} nach {$ELSE} von %s aus Zeile %d (wie E2279).',
           [Name, Compact(Tokens[Stack[High(Stack)].Opening].Text, 60),
-          Tokens[Stack[High(Stack)].Opening].StartPos.Line + 1]), TRuleConfidence.High)
+          Tokens[Stack[High(Stack)].Opening].StartPos.Line + 1]), TRuleConfidence.High);
+      end
       else
       begin
         Stack[High(Stack)].HadElse := Name = 'ELSE';
         Stack[High(Stack)].Last := AIndex;
         if MentionsFpc(Rest) then
+        begin
           Stack[High(Stack)].Fpc := True;
+        end;
       end;
     end
     else if (Name = 'ENDIF') or (Name = 'IFEND') then
     begin
       if Stack = nil then
-        Stray(AIndex, Name)
+      begin
+        Stray(AIndex, Name);
+      end
       else
+      begin
         SetLength(Stack, Length(Stack) - 1);
+      end;
     end
     else if (Name = 'DEFINE') or (Name = 'UNDEF') then
-      CheckSymbol(AIndex, Name, Rest)
+    begin
+      CheckSymbol(AIndex, Name, Rest);
+    end
     else if (Name = 'PUSHOPT') or (Name = 'POPOPT') then
     begin
       Options := Options + [AIndex];
       OptionInBranch := OptionInBranch or (Stack <> nil);
     end
     else if Name = 'ALIGN' then
-      CheckAlignValue(AIndex, FirstWord(Rest), True)
+    begin
+      CheckAlignValue(AIndex, FirstWord(Rest), True);
+    end
     else if Name = 'WARN' then
-      CheckWarn(AIndex, Pos(TDirectiveNames.LeadingName(Body), Tokens[AIndex].Text) + Length(Name), Rest)
+    begin
+      CheckWarn(AIndex, Pos(TDirectiveNames.LeadingName(Body), Tokens[AIndex].Text) + Length(Name), Rest);
+    end
     else if Length(Name) = 1 then
-      CheckShortSwitches(AIndex, Body)
+    begin
+      CheckShortSwitches(AIndex, Body);
+    end
     else
+    begin
       CheckUnknown(AIndex, TDirectiveNames.LeadingName(Body));
+    end;
   end;
 
   procedure CheckOptionStack;
@@ -447,28 +543,44 @@ var
     Index: Integer;
   begin
     if OptionInBranch then
+    begin
       Exit;
+    end;
     Pushes := nil;
     for Index in Options do
+    begin
       if SameText(TDirectiveNames.LeadingName(TDirectiveNames.Body(Tokens[Index].Text)), 'PUSHOPT') then
-        Pushes := Pushes + [Index]
+      begin
+        Pushes := Pushes + [Index];
+      end
       else if Pushes = nil then
-        AReport.Add(RangeOf(Index), '{$POPOPT} ohne vorheriges {$PUSHOPT} (wie W1078).', TRuleConfidence.High)
+      begin
+        AReport.Add(RangeOf(Index), '{$POPOPT} ohne vorheriges {$PUSHOPT} (wie W1078).', TRuleConfidence.High);
+      end
       else
+      begin
         SetLength(Pushes, Length(Pushes) - 1);
+      end;
+    end;
     for Index in Pushes do
+    begin
       AReport.Add(RangeOf(Index), '{$PUSHOPT} ohne passendes {$POPOPT} (wie W1079).', TRuleConfidence.High);
+    end;
   end;
 
 var
   Index: Integer;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   LineBreak := #10;
   if Pos(#13#10, AContext.Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Stack := nil;
   Options := nil;
   OptionInBranch := False;
@@ -476,12 +588,20 @@ begin
   // (#1382).
   mUnknownCode := 'W1030';
   if TLanguageFeatures.IsAtLeast(AContext.DelphiVersion, Delphi13) then
+  begin
     mUnknownCode := 'E1030';
+  end;
   for Index := 0 to High(Tokens) do
+  begin
     if Tokens[Index].Kind = TPascalTokenKind.Directive then
+    begin
       Visit(Index);
+    end;
+  end;
   for Index := 0 to High(Stack) do
+  begin
     Unclosed(Stack[Index], Index = High(Stack));
+  end;
   CheckOptionStack;
 end;
 
@@ -508,18 +628,26 @@ begin
     if Token.Kind <> TPascalTokenKind.Directive then
     begin
       if Fpc then
+      begin
         Result := Result + [Token.Offset];
+      end;
       Continue;
     end;
     Body := TDirectiveNames.Body(Token.Text);
     Name := UpperCase(TDirectiveNames.LeadingName(Body));
     Rest := Copy(Body, Length(Name) + 1, MaxInt);
     if (Name = 'IF') or (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IFOPT') then
-      Stack := Stack + [Fpc or MentionsFpc(Rest)]
+    begin
+      Stack := Stack + [Fpc or MentionsFpc(Rest)];
+    end
     else if (Name = 'ELSEIF') and (Stack <> nil) then
-      Stack[High(Stack)] := Stack[High(Stack)] or MentionsFpc(Rest)
+    begin
+      Stack[High(Stack)] := Stack[High(Stack)] or MentionsFpc(Rest);
+    end
     else if ((Name = 'ENDIF') or (Name = 'IFEND')) and (Stack <> nil) then
+    begin
       SetLength(Stack, Length(Stack) - 1);
+    end;
   end;
 end;
 
@@ -528,10 +656,14 @@ var
   Fpc: TArray<Integer>;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Fpc := nil;
   if Pos('{$', AContext.Text) > 0 then
+  begin
     Fpc := FpcOffsets(AContext.Tree.Tokens);
+  end;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -542,22 +674,38 @@ begin
     begin
       Result := True;
       if (ANode.Kind <> TSyntaxKind.Directive) or (ANode.Parent = nil) then
+      begin
         Exit;
+      end;
       // Nach einer Property steht nur default, nach Routinenköpfen eine der Direktiven.
       if ANode.Parent.Kind = TSyntaxKind.PropertyDecl then
-        Candidates := ['default']
+      begin
+        Candidates := ['default'];
+      end
       // Methodenzuordnung "function IFoo.GetX = MyGetX;": "= MyGetX" ist keine Direktive (#1325).
       else if (ANode.Parent.Kind = TSyntaxKind.RoutineHeader) and ANode.Parent.IsMethodResolution then
-        Exit
+      begin
+        Exit;
+      end
       else if ANode.Parent.Kind = TSyntaxKind.RoutineHeader then
-        Candidates := TDirectiveNames.RoutineDirectives
+      begin
+        Candidates := TDirectiveNames.RoutineDirectives;
+      end
       else
+      begin
         Exit;
+      end;
       if MatchText(ANode.Name, Candidates) then
+      begin
         Exit;
+      end;
       for Offset in Fpc do
+      begin
         if Offset = ANode.StartOffset then
+        begin
           Exit;
+        end;
+      end;
       Word := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
       Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
       Closest := TTextFuzzy.Closest(Word, Candidates);
@@ -569,7 +717,9 @@ begin
           [TRuleEdit.Create(Range, Closest)])]);
       end
       else
+      begin
         AReport.Add(Range, Format('Unbekannte Direktive %s (wie E2070).', [Word]), TRuleConfidence.High);
+      end;
     end);
 end;
 
@@ -609,7 +759,9 @@ begin
   if MatchStr(Name, ['WARNINGS', 'HINTS', 'RANGECHECKS', 'OVERFLOWCHECKS']) then
   begin
     if (Rest <> 'ON') and (Rest <> 'OFF') then
+    begin
       Exit;
+    end;
     Item.Switch := Name;
     Item.Off := Rest = 'OFF';
     Result := [Item];
@@ -619,7 +771,9 @@ begin
   begin
     Words := Rest.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
     if (Length(Words) <> 2) or not MatchStr(Words[1], ['ON', 'OFF', 'ERROR', 'DEFAULT']) then
+    begin
       Exit;
+    end;
     Item.Switch := 'WARN:' + Words[0];
     Item.Off := Words[1] = 'OFF';
     Result := [Item];
@@ -634,19 +788,29 @@ begin
   // Kurzschalter: {$R-}, {$Q+}, {$R-,Q-,O+}; {$R *.dfm} ist eine Ressource.
   Parts := Body.Split([',']);
   for Part in Parts do
+  begin
     if (Length(Trim(Part)) <> 2) or not CharInSet(Trim(Part)[1], ['A'..'Z', 'a'..'z']) or
       not CharInSet(Trim(Part)[2], ['+', '-']) then
+    begin
       Exit;
+    end;
+  end;
   for Part in Parts do
   begin
     Item := Default(TCompilerSwitch);
     Item.Written := UpperCase(Trim(Part)[1]);
     if Item.Written = 'R' then
-      Item.Switch := 'RANGECHECKS'
+    begin
+      Item.Switch := 'RANGECHECKS';
+    end
     else if Item.Written = 'Q' then
-      Item.Switch := 'OVERFLOWCHECKS'
+    begin
+      Item.Switch := 'OVERFLOWCHECKS';
+    end
     else
+    begin
       Continue;
+    end;
     Item.Off := Trim(Part)[2] = '-';
     Result := Result + [Item];
   end;
@@ -656,25 +820,41 @@ end;
 function RestoreText(const AItem: TCompilerSwitch): string;
 begin
   if StartsStr('WARN:', AItem.Switch) then
-    Result := Format('{$WARN %s DEFAULT}', [Copy(AItem.Switch, 6, MaxInt)])
+  begin
+    Result := Format('{$WARN %s DEFAULT}', [Copy(AItem.Switch, 6, MaxInt)]);
+  end
   else if Length(AItem.Written) = 1 then
-    Result := Format('{$%s+}', [AItem.Written])
+  begin
+    Result := Format('{$%s+}', [AItem.Written]);
+  end
   else
+  begin
     Result := Format('{$%s ON}', [AItem.Written]);
+  end;
 end;
 
 function SwitchMessage(const AItem: TCompilerSwitch): string;
 begin
   if AItem.Switch = 'WARNINGS' then
-    Result := 'WARNINGS bleibt bis zum Ende der Unit aus; alle späteren Warnungen fehlen.'
+  begin
+    Result := 'WARNINGS bleibt bis zum Ende der Unit aus; alle späteren Warnungen fehlen.';
+  end
   else if AItem.Switch = 'HINTS' then
-    Result := 'HINTS bleibt bis zum Ende der Unit aus; alle späteren Hinweise fehlen.'
+  begin
+    Result := 'HINTS bleibt bis zum Ende der Unit aus; alle späteren Hinweise fehlen.';
+  end
   else if AItem.Switch = 'RANGECHECKS' then
-    Result := 'Die Bereichsprüfung bleibt bis zum Ende der Unit aus; Überschreitungen fallen nicht mehr auf.'
+  begin
+    Result := 'Die Bereichsprüfung bleibt bis zum Ende der Unit aus; Überschreitungen fallen nicht mehr auf.';
+  end
   else if AItem.Switch = 'OVERFLOWCHECKS' then
-    Result := 'Die Überlaufprüfung bleibt bis zum Ende der Unit aus; Überläufe fallen nicht mehr auf.'
+  begin
+    Result := 'Die Überlaufprüfung bleibt bis zum Ende der Unit aus; Überläufe fallen nicht mehr auf.';
+  end
   else
+  begin
     Result := Format('Die Warnung %s bleibt bis zum Ende der Unit aus.', [Copy(AItem.Switch, 6, MaxInt)]);
+  end;
 end;
 
 /// <summary>Steht AItem in der Liste allow (Warnungsname, WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw.
@@ -682,10 +862,14 @@ end;
 function SwitchAllowed(const AItem: TCompilerSwitch; const AAllow: TArray<string>): Boolean;
 begin
   if StartsStr('WARN:', AItem.Switch) then
-    Result := MatchText(Copy(AItem.Switch, 6, MaxInt), AAllow)
+  begin
+    Result := MatchText(Copy(AItem.Switch, 6, MaxInt), AAllow);
+  end
   else
+  begin
     Result := MatchText(AItem.Switch, AAllow) or ((AItem.Switch = 'RANGECHECKS') and MatchText('R', AAllow)) or
       ((AItem.Switch = 'OVERFLOWCHECKS') and MatchText('Q', AAllow));
+  end;
 end;
 
 /// <summary>Folgt hinter dem Token AIndex noch Code außer dem abschließenden "end."?</summary>
@@ -695,9 +879,13 @@ var
 begin
   Result := False;
   for Index := AIndex + 1 to High(ATokens) do
+  begin
     if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
       not ATokens[Index].IsKeyword('end') and not ATokens[Index].IsSymbol('.') then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Der nächste Block hinter AOffset: das erste Geschwister hinter der Direktive im innersten Knoten,
@@ -713,6 +901,7 @@ begin
   begin
     Inner := nil;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (Node[Index].StartOffset <= AOffset) and (AOffset < Node[Index].EndOffset) then
       begin
         Inner := Node[Index];
@@ -723,11 +912,14 @@ begin
         Result := Node[Index];
         Break;
       end;
+    end;
     Node := Inner;
   end;
   if (Result <> nil) and (Result.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
     TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]) then
+  begin
     Result := nil;
+  end;
 end;
 
 function TCompilerWarningsDisabledRule.Descriptor: TRuleDescriptor;
@@ -751,16 +943,25 @@ var
 begin
   // Die Schalter einer .dpk sind die Optionen des Packages, die die IDE dort pflegt.
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.Tree.Root.Kind = TSyntaxKind.PackageFile) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Offs := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if Tokens[Index].Kind = TPascalTokenKind.Directive then
+    begin
       for Item in SwitchesOf(Tokens[Index].Text) do
+      begin
         if Item.Switch = 'POPOPT' then
+        begin
           // {$POPOPT} stellt alles wieder her, was seit {$PUSHOPT} umgestellt wurde.
           for Other := 0 to High(Offs) do
-            Offs[Other].Restored := True
+          begin
+            Offs[Other].Restored := True;
+          end;
+        end
         else if Item.Off then
         begin
           Off := Default(TSwitchOff);
@@ -769,28 +970,51 @@ begin
           Offs := Offs + [Off];
         end
         else
+        begin
           for Other := 0 to High(Offs) do
+          begin
             if Offs[Other].Item.Switch = Item.Switch then
+            begin
               Offs[Other].Restored := True;
+            end;
+          end;
+        end;
+      end;
+    end;
+  end;
   if Offs = nil then
+  begin
     Exit;
+  end;
   Allow := TRuleOptions.Strings(AContext.Options, 'allow', nil);
   Paths := TConditionalBranches.Paths(Tokens);
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   for Off in Offs do
   begin
     if Off.Restored or SwitchAllowed(Off.Item, Allow) or not CodeFollows(Tokens, Off.Token) then
+    begin
       Continue;
+    end;
     // {$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}: gewollt je Konfiguration, kein Vergessen.
     Deliberate := False;
     for Index := 0 to High(Tokens) do
+    begin
       if (Tokens[Index].Kind = TPascalTokenKind.Directive) and TConditionalBranches.Exclusive(
         TConditionalBranches.PathAt(Paths, Index), TConditionalBranches.PathAt(Paths, Off.Token)) then
+      begin
         for Item in SwitchesOf(Tokens[Index].Text) do
+        begin
           if (Item.Switch = Off.Item.Switch) and not Item.Off then
+          begin
             Deliberate := True;
+          end;
+        end;
+      end;
+    end;
     if Deliberate then
+    begin
       Continue;
+    end;
     Fixes := nil;
     Block := NextBlock(AContext.Tree, Tokens[Off.Token].Offset + Length(Tokens[Off.Token].Text));
     if Block <> nil then
@@ -798,14 +1022,18 @@ begin
       Line := Block.EndPos.Line;
       Indent := '';
       if Tokens[Off.Token].StartPos.Line <= High(Lines) then
+      begin
         Indent := TTextLines.IndentOf(Lines[Tokens[Off.Token].StartPos.Line]);
+      end;
       if Line <= High(Lines) then
+      begin
         // Bereichs- und Überlaufprüfung: {$R+} schaltet sie womöglich erst ein, wenn das Projekt sie aus hat;
         // deshalb nur einzeln.
         Fixes := [TRuleFix.Create('Nach dem nächsten Block wiederherstellen',
           [TRuleEdit.Create(TTextRange.Create(Line, Length(Lines[Line]), Line, Length(Lines[Line])),
           LineBreak + Indent + RestoreText(Off.Item))], (Off.Item.Switch <> 'RANGECHECKS') and
           (Off.Item.Switch <> 'OVERFLOWCHECKS'))];
+      end;
     end;
     AReport.Add(TTextRange.Create(Tokens[Off.Token].StartPos, Tokens[Off.Token].EndPos), SwitchMessage(Off.Item),
       TRuleConfidence.High, Fixes);
@@ -838,9 +1066,13 @@ begin
       if mText[mIndex] = '''' then
       begin
         if (mIndex < Length(mText)) and (mText[mIndex + 1] = '''') then
-          Inc(mIndex)
+        begin
+          Inc(mIndex);
+        end
         else
+        begin
           Break;
+        end;
       end;
       Result := Result + mText[mIndex];
       Inc(mIndex);
@@ -849,7 +1081,9 @@ begin
   else
   begin
     while (mIndex <= Length(mText)) and not CharInSet(mText[mIndex], [' ', #9, #10, #13]) do
+    begin
       Inc(mIndex);
+    end;
     Result := Copy(mText, 1, mIndex - 1);
   end;
   ARest := Trim(Copy(mText, mIndex + 1, MaxInt));
@@ -862,8 +1096,12 @@ var
 begin
   Result := AName <> '';
   for mChar in AName do
+  begin
     if CharInSet(mChar, cNoFileChars) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 /// <summary>Namen, unter denen dcc die Datei aus {$I} bzw. {$R} sucht: wie geschrieben, ohne passende Endung
@@ -875,10 +1113,14 @@ begin
   if AResource then
   begin
     if not EndsText('.res', AName) then
+    begin
       Result := Result + [AName + '.res'];
+    end;
   end
   else if not EndsText('.inc', AName) and not EndsText('.pas', AName) then
+  begin
     Result := Result + [AName + '.inc', AName + '.pas'];
+  end;
 end;
 
 /// <summary>Datei aus {$I}/{$INCLUDE} bzw. {$R}/{$RESOURCE} (ARest: alles hinter dem Namen der Direktive);
@@ -890,10 +1132,14 @@ begin
   AResource := (AName = 'R') or (AName = 'RESOURCE');
   Result := AResource or (AName = 'I') or (AName = 'INCLUDE');
   if not Result then
+  begin
     Exit;
+  end;
   Result := (ARest <> '') and not CharInSet(ARest[1], ['+', '-', ',']);
   if Result then
+  begin
     AFile := FirstArgument(ARest, AMore);
+  end;
 end;
 
 /// <summary>Schlüssel einer Include-Datei für den Vergleich: "\" als Trenner, klein.</summary>
@@ -928,20 +1174,32 @@ var
     mAnswer: TRuleUnitAnswer;
   begin
     if not Assigned(AContext.FileExists) or (AContext.FileName = '') then
+    begin
       Exit(TRuleUnitAnswer.Unknown);
+    end;
     for mName in ACandidates do
+    begin
       if AContext.FileExists(mName) then
+      begin
         Exit(TRuleUnitAnswer.Found);
+      end;
+    end;
     if AContext.Units = nil then
+    begin
       Exit(TRuleUnitAnswer.Unknown);
+    end;
     Result := TRuleUnitAnswer.Missing;
     for mName in ACandidates do
     begin
       mAnswer := AContext.Units.FindFile(mName, AContext.FileName);
       if mAnswer = TRuleUnitAnswer.Found then
+      begin
         Exit(TRuleUnitAnswer.Found);
+      end;
       if mAnswer = TRuleUnitAnswer.Unknown then
+      begin
         Result := TRuleUnitAnswer.Unknown;
+      end;
     end;
   end;
 
@@ -956,14 +1214,18 @@ var
     AText := '';
     Result := False;
     if not Assigned(AContext.ReadFile) or not PlainFileName(AName) then
+    begin
       Exit;
+    end;
     for mName in FileCandidates(AName, False) do
+    begin
       if AContext.ReadFile(mName, mData) then
       begin
         AFound := mName;
         AText := TFileEncoding.Decode(mData, mFormat);
         Exit(True);
       end;
+    end;
   end;
 
   /// <summary>Bindet sich die Include-Datei AName (relativ zur Unit) über unbedingte {$I} selbst ein, direkt oder
@@ -979,7 +1241,9 @@ var
     AChain := '';
     Result := False;
     if (Length(AStack) >= cMaxIncludeDepth) or not ReadInclude(AName, mFound, mText) then
+    begin
       Exit;
+    end;
     mKey := IncludeKey(mFound);
     if IndexStr(mKey, AStack) >= 0 then
     begin
@@ -991,20 +1255,28 @@ var
     for mToken in TPascalLexer.Tokenize(mText) do
     begin
       if mToken.Kind <> TPascalTokenKind.Directive then
+      begin
         Continue;
+      end;
       mBody := TDirectiveNames.Body(mToken.Text);
       mDirective := UpperCase(TDirectiveNames.LeadingName(mBody));
       mRest := Trim(Copy(mBody, Length(mDirective) + 1, MaxInt));
       if MatchStr(mDirective, ['IF', 'IFDEF', 'IFNDEF', 'IFOPT']) then
-        Inc(mDepth)
+      begin
+        Inc(mDepth);
+      end
       else if MatchStr(mDirective, ['ENDIF', 'IFEND']) then
-        Dec(mDepth)
+      begin
+        Dec(mDepth);
+      end
       // Nur unbedingte {$I}: Ein Wächter wie {$IFNDEF X_INC}{$DEFINE X_INC} … {$ENDIF} beendet den Kreis.
       else if (mDepth = 0) and DirectiveFile(mDirective, mRest, mResource, mFile, mMore) and not mResource and
         PlainFileName(mFile) then
       begin
         if ExtractFileDrive(mFile) = '' then
+        begin
           mFile := mFolder + mFile;
+        end;
         if Recursive(mFile, AStack + [mKey], mInner) then
         begin
           AChain := ExtractFileName(mFound) + ' → ' + mInner;
@@ -1019,17 +1291,25 @@ var
     mChain: string;
   begin
     if not PlainFileName(AFile) then
+    begin
       Exit;
+    end;
     if AResource then
     begin
       // {$R Name.res Name.rc}: Die .res entsteht beim Bau aus der .rc; Formulare prüft form-resource-missing.
       if (AMore <> '') or MatchText(ExtractFileExt(AFile), ['.dfm', '.fmx', '.xfm', '.lfm']) then
+      begin
         Exit;
+      end;
       // Eine .rc gleichen Namens übersetzt die IDE vor dem Compiler (RcCompile in der .dproj).
       if Assigned(AContext.FileExists) and AContext.FileExists(ChangeFileExt(AFile, '.rc')) then
+      begin
         Exit;
+      end;
       if Locate(FileCandidates(AFile, True)) = TRuleUnitAnswer.Missing then
+      begin
         AReport.Add(RangeOf(AIndex), Format('Ressourcendatei %s nicht gefunden (wie E1026).', [AFile]));
+      end;
       Exit;
     end;
     case Locate(FileCandidates(AFile, False)) of
@@ -1037,7 +1317,9 @@ var
         AReport.Add(RangeOf(AIndex), Format('Include-Datei %s nicht gefunden (wie F1026).', [AFile]));
       TRuleUnitAnswer.Found:
         if Recursive(AFile, nil, mChain) then
+        begin
           AReport.Add(RangeOf(AIndex), Format('Rekursive Include-Datei: %s (wie E2245).', [mChain]));
+        end;
     end;
   end;
 
@@ -1048,14 +1330,20 @@ var
     // {$MESSAGE HINT|WARN 'Text'}; ohne Art und mit ERROR/FATAL noch nicht mit dcc abgeglichen.
     mKind := UpperCase(FirstArgument(ARest, mText));
     if (mText = '') or (mText[1] <> '''') then
+    begin
       Exit;
+    end;
     mText := FirstArgument(mText, mAfter);
     if mKind = 'WARN' then
+    begin
       AReport.AddWithSeverity(RangeOf(AIndex), Format('{$MESSAGE WARN}: %s (wie W1054).', [mText]),
-        TRuleSeverity.Warning, nil)
+        TRuleSeverity.Warning, nil);
+    end
     else if mKind = 'HINT' then
+    begin
       AReport.AddWithSeverity(RangeOf(AIndex), Format('{$MESSAGE HINT}: %s (wie H1054).', [mText]),
         TRuleSeverity.Hint, nil);
+    end;
   end;
 
   procedure CheckPackageSwitch(AIndex: Integer; const AName, ARest: string);
@@ -1073,15 +1361,19 @@ var
     if AName = 'WEAKPACKAGEUNIT' then
     begin
       if mOn and mDeny and not mWeak and not mPackageUnknown then
+      begin
         AReport.Add(RangeOf(AIndex), '{$WEAKPACKAGEUNIT ON} und {$DENYPACKAGEUNIT ON} schließen sich aus ' +
           '(wie E2222).');
+      end;
       mWeak := mOn;
     end
     else
     begin
       if mOn and mWeak and not mDeny and not mPackageUnknown then
+      begin
         AReport.Add(RangeOf(AIndex), '{$WEAKPACKAGEUNIT ON} und {$DENYPACKAGEUNIT ON} schließen sich aus ' +
           '(wie E2222).');
+      end;
       mDeny := mOn;
     end;
   end;
@@ -1091,11 +1383,15 @@ var
     mValue, mAfter: string;
   begin
     if (AContext.Tree.Root = nil) or (AContext.Tree.Root.Kind <> TSyntaxKind.UnitFile) then
+    begin
       Exit;
+    end;
     mValue := UpperCase(FirstArgument(ARest, mAfter));
     if (mValue = '') or (mValue = 'ON') then
+    begin
       AReport.Add(RangeOf(AIndex), Format('{$%s} ist nur in einem Package (.dpk) erlaubt, nicht in einer Unit ' +
         '(wie E2224).', [AName]));
+    end;
   end;
 
   /// <summary>Ist ADecl ein globaler, schlichter Alias wie TZahl = Integer (nicht TZahl = type Integer)?</summary>
@@ -1108,14 +1404,20 @@ var
     if (ADecl.Parent = nil) or (ADecl.Parent.Kind <> TSyntaxKind.TypeSection) or (ADecl.Parent.Parent = nil) or
       not (ADecl.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) or
       (ADecl.ChildCount <> 1) then
+    begin
       Exit;
+    end;
     mTarget := ADecl[0];
     if (mTarget.Kind <> TSyntaxKind.TypeReference) or (mTarget.ChildCount > 0) or
       MatchText(mTarget.Name, ['', 'string', 'file', 'const']) then
+    begin
       Exit;
+    end;
     mToken := AContext.Tree.FirstTokenFrom(mTarget.StartOffset) - 1;
     while (mToken >= 0) and (mTokens[mToken].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    begin
       Dec(mToken);
+    end;
     Result := (mToken >= 0) and (mTokens[mToken].Text = '=');
   end;
 
@@ -1128,7 +1430,9 @@ var
   begin
     mName := FirstArgument(ARest, mAfter);
     if not IsValidIdent(mName) then
+    begin
       Exit;
+    end;
     // Iterativ (Bericht M1); Typen stehen nicht in Anweisungen.
     mDecls := nil;
     mPending := [AContext.Tree.Root];
@@ -1137,16 +1441,28 @@ var
       mNode := mPending[High(mPending)];
       SetLength(mPending, Length(mPending) - 1);
       if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, mName) then
+      begin
         mDecls := mDecls + [mNode];
+      end;
       if not (mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock]) then
+      begin
         for mChild := 0 to mNode.ChildCount - 1 do
+        begin
           mPending := mPending + [mNode[mChild]];
+        end;
+      end;
     end;
     if mDecls = nil then
+    begin
       Exit;
+    end;
     for mDecl in mDecls do
+    begin
       if not IsGlobalAlias(mDecl) then
+      begin
         Exit;
+      end;
+    end;
     AReport.Add(RangeOf(AIndex), Format('{$OBJTYPENAME} gilt nicht für den Alias %s; erlaubt sind nur globale ' +
       'Typen, die kein Alias sind (wie E2560).', [mName]));
   end;
@@ -1159,7 +1475,9 @@ var
     // Codepages sind 16 Bit groß; welche installiert sind, weiß nur der Rechner, der übersetzt (E2424).
     mValue := FirstArgument(ARest, mAfter);
     if TryStrToInt64(mValue, mNumber) and (mNumber > 65535) then
+    begin
       AReport.Add(RangeOf(AIndex), Format('%s ist keine Codepage für {$CODEPAGE} (wie E1030).', [mValue]));
+    end;
   end;
 
   procedure Visit(AIndex: Integer);
@@ -1174,36 +1492,58 @@ var
     begin
       // Was in bedingten Zweigen steht, wird vielleicht nicht übersetzt: dann ohne Aussage.
       if TConditionalBranches.PathAt(mPaths, AIndex) <> '' then
-        mPackageUnknown := True
+      begin
+        mPackageUnknown := True;
+      end
       else
+      begin
         CheckPackageSwitch(AIndex, mName, mRest);
+      end;
       Exit;
     end;
     if TConditionalBranches.PathAt(mPaths, AIndex) <> '' then
+    begin
       Exit;
+    end;
     if DirectiveFile(mName, mRest, mResource, mFile, mMore) then
-      CheckFile(AIndex, mResource, mFile, mMore)
+    begin
+      CheckFile(AIndex, mResource, mFile, mMore);
+    end
     else if mName = 'MESSAGE' then
-      CheckMessage(AIndex, mRest)
+    begin
+      CheckMessage(AIndex, mRest);
+    end
     else if (mName = 'DESIGNONLY') or (mName = 'RUNONLY') then
-      CheckPackageOnly(AIndex, mName, mRest)
+    begin
+      CheckPackageOnly(AIndex, mName, mRest);
+    end
     else if mName = 'OBJTYPENAME' then
-      CheckObjTypeName(AIndex, mRest)
+    begin
+      CheckObjTypeName(AIndex, mRest);
+    end
     else if mName = 'CODEPAGE' then
+    begin
       CheckCodePage(AIndex, mRest);
+    end;
   end;
 
 begin
   if (AContext.Tree = nil) or (Pos('$', AContext.Text) = 0) then
+  begin
     Exit;
+  end;
   mTokens := AContext.Tree.Tokens;
   mPaths := TConditionalBranches.Paths(mTokens);
   mWeak := False;
   mDeny := False;
   mPackageUnknown := False;
   for mIndex := 0 to High(mTokens) do
+  begin
     if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
+    begin
       Visit(mIndex);
+    end;
+  end;
 end;
 
 procedure RegisterDirectiveRules(const ARegistry: TRuleRegistry);
