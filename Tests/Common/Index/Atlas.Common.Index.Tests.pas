@@ -190,14 +190,6 @@ type
     procedure ReadOnlyServiceWaitsForOtherWriter;
     [Test]
     procedure ServiceSharesLibraryCache;
-    /// <summary>Speicher (Rückmeldung 01.11.2026): Suchpfad-Units stehen in einem gemeinsamen Cache statt im Cache
-    /// jedes Projekts; ein zweites Projekt mit denselben Suchpfaden liest sie von dort.</summary>
-    [Test]
-    procedure ServiceSharesSearchPathCache;
-    /// <summary>Speicher (Rückmeldung 01.11.2026): Ein weiteres Projekt der Gruppe übernimmt Units, die mit gleichem
-    /// Stand und gleichen Defines schon im Index stehen, nicht noch einmal; mit anderen Defines liest es neu.</summary>
-    [Test]
-    procedure BuilderSkipsUnitsAlreadyIndexed;
     /// <summary>Ergänzt ein anderer Schreiber den Bibliotheks-Cache, nachdem dieser Aufbau ihn gelesen hat,
     /// bleiben dessen Units erhalten (Bericht N1).</summary>
     [Test]
@@ -239,6 +231,29 @@ type
     /// Ende, Prepare läuft dann im Index-Thread.</summary>
     [Test]
     procedure RestartDoesNotWaitForRunningBuild;
+  end;
+
+  /// <summary>Speicher bei Projektgruppen (Rückmeldung 01.11.2026): gemeinsamer Suchpfad-Cache und keine doppelte
+  /// Übernahme. Eigene Klasse neben TIndexBuilderTests, deren Dateien sie über PutBuilderFiles teilt.</summary>
+  [TestFixture]
+  TIndexGroupCacheTests = class
+  private
+    FFileSystem: IIndexFileSystem;
+    FIndex: ISymbolIndex;
+    function Resolve(const AUnitName: string): string;
+  public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+    /// <summary>Speicher (Rückmeldung 01.11.2026): Suchpfad-Units stehen in einem gemeinsamen Cache statt im Cache
+    /// jedes Projekts; ein zweites Projekt mit denselben Suchpfaden liest sie von dort.</summary>
+    [Test]
+    procedure ServiceSharesSearchPathCache;
+    /// <summary>Speicher (Rückmeldung 01.11.2026): Ein weiteres Projekt der Gruppe übernimmt Units, die mit gleichem
+    /// Stand und gleichen Defines schon im Index stehen, nicht noch einmal; mit anderen Defines liest es neu.</summary>
+    [Test]
+    procedure BuilderSkipsUnitsAlreadyIndexed;
   end;
 
   [TestFixture]
@@ -1446,6 +1461,31 @@ begin
   Assert.AreEqual<NativeInt>(0, Length(U.Symbols));
 end;
 
+/// <summary>Projekt P mit A und die Bibliothek B bis F der Index-Aufbau-Tests.</summary>
+procedure PutBuilderFiles(AFiles: TMemoryIndexFileSystem);
+begin
+  AFiles.Put('C:\P\P.dpr', 'program P;'#10'uses A in ''A.pas'';'#10'begin end.', 1);
+  AFiles.Put('C:\P\A.pas', UnitA, 1);
+  AFiles.Put('C:\Lib\B.pas', 'unit B;'#10'interface'#10'uses D;'#10'type TB = class end;'#10'implementation'#10'uses E;'#10'end.', 1);
+  AFiles.Put('C:\Lib\C.pas', 'unit C;'#10'interface'#10'implementation'#10'end.', 1);
+  AFiles.Put('C:\Lib\D.pas', 'unit D;'#10'interface'#10'implementation'#10'end.', 1);
+  AFiles.Put('C:\Lib\E.pas', 'unit E;'#10'interface'#10'implementation'#10'end.', 1);
+  AFiles.Put('C:\Lib\F.pas', 'unit F;'#10'interface'#10'type TF = class end;'#10'implementation'#10'end.', 1);
+end;
+
+/// <summary>Units der Tests liegen unter C:\Lib; System.SysUtils gibt es nicht.</summary>
+function ResolveLibraryUnit(const AUnitName: string): string;
+begin
+  if SameText(AUnitName, 'System.SysUtils') then
+  begin
+    Result := '';
+  end
+  else
+  begin
+    Result := 'C:\Lib\' + AUnitName + '.pas';
+  end;
+end;
+
 { TIndexBuilderTests }
 
 procedure TIndexBuilderTests.WarmUpFirstUse;
@@ -1462,13 +1502,7 @@ procedure TIndexBuilderTests.Setup;
 begin
   FFiles := TMemoryIndexFileSystem.Create;
   FFileSystem := FFiles;
-  FFiles.Put('C:\P\P.dpr', 'program P;'#10'uses A in ''A.pas'';'#10'begin end.', 1);
-  FFiles.Put('C:\P\A.pas', UnitA, 1);
-  FFiles.Put('C:\Lib\B.pas', 'unit B;'#10'interface'#10'uses D;'#10'type TB = class end;'#10'implementation'#10'uses E;'#10'end.', 1);
-  FFiles.Put('C:\Lib\C.pas', 'unit C;'#10'interface'#10'implementation'#10'end.', 1);
-  FFiles.Put('C:\Lib\D.pas', 'unit D;'#10'interface'#10'implementation'#10'end.', 1);
-  FFiles.Put('C:\Lib\E.pas', 'unit E;'#10'interface'#10'implementation'#10'end.', 1);
-  FFiles.Put('C:\Lib\F.pas', 'unit F;'#10'interface'#10'type TF = class end;'#10'implementation'#10'end.', 1);
+  PutBuilderFiles(FFiles);
   FIndex := TSymbolIndex.Create;
 end;
 
@@ -1480,14 +1514,7 @@ end;
 
 function TIndexBuilderTests.Resolve(const AUnitName: string): string;
 begin
-  if SameText(AUnitName, 'System.SysUtils') then
-  begin
-    Result := '';
-  end
-  else
-  begin
-    Result := 'C:\Lib\' + AUnitName + '.pas';
-  end;
+  Result := ResolveLibraryUnit(AUnitName);
 end;
 
 procedure TIndexBuilderTests.IndexesProjectAndReferencedUnits;
@@ -2391,7 +2418,30 @@ begin
   end;
 end;
 
-procedure TIndexBuilderTests.ServiceSharesSearchPathCache;
+{ TIndexGroupCacheTests }
+
+procedure TIndexGroupCacheTests.Setup;
+var
+  mFiles: TMemoryIndexFileSystem;
+begin
+  mFiles := TMemoryIndexFileSystem.Create;
+  FFileSystem := mFiles;
+  PutBuilderFiles(mFiles);
+  FIndex := TSymbolIndex.Create;
+end;
+
+procedure TIndexGroupCacheTests.TearDown;
+begin
+  FIndex := nil;
+  FFileSystem := nil;
+end;
+
+function TIndexGroupCacheTests.Resolve(const AUnitName: string): string;
+begin
+  Result := ResolveLibraryUnit(AUnitName);
+end;
+
+procedure TIndexGroupCacheTests.ServiceSharesSearchPathCache;
 var
   Service: TIndexService;
   Request: TIndexRequest;
@@ -2437,7 +2487,7 @@ begin
   Assert.AreEqual('A.PAS,P.DPR', CachedNames(Data));
 end;
 
-procedure TIndexBuilderTests.BuilderSkipsUnitsAlreadyIndexed;
+procedure TIndexGroupCacheTests.BuilderSkipsUnitsAlreadyIndexed;
 
   function Parsed(const ADefines: TArray<string>): Integer;
   var
@@ -2460,6 +2510,7 @@ begin
   // Aufbau wie bisher, sobald sie im Index stehen.
   Assert.AreEqual(2, Parsed(['WIN64', 'DEBUG']), 'andere Defines: Projektdateien neu einlesen');
 end;
+
 
 procedure TIndexBuilderTests.ServiceKeepsLibraryUnitsOfOtherWriters;
 const
@@ -3024,6 +3075,7 @@ initialization
   TDUnitX.RegisterTestFixture(TSymbolIndexTests);
   TDUnitX.RegisterTestFixture(TIndexCacheTests);
   TDUnitX.RegisterTestFixture(TIndexBuilderTests);
+  TDUnitX.RegisterTestFixture(TIndexGroupCacheTests);
   TDUnitX.RegisterTestFixture(TIndexProjectFilesTests);
   TDUnitX.RegisterTestFixture(TIndexSchedulerTests);
 

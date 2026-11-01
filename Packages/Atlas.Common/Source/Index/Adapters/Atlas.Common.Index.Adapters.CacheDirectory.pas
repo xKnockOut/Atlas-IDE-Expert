@@ -416,6 +416,12 @@ class procedure TIndexCacheDirectory.TouchUse(const ACacheFile: string);
 var
   Marker: string;
 begin
+  // Ohne Cache-Datei (kein Bibliotheks- oder Suchpfad-Cache) gibt es nichts zu vermerken; sonst entstünde die
+  // Marke im aktuellen Ordner.
+  if ACacheFile = '' then
+  begin
+    Exit;
+  end;
   Marker := TPath.Combine(ExtractFileDir(ACacheFile), UseMarkerFileName);
   try
     ForceDirectories(ExtractFileDir(Marker));

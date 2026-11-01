@@ -468,7 +468,7 @@ var
   Text, Hash: string;
   Entry: TIndexCacheEntry;
   Cached, UnitIndex: TUnitIndex;
-  HasCache: Boolean;
+  HasCache, Taken: Boolean;
   Watch: TStopwatch;
   Miss: TIndexCacheMiss;
 begin
@@ -495,36 +495,33 @@ begin
   end;
   // Zeitstempel oder Inhalt passen: erst jetzt die Symbole dekodieren; ein beschädigter Block
   // zählt wie ein fehlender Cache-Eintrag.
-  if HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached) then
+  Taken := HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached);
+  if not Taken then
   begin
+    if not FFileSystem.ReadText(AFileName, Text) then
+    begin
+      Inc(AResult.Missing);
+      Exit(False);
+    end;
+    Hash := TIndexCache.HashOf(Text);
+    if HasCache and (Entry.Header.Hash = Hash) then
+    begin
+      Taken := FromCache(Entry, ALibrary, Cached);
+      Miss := TIndexCacheMiss.Damaged;
+    end
+    else if HasCache then
+    begin
+      Miss := TIndexCacheMiss.Changed;
+    end;
+  end;
+  if Taken then
+  begin
+    Cached.Stamp := Stamp;
     Cached.Library_ := ALibrary;
     Cached.DefinesKey := DefinesKeyFor(AFileName);
     FIndex.AddUnit(Cached);
     Inc(AResult.FromCache);
     Exit(True);
-  end;
-  if not FFileSystem.ReadText(AFileName, Text) then
-  begin
-    Inc(AResult.Missing);
-    Exit(False);
-  end;
-  Hash := TIndexCache.HashOf(Text);
-  if HasCache and (Entry.Header.Hash = Hash) then
-  begin
-    if FromCache(Entry, ALibrary, Cached) then
-    begin
-      Cached.Stamp := Stamp;
-      Cached.Library_ := ALibrary;
-      Cached.DefinesKey := DefinesKeyFor(AFileName);
-      FIndex.AddUnit(Cached);
-      Inc(AResult.FromCache);
-      Exit(True);
-    end;
-    Miss := TIndexCacheMiss.Damaged;
-  end
-  else if HasCache then
-  begin
-    Miss := TIndexCacheMiss.Changed;
   end;
   Watch := TStopwatch.StartNew;
   UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver(),

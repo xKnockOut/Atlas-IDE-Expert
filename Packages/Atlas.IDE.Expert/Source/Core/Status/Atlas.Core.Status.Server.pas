@@ -124,10 +124,14 @@ var
 begin
   Result := ADefault;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONNumber then
+  begin
     Result := TJSONNumber(mValue).AsInt64;
+  end;
 end;
 
 function FloatOf(AObject: TJSONObject; const AName: string): Double;
@@ -136,10 +140,14 @@ var
 begin
   Result := 0;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONNumber then
+  begin
     Result := TJSONNumber(mValue).AsDouble;
+  end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -148,11 +156,15 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   // TJSONNumber leitet von TJSONString ab; Zahlen sind hier kein Text.
   if (mValue is TJSONString) and not (mValue is TJSONNumber) then
+  begin
     Result := mValue.Value;
+  end;
 end;
 
 function BoolOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -161,10 +173,14 @@ var
 begin
   Result := False;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONBool then
+  begin
     Result := TJSONBool(mValue).AsBoolean;
+  end;
 end;
 
 function ObjectOf(AObject: TJSONObject; const AName: string): TJSONObject;
@@ -173,10 +189,14 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONObject then
+  begin
     Result := TJSONObject(mValue);
+  end;
 end;
 
 function ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
@@ -185,29 +205,43 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONArray then
+  begin
     Result := TJSONArray(mValue);
+  end;
 end;
 
 function StateOf(const AText: string): TAtlasServerState;
 begin
   if SameText(AText, 'loading') then
-    Result := TAtlasServerState.Loading
+  begin
+    Result := TAtlasServerState.Loading;
+  end
   else if SameText(AText, 'ready') then
-    Result := TAtlasServerState.Ready
+  begin
+    Result := TAtlasServerState.Ready;
+  end
   else if SameText(AText, 'checking') then
-    Result := TAtlasServerState.Checking
+  begin
+    Result := TAtlasServerState.Checking;
+  end
   else
+  begin
     Result := TAtlasServerState.Unknown;
+  end;
 end;
 
 function PercentOf(AObject: TJSONObject; const AName: string): Integer;
 begin
   Result := -1;
   if (AObject <> nil) and (AObject.GetValue(AName) is TJSONNumber) then
+  begin
     Result := EnsureRange(Integer(IntOf(AObject, AName, -1)), 0, 100);
+  end;
 end;
 
 procedure ReadCheckRun(var ASnapshot: TAtlasServerSnapshot; ARun: TJSONObject);
@@ -219,16 +253,22 @@ var
   mStarted: TDateTime;
 begin
   if ARun = nil then
+  begin
     Exit;
+  end;
   ASnapshot.CheckSerial := Integer(IntOf(ARun, 'serial', 0));
   ASnapshot.CheckActive := BoolOf(ARun, 'active');
   if TryISO8601ToDate(TextOf(ARun, 'started'), mStarted, False) then
+  begin
     ASnapshot.CheckStarted := mStarted;
+  end;
   ASnapshot.CheckDurationMs := IntOf(ARun, 'durationMs', 0);
   ASnapshot.CheckUnits := Integer(IntOf(ARun, 'units', 0));
   mItems := ArrayOf(ARun, 'slowUnits');
   if mItems <> nil then
+  begin
     for mItem in mItems do
+    begin
       if mItem is TJSONObject then
       begin
         mUnit := Default(TAtlasServerSlowUnit);
@@ -237,9 +277,13 @@ begin
         mUnit.Ms := FloatOf(TJSONObject(mItem), 'ms');
         ASnapshot.SlowUnits := ASnapshot.SlowUnits + [mUnit];
       end;
+    end;
+  end;
   mItems := ArrayOf(ARun, 'slowRules');
   if mItems <> nil then
+  begin
     for mItem in mItems do
+    begin
       if mItem is TJSONObject then
       begin
         mRule := Default(TAtlasServerSlowRule);
@@ -248,16 +292,22 @@ begin
         mRule.Calls := Integer(IntOf(TJSONObject(mItem), 'calls', 0));
         ASnapshot.SlowRules := ASnapshot.SlowRules + [mRule];
       end;
+    end;
+  end;
 end;
 
 function CompareRequests(const ALeft, ARight: TAtlasServerRequest): Integer;
 begin
   Result := CompareValue(ARight.MaxMs, ALeft.MaxMs);
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.Method, ARight.Method);
+  end;
   // Gleiche Methode zweimal kommt nicht vor; trotzdem eindeutig (TArray.Sort ist nicht stabil).
   if Result = 0 then
+  begin
     Result := CompareValue(ARight.Count, ALeft.Count);
+  end;
 end;
 
 procedure ReadRequests(var ASnapshot: TAtlasServerSnapshot; AItems: TJSONArray);
@@ -267,9 +317,12 @@ var
   mAll: TArray<TAtlasServerRequest>;
 begin
   if AItems = nil then
+  begin
     Exit;
+  end;
   mAll := nil;
   for mItem in AItems do
+  begin
     if mItem is TJSONObject then
     begin
       mRequest := Default(TAtlasServerRequest);
@@ -280,9 +333,12 @@ begin
       mRequest.Failed := Integer(IntOf(TJSONObject(mItem), 'failed', 0));
       mAll := mAll + [mRequest];
     end;
+  end;
   TArray.Sort<TAtlasServerRequest>(mAll, TComparer<TAtlasServerRequest>.Construct(CompareRequests));
   if Length(mAll) > TAtlasServerSnapshot.cRequestRows then
+  begin
     SetLength(mAll, TAtlasServerSnapshot.cRequestRows);
+  end;
   ASnapshot.Requests := mAll;
 end;
 
@@ -298,14 +354,20 @@ begin
   Result.IndexHitPercent := -1;
   Result.TreeHitPercent := -1;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   // Ungültiger Text liefert nil (keine Ausnahme).
   mValue := TJSONObject.ParseJSONValue(AJson);
   if mValue = nil then
+  begin
     Exit;
+  end;
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mRoot := TJSONObject(mValue);
     Result.Valid := True;
     Result.Units := Integer(IntOf(mRoot, 'units', -1));
@@ -359,8 +421,12 @@ var
 begin
   Result := 0;
   for mPart := Low(TAtlasServerMemoryPart) to High(TAtlasServerMemoryPart) do
+  begin
     if mPart <> TAtlasServerMemoryPart.Rest then
+    begin
       Inc(Result, Memory[mPart]);
+    end;
+  end;
 end;
 
 function TAtlasServerSnapshot.Scale: Int64;
@@ -372,14 +438,18 @@ end;
 function TAtlasServerSnapshot.Fraction(APart: TAtlasServerMemoryPart): Double;
 begin
   if Scale <= 0 then
+  begin
     Exit(0);
+  end;
   Result := EnsureRange(Memory[APart] / Scale, 0, 1);
 end;
 
 function TAtlasServerSnapshot.TotalFraction: Double;
 begin
   if Scale <= 0 then
+  begin
     Exit(0);
+  end;
   Result := EnsureRange(MemoryTotal / Scale, 0, 1);
 end;
 
@@ -391,13 +461,19 @@ var
 begin
   mSeconds := Max(AMs, 0) div 1000;
   if mSeconds < 60 then
+  begin
     Exit(Format('%d s', [mSeconds]));
+  end;
   mMinutes := mSeconds div 60;
   if mMinutes < 60 then
+  begin
     Exit(Format('%d min', [mMinutes]));
+  end;
   mHours := mMinutes div 60;
   if mHours >= 48 then
+  begin
     Exit(Format('%d h', [mHours]));
+  end;
   Result := Format('%d h %.2d min', [mHours, mMinutes mod 60]);
 end;
 
@@ -409,9 +485,13 @@ end;
 class function TAtlasServerTexts.Milliseconds(AMs: Double; const AFormat: TFormatSettings): string;
 begin
   if AMs >= 10 then
-    Result := FormatFloat('0', AMs, AFormat)
+  begin
+    Result := FormatFloat('0', AMs, AFormat);
+  end
   else
+  begin
     Result := FormatFloat('0.0', AMs, AFormat);
+  end;
 end;
 
 end.
