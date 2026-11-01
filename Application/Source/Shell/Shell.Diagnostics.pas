@@ -52,6 +52,11 @@ type
     function LibraryCount: Integer;
     procedure DescribeDocument(const AParams: TJSONValue; var ARequest: TDiagnosticRequest);
     class function CountOf(const AResult: TJSONValue): Integer; static;
+    /// <summary>Zählt AName als beendet; liefert, was danach noch läuft.</summary>
+    function EndRunning(const AName: string): string;
+    procedure SetOutcome(var ARequest: TDiagnosticRequest; const AResult: TJSONValue; const AError: Exception;
+      ANoteCount: Integer);
+    procedure AddIndexState(var ARequest: TDiagnosticRequest);
   public
     /// <summary>AFolder: Ordner der Tagesdateien; ATag unterscheidet die Prozesse.</summary>
     constructor Create(const AFolder, ATag: string; const ADocuments: IDocumentStore; const AIndex: ISymbolIndex);
@@ -411,127 +416,155 @@ begin
   end;
 end;
 
-procedure TShellDiagnostics.Finished(const AMethod: string; const AParams, AResult: TJSONValue;
-  const AError: Exception; AQueueMs, AElapsedMs: Int64);
+// Was beim Ende einer Anfrage noch läuft, etwa „hover1,completion2“.
+function RunningText(ARunning: TDictionary<string, Integer>): string;
 var
-  Notes: TRequestNotes;
-  Request: TDiagnosticRequest;
-  Timeout: Cardinal;
-  CpuMs: Int64;
-  Name, Parallel: string;
-  Count: Integer;
-  Pair: TPair<string, Integer>;
+  mPair: TPair<string, Integer>;
 begin
-  Notes := TRequestDiagnostics.Close;
-  // Rechenzeit gegen Laufzeit (#647): cpu weit unter ms heißt Warten (Sperre, volle CPU), nicht Rechnen.
-  CpuMs := TProcessInfo.ThreadCpuMs;
-  if (CpuMs >= 0) and (StartCpuMs >= 0) then
+  Result := '';
+  for mPair in ARunning do
   begin
-    Notes.Notes := Notes.Notes + ['cpu=' + IntToStr(CpuMs - StartCpuMs)];
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + mPair.Key + IntToStr(mPair.Value);
   end;
-  Name := ShortMethod(AMethod);
-  Parallel := '';
+end;
+
+function TShellDiagnostics.EndRunning(const AName: string): string;
+var
+  mCount: Integer;
+begin
   TMonitor.Enter(FLock);
   try
-    if FRunning.TryGetValue(Name, Count) then
+    if FRunning.TryGetValue(AName, mCount) then
     begin
-      if Count <= 1 then
+      if mCount <= 1 then
       begin
-        FRunning.Remove(Name);
+        FRunning.Remove(AName);
       end
       else
       begin
-        FRunning[Name] := Count - 1;
+        FRunning[AName] := mCount - 1;
       end;
     end;
-    // Was beim Ende dieser Anfrage noch läuft.
-    for Pair in FRunning do
-    begin
-      if Parallel <> '' then
-      begin
-        Parallel := Parallel + ',';
-      end;
-      Parallel := Parallel + Pair.Key + IntToStr(Pair.Value);
-    end;
+    Result := RunningText(FRunning);
   finally
     TMonitor.Exit(FLock);
   end;
-  if Parallel <> '' then
+end;
+
+// Zusätze am Ende einer Anfrage: Rechenzeit, Parallelität, Unit und Regel beim Fehler.
+procedure AddEndNotes(var ANotes: TRequestNotes; const AParallel: string);
+var
+  mCpuMs: Int64;
+begin
+  // Rechenzeit gegen Laufzeit (#647): cpu weit unter ms heißt Warten (Sperre, volle CPU), nicht Rechnen.
+  mCpuMs := TProcessInfo.ThreadCpuMs;
+  if (mCpuMs >= 0) and (StartCpuMs >= 0) then
   begin
-    Notes.Notes := Notes.Notes + ['parallel=' + Parallel];
+    ANotes.Notes := ANotes.Notes + ['cpu=' + IntToStr(mCpuMs - StartCpuMs)];
+  end;
+  if AParallel <> '' then
+  begin
+    ANotes.Notes := ANotes.Notes + ['parallel=' + AParallel];
   end;
   // Bei einem Fehler noch offen (#1094): die Unit und die Regel, an denen die Anfrage scheiterte.
-  if Notes.Subject <> '' then
+  if ANotes.Subject <> '' then
   begin
-    Notes.Notes := Notes.Notes + ['unit=' + Notes.Subject];
+    ANotes.Notes := ANotes.Notes + ['unit=' + ANotes.Subject];
   end;
-  if Notes.Rule <> '' then
+  if ANotes.Rule <> '' then
   begin
-    Notes.Notes := Notes.Notes + ['rule=' + Notes.Rule];
+    ANotes.Notes := ANotes.Notes + ['rule=' + ANotes.Rule];
   end;
+end;
+
+// Abbruch durch den Wächter (Zeitlimit) oder durch Client bzw. Änderung.
+function CancelOutcome(const ATimeoutMs: TFunc<Cardinal>; AWaitedMs: Int64): TDiagnosticOutcome;
+var
+  mTimeout: Cardinal;
+begin
+  mTimeout := 0;
+  if Assigned(ATimeoutMs) then
+  begin
+    mTimeout := ATimeoutMs();
+  end;
+  // Der Wächter bricht nach dem Zeitlimit ab; früher abgebrochen hat der Client oder eine Änderung.
+  Result := TDiagnosticOutcome.Cancelled;
+  if (mTimeout > 0) and (AWaitedMs >= Int64(mTimeout) - 50) then
+  begin
+    Result := TDiagnosticOutcome.Timeout;
+  end;
+end;
+
+procedure TShellDiagnostics.SetOutcome(var ARequest: TDiagnosticRequest; const AResult: TJSONValue;
+  const AError: Exception; ANoteCount: Integer);
+begin
+  if AError is EJsonRpcRequestCancelled then
+  begin
+    ARequest.Outcome := CancelOutcome(FTimeoutMs, ARequest.QueueMs + ARequest.ElapsedMs);
+  end
+  else if AError <> nil then
+  begin
+    ARequest.Outcome := TDiagnosticOutcome.Error;
+    ARequest.Reason := AError.ClassName;
+  end
+  else
+  begin
+    ARequest.Count := ANoteCount;
+    if ARequest.Count < 0 then
+    begin
+      ARequest.Count := CountOf(AResult);
+    end;
+    ARequest.Outcome := TDiagnosticOutcome.Empty;
+    if ARequest.Count > 0 then
+    begin
+      ARequest.Outcome := TDiagnosticOutcome.Ok;
+    end;
+  end;
+end;
+
+procedure TShellDiagnostics.AddIndexState(var ARequest: TDiagnosticRequest);
+begin
+  if FIndex <> nil then
+  begin
+    ARequest.IndexUnits := FIndex.UnitCount;
+    ARequest.IndexLibrary := LibraryCount;
+  end;
+  ARequest.IndexLoading := -1;
+  if Assigned(FIndexLoading) then
+  begin
+    ARequest.IndexLoading := FIndexLoading();
+  end;
+end;
+
+procedure TShellDiagnostics.Finished(const AMethod: string; const AParams, AResult: TJSONValue;
+  const AError: Exception; AQueueMs, AElapsedMs: Int64);
+var
+  mNotes: TRequestNotes;
+  mRequest: TDiagnosticRequest;
+begin
+  mNotes := TRequestDiagnostics.Close;
+  AddEndNotes(mNotes, EndRunning(ShortMethod(AMethod)));
   if FEnded or not FLog.Enabled then
   begin
     Exit;
   end;
-  Request := Default(TDiagnosticRequest);
-  Request.Time := Now;
-  Request.Method := AMethod;
-  Request.ElapsedMs := AElapsedMs;
-  Request.QueueMs := AQueueMs;
-  Request.Line := -1;
-  Request.Notes := Notes.Notes;
-  Request.Resolve := Notes.Resolve;
-  Request.Reason := Notes.Reason;
-  if AError is EJsonRpcRequestCancelled then
-  begin
-    Timeout := 0;
-    if Assigned(FTimeoutMs) then
-    begin
-      Timeout := FTimeoutMs();
-    end;
-    // Der Wächter bricht nach dem Zeitlimit ab; früher abgebrochen hat der Client oder eine Änderung.
-    if (Timeout > 0) and (AQueueMs + AElapsedMs >= Int64(Timeout) - 50) then
-    begin
-      Request.Outcome := TDiagnosticOutcome.Timeout;
-    end
-    else
-    begin
-      Request.Outcome := TDiagnosticOutcome.Cancelled;
-    end;
-  end
-  else if AError <> nil then
-  begin
-    Request.Outcome := TDiagnosticOutcome.Error;
-    Request.Reason := AError.ClassName;
-  end
-  else
-  begin
-    Request.Count := Notes.Count;
-    if Request.Count < 0 then
-    begin
-      Request.Count := CountOf(AResult);
-    end;
-    if Request.Count > 0 then
-    begin
-      Request.Outcome := TDiagnosticOutcome.Ok;
-    end
-    else
-    begin
-      Request.Outcome := TDiagnosticOutcome.Empty;
-    end;
-  end;
-  DescribeDocument(AParams, Request);
-  if FIndex <> nil then
-  begin
-    Request.IndexUnits := FIndex.UnitCount;
-    Request.IndexLibrary := LibraryCount;
-  end;
-  Request.IndexLoading := -1;
-  if Assigned(FIndexLoading) then
-  begin
-    Request.IndexLoading := FIndexLoading();
-  end;
-  FLog.LogRequest(Request);
+  mRequest := Default(TDiagnosticRequest);
+  mRequest.Time := Now;
+  mRequest.Method := AMethod;
+  mRequest.ElapsedMs := AElapsedMs;
+  mRequest.QueueMs := AQueueMs;
+  mRequest.Line := -1;
+  mRequest.Notes := mNotes.Notes;
+  mRequest.Resolve := mNotes.Resolve;
+  mRequest.Reason := mNotes.Reason;
+  SetOutcome(mRequest, AResult, AError, mNotes.Count);
+  DescribeDocument(AParams, mRequest);
+  AddIndexState(mRequest);
+  FLog.LogRequest(mRequest);
 end;
 
 end.

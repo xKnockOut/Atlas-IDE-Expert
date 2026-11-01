@@ -48,7 +48,7 @@ var
   Calls: PInteger;
 begin
   Calls := ACalls;
-  Result := TShellSlashHost.Create(
+  Result := TShellSlashHost.Create(TShellSlashSources.New(
     function(const AUri: string): TShellWorkspace
     begin
       Inc(Calls^);
@@ -62,7 +62,7 @@ begin
     function(const AUri: string): string
     begin
       Result := '';
-    end,
+    end),
     TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create);
 end;
 

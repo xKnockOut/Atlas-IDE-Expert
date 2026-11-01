@@ -46,6 +46,8 @@ type
     function Run(const AArguments: TArray<string>; ATimeoutMs: Cardinal; out AText, AError: string;
       out AExitCode: Integer; out AErrorText: string): Boolean; overload;
     function SvnPrefix(out APrefix, AError: string): Boolean;
+    function GitTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
+    function SvnTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
   public
     constructor Create(AKind: THotspotVcsKind; const ARoot, AExecutable: string; const ARunner: IAtlasVcsRunner;
       const ALines: IAtlasVcsLineHistory; ATimeoutMs: Cardinal);
@@ -90,6 +92,42 @@ begin
   FTimeoutMs := ATimeoutMs;
 end;
 
+// Werkzeug für die Arbeitskopie AWorkingCopy; '' mit AError, wenn sie weder Git noch SVN ist.
+function ToolOf(const AWorkingCopy: TAtlasVcsWorkingCopy; const ASettings: TServerSettings; const AFolder: string;
+  out AKind: THotspotVcsKind; out AError: string): string;
+begin
+  Result := '';
+  AError := '';
+  AKind := THotspotVcsKind.Git;
+  case AWorkingCopy.Kind of
+    TAtlasVcsKind.Git:
+      Result := TVcsChanges.ToolFor(TAtlasVcsKind.Git, ASettings.VcsGitPath);
+    TAtlasVcsKind.Svn:
+      begin
+        AKind := THotspotVcsKind.Svn;
+        Result := TVcsChanges.ToolFor(TAtlasVcsKind.Svn, ASettings.VcsSvnPath);
+      end;
+  else
+    AError := Format('%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie', [AFolder]);
+    Exit;
+  end;
+  if Result = '' then
+  begin
+    AError := Format('%s ist nicht installiert (vcs.%s.path)', [AtlasVcsKindName(AWorkingCopy.Kind),
+      THotspots.KindName(AKind)]);
+  end;
+end;
+
+// Zeitlimit eines Aufrufs: viermal vcs.timeoutSeconds (1–300), sonst 30 Sekunden.
+function TimeoutMsOf(const ASettings: TServerSettings): Cardinal;
+begin
+  Result := 30000;
+  if (ASettings.VcsTimeoutSeconds >= 1) and (ASettings.VcsTimeoutSeconds <= 300) then
+  begin
+    Result := Cardinal(ASettings.VcsTimeoutSeconds) * 1000 * 4;
+  end;
+end;
+
 class function TShellHotspotVcs.Detect(const AFolder: string; const ASettings: TServerSettings;
   out AVcs: IHotspotVcs; out AError: string): Boolean;
 var
@@ -98,57 +136,40 @@ var
   mExecutable: string;
   mKind: THotspotVcsKind;
   mRunner: IAtlasVcsRunner;
-  mVcs: IAtlasVersionControl;
   mLines: IAtlasVcsLineHistory;
   mTimeoutMs: Cardinal;
+  mFound: Boolean;
 begin
   AVcs := nil;
   AError := '';
-  mExecutable := '';
   mProvider := AtlasVcsProviderOf(ASettings.VcsProvider);
   if mProvider = TAtlasVcsProvider.Off then
   begin
     AError := 'Versionsverwaltung abgeschaltet (vcs.provider = off)';
     Exit(False);
   end;
-  mWorkingCopy := TAtlasVcsDetection.Find(AFolder, mProvider);
+  mWorkingCopy := Default(TAtlasVcsWorkingCopy);
+  mExecutable := '';
+  mKind := THotspotVcsKind.Git;
+  mFound := False;
   try
-    case mWorkingCopy.Kind of
-      TAtlasVcsKind.Git:
-        begin
-          mKind := THotspotVcsKind.Git;
-          mExecutable := TVcsChanges.ToolFor(TAtlasVcsKind.Git, ASettings.VcsGitPath);
-        end;
-      TAtlasVcsKind.Svn:
-        begin
-          mKind := THotspotVcsKind.Svn;
-          mExecutable := TVcsChanges.ToolFor(TAtlasVcsKind.Svn, ASettings.VcsSvnPath);
-        end;
-    else
-      AError := Format('%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie', [AFolder]);
-      Exit(False);
-    end;
+    mWorkingCopy := TAtlasVcsDetection.Find(AFolder, mProvider);
+    mExecutable := ToolOf(mWorkingCopy, ASettings, AFolder, mKind, AError);
+    mFound := mExecutable <> '';
   except
     on E: EVcsChanges do
     begin
       AError := E.Message;
-      Exit(False);
     end;
   end;
-  if mExecutable = '' then
+  if not mFound then
   begin
-    AError := Format('%s ist nicht installiert (vcs.%s.path)', [AtlasVcsKindName(mWorkingCopy.Kind),
-      THotspots.KindName(mKind)]);
     Exit(False);
   end;
-  mTimeoutMs := 30000;
-  if (ASettings.VcsTimeoutSeconds >= 1) and (ASettings.VcsTimeoutSeconds <= 300) then
-  begin
-    mTimeoutMs := Cardinal(ASettings.VcsTimeoutSeconds) * 1000 * 4;
-  end;
+  mTimeoutMs := TimeoutMsOf(ASettings);
   mRunner := TShellPlatform.CreateVcsRunner(True, nil);
-  mVcs := TAtlasVersionControl.ForWorkingCopy(mWorkingCopy, mRunner, mExecutable, mTimeoutMs);
-  if not Supports(mVcs, IAtlasVcsLineHistory, mLines) then
+  if not Supports(TAtlasVersionControl.ForWorkingCopy(mWorkingCopy, mRunner, mExecutable, mTimeoutMs),
+    IAtlasVcsLineHistory, mLines) then
   begin
     mLines := nil;
   end;
@@ -326,52 +347,72 @@ begin
   end;
 end;
 
-function TShellHotspotVcs.TextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
+function TShellHotspotVcs.GitTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
 var
-  mRevision, mError, mPrefix, mErrorText: string;
+  mRevision, mError, mErrorText: string;
   mExitCode: Integer;
+begin
+  Result := THotspotTextState.Unknown;
+  AText := '';
+  // Ohne Commit vor dem Datum reicht der Verlauf nicht so weit (neues oder flach geklontes Repository).
+  if not Run(['rev-list', '-1', '--before=' + THotspotHistory.IsoDate(ADate), 'HEAD'], FTimeoutMs, mRevision,
+    mError) or (Trim(mRevision) = '') then
+  begin
+    Exit;
+  end;
+  if Run(['show', Trim(mRevision) + ':' + AFileName], FTimeoutMs, AText, mError, mExitCode, mErrorText) then
+  begin
+    Result := THotspotTextState.Found;
+  end
+  else if mExitCode = 128 then
+  begin
+    // fatal: path '…' does not exist in '…'
+    Result := THotspotTextState.Missing;
+  end;
+end;
+
+function TShellHotspotVcs.SvnTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
+var
+  mError, mPrefix, mErrorText: string;
+  mExitCode: Integer;
+begin
+  Result := THotspotTextState.Unknown;
+  AText := '';
+  if not SvnPrefix(mPrefix, mError) then
+  begin
+    Exit;
+  end;
+  if not EndsStr('/', mPrefix) then
+  begin
+    mPrefix := mPrefix + '/';
+  end;
+  // Peg-Revision am Datum: der Pfad gilt in jenem Stand, auch wenn die Datei heute anders heißt.
+  if Run(['cat', '--non-interactive', '^' + mPrefix + AFileName + '@{' + THotspotHistory.IsoDate(ADate) + '}'],
+    FTimeoutMs, AText, mError, mExitCode, mErrorText) then
+  begin
+    Result := THotspotTextState.Found;
+  end
+  else if (Pos('E160013', mErrorText) > 0) or (Pos('E195012', mErrorText) > 0) then
+  begin
+    // Pfad nicht gefunden bzw. nicht mit der Peg-Revision verbunden.
+    Result := THotspotTextState.Missing;
+  end;
+end;
+
+function TShellHotspotVcs.TextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
 begin
   AText := '';
   if (AFileName = '') or StartsStr('-', AFileName) then
   begin
     Exit(THotspotTextState.Unknown);
   end;
-  Result := THotspotTextState.Unknown;
   if FKind = THotspotVcsKind.Git then
   begin
-    // Ohne Commit vor dem Datum reicht der Verlauf nicht so weit (neues oder flach geklontes Repository).
-    if not Run(['rev-list', '-1', '--before=' + THotspotHistory.IsoDate(ADate), 'HEAD'], FTimeoutMs, mRevision,
-      mError) or (Trim(mRevision) = '') then
-    begin
-      Exit;
-    end;
-    if Run(['show', Trim(mRevision) + ':' + AFileName], FTimeoutMs, AText, mError, mExitCode, mErrorText) then
-    begin
-      Result := THotspotTextState.Found;
-    end
-    else if mExitCode = 128 then
-    begin
-      // fatal: path '…' does not exist in '…'
-      Result := THotspotTextState.Missing;
-    end;
+    Result := GitTextAt(AFileName, ADate, AText);
   end
-  else if SvnPrefix(mPrefix, mError) then
+  else
   begin
-    if not EndsStr('/', mPrefix) then
-    begin
-      mPrefix := mPrefix + '/';
-    end;
-    // Peg-Revision am Datum: der Pfad gilt in jenem Stand, auch wenn die Datei heute anders heißt.
-    if Run(['cat', '--non-interactive', '^' + mPrefix + AFileName + '@{' + THotspotHistory.IsoDate(ADate) + '}'],
-      FTimeoutMs, AText, mError, mExitCode, mErrorText) then
-    begin
-      Result := THotspotTextState.Found;
-    end
-    else if (Pos('E160013', mErrorText) > 0) or (Pos('E195012', mErrorText) > 0) then
-    begin
-      // Pfad nicht gefunden bzw. nicht mit der Peg-Revision verbunden.
-      Result := THotspotTextState.Missing;
-    end;
+    Result := SvnTextAt(AFileName, ADate, AText);
   end;
   if Result <> THotspotTextState.Found then
   begin
