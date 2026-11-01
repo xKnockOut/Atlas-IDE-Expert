@@ -50,6 +50,7 @@
     "analysis.enabled": true,
     "tests.enabled": true,
     "buildTools.enabled": true,
+    "buildPipeline.enabled": true,
     "bookmarks.enabled": true,
     "designer.enabled": true,
     "ruleChecks.enabled": true,

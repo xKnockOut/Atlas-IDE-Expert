@@ -707,18 +707,15 @@ begin
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
     Resolver := TRuleDerived.Resolver(mCache, AContext);
+    Resolver.PinTree(AContext.Tree, FileName);
     try
-      Resolver.PinTree(AContext.Tree, FileName);
-      try
-        Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-        for Node in ArgsNodes do
-          CheckArguments(Node);
-        if HasParams then
-          CheckMethods;
-      finally
-        Resolver.UnpinTree;
-      end;
+      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      for Node in ArgsNodes do
+        CheckArguments(Node);
+      if HasParams then
+        CheckMethods;
     finally
+      Resolver.UnpinTree;
     end;
   finally
     ParamNames.Free;
@@ -1103,14 +1100,11 @@ begin
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
     mResolver := TRuleDerived.Resolver(mCache, AContext);
+    mResolver.PinTree(AContext.Tree, mFileName);
     try
-      mResolver.PinTree(AContext.Tree, mFileName);
-      try
-        Visit(AContext.Tree.Root);
-      finally
-        mResolver.UnpinTree;
-      end;
+      Visit(AContext.Tree.Root);
     finally
+      mResolver.UnpinTree;
     end;
   finally
     mGenericNames.Free;

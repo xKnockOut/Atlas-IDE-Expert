@@ -3,6 +3,8 @@
 // Regeln für DUnitX-Tests:
 //   dunitx-test-without-assert  [Test]- bzw. [TestCase]-Methode, die weder selbst noch über Methoden derselben
 //                               Klasse oder Routinen der Unit eine Prüfung aufruft (#945): Sie ist immer grün.
+//                               Freie Routinen anderer Units (AssertTextPair aus einer gemeinsamen Testunit) löst
+//                               der Symbolindex auf; ihr Rumpf wird gelesen und ebenso durchsucht.
 //                               Als Prüfung zählen Aufrufe nach "assertPatterns" (Vorgabe Assert.*, WillRaise*,
 //                               Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen
 //                               (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still.
@@ -35,7 +37,10 @@ uses
   System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.Attributes,
@@ -43,6 +48,232 @@ uses
 
 const
   DUnitXTestWithoutAssertRuleId = 'dunitx-test-without-assert';
+
+type
+  /// <summary>Prüft die freie Routine AName einer anderen Unit etwas? False, wenn sie unbekannt ist.</summary>
+  TAssertsElsewhere = function(const AName: string): Boolean of object;
+
+  /// <summary>Sucht in den Routinen einer Unit nach Prüfungen: Code-Tokens ohne Kommentare und alle Routinen,
+  /// auch lokale (ein Test prüft oft in einer eigenen Hilfsroutine).</summary>
+  TAssertSearch = class
+  private
+    FTokens: TArray<TPascalToken>;
+    FCode: TArray<Integer>;
+    FRoutines: TArray<TSyntaxNode>;
+    FPatterns: TArray<string>;
+    FElsewhere: TAssertsElsewhere;
+    procedure CollectRoutines(ARoot: TSyntaxNode);
+    function Token(APosition: Integer): TPascalToken;
+    function IsWord(APosition: Integer): Boolean;
+  public
+    /// <summary>AElsewhere = nil: Aufrufe in andere Units zählen nicht.</summary>
+    constructor Create(ATree: TSyntaxTree; const APatterns: TArray<string>; const AElsewhere: TAssertsElsewhere);
+    function FindRoutine(const AName: string): TSyntaxNode;
+    /// <summary>Prüft ARoutine etwas, selbst oder über eine aufgerufene Methode von AClassName, eine Routine
+    /// der Unit oder (über AElsewhere) eine freie Routine einer anderen Unit?</summary>
+    function Asserts(ARoutine: TSyntaxNode; const AClassName: string; var AVisited: TArray<TSyntaxNode>): Boolean;
+  end;
+
+  /// <summary>Freie Routinen anderer Units über den Symbolindex: Datei lesen, Rumpf durchsuchen. Je Name nur
+  /// einmal; von dort aus zählen nur Routinen derselben Unit (keine Kette über weitere Units).</summary>
+  TAssertsInOtherUnits = class
+  private
+    FIndex: ISymbolIndex;
+    FReadFile: TRuleFileReader;
+    FFileName: string;
+    FUnitName: string;
+    FPatterns: TArray<string>;
+    FKnown: TDictionary<string, Boolean>;
+    function Search(const AName: string): Boolean;
+    function SearchIn(const ALocation: TSymbolLocation): Boolean;
+  public
+    constructor Create(const AContext: TRuleContext; const APatterns: TArray<string>);
+    destructor Destroy; override;
+    function Asserts(const AName: string): Boolean;
+  end;
+
+{ TAssertSearch }
+
+constructor TAssertSearch.Create(ATree: TSyntaxTree; const APatterns: TArray<string>;
+  const AElsewhere: TAssertsElsewhere);
+var
+  mIndex: Integer;
+begin
+  inherited Create;
+  FTokens := ATree.Tokens;
+  FCode := nil;
+  for mIndex := 0 to High(FTokens) do
+    if not (FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      FCode := FCode + [mIndex];
+  FPatterns := APatterns;
+  FElsewhere := AElsewhere;
+  FRoutines := nil;
+  if ATree.Root <> nil then
+    CollectRoutines(ATree.Root);
+end;
+
+// Iterativ (Bericht M1).
+procedure TAssertSearch.CollectRoutines(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
+        FRoutines := FRoutines + [mNode];
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+        mPending.Push(mNode[mIndex]);
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+function TAssertSearch.Token(APosition: Integer): TPascalToken;
+begin
+  Result := FTokens[FCode[APosition]];
+end;
+
+function TAssertSearch.IsWord(APosition: Integer): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and
+    (Token(APosition).Kind = TPascalTokenKind.Identifier);
+end;
+
+function TAssertSearch.FindRoutine(const AName: string): TSyntaxNode;
+var
+  mRoutine: TSyntaxNode;
+begin
+  // Nur Routinen mit Rumpf: Die Deklaration im interface-Teil (procedure PruefePaar;) hat keinen.
+  for mRoutine in FRoutines do
+    if SameText(mRoutine.Name, AName) and (mRoutine.FindChild(TSyntaxKind.Block) <> nil) then
+      Exit(mRoutine);
+  Result := nil;
+end;
+
+function TAssertSearch.Asserts(ARoutine: TSyntaxNode; const AClassName: string;
+  var AVisited: TArray<TSyntaxNode>): Boolean;
+var
+  mBlock, mCallee, mVisited: TSyntaxNode;
+  mPosition, mLast: Integer;
+  mChain: string;
+begin
+  Result := False;
+  for mVisited in AVisited do
+    if mVisited = ARoutine then
+      Exit;
+  AVisited := AVisited + [ARoutine];
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+  if mBlock = nil then
+    Exit;
+  for mPosition := 0 to High(FCode) do
+  begin
+    if (Token(mPosition).Offset < mBlock.StartOffset) or (Token(mPosition).Offset >= mBlock.EndOffset) or
+      not IsWord(mPosition) or ((mPosition > 0) and Token(mPosition - 1).IsSymbol('.')) then
+      Continue;
+    // Punktkette ab hier: Assert.AreEqual, Self.Pruefen, TRuleAssert.Reports.
+    mChain := Token(mPosition).Text;
+    mLast := mPosition;
+    while (mLast + 2 <= High(FCode)) and Token(mLast + 1).IsSymbol('.') and IsWord(mLast + 2) do
+    begin
+      Inc(mLast, 2);
+      mChain := mChain + '.' + Token(mLast).Text;
+    end;
+    if TDUnitXTestWithoutAssertRule.IsAssertion(mChain, FPatterns) then
+      Exit(True);
+    if StartsText('Self.', mChain) then
+      mChain := Copy(mChain, 6, MaxInt);
+    if Pos('.', mChain) > 0 then
+      Continue;
+    mCallee := FindRoutine(AClassName + '.' + mChain);
+    if mCallee = nil then
+      mCallee := FindRoutine(mChain);
+    if mCallee <> nil then
+    begin
+      if Asserts(mCallee, AClassName, AVisited) then
+        Exit(True);
+    end
+    else if Assigned(FElsewhere) and FElsewhere(mChain) then
+      Exit(True);
+  end;
+end;
+
+{ TAssertsInOtherUnits }
+
+constructor TAssertsInOtherUnits.Create(const AContext: TRuleContext; const APatterns: TArray<string>);
+begin
+  inherited Create;
+  FIndex := AContext.Index;
+  FReadFile := AContext.ReadFile;
+  FFileName := AContext.FileName;
+  FUnitName := AContext.UnitName;
+  FPatterns := APatterns;
+  FKnown := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TAssertsInOtherUnits.Destroy;
+begin
+  FKnown.Free;
+  inherited Destroy;
+end;
+
+function TAssertsInOtherUnits.Asserts(const AName: string): Boolean;
+var
+  mKey: string;
+begin
+  if (FIndex = nil) or not Assigned(FReadFile) then
+    Exit(False);
+  mKey := UpperCase(AName);
+  if FKnown.TryGetValue(mKey, Result) then
+    Exit;
+  Result := Search(AName);
+  FKnown.Add(mKey, Result);
+end;
+
+function TAssertsInOtherUnits.Search(const AName: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := False;
+  for mLocation in FIndex.FindSymbols(AName) do
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.Routine) and (mLocation.Symbol.Container = '') and
+      mLocation.Symbol.InInterface and not SameText(mLocation.UnitName, FUnitName) and
+      not SameText(mLocation.FileName, FFileName) and SearchIn(mLocation) then
+      Exit(True);
+end;
+
+function TAssertsInOtherUnits.SearchIn(const ALocation: TSymbolLocation): Boolean;
+var
+  mData: TBytes;
+  mFormat: TFileFormat;
+  mTree: TSyntaxTree;
+  mSearch: TAssertSearch;
+  mRoutine: TSyntaxNode;
+  mVisited: TArray<TSyntaxNode>;
+begin
+  Result := False;
+  if not FReadFile(ALocation.FileName, mData) then
+    Exit;
+  mTree := TPascalParser.Parse(TFileEncoding.Decode(mData, mFormat));
+  try
+    mSearch := TAssertSearch.Create(mTree, FPatterns, nil);
+    try
+      mRoutine := mSearch.FindRoutine(ALocation.Symbol.Name);
+      mVisited := nil;
+      Result := (mRoutine <> nil) and mSearch.Asserts(mRoutine, '', mVisited);
+    finally
+      mSearch.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
 
 { TDUnitXTestWithoutAssertRule }
 
@@ -79,227 +310,141 @@ end;
 
 procedure TDUnitXTestWithoutAssertRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Code: TArray<Integer>;
-  Lines: TArray<string>;
-  LineBreak: string;
-  Patterns: TArray<string>;
-  Routines: TArray<TSyntaxNode>;
-
-  function Token(APosition: Integer): TPascalToken;
-  begin
-    Result := Tokens[Code[APosition]];
-  end;
-
-  function IsWord(APosition: Integer): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(Code)) and
-      (Token(APosition).Kind = TPascalTokenKind.Identifier);
-  end;
-
-  // Iterativ (Bericht M1).
-  procedure CollectRoutines(ARoot: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-  begin
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        // Auch lokale Routinen: Ein Test prüft oft in einer eigenen Hilfsroutine (procedure Silent(…) mit Assert).
-        if Node.Kind = TSyntaxKind.RoutineDecl then
-          Routines := Routines + [Node];
-        for Index := Node.ChildCount - 1 downto 0 do
-          Pending.Push(Node[Index]);
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
-  function FindRoutine(const AName: string): TSyntaxNode;
-  var
-    Routine: TSyntaxNode;
-  begin
-    for Routine in Routines do
-      if SameText(Routine.Name, AName) then
-        Exit(Routine);
-    Result := nil;
-  end;
-
-  // Prüft ARoutine (oder eine von ihr aufgerufene Methode von AClassName bzw. Routine der Unit) etwas?
-  function Asserts(ARoutine: TSyntaxNode; const AClassName: string; var AVisited: TArray<TSyntaxNode>): Boolean;
-  var
-    Block, Callee, Visited: TSyntaxNode;
-    Position, Last: Integer;
-    Chain: string;
-  begin
-    Result := False;
-    for Visited in AVisited do
-      if Visited = ARoutine then
-        Exit;
-    AVisited := AVisited + [ARoutine];
-    Block := ARoutine.FindChild(TSyntaxKind.Block);
-    if Block = nil then
-      Exit;
-    for Position := 0 to High(Code) do
-    begin
-      if (Token(Position).Offset < Block.StartOffset) or (Token(Position).Offset >= Block.EndOffset) or
-        not IsWord(Position) or ((Position > 0) and Token(Position - 1).IsSymbol('.')) then
-        Continue;
-      // Punktkette ab hier: Assert.AreEqual, Self.Pruefen, TRuleAssert.Reports.
-      Chain := Token(Position).Text;
-      Last := Position;
-      while (Last + 2 <= High(Code)) and Token(Last + 1).IsSymbol('.') and IsWord(Last + 2) do
-      begin
-        Inc(Last, 2);
-        Chain := Chain + '.' + Token(Last).Text;
-      end;
-      if IsAssertion(Chain, Patterns) then
-        Exit(True);
-      if StartsText('Self.', Chain) then
-        Chain := Copy(Chain, 6, MaxInt);
-      if Pos('.', Chain) > 0 then
-        Continue;
-      Callee := FindRoutine(AClassName + '.' + Chain);
-      if Callee = nil then
-        Callee := FindRoutine(Chain);
-      if (Callee <> nil) and Asserts(Callee, AClassName, AVisited) then
-        Exit(True);
-    end;
-  end;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mSearch: TAssertSearch;
+  mOtherUnits: TAssertsInOtherUnits;
 
   function NameRange(AHeader: TSyntaxNode): TTextRange;
   var
-    Position: Integer;
+    mToken: TPascalToken;
   begin
     Result := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
-    for Position := 0 to High(Code) do
-      if (Token(Position).Offset >= AHeader.StartOffset) and (Token(Position).Offset < AHeader.EndOffset) and
-        IsWord(Position) and SameText(Token(Position).Text, AHeader.Name) then
-        Exit(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos));
+    for mToken in AContext.Tree.Tokens do
+      if (mToken.Offset >= AHeader.StartOffset) and (mToken.Offset < AHeader.EndOffset) and
+        (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, AHeader.Name) then
+        Exit(TTextRange.Create(mToken.StartPos, mToken.EndPos));
   end;
 
   // "Assert.Pass;" vor das "end" des Rumpfs, wenn es allein in seiner Zeile steht.
   function PassEdit(ABlock: TSyntaxNode; out AEdit: TTextEdit): Boolean;
   var
-    Line: Integer;
-    Indent: string;
+    mLine: Integer;
+    mIndent: string;
   begin
     Result := False;
-    Line := ABlock.EndPos.Line;
-    if (Line > High(Lines)) or (ABlock.EndPos.Line = ABlock.StartPos.Line) or
-      (Trim(Copy(Lines[Line], 1, ABlock.EndPos.Character - 3)) <> '') then
+    mLine := ABlock.EndPos.Line;
+    if (mLine > High(mLines)) or (ABlock.EndPos.Line = ABlock.StartPos.Line) or
+      (Trim(Copy(mLines[mLine], 1, ABlock.EndPos.Character - 3)) <> '') then
       Exit;
-    Indent := TTextLines.IndentOf(Lines[Line]);
-    AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), Indent + '  Assert.Pass;' + LineBreak);
+    mIndent := TTextLines.IndentOf(mLines[mLine]);
+    AEdit := TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), mIndent + '  Assert.Pass;' + mLineBreak);
     Result := True;
   end;
 
   procedure CheckMethod(const AClassName: string; AHeader: TSyntaxNode);
   var
-    Body, Block: TSyntaxNode;
-    Visited: TArray<TSyntaxNode>;
-    Fixes: TArray<TRuleFix>;
-    Edit: TTextEdit;
-    Fix: TRuleFix;
+    mBody, mBlock: TSyntaxNode;
+    mVisited: TArray<TSyntaxNode>;
+    mFixes: TArray<TRuleFix>;
+    mEdit: TTextEdit;
+    mFix: TRuleFix;
   begin
-    Body := FindRoutine(AClassName + '.' + AHeader.Name);
-    if Body = nil then
+    mBody := mSearch.FindRoutine(AClassName + '.' + AHeader.Name);
+    if mBody = nil then
       Exit;
-    Visited := nil;
-    if Asserts(Body, AClassName, Visited) then
+    mVisited := nil;
+    if mSearch.Asserts(mBody, AClassName, mVisited) then
       Exit;
-    Fixes := nil;
-    Block := Body.FindChild(TSyntaxKind.Block);
-    if (Block <> nil) and PassEdit(Block, Edit) then
+    mFixes := nil;
+    mBlock := mBody.FindChild(TSyntaxKind.Block);
+    if (mBlock <> nil) and PassEdit(mBlock, mEdit) then
     begin
-      Fix := TRuleFix.Create('Assert.Pass; als Platzhalter einfügen', [Edit]);
-      Fix.Alternative := True;
-      Fixes := Fixes + [Fix];
+      mFix := TRuleFix.Create('Assert.Pass; als Platzhalter einfügen', [mEdit]);
+      mFix.Alternative := True;
+      mFixes := mFixes + [mFix];
     end;
-    Fix := TRuleFix.Jump('Zur Methode springen', Body.StartPos);
-    Fix.Alternative := True;
-    Fixes := Fixes + [Fix];
-    AReport.Add(NameRange(AHeader), 'Der Test prüft nichts; er ist immer grün.', Fixes);
+    mFix := TRuleFix.Jump('Zur Methode springen', mBody.StartPos);
+    mFix.Alternative := True;
+    mFixes := mFixes + [mFix];
+    AReport.Add(NameRange(AHeader), 'Der Test prüft nichts; er ist immer grün.', mFixes);
   end;
 
   procedure CheckClass(const AClassName: string; AClass: TSyntaxNode);
   var
-    Index: Integer;
-    Child: TSyntaxNode;
-    Names: TArray<string>;
+    mIndex: Integer;
+    mChild: TSyntaxNode;
+    mNames: TArray<string>;
   begin
-    Names := nil;
-    for Index := 0 to AClass.ChildCount - 1 do
+    mNames := nil;
+    for mIndex := 0 to AClass.ChildCount - 1 do
     begin
-      Child := AClass[Index];
-      if Child.Kind = TSyntaxKind.Attribute then
+      mChild := AClass[mIndex];
+      if mChild.Kind = TSyntaxKind.Attribute then
       begin
-        Names := Names + TAttributes.Names(Child);
+        mNames := mNames + TAttributes.Names(mChild);
         Continue;
       end;
-      if (Child.Kind = TSyntaxKind.RoutineHeader) and (MatchText('Test', Names) or MatchText('TestCase', Names)) and
-        not MatchText('Ignore', Names) and not MatchText('WillRaise', Names) and
-        not MatchText('WillRaiseAny', Names) then
-        CheckMethod(AClassName, Child);
-      Names := nil;
+      if (mChild.Kind = TSyntaxKind.RoutineHeader) and (MatchText('Test', mNames) or MatchText('TestCase', mNames)) and
+        not MatchText('Ignore', mNames) and not MatchText('WillRaise', mNames) and
+        not MatchText('WillRaiseAny', mNames) then
+        CheckMethod(AClassName, mChild);
+      mNames := nil;
     end;
   end;
 
   // Iterativ (Bericht M1).
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-    Body: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
+    mBody: TSyntaxNode;
   begin
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.TypeDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.TypeDecl then
         begin
-          Body := Node.FindChild(TSyntaxKind.ClassType);
-          if Body <> nil then
-            CheckClass(Node.Name, Body);
+          mBody := mNode.FindChild(TSyntaxKind.ClassType);
+          if mBody <> nil then
+            CheckClass(mNode.Name, mBody);
           Continue;
         end;
-        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+        if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
           Continue;
-        for Index := Node.ChildCount - 1 downto 0 do
-          Pending.Push(Node[Index]);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+          mPending.Push(mNode[mIndex]);
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Index: Integer;
+  mPatterns: TArray<string>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   // Ohne Attribut Test schweigt die Regel sofort.
   if not ContainsText(AContext.Text, 'Test') then
     Exit;
-  Tokens := AContext.Tree.Tokens;
-  Code := nil;
-  for Index := 0 to High(Tokens) do
-    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-      Code := Code + [Index];
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-  Patterns := TRuleOptions.Strings(AContext.Options, 'assertPatterns', DefaultPatterns);
-  Routines := nil;
-  CollectRoutines(AContext.Tree.Root);
-  Visit(AContext.Tree.Root);
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  mPatterns := TRuleOptions.Strings(AContext.Options, 'assertPatterns', DefaultPatterns);
+  mOtherUnits := TAssertsInOtherUnits.Create(AContext, mPatterns);
+  try
+    mSearch := TAssertSearch.Create(AContext.Tree, mPatterns, mOtherUnits.Asserts);
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      mSearch.Free;
+    end;
+  finally
+    mOtherUnits.Free;
+  end;
 end;
 
 procedure RegisterTestingRules(const ARegistry: TRuleRegistry);

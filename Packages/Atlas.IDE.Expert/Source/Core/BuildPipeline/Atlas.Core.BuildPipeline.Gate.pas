@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Gate;
+﻿unit Atlas.Core.BuildPipeline.Gate;
 
 // Prüfung vor dem Kompilieren (#529), ohne VCL und Open Tools API: Vor jedem
 // make bzw. build, den der Benutzer startet, prüft Atlas die Units, die sich
@@ -33,7 +33,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.ReleaseGuard;
+  Atlas.Core.Build.PipelineSettings,
+  Atlas.Core.BuildPipeline.ReleaseGuard;
 
 type
 {$SCOPEDENUMS ON}
@@ -89,9 +90,9 @@ type
   public const
     /// <summary>Zweiter Compile mit denselben Treffern in dieser Zeit läuft trotz block.</summary>
     OverrideMs = TAtlasReleaseGuard.OverrideMs;
-    DefaultTimeoutMs = 300;
-    MinTimeoutMs = 50;
-    MaxTimeoutMs = 10000;
+    DefaultTimeoutMs = TAtlasBuildPipelineSettings.GateDefaultTimeoutMs;
+    MinTimeoutMs = TAtlasBuildPipelineSettings.GateMinTimeoutMs;
+    MaxTimeoutMs = TAtlasBuildPipelineSettings.GateMaxTimeoutMs;
   public
     /// <summary>Prüft Atlas diesen Lauf? Gate nicht off, make oder build, vom Benutzer, keine Hintergrundprüfung.
     /// </summary>
@@ -154,7 +155,7 @@ uses
 
 class function TAtlasGateSettings.Create(const AGate: string; ATimeoutMs: Integer): TAtlasGateSettings;
 begin
-  Result.Gate := TAtlasReleaseGuard.GateOf(AGate);
+  Result.Gate := TAtlasBuildPipelineSettings.GateOf(AGate);
   Result.TimeoutMs := EnsureRange(ATimeoutMs, TAtlasBuildGateCheck.MinTimeoutMs, TAtlasBuildGateCheck.MaxTimeoutMs);
 end;
 

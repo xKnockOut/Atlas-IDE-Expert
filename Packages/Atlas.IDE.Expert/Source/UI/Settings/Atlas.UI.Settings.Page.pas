@@ -55,7 +55,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
-  Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Vcs,
   Atlas.Core.Welcome.QuickActions,
@@ -1707,7 +1707,6 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Projects.Matching,
@@ -2555,6 +2554,7 @@ begin
   // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
   AddSheet(TAtlasTextId.SettingsTabCompiler);
   AddModuleSwitch('BuildToolsEnabled');
+  AddModuleSwitch('BuildPipelineEnabled');
   AddModuleSwitch('TestsEnabled');
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
@@ -4710,7 +4710,7 @@ begin
   FReleaseConfigs := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReleaseConfigs));
   AddTitle(TAtlasTextId.SettingsReleaseChecksTitle);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
-    if TAtlasReleaseGuard.HasTarget[Check] then
+    if TAtlasBuildPipelineSettings.HasTarget[Check] then
       FReleaseCheckChoices[Check] := AddChoice(TAtlasStrings.Text(Captions[Check]),
         [TAtlasStrings.Text(TAtlasTextId.SettingsReleaseNotChecked),
         TAtlasStrings.Text(TAtlasTextId.SettingsReleaseExpectOff),
@@ -4735,7 +4735,7 @@ var
   Check: TAtlasReleaseCheck;
 begin
   FReleaseGuard.Checked := ASettings.ReleaseGuard;
-  FReleaseConfigs.Text := TAtlasReleaseGuard.NormalizedConfigurations(ASettings.ReleaseConfigs);
+  FReleaseConfigs.Text := TAtlasBuildPipelineSettings.NormalizedConfigurations(ASettings.ReleaseConfigs);
   Checks := TAtlasReleaseChecks.Parse(ASettings.ReleaseChecks);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
     if FReleaseCheckChoices[Check] <> nil then
@@ -4757,7 +4757,7 @@ var
   Check: TAtlasReleaseCheck;
 begin
   ASettings.ReleaseGuard := FReleaseGuard.Checked;
-  ASettings.ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(FReleaseConfigs.Text);
+  ASettings.ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(FReleaseConfigs.Text);
   Checks := TAtlasReleaseChecks.Parse(ASettings.ReleaseChecks);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
     if FReleaseCheckChoices[Check] <> nil then
@@ -7451,7 +7451,7 @@ begin
   FShowInterfaceCost.Checked := ASettings.ShowInterfaceCost;
   FBuildSummary.Checked := ASettings.BuildSummary;
   FBuildWarningsAsErrors.Text := TAtlasBuildVerdicts.NormalizeCodes(ASettings.BuildWarningsAsErrors);
-  FBuildGate.Choice := Ord(TAtlasReleaseGuard.GateOf(ASettings.BuildGate));
+  FBuildGate.Choice := Ord(TAtlasBuildPipelineSettings.GateOf(ASettings.BuildGate));
   FBuildGateTimeout.Text := IntToStr(ASettings.BuildGateTimeoutMs);
   FBuildCompilerSwitches.Checked := ASettings.BuildCompilerSwitches;
   FBuildSwitchesInStatusBar.Checked := ASettings.BuildSwitchesInStatusBar;
@@ -8047,9 +8047,9 @@ begin
   // Ungültige Einträge fallen weg; gespeichert wird die einheitliche Form „W1035, H2164“.
   ASettings.BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(FBuildWarningsAsErrors.Text);
   if (FBuildGate.Choice >= Ord(Low(TAtlasBuildGate))) and (FBuildGate.Choice <= Ord(High(TAtlasBuildGate))) then
-    ASettings.BuildGate := TAtlasReleaseGuard.GateNames[TAtlasBuildGate(FBuildGate.Choice)];
+    ASettings.BuildGate := TAtlasBuildPipelineSettings.GateNames[TAtlasBuildGate(FBuildGate.Choice)];
   ASettings.BuildGateTimeoutMs := EnsureRange(StrToIntDef(FBuildGateTimeout.Text, ASettings.BuildGateTimeoutMs),
-    TAtlasBuildGateCheck.MinTimeoutMs, TAtlasBuildGateCheck.MaxTimeoutMs);
+    TAtlasBuildPipelineSettings.GateMinTimeoutMs, TAtlasBuildPipelineSettings.GateMaxTimeoutMs);
   ASettings.BuildCompilerSwitches := FBuildCompilerSwitches.Checked;
   ASettings.BuildSwitchesInStatusBar := FBuildSwitchesInStatusBar.Checked;
   SaveRelease(ASettings);

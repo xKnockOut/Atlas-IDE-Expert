@@ -1,9 +1,9 @@
-﻿unit Atlas.IDE.Build.Inbox;
+﻿unit Atlas.IDE.BuildPipeline.Inbox;
 
 // Eingang für Builds von Claude Code (#261, Protokoll in
-// Atlas.Core.Build.Inbox): Alle 250 ms übernimmt das Plugin einen wartenden
+// Atlas.Core.BuildPipeline.Inbox): Alle 250 ms übernimmt das Plugin einen wartenden
 // Auftrag des MCP-Werkzeugs build_project, baut über den Build-Läufer
-// (Atlas.IDE.Build.Runner) und antwortet mit Ergebnis und Compilermeldungen.
+// (Atlas.IDE.BuildPipeline.Runner) und antwortet mit Ergebnis und Compilermeldungen.
 // Immer nur ein Auftrag zugleich; die übrigen warten, bis der Läufer frei ist
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
 // Einstellung „Builds für Claude Code“ (McpBuild); dann läuft der Eingang
@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.IDE.Build.Runner;
+  Atlas.IDE.BuildPipeline.Runner;
 
 type
   TAtlasBuildInboxProc = reference to procedure(const AMessage: string);
@@ -43,8 +43,8 @@ uses
   System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Inbox,
-  Atlas.UI.Strings;
+  Atlas.Core.BuildPipeline.Inbox,
+  Atlas.UI.BuildPipeline.Strings;
 
 constructor TAtlasIdeBuildInbox.Create(ARunner: TAtlasIdeBuildRunner; const AOnMessage: TAtlasBuildInboxProc);
 begin
@@ -116,7 +116,8 @@ begin
   mFolder := FFolder;
   OnMessage := FOnMessage;
   if Assigned(OnMessage) then
-    OnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpBuildStarted, [ExtractFileName(Request.Project)]));
+    OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildStarted,
+      [ExtractFileName(Request.Project)]));
   // Die Antwort kommt nach dem Build (Meldungen des Lesers, #528); der Rückruf hält nur Werte, nicht Self.
   if not FRunner.Start(Request, TAtlasBuildInbox.RequestedBy,
     procedure(const AReport: TAtlasBuildReport; const AError: string)
@@ -127,7 +128,8 @@ begin
         else
           TAtlasBuildInbox.Answer(mFolder, Request.Id, TAtlasBuildInbox.SuccessText(AReport));
         if Assigned(OnMessage) and (AError = '') then
-          OnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpBuildFinished, [ExtractFileName(Request.Project),
+          OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildFinished,
+            [ExtractFileName(Request.Project),
             ErrorCount(AReport.Messages)]));
       except
         on E: Exception do
@@ -137,7 +139,8 @@ begin
   begin
     TAtlasBuildInbox.Answer(FFolder, Request.Id, TAtlasBuildInbox.RefusalText(Reason));
     if Assigned(OnMessage) then
-      OnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpBuildRefused, [ExtractFileName(Request.Project), Reason]));
+      OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildRefused,
+        [ExtractFileName(Request.Project), Reason]));
   end;
 end;
 

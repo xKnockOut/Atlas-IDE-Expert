@@ -1,8 +1,8 @@
-﻿unit Atlas.IDE.Build.Runner;
+﻿unit Atlas.IDE.BuildPipeline.Runner;
 
 // Baut ein offenes Projekt auf Auftrag über IOTAProjectBuilder (#261) und
 // meldet Ergebnis und Compilermeldungen. Genutzt vom Eingang für Claude Code
-// (Atlas.IDE.Build.Inbox, MCP-Werkzeug build_project); gedacht auch für
+// (Atlas.IDE.BuildPipeline.Inbox, MCP-Werkzeug build_project); gedacht auch für
 // „Öffnen und bauen“ der Willkommensseite (#764).
 // - Abgelehnt wird mit Grund, wenn der Debugger läuft, schon ein Build oder
 //   die Compilerprüfung (#548) läuft, ein eigener Auftrag noch offen ist oder
@@ -16,7 +16,7 @@
 //   der Fortschrittsdialog auf OK; nur während des eigenen Builds drückt der
 //   Läufer dort OK (wie TAtlasIdeCheckOnSave, nie Abbrechen).
 // - Die Meldungen liest der Leser des Meldungsfensters (#528) kurz nach dem
-//   Ende; die Kompositionswurzel reicht sie über MessagesRead weiter. Kommen
+//   Ende; Base reicht sie über IAtlasCompilerMessagesListener (MessagesRead) weiter. Kommen
 //   sie nicht binnen MessagesWaitMs, meldet der Läufer das Ergebnis ohne sie.
 // - Bricht ein Teilnehmer der Compile-Ereignisse den eigenen Build ab (etwa
 //   der Release-Build-Wächter mit build.gate = block, #533), endet der
@@ -30,12 +30,10 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Inbox;
+  Atlas.Core.BuildPipeline.Inbox;
 
 type
-  /// <summary>Ende eines Auftrags; AError &lt;&gt; '' = nicht gebaut (Grund), sonst Ergebnis in AReport.</summary>
-  TAtlasBuildDoneProc = reference to procedure(const AReport: TAtlasBuildReport; const AError: string);
-
+  // TAtlasBuildDoneProc steht in Atlas.Core.BuildPipeline.Inbox (ein Typ, sonst E2010 unter Delphi 12).
   TAtlasIdeBuildRunner = class
   public const
     MessagesWaitMs = 5000;
@@ -71,13 +69,9 @@ type
     procedure Tick(Sender: TObject);
     procedure Finish;
     class function Debugging: Boolean; static;
-  private class var
-    FCurrent: TAtlasIdeBuildRunner;
   public
-    /// <summary>Der laufende Läufer (der zuletzt angelegte, bis zu seiner Freigabe); nil ohne. Module fragen ihn
-    /// bei jedem Auftrag neu (#1455).</summary>
-    class function Current: TAtlasIdeBuildRunner; static;
-    /// <summary>AEvents gehört dem Aufrufer und muss länger leben; der Wächter wird dort angemeldet.</summary>
+    /// <summary>AEvents gehört dem Aufrufer und muss länger leben; der Wächter wird dort an- und in Destroy
+    /// abgemeldet.</summary>
     constructor Create(AEvents: TAtlasCompileEvents);
     destructor Destroy; override;
     /// <summary>Hauptthread: baut ARequest.Project. False mit Grund in AReason, wenn nicht gebaut wird; sonst kommt
@@ -142,19 +136,13 @@ end;
 
 { TAtlasIdeBuildRunner }
 
-class function TAtlasIdeBuildRunner.Current: TAtlasIdeBuildRunner;
-begin
-  Result := FCurrent;
-end;
-
 constructor TAtlasIdeBuildRunner.Create(AEvents: TAtlasCompileEvents);
 begin
   inherited Create;
-  FCurrent := Self;
   FEvents := AEvents;
   FWatcher := TWatcher.Create;
   FWatcher.FOwner := Self;
-  // Der Dienst übernimmt den Wächter; Destroy trennt ihn nur von uns.
+  // Die Ereignisse halten den Wächter; Destroy meldet ihn ab und gibt ihn so frei (Regel 3, ADR 0017).
   FEvents.Add(FWatcher);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
@@ -164,10 +152,11 @@ end;
 
 destructor TAtlasIdeBuildRunner.Destroy;
 begin
-  if FCurrent = Self then
-    FCurrent := nil;
   FTimer.Free;
+  // Erst trennen, dann abmelden: Nach dem Entladen des Moduls darf kein Wächter mehr in den Ereignissen stehen.
   FWatcher.FOwner := nil;
+  FEvents.Remove(FWatcher);
+  FWatcher := nil;
   // Offener Auftrag: ohne Ergebnis abschließen, damit der Auftraggeber nicht wartet.
   if FBusy and Assigned(FOnDone) then
     try
