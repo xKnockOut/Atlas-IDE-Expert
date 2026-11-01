@@ -70,11 +70,11 @@ begin
   end;
   Result.Title := ExtractFileName(ARoot);
   Result.Root := ARoot;
-  Result.Namespaces := AWorkspace.Namespaces;
+  Result.Namespaces := AWorkspace.State.Namespaces;
   // Projektgruppe (#648): die Dateien aller geladenen Projekte, sonst nur die des Hauptprojekts.
   if Result.Scope = 'project' then
   begin
-    Result.Files := AWorkspace.ProjectFiles;
+    Result.Files := AWorkspace.State.ProjectFiles;
   end
   else
   begin
@@ -154,7 +154,7 @@ begin
       Request := ARequest;
       // Grenze requestTimeoutMs; Abbruch über notifications/cancelled des MCP-Clients.
       Request.TimeoutMs := AWorkspace.Configuration.Settings.RequestTimeoutMs;
-      Namespaces := AWorkspace.Namespaces;
+      Namespaces := AWorkspace.State.Namespaces;
       if string.Join(',', AGraphs.Options.Namespaces) <> string.Join(',', Namespaces) then
       begin
         Options := AGraphs.Options;

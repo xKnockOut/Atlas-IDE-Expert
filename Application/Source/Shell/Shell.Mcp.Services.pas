@@ -130,7 +130,7 @@ begin
   Result :=
     function(const AFileName: string): TArray<string>
     begin
-      if not AGroup.WorkspaceOf(AFileName).Defines(Result) then
+      if not AGroup.WorkspaceOf(AFileName).State.Defines(Result) then
       begin
         Result := nil;
       end;
@@ -265,7 +265,7 @@ begin
   Result := TMcpPathGuard.Create(ARoot,
     function: TArray<string>
     begin
-      Result := AWorkspace.IncludePaths;
+      Result := AWorkspace.State.IncludePaths;
     end,
     function(APath: string): string
     begin
