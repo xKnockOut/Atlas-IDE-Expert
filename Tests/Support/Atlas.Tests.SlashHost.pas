@@ -10,7 +10,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract;
 
 type
