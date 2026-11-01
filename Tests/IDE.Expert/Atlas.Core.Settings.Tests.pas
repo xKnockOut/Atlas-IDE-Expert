@@ -221,7 +221,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Tracker.Naming,
-  Atlas.Core.Welcome.Issues,
+  Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
@@ -1122,8 +1122,8 @@ begin
   Assert.AreEqual(1920, Settings.IssuesAttachMaxImageWidth);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
-  Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
-  Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Remember),
+  Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
+  Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Remember),
     TAtlasPluginSettings.IssuesStartRemember);
   // Normalisieren.
   Settings.IssuesTracker := ' YouTrack ';

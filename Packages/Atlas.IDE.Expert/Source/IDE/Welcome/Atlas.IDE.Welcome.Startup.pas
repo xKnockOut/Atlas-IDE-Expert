@@ -7,8 +7,8 @@
 // Befehlsnutzung und zeigt Kacheln anderer Module (TAtlasIdeWelcomeTiles).
 // Alle Anmeldungen laufen über den Scope des Moduls und werden beim Stoppen
 // rückwärts gelöst (Regel 4).
-// Übergang: „Testergebnisse“ (CI-Anbieter) und „Meine Issues“ samt „Issue
-// anlegen“ baut noch die Kompositionswurzel über RootHooks, bis das Modul
+// Übergang: „Testergebnisse“ (CI-Anbieter) baut noch die Kompositionswurzel
+// über RootHooks, bis das Modul
 // Tracker sie als Kacheln bereitstellt.
 
 interface
@@ -27,10 +27,6 @@ type
   /// <summary>Befristet (#1455): Teile, die noch die Kompositionswurzel baut; jedes Feld darf fehlen.</summary>
   TAtlasWelcomeRootHooks = record
     CreateTestResults: TAtlasWelcomeTestResultsFactory;
-    /// <summary>Nach „Testergebnisse“; liest TAtlasIdeWelcomeStartup.Current.</summary>
-    StartIssues: TProc;
-    /// <summary>Vor dem Abbau der Seite.</summary>
-    StopIssues: TProc;
   end;
 
   TAtlasIdeWelcomeStartup = class
@@ -185,10 +181,6 @@ begin
   begin
     GWelcome.TestResults := mHooks.CreateTestResults(GWelcome.Projects);
   end;
-  if Assigned(mHooks.StartIssues) then
-  begin
-    mHooks.StartIssues();
-  end;
   GWelcome.Unsaved := TAtlasIdeUnsaved.Create(Warn);
 end;
 
@@ -250,10 +242,6 @@ begin
   end;
   // Zuerst die Kacheln anderer Module: Ihre Steuerelemente gehen, solange die Seite noch steht.
   FreeAndNil(GTiles);
-  if Assigned(FHooks.StopIssues) then
-  begin
-    FHooks.StopIssues();
-  end;
   for mIndex := High(GRegistrations) downto 0 do
   begin
     GRegistrations[mIndex].Revoke;

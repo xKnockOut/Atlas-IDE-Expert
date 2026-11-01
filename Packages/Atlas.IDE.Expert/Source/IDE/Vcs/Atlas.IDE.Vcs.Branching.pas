@@ -138,7 +138,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.Vcs.BranchNames,
-  Atlas.Core.Welcome.Issues,
   Atlas.UI.Strings,
   Atlas.UI.Vcs.BranchDialog,
   Atlas.IDE.Foundation.DockWindow,
@@ -451,7 +450,7 @@ begin
         TAtlasIdeVcs.MainBranchOf(mProject, TAtlasIdeFiles.GroupOfProject(mProject))));
       // Geänderte Dateien für die Zeile „Offene Änderungen“ im Dialog (#1289).
       if (mFacts.Outcome = TAtlasVcsOutcome.Ok) and (mVcs.Changes(mItems) = TAtlasVcsOutcome.Ok) then
-        mFacts.LocalChanges := TAtlasWelcomeIssues.LocalChanges(mItems);
+        mFacts.LocalChanges := TAtlasVcsBranchPlan.LocalChanges(mItems);
     end,
     procedure
     var

@@ -292,6 +292,9 @@ TAtlasVcsBranchBase = record
     class function SafeFolder(const AFolder: string): Boolean; static;
     /// <summary>AProject (unter ARoot) im worktree AFolder; '' wenn AProject nicht unter ARoot liegt.</summary>
     class function ProjectInFolder(const AProject, ARoot, AFolder: string): string; static;
+    /// <summary>Anzahl lokaler Änderungen, die ein Wechsel des Branchs betrifft (ohne unversionierte Dateien).
+    /// </summary>
+    class function LocalChanges(const AChanges: TArray<TAtlasVcsChange>): Integer; static;
     /// <summary>Nachricht des Stashs vor dem Anlegen: "Atlas: vor &lt;Name&gt;".</summary>
     class function StashMessage(const AName: string): string; static;
     /// <summary>Der gescheiterte Schritt ist der Abruf vor dem Anlegen (noch nichts geändert).</summary>
@@ -1139,6 +1142,20 @@ begin
   if (Trim(ARoot) = '') or (AFolder = '') or not SameText(Copy(AProject, 1, Length(mRoot)), mRoot) then
     Exit;
   Result := IncludeTrailingPathDelimiter(AFolder) + Copy(AProject, Length(mRoot) + 1, MaxInt);
+end;
+
+class function TAtlasVcsBranchPlan.LocalChanges(const AChanges: TArray<TAtlasVcsChange>): Integer;
+var
+  mChange: TAtlasVcsChange;
+begin
+  Result := 0;
+  for mChange in AChanges do
+  begin
+    if mChange.Kind <> TAtlasVcsChangeKind.Untracked then
+    begin
+      Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasVcsBranchPlan.StashMessage(const AName: string): string;
