@@ -129,7 +129,9 @@ begin
   for mIndex := 1 to 12 do
   begin
     if mIndex > 1 then
+    begin
       mJson := mJson + ',';
+    end;
     mJson := mJson + Format('{"method":"m%.2d","count":1,"averageMs":1,"maxMs":%d}', [mIndex, 100 - mIndex]);
   end;
   mJson := mJson + ',{"method":"a99","count":1,"averageMs":1,"maxMs":99}]}';

@@ -1213,10 +1213,7 @@ begin
     end;
     TIndexCacheDirectory.TouchUse(ACacheFile);
     TIndexCacheDirectory.TouchUse(ALibraryCacheFile);
-    if ASearchCacheFile <> '' then
-    begin
-      TIndexCacheDirectory.TouchUse(ASearchCacheFile);
-    end;
+    TIndexCacheDirectory.TouchUse(ASearchCacheFile);
     // Im Log nur Anzahlen, keine Pfade (anonymes Server-Log).
     if ASettings.IndexRemoveOrphans then
     begin
@@ -2468,9 +2465,11 @@ begin
   // Suchpfad-Units einmal für alle Projekte mit denselben Suchpfaden, Defines und Include-Pfaden (Speicher,
   // Rückmeldung 01.11.2026); sie werden mit den Defines des Projekts gelesen, die gehören in den Schlüssel.
   if Length(SearchFiles) > 0 then
+  begin
     Request.SearchCacheFile := TIndexCacheDirectory.SearchFileFor(FCacheRoot, Version, AnsiUpperCase('search|' +
       String.Join(';', Request.Defines) + '|' + String.Join(';', Project.SearchPaths) + '|' +
       String.Join(';', Request.IncludePaths) + '|' + String.Join(';', Project.Namespaces)));
+  end;
   Request.Usages := ASettings.IndexUsages;
   // Herkunft für das Aufräumen (#905): die Projektdatei, ohne sie der Arbeitsordner.
   CacheOrigin := Project.FileName;

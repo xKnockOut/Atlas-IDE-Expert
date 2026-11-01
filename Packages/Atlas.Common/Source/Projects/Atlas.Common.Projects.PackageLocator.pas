@@ -95,7 +95,9 @@ var
 begin
   AData := nil;
   if not TFile.Exists(AFileName) then
+  begin
     Exit(False);
+  end;
   try
     mStamp := TFile.GetLastWriteTime(AFileName);
     mSize := TFile.GetSize(AFileName);
@@ -142,7 +144,9 @@ begin
   TMonitor.Enter(FLock);
   try
     for mEntry in FFiles.Values do
+    begin
       Inc(Result, Length(mEntry.Data));
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -167,7 +171,9 @@ begin
     begin
       // Übersetzte Packages geteilt über alle Locatoren (Speicher, Rückmeldung 01.11.2026).
       if SameText(ExtractFileExt(AFileName), '.dcp') then
+      begin
         Exit(TPackageCompiledFiles.Read(AFileName, AData));
+      end;
       AData := nil;
       Result := TFile.Exists(AFileName);
       if Result then
