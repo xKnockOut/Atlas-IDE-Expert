@@ -50,8 +50,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.ShellAPI,
   ToolsAPI,
+  Atlas.Core.Tracker.Files,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Contributions,
@@ -67,7 +67,6 @@ uses
 const
   cHttps = 'https://';
   cHttp = 'http://';
-  cOpenVerb = 'open';
 
 { TAtlasTestResultsActions }
 
@@ -260,7 +259,7 @@ begin
   // Nur Web-Adressen aus der eingetragenen Adresse, nie etwas aus der Antwort des Servers.
   if mUrl.StartsWith(cHttps, True) or mUrl.StartsWith(cHttp, True) then
   begin
-    ShellExecute(0, cOpenVerb, PChar(mUrl), nil, nil, SW_SHOWNORMAL);
+    TAtlasTrackerFiles.Shell.Open(mUrl);
   end;
 end;
 

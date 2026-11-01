@@ -154,9 +154,6 @@ type
     WriteTimeoutMs = 15000;
     /// <summary>Zeitgrenze der Prüfung vor „Beginnen“ (#1279).</summary>
     BlockedTimeoutMs = 5000;
-    /// <summary>Endungen, die Atlas nicht startet, sondern im Explorer zeigt.</summary>
-    RiskyExtensions = '.exe.com.bat.cmd.scr.pif.msi.msp.ps1.psm1.vbs.vbe.js.jse.wsf.wsh.hta.lnk.reg.cpl.jar.dll.' +
-      'appref-ms.application.';
   private type
     TChecklistChange = (Toggle, Append);
   private
@@ -218,7 +215,6 @@ type
     procedure ImageLoaded(AGeneration: Integer; const AUrl: string; const ABytes: TBytes);
     procedure OpenAttachment(const AAttachment: TAtlasTrackerAttachment);
     procedure AttachmentLoaded(const AFileName: string; ASucceeded: Boolean; const AName: string);
-    procedure Browse(const AUrl: string);
     procedure ShowCurrent;
     procedure UpdateHistory;
     procedure CancelLoad;
@@ -292,7 +288,6 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.ShellAPI,
   ToolsAPI,
   System.IOUtils,
   System.StrUtils,
@@ -390,7 +385,7 @@ begin
   mHooks.Browse :=
     procedure(AUrl: string)
     begin
-      mOwner.Browse(AUrl);
+      TAtlasIssuePreview.Browse(AUrl);
     end;
   mHooks.Frame :=
     function: TAtlasIssueFrame
@@ -588,15 +583,11 @@ begin
     end;
   AFrame.OnBrowse :=
     procedure
-    var
-      mProvider: IAtlasTrackerProvider;
     begin
-      if (mKeep = nil) or not mOwner.FHasCurrent then
-        Exit;
-      mProvider := mOwner.ProviderOf(mOwner.FCurrent.Target);
-      // Nur die Seite aus der eingetragenen Adresse, nie eine aus der Antwort.
-      if mProvider <> nil then
-        mOwner.Browse(mProvider.IssuePage(mOwner.FCurrent.Target, mOwner.FCurrent.Key));
+      if (mKeep <> nil) and mOwner.FHasCurrent then
+      begin
+        mOwner.Fix(TAtlasIssueFix.Browser);
+      end;
     end;
   AFrame.OnCopyKey :=
     procedure
@@ -621,7 +612,9 @@ begin
       if ALink.Local then
         mOwner.Show(mOwner.FCurrent.Target, ALink.Key)
       else
-        mOwner.Browse(ALink.Page);
+      begin
+        TAtlasIssuePreview.Browse(ALink.Page);
+      end;
     end;
   AFrame.OnOpenAttachment :=
     procedure(AAttachment: TAtlasTrackerAttachment)
@@ -632,8 +625,8 @@ begin
   AFrame.OnOpenUrl :=
     procedure(AUrl: string)
     begin
-      if mKeep <> nil then
-        mOwner.Browse(AUrl);
+      // Braucht den Besitzer nicht; nach dem Abmelden öffnet die leere Shell nichts mehr.
+      TAtlasIssuePreview.Browse(AUrl);
     end;
   AFrame.OnImages :=
     procedure(AUrls: TArray<string>)
@@ -695,13 +688,6 @@ begin
   Result := nil;
   if Assigned(FHooks.Provider) then
     Result := FHooks.Provider(ATarget.Provider);
-end;
-
-procedure TAtlasIdeIssuePreview.Browse(const AUrl: string);
-begin
-  // Nur Web-Adressen ohne Benutzer; nie eine Datei oder ein anderes Schema aus dem Issue-Text.
-  if TAtlasIssuePreview.MayBrowse(AUrl) then
-    ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
 end;
 
 procedure TAtlasIdeIssuePreview.UpdateHistory;
@@ -1607,8 +1593,6 @@ begin
 end;
 
 procedure TAtlasIdeIssuePreview.ShowLink(const ATarget: TAtlasTrackerTarget; const ALink: TAtlasTrackerLink);
-var
-  mProvider: IAtlasTrackerProvider;
 begin
   if ALink.Local and FStarted and Active then
   begin
@@ -1617,13 +1601,11 @@ begin
   end;
   if ALink.Page <> '' then
   begin
-    Browse(ALink.Page);
+    TAtlasIssuePreview.Browse(ALink.Page);
     Exit;
   end;
   // Nur die Seite aus der eingetragenen Adresse.
-  mProvider := ProviderOf(ATarget);
-  if mProvider <> nil then
-    Browse(mProvider.IssuePage(ATarget, ALink.Key));
+  TAtlasIssuePreview.BrowseIssue(ProviderOf(ATarget), ATarget, ALink.Key);
 end;
 
 procedure TAtlasIdeIssuePreview.Fix(AFix: TAtlasIssueFix);
@@ -1643,11 +1625,8 @@ begin
       if Assigned(FHooks.Settings) then
         FHooks.Settings();
     TAtlasIssueFix.Browser:
-      begin
-        mProvider := ProviderOf(FCurrent.Target);
-        if mProvider <> nil then
-          Browse(mProvider.IssuePage(FCurrent.Target, FCurrent.Key));
-      end;
+      // Nur die Seite aus der eingetragenen Adresse, nie eine aus der Antwort.
+      TAtlasIssuePreview.BrowseIssue(ProviderOf(FCurrent.Target), FCurrent.Target, FCurrent.Key);
     TAtlasIssueFix.Retry:
       Refresh;
     TAtlasIssueFix.None: ;
@@ -1929,7 +1908,7 @@ begin
   if AAttachment.External or not TAtlasIssuePreview.MayLoad(mUrl, mProvider.ApiServer(FCurrent.Target)) or
     not Assigned(FHooks.Transport) then
   begin
-    Browse(mUrl);
+    TAtlasIssuePreview.Browse(mUrl);
     Exit;
   end;
   mTransport := FHooks.Transport(mProvider, FCurrent.Target);
@@ -1981,7 +1960,6 @@ procedure TAtlasIdeIssuePreview.AttachmentLoaded(const AFileName: string; ASucce
   const AName: string);
 var
   mFrame: TAtlasIssueFrame;
-  mExtension: string;
 begin
   ReleaseThreads(False);
   if not FStarted then
@@ -1994,12 +1972,8 @@ begin
         TAtlasIssueFix.None);
     Exit;
   end;
-  mExtension := LowerCase(ExtractFileExt(AFileName));
   // Ausführbares nie starten: im Explorer zeigen.
-  if (mExtension = '') or (Pos(mExtension + '.', RiskyExtensions) > 0) then
-    ShellExecute(0, 'open', 'explorer.exe', PChar('/select,"' + AFileName + '"'), nil, SW_SHOWNORMAL)
-  else
-    ShellExecute(0, 'open', PChar(AFileName), nil, PChar(ExtractFilePath(AFileName)), SW_SHOWNORMAL);
+  TAtlasIssuePreview.OpenDownloaded(AFileName);
 end;
 
 end.

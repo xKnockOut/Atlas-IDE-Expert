@@ -109,7 +109,6 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.ShellAPI,
   System.StrUtils,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
@@ -511,8 +510,7 @@ begin
     Exit;
   // Nur die Seite aus der eingetragenen Adresse; nie eine Adresse aus der Antwort.
   mUrl := FProvider.IssuePage(FTarget, AKey);
-  if TAtlasIssuePreview.MayBrowse(mUrl) then
-    ShellExecute(0, 'open', PChar(mUrl), nil, nil, SW_SHOWNORMAL);
+  TAtlasIssuePreview.Browse(mUrl);
 end;
 
 procedure TAtlasIdeIssueSearch.Execute(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);

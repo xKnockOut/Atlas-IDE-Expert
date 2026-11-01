@@ -131,11 +131,14 @@ type
 implementation
 
 uses
-  System.Classes,
   System.Generics.Collections,
   System.Generics.Defaults,
-  System.IOUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Tracker.Files;
+
+const
+  cLocalAppData = 'LOCALAPPDATA';
+  cAtlasFolder = 'Atlas';
 
 { TAtlasTimeIssue }
 
@@ -486,92 +489,58 @@ end;
 
 class function TAtlasTimeFile.DefaultPath: string;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), FileName);
+  Result := TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Files.Environment(cLocalAppData),
+    cAtlasFolder), FileName);
 end;
 
-function TakeLock(const APath: string): TStream;
-var
-  mWaited: Integer;
+function TakeLock(const APath: string): IInterface;
 begin
-  Result := nil;
-  mWaited := 0;
-  ForceDirectories(ExtractFileDir(APath));
-  while Result = nil do
-  begin
-    try
-      Result := TFileStream.Create(APath + TAtlasTimeFile.LockExtension, fmCreate or fmShareExclusive);
-    except
-      on EStreamError do
-        Result := nil;
-      on EInOutError do
-        Result := nil;
-    end;
-    if Result <> nil then
-      Break;
-    if mWaited >= TAtlasTimeFile.LockWaitMs then
-      Exit;
-    Sleep(25);
-    Inc(mWaited, 25);
-  end;
+  Result := TAtlasTrackerFiles.Files.Lock(APath + TAtlasTimeFile.LockExtension, TAtlasTimeFile.LockWaitMs);
 end;
 
 function ReadLocked(const APath: string; out ALog: TAtlasTimeLog): Boolean;
+var
+  mText: string;
 begin
   ALog := TAtlasTimeLog.Empty;
-  if not FileExists(APath) then
+  if not TAtlasTrackerFiles.Files.FileExists(APath) then
+  begin
     Exit(True);
-  try
-    Result := TAtlasTimeLog.Parse(TFile.ReadAllText(APath, TEncoding.UTF8), ALog);
-  except
-    on EInOutError do
-      Result := False;
-    on EFileStreamError do
-      Result := False;
-    on EEncodingError do
-      Result := False;
   end;
+  Result := TAtlasTrackerFiles.Files.ReadText(APath, mText) and TAtlasTimeLog.Parse(mText, ALog);
 end;
 
 class function TAtlasTimeFile.Read(const APath: string; out ALog: TAtlasTimeLog): Boolean;
 var
-  mLock: TStream;
+  mLock: IInterface;
 begin
   ALog := TAtlasTimeLog.Empty;
   mLock := TakeLock(APath);
   if mLock = nil then
+  begin
     Exit(False);
-  try
-    Result := ReadLocked(APath, ALog);
-  finally
-    mLock.Free;
   end;
+  Result := ReadLocked(APath, ALog);
 end;
 
 class function TAtlasTimeFile.Update(const APath: string; const AChange: TAtlasTimeLogChange;
   out ALog: TAtlasTimeLog): Boolean;
 var
-  mLock: TStream;
+  mLock: IInterface;
 begin
   ALog := TAtlasTimeLog.Empty;
   mLock := TakeLock(APath);
   if mLock = nil then
+  begin
     Exit(False);
-  try
-    Result := ReadLocked(APath, ALog);
-    if not Result then
-      Exit;
-    AChange(ALog);
-    try
-      TFile.WriteAllText(APath, ALog.ToJson, TEncoding.UTF8);
-    except
-      on EInOutError do
-        Result := False;
-      on EFileStreamError do
-        Result := False;
-    end;
-  finally
-    mLock.Free;
   end;
+  Result := ReadLocked(APath, ALog);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AChange(ALog);
+  Result := TAtlasTrackerFiles.Files.WriteText(APath, ALog.ToJson);
 end;
 
 { TAtlasTimeRounding }

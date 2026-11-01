@@ -187,11 +187,11 @@ implementation
 
 uses
   System.Classes,
-  System.IOUtils,
   System.DateUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Tracker.Files;
 
 { TAtlasTrackerNotice }
 
@@ -672,44 +672,31 @@ end;
 
 class function TAtlasTrackerNotify.Load(const AFolder: string): TAtlasTrackerNotifyFile;
 var
-  mFileName: string;
+  mText: string;
 begin
   Result := TAtlasTrackerNotifyFile.Empty;
   if AFolder = '' then
+  begin
     Exit;
-  mFileName := TPath.Combine(AFolder, FileName);
-  try
-    if TFile.Exists(mFileName) and not FromJson(TFile.ReadAllText(mFileName, TEncoding.UTF8), Result) then
-      Result := TAtlasTrackerNotifyFile.Empty;
-  except
-    // Nicht lesbar (gesperrt, kaputt): wie ohne Datei, also „jetzt“.
-    on Exception do
-      Result := TAtlasTrackerNotifyFile.Empty;
+  end;
+  // Fehlt, gesperrt oder kaputt: wie ohne Datei, also „jetzt“.
+  if TAtlasTrackerFiles.Files.ReadText(TAtlasTrackerFiles.Join(AFolder, FileName), mText) and
+    not FromJson(mText, Result) then
+  begin
+    Result := TAtlasTrackerNotifyFile.Empty;
   end;
 end;
 
 class function TAtlasTrackerNotify.Save(const AFolder: string; const AFile: TAtlasTrackerNotifyFile): Boolean;
-var
-  mFileName, mTemp: string;
 begin
   Result := False;
   if AFolder = '' then
+  begin
     Exit;
-  mFileName := TPath.Combine(AFolder, FileName);
-  mTemp := mFileName + '.tmp';
-  try
-    TDirectory.CreateDirectory(AFolder);
-    // Erst daneben schreiben, dann ersetzen: Ein Abbruch lässt nie eine halbe Datei zurück.
-    TFile.WriteAllText(mTemp, ToJson(AFile), TEncoding.UTF8);
-    if TFile.Exists(mFileName) then
-      TFile.Delete(mFileName);
-    TFile.Move(mTemp, mFileName);
-    Result := True;
-  except
-    // Kein Platz, keine Rechte: Der Stand bleibt im Speicher und wird beim nächsten Mal wieder geschrieben.
-    on Exception do
-      Result := False;
   end;
+  // Erst daneben schreiben, dann ersetzen: Ein Abbruch lässt nie eine halbe Datei zurück. Kein Platz, keine
+  // Rechte: Der Stand bleibt im Speicher und wird beim nächsten Mal wieder geschrieben.
+  Result := TAtlasTrackerFiles.Files.ReplaceText(TAtlasTrackerFiles.Join(AFolder, FileName), ToJson(AFile));
 end;
 
 end.

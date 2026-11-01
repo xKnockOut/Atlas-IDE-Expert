@@ -639,6 +639,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Ci.Contract` | `Core/Ci/Atlas.Core.Ci.Contract.pas` | Ordner `Core/Ci` |
 | `Atlas.Core.Ci.Internals.Addresses` | `Core/Ci/Atlas.Core.Ci.Internals.Addresses.pas` | Ordner `Core/Ci` |
 | `Atlas.Core.Ci.Providers.Jenkins` | `Core/Ci/Atlas.Core.Ci.Providers.Jenkins.pas` | Ordner `Core/Ci` |
+| `Atlas.Core.Tracker.Adapters.LocalFiles` | `Core/Tracker/Atlas.Core.Tracker.Adapters.LocalFiles.pas` | Ordner `Core/Tracker`; Platte über System.IOUtils, nur in der Composition erzeugt (Paket 2d) |
+| `Atlas.Core.Tracker.Adapters.Shell` | `Core/Tracker/Atlas.Core.Tracker.Adapters.Shell.pas` | Ordner `Core/Tracker`; ShellExecute, nur in der Composition erzeugt (Paket 2d) |
 | `Atlas.Core.Tracker.Attach` | `Core/Tracker/Atlas.Core.Tracker.Attach.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.BlameLinks` | `Core/Tracker/Atlas.Core.Tracker.BlameLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Board` | `Core/Tracker/Atlas.Core.Tracker.Board.pas` | Ordner `Core/Tracker` |
@@ -648,7 +650,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.CommitHook` | `Core/Tracker/Atlas.Core.Tracker.CommitHook.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Connections` | `Core/Tracker/Atlas.Core.Tracker.Connections.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Contract` | `Core/Tracker/Atlas.Core.Tracker.Contract.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Contract.Files` | `Core/Tracker/Atlas.Core.Tracker.Contract.Files.pas` | Ordner `Core/Tracker`; Verträge für Platte und Shell des Trackers (Paket 2d) |
 | `Atlas.Core.Tracker.Development` | `Core/Tracker/Atlas.Core.Tracker.Development.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Files` | `Core/Tracker/Atlas.Core.Tracker.Files.pas` | Ordner `Core/Tracker`; Anmeldung von Platte und Shell, leere Umsetzung ohne Anmeldung (Paket 2d) |
 | `Atlas.Core.Tracker.Internals.GitHubApi` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubApi.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.IssueCache` | `Core/Tracker/Atlas.Core.Tracker.IssueCache.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Links` | `Core/Tracker/Atlas.Core.Tracker.Links.pas` | Ordner `Core/Tracker` |

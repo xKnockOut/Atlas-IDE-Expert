@@ -56,10 +56,13 @@ type
 implementation
 
 uses
-  System.Classes;
+  Atlas.Core.Tracker.Files;
 
 const
   Lf = #10;
+  /// <summary>So viel liest State vom Hook; die Marke steht in den ersten Zeilen.</summary>
+  cMaxHookBytes = 4096;
+  cMaxPrefixBytes = 1024;
 
 class function TAtlasCommitHook.Script: string;
 begin
@@ -96,68 +99,41 @@ begin
   Result := IncludeTrailingPathDelimiter(AGitDir) + PrefixFile;
 end;
 
+/// <summary>Höchstens AMax Bytes vom Anfang als UTF-8.</summary>
 function ReadText(const AFileName: string; AMax: Integer; out AText: string): Boolean;
 var
-  Stream: TFileStream;
-  Bytes: TBytes;
-  Size: Int64;
+  mBytes: TBytes;
 begin
   AText := '';
-  try
-    Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
-    try
-      Size := Stream.Size;
-      if Size > AMax then
-        Size := AMax;
-      SetLength(Bytes, Size);
-      if Size > 0 then
-        Stream.ReadBuffer(Bytes[0], Size);
-    finally
-      Stream.Free;
-    end;
-    AText := TEncoding.UTF8.GetString(Bytes);
-    Result := True;
-  except
-    on EStreamError do
-      Result := False;
-    on EOSError do
-      Result := False;
+  Result := TAtlasTrackerFiles.Files.ReadHead(AFileName, AMax, mBytes);
+  if Result then
+  begin
+    AText := TEncoding.UTF8.GetString(mBytes);
   end;
 end;
 
+/// <summary>UTF-8 ohne BOM: sh und cat von Git lesen die Bytes unverändert.</summary>
 function WriteText(const AFileName, AText: string): Boolean;
-var
-  Stream: TFileStream;
-  Bytes: TBytes;
 begin
-  Bytes := TEncoding.UTF8.GetBytes(AText);
-  try
-    Stream := TFileStream.Create(AFileName, fmCreate);
-    try
-      if Length(Bytes) > 0 then
-        Stream.WriteBuffer(Bytes[0], Length(Bytes));
-    finally
-      Stream.Free;
-    end;
-    Result := True;
-  except
-    on EStreamError do
-      Result := False;
-    on EOSError do
-      Result := False;
-  end;
+  Result := TAtlasTrackerFiles.Files.WriteBytes(AFileName, TEncoding.UTF8.GetBytes(AText));
 end;
 
 class function TAtlasCommitHook.State(const AHooksDir: string): TAtlasCommitHookState;
 var
-  Content: string;
+  mContent: string;
 begin
-  if (AHooksDir = '') or not FileExists(HookFile(AHooksDir)) then
+  if (AHooksDir = '') or not TAtlasTrackerFiles.Files.FileExists(HookFile(AHooksDir)) then
+  begin
     Exit(TAtlasCommitHookState.Missing);
-  if ReadText(HookFile(AHooksDir), 4096, Content) and IsOwn(Content) then
-    Result := TAtlasCommitHookState.Own
+  end;
+  if ReadText(HookFile(AHooksDir), cMaxHookBytes, mContent) and IsOwn(mContent) then
+  begin
+    Result := TAtlasCommitHookState.Own;
+  end
   else
+  begin
     Result := TAtlasCommitHookState.Foreign;
+  end;
 end;
 
 class function TAtlasCommitHook.Install(const AHooksDir: string): Boolean;
@@ -170,7 +146,7 @@ begin
       // Neu schreiben: eine ältere Fassung des Skripts wird so ersetzt.
       Result := WriteText(HookFile(AHooksDir), Script);
     TAtlasCommitHookState.Missing:
-      Result := ForceDirectories(AHooksDir) and WriteText(HookFile(AHooksDir), Script);
+      Result := TAtlasTrackerFiles.Files.ForceFolder(AHooksDir) and WriteText(HookFile(AHooksDir), Script);
   end;
 end;
 
@@ -178,7 +154,7 @@ class function TAtlasCommitHook.Uninstall(const AHooksDir: string): Boolean;
 begin
   case State(AHooksDir) of
     TAtlasCommitHookState.Own:
-      Result := DeleteFile(HookFile(AHooksDir));
+      Result := TAtlasTrackerFiles.Files.DeleteFile(HookFile(AHooksDir));
   else
     Result := True;
   end;
@@ -186,24 +162,32 @@ end;
 
 class function TAtlasCommitHook.WritePrefix(const AGitDir, APrefix: string): Boolean;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := False;
   if AGitDir = '' then
+  begin
     Exit;
-  FileName := PrefixFileOf(AGitDir);
+  end;
+  mFileName := PrefixFileOf(AGitDir);
   if APrefix = '' then
-    Exit(not FileExists(FileName) or DeleteFile(FileName));
-  Result := WriteText(FileName, APrefix);
+  begin
+    Exit(TAtlasTrackerFiles.Files.DeleteFile(mFileName));
+  end;
+  Result := WriteText(mFileName, APrefix);
 end;
 
 class function TAtlasCommitHook.ReadPrefix(const AGitDir: string): string;
 begin
   Result := '';
-  if (AGitDir = '') or not FileExists(PrefixFileOf(AGitDir)) then
+  if (AGitDir = '') or not TAtlasTrackerFiles.Files.FileExists(PrefixFileOf(AGitDir)) then
+  begin
     Exit;
-  if not ReadText(PrefixFileOf(AGitDir), 1024, Result) then
+  end;
+  if not ReadText(PrefixFileOf(AGitDir), cMaxPrefixBytes, Result) then
+  begin
     Result := '';
+  end;
 end;
 
 end.

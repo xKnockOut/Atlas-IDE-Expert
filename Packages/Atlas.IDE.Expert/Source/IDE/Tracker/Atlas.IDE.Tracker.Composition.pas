@@ -13,6 +13,9 @@
 // HTTP-Transporte (TAtlasCiHttpTransports) und die Anbieter (YouTrack, GitHub,
 // Jenkins) entstehen in dieser Unit und gehen als Schnittstellen an
 // TAtlasTrackerAccess und TAtlasCiAccess (Atlas.IDE.Tracker.Access).
+// Ebenso Platte und Shell (#1455 Paket 2d): TAtlasTrackerLocalFiles und
+// TAtlasTrackerShellExecute meldet RegisterModule vor allen Teilen bei
+// Atlas.Core.Tracker.Files an, UnregisterModule meldet sie zuletzt ab.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
 
@@ -62,6 +65,9 @@ uses
   Atlas.Core.Ci.Providers.Jenkins,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.Adapters.Shell,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.IDE.Foundation.Host,
@@ -196,6 +202,8 @@ begin
   end;
   mModule := TAtlasTrackerModule.Create;
   mRef := mModule as IAtlasModule;
+  // Platte und Shell vor allen Teilen: Sie lesen schon beim Start (Meldungen, Zeiterfassung, Board).
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, TAtlasTrackerShellExecute.Create);
   GScope := mRegistry.RegisterModule(mModule);
   // Ab der Anmeldung: Der Abschnitt Issue-Tracker braucht den Zugang auch bei ausgeschaltetem Modul.
   mAccess := TAtlasTrackerAccess.Create(TrackerProviders(), AccessParts);
@@ -237,6 +245,8 @@ begin
   TAtlasIdeTrackerSettings.Release;
   // Erst jetzt: Die Teile sind gestoppt, kein Hintergrund-Thread liest den Zugang mehr.
   TAtlasTrackerParts.Uninstall;
+  // Zuletzt: Danach erreicht nichts mehr Platte oder Shell im Namen des Moduls (Regel 3).
+  TAtlasTrackerFiles.Uninstall;
 end;
 
 initialization
