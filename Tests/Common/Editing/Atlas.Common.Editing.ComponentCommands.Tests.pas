@@ -49,12 +49,16 @@ var
   Index, Start, Stop: Integer;
 begin
   if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, Edits) then
+  begin
     Exit('');
+  end;
   Lines := AText.Split([#10]);
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   TArray.Sort<TRuleEdit>(Edits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
@@ -235,7 +239,9 @@ var
   Command: string;
 begin
   for Command in TArray<string>.Create('/notify OnChange', '/changed Farbe', '/loaded', '/notification') do
+  begin
     Assert.AreEqual('', Expand(Format(Outside, [Command]), 5), Command);
+  end;
 end;
 
 initialization

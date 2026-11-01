@@ -116,8 +116,10 @@ begin
   {$WARN SYMBOL_PLATFORM DEFAULT}
   Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
   for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
+  begin
     Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *
       State.SmallBlockTypeStates[I].UseableBlockSize);
+  end;
 end;
 
 function ProcessThreadCount: Integer;
@@ -129,7 +131,9 @@ begin
   Result := 0;
   Snapshot := CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
   if Snapshot = INVALID_HANDLE_VALUE then
+  begin
     Exit;
+  end;
   try
     ProcessId := GetCurrentProcessId;
     FillChar(Entry, SizeOf(Entry), 0);
@@ -137,7 +141,9 @@ begin
     if Thread32First(Snapshot, Entry) then
       repeat
         if Entry.th32OwnerProcessID = ProcessId then
+        begin
           Inc(Result);
+        end;
         Entry.dwSize := SizeOf(Entry);
       until not Thread32Next(Snapshot, Entry);
   finally
@@ -202,13 +208,19 @@ begin
   try
     SetLength(Waiters, 4 * TThread.ProcessorCount);
     if Length(Waiters) < MinPrewarmWaiters then
+    begin
       SetLength(Waiters, MinPrewarmWaiters);
+    end;
     for Index := 0 to High(Waiters) do
+    begin
       Waiters[Index] := StartWaiter(Gate);
+    end;
     // Inc steht unter der Sperre vor Wait; wer gezählt ist, wartet also schon.
     Deadline := TThread.GetTickCount64 + 5000;
     while (Gate.Waiting < Length(Waiters)) and (TThread.GetTickCount64 < Deadline) do
+    begin
       TThread.Sleep(1);
+    end;
     TMonitor.Enter(Gate);
     try
       TMonitor.PulseAll(Gate);
@@ -245,7 +257,9 @@ begin
     State := TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, '');
     // Gemeinsamer Speicher mit allen Standardwerten (DefaultValues): entsteht beim ersten DefaultJson.
     for Index := 0 to Catalog.Count - 1 do
+    begin
       TAtlasSettingsTransfer.DefaultJson(Catalog, Index);
+    end;
     Exported := TAtlasSettingsTransfer.ExportSettings(Catalog, State, TAtlasExportOptions.ForBackup, Environment);
     TAtlasSettingsTransfer.Apply(Catalog, State, TAtlasSettingsTransfer.Preview(Catalog, State,
       TAtlasSettingsTransfer.ParseFile(Exported.Text), imMerge, nil, Environment, '', ''));
@@ -349,15 +363,21 @@ begin
   // Hauptthread: TExternalThread für TThread.CurrentThread (bleibt bis Programmende).
   Current := TThread.CurrentThread;
   if Current = nil then
+  begin
     raise EInvalidOperation.Create('Kein aktueller Thread');
+  end;
   // Lokale Zeitzone (ISO-8601-Zeitstempel) und JSON-Pfade legen beim ersten Gebrauch Daten an,
   // die bis Programmende bleiben.
   if DateToISO8601(Now, False) = '' then
+  begin
     raise EInvalidOperation.Create('Keine Zeitzone');
+  end;
   Json := TJSONObject.ParseJSONValue('{"a":{"b":true}}');
   try
     if not Json.GetValue<Boolean>('a.b') then
+    begin
       raise EInvalidOperation.Create('JSON-Pfad');
+    end;
   finally
     Json.Free;
   end;
@@ -367,7 +387,9 @@ begin
   // Dateien ohne BOM liest TFile.ReadAllText mit TEncoding.Default (Singleton beim ersten Gebrauch, z. B. im
   // Korpustest des Parsers über die RTL-Quellen).
   if TEncoding.Default.GetString(TEncoding.Default.GetBytes('a')) <> 'a' then
+  begin
     raise EInvalidOperation.Create('Kodierung');
+  end;
 end;
 
 procedure RegisterLeakMonitor;
@@ -388,7 +410,9 @@ end;
 procedure TLeakMonitor.Start;
 begin
   if FStarted then
+  begin
     Exit;
+  end;
   FStarted := True;
   FThreadsAtStart := ProcessThreadCount;
   FThreadsAtEnd := FThreadsAtStart;
@@ -403,9 +427,13 @@ function TLeakMonitor.Reported(AValue: Int64): Int64;
 begin
   // Mehr freigegeben als belegt: Freigaben anderer Threads, kein Leck.
   if RawTotal <= 0 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := AValue;
+  end;
 end;
 
 procedure TLeakMonitor.Settle(ABefore: Int64; var AAllocated: Int64; AOthers: Int64);
@@ -423,7 +451,9 @@ begin
     TThread.Sleep(SettleStepMs);
     AAllocated := AllocatedBytes - ABefore;
     if AAllocated = Last then
-      Inc(Stable)
+    begin
+      Inc(Stable);
+    end
     else
     begin
       Stable := 0;
@@ -431,7 +461,9 @@ begin
     end;
     // Ruhig und keine zusätzlichen Threads mehr: weiteres Warten bringt nichts.
     if (Stable >= StableSamples) and (ProcessThreadCount <= FThreadsAtStart) then
+    begin
       Break;
+    end;
   end;
   Inc(FWaitedMs, TThread.GetTickCount64 - Started);
   FThreadsAtEnd := ProcessThreadCount;
@@ -464,9 +496,13 @@ begin
   FTestAllocated := AllocatedBytes - FTestBefore;
   // Nur der Test selbst: Was das Setup belegt, gibt meist erst das TearDown frei.
   if FTestAllocated > 0 then
-    Settle(FTestBefore, FTestAllocated, 0)
+  begin
+    Settle(FTestBefore, FTestAllocated, 0);
+  end
   else
+  begin
     FThreadsAtEnd := ProcessThreadCount;
+  end;
 end;
 
 procedure TLeakMonitor.PreTearDown;
@@ -478,7 +514,9 @@ procedure TLeakMonitor.PostTearDown;
 begin
   FTearDownAllocated := AllocatedBytes - FTearDownBefore;
   if RawTotal > 0 then
+  begin
     Settle(FTearDownBefore, FTearDownAllocated, FSetUpAllocated + FTestAllocated);
+  end;
 end;
 
 function TLeakMonitor.SetUpMemoryAllocated: Int64;

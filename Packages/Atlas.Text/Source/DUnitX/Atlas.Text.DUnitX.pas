@@ -162,7 +162,9 @@ var
   procedure Add(AKind: TTokenKind; const AText: string; ALine: Integer);
   begin
     if Count = Length(Result) then
+    begin
       SetLength(Result, Count * 2 + 64);
+    end;
     Result[Count].Kind := AKind;
     Result[Count].Text := AText;
     Result[Count].Line := ALine;
@@ -183,7 +185,9 @@ begin
       if InBrace then
       begin
         if Line[Index] = '}' then
+        begin
           InBrace := False;
+        end;
         Inc(Index);
         Continue;
       end;
@@ -207,7 +211,9 @@ begin
           end;
         '/':
           if (Index < Length(Line)) and (Line[Index + 1] = '/') then
-            Index := Length(Line) + 1
+          begin
+            Index := Length(Line) + 1;
+          end
           else
           begin
             Add(TTokenKind.Sym, '/', LineIndex);
@@ -229,11 +235,14 @@ begin
             // Zeichenkette samt #13-Teilen als ein Token; nur der Text in Anführungszeichen zählt.
             Value := '';
             while (Index <= Length(Line)) and ((Line[Index] = '''') or (Line[Index] = '#')) do
+            begin
               if Line[Index] = '#' then
               begin
                 Inc(Index);
                 while (Index <= Length(Line)) and (CharInSet(Line[Index], ['0'..'9', '$', 'A'..'F', 'a'..'f'])) do
+                begin
                   Inc(Index);
+                end;
               end
               else
               begin
@@ -255,6 +264,7 @@ begin
                   Inc(Index);
                 end;
               end;
+            end;
             Add(TTokenKind.Str, Value, LineIndex);
           end;
         '0'..'9', '$':
@@ -262,18 +272,24 @@ begin
             Start := Index;
             Inc(Index);
             while (Index <= Length(Line)) and TTextChars.IsIdentChar(Line[Index]) do
+            begin
               Inc(Index);
+            end;
             Add(TTokenKind.Num, Copy(Line, Start, Index - Start), LineIndex);
           end;
       else
         if (Line[Index] = '&') and (Index < Length(Line)) and TTextChars.IsIdentStart(Line[Index + 1]) then
+        begin
           Inc(Index);
+        end;
         if TTextChars.IsIdentStart(Line[Index]) then
         begin
           Start := Index;
           Inc(Index);
           while (Index <= Length(Line)) and TTextChars.IsIdentChar(Line[Index]) do
+          begin
             Inc(Index);
+          end;
           Add(TTokenKind.Ident, Copy(Line, Start, Index - Start), LineIndex);
         end
         else
@@ -311,7 +327,9 @@ var
 begin
   Result := 0;
   for Fixture in Fixtures do
+  begin
     Inc(Result, Length(Fixture.Tests));
+  end;
 end;
 
 function TDUnitXUnit.Find(const AFixture, AMethod: string; out AFixtureIndex, ATestIndex: Integer): Boolean;
@@ -321,20 +339,26 @@ begin
   AFixtureIndex := -1;
   ATestIndex := -1;
   for Index := 0 to High(Fixtures) do
+  begin
     if SameText(Fixtures[Index].Name, AFixture) then
     begin
       AFixtureIndex := Index;
       Break;
     end;
+  end;
   Result := AFixtureIndex >= 0;
   if not Result or (AMethod = '') then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Fixtures[AFixtureIndex].Tests) do
+  begin
     if SameText(Fixtures[AFixtureIndex].Tests[Index].Method, AMethod) then
     begin
       ATestIndex := Index;
       Exit;
     end;
+  end;
 end;
 
 function TDUnitXUnit.AtLine(ALine: Integer; out AFixtureIndex, ATestIndex: Integer): Boolean;
@@ -351,6 +375,7 @@ begin
       Exit(True);
     end;
     for TestIndex := 0 to High(Fixtures[FixtureIndex].Tests) do
+    begin
       if (Fixtures[FixtureIndex].Tests[TestIndex].AttributeLine = ALine) or
         (Fixtures[FixtureIndex].Tests[TestIndex].Line = ALine) then
       begin
@@ -358,6 +383,7 @@ begin
         ATestIndex := TestIndex;
         Exit(True);
       end;
+    end;
   end;
   Result := False;
 end;
@@ -367,12 +393,18 @@ var
   FixtureIndex, TestIndex: Integer;
 begin
   if not Find(AFixture, AMethod, FixtureIndex, TestIndex) then
+  begin
     Exit(-1);
+  end;
   if TestIndex < 0 then
+  begin
     Exit(Fixtures[FixtureIndex].Line);
+  end;
   Result := Fixtures[FixtureIndex].Tests[TestIndex].BodyLine;
   if Result < 0 then
+  begin
     Result := Fixtures[FixtureIndex].Tests[TestIndex].Line;
+  end;
 end;
 
 function TDUnitXUnit.CaseHasOwnLine(AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
@@ -383,14 +415,22 @@ begin
   Result := False;
   if (AFixtureIndex < 0) or (AFixtureIndex > High(Fixtures)) or (ATestIndex < 0) or
     (ATestIndex > High(Fixtures[AFixtureIndex].Tests)) then
+  begin
     Exit;
+  end;
   Lines := Fixtures[AFixtureIndex].Tests[ATestIndex].CaseLines;
   if (ACaseIndex < 0) or (ACaseIndex > High(Lines)) or
     (Lines[ACaseIndex] = Fixtures[AFixtureIndex].Tests[ATestIndex].Line) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Lines) do
+  begin
     if (Index <> ACaseIndex) and (Lines[Index] = Lines[ACaseIndex]) then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 
@@ -401,17 +441,27 @@ var
 begin
   Result := -1;
   if (AFixtureIndex < 0) or (AFixtureIndex > High(Fixtures)) then
+  begin
     Exit;
+  end;
   if ATestIndex < 0 then
+  begin
     Exit(Fixtures[AFixtureIndex].AttributeLine);
+  end;
   if ATestIndex > High(Fixtures[AFixtureIndex].Tests) then
+  begin
     Exit;
+  end;
   Test := Fixtures[AFixtureIndex].Tests[ATestIndex];
   Result := Test.AttributeLine;
   // Steht dort ein Fall mit eigener Marke, rückt die Marke des Tests an die Deklaration.
   for Index := 0 to High(Test.CaseLines) do
+  begin
     if (Test.CaseLines[Index] = Result) and CaseHasOwnLine(AFixtureIndex, ATestIndex, Index) then
+    begin
       Exit(Test.Line);
+    end;
+  end;
 end;
 
 function TDUnitXUnit.TestAt(ALine: Integer; out AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
@@ -425,19 +475,30 @@ begin
   Result := True;
   // Zeile eines [TestCase]: nur dieser Fall.
   for FixtureIndex := 0 to High(Fixtures) do
+  begin
     for TestIndex := 0 to High(Fixtures[FixtureIndex].Tests) do
+    begin
       for CaseIndex := 0 to High(Fixtures[FixtureIndex].Tests[TestIndex].CaseLines) do
+      begin
         if Fixtures[FixtureIndex].Tests[TestIndex].CaseLines[CaseIndex] = ALine then
         begin
           AFixtureIndex := FixtureIndex;
           ATestIndex := TestIndex;
           if CaseHasOwnLine(FixtureIndex, TestIndex, CaseIndex) then
+          begin
             ACaseIndex := CaseIndex;
+          end;
           Exit;
         end;
+      end;
+    end;
+  end;
   if AtLine(ALine, AFixtureIndex, ATestIndex) then
+  begin
     Exit;
+  end;
   for FixtureIndex := 0 to High(Fixtures) do
+  begin
     for TestIndex := 0 to High(Fixtures[FixtureIndex].Tests) do
     begin
       Test := Fixtures[FixtureIndex].Tests[TestIndex];
@@ -451,6 +512,7 @@ begin
         Exit;
       end;
     end;
+  end;
   AFixtureIndex := -1;
   ATestIndex := -1;
   Result := False;
@@ -469,12 +531,20 @@ begin
   Name := Trim(AName);
   // Qualifiziert (DUnitX.Attributes.TestFixture): nur der letzte Teil zählt.
   if LastDelimiter('.', Name) > 0 then
+  begin
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  end;
   if (Length(Name) > Length('Attribute')) and SameText(Copy(Name, Length(Name) - 8, 9), 'Attribute') then
+  begin
     SetLength(Name, Length(Name) - 9);
+  end;
   for Kind := Succ(TDUnitXAttribute.None) to High(TDUnitXAttribute) do
+  begin
     if SameText(Name, Names[Kind]) then
+    begin
       Exit(Kind);
+    end;
+  end;
   Result := TDUnitXAttribute.None;
 end;
 
@@ -485,10 +555,14 @@ var
 begin
   Tokens := Tokenize(ALines);
   for Index := 0 to High(Tokens) - 4 do
+  begin
     if IsWord(Tokens[Index], 'DUnitX') and IsSym(Tokens[Index + 1], '.') and
       IsWord(Tokens[Index + 2], 'TestFramework') and
       (IsSym(Tokens[Index + 3], ',') or IsSym(Tokens[Index + 3], ';') or IsWord(Tokens[Index + 3], 'in')) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -509,7 +583,9 @@ var
   function Peek(AOffset: Integer): TToken;
   begin
     if (Index + AOffset >= 0) and (Index + AOffset < Count) then
-      Result := Tokens[Index + AOffset]
+    begin
+      Result := Tokens[Index + AOffset];
+    end
     else
     begin
       Result.Kind := TTokenKind.Sym;
@@ -532,7 +608,9 @@ var
         Inc(Index);
       end
       else
+      begin
         Break;
+      end;
     end;
   end;
 
@@ -545,7 +623,9 @@ var
     while Index < Count do
     begin
       if IsSym(Tokens[Index], AOpen) then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if IsSym(Tokens[Index], AClose) then
       begin
         Dec(Depth);
@@ -577,24 +657,34 @@ var
         if (Index < Count) and IsSym(Tokens[Index], '(') then
         begin
           if Index + 1 < Count then
+          begin
             Attribute.FirstArgument := Tokens[Index + 1].Text;
+          end;
           SkipGroup('(', ')');
         end;
         Pending := Pending + [Attribute];
       end
       else
+      begin
         Inc(Index);
+      end;
     end;
     if Index < Count then
+    begin
       Inc(Index);
+    end;
   end;
 
   function FirstPendingLine(ADefault: Integer): Integer;
   begin
     if Length(Pending) > 0 then
-      Result := Pending[0].Line
+    begin
+      Result := Pending[0].Line;
+    end
     else
+    begin
       Result := ADefault;
+    end;
   end;
 
   function HasPending(AKind: TDUnitXAttribute): Boolean;
@@ -602,8 +692,12 @@ var
     Attribute: TPendingAttribute;
   begin
     for Attribute in Pending do
+    begin
       if Attribute.Kind = AKind then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -622,7 +716,9 @@ var
     Test.EndLine := -1;
     Inc(Index);
     if (Index >= Count) or (Tokens[Index].Kind <> TTokenKind.Ident) then
+    begin
       Exit;
+    end;
     Test.Method := Tokens[Index].Text;
     Inc(Index);
     IsTest := False;
@@ -632,9 +728,13 @@ var
         TDUnitXAttribute.Test:
           // [Test(False)] schaltet den Test ab.
           if SameText(Attribute.FirstArgument, 'False') then
-            NotTest := True
+          begin
+            NotTest := True;
+          end
           else
+          begin
             IsTest := True;
+          end;
         TDUnitXAttribute.TestCase:
           begin
             IsTest := True;
@@ -651,9 +751,13 @@ var
         TDUnitXAttribute.Category: ;
       end;
     if APublished and (Length(Pending) = 0) then
+    begin
       IsTest := True;
+    end;
     if IsTest and not NotTest then
+    begin
       AFixture.Tests := AFixture.Tests + [Test];
+    end;
   end;
 
   /// <summary>Klasse ab Index (auf „class“ hinter „Name =“); liest bis zum passenden end.</summary>
@@ -672,14 +776,22 @@ var
     Inc(Index);
     // Vorwärtsdeklaration, Klassenreferenz, class helper ohne Rumpf.
     if (Index < Count) and (IsSym(Tokens[Index], ';') or IsWord(Tokens[Index], 'of')) then
+    begin
       Exit;
+    end;
     while (Index < Count) and (IsWord(Tokens[Index], 'sealed') or IsWord(Tokens[Index], 'abstract')) do
+    begin
       Inc(Index);
+    end;
     if (Index < Count) and IsSym(Tokens[Index], '(') then
+    begin
       SkipGroup('(', ')');
+    end;
     // „TFoo = class(TBar);“ ohne Rumpf.
     if (Index < Count) and IsSym(Tokens[Index], ';') then
+    begin
       Exit;
+    end;
     // Ohne Sichtbarkeit sind Methoden mit {$M+} published; DUnitX-Fixtures haben das selten: wie public.
     Published := False;
     Depth := 1;
@@ -723,9 +835,13 @@ var
       if (Depth = 1) and (IsWord(Tokens[Index], 'procedure') or IsWord(Tokens[Index], 'function')) then
       begin
         if AfterClassWord then
-          Inc(Index)
+        begin
+          Inc(Index);
+        end
         else
+        begin
           ReadMethod(Candidate.Fixture, Published);
+        end;
         AfterClassWord := False;
         Pending := nil;
         Continue;
@@ -748,9 +864,13 @@ var
     while Index < Count do
     begin
       if IsSym(Tokens[Index], '(') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if IsSym(Tokens[Index], ')') then
-        Dec(Depth)
+      begin
+        Dec(Depth);
+      end
       else if IsSym(Tokens[Index], ';') and (Depth <= 0) then
       begin
         Inc(Index);
@@ -772,7 +892,9 @@ var
     begin
       if IsWord(Tokens[Index], 'begin') or IsWord(Tokens[Index], 'try') or IsWord(Tokens[Index], 'case') or
         IsWord(Tokens[Index], 'asm') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if IsWord(Tokens[Index], 'end') then
       begin
         Dec(Depth);
@@ -799,7 +921,9 @@ var
       if IsWord(Tokens[Index], 'record') or
         ((IsWord(Tokens[Index], 'class') or IsWord(Tokens[Index], 'object') or IsWord(Tokens[Index], 'interface')) and
         IsSym(Peek(-1), '=')) then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if IsWord(Tokens[Index], 'end') then
       begin
         Dec(Depth);
@@ -828,7 +952,9 @@ var
       begin
         ABeginLine := Tokens[Index].Line;
         if (Index + 1 < Count) and not IsWord(Tokens[Index + 1], 'end') then
+        begin
           ABeginLine := Tokens[Index + 1].Line;
+        end;
         AEndLine := SkipStatements;
         Exit;
       end;
@@ -839,7 +965,9 @@ var
       end;
       if IsWord(Tokens[Index], 'implementation') or IsWord(Tokens[Index], 'initialization') or
         IsWord(Tokens[Index], 'finalization') then
+      begin
         Exit;
+      end;
       // Lokale Routine (nicht der Typ „procedure(…) of object“ hinter „=“, „:“ oder „to“).
       if (ADepth < 16) and (IsWord(Tokens[Index], 'procedure') or IsWord(Tokens[Index], 'function')) and
         (Peek(1).Kind = TTokenKind.Ident) and not IsSym(Peek(-1), '=') and not IsSym(Peek(-1), ':') and
@@ -872,15 +1000,20 @@ var
     Inc(Index);
     if (Index + 2 >= Count) or (Tokens[Index].Kind <> TTokenKind.Ident) or not IsSym(Tokens[Index + 1], '.') or
       (Tokens[Index + 2].Kind <> TTokenKind.Ident) then
+    begin
       Exit;
+    end;
     ClassName := Tokens[Index].Text;
     Method := Tokens[Index + 2].Text;
     Inc(Index, 3);
     FoundCandidate := -1;
     FoundTest := -1;
     for CandidateIndex := 0 to High(Candidates) do
+    begin
       if SameText(Candidates[CandidateIndex].Fixture.Name, ClassName) then
+      begin
         for TestIndex := 0 to High(Candidates[CandidateIndex].Fixture.Tests) do
+        begin
           if SameText(Candidates[CandidateIndex].Fixture.Tests[TestIndex].Method, Method) and
             (Candidates[CandidateIndex].Fixture.Tests[TestIndex].BodyLine < 0) then
           begin
@@ -888,8 +1021,13 @@ var
             FoundCandidate := CandidateIndex;
             FoundTest := TestIndex;
           end;
+        end;
+      end;
+    end;
     if FoundCandidate < 0 then
+    begin
       Exit;
+    end;
     // Rumpf des Tests: Haltepunkt und Bereich für „Test am Cursor“ (#585).
     SkipHeader;
     ReadRoutine(0, BeginLine, EndLine);
@@ -959,17 +1097,25 @@ begin
     end;
     // Generische Fixtures (TFoo<T> = class) und alles andere: Attribute gelten nicht mehr.
     if not IsWord(Tokens[Index], 'type') then
+    begin
       Pending := nil;
+    end;
     Inc(Index);
   end;
   for Candidate in Candidates do
   begin
     IsRegistered := False;
     for Name in Registered do
+    begin
       if SameText(Name, Candidate.Fixture.Name) then
+      begin
         IsRegistered := True;
+      end;
+    end;
     if Candidate.HasFixtureAttribute or IsRegistered then
+    begin
       Result.Fixtures := Result.Fixtures + [Candidate.Fixture];
+    end;
   end;
 end;
 
@@ -979,9 +1125,13 @@ class function TDUnitXCommandLine.TestName(const AUnitName, AFixture, AMethod: s
 begin
   Result := AFixture;
   if AUnitName <> '' then
+  begin
     Result := AUnitName + '.' + Result;
+  end;
   if AMethod <> '' then
+  begin
     Result := Result + '.' + AMethod;
+  end;
 end;
 
 class function TDUnitXCommandLine.CaseName(const AUnitName, AFixture, AMethod, ACase: string): string;
@@ -989,11 +1139,17 @@ begin
   Result := TestName(AUnitName, AFixture, AMethod);
   // TDUnitXTestCase.GetName: „Methode(1,2)“ bei AutoNameTestCase, sonst „Methode.Fall“.
   if ACase = '' then
+  begin
     Exit;
+  end;
   if ACase[1] = '(' then
-    Result := Result + ACase
+  begin
+    Result := Result + ACase;
+  end
   else
+  begin
     Result := Result + '.' + ACase;
+  end;
 end;
 
 class function TDUnitXCommandLine.RunNames(const AUnit: TDUnitXUnit; AFixtureIndex, ATestIndex,
@@ -1011,8 +1167,12 @@ var
     Known: string;
   begin
     for Known in Names do
+    begin
       if SameText(Known, AName) then
+      begin
         Exit;
+      end;
+    end;
     Names := Names + [AName];
   end;
 
@@ -1022,24 +1182,36 @@ var
   begin
     // Ohne Fälle oder mit [Ignore] (DUnitX führt sie dann als einen Test): der Name der Methode.
     if (Length(ATest.Cases) = 0) or ATest.Ignored then
-      Add(TestName(AUnit.UnitName, Fixture.Name, ATest.Method))
+    begin
+      Add(TestName(AUnit.UnitName, Fixture.Name, ATest.Method));
+    end
     else if (ACase >= 0) and (ACase <= High(ATest.Cases)) then
-      Add(CaseName(AUnit.UnitName, Fixture.Name, ATest.Method, ATest.Cases[ACase]))
+    begin
+      Add(CaseName(AUnit.UnitName, Fixture.Name, ATest.Method, ATest.Cases[ACase]));
+    end
     else
+    begin
       for CaseIndex := 0 to High(ATest.Cases) do
+      begin
         Add(CaseName(AUnit.UnitName, Fixture.Name, ATest.Method, ATest.Cases[CaseIndex]));
+      end;
+    end;
   end;
 
 begin
   Result := nil;
   Names := nil;
   if (AFixtureIndex < 0) or (AFixtureIndex > High(AUnit.Fixtures)) then
+  begin
     Exit;
+  end;
   Fixture := AUnit.Fixtures[AFixtureIndex];
   if ATestIndex >= 0 then
   begin
     if ATestIndex > High(Fixture.Tests) then
+    begin
       Exit;
+    end;
     Test := Fixture.Tests[ATestIndex];
     AddTest(Test, ACaseIndex);
     Exit(Names);
@@ -1051,7 +1223,9 @@ begin
     Name := AUnit.Fixtures[Index].Name;
     if (Index <> AFixtureIndex) and (Length(Name) > Length(Fixture.Name)) and
       SameText(Copy(Name, 1, Length(Fixture.Name)), Fixture.Name) then
+    begin
       Shadowed := True;
+    end;
   end;
   if not Shadowed then
   begin
@@ -1059,7 +1233,9 @@ begin
     Exit;
   end;
   for Test in Fixture.Tests do
+  begin
     AddTest(Test, -1);
+  end;
   Result := Names;
 end;
 
@@ -1073,14 +1249,20 @@ begin
   Result := ['--exitbehavior:Continue', '--xmlfile:' + AResultFile];
   Run := '';
   for Test in ATests do
+  begin
     if Test <> '' then
     begin
       if Run <> '' then
+      begin
         Run := Run + ',';
+      end;
       Run := Run + Test;
     end;
+  end;
   if (Run <> '') and (Length(Run) <= MaxRunLength) then
+  begin
     Result := Result + ['--run:' + Run];
+  end;
 end;
 
 end.

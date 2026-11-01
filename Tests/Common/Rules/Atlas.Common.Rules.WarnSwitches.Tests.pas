@@ -56,11 +56,13 @@ begin
     mContext.ProjectWarnings := AProjectWarnings;
     mHere := -1;
     for mIndex := 0 to High(mTree.Tokens) do
+    begin
       if SameText(mTree.Tokens[mIndex].Text, 'Hier') then
       begin
         mHere := mIndex;
         Break;
       end;
+    end;
     mSwitches := TRuleWarnSwitches.Create(mContext);
     try
       Result := cNames[mSwitches.StateAt(AName, ADefaultOn, mHere)];

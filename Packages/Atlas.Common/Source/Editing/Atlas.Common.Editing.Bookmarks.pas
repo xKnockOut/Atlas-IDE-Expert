@@ -73,25 +73,41 @@ var
 begin
   Result := nil;
   if Pos(Marker, AText) = 0 then
+  begin
     Exit;
+  end;
   for Token in TPascalLexer.Tokenize(AText) do
   begin
     if Token.Kind <> TPascalTokenKind.Comment then
+    begin
       Continue;
+    end;
     if StartsStr('//', Token.Text) then
-      Content := Copy(Token.Text, 3, MaxInt)
+    begin
+      Content := Copy(Token.Text, 3, MaxInt);
+    end
     else if StartsStr('{', Token.Text) and not StartsStr('{$', Token.Text) then
-      Content := Copy(Token.Text, 2, Length(Token.Text) - 2)
+    begin
+      Content := Copy(Token.Text, 2, Length(Token.Text) - 2);
+    end
     else if StartsStr('(*', Token.Text) then
-      Content := Copy(Token.Text, 3, Length(Token.Text) - 4)
+    begin
+      Content := Copy(Token.Text, 3, Length(Token.Text) - 4);
+    end
     else
+    begin
       Continue;
+    end;
     Content := Trim(Content);
     if not StartsText(Marker + ' ', Content) then
+    begin
       Continue;
+    end;
     Bookmark.Name := Trim(Copy(Content, Length(Marker) + 2, MaxInt));
     if Bookmark.Name = '' then
+    begin
       Continue;
+    end;
     Bookmark.Range := TTextRange.Create(Token.StartPos, Token.EndPos);
     Result := Result + [Bookmark];
   end;
@@ -122,16 +138,22 @@ begin
   TMonitor.Enter(FLock);
   try
     if FEntries.TryGetValue(Key, Entry) and (Entry.Stamp = AStamp) then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
   Entry.FileName := AFileName;
   Entry.Stamp := AStamp;
   if AReadText(AFileName, Text) then
-    Entry.Items := TBookmarks.Find(Text)
+  begin
+    Entry.Items := TBookmarks.Find(Text);
+  end
   else
+  begin
     Entry.Items := nil;
+  end;
   TMonitor.Enter(FLock);
   try
     FEntries.AddOrSetValue(Key, Entry);
@@ -149,12 +171,18 @@ begin
   Keep := TDictionary<string, Boolean>.Create;
   try
     for Name in AFileNames do
+    begin
       Keep.AddOrSetValue(LowerCase(Name), True);
+    end;
     TMonitor.Enter(FLock);
     try
       for Key in FEntries.Keys.ToArray do
+      begin
         if not Keep.ContainsKey(Key) then
+        begin
           FEntries.Remove(Key);
+        end;
+      end;
     finally
       TMonitor.Exit(FLock);
     end;
@@ -173,12 +201,14 @@ begin
   TMonitor.Enter(FLock);
   try
     for Pair in FEntries do
+    begin
       for Bookmark in Pair.Value.Items do
       begin
         Hit.FileName := Pair.Value.FileName;
         Hit.Bookmark := Bookmark;
         Result := Result + [Hit];
       end;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

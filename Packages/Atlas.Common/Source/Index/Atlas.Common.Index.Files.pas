@@ -30,13 +30,17 @@ var
 begin
   Result := (AIndex <> nil) and AIndex.FindFile(AFileName, AUnit);
   if Result or (AIndex = nil) then
+  begin
     Exit;
+  end;
   for Candidate in AIndex.Units do
+  begin
     if IndexText(AFileName, Candidate.Includes) >= 0 then
     begin
       AUnit := Candidate;
       Exit(True);
     end;
+  end;
 end;
 
 end.

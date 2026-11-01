@@ -70,8 +70,12 @@ var
 begin
   Lines := AContext.Text.Split([#10]);
   for Index := 0 to High(Lines) do
+  begin
     if Pos('X := 1', Lines[Index]) > 0 then
+    begin
       AReport.Add(TTextRange.Create(TTextPosition.Create(Index, 2), TTextPosition.Create(Index, 8)), 'Probe');
+    end;
+  end;
 end;
 
 function Source(const ACommandLine: string): string;
@@ -224,8 +228,12 @@ const
     Result := nil;
     for Finding in TRuleAssert.FindingsOfAll([TSlashCommandRule.Create, TProbeLineRule.Create],
       Format(Text, [ACommand, ANext]), '') do
+    begin
       if Finding.RuleId = 'slash-command' then
+      begin
         Result := Result + [Finding.Message];
+      end;
+    end;
   end;
 
 begin

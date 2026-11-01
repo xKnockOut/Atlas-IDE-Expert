@@ -123,9 +123,13 @@ function CleanName(const AText: string): string;
 begin
   // &Begin → Begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
@@ -138,11 +142,15 @@ begin
     Token := ATokens[Index];
     if (Token.StartPos.Line > APosition.Line) or
       ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    begin
       Break;
+    end;
     // Cursor auf oder direkt hinter dem Bezeichner.
     if (Token.Kind = TPascalTokenKind.Identifier) and (Token.EndPos.Line = APosition.Line) and
       (APosition.Character <= Token.EndPos.Character) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -151,9 +159,13 @@ end;
 function AlternativeName(const AName: string): string;
 begin
   if EndsText('Attribute', AName) and (Length(AName) > Length('Attribute')) then
-    Result := Copy(AName, 1, Length(AName) - Length('Attribute'))
+  begin
+    Result := Copy(AName, 1, Length(AName) - Length('Attribute'));
+  end
   else
+  begin
     Result := AName + 'Attribute';
+  end;
 end;
 
 /// <summary>Ereignis-Handler und Komponentennamen AName in einer Formulardatei, über das
@@ -227,7 +239,9 @@ begin
   end;
   SetLength(Result, Length(Hits));
   for Index := 0 to High(Hits) do
+  begin
     Result[Index] := Hits[Index].Range;
+  end;
 end;
 
 class function TLspReferences.HitsInTree(AResolver: TNameResolver; AClassifier: TReferenceClassifier;
@@ -265,9 +279,13 @@ begin
       if (ATree.Tokens[Index].Kind <> TPascalTokenKind.Identifier) or
         not (SameText(CleanName(ATree.Tokens[Index].Text), AName) or
         SameText(CleanName(ATree.Tokens[Index].Text), Alternative)) then
+      begin
         Continue;
+      end;
       if ACancellation <> nil then
+      begin
         ACancellation.ThrowIfCancellationRequested;
+      end;
       if AClassifier.Classify(ATree, AFileName, Index, AInactive, Hit.Confidence) then
       begin
         Hit.Range := TTextRange.Create(ATree.Tokens[Index].StartPos, ATree.Tokens[Index].EndPos);
@@ -285,9 +303,13 @@ class function TLspReferences.InactiveFor(const AFileName, AText: string;
   const ASettings: TReferenceSettings): TArray<TLspInactiveRegion>;
 begin
   if ASettings.Inferred then
-    Result := TReferenceClassifier.InactiveOf(AText, TSyntaxTreeCache.DefinesOf(TDocumentUris.FromPath(AFileName)))
+  begin
+    Result := TReferenceClassifier.InactiveOf(AText, TSyntaxTreeCache.DefinesOf(TDocumentUris.FromPath(AFileName)));
+  end
   else
+  begin
     Result := nil;
+  end;
 end;
 
 
@@ -357,7 +379,9 @@ begin
   Result := nil;
   Index := TokenAt(ATree.Tokens, APosition);
   if Index < 0 then
+  begin
     Exit;
+  end;
   // Listen statt Result := Result + [...] (Code-Review P-08); bei vielen Treffern quadratisch.
   Locations := TList<TReferenceLocation>.Create;
   Searched := TDictionary<string, Boolean>.Create;
@@ -368,29 +392,39 @@ begin
   try
     Wanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
     if Length(Wanted) = 0 then
+    begin
       Exit;
+    end;
     Name := CleanName(ATree.Tokens[Index].Text);
     // Interface und virtual brauchen die Deklaration; ohne erschlossene Treffer genügt das Ziel.
     HasSymbol := ASettings.Inferred and
       TReferenceClassifier.SymbolOf(AResolver, AIndex, ATree, AFileName, Wanted[0], Symbol);
     if not HasSymbol then
+    begin
       Symbol := Default(TIndexSymbol);
+    end;
     Classifier := TReferenceClassifier.Create(AResolver, AIndex, Wanted[0], Symbol, HasSymbol, Name, ASettings);
     // Auch der Baum des Editors (#845) führt die Tokens aller Zweige; welche inaktiv sind, sagen die Bereiche.
     Inactive := nil;
     if ASettings.Inferred and Assigned(AReadText) and AReadText(AFileName, Text) then
+    begin
       Inactive := InactiveFor(AFileName, Text, ASettings);
+    end;
     AddHits(AFileName, HitsInTree(AResolver, Classifier, ATree, AFileName, Name, Inactive, ACancellation));
     Searched.AddOrSetValue(AnsiUpperCase(AFileName), True);
     for FileName in AFiles do
     begin
       if Searched.ContainsKey(AnsiUpperCase(FileName)) then
+      begin
         Continue;
+      end;
       Searched.Add(AnsiUpperCase(FileName), True);
       // Die kürzere Schreibweise ist in der längeren enthalten.
       if not (Assigned(AReadText) and AReadText(FileName, Text)) or not (ContainsText(Text, Name) or
         ContainsText(Text, AlternativeName(Name))) then
+      begin
         Continue;
+      end;
       // Parse liest alle Zweige; die inaktiven erkennt Classify an den Bereichen.
       Tree := TSyntaxTreeCache.Parse(Text);
       try
@@ -404,16 +438,28 @@ begin
     if Assigned(AReadText) then
     begin
       if not AReadText(Wanted[0].FileName, Text) then
+      begin
         Text := '';
+      end;
       for DfmName in TFormFiles.FormFiles(Wanted[0].FileName, Text) do
+      begin
         if AReadText(DfmName, Text) then
+        begin
           Add(DfmName, InForm(Text, Name));
+        end;
+      end;
     end;
     if not ADeclaration then
+    begin
       for Index := Locations.Count - 1 downto 0 do
+      begin
         if SameText(Locations[Index].FileName, Wanted[0].FileName) and
           (Locations[Index].Range.StartPos = Wanted[0].SelectionRange.StartPos) then
+        begin
           Locations.Delete(Index);
+        end;
+      end;
+    end;
     Result := Locations.ToArray;
   finally
     AResolver.UnpinTree;
@@ -443,10 +489,14 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+  end;
   if not TJSONObject(AParams).TryGetValue<Boolean>('context.includeDeclaration', IncludeDeclaration) then
+  begin
     IncludeDeclaration := True;
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   OwnTree := nil;
@@ -462,16 +512,24 @@ begin
     Tree := OwnTree;
   end
   else
+  begin
     Exit(TJSONNull.Create);
+  end;
   try
     Files := nil;
     if Assigned(FFiles) then
+    begin
       Files := FFiles();
+    end;
     ACancellation.ThrowIfCancellationRequested;
     if Assigned(FSettingsFor) then
-      Settings := FSettingsFor(Uri)
+    begin
+      Settings := FSettingsFor(Uri);
+    end
     else
+    begin
       Settings := TReferenceSettings.Default;
+    end;
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
       Resolver.Namespaces := Namespaces;

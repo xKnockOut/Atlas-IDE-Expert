@@ -74,9 +74,13 @@ begin
     Value.AddPair('cancellable', TJSONBool.Create(False));
   end
   else if ATitleOrMessage <> '' then
+  begin
     Value.AddPair('message', ATitleOrMessage);
+  end;
   if (AKind <> 'end') and (APercent >= 0) then
+  begin
     Value.AddPair('percentage', TJSONNumber.Create(APercent));
+  end;
   Params := TJSONObject.Create;
   Params.AddPair('token', FToken);
   Params.AddPair('value', Value);
@@ -120,9 +124,13 @@ begin
   TMonitor.Enter(FLock);
   try
     if FActive and (APercent >= 0) then
+    begin
       FPercent := APercent;
+    end;
     if not FActive or (FLastReport.ElapsedMilliseconds < MinReportIntervalMs) then
+    begin
       Exit;
+    end;
     SendProgress('report', AMessage, APercent);
     FLastReport := TStopwatch.StartNew;
   finally
@@ -135,7 +143,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if not FActive then
+    begin
       Exit;
+    end;
     SendProgress('end', AMessage, -1);
     FActive := False;
   finally
@@ -158,7 +168,9 @@ begin
             // Nur den Dateinamen zeigen.
             Name := AMessage;
             if LastDelimiter('\/', Name) > 0 then
+            begin
               Name := Copy(Name, LastDelimiter('\/', Name) + 1, MaxInt);
+            end;
             Report(Name, APercent);
           end;
         TIndexProgressKind.Finished:

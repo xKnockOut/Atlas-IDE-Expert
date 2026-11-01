@@ -65,7 +65,9 @@ begin
     begin
       Result := AComplete;
       if not Result then
+      begin
         AReason := 'Index läuft';
+      end;
     end);
 end;
 

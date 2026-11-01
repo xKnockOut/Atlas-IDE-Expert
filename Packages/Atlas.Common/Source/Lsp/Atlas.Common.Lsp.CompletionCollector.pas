@@ -259,16 +259,22 @@ function TScoredItemComparer.Compare(const Left, Right: TScoredItem): Integer;
 begin
   // Höhere Punktzahl zuerst, sonst Reihenfolge der Gültigkeitsbereiche.
   if Left.Score <> Right.Score then
-    Result := Right.Score - Left.Score
+  begin
+    Result := Right.Score - Left.Score;
+  end
   else
+  begin
     Result := Left.Order - Right.Order;
+  end;
 end;
 
 function PlainType(const AType: string): string;
 begin
   Result := LowerCase(AType.Replace(' ', ''));
   if (Pos('<', Result) = 0) and (LastDelimiter('.', Result) > 0) then
+  begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
 end;
 
 function TypeFamily(const APlain: string): TTypeFamily;
@@ -276,18 +282,30 @@ begin
   if MatchText(APlain, ['integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'shortint', 'smallint', 'longint',
     'longword', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32', 'fixedint',
     'fixeduint']) then
-    Result := TTypeFamily.Integer_
+  begin
+    Result := TTypeFamily.Integer_;
+  end
   else if MatchText(APlain, ['double', 'single', 'extended', 'real', 'currency', 'comp']) then
-    Result := TTypeFamily.Float
+  begin
+    Result := TTypeFamily.Float;
+  end
   else if MatchText(APlain, ['string', 'unicodestring', 'ansistring', 'widestring', 'shortstring', 'rawbytestring',
     'utf8string']) then
-    Result := TTypeFamily.String_
+  begin
+    Result := TTypeFamily.String_;
+  end
   else if MatchText(APlain, ['char', 'widechar', 'ansichar']) then
-    Result := TTypeFamily.Char_
+  begin
+    Result := TTypeFamily.Char_;
+  end
   else if MatchText(APlain, ['boolean', 'bytebool', 'wordbool', 'longbool']) then
-    Result := TTypeFamily.Boolean_
+  begin
+    Result := TTypeFamily.Boolean_;
+  end
   else
+  begin
     Result := TTypeFamily.None;
+  end;
 end;
 
 function TypeFits(const AActual, AExpected: string; out ACheckDescent: Boolean): Boolean;
@@ -296,14 +314,20 @@ var
 begin
   ACheckDescent := False;
   if (AActual = '') or (AExpected = '') then
+  begin
     Exit(False);
+  end;
   if PlainType(AActual) = PlainType(AExpected) then
+  begin
     Exit(True);
+  end;
   Actual := TypeFamily(PlainType(AActual));
   Expected := TypeFamily(PlainType(AExpected));
   if Expected <> TTypeFamily.None then
+  begin
     Exit((Actual = Expected) or (Expected = TTypeFamily.Float) and (Actual = TTypeFamily.Integer_) or
       (Expected = TTypeFamily.String_) and (Actual = TTypeFamily.Char_));
+  end;
   ACheckDescent := Actual = TTypeFamily.None;
   Result := False;
 end;
@@ -328,11 +352,17 @@ begin
       AResult.Units := ['System.TypInfo'];
     end
     else if Plain = 'tdatetime' then
-      Text := 'DateTimeToStr(' + AExpression + ')'
+    begin
+      Text := 'DateTimeToStr(' + AExpression + ')';
+    end
     else if Plain = 'tdate' then
-      Text := 'DateToStr(' + AExpression + ')'
+    begin
+      Text := 'DateToStr(' + AExpression + ')';
+    end
     else if Plain = 'ttime' then
-      Text := 'TimeToStr(' + AExpression + ')'
+    begin
+      Text := 'TimeToStr(' + AExpression + ')';
+    end
     else if Actual = TTypeFamily.Integer_ then
     begin
       Text := 'IntToStr(' + AExpression + ')';
@@ -375,23 +405,33 @@ begin
     Exit(True);
   end;
   if Text = '' then
+  begin
     Exit(False);
+  end;
   if AHelper and (Helper <> '') then
+  begin
     Text := Helper;
+  end;
   AResult.Text := Text;
   if AResult.Units = nil then
+  begin
     AResult.Units := ['System.SysUtils'];
+  end;
   Result := True;
 end;
 
 function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
 begin
   if APrefix = '' then
+  begin
     Exit(0);
+  end;
   if AMatching = TCompletionMatching.Prefix then
   begin
     if AName.StartsWith(APrefix, True) then
+    begin
       Exit(0);
+    end;
     Exit(TFuzzyMatch.NoMatch);
   end;
   Result := TFuzzyMatch.CompletionScore(AName, APrefix);
@@ -399,7 +439,9 @@ begin
   // hinter bloße Teilwörter zurück und erschienen erst mit passendem Anfang.
   if (Result <> TFuzzyMatch.NoMatch) and not AName.StartsWith(APrefix, True) and
     TTextFuzzy.MatchesWordStarts(APrefix, AName) then
+  begin
     Result := WordStartsScore - Min(Length(AName) - Length(APrefix), 99);
+  end;
 end;
 
 function PrefixFilter(const APrefix: string; AMatching: TCompletionMatching): TCandidateNameFilter;
@@ -424,7 +466,9 @@ begin
   // Name der eigenen Unit für die Bereichsstufe (#488).
   FOwnUnit := '';
   if ARequest.Tree <> nil then
+  begin
     FOwnUnit := TUsesClauses.OwnName(ARequest.Tree.Tokens);
+  end;
   FDescends := TDictionary<string, Boolean>.Create;
   FBaseTypes := TDictionary<string, string>.Create;
   FSentNames := TDictionary<string, Boolean>.Create;
@@ -447,14 +491,22 @@ var
 begin
   // Typ des Werts: Variablen, Felder, Eigenschaften, Funktionsergebnis; Aufzählungswerte über ihren Typ.
   if AMember.SymbolKind = TIndexSymbolKind.EnumMember then
-    TypeText := AMember.Container
+  begin
+    TypeText := AMember.Container;
+  end
   else if AMember.IsType then
-    Exit(False)
+  begin
+    Exit(False);
+  end
   else
+  begin
     TypeText := AMember.TypeName;
+  end;
   Result := TypeFits(TypeText, FExpected, CheckDescent);
   if Result or not CheckDescent then
+  begin
     Exit;
+  end;
   // Klassen: Nachfahr des erwarteten Typs; je Typname einmal auflösen.
   if not FDescends.TryGetValue(LowerCase(TypeText), Result) then
   begin
@@ -478,12 +530,18 @@ var
 begin
   Result := AType;
   if (AType = '') or Known(AType) then
+  begin
     Exit;
+  end;
   // Übliche Aliase der RTL und VCL auch ohne deren Quellen im Index.
   if MatchText(PlainType(AType), ['tcaption', 'tfilename']) then
+  begin
     Exit('string');
+  end;
   if FBaseTypes.TryGetValue(LowerCase(AType), Result) then
+  begin
     Exit;
+  end;
   Result := AType;
   Current := FRequest.Resolver.ResolveChain(FRequest.Tree, FRequest.FileName, AType.Split(['.']), FContext.Offset);
   Depth := 0;
@@ -495,13 +553,19 @@ begin
       Break;
     end;
     if (Current.SymbolKind <> TIndexSymbolKind.TypeAlias) or (Current.TypeName = '') then
+    begin
       Break;
+    end;
     // "TCaption = type string": das Wort type gehört nicht zum Namen.
     Result := Trim(Current.TypeName);
     if Result.StartsWith('type ', True) then
+    begin
       Result := Trim(Copy(Result, 6, MaxInt));
+    end;
     if Known(Result) then
+    begin
       Break;
+    end;
     Current := FRequest.Resolver.ResolveChain(FRequest.Tree, FRequest.FileName, Result.Split(['.']),
       FContext.Offset);
     Inc(Depth);
@@ -526,7 +590,9 @@ begin
     (ASymbol.Name = '') or ASymbol.IsType or (ASymbol.SymbolKind = TIndexSymbolKind.EnumMember) or
     (ASymbol.MinArgs > 0) or (ASymbol.TypeName = '') or (AOriginal.Item.AdditionalEdits <> nil) or
     AOriginal.Item.Unavailable or (FContext.Filter <> TCompletionFilter.Any) or (FRequest.Tree = nil) then
+  begin
     Exit;
+  end;
   Actual := BaseType(ASymbol.TypeName);
   Expected := BaseType(FExpected);
   EnumType := '';
@@ -536,7 +602,9 @@ begin
     Actual := '';
   end;
   if Expected.StartsWith('enum:') then
+  begin
     Exit;
+  end;
   Helper := FRequest.Settings.TypeConversion = TCompletionTypeConversion.Helper;
   // Eingesetzt wird die ganze Kette: "Lines.Cou" → "IntToStr(Lines.Count)"; gezeigt nur der Name.
   if FContext.Kind = TCompletionContextKind.Member then
@@ -551,7 +619,9 @@ begin
     Expression := AName;
   end;
   if (Start.Character < 0) or not TypeConversion(Actual, Expected, EnumType, Expression, Helper, Converted) then
+  begin
     Exit;
+  end;
   if Converted.Lossy then
   begin
     AOriginal.Item.Lossy := ASymbol.TypeName;
@@ -575,10 +645,14 @@ begin
     FUsedReady := True;
   end;
   for UnitName in Converted.Units do
+  begin
     if not TUsesClauses.IsUsed(FUsed, UnitName, FRequest.Resolver.Namespaces) and
       not TUsesClauses.IsUsed(FUsed, UnitName, ['System']) and
       TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitName, #13#10, Edit) then
+    begin
       AConverted.Item.AdditionalEdits := AConverted.Item.AdditionalEdits + [Edit];
+    end;
+  end;
   Result := True;
 end;
 
@@ -588,25 +662,37 @@ begin
   // Bereichsstufe nur im Gültigkeitsbereich, nicht nach einem Punkt (#488).
   Result := 0;
   if (FContext.Kind <> TCompletionContextKind.Scope) or (AMember.Name = '') then
+  begin
     Exit;
+  end;
   if AMember.WithOrigin <> '' then
   begin
     // Mitglied eines with-Objekts (#481), auch wenn es zur eigenen Klasse gehört (with Self do); abgeschaltet
     // ohne Angabe statt einer falschen.
     if FRequest.Settings.WithOrigin then
+    begin
       Result := 6;
+    end;
   end
   else if AMember.Kind = TResolvedKind.Local then
   begin
     if AMember.IsParameter then
-      Result := 2
+    begin
+      Result := 2;
+    end
     else
+    begin
       Result := 1;
+    end;
   end
   else if AMember.Container <> '' then
-    Result := 3
+  begin
+    Result := 3;
+  end
   else if (FOwnUnit <> '') and SameText(AMember.UnitName, FOwnUnit) then
-    Result := 4
+  begin
+    Result := 4;
+  end
   else
   begin
     Result := 5;
@@ -638,17 +724,23 @@ begin
   Scored := Default(TScoredItem);
   Scored.Score := MatchScore(AName, FContext.Prefix, FRequest.Matching);
   if Scored.Score = TFuzzyMatch.NoMatch then
+  begin
     Exit(False);
+  end;
   Dec(Scored.Score, APenalty);
   Scored.Item.Name := AName;
   // Der Index führt Namen ohne Escape-&; reservierte Wörter und &-Namen brauchen es im Quelltext (#1137).
   if (ASymbol.Name <> '') and (TPascalLexer.SourceName(AName) <> AName) then
+  begin
     Scored.Item.InsertText := TPascalLexer.SourceName(AName);
+  end;
   Scored.Item.AdditionalEdits := AEdits;
   // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde), ohne Unit davor.
   for Binding in ASymbol.Bindings do
+  begin
     Scored.Item.Bindings := Scored.Item.Bindings + [Copy(Binding, 1, Pos('=', Binding)) +
       FRequest.Resolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt), FOwnUnit)];
+  end;
   Scored.Item.Detail := TInterfaceStubs.SubstituteWords(ADetail, Scored.Item.Bindings);
   Scored.Item.Kind := AKind;
   // Wo die Deklaration steht, für completionItem/resolve.
@@ -669,19 +761,29 @@ begin
     Scored.Item.WithShadows := ASymbol.WithShadows;
   end;
   for Params in ASymbol.VariantParams do
+  begin
     if Params <> '' then
+    begin
       Scored.Item.HasParameters := True;
+    end;
+  end;
   for Range in ASymbol.Overloads do
+  begin
     Scored.Item.Overloads := Scored.Item.Overloads + [Range.StartPos];
+  end;
   // Der Editor filtert selbst nach dem getippten Wort; unscharfe Treffer bekommen es
   // als filterText, damit er sie nicht verwirft.
   if (FRequest.Matching = TCompletionMatching.Fuzzy) and not AName.StartsWith(FContext.Prefix, True) then
+  begin
     Scored.Item.FilterText := FContext.Prefix;
+  end;
   // Erwarteter Typ (#417): Atlas gruppiert nach Fits.
   Scored.Item.Expected := FExpected;
   Scored.Item.Fits := (FExpected <> '') and (ASymbol.Name <> '') and MemberFits(ASymbol);
   if Scored.Item.Fits then
+  begin
     FAnyFits := True;
+  end;
   // Typkonvertierung (#490): Umwandlung direkt vor dem Original, das mit seinem Typ wählbar bleibt.
   if not Scored.Item.Fits and Conversion(AName, ASymbol, Scored, Converted) then
   begin
@@ -709,7 +811,9 @@ var
   Scored: TScoredItem;
 begin
   if FList.Count = 0 then
+  begin
     Exit;
+  end;
   Scored := FList[FList.Count - 1];
   Scored.Item.Unavailable := True;
   FList[FList.Count - 1] := Scored;
@@ -728,25 +832,39 @@ var
   Scored: TScoredItem;
 begin
   if (FRequest.Index = nil) or not FRequest.Index.FindFile(FRequest.FileName, Own) then
+  begin
     Exit;
+  end;
   Conditions := TDictionary<string, string>.Create;
   Missing := TDictionary<string, string>.Create;
   try
     for Symbol in Own.Symbols do
+    begin
       if (Symbol.Container = '') and (Symbol.Condition <> '') then
+      begin
         Conditions.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
+      end;
+    end;
     for Symbol in Own.Unavailable do
+    begin
       if Symbol.Container = '' then
+      begin
         Missing.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
+      end;
+    end;
     if (Conditions.Count = 0) and (Missing.Count = 0) then
+    begin
       Exit;
+    end;
     for Index := 0 to FList.Count - 1 do
     begin
       Scored := FList[Index];
       // Nur Einträge aus dieser Datei; gleichnamige aus anderen Units bleiben unberührt.
       if (Scored.Item.Condition <> '') or ((Scored.Item.SourceFile <> '') and
         not SameText(Scored.Item.SourceFile, FRequest.FileName)) then
+      begin
         Continue;
+      end;
       if Missing.TryGetValue(UpperCase(Scored.Item.Name), Condition) then
       begin
         Scored.Item.Condition := Condition;
@@ -755,9 +873,13 @@ begin
         Dec(Scored.Score, PenaltyUnavailable);
       end
       else if Conditions.TryGetValue(UpperCase(Scored.Item.Name), Condition) then
-        Scored.Item.Condition := Condition
+      begin
+        Scored.Item.Condition := Condition;
+      end
       else
+      begin
         Continue;
+      end;
       FList[Index] := Scored;
     end;
   finally
@@ -775,9 +897,13 @@ var
 begin
   Result := TDictionary<string, Boolean>.Create;
   for Existing in FList do
+  begin
     Result.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+  end;
   for Name in FSentNames.Keys do
+  begin
     Result.AddOrSetValue(Name, True);
+  end;
 end;
 
 procedure TCompletionCollector.AddUnavailable;
@@ -796,17 +922,23 @@ begin
     for UnitInfo in FRequest.Index.UnavailableUnits do
     begin
       if Length(UnitInfo.Unavailable) = 0 then
+      begin
         Continue;
+      end;
       if not SameText(UnitInfo.UnitName, Own) and
         not TUsesClauses.IsUsed(Used, UnitInfo.UnitName, FRequest.Resolver.Namespaces) then
+      begin
         Continue;
+      end;
       for Symbol in UnitInfo.Unavailable do
       begin
         // Mitglieder nicht geltender Zweige zeigt AddUnavailableMembers hinter "Objekt.".
         if (Symbol.Container <> '') or (not Symbol.InInterface and not SameText(UnitInfo.UnitName, Own)) or
           Known.ContainsKey(UpperCase(Symbol.Name)) or
           ((FContext.Filter = TCompletionFilter.Types) and not (Symbol.Kind in IndexTypeKinds)) then
+        begin
           Continue;
+        end;
         Member := Default(TResolvedSymbol);
         Member.Name := Symbol.Name;
         Member.Condition := Symbol.Condition;
@@ -837,7 +969,9 @@ begin
   Wanted := TDictionary<string, Boolean>.Create;
   try
     for Name in ANames do
+    begin
       Wanted.AddOrSetValue(UpperCase(Name), True);
+    end;
     AddImports(Wanted);
   finally
     Wanted.Free;
@@ -877,31 +1011,47 @@ begin
     for Entry in Names.Entries do
     begin
       if not TImportNameIndex.MayMatch(Entry.Mask, QueryMask) then
+      begin
         Continue;
+      end;
       if UnitState[Entry.UnitPos] = 0 then
       begin
         UnitInfo := Names.Units[Entry.UnitPos];
         if SameText(UnitInfo.UnitName, Own) or
           TUsesClauses.IsUsed(Used, UnitInfo.UnitName, FRequest.Resolver.Namespaces) then
-          UnitState[Entry.UnitPos] := 1
+        begin
+          UnitState[Entry.UnitPos] := 1;
+        end
         else
+        begin
           UnitState[Entry.UnitPos] := 2;
+        end;
       end;
       if UnitState[Entry.UnitPos] = 1 then
+      begin
         Continue;
+      end;
       UnitInfo := Names.Units[Entry.UnitPos];
       Symbol := UnitInfo.Symbols[Entry.SymbolPos];
       if ((AWanted <> nil) and not AWanted.ContainsKey(UpperCase(Symbol.Name))) or
         Known.ContainsKey(UpperCase(Symbol.Name)) or
         ((FContext.Filter = TCompletionFilter.Types) and not (Symbol.Kind in IndexTypeKinds)) then
+      begin
         Continue;
+      end;
       if MatchScore(Symbol.Name, FContext.Prefix, FRequest.Matching) = TFuzzyMatch.NoMatch then
+      begin
         Continue;
+      end;
       if Assigned(FAdmit) and not FAdmit(FRequest.Resolver.SymbolFrom(UnitInfo, Symbol)) then
+      begin
         Continue;
+      end;
       // Fest #13#10 wie bisher (eigener Befund: uses-Eintrag in LF-Dateien, siehe CHANGELOG).
       if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitInfo.UnitName, #13#10, Edit) then
+      begin
         Exit;
+      end;
       // Merkmale und Quelle aus dem Indexsymbol (sonst fehlten z. B. die Klammern bei ShowMessage aus
       // Vcl.Dialogs).
       Member := Default(TResolvedSymbol);
@@ -912,9 +1062,13 @@ begin
       Member.SelectionRange.StartPos := Symbol.SelectionRange.StartPos;
       // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
       if UnitInfo.Library_ then
-        Penalty := PenaltyLibraryImport
+      begin
+        Penalty := PenaltyLibraryImport;
+      end
       else
+      begin
         Penalty := PenaltyProjectImport;
+      end;
       // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
       if Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', CompletionKindOf(Symbol.Kind), Penalty, Member,
         [Edit]) then
@@ -964,17 +1118,25 @@ begin
   Count := 0;
   if not FRequest.Settings.SameNameVariants or (FContext.Kind <> TCompletionContextKind.Scope) or
     (FRequest.Tree = nil) or (FRequest.Index = nil) then
+  begin
     Exit;
+  end;
   Active := TDictionary<string, Integer>.Create;
   Variants := TList<TVariant>.Create;
   try
     // Aktiv ist, was die Namensauflösung aus den uses brachte (letzte Unit gewinnt).
     for Index := 0 to FList.Count - 1 do
+    begin
       if (FList[Index].Item.Scope = 5) and (FList[Index].Item.UnitName <> '') and (FList[Index].Item.Action = '') and
         not FList[Index].Item.Unavailable and (FList[Index].Item.Conversion = '') then
+      begin
         Active.AddOrSetValue(UpperCase(FList[Index].Item.Name), Index);
+      end;
+    end;
     if Active.Count = 0 then
+    begin
       Exit;
+    end;
     Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
     Names := TImportNames.Current(FRequest.Index);
     QueryMask := TImportNameIndex.MaskOf(FContext.Prefix);
@@ -983,21 +1145,29 @@ begin
     for Entry in Names.Entries do
     begin
       if not TImportNameIndex.MayMatch(Entry.Mask, QueryMask) then
+      begin
         Continue;
+      end;
       Variant.Symbol := Names.Units[Entry.UnitPos].Symbols[Entry.SymbolPos];
       if not Active.TryGetValue(UpperCase(Variant.Symbol.Name), Variant.Active) then
+      begin
         Continue;
+      end;
       Variant.UnitInfo := Names.Units[Entry.UnitPos];
       if Variant.Symbol.Unavailable or SameText(Variant.UnitInfo.UnitName, Own) or
         SameText(Variant.UnitInfo.UnitName, FList[Variant.Active].Item.UnitName) or
         MatchText(Variant.UnitInfo.UnitName, Units[Variant.Active]) or
         ((FContext.Filter = TCompletionFilter.Types) and not (Variant.Symbol.Kind in IndexTypeKinds)) then
+      begin
         Continue;
+      end;
       if TCompletionSameNames.IsFmx(Variant.UnitInfo.UnitName) and not FRequest.Settings.ShowFmxUnits then
       begin
         Text := Variant.UnitInfo.UnitName + '.' + Variant.Symbol.Name;
         if not MatchText(Text, Hidden[Variant.Active]) then
+        begin
           Hidden[Variant.Active] := Hidden[Variant.Active] + [Text];
+        end;
         Continue;
       end;
       Units[Variant.Active] := Units[Variant.Active] + [Variant.UnitInfo.UnitName];
@@ -1005,6 +1175,7 @@ begin
     end;
     // Die aktive Variante nennt alle Units, die den Namen deklarieren.
     for Index := 0 to FList.Count - 1 do
+    begin
       if (Length(Units[Index]) > 0) or (Length(Hidden[Index]) > 0) then
       begin
         Scored := FList[Index];
@@ -1013,6 +1184,7 @@ begin
         Scored.Item.SameNameHidden := Hidden[Index];
         FList[Index] := Scored;
       end;
+    end;
     Used := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
     Range := TTextRange.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix),
       FRequest.Position.Line, FRequest.Position.Character);
@@ -1025,12 +1197,16 @@ begin
       Mode := TCompletionSameNames.InsertMode(FRequest.Settings.SameNameInsert, IsUsed_, Movable);
       Edits := nil;
       if Mode = TCompletionSameNames.InsertMove then
-        Edits := Moved
+      begin
+        Edits := Moved;
+      end
       else if (Mode = TCompletionSameNames.InsertAdd) or (Mode = TCompletionSameNames.InsertPrefixAdd) then
       begin
         if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, Variant.UnitInfo.UnitName,
           FRequest.LineBreak, Edit) then
+        begin
           Continue;
+        end;
         Edits := [Edit];
       end;
       Member := Default(TResolvedSymbol);
@@ -1043,7 +1219,9 @@ begin
       Member.SelectionRange.StartPos := Variant.Symbol.SelectionRange.StartPos;
       if not Add(Variant.Symbol.Name, Variant.UnitInfo.UnitName, CompletionKindOf(Variant.Symbol.Kind), 0, Member,
         Edits) then
+      begin
         Continue;
+      end;
       // Direkt hinter der aktiven Variante: gleiche Punktzahl, Reihenfolge gleich dahinter (siehe unten).
       Position := FList.Count - 1;
       Scored := FList[Position];
@@ -1055,7 +1233,9 @@ begin
       Scored.Item.SameNameUnits := FList[Variant.Active].Item.SameNameUnits;
       Scored.Item.SameNameHidden := FList[Variant.Active].Item.SameNameHidden;
       if Scored.Item.FilterText = '' then
+      begin
         Scored.Item.FilterText := Variant.Symbol.Name;
+      end;
       if (Mode = TCompletionSameNames.InsertPrefix) or (Mode = TCompletionSameNames.InsertPrefixAdd) then
       begin
         Scored.Item.HasTextEdit := True;
@@ -1068,13 +1248,17 @@ begin
   finally
     // Die übrigen behalten ihre Reihenfolge, mit Platz für die Varianten dahinter.
     if Count > 0 then
+    begin
       for Index := 0 to FList.Count - 1 do
+      begin
         if FList[Index].Item.SameNameOf = '' then
         begin
           Scored := FList[Index];
           Scored.Order := Scored.Order * VariantSlots;
           FList[Index] := Scored;
         end;
+      end;
+    end;
     Variants.Free;
     Active.Free;
   end;
@@ -1094,7 +1278,9 @@ var
   Depth, Position, Penalty: Integer;
 begin
   if Length(ATypes) = 0 then
+  begin
     Exit;
+  end;
   Known := KnownNames;
   try
     Used := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
@@ -1105,38 +1291,56 @@ begin
       UnitInfo := Names.Units[Entry.UnitPos];
       if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName,
         FRequest.Resolver.Namespaces) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, ['System']) then
+      begin
         Continue;
+      end;
       Helper := UnitInfo.Symbols[Entry.SymbolPos];
       Depth := -1;
       for Position := 0 to High(ATypes) do
+      begin
         if TNameResolver.HelperTargets(Helper.Ancestors[High(Helper.Ancestors)], ATypes[Position]) then
         begin
           Depth := Position;
           Break;
         end;
+      end;
       if Depth < 0 then
+      begin
         Continue;
+      end;
       if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitInfo.UnitName, #13#10, Edit) then
+      begin
         Exit;
+      end;
       if UnitInfo.Library_ then
-        Penalty := PenaltyLibraryImport
+      begin
+        Penalty := PenaltyLibraryImport;
+      end
       else
+      begin
         Penalty := PenaltyProjectImport;
+      end;
       for Position := 0 to High(UnitInfo.Symbols) do
       begin
         if not SameText(UnitInfo.Symbols[Position].Container, Helper.Name) or
           not (UnitInfo.Symbols[Position].Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) or
           Known.ContainsKey(UpperCase(UnitInfo.Symbols[Position].Name)) then
+        begin
           Continue;
+        end;
         if (FContext.Prefix <> '') and (MatchScore(UnitInfo.Symbols[Position].Name, FContext.Prefix,
           FRequest.Matching) = TFuzzyMatch.NoMatch) then
+        begin
           Continue;
+        end;
         Member := FRequest.Resolver.SymbolFrom(UnitInfo, UnitInfo.Symbols[Position]);
         Member.IsHelper := True;
         Member.Depth := Depth;
         if Add(UnitInfo.Symbols[Position].Name, UnitInfo.UnitName + ' (uses ergänzen)',
           CompletionKindOf(UnitInfo.Symbols[Position].Kind), Penalty, Member, [Edit]) then
+        begin
           Known.AddOrSetValue(UpperCase(UnitInfo.Symbols[Position].Name), True);
+        end;
       end;
     end;
   finally
@@ -1171,12 +1375,14 @@ begin
       end));
   end
   else if not AStaged then
+  begin
     for Index := 0 to FList.Count - 1 do
     begin
       Scored := FList[Index];
       Scored.Item.Expected := '';
       FList[Index] := Scored;
     end;
+  end;
   Room := Max(0, CompletionMaxItems - FSent);
   if FList.Count > Room then
   begin
@@ -1186,8 +1392,12 @@ begin
     // Methoden mit längerem Namen (Rückmeldung 15.10.2026). Die Reihenfolge bleibt.
     Near := 0;
     for Index := 0 to FList.Count - 1 do
+    begin
       if IsNearItem(FList[Index].Item) then
+      begin
         Inc(Near);
+      end;
+    end;
     OthersLeft := Max(0, Room - Near);
     Kept := 0;
     for Index := 0 to FList.Count - 1 do
@@ -1196,12 +1406,18 @@ begin
       if IsNearItem(Scored.Item) then
       begin
         if Kept >= Room then
+        begin
           Continue;
+        end;
       end
       else if OthersLeft > 0 then
-        Dec(OthersLeft)
+      begin
+        Dec(OthersLeft);
+      end
       else
+      begin
         Continue;
+      end;
       FList[Kept] := Scored;
       Inc(Kept);
     end;
@@ -1223,18 +1439,26 @@ var
   Items: TArray<TCompletionItem>;
 begin
   if not Assigned(FOnPartial) or (FList.Count = 0) then
+  begin
     Exit;
+  end;
   Items := TakeStage(True);
   if Length(Items) > 0 then
+  begin
     FOnPartial(Items);
+  end;
 end;
 
 procedure TCompletionCollector.SetNameFilter(AOn: Boolean);
 begin
   if AOn and (FContext.Prefix <> '') then
-    FRequest.Resolver.NameFilter := PrefixFilter(FContext.Prefix, FRequest.Matching)
+  begin
+    FRequest.Resolver.NameFilter := PrefixFilter(FContext.Prefix, FRequest.Matching);
+  end
   else
+  begin
     FRequest.Resolver.NameFilter := nil;
+  end;
 end;
 
 procedure TCompletionCollector.MarkUsedShadows;
@@ -1249,10 +1473,16 @@ begin
   Names := TDictionary<string, Integer>.Create;
   try
     for Index := 0 to FList.Count - 1 do
+    begin
       if ((FList[Index].Item.Scope >= 1) and (FList[Index].Item.Scope <= 4)) or (FList[Index].Item.Scope = 6) then
+      begin
         Names.AddOrSetValue(UpperCase(FList[Index].Item.Name), Index);
+      end;
+    end;
     if Names.Count = 0 then
+    begin
       Exit;
+    end;
     FRequest.Resolver.NameFilter :=
       function(const AName: string): Boolean
       begin
@@ -1264,6 +1494,7 @@ begin
       FRequest.Resolver.NameFilter := nil;
     end;
     for Shadow in Shadows do
+    begin
       if Names.TryGetValue(UpperCase(Shadow.Name), Index) then
       begin
         Scored := FList[Index];
@@ -1274,6 +1505,7 @@ begin
           FList[Index] := Scored;
         end;
       end;
+    end;
   finally
     Names.Free;
   end;
@@ -1284,7 +1516,9 @@ var
   Word: string;
 begin
   for Word in AWords do
+  begin
     Add(Word, '', KindKeyword, PenaltyKeyword, Default(TResolvedSymbol));
+  end;
 end;
 
 procedure TCompletionCollector.AddUnavailableMembers(const AMembers: TArray<TResolvedSymbol>);
@@ -1299,18 +1533,29 @@ begin
   Known := TDictionary<string, Boolean>.Create;
   try
     for Candidate in AMembers do
+    begin
       if Candidate.Container <> '' then
+      begin
         Containers.AddOrSetValue(UpperCase(Candidate.Container), True);
+      end;
+    end;
     if Containers.Count = 0 then
+    begin
       Exit;
+    end;
     for Existing in FList do
+    begin
       Known.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+    end;
     for UnitInfo in FRequest.Index.UnavailableUnits do
+    begin
       for Symbol in UnitInfo.Unavailable do
       begin
         if (Symbol.Container = '') or not Containers.ContainsKey(UpperCase(Symbol.Container)) or
           Known.ContainsKey(UpperCase(Symbol.Name)) then
+        begin
           Continue;
+        end;
         Member := Default(TResolvedSymbol);
         Member.Name := Symbol.Name;
         Member.Container := Symbol.Container;
@@ -1323,6 +1568,7 @@ begin
           Known.AddOrSetValue(UpperCase(Symbol.Name), True);
         end;
       end;
+    end;
   finally
     Known.Free;
     Containers.Free;
@@ -1342,15 +1588,25 @@ begin
   begin
     // Typposition (#31): nur Typen.
     if (FContext.Filter = TCompletionFilter.Types) and not Candidate.IsType then
+    begin
       Continue;
+    end;
     if Assigned(FAdmit) and not FAdmit(Candidate) then
+    begin
       Continue;
+    end;
     if Candidate.TypeName <> '' then
-      Add(Candidate.Name, Candidate.TypeName, CompletionKindOf(Candidate.SymbolKind), Candidate)
+    begin
+      Add(Candidate.Name, Candidate.TypeName, CompletionKindOf(Candidate.SymbolKind), Candidate);
+    end
     else if Candidate.Container <> '' then
-      Add(Candidate.Name, Candidate.Container, CompletionKindOf(Candidate.SymbolKind), Candidate)
+    begin
+      Add(Candidate.Name, Candidate.Container, CompletionKindOf(Candidate.SymbolKind), Candidate);
+    end
     else
+    begin
       Add(Candidate.Name, Candidate.UnitName, CompletionKindOf(Candidate.SymbolKind), Candidate);
+    end;
   end;
 end;
 

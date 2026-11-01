@@ -83,16 +83,20 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -107,8 +111,12 @@ var
 begin
   Result := 0;
   for Item in AItems.Items do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
@@ -237,8 +245,12 @@ begin
   Items := ItemsAt('  Leng', '  Leng');
   Assert.AreEqual(1, CountNamed(Items, 'Length'));
   for Item in Items.Items do
+  begin
     if SameText(Item.Name, 'Length') then
+    begin
       Assert.AreEqual('C:\Lib\System.pas', Item.SourceFile);
+    end;
+  end;
 end;
 
 procedure TSystemIntrinsicsTests.OwnDeclarationHidesIntrinsic;
@@ -264,8 +276,12 @@ begin
   end;
   Assert.AreEqual(1, CountNamed(Items, 'Assigned'));
   for Item in Items.Items do
+  begin
     if SameText(Item.Name, 'Assigned') then
+    begin
       Assert.AreEqual(HauptFile, Item.SourceFile);
+    end;
+  end;
 end;
 
 procedure TSystemIntrinsicsTests.SignatureHelpForIntrinsics;

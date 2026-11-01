@@ -60,7 +60,9 @@ function TLspProcessWorkspace.CacheName: string;
 begin
   Result := '';
   if CacheFile <> '' then
+  begin
     Result := ExtractFileName(ExtractFileDir(CacheFile)) + PathDelim + ExtractFileName(CacheFile);
+  end;
 end;
 
 function TLspProcessWorkspace.Holder(out AProcess: TIndexProcessInfo): Boolean;
@@ -68,11 +70,13 @@ var
   Process: TIndexProcessInfo;
 begin
   for Process in Processes do
+  begin
     if Process.Writer then
     begin
       AProcess := Process;
       Exit(True);
     end;
+  end;
   AProcess := Default(TIndexProcessInfo);
   Result := False;
 end;
@@ -84,8 +88,12 @@ var
 begin
   Writers := 0;
   for Process in Processes do
+  begin
     if Process.Writer then
+    begin
       Inc(Writers);
+    end;
+  end;
   Result := (Writers = 1) and (Length(Processes) > 1);
 end;
 
@@ -96,16 +104,26 @@ var
   Seconds: Int64;
 begin
   if ASaved = 0 then
+  begin
     Exit('noch nicht gespeichert');
+  end;
   Seconds := SecondsBetween(ANow, ASaved);
   if Seconds < 60 then
-    Result := Format('vor %d s', [Seconds])
+  begin
+    Result := Format('vor %d s', [Seconds]);
+  end
   else if Seconds < 3600 then
-    Result := Format('vor %d min', [Seconds div 60])
+  begin
+    Result := Format('vor %d min', [Seconds div 60]);
+  end
   else if Seconds < 86400 then
-    Result := Format('vor %d h', [Seconds div 3600])
+  begin
+    Result := Format('vor %d h', [Seconds div 3600]);
+  end
   else
+  begin
     Result := 'am ' + FormatDateTime('dd.mm.yyyy hh":"nn', ASaved);
+  end;
 end;
 
 class function TLspProcesses.ProcessText(const AProcess: TIndexProcessInfo): string;
@@ -114,7 +132,9 @@ var
 begin
   Client := AProcess.Client;
   if Client = '' then
+  begin
     Client := 'unbekannter Client';
+  end;
   Result := Format('%s · %s (pid %d)', [AProcess.Kind, Client, AProcess.Pid]);
 end;
 
@@ -130,15 +150,21 @@ begin
   try
     Builder.Append('## Prozesse am Projekt').Append(#10);
     if Length(AWorkspaces) = 0 then
+    begin
       Builder.Append(#10).Append('Kein Index-Cache: Es ist noch kein Projekt geladen.').Append(#10);
+    end;
     for Workspace in AWorkspaces do
     begin
       Builder.Append(#10).Append('### ').Append(Workspace.Name).Append(#10);
       Builder.Append('- Index-Cache: ').Append(Workspace.CacheName).Append(#10);
       if Workspace.Holder(Holder) then
-        Builder.Append('- Sperre: ').Append(ProcessText(Holder)).Append(', schreibt').Append(#10)
+      begin
+        Builder.Append('- Sperre: ').Append(ProcessText(Holder)).Append(', schreibt').Append(#10);
+      end
       else
+      begin
         Builder.Append('- Sperre: frei').Append(#10);
+      end;
       Builder.Append(Format('- Stand: %s gespeichert · Format %d · %d Units',
         [Age(Workspace.Saved, ANow), Workspace.FormatVersion, Workspace.Units]));
       Builder.Append(#10);
@@ -146,15 +172,21 @@ begin
       begin
         Builder.Append('- ').Append(ProcessText(Process)).Append(': ').Append(Process.State);
         if Process.Pid = AOwnPid then
+        begin
           Builder.Append(' (dieser Prozess)');
+        end;
         Builder.Append(#10);
       end;
       if Workspace.BuiltOnce then
+      begin
         Builder.Append(Format('- Index nur einmal aufgebaut, %d Prozesse', [Length(Workspace.Processes)]))
           .Append(#10);
+      end;
       for Event in TIndexProcessLog.Events(Workspace.Processes) do
+      begin
         Builder.Append('  - ').Append(FormatDateTime('hh":"nn":"ss', Event.Time)).Append(' ').Append(Event.Text)
           .Append(#10);
+      end;
     end;
     Builder.Append(#10).Append('Ungespeicherte Stände bleiben je Prozess getrennt: Andere Prozesse sehen den ' +
       'gespeicherten Stand, bis der Editor speichert.').Append(#10);
@@ -187,9 +219,13 @@ begin
     Item.AddPair('saved', Age(Workspace.Saved, ANow));
     Item.AddPair('units', TJSONNumber.Create(Workspace.Units));
     if Workspace.Holder(Holder) then
-      Item.AddPair('lockHolder', ProcessText(Holder))
+    begin
+      Item.AddPair('lockHolder', ProcessText(Holder));
+    end
     else
+    begin
       Item.AddPair('lockHolder', '');
+    end;
     Item.AddPair('builtOnce', TJSONBool.Create(Workspace.BuiltOnce));
     Processes := TJSONArray.Create;
     Item.AddPair('processes', Processes);

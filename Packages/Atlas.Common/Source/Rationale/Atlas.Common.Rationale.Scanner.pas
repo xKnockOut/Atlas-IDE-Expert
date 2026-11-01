@@ -75,15 +75,21 @@ begin
   Result := '';
   mPending := False;
   for mIndex := 1 to Length(AText) do
+  begin
     if IsSpace(AText[mIndex]) then
-      mPending := Result <> ''
+    begin
+      mPending := Result <> '';
+    end
     else
     begin
       if mPending then
+      begin
         Result := Result + ' ';
+      end;
       mPending := False;
       Result := Result + AText[mIndex];
     end;
+  end;
 end;
 
 function IsLineComment(const AToken: TPascalToken): Boolean;
@@ -107,9 +113,13 @@ begin
   begin
     mMiddle := (mLow + mHigh) div 2;
     if ATokens[mMiddle].Offset < AOffset then
-      mLow := mMiddle + 1
+    begin
+      mLow := mMiddle + 1;
+    end
     else
+    begin
       mHigh := mMiddle;
+    end;
   end;
   Result := mLow;
 end;
@@ -130,9 +140,13 @@ var
     begin
       mEntry.Text := Collapse(mEntry.Text);
       if Length(mEntry.Text) > TRationale.MaxText then
+      begin
         mEntry.Text := Copy(mEntry.Text, 1, TRationale.MaxText - 1) + '…';
+      end;
       if mEntry.Text <> '' then
+      begin
         Result := Result + [mEntry];
+      end;
     end;
     mOpen := False;
   end;
@@ -182,18 +196,24 @@ begin
   mFirst := 1;
   mLast := Length(AComment);
   if Copy(AComment, 1, 2) = '//' then
-    mFirst := 3
+  begin
+    mFirst := 3;
+  end
   else if Copy(AComment, 1, 2) = '(*' then
   begin
     mFirst := 3;
     if (mLast >= 4) and (Copy(AComment, mLast - 1, 2) = '*)') then
+    begin
       Dec(mLast, 2);
+    end;
   end
   else if Copy(AComment, 1, 1) = '{' then
   begin
     mFirst := 2;
     if (mLast >= 2) and (AComment[mLast] = '}') then
+    begin
       Dec(mLast);
+    end;
   end;
   Result := Copy(AComment, mFirst, mLast - mFirst + 1);
 end;
@@ -208,22 +228,36 @@ begin
   AText := '';
   mPosition := 1;
   while (mPosition <= Length(ABody)) and IsSpace(ABody[mPosition]) do
+  begin
     Inc(mPosition);
+  end;
   mStart := mPosition;
   while (mPosition <= Length(ABody)) and IsLetter(ABody[mPosition]) do
+  begin
     Inc(mPosition);
+  end;
   mWord := Copy(ABody, mStart, mPosition - mStart);
   if (Length(mWord) < 2) or (Length(mWord) > cMaxMarkerLength) then
+  begin
     Exit;
+  end;
   mAfter := mPosition;
   while (mAfter <= Length(ABody)) and (ABody[mAfter] = ' ') do
+  begin
     Inc(mAfter);
+  end;
   if (mAfter <= Length(ABody)) and (ABody[mAfter] = ':') then
-    AText := Copy(ABody, mAfter + 1, MaxInt)
+  begin
+    AText := Copy(ABody, mAfter + 1, MaxInt);
+  end
   else if (mWord = UpperCase(mWord)) and ((mPosition > Length(ABody)) or IsSpace(ABody[mPosition])) then
-    AText := Copy(ABody, mPosition, MaxInt)
+  begin
+    AText := Copy(ABody, mPosition, MaxInt);
+  end
   else
+  begin
     Exit;
+  end;
   AMarker := UpperCase(mWord);
   AText := Trim(AText);
   Result := True;
@@ -240,7 +274,9 @@ begin
   while (mIndex < Length(ATokens)) and (ATokens[mIndex].Offset < ATo) do
   begin
     if ATokens[mIndex].Kind = TPascalTokenKind.Comment then
+    begin
       mIndices := mIndices + [mIndex];
+    end;
     Inc(mIndex);
   end;
   Result := FromComments(ATokens, mIndices);
@@ -254,7 +290,9 @@ begin
   Result := nil;
   mIndex := TokenIndexAt(ATokens, AOffset);
   if mIndex >= Length(ATokens) then
+  begin
     Exit;
+  end;
   mBoundary := ATokens[mIndex].StartPos.Line;
   Dec(mIndex);
   // Attribute zwischen Kommentar und Deklaration überspringen.
@@ -263,23 +301,33 @@ begin
     mDepth := 0;
     repeat
       if ATokens[mIndex].IsSymbol(']') then
-        Inc(mDepth)
+      begin
+        Inc(mDepth);
+      end
       else if ATokens[mIndex].IsSymbol('[') then
+      begin
         Dec(mDepth);
+      end;
       Dec(mIndex);
     until (mIndex < 0) or (mDepth = 0);
     if mIndex >= -1 then
+    begin
       mBoundary := ATokens[mIndex + 1].StartPos.Line;
+    end;
   end;
   mIndices := nil;
   while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Comment) do
   begin
     // Höchstens eine Leerzeile; ein Kommentar hinter Code gehört zum Code.
     if mBoundary - ATokens[mIndex].EndPos.Line > 2 then
+    begin
       Break;
+    end;
     if (mIndex > 0) and (ATokens[mIndex - 1].Kind <> TPascalTokenKind.Comment) and
       (ATokens[mIndex - 1].EndPos.Line = ATokens[mIndex].StartPos.Line) then
+    begin
       Break;
+    end;
     mIndices := [mIndex] + mIndices;
     mBoundary := ATokens[mIndex].StartPos.Line;
     Dec(mIndex);
@@ -296,9 +344,13 @@ begin
   begin
     mHeader := ANode.FindChild(TSyntaxKind.RoutineHeader);
     if mHeader <> nil then
-      Result := Result + InRange(ATokens, mHeader.EndOffset, ANode.EndOffset)
+    begin
+      Result := Result + InRange(ATokens, mHeader.EndOffset, ANode.EndOffset);
+    end
     else
+    begin
       Result := Result + InRange(ATokens, ANode.StartOffset + 1, ANode.EndOffset);
+    end;
   end;
 end;
 
@@ -306,7 +358,9 @@ class function TRationaleScanner.ForUnit(ATree: TSyntaxTree): TArray<TRationaleE
 begin
   Result := nil;
   if ATree <> nil then
+  begin
     Result := ForUnit(ATree.Tokens, ATree.Root);
+  end;
 end;
 
 class function TRationaleScanner.ForUnit(const ATokens: TArray<TPascalToken>;
@@ -323,7 +377,9 @@ var
     mOwn: TRationaleEntry;
   begin
     for mOwn in Above(ATokens, ANode.StartOffset) do
+    begin
       mTaken := mTaken + [mOwn.Line];
+    end;
   end;
 
   function IsTaken(ALine: Integer): Boolean;
@@ -331,18 +387,26 @@ var
     mLine: Integer;
   begin
     for mLine in mTaken do
+    begin
       if mLine = ALine then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   Result := nil;
   if (ARoot = nil) or (ARoot.Kind <> TSyntaxKind.UnitFile) then
+  begin
     Exit;
+  end;
   mInterface := ARoot.FindChild(TSyntaxKind.InterfaceSection);
   if mInterface = nil then
+  begin
     Exit;
+  end;
   mLimit := mInterface.EndOffset;
   mTaken := nil;
   for mIndex := 0 to mInterface.ChildCount - 1 do
@@ -354,18 +418,26 @@ begin
       Break;
     end;
     if mChild.Kind in [TSyntaxKind.ConstSection, TSyntaxKind.VarSection] then
+    begin
       for mInner := 0 to mChild.ChildCount - 1 do
       begin
         mDecl := mChild[mInner];
         Take(mDecl);
-      end
+      end;
+    end
     else if mChild.Kind = TSyntaxKind.RoutineDecl then
+    begin
       Take(mChild);
+    end;
   end;
   mAll := InRange(ATokens, 0, mLimit);
   for mEntry in mAll do
+  begin
     if not IsTaken(mEntry.Line) then
+    begin
       Result := Result + [mEntry];
+    end;
+  end;
 end;
 
 end.

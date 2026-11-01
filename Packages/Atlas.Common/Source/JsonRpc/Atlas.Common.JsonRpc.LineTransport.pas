@@ -83,7 +83,9 @@ begin
       begin
         // Letzte Zeile ohne LF gilt noch als Nachricht.
         if Line.Size = 0 then
+        begin
           Exit(False);
+        end;
         Break;
       end;
       Value := FBuffer[FBufferPos];
@@ -91,13 +93,19 @@ begin
       if Value = 10 then
       begin
         if Line.Size > 0 then
+        begin
           Break;
+        end;
         Continue;
       end;
       if (Value = 13) or ((Line.Size = 0) and (Value in [9, 32])) then
+      begin
         Continue;
+      end;
       if Line.Size >= MaxLineLength then
+      begin
         raise EJsonRpcTransportError.Create('Nachricht überschreitet die Höchstlänge');
+      end;
       Line.WriteBuffer(Value, 1);
     end;
     Bytes := Line.Bytes;
@@ -114,10 +122,14 @@ var
   Value: TJSONValue;
 begin
   if not ReadLine(Line) then
+  begin
     raise EJsonRpcTransportClosed.Create('Eingabe geschlossen');
+  end;
   Value := TJSONObject.ParseJSONValue(Line, 0, True);
   if Value = nil then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, 'Nachricht ist kein gültiges JSON');
+  end;
   if not (Value is TJSONObject) then
   begin
     Value.Free;

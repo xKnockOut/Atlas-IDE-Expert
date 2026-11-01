@@ -111,7 +111,9 @@ var
 begin
   // Die Antwort des Clients wird nicht ausgewertet.
   if not SupportsDynamicRegistration(AInitializeParams) then
+  begin
     Exit;
+  end;
   Request := BuildRegistration;
   try
     FTransport.WriteMessage(Request);
@@ -129,14 +131,20 @@ var
 begin
   Result := nil;
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('changes', Changes)) then
+  begin
     Exit;
+  end;
   for Item in Changes do
   begin
     if not (Item.TryGetValue<string>('uri', Uri) and Item.TryGetValue<Integer>('type', ChangeType)) then
+    begin
       Continue;
+    end;
     Path := TDocumentUris.ToPath(Uri);
     if Path = '' then
+    begin
       Continue;
+    end;
     // FileChangeType des LSP: 1 Created, 2 Changed, 3 Deleted.
     case ChangeType of
       1: Result := Result + [TFileChange.Create(Path, TFileChangeKind.Created)];
@@ -183,7 +191,9 @@ var
 begin
   Changes := ParseChanges(AParams);
   if (Length(Changes) > 0) and Assigned(FOnChanged) then
+  begin
     FOnChanged(Changes);
+  end;
 end;
 
 end.

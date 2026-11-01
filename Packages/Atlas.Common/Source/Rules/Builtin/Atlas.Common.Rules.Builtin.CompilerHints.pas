@@ -136,9 +136,13 @@ begin
   begin
     mMiddle := (mLow + mHigh) div 2;
     if FTokens[mMiddle].Offset < AOffset then
-      mLow := mMiddle + 1
+    begin
+      mLow := mMiddle + 1;
+    end
     else
+    begin
       mHigh := mMiddle;
+    end;
   end;
   Result := mLow;
 end;
@@ -158,7 +162,9 @@ begin
   for mToken in FTokens do
   begin
     if mToken.Offset >= AOffset then
+    begin
       Break;
+    end;
     if (mToken.Kind = TPascalTokenKind.Directive) and (TPascalLexer.DirectiveName(mToken.Text) = 'HINTS') then
     begin
       mBody := TDirectiveNames.Body(mToken.Text);
@@ -175,7 +181,9 @@ begin
   begin
     ATokens := nil;
     if ReadNeighbour(FContext, AFileName, mText) and (mText <> '') then
+    begin
       ATokens := TTypeInfoClasses.ActiveTokens(mText);
+    end;
     FFiles.Add(LowerCase(AFileName), ATokens);
   end;
   Result := ATokens <> nil;
@@ -194,15 +202,25 @@ var
   mSymbol: TIndexSymbol;
 begin
   if IsLocal(ALocation) then
-    mSymbols := FLocal.Symbols
+  begin
+    mSymbols := FLocal.Symbols;
+  end
   else if (FContext.Index <> nil) and FContext.Index.FindUnit(ALocation.UnitName, mUnit) then
-    mSymbols := mUnit.Symbols
+  begin
+    mSymbols := mUnit.Symbols;
+  end
   else
+  begin
     Exit(True);
+  end;
   for mSymbol in mSymbols do
+  begin
     if (mSymbol.Visibility = TIndexVisibility.Published) and
       SameText(mSymbol.Container, ALocation.Symbol.QualifiedName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -219,7 +237,9 @@ begin
   for mLocation in mChain do
   begin
     if SameText(mLocation.Symbol.Name, 'TObject') then
+    begin
       Break;
+    end;
     // Bekannte Klassen mit RTTI entscheiden auch ohne vollständige Kette.
     if TTypeInfoClasses.KnownTypeInfoClass(mLocation.Symbol.Name) then
     begin
@@ -227,11 +247,17 @@ begin
       Exit(True);
     end;
     if (mLocation.Symbol.Kind <> TIndexSymbolKind.ClassType) or (mLocation.Symbol.TypeParams <> '') then
+    begin
       Exit;
+    end;
     if IsLocal(mLocation) then
-      mTokens := FActive
+    begin
+      mTokens := FActive;
+    end
     else if not FileTokens(mLocation.FileName, mTokens) then
+    begin
       Exit;
+    end;
     if TTypeInfoClasses.SwitchAt(mTokens, mLocation.Symbol.Range.StartPos) or HasPublishedMembers(mLocation) then
     begin
       AKnown := True;
@@ -250,17 +276,24 @@ var
   mToken: Integer;
 begin
   if ADecl.FindChild(TSyntaxKind.GenericParams) <> nil then
+  begin
     Exit;
+  end;
   // Erstes Mitglied hinter dem ersten ausdrücklichen published.
   mMember := nil;
   mSection := nil;
   for mIndex := 0 to ABody.ChildCount - 1 do
+  begin
     if ABody[mIndex].Kind = TSyntaxKind.Visibility then
     begin
       if mSection <> nil then
+      begin
         Break;
+      end;
       if ABody[mIndex].Name = 'published' then
+      begin
         mSection := ABody[mIndex];
+      end;
     end
     else if (mSection <> nil) and (ABody[mIndex].Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl,
       TSyntaxKind.RoutineHeader]) then
@@ -268,13 +301,20 @@ begin
       mMember := ABody[mIndex];
       Break;
     end;
+  end;
   if (mMember = nil) or (PathOf(mSection) <> '') or (PathOf(mMember) <> '') or (PathOf(ADecl) <> '') then
+  begin
     Exit;
+  end;
   if TTypeInfoClasses.SwitchAt(FActive, ADecl.StartPos) or
     not WarningEnabled(FTokens, cTypeInfoWarning, mMember.StartOffset) then
+  begin
     Exit;
+  end;
   if AncestorTypeInfo(ADecl.Name, mKnown) or not mKnown then
+  begin
     Exit;
+  end;
   // Am Namen des Mitglieds.
   mRange := TTextRange.Create(mMember.StartPos, mMember.StartPos);
   mToken := TokenAt(mMember.StartOffset);
@@ -297,7 +337,9 @@ begin
   while ANode <> nil do
   begin
     if ANode.Kind = TSyntaxKind.WithStatement then
+    begin
       Exit(True);
+    end;
     ANode := ANode.Parent;
   end;
   Result := False;
@@ -311,28 +353,44 @@ var
   mTypeName: string;
 begin
   if ANode.ChildCount <> 2 then
+  begin
     Exit;
+  end;
   mCallee := ANode[0];
   if (mCallee.Kind <> TSyntaxKind.Identifier) or not MatchText(mCallee.Name, ['Initialize', 'Finalize']) then
+  begin
     Exit;
+  end;
   mArgument := Unwrapped(ANode[1]);
   if (mArgument.Kind <> TSyntaxKind.Identifier) or InsideWith(ANode) or not HintsEnabled(ANode.StartOffset) then
+  begin
     Exit;
+  end;
   // Eine eigene Routine oder ein Mitglied gleichen Namens verdeckt die eingebaute.
   for mCandidate in FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, mCallee) do
+  begin
     if not mCandidate.Builtin and not SameText(mCandidate.UnitName, 'System') then
+    begin
       Exit;
+    end;
+  end;
   if FScope.Resolver.MayBeHiddenMember(FContext.Tree, FScope.FileName, mCallee, Default(TResolvedSymbol)) then
+  begin
     Exit;
+  end;
   if not FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, mArgument, mSymbol, mType, mTypeFound) or
     not (mSymbol.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) or mSymbol.IsType or
     not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) or
     not FScope.DeclarationSure(mSymbol, mArgument) then
+  begin
     Exit;
+  end;
   if mTypeFound then
   begin
     if not mType.Builtin and not SameText(mType.UnitName, 'System') then
+    begin
       Exit;
+    end;
     mTypeName := mType.Name;
   end
   else
@@ -340,15 +398,21 @@ begin
     // Ohne Index der RTL ist PString unbekannt; ein gleichnamiger eigener Typ wäre gefunden worden.
     mTypeName := mSymbol.TypeName;
     if IndexText(mTypeName, cManagedPointers) < 0 then
+    begin
       Exit;
+    end;
   end;
   if IndexText(mTypeName, cPlainTypes) >= 0 then
+  begin
     FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s(%s) hat keine Wirkung: %s ' +
-      'braucht kein Initialize/Finalize (wie H2243).', [mCallee.Name, mArgument.Name, mTypeName]))
+      'braucht kein Initialize/Finalize (wie H2243).', [mCallee.Name, mArgument.Name, mTypeName]));
+  end
   else if IndexText(mTypeName, cManagedPointers) >= 0 then
+  begin
     FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s(%s) wirkt auf den Zeiger, nicht auf ' +
       'das Ziel: %s braucht kein Initialize/Finalize, gemeint ist wohl %s^ (wie H2244).',
       [mCallee.Name, mArgument.Name, mArgument.Name, mArgument.Name]));
+  end;
 end;
 
 procedure TCompilerHintsCheck.VisitDeclarations;
@@ -368,13 +432,19 @@ begin
       begin
         mBody := mNode.FindChild(TSyntaxKind.ClassType);
         if mBody <> nil then
+        begin
           CheckClass(mNode, mBody);
+        end;
         Continue;
       end;
       for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
         if mNode[mIndex].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
           TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl] then
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
+      end;
     end;
   finally
     mPending.Free;
@@ -394,9 +464,13 @@ begin
     begin
       mNode := mPending.Pop;
       if mNode.Kind = TSyntaxKind.Call then
+      begin
         CheckCall(mNode);
+      end;
       for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
         mPending.Push(mNode[mIndex]);
+      end;
     end;
   finally
     mPending.Free;
@@ -435,7 +509,9 @@ var
   mCheck: TCompilerHintsCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mCheck := TCompilerHintsCheck.Create(AContext, AReport);
   try
     mCheck.Run;

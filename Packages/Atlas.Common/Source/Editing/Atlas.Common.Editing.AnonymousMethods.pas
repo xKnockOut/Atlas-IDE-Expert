@@ -222,7 +222,9 @@ function Capitalized(const AName: string): string;
 begin
   Result := AName;
   if Result <> '' then
+  begin
     Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+  end;
 end;
 
 /// <summary>Handler-Name zu einem Ziel: OnClick → HandleClick, FCallback → HandleCallback.</summary>
@@ -230,9 +232,13 @@ function HandlerName(const ATarget: string): string;
 begin
   Result := ATarget;
   if (Length(Result) > 2) and StartsText('On', Result) and CharInSet(Result[3], ['A'..'Z']) then
-    Result := Copy(Result, 3, MaxInt)
+  begin
+    Result := Copy(Result, 3, MaxInt);
+  end
   else if (Length(Result) > 1) and CharInSet(Result[1], ['F', 'L']) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
   Result := 'Handle' + Capitalized(Result);
 end;
 
@@ -254,13 +260,17 @@ begin
       begin
         Stop := ANode.EndOffset;
         for Index := 0 to ANode.ChildCount - 1 do
+        begin
           if ANode[Index].Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.Block] then
           begin
             Stop := ANode[Index].StartOffset;
             Break;
           end;
+        end;
         if Offset < Stop then
+        begin
           Found := ANode;
+        end;
       end;
     end);
   Result := Found;
@@ -271,7 +281,9 @@ function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode.Parent;
   while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 /// <summary>Äußerste Routine um ANode; nil ohne.</summary>
@@ -284,7 +296,9 @@ begin
   while Node <> nil do
   begin
     if Node.Kind = TSyntaxKind.RoutineDecl then
+    begin
       Result := Node;
+    end;
     Node := Node.Parent;
   end;
 end;
@@ -298,7 +312,9 @@ begin
   while (Node <> nil) and (Node <> AStop) do
   begin
     if Node.Kind = AKind then
+    begin
       Exit(True);
+    end;
     Node := Node.Parent;
   end;
   Result := False;
@@ -313,7 +329,9 @@ begin
   while (Index <= High(ATokens)) and (ATokens[Index].Offset < ANode.EndOffset) do
   begin
     if ATokens[Index].IsKeyword('inherited') then
+    begin
       Exit(True);
+    end;
     Inc(Index);
   end;
   Result := False;
@@ -324,7 +342,9 @@ function CalleeName(ACall: TSyntaxNode): string;
 begin
   Result := '';
   if (ACall <> nil) and (ACall.Kind = TSyntaxKind.Call) and (ACall.ChildCount > 0) then
+  begin
     Result := ACall[0].Name;
+  end;
 end;
 
 /// <summary>Ist ANode ein Argument (nicht der Aufgerufene) des Aufrufs AParent?</summary>
@@ -352,7 +372,9 @@ class function TAnonymousLookup.FromTree(ATree: TSyntaxTree): TAnonymousLookup;
 begin
   Result := Default(TAnonymousLookup);
   if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
     Result.Flow := TFlowSignatures.FromTree(ATree.Root);
+  end;
 end;
 
 { TAnonymousTarget }
@@ -360,9 +382,13 @@ end;
 function TAnonymousTarget.Title: string;
 begin
   if IsMethod then
-    Result := TAnonymousMethods.ToMethodTitle
+  begin
+    Result := TAnonymousMethods.ToMethodTitle;
+  end
   else
+  begin
     Result := TAnonymousMethods.ToRoutineTitle;
+  end;
   Result := Format('%s (%s)', [Result, Suggested]);
 end;
 
@@ -381,31 +407,49 @@ var
 begin
   AReason := '';
   if (Tree = nil) or (Tree.Root = nil) then
+  begin
     Exit(Fail('kein Baum', AReason));
+  end;
   Lines := TLineTable.Build(Text);
   Tokens := Tree.Tokens;
   Anonymous := AnonymousAt(Tree, Lines.OffsetAt(APosition));
   if (Anonymous = nil) or (TRoutineBody.BodyOf(Anonymous) = nil) then
+  begin
     Exit(Fail('keine anonyme Methode', AReason));
+  end;
   Outer := RoutineOf(Anonymous);
   if (Outer = nil) or (TRoutineBody.BodyOf(Outer) = nil) then
+  begin
     Exit(Fail('nicht in einer Routine', AReason));
+  end;
   if Outer <> TopRoutineOf(Anonymous) then
+  begin
     Exit(Fail('liegt in einer lokalen Routine', AReason));
+  end;
   if TRoutineParts.InAnonymous(Anonymous, Outer) then
+  begin
     Exit(Fail('liegt in einer anderen anonymen Methode', AReason));
+  end;
   if Inside(Anonymous, Outer, TSyntaxKind.WithStatement) or TRoutineLocals.HasKind(Anonymous,
     TSyntaxKind.WithStatement) then
+  begin
     Exit(Fail('with', AReason));
+  end;
   if HasInherited(Tokens, Anonymous) then
+  begin
     Exit(Fail('inherited', AReason));
+  end;
   ClassName := TRoutineBody.QualifierOf(Outer.Name);
   IsMethod := ClassName <> '';
   if (Pos('<', ClassName) > 0) or (Pos('.', ClassName) > 0) then
+  begin
     Exit(Fail('nicht unterstützte Klasse', AReason));
+  end;
   Header := TRoutineParts.HeaderOf(Outer);
   if Header = nil then
+  begin
     Exit(Fail('Routine ohne Kopf', AReason));
+  end;
   TypeBody := nil;
   IsClass := False;
   IsStatic := False;
@@ -413,28 +457,40 @@ begin
   begin
     TypeBody := TRoutineBody.TypeBody(Tree.Root, ClassName);
     if TypeBody = nil then
+    begin
       Exit(Fail('Klasse ' + ClassName + ' nicht in der Datei', AReason));
+    end;
     IsClass := TRoutineParts.IsClassHeader(Tokens, Header);
     if IsClass then
+    begin
       for Index := 0 to TypeBody.ChildCount - 1 do
       begin
         Node := TypeBody[Index];
         if (Node.Kind = TSyntaxKind.RoutineHeader) and SameText(Node.Name, TRoutineBody.ShortNameOf(Outer.Name)) and
           TRoutineParts.HasWord(Tokens, Node, ['static']) then
+        begin
           IsStatic := True;
+        end;
       end;
+    end;
   end;
   Parameters := TRoutineParts.ParameterTexts(Text, Anonymous);
   ParameterList := Anonymous.FindChild(TSyntaxKind.Parameters);
   if (Parameters = nil) and (ParameterList <> nil) and (ParameterList.ChildCount > 0) then
+  begin
     Exit(Fail('nicht unterstützte Parameter', AReason));
+  end;
   Cache := TLocalsCache.Create(Text, Tree);
   if not CollectCaptured(AReason) then
+  begin
     Exit(False);
+  end;
   ClassifyUse;
   Result := ChooseForm(AReason);
   if Result then
+  begin
     Suggested := SuggestName;
+  end;
 end;
 
 function TAnonymousPlan.CollectCaptured(out AReason: string): Boolean;
@@ -457,22 +513,32 @@ begin
     for Node in Identifiers do
     begin
       if TRoutineParts.Shadowed(Cache, Node, Anonymous, Node.Name, True) then
+      begin
         Continue;
+      end;
       if SameText(Node.Name, 'Result') and TRoutineParts.IsFunction(Outer) then
+      begin
         Exit(Fail('nutzt Result der äußeren Routine', AReason));
+      end;
       Found := TRoutineLocals.IndexOf(OuterLocals, Node.Name, Node.StartOffset);
       if (Found >= 0) and TRoutineBody.Within(OuterLocals[Found].Decl, Anonymous) then
+      begin
         Found := -1;
+      end;
       if Found < 0 then
       begin
         for Index := 0 to Outer.ChildCount - 1 do
         begin
           Child := Outer[Index];
           if (Child.Kind = TSyntaxKind.RoutineDecl) and SameText(Child.Name, Node.Name) then
+          begin
             Exit(Fail('nutzt die lokale Routine ' + Child.Name, AReason));
+          end;
           if (Child.Kind = TSyntaxKind.TypeSection) and (IndexText(Node.Name,
             TRoutineParts.ChildNames(Child)) >= 0) then
+          begin
             Exit(Fail('nutzt den lokalen Typ ' + Node.Name, AReason));
+          end;
         end;
         Continue;
       end;
@@ -480,15 +546,21 @@ begin
       if OuterLocals[Found].Kind = TRoutineLocalKind.Constant then
       begin
         if Written then
+        begin
           Exit(Fail('schreibt die Konstante ' + Node.Name, AReason));
+        end;
         if IndexText(TRoutineBody.TextOf(Text, OuterLocals[Found].Decl), ConstLines) < 0 then
+        begin
           ConstLines := ConstLines + [TRoutineBody.TextOf(Text, OuterLocals[Found].Decl)];
+        end;
         Continue;
       end;
       Index := 0;
       while (Index < Count) and not ((Captured[Index].Local.Decl = OuterLocals[Found].Decl) and
         SameText(Captured[Index].Local.Name, OuterLocals[Found].Name)) do
+      begin
         Inc(Index);
+      end;
       if Index = Count then
       begin
         Inc(Count);
@@ -496,21 +568,33 @@ begin
         Captured[Index].Local := OuterLocals[Found];
         Captured[Index].TypeText := OuterLocals[Found].TypeText;
         if (Captured[Index].TypeText = '') and Assigned(Lookup.InlineType) then
+        begin
           Captured[Index].TypeText := Lookup.InlineType(OuterLocals[Found]);
+        end;
       end;
       if Written then
+      begin
         Captured[Index].Written := True;
+      end;
       if TRoutineParts.InAnonymous(Node, Anonymous) then
+      begin
         Captured[Index].InNested := True;
+      end;
     end;
     // Lokale Typen der äußeren Routine auch in Typangaben.
     Identifiers.Clear;
     TRoutineLocals.CollectKind(Anonymous, TSyntaxKind.TypeReference, Identifiers);
     for Node in Identifiers do
+    begin
       for Index := 0 to Outer.ChildCount - 1 do
+      begin
         if (Outer[Index].Kind = TSyntaxKind.TypeSection) and (IndexText(Node.Name,
           TRoutineParts.ChildNames(Outer[Index])) >= 0) then
+        begin
           Exit(Fail('nutzt den lokalen Typ ' + Node.Name, AReason));
+        end;
+      end;
+    end;
   finally
     SetLength(Captured, Count);
     Identifiers.Free;
@@ -526,13 +610,19 @@ begin
   CallName := '';
   Parent := Anonymous.Parent;
   if not IsArgument(Anonymous, Parent) then
+  begin
     Exit;
+  end;
   CallName := CalleeName(Parent);
   if MatchText(CallName, SyncCalls) then
-    Synchronous := True
+  begin
+    Synchronous := True;
+  end
   else if SameText(CallName, 'Construct') and IsArgument(Parent, Parent.Parent) then
+  begin
     // TComparer<T>.Construct(…) direkt als Argument von Sort: läuft mit der Sortierung.
     Synchronous := MatchText(CalleeName(Parent.Parent), SyncCalls);
+  end;
 end;
 
 function TAnonymousPlan.ChooseForm(out AReason: string): Boolean;
@@ -547,37 +637,63 @@ begin
     Exit(True);
   end;
   for Index := 0 to High(Captured) do
+  begin
     if Captured[Index].TypeText = '' then
+    begin
       Exit(Fail('Typ von ' + Captured[Index].Local.Name + ' unbekannt', AReason));
+    end;
+  end;
   Form := TAnonymousForm.Forwarding;
   if not Synchronous and (Capture = TDeferredCapture.Fields) then
   begin
     Written := False;
     for Index := 0 to High(Captured) do
+    begin
       if Captured[Index].Written then
+      begin
         Written := True;
+      end;
+    end;
     if not IsMethod or IsClass then
-      FieldsReason := 'nur in Methoden eines Objekts'
+    begin
+      FieldsReason := 'nur in Methoden eines Objekts';
+    end
     else if Written then
-      FieldsReason := 'die anonyme Methode schreibt erfasste Variablen'
+    begin
+      FieldsReason := 'die anonyme Methode schreibt erfasste Variablen';
+    end
     else if TRoutineBody.HostStatement(Anonymous, TRoutineBody.BodyOf(Outer)) = nil then
-      FieldsReason := 'vor der Anweisung lässt sich nichts einfügen'
+    begin
+      FieldsReason := 'vor der Anweisung lässt sich nichts einfügen';
+    end
     else
+    begin
       Form := TAnonymousForm.Fields;
+    end;
   end;
   if Form = TAnonymousForm.Forwarding then
+  begin
     for Index := 0 to High(Captured) do
+    begin
       if Captured[Index].Written and Captured[Index].InNested then
+      begin
         Exit(Fail('eine verschachtelte anonyme Methode fängt ' + Captured[Index].Local.Name + ' ein', AReason));
+      end;
+    end;
+  end;
   Result := True;
 end;
 
 function TAnonymousPlan.Taken: TArray<string>;
 begin
   if IsMethod then
-    Result := TRoutineBody.MemberNames(TypeBody)
+  begin
+    Result := TRoutineBody.MemberNames(TypeBody);
+  end
   else
+  begin
     Result := TRoutineParts.UnitNames(Tree.Root);
+  end;
 end;
 
 function TAnonymousPlan.NameTaken(const AName: string): Boolean;
@@ -590,9 +706,15 @@ begin
     Cache.Declares(Outer, AName, Anonymous.StartOffset) or SameText(AName, Outer.Name) or
     SameText(AName, TRoutineBody.ShortNameOf(Outer.Name));
   if not Result then
+  begin
     for Index := 0 to High(Parameters) do
+    begin
       if SameText(Parameters[Index].Name, AName) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 function TAnonymousPlan.SuggestName: string;
@@ -605,9 +727,13 @@ begin
   Result := '';
   Parent := Anonymous.Parent;
   if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent.ChildCount > 1) and (Parent[1] = Anonymous) then
-    Result := HandlerName(Parent[0].Name)
+  begin
+    Result := HandlerName(Parent[0].Name);
+  end
   else if Parent.Kind = TSyntaxKind.InlineVar then
-    Result := HandlerName(Trim(Parent.Name.Split([','])[0]))
+  begin
+    Result := HandlerName(Trim(Parent.Name.Split([','])[0]));
+  end
   else if IsArgument(Anonymous, Parent) then
   begin
     // Vergleich zweier Werte gleichen Typs: CompareBy + erstes verglichenes Feld.
@@ -620,35 +746,53 @@ begin
       try
         TRoutineLocals.CollectKind(Block, TSyntaxKind.MemberAccess, Nodes);
         for Node in Nodes do
+        begin
           if (Node.ChildCount > 0) and (Node[0].Kind = TSyntaxKind.Identifier) and
             SameText(Node[0].Name, Parameters[0].Name) then
           begin
             Field := Node.Name;
             Break;
           end;
+        end;
       finally
         Nodes.Free;
       end;
       Result := 'CompareBy' + Capitalized(Field);
       if Field = '' then
+      begin
         Result := 'Compare';
+      end;
     end
     else if SameText(CallName, 'ForEach') then
-      Result := 'ProcessItem'
+    begin
+      Result := 'ProcessItem';
+    end
     else if SameText(CallName, 'For') then
-      Result := 'ProcessIndex'
+    begin
+      Result := 'ProcessIndex';
+    end
     else if MatchText(CallName, MainThreadCalls) then
-      Result := 'UpdateInMainThread'
+    begin
+      Result := 'UpdateInMainThread';
+    end
     else if MatchText(CallName, BackgroundCalls) then
-      Result := 'RunInBackground'
+    begin
+      Result := 'RunInBackground';
+    end
     else if CallName <> '' then
+    begin
       Result := 'Handle' + Capitalized(CallName);
+    end;
   end;
   if not IsValidName(Result) then
+  begin
     Result := 'HandleAnonymous';
+  end;
   Result := TRoutineParts.FreeName(Result, Taken);
   while NameTaken(Result) do
+  begin
     Result := TRoutineParts.FreeName(Result, Taken + [Result]);
+  end;
 end;
 
 function TAnonymousPlan.BodyStart: Integer;
@@ -657,8 +801,12 @@ var
 begin
   Result := Anonymous.EndOffset;
   for Index := 0 to Anonymous.ChildCount - 1 do
+  begin
     if Anonymous[Index].Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.Block] then
+    begin
       Exit(Anonymous[Index].StartOffset);
+    end;
+  end;
 end;
 
 function TAnonymousPlan.MethodText(const AName: string; const AStyle: TFormatStyle;
@@ -685,10 +833,18 @@ begin
     try
       TRoutineLocals.CollectKind(Anonymous, TSyntaxKind.Identifier, Identifiers);
       for Node in Identifiers do
+      begin
         if not TRoutineParts.Shadowed(Cache, Node, Anonymous, Node.Name, True) then
+        begin
           for Index := 0 to High(Captured) do
+          begin
             if SameText(Node.Name, Captured[Index].Local.Name) then
+            begin
               Edits := Edits + [TOffsetEdit.Create(Node.StartOffset, Node.EndOffset, Captured[Index].Field)];
+            end;
+          end;
+        end;
+      end;
     finally
       Identifiers.Free;
     end;
@@ -701,18 +857,24 @@ begin
     EndToken := TRoutineBody.PreviousToken(Tokens, TRoutineBody.TokenAt(Tokens, Block.EndOffset));
     if (BeginToken > High(Tokens)) or not Tokens[BeginToken].IsKeyword('begin') or (EndToken < 0) or
       not Tokens[EndToken].IsKeyword('end') then
+    begin
       Exit(Fail('Rumpf nicht lesbar', AReason));
+    end;
     InnerStart := Tokens[BeginToken].Offset + Length(Tokens[BeginToken].Text);
     InnerStop := Tokens[EndToken].Offset;
     Inner := Trim(TRoutineParts.ApplyEdits(Copy(Text, InnerStart + 1, InnerStop - InnerStart), InnerStart, Edits));
     Before := Trim(Copy(Text, Start + 1, Block.StartOffset - Start));
     Body := '';
     if Before <> '' then
+    begin
       Body := TRoutineBody.Reindent(Before, TTextLines.IndentOf(Text, Anonymous.StartPos.Line), Indent,
         LineBreak) + LineBreak;
+    end;
     Body := Body + Indent + 'begin' + LineBreak;
     if Inner <> '' then
+    begin
       Body := Body + Indent + IndentUnit + Inner + LineBreak;
+    end;
     Body := Body + Indent + 'end;';
   end
   else
@@ -723,14 +885,18 @@ begin
   end;
   Qualified := AName;
   if IsMethod then
+  begin
     Qualified := ClassName + '.' + AName;
+  end;
   Head := TRoutineParts.HeadText(Text, Anonymous, Qualified, AParameters, IsClass);
   AText := Indent + Head + LineBreak;
   if ConstLines <> nil then
   begin
     AText := AText + Indent + 'const' + LineBreak;
     for Line in ConstLines do
+    begin
       AText := AText + Indent + IndentUnit + Line + LineBreak;
+    end;
   end;
   AText := AText + Body;
   Result := True;
@@ -743,27 +909,37 @@ var
   Block: TSyntaxNode;
 begin
   if Form <> TAnonymousForm.Forwarding then
+  begin
     Exit(AName);
+  end;
   Arguments := '';
   for Index := 0 to High(Parameters) do
   begin
     if Arguments <> '' then
+    begin
       Arguments := Arguments + ', ';
+    end;
     Arguments := Arguments + Parameters[Index].Name;
   end;
   for Index := 0 to High(Captured) do
   begin
     if Arguments <> '' then
+    begin
       Arguments := Arguments + ', ';
+    end;
     Arguments := Arguments + Captured[Index].Local.Name;
   end;
   Call := AName + '(' + Arguments + ');';
   if TRoutineParts.IsFunction(Anonymous) then
+  begin
     Call := 'Result := ' + Call;
+  end;
   Head := TrimRight(Copy(Text, Anonymous.StartOffset + 1, BodyStart - Anonymous.StartOffset));
   Block := TRoutineBody.BodyOf(Anonymous);
   if Anonymous.StartPos.Line = Anonymous.EndPos.Line then
+  begin
     Exit(Head + ' begin ' + Call + ' end');
+  end;
   LineBreak := TTextLines.LineBreakOf(Text);
   Indent := TTextLines.IndentOf(Text, Block.EndPos.Line);
   Result := Head + LineBreak + Indent + 'begin' + LineBreak + Indent + TRoutineBody.IndentUnit(AStyle) + Call +
@@ -788,29 +964,39 @@ begin
   if ACheckName then
   begin
     if not IsValidName(AName) then
+    begin
       Exit(Fail(Format('"%s" ist kein gültiger Name', [AName]), AReason));
+    end;
     if NameTaken(AName) then
+    begin
       Exit(Fail(Format('"%s" ist schon vergeben', [AName]), AReason));
+    end;
   end;
   LineBreak := TTextLines.LineBreakOf(Text);
   // Parameter: die eigenen, bei der Weiterleitung dazu die erfassten.
   NewParameters := Parameters;
   if Form = TAnonymousForm.Forwarding then
+  begin
     for Index := 0 to High(Captured) do
     begin
       Parameter.Name := Captured[Index].Local.Name;
       Parameter.Rest := ': ' + Captured[Index].TypeText;
       Parameter.Modifier := '';
       if Captured[Index].Written then
-        Parameter.Modifier := 'var'
+      begin
+        Parameter.Modifier := 'var';
+      end
       else if TCreateMethod.WantsConst(Captured[Index].TypeText, False, False) or (Assigned(Lookup.ConstType) and
         Lookup.ConstType(Captured[Index].TypeText, Anonymous.StartOffset)) or
         // Ein const-Parameter der äußeren Routine bleibt const.
         ((Captured[Index].Local.Kind = TRoutineLocalKind.Parameter) and StartsText('const ',
         TRoutineBody.TextOf(Text, Captured[Index].Local.Decl))) then
+      begin
         Parameter.Modifier := 'const';
+      end;
       NewParameters := NewParameters + [Parameter];
     end;
+  end;
   // Felder: F + Name ohne L-Präfix, eindeutig in der Klasse.
   if Form = TAnonymousForm.Fields then
   begin
@@ -821,12 +1007,16 @@ begin
         FieldTaken);
       while (Assigned(Lookup.MemberExists) and Lookup.MemberExists(ClassName, Captured[Index].Field,
         Anonymous.StartOffset)) or Cache.Declares(Anonymous, Captured[Index].Field, MaxInt) do
+      begin
         Captured[Index].Field := TRoutineParts.FreeName(Captured[Index].Field, FieldTaken + [Captured[Index].Field]);
+      end;
       FieldTaken := FieldTaken + [Captured[Index].Field];
     end;
   end;
   if not MethodText(AName, AStyle, NewParameters, Moved, AReason) then
+  begin
     Exit(False);
+  end;
   Edits := nil;
   // Felder vor der Anweisung füllen.
   if Form = TAnonymousForm.Fields then
@@ -836,7 +1026,9 @@ begin
     for Index := 0 to High(Captured) do
     begin
       if Assignments <> '' then
+      begin
         Assignments := Assignments + LineBreak + TTextLines.IndentOf(Text, Host.StartPos.Line);
+      end;
       Assignments := Assignments + Captured[Index].Field + ' := ' + Captured[Index].Local.Name + ';';
     end;
     Edits := Edits + [TRoutineBody.InsertBefore(Text, Host, Assignments)];
@@ -849,39 +1041,55 @@ begin
     InsertLine := Outer.EndPos.Line + 1;
     // Leerzeile davor und, wenn direkt etwas folgt, auch danach.
     if not TRoutineParts.LineIsBlank(TTextLines.SplitLines(Text), InsertLine) then
+    begin
       Moved := Moved + LineBreak;
+    end;
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0), LineBreak + Moved +
       LineBreak)];
     Declaration := Head;
     if IsStatic then
+    begin
       Declaration := Declaration + ' static;';
+    end;
     if Form = TAnonymousForm.Fields then
     begin
       HasPrivate := False;
       for Index := 0 to TypeBody.ChildCount - 1 do
+      begin
         if (TypeBody[Index].Kind = TSyntaxKind.Visibility) and MatchText(TypeBody[Index].Name, ['private',
           'strict private']) then
+        begin
           HasPrivate := True;
+        end;
+      end;
       Fields := '';
       for Index := 0 to High(Captured) do
       begin
         if Fields <> '' then
+        begin
           Fields := Fields + ' ';
+        end;
         Fields := Fields + Captured[Index].Field + ': ' + Captured[Index].TypeText + ';';
       end;
       if not HasPrivate then
+      begin
         // Neuer Abschnitt: Felder und Methode in einem, Felder zuerst (E2169).
         Declaration := Fields + LineBreak + TTextLines.IndentOf(Text, TypeBody.EndPos.Line) +
-          TRoutineBody.IndentUnit(AStyle) + Declaration
+          TRoutineBody.IndentUnit(AStyle) + Declaration;
+      end
       else
       begin
         if not TRoutineBody.FieldDeclaration(Text, Tree, TypeBody, Fields, AStyle, FieldEdit) then
+        begin
           Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
+        end;
         Edits := Edits + [FieldEdit];
       end;
     end;
     if not TRoutineBody.MemberDeclaration(Text, Tree, TypeBody, 'private', Declaration, AStyle, Edit) then
+    begin
       Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
+    end;
     Edits := Edits + [Edit];
   end
   else
@@ -893,18 +1101,26 @@ begin
   // Vorschau: Kopf und Form.
   Qualified := AName;
   if IsMethod then
+  begin
     Qualified := ClassName + '.' + AName;
+  end;
   Names := '';
   for Index := 0 to High(Captured) do
   begin
     if Names <> '' then
+    begin
       Names := Names + ', ';
+    end;
     Names := Names + Captured[Index].Local.Name;
   end;
   if IsMethod then
-    AResult.Preview := 'Neue Methode: '
+  begin
+    AResult.Preview := 'Neue Methode: ';
+  end
   else
+  begin
     AResult.Preview := 'Neue Routine: ';
+  end;
   AResult.Preview := AResult.Preview + TRoutineParts.HeadText(Text, Anonymous, Qualified, NewParameters, IsClass) +
     LineBreak;
   case Form of
@@ -913,15 +1129,21 @@ begin
     TAnonymousForm.Forwarding:
       begin
         if Synchronous then
+        begin
           AResult.Preview := AResult.Preview + Format('Läuft während %s: Die erfassten Variablen (%s) werden ' +
             'Parameter, geschriebene als var; an der Stelle ruft eine kurze anonyme Methode %s mit ihnen auf.',
-            [CallName, Names, AName])
+            [CallName, Names, AName]);
+        end
         else
+        begin
           AResult.Preview := AResult.Preview + Format('Läuft womöglich später: Eine benannte Methode kann %s ' +
             'nicht erfassen. An der Stelle bleibt eine kurze anonyme Weiterleitung, die die Variablen weiter ' +
             'festhält und %s mit ihnen aufruft; das Verhalten bleibt gleich.', [Names, AName]);
+        end;
         if FieldsReason <> '' then
+        begin
           AResult.Preview := AResult.Preview + LineBreak + Format('Als Felder geht hier nicht: %s.', [FieldsReason]);
+        end;
       end;
     TAnonymousForm.Fields:
       begin
@@ -958,57 +1180,95 @@ begin
   AAction := Default(TCodeAction);
   AReason := '';
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit(Fail('kein Baum', AReason));
+  end;
   Lines := TLineTable.Build(AText);
   Tokens := ATree.Tokens;
   Routine := TRoutineParts.TopRoutineAt(ATree, Lines.OffsetAt(APosition), Declaration);
   if (Routine = nil) or (Routine.Parent = nil) or (Routine.Parent.Kind <> TSyntaxKind.ImplementationSection) then
+  begin
     Exit(Fail('keine Methode der Implementierung', AReason));
+  end;
   Header := TRoutineParts.HeaderOf(Routine);
   Body := TRoutineBody.BodyOf(Routine);
   if (Header = nil) or (Body = nil) then
+  begin
     Exit(Fail('Methode ohne Rumpf', AReason));
+  end;
   Short := TRoutineBody.ShortNameOf(Routine.Name);
   ClassName := TRoutineBody.QualifierOf(Routine.Name);
   if (ClassName = '') or (Pos('<', ClassName) > 0) or (Pos('.', ClassName) > 0) then
+  begin
     Exit(Fail('keine Methode', AReason));
+  end;
   if TRoutineParts.IsClassHeader(Tokens, Header) then
+  begin
     Exit(Fail('Klassenmethode', AReason));
+  end;
   if TRoutineParts.HasWord(Tokens, Header, ['overload', 'forward', 'external', 'assembler']) then
+  begin
     Exit(Fail('nicht unterstützte Form', AReason));
+  end;
   TypeBody := TRoutineBody.TypeBody(ATree.Root, ClassName);
   if TypeBody = nil then
+  begin
     Exit(Fail('Klasse ' + ClassName + ' nicht in der Datei', AReason));
+  end;
   Declaration := nil;
   for Index := 0 to TypeBody.ChildCount - 1 do
+  begin
     if (TypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(TypeBody[Index].Name, Short) then
     begin
       if Declaration <> nil then
+      begin
         Exit(Fail('überladen', AReason));
+      end;
       Declaration := TypeBody[Index];
     end;
+  end;
   if Declaration = nil then
+  begin
     Exit(Fail('Deklaration fehlt', AReason));
+  end;
   if not MatchText(TRoutineBody.VisibilityOf(TypeBody, Declaration), ['private', 'strict private']) then
+  begin
     Exit(Fail('nicht privat', AReason));
+  end;
   if TRoutineParts.HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract', 'message',
     'overload', 'reintroduce', 'final', 'static']) then
+  begin
     Exit(Fail('virtuell, Botschaft oder überladen', AReason));
+  end;
   if Assigned(ALookup.InForm) and ALookup.InForm(Short) then
+  begin
     Exit(Fail(Short + ' steht in der Formulardatei', AReason));
+  end;
   // Anonyme Methoden haben keine lokalen Routinen, Typen oder Marken; inherited bedeutete dort etwas anderes.
   for Index := 0 to Routine.ChildCount - 1 do
+  begin
     if Routine[Index].Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.TypeSection, TSyntaxKind.LabelSection] then
+    begin
       Exit(Fail('lokale Routinen, Typen oder Marken', AReason));
+    end;
+  end;
   if HasInherited(Tokens, Body) or TRoutineLocals.HasKind(Body, TSyntaxKind.WithStatement) then
+  begin
     Exit(Fail('inherited oder with', AReason));
+  end;
   Parameters := TRoutineParts.ParameterTexts(AText, Header);
   if (Parameters = nil) and (Header.FindChild(TSyntaxKind.Parameters) <> nil) and
     (Header.FindChild(TSyntaxKind.Parameters).ChildCount > 0) then
+  begin
     Exit(Fail('nicht unterstützte Parameter', AReason));
+  end;
   for Index := 0 to High(Parameters) do
+  begin
     if Pos('=', Parameters[Index].Rest) > 0 then
+    begin
       Exit(Fail('Parameter mit Vorgabewert', AReason));
+    end;
+  end;
   Cache := TLocalsCache.Create(AText, ATree);
   Collected := TList<TSyntaxNode>.Create;
   try
@@ -1019,29 +1279,45 @@ begin
     for Node in Collected do
     begin
       if not SameText(Node.Name, Short) then
+      begin
         Continue;
+      end;
       if Node.Kind = TSyntaxKind.MemberAccess then
       begin
         if (Node[0].Kind <> TSyntaxKind.Identifier) or not SameText(Node[0].Name, 'Self') then
+        begin
           Exit(Fail('über ein anderes Objekt benutzt', AReason));
+        end;
       end
       else if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.MemberAccess) and (Node.Parent[0] = Node) and
         SameText(Node.Parent.Name, Short) then
-        Continue
-      else if TRoutineParts.Shadowed(Cache, Node, nil, Short, False) then
+      begin
         Continue;
+      end
+      else if TRoutineParts.Shadowed(Cache, Node, nil, Short, False) then
+      begin
+        Continue;
+      end;
       if TRoutineBody.Within(Node, Routine) then
+      begin
         Exit(Fail('rekursiv', AReason));
+      end;
       References := References + [Node];
     end;
     if Length(References) <> 1 then
+    begin
       Exit(Fail('nicht genau eine Übergabe', AReason));
+    end;
     Reference := References[0];
     if not IsValueUse(Reference) then
+    begin
       Exit(Fail('wird aufgerufen, nicht als Wert übergeben', AReason));
+    end;
     Kind := TProcTypeKind.Unknown;
     if Assigned(ALookup.TargetType) then
+    begin
       Kind := ALookup.TargetType(Reference);
+    end;
     case Kind of
       TProcTypeKind.MethodPointer:
         Exit(Fail('das Ziel ist ein Methodenzeiger (of object); dort passt keine anonyme Methode', AReason));
@@ -1054,9 +1330,13 @@ begin
     Caller := TopRoutineOf(Reference);
     if (Caller = nil) or not SameText(TRoutineBody.QualifierOf(Caller.Name), ClassName) or
       TRoutineParts.IsClassHeader(Tokens, TRoutineParts.HeaderOf(Caller)) then
+    begin
       Exit(Fail('Übergabe nicht in einer Methode derselben Klasse', AReason));
+    end;
     if Inside(Reference, Caller, TSyntaxKind.WithStatement) then
+    begin
       Exit(Fail('Übergabe in with', AReason));
+    end;
     // Namen des Rumpfs, die an der Übergabe etwas anderes bedeuten.
     Collected.Clear;
     TRoutineLocals.CollectKind(Routine, TSyntaxKind.Identifier, Collected);
@@ -1064,13 +1344,17 @@ begin
     for Node in Collected do
     begin
       if TRoutineParts.Shadowed(Cache, Node, Routine, Node.Name, True) then
+      begin
         Continue;
+      end;
       Scope := Reference.Parent;
       while Scope <> nil do
       begin
         if (Scope.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) and Cache.Declares(Scope, Node.Name,
           Reference.StartOffset) then
+        begin
           Exit(Fail(Scope.Name + ' verdeckt ' + Node.Name, AReason));
+        end;
         Scope := Scope.Parent;
       end;
     end;
@@ -1082,7 +1366,9 @@ begin
     begin
       Child := Routine[Index];
       if (Child.Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection]) and (Child.StartOffset < Start) then
+      begin
         Start := Child.StartOffset;
+      end;
     end;
     Indent := TTextLines.IndentOf(AText, Reference.StartPos.Line) + TRoutineBody.IndentUnit(AStyle);
     Moved := TRoutineBody.Reindent(Copy(AText, Start + 1, Body.EndOffset - Start),
@@ -1092,7 +1378,9 @@ begin
     FirstLine := TRoutineBody.RoutineInsertLine(AText, Routine);
     RemoveEnd := Routine.EndPos.Line + 1;
     if TRoutineParts.LineIsBlank(TextLines, FirstLine - 1) and TRoutineParts.LineIsBlank(TextLines, RemoveEnd) then
+    begin
       Inc(RemoveEnd);
+    end;
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(FirstLine, 0, RemoveEnd, 0), '')];
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(Declaration.StartPos.Line, 0,
       Declaration.EndPos.Line + 1, 0), '')];
@@ -1117,18 +1405,30 @@ var
 begin
   Name := Trim(ATypeText);
   if StartsText('reference ', Name) then
+  begin
     Exit(TProcTypeKind.Reference);
+  end;
   if ContainsText(Name, ' of object') then
+  begin
     Exit(TProcTypeKind.MethodPointer);
+  end;
   if StartsText('procedure', Name) or StartsText('function', Name) then
+  begin
     Exit(TProcTypeKind.Plain);
+  end;
   if Pos('<', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('<', Name) - 1);
+  end;
   Name := Trim(Copy(Name, LastDelimiter('.', Name) + 1, MaxInt));
   if MatchText(Name, ReferenceTypes) then
+  begin
     Exit(TProcTypeKind.Reference);
+  end;
   if MatchText(Name, MethodPointerTypes) then
+  begin
     Exit(TProcTypeKind.MethodPointer);
+  end;
   Result := TProcTypeKind.Unknown;
 end;
 
@@ -1149,7 +1449,9 @@ begin
     Result := Plan.Analyze(APosition, AReason) and Plan.Build(Plan.Suggested, TFormatStyle.Default, False, Probe,
       AReason);
     if not Result then
+    begin
       Exit;
+    end;
     ATarget.IsMethod := Plan.IsMethod;
     ATarget.Suggested := Plan.Suggested;
     ATarget.Form := Plan.Form;

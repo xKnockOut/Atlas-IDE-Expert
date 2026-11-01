@@ -103,7 +103,9 @@ begin
     try
       Result := '';
       for Item in Answer as TJSONArray do
+      begin
         Result := Trim(Result + ' ' + Item.Value);
+      end;
     finally
       Answer.Free;
     end;

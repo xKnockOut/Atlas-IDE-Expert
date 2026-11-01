@@ -49,7 +49,9 @@ function Unquote(const AName: string): string;
 begin
   Result := Trim(AName);
   if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
     Result := Copy(Result, 2, Length(Result) - 2);
+  end;
 end;
 
 { TIncludeFiles }
@@ -62,7 +64,9 @@ begin
   AFileName := '';
   Name := Unquote(AName);
   if Name = '' then
+  begin
     Exit(False);
+  end;
   if (ExtractFileDrive(Name) <> '') or Name.StartsWith('\') or Name.StartsWith('/') then
   begin
     AFileName := Name;
@@ -72,15 +76,21 @@ begin
   begin
     AFileName := ExpandFileName(IncludeTrailingPathDelimiter(ABaseDir) + Name);
     if AFileExists(AFileName) then
+    begin
       Exit(True);
+    end;
   end;
   for Dir in ASearchPaths do
+  begin
     if Dir <> '' then
     begin
       AFileName := ExpandFileName(IncludeTrailingPathDelimiter(Dir) + Name);
       if AFileExists(AFileName) then
+      begin
         Exit(True);
+      end;
     end;
+  end;
   AFileName := '';
   Result := False;
 end;
@@ -93,7 +103,9 @@ begin
   Name := Unquote(AName);
   BaseDir := ExtractFileDir(AFromFile);
   if FindFile(Name, BaseDir, ASearchPaths, AFileExists, AFileName) then
+  begin
     Exit(True);
+  end;
   Result := (ExtractFileExt(Name) = '') and
     (FindFile(Name + '.inc', BaseDir, ASearchPaths, AFileExists, AFileName) or
      FindFile(Name + '.pas', BaseDir, ASearchPaths, AFileExists, AFileName));
@@ -159,10 +171,14 @@ begin
   Paths := ASearchPaths;
   Exists := AFileExists;
   if not Assigned(Exists) then
+  begin
     Exists := DiskExists();
+  end;
   Read := AReadText;
   if not Assigned(Read) then
+  begin
     Read := DiskReadText();
+  end;
   Result :=
     function(const AName, AFromFile: string; out AFileName, AText: string): Boolean
     begin

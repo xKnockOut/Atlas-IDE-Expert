@@ -141,7 +141,9 @@ var
   begin
     Result := 0;
     for Line := 0 to APos.Line - 1 do
+    begin
       Inc(Result, Length(Lines[Line]) + 1);
+    end;
     Inc(Result, APos.Character);
   end;
 
@@ -155,9 +157,13 @@ begin
   // Von hinten anwenden; gleiche Stelle in der gegebenen Reihenfolge.
   SetLength(Order, Length(AEdits));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   for Index := 0 to High(Order) do
+  begin
     for Inner := Index + 1 to High(Order) do
+    begin
       if Before(Order[Index], Order[Inner]) or
         ((OffsetOf(AEdits[Order[Index]].Range.StartPos) = OffsetOf(AEdits[Order[Inner]].Range.StartPos)) and
         (Order[Index] < Order[Inner])) then
@@ -166,6 +172,8 @@ begin
         Order[Index] := Order[Inner];
         Order[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index in Order do
   begin
@@ -201,9 +209,13 @@ begin
     begin
       Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
       if TFile.Exists(Result) then
+      begin
         Exit;
+      end;
       if ExtractFileDir(Directory) = Directory then
+      begin
         Break;
+      end;
       Directory := ExtractFileDir(Directory);
     end;
   end;
@@ -218,7 +230,9 @@ begin
   Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden: ' + AName);
   Result := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Result <> '') and (Result[1] = #$FEFF) then
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 /// <summary>Titel aller Aktionen für ALine.</summary>
@@ -231,7 +245,9 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     for Action in TClassActions.Actions(AText, Tree, ALine, TClassActionContext.Default) do
+    begin
       Result := Result + Action.Title + '|';
+    end;
   finally
     Tree.Free;
   end;

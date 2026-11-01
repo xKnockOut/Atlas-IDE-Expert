@@ -46,17 +46,25 @@ var
 begin
   Result := False;
   if not ASymbol.Initialized or (Pos(',', ASymbol.Decl.Name) > 0) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Keyword := TRoutineBody.TokenAt(Tokens, ASymbol.Decl.StartOffset);
   if (Keyword > High(Tokens)) or not Tokens[Keyword].IsKeyword('var') then
+  begin
     Exit;
+  end;
   Assign := Keyword;
   while (Assign <= High(Tokens)) and (Tokens[Assign].Offset < ASymbol.Decl.EndOffset) and
     not Tokens[Assign].IsSymbol(':=') do
+  begin
     Inc(Assign);
+  end;
   if (Assign > High(Tokens)) or (Tokens[Assign].Offset >= ASymbol.Decl.EndOffset) then
+  begin
     Exit;
+  end;
   AAction := Default(TCodeAction);
   AAction.Title := Format('Als Konstante deklarieren (const %s)', [ASymbol.Name]);
   AAction.Kind := RewriteKind;
@@ -78,29 +86,49 @@ begin
   Result := False;
   Body := TRoutineBody.BodyOf(ASymbol.Routine);
   if Body = nil then
+  begin
     Exit;
+  end;
   Statement := nil;
   for Occurrence in ASymbol.Occurrences do
+  begin
     if Occurrence.Write = TReassignedWrite.Write then
+    begin
       Statement := Occurrence.Node.Parent;
+    end;
+  end;
   // Die eine Zuweisung muss eine Anweisung direkt im Rumpf sein.
   if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.Parent <> Body) then
+  begin
     Exit;
+  end;
   for Occurrence in ASymbol.Occurrences do
+  begin
     if Occurrence.Node <> nil then
+    begin
       if (Occurrence.Offset < Body.StartOffset) or (Occurrence.Offset > Body.EndOffset) or
         ((Occurrence.Write = TReassignedWrite.None) and (Occurrence.Offset < Statement.EndOffset)) then
+      begin
         Exit;
+      end;
+    end;
+  end;
   TypeText := Trim(TRoutineLocals.TypeChildText(AText, ASymbol.Decl));
   if TypeText = '' then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Assign := TRoutineBody.TokenAt(Tokens, Statement[0].EndOffset);
   while (Assign <= High(Tokens)) and (Tokens[Assign].Offset < Statement.EndOffset) and
     not Tokens[Assign].IsSymbol(':=') do
+  begin
     Inc(Assign);
+  end;
   if (Assign > High(Tokens)) or (Tokens[Assign].Offset >= Statement.EndOffset) then
+  begin
     Exit;
+  end;
   Edits := [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Tokens[Assign].EndPos),
     Format('const %s: %s =', [ASymbol.Name, TypeText]))];
   TRoutineLocals.RemoveVariables(ATree, ASymbol.Decl, [ASymbol.Name], Edits);
@@ -120,11 +148,17 @@ begin
   Result := False;
   if (ATree = nil) or not TReassigned.SymbolAt(TReassigned.Analyze(AText, ATree, ALookup), APosition, Symbol) or
     not Symbol.IsConstCandidate then
+  begin
     Exit;
+  end;
   if Symbol.Kind = TReassignedKind.InlineVariable then
-    Result := InlineAction(ATree, Symbol, AAction)
+  begin
+    Result := InlineAction(ATree, Symbol, AAction);
+  end
   else if Symbol.Decl.Kind = TSyntaxKind.VarDecl then
+  begin
     Result := SectionAction(AText, ATree, Symbol, AAction);
+  end;
 end;
 
 end.

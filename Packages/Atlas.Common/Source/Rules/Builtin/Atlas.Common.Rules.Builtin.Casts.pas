@@ -121,9 +121,13 @@ begin
     AChain := AChain + [mCurrent];
     // Ohne Vorfahr erbt eine Klasse von TObject; TObject selbst steht ohne Index nicht im Baum.
     if IsTObject(mCurrent) or (Length(mCurrent.Ancestors) = 0) then
+    begin
       Exit(True);
+    end;
     if not AResolver.AncestorOf(mCurrent, mNext) or not IsPlainClass(mNext) then
+    begin
       Exit(False);
+    end;
     mCurrent := mNext;
   end;
   Result := False;
@@ -156,13 +160,17 @@ begin
     if mEqual = 0 then
     begin
       if SameName(Trim(mEntry), ASource) or SameName(Trim(mEntry), ATarget) then
+      begin
         Exit(True);
+      end;
       Continue;
     end;
     mSource := Trim(Copy(mEntry, 1, mEqual - 1));
     mTarget := Trim(Copy(mEntry, mEqual + 1, MaxInt));
     if SameName(mSource, ASource) and SameName(mTarget, ATarget) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -177,8 +185,12 @@ var
     mItem: TResolvedSymbol;
   begin
     for mItem in AChain do
+    begin
       if SameType(mItem, AType) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -190,12 +202,18 @@ var
     mSymbol: TIndexSymbol;
   begin
     if not mScope.Resolver.DeclaringUnit(AType, mUnit) then
+    begin
       Exit(True);
+    end;
     for mSymbol in mUnit.Symbols do
+    begin
       if SameText(mSymbol.Container, AType.QualifiedName) and ((mSymbol.Kind = TIndexSymbolKind.Field) or
         ((mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
         (mSymbol.HasDirective('virtual') or mSymbol.HasDirective('dynamic')))) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -208,9 +226,13 @@ var
     for mItem in ATargetChain do
     begin
       if Contains(ASourceChain, mItem) then
+      begin
         Exit(True);
+      end;
       if ChangesLayout(mItem) then
+      begin
         Exit(False);
+      end;
     end;
     Result := False;
   end;
@@ -236,26 +258,42 @@ var
     // T(X): Bezeichner bzw. qualifizierter Name ohne Typargumente und genau ein Argument.
     if (ANode.ChildCount <> 2) or not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
       (ANode[0].FindChild(TSyntaxKind.GenericArgs) <> nil) then
+    begin
       Exit;
+    end;
     if not mScope.SureType(ANode, mTargetSymbol, mTargetType) or not mTargetSymbol.IsType or
       not IsPlainClass(mTargetType) then
+    begin
       Exit;
+    end;
     mArgument := Unwrapped(ANode[1]);
     if not mScope.SureType(mArgument, mSourceSymbol, mSourceType) or mSourceSymbol.IsType or
       not IsPlainClass(mSourceType) or IsTObject(mSourceType) or SameType(mSourceType, mTargetType) then
+    begin
       Exit;
+    end;
     if not ClassChain(mScope.Resolver, mTargetType, mTargetChain) or
       not ClassChain(mScope.Resolver, mSourceType, mSourceChain) then
+    begin
       Exit;
+    end;
     if Contains(mTargetChain, mSourceType) or Contains(mSourceChain, mTargetType) then
+    begin
       Exit;
+    end;
     if SameLayout(mTargetChain, mSourceChain) then
+    begin
       Exit;
+    end;
     if Allowed(mAllowTypes, mSourceType.QualifiedName, mTargetType.QualifiedName) then
+    begin
       Exit;
+    end;
     mReplacement := Format('%s as %s', [mScope.Text(mArgument), mScope.Text(ANode[0])]);
     if NeedsParens(ANode) then
+    begin
       mReplacement := '(' + mReplacement + ')';
+    end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
       Format('%s und %s sind nicht verwandt: Die Umwandlung zeigt auf ein Objekt mit anderem Aufbau.',
       [mSourceType.Name, mTargetType.Name]), TRuleConfidence.High,
@@ -277,9 +315,13 @@ var
       begin
         mNode := mPending.Pop;
         if mNode.Kind = TSyntaxKind.Call then
+        begin
           CheckCast(mNode);
+        end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
@@ -288,7 +330,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mAllowTypes := TRuleOptions.Strings(AContext.Options, 'allowTypes', nil);
   mScope := TTypedScope.Create(AContext);
   try
@@ -318,7 +362,9 @@ var
     Result := Trim(AName);
     mDot := LastDelimiter('.', Result);
     if mDot > 0 then
+    begin
       Result := Copy(Result, mDot + 1, MaxInt);
+    end;
   end;
 
   /// <summary>Zieltyp der Umwandlung ANode: T(X) als Aufruf oder X as T; ATypeNode ist der Typname im Text,
@@ -351,10 +397,14 @@ var
     mFound: Boolean;
   begin
     if mScope.SureType(ATypeNode, mSymbol, AType) then
+    begin
       Exit(mSymbol.IsType);
+    end;
     if (ATypeNode.Kind <> TSyntaxKind.Identifier) or mScope.Resolver.NodeType(AContext.Tree, mScope.FileName,
       ATypeNode, mSymbol, AType, mFound) then
+    begin
       Exit(False);
+    end;
     AType := Default(TResolvedSymbol);
     AType.Kind := TResolvedKind.Symbol;
     AType.Name := ATypeNode.Name;
@@ -362,7 +412,9 @@ var
     AType.Builtin := True;
     AType.SymbolKind := TIndexSymbolKind.RecordType;
     if SameText(ATypeNode.Name, 'TObject') then
+    begin
       AType.SymbolKind := TIndexSymbolKind.ClassType;
+    end;
     Result := SameText(ATypeNode.Name, 'TObject') or TNameResolver.IsBuiltinTypeName(ATypeNode.Name);
   end;
 
@@ -375,8 +427,10 @@ var
       not (ASymbol.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember]);
     if Result and (ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
       TIndexSymbolKind.Constructor_]) then
+    begin
       Result := (ASource.Kind = TSyntaxKind.Call) and (ASymbol.Overloads = nil) and
         (Length(ASymbol.VariantParams) <= 1);
+    end;
   end;
 
   /// <summary>Steht ANode als Argument in einem Aufruf, dessen Ziel nicht genau eine Routine ist? Bei
@@ -404,7 +458,9 @@ var
     Result := ANode;
     while (Result.Parent <> nil) and (Result.Parent.Kind = TSyntaxKind.ParenExpr) and
       (Result.Parent.ChildCount = 1) do
+    begin
       Result := Result.Parent;
+    end;
   end;
 
   procedure Report(ANode, ASource: TSyntaxNode; const AMessage: string);
@@ -429,12 +485,20 @@ var
     for mItem in AChain do
     begin
       if IsTObject(mItem) then
+      begin
         Continue;
+      end;
       if not mScope.Resolver.DeclaringUnit(mItem, mUnit) then
+      begin
         Exit(True);
+      end;
       for mSymbol in mUnit.Symbols do
+      begin
         if SameText(mSymbol.Container, mItem.QualifiedName) and SameText(mSymbol.Name, 'Free') then
+        begin
           Exit(True);
+        end;
+      end;
     end;
     Result := False;
   end;
@@ -464,19 +528,31 @@ var
     mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
   begin
     if not CastParts(ANode, mTypeNode, mSource, mIsAs) then
+    begin
       Exit;
+    end;
     if not TargetOf(mTypeNode, mTargetType) then
+    begin
       Exit;
+    end;
     // as mit Interface ruft QueryInterface und kann ein anderes Objekt liefern.
     if mIsAs and not IsPlainClass(mTargetType) then
+    begin
       Exit;
+    end;
     if not SureSource(mSource, mSourceSymbol, mSourceType) then
+    begin
       Exit;
+    end;
     if not SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) and
       not SameBuiltin(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
+    begin
       Exit;
+    end;
     if InOverloadedCall(ReplacedNode(ANode)) then
+    begin
       Exit;
+    end;
     Report(ANode, mSource, Format('%s ist schon %s: Die Umwandlung ist überflüssig.',
       [mScope.Text(mSource), mScope.Text(mTypeNode)]));
   end;
@@ -490,26 +566,42 @@ var
     mTargetChain, mSourceChain: TArray<TResolvedSymbol>;
   begin
     if not SameText(ANode.Name, 'Free') or (ANode.ChildCount = 0) then
+    begin
       Exit;
+    end;
     // Free(…) mit Argumenten ist nicht TObject.Free.
     if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode) and
       (ANode.Parent.ChildCount > 1) then
+    begin
       Exit;
+    end;
     mCast := Unwrapped(ANode[0]);
     if not CastParts(mCast, mTypeNode, mSource, mIsAs) then
+    begin
       Exit;
+    end;
     if not TargetOf(mTypeNode, mTargetType) or not (IsPlainClass(mTargetType) or IsTObject(mTargetType)) then
+    begin
       Exit;
+    end;
     if not SureSource(mSource, mSourceSymbol, mSourceType) or not IsPlainClass(mSourceType) then
+    begin
       Exit;
+    end;
     // Gleicher Typ meldet CheckCast.
     if SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
+    begin
       Exit;
+    end;
     if not ClassChain(mScope.Resolver, mSourceType, mSourceChain) or DeclaresFree(mSourceChain) then
+    begin
       Exit;
+    end;
     if not IsTObject(mTargetType) and (not ClassChain(mScope.Resolver, mTargetType, mTargetChain) or
       DeclaresFree(mTargetChain)) then
+    begin
       Exit;
+    end;
     Report(mCast, mSource, Format('Free ruft den virtuellen Destruktor: Die Umwandlung von %s nach %s ist ' +
       'überflüssig.', [mScope.Text(mSource), mScope.Text(mTypeNode)]));
   end;
@@ -528,11 +620,17 @@ var
       begin
         mNode := mPending.Pop;
         if mNode.Kind in [TSyntaxKind.Call, TSyntaxKind.BinaryExpr] then
-          CheckCast(mNode)
+        begin
+          CheckCast(mNode);
+        end
         else if mCheckFree and (mNode.Kind = TSyntaxKind.MemberAccess) then
+        begin
           CheckFree(mNode);
+        end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
@@ -541,7 +639,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mCheckFree := TRuleOptions.Bool(AContext.Options, 'checkFree', True);
   mScope := TTypedScope.Create(AContext);
   try

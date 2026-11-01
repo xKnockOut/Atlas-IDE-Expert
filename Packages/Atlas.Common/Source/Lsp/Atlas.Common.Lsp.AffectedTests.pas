@@ -200,11 +200,17 @@ const
 function TAffectedChange.Text: string;
 begin
   if Kind = TAffectedChangeKind.WholeUnit then
-    Result := 'Unit ' + Item.Name
+  begin
+    Result := 'Unit ' + Item.Name;
+  end
   else if Item.Container <> '' then
-    Result := Item.Container + '.' + Item.Name
+  begin
+    Result := Item.Container + '.' + Item.Name;
+  end
   else
+  begin
     Result := Item.Name;
+  end;
 end;
 
 { TAffectedReason }
@@ -213,9 +219,13 @@ function TAffectedReason.Text: string;
 begin
   Result := string.Join(cArrow, Path);
   if Result = '' then
+  begin
     Result := Change;
+  end;
   if Inferred then
+  begin
     Result := Result + ' (erschlossen)';
+  end;
 end;
 
 { TAffectedResult }
@@ -230,12 +240,16 @@ begin
   mSeen := TDictionary<string, Boolean>.Create;
   try
     for mTest in Tests do
+    begin
       for mName in mTest.RunNames do
+      begin
         if not mSeen.ContainsKey(UpperCase(mName)) then
         begin
           mSeen.Add(UpperCase(mName), True);
           Result := Result + [mName];
         end;
+      end;
+    end;
   finally
     mSeen.Free;
   end;
@@ -279,29 +293,43 @@ begin
   mCount := Length(TTextLines.SplitLines(AText));
   SetLength(FCode, mCount);
   for mLine := 0 to mCount - 1 do
+  begin
     FCode[mLine] := TTextPosition.Create(mLine, -1);
+  end;
   FImplementationLine := MaxInt;
   FInitializationLine := MaxInt;
   for mToken in TPascalLexer.Tokenize(AText) do
   begin
     if mToken.Kind = TPascalTokenKind.Comment then
+    begin
       Continue;
+    end;
     // Zeilen, die ein mehrzeiliges Token (String) überspannt, zählen als Code ab Spalte 0.
     for mLine := mToken.StartPos.Line to mToken.EndPos.Line do
     begin
       if (mLine < 0) or (mLine >= mCount) or (FCode[mLine].Character >= 0) then
+      begin
         Continue;
+      end;
       if mLine = mToken.StartPos.Line then
-        FCode[mLine] := mToken.StartPos
+      begin
+        FCode[mLine] := mToken.StartPos;
+      end
       else
+      begin
         FCode[mLine] := TTextPosition.Create(mLine, 0);
+      end;
     end;
     // initialization und finalization sind reservierte Wörter und stehen nur auf Unit-Ebene.
     if mToken.IsKeyword('implementation') and (FImplementationLine = MaxInt) then
-      FImplementationLine := mToken.StartPos.Line
+    begin
+      FImplementationLine := mToken.StartPos.Line;
+    end
     else if (FInitializationLine = MaxInt) and
       (mToken.IsKeyword('initialization') or mToken.IsKeyword('finalization')) then
+    begin
       FInitializationLine := mToken.StartPos.Line;
+    end;
   end;
   FTree := TSyntaxTreeCache.Parse(AText);
   FUnit := TIndexExtractor.Extract(FTree, AFileName);
@@ -326,20 +354,30 @@ end;
 function TAffectedSource.SectionOf(ALine: Integer): string;
 begin
   if ALine >= FInitializationLine then
-    Result := 'initialization'
+  begin
+    Result := 'initialization';
+  end
   else if ALine >= FImplementationLine then
-    Result := 'implementation'
+  begin
+    Result := 'implementation';
+  end
   else
+  begin
     Result := 'interface';
+  end;
 end;
 
 function TAffectedSource.KeyOf(const AChange: TAffectedChange): string;
 begin
   if AChange.Kind = TAffectedChangeKind.WholeUnit then
-    Result := 'unit|' + UpperCase(AChange.Item.FileName)
+  begin
+    Result := 'unit|' + UpperCase(AChange.Item.FileName);
+  end
   else
+  begin
     Result := UpperCase(AChange.Item.FileName) + '|' + IntToStr(AChange.Item.SelectionRange.StartPos.Line) + ':' +
       IntToStr(AChange.Item.SelectionRange.StartPos.Character);
+  end;
 end;
 
 function SpanSize(const ARange: TTextRange): Int64;
@@ -365,7 +403,9 @@ begin
   Result.Item := Default(THierarchyItem);
   Result.Item.Name := FUnit.UnitName;
   if Result.Item.Name = '' then
+  begin
     Result.Item.Name := ChangeFileExt(ExtractFileName(FFileName), '');
+  end;
   Result.Item.UnitName := Result.Item.Name;
   Result.Item.FileName := FFileName;
   Result.Item.SymbolKind := TIndexSymbolKind.Variable;
@@ -381,7 +421,9 @@ begin
   Result.Source := FFileName;
   Result.Place := APlace;
   if Result.Place = '' then
+  begin
     Result.Place := SectionOf(ALine);
+  end;
   mPosition := FCode[ALine];
   // Rumpf und Kopf einer Routine: die Routine (bei lokalen Routinen die innerste).
   if TLspHierarchies.RoutineAt(FTree, FFileName, mPosition, Result.Item) then
@@ -393,7 +435,9 @@ begin
   mFound := False;
   mBest := Default(TIndexSymbol);
   if ALine < FInitializationLine then
+  begin
     for mSymbol in FUnit.Symbols do
+    begin
       // Symbole aus Include-Dateien tragen deren Zeilen.
       if (mSymbol.FileName = '') and RangeHas(mSymbol.Range, mPosition) and
         (not mFound or (SpanSize(mSymbol.Range) < SpanSize(mBest.Range))) then
@@ -401,6 +445,8 @@ begin
         mBest := mSymbol;
         mFound := True;
       end;
+    end;
+  end;
   if mFound then
   begin
     Result.Kind := TAffectedChangeKind.Symbol;
@@ -419,22 +465,34 @@ begin
   Result := False;
   mAbove := AGap - 1;
   if mAbove >= Length(FCode) then
+  begin
     mAbove := Length(FCode) - 1;
+  end;
   while (mAbove >= 0) and not HasCode(mAbove) do
+  begin
     Dec(mAbove);
+  end;
   mBelow := AGap;
   while (mBelow < Length(FCode)) and not HasCode(mBelow) do
+  begin
     Inc(mBelow);
+  end;
   // Am Anfang oder Ende der Datei: nichts, was die Zeilen umschloss.
   if (mAbove < 0) or (mBelow >= Length(FCode)) then
+  begin
     Exit;
+  end;
   mBefore := ChangeAt(mAbove, '');
   mAfter := ChangeAt(mBelow, '');
   if KeyOf(mBefore) = KeyOf(mAfter) then
-    AChange := mBefore
+  begin
+    AChange := mBefore;
+  end
   else
+  begin
     // Zwischen zwei Symbolen entfernt (z. B. eine ganze Routine): Was fehlt, lässt sich nicht mehr verfolgen.
     AChange := UnitChange(SectionOf(mBelow));
+  end;
   Result := True;
 end;
 
@@ -445,8 +503,12 @@ var
 begin
   mKey := KeyOf(AChange);
   for mChange in AChanges do
+  begin
     if KeyOf(mChange) = mKey then
+    begin
       Exit;
+    end;
+  end;
   AChanges := AChanges + [AChange];
 end;
 
@@ -467,14 +529,24 @@ begin
     begin
       mLast := mSpan.Last;
       if mLast >= mSource.LineCount then
+      begin
         mLast := mSource.LineCount - 1;
+      end;
       for mLine := mSpan.First to mLast do
+      begin
         if mSource.HasCode(mLine) then
+        begin
           mSource.Add(Result, mSource.ChangeAt(mLine, ''));
+        end;
+      end;
     end;
     for mGap in ALines.Gaps do
+    begin
       if mSource.ChangeAtGap(mGap, mChange) then
+      begin
         mSource.Add(Result, mChange);
+      end;
+    end;
   finally
     mSource.Free;
   end;
@@ -490,8 +562,12 @@ begin
   mSource := TAffectedSource.Create(AFileName, AText);
   try
     for mLine in AAt do
+    begin
       if mSource.HasCode(mLine) then
+      begin
         mSource.Add(Result, mSource.ChangeAt(mLine, APlace));
+      end;
+    end;
   finally
     mSource.Free;
   end;
@@ -507,16 +583,24 @@ begin
   begin
     mRest := Trim(mLine);
     if mRest = '' then
+    begin
       Continue;
+    end;
     // object Form1: TForm1 | inherited Form2: TForm2 | inline Frame1: TFrame1 [n]
     if not (StartsText('object ', mRest) or StartsText('inherited ', mRest) or StartsText('inline ', mRest)) then
+    begin
       Exit;
+    end;
     mColon := Pos(':', mRest);
     if mColon = 0 then
+    begin
       Exit;
+    end;
     Result := Trim(Copy(mRest, mColon + 1, MaxInt));
     if Pos(' ', Result) > 0 then
+    begin
       Result := Copy(Result, 1, Pos(' ', Result) - 1);
+    end;
     Exit;
   end;
 end;
@@ -539,13 +623,17 @@ begin
   Result := nil;
   mLines := TTextLines.SplitLines(AText);
   for mIndex := 0 to High(mLines) do
+  begin
     for mName in TChangedFiles.IncludeNames(mLines[mIndex]) do
+    begin
       if SameText(BaseNameOf(mName), BaseNameOf(AIncludeFile)) or
         ((Pos('.', BaseNameOf(mName)) = 0) and SameText(BaseNameOf(mName) + '.inc', BaseNameOf(AIncludeFile))) then
       begin
         Result := Result + [mIndex];
         Break;
       end;
+    end;
+  end;
 end;
 
 function SameFile(const A, B: string): Boolean;
@@ -558,8 +646,12 @@ var
   mFile: string;
 begin
   for mFile in AFiles do
+  begin
     if SameFile(mFile, AFileName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -567,14 +659,18 @@ function CompareTests(const A, B: TAffectedTest): Integer;
 begin
   Result := CompareText(A.Name, B.Name);
   if Result = 0 then
+  begin
     Result := CompareStr(A.Name, B.Name);
+  end;
 end;
 
 function CompareReasons(const A, B: TAffectedReason): Integer;
 begin
   Result := CompareText(A.Text, B.Text);
   if Result = 0 then
+  begin
     Result := CompareStr(A.Text, B.Text);
+  end;
 end;
 
 class procedure TAffectedTests.Sort(var ATests: TArray<TAffectedTest>);
@@ -582,7 +678,9 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(ATests) do
+  begin
     TArray.Sort<TAffectedReason>(ATests[mIndex].Reasons, TComparer<TAffectedReason>.Construct(CompareReasons));
+  end;
   TArray.Sort<TAffectedTest>(ATests, TComparer<TAffectedTest>.Construct(CompareTests));
 end;
 
@@ -591,8 +689,12 @@ var
   mReason: TAffectedReason;
 begin
   for mReason in ATest.Reasons do
+  begin
     if mReason.Text = AReason.Text then
+    begin
       Exit;
+    end;
+  end;
   ATest.Reasons := ATest.Reasons + [AReason];
 end;
 
@@ -637,16 +739,26 @@ begin
         mWhole.Name := TDUnitXCommandLine.TestName(mWhole.UnitName, mWhole.Fixture, '');
         mWhole.RunNames := AFixtureRun(mWhole);
         if mWhole.RunNames = nil then
+        begin
           mWhole.RunNames := [mWhole.Name];
+        end;
         mWhole.Reasons := nil;
         for mIndex in mMembers do
+        begin
           for mReason in ATests[mIndex].Reasons do
+          begin
             AddReason(mWhole, mReason);
+          end;
+        end;
         Result := Result + [mWhole];
       end
       else
+      begin
         for mIndex in mMembers do
+        begin
           Result := Result + [ATests[mIndex]];
+        end;
+      end;
     end;
   finally
     mOrder.Free;
@@ -713,10 +825,14 @@ var
   mText: string;
 begin
   if FSources.TryGetValue(UpperCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := Default(TDUnitXUnit);
   if ReadText(AFileName, mText) then
+  begin
     Result := TDUnitXSource.Scan(TTextLines.SplitLines(mText));
+  end;
   FSources.Add(UpperCase(AFileName), Result);
 end;
 
@@ -733,7 +849,9 @@ procedure TAffectedRun.NeedAll(const AReason: string);
 begin
   // Der erste Grund zählt; weitere ändern am Ergebnis nichts.
   if FResult.All then
+  begin
     Exit;
+  end;
   FResult.All := True;
   FResult.AllReason := AReason;
 end;
@@ -787,19 +905,25 @@ begin
   if MatchText(mExt, ['.dpr', '.dproj']) then
   begin
     for mProgram in FRequest.TestPrograms do
+    begin
       if SameFile(ChangeFileExt(mProgram, mExt), AInput.FileName) then
       begin
         NeedAll(Format('Testprogramm %s geändert', [ExtractFileName(AInput.FileName)]));
         Exit;
       end;
+    end;
     Skip(AInput.FileName, 'Projektdatei eines anderen Projekts');
   end
   else if MatchText(mExt, ['.pas']) then
   begin
     if not ProjectFile(AInput.FileName, mUnit) then
-      Skip(AInput.FileName, 'nicht in den Projekten')
+    begin
+      Skip(AInput.FileName, 'nicht in den Projekten');
+    end
     else if not ReadText(AInput.FileName, mText) then
-      NeedAll(Format('%s nicht lesbar', [ExtractFileName(AInput.FileName)]))
+    begin
+      NeedAll(Format('%s nicht lesbar', [ExtractFileName(AInput.FileName)]));
+    end
     else
     begin
       mFound := False;
@@ -809,16 +933,22 @@ begin
         mFound := True;
       end;
       if not mFound then
+      begin
         Skip(AInput.FileName, 'nur Leerzeilen oder Kommentare');
+      end;
     end;
   end
   else if MatchText(mExt, ['.dfm', '.fmx']) then
   begin
     mUnitFile := ChangeFileExt(AInput.FileName, '.pas');
     if not ProjectFile(mUnitFile, mUnit) then
-      Skip(AInput.FileName, 'Unit nicht in den Projekten')
+    begin
+      Skip(AInput.FileName, 'Unit nicht in den Projekten');
+    end
     else if not ReadText(AInput.FileName, mText) or not ReadText(mUnitFile, mUnitText) then
-      NeedAll(Format('%s nicht lesbar', [ExtractFileName(AInput.FileName)]))
+    begin
+      NeedAll(Format('%s nicht lesbar', [ExtractFileName(AInput.FileName)]));
+    end
     else
     begin
       mClass := TAffectedTests.FormClass(mText);
@@ -827,8 +957,11 @@ begin
       if mClass <> '' then
       begin
         if mUnit.UnitName = '' then
+        begin
           mUnit := TIndexExtractor.ExtractText(mUnitText, mUnitFile, nil, nil);
+        end;
         for mIndex in mUnit.SymbolsNamed(mClass) do
+        begin
           if (mUnit.Symbols[mIndex].Kind = TIndexSymbolKind.ClassType) and (mUnit.Symbols[mIndex].Container = '') then
           begin
             mChange.Kind := TAffectedChangeKind.Symbol;
@@ -838,11 +971,16 @@ begin
             mFound := True;
             Break;
           end;
+        end;
       end;
       if mFound then
-        FResult.Changes := FResult.Changes + [mChange]
+      begin
+        FResult.Changes := FResult.Changes + [mChange];
+      end
       else
+      begin
         NeedAll(Format('Formularklasse von %s nicht gefunden', [ExtractFileName(AInput.FileName)]));
+      end;
     end;
   end
   else if MatchText(mExt, ['.inc']) then
@@ -851,7 +989,9 @@ begin
     for mIncluding in FIndex.Units do
     begin
       if mIncluding.Library_ or not ContainsFile(mIncluding.Includes, AInput.FileName) then
+      begin
         Continue;
+      end;
       mFound := True;
       if not ReadText(mIncluding.FileName, mText) then
       begin
@@ -881,18 +1021,26 @@ begin
       end;
     end;
     if not mFound then
+    begin
       Skip(AInput.FileName, 'von keiner Unit der Projekte eingebunden');
+    end;
   end
   else
+  begin
     Skip(AInput.FileName, 'keine Delphi-Quelle');
+  end;
 end;
 
 function PlaceName(const AItem: THierarchyItem): string;
 begin
   if AItem.Container <> '' then
-    Result := AItem.Container + '.' + AItem.Name
+  begin
+    Result := AItem.Container + '.' + AItem.Name;
+  end
   else
+  begin
     Result := AItem.Name;
+  end;
 end;
 
 procedure TAffectedRun.TraceSymbols(AResolver: TNameResolver; const ACancellation: IJsonRpcCancellationToken);
@@ -915,22 +1063,30 @@ begin
   mWholeFiles := TDictionary<string, Boolean>.Create;
   try
     for mChange in FResult.Changes do
+    begin
       if mChange.Kind = TAffectedChangeKind.WholeUnit then
+      begin
         mWholeFiles.AddOrSetValue(UpperCase(mChange.Item.FileName), True);
+      end;
+    end;
     mStarts := nil;
     mChanges := nil;
     for mChange in FResult.Changes do
+    begin
       if (mChange.Kind = TAffectedChangeKind.Symbol) and not mWholeFiles.ContainsKey(UpperCase(mChange.Item.FileName))
       then
       begin
         mStarts := mStarts + [mChange.Item];
         mChanges := mChanges + [mChange];
       end;
+    end;
   finally
     mWholeFiles.Free;
   end;
   if mStarts = nil then
+  begin
     Exit;
+  end;
   mResults := TImpactAnalysis.AnalyzeEach(AResolver, FIndex, mStarts, FRequest.Files, FReadText, FRequest.Options,
     ACancellation);
   for mIndex := 0 to High(mResults) do
@@ -945,11 +1101,13 @@ begin
       mInferred := False;
       mPlace := -1;
       for mStep := 0 to High(mFound.Places) do
+      begin
         if mFound.Places[mStep].Test = mTestIndex then
         begin
           mPlace := mStep;
           Break;
         end;
+      end;
       mTest := Default(TAffectedTest);
       mTest.Name := mImpactTest.Name;
       mTest.RunNames := mImpactTest.RunNames;
@@ -965,7 +1123,9 @@ begin
         begin
           mPath := TArray<string>.Create(PlaceName(mFound.Places[mStep].Item)) + mPath;
           if not mFound.Places[mStep].Confidence.IsSure then
+          begin
             mInferred := True;
+          end;
           mStep := mFound.Places[mStep].Cause;
         end;
       end
@@ -977,7 +1137,9 @@ begin
         mTest.UnitName := mStarts[mIndex].UnitName;
       end;
       if (mTest.UnitName = '') and EndsText('.' + mTest.Fixture + '.' + mTest.Method, mTest.Name) then
+      begin
         mTest.UnitName := Copy(mTest.Name, 1, Length(mTest.Name) - Length(mTest.Fixture + mTest.Method) - 2);
+      end;
       mPath := TArray<string>.Create(mChanges[mIndex].Text) + mPath;
       mReason.Change := mChanges[mIndex].Text;
       mReason.Path := mPath;
@@ -1004,14 +1166,18 @@ var
   mPath: TArray<string>;
 begin
   if FResult.All then
+  begin
     Exit;
+  end;
   mUsers := nil;
   mUnits := TDictionary<string, TUnitIndex>.Create;
   try
     for mChange in FResult.Changes do
     begin
       if mChange.Kind <> TAffectedChangeKind.WholeUnit then
+      begin
         Continue;
+      end;
       if mUsers = nil then
       begin
         // Umgekehrte uses-Beziehung der Projekt-Units, einmal für alle ganzen Units.
@@ -1019,7 +1185,9 @@ begin
         for mUnit in FIndex.Units do
         begin
           if mUnit.Library_ or (mUnit.UnitName = '') then
+          begin
             Continue;
+          end;
           mUnits.AddOrSetValue(UpperCase(mUnit.UnitName), mUnit);
           for mUsed in mUnit.InterfaceUses + mUnit.ImplementationUses do
           begin
@@ -1029,7 +1197,9 @@ begin
               mUsers.Add(UpperCase(mUsed), mList);
             end;
             if not mList.Contains(mUnit.UnitName) then
+            begin
               mList.Add(mUnit.UnitName);
+            end;
           end;
         end;
       end;
@@ -1049,6 +1219,7 @@ begin
             begin
               mSource := SourceOf(mFound.FileName);
               for mFixture := 0 to High(mSource.Fixtures) do
+              begin
                 for mTestIndex := 0 to High(mSource.Fixtures[mFixture].Tests) do
                 begin
                   mTest := Default(TAffectedTest);
@@ -1066,20 +1237,27 @@ begin
                   mReason.Inferred := False;
                   AddTest(mTest, mReason);
                 end;
+              end;
             end;
             if (mLevel < FRequest.Options.Depth) and mUsers.TryGetValue(UpperCase(mName), mList) then
+            begin
               for mNext in mList do
+              begin
                 if not mPaths.ContainsKey(UpperCase(mNext)) then
                 begin
                   mPath := mPaths[UpperCase(mName)] + TArray<string>.Create('Unit ' + mNext);
                   mPaths.Add(UpperCase(mNext), mPath);
                   mLevelNext.Add(mNext);
                 end;
+              end;
+            end;
           end;
           mFrontier.Clear;
           mFrontier.AddRange(mLevelNext.ToArray);
           if mFrontier.Count = 0 then
+          begin
             Break;
+          end;
         end;
       finally
         mPaths.Free;
@@ -1106,7 +1284,9 @@ begin
   for mInput in AInputs do
   begin
     if ACancellation <> nil then
+    begin
       ACancellation.ThrowIfCancellationRequested;
+    end;
     MapInput(mInput);
   end;
   if not FResult.All then
@@ -1114,16 +1294,22 @@ begin
     TraceSymbols(AResolver, ACancellation);
     // Unvollständig verfolgt: Es können Tests fehlen. Die Tiefe dagegen ist gewollt.
     if TImpactLimit.Time in FResult.Limits then
-      NeedAll('Zeitlimit der Analyse erreicht')
+    begin
+      NeedAll('Zeitlimit der Analyse erreicht');
+    end
     else if TImpactLimit.Count in FResult.Limits then
+    begin
       NeedAll(Format('mehr als %d betroffene Stellen', [TImpactAnalysis.MaxPlaces]));
+    end;
   end;
   if not FResult.All then
   begin
     TraceUnits;
     mTests := nil;
     for mKey in FOrder do
+    begin
       mTests := mTests + [FTests[mKey]];
+    end;
     FResult.Tests := TAffectedTests.Collapse(mTests,
       function(ATest: TAffectedTest): Integer
       var
@@ -1132,9 +1318,13 @@ begin
       begin
         mSource := SourceOf(ATest.FileName);
         if mSource.Find(ATest.Fixture, '', mFixture, mTestIndex) then
-          Result := Length(mSource.Fixtures[mFixture].Tests)
+        begin
+          Result := Length(mSource.Fixtures[mFixture].Tests);
+        end
         else
+        begin
           Result := 0;
+        end;
       end,
       function(ATest: TAffectedTest): TArray<string>
       var
@@ -1143,9 +1333,13 @@ begin
       begin
         mSource := SourceOf(ATest.FileName);
         if mSource.Find(ATest.Fixture, '', mFixture, mTestIndex) then
-          Result := TDUnitXCommandLine.RunNames(mSource, mFixture, -1, -1)
+        begin
+          Result := TDUnitXCommandLine.RunNames(mSource, mFixture, -1, -1);
+        end
         else
+        begin
           Result := nil;
+        end;
       end);
     TAffectedTests.Sort(FResult.Tests);
   end;
@@ -1170,11 +1364,17 @@ class function TAffectedTests.TryParseFormat(const AText: string; out AFormat: T
 begin
   Result := True;
   if (AText = '') or SameText(AText, 'text') then
-    AFormat := TAffectedFormat.Text
+  begin
+    AFormat := TAffectedFormat.Text;
+  end
   else if SameText(AText, 'json') then
-    AFormat := TAffectedFormat.Json
+  begin
+    AFormat := TAffectedFormat.Json;
+  end
   else if SameText(AText, 'dunitx') then
-    AFormat := TAffectedFormat.DUnitX
+  begin
+    AFormat := TAffectedFormat.DUnitX;
+  end
   else
   begin
     AFormat := TAffectedFormat.Text;
@@ -1198,7 +1398,9 @@ begin
       end;
     TAffectedFormat.DUnitX:
       if not DUnitXArgument(AResult, Result) then
+      begin
         Result := '';
+      end;
   else
     Result := ToText(AResult);
   end;
@@ -1211,10 +1413,14 @@ begin
   AArgument := '';
   Result := True;
   if AResult.All or (Length(AResult.Tests) = 0) then
+  begin
     Exit;
+  end;
   mRun := string.Join(',', AResult.RunNames);
   if Length(mRun) > TDUnitXCommandLine.MaxRunLength then
+  begin
     Exit(False);
+  end;
   AArgument := '--run:' + mRun;
 end;
 
@@ -1230,41 +1436,63 @@ var
 begin
   mLines := nil;
   if AResult.All then
-    mLines := mLines + [Format('Alle Tests nötig: %s.', [AResult.AllReason])]
+  begin
+    mLines := mLines + [Format('Alle Tests nötig: %s.', [AResult.AllReason])];
+  end
   else if Length(AResult.Tests) = 0 then
-    mLines := mLines + [Format('Keine betroffenen Tests gegenüber %s (Tiefe %d).', [AResult.Base, AResult.Depth])]
+  begin
+    mLines := mLines + [Format('Keine betroffenen Tests gegenüber %s (Tiefe %d).', [AResult.Base, AResult.Depth])];
+  end
   else
   begin
     mFixtures := 0;
     for mTest in AResult.Tests do
+    begin
       if mTest.Method = '' then
+      begin
         Inc(mFixtures);
+      end;
+    end;
     mLines := mLines + [Format('%d betroffene Tests gegenüber %s (Tiefe %d), davon %d ganze Fixtures:',
       [Length(AResult.Tests), AResult.Base, AResult.Depth, mFixtures])];
     for mTest in AResult.Tests do
     begin
       mLines := mLines + ['  ' + mTest.Name];
       for mReason in mTest.Reasons do
+      begin
         mLines := mLines + ['    ← ' + mReason.Text];
+      end;
     end;
   end;
   if Length(AResult.Changes) > 0 then
   begin
     mLines := mLines + ['', Format('Geändert (%d):', [Length(AResult.Changes)])];
     for mChange in AResult.Changes do
+    begin
       mLines := mLines + [Format('  %s (%s, %s)', [mChange.Text, mChange.Place, ExtractFileName(mChange.Source)])];
+    end;
   end;
   if Length(AResult.Skipped) > 0 then
+  begin
     mLines := mLines + ['', Format('Ohne Einfluss auf Tests: %d Dateien.', [Length(AResult.Skipped)])];
+  end;
   mLimitNames := nil;
   for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
+  begin
     if mLimit in AResult.Limits then
+    begin
       mLimitNames := mLimitNames + [TImpactAnalysis.LimitName(mLimit)];
+    end;
+  end;
   if mLimitNames <> nil then
+  begin
     mLines := mLines + ['', 'Grenzen erreicht: ' + string.Join(', ', mLimitNames) +
       '; mit größerer Tiefe oder allen Tests prüfen.'];
+  end;
   if not AResult.All and (Length(AResult.Tests) > 0) then
+  begin
     mLines := mLines + ['', 'run_tests tests: ' + string.Join(', ', AResult.RunNames)];
+  end;
   Result := string.Join(sLineBreak, mLines) + sLineBreak;
 end;
 
@@ -1287,8 +1515,12 @@ begin
   mRun := TJSONArray.Create;
   Result.AddPair('run', mRun);
   if not AResult.All then
+  begin
     for mName in AResult.RunNames do
+    begin
       mRun.Add(mName);
+    end;
+  end;
   mTests := TJSONArray.Create;
   Result.AddPair('tests', mTests);
   for mTest in AResult.Tests do
@@ -1302,7 +1534,9 @@ begin
     mRun := TJSONArray.Create;
     mEntry.AddPair('run', mRun);
     for mName in mTest.RunNames do
+    begin
       mRun.Add(mName);
+    end;
     mEntry.AddPair('uri', TDocumentUris.FromPath(mTest.FileName));
     mEntry.AddPair('line', TJSONNumber.Create(mTest.Line));
     mReasons := TJSONArray.Create;
@@ -1315,7 +1549,9 @@ begin
       mPath := TJSONArray.Create;
       mReasonEntry.AddPair('path', mPath);
       for mStep in mReason.Path do
+      begin
         mPath.Add(mStep);
+      end;
       mReasonEntry.AddPair('inferred', TJSONBool.Create(mReason.Inferred));
     end;
   end;
@@ -1326,9 +1562,13 @@ begin
     mEntry := TJSONObject.Create;
     mChanges.AddElement(mEntry);
     if mChange.Kind = TAffectedChangeKind.WholeUnit then
-      mEntry.AddPair('kind', 'unit')
+    begin
+      mEntry.AddPair('kind', 'unit');
+    end
     else
+    begin
       mEntry.AddPair('kind', 'symbol');
+    end;
     mEntry.AddPair('name', mChange.Text);
     mEntry.AddPair('place', mChange.Place);
     mEntry.AddPair('uri', TDocumentUris.FromPath(mChange.Source));
@@ -1345,7 +1585,9 @@ begin
   mLimits := TJSONObject.Create;
   Result.AddPair('limits', mLimits);
   for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
+  begin
     mLimits.AddPair(TImpactAnalysis.LimitName(mLimit), TJSONBool.Create(mLimit in AResult.Limits));
+  end;
 end;
 
 class function TAffectedTests.FromJson(const AValue: TJSONValue): TAffectedResult;
@@ -1361,17 +1603,22 @@ var
 begin
   Result := Default(TAffectedResult);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject(AValue);
   mRoot.TryGetValue<string>('base', Result.Base);
   mRoot.TryGetValue<Integer>('depth', Result.Depth);
   mRoot.TryGetValue<Boolean>('all', Result.All);
   mRoot.TryGetValue<string>('reason', Result.AllReason);
   if mRoot.TryGetValue<TJSONArray>('tests', mArray) then
+  begin
     for mItem in mArray do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mEntry := TJSONObject(mItem);
       mTest := Default(TAffectedTest);
       mEntry.TryGetValue<string>('name', mTest.Name);
@@ -1380,30 +1627,51 @@ begin
       mEntry.TryGetValue<string>('method', mTest.Method);
       mEntry.TryGetValue<Integer>('line', mTest.Line);
       if mEntry.TryGetValue<string>('uri', mUri) then
+      begin
         mTest.FileName := TDocumentUris.ToPath(mUri);
+      end;
       if mEntry.TryGetValue<TJSONArray>('run', mInner) then
+      begin
         for mStep in mInner do
+        begin
           mTest.RunNames := mTest.RunNames + [mStep.Value];
+        end;
+      end;
       if mEntry.TryGetValue<TJSONArray>('reasons', mInner) then
+      begin
         for mReasonItem in mInner do
         begin
           if not (mReasonItem is TJSONObject) then
+          begin
             Continue;
+          end;
           mReasonEntry := TJSONObject(mReasonItem);
           mReason := Default(TAffectedReason);
           mReasonEntry.TryGetValue<string>('change', mReason.Change);
           mReasonEntry.TryGetValue<Boolean>('inferred', mReason.Inferred);
           if mReasonEntry.TryGetValue<TJSONArray>('path', mSteps) then
+          begin
             for mStep in mSteps do
+            begin
               mReason.Path := mReason.Path + [mStep.Value];
+            end;
+          end;
           mTest.Reasons := mTest.Reasons + [mReason];
         end;
+      end;
       Result.Tests := Result.Tests + [mTest];
     end;
+  end;
   if mRoot.TryGetValue<TJSONObject>('limits', mLimits) then
+  begin
     for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
+    begin
       if mLimits.TryGetValue<Boolean>(TImpactAnalysis.LimitName(mLimit), mFlag) and mFlag then
+      begin
         Include(Result.Limits, mLimit);
+      end;
+    end;
+  end;
 end;
 
 end.

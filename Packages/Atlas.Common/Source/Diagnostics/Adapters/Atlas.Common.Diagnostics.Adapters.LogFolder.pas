@@ -89,7 +89,9 @@ begin
     FStream.Seek(0, soEnd);
   end
   else
+  begin
     FStream := TFileStream.Create(FileName, fmCreate or fmShareDenyWrite);
+  end;
 end;
 
 procedure TDiagnosticLogFolder.WriteLine(const ALine: string);
@@ -103,7 +105,9 @@ begin
     try
       Day := FormatDateTime('yyyymmdd', Now);
       if (FStream = nil) or (Day <> FDay) then
+      begin
         OpenFor(Day);
+      end;
       FStream.WriteBuffer(Bytes, Length(Bytes));
     except
       // Das Diagnoselog darf den Server nie stören (Platte voll, Ordner gesperrt).
@@ -127,10 +131,16 @@ begin
     Own := TPath.Combine(FFolder, Format('run-%s.open', [FTag]));
     // Marken anderer, noch laufender Server sind offen und lassen sich nicht löschen.
     for FileName in TDirectory.GetFiles(FFolder, MarkerPattern) do
+    begin
       if not SameText(FileName, Own) and System.SysUtils.DeleteFile(FileName) then
+      begin
         Inc(Result);
+      end;
+    end;
     if FMarker = nil then
+    begin
       FMarker := TFileStream.Create(Own, fmCreate or fmShareExclusive);
+    end;
   except
     on EStreamError do
       Result := 0;
@@ -144,7 +154,9 @@ var
   FileName: string;
 begin
   if FMarker = nil then
+  begin
     Exit;
+  end;
   FileName := TFileStream(FMarker).FileName;
   FreeAndNil(FMarker);
   System.SysUtils.DeleteFile(FileName);
@@ -156,12 +168,18 @@ var
   Limit: TDateTime;
 begin
   if (ADays <= 0) or not TDirectory.Exists(FFolder) then
+  begin
     Exit;
+  end;
   Limit := IncDay(Now, -ADays);
   try
     for FileName in TDirectory.GetFiles(FFolder, FilePattern) + TDirectory.GetFiles(FFolder, MapPattern) do
+    begin
       if TFile.GetLastWriteTime(FileName) < Limit then
+      begin
         System.SysUtils.DeleteFile(FileName);
+      end;
+    end;
   except
     on EInOutError do
       ;
@@ -171,7 +189,9 @@ end;
 procedure TDiagnosticLogFolder.WriteMap(const ALines: TArray<string>);
 begin
   if Length(ALines) = 0 then
+  begin
     Exit;
+  end;
   try
     ForceDirectories(FFolder);
     TFile.WriteAllLines(TPath.Combine(FFolder, Format('diag-map-%s-%s.txt', [FormatDateTime('yyyymmdd', Now),

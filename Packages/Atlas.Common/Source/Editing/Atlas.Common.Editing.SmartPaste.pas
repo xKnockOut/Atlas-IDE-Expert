@@ -66,7 +66,9 @@ function Bare(const AIdentifier: string): string;
 begin
   Result := AIdentifier;
   if Result.StartsWith('&') then
+  begin
     Result := Result.Substring(1);
+  end;
 end;
 
 function Contains(const ANames: TArray<string>; const AName: string): Boolean;
@@ -74,8 +76,12 @@ var
   Name: string;
 begin
   for Name in ANames do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -96,7 +102,9 @@ var
 begin
   Result := nil;
   if not Assigned(ADeclaring) then
+  begin
     Exit;
+  end;
   Clauses := TUsesClauses.Clauses(ATokens);
   Seen := nil;
   for Index := 0 to High(ATokens) do
@@ -104,22 +112,34 @@ begin
     Token := ATokens[Index];
     if (Token.Kind <> TPascalTokenKind.Identifier) or Before(Token.StartPos, ARange.StartPos) or
       Before(ARange.EndPos, Token.EndPos) then
+    begin
       Continue;
+    end;
     Name := Bare(Token.Text);
     if Contains(Seen, Name) then
+    begin
       Continue;
+    end;
     Seen := Seen + [Name];
     // Eingefügte uses-Einträge sind keine Bezeichner, die fehlen.
     InUses := False;
     for Clause in Clauses do
+    begin
       if (Token.Offset > ATokens[Clause.UsesIndex].Offset) and (Token.Offset < ATokens[Clause.Semicolon].Offset) then
+      begin
         InUses := True;
+      end;
+    end;
     if InUses then
+    begin
       Continue;
+    end;
     Item.Name := Name;
     Item.Units := TUsesActions.MissingUnits(ATokens, ATree, Token.StartPos, ADeclaring, ANamespaces);
     if Item.Units <> nil then
+    begin
       Result := Result + [Item];
+    end;
   end;
 end;
 
@@ -129,8 +149,12 @@ var
 begin
   Result := nil;
   for Item in ANames do
+  begin
     if (Length(Item.Units) = 1) and not Contains(Result, Item.Units[0]) then
+    begin
       Result := Result + [Item.Units[0]];
+    end;
+  end;
 end;
 
 class function TSmartPaste.InInterface(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Boolean;
@@ -142,11 +166,17 @@ begin
   for Token in ATokens do
   begin
     if Before(APosition, Token.StartPos) then
+    begin
       Break;
+    end;
     if Token.IsKeyword('interface') then
-      Seen := True
+    begin
+      Seen := True;
+    end
     else if Token.IsKeyword('implementation') then
+    begin
       Exit(False);
+    end;
   end;
   Result := Seen;
 end;
@@ -169,13 +199,17 @@ begin
   InterfaceOffset := -1;
   ImplementationOffset := -1;
   for Index := 0 to High(ATokens) do
+  begin
     if ATokens[Index].IsKeyword('interface') and (InterfaceOffset < 0) then
-      InterfaceOffset := ATokens[Index].Offset
+    begin
+      InterfaceOffset := ATokens[Index].Offset;
+    end
     else if ATokens[Index].IsKeyword('implementation') then
     begin
       ImplementationOffset := ATokens[Index].Offset;
       Break;
     end;
+  end;
   // Ohne implementation (Programm, Paket) gibt es nur ein uses.
   Upper := (ImplementationOffset < 0) or InInterface(ATokens, APosition);
   ForInterface := nil;
@@ -184,7 +218,9 @@ begin
   begin
     if (Trim(Name) = '') or SameText(Name, Own) or Contains(AAdded, Name) or
       TUsesClauses.IsUsed(Used, Name, ANamespaces) then
+    begin
       Continue;
+    end;
     if Upper and (ImplementationOffset >= 0) and Assigned(AInterfaceUses) and (Own <> '') and
       Contains(AInterfaceUses(Name), Own) then
     begin
@@ -192,17 +228,25 @@ begin
       AToImplementation := AToImplementation + [Name];
     end
     else if Upper then
-      ForInterface := ForInterface + [Name]
+    begin
+      ForInterface := ForInterface + [Name];
+    end
     else
+    begin
       ForImplementation := ForImplementation + [Name];
+    end;
     AAdded := AAdded + [Name];
   end;
   if (Length(ForInterface) > 0) and TUsesClauses.AddUnit(ATokens, Max(0, InterfaceOffset),
     string.Join(', ', ForInterface), ALineBreak, Edit) then
+  begin
     AEdits := AEdits + [Edit];
+  end;
   if (Length(ForImplementation) > 0) and TUsesClauses.AddUnit(ATokens, ImplementationOffset,
     string.Join(', ', ForImplementation), ALineBreak, Edit) then
+  begin
     AEdits := AEdits + [Edit];
+  end;
   Result := Length(AEdits) > 0;
   if not Result then
   begin

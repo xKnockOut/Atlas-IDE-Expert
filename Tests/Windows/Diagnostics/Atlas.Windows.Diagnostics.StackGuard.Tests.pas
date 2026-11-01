@@ -74,7 +74,9 @@ begin
           begin
             // Nicht „on E: EStackOverflow“: In Delphi 13 veraltet (W1000).
             if not TStackGuard.IsOverflow(E) then
+            begin
               raise;
+            end;
             Inc(Caught);
             TStackGuard.AfterError(E);
           end;

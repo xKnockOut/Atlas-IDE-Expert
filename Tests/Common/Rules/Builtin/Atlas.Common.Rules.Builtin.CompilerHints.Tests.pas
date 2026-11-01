@@ -99,8 +99,10 @@ var
 begin
   Result := '';
   for mFinding in AFindings do
+  begin
     Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
       mFinding.Message]);
+  end;
 end;
 
 function Klasse(const AHead, ABody: string): string;
@@ -123,7 +125,9 @@ begin
     begin
       Result := AReadable and SameText(AName, 'C:\P\Werk.Basis.pas');
       if Result then
+      begin
         AData := TEncoding.UTF8.GetBytes(cBasisUnit);
+      end;
     end;
 end;
 
@@ -285,8 +289,12 @@ var
 begin
   mFound := False;
   for mRule in BuiltinRules do
+  begin
     if mRule.Descriptor.Id = CompilerHintsRuleId then
+    begin
       mFound := True;
+    end;
+  end;
   Assert.IsTrue(mFound);
 end;
 

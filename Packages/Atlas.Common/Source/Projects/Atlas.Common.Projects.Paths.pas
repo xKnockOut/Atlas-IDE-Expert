@@ -48,13 +48,21 @@ implementation
 function SeparatorFor(const APath: string): Char;
 begin
   if ((Length(APath) >= 2) and (APath[2] = ':')) or APath.StartsWith('\') then
-    Result := '\'
+  begin
+    Result := '\';
+  end
   else if APath.StartsWith('/') then
-    Result := '/'
-  else if Pos('\', APath) > 0 then
-    Result := '\'
-  else
+  begin
     Result := '/';
+  end
+  else if Pos('\', APath) > 0 then
+  begin
+    Result := '\';
+  end
+  else
+  begin
+    Result := '/';
+  end;
 end;
 
 function LastSeparator(const APath: string): Integer;
@@ -62,8 +70,12 @@ var
   Index: Integer;
 begin
   for Index := Length(APath) downto 1 do
+  begin
     if CharInSet(APath[Index], ['\', '/']) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -84,7 +96,9 @@ var
   Index: Integer;
 begin
   if APath = '' then
+  begin
     Exit('');
+  end;
   Separator := SeparatorFor(APath);
   Rest := StringReplace(APath, '/', Separator, [rfReplaceAll]);
   Rest := StringReplace(Rest, '\', Separator, [rfReplaceAll]);
@@ -100,27 +114,41 @@ begin
     Rest := Copy(Rest, 3, MaxInt);
   end
   else if (Rest <> '') and (Rest[1] = Separator) then
-    Prefix := Separator
+  begin
+    Prefix := Separator;
+  end
   else
+  begin
     Prefix := '';
+  end;
   Parts := TList<string>.Create;
   try
     Start := 1;
     for Index := 1 to Length(Rest) + 1 do
+    begin
       if (Index > Length(Rest)) or (Rest[Index] = Separator) then
       begin
         Part := Copy(Rest, Start, Index - Start);
         Start := Index + 1;
         if (Part = '') or (Part = '.') then
+        begin
           Continue;
+        end;
         if Part <> '..' then
-          Parts.Add(Part)
+        begin
+          Parts.Add(Part);
+        end
         else if (Parts.Count > 0) and (Parts.Last <> '..') then
-          Parts.Delete(Parts.Count - 1)
+        begin
+          Parts.Delete(Parts.Count - 1);
+        end
         else if Prefix = '' then
+        begin
           // Relativer Pfad über den Anfang hinaus; an der Wurzel bleibt es bei der Wurzel.
           Parts.Add(Part);
+        end;
       end;
+    end;
     Result := Prefix + string.Join(Separator, Parts.ToArray);
   finally
     Parts.Free;
@@ -130,11 +158,17 @@ end;
 class function TProjectPaths.Combine(const ABase, APath: string): string;
 begin
   if (APath = '') then
-    Result := Normalize(ABase)
+  begin
+    Result := Normalize(ABase);
+  end
   else if IsAbsolute(APath) or (ABase = '') then
-    Result := Normalize(APath)
+  begin
+    Result := Normalize(APath);
+  end
   else
+  begin
     Result := Normalize(ABase + SeparatorFor(ABase + APath) + APath);
+  end;
 end;
 
 class function TProjectPaths.DirectoryOf(const AFileName: string): string;
@@ -143,11 +177,17 @@ var
 begin
   Index := LastSeparator(AFileName);
   if Index = 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else if (Index = 3) and (AFileName[2] = ':') then
-    Result := Copy(AFileName, 1, 3)
+  begin
+    Result := Copy(AFileName, 1, 3);
+  end
   else
+  begin
     Result := Copy(AFileName, 1, Index - 1);
+  end;
 end;
 
 class function TProjectPaths.CommonFolder(const A, B: string): string;
@@ -158,7 +198,9 @@ var
 begin
   Result := '';
   if (A = '') or (B = '') then
+  begin
     Exit;
+  end;
   mSeparator := SeparatorFor(A);
   mLeft := Normalize(A).Split(['\', '/']);
   mRight := Normalize(B).Split(['\', '/']);
@@ -166,17 +208,25 @@ begin
   for mIndex := 0 to Min(High(mLeft), High(mRight)) do
   begin
     if not SameText(mLeft[mIndex], mRight[mIndex]) then
+    begin
       Break;
+    end;
     Inc(mCount);
   end;
   if mCount = 0 then
+  begin
     Exit;
+  end;
   Result := string.Join(mSeparator, Copy(mLeft, 0, mCount));
   // Laufwerk allein ("C:") als Ordner "C:\"; POSIX-Wurzel ("" vor dem ersten "/") als "/".
   if (Length(Result) = 2) and (Result[2] = ':') then
-    Result := Result + mSeparator
+  begin
+    Result := Result + mSeparator;
+  end
   else if Result = '' then
+  begin
     Result := mSeparator;
+  end;
 end;
 
 class function TProjectPaths.BaseName(const AFileName: string): string;
@@ -186,7 +236,9 @@ begin
   Result := Copy(AFileName, LastSeparator(AFileName) + 1, MaxInt);
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, 1, Dot - 1);
+  end;
 end;
 
 class function TProjectPaths.Extension(const AFileName: string): string;
@@ -197,9 +249,13 @@ begin
   Name := Copy(AFileName, LastSeparator(AFileName) + 1, MaxInt);
   Dot := LastDelimiter('.', Name);
   if Dot = 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := LowerCase(Copy(Name, Dot, MaxInt));
+  end;
 end;
 
 class function TProjectPaths.SplitList(const AValue: string): TArray<string>;
@@ -210,8 +266,12 @@ begin
   Items := TList<string>.Create;
   try
     for Item in AValue.Split([';']) do
+    begin
       if Trim(Item) <> '' then
+      begin
         Items.Add(Trim(Item));
+      end;
+    end;
     Result := Items.ToArray;
   finally
     Items.Free;
@@ -229,7 +289,9 @@ var
   Found: Boolean;
 begin
   if Pos('$(', AText) = 0 then
+  begin
     Exit(AText);
+  end;
   Builder := TStringBuilder.Create;
   try
     Index := 1;
@@ -243,14 +305,18 @@ begin
           Name := Copy(AText, Index + 2, Close - Index - 2);
           Found := False;
           for Variable in AVariables do
+          begin
             if SameText(Variable.Key, Name) then
             begin
               Builder.Append(Variable.Value);
               Found := True;
               Break;
             end;
+          end;
           if not Found then
+          begin
             Builder.Append(Copy(AText, Index, Close - Index + 1));
+          end;
           Index := Close + 1;
           Continue;
         end;

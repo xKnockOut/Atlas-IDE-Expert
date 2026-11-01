@@ -95,7 +95,9 @@ begin
   mArrow := Pos(' => ', AText);
   Result := mArrow > 0;
   if not Result then
+  begin
     Exit;
+  end;
   mOpen := Pos('{', AText);
   mClose := Pos('}', AText);
   if (mOpen > 0) and (mOpen < mArrow) and (mClose > mArrow) then
@@ -120,7 +122,9 @@ end;
 function CountOf(const AText: string): Integer;
 begin
   if not TryStrToInt(AText, Result) then
+  begin
     Result := -1;
+  end;
 end;
 
 class function THotspotHistory.ParseGitLog(const AText: string): TArray<THotspotCommit>;
@@ -140,32 +144,46 @@ begin
     begin
       mLines := StringReplace(mRecord, #13, '', [rfReplaceAll]).Split([#10]);
       if (Length(mLines) = 0) or (Trim(mLines[0]) = '') then
+      begin
         Continue;
+      end;
       mHead := mLines[0].Split([GitField], 4);
       if (Length(mHead) < 3) or not TryStrToInt64(Trim(mHead[1]), mSeconds) then
+      begin
         Continue;
+      end;
       mCommit := Default(THotspotCommit);
       mCommit.Revision := Trim(mHead[0]);
       mCommit.Date := UnixToDateTime(mSeconds, True);
       mCommit.Author := Trim(mHead[2]);
       if Length(mHead) > 3 then
+      begin
         mCommit.Summary := Trim(mHead[3]);
+      end;
       mFiles.Clear;
       for mIndex := 1 to High(mLines) do
       begin
         mLine := mLines[mIndex];
         mFields := mLine.Split([#9], 3);
         if Length(mFields) < 3 then
+        begin
           Continue;
+        end;
         if SplitRename(mFields[2], mOld, mNew) then
+        begin
           mFiles.Add(THotspotFileChange.Make(mNew, mOld, THotspotChangeKind.Renamed, CountOf(mFields[0]),
-            CountOf(mFields[1])))
+            CountOf(mFields[1])));
+        end
         else
+        begin
           mFiles.Add(THotspotFileChange.Make(mFields[2], '', THotspotChangeKind.Modified, CountOf(mFields[0]),
             CountOf(mFields[1])));
+        end;
       end;
       if mFiles.Count = 0 then
+      begin
         Continue;
+      end;
       mCommit.Files := mFiles.ToArray;
       mList.Add(mCommit);
     end;
@@ -202,7 +220,9 @@ var
   mBuilder: TStringBuilder;
 begin
   if Pos('&', AText) = 0 then
+  begin
     Exit(AText);
+  end;
   mBuilder := TStringBuilder.Create;
   try
     mIndex := 1;
@@ -216,19 +236,33 @@ begin
           mName := Copy(AText, mIndex + 1, mEnd - mIndex - 1);
           mCode := -1;
           if mName = 'amp' then
-            mCode := Ord('&')
+          begin
+            mCode := Ord('&');
+          end
           else if mName = 'lt' then
-            mCode := Ord('<')
+          begin
+            mCode := Ord('<');
+          end
           else if mName = 'gt' then
-            mCode := Ord('>')
+          begin
+            mCode := Ord('>');
+          end
           else if mName = 'quot' then
-            mCode := Ord('"')
+          begin
+            mCode := Ord('"');
+          end
           else if mName = 'apos' then
-            mCode := Ord('''')
+          begin
+            mCode := Ord('''');
+          end
           else if StartsText('#x', mName) then
-            mCode := StrToIntDef('$' + Copy(mName, 3, MaxInt), -1)
+          begin
+            mCode := StrToIntDef('$' + Copy(mName, 3, MaxInt), -1);
+          end
           else if StartsText('#', mName) then
+          begin
             mCode := StrToIntDef(Copy(mName, 2, MaxInt), -1);
+          end;
           if (mCode >= 0) and (mCode <= $FFFF) then
           begin
             mBuilder.Append(Char(mCode));
@@ -255,16 +289,24 @@ begin
   Result := '';
   mStart := Pos(' ' + AName + '=', ATag);
   if mStart = 0 then
+  begin
     Exit;
+  end;
   mStart := mStart + Length(AName) + 2;
   if mStart > Length(ATag) then
+  begin
     Exit;
+  end;
   mQuote := ATag[mStart];
   if (mQuote <> '"') and (mQuote <> '''') then
+  begin
     Exit;
+  end;
   mEnd := PosEx(mQuote, ATag, mStart + 1);
   if mEnd > 0 then
+  begin
     Result := XmlText(Copy(ATag, mStart + 1, mEnd - mStart - 1));
+  end;
 end;
 
 /// <summary>Inhalt des ersten Elements AName ab AFrom bis ALimit; '' ohne.</summary>
@@ -275,13 +317,19 @@ begin
   Result := '';
   mStart := PosEx('<' + AName, AXml, AFrom);
   if (mStart = 0) or (mStart > ALimit) then
+  begin
     Exit;
+  end;
   mClose := PosEx('>', AXml, mStart);
   if (mClose = 0) or (AXml[mClose - 1] = '/') then
+  begin
     Exit;
+  end;
   mEnd := PosEx('</' + AName + '>', AXml, mClose);
   if (mEnd > 0) and (mEnd <= ALimit) then
+  begin
     Result := XmlText(Copy(AXml, mClose + 1, mEnd - mClose - 1));
+  end;
 end;
 
 type
@@ -298,23 +346,35 @@ var
 begin
   mPrefix := APrefix;
   if (mPrefix <> '') and (mPrefix[Length(mPrefix)] <> '/') then
+  begin
     mPrefix := mPrefix + '/';
+  end;
   if mPrefix = '/' then
+  begin
     mPrefix := '';
+  end;
   if mPrefix = '' then
   begin
     ARelative := APath;
     if StartsStr('/', ARelative) then
+    begin
       Delete(ARelative, 1, 1);
+    end;
     Exit(ARelative <> '');
   end;
   if not StartsStr('/', mPrefix) then
+  begin
     mPrefix := '/' + mPrefix;
+  end;
   Result := StartsStr(mPrefix, APath) and (Length(APath) > Length(mPrefix));
   if Result then
-    ARelative := Copy(APath, Length(mPrefix) + 1, MaxInt)
+  begin
+    ARelative := Copy(APath, Length(mPrefix) + 1, MaxInt);
+  end
   else
+  begin
     ARelative := '';
+  end;
 end;
 
 class function THotspotHistory.ParseSvnLog(const AXml, APrefix: string): TArray<THotspotCommit>;
@@ -339,7 +399,9 @@ begin
     begin
       mEntryEnd := PosEx('</logentry>', AXml, mEntry);
       if mEntryEnd = 0 then
+      begin
         Break;
+      end;
       mTagEnd := PosEx('>', AXml, mEntry);
       mTag := Copy(AXml, mEntry, mTagEnd - mEntry);
       mCommit := Default(THotspotCommit);
@@ -347,9 +409,13 @@ begin
       mCommit.Author := Trim(XmlElement(AXml, 'author', mTagEnd, mEntryEnd));
       mCommit.Summary := Trim(StringReplace(XmlElement(AXml, 'msg', mTagEnd, mEntryEnd), #13, '', [rfReplaceAll]));
       if Pos(#10, mCommit.Summary) > 0 then
+      begin
         mCommit.Summary := Trim(Copy(mCommit.Summary, 1, Pos(#10, mCommit.Summary) - 1));
+      end;
       if not TryParseIsoDate(Trim(XmlElement(AXml, 'date', mTagEnd, mEntryEnd)), mCommit.Date) then
+      begin
         mCommit.Date := 0;
+      end;
       mPaths.Clear;
       mDeleted.Clear;
       mCopied.Clear;
@@ -359,7 +425,9 @@ begin
         mPathClose := PosEx('>', AXml, mPathStart);
         mPathEnd := PosEx('</path>', AXml, mPathClose);
         if (mPathClose = 0) or (mPathEnd = 0) or (mPathEnd > mEntryEnd) then
+        begin
           Break;
+        end;
         mTag := Copy(AXml, mPathStart, mPathClose - mPathStart);
         mItem.Action := XmlAttribute(mTag, 'action');
         mItem.Kind := XmlAttribute(mTag, 'kind');
@@ -367,9 +435,13 @@ begin
         mItem.Path := Trim(XmlText(Copy(AXml, mPathClose + 1, mPathEnd - mPathClose - 1)));
         mPaths.Add(mItem);
         if mItem.Action = 'D' then
+        begin
           mDeleted.AddOrSetValue(mItem.Path, True);
+        end;
         if mItem.CopyFrom <> '' then
+        begin
           mCopied.AddOrSetValue(mItem.CopyFrom, True);
+        end;
         mPathStart := PosEx('<path ', AXml, mPathEnd);
       end;
       mFiles.Clear;
@@ -377,21 +449,31 @@ begin
       begin
         // Ordner zählen nicht; alte Server lassen kind weg.
         if (mItem.Kind = 'dir') or not RelativeToPrefix(mItem.Path, APrefix, mRelative) then
+        begin
           Continue;
+        end;
         if mItem.Action = 'D' then
         begin
           // Die gelöschte Quelle einer Umbenennung steht beim neuen Pfad.
           if not mCopied.ContainsKey(mItem.Path) then
+          begin
             mFiles.Add(THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Deleted, -1, -1));
+          end;
           Continue;
         end;
         if (mItem.CopyFrom <> '') and mDeleted.ContainsKey(mItem.CopyFrom) and
           RelativeToPrefix(mItem.CopyFrom, APrefix, mOld) then
-          mFiles.Add(THotspotFileChange.Make(mRelative, mOld, THotspotChangeKind.Renamed, -1, -1))
+        begin
+          mFiles.Add(THotspotFileChange.Make(mRelative, mOld, THotspotChangeKind.Renamed, -1, -1));
+        end
         else if mItem.Action = 'A' then
-          mFiles.Add(THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Added, -1, -1))
+        begin
+          mFiles.Add(THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Added, -1, -1));
+        end
         else
+        begin
           mFiles.Add(THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Modified, -1, -1));
+        end;
       end;
       if mFiles.Count > 0 then
       begin
@@ -406,7 +488,9 @@ begin
       begin
         Result := StrToIntDef(ARight.Revision, 0) - StrToIntDef(ALeft.Revision, 0);
         if Result = 0 then
+        begin
           Result := CompareStr(ALeft.Revision, ARight.Revision);
+        end;
       end));
     Result := mList.ToArray;
   finally
@@ -440,13 +524,19 @@ begin
       for mFile in mCommit.Files do
       begin
         if not mNames.TryGetValue(LowerCase(mFile.Path), mCurrent) then
+        begin
           mCurrent := mFile.Path;
+        end;
         if mCurrent = cGone then
+        begin
           Continue;
+        end;
         case mFile.Kind of
           THotspotChangeKind.Renamed:
             if mFile.OldPath <> '' then
+            begin
               mNames.AddOrSetValue(LowerCase(mFile.OldPath), mCurrent);
+            end;
           THotspotChangeKind.Added:
             mNames.AddOrSetValue(LowerCase(mFile.Path), cGone);
           THotspotChangeKind.Modified, THotspotChangeKind.Deleted: ;
@@ -454,7 +544,9 @@ begin
         mFiles.Add(THotspotFileChange.Make(mCurrent, mFile.OldPath, mFile.Kind, mFile.Added, mFile.Deleted));
       end;
       if mFiles.Count = 0 then
+      begin
         Continue;
+      end;
       mFollowed := mCommit;
       mFollowed.Files := mFiles.ToArray;
       mList.Add(mFollowed);
@@ -474,12 +566,20 @@ begin
   AAdded := 0;
   ADeleted := 0;
   for mLine in ALines do
+  begin
     if StartsStr('+++', mLine) or StartsStr('---', mLine) then
-      Continue
+    begin
+      Continue;
+    end
     else if StartsStr('+', mLine) then
-      Inc(AAdded)
+    begin
+      Inc(AAdded);
+    end
     else if StartsStr('-', mLine) then
+    begin
       Inc(ADeleted);
+    end;
+  end;
 end;
 
 end.

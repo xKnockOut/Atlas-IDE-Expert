@@ -120,7 +120,9 @@ function TParameterText.Text: string;
 begin
   Result := Name + Rest;
   if Modifier <> '' then
+  begin
     Result := Modifier + ' ' + Result;
+  end;
 end;
 
 { TRoutineParts }
@@ -136,9 +138,13 @@ var
 begin
   // Die anonyme Methode trägt Parameter und Ergebnistyp selbst.
   if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
-    Header := ARoutine
+  begin
+    Header := ARoutine;
+  end
   else
+  begin
     Header := HeaderOf(ARoutine);
+  end;
   Result := (Header <> nil) and (Header.FindChild(TSyntaxKind.TypeReference) <> nil);
 end;
 
@@ -164,7 +170,9 @@ begin
       begin
         Header := HeaderOf(ANode);
         if Encloses(Header, Offset) then
+        begin
           Found := ANode;
+        end;
       end;
     end);
   Result := Found;
@@ -195,8 +203,10 @@ begin
   end;
   Result := ASource;
   for Index := High(AEdits) downto 0 do
+  begin
     Result := Copy(Result, 1, AEdits[Index].Start - ABase) + AEdits[Index].Text +
       Copy(Result, AEdits[Index].Stop - ABase + 1, MaxInt);
+  end;
 end;
 
 class function TRoutineParts.NameTokens(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode;
@@ -210,14 +220,20 @@ begin
     (ATokens[Index].IsKeyword('class') or ATokens[Index].IsKeyword('procedure') or
     ATokens[Index].IsKeyword('function') or (ATokens[Index].Kind in [TPascalTokenKind.Comment,
     TPascalTokenKind.Directive])) do
+  begin
     Inc(Index);
+  end;
   if (Index > High(ATokens)) or (ATokens[Index].Kind <> TPascalTokenKind.Identifier) then
+  begin
     Exit;
+  end;
   AFirst := Index;
   ALast := Index;
   while (ALast + 2 <= High(ATokens)) and ATokens[ALast + 1].IsSymbol('.') and
     (ATokens[ALast + 2].Kind = TPascalTokenKind.Identifier) do
+  begin
     Inc(ALast, 2);
+  end;
   Result := True;
 end;
 
@@ -239,7 +255,9 @@ begin
   begin
     if (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
       MatchText(ATokens[Index].Text, AWords) then
+    begin
       Exit(True);
+    end;
     Inc(Index);
   end;
   Result := False;
@@ -255,13 +273,17 @@ begin
   Result := nil;
   Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
   if Parameters = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Parameters.ChildCount - 1 do
   begin
     Node := Parameters[Index];
     Source := Trim(TRoutineBody.TextOf(AText, Node));
     if EndsStr(';', Source) then
+    begin
       Source := Trim(Copy(Source, 1, Length(Source) - 1));
+    end;
     Colon := Pos(':', Source);
     if Colon > 0 then
     begin
@@ -280,7 +302,9 @@ begin
       Head := Trim(Copy(Head, Length(Modifier) + 1, MaxInt));
     end;
     if StartsText('[ref]', Head) then
+    begin
       Exit(nil);
+    end;
     Item.Modifier := Modifier;
     for Name in Head.Split([',']) do
     begin
@@ -298,7 +322,9 @@ begin
   for Index := 0 to High(AParameters) do
   begin
     if Index > 0 then
+    begin
       Result := Result + '; ';
+    end;
     Result := Result + AParameters[Index].Text;
   end;
 end;
@@ -310,16 +336,26 @@ var
 begin
   ResultType := AHeader.FindChild(TSyntaxKind.TypeReference);
   if ResultType <> nil then
-    Result := 'function '
+  begin
+    Result := 'function ';
+  end
   else
+  begin
     Result := 'procedure ';
+  end;
   if AClass then
+  begin
     Result := 'class ' + Result;
+  end;
   Result := Result + AName;
   if AParameters <> nil then
+  begin
     Result := Result + '(' + JoinParameters(AParameters) + ')';
+  end;
   if ResultType <> nil then
+  begin
     Result := Result + ': ' + TRoutineBody.TextOf(AText, ResultType);
+  end;
   Result := Result + ';';
 end;
 
@@ -330,13 +366,21 @@ var
 begin
   ResultType := AHeader.FindChild(TSyntaxKind.TypeReference);
   if ResultType <> nil then
-    Result := 'function'
+  begin
+    Result := 'function';
+  end
   else
+  begin
     Result := 'procedure';
+  end;
   if AParameters <> nil then
+  begin
     Result := Result + '(' + JoinParameters(AParameters) + ')';
+  end;
   if ResultType <> nil then
+  begin
     Result := Result + ': ' + TRoutineBody.TextOf(AText, ResultType);
+  end;
 end;
 
 class function TRoutineParts.ChildNames(ANode: TSyntaxNode): TArray<string>;
@@ -346,9 +390,15 @@ var
 begin
   Result := nil;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     for Name in ANode[Index].Name.Split([',']) do
+    begin
       if Trim(Name) <> '' then
+      begin
         Result := Result + [Trim(Name)];
+      end;
+    end;
+  end;
 end;
 
 class function TRoutineParts.UnitNames(ARoot: TSyntaxNode): TArray<string>;
@@ -362,17 +412,23 @@ begin
   begin
     Section := ARoot[Index];
     if not (Section.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) then
+    begin
       Continue;
+    end;
     for Inner := 0 to Section.ChildCount - 1 do
     begin
       Child := Section[Inner];
       case Child.Kind of
         TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader:
           if TRoutineBody.QualifierOf(Child.Name) = '' then
+          begin
             Result := Result + [Child.Name];
+          end;
         TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
           for Name in TRoutineParts.ChildNames(Child) do
+          begin
             Result := Result + [Name];
+          end;
       else
         // Übrige Arten: nichts zu tun.
       end;
@@ -401,7 +457,9 @@ begin
   while (Node <> nil) and (Node <> AStop) do
   begin
     if Node.Kind = TSyntaxKind.AnonymousMethod then
+    begin
       Exit(True);
+    end;
     Node := Node.Parent;
   end;
   Result := False;
@@ -417,7 +475,9 @@ begin
   begin
     if (Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) and
       ACache.Declares(Node, AName, ANode.StartOffset) then
+    begin
       Exit(True);
+    end;
     Node := Node.Parent;
   end;
   Result := AWithStop and (Node = AStop) and ACache.Declares(AStop, AName, ANode.StartOffset);
@@ -433,7 +493,9 @@ begin
   ADeclaration := nil;
   Result := RoutineWithHeaderAt(ATree, AOffset);
   if Result <> nil then
+  begin
     Exit;
+  end;
   Found := nil;
   Offset := AOffset;
   ATree.Root.Walk(
@@ -442,18 +504,28 @@ begin
       Result := Encloses(ANode, Offset);
       if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
         (ANode.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
+      begin
         Found := ANode;
+      end;
     end);
   if (Found = nil) or (Found.Parent.Parent = nil) then
+  begin
     Exit;
+  end;
   ADeclaration := Found;
   Name := Found.Parent.Parent.Name + '.' + Found.Name;
   Implementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Implementation_ = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Implementation_.ChildCount - 1 do
+  begin
     if (Implementation_[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Implementation_[Index].Name, Name) then
+    begin
       Exit(Implementation_[Index]);
+    end;
+  end;
 end;
 
 { TLocalsCache }
@@ -478,7 +550,9 @@ begin
   begin
     Result := nil;
     if TRoutineBody.BodyOf(ARoutine) <> nil then
+    begin
       Result := TRoutineLocals.Collect(FText, FTree, ARoutine);
+    end;
     FLocals.Add(ARoutine, Result);
   end;
 end;
@@ -491,20 +565,34 @@ var
   Name: string;
 begin
   if SameText(AName, 'Result') and TRoutineParts.IsFunction(ARoutine) then
+  begin
     Exit(True);
+  end;
   for Local in Locals(ARoutine) do
+  begin
     if SameText(Local.Name, AName) and ((Local.Kind in [TRoutineLocalKind.Parameter, TRoutineLocalKind.Variable,
       TRoutineLocalKind.Constant]) or ((Local.ScopeStart <= AOffset) and (AOffset <= Local.ScopeEnd))) then
+    begin
       Exit(True);
+    end;
+  end;
   for Index := 0 to ARoutine.ChildCount - 1 do
   begin
     Child := ARoutine[Index];
     if (Child.Kind = TSyntaxKind.RoutineDecl) and SameText(Child.Name, AName) then
+    begin
       Exit(True);
+    end;
     if Child.Kind = TSyntaxKind.TypeSection then
+    begin
       for Name in TRoutineParts.ChildNames(Child) do
+      begin
         if SameText(Name, AName) then
+        begin
           Exit(True);
+        end;
+      end;
+    end;
   end;
   Result := False;
 end;

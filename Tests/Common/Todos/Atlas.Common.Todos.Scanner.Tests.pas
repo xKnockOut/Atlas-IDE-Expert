@@ -192,11 +192,17 @@ begin
       Read := Read + [AFileName];
       Result := not AFileName.EndsWith('Fehlt.pas');
       if AFileName.EndsWith('Lager.pas') then
-        AText := 'unit Lager;'#10'// FIXME Lager'
+      begin
+        AText := 'unit Lager;'#10'// FIXME Lager';
+      end
       else if AFileName.EndsWith('Ohne.pas') then
-        AText := 'unit Ohne;'#10'// nichts zu tun'
+      begin
+        AText := 'unit Ohne;'#10'// nichts zu tun';
+      end
       else
+      begin
         AText := Sample;
+      end;
     end, TTodos.DefaultKeywords);
   Assert.AreEqual(2, Integer(Length(Files)));
   Assert.AreEqual('Kasse.pas', Files[0].Path);

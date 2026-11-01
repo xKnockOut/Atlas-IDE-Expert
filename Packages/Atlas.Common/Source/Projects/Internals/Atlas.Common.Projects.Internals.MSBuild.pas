@@ -86,7 +86,9 @@ end;
 function TMSBuildProperties.Get(const AName: string): string;
 begin
   if not FValues.TryGetValue(UpperCase(AName), Result) then
+  begin
     Result := '';
+  end;
 end;
 
 function TMSBuildProperties.Has(const AName: string): Boolean;
@@ -100,7 +102,9 @@ var
 begin
   Key := UpperCase(AName);
   if not FValues.ContainsKey(Key) then
+  begin
     FNames.Add(AName);
+  end;
   FValues.AddOrSetValue(Key, AValue);
 end;
 
@@ -111,7 +115,9 @@ var
   Close: Integer;
 begin
   if Pos('$(', AText) = 0 then
+  begin
     Exit(AText);
+  end;
   Builder := TStringBuilder.Create;
   try
     Index := 1;
@@ -141,7 +147,9 @@ var
   Parser: TConditionParser;
 begin
   if Trim(ACondition) = '' then
+  begin
     Exit(True);
+  end;
   Parser := TConditionParser.Create(ACondition, Self);
   try
     try
@@ -161,7 +169,9 @@ var
 begin
   SetLength(Result, FNames.Count);
   for Index := 0 to FNames.Count - 1 do
+  begin
     Result[Index] := TPair<string, string>.Create(FNames[Index], Get(FNames[Index]));
+  end;
 end;
 
 { TConditionParser }
@@ -177,7 +187,9 @@ end;
 procedure TConditionParser.SkipSpace;
 begin
   while (FPos <= Length(FText)) and CharInSet(FText[FPos], [' ', #9, #10, #13]) do
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TConditionParser.TryKeyword(const AWord: string): Boolean;
@@ -189,7 +201,9 @@ begin
   Result := SameText(Copy(FText, FPos, Length(AWord)), AWord) and
     ((After > Length(FText)) or not CharInSet(FText[After], ['A'..'Z', 'a'..'z', '0'..'9', '_']));
   if Result then
+  begin
     FPos := After;
+  end;
 end;
 
 function TConditionParser.Run: Boolean;
@@ -197,7 +211,9 @@ begin
   Result := ParseOr;
   SkipSpace;
   if FPos <= Length(FText) then
+  begin
     raise EConditionError.Create('Unerwartetes Zeichen');
+  end;
 end;
 
 function TConditionParser.ParseOr: Boolean;
@@ -243,16 +259,22 @@ var
 begin
   SkipSpace;
   if FPos > Length(FText) then
+  begin
     raise EConditionError.Create('Operand erwartet');
+  end;
   if CharInSet(FText[FPos], ['''', '"']) then
   begin
     Quote := FText[FPos];
     Inc(FPos);
     Start := FPos;
     while (FPos <= Length(FText)) and (FText[FPos] <> Quote) do
+    begin
       Inc(FPos);
+    end;
     if FPos > Length(FText) then
+    begin
       raise EConditionError.Create('String nicht abgeschlossen');
+    end;
     Result := FProperties.Expand(Copy(FText, Start, FPos - Start));
     Inc(FPos);
   end
@@ -265,12 +287,16 @@ begin
       if (FText[FPos] = '$') and (FPos < Length(FText)) and (FText[FPos + 1] = '(') then
       begin
         while (FPos <= Length(FText)) and (FText[FPos] <> ')') do
+        begin
           Inc(FPos);
+        end;
       end;
       Inc(FPos);
     end;
     if FPos = Start then
+    begin
       raise EConditionError.Create('Operand erwartet');
+    end;
     Result := FProperties.Expand(Copy(FText, Start, FPos - Start));
   end;
 end;
@@ -282,14 +308,22 @@ begin
   Argument := ParseOperand;
   SkipSpace;
   if (FPos > Length(FText)) or (FText[FPos] <> ')') then
+  begin
     raise EConditionError.Create('")" erwartet');
+  end;
   Inc(FPos);
   if SameText(AName, 'Exists') then
-    Result := Assigned(FProperties.FFileExists) and FProperties.FFileExists(Argument)
+  begin
+    Result := Assigned(FProperties.FFileExists) and FProperties.FFileExists(Argument);
+  end
   else if SameText(AName, 'HasTrailingSlash') then
-    Result := (Argument <> '') and CharInSet(Argument[Length(Argument)], ['\', '/'])
+  begin
+    Result := (Argument <> '') and CharInSet(Argument[Length(Argument)], ['\', '/']);
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 function TConditionParser.ParsePrimary: Boolean;
@@ -309,7 +343,9 @@ begin
     Result := ParseOr;
     SkipSpace;
     if (FPos > Length(FText)) or (FText[FPos] <> ')') then
+    begin
       raise EConditionError.Create('")" erwartet');
+    end;
     Inc(FPos);
     Exit;
   end;
@@ -317,7 +353,9 @@ begin
   // Funktionsaufruf: Name(
   Start := FPos;
   while (FPos <= Length(FText)) and CharInSet(FText[FPos], ['A'..'Z', 'a'..'z']) do
+  begin
     Inc(FPos);
+  end;
   if (FPos > Start) and (FPos <= Length(FText)) and (FText[FPos] = '(') then
   begin
     Name := Copy(FText, Start, FPos - Start);
@@ -330,7 +368,9 @@ begin
   SkipSpace;
   Op := Copy(FText, FPos, 2);
   if (Op = '==') or (Op = '!=') or (Op = '<=') or (Op = '>=') then
-    Inc(FPos, 2)
+  begin
+    Inc(FPos, 2);
+  end
   else if (Op <> '') and CharInSet(Op[1], ['<', '>']) then
   begin
     Op := Op[1];
@@ -340,29 +380,47 @@ begin
   begin
     // Einzelner Wert: true/false.
     if SameText(Left, 'true') then
+    begin
       Exit(True);
+    end;
     if SameText(Left, 'false') then
+    begin
       Exit(False);
+    end;
     raise EConditionError.Create('Vergleich erwartet');
   end;
   Right := ParseOperand;
   if Op = '==' then
-    Result := SameText(Left, Right)
+  begin
+    Result := SameText(Left, Right);
+  end
   else if Op = '!=' then
-    Result := not SameText(Left, Right)
+  begin
+    Result := not SameText(Left, Right);
+  end
   else
   begin
     if not (TryStrToFloat(Left, LeftNumber, TFormatSettings.Invariant) and
       TryStrToFloat(Right, RightNumber, TFormatSettings.Invariant)) then
+    begin
       raise EConditionError.Create('Zahl erwartet');
+    end;
     if Op = '<' then
-      Result := LeftNumber < RightNumber
+    begin
+      Result := LeftNumber < RightNumber;
+    end
     else if Op = '>' then
-      Result := LeftNumber > RightNumber
+    begin
+      Result := LeftNumber > RightNumber;
+    end
     else if Op = '<=' then
-      Result := LeftNumber <= RightNumber
+    begin
+      Result := LeftNumber <= RightNumber;
+    end
     else
+    begin
       Result := LeftNumber >= RightNumber;
+    end;
   end;
 end;
 

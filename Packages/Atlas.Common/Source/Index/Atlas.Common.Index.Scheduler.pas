@@ -163,14 +163,20 @@ begin
   TMonitor.Enter(FLock);
   try
     if FRunning <> 0 then
+    begin
       Result.Running := 1;
+    end;
     for mPair in FEntries do
+    begin
       if mPair.Value.WaitingSince <> 0 then
       begin
         Inc(Result.Waiting);
         if Int64(mNow - mPair.Value.WaitingSince) > Result.OldestWaitMs then
+        begin
           Result.OldestWaitMs := Int64(mNow - mPair.Value.WaitingSince);
+        end;
       end;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -181,11 +187,17 @@ var
   mEntry: TEntry;
 begin
   if not FEntries.TryGetValue(ATicket, mEntry) then
+  begin
     Exit;
+  end;
   if AWaiting then
-    mEntry.WaitingSince := TThread.GetTickCount64
+  begin
+    mEntry.WaitingSince := TThread.GetTickCount64;
+  end
   else
+  begin
     mEntry.WaitingSince := 0;
+  end;
   FEntries[ATicket] := mEntry;
 end;
 
@@ -194,17 +206,25 @@ var
   Other: TPair<Int64, TEntry>;
 begin
   if (FRunning <> 0) and (FRunning <> ATicket) then
+  begin
     Exit(False);
+  end;
   for Other in FEntries do
   begin
     if Other.Key = ATicket then
+    begin
       Continue;
+    end;
     if Other.Value.Stage < AEntry.Stage then
+    begin
       Exit(False);
+    end;
     // Gleiche Stufe: kleinere Priorität, bei gleicher die frühere Anmeldung zuerst.
     if (Other.Value.Stage = AEntry.Stage) and ((Other.Value.Priority < AEntry.Priority) or
       ((Other.Value.Priority = AEntry.Priority) and (Other.Key < ATicket))) then
+    begin
       Exit(False);
+    end;
   end;
   Result := True;
 end;
@@ -216,7 +236,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if not FEntries.TryGetValue(ATicket, Entry) then
+    begin
       Exit(True);
+    end;
     Entry.Stage := AStage;
     Entry.WaitingSince := TThread.GetTickCount64;
     FEntries[ATicket] := Entry;
@@ -246,7 +268,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if FRunning = ATicket then
+    begin
       FRunning := 0;
+    end;
     // Bis zur nächsten Stufe zählt der Aufbau als hinter der verlassenen; so kommen andere an die Reihe.
     if FEntries.TryGetValue(ATicket, Entry) and (Entry.Stage < High(TIndexStage)) then
     begin
@@ -265,7 +289,9 @@ begin
   try
     FEntries.Remove(ATicket);
     if FRunning = ATicket then
+    begin
       FRunning := 0;
+    end;
     TMonitor.PulseAll(FLock);
   finally
     TMonitor.Exit(FLock);

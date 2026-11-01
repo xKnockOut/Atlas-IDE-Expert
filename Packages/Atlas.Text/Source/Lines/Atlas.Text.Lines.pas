@@ -110,11 +110,15 @@ begin
   if AText[AIndex] = #13 then
   begin
     if (AIndex < Length(AText)) and (AText[AIndex + 1] = #10) then
+    begin
       Exit(2);
+    end;
     Exit(1);
   end;
   if AText[AIndex] = #10 then
+  begin
     Exit(1);
+  end;
   Result := 0;
 end;
 
@@ -133,7 +137,9 @@ begin
       Inc(Index, Len);
     end
     else
+    begin
       Inc(Index);
+    end;
   end;
 end;
 
@@ -164,7 +170,9 @@ begin
       Inc(Index, Len);
     end
     else
+    begin
       Inc(Index);
+    end;
   end;
   Result.FContentEnds[Line] := Length(AText);
 end;
@@ -177,22 +185,34 @@ end;
 function TLineTable.LineStart(ALine: Integer): Integer;
 begin
   if FStarts = nil then
+  begin
     Exit(0);
+  end;
   if ALine < 0 then
-    ALine := 0
+  begin
+    ALine := 0;
+  end
   else if ALine > High(FStarts) then
+  begin
     ALine := High(FStarts);
+  end;
   Result := FStarts[ALine];
 end;
 
 function TLineTable.LineContentEnd(ALine: Integer): Integer;
 begin
   if FContentEnds = nil then
+  begin
     Exit(0);
+  end;
   if ALine < 0 then
-    ALine := 0
+  begin
+    ALine := 0;
+  end
   else if ALine > High(FContentEnds) then
+  begin
     ALine := High(FContentEnds);
+  end;
   Result := FContentEnds[ALine];
 end;
 
@@ -201,11 +221,17 @@ var
   First, Last, Middle, Character: Integer;
 begin
   if FStarts = nil then
+  begin
     Exit(TTextPosition.Create(0, 0));
+  end;
   if AOffset < 0 then
-    AOffset := 0
+  begin
+    AOffset := 0;
+  end
   else if AOffset > FLength then
+  begin
     AOffset := FLength;
+  end;
   // Letzte Zeile, deren Anfang nicht hinter AOffset liegt.
   First := 0;
   Last := High(FStarts);
@@ -213,13 +239,19 @@ begin
   begin
     Middle := (First + Last + 1) div 2;
     if FStarts[Middle] <= AOffset then
-      First := Middle
+    begin
+      First := Middle;
+    end
     else
+    begin
       Last := Middle - 1;
+    end;
   end;
   Character := AOffset;
   if Character > FContentEnds[First] then
+  begin
     Character := FContentEnds[First];
+  end;
   Result := TTextPosition.Create(First, Character - FStarts[First]);
 end;
 
@@ -228,14 +260,22 @@ var
   Character: Integer;
 begin
   if (FStarts = nil) or (APosition.Line < 0) then
+  begin
     Exit(0);
+  end;
   if APosition.Line > High(FStarts) then
+  begin
     Exit(FLength);
+  end;
   Character := APosition.Character;
   if Character < 0 then
-    Character := 0
+  begin
+    Character := 0;
+  end
   else if Character > FContentEnds[APosition.Line] - FStarts[APosition.Line] then
+  begin
     Character := FContentEnds[APosition.Line] - FStarts[APosition.Line];
+  end;
   Result := FStarts[APosition.Line] + Character;
 end;
 
@@ -244,9 +284,13 @@ end;
 class function TTextLines.LineBreakOf(const AText: string): string;
 begin
   if Pos(#13#10, AText) > 0 then
-    Result := #13#10
+  begin
+    Result := #13#10;
+  end
   else
+  begin
     Result := #10;
+  end;
 end;
 
 class function TTextLines.KindOf(const AText: string): TTextLineBreak;
@@ -255,7 +299,9 @@ var
 begin
   Result := DominantOf(AText, Mixed);
   if Mixed then
+  begin
     Result := TTextLineBreak.Mixed;
+  end;
 end;
 
 class function TTextLines.DominantOf(const AText: string; out AMixed: Boolean): TTextLineBreak;
@@ -271,7 +317,9 @@ var
   Index, Kinds: Integer;
 begin
   for Kind := Low(TTextLineBreak) to High(TTextLineBreak) do
+  begin
     Counts[Kind] := 0;
+  end;
   Index := 1;
   while Index <= Length(AText) do
   begin
@@ -283,24 +331,34 @@ begin
         Inc(Index);
       end
       else
+      begin
         Inc(Counts[TTextLineBreak.CR]);
+      end;
     end
     else if AText[Index] = #10 then
+    begin
       Inc(Counts[TTextLineBreak.LF]);
+    end;
     Inc(Index);
   end;
   // Der bevorzugte Umbruch gewinnt Gleichstände, andere gewinnen nur mit echter Mehrheit.
   Result := TTextLineBreak.None;
   if (APreferred in [TTextLineBreak.CRLF, TTextLineBreak.LF, TTextLineBreak.CR]) and (Counts[APreferred] > 0) then
+  begin
     Result := APreferred;
+  end;
   Kinds := 0;
   for Kind := TTextLineBreak.CRLF to TTextLineBreak.CR do
+  begin
     if Counts[Kind] > 0 then
     begin
       Inc(Kinds);
       if Counts[Kind] > Counts[Result] then
+      begin
         Result := Kind;
+      end;
     end;
+  end;
   AMixed := Kinds > 1;
 end;
 
@@ -324,7 +382,9 @@ begin
       Start := Index;
     end
     else
+    begin
       Inc(Index);
+    end;
   end;
   Result[Count] := Copy(AText, Start, MaxInt);
 end;
@@ -341,11 +401,15 @@ var
 begin
   Result := nil;
   if AText = '' then
+  begin
     Exit;
+  end;
   Count := CountBreaks(AText);
   // Ohne Umbruch am Ende kommt die letzte Zeile ohne Umbruch dazu.
   if BreakLengthAt(AText, Length(AText)) = 0 then
+  begin
     Inc(Count);
+  end;
   SetLength(Result, Count);
   Count := 0;
   Start := 1;
@@ -361,10 +425,14 @@ begin
       Start := Index;
     end
     else
+    begin
       Inc(Index);
+    end;
   end;
   if Start <= Length(AText) then
+  begin
     Result[Count] := Copy(AText, Start, MaxInt);
+  end;
 end;
 
 class function TTextLines.JoinLines(const ALines: array of string; const ALineBreak: string): string;
@@ -377,7 +445,9 @@ begin
     for Index := 0 to High(ALines) do
     begin
       if Index > 0 then
+      begin
         Builder.Append(ALineBreak);
+      end;
       Builder.Append(ALines[Index]);
     end;
     Result := Builder.ToString;
@@ -390,7 +460,9 @@ class function TTextLines.IndentLength(const ALine: string): Integer;
 begin
   Result := 0;
   while (Result < Length(ALine)) and ((ALine[Result + 1] = ' ') or (ALine[Result + 1] = #9)) do
+  begin
     Inc(Result);
+  end;
 end;
 
 class function TTextLines.IndentOf(const ALine: string): string;
@@ -404,7 +476,9 @@ var
 begin
   Table := TLineTable.Build(AText);
   if (ALine < 0) or (ALine >= Table.LineCount) then
+  begin
     Exit('');
+  end;
   Result := IndentOf(Copy(AText, Table.LineStart(ALine) + 1,
     Table.LineContentEnd(ALine) - Table.LineStart(ALine)));
 end;
@@ -412,9 +486,13 @@ end;
 class function TTextLines.StripTrailingCr(const ALine: string): string;
 begin
   if (ALine <> '') and (ALine[Length(ALine)] = #13) then
-    Result := Copy(ALine, 1, Length(ALine) - 1)
+  begin
+    Result := Copy(ALine, 1, Length(ALine) - 1);
+  end
   else
+  begin
     Result := ALine;
+  end;
 end;
 
 class function TTextLines.NormalizeLineBreaks(const AText, ALineBreak: string): string;

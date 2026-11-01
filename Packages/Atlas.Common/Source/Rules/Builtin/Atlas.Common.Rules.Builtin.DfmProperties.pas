@@ -84,9 +84,13 @@ begin
   Match := ARegEx.Match(ADeclaration);
   Result := Match.Success;
   if Result then
-    AValue := Trim(Match.Groups[1].Value)
+  begin
+    AValue := Trim(Match.Groups[1].Value);
+  end
   else
+  begin
     AValue := '';
+  end;
 end;
 
 type
@@ -159,11 +163,15 @@ var
   mFormat: TFileFormat;
 begin
   if FLines.TryGetValue(UpperCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   // '' steht für die geprüfte Unit selbst.
   if AFileName = '' then
-    Result := FContext.Text.Replace(#13#10, #10).Split([#10])
+  begin
+    Result := FContext.Text.Replace(#13#10, #10).Split([#10]);
+  end
   else if Assigned(FContext.ReadFile) and FContext.ReadFile(AFileName, Data) then
   begin
     // Dieselbe Erkennung wie überall (#1327): BOM, sonst nur ganz gültiges UTF-8 als UTF-8, sonst ANSI.
@@ -179,6 +187,7 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in FUnit.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
     begin
       ALocation.UnitName := FUnit.UnitName;
@@ -186,14 +195,19 @@ begin
       ALocation.Symbol := Symbol;
       Exit(True);
     end;
+  end;
   if FContext.Index = nil then
+  begin
     Exit(False);
+  end;
   for Location in FContext.Index.FindSymbols(AName) do
+  begin
     if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
     begin
       ALocation := Location;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -204,18 +218,26 @@ var
   Depth: Integer;
 begin
   if SameText(AClassName, ABase) then
+  begin
     Exit(True);
+  end;
   Result := False;
   if not ADescendants then
+  begin
     Exit;
+  end;
   Name := AClassName;
   for Depth := 1 to MaxDepth do
   begin
     if not FindClass(Name, Location) or (Length(Location.Symbol.Ancestors) = 0) then
+    begin
       Exit;
+    end;
     Name := Location.Symbol.Ancestors[0];
     if SameText(Name, ABase) then
+    begin
       Exit(True);
+    end;
   end;
 end;
 
@@ -226,6 +248,7 @@ var
 begin
   Result := nil;
   for Symbol in FUnit.Symbols do
+  begin
     if SameText(Symbol.Name, AName) then
     begin
       Location.UnitName := FUnit.UnitName;
@@ -233,8 +256,11 @@ begin
       Location.Symbol := Symbol;
       Result := Result + [Location];
     end;
+  end;
   if FContext.Index <> nil then
+  begin
     Result := Result + FContext.Index.FindSymbols(AName);
+  end;
 end;
 
 function TPropertyChecker.DeclarationText(const ALocation: TSymbolLocation): string;
@@ -245,8 +271,12 @@ begin
   Result := '';
   Lines := FileLines(ALocation.FileName);
   for Line := ALocation.Symbol.Range.StartPos.Line to ALocation.Symbol.Range.EndPos.Line do
+  begin
     if (Line >= 0) and (Line <= High(Lines)) then
+    begin
       Result := Result + ' ' + Trim(Lines[Line]);
+    end;
+  end;
   Result := Trim(Result);
 end;
 
@@ -264,8 +294,11 @@ begin
   for Depth := 1 to MaxDepth do
   begin
     if not FindClass(Name, Location) then
+    begin
       Exit;
+    end;
     for Member in Members(AName) do
+    begin
       if (Member.Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Member.Symbol.Container, Name) then
       begin
         Result.Found := True;
@@ -300,8 +333,11 @@ begin
         end;
         Break;
       end;
+    end;
     if Length(Location.Symbol.Ancestors) = 0 then
+    begin
       Exit;
+    end;
     Name := Location.Symbol.Ancestors[0];
   end;
 end;
@@ -318,7 +354,9 @@ begin
   ATypeName := '';
   Parts := APath.Split(['.']);
   if Length(Parts) = 0 then
+  begin
     Exit;
+  end;
   // Verschachtelt (Font.Name): über den Typ jeder Zwischen-Property zur Klasse des letzten Teils.
   Name := AClassName;
   for Index := 0 to High(Parts) - 1 do
@@ -326,13 +364,17 @@ begin
     Info := PropertyInfo(Name, Parts[Index]);
     // Nicht gespeichertes Objekt (stored IsFontStored, ParentFont): Werte kommen von anderswo.
     if not Info.Found or (Info.TypeName = '') or Info.StoredUnknown then
+    begin
       Exit;
+    end;
     Name := Info.TypeName;
   end;
   Info := PropertyInfo(Name, Parts[High(Parts)]);
   ATypeName := Info.TypeName;
   if not Info.Found or Info.StoredUnknown or Info.NoDefault then
+  begin
     Exit;
+  end;
   if Info.HasDefault then
   begin
     AValue := Info.DefaultValue;
@@ -340,14 +382,22 @@ begin
   end;
   // Ohne default speichert die VCL alles außer dem Nullwert des Typs.
   if SameText(Info.TypeName, 'Boolean') then
-    AValue := 'False'
+  begin
+    AValue := 'False';
+  end
   else if MatchText(Info.TypeName, ['Integer', 'Cardinal', 'Byte', 'Word', 'SmallInt', 'ShortInt', 'Int64',
     'UInt64', 'NativeInt', 'NativeUInt', 'LongInt', 'LongWord', 'TColor']) then
-    AValue := '0'
+  begin
+    AValue := '0';
+  end
   else if MatchText(Info.TypeName, StringTypes) then
-    AValue := ''
+  begin
+    AValue := '';
+  end
   else
+  begin
     Exit;
+  end;
   Result := True;
 end;
 
@@ -363,7 +413,9 @@ begin
   begin
     // Typ ohne Klasse im Index (z. B. ein Aufzählungstyp vor dem letzten Teil): nicht weiter prüfbar.
     if not FindClass(Name, Location) then
+    begin
       Exit(True);
+    end;
     Info := PropertyInfo(Name, Part);
     if not Info.Found then
     begin
@@ -372,7 +424,9 @@ begin
     end;
     Name := Info.TypeName;
     if Name = '' then
+    begin
       Exit(True);
+    end;
   end;
   Result := True;
 end;
@@ -394,7 +448,9 @@ function Unquote(const AValue: string): string;
 begin
   Result := Trim(AValue);
   if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
     Result := StringReplace(Copy(Result, 2, Length(Result) - 2), '''''', '''', [rfReplaceAll]);
+  end;
 end;
 
 function IsSet(const AValue: string): Boolean;
@@ -410,8 +466,12 @@ begin
   Inner := Trim(AValue);
   Inner := Copy(Inner, 2, Length(Inner) - 2);
   for Element in Inner.Split([',']) do
+  begin
     if Trim(Element) <> '' then
+    begin
       Result := Result + [Trim(Element)];
+    end;
+  end;
 end;
 
 function IsEmptyValue(const AValue: string): Boolean;
@@ -429,10 +489,16 @@ begin
     Actual := SetElements(AActual);
     Expected := SetElements(AExpected);
     if Length(Actual) <> Length(Expected) then
+    begin
       Exit(False);
+    end;
     for Element in Expected do
+    begin
       if not MatchText(Element, Actual) then
+      begin
         Exit(False);
+      end;
+    end;
     Exit(True);
   end;
   Result := SameText(Unquote(AActual), Unquote(AExpected));
@@ -441,9 +507,13 @@ end;
 function ContainsValue(const AActual, AExpected: string): Boolean;
 begin
   if IsSet(AActual) then
-    Result := MatchText(Trim(AExpected), SetElements(AActual))
+  begin
+    Result := MatchText(Trim(AExpected), SetElements(AActual));
+  end
   else
+  begin
     Result := ContainsText(Unquote(AActual), Unquote(AExpected));
+  end;
 end;
 
 class function TDfmPropertyCheckRule.Satisfies(ACondition: TDfmCondition; const AActual, AExpected: string): Boolean;
@@ -470,7 +540,9 @@ var
 begin
   Actual := AActual;
   if Actual = '' then
+  begin
     Actual := '''''';
+  end;
   case ARule.Condition of
     TDfmCondition.Equal:
       Result := Format('%s soll %s sein, ist %s', [ARule.PropertyPath, ARule.Value, Actual]);
@@ -493,11 +565,17 @@ var
   Pattern: string;
 begin
   if ARelativePath = '' then
+  begin
     Exit(False);
+  end;
   for Pattern in ARule.Exclude do
+  begin
     if MatchesGlob(Pattern, ARelativePath) or MatchesGlob(Pattern, ChangeFileExt(ARelativePath, '.dfm')) or
       MatchesGlob(Pattern, ChangeFileExt(ARelativePath, '.fmx')) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -506,9 +584,13 @@ var
   Child: TDfmObject;
 begin
   if (AObject.Kind <> TDfmObjectKind.Item) and (AObject.TypeName <> '') then
+  begin
     AObjects := AObjects + [AObject];
+  end;
   for Child in AObject.Children do
+  begin
     CollectObjects(Child, AObjects);
+  end;
 end;
 
 class function TDfmPropertyCheckRule.DfmString(const AValue: string): string;
@@ -520,27 +602,41 @@ begin
   Result := '';
   Quoted := False;
   for Ch in AValue do
+  begin
     if (Ord(Ch) >= 32) and (Ord(Ch) < 127) then
     begin
       if not Quoted then
+      begin
         Result := Result + '''';
+      end;
       Quoted := True;
       if Ch = '''' then
-        Result := Result + ''''''
+      begin
+        Result := Result + '''''';
+      end
       else
+      begin
         Result := Result + Ch;
+      end;
     end
     else
     begin
       if Quoted then
+      begin
         Result := Result + '''';
+      end;
       Quoted := False;
       Result := Result + '#' + IntToStr(Ord(Ch));
     end;
+  end;
   if Quoted then
+  begin
     Result := Result + '''';
+  end;
   if Result = '' then
+  begin
     Result := '''''';
+  end;
 end;
 
 function IsIdentifierLike(const AValue: string): Boolean;
@@ -549,8 +645,12 @@ var
 begin
   Result := AValue <> '';
   for Ch in AValue do
+  begin
     if not CharInSet(Ch, ['A'..'Z', 'a'..'z', '0'..'9', '_', '-', '.', '$']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 /// <summary>Sollwert als DFM-Text. AStringType: die Property ist ein String (gespeichert in Hochkommas
@@ -559,9 +659,13 @@ function DfmValue(const AValue: string; AStringType: Boolean): string;
 begin
   Result := Trim(AValue);
   if StartsStr('''', Result) or StartsStr('#', Result) then
+  begin
     Exit;
+  end;
   if AStringType or not (IsSet(Result) or IsIdentifierLike(Result)) then
+  begin
     Result := TDfmPropertyCheckRule.DfmString(AValue);
+  end;
 end;
 
 function JoinSet(const AElements: TArray<string>): string;
@@ -590,29 +694,43 @@ begin
     TDfmCondition.Contains:
       begin
         if not IsSetValue then
+        begin
           Exit(False);
+        end;
         AValue := JoinSet(SetElements(AActual) + [Trim(ARule.Value)]);
         ATitle := Format('%s in %s ergänzen', [Trim(ARule.Value), ARule.PropertyPath]);
       end;
     TDfmCondition.NotContains:
       begin
         if not IsSetValue then
+        begin
           Exit(False);
+        end;
         Kept := nil;
         for Element in SetElements(AActual) do
+        begin
           if not SameText(Element, Trim(ARule.Value)) then
+          begin
             Kept := Kept + [Element];
+          end;
+        end;
         AValue := JoinSet(Kept);
         ATitle := Format('%s aus %s entfernen', [Trim(ARule.Value), ARule.PropertyPath]);
       end;
     TDfmCondition.Empty:
       begin
         if IsSetValue then
-          AValue := '[]'
+        begin
+          AValue := '[]';
+        end
         else if AStringType or StartsStr('''', Trim(AActual)) or StartsStr('#', Trim(AActual)) then
-          AValue := ''''''
+        begin
+          AValue := '''''';
+        end
         else
+        begin
           Exit(False);
+        end;
         ATitle := Format('%s in der Formulardatei leeren', [ARule.PropertyPath]);
       end;
   else
@@ -627,7 +745,9 @@ var
 begin
   Count := 0;
   while (Count < Length(ALine)) and CharInSet(ALine[Count + 1], [' ', #9]) do
+  begin
     Inc(Count);
+  end;
   Result := Copy(ALine, 1, Count);
 end;
 
@@ -641,15 +761,23 @@ var
   Indent: string;
 begin
   if AStored then
+  begin
     Exit(TRuleEdit.Create(AProperty.ValueRange, AValue));
+  end;
   // Hinter der letzten Property, vor den Kindobjekten; ohne Properties hinter der Kopfzeile.
   Line := AObject.TypeRange.EndPos.Line;
   for Item in AObject.Properties do
+  begin
     if Item.ValueRange.EndPos.Line > Line then
+    begin
       Line := Item.ValueRange.EndPos.Line;
+    end;
+  end;
   Indent := '';
   if (AObject.Range.StartPos.Line >= 0) and (AObject.Range.StartPos.Line <= High(AFormLines)) then
+  begin
     Indent := LeadingSpaces(AFormLines[AObject.Range.StartPos.Line]);
+  end;
   Result := TRuleEdit.Create(TTextRange.Create(Line + 1, 0, Line + 1, 0),
     Indent + '  ' + AName + ' = ' + AValue + ALineBreak);
 end;
@@ -673,7 +801,9 @@ var
   FormLines: TArray<string>;
 begin
   if (Length(AContext.DfmPropertyRules) = 0) or (AContext.FormText = '') or (AContext.Tree = nil) then
+  begin
     Exit;
+  end;
   // Gemeldet wird in der Unit: am Feld der Komponente, sonst an der Formularklasse.
   // Den Index der Datei teilt der Lauf mit den anderen Regeln (Review P-03).
   Cache := TRuleDerived.Open(AContext);
@@ -682,35 +812,50 @@ begin
   Checker := TPropertyChecker.Create(AContext, UnitIndex);
   try
     if (Model.Document.Root = nil) or (Model.FormClass = '') then
+    begin
       Exit;
+    end;
     ClassRange := Default(TTextRange);
     for Symbol in UnitIndex.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
         SameText(Symbol.Name, Model.FormClass) then
+      begin
         ClassRange := Symbol.SelectionRange;
+      end;
+    end;
     if ClassRange.StartPos = ClassRange.EndPos then
+    begin
       Exit;
+    end;
     // Korrigiert wird nur eine Text-Formulardatei mit bekanntem Pfad.
     CanFix := (AContext.FormFile <> '') and not Model.Binary;
     LineBreak := TTextLines.LineBreakOf(AContext.FormText);
     FormLines := nil;
     if CanFix then
+    begin
       FormLines := AContext.FormText.Replace(#13#10, #10).Split([#10]);
+    end;
     Objects := nil;
     CollectObjects(Model.Document.Root, Objects);
     for Rule in AContext.DfmPropertyRules do
     begin
       if (Rule.Severity = TRuleSeverity.Off) or IsExcluded(Rule, AContext.RelativePath) then
+      begin
         Continue;
+      end;
       for Obj in Objects do
       begin
         if not Checker.IsClassOrDescendant(Obj.TypeName, Rule.ClassName, Rule.IncludeDescendants) then
+        begin
           Continue;
+        end;
         Stored := False;
         Actual := '';
         TypeName := '';
         Found := Default(TDfmProperty);
         for Prop in Obj.Properties do
+        begin
           if SameText(Prop.Name, Rule.PropertyPath) then
           begin
             Stored := True;
@@ -718,33 +863,52 @@ begin
             Actual := Trim(Prop.Value);
             Break;
           end;
+        end;
         // Aus dem Vorfahrenformular und hier nicht gesetzt: Sache des Vorfahren.
         if not Stored and (Obj.Kind = TDfmObjectKind.Inherited_) then
+        begin
           Continue;
+        end;
         if not Stored and not Checker.DefaultValue(Obj.TypeName, Rule.PropertyPath, Actual, TypeName) then
+        begin
           Continue;
+        end;
         if Satisfies(Rule.Condition, Actual, Rule.Value) then
+        begin
           Continue;
+        end;
         Range := ClassRange;
         if Obj <> Model.Document.Root then
+        begin
           for Symbol in UnitIndex.Symbols do
+          begin
             if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, Model.FormClass) and
               SameText(Symbol.Name, Obj.Name) then
             begin
               Range := Symbol.SelectionRange;
               Break;
             end;
+          end;
+        end;
         if Rule.Message <> '' then
-          Message := Format('%s (%s): %s', [Obj.Name, Obj.TypeName, Rule.Message])
+        begin
+          Message := Format('%s (%s): %s', [Obj.Name, Obj.TypeName, Rule.Message]);
+        end
         else
+        begin
           Message := DefaultMessage(Rule, Obj, Actual);
+        end;
         Fixes := nil;
         if CanFix and (Rule.Fix <> TDfmFixMode.None) then
         begin
           if Stored then
-            StringType := StartsStr('''', Actual) or StartsStr('#', Actual)
+          begin
+            StringType := StartsStr('''', Actual) or StartsStr('#', Actual);
+          end
           else
+          begin
             StringType := MatchText(TypeName, StringTypes);
+          end;
           if TargetValue(Rule, Actual, StringType, Target, Title) then
           begin
             Fix := TRuleFix.Create(Format('%s: %s', [Obj.Name, Title]),
@@ -775,7 +939,9 @@ var
 begin
   Result := nil;
   if (AIndex = nil) or (Length(ARules) = 0) then
+  begin
     Exit;
+  end;
   Context := Default(TRuleContext);
   Context.Index := AIndex;
   Context.ReadFile := AReadFile;
@@ -784,7 +950,9 @@ begin
     for Rule in ARules do
     begin
       if Rule.ClassName = '' then
+      begin
         Continue;
+      end;
       Issue := Default(TConfigurationIssue);
       if not Checker.FindClass(Rule.ClassName, Location) then
       begin
@@ -799,7 +967,9 @@ begin
           [Rule.ClassName, Missing]);
       end
       else
+      begin
         Continue;
+      end;
       Result := Result + [Issue];
     end;
   finally

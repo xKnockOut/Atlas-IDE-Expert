@@ -89,7 +89,9 @@ begin
   for Item in TLspWorkspaceSymbols.Search(FIndex, AQuery, AMax) do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Item.Symbol.Name;
   end;
 end;

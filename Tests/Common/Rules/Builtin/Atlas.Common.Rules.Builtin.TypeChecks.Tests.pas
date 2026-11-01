@@ -276,33 +276,57 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = DynamicArrayMisuseRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = LocalRoutineAsCallbackRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = HresultIntegerMixRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = InvalidVarArgumentRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = ConditionNotBooleanRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = ForInNotEnumerableRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 
@@ -314,7 +338,9 @@ var
 begin
   Index := AIndex;
   if Index = nil then
+  begin
     Index := SystemIndex;
+  end;
   Result := TRuleAssert.IndexFindings(THresultIntegerMixRule.Create, ASource, Index, '', 'Export.pas');
 end;
 

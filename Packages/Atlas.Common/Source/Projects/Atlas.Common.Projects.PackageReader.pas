@@ -63,7 +63,9 @@ function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer
 begin
   Result := AIndex;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function IsWord(const AToken: TPascalToken; const AWord: string): Boolean;
@@ -76,7 +78,9 @@ function Unquote(const AText: string): string;
 begin
   Result := AText;
   if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
     Result := Copy(Result, 2, Length(Result) - 2).Replace('''''', '''');
+  end;
 end;
 
 /// <summary>Liest eine Liste ab dem Token hinter requires/contains bis zum Semikolon; liefert dessen Index.</summary>
@@ -112,22 +116,32 @@ begin
       Exit;
     end;
     if ATokens[Result].IsSymbol(',') then
-      Flush
+    begin
+      Flush;
+    end
     else if ATokens[Result].IsKeyword('in') then
-      AfterIn := True
+    begin
+      AfterIn := True;
+    end
     else if AfterIn and (ATokens[Result].Kind = TPascalTokenKind.StringLiteral) then
-      Entry.Path := Unquote(ATokens[Result].Text)
+    begin
+      Entry.Path := Unquote(ATokens[Result].Text);
+    end
     else if not AfterIn and ((ATokens[Result].Kind = TPascalTokenKind.Identifier) or
       ATokens[Result].IsSymbol('.')) then
     begin
       if First < 0 then
+      begin
         First := Result;
+      end;
       Last := Result;
       Entry.Name := Entry.Name + ATokens[Result].Text;
     end
     else if not IsTrivia(ATokens[Result]) and not AfterIn then
+    begin
       // Unerwartetes Wort (z. B. "end"): Liste ist unvollständig.
       Break;
+    end;
     Inc(Result);
   end;
   Flush;
@@ -141,8 +155,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Contains) do
+  begin
     if SameText(Contains[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -151,8 +169,12 @@ var
   Entry: TPackageEntry;
 begin
   for Entry in Requires do
+  begin
     if SameText(Entry.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -167,13 +189,17 @@ begin
   Tokens := TPascalLexer.Tokenize(AText);
   Index := NextCode(Tokens, 0);
   if (Index > High(Tokens)) or not IsWord(Tokens[Index], 'package') then
+  begin
     Exit;
+  end;
   Result.IsPackage := True;
   Index := NextCode(Tokens, Index + 1);
   while (Index <= High(Tokens)) and not Tokens[Index].IsSymbol(';') do
   begin
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) or Tokens[Index].IsSymbol('.') then
+    begin
       Result.Name := Result.Name + Tokens[Index].Text;
+    end;
     Index := NextCode(Tokens, Index + 1);
   end;
   while Index <= High(Tokens) do
@@ -183,12 +209,16 @@ begin
     begin
       Index := NextCode(Tokens, Index + 1);
       if Index > High(Tokens) then
+      begin
         Break;
+      end;
       if IsWord(Tokens[Index], 'requires') then
       begin
         Stop := ReadList(Tokens, Index + 1, Result.Requires);
         if Stop < 0 then
+        begin
           Break;
+        end;
         Index := Stop;
         Continue;
       end;
@@ -196,7 +226,9 @@ begin
       begin
         Stop := ReadList(Tokens, Index + 1, Result.Contains);
         if Stop < 0 then
+        begin
           Break;
+        end;
         Result.HasContains := True;
         Result.ContainsEnd := Tokens[Stop].StartPos;
         Index := Stop;
@@ -212,7 +244,9 @@ class function TPackageReader.ContainsInsertion(const AName, APath, ALineBreak: 
 begin
   Result := ',' + ALineBreak + '  ' + AName;
   if APath <> '' then
+  begin
     Result := Result + ' in ''' + APath.Replace('''', '''''') + '''';
+  end;
 end;
 
 end.

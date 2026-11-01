@@ -37,8 +37,12 @@ begin
   Ids := TProcessInstances.IdsOf(UpperCase(ExtractFileName(ParamStr(0))));
   Found := False;
   for Id in Ids do
+  begin
     if Id = GetCurrentProcessId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, 'eigener Prozess fehlt');
 end;
 

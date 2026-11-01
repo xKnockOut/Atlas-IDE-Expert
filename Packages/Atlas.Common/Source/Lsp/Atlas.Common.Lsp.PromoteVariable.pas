@@ -70,8 +70,12 @@ begin
       Result := '';
       for Found in TLspInlayHints.Inferred(AResolver, ATree, FileName, TTextRange.Create(ALocal.Decl.StartPos,
         ALocal.Decl.EndPos)) do
+      begin
         if SameText(Found.Name, ALocal.Name) and not Found.ForIn then
+        begin
           Exit(Found.TypeName);
+        end;
+      end;
     end;
   Result.MemberExists :=
     function(const AClassName, AName: string; AOffset: Integer): Boolean
@@ -91,7 +95,9 @@ var
 begin
   Result := nil;
   if not TPromoteVariable.Target(AText, ATree, APosition, ALookup, Target, Reason) then
+  begin
     Exit;
+  end;
   Arguments := TJSONArray.Create;
   Arguments.Add(AUri);
   Arguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -116,10 +122,14 @@ var
   Warnings: TJSONArray;
 begin
   if not TPromoteVariable.Execute(AText, ATree, APosition, ALookup, AStyle, AName, Promoted, Reason) then
+  begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
+  end;
   Warnings := TJSONArray.Create;
   for Warning in Promoted.Warnings do
+  begin
     Warnings.Add(Warning);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, Promoted.Edits));
   Result.AddPair('warnings', Warnings);

@@ -217,7 +217,9 @@ begin
   begin
     Inc(Result);
     if AText[Result] = #10 then
+    begin
       Inc(Line);
+    end;
   end;
   Result := Result + APosition.Character;
 end;
@@ -241,9 +243,13 @@ var
   Edits: TArray<TRuleEdit>;
 begin
   if TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, #10, Edits) then
-    Result := ApplyAll(AText, Edits)
+  begin
+    Result := ApplyAll(AText, Edits);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 procedure TUsesClauseTests.OrganizeRemovesDuplicates;

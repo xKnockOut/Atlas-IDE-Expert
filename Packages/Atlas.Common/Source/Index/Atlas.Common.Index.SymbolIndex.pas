@@ -145,10 +145,14 @@ begin
   Result := AName;
   Dot := Pos('<', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, 1, Dot - 1);
+  end;
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, Dot + 1, MaxInt);
+  end;
 end;
 
 { TSymbolIndex }
@@ -198,16 +202,24 @@ var
   UnitFile: string;
 begin
   if not FFiles.TryGetValue(AFileKey, Existing) then
+  begin
     Exit;
+  end;
   Dec(FSymbolCount, Length(Existing.Symbols));
   Dec(FBytes, TIndexMemory.UnitBytes(Existing));
   Dec(FUsageBytes, TIndexMemory.UsageBytes(Existing));
   if Existing.Library_ then
+  begin
     Dec(FLibraryBytes, TIndexMemory.UnitBytes(Existing) - TIndexMemory.UsageBytes(Existing));
+  end;
   if Existing.Compact then
+  begin
     Dec(FCompactCount);
+  end;
   if Existing.UsagesOffloaded then
+  begin
     Dec(FOffloadedCount);
+  end;
   FFiles.Remove(AFileKey);
   FUnitsSnapshot := nil;
   FUnavailable.Remove(AFileKey);
@@ -215,7 +227,9 @@ begin
   DropRefsLocked(AFileKey);
   Inc(FGeneration);
   if FUnitFiles.TryGetValue(UpperCase(Existing.UnitName), UnitFile) and (UnitFile = AFileKey) then
+  begin
     FUnitFiles.Remove(UpperCase(Existing.UnitName));
+  end;
 end;
 
 procedure TSymbolIndex.AddLocked(const AKey: string; const AUnit: TUnitIndex);
@@ -229,20 +243,30 @@ begin
   FFiles.Add(AKey, Stored);
   FUnitsSnapshot := nil;
   if Length(AUnit.Unavailable) > 0 then
+  begin
     FUnavailable.AddOrSetValue(AKey, True);
+  end;
   Inc(FGeneration);
   FUnitFiles.AddOrSetValue(UpperCase(AUnit.UnitName), AKey);
   Inc(FSymbolCount, Length(AUnit.Symbols));
   Inc(FBytes, TIndexMemory.UnitBytes(AUnit));
   Inc(FUsageBytes, TIndexMemory.UsageBytes(AUnit));
   if AUnit.Library_ then
+  begin
     Inc(FLibraryBytes, TIndexMemory.UnitBytes(AUnit) - TIndexMemory.UsageBytes(AUnit));
+  end;
   if AUnit.Compact then
+  begin
     Inc(FCompactCount);
+  end;
   if AUnit.UsagesOffloaded then
+  begin
     Inc(FOffloadedCount);
+  end;
   if not AUnit.Compact or (Length(AUnit.Usages) > 0) then
+  begin
     FShrinkable.AddOrSetValue(AKey, True);
+  end;
   AddRefsLocked(AKey, AUnit);
 end;
 
@@ -289,7 +313,9 @@ begin
     begin
       Key := UpperCase(LastPart(AUnit.Symbols[Position].Ancestors[AncestorPos]));
       if (Key = '') or (IndexStr(Key, Keys) >= 0) then
+      begin
         Continue;
+      end;
       Keys := Keys + [Key];
       AddRef(FByAncestor, Key, Slot, Position);
       Inc(Count);
@@ -304,7 +330,9 @@ var
   Slot: Integer;
 begin
   if not FFileSlots.TryGetValue(AKey, Slot) then
+  begin
     Exit;
+  end;
   FFileSlots.Remove(AKey);
   FSlotKeys[Slot] := '';
   FSlotUnits[Slot] := Default(TSlotUnit);
@@ -318,7 +346,9 @@ var
   Pair: TPair<string, TUnitIndex>;
 begin
   if (FDeadRefs < RebuildDeadRefs) or (FDeadRefs <= FLiveRefs) then
+  begin
     Exit;
+  end;
   FByName.Clear;
   FByAncestor.Clear;
   FSlotKeys.Clear;
@@ -328,7 +358,9 @@ begin
   FLiveRefs := 0;
   FDeadRefs := 0;
   for Pair in FFiles do
+  begin
     AddRefsLocked(Pair.Key, Pair.Value);
+  end;
 end;
 
 function TSymbolIndex.LocationsLocked(ATable: TSymbolTable; const AKey: string): TArray<TSymbolLocation>;
@@ -340,7 +372,9 @@ var
 begin
   Result := nil;
   if not ATable.TryGetValue(AKey, Refs) then
+  begin
     Exit;
+  end;
   // Direkt ins Ergebnis statt über eine Liste und ToArray: jedes Symbol ist ein großer Record mit verwalteten
   // Feldern, häufige Namen (Create, Count) haben Tausende Verweise, und die Regeln fragen je Bezeichner.
   SetLength(Result, Refs.Count);
@@ -357,12 +391,18 @@ begin
       Owner := FSlotUnits[Ref.Slot];
     end;
     if not Owner.Known or (Ref.Position > High(Owner.Symbols)) then
+    begin
       Continue;
+    end;
     Result[Count].UnitName := Owner.UnitName;
     if Owner.Symbols[Ref.Position].FileName <> '' then
-      Result[Count].FileName := Owner.Symbols[Ref.Position].FileName
+    begin
+      Result[Count].FileName := Owner.Symbols[Ref.Position].FileName;
+    end
     else
+    begin
       Result[Count].FileName := Owner.FileName;
+    end;
     Result[Count].Symbol := Owner.Symbols[Ref.Position];
     Inc(Count);
   end;
@@ -380,26 +420,36 @@ begin
   // jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren: AddUnit ruft
   // das bei jeder Unit auf.
   if (FBudget <= 0) or (FBytes <= FBudget) or (FShrinkable.Count = 0) then
+  begin
     Exit;
+  end;
   for Pass := -1 to 1 do
   begin
     Keys := FShrinkable.Keys.ToArray;
     for Key in Keys do
     begin
       if (FBudget <= 0) or (FBytes <= FBudget) then
+      begin
         Exit;
+      end;
       if not FFiles.TryGetValue(Key, Existing) then
+      begin
         Continue;
+      end;
       if Pass < 0 then
       begin
         if Length(Existing.Usages) = 0 then
+        begin
           Continue;
+        end;
         RemoveFileLocked(Key);
         AddLocked(Key, TIndexMemory.WithoutUsages(Existing));
         Continue;
       end;
       if Existing.Compact or ((Pass = 0) and not Existing.Library_) then
+      begin
         Continue;
+      end;
       RemoveFileLocked(Key);
       AddLocked(Key, TIndexMemory.Compacted(TIndexMemory.WithoutUsages(Existing)));
     end;
@@ -491,7 +541,9 @@ begin
   FLock.Enter;
   try
     if not FByName.TryGetValue(UpperCase(AName), mRefs) then
+    begin
       Exit;
+    end;
     mLastSlot := -1;
     mOwner := Default(TSlotUnit);
     for mIndex := 0 to mRefs.Count - 1 do
@@ -504,7 +556,9 @@ begin
         mOwner := FSlotUnits[mRef.Slot];
       end;
       if mOwner.Known and (mRef.Position <= High(mOwner.Symbols)) and AMatch(mOwner.Symbols[mRef.Position]) then
+      begin
         Exit(True);
+      end;
     end;
   finally
     FLock.Leave;
@@ -517,7 +571,9 @@ var
 begin
   Key := UpperCase(LastPart(ATypeName));
   if Key = '' then
+  begin
     Exit(nil);
+  end;
   FLock.Enter;
   try
     Result := LocationsLocked(FByAncestor, Key);
@@ -532,7 +588,9 @@ begin
   try
     // Schnappschuss bis zur nächsten Änderung (Code-Review P-13); dynamische Arrays sind referenzgezählt.
     if FUnitsSnapshot = nil then
+    begin
       FUnitsSnapshot := FFiles.Values.ToArray;
+    end;
     Result := FUnitsSnapshot;
   finally
     FLock.Leave;
@@ -550,8 +608,12 @@ begin
     FLock.Enter;
     try
       for Key in FUnavailable.Keys do
+      begin
         if FFiles.TryGetValue(Key, UnitIndex) then
+        begin
           Found.Add(UnitIndex);
+        end;
+      end;
     finally
       FLock.Leave;
     end;

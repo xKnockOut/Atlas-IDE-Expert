@@ -100,10 +100,14 @@ begin
   Result := LowerCase(Trim(ATypeName));
   Index := Pos('<', Result);
   if Index > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Index - 1));
+  end;
   Index := LastDelimiter('.', Result);
   if Index > 0 then
+  begin
     Result := Copy(Result, Index + 1, MaxInt);
+  end;
 end;
 
 /// <summary>Beginnt ein Typtext mit dem Wort AWord (nicht mit einem längeren Namen)?</summary>
@@ -128,7 +132,9 @@ begin
         Dec(Depth);
       ':':
         if Depth = 0 then
+        begin
           Exit(Copy(ASignature, Index + 1, MaxInt));
+        end;
     end;
 end;
 
@@ -142,19 +148,27 @@ begin
   begin
     Found := -1;
     for Index := 0 to High(Result) do
+    begin
       if SameText(Result[Index].Name, Member.Name) then
       begin
         Found := Index;
         Break;
       end;
+    end;
     if Found < 0 then
-      Result := Result + [Member]
+    begin
+      Result := Result + [Member];
+    end
     else if (Member.Kind = TIndexSymbolKind.Property_) and (Member.TypeName = '') and
       (Result[Found].Kind = TIndexSymbolKind.Property_) then
+    begin
       // "property Caption;" im published-Abschnitt: Typ und Zugriff bleiben die geerbten.
-      Result[Found].Visibility := Member.Visibility
+      Result[Found].Visibility := Member.Visibility;
+    end
     else
+    begin
       Result[Found] := Member;
+    end;
   end;
 end;
 
@@ -163,7 +177,9 @@ begin
   Result := (AMember.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and
     (AMember.TypeName <> '');
   if not Result then
+  begin
     Exit;
+  end;
   case AMember.Kind of
     TIndexSymbolKind.Field:
       Result := True;
@@ -183,25 +199,43 @@ begin
   Result := True;
   Text := Trim(ATypeName);
   if Text.StartsWith('type ', True) then
+  begin
     Text := Trim(Copy(Text, 6, MaxInt));
+  end;
   Bare := BareName(Text);
   if StartsWithWord(Text, 'set') then
-    AKind := TAssignValueKind.SetOf
+  begin
+    AKind := TAssignValueKind.SetOf;
+  end
   else if Text.StartsWith('^') or StartsWithWord(Text, 'array') or StartsWithWord(Text, 'procedure') or
     StartsWithWord(Text, 'function') or StartsWithWord(Text, 'reference') or StartsWithWord(Text, 'class') then
-    AKind := TAssignValueKind.Reference
+  begin
+    AKind := TAssignValueKind.Reference;
+  end
   else if StartsWithWord(Text, 'string') or (IndexText(Bare, TextTypes) >= 0) then
-    AKind := TAssignValueKind.Text
+  begin
+    AKind := TAssignValueKind.Text;
+  end
   else if (IndexText(Bare, NumberTypes) >= 0) or SameText(Bare, 'ttime') then
-    AKind := TAssignValueKind.Number
+  begin
+    AKind := TAssignValueKind.Number;
+  end
   else if IndexText(Bare, CharTypes) >= 0 then
-    AKind := TAssignValueKind.Character
+  begin
+    AKind := TAssignValueKind.Character;
+  end
   else if IndexText(Bare, BooleanTypes) >= 0 then
-    AKind := TAssignValueKind.Boolean_
+  begin
+    AKind := TAssignValueKind.Boolean_;
+  end
   else if IndexText(Bare, ReferenceTypes) >= 0 then
-    AKind := TAssignValueKind.Reference
+  begin
+    AKind := TAssignValueKind.Reference;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 class function TAssignFields.DefaultValue(AKind: TAssignValueKind; const ATypeName, AFirstValue: string): string;
@@ -223,7 +257,9 @@ begin
       begin
         Result := AFirstValue;
         if Result = '' then
+        begin
           Result := 'Default(' + Trim(ATypeName) + ')';
+        end;
       end;
   else
     Result := 'Default(' + Trim(ATypeName) + ')';
@@ -242,15 +278,21 @@ begin
   // "Opts . Inner" steht auch mit Leerzeichen um den Punkt da.
   Parts := AExpression.Split(['.']);
   for Index := 0 to High(Parts) do
+  begin
     Parts[Index] := TRegEx.Escape(Trim(Parts[Index]));
+  end;
   Pattern := '^\s*' + string.Join('\s*\.\s*', Parts) + '\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*:=';
   for Index := ALine + 1 to High(ALines) do
   begin
     if Trim(ALines[Index]) = '' then
+    begin
       Continue;
+    end;
     Found := TRegEx.Match(ALines[Index], Pattern, [roIgnoreCase]);
     if not Found.Success then
+    begin
       Break;
+    end;
     Result := Result + [Found.Groups[1].Value];
   end;
 end;
@@ -262,8 +304,12 @@ var
 begin
   Result := nil;
   for Field in AFields do
+  begin
     if IndexText(Field.Name, ANames) < 0 then
+    begin
       Result := Result + [Field];
+    end;
+  end;
 end;
 
 class function TAssignFields.Line(const AExpression: string; const AField: TAssignField): string;
@@ -280,7 +326,9 @@ begin
   for Index := 1 to Length(AText) do
   begin
     if CharInSet(AText[Index], ['$', '}', '\']) then
+    begin
       Result := Result + '\';
+    end;
     Result := Result + AText[Index];
   end;
 end;
@@ -293,7 +341,9 @@ begin
   for Index := 0 to High(AFields) do
   begin
     if Index > 0 then
+    begin
       Result := Result + #10;
+    end;
     Result := Result + Escaped(AExpression) + '.' + Escaped(AFields[Index].Name) + ' := ${' +
       IntToStr(Index + 1) + ':' + Escaped(AFields[Index].Value) + '};';
   end;
@@ -308,7 +358,9 @@ begin
   for Index := 0 to High(AFields) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ALineBreak + AIndent;
+    end;
     Result := Result + Line(AExpression, AFields[Index]);
   end;
 end;

@@ -143,9 +143,13 @@ end;
 function Plural(ACount: Integer; const AOne, AMany: string): string;
 begin
   if ACount = 1 then
-    Result := '1 ' + AOne
+  begin
+    Result := '1 ' + AOne;
+  end
   else
+  begin
     Result := IntToStr(ACount) + ' ' + AMany;
+  end;
 end;
 
 function UnitOf(const AIndex: ISymbolIndex; const ACurrent: TUnitIndex; const AFileName: string;
@@ -176,12 +180,17 @@ begin
   for Depth := 1 to MaxDepth do
   begin
     if Length(Ancestors) = 0 then
+    begin
       Exit;
+    end;
     Name := Ancestors[0];
     if (Pos('<', Name) > 0) or not AResolver.ResolveTypeFrom(FromUnit, Name, Ancestor) or
       not UnitOf(AIndex, ACurrent, Ancestor.FileName, OwnerUnit) then
+    begin
       Exit;
+    end;
     for Symbol in OwnerUnit.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Ancestor.QualifiedName) and
         SameText(Symbol.Name, AName) then
       begin
@@ -189,6 +198,7 @@ begin
         ATarget := Location(OwnerUnit.FileName, Symbol.SelectionRange);
         Exit(True);
       end;
+    end;
     FromUnit := OwnerUnit;
     Ancestors := Ancestor.Ancestors;
   end;
@@ -205,15 +215,21 @@ begin
   for Index := 2 to High(Tokens) do
   begin
     if not (Tokens[Index - 1].IsSymbol('.') and (Tokens[Index].Kind = TPascalTokenKind.Identifier)) then
+    begin
       Continue;
+    end;
     Back := Index - 2;
     while (Back >= 2) and (Tokens[Back].Kind = TPascalTokenKind.Identifier) and Tokens[Back - 1].IsSymbol('.') do
+    begin
       Dec(Back, 2);
+    end;
     if (Back >= 1) and (Tokens[Back].Kind = TPascalTokenKind.Identifier) and
       (Tokens[Back - 1].IsKeyword('procedure') or Tokens[Back - 1].IsKeyword('function') or
       Tokens[Back - 1].IsKeyword('constructor') or Tokens[Back - 1].IsKeyword('destructor') or
       Tokens[Back - 1].IsKeyword('operator')) then
+    begin
       Result.AddOrSetValue(PositionKey(Tokens[Index].StartPos), True);
+    end;
   end;
 end;
 
@@ -281,13 +297,19 @@ begin
   Headers := HeaderNames(ATree);
   try
     for Symbol in Current.Symbols do
+    begin
       if Symbol.Kind in LensTypeKinds then
+      begin
         Types.AddOrSetValue(UpperCase(Symbol.QualifiedName), Symbol);
+      end;
+    end;
 
     for Symbol in Current.Symbols do
     begin
       if Headers.ContainsKey(PositionKey(Symbol.SelectionRange.StartPos)) then
+      begin
         Continue;
+      end;
       if Symbol.Kind in LensTypeKinds then
       begin
         Entry := Default(TCodeLensEntry);
@@ -304,7 +326,9 @@ begin
             Entry.Range := Symbol.SelectionRange;
             Entry.Title := Plural(Length(Descendants), 'Nachfahre', 'Nachfahren');
             for Descendant in Descendants do
+            begin
               Entry.Targets := Entry.Targets + [Location(Descendant.FileName, Descendant.Symbol.SelectionRange)];
+            end;
             List.Add(Entry);
           end;
         end;
@@ -322,7 +346,9 @@ begin
             Entry.Range := Symbol.SelectionRange;
             Entry.Title := Overview.Title;
             for Handler in Overview.Own do
+            begin
               Entry.Targets := Entry.Targets + [Location(Handler.FileName, Handler.SelectionRange)];
+            end;
             List.Add(Entry);
           end;
         end;
@@ -422,8 +448,12 @@ begin
   try
     for Found in TLspReferences.Find(AResolver, AIndex, ATree, AFileName, AEntry.Range.StartPos, False, AFiles,
       AReadText, ACancellation) do
+    begin
       if not (SameText(Found.FileName, AFileName) and Headers.ContainsKey(PositionKey(Found.Range.StartPos))) then
+      begin
         Result.Targets := Result.Targets + [Location(Found.FileName, Found.Range)];
+      end;
+    end;
   finally
     Headers.Free;
   end;
@@ -496,9 +526,13 @@ var
   Limits: TMetricLimits;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   FileName := TDocumentUris.ToPath(Uri);
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -508,10 +542,16 @@ begin
   try
     Result := TJSONArray.Create;
     for Entry in Lenses(Resolver, FIndex, Tree, FileName, FReadText) do
+    begin
       TJSONArray(Result).AddElement(ToJson(Entry, FileName));
+    end;
     if Assigned(FMetricsFor) and FMetricsFor(Uri, Limits) then
+    begin
       for Entry in MetricLenses(Tree, Limits, FIndex, FileName) do
+      begin
         TJSONArray(Result).AddElement(ToJson(Entry, FileName));
+      end;
+    end;
   finally
     Resolver.Free;
   end;
@@ -534,15 +574,21 @@ begin
     TJSONObject(AParams).TryGetValue<Integer>('data.character', Character) and
     TJSONObject(AParams).TryGetValue<Integer>('data.endLine', EndLine) and
     TJSONObject(AParams).TryGetValue<Integer>('data.endCharacter', EndCharacter)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "data" der Linse fehlt oder ist unvollständig');
+  end;
   Entry := Default(TCodeLensEntry);
   Entry.Kind := TCodeLensKind.References;
   Entry.Range := TTextRange.Create(TTextPosition.Create(Line, Character), TTextPosition.Create(EndLine, EndCharacter));
   FileName := TDocumentUris.ToPath(Uri);
   if Assigned(FFiles) then
-    Files := FFiles()
+  begin
+    Files := FFiles();
+  end
   else
+  begin
     Files := nil;
+  end;
   if FStore.TryGet(Uri, Document) then
   begin
     Cancellation := TRequestCancellation.Create(ACancellation);
@@ -556,7 +602,9 @@ begin
     end;
   end
   else
+  begin
     Entry.Title := Plural(0, 'Referenz', 'Referenzen');
+  end;
   Result := ToJson(Entry, FileName);
 end;
 

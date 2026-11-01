@@ -137,10 +137,16 @@ var
 begin
   Result := AAuthors;
   if AAuthor = '' then
+  begin
     Exit;
+  end;
   for mName in AAuthors do
+  begin
     if SameText(mName, AAuthor) then
+    begin
       Exit;
+    end;
+  end;
   Result := AAuthors + [AAuthor];
 end;
 
@@ -153,9 +159,13 @@ begin
   mExtension := LowerCase(ExtractFileExt(APath));
   if (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dfm') or (mExtension = '.fmx') or
     (mExtension = '.lfm') then
-    Result := LowerCase(ChangeFileExt(StringReplace(APath, '\', '/', [rfReplaceAll]), ''))
+  begin
+    Result := LowerCase(ChangeFileExt(StringReplace(APath, '\', '/', [rfReplaceAll]), ''));
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function THotspotAnalyzer.IsSource(const APath: string): Boolean;
@@ -180,24 +190,34 @@ begin
   SetLength(Result, Length(AUnits));
   SetLength(mSeen, Length(AUnits));
   for mIndex := 0 to High(Result) do
+  begin
     Result[mIndex] := Default(THotspotChanges);
+  end;
   mByPath := TDictionary<string, Integer>.Create;
   try
     for mIndex := 0 to High(AUnits) do
+    begin
       mByPath.AddOrSetValue(LowerCase(AUnits[mIndex].Path), mIndex);
+    end;
     for mCommit in ACommits do
     begin
       for mIndex := 0 to High(mSeen) do
+      begin
         mSeen[mIndex] := False;
+      end;
       for mFile in mCommit.Files do
       begin
         if (mFile.Kind = THotspotChangeKind.Deleted) or not IsSource(mFile.Path) or
           not mByPath.TryGetValue(LowerCase(mFile.Path), mUnit) then
+        begin
           Continue;
+        end;
         mAdded := mFile.Added;
         mDeleted := mFile.Deleted;
         if mSeen[mUnit] then
+        begin
           Continue;
+        end;
         mSeen[mUnit] := True;
         Inc(Result[mUnit].Changes);
         Result[mUnit].Authors := AddAuthor(Result[mUnit].Authors, mCommit.Author);
@@ -217,7 +237,9 @@ begin
           Result[mUnit].Deleted := -1;
         end;
         if mCommit.Date > Result[mUnit].LastChange then
+        begin
           Result[mUnit].LastChange := mCommit.Date;
+        end;
         if Length(Result[mUnit].History) < HistoryLimit then
         begin
           mEntry := Default(THotspotLineCommit);
@@ -261,9 +283,13 @@ begin
       Result.Deleted := -1;
     end;
     if mCommit.Date > Result.LastChange then
+    begin
       Result.LastChange := mCommit.Date;
+    end;
     if Length(Result.History) < HistoryLimit then
+    begin
       Result.History := Result.History + [mCommit];
+    end;
   end;
 end;
 
@@ -271,17 +297,29 @@ function CompareEntries(const ALeft, ARight: THotspotEntry): Integer;
 begin
   Result := CompareValue(ARight.Score, ALeft.Score);
   if Result = 0 then
+  begin
     Result := ARight.Changes.Changes - ALeft.Changes.Changes;
+  end;
   if Result = 0 then
+  begin
     Result := ARight.Complexity - ALeft.Complexity;
+  end;
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.Path, ARight.Path);
+  end;
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft.Path, ARight.Path);
+  end;
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.Method, ARight.Method);
+  end;
   if Result = 0 then
+  begin
     Result := ALeft.Line - ARight.Line;
+  end;
 end;
 
 class function THotspotAnalyzer.Rank(const AEntries: TArray<THotspotEntry>): TArray<THotspotEntry>;
@@ -293,22 +331,30 @@ begin
   mMaxChanges := 0;
   mMaxComplexity := 0;
   for mEntry in AEntries do
+  begin
     if mEntry.Changes.Changes > 0 then
     begin
       mMaxChanges := Max(mMaxChanges, mEntry.Changes.Changes);
       mMaxComplexity := Max(mMaxComplexity, mEntry.Complexity);
     end;
+  end;
   mList := TList<THotspotEntry>.Create;
   try
     for mEntry in AEntries do
     begin
       if mEntry.Changes.Changes <= 0 then
+      begin
         Continue;
+      end;
       mScored := mEntry;
       if mMaxComplexity > 0 then
-        mScored.Score := (mEntry.Changes.Changes / mMaxChanges) * (Max(0, mEntry.Complexity) / mMaxComplexity)
+      begin
+        mScored.Score := (mEntry.Changes.Changes / mMaxChanges) * (Max(0, mEntry.Complexity) / mMaxComplexity);
+      end
       else
+      begin
         mScored.Score := 0;
+      end;
       mList.Add(mScored);
     end;
     // TList.Sort ist nicht stabil: CompareEntries entscheidet bis zur Zeile eindeutig.
@@ -324,29 +370,47 @@ var
   mTolerance: Integer;
 begin
   if APast = -2 then
+  begin
     Exit(THotspotTrend.New);
+  end;
   if APast < 0 then
+  begin
     Exit(THotspotTrend.Unknown);
+  end;
   mTolerance := Max(1, Round(APast * 0.05));
   if ANow - APast > mTolerance then
-    Result := THotspotTrend.Rising
+  begin
+    Result := THotspotTrend.Rising;
+  end
   else if APast - ANow > mTolerance then
-    Result := THotspotTrend.Falling
+  begin
+    Result := THotspotTrend.Falling;
+  end
   else
+  begin
     Result := THotspotTrend.Steady;
+  end;
 end;
 
 function CompareCoupling(const ALeft, ARight: THotspotCoupling): Integer;
 begin
   Result := CompareValue(ARight.Ratio, ALeft.Ratio);
   if Result = 0 then
+  begin
     Result := ARight.Shared - ALeft.Shared;
+  end;
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.First.Path, ARight.First.Path);
+  end;
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.Second.Path, ARight.Second.Path);
+  end;
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft.First.Path + #1 + ALeft.Second.Path, ARight.First.Path + #1 + ARight.Second.Path);
+  end;
 end;
 
 class function THotspotAnalyzer.Coupling(const AUnits: TArray<THotspotUnit>; const ACommits: TArray<THotspotCommit>;
@@ -379,20 +443,28 @@ begin
     begin
       mKey := UnitKey(AUnits[mIndex].Path);
       if mKey <> '' then
+      begin
         mByKey.AddOrSetValue(mKey, mIndex);
+      end;
     end;
     for mCommit in ACommits do
     begin
       if Length(mCommit.Files) > AOptions.MaxCommitFiles then
+      begin
         Continue;
+      end;
       mTouched.Clear;
       for mFile in mCommit.Files do
       begin
         if mFile.Kind = THotspotChangeKind.Deleted then
+        begin
           Continue;
+        end;
         mKey := UnitKey(mFile.Path);
         if (mKey = '') or not mByKey.TryGetValue(mKey, mUnit) or mSeen[mUnit] then
+        begin
           Continue;
+        end;
         mSeen[mUnit] := True;
         mTouched.Add(mUnit);
       end;
@@ -406,23 +478,33 @@ begin
           mFirst := mTouched[mIndex];
           mSecond := mTouched[mInner];
           if mPairs.TryGetValue(mFirst * mUnitCount + mSecond, mShared) then
-            mPairs[mFirst * mUnitCount + mSecond] := mShared + 1
+          begin
+            mPairs[mFirst * mUnitCount + mSecond] := mShared + 1;
+          end
           else
+          begin
             mPairs.Add(mFirst * mUnitCount + mSecond, 1);
+          end;
         end;
       end;
     end;
     for mPair in mPairs do
     begin
       if mPair.Value < AOptions.MinSharedCommits then
+      begin
         Continue;
+      end;
       mFirst := Integer(mPair.Key div mUnitCount);
       mSecond := Integer(mPair.Key mod mUnitCount);
       mRatio := mPair.Value / ((mCounts[mFirst] + mCounts[mSecond]) / 2);
       if mRatio + 1E-9 < AOptions.MinCouplingRatio then
+      begin
         Continue;
+      end;
       if Assigned(AConnected) and AConnected(mFirst, mSecond) then
+      begin
         Continue;
+      end;
       mItem.First := AUnits[mFirst];
       mItem.Second := AUnits[mSecond];
       mItem.Shared := mPair.Value;

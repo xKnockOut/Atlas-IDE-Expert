@@ -70,23 +70,37 @@ var
   Index: Integer;
 begin
   if Length(ABytes) < Length(APrefix) then
+  begin
     Exit(False);
+  end;
   for Index := 0 to High(APrefix) do
+  begin
     if ABytes[Index] <> APrefix[Index] then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
 class function TTextEncodingProbe.BomOf(const ABytes: TBytes): TTextBom;
 begin
   if HasPrefix(ABytes, [$EF, $BB, $BF]) then
-    Result := TTextBom.Utf8
+  begin
+    Result := TTextBom.Utf8;
+  end
   else if HasPrefix(ABytes, [$FF, $FE]) then
-    Result := TTextBom.Utf16LE
+  begin
+    Result := TTextBom.Utf16LE;
+  end
   else if HasPrefix(ABytes, [$FE, $FF]) then
-    Result := TTextBom.Utf16BE
+  begin
+    Result := TTextBom.Utf16BE;
+  end
   else
+  begin
     Result := TTextBom.None;
+  end;
 end;
 
 class function TTextEncodingProbe.BomLength(ABom: TTextBom): Integer;
@@ -135,19 +149,27 @@ begin
       CodePoint := Lead and $07;
     end
     else
+    begin
       Exit(False);
+    end;
     if Index + Count > High(ABytes) then
+    begin
       Exit(False);
+    end;
     for Next := Index + 1 to Index + Count do
     begin
       if (ABytes[Next] and $C0) <> $80 then
+      begin
         Exit(False);
+      end;
       CodePoint := (CodePoint shl 6) or (ABytes[Next] and $3F);
     end;
     // Überlange Formen, Surrogate und Werte über U+10FFFF sind kein gültiges UTF-8.
     if ((Count = 2) and (CodePoint < $800)) or ((Count = 3) and (CodePoint < $10000)) or
       (CodePoint > $10FFFF) or ((CodePoint >= $D800) and (CodePoint <= $DFFF)) then
+    begin
       Exit(False);
+    end;
     Inc(Index, Count + 1);
   end;
   Result := True;
@@ -165,8 +187,12 @@ var
   Value: Byte;
 begin
   for Value in ABytes do
+  begin
     if Value >= $80 then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -180,8 +206,12 @@ var
   Known: Integer;
 begin
   for Known in SingleByteCodePages do
+  begin
     if Known = ACodePage then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -198,16 +228,22 @@ begin
     Exit(True);
   end;
   if Copy(Text, 1, 8) = 'windows-' then
-    Delete(Text, 1, 8)
+  begin
+    Delete(Text, 1, 8);
+  end
   else if Copy(Text, 1, 2) = 'cp' then
+  begin
     Delete(Text, 1, 2);
+  end;
   if not TryStrToInt(Text, ACodePage) then
   begin
     ACodePage := 0;
     Exit;
   end;
   if (ACodePage = Utf8CodePage) or IsSingleByteCodePage(ACodePage) then
+  begin
     Exit(True);
+  end;
   ACodePage := 0;
 end;
 
@@ -217,17 +253,25 @@ var
   Value: Byte;
 begin
   if AStart < 0 then
+  begin
     AStart := 0;
+  end;
   if AStart >= Length(ABytes) then
+  begin
     Exit('');
+  end;
   SetLength(Result, Length(ABytes) - AStart);
   for Index := AStart to High(ABytes) do
   begin
     Value := ABytes[Index];
     if (Value >= $80) and (Value <= $9F) then
-      Result[Index - AStart + 1] := Char(Cp1252High[Value])
+    begin
+      Result[Index - AStart + 1] := Char(Cp1252High[Value]);
+    end
     else
+    begin
       Result[Index - AStart + 1] := Char(Value);
+    end;
   end;
 end;
 
@@ -244,14 +288,20 @@ begin
     Code := Ord(AText[Index]);
     Value := Ord('?');
     if (Code < $80) or ((Code >= $A0) and (Code <= $FF)) then
-      Value := Code
+    begin
+      Value := Code;
+    end
     else
+    begin
       for High1252 := Low(Cp1252High) to High(Cp1252High) do
+      begin
         if Cp1252High[High1252] = Code then
         begin
           Value := High1252;
           Break;
         end;
+      end;
+    end;
     Result[Index - 1] := Value;
   end;
 end;

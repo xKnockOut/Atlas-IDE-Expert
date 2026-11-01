@@ -69,7 +69,9 @@ begin
   try
     Result := not FCancelled;
     if Result then
+    begin
       FRunning.Add(AProcess);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -104,7 +106,9 @@ begin
     FCancelled := True;
     // Unter der Sperre: Run entfernt ein Handle erst (Untrack), bevor es es schließt.
     for Process in FRunning do
+    begin
       TerminateProcess(Process, CancelledExitCode);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -115,17 +119,23 @@ var
   Index, Backslashes: Integer;
 begin
   if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
+  begin
     Exit(AArgument);
+  end;
   Result := '"';
   Backslashes := 0;
   for Index := 1 to Length(AArgument) do
   begin
     if AArgument[Index] = '\' then
-      Inc(Backslashes)
+    begin
+      Inc(Backslashes);
+    end
     else
     begin
       if AArgument[Index] = '"' then
+      begin
         Result := Result + StringOfChar('\', Backslashes + 1);
+      end;
       Backslashes := 0;
     end;
     Result := Result + AArgument[Index];
@@ -153,19 +163,27 @@ var
   begin
     Line := TEncoding.ANSI.GetString(Pending, AFrom, ACount);
     if (Line <> '') and (Line[Length(Line)] = #13) then
+    begin
       SetLength(Line, Length(Line) - 1);
+    end;
     if Assigned(AOnLine) then
+    begin
       AOnLine(Line);
+    end;
   end;
 
 begin
   if WasCancelled then
+  begin
     raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
+  end;
   Security.nLength := SizeOf(Security);
   Security.lpSecurityDescriptor := nil;
   Security.bInheritHandle := True;
   if not CreatePipe(ReadPipe, WritePipe, @Security, 0) then
+  begin
     RaiseLastOSError;
+  end;
   try
     // Nur das Schreibende erbt der Kindprozess.
     SetHandleInformation(ReadPipe, HANDLE_FLAG_INHERIT, 0);
@@ -178,22 +196,32 @@ begin
     StartupInfo.hStdError := WritePipe;
     CommandLine := QuoteArgument(ARequest.Executable);
     for Argument in ARequest.Arguments do
+    begin
       CommandLine := CommandLine + ' ' + QuoteArgument(Argument);
+    end;
     UniqueString(CommandLine);
     if ARequest.WorkingDir <> '' then
-      WorkingDir := PChar(ARequest.WorkingDir)
+    begin
+      WorkingDir := PChar(ARequest.WorkingDir);
+    end
     else
+    begin
       WorkingDir := nil;
+    end;
     if not CreateProcess(PChar(ARequest.Executable), PChar(CommandLine), nil, nil, True, CREATE_NO_WINDOW, nil,
       WorkingDir, StartupInfo, ProcessInfo) then
+    begin
       raise ECompilerError.CreateFmt('%s lässt sich nicht starten: %s',
         [ARequest.Executable, SysErrorMessage(GetLastError)]);
+    end;
     // Eigenes Schreibende schließen, damit ReadFile beim Prozessende False liefert.
     CloseHandle(WritePipe);
     WritePipe := 0;
     try
       if not Track(ProcessInfo.hProcess) then
+      begin
         TerminateProcess(ProcessInfo.hProcess, CancelledExitCode);
+      end;
       try
         Pending := nil;
         while ReadFile(ReadPipe, Buffer, SizeOf(Buffer), BytesRead, nil) and (BytesRead > 0) do
@@ -203,25 +231,33 @@ begin
           Move(Buffer[0], Pending[Start], BytesRead);
           Start := 0;
           for LineEnd := 0 to High(Pending) do
+          begin
             if Pending[LineEnd] = 10 then
             begin
               EmitLine(Start, LineEnd - Start);
               Start := LineEnd + 1;
             end;
+          end;
           Pending := Copy(Pending, Start, MaxInt);
         end;
         if Length(Pending) > 0 then
+        begin
           EmitLine(0, Length(Pending));
+        end;
         WaitForSingleObject(ProcessInfo.hProcess, INFINITE);
         if not GetExitCodeProcess(ProcessInfo.hProcess, ProcessExitCode) then
+        begin
           RaiseLastOSError;
+        end;
         Result := Integer(ProcessExitCode);
       finally
         // Vor CloseHandle: Cancel darf nie ein geschlossenes Handle beenden.
         Untrack(ProcessInfo.hProcess);
       end;
       if WasCancelled then
+      begin
         raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
+      end;
     finally
       CloseHandle(ProcessInfo.hThread);
       CloseHandle(ProcessInfo.hProcess);
@@ -229,7 +265,9 @@ begin
   finally
     CloseHandle(ReadPipe);
     if WritePipe <> 0 then
+    begin
       CloseHandle(WritePipe);
+    end;
   end;
 end;
 

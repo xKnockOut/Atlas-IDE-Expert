@@ -67,7 +67,9 @@ var
 begin
   Result := '';
   for Local in ALocals do
+  begin
     Result := Result + Local.Name + ':' + IntToStr(Ord(Local.Kind)) + ' ';
+  end;
 end;
 
 procedure TRoutineLocalsTests.CollectsAllKinds;
@@ -121,9 +123,13 @@ begin
     TRoutineLocals.CollectKind(Tree.Root, TSyntaxKind.Identifier, Nodes);
     Text := '';
     for Node in Nodes do
+    begin
       if (Node.StartPos.Line in [10, 16, 17]) and not SameText(Node.Name, 'Inc') and
         not SameText(Node.Name, 'IntToStr') then
+      begin
         Text := Text + Node.Name + ':' + IntToStr(Ord(TRoutineLocals.AccessOf(Node, Lookup))) + ' ';
+      end;
+    end;
     // Lesen 0, Schreiben 1, beides 2 (Inc ändert sein erstes Argument).
     Assert.AreEqual('X:1 A:0 Z:2 I:0 C:1 C:0 X:0 ', Text);
     Assert.IsTrue(TRoutineLocals.HasKind(Tree.Root, TSyntaxKind.InlineVar));

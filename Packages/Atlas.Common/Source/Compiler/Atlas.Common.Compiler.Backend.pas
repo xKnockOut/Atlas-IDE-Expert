@@ -90,10 +90,14 @@ end;
 function TCompilerBackendChoice.MessageText: string;
 begin
   if Usable then
+  begin
     Exit('');
+  end;
   Result := 'Atlas kann nicht kompilieren: ' + Reason + '.';
   if Remedy <> '' then
+  begin
     Result := Result + ' ' + Remedy;
+  end;
 end;
 
 class function TCompilerBackendChoice.Unavailable(const AReason, ARemedy: string): TCompilerBackendChoice;
@@ -166,21 +170,33 @@ begin
         'In settings.json "compiler.backend" auf "auto", "dcc" oder "ide" setzen.', 'abgeschaltet');
     TCompilerBackendSetting.Dcc:
       if DccUsable then
-        Result.Backend := TCompilerBackend.Dcc
+      begin
+        Result.Backend := TCompilerBackend.Dcc;
+      end
       else
+      begin
         Result := Off(TCompilerEditions.Describe(AEdition), IdeRemedy, 'Starter Edition');
+      end;
     TCompilerBackendSetting.Ide:
       Ide(AIdeCommand, AIdeCommandExists, Result);
   else
     if DccUsable then
-      Result.Backend := TCompilerBackend.Dcc
+    begin
+      Result.Backend := TCompilerBackend.Dcc;
+    end
     else if Ide(AIdeCommand, AIdeCommandExists, ViaIde) then
-      Result := ViaIde
+    begin
+      Result := ViaIde;
+    end
     else if Trim(AIdeCommand) = '' then
-      Result := Off(TCompilerEditions.Describe(AEdition), IdeRemedy, 'Starter Edition')
+    begin
+      Result := Off(TCompilerEditions.Describe(AEdition), IdeRemedy, 'Starter Edition');
+    end
     else
+    begin
       // cc.ps1 eingetragen, aber nicht da: beides nennen.
       Result := Off(TCompilerEditions.Describe(AEdition) + '; ' + ViaIde.Reason, ViaIde.Remedy, 'Starter Edition');
+    end;
   end;
 end;
 

@@ -137,9 +137,13 @@ const
 function Bare(const AIdentifier: string): string;
 begin
   if (AIdentifier <> '') and (AIdentifier[1] = '&') then
-    Result := Copy(AIdentifier, 2, MaxInt)
+  begin
+    Result := Copy(AIdentifier, 2, MaxInt);
+  end
   else
+  begin
     Result := AIdentifier;
+  end;
 end;
 
 function ContainsText_(const ANames: TArray<string>; const AName: string): Boolean;
@@ -147,8 +151,12 @@ var
   Name: string;
 begin
   for Name in ANames do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -163,15 +171,21 @@ begin
   Result := TDictionary<string, Integer>.Create;
   IsUnit := False;
   for Index := 0 to High(ATokens) do
+  begin
     if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
       IsUnit := ATokens[Index].IsKeyword('unit');
       Break;
     end;
+  end;
   if IsUnit then
-    Part := InInterfacePart
+  begin
+    Part := InInterfacePart;
+  end
   else
+  begin
     Part := InImplementationPart;
+  end;
   ClauseIndex := 0;
   Index := 0;
   while Index <= High(ATokens) do
@@ -183,12 +197,16 @@ begin
       Continue;
     end;
     if ATokens[Index].IsKeyword('implementation') then
-      Part := InImplementationPart
+    begin
+      Part := InImplementationPart;
+    end
     else if ATokens[Index].Kind = TPascalTokenKind.Identifier then
     begin
       Key := LowerCase(Bare(ATokens[Index].Text));
       if not Result.TryGetValue(Key, Mask) then
+      begin
         Mask := 0;
+      end;
       Result.AddOrSetValue(Key, Mask or Part);
     end;
     Inc(Index);
@@ -205,14 +223,20 @@ begin
   Result := 0;
   // Qualifizierter Zugriff wie SysUtils.Format oder System.SysUtils.Format.
   if AIdentifiers.TryGetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), Mask) then
+  begin
     Result := Result or Mask;
+  end;
   for Name in AInfo.Names do
+  begin
     if AIdentifiers.TryGetValue(LowerCase(Name), Mask) then
     begin
       Result := Result or Mask;
       if Result = InInterfacePart or InImplementationPart then
+      begin
         Exit;
+      end;
     end;
+  end;
 end;
 
 function IsBefore(const A, B: TTextPosition): Boolean;
@@ -225,8 +249,12 @@ var
   Range: TTextRange;
 begin
   for Range in ARanges do
+  begin
     if not IsBefore(APosition, Range.StartPos) and IsBefore(APosition, Range.EndPos) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -246,20 +274,26 @@ var
 begin
   Result := nil;
   if not Assigned(AInfo) then
+  begin
     Exit;
+  end;
   // Nur der aktive Zweig: so gelten auch Listen mit {$IFDEF}.
   if AInactive = nil then
-    Active := ATokens
+  begin
+    Active := ATokens;
+  end
   else
   begin
     SetLength(Active, Length(ATokens));
     Count := 0;
     for Index := 0 to High(ATokens) do
+    begin
       if not InsideAny(ATokens[Index].StartPos, AInactive) then
       begin
         Active[Count] := ATokens[Index];
         Inc(Count);
       end;
+    end;
     SetLength(Active, Count);
   end;
   Clauses := TUsesClauses.Clauses(Active);
@@ -268,36 +302,54 @@ begin
   Identifiers := CollectIdentifiers(Active, Clauses);
   try
     for Clause in Clauses do
+    begin
       for Reference in References do
       begin
         if IsBefore(Reference.Range.StartPos, Active[Clause.UsesIndex].EndPos) or
           IsBefore(Active[Clause.Semicolon].StartPos, Reference.Range.EndPos) then
+        begin
           Continue;
+        end;
         // Doppelte Einträge räumt "uses aufräumen" auf, nicht das Abblenden.
         if ContainsText_(Seen, Reference.Name) then
+        begin
           Continue;
+        end;
         Seen := Seen + [Reference.Name];
         Info := AInfo(Reference.Name);
         if not Info.Known then
+        begin
           Continue;
+        end;
         Usage := UsageOf(Reference.Name, Info, Identifiers);
         Entry.Name := Reference.Name;
         Entry.Range := Reference.Range;
         if Usage = 0 then
         begin
           if ContainsText_(AKeep, Reference.Name) then
-            Entry.State := TUsesEntryState.KeptByAllowlist
+          begin
+            Entry.State := TUsesEntryState.KeptByAllowlist;
+          end
           else if Info.HasInitialization then
-            Entry.State := TUsesEntryState.KeptForInitialization
+          begin
+            Entry.State := TUsesEntryState.KeptForInitialization;
+          end
           else
+          begin
             Entry.State := TUsesEntryState.Unused;
+          end;
         end
         else if Clause.InInterface and (Usage = InImplementationPart) and not Info.HasInitialization then
-          Entry.State := TUsesEntryState.OnlyImplementation
+        begin
+          Entry.State := TUsesEntryState.OnlyImplementation;
+        end
         else
+        begin
           Continue;
+        end;
         Result := Result + [Entry];
       end;
+    end;
   finally
     Identifiers.Free;
   end;
@@ -320,11 +372,17 @@ begin
   while (Result >= 0) and (Result <= High(ATokens)) do
   begin
     if ATokens[Result].Kind = TPascalTokenKind.Directive then
-      ABlocked := True
+    begin
+      ABlocked := True;
+    end
     else if ATokens[Result].Kind = TPascalTokenKind.Comment then
-      ACommented := True
+    begin
+      ACommented := True;
+    end
     else
+    begin
       Exit;
+    end;
     Inc(Result, AStep);
   end;
   Result := -1;
@@ -349,7 +407,9 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if (ATokens[Index].StartPos = ARange.StartPos) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) then
+    begin
       First := Index;
+    end;
     if (First >= 0) and (ATokens[Index].EndPos = ARange.EndPos) then
     begin
       Last := Index;
@@ -357,21 +417,29 @@ begin
     end;
   end;
   if (First < 0) or (Last < 0) then
+  begin
     Exit(False);
+  end;
   Next := Significant(ATokens, Last, 1, NextBlocked, NextCommented);
   // "in 'datei.pas'" gehört zum Eintrag.
   if (Next >= 0) and ATokens[Next].IsKeyword('in') then
   begin
     Last := Significant(ATokens, Next, 1, Blocked, Commented);
     if (Last < 0) or Blocked or (ATokens[Last].Kind <> TPascalTokenKind.StringLiteral) then
+    begin
       Exit(False);
+    end;
     Next := Significant(ATokens, Last, 1, NextBlocked, NextCommented);
   end;
   if Next < 0 then
+  begin
     Exit(False);
+  end;
   Previous := Significant(ATokens, First, -1, PreviousBlocked, PreviousCommented);
   if Previous < 0 then
+  begin
     Exit(False);
+  end;
   if ATokens[Previous].IsSymbol(',') and not PreviousBlocked then
   begin
     // "A, B" → "A"; mit Kommentar dazwischen bleibt er stehen, nur Komma und Name gehen.
@@ -383,7 +451,9 @@ begin
       Cut.First := ATokens[First].Offset;
     end
     else
+    begin
       Cut.First := ATokens[Previous].Offset;
+    end;
     Cut.Till := TokenEnd(ATokens[Last]);
     ACuts := ACuts + [Cut];
     Exit(True);
@@ -403,7 +473,9 @@ begin
       // "A, B" → "B", auch über den Zeilenumbruch einer mehrzeiligen Liste.
       Cut.Till := TokenEnd(ATokens[Next]);
       while (Cut.Till < Length(AText)) and CharInSet(AText[Cut.Till + 1], [' ', #9, #13, #10]) do
+      begin
         Inc(Cut.Till);
+      end;
     end;
     ACuts := ACuts + [Cut];
     Exit(True);
@@ -411,24 +483,34 @@ begin
   // Einziger Eintrag: das ganze uses, mit der Zeile, wenn sonst nichts darauf steht.
   if not (ATokens[Previous].IsKeyword('uses') and ATokens[Next].IsSymbol(';')) or PreviousBlocked or
     NextBlocked or PreviousCommented or NextCommented then
+  begin
     Exit(False);
+  end;
   Cut.First := ATokens[Previous].Offset;
   Cut.Till := TokenEnd(ATokens[Next]);
   LineStart := Cut.First;
   while (LineStart > 0) and CharInSet(AText[LineStart], [' ', #9]) do
+  begin
     Dec(LineStart);
+  end;
   LineEnd := Cut.Till;
   while (LineEnd < Length(AText)) and CharInSet(AText[LineEnd + 1], [' ', #9]) do
+  begin
     Inc(LineEnd);
+  end;
   if ((LineStart = 0) or CharInSet(AText[LineStart], [#13, #10])) and
     ((LineEnd = Length(AText)) or CharInSet(AText[LineEnd + 1], [#13, #10])) then
   begin
     Cut.First := LineStart;
     Cut.Till := LineEnd;
     if (Cut.Till < Length(AText)) and (AText[Cut.Till + 1] = #13) then
+    begin
       Inc(Cut.Till);
+    end;
     if (Cut.Till < Length(AText)) and (AText[Cut.Till + 1] = #10) then
+    begin
       Inc(Cut.Till);
+    end;
   end;
   ACuts := ACuts + [Cut];
   Result := True;
@@ -446,34 +528,48 @@ var
 begin
   AEdit := Default(TTextEdit);
   if ARanges = nil then
+  begin
     Exit(False);
+  end;
   // Von hinten nach vorn: Was weiter vorn steht, behält seine Position.
   Sorted := Copy(ARanges);
   for Index := 0 to High(Sorted) - 1 do
+  begin
     for Other := Index + 1 to High(Sorted) do
+    begin
       if IsBefore(Sorted[Index].StartPos, Sorted[Other].StartPos) then
       begin
         Swap := Sorted[Index];
         Sorted[Index] := Sorted[Other];
         Sorted[Other] := Swap;
       end;
+    end;
+  end;
   Text := AText;
   for Index := 0 to High(Sorted) do
   begin
     if not CutsFor(TPascalLexer.Tokenize(Text), Text, Sorted[Index], Cuts) then
+    begin
       Exit(False);
+    end;
     // Die Schnitte liegen aufsteigend: von hinten streichen.
     for Other := High(Cuts) downto 0 do
+    begin
       Delete(Text, Cuts[Other].First + 1, Cuts[Other].Till - Cuts[Other].First);
+    end;
   end;
   // Ein Edit über den geänderten Teil.
   Prefix := 0;
   while (Prefix < Length(Text)) and (Prefix < Length(AText)) and (Text[Prefix + 1] = AText[Prefix + 1]) do
+  begin
     Inc(Prefix);
+  end;
   Suffix := 0;
   while (Suffix < Length(Text) - Prefix) and (Suffix < Length(AText) - Prefix) and
     (Text[Length(Text) - Suffix] = AText[Length(AText) - Suffix]) do
+  begin
     Inc(Suffix);
+  end;
   Lines := TLineTable.Build(AText);
   AEdit := TTextEdit.Create(TTextRange.Create(Lines.PositionAt(Prefix), Lines.PositionAt(Length(AText) - Suffix)),
     Copy(Text, Prefix + 1, Length(Text) - Prefix - Suffix));
@@ -494,15 +590,23 @@ begin
   Identifiers := CollectIdentifiers(ATokens, Clauses);
   try
     for Clause in Clauses do
+    begin
       if Clause.Plain then
+      begin
         for Name in Clause.Names do
         begin
           if ContainsText_(AKeep, Name) or ContainsText_(Result, Name) then
+          begin
             Continue;
+          end;
           Info := AInfo(Name);
           if Info.Known and not Info.HasInitialization and (UsageOf(Name, Info, Identifiers) = 0) then
+          begin
             Result := Result + [Name];
+          end;
         end;
+      end;
+    end;
   finally
     Identifiers.Free;
   end;
@@ -521,20 +625,26 @@ begin
   Result := nil;
   IsUnit := False;
   for Index := 0 to High(ATokens) do
+  begin
     if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
       IsUnit := ATokens[Index].IsKeyword('unit');
       Break;
     end;
+  end;
   if not IsUnit then
+  begin
     Exit;
+  end;
   Clauses := TUsesClauses.Clauses(ATokens);
   Names := TDictionary<string, Boolean>.Create;
   try
     // Qualifizierter Zugriff wie uKunde.TKunde zählt wie in UsageOf.
     Names.AddOrSetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), True);
     for Name in ANames do
+    begin
       Names.AddOrSetValue(LowerCase(Bare(Name)), True);
+    end;
     ClauseIndex := 0;
     Index := 0;
     while Index <= High(ATokens) do
@@ -546,7 +656,9 @@ begin
         Continue;
       end;
       if ATokens[Index].IsKeyword('implementation') then
+      begin
         Break;
+      end;
       if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
         Names.ContainsKey(LowerCase(Bare(ATokens[Index].Text))) then
       begin
@@ -574,19 +686,29 @@ begin
   Clauses := TUsesClauses.Clauses(ATokens);
   // Ein implementation-uses mit Direktiven fassen wir nicht an.
   for Clause in Clauses do
+  begin
     if not Clause.InInterface and not Clause.Plain then
+    begin
       Exit;
+    end;
+  end;
   Identifiers := CollectIdentifiers(ATokens, Clauses);
   try
     for Clause in Clauses do
+    begin
       if Clause.InInterface and Clause.Plain then
+      begin
         for Name in Clause.Names do
         begin
           Info := AInfo(Name);
           // Initialisierungsreihenfolge kann zählen; solche Units bleiben, wo sie sind.
           if Info.Known and not Info.HasInitialization and (UsageOf(Name, Info, Identifiers) = InImplementationPart) then
+          begin
             Result := Result + [Name];
+          end;
         end;
+      end;
+    end;
   finally
     Identifiers.Free;
   end;
@@ -599,7 +721,9 @@ var
 begin
   AEdits := nil;
   if AUnits = nil then
+  begin
     Exit(False);
+  end;
   Options := Default(TUsesRewrite);
   Options.Drop := AUnits;
   Result := TUsesClauses.Rewrite(ATokens, AText, Options, ALineBreak, AEdits);
@@ -613,14 +737,18 @@ var
 begin
   AEdits := nil;
   if AUnits = nil then
+  begin
     Exit(False);
+  end;
   Implementation_ := -1;
   for Index := 0 to High(ATokens) do
+  begin
     if ATokens[Index].IsKeyword('implementation') then
     begin
       Implementation_ := Index;
       Break;
     end;
+  end;
   if (Implementation_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
     not TUsesClauses.AddUnit(ATokens, ATokens[Implementation_].Offset + 1, string.Join(', ', AUnits),
     ALineBreak, Added) then
@@ -640,14 +768,18 @@ var
 begin
   AEdits := nil;
   if AUnits = nil then
+  begin
     Exit(False);
+  end;
   Interface_ := -1;
   for Index := 0 to High(ATokens) do
+  begin
     if ATokens[Index].IsKeyword('interface') then
     begin
       Interface_ := Index;
       Break;
     end;
+  end;
   if (Interface_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
     not TUsesClauses.AddUnit(ATokens, ATokens[Interface_].Offset + 1, string.Join(', ', AUnits),
     ALineBreak, Added) then
@@ -679,13 +811,21 @@ begin
       if ACandidate.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
         TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.Parameter,
         TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+      begin
         for Part in ACandidate.Name.Split([',', '.']) do
+        begin
           if SameText(Bare(Trim(Part)), Name) then
+          begin
             Exit(TSyntaxSearchStep.Found);
+          end;
+        end;
+      end;
       // Aufzählungswerte stehen als Bezeichner im EnumType.
       if (ACandidate.Kind = TSyntaxKind.Identifier) and (ACandidate.Parent <> nil) and
         (ACandidate.Parent.Kind = TSyntaxKind.EnumType) and SameText(ACandidate.Name, Name) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end) <> nil;
 end;
 
@@ -700,34 +840,54 @@ begin
   Result := nil;
   Index := -1;
   for Previous := 0 to High(ATokens) do
+  begin
     if (ATokens[Previous].Kind = TPascalTokenKind.Identifier) and not Before(APosition, ATokens[Previous].StartPos) and
       not Before(ATokens[Previous].EndPos, APosition) then
     begin
       Index := Previous;
       Break;
     end;
+  end;
   if Index < 0 then
+  begin
     Exit;
+  end;
   // Nach einem Punkt ist es ein Mitglied oder ein qualifizierter Name.
   Previous := Index - 1;
   while (Previous >= 0) and (ATokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Dec(Previous);
+  end;
   if (Previous >= 0) and ATokens[Previous].IsSymbol('.') then
+  begin
     Exit;
+  end;
   Name := Bare(ATokens[Index].Text);
   if (ATree <> nil) and IsDeclaredIn(ATree.Root, Name) then
+  begin
     Exit;
+  end;
   Candidates := ADeclaring(Name);
   if Candidates = nil then
+  begin
     Exit;
+  end;
   Used := TUsesClauses.UsedUnits(ATokens);
   Own := TUsesClauses.OwnName(ATokens);
   for Candidate in Candidates do
+  begin
     if SameText(Candidate, Own) or TUsesClauses.IsUsed(Used, Candidate, ANamespaces) then
+    begin
       Exit(nil);
+    end;
+  end;
   for Candidate in Candidates do
+  begin
     if not ContainsText_(Result, Candidate) then
+    begin
       Result := Result + [Candidate];
+    end;
+  end;
 end;
 
 class function TUsesActions.AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
@@ -757,13 +917,17 @@ begin
   InterfaceOffset := -1;
   ImplementationOffset := -1;
   for Index := 0 to High(ATokens) do
+  begin
     if ATokens[Index].IsKeyword('interface') and (InterfaceOffset < 0) then
-      InterfaceOffset := ATokens[Index].Offset
+    begin
+      InterfaceOffset := ATokens[Index].Offset;
+    end
     else if ATokens[Index].IsKeyword('implementation') then
     begin
       ImplementationOffset := ATokens[Index].Offset;
       Break;
     end;
+  end;
   // Units, die Bezeichner des interface-Teils deklarieren.
   InterfaceNeeds := nil;
   if (ATarget = TUsesAddTarget.Auto) and (InterfaceOffset >= 0) and (ImplementationOffset >= 0) and
@@ -772,10 +936,18 @@ begin
     Identifiers := CollectIdentifiers(ATokens, TUsesClauses.Clauses(ATokens));
     try
       for Pair in Identifiers do
+      begin
         if Pair.Value and InInterfacePart <> 0 then
+        begin
           for Name in ADeclaring(Pair.Key) do
+          begin
             if ContainsText_(AUnits, Name) and not ContainsText_(InterfaceNeeds, Name) then
+            begin
               InterfaceNeeds := InterfaceNeeds + [Name];
+            end;
+          end;
+        end;
+      end;
     finally
       Identifiers.Free;
     end;
@@ -784,24 +956,36 @@ begin
   begin
     if (Trim(Name) = '') or SameText(Name, Own) or ContainsText_(AAdded, Name) or
       TUsesClauses.IsUsed(Used, Name, ANamespaces) then
+    begin
       Continue;
+    end;
     if (ImplementationOffset < 0) or (ATarget = TUsesAddTarget.Interface_) or
       ((ATarget = TUsesAddTarget.Auto) and ContainsText_(InterfaceNeeds, Name)) then
-      ForInterface := ForInterface + [Name]
+    begin
+      ForInterface := ForInterface + [Name];
+    end
     else
+    begin
       ForImplementation := ForImplementation + [Name];
+    end;
     AAdded := AAdded + [Name];
   end;
   // Ein Edit je Abschnitt; Programme und Units ohne implementation haben nur ein uses.
   if (Length(ForInterface) > 0) and TUsesClauses.AddUnit(ATokens, Max(0, InterfaceOffset),
     string.Join(', ', ForInterface), ALineBreak, Edit) then
+  begin
     AEdits := AEdits + [Edit];
+  end;
   if (Length(ForImplementation) > 0) and TUsesClauses.AddUnit(ATokens, ImplementationOffset,
     string.Join(', ', ForImplementation), ALineBreak, Edit) then
+  begin
     AEdits := AEdits + [Edit];
+  end;
   Result := Length(AEdits) > 0;
   if not Result then
+  begin
     AAdded := nil;
+  end;
 end;
 
 end.

@@ -154,16 +154,24 @@ begin
     begin
       Result := A.First - B.First;
       if Result = 0 then
+      begin
         Result := A.Last - B.Last;
+      end;
     end));
   for mSpan in mSorted do
   begin
     if mSpan.Last < mSpan.First then
+    begin
       Continue;
+    end;
     if (Result <> nil) and (mSpan.First <= Result[High(Result)].Last + 1) then
-      Result[High(Result)].Last := Max(Result[High(Result)].Last, mSpan.Last)
+    begin
+      Result[High(Result)].Last := Max(Result[High(Result)].Last, mSpan.Last);
+    end
     else
+    begin
       Result := Result + [mSpan];
+    end;
   end;
 end;
 
@@ -186,22 +194,32 @@ var
 begin
   mTokens := TPascalLexer.Tokenize(AText);
   if AScope.WholeFile then
+  begin
     Exit(TFormatter.Edits(AText, mTokens, AStyle, 0, -1));
+  end;
   mFound := TList<TTextEdit>.Create;
   try
     for mSpan in MergedSpans(AScope.Spans) do
+    begin
       for mEdit in TFormatter.Edits(AText, mTokens, AStyle, mSpan.First, mSpan.Last) do
       begin
         // Sicherheitsnetz: Ein Umbruch über die Grenze zweier Bereiche darf keine überlappenden Änderungen
         // ergeben (die Bereiche sind getrennt, die Gruppen des Formatierers bleiben in einem Bereich).
         mFree := True;
         for mIndex := 0 to mFound.Count - 1 do
+        begin
           if not (EndsBefore(mFound[mIndex].Range, mEdit.Range) or EndsBefore(mEdit.Range, mFound[mIndex].Range))
           then
+          begin
             mFree := False;
+          end;
+        end;
         if mFree then
+        begin
           mFound.Add(mEdit);
+        end;
       end;
+    end;
     Result := mFound.ToArray;
   finally
     mFound.Free;
@@ -232,7 +250,9 @@ begin
       Result := (Result div AIndentSize + 1) * AIndentSize;
     end
     else
+    begin
       Inc(Result);
+    end;
     Inc(mIndex);
   end;
   ALength := mIndex - 1;
@@ -245,8 +265,12 @@ var
   mItem: TFormatDeviation;
 begin
   for mItem in AList do
+  begin
     if (mItem.Line = ALine) and (mItem.Kind = AKind) and (mItem.Message = AMessage) then
+    begin
       Exit;
+    end;
+  end;
   AList := AList + [TFormatDeviation.Create(ALine, AKind, AMessage)];
 end;
 
@@ -259,30 +283,44 @@ begin
   if AToken.IsSymbol(':=') then
   begin
     if AOldGap = 0 then
-      mWhat := 'Leerzeichen vor := fehlt'
+    begin
+      mWhat := 'Leerzeichen vor := fehlt';
+    end
     else
+    begin
       mWhat := 'Zu viele Leerzeichen vor :=';
+    end;
     AddOnce(AList, ALine, TFormatDeviationKind.SpaceAssignment, mWhat);
   end
   else if ABefore.IsSymbol(':=') then
   begin
     if AOldGap = 0 then
-      mWhat := 'Leerzeichen nach := fehlt'
+    begin
+      mWhat := 'Leerzeichen nach := fehlt';
+    end
     else
+    begin
       mWhat := 'Zu viele Leerzeichen nach :=';
+    end;
     AddOnce(AList, ALine, TFormatDeviationKind.SpaceAssignment, mWhat);
   end
   else if ABefore.IsSymbol(',') then
   begin
     if AOldGap = 0 then
-      mWhat := 'Leerzeichen nach Komma fehlt'
+    begin
+      mWhat := 'Leerzeichen nach Komma fehlt';
+    end
     else
+    begin
       mWhat := 'Zu viele Leerzeichen nach Komma';
+    end;
     AddOnce(AList, ALine, TFormatDeviationKind.SpaceComma, mWhat);
   end
   else
+  begin
     AddOnce(AList, ALine, TFormatDeviationKind.Alignment, Format('Ausrichtung vor „%s“',
       [AToken.Text]));
+  end;
 end;
 
 /// <summary>Abweichungen einer Zeile, deren formatierte Fassung ANew ist.</summary>
@@ -301,14 +339,22 @@ begin
   if mOldRest <> '' then
   begin
     if mOldWidth <> mNewWidth then
+    begin
       AddOnce(AList, ALine, TFormatDeviationKind.Indent, Format('Einrückung %d statt %d',
-        [mOldWidth, mNewWidth]))
+        [mOldWidth, mNewWidth]));
+    end
     else if mOldTab and not mNewTab then
-      AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Tabulator statt Leerzeichen')
+    begin
+      AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Tabulator statt Leerzeichen');
+    end
     else if mNewTab and not mOldTab then
-      AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Leerzeichen statt Tabulator')
+    begin
+      AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Leerzeichen statt Tabulator');
+    end
     else if Copy(AOld, 1, mOldLength) <> Copy(ANew, 1, mNewLength) then
+    begin
       AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung aus Tabulatoren und Leerzeichen');
+    end;
   end;
   if (TrimRight(AOld) <> AOld) and (TrimRight(ANew) = ANew) then
   begin
@@ -316,14 +362,22 @@ begin
     mOldRest := TrimRight(mOldRest);
   end;
   if mOldRest = mNewRest then
+  begin
     Exit;
+  end;
   mOldTokens := TPascalLexer.Tokenize(mOldRest);
   mNewTokens := TPascalLexer.Tokenize(mNewRest);
   mSameTokens := Length(mOldTokens) = Length(mNewTokens);
   if mSameTokens then
+  begin
     for mIndex := 0 to High(mOldTokens) do
+    begin
       if not SameText(mOldTokens[mIndex].Text, mNewTokens[mIndex].Text) then
+      begin
         mSameTokens := False;
+      end;
+    end;
+  end;
   if not mSameTokens then
   begin
     AddOnce(AList, ALine, TFormatDeviationKind.LineBreaks, 'Zeilenumbruch');
@@ -332,12 +386,16 @@ begin
   for mIndex := 0 to High(mOldTokens) do
   begin
     if mOldTokens[mIndex].Text <> mNewTokens[mIndex].Text then
+    begin
       AddOnce(AList, ALine, TFormatDeviationKind.KeywordCase, Format('Schreibweise `%s`',
         [mOldTokens[mIndex].Text]));
+    end;
     if (mIndex > 0) and (mOldTokens[mIndex].StartPos.Character - mOldTokens[mIndex - 1].EndPos.Character <>
       mNewTokens[mIndex].StartPos.Character - mNewTokens[mIndex - 1].EndPos.Character) then
+    begin
       DescribeGap(AList, ALine, mOldTokens[mIndex - 1], mOldTokens[mIndex],
         mOldTokens[mIndex].StartPos.Character - mOldTokens[mIndex - 1].EndPos.Character);
+    end;
   end;
 end;
 
@@ -368,44 +426,62 @@ var
 begin
   Result := nil;
   if AOld = ANew then
+  begin
     Exit;
+  end;
   mIndentSize := AStyle.IndentSize;
   if mIndentSize < 1 then
+  begin
     mIndentSize := 2;
+  end;
   mOld := TTextLines.SplitLines(AOld);
   mNew := TTextLines.SplitLines(ANew);
   mOldKind := TTextLines.KindOf(AOld);
   mNewKind := TTextLines.KindOf(ANew);
   if (mOldKind <> mNewKind) and (mOldKind <> TTextLineBreak.None) and (mNewKind <> TTextLineBreak.None) then
+  begin
     AddOnce(Result, 0, TFormatDeviationKind.EndOfLine, Format('Zeilenenden %s statt %s',
       [LineBreakName(mOldKind), LineBreakName(mNewKind)]));
+  end;
   for mHunk in TTextDiff.Hunks(mOld, mNew) do
   begin
     if mHunk.OldCount = mHunk.NewCount then
     begin
       for mIndex := 0 to mHunk.OldCount - 1 do
+      begin
         DescribeLine(Result, mHunk.OldStart + mIndex, mOld[mHunk.OldStart + mIndex], mNew[mHunk.NewStart + mIndex],
           mIndentSize);
+      end;
       Continue;
     end;
     // Nur leere Zeilen am Dateiende angehängt: der abschließende Umbruch fehlt.
     mOnlyEmpty := (mHunk.OldCount = 0) and (mHunk.OldStart = Length(mOld));
     for mIndex := 0 to mHunk.NewCount - 1 do
+    begin
       mOnlyEmpty := mOnlyEmpty and (mNew[mHunk.NewStart + mIndex] = '');
+    end;
     if mOnlyEmpty then
-      AddOnce(Result, Max(Length(mOld) - 1, 0), TFormatDeviationKind.FinalNewline, 'Zeilenumbruch am Dateiende fehlt')
+    begin
+      AddOnce(Result, Max(Length(mOld) - 1, 0), TFormatDeviationKind.FinalNewline, 'Zeilenumbruch am Dateiende fehlt');
+    end
     else
+    begin
       AddOnce(Result, Min(mHunk.OldStart, Max(Length(mOld) - 1, 0)), TFormatDeviationKind.LineBreaks,
         Format('Zeilenumbruch: %d Zeilen statt %d', [mHunk.OldCount, mHunk.NewCount]));
+    end;
   end;
   TArray.Sort<TFormatDeviation>(Result, TComparer<TFormatDeviation>.Construct(
     function(const A, B: TFormatDeviation): Integer
     begin
       Result := A.Line - B.Line;
       if Result = 0 then
+      begin
         Result := Ord(A.Kind) - Ord(B.Kind);
+      end;
       if Result = 0 then
+      begin
         Result := CompareStr(A.Message, B.Message);
+      end;
     end));
 end;
 
@@ -443,7 +519,9 @@ begin
     Result.Stable := FormatText(mOnce, AStyle, TFormatScope.All) = mOnce;
   end
   else
+  begin
     Result.Stable := FormatText(Result.Formatted, AStyle, AScope) = Result.Formatted;
+  end;
 end;
 
 class function TFormatCheck.KindName(AKind: TFormatDeviationKind): string;

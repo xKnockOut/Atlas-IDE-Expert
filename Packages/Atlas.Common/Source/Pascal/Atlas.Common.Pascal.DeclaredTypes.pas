@@ -70,7 +70,9 @@ begin
   FRoutines := TList<TSyntaxNode>.Create;
   FInlineVars := TList<TSyntaxNode>.Create;
   if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
     Walk(ATree.Root);
+  end;
 end;
 
 destructor TDeclaredTypes.Destroy;
@@ -95,7 +97,9 @@ begin
     if Child.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
       TSyntaxKind.ClassOfType, TSyntaxKind.SetType, TSyntaxKind.RecordType, TSyntaxKind.ProcedureType,
       TSyntaxKind.FileType, TSyntaxKind.EnumType, TSyntaxKind.SubrangeType] then
+    begin
       Exit(Trim(Copy(FText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset)));
+    end;
   end;
 end;
 
@@ -105,10 +109,16 @@ var
 begin
   TypeName := TypeText(ANode);
   if TypeName = '' then
+  begin
     Exit;
+  end;
   for Name in SplitString(ANode.Name, ',') do
+  begin
     if Trim(Name) <> '' then
+    begin
       AScope.AddOrSetValue(LowerCase(Trim(Name)), TypeName);
+    end;
+  end;
 end;
 
 type
@@ -170,23 +180,41 @@ begin
               FClassScopes.Add(LowerCase(OwnerClass), Scope);
             end;
             for Inner := 0 to Child.ChildCount - 1 do
+            begin
               if Child[Inner].Kind = TSyntaxKind.Field then
+              begin
                 AddNames(Scope, Child[Inner]);
+              end;
+            end;
             // Sichtbarkeitsabschnitte rückwärts auf den Stapel: Sie kommen in Quelltextreihenfolge dran.
             for Inner := Child.ChildCount - 1 downto 0 do
+            begin
               if Child[Inner].Kind = TSyntaxKind.Visibility then
+              begin
                 Enter(Child[Inner], OwnerClass);
+              end;
+            end;
           end;
         TSyntaxKind.Field:
           if FClassScopes.TryGetValue(LowerCase(OwnerClass), Scope) then
+          begin
             AddNames(Scope, Child);
+          end;
         TSyntaxKind.VarSection:
           for Inner := 0 to Child.ChildCount - 1 do
+          begin
             if Child[Inner].Kind = TSyntaxKind.VarDecl then
+            begin
               if (Node.Kind = TSyntaxKind.RoutineDecl) and FRoutineScopes.TryGetValue(Node, Scope) then
-                AddNames(Scope, Child[Inner])
+              begin
+                AddNames(Scope, Child[Inner]);
+              end
               else
+              begin
                 AddNames(FUnitScope, Child[Inner]);
+              end;
+            end;
+          end;
         TSyntaxKind.RoutineDecl:
           begin
             Scope := TScope.Create;
@@ -197,9 +225,15 @@ begin
             begin
               Params := Header.FindChild(TSyntaxKind.Parameters);
               if Params <> nil then
+              begin
                 for Inner := 0 to Params.ChildCount - 1 do
+                begin
                   if Params[Inner].Kind = TSyntaxKind.Parameter then
+                  begin
                     AddNames(Scope, Params[Inner]);
+                  end;
+                end;
+              end;
             end;
             Enter(Child, '');
           end;
@@ -224,9 +258,15 @@ begin
   // Innerste Routine: die zuletzt begonnene, die APosition enthält.
   Result := nil;
   for Routine in FRoutines do
+  begin
     if not Before(APosition, Routine.StartPos) and Before(APosition, Routine.EndPos) then
+    begin
       if (Result = nil) or Before(Result.StartPos, Routine.StartPos) then
+      begin
         Result := Routine;
+      end;
+    end;
+  end;
 end;
 
 function TDeclaredTypes.DeclaredType(const AName: string; const APosition: TTextPosition): string;
@@ -241,34 +281,54 @@ begin
   // Inline-Variablen vor der Position in derselben Routine; die letzte gewinnt.
   Result := '';
   for Node in FInlineVars do
+  begin
     if Before(Node.StartPos, APosition) and (RoutineAt(Node.StartPos) = Routine) then
+    begin
       for Name in SplitString(Node.Name, ',') do
+      begin
         if SameText(Trim(Name), AName) and (TypeText(Node) <> '') then
+        begin
           Result := TypeText(Node);
+        end;
+      end;
+    end;
+  end;
   if Result <> '' then
+  begin
     Exit;
+  end;
   while Routine <> nil do
   begin
     if FRoutineScopes.TryGetValue(Routine, Scope) and Scope.TryGetValue(Key, Result) then
+    begin
       Exit;
+    end;
     // Methode TFoo.Bar: Felder von TFoo.
     Dot := LastDelimiter('.', Routine.Name);
     if Dot > 0 then
     begin
       ClassName := Copy(Routine.Name, 1, Dot - 1);
       if Pos('.', ClassName) > 0 then
+      begin
         ClassName := Copy(ClassName, LastDelimiter('.', ClassName) + 1, MaxInt);
+      end;
       if FClassScopes.TryGetValue(LowerCase(ClassName), Scope) and Scope.TryGetValue(Key, Result) then
+      begin
         Exit;
+      end;
     end;
     // Verschachtelte Routinen sehen die Deklarationen der umgebenden.
     Node := Routine.Parent;
     while (Node <> nil) and (Node.Kind <> TSyntaxKind.RoutineDecl) do
+    begin
       Node := Node.Parent;
+    end;
     Routine := Node;
   end;
   if not FUnitScope.TryGetValue(Key, Result) then
+  begin
     Result := '';
+  end;
 end;
 
 class function TDeclaredTypes.IsInt32(const AType: string): Boolean;

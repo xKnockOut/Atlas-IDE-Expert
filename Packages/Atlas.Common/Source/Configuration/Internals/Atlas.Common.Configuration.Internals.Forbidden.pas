@@ -69,19 +69,29 @@ var
 begin
   Result := '"';
   for Ch in AKey do
+  begin
     if (Ch = '"') or (Ch = '\') then
-      Result := Result + '\' + Ch
+    begin
+      Result := Result + '\' + Ch;
+    end
     else if Ord(Ch) < 32 then
-      Result := Result + Format('\u%.4x', [Ord(Ch)])
+    begin
+      Result := Result + Format('\u%.4x', [Ord(Ch)]);
+    end
     else
+    begin
       Result := Result + Ch;
+    end;
+  end;
   Result := Result + '"';
 end;
 
 function Join(const APath, AKey: string): string;
 begin
   if APath = '' then
+  begin
     Exit(AKey);
+  end;
   Result := APath + '.' + AKey;
 end;
 
@@ -115,7 +125,9 @@ var
 begin
   Result := False;
   if ANode.Kind <> TJsonKind.String_ then
+  begin
     Exit;
+  end;
   Shown := StringReplace(APath, '[]', '', [rfReplaceAll]);
   if TTextCheckin.HasUrlCredentials(ANode.Value) then
   begin
@@ -161,11 +173,15 @@ begin
       end;
       Child := Rebuild(ANode[Index], Path, ChildChanged);
       if ChildChanged then
+      begin
         AChanged := True;
+      end;
       Parts := Parts + [QuoteKey(Key) + ': ' + Child];
     end;
     if not AChanged then
+    begin
       Exit(NodeText(ANode));
+    end;
     Exit('{' + string.Join(', ', Parts) + '}');
   end;
   if ANode.Kind = TJsonKind.Array_ then
@@ -180,11 +196,15 @@ begin
       end;
       Child := Rebuild(ANode[Index], Path, ChildChanged);
       if ChildChanged then
+      begin
         AChanged := True;
+      end;
       Parts := Parts + [Child];
     end;
     if not AChanged then
+    begin
       Exit(NodeText(ANode));
+    end;
     Exit('[' + string.Join(', ', Parts) + ']');
   end;
   Result := NodeText(ANode);
@@ -197,7 +217,9 @@ var
 begin
   Result := FText;
   if Trim(FText) = '' then
+  begin
     Exit;
+  end;
   try
     Root := TJsonTree.Parse(FText);
   except
@@ -207,10 +229,14 @@ begin
   end;
   try
     if Root.Kind <> TJsonKind.Object_ then
+    begin
       Exit;
+    end;
     Result := Rebuild(Root, '', Changed);
     if not Changed then
+    begin
       Result := FText;
+    end;
   finally
     Root.Free;
   end;
@@ -223,8 +249,12 @@ var
   Item: string;
 begin
   for Item in PathSettings do
+  begin
     if Item = APath then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 

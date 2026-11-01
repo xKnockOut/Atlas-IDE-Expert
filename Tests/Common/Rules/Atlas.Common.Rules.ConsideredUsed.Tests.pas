@@ -69,13 +69,21 @@ begin
   try
     Tokens := nil;
     for Token in Tree.Tokens do
+    begin
       if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      begin
         Tokens := Tokens + [Token];
+      end;
+    end;
     Service := TConsideredUsed.Create(Index, Local, Tokens, AKeepAttributes, AKeepPatterns);
     try
       for Symbol in Local.Symbols do
+      begin
         if SameText(Symbol.Name, AName) and SameText(Symbol.Container, AContainer) then
+        begin
           Exit(Service.Reason(Symbol));
+        end;
+      end;
       Assert.Fail('Mitglied fehlt: ' + AName);
       Result := TConsideredUsedReason.None;
     finally
@@ -98,7 +106,9 @@ var
 begin
   Head := 'class';
   if AAncestor <> '' then
+  begin
     Head := 'class(' + AAncestor + ')';
+  end;
   Result := 'unit Probe;'#10'interface'#10'type'#10'  TProbe = ' + Head + #10 + AMembers + '  end;'#10 +
     'implementation'#10'end.';
 end;

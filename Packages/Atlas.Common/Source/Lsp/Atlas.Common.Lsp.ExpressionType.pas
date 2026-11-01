@@ -94,13 +94,19 @@ begin
     Item.AddPair('from', Conversion.FromType);
     Item.AddPair('to', Conversion.ToType);
     if Conversion.Kind = TExpressionConversionKind.Convert then
-      Item.AddPair('kind', 'convert')
+    begin
+      Item.AddPair('kind', 'convert');
+    end
     else
+    begin
       Item.AddPair('kind', 'widen');
+    end;
   end;
   Result.AddPair('overload', AInfo.Overload);
   if AInfo.HasValue then
+  begin
     Result.AddPair('value', TJSONNumber.Create(AInfo.Value));
+  end;
   if AInfo.Error <> TExpressionErrorKind.None then
   begin
     Error := TJSONObject.Create;
@@ -145,10 +151,14 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONObject) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Bereich');
+  end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+  end;
   Options := TExpressionTypeOptions.Default;
   Expand := False;
   if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
@@ -156,13 +166,19 @@ begin
     Settings := TJSONObject(AArguments.Items[2]);
     Flag := Settings.GetValue('expand');
     if Flag is TJSONBool then
+    begin
       Expand := TJSONBool(Flag).AsBoolean;
+    end;
     Flag := Settings.GetValue('conversions');
     if Flag is TJSONBool then
+    begin
       Options.Conversions := TJSONBool(Flag).AsBoolean;
+    end;
     Flag := Settings.GetValue('constValue');
     if Flag is TJSONBool then
+    begin
       Options.ConstValue := TJSONBool(Flag).AsBoolean;
+    end;
   end;
   Shared := TSyntaxTreeCache.Get(Document);
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);

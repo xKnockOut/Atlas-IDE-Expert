@@ -102,7 +102,9 @@ type
 destructor TSourceFile.Destroy;
 begin
   if OwnsTree then
+  begin
     Tree.Free;
+  end;
   inherited;
 end;
 
@@ -127,7 +129,9 @@ begin
     begin
       Result := (ANode.StartPos.Line <= APosition.Line) and (ANode.EndPos.Line >= APosition.Line);
       if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) then
+      begin
         Found := ANode;
+      end;
     end);
   Result := Found;
 end;
@@ -143,7 +147,9 @@ begin
     begin
       if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.StartPos.Line = AProperty.ClassLine) and
         (APosition.Line >= ANode.StartPos.Line) and (APosition.Line <= ANode.EndPos.Line) then
+      begin
         Found := True;
+      end;
       Result := not Found;
     end);
   Result := Found;
@@ -155,19 +161,33 @@ var
   Location: TSymbolLocation;
 begin
   if TRegEx.IsMatch(ATypeName, '^\s*(reference\s+to\s+)?(procedure|function)\b', [roIgnoreCase]) then
+  begin
     Exit(True);
+  end;
   Name := Trim(ATypeName);
   if Pos('<', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('<', Name) - 1);
+  end;
   if Pos('.', Name) > 0 then
+  begin
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  end;
   if IndexText(Name, KnownProcedural) >= 0 then
+  begin
     Exit(True);
+  end;
   if AIndex <> nil then
+  begin
     for Location in AIndex.FindSymbols(Name) do
+    begin
       if (Location.Symbol.Container = '') and (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
         TRegEx.IsMatch(Location.Symbol.Signature, ProceduralPattern, [roIgnoreCase]) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -188,7 +208,9 @@ begin
   Tokens := ASource.Tree.Tokens;
   Target := TPropertyFromAccessors.UnclearTarget(Tokens, ANameToken, Argument);
   if Target < 0 then
+  begin
     Exit;
+  end;
   if Argument < 0 then
   begin
     // Zuweisung: Result nimmt den Ergebnistyp der Routine, sonst der Typ des Ziels.
@@ -197,12 +219,18 @@ begin
       Routine := RoutineAt(ASource.Tree, Tokens[Target].StartPos);
       TypeRef := nil;
       if (Routine <> nil) and (Routine.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+      begin
         TypeRef := Routine.FindChild(TSyntaxKind.RoutineHeader).FindChild(TSyntaxKind.TypeReference);
+      end;
       if TypeRef = nil then
+      begin
         Exit;
+      end;
       if TLspPropertyFromAccessors.IsProcedural(Copy(ASource.Text, TypeRef.StartOffset + 1,
         TypeRef.EndOffset - TypeRef.StartOffset), AIndex) then
+      begin
         Exit(TUnclearResult.Pointer_);
+      end;
       Exit(TUnclearResult.Value);
     end;
     // Variable, Feld, Property: der deklarierte Typ; sonst der aufgelöste Typ.
@@ -210,36 +238,54 @@ begin
     if Resolved.Found and (Resolved.TypeName <> '') then
     begin
       if TLspPropertyFromAccessors.IsProcedural(Resolved.TypeName, AIndex) then
+      begin
         Exit(TUnclearResult.Pointer_);
+      end;
       Exit(TUnclearResult.Value);
     end;
     Resolved := AResolver.ResolveType(ASource.Tree, ASource.FileName, Tokens[Target].StartPos);
     if not Resolved.Found then
+    begin
       Exit;
+    end;
     if Resolved.Builtin or (not TRegEx.IsMatch(Resolved.Signature, ProceduralPattern, [roIgnoreCase]) and
       not TLspPropertyFromAccessors.IsProcedural(Resolved.Name, AIndex)) then
-      Result := TUnclearResult.Value
+    begin
+      Result := TUnclearResult.Value;
+    end
     else
+    begin
       Result := TUnclearResult.Pointer_;
+    end;
     Exit;
   end;
   // Argument: Assigned prüft Zeiger, die eingebauten Routinen oben nehmen Werte.
   if SameText(Tokens[Target].Text, 'Assigned') then
+  begin
     Exit(TUnclearResult.Pointer_);
+  end;
   if IndexText(Tokens[Target].Text, ValueIntrinsics) >= 0 then
+  begin
     Exit(TUnclearResult.Value);
+  end;
   Candidates := AResolver.ResolveAll(ASource.Tree, ASource.FileName, Tokens[Target].StartPos);
   Checked := False;
   for Candidate in Candidates do
   begin
     if Argument > High(Candidate.ParamTypes) then
+    begin
       Continue;
+    end;
     Checked := True;
     if TLspPropertyFromAccessors.IsProcedural(Candidate.ParamTypes[Argument], AIndex) then
+    begin
       Exit(TUnclearResult.Pointer_);
+    end;
   end;
   if Checked then
+  begin
     Result := TUnclearResult.Value;
+  end;
 end;
 
 function EditsJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
@@ -297,18 +343,30 @@ var
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) then
+  begin
     Exit;
+  end;
   Found := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AOptions, Whole);
   if Found = nil then
+  begin
     Exit;
+  end;
   if Whole then
-    Title := Format('Fehlende Properties anlegen (%d)', [Length(Found)])
+  begin
+    Title := Format('Fehlende Properties anlegen (%d)', [Length(Found)]);
+  end
   else
+  begin
     Title := Format('Property %s anlegen', [Found[0].Name]);
+  end;
   if AReplaceCalls <> TReplaceCalls.Always then
+  begin
     Result := Result + [Action(Title, False)];
+  end;
   if AReplaceCalls <> TReplaceCalls.Never then
+  begin
     Result := Result + [Action(Title + ' und Aufrufe umstellen', True)];
+  end;
 end;
 
 class function TLspPropertyFromAccessors.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
@@ -323,7 +381,9 @@ var
     Text: string;
   begin
     if Sources.TryGetValue(UpperCase(AName), Result) then
+    begin
       Exit;
+    end;
     Result := nil;
     if SameText(AName, AFileName) then
     begin
@@ -339,7 +399,9 @@ var
       Result.OwnsTree := True;
     end;
     if Result = nil then
+    begin
       Exit;
+    end;
     Result.FileName := AName;
     Sources.Add(UpperCase(AName), Result);
     Order.Add(AName);
@@ -367,7 +429,9 @@ var
 begin
   Properties := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AContext.Options, Whole);
   if Properties = nil then
+  begin
     raise Fail('Hier fehlt keine Property.');
+  end;
   Warnings := nil;
   Hidden := nil;
   Calls := 0;
@@ -383,13 +447,19 @@ begin
     begin
       Methods := nil;
       if Item.Getter.Exists then
+      begin
         Methods := Methods + [Item.Getter];
+      end;
       if Item.Setter.Exists then
+      begin
         Methods := Methods + [Item.Setter];
+      end;
       for Method in Methods do
       begin
         if not NeedReferences then
+        begin
           Break;
+        end;
         IsGetter := Method.Name = Item.Getter.Name;
         for Location in TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName, Method.NamePos, False,
           AContext.Files, AContext.ReadText) do
@@ -402,18 +472,24 @@ begin
           end;
           Unit_ := Source(Location.FileName);
           if (Unit_ = nil) or (Unit_.Tree = nil) then
+          begin
             Continue;
+          end;
           Token := TChangeSignature.NameTokenAt(Unit_.Tree.Tokens, Location.Range.StartPos);
           if (Token < 0) or TPropertyFromAccessors.IsHeaderName(Unit_.Tree.Tokens, Token) then
+          begin
             Continue;
+          end;
           // In der eigenen Klasse (Deklaration oder Methoden) bleibt eine Verwendung „innen“.
           Routine := RoutineAt(Unit_.Tree, Location.Range.StartPos);
           OwnBody := False;
           Internal := SameText(Location.FileName, AFileName) and (InClassDecl(Unit_.Tree, Item,
             Location.Range.StartPos) or ((Routine <> nil) and StartsText(Item.ClassName + '.', Routine.Name)));
           if Internal and (Routine <> nil) then
+          begin
             OwnBody := SameText(Routine.Name, Item.ClassName + '.' + Item.Getter.Name) or
               SameText(Routine.Name, Item.ClassName + '.' + Item.Setter.Name);
+          end;
           Use := TPropertyFromAccessors.UseOf(Unit_.Tree.Tokens, Token, IsGetter);
           if Use = TAccessorUse.Unclear then
             case ResolveUnclear(AResolver, AContext.Index, Unit_, Token) of
@@ -423,8 +499,10 @@ begin
                 Use := TAccessorUse.Pointer_;
             else
               if AReplaceCalls and not OwnBody then
+              begin
                 Warnings := Warnings + [Format('%s: Ob %s dort als Methodenzeiger gemeint ist, lässt sich nicht ' +
                   'bestimmen; die Stelle bleibt.', [Where(Location.FileName, Location.Range.StartPos), Method.Name])];
+              end;
               Use := TAccessorUse.Keep;
             end;
           if (Use = TAccessorUse.Call) and AReplaceCalls and not OwnBody and
@@ -435,22 +513,34 @@ begin
             Continue;
           end;
           if (Use = TAccessorUse.Pointer_) and AReplaceCalls then
+          begin
             Warnings := Warnings + [Format('%s: %s wird als Methodenzeiger verwendet und bleibt.',
               [Where(Location.FileName, Location.Range.StartPos), Method.Name])];
+          end;
           if not Internal then
+          begin
             Remaining.AddOrSetValue(UpperCase(Method.Name), True);
+          end;
         end;
       end;
       if AContext.Options.Hiding <> TAccessorHiding.Off then
+      begin
         for Method in Methods do
+        begin
           if TPropertyFromAccessors.CanHide(Method, AContext.Options) then
           begin
             if Remaining.ContainsKey(UpperCase(Method.Name)) then
+            begin
               Warnings := Warnings + [Format('%s bleibt sichtbar: Es wird außerhalb der Klasse noch benutzt.',
-                [Method.Name])]
+                [Method.Name])];
+            end
             else
+            begin
               Hidden := Hidden + [Method.Name];
+            end;
           end;
+        end;
+      end;
     end;
     Unit_ := Source(AFileName);
     Unit_.Edits := Unit_.Edits + TPropertyFromAccessors.Edits(ATree, AText, Properties, Hidden, AContext.Options);
@@ -461,14 +551,18 @@ begin
       begin
         Unit_ := Sources[UpperCase(Name)];
         if Unit_.Edits = nil then
+        begin
           Continue;
+        end;
         Text := TChangeSignature.ApplyEdits(Unit_.Text, Unit_.Edits);
         Tree := TSyntaxTreeCache.Parse(Text);
         try
           Before_ := Length(Unit_.Tree.Diagnostics);
           if Length(Tree.Diagnostics) > Before_ then
+          begin
             raise Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
               [ExtractFileName(Name), Tree.Diagnostics[0].StartPos.Line + 1, Tree.Diagnostics[0].Message]));
+          end;
         finally
           Tree.Free;
         end;
@@ -497,7 +591,9 @@ begin
   Edit.AddPair('changeAnnotations', Annotations);
   WarningList := TJSONArray.Create;
   for Warning in Warnings do
+  begin
     WarningList.Add(Warning);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('edit', Edit);
   Result.AddPair('warnings', WarningList);

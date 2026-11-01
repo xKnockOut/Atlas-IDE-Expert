@@ -452,10 +452,16 @@ begin
   Found := False;
   FoundStar := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = SqlWriteWithoutWhereRuleId then
-      Found := True
+    begin
+      Found := True;
+    end
     else if Rule.Descriptor.Id = SqlSelectStarRuleId then
+    begin
       FoundStar := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Assert.IsTrue(FoundStar);
 end;
