@@ -48,7 +48,7 @@ implementation
 uses
   System.DateUtils,
   Atlas.Core.Vcs.Contract,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 const
   Gap = 8;
@@ -61,7 +61,7 @@ var
   Buttons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPushTitle, [AProjectName]);
+  Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushTitle, [AProjectName]);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
@@ -74,7 +74,7 @@ begin
   FIntro.AlignWithMargins := True;
   FIntro.Margins.SetBounds(Gap, Gap, Gap, 0);
   FIntro.WordWrap := True;
-  FIntro.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedPushIntro);
+  FIntro.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushIntro);
 
   FDetails := TMemo.Create(Self);
   FDetails.Parent := Self;
@@ -96,9 +96,9 @@ begin
   Buttons.AlignWithMargins := True;
   Buttons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   Buttons.Top := FDetails.Top + FDetails.Height + 1;
-  FPush := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedPushButton));
+  FPush := AddButton(Buttons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushButton));
   FPush.ModalResult := mrOk;
-  FCancel := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedPushCancel));
+  FCancel := AddButton(Buttons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushCancel));
   FCancel.ModalResult := mrCancel;
   // Enter und Esc brechen ab: Gepusht wird nur mit einem bewussten Klick auf „Pushen“.
   FCancel.Default := True;
@@ -131,16 +131,16 @@ begin
       if Lines.Count > 0 then
         Lines.Add('');
       if Plan.SetUpstream then
-        Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPushTargetNew, [Plan.Branch, Plan.Target,
+        Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushTargetNew, [Plan.Branch, Plan.Target,
           Length(Plan.Commits)]))
       else
-        Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeUnsavedPushTarget, [Plan.Branch, Plan.Target,
+        Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushTarget, [Plan.Branch, Plan.Target,
           Length(Plan.Commits)]));
       for Commit in Plan.Commits do
         Lines.Add('  ' + Commit.ShortHash + '  ' + FormatDateTime('ddddd t',
           TTimeZone.Local.ToLocalTime(Commit.Date)) + '  ' + Commit.Summary);
       if Plan.More then
-        Lines.Add('  ' + TAtlasStrings.Text(TAtlasTextId.WelcomeUnsavedPushMore));
+        Lines.Add('  ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushMore));
     end;
     Result := TrimRight(Lines.Text);
   finally

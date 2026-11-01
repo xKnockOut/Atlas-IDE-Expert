@@ -212,7 +212,7 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 function StyleColor(AControl: TControl; AColor: TColor): TColor;
 begin
@@ -478,7 +478,7 @@ begin
   Width := GripWidth;
   Cursor := crSizeAll;
   ShowHint := True;
-  Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeGrip);
+  Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeGrip);
 end;
 
 procedure TAtlasWelcomeGrip.Paint;
@@ -692,11 +692,11 @@ begin
   case Hot of
     TAtlasWelcomeTool.Width:
       if FWide then
-        Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeNarrow)
+        Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNarrow)
       else
-        Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeWide);
+        Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeWide);
     TAtlasWelcomeTool.Eye:
-      Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeEye);
+      Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeEye);
   else
     Hint := '';
   end;

@@ -42,7 +42,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.Frame,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings;
 
 type
   IAtlasQuickActionsSource = interface
@@ -168,7 +169,7 @@ type
     function ItemsOf(ARow: Integer): TAtlasQuickActions;
     procedure Queue(const AProc: TProc);
     procedure AddChoice(AParent: TMenuItem; const ACaption: string; const AChoice: TChoice; ADefault: Boolean);
-    procedure AddTitle(AParent: TMenuItem; ATextId: TAtlasTextId);
+    procedure AddTitle(AParent: TMenuItem; AId: TAtlasWelcomeTextId);
     procedure FillTargets(AParent: TMenuItem; const AProject: string);
     procedure FillProfiles(AParent: TMenuItem; const AProject: string);
     procedure FillTestProjects(AParent: TMenuItem; const AProject: string; const ACandidates: TArray<string>);
@@ -870,7 +871,7 @@ begin
   Choice.Kind := TChoiceKind.Target;
   Choice.Project := AProject;
   // Erst „wie in der IDE“, dann jede Konfiguration je Plattform; die Vorgabe (zuletzt benutzt) ist fett.
-  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTargetsIde), Choice,
+  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTargetsIde), Choice,
     (Wanted = '') and (WantedPlatform = ''));
   for Configuration in Targets.Configurations do
   begin
@@ -880,7 +881,7 @@ begin
       Choice.B := '';
       Text := Configuration;
       if SameText(Configuration, Wanted) then
-        Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTargetLast, [Text]);
+        Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTargetLast, [Text]);
       AddChoice(AParent, Text, Choice, SameText(Configuration, Wanted));
       Continue;
     end;
@@ -890,7 +891,7 @@ begin
       Choice.B := Platform;
       Text := Configuration + Separator + Platform;
       if SameText(Configuration, Wanted) and SameText(Platform, WantedPlatform) then
-        Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTargetLast, [Text]);
+        Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTargetLast, [Text]);
       AddChoice(AParent, Text, Choice, SameText(Configuration, Wanted) and SameText(Platform, WantedPlatform));
     end;
   end;
@@ -911,11 +912,11 @@ begin
     Choice.A := mName;
     Text := mName;
     if SameText(mName, Active) then
-      Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickProfileActive, [mName]);
+      Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickProfileActive, [mName]);
     AddChoice(AParent, Text, Choice, SameText(mName, Active));
   end;
   Choice.A := '';
-  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickProfileNone), Choice, Active = '');
+  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickProfileNone), Choice, Active = '');
 end;
 
 procedure TAtlasQuickActionsBar.FillTestProjects(AParent: TMenuItem; const AProject: string;
@@ -957,12 +958,12 @@ begin
   Choice.Kind := TChoiceKind.Update;
   Choice.Project := AProject;
   Choice.A := 'with';
-  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdateWithExternals), Choice, True);
+  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateWithExternals), Choice, True);
   Choice.A := 'without';
-  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdateWithoutExternals), Choice, False);
+  AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateWithoutExternals), Choice, False);
 end;
 
-procedure TAtlasQuickActionsBar.AddTitle(AParent: TMenuItem; ATextId: TAtlasTextId);
+procedure TAtlasQuickActionsBar.AddTitle(AParent: TMenuItem; AId: TAtlasWelcomeTextId);
 var
   Item: TMenuItem;
 begin
@@ -970,7 +971,7 @@ begin
   if AParent <> FMenu.Items then
     Exit;
   Item := TMenuItem.Create(FMenu);
-  Item.Caption := TAtlasStrings.Text(ATextId);
+  Item.Caption := TAtlasWelcomeStrings.Text(AId);
   Item.Enabled := False;
   AParent.Add(Item);
   Item := TMenuItem.Create(FMenu);
@@ -995,12 +996,12 @@ begin
   case Buttons[AIndex].Action of
     TAtlasQuickAction.Build:
       begin
-        AddTitle(AParent, TAtlasTextId.WelcomeQuickTargetsTitle);
+        AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTargetsTitle);
         FillTargets(AParent, mName);
       end;
     TAtlasQuickAction.Run:
       begin
-        AddTitle(AParent, TAtlasTextId.WelcomeQuickProfilesTitle);
+        AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickProfilesTitle);
         FillProfiles(AParent, mName);
       end;
     TAtlasQuickAction.Tests:
@@ -1008,21 +1009,21 @@ begin
         Candidates := FSource.TestProjects(mName);
         if Length(Candidates) < 2 then
           Exit;
-        AddTitle(AParent, TAtlasTextId.WelcomeQuickTestsChoose);
+        AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTestsChoose);
         FillTestProjects(AParent, mName, Candidates);
       end;
     TAtlasQuickAction.Tasks:
       begin
         if Length(FSource.TaskNames(mName)) = 0 then
           Exit;
-        AddTitle(AParent, TAtlasTextId.WelcomeQuickTasksTitle);
+        AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTasksTitle);
         FillTasks(AParent, mName);
       end;
     TAtlasQuickAction.Pull:
       begin
         if not Buttons[AIndex].AskExternals then
           Exit;
-        AddTitle(AParent, TAtlasTextId.WelcomeQuickUpdate);
+        AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickUpdate);
         FillUpdate(AParent, mName);
       end;
   else
@@ -1062,10 +1063,10 @@ end;
 
 procedure TAtlasQuickActionsBar.AttachMenu(AMenu: TPopupMenu);
 
-  function Add(AParent: TMenuItem; AAction: TAtlasQuickAction; ATextId: TAtlasTextId): TMenuItem;
+  function Add(AParent: TMenuItem; AAction: TAtlasQuickAction; const ACaption: string): TMenuItem;
   begin
     Result := TMenuItem.Create(AMenu);
-    Result.Caption := TAtlasStrings.Text(ATextId);
+    Result.Caption := ACaption;
     Result.Tag := Length(FContextItems);
     Result.OnClick := ContextClick;
     FContextItems := FContextItems + [Result];
@@ -1077,18 +1078,18 @@ begin
   FContextSeparator := TMenuItem.Create(AMenu);
   FContextSeparator.Caption := '-';
   AMenu.Items.Add(FContextSeparator);
-  Add(AMenu.Items, TAtlasQuickAction.Build, TAtlasTextId.WelcomeQuickBuild);
+  Add(AMenu.Items, TAtlasQuickAction.Build, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBuild));
   FBuildWithItem := TMenuItem.Create(AMenu);
-  FBuildWithItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickMenuBuildWith);
+  FBuildWithItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuBuildWith);
   AMenu.Items.Add(FBuildWithItem);
-  Add(AMenu.Items, TAtlasQuickAction.Tests, TAtlasTextId.WelcomeQuickTests);
+  Add(AMenu.Items, TAtlasQuickAction.Tests, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTests));
   FRunWithItem := TMenuItem.Create(AMenu);
-  FRunWithItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickMenuRunWith);
+  FRunWithItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuRunWith);
   AMenu.Items.Add(FRunWithItem);
-  Add(AMenu.Items, TAtlasQuickAction.Pull, TAtlasTextId.WelcomeQuickPull);
-  Add(AMenu.Items, TAtlasQuickAction.Console, TAtlasTextId.WelcomeQuickMenuConsole);
+  Add(AMenu.Items, TAtlasQuickAction.Pull, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull));
+  Add(AMenu.Items, TAtlasQuickAction.Console, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuConsole));
   FTasksItem := TMenuItem.Create(AMenu);
-  FTasksItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickMenuTasks);
+  FTasksItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuTasks);
   AMenu.Items.Add(FTasksItem);
 end;
 
@@ -1112,7 +1113,7 @@ begin
     if (Found >= 0) and (FContextActions[Index] = TAtlasQuickAction.Pull) then
     begin
       if Buttons[Found].Update then
-        Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdate)
+        Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate)
       else
         Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
       // Untermenü „mit Externals“/„ohne Externals“ (#1292); ohne Auswahl ein einfacher Eintrag.
@@ -1303,7 +1304,7 @@ begin
     TAtlasQuickAction.Pull:
       begin
         if AButton.Update then
-          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdate)
+          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate)
         else
           Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
         if AButton.AskExternals then
@@ -1329,18 +1330,18 @@ begin
     Seconds := AState.ElapsedSeconds(ANowMs);
     case AState.Action of
       TAtlasQuickAction.Build:
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickBuilding, [Seconds]);
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickBuilding, [Seconds]);
       TAtlasQuickAction.Tests:
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTesting, [Seconds]);
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTesting, [Seconds]);
       TAtlasQuickAction.Run:
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickStarting, [Seconds]);
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickStarting, [Seconds]);
       TAtlasQuickAction.Pull:
         if AUpdate then
-          Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickUpdating, [Seconds])
+          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickUpdating, [Seconds])
         else
-          Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickPulling, [Seconds]);
+          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickPulling, [Seconds]);
       TAtlasQuickAction.Tasks:
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTasking, [Seconds]);
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTasking, [Seconds]);
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
@@ -1352,42 +1353,42 @@ begin
     TAtlasQuickAction.Build:
       // Gebaut: Die Marke „Build 0/0/0“ des Bereichs zeigt das Ergebnis.
       if AState.Phase = TAtlasQuickActionPhase.Refused then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBuildRefused)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildRefused)
       else if AState.Phase = TAtlasQuickActionPhase.Failed then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBuildFailed);
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildFailed);
     TAtlasQuickAction.Tests:
       if AState.Phase = TAtlasQuickActionPhase.Succeeded then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTestsPassed, [AState.Passed])
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsPassed, [AState.Passed])
       else if (AState.Phase = TAtlasQuickActionPhase.Failed) and (AState.Failed > 0) then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTestsFailed, [AState.Failed])
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsFailed, [AState.Failed])
       else
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTestsNotRun);
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTestsNotRun);
     TAtlasQuickAction.Run:
       if AState.Phase = TAtlasQuickActionPhase.Succeeded then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickRunStarted)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunStarted)
       else
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickRunRefused);
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunRefused);
     TAtlasQuickAction.Pull:
       if AState.Phase = TAtlasQuickActionPhase.Succeeded then
       begin
         if AState.Pull = TAtlasPullOutcome.Updated then
-          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullUpdated)
+          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpdated)
         else
-          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullUpToDate);
+          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpToDate);
       end
       else if AState.Pull = TAtlasPullOutcome.Blocked then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullBlocked)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullBlocked)
       else if AUpdate then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdateFailed)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateFailed)
       else
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullFailed);
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullFailed);
     TAtlasQuickAction.Console:
       if AState.Phase <> TAtlasQuickActionPhase.Succeeded then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsoleFailed);
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickConsoleFailed);
     TAtlasQuickAction.Tasks:
       // Fertig: Aufgabe und Ergebnis als Text der IDE-Schicht („Delphi-12-Prüfung: 2 Fehler 14:03“).
       if (AState.Phase = TAtlasQuickActionPhase.Refused) or (AState.Detail = '') then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTasksRefused)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTasksRefused)
       else
         Result := AState.Detail;
   else
@@ -1418,42 +1419,42 @@ class function TAtlasQuickActionsBar.ButtonHint(const AButton: TAtlasQuickAction
 begin
   case AButton.Block of
     TAtlasPullBlock.LocalChanges:
-      Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullLocalChanges));
+      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLocalChanges));
     TAtlasPullBlock.NoWorkingCopy:
-      Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullNoWorkingCopy));
+      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullNoWorkingCopy));
     TAtlasPullBlock.Busy:
-      Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBusy));
+      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBusy));
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
   if not AButton.Enabled then
   begin
     if ARunning then
-      Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBusy));
-    Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeQuickIdeBusy));
+      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBusy));
+    Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickIdeBusy));
   end;
   case AButton.Action of
     TAtlasQuickAction.Build:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintBuild);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintBuild);
     TAtlasQuickAction.Tests:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintTests);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintTests);
     TAtlasQuickAction.Run:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintRun);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintRun);
     TAtlasQuickAction.Pull:
       if AButton.Update then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintUpdate)
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintUpdate)
       else
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintPull);
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintPull);
     TAtlasQuickAction.Folder:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintFolder);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintFolder);
     TAtlasQuickAction.Tasks:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintTasks);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintTasks);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickHintConsole,
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintConsole,
       [TAtlasWelcomeQuickActions.NormalizedConsole(AConsole)]);
   end;
   if AKey <> 0 then
-    Result := Result + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickHintKey,
+    Result := Result + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintKey,
       [ShortCutToText(TShortCut(AKey))]);
 end;
 

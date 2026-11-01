@@ -199,7 +199,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings;
 
 const
   Separator = ' · ';
@@ -231,7 +232,7 @@ begin
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FQueryItem := TMenuItem.Create(Self);
-  FQueryItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsQueryNow);
+  FQueryItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsQueryNow);
   FQueryItem.OnClick := QueryClick;
   FMenu.Items.Add(FQueryItem);
   FCredentialsItem := TMenuItem.Create(Self);
@@ -239,7 +240,7 @@ begin
   FCredentialsItem.OnClick := CredentialsClick;
   FMenu.Items.Add(FCredentialsItem);
   FOpenItem := TMenuItem.Create(Self);
-  FOpenItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsOpenProject);
+  FOpenItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsOpenProject);
   FOpenItem.OnClick := OpenClick;
   FMenu.Items.Add(FOpenItem);
   FBox.PopupMenu := FMenu;
@@ -326,14 +327,14 @@ class function TAtlasWelcomeTestResultsFrame.PillText(const ARow: TAtlasTestRow)
 begin
   case ARow.LocalLevel of
     TAtlasTestLevel.Failed:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsFailed,
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsFailed,
         [Max(ARow.Local.Failed + ARow.Local.Errors, Integer(Length(ARow.Local.Failures)))]);
     TAtlasTestLevel.Passed:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsAllPassed, [ARow.Local.Passed]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsAllPassed, [ARow.Local.Passed]);
     TAtlasTestLevel.Warning:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsNonePassed);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsNonePassed);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsNoLocalRun);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsNoLocalRun);
   end;
 end;
 
@@ -362,7 +363,7 @@ begin
   if Trunc(AtLocal) = Trunc(NowLocal) then
     Result := FormatDateTime('t', AtLocal)
   else if Trunc(AtLocal) = Trunc(NowLocal) - 1 then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsYesterday)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsYesterday)
   else
     Result := FormatDateTime('ddddd', AtLocal);
 end;
@@ -380,15 +381,15 @@ begin
   NowLocal := TTimeZone.Local.ToLocalTime(ANowUtc);
   Days := Trunc(NowLocal) - Trunc(AtLocal);
   if Minutes < 1 then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsJustNow)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsJustNow)
   else if Minutes < 60 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsMinutesAgo, [Minutes])
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsMinutesAgo, [Minutes])
   else if Days <= 0 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsHoursAgo, [Minutes div 60])
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsHoursAgo, [Minutes div 60])
   else if Days = 1 then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsYesterday)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsYesterday)
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsDaysAgo, [Days]);
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsDaysAgo, [Days]);
 end;
 
 class function TAtlasWelcomeTestResultsFrame.LocalText(const ARow: TAtlasTestRow; ANowUtc: TDateTime): string;
@@ -401,9 +402,9 @@ begin
   Parts := nil;
   // Die Marke nennt bei „alle ok“ schon die Zahl.
   if ARow.LocalLevel <> TAtlasTestLevel.Passed then
-    Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsPassed, [ARow.Local.Passed])];
+    Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsPassed, [ARow.Local.Passed])];
   if ARow.Local.Skipped > 0 then
-    Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsSkipped, [ARow.Local.Skipped])];
+    Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsSkipped, [ARow.Local.Skipped])];
   if ARow.Local.DurationMs > 0 then
     Parts := Parts + [DurationText(ARow.Local.DurationMs)];
   if ARow.Local.At > 0 then
@@ -414,24 +415,24 @@ end;
 class function TAtlasWelcomeTestResultsFrame.BuildText(const ABuild: TAtlasCiBuild): string;
 begin
   if ABuild.TestsKnown and ((ABuild.Failed > 0) or (Length(ABuild.Failures) > 0)) then
-    Exit(TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsFailed,
+    Exit(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsFailed,
       [Max(ABuild.Failed, Integer(Length(ABuild.Failures)))]));
   case ABuild.Outcome of
     TAtlasCiOutcome.Success:
       if ABuild.TestsKnown and (ABuild.Passed > 0) then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsAllPassed, [ABuild.Passed])
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsAllPassed, [ABuild.Passed])
       else
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsBuildSuccess);
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsBuildSuccess);
     TAtlasCiOutcome.Failure:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsBuildFailure);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsBuildFailure);
     TAtlasCiOutcome.Unstable:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsBuildUnstable);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsBuildUnstable);
     TAtlasCiOutcome.Aborted:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsBuildAborted);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsBuildAborted);
     TAtlasCiOutcome.NotBuilt:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsBuildNotBuilt);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsBuildNotBuilt);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsBuildUnknown);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsBuildUnknown);
   end;
 end;
 
@@ -439,9 +440,9 @@ class function TAtlasWelcomeTestResultsFrame.ErrorText(AError: TAtlasCiFetchErro
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized, TAtlasCiFetchError.NoCredentials:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiUnauthorized);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsCiUnauthorized);
     TAtlasCiFetchError.NotFound:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiNotFound);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsCiNotFound);
     TAtlasCiFetchError.Timeout:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiTimeout);
     TAtlasCiFetchError.Server, TAtlasCiFetchError.Invalid:
@@ -481,7 +482,7 @@ begin
   begin
     Parts := Parts + [Head];
     if ARow.CiQuerying then
-      Parts := Parts + [TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiQuerying)]
+      Parts := Parts + [TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsCiQuerying)]
     else
       Parts := Parts + [ErrorText(ARow.Ci.Error)];
   end;
@@ -494,7 +495,7 @@ begin
     Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsStale,
       [FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(ARow.Ci.At))])]
   else if ARow.CiQuerying and ARow.Ci.HasBuild then
-    Parts := Parts + [TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiQuerying)];
+    Parts := Parts + [TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsCiQuerying)];
   Result := string.Join(Separator, Parts);
 end;
 
@@ -502,9 +503,9 @@ class function TAtlasWelcomeTestResultsFrame.MismatchText(AMismatch: TAtlasTestM
 begin
   case AMismatch of
     TAtlasTestMismatch.LocalGreenServerRed:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsLocalGreenServerRed);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsLocalGreenServerRed);
     TAtlasTestMismatch.LocalRedServerGreen:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsLocalRedServerGreen);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsLocalRedServerGreen);
   else
     Result := '';
   end;
@@ -541,18 +542,18 @@ end;
 
 class function TAtlasWelcomeTestResultsFrame.EmptyText: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsEmpty);
+  Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsEmpty);
 end;
 
 class function TAtlasWelcomeTestResultsFrame.ButtonText(AButton: TAtlasTestResultsButton): string;
 begin
   case AButton of
     TAtlasTestResultsButton.Rerun:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsRerun);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsRerun);
     TAtlasTestResultsButton.Debug:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsDebug);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsDebug);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsBrowse);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsBrowse);
   end;
 end;
 
@@ -587,20 +588,20 @@ begin
       Run := string.Join(' ', [ARow.Local.Configuration, ARow.Local.Platform]).Trim;
       if Run <> '' then
         Run := '(' + Run + ')';
-      Lines.Add(Trim(TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsHintLocal, [ARow.Local.Passed,
+      Lines.Add(Trim(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsHintLocal, [ARow.Local.Passed,
         ARow.Local.Failed + ARow.Local.Errors, ARow.Local.Skipped, Run])));
     end;
     if ARow.HasCi then
     begin
-      Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsHintJob,
+      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsHintJob,
         [TAtlasWelcomeTestResults.ProviderCaption(ARow.Job.Provider), ARow.Job.Job]));
       if ARow.Ci.Error <> TAtlasCiFetchError.None then
         Lines.Add(ErrorText(ARow.Ci.Error));
       if ARow.Ci.Attempt > 0 then
-        Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsHintAttempt,
+        Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsHintAttempt,
           [FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(ARow.Ci.Attempt))]));
     end;
-    Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeTestsHintClick));
+    Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsHintClick));
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -791,7 +792,7 @@ begin
   begin
     ACanvas.Font.Assign(Font);
     ACanvas.Font.Size := Font.Size - 2;
-    mText := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsServerTag);
+    mText := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsServerTag);
     mWidth := ACanvas.TextWidth(mText) + 2 * ScaleValue(PillPadding);
     mTag := Rect(Limit - mWidth, mTop + ScaleValue(2), Limit, mTop + ScaleValue(2) + ScaleValue(PillHeight) - 2);
     Radius := ScaleValue(PillHeight);
@@ -896,7 +897,7 @@ begin
     Canvas.Font.Assign(Font);
     Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
     Canvas.TextOut(ScaleValue(Indent) + ScaleValue(BarWidth) + ScaleValue(8),
-      FailureTop(Length(FView.Failures)) + ScaleValue(1), TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsMore,
+      FailureTop(Length(FView.Failures)) + ScaleValue(1), TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsMore,
       [FView.More]));
   end;
   PaintButtons(Canvas);
@@ -1041,7 +1042,7 @@ begin
       FBox.Hint := RowHint(FView.Rows[Hit.Index]);
     TAtlasTestResultsHitKind.Failure:
       FBox.Hint := FView.Failures[Hit.Index].Test + sLineBreak + FView.Failures[Hit.Index].Message + sLineBreak +
-        TAtlasStrings.Text(TAtlasTextId.WelcomeTestsHintFailure);
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsHintFailure);
   else
     FBox.Hint := '';
   end;
@@ -1151,8 +1152,9 @@ begin
   Values[0] := AUser;
   Values[1] := '';
   // Ein Steuerzeichen am Anfang der Beschriftung lässt InputQuery das Feld verdecken.
-  Result := InputQuery(TAtlasStrings.Fmt(TAtlasTextId.CiLoginTitle, [AServer]),
-    [TAtlasStrings.Text(TAtlasTextId.CiLoginUser), #31 + TAtlasStrings.Text(TAtlasTextId.CiLoginToken)], Values);
+  Result := InputQuery(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.CiLoginTitle, [AServer]),
+    [TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.CiLoginUser),
+      #31 + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.CiLoginToken)], Values);
   if not Result then
     Exit;
   AUser := Trim(Values[0]);

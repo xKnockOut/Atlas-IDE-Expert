@@ -152,7 +152,7 @@ uses
   Atlas.Core.Projects.Contract,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Welcome.Saved,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.SetupPreview,
   Atlas.IDE.Foundation.Settings,
@@ -541,13 +541,13 @@ begin
       Project := Target(Open);
       if Project = '' then
       begin
-        Report(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNoProject));
+        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
         Exit;
       end;
       Existing := TAtlasProjectSetups.ExistingConfig(Project, FileThere);
       if Existing <> '' then
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupConfigExists, [Existing]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigExists, [Existing]));
         Refresh;
         Exit;
       end;
@@ -561,7 +561,7 @@ begin
         Text := TAtlasProjectSetups.BuiltIn(Template);
         if not TAtlasProjectSetups.ValidTemplate(Text, AtlasSchemaJson, Issues) then
         begin
-          Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupConfigInvalid,
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigInvalid,
             [TAtlasWelcomeSetupFrame.TemplateCaption(Template), string.Join('; ', Issues)]));
           Exit;
         end;
@@ -575,7 +575,7 @@ begin
       // Während der Vorschau angelegt (etwa im Editor): nicht überschreiben.
       if TAtlasProjectSetups.ExistingConfig(Project, FileThere) <> '' then
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupConfigExists, [ConfigFile]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigExists, [ConfigFile]));
         Refresh;
         Exit;
       end;
@@ -586,12 +586,12 @@ begin
         on E: Exception do
         begin
           TAtlasGuard.Log('Einrichtung: atlas.json nicht geschrieben (' + E.ClassName + ')');
-          Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupConfigFailed, [ConfigFile, E.Message]));
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigFailed, [ConfigFile, E.Message]));
           Exit;
         end;
       end;
       TAtlasGuard.Log('Einrichtung: atlas.json angelegt (Vorlage ' + TAtlasProjectSetups.TemplateId(Template) + ')');
-      Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupConfigWritten, [ConfigFile]));
+      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigWritten, [ConfigFile]));
       // Abnahme: Schritt 2 ist danach abgehakt.
       Refresh;
     end);
@@ -611,7 +611,7 @@ begin
       Project := Target(Open);
       if Project = '' then
       begin
-        Report(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNoProject));
+        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
         Exit;
       end;
       if not Open then
@@ -829,7 +829,7 @@ begin
       Project := Target(Open);
       if Project = '' then
       begin
-        Report(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNoProject));
+        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
         Exit;
       end;
       Ide := OpenProjectOf(Project);
@@ -935,7 +935,7 @@ begin
     else
     begin
       FPaths := TAtlasSetupRun.Failed;
-      FPathsError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupPathsFailed, [Error]);
+      FPathsError := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsFailed, [Error]);
     end;
   end;
   Refresh;
@@ -976,7 +976,7 @@ begin
       Project := Target(Open);
       if Project = '' then
       begin
-        Report(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNoProject));
+        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
         Exit;
       end;
       if not Open and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
@@ -1020,7 +1020,7 @@ begin
       Project := Target(Open);
       if Project = '' then
       begin
-        Report(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNoProject));
+        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
         Exit;
       end;
       TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Project,
