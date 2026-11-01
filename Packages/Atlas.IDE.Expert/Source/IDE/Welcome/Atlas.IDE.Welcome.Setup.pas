@@ -160,7 +160,8 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Projects,
   Atlas.Core.Files.TextFile,
-  Atlas.IDE.Projects.Summaries;
+  Atlas.IDE.Projects.Summaries,
+  Atlas.IDE.Foundation.Host;
 
 function FileThere(const AFileName: string): Boolean;
 begin
@@ -551,7 +552,7 @@ begin
         Refresh;
         Exit;
       end;
-      Folder := TAtlasProjectSetups.TemplateFolder(ExtractFilePath(GetModuleName(HInstance)), FileThere);
+      Folder := TAtlasProjectSetups.TemplateFolder(TAtlasIdeHost.InstallFolder, FileThere);
       Text := TAtlasProjectSetups.TemplateText(Template, Folder, ReadText);
       if not TAtlasProjectSetups.ValidTemplate(Text, AtlasSchemaJson, Issues) then
       begin
