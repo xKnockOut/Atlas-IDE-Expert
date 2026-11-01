@@ -30,6 +30,9 @@ type
     procedure WrongKindAndUnknownKeyRaise;
     [Test]
     procedure StoredKeysAreKeysNotNames;
+    /// <summary>Listen (x-key mit JSON, z. B. issues.connections) lesen und schreiben sich als Text.</summary>
+    [Test]
+    procedure JsonKeysAsText;
   end;
 
 implementation
@@ -129,6 +132,27 @@ begin
   Assert.IsFalse(mValues.Contains('gibt.es.nicht'));
   Assert.AreEqual('', TAtlasSettingsStoreValues.PluginName(FCatalog, 'gibt.es.nicht'));
   Assert.AreEqual('IssuesBoardOnlyMine', TAtlasSettingsStoreValues.PluginName(FCatalog, 'issues.board.onlyMine'));
+end;
+
+procedure TSettingsStoreValuesTests.JsonKeysAsText;
+var
+  mSettings: TAtlasPluginSettings;
+  mStore: IAtlasMemorySettingsStore;
+  mValues: IAtlasSettingsValues;
+  mJson: string;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mValues := ValuesOf(FCatalog, mSettings, mStore);
+  Assert.AreEqual('[]', mValues.ReadString('issues.connections'));
+  mJson := '[{"name":"Firma","provider":"youtrack","url":"https://youtrack.example.com"}]';
+  mValues.WriteString('issues.connections', mJson);
+  mSettings.Load(mStore);
+  Assert.AreEqual(mJson, mSettings.IssuesConnections);
+  Assert.WillRaise(
+    procedure
+    begin
+      mValues.ReadInteger('issues.connections');
+    end, EAtlasSettingsKey);
 end;
 
 procedure TSettingsStoreValuesTests.StoredKeysAreKeysNotNames;
