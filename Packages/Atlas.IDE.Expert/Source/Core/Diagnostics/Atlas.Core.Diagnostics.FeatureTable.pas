@@ -25,8 +25,9 @@ uses
   Atlas.Core.Diagnostics.Teardown;
 
 type
-  /// <summary>Bedingung je Stufe des abgesicherten Starts (#722) und Einstellung.</summary>
-  TAtlasFeatureWanted = reference to function(ALevel: TAtlasSafeLevel): Boolean;
+  /// <summary>Bedingung je Stufe des abgesicherten Starts (#722) und Einstellung; der Typ steht im Modulvertrag.
+  /// </summary>
+  TAtlasFeatureWanted = Atlas.Core.Modules.Contract.TAtlasFeatureWanted;
   /// <summary>Ist das Modul AModule an (Modul-Schalter, #1454)?</summary>
   TAtlasModuleIsOn = reference to function(const AModule: string): Boolean;
 

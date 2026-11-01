@@ -95,6 +95,7 @@ type
     function IsModuleHandle(AHandle: NativeUInt): Boolean;
     function Provide(const AIID: TGUID; const AObject: IInterface): IAtlasRegistration;
     function FindAll(const AIID: TGUID): TArray<IInterface>;
+    function Provisions(const AIID: TGUID): TArray<TAtlasProvided>;
     function Subscribe(const AListener: IAtlasRegistryListener): IAtlasRegistration;
     /// <summary>Ablage der Einstellungen setzen (Base beim Laden): Die dort gespeicherte Liste bekannter Module
     /// kommt zuerst, bisher bekannte, die dort fehlen, folgen; das Ergebnis wird zurückgeschrieben.</summary>
@@ -750,6 +751,26 @@ begin
     for mProvision in FProvisions do
       if IsEqualGUID(mProvision.IID, AIID) then
         Result := Result + [mProvision.Instance];
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TAtlasModuleRegistry.Provisions(const AIID: TGUID): TArray<TAtlasProvided>;
+var
+  mProvision: TProvision;
+  mItem: TAtlasProvided;
+begin
+  Result := nil;
+  FLock.Acquire;
+  try
+    for mProvision in FProvisions do
+      if IsEqualGUID(mProvision.IID, AIID) then
+      begin
+        mItem.OwnerId := mProvision.OwnerId;
+        mItem.Instance := mProvision.Instance;
+        Result := Result + [mItem];
+      end;
   finally
     FLock.Release;
   end;
