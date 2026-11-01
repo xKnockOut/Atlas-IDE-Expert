@@ -524,6 +524,13 @@ type
     /// <summary>Lesen, AChange anwenden, schreiben. Eine unbrauchbare Datei liegt danach als .defekt daneben
     /// (Bericht N3); eine gesperrte bleibt unverändert (False).</summary>
     class function Update(const AFolder, AProject: string; const AChange: TAtlasProjectSummaryChange): Boolean; static;
+    /// <summary>Ordner "projects" unter %LOCALAPPDATA%\Atlas (Willkommensseite und Tests lesen dieselben Dateien).
+    /// </summary>
+    class function DefaultFolder: string; static;
+    /// <summary>Fehlgeschlagene Tests des letzten gespeicherten Laufs von ATestProject (#69, „Fehlgeschlagene
+    /// erneut ausführen“ nach einem Neustart); leer ohne Datei oder wenn der Lauf zu einem anderen Testprojekt
+    /// gehört.</summary>
+    class function FailedTestsOf(const AFolder, ATestProject: string): TArray<string>; static;
   end;
 
 implementation
@@ -1948,6 +1955,21 @@ begin
   end
   else
     ASummary := TAtlasProjectSummary.Create(AProject);
+end;
+
+class function TAtlasProjectSummaries.DefaultFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), FolderName);
+end;
+
+class function TAtlasProjectSummaries.FailedTestsOf(const AFolder, ATestProject: string): TArray<string>;
+var
+  mSummary: TAtlasProjectSummary;
+begin
+  Result := nil;
+  if (ATestProject <> '') and Load(AFolder, ATestProject, mSummary) and mSummary.Tests.Known and
+    SameText(mSummary.Tests.Project, ATestProject) then
+    Result := mSummary.Tests.FailedTests;
 end;
 
 class function TAtlasProjectSummaries.Load(const AFolder, AProject: string;

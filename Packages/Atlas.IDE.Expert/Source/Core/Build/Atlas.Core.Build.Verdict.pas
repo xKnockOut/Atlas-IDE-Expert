@@ -10,7 +10,8 @@
 // - build.zeroHints: jede gezählte Warnung und jeder Hinweis lässt den Build
 //   scheitern.
 // Zusammenfassung, Eintrag der Benachrichtigungszentrale und Tests nach dem
-// Build (#69) richten sich alle nach dieser Bewertung (Effective).
+// Build (#69) richten sich alle nach dieser Bewertung (Effective); Module
+// hören über IAtlasBuildVerdictListener darauf (#1455).
 //
 // Welche Meldungen in der Basislinie stehen, weiß der Server
 // (atlas.classifyCompilerMessages, Atlas.Common.Lsp.CompilerBaseline). Run
@@ -24,6 +25,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages;
 
 type
@@ -68,6 +70,13 @@ type
   TAtlasBuildClassify = reference to function(const AMessages: TArray<TAtlasCompilerMessage>;
     const ADone: TAtlasBuildBaselined): Boolean;
   TAtlasBuildVerdictDone = reference to procedure(const AVerdict: TAtlasBuildVerdict);
+
+  /// <summary>Hört auf bewertete Builds des Benutzers (#530); Module stellen ihn über ihren Scope bereit (#1455),
+  /// etwa die Tests nach dem Build (#69). Hauptthread, nach Zusammenfassung und Benachrichtigung.</summary>
+  IAtlasBuildVerdictListener = interface
+    ['{5F6C837F-1473-4EC8-B2F9-1A81BF8A7DAD}']
+    procedure BuildEvaluated(const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
+  end;
 
   TAtlasBuildVerdicts = class
   public const

@@ -22,7 +22,8 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 Ausnahmen:
 
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
-- Aus `Build/` bleibt auch die Build-Pipeline im Kern (#1455, Vorschlag an Marco vom 01.11.2026): Läufer der Builds auf Auftrag (`Build.Runner`, MCP `Build.Inbox`), Prüfung vor dem Kompilieren (`Build.Gate`, `Build.IdleGate`), Release-Wächter, Bewertung (`Build.Verdict`, `Build.Summary`) und `IDE.Build.Target`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
+- Aus `Build/` bleibt auch die Build-Pipeline im Kern (#1455, von Marco am 01.11.2026 bestätigt): Läufer der Builds auf Auftrag (`Build.Runner`, MCP `Build.Inbox`), Prüfung vor dem Kompilieren (`Build.Gate`, `Build.IdleGate`), Release-Wächter, Bewertung (`Build.Verdict`, `Build.Summary`) und `IDE.Build.Target`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
+- Aus `StartProfiles/` liegt die lokale Datei (`Core.StartProfiles.Store`) im Kern, dazu `IDE.Foundation.StartOptions` (#1455): Startoptionen schreiben und „Start“ auslösen brauchen die Startprofile (Modul Build) und „Test debuggen“ (Modul Tests); kein Modul kennt das andere.
 - Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
 - `Atlas.IDE.Rules` hat keinen eigenen Ordner. Die sieben Units mit „Rules“ in der Spalte Begründung sind ein **Vorschlag** aus Namen und Inhalt; die Analyse nannte 8 Units und rund 3 400 Zeilen. Vor #1455 prüfen und hier festschreiben.
 - `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen (ADR 0017, Fortschreibung).
@@ -411,6 +412,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.GutterColumns` | `IDE/Foundation/Atlas.IDE.Foundation.GutterColumns.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterMarks` | `IDE/Foundation/Atlas.IDE.Foundation.GutterMarks.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Host` | `IDE/Foundation/Atlas.IDE.Foundation.Host.pas` | Dienste von Base für die Module (Sitzung, Serverbefehle, Meldungen, Warnungen, Log, Statusfeld), #1455 |
+| `Atlas.IDE.Foundation.StartOptions` | `IDE/Foundation/Atlas.IDE.Foundation.StartOptions.pas` | Startoptionen und vorübergehende Startparameter; Startprofile (Build) und „Test debuggen“ (Tests) brauchen sie, #1455 |
+| `Atlas.Core.StartProfiles.Store` | `Core/StartProfiles/Atlas.Core.StartProfiles.Store.pas` | Lokale Datei der Startoptionen; Base liest und schreibt darin die vorübergehenden Startparameter, #1455 |
 | `Atlas.IDE.Foundation.KeyHook` | `IDE/Foundation/Atlas.IDE.Foundation.KeyHook.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Keys` | `IDE/Foundation/Atlas.IDE.Foundation.Keys.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Navigation` | `IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas` | Ordner `IDE/Foundation` |
@@ -804,6 +807,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 
 ## Atlas.IDE.Build
 
@@ -811,7 +815,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Build.CompilerSwitches` | `Core/Build/Atlas.Core.Build.CompilerSwitches.pas` | Ordner `Core/Build` |
 | `Atlas.Core.Build.OpenBuild` | `Core/Build/Atlas.Core.Build.OpenBuild.pas` | Ordner `Core/Build` |
-| `Atlas.Core.StartProfiles.Store` | `Core/StartProfiles/Atlas.Core.StartProfiles.Store.pas` | Ordner `Core/StartProfiles` |
 | `Atlas.Core.Tasks.Adapters.Process` | `Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Commands` | `Core/Tasks/Atlas.Core.Tasks.Commands.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Definitions` | `Core/Tasks/Atlas.Core.Tasks.Definitions.pas` | Ordner `Core/Tasks` |
@@ -858,4 +861,5 @@ Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Bis zum Pilot 
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.IDE.Contracts.BuildTools` | `Contracts/Atlas.IDE.Contracts.BuildTools.pas` | Startprofile und Projektaufgaben für andere Module, #1455 |
+| `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), #1455 |

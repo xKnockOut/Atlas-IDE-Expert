@@ -111,7 +111,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.StartProfiles.Service,
+  Atlas.IDE.Foundation.StartOptions,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX;
 
@@ -147,7 +147,7 @@ begin
   begin
     RemoveBreakpoint;
     if not Debugging then
-      TAtlasIdeStartProfiles.EndTemporary(FTarget.Project, Changed);
+      TAtlasIdeStartOptions.EndTemporary(FTarget.Project, Changed);
   end;
   if FPhase <> TPhase.Idle then
     FTests.Debugging := False;
@@ -471,7 +471,7 @@ begin
     FTarget.Configuration, FTarget.Platform]));
   FPhase := TPhase.Starting;
   FStartedAt := GetTickCount;
-  if not TAtlasIdeStartProfiles.RunTemporary(FTarget.Project,
+  if not TAtlasIdeStartOptions.RunTemporary(FTarget.Project,
     function(AExisting: string): string
     begin
       Result := TAtlasTestDebug.Parameters(AExisting, Names, XmlFile);
@@ -589,7 +589,7 @@ begin
   // Nur nach „Start“ gibt es vorübergehende Parameter (Building: nichts gesetzt).
   if FPhase in [TPhase.Starting, TPhase.Running] then
   begin
-    if TAtlasIdeStartProfiles.EndTemporary(Project, Changed) and Changed then
+    if TAtlasIdeStartOptions.EndTemporary(Project, Changed) and Changed then
       Say(TAtlasStrings.Fmt(TAtlasTextId.TestsDebugKeptParameters, [ProjectName(Project)]));
     RestoreActiveProject;
     if AStarted then

@@ -184,6 +184,16 @@ type
     procedure ThemeChanged;
   end;
 
+  /// <summary>Führt DUnitX-Tests aus (Modul Tests, #69). Base fragt ihn für „Betroffene Tests ausführen“ der
+  /// Auswirkungsanalyse (#1120), Module etwa für „Fehlgeschlagene erneut ausführen“ der Willkommensseite. Ohne
+  /// Anbieter sind die Tests aus. Hauptthread.</summary>
+  IAtlasTestRunner = interface
+    ['{88CE7F4C-2648-4187-BF73-C976328E6C9B}']
+    /// <summary>ATests (volle Namen für --run) aus dem Testprojekt von AFileName (Unit oder .dproj) ausführen;
+    /// leer = alle.</summary>
+    procedure RunTests(const AFileName: string; const ATests: TArray<string>);
+  end;
+
   /// <summary>Wert eines Ausdrucks im Tooltip beim Debuggen (Visualisierer, eigene Darstellungen): '' = kein Beitrag.
   /// ATypeChain: Typ und seine Vorfahren, AText: Wert der IDE.</summary>
   IAtlasHoverValueSource = interface

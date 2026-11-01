@@ -80,7 +80,6 @@ uses
   Atlas.Core.Lsp.DataFlow,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Results.Impact,
-  Atlas.IDE.Tests.Affected,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
@@ -255,14 +254,10 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Tests.Run,
-  Atlas.Core.Tests.Debug,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.MessageList,
-  Atlas.IDE.Tests.Runner,
   Atlas.IDE.Contracts.BuildTools,
-  Atlas.IDE.Tests.Debug,
-  Atlas.IDE.Tests.Lens;
+  Atlas.IDE.Contracts.Tests;
 
 var
   ManagerIndex: Integer = -1;
@@ -304,11 +299,6 @@ var
   RuleChecksNotice: TAtlasIdeRuleChecksNotice;
   // Angemeldete Module als Teile der Feature-Tabelle (#1455, ADR 0017 Regeln 1, 2); lebt mit Features.
   ModuleHosting: TAtlasModuleHosting;
-  // DUnitX-Tests ausführen samt Code Lens (#69), abschaltbar über TestRun bzw. CodeLensTests.
-  Tests: TAtlasIdeTests;
-  // Einzelnen Test ausführen bzw. im Debugger starten (#585), lebt mit Tests; abschaltbar über TestDebug.
-  TestDebugger: TAtlasIdeTestDebugger;
-  TestsLens: TAtlasIdeTestsLens;
   // Projektaufgaben aus atlas.json (#900), abschaltbar über tasks.enabled.
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
@@ -1367,6 +1357,8 @@ var
   Messages: TArray<TAtlasCompilerMessage>;
   Project: TAtlasCompileProject;
   Verdict: TAtlasBuildVerdict;
+  mItem: IInterface;
+  mListener: IAtlasBuildVerdictListener;
 begin
   Messages := AMessages;
   Project := AProject;
@@ -1382,12 +1374,14 @@ begin
       begin
         Notifications.BuildEvaluated(Messages, Project, Verdict);
       end);
-  if Tests <> nil then
-    TAtlasGuard.Run(TAtlasFeature.Build,
-      procedure
-      begin
-        Tests.BuildFinished(Project, Verdict.Effective);
-      end);
+  // Module, etwa die Tests nach dem Build (#69, #1455).
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildVerdictListener) do
+    if Supports(mItem, IAtlasBuildVerdictListener, mListener) then
+      TAtlasGuard.Run(TAtlasFeature.Build,
+        procedure
+        begin
+          mListener.BuildEvaluated(Project, Verdict);
+        end);
 end;
 
 /// <summary>Bewertet einen Build des Benutzers mit lesbaren Meldungen (#530): Basislinie über den Server,
@@ -1419,65 +1413,50 @@ begin
   Result := TAtlasIdeSettings.Current.ReleaseGuard;
 end;
 
-/// <summary>Befehle der Tests (#69) sichtbar?</summary>
-function TestsVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TestRun and (Tests <> nil);
-end;
-
-/// <summary>Befehl „Betroffene Tests ausführen“ (#1353) sichtbar?</summary>
-function AffectedTestsVisible: Boolean;
-begin
-  Result := TAtlasIdeAffectedTests.Enabled and (Tests <> nil);
-end;
-
-/// <summary>„Betroffene Tests ausführen“ (#1353) an Testläufer und Server binden (A-09).</summary>
-procedure InstallAffectedTests;
+/// <summary>Testläufer des Moduls Tests (#69, #1455); False ohne laufendes Modul.</summary>
+function TestRunner(out ARunner: IAtlasTestRunner): Boolean;
 var
-  mHooks: TAtlasAffectedTestsHooks;
+  mItem: IInterface;
 begin
-  mHooks := Default(TAtlasAffectedTestsHooks);
-  mHooks.RunTests :=
-    procedure(const AFileName: string; const ATests: TArray<string>)
-    begin
-      if Tests <> nil then
-        Tests.RunTests(AFileName, ATests)
-      else
-        GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
-    end;
-  mHooks.RunAll :=
-    procedure
-    begin
-      if Tests <> nil then
-        Tests.RunAll
-      else
-        GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
-    end;
-  mHooks.ResolveTarget :=
-    procedure(const AThen: TAtlasAffectedTargetProc)
-    begin
-      if Tests <> nil then
-        Tests.ResolveProject('',
-          procedure(const AProject: IOTAProject)
-          begin
-            AThen(TAtlasIdeTests.TargetOf(AProject, nil));
-          end);
-    end;
-  mHooks.ServerPath :=
-    function: string
-    var
-      mArguments: string;
-    begin
-      Result := TAtlasCodeInsightManager.ServerPath(mArguments);
-    end;
-  TAtlasIdeAffectedTests.Install(mHooks);
+  ARunner := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestRunner) do
+    if Supports(mItem, IAtlasTestRunner, ARunner) then
+      Exit(True);
+  Result := False;
 end;
 
-/// <summary>Befehl „Test am Cursor debuggen“ (#585) sichtbar?</summary>
-function TestDebugVisible: Boolean;
+/// <summary>Tests ausführen über das Modul Tests; ohne Modul der Hinweis, dass die Tests aus sind.</summary>
+procedure RunTestsOfModule(const AFileName: string; const ATests: TArray<string>);
+var
+  mRunner: IAtlasTestRunner;
 begin
-  Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current) and (TestDebugger <> nil);
+  if TestRunner(mRunner) then
+    mRunner.RunTests(AFileName, ATests)
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
 end;
+
+/// <summary>Testprojekte und einzelne Tests des Moduls Tests (#1455); False ohne laufendes Modul. Zieht mit der
+/// Willkommensseite in ihr Modul.</summary>
+function TestsSource(out ATests: IAtlasTestsSource): Boolean;
+var
+  mItem: IInterface;
+begin
+  ATests := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestsSource) do
+    if Supports(mItem, IAtlasTestsSource, ATests) then
+      Exit(True);
+  Result := False;
+end;
+
+function TestsBusy: Boolean;
+var
+  mTests: IAtlasTestsSource;
+begin
+  Result := TestsSource(mTests) and mTests.Busy;
+end;
+
+
 
 procedure RegisterPalette;
 
@@ -1986,35 +1965,6 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.IssuesAttach and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
-  // Betroffene Tests (#1353): sichtbar mit tests.affected und tests.run.
-  Add('Atlas.RunAffectedTests', TAtlasTextId.TestsAffectedCommand,
-    Guarded(TAtlasFeature.Build, TAtlasIdeAffectedTests.Run), AffectedTestsVisible);
-  // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
-  Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
-    procedure
-    begin
-      if Tests <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Build, Tests.RunAll);
-    end, TestsVisible);
-  Add('Atlas.RunFailedTests', TAtlasTextId.TestsRunFailedCommand,
-    procedure
-    begin
-      if Tests <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Build, Tests.RunFailed);
-    end, TestsVisible);
-  // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
-  Add('Atlas.RunTest', TAtlasTextId.TestsRunHereCommand,
-    procedure
-    begin
-      if TestDebugger <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.RunAtCursor);
-    end, TestsVisible);
-  Add('Atlas.DebugTest', TAtlasTextId.TestsDebugCommand,
-    procedure
-    begin
-      if TestDebugger <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.DebugAtCursor);
-    end, TestDebugVisible);
   // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
   // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
   Add('Atlas.Continue', TAtlasTextId.WelcomeContinueCommand,
@@ -3059,16 +3009,8 @@ begin
     begin
       GuardWarning(AText);
     end);
-  // Auswirkungsanalyse (#1120): „Betroffene Tests ausführen“ über den Testläufer (#69).
-  TAtlasIdeImpact.Install(
-    procedure(const AFileName: string; const ATests: TArray<string>)
-    begin
-      if Tests <> nil then
-        Tests.RunTests(AFileName, ATests)
-      else
-        GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
-    end);
-  InstallAffectedTests;
+  // Auswirkungsanalyse (#1120): „Betroffene Tests ausführen“ über den Testläufer des Moduls Tests (#69, #1455).
+  TAtlasIdeImpact.Install(RunTestsOfModule);
   // Klick auf die Testunit-Lens (#189); die Lens kennt die Editorbefehle nicht (A-09).
   TAtlasEditorTestUnitLens.OnSwitchTestUnit :=
     procedure
@@ -3492,7 +3434,6 @@ begin
   TAtlasEditorHover.OnVisualize := nil;
   TAtlasIdeEditorCommands.Uninstall;
   TAtlasIdeImpact.Uninstall;
-  TAtlasIdeAffectedTests.Uninstall;
   TAtlasIdeResults.Uninstall;
   CommandsInstalled := False;
 end;
@@ -3578,88 +3519,6 @@ begin
     TAtlasIdeSettings.Current.TipsUsageTracking;
 end;
 
-/// <summary>DUnitX-Tests (#69): Läufer mit dem Prozessläufer der Versionsverwaltung und Haken zu Build,
-/// Problemen und Willkommensseite (A-09), dazu die Code Lens.</summary>
-procedure StartTests;
-begin
-  Tests := TAtlasIdeTests.Create(
-    function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner
-    begin
-      Result := TAtlasVcsProcessRunner.Create(False, ACancelled);
-    end);
-  // Vor den Tests bauen: über den Läufer der Builds auf Auftrag (#261), Auftraggeber "tests".
-  Tests.OnBuild :=
-    function(const AProject: string; const ADone: TAtlasTestsBuildDone; out AReason: string): Boolean
-    var
-      Request: TAtlasBuildRequest;
-    begin
-      if BuildRunner = nil then
-      begin
-        AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
-        Exit(False);
-      end;
-      Request := Default(TAtlasBuildRequest);
-      Request.Project := AProject;
-      Request.Kind := TAtlasCompileKind.Make;
-      Result := BuildRunner.Start(Request, TAtlasTestRun.RequestedBy,
-        procedure(const AReport: TAtlasBuildReport; const AError: string)
-        begin
-          ADone(AReport.Succeeded, AReport.Project.OutputFile, AError);
-        end, AReason);
-    end;
-  Tests.OnProblems :=
-    procedure(const AProblems: TArray<TPair<string, TAtlasProblem>>)
-    begin
-      if TAtlasProblemsController.Current <> nil then
-        TAtlasProblemsController.Current.SetTests(AProblems);
-    end;
-  Tests.OnFinished :=
-    procedure(const AProject: string; const ATests: TAtlasProjectTests)
-    begin
-      if (Welcome <> nil) and (Welcome.Projects <> nil) then
-        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-          procedure
-          begin
-            Welcome.Projects.RecordTests(AProject, ATests);
-            // Schnellaktion „Tests“ (#764): Ergebnis in der Zeile des Projekts.
-            if Welcome.QuickActions <> nil then
-              Welcome.QuickActions.TestsFinished(AProject, ATests);
-          end);
-    end;
-  Tests.OnLastFailed :=
-    function(AProject: string): TArray<string>
-    begin
-      Result := TAtlasIdeProjects.LastFailedTests(AProject);
-    end;
-  // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü (A-09: Haken der Editorbefehle).
-  TestDebugger := TAtlasIdeTestDebugger.Create(Tests);
-  TAtlasIdeEditorCommands.OnRunTest :=
-    procedure
-    begin
-      if TestDebugger <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.RunAtCursor);
-    end;
-  TAtlasIdeEditorCommands.OnDebugTest :=
-    procedure
-    begin
-      if TestDebugger <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.DebugAtCursor);
-    end;
-  TestsLens := TAtlasIdeTestsLens.Create(Tests, TestDebugger);
-end;
-
-procedure StopTests;
-begin
-  // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
-  // zurück), dann der Läufer; seine Probleme verschwinden mit ihm.
-  TAtlasIdeEditorCommands.OnRunTest := nil;
-  TAtlasIdeEditorCommands.OnDebugTest := nil;
-  FreeAndNil(TestsLens);
-  FreeAndNil(TestDebugger);
-  FreeAndNil(Tests);
-  if TAtlasProblemsController.Current <> nil then
-    TAtlasProblemsController.Current.ClearTests;
-end;
 
 procedure StartPalette;
 begin
@@ -3990,26 +3849,24 @@ begin
     begin
       GuardWarning(AText);
     end);
-  // „Fehlgeschlagene erneut ausführen“: der Läufer aus #69 (sichtbar nur mit TestRun).
-  Result.OnRunTests :=
-    procedure(const AProject: string; const ATests: TArray<string>)
-    begin
-      if Tests <> nil then
-        Tests.RunTests(AProject, ATests);
-    end;
-  // „Im Debugger“: #585.
+  // „Fehlgeschlagene erneut ausführen“, „Im Debugger“ und Sprung zum Test: über das Modul Tests (#69, #585, #1455).
+  Result.OnRunTests := RunTestsOfModule;
   Result.OnDebugTest :=
     function(const AProject, AFullName: string; out AReason: string): Boolean
+    var
+      mTests: IAtlasTestsSource;
     begin
       AReason := '';
-      Result := False;
-      if TestDebugger <> nil then
-        Result := TestDebugger.DebugByName(AProject, AFullName, AReason);
+      Result := TestsSource(mTests) and mTests.DebugByName(AProject, AFullName, AReason);
     end;
   Result.OnLocateTest :=
     function(const AProject, AFullName: string; out AFileName: string; out ALine: Integer): Boolean
+    var
+      mTests: IAtlasTestsSource;
     begin
-      Result := TAtlasIdeTestDebugger.LocateByName(AProject, AFullName, AFileName, ALine);
+      AFileName := '';
+      ALine := 0;
+      Result := TestsSource(mTests) and mTests.LocateByName(AProject, AFullName, AFileName, ALine);
     end;
   // CI-Anbieter: Jenkins als erster Adapter.
   Result.ProviderFactory :=
@@ -4100,13 +3957,15 @@ begin
 end;
 
 type
-  /// <summary>Ende einer Projektaufgabe an die Schnellaktionen der Willkommensseite (#764, #900).</summary>
-  TWelcomeTaskListener = class(TInterfacedObject, IAtlasTaskListener)
+  /// <summary>Ende einer Projektaufgabe (#900) bzw. eines Testlaufs (#69) an die Willkommensseite: Karte Tests
+  /// (#763) und Schnellaktionen (#764).</summary>
+  TWelcomeListener = class(TInterfacedObject, IAtlasTaskListener, IAtlasTestsListener)
   public
     procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
+    procedure TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
   end;
 
-procedure TWelcomeTaskListener.TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
+procedure TWelcomeListener.TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
 begin
   if (Welcome <> nil) and (Welcome.QuickActions <> nil) then
     TAtlasGuard.Run(TAtlasFeature.WelcomePage,
@@ -4114,6 +3973,25 @@ begin
       begin
         Welcome.QuickActions.TaskFinished(AProject, AResult);
       end);
+end;
+
+procedure TWelcomeListener.TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
+var
+  mProject: string;
+  mTests: TAtlasProjectTests;
+begin
+  if (Welcome = nil) or (Welcome.Projects = nil) then
+    Exit;
+  mProject := ATestProject;
+  mTests := ATests;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      Welcome.Projects.RecordTests(mProject, mTests);
+      // Schnellaktion „Tests“ (#764): Ergebnis in der Zeile des Projekts.
+      if Welcome.QuickActions <> nil then
+        Welcome.QuickActions.TestsFinished(mProject, mTests);
+    end);
 end;
 
 /// <summary>Startprofile und Projektaufgaben des Moduls Build (#1455); False ohne laufendes Modul.</summary>
@@ -4129,8 +4007,9 @@ begin
 end;
 
 var
-  /// <summary>Anmeldung von TWelcomeTaskListener, solange die Willkommensseite läuft.</summary>
+  /// <summary>Anmeldungen von TWelcomeListener, solange die Willkommensseite läuft.</summary>
   WelcomeTaskListener: IAtlasRegistration;
+  WelcomeTestsListener: IAtlasRegistration;
 
 procedure StartWelcome;
 begin
@@ -4248,23 +4127,17 @@ begin
     end;
   Welcome.QuickActions.OnTests :=
     function(const ATestProject: string; out AReason: string): Boolean
+    var
+      mTests: IAtlasTestsSource;
     begin
-      if Tests = nil then
-      begin
-        AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
-        Exit(False);
-      end;
-      Result := Tests.RunProject(ATestProject, AReason);
+      AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
+      Result := TestsSource(mTests) and mTests.RunProject(ATestProject, AReason);
     end;
-  Welcome.QuickActions.OnTestsBusy :=
-    function: Boolean
-    begin
-      Result := (Tests <> nil) and Tests.Busy;
-    end;
+  Welcome.QuickActions.OnTestsBusy := TestsBusy;
   Welcome.QuickActions.OnIdeBusy :=
     function: Boolean
     begin
-      Result := ((BuildRunner <> nil) and BuildRunner.Busy) or ((Tests <> nil) and Tests.Busy);
+      Result := ((BuildRunner <> nil) and BuildRunner.Busy) or TestsBusy;
     end;
   // Startprofile (#575) und Knopf „Aufgaben ▾“ (#900) über das Modul Build (IAtlasBuildToolsSource, #1455);
   // ohne Modul keine Profile und keine Aufgaben. Zieht mit der Willkommensseite in ihr Modul.
@@ -4307,9 +4180,11 @@ begin
       if BuildTools(mTools) then
         Result := mTools.RunTask(AProject, AName, AReason);
     end;
-  // Ende einer Projektaufgabe (#900) aus dem Modul Build.
+  // Ende einer Projektaufgabe (#900) aus dem Modul Build und eines Testlaufs (#69) aus dem Modul Tests.
   WelcomeTaskListener := AtlasModuleRegistry.Provide(IAtlasTaskListener,
-    TWelcomeTaskListener.Create as IAtlasTaskListener);
+    TWelcomeListener.Create as IAtlasTaskListener);
+  WelcomeTestsListener := AtlasModuleRegistry.Provide(IAtlasTestsListener,
+    TWelcomeListener.Create as IAtlasTestsListener);
   // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
   Welcome.ContinueWork := TAtlasIdeContinue.Create(
     procedure(AText: string)
@@ -4468,6 +4343,9 @@ begin
   if WelcomeTaskListener <> nil then
     WelcomeTaskListener.Revoke;
   WelcomeTaskListener := nil;
+  if WelcomeTestsListener <> nil then
+    WelcomeTestsListener.Revoke;
+  WelcomeTestsListener := nil;
   // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
   TAtlasIdeNewIssue.Stop;
   FreeAndNil(Welcome);
@@ -4649,17 +4527,6 @@ begin
     begin
       FreeAndNil(RuleChecksNotice);
     end);
-  // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über BuildRunner, wenn er läuft.
-  Features.AddWanted('Tests',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
-    end,
-    function: Boolean
-    begin
-      Result := Tests <> nil;
-    end,
-    StartTests, StopTests);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -5015,7 +4882,6 @@ begin
   // Module (#1454): Ist der Modul-Schalter aus, startet keines dieser Teile, laufende stoppt RegisterFeatures.
   // Die übrigen Teile eines Moduls folgen ihren eigenen Einstellungen, die bei ausgeschaltetem Modul „aus“
   // liefern (TAtlasModuleSwitches). Angemeldete Module (Debugger, #1455) bringen ihren Schalter selbst mit.
-  Features.Join('tests', ['Tests']);
   Features.Join('issues', ['IssueLinks', 'BlameIssues']);
   Features.ModuleOn := ModuleOn;
   // Module zuletzt: Sie bauen auf den Teilen von Base auf und gehen beim Abbau zuerst (#1455).
@@ -5309,8 +5175,6 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // architecture.* (#1118).
       TAtlasIdeArchitecture.ApplySettings;
-      // tests.affectedBeforeCommit (#1353): pre-commit-Hook anlegen bzw. entfernen.
-      TAtlasIdeAffectedTests.ApplySettings;
       // query.enabled (#1351).
       TAtlasIdeCodeQuery.ApplySettings;
       // hotspots.* (#1354).
