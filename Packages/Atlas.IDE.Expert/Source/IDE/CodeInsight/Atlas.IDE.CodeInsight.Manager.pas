@@ -555,9 +555,21 @@ begin
 end;
 
 class function TAtlasCodeInsightManager.DiagnoseLog: string;
+const
+  cBaseName = 'Atlas.IDE.Base';
+  cLogName = 'Atlas.IDE.Expert';
+var
+  mModule, mName: string;
 begin
   // Neben dem Plugin, nicht im Temp-Ordner: Den hat die IDE nicht in jedem Fall gemeinsam mit uns.
-  Result := ChangeFileExt(GetModuleName(HInstance), '.log');
+  mModule := GetModuleName(HInstance);
+  mName := ChangeFileExt(ExtractFileName(mModule), '.log');
+  // Der Name bleibt trotz neuem BPL-Namen (#1456, ADR 0017): Atlas.IDE.Base370.bpl schreibt Atlas.IDE.Expert370.log.
+  if SameText(Copy(mName, 1, Length(cBaseName)), cBaseName) then
+  begin
+    mName := cLogName + Copy(mName, Length(cBaseName) + 1, MaxInt);
+  end;
+  Result := ExtractFilePath(mModule) + mName;
 end;
 
 class function TAtlasCodeInsightManager.ServerPath(out AArguments: string): string;

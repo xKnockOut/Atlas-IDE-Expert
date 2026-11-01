@@ -79,7 +79,8 @@ uses
   Atlas.UI.Diagnostics.ReportDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.BugReport,
-  Atlas.IDE.Diagnostics.Timing;
+  Atlas.IDE.Diagnostics.Timing,
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Datei oder Webadresse mit dem zuständigen Programm öffnen (Browser).</summary>
 procedure OpenTarget(const ATarget: string);
@@ -175,7 +176,7 @@ end;
 
 class function TAtlasIdeHelp.DocsTarget: string;
 begin
-  Result := TAtlasHelp.DocsTarget(ExtractFilePath(GetModuleName(HInstance)),
+  Result := TAtlasHelp.DocsTarget(TAtlasIdeHost.InstallFolder,
     function(AFileName: string): Boolean
     begin
       Result := FileExists(AFileName);
