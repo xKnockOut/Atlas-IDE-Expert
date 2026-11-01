@@ -127,7 +127,8 @@ type
 
   /// <summary>Ein Eintrag im Atlas-Menü bzw. im Kontextmenü des Editors (Place): Befehl CommandId (aus einer
   /// IAtlasCommandSource) im Untermenü Section ('' = oberste Ebene; nur im Atlas-Menü); Text und Sichtbarkeit kommen
-  /// vom Befehl. CommandId „-“ ist eine Trennlinie, sichtbar nur zwischen sichtbaren Einträgen.
+  /// vom Befehl. CommandId „-“ ist eine Trennlinie, sichtbar nur zwischen sichtbaren Einträgen. Unter Ansicht › Atlas
+  /// (ViewMenu) ersetzt eine gesetzte Caption den Text des Befehls.
   /// Eintrag ohne Befehl (nur im Atlas-Menü): CommandId ist eine eindeutige Kennung, Caption der Text, Run die
   /// Aktion (nil = ausgegraut), etwa je Projektaufgabe; Base fragt die Einträge bei jedem Öffnen und beim Klick
   /// neu (Regel 3).</summary>

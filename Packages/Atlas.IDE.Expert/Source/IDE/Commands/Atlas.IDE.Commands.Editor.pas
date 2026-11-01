@@ -151,8 +151,6 @@ type
     /// <summary>Qualifizierter Name am Cursor der oberen Datei (ohne Parameter); False mit Meldung ohne Server,
     /// Editor oder Symbol.</summary>
     class function QualifiedNameHere(out AName: string): Boolean; static;
-    /// <summary>„Weg von hier nach …“ (#1117).</summary>
-    class procedure SymbolPathFromHere; static;
     /// <summary>Nach geänderten Einstellungen: Sichtbarkeit der Kontextmenüeinträge.</summary>
     class procedure ApplySettings; static;
     /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
@@ -256,7 +254,6 @@ uses
   Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.EditorToolbar.Service,
-  Atlas.IDE.SymbolPath.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation,
   Atlas.Core.Results.Model,
@@ -268,8 +265,9 @@ const
   CommandTimeoutMs = 30000;
   // Beim Tippen: lieber nichts tun als die IDE aufhalten.
   SlashTimeoutMs = 3000;
-  // Plätze im Kontextmenü für Einträge der Module (#1455); der Debugger braucht drei.
-  ModuleSlotCount = 12;
+  // Plätze im Kontextmenü für Einträge der Module (#1455): Lesezeichen 8 (mit Trennlinien), Debugger 3, Tests 2,
+  // Analyse 1; Reserve für Regeln, Tracker und Willkommensseite. Zu wenige meldet das Log.
+  ModuleSlotCount = 24;
   CopyTextCommand = 'atlas.copyText';
   OpenFileCommand = 'atlas.openFile';
   GoToPositionCommand = 'atlas.goToPosition';
@@ -608,17 +606,6 @@ begin
     procedure
     begin
       CopyQualifiedName(True);
-    end);
-  // Weg zwischen Symbolen (#1117).
-  FContextMenu.AddWhen(TAtlasFeature.SymbolPath, 'Atlas.SymbolPath',
-    TAtlasStrings.Text(TAtlasTextId.SymbolPathFromHere), nil,
-    procedure
-    begin
-      SymbolPathFromHere;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSymbolPath.Enabled;
     end);
   // Atlas-Änderungen über mehrere Dateien (#721).
   FContextMenu.Add('-', nil, nil);
@@ -1108,18 +1095,6 @@ class procedure TAtlasIdeEditorCommands.ToggleMethod;
 begin
   if not TryToggleMethod then
     Say(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggleNone));
-end;
-
-class procedure TAtlasIdeEditorCommands.SymbolPathFromHere;
-var
-  Name: string;
-begin
-  if not TAtlasIdeSymbolPath.Enabled then
-    Exit;
-  // Ohne Symbol am Cursor trotzdem den Dialog: „Von“ lässt sich dort eintippen.
-  if not QualifiedNameHere(Name) then
-    Name := '';
-  TAtlasIdeSymbolPath.ShowDialogFrom(Name);
 end;
 
 class procedure TAtlasIdeEditorCommands.ApplySettings;

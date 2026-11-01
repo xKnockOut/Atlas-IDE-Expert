@@ -86,11 +86,7 @@ uses
   Atlas.IDE.Results.Peek,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
-  Atlas.IDE.Architecture.Service,
-  Atlas.IDE.Hotspots.Service,
-  Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
@@ -990,28 +986,6 @@ begin
   Result := TAtlasIdeSettings.Current.Outline;
 end;
 
-/// <summary>Antwort von RunServerCommandAsync als JSON-Text ('' ohne Antwort) an ADone; eigene Routine, damit die
-/// anonyme Methode nur ADone einfängt.</summary>
-function HotspotsAnswer(const ADone: TProc<string>): TProc<TJSONValue>;
-var
-  mDone: TProc<string>;
-begin
-  mDone := ADone;
-  Result :=
-    procedure(AValue: TJSONValue)
-    begin
-      if AValue = nil then
-        mDone('')
-      else
-        mDone(AValue.ToJSON);
-    end;
-end;
-
-function ArchitectureVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
-end;
-
 /// <summary>Antwort als JSON-Text an ADone ('' ohne Antwort); der Manager gibt den Wert nach dem Aufruf frei.
 /// </summary>
 function AnswerText(const ADone: TProc<string>): TProc<TJSONValue>;
@@ -1024,21 +998,6 @@ begin
       else
         ADone(AValue.ToJSON([]));
     end;
-end;
-
-function HotspotsVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.HotspotsEnabled;
-end;
-
-function UnitRelationsVisible: Boolean;
-begin
-  Result := TAtlasIdeUnitRelations.Enabled;
-end;
-
-function SymbolPathVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.SymbolPath;
 end;
 
 function JumpToMatchVisible: Boolean;
@@ -1387,6 +1346,21 @@ begin
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
 end;
 
+const
+  /// <summary>Befehl des Moduls Analyse (#1455): Abhängigkeiten der Unit im Editor (#554, #593).</summary>
+  UnitDependenciesCommandId = 'Atlas.UnitDependencies';
+
+/// <summary>Befehl AId eines laufenden Moduls ausführen (Base kennt die Module nicht, Regel 9); ohne Modul nichts.
+/// </summary>
+procedure RunModuleCommand(const AId: string);
+var
+  mCommand: TAtlasModuleCommand;
+begin
+  if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run) and
+    TAtlasModuleContributions.IsVisible(mCommand) then
+    TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+end;
+
 /// <summary>Testprojekte und einzelne Tests des Moduls Tests (#1455); False ohne laufendes Modul. Zieht mit der
 /// Willkommensseite in ihr Modul.</summary>
 function TestsSource(out ATests: IAtlasTestsSource): Boolean;
@@ -1488,24 +1462,6 @@ begin
   // Gliederungsfenster (#537); nur sichtbar, solange outline.enabled an ist.
   Add('Atlas.Outline', TAtlasTextId.OutlineCommand,
     Guarded(TAtlasFeature.Outline, TAtlasIdeOutline.ShowWindow), OutlineVisible);
-  // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
-  Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
-    Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
-  // Hotspots (#1354); nur sichtbar, solange hotspots.enabled an ist.
-  Add('Atlas.Hotspots', TAtlasTextId.HotspotsCommand,
-    Guarded(TAtlasFeature.Hotspots, TAtlasIdeHotspots.ShowWindow), HotspotsVisible);
-  // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
-  Add('Atlas.UnitRelations', TAtlasTextId.UnitRelationsCommand,
-    Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowWindow), UnitRelationsVisible);
-  // Kosten einer interface-Änderung (#554): Verwender nach Abschnitt und verschiebbare uses der Unit im Editor,
-  // dazu die teuersten Units in der Architekturübersicht.
-  Add('Atlas.UnitDependencies', TAtlasTextId.UnitDependenciesCommand,
-    Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent), UnitRelationsVisible);
-  Add('Atlas.InterfaceCostRanking', TAtlasTextId.InterfaceCostRankingCommand,
-    Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowRanking), ArchitectureVisible);
-  // Weg zwischen Symbolen (#1117); nur sichtbar, solange navigation.symbolPath an ist.
-  Add('Atlas.SymbolPath', TAtlasTextId.SymbolPathCommand,
-    Guarded(TAtlasFeature.SymbolPath, TAtlasIdeSymbolPath.ShowDialog), SymbolPathVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
@@ -2027,8 +1983,6 @@ end;
 
 const
   ProblemCountsExtra = 'problemCounts';
-  /// <summary>Kosten einer interface-Änderung (#554).</summary>
-  InterfaceCostExtra = 'interfaceCost';
 
 /// <summary>Diagnosepaket des Fensters „Atlas-Server“ (#1356): Bericht und Dateien des laufenden Servers im
 /// Hintergrund.</summary>
@@ -2952,7 +2906,7 @@ begin
       end;
       if ATag = 'cycle.showGraph' then
       begin
-        TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+        RunModuleCommand(UnitDependenciesCommandId);
         Exit;
       end;
       TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
@@ -2978,7 +2932,7 @@ begin
   TAtlasIdeEditorCommands.OnUnitRelations :=
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+      RunModuleCommand(UnitDependenciesCommandId);
     end;
   // „Issue anlegen …“ im Editor-Kontextmenü und auf der Taste (#1268).
   TAtlasIdeEditorCommands.OnCreateIssue :=
@@ -3045,71 +2999,6 @@ begin
         Result := Manager.ActiveSession;
     end);
   TAtlasIdeOutline.Install;
-  // Fenster „Atlas-Architektur“ (#1118): fragt den Server über RunCommandAsync.
-  TAtlasIdeArchitecture.Install(
-    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
-    begin
-      Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
-        Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
-    end);
-  // Fenster „Unit-Beziehungen“ (#593): fragt regelmäßig nach, daher nicht über den einen Hintergrundbefehl von
-  // RunCommandAsync (der bliebe sonst für Architektur und Co. belegt), und startet keinen Server.
-  TAtlasIdeUnitRelations.Install(
-    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>): Boolean
-    begin
-      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
-      if Result then
-        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
-    end);
-  // Kosten einer interface-Änderung (#554) im Zusatzfeld der Statusleiste; Klick zeigt die Abhängigkeiten.
-  TAtlasIdeUnitRelations.SetCostHandler(
-    procedure(const AText, AHint: string)
-    begin
-      if StatusField = nil then
-        Exit;
-      if AText = '' then
-        StatusField.SetExtra(InterfaceCostExtra, '', '', nil)
-      else
-        StatusField.SetExtra(InterfaceCostExtra, AText, AHint,
-          procedure(APoint: TPoint)
-          begin
-            TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
-          end);
-    end);
-  // Fenster „Atlas-Hotspots“ (#1354): nebenläufig zu anderen Befehlen, weil es nachfragt, solange der Server im
-  // Hintergrund rechnet; startet den Server bei Bedarf.
-  TAtlasIdeHotspots.Install(
-    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
-    begin
-      Result := (Manager <> nil) and (Manager.ActiveSession <> nil);
-      if Result then
-        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, HotspotsAnswer(ADone));
-    end);
-  // „Auswirkungen anzeigen“ im Hotspot-Fenster (#1120) auf der Methode, auf die das Fenster den Cursor setzt.
-  TAtlasIdeHotspots.OnImpact :=
-    procedure
-    begin
-      TAtlasIdeImpact.ShowAtCursor;
-    end;
-  // Strg+Doppelklick in der Architekturkarte zeigt die Unit dort.
-  TAtlasIdeArchitecture.OnUnitRelations :=
-    procedure(AFileName: string)
-    begin
-      TAtlasIdeUnitRelations.ShowFor(AFileName);
-    end;
-  // Weg zwischen Symbolen (#1117): Suche über RunCommandAsync, Vorschläge aus der Symbolsuche.
-  TAtlasIdeSymbolPath.Install(
-    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
-    begin
-      Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
-        Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
-    end,
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.ActiveSession;
-    end);
   TAtlasIdeBreadcrumbs.Install;
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
@@ -3296,10 +3185,6 @@ begin
   TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeStatementCompletion.Uninstall;
   TAtlasIdeOutline.Uninstall;
-  TAtlasIdeSymbolPath.Uninstall;
-  TAtlasIdeArchitecture.Uninstall;
-  TAtlasIdeHotspots.Uninstall;
-  TAtlasIdeUnitRelations.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeGenerate.Uninstall;
@@ -4916,6 +4801,15 @@ begin
     begin
       Result := (Manager <> nil) and Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
     end;
+  // Nebenläufig zu RunCommand (#1455): Fenster, die regelmäßig nachfragen (Unit-Beziehungen, Hotspots), belegen
+  // nicht den einen Hintergrundbefehl.
+  mServices.RunServerCommand :=
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
+      if Result then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, AnswerText(ADone));
+    end;
   mServices.Report :=
     procedure(AText: string)
     begin
@@ -5001,9 +4895,6 @@ begin
         ShortcutTips.ThemeChanged;
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
-      TAtlasIdeArchitecture.ThemeChanged;
-      TAtlasIdeHotspots.ThemeChanged;
-      TAtlasIdeUnitRelations.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
       TAtlasIdeStatusBar.ThemeChanged;
@@ -5053,11 +4944,6 @@ begin
       TAtlasIdeProblems.ApplySettings;
       // outline.* (#537).
       TAtlasIdeOutline.ApplySettings;
-      // architecture.* (#1118).
-      TAtlasIdeArchitecture.ApplySettings;
-      // hotspots.* (#1354).
-      TAtlasIdeHotspots.ApplySettings;
-      TAtlasIdeUnitRelations.ApplySettings;
       // callHierarchy.diagram (#1122).
       TAtlasIdeResultsWindow.ApplySettings;
       // server.statusWindow (#1356).

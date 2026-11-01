@@ -10,7 +10,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 | `Debug` | `Atlas.IDE.Debugger` |
 | `Tracker`, `Ci` | `Atlas.IDE.Tracker` |
 | `Welcome` | `Atlas.IDE.Welcome` |
-| `Architecture`, `UnitRelations`, `SymbolPath`, `Hotspots` | `Atlas.IDE.Analysis` |
+| `Analysis`, `Architecture`, `UnitRelations`, `SymbolPath`, `Hotspots` | `Atlas.IDE.Analysis` |
 | `Designer` | `Atlas.IDE.Designer` |
 | `Search`, `UnitSearch`, `Query` | `Atlas.IDE.Search` |
 | `Tests` | `Atlas.IDE.Tests` |
@@ -23,6 +23,7 @@ Ausnahmen:
 
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
 - Aus `Build/` bleibt auch die Build-Pipeline im Kern (#1455, von Marco am 01.11.2026 bestätigt): Läufer der Builds auf Auftrag (`Build.Runner`, MCP `Build.Inbox`), Prüfung vor dem Kompilieren (`Build.Gate`, `Build.IdleGate`), Release-Wächter, Bewertung (`Build.Verdict`, `Build.Summary`) und `IDE.Build.Target`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
+- Aus `SymbolPath/` liegen das Modell eines Wegs (`Core.SymbolPath.Model`) und seine Kette (`UI.SymbolPath.Chain`) im Kern (#1455): Das Ergebnisfenster von Base zeigt den Weg; Suche, Dialog und Befehle gehören zum Modul Analyse.
 - Aus `StartProfiles/` liegt die lokale Datei (`Core.StartProfiles.Store`) im Kern, dazu `IDE.Foundation.StartOptions` (#1455): Startoptionen schreiben und „Start“ auslösen brauchen die Startprofile (Modul Build) und „Test debuggen“ (Modul Tests); kein Modul kennt das andere.
 - Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
 - `Atlas.IDE.Rules` hat keinen eigenen Ordner. Die sieben Units mit „Rules“ in der Spalte Begründung sind ein **Vorschlag** aus Namen und Inhalt; die Analyse nannte 8 Units und rund 3 400 Zeilen. Vor #1455 prüfen und hier festschreiben.
@@ -62,6 +63,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Inbox` | `Core/Build/Atlas.Core.Build.Inbox.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.Core.Build.ReleaseGuard` | `Core/Build/Atlas.Core.Build.ReleaseGuard.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
+| `Atlas.Core.SymbolPath.Model` | `Core/SymbolPath/Atlas.Core.SymbolPath.Model.pas` | Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455 |
 | `Atlas.IDE.Build.Gate` | `IDE/Build/Atlas.IDE.Build.Gate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
 | `Atlas.IDE.Build.Inbox` | `IDE/Build/Atlas.IDE.Build.Inbox.pas` | Build-Pipeline bleibt im Kern (#1455): Läufer, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung, MCP-Builds |
@@ -523,6 +525,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.StatusBar.Bar` | `UI/StatusBar/Atlas.UI.StatusBar.Bar.pas` | Ordner `UI/StatusBar` |
 | `Atlas.UI.Strings` | `UI/Atlas.UI.Strings.pas` | Ordner `UI` |
 | `Atlas.UI.Style.Symbol` | `UI/Style/Atlas.UI.Style.Symbol.pas` | Ordner `UI/Style` |
+| `Atlas.UI.SymbolPath.Chain` | `UI/SymbolPath/Atlas.UI.SymbolPath.Chain.pas` | Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455 |
 | `Atlas.UI.Undo.DiffView` | `UI/Undo/Atlas.UI.Undo.DiffView.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Undo.Messages` | `UI/Undo/Atlas.UI.Undo.Messages.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Updates.Consent` | `UI/Updates/Atlas.UI.Updates.Consent.pas` | Ordner `UI/Updates` |
@@ -725,9 +728,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Architecture.Model` | `Core/Architecture/Atlas.Core.Architecture.Model.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Hotspots.Model` | `Core/Hotspots/Atlas.Core.Hotspots.Model.pas` | Ordner `Core/Hotspots` |
-| `Atlas.Core.SymbolPath.Model` | `Core/SymbolPath/Atlas.Core.SymbolPath.Model.pas` | Ordner `Core/SymbolPath` |
 | `Atlas.Core.UnitRelations.InterfaceCost` | `Core/UnitRelations/Atlas.Core.UnitRelations.InterfaceCost.pas` | Ordner `Core/UnitRelations` |
 | `Atlas.Core.UnitRelations.Model` | `Core/UnitRelations/Atlas.Core.UnitRelations.Model.pas` | Ordner `Core/UnitRelations` |
+| `Atlas.IDE.Analysis.Composition` | `IDE/Analysis/Atlas.IDE.Analysis.Composition.pas` | Anmeldung des Moduls `atlas.analysis`, #1455 |
 | `Atlas.IDE.Architecture.Service` | `IDE/Architecture/Atlas.IDE.Architecture.Service.pas` | Ordner `IDE/Architecture` |
 | `Atlas.IDE.Architecture.Window` | `IDE/Architecture/Atlas.IDE.Architecture.Window.pas` | Ordner `IDE/Architecture` |
 | `Atlas.IDE.Hotspots.Service` | `IDE/Hotspots/Atlas.IDE.Hotspots.Service.pas` | Ordner `IDE/Hotspots` |
@@ -741,7 +744,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Architecture.Slider` | `UI/Architecture/Atlas.UI.Architecture.Slider.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Hotspots.Chart` | `UI/Hotspots/Atlas.UI.Hotspots.Chart.pas` | Ordner `UI/Hotspots` |
 | `Atlas.UI.Hotspots.Frame` | `UI/Hotspots/Atlas.UI.Hotspots.Frame.pas` | Ordner `UI/Hotspots` |
-| `Atlas.UI.SymbolPath.Chain` | `UI/SymbolPath/Atlas.UI.SymbolPath.Chain.pas` | Ordner `UI/SymbolPath` |
 | `Atlas.UI.SymbolPath.Dialog` | `UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas` | Ordner `UI/SymbolPath` |
 | `Atlas.UI.UnitRelations.Frame` | `UI/UnitRelations/Atlas.UI.UnitRelations.Frame.pas` | Ordner `UI/UnitRelations` |
 

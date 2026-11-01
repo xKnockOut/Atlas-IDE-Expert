@@ -124,22 +124,12 @@ type
     /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
     FViewAtlas: TMenuItem;
     FViewProblems: TMenuItem;
-    /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
-    FArchitectureItem: TMenuItem;
-    FViewArchitecture: TMenuItem;
     /// <summary>Einträge der Module unter Ansicht › Atlas und ihre Befehls-Ids (Index = Tag).</summary>
     FViewModuleItems: TArray<TMenuItem>;
     FViewModuleIds: TArray<string>;
-    /// <summary>Fenster „Atlas-Hotspots“ (#1354) im Atlas-Menü und unter Ansicht › Atlas.</summary>
-    FHotspotsItem: TMenuItem;
-    FViewHotspots: TMenuItem;
-    /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
-    FUnitRelationsItem: TMenuItem;
-    FViewUnitRelations: TMenuItem;
     /// <summary>Fenster „Atlas-Board“ (#1272) unter Ansicht › Atlas.</summary>
     FViewBoard: TMenuItem;
     FOnBoard: TProc;
-    FSymbolPathItem: TMenuItem;
     /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
     FImpactItem: TMenuItem;
     /// <summary>Untermenü „Aufgaben“ (#900).</summary>
@@ -151,17 +141,13 @@ type
     procedure UndoClick(Sender: TObject);
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
-    procedure ArchitectureClick(Sender: TObject);
     procedure ViewAtlasClick(Sender: TObject);
     procedure ViewModuleItemClick(Sender: TObject);
     /// <summary>Einträge der Module unter Ansicht › Atlas neu aufbauen.</summary>
     procedure UpdateViewModuleItems;
     /// <summary>Hat ein laufendes Modul einen sichtbaren Eintrag unter Ansicht › Atlas?</summary>
     class function HasViewModuleItems: Boolean; static;
-    procedure HotspotsClick(Sender: TObject);
-    procedure UnitRelationsClick(Sender: TObject);
     procedure BoardClick(Sender: TObject);
-    procedure SymbolPathClick(Sender: TObject);
     procedure ModuleItemClick(Sender: TObject);
     /// <summary>Einträge der Module nach der Marke neu aufbauen (Regel 2: sie kommen und gehen mit dem Modul).
     /// </summary>
@@ -235,10 +221,6 @@ uses
   Atlas.IDE.Results.Impact,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Outline.Service,
-  Atlas.IDE.Architecture.Service,
-  Atlas.IDE.Hotspots.Service,
-  Atlas.IDE.UnitRelations.Service,
-  Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
   Atlas.Core.Modules.Contract,
@@ -332,12 +314,8 @@ begin
   FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, 12, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
-  FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
-  FHotspotsItem := AddItem(TAtlasTextId.HotspotsCommand, 0, HotspotsClick);
-  FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
-  // Weg zwischen Symbolen (#1117).
-  FSymbolPathItem := AddItem(TAtlasTextId.SymbolPathCommand, 0, SymbolPathClick);
-  // Einträge der Module (#1455), z. B. Exception-Verlauf und „Auswerten“ des Debuggers.
+  // Einträge der Module (#1455), z. B. Architektur und Hotspots der Analyse, Exception-Verlauf und „Auswerten“ des
+  // Debuggers.
   FModuleAnchor := AddItem('', 0, nil);
   FModuleAnchor.Visible := False;
   FIssueAttachItem := AddItem(TAtlasTextId.AttachCommand, 0, IssueAttachClick);
@@ -438,18 +416,6 @@ begin
       FViewProblems.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
       FViewProblems.OnClick := ProblemsClick;
       FViewAtlas.Add(FViewProblems);
-      FViewArchitecture := TMenuItem.Create(FViewAtlas);
-      FViewArchitecture.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureViewMenu);
-      FViewArchitecture.OnClick := ArchitectureClick;
-      FViewAtlas.Add(FViewArchitecture);
-      FViewHotspots := TMenuItem.Create(FViewAtlas);
-      FViewHotspots.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsViewMenu);
-      FViewHotspots.OnClick := HotspotsClick;
-      FViewAtlas.Add(FViewHotspots);
-      FViewUnitRelations := TMenuItem.Create(FViewAtlas);
-      FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
-      FViewUnitRelations.OnClick := UnitRelationsClick;
-      FViewAtlas.Add(FViewUnitRelations);
       FViewBoard := TMenuItem.Create(FViewAtlas);
       FViewBoard.Caption := TAtlasStrings.Text(TAtlasTextId.BoardViewMenu);
       FViewBoard.OnClick := BoardClick;
@@ -774,31 +740,11 @@ begin
     FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
   if FViewProblems <> nil then
     FViewProblems.Visible := TAtlasIdeProblems.Enabled;
-  // Architekturübersicht (#1118) nach architecture.enabled.
-  if FArchitectureItem <> nil then
-    FArchitectureItem.Visible := TAtlasIdeArchitecture.Enabled;
-  if FViewArchitecture <> nil then
-    FViewArchitecture.Visible := TAtlasIdeArchitecture.Enabled;
-  // Hotspots (#1354) nach hotspots.enabled.
-  if FHotspotsItem <> nil then
-    FHotspotsItem.Visible := TAtlasIdeHotspots.Enabled;
-  if FViewHotspots <> nil then
-    FViewHotspots.Visible := TAtlasIdeHotspots.Enabled;
-  // Unit-Beziehungen (#593) am selben Schalter.
-  if FUnitRelationsItem <> nil then
-    FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
-  if FViewUnitRelations <> nil then
-    FViewUnitRelations.Visible := TAtlasIdeUnitRelations.Enabled;
   // Atlas-Board (#1272) nach issues.board.
   if FViewBoard <> nil then
     FViewBoard.Visible := TAtlasIdeSettings.Current.IssuesBoard;
   if FViewAtlas <> nil then
-    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled or
-      TAtlasIdeHotspots.Enabled or TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard or
-        HasViewModuleItems;
-  // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
-  if FSymbolPathItem <> nil then
-    FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
+    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeSettings.Current.IssuesBoard or HasViewModuleItems;
   // Auswirkungen anzeigen (#1120) nach navigation.impact.
   if FImpactItem <> nil then
     FImpactItem.Visible := TAtlasIdeImpact.Enabled;
@@ -946,16 +892,6 @@ begin
     end);
 end;
 
-procedure TAtlasMainMenu.ArchitectureClick(Sender: TObject);
-begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.Architecture');
-  TAtlasGuard.Run(TAtlasFeature.Architecture,
-    procedure
-    begin
-      TAtlasIdeArchitecture.ShowWindow;
-    end);
-end;
-
 procedure TAtlasMainMenu.ViewAtlasClick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Menu, UpdateViewModuleItems);
@@ -977,7 +913,11 @@ begin
     if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
     begin
       mItem := TMenuItem.Create(FViewAtlas);
-      mItem.Caption := mCommand.Caption;
+      // Unter Ansicht › Atlas darf der Eintrag einen eigenen Text haben („Atlas: Hotspots“ statt „Hotspots …“).
+      if mEntry.Caption <> '' then
+        mItem.Caption := mEntry.Caption
+      else
+        mItem.Caption := mCommand.Caption;
       mItem.Tag := Length(FViewModuleIds);
       mItem.OnClick := ViewModuleItemClick;
       mItem.Visible := TAtlasModuleContributions.IsVisible(mCommand);
@@ -1016,16 +956,6 @@ begin
   end;
 end;
 
-procedure TAtlasMainMenu.HotspotsClick(Sender: TObject);
-begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.Hotspots');
-  TAtlasGuard.Run(TAtlasFeature.Hotspots,
-    procedure
-    begin
-      TAtlasIdeHotspots.ShowWindow;
-    end);
-end;
-
 procedure TAtlasMainMenu.BoardClick(Sender: TObject);
 begin
   if not Assigned(FOnBoard) then
@@ -1035,26 +965,6 @@ begin
     procedure
     begin
       FOnBoard();
-    end);
-end;
-
-procedure TAtlasMainMenu.UnitRelationsClick(Sender: TObject);
-begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.UnitRelations');
-  TAtlasGuard.Run(TAtlasFeature.UnitRelations,
-    procedure
-    begin
-      TAtlasIdeUnitRelations.ShowWindow;
-    end);
-end;
-
-procedure TAtlasMainMenu.SymbolPathClick(Sender: TObject);
-begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.SymbolPath');
-  TAtlasGuard.Run(TAtlasFeature.SymbolPath,
-    procedure
-    begin
-      TAtlasIdeSymbolPath.ShowDialog;
     end);
 end;
 
