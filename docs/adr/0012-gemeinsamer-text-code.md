@@ -46,5 +46,5 @@ Die Folge waren Kopien mit Drift. Das Code-Review zählte unter anderem:
 
 - Eine Quelle für Zeilen, Kodierung, URIs, Fuzzy-Regeln und Versionsangabe; Server und Plugin entscheiden gleich. Gleichlauftests (`Atlas.Core.Text.Agreement.Tests`) halten Kodierung, Vervollständigung und Anonymisierung fest.
 - Sichtbare Änderungen im Plugin: strenges UTF-8, URIs mit kleinem Laufwerksbuchstaben (`file:///c%3A/…`), ein Offset zwischen CR und LF zählt zum Zeilenende, numerische Entities in Live-Templates, `//` in `settings.json` endet auch an CR, Wortanfänge auch nach „.“ und bei Kleinbuchstaben nach Ziffern.
-- Die Projektgruppe baut `Atlas.Text` zuerst. Neue Units in Atlas.Text stehen in `Atlas.Text.dpk`/`.dproj` **und** in `Atlas.IDE.Expert.dpk`/`.dproj`; das Prüfskript meldet eine fehlende.
+- Die Projektgruppe baut `Atlas.Text` zuerst. Neue Units in Atlas.Text stehen in `Atlas.Text.dpk`/`.dproj` **und** in `Atlas.IDE.Base.dpk`/`.dproj`; das Prüfskript meldet eine fehlende.
 - `Atlas.Core.Vcs.*` bleibt das umgekehrte Muster (Plugin-Units, die der Server als Quelltext mitübersetzt).

@@ -42,11 +42,22 @@
 - Optionsseiten: Modulschalter oben auf der jeweiligen Seite. Hinweis „Prüfregeln sind aus“ einmal je atlas.json und Sitzung, wenn die atlas.json Regeln festlegt und das Modul aus ist (`Atlas.Core.Settings.RuleChecksNotice`, `Atlas.IDE.Settings.RuleChecksNotice`, Quelle `ruleChecks`).
 - Nicht übersetzt: FPC trunk ließ sich in der Cloud nicht bauen. Alle Prüfskripte grün. Vor dem Merge mit Delphi bauen und Tests laufen lassen.
 - Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
+## Einstellungen der Willkommensseite im Modul (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
+
+- Letzter bekannter Verstoß behoben (`Atlas.UI.Settings.Page` → Willkommensseite): Der Reiter Willkommensseite zeigt in Base nur noch den Modulschalter (`AddModuleSwitch('WelcomePage')`). Alle übrigen Einstellungen baut das Modul als `IAtlasSettingsSection` (`Atlas.UI.Welcome.SettingsSection`, Layouts in `Atlas.UI.Welcome.SettingsLayouts`), sein Anbieter `Atlas.IDE.Welcome.Settings` meldet sich in `Atlas.IDE.Welcome.Composition` ab der Anmeldung an (auch bei ausgeschaltetem Modul einstellbar). Die Tabelle „Bekannte Verstöße“ der Zuordnung ist leer.
+- „Zählung zurücksetzen“ und „Gesperrte Tipps wieder zeigen“ laufen über die Haken des Abschnitts (`TAtlasIdeCommandUsage.ResetCounts`, `TAtlasIdeDiscover.UnblockAll`); die Haken in `TAtlasOptionsHooks` und der Root-Composition entfallen, ebenso `IAtlasCommandUsageListener.TipsUnblocked` (einziger Hörer war die Willkommensseite). Die Auswahl des Layouts ist jetzt eine `TAtlasChoiceBox` (füllbar ohne Fenster).
+- `ciLogin` und `tips.usageTracking` stehen weiter im Abschnitt der Willkommensseite: Ohne das Modul sind sie im Optionsdialog nicht sichtbar, obwohl der Tracker `ciLogin` nutzt (Vorgabe an). Bei Bedarf später auf eine Seite von Base ziehen.
+- Der Link „prüfen …“ der Versionsverwaltung und „Meine Issues“ führen ohne das jeweilige Modul zu dessen Schalter (`SelectModulePage`).
+- 93 Texte nach `Atlas.UI.Welcome.Strings` verschoben; in Base bleiben die drei Tastentexte (Tastenbelegung) und die Pull-Texte (Arbeitskopien).
+- Tests: `Atlas.UI.Welcome.SettingsSection.Tests` (Werte laden/speichern, Layouts, Zählknöpfe, Lage und Link), die alten Welcome-Tests der Seite und die Welcome-Teile im Tracker-Abschnitt entfernt. Prüfskripte und Atlas (Metriken an) ohne neue Befunde; Texte-Tests unter FPC grün, die VCL-Tests nicht in der Cloud lauffähig. Handtests WS1–WS6.
+
 ## Weitere Module als eigene Packages (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 
 - Nach dem Debugger mit demselben Werkzeug verschoben: `Atlas.IDE.Designer` (7 Units), `.Rules` (7), `.Tests` (10), `.Bookmarks` (19), `.Analysis` (21), `.Search` (25), `.Build` (20), `.BuildPipeline` (10), nach Paket 2d (PR #1481, gemergt 555e65f2) auch `.Tracker` (104); je Package dpk/dproj wie beim Debugger, Eintrag in `Atlas.groupproj` vor dem Testprojekt, Testpfade angepasst. Inhalt der Units unverändert.
-- Offen: Willkommensseite (zuerst ihr Abschnitt im Optionsdialog als `IAtlasSettingsSection` ins Modul, letzter bekannter Verstoß), dann `Atlas.IDE.Contracts` und die Umbenennung in `Atlas.IDE.Base`.
-- Handtests MP1–MP4 in `handtests-v2.md`.
+- Danach auch `.Welcome` (63 Units, mit Frame-dfm), nachdem ihr Abschnitt im Optionsdialog ins Modul gezogen war (folgender Abschnitt). Alle zehn Module liegen damit in eigenen Packages; Prüfskripte grün, Inhalt der Units unverändert.
+- Danach das Package `Atlas.IDE.Contracts` (die sechs Units aus `Source/Contracts`, requires nur rtl und vcl, `DESIGNONLY` wie alle Atlas-Packages). Alle Module requiren Kern und Contracts (dpk und `DCCReference` der .dcp); in `Atlas.groupproj` steht Contracts vor dem Kern ohne Abhängigkeit, die Module hängen von beiden ab, die Bau-Reihenfolge ist Kern, Contracts, Module. `release.yml` baut Kern und Contracts zuerst (alphabetisch käme Contracts nach Build).
+- Danach der Kern in `Atlas.IDE.Base` umbenannt (`Packages/Atlas.IDE.Base`, dpk/dproj, `Atlas.groupproj`, requires und `.dcp`-Verweise aller Module, Testprojekt, Server, Werkzeuge, Workflows, Doku). `Check-PackageDependencies` kennt nur noch `Atlas.IDE.Base`. Die Protokolldatei heißt bewusst weiter `Atlas.IDE.Expert<Ver>.log` (`cLogName`), damit Anleitungen und Fehlerberichte gültig bleiben; Testdaten mit dem alten Namen unverändert. Auf Marcos PC muss der Known-Packages-Eintrag von `Atlas.IDE.Expert370.bpl` auf `Atlas.IDE.Base370.bpl` umgestellt werden (Handtest RN1).
+- Handtests MP1–MP4 und RN1–RN3 in `handtests-v2.md`.
 
 ## Pilot: Debugger als eigenes Package (#1456, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 

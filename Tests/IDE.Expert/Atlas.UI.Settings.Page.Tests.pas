@@ -114,8 +114,6 @@ type
     /// <summary>#1122: Kontrollkästchen „Aufrufdiagramm“ liest und schreibt callHierarchy.diagram.</summary>
     [Test]
     procedure CallHierarchyDiagramRoundTrip;
-    [Test]
-    procedure WelcomeSettingsRoundTrip;
     /// <summary>#1285: Seite Versionsverwaltung als eigener Bereich: Art, Programmpfade mit Fundort ohne
     /// Prozess, „Prüfen“ im Hintergrund, Zeitlimit, aktuelles Projekt beim ersten Zeigen und Links.</summary>
     [Test]
@@ -133,12 +131,6 @@ type
     /// </summary>
     [Test]
     procedure VcsServersTable;
-    /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
-    /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
-    [Test]
-    procedure WelcomeLayoutsOnPage;
-    [Test]
-    procedure UsageButtonsCallBack;
     /// <summary>Favoriten (#458): Schalter, Liste, „Entfernen“ und „Alle entfernen“.</summary>
     [Test]
     procedure FavoritesListAndRemove;
@@ -218,10 +210,7 @@ uses
   Atlas.Text.StepFilter,
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Build.PipelineSettings,
-  Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Vcs,
-  Atlas.Core.Welcome.QuickActions,
-  Atlas.Core.Welcome.Layouts,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Snippets,
@@ -1875,98 +1864,6 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsPageTests.WelcomeLayoutsOnPage;
-var
-  Page: TAtlasSettingsPage;
-  Saved: TAtlasPluginSettings;
-  Layouts: TAtlasWelcomeLayouts;
-  Answer, Told: string;
-begin
-  Page := TAtlasSettingsPage.Create(nil);
-  try
-    Page.OnAskLayoutName :=
-      function(const APrompt: string; var AName: string): Boolean
-      begin
-        AName := Answer; // lsp-ignore: captured-loop-variable -- Absicht: liest den jeweils aktuellen Wert
-        Result := Answer <> '';
-      end;
-    Page.OnConfirmLayout :=
-      function(const AText: string; AQuestion: Boolean): Boolean
-      begin
-        Told := AText;
-        Result := True;
-      end;
-    Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(Page.WelcomeCustomLayout.Checked);
-    Assert.AreEqual('2', Page.WelcomeColumns.Text);
-    Assert.AreEqual(0, Page.WelcomeActiveLayout.Choice);
-    Assert.AreEqual(1, Integer(Length(Page.PageLayouts.Items)));
-    Assert.IsFalse(Page.WelcomeLayoutDelete.Enabled, 'das letzte Layout bleibt');
-    // Neues Layout „Präsentation“: Kopie, danach aktiv; dort Testergebnisse aus, eine Spalte.
-    Answer := 'Präsentation';
-    Page.WelcomeLayoutNew.Click;
-    Assert.AreEqual(1, Page.WelcomeActiveLayout.Choice);
-    Assert.AreEqual('Präsentation', Page.PageLayouts.ActiveName);
-    Assert.IsTrue(Page.WelcomeLayoutDelete.Enabled);
-    Page.WelcomeTests.Checked := False;
-    Page.WelcomeWhatsNew.Choice := 0;
-    Page.WelcomeColumns.Text := '1';
-    // Zurück zu „Standard“: dessen Sichtbarkeit und Spalten.
-    Page.SelectWelcomeLayout(0);
-    Assert.IsTrue(Page.WelcomeTests.Checked);
-    Assert.AreEqual(1, Page.WelcomeWhatsNew.Choice, '„Neu in Atlas“ wieder nach einem Update');
-    Assert.AreEqual('2', Page.WelcomeColumns.Text);
-    Page.SelectWelcomeLayout(1);
-    Assert.IsFalse(Page.WelcomeTests.Checked);
-    Assert.AreEqual(0, Page.WelcomeWhatsNew.Choice);
-    Assert.AreEqual('1', Page.WelcomeColumns.Text);
-    // Vergebener Name: Hinweis, nichts geändert.
-    Answer := 'standard';
-    Page.WelcomeLayoutRename.Click;
-    Assert.IsTrue(Pos('standard', Told) > 0);
-    Assert.AreEqual('Präsentation', Page.PageLayouts.ActiveName);
-    Answer := 'Vortrag';
-    Page.WelcomeLayoutRename.Click;
-    Assert.AreEqual('Vortrag', Page.PageLayouts.ActiveName);
-    // Abbrechen ändert nichts.
-    Answer := '';
-    Page.WelcomeLayoutNew.Click;
-    Assert.AreEqual(2, Integer(Length(Page.PageLayouts.Items)));
-    Page.WelcomeCustomLayout.Checked := False;
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
-    Assert.IsFalse(Saved.WelcomePageCustomLayout);
-    Assert.AreEqual('Vortrag', Saved.WelcomePageActiveLayout);
-    Assert.AreEqual(1, Saved.WelcomePageColumns);
-    Assert.IsFalse(Saved.WelcomePageTests);
-    Assert.AreEqual('off', Saved.WelcomePageWhatsNew);
-    Layouts := TAtlasWelcomeCustomizing.Load(Saved);
-    Assert.AreEqual(2, Integer(Length(Layouts.Items)));
-    Assert.AreEqual('Standard', Layouts.Items[0].Name);
-    Assert.AreEqual(2, Layouts.Items[0].Columns);
-    // Wieder laden und löschen: „Standard“ bleibt mit seiner Sichtbarkeit.
-    Page.LoadFrom(Saved);
-    Assert.IsFalse(Page.WelcomeCustomLayout.Checked);
-    Assert.AreEqual(1, Page.WelcomeActiveLayout.Choice);
-    Page.WelcomeLayoutDelete.Click;
-    Assert.IsTrue(Pos('Vortrag', Told) > 0, 'Rückfrage nennt das Layout');
-    Assert.AreEqual(0, Page.WelcomeActiveLayout.Choice);
-    Assert.IsTrue(Page.WelcomeTests.Checked);
-    Assert.AreEqual('2', Page.WelcomeColumns.Text);
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
-    Assert.AreEqual('', Saved.WelcomePageLayouts, 'nur noch die Vorgabe');
-    Assert.AreEqual('Standard', Saved.WelcomePageActiveLayout);
-    // „Einstellungen dazu …“ (#628) findet die neuen Einstellungen und Meine Issues.
-    Assert.IsTrue(Page.Reveal('WelcomePageCustomLayout'));
-    Assert.IsTrue(Page.Reveal('WelcomePageColumns'));
-    Assert.IsTrue(Page.Reveal('WelcomePageActiveLayout'));
-    Assert.IsTrue(Page.Reveal('WelcomePageIssues'));
-  finally
-    Page.Free;
-  end;
-end;
-
 procedure TAtlasSettingsPageTests.VcsPageLocatesChecksAndShowsProject;
 var
   mHost: TForm;
@@ -2098,7 +1995,8 @@ begin
     Assert.Contains(mPage.VcsProjectInfo.Caption, 'Kasse.dproj');
     // Links auf die Seiten, die die Anzeige steuern.
     mPage.VcsLinkWelcome.Click;
-    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(mPage.WelcomeRefreshVcs));
+    // Ohne das Modul Willkommensseite die Seite seines Schalters (#1456).
+    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(mPage.ControlOfSetting('WelcomePage')));
     mPage.VcsLinkIssues.Click;
     Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(mPage.ControlOfSetting('IssuesEnabled')));
     mPage.VcsLinkEditor.Click;
@@ -2437,255 +2335,6 @@ begin
   end;
   mChecked := nil;
   mLogins := nil;
-end;
-
-procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;
-var
-  Page: TAtlasSettingsPage;
-  Settings, Saved: TAtlasPluginSettings;
-begin
-  // #753: Ein/Aus, Willkommensseite der IDE (#761) und Fenster „Atlas-Start“ unabhängig, Atlas-Layout, Kopf und
-  // Grußzeile;
-  // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“;
-  // #762: Bereich „Nicht gesichert“; #755: Bereich „Weiterarbeiten“; #754: Zustandskachel „Atlas“; #757: Karte „Atlas entdecken“, Zählung und
-  // ihre Knöpfe.
-  Settings := TAtlasPluginSettings.Defaults;
-  Page := TAtlasSettingsPage.Create(nil);
-  try
-    Page.LoadFrom(Settings);
-    Assert.IsTrue(Page.WelcomeEnabled.Checked);
-    Assert.IsTrue(Page.WelcomeIdePage.Checked, 'wieder auf der Willkommensseite der IDE (#761)');
-    Assert.IsFalse(Page.WelcomeLayout.Checked, 'Layout der IDE bleibt, bis man es anwendet');
-    Assert.IsFalse(Page.WelcomeOpenOnStart.Checked, 'Atlas-Start nur auf Wunsch (#1114)');
-    Assert.IsTrue(Page.WelcomeOpenWhenNoProject.Checked, 'Atlas-Start ohne Projekt (#1114)');
-    Assert.IsTrue(Page.WelcomeHeader.Checked);
-    Assert.IsTrue(Page.WelcomeGreeting.Checked);
-    Assert.IsTrue(Page.WelcomeSearch.Checked);
-    Assert.IsTrue(Page.WelcomeSearchSymbols.Checked);
-    Assert.AreEqual(ShortCutToText($4045), Page.WelcomeSearchKey.Text);
-    Assert.AreEqual(1, Page.WelcomeWhatsNew.Choice, 'afterUpdate');
-    // #755: Bereich „Weiterarbeiten“ und Reiter „Gemerkt“.
-    Assert.IsTrue(Page.WelcomeContinue.Checked);
-    Assert.AreEqual('5', Page.WelcomeContinueCount.Text);
-    Assert.IsTrue(Page.WelcomeContinueIncoming.Checked);
-    Assert.IsFalse(Page.WelcomeContinueFetch.Checked);
-    Assert.IsTrue(Page.WelcomeSaved.Checked);
-    Assert.IsTrue(Page.WelcomeProjects.Checked);
-    Assert.AreEqual('8', Page.WelcomeMaxProjects.Text);
-    Assert.IsTrue(Page.WelcomeRefreshVcs.Checked);
-    // #758: Projektverlauf mit 30 Builds und allen fünf Reihen.
-    Assert.IsTrue(Page.WelcomeTrends.Checked);
-    Assert.AreEqual('30', Page.WelcomeTrendsPoints.Text);
-    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.Warnings).Checked);
-    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.MethodLength).Checked);
-    // #763: Testergebnisse an, Build-Server aus (Jenkins, alle 10 Min., Hinweis an), Befehl Atlas.CiLogin an.
-    Assert.IsTrue(Page.WelcomeTests.Checked);
-    Assert.AreEqual('5', Page.WelcomeTestsMaxFailures.Text);
-    Assert.IsFalse(Page.WelcomeTestsCi.Checked);
-    Assert.AreEqual(0, Page.WelcomeTestsCiProvider.Choice);
-    Assert.AreEqual('10', Page.WelcomeTestsCiInterval.Text);
-    Assert.IsTrue(Page.WelcomeTestsCiNotify.Checked);
-    Assert.IsTrue(Page.CiLogin.Checked);
-    // #765: Meine Issues aus, Tracker aus der .atlas, Branch anlegen, Präfix „{kennung} “, Befehl Atlas.TrackerLogin an.
-    Assert.IsFalse(Page.WelcomeIssues.Checked);
-    Assert.AreEqual('', Page.CreateIssueKey.Text, 'ohne Taste');
-    Assert.IsTrue(Page.WelcomeSprint.Checked);
-    // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
-    Assert.IsTrue(Page.WelcomeQuickActions.Checked);
-    Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
-    Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
-    Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Tasks).Checked, 'Aufgaben (#900)');
-    Assert.AreEqual('wt.exe', Page.WelcomeQuickActionsConsole.Text);
-    Assert.AreEqual(ShortCutToText($4042), Page.WelcomeQuickActionsBuildKey.Text);
-    Assert.AreEqual(ShortCutToText($4054), Page.WelcomeQuickActionsTestKey.Text);
-    Assert.IsTrue(Page.WelcomeUnsaved.Checked);
-    Assert.AreEqual('0', Page.WelcomeUnsavedMinAge.Text);
-    Assert.AreEqual('24', Page.WelcomeUnsavedWarn.Text);
-    Assert.AreEqual('72', Page.WelcomeUnsavedAlert.Text);
-    Assert.IsFalse(Page.WelcomeUnsavedHideClean.Checked);
-    Assert.IsTrue(Page.WelcomeStatusTile.Checked);
-    Assert.IsFalse(Page.WelcomeStatusTileOnlyProblems.Checked);
-    Assert.IsTrue(Page.WelcomeDiscover.Checked);
-    Assert.IsTrue(Page.TipsUsageTracking.Checked);
-    // #766: Bereich „Hilfe und Rückmeldung“, Ziel der Issue-Seite, Ordner (leer = Desktop).
-    Assert.IsTrue(Page.WelcomeHelp.Checked);
-    Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Page.WelcomeHelpReportUrl.Text);
-    Assert.AreEqual('', Page.WelcomeHelpReportFolder.Text);
-    Page.WelcomeEnabled.Checked := False;
-    Page.WelcomeIdePage.Checked := False;
-    Page.WelcomeLayout.Checked := True;
-    Page.WelcomeOpenOnStart.Checked := True;
-    Page.WelcomeOpenWhenNoProject.Checked := False;
-    Page.WelcomeHeader.Checked := False;
-    Page.WelcomeGreeting.Checked := False;
-    Page.WelcomeSearch.Checked := False;
-    Page.WelcomeSearchSymbols.Checked := False;
-    Page.WelcomeSearchKey.Text := ShortCutToText($6046);
-    Page.WelcomeWhatsNew.Choice := 2;
-    Page.WelcomeContinue.Checked := False;
-    Page.WelcomeContinueCount.Text := '50';
-    Page.WelcomeContinueIncoming.Checked := False;
-    Page.WelcomeContinueFetch.Checked := True;
-    Page.WelcomeSaved.Checked := False;
-    Page.WelcomeProjects.Checked := False;
-    Page.WelcomeMaxProjects.Text := '99';
-    Page.WelcomeRefreshVcs.Checked := False;
-    Page.WelcomeTrends.Checked := False;
-    Page.WelcomeTrendsPoints.Text := '500';
-    Page.WelcomeTrendsSeries(TAtlasTrendSeries.RuleHits).Checked := False;
-    Page.WelcomeTrendsSeries(TAtlasTrendSeries.Duration).Checked := False;
-    Page.WelcomeTests.Checked := False;
-    Page.WelcomeTestsMaxFailures.Text := '99';
-    Page.WelcomeTestsCi.Checked := True;
-    Page.WelcomeTestsCiInterval.Text := '0';
-    Page.WelcomeTestsCiNotify.Checked := False;
-    Page.CiLogin.Checked := False;
-    Page.WelcomeIssues.Checked := True;
-    Page.CreateIssueKey.Text := ShortCutToText($4049);
-    Page.WelcomeSprint.Checked := False;
-    Page.WelcomeQuickActions.Checked := False;
-    Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
-    Page.WelcomeQuickActionsItem(TAtlasQuickAction.Run).Checked := False;
-    Page.WelcomeQuickActionsConsole.Text := '  pwsh.exe ';
-    Page.WelcomeQuickActionsBuildKey.Text := '';
-    Page.WelcomeQuickActionsTestKey.Text := ShortCutToText($C054);
-    Page.WelcomeUnsaved.Checked := False;
-    Page.WelcomeUnsavedMinAge.Text := '2';
-    Page.WelcomeUnsavedWarn.Text := '48';
-    Page.WelcomeUnsavedAlert.Text := '12';
-    Page.WelcomeUnsavedHideClean.Checked := True;
-    Page.WelcomeStatusTile.Checked := False;
-    Page.WelcomeStatusTileOnlyProblems.Checked := True;
-    Page.WelcomeDiscover.Checked := False;
-    Page.TipsUsageTracking.Checked := False;
-    Page.WelcomeHelp.Checked := False;
-    Page.WelcomeHelpReportUrl.Text := ' https://example.org/issues/new ';
-    Page.WelcomeHelpReportFolder.Text := ' D:\Diagnose ';
-    Assert.IsTrue(Page.WelcomeProjectSetup.Checked, 'Vorgabe an (#759)');
-    Assert.IsTrue(Page.WelcomeNewFromTemplate.Checked, 'Vorgabe an (#759)');
-    Page.WelcomeProjectSetup.Checked := False;
-    Page.WelcomeNewFromTemplate.Checked := False;
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
-    Assert.IsFalse(Saved.WelcomePageHelp);
-    Assert.AreEqual('https://example.org/issues/new', Saved.WelcomePageHelpReportUrl);
-    Assert.AreEqual('D:\Diagnose', Saved.WelcomePageHelpReportFolder);
-    Assert.IsFalse(Saved.WelcomePageProjectSetup);
-    Assert.IsFalse(Saved.WelcomePageNewFromTemplate);
-    Assert.IsFalse(Saved.WelcomePage);
-    Assert.IsFalse(Saved.WelcomePageIdePage);
-    Assert.AreEqual('atlas', Saved.WelcomePageLayout);
-    Assert.IsTrue(Saved.WelcomePageOpenOnStart);
-    Assert.IsFalse(Saved.WelcomePageOpenWhenNoProject);
-    Assert.IsFalse(Saved.WelcomePageHeader);
-    Assert.IsFalse(Saved.WelcomePageGreeting);
-    Assert.IsFalse(Saved.WelcomePageSearch);
-    Assert.IsFalse(Saved.WelcomePageSearchSymbols);
-    Assert.AreEqual($6046, Saved.WelcomePageSearchKey);
-    Assert.AreEqual('always', Saved.WelcomePageWhatsNew);
-    Assert.IsFalse(Saved.WelcomePageContinue);
-    Assert.AreEqual(20, Saved.WelcomePageContinueCount, 'auf 1–20 begrenzt');
-    Assert.IsFalse(Saved.WelcomePageContinueIncoming);
-    Assert.IsTrue(Saved.WelcomePageContinueFetch);
-    Assert.IsFalse(Saved.WelcomePageSaved);
-    Assert.IsFalse(Saved.WelcomePageProjectStatus);
-    Assert.AreEqual(30, Saved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');
-    Assert.IsFalse(Saved.WelcomePageRefreshVcs);
-    Assert.IsFalse(Saved.WelcomePageTrends);
-    Assert.AreEqual(100, Saved.WelcomePageTrendsPoints, 'auf 2–100 begrenzt');
-    Assert.AreEqual('warnings,todos,methodLength', Saved.WelcomePageTrendsSeries);
-    Assert.IsFalse(Saved.WelcomePageTests);
-    Assert.AreEqual(50, Saved.WelcomePageTestsMaxFailures, 'auf 1–50 begrenzt');
-    Assert.IsTrue(Saved.WelcomePageTestsCi);
-    Assert.AreEqual('jenkins', Saved.WelcomePageTestsCiProvider);
-    Assert.AreEqual(1, Saved.WelcomePageTestsCiIntervalMinutes, 'auf 1–1440 begrenzt');
-    Assert.IsFalse(Saved.WelcomePageTestsCiNotify);
-    Assert.IsFalse(Saved.CiLogin);
-    Assert.IsTrue(Saved.WelcomePageIssues);
-    Assert.AreEqual($4049, Saved.CreateIssueKey, 'Strg+I');
-    Assert.IsFalse(Saved.WelcomePageSprint);
-    Assert.IsFalse(Saved.WelcomePageQuickActions);
-    Assert.AreEqual('build,tests,pull,folder,tasks', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
-    Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
-    Assert.AreEqual(0, Saved.WelcomePageQuickActionsBuildKey, 'leer = keine Taste');
-    Assert.AreEqual($C054, Saved.WelcomePageQuickActionsTestKey);
-    Assert.IsFalse(Saved.WelcomePageUnsaved);
-    Assert.AreEqual(2, Saved.WelcomePageUnsavedMinAgeHours);
-    Assert.AreEqual(48, Saved.WelcomePageUnsavedWarnHours);
-    Assert.AreEqual(48, Saved.WelcomePageUnsavedAlertHours, 'rot nie vor gelb');
-    Assert.IsTrue(Saved.WelcomePageUnsavedHideWhenClean);
-    Assert.IsFalse(Saved.WelcomePageStatusTile);
-    Assert.IsTrue(Saved.WelcomePageStatusTileOnlyProblems);
-    Assert.IsFalse(Saved.WelcomePageDiscover);
-    Assert.IsFalse(Saved.TipsUsageTracking);
-    Page.LoadFrom(Saved);
-    Assert.IsFalse(Page.WelcomeTrends.Checked);
-    Assert.AreEqual('100', Page.WelcomeTrendsPoints.Text);
-    Assert.IsFalse(Page.WelcomeTrendsSeries(TAtlasTrendSeries.RuleHits).Checked);
-    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.Todos).Checked);
-    Assert.IsFalse(Page.WelcomeTests.Checked);
-    Assert.AreEqual('50', Page.WelcomeTestsMaxFailures.Text);
-    Assert.IsTrue(Page.WelcomeTestsCi.Checked);
-    Assert.AreEqual('1', Page.WelcomeTestsCiInterval.Text);
-    Assert.IsFalse(Page.WelcomeTestsCiNotify.Checked);
-    Assert.IsFalse(Page.CiLogin.Checked);
-    Assert.IsTrue(Page.WelcomeIssues.Checked);
-    Assert.IsFalse(Page.WelcomeSprint.Checked);
-    Assert.IsFalse(Page.WelcomeQuickActions.Checked);
-    Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
-    Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Pull).Checked);
-    Assert.AreEqual('pwsh.exe', Page.WelcomeQuickActionsConsole.Text);
-    Assert.AreEqual('', Page.WelcomeQuickActionsBuildKey.Text);
-    Assert.IsFalse(Page.WelcomeHelp.Checked);
-    Assert.AreEqual('https://example.org/issues/new', Page.WelcomeHelpReportUrl.Text);
-    Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);
-    Assert.IsFalse(Page.WelcomeDiscover.Checked);
-    Assert.IsFalse(Page.TipsUsageTracking.Checked);
-    Assert.IsFalse(Page.WelcomeIdePage.Checked);
-    Assert.IsTrue(Page.WelcomeLayout.Checked);
-    Assert.IsTrue(Page.WelcomeOpenOnStart.Checked);
-    Assert.AreEqual(2, Page.WelcomeWhatsNew.Choice);
-    Page.WelcomeWhatsNew.Choice := 0;
-    // Keine Webadresse als Ziel: die Vorgabe.
-    Page.WelcomeHelpReportUrl.Text := 'cmd.exe';
-    Page.SaveTo(Saved);
-    Assert.AreEqual('off', Saved.WelcomePageWhatsNew);
-    Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Saved.WelcomePageHelpReportUrl);
-  finally
-    Page.Free;
-  end;
-end;
-
-procedure TAtlasSettingsPageTests.UsageButtonsCallBack;
-var
-  Page: TAtlasSettingsPage;
-  Calls: string;
-begin
-  // #757: „Zählung zurücksetzen“ und „Gesperrte Tipps wieder zeigen“ rufen die IDE-Schicht, je einmal.
-  Calls := '';
-  Page := TAtlasSettingsPage.Create(nil);
-  try
-    // Die Knöpfe gehören zu „Atlas entdecken“ und sind nur mit dessen Schalter frei (#890).
-    Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Page.OnResetUsage :=
-      procedure
-      begin
-        Calls := Calls + 'reset;';
-      end;
-    Page.OnUnblockTips :=
-      procedure
-      begin
-        Calls := Calls + 'unblock;';
-      end;
-    Assert.IsTrue(Page.ResetUsageButton.Enabled);
-    Page.ResetUsageButton.Click;
-    Page.UnblockTipsButton.Click;
-    Assert.AreEqual('reset;unblock;', Calls);
-    Assert.IsFalse(Page.ResetUsageButton.Enabled, 'erledigt');
-    Assert.IsFalse(Page.UnblockTipsButton.Enabled, 'erledigt');
-  finally
-    Page.Free;
-  end;
 end;
 
 procedure TAtlasSettingsPageTests.FavoritesListAndRemove;

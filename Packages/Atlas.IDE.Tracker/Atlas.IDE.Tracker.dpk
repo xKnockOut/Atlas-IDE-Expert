@@ -32,15 +32,17 @@
 // Modul Issue-Tracker und Build-Server (#1456, ADR 0017): Verbindungen, Meine Issues, Sprint, Board,
 // Vorschau, Zeiterfassung, Testergebnisse vom Build-Server und Fehlerberichte als Issue.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Tracker.Composition über die Registry
-// des Kern-Packages Atlas.IDE.Expert an und lässt sich ohne Neustart der IDE laden und entladen
-// (Regeln 1 bis 4). Requiret nur das Kern-Package, kein anderes Modul (Regel 9).
+// des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
+// (Regeln 1 bis 4). Requiret nur das Kern-Package und
+// Atlas.IDE.Contracts, kein anderes Modul (Regel 9).
 
 requires
   rtl,
   vcl,
   vclwinx,
   designide,
-  Atlas.IDE.Expert;
+  Atlas.IDE.Base,
+  Atlas.IDE.Contracts;
 
 contains
   Atlas.UI.Tracker.QueryDialog in 'Source\UI\Tracker\Atlas.UI.Tracker.QueryDialog.pas',

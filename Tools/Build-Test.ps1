@@ -17,7 +17,7 @@
        (DUnitX gibt es nur für Win64, ADR 0008). Die Plugin-BPL für die
        klassische IDE muss dabei neu geschrieben sein (#78). Die BPL heißt
        wegen LIBSUFFIX AUTO je IDE-Version anders, z. B.
-       Atlas.IDE.Expert370.bpl (#281).
+       Atlas.IDE.Base370.bpl (#281).
     4. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis;
        die Benchmarks (Kategorie Benchmark, #415) nur mit -Benchmarks.
     5. cc.ps1 quit, wiederholt, solange die IDE beschäftigt ist.
@@ -57,7 +57,7 @@ $GroupProject = Join-Path $Root 'Atlas.groupproj'
 $TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Atlas.Tests.exe')
 # Plugin-BPLs für die klassische (Win32) und die 64-Bit-IDE (Win64), ADR 0008: das Kern-Package und jedes
 # Modul-Package unter Packages/Atlas.IDE.* (#1456). LIBSUFFIX AUTO hängt die Package-Version an:
-# Atlas.IDE.Expert290.bpl (Delphi 12), …370.bpl (Delphi 13).
+# Atlas.IDE.Base290.bpl (Delphi 12), …370.bpl (Delphi 13).
 $PluginPackages = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
     Where-Object { Test-Path (Join-Path $_.FullName "$($_.Name).dpk") } | ForEach-Object Name | Sort-Object)
 # Zeilen des Build-Logs, die die 0/0/0-Regel verletzen, z. B. "[dcc64 Hinweis] X.pas(10): H2164 …".
@@ -72,7 +72,7 @@ function Write-Step([string] $Text) {
 function Test-PluginBpl([string] $Platform, [datetime] $Started) {
     $dir = Join-Path $Root "Output/$Platform/$Config/Bpl"
     foreach ($package in $PluginPackages) {
-        # Name, Versionsnummer, .bpl: "Atlas.IDE.Expert370.bpl" passt zu Atlas.IDE.Expert, nicht zu Atlas.IDE.Expert.X.
+        # Name, Versionsnummer, .bpl: "Atlas.IDE.Base370.bpl" passt zu Atlas.IDE.Base, nicht zu Atlas.IDE.Base.X.
         $bpl = @(Get-ChildItem -Path $dir -Filter "$package*.bpl" -File -ErrorAction SilentlyContinue |
             Where-Object { $_.BaseName -match ('^' + [regex]::Escape($package) + '\d*$') } |
             Sort-Object LastWriteTime -Descending) | Select-Object -First 1
