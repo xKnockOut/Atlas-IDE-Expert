@@ -92,6 +92,18 @@ begin
   FRefresh := ARefresh;
 end;
 
+/// <summary>Beschreibung, die der Bereich selbst mitbringt (Kacheln anderer Module, #1455); '' ohne.</summary>
+function DescriptionOfSection(const AId: string): string;
+var
+  mSection: TAtlasWelcomeSection;
+begin
+  Result := '';
+  if TAtlasWelcomeSections.Default.Find(AId, mSection) then
+  begin
+    Result := mSection.Description;
+  end;
+end;
+
 class function TAtlasIdeWelcomeLayouts.Description(const AId: string): string;
 begin
   if SameText(AId, TAtlasWelcomeIds.Continue) then
@@ -119,7 +131,7 @@ begin
   else if SameText(AId, TAtlasWelcomeIds.Help) then
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescHelp)
   else
-    Result := '';
+    Result := DescriptionOfSection(AId);
 end;
 
 function TAtlasIdeWelcomeLayouts.Registered: TArray<string>;
