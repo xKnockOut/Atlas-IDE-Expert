@@ -530,7 +530,7 @@ FCompletion.NamingFor :=
 **Konfidenz:** hoch.
 
 #### T-02 · Neue Hintergrunddienste lassen hängende Threads beim Entladen mit `FreeOnTerminate` weiterlaufen · Schweregrad: Mittel · Aufwand: S
-**Fundstelle:** `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas`, Zeile 276–289 (`ReleaseThread`); `IDE/Welcome/Atlas.IDE.Welcome.TestResults.pas`, Zeile 244–257; `IDE/Welcome/Atlas.IDE.Welcome.Setup.pas`, Zeile 286–297 (`Stop`); `Core/Vcs/Atlas.Core.Vcs.Worker.pas`, Zeile 160–180 (`Stop`). Soll-Muster: `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas`, Zeile 3–10 (#886).
+**Fundstelle:** `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas`, Zeile 276–289 (`ReleaseThread`); `IDE/Tracker/Atlas.IDE.Tracker.TestResults.pas`, Zeile 244–257; `IDE/Welcome/Atlas.IDE.Welcome.Setup.pas`, Zeile 286–297 (`Stop`); `Core/Vcs/Atlas.Core.Vcs.Worker.pas`, Zeile 160–180 (`Stop`). Soll-Muster: `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas`, Zeile 3–10 (#886).
 **Beobachtung:**
 ```pascal
 if AWait and not FThread.Finished then

@@ -149,28 +149,10 @@ uses
   Atlas.IDE.Foundation.Symbol,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.Usage,
-  Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Welcome.TestResults,
-  Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Ci.Providers.Jenkins,
-  Atlas.Core.Ci.Adapters.Http,
-  Atlas.Core.Ci.Adapters.Credentials,
-  Atlas.Core.Tracker.Attach,
-  Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Connections,
-  Atlas.Core.Tracker.Providers.GitHub,
-  Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.IDE.Tracker.NewIssue,
-  Atlas.Core.Tracker.NewIssue,
   Atlas.Core.Problems.Findings,
-  Atlas.UI.Welcome.TestResults,
-  Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Projects.Baseline,
-  Atlas.IDE.Welcome.Commands,
-  Atlas.IDE.Welcome.Startup,
   Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.WorkingCopies,
   Atlas.IDE.Vcs.Service,
@@ -219,10 +201,8 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.InlineHints,
-  Atlas.Core.Projects.Summary,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Problems.MessageList,
-  Atlas.IDE.Contracts.Tests;
+  Atlas.IDE.Problems.MessageList;
 
 var
   ManagerIndex: Integer = -1;
@@ -413,14 +393,6 @@ begin
     Messages.ShowMessageView(Group);
 end;
 
-/// <summary>Ergebnis eines Zugangs-Befehls (#763, #765): wie GuardWarning und sichtbar in der Meldungsansicht.
-/// </summary>
-procedure LoginNotice(const AText: string);
-begin
-  GuardWarning(AText);
-  ShowAtlasMessages;
-end;
-
 /// <summary>„Fehlerbericht erstellen…“ (#108) aus Menü, Palette und dem Fenster des abgesicherten Starts.</summary>
 // Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und
 // Parameter-Hint aus dem Kern (A-09).
@@ -528,21 +500,80 @@ begin
     end);
 end;
 
+/// <summary>„Issue anlegen“ des Moduls Tracker (#1268, #1455); False ohne laufendes Modul.</summary>
+function IssueCreation(out ACreation: IAtlasIssueCreation): Boolean;
+var
+  mItem: IInterface;
+begin
+  ACreation := nil;
+  Result := False;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasIssueCreation) do
+  begin
+    if Supports(mItem, IAtlasIssueCreation, ACreation) then
+    begin
+      Result := True;
+      Break;
+    end;
+  end;
+end;
+
+/// <summary>Befunde des Fensters „Atlas-Prüfung“ für „Issue anlegen“: Regel, Meldung, Fundstelle und Zeile.
+/// </summary>
+function IssueFindings(const AFindings: TArray<TAtlasFinding>): TArray<TAtlasIssueFinding>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AFindings));
+  for mIndex := 0 to High(AFindings) do
+  begin
+    Result[mIndex].Rule := AFindings[mIndex].Rule;
+    Result[mIndex].Message := AFindings[mIndex].MessageText(TAtlasIdeSettings.Current.ProblemsShowCompilerCode);
+    Result[mIndex].Location := AFindings[mIndex].Location;
+    Result[mIndex].LineText := AFindings[mIndex].LineText;
+  end;
+end;
+
+/// <summary>„Für diesen Befund ein Issue anlegen …“ (#1268) über das Modul Tracker; ohne Modul nichts.</summary>
+procedure CreateIssueFromFindings(const AFindings: TArray<TAtlasIssueFinding>);
+var
+  mCreation: IAtlasIssueCreation;
+begin
+  if IssueCreation(mCreation) then
+  begin
+    mCreation.FromFindings(AFindings);
+  end;
+end;
+
+function CanCreateIssue: Boolean;
+var
+  mCreation: IAtlasIssueCreation;
+begin
+  Result := IssueCreation(mCreation) and mCreation.Enabled;
+end;
+
 /// <summary>„Issue anlegen“ zu einem Absturzfall des Servers (#1355): Dialog aus #1268, danach die Dateien des
 /// Falls über „An Issue anhängen“ (#1276). Ohne Tracker bzw. mit issues.create aus öffnet der Ordner des Falls.
 /// </summary>
 procedure CreateCrashIssue(ACase: TAtlasCrashCase);
 var
-  Files: TArray<TAtlasAttachFile>;
-  CaseFile: TAtlasCrashCaseFile;
+  mFiles: TArray<TAtlasIssueTextFile>;
+  mCaseFiles: TArray<TAtlasCrashCaseFile>;
+  mIndex: Integer;
+  mCreation: IAtlasIssueCreation;
 begin
-  Files := nil;
-  for CaseFile in TAtlasCrashCases.AttachFiles(ACase.Folder) do
-    Files := Files + [TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, CaseFile.Name, CaseFile.Text)];
-  if TAtlasIdeNewIssue.Enabled then
-    TAtlasIdeNewIssue.FromCrash(TAtlasCrashCases.IssueTitle(ACase), TAtlasCrashCases.IssueDescription(ACase), Files)
-  else
+  if not IssueCreation(mCreation) or not mCreation.Enabled then
+  begin
     MessageLine(TAtlasStrings.Text(TAtlasTextId.CrashCaseTitle) + ': ' + ACase.Folder);
+    Exit;
+  end;
+  mCaseFiles := TAtlasCrashCases.AttachFiles(ACase.Folder);
+  SetLength(mFiles, Length(mCaseFiles));
+  for mIndex := 0 to High(mCaseFiles) do
+  begin
+    mFiles[mIndex].Name := mCaseFiles[mIndex].Name;
+    mFiles[mIndex].Text := mCaseFiles[mIndex].Text;
+  end;
+  mCreation.FromCrash(TAtlasCrashCases.IssueTitle(ACase), TAtlasCrashCases.IssueDescription(ACase), mFiles);
 end;
 
 /// <summary>Fenster „Atlas-Server“ (#1356) zeigen; abgeschaltet nichts.</summary>
@@ -1026,19 +1057,6 @@ begin
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run) and
     TAtlasModuleContributions.IsVisible(mCommand) then
     TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
-end;
-
-/// <summary>Testprojekte und einzelne Tests des Moduls Tests (#1455); False ohne laufendes Modul. Zieht mit der
-/// Karte „Testergebnisse“ ins Modul Tracker.</summary>
-function TestsSource(out ATests: IAtlasTestsSource): Boolean;
-var
-  mItem: IInterface;
-begin
-  ATests := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestsSource) do
-    if Supports(mItem, IAtlasTestsSource, ATests) then
-      Exit(True);
-  Result := False;
 end;
 
 procedure RegisterPalette;
@@ -1934,131 +1952,6 @@ begin
   Setup := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, Hooks);
 end;
 
-type
-  /// <summary>Anbieter, Token und Transport des Issue-Trackers (#765, #1260) für „Meine Issues“ und die Seite
-  /// Issue-Tracker: Token im Anmeldespeicher von Windows (Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer =
-  /// Anbieter), verdeckter Dialog, „Authorization: Bearer“ nur über https an die API des Trackers. Meldungen
-  /// anonym, ohne Server und Token.</summary>
-  TAtlasComposedTrackerAccess = class(TInterfacedObject, IAtlasTrackerAccess)
-  public
-    function Providers: TArray<IAtlasTrackerProvider>;
-    function Provider(const AName: string): IAtlasTrackerProvider;
-    function HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
-    function EnterToken(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
-    function RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
-    function Transport(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
-  end;
-
-var
-  TrackerAccessInstance: IAtlasTrackerAccess;
-  /// <summary>Zugang für den Abschnitt Issue-Tracker des Moduls Tracker (#1455), solange die Optionen angemeldet
-  /// sind.</summary>
-  TrackerAccessRegistration: IAtlasRegistration;
-
-function TrackerAccess: IAtlasTrackerAccess;
-begin
-  if TrackerAccessInstance = nil then
-    TrackerAccessInstance := TAtlasComposedTrackerAccess.Create;
-  Result := TrackerAccessInstance;
-end;
-
-function TAtlasComposedTrackerAccess.Providers: TArray<IAtlasTrackerProvider>;
-begin
-  // Tracker-Anbieter: YouTrack und GitHub; weitere kommen ohne Änderung an Bereich und Optionsseite dazu.
-  Result := [TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, TAtlasGitHubTracker.Create as IAtlasTrackerProvider];
-end;
-
-function TAtlasComposedTrackerAccess.Provider(const AName: string): IAtlasTrackerProvider;
-var
-  mProvider: IAtlasTrackerProvider;
-begin
-  for mProvider in Providers do
-    if SameText(mProvider.Name, Trim(AName)) then
-      Exit(mProvider);
-  Result := nil;
-end;
-
-function TAtlasComposedTrackerAccess.HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
-var
-  mUser, mToken: string;
-begin
-  Result := False;
-  if ATarget.CredentialTarget = '' then
-    Exit;
-  mUser := '';
-  mToken := '';
-  Result := TAtlasCiCredentials.Read(ATarget.CredentialTarget, mUser, mToken) and (mToken <> '');
-  UniqueString(mToken);
-  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
-end;
-
-function TAtlasComposedTrackerAccess.EnterToken(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget): Boolean;
-var
-  mToken: string;
-  mOk: Boolean;
-begin
-  Result := False;
-  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
-  if not ATarget.Secure then
-  begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
-    Exit;
-  end;
-  mToken := '';
-  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
-    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), mToken) then
-    Exit;
-  if mToken = '' then
-  begin
-    mOk := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
-    if mOk then
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
-    else
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-    Exit(mOk);
-  end;
-  mOk := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, mToken, 'Atlas: Issue-Tracker');
-  UniqueString(mToken);
-  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
-  // Anonym: weder Server noch Projekt.
-  if mOk then
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
-  else
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-  Result := mOk;
-end;
-
-function TAtlasComposedTrackerAccess.RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
-begin
-  Result := True;
-  if ATarget.CredentialTarget = '' then
-    Exit;
-  Result := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
-  if Result then
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
-  else
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-end;
-
-function TAtlasComposedTrackerAccess.Transport(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
-var
-  mUser, mToken: string;
-begin
-  Result := nil;
-  if (AProvider = nil) or not ATarget.Secure then
-    Exit;
-  mUser := '';
-  mToken := '';
-  if not TAtlasCiCredentials.Read(ATarget.CredentialTarget, mUser, mToken) or (mToken = '') then
-    Exit;
-  // „Authorization: Bearer“ nur über https an die Programmierschnittstelle des Trackers.
-  Result := TAtlasCiHttpTransport.CreateBearer(AProvider.ApiServer(ATarget), mToken);
-  UniqueString(mToken);
-  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
-end;
-
 /// <summary>Zählung zurückgesetzt (#757): an jeden IAtlasCommandUsageListener der laufenden Module.</summary>
 procedure UsageResetInModules;
 var
@@ -2153,12 +2046,6 @@ begin
       Result := TAtlasEditorCompletion.SnippetFolder;
     end;
   TAtlasOptionsRegistration.Register(Hooks);
-  // Abschnitt Issue-Tracker des Moduls Tracker (#1260, #1455): Anbieter, Token und „Verbindung prüfen“ über die
-  // Registry; das Modul kennt die Kompositionswurzel nicht.
-  if TrackerAccessRegistration = nil then
-  begin
-    TrackerAccessRegistration := AtlasModuleRegistry.Provide(IAtlasTrackerAccess, TrackerAccess);
-  end;
 end;
 
 /// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
@@ -2828,28 +2715,23 @@ begin
       APercent := -1;
       Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
     end;
-  // „Für diesen Befund ein Issue anlegen …“ (#1268): Regel, Meldung, Fundstelle und Zeile je Befund.
+  // „Für diesen Befund ein Issue anlegen …“ (#1268): über IAtlasIssueCreation des Moduls Tracker.
   Hooks.CreateIssue :=
     procedure(AFindings: TArray<TAtlasFinding>)
     var
-      mItems: TArray<TAtlasNewIssueFinding>;
-      mFinding: TAtlasFinding;
+      mItems: TArray<TAtlasIssueFinding>;
     begin
-      mItems := nil;
-      for mFinding in AFindings do
-        mItems := mItems + [TAtlasNewIssueFinding.Create(mFinding.Rule,
-          mFinding.MessageText(TAtlasIdeSettings.Current.ProblemsShowCompilerCode), mFinding.Location,
-          mFinding.LineText)];
+      mItems := IssueFindings(AFindings);
       TAtlasGuard.Run(TAtlasFeature.WelcomePage,
         procedure
         begin
-          TAtlasIdeNewIssue.FromFindings(mItems);
+          CreateIssueFromFindings(mItems);
         end);
     end;
   Hooks.CanCreateIssue :=
     function: Boolean
     begin
-      Result := TAtlasIdeNewIssue.Enabled;
+      Result := CanCreateIssue;
     end;
   TAtlasIdeProblems.Start(Hooks);
   TAtlasIdeEditorCommands.OnStepList :=
@@ -3018,125 +2900,6 @@ procedure UnwatchKeys;
 begin
   TAtlasIdeKeys.UnwatchPackages;
   KeysWatched := False;
-end;
-
-/// <summary>Zugang zum Build-Server für AJob abfragen und im Anmeldespeicher von Windows ablegen (#763); beide
-/// Felder leer entfernt ihn. True, wenn sich etwas geändert hat.</summary>
-function EnterCiCredentials(const AJob: TAtlasCiJob): Boolean;
-var
-  User, Token, Stored: string;
-  Ok: Boolean;
-begin
-  Result := False;
-  User := '';
-  Stored := '';
-  TAtlasCiCredentials.Read(AJob.CredentialTarget, User, Stored);
-  // Nur der Benutzer wird vorbelegt; das gespeicherte Token wird nie angezeigt.
-  if Stored <> '' then
-  begin
-    UniqueString(Stored);
-    FillChar(PChar(Stored)^, Length(Stored) * SizeOf(Char), 0);
-  end;
-  Stored := '';
-  Token := '';
-  if not TAtlasCiLoginPrompt.Ask(AJob.Server, User, Token) then
-    Exit;
-  if (User = '') and (Token = '') then
-  begin
-    Ok := TAtlasCiCredentials.Delete(AJob.CredentialTarget);
-    if Ok then
-      LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginRemoved))
-    else
-      LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
-    Exit(Ok);
-  end;
-  if (User = '') or (Token = '') then
-  begin
-    LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginIncomplete));
-    Exit;
-  end;
-  Ok := TAtlasCiCredentials.Write(AJob.CredentialTarget, User, Token);
-  UniqueString(Token);
-  FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
-  // Anonym: weder Server noch Benutzer.
-  if Ok then
-    LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginSaved))
-  else
-    LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
-  Result := Ok;
-end;
-
-function CreateWelcomeTestResults(const AProjects: IAtlasProjectsSource): TAtlasIdeTestResults;
-begin
-  Result := TAtlasIdeTestResults.Create(AProjects,
-    procedure(AText: string)
-    begin
-      GuardWarning(AText);
-    end);
-  // „Fehlgeschlagene erneut ausführen“, „Im Debugger“ und Sprung zum Test: über das Modul Tests (#69, #585, #1455).
-  Result.OnRunTests := RunTestsOfModule;
-  Result.OnDebugTest :=
-    function(const AProject, AFullName: string; out AReason: string): Boolean
-    var
-      mTests: IAtlasTestsSource;
-    begin
-      AReason := '';
-      Result := TestsSource(mTests) and mTests.DebugByName(AProject, AFullName, AReason);
-    end;
-  Result.OnLocateTest :=
-    function(const AProject, AFullName: string; out AFileName: string; out ALine: Integer): Boolean
-    var
-      mTests: IAtlasTestsSource;
-    begin
-      AFileName := '';
-      ALine := 0;
-      Result := TestsSource(mTests) and mTests.LocateByName(AProject, AFullName, AFileName, ALine);
-    end;
-  // CI-Anbieter: Jenkins als erster Adapter.
-  Result.ProviderFactory :=
-    function(const AName: string): IAtlasCiProvider
-    begin
-      Result := nil;
-      if SameText(AName, TAtlasJenkinsProvider.ProviderName) then
-        Result := TAtlasJenkinsProvider.Create;
-    end;
-  // Im Hintergrund-Thread: Zugang aus dem Anmeldespeicher, ohne Dialog.
-  Result.TransportFactory :=
-    function(const AJob: TAtlasCiJob): IAtlasCiTransport
-    var
-      User, Token: string;
-    begin
-      User := '';
-      Token := '';
-      TAtlasCiCredentials.Read(AJob.CredentialTarget, User, Token);
-      Result := TAtlasCiHttpTransport.Create(AJob.Server, User, Token);
-      if Length(Token) > 0 then
-      begin
-        UniqueString(Token);
-        FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
-      end;
-    end;
-  Result.OnCredentials := EnterCiCredentials;
-end;
-
-/// <summary>Die laufende Willkommensseite des Moduls atlas.welcome; nil ohne Modul.</summary>
-function Welcome: TAtlasIdeWelcome;
-begin
-  Result := TAtlasIdeWelcomeStartup.Current;
-end;
-
-/// <summary>Befristet (#1455): „Testergebnisse“ mit den CI-Anbietern baut noch die Wurzel.</summary>
-procedure InstallWelcomeHooks;
-var
-  mHooks: TAtlasWelcomeRootHooks;
-begin
-  mHooks := Default(TAtlasWelcomeRootHooks);
-  mHooks.CreateTestResults :=
-    function(const AProjects: IAtlasProjectsSource): TAtlasIdeTestResults
-    begin
-      Result := CreateWelcomeTestResults(AProjects);
-    end;
-  TAtlasIdeWelcomeStartup.RootHooks := mHooks;
 end;
 
 procedure StartMainMenu;
@@ -3938,7 +3701,6 @@ begin
   TAtlasMainThread.Start;
   // Vor den Modulen: Sie fragen Sitzung und Protokoll über TAtlasIdeHost (#1455).
   InstallHost;
-  InstallWelcomeHooks;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasGuard.OnTripped := GuardTripped;
@@ -4329,7 +4091,6 @@ begin
       procedure
       begin
         TAtlasIdeHost.Uninstall;
-        TAtlasIdeWelcomeStartup.RootHooks := Default(TAtlasWelcomeRootHooks);
       end);
     if Features <> nil then
       Teardown.AddFailures(Features.StopAll);
@@ -4359,11 +4120,6 @@ begin
       procedure
       begin
         TAtlasOptionsRegistration.Unregister;
-        if TrackerAccessRegistration <> nil then
-        begin
-          TrackerAccessRegistration.Revoke;
-        end;
-        TrackerAccessRegistration := nil;
       end);
     TAtlasProjectSettings.Command := nil;
     Teardown.Step('History',

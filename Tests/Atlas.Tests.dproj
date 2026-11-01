@@ -1013,8 +1013,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Pipeline.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Trends.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.TestResults.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.TestResults.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.TestResults.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TestResults.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.MyIssues.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.MyIssues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
@@ -1053,8 +1053,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.QuickActions.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.TestResults.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.TestResults.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.TestResults.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.CiLogin.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.TestResults.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.MyIssues.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.TileView.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.MyIssues.Tests.pas"/>

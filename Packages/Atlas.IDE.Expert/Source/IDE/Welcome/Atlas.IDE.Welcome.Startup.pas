@@ -6,38 +6,23 @@
 // (TAtlasWelcomeNeighbors), hört auf Projektaufgaben, Testläufe und die
 // Befehlsnutzung und zeigt Kacheln anderer Module (TAtlasIdeWelcomeTiles).
 // Alle Anmeldungen laufen über den Scope des Moduls und werden beim Stoppen
-// rückwärts gelöst (Regel 4).
-// Übergang: „Testergebnisse“ (CI-Anbieter) baut noch die Kompositionswurzel
-// über RootHooks, bis das Modul
-// Tracker sie als Kacheln bereitstellt.
+// rückwärts gelöst (Regel 4). „Testergebnisse“ ist seit #1455 eine Kachel des
+// Moduls Tracker.
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.UI.Welcome.Projects,
-  Atlas.IDE.Welcome.TestResults,
   Atlas.IDE.Welcome.Commands;
 
 type
-  TAtlasWelcomeTestResultsFactory = reference to function(const AProjects: IAtlasProjectsSource):
-    TAtlasIdeTestResults;
-
-  /// <summary>Befristet (#1455): Teile, die noch die Kompositionswurzel baut; jedes Feld darf fehlen.</summary>
-  TAtlasWelcomeRootHooks = record
-    CreateTestResults: TAtlasWelcomeTestResultsFactory;
-  end;
-
   TAtlasIdeWelcomeStartup = class
-  private class var
-    FHooks: TAtlasWelcomeRootHooks;
   public
     class procedure Start(const AScope: IAtlasModuleScope); static;
     class procedure Stop; static;
     /// <summary>Die laufende Seite; nil vor Start und nach Stop.</summary>
     class function Current: TAtlasIdeWelcome; static;
-    class property RootHooks: TAtlasWelcomeRootHooks read FHooks write FHooks;
   end;
 
 implementation
@@ -166,21 +151,14 @@ end;
 
 { Aufbau }
 
-/// <summary>Kopf, „Neu in Atlas“ (#756), „Projekte“ (#592), „Projektverlauf“ (#758) und die Bereiche der Wurzel.
+/// <summary>Kopf, „Neu in Atlas“ (#756), „Projekte“ (#592), „Projektverlauf“ (#758) und „Nicht gesichert“ (#762).
 /// </summary>
 procedure StartProjectSections;
-var
-  mHooks: TAtlasWelcomeRootHooks;
 begin
-  mHooks := TAtlasIdeWelcomeStartup.RootHooks;
   GWelcome.Search := TAtlasIdeWelcomeSearch.Create(PaletteCommands, Execute);
   GWelcome.WhatsNew := TAtlasIdeWhatsNew.Create(PaletteHas, Execute, Warn);
   GWelcome.Projects := TAtlasIdeProjects.Create(Warn);
   GWelcome.Trends := TAtlasIdeTrends.Create(GWelcome.Projects);
-  if Assigned(mHooks.CreateTestResults) then
-  begin
-    GWelcome.TestResults := mHooks.CreateTestResults(GWelcome.Projects);
-  end;
   GWelcome.Unsaved := TAtlasIdeUnsaved.Create(Warn);
 end;
 

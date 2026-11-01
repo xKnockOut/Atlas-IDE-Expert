@@ -16,7 +16,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Ci.Contract;
 
 type
   TAtlasCiCredentials = class
@@ -33,6 +34,18 @@ type
     /// <summary>Eintrag entfernen; True auch, wenn es keinen gab.</summary>
     class function Delete(const ATarget: string): Boolean; static;
     class function Exists(const ATarget: string): Boolean; static;
+  end;
+
+  /// <summary>IAtlasCiCredentialStore über den Anmeldespeicher von Windows (#1455); erzeugt nur die Komposition
+  /// des Moduls Tracker.</summary>
+  TAtlasCiCredentialStore = class(TInterfacedObject, IAtlasCiCredentialStore)
+  public const
+    cDefaultComment = 'Atlas: Build-Server';
+  public
+    function Read(const ATarget: string; out AUser, AToken: string): Boolean;
+    /// <summary>AComment '' = cDefaultComment.</summary>
+    function Write(const ATarget, AUser, AToken, AComment: string): Boolean;
+    function Delete(const ATarget: string): Boolean;
   end;
 
 implementation
@@ -142,6 +155,30 @@ var
   User, Token: string;
 begin
   Result := Read(ATarget, User, Token);
+end;
+
+{ TAtlasCiCredentialStore }
+
+function TAtlasCiCredentialStore.Read(const ATarget: string; out AUser, AToken: string): Boolean;
+begin
+  Result := TAtlasCiCredentials.Read(ATarget, AUser, AToken);
+end;
+
+function TAtlasCiCredentialStore.Write(const ATarget, AUser, AToken, AComment: string): Boolean;
+var
+  mComment: string;
+begin
+  mComment := AComment;
+  if mComment = '' then
+  begin
+    mComment := cDefaultComment;
+  end;
+  Result := TAtlasCiCredentials.Write(ATarget, AUser, AToken, mComment);
+end;
+
+function TAtlasCiCredentialStore.Delete(const ATarget: string): Boolean;
+begin
+  Result := TAtlasCiCredentials.Delete(ATarget);
 end;
 
 end.

@@ -9,8 +9,9 @@
 //   die Zeilen des Statusfelds laufen, die die Zustandskachel (#754) zeigt,
 // - die Befehle der Seite (Palette und Atlas-Menü): Atlas-Start, Layout
 //   anwenden und zurücksetzen, Seite anpassen (#767), „Neu in Atlas“ (#756),
-//   Projekt einrichten (#759), Weiterarbeiten (#755) und Zugang zum
-//   Build-Server (#763),
+//   Projekt einrichten (#759) und Weiterarbeiten (#755); der Zugang zum
+//   Build-Server (#763) gehört seit #1455 mit der Kachel „Testergebnisse“
+//   zum Modul Tracker,
 // - die Einträge im Atlas-Menü und unter Ansicht › Atlas,
 // - Einstellungen und Thema an die laufende Seite.
 // Andere Module erreicht die Seite nur über Verträge (TAtlasWelcomeNeighbors,
@@ -64,7 +65,6 @@ uses
   Atlas.IDE.Welcome.Layouts,
   Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Startup,
-  Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings;
 
 var
@@ -210,24 +210,6 @@ begin
   mPage.ShowStart;
 end;
 
-/// <summary>Bereich „Testergebnisse“ (#763): Zugang zum Build-Server für die .atlas des aktiven Projekts.</summary>
-procedure EnterCiCredentials;
-var
-  mPage: TAtlasIdeWelcome;
-begin
-  mPage := TAtlasIdeWelcomeStartup.Current;
-  if (mPage <> nil) and (mPage.TestResults <> nil) then
-  begin
-    mPage.TestResults.EnterCredentialsForActive;
-  end;
-end;
-
-function CiLoginVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.CiLogin and (TAtlasIdeWelcomeStartup.Current <> nil) and
-    (TAtlasIdeWelcomeStartup.Current.TestResults <> nil);
-end;
-
 procedure ContinueLatest;
 var
   mPage: TAtlasIdeWelcome;
@@ -239,20 +221,14 @@ begin
   end;
 end;
 
-function CommandOf(const AId, ACaption: string; const ARun: TProc; const AVisible: TFunc<Boolean>):
-  TAtlasModuleCommand;
-begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := AId;
-  Result.Caption := ACaption;
-  Result.Run := ARun;
-  Result.Visible := AVisible;
-end;
-
 function Command(const AId: string; ACaption: TAtlasWelcomeTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
-  Result := CommandOf(AId, TAtlasWelcomeStrings.Text(ACaption), ARun, AVisible);
+  Result := Default(TAtlasModuleCommand);
+  Result.Id := AId;
+  Result.Caption := TAtlasWelcomeStrings.Text(ACaption);
+  Result.Run := ARun;
+  Result.Visible := AVisible;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -304,10 +280,7 @@ begin
     // Bereich „Projekt für Atlas einrichten“ (#759): Frage erneut stellen.
     Command('Atlas.ProjectSetup', TAtlasWelcomeTextId.WelcomeSetupCommand, AskSetup, SetupVisible),
     // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
-    Command('Atlas.Continue', TAtlasWelcomeTextId.WelcomeContinueCommand, ContinueLatest, nil),
-    // Bereich „Testergebnisse“ (#763); sichtbar mit ci.login und dem Bereich.
-    CommandOf('Atlas.CiLogin', TAtlasStrings.Text(TAtlasTextId.CiLoginCommand), EnterCiCredentials,
-      CiLoginVisible)];
+    Command('Atlas.Continue', TAtlasWelcomeTextId.WelcomeContinueCommand, ContinueLatest, nil)];
 end;
 
 function TAtlasWelcomeModule.MenuEntries: TArray<TAtlasMenuEntry>;
