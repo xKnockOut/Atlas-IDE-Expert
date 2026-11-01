@@ -113,7 +113,9 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Query.Service,
   Atlas.Common.Lsp.Query,
-  Shell.Bootstrap;
+  Shell.Bootstrap,
+  Shell.Workspace.Setup,
+  Shell.Workspace.RuleProjects;
 
 type
   /// <summary>Nimmt die LSP-Benachrichtigungen der Arbeitsbereiche (Fortschritt, logMessage) auf und verwirft
@@ -151,7 +153,8 @@ begin
   FFinishedEvent := TEvent.Create(nil, False, False, '');
   FOthers := TObjectList<TShellWorkspace>.Create(True);
   FCacheRoot := TIndexCacheDirectory.DefaultRoot;
-  FMain := TShellWorkspace.Create(ARoot, ExtractFileName(ARoot), AStore, FTransport, ALogger, AIndex, AProgressToken);
+  FMain := TShellWorkspace.Create(ARoot, ExtractFileName(ARoot), TShellWorkspaceServices.Create(AStore, FTransport, ALogger,
+    AIndex, AProgressToken));
   FUsesGraph := TUsesGraphService.Create(AIndex, TUsesGraphOptions.Default);
   FQueries := TCodeQueryService.Create(QuerySource);
 end;
@@ -170,9 +173,9 @@ end;
 
 procedure TShellWorkspaceGroup.Prepare(AWorkspace: TShellWorkspace);
 begin
-  AWorkspace.ProcessIdentity := FProcessIdentity;
-  AWorkspace.CacheRoot := FCacheRoot;
-  AWorkspace.OnIndexFinished :=
+  AWorkspace.Setup.ProcessIdentity := FProcessIdentity;
+  AWorkspace.Setup.CacheRoot := FCacheRoot;
+  AWorkspace.Events.OnIndexFinished :=
     procedure
     begin
       System.TMonitor.Enter(FLock);
@@ -189,7 +192,7 @@ begin
     end;
   // uses-unit-not-found: Was ein anderes Projekt der Gruppe in einen Suchpfad übersetzt, gibt es beim Bau der
   // Gruppe (wie in der Komposition; hier für --check und MCP).
-  AWorkspace.OnGroupProjects :=
+  AWorkspace.Setup.OnGroupProjects :=
     function: TArray<string>
     begin
       Result := TShellBootstrap.GroupProjects(FRoot, FLogger);
@@ -212,13 +215,14 @@ begin
   end;
   for ProjectFile in TShellBootstrap.GroupProjects(FRoot, FLogger) do
   begin
-    if FMain.Project(Info) and SameText(Info.FileName, ProjectFile) then
+    if FMain.State.Project(Info) and SameText(Info.FileName, ProjectFile) then
     begin
       Continue;
     end;
     Other := TShellWorkspace.Create(ExtractFileDir(ProjectFile), ChangeFileExt(ExtractFileName(ProjectFile), ''),
-      FStore, FTransport, FLogger, FIndex, Format('%s-%d', [FProgressToken, FOthers.Count + 1]));
-    Other.ProjectFile := ProjectFile;
+      TShellWorkspaceServices.Create(FStore, FTransport, FLogger, FIndex, Format('%s-%d', [FProgressToken,
+      FOthers.Count + 1])));
+    Other.Setup.ProjectFile := ProjectFile;
     Prepare(Other);
     FOthers.Add(Other);
     Other.Load(AGlobalSettings);
@@ -262,7 +266,7 @@ begin
     try
       for Workspace in Workspaces do
       begin
-        if Workspace.Project(Info) and not FFinished.Contains(Workspace) then
+        if Workspace.State.Project(Info) and not FFinished.Contains(Workspace) then
         begin
           Missing := True;
         end;
@@ -304,7 +308,7 @@ begin
   Result := nil;
   for Workspace in Workspaces do
   begin
-    Result := Result + Workspace.ProjectFiles;
+    Result := Result + Workspace.State.ProjectFiles;
   end;
 end;
 
@@ -328,7 +332,7 @@ var
 begin
   for Workspace in Workspaces do
   begin
-    if Workspace.ContainsFile(AFileName) then
+    if Workspace.State.ContainsFile(AFileName) then
     begin
       Exit(Workspace);
     end;
@@ -364,7 +368,7 @@ begin
   Result := nil;
   for Workspace in Workspaces do
   begin
-    if Workspace.RuleProject(Project, MainSource) then
+    if Workspace.State.RuleProject(Project, MainSource) then
     begin
       Result := Result + [TRuleProjectFiles.ProjectOf(Project.FileName, MainSource, Project.Sources, FReadText)];
     end;
@@ -388,18 +392,18 @@ begin
   // im Package hat keine eindeutige Anwendungsart (MergeRuleProjects).
   Workspace := WorkspaceOf(AFileName);
   Projects := nil;
-  if Workspace.Project(Info) then
+  if Workspace.State.Project(Info) then
   begin
     Projects := Projects + [Info];
   end;
   for Other in Workspaces do
   begin
-    if (Other <> Workspace) and Other.ContainsFile(AFileName) and Other.Project(Info) then
+    if (Other <> Workspace) and Other.State.ContainsFile(AFileName) and Other.State.Project(Info) then
     begin
       Projects := Projects + [Info];
     end;
   end;
-  Result := TShellWorkspace.RuleProjectOf(Projects, AFileName, FReadText);
+  Result := TShellRuleProjects.RuleProjectOf(Projects, AFileName, FReadText);
   Result.Services := Workspace.RuleServices;
   // Nachladen über alle Projekte der Gruppe und projektweite Regeln (#1102) wie im Server.
   Result.Services.EnsureUnit :=
@@ -424,7 +428,7 @@ begin
     begin
       Result := EnsureUnit(AUnitName);
     end,
-    FRoot, AllFiles, FMain.Namespaces,
+    FRoot, AllFiles, FMain.State.Namespaces,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := Assigned(FReadText) and FReadText(AFileName, AText);
@@ -438,9 +442,9 @@ var
   mOptions: TUsesGraphOptions;
 begin
   mOptions := FUsesGraph.Options;
-  if string.Join(';', mOptions.Namespaces) <> string.Join(';', FMain.Namespaces) then
+  if string.Join(';', mOptions.Namespaces) <> string.Join(';', FMain.State.Namespaces) then
   begin
-    mOptions.Namespaces := FMain.Namespaces;
+    mOptions.Namespaces := FMain.State.Namespaces;
     FUsesGraph.SetOptions(mOptions);
   end;
   Result := FUsesGraph;

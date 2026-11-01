@@ -668,7 +668,7 @@ begin
   try
     if SameText(ExtractFileExt(AOptions.CheckTarget), '.dproj') then
     begin
-      Result.Main.ProjectFile := TPath.GetFullPath(AOptions.CheckTarget);
+      Result.Main.Setup.ProjectFile := TPath.GetFullPath(AOptions.CheckTarget);
     end;
     if AOptions.IndexCacheFolder <> '' then
     begin
@@ -1473,7 +1473,7 @@ begin
         end;
       mResolver := TNameResolver.Create(mGroup.Index, mEnsureUnit);
       try
-        mResolver.Namespaces := mGroup.Main.Namespaces;
+        mResolver.Namespaces := mGroup.Main.State.Namespaces;
         mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery,
           TShellAffectedSources.New(mResolver, mGroup.Index, mReadText), mRequest, nil);
       finally

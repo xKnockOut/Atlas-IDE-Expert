@@ -32,7 +32,7 @@ begin
   begin
     raise EMcpToolError.Create('Argumente "line" und "column" fehlen');
   end;
-  AContext.Edit.Namespaces := AContext.Group.Main.Namespaces;
+  AContext.Edit.Namespaces := AContext.Group.Main.State.Namespaces;
   Result := AContext.Edit.RenameSymbol(FileName, Line, Column, TMcpServer.RequiredString(AArguments, 'newName'),
     DryRunOf(AArguments));
 end;
@@ -106,7 +106,7 @@ begin
   end
   else
   begin
-    mFiles := AContext.Group.Main.ProjectFiles;
+    mFiles := AContext.Group.Main.State.ProjectFiles;
   end;
   if Length(mFiles) = 0 then
   begin

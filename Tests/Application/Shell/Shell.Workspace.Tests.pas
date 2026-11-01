@@ -39,13 +39,15 @@ uses
   System.Generics.Collections,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
+  Shell.Workspace.Setup,
+  Shell.Workspace.RuleProjects,
   Shell.Workspace;
 
 function NewWorkspace(const AName: string): TShellWorkspace;
 begin
-  Result := TShellWorkspace.Create('', AName, TDocumentStore.Create,
+  Result := TShellWorkspace.Create('', AName, TShellWorkspaceServices.Create(TDocumentStore.Create,
     TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
-    'atlas-test-index');
+    'atlas-test-index'));
 end;
 
 { TShellWorkspaceTests }
@@ -57,11 +59,9 @@ var
   Raised: string;
 begin
   Raised := '';
-  Workspace := TShellWorkspace.Create('', 'Test', TDocumentStore.Create,
-    TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
-    'atlas-test-index');
+  Workspace := NewWorkspace('Test');
   try
-    Workspace.LoopThreadId := TThread.Current.ThreadID;
+    Workspace.Setup.LoopThreadId := TThread.Current.ThreadID;
     Worker := TThread.CreateAnonymousThread(
       procedure
       begin
@@ -92,15 +92,15 @@ var
 begin
   All := TObjectList<TShellWorkspace>.Create(True);
   try
-    Assert.IsNull(TShellWorkspace.Choose(nil, All), 'Ohne Arbeitsbereich keiner');
-    Assert.IsNull(TShellWorkspace.Choose(nil, nil));
+    Assert.IsNull(TShellWorkspaces.Choose(nil, All), 'Ohne Arbeitsbereich keiner');
+    Assert.IsNull(TShellWorkspaces.Choose(nil, nil));
     A := NewWorkspace('A');
     All.Add(A);
-    Assert.AreSame(A, TShellWorkspace.Choose(nil, All), 'Einziger Arbeitsbereich als Rückfall');
+    Assert.AreSame(A, TShellWorkspaces.Choose(nil, All), 'Einziger Arbeitsbereich als Rückfall');
     B := NewWorkspace('B');
     All.Add(B);
-    Assert.IsNull(TShellWorkspace.Choose(nil, All), 'Bei mehreren kein Rückfall');
-    Assert.AreSame(B, TShellWorkspace.Choose(B, All), 'Treffer geht vor');
+    Assert.IsNull(TShellWorkspaces.Choose(nil, All), 'Bei mehreren kein Rückfall');
+    Assert.AreSame(B, TShellWorkspaces.Choose(B, All), 'Treffer geht vor');
   finally
     All.Free;
   end;
@@ -119,18 +119,18 @@ var
   Outside, Merged: TCheckProject;
 begin
   Outside := Default(TCheckProject);
-  Merged := TShellWorkspace.MergeRuleProjects(nil, 'U.pas');
+  Merged := TShellRuleProjects.MergeRuleProjects(nil, 'U.pas');
   Assert.AreEqual('U.pas', Merged.FileName);
   Assert.IsTrue(Merged.Application = TRuleApplicationKind.Unknown, 'Ohne Projekt unbekannt');
-  Merged := TShellWorkspace.MergeRuleProjects([Outside, Member('Tests', TRuleApplicationKind.Console)], 'U.pas');
+  Merged := TShellRuleProjects.MergeRuleProjects([Outside, Member('Tests', TRuleApplicationKind.Console)], 'U.pas');
   Assert.IsTrue(Merged.Application = TRuleApplicationKind.Console, 'Projekt ohne die Datei zählt nicht');
   Assert.AreEqual('Tests', Merged.Name);
   Assert.AreEqual('U.pas', Merged.FileName);
-  Merged := TShellWorkspace.MergeRuleProjects([Member('A', TRuleApplicationKind.Gui),
+  Merged := TShellRuleProjects.MergeRuleProjects([Member('A', TRuleApplicationKind.Gui),
     Member('B', TRuleApplicationKind.Gui)], 'U.pas');
   Assert.IsTrue(Merged.Application = TRuleApplicationKind.Gui, 'Gleiche Art bleibt');
   Assert.AreEqual('A', Merged.Name, 'Das erste Projekt liefert den Namen');
-  Merged := TShellWorkspace.MergeRuleProjects([Member('Tests', TRuleApplicationKind.Console),
+  Merged := TShellRuleProjects.MergeRuleProjects([Member('Tests', TRuleApplicationKind.Console),
     Member('Plugin', TRuleApplicationKind.Package), Member('Noch', TRuleApplicationKind.Console)], 'U.pas');
   Assert.IsTrue(Merged.Application = TRuleApplicationKind.Unknown, 'Verschiedene Arten ergeben Unknown');
   Assert.AreEqual('Tests', Merged.Name);
@@ -143,7 +143,7 @@ var
 begin
   mWorkspace := NewWorkspace('Ohne');
   try
-    mWorkspace.LoopThreadId := TThread.Current.ThreadID;
+    mWorkspace.Setup.LoopThreadId := TThread.Current.ThreadID;
     Assert.IsFalse(mWorkspace.RuleReady(mReason), 'Vor dem ersten Aufbau ist offen, ob ein Projekt kommt');
     Assert.AreEqual('Projekte werden geladen', mReason);
     mWorkspace.Reload;

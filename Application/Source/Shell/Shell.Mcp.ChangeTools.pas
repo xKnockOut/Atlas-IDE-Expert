@@ -97,7 +97,7 @@ begin
   mProcess := TProcessRunner.Create;
   mResolver := TNameResolver.Create(AGroup.Index, EnsureUnitOf(AGroup));
   try
-    mResolver.Namespaces := AGroup.Main.Namespaces;
+    mResolver.Namespaces := AGroup.Main.State.Namespaces;
     try
       Result := TShellAffectedTests.Run(mProcess, ASettings, AQuery,
         TShellAffectedSources.New(mResolver, AGroup.Index, AReadText), ARequest, nil);
@@ -219,10 +219,10 @@ begin
   end;
   Result.Title := ExtractFileName(AContext.Root);
   Result.Root := AContext.Root;
-  Result.Namespaces := AContext.Group.Main.Namespaces;
+  Result.Namespaces := AContext.Group.Main.State.Namespaces;
   if ASettings.ArchitectureScope = 'project' then
   begin
-    Result.Files := AContext.Group.Main.ProjectFiles;
+    Result.Files := AContext.Group.Main.State.ProjectFiles;
   end
   else
   begin
