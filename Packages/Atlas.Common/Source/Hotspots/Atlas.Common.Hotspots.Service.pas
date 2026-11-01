@@ -226,7 +226,7 @@ begin
     mFiles[mIndex] := LowerCase(mFiles[mIndex]);
   TArray.Sort<string>(mFiles);
   Result := Title + #1 + Root + #1 + IntToStr(Ord(Level)) + #1 + IntToStr(Options.Months) + #1 +
-    IntToStr(Options.MinSharedCommits) + #1 + FloatToStr(Options.MinCouplingRatio) + #1 +
+    IntToStr(Options.MinSharedCommits) + #1 + FloatToStr(Options.MinCouplingRatio, TFormatSettings.Invariant) + #1 +
     IntToStr(Options.MaxCommitFiles) + #1 + IntToStr(Options.MethodCandidates) + #1 +
     IntToStr(Options.TrendCandidates) + #1 + IntToStr(Options.TrendMonths) + #1 + string.Join(#2, Exclude) + #1 +
     string.Join(#2, Namespaces) + #1 + string.Join(#2, mFiles);

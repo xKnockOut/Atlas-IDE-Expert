@@ -117,35 +117,32 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Lookup := TMethodLookup.FromResolver(Resolver, AContext.Tree, FileName);
-      // Ereignisse der Formulardatei brauchen eine Methode des Objekts.
-      Lookup.InForm :=
-        function(const AName: string): Boolean
-        begin
-          Result := MentionsWord(FormText, AName);
-        end;
-      for Target in TMethodWithoutSelf.Candidates(AContext.Text, AContext.Tree, Lookup) do
+    Lookup := TMethodLookup.FromResolver(Resolver, AContext.Tree, FileName);
+    // Ereignisse der Formulardatei brauchen eine Methode des Objekts.
+    Lookup.InForm :=
+      function(const AName: string): Boolean
       begin
-        Fixes := nil;
-        if TMethodWithoutSelf.Execute(TMethodSource.Create(FileName, AContext.Text, AContext.Tree,
-          NameOffsets(AContext.Tree, Target.Name)), nil, Target.NamePosition, TMethodConversion.ClassMethod,
-          AContext.MethodKindStatic, Lookup, AContext.Formatting, Converted, Reason) then
-          for Item in Converted.Files do
-            if SameText(Item.FileName, FileName) and (Item.Edits <> nil) then
-              Fixes := [TRuleFix.Create(TMethodWithoutSelf.ClassMethodTitle, Item.Edits, False)];
-        // Mittel: Aufrufe über Methodenzeiger in anderen Units sieht die Regel nicht.
-        AReport.Add(TTextRange.Create(Target.NamePosition, TTextPosition.Create(Target.NamePosition.Line,
-          Target.NamePosition.Character + Length(Target.Name))), Format('%s.%s braucht Self nicht: als ' +
-          'class-Methode, freie Routine oder Record-Helper möglich.', [Target.ClassName, Target.Name]),
-          TRuleConfidence.Medium, Fixes);
+        Result := MentionsWord(FormText, AName);
       end;
-    finally
-      Resolver.UnpinTree;
+    for Target in TMethodWithoutSelf.Candidates(AContext.Text, AContext.Tree, Lookup) do
+    begin
+      Fixes := nil;
+      if TMethodWithoutSelf.Execute(TMethodSource.Create(FileName, AContext.Text, AContext.Tree,
+        NameOffsets(AContext.Tree, Target.Name)), nil, Target.NamePosition, TMethodConversion.ClassMethod,
+        AContext.MethodKindStatic, Lookup, AContext.Formatting, Converted, Reason) then
+        for Item in Converted.Files do
+          if SameText(Item.FileName, FileName) and (Item.Edits <> nil) then
+            Fixes := [TRuleFix.Create(TMethodWithoutSelf.ClassMethodTitle, Item.Edits, False)];
+      // Mittel: Aufrufe über Methodenzeiger in anderen Units sieht die Regel nicht.
+      AReport.Add(TTextRange.Create(Target.NamePosition, TTextPosition.Create(Target.NamePosition.Line,
+        Target.NamePosition.Character + Length(Target.Name))), Format('%s.%s braucht Self nicht: als ' +
+        'class-Methode, freie Routine oder Record-Helper möglich.', [Target.ClassName, Target.Name]),
+        TRuleConfidence.Medium, Fixes);
     end;
   finally
+    Resolver.UnpinTree;
   end;
 end;
 

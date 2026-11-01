@@ -109,7 +109,7 @@ end;
 
 function ScoreText(AValue: Double): string;
 begin
-  Result := FormatFloat('0.00', AValue);
+  Result := FormatFloat('0.00', AValue, TFormatSettings.Invariant);
 end;
 
 function ChurnText(const AChanges: THotspotChanges): string;
