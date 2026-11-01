@@ -49,39 +49,17 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Build.Events;
+  Atlas.Core.Build.Events,
+  Atlas.Core.Build.PipelineSettings;
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Einzeln abschaltbare Prüfung (build.releaseChecks).</summary>
-  TAtlasReleaseCheck = (DebugDefine, DebugInfo, StackFrames, Assertions, RangeChecks, OverflowChecks, MemoryLeaks,
-    VersionInfo, OutputFolder);
   /// <summary>Art eines Verstoßes; bestimmt Text und Hinweis, wo die Option zu ändern ist.</summary>
   TAtlasReleaseIssue = (DebugDefine, DebugInfo, DebugInfoInExe, StackFrames, Assertions, RangeChecks, OverflowChecks,
     MemoryLeaks, VersionMissing, VersionUnchanged, OutputFolder);
-  /// <summary>build.gate (#529): off und warn melden nur, block bricht den Build ab.</summary>
-  TAtlasBuildGate = (Off, Warn, Block);
   /// <summary>Ergebnis einer Prüfung vor dem Build.</summary>
   TAtlasReleaseOutcome = (Passed, Reported, Blocked, Overridden);
 {$SCOPEDENUMS OFF}
-
-  TAtlasReleaseCheckSetting = record
-    Enabled: Boolean;
-    /// <summary>Sollwert der Compileroption (nur für Prüfungen mit Sollwert): True = an.</summary>
-    Expected: Boolean;
-  end;
-
-  TAtlasReleaseChecks = record
-    Items: array[TAtlasReleaseCheck] of TAtlasReleaseCheckSetting;
-    /// <summary>Alle an, Sollwerte aus.</summary>
-    class function Defaults: TAtlasReleaseChecks; static;
-    /// <summary>Liest die Textform (siehe Kopf); fehlende Namen mit Vorgabe, unbekannte entfallen.</summary>
-    class function Parse(const AText: string): TAtlasReleaseChecks; static;
-    /// <summary>Textform in fester Reihenfolge mit allen Prüfungen.</summary>
-    function ToText: string;
-    /// <summary>Parse und ToText in einem: einheitliche Schreibweise für die Ablage.</summary>
-    class function Normalized(const AText: string): string; static;
-  end;
 
   /// <summary>Einstellungen des Wächters, aus den Plugin-Einstellungen zusammengesetzt.</summary>
   TAtlasReleaseSettings = record
@@ -163,28 +141,15 @@ type
   public const
     /// <summary>Zweiter Build mit denselben Verstößen in dieser Zeit läuft trotz block (wie #529).</summary>
     OverrideMs = 10000;
-    ReleaseConfiguration = 'Release';
     DebugConfiguration = 'Debug';
-    CheckNames: array[TAtlasReleaseCheck] of string = ('debugDefine', 'debugInfo', 'stackFrames', 'assertions',
-      'rangeChecks', 'overflowChecks', 'memoryLeaks', 'versionInfo', 'outputFolder');
     RuleIds: array[TAtlasReleaseCheck] of string = ('release-debug-define', 'release-debug-info',
       'release-stack-frames', 'release-assertions', 'release-range-checks', 'release-overflow-checks',
       'release-memory-leaks', 'release-version-info', 'release-output-folder');
-    /// <summary>Prüfungen mit Sollwert (Compileroptionen).</summary>
-    HasTarget: array[TAtlasReleaseCheck] of Boolean = (False, True, True, True, True, True, False, False, False);
     /// <summary>Name der Option in den Projektoptionen je Verstoß (für Meldung und Protokoll).</summary>
     OptionNames: array[TAtlasReleaseIssue] of string = ('DCC_Define', 'DCC_DebugInformation', 'DCC_DebugInfoInExe',
       'DCC_GenerateStackFrames', 'DCC_AssertionsAtRuntime', 'DCC_RangeChecking', 'DCC_IntegerOverflowCheck',
       'ReportMemoryLeaksOnShutdown', 'VerInfo_IncludeVerInfo', 'VerInfo_Keys', 'DCC_ExeOutput');
-    GateNames: array[TAtlasBuildGate] of string = ('off', 'warn', 'block');
   public
-    /// <summary>"off", "warn" oder "block" (Groß-/Kleinschreibung egal); sonst off.</summary>
-    class function GateOf(const AText: string): TAtlasBuildGate; static;
-    /// <summary>Konfigurationen durch Komma oder Semikolon getrennt, ohne Leere und Doppelte; Schreibweise der
-    /// ersten Nennung.</summary>
-    class function ConfigurationList(const AText: string): TArray<string>; static;
-    /// <summary>Einheitliche Schreibweise von build.releaseConfigs: Liste durch ", " getrennt.</summary>
-    class function NormalizedConfigurations(const AText: string): string; static;
     /// <summary>Prüft der Wächter diesen Lauf? Eingeschaltet, Release, make oder build, keine Hintergrundprüfung.
     /// </summary>
     class function Applies(const ASettings: TAtlasReleaseSettings; const AProject: TAtlasCompileProject): Boolean;
@@ -254,92 +219,8 @@ implementation
 
 uses
   System.Diagnostics,
-  Atlas.Text.Chars;
-
-{ TAtlasReleaseChecks }
-
-class function TAtlasReleaseChecks.Defaults: TAtlasReleaseChecks;
-var
-  Check: TAtlasReleaseCheck;
-begin
-  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
-  begin
-    Result.Items[Check].Enabled := True;
-    Result.Items[Check].Expected := False;
-  end;
-end;
-
-function CheckOf(const AName: string; out ACheck: TAtlasReleaseCheck): Boolean;
-var
-  Check: TAtlasReleaseCheck;
-begin
-  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
-    if SameText(AName, TAtlasReleaseGuard.CheckNames[Check]) then
-    begin
-      ACheck := Check;
-      Exit(True);
-    end;
-  ACheck := TAtlasReleaseCheck.DebugDefine;
-  Result := False;
-end;
-
-class function TAtlasReleaseChecks.Parse(const AText: string): TAtlasReleaseChecks;
-var
-  Part, Name, Target: string;
-  Enabled: Boolean;
-  Equals: Integer;
-  Check: TAtlasReleaseCheck;
-begin
-  Result := Defaults;
-  for Part in AText.Split([',', ';']) do
-  begin
-    Name := Trim(Part);
-    Enabled := True;
-    if Name.StartsWith('-') or Name.StartsWith('!') then
-    begin
-      Enabled := False;
-      Name := Trim(Copy(Name, 2, MaxInt));
-    end;
-    Target := '';
-    Equals := Pos('=', Name);
-    if Equals > 0 then
-    begin
-      Target := Trim(Copy(Name, Equals + 1, MaxInt));
-      Name := Trim(Copy(Name, 1, Equals - 1));
-    end;
-    if not CheckOf(Name, Check) then
-      Continue;
-    Result.Items[Check].Enabled := Enabled;
-    if TAtlasReleaseGuard.HasTarget[Check] and (Target <> '') then
-      Result.Items[Check].Expected := SameText(Target, 'on') or SameText(Target, 'true') or (Target = '1');
-  end;
-end;
-
-function TAtlasReleaseChecks.ToText: string;
-const
-  Targets: array[Boolean] of string = ('=off', '=on');
-var
-  Check: TAtlasReleaseCheck;
-  Item: string;
-begin
-  Result := '';
-  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
-  begin
-    Item := TAtlasReleaseGuard.CheckNames[Check];
-    if not Items[Check].Enabled then
-      Item := '-' + Item;
-    if TAtlasReleaseGuard.HasTarget[Check] then
-      Item := Item + Targets[Items[Check].Expected];
-    if Result <> '' then
-      Result := Result + ',';
-    Result := Result + Item;
-  end;
-end;
-
-class function TAtlasReleaseChecks.Normalized(const AText: string): string;
-begin
-  Result := Parse(AText).ToText;
-end;
+  Atlas.Text.Chars,
+  Atlas.Core.Versions.Project;
 
 { TAtlasReleaseSettings }
 
@@ -347,8 +228,8 @@ class function TAtlasReleaseSettings.Create(AEnabled: Boolean; const AGate, ACon
   AChecks: string): TAtlasReleaseSettings;
 begin
   Result.Enabled := AEnabled;
-  Result.Gate := TAtlasReleaseGuard.GateOf(AGate);
-  Result.Configurations := TAtlasReleaseGuard.ConfigurationList(AConfigurations);
+  Result.Gate := TAtlasBuildPipelineSettings.GateOf(AGate);
+  Result.Configurations := TAtlasBuildPipelineSettings.ConfigurationList(AConfigurations);
   Result.Checks := TAtlasReleaseChecks.Parse(AChecks);
 end;
 
@@ -356,7 +237,7 @@ function TAtlasReleaseSettings.IsRelease(const AConfiguration: string): Boolean;
 var
   Name: string;
 begin
-  Result := SameText(Trim(AConfiguration), TAtlasReleaseGuard.ReleaseConfiguration);
+  Result := SameText(Trim(AConfiguration), TAtlasBuildPipelineSettings.ReleaseConfiguration);
   if Result or (Trim(AConfiguration) = '') then
     Exit;
   for Name in Configurations do
@@ -365,44 +246,6 @@ begin
 end;
 
 { TAtlasReleaseGuard }
-
-class function TAtlasReleaseGuard.GateOf(const AText: string): TAtlasBuildGate;
-var
-  Gate: TAtlasBuildGate;
-begin
-  for Gate := Low(TAtlasBuildGate) to High(TAtlasBuildGate) do
-    if SameText(Trim(AText), GateNames[Gate]) then
-      Exit(Gate);
-  Result := TAtlasBuildGate.Off;
-end;
-
-class function TAtlasReleaseGuard.ConfigurationList(const AText: string): TArray<string>;
-var
-  Part, Name, Known: string;
-  Seen: Boolean;
-begin
-  Result := nil;
-  for Part in AText.Split([',', ';']) do
-  begin
-    Name := Trim(Part);
-    // JSON-artige Eingabe ["Release", "Ship"] verträgt die Liste auch.
-    Name := Trim(StringReplace(StringReplace(StringReplace(Name, '"', '', [rfReplaceAll]), '[', '',
-      [rfReplaceAll]), ']', '', [rfReplaceAll]));
-    if Name = '' then
-      Continue;
-    Seen := False;
-    for Known in Result do
-      if SameText(Known, Name) then
-        Seen := True;
-    if not Seen then
-      Result := Result + [Name];
-  end;
-end;
-
-class function TAtlasReleaseGuard.NormalizedConfigurations(const AText: string): string;
-begin
-  Result := string.Join(', ', ConfigurationList(AText));
-end;
 
 class function TAtlasReleaseGuard.Applies(const ASettings: TAtlasReleaseSettings;
   const AProject: TAtlasCompileProject): Boolean;
@@ -413,44 +256,14 @@ begin
 end;
 
 class function TAtlasReleaseGuard.IsOn(const AValue: string; ADefault: Boolean): Boolean;
-var
-  Value: string;
 begin
-  Value := LowerCase(Trim(AValue));
-  if (Value = 'true') or (Value = '1') or (Value = '2') then
-    Result := True
-  else if (Value = 'false') or (Value = '0') then
-    Result := False
-  else
-    Result := ADefault;
-end;
-
-function VersionPart(const AValue, ADefault: string): string;
-begin
-  Result := Trim(AValue);
-  if Result = '' then
-    Result := ADefault;
+  Result := TAtlasProjectVersion.IsOn(AValue, ADefault);
 end;
 
 class function TAtlasReleaseGuard.VersionOf(const AOptions: TAtlasReleaseOptions): string;
-var
-  Part: string;
 begin
-  Result := '';
-  if not IsOn(AOptions.IncludeVersionInfo, False) then
-    Exit;
-  for Part in AOptions.VersionKeys.Split([';']) do
-    if SameText(Trim(Copy(Part, 1, Pos('=', Part) - 1)), 'FileVersion') then
-    begin
-      Result := Trim(Copy(Part, Pos('=', Part) + 1, MaxInt));
-      // $(…) setzt erst MSBuild ein; dann gelten die Einzelwerte.
-      if Pos('$(', Result) > 0 then
-        Result := '';
-      Break;
-    end;
-  if Result = '' then
-    Result := VersionPart(AOptions.MajorVersion, '1') + '.' + VersionPart(AOptions.MinorVersion, '0') + '.' +
-      VersionPart(AOptions.ReleaseVersion, '0') + '.' + VersionPart(AOptions.BuildVersion, '0');
+  Result := TAtlasProjectVersion.FromOptions(AOptions.IncludeVersionInfo, AOptions.VersionKeys, AOptions.MajorVersion,
+    AOptions.MinorVersion, AOptions.ReleaseVersion, AOptions.BuildVersion);
 end;
 
 class function TAtlasReleaseGuard.ResolveFolder(const AFolder, AConfiguration, APlatform: string): string;

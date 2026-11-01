@@ -1670,8 +1670,7 @@ uses
   System.StrUtils,
   Atlas.Core.Generate.Contract,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.ReleaseGuard,
-  Atlas.Core.Build.Gate,
+  Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Build.OpenBuildSettings,
   Atlas.Core.Settings.OverviewKinds,
@@ -2043,8 +2042,8 @@ begin
   Result.TasksSaveBeforeRun := True;
   Result.TasksRunChecksParallel := False;
   Result.TasksOnlyFindings := False;
-  Result.BuildGateTimeoutMs := TAtlasBuildGateCheck.DefaultTimeoutMs;
-  Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
+  Result.BuildGateTimeoutMs := TAtlasBuildPipelineSettings.GateDefaultTimeoutMs;
+  Result.ReleaseConfigs := TAtlasBuildPipelineSettings.ReleaseConfiguration;
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
@@ -2603,11 +2602,11 @@ begin
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
   if WelcomePageActiveLayout = '' then
     WelcomePageActiveLayout := DefaultWelcomeLayoutName;
-  BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
+  BuildGate := TAtlasBuildPipelineSettings.GateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
   TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
-  BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildGateCheck.MinTimeoutMs,
-    TAtlasBuildGateCheck.MaxTimeoutMs);
-  ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
+  BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.GateMinTimeoutMs,
+    TAtlasBuildPipelineSettings.GateMaxTimeoutMs);
+  ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);

@@ -56,6 +56,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Build.Events,
+  Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Build.Gate;
 
@@ -200,8 +201,8 @@ end;
 
 procedure TAtlasBuildGateTests.SettingsClampTimeout;
 begin
-  Assert.AreEqual(TAtlasBuildGateCheck.MinTimeoutMs, TAtlasGateSettings.Create('block', 0).TimeoutMs);
-  Assert.AreEqual(TAtlasBuildGateCheck.MaxTimeoutMs, TAtlasGateSettings.Create('block', 999999).TimeoutMs);
+  Assert.AreEqual(TAtlasBuildPipelineSettings.GateMinTimeoutMs, TAtlasGateSettings.Create('block', 0).TimeoutMs);
+  Assert.AreEqual(TAtlasBuildPipelineSettings.GateMaxTimeoutMs, TAtlasGateSettings.Create('block', 999999).TimeoutMs);
   Assert.AreEqual(300, TAtlasGateSettings.Create('block', 300).TimeoutMs);
   Assert.IsTrue(TAtlasGateSettings.Create('BLOCK', 300).Gate = TAtlasBuildGate.Block);
   Assert.IsTrue(TAtlasGateSettings.Create('streng', 300).Gate = TAtlasBuildGate.Off);

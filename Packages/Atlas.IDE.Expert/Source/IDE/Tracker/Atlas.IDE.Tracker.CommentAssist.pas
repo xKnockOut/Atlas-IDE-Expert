@@ -10,7 +10,7 @@
 // - Platzhalter: {issue} = Kennung, {branch}/{commit} aus der
 //   Versionsverwaltung des Projektordners (TAtlasIdeVcs.Run im Hintergrund),
 //   {version} aus den Versionsinformationen des aktiven Projekts
-//   (TAtlasReleaseGuard.VersionOf, aktive Konfiguration und Plattform).
+//   (TAtlasIdeProjectContext.Version von Base, aktive Konfiguration und Plattform).
 // - Entwürfe in <Zwischenspeicher>\drafts.json (TAtlasCommentDrafts); die
 //   Datei liest der Dienst einmal und schreibt sie bei jeder Änderung atomar.
 // - Eine neue Anfrage derselben Art ersetzt die alte, Cancel verwirft alle;
@@ -48,8 +48,6 @@ type
     Recent: TAtlasCommentRecentHook;
     /// <summary>Ordner des Projekts für {branch} und {commit}; '' ohne Projekt.</summary>
     Folder: TFunc<string>;
-    /// <summary>Ordner der Projekt-Zusammenfassungen für {version} (wie TAtlasIdeReleaseGuard.ReadOptions).</summary>
-    SummaryFolder: string;
   end;
 
   /// <summary>Dienst hinter allen Kommentarfeldern: Entwurfsdatei, Zwischenspeicher der Benutzer, Threads.
@@ -69,7 +67,6 @@ type
     FHooks: TAtlasCommentAssistHooks;
     FStarted: Boolean;
     FFolder: string;
-    FSummaryFolder: string;
     FDrafts: TAtlasCommentDrafts;
     FDraftsLoaded: Boolean;
     FUsers: TDictionary<string, TCachedUsers>;
@@ -148,14 +145,13 @@ uses
   System.IOUtils,
   System.DateUtils,
   ToolsAPI,
-  Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Vcs.Contract,
-  Atlas.IDE.Build.ReleaseGuard,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Projects.Context,
   Atlas.IDE.Vcs.Service;
 
 { TAtlasIdeCommentService }
@@ -165,7 +161,6 @@ begin
   inherited Create;
   FHooks := AHooks;
   FFolder := ACacheFolder;
-  FSummaryFolder := AHooks.SummaryFolder;
   FStarted := True;
   FDrafts := TAtlasCommentDrafts.Create;
   FUsers := TDictionary<string, TCachedUsers>.Create;
@@ -599,7 +594,6 @@ function TAtlasIdeCommentAssist.VersionValue: string;
 var
   mModules: IOTAModuleServices;
   mProject: IOTAProject;
-  mOptions: TAtlasReleaseOptions;
 begin
   // Version des aktiven Projekts in der aktiven Konfiguration und Plattform; '' ohne Versionsinformationen.
   Result := '';
@@ -608,9 +602,7 @@ begin
     mProject := mModules.GetActiveProject;
   if mProject = nil then
     Exit;
-  if TAtlasIdeReleaseGuard.ReadOptions(mProject, mProject.CurrentConfiguration, mProject.CurrentPlatform,
-    FService.FSummaryFolder, mOptions) then
-    Result := TAtlasReleaseGuard.VersionOf(mOptions);
+  Result := TAtlasIdeProjectContext.Version(mProject, mProject.CurrentConfiguration, mProject.CurrentPlatform);
 end;
 
 procedure TAtlasIdeCommentAssist.Values(const ADone: TAtlasCommentValuesDone);

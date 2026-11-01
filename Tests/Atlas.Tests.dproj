@@ -981,8 +981,13 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.WhatsNew.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Versions\Atlas.Core.Versions.Project.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Pipeline.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Projects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Recording.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Versions.Project.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Build.Pipeline.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Trends.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.TestResults.pas"/>

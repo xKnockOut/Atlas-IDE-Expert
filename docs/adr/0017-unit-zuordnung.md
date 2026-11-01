@@ -54,6 +54,7 @@ Genehmigt im Auftrag zu #1455 (Paket 1, 01.11.2026). Das Skript übergeht diese 
 | `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.BuildTools` | Kompositionswurzel klebt Willkommensseite und Startprofile, bis die Willkommensseite ein Modul ist |
 | `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Tests` | Kompositionswurzel klebt Willkommensseite und Tests, bis die Willkommensseite ein Modul ist |
 | `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Rules` | Kompositionswurzel klebt Willkommensseite und Prüfregeln, bis die Willkommensseite ein Modul ist |
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.BuildPipeline` | Kompositionswurzel klebt Willkommensseite und Builds auf Auftrag, bis die Willkommensseite ein Modul ist |
 
 ### Bekannte Verstöße
 
@@ -105,6 +106,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
 | `Atlas.Core.Build.OpenBuildSettings` | `Core/Build/Atlas.Core.Build.OpenBuildSettings.pas` | Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455 |
+| `Atlas.Core.Build.Pipeline` | `Core/Build/Atlas.Core.Build.Pipeline.pas` | Was Base der Build-Pipeline gibt (Compilermeldungen, Bewertung) über die Registry, #1455 |
+| `Atlas.Core.Build.PipelineSettings` | `Core/Build/Atlas.Core.Build.PipelineSettings.pas` | Werte der Einstellungen von Prüfung vor dem Kompilieren und Release-Wächter für Einstellungen und Optionsdialog, #1455 |
+| `Atlas.Core.Versions.Project` | `Core/Versions/Atlas.Core.Versions.Project.pas` | Versionsnummer eines Projekts; Release-Wächter und Modul Tracker lesen sie, #1455 |
 | `Atlas.Core.Projects.Recording` | `Core/Projects/Atlas.Core.Projects.Recording.pas` | Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455 |
 | `Atlas.IDE.Projects.Summaries` | `IDE/Projects/Atlas.IDE.Projects.Summaries.pas` | Projekt-Zusammenfassungen pflegen (auch ohne Willkommensseite), `IAtlasProjectSummaryListener`, #1455 |
 | `Atlas.Core.Build.Target` | `Core/Build/Atlas.Core.Build.Target.pas` | Konfiguration und Symbole für den Server ({$IFDEF}-Zweige, #615) |
@@ -934,6 +938,7 @@ Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Bis zum Pilot 
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.IDE.Contracts.BuildTools` | `Contracts/Atlas.IDE.Contracts.BuildTools.pas` | Startprofile und Projektaufgaben für andere Module, #1455 |
+| `Atlas.IDE.Contracts.BuildPipeline` | `Contracts/Atlas.IDE.Contracts.BuildPipeline.pas` | Builds auf Auftrag (Build-Pipeline → Tests, Build-Werkzeuge, Willkommensseite), #1455 |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), #1455 |
 | `Atlas.IDE.Contracts.Rules` | `Contracts/Atlas.IDE.Contracts.Rules.pas` | Baseline aktualisieren (Prüfregeln → Willkommensseite), #1455 |

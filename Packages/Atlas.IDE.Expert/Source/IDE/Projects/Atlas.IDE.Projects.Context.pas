@@ -57,6 +57,9 @@ type
     /// ohne.</summary>
     class function BuildConfiguration(const AProject: IOTAProject; const AName: string): IOTABuildConfiguration;
       static;
+    /// <summary>Version von AProject in AConfiguration und APlatform aus seinen Versionsinformationen (#533, #1455);
+    /// '' ohne.</summary>
+    class function Version(const AProject: IOTAProject; const AConfiguration, APlatform: string): string; static;
   end;
 
 implementation
@@ -69,6 +72,7 @@ uses
   System.Win.Registry,
   Winapi.Windows,
   Atlas.Core.Settings.TeamFile,
+  Atlas.Core.Versions.Project,
   Atlas.IDE.Foundation.TeamFile;
 
 /// <summary>Konfiguration AConfiguration ('' = aktive), für APlatform deren Plattformkonfiguration; nil ohne.
@@ -365,6 +369,22 @@ begin
     if Context.Project <> '' then
       Result := Result + [Context];
   end;
+end;
+
+class function TAtlasIdeProjectContext.Version(const AProject: IOTAProject; const AConfiguration,
+  APlatform: string): string;
+
+  function Value(const AName: string): string;
+  begin
+    Result := Trim(ConfigurationValue(AProject, AConfiguration, APlatform, AName));
+  end;
+
+begin
+  Result := '';
+  if (AProject = nil) or (AProject.ProjectOptions = nil) then
+    Exit;
+  Result := TAtlasProjectVersion.FromOptions(Value('VerInfo_IncludeVerInfo'), Value('VerInfo_Keys'), Value('VerInfo_MajorVer'),
+    Value('VerInfo_MinorVer'), Value('VerInfo_Release'), Value('VerInfo_Build'));
 end;
 
 end.

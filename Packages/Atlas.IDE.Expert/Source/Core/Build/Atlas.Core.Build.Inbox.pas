@@ -37,7 +37,7 @@ type
     Platform: string;
   end;
 
-  /// <summary>Ergebnis eines Builds für die Antwort.</summary>
+  /// <summary>Ergebnis eines Builds auf Auftrag.</summary>
   TAtlasBuildReport = record
     /// <summary>Projekt, Art, Konfiguration und Plattform des Laufs.</summary>
     Project: TAtlasCompileProject;
@@ -47,6 +47,9 @@ type
     FinishedAt: TDateTime;
     Messages: TArray<TAtlasCompilerMessage>;
   end;
+
+  /// <summary>Ende eines Auftrags; AError &lt;&gt; '' = nicht gebaut (Grund), sonst Ergebnis in AReport.</summary>
+  TAtlasBuildDoneProc = reference to procedure(const AReport: TAtlasBuildReport; const AError: string);
 
   TAtlasBuildInbox = class
   public const

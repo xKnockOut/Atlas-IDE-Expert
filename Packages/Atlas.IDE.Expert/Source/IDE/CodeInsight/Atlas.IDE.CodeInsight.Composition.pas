@@ -239,6 +239,7 @@ uses
   Atlas.Core.Diagnostics.Teardown,
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.Pipeline,
   Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Problems.Contract,
@@ -249,7 +250,8 @@ uses
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Contracts.Rules,
-  Atlas.IDE.Contracts.Tests;
+  Atlas.IDE.Contracts.Tests,
+  Atlas.IDE.Contracts.BuildPipeline;
 
 var
   ManagerIndex: Integer = -1;
@@ -1119,6 +1121,18 @@ end;
 
 /// <summary>Testprojekte und einzelne Tests des Moduls Tests (#1455); False ohne laufendes Modul. Zieht mit der
 /// Willkommensseite in ihr Modul.</summary>
+/// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
+function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
+var
+  mItem: IInterface;
+begin
+  AJobs := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
+    if Supports(mItem, IAtlasBuildJobs, AJobs) then
+      Exit(True);
+  Result := False;
+end;
+
 function TestsSource(out ATests: IAtlasTestsSource): Boolean;
 var
   mItem: IInterface;
@@ -3627,22 +3641,24 @@ begin
     function(const AProject, AConfiguration, APlatform: string; const ADone: TAtlasQuickBuildDone;
       out AReason: string): Boolean
     var
-      Request: TAtlasBuildRequest;
+      mJob: TAtlasBuildJob;
+      mJobs: IAtlasBuildJobs;
     begin
-      if BuildRunner = nil then
+      if not BuildJobs(mJobs) then
       begin
         AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
         Exit(False);
       end;
-      Request := Default(TAtlasBuildRequest);
-      Request.Project := AProject;
-      Request.Kind := TAtlasCompileKind.Build;
-      Request.Configuration := AConfiguration;
-      Request.Platform := APlatform;
-      Result := BuildRunner.Start(Request, TAtlasWelcomeQuickActions.RequestedBy,
-        procedure(const AReport: TAtlasBuildReport; const AError: string)
+      mJob := Default(TAtlasBuildJob);
+      mJob.Project := AProject;
+      mJob.Kind := TAtlasBuildJobKind.Build;
+      mJob.Configuration := AConfiguration;
+      mJob.Platform := APlatform;
+      mJob.RequestedBy := TAtlasWelcomeQuickActions.RequestedBy;
+      Result := mJobs.Start(mJob,
+        procedure(const AResult: TAtlasBuildJobResult)
         begin
-          ADone(AReport.Succeeded, AError);
+          ADone(AResult.Succeeded, AResult.Error);
         end, AReason);
     end;
   Welcome.QuickActions.OnTests :=
@@ -3656,8 +3672,10 @@ begin
   Welcome.QuickActions.OnTestsBusy := TestsBusy;
   Welcome.QuickActions.OnIdeBusy :=
     function: Boolean
+    var
+      mJobs: IAtlasBuildJobs;
     begin
-      Result := ((BuildRunner <> nil) and BuildRunner.Busy) or TestsBusy;
+      Result := (BuildJobs(mJobs) and mJobs.Busy) or TestsBusy;
     end;
   // Startprofile (#575) und Knopf „Aufgaben ▾“ (#900) über das Modul Build (IAtlasBuildToolsSource, #1455);
   // ohne Modul keine Profile und keine Aufgaben. Zieht mit der Willkommensseite in ihr Modul.
