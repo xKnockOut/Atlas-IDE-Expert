@@ -440,6 +440,7 @@ contains
   Atlas.UI.Tracker.EndDialog in 'Source\UI\Tracker\Atlas.UI.Tracker.EndDialog.pas',
   Atlas.UI.Tracker.TimeDialog in 'Source\UI\Tracker\Atlas.UI.Tracker.TimeDialog.pas',
   Atlas.UI.Tracker.TimeList in 'Source\UI\Tracker\Atlas.UI.Tracker.TimeList.pas',
+  Atlas.UI.Tracker.Strings in 'Source\UI\Tracker\Atlas.UI.Tracker.Strings.pas',
   Atlas.UI.Tracker.BoardFrame in 'Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas' {AtlasBoardFrame: TFrame},
   Atlas.UI.Tracker.MoveDialog in 'Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas',
   Atlas.UI.Tracker.DocBox in 'Source\UI\Tracker\Atlas.UI.Tracker.DocBox.pas',

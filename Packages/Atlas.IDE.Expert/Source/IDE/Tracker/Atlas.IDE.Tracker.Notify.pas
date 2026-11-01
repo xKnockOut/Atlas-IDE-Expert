@@ -153,7 +153,7 @@ uses
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings,
   Atlas.UI.Popup.Window,
   Atlas.UI.Tracker.Notify,
   Atlas.IDE.Foundation.EditorStyle,
@@ -541,10 +541,10 @@ var
   mMode: TAtlasNotificationMode;
 begin
   mCenter := TAtlasNotificationCenter.Default;
-  mCaption := TAtlasStrings.Text(TAtlasTextId.IssueNotifyOpen);
+  mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyOpen);
   if ARest > 0 then
     mCenter.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Info,
-      TAtlasTrackerNoticeText.MoreTitle(ARest), TAtlasStrings.Text(TAtlasTextId.IssueNotifyMoreText));
+      TAtlasTrackerNoticeText.MoreTitle(ARest), TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyMoreText));
   // Älteste zuerst in die Liste, damit die neueste oben steht; eingeblendet wird nur die neueste.
   for mIndex := High(ANotices) downto 0 do
   begin
@@ -568,8 +568,8 @@ var
   mRun: TProc;
 begin
   mTitle := TAtlasTrackerNoticeText.ErrorTitle(AError, AJob.Target.Server);
-  mText := TAtlasStrings.Text(TAtlasTextId.IssueNotifyErrorText);
-  mCaption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewFixSettings);
+  mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyErrorText);
+  mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixSettings);
   mRun := SettingsAction(Self, Self);
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Warning,
     mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, mRun)]) = TAtlasNotificationMode.Show then

@@ -116,7 +116,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Strings,
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeIssueSearch }
@@ -246,7 +246,8 @@ end;
 procedure TAtlasIdeIssueSearch.ShowStatus(const AStatus: string);
 begin
   FIssues := nil;
-  ShowGroup(TAtlasPaletteGroup.Create(TAtlasStrings.Text(TAtlasTextId.PaletteIssuesGroup), AStatus, '', nil));
+  ShowGroup(TAtlasPaletteGroup.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesGroup), AStatus, '',
+    nil));
 end;
 
 procedure TAtlasIdeIssueSearch.ShowIssues(const ATitle: string; const AQuery: TAtlasIssueSearchQuery;
@@ -256,9 +257,9 @@ var
 begin
   FIssues := AIssues;
   if Length(AIssues) = 0 then
-    mStatus := TAtlasStrings.Text(TAtlasTextId.PaletteIssuesNone)
+    mStatus := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesNone)
   else
-    mStatus := TAtlasStrings.Text(TAtlasTextId.PaletteIssuesKeys);
+    mStatus := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesKeys);
   ShowGroup(TAtlasPaletteGroup.Create(ATitle, mStatus, AQuery.Highlight, TAtlasIssuePaletteSearch.Rows(AIssues)));
 end;
 
@@ -281,7 +282,7 @@ begin
       begin
         // Ohne Tracker gehört "#…" trotzdem nicht zu den Befehlen: Hinweis statt stiller Leere.
         if StartsStr('#', TrimLeft(APattern)) then
-          ShowStatus(TAtlasStrings.Text(TAtlasTextId.PaletteIssuesNoTracker))
+          ShowStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesNoTracker))
         else
           ShowGroup(TAtlasPaletteGroup.None);
         Exit;
@@ -300,16 +301,16 @@ begin
             if Assigned(FHooks.Recent) then
               mRecent := FHooks.Recent(FTarget);
             if Length(mRecent) = 0 then
-              ShowStatus(TAtlasStrings.Text(TAtlasTextId.PaletteIssuesNoRecent))
+              ShowStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesNoRecent))
             else
-              ShowIssues(TAtlasStrings.Text(TAtlasTextId.PaletteIssuesRecent), mQuery, mRecent);
+              ShowIssues(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesRecent), mQuery, mRecent);
           end;
       else
         if FHasLast and mQuery.SameAs(FLastQuery) then
-          ShowIssues(TAtlasStrings.Text(TAtlasTextId.PaletteIssuesGroup), mQuery, FLastIssues)
+          ShowIssues(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesGroup), mQuery, FLastIssues)
         else
         begin
-          ShowStatus(TAtlasStrings.Text(TAtlasTextId.PaletteIssuesSearching));
+          ShowStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesSearching));
           FDebounce.Input(mQuery.Key + '|' + mQuery.Text, NowMs);
           Schedule;
         end;
@@ -451,7 +452,7 @@ begin
     FLastQuery := AQuery;
     FLastIssues := AIssues;
     FHasLast := True;
-    ShowIssues(TAtlasStrings.Text(TAtlasTextId.PaletteIssuesGroup), AQuery, AIssues);
+    ShowIssues(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesGroup), AQuery, AIssues);
     Exit;
   end;
   if AError = TAtlasCiFetchError.Cancelled then
@@ -463,16 +464,16 @@ function TAtlasIdeIssueSearch.ErrorText(AError: TAtlasCiFetchError; const AQuery
 begin
   case AError of
     TAtlasCiFetchError.NotConfigured:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorConfig);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig);
     TAtlasCiFetchError.Unauthorized:
       Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
     TAtlasCiFetchError.NotFound:
       if AQuery.Kind = TAtlasIssueSearchKind.Key then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewErrorNotFound, [AQuery.Key])
+        Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AQuery.Key])
       else
-        Result := TAtlasStrings.Text(TAtlasTextId.PaletteIssuesNone);
+        Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesNone);
     TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.PaletteIssuesTimeout);
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.PaletteIssuesTimeout);
     TAtlasCiFetchError.Network:
       Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
   else
@@ -533,7 +534,7 @@ begin
           if Assigned(FHooks.Start) and Assigned(FHooks.CanStart) and FHooks.CanStart() then
             FHooks.Start(mIssue)
           else
-            Report(TAtlasStrings.Fmt(TAtlasTextId.PaletteIssuesCannotStart, [mIssue.Key]));
+            Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.PaletteIssuesCannotStart, [mIssue.Key]));
         TAtlasPaletteAction.Browse:
           Browse(mIssue.Key);
         TAtlasPaletteAction.Copy:

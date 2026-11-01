@@ -715,6 +715,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.Notify` | `UI/Tracker/Atlas.UI.Tracker.Notify.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.TimeDialog` | `UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.TimeList` | `UI/Tracker/Atlas.UI.Tracker.TimeList.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Texte des Moduls (Tracker), Sprache von Base, #1455 |
 | `Atlas.UI.Tracker.ValueBox` | `UI/Tracker/Atlas.UI.Tracker.ValueBox.pas` | Ordner `UI/Tracker` |
 
 ## Atlas.IDE.Welcome
