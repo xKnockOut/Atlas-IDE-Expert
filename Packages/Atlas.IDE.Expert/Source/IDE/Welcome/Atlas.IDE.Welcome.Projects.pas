@@ -49,8 +49,9 @@
 // - Tests (#69): nach jedem Testlauf aus der IDE übergibt die Composition den
 //   Abschnitt "tests" an RecordTests, für das Testprojekt und seine
 //   Projektgruppe (die Karte Tests #763 zeigt ihn beim Projekt, das der
-//   Benutzer öffnet). „Fehlgeschlagene Tests erneut ausführen“ liest daraus
-//   die Namen des letzten Laufs (LastFailedTests), auch nach einem Neustart.
+//   Benutzer öffnet). „Fehlgeschlagene Tests erneut ausführen“ des Moduls
+//   Tests liest daraus die Namen des letzten Laufs
+//   (TAtlasProjectSummaries.FailedTestsOf), auch nach einem Neustart.
 // - Schnellaktionen (#764): Die Quelle der Knopfleiste (QuickActions, aus der
 //   Composition) bekommt jeder Frame; VcsOf liefert ihr den Stand der
 //   Versionsverwaltung (frisch abgefragt, sonst gespeichert), Refresh fragt
@@ -150,8 +151,6 @@ type
     /// <summary>Letzter Testlauf (#69) des Testprojekts AProject für die Karte Tests (#763); bei einer
     /// Projektgruppe auch in deren Zusammenfassung. Hauptthread.</summary>
     procedure RecordTests(const AProject: string; const ATests: TAtlasProjectTests);
-    /// <summary>Fehlgeschlagene Tests des letzten Laufs von AProject (Namen für --run); leer ohne.</summary>
-    class function LastFailedTests(const AProject: string): TArray<string>; static;
     /// <summary>Jetzt in UTC, Zeitpunkt der Einträge.</summary>
     class function StampUtc: TDateTime; static;
     /// <summary>Stand der Versionsverwaltung von AProject: frisch abgefragt (diese Sitzung), sonst aus der
@@ -188,7 +187,6 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.Classes,
-  System.IOUtils,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -263,8 +261,7 @@ end;
 
 class function TAtlasIdeProjects.Folder: string;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TAtlasProjectSummaries.FolderName);
+  Result := TAtlasProjectSummaries.DefaultFolder;
 end;
 
 class function TAtlasIdeProjects.NowUtc: TDateTime;
@@ -766,16 +763,6 @@ begin
         ASummary.Tests := Tests;
       end);
   Changed;
-end;
-
-class function TAtlasIdeProjects.LastFailedTests(const AProject: string): TArray<string>;
-var
-  Summary: TAtlasProjectSummary;
-begin
-  Result := nil;
-  if (AProject <> '') and TAtlasProjectSummaries.Load(Folder, AProject, Summary) and Summary.Tests.Known and
-    SameText(Summary.Tests.Project, AProject) then
-    Result := Summary.Tests.FailedTests;
 end;
 
 procedure TAtlasIdeProjects.RecordBaseline(const AProject: string; const AState: TAtlasBaselineState;

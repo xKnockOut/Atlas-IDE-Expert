@@ -17,12 +17,19 @@
 - Optionsseiten: Modulschalter oben auf der jeweiligen Seite. Hinweis „Prüfregeln sind aus“ einmal je atlas.json und Sitzung, wenn die atlas.json Regeln festlegt und das Modul aus ist (`Atlas.Core.Settings.RuleChecksNotice`, `Atlas.IDE.Settings.RuleChecksNotice`, Quelle `ruleChecks`).
 - Nicht übersetzt: FPC trunk ließ sich in der Cloud nicht bauen. Alle Prüfskripte grün. Vor dem Merge mit Delphi bauen und Tests laufen lassen.
 - Danach: #1455 (Registry und Verträge in Base), #1456 (Pilot Base + Debugger).
+## Tests melden sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
+- `Atlas.IDE.Tests.Composition` meldet `atlas.tests` an (Schalter `tests`, nur normaler Start): Teil Tests (Läufer, Test am Cursor, Lens, betroffene Tests), Befehle, Atlas-Menü „Betroffene Tests ausführen“ (jetzt bei den Einträgen der Module), Kontextmenü „Test ausführen“/„Test debuggen“ (jetzt aus dem Modul; ausgeschaltet fehlen sie statt zu melden, dass es aus ist).
+- Base neu: `IAtlasBuildVerdictListener` (`Atlas.Core.Build.Verdict`, Tests nach dem Build), `IAtlasTestRunner` (`Atlas.Core.Modules.Contract`, Auswirkungsanalyse und Willkommensseite starten Tests), `Atlas.IDE.Foundation.StartOptions` (Startoptionen, „Start“, vorübergehende Startparameter; vorher in `TAtlasIdeStartProfiles`, Tests.Debug griff damit ins Modul Build), `TAtlasProjectSummaries.DefaultFolder/FailedTestsOf` (Test; das Modul liest die fehlgeschlagenen Tests ohne Willkommensseite).
+- Vertrag `Atlas.IDE.Contracts.Tests`: `IAtlasTestsSource` (Testprojekt ausführen, Test debuggen/finden, Busy), `IAtlasTestsListener` (Ende eines Laufs). Die Wurzel nutzt ihn übergangsweise für die Willkommensseite (`TWelcomeListener`).
+- Startprofile setzen ihr Profil nach dem Ende vorübergehender Parameter mit der nächsten Prüfung (≤ 1 s) wieder, nicht mehr sofort.
+- Nicht übersetzt; `Atlas.Core.Projects.Summary.Tests` läuft im FPC-Gerüst nicht (DataFile fehlt dort), die übrigen Tests grün.
+
 ## Build-Werkzeuge melden sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 - `Atlas.IDE.BuildTools.Composition` (eigener Ordner `IDE/BuildTools`, sonst Feature-Zyklus Build → Tasks → Problems → Build.Target) meldet `atlas.build` an (Schalter `buildTools`): Teile OpenBuild, Tasks, StartProfiles, CompilerSwitches; Befehle; Atlas-Menü „Compiler-Schalter“ und Untermenü „Aufgaben“ mit einem Eintrag je Aufgabe.
-- Build-Pipeline bleibt in Base (Läufer, Gate, Release-Wächter, Bewertung, Inbox, Build.Target); Vorschlag an Marco als Entscheidungskarte, umgesetzt mit der empfohlenen Variante. Unit-Zuordnung entsprechend geändert.
+- Build-Pipeline bleibt in Base (Läufer, Gate, Release-Wächter, Bewertung, Inbox, Build.Target); von Marco am 01.11.2026 bestätigt. Unit-Zuordnung entsprechend geändert.
 - Base neu: `TAtlasCompileEvents.Remove` (frei nach laufender Verteilung, Tests), `TAtlasIdeOpenBuild.Destroy` meldet seinen Wächter ab (vorher blieb er bis zum Entladen liegen), `TAtlasIdeBuildRunner.Current`, `TAtlasMenuEntry.Caption/Run` für Einträge ohne Befehl (`TAtlasModuleContributions.FindMenuEntry`, Test), Host-Dienste `Report`, `SetStatusField`, `CompileEvents`.
 - Vertrag `Atlas.IDE.Contracts.BuildTools`: `IAtlasBuildToolsSource` (Startprofile, Aufgaben) und `IAtlasTaskListener` (Ende einer Aufgabe, Record `TAtlasTaskResult`). Die Schnellaktionen der Willkommensseite nutzen ihn; die Wurzel verwendet den Vertrag übergangsweise, bis die Willkommensseite ihr Modul hat.
-- Noch offen: `Atlas.IDE.Tests.Debug` ruft `TAtlasIdeStartProfiles.RunTemporary/EndTemporary` direkt (mit dem Modul Tests lösen).
+- Erledigt mit dem Modul Tests: `Atlas.IDE.Tests.Debug` nutzt `TAtlasIdeStartOptions` von Base.
 
 ## Lesezeichen melden sich als Modul an (#1455, 01.11.2026, Branch `claude/project-thread-rc7rg9`, PR #1465)
 - `Atlas.IDE.Bookmarks.Composition` meldet `atlas.bookmarks` an (Schalter `bookmarks`, ab abgesichertem Start): Teile Notes, Bookmarks, QuickBookmarks; Befehle, Untermenü „Notizen und Lesezeichen“ (Section, Trennlinie „-“), Kontextmenü, alle Lesezeichen-Tasten (Ziffern mit Ids `Atlas.QuickBookmarkSet<N>`/`Jump<N>`, Akkord als Attempt), TODO-Liste des Projekts. Die Wurzel kennt keine Notes-/Bookmarks-Unit mehr.

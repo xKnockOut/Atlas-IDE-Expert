@@ -43,9 +43,8 @@
 //   eingesetzte Gerüst füllt der Platzhalter-Modus der Vervollständigung
 //   (OnPlaceholders, setzt die Composition); über einer Methodenimplementierung
 //   steht es an der Deklaration in der Klasse.
-// - Test am Cursor ausführen bzw. debuggen (#585): nur Einträge im
-//   Kontextmenü; was sie tun, setzt die Composition über OnRunTest und
-//   OnDebugTest (A-09: die Befehle importieren die Tests nicht).
+// - Test am Cursor ausführen bzw. debuggen (#585): Einträge des Moduls Tests
+//   im Kontextmenü (#1455), nicht mehr hier.
 // - „Element ausblenden …“ (#628): Menü zum gezeichneten Element an der Stelle
 //   des Rechtsklicks bzw. in der Zeile der Schreibmarke (TAtlasIdeHide).
 // - Nächster bzw. vorheriger Befund in der oberen Datei (#509): alle Atlas-
@@ -91,8 +90,6 @@ type
     /// <summary>Cursor beim ersten Erweitern der Auswahl.</summary>
     FAnchorFile: string;
     FAnchor: TLspTextPosition;
-    FOnRunTest: TProc;
-    FOnDebugTest: TProc;
     FProblemsOf: TAtlasProblemsOfFunc;
     FStepList: TFunc<Boolean, Boolean>;
     FOnPlaceholders: TAtlasPlaceholdersProc;
@@ -170,11 +167,6 @@ type
     /// <summary>Nach einer Einstellungsänderung: abschaltbare Einträge des Kontextmenüs (#1120) ein- bzw. ausblenden.
     /// </summary>
     class procedure UpdateContextMenus; static;
-    /// <summary>Kontextmenü „Test am Cursor ausführen“ (#585); setzt die Composition, nil = ausgeschaltet (der
-    /// Eintrag meldet das).</summary>
-    class property OnRunTest: TProc read FOnRunTest write FOnRunTest;
-    /// <summary>Kontextmenü „Test am Cursor debuggen“ (#585); nil = ausgeschaltet.</summary>
-    class property OnDebugTest: TProc read FOnDebugTest write FOnDebugTest;
     /// <summary>Cursor zum nächsten (AForward) bzw. vorherigen Befund der oberen Datei (#509); ohne Befund eine
     /// Zeile in der Meldungsansicht.</summary>
     class procedure StepProblem(AForward: Boolean); static;
@@ -606,23 +598,6 @@ begin
     procedure
     begin
       SwitchTestUnit;
-    end);
-  // Test am Cursor (#585): ohne Tests bzw. ohne „Test debuggen“ meldet der Eintrag, dass es aus ist.
-  FContextMenu.Add('Atlas.RunTest', TAtlasStrings.Text(TAtlasTextId.TestsRunHereCommand), nil,
-    procedure
-    begin
-      if Assigned(FOnRunTest) then
-        FOnRunTest()
-      else
-        Say(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
-    end);
-  FContextMenu.Add('Atlas.DebugTest', TAtlasStrings.Text(TAtlasTextId.TestsDebugCommand), nil,
-    procedure
-    begin
-      if Assigned(FOnDebugTest) then
-        FOnDebugTest()
-      else
-        Say(TAtlasStrings.Text(TAtlasTextId.TestsDebugOff));
     end);
   FContextMenu.Add('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), nil,
     procedure
