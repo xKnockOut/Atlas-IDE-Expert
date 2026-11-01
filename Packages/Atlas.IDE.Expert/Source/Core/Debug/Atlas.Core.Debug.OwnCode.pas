@@ -76,16 +76,13 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Settings.FolderList;
 
 function NormalFolder(const AFolder: string): string;
 begin
-  Result := Trim(AFolder);
-  if Result = '' then
-    Exit;
-  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
-  while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
-    Delete(Result, Length(Result), 1);
+  // Wie der Wert der Einstellung (TAtlasFolderList, Base).
+  Result := TAtlasFolderList.Normal(AFolder);
 end;
 
 function NormalPath(const APath: string): string;
@@ -136,16 +133,8 @@ begin
 end;
 
 class function TAtlasDebugOwnCode.ParseFolders(const AText: string): TArray<string>;
-var
-  Parts: TArray<string>;
-  Part: string;
-  List: TAtlasDebugOwnCode;
 begin
-  List.Folders := nil;
-  Parts := StringReplace(StringReplace(AText, #13, ';', [rfReplaceAll]), #10, ';', [rfReplaceAll]).Split([';']);
-  for Part in Parts do
-    List.AddFolder(Part);
-  Result := List.Folders;
+  Result := TAtlasFolderList.Parse(AText);
 end;
 
 class function TAtlasDebugOwnCode.FoldersText(const AFolders: TArray<string>): string;

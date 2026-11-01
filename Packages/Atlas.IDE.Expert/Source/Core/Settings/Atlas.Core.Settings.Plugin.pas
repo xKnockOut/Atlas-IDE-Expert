@@ -1657,6 +1657,12 @@ type
     function IndexProgressInMenu: Boolean;
   end;
 
+const
+  /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.BeforeBuildNames, in der Reihenfolge der Auswahl
+  /// im Optionsdialog; die Einstellungen kennen die Projektaufgaben nicht (A-09, sonst Feature-Zyklus, und Base
+  /// nicht das Modul Build, #1455), der Test hält beide gleich.</summary>
+  TasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');
+
 implementation
 
 uses
@@ -1696,9 +1702,6 @@ const
   /// Einstellungen kennen die Willkommensseite nicht, A-09).</summary>
   QuickActionNames: array[0..6] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
   QuickActionsDefaultConsole = 'wt.exe';
-  /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.BeforeBuildNames; die Einstellungen kennen die
-  /// Projektaufgaben nicht (A-09, sonst Feature-Zyklus), der Test hält beide gleich.</summary>
-  TasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');
 
 /// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
 function NormalizedTasksBeforeBuild(const AText: string): string;
@@ -2469,7 +2472,7 @@ end;
 
 procedure TAtlasPluginSettings.Normalize;
 begin
-  // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasDebugOwnCode.ParseFolders.
+  // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasFolderList.Parse (#1455).
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
   VisibleRows := EnsureRange(VisibleRows, MinVisibleRows, MaxVisibleRows);
   if ListWidth <> 0 then
