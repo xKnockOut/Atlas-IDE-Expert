@@ -536,8 +536,8 @@ begin
     if Field.Experimental then
       mName.Caption := mName.Caption + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
     Inc(Y, 20);
-    if Field.Description <> '' then
-      Inc(Y, AddLabel(Field.Description, Y).Height + 4);
+    if Field.DescriptionFor(TAtlasStrings.Language = TAtlasLanguage.English) <> '' then
+      Inc(Y, AddLabel(Field.DescriptionFor(TAtlasStrings.Language = TAtlasLanguage.English), Y).Height + 4);
     if Field.Restart then
     begin
       Note := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRestart), Y);

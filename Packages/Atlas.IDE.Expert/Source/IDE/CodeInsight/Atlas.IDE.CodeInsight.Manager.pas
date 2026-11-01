@@ -1039,6 +1039,11 @@ begin
           ServerEnded(Client.CloseInfo);
       end;
     FSession := TLspSession.Create(FServer.Client);
+    // Befunde, Code-Aktionen und Hover in der Sprache der Oberfläche (#1458).
+    if TAtlasStrings.Language = TAtlasLanguage.English then
+      FSession.Locale := 'en'
+    else
+      FSession.Locale := 'de';
     FContextsChecked := 0;
     RefreshContexts;
     AcceptApplyEdit(FSession);
