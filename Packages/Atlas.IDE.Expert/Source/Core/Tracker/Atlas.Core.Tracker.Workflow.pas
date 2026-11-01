@@ -138,7 +138,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Tracker.Naming;
+  Atlas.Core.Vcs.BranchNames;
 
 { TAtlasTrackerSyncOptions }
 
@@ -322,7 +322,7 @@ begin
   if Trim(ABranchBase) <> '' then
     Result := TArray<string>.Create(Trim(ABranchBase))
   else
-    Result := TArray<string>.Create(TAtlasTrackerNaming.GitBase, TAtlasTrackerNaming.GitBaseFallback);
+    Result := TArray<string>.Create(TAtlasVcsBranchNames.GitBase, TAtlasVcsBranchNames.GitBaseFallback);
 end;
 
 class function TAtlasTrackerWorkflow.CommitsFor(const AWork: IAtlasVcsLocalWork; const ABranch, ABranchBase,

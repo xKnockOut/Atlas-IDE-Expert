@@ -95,8 +95,6 @@ type
     FOnPlaceholders: TAtlasPlaceholdersProc;
     FOnSignatureHelp: TProc;
     FOnUnitRelations: TProc;
-    FOnCreateIssue: TProc;
-    FCreateIssueAvailable: TFunc<Boolean>;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -182,12 +180,6 @@ type
     /// <summary>Unit-Beziehungen der Unit im Editor zeigen (atlas.showUnitRelations, #896); setzt die
     /// Composition, nil = nichts.</summary>
     class property OnUnitRelations: TProc read FOnUnitRelations write FOnUnitRelations;
-    /// <summary>„Issue anlegen …“ (#1268) an der Schreibmarke; setzt die Composition, nil = nichts.</summary>
-    class property OnCreateIssue: TProc read FOnCreateIssue write FOnCreateIssue;
-    /// <summary>Sichtbarkeit des Eintrags „Issue anlegen …“ (issues.create); nil = unsichtbar.</summary>
-    class property CreateIssueAvailable: TFunc<Boolean> read FCreateIssueAvailable write FCreateIssueAvailable;
-    /// <summary>Befehl Atlas.CreateIssue: ruft OnCreateIssue, solange CreateIssueAvailable True liefert.</summary>
-    class procedure CreateIssue; static;
   end;
 
 implementation
@@ -266,7 +258,7 @@ const
   // Beim Tippen: lieber nichts tun als die IDE aufhalten.
   SlashTimeoutMs = 3000;
   // Plätze im Kontextmenü für Einträge der Module (#1455): Lesezeichen 8 (mit Trennlinien), Debugger 3, Tests 2,
-  // Analyse 1; Reserve für Regeln, Tracker und Willkommensseite. Zu wenige meldet das Log.
+  // Analyse 1, Tracker 1; Reserve für Regeln und Willkommensseite. Zu wenige meldet das Log.
   ModuleSlotCount = 24;
   CopyTextCommand = 'atlas.copyText';
   OpenFileCommand = 'atlas.openFile';
@@ -647,21 +639,6 @@ begin
     begin
       StepProblem(False);
     end);
-  // Issue anlegen (#1268): aus Auswahl bzw. TODO an der Schreibmarke, nur mit issues.create.
-  FContextMenu.AddWhen(TAtlasFeature.WelcomePage, 'Atlas.CreateIssue',
-    TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand),
-    function: Integer
-    begin
-      Result := TAtlasIdeSettings.Current.CreateIssueKey;
-    end,
-    procedure
-    begin
-      CreateIssue;
-    end,
-    function: Boolean
-    begin
-      Result := Assigned(FCreateIssueAvailable) and FCreateIssueAvailable();
-    end);
   // Ausblenden am Element (#628): nach einem Rechtsklick auf ein Element im Text oder in der Rinne für dieses.
   FContextMenu.Add('-', nil, nil);
   FContextMenu.AddGuarded(TAtlasFeature.Hide, 'Atlas.HideElement', TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
@@ -697,14 +674,6 @@ begin
   FOnPlaceholders := nil;
   FOnSignatureHelp := nil;
   FOnUnitRelations := nil;
-  FOnCreateIssue := nil;
-  FCreateIssueAvailable := nil;
-end;
-
-class procedure TAtlasIdeEditorCommands.CreateIssue;
-begin
-  if Assigned(FOnCreateIssue) and Assigned(FCreateIssueAvailable) and FCreateIssueAvailable() then
-    FOnCreateIssue();
 end;
 
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;

@@ -352,6 +352,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
+  Atlas.Core.Vcs.BranchNames,
   Atlas.Core.Tracker.Naming;
 
 const
@@ -655,7 +656,7 @@ begin
   end;
   Result.Branch := TAtlasTrackerNaming.BranchName(Pattern, AIssue);
   Result.Valid := Result.Branch <> '';
-  Result.Bases := TAtlasTrackerNaming.Bases(AKind = TAtlasVcsKind.Svn, AOptions.BranchBase, AOptions.MainBranch);
+  Result.Bases := TAtlasVcsBranchNames.Bases(AKind = TAtlasVcsKind.Svn, AOptions.BranchBase, AOptions.MainBranch);
   Result.Svn := AOptions.Svn;
   Result.Svn.Key := Trim(AIssue.Key);
   Result.Svn.Title := Trim(AIssue.Title);

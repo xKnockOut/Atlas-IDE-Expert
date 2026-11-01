@@ -178,8 +178,7 @@ uses
   Atlas.Core.Tracker.NewIssue,
   Atlas.Core.Problems.Findings,
   Atlas.IDE.Tracker.IssuePreview,
-  Atlas.IDE.Tracker.CodeLinks,
-  Atlas.IDE.Tracker.BlameLinks,
+  Atlas.IDE.Tracker.Session,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -267,10 +266,6 @@ var
   GutterColumn: TAtlasIdeGutterColumn;
   // Gleichen Text wie die Markierung hervorheben (#709).
   SelectionMatches: TAtlasIdeSelectionMatches;
-  // Issue-Kennungen im Code (#1265), über „Meine Issues“.
-  IssueLinks: TAtlasIdeCodeLinks;
-  // Issues in der Zeilenhistorie (#1275), über „Meine Issues“ und die Zeilenhistorie.
-  BlameIssues: TAtlasIdeBlameLinks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -1451,38 +1446,6 @@ begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
     end);
-  // Zugang zum Build-Server (#763): für die .atlas des aktiven Projekts; sichtbar mit CiLogin.
-  Add('Atlas.CiLogin', TAtlasTextId.CiLoginCommand,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.TestResults <> nil) then
-        Welcome.TestResults.EnterCredentialsForActive;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.CiLogin and (Welcome <> nil) and (Welcome.TestResults <> nil);
-    end);
-  // Zugang zum Issue-Tracker (#765): für die .atlas des aktiven Projekts; sichtbar mit TrackerLogin.
-  Add('Atlas.TrackerLogin', TAtlasTextId.TrackerLoginCommand,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Welcome.Issues.EnterCredentialsForActive;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.TrackerLogin and (Welcome <> nil) and (Welcome.Issues <> nil);
-    end);
-  // Issue anlegen (#1268): aus Auswahl bzw. TODO im Editor; sichtbar mit issues.create.
-  Add('Atlas.CreateIssue', TAtlasTextId.CreateIssueCommand,
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.WelcomePage, TAtlasIdeNewIssue.FromEditor);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeNewIssue.Enabled;
-    end);
   // Branch anlegen (#1288): Dialog für die Arbeitskopie des aktiven Projekts, ohne Issue; immer mit Dialog.
   Add('Atlas.CreateBranch', TAtlasTextId.VcsBranchCommand,
     procedure
@@ -1524,62 +1487,6 @@ begin
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.VcsExternalsShow;
-    end);
-  // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
-  Add('Atlas.IssueShow', TAtlasTextId.IssuePreviewCommand,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Welcome.Issues.ShowPreviewPrompt;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.IssuesPreview and (Welcome <> nil) and (Welcome.Issues <> nil);
-    end);
-  // Issues zu dieser Methode (#1275): Issues aus der Zeilenhistorie der Methode bzw. Unit am Cursor; sichtbar mit
-  // issues.blameLinks.
-  Add('Atlas.BlameIssues', TAtlasTextId.BlameIssuesCommand,
-    procedure
-    begin
-      if BlameIssues <> nil then
-        TAtlasGuard.Run(TAtlasFeature.BlameIssues, BlameIssues.ShowScope);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeBlameLinks.Enabled and (BlameIssues <> nil);
-    end);
-  // Offene Zeitbuchungen (#1267): sichtbar mit issues.timeTracking.
-  Add('Atlas.IssueTimeOpen', TAtlasTextId.TimeMenuOpen,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Welcome.Issues.ShowTimeOpen;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.IssuesTimeTracking and (Welcome <> nil) and (Welcome.Issues <> nil);
-    end);
-  // Atlas-Board (#1272): Sprint als Spalten nach Zustand; sichtbar mit issues.board.
-  Add('Atlas.Board', TAtlasTextId.BoardCommand,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) and (Welcome.Issues.Board <> nil) then
-        Welcome.Issues.Board.Show;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.IssuesBoard and (Welcome <> nil) and (Welcome.Issues <> nil);
-    end);
-  // An Issue anhängen (#1276): Bildschirmfoto, Formular, Log, Debug-Notiz; sichtbar mit issues.attach.
-  Add('Atlas.IssueAttach', TAtlasTextId.AttachCommand,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Welcome.Issues.AttachPrompt;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.IssuesAttach and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
   // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
   // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
@@ -2669,17 +2576,6 @@ begin
     begin
       RunModuleCommand(UnitDependenciesCommandId);
     end;
-  // „Issue anlegen …“ im Editor-Kontextmenü und auf der Taste (#1268).
-  TAtlasIdeEditorCommands.OnCreateIssue :=
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.WelcomePage, TAtlasIdeNewIssue.FromEditor);
-    end;
-  TAtlasIdeEditorCommands.CreateIssueAvailable :=
-    function: Boolean
-    begin
-      Result := TAtlasIdeNewIssue.Enabled;
-    end;
   TAtlasIdeEditorCommands.OnSignatureHelp :=
     procedure
     begin
@@ -3527,9 +3423,128 @@ begin
   Result := False;
 end;
 
+type
+  /// <summary>Übergang (#1455): „Meine Issues“ der Willkommensseite für das Modul Tracker
+  /// (Atlas.IDE.Tracker.Session), bis der Umbau der Willkommensseite den Kern ins Modul holt. Fragt Welcome bei jedem
+  /// Aufruf neu; ohne den Bereich wirkungslos.</summary>
+  TWelcomeIssuesSession = class(TInterfacedObject, IAtlasIssuesSession)
+  public
+    function Available: Boolean;
+    function CodeTarget(out ATarget: TAtlasTrackerTarget): Boolean;
+    function IssuePreview: TAtlasIdeIssuePreview;
+    procedure ShowIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    procedure BrowseIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    procedure StartIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    function CanStartIssue: Boolean;
+    procedure EnterCredentials;
+    function CanEnterCiCredentials: Boolean;
+    procedure EnterCiCredentials;
+    procedure ShowPreviewPrompt;
+    procedure ShowTimeOpen;
+    procedure ShowBoard;
+    procedure AttachPrompt;
+    function CanCreateIssue: Boolean;
+    procedure CreateIssueFromEditor;
+  end;
+
+function TWelcomeIssuesSession.Available: Boolean;
+begin
+  Result := (Welcome <> nil) and (Welcome.Issues <> nil);
+end;
+
+function TWelcomeIssuesSession.CodeTarget(out ATarget: TAtlasTrackerTarget): Boolean;
+begin
+  ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+  Result := Available and Welcome.Issues.CodeTarget(ATarget);
+end;
+
+function TWelcomeIssuesSession.IssuePreview: TAtlasIdeIssuePreview;
+begin
+  Result := nil;
+  if Available then
+    Result := Welcome.Issues.IssuePreview;
+end;
+
+procedure TWelcomeIssuesSession.ShowIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+begin
+  if Available then
+    Welcome.Issues.ShowIssue(ATarget, AKey);
+end;
+
+procedure TWelcomeIssuesSession.BrowseIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+begin
+  if Available then
+    Welcome.Issues.BrowseIssue(ATarget, AKey);
+end;
+
+procedure TWelcomeIssuesSession.StartIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+begin
+  if Available then
+    Welcome.Issues.StartIssue(ATarget, AKey);
+end;
+
+function TWelcomeIssuesSession.CanStartIssue: Boolean;
+begin
+  Result := Available and Welcome.Issues.CanStartIssue;
+end;
+
+procedure TWelcomeIssuesSession.EnterCredentials;
+begin
+  if Available then
+    Welcome.Issues.EnterCredentialsForActive;
+end;
+
+function TWelcomeIssuesSession.CanEnterCiCredentials: Boolean;
+begin
+  Result := (Welcome <> nil) and (Welcome.TestResults <> nil);
+end;
+
+procedure TWelcomeIssuesSession.EnterCiCredentials;
+begin
+  if CanEnterCiCredentials then
+    Welcome.TestResults.EnterCredentialsForActive;
+end;
+
+procedure TWelcomeIssuesSession.ShowPreviewPrompt;
+begin
+  if Available then
+    Welcome.Issues.ShowPreviewPrompt;
+end;
+
+procedure TWelcomeIssuesSession.ShowTimeOpen;
+begin
+  if Available then
+    Welcome.Issues.ShowTimeOpen;
+end;
+
+procedure TWelcomeIssuesSession.ShowBoard;
+begin
+  if Available and (Welcome.Issues.Board <> nil) then
+    Welcome.Issues.Board.Show;
+end;
+
+procedure TWelcomeIssuesSession.AttachPrompt;
+begin
+  if Available then
+    Welcome.Issues.AttachPrompt;
+end;
+
+function TWelcomeIssuesSession.CanCreateIssue: Boolean;
+begin
+  Result := TAtlasIdeNewIssue.Enabled;
+end;
+
+procedure TWelcomeIssuesSession.CreateIssueFromEditor;
+begin
+  TAtlasIdeNewIssue.FromEditor;
+end;
+
 var
   /// <summary>Anmeldungen von TWelcomeListener, solange die Willkommensseite läuft.</summary>
   WelcomeTaskListener: IAtlasRegistration;
+  /// <summary>„Meine Issues“ für das Modul Tracker (TWelcomeIssuesSession), solange die Willkommensseite läuft.
+  /// </summary>
+  WelcomeIssuesSession: IAtlasRegistration;
   WelcomeTestsListener: IAtlasRegistration;
   WelcomeBaselineListener: IAtlasRegistration;
 
@@ -3611,6 +3626,9 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Befehle, Kennungen im Code und Zeilenhistorie des Moduls Tracker fragen „Meine Issues“ hierüber (#1455).
+  WelcomeIssuesSession := AtlasModuleRegistry.Provide(IAtlasIssuesSession,
+    TWelcomeIssuesSession.Create as IAtlasIssuesSession);
   // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
   Welcome.Unsaved := TAtlasIdeUnsaved.Create(
     procedure(AText: string)
@@ -3795,76 +3813,11 @@ begin
     end;
 end;
 
-function IssueHooks: TAtlasCodeLinksHooks;
-var
-  mHooks: TAtlasCodeLinksHooks;
-begin
-  // Alles über „Meine Issues“ (Tracker wie dort, Zwischenspeicher der Vorschau); ohne den Bereich wirkungslos.
-  mHooks := Default(TAtlasCodeLinksHooks);
-  mHooks.Target :=
-    function(out ATarget: TAtlasTrackerTarget): Boolean
-    begin
-      ATarget := TAtlasTrackerTarget.Create('', '', '', '');
-      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CodeTarget(ATarget);
-    end;
-  mHooks.CommitPattern :=
-    function: string
-    begin
-      Result := TAtlasIdeSettings.Current.IssuesCommitPattern;
-    end;
-  mHooks.Preview :=
-    function: TAtlasIdeIssuePreview
-    begin
-      Result := nil;
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Result := Welcome.Issues.IssuePreview;
-    end;
-  mHooks.Show :=
-    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Welcome.Issues.ShowIssue(ATarget, AKey);
-    end;
-  mHooks.Browse :=
-    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Welcome.Issues.BrowseIssue(ATarget, AKey);
-    end;
-  mHooks.Start :=
-    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Welcome.Issues.StartIssue(ATarget, AKey);
-    end;
-  mHooks.CanStart :=
-    function: Boolean
-    begin
-      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CanStartIssue;
-    end;
-  Result := mHooks;
-end;
-
-procedure StartIssueLinks;
-begin
-  IssueLinks := TAtlasIdeCodeLinks.Create(IssueHooks);
-end;
-
-procedure StartBlameIssues;
-begin
-  // Dieselben Haken wie die Kennungen im Code; die Zeilenhistorie bekommt ihre Ergänzungen (kein Zyklus).
-  BlameIssues := TAtlasIdeBlameLinks.Create(IssueHooks);
-  TAtlasIdeLineChanges.SetBlameHooks(BlameIssues.LineHooks);
-end;
-
-procedure StopBlameIssues;
-begin
-  TAtlasIdeLineChanges.SetBlameHooks(Default(TAtlasBlameHooks));
-  FreeAndNil(BlameIssues);
-end;
-
 procedure StopWelcome;
 begin
+  if WelcomeIssuesSession <> nil then
+    WelcomeIssuesSession.Revoke;
+  WelcomeIssuesSession := nil;
   if WelcomeTaskListener <> nil then
     WelcomeTaskListener.Revoke;
   WelcomeTaskListener := nil;
@@ -3910,19 +3863,6 @@ begin
       else
         Welcome.ResetLayout;
       end;
-    end;
-  // Ansicht › Atlas › Board (#1272).
-  MainMenu.OnBoard :=
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) and (Welcome.Issues.Board <> nil) then
-        Welcome.Issues.Board.Show;
-    end;
-  MainMenu.OnIssueAttach :=
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.Issues <> nil) then
-        Welcome.Issues.AttachPrompt;
     end;
 end;
 
@@ -4336,34 +4276,6 @@ begin
       Result := Welcome <> nil;
     end,
     StartWelcome, StopWelcome);
-  // Issue-Kennungen im Code (#1265): nach „Meine Issues“ (Tracker und Vorschau), Abbau davor. issues.codeLinks
-  // prüft der Zeitgeber selbst (Schnellschalter ohne Neustart).
-  Features.AddWanted('IssueLinks',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
-    end,
-    function: Boolean
-    begin
-      Result := IssueLinks <> nil;
-    end,
-    StartIssueLinks,
-    procedure
-    begin
-      FreeAndNil(IssueLinks);
-    end);
-  // Issues in der Zeilenhistorie (#1275): nach „Meine Issues“; issues.blameLinks prüfen die Haken selbst
-  // (Schnellschalter ohne Neustart).
-  Features.AddWanted('BlameIssues',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
-    end,
-    function: Boolean
-    begin
-      Result := BlameIssues <> nil;
-    end,
-    StartBlameIssues, StopBlameIssues);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe,
     function: Boolean
     begin
@@ -4410,7 +4322,6 @@ begin
   // Module (#1454): Ist der Modul-Schalter aus, startet keines dieser Teile, laufende stoppt RegisterFeatures.
   // Die übrigen Teile eines Moduls folgen ihren eigenen Einstellungen, die bei ausgeschaltetem Modul „aus“
   // liefern (TAtlasModuleSwitches). Angemeldete Module (Debugger, #1455) bringen ihren Schalter selbst mit.
-  Features.Join('issues', ['IssueLinks', 'BlameIssues']);
   Features.ModuleOn := ModuleOn;
   // Module zuletzt: Sie bauen auf den Teilen von Base auf und gehen beim Abbau zuerst (#1455).
   ModuleHosting := TAtlasModuleHosting.Create(AtlasModuleRegistry, Features);

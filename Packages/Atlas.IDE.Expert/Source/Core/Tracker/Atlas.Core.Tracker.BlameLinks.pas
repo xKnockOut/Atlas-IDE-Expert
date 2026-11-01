@@ -7,7 +7,7 @@
 //   keine Nachricht; die ganzen Nachrichten holt die Zeilenhistorie einmal je
 //   blame (IAtlasVcsLineHistory.Messages, BlameRevisions).
 // - Scope: Bereich für „Issues zu dieser Methode“: innerster Methodenrumpf um
-//   die Cursorzeile (TAtlasMethodToggle, TAtlasBookmarks.MethodAt), außerhalb
+//   die Cursorzeile (TAtlasMethodToggle.BodyAt), außerhalb
 //   jeder Methode die ganze Unit.
 // - RepositoryRange: git log -L und svn log zählen Zeilen im Stand des
 //   Repositorys (Git HEAD, SVN BASE); der Puffer kann davon abweichen
@@ -97,8 +97,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Editor.LineChanges,
-  Atlas.Core.Editor.MethodToggle,
-  Atlas.Core.Bookmarks.Store;
+  Atlas.Core.Editor.MethodToggle;
 
 { TAtlasBlameLinks }
 
@@ -199,7 +198,7 @@ var
   mPlace: TAtlasMethodPlace;
   mCount, mIndex: Integer;
 begin
-  Result := TAtlasBookmarks.MethodAt(TAtlasMethodToggle.Places(AText), ALine, mPlace);
+  Result := TAtlasMethodToggle.BodyAt(TAtlasMethodToggle.Places(AText), ALine, mPlace);
   if Result then
   begin
     AFirst := mPlace.FirstLine;

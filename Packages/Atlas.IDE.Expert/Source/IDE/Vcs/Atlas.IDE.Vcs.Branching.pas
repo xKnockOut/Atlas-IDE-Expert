@@ -137,7 +137,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Setup.Checklist,
-  Atlas.Core.Tracker.Naming,
+  Atlas.Core.Vcs.BranchNames,
   Atlas.Core.Welcome.Issues,
   Atlas.UI.Strings,
   Atlas.UI.Vcs.BranchDialog,
@@ -373,7 +373,7 @@ end;
 
 class function TAtlasIdeBranching.Candidates(AKind: TAtlasVcsKind; const AProject: string): TArray<string>;
 begin
-  Result := TAtlasTrackerNaming.Bases(AKind = TAtlasVcsKind.Svn, TAtlasIdeSettings.Current.IssuesBranchBase,
+  Result := TAtlasVcsBranchNames.Bases(AKind = TAtlasVcsKind.Svn, TAtlasIdeSettings.Current.IssuesBranchBase,
     TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject)));
 end;
 
@@ -447,7 +447,7 @@ begin
       mKind := TAtlasVcsKind.None;
       if mVcs <> nil then
         mKind := mVcs.Kind;
-      mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TAtlasTrackerNaming.Bases(mKind = TAtlasVcsKind.Svn, mBaseText,
+      mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TAtlasVcsBranchNames.Bases(mKind = TAtlasVcsKind.Svn, mBaseText,
         TAtlasIdeVcs.MainBranchOf(mProject, TAtlasIdeFiles.GroupOfProject(mProject))));
       // Geänderte Dateien für die Zeile „Offene Änderungen“ im Dialog (#1289).
       if (mFacts.Outcome = TAtlasVcsOutcome.Ok) and (mVcs.Changes(mItems) = TAtlasVcsOutcome.Ok) then
