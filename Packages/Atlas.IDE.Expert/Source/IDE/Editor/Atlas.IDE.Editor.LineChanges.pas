@@ -13,7 +13,7 @@
 //   Löschung (am Dateiende an der letzten Zeile). Farben aus dem Grund der
 //   Rinne (TAtlasColors.ForBackground, passt zu hellem und dunklem Thema).
 // - Klick auf eine Marke zeigt den alten Stand in einem kleinen Fenster
-//   (TAtlasNoteTip) mit „Zurücksetzen“: Die Änderung geht über
+//   (TAtlasTitledTip) mit „Zurücksetzen“: Die Änderung geht über
 //   TAtlasIdeWorkspaceEdit (#397) in den Puffer, Strg+Z nimmt sie zurück.
 // - GoToChange springt reihum zur nächsten bzw. vorigen Änderung
 //   (keys.nextChange, keys.previousChange).
@@ -135,7 +135,7 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Strings,
-  Atlas.UI.Notes.Tip,
+  Atlas.UI.Popup.TitledTip,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
@@ -180,7 +180,7 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FTimer: TTimer;
-    FTip: TAtlasNoteTip;
+    FTip: TAtlasTitledTip;
     FFont: TFont;
     FFontKey: string;
     FGutterOn: Boolean;
@@ -358,7 +358,7 @@ begin
   FRows := TDictionary<Integer, TMarkRow>.Create;
   FMessages := TDictionary<string, string>.Create;
   FFont := TFont.Create;
-  FTip := TAtlasNoteTip.Create(nil);
+  FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.LineChanges;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;

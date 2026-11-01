@@ -13,7 +13,7 @@
 // - Farben aus dem Grund der Rinne (hell/dunkel), Breite aus der Zeilenhöhe:
 //   Ändert sich die Schrift oder die Skalierung, fordert der Zeitgeber die
 //   Spalte in der neuen Breite an.
-// - Überfahren zeigt nach HoverMs die Tafel des Symbols (TAtlasNoteTip). Ein
+// - Überfahren zeigt nach HoverMs die Tafel des Symbols (TAtlasTitledTip). Ein
 //   Klick auf ✕/▲/● zeigt Meldung, Code und die Korrekturen des Servers als
 //   Links („Alle Code-Aktionen …“ dahinter), auf ◆ öffnet er die
 //   Code-Aktionen der Zeile, auf ↑/↓ springt er zur Methode bzw. listet bei
@@ -41,7 +41,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Lsp.Session,
-  Atlas.UI.Notes.Tip;
+  Atlas.UI.Popup.TitledTip;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -87,7 +87,7 @@ type
     FTimer: TTimer;
     /// <summary>Anmeldung bei TAtlasIdeGutterColumns: Spalte vor dem Abbau eines Editorfensters abgeben (#1233).</summary>
     FColumnsHandle: Integer;
-    FTip: TAtlasNoteTip;
+    FTip: TAtlasTitledTip;
     FLinks: TArray<TProc>;
     FOptions: TAtlasGutterColumnOptions;
     FRows: TDictionary<Integer, TRow>;
@@ -226,7 +226,7 @@ begin
   FProblemsVersion := -1;
   FOptions := TAtlasGutterColumnOptions.All;
   FRows := TDictionary<Integer, TRow>.Create;
-  FTip := TAtlasNoteTip.Create(nil);
+  FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.GutterColumn;
   FTip.OnLink :=
     procedure(AIndex: Integer)

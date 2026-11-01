@@ -196,9 +196,7 @@ uses
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
-  Atlas.Core.Projects.Todos,
   Atlas.Core.Projects.Baseline,
-  Atlas.UI.Todos.Dialog,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.QuickActions,
@@ -211,20 +209,12 @@ uses
   Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.WorkingCopies,
   Atlas.IDE.Vcs.Service,
-  Atlas.IDE.Notes.Service,
-  Atlas.IDE.Notes.Gutter,
   Atlas.IDE.Editor.RecursionGutter,
   Atlas.IDE.Editor.GutterColumn,
-  Atlas.IDE.Bookmarks.QuickColumn,
-  Atlas.Core.Bookmarks.Store,
-  Atlas.Core.Editor.Overview,
-  Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Editor.SelectionMatches,
   Atlas.IDE.Editor.ExitPoints,
   Atlas.IDE.Editor.Reassigned,
-  Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Problems.Service,
-  Atlas.IDE.Bookmarks.Gutter,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Providers.Expression,
   Atlas.IDE.Build.CompilerSwitches,
@@ -297,7 +287,6 @@ var
   GutterMarks: TAtlasIdeGutterMarks;
   // Atlas-Spalte in der Zeilenleiste (#768).
   GutterColumn: TAtlasIdeGutterColumn;
-  QuickColumn: TAtlasIdeQuickColumn;
   // Gleichen Text wie die Markierung hervorheben (#709).
   SelectionMatches: TAtlasIdeSelectionMatches;
   // Issue-Kennungen im Code (#1265), über „Meine Issues“.
@@ -372,8 +361,6 @@ var
   // Atlas-Bereiche auf der Willkommensseite und Fenster „Atlas-Start“ (#753).
   Welcome: TAtlasIdeWelcome;
   // Dienste für Notizen (#545) und Lesezeichen (#622) gestartet.
-  NotesStarted: Boolean;
-  BookmarksStarted: Boolean;
   // Fenster „Atlas-Prüfung“ (#909) gestartet.
   ProblemsWindowStarted: Boolean;
   HideStarted: Boolean;
@@ -955,108 +942,6 @@ begin
     TAtlasBuildVerdicts.AddTimeoutMs, ReportCompilerBaseline);
 end;
 
-var
-  /// <summary>Letzter Filter der TODO-Liste (#68) in dieser Sitzung; Vorgabe für den Filterdialog.</summary>
-  TodoFilter: TAtlasTodoFilter;
-  /// <summary>Vorschläge für den Filterdialog aus der letzten Liste.</summary>
-  TodoChoices: TAtlasTodoChoices;
-
-/// <summary>Argumente für atlas.server.todos im Modus json: [uri, "json", filter].</summary>
-function TodoArguments(const AProject: string; const AFilter: TAtlasTodoFilter): string;
-var
-  Arguments: TJSONArray;
-begin
-  Arguments := TJSONArray.Create;
-  try
-    Arguments.Add(TLspSession.PathToUri(AProject));
-    Arguments.Add('json');
-    Arguments.AddElement(TJSONObject.ParseJSONValue(AFilter.ToJson));
-    Result := Arguments.ToJSON;
-  finally
-    Arguments.Free;
-  end;
-end;
-
-/// <summary>TODO-Liste des aktiven Projekts (#68) im Ergebnisfenster: Daten vom Server (startet ihn bei Bedarf) im
-/// Hintergrund mit dem Filter AFilter (Filter des Servers), nach Unit gruppiert; Doppelklick springt zum
-/// Kommentar.</summary>
-procedure ProjectTodos(const AFilter: TAtlasTodoFilter);
-var
-  Project: IOTAProject;
-  Name, Described: string;
-  Filter: TAtlasTodoFilter;
-begin
-  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
-  if (Manager = nil) or not TAtlasIdeSettings.Current.TodoList then
-    Exit;
-  Project := GetActiveProject;
-  if (Project = nil) or (Project.FileName = '') then
-  begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListNoProject));
-    Exit;
-  end;
-  Name := ChangeFileExt(ExtractFileName(Project.FileName), '');
-  Filter := AFilter.Trimmed;
-  Described := Filter.Describe;
-  if Manager.ActiveSession = nil then
-  begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
-    Exit;
-  end;
-  if not Manager.RunCommandAsync(TodosCommand, TodoArguments(Project.FileName, Filter), 120000,
-    procedure(AAnswer: string)
-    var
-      Answer: string;
-    begin
-      Answer := AAnswer;
-      TAtlasMainThread.Queue(TAtlasFeature.Menu,
-        procedure
-        begin
-          TAtlasGuard.Run(TAtlasFeature.Palette,
-            procedure
-            var
-              Entries: TArray<TAtlasResultEntry>;
-              Choices: TAtlasTodoChoices;
-            begin
-              if not TAtlasTodoList.Entries(Answer, Entries) then
-              begin
-                GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
-                Exit;
-              end;
-              // Vorschläge nur aus der ungefilterten Liste: sonst schrumpfen sie mit jedem Filter.
-              if Filter.IsEmpty and TAtlasTodoList.Choices(Answer, Choices) then
-                TodoChoices := Choices;
-              if (Length(Entries) = 0) and (Described = '') then
-                GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.TodoListEmpty, [Name]))
-              else if Length(Entries) = 0 then
-                GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.TodoListNoMatch, [Name, Described]))
-              else if Described = '' then
-                TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListTitle,
-                  [Name, Length(Entries)]), Entries)
-              else
-                TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListFilteredTitle,
-                  [Name, Described, Length(Entries)]), Entries);
-            end);
-        end);
-    end) then
-    // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListBusy));
-end;
-
-/// <summary>Filterdialog der TODO-Liste (#68) mit dem letzten Filter; „Anzeigen“ fragt mit dem neuen Filter.</summary>
-procedure FilterProjectTodos;
-var
-  Filter: TAtlasTodoFilter;
-begin
-  if not TAtlasIdeSettings.Current.TodoList then
-    Exit;
-  Filter := TodoFilter;
-  if not TAtlasTodoFilterDialog.Execute(TodoChoices, Filter) then
-    Exit;
-  TodoFilter := Filter;
-  ProjectTodos(Filter);
-end;
-
 /// <summary>„Symbol umbenennen…“ (#397) aus Menü und Palette.</summary>
 procedure RenameSymbol;
 begin
@@ -1092,21 +977,6 @@ end;
 function BaselineUpdateVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.BaselineUpdate;
-end;
-
-function BookmarksNamedVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.BookmarksNamed;
-end;
-
-function QuickBookmarksVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.QuickBookmarks;
-end;
-
-function BookmarksWindowVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
 end;
 
 function CompilerSwitchesVisible: Boolean;
@@ -1432,11 +1302,6 @@ begin
   Result := TAtlasIdeSettings.Current.MetricsReport;
 end;
 
-function NotesVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Notes;
-end;
-
 /// <summary>Befehl „Aufrufdiagramm“ (#1122) sichtbar?</summary>
 function CallDiagramVisible: Boolean;
 begin
@@ -1447,11 +1312,6 @@ end;
 function SettingsTransferVisible: Boolean;
 begin
   Result := TAtlasIdeSettingsTransfer.Visible;
-end;
-
-function TodoListVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TodoList;
 end;
 
 function NotificationsVisible: Boolean;
@@ -1846,27 +1706,6 @@ begin
   Add('Atlas.UndoChange', TAtlasTextId.UndoMenu, TAtlasIdeUndo.UndoLast);
   Add('Atlas.RedoChange', TAtlasTextId.RedoMenu, TAtlasIdeUndo.RedoLast);
   Add('Atlas.ChangeList', TAtlasTextId.UndoListMenu, TAtlasIdeUndo.ShowList);
-  // Persönliche Notizen (#545); nur sichtbar, solange die Einstellung an ist.
-  Add('Atlas.NoteAdd', TAtlasTextId.NotesMenuAdd,
-    Guarded(TAtlasFeature.Notes, TAtlasIdeNotes.AddOrEdit), NotesVisible);
-  Add('Atlas.NoteDelete', TAtlasTextId.NotesMenuDelete,
-    Guarded(TAtlasFeature.Notes, TAtlasIdeNotes.DeleteAtLine), NotesVisible);
-  Add('Atlas.NoteList', TAtlasTextId.NotesMenuList,
-    Guarded(TAtlasFeature.Notes, TAtlasIdeNotes.ShowList), NotesVisible);
-  // Benannte Lesezeichen (#622); nur sichtbar, solange bookmarks.named an ist.
-  Add('Atlas.BookmarkAdd', TAtlasTextId.BookmarksMenuAdd,
-    Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.AddBookmark), BookmarksNamedVisible);
-  Add('Atlas.BookmarkGoTo', TAtlasTextId.BookmarksMenuGoTo,
-    Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.GoToBookmark), BookmarksNamedVisible);
-  Add('Atlas.BookmarkWindow', TAtlasTextId.BookmarksMenuWindow,
-    Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.ShowWindow), BookmarksWindowVisible);
-  // Schnelle Lesezeichen (#1104); nur sichtbar, solange bookmarks.quick an ist.
-  Add('Atlas.QuickBookmarkToggle', TAtlasTextId.QuickBookmarkToggleCommand,
-    Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.QuickToggle), QuickBookmarksVisible);
-  Add('Atlas.NextBookmark', TAtlasTextId.NextBookmarkCommand,
-    Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.NextBookmark), QuickBookmarksVisible);
-  Add('Atlas.PreviousBookmark', TAtlasTextId.PreviousBookmarkCommand,
-    Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.PreviousBookmark), QuickBookmarksVisible);
   // Wirksame Compiler-Schalter (#558); nur sichtbar, solange build.compilerSwitches an ist.
   Add('Atlas.CompilerSwitches', TAtlasTextId.CompilerSwitchesCommand,
     Guarded(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible);
@@ -1950,14 +1789,6 @@ begin
   Add('Atlas.ResetHistory', TAtlasTextId.PaletteResetHistory, TAtlasIdeHistory.Reset);
   // Metrikbericht des Projekts (#66); nur sichtbar, solange die Einstellung MetricsReport an ist.
   Add('Atlas.MetricsReport', TAtlasTextId.MetricsReportCommand, MetricsReport, MetricsReportVisible);
-  // TODO-Liste des Projekts (#68): ohne Filter (alle offenen) und mit Filterdialog; nur sichtbar, solange die
-  // Einstellung TodoList an ist.
-  Add('Atlas.TodoList', TAtlasTextId.TodoListCommand,
-    procedure
-    begin
-      ProjectTodos(Default(TAtlasTodoFilter));
-    end, TodoListVisible);
-  Add('Atlas.TodoListFilter', TAtlasTextId.TodoFilterCommand, FilterProjectTodos, TodoListVisible);
   // Baseline des Projekts aktualisieren (#97); nur sichtbar, solange die Einstellung BaselineUpdate an ist.
   Add('Atlas.UpdateBaseline', TAtlasTextId.BaselineUpdateCommand, UpdateBaseline, BaselineUpdateVisible);
   // Compilermeldungen des letzten Builds in die Baseline (#530); mit derselben Einstellung abschaltbar.
@@ -3689,18 +3520,6 @@ begin
       Result := TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits);
     end);
   // Übersichtsleiste an der Scrollleiste (#519).
-  // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
-  TAtlasIdeOverviewRuler.Bookmarks :=
-    function(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean
-    var
-      Marks: TArray<TAtlasBookmark>;
-      Mark: TAtlasBookmark;
-    begin
-      AMarks := nil;
-      Result := TAtlasIdeBookmarks.OverviewMarks(AFileName, Marks);
-      for Mark in Marks do
-        AMarks := AMarks + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, Mark.Line, 1, Mark.DisplayName)];
-    end;
   TAtlasIdeOverviewRuler.Install;
   // Minimap neben der Scrollleiste (#873, experimentell); fragt die Gliederung über TAtlasIdeOutlineCache.
   TAtlasIdeMinimap.Install;
@@ -3743,7 +3562,6 @@ begin
   TAtlasIdeBreadcrumbs.Uninstall;
   TAtlasIdeMinimap.Uninstall;
   TAtlasIdeOverviewRuler.Uninstall;
-  TAtlasIdeOverviewRuler.Bookmarks := nil;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
@@ -4063,44 +3881,6 @@ begin
     end;
 end;
 
-procedure StartNotes;
-begin
-  TAtlasIdeNotes.Start(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-  NotesStarted := True;
-end;
-
-procedure StopNotes;
-begin
-  TAtlasIdeNotes.Release;
-  NotesStarted := False;
-end;
-
-procedure StartBookmarks;
-begin
-  TAtlasIdeBookmarks.Start(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end,
-    // Hinweise der schnellen Lesezeichen (#1104) im Statusfeld.
-    procedure(AText: string)
-    begin
-      if StatusField <> nil then
-        StatusField.SetExtra('quickBookmarks', AText, '', nil);
-    end);
-  BookmarksStarted := True;
-end;
-
-procedure StopBookmarks;
-begin
-  TAtlasIdeBookmarks.Release;
-  BookmarksStarted := False;
-end;
-
 const
   CompilerSwitchesExtra = 'compilerSwitches';
 
@@ -4257,8 +4037,6 @@ end;
 procedure StartGutterMarks;
 begin
   GutterMarks := TAtlasIdeGutterMarks.Create;
-  GutterMarks.Add(TAtlasIdeNotesGutter.Create);
-  GutterMarks.Add(TAtlasIdeBookmarksGutter.Create);
   // Rekursionssymbole (#623); fragt den Server nur, wenn er ohnehin läuft.
   GutterMarks.Add(TAtlasIdeRecursionGutter.Create(
     function: TLspSession
@@ -4287,17 +4065,6 @@ begin
     begin
       TAtlasIdeEditorCommands.ApplyAction(AAction);
     end);
-end;
-
-procedure StartQuickColumn;
-begin
-  QuickColumn := TAtlasIdeQuickColumn.Create;
-end;
-
-procedure StopQuickColumn;
-begin
-  TAtlasIdeQuickChord.Release;
-  FreeAndNil(QuickColumn);
 end;
 
 procedure StartSelectionMatches;
@@ -5273,22 +5040,6 @@ begin
     begin
       FreeAndNil(Pairs);
     end);
-  // Persönliche Notizen (#545): Befehle auch abgesichert (nur lokale Dateien), die Rinne wie die übrigen
-  // Zeichnungen nur im normalen Start oder mit eingeschalteter Einstellung.
-  Features.Add('Notes', TAtlasSafeLevel.Safe,
-    function: Boolean
-    begin
-      Result := NotesStarted;
-    end,
-    StartNotes, StopNotes);
-  // Benannte Lesezeichen (#622): Befehle auch abgesichert; die Rinne teilt sich die Zeichenschicht mit den
-  // Notizen, jede Schicht folgt ihrer Einstellung.
-  Features.Add('Bookmarks', TAtlasSafeLevel.Safe,
-    function: Boolean
-    begin
-      Result := BookmarksStarted;
-    end,
-    StartBookmarks, StopBookmarks);
   // Fenster „Atlas-Prüfung“ (#909): liest den Problemspeicher des Managers.
   Features.Add('ProblemsWindow', TAtlasSafeLevel.Normal,
     function: Boolean
@@ -5296,14 +5047,13 @@ begin
       Result := ProblemsWindowStarted;
     end,
     StartProblemsWindow, StopProblemsWindow);
-  // Nach Notizen und Lesezeichen, Abbau davor: Die Rinne liest deren Listen (#545, #622); dazu die
-  // Rekursionssymbole (#623).
+  // Gemeinsame Zeichenschicht der Rinne: Rekursionssymbole (#623) und die Schichten der Module (Notizen und
+  // Lesezeichen, #545, #622, #1455), die sie über die Registry findet.
   Features.AddWanted('GutterMarks',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
-        TAtlasIdeSettings.Current.Notes or TAtlasIdeSettings.Current.BookmarksNamed or
-        TAtlasIdeSettings.Current.RecursionMarkers);
+        TAtlasIdeSettings.Current.RecursionMarkers or TAtlasIdeGutterMarks.ModuleLayersWanted);
     end,
     function: Boolean
     begin
@@ -5330,19 +5080,6 @@ begin
     begin
       FreeAndNil(GutterColumn);
     end);
-  // Schnelle Lesezeichen (#1104): Spalte links der Zeilennummern, Wiederfinden und Übernahme der IDE-Lesezeichen;
-  // nach den Lesezeichen (#622), deren Listen sie liest.
-  Features.AddWanted('QuickBookmarks',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
-        TAtlasIdeSettings.Current.QuickBookmarks);
-    end,
-    function: Boolean
-    begin
-      Result := QuickColumn <> nil;
-    end,
-    StartQuickColumn, StopQuickColumn);
   // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
   Features.AddWanted('CompilerSwitches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -5518,7 +5255,6 @@ begin
   // liefern (TAtlasModuleSwitches). Angemeldete Module (Debugger, #1455) bringen ihren Schalter selbst mit.
   Features.Join('buildTools', ['OpenBuild', 'Tasks', 'StartProfiles', 'CompilerSwitches']);
   Features.Join('tests', ['Tests']);
-  Features.Join('bookmarks', ['Notes', 'Bookmarks', 'QuickBookmarks']);
   Features.Join('issues', ['IssueLinks', 'BlameIssues']);
   Features.ModuleOn := ModuleOn;
   // Module zuletzt: Sie bauen auf den Teilen von Base auf und gehen beim Abbau zuerst (#1455).
@@ -5637,18 +5373,47 @@ end;
 
 /// <summary>Dienste von Base für die Module (#1455): laufende Sitzung des Managers und dessen Diagnoselog.</summary>
 procedure InstallHost;
+var
+  mServices: TAtlasHostServices;
 begin
-  TAtlasIdeHost.Install(
+  mServices := Default(TAtlasHostServices);
+  mServices.Session :=
     function: TLspSession
     begin
       Result := nil;
       if Manager <> nil then
         Result := Manager.RunningSession;
-    end,
+    end;
+  mServices.ActiveSession :=
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end;
+  mServices.Log :=
     procedure(AText: string)
     begin
       LogLine(AText);
-    end);
+    end;
+  mServices.Warning :=
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end;
+  mServices.RunCommand :=
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end;
+  // Felder der Module im Atlas-Statusfeld, etwa Hinweise der schnellen Lesezeichen (#1104).
+  mServices.StatusExtra :=
+    procedure(AId, AText: string)
+    begin
+      if StatusField <> nil then
+        StatusField.SetExtra(AId, AText, '', nil);
+    end;
+  TAtlasIdeHost.Install(mServices);
 end;
 
 /// <summary>Thema an die angemeldeten Module weitergeben (#1455); Fehler eines Moduls ins Protokoll.</summary>
@@ -5711,7 +5476,6 @@ begin
         KeyMap.ThemeChanged;
       if ShortcutTips <> nil then
         ShortcutTips.ThemeChanged;
-      TAtlasIdeBookmarks.ThemeChanged;
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeArchitecture.ThemeChanged;
@@ -5766,8 +5530,6 @@ begin
       // diagnosticMode.enabled (#479).
       if DiagnosticMode <> nil then
         DiagnosticMode.ApplySettings;
-      // bookmarks.named und bookmarks.shared (#622).
-      TAtlasIdeBookmarks.ApplySettings;
       // problems.window* (#909).
       TAtlasIdeProblems.ApplySettings;
       // outline.* (#537).

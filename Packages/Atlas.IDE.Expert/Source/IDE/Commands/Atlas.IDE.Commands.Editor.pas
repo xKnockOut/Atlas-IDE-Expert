@@ -232,8 +232,6 @@ uses
   Atlas.IDE.Results.Impact,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Notes.Service,
-  Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
   Atlas.Core.Problems.InlineHints,
@@ -666,57 +664,6 @@ begin
     procedure
     begin
       TAtlasIdeUndo.RedoLast;
-    end);
-  // Persönliche Notizen (#545): nach Rechtsklick in die Rinne für die angeklickte Zeile, sonst für den Cursor.
-  FContextMenu.Add('-', nil, nil);
-  FContextMenu.AddGuarded(TAtlasFeature.Notes, 'Atlas.NoteAdd', TAtlasStrings.Text(TAtlasTextId.NotesMenuAdd), nil,
-    procedure
-    begin
-      TAtlasIdeNotes.AddOrEdit;
-    end);
-  FContextMenu.AddGuarded(TAtlasFeature.Notes, 'Atlas.NoteDelete',
-    TAtlasStrings.Text(TAtlasTextId.NotesMenuDelete), nil,
-    procedure
-    begin
-      TAtlasIdeNotes.DeleteAtLine;
-    end);
-  FContextMenu.AddGuarded(TAtlasFeature.Notes, 'Atlas.NoteList', TAtlasStrings.Text(TAtlasTextId.NotesMenuList), nil,
-    procedure
-    begin
-      TAtlasIdeNotes.ShowList;
-    end);
-  // Benannte Lesezeichen (#622): wie die Notizen nach Rechtsklick in die Rinne für die angeklickte Zeile.
-  FContextMenu.Add('-', nil, nil);
-  FContextMenu.AddGuarded(TAtlasFeature.Bookmarks, 'Atlas.BookmarkAdd',
-    TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
-    function: Integer
-    begin
-      Result := 0;
-      if TAtlasIdeSettings.Current.BookmarksNamed then
-        Result := TAtlasIdeSettings.Current.BookmarkKey;
-    end,
-    procedure
-    begin
-      TAtlasIdeBookmarks.AddBookmark;
-    end);
-  FContextMenu.AddGuarded(TAtlasFeature.Bookmarks, 'Atlas.BookmarkGoTo',
-    TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), nil,
-    procedure
-    begin
-      TAtlasIdeBookmarks.GoToBookmark;
-    end);
-  // Schnelle Lesezeichen (#1104) an der Cursorzeile; die Spalte hat ihr eigenes Menü.
-  FContextMenu.AddGuarded(TAtlasFeature.QuickBookmarks, 'Atlas.QuickBookmarkToggle',
-    TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand),
-    function: Integer
-    begin
-      Result := 0;
-      if TAtlasIdeSettings.Current.QuickBookmarks and (TAtlasIdeSettings.Current.QuickBookmarkChordWait > 0) then
-        Result := TAtlasIdeSettings.Current.QuickBookmarkKey;
-    end,
-    procedure
-    begin
-      TAtlasIdeBookmarks.QuickToggle;
     end);
   // Nächster/vorheriger Befund (#509).
   FContextMenu.Add('-', nil, nil);

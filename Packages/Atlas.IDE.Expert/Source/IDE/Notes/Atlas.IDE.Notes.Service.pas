@@ -87,6 +87,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Notes.Dialog,
+  Atlas.UI.Notes.List,
   Atlas.UI.Results.Frame,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.GutterMarks,
@@ -94,6 +95,21 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.EditorRefresh;
+
+/// <summary>Liste der Notizen für das Ergebnisfenster mit Bearbeiten und Löschen.</summary>
+function ListOf(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
+  const ASelectId: string): TAtlasResultsItemList;
+begin
+  Result := TAtlasNotesList.Build(ATitle, AGroups, ASelectId,
+    procedure(const ANoteId: string)
+    begin
+      TAtlasIdeNotes.EditNote(ANoteId);
+    end,
+    procedure(const ANoteId: string)
+    begin
+      TAtlasIdeNotes.DeleteNote(ANoteId);
+    end);
+end;
 
 { TAtlasIdeNotes }
 
@@ -106,22 +122,12 @@ begin
     FBooks := TDictionary<string, TAtlasNoteBook>.Create;
   if FProjectOf = nil then
     FProjectOf := TDictionary<string, string>.Create;
-  TAtlasIdeResultsWindow.OnNoteEdit :=
-    procedure(const ANoteId: string)
-    begin
-      EditNote(ANoteId);
-    end;
-  TAtlasIdeResultsWindow.OnNoteDelete :=
-    procedure(const ANoteId: string)
-    begin
-      DeleteNote(ANoteId);
-    end;
 end;
 
 class procedure TAtlasIdeNotes.Release;
 begin
-  TAtlasIdeResultsWindow.OnNoteEdit := nil;
-  TAtlasIdeResultsWindow.OnNoteDelete := nil;
+  // Die Liste im Ergebnisfenster darf das Modul danach nicht mehr erreichen (Regel 3).
+  TAtlasIdeResultsWindow.ReleaseItems(TAtlasNotesList.Owner);
   FMessage := nil;
   FreeAndNil(FBooks);
   FreeAndNil(FProjectOf);
@@ -397,8 +403,8 @@ begin
   else
     Put(Current);
   FListProject := Project;
-  TAtlasIdeResultsWindow.ShowNotes(TAtlasStrings.Fmt(TAtlasTextId.NotesListTitle,
-    [ExtractFileName(Project), Current.Count, Current.OrphanCount]), Current.Groups, '');
+  TAtlasIdeResultsWindow.ShowItems(ListOf(TAtlasStrings.Fmt(TAtlasTextId.NotesListTitle,
+    [ExtractFileName(Project), Current.Count, Current.OrphanCount]), Current.Groups, ''));
 end;
 
 class procedure TAtlasIdeNotes.RefreshList(const ASelectId: string);
@@ -408,11 +414,11 @@ var
 begin
   Frame := TAtlasIdeResultsWindow.ExistingFrame;
   // Nur, wenn das Fenster gerade die Notizen zeigt; sonst bleibt seine Liste.
-  if (Frame = nil) or (FListProject = '') or not Frame.ShowsNotes then
+  if (Frame = nil) or (FListProject = '') or not Frame.ShowsItemsOf(TAtlasNotesList.Owner) then
     Exit;
   Current := Book(FListProject);
-  Frame.ShowNotes(TAtlasStrings.Fmt(TAtlasTextId.NotesListTitle,
-    [ExtractFileName(FListProject), Current.Count, Current.OrphanCount]), Current.Groups, ASelectId);
+  Frame.ShowItems(ListOf(TAtlasStrings.Fmt(TAtlasTextId.NotesListTitle,
+    [ExtractFileName(FListProject), Current.Count, Current.OrphanCount]), Current.Groups, ASelectId));
 end;
 
 class procedure TAtlasIdeNotes.EditNote(const AId: string);

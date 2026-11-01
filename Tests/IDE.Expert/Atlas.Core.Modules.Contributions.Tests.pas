@@ -26,6 +26,8 @@ type
     procedure KeysWithoutKeyOrAttemptAreLeftOut;
     [Test]
     procedure EditorViewListenersRun;
+    [Test]
+    procedure StoppedModuleContributesNothing;
   end;
 
 implementation
@@ -40,6 +42,7 @@ type
   TFakeModule = class(TInterfacedObject, IAtlasModule)
   private
     FId: string;
+    FStopped: Boolean;
   public
     constructor Create(const AId: string);
     function Info: TAtlasModuleInfo;
@@ -80,15 +83,18 @@ end;
 
 procedure TFakeModule.Start;
 begin
+  FStopped := False;
 end;
 
 procedure TFakeModule.Stop;
 begin
+  FStopped := True;
 end;
 
+// Läuft ab der Anmeldung, bis Stop: Beiträge zählen nur von laufenden Modulen.
 function TFakeModule.IsActive: Boolean;
 begin
-  Result := False;
+  Result := not FStopped;
 end;
 
 constructor TSource.Create(const APrefix: string; AFail: Boolean; const AHover: string);
@@ -145,6 +151,15 @@ begin
   Result := Result + [mKey];
   mKey.Key := 16450;
   mKey.Attempt := nil;
+  Result := Result + [mKey];
+  // Ohne Attempt, aber mit Run: läuft nach der Tastenverarbeitung.
+  mKey.Id := FPrefix + '.Later';
+  mKey.Key := 16451;
+  mKey.Run :=
+    procedure
+    begin
+      Log := Log + 'key;';
+    end;
   Result := Result + [mKey];
 end;
 
@@ -294,9 +309,11 @@ begin
   mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
   Provide(mScope, TSource.Create('A', False, ''));
   mKeys := TAtlasModuleContributions.Keys(mRegistry);
-  Assert.AreEqual(1, Integer(Length(mKeys)));
+  Assert.AreEqual(2, Integer(Length(mKeys)));
   Assert.AreEqual(16449, mKeys[0].Key);
   Assert.IsTrue(mKeys[0].Attempt());
+  Assert.AreEqual('A.Later', mKeys[1].Id);
+  Assert.IsFalse(Assigned(mKeys[1].Attempt));
   mKeys := nil;
   mScope := nil;
   mRegistry.UnregisterModule('atlas.a');
@@ -322,6 +339,41 @@ begin
   Assert.AreEqual('view;', mGood.Log, 'der zweite läuft trotzdem');
   mFailures := nil;
   mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  mRegistry := nil;
+end;
+
+procedure TModuleContributionsTests.StoppedModuleContributesNothing;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mModule: IAtlasModule;
+  mScope: IAtlasModuleScope;
+  mSource: TSource;
+  mRef: IInterface;
+  mCommand: TAtlasModuleCommand;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mModule := TFakeModule.Create('atlas.a');
+  mScope := mRegistry.RegisterModule(mModule);
+  mSource := TSource.Create('A', False, 'Wert');
+  mRef := mSource as IAtlasCommandSource;
+  Provide(mScope, mSource);
+  mModule.Stop;
+  Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.Commands(mRegistry))), 'Befehle');
+  Assert.IsFalse(TAtlasModuleContributions.FindCommand(mRegistry, 'A.Run', mCommand));
+  Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.MenuEntries(mRegistry, TAtlasMenuPlace.AtlasMenu))));
+  Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.Keys(mRegistry))), 'Tasten');
+  Assert.AreEqual('', TAtlasModuleContributions.HoverValue(mRegistry, 'x', nil, ''));
+  TAtlasModuleContributions.ApplySettings(mRegistry);
+  TAtlasModuleContributions.ThemeChanged(mRegistry);
+  TAtlasModuleContributions.EditorViewActivated(mRegistry);
+  Assert.AreEqual('', mSource.Log, 'gestoppt hört nichts');
+  mModule.Start;
+  Assert.AreEqual(1, Integer(Length(TAtlasModuleContributions.Commands(mRegistry))), 'wieder da');
+  mSource := nil;
+  mRef := nil;
+  mScope := nil;
+  mModule := nil;
   mRegistry.UnregisterModule('atlas.a');
   mRegistry := nil;
 end;

@@ -6,6 +6,10 @@
 // und Hörer mit ihrem Modul. Ein Fehler in einem Beitrag hält die übrigen nicht
 // an; ApplySettings und ThemeChanged liefern die Fehler als
 // „Interface: Klasse: Meldung“.
+// Es zählen nur Beiträge laufender Module (IsActive): Ein über seinen
+// Schalter gestopptes Modul (#1454) bleibt angemeldet, zeigt aber keine
+// Befehle, Menüeinträge und Tasten mehr und hört nichts. Beiträge ohne
+// angemeldetes Modul als Besitzer (Base selbst) zählen immer.
 
 interface
 
@@ -16,6 +20,9 @@ uses
 type
   TAtlasModuleContributions = class
   public
+    /// <summary>Unter AIID bereitgestellte Objekte laufender Module (und solche ohne Modul) in Reihenfolge der
+    /// Bereitstellung; ohne Registry leer.</summary>
+    class function Active(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID): TArray<IInterface>; static;
     /// <summary>Alle Befehle in Reihenfolge der Bereitstellung; ohne Registry leer.</summary>
     class function Commands(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleCommand>; static;
     /// <summary>Befehl AId; False, wenn ihn kein Modul anbietet.</summary>
@@ -26,7 +33,7 @@ type
     /// <summary>Menüeinträge für APlace in Reihenfolge der Bereitstellung.</summary>
     class function MenuEntries(const ARegistry: IAtlasModuleRegistry;
       APlace: TAtlasMenuPlace): TArray<TAtlasMenuEntry>; static;
-    /// <summary>Tastenkürzel aller Module; Einträge ohne Taste (0) oder ohne Attempt fehlen.</summary>
+    /// <summary>Tastenkürzel aller Module; Einträge ohne Taste (0) oder ohne Attempt und Run fehlen.</summary>
     class function Keys(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleKey>; static;
     class function EditorViewActivated(const ARegistry: IAtlasModuleRegistry): TArray<string>; static;
     class function ApplySettings(const ARegistry: IAtlasModuleRegistry): TArray<string>; static;
@@ -38,6 +45,20 @@ type
 
 implementation
 
+class function TAtlasModuleContributions.Active(const ARegistry: IAtlasModuleRegistry;
+  const AIID: TGUID): TArray<IInterface>;
+var
+  mItem: TAtlasProvided;
+  mModule: IAtlasModule;
+begin
+  Result := nil;
+  if ARegistry = nil then
+    Exit;
+  for mItem in ARegistry.Provisions(AIID) do
+    if not ARegistry.FindModule(mItem.OwnerId, mModule) or mModule.IsActive then
+      Result := Result + [mItem.Instance];
+end;
+
 class function TAtlasModuleContributions.Commands(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleCommand>;
 var
   mItem: IInterface;
@@ -46,7 +67,7 @@ begin
   Result := nil;
   if ARegistry = nil then
     Exit;
-  for mItem in ARegistry.FindAll(IAtlasCommandSource) do
+  for mItem in Active(ARegistry, IAtlasCommandSource) do
     if Supports(mItem, IAtlasCommandSource, mSource) then
       Result := Result + mSource.Commands;
 end;
@@ -81,7 +102,7 @@ begin
   Result := nil;
   if ARegistry = nil then
     Exit;
-  for mItem in ARegistry.FindAll(IAtlasMenuSource) do
+  for mItem in Active(ARegistry, IAtlasMenuSource) do
     if Supports(mItem, IAtlasMenuSource, mSource) then
       for mEntry in mSource.MenuEntries do
         if mEntry.Place = APlace then
@@ -97,10 +118,10 @@ begin
   Result := nil;
   if ARegistry = nil then
     Exit;
-  for mItem in ARegistry.FindAll(IAtlasKeySource) do
+  for mItem in Active(ARegistry, IAtlasKeySource) do
     if Supports(mItem, IAtlasKeySource, mSource) then
       for mKey in mSource.Keys do
-        if (mKey.Key <> 0) and Assigned(mKey.Attempt) then
+        if (mKey.Key <> 0) and (Assigned(mKey.Attempt) or Assigned(mKey.Run)) then
           Result := Result + [mKey];
 end;
 
@@ -112,7 +133,7 @@ begin
   Result := nil;
   if ARegistry = nil then
     Exit;
-  for mItem in ARegistry.FindAll(IAtlasFollowsEditorView) do
+  for mItem in Active(ARegistry, IAtlasFollowsEditorView) do
     if Supports(mItem, IAtlasFollowsEditorView, mListener) then
       try
         mListener.EditorViewActivated;
@@ -130,7 +151,7 @@ begin
   Result := nil;
   if ARegistry = nil then
     Exit;
-  for mItem in ARegistry.FindAll(IAtlasAppliesSettings) do
+  for mItem in Active(ARegistry, IAtlasAppliesSettings) do
     if Supports(mItem, IAtlasAppliesSettings, mListener) then
       try
         mListener.ApplySettings;
@@ -148,7 +169,7 @@ begin
   Result := nil;
   if ARegistry = nil then
     Exit;
-  for mItem in ARegistry.FindAll(IAtlasFollowsTheme) do
+  for mItem in Active(ARegistry, IAtlasFollowsTheme) do
     if Supports(mItem, IAtlasFollowsTheme, mListener) then
       try
         mListener.ThemeChanged;
@@ -167,7 +188,7 @@ begin
   Result := '';
   if ARegistry = nil then
     Exit;
-  for mItem in ARegistry.FindAll(IAtlasHoverValueSource) do
+  for mItem in Active(ARegistry, IAtlasHoverValueSource) do
     if Supports(mItem, IAtlasHoverValueSource, mSource) then
     begin
       Result := mSource.HoverValue(AExpression, ATypeChain, AText);

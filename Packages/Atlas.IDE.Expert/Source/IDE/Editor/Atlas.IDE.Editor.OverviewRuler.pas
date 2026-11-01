@@ -11,12 +11,12 @@
 //   einer Suche ist der Treffer markiert), Änderungen aus
 //   TAtlasIdeLineChanges (#507), Haltepunkte des Debuggers, die
 //   Lesezeichen 0–9 der IDE (mit schnellen Lesezeichen, #1104, statt dessen
-//   die Lesezeichen von Atlas über den Haken Bookmarks) und den Cursor. Die Treffer sucht er erst nach
+//   die Lesezeichen eines Moduls über IAtlasOverviewBookmarks, #1455) und den Cursor. Die Treffer sucht er erst nach
 //   einer Tipp-Pause neu; der Streifen zeichnet nur bei geänderten Marken.
 //   Mit „Gleichen Text hervorheben“ (#709, highlight.selectionMatches) gelten
 //   dessen Mindestlänge, Groß-/Kleinschreibung, ganze Wörter und Obergrenze.
 // - Klick springt zur Marke bzw. zur Zeile; Überfahren zeigt nach kurzer
-//   Zeit die Zeile und die Beschreibung der Marke (TAtlasNoteTip).
+//   Zeit die Zeile und die Beschreibung der Marke (TAtlasTitledTip).
 // - editor.overviewRuler aus entfernt alle Streifen, editor.overviewRulerKinds
 //   wählt die Arten.
 // - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
@@ -33,15 +33,9 @@ uses
   Atlas.Core.Editor.Overview;
 
 type
-  /// <summary>Lesezeichen von Atlas für AFileName; False: keine eigenen, die Leiste zeigt die der IDE.</summary>
-  TAtlasOverviewBookmarksFunc = reference to function(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
-
   TAtlasIdeOverviewRuler = class
   private class var
     FState: TObject;
-  public class var
-    /// <summary>Kommt von der Komposition (#1104), damit Editor nicht von Bookmarks abhängt.</summary>
-    Bookmarks: TAtlasOverviewBookmarksFunc;
   public
     class procedure Install; static;
     class procedure Uninstall; static;
@@ -65,12 +59,15 @@ uses
   Vcl.ExtCtrls,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.SelectionMatches,
   Atlas.UI.Strings,
-  Atlas.UI.Notes.Tip,
+  Atlas.UI.Popup.TitledTip,
   Atlas.UI.Editor.OverviewRuler,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -94,7 +91,7 @@ type
   private
     FTimer: TTimer;
     FHost: TAtlasEditorBarHost;
-    FTip: TAtlasNoteTip;
+    FTip: TAtlasTitledTip;
     FKinds: TAtlasOverviewKinds;
     // Treffer: Text des Puffers und Suchtext, zu denen sie gehören.
     FFileName: string;
@@ -160,7 +157,7 @@ begin
     begin
       Removed(ABar);
     end;
-  FTip := TAtlasNoteTip.Create(nil);
+  FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.OverviewRuler;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
@@ -253,6 +250,23 @@ begin
   Result := TAtlasIdeOverviewRuler.CollectMarks(AView, ALineCount, FKinds, FSearchTerm, FSearchLines);
 end;
 
+/// <summary>Eigene Lesezeichen des ersten laufenden Moduls, das welche für AFileName hat (#1455); False ohne.</summary>
+function ModuleBookmarks(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mItem: IInterface;
+begin
+  Result := False;
+  AMarks := nil;
+  mRegistry := AtlasModuleRegistry;
+  if mRegistry = nil then
+    Exit;
+  for mItem in TAtlasModuleContributions.Active(mRegistry, IAtlasOverviewBookmarks) do
+    if (mItem as IAtlasOverviewBookmarks).Marks(AFileName, AMarks) then
+      Exit(True);
+  AMarks := nil;
+end;
+
 class function TAtlasIdeOverviewRuler.CollectMarks(const AView: IOTAEditView; ALineCount: Integer;
   AKinds: TAtlasOverviewKinds; const ASearchTerm: string; const ASearchLines: TArray<Integer>): TAtlasOverviewMarks;
 var
@@ -321,7 +335,7 @@ begin
             1, TAtlasStrings.Text(TAtlasTextId.OverviewBreakpoint))];
       end;
   end;
-  if (TAtlasOverviewKind.Bookmarks in AKinds) and Assigned(Bookmarks) and Bookmarks(FileName, Own) then
+  if (TAtlasOverviewKind.Bookmarks in AKinds) and ModuleBookmarks(FileName, Own) then
     Result := Result + Own
   else if TAtlasOverviewKind.Bookmarks in AKinds then
     for Index := 0 to BookmarkCount - 1 do

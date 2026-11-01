@@ -36,6 +36,9 @@ type
   /// <summary>Wo ein Menüeintrag eines Moduls erscheint: Atlas-Menü der IDE oder Untermenü „Atlas“ im
   /// Kontextmenü des Editors.</summary>
   TAtlasMenuPlace = (AtlasMenu, EditorContext);
+  /// <summary>Vorrang einer Taste eines Moduls vor fremden Belegungen: Shared folgt keys.editorPriority wie die
+  /// Editorbefehle von Base, Take übernimmt die Taste, Yield lässt eine fremde Belegung aktiv.</summary>
+  TAtlasKeyPriority = (Shared, Take, Yield);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Bedingung eines Teils der Feature-Tabelle je Stufe des abgesicherten Starts und Einstellung. Ein Typ
@@ -122,8 +125,9 @@ type
     function Commands: TArray<TAtlasModuleCommand>;
   end;
 
-  /// <summary>Ein Eintrag im Atlas-Menü: Befehl CommandId (aus einer IAtlasCommandSource) im Untermenü Section
-  /// ('' = oberste Ebene); Text und Sichtbarkeit kommen vom Befehl.</summary>
+  /// <summary>Ein Eintrag im Atlas-Menü bzw. im Kontextmenü des Editors (Place): Befehl CommandId (aus einer
+  /// IAtlasCommandSource) im Untermenü Section ('' = oberste Ebene; nur im Atlas-Menü); Text und Sichtbarkeit kommen
+  /// vom Befehl. CommandId „-“ ist eine Trennlinie, sichtbar nur zwischen sichtbaren Einträgen.</summary>
   TAtlasMenuEntry = record
     CommandId: string;
     Section: string;
@@ -136,13 +140,16 @@ type
     function MenuEntries: TArray<TAtlasMenuEntry>;
   end;
 
-  /// <summary>Tastenkürzel eines Moduls im Editor: Key (TShortCut, 0 = keins) ruft Attempt; liefert Attempt False,
-  /// geht die Taste an die nächste Bindung der IDE. Id ist die Befehls-Id (Tastenkürzel-Tipps, Konflikte).</summary>
+  /// <summary>Tastenkürzel eines Moduls im Editor (Key: TShortCut, 0 = keins). Mit Attempt läuft die Taste sofort;
+  /// liefert Attempt False, geht sie an die nächste Bindung der IDE. Sonst läuft Run nach der Tastenverarbeitung.
+  /// Id ist eindeutig (Tastenkürzel-Tipps; Base sucht die Taste beim Drücken darüber neu).</summary>
   TAtlasModuleKey = record
     Id: string;
     Caption: string;
     Key: Integer;
+    Priority: TAtlasKeyPriority;
     Attempt: TFunc<Boolean>;
+    Run: TProc;
   end;
 
   /// <summary>Tastenkürzel eines Moduls; Base fragt sie bei jedem Neubelegen der Tasten (nach Einstellungen und

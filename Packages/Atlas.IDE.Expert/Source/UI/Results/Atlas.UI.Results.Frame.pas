@@ -61,7 +61,6 @@ uses
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Notes.Store,
   Atlas.UI.Results.CallDiagram,
   Atlas.Core.SymbolPath.Model,
   Atlas.UI.SymbolPath.Chain;
@@ -74,8 +73,38 @@ type
   TAtlasChangeSetAction = reference to procedure(ASetId: Integer);
   /// <summary>Unterschied eines Satzes zeigen; AFileName = '' für alle Dateien.</summary>
   TAtlasChangeDiff = reference to procedure(ASetId: Integer; const AFileName: string);
-  /// <summary>Notiz (#545) bearbeiten bzw. löschen.</summary>
-  TAtlasNoteAction = reference to procedure(const ANoteId: string);
+  /// <summary>Eintrag einer Liste mit Kennung (etwa eine Notiz, #545) bearbeiten bzw. löschen.</summary>
+  TAtlasResultsItemAction = reference to procedure(const AItemId: string);
+
+  /// <summary>Eintrag einer Liste mit Kennung: Text, Ort für den Sprung (Line 0-basiert).</summary>
+  TAtlasResultsItem = record
+    Id: string;
+    Caption: string;
+    FileName: string;
+    Line: Integer;
+  end;
+
+  /// <summary>Gruppe einer Liste mit Kennungen (etwa die Notizen einer Datei).</summary>
+  TAtlasResultsItemGroup = record
+    Caption: string;
+    FileName: string;
+    Items: TArray<TAtlasResultsItem>;
+  end;
+
+  /// <summary>Liste mit Kennungen, die ein Modul zeigt (#1455; zuerst die Notizen, #545). Owner nennt den
+  /// Besitzer („notes“); EditCaption bzw. DeleteCaption '' lassen den Eintrag im Kontextmenü weg. Entf löscht,
+  /// solange OnDelete gesetzt ist.</summary>
+  TAtlasResultsItemList = record
+    Owner: string;
+    Title: string;
+    Groups: TArray<TAtlasResultsItemGroup>;
+    /// <summary>Diesen Eintrag wählen; '' = den ersten.</summary>
+    SelectId: string;
+    EditCaption: string;
+    DeleteCaption: string;
+    OnEdit: TAtlasResultsItemAction;
+    OnDelete: TAtlasResultsItemAction;
+  end;
   /// <summary>Units eines Wegs (#1117) auf der Architekturkarte zeigen.</summary>
   TAtlasShowRoute = reference to procedure(const AUnits: TArray<string>);
   /// <summary>Auswirkungsanalyse (#1120) mit anderer Tiefe neu rechnen.</summary>
@@ -95,7 +124,7 @@ type
   TAtlasResultsFrame = class(TFrame)
   private type
 {$SCOPEDENUMS ON}
-    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Note, Flow, FlowPlace, FlowSource,
+    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Item, Flow, FlowPlace, FlowSource,
       Issue, Commit);
 {$SCOPEDENUMS OFF}
     TNodeData = record
@@ -108,8 +137,8 @@ type
       /// <summary>Kennung des Satzes (#721) und sein Zustand; bei Issue und Commit (#1275) deren Id.</summary>
       SetId: Integer;
       State: TAtlasChangeSetState;
-      /// <summary>Kennung der Notiz (#545).</summary>
-      NoteId: string;
+      /// <summary>Kennung des Eintrags einer Liste mit Kennungen (#545, #1455).</summary>
+      ItemId: string;
       /// <summary>Hinweis unter der Maus: Erklärung eines erschlossenen Treffers (#1119).</summary>
       Hint: string;
       /// <summary>Datenfluss (#690): Quelle, Pfad bis einschließlich der Quelle und Ebene ihrer Stelle.</summary>
@@ -133,11 +162,10 @@ type
     FOnChangeUndo: TAtlasChangeSetAction;
     FOnChangeRedo: TAtlasChangeSetAction;
     FOnChangeDiff: TAtlasChangeDiff;
-    FNoteEditItem: TMenuItem;
-    FNoteDeleteItem: TMenuItem;
-    FShowsNotes: Boolean;
-    FOnNoteEdit: TAtlasNoteAction;
-    FOnNoteDelete: TAtlasNoteAction;
+    FItemEditItem: TMenuItem;
+    FItemDeleteItem: TMenuItem;
+    /// <summary>Gezeigte Liste mit Kennungen; Owner '' = keine.</summary>
+    FItems: TAtlasResultsItemList;
     FOnlySure: TCheckBox;
     FRatedTitle: string;
     FRatedEntries: TArray<TAtlasResultEntry>;
@@ -211,8 +239,8 @@ type
     procedure UndoClick(Sender: TObject);
     procedure RedoClick(Sender: TObject);
     procedure DiffClick(Sender: TObject);
-    procedure NoteEditClick(Sender: TObject);
-    procedure NoteDeleteClick(Sender: TObject);
+    procedure ItemEditClick(Sender: TObject);
+    procedure ItemDeleteClick(Sender: TObject);
     function IsCallHierarchy: Boolean;
     procedure UpdateDiagramControls;
     procedure SetDiagramAllowed(AValue: Boolean);
@@ -259,24 +287,23 @@ type
     procedure ShowSelectedDiff;
     procedure UndoSelected;
     procedure RedoSelected;
-    /// <summary>Notizen des Projekts (#545): je Datei eine Gruppe, verwaiste am Ende; alles aufgeklappt.</summary>
-    procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>); overload;
-    /// <summary>Wie oben; ASelectId: diese Notiz wählen (nach Bearbeiten).</summary>
-    procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
-      const ASelectId: string); overload;
+    /// <summary>Liste mit Kennungen eines Moduls (#1455, etwa die Notizen #545): je Gruppe ein Knoten, alles
+    /// aufgeklappt.</summary>
+    procedure ShowItems(const AList: TAtlasResultsItemList);
+    /// <summary>Zeigt gerade die Liste mit Kennungen von AOwner?</summary>
+    function ShowsItemsOf(const AOwner: string): Boolean;
+    /// <summary>Aktionen der Liste von AOwner vergessen (Modul stoppt, Regel 3); die Liste bleibt sichtbar, ohne
+    /// Bearbeiten und Löschen.</summary>
+    procedure ReleaseItems(const AOwner: string);
     /// <summary>Weg zwischen Symbolen (#1117) als Kette; AMapAvailable: Knopf „In Architekturkarte zeigen“
     /// anbieten (Architekturübersicht an und ein Weg gefunden).</summary>
     procedure ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer; AMapAvailable: Boolean);
     /// <summary>Statt der Kette nur ein Hinweis (Suche läuft, kein Server, Fehler).</summary>
     procedure ShowSymbolPathMessage(const ATitle, AText: string);
-    /// <summary>Kennung der gewählten Notiz; '' ohne.</summary>
-    function SelectedNoteId: string;
-    procedure EditSelectedNote;
-    procedure DeleteSelectedNote;
-    /// <summary>Gruppe: "Kunde.pas (2)" bzw. "Verwaist (1)".</summary>
-    class function NoteGroupText(const AGroup: TAtlasNoteGroup): string; static;
-    /// <summary>Eintrag: "42: Titel" bzw. verwaist "Kunde.pas, Zeile 42: Titel".</summary>
-    class function NoteText(const ANote: TAtlasNote; AOrphaned: Boolean): string; static;
+    /// <summary>Kennung des gewählten Eintrags einer Liste mit Kennungen; '' ohne.</summary>
+    function SelectedItemId: string;
+    procedure EditSelectedItem;
+    procedure DeleteSelectedItem;
     /// <summary>Text einer Fundstelle: "12: Kunde.Laden;" bzw. mit Vorschau "alt  →  neu"; erschlossen
     /// "≈ 12: S.Speichern;  [über Interface]" (#1119).</summary>
     class function EntryText(const AEntry: TAtlasResultEntry): string; static;
@@ -326,10 +353,6 @@ type
     property OnChangeUndo: TAtlasChangeSetAction read FOnChangeUndo write FOnChangeUndo;
     property OnChangeRedo: TAtlasChangeSetAction read FOnChangeRedo write FOnChangeRedo;
     property OnChangeDiff: TAtlasChangeDiff read FOnChangeDiff write FOnChangeDiff;
-    /// <summary>Zeigt gerade die Liste der Notizen (#545).</summary>
-    property ShowsNotes: Boolean read FShowsNotes;
-    property OnNoteEdit: TAtlasNoteAction read FOnNoteEdit write FOnNoteEdit;
-    property OnNoteDelete: TAtlasNoteAction read FOnNoteDelete write FOnNoteDelete;
     /// <summary>„Nur sichere“ (#1119); sichtbar, solange erschlossene Treffer da sind.</summary>
     property OnlySure: TCheckBox read FOnlySure;
     /// <summary>Diagramm erlaubt (callHierarchy.diagram, #1122); aus: Umschalter fehlt, nur der Baum.</summary>
@@ -559,15 +582,13 @@ begin
   FDiffItem.Caption := TAtlasStrings.Text(TAtlasTextId.UndoActionDiff);
   FDiffItem.OnClick := DiffClick;
   FMenu.Items.Add(FDiffItem);
-  // Notizen (#545).
-  FNoteEditItem := TMenuItem.Create(FMenu);
-  FNoteEditItem.Caption := TAtlasStrings.Text(TAtlasTextId.NotesEdit);
-  FNoteEditItem.OnClick := NoteEditClick;
-  FMenu.Items.Add(FNoteEditItem);
-  FNoteDeleteItem := TMenuItem.Create(FMenu);
-  FNoteDeleteItem.Caption := TAtlasStrings.Text(TAtlasTextId.NotesDelete);
-  FNoteDeleteItem.OnClick := NoteDeleteClick;
-  FMenu.Items.Add(FNoteDeleteItem);
+  // Listen mit Kennungen (#545, #1455): Text setzt die Liste.
+  FItemEditItem := TMenuItem.Create(FMenu);
+  FItemEditItem.OnClick := ItemEditClick;
+  FMenu.Items.Add(FItemEditItem);
+  FItemDeleteItem := TMenuItem.Create(FMenu);
+  FItemDeleteItem.OnClick := ItemDeleteClick;
+  FMenu.Items.Add(FItemDeleteItem);
   FTree.PopupMenu := FMenu;
   // Weg zwischen Symbolen (#1117): anfangs verborgen, ersetzt den Baum.
   FPathPanel := TPanel.Create(Self);
@@ -894,7 +915,7 @@ begin
   FRoots := nil;
   ShowPathPanel(False);
   FShowsChanges := False;
-  FShowsNotes := False;
+  FItems := Default(TAtlasResultsItemList);
   FOnlySure.Visible := False;
   FShowsImpact := False;
   FDepthLabel.Visible := False;
@@ -1318,106 +1339,98 @@ begin
   FUndoItem.Enabled := (Data.SetId > 0) and (Data.State <> TAtlasChangeSetState.Undone);
   FRedoItem.Enabled := (Data.SetId > 0) and (Data.State <> TAtlasChangeSetState.Applied);
   FDiffItem.Enabled := Data.SetId > 0;
-  FNoteEditItem.Visible := FShowsNotes;
-  FNoteDeleteItem.Visible := FShowsNotes;
-  FNoteEditItem.Enabled := SelectedNoteId <> '';
-  FNoteDeleteItem.Enabled := SelectedNoteId <> '';
+  FItemEditItem.Caption := FItems.EditCaption;
+  FItemDeleteItem.Caption := FItems.DeleteCaption;
+  FItemEditItem.Visible := (FItems.Owner <> '') and (FItems.EditCaption <> '') and Assigned(FItems.OnEdit);
+  FItemDeleteItem.Visible := (FItems.Owner <> '') and (FItems.DeleteCaption <> '') and Assigned(FItems.OnDelete);
+  FItemEditItem.Enabled := SelectedItemId <> '';
+  FItemDeleteItem.Enabled := SelectedItemId <> '';
 end;
 
-class function TAtlasResultsFrame.NoteGroupText(const AGroup: TAtlasNoteGroup): string;
-begin
-  if AGroup.Orphaned then
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.NotesOrphanGroup), [Length(AGroup.Notes)])
-  else
-    Result := Format('%s (%d)', [ExtractFileName(AGroup.FileName), Length(AGroup.Notes)]);
-end;
-
-class function TAtlasResultsFrame.NoteText(const ANote: TAtlasNote; AOrphaned: Boolean): string;
-begin
-  if AOrphaned then
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.NotesOrphanEntry), [ExtractFileName(ANote.FileName),
-      ANote.Line + 1, ANote.Title])
-  else
-    Result := Format('%d: %s', [ANote.Line + 1, ANote.Title]);
-end;
-
-procedure TAtlasResultsFrame.ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>);
-begin
-  ShowNotes(ATitle, AGroups, '');
-end;
-
-procedure TAtlasResultsFrame.ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
-  const ASelectId: string);
+procedure TAtlasResultsFrame.ShowItems(const AList: TAtlasResultsItemList);
 var
-  Group: TAtlasNoteGroup;
-  Note: TAtlasNote;
-  Data: TNodeData;
-  GroupNode, Node, Selected: TTreeNode;
+  mGroup: TAtlasResultsItemGroup;
+  mItem: TAtlasResultsItem;
+  mData: TNodeData;
+  mGroupNode, mNode, mSelected: TTreeNode;
 begin
-  Clear(ATitle);
-  FShowsNotes := True;
-  Selected := nil;
+  Clear(AList.Title);
+  FItems := AList;
+  mSelected := nil;
   FTree.Items.BeginUpdate;
   try
-    for Group in AGroups do
+    for mGroup in AList.Groups do
     begin
-      Data := Default(TNodeData);
-      Data.Kind := TNodeKind.Group;
-      Data.FileName := Group.FileName;
-      GroupNode := AddNode(nil, NoteGroupText(Group), Data);
-      for Note in Group.Notes do
+      mData := Default(TNodeData);
+      mData.Kind := TNodeKind.Group;
+      mData.FileName := mGroup.FileName;
+      mGroupNode := AddNode(nil, mGroup.Caption, mData);
+      for mItem in mGroup.Items do
       begin
-        Data := Default(TNodeData);
-        Data.Kind := TNodeKind.Note;
-        Data.FileName := Note.FileName;
-        Data.Line := Note.Line;
-        Data.NoteId := Note.Id;
-        Node := AddNode(GroupNode, NoteText(Note, Group.Orphaned), Data);
-        if (ASelectId <> '') and (Note.Id = ASelectId) then
-          Selected := Node;
+        mData := Default(TNodeData);
+        mData.Kind := TNodeKind.Item;
+        mData.FileName := mItem.FileName;
+        mData.Line := mItem.Line;
+        mData.ItemId := mItem.Id;
+        mNode := AddNode(mGroupNode, mItem.Caption, mData);
+        if (AList.SelectId <> '') and (mItem.Id = AList.SelectId) then
+          mSelected := mNode;
       end;
-      GroupNode.Expand(False);
+      mGroupNode.Expand(False);
     end;
   finally
     FTree.Items.EndUpdate;
   end;
-  if Selected <> nil then
-    FTree.Selected := Selected
+  if mSelected <> nil then
+    FTree.Selected := mSelected
   else if FTree.Items.Count > 0 then
     FTree.Selected := FTree.Items[0];
 end;
 
-function TAtlasResultsFrame.SelectedNoteId: string;
+function TAtlasResultsFrame.ShowsItemsOf(const AOwner: string): Boolean;
 begin
-  Result := DataOf(FTree.Selected).NoteId;
+  Result := (AOwner <> '') and SameText(FItems.Owner, AOwner);
 end;
 
-procedure TAtlasResultsFrame.EditSelectedNote;
+procedure TAtlasResultsFrame.ReleaseItems(const AOwner: string);
+begin
+  if not ShowsItemsOf(AOwner) then
+    Exit;
+  FItems.OnEdit := nil;
+  FItems.OnDelete := nil;
+end;
+
+function TAtlasResultsFrame.SelectedItemId: string;
+begin
+  Result := DataOf(FTree.Selected).ItemId;
+end;
+
+procedure TAtlasResultsFrame.EditSelectedItem;
 var
-  Id: string;
+  mId: string;
 begin
-  Id := SelectedNoteId;
-  if (Id <> '') and Assigned(FOnNoteEdit) then
-    FOnNoteEdit(Id);
+  mId := SelectedItemId;
+  if (mId <> '') and Assigned(FItems.OnEdit) then
+    FItems.OnEdit(mId);
 end;
 
-procedure TAtlasResultsFrame.DeleteSelectedNote;
+procedure TAtlasResultsFrame.DeleteSelectedItem;
 var
-  Id: string;
+  mId: string;
 begin
-  Id := SelectedNoteId;
-  if (Id <> '') and Assigned(FOnNoteDelete) then
-    FOnNoteDelete(Id);
+  mId := SelectedItemId;
+  if (mId <> '') and Assigned(FItems.OnDelete) then
+    FItems.OnDelete(mId);
 end;
 
-procedure TAtlasResultsFrame.NoteEditClick(Sender: TObject);
+procedure TAtlasResultsFrame.ItemEditClick(Sender: TObject);
 begin
-  EditSelectedNote;
+  EditSelectedItem;
 end;
 
-procedure TAtlasResultsFrame.NoteDeleteClick(Sender: TObject);
+procedure TAtlasResultsFrame.ItemDeleteClick(Sender: TObject);
 begin
-  DeleteSelectedNote;
+  DeleteSelectedItem;
 end;
 
 procedure TAtlasResultsFrame.ShowSelectedDiff;
@@ -1769,8 +1782,8 @@ begin
     ShowSelectedDiff;
     Exit;
   end;
-  // Notizen (#545) springen zu ihrer Zeile, verwaiste zur zuletzt bekannten.
-  if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy, TNodeKind.Note, TNodeKind.Flow, TNodeKind.FlowPlace,
+  // Einträge mit Kennung (Notizen #545) springen zu ihrer Zeile, verwaiste Notizen zur zuletzt bekannten.
+  if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy, TNodeKind.Item, TNodeKind.Flow, TNodeKind.FlowPlace,
     TNodeKind.FlowSource]) and (Data.FileName <> '') and
     Assigned(FOnOpen) then
     FOnOpen(Data.FileName, Data.Line, Data.Character);
@@ -1791,9 +1804,9 @@ begin
     OpenSelected;
     Key := 0;
   end
-  else if (Key = VK_DELETE) and FShowsNotes then
+  else if (Key = VK_DELETE) and (FItems.Owner <> '') and Assigned(FItems.OnDelete) then
   begin
-    DeleteSelectedNote;
+    DeleteSelectedItem;
     Key := 0;
   end;
 end;

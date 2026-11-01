@@ -1652,7 +1652,7 @@
     {"path": "Source/UI/Hover/Atlas.UI.Hover.Tip.pas", "rule": "component-missing-inherited", "fingerprint": "200a62c5", "count": 1, "routine": "TAtlasHoverTip.Paint", "context": "0c3f24ab"},
     {"path": "Source/UI/Hover/Atlas.UI.Hover.Tip.pas", "rule": "metric-method-length", "fingerprint": "56042b92", "count": 1, "routine": "TAtlasHoverTip.PaintItem", "context": "79886e26"},
     {"path": "Source/UI/Notes/Atlas.UI.Notes.Dialog.pas", "rule": "hardcoded-string", "fingerprint": "a091a75c", "count": 1, "routine": "TAtlasNoteDialog.CreateDialog", "context": "82895aa9"},
-    {"path": "Source/UI/Notes/Atlas.UI.Notes.Tip.pas", "rule": "component-missing-inherited", "fingerprint": "1c8d6a85", "count": 1, "routine": "TAtlasNoteTip.Paint", "context": "7ab3a686"},
+    {"path": "Source/UI/Popup/Atlas.UI.Popup.TitledTip.pas", "rule": "component-missing-inherited", "fingerprint": "1c8d6a85", "count": 1, "routine": "TAtlasTitledTip.Paint", "context": "7ab3a686"},
     {"path": "Source/UI/Notifications/Atlas.UI.Notifications.Window.pas", "rule": "component-missing-inherited", "fingerprint": "ba4e192a", "count": 1, "routine": "TAtlasNotificationsWindow.Paint", "context": "9d0f455a"},
     {"path": "Source/UI/Notifications/Atlas.UI.Notifications.Window.pas", "rule": "format-without-settings", "fingerprint": "68af38c2", "count": 1, "routine": "TAtlasNotificationsWindow.TimeText", "context": "1d79758c"},
     {"path": "Source/UI/Notifications/Atlas.UI.Notifications.Window.pas", "rule": "format-without-settings", "fingerprint": "765b0019", "count": 1, "routine": "TAtlasNotificationsWindow.TimeText", "context": "c5396fd3"},

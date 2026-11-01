@@ -1,7 +1,8 @@
-﻿unit Atlas.UI.Notes.Tip;
+﻿unit Atlas.UI.Popup.TitledTip;
 
-// Tooltip einer persönlichen Notiz (#545) beim Überfahren ihres Symbols in
-// der Rinne: oben gedämpft „Notiz vom 15.10.2026“, darunter der Text, auch
+// Tooltip mit Titel und Text für Symbole in Rinne, Übersichtsleiste und
+// Atlas-Spalte (zuerst für persönliche Notizen, #545; bis #1455
+// Atlas.UI.Notes.Tip): oben gedämpft „Notiz vom 15.10.2026“, darunter der Text, auch
 // mehrzeilig, umbrochen auf höchstens MaxWidth logische Pixel. Ohne Fokus wie
 // alle Atlas-Fenster (TAtlasPopupWindow), Schrift der Oberfläche.
 // Unter dem Text optional Links, je einer pro Zeile in der Akzentfarbe (etwa
@@ -20,7 +21,7 @@ uses
   Atlas.UI.Popup.Window;
 
 type
-  TAtlasNoteTip = class(TAtlasPopupWindow)
+  TAtlasTitledTip = class(TAtlasPopupWindow)
   public const
     /// <summary>Höchstbreite des Textes in logischen Pixeln (96 dpi).</summary>
     MaxWidth = 420;
@@ -70,20 +71,20 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Popup.Accessibility;
 
-{ TAtlasNoteTip }
+{ TAtlasTitledTip }
 
-constructor TAtlasNoteTip.Create(AOwner: TComponent);
+constructor TAtlasTitledTip.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Notes;
 end;
 
-function TAtlasNoteTip.TextFlags: Cardinal;
+function TAtlasTitledTip.TextFlags: Cardinal;
 begin
   Result := DT_LEFT or DT_TOP or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS;
 end;
 
-function TAtlasNoteTip.MeasureText(AWidth: Integer): TRect;
+function TAtlasTitledTip.MeasureText(AWidth: Integer): TRect;
 var
   Shown: string;
 begin
@@ -95,25 +96,25 @@ begin
   DrawText(Canvas.Handle, PChar(Shown), -1, Result, TextFlags or DT_CALCRECT);
 end;
 
-function TAtlasNoteTip.TitleArea(AClientWidth: Integer): TRect;
+function TAtlasTitledTip.TitleArea(AClientWidth: Integer): TRect;
 begin
   Canvas.Font := UIFont;
   Result := Rect(Scale(Padding), Scale(Padding) - Scale(2), AClientWidth - Scale(Padding),
     Scale(Padding) - Scale(2) + Canvas.TextHeight('Wg'));
 end;
 
-function TAtlasNoteTip.BodyArea(const ASize: TSize): TRect;
+function TAtlasTitledTip.BodyArea(const ASize: TSize): TRect;
 begin
   Result := Rect(Scale(Padding), TitleArea(ASize.cx).Bottom + Scale(4), ASize.cx - Scale(Padding),
     ASize.cy - Scale(Padding));
 end;
 
-function TAtlasNoteTip.Measure(const ATitle, AText: string): TSize;
+function TAtlasTitledTip.Measure(const ATitle, AText: string): TSize;
 begin
   Result := Measure(ATitle, AText, nil);
 end;
 
-function TAtlasNoteTip.Measure(const ATitle, AText: string; const ALinks: TArray<string>): TSize;
+function TAtlasTitledTip.Measure(const ATitle, AText: string; const ALinks: TArray<string>): TSize;
 var
   Body: TRect;
   TitleWidth, mWidth, LinkWidth, LineHeight: Integer;
@@ -143,12 +144,12 @@ begin
     Inc(Result.cy, Scale(6) + Length(FLinks) * (LineHeight + Scale(2)));
 end;
 
-procedure TAtlasNoteTip.ShowNote(const ATitle, AText: string; const APoint: TPoint);
+procedure TAtlasTitledTip.ShowNote(const ATitle, AText: string; const APoint: TPoint);
 begin
   ShowNote(ATitle, AText, nil, APoint);
 end;
 
-procedure TAtlasNoteTip.ShowNote(const ATitle, AText: string; const ALinks: TArray<string>; const APoint: TPoint);
+procedure TAtlasTitledTip.ShowNote(const ATitle, AText: string; const ALinks: TArray<string>; const APoint: TPoint);
 var
   Area, Bounds: TRect;
   Size: TSize;
@@ -171,7 +172,7 @@ begin
     Announce(ATitle + '. ' + AText);
 end;
 
-function TAtlasNoteTip.LinkAt(X, Y: Integer): Integer;
+function TAtlasTitledTip.LinkAt(X, Y: Integer): Integer;
 var
   Index: Integer;
 begin
@@ -181,7 +182,7 @@ begin
   Result := -1;
 end;
 
-procedure TAtlasNoteTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasTitledTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   Index: Integer;
 begin
@@ -195,7 +196,7 @@ begin
       end);
 end;
 
-procedure TAtlasNoteTip.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TAtlasTitledTip.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseMove(Shift, X, Y);
   if LinkAt(X, Y) >= 0 then
@@ -204,7 +205,7 @@ begin
     Cursor := crDefault;
 end;
 
-procedure TAtlasNoteTip.Paint;
+procedure TAtlasTitledTip.Paint;
 var
   Area, LinkArea: TRect;
   TitleHeight, mTop, Index: Integer;
