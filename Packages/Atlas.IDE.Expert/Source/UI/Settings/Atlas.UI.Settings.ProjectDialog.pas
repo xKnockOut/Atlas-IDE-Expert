@@ -166,6 +166,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.JsonText,
+  Atlas.Core.Settings.PageNames,
   Atlas.UI.Strings;
 
 const
@@ -287,7 +288,8 @@ begin
   try
     for Index := 0 to High(FPages) do
     begin
-      FPageNodes[Index] := FPageTree.Items.Add(nil, FPages[Index]);
+      FPageNodes[Index] := FPageTree.Items.Add(nil,
+      TAtlasSettingsPageNames.Caption(FPages[Index], TAtlasStrings.Language = TAtlasLanguage.English));
       FPageNodes[Index].Data := Pointer(NativeInt(Index));
     end;
     // Prüfregeln (#909): unter der Seite mit "rules" je Gruppe ein Knoten mit Hauptschalter und Tabelle.
