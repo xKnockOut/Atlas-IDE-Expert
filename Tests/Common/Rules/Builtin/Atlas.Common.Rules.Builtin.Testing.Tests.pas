@@ -108,7 +108,9 @@ begin
       AData := nil;
       Result := SameText(AName, cHelperFile);
       if Result then
+      begin
         AData := TEncoding.UTF8.GetBytes(AHelper);
+      end;
     end;
 end;
 

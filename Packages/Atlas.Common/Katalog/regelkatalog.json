@@ -3431,7 +3431,8 @@
           "default": false,
           "description": "Allow a single statement on the same line as the condition or loop header."
         }
-      ]
+      ],
+      "safeFix": true
     },
     {
       "id": "inherited-constructor-after-try",
