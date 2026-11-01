@@ -706,17 +706,14 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
+  Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver,
+    TRuleOptions.Strings(AContext.Options, 'switchConstants', []));
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver,
-      TRuleOptions.Strings(AContext.Options, 'switchConstants', []));
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Values.Free;
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Values.Free;
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -1001,18 +998,15 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
+  Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver, nil);
+  Raising := RaisingRoutines(AContext.Tree);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver, nil);
-    Raising := RaisingRoutines(AContext.Tree);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Raising.Free;
-      Values.Free;
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Raising.Free;
+    Values.Free;
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -1458,16 +1452,13 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
+  Raising := RaisingRoutines(AContext.Tree);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    Raising := RaisingRoutines(AContext.Tree);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Raising.Free;
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Raising.Free;
+    Resolver.UnpinTree;
   end;
 end;
 

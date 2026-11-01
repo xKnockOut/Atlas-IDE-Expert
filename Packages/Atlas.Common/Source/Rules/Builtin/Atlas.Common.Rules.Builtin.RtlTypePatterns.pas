@@ -3925,24 +3925,21 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
-  try
-    Visit(AContext.Tree.Root);
-    for Item in Found do
-    begin
-      // Die Korrektur nur bei genau einer Änderung in der Routine; sonst stellt sie etwa ein Zurücksetzen im
-      // finally nicht sinnvoll um.
-      Count := 0;
-      for Index := 0 to High(Found) do
-        if Found[Index].Routine = Item.Routine then
-          Inc(Count);
-      Fixes := nil;
-      if (Item.Routine <> nil) and (Count = 1) and LocalFix(Item, Fix) then
-        Fixes := [Fix];
-      AReport.Add(TTextRange.Create(Item.Statement.StartPos, Item.Statement.EndPos),
-        Format('Ändert %s für die ganze Anwendung und alle Threads; eine lokale TFormatSettings verwenden.',
-        [Subject(Item.Field)]), TRuleConfidence.High, Fixes);
-    end;
-  finally
+  Visit(AContext.Tree.Root);
+  for Item in Found do
+  begin
+    // Die Korrektur nur bei genau einer Änderung in der Routine; sonst stellt sie etwa ein Zurücksetzen im
+    // finally nicht sinnvoll um.
+    Count := 0;
+    for Index := 0 to High(Found) do
+      if Found[Index].Routine = Item.Routine then
+        Inc(Count);
+    Fixes := nil;
+    if (Item.Routine <> nil) and (Count = 1) and LocalFix(Item, Fix) then
+      Fixes := [Fix];
+    AReport.Add(TTextRange.Create(Item.Statement.StartPos, Item.Statement.EndPos),
+      Format('Ändert %s für die ganze Anwendung und alle Threads; eine lokale TFormatSettings verwenden.',
+      [Subject(Item.Field)]), TRuleConfidence.High, Fixes);
   end;
 end;
 

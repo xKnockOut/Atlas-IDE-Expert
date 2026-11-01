@@ -1,5 +1,13 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Befunde im eigenen Repo, Teil 1 (01.11.2026, Branch `claude/project-thread-jz4idl` von `claude/project-thread-rc7rg9`)
+
+- Lauf: `AtlasServer --check . --units 'Packages/**,Application/**'` mit eingeschalteten `metric-*` (13 min): 7064 Metrik-Warnungen, 56421 `missing-begin-end`, 54 sonstige. Wie der Metrik-Bestand abgebaut wird, entscheidet Marco; `atlas.json` bleibt bis dahin unverändert.
+- Behoben: 26 leere `finally` in den Regel-Units (Reste des früheren `Resolver.Free`, der Resolver gehört dem Cache), unbenutztes `Atlas.Common.Editing.UsesActions` in `Shell.SlashHost`, Zahlen in Hotspot-Berichten (Dateien) und Cache-Schlüsseln von Hotspots und Architektur mit `TFormatSettings.Invariant`.
+- Fehlalarm `collection-modified-in-loop` in `Modules.Registry` und `Settings.Parts` (nach `Delete` folgen Anweisungen, dann `Break`) in der Regel behoben: Break oder Exit ohne Bedingung später im selben Block beendet die Schleife; Break zählt nicht, wenn zwischen Schleifenkopf und Aufruf eine innere Schleife beginnt. Test `LaterBreakLeavesLoop` (FPC-Harness: 67 von 67 grün).
+- Fehlalarm, nur gemeldet: `format-without-settings` bei Datumsanzeigen in der Oberfläche (gewollt im Gebietsschema des Benutzers).
+- Geprüft: AtlasServer mit FPC trunk gebaut; erneuter `--check` der geänderten Units ohne neue Befunde. Delphi-Build offen.
+
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
 - Projektgruppe `Atlas.groupproj`: `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` (Packages), `AtlasServer` (Anwendung), `Atlas.IDE.Expert` (Design-Time-Package, Win32, ADR 0006; bis #406 `Atlas.IdePlugin`), `Atlas.Tests` (DUnitX, nur Win64).
