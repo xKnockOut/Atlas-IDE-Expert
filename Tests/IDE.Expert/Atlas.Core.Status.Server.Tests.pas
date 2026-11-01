@@ -44,7 +44,7 @@ begin
     '"process":{"pid":4711,"version":"1.2.0","started":"2026-10-29T12:00:00.000Z","uptimeMs":3900000,' +
     '"state":"checking"},' +
     '"memory":{"symbols":104857600,"usages":209715200,"libraryUnits":52428800,"treeCache":31457280,' +
-    '"documents":1048576,"rest":124780544,"total":524288000,"budget":419430400,"overBudget":true},' +
+    '"documents":1048576,"packages":2097152,"rest":122683392,"total":524288000,"budget":419430400,"overBudget":true},' +
     '"checkRun":{"serial":3,"active":false,"started":"2026-10-29T12:30:00.000Z","durationMs":8000,"units":120,' +
     '"unitMs":7900,"ruleMs":6000,"slowUnits":[{"name":"Haupt","file":"C:\\P\\Haupt.pas","ms":900.5},' +
     '{"name":"Ohne","ms":12}],"slowRules":[{"id":"unused-uses","ms":2500,"calls":120}]},' +
@@ -66,6 +66,8 @@ begin
   Assert.AreEqual(1234, mSnapshot.Units);
   Assert.AreEqual<Int64>(200 * cMb, mSnapshot.Memory[TAtlasServerMemoryPart.Usages]);
   Assert.AreEqual<Int64>(30 * cMb, mSnapshot.Memory[TAtlasServerMemoryPart.TreeCache]);
+  // Übersetzte Packages (.dcp) als eigener Bereich statt im Rest (Speicher, Rückmeldung 01.11.2026).
+  Assert.AreEqual<Int64>(2 * cMb, mSnapshot.Memory[TAtlasServerMemoryPart.Packages]);
   Assert.AreEqual<Int64>(500 * cMb, mSnapshot.MemoryTotal);
   Assert.AreEqual<Int64>(400 * cMb, mSnapshot.MemoryBudget);
   Assert.IsTrue(mSnapshot.OverBudget);
@@ -127,7 +129,9 @@ begin
   for mIndex := 1 to 12 do
   begin
     if mIndex > 1 then
+    begin
       mJson := mJson + ',';
+    end;
     mJson := mJson + Format('{"method":"m%.2d","count":1,"averageMs":1,"maxMs":%d}', [mIndex, 100 - mIndex]);
   end;
   mJson := mJson + ',{"method":"a99","count":1,"averageMs":1,"maxMs":99}]}';

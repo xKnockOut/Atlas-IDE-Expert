@@ -52,3 +52,7 @@ benchmark/
 /Packages/Atlas.Windows/atlas-baseline.json
 /Tests/Referenzprojekt/atlas.json
 /Tests/Referenzprojekt/atlas-baseline.json
+
+# Reste von Merge-Werkzeugen (git mergetool), z. B. Shell.Linter.pas.orig
+*.orig
+*.rej
