@@ -23,7 +23,7 @@ type
   /// <summary>Zustand des Servers aus process.state: lädt (Index wird aufgebaut), bereit, prüft.</summary>
   TAtlasServerState = (Unknown, Loading, Ready, Checking);
   /// <summary>Speicherbereiche in der Reihenfolge des Fensters.</summary>
-  TAtlasServerMemoryPart = (Symbols, Usages, LibraryUnits, TreeCache, Documents, Rest);
+  TAtlasServerMemoryPart = (Symbols, Usages, LibraryUnits, TreeCache, Documents, Packages, Rest);
 {$SCOPEDENUMS OFF}
 
   TAtlasServerSlowUnit = record
@@ -328,6 +328,7 @@ begin
       Result.Memory[TAtlasServerMemoryPart.Usages] := IntOf(mMemory, 'usages', 0);
       Result.Memory[TAtlasServerMemoryPart.LibraryUnits] := IntOf(mMemory, 'libraryUnits', 0);
       Result.Memory[TAtlasServerMemoryPart.TreeCache] := IntOf(mMemory, 'treeCache', 0);
+      Result.Memory[TAtlasServerMemoryPart.Packages] := IntOf(mMemory, 'packages', 0);
       Result.Memory[TAtlasServerMemoryPart.Documents] := IntOf(mMemory, 'documents', 0);
       Result.Memory[TAtlasServerMemoryPart.Rest] := IntOf(mMemory, 'rest', 0);
       Result.MemoryTotal := IntOf(mMemory, 'total', Result.MemoryTotal);

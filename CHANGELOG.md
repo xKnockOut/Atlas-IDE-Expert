@@ -9,6 +9,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ### Geändert
 - Plugin: Grundstock der Modul-Verträge für 2.0 (#1455, ADR 0017): Modul, Scope und Registry mit `Provide`/`FindAll` nach Interface-GUID und Änderungsmeldung (`Atlas.Core.Modules.Contract`, `.Registry`); die Modulliste entsteht nur aus Anmeldungen und merkt sich jedes einmal angemeldete Modul; Abmelden stoppt das Modul und löst alle seine Anmeldungen rückwärts. Versions-Handschlag über die exportierte Funktion `AtlasCoreContractVersion` (`.Handshake`). Einstellungsteile der Module (`Atlas.Core.Settings.Contract`, `.Parts`): Schlüssel mit Vorgaben, Schema-Teil, Seite und Umbenennungen, zentral in Base; Werte fehlender und fremder Module bleiben erhalten. Noch nicht verdrahtet.
 
+### Behoben
+- Speicher des Servers in der IDE bei Projektgruppen: Jeder Arbeitsbereich las übersetzte Packages (`.dcp`, bei Fremdkomponenten oft zweistellige MB) selbst ein und behielt sie, und bei jedem Indexstart (in der IDE auch bei jedem Projektkontext) kam ein weiterer Satz dazu, freigegeben erst beim Schließen. Bei einer Gruppe mit 8 Projekten lagen so über 2 GB, die das Fenster „Atlas-Server“ als „Rest“ zeigte; über dem Budget wurden dann die Verwendungen ausgelagert und `unused-public-member` immer langsamer. Jetzt liegt jede `.dcp` einmal je Prozess im Speicher (neu gelesen bei geändertem Zeitstempel oder Größe), und das Fenster „Atlas-Server“ zeigt sie als eigenen Bereich „Packages (.dcp)“.
+
 ## [1.2.0] - 2026-11-01
 
 ### Neu
