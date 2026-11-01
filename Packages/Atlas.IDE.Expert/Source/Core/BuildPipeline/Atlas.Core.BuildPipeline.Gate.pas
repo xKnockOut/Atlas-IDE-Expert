@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Gate;
+﻿unit Atlas.Core.BuildPipeline.Gate;
 
 // Prüfung vor dem Kompilieren (#529), ohne VCL und Open Tools API: Vor jedem
 // make bzw. build, den der Benutzer startet, prüft Atlas die Units, die sich
@@ -34,7 +34,7 @@ uses
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.PipelineSettings,
-  Atlas.Core.Build.ReleaseGuard;
+  Atlas.Core.BuildPipeline.ReleaseGuard;
 
 type
 {$SCOPEDENUMS ON}

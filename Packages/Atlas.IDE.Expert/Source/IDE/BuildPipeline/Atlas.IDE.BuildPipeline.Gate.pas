@@ -1,7 +1,7 @@
-﻿unit Atlas.IDE.Build.Gate;
+﻿unit Atlas.IDE.BuildPipeline.Gate;
 
 // Prüfung vor dem Kompilieren in der IDE (#529); Entscheidungen in
-// Atlas.Core.Build.Gate.
+// Atlas.Core.BuildPipeline.Gate.
 // - Units: die Pascal-Dateien des Projekts (.pas, .dpr, .dpk) aus der IDE.
 //   Stand eines ungespeicherten Puffers ist eine Prüfsumme seines Texts, sonst
 //   der Zeitstempel der Datei; Vergleichszeit ist die Ausgabedatei des
@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.Gate;
+  Atlas.Core.BuildPipeline.Gate;
 
 type
   TAtlasIdeBuildGate = class
@@ -42,7 +42,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
-  Atlas.UI.Strings;
+  Atlas.UI.BuildPipeline.Strings;
 
 function MessageServices(out AMessages: IOTAMessageServices; out AGroup: IOTAMessageGroup): Boolean;
 begin
@@ -166,12 +166,12 @@ var
 begin
   Result := '';
   if AOutcome = TAtlasGateOutcome.Blocked then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.GateBlockReason, [Length(AFindings)]);
+    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateBlockReason, [Length(AFindings)]);
   if not MessageServices(Messages, Group) then
     Exit;
   if Length(AFindings) > 0 then
   begin
-    Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.GateFindings, [Length(AFindings),
+    Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateFindings, [Length(AFindings),
       ExtractFileName(AProject.FileName), ACheckedUnits]), Group);
     for Finding in AFindings do
     begin
@@ -184,13 +184,14 @@ begin
   end;
   case AOutcome of
     TAtlasGateOutcome.Blocked:
-      Messages.AddTitleMessage(TAtlasStrings.Text(TAtlasTextId.GateBlocked), Group);
+      Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.GateBlocked), Group);
     TAtlasGateOutcome.Overridden:
-      Messages.AddTitleMessage(TAtlasStrings.Text(TAtlasTextId.GateOverridden), Group);
+      Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.GateOverridden), Group);
     TAtlasGateOutcome.Passed, TAtlasGateOutcome.Reported, TAtlasGateOutcome.TimedOut: ;
   end;
   if ANotifyTimeout then
-    Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.GateTimedOut, [ATimeoutMs]), Group);
+    Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateTimedOut, [ATimeoutMs]),
+      Group);
   Messages.ShowMessageView(Group);
 end;
 

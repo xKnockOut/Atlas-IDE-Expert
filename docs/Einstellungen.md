@@ -184,7 +184,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Tastenkürzel (`keys`) | `keys.palette`, `keys.check`, `keys.palettePriority`, `keys.checkPriority`, `keys.completion`, `keys.signature`, `keys.completionPriority`, `keys.signaturePriority`, `bookmarks.key`, `bookmarks.quick.keyPriority`, `bookmarks.quick.setKey`, `bookmarks.quick.setKeyPriority`, `bookmarks.quick.jumpKey`, `bookmarks.quick.jumpKeyPriority`, `keys.nextBookmark`, `keys.previousBookmark`, `keys.hideElement`, `keys.nextProblem`, `keys.previousProblem`, `keys.searchReplace`, `keys.search`, `keys.searchNext`, `keys.searchPrevious`, `keys.searchInMethod`, `keys.createIssue`, `keys.problemsWindow`, `keys.gotoInterface`, `keys.gotoImplementation`, `keys.codeActions`, `keys.expandSelection`, `keys.shrinkSelection`, `keys.implementations`, `keys.typeDefinition`, `keys.methodToggleUp`, `keys.methodToggleDown`, `keys.jumpToMatch`, `keys.jumpToMatchShortcut`, `keys.jumpToMatchSelect`, `keys.moveLines`, `keys.moveLinesUp`, `keys.moveLinesDown`, `keys.duplicateLinesUp`, `keys.duplicateLinesDown`, `keys.toggleBlockComment`, `keys.toggleBlockComment.key`, `keys.toggleBlockComment.style`, `keys.toggleBlockComment.fallback`, `keys.toggleBlockComment.ownLines`, `keys.toggleBlockComment.withoutSelection`, `keys.newLineAround`, `keys.newLineAround.belowKey`, `keys.newLineAround.aboveKey`, `keys.newLineAround.statementAware`, `keys.unwrap`, `keys.unwrap.key`, `keys.safeDelete`, `keys.safeDelete.key`, `keys.completeStatement`, `keys.format`, `keys.multiCursor.next`, `keys.multiCursor.skip`, `keys.multiCursor.lineEnds`, `keys.multiCursor.above`, `keys.multiCursor.below`, `keys.testUnit`, `keys.editorPriority`, `keys.generateMenu.key`, `keys.quickToggles`, `keys.quickTogglesPriority`, `keys.diagnosticMode`, `keys.diagnosticModePriority`, `keys.overview`, `keys.startupCheck`, `keys.undoChange`, `keys.redoChange`, `unitSearch.key`, `keys.quickOpen`, `keys.navBack`, `keys.navForward`, `keys.lastEdit`, `keys.peekDefinition`, `keys.peekReferences`, `keys.breadcrumbs`, `keys.expressionType`, `keys.nextChange`, `keys.previousChange`, `welcomePage.search.key`, `welcomePage.quickActions.buildKey`, `welcomePage.quickActions.testKey`, `notifications.key` |
 | Code-Aktionen (`codeActions`) | `keys.generateMenu`, `codeActions.methodToggle`, `slashCommands.enabled`, `keys.generateMenu.groups`, `keys.generateMenu.hidden`, `keys.generateMenu.recentFirst`, `keys.generateMenu.showCommandNames`, `usesCommand`, `completeBlocks.docComment`, `slashCommands.disabled`, `slashCommands.headerTemplate`, `slashCommands.logCall`, `slashCommands.componentPalette`, `slashCommands.todoOwner`, `slashCommands.todoCategory`, `slashCommands.sortUsesRemoveUnused`, `slashCommands.enumHelper`, `slashCommands.setHelper` |
 | Prüfregeln (`rules`) | `problems.window`, `problems.window.scope`, `problems.window.groupBy`, `problems.window.columns`, `problems.window.compiler`, `problems.window.followCursor`, `problems.window.openFirst`, `problems.window.closedUnits`, `problems.window.showCleanActive`, `problems.compilerMerge`, `problems.showCompilerCode`, `ruleChecks.enabled`, `problems.live`, `fix.bulk`, `rules`, `excludeTests` |
-| Build (`build`) | `build.checkOnSave`, `compiler.mcpBuild`, `buildTools.enabled`, `build.onOpen`, `tests.enabled`, `tests.run`, `tests.afterBuild`, `tests.affected`, `tests.affectedDepth`, `tests.affectedBeforeCommit`, `tests.buildFirst`, `build.releaseGuard`, `build.zeroHints`, `build.showInterfaceCost`, `taskRunner.enabled`, `taskRunner.problemsFromOutput`, `taskRunner.beforeBuild`, `taskRunner.saveBeforeRun`, `taskRunner.runChecksParallel`, `taskRunner.onlyFindings`, `build.summary`, `build.warningsAsErrors`, `build.compilerSwitches`, `build.showSwitchesInStatusBar`, `build.checkOnSaveDelayMs`, `build.checkOnSaveMaxMs`, `build.onOpenKind`, `build.onOpenScope`, `build.onOpenDelayMs`, `build.onOpenExclude`, `build.onOpenConfig`, `build.onOpenPlatform`, `compiler.onSave`, `build.gate`, `build.gateTimeoutMs`, `build.releaseConfigs`, `build.releaseChecks`, `compiler.backend`, `compiler.ideCommand`, `mcp.disabledTools`, `mcp.prompts`, `mcp.promptLanguage`, `tasks` |
+| Build (`build`) | `build.checkOnSave`, `compiler.mcpBuild`, `buildTools.enabled`, `buildPipeline.enabled`, `build.onOpen`, `tests.enabled`, `tests.run`, `tests.afterBuild`, `tests.affected`, `tests.affectedDepth`, `tests.affectedBeforeCommit`, `tests.buildFirst`, `build.releaseGuard`, `build.zeroHints`, `build.showInterfaceCost`, `taskRunner.enabled`, `taskRunner.problemsFromOutput`, `taskRunner.beforeBuild`, `taskRunner.saveBeforeRun`, `taskRunner.runChecksParallel`, `taskRunner.onlyFindings`, `build.summary`, `build.warningsAsErrors`, `build.compilerSwitches`, `build.showSwitchesInStatusBar`, `build.checkOnSaveDelayMs`, `build.checkOnSaveMaxMs`, `build.onOpenKind`, `build.onOpenScope`, `build.onOpenDelayMs`, `build.onOpenExclude`, `build.onOpenConfig`, `build.onOpenPlatform`, `compiler.onSave`, `build.gate`, `build.gateTimeoutMs`, `build.releaseConfigs`, `build.releaseChecks`, `compiler.backend`, `compiler.ideCommand`, `mcp.disabledTools`, `mcp.prompts`, `mcp.promptLanguage`, `tasks` |
 | Debug (`debug`) | `startProfiles.enabled`, `startProfiles.statusField`, `tests.debug`, `debug.testBreakAtStart`, `debug.enabled`, `debug.hoverValues`, `debug.explainUnavailable`, `debug.completionInDialogs`, `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`, `debug.explainAccessViolation`, `debug.explainAccessViolation.allowCalls`, `debug.exceptionHistory`, `debug.justMyCode`, `debug.exceptionBanner`, `debug.exceptionBanner.ignoreAtLocation`, `debug.inlineValues`, `debug.inlineValuesPerLine`, `debug.ownCodeFolders`, `debug.visualizers`, `debug.visualizers.types`, `debug.visualizers.nameFields`, `debug.visualizers.maxLength`, `debug.visualizers.timeoutMs`, `debug.visualizers.maxImagePixels`, `debug.visualizers.evaluation`, `debug.displayRules`, `debug.displayRules.allowCalls`, `debug.stepIntoTarget`, `debug.stepFilters`, `debug.stepFilters.kinds`, `debug.stepFilters.patterns`, `debug.stepIntoTarget.key`, `debug.breakOnNextEvent`, `debug.breakOnNextEvent.excluded` |
 | Vorlagen/Snippets (`snippets`) | `snippets.enabled`, `snippets.importIdeTemplates`, `completion.postfixTemplates` |
 | Lesezeichen (`bookmarks`) | `bookmarks.enabled`, `bookmarks.named`, `bookmarks.shared`, `bookmarks.quick`, `bookmarks.quick.gutter`, `bookmarks.quick.gutterClick`, `bookmarks.quick.numberedKeys`, `bookmarks.quick.key`, `bookmarks.quick.chordWait`, `bookmarks.quick.scope`, `bookmarks.quick.importIde` |
@@ -450,17 +450,18 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 ### Compiler
 
 - **Hauptknoten**
-  - `compiler.mcpBuild`
   - `buildTools.enabled`
-    - `build.summary`
     - `build.compilerSwitches`
       - `build.showSwitchesInStatusBar`
+  - `buildPipeline.enabled`
+    - `compiler.mcpBuild`
+    - `build.zeroHints`
+    - `build.summary`
+    - `build.warningsAsErrors`
     - `build.gate`
     - `build.gateTimeoutMs`
   - `tests.enabled`
-  - `build.zeroHints`
   - `build.showInterfaceCost`
-  - `build.warningsAsErrors`
 
 - **Probleme** (`compiler.problems`)
   - `problems.enabled` – hängt an `completion.enabled`
@@ -676,7 +677,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 ### Release-Build
 
 - **Hauptknoten**
-  - `build.releaseGuard` – hängt an `buildTools.enabled`
+  - `build.releaseGuard` – hängt an `buildPipeline.enabled`
     - `build.releaseConfigs`
     - `build.releaseChecks`
 

@@ -1047,6 +1047,7 @@
       "x-key": "compiler.mcpBuild",
       "x-area": "build",
       "x-feature": "Build",
+      "x-parent": "buildPipeline.enabled",
       "x-page": "Compiler",
       "x-quickToggle": true,
       "x-caption": "Builds für Claude Code",
@@ -1056,7 +1057,7 @@
     "BuildToolsEnabled": {
       "type": "boolean",
       "default": true,
-      "description": "Modul Build-Werkzeuge (#1454): Release-Wächter, Schranke vor dem Kompilieren, Compilerschalter, Build-Zusammenfassung, Bauen beim Öffnen, Projektaufgaben und Startprofile; aus = nichts davon. Compilermeldungen und Prüfen nach dem Speichern laufen weiter. Die Einzelschalter behalten ihre Werte.",
+      "description": "Modul Build-Werkzeuge (#1454): Compilerschalter, Bauen beim Öffnen, Projektaufgaben und Startprofile; aus = nichts davon. Compilermeldungen und Prüfen nach dem Speichern laufen weiter. Die Einzelschalter behalten ihre Werte.",
       "x-key": "buildTools.enabled",
       "x-area": "build",
       "x-page": "Compiler",
@@ -1067,6 +1068,21 @@
       "x-caption": "Build-Werkzeuge",
       "x-captionEn": "Build tools",
       "x-issue": "#1454"
+    },
+    "BuildPipelineEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Build-Pipeline (#1455): Builds auf Auftrag (Claude Code, Schnellaktion Build, Tests vor dem Lauf), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel und Build-Zusammenfassung; aus = nichts davon. Compilermeldungen und Prüfen nach dem Speichern laufen weiter. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "buildPipeline.enabled",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "buildPipeline",
+      "x-quickToggle": true,
+      "x-caption": "Build-Pipeline",
+      "x-captionEn": "Build pipeline",
+      "x-issue": "#1455"
     },
     "BuildOnOpen": {
       "type": "boolean",
@@ -1605,7 +1621,7 @@
       "x-area": "build",
       "x-feature": "Build",
       "x-page": "Release-Build",
-      "x-parent": "buildTools.enabled",
+      "x-parent": "buildPipeline.enabled",
       "x-quickToggle": true,
       "x-caption": "Release-Build-Wächter",
       "x-captionEn": "Release build guard",
@@ -1616,6 +1632,7 @@
       "default": false,
       "x-key": "build.zeroHints",
       "x-area": "build",
+      "x-parent": "buildPipeline.enabled",
       "x-page": "Compiler",
       "x-caption": "Build nur ohne Warnungen und Hinweise erfolgreich",
       "x-captionEn": "Build succeeds only without warnings and hints",
@@ -1728,13 +1745,14 @@
       "x-caption": "Zusammenfassung nach jedem Build",
       "x-captionEn": "Summary after every build",
       "x-issue": "#530",
-      "x-parent": "buildTools.enabled"
+      "x-parent": "buildPipeline.enabled"
     },
     "BuildWarningsAsErrors": {
       "type": "string",
       "default": "",
       "x-key": "build.warningsAsErrors",
       "x-area": "build",
+      "x-parent": "buildPipeline.enabled",
       "x-page": "Compiler",
       "x-issue": "#530"
     },
@@ -3414,7 +3432,7 @@
       "x-area": "build",
       "x-page": "Compiler",
       "x-issue": "#529, #533",
-      "x-parent": "buildTools.enabled",
+      "x-parent": "buildPipeline.enabled",
       "x-offValue": "off"
     },
     "BuildGateTimeoutMs": {
@@ -3426,7 +3444,7 @@
       "x-area": "build",
       "x-page": "Compiler",
       "x-issue": "#529",
-      "x-parent": "buildTools.enabled"
+      "x-parent": "buildPipeline.enabled"
     },
     "ReleaseConfigs": {
       "type": "string",

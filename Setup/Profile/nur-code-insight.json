@@ -13,6 +13,7 @@
     "analysis.enabled": false,
     "tests.enabled": false,
     "buildTools.enabled": false,
+    "buildPipeline.enabled": false,
     "bookmarks.enabled": false,
     "designer.enabled": false,
     "ruleChecks.enabled": false,

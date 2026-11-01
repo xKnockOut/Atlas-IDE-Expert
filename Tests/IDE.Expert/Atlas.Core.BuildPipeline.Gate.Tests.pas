@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Gate.Tests;
+﻿unit Atlas.Core.BuildPipeline.Gate.Tests;
 
 // Tests für die Prüfung vor dem Kompilieren (#529) ohne IDE: wann geprüft
 // wird, welche Units als geändert gelten, welche Treffer zählen, die Modi warn
@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.BuildPipeline')]
   TAtlasBuildGateTests = class
   public
     /// <summary>off, Syntaxprüfung, Clean, Hintergrundprüfung und Aufträge: keine Prüfung.</summary>
@@ -57,8 +58,8 @@ uses
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.PipelineSettings,
-  Atlas.Core.Build.ReleaseGuard,
-  Atlas.Core.Build.Gate;
+  Atlas.Core.BuildPipeline.ReleaseGuard,
+  Atlas.Core.BuildPipeline.Gate;
 
 const
   ProjectFile = 'C:\P\Kasse.dproj';

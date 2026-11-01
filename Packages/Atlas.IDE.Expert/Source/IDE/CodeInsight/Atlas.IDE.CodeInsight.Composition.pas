@@ -66,11 +66,7 @@ uses
   Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Files.EditInbox,
   Atlas.IDE.Build.CheckOnSave,
-  Atlas.IDE.Build.Runner,
-  Atlas.IDE.Build.Inbox,
-  Atlas.IDE.Build.ReleaseGuard,
-  Atlas.IDE.Build.Gate,
-  Atlas.IDE.Build.Summary,
+  Atlas.IDE.Build.LastMessages,
   Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
@@ -237,10 +233,7 @@ uses
   Atlas.Core.Diagnostics.FeatureTable,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Teardown,
-  Atlas.Core.Build.Inbox,
-  Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Build.Pipeline,
-  Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
@@ -276,14 +269,12 @@ var
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
   EditInbox: TAtlasIdeEditInbox;
   CheckOnSave: TAtlasIdeCheckOnSave;
-  // Bauen auf Auftrag über IOTAProjectBuilder (#261), z. B. für Claude Code; lebt mit den Compile-Ereignissen.
-  BuildRunner: TAtlasIdeBuildRunner;
-  // Zusammenfassung und letzte Meldungen je Projekt (#530); lebt mit den Compile-Ereignissen.
-  BuildSummary: TAtlasIdeBuildSummary;
+  // Meldungen des letzten Builds je Projekt (#530) für Atlas.CompilerBaseline; lebt mit den Compile-Ereignissen.
+  LastBuildMessages: TAtlasIdeLastBuildMessages;
+  // Bewertung eines Builds (#530) an die Benachrichtigungszentrale (#601); lebt mit den Compile-Ereignissen.
+  NotificationsVerdict: IAtlasRegistration;
   // Projekt-Zusammenfassungen (#592, #1455): schreibt Base, auch ohne Willkommensseite.
   ProjectSummaries: TAtlasIdeProjectSummaries;
-  // Eingang des MCP-Werkzeugs build_project (#261), abschaltbar über McpBuild.
-  BuildInbox: TAtlasIdeBuildInbox;
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen); lebt mit den
   // Compile-Ereignissen.
   UnitRename: TAtlasIdeUnitRename;
@@ -968,117 +959,50 @@ begin
   Result := TAtlasIdeSettings.Current.TeamFile;
 end;
 
-/// <summary>Einstellungen des Release-Build-Wächters (#533) aus den aktuellen Plugin-Einstellungen.</summary>
-function ReleaseSettings: TAtlasReleaseSettings;
-var
-  Settings: TAtlasPluginSettings;
-begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasReleaseSettings.Create(Settings.ReleaseGuard, Settings.BuildGate, Settings.ReleaseConfigs,
-    Settings.ReleaseChecks);
-end;
+type
+  /// <summary>Bewertung eines Builds (#530) aus dem Modul Build-Pipeline bzw. nur nach dem Compiler (Modul aus) an
+  /// die Benachrichtigungszentrale (#601).</summary>
+  TNotificationsVerdictListener = class(TInterfacedObject, IAtlasBuildVerdictListener)
+  public
+    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      const AVerdict: TAtlasBuildVerdict);
+  end;
 
-/// <summary>Einstellungen der Prüfung vor dem Kompilieren (#529) aus den aktuellen Plugin-Einstellungen.</summary>
-function GateSettings: TAtlasGateSettings;
+procedure TNotificationsVerdictListener.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
 var
-  Settings: TAtlasPluginSettings;
+  mMessages: TArray<TAtlasCompilerMessage>;
+  mProject: TAtlasCompileProject;
+  mVerdict: TAtlasBuildVerdict;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasGateSettings.Create(Settings.BuildGate, Settings.BuildGateTimeoutMs);
-end;
-
-/// <summary>Fragt den laufenden Server (#530), welche Meldungen eines Builds von AProjectFile in der Basislinie
-/// stehen; ohne laufenden Server nicht (False), dann zählt alles.</summary>
-function BaselineClassifier(const AProjectFile: string): TAtlasBuildClassify;
-var
-  FileName: string;
-begin
-  FileName := AProjectFile;
-  Result :=
-    function(const AMessages: TArray<TAtlasCompilerMessage>; const ADone: TAtlasBuildBaselined): Boolean
-    var
-      Count: Integer;
-      Done: TAtlasBuildBaselined;
-    begin
-      // Den Server startet Atlas dafür nicht (#874).
-      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
-      if not Result then
-        Exit;
-      Count := Length(AMessages);
-      Done := ADone;
-      Manager.RunServerCommandAsync(TAtlasBuildVerdicts.ClassifyCommand,
-        TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(FileName), AMessages),
-        TAtlasBuildVerdicts.ClassifyTimeoutMs,
-        procedure(AAnswer: TJSONValue)
-        begin
-          // nil (Zeitlimit, älterer Server): BaselinedOf liefert nil, dann zählt alles.
-          Done(TAtlasBuildVerdicts.BaselinedOf(AAnswer, Count));
-        end);
-    end;
-end;
-
-/// <summary>Folgen eines bewerteten Builds (#530): Zusammenfassung, Eintrag der Benachrichtigungszentrale (#601) und
-/// Tests nach dem Build (#69), alle nach derselben Bewertung.</summary>
-procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-  const AVerdict: TAtlasBuildVerdict);
-var
-  Messages: TArray<TAtlasCompilerMessage>;
-  Project: TAtlasCompileProject;
-  Verdict: TAtlasBuildVerdict;
-  mItem: IInterface;
-  mListener: IAtlasBuildVerdictListener;
-begin
-  Messages := AMessages;
-  Project := AProject;
-  Verdict := AVerdict;
-  TAtlasGuard.Run(TAtlasFeature.Build,
+  if Notifications = nil then
+    Exit;
+  mMessages := AMessages;
+  mProject := AProject;
+  mVerdict := AVerdict;
+  TAtlasGuard.Run(TAtlasFeature.Notifications,
     procedure
     begin
-      TAtlasIdeBuildSummary.Report(Messages, Project, Verdict, TAtlasIdeSettings.Current.BuildSummary);
+      Notifications.BuildEvaluated(mMessages, mProject, mVerdict);
     end);
-  if Notifications <> nil then
-    TAtlasGuard.Run(TAtlasFeature.Notifications,
-      procedure
-      begin
-        Notifications.BuildEvaluated(Messages, Project, Verdict);
-      end);
-  // Module, etwa die Tests nach dem Build (#69, #1455).
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildVerdictListener) do
-    if Supports(mItem, IAtlasBuildVerdictListener, mListener) then
-      TAtlasGuard.Run(TAtlasFeature.Build,
-        procedure
-        begin
-          mListener.BuildEvaluated(Project, Verdict);
-        end);
 end;
 
-/// <summary>Bewertet einen Build des Benutzers mit lesbaren Meldungen (#530): Basislinie über den Server,
-/// build.zeroHints und build.warningsAsErrors; dann BuildEvaluated (bei Server-Frage später im Hauptthread).
-/// </summary>
+/// <summary>Build des Benutzers mit lesbaren Meldungen (#530): Meldungen merken, dann bewerten lassen. Übernimmt das
+/// Modul Build-Pipeline die Bewertung nicht (aus), bewertet Base nur nach dem Compiler; die Folgen
+/// (Benachrichtigung, Tests nach dem Build) gehen in beiden Fällen an jeden IAtlasBuildVerdictListener.</summary>
 procedure EvaluateBuild(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
   ASucceeded: Boolean);
 var
-  Settings: TAtlasPluginSettings;
-  Messages: TArray<TAtlasCompilerMessage>;
-  Project: TAtlasCompileProject;
+  mFailures: TArray<string>;
+  mFailure: string;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  if BuildSummary <> nil then
-    BuildSummary.Remember(AProject.FileName, AMessages);
-  Messages := AMessages;
-  Project := AProject;
-  TAtlasBuildVerdicts.Run(Messages, ASucceeded,
-    TAtlasBuildVerdictSettings.Create(Settings.BuildZeroHints, Settings.BuildWarningsAsErrors),
-    BaselineClassifier(Project.FileName),
-    procedure(const AVerdict: TAtlasBuildVerdict)
-    begin
-      BuildEvaluated(Messages, Project, AVerdict);
-    end);
-end;
-
-function ReleaseGuardVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.ReleaseGuard;
+  if LastBuildMessages <> nil then
+    LastBuildMessages.Remember(AProject.FileName, AMessages);
+  if not TAtlasBuildPipeline.Evaluate(AMessages, AProject, ASucceeded, mFailures) then
+    mFailures := mFailures + TAtlasBuildPipeline.Announce(AMessages, AProject,
+      TAtlasBuildPipeline.CompilerVerdict(AMessages, ASucceeded));
+  for mFailure in mFailures do
+    TAtlasGuard.Log('Bewertung des Builds: ' + mFailure);
 end;
 
 /// <summary>Testläufer des Moduls Tests (#69, #1455); False ohne laufendes Modul.</summary>
@@ -1380,12 +1304,7 @@ begin
   // Liste der Benachrichtigungen (#601); nur sichtbar, solange die Zentrale an ist.
   Add('Atlas.Notifications', TAtlasTextId.NotificationsCommand,
     Guarded(TAtlasFeature.Notifications, TAtlasIdeNotifications.ShowList), NotificationsVisible);
-  // Release-Build prüfen (#533) ohne Build; nur sichtbar, solange die Einstellung ReleaseGuard an ist.
-  Add('Atlas.CheckRelease', TAtlasTextId.ReleaseCheckCommand, Guarded(TAtlasFeature.Build,
-    procedure
-    begin
-      TAtlasIdeReleaseGuard.CheckActive(TAtlasIdeProjectSummaries.Folder, ReleaseSettings());
-    end), ReleaseGuardVisible);
+  // „Release-Build prüfen“ (#533) stellt das Modul Build-Pipeline bereit.
   Add('Atlas.CheckNow', TAtlasTextId.PaletteCheckNow,
     procedure
     begin
@@ -1914,26 +1833,8 @@ begin
     end;
   Events.OnLog := LogLine;
   Events.Add(TAtlasCompileLog.Create(Events, LogLine));
-  // Release-Build-Wächter (#533): prüft vor make und build in einer Release-Konfiguration, auch für Aufträge des
-  // Läufers (#261, #764); mit build.gate = block bricht er ab.
-  Events.Add(TAtlasIdeReleaseGuard.CreateParticipant(TAtlasIdeProjectSummaries.Folder,
-    function: TAtlasReleaseSettings
-    begin
-      Result := ReleaseSettings();
-    end));
-  // Projektaufgaben vor dem Build (#900) meldet das Modul Build selbst an und ab (#1455).
-  // Prüfung vor dem Kompilieren (#529): geänderte Units über den laufenden Server, nur Builds des Benutzers.
-  Events.Add(TAtlasIdeBuildGate.CreateParticipant(
-    function: TAtlasGateSettings
-    begin
-      Result := GateSettings();
-    end,
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.RunningSession;
-    end));
+  // Release-Build-Wächter (#533), Prüfung vor dem Kompilieren (#529) und Läufer der Builds auf Auftrag (#261)
+  // meldet das Modul Build-Pipeline an und ab, die Projektaufgaben vor dem Build (#900) das Modul Build (#1455).
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(
     procedure(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
@@ -1943,6 +1844,7 @@ begin
       Project: TAtlasCompileProject;
       Succeeded, Readable: Boolean;
       Stamp: TDateTime;
+      Failure: string;
     begin
       Messages := TAtlasCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
       // Projekt-Zusammenfassung (#592, Base): letzter Build bzw. letzte Hintergrundprüfung.
@@ -1964,15 +1866,12 @@ begin
           begin
             RecordProjectMetrics(Project.FileName, Stamp);
           end);
-      // Builds auf Auftrag (#261) warten auf ihre Meldungen.
-      if BuildRunner <> nil then
-        TAtlasGuard.Run(TAtlasFeature.Build,
-          procedure
-          begin
-            BuildRunner.MessagesRead(Messages, Project);
-          end);
-      // Build des Benutzers mit lesbaren Meldungen (#530): erst bewerten (Basislinie, build.zeroHints,
-      // build.warningsAsErrors), dann Zusammenfassung, Benachrichtigung (#601) und Tests nach dem Build (#69).
+      // Gelesene Meldungen an die Module, etwa die Builds auf Auftrag (#261) der Build-Pipeline.
+      for Failure in TAtlasBuildPipeline.MessagesRead(Messages, Project) do
+        TAtlasGuard.Log('Compilermeldungen: ' + Failure);
+      // Build des Benutzers mit lesbaren Meldungen (#530): erst bewerten (Modul Build-Pipeline: Basislinie,
+      // build.zeroHints, build.warningsAsErrors, Zusammenfassung), dann Benachrichtigung (#601) und Tests nach dem
+      // Build (#69).
       if AReadable and not AProject.Background then
         TAtlasGuard.Run(TAtlasFeature.Build,
           procedure
@@ -1998,8 +1897,9 @@ begin
         AProject.Background));
     end));
   Compile := TAtlasIdeCompileEvents.Create(Events);
-  BuildRunner := TAtlasIdeBuildRunner.Create(Events);
-  BuildSummary := TAtlasIdeBuildSummary.Create;
+  LastBuildMessages := TAtlasIdeLastBuildMessages.Create;
+  NotificationsVerdict := AtlasModuleRegistry.Provide(IAtlasBuildVerdictListener,
+    TNotificationsVerdictListener.Create as IAtlasBuildVerdictListener);
 end;
 
 /// <summary>Sprache der IDE (#446): Eintrag für bds.exe unter HKCU\Software\Embarcadero\Locales (von
@@ -3916,12 +3816,13 @@ begin
     RegisterCompileEvents,
     procedure
     begin
-      // Der Läufer meldet sich bei den Ereignissen von Compile an; vorher gehen (Bauen beim Öffnen stoppt mit
-      // seinem Modul vorher).
-      FreeAndNil(BuildInbox);
-      FreeAndNil(BuildRunner);
+      // Läufer, Wächter und Prüfung (Modul Build-Pipeline) und Bauen beim Öffnen (Modul Build) stoppen mit ihren
+      // Modulen vorher.
+      if NotificationsVerdict <> nil then
+        NotificationsVerdict.Revoke;
+      NotificationsVerdict := nil;
       FreeAndNil(Compile);
-      FreeAndNil(BuildSummary);
+      FreeAndNil(LastBuildMessages);
     end);
   Features.Add('Watchdog', TAtlasSafeLevel.Normal,
     function: Boolean
@@ -3961,28 +3862,7 @@ begin
       Result := TAtlasIdeTeamFile.Started;
     end,
     TAtlasIdeTeamFile.Start, TAtlasIdeTeamFile.Stop);
-  // Builds für Claude Code (#261): nur im normalen Start, mit den Compile-Ereignissen und solange McpBuild an ist.
-  Features.AddWanted('McpBuild',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.McpBuild and (BuildRunner <> nil);
-    end,
-    function: Boolean
-    begin
-      Result := BuildInbox <> nil;
-    end,
-    procedure
-    begin
-      BuildInbox := TAtlasIdeBuildInbox.Create(BuildRunner,
-        procedure(const AText: string)
-        begin
-          GuardWarning(AText);
-        end);
-    end,
-    procedure
-    begin
-      FreeAndNil(BuildInbox);
-    end);
+  // Builds für Claude Code (#261, McpBuild) startet das Modul Build-Pipeline.
   // uses nachziehen nach dem Umbenennen einer Unit (#512): ob es angeboten wird, entscheidet der Server
   // (refactoring.unitRenameFollowUp).
   Features.Add('UnitRename', TAtlasSafeLevel.Normal,

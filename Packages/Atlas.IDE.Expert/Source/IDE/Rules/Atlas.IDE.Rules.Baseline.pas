@@ -10,7 +10,7 @@
 //   StartUpdate ist zugleich IAtlasBaselineSource für die Einrichtung (#759).
 // - „Aktuelle Compilermeldungen in die Basislinie“ (#530): Warnungen und
 //   Hinweise des letzten Builds des aktiven Projekts
-//   (TAtlasIdeBuildSummary.Current) über atlas.baselineCompilerMessages.
+//   (TAtlasIdeLastBuildMessages.Current) über atlas.baselineCompilerMessages.
 // Beide sind mit BaselineUpdate (baseline.update) abschaltbar. Befehle an den
 // Server gehen über TAtlasIdeHost: Antworten kommen im Hauptthread und nur,
 // solange das Modul angemeldet ist (Regel 3). Den Stand der Datei danach liest
@@ -58,7 +58,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Build.Summary,
+  Atlas.IDE.Build.LastMessages,
   Atlas.UI.Rules.Strings;
 
 const
@@ -281,10 +281,10 @@ end;
 class procedure TAtlasIdeRulesBaseline.AddCompilerMessages;
 var
   mFileName: string;
-  mSummary: TAtlasIdeBuildSummary;
+  mSummary: TAtlasIdeLastBuildMessages;
   mMessages: TArray<TAtlasCompilerMessage>;
 begin
-  mSummary := TAtlasIdeBuildSummary.Current;
+  mSummary := TAtlasIdeLastBuildMessages.Current;
   if (FScope = nil) or (mSummary = nil) or not Enabled then
     Exit;
   mFileName := ActiveProjectFile;

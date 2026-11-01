@@ -1,8 +1,8 @@
-﻿unit Atlas.Core.Build.Inbox;
+﻿unit Atlas.Core.BuildPipeline.Inbox;
 
 // Builds für Claude Code über die IDE (#261, MCP-Werkzeug build_project), ohne
 // Open Tools API. Ohne Kommandozeilen-Compiler (Starter Edition) baut das
-// Plugin selbst über IOTAProjectBuilder (Atlas.IDE.Build.Runner). Der
+// Plugin selbst über IOTAProjectBuilder (Atlas.IDE.BuildPipeline.Runner). Der
 // MCP-Server legt den Auftrag in den Eingang des Plugins:
 //   %LOCALAPPDATA%\Atlas\ide-builds\<pid>\<id>.json
 //   {"project": Pfad der .dproj, "mode": "make"|"build"|"check",

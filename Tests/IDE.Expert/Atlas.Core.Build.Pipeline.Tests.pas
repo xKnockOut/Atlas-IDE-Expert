@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Build.Pipeline.Tests;
 
 // Tests zu TAtlasBuildPipeline (#1455): Hörer der Compilermeldungen und
-// Bewertung kommen und gehen mit dem Modul der Build-Pipeline.
+// Bewertung kommen und gehen mit dem Modul der Build-Pipeline; die Bewertung
+// erreicht jeden Hörer, auch die von Base ohne Modul.
 
 interface
 
@@ -16,6 +17,10 @@ type
     procedure MessagesReachEveryListener;
     [Test]
     procedure EvaluateOnlyWhenTaken;
+    [Test]
+    procedure AnnounceReachesEveryListener;
+    [Test]
+    procedure CompilerVerdictIgnoresHints;
   end;
 
 implementation
@@ -26,6 +31,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Build.Pipeline;
 
 type
@@ -50,6 +56,21 @@ type
     function Evaluate(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
       ASucceeded: Boolean): Boolean;
   end;
+
+  TFakeVerdictListener = class(TInterfacedObject, IAtlasBuildVerdictListener)
+  public
+    Heard: Integer;
+    LastErrors: Integer;
+    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      const AVerdict: TAtlasBuildVerdict);
+  end;
+
+procedure TFakeVerdictListener.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
+begin
+  Inc(Heard);
+  LastErrors := AVerdict.Errors;
+end;
 
 function TFakeModule.Info: TAtlasModuleInfo;
 begin
@@ -158,6 +179,59 @@ begin
   mKeepTakes := nil;
   mFailures := nil;
   mRegistry := nil;
+end;
+
+procedure TAtlasBuildPipelineTests.AnnounceReachesEveryListener;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mBase, mModule: TFakeVerdictListener;
+  mKeepBase, mKeepModule: IInterface;
+  mBaseProvided: IAtlasRegistration;
+  mVerdict: TAtlasBuildVerdict;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mBase := TFakeVerdictListener.Create;
+  mKeepBase := mBase as IAtlasBuildVerdictListener;
+  mBaseProvided := mRegistry.Provide(IAtlasBuildVerdictListener, mKeepBase);
+  mScope := mRegistry.RegisterModule(TFakeModule.Create as IAtlasModule);
+  mModule := TFakeVerdictListener.Create;
+  mKeepModule := mModule as IAtlasBuildVerdictListener;
+  mScope.Provide(IAtlasBuildVerdictListener, mKeepModule);
+  mVerdict := Default(TAtlasBuildVerdict);
+  mVerdict.Errors := 3;
+  Assert.AreEqual(0, Integer(Length(TAtlasBuildPipeline.Announce(mRegistry, Messages, Project, mVerdict))));
+  Assert.AreEqual(1, mBase.Heard, 'Hörer von Base');
+  Assert.AreEqual(1, mModule.Heard, 'Hörer eines Moduls');
+  Assert.AreEqual(3, mModule.LastErrors);
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.buildpipeline');
+  TAtlasBuildPipeline.Announce(mRegistry, Messages, Project, mVerdict);
+  Assert.AreEqual(2, mBase.Heard, 'Base hört weiter');
+  Assert.AreEqual(1, mModule.Heard, 'nach dem Abmelden nichts mehr');
+  mBaseProvided.Revoke;
+  mBaseProvided := nil;
+  mKeepBase := nil;
+  mKeepModule := nil;
+  mRegistry := nil;
+end;
+
+procedure TAtlasBuildPipelineTests.CompilerVerdictIgnoresHints;
+var
+  mMessages: TArray<TAtlasCompilerMessage>;
+  mVerdict: TAtlasBuildVerdict;
+begin
+  mMessages := Messages;
+  mMessages[0].Severity := TAtlasCompilerSeverity.Hint;
+  mMessages[1].Severity := TAtlasCompilerSeverity.Warning;
+  mVerdict := TAtlasBuildPipeline.CompilerVerdict(mMessages, True);
+  Assert.IsTrue(mVerdict.Effective, 'Hinweise und Warnungen halten ohne Modul nicht an');
+  Assert.IsFalse(mVerdict.BaselineChecked);
+  Assert.AreEqual(1, mVerdict.Hints);
+  Assert.AreEqual(1, mVerdict.Warnings);
+  mVerdict := TAtlasBuildPipeline.CompilerVerdict(mMessages, False);
+  Assert.IsFalse(mVerdict.Effective, 'Compiler gescheitert');
+  mMessages := nil;
 end;
 
 end.

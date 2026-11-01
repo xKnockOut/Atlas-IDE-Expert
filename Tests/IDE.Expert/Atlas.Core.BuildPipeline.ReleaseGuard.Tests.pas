@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.ReleaseGuard.Tests;
+﻿unit Atlas.Core.BuildPipeline.ReleaseGuard.Tests;
 
 // Tests für den Release-Build-Wächter (#533) mit gefälschten Projektoptionen,
 // ohne IDE: Textform der Prüfungen, Release-Konfigurationen, jede Prüfung,
@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.BuildPipeline')]
   TAtlasReleaseGuardTests = class
   public
     [Test]
@@ -59,7 +60,7 @@ uses
   System.SysUtils,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.PipelineSettings,
-  Atlas.Core.Build.ReleaseGuard;
+  Atlas.Core.BuildPipeline.ReleaseGuard;
 
 const
   DefaultChecks = 'debugDefine,debugInfo=off,stackFrames=off,assertions=off,rangeChecks=off,overflowChecks=off,' +

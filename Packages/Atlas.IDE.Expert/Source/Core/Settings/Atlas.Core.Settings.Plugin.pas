@@ -1270,6 +1270,9 @@ type
     /// <summary>Modul-Schalter buildTools.enabled (#1454): Build-Werkzeuge; aus = die wirksamen Werte aller Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     BuildToolsEnabled: Boolean;
+    /// <summary>Modul-Schalter buildPipeline.enabled (#1455): Build-Pipeline; aus = die wirksamen Werte aller
+    /// Einstellungen des Moduls sind „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    BuildPipelineEnabled: Boolean;
     /// <summary>Modul-Schalter bookmarks.enabled (#1454): Lesezeichen und Notizen; aus = die wirksamen Werte aller Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     BookmarksEnabled: Boolean;
@@ -2332,6 +2335,7 @@ begin
   Result.AnalysisEnabled := True;
   Result.TestsEnabled := True;
   Result.BuildToolsEnabled := True;
+  Result.BuildPipelineEnabled := True;
   Result.BookmarksEnabled := True;
   Result.DesignerEnabled := True;
   Result.RuleChecksEnabled := True;
@@ -3270,6 +3274,7 @@ begin
   AnalysisEnabled := AStore.ReadInteger('AnalysisEnabled', BoolValue(Default.AnalysisEnabled)) <> 0;
   TestsEnabled := AStore.ReadInteger('TestsEnabled', BoolValue(Default.TestsEnabled)) <> 0;
   BuildToolsEnabled := AStore.ReadInteger('BuildToolsEnabled', BoolValue(Default.BuildToolsEnabled)) <> 0;
+  BuildPipelineEnabled := AStore.ReadInteger('BuildPipelineEnabled', BoolValue(Default.BuildPipelineEnabled)) <> 0;
   BookmarksEnabled := AStore.ReadInteger('BookmarksEnabled', BoolValue(Default.BookmarksEnabled)) <> 0;
   DesignerEnabled := AStore.ReadInteger('DesignerEnabled', BoolValue(Default.DesignerEnabled)) <> 0;
   RuleChecksEnabled := AStore.ReadInteger('RuleChecksEnabled', BoolValue(Default.RuleChecksEnabled)) <> 0;
@@ -3863,6 +3868,7 @@ begin
   AStore.WriteInteger('AnalysisEnabled', BoolValue(AnalysisEnabled));
   AStore.WriteInteger('TestsEnabled', BoolValue(TestsEnabled));
   AStore.WriteInteger('BuildToolsEnabled', BoolValue(BuildToolsEnabled));
+  AStore.WriteInteger('BuildPipelineEnabled', BoolValue(BuildPipelineEnabled));
   AStore.WriteInteger('BookmarksEnabled', BoolValue(BookmarksEnabled));
   AStore.WriteInteger('DesignerEnabled', BoolValue(DesignerEnabled));
   AStore.WriteInteger('RuleChecksEnabled', BoolValue(RuleChecksEnabled));
