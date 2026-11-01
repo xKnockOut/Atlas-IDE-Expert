@@ -105,7 +105,9 @@ var
 begin
   for Rule in TArray<IRule>.Create(TStringConcatInLoopRule.Create, TLoopInvariantCallRule.Create,
     TMissingBeginUpdateRule.Create) do
+  begin
     Assert.IsTrue(Rule.Descriptor.Experimental, Rule.Descriptor.Id);
+  end;
 end;
 
 procedure TPerformanceRulesTests.StringConcatInLoopReported;

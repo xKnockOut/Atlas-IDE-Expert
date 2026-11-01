@@ -155,9 +155,13 @@ uses
 function ErrorResponse(const AId: TJSONValue; const AError: Exception): TJSONObject;
 begin
   if AError is EJsonRpcError then
-    Result := TJsonRpcMessages.Error(AId, EJsonRpcError(AError).Code, AError.Message)
+  begin
+    Result := TJsonRpcMessages.Error(AId, EJsonRpcError(AError).Code, AError.Message);
+  end
   else
+  begin
     Result := TJsonRpcMessages.Error(AId, TJsonRpcErrorCode.InternalError, AError.ClassName + ': ' + AError.Message);
+  end;
 end;
 
 // Meldet unerwartete Fehler; Fehler beim Melden selbst werden verschluckt.
@@ -229,7 +233,9 @@ begin
     end;
   end;
   if AStatistics <> nil then
+  begin
     AStatistics.Add(AMethod, Watch.ElapsedMilliseconds, Failed);
+  end;
 end;
 
 // Übergibt eine nebenläufige Anfrage dem Scheduler. Die Arbeit hält nur
@@ -269,7 +275,9 @@ begin
   Id := TJSONValue(AId.Clone);
   Params := nil;
   if AParams <> nil then
+  begin
     Params := TJSONValue(AParams.Clone);
+  end;
 
   Pending.BeginWork;
   try
@@ -283,13 +291,17 @@ begin
           Ticket := 0;
           // Beim Ablauf antwortet der Watchdog selbst mit RequestCancelled (Code-Review A-06).
           if Watchdog <> nil then
+          begin
             Ticket := Watchdog.Watch(Id, Method, Token, Responder);
+          end;
           try
             Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed, Statistics, Observer,
               Waited + Queued.ElapsedMilliseconds);
           finally
             if Watchdog <> nil then
+            begin
               Watchdog.Unwatch(Ticket);
+            end;
             Pending.Release(Id, Token);
             Params.Free;
             Id.Free;
@@ -297,9 +309,13 @@ begin
           // Hat der Watchdog schon mit RequestCancelled geantwortet, wird die späte Antwort verworfen:
           // genau eine Antwort je Anfrage (A-06).
           if Pending.TryAnswer(Token) then
-            Responder(Response)
+          begin
+            Responder(Response);
+          end
           else
+          begin
             Response.Free;
+          end;
         finally
           Pending.EndWork;
         end;
@@ -367,7 +383,9 @@ procedure TJsonRpcDispatcher.RegisterConditionalRequest(const AMethod: string;
 begin
   RegisterRequest(AMethod, AHandler);
   if Assigned(AConcurrentWhen) then
+  begin
     FConcurrentWhen.AddOrSetValue(AMethod, AConcurrentWhen);
+  end;
 end;
 
 procedure TJsonRpcDispatcher.RegisterConcurrentRequest(const AMethod: string;
@@ -420,13 +438,17 @@ begin
         try
           Found := FExpected.TryGetValue(Id.Value, Handler);
           if Found then
+          begin
             FExpected.Remove(Id.Value);
+          end;
         finally
           TMonitor.Exit(FExpected);
         end;
       end;
       if Found then
+      begin
         Handler(AMessage);
+      end;
       Exit(nil);
     end;
     Exit(TJsonRpcMessages.Error(Id, TJsonRpcErrorCode.InvalidRequest, 'Feld "method" fehlt'));
@@ -435,14 +457,20 @@ begin
   if not (MethodValue is TJSONString) then
   begin
     if Id = nil then
+    begin
       Exit(nil);
+    end;
     Exit(TJsonRpcMessages.Error(Id, TJsonRpcErrorCode.InvalidRequest, 'Feld "method" ist keine Zeichenkette'));
   end;
 
   if Id = nil then
-    FLastMessage := MethodValue.Value
+  begin
+    FLastMessage := MethodValue.Value;
+  end
   else
+  begin
     FLastMessage := MethodValue.Value + ' (id ' + Id.ToJSON + ')';
+  end;
 
   if Id = nil then
   begin
@@ -457,7 +485,9 @@ begin
     Result := nil;
   end
   else
+  begin
     Result := DispatchRequest(Id, MethodValue.Value, Params, AQueueMs);
+  end;
 end;
 
 function TJsonRpcDispatcher.ConcurrentFor(const AMethod: string; const AParams: TJSONValue;
@@ -469,9 +499,13 @@ var
 begin
   AHandler := nil;
   if FConcurrentHandlers.TryGetValue(AMethod, AHandler) then
+  begin
     Exit(True);
+  end;
   if not (FConcurrentWhen.TryGetValue(AMethod, When) and FRequestHandlers.TryGetValue(AMethod, Handler)) then
+  begin
     Exit(False);
+  end;
   try
     Concurrent := When(AParams);
   except
@@ -480,7 +514,9 @@ begin
       Concurrent := False;
   end;
   if not Concurrent then
+  begin
     Exit(False);
+  end;
   AHandler :=
     function(const ARequestParams: TJSONValue; const AToken: IJsonRpcCancellationToken): TJSONValue
     begin
@@ -515,9 +551,13 @@ begin
   try
     try
       if Assigned(FGuard) then
+      begin
         FGuard(AMethod, True);
+      end;
       if Assigned(FRequestGuard) then
+      begin
         FRequestGuard(AMethod, AParams);
+      end;
       if ConcurrentFor(AMethod, AParams, ConcurrentHandler) then
       begin
         if Assigned(FScheduler) and Assigned(FResponder) then
@@ -529,16 +569,22 @@ begin
         end;
         // Ohne Scheduler läuft die Anfrage hier; auch dann gilt das Zeitlimit.
         if FWatchdog <> nil then
+        begin
           Ticket := FWatchdog.Watch(AId, AMethod);
+        end;
         Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed, FStatistics,
           FObserver, AQueueMs));
       end;
       if not FRequestHandlers.TryGetValue(AMethod, Handler) then
+      begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, 'Methode nicht unterstützt: ' + AMethod);
+      end;
       // Abgebrochen, während die Anfrage noch in der Warteschlange stand.
       Token.ThrowIfCancellationRequested;
       if FWatchdog <> nil then
+      begin
         Ticket := FWatchdog.Watch(AId, AMethod);
+      end;
       Measured := True;
       ObserveStarted(FObserver, AMethod);
       Previous := TJsonRpcCurrentRequest.Enter(Token);
@@ -550,25 +596,35 @@ begin
       Result := TJsonRpcMessages.Response(AId, Value);
       ObserveFinished(FObserver, AMethod, AParams, Value, nil, AQueueMs, Watch.ElapsedMilliseconds);
       if FStatistics <> nil then
+      begin
         FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, False);
+      end;
     except
       on E: Exception do
       begin
         // Zuerst die Schutzseite nach einem Stapelüberlauf; alles danach darf wieder tief rufen (#1355).
         TStackGuard.AfterError(E);
         if Measured then
+        begin
           ObserveFinished(FObserver, AMethod, AParams, nil, E, AQueueMs, Watch.ElapsedMilliseconds);
+        end;
         if Measured and (FStatistics <> nil) then
+        begin
           FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, True);
+        end;
         NotifyFailed(FOnRequestFailed, AMethod, AParams, E);
         Result := ErrorResponse(AId, E);
       end;
     end;
   finally
     if FWatchdog <> nil then
+    begin
       FWatchdog.Unwatch(Ticket);
+    end;
     if not Scheduled then
+    begin
       FPending.Release(AId, Token);
+    end;
   end;
 end;
 
@@ -587,7 +643,9 @@ begin
         Exit;
     end;
   if FNotificationHandlers.TryGetValue(AMethod, Handler) then
+  begin
     Handler(AParams);
+  end;
 end;
 
 end.

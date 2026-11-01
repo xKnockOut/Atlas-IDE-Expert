@@ -140,7 +140,9 @@ begin
   FText := AText;
   FPos := 1;
   if (FText <> '') and (FText[1] = #$FEFF) then
+  begin
     FPos := 2;
+  end;
 end;
 
 procedure TReader.Fail(const AMessage: string);
@@ -172,7 +174,9 @@ begin
     while True do
     begin
       if FPos > Length(FText) then
+      begin
         Fail('String nicht abgeschlossen');
+      end;
       case FText[FPos] of
         '"':
           begin
@@ -185,7 +189,9 @@ begin
           begin
             Inc(FPos);
             if FPos > Length(FText) then
+            begin
               Fail('String nicht abgeschlossen');
+            end;
             case FText[FPos] of
               '"', '\', '/': Builder.Append(FText[FPos]);
               'b': Builder.Append(#8);
@@ -197,7 +203,9 @@ begin
                 begin
                   Code := StrToIntDef('$' + Copy(FText, FPos + 1, 4), -1);
                   if (Code < 0) or (FPos + 4 > Length(FText)) then
+                  begin
                     Fail('Ungültige \u-Folge');
+                  end;
                   Builder.Append(Char(Code));
                   Inc(FPos, 4);
                 end;
@@ -225,10 +233,14 @@ var
   Word: string;
 begin
   if ADepth > MaxDepth then
+  begin
     Fail('Zu tief verschachtelt');
+  end;
   SkipSpace;
   if FPos > Length(FText) then
+  begin
     Fail('Wert erwartet');
+  end;
   Start := FPos - 1;
   case FText[FPos] of
     '{':
@@ -240,12 +252,16 @@ begin
           while (FPos <= Length(FText)) and (FText[FPos] <> '}') do
           begin
             if FText[FPos] <> '"' then
+            begin
               Fail('Schlüssel in Anführungszeichen erwartet');
+            end;
             KeyStart := FPos - 1;
             Key := ReadString;
             SkipSpace;
             if (FPos > Length(FText)) or (FText[FPos] <> ':') then
+            begin
               Fail('":" erwartet');
+            end;
             Inc(FPos);
             Result.FKeys.Add(Key);
             Result.FKeyStarts.Add(KeyStart);
@@ -257,10 +273,14 @@ begin
               SkipSpace;
             end
             else if (FPos <= Length(FText)) and (FText[FPos] <> '}') then
+            begin
               Fail('"," oder "}" erwartet');
+            end;
           end;
           if FPos > Length(FText) then
+          begin
             Fail('"}" fehlt');
+          end;
           Inc(FPos);
           Result.FStop := FPos - 1;
         except
@@ -284,10 +304,14 @@ begin
               SkipSpace;
             end
             else if (FPos <= Length(FText)) and (FText[FPos] <> ']') then
+            begin
               Fail('"," oder "]" erwartet');
+            end;
           end;
           if FPos > Length(FText) then
+          begin
             Fail('"]" fehlt');
+          end;
           Inc(FPos);
           Result.FStop := FPos - 1;
         except
@@ -304,18 +328,30 @@ begin
       end;
   else
     while (FPos <= Length(FText)) and CharInSet(FText[FPos], ['A'..'Z', 'a'..'z', '0'..'9', '-', '+', '.']) do
+    begin
       Inc(FPos);
+    end;
     Word := Copy(FText, Start + 1, FPos - 1 - Start);
     if Word = '' then
+    begin
       Fail('Wert erwartet');
+    end;
     if Word = 'null' then
-      Result := TJsonNode.Create(TJsonKind.Null, Start)
+    begin
+      Result := TJsonNode.Create(TJsonKind.Null, Start);
+    end
     else if (Word = 'true') or (Word = 'false') then
-      Result := TJsonNode.Create(TJsonKind.Boolean_, Start)
+    begin
+      Result := TJsonNode.Create(TJsonKind.Boolean_, Start);
+    end
     else if CharInSet(Word[1], ['-', '0'..'9']) then
-      Result := TJsonNode.Create(TJsonKind.Number, Start)
+    begin
+      Result := TJsonNode.Create(TJsonKind.Number, Start);
+    end
     else
+    begin
       raise EJsonTreeError.Create(Format('Unbekannter Wert "%s"', [Word]), Start);
+    end;
     Result.FValue := Word;
     Result.FStop := FPos - 1;
   end;
@@ -327,7 +363,9 @@ begin
   try
     SkipSpace;
     if FPos <= Length(FText) then
+    begin
       Fail('Inhalt hinter dem Wert');
+    end;
   except
     Result.Free;
     raise;

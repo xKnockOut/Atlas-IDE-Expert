@@ -124,7 +124,9 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     for Name in TUnresolvedNames.Find(FResolver, Tree, 'C:\P\Haupt.pas') do
+    begin
       Result := Result + Name.Name + Format('@%d:%d;', [Name.Range.StartPos.Line, Name.Range.StartPos.Character]);
+    end;
   finally
     Tree.Free;
   end;
@@ -139,7 +141,9 @@ begin
   mTree := TPascalParser.Parse(AText);
   try
     for mName in TUnresolvedNames.Find(FResolver, mTree, 'C:\P\Haupt.pas') do
+    begin
       Result := Result + Format('%s=%s/%s;', [mName.Name, mName.Code, mName.Owner]);
+    end;
   finally
     mTree.Free;
   end;

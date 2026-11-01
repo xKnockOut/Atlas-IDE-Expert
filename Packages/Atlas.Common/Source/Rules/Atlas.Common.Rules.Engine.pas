@@ -166,7 +166,9 @@ var
 begin
   Result := nil;
   if ASettings.RuleSeverity(UnitTooDeepRuleId, TRuleSeverity.Hint) = TRuleSeverity.Off then
+  begin
     Exit;
+  end;
   Node := ATree.Deepest;
   Finding := Default(TRuleFinding);
   Finding.RuleId := UnitTooDeepRuleId;
@@ -183,9 +185,13 @@ function CompareFindings(const A, B: TRuleFinding): Integer;
 begin
   Result := A.Range.StartPos.Line - B.Range.StartPos.Line;
   if Result = 0 then
+  begin
     Result := A.Range.StartPos.Character - B.Range.StartPos.Character;
+  end;
   if Result = 0 then
+  begin
     Result := CompareText(A.RuleId, B.RuleId);
+  end;
 end;
 
 /// <summary>AFindings nach CompareFindings, bei Gleichstand in Meldereihenfolge (Delphis Sort ist nicht stabil:
@@ -199,17 +205,23 @@ begin
   Items := AFindings;
   SetLength(Order, Length(Items));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
     function(const A, B: Integer): Integer
     begin
       Result := CompareFindings(Items[A], Items[B]);
       if Result = 0 then
+      begin
         Result := A - B;
+      end;
     end));
   SetLength(Result, Length(Items));
   for Index := 0 to High(Order) do
+  begin
     Result[Index] := Items[Order[Index]];
+  end;
 end;
 
 { TRuleReport }
@@ -273,14 +285,20 @@ var
   Finding: TRuleFinding;
 begin
   if ASeverity = TRuleSeverity.Off then
+  begin
     Exit;
+  end;
   Finding.RuleId := FRuleId;
   Finding.Range := ARange;
   Finding.Message := AMessage;
   if ASeverity = TRuleSeverity.Default then
-    Finding.Severity := FSeverity
+  begin
+    Finding.Severity := FSeverity;
+  end
   else
+  begin
     Finding.Severity := ASeverity;
+  end;
   Finding.Confidence := TRuleConfidence.High;
   Finding.Fixes := AFixes;
   Finding.Details := '';
@@ -293,14 +311,20 @@ var
   Finding: TRuleFinding;
 begin
   if ASeverity = TRuleSeverity.Off then
+  begin
     Exit;
+  end;
   Finding.RuleId := FRuleId;
   Finding.Range := ARange;
   Finding.Message := AMessage;
   if ASeverity = TRuleSeverity.Default then
-    Finding.Severity := FSeverity
+  begin
+    Finding.Severity := FSeverity;
+  end
   else
+  begin
     Finding.Severity := ASeverity;
+  end;
   Finding.Confidence := TRuleConfidence.High;
   Finding.Fixes := AFixes;
   Finding.Details := ADetails;
@@ -342,7 +366,9 @@ begin
   Result := TRuleProfiles.Severity(ASettings, ASettings.Profile, ARule, TRuleProfiles.CategoryOf(ARule.Id),
     ARelativePath, AEnabled);
   if Result = TRuleSeverity.Default then
+  begin
     Result := TRuleSeverity.Warning;
+  end;
 end;
 
 class function TRuleEngine.GroupOff(const ARuleId: string; const ASettings: TServerSettings): Boolean;
@@ -362,10 +388,14 @@ begin
   Result := False;
   if (Length(ASettings.Rules) = 0) or not TRuleCatalog.Shared.TryFind(ARuleId, Entry) or
     (Entry.Group <> TRuleGroup.Compiler) or (Entry.Level <> 'T') then
+  begin
     Exit;
+  end;
   Options := RuleOptions(TRuleCatalog.GroupKey(Entry.Group), ASettings);
   if Options = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(Options);
   try
     if Value is TJSONObject then
@@ -391,9 +421,13 @@ begin
     Limit := TRuleSeverity.Error;
   end;
   if Ord(ASeverity) > Ord(Limit) then
-    Result := Limit
+  begin
+    Result := Limit;
+  end
   else
+  begin
     Result := ASeverity;
+  end;
 end;
 
 class function TRuleEngine.RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string;
@@ -401,8 +435,12 @@ var
   Rule: TRuleSetting;
 begin
   for Rule in ASettings.Rules do
+  begin
     if SameText(Rule.Id, ARuleId) then
+    begin
       Exit(Rule.Options);
+    end;
+  end;
   Result := '';
 end;
 
@@ -415,22 +453,32 @@ var
 begin
   Result := False;
   if AOptions = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Exclude := TJSONObject(Value).GetValue('exclude');
     if not (Exclude is TJSONArray) then
+    begin
       Exit;
+    end;
     for Item in TJSONArray(Exclude) do
     begin
       if not (Item is TJSONString) then
+      begin
         Continue;
+      end;
       Pattern := Item.Value;
       if ((AUnitName <> '') and SameText(Pattern, AUnitName)) or
         ((ARelativePath <> '') and MatchesGlob(Pattern, ARelativePath)) then
+      begin
         Exit(True);
+      end;
     end;
   finally
     Value.Free;
@@ -448,28 +496,38 @@ var
 begin
   Result := '';
   if not TRuleCatalog.Shared.TryFind(ARuleId, Entry) then
+  begin
     Exit;
+  end;
   for Id in Entry.OverriddenBy do
   begin
     Found := False;
     for Rule in ARules do
+    begin
       if SameText(Rule.Descriptor.Id, Id) then
       begin
         Descriptor := Rule.Descriptor;
         Found := True;
         Break;
       end;
+    end;
     if not Found then
     begin
       if not TRuleCatalog.Shared.TryFind(Id, Other) then
+      begin
         Continue;
+      end;
       Descriptor := TRuleDescriptor.Create(Other.Id, Other.DefaultSeverity, Other.Name);
     end;
     if EffectiveSeverity(Descriptor, ASettings, ARelativePath, Enabled) = TRuleSeverity.Off then
+    begin
       Continue;
+    end;
     if (Descriptor.Experimental and not Enabled) or
       IsExceptedByOptions(RuleOptions(Descriptor.Id, ASettings), ARelativePath, AUnitName) then
+    begin
       Continue;
+    end;
     Exit(Descriptor.Id);
   end;
 end;
@@ -487,16 +545,22 @@ begin
   for Rule in ARules do
   begin
     if not Supports(Rule, IRuleNewNames, Source) then
+    begin
       Continue;
+    end;
     Descriptor := Rule.Descriptor;
     // Dieselben Bedingungen wie für den Lauf der Regel: Schweregrad, experimentell, Ausnahmen der Optionen.
     if (EffectiveSeverity(Descriptor, ASettings, AContext.RelativePath, Enabled) = TRuleSeverity.Off) or
       (Descriptor.Experimental and not Enabled) then
+    begin
       Continue;
+    end;
     Context := AContext;
     Context.Options := RuleOptions(Descriptor.Id, ASettings);
     if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
+    begin
       Continue;
+    end;
     Exit(Source.NewNames(Context));
   end;
 end;
@@ -539,13 +603,17 @@ var
   mRules: TArray<IRule>;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
+  begin
     Exit(nil);
+  end;
   Settings := ASettings;
   if (ASettings.ExcludeTests or (ASettings.TestProfile <> '')) and (AContext.Tree <> nil) and
     TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
   begin
     if ASettings.ExcludeTests then
+    begin
       Exit(nil);
+    end;
     Settings.Profile := ASettings.TestProfile;
   end;
   if (AContext.Tree <> nil) and (AContext.Tree.Depth > MaxTreeDepth) then
@@ -559,7 +627,9 @@ begin
   // anbietet: Editor, --check und SARIF zeigen sie, Unterdrückungen und Baseline wirken wie bei jeder Regel.
   mRules := ARules;
   if AContext.Queries <> nil then
+  begin
     mRules := mRules + TSavedQueryRule.RulesOf(Settings);
+  end;
   // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer
   // gesetzter Cache gehört dem Aufrufer und bleibt gefüllt.
   Shared := AContext;
@@ -593,15 +663,23 @@ begin
       Descriptor := Rule.Descriptor;
       Severity := EffectiveSeverity(Descriptor, Settings, AContext.RelativePath, Enabled);
       if Severity = TRuleSeverity.Off then
+      begin
         Continue;
+      end;
       if Descriptor.Experimental and not Enabled then
+      begin
         Continue;
+      end;
       if OverridingRule(Descriptor.Id, mRules, Settings, AContext.RelativePath, AContext.UnitName) <> '' then
+      begin
         Continue;
+      end;
       Context := Shared;
       // Sprachstand (#1126): Korrekturen erzeugen keine Merkmale, die minDelphiVersion nicht kennt.
       if Context.DelphiVersion = '' then
+      begin
         Context.DelphiVersion := TLanguageFeatures.LanguageLevel(Settings.DelphiVersion, Settings.MinDelphiVersion);
+      end;
       Context.Options := RuleOptions(Descriptor.Id, Settings);
       Context.DfmPropertyRules := Settings.DfmPropertyRules;
       Context.NoSignatureSync := not Settings.Refactoring.SyncSignatures;
@@ -623,11 +701,15 @@ begin
       Context.SortUsesByNamespace := Settings.SortUsesByNamespace;
       Context.UsesKeep := Settings.UsesKeep;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
+      begin
         Continue;
+      end;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als
       // const; ohne gezählte Referenz würde er nie freigegeben (Speicherleck).
       if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+      begin
         raise ERuleCheckCancelled.Create('Prüfung abgebrochen');
+      end;
       Report := TRuleReport.Create(Descriptor.Id, Severity, Findings);
       Watch := TStopwatch.StartNew;
       TRequestDiagnostics.CurrentRule(Descriptor.Id);
@@ -643,7 +725,9 @@ begin
           // Abgebrochen wird weiter wie bisher; sonst kostet eine scheiternde Regel nur ihre eigenen
           // Treffer (#1094).
           if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+          begin
             raise;
+          end;
           Findings.Count := Before;
           TStackGuard.AfterError(E);
           TRequestDiagnostics.RuleFailed(Descriptor.Id, E.ClassName);
@@ -653,13 +737,17 @@ begin
       TRequestDiagnostics.CurrentRule('');
       Report := nil;
       if Failed then
+      begin
         Continue;
+      end;
       Elapsed := Watch.ElapsedMilliseconds;
       // Zeitprofil des Prüflaufs (#1356): dieselbe Messung, an den Profiler des Threads, falls einer hängt.
       TCheckProfiler.RuleTimed(Descriptor.Id, TCheckProfiler.TicksToMicroseconds(Watch.ElapsedTicks,
         TStopwatch.Frequency));
       if Elapsed >= SlowRuleMs then
+      begin
         TRequestDiagnostics.Slowest('slowRule', Descriptor.Id, Integer(Elapsed));
+      end;
       RanIds.Add(LowerCase(Descriptor.Id));
       if Supports(Rule, IRuleAfterFindings, After) then
       begin
@@ -687,7 +775,9 @@ begin
         on E: Exception do
         begin
           if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+          begin
             raise;
+          end;
           Findings.Count := Before;
           TStackGuard.AfterError(E);
           TRequestDiagnostics.RuleFailed(AfterIds[Index], E.ClassName);
@@ -698,27 +788,44 @@ begin
     end;
 
     if AContext.Tree <> nil then
+    begin
       Suppressions := TSuppressions.Create(AContext.Tree.Tokens);
+    end;
     // Erst unterdrücken, dann filtern: Auch ausgeblendete Treffer machen einen Kommentar wirksam.
     for Finding in Findings do
+    begin
       if ((Suppressions = nil) or not Suppressions.IsSuppressed(Finding.RuleId, Finding.Range.StartPos.Line)) and
         (Ord(Finding.Confidence) >= Ord(MinConfidence)) then
+      begin
         Kept.Add(Finding);
+      end;
+    end;
 
     if (Suppressions <> nil) and
       (ASettings.RuleSeverity(UnusedSuppressionRuleId, TRuleSeverity.Hint) <> TRuleSeverity.Off) then
+    begin
       for Entry in Suppressions.UnusedEntries do
       begin
         AllRan := Length(Entry.Ids) > 0;
         for Id in Entry.Ids do
+        begin
           if (Id <> '*') and not RanIds.Contains(Id) then
+          begin
             AllRan := False;
+          end;
+        end;
         if not AllRan then
+        begin
           Continue;
+        end;
         if Entry.OwnLine then
-          Removal := TTextRange.Create(Entry.Range.StartPos.Line, 0, Entry.Range.EndPos.Line + 1, 0)
+        begin
+          Removal := TTextRange.Create(Entry.Range.StartPos.Line, 0, Entry.Range.EndPos.Line + 1, 0);
+        end
         else
+        begin
           Removal := Entry.Range;
+        end;
         Finding := Default(TRuleFinding);
         Finding.RuleId := UnusedSuppressionRuleId;
         Finding.Range := Entry.Range;
@@ -728,19 +835,25 @@ begin
         Finding.Fixes := [TRuleFix.Create('Unterdrückung entfernen', [TRuleEdit.Create(Removal, '')], True)];
         Kept.Add(Finding);
       end;
+    end;
 
     if (Suppressions <> nil) and (Length(Suppressions.Entries) > 0) and
       (ASettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint) <> TRuleSeverity.Off) then
     begin
       Known := TRuleProfiles.KnownRuleIds;
       for Rule in mRules do
+      begin
         Known := Known + [LowerCase(Rule.Descriptor.Id)];
+      end;
       for Entry in Suppressions.Entries do
+      begin
         for Index := 0 to High(Entry.Ids) do
         begin
           Id := Entry.Ids[Index];
           if (Id = '*') or (IndexText(TRuleIdAliases.Current(Id), Known) >= 0) then
+          begin
             Continue;
+          end;
           Suggestion := TSuppressions.Suggest(Id, Known);
           Finding := Default(TRuleFinding);
           Finding.RuleId := UnknownRuleIdRuleId;
@@ -748,17 +861,22 @@ begin
           Finding.Severity := ASettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint);
           Finding.Confidence := TRuleConfidence.High;
           if Suggestion = '' then
-            Finding.Message := Format('Unbekannte Regelkennung "%s"; die Unterdrückung wirkt nicht', [Id])
+          begin
+            Finding.Message := Format('Unbekannte Regelkennung "%s"; die Unterdrückung wirkt nicht', [Id]);
+          end
           else
           begin
             Finding.Message := Format('Unbekannte Regelkennung "%s"; gemeint ist vermutlich "%s"', [Id, Suggestion]);
             // Nur genau markierte Kennungen ersetzen, nicht den ganzen Kommentar.
             if Entry.IdRanges[Index].StartPos.Line = Entry.IdRanges[Index].EndPos.Line then
+            begin
               Finding.Fixes := [TRuleFix.Create(Format('Durch "%s" ersetzen', [Suggestion]),
                 [TRuleEdit.Create(Entry.IdRanges[Index], Suggestion)], True)];
+            end;
           end;
           Kept.Add(Finding);
         end;
+      end;
     end;
 
     Result := SortedFindings(Kept.ToArray);
@@ -766,10 +884,14 @@ begin
     // Gibt Graphen und Modelle frei, bevor der Aufrufer den Baum freigibt, und bricht
     // Referenzzyklen über Kontextkopien in abgelegten Objekten.
     if OwnCache <> nil then
+    begin
       OwnCache.Clear;
+    end;
     // Kontextkopien in abgelegten Objekten können die Auswertung überleben: ohne Baum bedient sie keinen mehr.
     if mOwnUnits <> nil then
+    begin
       mOwnUnits.Clear;
+    end;
     AfterContexts.Free;
     AfterSeverities.Free;
     AfterIds.Free;

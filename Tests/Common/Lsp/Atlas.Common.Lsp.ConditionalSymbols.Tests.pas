@@ -72,7 +72,9 @@ end;
 function HoverAt(const AText: string; ALine, ACharacter: Integer; const AContext: TConditionalContext): string;
 begin
   if not TConditionalSymbols.Hover(AText, TTextPosition.Create(ALine, ACharacter), AContext, Result) then
+  begin
     Result := '-';
+  end;
 end;
 
 procedure TConditionalSymbolsTests.HoverNamesConfiguration;
@@ -166,7 +168,9 @@ end;
 function ConditionAt(const AText: string; ALine, ACharacter: Integer; const AContext: TConditionalContext): string;
 begin
   if not TConditionalSymbols.ConditionHover(AText, TTextPosition.Create(ALine, ACharacter), AContext, Result) then
+  begin
     Result := '-';
+  end;
 end;
 
 function SwitchContext: TConditionalContext;
@@ -273,15 +277,23 @@ var
   begin
     Result := Default(TConditionalSymbol);
     for Symbol in Found do
+    begin
       if Symbol.Name = AName then
+      begin
         Exit(Symbol);
+      end;
+    end;
   end;
 
   function IndexOf(const AName: string): Integer;
   begin
     for Result := 0 to High(Found) do
+    begin
       if Found[Result].Name = AName then
+      begin
         Exit;
+      end;
+    end;
     Result := -1;
   end;
 
@@ -291,8 +303,12 @@ var
   begin
     Result := 0;
     for Symbol in Found do
+    begin
       if Symbol.Name = AName then
+      begin
         Inc(Result);
+      end;
+    end;
   end;
 
 begin

@@ -134,7 +134,9 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     if not TSafeDelete.Find(Tree, AText, Pos_(ALine, ACharacter), Target, Reason) then
+    begin
       Exit('nicht gefunden: ' + Reason);
+    end;
     Result := TTextChanges.Apply(AText, TSafeDelete.Edits(Tree, AText, [Target]));
   finally
     Tree.Free;

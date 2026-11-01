@@ -105,7 +105,9 @@ begin
   Cache := TFormSnapshotCache.Create;
   try
     for Index := 1 to TFormSnapshotCache.MaxEntries do
+    begin
       Cache.Put(Format('C:\P\F%d.dfm', [Index]), 's', Snapshot('', IntToStr(Index)));
+    end;
     // F1 zuletzt benutzt: Beim nächsten Eintrag fällt F2 heraus, nicht F1.
     Assert.IsTrue(Cache.TryGet('C:\P\F1.dfm', 's', Found));
     Cache.Put('C:\P\Neu.dfm', 's', Snapshot('', 'Neu'));

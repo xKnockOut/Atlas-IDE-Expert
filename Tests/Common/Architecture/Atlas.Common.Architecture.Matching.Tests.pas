@@ -60,8 +60,12 @@ var
   mMatch: TSubsystemMatch;
 begin
   for mMatch in AMatches do
+  begin
     if mMatch.NewName = ANewName then
+    begin
       Exit(mMatch.OldName);
+    end;
+  end;
   Result := '#';
 end;
 

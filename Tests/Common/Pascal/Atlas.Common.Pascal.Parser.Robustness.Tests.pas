@@ -140,7 +140,9 @@ begin
   for Round := 1 to 1 + Random(5) do
   begin
     if Result = '' then
+    begin
       Exit;
+    end;
     Position := Random(Length(Result));
     case Random(5) of
       0:
@@ -165,7 +167,9 @@ begin
   Builder := TStringBuilder.Create;
   try
     for Index := 1 to ACount do
+    begin
       Builder.Append(AText);
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -189,6 +193,7 @@ begin
   try
     Builder.AppendLine('unit Big;').AppendLine('interface').AppendLine('type');
     for Index := 1 to AClasses do
+    begin
       Builder.AppendFormat('  TClass%d = class', [Index]).AppendLine
         .AppendLine('  private')
         .AppendLine('    FValue: Integer;')
@@ -196,14 +201,17 @@ begin
         .AppendLine('    procedure Run(const A: string; B: Integer);')
         .AppendLine('    property Value: Integer read FValue write FValue;')
         .AppendLine('  end;');
+    end;
     Builder.AppendLine('implementation');
     for Index := 1 to AClasses do
+    begin
       Builder.AppendFormat('procedure TClass%d.Run(const A: string; B: Integer);', [Index]).AppendLine
         .AppendLine('var I: Integer;')
         .AppendLine('begin')
         .AppendLine('  for I := 0 to B do')
         .AppendLine('    if A <> '''' then FValue := FValue + Length(A) * I else Exit;')
         .AppendLine('end;');
+    end;
     Builder.Append('end.');
     Result := Builder.ToString;
   finally
@@ -225,7 +233,9 @@ begin
   try
     TFile.WriteAllText(TPath.Combine(Folder, 'Probe.pas'), Samples[0], TEncoding.UTF8);
     for FileName in TDirectory.GetFiles(Folder, '*.pas', TSearchOption.soAllDirectories) do
+    begin
       ParseAndFree(TFile.ReadAllText(FileName, TEncoding.UTF8));
+    end;
   finally
     TDirectory.Delete(Folder, True);
   end;
@@ -249,7 +259,9 @@ begin
         Assert.Fail(Format('Runde %d: %s: %s'#13#10'%s', [Round, E.ClassName, E.Message, Text]));
     end;
     if Watch.ElapsedMilliseconds > HangLimitMs then
+    begin
       Assert.Fail(Format('Runde %d: %d ms'#13#10'%s', [Round, Watch.ElapsedMilliseconds, Text]));
+    end;
   end;
 end;
 
@@ -281,10 +293,14 @@ begin
   try
     Builder.Append('program P; begin X := 1');
     for Index := 1 to 100000 do
+    begin
       Builder.Append('+1');
+    end;
     Builder.Append('; Y := a');
     for Index := 1 to 100000 do
+    begin
       Builder.Append('.b');
+    end;
     Builder.Append('; end.');
     Text := Builder.ToString;
   finally
@@ -309,7 +325,9 @@ begin
   try
     Builder.Append('1');
     for Index := 2 to ACount do
+    begin
       Builder.Append(' ').Append(AOperator).Append(' ').Append(Index);
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -331,7 +349,9 @@ begin
     function(AVisited: TSyntaxNode): Boolean
     begin
       if (Found = nil) and (AVisited.Kind = AKind) then
+      begin
         Found := AVisited;
+      end;
       Result := Found = nil;
     end);
   Result := Found;
@@ -371,7 +391,9 @@ begin
         Part: string;
       begin
         if ANode.Kind = TSyntaxKind.Literal then
-          Literals.Add(TextOf(Text, ANode))
+        begin
+          Literals.Add(TextOf(Text, ANode));
+        end
         else if ANode.Kind = TSyntaxKind.BinaryExpr then
         begin
           // Jeder Teilbaum umfasst genau eine zusammenhängende Folge von Gliedern.
@@ -380,14 +402,18 @@ begin
             not CharInSet(Part[Length(Part)], ['0'..'9']) or
             (ANode.StartOffset <> ANode.Children[0].StartOffset) or
             (ANode.EndOffset <> ANode.Children[1].EndOffset) then
+          begin
             RangesOk := False;
+          end;
         end;
         Result := True;
       end);
     Assert.IsTrue(RangesOk, 'Bereiche der Teilbäume');
     Assert.AreEqual(Integer(Count), Integer(Literals.Count));
     for Index := 0 to Literals.Count - 1 do
+    begin
       Assert.AreEqual(IntToStr(Index + 1), Literals[Index], 'Reihenfolge der Glieder');
+    end;
   finally
     Literals.Free;
     Tree.Free;
@@ -451,7 +477,9 @@ begin
       'destructor TKatalog.Destroy;'#13#10'begin'#13#10'  inherited;'#13#10'end;'#13#10 +
       'function Daten: string;'#13#10'begin'#13#10'  Result := ''a''');
     for Index := 1 to 5000 do
+    begin
       Builder.Append(' + #10 + ''z').Append(Index).Append('''');
+    end;
     Builder.Append(';'#13#10'end;'#13#10'end.');
     Text := Builder.ToString;
   finally
@@ -467,8 +495,12 @@ begin
   // Die Vererbungsregeln melden weiter, was sie vorher meldeten.
   Destroys := 0;
   for Finding in Findings do
+  begin
     if Finding.RuleId = 'destroy-without-override' then
+    begin
       Inc(Destroys);
+    end;
+  end;
   Assert.AreEqual(1, Destroys);
   Findings := nil;
 end;
@@ -491,7 +523,9 @@ begin
   begin
     Root := GetEnvironmentVariable('BDS');
     if Root <> '' then
+    begin
       Root := TPath.Combine(Root, 'source');
+    end;
   end;
   // Ohne Assert.Pass: Es hinterließ hier 192 Byte, die der Leckmonitor dem Test anrechnet (Bericht N2).
   if (Root = '') or not TDirectory.Exists(Root) then
@@ -502,16 +536,23 @@ begin
   // In der Delphi-Installation RTL und VCL, sonst der ganze Ordner.
   Directories := nil;
   for Directory in TArray<string>.Create(TPath.Combine(Root, 'rtl'), TPath.Combine(Root, 'vcl')) do
+  begin
     if TDirectory.Exists(Directory) then
+    begin
       Directories := Directories + [Directory];
+    end;
+  end;
   if Directories = nil then
+  begin
     Directories := [Root];
+  end;
 
   Files := 0;
   Slowest := 0;
   SlowestFile := '';
   Total := TStopwatch.StartNew;
   for Directory in Directories do
+  begin
     for FileName in TDirectory.GetFiles(Directory, '*.pas', TSearchOption.soAllDirectories) do
     begin
       Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
@@ -529,6 +570,7 @@ begin
       end;
       Inc(Files);
     end;
+  end;
   Assert.IsTrue(Files > 0, 'Keine .pas-Dateien unter ' + Root);
   Assert.IsTrue(Slowest < HangLimitMs, Format('%s braucht %d ms', [SlowestFile, Slowest]));
   System.Writeln(Format('  %d Dateien in %d ms; langsamste: %s (%d ms)',

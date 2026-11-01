@@ -305,8 +305,10 @@ var
   Statement: string;
 begin
   for Statement in Exits do
+  begin
     Assert.AreEqual(0, Integer(Length(LoopFindings(Lesen('  while True do'#10'  begin'#10 +
       '    Zeile := Leser.ReadLine;'#10'    ' + Statement + #10'  end;'#10)))), Statement);
+  end;
   // Normale Schleifen und Terminated im Thread.
   Assert.AreEqual(0, Integer(Length(LoopFindings(Lesen('  while not Leser.EndOfStream do'#10 +
     '    Zeile := Leser.ReadLine;'#10'  while True do'#10'    if Terminated then'#10'      Zeile := '''';'#10)))));
@@ -391,8 +393,10 @@ var
   Body: string;
 begin
   for Body in Bodies do
+  begin
     Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife('  while (I < Liste.Count) and (Werte[0] > 0) do'#10 +
       '    ' + Body + #10)))), Body);
+  end;
 end;
 
 procedure TLoopConditionUnchangedTests.UnknownConditionsAreSilent;
@@ -412,7 +416,9 @@ var
   Loop: string;
 begin
   for Loop in Loops do
+  begin
     Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife(Loop)))), Loop);
+  end;
   // Lokale Routine kann I ändern.
   Assert.AreEqual(0, Integer(Length(UnchangedFindings(Schleife('  while I < 10 do'#10'    Weiter;'#10).Replace(
     '  Werte: TArray<Integer>;'#10, '  Werte: TArray<Integer>;'#10'  procedure Weiter;'#10'  begin'#10'    Inc(I);'#10 +
@@ -524,7 +530,9 @@ var
   mBody: string;
 begin
   for mBody in Bodies do
+  begin
     Assert.AreEqual(0, Integer(Length(JumpFindings(Schreiben(mBody)))), mBody);
+  end;
   // Mit Marke: Ziel eines goto.
   Assert.AreEqual(0, Integer(Length(JumpFindings(Schreiben('  goto Ende;'#10'  Inc(FLaenge);'#10'Ende:'#10 +
     '  Exit;'#10).Replace('var'#10, 'label'#10'  Ende;'#10'var'#10)))));

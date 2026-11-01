@@ -221,16 +221,20 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -283,7 +287,9 @@ var
 begin
   Result := '';
   for Item in AItems.Items do
+  begin
     Result := Result + Item.Name + ' ';
+  end;
   Result := Result.Trim;
 end;
 
@@ -304,7 +310,9 @@ begin
   // Methoden mit längerem Namen beim Kürzen heraus.
   Source := 'unit Gross;'#10'interface'#10'type'#10'  TGross = class'#10'  public'#10;
   for Index := 0 to TLspCompletion.MaxItems + 199 do
+  begin
     Source := Source + '    procedure R' + IntToStr(Index) + ';'#10;
+  end;
   Source := Source + '  end;'#10'implementation'#10'end.';
   FIndex.AddUnit(TIndexExtractor.ExtractText(Source, 'C:\P\Gross.pas', nil));
   Text := StringReplace(StringReplace(WithCode('  R'), 'uses Werkzeug;', 'uses Werkzeug, Gross;', []),
@@ -363,6 +371,7 @@ begin
   Assert.AreEqual('Name Bar Zaehler Melde Hilfe', Names(Items));
   Found := False;
   for Item in Items.Items do
+  begin
     if Item.Name = 'Hilfe' then
     begin
       Found := True;
@@ -373,17 +382,20 @@ begin
       // Verwendung im implementation-Teil: dort ein neuer uses-Abschnitt.
       Assert.IsTrue(Item.AdditionalEdits[0].NewText.Contains('Hilfen'), Item.AdditionalEdits[0].NewText);
     end;
+  end;
   Assert.IsTrue(Found);
   // Eingebauter Typ: nur die öffentlichen Helper-Mitglieder.
   Assert.AreEqual('Laenge', Names(ItemsAt(WithCode('  Wert.Name.'), 'Wert.Name.')));
   // Eingebunden: aktiver Helper ohne uses-Eintrag.
   Text := StringReplace(WithCode('  Wert.'), 'uses Werkzeug;', 'uses Werkzeug, Hilfen;', []);
   for Item in ItemsAt(Text, 'Wert.').Items do
+  begin
     if Item.Name = 'Hilfe' then
     begin
       Assert.IsTrue(Item.IsHelper);
       Assert.AreEqual(0, Integer(Length(Item.AdditionalEdits)));
     end;
+  end;
 end;
 
 procedure TLspCompletionTests.MembersOfUnitAreInterfaceSymbols;
@@ -637,7 +649,9 @@ begin
       Found := '';
       for Symbol in FResolver.ScopeCandidates(Tree, HauptFile,
         TLspCompletion.Analyze(Tree, PositionOf(Text, #10'begin'#10'  ')).Offset) do
+      begin
         Found := Found + Symbol.Name + ' ';
+      end;
     finally
       FResolver.NameFilter := nil;
     end;
@@ -800,8 +814,12 @@ begin
   Items := ItemsAt(WithCode('  TTest'), '  TTest', TCompletionMatching.Prefix);
   Found := False;
   for Item in Items.Items do
+  begin
     if Item.Name = 'TTestHier' then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, 'Klasse aus dem Projekt trotz vieler Bibliotheks-Treffer');
 end;
 
@@ -829,9 +847,13 @@ begin
   Items := ItemsAt(WithCode('  Ziel := '), 'Ziel := ', TCompletionMatching.Prefix);
   Scopes := '';
   for Item in Items.Items do
+  begin
     if (Item.Name = 'Wert') or (Item.Name = 'Anzahl') or (Item.Name = 'Name') or (Item.Name = 'TFoo') or
       (Item.Name = 'Rechne') then
+    begin
       Scopes := Scopes + Item.Name + '=' + IntToStr(Item.Scope) + ';';
+    end;
+  end;
   Assert.Contains(Scopes, 'Wert=1;');
   Assert.Contains(Scopes, 'Anzahl=2;');
   Assert.Contains(Scopes, 'Name=3;');
@@ -845,19 +867,27 @@ var
 begin
   Result := 0;
   for Index := 0 to High(AItems.Items) do
+  begin
     if SameText(AItems.Items[Index].Name, AName) then
     begin
       if Result = 0 then
+      begin
         AItem := AItems.Items[Index];
+      end;
       Inc(Result);
     end;
+  end;
 end;
 
 function IndexOfItem(const AItems: TCompletionItems; const AName: string): Integer;
 begin
   for Result := 0 to High(AItems.Items) do
+  begin
     if SameText(AItems.Items[Result].Name, AName) then
+    begin
       Exit;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -953,7 +983,9 @@ begin
   Items := ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Fuzzy);
   Assert.IsTrue(Length(Items.Items) > 1);
   for Index := 0 to High(Items.Items) do
+  begin
     Assert.IsFalse(Items.Items[Index].HasTextEdit, Items.Items[Index].Name);
+  end;
 end;
 
 procedure TLspCompletionTests.MembersCarryContainerDepthAndOverloads;
@@ -1139,12 +1171,14 @@ begin
     // Nur Methoden mit (Sender: TObject); Fertig hat zwei Parameter.
     Handlers := '';
     for Item in Items.Items do
+    begin
       if Item.Action = '' then
       begin
         Handlers := Handlers + ' ' + Item.Name;
         Assert.AreEqual('TNotifyEvent', Item.Expected);
         Assert.IsTrue(Item.Fits);
       end;
+    end;
     Assert.AreEqual(' FormCreate btnSaveClick', Handlers);
     // Zuletzt die neue Methode; btnSaveClick ist vergeben.
     Item := Items.Items[High(Items.Items)];
@@ -1153,7 +1187,9 @@ begin
     Assert.AreEqual('btnSaveClick2', Item.InsertText);
     Edits := '';
     for Edit in Item.AdditionalEdits do
+    begin
       Edits := Edits + Edit.NewText + '|';
+    end;
     Assert.AreEqual(2, Integer(Length(Item.AdditionalEdits)), Edits);
     Assert.IsTrue(Edits.Contains('private'#13#10'    procedure btnSaveClick2(Sender: TObject);'), Edits);
     Assert.IsTrue(Edits.Contains('procedure TForm1.btnSaveClick2(Sender: TObject);'#13#10'begin'#13#10#13#10'end;'),
@@ -1221,7 +1257,9 @@ begin
     Assert.Contains(Items[1].Detail, 'function Items: TArray<TKunde>');
     Edits := nil;
     for Item in Items do
+    begin
       Edits := Edits + Item.AdditionalEdits;
+    end;
     Merged := TInterfaceStubs.Merge(Edits);
     Assert.IsTrue(Merged[0].NewText.Contains('{ IListe<TKunde> }'), Merged[0].NewText);
     Assert.IsTrue(Merged[1].NewText.Contains('procedure TKundenListe.Add(const AItem: TKunde);'), Merged[1].NewText);
@@ -1310,7 +1348,9 @@ begin
     // Alle angehakt: ein neuer public-Abschnitt vor dem end, je Interface mit Kommentar; Rümpfe in die implementation.
     Edits := nil;
     for Item in Items do
+    begin
       Edits := Edits + Item.AdditionalEdits;
+    end;
     Merged := TInterfaceStubs.Merge(Edits);
     Assert.AreEqual(2, Integer(Length(Merged)));
     Assert.AreEqual(8, Merged[0].Range.StartPos.Line);
@@ -1470,7 +1510,9 @@ const
     begin
       Result := Result + Item.Name;
       if Item.ByType then
+      begin
         Result := Result + '*';
+      end;
       Result := Result + ' ';
     end;
     Result := Result.Trim;
@@ -1560,11 +1602,13 @@ const
     Item: TCompletionItem;
   begin
     for Item in AItems do
+    begin
       if Item.Name = AName then
       begin
         AItem := Item;
         Exit(True);
       end;
+    end;
     AItem := Default(TCompletionItem);
     Result := False;
   end;
@@ -1741,8 +1785,12 @@ var
     Item: TCompletionItem;
   begin
     for Item in Items do
+    begin
       if Item.Name = AName then
+      begin
         Exit(Item);
+      end;
+    end;
     raise Exception.CreateFmt('Eintrag "%s" fehlt', [AName]);
   end;
 
@@ -1772,7 +1820,9 @@ begin
     Assert.AreEqual(#13#10'    FTotalCount: Integer;', Item.AdditionalEdits[0].NewText);
     // Keine Konstante als Ziel einer Zuweisung.
     for Item in Items do
+    begin
       Assert.AreNotEqual('Konstante anlegen', Item.Name);
+    end;
     // Als Argument: Typ des Parameters, auch als Konstante in der implementation.
     Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
       PositionOf(Text, 'Zeige(Anzahl'), False, nil, Items));
@@ -1985,7 +2035,9 @@ begin
   // Mehr als 15 Felder: erst die Liste mit Kontrollkästchen, je Zeile samt Umbruch für die nächste.
   Fields := '';
   for Index := 0 to TAssignFields.ListThreshold do
+  begin
     Fields := Fields + '    F' + IntToStr(Index) + ': Integer;'#13#10;
+  end;
   Text := StringReplace(AssignText, '    Header: string;'#13#10, Fields, []);
   Text := StringReplace(Text, '  Opts.Header := ''x'';'#13#10, '', []);
   Assert.IsTrue(AssignItem(Text, #10'  Opts.', True, True, Item));
@@ -2064,7 +2116,9 @@ var
   begin
     Result := '';
     for Item in Items do
+    begin
       Result := Result + ' ' + Item.Name;
+    end;
     Result := Result.Trim;
   end;
 
@@ -2190,7 +2244,9 @@ procedure TLspCompletionTests.GroupsByExpectedType;
           Fits := Fits + ' ' + Item.Name;
         end
         else
+        begin
           Fitting := False;
+        end;
       end;
       Assert.AreEqual(AFits, Trim(Fits), ALine);
     finally
@@ -2449,15 +2505,23 @@ begin
         Seen: Integer;
       begin
         if not Reads.TryGetValue(UpperCase(AFileName), Seen) then
+        begin
           Seen := 0;
+        end;
         Reads.AddOrSetValue(UpperCase(AFileName), Seen + 1);
         Result := True;
         if SameText(AFileName, BasisFile) then
-          AText := UnitBasis
+        begin
+          AText := UnitBasis;
+        end
         else if SameText(AFileName, MitteFile) then
-          AText := UnitMitte
+        begin
+          AText := UnitMitte;
+        end
         else
+        begin
           Result := False;
+        end;
       end, Items));
     Assert.AreEqual('Moved Renamed Changed Cleared Sorted', Names(Items));
     // Vorher je Kandidat einmal (3 bzw. 2), jetzt je Datei einmal.
@@ -2670,7 +2734,9 @@ begin
   // Lokale Prozedur zwischen Kopf und Cursor, dann mehr Zeilen, als die frühere Zeilensuche (2000) prüfte.
   Body := '';
   for Index := 1 to Filler do
+  begin
     Body := Body + '  // Zeile'#13#10;
+  end;
   Text :=
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
@@ -2745,8 +2811,12 @@ begin
         AText := UnitFremd;
         Result := SameText(AFileName, 'C:\P\Fremd.pas');
       end, TCompletionMatching.Fuzzy, Items, SetMode) then
+    begin
       for Item in Items do
+      begin
         Assert.AreNotEqual('Eins', Item.Name);
+      end;
+    end;
     Assert.IsFalse(SetMode);
   finally
     Resolver.Free;

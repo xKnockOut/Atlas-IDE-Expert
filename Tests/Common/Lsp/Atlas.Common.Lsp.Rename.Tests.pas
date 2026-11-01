@@ -177,15 +177,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for I := 1 to Index - 1 do
+  begin
     if AText[I] = #10 then
     begin
       Inc(Line);
       LineStart := I + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -228,11 +232,17 @@ begin
       begin
         Result := True;
         if SameText(AFileName, WerkzeugFile) then
-          AText := UnitWerkzeug
+        begin
+          AText := UnitWerkzeug;
+        end
         else if SameText(AFileName, WerkzeugDfm) then
-          AText := FormWerkzeug
+        begin
+          AText := FormWerkzeug;
+        end
         else
+        begin
           Result := False;
+        end;
       end);
   finally
     Tree.Free;
@@ -257,7 +267,9 @@ begin
         begin
           Result := SameText(AFileName, KundeFile);
           if Result then
+          begin
             AText := UnitKunde;
+          end;
         end);
     except
       on E: EJsonRpcError do
@@ -281,8 +293,10 @@ begin
   // FMX (#87): Formular und Plattformansicht über die {$R}-Direktiven der Unit.
   UnitText := UnitMaske;
   if AFmx then
+  begin
     UnitText := StringReplace(UnitText, 'implementation'#10,
       'implementation'#10'{$R *.fmx}'#10'{$R *.Windows.fmx MSWINDOWS}'#10, []);
+  end;
   Index := TSymbolIndex.Create;
   Index.AddUnit(TIndexExtractor.ExtractText(UnitText, MaskeFile, nil));
   Resolver := TNameResolver.Create(Index);
@@ -294,13 +308,21 @@ begin
       begin
         Result := True;
         if SameText(AFileName, MaskeFile) then
-          AText := UnitText
+        begin
+          AText := UnitText;
+        end
         else if not AFmx and SameText(AFileName, MaskeDfm) then
-          AText := FormMaske
+        begin
+          AText := FormMaske;
+        end
         else if AFmx and (SameText(AFileName, MaskeFmx) or SameText(AFileName, MaskeWindowsFmx)) then
-          AText := FormMaske
+        begin
+          AText := FormMaske;
+        end
         else
+        begin
           Result := False;
+        end;
       end, nil, AHandlers);
   finally
     Tree.Free;
@@ -354,12 +376,20 @@ begin
   Werkzeug := 0;
   Form := 0;
   for Edit in Found do
+  begin
     if SameText(Edit.FileName, HauptFile) then
-      Inc(Haupt)
+    begin
+      Inc(Haupt);
+    end
     else if SameText(Edit.FileName, WerkzeugFile) then
-      Inc(Werkzeug)
+    begin
+      Inc(Werkzeug);
+    end
     else if SameText(Edit.FileName, WerkzeugDfm) then
+    begin
       Inc(Form);
+    end;
+  end;
   Assert.AreEqual(3, Haupt);
   Assert.AreEqual(2, Werkzeug);
   Assert.AreEqual(2, Form);
@@ -390,12 +420,20 @@ begin
   Handler := 0;
   Other := 0;
   for Edit in Found do
+  begin
     if Edit.NewText = 'btnSpeichern' then
-      Inc(Field)
+    begin
+      Inc(Field);
+    end
     else if Edit.NewText = 'btnSpeichernClick' then
-      Inc(Handler)
+    begin
+      Inc(Handler);
+    end
     else
+    begin
       Inc(Other);
+    end;
+  end;
   // Feld, Verwendung im Code und Objektname in der DFM.
   Assert.AreEqual(3, Field);
   // Deklaration, Implementierung und Zuordnung in der DFM; Eigen bleibt.
@@ -408,7 +446,9 @@ var
   Edit: TRenameEdit;
 begin
   for Edit in FormEdits('Button1: TObject', 'btnSpeichern', False) do
+  begin
     Assert.AreEqual('btnSpeichern', Edit.NewText);
+  end;
 end;
 
 procedure TLspRenameTests.RenamesHandlersInFmxViews;
@@ -419,10 +459,16 @@ begin
   Fmx := 0;
   Windows := 0;
   for Edit in FormEdits('Button1: TObject', 'btnSpeichern', True, True) do
+  begin
     if SameText(Edit.FileName, MaskeFmx) then
-      Inc(Fmx)
+    begin
+      Inc(Fmx);
+    end
     else if SameText(Edit.FileName, MaskeWindowsFmx) then
+    begin
       Inc(Windows);
+    end;
+  end;
   // Objektname und Zuordnung OnClick in beiden Formularen.
   Assert.AreEqual(2, Fmx);
   Assert.AreEqual(2, Windows);
@@ -437,6 +483,7 @@ begin
   Fmx := 0;
   Windows := 0;
   for Edit in FormEdits('Button1Click(Sender', 'Speichern', False, True) do
+  begin
     if SameText(Edit.FileName, MaskeFmx) then
     begin
       Inc(Fmx);
@@ -448,7 +495,10 @@ begin
       Assert.AreEqual('Speichern', Edit.NewText);
     end
     else
+    begin
       Assert.AreEqual(MaskeFile, Edit.FileName, 'nur Unit und Formulare');
+    end;
+  end;
   Assert.AreEqual(1, Fmx);
   Assert.AreEqual(1, Windows);
 end;

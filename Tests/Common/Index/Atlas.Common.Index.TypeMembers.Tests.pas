@@ -62,8 +62,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if Symbol.Name = AName then
+    begin
       Exit(Symbol);
+    end;
+  end;
   Result := Default(TIndexSymbol);
 end;
 
@@ -73,7 +77,9 @@ var
 begin
   Result := '';
   for Member in AMembers do
+  begin
     Result := Result + Member.Name + ':' + IntToStr(Member.Depth) + ' ';
+  end;
 end;
 
 procedure TTypeMembersTests.OwnMembersThenAncestors;

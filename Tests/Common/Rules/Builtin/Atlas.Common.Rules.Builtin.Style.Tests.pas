@@ -132,15 +132,19 @@ begin
   Lines := nil;
   Start := 1;
   for Index := 1 to Length(ASource) + 1 do
+  begin
     if (Index > Length(ASource)) or (ASource[Index] = #10) then
     begin
       Lines := Lines + [Copy(ASource, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   Result := ASource;
   // Von hinten nach vorn, damit die Positionen stimmen (die Edits einer Korrektur sind nicht sortiert).
   Edits := Copy(AFix.Edits);
@@ -177,8 +181,12 @@ var
   Fix: TRuleFix;
 begin
   for Fix in AFinding.Fixes do
+  begin
     if Pos(AText, Fix.Title) > 0 then
+    begin
       Exit(Fix);
+    end;
+  end;
   Assert.Fail('Keine Korrektur mit "' + AText + '"');
   Result := Default(TRuleFix);
 end;

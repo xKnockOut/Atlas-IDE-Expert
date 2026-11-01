@@ -60,8 +60,12 @@ var
   Name: string;
 begin
   for Name in [FFileName, FFileName + '.1', TRotatingFileStream.FallbackName(FFileName, '42')] do
+  begin
     if TFile.Exists(Name) then
+    begin
       TFile.Delete(Name);
+    end;
+  end;
 end;
 
 procedure TRotatingFileStreamTests.SetupFixture;

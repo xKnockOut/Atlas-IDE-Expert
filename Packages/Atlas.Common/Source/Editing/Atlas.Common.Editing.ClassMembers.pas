@@ -84,23 +84,35 @@ begin
     Next := '';
     Found := False;
     for Symbol in ASource.UnitIndex.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, Name) and (Symbol.Container = '') then
       begin
         Found := True;
         if Length(Symbol.Ancestors) > 0 then
+        begin
           Next := Symbol.Ancestors[0];
+        end;
         Break;
       end;
+    end;
     if not Found and (AIndex <> nil) then
+    begin
       for Location in AIndex.FindSymbols(Name) do
+      begin
         if Location.Symbol.Kind = TIndexSymbolKind.ClassType then
         begin
           if Length(Location.Symbol.Ancestors) > 0 then
+          begin
             Next := Location.Symbol.Ancestors[0];
+          end;
           Break;
         end;
+      end;
+    end;
     if (Next = '') or (IndexText(Next, Result) >= 0) then
+    begin
       Exit;
+    end;
     Result := Result + [Next];
     Name := Next;
   end;
@@ -111,8 +123,12 @@ var
   Name: string;
 begin
   for Name in AChain do
+  begin
     if MatchText(Name, ARoots) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -128,6 +144,7 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in AKinds) and SameText(Symbol.Name, AName) and SameText(Symbol.Container, AClass.Name) and
       (Symbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
       (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
@@ -135,6 +152,7 @@ begin
       AMember := Symbol;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -144,10 +162,14 @@ var
 begin
   Result := nil;
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in AKinds) and SameText(Symbol.Container, AClass.Name) and
       (Symbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
       (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
+    begin
       Result := Result + [Symbol];
+    end;
+  end;
 end;
 
 function FindBody(ASource: TCommandSource; const AClassName, AName: string): TSyntaxNode;
@@ -158,11 +180,17 @@ begin
   Result := nil;
   Section := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Section = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Section.ChildCount - 1 do
+  begin
     if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AClassName + '.' + AName) and
       (Section[Index].FindChild(TSyntaxKind.Block) <> nil) then
+    begin
       Exit(Section[Index]);
+    end;
+  end;
 end;
 
 function Accessor(const ADeclaration, AKeyword: string): string;
@@ -172,8 +200,12 @@ var
 begin
   Words := ADeclaration.Replace(';', ' ').Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
   for Index := 0 to High(Words) - 1 do
+  begin
     if SameText(Words[Index], AKeyword) then
+    begin
       Exit(Words[Index + 1]);
+    end;
+  end;
   Result := '';
 end;
 
@@ -185,18 +217,26 @@ var
 begin
   Result := nil;
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClassName) and
       (Symbol.Range.EndPos.Line > Symbol.Range.StartPos.Line) then
+    begin
       for Index := Symbol.Range.StartPos.Line to Symbol.Range.EndPos.Line do
       begin
         Line := Trim(ASource.Lines[Index]);
         Assign := Pos(':=', Line);
         if (Assign = 0) or (Pos('.Create', Copy(Line, Assign, MaxInt)) = 0) then
+        begin
           Continue;
+        end;
         Field := Trim(Copy(Line, 1, Assign - 1));
         if IsValidIdent(Field) and (IndexText(Field, Result) < 0) then
+        begin
           Result := Result + [Field];
+        end;
       end;
+    end;
+  end;
 end;
 
 { TSetterGenerator }
@@ -207,13 +247,21 @@ var
   Member: TIndexSymbol;
 begin
   if DescendsFrom(Ancestors(ASource, AIndex, AClass.Name), ControlRoots) then
-    Result := 'Invalidate'
+  begin
+    Result := 'Invalidate';
+  end
   else if FindMember(ASource, AClass, 'Changed', [TIndexSymbolKind.Method], Member) then
-    Result := 'Changed'
+  begin
+    Result := 'Changed';
+  end
   else if FindMember(ASource, AClass, 'DoChange', [TIndexSymbolKind.Method], Member) then
-    Result := 'DoChange'
+  begin
+    Result := 'DoChange';
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TSetterGenerator.Statements(const AField, AValue, ACall: string): TArray<string>;
@@ -230,7 +278,9 @@ var
 begin
   Result := 'begin';
   for Line in Statements(AField, AValue, ACall) do
+  begin
     Result := Result + ALineBreak + '  ' + Line;
+  end;
   Result := Result + ALineBreak + 'end;';
 end;
 

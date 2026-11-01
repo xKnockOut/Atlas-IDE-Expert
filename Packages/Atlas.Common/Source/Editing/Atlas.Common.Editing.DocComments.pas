@@ -105,7 +105,9 @@ begin
   begin
     Text := ALines[Line];
     if Pos('//', Text) > 0 then
+    begin
       Text := Copy(Text, 1, Pos('//', Text) - 1);
+    end;
     for Index := 1 to Length(Text) do
     begin
       case Text[Index] of
@@ -115,7 +117,9 @@ begin
           Dec(Depth);
         ';':
           if Depth = 0 then
+          begin
             Exit(Result + Copy(Text, 1, Index));
+          end;
       end;
     end;
     Result := Result + Text + ' ';
@@ -132,18 +136,30 @@ begin
   Text := Trim(AGroup);
   Colon := Pos(':', Text);
   if Colon > 0 then
+  begin
     Text := Copy(Text, 1, Colon - 1);
+  end;
   // Attribute wie [Ref] entfernen.
   Bracket := Pos(']', Text);
   if (Pos('[', Text) > 0) and (Bracket > 0) then
+  begin
     Text := Copy(Text, 1, Pos('[', Text) - 1) + Copy(Text, Bracket + 1, MaxInt);
+  end;
   Text := Trim(Text);
   for Name in ['const ', 'var ', 'out ', 'constref '] do
+  begin
     if StartsText(Name, Text) then
+    begin
       Text := Trim(Copy(Text, Length(Name) + 1, MaxInt));
+    end;
+  end;
   for Name in SplitTop(Text, ',') do
+  begin
     if IsValidIdent(Trim(Name)) then
+    begin
       Result := Result + [Trim(Name)];
+    end;
+  end;
 end;
 
 class function TDocComments.Signature(const ALines: TArray<string>; ALine: Integer): TDocSignature;
@@ -154,37 +170,55 @@ begin
   Result := Default(TDocSignature);
   Text := Trim(DeclarationText(ALines, ALine));
   if StartsText('class ', Text) then
+  begin
     Text := Trim(Copy(Text, 7, MaxInt));
+  end;
   Word := LowerCase(Copy(Text, 1, Pos(' ', Text + ' ') - 1));
   if IndexText(Word, RoutineWords) < 0 then
+  begin
     Exit;
+  end;
   Result.IsRoutine := True;
   Result.HasResult := MatchText(Word, ['function', 'operator']);
   Text := Trim(Copy(Text, Length(Word) + 1, MaxInt));
   Open := Pos('(', Text);
   if Open = 0 then
-    Head := Copy(Text, 1, Pos(';', Text + ';') - 1)
+  begin
+    Head := Copy(Text, 1, Pos(';', Text + ';') - 1);
+  end
   else
+  begin
     Head := Copy(Text, 1, Open - 1);
+  end;
   if Pos(':', Head) > 0 then
+  begin
     Head := Copy(Head, 1, Pos(':', Head) - 1);
+  end;
   // Generische Parameter am Namen (nicht am Klassennamen davor).
   Less := LastDelimiter('<', Head);
   if (Less > 0) and (Less > LastDelimiter('.', Head)) then
   begin
     Generic := Copy(Head, Less + 1, LastDelimiter('>', Head) - Less - 1);
     for Part in SplitTop(StringReplace(Generic, ';', ',', [rfReplaceAll]), ',') do
+    begin
       if IsValidIdent(Trim(Copy(Part, 1, Pos(':', Part + ':') - 1))) then
+      begin
         Result.TypeParams := Result.TypeParams + [Trim(Copy(Part, 1, Pos(':', Part + ':') - 1))];
+      end;
+    end;
   end;
   if Open = 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   Close := 0;
   for Index := Open to Length(Text) do
   begin
     if Text[Index] = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Text[Index] = ')' then
     begin
       Dec(Depth);
@@ -196,9 +230,13 @@ begin
     end;
   end;
   if Close = 0 then
+  begin
     Exit;
+  end;
   for Part in SplitTop(Copy(Text, Open + 1, Close - Open - 1), ';') do
+  begin
     Result.Params := Result.Params + GroupNames(Part);
+  end;
 end;
 
 class function TDocComments.Skeleton(const ASignature: TDocSignature; const AIndent: string): TArray<string>;
@@ -207,11 +245,17 @@ var
 begin
   Result := [AIndent + '/// <summary></summary>'];
   for Name in ASignature.TypeParams do
+  begin
     Result := Result + [AIndent + Format('/// <typeparam name="%s"></typeparam>', [Name])];
+  end;
   for Name in ASignature.Params do
+  begin
     Result := Result + [AIndent + Format('/// <param name="%s"></param>', [Name])];
+  end;
   if ASignature.HasResult then
+  begin
     Result := Result + [AIndent + '/// <returns></returns>'];
+  end;
 end;
 
 /// <summary>Erster Knoten einer der Arten AKinds, der in Zeile ALine beginnt; nil sonst. Search statt
@@ -229,10 +273,14 @@ begin
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
       if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
       if (ACandidate.Kind in Kinds) and (ACandidate.StartPos.Line = Line) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end);
 end;
 
@@ -277,12 +325,16 @@ begin
   begin
     Result := ANode[Index];
     if (Result.Kind = TSyntaxKind.TypeDecl) and SameText(Result.Name, AName) then
+    begin
       Exit;
+    end;
     if Result.Kind in Containers then
     begin
       Result := FindType(Result, AName);
       if Result <> nil then
+      begin
         Exit;
+      end;
     end;
   end;
   Result := nil;
@@ -298,11 +350,19 @@ begin
   Result := nil;
   Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
   if Parameters = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Parameters.ChildCount - 1 do
+  begin
     if Parameters[Index].Kind = TSyntaxKind.Parameter then
+    begin
       for Name in Parameters[Index].Name.Split([',']) do
+      begin
         Result := Result + [Trim(Name)];
+      end;
+    end;
+  end;
 end;
 
 function SameNames(const A, B: TArray<string>): Boolean;
@@ -311,9 +371,15 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for Index := 0 to High(A) do
+    begin
       if not SameText(A[Index], B[Index]) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Deklaration (RoutineHeader in der Klasse) zur Methodenimplementierung in Zeile ALine; nil, wenn die
@@ -327,40 +393,58 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Routine := NodeAt(ATree.Root, ALine, TSyntaxKind.RoutineDecl);
   if (Routine = nil) or (Pos('.', Routine.Name) = 0) then
+  begin
     Exit;
+  end;
   Parts := Routine.Name.Split(['.']);
   Found := ATree.Root;
   for Index := 0 to High(Parts) - 1 do
   begin
     Found := FindType(Found, Parts[Index]);
     if Found = nil then
+    begin
       Exit;
+    end;
   end;
   Body := nil;
   for Index := 0 to Found.ChildCount - 1 do
+  begin
     if Found[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
       TSyntaxKind.HelperType] then
+    begin
       Body := Found[Index];
+    end;
+  end;
   if Body = nil then
+  begin
     Exit;
+  end;
   Params := TDocComments.Signature(ALines, ALine).Params;
   Count := 0;
   for Index := 0 to Body.ChildCount - 1 do
   begin
     Member := Body[Index];
     if (Member.Kind <> TSyntaxKind.RoutineHeader) or not SameText(Member.Name, Parts[High(Parts)]) then
+    begin
       Continue;
+    end;
     // Überladung: an den Parameternamen erkennen.
     if SameNames(HeaderParams(Member), Params) then
+    begin
       Exit(Member);
+    end;
     Inc(Count);
     Result := Member;
   end;
   if Count <> 1 then
+  begin
     Result := nil;
+  end;
 end;
 
 class function TDocComments.AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
@@ -374,10 +458,14 @@ begin
   Lines := TTextLines.SplitLines(AText);
   Line := APosition.Line;
   if (Line < 0) or (Line >= High(Lines)) or (Trim(Lines[Line]) <> '///') then
+  begin
     Exit;
+  end;
   // Schon dokumentiert oder kein Ziel darunter.
   if ((Line > 0) and IsDocLine(Lines[Line - 1])) or not IsDeclarationLine(ATree, Lines, Line + 1) then
+  begin
     Exit;
+  end;
   Skeleton := TDocComments.Skeleton(TDocComments.Signature(Lines, Line + 1), TTextLines.IndentOf(Lines[Line]));
   AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])),
     TTextLines.JoinLines(Skeleton, TTextLines.LineBreakOf(AText)));
@@ -399,22 +487,30 @@ begin
   Declaration := nil;
   if (Line >= 0) and (Line < High(Lines)) and (Trim(Lines[Line]) = '///') and
     not ((Line > 0) and IsDocLine(Lines[Line - 1])) then
+  begin
     Declaration := MethodDeclaration(ATree, Lines, Line + 1);
+  end;
   if Declaration = nil then
   begin
     Result := TDocComments.AfterSlash(AText, ATree, APosition, Edit);
     if Result then
+    begin
       AEdits := [Edit];
+    end;
     Exit;
   end;
   // Über den Attributen der Deklaration einfügen.
   Target := Declaration.StartPos.Line;
   while (Target > 0) and IsAttributeLine(Lines[Target - 1]) do
+  begin
     Dec(Target);
+  end;
   // Schon dokumentiert: "///" bleibt, wie getippt.
   Result := not ((Target > 0) and IsDocLine(Lines[Target - 1]));
   if not Result then
+  begin
     Exit;
+  end;
   LB := TTextLines.LineBreakOf(AText);
   AEdits := [TTextEdit.Create(TTextRange.Create(Target, 0, Target, 0),
     TTextLines.JoinLines(TDocComments.Skeleton(TDocComments.Signature(Lines, Declaration.StartPos.Line),
@@ -433,14 +529,22 @@ begin
   AAction := Default(TCodeAction);
   Lines := TTextLines.SplitLines(AText);
   if (ALine < 0) or (ALine > High(Lines)) or not IsDocLine(Lines[ALine]) then
+  begin
     Exit;
+  end;
   Line := ALine;
   while (Line <= High(Lines)) and IsDocLine(Lines[Line]) do
+  begin
     Inc(Line);
+  end;
   while (Line <= High(Lines)) and IsAttributeLine(Lines[Line]) do
+  begin
     Inc(Line);
+  end;
   if Line > High(Lines) then
+  begin
     Exit;
+  end;
   Actions := TDocComments.Actions(AText, ATree, Line);
   // Ohne Block liefert Actions "erzeugen"; hier steht ein Block, also nur der Abgleich.
   Result := Actions <> nil;
@@ -459,11 +563,15 @@ begin
   Result := '';
   Start := Pos('<param name="', ALine);
   if Start = 0 then
+  begin
     Exit;
+  end;
   Start := Start + Length('<param name="');
   Stop := PosEx('"', ALine, Start);
   if Stop > Start then
+  begin
     Result := Copy(ALine, Start, Stop - Start);
+  end;
 end;
 
 /// <summary>Bearbeitungen, die den &lt;param&gt; ab Zeile ALine als &lt;!-- entfernt: Name --&gt; markieren;
@@ -484,7 +592,9 @@ begin
     Description := Trim(StringReplace(Copy(ALines[ALine], OpenEnd + 1, Close - OpenEnd - 1), '--', '–',
       [rfReplaceAll]));
     if Description <> '' then
+    begin
       Description := ': ' + Description;
+    end;
     Result := [TTextEdit.Create(TTextRange.Create(ALine, Open - 1, ALine, Close - 1 + Length(CloseTag)),
       Format('<!-- entfernt: %s%s -->', [AName, Description]))];
     Exit;
@@ -519,7 +629,9 @@ begin
   Result := nil;
   Lines := TTextLines.SplitLines(AText);
   if not IsDeclarationLine(ATree, Lines, ALine) or IsDocLine(Lines[ALine]) then
+  begin
     Exit;
+  end;
   LB := TTextLines.LineBreakOf(AText);
   Indent := TTextLines.IndentOf(Lines[ALine]);
   Signature := TDocComments.Signature(Lines, ALine);
@@ -528,10 +640,14 @@ begin
   // Der Kommentar steht über den Attributen der Deklaration.
   Top := ALine;
   while (Top > 0) and IsAttributeLine(Lines[Top - 1]) do
+  begin
     Dec(Top);
+  end;
   First := Top;
   while (First > 0) and IsDocLine(Lines[First - 1]) do
+  begin
     Dec(First);
+  end;
   if First = Top then
   begin
     Action.Title := 'Dokumentationskommentar erzeugen';
@@ -541,7 +657,9 @@ begin
     Exit;
   end;
   if not Signature.IsRoutine then
+  begin
     Exit;
+  end;
   // Vorhandene <param> mit der Signatur abgleichen.
   Existing := nil;
   Stale := False;
@@ -551,9 +669,13 @@ begin
     Name := ParamName(Lines[Line]);
     if (Name <> '') or ContainsText(Lines[Line], '</summary>') or ContainsText(Lines[Line], '<typeparam') or
       ContainsText(Lines[Line], '</param>') then
+    begin
       Anchor := Line + 1;
+    end;
     if Name = '' then
+    begin
       Continue;
+    end;
     Existing := Existing + [Name];
     if IndexText(Name, Signature.Params) < 0 then
     begin
@@ -563,21 +685,33 @@ begin
   end;
   Missing := nil;
   for Name in Signature.Params do
+  begin
     if IndexText(Name, Existing) < 0 then
+    begin
       Missing := Missing + [Name];
+    end;
+  end;
   if Missing <> nil then
   begin
     Inserted := '';
     for Name in Missing do
+    begin
       Inserted := Inserted + Indent + Format('/// <param name="%s"></param>', [Name]) + LB;
+    end;
     Action.Edits := Action.Edits + [TTextEdit.Create(TTextRange.Create(Anchor, 0, Anchor, 0), Inserted)];
   end;
   if Action.Edits = nil then
+  begin
     Exit;
+  end;
   if Stale then
-    Action.Title := 'Dokumentation an die Signatur anpassen'
+  begin
+    Action.Title := 'Dokumentation an die Signatur anpassen';
+  end
   else
+  begin
     Action.Title := 'Fehlende <param> ergänzen';
+  end;
   Result := [Action];
 end;
 

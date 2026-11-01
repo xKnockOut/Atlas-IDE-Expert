@@ -145,23 +145,31 @@ begin
     begin
       Result := Own(ACallee);
       if (Result <> nil) or (Resolver = nil) or (ACallee = nil) then
+      begin
         Exit;
+      end;
       // Name am Ende des Ziels (Bar in Obj.Bar) über die Namensauflösung.
       Tokens := Tree.Tokens;
       Symbol := Default(TResolvedSymbol);
       for Index := High(Tokens) downto 0 do
+      begin
         if (Tokens[Index].Offset < ACallee.EndOffset) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
         begin
           Symbol := Resolver.Resolve(Tree, FileName, Tokens[Index].StartPos);
           Break;
         end;
+      end;
       if not Symbol.Found or (Symbol.FileName = '') or not Assigned(Reader) or
         not Reader(Symbol.FileName, Text) then
+      begin
         Exit;
+      end;
       Lines := TTextLines.SplitLines(Text);
       Doc := TLspDocumentation.Load(Resolver, Symbol, Lines, Symbol.Range.StartPos.Line, Reader);
       for Entry in Doc.Exceptions do
+      begin
         Result := Result + [TXmlDoc.NormalizeCref(Entry.Name)];
+      end;
     end;
 end;
 
@@ -199,24 +207,36 @@ var
   Flag: TJSONValue;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
+  end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+  end;
   Options := TExitPointOptions.Default;
   if Assigned(ASettingsFor) then
-    Options.Keywords := ASettingsFor(Uri).ExitKeywords
+  begin
+    Options.Keywords := ASettingsFor(Uri).ExitKeywords;
+  end
   else
+  begin
     Options.Keywords := THighlightSettings.Default.ExitKeywords;
+  end;
   if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
   begin
     Settings := TJSONObject(AArguments.Items[2]);
     Flag := Settings.GetValue('exceptions');
     if Flag is TJSONBool then
+    begin
       Options.Exceptions := TJSONBool(Flag).AsBoolean;
+    end;
     Flag := Settings.GetValue('loops');
     if Flag is TJSONBool then
+    begin
       Options.Loops := TJSONBool(Flag).AsBoolean;
+    end;
   end;
   FileName := TDocumentUris.ToPath(Uri);
   Shared := TSyntaxTreeCache.Get(Document);

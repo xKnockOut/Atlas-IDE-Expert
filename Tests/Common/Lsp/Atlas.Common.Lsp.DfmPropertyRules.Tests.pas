@@ -58,9 +58,13 @@ begin
   AFindings := nil;
   Result := not SameText(AFileName, UnitC);
   if SameText(AFileName, UnitA) then
-    AFindings := [Finding('dfm-property', 'C:\P\A.dfm', 3, 'True'), Finding('dfm-property', 'C:\P\A.dfm', 5, '[a]')]
+  begin
+    AFindings := [Finding('dfm-property', 'C:\P\A.dfm', 3, 'True'), Finding('dfm-property', 'C:\P\A.dfm', 5, '[a]')];
+  end
   else if SameText(AFileName, UnitB) then
+  begin
     AFindings := [Finding('dfm-property', 'C:\P\B.dfm', 1, '0')];
+  end;
 end;
 
 procedure TLspDfmPropertyRulesTests.CollectsFormEditsOfAllUnits;

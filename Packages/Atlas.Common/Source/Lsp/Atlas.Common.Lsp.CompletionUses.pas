@@ -116,10 +116,16 @@ var
 begin
   Result := '';
   for Index := AFrom to High(AParts) do
+  begin
     if Result = '' then
-      Result := AParts[Index]
+    begin
+      Result := AParts[Index];
+    end
     else
+    begin
       Result := Result + '.' + AParts[Index];
+    end;
+  end;
 end;
 
 { TCompletionUses }
@@ -129,16 +135,26 @@ var
   Namespace, Path, Known: string;
 begin
   if not AUnit.Library_ then
+  begin
     Exit(TUsesGroup.Project);
+  end;
   Path := LowerCase(AUnit.FileName.Replace('/', '\'));
   if Pos('\embarcadero\studio\', Path) > 0 then
+  begin
     Exit(TUsesGroup.Rtl);
+  end;
   Namespace := '';
   if Pos('.', AUnit.UnitName) > 0 then
+  begin
     Namespace := Copy(AUnit.UnitName, 1, Pos('.', AUnit.UnitName) - 1);
+  end;
   for Known in RtlNamespaces do
+  begin
     if SameText(Namespace, Known) then
+    begin
       Exit(TUsesGroup.Rtl);
+    end;
+  end;
   Result := TUsesGroup.Library_;
 end;
 
@@ -154,7 +170,9 @@ var
   procedure Flush;
   begin
     if (Name <> '') and not Current then
+    begin
       Names := Names + [Name];
+    end;
     Name := '';
     Current := False;
     AfterIn := False;
@@ -168,7 +186,9 @@ begin
   Section := TUsesSection.Other;
   First := 0;
   while (First <= High(ATokens)) and IsTrivia(ATokens[First]) do
+  begin
     Inc(First);
+  end;
   IsUnit := (First <= High(ATokens)) and ATokens[First].IsKeyword('unit');
   InImplementation := False;
   Index := 0;
@@ -176,14 +196,20 @@ begin
   begin
     Token := ATokens[Index];
     if Token.IsKeyword('implementation') then
-      InImplementation := True
+    begin
+      InImplementation := True;
+    end
     else if Token.IsKeyword('uses') or Token.IsKeyword('contains') then
     begin
       ClauseSection := TUsesSection.Other;
       if IsUnit and InImplementation then
-        ClauseSection := TUsesSection.Implementation_
+      begin
+        ClauseSection := TUsesSection.Implementation_;
+      end
       else if IsUnit then
+      begin
         ClauseSection := TUsesSection.Interface_;
+      end;
       AtCursor := not Before(APosition, Token.EndPos);
       Names := nil;
       Name := '';
@@ -199,24 +225,34 @@ begin
           Continue;
         end;
         if Token.IsSymbol(',') then
-          Flush
+        begin
+          Flush;
+        end
         else if Token.IsSymbol(';') or (Token.Kind = TPascalTokenKind.Keyword) and not Token.IsKeyword('in') then
-          Break
+        begin
+          Break;
+        end
         else if Token.IsKeyword('in') then
-          AfterIn := True
+        begin
+          AfterIn := True;
+        end
         else if not AfterIn and ((Token.Kind = TPascalTokenKind.Identifier) or Token.IsSymbol('.')) then
         begin
           Name := Name + Token.Text;
           // Der Name, an dem getippt wird, zählt nicht als eingebunden.
           if Before(Token.StartPos, APosition) and not Before(Token.EndPos, APosition) then
+          begin
             Current := True;
+          end;
         end;
         Inc(Index);
       end;
       Flush;
       // Cursor in dieser Liste: hinter "uses" und vor dem Ende (Semikolon bzw. erstes fremdes Token).
       if AtCursor and ((Index > High(ATokens)) or not Before(ATokens[Index].StartPos, APosition)) then
+      begin
         Section := ClauseSection;
+      end;
       case ClauseSection of
         TUsesSection.Interface_:
           Interface_ := Interface_ + Names;
@@ -262,22 +298,32 @@ begin
   begin
     // Ohne Eingabe nur der volle Name; sonst jede Stelle, an der ein Namensteil beginnt.
     if (APrefix = '') and (Part > 0) then
+    begin
       Break;
+    end;
     Score := MatchScore(JoinParts(Parts, Part), APrefix, AMatching);
     if Score = TFuzzyMatch.NoMatch then
+    begin
       Continue;
+    end;
     Penalty := 0;
     if Part > 0 then
     begin
       Penalty := PartPenalty;
       Lead := JoinParts(Copy(Parts, 0, Part), 0);
       for Namespace in ANamespaces do
+      begin
         if SameText(Namespace, Lead) then
+        begin
           Penalty := NamespacePenalty;
+        end;
+      end;
     end;
     Dec(Score, Penalty);
     if Result and (Score <= AMatch.Score) then
+    begin
       Continue;
+    end;
     Result := True;
     AMatch.Score := Score;
     AMatch.Filter := JoinParts(Parts, Min(Part + Dots, High(Parts)));
@@ -295,11 +341,15 @@ begin
   Path := AFileName.Replace('/', '\');
   Start := Pos(Marker, LowerCase(Path));
   if Start = 0 then
+  begin
     Exit;
+  end;
   // Hinter "Studio\" steht die Version ("37.0"), dann der Rest unter $(BDS).
   Stop := PosEx('\', Path, Start + Length(Marker));
   if Stop = 0 then
+  begin
     Exit;
+  end;
   Result := '$(BDS)' + Copy(Path, Stop, MaxInt);
 end;
 
@@ -314,13 +364,19 @@ begin
   for Symbol in AUnit.Symbols do
   begin
     if not Symbol.InInterface or (Symbol.Container <> '') or not (Symbol.Kind in IndexTypeKinds) then
+    begin
       Continue;
+    end;
     Inc(ACount);
     if Length(Result) >= AMax then
+    begin
       Continue;
+    end;
     Name := Symbol.Name;
     if Symbol.TypeParams <> '' then
+    begin
       Name := Name + '<' + Symbol.TypeParams.Replace(' ', '') + '>';
+    end;
     Result := Result + [Name];
   end;
 end;
@@ -341,17 +397,25 @@ var
     Namespace: string;
   begin
     if Names.TryGetValue(UpperCase(AName), Result) then
+    begin
       Exit;
+    end;
     for Namespace in ANamespaces do
+    begin
       if Names.TryGetValue(UpperCase(Namespace + '.' + AName), Result) then
+      begin
         Exit;
+      end;
+    end;
     Result := '';
   end;
 
 begin
   Result := TDictionary<string, string>.Create;
   if AOwnUnit = '' then
+  begin
     Exit;
+  end;
   Names := TDictionary<string, string>.Create;
   Users := TObjectDictionary<string, TList<string>>.Create([doOwnsValues]);
   Next := TDictionary<string, string>.Create;
@@ -359,19 +423,27 @@ begin
   try
     // Nur Projekt-Units: Bibliotheken binden keine Projekt-Units ein.
     for UnitInfo in AUnits do
+    begin
       if not UnitInfo.Library_ then
+      begin
         Names.AddOrSetValue(UpperCase(UnitInfo.UnitName), UnitInfo.UnitName);
+      end;
+    end;
     Names.AddOrSetValue(UpperCase(AOwnUnit), AOwnUnit);
     // Rückwärts: wer bindet wen im interface-Teil ein.
     for UnitInfo in AUnits do
     begin
       if UnitInfo.Library_ or SameText(UnitInfo.UnitName, AOwnUnit) then
+      begin
         Continue;
+      end;
       for Used in UnitInfo.InterfaceUses do
       begin
         Target := Resolve(Used);
         if Target = '' then
+        begin
           Continue;
+        end;
         if not Users.TryGetValue(UpperCase(Target), List) then
         begin
           List := TList<string>.Create;
@@ -386,18 +458,24 @@ begin
     begin
       Current := Queue.Dequeue;
       if not Users.TryGetValue(UpperCase(Current), List) then
+      begin
         Continue;
+      end;
       for User in List do
+      begin
         if not Next.ContainsKey(UpperCase(User)) then
         begin
           Next.Add(UpperCase(User), Current);
           Queue.Enqueue(User);
         end;
+      end;
     end;
     for User in Next.Keys do
     begin
       if SameText(User, AOwnUnit) then
+      begin
         Continue;
+      end;
       Chain := Names[User];
       Step := Next[User];
       while Step <> '' do
@@ -423,11 +501,19 @@ var
 begin
   Result := nil;
   if APrefix <> '' then
+  begin
     for Name in ASite.Here do
+    begin
       if Match(Name, APrefix, ANamespaces, AMatching, Found) then
+      begin
         Result := Result + [Name];
+      end;
+    end;
+  end;
   if Result = nil then
+  begin
     Result := ASite.Here;
+  end;
 end;
 
 class procedure TCompletionUses.Collect(ARequest: TCompletionRequest; const AContext: TCompletionContext;
@@ -445,10 +531,14 @@ var
   Start, Stop, Count: Integer;
 begin
   if ARequest.Index = nil then
+  begin
     Exit;
+  end;
   Namespaces := nil;
   if ARequest.Resolver <> nil then
+  begin
     Namespaces := ARequest.Resolver.Namespaces;
+  end;
   Own := '';
   Site := Default(TUsesSite);
   if ARequest.Tree <> nil then
@@ -463,7 +553,9 @@ begin
   Stop := ARequest.Position.Character;
   while (Stop < Length(Line)) and (CharInSet(Line[Stop + 1], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) or
     (Ord(Line[Stop + 1]) > 127)) do
+  begin
     Inc(Stop);
+  end;
   Units := ARequest.Index.Units;
   TArray.Sort<TUnitIndex>(Units, TComparer<TUnitIndex>.Construct(
     function(const ALeft, ARight: TUnitIndex): Integer
@@ -472,13 +564,17 @@ begin
     end));
   Cycles_ := nil;
   if Site.Section = TUsesSection.Interface_ then
+  begin
     Cycles_ := Cycles(Units, Own, Namespaces);
+  end;
   try
     for UnitInfo in Units do
     begin
       if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Site.Here, UnitInfo.UnitName, Namespaces) or
         not Match(UnitInfo.UnitName, AContext.Prefix, Namespaces, ARequest.Matching, Found) then
+      begin
         Continue;
+      end;
       Group := GroupOf(UnitInfo);
       Item := Default(TCompletionItem);
       Item.Name := UnitInfo.UnitName;
@@ -489,16 +585,26 @@ begin
         Stop), UnitInfo.UnitName);
       if (ARequest.Matching = TCompletionMatching.Fuzzy) and
         not UnitInfo.UnitName.StartsWith(AContext.Prefix, True) then
+      begin
         Item.FilterText := AContext.Prefix;
+      end;
       Item.UsesGroup := GroupNames[Group];
       Item.UsesFilter := Found.Filter;
       if TUsesClauses.IsUsed(Site.Other, UnitInfo.UnitName, Namespaces) then
+      begin
         if Site.Section = TUsesSection.Interface_ then
-          Item.UsesElsewhere := SectionNames[TUsesSection.Implementation_]
+        begin
+          Item.UsesElsewhere := SectionNames[TUsesSection.Implementation_];
+        end
         else
+        begin
           Item.UsesElsewhere := SectionNames[TUsesSection.Interface_];
+        end;
+      end;
       if (Cycles_ <> nil) and Cycles_.TryGetValue(UpperCase(UnitInfo.UnitName), Chain) then
+      begin
         Item.UsesCycle := Chain;
+      end;
       Item.UsesTypes := ExportedTypes(UnitInfo, MaxTypes, Count);
       Item.UsesTypeCount := Count;
       Item.UsesHidden := HiddenUnits;

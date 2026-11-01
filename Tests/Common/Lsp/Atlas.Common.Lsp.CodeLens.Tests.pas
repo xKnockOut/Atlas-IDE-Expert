@@ -99,11 +99,17 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else if SameText(AFileName, BasisFile) then
-    AText := UnitBasis
+  begin
+    AText := UnitBasis;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { TLspCodeLensTests }
@@ -128,8 +134,10 @@ var
 begin
   Result := '';
   for Entry in AEntries do
+  begin
     Result := Result + Format('%d %d %s %d|', [Entry.Range.StartPos.Line, Ord(Entry.Kind), Entry.Title,
       Length(Entry.Targets)]);
+  end;
 end;
 
 procedure TLspCodeLensTests.FindsMessageHandlersAndInheritedOnes;

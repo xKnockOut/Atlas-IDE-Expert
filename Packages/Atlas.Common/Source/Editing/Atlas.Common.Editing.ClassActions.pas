@@ -97,16 +97,22 @@ var
 begin
   Found := nil;
   if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.StartPos.Line > ALine) or (ANode.EndPos.Line < ALine) then
+        begin
           Exit(False);
+        end;
         if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.ClassType) <> nil) and
           (ANode.EndPos.Line > ALine) then
+        begin
           Found := ANode;
+        end;
         Result := True;
       end);
+  end;
   Result := Found;
 end;
 
@@ -123,10 +129,14 @@ begin
   for Index := 0 to High(Lines) do
   begin
     if Index > 0 then
+    begin
       Result := Result + LB;
+    end;
     Result := Result + Lines[Index];
     if Index = ALine then
+    begin
       Result := Result + LB + TTextLines.IndentOf(Lines[Index]) + '  ' + ACommand;
+    end;
   end;
 end;
 
@@ -134,11 +144,17 @@ end;
 function MapBack(const APosition: TTextPosition; APhantom: Integer): TTextPosition;
 begin
   if APosition.Line < APhantom then
-    Result := APosition
+  begin
+    Result := APosition;
+  end
   else if APosition.Line = APhantom then
-    Result := TTextPosition.Create(APhantom, 0)
+  begin
+    Result := TTextPosition.Create(APhantom, 0);
+  end
   else
+  begin
     Result := TTextPosition.Create(APosition.Line - 1, APosition.Character);
+  end;
 end;
 
 /// <summary>Führt ACommand als gedachte Zeile hinter ALine aus und rechnet die Änderungen zurück.</summary>
@@ -156,13 +172,17 @@ begin
   Result := TSlashCommandRegistry.Shared.Run(Phantom, Line, 0, AContext.Namespaces, nil, AContext.Index,
     AContext.DelphiVersion, AContext.Uri, AContext.Host, AContext.Style, Edits, Reason);
   if not Result then
+  begin
     Exit;
+  end;
   for Edit in Edits do
   begin
     // Das Entfernen der Befehlszeile entfällt: Im echten Text gibt es sie nicht.
     if (Edit.NewText = '') and (Edit.Range.StartPos.Line = Line) and (Edit.Range.StartPos.Character = 0) and
       (Edit.Range.EndPos.Line = Line + 1) and (Edit.Range.EndPos.Character = 0) then
+    begin
       Continue;
+    end;
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(MapBack(Edit.Range.StartPos, Line),
       MapBack(Edit.Range.EndPos, Line)), Edit.NewText)];
   end;
@@ -178,7 +198,9 @@ begin
   Result.Text := AText;
   Result.Line := ALine;
   if (ALine >= 0) and (ALine <= High(Lines)) then
+  begin
     Result.LineText := Lines[ALine];
+  end;
   Result.Namespaces := AContext.Namespaces;
   Result.Index := AContext.Index;
   Result.DelphiVersion := AContext.DelphiVersion;
@@ -192,8 +214,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.Container, AClassName) and SameText(Symbol.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -213,11 +239,15 @@ begin
   Result := False;
   Lines := TTextLines.SplitLines(AText);
   if (ALine < 0) or (ALine > High(Lines)) then
+  begin
     Exit;
+  end;
   Match := TRegEx.Match(Lines[ALine], '^(\s*)property\s+(\w+)\s*:\s*([^;]+?)\s*;\s*(//.*|)$', [roIgnoreCase]);
   if not Match.Success or TRegEx.IsMatch(Match.Groups[3].Value,
     '\b(read|write|index|default|stored|nodefault|implements)\b', [roIgnoreCase]) then
+  begin
     Exit;
+  end;
   Name := Match.Groups[2].Value;
   TypeName := Match.Groups[3].Value;
   Comment := Match.Groups[4].Value;
@@ -229,17 +259,23 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) or (ClassSymbol.Range.StartPos.Line >= ALine) or
       (ClassSymbol.Range.EndPos.Line <= ALine) then
+    begin
       Exit;
+    end;
     LB := Source.LineBreak;
     Indent := Source.Indent(ClassSymbol.Range.EndPos.Line);
     Section := TInterfaceStubs.LastSection(Source.Tree.Tokens, ClassSymbol.Range.StartPos.Line, ALine);
     if Section = '' then
+    begin
       Section := 'public';
+    end;
     // Feld und Zugriffsmethoden vor der Property: Delphi verlangt sie vor ihrer Verwendung, und Felder stehen in
     // einem Abschnitt vor den Methoden. Danach geht der Abschnitt der Property weiter.
     Declarations := '';
     if not HasMember(Source.UnitIndex, ClassSymbol.Name, Field) then
+    begin
       Declarations := Declarations + Indent + '  ' + Format('%s: %s;', [Field, TypeName]) + LB;
+    end;
     Bodies := '';
     if not HasMember(Source.UnitIndex, ClassSymbol.Name, Getter) then
     begin
@@ -251,20 +287,28 @@ begin
     begin
       Declarations := Declarations + Indent + '  ' + Format('procedure %s(const Value: %s);', [Setter, TypeName]) + LB;
       if Bodies <> '' then
+      begin
         Bodies := Bodies + LB + LB;
+      end;
       // Derselbe Setter wie bei /prop: nur bei Änderung, mit Benachrichtigung.
       Bodies := Bodies + Format('procedure %s.%s(const Value: %s);', [ClassSymbol.Name, Setter, TypeName]) + LB +
         TSetterGenerator.Body(Field, 'Value', TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol), LB);
     end;
     if Declarations = '' then
+    begin
       Exit;
+    end;
     if Comment <> '' then
+    begin
       Comment := ' ' + Comment;
+    end;
     Edits := [TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, Length(Lines[ALine])),
       Indent + 'private' + LB + Declarations + Indent + Section + LB + Match.Groups[1].Value +
       Format('property %s: %s read %s write %s;', [Name, TypeName, Getter, Setter]) + Comment)];
     if Bodies <> '' then
+    begin
       Edits := Edits + [Source.AddBody(ClassSymbol.Name, Bodies)];
+    end;
   finally
     Source.Free;
   end;
@@ -316,7 +360,9 @@ begin
     Source.Free;
   end;
   if not Result then
+  begin
     Exit;
+  end;
   AAction.Title := Format('%s anlegen', [APlan.Name]);
   AAction.Kind := RewriteKind;
   AAction.Edits := TSlashCommandRegistry.Reindent(AText, Edits, AContext.Style);
@@ -342,17 +388,27 @@ begin
   Result := nil;
   Decl := ClassDeclAt(ATree, ALine);
   if Decl = nil then
+  begin
     Exit;
+  end;
   if PropertyAccessors(AText, ALine, AContext, Action) then
+  begin
     Result := Result + [Action];
+  end;
   for Name in TInterfaceStubs.HeaderAncestors(TTextLines.SplitLines(AText), Decl.StartPos.Line) do
+  begin
     if TRegEx.IsMatch(Name, '^I[A-Z]') and ImplementInterface(AText, ALine, Name, AContext, Action) then
+    begin
       Result := Result + [Action];
+    end;
+  end;
   Count := 0;
   for Name in OverrideCandidates(AText, ALine, AContext) do
   begin
     if Count >= MaxOverrides then
+    begin
       Break;
+    end;
     if OverrideMethod(AText, ALine, Name, AContext, Action) then
     begin
       Result := Result + [Action];

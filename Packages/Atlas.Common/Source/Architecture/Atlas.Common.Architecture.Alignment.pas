@@ -51,11 +51,17 @@ uses
 function ShadeAt(ARank: Integer): Integer;
 begin
   if ARank = 0 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else if Odd(ARank) then
-    Result := (ARank + 1) div 2
+  begin
+    Result := (ARank + 1) div 2;
+  end
   else
+  begin
     Result := -(ARank div 2);
+  end;
 end;
 
 /// <summary>Name ohne den Zusatz " 2", " 3" …, den das Eindeutigmachen anhängt.</summary>
@@ -66,9 +72,13 @@ begin
   Result := AName;
   mPosition := Length(AName);
   while (mPosition > 0) and CharInSet(AName[mPosition], ['0'..'9']) do
+  begin
     Dec(mPosition);
+  end;
   if (mPosition > 1) and (mPosition < Length(AName)) and (AName[mPosition] = ' ') then
+  begin
     Result := Copy(AName, 1, mPosition - 1);
+  end;
 end;
 
 function Taken(const AName: string; const ATaken: TArray<string>): Boolean;
@@ -76,8 +86,12 @@ var
   mName: string;
 begin
   for mName in ATaken do
+  begin
     if SameText(mName, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -88,7 +102,9 @@ var
 begin
   Result := ABase;
   if not Taken(Result, ATaken) then
+  begin
     Exit;
+  end;
   mBase := WithoutSuffix(ABase);
   mSuffix := 2;
   Result := mBase + ' ' + IntToStr(mSuffix);
@@ -110,22 +126,32 @@ var
 begin
   SetLength(Result, Length(AOverview.Subsystems));
   for mIndex := 0 to High(Result) do
+  begin
     Result[mIndex] := -1;
+  end;
   mMatches := TSubsystemMatcher.Match(APrevious, TArchitectureSnapshots.FromOverview(AOverview),
     TSubsystemMatchMode.Majority);
   mOldByName := TDictionary<string, Integer>.Create;
   mNewByName := TDictionary<string, Integer>.Create;
   try
     for mIndex := 0 to High(APrevious.Subsystems) do
+    begin
       mOldByName.AddOrSetValue(LowerCase(APrevious.Subsystems[mIndex].Name), mIndex);
+    end;
     for mIndex := 0 to High(AOverview.Subsystems) do
+    begin
       mNewByName.AddOrSetValue(LowerCase(AOverview.Subsystems[mIndex].Name), mIndex);
+    end;
     for mMatch in mMatches do
+    begin
       if (mMatch.OldName <> '') and mNewByName.TryGetValue(LowerCase(mMatch.NewName), mNew) and
         mOldByName.TryGetValue(LowerCase(mMatch.OldName), mOld) and
         (AOverview.Subsystems[mNew].Foundation = APrevious.Subsystems[mOld].Foundation) and
         (AOverview.Subsystems[mNew].Isolated = APrevious.Subsystems[mOld].Isolated) then
+      begin
         Result[mNew] := mOld;
+      end;
+    end;
   finally
     mNewByName.Free;
     mOldByName.Free;
@@ -137,8 +163,12 @@ var
   mShade: Integer;
 begin
   for mShade in AShades do
+  begin
     if mShade = AShade then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -164,7 +194,9 @@ var
 begin
   SetLength(mFamily, Length(AOverview.Subsystems));
   for mIndex := 0 to High(mFamily) do
+  begin
     mFamily[mIndex] := AOverview.Subsystems[mIndex].ColorSlot;
+  end;
   SetLength(mKeep, Length(mFamily));
   mSlotOf := TDictionary<Integer, Integer>.Create;
   mSourceOf := TDictionary<Integer, Integer>.Create;
@@ -175,8 +207,11 @@ begin
     for mIndex := 0 to High(mFamily) do
     begin
       if (mFamily[mIndex] < 0) or mSlotOf.ContainsKey(mFamily[mIndex]) then
+      begin
         Continue;
+      end;
       for mMember := mIndex to High(mFamily) do
+      begin
         if (mFamily[mMember] = mFamily[mIndex]) and HasOldColor(mMember) and
           not mUsed.ContainsKey(APrevious.Subsystems[AOld[mMember]].ColorSlot) then
         begin
@@ -186,15 +221,20 @@ begin
           mUsed.Add(mSlot, True);
           Break;
         end;
+      end;
     end;
     // Dann die übrigen mit der kleinsten freien.
     for mIndex := 0 to High(mFamily) do
     begin
       if (mFamily[mIndex] < 0) or mSlotOf.ContainsKey(mFamily[mIndex]) then
+      begin
         Continue;
+      end;
       mSlot := 0;
       while mUsed.ContainsKey(mSlot) do
+      begin
         Inc(mSlot);
+      end;
       mSlotOf.Add(mFamily[mIndex], mSlot);
       mUsed.Add(mSlot, True);
     end;
@@ -202,10 +242,14 @@ begin
     for mIndex := 0 to High(mFamily) do
     begin
       if mFamily[mIndex] < 0 then
+      begin
         Continue;
+      end;
       mSlot := mSlotOf[mFamily[mIndex]];
       if not mShades.TryGetValue(mSlot, mUsedShades) then
+      begin
         mUsedShades := nil;
+      end;
       if HasOldColor(mIndex) and (APrevious.Subsystems[AOld[mIndex]].ColorSlot = mSlot) and
         not ContainsShade(mUsedShades, APrevious.Subsystems[AOld[mIndex]].Shade) then
       begin
@@ -217,10 +261,14 @@ begin
     for mIndex := 0 to High(mFamily) do
     begin
       if (mFamily[mIndex] < 0) or mKeep[mIndex] then
+      begin
         Continue;
+      end;
       mSlot := mSlotOf[mFamily[mIndex]];
       if not mShades.TryGetValue(mSlot, mUsedShades) then
+      begin
         mUsedShades := nil;
+      end;
       mRank := 0;
       mShade := ShadeAt(mRank);
       while ContainsShade(mUsedShades, mShade) do
@@ -232,14 +280,18 @@ begin
       mShades.AddOrSetValue(mSlot, mUsedShades + [mShade]);
     end;
     for mIndex := 0 to High(mFamily) do
+    begin
       if mFamily[mIndex] >= 0 then
       begin
         AOverview.Subsystems[mIndex].ColorSlot := mSlotOf[mFamily[mIndex]];
         // Das ursprüngliche Teilsystem einer Familie heißt wie das des Teils, dessen Farbe sie übernimmt.
         if mSourceOf.TryGetValue(mFamily[mIndex], mSource) and (AOverview.Subsystems[mIndex].Parent <> '') and
           (APrevious.Subsystems[AOld[mSource]].Parent <> '') then
+        begin
           AOverview.Subsystems[mIndex].Parent := APrevious.Subsystems[AOld[mSource]].Parent;
+        end;
       end;
+    end;
   finally
     mShades.Free;
     mUsed.Free;
@@ -268,15 +320,19 @@ begin
       mFixed[mIndex] := True;
     end;
     if mFixed[mIndex] then
+    begin
       mTaken := mTaken + [AOverview.Subsystems[mIndex].Name];
+    end;
   end;
   for mIndex := 0 to High(AOverview.Subsystems) do
+  begin
     if not mFixed[mIndex] then
     begin
       AOverview.Subsystems[mIndex].Name := TArchitectureAlignment.UniqueName(AOverview.Subsystems[mIndex].Name,
         mTaken);
       mTaken := mTaken + [AOverview.Subsystems[mIndex].Name];
     end;
+  end;
 end;
 
 class function TArchitectureAlignment.Align(var AOverview: TArchitectureOverview;
@@ -287,18 +343,28 @@ var
 begin
   Result := 0;
   if (Length(AOverview.Subsystems) = 0) or (Length(APrevious.Subsystems) = 0) then
+  begin
     Exit;
+  end;
   mOld := MatchedOld(AOverview, APrevious);
   for mIndex := 0 to High(mOld) do
+  begin
     if (mOld[mIndex] >= 0) and not AOverview.Subsystems[mIndex].Foundation then
+    begin
       Inc(Result);
+    end;
+  end;
   if Result = 0 then
+  begin
     Exit;
+  end;
   AlignColors(AOverview, APrevious, mOld);
   AlignNames(AOverview, APrevious, mOld);
   // Gleichstände der Zuordnung gehen nach dem Namen des Teilsystems (#1368).
   if Length(AOverview.Assignments) > 0 then
+  begin
     AOverview.Assignments := TArchitectureAnalyzer.Assignments(AOverview);
+  end;
   AOverview.AlignedSource := ASource;
   AOverview.AlignedAt := AAt;
   AOverview.AlignedKept := Result;

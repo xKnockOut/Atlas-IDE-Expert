@@ -77,8 +77,12 @@ var
 begin
   Result := nil;
   for Reference in TUsesClauses.References(TPascalLexer.Tokenize(TIndexExtractor.BlankInactive(AText, ADefines))) do
+  begin
     if Reference.List = TUsesListKind.UsesList then
+    begin
       Result := Result + [Reference];
+    end;
+  end;
 end;
 
 function TUsesLocator.ReferencesOf(const ANode: TUsesNode): TArray<TUsesReference>;
@@ -88,13 +92,17 @@ var
 begin
   Key := LowerCase(ANode.FileName) + '|' + ANode.Hash;
   if FCache.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   if Assigned(FReader) and FReader(ANode.FileName, Text) then
   begin
     Defines := nil;
     if Assigned(FDefines) then
+    begin
       Defines := FDefines(ANode.FileName);
+    end;
     Result := UsesReferences(Text, Defines);
   end;
   FCache.AddOrSetValue(Key, Result);
@@ -116,7 +124,9 @@ begin
   for Reference in ReferencesOf(Node) do
   begin
     if Reference.InInterface <> InInterface then
+    begin
       Continue;
+    end;
     if SameText(Reference.Name, AEdge.Name) and (Order = AEdge.Order) then
     begin
       ALocation.Range := Reference.Range;
@@ -125,11 +135,13 @@ begin
     Inc(Order);
   end;
   for Reference in ReferencesOf(Node) do
+  begin
     if (Reference.InInterface = InInterface) and SameText(Reference.Name, AEdge.Name) then
     begin
       ALocation.Range := Reference.Range;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 

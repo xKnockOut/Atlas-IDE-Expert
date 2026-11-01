@@ -293,9 +293,13 @@ var
 begin
   Result := nil;
   if not FFiles.TryGetValue(SharedCacheKey(AFileSystem, AFileName), Entry) then
+  begin
     Exit;
+  end;
   if AFileSystem.FileStamp(AFileName, Stamp) and (Stamp = Entry.Stamp) then
+  begin
     Result := Entry.Units;
+  end;
 end;
 
 class procedure TSharedCacheWrites.Remember(const AFileSystem: IIndexFileSystem; const AFileName: string;
@@ -357,7 +361,9 @@ var
   Shared: TShared;
 begin
   if not AFileSystem.FileStamp(AFileName, AStamp) then
+  begin
     AStamp := -1;
+  end;
   Key := KeyOf(AFileSystem, AFileName);
   // Unter der Sperre lesen: Ein zweiter Dienst wartet lieber, als dieselbe Datei ein zweites Mal zu laden.
   TMonitor.Enter(FLock);
@@ -391,7 +397,9 @@ begin
   try
     // Anderer Stand: Der Eintrag wurde schon ersetzt; die eigene Kopie hält der Aufrufer selbst.
     if not FFiles.TryGetValue(Key, Shared) or (Shared.Stamp <> AStamp) then
+    begin
       Exit;
+    end;
     Dec(Shared.Users);
     if Shared.Users <= 0 then
     begin
@@ -403,7 +411,9 @@ begin
   end;
   // Außerhalb der Lese-Sperre: Forget wartet auf ein laufendes Schreiben.
   if Unused then
+  begin
     TSharedCacheWrites.Forget(AFileSystem, AFileName);
+  end;
 end;
 
 class function TSharedCacheReads.HeldCount: Integer;
@@ -478,7 +488,9 @@ begin
     FreeAndNil(FPrevious);
   end;
   if not FCancelled then
+  begin
     FService.Run(FRequest, IsCancelled);
+  end;
 end;
 
 { TIndexService }
@@ -530,10 +542,16 @@ begin
   ByFile := TDictionary<string, Integer>.Create;
   try
     for Position := 0 to High(AEntries) do
+    begin
       ByFile.AddOrSetValue(AnsiUpperCase(AEntries[Position].Header.FileName), Position);
+    end;
     for UnitIndex in AUnits do
+    begin
       if not ContainsUnit(AEntries, ByFile, UnitIndex) then
+      begin
         Exit(True);
+      end;
+    end;
   finally
     ByFile.Free;
   end;
@@ -547,9 +565,13 @@ var
   State: string;
 begin
   for UnitIndex in AUnits do
+  begin
     if not AWritten.TryGetValue(AnsiUpperCase(UnitIndex.FileName), State) or
       (State <> TSharedCacheWrites.StateOf(UnitIndex)) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -564,11 +586,17 @@ begin
   Current := TDictionary<string, Boolean>.Create;
   try
     for UnitIndex in AUnits do
+    begin
       Current.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), True);
+    end;
     for Entry in AEntries do
+    begin
       if not Current.ContainsKey(AnsiUpperCase(Entry.Header.FileName)) and
         TIndexCache.Expand(Entry, UnitIndex) then
+      begin
         AUnits.Add(UnitIndex);
+      end;
+    end;
   finally
     Current.Free;
   end;
@@ -596,7 +624,9 @@ end;
 procedure TIndexService.NotWritten(const AFileName, AReason: string);
 begin
   if Assigned(FOnCacheNotWritten) then
+  begin
     FOnCacheNotWritten(AFileName, AReason);
+  end;
 end;
 
 function TIndexService.WriteCache(ALibrary: Boolean; const AFileName: string;
@@ -610,9 +640,13 @@ begin
   Data := TIndexCache.Serialize(AUnits);
   Result := FFileSystem.WriteBytes(AFileName, Data, Error);
   if not Result then
-    NotWritten(AFileName, Error)
+  begin
+    NotWritten(AFileName, Error);
+  end
   else if Assigned(FOnCacheWritten) then
+  begin
     FOnCacheWritten(ALibrary, Length(AUnits), Length(Data), Watch.ElapsedMilliseconds);
+  end;
 end;
 
 procedure TIndexService.WriteCaches(const ARequest: TIndexRequest; const ACached,
@@ -627,7 +661,9 @@ var
   Latest: TArray<TIndexCacheEntry>;
 begin
   if (ARequest.CacheFile = '') or ARequest.ReadOnlyCache then
+  begin
     Exit;
+  end;
   // Immer nur ein Dienst des Prozesses serialisiert (Rückmeldung 22.10.2026): Die Projekte einer Gruppe
   // enden fast gleichzeitig, jede Serialisierung belegt kurzzeitig ein Vielfaches der Datei. Gegen andere
   // Prozesse schützt die Schreibsperre der Datei (Bericht N1).
@@ -636,7 +672,9 @@ begin
     if ARequest.LibraryCacheFile = '' then
     begin
       if (AParsed > 0) or (Length(ACached) <> FIndex.UnitCount) then
+      begin
         WriteCache(False, ARequest.CacheFile, FIndex.Units);
+      end;
       Exit;
     end;
     // Getrennt schreiben: Projekt-Units ins Projekt, Bibliothek in den gemeinsamen Cache.
@@ -648,29 +686,43 @@ begin
       Own := TDictionary<string, Boolean>.Create;
       try
         for FileName in ARequest.Files + ARequest.SearchFiles do
+        begin
           Own.AddOrSetValue(AnsiUpperCase(FileName), True);
+        end;
         for UnitIndex in FIndex.Units do
+        begin
           if UnitIndex.Library_ and InSharedCache(ARequest, UnitIndex.FileName) then
-            LibraryUnits.Add(UnitIndex)
+          begin
+            LibraryUnits.Add(UnitIndex);
+          end
           else if UnitIndex.Library_ or Own.ContainsKey(AnsiUpperCase(UnitIndex.FileName)) then
+          begin
             // Über uses erreichte Units außerhalb der Installation (gemeinsamer Firmencode) liest
             // der Builder mit den Defines des Projekts; sie gehören in dessen Cache (#647).
             ProjectUnits.Add(UnitIndex);
+          end;
+        end;
       finally
         Own.Free;
       end;
       if (AParsed > 0) or (Length(ACached) <> ProjectUnits.Count) then
+      begin
         WriteCache(False, ARequest.CacheFile, ProjectUnits.ToArray);
+      end;
       // Hat in diesem Prozess schon ein Dienst diese Units in die unveränderte Datei geschrieben, gibt es
       // nichts Neues; dann weder sperren noch lesen. Sonst gegen den beim Start gelesenen Stand.
       Written := TSharedCacheWrites.Written(FFileSystem, ARequest.LibraryCacheFile);
       if Written <> nil then
       begin
         if AllWritten(Written, LibraryUnits) then
+        begin
           Exit;
+        end;
       end
       else if not MissingIn(ALibraryCached, LibraryUnits) then
+      begin
         Exit;
+      end;
       // Ein Schreiber zur Zeit (Bericht N1). Unter der Sperre den aktuellen Stand lesen: Ein anderes Projekt
       // oder ein anderer Prozess kann seit dem Start Units ergänzt haben, die sonst verloren gingen.
       Lock := LockForWrite(ARequest.LibraryCacheFile, ACancelled);
@@ -678,19 +730,25 @@ begin
       begin
         // Abgebrochen ist kein Fehler: Der nächste Aufbau ergänzt den Cache.
         if not ACancelled() then
+        begin
           NotWritten(ARequest.LibraryCacheFile, 'Schreibsperre nicht erhalten');
+        end;
         Exit;
       end;
       Latest := ReadCache(ARequest.LibraryCacheFile);
       if not MissingIn(Latest, LibraryUnits) then
+      begin
         Exit;
+      end;
       AddOthers(Latest, LibraryUnits);
       Latest := nil;
       if WriteCache(True, ARequest.LibraryCacheFile, LibraryUnits.ToArray) then
       begin
         NewState := TDictionary<string, string>.Create;
         for UnitIndex in LibraryUnits do
+        begin
           NewState.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), TSharedCacheWrites.StateOf(UnitIndex));
+        end;
         TSharedCacheWrites.Remember(FFileSystem, ARequest.LibraryCacheFile, NewState);
       end;
     finally
@@ -709,10 +767,14 @@ var
 begin
   Result := nil;
   if (AFileName = '') or not FFileSystem.ReadBytes(AFileName, Data) then
+  begin
     Exit;
+  end;
   Result := TIndexCache.ReadEntries(Data, Reason);
   if (Reason <> '') and Assigned(FOnCacheRejected) then
+  begin
     FOnCacheRejected(AFileName, Reason);
+  end;
 end;
 
 procedure TIndexService.Run(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
@@ -740,7 +802,9 @@ begin
       Builder.LibraryDefines := ARequest.LibraryDefines;
       Builder.Usages := ARequest.Usages;
       if Assigned(ARequest.Prepare) then
+      begin
         ARequest.Prepare();
+      end;
       WaitForOtherWriter(ARequest, ACancelled);
       TMonitor.Enter(FLock);
       try
@@ -774,7 +838,9 @@ begin
     ReplaceBuilder(Builder);
     Turn := nil;
     if FScheduler <> nil then
+    begin
       Turn := FScheduler.Register(ARequest.Priority);
+    end;
     WrittenParsed := 0;
     BuildResult := Builder.Build(ARequest.Files, ARequest.SearchFiles, ARequest.LibraryFiles, FOnProgress,
       function: Boolean
@@ -788,7 +854,9 @@ begin
         WriteCaches(Request, Cached, LibraryCached, APartial.Parsed, ACancelled);
         WrittenParsed := APartial.Parsed;
         if Assigned(FOnProjectReady) then
+        begin
           FOnProjectReady(APartial, Watch.ElapsedMilliseconds);
+        end;
       end);
     // Abmelden vor dem Schreiben des Caches: Das nächste Projekt muss darauf nicht warten.
     Turn := nil;
@@ -799,19 +867,25 @@ begin
       Builder.ReleaseCache;
     end;
     if Assigned(FOnFinished) then
+    begin
       FOnFinished(BuildResult, Watch.ElapsedMilliseconds);
+    end;
   except
     on E: Exception do
       ReportError(E);
   end;
   if LibraryHeld then
+  begin
     TSharedCacheReads.Release(FFileSystem, ARequest.LibraryCacheFile, LibraryStamp);
+  end;
 end;
 
 procedure TIndexService.ReportError(const AError: Exception);
 begin
   if not Assigned(FOnError) then
+  begin
     Exit;
+  end;
   try
     FOnError(AError);
   except
@@ -825,16 +899,22 @@ var
   Before, Stamp: Int64;
 begin
   if (ARequest.CacheFile = '') or not ARequest.ReadOnlyCache or not Assigned(ARequest.CacheBusy) then
+  begin
     Exit;
+  end;
   if not FFileSystem.FileStamp(ARequest.CacheFile, Before) then
+  begin
     Before := 0;
+  end;
   Watch := TStopwatch.StartNew;
   // Bis die andere Instanz einen neuen Stand geschrieben oder die Sperre freigegeben hat,
   // nie länger als CacheWaitMs.
   while not ACancelled() and (Watch.ElapsedMilliseconds < ARequest.CacheWaitMs) and ARequest.CacheBusy() do
   begin
     if FFileSystem.FileStamp(ARequest.CacheFile, Stamp) and (Stamp <> Before) then
+    begin
       Exit;
+    end;
     TThread.Sleep(200);
   end;
 end;
@@ -847,14 +927,18 @@ begin
   Previous := FThread;
   FThread := nil;
   if Previous <> nil then
+  begin
     TIndexThread(Previous).Cancel;
+  end;
   FThread := TIndexThread.Create(Self, ARequest, Previous);
 end;
 
 procedure TIndexService.Stop;
 begin
   if FThread = nil then
+  begin
     Exit;
+  end;
   TIndexThread(FThread).Cancel;
   FThread.WaitFor;
   FreeAndNil(FThread);
@@ -863,7 +947,9 @@ end;
 procedure TIndexService.WaitFor;
 begin
   if FThread <> nil then
+  begin
     FThread.WaitFor;
+  end;
 end;
 
 function TIndexService.AcquireBuilder: TIndexBuilder;
@@ -872,7 +958,9 @@ begin
   try
     Result := FBuilder;
     if Result <> nil then
+    begin
       Inc(FUsers);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -884,7 +972,9 @@ begin
   try
     Dec(FUsers);
     if FUsers = 0 then
+    begin
       TMonitor.PulseAll(FLock);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -900,7 +990,9 @@ begin
     Old := FBuilder;
     FBuilder := nil;
     while FUsers > 0 do
+    begin
       TMonitor.Wait(FLock, INFINITE);
+    end;
     FBuilder := ABuilder;
   finally
     TMonitor.Exit(FLock);
@@ -915,7 +1007,9 @@ var
 begin
   Builder := AcquireBuilder;
   if Builder = nil then
+  begin
     Exit(FIndex.FindUnit(AUnitName, Existing));
+  end;
   try
     Result := Builder.EnsureUnit(AUnitName);
   finally
@@ -929,7 +1023,9 @@ var
 begin
   Builder := AcquireBuilder;
   if Builder = nil then
+  begin
     Exit(False);
+  end;
   try
     TMonitor.Enter(FApplyLock);
     try
@@ -951,7 +1047,9 @@ var
 begin
   AUsages := nil;
   if not FIndex.FindFile(AFileName, Existing) or not Existing.UsagesIndexed then
+  begin
     Exit(False);
+  end;
   if not Existing.UsagesOffloaded then
   begin
     AUsages := Existing.Usages;
@@ -965,13 +1063,19 @@ begin
     TMonitor.Exit(FLock);
   end;
   for Entry in ReadCache(CacheFile) do
+  begin
     if SameText(Entry.Header.FileName, AFileName) and (Entry.Header.Hash = Existing.Hash) and
       Entry.Header.UsagesIndexed then
+    begin
       Exit(TIndexCache.ExpandUsages(Entry, AUsages));
+    end;
+  end;
   // Noch nicht geschrieben (neu eingelesen): aus der Datei.
   Builder := AcquireBuilder;
   if Builder = nil then
+  begin
     Exit(False);
+  end;
   try
     Result := Builder.ReadUsages(AFileName, AUsages);
   finally
@@ -985,7 +1089,9 @@ var
 begin
   Builder := AcquireBuilder;
   if Builder = nil then
+  begin
     Exit(0);
+  end;
   try
     TMonitor.Enter(FApplyLock);
     try

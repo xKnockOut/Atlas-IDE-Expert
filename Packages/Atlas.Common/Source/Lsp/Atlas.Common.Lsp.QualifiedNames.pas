@@ -71,15 +71,19 @@ begin
   begin
     Child := nil;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if not Before(APosition, Node[Index].StartPos) and Before(APosition, Node[Index].EndPos) then
       begin
         Child := Node[Index];
         Break;
       end;
+    end;
     // Der Name der Routine selbst gehört nicht zu ihrem Inhalt: erst ab dem Rumpf bzw. den Deklarationen.
     if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) and
       (APosition.Line > Child.StartPos.Line) then
+    begin
       Result := Result + [Child.Name];
+    end;
     Node := Child;
   end;
 end;
@@ -91,12 +95,18 @@ var
 begin
   Result := ATypeName;
   if not AFound then
+  begin
     Exit;
+  end;
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.Name, ATypeName) and SameText(Symbol.Container, AContainer) and (Symbol.TypeParams <> '') and
       (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.InterfaceType, TIndexSymbolKind.TypeAlias]) then
+    begin
       Exit(ATypeName + '<' + StringReplace(Symbol.TypeParams, ',', ', ', [rfReplaceAll]) + '>');
+    end;
+  end;
 end;
 
 function InUses(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
@@ -110,10 +120,14 @@ begin
     begin
       Result := TSyntaxSearchStep.Descend;
       if ACandidate.Kind <> TSyntaxKind.UsesClause then
+      begin
         Exit;
+      end;
       Result := TSyntaxSearchStep.Skip;
       if not Before(Position, ACandidate.StartPos) and Before(Position, ACandidate.EndPos) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end) <> nil;
 end;
 
@@ -125,9 +139,12 @@ var
 begin
   Result := '';
   if (ATree.Root = nil) or not InUses(ATree.Root, APosition) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and (Tokens[Index].StartPos.Line = APosition.Line) and
       (Tokens[Index].StartPos.Character <= APosition.Character) and
       (Tokens[Index].EndPos.Character >= APosition.Character) then
@@ -135,15 +152,22 @@ begin
       First := Index;
       while (First >= 2) and Tokens[First - 1].IsSymbol('.') and
         (Tokens[First - 2].Kind = TPascalTokenKind.Identifier) do
+      begin
         Dec(First, 2);
+      end;
       Last := Index;
       while (Last + 2 <= High(Tokens)) and Tokens[Last + 1].IsSymbol('.') and
         (Tokens[Last + 2].Kind = TPascalTokenKind.Identifier) do
+      begin
         Inc(Last, 2);
+      end;
       for Part := First to Last do
+      begin
         Result := Result + Tokens[Part].Text;
+      end;
       Exit;
     end;
+  end;
 end;
 
 class function TQualifiedNames.Compose(const ASymbol: TResolvedSymbol; const AIndex: ISymbolIndex;
@@ -156,9 +180,13 @@ var
   Index: Integer;
 begin
   if ASymbol.Kind = TResolvedKind.UnitName then
+  begin
     Exit(ASymbol.Name);
+  end;
   if ASymbol.Builtin then
+  begin
     Exit('System.' + ASymbol.Name);
+  end;
   // Die eigene Datei frisch aus dem Baum, andere aus dem Index.
   if (ATree <> nil) and SameText(ASymbol.FileName, AFileName) then
   begin
@@ -166,7 +194,9 @@ begin
     Found := True;
   end
   else
+  begin
     Found := (AIndex <> nil) and (ASymbol.FileName <> '') and AIndex.FindFile(ASymbol.FileName, UnitIndex);
+  end;
   Result := ASymbol.UnitName;
   // Umgebende Typen, je mit ihren Typparametern.
   Container := '';
@@ -177,26 +207,42 @@ begin
     begin
       Result := Result + '.' + WithTypeParams(UnitIndex, Found, Container, Parts[Index]);
       if Container <> '' then
+      begin
         Container := Container + '.';
+      end;
       Container := Container + Parts[Index];
     end;
   end
   else if (ATree <> nil) and SameText(ASymbol.FileName, AFileName) then
+  begin
     // Lokale Symbole: umgebende Routinen, z. B. Unit.Aussen.Innen oder Unit.TFoo.Bar.Zaehler.
     for Routine in EnclosingRoutines(ATree.Root, ASymbol.SelectionRange.StartPos) do
+    begin
       Result := Result + '.' + Routine;
+    end;
+  end;
   Name := ASymbol.Name;
   if ASymbol.IsType then
-    Name := WithTypeParams(UnitIndex, Found, ASymbol.Container, Name)
+  begin
+    Name := WithTypeParams(UnitIndex, Found, ASymbol.Container, Name);
+  end
   else if ASymbol.TypeParams <> '' then
+  begin
     Name := Name + '<' + StringReplace(ASymbol.TypeParams, ',', ', ', [rfReplaceAll]) + '>';
+  end;
   if Result = '' then
-    Result := Name
+  begin
+    Result := Name;
+  end
   else
+  begin
     Result := Result + '.' + Name;
+  end;
   if AWithParameters and (ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
     TIndexSymbolKind.Routine]) then
+  begin
     Result := Result + '(' + string.Join(', ', ASymbol.ParamTypes) + ')';
+  end;
 end;
 
 class function TQualifiedNames.At(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -212,11 +258,14 @@ begin
   // Unit-Namen in uses stehen für sich.
   AName := UsesUnitAt(ATree, APosition);
   if AName <> '' then
+  begin
     Exit(True);
+  end;
   // Auf einer Deklaration der Datei genau diese (auch die richtige Überladung), sonst die Namensauflösung.
   Symbol := Default(TResolvedSymbol);
   UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
   for Declared in UnitIndex.Symbols do
+  begin
     if (Declared.SelectionRange.StartPos.Line = APosition.Line) and
       (Declared.SelectionRange.StartPos.Character <= APosition.Character) and
       (Declared.SelectionRange.EndPos.Character >= APosition.Character) then
@@ -233,8 +282,11 @@ begin
       Symbol.ParamTypes := Declared.ParamTypes;
       Break;
     end;
+  end;
   if not Symbol.Found then
+  begin
     Symbol := AResolver.Resolve(ATree, AFileName, APosition);
+  end;
   if not Symbol.Found then
   begin
     AError := Format('An Zeile %d, Spalte %d steht kein bekanntes Symbol', [APosition.Line + 1,
@@ -255,19 +307,25 @@ var
   WithParameters: Boolean;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
+  end;
   Uri := AArguments.Items[0].Value;
   WithParameters := (AArguments.Count > 2) and (AArguments.Items[2] is TJSONBool) and
     TJSONBool(AArguments.Items[2]).AsBoolean;
   if not AStore.TryGet(Uri, Document) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+  end;
   Shared := TSyntaxTreeCache.Get(Document);
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
     Resolver.Namespaces := ANamespaces;
     if not At(Resolver, AIndex, Shared.Tree, TDocumentUris.ToPath(Uri),
       TLspPositions.ReadPosition(AArguments.Items[1]), WithParameters, Name, Error) then
+    begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
+    end;
   finally
     Resolver.Free;
   end;

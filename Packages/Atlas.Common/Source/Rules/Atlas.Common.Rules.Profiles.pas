@@ -64,8 +64,12 @@ var
   Item: string;
 begin
   for Item in AItems do
+  begin
     if SameText(Item, AText) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -76,30 +80,42 @@ var
   Rule: TRuleSetting;
 begin
   for Rule in AItems do
+  begin
     if (SameText(Rule.Id, ARuleId) or (AWildcard and (Rule.Id = '*'))) and
       (Rule.Severity <> TRuleSeverity.Default) then
     begin
       ASeverity := Rule.Severity;
       AEnabled := Rule.Severity <> TRuleSeverity.Off;
     end;
+  end;
 end;
 
 procedure ApplyCategories(const ACategories: TArray<string>; const ACategory: string; var ASeverity: TRuleSeverity);
 begin
   if (Length(ACategories) > 0) and (ACategory <> '') and not Contains(ACategories, ACategory) then
+  begin
     ASeverity := TRuleSeverity.Off;
+  end;
 end;
 
 procedure ApplyBuiltin(const AName, ACategory: string; var ASeverity: TRuleSeverity; var AEnabled: Boolean);
 begin
   if SameText(AName, 'fast') then
-    ApplyCategories(['bug', 'vulnerability'], ACategory, ASeverity)
+  begin
+    ApplyCategories(['bug', 'vulnerability'], ACategory, ASeverity);
+  end
   else if SameText(AName, 'security') then
-    ApplyCategories(['vulnerability', 'security-hotspot'], ACategory, ASeverity)
+  begin
+    ApplyCategories(['vulnerability', 'security-hotspot'], ACategory, ASeverity);
+  end
   else if SameText(AName, 'style') then
-    ApplyCategories(['code-smell'], ACategory, ASeverity)
+  begin
+    ApplyCategories(['code-smell'], ACategory, ASeverity);
+  end
   else if SameText(AName, 'strict') then
+  begin
     AEnabled := True;
+  end;
 end;
 
 { TRuleProfiles }
@@ -132,13 +148,19 @@ begin
   end;
   ApplyRules(ASettings.Rules, ADescriptor.Id, Result, AEnabled, False);
   if ARelativePath <> '' then
+  begin
     for Item in ASettings.Overrides do
+    begin
       for Pattern in Item.Files do
+      begin
         if MatchesGlob(Pattern, ARelativePath) then
         begin
           ApplyRules(Item.Rules, ADescriptor.Id, Result, AEnabled, True);
           Break;
         end;
+      end;
+    end;
+  end;
 end;
 
 class function TRuleProfiles.BaseProfile(const ASettings: TServerSettings; const AProfile: string): string;
@@ -158,15 +180,21 @@ end;
 class function TRuleProfiles.MinConfidence(const ASettings: TServerSettings; const AProfile: string): TRuleConfidence;
 begin
   if not ASettings.MinConfidenceGiven and SameText(BaseProfile(ASettings, AProfile), 'strict') then
-    Result := TRuleConfidence.Low
+  begin
+    Result := TRuleConfidence.Low;
+  end
   else
+  begin
     Result := ASettings.MinConfidence;
+  end;
 end;
 
 class function TRuleProfiles.CategoryOf(const ARuleId: string): string;
 begin
   if (Categories = nil) or not Categories.TryGetValue(LowerCase(ARuleId), Result) then
+  begin
     Result := '';
+  end;
 end;
 
 class function TRuleProfiles.KnownRuleIds: TArray<string>;
@@ -176,7 +204,9 @@ var
 begin
   Result := nil;
   if Categories = nil then
+  begin
     Exit;
+  end;
   // Ohne Categories.Keys: Die Sammlung entstünde beim ersten Zugriff und bliebe bis Programmende.
   SetLength(Result, Categories.Count);
   Index := 0;
@@ -203,7 +233,9 @@ begin
     Catalog := TRuleCatalog.Create(RuleCatalogBaseJson);
     try
       for Entry in Catalog.Entries do
+      begin
         Categories.AddOrSetValue(LowerCase(Entry.Id), TRuleCatalog.CategoryName(Entry.Category));
+      end;
     finally
       Catalog.Free;
     end;

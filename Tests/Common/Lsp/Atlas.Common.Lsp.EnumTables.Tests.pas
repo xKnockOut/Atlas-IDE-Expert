@@ -94,13 +94,21 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, OrdersFile) then
-    AText := Orders
+  begin
+    AText := Orders;
+  end
   else if SameText(AFileName, ShopFile) then
-    AText := Shop
+  begin
+    AText := Shop;
+  end
   else if SameText(AFileName, OtherFile) then
-    AText := Other
+  begin
+    AText := Other;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 procedure TLspEnumTablesTests.Setup;
@@ -151,7 +159,9 @@ var
   Action: TJSONObject;
 begin
   for Action in AActions do
+  begin
     Action.Free;
+  end;
 end;
 
 procedure TLspEnumTablesTests.ActionsOnType;

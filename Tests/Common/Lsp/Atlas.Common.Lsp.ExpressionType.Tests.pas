@@ -109,7 +109,9 @@ begin
       '{"start": {"line": %d, "character": %d}, "end": {"line": %d, "character": %d}}',
       [ALine, AStart, ALine, AEnd])));
     if ASettings <> '' then
+    begin
       Arguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
+    end;
     Reply := TLspExpressionType.Execute(FStore, FIndex, nil, nil, Arguments);
   finally
     Arguments.Free;

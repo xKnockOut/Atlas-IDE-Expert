@@ -90,11 +90,17 @@ begin
   Value := LowerCase(Trim(AText));
   Result := True;
   if Value = 'text' then
-    AFormat := TFindingsFormat.Text
+  begin
+    AFormat := TFindingsFormat.Text;
+  end
   else if Value = 'json' then
-    AFormat := TFindingsFormat.Json
+  begin
+    AFormat := TFindingsFormat.Json;
+  end
   else if Value = 'sarif' then
-    AFormat := TFindingsFormat.Sarif
+  begin
+    AFormat := TFindingsFormat.Sarif;
+  end
   else
   begin
     AFormat := TFindingsFormat.Text;
@@ -140,11 +146,17 @@ begin
   Value := LowerCase(Trim(AText));
   Result := True;
   if Value = 'error' then
-    AFailOn := TFailOn.Error
+  begin
+    AFailOn := TFailOn.Error;
+  end
   else if Value = 'warning' then
-    AFailOn := TFailOn.Warning
+  begin
+    AFailOn := TFailOn.Warning;
+  end
   else if Value = 'never' then
-    AFailOn := TFailOn.Never
+  begin
+    AFailOn := TFailOn.Never;
+  end
   else
   begin
     AFailOn := TFailOn.Error;
@@ -166,11 +178,17 @@ begin
   Result := '';
   Bytes := TEncoding.UTF8.GetBytes(APath);
   for B in Bytes do
+  begin
     if (B in [Ord('A')..Ord('Z'), Ord('a')..Ord('z'), Ord('0')..Ord('9')]) or
       (B in [Ord('-'), Ord('.'), Ord('_'), Ord('~'), Ord('/'), Ord(':')]) then
-      Result := Result + Chr(B)
+    begin
+      Result := Result + Chr(B);
+    end
     else
+    begin
       Result := Result + '%' + IntToHex(B, 2);
+    end;
+  end;
 end;
 
 class function TFindingsOutput.FileUri(const AFullPath: string): string;
@@ -180,9 +198,13 @@ begin
   Path := UriPath(AFullPath);
   // UNC-Pfad \\server\freigabe wird zu file://server/freigabe.
   if Copy(Path, 1, 2) = '//' then
+  begin
     Exit('file:' + EncodeUri(Path));
+  end;
   if Copy(Path, 1, 1) <> '/' then
+  begin
     Path := '/' + Path;
+  end;
   Result := 'file://' + EncodeUri(Path);
 end;
 
@@ -193,13 +215,19 @@ begin
   Path := UriPath(AFullPath);
   Root := UriPath(ASourceRoot);
   if (Root <> '') and (Root[Length(Root)] <> '/') then
+  begin
     Root := Root + '/';
+  end;
   // Windows-Pfade unterscheiden keine Groß- und Kleinschreibung.
   ARelative := (Root <> '') and (Length(Path) > Length(Root)) and SameText(Copy(Path, 1, Length(Root)), Root);
   if ARelative then
-    Result := EncodeUri(Copy(Path, Length(Root) + 1, MaxInt))
+  begin
+    Result := EncodeUri(Copy(Path, Length(Root) + 1, MaxInt));
+  end
   else
+  begin
     Result := FileUri(AFullPath);
+  end;
 end;
 
 class function TFindingsOutput.FindGitRoot(const AStart: string; const AExists: TPathExists): string;
@@ -210,10 +238,14 @@ begin
   while Dir <> '' do
   begin
     if AExists(IncludeTrailingPathDelimiter(Dir) + '.git') then
+    begin
       Exit(Dir);
+    end;
     Parent := ExtractFileDir(Dir);
     if (Parent = Dir) or (Parent = '') then
+    begin
       Break;
+    end;
     Dir := Parent;
   end;
   Result := '';
@@ -233,7 +265,9 @@ begin
     for CheckedFile in AFiles do
     begin
       if Length(CheckedFile.Findings) > 0 then
+      begin
         Inc(FilesWithFindings);
+      end;
       for Finding in CheckedFile.Findings do
       begin
         Inc(Count);
@@ -268,7 +302,9 @@ var
   Severity: TRuleSeverity;
 begin
   for Severity := Low(TRuleSeverity) to High(TRuleSeverity) do
+  begin
     Counts[Severity] := 0;
+  end;
   Builder := TStringBuilder.Create;
   try
     Builder.Append('{"files":[');
@@ -276,7 +312,9 @@ begin
     for CheckedFile in AFiles do
     begin
       if not FirstFile then
+      begin
         Builder.Append(',');
+      end;
       FirstFile := False;
       Builder.Append('{"path":').Append(TFindingsOutput.JsonString(UriPath(CheckedFile.Path))).Append(',"findings":[');
       FirstFinding := True;
@@ -284,7 +322,9 @@ begin
       begin
         Inc(Counts[Finding.Severity]);
         if not FirstFinding then
+        begin
           Builder.Append(',');
+        end;
         FirstFinding := False;
         Builder.Append('{"rule":').Append(TFindingsOutput.JsonString(Finding.RuleId));
         Builder.Append(',"severity":').Append(TFindingsOutput.JsonString(TFindingsOutput.SeverityName(Finding.Severity)));
@@ -319,10 +359,14 @@ begin
     Relative := ASourceRoot <> '';
   end
   else
+  begin
     Uri := TFindingsOutput.SarifUri(ACheckedFile.FullPath, ASourceRoot, Relative);
+  end;
   Result := '{"uri":' + TFindingsOutput.JsonString(Uri);
   if Relative then
+  begin
     Result := Result + ',"uriBaseId":' + TFindingsOutput.JsonString(TFindingsOutput.SourceRootId);
+  end;
 end;
 
 /// <summary>Englischer Katalogname der Regel; ohne Katalogeintrag die Meldung ohne Konfidenz-Zusatz.</summary>
@@ -331,9 +375,13 @@ var
   Entry: TRuleCatalogEntry;
 begin
   if ACatalog.TryFind(AFinding.RuleId, Entry) and (Entry.Name <> '') then
-    Result := Entry.Name
+  begin
+    Result := Entry.Name;
+  end
   else
+  begin
     Result := AFinding.Message;
+  end;
 end;
 
 function BaselineStateName(AState: TBaselineState): string;
@@ -356,7 +404,9 @@ var
   Count: Integer;
 begin
   if not ACounts.TryGetValue(AKey, Count) then
+  begin
     Count := 0;
+  end;
   Inc(Count);
   ACounts.AddOrSetValue(AKey, Count);
   Result := AKey + ':' + IntToStr(Count);
@@ -368,8 +418,12 @@ var
   Rule: TRuleDescriptor;
 begin
   for Rule in ARules do
+  begin
     if SameText(Rule.Id, ARuleId) then
+    begin
       Exit(Rule.DefaultSeverity);
+    end;
+  end;
   Result := TRuleSeverity.Hint;
 end;
 
@@ -384,9 +438,13 @@ begin
   Finding := AMark.Finding;
   // Nicht mehr gefunden: Schweregrad aus dem Aufrufer, sonst der Standard der Regel.
   if (AMark.State = TBaselineState.Absent) and (Finding.Severity in [TRuleSeverity.Default, TRuleSeverity.Off]) then
-    Severity := DefaultSeverityOf(ARules, Finding.RuleId)
+  begin
+    Severity := DefaultSeverityOf(ARules, Finding.RuleId);
+  end
   else
+  begin
     Severity := Finding.Severity;
+  end;
   ABuilder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(Finding.RuleId));
   ABuilder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(Severity)));
   ABuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(SarifMessage(ACatalog, Finding)));
@@ -394,23 +452,31 @@ begin
   ABuilder.Append(SarifLocation(ACheckedFile, ASourceRoot)).Append('}');
   // Nicht mehr gefunden: keine Stelle im aktuellen Text.
   if AMark.State <> TBaselineState.Absent then
+  begin
     ABuilder.Append(Format(',"region":{"startLine":%d,"startColumn":%d,"endLine":%d,"endColumn":%d}',
       [Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
       Finding.Range.EndPos.Line + 1, Finding.Range.EndPos.Character + 1]));
+  end;
   ABuilder.Append('}}]');
   ABuilder.Append(',"partialFingerprints":{"atlasBaseline/v1":');
   ABuilder.Append(TFindingsOutput.JsonString(Occurrence(ALineCounts, TRuleBaseline.SarifFingerprint(AMark))));
   ABuilder.Append(',"atlasContext/v1":').Append(TFindingsOutput.JsonString(Occurrence(AContextCounts,
     AMark.Context))).Append('}');
   if AMark.State <> TBaselineState.None then
+  begin
     ABuilder.Append(',"baselineState":').Append(TFindingsOutput.JsonString(BaselineStateName(AMark.State)));
+  end;
   if AMark.State = TBaselineState.Unchanged then
+  begin
     ABuilder.Append(',"suppressions":[{"kind":"external","justification":').Append(
       TFindingsOutput.JsonString(BaselineFileName)).Append('}]');
+  end;
   ABuilder.Append(',"properties":{"confidence":').Append(TFindingsOutput.JsonString(ConfidenceName(Finding.Confidence)));
   ABuilder.Append(',"detail":').Append(TFindingsOutput.JsonString(Finding.Message));
   if AMark.Routine <> '' then
+  begin
     ABuilder.Append(',"routine":').Append(TFindingsOutput.JsonString(AMark.Routine));
+  end;
   ABuilder.Append('}}');
 end;
 
@@ -440,7 +506,9 @@ begin
     for Rule in ARules do
     begin
       if not First then
+      begin
         Builder.Append(',');
+      end;
       First := False;
       Builder.Append('{"id":').Append(TFindingsOutput.JsonString(Rule.Id));
       if Catalog.TryFind(Rule.Id, Entry) then
@@ -452,7 +520,9 @@ begin
         Builder.Append(']}');
       end
       else
+      begin
         Builder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(Rule.Description)).Append('}');
+      end;
       Builder.Append(',"helpUri":').Append(TFindingsOutput.JsonString(TRuleCatalog.HelpUri(Rule.Id)));
       Builder.Append(',"defaultConfiguration":{"level":').Append(TFindingsOutput.JsonString(SarifLevel(Rule.DefaultSeverity)));
       Builder.Append('}}');
@@ -462,7 +532,9 @@ begin
     begin
       RootUri := TFindingsOutput.FileUri(ASourceRoot);
       if RootUri[Length(RootUri)] <> '/' then
+      begin
         RootUri := RootUri + '/';
+      end;
       Builder.Append(',"originalUriBaseIds":{').Append(TFindingsOutput.JsonString(TFindingsOutput.SourceRootId));
       Builder.Append(':{"uri":').Append(TFindingsOutput.JsonString(RootUri)).Append('}}');
     end;
@@ -479,7 +551,9 @@ begin
           for Mark in CheckedFile.Marks do
           begin
             if not First then
+            begin
               Builder.Append(',');
+            end;
             First := False;
             AppendSarifMark(Builder, Catalog, ARules, CheckedFile, ASourceRoot, Mark, LineCounts, ContextCounts);
           end;
@@ -492,7 +566,9 @@ begin
       for Finding in CheckedFile.Findings do
       begin
         if not First then
+        begin
           Builder.Append(',');
+        end;
         First := False;
         Builder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(Finding.RuleId));
         Builder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(Finding.Severity)));
@@ -546,13 +622,21 @@ var
 begin
   Result := ExitClean;
   if AFailOn = TFailOn.Never then
+  begin
     Exit;
+  end;
   // Treffer aus der Baseline sind hier schon ausgeblendet und zählen deshalb nie.
   for CheckedFile in AFiles do
+  begin
     for Finding in CheckedFile.Findings do
+    begin
       if (Finding.Severity = TRuleSeverity.Error) or
         ((AFailOn = TFailOn.Warning) and (Finding.Severity = TRuleSeverity.Warning)) then
+      begin
         Exit(ExitFindings);
+      end;
+    end;
+  end;
 end;
 
 end.

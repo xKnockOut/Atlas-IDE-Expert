@@ -43,11 +43,19 @@ begin
   // Fünf Namensräume zu je acht Units, jede verwendet die erste ihres Namensraums.
   Units := nil;
   for Group := 0 to 4 do
+  begin
     for Item := 0 to 7 do
+    begin
       if Item = 0 then
-        Units := Units + [UsesUnit(Format('N%d.U0', [Group]), nil, [Format('N%d.U0', [(Group + 1) mod 5])])]
+      begin
+        Units := Units + [UsesUnit(Format('N%d.U0', [Group]), nil, [Format('N%d.U0', [(Group + 1) mod 5])])];
+      end
       else
+      begin
         Units := Units + [UsesUnit(Format('N%d.U%d', [Group, Item]), [Format('N%d.U0', [Group])], nil)];
+      end;
+    end;
+  end;
   Graph := TUsesGraph.Create(Units, TUsesGraphOptions.Default);
   try
     Result := TArchitectureAnalyzer.Analyze(Graph, nil, 10);
@@ -84,10 +92,14 @@ var
 begin
   Layout := TArchitectureLayouter.Compute(Overview);
   for A := 0 to High(Layout.Subsystems) do
+  begin
     for B := A + 1 to High(Layout.Subsystems) do
+    begin
       Assert.IsTrue(Sqrt(Sqr(Layout.Subsystems[A].X - Layout.Subsystems[B].X) +
         Sqr(Layout.Subsystems[A].Y - Layout.Subsystems[B].Y)) >= Layout.Subsystems[A].Radius +
         Layout.Subsystems[B].Radius - 1E-6, Format('%d/%d', [A, B]));
+    end;
+  end;
   Assert.IsTrue(Layout.Right > Layout.Left);
   Assert.IsTrue(Layout.Bottom > Layout.Top);
 end;

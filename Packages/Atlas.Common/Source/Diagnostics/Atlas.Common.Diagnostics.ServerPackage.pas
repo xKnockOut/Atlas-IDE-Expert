@@ -106,8 +106,11 @@ var
 begin
   Result := TJSONArray.Create;
   for mItem in AArray do
+  begin
     if AAll and IsText(mItem) and (mItem.Value <> '') then
-      Result.Add(TTextAnonymizer.ValueLabel)
+    begin
+      Result.Add(TTextAnonymizer.ValueLabel);
+    end
     else
     begin
       mCopy := TJSONValue(mItem.Clone);
@@ -122,6 +125,7 @@ begin
         Result.AddElement(mCopy);
       end;
     end;
+  end;
 end;
 
 class procedure TServerPackage.Scrub(AValue: TJSONValue; AAll: Boolean);
@@ -131,26 +135,40 @@ var
   mKey: string;
 begin
   if AValue is TJSONObject then
+  begin
     for mPair in TJSONObject(AValue) do
     begin
       mKey := mPair.JsonString.Value;
       if IsSecretKey(mKey) and not (mPair.JsonValue is TJSONNull) then
-        ReplaceValue(mPair, SecretLabel)
+      begin
+        ReplaceValue(mPair, SecretLabel);
+      end
       else if IsText(mPair.JsonValue) then
       begin
         if AAll and not SameText(mKey, 'jsonrpc') and not SameText(mKey, 'method') and
           (mPair.JsonValue.Value <> '') then
+        begin
           ReplaceValue(mPair, TTextAnonymizer.ValueLabel);
+        end;
       end
       else if AAll and (mPair.JsonValue is TJSONArray) then
+      begin
         // Texte in Arrays lassen sich nicht an Ort und Stelle ersetzen: bereinigte Kopie einsetzen.
-        mPair.JsonValue := ScrubbedArray(TJSONArray(mPair.JsonValue), AAll)
+        mPair.JsonValue := ScrubbedArray(TJSONArray(mPair.JsonValue), AAll);
+      end
       else
+      begin
         Scrub(mPair.JsonValue, AAll);
-    end
+      end;
+    end;
+  end
   else if AValue is TJSONArray then
+  begin
     for mItem in TJSONArray(AValue) do
+    begin
       Scrub(mItem, AAll);
+    end;
+  end;
 end;
 
 /// <summary>Trace-Zeile mit bereinigtem JSON; '' ohne JSON.</summary>
@@ -163,13 +181,19 @@ begin
   Result := '';
   mStart := Pos('{', ALine);
   if mStart = 0 then
+  begin
     Exit;
+  end;
   mValue := TJSONObject.ParseJSONValue(Copy(ALine, mStart, MaxInt));
   if mValue = nil then
+  begin
     Exit;
+  end;
   try
     if mValue is TJSONArray then
-      mScrubbed := ScrubbedArray(TJSONArray(mValue), AAll)
+    begin
+      mScrubbed := ScrubbedArray(TJSONArray(mValue), AAll);
+    end
     else
     begin
       mScrubbed := nil;
@@ -182,7 +206,9 @@ begin
         mScrubbed.Free;
       end
     else
+    begin
       Result := Copy(ALine, 1, mStart - 1) + mValue.ToJSON([]);
+    end;
   finally
     mValue.Free;
   end;
@@ -197,7 +223,9 @@ class function TServerPackage.SecretFreeTraceLine(const ALine: string): string;
 begin
   Result := ScrubbedTraceLine(ALine, False);
   if Result = '' then
+  begin
     Result := ALine;
+  end;
 end;
 
 /// <summary>Status-JSON mit Zugangsdaten entfernt und, mit AAnonymize, Pfaden und Benutzernamen ersetzt.</summary>
@@ -207,7 +235,9 @@ var
 begin
   mValue := TJSONObject.ParseJSONValue(AInput.StatusJson);
   if mValue = nil then
+  begin
     Exit('{}');
+  end;
   try
     TServerPackage.Scrub(mValue, False);
     Result := mValue.Format(2);
@@ -215,7 +245,9 @@ begin
     mValue.Free;
   end;
   if AInput.Anonymize then
+  begin
     Result := TTextAnonymizer.AnonymizePaths(Result, AInput.Workspaces, AInput.Identity);
+  end;
 end;
 
 class function TServerPackage.Build(const AInput: TServerPackageInput): TArray<TServerPackageFile>;
@@ -236,7 +268,9 @@ begin
     begin
       mText := mLine;
       if AInput.Anonymize then
+      begin
         mText := TTextAnonymizer.AnonymizeLogLine(mText, AInput.Workspaces, AInput.Identity);
+      end;
       mBuilder.Append(mText).Append(sLineBreak);
     end;
     mFile.Name := LogName;
@@ -247,20 +281,28 @@ begin
   end;
 
   if not AInput.Tracing then
+  begin
     Exit;
+  end;
   mBuilder := TStringBuilder.Create;
   try
     mDropped := 0;
     mBuilder.Append(Format('# Trace der letzten %d Minuten', [AInput.TraceMinutes]));
     if AInput.Anonymize then
+    begin
       mBuilder.Append(', anonymisiert (Schlüssel, Zahlen und Methoden bleiben)');
+    end;
     mBuilder.Append(sLineBreak);
     for mLine in AInput.TraceLines do
     begin
       if AInput.Anonymize then
-        mText := AnonymizeTraceLine(mLine)
+      begin
+        mText := AnonymizeTraceLine(mLine);
+      end
       else
+      begin
         mText := SecretFreeTraceLine(mLine);
+      end;
       if mText = '' then
       begin
         Inc(mDropped);
@@ -269,7 +311,9 @@ begin
       mBuilder.Append(mText).Append(sLineBreak);
     end;
     if mDropped > 0 then
+    begin
       mBuilder.Append(Format('# %d Zeilen ohne JSON ausgelassen', [mDropped])).Append(sLineBreak);
+    end;
     mFile.Name := TraceName;
     mFile.Content := mBuilder.ToString;
     Result := Result + [mFile];

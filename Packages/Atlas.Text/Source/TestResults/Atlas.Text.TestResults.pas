@@ -118,8 +118,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AttributeNames) do
+  begin
     if SameText(AttributeNames[Index], AName) then
+    begin
       Exit(AttributeValues[Index]);
+    end;
+  end;
   Result := '';
 end;
 
@@ -140,7 +144,9 @@ begin
     begin
       Start := Position;
       while (Position <= Length(Source)) and (Source[Position] <> '<') do
+      begin
         Inc(Position);
+      end;
       Kind := TXmlNodeKind.Text;
       Value := TTextEntities.Decode(Copy(Source, Start, Position - Start));
       Exit(True);
@@ -150,7 +156,9 @@ begin
       Start := Position + 9;
       Stop := PosEx(']]>', Source, Start);
       if Stop = 0 then
+      begin
         Stop := Length(Source) + 1;
+      end;
       Kind := TXmlNodeKind.Text;
       Value := Copy(Source, Start, Stop - Start);
       Position := Stop + 3;
@@ -160,7 +168,9 @@ begin
     begin
       Stop := PosEx('-->', Source, Position + 4);
       if Stop = 0 then
+      begin
         Break;
+      end;
       Position := Stop + 3;
       Continue;
     end;
@@ -168,7 +178,9 @@ begin
     begin
       Stop := PosEx('>', Source, Position + 2);
       if Stop = 0 then
+      begin
         Break;
+      end;
       Position := Stop + 1;
       Continue;
     end;
@@ -181,7 +193,9 @@ begin
     end;
     Start := Position;
     while (Position <= Length(Source)) and not CharInSet(Source[Position], [' ', #9, #13, #10, '/', '>']) do
+    begin
       Inc(Position);
+    end;
     Name := Copy(Source, Start, Position - Start);
     while Position <= Length(Source) do
     begin
@@ -201,22 +215,30 @@ begin
       else
         Start := Position;
         while (Position <= Length(Source)) and not CharInSet(Source[Position], ['=', ' ', #9, #13, #10, '>', '/']) do
+        begin
           Inc(Position);
+        end;
         AttributeName := Copy(Source, Start, Position - Start);
         while (Position <= Length(Source)) and CharInSet(Source[Position], [' ', #9, #13, #10]) do
+        begin
           Inc(Position);
+        end;
         if (Position <= Length(Source)) and (Source[Position] = '=') then
         begin
           Inc(Position);
           while (Position <= Length(Source)) and CharInSet(Source[Position], [' ', #9, #13, #10]) do
+          begin
             Inc(Position);
+          end;
           if (Position <= Length(Source)) and CharInSet(Source[Position], ['"', '''']) then
           begin
             Quote := Source[Position];
             Inc(Position);
             Start := Position;
             while (Position <= Length(Source)) and (Source[Position] <> Quote) do
+            begin
               Inc(Position);
+            end;
             AttributeNames := AttributeNames + [AttributeName];
             AttributeValues := AttributeValues + [TTextEntities.Decode(Copy(Source, Start, Position - Start))];
             Inc(Position);
@@ -245,8 +267,12 @@ var
 begin
   Result := 0;
   for Item in Cases do
+  begin
     if Item.Outcome = AOutcome then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TTestRunResult.Total: Integer;
@@ -260,8 +286,12 @@ var
 begin
   Result := nil;
   for Item in Cases do
+  begin
     if Item.IsFailure then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 function TTestRunResult.AllPassed: Boolean;
@@ -278,7 +308,9 @@ var
 begin
   Settings := TFormatSettings.Invariant;
   if not TryStrToFloat(StringReplace(Trim(AText), ',', '.', []), Value, Settings) or (Value < 0) then
+  begin
     Exit(0);
+  end;
   Result := Round(Value * 1000);
 end;
 
@@ -292,9 +324,13 @@ var
     Result := Trim(AValue);
     if (Length(Result) >= 2) and CharInSet(Result[1], ['"', '''', '<']) and
       (Result[Length(Result)] = Result[1]) then
-      Result := Copy(Result, 2, Length(Result) - 2)
-    else if (Length(Result) >= 2) and (Result[1] = '<') and (Result[Length(Result)] = '>') then
+    begin
       Result := Copy(Result, 2, Length(Result) - 2);
+    end
+    else if (Length(Result) >= 2) and (Result[1] = '<') and (Result[Length(Result)] = '>') then
+    begin
+      Result := Copy(Result, 2, Length(Result) - 2);
+    end;
   end;
 
 begin
@@ -310,23 +346,31 @@ begin
     AActual := Copy(Text, ActualAt + 8, MaxInt);
     LineEnd := Pos(#10, AActual);
     if LineEnd > 0 then
+    begin
       AActual := Copy(AActual, 1, LineEnd - 1);
+    end;
     AActual := Unquote(AActual);
     Exit(True);
   end;
   // DUnitX: "Expected 3 but got 4" (dahinter ggf. die eigene Meldung des Tests).
   ExpectedAt := Pos('expected ', LowerCase(Text));
   if ExpectedAt > 0 then
-    ActualAt := PosEx(' but got ', LowerCase(Text), ExpectedAt + 9)
+  begin
+    ActualAt := PosEx(' but got ', LowerCase(Text), ExpectedAt + 9);
+  end
   else
+  begin
     ActualAt := 0;
+  end;
   if (ExpectedAt > 0) and (ActualAt > 0) then
   begin
     AExpected := Unquote(Copy(Text, ExpectedAt + 9, ActualAt - ExpectedAt - 9));
     AActual := Copy(Text, ActualAt + 9, MaxInt);
     LineEnd := Pos(#10, AActual);
     if LineEnd > 0 then
+    begin
       AActual := Copy(AActual, 1, LineEnd - 1);
+    end;
     AActual := Unquote(AActual);
     Exit(True);
   end;
@@ -360,7 +404,9 @@ begin
         ACaseName := Copy(Rest, Index + 1, MaxInt);
       end
       else
+      begin
         AMethod := Rest;
+      end;
       Exit;
     end;
   end;
@@ -372,12 +418,16 @@ begin
     for Index := 0 to High(Parts) - 2 do
     begin
       if AUnitName <> '' then
+      begin
         AUnitName := AUnitName + '.';
+      end;
       AUnitName := AUnitName + Parts[Index];
     end;
   end
   else
+  begin
     AMethod := AFullName;
+  end;
 end;
 
 class function TTestResults.Parse(const AXml: string): TTestRunResult;
@@ -408,7 +458,9 @@ var
         Current.Fixture := Copy(ClassName, LastDelimiter('.', ClassName) + 1, MaxInt);
       end
       else
+      begin
         Current.Fixture := ClassName;
+      end;
       // Testfall: "Methode.Fall" im Namen.
       if Pos('.', Current.Method) > 0 then
       begin
@@ -421,36 +473,54 @@ var
     end;
     Current.FullName := Cursor.Attribute('fullname');
     if Current.FullName = '' then
+    begin
       Current.FullName := Cursor.Attribute('name');
+    end;
     SuiteFixture := '';
     if Length(Fixtures) > 0 then
+    begin
       SuiteFixture := Fixtures[High(Fixtures)];
+    end;
     SplitName(Current.FullName, SuiteFixture, UnitName, FixtureName, Method, CaseName);
     Current.UnitName := UnitName;
     Current.Fixture := FixtureName;
     Current.Method := Method;
     Current.CaseName := CaseName;
     if Cursor.Attribute('duration') <> '' then
-      Current.DurationMs := SecondsToMs(Cursor.Attribute('duration'))
+    begin
+      Current.DurationMs := SecondsToMs(Cursor.Attribute('duration'));
+    end
     else
+    begin
       Current.DurationMs := SecondsToMs(Cursor.Attribute('time'));
+    end;
     ResultText := LowerCase(Cursor.Attribute('result'));
     Label_ := LowerCase(Cursor.Attribute('label'));
     if (ResultText = 'success') or (ResultText = 'passed') then
-      Current.Outcome := TTestOutcome.Passed
+    begin
+      Current.Outcome := TTestOutcome.Passed;
+    end
     else if (ResultText = 'failure') or (ResultText = 'failed') then
     begin
       Current.Outcome := TTestOutcome.Failed;
       if (Label_ = 'error') or (Label_ = 'cancelled') then
+      begin
         Current.Outcome := TTestOutcome.Error;
+      end;
     end
     else if ResultText = 'error' then
-      Current.Outcome := TTestOutcome.Error
+    begin
+      Current.Outcome := TTestOutcome.Error;
+    end
     else
+    begin
       // Ignored, Skipped, Inconclusive, NotRunnable, executed="False"
       Current.Outcome := TTestOutcome.Skipped;
+    end;
     if SameText(Cursor.Attribute('executed'), 'False') and (Current.Outcome = TTestOutcome.Passed) then
+    begin
       Current.Outcome := TTestOutcome.Skipped;
+    end;
   end;
 
   procedure EndCase;
@@ -464,7 +534,9 @@ var
     begin
       Current.Message := Current.StackTrace;
       if Pos(#10, Current.Message) > 0 then
+      begin
         Current.Message := Trim(Copy(Current.Message, 1, Pos(#10, Current.Message) - 1));
+      end;
     end;
     if Current.IsFailure and SplitValues(Current.Message, Expected, Actual) then
     begin
@@ -500,11 +572,17 @@ begin
           if Result.Format = '' then
           begin
             if Element = 'test-results' then
-              Result.Format := 'nunit2'
+            begin
+              Result.Format := 'nunit2';
+            end
             else if Element = 'test-run' then
-              Result.Format := 'nunit3'
+            begin
+              Result.Format := 'nunit3';
+            end
             else if (Element = 'testsuites') or (Element = 'testsuite') then
+            begin
               Result.Format := 'junit';
+            end;
             if (Result.Format <> '') and not Cursor.SelfClosing then
             begin
               // Gesamtdauer: NUnit 3 "duration", JUnit "time" an der Wurzel.
@@ -533,37 +611,53 @@ begin
             begin
               Suites := Suites + [Pos('fixture', SuiteType) > 0];
               if Pos('fixture', SuiteType) > 0 then
+              begin
                 Fixtures := Fixtures + [Cursor.Attribute('name')];
+              end;
             end;
           end
           else if (Element = 'test-case') or (Element = 'testcase') then
           begin
             StartCase;
             if Cursor.SelfClosing then
+            begin
               EndCase;
+            end;
           end
           else if InCase and ((Element = 'failure') or (Element = 'error')) then
           begin
             InFailure := True;
             if Element = 'error' then
-              Current.Outcome := TTestOutcome.Error
+            begin
+              Current.Outcome := TTestOutcome.Error;
+            end
             else if Current.Outcome = TTestOutcome.Passed then
+            begin
               Current.Outcome := TTestOutcome.Failed;
+            end;
             // JUnit: Meldung im Attribut, der Text ist die Aufrufliste.
             if Cursor.Attribute('message') <> '' then
+            begin
               Current.Message := Cursor.Attribute('message');
+            end;
             InStack := (Result.Format = 'junit') and not Cursor.SelfClosing;
           end
           else if InCase and (Element = 'skipped') then
           begin
             Current.Outcome := TTestOutcome.Skipped;
             if Cursor.Attribute('message') <> '' then
+            begin
               Current.Message := Cursor.Attribute('message');
+            end;
           end
           else if InCase and (Element = 'message') and not Cursor.SelfClosing then
-            InMessage := True
+          begin
+            InMessage := True;
+          end
           else if InCase and (Element = 'stack-trace') and not Cursor.SelfClosing then
+          begin
             InStack := True;
+          end;
         end;
       TXmlNodeKind.EndTag:
         begin
@@ -572,16 +666,24 @@ begin
             if Length(Suites) > 0 then
             begin
               if Suites[High(Suites)] and (Length(Fixtures) > 0) then
+              begin
                 SetLength(Fixtures, Length(Fixtures) - 1);
+              end;
               SetLength(Suites, Length(Suites) - 1);
             end;
           end
           else if InCase and ((Element = 'test-case') or (Element = 'testcase')) then
-            EndCase
+          begin
+            EndCase;
+          end
           else if Element = 'message' then
-            InMessage := False
+          begin
+            InMessage := False;
+          end
           else if Element = 'stack-trace' then
-            InStack := False
+          begin
+            InStack := False;
+          end
           else if (Element = 'failure') or (Element = 'error') then
           begin
             InFailure := False;
@@ -592,11 +694,17 @@ begin
         if InCase then
         begin
           if InMessage then
-            Current.Message := Current.Message + Cursor.Value
+          begin
+            Current.Message := Current.Message + Cursor.Value;
+          end
           else if InStack then
-            Current.StackTrace := Current.StackTrace + Cursor.Value
+          begin
+            Current.StackTrace := Current.StackTrace + Cursor.Value;
+          end
           else if InFailure and (Trim(Cursor.Value) <> '') and (Current.Message = '') then
+          begin
             Current.Message := Cursor.Value;
+          end;
         end;
       TXmlNodeKind.Done: ;
     end;
@@ -608,7 +716,9 @@ begin
   end;
   Result.Valid := True;
   if not RunTimeKnown then
+  begin
     Result.DurationMs := SumMs;
+  end;
 end;
 
 end.

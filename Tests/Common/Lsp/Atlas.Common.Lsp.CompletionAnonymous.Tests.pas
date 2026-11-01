@@ -139,13 +139,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := StringReplace(AMarked, '|', '', []);
 end;
@@ -211,7 +215,9 @@ var
 begin
   Result := '-';
   if ItemAt(AMarked, Item) then
+  begin
     Result := Item.Name;
+  end;
 end;
 
 procedure TCompletionAnonymousTests.ParsesDeclarations;
@@ -407,7 +413,9 @@ begin
     begin
       Result := '';
       if AKind = TNamingKind.Parameter then
+      begin
         Result := 'A';
+      end;
     end;
   Assert.IsTrue(ItemAt('P := |', True, TCompletionSettings.Default, NamingFor, Item));
   Assert.AreEqual('procedure(const AValue: string)', Item.Name);
@@ -442,7 +450,9 @@ var
   begin
     Trigger := '';
     if ATrigger <> '' then
+    begin
       Trigger := ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
+    end;
     Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
       '"params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' +
       IntToStr(Position.Line) + ',"character":' + IntToStr(Position.Character) + '}' + Trigger + '}}') as TJSONObject;

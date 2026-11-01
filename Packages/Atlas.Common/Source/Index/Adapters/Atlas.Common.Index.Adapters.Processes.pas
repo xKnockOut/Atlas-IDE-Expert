@@ -72,7 +72,9 @@ begin
   FCacheFile := ACacheFile;
   FInfo := AInfo;
   if FInfo.Started = 0 then
+  begin
     FInfo.Started := Now;
+  end;
   Folder := TIndexProcesses.FolderFor(ACacheFile);
   // Mehrere Arbeitsbereiche desselben Prozesses können denselben Cache nutzen: laufende Nummer.
   for Index := 0 to 99 do
@@ -81,7 +83,9 @@ begin
     try
       ForceDirectories(Folder);
       if TFile.Exists(FFileName) then
+      begin
         TFile.Delete(FFileName);
+      end;
       FStream := TFileStream.Create(FFileName, fmCreate or fmShareDenyWrite);
       Break;
     except
@@ -91,7 +95,9 @@ begin
     end;
   end;
   if FStream = nil then
+  begin
     FFileName := '';
+  end;
   Save;
 end;
 
@@ -116,7 +122,9 @@ var
   Bytes: TBytes;
 begin
   if FStream = nil then
+  begin
     Exit;
+  end;
   Json := FInfo.ToJson;
   try
     Bytes := TEncoding.UTF8.GetBytes(Json.ToJSON);
@@ -127,7 +135,9 @@ begin
     FStream.Size := 0;
     FStream.Position := 0;
     if Length(Bytes) > 0 then
+    begin
       FStream.WriteBuffer(Bytes[0], Length(Bytes));
+    end;
   except
     // Platte voll oder Netzlaufwerk weg: Die Anzeige ist nur Diagnose.
     on Exception do
@@ -149,7 +159,9 @@ begin
       Event.Text := AEvent;
       FInfo.Events := FInfo.Events + [Event];
       if Length(FInfo.Events) > MaxEvents then
+      begin
         Delete(FInfo.Events, 0, Length(FInfo.Events) - MaxEvents);
+      end;
     end;
     Save;
   finally
@@ -195,7 +207,9 @@ begin
     try
       SetLength(Bytes, Stream.Size);
       if Length(Bytes) > 0 then
+      begin
         Stream.ReadBuffer(Bytes[0], Length(Bytes));
+      end;
     finally
       Stream.Free;
     end;
@@ -232,7 +246,9 @@ begin
   Folder := FolderFor(ACacheFile);
   try
     if not TDirectory.Exists(Folder) then
+    begin
       Exit;
+    end;
     Files := TDirectory.GetFiles(Folder, '*.json');
   except
     on Exception do
@@ -251,14 +267,18 @@ begin
       Continue;
     end;
     if ReadShared(FileName, Text) and TIndexProcessInfo.FromJson(Text, Info) then
+    begin
       Result := Result + [Info];
+    end;
   end;
   TArray.Sort<TIndexProcessInfo>(Result, TComparer<TIndexProcessInfo>.Construct(
     function(const ALeft, ARight: TIndexProcessInfo): Integer
     begin
       Result := CompareDateTime(ALeft.Started, ARight.Started);
       if Result = 0 then
+      begin
         Result := Integer(ALeft.Pid > ARight.Pid) - Integer(ALeft.Pid < ARight.Pid);
+      end;
     end));
 end;
 

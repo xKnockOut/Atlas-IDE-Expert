@@ -98,19 +98,33 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, BasisFile) then
-    Result := UnitBasis
+  begin
+    Result := UnitBasis;
+  end
   else if SameText(AFileName, HelferFile) then
-    Result := UnitHelfer
+  begin
+    Result := UnitHelfer;
+  end
   else if SameText(AFileName, LagerFile) then
-    Result := UnitLager
+  begin
+    Result := UnitLager;
+  end
   else if SameText(AFileName, KasseFile) then
-    Result := UnitKasse
+  begin
+    Result := UnitKasse;
+  end
   else if SameText(AFileName, ProgramFile) then
-    Result := TextProgram
+  begin
+    Result := TextProgram;
+  end
   else if SameText(AFileName, ProjectFile) then
-    Result := TextProject
+  begin
+    Result := TextProject;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function Context: TMoveClassContext;
@@ -191,24 +205,36 @@ begin
     begin
       Document := TJSONObject(Item);
       if Document.GetValue('textDocument') = nil then
+      begin
         Continue;
+      end;
       Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
       Results := Results + ExtractFileName(TDocumentUris.ToPath(Uri)) + '|';
       if Uri = TDocumentUris.FromPath('C:\P\Stock.pas') then
+      begin
         Assert.AreEqual('unit Stock;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'type'#10'  TStock = class'#10 +
           '    FItems: TItems;'#10'    function Text: string;'#10'  end;'#10#10'implementation'#10#10'uses'#10 +
           '  Helfer;'#10#10'function TStock.Text: string;'#10'begin'#10'  Log;'#10'  Result := Fmt(1);'#10'end;'#10#10 +
-          'end.'#10, Apply('', Document))
+          'end.'#10, Apply('', Document));
+      end
       else if Uri = TDocumentUris.FromPath(LagerFile) then
+      begin
         Assert.AreEqual('unit Lager;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'implementation'#10#10'uses'#10 +
-          '  Helfer;'#10#10'end.'#10, Apply(UnitLager, Document))
+          '  Helfer;'#10#10'end.'#10, Apply(UnitLager, Document));
+      end
       else if Uri = TDocumentUris.FromPath(KasseFile) then
+      begin
         Assert.AreEqual(StringReplace(StringReplace(UnitKasse, 'uses Lager;', 'uses Lager, Stock;', []),
-          'Lager.TStock', 'Stock.TStock', []), Apply(UnitKasse, Document))
+          'Lager.TStock', 'Stock.TStock', []), Apply(UnitKasse, Document));
+      end
       else if Uri = TDocumentUris.FromPath(ProgramFile) then
-        Assert.Contains(Apply(TextProgram, Document), 'Stock in ''Stock.pas''')
+      begin
+        Assert.Contains(Apply(TextProgram, Document), 'Stock in ''Stock.pas''');
+      end
       else if Uri = TDocumentUris.FromPath(ProjectFile) then
+      begin
         Assert.Contains(Apply(TextProject, Document), '<DCCReference Include="Stock.pas"/>');
+      end;
     end;
     Assert.AreEqual('Stock.pas|Lager.pas|Kasse.pas|Projekt.dpr|Projekt.dproj|', Results);
     // Gibt es die Datei schon, bricht der Befehl ab.
@@ -247,7 +273,9 @@ begin
         ((Actions[0].GetValue('command') as TJSONObject).GetValue('arguments') as TJSONArray).ToJSON);
     finally
       for Action in Actions do
+      begin
         Action.Free;
+      end;
     end;
   finally
     Tree.Free;

@@ -102,9 +102,13 @@ var
 begin
   Dot := LastDelimiter('.', AQualified);
   if Dot > 1 then
-    Result := Copy(AQualified, 1, Dot - 1)
+  begin
+    Result := Copy(AQualified, 1, Dot - 1);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function IntervalOf(AObject: TDfmObject): Integer;
@@ -113,8 +117,12 @@ var
 begin
   Result := -1;
   for Item in AObject.Properties do
+  begin
     if SameText(Item.Name, 'Interval') then
+    begin
       Exit(StrToIntDef(Trim(Item.Value), -1));
+    end;
+  end;
 end;
 
 { TEventHandlers }
@@ -130,11 +138,17 @@ begin
   begin
     Index := Position - 1;
     while (Index > 0) and CharInSet(AText[Index], [' ', #9]) do
+    begin
       Dec(Index);
+    end;
     while (Index > 0) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    begin
       Dec(Index);
+    end;
     if TDfmProperty.IsEventName(Copy(AText, Index + 1, Position - Index - 1).Trim) then
+    begin
       Exit(True);
+    end;
     Position := PosEx(':=', AText, Position + 2);
   end;
 end;
@@ -142,7 +156,9 @@ end;
 class procedure TEventHandlers.Bodies(ATree: TSyntaxTree; ABodies: TDictionary<string, TEventHandlerBody>);
 begin
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -151,18 +167,26 @@ begin
     begin
       Result := True;
       if (ANode.Kind <> TSyntaxKind.RoutineDecl) or (Pos('.', ANode.Name) = 0) then
+      begin
         Exit;
+      end;
       Block := ANode.FindChild(TSyntaxKind.Block);
       if Block = nil then
+      begin
         Block := ANode.FindChild(TSyntaxKind.AsmBlock);
+      end;
       if Block = nil then
+      begin
         Exit;
+      end;
       Body.Line := Block.StartPos.Line;
       // Erste Anweisung in einer eigenen Zeile nach begin, sonst das end.
       Body.BodyLine := Block.EndPos.Line;
       if (Block.Kind = TSyntaxKind.Block) and (Block.ChildCount > 0) and
         (Block.Children[0].StartPos.Line > Block.StartPos.Line) then
+      begin
         Body.BodyLine := Block.Children[0].StartPos.Line;
+      end;
       ABodies.AddOrSetValue(LowerCase(ANode.Name), Body);
     end);
 end;
@@ -174,7 +198,9 @@ var
 begin
   Result := (ABodies <> nil) and ABodies.TryGetValue(LowerCase(AHandler.Container + '.' + AHandler.Handler), Body);
   if not Result then
+  begin
     Exit;
+  end;
   AHandler.FileName := AFileName;
   AHandler.Line := Body.Line;
   AHandler.BodyLine := Body.BodyLine;
@@ -220,7 +246,9 @@ var
 begin
   Found := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit(nil);
+  end;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -229,7 +257,9 @@ begin
     begin
       Result := True;
       if (ANode.Kind <> TSyntaxKind.AssignStatement) or (ANode.ChildCount < 2) then
+      begin
         Exit;
+      end;
       Target := ANode.Children[0];
       Value := ANode.Children[1];
       Handler := Default(TEventHandler);
@@ -243,32 +273,54 @@ begin
         Handler.Event := Target.Name;
         if (Target.Children[0].EndOffset > Target.Children[0].StartOffset) and
           (Target.Children[0].EndOffset <= Length(AUnitText)) then
+        begin
           Handler.Component := Copy(AUnitText, Target.Children[0].StartOffset + 1,
             Target.Children[0].EndOffset - Target.Children[0].StartOffset);
+        end;
         if SameText(Handler.Component, 'Self') then
+        begin
           Handler.Component := '';
+        end;
       end
       else if Target.Kind = TSyntaxKind.Identifier then
-        Handler.Event := Target.Name
+      begin
+        Handler.Event := Target.Name;
+      end
       else
+      begin
         Exit;
+      end;
       if not TDfmProperty.IsEventName(Handler.Event) then
+      begin
         Exit;
+      end;
       // Wert: Methode oder Self.Methode; nil, anonyme Methoden und fremde Objekte zählen nicht.
       if Value.Kind = TSyntaxKind.Identifier then
-        Handler.Handler := Value.Name
+      begin
+        Handler.Handler := Value.Name;
+      end
       else if (Value.Kind = TSyntaxKind.MemberAccess) and (Value.ChildCount > 0) and
         (Value.Children[0].Kind = TSyntaxKind.Identifier) and SameText(Value.Children[0].Name, 'Self') then
-        Handler.Handler := Value.Name
+      begin
+        Handler.Handler := Value.Name;
+      end
       else
+      begin
         Exit;
+      end;
       if (Handler.Handler = '') or SameText(Handler.Handler, 'nil') then
+      begin
         Exit;
+      end;
       Routine := ANode.Parent;
       while (Routine <> nil) and not ((Routine.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', Routine.Name) > 0)) do
+      begin
         Routine := Routine.Parent;
+      end;
       if Routine = nil then
+      begin
         Exit;
+      end;
       Handler.Container := ContainerOf(Routine.Name);
       Handler.FormClass := Handler.Container;
       Handler.SourceFile := AUnitFile;
@@ -289,15 +341,21 @@ var
 begin
   Result := nil;
   if (Length(AForms) = 0) and not MayAssignHandlers(AUnitText) then
+  begin
     Exit;
+  end;
   Bodies := TDictionary<string, TEventHandlerBody>.Create;
   Tree := TSyntaxTreeCache.Parse(AUnitText, nil);
   try
     TEventHandlers.Bodies(Tree, Bodies);
     for Form in AForms do
+    begin
       Result := Result + FromForm(Form, AUnitFile, Bodies);
+    end;
     if MayAssignHandlers(AUnitText) then
+    begin
       Result := Result + FromCode(Tree, AUnitFile, AUnitText, Bodies);
+    end;
   finally
     Tree.Free;
     Bodies.Free;

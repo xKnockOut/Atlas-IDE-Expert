@@ -140,7 +140,9 @@ end;
 function TConverter.ReadByte: Byte;
 begin
   if FPos >= Length(FBytes) then
+  begin
     raise EBinaryForm.Create('Unerwartetes Dateiende');
+  end;
   Result := FBytes[FPos];
   Inc(FPos);
 end;
@@ -148,14 +150,18 @@ end;
 function TConverter.NextByte: Byte;
 begin
   if FPos >= Length(FBytes) then
+  begin
     raise EBinaryForm.Create('Unerwartetes Dateiende');
+  end;
   Result := FBytes[FPos];
 end;
 
 function TConverter.ReadBytes(ACount: Integer): TBytes;
 begin
   if (ACount < 0) or (FPos + ACount > Length(FBytes)) then
+  begin
     raise EBinaryForm.Create('Unerwartetes Dateiende');
+  end;
   Result := Copy(FBytes, FPos, ACount);
   Inc(FPos, ACount);
 end;
@@ -214,15 +220,23 @@ begin
   Bytes := ReadBytes(10);
   Mantissa := 0;
   for Index := 7 downto 0 do
+  begin
     Mantissa := (Mantissa shl 8) or Bytes[Index];
+  end;
   Exponent := (Bytes[8] or (Bytes[9] shl 8)) and $7FFF;
   Negative := (Bytes[9] and $80) <> 0;
   if (Mantissa = 0) and (Exponent = 0) then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := Ldexp(Mantissa, Exponent - 16383 - 63);
+  end;
   if Negative then
+  begin
     Result := -Result;
+  end;
 end;
 
 function TConverter.ReadStr: string;
@@ -253,7 +267,9 @@ end;
 procedure TConverter.ReadListEnd;
 begin
   if ReadByte <> vaNull then
+  begin
     raise EBinaryForm.Create('Listenende erwartet');
+  end;
 end;
 
 procedure TConverter.Emit(const AText: string);
@@ -287,7 +303,9 @@ begin
   Inc(FNesting);
   try
     if Count > TDfmBinary.LineLength then
+    begin
       NewLine;
+    end;
     LineStart := Index;
     repeat
       LineBreak := False;
@@ -299,7 +317,9 @@ begin
         until (Index > Count) or (AText[Index] < ' ') or (AText[Index] = '''') or
           (Index - LineStart >= TDfmBinary.LineLength) or (Ord(AText[Index]) > 127);
         if Index - LineStart >= TDfmBinary.LineLength then
+        begin
           LineBreak := True;
+        end;
         Emit('''' + Copy(AText, Start, Index - Start) + '''');
       end
       else
@@ -307,7 +327,9 @@ begin
         Emit('#' + IntToStr(Ord(AText[Index])));
         Inc(Index);
         if Index - LineStart >= TDfmBinary.LineLength then
+        begin
           LineBreak := True;
+        end;
       end;
       if LineBreak and (Index <= Count) then
       begin
@@ -454,9 +476,13 @@ begin
         repeat
           Name := ReadStr;
           if Name = '' then
+          begin
             Break;
+          end;
           if not First then
+          begin
             Emit(', ');
+          end;
           Emit(Name);
           First := False;
         until False;
@@ -479,10 +505,14 @@ begin
           end;
           Emit(CrLf);
           if ReadByte <> vaList then
+          begin
             raise EBinaryForm.Create('Collection-Eintrag erwartet');
+          end;
           Inc(FNesting);
           while not EndOfList do
+          begin
             ConvertProperty;
+          end;
           ReadListEnd;
           Dec(FNesting);
           WriteIndent;
@@ -517,29 +547,45 @@ begin
   begin
     Flags := ReadByte and $0F;
     if (Flags and ffChildPos) <> 0 then
+    begin
       Position := ReadInteger;
+    end;
   end;
   ClassName := ReadStr;
   ObjectName := ReadStr;
   WriteIndent;
   if (Flags and ffInherited) <> 0 then
-    Emit('inherited ')
+  begin
+    Emit('inherited ');
+  end
   else if (Flags and ffInline) <> 0 then
-    Emit('inline ')
+  begin
+    Emit('inline ');
+  end
   else
+  begin
     Emit('object ');
+  end;
   if ObjectName <> '' then
+  begin
     Emit(ObjectName + ': ');
+  end;
   Emit(ClassName);
   if (Flags and ffChildPos) <> 0 then
+  begin
     Emit(' [' + IntToStr(Position) + ']');
+  end;
   Emit(CrLf);
   Inc(FNesting);
   while not EndOfList do
+  begin
     ConvertProperty;
+  end;
   ReadListEnd;
   while not EndOfList do
+  begin
     ConvertObject;
+  end;
   ReadListEnd;
   Dec(FNesting);
   WriteIndent;
@@ -549,7 +595,9 @@ end;
 function TConverter.Run: string;
 begin
   if (ReadByte <> Ord('T')) or (ReadByte <> Ord('P')) or (ReadByte <> Ord('F')) or (ReadByte <> Ord('0')) then
+  begin
     raise EBinaryForm.Create('Signatur TPF0 fehlt');
+  end;
   ConvertObject;
   Result := FOut.ToString;
 end;
@@ -570,14 +618,18 @@ var
 begin
   AText := '';
   if not IsBinary(ABytes) then
+  begin
     Exit(False);
+  end;
   Start := 0;
   if ABytes[0] = $FF then
   begin
     // Ressourcen-Kopf: FF 0A 00, Name mit Null-Ende, 2 Byte Flags, 4 Byte Größe.
     Start := 3;
     while (Start < Length(ABytes)) and (ABytes[Start] <> 0) do
+    begin
       Inc(Start);
+    end;
     Inc(Start, 1 + 2 + 4);
   end;
   Converter := TConverter.Create(ABytes, Start);
@@ -604,18 +656,24 @@ begin
   begin
     Code := Ord(AText[Index]);
     if (Code < $80) or ((Code >= $A0) and (Code <= $FF)) then
-      ABytes[Index - 1] := Code
+    begin
+      ABytes[Index - 1] := Code;
+    end
     else
     begin
       ABytes[Index - 1] := 0;
       for High := $80 to $9F do
+      begin
         if Cp1252High[High] = Code then
         begin
           ABytes[Index - 1] := High;
           Break;
         end;
+      end;
       if (ABytes[Index - 1] = 0) then
+      begin
         Exit(False);
+      end;
     end;
   end;
   Result := True;
@@ -630,10 +688,14 @@ begin
   begin
     if DirectoryExists(TPath.Combine(Folder, '.git')) or FileExists(TPath.Combine(Folder, '.git')) or
       DirectoryExists(TPath.Combine(Folder, '.svn')) or DirectoryExists(TPath.Combine(Folder, '.hg')) then
+    begin
       Exit(True);
+    end;
     Parent := ExtractFileDir(Folder);
     if Parent = Folder then
+    begin
       Break;
+    end;
     Folder := Parent;
   end;
   Result := False;
@@ -646,10 +708,14 @@ var
 begin
   ABackup := '';
   if not FileExists(AFileName) then
+  begin
     Exit(False);
+  end;
   Bytes := TFile.ReadAllBytes(AFileName);
   if not ToText(Bytes, Text) then
+  begin
     Exit(False);
+  end;
   if not UnderVersionControl(AFileName) then
   begin
     ABackup := AFileName + '.bak';
@@ -667,7 +733,9 @@ begin
   // Erst als Windows-1252 (ungültiges UTF-8), dann als UTF-8 zurückwandeln.
   Result := Cp1252Bytes(AText, Bytes) and ToText(Bytes, AFormText);
   if not Result then
+  begin
     Result := ToText(TEncoding.UTF8.GetBytes(AText), AFormText);
+  end;
 end;
 
 end.

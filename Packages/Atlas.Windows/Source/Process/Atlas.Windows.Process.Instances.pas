@@ -35,15 +35,21 @@ begin
   Result := nil;
   Snapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if Snapshot = INVALID_HANDLE_VALUE then
+  begin
     Exit;
+  end;
   try
     Entry := Default(TProcessEntry32);
     Entry.dwSize := SizeOf(Entry);
     if not Process32First(Snapshot, Entry) then
+    begin
       Exit;
+    end;
     repeat
       if SameText(string(Entry.szExeFile), AExeName) then
+      begin
         Result := Result + [Entry.th32ProcessID];
+      end;
     until not Process32Next(Snapshot, Entry);
   finally
     CloseHandle(Snapshot);
@@ -58,10 +64,14 @@ var
   Code: Cardinal;
 begin
   if APid = 0 then
+  begin
     Exit(False);
+  end;
   Process := OpenProcess(QueryLimitedInformation, False, APid);
   if Process = 0 then
+  begin
     Exit(False);
+  end;
   try
     Result := GetExitCodeProcess(Process, Code) and (Code = STILL_ACTIVE);
   finally

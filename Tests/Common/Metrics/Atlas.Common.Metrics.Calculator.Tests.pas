@@ -353,6 +353,7 @@ begin
     'end;'));
   Checked := 0;
   for Item in Found do
+  begin
     if Item.Name = 'P' then
     begin
       Assert.AreEqual(7, Value(Item, TMetricKind.LocalCount));
@@ -363,6 +364,7 @@ begin
       Assert.AreEqual(2, Value(Item, TMetricKind.LocalCount));
       Inc(Checked);
     end;
+  end;
   Assert.AreEqual(2, Checked);
 end;
 

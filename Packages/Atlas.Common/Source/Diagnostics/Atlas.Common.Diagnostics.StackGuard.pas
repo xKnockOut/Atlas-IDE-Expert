@@ -48,10 +48,14 @@ var
   Action: TStackGuardRestore;
 begin
   if not IsOverflow(AError) then
+  begin
     Exit;
+  end;
   Action := FRestore;
   if not Assigned(Action) then
+  begin
     Exit;
+  end;
   Action();
   AtomicIncrement(FRestored);
 end;

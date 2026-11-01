@@ -100,7 +100,9 @@ function ReadUnit(const AFileName: string; out AText: string): Boolean;
 begin
   Result := SameText(ExtractFileName(AFileName), 'Unit1.pas');
   if Result then
+  begin
     AText := FormUnit;
+  end;
 end;
 
 const
@@ -138,7 +140,9 @@ function ReadInheritedUnit(const AFileName: string; out AText: string): Boolean;
 begin
   Result := SameText(ExtractFileName(AFileName), 'Unit2.pas');
   if Result then
+  begin
     AText := InheritedUnit;
+  end;
 end;
 
 function NoUnit(const AFileName: string; out AText: string): Boolean;
@@ -179,13 +183,17 @@ begin
   try
     Names := '';
     for Item in Document.Root.Properties do
+    begin
       Names := Names + Item.Name + ';';
+    end;
     Assert.AreEqual('Left;Caption;Font.Name;Anchors;OnCreate;', Names);
     Assert.AreEqual('0', Document.Root.Properties[0].Value);
     Assert.AreEqual('[akLeft, akTop]', Document.Root.Properties[3].Value);
     Names := '';
     for Item in Document.Root.Children[1].Properties do
+    begin
       Names := Names + Item.Name + ';';
+    end;
     Assert.AreEqual('Columns;Data;', Names);
   finally
     Document.Free;

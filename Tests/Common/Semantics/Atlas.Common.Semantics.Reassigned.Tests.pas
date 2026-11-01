@@ -81,8 +81,10 @@ begin
   Tree := TPascalParser.Parse(ASource);
   try
     for Symbol in TReassigned.Analyze(ASource, Tree, ALookup) do
+    begin
       Items.Add(Format('%s=%s:%d/%d/%d', [Symbol.Name, TReassigned.KindNames[Symbol.Kind], Symbol.Writes,
         Symbol.LoopWrites, Symbol.MaybeWrites]));
+    end;
     Items.Sort;
     Result := string.Join(' ', Items.ToArray);
   finally
@@ -101,7 +103,9 @@ begin
   Tree := TPascalParser.Parse(ASource);
   try
     for Symbol in TReassigned.Filter(TReassigned.Analyze(ASource, Tree, nil), ATargets) do
+    begin
       Items.Add(Symbol.Name);
+    end;
     Items.Sort;
     Result := string.Join(' ', Items.ToArray);
   finally
@@ -120,14 +124,20 @@ begin
   Tree := TPascalParser.Parse(ASource);
   try
     for Symbol in TReassigned.Analyze(ASource, Tree, nil) do
+    begin
       if SameText(Symbol.Name, AName) then
+      begin
         for Occurrence in Symbol.Occurrences do
         begin
           if Result <> '' then
+          begin
             Result := Result + ' ';
+          end;
           Result := Result + Format('%d:%d%s', [Occurrence.Range.StartPos.Line, Occurrence.Range.StartPos.Character,
             WriteCodes[Occurrence.Write]]);
         end;
+      end;
+    end;
   finally
     Tree.Free;
   end;
@@ -240,7 +250,9 @@ begin
     begin
       Result := TFlowArgumentMode.Value;
       if SameText(ACall.Name, 'Fill') then
+      begin
         Result := TFlowArgumentMode.Reference;
+      end;
     end;
   Assert.AreEqual('A=local:2/0/0 B=local:1/0/0', Counts(Wrap(Source), Lookup));
 end;
@@ -414,11 +426,13 @@ begin
       Targets := [];
       Names.Clear;
       for Target := Low(TReassignedTarget) to High(TReassignedTarget) do
+      begin
         if (Mask and (1 shl Ord(Target))) <> 0 then
         begin
           Include(Targets, Target);
           Names.Add(Expected[Target]);
         end;
+      end;
       Names.Sort;
       Assert.AreEqual(string.Join(' ', Names.ToArray), Marked(Source, Targets), 'Maske ' + IntToStr(Mask));
     end;
@@ -452,8 +466,12 @@ begin
   Tree := TPascalParser.Parse(Wrap(Source));
   try
     for Symbol in TReassigned.Analyze(Wrap(Source), Tree, nil) do
+    begin
       if Symbol.IsConstCandidate then
+      begin
         Names := Names + Symbol.Name + ' ';
+      end;
+    end;
   finally
     Tree.Free;
   end;

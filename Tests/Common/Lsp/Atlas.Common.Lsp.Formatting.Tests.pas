@@ -54,7 +54,9 @@ begin
     Response := ADispatcher.DispatchMessage(Request);
     try
       if not Response.TryGetValue<Integer>('error.code', Result) then
+      begin
         Result := 0;
+      end;
     finally
       Response.Free;
     end;
@@ -89,9 +91,13 @@ begin
     Response := ADispatcher.DispatchMessage(Request);
     try
       if Response.TryGetValue<TJSONArray>('result', Edits) then
-        Result := Edits.Count
+      begin
+        Result := Edits.Count;
+      end
       else
+      begin
         Result := -1;
+      end;
     finally
       Response.Free;
     end;

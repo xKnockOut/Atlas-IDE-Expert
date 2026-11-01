@@ -66,10 +66,16 @@ begin
       Index: Integer;
     begin
       for Index := 1 to Rounds do
+      begin
         if Odd(Index) then
-          TLspNamespaces.Write(Field, ['C'])
+        begin
+          TLspNamespaces.Write(Field, ['C']);
+        end
         else
+        begin
           TLspNamespaces.Write(Field, ['A', 'B']);
+        end;
+      end;
       Done := True;
     end);
   Writer.FreeOnTerminate := False;
@@ -80,10 +86,14 @@ begin
       if Length(Value) = 1 then
       begin
         if Value[0] <> 'C' then
+        begin
           Inc(Bad);
+        end;
       end
       else if (Length(Value) <> 2) or (Value[0] <> 'A') or (Value[1] <> 'B') then
+      begin
         Inc(Bad);
+      end;
     until Done;
   finally
     Writer.WaitFor;

@@ -273,16 +273,22 @@ begin
     begin
       Result := SameText(AFileName, KnopfFile);
       if Result then
+      begin
         AText := KnopfUnit;
+      end;
     end);
   try
     Tools.PackageOf :=
       function(const AUnitName: string): string
       begin
         if SameText(AUnitName, 'Knopf') then
-          Result := 'BeispielPaket'
+        begin
+          Result := 'BeispielPaket';
+        end
         else
+        begin
           Result := '';
+        end;
       end;
     Text := Tools.ComponentInfo('TKnopf');
     Assert.Contains(Text, 'Vorfahren: TKnopf → TBasisKnopf → TObject');

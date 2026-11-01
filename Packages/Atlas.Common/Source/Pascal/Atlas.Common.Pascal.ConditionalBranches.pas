@@ -50,7 +50,9 @@ begin
       if (Name = 'IF') or (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IFOPT') then
       begin
         if Result = nil then
+        begin
           SetLength(Result, Length(ATokens));
+        end;
         Stack := Stack + [IntToStr(Next) + '.0'];
         Inc(Next);
       end
@@ -61,11 +63,15 @@ begin
         Stack[High(Stack)] := Copy(Top, 1, Dot) + IntToStr(StrToIntDef(Copy(Top, Dot + 1, MaxInt), 0) + 1);
       end
       else if ((Name = 'ENDIF') or (Name = 'IFEND')) and (Stack <> nil) then
+      begin
         SetLength(Stack, Length(Stack) - 1);
+      end;
       Path := string.Join('/', Stack);
     end;
     if Result <> nil then
+    begin
       Result[Index] := Path;
+    end;
   end;
 end;
 
@@ -73,7 +79,9 @@ class function TConditionalBranches.PathAt(const APaths: TArray<string>; AIndex:
 begin
   Result := '';
   if (AIndex >= 0) and (AIndex < Length(APaths)) then
+  begin
     Result := APaths[AIndex];
+  end;
 end;
 
 class function TConditionalBranches.Exclusive(const APath, AOther: string): Boolean;
@@ -83,13 +91,21 @@ var
 begin
   Result := False;
   if (APath = '') or (AOther = '') or (APath = AOther) then
+  begin
     Exit;
+  end;
   Mine := APath.Split(['/']);
   Theirs := AOther.Split(['/']);
   for Part in Mine do
+  begin
     for Other in Theirs do
+    begin
       if (Copy(Part, 1, Pos('.', Part)) = Copy(Other, 1, Pos('.', Other))) and (Part <> Other) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 class function TConditionalBranches.Implies(const APath, AOuter: string): Boolean;

@@ -78,7 +78,7 @@ for ($Index = 0; $Index -lt $Lines.Count; $Index++) {
     $Text.Add('    ' + ($Pieces -join " +`r`n      ") + $End)
 }
 foreach ($Line in @('', "function $($Template.Function): string;", 'var', '  Line: string;', 'begin', "  Result := '';",
-    '  for Line in Lines do', '    Result := Result + Line + #10;', 'end;', '', 'end.')) { $Text.Add($Line) }
+    '  for Line in Lines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '', 'end.')) { $Text.Add($Line) }
 $Result = ($Text -join "`r`n") + "`r`n"
 
 $Current = if (Test-Path $UnitPath) { [IO.File]::ReadAllText($UnitPath).TrimStart([char]0xFEFF) } else { '' }

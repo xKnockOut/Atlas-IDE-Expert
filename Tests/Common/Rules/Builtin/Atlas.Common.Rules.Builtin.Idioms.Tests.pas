@@ -110,11 +110,15 @@ begin
   Names := ['Preis', 'GesamtPreis', 'Nettobetrag', 'FNetto', 'Preise', 'Steuern', 'Summen', 'TOTAL_AMOUNT',
     'UnitPrice', 'Prices', 'LBrutto', 'Preis2'];
   for Name in Names do
+  begin
     Assert.IsTrue(TMoneyAsFloatRule.IsMoneyName(Name, Patterns), Name);
+  end;
   Names := ['Menge', 'NettoGewicht', 'ASteuerSatz', 'Steuersatz', 'PriceFactor', 'Pruefsumme', 'Prüfsumme',
     'Rabattquote', 'BetragAnteil', 'ExchangeRate', 'Preisliste'];
   for Name in Names do
+  begin
     Assert.IsFalse(TMoneyAsFloatRule.IsMoneyName(Name, Patterns), Name);
+  end;
 end;
 
 procedure TIdiomRulesTests.MoneyVariants;

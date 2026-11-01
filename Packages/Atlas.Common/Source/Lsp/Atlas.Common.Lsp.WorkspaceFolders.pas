@@ -80,11 +80,15 @@ var
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AValue) do
   begin
     if not Item.TryGetValue<string>('uri', Uri) then
+    begin
       Continue;
+    end;
     Path := TDocumentUris.ToPath(Uri);
     ProjectFile := '';
     if TLspWorkspaceFolders.IsProjectFile(Path) then
@@ -93,13 +97,19 @@ begin
       Path := ExtractFileDir(ProjectFile);
     end;
     if not TLspWorkspaceFolders.IsUsableRoot(Path) then
+    begin
       Continue;
+    end;
     if not Item.TryGetValue<string>('name', Name) then
     begin
       if ProjectFile <> '' then
-        Name := ChangeFileExt(ExtractFileName(ProjectFile), '')
+      begin
+        Name := ChangeFileExt(ExtractFileName(ProjectFile), '');
+      end
       else
+      begin
         Name := ExtractFileName(ExcludeTrailingPathDelimiter(Path));
+      end;
     end;
     Result := Result + [TWorkspaceFolder.Create(Path, Name, ProjectFile)];
   end;
@@ -109,7 +119,9 @@ function WithSeparator(const APath: string): string;
 begin
   Result := StringReplace(APath, '/', '\', [rfReplaceAll]);
   if (Result <> '') and (Result[Length(Result)] <> '\') then
+  begin
     Result := Result + '\';
+  end;
 end;
 
 { TWorkspaceFolder }
@@ -129,9 +141,13 @@ end;
 function TWorkspaceFolder.Key: string;
 begin
   if ProjectFile <> '' then
-    Result := AnsiUpperCase(ProjectFile)
+  begin
+    Result := AnsiUpperCase(ProjectFile);
+  end
   else
+  begin
     Result := AnsiUpperCase(ExcludeTrailingPathDelimiter(StringReplace(Path, '/', '\', [rfReplaceAll])));
+  end;
 end;
 
 { TLspWorkspaceFolders }
@@ -148,23 +164,33 @@ var
 begin
   Result := nil;
   if AParams = nil then
+  begin
     Exit;
+  end;
   Result := ReadFolders(AParams.GetValue('workspaceFolders'));
   if Length(Result) > 0 then
+  begin
     Exit;
+  end;
   // Ältere Clients: nur ein Wurzelordner.
   Path := '';
   Value := AParams.GetValue('rootUri');
   if (Value is TJSONString) and (Value.Value <> '') then
-    Path := TDocumentUris.ToPath(Value.Value)
+  begin
+    Path := TDocumentUris.ToPath(Value.Value);
+  end
   else
   begin
     Value := AParams.GetValue('rootPath');
     if Value is TJSONString then
+    begin
       Path := Value.Value;
+    end;
   end;
   if IsUsableRoot(Path) then
+  begin
     Result := [TWorkspaceFolder.Create(Path, ExtractFileName(ExcludeTrailingPathDelimiter(Path)))];
+  end;
 end;
 
 class procedure TLspWorkspaceFolders.ParseChange(const AParams: TJSONValue;
@@ -175,10 +201,14 @@ begin
   AAdded := nil;
   ARemoved := nil;
   if not (AParams is TJSONObject) then
+  begin
     Exit;
+  end;
   Event := TJSONObject(AParams).GetValue('event');
   if not (Event is TJSONObject) then
+  begin
     Exit;
+  end;
   AAdded := ReadFolders(TJSONObject(Event).GetValue('added'));
   ARemoved := ReadFolders(TJSONObject(Event).GetValue('removed'));
 end;
@@ -214,7 +244,9 @@ var
 begin
   Path := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
   while (Path <> '') and (Path[Length(Path)] = '\') do
+  begin
     SetLength(Path, Length(Path) - 1);
+  end;
   // Übrig bleibt bei "/" nichts, bei "C:\" nur "C:".
   Result := (Path <> '') and not ((Length(Path) = 2) and (Path[2] = ':'));
 end;
@@ -229,10 +261,14 @@ begin
   while IsUsableRoot(Folder) do
   begin
     if AHasProjectFile(Folder) then
+    begin
       Exit(Folder);
+    end;
     Parent := ExcludeTrailingPathDelimiter(ExtractFileDir(Folder));
     if SameText(Parent, Folder) then
+    begin
       Break;
+    end;
     Folder := Parent;
   end;
 end;
@@ -254,7 +290,9 @@ var
 begin
   ParseChange(AParams, Added, Removed);
   if ((Length(Added) > 0) or (Length(Removed) > 0)) and Assigned(FOnChanged) then
+  begin
     FOnChanged(Added, Removed);
+  end;
 end;
 
 end.

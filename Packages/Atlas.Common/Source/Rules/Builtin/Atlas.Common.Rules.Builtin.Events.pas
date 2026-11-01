@@ -67,7 +67,9 @@ function ShortTypeName(const ATypeName: string): string;
 begin
   Result := Trim(ATypeName);
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
 
@@ -76,7 +78,9 @@ var
   Name: string;
 begin
   if TRegEx.IsMatch(ATypeName, ProceduralPattern, [roIgnoreCase]) then
+  begin
     Exit(True);
+  end;
   Name := ShortTypeName(ATypeName);
   Result := (IndexText(Name, KnownEventTypes) >= 0) or
     ((Length(Name) > 6) and StartsStr('T', Name) and EndsStr('Event', Name));
@@ -107,9 +111,13 @@ var
     begin
       mMiddle := (mLow + mHigh) div 2;
       if Tokens[Code[mMiddle]].Offset < AOffset then
-        mLow := mMiddle + 1
+      begin
+        mLow := mMiddle + 1;
+      end
       else
+      begin
         mHigh := mMiddle;
+      end;
     end;
     Result := mLow;
   end;
@@ -126,8 +134,12 @@ var
   begin
     Result := '';
     for Index := 1 to Length(AText) do
+    begin
       if not CharInSet(AText[Index], [' ', #9, #10, #13]) then
+      begin
         Result := Result + AText[Index];
+      end;
+    end;
     Result := StringReplace(LowerCase(Result), 'self.', '', [rfReplaceAll]);
   end;
 
@@ -145,13 +157,21 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
           UnitTypes := UnitTypes + [Node];
+        end;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Routines := Routines + [Node];
+        end;
         if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -166,21 +186,31 @@ var
     Location: TSymbolLocation;
   begin
     if IsKnownEventType(ATypeName) then
+    begin
       Exit(True);
+    end;
     Name := ShortTypeName(ATypeName);
     for Decl in UnitTypes do
+    begin
       if SameText(Decl.Name, Name) then
       begin
         Text := NodeText(Decl);
         Text := Copy(Text, Pos('=', Text) + 1, MaxInt);
         Exit(TRegEx.IsMatch(Text, ProceduralPattern, [roIgnoreCase]));
       end;
+    end;
     if AContext.Index <> nil then
+    begin
       for Location in AContext.Index.FindSymbols(Name) do
+      begin
         if (Location.Symbol.Container = '') and (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
           (ContainsText(Location.Symbol.Signature, 'of object') or
           ContainsText(Location.Symbol.Signature, 'reference to')) then
+        begin
           Exit(True);
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -206,21 +236,29 @@ var
           Block := Node.FindChild(TSyntaxKind.Block);
           if (Block = nil) or not StartsText(AClassName + '.', Node.Name) or
             (not AAnyMethod and not StartsText('constructor', TrimLeft(NodeText(Node)))) then
+          begin
             Continue;
+          end;
           // Nur die Token des Rumpfs statt aller Token der Datei je Routine und Feld (#1323).
           for Position := FirstCodeAt(Block.StartOffset) to High(Code) - 2 do
           begin
             if Tokens[Code[Position]].Offset >= Block.EndOffset then
+            begin
               Break;
+            end;
             if (Tokens[Code[Position]].Kind = TPascalTokenKind.Identifier) and
               SameText(Tokens[Code[Position]].Text, AName) and Tokens[Code[Position + 1]].IsSymbol(':=') and
               not Tokens[Code[Position + 2]].IsKeyword('nil') then
+            begin
               Exit(True);
+            end;
           end;
           Continue;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -247,33 +285,49 @@ var
     // Felder, die eine Property schreibt: Ereignisse, die der Nutzer der Klasse setzt.
     Written := nil;
     for Index := 0 to AClass.ChildCount - 1 do
+    begin
       if AClass[Index].Kind = TSyntaxKind.PropertyDecl then
       begin
         ReadField := TRegEx.Match(NodeText(AClass[Index]), '\bwrite\s+(\w+)', [roIgnoreCase]);
         if ReadField.Success then
+        begin
           Written := Written + [ReadField.Groups[1].Value];
+        end;
       end;
+    end;
     for Index := 0 to AClass.ChildCount - 1 do
     begin
       Member := AClass[Index];
       if not (Member.Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl]) then
+      begin
         Continue;
+      end;
       TypeNode := Member.FindChild(TSyntaxKind.ProcedureType);
       if (TypeNode = nil) and (Member.FindChild(TSyntaxKind.TypeReference) <> nil) and
         IsEventType(NodeText(Member.FindChild(TSyntaxKind.TypeReference))) then
+      begin
         TypeNode := Member.FindChild(TSyntaxKind.TypeReference);
+      end;
       if TypeNode = nil then
+      begin
         Continue;
+      end;
       if Member.Kind = TSyntaxKind.PropertyDecl then
       begin
         ReadField := TRegEx.Match(NodeText(Member), '\bread\s+(\w+)', [roIgnoreCase]);
         if ReadField.Success and IsInjected(ReadField.Groups[1].Value) then
+        begin
           Continue;
+        end;
       end;
       for Name in Member.Name.Split([',']) do
+      begin
         if (Trim(Name) <> '') and
           ((Member.Kind = TSyntaxKind.PropertyDecl) or not IsInjected(Trim(Name))) then
+        begin
           Result := Result + [Trim(Name)];
+        end;
+      end;
     end;
   end;
 
@@ -295,11 +349,19 @@ var
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar,
           TSyntaxKind.InlineConst] then
+        begin
           for Name in Node.Name.Split([',']) do
+          begin
             if SameText(Trim(Name), AName) then
+            begin
               Exit(True);
+            end;
+          end;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -317,12 +379,14 @@ var
     repeat
       Found := False;
       for Index := 0 to Result.ChildCount - 1 do
+      begin
         if (AOffset >= Result[Index].StartOffset) and (AOffset < Result[Index].EndOffset) then
         begin
           Result := Result[Index];
           Found := True;
           Break;
         end;
+      end;
     until not Found;
   end;
 
@@ -361,17 +425,23 @@ var
   begin
     Result := False;
     for Index := 0 to High(Code) - 1 do
+    begin
       if (Token(Index).Offset > ARoutine.StartOffset) and (Token(Index).Offset < AOffset) and
         SameText(Token(Index).Text, AFlag) and Token(Index + 1).IsSymbol(':=') then
       begin
         Node := NodeAt(ARoutine, Token(Index).Offset);
         while (Node <> nil) and (Node.Kind <> TSyntaxKind.AssignStatement) and (Node <> ARoutine) do
+        begin
           Node := Node.Parent;
+        end;
         if (Node = nil) or (Node.Kind <> TSyntaxKind.AssignStatement) then
+        begin
           Continue;
+        end;
         Value := Copy(AContext.Text, Token(Index + 1).Offset + 3, Node.EndOffset - Token(Index + 1).Offset - 2);
         Result := Positive(Normalized(Value), AName) and not TRegEx.IsMatch(Value, '\bor\b', [roIgnoreCase]);
       end;
+    end;
   end;
 
   // Steht AFlag für Assigned(F): ein vorher belegter Merker oder eine Methode der Klasse ohne Parameter mit
@@ -382,17 +452,27 @@ var
     Callee: TSyntaxNode;
   begin
     if not TRegEx.IsMatch(AFlag, '^\w+$') then
+    begin
       Exit(False);
+    end;
     if AssignedFlag(ARoutine, AOffset, AFlag, AName) then
+    begin
       Exit(True);
+    end;
     Result := False;
     ClassName := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
     if ClassName = '' then
+    begin
       Exit;
+    end;
     for Callee in Routines do
+    begin
       if SameText(Callee.Name, ClassName + '.' + AFlag) and
         (Pos('(', Copy(NodeText(Callee), 1, Pos(';', NodeText(Callee)))) = 0) then
+      begin
         Exit(AssignedFlag(Callee, Callee.EndOffset, 'Result', AName));
+      end;
+    end;
   end;
 
   // Steht ATerm in APrefix als eigenes Glied einer and-Kette ("(a)and", "xand(a)and")?
@@ -420,11 +500,15 @@ var
     Result := False;
     if (ABranch.Kind <> TSyntaxKind.AssignStatement) or (ABranch.ChildCount <> 2) or
       (ABranch[0].Kind <> TSyntaxKind.Identifier) then
+    begin
       Exit;
+    end;
     Flag := LowerCase(ABranch[0].Name);
     Value := Normalized(NodeText(ABranch[1]));
     if (Value = '''''') or (Value = 'false') or (Value = 'nil') then
+    begin
       Exit;
+    end;
     Result := Conjunct(APrefix, Flag + '=''''') or ((Value = 'true') and Conjunct(APrefix, 'not' + Flag));
   end;
 
@@ -442,20 +526,28 @@ var
     while (Parent <> nil) and (Parent <> ARoutine) and not (Parent.Kind in [TSyntaxKind.AssignStatement,
       TSyntaxKind.CallStatement, TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
       TSyntaxKind.CaseStatement, TSyntaxKind.Block]) do
+    begin
       Parent := Parent.Parent;
+    end;
     if (Parent <> nil) and (Parent <> ARoutine) then
     begin
       Prefix := Normalized(Copy(AContext.Text, Parent.StartOffset + 1, AOffset - Parent.StartOffset));
       // Ab der Bedingung: "if (Grund = '') and not F(…)".
       if Parent.Kind = TSyntaxKind.IfStatement then
-        Prefix := Copy(Prefix, 3, MaxInt)
+      begin
+        Prefix := Copy(Prefix, 3, MaxInt);
+      end
       else if Parent.Kind = TSyntaxKind.WhileStatement then
+      begin
         Prefix := Copy(Prefix, 6, MaxInt);
+      end;
       if (Positive(Prefix, AName) and ContainsStr(Prefix, 'assigned(' + AName + ')and')) or
         (ContainsStr(Prefix, AName + '<>niland')) or
         (Negative(Prefix, AName) and (ContainsStr(Prefix, 'notassigned(' + AName + ')or') or
         ContainsStr(Prefix, AName + '=nilor'))) then
+      begin
         Exit(True);
+      end;
     end;
     while (Node <> nil) and (Node <> ARoutine) do
     begin
@@ -465,52 +557,78 @@ var
         Condition := Normalized(NodeText(Parent[0]));
         if (Node = Parent[1]) and (Positive(Condition, AName) or FlagFor(ARoutine, Parent.StartOffset, Condition,
           AName)) then
+        begin
           Exit(True);
+        end;
         // Für MarkedUnassigned: "if Grund = '' then F(Self)" wirkt wie "(Grund = '') and F(…)".
         if Node = Parent[1] then
-          Prefix := Prefix + '(' + Condition + ')and'
+        begin
+          Prefix := Prefix + '(' + Condition + ')and';
+        end
         else if (Parent.ChildCount > 2) and (Node = Parent[2]) and Negative(Condition, AName) then
+        begin
           Exit(True);
+        end;
       end;
       // "while Assigned(F) do F(Self);"
       if (Parent <> nil) and (Parent.Kind = TSyntaxKind.WhileStatement) and (Parent.ChildCount > 1) and
         (Node = Parent[1]) and Positive(Normalized(NodeText(Parent[0])), AName) then
+      begin
         Exit(True);
+      end;
       Node := Parent;
     end;
     // "if not Assigned(F) then Exit;" bzw. "if not Ok then Exit;" mit "Ok := … and Assigned(F)" vor dem Aufruf.
     Result := False;
     for Index := 0 to High(Code) do
+    begin
       if (Token(Index).Offset > ARoutine.StartOffset) and (Token(Index).Offset < AOffset) and
         Token(Index).IsKeyword('if') then
       begin
         Node := NodeAt(ARoutine, Token(Index).Offset);
         while (Node <> nil) and (Node.Kind <> TSyntaxKind.IfStatement) and (Node <> ARoutine) do
+        begin
           Node := Node.Parent;
+        end;
         if (Node = nil) or (Node.Kind <> TSyntaxKind.IfStatement) or (Node.ChildCount < 2) or
           (Node.EndOffset > AOffset) then
+        begin
           Continue;
+        end;
         Branch := Node[1];
         Condition := Normalized(NodeText(Node[0]));
         if Negative(Condition, AName) and MarkedUnassigned(Branch, Prefix) then
+        begin
           Exit(True);
+        end;
         if not Leaves(Branch) then
+        begin
           Continue;
+        end;
         if Negative(Condition, AName) then
+        begin
           Exit(True);
+        end;
         if StartsStr('not', Condition) and FlagFor(ARoutine, Node.StartOffset, Copy(Condition, 4, MaxInt), AName) then
+        begin
           Exit(True);
+        end;
         // "if not CanAssign or (Name = '') then Exit;": jedes Glied der or-Kette verlässt die Routine (#1371).
         for Term in TRegEx.Split(NodeText(Node[0]), '\bor\b', [roIgnoreCase]) do
         begin
           Condition := Normalized(Term);
           while StartsStr('(', Condition) and EndsStr(')', Condition) do
+          begin
             Condition := Copy(Condition, 2, Length(Condition) - 2);
+          end;
           if StartsStr('not', Condition) and FlagFor(ARoutine, Node.StartOffset, Copy(Condition, 4, MaxInt),
             AName) then
+          begin
             Exit(True);
+          end;
         end;
       end;
+    end;
   end;
 
   // "if Assigned(F) then" vor die Anweisung; nur in Blöcken und wenn die Anweisung allein am Zeilenanfang steht.
@@ -523,14 +641,20 @@ var
     Result := False;
     Statement := NodeAt(ARoutine, Token(AFirst).Offset);
     while (Statement <> nil) and (Statement.Kind <> TSyntaxKind.CallStatement) and (Statement <> ARoutine) do
+    begin
       Statement := Statement.Parent;
+    end;
     if (Statement = nil) or (Statement.Kind <> TSyntaxKind.CallStatement) or (Statement.Parent = nil) or
       not (Statement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,
       TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) or (Statement.StartOffset <> Token(AFirst).Offset) then
+    begin
       Exit;
+    end;
     Line := Statement.StartPos.Line;
     if (Line > High(Lines)) or (Trim(Copy(Lines[Line], 1, Statement.StartPos.Character)) <> '') then
+    begin
       Exit;
+    end;
     Indent := Copy(Lines[Line], 1, Statement.StartPos.Character);
     AFix := TRuleFix.Create(Format('In if Assigned(%s) then einschließen', [AName]),
       [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos), 'if Assigned(' + AName +
@@ -549,33 +673,47 @@ var
   begin
     Block := ARoutine.FindChild(TSyntaxKind.Block);
     if Block = nil then
+    begin
       Exit;
+    end;
     for Position := 0 to High(Code) - 1 do
     begin
       if (Token(Position).Offset < Block.StartOffset) or (Token(Position).Offset >= Block.EndOffset) or
         (Token(Position).Kind <> TPascalTokenKind.Identifier) or (IndexText(Token(Position).Text, AEvents) < 0) then
+      begin
         Continue;
+      end;
       First := Position;
       if (Position > 0) and Token(Position - 1).IsSymbol('.') then
       begin
         if (Position < 2) or not SameText(Token(Position - 2).Text, 'Self') then
+        begin
           Continue;
+        end;
         First := Position - 2;
       end;
       Next := Position + 1;
       IsCall := Token(Next).IsSymbol('(');
       // Ohne Argumente nur als eigene Anweisung: "FOnIdle;".
       if not IsCall and ((First = 0) or MatchText(Token(First - 1).Text, StatementStarts)) then
+      begin
         IsCall := Token(Next).IsSymbol(';') or Token(Next).IsKeyword('end') or Token(Next).IsKeyword('else');
+      end;
       if not IsCall then
+      begin
         Continue;
+      end;
       Name := LowerCase(Token(Position).Text);
       if ((First = Position) and Shadowed(ARoutine, Name)) or Guarded(ARoutine, Token(Position).Offset, Name) then
+      begin
         Continue;
+      end;
       Written := Token(Position).Text;
       Fixes := nil;
       if WrapFix(ARoutine, First, Written, Fix) then
+      begin
         Fixes := [Fix];
+      end;
       AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
         Format('%s kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.', [Written]), Fixes);
     end;
@@ -597,11 +735,15 @@ var
         if Node.Kind = TSyntaxKind.RoutineDecl then
         begin
           if StartsText(AClassName + '.', Node.Name) then
+          begin
             CheckRoutine(Node, AEvents);
+          end;
           Continue;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -614,12 +756,18 @@ var
   Events: TArray<string>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   UnitTypes := nil;
   Routines := nil;
@@ -628,12 +776,18 @@ begin
   begin
     ClassNode := Decl.FindChild(TSyntaxKind.ClassType);
     if ClassNode = nil then
+    begin
       ClassNode := Decl.FindChild(TSyntaxKind.RecordType);
+    end;
     if ClassNode = nil then
+    begin
       Continue;
+    end;
     Events := EventsOf(Decl.Name, ClassNode);
     if Events <> nil then
+    begin
       CheckRoutines(AContext.Tree.Root, Decl.Name, Events);
+    end;
   end;
 end;
 

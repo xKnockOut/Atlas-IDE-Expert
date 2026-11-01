@@ -91,18 +91,30 @@ var
 begin
   Result := nil;
   for Index := Low(TCapturedLoopVariableRule.DefaultDeferredApis) to High(TCapturedLoopVariableRule.DefaultDeferredApis) do
+  begin
     Result := Result + [TCapturedLoopVariableRule.DefaultDeferredApis[Index]];
+  end;
   if AOptions = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Items := TJSONObject(Value).GetValue('deferredApis');
     if Items is TJSONArray then
+    begin
       for Item in TJSONArray(Items) do
+      begin
         if Item is TJSONString then
+        begin
           Result := Result + [Item.Value];
+        end;
+      end;
+    end;
   finally
     Value.Free;
   end;
@@ -136,8 +148,12 @@ var
   Api: string;
 begin
   for Api in AApis do
+  begin
     if SameText(ACallee, Api) or EndsText('.' + Api, ACallee) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -149,7 +165,9 @@ begin
   Result := False;
   Parent := AMethod.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   if (Parent.Kind = TSyntaxKind.Call) and (Parent.ChildCount > 0) and (Parent[0] <> AMethod) and
     MatchesApi(CalleeText(Parent[0]), AApis) then
   begin
@@ -178,7 +196,9 @@ begin
     begin
       Result := AVisited.Kind <> TSyntaxKind.RoutineDecl;
       if Result and (AVisited.Kind = TSyntaxKind.AnonymousMethod) then
+      begin
         Methods := Methods + [AVisited];
+      end;
     end);
   AMethods := Methods;
 end;
@@ -194,7 +214,9 @@ begin
     function(AVisited: TSyntaxNode): Boolean
     begin
       if AVisited.Kind = TSyntaxKind.Identifier then
+      begin
         List.Add(AVisited);
+      end;
       Result := True;
     end);
 end;
@@ -234,9 +256,13 @@ begin
   while Result <> nil do
   begin
     if (Result.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and SameText(Result.Name, AName) then
+    begin
       Exit;
+    end;
     if Result.Kind = TSyntaxKind.RoutineDecl then
+    begin
       Exit(nil);
+    end;
     Result := Result.Parent;
   end;
 end;
@@ -249,12 +275,14 @@ function Locals(ARoutine, ABlock: TSyntaxNode): TArray<TLocal>;
     Local: TLocal;
   begin
     for Name in SplitString(ANames, ',') do
+    begin
       if Trim(Name) <> '' then
       begin
         Local.Name := Trim(Name);
         Local.TypeName := ATypeName;
         Result := Result + [Local];
       end;
+    end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
@@ -271,19 +299,29 @@ function Locals(ARoutine, ABlock: TSyntaxNode): TArray<TLocal>;
       begin
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        begin
           Continue;
+        end;
         if Node.Kind = TSyntaxKind.InlineVar then
         begin
           TypeNode := Node.FindChild(TSyntaxKind.TypeReference);
           if TypeNode <> nil then
-            AddNames(Node.Name, TypeNode.Name)
+          begin
+            AddNames(Node.Name, TypeNode.Name);
+          end
           else
+          begin
             AddNames(Node.Name, '');
+          end;
         end
         else if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
+        begin
           AddNames(Node.Name, '');
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -299,16 +337,24 @@ begin
   begin
     Section := ARoutine[Index];
     if Section.Kind <> TSyntaxKind.VarSection then
+    begin
       Continue;
+    end;
     for Inner := 0 to Section.ChildCount - 1 do
+    begin
       if Section[Inner].Kind = TSyntaxKind.VarDecl then
       begin
         TypeNode := Section[Inner].FindChild(TSyntaxKind.TypeReference);
         if (TypeNode <> nil) and (TypeNode.ChildCount = 0) then
-          AddNames(Section[Inner].Name, TypeNode.Name)
+        begin
+          AddNames(Section[Inner].Name, TypeNode.Name);
+        end
         else
+        begin
           AddNames(Section[Inner].Name, '');
+        end;
       end;
+    end;
   end;
   Visit(ABlock);
 end;
@@ -318,11 +364,13 @@ var
   Local: TLocal;
 begin
   for Local in ALocals do
+  begin
     if SameText(Local.Name, AName) then
     begin
       ALocal := Local;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -343,11 +391,15 @@ var
   Syntax, Call: TSyntaxNode;
 begin
   if SameText(ANode.Defines, AName) then
+  begin
     Exit(True);
+  end;
   Syntax := ANode.Syntax;
   Result := False;
   if (Syntax = nil) or (Syntax.Kind <> TSyntaxKind.CallStatement) or (Syntax.ChildCount = 0) then
+  begin
     Exit;
+  end;
   Call := Syntax[0];
   Result := (Call.Kind = TSyntaxKind.Call) and (Call.ChildCount > 1) and (Call[0].Kind = TSyntaxKind.Identifier) and
     MatchText(Call[0].Name, ['Inc', 'Dec']) and (Call[1].Kind = TSyntaxKind.Identifier) and
@@ -366,22 +418,28 @@ begin
   Stack := TStack<TFlowNode>.Create;
   try
     for Next in AStart.Successors do
+    begin
       if not Seen[Next.Index] then
       begin
         Seen[Next.Index] := True;
         Stack.Push(Next);
       end;
+    end;
     while Stack.Count > 0 do
     begin
       Node := Stack.Pop;
       if Writes(Node, AName) then
+      begin
         Exit(True);
+      end;
       for Next in Node.Successors do
+      begin
         if not Seen[Next.Index] then
         begin
           Seen[Next.Index] := True;
           Stack.Push(Next);
         end;
+      end;
     end;
   finally
     Stack.Free;
@@ -406,17 +464,23 @@ begin
       mNode := mStack.Pop;
       if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount > 0) and
         (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, AName) then
+      begin
         Exit(True);
+      end;
       if (mNode.Kind = TSyntaxKind.CallStatement) and (mNode.ChildCount > 0) then
       begin
         mCall := mNode[0];
         if (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount > 1) and (mCall[0].Kind = TSyntaxKind.Identifier) and
           MatchText(mCall[0].Name, ['Inc', 'Dec']) and (mCall[1].Kind = TSyntaxKind.Identifier) and
           SameText(mCall[1].Name, AName) then
+        begin
           Exit(True);
+        end;
       end;
       for mIndex := 0 to mNode.ChildCount - 1 do
+      begin
         mStack.Push(mNode[mIndex]);
+      end;
     end;
   finally
     mStack.Free;
@@ -440,14 +504,20 @@ begin
   // Nur procedure ohne Parameter (TProc) und mit bekanntem Typ.
   if (ALocal.TypeName = '') or (Header = nil) or (Block = nil) or not SameText(AMethod.Name, 'procedure') or
     (AMethod.FindChild(TSyntaxKind.Parameters) <> nil) then
+  begin
     Exit;
+  end;
   Identifiers := TList<TSyntaxNode>.Create;
   try
     CollectIdentifiers(AMethod, Identifiers);
     // Weitere lokale Variablen würden in der Hilfsfunktion fehlen.
     for Identifier in Identifiers do
+    begin
       if not SameText(Identifier.Name, ALocal.Name) and FindLocal(ALocals, Identifier.Name, Other) then
+      begin
         Exit;
+      end;
+    end;
     Text := AContext.Text;
     // Rumpf der anonymen Methode mit AValue statt der Variable, von hinten ersetzt.
     Body := Copy(Text, AMethod.StartOffset + 1, AMethod.EndOffset - AMethod.StartOffset);
@@ -455,7 +525,9 @@ begin
     begin
       Identifier := Identifiers[Index];
       if not SameText(Identifier.Name, ALocal.Name) then
+      begin
         Continue;
+      end;
       Position := Identifier.StartOffset - AMethod.StartOffset;
       Body := Copy(Body, 1, Position) + 'AValue' + Copy(Body, Position + Length(ALocal.Name) + 1, MaxInt);
     end;
@@ -466,14 +538,20 @@ begin
   // Einrückung der Routine; die lokale Funktion steht direkt vor ihrem begin.
   LineStart := ARoutine.StartOffset;
   while (LineStart > 0) and (Text[LineStart] <> #10) do
+  begin
     Dec(LineStart);
+  end;
   Indent := Copy(Text, LineStart + 1, ARoutine.StartOffset - LineStart);
   if Trim(Indent) <> '' then
+  begin
     Exit;
+  end;
   FunctionName := 'Capture' + ALocal.Name;
   Insert := TRuleDerived.PositionAt(ACache, AContext, Block.StartOffset);
   if Insert.Character <> Length(Indent) then
+  begin
     Exit;
+  end;
   AFix := TRuleFix.Create(Format('Variable "%s" je Durchlauf kopieren', [ALocal.Name]), [
     TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(Insert.Line, 0), TTextPosition.Create(Insert.Line, 0)),
       Indent + '  function ' + FunctionName + '(const AValue: ' + ALocal.TypeName + '): TProc;' + LB +
@@ -511,7 +589,9 @@ var
   Cache: IRuleDerivedCache;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Apis := DeferredApis(AContext.Options);
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
   Cache := TRuleDerived.Open(AContext);
@@ -525,47 +605,65 @@ begin
       Methods := nil;
       CollectAnonymous(Block, Methods);
       if Methods = nil then
+      begin
         Continue;
+      end;
       Variables := Locals(Routine, Block);
       Graph := nil;
       for Method in Methods do
       begin
         if not IsDeferred(Method, Apis, Confidence) then
+        begin
           Continue;
+        end;
         Identifiers.Clear;
         Reported.Clear;
         CollectIdentifiers(Method, Identifiers);
         for Identifier in Identifiers do
         begin
           if not FindLocal(Variables, Identifier.Name, Local) or Reported.Contains(LowerCase(Local.Name)) then
+          begin
             Continue;
+          end;
           Loop := EnclosingLoop(Method, Local.Name);
           if Loop <> nil then
           begin
             // for I := … mit äußerer Variable lässt sich nicht erfassen (E2555).
             if (Loop.Kind = TSyntaxKind.ForStatement) and not IsInlineLoop(AContext, Loop) then
+            begin
               Continue;
+            end;
             Changes := True;
           end
           else if WrittenInside(Method, Local.Name) then
+          begin
             // Ereignis, das in die Variable schreibt (Log := Log + …, Inc(Zähler)): gewollt geteilt.
-            Changes := False
+            Changes := False;
+          end
           else
           begin
             if Graph = nil then
+            begin
               Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+            end;
             Start := FlowNodeOf(Graph, Method);
             Changes := Graph.Complete and (Start <> nil) and WrittenAfter(Graph, Start, Local.Name);
           end;
           if not Changes then
+          begin
             Continue;
+          end;
           Reported.Add(LowerCase(Local.Name));
           Message := Format('Die anonyme Methode erfasst "%s", nicht seinen Wert; bis sie läuft, hat "%s" ' +
             'womöglich schon einen anderen Wert', [Local.Name, Local.Name]);
           if CopyPerIterationFix(Cache, AContext, Routine, Method, Local, Variables, Fix) then
-            AReport.Add(TTextRange.Create(Identifier.StartPos, Identifier.EndPos), Message, Confidence, [Fix])
+          begin
+            AReport.Add(TTextRange.Create(Identifier.StartPos, Identifier.EndPos), Message, Confidence, [Fix]);
+          end
           else
+          begin
             AReport.Add(TTextRange.Create(Identifier.StartPos, Identifier.EndPos), Message, Confidence);
+          end;
         end;
       end;
     end;
@@ -607,7 +705,9 @@ function ScopeOf(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode.Parent;
   while (Result <> nil) and not IsCaptureScope(Result) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 function TypeChild(ANode: TSyntaxNode): TSyntaxNode;
@@ -615,8 +715,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if ANode[Index].Kind in TRoutineLocals.TypeKinds then
+    begin
       Exit(ANode[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -625,8 +729,12 @@ var
   Name: string;
 begin
   for Name in SplitString(ANames, ',') do
+  begin
     if SameText(Trim(Name), AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -671,17 +779,25 @@ var
       begin
         Node := Pending.Pop;
         if (Node <> AScope) and IsCaptureScope(Node) then
+        begin
           Continue;
+        end;
         if (Node.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst]) and HasName(Node.Name, AName) and
           (Node.StartOffset <= AOffset) and (Node.Parent <> nil) and (AOffset <= Node.Parent.EndOffset) and
           Active(Node) then
-          Take(TCaptureDeclKind.Other, Node, '')
+        begin
+          Take(TCaptureDeclKind.Other, Node, '');
+        end
         else if (Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
           SameText(Node.Name, AName) and (Node.StartOffset <= AOffset) and (AOffset <= Node.EndOffset) and
           TRoutineLocals.IsInlineFor(ATokens, Node) and Active(Node) then
+        begin
           Take(TCaptureDeclKind.Other, Node, '');
+        end;
         for I := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[I]);
+        end;
       end;
     finally
       Pending.Free;
@@ -692,39 +808,59 @@ begin
   ADecl := Default(TCaptureDecl);
   Found := False;
   if AScope.Kind = TSyntaxKind.RoutineDecl then
-    Header := AScope.FindChild(TSyntaxKind.RoutineHeader)
+  begin
+    Header := AScope.FindChild(TSyntaxKind.RoutineHeader);
+  end
   else
+  begin
     Header := AScope;
+  end;
   Parameters := nil;
   if Header <> nil then
+  begin
     Parameters := Header.FindChild(TSyntaxKind.Parameters);
+  end;
   if Parameters <> nil then
+  begin
     for Index := 0 to Parameters.ChildCount - 1 do
     begin
       Param := Parameters[Index];
       if (Param.Kind <> TSyntaxKind.Parameter) or not HasName(Param.Name, AName) or not Active(Param) then
+      begin
         Continue;
+      end;
       if TypeChild(Param) = nil then
-        Take(TCaptureDeclKind.UntypedParam, Param, '')
+      begin
+        Take(TCaptureDeclKind.UntypedParam, Param, '');
+      end
       else if Param.Modifier = TParameterModifier.VarParam then
-        Take(TCaptureDeclKind.VarParam, Param, TRoutineBody.TextOf(AText, TypeChild(Param)))
+      begin
+        Take(TCaptureDeclKind.VarParam, Param, TRoutineBody.TextOf(AText, TypeChild(Param)));
+      end
       else if Param.Modifier = TParameterModifier.OutParam then
-        Take(TCaptureDeclKind.OutParam, Param, TRoutineBody.TextOf(AText, TypeChild(Param)))
+      begin
+        Take(TCaptureDeclKind.OutParam, Param, TRoutineBody.TextOf(AText, TypeChild(Param)));
+      end
       else
+      begin
         Take(TCaptureDeclKind.Other, Param, '');
+      end;
       Exit(True);
     end;
+  end;
   for Index := 0 to AScope.ChildCount - 1 do
   begin
     Section := AScope[Index];
     case Section.Kind of
       TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
         for Inner := 0 to Section.ChildCount - 1 do
+        begin
           if HasName(Section[Inner].Name, AName) and Active(Section[Inner]) then
           begin
             Take(TCaptureDeclKind.Other, Section[Inner], '');
             Exit(True);
           end;
+        end;
       TSyntaxKind.RoutineDecl:
         if SameText(Section.Name, AName) and Active(Section) then
         begin
@@ -737,15 +873,23 @@ begin
   end;
   VisitInline(AScope);
   if Found then
+  begin
     Exit(True);
+  end;
   // Result einer Funktion: Ergebnistyp am Kopf (Routine) bzw. "function" (anonyme Methode).
   if SameText(AName, 'Result') then
   begin
     Result_ := nil;
     if Header <> nil then
+    begin
       for Index := 0 to Header.ChildCount - 1 do
+      begin
         if Header[Index].Kind = TSyntaxKind.TypeReference then
+        begin
           Result_ := Header[Index];
+        end;
+      end;
+    end;
     if (Result_ <> nil) and ((AScope.Kind = TSyntaxKind.RoutineDecl) or (AScope.Name = 'function')) then
     begin
       Take(TCaptureDeclKind.FunctionResult, nil, TRoutineBody.TextOf(AText, Result_));
@@ -762,7 +906,9 @@ var
 begin
   Result := False;
   if (ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.ParenExpr) then
+  begin
     Exit;
+  end;
   Index := TRoutineBody.NextToken(ATokens, TRoutineBody.TokenAt(ATokens, ANode.StartOffset));
   Result := (Index >= 0) and (Index < Length(ATokens)) and ATokens[Index].IsSymbol(':');
 end;
@@ -795,17 +941,27 @@ var
     begin
       // with kann den Namen auf ein Feld umlenken: keine Aussage.
       if (Node.Parent.Kind = TSyntaxKind.WithStatement) and (Node <> Node.Parent[0]) then
+      begin
         Exit(False);
+      end;
       if Node.Parent.Kind = TSyntaxKind.AsmBlock then
+      begin
         Exit(False);
+      end;
       Node := Node.Parent;
       if not IsCaptureScope(Node) then
+      begin
         Continue;
+      end;
       Scope := Node;
       if FindCaptureDecl(AContext.Text, Scope, AIdent.Name, AIdent.StartOffset, Paths, Tokens, Path, ADecl) then
+      begin
         Exit(AOuter <> nil);
+      end;
       if Scope.Kind = TSyntaxKind.AnonymousMethod then
+      begin
         AOuter := Scope;
+      end;
     end;
   end;
 
@@ -828,11 +984,15 @@ var
   begin
     Result := '';
     if (ALine < 0) or (ALine > High(Lines)) then
+    begin
       Exit;
+    end;
     Text := Lines[ALine];
     Index := 1;
     while (Index <= Length(Text)) and CharInSet(Text[Index], [' ', #9]) do
+    begin
       Inc(Index);
+    end;
     Result := Copy(Text, 1, Index - 1);
   end;
 
@@ -849,10 +1009,14 @@ var
   begin
     Result := False;
     if APosition.Line > High(Lines) then
+    begin
       Exit;
+    end;
     Rest := Trim(Copy(Lines[APosition.Line], APosition.Character + 1, MaxInt));
     if StartsStr(';', Rest) then
+    begin
       Rest := Trim(Copy(Rest, 2, MaxInt));
+    end;
     Result := (Rest = '') or StartsStr('//', Rest);
   end;
 
@@ -875,24 +1039,34 @@ var
     AFix := Default(TRuleFix);
     Routine := ADecl.Scope;
     if (Routine.Kind <> TSyntaxKind.RoutineDecl) or (ADecl.TypeText = '') then
+    begin
       Exit;
+    end;
     Block := Routine.FindChild(TSyntaxKind.Block);
     if Block = nil then
+    begin
       Exit;
+    end;
     // Anweisung, die die anonyme Methode enthält, direkt in einem Block der Routine.
     Statement := AMethod;
     while (Statement.Parent <> nil) and (Statement.Parent.Kind <> TSyntaxKind.Block) do
+    begin
       Statement := Statement.Parent;
+    end;
     if (Statement.Parent = nil) or (ScopeOf(Statement) <> Routine) or not LineStartsAt(Statement.StartPos) or
       not LineEndsAt(Statement.EndPos) then
+    begin
       Exit;
+    end;
     Uses_ := TList<TSyntaxNode>.Create;
     try
       AMethod.Walk(
         function(ANode: TSyntaxNode): Boolean
         begin
           if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, ADecl.Name) then
+          begin
             Uses_.Add(ANode);
+          end;
           Result := True;
         end);
       Reads := False;
@@ -900,37 +1074,59 @@ var
       for Ident in Uses_ do
       begin
         if not Resolve(Ident, Decl, Outer) or (Decl.Scope <> ADecl.Scope) then
+        begin
           Continue;
+        end;
         Access := TRoutineLocals.AccessOf(Ident, nil);
         Reads := Reads or (Access <> TLocalAccess.Write);
         Writes := Writes or (Access <> TLocalAccess.Read);
       end;
       if ADecl.Kind = TCaptureDeclKind.FunctionResult then
-        Copy_ := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('Ergebnis'))
+      begin
+        Copy_ := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('Ergebnis'));
+      end
       else
+      begin
         Copy_ := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local(ADecl.Name + 'Kopie'));
+      end;
       RoutineIndent := Indent(Routine.StartPos.Line);
       StatementIndent := Indent(Statement.StartPos.Line);
       Section := nil;
       for Index := 0 to Routine.ChildCount - 1 do
+      begin
         if Routine[Index].Kind = TSyntaxKind.VarSection then
+        begin
           Section := Routine[Index];
+        end;
+      end;
       if Section <> nil then
+      begin
         Edits := [TRuleEdit.Create(TTextRange.Create(Section.EndPos.Line + 1, 0, Section.EndPos.Line + 1, 0),
-          RoutineIndent + '  ' + Copy_ + ': ' + ADecl.TypeText + ';' + LineBreak)]
+          RoutineIndent + '  ' + Copy_ + ': ' + ADecl.TypeText + ';' + LineBreak)];
+      end
       else
+      begin
         Edits := [TRuleEdit.Create(TTextRange.Create(Block.StartPos.Line, 0, Block.StartPos.Line, 0),
           RoutineIndent + 'var' + LineBreak + RoutineIndent + '  ' + Copy_ + ': ' + ADecl.TypeText + ';' + LineBreak)];
+      end;
       // out-Parameter und Result haben vorher keinen Wert, der kopiert werden müsste.
       if Reads and (ADecl.Kind in [TCaptureDeclKind.VarParam, TCaptureDeclKind.FunctionResult]) then
+      begin
         Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Statement.StartPos.Line, 0, Statement.StartPos.Line, 0),
           StatementIndent + Copy_ + ' := ' + ADecl.Name + ';' + LineBreak)];
+      end;
       for Ident in Uses_ do
+      begin
         if Resolve(Ident, Decl, Outer) and (Decl.Scope = ADecl.Scope) then
+        begin
           Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Ident.StartPos, Ident.EndPos), Copy_)];
+        end;
+      end;
       if Writes then
+      begin
         Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Statement.EndPos.Line + 1, 0, Statement.EndPos.Line + 1,
           0), StatementIndent + ADecl.Name + ' := ' + Copy_ + ';' + LineBreak)];
+      end;
       AFix := TRuleFix.Create('Wert in die lokale Variable ' + Copy_ + ' kopieren', Edits);
       Result := True;
     finally
@@ -947,20 +1143,32 @@ var
   begin
     if IsRecordFieldName(Tokens, AIdent) or not Resolve(AIdent, Decl, Outer) or
       (Decl.Kind in [TCaptureDeclKind.None, TCaptureDeclKind.Other]) then
+    begin
       Exit;
+    end;
     // Je anonymer Methode und Deklaration eine Meldung.
     Key := IntToStr(Outer.StartOffset) + ':' + IntToStr(Decl.Scope.StartOffset) + ':' + LowerCase(Decl.Name);
     if Reported.Contains(Key) then
+    begin
       Exit;
+    end;
     Reported.Add(Key);
     if Decl.Kind = TCaptureDeclKind.FunctionResult then
-      Message := 'Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).'
+    begin
+      Message := 'Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).';
+    end
     else
+    begin
       Message := Format('Der %s %s kann nicht erfasst werden (wie E2555).', [KindText(Decl.Kind), Decl.Name]);
+    end;
     if CopyFix(Decl, Outer, Fix) then
-      AReport.Add(TTextRange.Create(AIdent.StartPos, AIdent.EndPos), Message, TRuleConfidence.High, [Fix])
+    begin
+      AReport.Add(TTextRange.Create(AIdent.StartPos, AIdent.EndPos), Message, TRuleConfidence.High, [Fix]);
+    end
     else
+    begin
       AReport.Add(TTextRange.Create(AIdent.StartPos, AIdent.EndPos), Message, TRuleConfidence.High);
+    end;
   end;
 
   // Iterativ (Bericht M1).
@@ -982,7 +1190,9 @@ var
         Node := Pending.Pop;
         InAnonymous := PendingInAnonymous.Pop;
         if InAnonymous and (Node.Kind = TSyntaxKind.Identifier) then
+        begin
           CheckIdentifier(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
         begin
           Pending.Push(Node[Index]);
@@ -997,7 +1207,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);

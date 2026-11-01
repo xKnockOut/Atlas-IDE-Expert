@@ -52,7 +52,9 @@ begin
   Offset := Pos(AMarker, AText);
   Assert.IsTrue(Offset > 0, AMarker);
   if not TKeywordReference.HoverAt(AText, TTextPosition.Create(0, Offset), AVersion, Result) then
+  begin
     Result := '';
+  end;
 end;
 
 procedure TKeywordReferenceTests.EveryReservedWordCovered;
@@ -61,7 +63,9 @@ var
   Info: TKeywordInfo;
 begin
   for Word in TPascalLexer.ReservedWordList do
+  begin
     Assert.IsTrue(TKeywordReference.Find(Word, Info) or MatchText(Word, TKeywordReference.CommonWords), Word);
+  end;
 end;
 
 procedure TKeywordReferenceTests.EveryDirectiveCovered;
@@ -70,7 +74,9 @@ var
   Info: TKeywordInfo;
 begin
   for Word in Directives do
+  begin
     Assert.IsTrue(TKeywordReference.Find(Word, Info), Word);
+  end;
 end;
 
 procedure TKeywordReferenceTests.LinkFollowsDelphiVersion;
@@ -128,8 +134,12 @@ begin
     Assert.IsFalse(MatchText(Info.Name, TKeywordReference.CommonWords), Info.Name);
     Count := 0;
     for Other in TKeywordReference.All do
+    begin
       if Other.Name = Info.Name then
+      begin
         Inc(Count);
+      end;
+    end;
     Assert.AreEqual(1, Count, Info.Name);
   end;
 end;

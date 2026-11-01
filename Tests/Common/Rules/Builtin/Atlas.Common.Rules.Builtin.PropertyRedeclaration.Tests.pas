@@ -69,7 +69,9 @@ var
 begin
   Result := '';
   for Finding in AFound do
+  begin
     Result := Result + ' | ' + Finding.Message;
+  end;
 end;
 
 function OnlyMessage(const ASource: string): string;

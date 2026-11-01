@@ -56,14 +56,18 @@ var
 begin
   Result := False;
   for Request in TDirectory.GetFiles(AInbox, '*.json') do
+  begin
     if not Request.EndsWith('.result.json') then
     begin
       RenameFile(Request, ChangeFileExt(Request, '.taken'));
       ARequest := TFile.ReadAllText(ChangeFileExt(Request, '.taken'), TEncoding.UTF8);
       if AAnswer <> '' then
+      begin
         TFile.WriteAllText(ChangeFileExt(Request, '') + '.result.json', AAnswer, TEncoding.UTF8);
+      end;
       Exit(True);
     end;
+  end;
 end;
 
 procedure TMcpIdeEditsTests.Setup;
@@ -75,7 +79,9 @@ end;
 procedure TMcpIdeEditsTests.TearDown;
 begin
   if TDirectory.Exists(FInbox) then
+  begin
     TDirectory.Delete(FInbox, True);
+  end;
   FInbox := '';
 end;
 

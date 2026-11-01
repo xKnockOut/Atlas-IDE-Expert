@@ -162,21 +162,33 @@ begin
   for Chain in Found.Chains do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' | ';
+    end;
     Part := '';
     for Link in Chain.Links do
     begin
       if Part <> '' then
+      begin
         Part := Part + ' ';
+      end;
       Part := Part + Link.Expression + ':' + TLspAccessChains.KindName(Link.Kind) + ':' + Link.TypeName;
       if Link.Call then
+      begin
         Part := Part + ':call';
+      end;
       if Link.ImplicitSelf then
+      begin
         Part := Part + ':self';
+      end;
       if Link.IndexText <> '' then
+      begin
         Part := Part + ':idx=' + Link.IndexText;
+      end;
       if Link.IndexPlain then
+      begin
         Part := Part + ':plain';
+      end;
     end;
     Result := Result + Part;
   end;
