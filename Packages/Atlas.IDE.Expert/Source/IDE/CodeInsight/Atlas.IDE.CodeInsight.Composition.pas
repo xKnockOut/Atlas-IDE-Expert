@@ -107,8 +107,6 @@ uses
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.Editor.Minimap,
   Atlas.IDE.Generate.Commands,
-  Atlas.IDE.Generate.NewFile,
-  Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Completion.Snippets,
   Atlas.IDE.Commands.Bindings,
   Atlas.IDE.Forms.Designer,
@@ -143,25 +141,16 @@ uses
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips,
-  Atlas.Core.Commands.ShortcutTips,
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Adapters.HttpSource,
   Atlas.IDE.Updates.Check,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Symbol,
-  Atlas.Core.Welcome.Sections,
-  Atlas.Core.Welcome.WhatsNew,
-  Atlas.Core.Welcome.QuickActions,
-  Atlas.Core.Welcome.Projects,
-  Atlas.UI.Welcome.Frame,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.Usage,
-  Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Welcome.Trends,
   Atlas.IDE.Welcome.TestResults,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
@@ -183,17 +172,8 @@ uses
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Projects.Baseline,
-  Atlas.IDE.Welcome.Unsaved,
-  Atlas.IDE.Welcome.Continue,
-  Atlas.IDE.Welcome.QuickActions,
-  Atlas.IDE.Welcome.State,
-  Atlas.IDE.Welcome.Discover,
-  Atlas.IDE.Welcome.Help,
-  Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Commands,
-  Atlas.IDE.Welcome.Layouts,
-  Atlas.IDE.Welcome.Tiles,
-  Atlas.IDE.Contracts.WelcomeTiles,
+  Atlas.IDE.Welcome.Startup,
   Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.WorkingCopies,
   Atlas.IDE.Vcs.Service,
@@ -245,10 +225,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.MessageList,
-  Atlas.IDE.Contracts.BuildTools,
-  Atlas.IDE.Contracts.Rules,
-  Atlas.IDE.Contracts.Tests,
-  Atlas.IDE.Contracts.BuildPipeline;
+  Atlas.IDE.Contracts.Tests;
 
 var
   ManagerIndex: Integer = -1;
@@ -327,7 +304,6 @@ var
   // Paketbeobachtung und Meldung fremder Vervollständigung angemeldet (#494).
   KeysWatched: Boolean;
   // Atlas-Bereiche auf der Willkommensseite und Fenster „Atlas-Start“ (#753).
-  Welcome: TAtlasIdeWelcome;
   // Dienste für Notizen (#545) und Lesezeichen (#622) gestartet.
   // Fenster „Atlas-Prüfung“ (#909) gestartet.
   ProblemsWindowStarted: Boolean;
@@ -1055,20 +1031,8 @@ begin
     TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
 end;
 
-/// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
-function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
-var
-  mItem: IInterface;
-begin
-  AJobs := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
-    if Supports(mItem, IAtlasBuildJobs, AJobs) then
-      Exit(True);
-  Result := False;
-end;
-
 /// <summary>Testprojekte und einzelne Tests des Moduls Tests (#1455); False ohne laufendes Modul. Zieht mit der
-/// Willkommensseite in ihr Modul.</summary>
+/// Karte „Testergebnisse“ ins Modul Tracker.</summary>
 function TestsSource(out ATests: IAtlasTestsSource): Boolean;
 var
   mItem: IInterface;
@@ -1079,15 +1043,6 @@ begin
       Exit(True);
   Result := False;
 end;
-
-function TestsBusy: Boolean;
-var
-  mTests: IAtlasTestsSource;
-begin
-  Result := TestsSource(mTests) and mTests.Busy;
-end;
-
-
 
 procedure RegisterPalette;
 
@@ -1340,62 +1295,6 @@ begin
       Result := TAtlasIdeServerWindow.Enabled;
     end);
   Add('Atlas.ProjectSettings', TAtlasTextId.ProjectSettingsTitle, TAtlasProjectSettings.Execute);
-  Add('Atlas.WelcomeStart', TAtlasTextId.MenuWelcomeStart,
-    procedure
-    begin
-      if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
-        Welcome.ShowStart;
-    end);
-  Add('Atlas.WelcomeApply', TAtlasTextId.MenuWelcomeApply,
-    procedure
-    begin
-      if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
-        Welcome.ApplyLayout;
-    end);
-  Add('Atlas.WelcomeReset', TAtlasTextId.MenuWelcomeReset,
-    procedure
-    begin
-      if Welcome <> nil then
-        Welcome.ResetLayout;
-    end);
-  // Seite anpassen (#767): Bearbeitungsmodus der Willkommensseite bzw. von „Atlas-Start“; sichtbar mit
-  // welcomePage.customLayout.
-  Add(TAtlasIdeWelcomeLayouts.CommandId, TAtlasTextId.CommandWelcomeCustomize,
-    procedure
-    begin
-      if Welcome <> nil then
-        Welcome.Customize;
-    end,
-    function: Boolean
-    begin
-      Result := (Welcome <> nil) and Welcome.Layouts.CanCustomize;
-    end);
-  // Karte „Neu in Atlas“ (#756): wie das Kontextmenü; zeigt die Willkommensseite bzw. „Atlas-Start“.
-  Add('Atlas.WhatsNew', TAtlasTextId.WelcomeNewsShowCurrent,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
-        Welcome.ShowWhatsNew(TAtlasWhatsNewView.Current);
-    end);
-  // Projekt für Atlas einrichten (#759): hebt „nicht mehr fragen“ auf und zeigt die Karte in „Atlas-Start“.
-  Add('Atlas.ProjectSetup', TAtlasTextId.WelcomeSetupCommand,
-    procedure
-    begin
-      if (Welcome = nil) or (Welcome.Setup = nil) or not TAtlasIdeSetup.Active then
-        Exit;
-      Welcome.Setup.Ask;
-      Welcome.ShowStart;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSetup.Active;
-    end);
-  Add('Atlas.WhatsNewAll', TAtlasTextId.WelcomeNewsShowAllCommand,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
-        Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
-    end);
   // Branch anlegen (#1288): Dialog für die Arbeitskopie des aktiven Projekts, ohne Issue; immer mit Dialog.
   Add('Atlas.CreateBranch', TAtlasTextId.VcsBranchCommand,
     procedure
@@ -1439,13 +1338,6 @@ begin
       Result := TAtlasIdeSettings.Current.VcsExternalsShow;
     end);
   // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
-  // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
-  Add('Atlas.Continue', TAtlasTextId.WelcomeContinueCommand,
-    procedure
-    begin
-      if (Welcome <> nil) and (Welcome.ContinueWork <> nil) then
-        Welcome.ContinueWork.ResumeLatest;
-    end);
   Add('Atlas.HangTest', TAtlasTextId.SettingsHangTest,
     procedure
     var
@@ -1547,34 +1439,6 @@ begin
   Folder := TAtlasRotatingLog.DefaultFolder;
   ForceDirectories(Folder);
   ShellExecute(0, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
-end;
-
-/// <summary>Zustandskachel „Atlas“ (#754): Zeilen aus dem Statusfeld, Knöpfe über den Manager und die Update-Prüfung.</summary>
-function CreateWelcomeState: TAtlasIdeWelcomeState;
-var
-  Actions: TAtlasStateActions;
-begin
-  Actions.Restart :=
-    procedure
-    begin
-      TAtlasIdeHost.RestartServer;
-    end;
-  Actions.Settings :=
-    procedure
-    begin
-      TAtlasIdeHost.OpenOptions;
-    end;
-  Actions.LogFolder :=
-    procedure
-    begin
-      TAtlasIdeHost.OpenLogFolder;
-    end;
-  Actions.Update :=
-    procedure
-    begin
-      TAtlasIdeHost.OpenUpdate;
-    end;
-  Result := TAtlasIdeWelcomeState.Create(TAtlasStatusRegistry.Default, Actions);
 end;
 
 const
@@ -3319,88 +3183,10 @@ begin
     end;
 end;
 
-type
-  /// <summary>Ende einer Projektaufgabe (#900) bzw. eines Testlaufs (#69) an die Willkommensseite: Karte Tests
-  /// (#763) und Schnellaktionen (#764).</summary>
-  TWelcomeListener = class(TInterfacedObject, IAtlasTaskListener, IAtlasTestsListener, IAtlasCommandUsageListener)
-  public
-    procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
-    procedure TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
-    /// <summary>Karte „Atlas entdecken“ (#757): „Noch nie benutzt“ sofort bzw. Sperren aufheben.</summary>
-    procedure UsageReset;
-    procedure TipsUnblocked;
-  end;
-
-procedure TWelcomeListener.UsageReset;
+/// <summary>Die laufende Willkommensseite des Moduls atlas.welcome; nil ohne Modul.</summary>
+function Welcome: TAtlasIdeWelcome;
 begin
-  if (Welcome <> nil) and (Welcome.Discover <> nil) then
-  begin
-    Welcome.Discover.Refresh;
-  end;
-end;
-
-procedure TWelcomeListener.TipsUnblocked;
-begin
-  TAtlasIdeDiscover.UnblockAll;
-end;
-
-procedure TWelcomeListener.TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
-begin
-  if (Welcome <> nil) and (Welcome.QuickActions <> nil) then
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        Welcome.QuickActions.TaskFinished(AProject, AResult);
-      end);
-end;
-
-procedure TWelcomeListener.TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
-begin
-  // Schnellaktion „Tests“ (#764): Ergebnis in der Zeile des Projekts; die Karte Tests (#763) liest die
-  // Projekt-Zusammenfassung, in die das Modul Tests den Lauf schreibt.
-  if (Welcome <> nil) and (Welcome.QuickActions <> nil) then
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        Welcome.QuickActions.TestsFinished(ATestProject, APassed, AFailed);
-      end);
-end;
-
-/// <summary>Ergebnis des Moduls an die Einrichtung (#759); eigene Routine, weil die beiden gleich gebauten
-/// Methodenreferenzen in Delphi 12 verschiedene Typen sind.</summary>
-function SetupBaselineDone(const ADone: TAtlasSetupBaselineDone): TAtlasBaselineUpdateDone;
-begin
-  Result := nil;
-  if Assigned(ADone) then
-    Result :=
-      procedure(ASucceeded: Boolean; ATotal, AFiles: Integer; const AReason: string)
-      begin
-        ADone(ASucceeded, ATotal, AFiles, AReason);
-      end;
-end;
-
-/// <summary>Baseline über das Modul Prüfregeln (#1455) aktualisieren; ohne laufendes Modul der Grund.</summary>
-function StartBaselineOfModule(const AProject: string; const ADone: TAtlasSetupBaselineDone): string;
-var
-  mItem: IInterface;
-  mSource: IAtlasBaselineSource;
-begin
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBaselineSource) do
-    if Supports(mItem, IAtlasBaselineSource, mSource) then
-      Exit(mSource.StartUpdate(AProject, SetupBaselineDone(ADone)));
-  Result := TAtlasStrings.Text(TAtlasTextId.BaselineUpdateModuleOff);
-end;
-
-/// <summary>Startprofile und Projektaufgaben des Moduls Build (#1455); False ohne laufendes Modul.</summary>
-function BuildTools(out ATools: IAtlasBuildToolsSource): Boolean;
-var
-  mItem: IInterface;
-begin
-  ATools := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildToolsSource) do
-    if Supports(mItem, IAtlasBuildToolsSource, ATools) then
-      Exit(True);
-  Result := False;
+  Result := TAtlasIdeWelcomeStartup.Current;
 end;
 
 type
@@ -3531,140 +3317,28 @@ begin
 end;
 
 var
-  /// <summary>Anmeldungen von TWelcomeListener, solange die Willkommensseite läuft.</summary>
-  WelcomeTaskListener: IAtlasRegistration;
   /// <summary>„Meine Issues“ für das Modul Tracker (TWelcomeIssuesSession), solange die Willkommensseite läuft.
   /// </summary>
   WelcomeIssuesSession: IAtlasRegistration;
   WelcomePaletteSource: IAtlasRegistration;
-  WelcomeTestsListener: IAtlasRegistration;
-  WelcomeUsageListener: IAtlasRegistration;
-  /// <summary>Kacheln anderer Module (#1455), solange die Willkommensseite läuft.</summary>
-  WelcomeTiles: TAtlasIdeWelcomeTiles;
 
-function WelcomeProjectList: TArray<TAtlasWelcomeProject>;
+/// <summary>Übergang (#1455): „Meine Issues“ (#765) und „Issue anlegen …“ (#1268) baut noch die Wurzel; das Modul
+/// Willkommensseite ruft das über TAtlasIdeWelcomeStartup.RootHooks nach „Testergebnisse“, bis das Modul Tracker
+/// sie als Kacheln bereitstellt.</summary>
+procedure StartWelcomeIssues;
 var
-  mEntry: TAtlasProjectEntry;
-  mProject: TAtlasWelcomeProject;
+  mWelcome: TAtlasIdeWelcome;
 begin
-  Result := nil;
-  if (Welcome = nil) or (Welcome.Projects = nil) then
+  mWelcome := TAtlasIdeWelcomeStartup.Current;
+  if mWelcome = nil then
   begin
     Exit;
   end;
-  for mEntry in Welcome.Projects.Entries do
-  begin
-    mProject.Project := mEntry.Project;
-    mProject.Name := mEntry.Name;
-    Result := Result + [mProject];
-  end;
-end;
-
-/// <summary>Was Kacheln anderer Module über IAtlasWelcomeProjects vom Bereich „Projekte“ erreichen.</summary>
-function WelcomeProjectsAccess: TAtlasWelcomeProjectsAccess;
-begin
-  Result := Default(TAtlasWelcomeProjectsAccess);
-  Result.Projects := WelcomeProjectList;
-  Result.Selected :=
-    function: string
-    begin
-      Result := '';
-      if (Welcome <> nil) and (Welcome.Projects <> nil) then
-      begin
-        Result := Welcome.Projects.Selected;
-      end;
-    end;
-  Result.Open :=
-    procedure(AProject: string)
-    begin
-      if (Welcome <> nil) and (Welcome.Projects <> nil) then
-      begin
-        Welcome.Projects.Open(AProject);
-      end;
-    end;
-  Result.Refresh :=
-    procedure(AProject: string)
-    begin
-      if (Welcome <> nil) and (Welcome.Projects <> nil) then
-      begin
-        Welcome.Projects.Refresh(AProject);
-      end;
-    end;
-end;
-
-procedure StartWelcomeTiles;
-begin
-  WelcomeTiles := TAtlasIdeWelcomeTiles.Create(AtlasModuleRegistry, TAtlasWelcomeSections.Default);
-  WelcomeTiles.Start(WelcomeProjectsAccess);
-end;
-
-procedure StartWelcome;
-begin
-  Welcome := TAtlasIdeWelcome.Create(
-    function: TAtlasServerInfo
-    begin
-      Result := TAtlasIdeHost.ServerInfo;
-    end,
-    function(out APercent: Integer): Boolean
-    begin
-      Result := TAtlasIdeHost.ServerIndexing(APercent);
-    end,
-    function: Integer
-    begin
-      Result := TAtlasIdeHost.IndexedUnits;
-    end,
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Warning(AText);
-    end);
-  // Suchfeld im Kopf (#760): Befehle aus der Palette, sobald es sie gibt.
-  Welcome.Search := TAtlasIdeWelcomeSearch.Create(
-    function: TArray<TAtlasCommand>
-    begin
-      Result := TAtlasIdeHost.PaletteCommands;
-    end,
-    procedure(AId: string)
-    begin
-      TAtlasIdeHost.ExecuteCommand(AId);
-    end);
-  // Karte „Neu in Atlas“ (#756): „Ausprobieren“ führt Atlas-Befehle der Palette aus.
-  Welcome.WhatsNew := TAtlasIdeWhatsNew.Create(
-    function(AId: string): Boolean
-    var
-      Command: TAtlasCommand;
-    begin
-      Result := False;
-      for Command in TAtlasIdeHost.PaletteCommands do
-      begin
-        if SameText(Command.Id, AId) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end,
-    procedure(AId: string)
-    begin
-      TAtlasIdeHost.ExecuteCommand(AId);
-    end,
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Warning(AText);
-    end);
-  // Bereich „Projekte“ (#592): Zustand je Projekt aus den Projekt-Zusammenfassungen.
-  Welcome.Projects := TAtlasIdeProjects.Create(
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Warning(AText);
-    end);
-  // Bereich „Projektverlauf“ (#758): Linien über die letzten Builds des in „Projekte“ gewählten Projekts.
-  Welcome.Trends := TAtlasIdeTrends.Create(Welcome.Projects);
-  // Bereich „Testergebnisse“ (#763): letzter Testlauf (#69) und letzter Build des Build-Servers je Projekt.
-  Welcome.TestResults := CreateWelcomeTestResults(Welcome.Projects);
-  // Bereich „Meine Issues“ (#765): offene Issues aus GitHub bzw. YouTrack (Tracker aus .atlas), „Beginnen“ über die
-  // VCS-Schnittstelle (#571), aktuelles Issue im Statusfeld (#591); Token im Anmeldespeicher wie #763.
-  Welcome.Issues := CreateWelcomeIssues(Welcome.Projects);
+  // Offene Issues aus GitHub bzw. YouTrack (Tracker aus .atlas), „Beginnen“ über die VCS-Schnittstelle (#571),
+  // aktuelles Issue im Statusfeld (#591); Token im Anmeldespeicher wie #763.
+  mWelcome.Issues := CreateWelcomeIssues(mWelcome.Projects);
   // „Issue anlegen …“ (#1268): Tracker, Transport und „Beginnen“ wie „Meine Issues“.
-  TAtlasIdeNewIssue.Start(Welcome.Issues,
+  TAtlasIdeNewIssue.Start(mWelcome.Issues,
     procedure(AText: string)
     begin
       TAtlasIdeHost.Message(AText);
@@ -3674,192 +3348,10 @@ begin
     TWelcomeIssuesSession.Create as IAtlasIssuesSession);
   WelcomePaletteSource := AtlasModuleRegistry.Provide(IAtlasPaletteSourceProvider,
     TWelcomeIssuesSession.Create as IAtlasPaletteSourceProvider);
-  // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
-  Welcome.Unsaved := TAtlasIdeUnsaved.Create(
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Warning(AText);
-    end);
-  // Schnellaktionen je Projekt (#764) in „Projekte“ und „Weiterarbeiten“: bauen über den Läufer der Builds auf
-  // Auftrag (#261, Release-Wächter #533), Tests über #69, Startprofile über #575. Meldungen tragen Pfade und gehen
-  // deshalb nur in die Meldungsansicht.
-  Welcome.QuickActions := TAtlasIdeQuickActions.Create(Welcome.Projects,
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Message(AText);
-    end);
-  Welcome.QuickActions.OnBuild :=
-    function(const AProject, AConfiguration, APlatform: string; const ADone: TAtlasQuickBuildDone;
-      out AReason: string): Boolean
-    var
-      mJob: TAtlasBuildJob;
-      mJobs: IAtlasBuildJobs;
-    begin
-      if not BuildJobs(mJobs) then
-      begin
-        AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
-        Exit(False);
-      end;
-      mJob := Default(TAtlasBuildJob);
-      mJob.Project := AProject;
-      mJob.Kind := TAtlasBuildJobKind.Build;
-      mJob.Configuration := AConfiguration;
-      mJob.Platform := APlatform;
-      mJob.RequestedBy := TAtlasWelcomeQuickActions.RequestedBy;
-      Result := mJobs.Start(mJob,
-        procedure(const AResult: TAtlasBuildJobResult)
-        begin
-          ADone(AResult.Succeeded, AResult.Error);
-        end, AReason);
-    end;
-  Welcome.QuickActions.OnTests :=
-    function(const ATestProject: string; out AReason: string): Boolean
-    var
-      mTests: IAtlasTestsSource;
-    begin
-      AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
-      Result := TestsSource(mTests) and mTests.RunProject(ATestProject, AReason);
-    end;
-  Welcome.QuickActions.OnTestsBusy := TestsBusy;
-  Welcome.QuickActions.OnIdeBusy :=
-    function: Boolean
-    var
-      mJobs: IAtlasBuildJobs;
-    begin
-      Result := (BuildJobs(mJobs) and mJobs.Busy) or TestsBusy;
-    end;
-  // Startprofile (#575) und Knopf „Aufgaben ▾“ (#900) über das Modul Build (IAtlasBuildToolsSource, #1455);
-  // ohne Modul keine Profile und keine Aufgaben. Zieht mit der Willkommensseite in ihr Modul.
-  Welcome.QuickActions.OnProfiles :=
-    function(const AProject: string; out AActive: string): TArray<string>
-    var
-      mTools: IAtlasBuildToolsSource;
-    begin
-      Result := nil;
-      AActive := '';
-      if BuildTools(mTools) then
-        Result := mTools.StartProfiles(AProject, AActive);
-    end;
-  Welcome.QuickActions.OnRun :=
-    function(const AProject, AProfile: string; out AReason: string): Boolean
-    var
-      mTools: IAtlasBuildToolsSource;
-    begin
-      Result := False;
-      AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
-      if BuildTools(mTools) then
-        Result := mTools.RunStartProfile(AProject, AProfile, AReason);
-    end;
-  Welcome.QuickActions.OnTaskNames :=
-    function(const AProject: string): TArray<string>
-    var
-      mTools: IAtlasBuildToolsSource;
-    begin
-      Result := nil;
-      if BuildTools(mTools) then
-        Result := mTools.TaskNames(AProject);
-    end;
-  Welcome.QuickActions.OnRunTask :=
-    function(const AProject, AName: string; out AReason: string): Boolean
-    var
-      mTools: IAtlasBuildToolsSource;
-    begin
-      Result := False;
-      AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
-      if BuildTools(mTools) then
-        Result := mTools.RunTask(AProject, AName, AReason);
-    end;
-  // Ende einer Projektaufgabe (#900) aus dem Modul Build und eines Testlaufs (#69) aus dem Modul Tests.
-  WelcomeTaskListener := AtlasModuleRegistry.Provide(IAtlasTaskListener,
-    TWelcomeListener.Create as IAtlasTaskListener);
-  WelcomeTestsListener := AtlasModuleRegistry.Provide(IAtlasTestsListener,
-    TWelcomeListener.Create as IAtlasTestsListener);
-  WelcomeUsageListener := AtlasModuleRegistry.Provide(IAtlasCommandUsageListener,
-    TWelcomeListener.Create as IAtlasCommandUsageListener);
-  // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
-  Welcome.ContinueWork := TAtlasIdeContinue.Create(
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Warning(AText);
-    end);
-  // „Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung, Zeile des Ordners prüfen.
-  Welcome.ContinueWork.OnServerAccess :=
-    procedure(AFolder: string)
-    begin
-      TAtlasOptionsRegistration.ShowVcsServer(AFolder);
-    end;
-  // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
-  Welcome.State := CreateWelcomeState;
-  // Karte „Atlas entdecken“ (#757): Befehle und Tasten aus der Palette, „Ausprobieren“ führt sie aus.
-  Welcome.Discover := TAtlasIdeDiscover.Create(
-    function: TArray<TAtlasCommand>
-    begin
-      Result := TAtlasIdeHost.PaletteCommands;
-    end,
-    procedure(AId: string)
-    begin
-      // Tipp zur Befehlspalette: „Ausprobieren“ öffnet sie.
-      if SameText(AId, TAtlasShortcutTips.PaletteCommandId) then
-      begin
-        TAtlasIdeHost.ShowPalette;
-      end
-      else
-      begin
-        TAtlasIdeHost.ExecuteCommand(AId);
-      end;
-    end,
-    procedure(AText: string)
-    begin
-      TAtlasIdeHost.Warning(AText);
-    end);
-  // Bereich „Hilfe und Rückmeldung“ (#766): „Tastenkürzel“ zeigt die Übersicht aus #520 mit allen Kürzeln.
-  Welcome.Help := TAtlasIdeHelp.Create(
-    procedure
-    begin
-      TAtlasIdeHost.ShowKeyMap;
-    end);
-  // Bereich „Projekt für Atlas einrichten“ (#759): atlas.json, Baseline (#97), Suchpfade und „Neu mit Atlas“.
-  Welcome.Setup := TAtlasIdeSetup.Create(
-    procedure(AText: string)
-    begin
-      // Nur Meldungsansicht: Die Zeilen enthalten Pfade.
-      TAtlasIdeHost.Message(AText);
-    end,
-    function(const AProject: string; const ADone: TAtlasSetupBaselineDone): string
-    begin
-      Result := StartBaselineOfModule(AProject, ADone);
-    end,
-    procedure(AKind: TAtlasNewFileKind)
-    begin
-      TAtlasIdeNewFile.Show(AKind, TAtlasIdeHost.FileSnippets,
-        procedure(AText: string)
-        begin
-          TAtlasIdeHost.Message(AText);
-        end);
-    end);
-  // Seite anpassen (#767): Rechtsklick „Ausblenden“ über den Weg von #628 (mit „Rückgängig“), „Einstellungen
-  // dazu …“ auf der Optionsseite.
-  Welcome.Layouts.OnHideSetting :=
-    function(AKey: string; APoint: TPoint): Boolean
-    begin
-      Result := TAtlasIdeHost.HideSetting(AKey, APoint);
-    end;
-  Welcome.Layouts.OnShowSetting :=
-    procedure(AKey: string)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          TAtlasOptionsRegistration.ShowSetting(AKey);
-        end);
-    end;
-  StartWelcomeTiles;
 end;
 
-procedure StopWelcome;
+procedure StopWelcomeIssues;
 begin
-  // Zuerst die Kacheln anderer Module: Ihre Steuerelemente gehen, solange die Seite noch steht.
-  FreeAndNil(WelcomeTiles);
   if WelcomeIssuesSession <> nil then
     WelcomeIssuesSession.Revoke;
   WelcomeIssuesSession := nil;
@@ -3868,22 +3360,25 @@ begin
     WelcomePaletteSource.Revoke;
   end;
   WelcomePaletteSource := nil;
-  if WelcomeTaskListener <> nil then
-    WelcomeTaskListener.Revoke;
-  WelcomeTaskListener := nil;
-  if WelcomeTestsListener <> nil then
-    WelcomeTestsListener.Revoke;
-  WelcomeTestsListener := nil;
-  if WelcomeUsageListener <> nil then
-  begin
-    WelcomeUsageListener.Revoke;
-  end;
-  WelcomeUsageListener := nil;
   // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
   TAtlasIdeNewIssue.Stop;
-  FreeAndNil(Welcome);
-  TAtlasWelcomeViews.Release;
-  TAtlasWelcomeSections.ReleaseDefault;
+end;
+
+/// <summary>Befristet (#1455): Teile der Willkommensseite, die noch die Wurzel baut („Testergebnisse“ mit den
+/// CI-Anbietern, „Meine Issues“).</summary>
+procedure InstallWelcomeHooks;
+var
+  mHooks: TAtlasWelcomeRootHooks;
+begin
+  mHooks := Default(TAtlasWelcomeRootHooks);
+  mHooks.CreateTestResults :=
+    function(const AProjects: IAtlasProjectsSource): TAtlasIdeTestResults
+    begin
+      Result := CreateWelcomeTestResults(AProjects);
+    end;
+  mHooks.StartIssues := StartWelcomeIssues;
+  mHooks.StopIssues := StopWelcomeIssues;
+  TAtlasIdeWelcomeStartup.RootHooks := mHooks;
 end;
 
 procedure StartMainMenu;
@@ -3901,20 +3396,6 @@ begin
     begin
       if KeyMap <> nil then
         KeyMap.ShowWindow;
-    end;
-  MainMenu.OnWelcome :=
-    procedure(ACommand: TAtlasWelcomeCommand)
-    begin
-      if Welcome = nil then
-        Exit;
-      case ACommand of
-        TAtlasWelcomeCommand.Start:
-          Welcome.ShowStart;
-        TAtlasWelcomeCommand.Apply:
-          Welcome.ApplyLayout;
-      else
-        Welcome.ResetLayout;
-      end;
     end;
 end;
 
@@ -4317,18 +3798,6 @@ begin
       Result := KeysWatched;
     end,
     WatchKeys, UnwatchKeys);
-  // Willkommensseite (#753): auch abgesichert, sie startet keinen Server und liest nur lokale Daten. Abbau
-  // vor dem Statusfeld, dessen Registry sie beobachtet.
-  Features.AddWanted('Welcome',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (StatusLines <> nil);
-    end,
-    function: Boolean
-    begin
-      Result := Welcome <> nil;
-    end,
-    StartWelcome, StopWelcome);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe,
     function: Boolean
     begin
@@ -4396,13 +3865,8 @@ begin
   // Bis zur freien Nachrichtenschleife zählt jedes Teil zu den Startanteilen (Bericht N4).
   Features.Times := StartTimes;
   Features.StartWanted(Level);
-  if Welcome <> nil then
-    Welcome.Sync;
   if MainMenu <> nil then
-  begin
-    MainMenu.UpdateWelcome;
     MainMenu.UpdateKeyMap;
-  end;
   // Abschaltbare Einträge im Kontextmenü des Editors (#1120).
   TAtlasIdeEditorCommands.UpdateContextMenus;
   // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
@@ -4601,6 +4065,12 @@ begin
       end;
     end;
   AServices.ShowMessages := ShowAtlasMessages;
+  // Zustandskachel der Willkommensseite (#754): beobachtet die Zeilen des Statusfelds.
+  AServices.StatusLinesReady :=
+    function: Boolean
+    begin
+      Result := StatusLines <> nil;
+    end;
 end;
 
 /// <summary>Dienste von Base für die Module (#1455): laufende Sitzung des Managers und dessen Diagnoselog.</summary>
@@ -4710,6 +4180,7 @@ begin
   TAtlasMainThread.Start;
   // Vor den Modulen: Sie fragen Sitzung und Protokoll über TAtlasIdeHost (#1455).
   InstallHost;
+  InstallWelcomeHooks;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasGuard.OnTripped := GuardTripped;
@@ -4730,8 +4201,6 @@ begin
         StatusField.RequestRefresh;
       TAtlasIdeResultsWindow.ApplyTheme;
       TAtlasIdeServerWindow.ApplyTheme;
-      if Welcome <> nil then
-        Welcome.ThemeChanged;
       if DiagnosticMode <> nil then
         DiagnosticMode.ThemeChanged;
       if Setup <> nil then
@@ -5093,6 +4562,7 @@ begin
       procedure
       begin
         TAtlasIdeHost.Uninstall;
+        TAtlasIdeWelcomeStartup.RootHooks := Default(TAtlasWelcomeRootHooks);
       end);
     if Features <> nil then
       Teardown.AddFailures(Features.StopAll);

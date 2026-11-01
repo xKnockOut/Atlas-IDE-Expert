@@ -52,6 +52,9 @@ type
     function ShouldShow(const ARows: TAtlasStateRows): Boolean;
   public
     constructor Create(const ARegistry: IAtlasStatusRegistry; const AActions: TAtlasStateActions);
+    /// <summary>Kachel mit den Zeilen des Statusfelds und den Knöpfen über die Dienste von Base (TAtlasIdeHost,
+    /// #1455).</summary>
+    class function CreateForHost: TAtlasIdeWelcomeState; static;
     destructor Destroy; override;
     /// <summary>Bereich, Fabrik und Beobachter anmelden.</summary>
     procedure Start;
@@ -73,6 +76,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
+  Atlas.Core.Status.Registry,
+  Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings;
 
 var
@@ -251,6 +256,34 @@ begin
     begin
       Action();
     end);
+end;
+
+class function TAtlasIdeWelcomeState.CreateForHost: TAtlasIdeWelcomeState;
+var
+  mActions: TAtlasStateActions;
+begin
+  mActions := Default(TAtlasStateActions);
+  mActions.Restart :=
+    procedure
+    begin
+      TAtlasIdeHost.RestartServer;
+    end;
+  mActions.Settings :=
+    procedure
+    begin
+      TAtlasIdeHost.OpenOptions;
+    end;
+  mActions.LogFolder :=
+    procedure
+    begin
+      TAtlasIdeHost.OpenLogFolder;
+    end;
+  mActions.Update :=
+    procedure
+    begin
+      TAtlasIdeHost.OpenUpdate;
+    end;
+  Result := TAtlasIdeWelcomeState.Create(TAtlasStatusRegistry.Default, mActions);
 end;
 
 end.
