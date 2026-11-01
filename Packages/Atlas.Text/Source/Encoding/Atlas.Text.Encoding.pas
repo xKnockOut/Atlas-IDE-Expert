@@ -115,62 +115,87 @@ begin
   end;
 end;
 
+// Leitbyte einer Mehrbytefolge: Zahl der Folgebytes und Startwert; False bei ungültigem Leitbyte.
+function Utf8Lead(ALead: Byte; out ACount: Integer; out ACodePoint: Cardinal): Boolean;
+begin
+  Result := True;
+  if (ALead >= $C2) and (ALead <= $DF) then
+  begin
+    ACount := 1;
+    ACodePoint := ALead and $1F;
+  end
+  else if (ALead >= $E0) and (ALead <= $EF) then
+  begin
+    ACount := 2;
+    ACodePoint := ALead and $0F;
+  end
+  else if (ALead >= $F0) and (ALead <= $F4) then
+  begin
+    ACount := 3;
+    ACodePoint := ALead and $07;
+  end
+  else
+  begin
+    ACount := 0;
+    ACodePoint := 0;
+    Result := False;
+  end;
+end;
+
+// Überlange Form: Der Wert hätte in weniger Bytes gepasst.
+function IsOverlong(ACount: Integer; ACodePoint: Cardinal): Boolean;
+begin
+  Result := ((ACount = 2) and (ACodePoint < $800)) or ((ACount = 3) and (ACodePoint < $10000));
+end;
+
+// Surrogate und Werte über U+10FFFF sind kein gültiges UTF-8.
+function IsAllowedCodePoint(ACount: Integer; ACodePoint: Cardinal): Boolean;
+begin
+  Result := not IsOverlong(ACount, ACodePoint) and (ACodePoint <= $10FFFF) and
+    not ((ACodePoint >= $D800) and (ACodePoint <= $DFFF));
+end;
+
+// Gültige Mehrbytefolge ab AIndex? ACount ist die Zahl der Folgebytes.
+function IsUtf8Sequence(const ABytes: TBytes; AIndex: Integer; out ACount: Integer): Boolean;
+var
+  mNext: Integer;
+  mCodePoint: Cardinal;
+begin
+  if not Utf8Lead(ABytes[AIndex], ACount, mCodePoint) or (AIndex + ACount > High(ABytes)) then
+  begin
+    Exit(False);
+  end;
+  for mNext := AIndex + 1 to AIndex + ACount do
+  begin
+    if (ABytes[mNext] and $C0) <> $80 then
+    begin
+      Exit(False);
+    end;
+    mCodePoint := (mCodePoint shl 6) or (ABytes[mNext] and $3F);
+  end;
+  Result := IsAllowedCodePoint(ACount, mCodePoint);
+end;
+
 class function TTextEncodingProbe.IsValidUtf8(const ABytes: TBytes; AStart: Integer;
   out AHasNonAscii: Boolean): Boolean;
 var
-  Index, Count, Next: Integer;
-  Lead: Byte;
-  CodePoint: Cardinal;
+  mIndex, mCount: Integer;
 begin
   AHasNonAscii := False;
-  Index := AStart;
-  while Index < Length(ABytes) do
+  mIndex := AStart;
+  while mIndex < Length(ABytes) do
   begin
-    Lead := ABytes[Index];
-    if Lead < $80 then
+    if ABytes[mIndex] < $80 then
     begin
-      Inc(Index);
+      Inc(mIndex);
       Continue;
     end;
     AHasNonAscii := True;
-    if (Lead >= $C2) and (Lead <= $DF) then
-    begin
-      Count := 1;
-      CodePoint := Lead and $1F;
-    end
-    else if (Lead >= $E0) and (Lead <= $EF) then
-    begin
-      Count := 2;
-      CodePoint := Lead and $0F;
-    end
-    else if (Lead >= $F0) and (Lead <= $F4) then
-    begin
-      Count := 3;
-      CodePoint := Lead and $07;
-    end
-    else
+    if not IsUtf8Sequence(ABytes, mIndex, mCount) then
     begin
       Exit(False);
     end;
-    if Index + Count > High(ABytes) then
-    begin
-      Exit(False);
-    end;
-    for Next := Index + 1 to Index + Count do
-    begin
-      if (ABytes[Next] and $C0) <> $80 then
-      begin
-        Exit(False);
-      end;
-      CodePoint := (CodePoint shl 6) or (ABytes[Next] and $3F);
-    end;
-    // Überlange Formen, Surrogate und Werte über U+10FFFF sind kein gültiges UTF-8.
-    if ((Count = 2) and (CodePoint < $800)) or ((Count = 3) and (CodePoint < $10000)) or
-      (CodePoint > $10FFFF) or ((CodePoint >= $D800) and (CodePoint <= $DFFF)) then
-    begin
-      Exit(False);
-    end;
-    Inc(Index, Count + 1);
+    Inc(mIndex, mCount + 1);
   end;
   Result := True;
 end;
