@@ -143,7 +143,7 @@ Unabhängig davon: je BPL-Name nur eine Kopie auf dem Rechner; eine ältere `Atl
 - **CHANGELOG:** Einträge nennen ab 2.0 das Modul (z. B. „Debugger: …“).
 - **Fehlendes Modul nach Update:** Ist ein Modul eingeschaltet, aber nicht installiert, zeigt der Kern das einmal je IDE-Sitzung mit Verweis auf die Installationsanleitung, damit ein vergessenes Add-on nicht still fehlt.
 - **Diagnose:** Diagnoselog und Registry-Schlüssel `HKCU\Software\Atlas\IdePlugin` behalten ihren Namen trotz neuem BPL-Namen (heute leitet `CodeInsight.Manager` den Log-Namen vom BPL ab); Stacktraces lesen die Map-Datei des jeweiligen BPL; Fehlerbericht und Update-Prüfung nennen die installierten Add-ons.
-- **Prüfregeln nur mit `Atlas.IDE.Rules`:** Hat ein Projekt Regeln in der `atlas.json`, ist das Package aber nicht installiert, zeigt die IDE keine Prüfbefunde, während `--check` in der CI dieselben Befunde meldet und rot sein kann. Das ist so gewollt (Marco, 31.10.2026, oben unter „Regeln“); der Hinweis je Projekt ist die einzige Brücke. Ob das so bleibt, ist Entscheidung 8.
+- **Prüfregeln nur mit `Atlas.IDE.Rules`:** Hat ein Projekt Regeln in der `atlas.json`, ist das Package aber nicht installiert, zeigt die IDE keine Prüfbefunde, während `--check` in der CI dieselben Befunde meldet und rot sein kann. Das ist so gewollt (Marco, 31.10.2026, bestätigt 01.11.2026); der Hinweis je Projekt ist die einzige Brücke.
 - **`{$IMPLICITBUILD OFF}`** für Kern und Add-ons: Ein Package, das andere requiren und das in der bauenden IDE geladen sein kann, darf nicht implizit gebaut werden.
 
 ### Pilot (#1456): Verträge und Abnahme
@@ -189,7 +189,7 @@ Scheitert der Pilot an einem Fall ohne Abhilfe, greift Schritt 4: Es bleibt beim
 5. ~~**`Atlas.IDE.Expert.dproj` im Pilot behalten?**~~ **Entschieden (Marco, 01.11.2026):** Nur auf `release/1.2`; auf `main` und im Pilot wird es durch das Kern-Package ersetzt.
 6. **Regeln 1 bis 9** oben bestätigen oder ändern.
 7. ~~**Quellbaum**~~ **Entschieden (Marco, 01.11.2026): package-first, ab dem Pilot.** Jedes Package hat seine Quellen unter `Packages/<Package>/Source/{Core,IDE,UI}/<Feature>`; der Ordner zeigt, zu welchem Package eine Unit gehört, und das Prüfskript liest die Zuordnung daraus. Verschoben wird mit dem Pilot (#1456), vorher nur `contains` aufgeteilt.
-8. **Prüfregeln nur mit `Atlas.IDE.Rules`:** bestätigen, obwohl IDE und `--check` sich widersprechen können, oder Regeln im Kern laufen lassen und nur die Regelseite ins Add-on legen.
+8. ~~**Prüfregeln nur mit `Atlas.IDE.Rules`**~~ **Bestätigt (Marco, 01.11.2026):** Regeln laufen nur mit dem Rules-Package (wie 31.10.). Die Abweichung zu `--check` in der CI ist bewusst in Kauf genommen; der Hinweis je Projekt bleibt.
 
 ### Versionen (neu, Marco 01.11.2026)
 
