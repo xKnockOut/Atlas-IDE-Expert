@@ -2074,7 +2074,7 @@ begin
     AllEdits := nil;
     for Index := 0 to High(Sites) do
     begin
-      Fixes := [TRuleFix.Create('begin … end setzen', Finder.Edits([Index]))];
+      Fixes := [TRuleFix.Create('begin … end setzen', Finder.Edits([Index]), True)];
       if MethodCounts[Index] > 1 then
         Fixes := Fixes + [TRuleFix.Create(Format('begin … end in der ganzen Methode setzen (%d Stellen)',
           [MethodCounts[Index]]), MethodEdits[Index])];

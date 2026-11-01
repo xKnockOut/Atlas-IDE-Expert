@@ -6334,6 +6334,8 @@ Name := GetEnumName(TypeInfo(TStatus), Ord(Status));
 
 Der Rumpf von if … then, else, for, while oder with ist eine einzelne Anweisung ohne begin … end. Mit der Regel haben Bedingungen und Schleifen immer einen Block; eine später ergänzte zweite Anweisung landet so nicht versehentlich außerhalb. else if bleibt erlaubt (das innere if braucht keinen eigenen Block); repeat … until, case … end, try … end und asm … end sind schon Blöcke. Eine leere Anweisung (if X then ;) meldet empty-statement. Rümpfe mit {$IFDEF} meldet die Regel nicht. Solange die Regel an ist, meldet redundant-begin-end nichts. Schnellkorrekturen: begin … end um die Anweisung setzen, für die ganze Methode oder für die ganze Datei, eingerückt nach den Formatierungseinstellungen; ein ; vor else wandert in den Block (kein E2153); mit format.elsePlacement "sameLine" steht else hinter dem neuen end (end else).
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix missing-begin-end`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `statements` | string-list | `["if","else","for","while","with"]` | Geprüfte Anweisungen; case für die Zweige von case-Anweisungen ergänzen. |

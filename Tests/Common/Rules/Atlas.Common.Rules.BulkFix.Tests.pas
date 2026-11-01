@@ -234,6 +234,16 @@ begin
   mFinding.Fixes := mFinding.Fixes + mFinding.Fixes;
   Assert.IsFalse(TBulkFix.SafeFixOf(mFinding, Options(TRuleConfidence.High), mFix, mSkip));
   Assert.AreEqual(Ord(TBulkFixSkip.Unsafe), Ord(mSkip));
+  // Eine sichere neben einer nicht sicheren (begin … end in der ganzen Methode): die sichere zählt.
+  mFinding := Finding(0, 0, 1, 'a', TRuleConfidence.High, True);
+  mFinding.Fixes := mFinding.Fixes + Finding(0, 0, 3, 'b', TRuleConfidence.High, False).Fixes;
+  Assert.IsTrue(TBulkFix.SafeFixOf(mFinding, Options(TRuleConfidence.High), mFix, mSkip));
+  Assert.AreEqual('a', mFix.Edits[0].NewText);
+  // Nur nicht sichere: unsicher.
+  mFinding := Finding(0, 0, 1, 'a', TRuleConfidence.High, False);
+  mFinding.Fixes := mFinding.Fixes + mFinding.Fixes;
+  Assert.IsFalse(TBulkFix.SafeFixOf(mFinding, Options(TRuleConfidence.High), mFix, mSkip));
+  Assert.AreEqual(Ord(TBulkFixSkip.Unsafe), Ord(mSkip));
   mFinding := Finding(0, 0, 1, 'a', TRuleConfidence.High, True);
   mFinding.Fixes[0].Alternative := True;
   Assert.IsFalse(TBulkFix.SafeFixOf(mFinding, Options(TRuleConfidence.High), mFix, mSkip));
