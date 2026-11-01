@@ -64,7 +64,7 @@ uses
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 var
   GScope: IAtlasModuleScope;
@@ -211,12 +211,12 @@ end;
 
 { Befehle }
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId, ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := ACaption;
   Result.Run := ARun;
   Result.Visible := AVisible;
 end;
@@ -381,24 +381,30 @@ var
   mCreate: TAtlasModuleCommand;
 begin
   // Issue anlegen (#1268): aus Auswahl bzw. TODO im Editor; sichtbar mit issues.create.
-  mCreate := Command('Atlas.CreateIssue', TAtlasTextId.CreateIssueCommand, CreateIssue, CreateIssueVisible);
+  mCreate := Command('Atlas.CreateIssue', TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand),
+    CreateIssue, CreateIssueVisible);
   mCreate.Key := CreateIssueKey;
   Result := [
     // Zugang zum Build-Server (#763): für die .atlas des aktiven Projekts; sichtbar mit CiLogin.
-    Command('Atlas.CiLogin', TAtlasTextId.CiLoginCommand, EnterCiCredentials, CiLoginVisible),
+    Command('Atlas.CiLogin', TAtlasStrings.Text(TAtlasTextId.CiLoginCommand), EnterCiCredentials, CiLoginVisible),
     // Zugang zum Issue-Tracker (#765): für die .atlas des aktiven Projekts; sichtbar mit TrackerLogin.
-    Command('Atlas.TrackerLogin', TAtlasTextId.TrackerLoginCommand, EnterCredentials, TrackerLoginVisible),
+    Command('Atlas.TrackerLogin', TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand),
+      EnterCredentials, TrackerLoginVisible),
     mCreate,
     // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
-    Command('Atlas.IssueShow', TAtlasTextId.IssuePreviewCommand, ShowPreviewPrompt, PreviewVisible),
+    Command('Atlas.IssueShow', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommand), ShowPreviewPrompt,
+      PreviewVisible),
     // Issues zu dieser Methode (#1275); sichtbar mit issues.blameLinks.
-    Command('Atlas.BlameIssues', TAtlasTextId.BlameIssuesCommand, ShowBlameScope, BlameVisible),
+    Command('Atlas.BlameIssues', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesCommand), ShowBlameScope,
+      BlameVisible),
     // Offene Zeitbuchungen (#1267): sichtbar mit issues.timeTracking.
-    Command('Atlas.IssueTimeOpen', TAtlasTextId.TimeMenuOpen, ShowTimeOpen, TimeVisible),
+    Command('Atlas.IssueTimeOpen', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeMenuOpen), ShowTimeOpen,
+      TimeVisible),
     // Atlas-Board (#1272): Sprint als Spalten nach Zustand; sichtbar mit issues.board.
-    Command('Atlas.Board', TAtlasTextId.BoardCommand, ShowBoard, BoardVisible),
+    Command('Atlas.Board', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardCommand), ShowBoard, BoardVisible),
     // An Issue anhängen (#1276): Bildschirmfoto, Formular, Log, Debug-Notiz; sichtbar mit issues.attach.
-    Command('Atlas.IssueAttach', TAtlasTextId.AttachCommand, AttachPrompt, AttachVisible)];
+    Command('Atlas.IssueAttach', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), AttachPrompt,
+      AttachVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -414,7 +420,7 @@ var
 begin
   // Ansicht › Atlas › Board (#1272) mit dem bisherigen Text.
   mBoard := MenuEntry('Atlas.Board', TAtlasMenuPlace.ViewMenu);
-  mBoard.Caption := TAtlasStrings.Text(TAtlasTextId.BoardViewMenu);
+  mBoard.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardViewMenu);
   Result := [
     MenuEntry('Atlas.IssueAttach', TAtlasMenuPlace.AtlasMenu),
     mBoard,

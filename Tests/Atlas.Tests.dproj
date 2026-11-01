@@ -717,6 +717,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tests.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Search.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Build.Strings.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Bookmarks.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Analysis.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.Strings.Tests.pas"/>
@@ -850,6 +851,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.BoardFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.TimeDialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.TimeList.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.TimeDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.CommentEditor.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.CommentEditor.Tests.pas"/>

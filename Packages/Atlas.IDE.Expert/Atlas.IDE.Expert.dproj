@@ -508,6 +508,7 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.EndDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TimeDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TimeList.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Strings.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas">
             <Form>AtlasBoardFrame</Form>
             <FormType>dfm</FormType>
