@@ -133,13 +133,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := StringReplace(AMarked, '|', '', []);
 end;
@@ -211,9 +215,13 @@ begin
   Index := IndexOf(AItems, AName);
   Result := Index >= 0;
   if Result then
-    AItem := AItems.Items[Index]
+  begin
+    AItem := AItems.Items[Index];
+  end
   else
+  begin
     AItem := Default(TCompletionItem);
+  end;
 end;
 
 function TCompletionExceptionsTests.IndexOf(const AItems: TCompletionItems; const AName: string): Integer;
@@ -221,8 +229,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AItems.Items) do
+  begin
     if AItems.Items[Index].Name = AName then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 

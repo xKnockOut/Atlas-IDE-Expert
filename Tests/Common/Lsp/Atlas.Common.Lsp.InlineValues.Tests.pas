@@ -120,7 +120,9 @@ begin
       AStoppedLine) do
     begin
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Format('%d:%s', [Value.Range.StartPos.Line, Value.Name]);
     end;
   finally
@@ -185,7 +187,9 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   try
     for Value in TLspInlineValues.Collect(Resolver, Tree, FileName, TTextRange.Create(26, 0, 27, 0), 31) do
+    begin
       Types := Types + Value.Name + ':' + Value.TypeName + ' ';
+    end;
   finally
     Resolver.Free;
     Tree.Free;

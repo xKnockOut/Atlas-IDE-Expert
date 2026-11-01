@@ -76,11 +76,17 @@ begin
     Result := ASite.Callee.Name;
   end;
   if ASite.Explicit then
+  begin
     Result := Result + '()';
+  end;
   if ASite.Assigned then
+  begin
     Result := Result + ':=';
+  end;
   if not TStepCalls.NamePosition(ASite.Callee, Position) then
+  begin
     Result := Result + '?';
+  end;
 end;
 
 function TSemanticsStepCallsTests.SitesAt(const AText: string; ALine: Integer; out AStatement: TStepStatement): string;
@@ -93,7 +99,9 @@ begin
   Assert.IsTrue(TStepCalls.Find(FTree, ALine, AStatement), 'keine Anweisung');
   Names := nil;
   for Site in AStatement.Sites do
+  begin
     Names := Names + [NameOf(Site)];
+  end;
   Result := string.Join(' ', Names);
 end;
 

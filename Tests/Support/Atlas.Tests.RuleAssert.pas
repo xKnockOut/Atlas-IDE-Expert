@@ -103,9 +103,13 @@ var
   Tree: TSyntaxTree;
 begin
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -163,9 +167,13 @@ var
   Tree: TSyntaxTree;
 begin
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -194,9 +202,13 @@ var
   Tree: TSyntaxTree;
 begin
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -218,9 +230,13 @@ var
   Tree: TSyntaxTree;
 begin
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -244,9 +260,13 @@ var
   Tree: TSyntaxTree;
 begin
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(AContext.Text);
   try
     Context := AContext;
@@ -266,9 +286,13 @@ var
   Tree: TSyntaxTree;
 begin
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -292,9 +316,13 @@ var
   Tree: TSyntaxTree;
 begin
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -328,9 +356,13 @@ var
   Tree: TSyntaxTree;
 begin
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -360,7 +392,9 @@ begin
   begin
     Result := Result + ' | ' + Fix.Title;
     for Edit in Fix.Edits do
+    begin
       Result := Result + ' [' + RangeText(Edit.Range) + '=' + Edit.NewText + ']';
+    end;
   end;
 end;
 
@@ -376,15 +410,23 @@ begin
   Separate := TList<string>.Create;
   try
     for Finding in FindingsOfAll(ARules, ASource, AConfigJson) do
+    begin
       Combined.Add(FindingKey(Finding));
+    end;
     for Rule in ARules do
+    begin
       for Finding in FindingsOfAll([Rule], ASource, AConfigJson) do
+      begin
         Separate.Add(FindingKey(Finding));
+      end;
+    end;
     Combined.Sort;
     Separate.Sort;
     Assert.AreEqual(Separate.Count, Combined.Count, 'Trefferzahl gemeinsam/einzeln');
     for Index := 0 to Combined.Count - 1 do
+    begin
       Assert.AreEqual(Separate[Index], Combined[Index]);
+    end;
     Result := Combined.Count;
   finally
     Separate.Free;

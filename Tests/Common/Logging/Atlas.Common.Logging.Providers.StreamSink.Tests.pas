@@ -72,7 +72,9 @@ begin
     Assert.IsTrue(Content.IndexOf('alt') < Content.IndexOf('neu'), Content);
   finally
     if TFile.Exists(FileName) then
+    begin
       TFile.Delete(FileName);
+    end;
   end;
 end;
 

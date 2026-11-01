@@ -88,9 +88,13 @@ begin
     FileName := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine('Compiler', AName))));
     if TFile.Exists(FileName) then
+    begin
       Exit(TFile.ReadAllLines(FileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   raise Exception.Create('Tests\Data\Compiler\' + AName + ' nicht gefunden');

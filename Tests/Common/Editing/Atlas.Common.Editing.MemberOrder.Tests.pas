@@ -72,24 +72,32 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     if not TMemberOrder.Sort(AText, Tree, 3, ASettings, Edit) then
+    begin
       Exit('');
+    end;
   finally
     Tree.Free;
   end;
   Lines := nil;
   Start := 1;
   for Index := 1 to Length(AText) + 1 do
+  begin
     if (Index > Length(AText)) or (AText[Index] = #10) then
     begin
       Lines := Lines + [Copy(AText, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   Result := '';
   for Line := 0 to Edit.Range.StartPos.Line - 1 do
+  begin
     Result := Result + Lines[Line] + #10;
+  end;
   Result := Result + Edit.NewText;
   for Line := Edit.Range.EndPos.Line to High(Lines) do
+  begin
     Result := Result + Lines[Line] + IfThen(Line < High(Lines), #10, '');
+  end;
 end;
 
 function Sorted(const AText: string): string; overload;

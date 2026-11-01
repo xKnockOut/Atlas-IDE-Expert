@@ -334,7 +334,9 @@ begin
   for Finding in AFound do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + IntToStr(Finding.Range.StartPos.Line + 1) + ': ' + Finding.Message;
   end;
 end;

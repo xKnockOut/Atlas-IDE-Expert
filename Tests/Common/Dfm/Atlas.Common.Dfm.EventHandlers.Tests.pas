@@ -126,8 +126,12 @@ var
   Item: TEventHandler;
 begin
   for Item in FHandlers do
+  begin
     if SameText(Item.Component, AComponent) and SameText(Item.Event, AEvent) then
+    begin
       Exit(Item);
+    end;
+  end;
   Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
   Result := Default(TEventHandler);
 end;

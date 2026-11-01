@@ -66,7 +66,9 @@ var
 begin
   AList.Add(ANode);
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     CollectRecursive(ANode.Children[Index], AList);
+  end;
 end;
 
 function CountKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Integer;
@@ -75,9 +77,13 @@ var
 begin
   Result := 0;
   if ANode.Kind = AKind then
+  begin
     Inc(Result);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     Inc(Result, CountKind(ANode.Children[Index], AKind));
+  end;
 end;
 
 procedure TSyntaxTreeTests.WalkVisitsAllNodesInTreeOrder;
@@ -101,7 +107,9 @@ begin
     Assert.AreEqual(Expected.Count, Visited.Count, 'Anzahl Knoten');
     Assert.IsTrue(Visited[0] = Tree.Root, 'erster Knoten ist die Wurzel');
     for Index := 0 to Expected.Count - 1 do
+    begin
       Assert.IsTrue(Expected[Index] = Visited[Index], 'Reihenfolge an Stelle ' + IntToStr(Index));
+    end;
   finally
     Visited.Free;
     Expected.Free;
@@ -123,9 +131,13 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         if ANode.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Inc(Routines);
+        end;
         if ANode.Kind = TSyntaxKind.Block then
+        begin
           Inc(Blocks);
+        end;
         Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
       end);
     Assert.AreEqual(2, Routines, 'Routinen besucht');
@@ -144,7 +156,9 @@ begin
   begin
     Child := RecursiveDepth(ANode.Children[Index]) + 1;
     if Child > Result then
+    begin
       Result := Child;
+    end;
   end;
 end;
 
@@ -174,7 +188,9 @@ begin
   try
     Builder.Append('program P; begin X := 1');
     for Index := 1 to 100000 do
+    begin
       Builder.Append('-1');
+    end;
     Builder.Append('; end.');
     Tree := TPascalParser.Parse(Builder.ToString);
   finally
@@ -207,8 +223,12 @@ begin
     CollectRecursive(Tree.Root, All);
     Expected := nil;
     for Index := All.Count - 1 downto 0 do
+    begin
       if All[Index].Kind = TSyntaxKind.AssignStatement then
+      begin
         Expected := All[Index];
+      end;
+    end;
     Assert.IsTrue(Expected <> nil, 'Zuweisung vorhanden');
     Visits := 0;
     Found := Tree.Root.Search(
@@ -216,7 +236,9 @@ begin
       begin
         Inc(Visits);
         if ANode.Kind = TSyntaxKind.AssignStatement then
+        begin
           Exit(TSyntaxSearchStep.Found);
+        end;
         Result := TSyntaxSearchStep.Descend;
       end);
     Assert.IsTrue(Found = Expected, 'erste Zuweisung in Baumreihenfolge');
@@ -244,9 +266,13 @@ begin
       function(ANode: TSyntaxNode): TSyntaxSearchStep
       begin
         if ANode.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Exit(TSyntaxSearchStep.Skip);
+        end;
         if ANode.Kind = TSyntaxKind.Block then
+        begin
           Exit(TSyntaxSearchStep.Found);
+        end;
         Result := TSyntaxSearchStep.Descend;
       end);
     Assert.IsTrue(Found = nil, 'alle Blöcke liegen in übersprungenen Routinen');
@@ -274,7 +300,9 @@ begin
   try
     Builder.Append('program P; begin X := 1');
     for Index := 1 to 100000 do
+    begin
       Builder.Append('-2');
+    end;
     Builder.Append('; end.');
     Tree := TPascalParser.Parse(Builder.ToString);
   finally
@@ -290,7 +318,9 @@ begin
           function(ANode: TSyntaxNode): Boolean
           begin
             if ANode.Kind = TSyntaxKind.Literal then
+            begin
               Inc(Count);
+            end;
             Result := True;
           end);
         // Das erste Glied liegt ganz unten in der linkslastigen Kette.
@@ -298,7 +328,9 @@ begin
           function(ANode: TSyntaxNode): TSyntaxSearchStep
           begin
             if (ANode.Kind = TSyntaxKind.Literal) and (ANode.Name = '1') then
+            begin
               Exit(TSyntaxSearchStep.Found);
+            end;
             Result := TSyntaxSearchStep.Descend;
           end);
       end);
@@ -336,8 +368,12 @@ begin
     CollectRecursive(Tree.Root, All);
     Expected := nil;
     for Node in All do
+    begin
       if (Expected = nil) and (LevelOf(Node) = Tree.Depth) then
+      begin
         Expected := Node;
+      end;
+    end;
     Assert.IsTrue(Expected <> nil, 'Knoten in größter Tiefe');
     Assert.IsTrue(Tree.Deepest = Expected, 'erster in Baumreihenfolge');
   finally
@@ -381,9 +417,13 @@ var
   function Compare(const A, B: TTextPosition): Integer;
   begin
     if A.Line <> B.Line then
-      Result := A.Line - B.Line
+    begin
+      Result := A.Line - B.Line;
+    end
     else
+    begin
       Result := A.Character - B.Character;
+    end;
   end;
 
 begin
@@ -391,11 +431,15 @@ begin
   begin
     mToken := ATree.Tokens[mIndex];
     if Compare(mToken.StartPos, APosition) > 0 then
+    begin
       Break;
+    end;
     if (mToken.Kind = TPascalTokenKind.Identifier) and (Compare(APosition, mToken.EndPos) <= 0) then
     begin
       if ATree.IsControlCharPart(mIndex) then
+      begin
         Exit(-1);
+      end;
       Exit(mIndex);
     end;
   end;
@@ -409,12 +453,16 @@ var
 begin
   mCount := 0;
   for mIndex := 0 to High(ATree.Tokens) do
+  begin
     if ATree.Tokens[mIndex].Text = AText then
     begin
       Inc(mCount);
       if mCount = AOccurrence then
+      begin
         Exit(mIndex);
+      end;
     end;
+  end;
   Result := -1;
 end;
 
@@ -467,6 +515,7 @@ begin
     mChecked := 0;
     // Jede Position jeder Zeile, zwei Zeichen über das Zeilenende hinaus, und zwei Zeilen hinter dem Ende.
     for mLine := 0 to Length(mLines) + 1 do
+    begin
       for mCharacter := 0 to 42 do
       begin
         mPosition := TTextPosition.Create(mLine, mCharacter);
@@ -474,6 +523,7 @@ begin
           Format('Zeile %d, Zeichen %d', [mLine, mCharacter]));
         Inc(mChecked);
       end;
+    end;
     Assert.IsTrue(mChecked > 500);
   finally
     mTree.Free;
@@ -492,7 +542,9 @@ begin
     begin
       mExpected := 0;
       while (mExpected <= High(mTree.Tokens)) and (mTree.Tokens[mExpected].Offset < mOffset) do
+      begin
         Inc(mExpected);
+      end;
       Assert.AreEqual(mExpected, mTree.FirstTokenFrom(mOffset), Format('Offset %d', [mOffset]));
     end;
   finally
@@ -511,15 +563,21 @@ begin
   try
     mCode := nil;
     for mIndex := 0 to High(mTree.Tokens) do
+    begin
       if not (mTree.Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      begin
         mCode := mCode + [mTree.Tokens[mIndex]];
+      end;
+    end;
     Assert.IsTrue(Length(mCode) < Length(mTree.Tokens), 'Quelltext mit Kommentaren');
     Assert.AreEqual(0, TSyntaxTree.FirstTokenOf(nil, 5), 'leere Liste');
     for mOffset := -1 to Length(cTokenSource) + 1 do
     begin
       mExpected := 0;
       while (mExpected <= High(mCode)) and (mCode[mExpected].Offset < mOffset) do
+      begin
         Inc(mExpected);
+      end;
       Assert.AreEqual(mExpected, TSyntaxTree.FirstTokenOf(mCode, mOffset), Format('Offset %d', [mOffset]));
     end;
   finally

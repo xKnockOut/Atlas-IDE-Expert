@@ -75,7 +75,9 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     if TDisableWarning.Edits(AText, Tree, ALine, Switch, AScope, AReason, Edits) then
+    begin
       Result := TChangeSignature.ApplyEdits(AText, Edits);
+    end;
   finally
     Tree.Free;
   end;

@@ -113,11 +113,13 @@ var
   Range: TTextRange;
 begin
   for Token in AContext.Tree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Alt') then
     begin
       Range := TTextRange.Create(Token.StartPos, Token.EndPos);
       AReport.Add(Range, 'Alt gefunden', [TRuleFix.Create('Alt durch Neu ersetzen', [TRuleEdit.Create(Range, 'Neu')])]);
     end;
+  end;
 end;
 
 function TNoFixRule.Descriptor: TRuleDescriptor;
@@ -130,8 +132,12 @@ var
   Token: TPascalToken;
 begin
   for Token in AContext.Tree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Alt') then
+    begin
       AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), 'Alt gefunden');
+    end;
+  end;
 end;
 
 constructor TMemoryFiles.Create;
@@ -154,7 +160,9 @@ end;
 procedure TMemoryFiles.Write(const AFileName, AText: string);
 begin
   if SameText(AFileName, FailOn) then
+  begin
     raise Exception.Create('gesperrt');
+  end;
   Files[AFileName] := AText;
   Inc(Writes);
 end;

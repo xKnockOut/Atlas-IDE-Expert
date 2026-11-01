@@ -67,7 +67,9 @@ begin
   begin
     mUses := nil;
     for mOther := 1 to mIndex - 1 do
+    begin
       mUses := mUses + [ANamespace + '.' + APrefix + IntToStr(mOther)];
+    end;
     Result := Result + [UsesUnit(ANamespace + '.' + APrefix + IntToStr(mIndex), mUses, nil)];
   end;
 end;
@@ -75,9 +77,13 @@ end;
 function AlignmentSample(AExtra: Boolean): TArray<TUnitIndex>;
 begin
   if AExtra then
-    Result := AlignmentCluster('Index', 'A', 3) + AlignmentCluster('Index', 'B', 4) + AlignmentCluster('Ui', 'X', 3)
+  begin
+    Result := AlignmentCluster('Index', 'A', 3) + AlignmentCluster('Index', 'B', 4) + AlignmentCluster('Ui', 'X', 3);
+  end
   else
+  begin
     Result := AlignmentCluster('Index', 'A', 3) + AlignmentCluster('Index', 'B', 3) + AlignmentCluster('Ui', 'X', 3);
+  end;
 end;
 
 function AlignmentOverview(AExtra: Boolean): TArchitectureOverview;
@@ -141,8 +147,12 @@ begin
   mPrevious := TArchitectureSnapshots.FromOverview(mBefore);
   // Farbe 5 im alten Stand: Der Teil mit Mehrheit übernimmt sie, nicht die Nummer nach Reihenfolge.
   for mIndex := 0 to High(mPrevious.Subsystems) do
+  begin
     if mPrevious.Subsystems[mIndex].Name = 'Kern' then
+    begin
       mPrevious.Subsystems[mIndex].ColorSlot := 5;
+    end;
+  end;
   mAfter := ArchitectureOverviewOf(AlignmentCluster('Kern', 'K', 4) + AlignmentCluster('Kern', 'L', 2) +
     AlignmentCluster('Ui', 'X', 3));
   Assert.AreEqual(3, Integer(Length(mAfter.Subsystems)));

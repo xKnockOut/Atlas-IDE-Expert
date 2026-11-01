@@ -79,7 +79,9 @@ var
 begin
   Result := 1;
   for Line := 1 to APosition.Line do
+  begin
     Result := Pos(#10, AText, Result) + 1;
+  end;
   Inc(Result, APosition.Character);
 end;
 
@@ -267,7 +269,9 @@ begin
   for mFinding in AFound do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + IntToStr(mFinding.Range.StartPos.Line + 1) + ': ' + mFinding.Message;
   end;
 end;

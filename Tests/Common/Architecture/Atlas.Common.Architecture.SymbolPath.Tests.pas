@@ -284,7 +284,9 @@ var
   Files: TDictionary<string, string>;
 begin
   if FGraph = nil then
+  begin
     Build;
+  end;
   Files := FFiles;
   Search := TSymbolPathSearch.Create(FIndex, FGraph, FLocator,
     function(const AFileName: string; out AText: string): Boolean
@@ -311,7 +313,9 @@ begin
   for Node in ARoute.Nodes do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' > ';
+    end;
     Result := Result + Node.Caption;
   end;
 end;
@@ -324,7 +328,9 @@ begin
   for Step in ARoute.Steps do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + TSymbolPathSearch.EdgeName(Step.Kind);
   end;
 end;
@@ -714,9 +720,11 @@ begin
     Name := Format('U%.4d', [Index]);
     UsesText := '';
     if Layer < 249 then
+    begin
       UsesText := Format('uses U%.4d, U%.4d, U%.4d, U%.4d, U%.4d, U%.4d, U%.4d, U%.4d;'#10,
         [(Layer + 1) * 8, (Layer + 1) * 8 + 1, (Layer + 1) * 8 + 2, (Layer + 1) * 8 + 3, (Layer + 1) * 8 + 4,
         (Layer + 1) * 8 + 5, (Layer + 1) * 8 + 6, (Layer + 1) * 8 + 7]);
+    end;
     AddUnit(Name, 'unit ' + Name + ';'#10'interface'#10 + UsesText + 'type'#10'  T' + Name + ' = class'#10 +
       IfThen(Layer < 249, Format('    FNext: TU%.4d;'#10, [(Layer + 1) * 8 + Index mod 8]), '') +
       '    procedure Arbeite;'#10'  end;'#10'implementation'#10'procedure T' + Name + '.Arbeite;'#10'begin'#10 +

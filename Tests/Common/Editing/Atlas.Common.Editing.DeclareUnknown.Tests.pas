@@ -40,13 +40,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := TPascalLexer.Tokenize(StringReplace(AMarked, '|', '', []));
 end;
@@ -67,13 +71,17 @@ var
   First, Last, Index: Integer;
 begin
   if not SlotAt(AMarked, Tokens, Slot) then
+  begin
     Exit('-');
+  end;
   Result := TDeclareUnknown.Shape(Tokens, Slot.ValueFirst, Slot.ValueLast, First, Last);
   if (Result = '') and (First >= 0) then
   begin
     Result := '[';
     for Index := First to Last do
+    begin
       Result := Result + Tokens[Index].Text;
+    end;
     Result := Result + ']';
   end;
 end;

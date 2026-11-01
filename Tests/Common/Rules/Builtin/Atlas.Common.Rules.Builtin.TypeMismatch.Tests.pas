@@ -109,7 +109,9 @@ begin
   for mFinding in mFound do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' | ';
+    end;
     Result := Result + mFinding.Message;
   end;
 end;
@@ -419,8 +421,12 @@ procedure TTypeMismatchTests.RuleIsRegistered;var
 begin
   mFound := False;
   for mRule in BuiltinRules do
+  begin
     if mRule.Descriptor.Id = TypeMismatchRuleId then
+    begin
       mFound := True;
+    end;
+  end;
   Assert.IsTrue(mFound);
 end;
 

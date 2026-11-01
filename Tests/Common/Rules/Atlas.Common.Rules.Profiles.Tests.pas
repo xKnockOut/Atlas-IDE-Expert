@@ -147,9 +147,13 @@ begin
   Config.Profile := AProfile;
   Ids := nil;
   for Rule in BuiltinRules do
+  begin
     if (TRuleEngine.EffectiveSeverity(Rule.Descriptor, Config, '', Enabled) <> TRuleSeverity.Off) and
       (Enabled or not Rule.Descriptor.Experimental) then
+    begin
       Ids := Ids + [Rule.Descriptor.Id];
+    end;
+  end;
   TArray.Sort<string>(Ids);
   Result := string.Join(',', Ids);
 end;
@@ -162,7 +166,9 @@ var
 begin
   Ids := AList.Split([',']);
   for Id in AExtra do
+  begin
     Ids := Ids + [Id];
+  end;
   TArray.Sort<string>(Ids);
   Result := string.Join(',', Ids);
 end;

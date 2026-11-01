@@ -102,13 +102,21 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, FormFile) then
-    AText := 'object Kunde: TKunde'#10'  OnClick = Knopf'#10'end'#10
+  begin
+    AText := 'object Kunde: TKunde'#10'  OnClick = Knopf'#10'end'#10;
+  end
   else if SameText(AFileName, AufruferFile) then
-    AText := Aufrufer
+  begin
+    AText := Aufrufer;
+  end
   else if SameText(AFileName, KundenFile) then
-    AText := Kunden
+  begin
+    AText := Kunden;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 procedure TLspMethodWithoutSelfTests.Setup;
@@ -171,7 +179,9 @@ var
   Action: TJSONObject;
 begin
   for Action in AActions do
+  begin
     Action.Free;
+  end;
 end;
 
 procedure TLspMethodWithoutSelfTests.ActionsCarryClientCommand;

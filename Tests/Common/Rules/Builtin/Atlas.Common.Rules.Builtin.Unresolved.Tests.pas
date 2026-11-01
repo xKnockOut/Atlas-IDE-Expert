@@ -124,7 +124,9 @@ var
 begin
   Result := nil;
   for Name in LibraryNames do
+  begin
     Result := Result + [Name];
+  end;
 end;
 
 /// <summary>Unit-Suche über die Dateien AFiles mit Projekt C:\P\App.dproj (Suchpfad C:\P\Src).</summary>
@@ -145,8 +147,12 @@ begin
     begin
       Result := nil;
       for FileName in AFiles do
+      begin
         if SameText(TProjectPaths.DirectoryOf(FileName), AFolder) then
+        begin
           Result := Result + [FileName];
+        end;
+      end;
     end;
   Setup.ListFolders :=
     function(AFolder: string): TArray<string>
@@ -158,7 +164,9 @@ begin
       begin
         Folder := TProjectPaths.DirectoryOf(FileName);
         if SameText(TProjectPaths.DirectoryOf(Folder), AFolder) and (IndexText(Folder, Result) < 0) then
+        begin
           Result := Result + [Folder];
+        end;
       end;
     end;
   Setup.FileExists :=
@@ -370,7 +378,9 @@ begin
     begin
       Result := nil;
       if SameText(AFolder, 'C:\BDS\lib') then
+      begin
         Result := ['C:\BDS\lib\System.dcu'];
+      end;
     end;
   Setup.IndexKnows :=
     function(AName: string): Boolean
@@ -450,9 +460,11 @@ function AttributeIndex(AWithSystem: Boolean): ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
   if AWithSystem then
+  begin
     Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
       '  end;'#10'  TCustomAttribute = class(TObject)'#10'  end;'#10'  WeakAttribute = class(TCustomAttribute)'#10 +
       '  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  end;
   Result.AddUnit(TIndexExtractor.ExtractText('unit System.SysUtils;'#10'interface'#10'implementation'#10'end.',
     'C:\BDS\source\System.SysUtils.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText('unit DUnitX.Attributes;'#10'interface'#10'type'#10 +

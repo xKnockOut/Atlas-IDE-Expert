@@ -112,7 +112,9 @@ begin
       begin
         // Ohne Parameter immer: eine Anfrage, die fehlschlägt.
         if AParams = nil then
+        begin
           raise Exception.Create('Absicht');
+        end;
         Result := TJSONNull.Create;
       end);
     Message := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"gut"}') as TJSONObject;
@@ -274,7 +276,9 @@ begin
     Assert.AreEqual('write', Responses[0].GetValue<string>('result'), 'seriell sofort');
     Assert.AreEqual(1, Integer(Work.Count));
     for Item in Work.ToArray do
+    begin
       Item();
+    end;
     Assert.AreEqual(2, Integer(Responses.Count));
     Assert.AreEqual('status', Responses[1].GetValue<string>('result'));
   finally

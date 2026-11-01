@@ -212,15 +212,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for I := 1 to Index - 1 do
+  begin
     if AText[I] = #10 then
     begin
       Inc(Line);
       LineStart := I + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -260,7 +264,9 @@ begin
   FFiles := FFiles + [AFileName];
   FTexts := FTexts + [AText];
   if SameText(ExtractFileExt(AFileName), '.pas') then
+  begin
     FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
+  end;
 end;
 
 function TLspChangeSignatureTests.TextOf(const AFileName: string): string;
@@ -268,8 +274,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FFiles) do
+  begin
     if SameText(FFiles[Index], AFileName) then
+    begin
       Exit(FTexts[Index]);
+    end;
+  end;
   Result := '';
 end;
 
@@ -359,8 +369,12 @@ var
 begin
   Edits := nil;
   for Edit in AOutcome.Edits do
+  begin
     if SameText(Edit.FileName, AFileName) then
+    begin
       Edits := Edits + [TTextEdit.Create(Edit.Range, Edit.NewText)];
+    end;
+  end;
   Result := TChangeSignature.ApplyEdits(TextOf(AFileName), Edits);
 end;
 
@@ -372,7 +386,9 @@ begin
   for FileName in [BasisFile, HauptFile, MaskeFile] do
   begin
     if TextOf(FileName) = '' then
+    begin
       Continue;
+    end;
     Tree := TPascalParser.Parse(Applied(AOutcome, FileName));
     try
       Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), FileName);
@@ -649,7 +665,9 @@ begin
       Assert.AreEqual(TLspChangeSignature.ClientCommand, Actions[0].GetValue<string>('command.command'));
     finally
       for Action in Actions do
+      begin
         Action.Free;
+      end;
     end;
     Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(False, Resolver, Tree, HauptFile, 'x',
       PositionOf(UnitHaupt, 'Teile(6')))));

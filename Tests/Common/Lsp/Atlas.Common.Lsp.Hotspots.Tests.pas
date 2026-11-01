@@ -112,9 +112,13 @@ begin
       AError := '';
       AVcs := nil;
       if FNoVcs then
-        AError := 'Keine Arbeitskopie (vcs.provider = auto)'
+      begin
+        AError := 'Keine Arbeitskopie (vcs.provider = auto)';
+      end
       else
+      begin
         AVcs := FVcsRef;
+      end;
       Result := True;
     end);
 end;
@@ -387,7 +391,9 @@ begin
   finally
     mArguments.Free;
     if TFile.Exists(mTarget) then
+    begin
       TFile.Delete(mTarget);
+    end;
     mFixture.Free;
   end;
 end;

@@ -42,7 +42,9 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     if not TUnitRename.Edits(AFileName, AText, Tree, AOld, ANew, Edits) then
+    begin
       Exit('-');
+    end;
     Result := TChangeSignature.ApplyEdits(AText, Edits);
   finally
     Tree.Free;

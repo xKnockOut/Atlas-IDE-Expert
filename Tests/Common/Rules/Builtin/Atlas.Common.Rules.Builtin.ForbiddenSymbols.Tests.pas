@@ -346,9 +346,13 @@ begin
   begin
     Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
     if TDirectory.Exists(Result) then
+    begin
       Exit;
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   Result := '';
@@ -374,7 +378,9 @@ begin
   // markierten Zeilen, jede weitere Meldung ist ein Fehlalarm.
   mFolder := ReferenceFolder;
   if mFolder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(TIndexExtractor.ExtractText('unit System.Classes;'#10'interface'#10'type'#10 +
     '  TThreadProcedure = reference to procedure;'#10'  TThread = class'#10'  public'#10 +
@@ -395,11 +401,17 @@ begin
   begin
     mLines := mTexts[mFile].Replace(#13#10, #10).Split([#10]);
     for mLine := 0 to High(mLines) do
+    begin
       if mLines[mLine].Contains(cMarker) then
+      begin
         mExpected := mExpected + ExtractFileName(mFiles[mFile]) + ':' + IntToStr(mLine + 1) + #10;
+      end;
+    end;
     for mFinding in TRuleAssert.IndexFindings(TForbiddenSymbolRule.Create, mTexts[mFile], mIndex, Config(cSymbols),
       ExtractFileName(mFiles[mFile])) do
+    begin
       mActual := mActual + ExtractFileName(mFiles[mFile]) + ':' + IntToStr(mFinding.Range.StartPos.Line + 1) + #10;
+    end;
   end;
   Assert.IsTrue(mExpected <> '', 'Keine Markierungen im Referenzprojekt');
   Assert.AreEqual(mExpected, mActual);

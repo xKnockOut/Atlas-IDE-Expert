@@ -59,7 +59,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + #10;
+  end;
 end;
 
 function Defines: TArray<string>;
@@ -68,7 +70,9 @@ var
 begin
   Result := nil;
   for Define in ProjectDefines do
+  begin
     Result := Result + [Define];
+  end;
 end;
 
 function NoProperties: TArray<TPair<string, string>>;
@@ -107,8 +111,12 @@ var
   Entry: TSwitchEntry;
 begin
   for Entry in AState.Switches + AState.Warns + AState.Defines do
+  begin
     if SameText(Entry.Name, AName) then
+    begin
       Exit(Entry);
+    end;
+  end;
   Result := Default(TSwitchEntry);
 end;
 
@@ -121,10 +129,16 @@ var
 begin
   Text := '';
   for Index := 0 to 24 do
+  begin
     if Index = 9 then
-      Text := Text + '{$R-}'#10
+    begin
+      Text := Text + '{$R-}'#10;
+    end
     else
+    begin
       Text := Text + '// Zeile'#10;
+    end;
+  end;
   State := StateAt(Text, 19, Defines, NoProperties);
   Range := Find(State, 'R');
   Assert.AreEqual('-', Range.Value);
@@ -166,7 +180,9 @@ begin
   Assert.AreEqual('RQOCIA', Find(State, 'R').Name + State.Switches[1].Name + State.Switches[2].Name +
     State.Switches[3].Name + State.Switches[4].Name + State.Switches[5].Name, 'Reihenfolge');
   for Entry in State.Switches do
+  begin
     Assert.IsFalse(Entry.Deviates, Entry.Name);
+  end;
   Assert.AreEqual('+', Find(State, 'R').Value);
   Assert.AreEqual(Ord(TSwitchOriginKind.Project), Ord(Find(State, 'R').Origin.Kind));
   Assert.AreEqual('DCC_RangeChecking', Find(State, 'R').Origin.Text);
@@ -263,7 +279,9 @@ begin
   State := StateAt(Lines(['{$DEFINE EIGEN}', '{$UNDEF DEBUG}', 'x', '{$DEFINE SPAETER}']), 2, Defines, NoProperties);
   Names := '';
   for Entry in State.Defines do
+  begin
     Names := Names + Entry.Name + ' ';
+  end;
   Assert.AreEqual('EIGEN ', Names, 'DEBUG aufgehoben, SPAETER erst danach, keine Schaltereinträge');
   Assert.AreEqual(0, Find(State, 'EIGEN').Origin.Line);
   State := StateAt(Lines(['x']), 1, Defines, NoProperties);

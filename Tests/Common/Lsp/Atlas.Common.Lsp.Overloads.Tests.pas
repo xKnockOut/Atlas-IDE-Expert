@@ -104,7 +104,9 @@ var
   Action: TJSONObject;
 begin
   for Action in AActions do
+  begin
     Action.Free;
+  end;
 end;
 
 procedure TLspOverloadsTests.ActionsOnHeader;

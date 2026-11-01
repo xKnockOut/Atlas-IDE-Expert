@@ -220,9 +220,13 @@ begin
       mMood: string;
     begin
       if not AArguments.TryGetValue('mood', mMood) then
+      begin
         mMood := 'ohne Laune';
+      end;
       if AArguments['who'] = 'fehler' then
+      begin
         raise EMcpToolError.Create('Unit liegt außerhalb des Arbeitsbereichs');
+      end;
       Result := 'Hallo ' + AArguments['who'] + ', ' + mMood;
     end;
 end;
@@ -369,7 +373,9 @@ begin
       function(const AValue: string): string
       begin
         if AValue = 'Fremd' then
+        begin
           raise EMcpToolError.Create('"Fremd" liegt außerhalb des Arbeitsbereichs');
+        end;
         Result := 'Unit ' + AValue;
       end);
     mResult := mServer.ListResourceTemplates;

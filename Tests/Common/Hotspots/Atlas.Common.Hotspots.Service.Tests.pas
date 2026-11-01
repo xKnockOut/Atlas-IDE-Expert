@@ -111,7 +111,9 @@ begin
   Result := 'unit ' + AName + ';'#10#10'interface'#10#10'procedure Run(A: Integer);'#10#10'implementation'#10#10 +
     'procedure Run(A: Integer);'#10'begin'#10;
   for mIndex := 1 to AIfs do
+  begin
     Result := Result + '  if A > ' + IntToStr(mIndex) + ' then'#10'    A := A - 1;'#10;
+  end;
   Result := Result + 'end;'#10#10'end.'#10;
 end;
 
@@ -154,10 +156,14 @@ begin
   // SVN kennt keine Zeilen im Log.
   mAdded := 3;
   if FKind = THotspotVcsKind.Svn then
+  begin
     mAdded := -1;
+  end;
   for mPath in APaths do
+  begin
     mCommit.Files := mCommit.Files + [THotspotFileChange.Make(mPath, '', THotspotChangeKind.Modified, mAdded,
       mAdded)];
+  end;
   AddCommit(mCommit);
 end;
 
@@ -194,10 +200,16 @@ begin
   AError := FLogError;
   ACommits := nil;
   if FLogError <> '' then
+  begin
     Exit(False);
+  end;
   for mCommit in FCommits do
+  begin
     if mCommit.Date >= ASince then
+    begin
       ACommits := ACommits + [mCommit];
+    end;
+  end;
   Result := True;
 end;
 
@@ -215,8 +227,11 @@ begin
   for mCommit in FCommits do
   begin
     if mCommit.Date < ASince then
+    begin
       Continue;
+    end;
     for mFile in mCommit.Files do
+    begin
       if SameText(mFile.Path, mPath) then
       begin
         mLine := Default(THotspotLineCommit);
@@ -229,6 +244,7 @@ begin
         ACommits := ACommits + [mLine];
         Break;
       end;
+    end;
   end;
   Result := True;
 end;
@@ -237,7 +253,9 @@ function THotspotFakeVcs.TextAt(const AFileName: string; ADate: TDateTime; out A
 begin
   FTexts := FTexts + [AFileName];
   if FPast.TryGetValue(LowerCase(AFileName), AText) then
+  begin
     Exit(THotspotTextState.Found);
+  end;
   AText := '';
   Result := FPastState;
 end;
@@ -304,8 +322,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(AEntries) do
+  begin
     if SameText(AEntries[mIndex].UnitName, AUnit) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -610,7 +632,9 @@ begin
     mTexts.Put('Rechnung', 2);
     mTexts.Put('Form', 2);
     for mDay := 1 to 6 do
+    begin
       mVcs.AddCommit('c' + IntToStr(mDay), 'anna', Day(mDay), ['Kunde.pas', 'Rechnung.pas', 'Form.pas', 'Form.dfm']);
+    end;
     mResult := mService.Analyze(NewRequest, mVcsRef, HotspotNow);
     // Kunde–Form hat eine uses-Kante; Form.pas/Form.dfm ist dieselbe Unit.
     Assert.AreEqual(2, Integer(Length(mResult.Coupling)));
@@ -653,7 +677,9 @@ begin
       mVcs := THotspotFakeVcs.Create(mKind, 'C:\Projekt');
       mVcsRef := mVcs;
       for mDay := 1 to 6 do
+      begin
         mVcs.AddCommit(IntToStr(100 - mDay), 'anna', Day(mDay), ['A.pas', 'C.pas']);
+      end;
       mVcs.AddCommit('90', 'bernd', Day(9), ['B.pas']);
       mVcs.AddCommit('80', 'anna', Day(20), ['B.pas', 'A.pas']);
       mResults[mSlot] := mService.Analyze(NewRequest, mVcsRef, HotspotNow);
@@ -726,9 +752,13 @@ begin
     begin
       mName := 'App.Teil' + IntToStr(mUnit div 50) + '.Unit' + IntToStr(mUnit);
       if mUnit mod 10 = 0 then
-        mIndex.AddUnit(UsesUnit(mName, ['App.Teil0.Unit0'], nil))
+      begin
+        mIndex.AddUnit(UsesUnit(mName, ['App.Teil0.Unit0'], nil));
+      end
       else
+      begin
         mIndex.AddUnit(UsesUnit(mName, nil, nil));
+      end;
       mTexts.Put(mName, 1 + mUnit mod 15);
     end;
     // 5000 Commits über ein Jahr mit je 1–8 Dateien.
@@ -736,8 +766,10 @@ begin
     begin
       mPaths := nil;
       for mUnit := 0 to mCommit mod 8 do
+      begin
         mPaths := mPaths + [PathOf('App.Teil' + IntToStr(((mCommit * 7 + mUnit * 13) mod 1000) div 50) + '.Unit' +
           IntToStr((mCommit * 7 + mUnit * 13) mod 1000))];
+      end;
       mVcs.AddCommit(IntToStr(5000 - mCommit), 'autor' + IntToStr(mCommit mod 9),
         IncMinute(HotspotNow, -mCommit * 100), mPaths);
     end;
