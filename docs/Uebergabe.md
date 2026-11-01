@@ -9,6 +9,15 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## Modulgrenzen im Prüfskript (#1455, 01.11.2026, Branch `claude/project-thread-jz4idl` von `claude/project-thread-rc7rg9`)
+
+- `Tools/Check-PackageDependencies.ps1` liest `docs/adr/0017-unit-zuordnung.md` als Daten: Ordnertabelle, Einzelzeilen je Package und den neuen Abschnitt „Grenzen zwischen Base, Modulen und Verträgen“. Verboten sind Base → Modul, Base → Contracts, Modul → anderes Modul und Contracts → Base oder Modul.
+- **Jede neue Unit unter `Packages/Atlas.IDE.Expert/Source` braucht eine Zeile in der Zuordnung**, sonst schlägt das Skript fehl (ebenso Zeilen ohne Datei, falsche Pfade, Abweichung von der Ordnertabelle mit Begründung „Ordner …“). Nachgetragen: `Atlas.Core.Settings.Contract`, `.ModuleSwitches`, `.Parts`.
+- **Befristete Ausnahme:** `Atlas.IDE.CodeInsight.Composition` → Welcome, Tracker, `Contracts.BuildTools/Tests/Rules`.
+- **Bekannte Verstöße (27 Zeilen, 92 Verweise, Stand 8510d10a):** Einstellungen (`Settings.Plugin`, `Settings.Options`, `UI.Settings.Page`, `UI.Settings.QueryDialog`) → Build, Tracker, Welcome; VCS (`Vcs.Branching`, `Vcs.WorkingCopies`, `UI.Vcs.BranchDialog`) → Tracker, Welcome; `Projects.Summary` → `Ci.Contract`; `Contracts.Rules`/`Contracts.Tests` → Base (`Projects.Baseline`/`Projects.Summary`); Welcome → Tracker und Bookmarks; `Tracker.BlameLinks` → Bookmarks. Das Skript nennt sie bei jedem Lauf, schlägt nur bei neuen fehl und verlangt, dass behobene Zeilen gestrichen werden.
+- **Test:** `Tools/Test-PackageDependencies.ps1` (in `package-dependencies.yml`) baut in einer Kopie Verstöße ein und erwartet Fehlschlag mit Meldung; Modul → Base/Contracts muss bestehen.
+- **Geprüft:** Logik in der Cloud mit einem Python-Nachbau gegen den Quellbaum (0 neue, 0 veraltete Zeilen); `pwsh` ließ sich hier nicht installieren, die Skripte laufen erst in der GitHub Action. Keine Pascal-Unit geändert, darum kein `AtlasServer --check` und kein FPC-Lauf nötig.
+
 ## Modulschalter (#1454, 01.11.2026, Branch `claude/project-thread-rc7rg9` von `Pilot-2.0.0-beta.1`)
 - Erster Schritt zu 2.0.0: je Modul ein Hauptschalter im Plugin-Schema mit `x-module` (debug, issues, analysis, tests, buildTools, bookmarks, designer, ruleChecks, search; welcome = vorhandenes `welcomePage.enabled`). Mitglieder eines Moduls sind alle Einstellungen unter dem Schalter im `x-parent`-Baum; einige Schlüssel wurden dafür umgehängt.
 - `Atlas.Core.Settings.ModuleSwitches` liest die Schalter aus dem Katalog und maskiert in `TAtlasIdeSettings.Current` die Mitglieder ausgeschalteter Module (Wahrheitswerte 0, sonst `x-offValue`); gespeicherte Werte bleiben. Die Feature-Tabelle kennt Module (`Join`, `StopOffModules`) und stoppt Teile ausgeschalteter Module ohne Neustart.

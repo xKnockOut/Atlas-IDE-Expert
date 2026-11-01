@@ -16,6 +16,9 @@ jobs:
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
+      - name: "Modulgrenzen: Selbsttest mit absichtlichen Verstößen (#1455)"
+        shell: pwsh
+        run: ./Tools/Test-PackageDependencies.ps1
       - name: Keine Ausgaben auf stdout
         shell: pwsh
         run: ./Tools/Check-ConsoleOutput.ps1
