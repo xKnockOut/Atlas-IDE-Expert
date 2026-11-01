@@ -108,6 +108,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
   Atlas.UI.Strings,
+  Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -224,12 +225,12 @@ begin
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
     View := Editors.TopView;
   if (View = nil) or (View.Buffer = nil) or not SameText(ExtractFileExt(View.Buffer.FileName), '.pas') then
-    Exit(Say(TAtlasStrings.Text(TAtlasTextId.TestsNoTestAtCursor)));
+    Exit(Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor)));
   AFileName := View.Buffer.FileName;
   Result := TAtlasTestDebug.SelectAt(TDUnitXSource.Scan(TTextLines.SplitLines(TAtlasEditorBuffer.Text(View.Buffer))),
     View.CursorPos.Line - 1, ASelection) and (Length(ASelection.Names) > 0);
   if not Result then
-    Say(TAtlasStrings.Text(TAtlasTextId.TestsNoTestAtCursor));
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor));
 end;
 
 procedure TAtlasIdeTestDebugger.RunAtCursor;
@@ -253,7 +254,7 @@ var
 begin
   if not TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TestsDebugOff));
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugOff));
     Exit;
   end;
   if AtCursor(FileName, Selection) then
@@ -276,17 +277,17 @@ begin
     Exit;
   if Busy then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TestsDebugBusy));
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugBusy));
     Exit;
   end;
   if FTests.Busy then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TestsBusy));
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy));
     Exit;
   end;
   if Debugging then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TestsDebugRunning));
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugRunning));
     Exit;
   end;
   FSelection := ASelection;
@@ -317,7 +318,7 @@ begin
   Result := False;
   if not TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current) then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.TestsDebugOff);
+    AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugOff);
     Exit;
   end;
   Project := ProjectOf(AProject);
@@ -341,7 +342,7 @@ begin
     begin
       if Busy or FTests.Busy or Debugging then
       begin
-        AReason := TAtlasStrings.Text(TAtlasTextId.TestsDebugBusy);
+        AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugBusy);
         Exit;
       end;
       FSelection := Selection;
@@ -349,7 +350,7 @@ begin
       Exit(Prepare(Project, AReason));
     end;
   end;
-  AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoTestAtCursor);
+  AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor);
 end;
 
 class function TAtlasIdeTestDebugger.LocateByName(const AProject, AFullName: string; out AFileName: string;
@@ -395,13 +396,14 @@ begin
   Result := False;
   if Busy or FTests.Busy or Debugging then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.TestsDebugBusy);
+    AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugBusy);
     Exit;
   end;
   FTarget := TAtlasIdeTests.TargetOf(AProject, FSelection.Names);
   if not TAtlasTestRun.CanRun(FTarget.Platform) then
   begin
-    AReason := TAtlasStrings.Fmt(TAtlasTextId.TestsPlatform, [ProjectName(FTarget.Project), FTarget.Platform]);
+    AReason := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform,
+      [ProjectName(FTarget.Project), FTarget.Platform]);
     Exit;
   end;
   Result := True;
@@ -425,12 +427,12 @@ begin
         Exit;
       if AError <> '' then
       begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.TestsBuildRefused, [ProjectName(FTarget.Project), AError]));
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), AError]));
         Finish(False);
       end
       else if not ASucceeded then
       begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.TestsBuildFailed, [ProjectName(FTarget.Project)]));
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(FTarget.Project)]));
         Finish(False);
       end
       else
@@ -441,7 +443,7 @@ begin
           end);
     end, Reason) then
   begin
-    AReason := TAtlasStrings.Fmt(TAtlasTextId.TestsBuildRefused, [ProjectName(FTarget.Project), Reason]);
+    AReason := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), Reason]);
     FPhase := TPhase.Idle;
     FTests.Debugging := False;
     Result := False;
@@ -457,7 +459,7 @@ begin
     FTarget.Executable := AExecutable;
   if Debugging then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TestsDebugRunning));
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugRunning));
     Finish(False);
     Exit;
   end;
@@ -467,7 +469,7 @@ begin
   FXmlFile := XmlFile;
   if TAtlasTestDebug.BreakWanted(TAtlasIdeSettings.Current, FSelection) then
     SetBreakpoint;
-  Say(TAtlasStrings.Fmt(TAtlasTextId.TestsDebugStarted, [ProjectName(FTarget.Project), FSelection.Caption,
+  Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugStarted, [ProjectName(FTarget.Project), FSelection.Caption,
     FTarget.Configuration, FTarget.Platform]));
   FPhase := TPhase.Starting;
   FStartedAt := GetTickCount;
@@ -477,7 +479,7 @@ begin
       Result := TAtlasTestDebug.Parameters(AExisting, Names, XmlFile);
     end, True, Reason) then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestsDebugFailed, [ProjectName(FTarget.Project), Reason]));
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugFailed, [ProjectName(FTarget.Project), Reason]));
     // RunTemporary hat die Parameter schon zurückgestellt, das aktive Projekt aber vielleicht gewechselt.
     RestoreActiveProject;
     FPhase := TPhase.Building;
@@ -508,7 +510,7 @@ begin
   try
     FBreakpoint := Services.NewSourceBreakpoint(FUnitFile, Line, nil);
     if FBreakpoint <> nil then
-      Say(TAtlasStrings.Fmt(TAtlasTextId.TestsDebugBreak, [Line]));
+      Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugBreak, [Line]));
   except
     on Exception do
       FBreakpoint := nil;
@@ -590,12 +592,12 @@ begin
   if FPhase in [TPhase.Starting, TPhase.Running] then
   begin
     if TAtlasIdeStartOptions.EndTemporary(Project, Changed) and Changed then
-      Say(TAtlasStrings.Fmt(TAtlasTextId.TestsDebugKeptParameters, [ProjectName(Project)]));
+      Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugKeptParameters, [ProjectName(Project)]));
     RestoreActiveProject;
     if AStarted then
-      Say(TAtlasStrings.Fmt(TAtlasTextId.TestsDebugFinished, [ProjectName(Project)]))
+      Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugFinished, [ProjectName(Project)]))
     else
-      Say(TAtlasStrings.Fmt(TAtlasTextId.TestsDebugNoProcess, [ProjectName(Project)]));
+      Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugNoProcess, [ProjectName(Project)]));
   end;
   FPhase := TPhase.Idle;
   FTests.Debugging := False;

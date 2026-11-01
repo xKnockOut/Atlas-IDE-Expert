@@ -156,13 +156,15 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings;
 
 {$R *.dfm}
 
 const
-  ViewTexts: array[TAtlasEvalView] of TAtlasTextId = (TAtlasTextId.DebugEvaluateViewText,
-    TAtlasTextId.DebugEvaluateViewLines, TAtlasTextId.DebugEvaluateViewJson, TAtlasTextId.DebugEvaluateViewHex);
+  ViewTexts: array[TAtlasEvalView] of TAtlasDebugTextId = (TAtlasDebugTextId.DebugEvaluateViewText,
+    TAtlasDebugTextId.DebugEvaluateViewLines, TAtlasDebugTextId.DebugEvaluateViewJson,
+      TAtlasDebugTextId.DebugEvaluateViewHex);
 
 { TAtlasDebugEvaluateFrame }
 
@@ -189,7 +191,7 @@ begin
   FSideEffects.Align := alRight;
   FSideEffects.AlignWithMargins := True;
   FSideEffects.Width := MulDiv(170, CurrentPPI, 96);
-  FSideEffects.Caption := TAtlasStrings.Text(TAtlasTextId.DebugEvaluateSideEffects);
+  FSideEffects.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateSideEffects);
   FSideEffects.Checked := False;
   FSideEffects.OnClick := SideEffectsClick;
 
@@ -197,7 +199,7 @@ begin
   FInput.Parent := FTop;
   FInput.Align := alClient;
   FInput.AlignWithMargins := True;
-  FInput.TextHint := TAtlasStrings.Text(TAtlasTextId.DebugEvaluateInputHint);
+  FInput.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateInputHint);
   FInput.OnKeyDown := InputKeyDown;
 
   FHistoryMenu := TPopupMenu.Create(Self);
@@ -209,7 +211,7 @@ begin
   FKeys.ShowAccelChar := False;
   FKeys.WordWrap := True;
   FKeys.Font.Color := clGrayText;
-  FKeys.Caption := TAtlasStrings.Text(TAtlasTextId.DebugEvaluateKeys);
+  FKeys.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateKeys);
 
   FBottom := TPanel.Create(Self);
   FBottom.Parent := Self;
@@ -228,9 +230,9 @@ begin
   FBar.Height := MulDiv(28, CurrentPPI, 96);
 
   // Von rechts: IDE-Dialog, Festheften, Ändern; links die Ansichten.
-  FIdeDialog := AddButton(FBar, TAtlasStrings.Text(TAtlasTextId.DebugEvaluateIdeDialog), IdeDialogClick);
-  FPin := AddButton(FBar, TAtlasStrings.Text(TAtlasTextId.DebugEvaluatePin), PinClick);
-  FModify := AddButton(FBar, TAtlasStrings.Text(TAtlasTextId.DebugEvaluateModify), ModifyClick);
+  FIdeDialog := AddButton(FBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialog), IdeDialogClick);
+  FPin := AddButton(FBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePin), PinClick);
+  FModify := AddButton(FBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateModify), ModifyClick);
   for Kind := High(TAtlasEvalView) downto Low(TAtlasEvalView) do
   begin
     Button := TSpeedButton.Create(Self);
@@ -240,7 +242,7 @@ begin
     Button.Width := MulDiv(54, CurrentPPI, 96);
     Button.GroupIndex := 1;
     Button.AllowAllUp := False;
-    Button.Caption := TAtlasStrings.Text(ViewTexts[Kind]);
+    Button.Caption := TAtlasDebugStrings.Text(ViewTexts[Kind]);
     Button.Tag := Ord(Kind);
     Button.Down := Kind = FView;
     Button.OnClick := ViewClick;
@@ -378,11 +380,11 @@ begin
     for Index := 0 to ANode.ChildCount - 1 do
       AddTreeNodes(Item, ANode.Children[Index]);
     if ANode.ChildCount = 0 then
-      FTree.Items.AddChildObject(Item, TAtlasStrings.Text(TAtlasTextId.DebugEvaluateNoFields), nil);
+      FTree.Items.AddChildObject(Item, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoFields), nil);
   end
   else if ANode.CanExpand then
     // Platzhalter für das Aufklappzeichen; die Felder holt OnExpand.
-    FTree.Items.AddChildObject(Item, TAtlasStrings.Text(TAtlasTextId.DebugEvaluatePending), nil);
+    FTree.Items.AddChildObject(Item, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending), nil);
   if ANode.Expanded and ANode.ChildrenLoaded then
     Item.Expand(False);
 end;
@@ -474,9 +476,9 @@ begin
       if ANode.Value <> '' then
         Value := ANode.Value
       else
-        Value := TAtlasStrings.Text(TAtlasTextId.DebugEvaluatePending);
+        Value := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending);
     TAtlasEvalState.Unavailable:
-      Value := TAtlasStrings.Text(TAtlasTextId.DebugEvaluateNotStopped);
+      Value := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNotStopped);
   else
     Value := ANode.Value;
   end;
@@ -494,12 +496,12 @@ var
 begin
   AUnfit := False;
   if ANode = nil then
-    Exit(TAtlasStrings.Text(TAtlasTextId.DebugEvaluateNoSelection));
+    Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoSelection));
   case ANode.State of
     TAtlasEvalState.Pending:
-      Exit(TAtlasStrings.Text(TAtlasTextId.DebugEvaluatePending));
+      Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending));
     TAtlasEvalState.Unavailable:
-      Exit(TAtlasStrings.Text(TAtlasTextId.DebugEvaluateNotStopped));
+      Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNotStopped));
     TAtlasEvalState.Error:
       Exit(ANode.Value);
     TAtlasEvalState.Value: ;
@@ -512,7 +514,7 @@ begin
       AUnfit := True;
       TAtlasEvalText.Render(ANode.Value, TAtlasEvalView.Text, Result);
       if ALines <> '' then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.DebugEvaluateLinesFailed,
+        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateLinesFailed,
           [TAtlasEvalText.FieldExpression(ANode.Expression, 'Text'), ALines]) + sLineBreak + sLineBreak + Result;
       Exit;
     end;
@@ -544,14 +546,14 @@ begin
       FLinesKey := Node.Key;
       FLinesOk := False;
       FLinesText := '';
-      FDetail.Text := TAtlasStrings.Text(TAtlasTextId.DebugEvaluatePending);
+      FDetail.Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending);
       FOnLines(Node);
       Exit;
     end;
   end;
   Text := DetailText(Node, FView, Ok, Lines, Unfit);
   if Unfit and (FView <> TAtlasEvalView.Lines) then
-    Text := TAtlasStrings.Text(TAtlasTextId.DebugEvaluateViewUnfit) + sLineBreak + sLineBreak + Text;
+    Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateViewUnfit) + sLineBreak + sLineBreak + Text;
   if FDetail.Text <> Text then
     FDetail.Text := Text;
 end;
@@ -579,9 +581,9 @@ begin
     Assigned(FOnModify);
   FPin.Enabled := (Node <> nil) and (Node.Expression <> '');
   if (Node <> nil) and (Node.Parent = nil) and Node.Pinned then
-    FPin.Caption := TAtlasStrings.Text(TAtlasTextId.DebugEvaluateUnpin)
+    FPin.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateUnpin)
   else
-    FPin.Caption := TAtlasStrings.Text(TAtlasTextId.DebugEvaluatePin);
+    FPin.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePin);
   FIdeDialog.Enabled := Assigned(FOnIdeDialog);
 end;
 
@@ -641,7 +643,7 @@ begin
   if FHistoryMenu.Items.Count = 0 then
   begin
     MenuItem := TMenuItem.Create(FHistoryMenu);
-    MenuItem.Caption := TAtlasStrings.Text(TAtlasTextId.DebugEvaluateHistoryEmpty);
+    MenuItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateHistoryEmpty);
     MenuItem.Enabled := False;
     FHistoryMenu.Items.Add(MenuItem);
   end;

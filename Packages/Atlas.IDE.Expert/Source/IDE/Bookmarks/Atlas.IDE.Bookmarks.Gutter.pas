@@ -47,7 +47,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Editor.LineAnchor,
-  Atlas.UI.Strings,
+  Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Foundation.Settings;
 
@@ -126,9 +126,9 @@ begin
   if Length(ABookmarks) = 0 then
     Exit;
   if Length(ABookmarks) = 1 then
-    ATitle := TAtlasStrings.Text(TAtlasTextId.BookmarksTipTitle)
+    ATitle := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksTipTitle)
   else
-    ATitle := TAtlasStrings.Fmt(TAtlasTextId.BookmarksTipMore, [Length(ABookmarks)]);
+    ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksTipMore, [Length(ABookmarks)]);
   for Mark in ABookmarks do
   begin
     if AText <> '' then

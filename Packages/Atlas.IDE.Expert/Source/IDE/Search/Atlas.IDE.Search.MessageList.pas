@@ -35,13 +35,13 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.UI.Strings;
+  Atlas.UI.Search.Strings;
 
 function Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMessageGroup;
 var
   Name: string;
 begin
-  Name := TAtlasStrings.Text(TAtlasTextId.SearchGroup);
+  Name := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
   Result := AMessages.GetGroup(Name);
   if (Result = nil) and ACreate then
     Result := AMessages.AddMessageGroup(Name);
@@ -63,11 +63,12 @@ begin
     Exit;
   Messages.ClearMessageGroup(Target);
   Messages.AddTitleMessage(ATitle, Target);
-  Prefix := TAtlasStrings.Text(TAtlasTextId.SearchGroup);
+  Prefix := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
   for Entry in AEntries do
     Messages.AddToolMessage(AFileName, Entry.Text, Prefix, Entry.Line, Entry.Column, nil, LineRef, Target);
   if ATotal > Length(AEntries) then
-    Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.SearchListMore, [ATotal - Length(AEntries)]), Target);
+    Messages.AddTitleMessage(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchListMore, [ATotal - Length(AEntries)]),
+      Target);
   Messages.ShowMessageView(Target);
 end;
 
@@ -99,7 +100,7 @@ begin
   Target := Group(Messages, True);
   if Target = nil then
     Exit;
-  Prefix := TAtlasStrings.Text(TAtlasTextId.SearchGroup);
+  Prefix := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
   for Entry in AEntries do
     Messages.AddToolMessage(AFileName, Entry.Text, Prefix, Entry.Line, Entry.Column, nil, LineRef, Target);
 end;

@@ -174,7 +174,7 @@ uses
   System.Types,
   System.Math,
   Vcl.Clipbrd,
-  Atlas.UI.Strings;
+  Atlas.UI.Search.Strings;
 
 {$R *.dfm}
 
@@ -209,15 +209,15 @@ begin
   FSaved.AlignWithMargins := True;
   FSaved.Style := csDropDownList;
   FSaved.Width := 220;
-  FSaved.Hint := TAtlasStrings.Text(TAtlasTextId.QuerySavedHint);
+  FSaved.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySavedHint);
   FSaved.ShowHint := True;
   FSaved.OnChange := SavedChange;
 
-  FRun := NewButton(TAtlasStrings.Text(TAtlasTextId.QueryRun), 90, RunClick);
-  FCancel := NewButton(TAtlasStrings.Text(TAtlasTextId.QueryCancel), 90, CancelClick);
-  FSaveRule := NewButton(TAtlasStrings.Text(TAtlasTextId.QuerySaveRule), 140, SaveRuleClick);
-  FCopyCsv := NewButton(TAtlasStrings.Text(TAtlasTextId.QueryCopyCsv), 120, CopyCsvClick);
-  FHelpButton := NewButton(TAtlasStrings.Text(TAtlasTextId.QueryHelp), 70, HelpClick);
+  FRun := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRun), 90, RunClick);
+  FCancel := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancel), 90, CancelClick);
+  FSaveRule := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySaveRule), 140, SaveRuleClick);
+  FCopyCsv := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCopyCsv), 120, CopyCsvClick);
+  FHelpButton := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryHelp), 70, HelpClick);
 
   FInputBar := TPanel.Create(Self);
   FInputBar.Parent := Self;
@@ -232,7 +232,7 @@ begin
   FInput.Parent := FInputBar;
   FInput.Align := alTop;
   FInput.AlignWithMargins := True;
-  FInput.TextHint := TAtlasStrings.Text(TAtlasTextId.QueryInputHint);
+  FInput.TextHint := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryInputHint);
   FInput.OnChange := InputChange;
   FInput.OnKeyDown := InputKeyDown;
   FInput.OnKeyPress := InputKeyPress;
@@ -334,7 +334,7 @@ begin
     try
       FSaved.Items.Clear;
       // Erster Eintrag: Hinweis statt Wahl (eine Klappliste zeigt keinen TextHint).
-      FSaved.Items.Add(TAtlasStrings.Text(TAtlasTextId.QuerySavedHint));
+      FSaved.Items.Add(TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySavedHint));
       for mSaved in FCatalog.Saved do
         if mSaved.Description <> '' then
           FSaved.Items.Add(mSaved.Name + ' – ' + mSaved.Description)
@@ -372,7 +372,7 @@ begin
         mColumn.Width := MulDiv(90, CurrentPPI, 96);
     end;
     mColumn := FList.Columns.Add;
-    mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.QueryColumnFile);
+    mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryColumnFile);
     mColumn.Width := MulDiv(320, CurrentPPI, 96);
   finally
     FList.Columns.EndUpdate;
@@ -411,11 +411,11 @@ var
 begin
   Text := TStringBuilder.Create;
   try
-    Text.Append(TAtlasStrings.Text(TAtlasTextId.QueryHelpIntro));
+    Text.Append(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryHelpIntro));
     // Mengen und Felder aus dem Katalog des Servers: stimmt immer mit der Sprache überein.
     if FCatalog.Entities <> nil then
     begin
-      Text.Append(sLineBreak).Append(sLineBreak).Append(TAtlasStrings.Text(TAtlasTextId.QueryHelpEntities));
+      Text.Append(sLineBreak).Append(sLineBreak).Append(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryHelpEntities));
       for Entity in FCatalog.Entities do
       begin
         Names := nil;
@@ -474,7 +474,7 @@ procedure TAtlasCodeQueryFrame.SetRunning(ARunning: Boolean);
 begin
   FRunning := ARunning;
   if ARunning then
-    FMessageText := TAtlasStrings.Text(TAtlasTextId.QueryRunning);
+    FMessageText := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRunning);
   UpdateButtons;
   UpdateStatus;
 end;
@@ -514,16 +514,16 @@ begin
   else if not FHasAnswer or FAnswer.Failed then
     mText := ''
   else if Length(FAnswer.Rows) = 0 then
-    mText := TAtlasStrings.Text(TAtlasTextId.QueryEmpty)
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryEmpty)
   else
   begin
     if FAnswer.Truncated then
-      mText := TAtlasStrings.Fmt(TAtlasTextId.QueryStatusTruncated, [Length(FAnswer.Rows), FAnswer.Total,
+      mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatusTruncated, [Length(FAnswer.Rows), FAnswer.Total,
         FAnswer.ElapsedMs])
     else
-      mText := TAtlasStrings.Fmt(TAtlasTextId.QueryStatus, [FAnswer.Total, FAnswer.ElapsedMs]);
+      mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatus, [FAnswer.Total, FAnswer.ElapsedMs]);
     if FAnswer.InferredCount > 0 then
-      mText := mText + TAtlasStrings.Fmt(TAtlasTextId.QueryStatusInferred, [FAnswer.InferredCount]);
+      mText := mText + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatusInferred, [FAnswer.InferredCount]);
   end;
   FStatus.Caption := mText;
 end;
@@ -539,11 +539,11 @@ begin
     Exit;
   end;
   if FAnswer.ErrorColumn > 0 then
-    mText := TAtlasStrings.Fmt(TAtlasTextId.QueryError, [FAnswer.ErrorColumn, FAnswer.Error])
+    mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryError, [FAnswer.ErrorColumn, FAnswer.Error])
   else
     mText := FAnswer.Error;
   if FAnswer.Suggestion <> '' then
-    mText := mText + ' ' + TAtlasStrings.Fmt(TAtlasTextId.QuerySuggestion, [FAnswer.Suggestion]);
+    mText := mText + ' ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QuerySuggestion, [FAnswer.Suggestion]);
   FError.Caption := mText;
   FError.Visible := True;
   // Schreibmarke an die Fehlerstelle, damit man gleich verbessern kann.
@@ -711,7 +711,7 @@ begin
   if ARow.Line > 0 then
     Result := Result + ':' + IntToStr(ARow.Line);
   if ARow.Inferred then
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.QueryInferred);
+    Result := Result + ' · ' + TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryInferred);
 end;
 
 function TAtlasCodeQueryFrame.RowText: TArray<string>;
@@ -776,7 +776,7 @@ begin
   if not FHasAnswer or (Length(FAnswer.Rows) = 0) then
     Exit;
   Clipboard.AsText := FAnswer.Csv;
-  FMessageText := TAtlasStrings.Fmt(TAtlasTextId.QueryCopied, [Length(FAnswer.Rows)]);
+  FMessageText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryCopied, [Length(FAnswer.Rows)]);
   UpdateStatus;
   if Assigned(FOnCopied) then
     FOnCopied(Length(FAnswer.Rows));

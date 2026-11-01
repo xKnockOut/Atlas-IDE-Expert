@@ -28,6 +28,30 @@ type
     /// <summary>Abnahme #530: ein Hinweis H2164 zeigt „1 Hinweis“ in der Zusammenfassung.</summary>
     [Test]
     procedure BuildCountsSingularAndPlural;
+    /// <summary>Texte des Moduls Prüfregeln (#1455): beide Sprachen, gleiche Platzhalter.</summary>
+    [Test]
+    procedure RulesTextsInBothLanguages;
+    /// <summary>Texte des Moduls Formulardesigner (#1455): beide Sprachen, gleiche Platzhalter.</summary>
+    [Test]
+    procedure DesignerTextsInBothLanguages;
+    /// <summary>Texte des Moduls Debugger (#1455): beide Sprachen, gleiche Platzhalter.</summary>
+    [Test]
+    procedure DebugTextsInBothLanguages;
+    /// <summary>Texte des Moduls Analyse (#1455): beide Sprachen, gleiche Platzhalter.</summary>
+    [Test]
+    procedure AnalysisTextsInBothLanguages;
+    /// <summary>Texte des Moduls Lesezeichen und Notizen (#1455): beide Sprachen, gleiche Platzhalter.</summary>
+    [Test]
+    procedure BookmarksTextsInBothLanguages;
+    /// <summary>Texte des Moduls Build-Werkzeuge (#1455): beide Sprachen, gleiche Platzhalter.</summary>
+    [Test]
+    procedure BuildTextsInBothLanguages;
+    /// <summary>Texte des Moduls Suche (#1455): beide Sprachen, gleiche Platzhalter.</summary>
+    [Test]
+    procedure SearchTextsInBothLanguages;
+    /// <summary>Texte des Moduls Tests (#1455): beide Sprachen, gleiche Platzhalter.</summary>
+    [Test]
+    procedure TestsTextsInBothLanguages;
   end;
 
 implementation
@@ -37,7 +61,15 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
+  Atlas.UI.Bookmarks.Strings,
+  Atlas.UI.Build.Strings,
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Designer.Strings,
+  Atlas.UI.Rules.Strings,
+  Atlas.UI.Search.Strings,
+  Atlas.UI.Tests.Strings;
 
 function Placeholders(const AText: string): string;
 var
@@ -48,6 +80,172 @@ begin
   for Index := 1 to Length(AText) - 1 do
     if AText[Index] = '%' then
       Result := Result + AText[Index + 1];
+end;
+
+procedure CheckPair(const AGerman, AEnglish: string; AIndex: Integer);
+begin
+  Assert.IsTrue((AGerman <> '') and (AEnglish <> ''), AIndex.ToString);
+  Assert.AreEqual(Placeholders(AGerman), Placeholders(AEnglish), AGerman + ' / ' + AEnglish);
+end;
+
+procedure TAtlasStringsTests.RulesTextsInBothLanguages;
+var
+  mId: TAtlasRulesTextId;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mId := Low(TAtlasRulesTextId) to High(TAtlasRulesTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasRulesStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      CheckPair(mGerman, TAtlasRulesStrings.Text(mId), Ord(mId));
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasStringsTests.DesignerTextsInBothLanguages;
+var
+  mId: TAtlasDesignerTextId;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mId := Low(TAtlasDesignerTextId) to High(TAtlasDesignerTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasDesignerStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      CheckPair(mGerman, TAtlasDesignerStrings.Text(mId), Ord(mId));
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasStringsTests.DebugTextsInBothLanguages;
+var
+  mId: TAtlasDebugTextId;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mId := Low(TAtlasDebugTextId) to High(TAtlasDebugTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasDebugStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      CheckPair(mGerman, TAtlasDebugStrings.Text(mId), Ord(mId));
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasStringsTests.AnalysisTextsInBothLanguages;
+var
+  mId: TAtlasAnalysisTextId;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mId := Low(TAtlasAnalysisTextId) to High(TAtlasAnalysisTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasAnalysisStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      CheckPair(mGerman, TAtlasAnalysisStrings.Text(mId), Ord(mId));
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasStringsTests.BookmarksTextsInBothLanguages;
+var
+  mId: TAtlasBookmarksTextId;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mId := Low(TAtlasBookmarksTextId) to High(TAtlasBookmarksTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasBookmarksStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      CheckPair(mGerman, TAtlasBookmarksStrings.Text(mId), Ord(mId));
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasStringsTests.BuildTextsInBothLanguages;
+var
+  mId: TAtlasBuildTextId;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mId := Low(TAtlasBuildTextId) to High(TAtlasBuildTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasBuildStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      CheckPair(mGerman, TAtlasBuildStrings.Text(mId), Ord(mId));
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasStringsTests.SearchTextsInBothLanguages;
+var
+  mId: TAtlasSearchTextId;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mId := Low(TAtlasSearchTextId) to High(TAtlasSearchTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasSearchStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      CheckPair(mGerman, TAtlasSearchStrings.Text(mId), Ord(mId));
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasStringsTests.TestsTextsInBothLanguages;
+var
+  mId: TAtlasTestsTextId;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mId := Low(TAtlasTestsTextId) to High(TAtlasTestsTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasTestsStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      CheckPair(mGerman, TAtlasTestsStrings.Text(mId), Ord(mId));
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
 end;
 
 procedure TAtlasStringsTests.EveryTextExistsInBothLanguagesWithSamePlaceholders;

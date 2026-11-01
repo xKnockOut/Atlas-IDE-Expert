@@ -10,7 +10,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings;
 
 type
   [TestFixture]
@@ -139,7 +140,7 @@ begin
     TAtlasDebugStepFilterFrame.SessionText(True, 0, '', ''));
   Assert.AreEqual('In dieser Debug-Sitzung übersprungen: 3 · zuletzt Kunden.TKunde.GetName (Muster *.Get*)',
     TAtlasDebugStepFilterFrame.SessionText(True, 3, 'Kunden.TKunde.GetName', 'Muster *.Get*'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.StepFilterInactive),
+  Assert.AreEqual(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterInactive),
     TAtlasDebugStepFilterFrame.SessionText(False, 3, 'Kunden.TKunde.GetName', 'Muster *.Get*'));
   mCounts.Patterns := nil;
 end;

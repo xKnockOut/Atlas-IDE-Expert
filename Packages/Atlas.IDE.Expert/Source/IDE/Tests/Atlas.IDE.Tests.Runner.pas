@@ -160,6 +160,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.TextFile,
   Atlas.UI.Strings,
+  Atlas.UI.Tests.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -323,7 +324,7 @@ begin
   end;
   if Length(Found) = 0 then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TestsNoProject));
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
     Exit;
   end;
   Choose(Found, AThen);
@@ -366,7 +367,7 @@ begin
   Keep := FAliveRef;
   Window := TAtlasPaletteWindow.CreatePalette(Application, Commands, nil, TAtlasIdeStyle.Colors);
   Window.KeepOrder := True;
-  Window.Prompt := TAtlasStrings.Text(TAtlasTextId.TestsChooseProject);
+  Window.Prompt := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChooseProject);
   Window.OnExecute :=
     procedure(ACommand: TAtlasCommand)
     var
@@ -385,7 +386,7 @@ begin
           Project := ProjectByFile(Files[Chosen]);
           if Project = nil then
           begin
-            Say(TAtlasStrings.Text(TAtlasTextId.TestsNoProject));
+            Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
             Exit;
           end;
           // Gesperrt gelesene Datei nicht mit dieser einen Wahl überschreiben (Bericht N3).
@@ -393,10 +394,10 @@ begin
           begin
             TAtlasTestProjectChoices.Remember(Stored, Files, Project.FileName);
             if not TAtlasTestProjectChoices.Save(ChoiceFile, Stored) then
-              Say(TAtlasStrings.Text(TAtlasTextId.TestsChoiceSaveFailed));
+              Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
           end
           else
-            Say(TAtlasStrings.Text(TAtlasTextId.TestsChoiceSaveFailed));
+            Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
           AThen(Project);
         end);
     end;
@@ -454,7 +455,7 @@ begin
         Tests := FOnLastFailed(AProject.FileName);
       if Length(Tests) = 0 then
       begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.TestsNoFailed, [ProjectName(AProject.FileName)]));
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoFailed, [ProjectName(AProject.FileName)]));
         Exit;
       end;
       Start(AProject, Tests, TAtlasIdeSettings.Current.TestsBuildFirst);
@@ -488,7 +489,7 @@ begin
   end;
   if Busy then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.TestsBusy);
+    AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy);
     Exit;
   end;
   Project := ProjectByFile(AProject);
@@ -571,13 +572,13 @@ var
 begin
   if Busy then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TestsBusy));
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy));
     Exit;
   end;
   Target := TargetOf(AProject, ATests);
   if not TAtlasTestRun.CanRun(Target.Platform) then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestsPlatform, [ProjectName(Target.Project), Target.Platform]));
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform, [ProjectName(Target.Project), Target.Platform]));
     Exit;
   end;
   if not ABuildFirst or not Assigned(FOnBuild) then
@@ -598,9 +599,9 @@ begin
       FBusy := False;
       Inc(FVersion);
       if AError <> '' then
-        Say(TAtlasStrings.Fmt(TAtlasTextId.TestsBuildRefused, [ProjectName(Target.Project), AError]))
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(Target.Project), AError]))
       else if not ASucceeded then
-        Say(TAtlasStrings.Fmt(TAtlasTextId.TestsBuildFailed, [ProjectName(Target.Project)]))
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(Target.Project)]))
       else
       begin
         if AOutputFile <> '' then
@@ -611,7 +612,7 @@ begin
   begin
     FBusy := False;
     Inc(FVersion);
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestsBuildRefused, [ProjectName(Target.Project), Reason]));
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(Target.Project), Reason]));
   end;
 end;
 
@@ -624,7 +625,7 @@ var
 begin
   if (ATarget.Executable = '') or not FileExists(ATarget.Executable) then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestsNoExe, [ProjectName(ATarget.Project), ATarget.Executable]));
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoExe, [ProjectName(ATarget.Project), ATarget.Executable]));
     Exit;
   end;
   Target := ATarget;
@@ -633,7 +634,7 @@ begin
   Keep := FAliveRef;
   FBusy := True;
   Inc(FVersion);
-  Say(TAtlasStrings.Fmt(TAtlasTextId.TestsStarted, [ProjectName(Target.Project), Target.Configuration,
+  Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsStarted, [ProjectName(Target.Project), Target.Configuration,
     Target.Platform]));
   // Ein Thread je Lauf; der vorige ist fertig (FBusy), sein Objekt wird hier frei.
   FreeAndNil(FThread);
@@ -731,14 +732,14 @@ begin
     Exit;
   if AOutcome = TAtlasVcsOutcome.TimedOut then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestsTimedOut, [ProjectName(ATarget.Project),
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
       TAtlasTestRun.TimeoutMs div 1000]));
     Exit;
   end;
   Run := TTestResults.Parse(AXml);
   if (AOutcome <> TAtlasVcsOutcome.Ok) or not Run.Valid then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
     for Line in AOutput do
       Say('  ' + Line);
     Exit;
@@ -758,15 +759,15 @@ begin
       function(const AUnitName: string): string
       begin
         Result := UnitFileOf(ProjectFile, AUnitName);
-      end, ReadLines), TAtlasStrings.Text(TAtlasTextId.TestsProblem),
-      TAtlasStrings.Text(TAtlasTextId.TestsProblemValues)));
+      end, ReadLines), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
+      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues)));
   FLastFailed.AddOrSetValue(AnsiLowerCase(ATarget.Project), TAtlasTestRun.SummaryOf(ATarget, Run, Failures,
     0).FailedTests);
   // Meldungsansicht: Zusammenfassung, dann je Fehlschlag eine Zeile, die zur Testmethode springt.
   if Run.Total = 0 then
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestsNoTests, [ProjectName(ATarget.Project)]))
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoTests, [ProjectName(ATarget.Project)]))
   else
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestsFinished, [ProjectName(ATarget.Project),
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsFinished, [ProjectName(ATarget.Project),
       Run.Count(TTestOutcome.Passed), Run.Count(TTestOutcome.Failed), Run.Count(TTestOutcome.Error),
       Run.Count(TTestOutcome.Skipped), SecondsText(Run.DurationMs)]));
   if (Length(Failures) > 0) and Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
@@ -777,11 +778,13 @@ begin
     for Failure in Failures do
       if Failure.FileName <> '' then
         Messages.AddToolMessage(Failure.FileName, TAtlasTestRun.ProblemText(Failure.Test,
-          TAtlasStrings.Text(TAtlasTextId.TestsProblem), TAtlasStrings.Text(TAtlasTextId.TestsProblemValues)),
+          TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
+            TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues)),
           'DUnitX', Failure.Line + 1, Failure.StartCharacter + 1, nil, LineRef, Group)
       else
         Messages.AddTitleMessage('  ' + TAtlasTestRun.ProblemText(Failure.Test,
-          TAtlasStrings.Text(TAtlasTextId.TestsProblem), TAtlasStrings.Text(TAtlasTextId.TestsProblemValues)),
+          TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
+            TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues)),
           Group);
   end;
   if Assigned(FOnFinished) then

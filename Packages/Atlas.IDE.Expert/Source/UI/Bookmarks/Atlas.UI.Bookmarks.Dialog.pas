@@ -42,7 +42,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Bookmarks.Strings;
 
 const
   Gap = 8;
@@ -69,7 +69,7 @@ begin
   FPrompt.AlignWithMargins := True;
   FPrompt.Margins.SetBounds(Gap, Gap, Gap, Gap div 2);
   FPrompt.ShowAccelChar := False;
-  FPrompt.Caption := TAtlasStrings.Text(TAtlasTextId.BookmarksDialogPrompt);
+  FPrompt.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogPrompt);
 
   FEdit := TEdit.Create(Self);
   FEdit.Parent := Self;
@@ -87,10 +87,10 @@ begin
   Bottom.Height := ScaleValue(44);
   Bottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Setzen“.
-  FCancel := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.BookmarksDialogCancel), CancelClick);
+  FCancel := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogCancel), CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FOk := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.BookmarksDialogOk), OkClick);
+  FOk := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
 

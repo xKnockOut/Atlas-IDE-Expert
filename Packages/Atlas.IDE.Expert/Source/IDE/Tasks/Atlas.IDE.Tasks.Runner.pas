@@ -249,6 +249,7 @@ uses
   Atlas.Core.Tasks.Reports,
   Atlas.Text.Lines,
   Atlas.UI.Strings,
+  Atlas.UI.Build.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Tasks.Texts,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -698,7 +699,7 @@ begin
   Shown := string.Join(#10, Issues);
   if (Shown <> '') and (Shown <> FIssuesShown) then
     for Issue in Issues do
-      Say(TAtlasStrings.Fmt(TAtlasTextId.TasksIssue, [ExtractFileName(Project), Issue]), False);
+      Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksIssue, [ExtractFileName(Project), Issue]), False);
   FIssuesShown := Shown;
   Rebuild;
 end;
@@ -781,9 +782,9 @@ begin
     if Task.Key <> 0 then
     begin
       Binding := TAtlasIdeKeyBinding.Create('Atlas.Task' + IntToStr(Index),
-        TAtlasStrings.Fmt(TAtlasTextId.TasksKeyWhat, [Task.Name]), TAtlasFeature.Tasks, KeyAction(Task.Name));
+        TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksKeyWhat, [Task.Name]), TAtlasFeature.Tasks, KeyAction(Task.Name));
       FKeys.Add(Binding);
-      Binding.Rebind(Task.Key, False, TAtlasStrings.Fmt(TAtlasTextId.TasksKeyWhat, [Task.Name]));
+      Binding.Rebind(Task.Key, False, TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksKeyWhat, [Task.Name]));
     end;
     Line := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, StatusId(Task.Name), StatusOrder + Index,
       StatusAction(Task.Name));
@@ -806,7 +807,7 @@ var
   Has: Boolean;
 begin
   if IsRunning(AProject, AName) then
-    Exit(TAtlasStrings.Text(TAtlasTextId.TasksRunningShort));
+    Exit(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksRunningShort));
   Has := FHistory.LastRun(AProject, AName, Last);
   Result := TAtlasTaskTexts.LastResult(Last, Has);
 end;
@@ -986,14 +987,14 @@ begin
   Index := TAtlasTasks.IndexOf(Tasks, AName);
   if Index < 0 then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.TasksNone);
+    AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNone);
     Exit;
   end;
   if TAtlasIdeSettings.Current.TasksSaveBeforeRun then
     SaveModified;
   Result := Start(AProject, Tasks[Index], 0, TAtlasTaskBeforeBuild.Off, True);
   if not Result then
-    AReason := TAtlasStrings.Fmt(TAtlasTextId.TasksAlreadyRunning, [AName]);
+    AReason := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksAlreadyRunning, [AName]);
 end;
 
 function TAtlasIdeTasks.RunByName(const AName: string; out AReason: string): Boolean;
@@ -1008,7 +1009,7 @@ var
 begin
   if FLastName = '' then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TasksNoLast), True);
+    Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNoLast), True);
     Exit;
   end;
   if not RunInProject(FLastProject, FLastName, Reason) and (Reason <> '') then
@@ -1026,7 +1027,7 @@ begin
   Checks := TAtlasTasks.OfGroup(Definitions, TAtlasTaskGroup.Check);
   if Length(Checks) = 0 then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TasksNoChecks), True);
+    Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNoChecks), True);
     Exit;
   end;
   if TAtlasIdeSettings.Current.TasksSaveBeforeRun then
@@ -1115,7 +1116,7 @@ begin
   Rebuild := FOnRebuild;
   if not Assigned(Rebuild) then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TasksGateRebuild, [ExtractFileName(Project.FileName)]), True);
+    Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGateRebuild, [ExtractFileName(Project.FileName)]), True);
     Exit;
   end;
   Alive := FAlive;
@@ -1125,9 +1126,9 @@ begin
     begin
       if (Keep = nil) or not Alive.Alive then
         Exit;
-      Say(TAtlasStrings.Fmt(TAtlasTextId.TasksGatePassed, [ExtractFileName(Project.FileName)]), False);
+      Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGatePassed, [ExtractFileName(Project.FileName)]), False);
       if not Rebuild(Project, Reason) then
-        Say(TAtlasStrings.Fmt(TAtlasTextId.TasksGateRebuild, [Reason]), True);
+        Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGateRebuild, [Reason]), True);
     end);
 end;
 
@@ -1268,13 +1269,13 @@ begin
       begin
         if TAtlasIdeSettings.Current.TasksSaveBeforeRun then
           SaveModified;
-        AReason := TAtlasStrings.Fmt(TAtlasTextId.TasksGateRunning, [Names]);
+        AReason := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGateRunning, [Names]);
         Result := True;
         StartBatch(AProject.FileName, Tasks, Modes, True);
       end;
     TAtlasTaskPreBuildAction.Busy:
       begin
-        AReason := TAtlasStrings.Text(TAtlasTextId.TasksGateBusy);
+        AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGateBusy);
         Result := True;
       end;
   end;
@@ -1302,9 +1303,9 @@ begin
   if FPreBuild.Running then
     FPreBuild.Abandon;
   if Count = 0 then
-    Say(TAtlasStrings.Text(TAtlasTextId.TasksNothingRunning), True)
+    Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNothingRunning), True)
   else
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TasksCancelledAll, [Count]), False);
+    Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksCancelledAll, [Count]), False);
 end;
 
 procedure TAtlasIdeTasks.ToggleOutput;
@@ -1316,9 +1317,9 @@ begin
   TAtlasIdeSettings.Update(Settings);
   FOutput.OnlyFindings := Settings.TasksOnlyFindings;
   if FOutput.OnlyFindings then
-    Say(TAtlasStrings.Text(TAtlasTextId.TasksOutputOnlyFindings), False)
+    Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksOutputOnlyFindings), False)
   else
-    Say(TAtlasStrings.Text(TAtlasTextId.TasksOutputAll), False);
+    Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksOutputAll), False);
 end;
 
 function PaletteArea: TRect;
@@ -1346,7 +1347,7 @@ begin
   Tasks := Definitions;
   if Length(Tasks) = 0 then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TasksNone), True);
+    Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNone), True);
     Exit;
   end;
   Key := FProject;
@@ -1368,7 +1369,7 @@ begin
   Owner := Self;
   Window := TAtlasPaletteWindow.CreatePalette(Application, Commands, nil, TAtlasIdeStyle.Colors);
   Window.KeepOrder := True;
-  Window.Prompt := TAtlasStrings.Text(TAtlasTextId.TasksChoosePrompt);
+  Window.Prompt := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksChoosePrompt);
   Window.OnExecute :=
     procedure(ACommand: TAtlasCommand)
     begin
@@ -1401,7 +1402,7 @@ begin
   Tasks := Definitions;
   if Length(Tasks) = 0 then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.TasksNone), True);
+    Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNone), True);
     Exit;
   end;
   Key := FProject;
@@ -1413,9 +1414,9 @@ begin
     Command := Default(TAtlasCommand);
     Command.Id := Task.Name;
     if FHistory.IsHidden(Key, Task.Name) then
-      Command.Caption := TAtlasStrings.Fmt(TAtlasTextId.TasksFindingsHidden, [Task.Name])
+      Command.Caption := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksFindingsHidden, [Task.Name])
     else
-      Command.Caption := TAtlasStrings.Fmt(TAtlasTextId.TasksFindingsShown, [Task.Name]);
+      Command.Caption := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksFindingsShown, [Task.Name]);
     Command.Path := TAtlasTaskTexts.GroupName(Task.Group);
     Commands := Commands + [Command];
   end;
@@ -1424,7 +1425,7 @@ begin
   Owner := Self;
   Window := TAtlasPaletteWindow.CreatePalette(Application, Commands, nil, TAtlasIdeStyle.Colors);
   Window.KeepOrder := True;
-  Window.Prompt := TAtlasStrings.Text(TAtlasTextId.TasksFindingsPrompt);
+  Window.Prompt := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksFindingsPrompt);
   Window.OnExecute :=
     procedure(ACommand: TAtlasCommand)
     begin

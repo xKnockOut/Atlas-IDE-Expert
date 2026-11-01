@@ -72,7 +72,8 @@ uses
   Atlas.IDE.Search.Commands,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Query.Service,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Search.Strings;
 
 const
   /// <summary>Symbolnamen beim Tippen im Fenster „Atlas-Abfrage“: lieber keine Vorschläge als die IDE aufhalten.
@@ -193,12 +194,12 @@ begin
     end;
 end;
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := ACaption;
   Result.Run := ARun;
   Result.Visible := AVisible;
 end;
@@ -256,12 +257,12 @@ end;
 
 { Tasten }
 
-function Key(const AId: string; ACaption: TAtlasTextId; AKey: Integer;
+function Key(const AId: string; const ACaption: string; AKey: Integer;
   APriority: TAtlasKeyPriority): TAtlasModuleKey;
 begin
   Result := Default(TAtlasModuleKey);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := ACaption;
   Result.Key := AKey;
   Result.Priority := APriority;
 end;
@@ -331,22 +332,28 @@ function TAtlasSearchModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     // Units suchen (#777), Unit verwenden und Formulare (#786), mit den Dialogen der IDE als Ausweg.
-    Command('Atlas.UnitSearch', TAtlasTextId.UnitSearchTitle, ShowUnitSearch, UnitSearchVisible),
-    Command('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog, ShowUnitSearchIde, nil),
-    Command('Atlas.UseUnit', TAtlasTextId.UseUnitCommand, ShowUseUnit, UnitSearchVisible),
-    Command('Atlas.UseUnitIde', TAtlasTextId.UseUnitIdeDialog, ShowUseUnitIde, nil),
-    Command('Atlas.Forms', TAtlasTextId.FormsCommand, ShowForms, UnitSearchVisible),
-    Command('Atlas.FormsIde', TAtlasTextId.FormsIdeDialog, ShowFormsIde, nil),
+    Command('Atlas.UnitSearch', TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle), ShowUnitSearch, UnitSearchVisible),
+    Command('Atlas.UnitSearchIde', TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchIdeDialog), ShowUnitSearchIde,
+      nil),
+    Command('Atlas.UseUnit', TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitCommand), ShowUseUnit,
+      UnitSearchVisible),
+    Command('Atlas.UseUnitIde', TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitIdeDialog), ShowUseUnitIde, nil),
+    Command('Atlas.Forms', TAtlasSearchStrings.Text(TAtlasSearchTextId.FormsCommand), ShowForms, UnitSearchVisible),
+    Command('Atlas.FormsIde', TAtlasSearchStrings.Text(TAtlasSearchTextId.FormsIdeDialog), ShowFormsIde, nil),
     // Atlas-Suche (#877, #878); Ersetzen (#893) nur mit search.replace.
-    Command('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show, nil),
-    Command('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod, nil),
-    Command('Atlas.SearchReplace', TAtlasTextId.SearchReplaceCommand, TAtlasIdeSearch.ShowReplace,
+    Command('Atlas.Search', TAtlasStrings.Text(TAtlasTextId.SearchCommand), TAtlasIdeSearch.Show, nil),
+    Command('Atlas.SearchInMethod', TAtlasStrings.Text(TAtlasTextId.SearchInMethodCommand),
+      TAtlasIdeSearch.ShowInMethod, nil),
+    Command('Atlas.SearchReplace', TAtlasStrings.Text(TAtlasTextId.SearchReplaceCommand), TAtlasIdeSearch.ShowReplace,
       SearchReplaceVisible),
-    Command('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, TAtlasIdeSearch.FindNext, nil),
-    Command('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, TAtlasIdeSearch.FindPrevious, nil),
-    Command('Atlas.SearchClear', TAtlasTextId.SearchClearCommand, TAtlasIdeSearch.ClearHighlights, nil),
+    Command('Atlas.SearchNext', TAtlasStrings.Text(TAtlasTextId.SearchNextCommand), TAtlasIdeSearch.FindNext, nil),
+    Command('Atlas.SearchPrevious', TAtlasStrings.Text(TAtlasTextId.SearchPreviousCommand),
+      TAtlasIdeSearch.FindPrevious, nil),
+    Command('Atlas.SearchClear', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchClearCommand),
+      TAtlasIdeSearch.ClearHighlights, nil),
     // Code-Abfragen (#1351); nur sichtbar, solange query.enabled an ist.
-    Command('Atlas.Query', TAtlasTextId.QueryCommand, Guarded(TAtlasFeature.Query, ShowQuery), QueryVisible)];
+    Command('Atlas.Query', TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCommand),
+      Guarded(TAtlasFeature.Query, ShowQuery), QueryVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -377,34 +384,39 @@ begin
   // nicht. Die Leiste öffnet erst nach der Tastenverarbeitung (sie nimmt den Fokus).
   if mSettings.SearchReplaceIde then
   begin
-    mKey := Key('Atlas.Search', TAtlasTextId.SearchCommand, mSettings.SearchKey, TAtlasKeyPriority.Take);
+    mKey := Key('Atlas.Search', TAtlasStrings.Text(TAtlasTextId.SearchCommand), mSettings.SearchKey,
+      TAtlasKeyPriority.Take);
     mKey.Run := ShowSearch;
     Result := Result + [mKey];
     // Strg+H (#893): nur mit search.replace, sonst gehört die Taste der IDE.
     if mSettings.SearchReplace then
     begin
-      mKey := Key('Atlas.SearchReplace', TAtlasTextId.SearchReplaceCommand, mSettings.SearchReplaceKey,
+      mKey := Key('Atlas.SearchReplace', TAtlasStrings.Text(TAtlasTextId.SearchReplaceCommand),
+        mSettings.SearchReplaceKey,
         TAtlasKeyPriority.Take);
       mKey.Run := ShowReplace;
       Result := Result + [mKey];
     end;
-    mKey := Key('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, mSettings.SearchNextKey, TAtlasKeyPriority.Take);
+    mKey := Key('Atlas.SearchNext', TAtlasStrings.Text(TAtlasTextId.SearchNextCommand), mSettings.SearchNextKey,
+      TAtlasKeyPriority.Take);
     mKey.Attempt := SearchStep(False);
     Result := Result + [mKey];
-    mKey := Key('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, mSettings.SearchPreviousKey,
+    mKey := Key('Atlas.SearchPrevious', TAtlasStrings.Text(TAtlasTextId.SearchPreviousCommand),
+      mSettings.SearchPreviousKey,
       TAtlasKeyPriority.Take);
     mKey.Attempt := SearchStep(True);
     Result := Result + [mKey];
   end;
   // In Methode suchen (#877): gewöhnlicher Editorbefehl.
-  mKey := Key('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, mSettings.SearchMethodKey,
+  mKey := Key('Atlas.SearchInMethod', TAtlasStrings.Text(TAtlasTextId.SearchInMethodCommand), mSettings.SearchMethodKey,
     TAtlasKeyPriority.Shared);
   mKey.Run := ShowInMethod;
   Result := Result + [mKey];
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if mSettings.UnitSearchEnabled then
   begin
-    mKey := Key('Atlas.UnitSearch', TAtlasTextId.UnitSearchTitle, mSettings.UnitSearchKey, TAtlasKeyPriority.Shared);
+    mKey := Key('Atlas.UnitSearch', TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle), mSettings.UnitSearchKey,
+      TAtlasKeyPriority.Shared);
     mKey.Run := ShowUnitSearchGuarded;
     Result := Result + [mKey];
   end;

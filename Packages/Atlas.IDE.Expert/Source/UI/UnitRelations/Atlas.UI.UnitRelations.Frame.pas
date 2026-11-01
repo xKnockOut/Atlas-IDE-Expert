@@ -160,7 +160,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Symbol,
-  Atlas.UI.Strings;
+  Atlas.UI.Analysis.Strings;
 
 {$R *.dfm}
 
@@ -214,21 +214,21 @@ begin
   FAllLevels.Align := alRight;
   FAllLevels.AlignWithMargins := True;
   FAllLevels.Width := 90;
-  FAllLevels.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsAllLevels);
+  FAllLevels.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsAllLevels);
   FAllLevels.OnClick := DepthClick;
   FDirect := TRadioButton.Create(Self);
   FDirect.Parent := Bar;
   FDirect.Align := alRight;
   FDirect.AlignWithMargins := True;
   FDirect.Width := 70;
-  FDirect.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsDirect);
+  FDirect.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsDirect);
   FDirect.Checked := True;
   FDirect.OnClick := DepthClick;
   FFilter := TEdit.Create(Self);
   FFilter.Parent := Bar;
   FFilter.Align := alClient;
   FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasStrings.Text(TAtlasTextId.UnitRelationsFilterHint);
+  FFilter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsFilterHint);
   FFilter.OnChange := FilterChange;
   FTree := TTreeView.Create(Self);
   FTree.Parent := Self;
@@ -247,19 +247,19 @@ begin
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FMoveImplementationItem := TMenuItem.Create(FMenu);
-  FMoveImplementationItem.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsMoveImplementation);
+  FMoveImplementationItem.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsMoveImplementation);
   FMoveImplementationItem.OnClick := MoveImplementationClick;
   FMenu.Items.Add(FMoveImplementationItem);
   FMoveInterfaceItem := TMenuItem.Create(FMenu);
-  FMoveInterfaceItem.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsMoveInterface);
+  FMoveInterfaceItem.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsMoveInterface);
   FMoveInterfaceItem.OnClick := MoveInterfaceClick;
   FMenu.Items.Add(FMoveInterfaceItem);
   FRemoveItem := TMenuItem.Create(FMenu);
-  FRemoveItem.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsRemove);
+  FRemoveItem.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsRemove);
   FRemoveItem.OnClick := RemoveClick;
   FMenu.Items.Add(FRemoveItem);
   FCopyPathItem := TMenuItem.Create(FMenu);
-  FCopyPathItem.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsCopyPath);
+  FCopyPathItem.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsCopyPath);
   FCopyPathItem.OnClick := CopyPathClick;
   FMenu.Items.Add(FCopyPathItem);
   FTree.PopupMenu := FMenu;
@@ -311,17 +311,17 @@ function TAtlasUnitRelationsFrame.EntryText(const ARelation: TAtlasUnitRelation)
 begin
   Result := ARelation.Name + '  ';
   if ARelation.InInterface then
-    Result := Result + TAtlasStrings.Text(TAtlasTextId.UnitRelationsInterface)
+    Result := Result + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsInterface)
   else
-    Result := Result + TAtlasStrings.Text(TAtlasTextId.UnitRelationsImplementation);
+    Result := Result + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsImplementation);
   if ARelation.Cycle then
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsCycle);
+    Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsCycle);
   if ARelation.Unused then
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsUnused)
+    Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsUnused)
   else if ARelation.OnlyImplementation and ARelation.InInterface then
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsOnlyImplementation);
+    Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsOnlyImplementation);
   if ARelation.Repeated then
-    Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsRepeated);
+    Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsRepeated);
 end;
 
 procedure TAtlasUnitRelationsFrame.AddEntries(AParent: TTreeNode; const AItems: TAtlasUnitRelationList;
@@ -407,16 +407,16 @@ begin
       FData.Clear;
       FTitle.Caption := FRelations.UnitName;
       if not FRelations.Found then
-        Line := TAtlasStrings.Text(TAtlasTextId.UnitRelationsNotInGraph)
+        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNotInGraph)
       else if FRelations.RecompileCount = 1 then
-        Line := TAtlasStrings.Text(TAtlasTextId.UnitRelationsRecompileOne)
+        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsRecompileOne)
       else
-        Line := TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsRecompile, [FRelations.RecompileCount]);
+        Line := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsRecompile, [FRelations.RecompileCount]);
       Movable := TAtlasUnitRelationsModel.Movable(FRelations.Uses_);
       if Movable > 0 then
-        Line := Line + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsMovable, [Movable]);
+        Line := Line + ' · ' + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsMovable, [Movable]);
       if FRelations.InCycle then
-        Line := Line + ' · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsCycle);
+        Line := Line + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsCycle);
       FInfo.Caption := Line;
       FInfo.Hint := FRelations.CyclePath;
       if FRelations.InCycle then
@@ -430,34 +430,36 @@ begin
       Data.Kind := TNodeKind.Section;
       Data.UsesSide := True;
       Data.Key := 'uses';
-      Section := AddNode(nil, TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUses, [Length(Uses_)]), Data);
+      Section := AddNode(nil, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUses, [Length(Uses_)]), Data);
       AddEntries(Section, Project, True, True, Data.Key);
       if Library_ <> nil then
       begin
         Data.Kind := TNodeKind.LibraryGroup;
         Data.Key := 'uses/#library';
-        Group := AddNode(Section, TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsLibrary, [Length(Library_)]), Data);
+        Group := AddNode(Section,
+          TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsLibrary, [Length(Library_)]), Data);
         AddEntries(Group, Library_, True, True, Data.Key);
       end;
       UsedBy := TAtlasUnitRelationsModel.Filter(FRelations.UsedBy, FFilter.Text);
       Data := Default(TNodeData);
       Data.Kind := TNodeKind.Section;
       Data.Key := 'usedBy';
-      Section := AddNode(nil, TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedBy, [Length(UsedBy)]), Data);
+      Section := AddNode(nil, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUsedBy, [Length(UsedBy)]),
+        Data);
       // Nach dem Abschnitt in der verwendenden Unit (#554); leere Gruppen entfallen.
       TAtlasUnitRelationsModel.SplitUsedBy(UsedBy, ByInterface, ByImplementation);
       Data.Kind := TNodeKind.UsedByGroup;
       if ByInterface <> nil then
       begin
         Data.Key := 'usedBy/#interface';
-        Group := AddNode(Section, TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByInterface,
+        Group := AddNode(Section, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUsedByInterface,
           [Length(ByInterface)]), Data);
         AddEntries(Group, ByInterface, False, True, Data.Key);
       end;
       if ByImplementation <> nil then
       begin
         Data.Key := 'usedBy/#implementation';
-        Group := AddNode(Section, TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByImplementation,
+        Group := AddNode(Section, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUsedByImplementation,
           [Length(ByImplementation)]), Data);
         AddEntries(Group, ByImplementation, False, True, Data.Key);
       end;
@@ -543,9 +545,9 @@ begin
   if not EntryOf(ANode, Relation) then
     Exit;
   if Relation.Cycle and (Relation.CyclePath <> '') then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsCyclePath, [Relation.CyclePath])
+    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsCyclePath, [Relation.CyclePath])
   else if Relation.OnlyImplementation and Relation.InInterface and not Relation.Unused then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsOnlyImplementationHint, [Relation.Name])
+    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsOnlyImplementationHint, [Relation.Name])
   else
     Result := Relation.FileName;
 end;

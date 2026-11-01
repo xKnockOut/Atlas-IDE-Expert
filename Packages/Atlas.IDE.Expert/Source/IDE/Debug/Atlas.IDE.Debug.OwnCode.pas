@@ -98,7 +98,7 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.UI.Strings;
+  Atlas.UI.Debug.Strings;
 
 { TAtlasIdeDebugOwnCode.TTicker }
 
@@ -220,9 +220,9 @@ begin
   TAtlasIdeSettings.Update(Next);
   if Assigned(AMessage) then
     if Next.DebugJustMyCode then
-      AMessage(TAtlasStrings.Text(TAtlasTextId.DebugJustMyCodeOn))
+      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOn))
     else
-      AMessage(TAtlasStrings.Text(TAtlasTextId.DebugJustMyCodeOff));
+      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOff));
 end;
 
 class procedure TAtlasIdeDebugOwnCode.Stepped;
@@ -334,7 +334,7 @@ begin
     Exit;
   TAtlasIdeNavigation.MarkLine(Frames[Index].FileName, Frames[Index].Line - 1);
   if Assigned(FMessage) then
-    FMessage(TAtlasStrings.Fmt(TAtlasTextId.DebugJustMyCodeJumped,
+    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugJustMyCodeJumped,
       [ExtractFileName(Frames[Index].FileName), Frames[Index].Line, Index]));
 end;
 

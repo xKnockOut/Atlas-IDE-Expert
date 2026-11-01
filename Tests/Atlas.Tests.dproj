@@ -705,6 +705,14 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Favorites.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Favorites.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Atlas.UI.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tests\Atlas.UI.Tests.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Search\Atlas.UI.Search.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Build\Atlas.UI.Build.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Analysis\Atlas.UI.Analysis.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Designer\Atlas.UI.Designer.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Rules\Atlas.UI.Rules.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Strings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Snippets.pas"/>

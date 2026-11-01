@@ -264,7 +264,8 @@ uses
   Winapi.Dwmapi,
   Vcl.Clipbrd,
   Atlas.Core.Completion.Presentation,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Search.Strings;
 
 const
   // Ab Windows 11; ältere Systeme ignorieren die Attribute.
@@ -299,11 +300,11 @@ begin
   case FOptions.Mode of
     TAtlasUnitSearchMode.UseUnit:
       if FOptions.TargetUnit <> '' then
-        Caption := TAtlasStrings.Fmt(TAtlasTextId.UseUnitTitle, [FOptions.TargetUnit])
+        Caption := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitTitle, [FOptions.TargetUnit])
       else
-        Caption := TAtlasStrings.Text(TAtlasTextId.UseUnitTitleNone);
+        Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitTitleNone);
     TAtlasUnitSearchMode.Forms:
-      Caption := TAtlasStrings.Text(TAtlasTextId.FormsTitle);
+      Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.FormsTitle);
   else
     Caption := TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle);
   end;
@@ -926,14 +927,14 @@ end;
 function TAtlasUnitSearchWindow.ActionCaption(AAction: TAtlasUnitSearchAction): string;
 begin
   case AAction of
-    TAtlasUnitSearchAction.Open: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchOpen);
-    TAtlasUnitSearchAction.OpenForm: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchOpenForm);
-    TAtlasUnitSearchAction.AddUses: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchAddUses);
-    TAtlasUnitSearchAction.OpenTests: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchOpenTests);
-    TAtlasUnitSearchAction.CopyPaths: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchCopyPaths);
-    TAtlasUnitSearchAction.ShowProject: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchShowProject);
+    TAtlasUnitSearchAction.Open: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOpen);
+    TAtlasUnitSearchAction.OpenForm: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOpenForm);
+    TAtlasUnitSearchAction.AddUses: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchAddUses);
+    TAtlasUnitSearchAction.OpenTests: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchOpenTests);
+    TAtlasUnitSearchAction.CopyPaths: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchCopyPaths);
+    TAtlasUnitSearchAction.ShowProject: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchShowProject);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchShowExplorer);
+    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchShowExplorer);
   end;
 end;
 
@@ -983,13 +984,13 @@ end;
 function TAtlasUnitSearchWindow.KindCaption(AKind: TAtlasUnitKind): string;
 begin
   case AKind of
-    TAtlasUnitKind.Form: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchKindForm);
-    TAtlasUnitKind.Frame: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchKindFrame);
-    TAtlasUnitKind.DataModule: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchKindDataModule);
-    TAtlasUnitKind.Test: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchKindTest);
-    TAtlasUnitKind.Include: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchKindInclude);
+    TAtlasUnitKind.Form: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchKindForm);
+    TAtlasUnitKind.Frame: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchKindFrame);
+    TAtlasUnitKind.DataModule: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchKindDataModule);
+    TAtlasUnitKind.Test: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchKindTest);
+    TAtlasUnitKind.Include: Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchKindInclude);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchKindUnit);
+    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchKindUnit);
   end;
 end;
 
@@ -1023,9 +1024,9 @@ begin
   if AGroup <> '' then
     Exit(AGroup);
   if FGrouping = TAtlasUnitGrouping.Folder then
-    Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchRootFolder)
+    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchRootFolder)
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchNoProject);
+    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoProject);
 end;
 
 { Zeichnen }
@@ -1190,7 +1191,7 @@ begin
   begin
     Canvas.Font.Color := C(FColors.Muted);
     if FOptions.FilterSyntax then
-      mText := TAtlasStrings.Text(TAtlasTextId.UnitSearchPrompt)
+      mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPrompt)
     else
       mText := TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle) + ' …';
   end
@@ -1394,14 +1395,15 @@ begin
   mText := '';
   State := TAtlasUseUnitCycleState.None;
   if InUses then
-    mText := TAtlasStrings.Text(TAtlasTextId.UseUnitInUses)
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitInUses)
   else if UseCycle(Row.Entry, Cycle) then
   begin
     State := TAtlasUseUnit.CycleState(Cycle, FUseSection);
     if State = TAtlasUseUnitCycleState.Warning then
-      mText := '⚠ ' + TAtlasStrings.Fmt(TAtlasTextId.UseUnitCycle, [TAtlasUseUnit.CycleVia(Cycle, FUseSection)])
+      mText := '⚠ ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycle,
+        [TAtlasUseUnit.CycleVia(Cycle, FUseSection)])
     else
-      mText := TAtlasStrings.Fmt(TAtlasTextId.UseUnitCycle, [TAtlasUseUnit.CycleVia(Cycle, FUseSection)]);
+      mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycle, [TAtlasUseUnit.CycleVia(Cycle, FUseSection)]);
   end;
   if mText <> '' then
   begin
@@ -1479,7 +1481,7 @@ begin
     Canvas.Font.Color := C(FColors.Muted);
     Canvas.Brush.Style := bsClear;
     if FLoading then
-      DrawText(Canvas.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.UnitSearchLoading)), -1, FListRect,
+      DrawText(Canvas.Handle, PChar(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchLoading)), -1, FListRect,
         DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX)
     else
       DrawText(Canvas.Handle, '—', -1, FListRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
@@ -1610,7 +1612,7 @@ begin
   begin
     Canvas.Font.Assign(FUIFont);
     Canvas.Font.Color := C(FColors.Muted);
-    DrawText(Canvas.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewNone)), -1, Area,
+    DrawText(Canvas.Handle, PChar(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPreviewNone)), -1, Area,
       DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
     Canvas.Brush.Style := bsSolid;
     Exit;
@@ -1624,24 +1626,24 @@ begin
   Inc(mTop, S(22));
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Color := C(FColors.Muted);
-  Facts := [TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewLines, [FPreview.Lines])];
+  Facts := [TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchPreviewLines, [FPreview.Lines])];
   if FPreview.Modified > 0 then
-    Facts := Facts + [TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewModified,
+    Facts := Facts + [TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchPreviewModified,
       [FormatDateTime('dd.mm.yyyy hh":"nn', FPreview.Modified)])];
   if FPreview.Git = 'clean' then
-    Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitClean)]
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitClean)]
   else if FPreview.Git = 'modified' then
-    Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitModified)]
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitModified)]
   else if FPreview.Git = 'added' then
-    Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitAdded)]
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitAdded)]
   else if FPreview.Git = 'untracked' then
-    Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitUntracked)]
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitUntracked)]
   else if FPreview.Git = 'deleted' then
-    Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitDeleted)]
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitDeleted)]
   else if FPreview.Git = 'renamed' then
-    Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitRenamed)]
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitRenamed)]
   else if FPreview.Git = 'conflict' then
-    Facts := Facts + [TAtlasStrings.Text(TAtlasTextId.UnitSearchGitConflict)];
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitConflict)];
   Line := Rect(Area.Left, mTop, Area.Right, mTop + S(16));
   mText := string.Join(' · ', Facts);
   DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -1705,17 +1707,17 @@ function TAtlasUnitSearchWindow.SectionCaption(ASection: TAtlasPreviewSection): 
 begin
   case ASection of
     TAtlasPreviewSection.Path:
-      Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewPath);
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPreviewPath);
     TAtlasPreviewSection.Header:
-      Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewHeader);
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPreviewHeader);
     TAtlasPreviewSection.Form:
-      Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewForm);
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPreviewForm);
     TAtlasPreviewSection.Types:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewTypes, [FPreview.TypeCount]);
+      Result := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchPreviewTypes, [FPreview.TypeCount]);
     TAtlasPreviewSection.Uses_:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewUses, [Length(FPreview.Uses_)]);
+      Result := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchPreviewUses, [Length(FPreview.Uses_)]);
     TAtlasPreviewSection.UsedBy:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewUsedBy, [FPreview.UsedBy]);
+      Result := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchPreviewUsedBy, [FPreview.UsedBy]);
   else
     Result := '';
   end;
@@ -1742,8 +1744,10 @@ begin
   begin
     Canvas.Font.Style := [];
     mTag := Line;
-    mTag.Left := Max(Line.Left, Line.Right - Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewAutoCollapsed)));
-    DrawText(Canvas.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewAutoCollapsed)), -1, mTag,
+    mTag.Left := Max(Line.Left,
+      Line.Right - Canvas.TextWidth(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPreviewAutoCollapsed)));
+    DrawText(Canvas.Handle, PChar(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPreviewAutoCollapsed)), -1,
+      mTag,
       DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX or DT_END_ELLIPSIS);
     Line.Right := mTag.Left - S(8);
     Canvas.Font.Style := [fsBold];
@@ -1838,7 +1842,7 @@ begin
         begin
           Canvas.Font.Color := C(FColors.Muted);
           Line := Rect(AArea.Left + S(22), mTop, AArea.Right, mTop + S(16));
-          mText := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewMore, [Rest]);
+          mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchPreviewMore, [Rest]);
           DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
           Inc(mTop, S(17));
         end;
@@ -1932,9 +1936,9 @@ begin
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Color := C(FColors.Muted);
   Canvas.Brush.Style := bsClear;
-  mText := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchCount, [FMatchCount, Length(FEntries)]);
+  mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchCount, [FMatchCount, Length(FEntries)]);
   if FMarked.Count > 0 then
-    mText := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchMarked, [FMarked.Count]) + ' · ' + mText;
+    mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchMarked, [FMarked.Count]) + ' · ' + mText;
   CountWidth := Canvas.TextWidth(mText);
   Part := Rect(Bar.Right - S(10) - CountWidth, Bar.Top, Bar.Right - S(10), Bar.Bottom);
   DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
@@ -1942,18 +1946,20 @@ begin
   if CurrentEntry(Index) and UseCycle(Index, Cycle) then
   begin
     if TAtlasUseUnit.CycleState(Cycle, FUseSection) = TAtlasUseUnitCycleState.Warning then
-      mText := TAtlasStrings.Fmt(TAtlasTextId.UseUnitCycleWarning, [TAtlasUseUnit.CyclePath(Cycle, FUseSection)])
+      mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycleWarning,
+        [TAtlasUseUnit.CyclePath(Cycle, FUseSection)])
     else
-      mText := TAtlasStrings.Fmt(TAtlasTextId.UseUnitCycleHint, [TAtlasUseUnit.CyclePath(Cycle, FUseSection)]);
+      mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycleHint,
+        [TAtlasUseUnit.CyclePath(Cycle, FUseSection)]);
   end
   else if CurrentEntry(Index) then
     mText := FEntries[Index].FileName
   else if FOptions.Mode = TAtlasUnitSearchMode.UseUnit then
-    mText := TAtlasStrings.Text(TAtlasTextId.UseUnitHints)
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitHints)
   else if FOptions.Mode = TAtlasUnitSearchMode.Forms then
-    mText := TAtlasStrings.Text(TAtlasTextId.FormsHints)
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.FormsHints)
   else
-    mText := TAtlasStrings.Text(TAtlasTextId.UnitSearchHints);
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchHints);
   Part := Rect(Bar.Left + S(10), Bar.Top, Part.Left - S(16), Bar.Bottom);
   DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;

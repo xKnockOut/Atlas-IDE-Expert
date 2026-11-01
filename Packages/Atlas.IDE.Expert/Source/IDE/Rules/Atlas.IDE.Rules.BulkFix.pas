@@ -39,7 +39,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.UI.Problems.BulkFix,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Rules.Strings;
 
 const
   /// <summary>Der Server prüft alle Dateien der Regel; das dauert länger als ein Befehl sonst.</summary>
@@ -57,7 +58,7 @@ begin
   try
     if mPreview.Count = 0 then
     begin
-      TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllNothing, [ARule, mPreview.Summary]));
+      TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllNothing, [ARule, mPreview.Summary]));
       Exit;
     end;
     if not TAtlasBulkFixDialog.Execute(mPreview) then
@@ -70,11 +71,11 @@ begin
         mNames := mNames + [ExtractFileName(mPreview.Files[mIndex].FileName)];
     mError := TAtlasIdeWorkspaceEdit.Apply(mPreview.SelectedEdit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-      TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllAction, [ARule])).Error;
+      TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllAction, [ARule])).Error;
     if mError <> '' then
-      TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllFailed, [ARule, mError]))
+      TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllFailed, [ARule, mError]))
     else
-      TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllDone, [ARule, mFixes, mCount,
+      TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllDone, [ARule, mFixes, mCount,
         string.Join(', ', mNames)]));
   finally
     mPreview.Free;
@@ -134,7 +135,7 @@ begin
   mFiles := TAtlasBulkFixPreview.FilesOf(AFindings, ARule);
   if mFiles = nil then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ProblemsFixAllNoFiles, [ARule]));
+    TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllNoFiles, [ARule]));
     Exit;
   end;
   if not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Problems, TAtlasBulkFixPreview.Command,

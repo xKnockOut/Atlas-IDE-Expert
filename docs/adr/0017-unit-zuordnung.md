@@ -590,6 +590,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.ExceptionsFrame` | `UI/Debug/Atlas.UI.Debug.ExceptionsFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.Strings` | `UI/Debug/Atlas.UI.Debug.Strings.pas` | Texte des Moduls (Debugger), Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Viewer` | `UI/Debug/Atlas.UI.Debug.Viewer.pas` | Ordner `UI/Debug` |
 
 ## Atlas.IDE.Tracker
@@ -744,6 +745,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.SymbolPath.Service` | `IDE/SymbolPath/Atlas.IDE.SymbolPath.Service.pas` | Ordner `IDE/SymbolPath` |
 | `Atlas.IDE.UnitRelations.Service` | `IDE/UnitRelations/Atlas.IDE.UnitRelations.Service.pas` | Ordner `IDE/UnitRelations` |
 | `Atlas.IDE.UnitRelations.Window` | `IDE/UnitRelations/Atlas.IDE.UnitRelations.Window.pas` | Ordner `IDE/UnitRelations` |
+| `Atlas.UI.Analysis.Strings` | `UI/Analysis/Atlas.UI.Analysis.Strings.pas` | Texte des Moduls (Analyse), Sprache von Base, #1455 |
 | `Atlas.UI.Architecture.Assignment` | `UI/Architecture/Atlas.UI.Architecture.Assignment.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Frame` | `UI/Architecture/Atlas.UI.Architecture.Frame.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Map` | `UI/Architecture/Atlas.UI.Architecture.Map.pas` | Ordner `UI/Architecture` |
@@ -762,6 +764,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.Composition` | `IDE/Designer/Atlas.IDE.Designer.Composition.pas` | Anmeldung des Moduls `atlas.designer`, #1455 |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Search` | `UI/Designer/Atlas.UI.Designer.Search.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Strings` | `UI/Designer/Atlas.UI.Designer.Strings.pas` | Texte des Moduls (Formulardesigner), Sprache von Base, #1455 |
 | `Atlas.UI.Designer.TabOverlay` | `UI/Designer/Atlas.UI.Designer.TabOverlay.pas` | Ordner `UI/Designer` |
 
 ## Atlas.IDE.Search
@@ -791,6 +794,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Query.Frame` | `UI/Query/Atlas.UI.Query.Frame.pas` | Ordner `UI/Query` |
 | `Atlas.UI.Search.Bar` | `UI/Search/Atlas.UI.Search.Bar.pas` | Ordner `UI/Search` |
 | `Atlas.UI.Search.ReplaceFrame` | `UI/Search/Atlas.UI.Search.ReplaceFrame.pas` | Ordner `UI/Search` |
+| `Atlas.UI.Search.Strings` | `UI/Search/Atlas.UI.Search.Strings.pas` | Texte des Moduls (Suche), Sprache von Base, #1455 |
 | `Atlas.UI.UnitSearch.Window` | `UI/UnitSearch/Atlas.UI.UnitSearch.Window.pas` | Ordner `UI/UnitSearch` |
 
 ## Atlas.IDE.Rules
@@ -803,6 +807,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Rules.BulkFix` | `IDE/Rules/Atlas.IDE.Rules.BulkFix.pas` | Ordner `IDE/Rules`: Sammelkorrektur, #1455 |
 | `Atlas.IDE.Rules.Composition` | `IDE/Rules/Atlas.IDE.Rules.Composition.pas` | Anmeldung des Moduls `atlas.rules`, #1455 |
 | `Atlas.UI.Problems.BulkFix` | `UI/Problems/Atlas.UI.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
+| `Atlas.UI.Rules.Strings` | `UI/Rules/Atlas.UI.Rules.Strings.pas` | Texte des Moduls (Prüfregeln), Sprache von Base, #1455 |
 
 ## Atlas.IDE.Tests
 
@@ -816,6 +821,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
+| `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 
 ## Atlas.IDE.Build
@@ -839,6 +845,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.StartProfiles.Service` | `IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas` | Ordner `IDE/StartProfiles` |
 | `Atlas.IDE.Tasks.Output` | `IDE/Tasks/Atlas.IDE.Tasks.Output.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Runner` | `IDE/Tasks/Atlas.IDE.Tasks.Runner.pas` | Ordner `IDE/Tasks` |
+| `Atlas.UI.Build.Strings` | `UI/Build/Atlas.UI.Build.Strings.pas` | Texte des Moduls (Build-Werkzeuge), Sprache von Base, #1455 |
 | `Atlas.UI.Build.SwitchesFrame` | `UI/Build/Atlas.UI.Build.SwitchesFrame.pas` | Ordner `UI/Build` |
 | `Atlas.UI.Tasks.Texts` | `UI/Tasks/Atlas.UI.Tasks.Texts.pas` | Ordner `UI/Tasks` |
 
@@ -859,6 +866,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Notes.Service` | `IDE/Notes/Atlas.IDE.Notes.Service.pas` | Ordner `IDE/Notes` |
 | `Atlas.UI.Bookmarks.Dialog` | `UI/Bookmarks/Atlas.UI.Bookmarks.Dialog.pas` | Ordner `UI/Bookmarks` |
 | `Atlas.UI.Bookmarks.Frame` | `UI/Bookmarks/Atlas.UI.Bookmarks.Frame.pas` | Ordner `UI/Bookmarks` |
+| `Atlas.UI.Bookmarks.Strings` | `UI/Bookmarks/Atlas.UI.Bookmarks.Strings.pas` | Texte des Moduls (Lesezeichen und Notizen), Sprache von Base, #1455 |
 | `Atlas.UI.Notes.Dialog` | `UI/Notes/Atlas.UI.Notes.Dialog.pas` | Ordner `UI/Notes` |
 | `Atlas.UI.Notes.List` | `UI/Notes/Atlas.UI.Notes.List.pas` | Notizen als Einträge der Ergebnisliste, #1455 |
 | `Atlas.UI.Todos.Dialog` | `UI/Todos/Atlas.UI.Todos.Dialog.pas` | Ordner `UI/Todos` |

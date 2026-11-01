@@ -31,12 +31,12 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.UI.Bookmarks.Strings;
 
 class function TAtlasNotesList.GroupText(const AGroup: TAtlasNoteGroup): string;
 begin
   if AGroup.Orphaned then
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.NotesOrphanGroup), [Length(AGroup.Notes)])
+    Result := Format(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesOrphanGroup), [Length(AGroup.Notes)])
   else
     Result := Format('%s (%d)', [ExtractFileName(AGroup.FileName), Length(AGroup.Notes)]);
 end;
@@ -44,7 +44,8 @@ end;
 class function TAtlasNotesList.NoteText(const ANote: TAtlasNote; AOrphaned: Boolean): string;
 begin
   if AOrphaned then
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.NotesOrphanEntry), [ExtractFileName(ANote.FileName),
+    Result := Format(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesOrphanEntry),
+      [ExtractFileName(ANote.FileName),
       ANote.Line + 1, ANote.Title])
   else
     Result := Format('%d: %s', [ANote.Line + 1, ANote.Title]);
@@ -62,8 +63,8 @@ begin
   Result.Owner := Owner;
   Result.Title := ATitle;
   Result.SelectId := ASelectId;
-  Result.EditCaption := TAtlasStrings.Text(TAtlasTextId.NotesEdit);
-  Result.DeleteCaption := TAtlasStrings.Text(TAtlasTextId.NotesDelete);
+  Result.EditCaption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesEdit);
+  Result.DeleteCaption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDelete);
   Result.OnEdit := AOnEdit;
   Result.OnDelete := AOnDelete;
   for mGroup in AGroups do

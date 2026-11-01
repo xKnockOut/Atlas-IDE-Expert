@@ -143,7 +143,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Themes,
-  Atlas.UI.Strings;
+  Atlas.UI.Debug.Strings;
 
 {$R *.dfm}
 
@@ -176,7 +176,7 @@ begin
   FFilter.Parent := FTop;
   FFilter.Align := alClient;
   FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasStrings.Text(TAtlasTextId.DebugExceptionsFilterHint);
+  FFilter.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsFilterHint);
   FFilter.OnChange := FilterChange;
   FFilter.OnKeyDown := FilterKeyDown;
 
@@ -200,8 +200,8 @@ begin
   FStack.ReadOnly := True;
   FStack.MultiSelect := False;
   FStack.ColumnClick := False;
-  AddColumn(FStack, TAtlasStrings.Text(TAtlasTextId.DebugExceptionsStackCaption), 330);
-  AddColumn(FStack, TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnLocation), 170);
+  AddColumn(FStack, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStackCaption), 330);
+  AddColumn(FStack, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnLocation), 170);
   FStack.OnDblClick := StackDblClick;
   FStack.OnKeyDown := StackKeyDown;
   FStack.OnCustomDrawItem := StackCustomDrawItem;
@@ -215,12 +215,12 @@ begin
 
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
-  FOpenItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsGoTo), OpenClick);
+  FOpenItem := AddMenuItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsGoTo), OpenClick);
   FOpenItem.Default := True;
-  FIgnoreItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsIgnoreClass), IgnoreClick);
-  FStopItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsStopAgain), StopClick);
-  FCopyItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsCopy), CopyClick);
-  FClearItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsClear), ClearClick);
+  FIgnoreItem := AddMenuItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnoreClass), IgnoreClick);
+  FStopItem := AddMenuItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStopAgain), StopClick);
+  FCopyItem := AddMenuItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsCopy), CopyClick);
+  FClearItem := AddMenuItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsClear), ClearClick);
 
   FList := TListView.Create(Self);
   FList.Parent := Self;
@@ -233,12 +233,12 @@ begin
   FList.MultiSelect := False;
   FList.ColumnClick := False;
   FList.PopupMenu := FMenu;
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnTime), 70);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnClass), 130);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnMessage), 260);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnCount), 60).Alignment := taRightJustify;
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnLocation), 170);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsColumnThread), 110);
+  AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnTime), 70);
+  AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnClass), 130);
+  AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnMessage), 260);
+  AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnCount), 60).Alignment := taRightJustify;
+  AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnLocation), 170);
+  AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnThread), 110);
   FList.OnDblClick := ListDblClick;
   FList.OnSelectItem := ListSelectItem;
   FList.OnKeyDown := ListKeyDown;
@@ -253,7 +253,7 @@ begin
   FEmpty.WordWrap := True;
   FEmpty.ShowAccelChar := False;
   FEmpty.Font.Color := clGrayText;
-  FEmpty.Caption := TAtlasStrings.Text(TAtlasTextId.DebugExceptionsEmpty);
+  FEmpty.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsEmpty);
   FEmpty.Visible := False;
 end;
 
@@ -293,10 +293,10 @@ var
 begin
   Count := IntToStr(AException.Count);
   if AIgnoredClass then
-    Count := Count + ' · ' + TAtlasStrings.Text(TAtlasTextId.DebugExceptionsIgnored);
+    Count := Count + ' · ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnored);
   Result := TArray<string>.Create(FormatDateTime('hh:nn:ss', AException.LastTime), AException.ExceptionClass,
     AException.Message, Count, AException.LocationText,
-    AException.ThreadText(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsThread)));
+    AException.ThreadText(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread)));
 end;
 
 function TAtlasDebugExceptionsFrame.ClassFilter: string;
@@ -320,7 +320,7 @@ begin
   FClassBox.Items.BeginUpdate;
   try
     FClassBox.Items.Clear;
-    FClassBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.DebugExceptionsAllClasses));
+    FClassBox.Items.Add(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsAllClasses));
     for Name in FClasses do
       FClassBox.Items.Add(Name);
   finally
@@ -395,7 +395,7 @@ begin
   FStack.Visible := FHistory <> nil;
   FSplitter.Visible := FHistory <> nil;
   FillStack;
-  FSummary.Caption := TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsSummary, [Length(FHistory), FTotal]);
+  FSummary.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsSummary, [Length(FHistory), FTotal]);
 end;
 
 function TAtlasDebugExceptionsFrame.TrySelected(out AException: TAtlasDebugException): Boolean;
@@ -475,7 +475,8 @@ var
   Where: string;
 begin
   if ARow.Kind = TAtlasDebugStackRowKind.LibraryGroup then
-    Exit(TArray<string>.Create(TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsStackLibrary, [ARow.Count]), ''));
+    Exit(TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStackLibrary, [ARow.Count]),
+      ''));
   Frame := AFrames[ARow.First];
   Where := '';
   if Frame.HasSource then
@@ -517,7 +518,7 @@ begin
       Item.SubItems.Add(Texts[1]);
     end;
     if (FStackRows = nil) and (FStackKey <> '') then
-      FStack.Items.Add.Caption := TAtlasStrings.Text(TAtlasTextId.DebugExceptionsStackEmpty);
+      FStack.Items.Add.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStackEmpty);
   finally
     FStack.Items.EndUpdate;
   end;
@@ -635,13 +636,15 @@ begin
   FClearItem.Enabled := FHistory <> nil;
   if Has then
   begin
-    FIgnoreItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsIgnoreClassNamed, [Entry.ExceptionClass]);
-    FStopItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsStopAgainNamed, [Entry.ExceptionClass]);
+    FIgnoreItem.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsIgnoreClassNamed,
+      [Entry.ExceptionClass]);
+    FStopItem.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStopAgainNamed,
+      [Entry.ExceptionClass]);
   end
   else
   begin
-    FIgnoreItem.Caption := TAtlasStrings.Text(TAtlasTextId.DebugExceptionsIgnoreClass);
-    FStopItem.Caption := TAtlasStrings.Text(TAtlasTextId.DebugExceptionsStopAgain);
+    FIgnoreItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnoreClass);
+    FStopItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStopAgain);
   end;
 end;
 

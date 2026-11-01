@@ -83,6 +83,7 @@ uses
   Atlas.Core.EditorToolbar.Sections,
   Atlas.Text.Lines,
   Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.UI.UnitRelations.Frame,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -135,7 +136,7 @@ type
     function EditorFile: string;
     function Target: string;
     procedure ShowJson(AFrame: TAtlasUnitRelationsFrame; const AJson: string);
-    procedure ShowInfo(AFrame: TAtlasUnitRelationsFrame; AId: TAtlasTextId);
+    procedure ShowInfo(AFrame: TAtlasUnitRelationsFrame; AId: TAtlasAnalysisTextId);
     procedure Request;
     procedure ChangeDepth(AAllLevels: Boolean);
     procedure Change(const ACommand, AArgumentsJson: string);
@@ -334,13 +335,13 @@ begin
     Exit;
   end;
   if FCost.RecompileCount = 1 then
-    Text := TAtlasStrings.Text(TAtlasTextId.InterfaceCostStatusOne)
+    Text := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.InterfaceCostStatusOne)
   else
-    Text := TAtlasStrings.Fmt(TAtlasTextId.InterfaceCostStatus, [FCost.RecompileCount]);
+    Text := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostStatus, [FCost.RecompileCount]);
   Units := TAtlasInterfaceCostModel.UnitList(FCost, More);
   if More > 0 then
-    Units := TAtlasStrings.Fmt(TAtlasTextId.InterfaceCostMore, [Units, More]);
-  SetCost(Text, TAtlasStrings.Fmt(TAtlasTextId.InterfaceCostHint, [FCost.UnitName, Units]));
+    Units := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostMore, [Units, More]);
+  SetCost(Text, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostHint, [FCost.UnitName, Units]));
 end;
 
 procedure TUnitRelationsState.RequestCost;
@@ -428,7 +429,7 @@ begin
   if not TAtlasUnitRelationsModel.Parse(AJson, Relations) then
   begin
     if not AFrame.HasRelations then
-      ShowInfo(AFrame, TAtlasTextId.UnitRelationsFailed);
+      ShowInfo(AFrame, TAtlasAnalysisTextId.UnitRelationsFailed);
     Exit;
   end;
   FLastJson := AJson;
@@ -439,11 +440,11 @@ begin
   AFrame.SetRelations(Relations);
 end;
 
-procedure TUnitRelationsState.ShowInfo(AFrame: TAtlasUnitRelationsFrame; AId: TAtlasTextId);
+procedure TUnitRelationsState.ShowInfo(AFrame: TAtlasUnitRelationsFrame; AId: TAtlasAnalysisTextId);
 begin
   FLastJson := '';
   FShownMessage := True;
-  AFrame.SetMessage(TAtlasStrings.Text(AId));
+  AFrame.SetMessage(TAtlasAnalysisStrings.Text(AId));
 end;
 
 procedure TUnitRelationsState.Request;
@@ -483,7 +484,7 @@ begin
       if Json = '' then
       begin
         if not Current.HasRelations then
-          ShowInfo(Current, TAtlasTextId.UnitRelationsFailed);
+          ShowInfo(Current, TAtlasAnalysisTextId.UnitRelationsFailed);
         Exit;
       end;
       FCache.Put(FileName, AllLevels, Json);
@@ -492,7 +493,7 @@ begin
   begin
     FPending := False;
     if not Frame.HasRelations then
-      ShowInfo(Frame, TAtlasTextId.UnitRelationsNoServer);
+      ShowInfo(Frame, TAtlasAnalysisTextId.UnitRelationsNoServer);
   end;
 end;
 
@@ -510,7 +511,7 @@ begin
     if (FFileName <> '') or not FShownMessage then
     begin
       FFileName := '';
-      ShowInfo(Frame, TAtlasTextId.UnitRelationsNoFile);
+      ShowInfo(Frame, TAtlasAnalysisTextId.UnitRelationsNoFile);
     end;
     Exit;
   end;
@@ -522,7 +523,7 @@ begin
     if FCache.TryGet(FileName, FAllLevels, Json) then
       ShowJson(Frame, Json)
     else
-      ShowInfo(Frame, TAtlasTextId.UnitRelationsLoading);
+      ShowInfo(Frame, TAtlasAnalysisTextId.UnitRelationsLoading);
     Request;
     Exit;
   end;
@@ -570,17 +571,18 @@ begin
       if Edit.IsEmpty then
       begin
         if Current <> nil then
-          Current.Info.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsEditRefused);
+          Current.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsEditRefused);
         Exit;
       end;
       Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.OpenInEditor,
-        TAtlasStrings.Text(TAtlasTextId.UnitRelationsEditAction));
+        TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsEditAction));
       if (Outcome.Error <> '') and (Current <> nil) then
-        Current.Info.Caption := TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsEditFailed, [Outcome.Error]);
+        Current.Info.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsEditFailed,
+          [Outcome.Error]);
       // Bald neu fragen: Der Server sieht den geänderten Text mit dem nächsten Abgleich des Puffers.
       FAsked := GetTickCount - RefreshMs + 500;
     end) then
-    Frame.Info.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsNoServer);
+    Frame.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNoServer);
 end;
 
 procedure TUnitRelationsState.Open(const AFileName: string; ALine, ACharacter: Integer);

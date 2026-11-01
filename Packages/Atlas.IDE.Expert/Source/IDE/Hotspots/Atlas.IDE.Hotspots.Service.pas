@@ -62,7 +62,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hotspots.Model,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.UI.Hotspots.Frame,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Navigation,
@@ -274,7 +274,7 @@ begin
     Exit;
   if not ProjectUri(mUri) then
   begin
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsNoProject), False);
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), False);
     Exit;
   end;
   Inc(FRequest);
@@ -282,7 +282,7 @@ begin
   FPending := True;
   FMonths := TAtlasIdeSettings.Current.HotspotsMonths;
   FMinCommits := TAtlasIdeSettings.Current.HotspotsCouplingMinCommits;
-  mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsLoading), True);
+  mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
   if not FRun(TAtlasHotspotCommands.Command, TAtlasHotspotCommands.Arguments(mUri, cRequestLevel, ARefresh),
     cTimeoutMs,
     procedure(AAnswer: string)
@@ -304,15 +304,15 @@ begin
           if mCurrent = nil then
             Exit;
           if not mParsed then
-            mCurrent.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsFailed), False)
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFailed), False)
           else if not mEnabled then
-            mCurrent.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsDisabled), False)
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsDisabled), False)
           else if not mHasVcs then
-            mCurrent.SetMessage(TAtlasStrings.Fmt(TAtlasTextId.HotspotsNoVcs, [mMessage]), False)
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsNoVcs, [mMessage]), False)
           else if mModel.Pending then
           begin
             // Der Server rechnet noch: bisherige Daten stehen lassen und später nachfragen.
-            mCurrent.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsLoading), True);
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
             FPoll.Enabled := True;
           end
           else
@@ -321,7 +321,7 @@ begin
     end) then
   begin
     FPending := False;
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsNoServer), True);
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoServer), True);
   end;
 end;
 
@@ -335,7 +335,7 @@ begin
     Exit;
   if not ProjectUri(mUri) then
   begin
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsNoProject), True);
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), True);
     Exit;
   end;
   if not FRun(TAtlasHotspotCommands.SaveCommand,
@@ -358,14 +358,14 @@ begin
           if mCurrent = nil then
             Exit;
           if mSaved <> '' then
-            mCurrent.SetMessage(TAtlasStrings.Fmt(TAtlasTextId.HotspotsSaved, [mSaved]), True)
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsSaved, [mSaved]), True)
           else if mPendingSave then
-            mCurrent.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsLoading), True)
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True)
           else
-            mCurrent.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsFailed), True);
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFailed), True);
         end);
     end) then
-    mFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsNoServer), True);
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoServer), True);
 end;
 
 procedure THotspotsState.ApplySettings;

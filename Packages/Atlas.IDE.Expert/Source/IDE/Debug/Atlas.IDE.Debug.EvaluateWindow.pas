@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -81,7 +81,7 @@ end;
 
 function TEvaluateDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.DebugEvaluateCaption);
+  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateCaption);
 end;
 
 function TEvaluateDock.GetIdentifier: string;

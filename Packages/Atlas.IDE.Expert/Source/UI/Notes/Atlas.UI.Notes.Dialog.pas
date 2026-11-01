@@ -59,7 +59,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Strings;
+  Atlas.UI.Bookmarks.Strings;
 
 const
   Gap = 8;
@@ -92,7 +92,7 @@ begin
   FHint.Margins.SetBounds(Gap, Gap, Gap, Gap div 2);
   FHint.WordWrap := True;
   FHint.ShowAccelChar := False;
-  FHint.Caption := TAtlasStrings.Text(TAtlasTextId.NotesDialogHint);
+  FHint.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogHint);
 
   Bottom := TPanel.Create(Self);
   Bottom.Parent := Self;
@@ -100,12 +100,12 @@ begin
   Bottom.Height := ScaleValue(44);
   Bottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Speichern“; „Löschen“ links außen.
-  FCancel := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.NotesDialogCancel), CancelClick);
+  FCancel := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogCancel), CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FSave := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.NotesDialogSave), SaveClick);
+  FSave := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogSave), SaveClick);
   FSave.Left := FCancel.Left - FSave.Width - ScaleValue(Gap);
-  FDelete := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.NotesDialogDelete), DeleteClick);
+  FDelete := AddButton(Bottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogDelete), DeleteClick);
   FDelete.Left := ScaleValue(Gap);
   FDelete.Anchors := [akLeft, akTop];
   FDelete.Visible := ACanDelete;

@@ -174,7 +174,7 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.UI.Strings;
+  Atlas.UI.Designer.Strings;
 
 const
   // Ab Windows 11; ältere Systeme ignorieren die Attribute.
@@ -201,7 +201,7 @@ begin
   BorderStyle := bsNone;
   DoubleBuffered := True;
   Color := C(FColors.Surface);
-  Caption := TAtlasStrings.Text(TAtlasTextId.DesignerSearchTitle);
+  Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchTitle);
   OnClose := FormClose;
   OnDeactivate := FormDeactivate;
   FUIFont := TFont.Create;
@@ -321,41 +321,44 @@ end;
 function TAtlasComponentSearchWindow.KindCaption(AKind: TAtlasDesignerKind): string;
 begin
   case AKind of
-    TAtlasDesignerKind.Controls: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchKindControls);
-    TAtlasDesignerKind.NonVisual: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchKindNonVisual);
-    TAtlasDesignerKind.Containers: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchKindContainers);
+    TAtlasDesignerKind.Controls: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchKindControls);
+    TAtlasDesignerKind.NonVisual: Result := TAtlasDesignerStrings.Text(
+      TAtlasDesignerTextId.DesignerSearchKindNonVisual);
+    TAtlasDesignerKind.Containers: Result := TAtlasDesignerStrings.Text(
+      TAtlasDesignerTextId.DesignerSearchKindContainers);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchKindAll);
+    Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchKindAll);
   end;
 end;
 
 function TAtlasComponentSearchWindow.FieldCaption(AField: TAtlasDesignerField): string;
 begin
   case AField of
-    TAtlasDesignerField.Caption: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchFieldCaption);
-    TAtlasDesignerField.ClassName: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchFieldClass);
+    TAtlasDesignerField.Caption: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchFieldCaption);
+    TAtlasDesignerField.ClassName: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchFieldClass);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchFieldName);
+    Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchFieldName);
   end;
 end;
 
 function TAtlasComponentSearchWindow.GroupingCaption(AGrouping: TAtlasDesignerGrouping): string;
 begin
   case AGrouping of
-    TAtlasDesignerGrouping.ClassName: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchGroupClass);
-    TAtlasDesignerGrouping.Flat: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchGroupFlat);
+    TAtlasDesignerGrouping.ClassName: Result := TAtlasDesignerStrings.Text(
+      TAtlasDesignerTextId.DesignerSearchGroupClass);
+    TAtlasDesignerGrouping.Flat: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchGroupFlat);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchGroupHierarchy);
+    Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchGroupHierarchy);
   end;
 end;
 
 function TAtlasComponentSearchWindow.ActionCaption(AAction: TAtlasComponentSearchAction): string;
 begin
   case AAction of
-    TAtlasComponentSearchAction.Event: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchEvent);
-    TAtlasComponentSearchAction.CopyName: Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchCopy);
+    TAtlasComponentSearchAction.Event: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchEvent);
+    TAtlasComponentSearchAction.CopyName: Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchCopy);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.DesignerSearchSelect);
+    Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchSelect);
   end;
 end;
 
@@ -737,7 +740,7 @@ begin
   if FPattern = '' then
   begin
     Canvas.Font.Color := C(FColors.Muted);
-    mText := TAtlasStrings.Text(TAtlasTextId.DesignerSearchPrompt);
+    mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchPrompt);
     if FOptions.FormName <> '' then
       mText := FOptions.FormName + ': ' + mText;
   end
@@ -769,7 +772,7 @@ begin
   Canvas.MoveTo(mX + S(2), mY + S(3));
   Canvas.LineTo(mX + S(2), mY + S(19));
   Inc(mX, S(12));
-  mText := TAtlasStrings.Text(TAtlasTextId.DesignerSearchIn);
+  mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchIn);
   mRect := Rect(mX, mY, mX + Canvas.TextWidth(mText), mY + S(22));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := C(FColors.Muted);
@@ -835,7 +838,7 @@ begin
   mEnd := DrawHighlighted(mItem.TypeName, Rect(mPart.Left, ARect.Top + S(21), mPart.Right, ARect.Bottom - S(2)),
     FColors.Muted, TAtlasDesignerField.ClassName in FFields);
   if not mItem.Visual then
-    mText := TAtlasStrings.Text(TAtlasTextId.DesignerSearchNonVisual)
+    mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchNonVisual)
   else if mItem.ParentName <> '' then
     mText := mItem.ParentName
   else
@@ -977,14 +980,14 @@ begin
   Line(mItem.TypeName, FColors.Muted);
   Inc(mTop, S(6));
   // Lage: Karte des Formulars, Position und Größe.
-  Head(TAtlasStrings.Text(TAtlasTextId.DesignerSearchPosition));
+  Head(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchPosition));
   DrawMap(Rect(mArea.Left, mTop, mArea.Right, mTop + S(120)), mItem);
   Canvas.Brush.Style := bsClear;
   if not FOptions.FormBounds.IsEmpty then
     Inc(mTop, S(126));
   Canvas.Font.Assign(FSmallFont);
   if not mItem.Visual then
-    mText := TAtlasStrings.Text(TAtlasTextId.DesignerSearchNonVisual)
+    mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchNonVisual)
   else
     mText := Format('%d, %d · %d × %d', [mItem.Bounds.Left, mItem.Bounds.Top, mItem.Bounds.Width,
       mItem.Bounds.Height]);
@@ -994,16 +997,16 @@ begin
   Inc(mTop, S(6));
   if Length(mItem.Properties) > 0 then
   begin
-    Head(TAtlasStrings.Text(TAtlasTextId.DesignerSearchProperties));
+    Head(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchProperties));
     Canvas.Font.Assign(FSmallFont);
     for mText in mItem.Properties do
       Line(mText, FColors.Text);
     Inc(mTop, S(6));
   end;
-  Head(TAtlasStrings.Text(TAtlasTextId.DesignerSearchEvents));
+  Head(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchEvents));
   Canvas.Font.Assign(FSmallFont);
   if Length(mItem.Events) = 0 then
-    Line(TAtlasStrings.Text(TAtlasTextId.DesignerSearchNoEvents), FColors.Muted);
+    Line(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchNoEvents), FColors.Muted);
   for mText in mItem.Events do
     Line(mText, FColors.Text);
   Canvas.Brush.Style := bsSolid;
@@ -1067,13 +1070,13 @@ begin
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Color := C(FColors.Muted);
   Canvas.Brush.Style := bsClear;
-  mText := TAtlasStrings.Fmt(TAtlasTextId.DesignerSearchCount, [Length(FHits), Length(FItems)]);
+  mText := TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSearchCount, [Length(FHits), Length(FItems)]);
   mPart := Rect(mBar.Right - S(10) - Canvas.TextWidth(mText), mBar.Top, mBar.Right - S(10), mBar.Bottom);
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   if FOptions.Compact then
-    mText := TAtlasStrings.Text(TAtlasTextId.DesignerSearchKeysPopup)
+    mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchKeysPopup)
   else
-    mText := TAtlasStrings.Text(TAtlasTextId.DesignerSearchKeys);
+    mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchKeys);
   mPart := Rect(mBar.Left + S(10), mBar.Top, mPart.Left - S(16), mBar.Bottom);
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;

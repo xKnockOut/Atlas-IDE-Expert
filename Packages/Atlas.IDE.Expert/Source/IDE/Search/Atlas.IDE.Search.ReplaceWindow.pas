@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.UI.Search.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol,
   Atlas.IDE.Foundation.DockWindow;
@@ -81,7 +81,7 @@ end;
 
 function TReplaceDock.GetCaption: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.SearchReplaceCaption);
+  Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceCaption);
 end;
 
 function TReplaceDock.GetIdentifier: string;

@@ -69,7 +69,8 @@ uses
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Hotspots.Service,
   Atlas.IDE.SymbolPath.Service,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings;
 
 const
   /// <summary>Feld im Atlas-Statusfeld für die Kosten einer interface-Änderung (#554).</summary>
@@ -277,12 +278,12 @@ begin
     end;
 end;
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId: string; ACaption: TAtlasAnalysisTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := TAtlasAnalysisStrings.Text(ACaption);
   Result.Run := ARun;
   Result.Visible := AVisible;
 end;
@@ -366,23 +367,25 @@ function TAtlasAnalysisModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
-    Command('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
+    Command('Atlas.Architecture', TAtlasAnalysisTextId.ArchitectureCommand,
       Guarded(TAtlasFeature.Architecture, ShowArchitecture), ArchitectureVisible),
     // Hotspots (#1354); nur sichtbar, solange hotspots.enabled an ist.
-    Command('Atlas.Hotspots', TAtlasTextId.HotspotsCommand, Guarded(TAtlasFeature.Hotspots, ShowHotspots),
+    Command('Atlas.Hotspots', TAtlasAnalysisTextId.HotspotsCommand, Guarded(TAtlasFeature.Hotspots, ShowHotspots),
       HotspotsVisible),
     // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
-    Command('Atlas.UnitRelations', TAtlasTextId.UnitRelationsCommand,
+    Command('Atlas.UnitRelations', TAtlasAnalysisTextId.UnitRelationsCommand,
       Guarded(TAtlasFeature.UnitRelations, ShowUnitRelations), UnitRelationsVisible),
     // Kosten einer interface-Änderung (#554): Verwender nach Abschnitt und verschiebbare uses der Unit im Editor,
     // dazu die teuersten Units in der Architekturübersicht.
-    Command('Atlas.UnitDependencies', TAtlasTextId.UnitDependenciesCommand, ShowCurrentUnit, UnitRelationsVisible),
-    Command('Atlas.InterfaceCostRanking', TAtlasTextId.InterfaceCostRankingCommand,
+    Command('Atlas.UnitDependencies', TAtlasAnalysisTextId.UnitDependenciesCommand, ShowCurrentUnit,
+      UnitRelationsVisible),
+    Command('Atlas.InterfaceCostRanking', TAtlasAnalysisTextId.InterfaceCostRankingCommand,
       Guarded(TAtlasFeature.Architecture, ShowRanking), ArchitectureVisible),
     // Weg zwischen Symbolen (#1117); nur sichtbar, solange navigation.symbolPath an ist.
-    Command('Atlas.SymbolPath', TAtlasTextId.SymbolPathCommand, Guarded(TAtlasFeature.SymbolPath, ShowSymbolPath),
+    Command('Atlas.SymbolPath', TAtlasAnalysisTextId.SymbolPathCommand,
+      Guarded(TAtlasFeature.SymbolPath, ShowSymbolPath),
       SymbolPathVisible),
-    Command('Atlas.SymbolPathFromHere', TAtlasTextId.SymbolPathFromHere,
+    Command('Atlas.SymbolPathFromHere', TAtlasAnalysisTextId.SymbolPathFromHere,
       Guarded(TAtlasFeature.SymbolPath, SymbolPathFromHere), SymbolPathVisible)];
 end;
 
@@ -394,10 +397,10 @@ begin
 end;
 
 /// <summary>Eintrag unter Ansicht › Atlas mit eigenem Text.</summary>
-function ViewEntry(const ACommandId: string; ACaption: TAtlasTextId): TAtlasMenuEntry;
+function ViewEntry(const ACommandId: string; ACaption: TAtlasAnalysisTextId): TAtlasMenuEntry;
 begin
   Result := MenuEntry(ACommandId, TAtlasMenuPlace.ViewMenu);
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := TAtlasAnalysisStrings.Text(ACaption);
 end;
 
 function TAtlasAnalysisModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -407,9 +410,9 @@ begin
     MenuEntry('Atlas.Hotspots', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.UnitRelations', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.SymbolPath', TAtlasMenuPlace.AtlasMenu),
-    ViewEntry('Atlas.Architecture', TAtlasTextId.ArchitectureViewMenu),
-    ViewEntry('Atlas.Hotspots', TAtlasTextId.HotspotsViewMenu),
-    ViewEntry('Atlas.UnitRelations', TAtlasTextId.UnitRelationsViewMenu),
+    ViewEntry('Atlas.Architecture', TAtlasAnalysisTextId.ArchitectureViewMenu),
+    ViewEntry('Atlas.Hotspots', TAtlasAnalysisTextId.HotspotsViewMenu),
+    ViewEntry('Atlas.UnitRelations', TAtlasAnalysisTextId.UnitRelationsViewMenu),
     MenuEntry('Atlas.SymbolPathFromHere', TAtlasMenuPlace.EditorContext)];
 end;
 

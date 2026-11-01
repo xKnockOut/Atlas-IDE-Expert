@@ -80,7 +80,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.UI.Architecture.Frame,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -392,13 +392,13 @@ begin
     Exit;
   if not ProjectUri(Uri) then
   begin
-    Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureNoProject), False);
+    Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), False);
     Exit;
   end;
   Inc(FRequest);
   Request := FRequest;
   FPending := True;
-  Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureLoading), True);
+  Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLoading), True);
   mArguments := TAtlasArchitectureCommands.Arguments(Uri, Options);
   // Neu benennen gilt einmal; der Server legt das Ergebnis als vorigen Stand ab (#1367).
   FRename := False;
@@ -422,9 +422,9 @@ begin
           if Current = nil then
             Exit;
           if not Parsed then
-            Current.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureFailed), False)
+            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), False)
           else if not Enabled then
-            Current.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureDisabled), False)
+            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureDisabled), False)
           else
           begin
             Current.SetModel(Model);
@@ -434,7 +434,7 @@ begin
     end) then
   begin
     FPending := False;
-    Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureNoServer), True);
+    Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
   end;
 end;
 
@@ -448,7 +448,7 @@ begin
     Exit;
   if not ProjectUri(Uri) then
   begin
-    Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureNoProject), True);
+    Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), True);
     Exit;
   end;
   if not FRun(TAtlasArchitectureCommands.SaveCommand,
@@ -470,12 +470,12 @@ begin
           if Current = nil then
             Exit;
           if Saved <> '' then
-            Current.SetMessage(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSaved, [Saved]), True)
+            Current.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSaved, [Saved]), True)
           else
-            Current.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureFailed), True);
+            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), True);
         end);
     end) then
-    Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureNoServer), True);
+    Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
 end;
 
 procedure TArchitectureState.ShowRoute(const AUnits: TArray<string>);

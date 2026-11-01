@@ -166,7 +166,7 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.Core.Debug.OwnCode,
   Atlas.Core.Debug.ExceptionBanner,
-  Atlas.UI.Strings;
+  Atlas.UI.Debug.Strings;
 
 { TAtlasIdeDebugExceptions.TListener }
 
@@ -382,7 +382,7 @@ begin
     Exit;
   SaveIgnoreList(List);
   if Assigned(FMessage) then
-    FMessage(TAtlasStrings.Fmt(TAtlasTextId.DebugBannerIgnoredLocationSaid,
+    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerIgnoredLocationSaid,
       [AClass, ExtractFileName(AFileName) + ':' + IntToStr(ALine)]));
 end;
 
@@ -444,9 +444,9 @@ begin
   StatusTexts(ExceptionClass, Message);
   if ExceptionClass = '' then
     if AFault then
-      ExceptionClass := TAtlasStrings.Text(TAtlasTextId.DebugExceptionsFault)
+      ExceptionClass := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsFault)
     else
-      ExceptionClass := TAtlasStrings.Text(TAtlasTextId.DebugExceptionsUnknownClass);
+      ExceptionClass := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsUnknownClass);
   FPending := Default(TAtlasDebugExceptionStop);
   FPending.Stop := TAtlasIdeDebugSession.StopCount;
   FPending.Exception := TAtlasDebugException.Create(Now, ExceptionClass, Message, Thread.GetOSThreadID,
@@ -630,9 +630,9 @@ begin
   SaveIgnoreList(List);
   if Assigned(FMessage) then
     if AIgnore then
-      FMessage(TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsIgnoredClassSaid, [AClass]))
+      FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsIgnoredClassSaid, [AClass]))
     else
-      FMessage(TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsStopAgainSaid, [AClass]));
+      FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStopAgainSaid, [AClass]));
 end;
 
 class procedure TAtlasIdeDebugExceptions.WireFrame(AFrame: TAtlasDebugExceptionsFrame);
@@ -648,7 +648,7 @@ begin
       if Path <> '' then
         TAtlasIdeNavigation.GoToLocation(Path, AException.Line - 1, 0)
       else if Assigned(FMessage) then
-        FMessage(TAtlasStrings.Fmt(TAtlasTextId.DebugExceptionsNoSource, [AException.FileName]));
+        FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsNoSource, [AException.FileName]));
     end;
   // Rahmen aus dem Aufrufstapel (#578): Pfad ist schon aufgelöst.
   AFrame.OnOpenFrame :=

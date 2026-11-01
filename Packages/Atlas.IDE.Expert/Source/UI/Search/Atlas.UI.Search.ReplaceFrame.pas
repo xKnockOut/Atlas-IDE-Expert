@@ -70,7 +70,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.UI.Strings;
+  Atlas.UI.Search.Strings;
 
 {$R *.dfm}
 
@@ -96,7 +96,7 @@ begin
   FReplace.Align := alRight;
   FReplace.AlignWithMargins := True;
   FReplace.Width := 170;
-  FReplace.Caption := TAtlasStrings.Text(TAtlasTextId.SearchReplaceSelectedButton);
+  FReplace.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceSelectedButton);
   FReplace.OnClick := ReplaceClick;
 
   FTitle := TLabel.Create(Self);
@@ -130,13 +130,13 @@ begin
   Column.Caption := '';
   Column.Width := CheckWidth;
   Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SearchReplaceColumnPlace);
+  Column.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPlace);
   Column.Width := 220;
   Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SearchReplaceColumnText);
+  Column.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnText);
   Column.Width := 360;
   Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SearchReplaceColumnPreview);
+  Column.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPreview);
   Column.Width := 300;
   UpdateTitle;
 end;
@@ -163,12 +163,13 @@ var
 begin
   if FModel = nil then
   begin
-    FTitle.Caption := TAtlasStrings.Text(TAtlasTextId.SearchReplaceEmpty);
+    FTitle.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceEmpty);
     FReplace.Enabled := False;
     Exit;
   end;
   Files := Length(FModel.Results);
-  FTitle.Caption := TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceListTitle, [FModel.Query.Text, FModel.Replace,
+  FTitle.Caption := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceListTitle,
+    [FModel.Query.Text, FModel.Replace,
     FModel.CheckedCount, FModel.HitCount, Files]);
   FReplace.Enabled := FModel.CheckedCount > 0;
 end;
@@ -195,7 +196,7 @@ begin
   begin
     // Treffer eingerückt unter ihrer Datei.
     Item.Caption := '   ' + Check;
-    Item.SubItems.Add('   ' + TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceLine, [Row.Line]));
+    Item.SubItems.Add('   ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceLine, [Row.Line]));
     Item.SubItems.Add(Row.Text);
     Item.SubItems.Add(Row.Preview);
   end;

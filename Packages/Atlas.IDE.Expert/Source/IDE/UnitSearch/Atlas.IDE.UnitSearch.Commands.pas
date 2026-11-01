@@ -98,6 +98,7 @@ uses
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.State,
   Atlas.UI.Strings,
+  Atlas.UI.Search.Strings,
   Atlas.UI.UnitSearch.Window,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -585,7 +586,7 @@ begin
   Running := Session;
   if Running = nil then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.UnitSearchNoServer));
+    Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
     if AFallback then
       ShowIdeDialog(AMode);
     Exit;
@@ -593,7 +594,7 @@ begin
   TargetFile := TopFile;
   if (AMode = TAtlasUnitSearchMode.UseUnit) and not UsesTarget(TargetFile) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.UnitSearchUsesNone));
+    Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchUsesNone));
     Exit;
   end;
   if Current <> nil then
@@ -734,7 +735,7 @@ begin
       Live := Session;
       if Live = nil then
       begin
-        Say(TAtlasStrings.Text(TAtlasTextId.UnitSearchNoServer));
+        Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
         Exit;
       end;
       try
@@ -808,7 +809,7 @@ begin
     if Info.CounterpartFile <> '' then
       TAtlasIdeNavigation.GoToLocation(Info.CounterpartFile, 0, 0)
     else
-      TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchNoTests, [Entry.Name]));
+      TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchNoTests, [Entry.Name]));
   end;
 end;
 
@@ -857,16 +858,18 @@ begin
   end;
   if Edit.IsEmpty then
   begin
-    TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchUsesAdded, [0, ExtractFileName(ATarget)]));
+    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchUsesAdded,
+      [0, ExtractFileName(ATarget)]));
     Exit;
   end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit,
     TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchAddUses) + ': ' + UnitList(AEntries));
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchAddUses) + ': ' + UnitList(AEntries));
   if Outcome.Error <> '' then
     TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))
   else
-    TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchUsesAdded, [Added, ExtractFileName(ATarget)]));
+    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchUsesAdded,
+      [Added, ExtractFileName(ATarget)]));
 end;
 
 /// <summary>Sitzung für das Einfügen in ATarget, Puffer abgeglichen; nil mit Meldung.</summary>
@@ -875,13 +878,13 @@ begin
   Result := nil;
   if not UsesTarget(ATarget) then
   begin
-    TAtlasIdeUnitSearch.Say(TAtlasStrings.Text(TAtlasTextId.UnitSearchUsesNone));
+    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchUsesNone));
     Exit;
   end;
   Result := TAtlasIdeUnitSearch.Session;
   if Result = nil then
   begin
-    TAtlasIdeUnitSearch.Say(TAtlasStrings.Text(TAtlasTextId.UnitSearchNoServer));
+    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
     Exit;
   end;
   SyncBuffer(Result, ATarget);
@@ -917,7 +920,7 @@ var
 begin
   if Length(AEntries) = 0 then
   begin
-    TAtlasIdeUnitSearch.Say(TAtlasStrings.Text(TAtlasTextId.UseUnitNothing));
+    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitNothing));
     Exit;
   end;
   Live := AddUsesSession(ATarget);
@@ -943,7 +946,7 @@ begin
       begin
         FormFile := FormFileOf(Entry.FileName);
         if (FormFile = '') or not ShowForm(Entry.FileName) then
-          TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchNoForm, [Entry.Name]));
+          TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchNoForm, [Entry.Name]));
       end;
     TAtlasUnitSearchAction.AddUses:
       AddUses(AEntries, ATarget);
@@ -957,8 +960,9 @@ begin
         begin
           Project := string.Join(', ', Entry.Projects);
           if Project = '' then
-            Project := TAtlasStrings.Text(TAtlasTextId.UnitSearchNoProject);
-          TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchProjectOf, [Entry.Name, Project]));
+            Project := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoProject);
+          TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchProjectOf,
+            [Entry.Name, Project]));
         end;
       end;
     TAtlasUnitSearchAction.ShowExplorer:

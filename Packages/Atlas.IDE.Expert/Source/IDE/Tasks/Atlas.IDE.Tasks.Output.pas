@@ -81,7 +81,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Style.Palette,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.UI.Strings,
+  Atlas.UI.Build.Strings,
   Atlas.UI.Tasks.Texts;
 
 type
@@ -166,7 +166,7 @@ function TAtlasIdeTaskOutput.Group(const AMessages: IOTAMessageServices; ACreate
 var
   Name: string;
 begin
-  Name := TAtlasStrings.Text(TAtlasTextId.TasksGroup);
+  Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGroup);
   Result := AMessages.GetGroup(Name);
   if (Result = nil) and ACreate then
     Result := AMessages.AddMessageGroup(Name);
@@ -345,7 +345,7 @@ begin
     for Index := 0 to High(Entry.Lines) do
       AddLine(Entry, Index);
     if (Entry.Dropped > 0) and not FOnlyFindings then
-      Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.TasksMoreLines, [Entry.Dropped]), Target);
+      Messages.AddTitleMessage(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMoreLines, [Entry.Dropped]), Target);
   end;
 end;
 

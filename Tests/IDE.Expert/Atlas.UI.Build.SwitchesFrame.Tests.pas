@@ -9,7 +9,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Build.Strings;
 
 type
   [TestFixture]
@@ -178,7 +179,7 @@ begin
     Frame.HandleNeeded;
     Assert.IsTrue(Frame.EmptyLabel.Visible, 'ohne Stand der Hinweis');
     Frame.SetView(SampleView, 'C:\P\A.pas', 19);
-    Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesNoServer));
+    Frame.SetMessage(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
     Assert.IsTrue(Frame.EmptyLabel.Visible);
     Assert.IsFalse(Frame.List.Visible);
     Assert.AreEqual('Der Atlas-Server läuft nicht.', Frame.EmptyLabel.Caption);

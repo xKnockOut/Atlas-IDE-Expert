@@ -84,7 +84,8 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.Affected,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Tests.Strings;
 
 var
   GScope: IAtlasModuleScope;
@@ -280,12 +281,12 @@ begin
     end;
 end;
 
-function Command(const AId: string; ACaption: TAtlasTextId; const ARun: TProc;
+function Command(const AId: string; ACaption: TAtlasTestsTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Caption := TAtlasTestsStrings.Text(ACaption);
   Result.Run := ARun;
   Result.Visible := AVisible;
 end;
@@ -335,14 +336,14 @@ function TAtlasTestsModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     // Betroffene Tests (#1353): sichtbar mit tests.affected und tests.run.
-    Command('Atlas.RunAffectedTests', TAtlasTextId.TestsAffectedCommand,
+    Command('Atlas.RunAffectedTests', TAtlasTestsTextId.TestsAffectedCommand,
       Guarded(TAtlasFeature.Build, TAtlasIdeAffectedTests.Run), AffectedTestsVisible),
     // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft.
-    Command('Atlas.RunTests', TAtlasTextId.TestsRunCommand, RunAll, TestsVisible),
-    Command('Atlas.RunFailedTests', TAtlasTextId.TestsRunFailedCommand, RunFailed, TestsVisible),
+    Command('Atlas.RunTests', TAtlasTestsTextId.TestsRunCommand, RunAll, TestsVisible),
+    Command('Atlas.RunFailedTests', TAtlasTestsTextId.TestsRunFailedCommand, RunFailed, TestsVisible),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
-    Command('Atlas.RunTest', TAtlasTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
-    Command('Atlas.DebugTest', TAtlasTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible)];
+    Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
+    Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;

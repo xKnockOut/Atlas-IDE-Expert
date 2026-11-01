@@ -39,6 +39,7 @@ uses
   System.JSON,
   ToolsAPI,
   Atlas.UI.Strings,
+  Atlas.UI.Rules.Strings,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
@@ -111,7 +112,7 @@ begin
   begin
     if not HasForm(FileName) then
     begin
-      AMessage(TAtlasStrings.Text(TAtlasTextId.DfmRulesNoForm));
+      AMessage(TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesNoForm));
       Exit;
     end;
   end
@@ -124,7 +125,7 @@ begin
         FileName := Project.FileName;
     if FileName = '' then
     begin
-      AMessage(TAtlasStrings.Text(TAtlasTextId.DfmRulesNoProject));
+      AMessage(TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesNoProject));
       Exit;
     end;
   end;
@@ -147,13 +148,13 @@ begin
   except
     on E: ELspClientError do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.DfmRulesFailed, [E.Message]));
+      AMessage(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.DfmRulesFailed, [E.Message]));
       Exit;
     end;
   end;
   if Edit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.DfmRulesNothing));
+    AMessage(TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesNothing));
     Exit;
   end;
   // Vorschau wie beim Umbenennen (#400): Bestätigung durch den Benutzer (needsConfirmation).
@@ -167,15 +168,16 @@ begin
     begin
       TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
     end;
-  if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.DfmRulesPreviewTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.DfmRulesPreviewHint, [Edit.EditCount, Length(Edit.Files)]),
-    TAtlasStrings.Text(TAtlasTextId.DfmRulesPreviewApply), TAtlasResults.Group(Preview), Open) then
+  if not TAtlasRenamePreview.Execute(TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewTitle),
+    TAtlasRulesStrings.Fmt(TAtlasRulesTextId.DfmRulesPreviewHint, [Edit.EditCount, Length(Edit.Files)]),
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewApply), TAtlasResults.Group(Preview), Open) then
     Exit;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.DfmRulesPreviewTitle));
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy,
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewTitle));
   if Outcome.Error <> '' then
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))
   else
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DfmRulesDone, [Outcome.Edits, Outcome.Files]));
+    AMessage(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.DfmRulesDone, [Outcome.Edits, Outcome.Files]));
   if Outcome.Written > 0 then
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
 end;

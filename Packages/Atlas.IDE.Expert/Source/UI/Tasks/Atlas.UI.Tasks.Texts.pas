@@ -40,7 +40,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Build.Strings;
 
 { TAtlasTaskTexts }
 
@@ -52,54 +52,55 @@ begin
     AMs := 0;
   Seconds := AMs div 1000;
   if Seconds < 60 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksSeconds, [Seconds, (AMs mod 1000) div 100])
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksSeconds, [Seconds, (AMs mod 1000) div 100])
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksMinutes, [Seconds div 60, Seconds mod 60]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMinutes, [Seconds div 60, Seconds mod 60]);
 end;
 
 class function TAtlasTaskTexts.GroupName(AGroup: TAtlasTaskGroup): string;
 begin
   case AGroup of
     TAtlasTaskGroup.Check:
-      Result := TAtlasStrings.Text(TAtlasTextId.TasksGroupCheck);
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGroupCheck);
     TAtlasTaskGroup.Build:
-      Result := TAtlasStrings.Text(TAtlasTextId.TasksGroupBuild);
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGroupBuild);
     TAtlasTaskGroup.Test:
-      Result := TAtlasStrings.Text(TAtlasTextId.TasksGroupTest);
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGroupTest);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.TasksGroupOther);
+    Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGroupOther);
   end;
 end;
 
 class function TAtlasTaskTexts.Findings(ACount: Integer): string;
 begin
   if ACount <= 0 then
-    Result := TAtlasStrings.Text(TAtlasTextId.TasksFindingsNone)
+    Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksFindingsNone)
   else if ACount = 1 then
-    Result := TAtlasStrings.Text(TAtlasTextId.TasksFindingsOne)
+    Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksFindingsOne)
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksFindingsMany, [ACount]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksFindingsMany, [ACount]);
 end;
 
 class function TAtlasTaskTexts.Running(const AName, ACommandLine: string): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.TasksHeaderRunning, [AName, ACommandLine]);
+  Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksHeaderRunning, [AName, ACommandLine]);
 end;
 
 class function TAtlasTaskTexts.Header(const ARun: TAtlasTaskRun; ATimeoutSec: Integer): string;
 begin
   case ARun.Outcome of
     TAtlasTaskOutcome.TimedOut:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TasksHeaderTimedOut, [ARun.Name, ATimeoutSec,
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksHeaderTimedOut, [ARun.Name, ATimeoutSec,
         Findings(ARun.Counts.Total)]);
     TAtlasTaskOutcome.Cancelled:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TasksHeaderCancelled, [ARun.Name, Findings(ARun.Counts.Total)]);
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksHeaderCancelled,
+        [ARun.Name, Findings(ARun.Counts.Total)]);
     TAtlasTaskOutcome.ProgramMissing:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TasksHeaderMissing, [ARun.Name, ARun.Error, ARun.Cwd]);
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksHeaderMissing, [ARun.Name, ARun.Error, ARun.Cwd]);
     TAtlasTaskOutcome.StartFailed:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.TasksHeaderStartFailed, [ARun.Name, ARun.Error]);
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksHeaderStartFailed, [ARun.Name, ARun.Error]);
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksHeaderFinished, [ARun.Name, ARun.ExitCode,
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksHeaderFinished, [ARun.Name, ARun.ExitCode,
       Duration(ARun.DurationMs), Findings(ARun.Counts.Total)]);
   end;
 end;
@@ -107,11 +108,11 @@ end;
 class function TAtlasTaskTexts.Blocked(const ARun: TAtlasTaskRun): string;
 begin
   if ARun.Counts.Errors > 0 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksGateErrors, [ARun.Name, ARun.Counts.Errors])
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGateErrors, [ARun.Name, ARun.Counts.Errors])
   else if ARun.Outcome = TAtlasTaskOutcome.Finished then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksGateExit, [ARun.Name, ARun.ExitCode])
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGateExit, [ARun.Name, ARun.ExitCode])
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksGateNotRun, [ARun.Name]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGateNotRun, [ARun.Name]);
 end;
 
 class function TAtlasTaskTexts.LastResult(const ALast: TAtlasTaskLastRun; AHas: Boolean): string;
@@ -119,21 +120,21 @@ var
   Time: string;
 begin
   if not AHas then
-    Exit(TAtlasStrings.Text(TAtlasTextId.TasksNever));
+    Exit(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNever));
   Time := FormatDateTime('hh:nn', ALast.FinishedAt);
   if ALast.Outcome <> TAtlasTaskOutcome.Finished then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksNotRun, [Time])
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksNotRun, [Time])
   else if ALast.Counts.Errors > 0 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksErrors, [ALast.Counts.Errors, Time])
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksErrors, [ALast.Counts.Errors, Time])
   else if ALast.ExitCode <> 0 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksExitCode, [ALast.ExitCode, Time])
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksExitCode, [ALast.ExitCode, Time])
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.TasksPassed, [Time]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksPassed, [Time]);
 end;
 
 class function TAtlasTaskTexts.Description(const ATask: TAtlasTaskDefinition; const ALastText: string): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.TasksItemDescription, [GroupName(ATask.Group), ATask.CommandLine,
+  Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksItemDescription, [GroupName(ATask.Group), ATask.CommandLine,
     ALastText]);
 end;
 

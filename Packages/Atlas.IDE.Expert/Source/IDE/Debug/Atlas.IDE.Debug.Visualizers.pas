@@ -140,7 +140,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Debug.Evaluator,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings;
 
 const
   IdentifierPrefix = 'Atlas.Visualizer.';
@@ -199,12 +200,12 @@ end;
 
 function TAtlasIdeVisualizer.GetVisualizerName: string;
 begin
-  Result := Format(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerName), [KindCaption(FKind)]);
+  Result := Format(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerName), [KindCaption(FKind)]);
 end;
 
 function TAtlasIdeVisualizer.GetVisualizerDescription: string;
 begin
-  Result := Format(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerDescription), [KindCaption(FKind)]);
+  Result := Format(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerDescription), [KindCaption(FKind)]);
 end;
 
 function TAtlasIdeVisualizer.GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
@@ -232,7 +233,7 @@ end;
 
 function TAtlasIdeViewerVisualizer.GetMenuText: string;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.DebugViewerMenu);
+  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerMenu);
 end;
 
 function TAtlasIdeViewerVisualizer.Show(const Expression, TypeName, EvalResult: string; SuggestedLeft,
@@ -303,9 +304,9 @@ begin
   if FForm = nil then
     Exit;
   if Reason = ovurProcessRunning then
-    FForm.MarkUnavailable(TAtlasStrings.Text(TAtlasTextId.DebugViewerRunning))
+    FForm.MarkUnavailable(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerRunning))
   else
-    FForm.MarkUnavailable(TAtlasStrings.Text(TAtlasTextId.DebugViewerOutOfScope));
+    FForm.MarkUnavailable(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerOutOfScope));
 end;
 
 procedure TAtlasIdeViewerUpdater.RefreshVisualizer(const Expression, TypeName, EvalResult: string);

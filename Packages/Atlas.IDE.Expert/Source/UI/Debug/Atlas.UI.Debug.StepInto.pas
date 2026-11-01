@@ -74,6 +74,7 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -96,13 +97,13 @@ class function TAtlasStepIntoWindow.KindText(const ARow: TAtlasStepRow): string;
 begin
   case ARow.Kind of
     TAtlasStepKind.Getter:
-      Result := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetGetter);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetGetter);
     TAtlasStepKind.Setter:
-      Result := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetSetter);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetSetter);
     TAtlasStepKind.Constructor_:
-      Result := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetConstructor);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetConstructor);
     TAtlasStepKind.Inherited_:
-      Result := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetInherited);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetInherited);
   else
     Result := '';
   end;
@@ -110,7 +111,7 @@ begin
   begin
     if Result <> '' then
       Result := Result + ', ';
-    Result := Result + TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCandidate);
+    Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetCandidate);
   end;
 end;
 
@@ -118,9 +119,9 @@ class function TAtlasStepIntoWindow.ReasonText(const ARow: TAtlasStepRow): strin
 begin
   case ARow.Unavailable of
     TAtlasStepUnavailable.NoSource:
-      Result := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetNoSource);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNoSource);
     TAtlasStepUnavailable.Library_:
-      Result := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetLibrary);
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetLibrary);
   else
     Result := '';
   end;
@@ -206,7 +207,7 @@ begin
   end;
   // Fußzeile mit den Tasten.
   Y := Y + TextHeight + Scale(RowGap) * 2;
-  Text := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetFooter);
+  Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetFooter);
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Muted);

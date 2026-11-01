@@ -85,7 +85,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.UI.Bookmarks.Strings,
   Atlas.UI.Notes.Dialog,
   Atlas.UI.Notes.List,
   Atlas.UI.Results.Frame,
@@ -193,7 +193,7 @@ begin
   Put(ABook);
   Result := (FFolder <> '') and TAtlasNotes.Save(FFolder, ABook);
   if not Result then
-    Say(TAtlasStrings.Text(TAtlasTextId.NotesSaveFailed));
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesSaveFailed));
 end;
 
 class function TAtlasIdeNotes.CurrentLines(const AFileName: string): TArray<string>;
@@ -259,14 +259,14 @@ begin
     Exit;
   if not TAtlasIdeSettings.Current.Notes then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.NotesDisabled));
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDisabled));
     Exit;
   end;
   // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.NotesNoEditor));
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoEditor));
     Exit;
   end;
   AFileName := View.Buffer.FileName;
@@ -278,7 +278,8 @@ end;
 
 class function TAtlasIdeNotes.Confirm(const ANote: TAtlasNote): Boolean;
 begin
-  Result := MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.NotesDeleteConfirm, [ANote.Title]), mtConfirmation,
+  Result := MessageDlg(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesDeleteConfirm, [ANote.Title]),
+    mtConfirmation,
     [mbYes, mbNo], 0) = mrYes;
 end;
 
@@ -295,7 +296,7 @@ begin
   Project := ResolveProject(FileName);
   if Project = '' then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.NotesNoProject));
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoProject));
     Exit;
   end;
   Lines := CurrentLines(FileName);
@@ -306,7 +307,7 @@ begin
   Text := '';
   if Index >= 0 then
     Text := Current.Notes[Index].Text;
-  Choice := TAtlasNoteDialog.Execute(TAtlasStrings.Fmt(TAtlasTextId.NotesDialogTitle,
+  Choice := TAtlasNoteDialog.Execute(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesDialogTitle,
     [ExtractFileName(FileName), Line + 1]), Text, Index >= 0);
   case Choice of
     TAtlasNoteChoice.Save:
@@ -338,7 +339,7 @@ begin
   Project := ResolveProject(FileName);
   if Project = '' then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.NotesNoProject));
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoProject));
     Exit;
   end;
   Current := Book(Project);
@@ -347,7 +348,7 @@ begin
   Index := Current.IndexAt(FileName, Line);
   if Index < 0 then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.NotesNone));
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNone));
     Exit;
   end;
   if not Confirm(Current.Notes[Index]) then
@@ -370,7 +371,7 @@ begin
     Exit;
   if not TAtlasIdeSettings.Current.Notes then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.NotesDisabled));
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDisabled));
     Exit;
   end;
   Project := '';
@@ -382,7 +383,7 @@ begin
     Project := ActiveProject;
   if Project = '' then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.NotesNoProject));
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoProject));
     Exit;
   end;
   Current := Book(Project);
@@ -403,7 +404,7 @@ begin
   else
     Put(Current);
   FListProject := Project;
-  TAtlasIdeResultsWindow.ShowItems(ListOf(TAtlasStrings.Fmt(TAtlasTextId.NotesListTitle,
+  TAtlasIdeResultsWindow.ShowItems(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
     [ExtractFileName(Project), Current.Count, Current.OrphanCount]), Current.Groups, ''));
 end;
 
@@ -417,7 +418,7 @@ begin
   if (Frame = nil) or (FListProject = '') or not Frame.ShowsItemsOf(TAtlasNotesList.Owner) then
     Exit;
   Current := Book(FListProject);
-  Frame.ShowItems(ListOf(TAtlasStrings.Fmt(TAtlasTextId.NotesListTitle,
+  Frame.ShowItems(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
     [ExtractFileName(FListProject), Current.Count, Current.OrphanCount]), Current.Groups, ASelectId));
 end;
 
@@ -436,7 +437,7 @@ begin
     Exit;
   Note := Current.Notes[Index];
   Text := Note.Text;
-  case TAtlasNoteDialog.Execute(TAtlasStrings.Fmt(TAtlasTextId.NotesDialogTitle,
+  case TAtlasNoteDialog.Execute(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesDialogTitle,
     [ExtractFileName(Note.FileName), Note.Line + 1]), Text, True) of
     TAtlasNoteChoice.Save:
       Current.SetText(AId, Text, NowUtc);

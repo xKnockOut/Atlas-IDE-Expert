@@ -140,7 +140,7 @@ uses
   Winapi.Windows,
   Winapi.CommCtrl,
   Vcl.Themes,
-  Atlas.UI.Strings;
+  Atlas.UI.Bookmarks.Strings;
 
 {$R *.dfm}
 
@@ -157,7 +157,7 @@ begin
   FFilter.Parent := Self;
   FFilter.Align := alTop;
   FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasStrings.Text(TAtlasTextId.BookmarksFilterHint);
+  FFilter.TextHint := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksFilterHint);
   FFilter.OnChange := FilterChange;
   FFilter.OnKeyDown := FilterKeyDown;
   FFilter.OnKeyPress := FilterKeyPress;
@@ -167,7 +167,7 @@ begin
   FOnlyFile.Align := alTop;
   FOnlyFile.AlignWithMargins := True;
   FOnlyFile.Top := FFilter.Top + FFilter.Height;
-  FOnlyFile.Caption := TAtlasStrings.Text(TAtlasTextId.BookmarksOnlyFile);
+  FOnlyFile.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksOnlyFile);
   FOnlyFile.OnClick := OnlyFileClick;
 
   FPlace := TLabel.Create(Self);
@@ -181,10 +181,10 @@ begin
 
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
-  FOpenItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), OpenClick);
+  FOpenItem := AddMenuItem(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo), OpenClick);
   FOpenItem.Default := True;
-  FRenameItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.BookmarksRename), RenameClick);
-  FDeleteItem := AddMenuItem(TAtlasStrings.Text(TAtlasTextId.BookmarksDelete), DeleteClick);
+  FRenameItem := AddMenuItem(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksRename), RenameClick);
+  FDeleteItem := AddMenuItem(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDelete), DeleteClick);
 
   FList := TListView.Create(Self);
   FList.Parent := Self;
@@ -198,12 +198,12 @@ begin
   FList.ColumnClick := False;
   FList.DragMode := dmAutomatic;
   FList.PopupMenu := FMenu;
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.BookmarksColumnName), 160);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.BookmarksColumnFile), 120);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.BookmarksColumnMethod), 140);
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.BookmarksColumnLine), 240);
+  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnName), 160);
+  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnFile), 120);
+  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnMethod), 140);
+  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnLine), 240);
   // „Nr.“ hinten angelegt, damit der Name die bearbeitbare erste Spalte bleibt; CreateWnd zeigt sie vorn.
-  AddColumn(TAtlasStrings.Text(TAtlasTextId.BookmarksColumnNumber), 36).Alignment := taCenter;
+  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnNumber), 36).Alignment := taCenter;
   FList.OnClick := ListClick;
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
@@ -223,7 +223,7 @@ begin
   FEmpty.WordWrap := True;
   FEmpty.ShowAccelChar := False;
   FEmpty.Font.Color := clGrayText;
-  FEmpty.Caption := TAtlasStrings.Text(TAtlasTextId.BookmarksEmpty);
+  FEmpty.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksEmpty);
   FEmpty.Visible := False;
   Refill('');
 end;
@@ -269,7 +269,7 @@ var
 begin
   Preview := ABookmark.Preview;
   if ABookmark.Lost then
-    Preview := TAtlasStrings.Text(TAtlasTextId.BookmarksLost) + ' · ' + Preview;
+    Preview := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost) + ' · ' + Preview;
   Number := '';
   if ABookmark.Number > 0 then
     Number := IntToStr(ABookmark.Number)

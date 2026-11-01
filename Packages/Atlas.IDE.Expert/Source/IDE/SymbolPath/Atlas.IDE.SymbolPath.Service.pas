@@ -59,7 +59,7 @@ uses
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Client,
   Atlas.Core.SymbolPath.Model,
-  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.ResultsWindow;
 
@@ -159,16 +159,18 @@ var
   Title: string;
   Request: Integer;
 begin
-  Title := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathTitle, [AInput.From, AInput.To_]);
+  Title := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.SymbolPathTitle, [AInput.From, AInput.To_]);
   Project := GetActiveProject;
   if (Project = nil) or (Project.FileName = '') then
   begin
-    TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title, TAtlasStrings.Text(TAtlasTextId.ArchitectureNoProject));
+    TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+      TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject));
     Exit;
   end;
   Inc(FRequest);
   Request := FRequest;
-  TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title, TAtlasStrings.Fmt(TAtlasTextId.SymbolPathSearching,
+  TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+    TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.SymbolPathSearching,
     [AInput.From, AInput.To_]));
   if not Assigned(FRun) or not FRun(TAtlasSymbolPathCommands.Command,
     TAtlasSymbolPathCommands.Arguments(TLspSession.PathToUri(Project.FileName), AInput.From, AInput.To_,
@@ -185,15 +187,17 @@ begin
           if not FInstalled or (Request <> FRequest) then
             Exit;
           if not Parsed then
-            TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title, TAtlasStrings.Text(TAtlasTextId.SymbolPathFailed))
+            TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+              TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFailed))
           else if not Answer.Enabled then
             TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
-              TAtlasStrings.Text(TAtlasTextId.SymbolPathDisabled))
+              TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathDisabled))
           else
             TAtlasIdeResultsWindow.ShowSymbolPath(Title, Answer, TAtlasIdeArchitecture.Enabled);
         end);
     end) then
-    TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title, TAtlasStrings.Text(TAtlasTextId.ArchitectureNoServer));
+    TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
+      TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer));
 end;
 
 end.

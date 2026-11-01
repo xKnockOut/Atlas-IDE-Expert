@@ -163,7 +163,7 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Dialogs,
-  Atlas.UI.Strings;
+  Atlas.UI.Analysis.Strings;
 
 {$R *.dfm}
 
@@ -193,7 +193,7 @@ begin
   FRefresh.Parent := FTop;
   FRefresh.Align := alLeft;
   FRefresh.AlignWithMargins := True;
-  FRefresh.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsRefresh);
+  FRefresh.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsRefresh);
   FRefresh.Width := 110;
   FRefresh.OnClick := RefreshClick;
 
@@ -202,7 +202,7 @@ begin
   FSave.Align := alLeft;
   FSave.AlignWithMargins := True;
   FSave.Left := FRefresh.Left + FRefresh.Width + 1;
-  FSave.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsSaveReport);
+  FSave.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveReport);
   FSave.Width := 130;
   FSave.OnClick := SaveClick;
 
@@ -219,7 +219,7 @@ begin
   FFilter.Parent := FTop;
   FFilter.Align := alClient;
   FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasStrings.Text(TAtlasTextId.HotspotsFilterHint);
+  FFilter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFilterHint);
   FFilter.OnChange := FilterChange;
 
   FStatus := TLabel.Create(Self);
@@ -233,16 +233,16 @@ begin
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FMenuOpen := TMenuItem.Create(FMenu);
-  FMenuOpen.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsMenuOpen);
+  FMenuOpen.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsMenuOpen);
   FMenuOpen.Default := True;
   FMenuOpen.OnClick := MenuOpenClick;
   FMenu.Items.Add(FMenuOpen);
   FMenuHistory := TMenuItem.Create(FMenu);
-  FMenuHistory.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsMenuHistory);
+  FMenuHistory.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsMenuHistory);
   FMenuHistory.OnClick := MenuHistoryClick;
   FMenu.Items.Add(FMenuHistory);
   FMenuImpact := TMenuItem.Create(FMenu);
-  FMenuImpact.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsMenuImpact);
+  FMenuImpact.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsMenuImpact);
   FMenuImpact.OnClick := MenuImpactClick;
   FMenu.Items.Add(FMenuImpact);
 
@@ -251,7 +251,7 @@ begin
   FChart.Align := alTop;
   FChart.AlignWithMargins := True;
   FChart.Height := MulDiv(220, CurrentPPI, 96);
-  FChart.EmptyText := TAtlasStrings.Text(TAtlasTextId.HotspotsChartHint);
+  FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint);
   FChart.PopupMenu := FMenu;
   FChart.OnSelect :=
     procedure(AEntry: Integer)
@@ -275,34 +275,34 @@ begin
   FPages.Align := alClient;
   FPages.AlignWithMargins := True;
 
-  FHotspotSheet := NewSheet(TAtlasStrings.Text(TAtlasTextId.HotspotsTabHotspots));
+  FHotspotSheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTabHotspots));
   FHotspots := NewList(FHotspotSheet);
   FHotspots.PopupMenu := FMenu;
   FHotspots.OnSelectItem := HotspotsSelect;
   FHotspots.OnDblClick := HotspotsDblClick;
 
-  FCouplingSheet := NewSheet(TAtlasStrings.Text(TAtlasTextId.HotspotsTabCoupling));
+  FCouplingSheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTabCoupling));
   FCoupling := NewList(FCouplingSheet);
   FCoupling.OnDblClick := CouplingDblClick;
-  AddColumn(FCoupling, TAtlasStrings.Text(TAtlasTextId.HotspotsColFirst), 200);
-  AddColumn(FCoupling, TAtlasStrings.Text(TAtlasTextId.HotspotsColSecond), 200);
-  AddColumn(FCoupling, TAtlasStrings.Text(TAtlasTextId.HotspotsColShared), 80);
-  AddColumn(FCoupling, TAtlasStrings.Text(TAtlasTextId.HotspotsColRatio), 70);
+  AddColumn(FCoupling, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColFirst), 200);
+  AddColumn(FCoupling, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColSecond), 200);
+  AddColumn(FCoupling, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColShared), 80);
+  AddColumn(FCoupling, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColRatio), 70);
 
-  FHistorySheet := NewSheet(TAtlasStrings.Text(TAtlasTextId.HotspotsTabHistory));
+  FHistorySheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTabHistory));
   FHistoryInfo := TLabel.Create(Self);
   FHistoryInfo.Parent := FHistorySheet;
   FHistoryInfo.Align := alTop;
   FHistoryInfo.AlignWithMargins := True;
   FHistoryInfo.ShowAccelChar := False;
   FHistoryInfo.EllipsisPosition := epEndEllipsis;
-  FHistoryInfo.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsHistoryNone);
+  FHistoryInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsHistoryNone);
   FHistory := NewList(FHistorySheet);
-  AddColumn(FHistory, TAtlasStrings.Text(TAtlasTextId.HotspotsColRevision), 80);
-  AddColumn(FHistory, TAtlasStrings.Text(TAtlasTextId.HotspotsColDate), 90);
-  AddColumn(FHistory, TAtlasStrings.Text(TAtlasTextId.HotspotsColAuthor), 120);
-  AddColumn(FHistory, TAtlasStrings.Text(TAtlasTextId.HotspotsColSummary), 300);
-  AddColumn(FHistory, TAtlasStrings.Text(TAtlasTextId.HotspotsColLines), 70);
+  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColRevision), 80);
+  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColDate), 90);
+  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColAuthor), 120);
+  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColSummary), 300);
+  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColLines), 70);
   FillHotspotColumns;
 end;
 
@@ -341,18 +341,18 @@ begin
   FHotspots.Columns.BeginUpdate;
   try
     FHotspots.Columns.Clear;
-    AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColRank), 36);
+    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColRank), 36);
     if FLevelValue = cLevelValues[1] then
-      AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColMethod), 220)
+      AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColMethod), 220)
     else
-      AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColUnit), 220);
-    AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColScore), 60);
-    AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColChanges), 80);
-    AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColAuthors), 60);
-    AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColComplexity), 85);
-    AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColLines), 60);
-    AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColTrend), 70);
-    AddColumn(FHotspots, TAtlasStrings.Text(TAtlasTextId.HotspotsColLast), 90);
+      AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColUnit), 220);
+    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColScore), 60);
+    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColChanges), 80);
+    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColAuthors), 60);
+    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColComplexity), 85);
+    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColLines), 60);
+    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColTrend), 70);
+    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColLast), 90);
   finally
     FHotspots.Columns.EndUpdate;
   end;
@@ -386,8 +386,8 @@ begin
     FLevel.Items.BeginUpdate;
     try
       FLevel.Items.Clear;
-      FLevel.Items.Add(TAtlasStrings.Text(TAtlasTextId.HotspotsLevelUnits));
-      FLevel.Items.Add(TAtlasStrings.Text(TAtlasTextId.HotspotsLevelMethods));
+      FLevel.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLevelUnits));
+      FLevel.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLevelMethods));
     finally
       FLevel.Items.EndUpdate;
     end;
@@ -487,13 +487,13 @@ end;
 function TAtlasHotspotsFrame.TrendCaption(const ATrend: string): string;
 begin
   if ATrend = 'rising' then
-    Result := TAtlasStrings.Text(TAtlasTextId.HotspotsTrendRising)
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendRising)
   else if ATrend = 'steady' then
-    Result := TAtlasStrings.Text(TAtlasTextId.HotspotsTrendSteady)
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendSteady)
   else if ATrend = 'falling' then
-    Result := TAtlasStrings.Text(TAtlasTextId.HotspotsTrendFalling)
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendFalling)
   else if ATrend = 'new' then
-    Result := TAtlasStrings.Text(TAtlasTextId.HotspotsTrendNew)
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendNew)
   else
     Result := '';
 end;
@@ -503,9 +503,9 @@ begin
   FRows := FModel.Filter(FFilter.Text);
   FPairs := FModel.FilterCoupling(FFilter.Text);
   if FHasModel and (Length(Entries) = 0) then
-    FChart.EmptyText := TAtlasStrings.Text(TAtlasTextId.HotspotsNoEntries)
+    FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoEntries)
   else
-    FChart.EmptyText := TAtlasStrings.Text(TAtlasTextId.HotspotsChartHint);
+    FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint);
   FChart.SetEntries(Entries, FRows);
   FChart.SelectEntry(FSelected);
   FillHotspots;
@@ -585,12 +585,13 @@ begin
   if (FHistoryEntry < 0) or (FHistoryEntry >= Length(Entries)) then
   begin
     FHistoryEntry := -1;
-    FHistoryInfo.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsHistoryNone);
+    FHistoryInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsHistoryNone);
   end
   else
   begin
     mEntry := Entries[FHistoryEntry];
-    FHistoryInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.HotspotsHistoryOf, [mEntry.Caption, mEntry.Changes]);
+    FHistoryInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsHistoryOf,
+      [mEntry.Caption, mEntry.Changes]);
   end;
   if not CanFill(FHistory) then
     Exit;
@@ -628,9 +629,10 @@ begin
       mRange := 'SVN'
     else
       mRange := 'Git';
-    mRange := TAtlasStrings.Fmt(TAtlasTextId.HotspotsRange, [mRange, FModel.Months, Copy(FModel.Since, 1, 10),
+    mRange := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsRange,
+      [mRange, FModel.Months, Copy(FModel.Since, 1, 10),
       FModel.Commits]);
-    FStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.HotspotsStatus, [mRange, Length(FModel.Units),
+    FStatus.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsStatus, [mRange, Length(FModel.Units),
       Length(FModel.Methods), Length(FModel.Coupling)]);
   end
   else
@@ -715,7 +717,7 @@ var
 begin
   mDialog := TSaveDialog.Create(nil);
   try
-    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.HotspotsSaveFilter);
+    mDialog.Filter := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveFilter);
     mDialog.DefaultExt := 'html';
     mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if FModel.Title <> '' then
