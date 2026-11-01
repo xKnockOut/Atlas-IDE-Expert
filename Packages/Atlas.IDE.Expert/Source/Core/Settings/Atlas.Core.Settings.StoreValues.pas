@@ -5,7 +5,9 @@
 // gibt damit den Abschnitten der Module (IAtlasSettingsSection) die Werte, die
 // noch im zentralen Record stehen: Schlüssel (x-key) und Art kommen aus dem
 // Katalog, der Wert steht unter dem Registry-Namen im Speicher. Wahrheitswerte
-// stehen dort als Zahl 0/1 (wie TAtlasPluginSettings.Save).
+// stehen dort als Zahl 0/1 (wie TAtlasPluginSettings.Save), Listen und
+// Objekte (issues.connections …) als JSON-Text: ReadString und WriteString
+// gelten für Text und JSON.
 
 interface
 
@@ -23,6 +25,8 @@ type
     FDefaults: IAtlasMemorySettingsStore;
     /// <summary>Registry-Name zu AKey in der Art AKind; sonst EAtlasSettingsKey.</summary>
     function NameOf(const AKey: string; AKind: TAtlasSettingKind): string;
+    /// <summary>Wie NameOf für Text: Text oder JSON (als Text gespeichert).</summary>
+    function TextNameOf(const AKey: string): string;
   public
     /// <summary>ACatalog gehört weiter dem Aufrufer und muss länger leben. ADefaults: Speicher mit den Vorgaben
     /// (Reset).</summary>
@@ -78,6 +82,16 @@ begin
   Result := FCatalog[mIndex].Name;
 end;
 
+function TAtlasSettingsStoreValues.TextNameOf(const AKey: string): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := FCatalog.IndexOfKey(AKey);
+  if (mIndex >= 0) and (FCatalog[mIndex].Kind = akJson) then
+    Exit(NameOf(AKey, akJson));
+  Result := NameOf(AKey, akString);
+end;
+
 function TAtlasSettingsStoreValues.Contains(const AKey: string): Boolean;
 var
   mName: string;
@@ -106,7 +120,7 @@ function TAtlasSettingsStoreValues.ReadString(const AKey: string): string;
 var
   mName: string;
 begin
-  mName := NameOf(AKey, akString);
+  mName := TextNameOf(AKey);
   Result := FStore.ReadString(mName, FDefaults.ReadString(mName, ''));
 end;
 
@@ -125,7 +139,7 @@ end;
 
 procedure TAtlasSettingsStoreValues.WriteString(const AKey, AValue: string);
 begin
-  FStore.WriteString(NameOf(AKey, akString), AValue);
+  FStore.WriteString(TextNameOf(AKey), AValue);
 end;
 
 procedure TAtlasSettingsStoreValues.Reset(const AKey: string);

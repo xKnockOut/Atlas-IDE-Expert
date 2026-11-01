@@ -10,7 +10,9 @@
 //   anlegen, Issue anzeigen, Issues zu dieser Methode, offene Zeitbuchungen,
 //   Board, An Issue anhängen,
 // - „An Issue anhängen …“ im Atlas-Menü, „Board“ unter Ansicht › Atlas,
-//   „Issue anlegen …“ im Kontextmenü des Editors und auf seiner Taste.
+//   „Issue anlegen …“ im Kontextmenü des Editors und auf seiner Taste,
+// - den Abschnitt „Issue-Tracker“ im Optionsdialog (Atlas.IDE.Tracker.Settings,
+//   auch bei ausgeschaltetem Modul, damit man es einstellen kann).
 // Alles, was „Meine Issues“ braucht (Tracker des Projekts, Vorschau,
 // Beginnen, Board, Zeiterfassung, Anhängen, Issue anlegen), fragt das Modul bei
 // jedem Gebrauch über IAtlasIssuesSession (Atlas.IDE.Tracker.Session) aus der
@@ -64,7 +66,10 @@ uses
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
+  Atlas.IDE.Tracker.Settings,
+  Atlas.UI.Settings.Contract,
+  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Strings;
 
 var
   GScope: IAtlasModuleScope;
@@ -479,6 +484,7 @@ begin
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasKeySource, mRef);
+  GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeTrackerSettings.Create as IAtlasSettingsSectionProvider);
   Result := True;
 end;
 
@@ -495,6 +501,8 @@ begin
   if mRegistry <> nil then
     for mFailure in mRegistry.UnregisterModule(ModuleId) do
       TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+  // Laufende Prüfungen der Optionsseite: Ihre Antwort erreicht das Modul danach nicht mehr (Regel 3).
+  TAtlasIdeTrackerSettings.Release;
 end;
 
 initialization
