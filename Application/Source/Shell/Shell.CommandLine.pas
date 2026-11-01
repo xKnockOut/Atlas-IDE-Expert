@@ -4,6 +4,9 @@
 //
 //   --log <Datei>         Logdatei (wird fortgeschrieben)
 //   --log-level <Stufe>   debug, info, warning, error (Standard: info)
+//   --locale <Sprache>    de oder en (#1458): Sprache der Befunde und Meldungen ohne Client
+//                         (--check und die übrigen Befehle, --mcp); sonst language aus
+//                         settings.json, sonst Englisch. Der LSP-Server nimmt die Sprache aus initialize.
 //   --trace <Datei>       Mitschnitt aller JSON-Nachrichten
 //
 // Linter-Modus ohne Editor (#95):
@@ -103,6 +106,8 @@ type
     /// <summary>--log-names: Server-Log mit Pfaden und Namen statt anonymisiert (#647).</summary>
     LogNames: Boolean;
     TraceFile: string;
+    /// <summary>--locale (#1458): Sprache der Texte ohne Client, "de" oder "en"; '' = nicht angegeben.</summary>
+    Locale: string;
     /// <summary>Ziel des Linter-Modus; '' = Server-Modus.</summary>
     CheckTarget: string;
     CheckFormat: TFindingsFormat;
@@ -197,6 +202,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Filter,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Architecture.Comparison;
 
 { TCommandLineOptions }
@@ -298,6 +304,7 @@ var
   StringHit: TStringOption;
   FlagHit: TFlagOption;
   Found: Boolean;
+  mLanguage: TTextLanguage;
 begin
   Result := Default(TCommandLineOptions);
   Result.LogLevel := DefaultLogLevel;
@@ -310,7 +317,8 @@ begin
     StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile),
     StringOption('--replay', @Result.ReplayFile),
     StringOption('--hotspots', @Result.HotspotsFile),
-    StringOption('--query', @Result.QueryText), StringOption('--hotspots', @Result.HotspotsFile)];
+    StringOption('--query', @Result.QueryText), StringOption('--hotspots', @Result.HotspotsFile),
+    StringOption('--locale', @Result.Locale)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
@@ -482,6 +490,11 @@ begin
       AddWarning(Format('Unbekannter Parameter "%s" wird ignoriert', [Arg]));
 
     Inc(Index);
+  end;
+  if (Result.Locale <> '') and not TAtlasLocale.TryParse(Result.Locale, mLanguage) then
+  begin
+    AddWarning(Format('Unbekannte Sprache "%s" für --locale, erlaubt sind de und en', [Result.Locale]));
+    Result.Locale := '';
   end;
   // Mit --affected-tests gilt --include-uncommitted für dessen Basis, nicht als --changed.
   if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') and not Result.AffectedTests then

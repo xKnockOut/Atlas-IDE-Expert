@@ -39,6 +39,7 @@ uses
   Atlas.Common.Logging.Providers.Logger.Tests in 'Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas',
   Atlas.Common.Logging.Providers.StreamSink.Tests in 'Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas',
   Atlas.Common.Logging.RotatingFileStream.Tests in 'Common\Logging\Atlas.Common.Logging.RotatingFileStream.Tests.pas',
+  Atlas.Common.Localization.Texts.Tests in 'Common\Localization\Atlas.Common.Localization.Texts.Tests.pas',
   Atlas.Common.JsonRpc.TestSupport in 'Common\JsonRpc\Atlas.Common.JsonRpc.TestSupport.pas',
   Atlas.Common.JsonRpc.StreamTransport.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.Tests.pas',
   Atlas.Common.JsonRpc.TracingTransport.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.Tests.pas',

@@ -176,6 +176,7 @@ type
     FOnCrashNotification: TLspCrashNotificationProc;
     FServerSettings: string;
     FServerVersion: string;
+    FLocale: string;
     procedure SyncLocked(const AFileName, AText: string);
     procedure CloseLocked(const AFileName: string);
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
@@ -249,7 +250,13 @@ type
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
     class function InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
-      const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject; static;
+      const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject; overload; static;
+    /// <summary>Wie oben, dazu die Sprache der Oberfläche ALocale ("de", "en"; '' = keine) als
+    /// initializationOptions.locale und locale (#1458): Befunde, Code-Aktionen und Hover kommen in dieser
+    /// Sprache, solange settings.json keine language vorgibt.</summary>
+    class function InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
+      const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean;
+      const ALocale: string): TJSONObject; overload; static;
     /// <summary>Antwort auf workspace/applyEdit ({applied, failureReason}). Gehört dem Aufrufer.</summary>
     class function ApplyEditAnswer(AApplied: Boolean; const AFailureReason: string): TJSONObject; static;
     /// <summary>Vor Initialize setzen (#397): workspace/applyEdit des Servers annehmen.</summary>
@@ -267,6 +274,8 @@ type
     /// <summary>Einstellungen der Atlas-Optionen im Format von atlas.json (#652), vor Initialize setzen;
     /// gehen als initializationOptions mit, damit schon der erste Indexaufbau sie nutzt.</summary>
     property ServerSettings: string read FServerSettings write FServerSettings;
+    /// <summary>Sprache der Oberfläche für initialize (#1458), "de" oder "en"; vor Initialize setzen.</summary>
+    property Locale: string read FLocale write FLocale;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
     procedure Sync(const AFileName, AText: string);
     function Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
@@ -609,6 +618,12 @@ end;
 
 class function TLspSession.InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
   const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject;
+begin
+  Result := InitializeParams(AProjects, AServerSettings, AContexts, AApplyEdit, '');
+end;
+
+class function TLspSession.InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
+  const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean; const ALocale: string): TJSONObject;
 var
   Options: TJSONObject;
   Contexts: TJSONArray;
@@ -634,6 +649,14 @@ begin
     if Options = nil then
       Options := TJSONObject.Create;
     Options.AddPair('projectContexts', Contexts);
+  end;
+  // Sprache der Oberfläche (#1458): eigener Schlüssel für Atlas und das Feld locale aus LSP 3.16.
+  if ALocale <> '' then
+  begin
+    Result.AddPair('locale', ALocale);
+    if Options = nil then
+      Options := TJSONObject.Create;
+    Options.AddPair('locale', ALocale);
   end;
   if Options <> nil then
     Result.AddPair('initializationOptions', Options);
@@ -723,7 +746,7 @@ var
   Context: TAtlasProjectContext;
   Response: TJSONValue;
 begin
-  Params := InitializeParams(FProjects, FServerSettings, FContexts, Assigned(FOnApplyEdit));
+  Params := InitializeParams(FProjects, FServerSettings, FContexts, Assigned(FOnApplyEdit), FLocale);
   // Gesendete Kontexte merken: SetProjectContexts schickt danach nur neue oder geänderte (#396).
   for Context in FContexts do
     FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);

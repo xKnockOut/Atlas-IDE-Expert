@@ -20,6 +20,7 @@ uses
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Shell.Platform,
   Shell.CommandLine,
+  Shell.Bootstrap,
   Shell.Composition,
   Shell.Mcp,
   Shell.ReplayServer,
@@ -33,6 +34,9 @@ begin
   try
     Options := TCommandLineOptions.FromProcess;
     TShutdownLeaks.SetLogFile(Options.LogFile);
+    // Sprache der Texte (#1458) für alle Modi: --locale, sonst language aus settings.json, sonst Englisch. Der
+    // LSP-Server wählt nach initialize mit der Sprache des Clients neu.
+    TShellBootstrap.UseTextLanguage(Options.Locale);
     if Options.ClearCache then
       Exit(TLinterShell.ClearCache);
     // Absturzfall nachstellen (#1355): eigener Server im Prozess, Ergebnis auf stderr.
