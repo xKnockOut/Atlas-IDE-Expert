@@ -104,6 +104,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Commands.Usage,
@@ -415,19 +416,19 @@ begin
           Column := 0;
         TAtlasIdeResults.Open(FileName, Line, Column);
         if HasCommand and (Command.ShortCut <> '') then
-          Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverPressKey, [Command.ShortCut]));
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [Command.ShortCut]));
         Exit;
       end;
       if Tip.Sample <> '' then
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverNoSample, [Tip.Sample]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [Tip.Sample]));
         Exit;
       end;
       if CanRun(Tip.TryId) and Assigned(FRun) then
         // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
         FRun(Tip.TryId)
       else
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverNoCommand, [Tip.TryId]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [Tip.TryId]));
     end);
 end;
 

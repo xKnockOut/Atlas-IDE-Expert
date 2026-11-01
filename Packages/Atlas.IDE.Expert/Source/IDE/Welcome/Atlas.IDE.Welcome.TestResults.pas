@@ -169,7 +169,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Welcome.Projects,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
@@ -260,7 +260,8 @@ end;
 
 function TAtlasIdeTestResults.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Tests, TAtlasStrings.Text(TAtlasTextId.WelcomeTestsTitle),
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Tests,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsTitle),
     Order, TAtlasWelcomeColumn.Left,
     function: Boolean
     begin
@@ -548,7 +549,7 @@ begin
   Job := AJob;
   Number := ABuild.Number;
   Keep := Self;
-  Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildServerRed,
+  Title := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.NotificationsBuildServerRed,
     [TAtlasWelcomeTestResults.ProviderCaption(AJob.Provider), ABuild.Number,
     ChangeFileExt(ExtractFileName(AProject), '')]);
   Text := TAtlasWelcomeTestResultsFrame.BuildText(ABuild);
@@ -556,7 +557,7 @@ begin
     Text := Text + ' · ' + AJob.JobBranch;
   Mode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.BuildServer,
     TAtlasNotificationSeverity.Error, Title, Text,
-    [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.WelcomeTestsBrowse),
+    [TAtlasNotificationCenter.Action(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTestsBrowse),
     procedure
     begin
       if Keep <> nil then
@@ -588,7 +589,7 @@ begin
   Result := False;
   if not FileExists(AProject) then
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsMissing, [AProject]));
+    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
     Exit;
   end;
   // Schon offen: nicht neu laden.
@@ -634,7 +635,7 @@ begin
           Exit;
         if not Assigned(FOnLocateTest) or not FOnLocateTest(TestProjectOf(Row), Item.Test, FileName, Line) then
         begin
-          Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeTestsNotFound, [Item.Test]));
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTestsNotFound, [Item.Test]));
           Exit;
         end;
         Target.FileName := FileName;
@@ -738,7 +739,7 @@ begin
         Exit;
       if Job.Server = '' then
       begin
-        Report(TAtlasStrings.Text(TAtlasTextId.CiLoginNoServer));
+        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.CiLoginNoServer));
         Exit;
       end;
       if not FOnCredentials(Job) then
@@ -762,7 +763,7 @@ begin
   Project := TAtlasIdeTeamFile.ActiveProject;
   if Project = '' then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.CiLoginNoServer));
+    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.CiLoginNoServer));
     Exit;
   end;
   Team := TAtlasIdeTeamFile.ForProject(Project);

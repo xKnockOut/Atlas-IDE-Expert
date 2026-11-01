@@ -142,7 +142,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings;
 
 var
   // Lebende Karten: Klicks auf Überschriften wirken über die Nachrichtenschleife, die Karte kann bis dahin frei
@@ -160,7 +161,7 @@ begin
   FCurrentItem.OnClick := ItemClick;
   Items.Add(FCurrentItem);
   FAllItem := TMenuItem.Create(Self);
-  FAllItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsShowAll);
+  FAllItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsShowAll);
   FAllItem.Tag := Ord(TAtlasWhatsNewView.All);
   FAllItem.OnClick := ItemClick;
   Items.Add(FAllItem);
@@ -223,15 +224,15 @@ class function TAtlasWelcomeWhatsNewFrame.TitleFor(AView: TAtlasWhatsNewView;
   const AVersions: TAtlasWhatsNewVersions): string;
 begin
   if (AView <> TAtlasWhatsNewView.All) and (Length(AVersions) = 1) then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeNewsTitle, [AVersions[0].Version])
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsTitle, [AVersions[0].Version])
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsTitlePlain);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsTitlePlain);
 end;
 
 class function TAtlasWelcomeWhatsNewFrame.HeadingText(const AVersion: string; ACollapsible,
   AExpanded: Boolean): string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeNewsVersion, [AVersion]);
+  Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsVersion, [AVersion]);
   if not ACollapsible then
     Exit;
   if AExpanded then
@@ -347,7 +348,7 @@ begin
         begin
           InExperimental := True;
           Section := Add(TLabel.Create(nil));
-          Section.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsExperimental);
+          Section.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsExperimental);
           Section.Font.Style := [fsItalic];
           Section.Font.Color := clGrayText;
         end;
@@ -380,9 +381,9 @@ begin
         if Switch <> TAtlasWhatsNewSwitch.None then
         begin
           Row.Switch := Add(TCheckBox.Create(nil));
-          Row.Switch.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsSwitch);
+          Row.Switch.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsSwitch);
           Row.Switch.Checked := Switch = TAtlasWhatsNewSwitch.On;
-          Row.Switch.Hint := TAtlasStrings.Fmt(TAtlasTextId.WelcomeNewsSwitchHint, [Item.Setting]);
+          Row.Switch.Hint := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsSwitchHint, [Item.Setting]);
           Row.Switch.ShowHint := True;
           Row.Switch.Tag := Length(FRows);
           Row.Switch.OnClick := SwitchClick;
@@ -390,7 +391,7 @@ begin
         if (FSource <> nil) and FSource.CanTry(Item) then
         begin
           Row.TryButton := Add(TButton.Create(nil));
-          Row.TryButton.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsTry);
+          Row.TryButton.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsTry);
           Row.TryButton.Tag := Length(FRows);
           Row.TryButton.OnClick := TryClick;
         end;
@@ -400,12 +401,12 @@ begin
     if FView = TAtlasWhatsNewView.Unread then
     begin
       FDismiss := Add(TButton.Create(nil));
-      FDismiss.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsRead);
+      FDismiss.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsRead);
     end
     else if FView <> TAtlasWhatsNewView.Hidden then
     begin
       FDismiss := Add(TButton.Create(nil));
-      FDismiss.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsClose);
+      FDismiss.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose);
     end;
     if FDismiss <> nil then
       FDismiss.OnClick := DismissClick;

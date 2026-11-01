@@ -289,7 +289,7 @@ uses
   Atlas.Core.Welcome.HostLayout,
   Atlas.Core.Welcome.Projects,
   Atlas.Core.Welcome.Search,
-  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.WhatsNew,
   Atlas.UI.Welcome.Arrange,
   Atlas.IDE.Foundation.Settings,
@@ -771,8 +771,8 @@ begin
     if not TAtlasWelcomeSections.Default.Find(Id, Section) then
       Continue;
     Item := Default(TAtlasWhatsNewItem);
-    Item.Title := TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeNewSection, [Section.Title]);
-    Item.Text := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeNewSectionText);
+    Item.Title := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeNewSection, [Section.Title]);
+    Item.Text := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNewSectionText);
     Item.Setting := TAtlasWelcomeCustomizing.SettingOf(Id);
     Item.Command := TAtlasIdeWelcomeLayouts.CommandId;
     Items := Items + [Item];
@@ -993,9 +993,9 @@ var
 begin
   Id := TAtlasWelcomeIds.SectionOf(APluginId);
   if SameText(Id, TAtlasWelcomeIds.Header) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHeaderTitle)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle)
   else if SameText(Id, TAtlasWelcomeIds.Board) then
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeBoardTitle)
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeBoardTitle)
   else if TAtlasWelcomeSections.Default.Find(Id, Section) then
     Result := Section.Title
   else
@@ -1243,7 +1243,7 @@ begin
       if Outcome = TAtlasRetireResult.Nothing then
         Exit;
       TAtlasDataFile.Write(PendingFile, Snapshot);
-      Report(TAtlasStrings.Text(TAtlasTextId.WelcomeRetired));
+      Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeRetired));
     end);
 end;
 
@@ -1278,7 +1278,7 @@ begin
     except
       on E: Exception do
       begin
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeBackupFailed, [E.Message]));
+        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeBackupFailed, [E.Message]));
         Exit;
       end;
     end;
@@ -1286,7 +1286,7 @@ begin
   TAtlasDataFile.Write(PendingFile, 'atlas');
   Result := True;
   if AReport then
-    Report(TAtlasStrings.Text(TAtlasTextId.WelcomeApplied));
+    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeApplied));
 end;
 
 function TAtlasIdeWelcome.Unplace(AReport: Boolean): Boolean;
@@ -1304,14 +1304,14 @@ begin
   if not Result then
   begin
     if AReport then
-      Report(TAtlasStrings.Text(TAtlasTextId.WelcomeNoBackup));
+      Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNoBackup));
     Exit;
   end;
   // Bis die IDE den Stand übernommen hat, gilt die Sicherung als gewünschter Stand (CheckPending).
   TAtlasDataFile.Write(PendingFile, Snapshot);
   System.SysUtils.DeleteFile(Backup);
   if AReport then
-    Report(TAtlasStrings.Text(TAtlasTextId.WelcomeResetDone));
+    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeResetDone));
 end;
 
 procedure TAtlasIdeWelcome.ApplyLayout;

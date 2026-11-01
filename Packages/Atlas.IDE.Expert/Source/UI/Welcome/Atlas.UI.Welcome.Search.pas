@@ -106,7 +106,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Style.Color,
-  Atlas.UI.Strings;
+  Atlas.UI.Welcome.Strings;
 
 const
   VisibleRows = 18;
@@ -195,7 +195,7 @@ begin
         if Row.Kind = TAtlasWelcomeRowKind.Hint then
           mText := Row.Text
         else
-          mText := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSearchMore, [Row.Index]);
+          mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSearchMore, [Row.Index]);
         Inc(Part.Left, MulDiv(12, Screen.PixelsPerInch, 96));
         DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
         Canvas.Font.Style := [];
@@ -252,7 +252,7 @@ begin
   FEdit := TAtlasWelcomeSearchEdit.Create(Self);
   FEdit.Parent := Self;
   FEdit.Align := alClient;
-  FEdit.TextHint := TAtlasStrings.Text(TAtlasTextId.WelcomeSearchHint);
+  FEdit.TextHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchHint);
   FEdit.OnChange := EditChange;
   FEdit.OnExit := EditExit;
   FEdit.OnKeyDown := EditKeyDown;
@@ -274,13 +274,13 @@ class function TAtlasWelcomeSearchBox.GroupCaption(AGroup: TAtlasWelcomeSearchGr
 begin
   case AGroup of
     TAtlasWelcomeSearchGroup.Projects:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSearchProjects);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchProjects);
     TAtlasWelcomeSearchGroup.Files:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSearchFiles);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchFiles);
     TAtlasWelcomeSearchGroup.Symbols:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSearchSymbols);
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchSymbols);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeSearchCommands);
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchCommands);
   end;
 end;
 
