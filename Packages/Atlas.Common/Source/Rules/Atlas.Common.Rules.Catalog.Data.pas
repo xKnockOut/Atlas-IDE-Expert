@@ -1740,8 +1740,9 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "Delete, Remove, Add or another method from the option mutatingMethods is called on the list that the loop is walking forwards by index or with for … in. Forwards, Delete skips th' +
-    'e next element and runs past the end, Add is not visited and Insert visits the same element twice; with for … in the RTL raises an exception. A Break or Exit without a condition after the call in the same block ends the loop ' +
-    'and stays silent (a Break in an inner loop does not count), downto loops too. Quick fix for index loops: rewrite as downto; for for … in collect the elements and change the list after the loop.",',
+    'e next element and runs past the end, Add is not visited and Insert visits the same element twice; with for … in the RTL raises an exception. A Break or Exit without a condition after the call in the ' +
+    'same block ends the loop and stays silent (a Break in an inner loop does not count), downto loops too. Quick fix for index loops: rewrite as downto; for for … in collect the elements and change the li' +
+    'st after the loop.",',
     '      "bad": "for I := 0 to Liste.Count - 1 do\n  if Liste[I].Erledigt then\n    Liste.Delete(I);",',
     '      "good": "for I := Liste.Count - 1 downto 0 do\n  if Liste[I].Erledigt then\n    Liste.Delete(I);",',
     '      "options": [',
@@ -6672,8 +6673,8 @@ const
     '      "name": "Liste in der eigenen Schleife verändert",',
     '      "description": "Delete, Remove, Add oder eine andere Methode aus der Option mutatingMethods wird auf der Liste aufgerufen, über die die Schleife gerade vorwärts per Index oder mit for … in läuft' +
     '. Vorwärts überspringt Delete das nächste Element und läuft über das Ende, Add wird nicht mehr durchlaufen und Insert liefert dasselbe Element zweimal; mit for … in wirft die RTL eine Exception. Ein B' +
-    'reak oder Exit ohne Bedingung nach dem Aufruf im selben Block beendet die Schleife und bleibt still (ein Break in einer inneren Schleife zählt nicht), downto-Schleifen ebenso. Schnellkorrektur bei Indexschleifen: rückwärts mit downto; bei for … in die Elemente sammeln und d' +
-    'ie Liste nach der Schleife ändern.",',
+    'reak oder Exit ohne Bedingung nach dem Aufruf im selben Block beendet die Schleife und bleibt still (ein Break in einer inneren Schleife zählt nicht), downto-Schleifen ebenso. Schnellkorrektur bei Ind' +
+    'exschleifen: rückwärts mit downto; bei for … in die Elemente sammeln und die Liste nach der Schleife ändern.",',
     '      "options": [',
     '        {',
     '          "name": "mutatingMethods",',
