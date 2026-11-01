@@ -34,36 +34,78 @@ type
 
 implementation
 
+function IsSpace(ACh: Char): Boolean;
+begin
+  Result := (ACh = ' ') or (ACh = #9) or (ACh = #10) or (ACh = #13);
+end;
+
+// Beginnt bei APos ein Kommentar "/" + AKind ("//" bzw. "/*")?
+function StartsComment(const AText: string; APos: Integer; AKind: Char): Boolean;
+begin
+  Result := (AText[APos] = '/') and (APos < Length(AText)) and (AText[APos + 1] = AKind);
+end;
+
+// Erste Stelle ab APos, an der ein Zeilenkommentar endet (#10, #13 oder hinter dem Text).
+function LineCommentEnd(const AText: string; APos: Integer): Integer;
+begin
+  Result := APos;
+  while (Result <= Length(AText)) and (AText[Result] <> #10) and (AText[Result] <> #13) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+// Stelle hinter dem "*/" des Blockkommentars bei APos; 0, wenn er offen bleibt.
+function BlockCommentEnd(const AText: string; APos: Integer): Integer;
+begin
+  Result := Pos('*/', AText, APos + 2);
+  if Result > 0 then
+  begin
+    Inc(Result, 2);
+  end;
+end;
+
+// Ersetzt AText[AFrom..ATo - 1] durch Leerzeichen; Zeilenumbrüche bleiben.
+procedure Blank(var AText: string; AFrom, ATo: Integer);
+var
+  mIndex: Integer;
+begin
+  for mIndex := AFrom to ATo - 1 do
+  begin
+    if (AText[mIndex] <> #10) and (AText[mIndex] <> #13) then
+    begin
+      AText[mIndex] := ' ';
+    end;
+  end;
+end;
+
 { TJsoncScanner }
 
 class function TJsoncScanner.SkipSpace(const AText: string; var APos: Integer; out AOpenComment: Integer): Boolean;
 var
-  Close: Integer;
+  mClose: Integer;
 begin
   AOpenComment := 0;
   while APos <= Length(AText) do
   begin
-    if (AText[APos] = ' ') or (AText[APos] = #9) or (AText[APos] = #10) or (AText[APos] = #13) then
+    if IsSpace(AText[APos]) then
     begin
       Inc(APos);
     end
-    else if (AText[APos] = '/') and (APos < Length(AText)) and (AText[APos + 1] = '/') then
+    else if StartsComment(AText, APos, '/') then
     begin
-      while (APos <= Length(AText)) and (AText[APos] <> #10) and (AText[APos] <> #13) do
-      begin
-        Inc(APos);
-      end;
+      APos := LineCommentEnd(AText, APos);
     end
-    else if (AText[APos] = '/') and (APos < Length(AText)) and (AText[APos + 1] = '*') then
+    else if StartsComment(AText, APos, '*') then
     begin
-      Close := Pos('*/', AText, APos + 2);
-      if Close = 0 then
+      mClose := BlockCommentEnd(AText, APos);
+      if mClose = 0 then
       begin
         AOpenComment := APos;
         APos := Length(AText) + 1;
         Exit(False);
       end;
-      APos := Close + 2;
+      APos := mClose;
     end
     else
     begin
@@ -94,71 +136,58 @@ begin
   Inc(APos);
 end;
 
-class function TJsoncScanner.StripComments(const AText: string): string;
-var
-  Position, Start, Next, Index: Integer;
+// Stelle hinter dem Kommentar bei APos; ein offener Blockkommentar reicht bis zum Textende.
+function CommentEnd(const AText: string; APos: Integer): Integer;
 begin
-  Result := AText;
-  Position := 1;
-  while Position <= Length(AText) do
+  if AText[APos + 1] = '/' then
   begin
-    case AText[Position] of
-      '"':
-        begin
-          SkipString(AText, Position);
-          Continue;
-        end;
-      '/':
-        if (Position < Length(AText)) and ((AText[Position + 1] = '/') or (AText[Position + 1] = '*')) then
-        begin
-          // Genau diesen Kommentar blanken; ein offener Blockkommentar reicht bis zum Textende.
-          Start := Position;
-          if AText[Position + 1] = '/' then
-          begin
-            while (Position <= Length(AText)) and (AText[Position] <> #10) and (AText[Position] <> #13) do
-            begin
-              Inc(Position);
-            end;
-          end
-          else
-          begin
-            Next := Pos('*/', AText, Position + 2);
-            if Next = 0 then
-            begin
-              Position := Length(AText) + 1;
-            end
-            else
-            begin
-              Position := Next + 2;
-            end;
-          end;
-          for Index := Start to Position - 1 do
-          begin
-            if (Result[Index] <> #10) and (Result[Index] <> #13) then
-            begin
-              Result[Index] := ' ';
-            end;
-          end;
-          Continue;
-        end;
-      ',':
-        begin
-          // Schlusskomma vor } oder ] (auch mit Kommentaren dazwischen) entfernen.
-          Next := Position + 1;
-          SkipSpace(AText, Next);
-          if (Next <= Length(AText)) and ((AText[Next] = '}') or (AText[Next] = ']')) then
-          begin
-            Result[Position] := ' ';
-          end;
-        end;
-    end;
-    Inc(Position);
+    Exit(LineCommentEnd(AText, APos));
+  end;
+  Result := BlockCommentEnd(AText, APos);
+  if Result = 0 then
+  begin
+    Result := Length(AText) + 1;
   end;
 end;
 
-function IsSpace(ACh: Char): Boolean;
+// Schlusskomma bei APos: vor } oder ] (auch mit Kommentaren dazwischen)?
+function IsTrailingComma(const AText: string; APos: Integer): Boolean;
+var
+  mNext: Integer;
 begin
-  Result := (ACh = ' ') or (ACh = #9) or (ACh = #10) or (ACh = #13);
+  mNext := APos + 1;
+  TJsoncScanner.SkipSpace(AText, mNext);
+  Result := (mNext <= Length(AText)) and ((AText[mNext] = '}') or (AText[mNext] = ']'));
+end;
+
+class function TJsoncScanner.StripComments(const AText: string): string;
+var
+  mPosition, mEnd: Integer;
+begin
+  Result := AText;
+  mPosition := 1;
+  while mPosition <= Length(AText) do
+  begin
+    if AText[mPosition] = '"' then
+    begin
+      SkipString(AText, mPosition);
+    end
+    else if StartsComment(AText, mPosition, '/') or StartsComment(AText, mPosition, '*') then
+    begin
+      // Genau diesen Kommentar blanken.
+      mEnd := CommentEnd(AText, mPosition);
+      Blank(Result, mPosition, mEnd);
+      mPosition := mEnd;
+    end
+    else
+    begin
+      if (AText[mPosition] = ',') and IsTrailingComma(AText, mPosition) then
+      begin
+        Result[mPosition] := ' ';
+      end;
+      Inc(mPosition);
+    end;
+  end;
 end;
 
 function IsDigit(ACh: Char): Boolean;
@@ -271,51 +300,46 @@ var
 
   function Value: Boolean; forward;
 
+  // Steht nach Leerraum das Zeichen AChar? Dann geht es dahinter weiter.
+  function Next(AChar: Char): Boolean;
+  begin
+    Space;
+    Result := (Position <= Length(Text)) and (Text[Position] = AChar);
+    if Result then
+    begin
+      Inc(Position);
+    end;
+  end;
+
+  // Schlüssel eines Objekts samt Doppelpunkt.
+  function Key: Boolean;
+  begin
+    Space;
+    if (Position > Length(Text)) or (Text[Position] <> '"') or not StringValue then
+    begin
+      Exit(Fail);
+    end;
+    Result := Next(':') or Fail;
+  end;
+
   function Members(AClose: Char; AObject: Boolean): Boolean;
   begin
     Inc(Position);
-    Space;
-    if (Position <= Length(Text)) and (Text[Position] = AClose) then
+    if Next(AClose) then
     begin
-      Inc(Position);
       Exit(True);
     end;
-    while True do
-    begin
-      if AObject then
-      begin
-        Space;
-        if (Position > Length(Text)) or (Text[Position] <> '"') or not StringValue then
-        begin
-          Exit(Fail);
-        end;
-        Space;
-        if (Position > Length(Text)) or (Text[Position] <> ':') then
-        begin
-          Exit(Fail);
-        end;
-        Inc(Position);
-      end;
-      if not Value then
+    repeat
+      if (AObject and not Key) or not Value then
       begin
         Exit(False);
       end;
-      Space;
-      if Position > Length(Text) then
+      if Next(AClose) then
       begin
-        Exit(Fail);
-      end;
-      if Text[Position] = AClose then
-      begin
-        Inc(Position);
         Exit(True);
       end;
-      if Text[Position] <> ',' then
-      begin
-        Exit(Fail);
-      end;
-      Inc(Position);
-    end;
+    until not Next(',');
+    Result := Fail;
   end;
 
   function Value: Boolean;
