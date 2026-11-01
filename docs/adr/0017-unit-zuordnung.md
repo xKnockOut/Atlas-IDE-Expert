@@ -50,13 +50,9 @@ Genehmigt im Auftrag zu #1455 (Paket 1, 01.11.2026). Das Skript übergeht diese 
 
 | Von | Nach | Grund |
 |---|---|---|
-| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Welcome` | Kompositionswurzel, bis die Willkommensseite ein eigenes Modul ist |
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Welcome` | Kompositionswurzel baut „Testergebnisse“ und „Meine Issues“ über `TAtlasIdeWelcomeStartup.RootHooks`, bis das Modul Tracker sie als Kacheln bereitstellt |
 | `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Tracker` | Kompositionswurzel, bis der Tracker ein eigenes Modul ist (Paket 2) |
-| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.BuildTools` | Kompositionswurzel klebt Willkommensseite und Startprofile, bis die Willkommensseite ein Modul ist |
-| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Tests` | Kompositionswurzel klebt Willkommensseite und Tests, bis die Willkommensseite ein Modul ist |
-| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Rules` | Kompositionswurzel klebt Willkommensseite und Prüfregeln, bis die Willkommensseite ein Modul ist |
-| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.BuildPipeline` | Kompositionswurzel klebt Willkommensseite und Builds auf Auftrag, bis die Willkommensseite ein Modul ist |
-| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.WelcomeTiles` | Kompositionswurzel gibt den Kacheln anderer Module die Projekte der Willkommensseite, bis die Willkommensseite ein Modul ist |
+| `Atlas.IDE.CodeInsight.Composition` | `Atlas.IDE.Contracts.Tests` | Kompositionswurzel klebt „Testergebnisse“ und Tests, bis das Modul Tracker die Karte übernimmt |
 
 ### Bekannte Verstöße
 
@@ -753,12 +749,16 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Unsaved` | `Core/Welcome/Atlas.Core.Welcome.Unsaved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.WhatsNew` | `Core/Welcome/Atlas.Core.Welcome.WhatsNew.pas` | Ordner `Core/Welcome` |
 | `Atlas.IDE.Welcome.Commands` | `IDE/Welcome/Atlas.IDE.Welcome.Commands.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Composition` | `IDE/Welcome/Atlas.IDE.Welcome.Composition.pas` | Anmeldung des Moduls `atlas.welcome` (Teil Welcome, Befehle, Menüeinträge), #1455 |
 | `Atlas.IDE.Welcome.Continue` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Discover` | `IDE/Welcome/Atlas.IDE.Welcome.Discover.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Help` | `IDE/Welcome/Atlas.IDE.Welcome.Help.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Issues` | `IDE/Welcome/Atlas.IDE.Welcome.Issues.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Layouts` | `IDE/Welcome/Atlas.IDE.Welcome.Layouts.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.TileProjects` | `IDE/Welcome/Atlas.IDE.Welcome.TileProjects.pas` | Bereich „Projekte“ für Kacheln anderer Module (IAtlasWelcomeProjects), #1455 |
 | `Atlas.IDE.Welcome.Tiles` | `IDE/Welcome/Atlas.IDE.Welcome.Tiles.pas` | Kacheln anderer Module über `Atlas.IDE.Contracts.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455 |
+| `Atlas.IDE.Welcome.Listener` | `IDE/Welcome/Atlas.IDE.Welcome.Listener.pas` | Ende von Projektaufgaben, Testläufen und Befehlsnutzung an die Seite, #1455 |
+| `Atlas.IDE.Welcome.Neighbors` | `IDE/Welcome/Atlas.IDE.Welcome.Neighbors.pas` | Schnellaktionen und Einrichtung über die Verträge der Module Build-Pipeline, Tests, Build und Prüfregeln, #1455 |
 | `Atlas.IDE.Welcome.NewIssue` | `IDE/Welcome/Atlas.IDE.Welcome.NewIssue.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Page` | `IDE/Welcome/Atlas.IDE.Welcome.Page.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Projects` | `IDE/Welcome/Atlas.IDE.Welcome.Projects.pas` | Ordner `IDE/Welcome` |
@@ -767,6 +767,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Welcome.Search` | `IDE/Welcome/Atlas.IDE.Welcome.Search.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Setup` | `IDE/Welcome/Atlas.IDE.Welcome.Setup.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Sprint` | `IDE/Welcome/Atlas.IDE.Welcome.Sprint.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Startup` | `IDE/Welcome/Atlas.IDE.Welcome.Startup.pas` | Aufbau und Abbau der Seite aus den Diensten von Base, Kacheln anderer Module, #1455 |
 | `Atlas.IDE.Welcome.State` | `IDE/Welcome/Atlas.IDE.Welcome.State.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.TestResults` | `IDE/Welcome/Atlas.IDE.Welcome.TestResults.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Trends` | `IDE/Welcome/Atlas.IDE.Welcome.Trends.pas` | Ordner `IDE/Welcome` |
