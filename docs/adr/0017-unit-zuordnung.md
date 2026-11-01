@@ -16,7 +16,7 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 | `Tests` | `Atlas.IDE.Tests` |
 | `Build`, `Tasks`, `StartProfiles` | `Atlas.IDE.Build` |
 | `Bookmarks`, `Notes`, `Todos` | `Atlas.IDE.Bookmarks` |
-| alle übrigen | `Atlas.IDE.Core` |
+| alle übrigen | `Atlas.IDE.Base` |
 
 Ausnahmen:
 
@@ -31,7 +31,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 
 | Package | Units | Zeilen |
 |---|---:|---:|
-| `Atlas.IDE.Core` | 448 | 224 327 |
+| `Atlas.IDE.Base` | 448 | 224 327 |
 | `Atlas.IDE.Debugger` | 47 | 23 568 |
 | `Atlas.IDE.Tracker` | 63 | 39 536 |
 | `Atlas.IDE.Welcome` | 63 | 40 104 |
@@ -44,7 +44,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Bookmarks` | 14 | 7 166 |
 | zusammen | 730 | 381 931 |
 
-## Atlas.IDE.Core
+## Atlas.IDE.Base
 
 | Unit | Datei | Begründung |
 |---|---|---|
