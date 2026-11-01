@@ -45,8 +45,6 @@
 // Atlas › Prüfung; sichtbar nur bei problems.window.
 // „Architekturübersicht“ (#1118) öffnet das Fenster „Atlas-Architektur“, auch
 // unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
-// „Board“ (#1272) unter Ansicht › Atlas ruft OnBoard; sichtbar nur bei
-// issues.board.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
 // der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
 // Einträge der Module (#1455): Jedes Modul nennt sie über IAtlasMenuSource
@@ -116,9 +114,6 @@ type
     FModuleItems: TArray<TMenuItem>;
     /// <summary>Befehls-Id je Eintrag (Index = Tag).</summary>
     FModuleIds: TArray<string>;
-    /// <summary>„An Issue anhängen …“ (#1276), sichtbar nach issues.attach.</summary>
-    FIssueAttachItem: TMenuItem;
-    FOnIssueAttach: TProc;
     /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
     FDataFlowItems: TArray<TMenuItem>;
     /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
@@ -127,9 +122,6 @@ type
     /// <summary>Einträge der Module unter Ansicht › Atlas und ihre Befehls-Ids (Index = Tag).</summary>
     FViewModuleItems: TArray<TMenuItem>;
     FViewModuleIds: TArray<string>;
-    /// <summary>Fenster „Atlas-Board“ (#1272) unter Ansicht › Atlas.</summary>
-    FViewBoard: TMenuItem;
-    FOnBoard: TProc;
     /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
     FImpactItem: TMenuItem;
     /// <summary>Untermenü „Aufgaben“ (#900).</summary>
@@ -147,14 +139,12 @@ type
     procedure UpdateViewModuleItems;
     /// <summary>Hat ein laufendes Modul einen sichtbaren Eintrag unter Ansicht › Atlas?</summary>
     class function HasViewModuleItems: Boolean; static;
-    procedure BoardClick(Sender: TObject);
     procedure ModuleItemClick(Sender: TObject);
     /// <summary>Einträge der Module nach der Marke neu aufbauen (Regel 2: sie kommen und gehen mit dem Modul).
     /// </summary>
     procedure UpdateModuleItems;
     /// <summary>Trennlinien und Sichtbarkeit eines Untermenüs der Module.</summary>
     class procedure TidyModuleSection(AGroup: TMenuItem); static;
-    procedure IssueAttachClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -191,12 +181,8 @@ type
     property OnKeyMap: TProc read FOnKeyMap write FOnKeyMap;
     /// <summary>Eintrag „Tastenkürzel-Übersicht…“ nach keys.overview ein- oder ausblenden.</summary>
     procedure UpdateKeyMap;
-    /// <summary>„An Issue anhängen …“ (#1276).</summary>
-    property OnIssueAttach: TProc read FOnIssueAttach write FOnIssueAttach;
     /// <summary>Befehle der Willkommensseite (#753).</summary>
     property OnWelcome: TProc<TAtlasWelcomeCommand> read FOnWelcome write FOnWelcome;
-    /// <summary>Fenster „Atlas-Board“ öffnen (#1272).</summary>
-    property OnBoard: TProc read FOnBoard write FOnBoard;
     /// <summary>Einträge der Willkommensseite nach den Einstellungen ein- oder ausblenden.</summary>
     procedure UpdateWelcome;
     /// <summary>Name der Einstellung eines Schalters (Schlüssel im Katalog der Schnellschalter, #604).</summary>
@@ -318,7 +304,6 @@ begin
   // Debuggers.
   FModuleAnchor := AddItem('', 0, nil);
   FModuleAnchor.Visible := False;
-  FIssueAttachItem := AddItem(TAtlasTextId.AttachCommand, 0, IssueAttachClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -416,10 +401,6 @@ begin
       FViewProblems.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
       FViewProblems.OnClick := ProblemsClick;
       FViewAtlas.Add(FViewProblems);
-      FViewBoard := TMenuItem.Create(FViewAtlas);
-      FViewBoard.Caption := TAtlasStrings.Text(TAtlasTextId.BoardViewMenu);
-      FViewBoard.OnClick := BoardClick;
-      FViewAtlas.Add(FViewBoard);
       // Einträge der Module (#1455) kommen beim Öffnen dazu.
       FViewAtlas.OnClick := ViewAtlasClick;
       Services.MainMenu.Items[Index].Add(FViewAtlas);
@@ -490,9 +471,6 @@ begin
     not AtlasLayout;
   FWelcome[TAtlasWelcomeCommand.Reset].Visible := Settings.WelcomePage and Settings.WelcomePageIdePage and
     AtlasLayout;
-  // An Issue anhängen (#1276) nach issues.attach.
-  if FIssueAttachItem <> nil then
-    FIssueAttachItem.Visible := Settings.IssuesAttach;
   if FViewStart <> nil then
     FViewStart.Visible := Settings.WelcomePage;
 end;
@@ -740,11 +718,8 @@ begin
     FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
   if FViewProblems <> nil then
     FViewProblems.Visible := TAtlasIdeProblems.Enabled;
-  // Atlas-Board (#1272) nach issues.board.
-  if FViewBoard <> nil then
-    FViewBoard.Visible := TAtlasIdeSettings.Current.IssuesBoard;
   if FViewAtlas <> nil then
-    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeSettings.Current.IssuesBoard or HasViewModuleItems;
+    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or HasViewModuleItems;
   // Auswirkungen anzeigen (#1120) nach navigation.impact.
   if FImpactItem <> nil then
     FImpactItem.Visible := TAtlasIdeImpact.Enabled;
@@ -956,18 +931,6 @@ begin
   end;
 end;
 
-procedure TAtlasMainMenu.BoardClick(Sender: TObject);
-begin
-  if not Assigned(FOnBoard) then
-    Exit;
-  TAtlasIdeShortcutTips.Invoked('Atlas.Board');
-  TAtlasGuard.Run(TAtlasFeature.Menu,
-    procedure
-    begin
-      FOnBoard();
-    end);
-end;
-
 procedure TAtlasMainMenu.ModuleItemClick(Sender: TObject);
 var
   mIndex: Integer;
@@ -1102,18 +1065,6 @@ begin
     end;
   end;
   AGroup.Visible := mSeenItem;
-end;
-
-procedure TAtlasMainMenu.IssueAttachClick(Sender: TObject);
-begin
-  if not Assigned(FOnIssueAttach) then
-    Exit;
-  TAtlasIdeShortcutTips.Invoked('Atlas.IssueAttach');
-  TAtlasGuard.Run(TAtlasFeature.Menu,
-    procedure
-    begin
-      FOnIssueAttach();
-    end);
 end;
 
 

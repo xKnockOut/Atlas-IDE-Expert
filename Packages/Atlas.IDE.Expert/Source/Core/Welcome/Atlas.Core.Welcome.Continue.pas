@@ -224,8 +224,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   System.DateUtils,
-  Atlas.Core.Editor.MethodToggle,
-  Atlas.Core.Bookmarks.Store;
+  Atlas.Core.Editor.MethodToggle;
 
 { TAtlasWorkTab }
 
@@ -704,7 +703,7 @@ begin
   Result := '';
   if (AText = '') or (ALine < 1) then
     Exit;
-  if TAtlasBookmarks.MethodAt(TAtlasMethodToggle.Places(AText), ALine - 1, Place) then
+  if TAtlasMethodToggle.BodyAt(TAtlasMethodToggle.Places(AText), ALine - 1, Place) then
     Result := Place.Name;
 end;
 
