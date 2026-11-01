@@ -275,6 +275,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryTrees);
     TAtlasServerMemoryPart.Documents:
       Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryDocuments);
+    TAtlasServerMemoryPart.Packages:
+      Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryPackages);
   else
     Result := TAtlasStrings.Text(TAtlasTextId.ServerMemoryRest);
   end;
