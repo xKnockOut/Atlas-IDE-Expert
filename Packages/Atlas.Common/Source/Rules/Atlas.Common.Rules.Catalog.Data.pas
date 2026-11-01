@@ -2666,9 +2666,9 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "packages",',
-    '      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through its local routines, methods of the same class or routines of the unit: it is always green. Calls mat' +
-    'ching assertPatterns (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with Assert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay' +
-    ' silent. High confidence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",',
+    '      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through its local routines, methods of the same class, routines of the unit or free routines of other units ' +
+    'known to the symbol index (AssertTextPair from a shared test unit): it is always green. Calls matching assertPatterns (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with As' +
+    'sert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay silent. High confidence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",',
     '      "bad": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden(''leer.csv'');\nend;",',
     '      "good": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden(''leer.csv'');\n  Assert.AreEqual(0, FImport.Anzahl);\nend;",',
     '      "options": [',
@@ -7247,9 +7247,10 @@ const
     '    {',
     '      "id": "dunitx-test-without-assert",',
     '      "name": "DUnitX-Test ohne Assert",',
-    '      "description": "Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über ihre lokalen Routinen, Methoden derselben Klasse oder Routinen der Unit: Sie ist immer grü' +
-    'n. Als Prüfung zählen Aufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ig' +
-    'nore] bleiben still. Sicherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zur Methode springen.",',
+    '      "description": "Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über ihre lokalen Routinen, Methoden derselben Klasse, Routinen der Unit oder freie Routinen an' +
+    'derer Units, die der Symbolindex kennt (AssertTextPair aus einer gemeinsamen Testunit): Sie ist immer grün. Als Prüfung zählen Aufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), Syste' +
+    'm.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still. Sicherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zu' +
+    'r Methode springen.",',
     '      "options": [',
     '        {',
     '          "name": "assertPatterns",',

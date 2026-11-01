@@ -1043,8 +1043,6 @@ begin
     TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
 end;
 
-/// <summary>Testprojekte und einzelne Tests des Moduls Tests (#1455); False ohne laufendes Modul. Zieht mit der
-/// Willkommensseite in ihr Modul.</summary>
 /// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
 function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
 var
@@ -1057,6 +1055,8 @@ begin
   Result := False;
 end;
 
+/// <summary>Testprojekte und einzelne Tests des Moduls Tests (#1455); False ohne laufendes Modul. Zieht mit der
+/// Willkommensseite in ihr Modul.</summary>
 function TestsSource(out ATests: IAtlasTestsSource): Boolean;
 var
   mItem: IInterface;
