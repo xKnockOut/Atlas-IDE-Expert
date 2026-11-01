@@ -56,8 +56,8 @@ const
     (De: 'Rückgängig'; En: 'Undo'), // german-ok
     (De: 'Speicher'; En: 'Memory'),
     (De: 'Start und Updates'; En: 'Startup and updates'), // german-ok
-    (De: 'Tastenkonflikte'; En: 'Shortcut conflicts'),
-    (De: 'Units suchen'; En: 'Unit search'), // german-ok
+    (De: 'Tastenkonflikte'; En: 'Key conflicts'),
+    (De: 'Units suchen'; En: 'Search units'), // german-ok
     (De: 'Versionsverwaltung'; En: 'Version control'),
     (De: 'Vervollständigung'; En: 'Completion'), // german-ok
     (De: 'Willkommensseite'; En: 'Welcome page'));
