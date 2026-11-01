@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Issues;
+﻿unit Atlas.IDE.Tracker.MyIssues;
 
 // Bereich „Meine Issues“ in der IDE (#765): Quelle des Bereichs
 // (IAtlasIssuesSource), Anmeldung als Bereich atlas.issues der
@@ -115,9 +115,9 @@ uses
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.TimeLog,
   Atlas.Core.Vcs.BranchPlan,
-  Atlas.Core.Welcome.Issues,
+  Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Welcome.Sections,
-  Atlas.UI.Welcome.Issues,
+  Atlas.UI.Tracker.MyIssues,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
   Atlas.IDE.Tracker.Notify,
@@ -127,7 +127,7 @@ uses
   Atlas.IDE.Tracker.PaletteSearch,
   Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Welcome.Projects,
-  Atlas.IDE.Welcome.Sprint;
+  Atlas.IDE.Tracker.SprintTile;
 
 type
   /// <summary>Tracker-Anbieter zum Namen ("github", "youtrack"); nil, wenn es ihn nicht gibt.</summary>

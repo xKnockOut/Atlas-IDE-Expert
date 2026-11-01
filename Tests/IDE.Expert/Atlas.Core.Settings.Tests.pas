@@ -221,7 +221,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Tracker.Naming,
-  Atlas.Core.Welcome.Issues,
+  Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,

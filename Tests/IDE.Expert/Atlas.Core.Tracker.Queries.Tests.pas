@@ -47,7 +47,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Queries,
-  Atlas.Core.Welcome.Issues;
+  Atlas.Core.Tracker.MyIssues;
 
 const
   cDefaultName = 'Mir zugewiesen';

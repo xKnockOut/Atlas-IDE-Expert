@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Welcome.Issues.Tests;
+﻿unit Atlas.UI.Tracker.MyIssues.Tests;
 
 // Bereich „Meine Issues“ der Willkommensseite (#765, Mockup #ws12): Titel,
 // Chip des Pull Requests mit CI-Ampel, Zeile zum Stand („Stand vom …“ ohne
@@ -60,9 +60,9 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Vcs.Contract,
-  Atlas.Core.Welcome.Issues,
+  Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.Issues;
+  Atlas.UI.Tracker.MyIssues;
 
 type
   /// <summary>Quelle des Bereichs für die Tests; merkt sich die Aufrufe.</summary>

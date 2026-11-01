@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Welcome.Sprint.Tests;
+﻿unit Atlas.UI.Tracker.SprintTile.Tests;
 
 // Tests der Sprint-Kachel (#1277) ohne IDE: Texte (Kopf, Zahlen, Vergleich,
 // Hinweise, Stand, Tooltip je Tag) auf Deutsch und Englisch, Klickflächen und
@@ -47,7 +47,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Sprint,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.Sprint;
+  Atlas.UI.Tracker.SprintTile;
 
 type
   /// <summary>Quelle der Kachel für die Tests; merkt sich die Aufrufe.</summary>

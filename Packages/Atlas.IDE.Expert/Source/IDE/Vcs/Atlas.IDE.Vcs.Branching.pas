@@ -138,7 +138,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.Vcs.BranchNames,
-  Atlas.Core.Welcome.Issues,
+  Atlas.Core.Tracker.MyIssues,
   Atlas.UI.Strings,
   Atlas.UI.Vcs.BranchDialog,
   Atlas.IDE.Foundation.DockWindow,

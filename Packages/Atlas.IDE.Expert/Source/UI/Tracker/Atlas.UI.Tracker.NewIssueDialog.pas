@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Welcome.NewIssue;
+﻿unit Atlas.UI.Tracker.NewIssueDialog;
 
 // Dialog „Issue anlegen“ (#1268) mit Vorschau des Textes, bevor etwas an den
 // Tracker geht: Tracker (Klappliste bei mehreren Verbindungen), Projekt,

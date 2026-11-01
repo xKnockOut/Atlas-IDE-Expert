@@ -53,7 +53,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.Core.Welcome.Issues;
+  Atlas.Core.Tracker.MyIssues;
 
 const
   cKassePath = 'C:\Projekte\Kasse';
