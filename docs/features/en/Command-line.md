@@ -2,6 +2,8 @@
 
 Back to the [README](../../../README.md)
 
+## Logging and diagnostics
+
 | Parameter | Meaning |
 |---|---|
 | `--log <file>` | log file, appended; paths, project, unit and user names are replaced by IDs (`datei#3`, `name#2`) |
@@ -9,17 +11,57 @@ Back to the [README](../../../README.md)
 | `--log-level <level>` | `debug`, `info` (default), `warning`, `error`; applies to the log file and `window/logMessage` |
 | `--trace <file>` | trace of all JSON messages (`-->` received, `<--` sent) |
 
-Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId`, appended by editors, are ignored.
+- Values also work with `=` (`--log=server.log`).
+- `--stdio` and `--clientProcessId`, appended by editors, are ignored.
 
-`AtlasServer.exe --clear-cache` deletes all index caches under `%LOCALAPPDATA%\Atlas` that no running instance uses. The folder is limited to 1024 MB anyway (`index.cacheMaxMb`); the caches unused longest go first.
+## Index cache
+
+- `AtlasServer.exe --clear-cache` deletes all index caches under `%LOCALAPPDATA%\Atlas` that no running instance uses.
+- The folder is limited to 1024 MB anyway (`index.cacheMaxMb`); the caches unused longest go first.
 
 ## Linter mode
 
-`AtlasServer.exe --check <target>` checks without an editor. The target can be a `.dproj` (main file and units), a folder (all `.pas`, `.dpr` and `.dpk` below) or a file. `atlas.json` in the target's folder applies as in the editor. If it is missing, the former `delphi-lsp.json` applies (likewise `delphi-lsp-baseline.json` for the baseline).
+`AtlasServer.exe --check <target>` checks without an editor.
 
-The linter loads the same symbol index as the editor (#1112): the target's project and, with `index.projectGroup`, the other projects of the group, from the index cache if it is current. Rules that need types from other units (for example ownership of fields whose type is declared elsewhere, or `case` over an enumeration from another unit) therefore report the same findings as in the IDE. Without a project file the check runs without the index (stderr says so). The MCP server checks with the same index (`get_diagnostics`, `check_code`, `explain_finding`); while it is still loading, `get_diagnostics` says that findings needing the index may be missing.
+- The target can be:
+  - a `.dproj` (main file and units)
+  - a folder (all `.pas`, `.dpr` and `.dpk` below)
+  - or a file
+- `atlas.json` in the target's folder applies as in the editor.
+- If it is missing, the former `delphi-lsp.json` applies (likewise `delphi-lsp-baseline.json` for the baseline).
 
-A check run evaluates each unit once and shares the result with all rules (#1322). Before, rules that ask for the type of many expressions (ownership, casts, typed expressions) extracted the whole unit again for every question, so large units took quadratic time; in the IDE this cost CPU on every change as well. The token at a position is found by binary search instead of a scan from the start of the file (#1323), which large constant arrays made quadratic as well. Measured with the Linux build (before → #1322 → #1323): SynEdit 353 s → 135 s → 113 s, VirtualTreeView 676 s → 93 s → 78 s, HtmlViewer 987 s → 708 s → 116 s, findings unchanged. Searches that a check run repeats all the time no longer start from scratch (#1342): project units and type lookups through the uses units are looked up in name tables and remembered per resolver, yes/no questions to the symbol index stop at the first match, and token searches jump to the start of their range by binary search. A check over the Atlas sources themselves (1,917 units, Linux build) went from 912 s to 594 s, on one core as before and with the same findings.
+### Symbol index (#1112)
+
+- The linter loads the same symbol index as the editor:
+  - the target's project
+  - and, with `index.projectGroup`, the other projects of the group
+  - from the index cache if it is current
+- Rules that need types from other units (for example ownership of fields whose type is declared elsewhere, or `case` over an enumeration from another unit) therefore report the same findings as in the IDE.
+- Without a project file the check runs without the index (stderr says so).
+- The MCP server checks with the same index (`get_diagnostics`, `check_code`, `explain_finding`).
+  - While it is still loading, `get_diagnostics` says that findings needing the index may be missing.
+
+### Runtime
+
+- **One evaluation per unit (#1322):** a check run evaluates each unit once and shares the result with all rules.
+  - Before, rules that ask for the type of many expressions (ownership, casts, typed expressions) extracted the whole unit again for every question, so large units took quadratic time.
+  - In the IDE this cost CPU on every change as well.
+- **Token search (#1323):** the token at a position is found by binary search instead of a scan from the start of the file, which large constant arrays made quadratic as well.
+- Measured with the Linux build (before → #1322 → #1323), findings unchanged:
+
+  | Project | before | #1322 | #1323 |
+  |---|---|---|---|
+  | SynEdit | 353 s | 135 s | 113 s |
+  | VirtualTreeView | 676 s | 93 s | 78 s |
+  | HtmlViewer | 987 s | 708 s | 116 s |
+
+- **Repeated searches (#1342):** searches that a check run repeats all the time no longer start from scratch:
+  - project units and type lookups through the uses units are looked up in name tables and remembered per resolver
+  - yes/no questions to the symbol index stop at the first match
+  - token searches jump to the start of their range by binary search
+- A check over the Atlas sources themselves (1,917 units, Linux build) went from 912 s to 594 s, on one core as before and with the same findings.
+
+### Parameters
 
 | Parameter | Meaning |
 |---|---|
@@ -52,21 +94,74 @@ A check run evaluates each unit once and shares the result with all rules (#1322
 | `--query "<query>"` | instead of findings: code query (#1351) over the `--check` target (without a project over the folder's files), also `@name` of a saved query from `queries`; `--format text` (default), `json` or `csv`, `--output`; exit code 0, 3 for an error in the query (message with column on stderr), an unknown `@name` or `query.enabled` off |
 | `--fail-on-match` | with `--query`: exit code 1 as soon as the query finds something (also for `@name` with `failIfAny`) |
 
-Exit code: 1 if a finding reaches `--fail-on` (default: at least one error), otherwise 0; 3 for invocation or read errors. Findings hidden by the baseline never count.
+### Exit code
 
-Baseline (#97): an entry in `atlas-baseline.json` records the file, the rule, the enclosing routine (fully qualified like `TFoo.Bar`, outside a routine the section such as `implementation`), a fingerprint of the line without whitespace and a fingerprint of the code ±2 lines around it. The same line in another routine therefore counts as new, as does a finding that moves to another routine. Re-indenting, moved lines and a renamed routine (same context, old name gone from the file) keep their entries. A renamed or moved file loses its entries: its findings show up as new until the baseline is updated. Older files without routines stay readable and are completed on the next update. Suppression comments for findings in the baseline never report `unused-suppression`. In editors the command `atlas.updateBaseline` (`workspace/executeCommand`, argument: URI of the project or folder) updates the baseline and answers with the counters; it checks every file of the project and keeps the server busy meanwhile. In SARIF every result carries `partialFingerprints` (`atlasBaseline/v1` from rule, routine and line, `atlasContext/v1` from the context, each with a running number `:n` for equal values in one file); with a baseline `baselineState` is added: `new`, `unchanged` (as an external suppression) or `absent` (entry without a finding). Text, JSON and the exit code contain only new findings.
+- 1 if a finding reaches `--fail-on` (default: at least one error), otherwise 0
+- 3 for invocation or read errors
+- Findings hidden by the baseline never count.
 
-In SARIF, `message.text` is the rule's English catalog name without the confidence suffix. The confidence is in `properties.confidence`, the finding's German message in `properties.detail`.
+### Baseline (#97)
 
-Every rule finding has a confidence (high, medium, low). It caps the severity even if `rules` sets it higher: medium confidence at most warning, low at most hint. Findings below `minConfidence` (default `medium`) are hidden. The confidence is never part of the message text; it is a separate column in the text output (`[Konfidenz mittel]`), `confidence` in JSON, `data.confidence` in LSP and its own line in the plugin's tooltip.
+- An entry in `atlas-baseline.json` records:
+  - the file
+  - the rule
+  - the enclosing routine (fully qualified like `TFoo.Bar`, outside a routine the section such as `implementation`)
+  - a fingerprint of the line without whitespace
+  - a fingerprint of the code ±2 lines around it
+- The same line in another routine therefore counts as new, as does a finding that moves to another routine.
+- Re-indenting, moved lines and a renamed routine (same context, old name gone from the file) keep their entries.
+- A renamed or moved file loses its entries: its findings show up as new until the baseline is updated.
+- Older files without routines stay readable and are completed on the next update.
+- Suppression comments for findings in the baseline never report `unused-suppression`.
+- In editors the command `atlas.updateBaseline` (`workspace/executeCommand`, argument: URI of the project or folder) updates the baseline and answers with the counters.
+  - It checks every file of the project and keeps the server busy meanwhile.
+- In SARIF every result carries `partialFingerprints`:
+  - `atlasBaseline/v1` from rule, routine and line
+  - `atlasContext/v1` from the context
+  - each with a running number `:n` for equal values in one file
+- With a baseline `baselineState` is added: `new`, `unchanged` (as an external suppression) or `absent` (entry without a finding).
+- Text, JSON and the exit code contain only new findings.
 
-In an SVN working copy, `--changed` without a base compares the working copy with BASE (`svn status`), `--changed <rev>` and `--diff <rev>` with the revision (`svn diff -r`); `--include-uncommitted` adds unversioned files. The nearest working copy above the configuration folder wins (`.git` or `.svn`), Git on a tie; `vcs.provider` in `%APPDATA%\Atlas\settings.json` picks the kind (`auto`, `git`, `svn`) or turns it off (`off`). svn must be installed as a command-line tool (TortoiseSVN with command-line tools is enough). `vcs.git.path` and `vcs.svn.path` pick the program (as on the *Version control* page), `vcs.timeoutSeconds` the time limit per call; if the file under a custom path is missing, `--changed` stops with that cause.
+### SARIF messages
 
-Examples for a pre-commit hook and a GitHub Action that check only changes, and a GitHub Action that runs only the affected tests (all of them at night), are in [docs/Beispiele](../../../docs/Beispiele).
+- In SARIF, `message.text` is the rule's English catalog name without the confidence suffix.
+- The confidence is in `properties.confidence`, the finding's German message in `properties.detail`.
+
+### Confidence
+
+- Every rule finding has a confidence (high, medium, low).
+- It caps the severity even if `rules` sets it higher:
+  - medium confidence at most warning
+  - low at most hint
+- Findings below `minConfidence` (default `medium`) are hidden.
+- The confidence is never part of the message text. It is:
+  - a separate column in the text output (`[Konfidenz mittel]`)
+  - `confidence` in JSON
+  - `data.confidence` in LSP
+  - its own line in the plugin's tooltip
+
+### SVN with `--changed`
+
+- In an SVN working copy:
+  - `--changed` without a base compares the working copy with BASE (`svn status`)
+  - `--changed <rev>` and `--diff <rev>` compare with the revision (`svn diff -r`)
+  - `--include-uncommitted` adds unversioned files
+- The nearest working copy above the configuration folder wins (`.git` or `.svn`), Git on a tie.
+- `vcs.provider` in `%APPDATA%\Atlas\settings.json` picks the kind (`auto`, `git`, `svn`) or turns it off (`off`).
+- svn must be installed as a command-line tool (TortoiseSVN with command-line tools is enough).
+- `vcs.git.path` and `vcs.svn.path` pick the program (as on the *Version control* page), `vcs.timeoutSeconds` the time limit per call.
+- If the file under a custom path is missing, `--changed` stops with that cause.
+
+### Examples
+
+- Examples for a pre-commit hook and a GitHub Action that check only changes, and a GitHub Action that runs only the affected tests (all of them at night), are in [docs/Beispiele](../../../docs/Beispiele).
 
 ### Formatting without the IDE
 
-The same formatter as *Format document* in the plugin (#1358) runs without the IDE, for example in a pre-commit hook, in CI or for Claude Code. Target and selection as with `--check` (`.dproj`, folder or file, `--units`, `--changed`/`--diff`, `--include-uncommitted`, exclusions from `atlas.json`). The project's formatting rules apply: `format.*` from `atlas.json` over `.editorconfig` over the defaults. The command line does not know the indentation from the IDE's editor options; to get the same everywhere, set `format.indentSize` and `format.useTabs`.
+- The same formatter as *Format document* in the plugin (#1358) runs without the IDE, for example in a pre-commit hook, in CI or for Claude Code.
+- Target and selection as with `--check` (`.dproj`, folder or file, `--units`, `--changed`/`--diff`, `--include-uncommitted`, exclusions from `atlas.json`).
+- The project's formatting rules apply: `format.*` from `atlas.json` over `.editorconfig` over the defaults.
+- The command line does not know the indentation from the IDE's editor options; to get the same everywhere, set `format.indentSize` and `format.useTabs`.
 
 | Parameter | Meaning |
 |---|---|
@@ -74,12 +169,29 @@ The same formatter as *Format document* in the plugin (#1358) runs without the I
 | `--format-write` | writes the formatted files atomically (sibling file, then replace); encoding (UTF-8 with or without BOM, ANSI) and line endings stay, unless `format.endOfLine` asks for others. Exit code 1 only on syntax errors or unstable formatting, 3 if a file could not be written |
 | `--changed-lines` | with `--format-check`/`--format-write`: formats only the changed lines like *Format selection* (`textDocument/rangeFormatting`); every other line stays byte for byte |
 
-Files with syntax errors are not formatted and are reported with line and message. Regions between `// atlas-format: off` and `// atlas-format: on` (also as `{ … }` or `(* … *)`, without `on` up to the end of the file) stay untouched including these lines, in the plugin as on the command line. Every run formats the result a second time and reports files that still change.
+#### Behaviour
 
-For Claude Code the MCP tool `format_code` formats a unit by the same rules: with `text` planned code (returns the formatted text, writes nothing), otherwise the file, whole or `startLine`..`endLine`; `dryRun` (default `true`) shows the diff, `dryRun: false` writes like `apply_code_action` (files open in the IDE as one undo step). Switch it off via `mcp.disabledTools`.
+- Files with syntax errors are not formatted and are reported with line and message.
+- Regions between `// atlas-format: off` and `// atlas-format: on` stay untouched including these lines, in the plugin as on the command line.
+  - also as `{ … }` or `(* … *)`
+  - without `on` up to the end of the file
+- Every run formats the result a second time and reports files that still change.
 
-Examples: [pre-commit hook](../../../docs/Beispiele/pre-commit-formatierung.ps1) with `--format-check --changed HEAD --changed-lines --include-uncommitted` (with `ATLAS_FORMAT_WRITE=1` it formats itself) and [GitHub Action](../../../docs/Beispiele/github-action-formatierung.yml) with the diff in the log.
+#### Claude Code
+
+- For Claude Code the MCP tool `format_code` formats a unit by the same rules:
+  - with `text` planned code (returns the formatted text, writes nothing)
+  - otherwise the file, whole or `startLine`..`endLine`
+- `dryRun` (default `true`) shows the diff, `dryRun: false` writes like `apply_code_action` (files open in the IDE as one undo step).
+- Switch it off via `mcp.disabledTools`.
+
+#### Examples
+
+- [pre-commit hook](../../../docs/Beispiele/pre-commit-formatierung.ps1) with `--format-check --changed HEAD --changed-lines --include-uncommitted` (with `ATLAS_FORMAT_WRITE=1` it formats itself)
+- [GitHub Action](../../../docs/Beispiele/github-action-formatierung.yml) with the diff in the log
 
 ## Rules
 
-All rules are described in [docs/Regeln.md](../../../docs/Regeln.md). The single source is the rule catalogue `Packages/Atlas.Common/Katalog/regelkatalog.json` (English) with the translation `regelkatalog.de.json`. After changes run `pwsh Tools/Update-RuleCatalog.ps1`; CI checks with `-Check` that catalogue, implementation and documentation agree.
+- All rules are described in [docs/Regeln.md](../../../docs/Regeln.md).
+- The single source is the rule catalogue `Packages/Atlas.Common/Katalog/regelkatalog.json` (English) with the translation `regelkatalog.de.json`.
+- After changes run `pwsh Tools/Update-RuleCatalog.ps1`; CI checks with `-Check` that catalogue, implementation and documentation agree.
