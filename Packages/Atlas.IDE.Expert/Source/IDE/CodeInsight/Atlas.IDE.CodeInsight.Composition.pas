@@ -4095,10 +4095,19 @@ begin
     end);
 end;
 
-/// <summary>Stammt die Klasse von AObject aus diesem Package?</summary>
+/// <summary>Stammt die Klasse von AObject aus Base oder einem angemeldeten Modul (Regel 8, #1456)?</summary>
 function OwnClass(AObject: TObject): Boolean;
+var
+  mModule: NativeUInt;
 begin
-  Result := (AObject <> nil) and (FindClassHInstance(AObject.ClassType) = HInstance);
+  Result := False;
+  if AObject = nil then
+  begin
+    Exit;
+  end;
+  mModule := NativeUInt(FindClassHInstance(AObject.ClassType));
+  Result := (mModule = NativeUInt(HInstance)) or
+    ((AtlasModuleRegistry <> nil) and AtlasModuleRegistry.IsModuleHandle(mModule));
 end;
 
 /// <summary>„TEditWindow EditWindow_0 › TPanel EditorPanel“: Owner- bzw. Elternkette für das Protokoll.</summary>

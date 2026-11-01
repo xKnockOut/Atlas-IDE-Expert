@@ -153,6 +153,9 @@ type
     class procedure ShowMessages; static;
     /// <summary>Laufen die Zeilen des Statusfelds? False vor Install und nach Uninstall.</summary>
     class function StatusLinesReady: Boolean; static;
+    /// <summary>Ordner des Base-Packages mit Pfadtrenner am Ende (Regel 8, #1456): Daten, Vorlagen und Doku liegen
+    /// dort, auch wenn ein Modul aus einem eigenen Package fragt. Braucht kein Install.</summary>
+    class function InstallFolder: string; static;
   end;
 
 implementation
@@ -413,6 +416,12 @@ end;
 class function TAtlasIdeHost.StatusLinesReady: Boolean;
 begin
   Result := Assigned(FServices.StatusLinesReady) and FServices.StatusLinesReady();
+end;
+
+class function TAtlasIdeHost.InstallFolder: string;
+begin
+  // HInstance ist hier das Base-Package, weil diese Unit dort liegt.
+  Result := ExtractFilePath(GetModuleName(HInstance));
 end;
 
 end.
