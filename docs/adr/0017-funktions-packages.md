@@ -188,7 +188,7 @@ Scheitert der Pilot an einem Fall ohne Abhilfe, greift Schritt 4: Es bleibt beim
 4. **Texte:** a je Modul eigenes Enum und eigene Tabelle (`TAtlasDebugTextId`), Sprachwechsel über einen Vertrag; b Schlüssel als `string` mit Registry je Modul. Empfehlung: a; der Vertrag für den Sprachwechsel gilt auch für fremde Module.
 5. **`Atlas.IDE.Expert.dproj` im Pilot behalten?** Empfehlung: nur auf `release/1.2`, auf `main` und im Pilot entfernen.
 6. **Regeln 1 bis 9** oben bestätigen oder ändern.
-7. **Quellbaum:** schicht-first wie heute (`Source/{Core,IDE,UI}/<Feature>`) oder package-first (`Packages/Atlas.IDE.Debugger/Source/{Core,IDE,UI}`). Package-first macht die Zuordnung zur Ordnerfrage und vereinfacht das Prüfskript, verschiebt aber viele Dateien. Bis zur Entscheidung werden keine Dateien verschoben, nur `contains` aufgeteilt.
+7. ~~**Quellbaum**~~ **Entschieden (Marco, 01.11.2026): package-first, ab dem Pilot.** Jedes Package hat seine Quellen unter `Packages/<Package>/Source/{Core,IDE,UI}/<Feature>`; der Ordner zeigt, zu welchem Package eine Unit gehört, und das Prüfskript liest die Zuordnung daraus. Verschoben wird mit dem Pilot (#1456), vorher nur `contains` aufgeteilt.
 8. **Prüfregeln nur mit `Atlas.IDE.Rules`:** bestätigen, obwohl IDE und `--check` sich widersprechen können, oder Regeln im Kern laufen lassen und nur die Regelseite ins Add-on legen.
 
 ### Versionen (neu, Marco 01.11.2026)
