@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Welcome.TestResults.Tests;
+﻿unit Atlas.UI.Tracker.TestResults.Tests;
 
 // Bereich „Testergebnisse“ der Willkommensseite (#763, Mockup #ws11): Texte
 // der Zeilen (Marke, lokaler Lauf, Zeile des Build-Servers mit „Stand vom …“,
@@ -14,8 +14,8 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.Welcome')]
-  TAtlasWelcomeTestResultsFrameTests = class
+  [Category('Atlas.IDE.Tracker')]
+  TAtlasTrackerTestResultsViewTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
     [SetupFixture]
@@ -41,9 +41,9 @@ uses
   Vcl.Forms,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Welcome.TestResults,
+  Atlas.Core.Tracker.TestResults,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.TestResults;
+  Atlas.UI.Tracker.TestResults;
 
 const
   TestProject = 'C:\Projekte\Atlas\Atlas.Tests.dproj';
@@ -140,9 +140,11 @@ begin
   Result.Summary.Tests := ATests;
   Result.Summary.Ci := TAtlasProjectCi.Empty;
   if ABuild.Number > 0 then
+  begin
     // Abgerufen vor 40 Minuten.
-    Result.Summary.Ci := TAtlasWelcomeTestResults.Recorded(TAtlasProjectCi.Empty, AJob, True, ABuild,
+    Result.Summary.Ci := TAtlasTestResults.Recorded(TAtlasProjectCi.Empty, AJob, True, ABuild,
       TAtlasCiFetchError.None, IncMinute(NowUtc0, -40));
+  end;
   Result.Job := AJob;
   Result.Querying := False;
 end;
@@ -155,7 +157,7 @@ end;
 /// <summary>Atlas.Tests (lokal rot, Server rot) und Kasse.Tests (alle ok, ohne Build-Server).</summary>
 function SampleView(ACi: Boolean): TAtlasTestResultsView;
 begin
-  Result := TAtlasWelcomeTestResults.View([
+  Result := TAtlasTestResults.View([
     Project(TestProject, LocalRun, Job, Build(482, TAtlasCiOutcome.Unstable, 1)),
     Project('C:\Projekte\Kasse\Kasse.dproj', GreenRun, NoJob, TAtlasCiBuild.Empty)], '', 5, ACi);
 end;
@@ -217,14 +219,14 @@ begin
   Calls := Calls + ['shown'];
 end;
 
-{ TAtlasWelcomeTestResultsFrameTests }
+{ TAtlasTrackerTestResultsViewTests }
 
-procedure TAtlasWelcomeTestResultsFrameTests.WarmUpFirstUse;
+procedure TAtlasTrackerTestResultsViewTests.WarmUpFirstUse;
 begin
   ClicksReachSource;
 end;
 
-procedure TAtlasWelcomeTestResultsFrameTests.TextsFollowMockup;
+procedure TAtlasTrackerTestResultsViewTests.TextsFollowMockup;
 var
   Saved: TAtlasLanguage;
   View: TAtlasTestResultsView;
@@ -238,48 +240,49 @@ begin
     Row := View.Rows[0];
     Assert.AreEqual('Atlas.Tests', Row.Name);
     // Mockup: Marke „2 fehlgeschlagen“, daneben „412 ok · 3 übersprungen · 18,4 s · 19:41“.
-    Assert.AreEqual('2 fehlgeschlagen', TAtlasWelcomeTestResultsFrame.PillText(Row));
-    Assert.AreEqual('412 ok · 3 übersprungen · ' + FormatFloat('0.0', 18.4) + ' s · ' +
-      FormatDateTime('t', TTimeZone.Local.ToLocalTime(NowUtc0)),
-      TAtlasWelcomeTestResultsFrame.LocalText(Row, NowUtc0));
+    Assert.AreEqual('2 fehlgeschlagen', TAtlasTrackerTestResultsText.PillText(Row));
+    Assert.AreEqual('412 ok · 3 übersprungen · ' + FormatFloat('0.0', 18.4, FormatSettings) + ' s · ' +
+      FormatDateTime('t', TTimeZone.Local.ToLocalTime(NowUtc0), FormatSettings),
+      TAtlasTrackerTestResultsText.LocalText(Row, NowUtc0));
     // „alle 57 ok“ nennt die Zahl schon in der Marke.
     Row := View.Rows[1];
-    Assert.AreEqual('alle 57 ok', TAtlasWelcomeTestResultsFrame.PillText(Row));
-    Assert.AreEqual(FormatFloat('0.0', 2.1) + ' s', TAtlasWelcomeTestResultsFrame.LocalText(Row, NowUtc0));
+    Assert.AreEqual('alle 57 ok', TAtlasTrackerTestResultsText.PillText(Row));
+    Assert.AreEqual(FormatFloat('0.0', 2.1, FormatSettings) + ' s',
+      TAtlasTrackerTestResultsText.LocalText(Row, NowUtc0));
     Row.Local := TAtlasProjectTests.Empty;
-    Row.LocalLevel := TAtlasWelcomeTestResults.LocalLevel(Row.Local);
-    Assert.AreEqual('noch kein Lauf', TAtlasWelcomeTestResultsFrame.PillText(Row));
-    Assert.AreEqual('', TAtlasWelcomeTestResultsFrame.LocalText(Row, NowUtc0));
-    Assert.AreEqual('2:05 min', TAtlasWelcomeTestResultsFrame.DurationText(125000));
+    Row.LocalLevel := TAtlasTestResults.LocalLevel(Row.Local);
+    Assert.AreEqual('noch kein Lauf', TAtlasTrackerTestResultsText.PillText(Row));
+    Assert.AreEqual('', TAtlasTrackerTestResultsText.LocalText(Row, NowUtc0));
+    Assert.AreEqual('2:05 min', TAtlasTrackerTestResultsText.DurationText(125000));
     // Fehlschläge: Meldung und Datei:Zeile.
     Assert.AreEqual(2, Integer(Length(View.Failures)));
     Item := View.Failures[0];
     Assert.AreEqual('Erwartet 3 Deklarationen, gefunden 0 · Atlas.Core.Index.Tests.pas:214',
-      TAtlasWelcomeTestResultsFrame.FailureDetail(Item));
+      TAtlasTrackerTestResultsText.FailureDetail(Item));
     Item.Message := '';
-    Assert.AreEqual('Atlas.Core.Index.Tests.pas:214', TAtlasWelcomeTestResultsFrame.FailureDetail(Item));
+    Assert.AreEqual('Atlas.Core.Index.Tests.pas:214', TAtlasTrackerTestResultsText.FailureDetail(Item));
     Item.FileName := '';
     Item.Message := 'Nur Meldung';
-    Assert.AreEqual('Nur Meldung', TAtlasWelcomeTestResultsFrame.FailureDetail(Item));
+    Assert.AreEqual('Nur Meldung', TAtlasTrackerTestResultsText.FailureDetail(Item));
     // Zeitangaben.
-    Assert.AreEqual('gerade eben', TAtlasWelcomeTestResultsFrame.AgoText(NowUtc0, NowUtc0));
-    Assert.AreEqual('vor 40 Min.', TAtlasWelcomeTestResultsFrame.AgoText(IncMinute(NowUtc0, -40), NowUtc0));
-    Assert.AreEqual('vor 4 Tagen', TAtlasWelcomeTestResultsFrame.AgoText(IncDay(NowUtc0, -4), NowUtc0));
-    Assert.AreEqual('', TAtlasWelcomeTestResultsFrame.AgoText(0, NowUtc0));
+    Assert.AreEqual('gerade eben', TAtlasTrackerTestResultsText.AgoText(NowUtc0, NowUtc0));
+    Assert.AreEqual('vor 40 Min.', TAtlasTrackerTestResultsText.AgoText(IncMinute(NowUtc0, -40), NowUtc0));
+    Assert.AreEqual('vor 4 Tagen', TAtlasTrackerTestResultsText.AgoText(IncDay(NowUtc0, -4), NowUtc0));
+    Assert.AreEqual('', TAtlasTrackerTestResultsText.AgoText(0, NowUtc0));
     Assert.AreEqual('Fehlgeschlagene erneut ausführen',
-      TAtlasWelcomeTestResultsFrame.ButtonText(TAtlasTestResultsButton.Rerun));
-    Assert.AreEqual('Im Debugger', TAtlasWelcomeTestResultsFrame.ButtonText(TAtlasTestResultsButton.Debug));
-    Assert.AreEqual('Im Browser', TAtlasWelcomeTestResultsFrame.ButtonText(TAtlasTestResultsButton.Browse));
-    Assert.IsTrue(TAtlasWelcomeTestResultsFrame.LevelColor(TAtlasTestLevel.Passed) <>
-      TAtlasWelcomeTestResultsFrame.LevelColor(TAtlasTestLevel.Failed), 'rot ist nicht grün');
-    Assert.Contains(TAtlasWelcomeTestResultsFrame.RowHint(View.Rows[0]), TestProject);
-    Assert.Contains(TAtlasWelcomeTestResultsFrame.EmptyText, 'Tests ausführen');
+      TAtlasTrackerTestResultsText.ButtonText(TAtlasTestResultsButton.Rerun));
+    Assert.AreEqual('Im Debugger', TAtlasTrackerTestResultsText.ButtonText(TAtlasTestResultsButton.Debug));
+    Assert.AreEqual('Im Browser', TAtlasTrackerTestResultsText.ButtonText(TAtlasTestResultsButton.Browse));
+    Assert.IsTrue(TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Passed) <>
+      TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Failed), 'rot ist nicht grün');
+    Assert.Contains(TAtlasTrackerTestResultsText.RowHint(View.Rows[0]), TestProject);
+    Assert.Contains(TAtlasTrackerTestResultsText.EmptyText, 'Tests ausführen');
   finally
     TAtlasStrings.Language := Saved;
   end;
 end;
 
-procedure TAtlasWelcomeTestResultsFrameTests.ServerTextsAndMismatch;
+procedure TAtlasTrackerTestResultsViewTests.ServerTextsAndMismatch;
 var
   Saved: TAtlasLanguage;
   View: TAtlasTestResultsView;
@@ -293,39 +296,39 @@ begin
     Assert.IsTrue(Row.HasCi);
     // Zweite Zeile wie im Issue: „Jenkins #482 · 1 fehlgeschlagen · vor 40 Min. · main“.
     Assert.AreEqual('Jenkins #482 · 1 fehlgeschlagen · vor 40 Min. · main',
-      TAtlasWelcomeTestResultsFrame.CiText(Row, NowUtc0));
+      TAtlasTrackerTestResultsText.CiText(Row, NowUtc0));
     // Server-Fehlschläge stehen in derselben Liste, mit Marke „Server“.
     Assert.AreEqual(3, Integer(Length(View.Failures)));
     Assert.IsTrue(View.Failures[2].Server);
     // Nicht erreichbar: letzter Stand mit „Stand vom …“, kein Fehler.
     Row.CiStale := True;
     Assert.StartsWith('Jenkins #482 · 1 fehlgeschlagen · vor 40 Min. · main · Stand vom ',
-      TAtlasWelcomeTestResultsFrame.CiText(Row, NowUtc0));
+      TAtlasTrackerTestResultsText.CiText(Row, NowUtc0));
     // Noch nie abgerufen.
     Row.Ci := TAtlasProjectCi.Empty;
     Row.CiStale := False;
     Row.Ci.Error := TAtlasCiFetchError.Network;
-    Assert.AreEqual('Jenkins · nicht erreichbar · main', TAtlasWelcomeTestResultsFrame.CiText(Row, NowUtc0));
+    Assert.AreEqual('Jenkins · nicht erreichbar · main', TAtlasTrackerTestResultsText.CiText(Row, NowUtc0));
     Row.CiQuerying := True;
-    Assert.AreEqual('Jenkins · wird abgefragt … · main', TAtlasWelcomeTestResultsFrame.CiText(Row, NowUtc0));
+    Assert.AreEqual('Jenkins · wird abgefragt … · main', TAtlasTrackerTestResultsText.CiText(Row, NowUtc0));
     Row.HasCi := False;
-    Assert.AreEqual('', TAtlasWelcomeTestResultsFrame.CiText(Row, NowUtc0));
+    Assert.AreEqual('', TAtlasTrackerTestResultsText.CiText(Row, NowUtc0));
     Assert.AreEqual('lokal grün, Server rot',
-      TAtlasWelcomeTestResultsFrame.MismatchText(TAtlasTestMismatch.LocalGreenServerRed));
+      TAtlasTrackerTestResultsText.MismatchText(TAtlasTestMismatch.LocalGreenServerRed));
     Assert.AreEqual('lokal rot, Server grün',
-      TAtlasWelcomeTestResultsFrame.MismatchText(TAtlasTestMismatch.LocalRedServerGreen));
-    Assert.AreEqual('', TAtlasWelcomeTestResultsFrame.MismatchText(TAtlasTestMismatch.None));
-    Assert.AreEqual('instabil', TAtlasWelcomeTestResultsFrame.BuildText(Build(7, TAtlasCiOutcome.Unstable, 0)));
-    Assert.AreEqual('alle 400 ok', TAtlasWelcomeTestResultsFrame.BuildText(Build(7, TAtlasCiOutcome.Success, 0)));
+      TAtlasTrackerTestResultsText.MismatchText(TAtlasTestMismatch.LocalRedServerGreen));
+    Assert.AreEqual('', TAtlasTrackerTestResultsText.MismatchText(TAtlasTestMismatch.None));
+    Assert.AreEqual('instabil', TAtlasTrackerTestResultsText.BuildText(Build(7, TAtlasCiOutcome.Unstable, 0)));
+    Assert.AreEqual('alle 400 ok', TAtlasTrackerTestResultsText.BuildText(Build(7, TAtlasCiOutcome.Success, 0)));
     Assert.AreEqual('Anmeldung abgelehnt (Zugang hinterlegen)',
-      TAtlasWelcomeTestResultsFrame.ErrorText(TAtlasCiFetchError.Unauthorized));
-    Assert.AreEqual('keine Antwort in 5 s', TAtlasWelcomeTestResultsFrame.ErrorText(TAtlasCiFetchError.Timeout));
+      TAtlasTrackerTestResultsText.ErrorText(TAtlasCiFetchError.Unauthorized));
+    Assert.AreEqual('keine Antwort in 5 s', TAtlasTrackerTestResultsText.ErrorText(TAtlasCiFetchError.Timeout));
   finally
     TAtlasStrings.Language := Saved;
   end;
 end;
 
-procedure TAtlasWelcomeTestResultsFrameTests.EnglishTexts;
+procedure TAtlasTrackerTestResultsViewTests.EnglishTexts;
 var
   Saved: TAtlasLanguage;
   View: TAtlasTestResultsView;
@@ -334,31 +337,31 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.English;
     View := SampleView(True);
-    Assert.AreEqual('2 failed', TAtlasWelcomeTestResultsFrame.PillText(View.Rows[0]));
-    Assert.AreEqual('all 57 passed', TAtlasWelcomeTestResultsFrame.PillText(View.Rows[1]));
+    Assert.AreEqual('2 failed', TAtlasTrackerTestResultsText.PillText(View.Rows[0]));
+    Assert.AreEqual('all 57 passed', TAtlasTrackerTestResultsText.PillText(View.Rows[1]));
     Assert.AreEqual('Jenkins #482 · 1 failed · 40 min ago · main',
-      TAtlasWelcomeTestResultsFrame.CiText(View.Rows[0], NowUtc0));
+      TAtlasTrackerTestResultsText.CiText(View.Rows[0], NowUtc0));
     Assert.AreEqual('green locally, red on the server',
-      TAtlasWelcomeTestResultsFrame.MismatchText(TAtlasTestMismatch.LocalGreenServerRed));
-    Assert.AreEqual('Re-run failed', TAtlasWelcomeTestResultsFrame.ButtonText(TAtlasTestResultsButton.Rerun));
+      TAtlasTrackerTestResultsText.MismatchText(TAtlasTestMismatch.LocalGreenServerRed));
+    Assert.AreEqual('Re-run failed', TAtlasTrackerTestResultsText.ButtonText(TAtlasTestResultsButton.Rerun));
   finally
     TAtlasStrings.Language := Saved;
   end;
 end;
 
-procedure TAtlasWelcomeTestResultsFrameTests.ClicksReachSource;
+procedure TAtlasTrackerTestResultsViewTests.ClicksReachSource;
 var
   Host: TForm;
   Fake: TFakeTestResults;
   Source: IAtlasTestResultsSource;
-  Frame: TAtlasWelcomeTestResultsFrame;
+  Frame: TAtlasTrackerTestResultsView;
 begin
   Fake := TFakeTestResults.Create;
   Source := Fake;
   Fake.FView := SampleView(True);
   Host := TForm.CreateNew(nil);
   try
-    Frame := TAtlasWelcomeTestResultsFrame.Create(Host);
+    Frame := TAtlasTrackerTestResultsView.Create(Host);
     Frame.Parent := Host;
     Frame.Width := 600;
     Frame.Source := Source;
@@ -380,10 +383,10 @@ begin
     Frame.ClickAt(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.Row, 1));
     Frame.DoubleClickAt(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.Row, 1));
     Frame.ClickAt(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.Row, 9));
-    Frame.MenuRow := 0;
-    Frame.QueryItem.Click;
-    Frame.CredentialsItem.Click;
-    Frame.OpenItem.Click;
+    Frame.Menus.MenuRow := 0;
+    Frame.Menus.QueryItem.Click;
+    Frame.Menus.CredentialsItem.Click;
+    Frame.Menus.OpenItem.Click;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
     Assert.AreEqual(9, Integer(Length(Fake.Calls)));
@@ -406,19 +409,19 @@ begin
   end;
 end;
 
-procedure TAtlasWelcomeTestResultsFrameTests.BrowseOnlyWithServer;
+procedure TAtlasTrackerTestResultsViewTests.BrowseOnlyWithServer;
 var
   Host: TForm;
   Fake: TFakeTestResults;
   Source: IAtlasTestResultsSource;
-  Frame: TAtlasWelcomeTestResultsFrame;
+  Frame: TAtlasTrackerTestResultsView;
 begin
   Fake := TFakeTestResults.Create;
   Source := Fake;
   Fake.FView := SampleView(False);
   Host := TForm.CreateNew(nil);
   try
-    Frame := TAtlasWelcomeTestResultsFrame.Create(Host);
+    Frame := TAtlasTrackerTestResultsView.Create(Host);
     Frame.Parent := Host;
     Frame.Width := 600;
     Frame.Source := Source;
@@ -429,7 +432,7 @@ begin
     CheckSynchronize;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)));
     // Ohne Fehlschläge: nichts erneut auszuführen.
-    Fake.FView := TAtlasWelcomeTestResults.View([Project('C:\Projekte\Kasse\Kasse.dproj', GreenRun, NoJob,
+    Fake.FView := TAtlasTestResults.View([Project('C:\Projekte\Kasse\Kasse.dproj', GreenRun, NoJob,
       TAtlasCiBuild.Empty)], '', 5, False);
     Frame.UpdateContent;
     Assert.IsFalse(Frame.ButtonEnabled(TAtlasTestResultsButton.Rerun));
@@ -444,6 +447,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TAtlasWelcomeTestResultsFrameTests);
+  TDUnitX.RegisterTestFixture(TAtlasTrackerTestResultsViewTests);
 
 end.
