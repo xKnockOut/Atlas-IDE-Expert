@@ -9,6 +9,13 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## ADR 0017 fortgeschrieben: Laden, Entladen, Versionen (01.11.2026, Branch `claude/project-thread-rc7rg9` von `Pilot-2.0.0-beta.1`)
+- Auftrag von Marco: ADR 0017 um den Review-Arbeitsauftrag vom 01.11. ergänzen (Aufgabe A). Nur Doku, kein Code.
+- `docs/adr/0017-funktions-packages.md`: `Atlas.Core.Strings` → `Atlas.UI.Strings` (zweimal); neuer Abschnitt „Fortschreibung: Laden, Entladen, Versionen (Review 2026-11-01)“ mit Befund am Code, den drei Package-Mechaniken (Ladereihenfolge, Entladen, ABI), Regeln 1–9 für Module und Verträge (Status vorgeschlagen), Auffindbarkeit des Kerns (offen, Optionen a–d), weiteren Folgen (Release, Versionen, Doku, CHANGELOG, Diagnose, Prüfregeln ohne Rules-Package), Verträgen und Abnahme P1–P11 des Piloten, offenen Entscheidungen 1–8.
+- Neu `docs/adr/0017-unit-zuordnung.md`: alle 730 Units mit Package, aus dem Quellbaum nach Ordnerregeln erzeugt. Die Analyse (claude.ai-Dokument) hatte nur Summen je Package. Ausnahmen: `Notes.Tip` und sechs Build-Units (Compilermeldungen, Prüfen nach dem Speichern, Compile-Ereignisse, Build-Auswahl) bleiben im Kern; die sieben Rules-Units sind ein Vorschlag.
+- Am Code abweichend vom Auftrag: Welcome → Tracker sind 10 Units (auf 30 Tracker-Units), nicht 16; Welcome → Bookmarks 3 statt 5. Zusätzlich gefunden: `OwnClass` in der Kompositionswurzel und `Diagnostics.StackCapture` hängen ebenfalls an `HInstance`; `CodeInsight.Manager` leitet den Namen des Diagnoselogs vom BPL-Namen ab.
+- Offen: Marcos Entscheidungen 1–8 (im ADR); danach Aufgabe B (Regeln in `CLAUDE.md` und `docs/Architektur.md`), #1454 usw.
+
 ## Plugin in Funktions-Packages aufteilen (31.10.2026, Branch `claude/project-thread-ewwfb4`)
 - Marco fragte, ob Atlas-Funktionen in eigene Packages gehören. Analyse mit Varianten A bis D und Package-Diagramm: https://claude.ai/artifact/MYjWn34YhgeVw5PPA7eHu3.
 - Entscheidung: Ziel ist Variante C, feiner geschnitten (Kern `Atlas.IDE.Core` plus zehn Add-on-Packages: Debugger, Tracker, Welcome, Analysis, Designer, Search, Rules, Tests, Build, Bookmarks; die Anzeige der Diagnosen bleibt im Kern), festgehalten in ADR 0017. Den Kern in Base und CodeInsight zu teilen ist als möglicher Schnitt nach dem Pilot vermerkt. Weg: #1454 Modul-Schalter, #1455 Verträge statt direkter uses, #1456 Pilot mit dem Debugger; die übrigen Module erst nach dem Pilot. Versionen: #1454 und #1455 in 1.x, Pilot als `2.0.0-beta.1`, Aufteilung insgesamt = 2.0.0.
