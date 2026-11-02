@@ -32,6 +32,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.StrUtils,
   System.Classes,
   Atlas.Common.Documents.Uris,
@@ -58,56 +59,61 @@ begin
     EndsText('Icon.Data', AName);
 end;
 
+/// <summary>Liste "( … )": je Zeile ein Eintrag; nach TFormInfo.MaxListLines gekürzt.</summary>
+function ListText(const AValue: string): string;
+var
+  mLine: string;
+  mItems: TArray<string>;
+  mIndex: Integer;
+begin
+  mItems := nil;
+  for mLine in SplitString(Copy(AValue, 2, Length(AValue) - 2), #10) do
+  begin
+    if Trim(mLine) <> '' then
+    begin
+      mItems := mItems + [Trim(mLine)];
+    end;
+  end;
+  Result := '(';
+  for mIndex := 0 to Min(Length(mItems), TFormInfo.MaxListLines) - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ' ';
+    end;
+    Result := Result + mItems[mIndex];
+  end;
+  if Length(mItems) > TFormInfo.MaxListLines then
+  begin
+    Result := Result + Format(' … %d weitere', [Length(mItems) - TFormInfo.MaxListLines]);
+  end;
+  Result := Result + ')';
+end;
+
 class function TFormInfo.ValueText(const AProperty: TDfmProperty): string;
 var
-  Value, Line: string;
-  Items: TArray<string>;
-  Index, Count: Integer;
+  mValue: string;
 begin
-  Value := Trim(AProperty.Value);
-  if StartsStr('{', Value) then
+  mValue := Trim(AProperty.Value);
+  if StartsStr('{', mValue) and IsPicture(AProperty.Name) then
   begin
-    if IsPicture(AProperty.Name) then
-    begin
-      Exit(Format('Bild, %d Bytes', [CountHexBytes(Value)]));
-    end
-    else
-    begin
-      Exit(Format('Binärdaten, %d Bytes', [CountHexBytes(Value)]));
-    end;
-  end;
-  if StartsStr('(', Value) then
+    Result := Format('Bild, %d Bytes', [CountHexBytes(mValue)]);
+  end
+  else if StartsStr('{', mValue) then
   begin
-    // Liste: je Zeile ein Eintrag; nach MaxListLines gekürzt.
-    Items := nil;
-    for Line in SplitString(Copy(Value, 2, Length(Value) - 2), #10) do
-    begin
-      if Trim(Line) <> '' then
-      begin
-        Items := Items + [Trim(Line)];
-      end;
-    end;
-    Result := '(';
-    Count := Length(Items);
-    for Index := 0 to Count - 1 do
-    begin
-      if Index = MaxListLines then
-      begin
-        Result := Result + Format(' … %d weitere', [Count - MaxListLines]);
-        Break;
-      end;
-      if Index > 0 then
-      begin
-        Result := Result + ' ';
-      end;
-      Result := Result + Items[Index];
-    end;
-    Exit(Result + ')');
-  end;
-  Result := Trim(StringReplace(StringReplace(Value, #13, '', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
-  if Length(Result) > MaxValueLength then
+    Result := Format('Binärdaten, %d Bytes', [CountHexBytes(mValue)]);
+  end
+  else if StartsStr('(', mValue) then
   begin
-    Result := Copy(Result, 1, MaxValueLength - 3) + '...';
+    Result := ListText(mValue);
+  end
+  else
+  begin
+    Result := Trim(StringReplace(StringReplace(mValue, #13, '', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+    if Length(Result) > MaxValueLength then
+    begin
+      Result := Copy(Result, 1, MaxValueLength - 3) + '...';
+    end;
   end;
 end;
 
