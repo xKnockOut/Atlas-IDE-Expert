@@ -357,7 +357,65 @@ type
     procedure WireRefactorings;
     procedure WireCodeActions;
     /// <summary>Teil von Create (S-02): workspace/executeCommand: alle Befehle des Servers.</summary>
+    /// <summary>Formulare in Text umwandeln (Logik in Shell.Commands.Build).</summary>
+    function RunConvertForms(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Austrittspunkte am Cursor (#698).</summary>
+    function RunExitPoints(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Neu zugewiesene Variablen (#712).</summary>
+    function RunReassigned(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Typ des markierten Ausdrucks (#689).</summary>
+    function RunExpressionType(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660).</summary>
+    function RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Überschreibungen für die Zeilenleiste (#768).</summary>
+    function RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Baseline des Projekts aktualisieren.</summary>
+    function RunBaseline(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Vorschau der Sammelkorrektur.</summary>
+    function RunBulkFix(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Compilermeldungen in die Baseline.</summary>
+    function RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Qualifizierte Namen.</summary>
+    function RunQualifiedNames(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Werte einer Aufzählung.</summary>
+    function RunEnumValue(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>resourcestring anlegen.</summary>
+    function RunAddResourceString(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Literal als reiner Text.</summary>
+    function RunPlainText(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Text als Literal.</summary>
+    function RunToLiteral(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Status (#28), optional anonymisiert (#1356).</summary>
+    function RunStatus(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Prozesse am selben Index-Cache (#62).</summary>
+    function RunProcesses(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Einstellungen mit dem Parser des Servers prüfen (#227).</summary>
+    function RunSettingsCheck(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Regelkatalog für den Einstellungsdialog (#227, #909).</summary>
+    function RunSettingsCatalog(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Kompilieren auf den Befehl (#40, #261).</summary>
+    function RunCompile(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Index aller Ordner ohne Cache neu einlesen (#49).</summary>
+    function RunRebuildIndex(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Index löschen (#492).</summary>
+    function RunClearIndex(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Erneut versuchen nach dem Überspringen (#1355).</summary>
+    function RunRetryCrashCase(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Alle Dateien neu prüfen (#1231).</summary>
+    function RunRecheck(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Konfiguration und Plattform wählen (#46).</summary>
+    function RunSelectBuild(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Projekt für Dateien mehrerer Projekte (#46).</summary>
+    function RunSelectProject(const AArguments: TJSONArray): TJSONValue;
     procedure WireCommands;
+    /// <summary>Befehle für Status, Einstellungen, Fehlerbericht, Bau und Index.</summary>
+    procedure WireServerCommands;
+    /// <summary>Befehle für Metriken, TODOs, Architektur, Abfragen und Hotspots.</summary>
+    procedure WireReportCommands;
+    /// <summary>Befehle für Unit-Beziehungen, Symbolpfad, Debuggeranzeige, Ereignisse und Rekursion.</summary>
+    procedure WireUnitCommands;
+    /// <summary>Befehle für Compiler-Baseline, Slash-Menü, Testunits und Unit-Suche.</summary>
+    procedure WireSlashCommands;
     /// <summary>Teil von Create (S-02): Dateiüberwachung und Index-Auffrischung.</summary>
     procedure WireWatchedFiles;
     /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
@@ -1905,27 +1963,36 @@ begin
   FReadSourceTextRef := ReadSourceText;
   FReadResourceRef := ReadSourceText;
   FCommands := TLspCommands.Create;
-  FCommands.Register(TLspFormFiles.ConvertCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Converted, Backups: Integer;
-    begin
-      // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units (Logik in Shell.Commands.Build).
-      Converted := TBuildCommands.ConvertForms(TBuildCommands.FormFiles(AArguments, ProjectSourceFiles,
-        function(AFileName: string): Boolean
-        begin
-          Result := FileExists(AFileName);
-        end), FLogger, Backups);
-      FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
-        [Converted, Backups]));
-      Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
-    end);
-  FCommands.Register(TLspDfmPropertyRules.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := ApplyDfmPropertyRules(AArguments);
-    end);
+  FCommands.Register(TLspFormFiles.ConvertCommand, RunConvertForms);
+  FCommands.Register(TLspDfmPropertyRules.Command, ApplyDfmPropertyRules);
   FRefactorings.Register(FCommands);
+  WireReportCommands;
+  WireUnitCommands;
+  // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
+  FCommands.Register(TLspExitPoints.Command, RunExitPoints);
+  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
+  FCommands.Register(TLspReassigned.Command, RunReassigned);
+  // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
+  FCommands.Register(TLspExpressionType.Command, RunExpressionType);
+  // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
+  FCommands.Register(TLspMethodOrder.Command, RunMethodOrder);
+  // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
+  FCommands.Register(TLspOverrideMarks.Command, RunOverrideMarks);
+  FCommands.Register(TLspBaseline.Command, RunBaseline);
+  FCommands.Register(TLspBulkFix.Command, RunBulkFix);
+  FCommands.Register(TLspCompilerBaseline.AddCommand, RunCompilerBaselineAdd);
+  WireSlashCommands;
+  FCommands.Register(TQualifiedNames.Command, RunQualifiedNames);
+  FCommands.Register(TEnumValueCommands.Command, RunEnumValue);
+  FCommands.Register(TResourceStringCommands.AddCommand, RunAddResourceString);
+  FCommands.Register(TStringLiteralCommands.PlainTextCommand, RunPlainText);
+  FCommands.Register(TStringLiteralCommands.ToLiteralCommand, RunToLiteral);
+  WireServerCommands;
+  FCommands.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireReportCommands;
+begin
   FCommands.Register(TLspMetrics.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -1962,6 +2029,10 @@ begin
     begin
       Result := FHotspots.SaveReport(AArguments);
     end);
+end;
+
+procedure TServerComposition.WireUnitCommands;
+begin
   FCommands.Register(TLspUnitRelations.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -2007,85 +2078,10 @@ begin
     begin
       Result := FRecursion.Execute(AArguments);
     end);
-  // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
-  FCommands.Register(TLspExitPoints.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TLspExitPoints.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, FReadSourceTextRef,
-        FDocumentHighlights.SettingsFor, AArguments);
-    end);
-  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
-  FCommands.Register(TLspReassigned.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TLspReassigned.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
-    end);
-  // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
-  FCommands.Register(TLspExpressionType.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TLspExpressionType.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
-    end);
-  // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
-  FCommands.Register(TLspMethodOrder.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TLspMethodOrder.Execute(FDocuments, AArguments);
-    end);
-  // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
-  FCommands.Register(TLspOverrideMarks.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TLspOverrideMarks.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
-    end);
-  FCommands.Register(TLspBaseline.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Watch: TStopwatch;
-    begin
-      // Prüft das ganze Projekt: in großen Altprojekten dauert das; nur Zahlen ins Log, keine Pfade.
-      Watch := TStopwatch.StartNew;
-      Result := FBaseline.Execute(AArguments);
-      if Result is TJSONObject then
-      begin
-        FLogger.Info(Format('Baseline aktualisiert: %d Treffer, %d Dateien geprüft ' +
-          '(%d neu, %d entfernt, %d ohne Datei), %d ms', [TJSONObject(Result).GetValue<Integer>('total', -1),
-          TJSONObject(Result).GetValue<Integer>('files', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
-          TJSONObject(Result).GetValue<Integer>('removed', -1),
-          TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
-      end;
-    end);
-  FCommands.Register(TLspBulkFix.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Watch: TStopwatch;
-      Summary: string;
-    begin
-      // Nur die Vorschau; geschrieben wird im Plugin. Ins Log nur Zahlen und Regeln, keine Pfade.
-      Watch := TStopwatch.StartNew;
-      Result := FBulkFix.Execute(AArguments);
-      if not (Result is TJSONObject) then
-      begin
-        Exit;
-      end;
-      Summary := TJSONObject(Result).GetValue<string>('summary', '');
-      if Pos(sLineBreak, Summary) > 0 then
-      begin
-        Summary := Copy(Summary, 1, Pos(sLineBreak, Summary) - 1);
-      end;
-      FLogger.Info(Format('Sammelkorrektur berechnet (%s), %d ms', [Summary, Watch.ElapsedMilliseconds]));
-    end);
-  FCommands.Register(TLspCompilerBaseline.AddCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FCompilerBaseline.ExecuteAdd(AArguments);
-      if Result is TJSONObject then
-      begin
-        FLogger.Info(Format('Compilermeldungen in die Baseline: %d Einträge (%d neu, %d entfernt)',
-          [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
-          TJSONObject(Result).GetValue<Integer>('removed', -1)]));
-      end;
-    end);
+end;
+
+procedure TServerComposition.WireSlashCommands;
+begin
   FCommands.Register(TLspCompilerBaseline.ClassifyCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -2127,310 +2123,405 @@ begin
     begin
       Result := FUnitSearch.ExecuteAddUses(AArguments);
     end);
-  FCommands.Register(TQualifiedNames.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TQualifiedNames.Execute(FDocuments, FIndex,
-        FEnsureUnitRef, FDefinition.Namespaces, AArguments);
-    end);
-  FCommands.Register(TEnumValueCommands.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TEnumValueCommands.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces,
-        FReadSourceTextRef, AArguments);
-    end);
-  FCommands.Register(TResourceStringCommands.AddCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TResourceStringCommands.ExecuteAdd(FReadResourceRef, FResourceStringWrite, AArguments);
-    end);
-  FCommands.Register(TStringLiteralCommands.PlainTextCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TStringLiteralCommands.ExecutePlainText(FDocuments, AArguments);
-    end);
-  FCommands.Register(TStringLiteralCommands.ToLiteralCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Settings: TStringLiteralSettings;
-      Multiline: Boolean;
-    begin
-      Settings := TStringLiteralSettings.Default;
-      Multiline := False;
-      if (AArguments <> nil) and (AArguments.Count > 0) then
-      begin
-        Settings := StringLiteralFor(AArguments.Items[0].Value, Multiline);
-      end;
-      Result := TStringLiteralCommands.ExecuteToLiteral(FDocuments, Settings, Multiline, AArguments);
-    end);
+end;
+
+procedure TServerComposition.WireServerCommands;
+begin
   // Reine Lesebefehle laufen nebenläufig (#874): Status, Prüfung und Katalog der Einstellungen, Fehlerbericht.
   // Sie warten so nicht hinter einem Neuladen, während das Plugin auf die Antwort wartet.
   // Status (#28); Argument optional {"anonymize": true} (#1356, Fenster „Atlas-Server“ und Diagnosepaket).
-  FCommands.RegisterConcurrent(StatusCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      mAnonymize: Boolean;
-    begin
-      mAnonymize := (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) and
-        (TJSONObject(AArguments.Items[0]).GetValue('anonymize') is TJSONBool) and
-        TJSONBool(TJSONObject(AArguments.Items[0]).GetValue('anonymize')).AsBoolean;
-      Result := StatusJson(mAnonymize);
-    end);
-  FCommands.RegisterConcurrent(TServerPackage.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := DiagnosticPackage(AArguments);
-    end);
+  FCommands.RegisterConcurrent(StatusCommand, RunStatus);
+  FCommands.RegisterConcurrent(TServerPackage.Command, DiagnosticPackage);
   // Prozesse am selben Index-Cache (#62): Sperre, Stand, Prozesse und Ereignisse.
-  FCommands.RegisterConcurrent(ProcessesCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Workspaces: TArray<TLspProcessWorkspace>;
-    begin
-      Workspaces := CollectProcesses;
-      Result := TLspProcesses.ToJson(Workspaces, TShellPlatform.CurrentProcessId, Now);
-      FLogger.Info(TLspProcesses.ToMarkdown(Workspaces, TShellPlatform.CurrentProcessId, Now));
-    end);
+  FCommands.RegisterConcurrent(ProcessesCommand, RunProcesses);
   // Einstellungsdialog des Plugins (#227): Prüfung mit dem Parser des Servers und Regelkatalog.
-  FCommands.RegisterConcurrent(TLspSettingsCommands.CheckCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TLspSettingsCommands.Check(AArguments);
-    end);
-  FCommands.RegisterConcurrent(TLspSettingsCommands.CatalogCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Rule: IRule;
-      Experimental: TArray<string>;
-    begin
-      // Experimentelle Regeln (#834) kennt nur ihr Deskriptor; die Einstellungsseite (#909) markiert sie.
-      Experimental := nil;
-      for Rule in BuiltinRules do
-      begin
-        if Rule.Descriptor.Experimental then
-        begin
-          Experimental := Experimental + [Rule.Descriptor.Id];
-        end;
-      end;
-      Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments), FGlobalSettingsFile,
-        Experimental);
-    end);
-  FCommands.RegisterConcurrent(TBugReport.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := BugReport(AArguments);
-    end);
-  FCommands.Register(CompileCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Uri: string;
-      Started: Boolean;
-      Choice: TCompilerBackendChoice;
-      Answer: TJSONObject;
-    begin
-      // Optional die URI einer Datei, deren Projekt kompiliert wird.
-      Uri := '';
-      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-      begin
-        Uri := AArguments.Items[0].Value;
-      end;
-      if Uri = '' then
-      begin
-        Started := FCompile.Start('', True, Choice);
-      end
-      else
-      begin
-        Started := FCompile.Start(TDocumentUris.ToPath(Uri), True, Choice);
-      end;
-      // Ohne nutzbaren Compiler antwortet der Befehl immer mit Grund und Ausweg (#261).
-      if not Started then
-      begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, Choice.MessageText);
-      end;
-      Answer := TJSONObject.Create;
-      Answer.AddPair('started', TJSONBool.Create(True));
-      Answer.AddPair('backend', TCompilerBackends.BackendText(Choice.Backend));
-      Result := Answer;
-    end);
-  FCommands.Register(RebuildIndexCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Workspace: TShellWorkspace;
-      Targets: TArray<TShellWorkspace>;
-    begin
-      // Alle Ordner ohne Cache neu einlesen (#49), z. B. nach Änderungen außerhalb des Editors.
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        Targets := FWorkspaces.ToArray;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-      for Workspace in Targets do
-      begin
-        Workspace.Rebuild;
-      end;
-      FLogger.Info(Format('Index wird für %d Ordner neu aufgebaut', [Length(Targets)]));
-      Result := TJSONNull.Create;
-    end);
-  FCommands.Register(ClearIndexCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Workspace: TShellWorkspace;
-      Targets: TArray<TShellWorkspace>;
-      Freed: Int64;
-      Removed: Integer;
-    begin
-      // „Index löschen“ (#492, Logik in Shell.Commands.Index): Caches freigeben, alle löschen, neu indizieren.
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        Targets := FWorkspaces.ToArray;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-      for Workspace in Targets do
-      begin
-        Workspace.ReleaseCache;
-      end;
-      Removed := TIndexCommands.ClearCaches(TIndexCacheDirectory.DefaultRoot, Freed);
-      FLogger.Info(Format('Index gelöscht: %d Caches, %d KB; %d Ordner werden neu indiziert',
-        [Removed, Freed div 1024, Length(Targets)]));
-      for Workspace in Targets do
-      begin
-        Workspace.Rebuild;
-      end;
-      Result := TIndexCommands.Answer(Removed, Freed);
-    end);
+  FCommands.RegisterConcurrent(TLspSettingsCommands.CheckCommand, RunSettingsCheck);
+  FCommands.RegisterConcurrent(TLspSettingsCommands.CatalogCommand, RunSettingsCatalog);
+  FCommands.RegisterConcurrent(TBugReport.Command, BugReport);
+  FCommands.Register(CompileCommand, RunCompile);
+  FCommands.Register(RebuildIndexCommand, RunRebuildIndex);
+  FCommands.Register(ClearIndexCommand, RunClearIndex);
   // „Erneut versuchen“ nach dem Überspringen (#1355): Argument Uri der Datei, ohne alle.
-  FCommands.Register(TShellCrashCases.RetryCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      mUri: string;
+  FCommands.Register(TShellCrashCases.RetryCommand, RunRetryCrashCase);
+  FCommands.Register(TLspPullDiagnostics.RecheckCommand, RunRecheck);
+  FCommands.Register(SelectBuildCommand, RunSelectBuild);
+  FCommands.Register(SelectProjectCommand, RunSelectProject);
+end;
+
+function TServerComposition.RunConvertForms(const AArguments: TJSONArray): TJSONValue;
+var
+  Converted, Backups: Integer;
+begin
+  // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units (Logik in Shell.Commands.Build).
+  Converted := TBuildCommands.ConvertForms(TBuildCommands.FormFiles(AArguments, ProjectSourceFiles,
+    function(AFileName: string): Boolean
     begin
-      mUri := '';
-      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-      begin
-        mUri := AArguments.Items[0].Value;
-      end;
-      Result := TJSONNumber.Create(FCrashCases.Retry(mUri));
-    end);
-  FCommands.Register(TLspPullDiagnostics.RecheckCommand,
-    function(const AArguments: TJSONArray): TJSONValue
+      Result := FileExists(AFileName);
+    end), FLogger, Backups);
+  FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
+    [Converted, Backups]));
+  Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
+end;
+
+function TServerComposition.RunExitPoints(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspExitPoints.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, FReadSourceTextRef,
+    FDocumentHighlights.SettingsFor, AArguments);
+end;
+
+function TServerComposition.RunReassigned(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspReassigned.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+end;
+
+function TServerComposition.RunExpressionType(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspExpressionType.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+end;
+
+function TServerComposition.RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspMethodOrder.Execute(FDocuments, AArguments);
+end;
+
+function TServerComposition.RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspOverrideMarks.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+end;
+
+function TServerComposition.RunBaseline(const AArguments: TJSONArray): TJSONValue;
+var
+  Watch: TStopwatch;
+begin
+  // Prüft das ganze Projekt: in großen Altprojekten dauert das; nur Zahlen ins Log, keine Pfade.
+  Watch := TStopwatch.StartNew;
+  Result := FBaseline.Execute(AArguments);
+  if Result is TJSONObject then
+  begin
+    FLogger.Info(Format('Baseline aktualisiert: %d Treffer, %d Dateien geprüft ' +
+      '(%d neu, %d entfernt, %d ohne Datei), %d ms', [TJSONObject(Result).GetValue<Integer>('total', -1),
+      TJSONObject(Result).GetValue<Integer>('files', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
+      TJSONObject(Result).GetValue<Integer>('removed', -1),
+      TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
+  end;
+end;
+
+function TServerComposition.RunBulkFix(const AArguments: TJSONArray): TJSONValue;
+var
+  Watch: TStopwatch;
+  Summary: string;
+begin
+  // Nur die Vorschau; geschrieben wird im Plugin. Ins Log nur Zahlen und Regeln, keine Pfade.
+  Watch := TStopwatch.StartNew;
+  Result := FBulkFix.Execute(AArguments);
+  if not (Result is TJSONObject) then
+  begin
+    Exit;
+  end;
+  Summary := TJSONObject(Result).GetValue<string>('summary', '');
+  if Pos(sLineBreak, Summary) > 0 then
+  begin
+    Summary := Copy(Summary, 1, Pos(sLineBreak, Summary) - 1);
+  end;
+  FLogger.Info(Format('Sammelkorrektur berechnet (%s), %d ms', [Summary, Watch.ElapsedMilliseconds]));
+end;
+
+function TServerComposition.RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := FCompilerBaseline.ExecuteAdd(AArguments);
+  if Result is TJSONObject then
+  begin
+    FLogger.Info(Format('Compilermeldungen in die Baseline: %d Einträge (%d neu, %d entfernt)',
+      [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
+      TJSONObject(Result).GetValue<Integer>('removed', -1)]));
+  end;
+end;
+
+function TServerComposition.RunQualifiedNames(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TQualifiedNames.Execute(FDocuments, FIndex,
+    FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+end;
+
+function TServerComposition.RunEnumValue(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TEnumValueCommands.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces,
+    FReadSourceTextRef, AArguments);
+end;
+
+function TServerComposition.RunAddResourceString(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TResourceStringCommands.ExecuteAdd(FReadResourceRef, FResourceStringWrite, AArguments);
+end;
+
+function TServerComposition.RunPlainText(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TStringLiteralCommands.ExecutePlainText(FDocuments, AArguments);
+end;
+
+function TServerComposition.RunToLiteral(const AArguments: TJSONArray): TJSONValue;
+var
+  Settings: TStringLiteralSettings;
+  Multiline: Boolean;
+begin
+  Settings := TStringLiteralSettings.Default;
+  Multiline := False;
+  if (AArguments <> nil) and (AArguments.Count > 0) then
+  begin
+    Settings := StringLiteralFor(AArguments.Items[0].Value, Multiline);
+  end;
+  Result := TStringLiteralCommands.ExecuteToLiteral(FDocuments, Settings, Multiline, AArguments);
+end;
+
+function TServerComposition.RunStatus(const AArguments: TJSONArray): TJSONValue;
+var
+  mAnonymize: Boolean;
+begin
+  mAnonymize := (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) and
+    (TJSONObject(AArguments.Items[0]).GetValue('anonymize') is TJSONBool) and
+    TJSONBool(TJSONObject(AArguments.Items[0]).GetValue('anonymize')).AsBoolean;
+  Result := StatusJson(mAnonymize);
+end;
+
+function TServerComposition.RunProcesses(const AArguments: TJSONArray): TJSONValue;
+var
+  Workspaces: TArray<TLspProcessWorkspace>;
+begin
+  Workspaces := CollectProcesses;
+  Result := TLspProcesses.ToJson(Workspaces, TShellPlatform.CurrentProcessId, Now);
+  FLogger.Info(TLspProcesses.ToMarkdown(Workspaces, TShellPlatform.CurrentProcessId, Now));
+end;
+
+function TServerComposition.RunSettingsCheck(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := TLspSettingsCommands.Check(AArguments);
+end;
+
+function TServerComposition.RunSettingsCatalog(const AArguments: TJSONArray): TJSONValue;
+var
+  Rule: IRule;
+  Experimental: TArray<string>;
+begin
+  // Experimentelle Regeln (#834) kennt nur ihr Deskriptor; die Einstellungsseite (#909) markiert sie.
+  Experimental := nil;
+  for Rule in BuiltinRules do
+  begin
+    if Rule.Descriptor.Experimental then
     begin
-      // Neue Generation (#1231): Alle Ergebnis-Ids veralten, auch die übersprungener Dateien (#1094); geöffnete
-      // Dateien holt der Client nach dem refresh, die übrigen liefert workspace/diagnostic nach.
-      FPullDiagnostics.Changed;
-      FLogger.Info('Alle Dateien werden neu geprüft');
-      Result := TJSONNull.Create;
-    end);
-  FCommands.Register(SelectBuildCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Args: TSelectBuildArgs;
-      Error: string;
-      Workspace: TShellWorkspace;
-      Targets: TArray<TShellWorkspace>;
-      Project: TProjectInfo;
-      Items: TJSONArray;
+      Experimental := Experimental + [Rule.Descriptor.Id];
+    end;
+  end;
+  Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments), FGlobalSettingsFile,
+    Experimental);
+end;
+
+function TServerComposition.RunCompile(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Started: Boolean;
+  Choice: TCompilerBackendChoice;
+  Answer: TJSONObject;
+begin
+  // Optional die URI einer Datei, deren Projekt kompiliert wird.
+  Uri := '';
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
+    Uri := AArguments.Items[0].Value;
+  end;
+  if Uri = '' then
+  begin
+    Started := FCompile.Start('', True, Choice);
+  end
+  else
+  begin
+    Started := FCompile.Start(TDocumentUris.ToPath(Uri), True, Choice);
+  end;
+  // Ohne nutzbaren Compiler antwortet der Befehl immer mit Grund und Ausweg (#261).
+  if not Started then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, Choice.MessageText);
+  end;
+  Answer := TJSONObject.Create;
+  Answer.AddPair('started', TJSONBool.Create(True));
+  Answer.AddPair('backend', TCompilerBackends.BackendText(Choice.Backend));
+  Result := Answer;
+end;
+
+function TServerComposition.RunRebuildIndex(const AArguments: TJSONArray): TJSONValue;
+var
+  Workspace: TShellWorkspace;
+  Targets: TArray<TShellWorkspace>;
+begin
+  // Alle Ordner ohne Cache neu einlesen (#49), z. B. nach Änderungen außerhalb des Editors.
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Targets := FWorkspaces.ToArray;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  for Workspace in Targets do
+  begin
+    Workspace.Rebuild;
+  end;
+  FLogger.Info(Format('Index wird für %d Ordner neu aufgebaut', [Length(Targets)]));
+  Result := TJSONNull.Create;
+end;
+
+function TServerComposition.RunClearIndex(const AArguments: TJSONArray): TJSONValue;
+var
+  Workspace: TShellWorkspace;
+  Targets: TArray<TShellWorkspace>;
+  Freed: Int64;
+  Removed: Integer;
+begin
+  // „Index löschen“ (#492, Logik in Shell.Commands.Index): Caches freigeben, alle löschen, neu indizieren.
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Targets := FWorkspaces.ToArray;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  for Workspace in Targets do
+  begin
+    Workspace.ReleaseCache;
+  end;
+  Removed := TIndexCommands.ClearCaches(TIndexCacheDirectory.DefaultRoot, Freed);
+  FLogger.Info(Format('Index gelöscht: %d Caches, %d KB; %d Ordner werden neu indiziert',
+    [Removed, Freed div 1024, Length(Targets)]));
+  for Workspace in Targets do
+  begin
+    Workspace.Rebuild;
+  end;
+  Result := TIndexCommands.Answer(Removed, Freed);
+end;
+
+function TServerComposition.RunRetryCrashCase(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+begin
+  mUri := '';
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
+    mUri := AArguments.Items[0].Value;
+  end;
+  Result := TJSONNumber.Create(FCrashCases.Retry(mUri));
+end;
+
+function TServerComposition.RunRecheck(const AArguments: TJSONArray): TJSONValue;
+begin
+  // Neue Generation (#1231): Alle Ergebnis-Ids veralten, auch die übersprungener Dateien (#1094); geöffnete
+  // Dateien holt der Client nach dem refresh, die übrigen liefert workspace/diagnostic nach.
+  FPullDiagnostics.Changed;
+  FLogger.Info('Alle Dateien werden neu geprüft');
+  Result := TJSONNull.Create;
+end;
+
+function TServerComposition.RunSelectBuild(const AArguments: TJSONArray): TJSONValue;
+var
+  Args: TSelectBuildArgs;
+  Error: string;
+  Workspace: TShellWorkspace;
+  Targets: TArray<TShellWorkspace>;
+  Project: TProjectInfo;
+  Items: TJSONArray;
+begin
+  // Argumente und Antwort in Shell.Commands.Build; ohne Änderung nur die aktuelle Auswahl je Projekt (#46).
+  Args := TSelectBuildArgs.Parse(AArguments);
+  Targets := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    if Args.Uri <> '' then
     begin
-      // Argumente und Antwort in Shell.Commands.Build; ohne Änderung nur die aktuelle Auswahl je Projekt (#46).
-      Args := TSelectBuildArgs.Parse(AArguments);
-      Targets := nil;
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        if Args.Uri <> '' then
-        begin
-          Workspace := WorkspaceOf(TDocumentUris.ToPath(Args.Uri));
-          if Workspace <> nil then
-          begin
-            Targets := [Workspace];
-          end;
-        end
-        else
-        begin
-          Targets := FWorkspaces.ToArray;
-        end;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-      if Args.Changes then
+      Workspace := WorkspaceOf(TDocumentUris.ToPath(Args.Uri));
+      if Workspace <> nil then
       begin
-        for Workspace in Targets do
-        begin
-          if Workspace.State.Project(Project) and
-            not Workspace.SelectBuild(Args.Config, Args.Platform, Args.Defines, Args.HasDefines, Error) then
-          begin
-            raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
-          end;
-        end;
+        Targets := [Workspace];
       end;
-      Items := TJSONArray.Create;
-      for Workspace in Targets do
-      begin
-        if Workspace.State.Project(Project) then
-        begin
-          Items.AddElement(TBuildCommands.ProjectItem(Workspace.Name, Project, Args));
-        end;
-      end;
-      Result := TJSONObject.Create(TJSONPair.Create('projects', Items));
-    end);
-  FCommands.Register(SelectProjectCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    var
-      Args: TSelectProjectArgs;
-      Targets: TArray<TShellWorkspace>;
-      Items: TArray<TProjectChoiceItem>;
-      Index: Integer;
-      Active: string;
+    end
+    else
     begin
-      // Projekt für Dateien, die zu mehreren Projekten gehören (#46); gemerkt über Neustarts.
-      Args := TSelectProjectArgs.Parse(AArguments);
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        Targets := nil;
-        for Index := 0 to FWorkspaces.Count - 1 do
-        begin
-          if FWorkspaces[Index].State.ProjectFileName <> '' then
-          begin
-            Targets := Targets + [FWorkspaces[Index]];
-          end;
-        end;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-      Active := FIdeProject.ActiveProject;
-      SetLength(Items, Length(Targets));
-      for Index := 0 to High(Targets) do
+      Targets := FWorkspaces.ToArray;
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  if Args.Changes then
+  begin
+    for Workspace in Targets do
+    begin
+      if Workspace.State.Project(Project) and
+        not Workspace.SelectBuild(Args.Config, Args.Platform, Args.Defines, Args.HasDefines, Error) then
       begin
-        Items[Index].Name := Targets[Index].Name;
-        Items[Index].Project := Targets[Index].State.ProjectFileName;
-        Items[Index].Active := SameText(Items[Index].Project, Active);
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
       end;
-      if Args.HasProject and (Args.Project = '') then
+    end;
+  end;
+  Items := TJSONArray.Create;
+  for Workspace in Targets do
+  begin
+    if Workspace.State.Project(Project) then
+    begin
+      Items.AddElement(TBuildCommands.ProjectItem(Workspace.Name, Project, Args));
+    end;
+  end;
+  Result := TJSONObject.Create(TJSONPair.Create('projects', Items));
+end;
+
+function TServerComposition.RunSelectProject(const AArguments: TJSONArray): TJSONValue;
+var
+  Args: TSelectProjectArgs;
+  Targets: TArray<TShellWorkspace>;
+  Items: TArray<TProjectChoiceItem>;
+  mIndex: Integer;
+  Active: string;
+begin
+  // Projekt für Dateien, die zu mehreren Projekten gehören (#46); gemerkt über Neustarts.
+  Args := TSelectProjectArgs.Parse(AArguments);
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Targets := nil;
+    for mIndex := 0 to FWorkspaces.Count - 1 do
+    begin
+      if FWorkspaces[mIndex].State.ProjectFileName <> '' then
       begin
-        for Index := 0 to High(Targets) do
-        begin
-          FProjectSelection.SetProject(Targets[Index].Setup.Origin, '');
-        end;
-        FLogger.Info('Projektwahl aufgehoben');
-      end
-      else if Args.HasProject then
-      begin
-        Index := TBuildCommands.FindProject(Items, Args.Project);
-        if Index < 0 then
-        begin
-          raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-            Format('Projekt %s ist nicht geladen.', [Args.Project]));
-        end;
-        FProjectSelection.SetProject(Targets[Index].Setup.Origin, Items[Index].Project);
-        FLogger.Info(Format('Projekt %s ausgewählt', [Items[Index].Name]));
+        Targets := Targets + [FWorkspaces[mIndex]];
       end;
-      for Index := 0 to High(Targets) do
-      begin
-        Items[Index].Selected := IsSelectedProject(Targets[Index]);
-      end;
-      Result := TBuildCommands.ProjectChoices(Items);
-    end);
-  FCommands.Attach(FDispatcher);
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Active := FIdeProject.ActiveProject;
+  SetLength(Items, Length(Targets));
+  for mIndex := 0 to High(Targets) do
+  begin
+    Items[mIndex].Name := Targets[mIndex].Name;
+    Items[mIndex].Project := Targets[mIndex].State.ProjectFileName;
+    Items[mIndex].Active := SameText(Items[mIndex].Project, Active);
+  end;
+  if Args.HasProject and (Args.Project = '') then
+  begin
+    for mIndex := 0 to High(Targets) do
+    begin
+      FProjectSelection.SetProject(Targets[mIndex].Setup.Origin, '');
+    end;
+    FLogger.Info('Projektwahl aufgehoben');
+  end
+  else if Args.HasProject then
+  begin
+    mIndex := TBuildCommands.FindProject(Items, Args.Project);
+    if mIndex < 0 then
+    begin
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+        Format('Projekt %s ist nicht geladen.', [Args.Project]));
+    end;
+    FProjectSelection.SetProject(Targets[mIndex].Setup.Origin, Items[mIndex].Project);
+    FLogger.Info(Format('Projekt %s ausgewählt', [Items[mIndex].Name]));
+  end;
+  for mIndex := 0 to High(Targets) do
+  begin
+    Items[mIndex].Selected := IsSelectedProject(Targets[mIndex]);
+  end;
+  Result := TBuildCommands.ProjectChoices(Items);
 end;
 
 procedure TServerComposition.WireWatchedFiles;
