@@ -75,6 +75,7 @@ uses
   Shell.Composition.FileOptions,
   Shell.Composition.Folders,
   Shell.Composition.CompileSetup,
+  Shell.Composition.Stdio,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Projects.MissingUnit,
@@ -435,11 +436,7 @@ uses
   Shell.Composition.Refactorings.Services,
   System.StrUtils,
   Atlas.Common.Product.Version,
-  Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Logging.Providers.StreamSink,
-  Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Diagnostics.ShutdownLeaks,
-  Atlas.Common.Lsp.Adapters.LogMessageSink,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
@@ -467,32 +464,12 @@ uses
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Common.Compiler.Edition,
-  Atlas.Common.Logging.RotatingFileStream,
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.JsonRpc.Messages;
 
 const
   /// <summary>Längste Pause der Projektprüfung für einen Compile, falls sein Ende nie ankommt (#1247).</summary>
   CompilePauseLimitMs = 10 * 60 * 1000;
-
-// Mitschnitt anlegen. Rotiert bei Überlänge (#283). Hält ihn schon ein anderer
-// Server (jede RAD-Studio-IDE startet einen eigenen), weicht er auf einen Namen
-// mit AFallbackTag aus, statt ganz ohne Mitschnitt zu laufen. AActualName ist
-// die tatsächlich benutzte Datei.
-function CreateTraceStream(const AFileName, AFallbackTag: string; out AActualName: string): TStream;
-var
-  Directory: string;
-  Stream: TRotatingFileStream;
-begin
-  Directory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
-  if Directory <> '' then
-  begin
-    ForceDirectories(Directory);
-  end;
-  Stream := TRotatingFileStream.Create(AFileName, False, AFallbackTag);
-  AActualName := Stream.FileName;
-  Result := Stream;
-end;
 
 { TServerComposition }
 
@@ -2298,10 +2275,6 @@ begin
   end;
 end;
 
-const
-  /// <summary>Protokoll der Sitzung im Speicher für Fehlerbericht und Diagnosepaket (#1356).</summary>
-  SessionLogLines = 10000;
-
 function TServerComposition.UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
 begin
   AContext := Default(TUsesContext);
@@ -2632,107 +2605,17 @@ begin
   end;
 end;
 
-/// <summary>Protokoll für den stdio-Betrieb: Debug-Senke der Plattform, stderr nur für Fehler, Auszug der Sitzung
-/// und die Datei aus --log samt Anonymisierer.</summary>
-function NewStdioLogger(const AOptions: TCommandLineOptions; out ARecentLog: IRecentLogLines;
-  out AAnonymizer: ILogAnonymizer): TLogger;
-var
-  mDebugSink: ILogSink;
-  mRecentSink: TRecentLogSink;
-begin
-  Result := TLogger.Create;
-  mDebugSink := TShellPlatform.DebugLogSink;
-  if mDebugSink <> nil then
-  begin
-    Result.AddSink(mDebugSink, TLogLevel.Debug);
-  end;
-  // stderr zeigt VS Code ebenfalls im Ausgabefenster; dort nur Fehler, um
-  // Doppelungen mit window/logMessage zu vermeiden.
-  Result.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Error);
-  // Auszug für den Fehlerbericht (#108) und das Protokoll der Sitzung im Diagnosepaket (#1356), unabhängig von
-  // --log.
-  mRecentSink := TRecentLogSink.Create(SessionLogLines);
-  ARecentLog := mRecentSink;
-  Result.AddSink(mRecentSink, TLogLevel.Info);
-  TShellDiagnostics.AddLogFile(Result, AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
-    AOptions.LogNames, AOptions.LogLevel, AAnonymizer);
-  // Ohne --log bzw. mit --log-names trotzdem einer: Er sammelt die Namen der Projekte für den anonymen Status im
-  // Diagnosepaket (#1356).
-  if AAnonymizer = nil then
-  begin
-    AAnonymizer := TLogAnonymizer.Create(TProcessInfo.IdentityNames);
-  end;
-end;
-
-/// <summary>Transport über stdin/stdout, mit --trace hinter einem Mitschnitt (ATracing, sonst nil).</summary>
-function NewStdioTransport(const AOptions: TCommandLineOptions; const ALogger: ILogger;
-  out ATracing: TJsonRpcTracingTransport): IJsonRpcTransport;
-var
-  mTraceName: string;
-begin
-  ATracing := nil;
-  // Ab hier erreichen versehentliche Ausgaben (Writeln, Bibliotheken) nur noch stderr.
-  Result := TJsonRpcStreamTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
-  if AOptions.TraceFile = '' then
-  begin
-    Exit;
-  end;
-  try
-    ATracing := TJsonRpcTracingTransport.Create(Result,
-      CreateTraceStream(AOptions.TraceFile, IntToStr(TParentWatcher.CurrentProcessId), mTraceName), True);
-    Result := ATracing;
-    if not SameText(mTraceName, AOptions.TraceFile) then
-    begin
-      ALogger.Info(Format('Mitschnitt "%s" ist belegt, schreibe nach "%s"', [AOptions.TraceFile, mTraceName]));
-    end;
-  except
-    on E: Exception do
-      ALogger.Error(Format('Mitschnitt "%s" kann nicht angelegt werden: %s', [AOptions.TraceFile, E.Message]));
-  end;
-end;
-
-/// <summary>Meldet den Abbruch des Mitschnitts. Fängt nur den Logger ein; den Zyklus Logger → Sink → Transport →
-/// Closure bricht das einmalige Leeren beim Melden bzw. Destroy (S-07). Anonym: Klasse und Meldung, kein Pfad.</summary>
-procedure WatchTracing(ATracing: TJsonRpcTracingTransport; const ALogger: ILogger);
-begin
-  ATracing.OnFailed :=
-    procedure(const AReason: string)
-    begin
-      ALogger.Warning('Mitschnitt abgebrochen, der Server arbeitet ohne weiter: ' + AReason);
-    end;
-end;
-
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;
 var
-  mLoggerImpl: TLogger;
+  mChannel: TShellStdioChannel;
   mLogger: ILogger;
-  mTransport: IJsonRpcTransport;
-  mWarning: string;
-  mAnonymizer: ILogAnonymizer;
-  mRecentLog: IRecentLogLines;
-  mTracing: TJsonRpcTracingTransport;
 begin
-  // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
-  TStackTrace.Install;
-  // Schutzseite nach Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE (Bericht M5), soweit die
-  // Plattform sie braucht.
-  TShellPlatform.InstallGuards;
-  mLoggerImpl := NewStdioLogger(AOptions, mRecentLog, mAnonymizer);
-  mLogger := mLoggerImpl;
-  mTransport := NewStdioTransport(AOptions, mLogger, mTracing);
-  mLoggerImpl.AddSink(TLspLogMessageSink.Create(mTransport), AOptions.LogLevel);
-  for mWarning in AOptions.Warnings do
-  begin
-    mLogger.Warning(mWarning);
-  end;
-  Result := TServerComposition.Create(mTransport, mLogger);
-  if mTracing <> nil then
-  begin
-    Result.FTracing := mTracing;
-    WatchTracing(mTracing, mLogger);
-  end;
-  Result.FRecentLog := mRecentLog;
-  Result.FLogAnonymizer := mAnonymizer;
+  mChannel := TShellStdio.Open(AOptions);
+  mLogger := mChannel.Logger;
+  Result := TServerComposition.Create(mChannel.Transport, mLogger);
+  Result.FTracing := mChannel.Tracing;
+  Result.FRecentLog := mChannel.RecentLog;
+  Result.FLogAnonymizer := mChannel.Anonymizer;
   Result.FCompile.Restricted := AOptions.Restricted;
   Result.FClientProcessId := AOptions.ClientProcessId;
   if AOptions.Restricted then
