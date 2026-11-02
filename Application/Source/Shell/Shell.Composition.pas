@@ -79,6 +79,7 @@ uses
   Shell.Composition.Settings,
   Shell.Composition.RuleContext,
   Shell.Composition.Ide,
+  Shell.Composition.Configuration,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -137,7 +138,6 @@ type
     /// <summary>Absturzfälle und Sicherheitsnetz (#1355); nach WireDocuments angelegt.</summary>
     FCrashCases: TShellCrashCases;
     /// <summary>--replay (#1355): Einstellungen aus dem Fall, keine eigenen Fälle.</summary>
-    FReplaySettingsFile: string;
     FReplay: Boolean;
     FLifecycle: TLspLifecycle;
     FDocuments: IDocumentStore;
@@ -207,8 +207,6 @@ type
     /// <summary>Gemerkte Projektwahl über Neustarts (#46): selectBuild je Projekt, selectProject je Ordner.</summary>
     FProjectSelection: TProjectSelection;
     FWorkspaceFolders: TLspWorkspaceFolders;
-    /// <summary>Für atlas.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
-    FLooseConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
     /// <summary>Uses-Graph über FIndex für uses-cycle und unused-unit (#64); lebt so lange wie der Index.</summary>
@@ -222,12 +220,11 @@ type
     FWorkspacePriority: Integer;
     /// <summary>Ebenen global und Editor, wirksame Einstellungen je Datei (Shell.Composition.Settings).</summary>
     FSettings: TShellSettings;
-    // Globale Benutzerdatei (#227) als unterste Ebene; Pfad und der Beobachter für sie und die atlas.json aller
-    // Ordner.
-    FGlobalSettingsFile: string;
+    /// <summary>Globale Benutzerdatei (#227), Beobachter der Einstellungsdateien und atlas.json außerhalb aller
+    /// Ordner (Shell.Composition.Configuration).</summary>
+    FConfiguration: TShellConfiguration;
     /// <summary>Umfeld der Prüfregeln je Datei (Shell.Composition.RuleContext).</summary>
     FRuleContext: TShellRuleContext;
-    FFileWatcher: TFileWatcher;
     FCompilerProcess: ICompilerProcess;
     /// <summary>Compilerläufe (#40, #261): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.</summary>
     FCompile: TShellCompileHost;
@@ -366,6 +363,7 @@ type
     /// <summary>Dienste der IDE-Nachrichten: Meldungen ersetzen die des letzten Laufs, Pause der Projektprüfung
     /// während eines Compiles, Neuprüfung nach neuen Präfixen.</summary>
     function IdeServices: TShellIdeServices;
+    function ConfigurationServices: TShellConfigurationServices;
     /// <summary>Teil von Create (S-02): Arbeitsbereichsordner und Ereignisse nach initialized.</summary>
     procedure WireWorkspaceFolders;
     /// <summary>Arbeitsbereichsordner entfernen und hinzufügen, wie der Client sie meldet.</summary>
@@ -374,10 +372,6 @@ type
     procedure ClientInitialized;
     /// <summary>Name, Fähigkeiten und Editor-Einstellungen des Clients aus initialize.</summary>
     procedure ApplyClientInfo(const AParams: TJSONObject);
-    /// <summary>Lädt die globale Benutzerdatei und startet die Dateibeobachtung.</summary>
-    procedure StartSettingsWatch;
-    /// <summary>Änderungen auf der Platte wie eine Meldung des Clients einreihen.</summary>
-    procedure FilesChangedOnDisk(const AFiles: TArray<string>);
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Ein Indexaufbau ist fertig: Befunde neu prüfen, falls die Projektstufe das nicht schon getan hat.
     /// Index-Thread.</summary>
@@ -511,8 +505,6 @@ type
     procedure IndexRefreshEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
     /// <summary>Gespeicherte Quelldatei: Index nachziehen (#500), bei compiler.onSave kompilieren (#40).</summary>
     procedure SourceSaved(const AFileName: string);
-    /// <summary>Ereignis einer atlas.json im Editor an ihren Arbeitsbereich bzw. die lose Konfiguration.</summary>
-    procedure ConfigurationDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     /// <summary>Auftrag für das Projekt zu AFileName ('' = einziger Ordner); False ohne Projekt oder Installation
     /// (Grund in AError).</summary>
     function CompileJobFor(const AFileName: string; out AJob: TShellCompileJob; out AError: string): Boolean;
@@ -526,22 +518,15 @@ type
     procedure FreeAnalysisFeatures;
     /// <summary>Teil von FreeFeatures: Vervollständigung, Code-Aktionen, Befehle, IDE und Protokoll.</summary>
     procedure FreeCodeFeatures;
-    procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
     /// <summary>Dateiänderungen von außen: Projektdateien laden das Projekt neu, Quelltexte aktualisieren den Index.</summary>
     procedure HandleWatchedFiles(const AChanges: TArray<TFileChange>);
     /// <summary>Ordnet eine Dateiänderung ein: Einstellungen, Projektdatei (AReload) oder Quelltext (ASources).</summary>
     procedure WatchedFileChanged(const AChange: TFileChange; AReload: TList<TShellWorkspace>;
       var ASources: TArray<TFileChange>);
-    /// <summary>atlas.json von außen geändert (#227): alle Arbeitsbereiche lesen sie neu.</summary>
-    procedure ConfigurationFileChanged(const AFileName: string);
     /// <summary>Lädt die Arbeitsbereiche mit geänderter Projektdatei neu.</summary>
     procedure ReloadWorkspaces(AReload: TList<TShellWorkspace>);
     /// <summary>Geänderte Quelltexte in den Index und in die Projektprüfung (#1247).</summary>
     procedure ApplySourceChanges(const ASources: TArray<TFileChange>);
-    /// <summary>Liest die globale Benutzerdatei und gibt sie allen Ordnern (#227).</summary>
-    procedure LoadGlobalSettings;
-    /// <summary>Gibt dem Dateibeobachter die globale Datei und die atlas.json aller Ordner.</summary>
-    procedure UpdateWatchedSettings;
     class function BuildCapabilities: TJSONObject; static;
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
     function DescribeFailure(const AError: Exception): string;
@@ -553,8 +538,6 @@ type
     destructor Destroy; override;
     /// <summary>Komposition mit stdin/stdout des Prozesses und Logging nach AOptions.</summary>
     class function CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition; static;
-    /// <summary>%APPDATA%\Atlas\settings.json; '' ohne APPDATA.</summary>
-    class function GlobalSettingsPath: string; static;
     /// <summary>Verarbeitet Nachrichten bis exit oder Ende der Eingabe und liefert den Exit-Code.</summary>
     function Run: Integer;
     /// <summary>Nachstellen eines Absturzfalls (--replay, #1355), vor Run: settings.json aus ASettingsFile ('' =
@@ -575,8 +558,6 @@ uses
   System.StrUtils,
   Atlas.Common.Product.Version,
   Atlas.Common.Query.Language,
-  Atlas.Common.Configuration.Parser,
-  Atlas.Common.Configuration.Scopes,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.JsonRpc.StreamTransport,
@@ -614,7 +595,6 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Compiler.OutputParser,
-  Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Compiler.Edition,
   Atlas.Common.Logging.RotatingFileStream,
   Atlas.Common.Projects.GroupReader,
@@ -818,9 +798,9 @@ begin
       mWorkspace: TShellWorkspace;
     begin
       Result := nil;
-      if FGlobalSettingsFile <> '' then
+      if (FConfiguration <> nil) and (FConfiguration.GlobalSettingsFile <> '') then
       begin
-        Result := Result + [FGlobalSettingsFile];
+        Result := Result + [FConfiguration.GlobalSettingsFile];
       end;
       if not StartsText('file:', AUri) or (FWorkspaces.Lock = nil) then
       begin
@@ -844,7 +824,7 @@ end;
 procedure TServerComposition.PrepareReplay(const ASettingsFile: string);
 begin
   FReplay := True;
-  FReplaySettingsFile := ASettingsFile;
+  FConfiguration.UseReplaySettings(ASettingsFile);
   FCrashCases.Enabled := False;
   FCrashCases.SkipEnabled := False;
 end;
@@ -1128,14 +1108,9 @@ begin
     end);
   FRuleContext := TShellRuleContext.Create(RuleContextServices);
   FIndexScheduler := TIndexScheduler.Create;
-  FLooseConfiguration := TLspConfiguration.Create(FDocuments, FTransport,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      AText := '';
-      Result := False;
-    end);
+  FConfiguration := TShellConfiguration.Create(ConfigurationServices);
   FDocuments.Subscribe(HandleDocumentEvent);
-  FDispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, HandleDidChangeConfiguration);
+  FConfiguration.Attach(FDispatcher);
   // Editor-Baum nur aus den aktiven Zweigen des Projekts (#845).
   TSyntaxTreeCache.SetDefinesProvider(DefinesFor);
   // $I-Dateien im Editor-Baum, in Syntaxprüfung und Abblenden (#264, #860): Suchpfade des Projekts.
@@ -1591,7 +1566,7 @@ begin
   mServices.GlobalSettingsFile :=
     function: string
     begin
-      Result := FGlobalSettingsFile;
+      Result := FConfiguration.GlobalSettingsFile;
     end;
   mServices.ProjectSourceFiles := ProjectSourceFiles;
   mServices.Compile :=
@@ -1794,6 +1769,22 @@ begin
     end;
 end;
 
+function TServerComposition.ConfigurationServices: TShellConfigurationServices;
+begin
+  Result := Default(TShellConfigurationServices);
+  Result.Logger := FLogger;
+  Result.Workspaces := FWorkspaces;
+  Result.Settings := FSettings;
+  Result.Documents := FDocuments;
+  Result.Transport := FTransport;
+  // Im Thread der Nachrichtenschleife verarbeiten wie eine Meldung des Clients.
+  Result.FilesChanged :=
+    procedure(const AFiles: TArray<string>)
+    begin
+      FConnection.Post(TLspWatchedFiles.Notification(AFiles));
+    end;
+end;
+
 procedure TServerComposition.WireIde;
 begin
   FIde := TShellIde.Create(IdeServices);
@@ -1849,12 +1840,12 @@ begin
   begin
     FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
   end;
-  StartSettingsWatch;
+  FConfiguration.Start;
   for mFolder in mFolders do
   begin
     AddWorkspace(mFolder);
   end;
-  UpdateWatchedSettings;
+  FConfiguration.UpdateWatchedFiles;
   FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
 end;
 
@@ -1887,28 +1878,6 @@ begin
   FCompletion.Completion.DocumentationMarkdown := TLspCompletion.ClientPrefersMarkdown(AParams);
 end;
 
-procedure TServerComposition.StartSettingsWatch;
-begin
-  // Globale Benutzerdatei (#227) vor dem ersten Ordner; der Server beobachtet sie und die atlas.json
-  // selbst, weil die RAD-Studio-IDE keine Dateiänderungen meldet.
-  if FReplay then
-  begin
-    FGlobalSettingsFile := FReplaySettingsFile;
-  end
-  else
-  begin
-    FGlobalSettingsFile := GlobalSettingsPath;
-  end;
-  LoadGlobalSettings;
-  FFileWatcher := TFileWatcher.Create(FilesChangedOnDisk);
-end;
-
-procedure TServerComposition.FilesChangedOnDisk(const AFiles: TArray<string>);
-begin
-  // Im Thread der Nachrichtenschleife verarbeiten wie eine Meldung des Clients.
-  FConnection.Post(TLspWatchedFiles.Notification(AFiles));
-end;
-
 destructor TServerComposition.Destroy;
 var
   Unfinished: Boolean;
@@ -1918,7 +1887,10 @@ begin
   FreeAndNil(FIndexRefresh);
   FreeAndNil(FUsesChanges);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
-  FreeAndNil(FFileWatcher);
+  if FConfiguration <> nil then
+  begin
+    FConfiguration.StopWatching;
+  end;
   FreeAndNil(FParentWatcher);
   // Code-Review A-06: Liefen beim Ende noch Handler, die ihr Abbruchsignal nicht prüfen, nutzen sie
   // Features und Ordner weiter.
@@ -1994,7 +1966,7 @@ begin
   FWorkspaces.Free;
   // Nach den Ordnern: Ihre Index-Threads sind beendet und abgemeldet.
   FIndexScheduler.Free;
-  FLooseConfiguration.Free;
+  FreeAndNil(FConfiguration);
   FWorkspaceFolders.Free;
   FreeAndNil(FUsesGraph);
   FIndex := nil;
@@ -2122,7 +2094,7 @@ begin
   mWorkspace.Configuration.SetGlobalSettings(FSettings.GlobalSettings);
   mWorkspace.Configuration.SetEditorSettings(FSettings.EditorSettings);
   FWorkspaces.Add(mWorkspace);
-  UpdateWatchedSettings;
+  FConfiguration.UpdateWatchedFiles;
   if AProjectFile <> '' then
   begin
     FLogger.Info('Arbeitsbereich für Projekt: ' + AProjectFile);
@@ -2288,7 +2260,7 @@ begin
   begin
     FWorkspaces.FreeWhenUnused(mWorkspace);
   end;
-  UpdateWatchedSettings;
+  FConfiguration.UpdateWatchedFiles;
   ProjectLoaded;
 end;
 
@@ -3568,7 +3540,7 @@ begin
   end
   else if IsConfigurationFileName(ExtractFileName(mFileName)) then
   begin
-    ConfigurationDocumentEvent(AKind, ADocument);
+    FConfiguration.DocumentEvent(AKind, ADocument);
   end;
 end;
 
@@ -3657,22 +3629,6 @@ begin
   end;
 end;
 
-procedure TServerComposition.ConfigurationDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  mWorkspace := LockedWorkspaceOf(TDocumentUris.ToPath(ADocument.Uri));
-  // Nur der Thread der Nachrichtenschleife entfernt Ordner; mWorkspace bleibt gültig.
-  if mWorkspace <> nil then
-  begin
-    mWorkspace.Configuration.DocumentEvent(AKind, ADocument);
-  end
-  else
-  begin
-    FLooseConfiguration.DocumentEvent(AKind, ADocument);
-  end;
-end;
-
 function TServerComposition.CompileJobFor(const AFileName: string; out AJob: TShellCompileJob;
   out AError: string): Boolean;
 var
@@ -3700,79 +3656,6 @@ begin
     TMonitor.Exit(FWorkspaces.Lock);
   end;
   Result := AError = '';
-end;
-
-procedure TServerComposition.HandleDidChangeConfiguration(const AParams: TJSONValue);
-var
-  Workspace: TShellWorkspace;
-begin
-  FSettings.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
-  for Workspace in FWorkspaces.Items.ToArray do
-  begin
-    Workspace.Configuration.SetEditorSettings(FSettings.EditorSettings);
-  end;
-end;
-
-class function TServerComposition.GlobalSettingsPath: string;
-begin
-  Result := TShellBootstrap.GlobalSettingsFile;
-end;
-
-procedure TServerComposition.LoadGlobalSettings;
-var
-  Settings: TServerSettings;
-  Text: string;
-  Workspace: TShellWorkspace;
-  Issues, Misplaced: TArray<TConfigurationIssue>;
-  Issue: TConfigurationIssue;
-begin
-  // Nicht lesbar (gerade geschrieben oder gesperrt): Warnung im Log, der Beobachter meldet die Datei erneut.
-  Text := TShellBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FLogger);
-  if not FSettings.SetGlobalSettings(Text) then
-  begin
-    Exit;
-  end;
-  if Text <> '' then
-  begin
-    Settings := TConfigurationParser.Parse(Text, Issues);
-    // Projekt-Schlüssel in der globalen Datei wirken nicht; das Log nennt sie.
-    TConfigurationScopes.Filter(Text, TConfigurationScope.Global, Misplaced);
-    // "delphiVersion" ist global: Fehlt die Version, steht die Warnung mit Stelle in settings.json im Log
-    // (#47); die Projekte nehmen dann die automatisch gewählte Version.
-    Misplaced := Misplaced + TDelphiVersions.ConfigurationIssues(Settings, TDelphiInstallation.Versions);
-    FLogger.Info(Format('Globale Einstellungen gelesen (%d Meldungen)', [Length(Issues) + Length(Misplaced)]));
-    for Issue in Misplaced do
-    begin
-      FLogger.Warning(Format('%s(%d,%d): %s', [ExtractFileName(FGlobalSettingsFile), Issue.Range.StartPos.Line + 1,
-        Issue.Range.StartPos.Character + 1, Issue.Message]));
-    end;
-  end;
-  for Workspace in FWorkspaces.Items.ToArray do
-  begin
-    Workspace.Configuration.SetGlobalSettings(FSettings.GlobalSettings);
-  end;
-end;
-
-procedure TServerComposition.UpdateWatchedSettings;
-var
-  Files: TArray<string>;
-  Workspace: TShellWorkspace;
-begin
-  if FFileWatcher = nil then
-  begin
-    Exit;
-  end;
-  Files := [FGlobalSettingsFile];
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    for Workspace in FWorkspaces.Items do
-    begin
-      Files := Files + [Workspace.Configuration.PrimaryFileName, Workspace.Configuration.LegacyFileName];
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  FFileWatcher.SetFiles(Files);
 end;
 
 procedure TServerComposition.HandleWatchedFiles(const AChanges: TArray<TFileChange>);
@@ -3803,13 +3686,13 @@ procedure TServerComposition.WatchedFileChanged(const AChange: TFileChange; ARel
 var
   mWorkspace: TShellWorkspace;
 begin
-  if (FGlobalSettingsFile <> '') and SameText(AChange.FileName, FGlobalSettingsFile) then
+  if FConfiguration.IsGlobalSettingsFile(AChange.FileName) then
   begin
-    LoadGlobalSettings;
+    FConfiguration.LoadGlobalSettings;
   end
   else if IsConfigurationFileName(ExtractFileName(AChange.FileName)) then
   begin
-    ConfigurationFileChanged(AChange.FileName);
+    FConfiguration.FileChanged(AChange.FileName);
   end
   else if TLspWatchedFiles.IsProjectFile(AChange.FileName) then
   begin
@@ -3828,20 +3711,6 @@ begin
     begin
       TSyntaxTreeCache.IncludesChanged;
       FSyntaxDiagnostics.RefreshLater;
-    end;
-  end;
-end;
-
-procedure TServerComposition.ConfigurationFileChanged(const AFileName: string);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  // atlas.json von außen geändert (#227, etwa im Dialog des Plugins): ohne Neustart übernehmen.
-  for mWorkspace in FWorkspaces.Items.ToArray do
-  begin
-    if mWorkspace.Configuration.FileChanged(AFileName) then
-    begin
-      FLogger.Info(Format('Einstellungen von %s neu gelesen', [mWorkspace.Root]));
     end;
   end;
 end;
