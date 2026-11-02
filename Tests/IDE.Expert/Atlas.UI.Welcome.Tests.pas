@@ -2675,9 +2675,9 @@ begin
   Calls := Calls + [Format('button %d', [Ord(AButton)])];
 end;
 
-/// <summary>Zeile im Statusfeld; mit AAction anklickbar.</summary>
-procedure AddLine(const ARegistry: IAtlasStatusRegistry; const AId, AText: string; AState: TAtlasStatusState;
-  const ABrief, ADetail: string; AAction: Boolean);
+/// <summary>Zeile im Statusfeld; ATexts sind Text, Kurzform und Einzelheit; mit AAction anklickbar.</summary>
+procedure AddLine(const ARegistry: IAtlasStatusRegistry; const AId: string; AState: TAtlasStatusState;
+  const ATexts: array of string; AAction: Boolean);
 var
   Line: TAtlasStatusLine;
   Ref: IAtlasStatusItem;
@@ -2696,7 +2696,8 @@ begin
     Line := TAtlasStatusLine.Create(ARegistry, AId, 0);
   end;
   Ref := Line;
-  Line.Update(AText, AState, '', ABrief, ADetail);
+  Assert.AreEqual(3, Integer(Length(ATexts)), 'Text, Kurzform, Einzelheit');
+  Line.Update(ATexts[0], AState, '', ATexts[1], ATexts[2]);
   ARegistry.Add(Ref);
 end;
 
@@ -2704,12 +2705,12 @@ function StateFake: TFakeState;
 begin
   Result := TFakeState.Create;
   Result.Registry := TAtlasStatusRegistry.Create;
-  AddLine(Result.Registry, TAtlasStatusLines.ServerId, 'Server: läuft seit 19:02', TAtlasStatusState.Green,
-    'Server läuft', 'seit 19:02', False);
-  AddLine(Result.Registry, TAtlasStatusLines.IndexId, 'Index: 1284 Units', TAtlasStatusState.Green,
-    'Index: 1284 Units', 'indiziert 18:40', False);
-  AddLine(Result.Registry, TAtlasStatusLines.SetupId, 'Einrichtung: 5 von 6 erledigt', TAtlasStatusState.Yellow,
-    '', '', True);
+  AddLine(Result.Registry, TAtlasStatusLines.ServerId, TAtlasStatusState.Green, ['Server: läuft seit 19:02',
+    'Server läuft', 'seit 19:02'], False);
+  AddLine(Result.Registry, TAtlasStatusLines.IndexId, TAtlasStatusState.Green, ['Index: 1284 Units',
+    'Index: 1284 Units', 'indiziert 18:40'], False);
+  AddLine(Result.Registry, TAtlasStatusLines.SetupId, TAtlasStatusState.Yellow, ['Einrichtung: 5 von 6 erledigt',
+    '', ''], True);
 end;
 
 { TAtlasWelcomeStateFrameTests }
@@ -2764,8 +2765,8 @@ begin
     Assert.IsTrue(Frame.Button(TAtlasStateButton.Settings).Visible);
     Assert.IsTrue(Frame.Button(TAtlasStateButton.LogFolder).Visible);
     Assert.IsFalse(Frame.Button(TAtlasStateButton.Update).Visible);
-    AddLine(Fake.Registry, TAtlasStatusLines.VersionId, 'Version: Atlas 1.0.0, Update 1.0.1 bereit',
-      TAtlasStatusState.Yellow, 'Update 1.0.1 bereit', 'installiert 1.0.0', True);
+    AddLine(Fake.Registry, TAtlasStatusLines.VersionId, TAtlasStatusState.Yellow,
+      ['Version: Atlas 1.0.0, Update 1.0.1 bereit', 'Update 1.0.1 bereit', 'installiert 1.0.0'], True);
     Frame.UpdateContent;
     Assert.IsTrue(Frame.Button(TAtlasStateButton.Update).Visible);
     Assert.IsTrue(Frame.PreferredHeight > 5 * Frame.ScaleValue(TAtlasWelcomeStateFrame.RowHeight));
