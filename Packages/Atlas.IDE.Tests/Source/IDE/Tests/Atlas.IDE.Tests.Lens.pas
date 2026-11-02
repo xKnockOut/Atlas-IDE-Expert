@@ -156,7 +156,9 @@ begin
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseDown := EditorMouseDown;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -172,12 +174,16 @@ begin
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEvents.OnEditorMouseDown := nil;
   FEventsRef := nil;
   if FShowing then
+  begin
     Invalidate;
+  end;
   inherited Destroy;
 end;
 
@@ -186,7 +192,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 class function TAtlasIdeTestsLens.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
@@ -221,9 +229,13 @@ begin
     end;
     View := nil;
     if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    begin
       View := Editors.TopView;
+    end;
     if (View = nil) or (View.Buffer = nil) or not SameText(ExtractFileExt(View.Buffer.FileName), '.pas') then
+    begin
       Exit;
+    end;
     Text := TAtlasEditorBuffer.Text(View.Buffer);
     if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) then
     begin
@@ -233,7 +245,9 @@ begin
     end
     else if (GetTickCount - FChangedAt >= QuietMs) and
       (not SameText(FScannedFile, FFileName) or (FScannedText <> FText)) then
+    begin
       Scan;
+    end;
     // Lauf begonnen oder beendet: Stand neu zeichnen.
     if FShowing and (FTests.Version <> FVersion) then
     begin
@@ -258,12 +272,16 @@ var
     Item: TItem;
   begin
     if ALine < 0 then
+    begin
       Exit;
+    end;
     Item := Default(TItem);
     Item.Line := ALine;
     Item.Selection := TAtlasTestDebug.Selection(Found, AFixture, ATest, ACase);
     if Length(Item.Selection.Names) > 0 then
+    begin
       Items := Items + [Item];
+    end;
   end;
 
 begin
@@ -278,16 +296,24 @@ begin
       Add(Found.MarkLine(FixtureIndex, TestIndex), FixtureIndex, TestIndex, -1);
       // Fälle mit eigener Zeile bekommen eigene Marken (mit [Ignore] führt DUnitX sie als einen Test).
       if not Test.Ignored then
+      begin
         for CaseIndex := 0 to High(Test.CaseLines) do
+        begin
           if Found.CaseHasOwnLine(FixtureIndex, TestIndex, CaseIndex) then
+          begin
             Add(Test.CaseLines[CaseIndex], FixtureIndex, TestIndex, CaseIndex);
+          end;
+        end;
+      end;
     end;
   end;
   FScannedFile := FFileName;
   FScannedText := FText;
   FUnitName := Found.UnitName;
   if (Length(Items) = 0) and (Length(FItems) = 0) then
+  begin
     Exit;
+  end;
   FItems := Items;
   FShowing := Length(Items) > 0;
   FVersion := FTests.Version;
@@ -299,8 +325,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FItems) do
+  begin
     if FItems[Index].Line = ALine then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -311,13 +341,21 @@ begin
   AFailed := False;
   APassed := False;
   if FTests.Busy then
+  begin
     Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
+  end;
   if AItem.Selection.Method = '' then
-    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunFixture)
+  begin
+    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunFixture);
+  end
   else if AItem.Selection.CaseName <> '' then
-    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunCase)
+  begin
+    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunCase);
+  end
   else
+  begin
     Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRun);
+  end;
   Status := FTests.StatusOf(FUnitName, AItem.Selection.Fixture, AItem.Selection.Method, AItem.Selection.CaseName);
   if Status = TAtlasTestStatus.Failed then
   begin
@@ -365,20 +403,30 @@ var
 
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
+  begin
     Exit;
+  end;
   try
     if not Wanted(TAtlasIdeSettings.Current) or not SameText(Context.FileName, FScannedFile) then
+    begin
       Exit;
+    end;
     Index := ItemAt(Context.LogicalLineNum - 1);
     if Index < 0 then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) then
+    begin
       Exit;
+    end;
     Line := LineState.Text;
     // Text seit dem Lesen verschoben: keine Marke an einer Leerzeile.
     if Trim(Line) = '' then
+    begin
       Exit;
+    end;
     // Ausgeblendet am Element (#628): Anker ist Fixture.Methode[.Fall].
     if TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensTests, Context.FileName,
       FItems[Index].Selection.Caption) then
@@ -394,15 +442,23 @@ begin
     Canvas := Context.Canvas;
     Sample := GetPixel(Canvas.Handle, Cell.Left, Rect.Top + 1);
     if Sample = CLR_INVALID then
-      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color))
+    begin
+      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color));
+    end
     else
+    begin
       Back := TAtlasColor(Sample);
+    end;
     Colors := TAtlasColors.ForBackground(Back);
     Tone := Colors.Accent;
     if Failed then
-      Tone := Colors.Error
+    begin
+      Tone := Colors.Error;
+    end
     else if Passed then
+    begin
       Tone := Colors.Add;
+    end;
     OldFont := TFont.Create;
     OldBrush := TBrush.Create;
     OldPen := TPen.Create;
@@ -417,14 +473,18 @@ begin
       FItems[Index].DebugRect := TRect.Empty;
       // „Debuggen“ (#585) rechts daneben; nicht während eines Laufs.
       if TAtlasTestDebug.LensDebugWanted(TAtlasIdeSettings.Current) and not FTests.Busy then
+      begin
         FItems[Index].DebugRect := DrawPill(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDebug), Colors.Accent,
           Pill.Right + 6);
+      end;
       FItems[Index].TopRow := Context.EditView.TopRow;
       TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTests, Context.FileName, FItems[Index].Line,
         FItems[Index].Selection.Caption, Pill, FItems[Index].TopRow, Rect.Height);
       if not FItems[Index].DebugRect.IsEmpty then
+      begin
         TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTests, Context.FileName, FItems[Index].Line,
           FItems[Index].Selection.Caption, FItems[Index].DebugRect, FItems[Index].TopRow, Rect.Height);
+      end;
     finally
       Canvas.Font.Assign(OldFont);
       Canvas.Brush.Assign(OldBrush);
@@ -455,10 +515,13 @@ var
 begin
   if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FShowing or (FUnitName = '') or
     not Wanted(TAtlasIdeSettings.Current) then
+  begin
     Exit;
+  end;
   Hit := -1;
   DebugHit := False;
   for Index := 0 to High(FItems) do
+  begin
     if not FItems[Index].RunRect.IsEmpty and PtInRect(FItems[Index].RunRect, Point(X, Y)) then
     begin
       Hit := Index;
@@ -469,15 +532,22 @@ begin
       Hit := Index;
       DebugHit := True;
     end;
+  end;
   if Hit < 0 then
+  begin
     Exit;
+  end;
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
   View := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     View := Editors.TopView;
+  end;
   if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, FScannedFile) or
     (View.TopRow <> FItems[Hit].TopRow) then
+  begin
     Exit;
+  end;
   FileName := FScannedFile;
   Selection := FItems[Hit].Selection;
   Debugger := FDebugger;
@@ -489,14 +559,20 @@ begin
     procedure
     begin
       if (Keep = nil) or not Alive.Alive then
+      begin
         Exit;
+      end;
       TAtlasGuard.Run(TAtlasFeature.Build,
         procedure
         begin
           if DebugHit then
-            Debugger.Debug(FileName, Selection)
+          begin
+            Debugger.Debug(FileName, Selection);
+          end
           else
+          begin
             Debugger.Run(FileName, Selection);
+          end;
         end);
     end);
 end;
