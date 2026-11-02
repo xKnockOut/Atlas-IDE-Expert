@@ -61,13 +61,8 @@ uses
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
-  Atlas.Common.Lsp.ExitPoints,
-  Atlas.Common.Lsp.Reassigned,
-  Atlas.Common.Lsp.ExpressionType,
-  Atlas.Common.Lsp.MethodOrder,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.BulkFix,
@@ -78,6 +73,7 @@ uses
   Shell.Composition.Navigation,
   Shell.Composition.Completion,
   Shell.Composition.Editing,
+  Shell.Composition.EditorCommands,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -195,10 +191,10 @@ type
     // Methodenreferenzen für die Befehle, vorab gebildet (Free Pascal). Je Empfänger der eigene Typ: Delphi 12 nimmt
     // TCompletionReadText nicht als TResourceStringRead an, obwohl die Signatur gleich ist.
     FEnsureUnitRef: TEnsureUnitFunc;
-    FReadSourceTextRef: TCompletionReadText;
-    FReadResourceRef: TResourceStringRead;
     /// <summary>Schreibt einen resourcestring in eine andere Unit (#473); über den Host der Schnellbefehle.</summary>
     FResourceStringWrite: TResourceStringWrite;
+    /// <summary>Befehle des Plugins am Editor (#698, #712, #689, #660, #768, #473).</summary>
+    FEditorCommands: TShellEditorCommands;
     FStatistics: IJsonRpcStatistics;
     /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
     FRecentLog: IRecentLogLines;
@@ -386,32 +382,12 @@ type
     function IncludePathsOf(const AUri: string): TArray<string>;
     /// <summary>Formulare in Text umwandeln (Logik in Shell.Commands.Build).</summary>
     function RunConvertForms(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Austrittspunkte am Cursor (#698).</summary>
-    function RunExitPoints(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Neu zugewiesene Variablen (#712).</summary>
-    function RunReassigned(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Typ des markierten Ausdrucks (#689).</summary>
-    function RunExpressionType(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660).</summary>
-    function RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Überschreibungen für die Zeilenleiste (#768).</summary>
-    function RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Baseline des Projekts aktualisieren.</summary>
     function RunBaseline(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Vorschau der Sammelkorrektur.</summary>
     function RunBulkFix(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Compilermeldungen in die Baseline.</summary>
     function RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Qualifizierte Namen.</summary>
-    function RunQualifiedNames(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Werte einer Aufzählung.</summary>
-    function RunEnumValue(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>resourcestring anlegen.</summary>
-    function RunAddResourceString(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Literal als reiner Text.</summary>
-    function RunPlainText(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Text als Literal.</summary>
-    function RunToLiteral(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Status (#28), optional anonymisiert (#1356).</summary>
     function RunStatus(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Prozesse am selben Index-Cache (#62).</summary>
@@ -436,6 +412,8 @@ type
     function RunSelectProject(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Teil von Create (S-02): workspace/executeCommand: alle Befehle des Servers.</summary>
     procedure WireCommands;
+    /// <summary>Teil von WireCommands: Befehle des Plugins am Editor.</summary>
+    procedure WireEditorCommands;
     /// <summary>Befehle für Status, Einstellungen, Fehlerbericht, Bau und Index.</summary>
     procedure WireServerCommands;
     /// <summary>Befehle für Metriken, TODOs, Architektur, Abfragen und Hotspots.</summary>
@@ -1881,38 +1859,44 @@ begin
   end;
 end;
 
+procedure TServerComposition.WireEditorCommands;
+var
+  mServices: TShellEditorCommandServices;
+begin
+  mServices := Default(TShellEditorCommandServices);
+  mServices.Documents := FDocuments;
+  mServices.Index := FIndex;
+  mServices.EnsureUnit := FEnsureUnitRef;
+  mServices.ReadText := ReadSourceText;
+  mServices.Namespaces :=
+    function: TArray<string>
+    begin
+      Result := FNavigation.Namespaces;
+    end;
+  mServices.HighlightSettingsFor := HighlightSettingsFor;
+  mServices.StringLiteralFor := StringLiteralFor;
+  mServices.ResourceStringWrite := FResourceStringWrite;
+  FEditorCommands := TShellEditorCommands.Create(mServices);
+end;
+
 procedure TServerComposition.WireCommands;
 begin
   // Methodenreferenz vorab: Free Pascal (Linux-Bau) bricht ab, wenn eine anonyme Methode die Methode selbst
   // als Referenz weitergibt.
   FEnsureUnitRef := EnsureUnit;
-  FReadSourceTextRef := ReadSourceText;
-  FReadResourceRef := ReadSourceText;
   FCommands := TLspCommands.Create;
   FCommands.Register(TLspFormFiles.ConvertCommand, RunConvertForms);
   FCommands.Register(TLspDfmPropertyRules.Command, ApplyDfmPropertyRules);
   FRefactorings.Register(FCommands);
   WireReportCommands;
   FOverviews.RegisterUnitCommands(FCommands);
-  // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
-  FCommands.Register(TLspExitPoints.Command, RunExitPoints);
-  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
-  FCommands.Register(TLspReassigned.Command, RunReassigned);
-  // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
-  FCommands.Register(TLspExpressionType.Command, RunExpressionType);
-  // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
-  FCommands.Register(TLspMethodOrder.Command, RunMethodOrder);
-  // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
-  FCommands.Register(TLspOverrideMarks.Command, RunOverrideMarks);
+  WireEditorCommands;
+  FEditorCommands.RegisterMarkCommands(FCommands);
   FCommands.Register(TLspBaseline.Command, RunBaseline);
   FCommands.Register(TLspBulkFix.Command, RunBulkFix);
   FCommands.Register(TLspCompilerBaseline.AddCommand, RunCompilerBaselineAdd);
   WireSlashCommands;
-  FCommands.Register(TQualifiedNames.Command, RunQualifiedNames);
-  FCommands.Register(TEnumValueCommands.Command, RunEnumValue);
-  FCommands.Register(TResourceStringCommands.AddCommand, RunAddResourceString);
-  FCommands.Register(TStringLiteralCommands.PlainTextCommand, RunPlainText);
-  FCommands.Register(TStringLiteralCommands.ToLiteralCommand, RunToLiteral);
+  FEditorCommands.RegisterTextCommands(FCommands);
   WireServerCommands;
   FCommands.Attach(FDispatcher);
 end;
@@ -1992,32 +1976,6 @@ begin
   Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
 end;
 
-function TServerComposition.RunExitPoints(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TLspExitPoints.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces, FReadSourceTextRef,
-    HighlightSettingsFor, AArguments);
-end;
-
-function TServerComposition.RunReassigned(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TLspReassigned.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces, AArguments);
-end;
-
-function TServerComposition.RunExpressionType(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TLspExpressionType.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces, AArguments);
-end;
-
-function TServerComposition.RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TLspMethodOrder.Execute(FDocuments, AArguments);
-end;
-
-function TServerComposition.RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TLspOverrideMarks.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces, AArguments);
-end;
-
 function TServerComposition.RunBaseline(const AArguments: TJSONArray): TJSONValue;
 var
   Watch: TStopwatch;
@@ -2064,42 +2022,6 @@ begin
       [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
       TJSONObject(Result).GetValue<Integer>('removed', -1)]));
   end;
-end;
-
-function TServerComposition.RunQualifiedNames(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TQualifiedNames.Execute(FDocuments, FIndex,
-    FEnsureUnitRef, FNavigation.Namespaces, AArguments);
-end;
-
-function TServerComposition.RunEnumValue(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TEnumValueCommands.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces,
-    FReadSourceTextRef, AArguments);
-end;
-
-function TServerComposition.RunAddResourceString(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TResourceStringCommands.ExecuteAdd(FReadResourceRef, FResourceStringWrite, AArguments);
-end;
-
-function TServerComposition.RunPlainText(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := TStringLiteralCommands.ExecutePlainText(FDocuments, AArguments);
-end;
-
-function TServerComposition.RunToLiteral(const AArguments: TJSONArray): TJSONValue;
-var
-  Settings: TStringLiteralSettings;
-  Multiline: Boolean;
-begin
-  Settings := TStringLiteralSettings.Default;
-  Multiline := False;
-  if (AArguments <> nil) and (AArguments.Count > 0) then
-  begin
-    Settings := StringLiteralFor(AArguments.Items[0].Value, Multiline);
-  end;
-  Result := TStringLiteralCommands.ExecuteToLiteral(FDocuments, Settings, Multiline, AArguments);
 end;
 
 function TServerComposition.RunStatus(const AArguments: TJSONArray): TJSONValue;
@@ -2723,6 +2645,7 @@ procedure TServerComposition.FreeCodeFeatures;
 begin
   FreeAndNil(FCompletion);
   FreeAndNil(FRefactorings);
+  FreeAndNil(FEditorCommands);
   FreeAndNil(FNavigation);
   FreeAndNil(FCodeActions);
   FreeAndNil(FTestUnits);
