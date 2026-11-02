@@ -531,9 +531,30 @@ begin
   Result := (Drive <> '') and not DirectoryExists(IncludeTrailingPathDelimiter(Drive));
 end;
 
+/// <summary>Löscht die Build-Stände (build-*.json) in ARoot, deren Projekt es nicht mehr gibt; Anzahl.</summary>
+function RemoveOrphanBuilds(const ARoot: string): Integer;
+var
+  mFileName, mProject: string;
+begin
+  Result := 0;
+  if not TDirectory.Exists(ARoot) then
+  begin
+    Exit;
+  end;
+  for mFileName in TDirectory.GetFiles(ARoot, TIndexCacheDirectory.BuildPattern) do
+  begin
+    mProject := BuildProjectOf(mFileName);
+    if (mProject <> '') and not TIndexCacheDirectory.OriginExists(mProject) and
+      System.SysUtils.DeleteFile(mFileName) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 class function TIndexCacheDirectory.RemoveOrphans(const ARoot: string; const AKeep: TArray<string>): Integer;
 var
-  FileName, Project: string;
+  FileName: string;
   Infos: TList<TCacheFileInfo>;
   Info: TCacheFileInfo;
   Exists: TFunc<string, Boolean>;
@@ -576,17 +597,7 @@ begin
   finally
     Infos.Free;
   end;
-  if TDirectory.Exists(ARoot) then
-  begin
-    for FileName in TDirectory.GetFiles(ARoot, BuildPattern) do
-    begin
-      Project := BuildProjectOf(FileName);
-      if (Project <> '') and not OriginExists(Project) and System.SysUtils.DeleteFile(FileName) then
-      begin
-        Inc(Result);
-      end;
-    end;
-  end;
+  Inc(Result, RemoveOrphanBuilds(ARoot));
 end;
 
 class function TIndexCacheDirectory.Clear(const ARoot: string): Integer;

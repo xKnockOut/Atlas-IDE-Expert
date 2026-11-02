@@ -259,6 +259,122 @@ begin
   end;
 end;
 
+/// <summary>Zeile je Arbeitsbereich für TServerStatus.ToMarkdown.</summary>
+procedure AppendWorkspaces(ABuilder: TStringBuilder; const AWorkspaces: TArray<TWorkspaceStatus>);
+var
+  mWorkspace: TWorkspaceStatus;
+begin
+  for mWorkspace in AWorkspaces do
+  begin
+    if mWorkspace.LastIndexMs < 0 then
+    begin
+      ABuilder.Append(Format('- %s%s: Index wird aufgebaut', [mWorkspace.Name, mWorkspace.ProjectText])).Append(#10);
+      Continue;
+    end;
+    ABuilder.Append(Format('- %s%s: letzter Indexlauf %d ms (%d neu eingelesen, %d aus dem Cache, %d fehlen)',
+      [mWorkspace.Name, mWorkspace.ProjectText, mWorkspace.LastIndexMs, mWorkspace.Parsed, mWorkspace.FromCache,
+      mWorkspace.Missing]));
+    if mWorkspace.LastUpdate <> 0 then
+    begin
+      ABuilder.Append(', aktualisiert ').Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss', mWorkspace.LastUpdate));
+    end;
+    ABuilder.Append(', Cache ').Append(MegaBytes(mWorkspace.CacheBytes + mWorkspace.LibraryCacheBytes));
+    ABuilder.Append(#10);
+  end;
+end;
+
+/// <summary>Tabelle der Anfragen für TServerStatus.ToMarkdown; nichts ohne Anfragen.</summary>
+procedure AppendRequests(ABuilder: TStringBuilder; const ARequests: TArray<TMethodStatistics>);
+var
+  mRequest: TMethodStatistics;
+begin
+  if Length(ARequests) = 0 then
+  begin
+    Exit;
+  end;
+  ABuilder.Append(#10).Append('| Methode | Anzahl | Mittel ms | Max ms | Fehler |').Append(#10);
+  ABuilder.Append('|---|---:|---:|---:|---:|').Append(#10);
+  for mRequest in ARequests do
+  begin
+    ABuilder.Append(Format('| %s | %d | %s | %d | %d |', [mRequest.Method, mRequest.Count,
+      FormatFloat('0.0', mRequest.AverageMs, TFormatSettings.Invariant), mRequest.MaxMs, mRequest.Failed])).Append(#10);
+  end;
+end;
+
+function WorkspacesJson(const AWorkspaces: TArray<TWorkspaceStatus>): TJSONArray;
+var
+  mWorkspace: TWorkspaceStatus;
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mWorkspace in AWorkspaces do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mWorkspace.Name);
+    mItem.AddPair('lastIndexMs', TJSONNumber.Create(mWorkspace.LastIndexMs));
+    mItem.AddPair('parsed', TJSONNumber.Create(mWorkspace.Parsed));
+    mItem.AddPair('fromCache', TJSONNumber.Create(mWorkspace.FromCache));
+    mItem.AddPair('missing', TJSONNumber.Create(mWorkspace.Missing));
+    mItem.AddPair('lastUpdate', DateText(mWorkspace.LastUpdate));
+    mItem.AddPair('cacheBytes', TJSONNumber.Create(mWorkspace.CacheBytes));
+    mItem.AddPair('libraryCacheBytes', TJSONNumber.Create(mWorkspace.LibraryCacheBytes));
+    if mWorkspace.Project <> '' then
+    begin
+      mItem.AddPair('project', mWorkspace.Project);
+      mItem.AddPair('config', mWorkspace.Config);
+      mItem.AddPair('platform', mWorkspace.Platform);
+      mItem.AddPair('buildChosen', TJSONBool.Create(mWorkspace.BuildChosen));
+      mItem.AddPair('active', TJSONBool.Create(mWorkspace.Active));
+      mItem.AddPair('selected', TJSONBool.Create(mWorkspace.Selected));
+    end;
+    Result.AddElement(mItem);
+  end;
+end;
+
+function RequestsJson(const ARequests: TArray<TMethodStatistics>): TJSONArray;
+var
+  mRequest: TMethodStatistics;
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mRequest in ARequests do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('method', mRequest.Method);
+    mItem.AddPair('count', TJSONNumber.Create(mRequest.Count));
+    mItem.AddPair('averageMs', TJSONNumber.Create(mRequest.AverageMs));
+    mItem.AddPair('maxMs', TJSONNumber.Create(mRequest.MaxMs));
+    mItem.AddPair('failed', TJSONNumber.Create(mRequest.Failed));
+    Result.AddElement(mItem);
+  end;
+end;
+
+/// <summary>Aufschlüsselung des Speichers; AOverBudget wie TServerMemory.OverBudget.</summary>
+function MemoryJson(const AMemory: TServerMemory; AOverBudget: Boolean): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('symbols', TJSONNumber.Create(AMemory.Symbols));
+  Result.AddPair('usages', TJSONNumber.Create(AMemory.Usages));
+  Result.AddPair('libraryUnits', TJSONNumber.Create(AMemory.LibraryUnits));
+  Result.AddPair('treeCache', TJSONNumber.Create(AMemory.TreeCache));
+  Result.AddPair('documents', TJSONNumber.Create(AMemory.Documents));
+  Result.AddPair('packages', TJSONNumber.Create(AMemory.Packages));
+  Result.AddPair('rest', TJSONNumber.Create(AMemory.Rest));
+  Result.AddPair('total', TJSONNumber.Create(AMemory.Total));
+  Result.AddPair('budget', TJSONNumber.Create(AMemory.Budget));
+  Result.AddPair('overBudget', TJSONBool.Create(AOverBudget));
+end;
+
+function QueueJson(const AQueue: TServerQueue): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('indexWaiting', TJSONNumber.Create(AQueue.IndexWaiting));
+  Result.AddPair('indexRunning', TJSONNumber.Create(AQueue.IndexRunning));
+  Result.AddPair('checkWaiting', TJSONNumber.Create(AQueue.CheckWaiting));
+  Result.AddPair('checkRunning', TJSONNumber.Create(AQueue.CheckRunning));
+  Result.AddPair('oldestWaitMs', TJSONNumber.Create(AQueue.OldestWaitMs));
+end;
+
 procedure TServerStatus.AppendDiagnostics(ABuilder: TStringBuilder);
 var
   mProfile: string;
@@ -317,8 +433,6 @@ end;
 function TServerStatus.ToMarkdown: string;
 var
   Builder: TStringBuilder;
-  Workspace: TWorkspaceStatus;
-  Request: TMethodStatistics;
 begin
   Builder := TStringBuilder.Create;
   try
@@ -352,39 +466,12 @@ begin
         Builder.Append('  ').Append(CompilerReason).Append(#10);
       end;
     end;
-    for Workspace in Workspaces do
-    begin
-      if Workspace.LastIndexMs < 0 then
-      begin
-        Builder.Append(Format('- %s%s: Index wird aufgebaut', [Workspace.Name, Workspace.ProjectText])).Append(#10);
-      end
-      else
-      begin
-        Builder.Append(Format('- %s%s: letzter Indexlauf %d ms (%d neu eingelesen, %d aus dem Cache, %d fehlen)',
-          [Workspace.Name, Workspace.ProjectText, Workspace.LastIndexMs, Workspace.Parsed, Workspace.FromCache,
-          Workspace.Missing]));
-        if Workspace.LastUpdate <> 0 then
-        begin
-          Builder.Append(', aktualisiert ').Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss', Workspace.LastUpdate));
-        end;
-        Builder.Append(', Cache ').Append(MegaBytes(Workspace.CacheBytes + Workspace.LibraryCacheBytes));
-        Builder.Append(#10);
-      end;
-    end;
+    AppendWorkspaces(Builder, Workspaces);
     if ProcessId <> 0 then
     begin
       AppendDiagnostics(Builder);
     end;
-    if Length(Requests) > 0 then
-    begin
-      Builder.Append(#10).Append('| Methode | Anzahl | Mittel ms | Max ms | Fehler |').Append(#10);
-      Builder.Append('|---|---:|---:|---:|---:|').Append(#10);
-      for Request in Requests do
-      begin
-        Builder.Append(Format('| %s | %d | %s | %d | %d |', [Request.Method, Request.Count,
-          FormatFloat('0.0', Request.AverageMs, TFormatSettings.Invariant), Request.MaxMs, Request.Failed])).Append(#10);
-      end;
-    end;
+    AppendRequests(Builder, Requests);
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -393,10 +480,7 @@ end;
 
 function TServerStatus.ToJson: TJSONObject;
 var
-  Items: TJSONArray;
   Item: TJSONObject;
-  Workspace: TWorkspaceStatus;
-  Request: TMethodStatistics;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('units', TJSONNumber.Create(Units));
@@ -408,42 +492,8 @@ begin
   Result.AddPair('diskBytes', TJSONNumber.Create(DiskBytes));
   Result.AddPair('budgetBytes', TJSONNumber.Create(BudgetBytes));
   Result.AddPair('documentBytes', TJSONNumber.Create(DocumentBytes));
-  Items := TJSONArray.Create;
-  for Workspace in Workspaces do
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('name', Workspace.Name);
-    Item.AddPair('lastIndexMs', TJSONNumber.Create(Workspace.LastIndexMs));
-    Item.AddPair('parsed', TJSONNumber.Create(Workspace.Parsed));
-    Item.AddPair('fromCache', TJSONNumber.Create(Workspace.FromCache));
-    Item.AddPair('missing', TJSONNumber.Create(Workspace.Missing));
-    Item.AddPair('lastUpdate', DateText(Workspace.LastUpdate));
-    Item.AddPair('cacheBytes', TJSONNumber.Create(Workspace.CacheBytes));
-    Item.AddPair('libraryCacheBytes', TJSONNumber.Create(Workspace.LibraryCacheBytes));
-    if Workspace.Project <> '' then
-    begin
-      Item.AddPair('project', Workspace.Project);
-      Item.AddPair('config', Workspace.Config);
-      Item.AddPair('platform', Workspace.Platform);
-      Item.AddPair('buildChosen', TJSONBool.Create(Workspace.BuildChosen));
-      Item.AddPair('active', TJSONBool.Create(Workspace.Active));
-      Item.AddPair('selected', TJSONBool.Create(Workspace.Selected));
-    end;
-    Items.AddElement(Item);
-  end;
-  Result.AddPair('workspaces', Items);
-  Items := TJSONArray.Create;
-  for Request in Requests do
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('method', Request.Method);
-    Item.AddPair('count', TJSONNumber.Create(Request.Count));
-    Item.AddPair('averageMs', TJSONNumber.Create(Request.AverageMs));
-    Item.AddPair('maxMs', TJSONNumber.Create(Request.MaxMs));
-    Item.AddPair('failed', TJSONNumber.Create(Request.Failed));
-    Items.AddElement(Item);
-  end;
-  Result.AddPair('requests', Items);
+  Result.AddPair('workspaces', WorkspacesJson(Workspaces));
+  Result.AddPair('requests', RequestsJson(Requests));
   if Compiler <> '' then
   begin
     Item := TJSONObject.Create;
@@ -461,26 +511,9 @@ begin
     Item.AddPair('uptimeMs', TJSONNumber.Create(UptimeMs));
     Item.AddPair('state', State);
     Result.AddPair('process', Item);
-    Item := TJSONObject.Create;
-    Item.AddPair('symbols', TJSONNumber.Create(Memory.Symbols));
-    Item.AddPair('usages', TJSONNumber.Create(Memory.Usages));
-    Item.AddPair('libraryUnits', TJSONNumber.Create(Memory.LibraryUnits));
-    Item.AddPair('treeCache', TJSONNumber.Create(Memory.TreeCache));
-    Item.AddPair('documents', TJSONNumber.Create(Memory.Documents));
-    Item.AddPair('packages', TJSONNumber.Create(Memory.Packages));
-    Item.AddPair('rest', TJSONNumber.Create(Memory.Rest));
-    Item.AddPair('total', TJSONNumber.Create(Memory.Total));
-    Item.AddPair('budget', TJSONNumber.Create(Memory.Budget));
-    Item.AddPair('overBudget', TJSONBool.Create(Memory.OverBudget(CompactUnits, OffloadedUnits)));
-    Result.AddPair('memory', Item);
+    Result.AddPair('memory', MemoryJson(Memory, Memory.OverBudget(CompactUnits, OffloadedUnits)));
     Result.AddPair('checkRun', CheckRun.ToJson);
-    Item := TJSONObject.Create;
-    Item.AddPair('indexWaiting', TJSONNumber.Create(Queue.IndexWaiting));
-    Item.AddPair('indexRunning', TJSONNumber.Create(Queue.IndexRunning));
-    Item.AddPair('checkWaiting', TJSONNumber.Create(Queue.CheckWaiting));
-    Item.AddPair('checkRunning', TJSONNumber.Create(Queue.CheckRunning));
-    Item.AddPair('oldestWaitMs', TJSONNumber.Create(Queue.OldestWaitMs));
-    Result.AddPair('queue', Item);
+    Result.AddPair('queue', QueueJson(Queue));
     Item := TJSONObject.Create;
     Item.AddPair('index', TJSONNumber.Create(IndexCacheHitPercent));
     Item.AddPair('trees', TJSONNumber.Create(TreeCacheHitPercent));
