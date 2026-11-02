@@ -88,6 +88,7 @@ contains
   Atlas.Core.Hover.Declaration in 'Source\Core\Hover\Atlas.Core.Hover.Declaration.pas',
   Atlas.Core.Hover.History in 'Source\Core\Hover\Atlas.Core.Hover.History.pas',
   Atlas.Core.Hover.Layout in 'Source\Core\Hover\Atlas.Core.Hover.Layout.pas',
+  Atlas.Core.Hover.Texts in 'Source\Core\Hover\Atlas.Core.Hover.Texts.pas',
   Atlas.Core.Hover.DebugValue in 'Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',
   Atlas.Core.Documentation.Contract in 'Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',
   Atlas.Core.Documentation.Layout in 'Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas',
