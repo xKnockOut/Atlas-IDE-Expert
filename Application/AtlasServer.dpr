@@ -14,6 +14,7 @@ uses
   Atlas.Windows.Diagnostics.DebugOutput,
   Shell.Application in 'Source\Shell\Shell.Application.pas',
   Shell.Composition in 'Source\Shell\Shell.Composition.pas',
+  Shell.Composition.Compile in 'Source\Shell\Shell.Composition.Compile.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
   Shell.Workspace.Listings in 'Source\Shell\Shell.Workspace.Listings.pas',

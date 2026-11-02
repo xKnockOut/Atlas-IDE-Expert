@@ -53,6 +53,7 @@
         </DelphiCompile>
         <DCCReference Include="Source\Shell\Shell.Application.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Compile.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.Listings.pas"/>
