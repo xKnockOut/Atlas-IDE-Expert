@@ -174,12 +174,18 @@ begin
   Result := False;
   Index := ACharacter + 1;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   if Index > Length(ALine) then
+  begin
     Exit;
+  end;
   Next := #0;
   if Index < Length(ALine) then
+  begin
     Next := ALine[Index + 1];
+  end;
   case ALine[Index] of
     '''':
       Exit(True);
@@ -192,7 +198,9 @@ begin
   end;
   Stop := Index;
   while (Stop <= Length(ALine)) and TTextChars.IsIdentChar(ALine[Stop]) do
+  begin
     Inc(Stop);
+  end;
   Word := LowerCase(Copy(ALine, Index, Stop - Index));
   Result := (Word = 'true') or (Word = 'false') or (Word = 'nil');
 end;
@@ -200,7 +208,9 @@ end;
 function TAtlasInlayHintStore.Find(const AFileName: string): TEntry;
 begin
   if not FEntries.TryGetValue(Key(AFileName), Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 procedure TAtlasInlayHintStore.SetText(const AFileName, AText: string);
@@ -209,7 +219,9 @@ var
 begin
   Entry := Find(AFileName);
   if (Entry <> nil) and (Entry.Text = AText) then
+  begin
     Exit;
+  end;
   if Entry = nil then
   begin
     Entry := TEntry.Create;
@@ -236,20 +248,30 @@ begin
   ATo := -1;
   Entry := Find(AFileName);
   if (Entry = nil) or (Length(Entry.Lines) = 0) then
+  begin
     Exit(False);
+  end;
   First := AFirst - Margin;
   if First < 0 then
+  begin
     First := 0;
+  end;
   Last := ALast + Margin;
   if Last > High(Entry.Lines) then
+  begin
     Last := High(Entry.Lines);
+  end;
   for Line := First to Last do
+  begin
     if not Entry.Covered[Line] then
     begin
       if AFrom < 0 then
+      begin
         AFrom := Line;
+      end;
       ATo := Line;
     end;
+  end;
   Result := AFrom >= 0;
 end;
 
@@ -259,8 +281,12 @@ var
   Known: TAtlasInlayHint;
 begin
   for Known in AList do
+  begin
     if (Known.Line = AHint.Line) and (Known.Character = AHint.Character) then
+    begin
       Exit;
+    end;
+  end;
   AList := AList + [AHint];
 end;
 
@@ -275,10 +301,16 @@ var
 begin
   Entry := Find(AFileName);
   if (Entry = nil) or (Entry.Text <> AText) then
+  begin
     Exit;
+  end;
   for Line := AFrom to ATo do
+  begin
     if (Line >= 0) and (Line <= High(Entry.Covered)) then
+    begin
       Entry.Covered[Line] := True;
+    end;
+  end;
   for Hint in AHints do
   begin
     // Endmarke (#620): nur ohne Kommentar hinter dem end, jede Zeile einmal.
@@ -286,12 +318,18 @@ begin
     begin
       if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
         HasCommentAfter(Entry.Lines[Hint.Line], Hint.Character) then
+      begin
         Continue;
+      end;
       Duplicate := False;
       for Known in Entry.Ends do
+      begin
         Duplicate := Duplicate or (Known.Line = Hint.Line);
+      end;
       if not Duplicate then
+      begin
         Entry.Ends := Entry.Ends + [Hint];
+      end;
       Continue;
     end;
     // Typmarke (#453), Include-Symbole (#860), Steuerzeichen (#862) und Methoden ohne Self (#686): jede Stelle
@@ -299,37 +337,57 @@ begin
     if Hint.TypeHint or Hint.DefineHint or Hint.CharHint or Hint.MethodHint then
     begin
       if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') then
+      begin
         Continue;
+      end;
       if Hint.TypeHint then
-        AddOnce(Entry.Types, Hint)
+      begin
+        AddOnce(Entry.Types, Hint);
+      end
       else if Hint.DefineHint then
-        AddOnce(Entry.Defines, Hint)
+      begin
+        AddOnce(Entry.Defines, Hint);
+      end
       else if Hint.MethodHint then
-        AddOnce(Entry.Methods, Hint)
+      begin
+        AddOnce(Entry.Methods, Hint);
+      end
       else
+      begin
         AddOnce(Entry.Chars, Hint);
+      end;
       Continue;
     end;
     if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
       not IsLiteralAt(Entry.Lines[Hint.Line], Hint.Character) then
+    begin
       Continue;
+    end;
     // Nur Hinweise, die am Zeilenende noch etwas sagen.
     if IsVagueName(Hint.Name) or IsSoleArgument(Entry.Lines[Hint.Line], Hint.Character) or
       ContainsText(ArgumentAt(Entry.Lines[Hint.Line], Hint.Character), Hint.Name) then
+    begin
       Continue;
+    end;
     // Überlappende Abrufe liefern dieselben Hinweise noch einmal.
     Duplicate := False;
     for Known in Entry.Hints do
+    begin
       Duplicate := Duplicate or ((Known.Line = Hint.Line) and (Known.Character = Hint.Character));
+    end;
     if not Duplicate then
+    begin
       Entry.Hints := Entry.Hints + [Hint];
+    end;
   end;
   Order := TComparer<TAtlasInlayHint>.Construct(
     function(const ALeft, ARight: TAtlasInlayHint): Integer
     begin
       Result := ALeft.Line - ARight.Line;
       if Result = 0 then
+      begin
         Result := ALeft.Character - ARight.Character;
+      end;
     end);
   TArray.Sort<TAtlasInlayHint>(Entry.Hints, Order);
   TArray.Sort<TAtlasInlayHint>(Entry.Types, Order);
@@ -344,8 +402,12 @@ var
 begin
   Result := nil;
   for Hint in AHints do
+  begin
     if Hint.Line = ALine then
+    begin
       Result := Result + [Hint.Name];
+    end;
+  end;
 end;
 
 function TAtlasInlayHintStore.DefinesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
@@ -355,7 +417,9 @@ begin
   Result := nil;
   Entry := Find(AFileName);
   if Entry <> nil then
+  begin
     Result := NamesOn(Entry.Defines, ALine);
+  end;
 end;
 
 function TAtlasInlayHintStore.CharsOnLine(const AFileName: string; ALine: Integer): TArray<string>;
@@ -365,7 +429,9 @@ begin
   Result := nil;
   Entry := Find(AFileName);
   if Entry <> nil then
+  begin
     Result := NamesOn(Entry.Chars, ALine);
+  end;
 end;
 
 function TAtlasInlayHintStore.MethodOnLine(const AFileName: string; ALine: Integer): Boolean;
@@ -384,10 +450,16 @@ begin
   Result := nil;
   Entry := Find(AFileName);
   if Entry = nil then
+  begin
     Exit;
+  end;
   for Hint in Entry.Hints do
+  begin
     if Hint.Line = ALine then
+    begin
       Result := Result + [LabelOf(Hint.Name, ArgumentAt(Entry.Lines[ALine], Hint.Character))];
+    end;
+  end;
 end;
 
 function TAtlasInlayHintStore.TypesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
@@ -398,18 +470,26 @@ begin
   Result := nil;
   Entry := Find(AFileName);
   if Entry = nil then
+  begin
     Exit;
+  end;
   // In Spaltenreihenfolge, wie die Variablen in der Zeile stehen.
   for Hint in Entry.Types do
+  begin
     if Hint.Line = ALine then
+    begin
       Result := Result + [TypeLabelOf(Hint.Name)];
+    end;
+  end;
 end;
 
 class function TAtlasInlayHintStore.TypeLabelOf(const ATypeName: string): string;
 begin
   Result := ': ' + ATypeName;
   if Length(Result) > MaxTypeLength + 2 then
+  begin
     Result := Copy(Result, 1, MaxTypeLength + 1) + '…';
+  end;
 end;
 
 function TAtlasInlayHintStore.EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string): Boolean;
@@ -430,8 +510,11 @@ begin
   AHint := Default(TAtlasInlayHint);
   Entry := Find(AFileName);
   if Entry = nil then
+  begin
     Exit(False);
+  end;
   for Hint in Entry.Ends do
+  begin
     if Hint.Line = ALine then
     begin
       AText := Hint.Name;
@@ -439,15 +522,20 @@ begin
       AHint := Hint;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
 class function TAtlasInlayHintStore.EndLabelOf(const AText: string): string;
 begin
   if Length(AText) > MaxEndLabelLength then
-    Result := '// ' + TrimRight(Copy(AText, 1, MaxEndLabelLength - 1)) + '…'
+  begin
+    Result := '// ' + TrimRight(Copy(AText, 1, MaxEndLabelLength - 1)) + '…';
+  end
   else
+  begin
     Result := '// ' + AText;
+  end;
 end;
 
 class function TAtlasInlayHintStore.HasCommentAfter(const ALine: string; ACharacter: Integer): Boolean;
@@ -462,12 +550,18 @@ begin
     if InString then
     begin
       if ALine[Index] = '''' then
+      begin
         InString := False;
+      end;
     end
     else if ALine[Index] = '''' then
-      InString := True
+    begin
+      InString := True;
+    end
     else if (ALine[Index] = '{') or (Copy(ALine, Index, 2) = '//') or (Copy(ALine, Index, 2) = '(*') then
+    begin
       Exit(True);
+    end;
     Inc(Index);
   end;
   Result := False;
@@ -486,20 +580,30 @@ begin
     if InString then
     begin
       if ALine[Index] = '''' then
+      begin
         InString := False;
+      end;
     end
     else if ALine[Index] = '''' then
-      InString := True
+    begin
+      InString := True;
+    end
     else if CharInSet(ALine[Index], ['(', '[']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if CharInSet(ALine[Index], [')', ']']) then
     begin
       if Depth = 0 then
+      begin
         Break;
+      end;
       Dec(Depth);
     end
     else if (ALine[Index] = ',') and (Depth = 0) then
+    begin
       Break;
+    end;
     Inc(Index);
   end;
   Result := Trim(Copy(ALine, ACharacter + 1, Index - ACharacter - 1));
@@ -511,10 +615,14 @@ var
 begin
   Before := ACharacter;
   while (Before >= 1) and CharInSet(ALine[Before], [' ', #9]) do
+  begin
     Dec(Before);
+  end;
   After := ACharacter + Length(ArgumentAt(ALine, ACharacter)) + 1;
   while (After <= Length(ALine)) and CharInSet(ALine[After], [' ', #9]) do
+  begin
     Inc(After);
+  end;
   Result := (Before >= 1) and (ALine[Before] = '(') and (After <= Length(ALine)) and (ALine[After] = ')');
 end;
 
@@ -524,19 +632,29 @@ var
 begin
   Result := Length(AName) <= 2;
   if Result or not CharInSet(AName[1], ['A'..'Z', 'a'..'z']) then
+  begin
     Exit;
+  end;
   for Index := 2 to Length(AName) do
+  begin
     if not CharInSet(AName[Index], ['0'..'9']) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
 class function TAtlasInlayHintStore.LabelOf(const AName, AValue: string): string;
 begin
   if Length(AValue) > MaxValueLength then
-    Result := AName + ' = ' + Copy(AValue, 1, MaxValueLength - 1) + '…'
+  begin
+    Result := AName + ' = ' + Copy(AValue, 1, MaxValueLength - 1) + '…';
+  end
   else
+  begin
     Result := AName + ' = ' + AValue;
+  end;
 end;
 
 function TAtlasInlayHintStore.LineText(const AFileName: string; ALine: Integer; out AText: string): Boolean;
@@ -547,7 +665,9 @@ begin
   Entry := Find(AFileName);
   Result := (Entry <> nil) and (ALine >= 0) and (ALine <= High(Entry.Lines));
   if Result then
+  begin
     AText := Entry.Lines[ALine];
+  end;
 end;
 
 procedure TAtlasInlayHintStore.Clear;

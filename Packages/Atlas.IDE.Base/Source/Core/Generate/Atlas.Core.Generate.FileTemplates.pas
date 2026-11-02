@@ -197,8 +197,12 @@ begin
   Result := nil;
   Word := KindWord(AKind);
   for Item in TAtlasSnippets.Merge(BuiltIn, TAtlasSnippets.FileTemplates(AUser)) do
+  begin
     if SameText(Item.FileKind, Word) then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 class function TAtlasFileTemplates.Entries(const ATemplates: TAtlasSnippetList): TArray<TAtlasGenerateEntry>;
@@ -212,7 +216,9 @@ begin
     Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates,
       ATemplates[Index].Prefix, ATemplates[Index].Name);
     if Entry.Caption = '' then
+    begin
       Entry.Caption := ATemplates[Index].Prefix;
+    end;
     Entry.Detail := ATemplates[Index].Description;
     Entry.Source := Index;
     Result := Result + [Entry];
@@ -225,8 +231,12 @@ var
 begin
   Result := Trim(AUnit);
   for Index := Length(Result) downto 1 do
+  begin
     if Result[Index] = '.' then
+    begin
       Exit(Copy(Result, Index + 1, MaxInt));
+    end;
+  end;
 end;
 
 class function TAtlasFileTemplates.Render(const ABody, AUnit, AForm, AAncestor, ALineBreak: string): string;
@@ -235,10 +245,14 @@ var
 begin
   Form := Trim(AForm);
   if Form = '' then
+  begin
     Form := ShortName(AUnit);
+  end;
   Ancestor := Trim(AAncestor);
   if Ancestor = '' then
+  begin
     Ancestor := DefaultAncestor;
+  end;
   Result := ABody;
   Result := StringReplace(Result, '%Unit%', Trim(AUnit), [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '%Name%', ShortName(AUnit), [rfReplaceAll, rfIgnoreCase]);
@@ -246,7 +260,9 @@ begin
   Result := StringReplace(Result, '%Ancestor%', Ancestor, [rfReplaceAll, rfIgnoreCase]);
   Result := TAtlasSnippets.PlainText(Result);
   while (Result <> '') and CharInSet(Result[Length(Result)], [#10, ' ']) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
   Result := StringReplace(Result + #10, #10, ALineBreak, [rfReplaceAll]);
 end;
 

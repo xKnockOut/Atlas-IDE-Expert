@@ -125,13 +125,17 @@ procedure TAtlasIdeUpdates.Notification(AComponent: TComponent; Operation: TOper
 begin
   inherited;
   if (Operation = opRemove) and (AComponent = FConsent) then
+  begin
     FConsent := nil;
+  end;
 end;
 
 procedure TAtlasIdeUpdates.Log(const AText: string);
 begin
   if Assigned(FOnLog) then
+  begin
     FOnLog(AText);
+  end;
 end;
 
 procedure TAtlasIdeUpdates.LoadState;
@@ -182,9 +186,13 @@ begin
   FTimer.Enabled := False;
   // Erster Start: einmal fragen; ohne Zustimmung nie eine Abfrage.
   if not TAtlasIdeSettings.Current.UpdatesCheck and not FState.Asked then
-    ShowConsent
+  begin
+    ShowConsent;
+  end
   else
+  begin
     CheckNow;
+  end;
 end;
 
 procedure TAtlasIdeUpdates.ShowConsent;
@@ -192,7 +200,9 @@ var
   Area: TRect;
 begin
   if (FConsent <> nil) or TAtlasShutdown.Signalled then
+  begin
     Exit;
+  end;
   FConsent := TAtlasUpdateConsent.CreateConsent(nil);
   FConsent.FreeNotification(Self);
   FConsent.OnYes :=
@@ -206,16 +216,22 @@ begin
       Answer(False);
     end;
   if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   FConsent.ShowIn(Area);
 end;
 
 procedure TAtlasIdeUpdates.ApplySettings;
 begin
   if FSource = nil then
+  begin
     Exit;
+  end;
   // updates.check an oder aus: Die Zeile „Version“ zeigt es.
   UpdateLine;
   if TAtlasIdeSettings.Current.UpdatesCheck and not FState.Asked then
@@ -224,10 +240,14 @@ begin
     FState.Asked := True;
     SaveState;
     if FConsent <> nil then
+    begin
       FConsent.Close;
+    end;
   end;
   if not FTimer.Enabled then
+  begin
     CheckNow;
+  end;
 end;
 
 procedure TAtlasIdeUpdates.CheckNow;
@@ -237,7 +257,9 @@ var
 begin
   if (FSource = nil) or (FThread <> nil) or TAtlasShutdown.Signalled or
     not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsDue(FState.LastCheck, Now) then
+  begin
     Exit;
+  end;
   Source := FSource;
   mState := FState;
   FThread := TThread.CreateAnonymousThread(
@@ -260,7 +282,9 @@ begin
         end;
       end;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       // An diesen Thread gebunden: Stop entfernt das Ergebnis, wenn es nicht mehr ankommen soll.
       TThread.Queue(TThread.Current,
         procedure
@@ -279,11 +303,17 @@ begin
   FState.Asked := True;
   SaveState;
   if AYes then
-    Log('Update-Prüfung beim ersten Start: ja')
+  begin
+    Log('Update-Prüfung beim ersten Start: ja');
+  end
   else
+  begin
     Log('Update-Prüfung beim ersten Start: nein');
+  end;
   if not AYes then
+  begin
     Exit;
+  end;
   // Über die Einstellungen: Optionsseite und Schnellzugriff zeigen den neuen Wert, ApplySettings prüft.
   Settings := TAtlasIdeSettings.Stored;
   Settings.UpdatesCheck := True;
@@ -307,8 +337,10 @@ begin
       begin
         Log('Update-Prüfung: neue Version ' + AResult.Release.Version);
         if Assigned(FOnMessage) then
+        begin
           FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.UpdatesAvailable, [AResult.Release.Version,
             TAtlasPluginVersion.Version, AResult.Release.ChangesUrl]));
+        end;
       end;
     TAtlasUpdateOutcome.Current:
       Log('Update-Prüfung: aktuell');
@@ -324,9 +356,13 @@ begin
   FTimer.Enabled := False;
   FSource := nil;
   if FLine <> nil then
+  begin
     FLine.Detach;
+  end;
   if FRegistry <> nil then
+  begin
     FRegistry.Remove(TAtlasStatusLines.VersionId);
+  end;
   FLine := nil;
   FLineRef := nil;
   FRegistry := nil;
@@ -341,7 +377,9 @@ begin
     TAtlasShutdown.WaitForThreads([FThread]);
     TThread.RemoveQueuedEvents(FThread);
     if FThread.Finished then
-      FreeAndNil(FThread)
+    begin
+      FreeAndNil(FThread);
+    end
     else
     begin
       // Hängt der Thread noch, wird er nicht freigegeben, sondern bleibt sich selbst überlassen.
@@ -369,7 +407,9 @@ var
   Ready: Boolean;
 begin
   if FRegistry = nil then
+  begin
     Exit;
+  end;
   Ready := UpdateReady(Release);
   Info := Default(TAtlasVersionInfo);
   Info.Installed := TAtlasPluginVersion.Version;
@@ -380,15 +420,21 @@ begin
   if (FLine = nil) or (FLineAction <> Ready) then
   begin
     if FLine <> nil then
+    begin
       FLine.Detach;
+    end;
     if Ready then
+    begin
       FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.VersionId, TAtlasStatusLines.VersionOrder,
         procedure
         begin
           OpenUpdate;
-        end)
+        end);
+    end
     else
+    begin
       FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.VersionId, TAtlasStatusLines.VersionOrder);
+    end;
     FLineRef := FLine;
     FLineAction := Ready;
     FLine.Update(TAtlasStatusLines.VersionText(Info), TAtlasStatusLines.VersionState(Info),
@@ -407,7 +453,9 @@ var
   Release: TAtlasRelease;
 begin
   if not UpdateReady(Release) then
+  begin
     Exit;
+  end;
   Log('Update ' + Release.Version + ': Änderungen im Browser geöffnet');
   // Nur https-Adressen (TAtlasUpdates.TryParse bzw. Pending); heruntergeladen wird im Browser, nicht von Atlas.
   ShellExecute(0, 'open', PChar(Release.ChangesUrl), nil, nil, SW_SHOWNORMAL);

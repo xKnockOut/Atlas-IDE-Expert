@@ -109,11 +109,17 @@ function DocumentationText(AValue: TJSONValue): string;
 begin
   // string oder MarkupContent.
   if AValue is TJSONString then
-    Result := TJSONString(AValue).Value
+  begin
+    Result := TJSONString(AValue).Value;
+  end
   else if AValue is TJSONObject then
-    Result := TJSONObject(AValue).GetValue<string>('value', '')
+  begin
+    Result := TJSONObject(AValue).GetValue<string>('value', '');
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function RangeFromLsp(AValue: TJSONValue; out ARange: TAtlasFormatRange): Boolean;
@@ -138,7 +144,9 @@ begin
   Result.ProblemPlaceholder := -1;
   Result.ProblemArgument := -1;
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Result.Found := True;
   Result.FormatParameter := TJSONObject(AValue).GetValue<Integer>('formatParameter', -1);
   Result.ListParameter := TJSONObject(AValue).GetValue<Integer>('listParameter', -1);
@@ -146,14 +154,18 @@ begin
   Result.ActiveArgument := TJSONObject(AValue).GetValue<Integer>('activeArgument', -1);
   Items := TJSONObject(AValue).GetValue('placeholders');
   if Items is TJSONArray then
+  begin
     for Item in TJSONArray(Items) do
+    begin
       if Item is TJSONObject then
       begin
         Placeholder := Default(TAtlasFormatPlaceholder);
         Placeholder.Text := TJSONObject(Item).GetValue<string>('text', '');
         TypeText := TJSONObject(Item).GetValue<string>('type', '');
         if TypeText <> '' then
+        begin
           Placeholder.TypeChar := TypeText[1];
+        end;
         Placeholder.Valid := TJSONObject(Item).GetValue<Boolean>('valid', False);
         Placeholder.Argument := TJSONObject(Item).GetValue<Integer>('argument', -1);
         Placeholder.WidthArgument := TJSONObject(Item).GetValue<Integer>('width', -1);
@@ -161,24 +173,36 @@ begin
         Placeholder.HasRange := RangeFromLsp(TJSONObject(Item).GetValue('range'), Placeholder.Range);
         Result.Placeholders := Result.Placeholders + [Placeholder];
       end;
+    end;
+  end;
   Items := TJSONObject(AValue).GetValue('arguments');
   if Items is TJSONArray then
+  begin
     for Item in TJSONArray(Items) do
     begin
       if not RangeFromLsp(Item, Range) then
+      begin
         Range := Default(TAtlasFormatRange);
+      end;
       Result.Arguments := Result.Arguments + [Range];
     end;
+  end;
   Problem := TJSONObject(AValue).GetValue('problem');
   if Problem is TJSONObject then
   begin
     Kind := TJSONObject(Problem).GetValue<string>('kind', '');
     if Kind = 'invalid' then
-      Result.Problem := TAtlasFormatProblem.Invalid
+    begin
+      Result.Problem := TAtlasFormatProblem.Invalid;
+    end
     else if Kind = 'tooManyArguments' then
-      Result.Problem := TAtlasFormatProblem.TooManyArguments
+    begin
+      Result.Problem := TAtlasFormatProblem.TooManyArguments;
+    end
     else if Kind = 'typeConflict' then
+    begin
       Result.Problem := TAtlasFormatProblem.TypeConflict;
+    end;
     Result.ProblemPlaceholder := TJSONObject(Problem).GetValue<Integer>('placeholder', -1);
     Result.ProblemArgument := TJSONObject(Problem).GetValue<Integer>('argument', -1);
     Result.ProblemKind := TJSONObject(Problem).GetValue<string>('argumentKind', '');
@@ -197,17 +221,23 @@ begin
   Result.ActiveSignature := -1;
   Result.ActiveParameter := -1;
   if not (AResponse is TJSONObject) then
+  begin
     Exit;
+  end;
   Result.ActiveSignature := TJSONObject(AResponse).GetValue<Integer>('activeSignature', -1);
   Result.ActiveParameter := TJSONObject(AResponse).GetValue<Integer>('activeParameter', -1);
   Result.Format := FormatFromLsp(TJSONObject(AResponse).GetValue('format'));
   Signatures := TJSONObject(AResponse).GetValue('signatures');
   if not (Signatures is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(Signatures) do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Signature := Default(TAtlasSignature);
     Signature.Label_ := TJSONObject(Item).GetValue<string>('label', '');
     Signature.Documentation := DocumentationText(TJSONObject(Item).GetValue('documentation'));
@@ -221,10 +251,13 @@ begin
     end;
     Parameters := TJSONObject(Item).GetValue('parameters');
     if Parameters is TJSONArray then
+    begin
       for ParameterItem in TJSONArray(Parameters) do
       begin
         if not (ParameterItem is TJSONObject) then
+        begin
           Continue;
+        end;
         Parameter := Default(TAtlasSignatureParameter);
         Parameter.Start := -1;
         Parameter.Stop := -1;
@@ -248,6 +281,7 @@ begin
         Parameter.Documentation := DocumentationText(TJSONObject(ParameterItem).GetValue('documentation'));
         Signature.Parameters := Signature.Parameters + [Parameter];
       end;
+    end;
     Result.Signatures := Result.Signatures + [Signature];
   end;
 end;
@@ -259,11 +293,13 @@ begin
   FLock.Enter;
   try
     for Index := FWorkers.Count - 1 downto 0 do
+    begin
       if FWorkers[Index].Finished then
       begin
         FWorkers[Index].Free;
         FWorkers.Delete(Index);
       end;
+    end;
   finally
     FLock.Leave;
   end;
@@ -310,30 +346,42 @@ begin
   ReapWorkers;
   Result := False;
   if (AFileName = '') or TAtlasGuard.ProviderDisabled(ProviderTitle) then
+  begin
     Exit;
+  end;
   FileName := AFileName;
   // Sitzung holen und abgleichen im aufrufenden Thread: Sync wartet nicht auf den Server (siehe oben).
   Session := nil;
   Watch := TStopwatch.StartNew;
   try
     if Assigned(FSession) then
+    begin
       Session := FSession();
+    end;
     if Session <> nil then
+    begin
       Session.Sync(FileName, AText);
+    end;
   except
     // Server weg: kein Hint. Anderes zählt die Sicherung (#493).
     on E: Exception do
     begin
       if not (E is ELspClientError) then
+      begin
         TAtlasGuard.ReportProvider(ProviderTitle, E);
+      end;
       Exit;
     end;
   end;
   if Watch.ElapsedMilliseconds > TAtlasTimeLimit.LimitMs then
+  begin
     TAtlasGuard.ReportProviderSlow(ProviderTitle, Format('Abgleich dauerte %d ms', [Watch.ElapsedMilliseconds]));
+  end;
   Result := Session <> nil;
   if not Result then
+  begin
     Exit;
+  end;
   Provider := Self;
   Flag := FFlag;
   FlagRef := FFlagRef;
@@ -357,22 +405,28 @@ begin
         begin
           Help := Default(TAtlasSignatureHelp);
           if not (E is ELspClientError) then
+          begin
             TAtlasGuard.ReportProvider(ProviderTitle, E);
+          end;
         end;
       end;
       if TInterlocked.CompareExchange(Provider.FGeneration, 0, 0) <> Generation then
+      begin
         Exit;
+      end;
       // Im Hauptthread erst prüfen, ob die Quelle noch lebt und dies die jüngste Anfrage ist.
       TAtlasMainThread.Queue(TAtlasFeature.Signature,
         procedure
         begin
           if Flag.Alive and (FlagRef <> nil) and
             (TInterlocked.CompareExchange(Provider.FGeneration, 0, 0) = Generation) then
+          begin
             TAtlasGuard.Run(TAtlasFeature.Signature,
               procedure
               begin
                 ACallback(Help);
               end);
+          end;
         end);
     end);
   Worker.FreeOnTerminate := False;
