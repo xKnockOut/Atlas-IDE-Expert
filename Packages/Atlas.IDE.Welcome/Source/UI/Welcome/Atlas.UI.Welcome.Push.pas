@@ -129,18 +129,28 @@ begin
     for Plan in APlans do
     begin
       if Lines.Count > 0 then
+      begin
         Lines.Add('');
+      end;
       if Plan.SetUpstream then
+      begin
         Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushTargetNew, [Plan.Branch, Plan.Target,
-          Length(Plan.Commits)]))
+          Length(Plan.Commits)]));
+      end
       else
+      begin
         Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushTarget, [Plan.Branch, Plan.Target,
           Length(Plan.Commits)]));
+      end;
       for Commit in Plan.Commits do
+      begin
         Lines.Add('  ' + Commit.ShortHash + '  ' + FormatDateTime('ddddd t',
           TTimeZone.Local.ToLocalTime(Commit.Date)) + '  ' + Commit.Summary);
+      end;
       if Plan.More then
+      begin
         Lines.Add('  ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushMore));
+      end;
     end;
     Result := TrimRight(Lines.Text);
   finally
@@ -156,7 +166,9 @@ begin
   Dialog := TAtlasPushDialog.CreateDialog(nil, AProjectName, APlans);
   try
     if Assigned(APrepare) then
+    begin
       APrepare(Dialog);
+    end;
     Result := Dialog.ShowModal = mrOk;
   finally
     Dialog.Free;
