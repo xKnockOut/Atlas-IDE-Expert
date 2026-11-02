@@ -36,7 +36,6 @@ uses
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.TestUnits,
-  Atlas.Common.Lsp.UnitSearch,
   Atlas.Common.Lsp.DocumentLinks,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Rename,
@@ -73,6 +72,8 @@ uses
   Shell.Composition.CodeActions,
   Shell.Composition.Status,
   Shell.Composition.Slash,
+  Shell.Composition.Contract,
+  Shell.Composition.UnitSearch,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -179,7 +180,7 @@ type
     /// <summary>Gefundenes Testprogramm je Wurzel mit Zeitpunkt (#274); Sperre ist das Objekt selbst.</summary>
     FTestPrograms: TDictionary<string, TPair<string, UInt64>>;
     /// <summary>Daten des Fensters „Units suchen“ im Plugin (#777).</summary>
-    FUnitSearch: TUnitSearch;
+    FUnitSearch: TShellUnitSearch;
     FCommands: TLspCommands;
     // Methodenreferenzen für die Befehle, vorab gebildet (Free Pascal). Je Empfänger der eigene Typ: Delphi 12 nimmt
     // TCompletionReadText nicht als TResourceStringRead an, obwohl die Signatur gleich ist.
@@ -376,13 +377,15 @@ type
     /// <summary>Teil von WireStatus: Zustände von Compiler, Prüflauf und Index-Warteschlange.</summary>
     procedure WireStatusStates(var AServices: TShellStatusServices);
     /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter FWorkspacesLock auf.</summary>
-    procedure VisitWorkspaces(const AVisit: TShellStatusWorkspacesProc);
+    procedure VisitWorkspaces(const AVisit: TShellWorkspacesProc);
     /// <summary>Arbeitsbereich der Datei hinter AUri, mit '' alle; unter der Sperre der Arbeitsbereiche.</summary>
     function CommandWorkspaces(const AUri: string): TArray<TShellWorkspace>;
     /// <summary>Befehle für Metriken, TODOs, Architektur, Abfragen und Hotspots.</summary>
     procedure WireReportCommands;
     /// <summary>Befehle für Compiler-Baseline, Slash-Menü, Testunits und Unit-Suche.</summary>
     procedure WireSlashCommands;
+    /// <summary>Teil von WireSlashCommands: Daten des Fensters „Units suchen“ (#777).</summary>
+    procedure WireUnitSearch;
     /// <summary>Teil von Create (S-02): Dateiüberwachung und Index-Auffrischung.</summary>
     procedure WireWatchedFiles;
     /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
@@ -470,18 +473,6 @@ type
     procedure StoreTestProgram(const ARoot, AProgram: string);
     /// <summary>.dpr in der Wurzel und eine Ebene darunter (ohne Punktordner).</summary>
     function DprFilesNear(const ARoot: string): TArray<string>;
-    /// <summary>Index, Projekte und Dateizugriffe für „Units suchen“ (#777).</summary>
-    function UnitSearchContext(out AContext: TUnitSearchContext): Boolean;
-    /// <summary>Projekte aller Arbeitsbereiche für die Unit-Suche.</summary>
-    function UnitSearchProjects: TArray<TUnitSearchProject>;
-    /// <summary>Vorfahren der Klasse AType aus dem Index.</summary>
-    function IndexAncestorsOf(AType: string): TArray<string>;
-    function SearchSourceText(AFileName: string): string;
-    function SearchGitState(AFileName: string): string;
-    /// <summary>uses-Umfeld der Code-Aktionen für AUri; leer, solange es fehlt.</summary>
-    function SearchUsesContext(AUri: string): TUsesContext;
-    /// <summary>Git-Zustand einer Datei für die Vorschau (#777); '' ohne Git oder Repository.</summary>
-    function GitStateOf(const AFileName: string): string;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
     /// <summary>Dateien der Projektprüfung: ProjectSourceFiles ohne Testunits, wenn excludeTests gilt.</summary>
@@ -1593,22 +1584,26 @@ begin
     begin
       Result := FTestUnits.Execute(AArguments);
     end);
-  FUnitSearch := TUnitSearch.Create(UnitSearchContext);
-  FCommands.Register(TUnitSearch.UnitsCommand,
-    function(const AArguments: TJSONArray): TJSONValue
+  WireUnitSearch;
+  FUnitSearch.RegisterCommands(FCommands);
+end;
+
+procedure TServerComposition.WireUnitSearch;
+var
+  mServices: TShellUnitSearchServices;
+begin
+  mServices := Default(TShellUnitSearchServices);
+  mServices.Logger := FLogger;
+  mServices.Index := FIndex;
+  mServices.VisitWorkspaces := VisitWorkspaces;
+  mServices.ReadText := ReadSourceText;
+  mServices.UsesContextFor := UsesContextFor;
+  mServices.Process :=
+    function: ICompilerProcess
     begin
-      Result := FUnitSearch.ExecuteUnits(AArguments);
-    end);
-  FCommands.Register(TUnitSearch.PreviewCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitSearch.ExecutePreview(AArguments);
-    end);
-  FCommands.Register(TUnitSearch.AddUsesCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitSearch.ExecuteAddUses(AArguments);
-    end);
+      Result := FCompilerProcess;
+    end;
+  FUnitSearch := TShellUnitSearch.Create(mServices);
 end;
 
 procedure TServerComposition.WireServerCommands;
@@ -1621,11 +1616,6 @@ begin
     function(AAnonymize: Boolean): TJSONObject
     begin
       Result := FStatusReports.StatusJson(AAnonymize);
-    end;
-  mServices.Processes :=
-    function: TArray<TLspProcessWorkspace>
-    begin
-      Result := FStatusReports.CollectProcesses;
     end;
   mServices.GlobalSettingsFile :=
     function: string
@@ -1733,7 +1723,7 @@ begin
     end;
 end;
 
-procedure TServerComposition.VisitWorkspaces(const AVisit: TShellStatusWorkspacesProc);
+procedure TServerComposition.VisitWorkspaces(const AVisit: TShellWorkspacesProc);
 begin
   System.TMonitor.Enter(FWorkspacesLock);
   try
@@ -3173,134 +3163,6 @@ begin
     on E: EInOutError do
       FLogger.Debug('Testprojekt: Ordner nicht lesbar: ' + E.Message);
   end;
-end;
-
-/// <summary>Gibt es die Datei auf der Platte?</summary>
-function FileOnDisk(AFileName: string): Boolean;
-begin
-  Result := FileExists(AFileName);
-end;
-
-/// <summary>Letzte Änderung der Datei; 0, wenn sie fehlt.</summary>
-function FileModified(AFileName: string): TDateTime;
-begin
-  Result := 0;
-  if FileExists(AFileName) then
-  begin
-    Result := TFile.GetLastWriteTime(AFileName);
-  end;
-end;
-
-function TServerComposition.UnitSearchContext(out AContext: TUnitSearchContext): Boolean;
-begin
-  AContext := Default(TUnitSearchContext);
-  AContext.Units := FIndex.Units;
-  AContext.Projects := UnitSearchProjects;
-  AContext.AncestorsOf := IndexAncestorsOf;
-  AContext.Exists := FileOnDisk;
-  AContext.ReadText := SearchSourceText;
-  AContext.Modified := FileModified;
-  AContext.GitState := SearchGitState;
-  AContext.UsesFor := SearchUsesContext;
-  Result := True;
-end;
-
-function TServerComposition.UnitSearchProjects: TArray<TUnitSearchProject>;
-var
-  mWorkspace: TShellWorkspace;
-  mInfo: TProjectInfo;
-  mProject: TUnitSearchProject;
-  mText: string;
-begin
-  Result := nil;
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    for mWorkspace in FWorkspaces do
-    begin
-      mProject := Default(TUnitSearchProject);
-      mProject.Files := mWorkspace.State.ProjectFiles;
-      if mWorkspace.State.Project(mInfo) then
-      begin
-        mProject.FileName := mInfo.FileName;
-        mProject.Name := ChangeFileExt(ExtractFileName(mInfo.FileName), '');
-        mProject.IsTest := (mInfo.MainSource <> '') and ReadSourceText(mInfo.MainSource, mText) and
-          TTestUnits.IsTestProgram(mText);
-      end
-      else
-      begin
-        mProject.Name := mWorkspace.Name;
-      end;
-      Result := Result + [mProject];
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
-end;
-
-function TServerComposition.IndexAncestorsOf(AType: string): TArray<string>;
-var
-  mLocation: TSymbolLocation;
-begin
-  Result := nil;
-  for mLocation in FIndex.FindSymbols(AType) do
-  begin
-    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
-    begin
-      Exit(mLocation.Symbol.Ancestors);
-    end;
-  end;
-end;
-
-function TServerComposition.SearchSourceText(AFileName: string): string;
-begin
-  Result := SourceTextOrEmpty(AFileName);
-end;
-
-function TServerComposition.SearchGitState(AFileName: string): string;
-begin
-  Result := GitStateOf(AFileName);
-end;
-
-function TServerComposition.SearchUsesContext(AUri: string): TUsesContext;
-begin
-  if not UsesContextFor(AUri, Result) then
-  begin
-    Result := Default(TUsesContext);
-  end;
-end;
-
-function TServerComposition.GitStateOf(const AFileName: string): string;
-var
-  Request: TCompilerRequest;
-  Output: TArray<string>;
-  Code: Integer;
-begin
-  Result := '';
-  if not FileExists(AFileName) then
-  begin
-    Exit;
-  end;
-  Request := Default(TCompilerRequest);
-  Request.Executable := TVcsChanges.FindProgram('git.exe');
-  Request.Arguments := ['status', '--porcelain', '--', ExtractFileName(AFileName)];
-  Request.WorkingDir := ExtractFileDir(AFileName);
-  Output := nil;
-  try
-    Code := FCompilerProcess.Run(Request,
-      procedure(const ALine: string)
-      begin
-        Output := Output + [ALine];
-      end);
-  except
-    // Ohne Git: kein Zustand.
-    on E: Exception do
-    begin
-      FLogger.Debug('Git-Zustand nicht ermittelt: ' + E.ClassName);
-      Exit;
-    end;
-  end;
-  // Exit-Code 128: kein Repository.
-  Result := TUnitSearch.GitState(Output, Code = 0);
 end;
 
 function TServerComposition.ProjectSourceFiles: TArray<string>;
