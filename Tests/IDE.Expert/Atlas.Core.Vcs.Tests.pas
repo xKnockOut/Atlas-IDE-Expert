@@ -174,9 +174,13 @@ type
 function Root: string;
 begin
   if PathDelim = '\' then
-    Result := 'C:\Projekte\Kunde'
+  begin
+    Result := 'C:\Projekte\Kunde';
+  end
   else
+  begin
     Result := '/projekte/kunde';
+  end;
 end;
 
 function Under(const ARelative: string): string;
@@ -213,9 +217,13 @@ begin
   for Index := 0 to High(AArguments) do
   begin
     if AfterC then
-      AfterC := False
+    begin
+      AfterC := False;
+    end
     else if AArguments[Index] = '-c' then
-      AfterC := True
+    begin
+      AfterC := True;
+    end
     else if Copy(AArguments[Index], 1, 1) <> '-' then
     begin
       Command := AArguments[Index];
@@ -225,8 +233,12 @@ begin
   Result := TAtlasVcsRunResult.Make(Outcome, ExitCode, nil);
   Result.ErrorText := ErrorText;
   for Index := 0 to High(Commands) do
+  begin
     if Commands[Index] = Command then
+    begin
       Result.Output := Utf8Bytes(Answers[Index]);
+    end;
+  end;
 end;
 
 { TFakeVcs }
@@ -414,7 +426,9 @@ var
   Provider: TAtlasVcsProvider;
 begin
   for Provider := Low(TAtlasVcsProvider) to High(TAtlasVcsProvider) do
+  begin
     Assert.IsTrue(AtlasVcsProviderOf(AtlasVcsProviderText(Provider)) = Provider, AtlasVcsProviderText(Provider));
+  end;
   Assert.IsTrue(AtlasVcsProviderOf(' SVN ') = TAtlasVcsProvider.Svn, 'Groß- und Kleinschreibung egal');
   Assert.IsTrue(AtlasVcsProviderOf('') = TAtlasVcsProvider.Auto, 'leer = auto');
   Assert.IsTrue(AtlasVcsProviderOf('"off"') = TAtlasVcsProvider.Off, 'JSON-Text aus settings.json');
@@ -492,9 +506,13 @@ begin
           begin
             Trace := Trace + '<' + Reader.Name;
             if Reader.Name = 'a' then
+            begin
               Trace := Trace + ' x=' + Reader.Attr('x') + ' y=' + Reader.Attr('y') + ' q=' + Reader.Attr('q');
+            end;
             if Reader.EmptyElement then
+            begin
               Trace := Trace + '/';
+            end;
             Trace := Trace + '>';
           end;
         TAtlasVcsXmlNode.EndTag:
@@ -732,8 +750,12 @@ begin
       Item: string;
     begin
       for Item in Dirs do
+      begin
         if SameText(Item, APath) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
   AFileExists :=
@@ -742,8 +764,12 @@ begin
       Item: string;
     begin
       for Item in Files do
+      begin
         if SameText(Item, APath) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
   Result := True;
@@ -799,7 +825,9 @@ var
 begin
   Exe := 'svn';
   if PathDelim = '\' then
+  begin
     Exe := 'svn.exe';
+  end;
   PathText := Under('leer') + PathSep + '"' + Under('tools') + '"' + PathSep + PathSep;
   Assert.AreEqual(Under('tools/' + Exe), TAtlasVcsTools.Locate('svn', PathText, nil,
     function(const APath: string): Boolean
@@ -967,9 +995,13 @@ var
 begin
   Temp := GetEnvironmentVariable('TEMP');
   if Temp = '' then
+  begin
     Temp := GetEnvironmentVariable('TMPDIR');
+  end;
   if Temp = '' then
+  begin
     Temp := '/tmp';
+  end;
   Result := IncludeTrailingPathDelimiter(Temp) + 'AtlasVcsTests-' + AName + '-' + FormatDateTime('hhnnsszzz', Now) +
     IntToStr(Random(1000));
   ForceDirectories(Result);
@@ -984,7 +1016,9 @@ begin
   Stream := TFileStream.Create(AFileName, fmCreate);
   try
     if Length(Bytes) > 0 then
+    begin
       Stream.WriteBuffer(Bytes[0], Length(Bytes));
+    end;
   finally
     Stream.Free;
   end;
@@ -1008,9 +1042,13 @@ begin
     begin
       // svn fehlt, git ist da.
       if AKind = TAtlasVcsKind.Git then
-        Result := 'git.exe'
+      begin
+        Result := 'git.exe';
+      end
       else
+      begin
         Result := '';
+      end;
     end;
   Reported := nil;
   TAtlasVcsNotices.Reset;
@@ -1169,7 +1207,9 @@ begin
       end));
     Deadline := TThread.GetTickCount64 + 5000;
     while not Done and (TThread.GetTickCount64 < Deadline) do
+    begin
       CheckSynchronize(10);
+    end;
     Assert.IsTrue(Done);
     Worker.Stop(1000);
     Assert.IsFalse(Worker.Run(
@@ -1719,7 +1759,9 @@ begin
   // Eingabedatei für propset -F: vor dem Aufruf geschrieben, CRLF wird LF.
   mFile := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'Atlas-Vcs-Tests'), 'p0.txt');
   if TFile.Exists(mFile) then
+  begin
     TFile.Delete(mFile);
+  end;
   mStep := TAtlasVcsBranchStep.Make(TArray<string>.Create('propset', 'svn:externals', '-F', mFile, 'p0'), False,
     False);
   mStep.InputFile := mFile;

@@ -334,6 +334,7 @@ begin
   Assert.AreEqual(26, Bars[0].Bottom);
   Found := 0;
   for Bar in Bars do
+  begin
     if Bar.Kind = TAtlasOverviewMarkKind.Search then
     begin
       Inc(Found);
@@ -341,6 +342,7 @@ begin
       Assert.AreEqual(110, Bar.Top);
       Assert.AreEqual(114, Bar.Bottom);
     end;
+  end;
   Assert.AreEqual(1, Found);
   // Der Fehler liegt in der Faltung: auf ihrer Kopfzeile, wichtigste Art zuletzt.
   Assert.AreEqual(Ord(TAtlasOverviewMarkKind.Error), Ord(Bars[2].Kind));

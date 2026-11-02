@@ -56,7 +56,9 @@ begin
   for Width in AWidths do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + IntToStr(Width);
   end;
 end;

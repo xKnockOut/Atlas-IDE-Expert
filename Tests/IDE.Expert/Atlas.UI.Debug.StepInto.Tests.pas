@@ -42,9 +42,13 @@ begin
   Result.Kind := AKind;
   Result.HasTarget := AAvailable;
   if AAvailable then
-    Result.Location := 'Haupt.pas:12'
+  begin
+    Result.Location := 'Haupt.pas:12';
+  end
   else
+  begin
     Result.Unavailable := TAtlasStepUnavailable.NoSource;
+  end;
 end;
 
 function Sample: TArray<TAtlasStepRow>;

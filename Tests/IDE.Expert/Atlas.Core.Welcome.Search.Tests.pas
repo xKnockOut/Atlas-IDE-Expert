@@ -103,9 +103,13 @@ procedure PutVar(var ABytes: TBytes; AValue: UInt64);
 begin
   repeat
     if AValue >= $80 then
-      ABytes := ABytes + [Byte((AValue and $7F) or $80)]
+    begin
+      ABytes := ABytes + [Byte((AValue and $7F) or $80)];
+    end
     else
+    begin
       ABytes := ABytes + [Byte(AValue)];
+    end;
     AValue := AValue shr 7;
   until AValue = 0;
 end;
@@ -116,7 +120,9 @@ var
 begin
   Result := 2166136261;
   for Index := AFrom to High(AData) do
+  begin
     Result := Cardinal(UInt64(Result xor AData[Index]) * 16777619);
+  end;
 end;
 
 /// <summary>Cache im Format von Atlas.Common.Index.Cache (Version AVersion).</summary>
@@ -133,7 +139,9 @@ var
   begin
     Result := Strings.IndexOf(AValue);
     if Result < 0 then
+    begin
       Result := Strings.Add(AValue);
+    end;
   end;
 
 begin
@@ -149,9 +157,13 @@ begin
       PutVar(Body, 2 * 638000000000000000); // Zeitstempel (ZigZag)
       PutVar(Body, IndexOf('HASH-' + Spec_.Name));
       if Spec_.Library_ then
-        PutVar(Body, 1 or 8)
+      begin
+        PutVar(Body, 1 or 8);
+      end
       else
+      begin
         PutVar(Body, 8);
+      end;
       PutVar(Body, 2); // uses (interface)
       PutVar(Body, IndexOf('System.SysUtils'));
       PutVar(Body, IndexOf('System.Classes'));
@@ -161,7 +173,9 @@ begin
       PutVar(Body, 1); // Include-Zeitstempel
       PutVar(Body, 3); // -2 als ZigZag
       for Index := 1 to 6 do
-        PutVar(Body, Index); // Präfix-Zählung (#452)
+      begin
+        PutVar(Body, Index);
+      end; // Präfix-Zählung (#452)
       PutVar(Body, 1); // Hinweise im Unit-Kopf (#1018)
       PutVar(Body, IndexOf('deprecated'));
       PutVar(Body, IndexOf('Nutze Neu')); // Grund
@@ -171,7 +185,9 @@ begin
       PutVar(Body, 1); // nicht verfügbar
       PutVar(Body, 200); // Blocklänge über ein Byte hinaus
       for Index := 1 to 200 do
+      begin
         Body := Body + [Byte(Index)];
+      end;
       PutVar(Body, 1); // Verwendungen
       PutVar(Body, 3);
       Body := Body + [$FF, $80, $01];
@@ -190,7 +206,9 @@ begin
     Result := Result + Body;
     Sum := Checksum(Result, ChecksumAt + 4);
     for Index := 0 to 3 do
+    begin
       Result[ChecksumAt + Index] := Byte(Sum shr (8 * Index));
+    end;
   finally
     Strings.Free;
   end;
@@ -236,11 +254,17 @@ begin
     try
       repeat
         if (Search.Name = '.') or (Search.Name = '..') then
+        begin
           Continue;
+        end;
         if (Search.Attr and faDirectory) <> 0 then
-          RemoveTree(Path + Search.Name)
+        begin
+          RemoveTree(Path + Search.Name);
+        end
         else
+        begin
           DeleteFile(Path + Search.Name);
+        end;
       until FindNext(Search) <> 0;
     finally
       FindClose(Search);
@@ -343,7 +367,9 @@ begin
   Cut := Copy(Data, 0, Length(Data) - 50);
   Sum := Checksum(Cut, 13);
   for Index := 0 to 3 do
+  begin
     Cut[9 + Index] := Byte(Sum shr (8 * Index));
+  end;
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(Cut, Reason))));
   Assert.AreEqual('Inhalt beschädigt', Reason);
 end;
@@ -447,11 +473,13 @@ var
   Entry: TAtlasWelcomeSearchResult;
 begin
   for Entry in AResults do
+  begin
     if Entry.Group = AGroup then
     begin
       AResult := Entry;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -512,9 +540,13 @@ var
 begin
   Hits := nil;
   for Index := 1 to 7 do
+  begin
     Hits := Hits + [FileHit(Format('Unit%d.pas', [Index]), 'P')];
+  end;
   for Index := 1 to 2 do
+  begin
     Hits := Hits + [CommandHit(Format('Unit-Befehl %d', [Index]), 'Atlas.U' + IntToStr(Index))];
+  end;
   Results := TAtlasWelcomeSearch.Search('unit', Hits, '');
   Assert.AreEqual(2, Integer(Length(Results)));
   Assert.AreEqual(4, Integer(Length(Results[0].Hits)));
@@ -595,7 +627,9 @@ var
 begin
   Hits := [CommandHit('Unit-Befehl', 'Atlas.U')];
   for Index := 1 to 6 do
+  begin
     Hits := Hits + [FileHit(Format('Unit%d.pas', [Index]), 'P')];
+  end;
   Rows := TAtlasWelcomeSearch.Rows(TAtlasWelcomeSearch.Search('unit', Hits, 'Hinweis'));
   // Dateien: Kopf, 4 Treffer, „2 weitere“; Symbole: Kopf, Hinweis; Befehle: Kopf, Treffer.
   Assert.AreEqual(10, Integer(Length(Rows)));

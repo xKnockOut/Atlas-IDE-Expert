@@ -122,7 +122,9 @@ begin
   Result := Default(TAtlasFileMetrics);
   Result.Enabled := True;
   for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
+  begin
     Result.Limits[Metric] := MaxInt;
+  end;
   Result.Limits[TAtlasMetric.MethodLength] := 8;
   Result.Limits[TAtlasMetric.Cyclomatic] := 15;
   Method := Default(TAtlasMethodMetrics);

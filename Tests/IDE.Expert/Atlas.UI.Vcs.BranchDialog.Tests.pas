@@ -92,7 +92,9 @@ begin
   Result.Uncommitted := AUncommitted;
   Result.Worktree := AWorktree;
   if AFolder <> '' then
+  begin
     Result.WorktreeFolder := AFolder;
+  end;
 end;
 
 function SvnFacts: TAtlasVcsBranchFacts;

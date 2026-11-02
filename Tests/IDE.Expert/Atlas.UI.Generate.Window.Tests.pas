@@ -67,7 +67,9 @@ var
 begin
   Result := nil;
   for Name in MockupNames do
+  begin
     Result := Result + [Slash(Name, TAtlasGenerateGroup.Generate)];
+  end;
   Result[0].HasChoices := True;
   Result[0].Multi := True;
   Result[0].Separator := ', ';
@@ -116,8 +118,12 @@ begin
     Assert.IsTrue(Window.Rows[0].IsHeader);
     Captions := nil;
     for Row in Window.Rows do
+    begin
       if not Row.IsHeader then
+      begin
         Captions := Captions + [IntToStr(Row.Digit) + ' ' + TAtlasGenerateWindow.EntryCaption(Entries[Row.Entry])];
+      end;
+    end;
     Assert.AreEqual('1 Konstruktor aus Feldern|2 Destruktor mit Freigabe|3 Property mit Feld|' +
       '4 Methoden überschreiben…|5 Interface implementieren…|6 Equals / GetHashCode', string.Join('|', Captions));
     Assert.AreEqual(1, Window.Selected, 'erster Eintrag unter dem Kopf gewählt');
@@ -135,8 +141,10 @@ var
   Name: string;
 begin
   for Name in CatalogNames do
+  begin
     Assert.IsFalse(TAtlasGenerateWindow.EntryCaption(Slash(Name, TAtlasGenerateGroup.Generate)).StartsWith('Server'),
       Name);
+  end;
   TAtlasStrings.Language := TAtlasLanguage.English;
   Assert.AreEqual('Constructor from fields',
     TAtlasGenerateWindow.EntryCaption(Slash('ctor', TAtlasGenerateGroup.Generate)));
@@ -166,8 +174,12 @@ begin
     Assert.AreEqual('slash:dtor', Hidden);
     Count := 0;
     for Row in Window.Rows do
+    begin
       if not Row.IsHeader then
+      begin
         Inc(Count);
+      end;
+    end;
     Assert.AreEqual(5, Count, 'ausgeblendet');
   finally
     Window.Free;

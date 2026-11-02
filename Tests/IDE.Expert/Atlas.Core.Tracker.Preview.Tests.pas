@@ -145,7 +145,9 @@ begin
   mHistory := TAtlasIssueHistory.Create;
   try
     for mIndex := 1 to TAtlasIssueHistory.MaxEntries + 5 do
+    begin
       mHistory.Visit(Entry('#' + IntToStr(mIndex)));
+    end;
     Assert.AreEqual(Integer(TAtlasIssueHistory.MaxEntries), mHistory.Count);
     repeat
       // Bis zum ältesten Eintrag zurück.

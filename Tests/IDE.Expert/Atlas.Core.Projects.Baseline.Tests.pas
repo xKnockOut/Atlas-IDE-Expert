@@ -78,7 +78,9 @@ begin
   Disk.Clear;
   Asked := 0;
   for Name in AFiles do
+  begin
     Disk.AddOrSetValue(UpperCase(Name), Baseline);
+  end;
 end;
 
 function Exists(const AFileName: string): Boolean;

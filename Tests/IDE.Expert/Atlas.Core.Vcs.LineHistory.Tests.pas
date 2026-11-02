@@ -131,9 +131,13 @@ type
 function Root: string;
 begin
   if PathDelim = '\' then
-    Result := 'C:\Projekte\Kunde'
+  begin
+    Result := 'C:\Projekte\Kunde';
+  end
   else
+  begin
     Result := '/projekte/kunde';
+  end;
 end;
 
 function Under(const ARelative: string): string;
@@ -170,11 +174,13 @@ begin
   Calls := Calls + [mLine];
   Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Ok, 0, nil);
   for mIndex := 0 to High(Parts) do
+  begin
     if Pos(Parts[mIndex], mLine) > 0 then
     begin
       Result.Output := Answers[mIndex];
       Break;
     end;
+  end;
 end;
 
 { TAtlasVcsLineHistoryTests }
@@ -277,7 +283,9 @@ begin
   mDiffs := TAtlasSvnParser.ParseLogDiff(cSvnLogDiff);
   SetLength(mPatches, Length(mDiffs));
   for mIndex := 0 to High(mDiffs) do
+  begin
     mPatches[mIndex] := mDiffs[mIndex].Patch;
+  end;
   // Zeilen 1–3 (a, B, c): r3 ändert b, r2 legt sie an; r5 und r4 ändern nur dahinter.
   mFound := TAtlasVcsLineTrace.Trace(mPatches, 1, 3);
   Assert.AreEqual(2, Integer(Length(mFound)));
@@ -369,7 +377,9 @@ begin
   // Viele Commits: je MessageBatch ein Aufruf.
   SetLength(mRevisions, TAtlasGitVersionControl.MessageBatch + 1);
   for mIndex := 0 to High(mRevisions) do
+  begin
     mRevisions[mIndex] := cHashA;
+  end;
   Assert.IsTrue(mHistory.Messages(Under('src/f.pas'), mRevisions, mMessages) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual(4, Integer(Length(mRunner.Calls)));
   // Ohne Commits kein Prozess; Optionen und ungültige Bereiche starten keinen.

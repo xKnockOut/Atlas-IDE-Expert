@@ -57,9 +57,13 @@ begin
   Result.Problem.Code := ARule;
   Result.Problem.Source := ASource;
   if ASource = TAtlasProblem.CompilerSource then
-    Result.Category := TAtlasFindingCategory.Compiler
+  begin
+    Result.Category := TAtlasFindingCategory.Compiler;
+  end
   else
+  begin
     Result.Category := TAtlasFindingCategory.CodeSmell;
+  end;
 end;
 
 function Preview: TAtlasBulkFixPreview;

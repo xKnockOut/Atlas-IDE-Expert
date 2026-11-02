@@ -50,8 +50,12 @@ begin
   // %d und %s in Reihenfolge, z. B. "ds".
   Result := '';
   for Index := 1 to Length(AText) - 1 do
+  begin
     if AText[Index] = '%' then
+    begin
       Result := Result + AText[Index + 1];
+    end;
+  end;
 end;
 
 procedure AssertTextPair(const AGerman, AEnglish: string; AIndex: Integer);

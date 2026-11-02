@@ -134,11 +134,13 @@ begin
     Assert.AreEqual(2, Integer(Length(Layout.Boxes)));
     Backs := 0;
     for Edge in Layout.Edges do
+    begin
       if Edge.Back then
       begin
         Inc(Backs);
         Assert.AreEqual(Layout.BoxOf(1), Edge.Source);
       end;
+    end;
     Assert.AreEqual(2, Backs);
     // Weiteres Laden unter einer Rekursion wird ignoriert.
     Diagram.SetChildren(2, [Item('X', 'C:\P\A.pas', 1)]);
@@ -162,7 +164,9 @@ begin
     Diagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Speichern', 'C:\P\A.pas', 3)]);
     Children := nil;
     for Index := 1 to 11 do
+    begin
       Children := Children + [Item('Aufrufer' + IntToStr(Index), 'C:\P\A.pas', 10 + Index)];
+    end;
     Diagram.SetChildren(0, Children);
     Assert.AreEqual(8, Integer(Length(Diagram.VisibleChildren(0, More))));
     Assert.AreEqual(3, More);
@@ -170,6 +174,7 @@ begin
     Assert.AreEqual(10, Integer(Length(Layout.Boxes)), 'Wurzel, 8 Kinder, „+ 3 …“');
     Found := False;
     for Box in Layout.Boxes do
+    begin
       if Box.Kind = TAtlasCallBoxKind.More then
       begin
         Found := True;
@@ -177,6 +182,7 @@ begin
         Assert.AreEqual(0, Box.Node);
         Assert.AreEqual(1, Box.Column);
       end;
+    end;
     Assert.IsTrue(Found);
     Diagram.ShowAll(0);
     Assert.AreEqual(12, Integer(Length(Diagram.Layout.Boxes)));
@@ -242,15 +248,21 @@ begin
     Diagram.SetChildren(0, [Over, ViaVirtual, Plain]);
     Layout := Diagram.Layout;
     for Edge in Layout.Edges do
+    begin
       if Layout.Boxes[Edge.Target].Node = 1 then
       begin
         Assert.IsTrue(Edge.Dashed);
         Assert.AreEqual(3, Edge.Implementations);
       end
       else if Layout.Boxes[Edge.Target].Node = 2 then
-        Assert.IsTrue(Edge.Dashed)
+      begin
+        Assert.IsTrue(Edge.Dashed);
+      end
       else
+      begin
         Assert.IsFalse(Edge.Dashed);
+      end;
+    end;
   finally
     Diagram.Free;
   end;

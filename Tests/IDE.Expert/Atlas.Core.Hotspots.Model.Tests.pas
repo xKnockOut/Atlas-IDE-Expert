@@ -47,7 +47,9 @@ function EntryJson(const AUnit, APath, AMethod: string; ALine, AChanges, AComple
 begin
   Result := '{"unit":"' + AUnit + '","path":"' + APath + '"';
   if AMethod <> '' then
+  begin
     Result := Result + ',"method":"' + AMethod + '"';
+  end;
   Result := Result + ',"line":' + IntToStr(ALine) + ',"endLine":' + IntToStr(ALine + ALines - 1) + ',"changes":' +
     IntToStr(AChanges) + ',"authors":2,"authorNames":["anna","bernd"],"added":10,"deleted":4,' +
     '"lastChange":"2026-10-20T08:00:00Z","complexity":' + IntToStr(AComplexity) + ',"lines":' + IntToStr(ALines) +

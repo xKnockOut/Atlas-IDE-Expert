@@ -111,7 +111,9 @@ begin
   for Index in AOrder do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + AEntries[Index].Name;
   end;
 end;
@@ -226,7 +228,9 @@ begin
     TAtlasUnitSearch.OriginsForScope('group'), []);
   Assert.AreEqual('Atlas.Core.Settings.Plugin,Atlas.UI.Settings.Page,Atlas.Core.Settings.Tests', Names(List, Order));
   for Index := 0 to High(List) do
+  begin
     List[Index].IsOpen := List[Index].Name = 'Atlas.Core.Settings.Tests';
+  end;
   Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('Settings', True),
     TAtlasUnitSearch.OriginsForScope('group'), []);
   Assert.AreEqual('Atlas.Core.Settings.Tests', List[Order[0]].Name, 'offene Unit zuerst');
@@ -499,9 +503,13 @@ begin
     Watch := TStopwatch.StartNew;
     Query := TAtlasUnitQuery.Parse(Pattern, True);
     if HasPrevious and Query.Narrows(Previous) then
-      Order := TAtlasUnitSearch.Order(Units, Query, All, [], Order)
+    begin
+      Order := TAtlasUnitSearch.Order(Units, Query, All, [], Order);
+    end
     else
+    begin
       Order := TAtlasUnitSearch.Order(Units, Query, All, []);
+    end;
     Previous := Query;
     HasPrevious := True;
     TAtlasUnitSearch.Rows(Units, Order, TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.P1', nil, True);

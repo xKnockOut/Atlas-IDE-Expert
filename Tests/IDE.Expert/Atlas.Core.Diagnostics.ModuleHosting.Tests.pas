@@ -61,7 +61,9 @@ type
 procedure TLog.Add(const AEntry: string);
 begin
   if Text <> '' then
+  begin
     Text := Text + ',';
+  end;
   Text := Text + AEntry;
 end;
 

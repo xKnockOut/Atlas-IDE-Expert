@@ -64,7 +64,6 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Build.Messages,
   Atlas.Core.Vcs.Contract,
-  Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Welcome.Projects;
 
@@ -103,18 +102,6 @@ begin
   Result.Build.Hints := AHints;
 end;
 
-function Message(ASeverity: TAtlasCompilerSeverity; const AFileName: string; ALine: Integer;
-  const ACode: string): TAtlasCompilerMessage;
-begin
-  Result := Default(TAtlasCompilerMessage);
-  Result.Severity := ASeverity;
-  Result.FileName := AFileName;
-  Result.Line := ALine;
-  Result.Column := 3;
-  Result.Code := ACode;
-  Result.Text := 'Text';
-end;
-
 { TAtlasWelcomeProjectsTests }
 
 procedure TAtlasWelcomeProjectsTests.EntriesKeepOrderDropDuplicatesAndHidden;
@@ -146,7 +133,9 @@ var
 begin
   Recent := nil;
   for Index := 1 to 40 do
+  begin
     Recent := Recent + [Format('C:\P%d\P%d.dproj', [Index, Index])];
+  end;
   Assert.AreEqual(8, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, TAtlasWelcomeProjects.DefaultMax))));
   Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, 0))), 'mindestens eins');
   Assert.AreEqual(30, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, 99))), 'höchstens 30');
@@ -288,13 +277,6 @@ begin
   Summary.Vcs.Kind := 'svn';
   Summary.Vcs.Branch := 'trunk';
   Assert.AreEqual('trunk', Entry(Summary).Branch);
-end;
-
-function VcsChange(const APath, AOldPath: string): TAtlasVcsChange;
-begin
-  Result := Default(TAtlasVcsChange);
-  Result.Path := APath;
-  Result.OldPath := AOldPath;
 end;
 
 procedure TAtlasWelcomeProjectsTests.ShortensLongPaths;

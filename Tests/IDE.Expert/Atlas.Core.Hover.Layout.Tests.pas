@@ -121,7 +121,9 @@ begin
   Result := nil;
   SetLength(Result, Length(FDeclaration) + 1);
   for Index := 0 to Length(FDeclaration) do
+  begin
     Result[Index] := 8 * Index;
+  end;
 end;
 
 function TFakeMeasure.TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
@@ -131,9 +133,13 @@ begin
       Result := 7 * Length(AText);
     TAtlasHoverFont.Mono:
       if AFace.Bold then
-        Result := 9 * Length(AText)
+      begin
+        Result := 9 * Length(AText);
+      end
       else
+      begin
         Result := 8 * Length(AText);
+      end;
   else
     Result := 6 * Length(AText);
   end;
@@ -232,8 +238,12 @@ var
 begin
   Result := 0;
   for Item in ALayout.Items do
+  begin
     if Item.Kind = AKind then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function THoverLayoutTests.FirstKind(const ALayout: TAtlasHoverLayout; AKind: TAtlasHoverItemKind): Integer;
@@ -241,8 +251,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ALayout.Items) do
+  begin
     if ALayout.Items[Index].Kind = AKind then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -400,7 +414,9 @@ begin
   HoverView.DebugValue := TAtlasDebugValue.Failed('Count', 'E2003 Undeclared identifier');
   Layout := Build(HoverView, 300);
   for Item in Layout.Items do
+  begin
     Assert.IsFalse(Item.Text = 'Count', 'kein Abschnitt für den Wert');
+  end;
   Assert.AreEqual(Integer(0), CountKind(Layout, TAtlasHoverItemKind.RoundFill));
 end;
 
@@ -435,11 +451,13 @@ begin
   Assert.AreEqual(Colors.Muted, Layout.Items[3].Color);
   Fixes := 0;
   for Hit in Layout.Hits do
+  begin
     if Hit.Kind = TAtlasHoverHitKind.DebugFix then
     begin
       Assert.AreEqual(Fixes, Hit.Index, 'Index in Note.Fixes');
       Inc(Fixes);
     end;
+  end;
   Assert.AreEqual(2, Fixes);
 end;
 
@@ -463,7 +481,9 @@ begin
   Assert.AreEqual('• Start', Layout.Items[4].Text);
   Assert.AreEqual('• Schalter', Layout.Items[5].Text);
   for Hit in Layout.Hits do
+  begin
     Assert.IsFalse(Hit.Kind = TAtlasHoverHitKind.DebugFix, 'ohne Korrekturen keine Klickfläche');
+  end;
 end;
 
 procedure THoverLayoutTests.PathChipsProduceHits;
@@ -492,12 +512,14 @@ begin
   // „angeheftet“ rechtsbündig, weil Platz ist.
   Found := False;
   for Index := 0 to High(Layout.Items) do
+  begin
     if Layout.Items[Index].Text = 'pinned' then
     begin
       Found := True;
       Assert.AreEqual(253, Layout.Items[Index].Rect.Left);
       Assert.AreEqual(8, Layout.Items[Index].Rect.Top);
     end;
+  end;
   Assert.IsTrue(Found);
   Assert.AreEqual(38, Layout.Items[FirstKind(Layout, TAtlasHoverItemKind.Styled)].Rect.Top);
   Assert.AreEqual(62, Layout.Height);
@@ -535,12 +557,14 @@ begin
   // Fundort rechtsbündig in der Kopfzeile.
   Found := False;
   for Index := 0 to High(Layout.Items) do
+  begin
     if Layout.Items[Index].Text = 'U.pas : 5' then
     begin
       Found := True;
       Assert.AreEqual(235, Layout.Items[Index].Rect.Left);
       Assert.AreEqual(10, Layout.Items[Index].Rect.Top);
     end;
+  end;
   Assert.IsTrue(Found);
   // Randfläche mit Linie oben vor dem Inhalt.
   Assert.AreEqual(Layout.AnchorItem, FirstKind(Layout, TAtlasHoverItemKind.Fill));
@@ -642,11 +666,13 @@ procedure THoverLayoutTests.UsesProblemsOfferActions;
   begin
     Result := '';
     for Hit in ALayout.Hits do
+    begin
       if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
       begin
         TAtlasHoverLayout.DecodeProblemAction(Hit.Index, Problem, Action);
         Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + '|';
       end;
+    end;
   end;
 
 var
@@ -701,12 +727,16 @@ procedure THoverLayoutTests.CycleUnitsAreLinks;
   begin
     Result := '';
     for Hit in ALayout.Hits do
+    begin
       if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
       begin
         TAtlasHoverLayout.DecodeProblemAction(Hit.Index, Problem, Action, Item);
         if Action in [TAtlasHoverProblemAction.Related, TAtlasHoverProblemAction.ShowGraph] then
+        begin
           Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + ':' + IntToStr(Item) + '|';
+        end;
       end;
+    end;
   end;
 
 var
@@ -740,8 +770,12 @@ begin
   Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|1:7:0|', Codes(Layout));
   Texts := 0;
   for Item in Layout.Items do
+  begin
     if (Item.Kind = TAtlasHoverItemKind.Text) and (Item.Text = ' → ') then
+    begin
       Inc(Texts);
+    end;
+  end;
   Assert.AreEqual(3, Texts, 'Pfeile zwischen den Units');
   // Ohne Text kein „Graph zeigen“; andere Regeln ohne Stellen haben keine solche Zeile.
   HoverInput.Texts.ShowGraph := '';
@@ -771,11 +805,13 @@ var
 begin
   Result := '';
   for Hit in ALayout.Hits do
+  begin
     if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
     begin
       TAtlasHoverLayout.DecodeProblemAction(Hit.Index, Problem, Action);
       Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + '|';
     end;
+  end;
 end;
 
 function TextsOf(const ALayout: TAtlasHoverLayout; AKind: TAtlasHoverItemKind): string;
@@ -784,8 +820,12 @@ var
 begin
   Result := '';
   for Item in ALayout.Items do
+  begin
     if Item.Kind = AKind then
+    begin
       Result := Result + Item.Text + '|';
+    end;
+  end;
 end;
 
 procedure THoverLayoutTests.FindingsShowPillAndRuleErrorsFirst;
@@ -950,8 +990,12 @@ var
   begin
     Result := '';
     for Hit in Layout.Hits do
+    begin
       if Hit.Kind = TAtlasHoverHitKind.Published then
+      begin
         Result := Result + IntToStr(Hit.Index);
+      end;
+    end;
   end;
 
   function HasText(const AText: string): Boolean;
@@ -959,8 +1003,12 @@ var
     Item: TAtlasHoverItem;
   begin
     for Item in Layout.Items do
+    begin
       if Item.Text = AText then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 

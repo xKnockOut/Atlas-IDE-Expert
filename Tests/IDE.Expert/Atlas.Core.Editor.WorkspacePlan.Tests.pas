@@ -139,7 +139,9 @@ begin
   AContent := Default(TAtlasTextFileContent);
   Result := FFiles.TryGetValue(LowerCase(AFileName), Text);
   if not Result then
+  begin
     Exit;
+  end;
   AContent.Text := Text;
   // Kennzeichen, dass die Kodierung der Quelle mitwandert.
   AContent.Encoding := TAtlasTextEncoding.Ansi;
@@ -155,7 +157,9 @@ end;
 function TFakeEnvironment.ProjectOfFile(const AFileName: string): string;
 begin
   if not FProjects.TryGetValue(LowerCase(AFileName), Result) then
+  begin
     Result := '';
+  end;
 end;
 
 function TFakeEnvironment.ProjectForNewFile(const AFileName: string): string;

@@ -203,7 +203,9 @@ begin
           Client.Receive(Answer, Length(Answer));
         end
         else if Message.GetValue('method') = nil then
+        begin
           ASent.Add(Message.ToJSON);
+        end;
       finally
         Message.Free;
       end;
@@ -241,7 +243,9 @@ begin
       end;
       // Byteweise, um die Rahmung über Stückgrenzen zu prüfen.
       for Index := 0 to High(Reply) do
+      begin
         Client.Receive(Copy(Reply, Index, 1), 1);
+      end;
     end);
   try
     Response := Client.Request('test', nil, 1000);
@@ -337,9 +341,13 @@ begin
       procedure(const AMethod: string; const AParams: TJSONValue)
       begin
         if AParams <> nil then
-          Seen.Add(AMethod + ' ' + AParams.ToJSON)
+        begin
+          Seen.Add(AMethod + ' ' + AParams.ToJSON);
+        end
         else
+        begin
           Seen.Add(AMethod);
+        end;
       end;
     Incoming := TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}') +
       TLspClient.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}');
@@ -520,9 +528,13 @@ begin
       Message := Unframe(ABytes);
       try
         if Message.GetValue<string>('method', '') = 'textDocument/definition' then
-          DefinitionSent.SetEvent
+        begin
+          DefinitionSent.SetEvent;
+        end
         else if Message.GetValue<string>('method', '') = 'workspace/diagnostic' then
+        begin
           DiagnosticSent.SetEvent;
+        end;
       finally
         Message.Free;
       end;
@@ -839,7 +851,9 @@ begin
         begin
           Line := '';
           for Item in Message.GetValue<TJSONArray>('params.changes') do
+          begin
             Line := Line + Item.GetValue<string>('uri') + '=' + Item.GetValue<string>('type') + ' ';
+          end;
           Messages.Add(Line);
         end;
       finally
@@ -884,14 +898,18 @@ begin
       try
         Method := Message.GetValue<string>('method', '');
         if Method = 'textDocument/prepareRename' then
-          Answer := PrepareReply
+        begin
+          Answer := PrepareReply;
+        end
         else if Method = 'textDocument/rename' then
         begin
           NewName := Message.GetValue<string>('params.newName');
           Answer := '{"changes":{}}';
         end
         else
+        begin
           Exit;
+        end;
         Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
           [Message.GetValue<Integer>('id'), Answer]));
         Client.Receive(Reply, Length(Reply));
@@ -1009,7 +1027,9 @@ begin
           Client.Receive(Answer, Length(Answer));
         end
         else if Message.GetValue('method') = nil then
+        begin
           Sent.Add(Message.ToJSON);
+        end;
       finally
         Message.Free;
       end;
@@ -1070,13 +1090,17 @@ begin
         if Message.GetValue<string>('method', '') = 'initialize' then
         begin
           if Message.TryGetValue<TJSONArray>('params.initializationOptions.projectContexts', Contexts) then
+          begin
             Initial := Contexts.ToJSON;
+          end;
           Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
             [Message.GetValue<Integer>('id')]));
           Client.Receive(Reply, Length(Reply));
         end
         else if Message.GetValue<string>('method', '') = 'atlas/projectContext' then
+        begin
           Sent.Add(Message.GetValue<string>('params.configuration') + '/' + Message.GetValue<string>('params.platform'));
+        end;
       finally
         Message.Free;
       end;
@@ -1346,11 +1370,13 @@ begin
   After := 0;
   Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, Before));
   for Index := 1 to 10 do
+  begin
     Assert.WillRaise(
       procedure
       begin
         TLspServerProcess.Create(Missing, '').Free;
       end, EOSError);
+  end;
   Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, After));
   // Je Lauf vier Pipe-Enden und die stderr-Datei; ein Leck zeigte sich als Zuwachs um mindestens zehn.
   Assert.IsTrue(Integer(After) - Integer(Before) < 5, Format('Handles vorher %d, nachher %d', [Before, After]));
@@ -1367,7 +1393,9 @@ begin
   Server := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
   Watch := TStopwatch.StartNew;
   while not Server.Client.Closed and (Watch.ElapsedMilliseconds < 10000) do
+  begin
     Sleep(20);
+  end;
   Assert.IsTrue(Server.Client.Closed, 'Verbindung nach dem Ende des Prozesses geschlossen');
   Info := Server.Client.CloseInfo;
   Assert.IsTrue(Info.ExitKnown, 'Exit-Code bekannt');
@@ -1484,7 +1512,9 @@ var
 begin
   ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
   if not FileExists(ServerExe) then
+  begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+  end;
   FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbe.pas');
   Server := TLspServerProcess.Create(ServerExe, '');
   try
@@ -1523,7 +1553,9 @@ var
 begin
   ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
   if not FileExists(ServerExe) then
+  begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+  end;
   FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeFehler.pas');
   Server := TLspServerProcess.Create(ServerExe, '');
   try
@@ -1570,7 +1602,9 @@ var
 begin
   ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
   if not FileExists(ServerExe) then
+  begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+  end;
   FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeCompiler.pas');
   Server := TLspServerProcess.Create(ServerExe, '');
   try
@@ -1594,12 +1628,14 @@ begin
       Report := Session.DocumentDiagnostics(FileName, '', 10000);
       Found := False;
       for Problem in Report.Problems do
+      begin
         if Problem.IsCompiler and (Problem.Code = 'E2003') then
         begin
           Found := True;
           Assert.AreEqual(5, Problem.StartLine);
           Assert.IsTrue(Problem.Severity = TAtlasProblemSeverity.Error);
         end;
+      end;
       Assert.IsTrue(Found, 'dcc-Meldung in den Diagnosen der geöffneten Datei');
     finally
       Session.Free;
@@ -1666,7 +1702,9 @@ var
   begin
     Result := '';
     for Position := 1 to ALength do
+    begin
       Result := Result + Alphabet[Random(Length(Alphabet)) + 1];
+    end;
   end;
 
 begin
@@ -1699,9 +1737,13 @@ var
   Offset: Integer;
 begin
   for Offset := 0 to Length(Text) do // lsp-ignore: loop-off-by-one -- Offsets zwischen den Zeichen; Text[Offset] nur ab 1
+  begin
     if (Offset = 0) or (Text[Offset] <> #13) or (Offset = Length(Text)) or (Text[Offset + 1] <> #10) then
+    begin
       Assert.AreEqual(Offset, TLspTextChanges.OffsetOf(Text, TLspTextChanges.PositionOf(Text, Offset)),
         IntToStr(Offset));
+    end;
+  end;
   Assert.AreEqual(3, TLspTextChanges.OffsetOf(Text, TLspTextPosition.Create(1, 0)));
   Assert.AreEqual(7, TLspTextChanges.OffsetOf(Text, TLspTextPosition.Create(2, 9)), 'geklemmt auf das Zeilenende');
 end;
@@ -1723,7 +1765,9 @@ begin
       try
         Method := Message.GetValue<string>('method', '');
         if not AReplies.TryGetValue(Method, Answer) or (Message.GetValue('id') = nil) then
+        begin
           Exit;
+        end;
         ASeen.Add(Method + ' ' + Message.GetValue('params').ToJSON);
         Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
           [Message.GetValue<Integer>('id'), Answer]));
@@ -2055,7 +2099,9 @@ begin
   // Umkehrung von ColumnToIndex innerhalb der Zeile.
   Line := 'a'#9'bc'#9#9'd';
   for Index := 0 to Length(Line) do
+  begin
     Assert.AreEqual(Index, TLspSession.ColumnToIndex(Line, TLspSession.IndexToColumn(Line, Index, 4), 4));
+  end;
 end;
 
 initialization

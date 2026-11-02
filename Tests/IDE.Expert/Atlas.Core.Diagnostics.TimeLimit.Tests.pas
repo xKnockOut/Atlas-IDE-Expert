@@ -187,7 +187,9 @@ begin
   FLock.Enter;
   try
     for Item in AItems do
+    begin
       FNames.Add(Item.Name);
+    end;
   finally
     FLock.Leave;
   end;
@@ -234,7 +236,9 @@ procedure TBrokenProvider.Query(const AContext: TAtlasContext; const ASink: IAtl
 begin
   TInterlocked.Increment(Calls);
   if FHangMs = 0 then
+  begin
     raise EInvalidOpException.Create('SQL-Provider kaputt');
+  end;
   // Hängt, endet aber beim Abbruchsignal (wie jeder Thread von Atlas).
   TAtlasShutdown.Wait(FHangMs);
   ASink.Complete;
@@ -289,7 +293,9 @@ begin
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.RotatingLog.Folder := FOldFolder;
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
   FOldFolder := '';
 end;
@@ -360,7 +366,9 @@ end;
 procedure JoinThread(AThread: TThread);
 begin
   if AThread = nil then
+  begin
     Exit;
+  end;
   AThread.WaitFor;
   AThread.Free;
 end;

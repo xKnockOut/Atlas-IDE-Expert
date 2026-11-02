@@ -69,10 +69,14 @@ begin
   for Item in AItems do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Item.Name;
     if Item.Children <> nil then
+    begin
       Result := Result + '(' + Names(Item.Children) + ')';
+    end;
   end;
 end;
 
@@ -174,7 +178,9 @@ begin
     // A (direkt) wieder anfassen, dann bis über die Grenze füllen: A bleibt, A (alle) fällt heraus.
     Cache.Put('C:\P\A.pas', False, 'neu');
     for Index := 1 to TAtlasUnitRelationsCache.Capacity - 1 do
+    begin
       Cache.Put('C:\P\U' + IntToStr(Index) + '.pas', False, 'u');
+    end;
     Assert.AreEqual(TAtlasUnitRelationsCache.Capacity, Cache.Count);
     Assert.IsFalse(Cache.TryGet('C:\P\A.pas', True, Json));
     Assert.IsTrue(Cache.TryGet('C:\P\A.pas', False, Json));

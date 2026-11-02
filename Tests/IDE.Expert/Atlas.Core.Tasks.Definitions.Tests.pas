@@ -58,7 +58,9 @@ var
 begin
   Assert.AreEqual(Integer(Length(TasksBeforeBuildNames)), Ord(High(TAtlasTaskBeforeBuild)) + 1);
   for mMode := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
+  begin
     Assert.AreEqual(TAtlasTasks.BeforeBuildNames[mMode], TasksBeforeBuildNames[Ord(mMode)]);
+  end;
 end;
 
 procedure TAtlasTaskDefinitionsTests.ExampleOfTheIssueIsRead;

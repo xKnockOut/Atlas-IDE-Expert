@@ -86,11 +86,17 @@ begin
   for Index in AOrder do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     if TAtlasRanking.IsHeader(Index) then
-      Result := Result + '#'
+    begin
+      Result := Result + '#';
+    end
     else
+    begin
       Result := Result + AItems[Index].Name;
+    end;
   end;
 end;
 
@@ -156,7 +162,9 @@ begin
   repeat
     CheckSynchronize(5);
     if ACondition() then
+    begin
       Exit(True);
+    end;
   until TThread.GetTickCount64 - Start > 3000;
   Result := False;
 end;
@@ -174,7 +182,9 @@ var
 begin
   Items := Copy(AItems);
   for Index := 0 to High(Items) do
+  begin
     Items[Index].Favorite := AFavorites.IsFavorite(Items[Index]);
+  end;
   Result := OrderNames(Items, TAtlasRanking.Order(Items, APattern, AOptions));
 end;
 
@@ -184,9 +194,13 @@ var
   Position: Integer;
 begin
   for Position := 0 to High(AController.Order) do
+  begin
     if not TAtlasRanking.IsHeader(AController.Order[Position]) and
       (AController.Items[AController.Order[Position]].Name = AName) then
+    begin
       Exit(Position);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -248,7 +262,9 @@ begin
   Favorites := TAtlasFavorites.Create;
   try
     for Index := 1 to TAtlasFavorites.MaxPerType do
+    begin
       Assert.IsTrue(Favorites.Toggle(Member('M' + IntToStr(Index), 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Added);
+    end;
     // Ein sechster ersetzt nichts.
     Assert.IsTrue(Favorites.Toggle(Member('M6', 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Full);
     Assert.AreEqual(5, Favorites.CountOf('TDataSet'));
@@ -351,7 +367,9 @@ begin
     Json := '{"version":1,"favorites":[{"type":"TDataSet","member":"Open"},{"type":"tdataset","member":"OPEN"},' +
       '{"type":"TDataSet","member":""},7,{"member":"ohneTyp","added":"gestern"}';
     for Index := 1 to 6 do
+    begin
       Json := Json + ',{"type":"TStrings","member":"S' + IntToStr(Index) + '"}';
+    end;
     Favorites.Parse(Json + ']}');
     Assert.AreEqual(1, Favorites.CountOf('TDataSet'), 'doppelt und leer fallen weg');
     Assert.AreEqual(5, Favorites.CountOf('TStrings'), 'höchstens fünf je Typ');
@@ -393,7 +411,9 @@ begin
     Loaded.Free;
     Favorites.Free;
     if TFile.Exists(FileName) then
+    begin
       TFile.Delete(FileName);
+    end;
   end;
 end;
 
@@ -442,9 +462,13 @@ begin
       function(AIndex: Integer): Integer
       begin
         if AIndex = 2 then
-          Result := 0
+        begin
+          Result := 0;
+        end
         else
+        begin
           Result := 99;
+        end;
       end;
     Assert.AreEqual('Open,O,OnError', Ordered(Items, Favorites, 'O', Options), 'vor dem genauen Treffer "O"');
     Assert.AreEqual('Open,O,OnError', Ordered(Items, Favorites, '', Options), 'auch ohne Präfix');
@@ -536,7 +560,9 @@ begin
     Restarted.Free;
     Favorites.Free;
     if TFile.Exists(FileName) then
+    begin
       TFile.Delete(FileName);
+    end;
   end;
 end;
 
@@ -557,7 +583,9 @@ begin
     IAtlasCompletionProvider, ViewRef);
   try
     for Index := 1 to TAtlasFavorites.MaxPerType do
+    begin
       Favorites.Toggle(Member('Weitere' + IntToStr(Index), 'TDataSet', 1, 0));
+    end;
     Controller.Favorites := Favorites;
     StartAndWait(Controller, '');
     Before := View.Names;

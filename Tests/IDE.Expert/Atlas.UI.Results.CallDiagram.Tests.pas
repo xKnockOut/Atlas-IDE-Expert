@@ -54,15 +54,25 @@ var
 begin
   Result := nil;
   if AItem.Name = 'Start' then
+  begin
     Result := TArray<TAtlasHierarchyItem>.Create(Item('Laden', 'C:\P\Daten.pas', 10),
-      Item('Speichern', 'C:\P\Daten.pas', 20), Item('IntToStr', 'C:\RTL\System.pas', 5))
+      Item('Speichern', 'C:\P\Daten.pas', 20), Item('IntToStr', 'C:\RTL\System.pas', 5));
+  end
   else if AItem.Name = 'Laden' then
-    Result := TArray<TAtlasHierarchyItem>.Create(Item('Lesen', 'C:\P\Datei.pas', 3))
+  begin
+    Result := TArray<TAtlasHierarchyItem>.Create(Item('Lesen', 'C:\P\Datei.pas', 3));
+  end
   else if AItem.Name = 'Viele' then
+  begin
     for Index := 1 to 10 do
+    begin
       Result := Result + [Item('Teil' + IntToStr(Index), 'C:\P\Teile.pas', Index)];
+    end;
+  end;
   if ADirection = TAtlasHierarchyDirection.Incoming then
+  begin
     Result := TArray<TAtlasHierarchyItem>.Create(Item('Aufrufer', 'C:\P\Haupt.pas', 1));
+  end;
 end;
 
 function IsProject(AFileName: string): Boolean;
@@ -142,8 +152,12 @@ begin
       1)));
     More := -1;
     for Index := 0 to High(View.Layout.Boxes) do
+    begin
       if View.Layout.Boxes[Index].Kind = TAtlasCallBoxKind.More then
+      begin
         More := Index;
+      end;
+    end;
     Assert.IsTrue(More >= 0, '„+ N …“ bei zehn Kindern');
     Assert.AreEqual(2, View.Layout.Boxes[More].Hidden);
     Assert.AreEqual(1 + TAtlasCallDiagram.MaxChildren + 1, Integer(Length(View.Layout.Boxes)));

@@ -95,7 +95,9 @@ var
 begin
   SetLength(Lines, ALineCount);
   for Index := 0 to High(Lines) do
+  begin
     Lines[Index] := '  if Value > ' + IntToStr(Index) + ' then // Zeile';
+  end;
   FView.SetContent(Lines, TAtlasMinimap.Runs(Lines, 120, 4), 4);
 end;
 

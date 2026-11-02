@@ -54,7 +54,9 @@ end;
 procedure TAtlasBuildInboxTests.TearDown;
 begin
   if TDirectory.Exists(ExtractFileDir(ExtractFileDir(FFolder))) then
+  begin
     TDirectory.Delete(ExtractFileDir(ExtractFileDir(FFolder)), True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;

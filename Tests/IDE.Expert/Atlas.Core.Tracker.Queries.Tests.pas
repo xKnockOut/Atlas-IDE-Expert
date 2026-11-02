@@ -65,7 +65,9 @@ var
 begin
   Result := '';
   for mQuery in AQueries do
+  begin
     Result := Result + mQuery.Name + ';';
+  end;
 end;
 
 { TAtlasTrackerQueriesTests }

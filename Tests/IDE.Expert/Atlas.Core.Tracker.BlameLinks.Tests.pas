@@ -80,7 +80,9 @@ begin
   for mMatch in AMatches do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + mMatch.Key;
   end;
 end;
@@ -100,9 +102,13 @@ function TBenchRunner.Run(const AExecutable: string; const AArguments: TArray<st
 begin
   Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Ok, 0, nil);
   if AArguments[1] = '--diff' then
-    Result.Output := Diff
+  begin
+    Result.Output := Diff;
+  end
   else
+  begin
     Result.Output := Xml;
+  end;
 end;
 
 type
@@ -129,12 +135,18 @@ begin
   if Pos(' show ', mLine) > 0 then
   begin
     if Committed then
-      Result.Output := TEncoding.UTF8.GetBytes(Head)
+    begin
+      Result.Output := TEncoding.UTF8.GetBytes(Head);
+    end
     else
+    begin
       Result.ExitCode := 128;
+    end;
   end
   else if Pos(' -L', mLine) > 0 then
+  begin
     Result.Output := TEncoding.UTF8.GetBytes(Log);
+  end;
 end;
 
 { TAtlasBlameLinksTests }
@@ -249,9 +261,13 @@ var
   mHistory: TAtlasBlameHistory;
 begin
   if PathDelim = '\' then
-    mRoot := 'C:\Projekte\Kunde'
+  begin
+    mRoot := 'C:\Projekte\Kunde';
+  end
   else
+  begin
     mRoot := '/projekte/kunde';
+  end;
   mFile := mRoot + PathDelim + 'a.pas';
   mRunner := THistoryRunner.Create;
   mRunnerRef := mRunner;
@@ -338,17 +354,23 @@ begin
       // Die übrigen ändern weiter oben (Zeilen 100–899).
       mStart := 100 + (mRevision * 37) mod 800;
       if mRevision mod 5 = 0 then
+      begin
         mStart := 1010;
+      end;
       mDiff.Append(cSep).Append(#10).Append('r').Append(mRevision)
         .Append(' | anna | 2026-10-01 10:00:00 +0200 (Mi, 01 Okt 2026) | 1 line'#10#10'ATL-1 x'#10#10)
         .Append('Index: Kunde.pas'#10'==================================================================='#10)
         .Append('--- Kunde.pas'#9'(revision 1)'#10'+++ Kunde.pas'#9'(revision 2)'#10)
         .Append('@@ -').Append(mStart - 3).Append(',7 +').Append(mStart - 3).Append(',7 @@'#10);
       for mLine := 1 to 3 do
+      begin
         mDiff.Append(' gleich').Append(mLine).Append(#10);
+      end;
       mDiff.Append('-alt'#10'+neu'#10);
       for mLine := 1 to 3 do
+      begin
         mDiff.Append(' gleich').Append(mLine).Append(#10);
+      end;
       mDiff.Append(#10);
     end;
     mXml.Append('</log>'#10);
@@ -362,9 +384,13 @@ begin
     mDiff.Free;
   end;
   if PathDelim = '\' then
-    mRoot := 'C:\Projekte\Kunde'
+  begin
+    mRoot := 'C:\Projekte\Kunde';
+  end
   else
+  begin
     mRoot := '/projekte/kunde';
+  end;
   mVcs := TAtlasSvnVersionControl.Create(mRoot, mRunnerRef, 'svn.exe', 5000);
   Assert.IsTrue(Supports(mVcs, IAtlasVcsLineHistory, mHistory));
   mWatch := TStopwatch.StartNew;

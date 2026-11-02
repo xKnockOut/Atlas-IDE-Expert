@@ -97,7 +97,9 @@ var
 begin
   SetLength(Result, Length(UnitText));
   for Index := 0 to High(UnitText) do
+  begin
     Result[Index] := UnitText[Index];
+  end;
 end;
 
 function At(ALine, ACharacter: Integer): TAtlasPeekPlace;
@@ -284,7 +286,9 @@ var
 begin
   SetLength(Source, 100);
   for Index := 0 to High(Source) do
+  begin
     Source[Index] := Format('L%d', [Index]);
+  end;
   Source[50] := #9'Foo(1);';
   Rows := TAtlasPeek.ReferenceRows(At(50, 1), Source, 4);
   Assert.AreEqual(TAtlasPeek.ReferenceBefore + TAtlasPeek.ReferenceAfter + 1, Integer(Length(Rows)));
@@ -310,7 +314,9 @@ var
 begin
   SetLength(Source, 100);
   for Index := 0 to High(Source) do
+  begin
     Source[Index] := Format('L%d', [Index]);
+  end;
   SetLength(Entries, 2);
   Entries[0].Target.Place := At(10, 0);
   Entries[0].Rows := TAtlasPeek.ReferenceRows(At(10, 0), Source, 4);

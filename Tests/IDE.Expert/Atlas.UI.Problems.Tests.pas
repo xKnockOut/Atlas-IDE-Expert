@@ -78,7 +78,9 @@ procedure TFetchCounter.Fetch(Sender: TObject; Item: TListItem);
 begin
   Inc(Count);
   if Assigned(Inner) then
+  begin
     Inner(Sender, Item);
+  end;
 end;
 
 function Problem(ALine: Integer; const ASource, ACode, AMessage: string; ASeverity: TAtlasProblemSeverity;
@@ -280,8 +282,10 @@ var
 begin
   SetLength(Problems, 300);
   for Index := 0 to High(Problems) do
+  begin
     Problems[Index] := Problem(Index, 'Atlas', 'empty-except', 'Leerer except-Block', TAtlasProblemSeverity.Warning,
       '');
+  end;
   Host := TForm.CreateNew(nil);
   Counter := TFetchCounter.Create;
   try
@@ -360,8 +364,12 @@ var
   begin
     Result := nil;
     for Index := 0 to Frame.Menu.Items.Count - 1 do
+    begin
       if StripHotkey(Frame.Menu.Items[Index].Caption).StartsWith(ACaption) then
+      begin
         Exit(Frame.Menu.Items[Index]);
+      end;
+    end;
   end;
 
 begin
@@ -403,8 +411,12 @@ var
   begin
     Result := nil;
     for Index := 0 to Frame.Menu.Items.Count - 1 do
+    begin
       if StripHotkey(Frame.Menu.Items[Index].Caption).StartsWith('Alle sicheren Treffer von') then
+      begin
         Exit(Frame.Menu.Items[Index]);
+      end;
+    end;
   end;
 
 begin

@@ -50,9 +50,13 @@ uses
 function Root: string;
 begin
   if PathDelim = '\' then
-    Result := 'C:\Projekte\Kasse'
+  begin
+    Result := 'C:\Projekte\Kasse';
+  end
   else
+  begin
     Result := '/projekte/kasse';
+  end;
 end;
 
 function Under(const ARelative: string): string;

@@ -64,7 +64,9 @@ begin
     procedure
     begin
       if Signal <> nil then
+      begin
         ARelease.WaitFor(5000);
+      end;
     end;
 end;
 

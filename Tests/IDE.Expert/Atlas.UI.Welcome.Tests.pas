@@ -502,18 +502,26 @@ end;
 function TFakeWhatsNew.SwitchOf(const ASetting: string): TAtlasWhatsNewSwitch;
 begin
   if ASetting = 'An' then
-    Result := TAtlasWhatsNewSwitch.On
+  begin
+    Result := TAtlasWhatsNewSwitch.On;
+  end
   else if ASetting = 'Aus' then
-    Result := TAtlasWhatsNewSwitch.Off
+  begin
+    Result := TAtlasWhatsNewSwitch.Off;
+  end
   else
+  begin
     Result := TAtlasWhatsNewSwitch.None;
+  end;
 end;
 
 function TFakeWhatsNew.KeyText(const AKey: string): string;
 begin
   Result := '';
   if AKey = 'Taste' then
+  begin
     Result := 'Ctrl+E';
+  end;
 end;
 
 function TFakeWhatsNew.CanTry(const AItem: TAtlasWhatsNewItem): Boolean;
@@ -842,11 +850,13 @@ var
   Id: string;
 begin
   for Id in AIds do
+  begin
     TAtlasWelcomeViews.Register(Id,
       function(AOwner: TComponent): TAtlasWelcomeSectionFrame
       begin
         Result := TTestSection.Create(AOwner);
       end);
+  end;
 end;
 
 function Section(const AId: string; AOrder: Integer; AColumn: TAtlasWelcomeColumn): TAtlasWelcomeSection;
@@ -1220,7 +1230,9 @@ function TFakeArrangeSource.Last: string;
 begin
   Result := '';
   if Length(Calls) > 0 then
+  begin
     Result := Calls[High(Calls)];
+  end;
 end;
 
 function ArrangeSource(AEditing: Boolean): TFakeArrangeSource;
@@ -2676,9 +2688,13 @@ begin
     begin
     end;
   if AAction then
-    Line := TAtlasStatusLine.Create(ARegistry, AId, 0, Action)
+  begin
+    Line := TAtlasStatusLine.Create(ARegistry, AId, 0, Action);
+  end
   else
+  begin
     Line := TAtlasStatusLine.Create(ARegistry, AId, 0);
+  end;
   Ref := Line;
   Line.Update(AText, AState, '', ABrief, ADetail);
   ARegistry.Add(Ref);
@@ -3045,10 +3061,14 @@ begin
     Frame.SetBounds(0, 0, 600, 120);
     // Ohne Quelle geht nichts.
     for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
+    begin
       Assert.IsFalse(Frame.Button(Kind).Enabled, 'ohne Quelle ausgegraut');
+    end;
     Frame.Source := Source;
     for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
+    begin
       Assert.IsTrue(Frame.Button(Kind).Enabled);
+    end;
     Assert.AreEqual(Frame.Button(TAtlasHelpButton.Docs).Top, Frame.Button(TAtlasHelpButton.Report).Top,
       'genug Breite: eine Reihe');
     Assert.IsTrue(Frame.Button(TAtlasHelpButton.Keys).Left > Frame.Button(TAtlasHelpButton.Docs).Left);
@@ -3310,8 +3330,10 @@ begin
   Fake.Card_.Facts.Setup.UndefinedDefineCount := 1;
   Fake.Card_.Facts.Setup.MissingUnits := [SetupFinding('Xml.Helpers', 'Src\Main.pas', 12, 3)];
   for Index := 2 to 9 do
+  begin
     Fake.Card_.Facts.Setup.MissingUnits := Fake.Card_.Facts.Setup.MissingUnits +
       [SetupFinding('Unit' + IntToStr(Index), 'Src\Main.pas', 12 + Index, 1)];
+  end;
   Fake.Card_.Facts.Setup.UndefinedDefines := [SetupFinding('USE_XML', 'Src\Main.pas', 3, 1)];
   Fake.Card_.Paths := TAtlasSetupRun.Done;
   Source := Fake;
@@ -3445,7 +3467,9 @@ begin
     Fake.Card_.ShowCard := False;
     Frame.UpdateContent;
     for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
+    begin
       Assert.IsFalse(Frame.StepText(Step).Visible);
+    end;
     Assert.IsFalse(Frame.TemplateBox.Visible);
     Assert.IsFalse(Frame.Button(TAtlasSetupButton.Baseline).Visible);
     Assert.IsFalse(Frame.DismissLabel.Visible);
@@ -3740,7 +3764,9 @@ begin
   Result.State.Known := True;
   Result.State.At := AAtUtc;
   for Index := 1 to ATabs do
+  begin
     Result.State.Tabs := Result.State.Tabs + [TAtlasWorkTab.Create('C:\Repo\Unit' + IntToStr(Index) + '.pas', 1, 1)];
+  end;
 end;
 
 function ContinueCommit(const AHash, ASummary, AAuthor, AFile: string): TAtlasContinueCommit;

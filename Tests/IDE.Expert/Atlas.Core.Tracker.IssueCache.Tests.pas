@@ -112,7 +112,9 @@ procedure TAtlasTrackerIssueCacheTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 
@@ -240,7 +242,9 @@ begin
   mCache := TAtlasTrackerIssueCache.Create('');
   try
     for mIndex := 1 to TAtlasTrackerIssueCache.MaxMemory do
+    begin
       mCache.Put(Target, Sample('ATL-' + IntToStr(mIndex), cNow));
+    end;
     // ATL-1 benutzen: danach fällt ATL-2 als ältestes heraus.
     Assert.IsTrue(mCache.Get(Target, 'ATL-1', cNow, mDetails));
     mCache.Put(Target, Sample('ATL-999', cNow));

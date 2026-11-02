@@ -47,7 +47,9 @@ begin
   Result.Expression := 'Price * Count';
   Result.TypeName := 'Currency';
   if ALocated then
+  begin
     Result.FileName := 'C:\P\Preise.pas';
+  end;
   SetLength(Result.Conversions, 1);
   Result.Conversions[0].Expression := 'Count';
   Result.Conversions[0].FromType := 'Integer';
