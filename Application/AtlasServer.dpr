@@ -38,6 +38,7 @@ uses
   Shell.Composition.TestUnits in 'Source\Shell\Shell.Composition.TestUnits.pas',
   Shell.Composition.Workspaces in 'Source\Shell\Shell.Composition.Workspaces.pas',
   Shell.Composition.Settings in 'Source\Shell\Shell.Composition.Settings.pas',
+  Shell.Composition.RuleContext in 'Source\Shell\Shell.Composition.RuleContext.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
