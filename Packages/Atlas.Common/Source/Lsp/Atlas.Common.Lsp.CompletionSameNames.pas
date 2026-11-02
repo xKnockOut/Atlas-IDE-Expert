@@ -55,14 +55,22 @@ begin
   if not AUsed then
   begin
     if AInsert = TCompletionSameNameInsert.Uses_ then
-      Result := InsertAdd
+    begin
+      Result := InsertAdd;
+    end
     else
+    begin
       Result := InsertPrefixAdd;
+    end;
   end
   else if (AInsert = TCompletionSameNameInsert.Uses_) and AMovable then
-    Result := InsertMove
+  begin
+    Result := InsertMove;
+  end
   else
+  begin
     Result := InsertPrefix;
+  end;
 end;
 
 function Before(const A, B: TTextPosition): Boolean;
@@ -85,30 +93,50 @@ begin
   for Clause in TUsesClauses.Clauses(ATokens) do
   begin
     if not Clause.Plain then
+    begin
       Continue;
+    end;
     Start := ATokens[Clause.UsesIndex].EndPos;
     Stop := ATokens[Clause.Semicolon].StartPos;
     Inside := nil;
     for Reference in References do
+    begin
       if Before(Start, Reference.Range.StartPos) and Before(Reference.Range.EndPos, Stop) then
+      begin
         Inside := Inside + [Reference];
+      end;
+    end;
     Own := -1;
     Active := -1;
     for Index := 0 to High(Inside) do
+    begin
       if TUsesClauses.IsUsed([Inside[Index].Name], AUnitName, ANamespaces) then
-        Own := Index
+      begin
+        Own := Index;
+      end
       else if TUsesClauses.IsUsed([Inside[Index].Name], AActiveUnit, ANamespaces) then
+      begin
         Active := Index;
+      end;
+    end;
     if (Own < 0) or (Active < 0) then
+    begin
       Continue;
+    end;
     // Nur wenn die Variante vor der aktiven steht; sonst wäre sie schon die aktive.
     if Own > Active then
+    begin
       Exit;
+    end;
     // Entfernen samt Komma: hinter dem vorigen Namen bis zu ihrem Ende, als erster bis vor den nächsten.
     if Own > 0 then
-      AEdits := [TTextEdit.Create(TTextRange.Create(Inside[Own - 1].Range.EndPos, Inside[Own].Range.EndPos), '')]
+    begin
+      AEdits := [TTextEdit.Create(TTextRange.Create(Inside[Own - 1].Range.EndPos, Inside[Own].Range.EndPos), '')];
+    end
     else
+    begin
       AEdits := [TTextEdit.Create(TTextRange.Create(Inside[Own].Range.StartPos, Inside[Own + 1].Range.StartPos), '')];
+    end;
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Stop, Stop), ', ' + Inside[Own].Name)];
     Exit(True);
   end;

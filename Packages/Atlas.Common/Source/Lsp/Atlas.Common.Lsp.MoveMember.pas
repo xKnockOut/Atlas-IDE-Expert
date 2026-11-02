@@ -107,17 +107,25 @@ function PlainName(const AName: string): string;
 begin
   Result := Trim(AName);
   if Pos('<', Result) > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Pos('<', Result) - 1));
+  end;
 end;
 
 function IsUp(const ADirection: string): Boolean;
 begin
   if SameText(ADirection, 'up') then
-    Result := True
+  begin
+    Result := True;
+  end
   else if SameText(ADirection, 'down') then
-    Result := False
+  begin
+    Result := False;
+  end
   else
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Richtung "up" oder "down" fehlt');
+  end;
 end;
 
 /// <summary>Liegt die Datei in einer Bibliothek (RTL/VCL, Suchpfade)?</summary>
@@ -140,7 +148,9 @@ begin
   AHit := Default(TClassHit);
   Name := PlainName(AName);
   if (Name = '') or SameText(Name, 'TObject') then
+  begin
     Exit(False);
+  end;
   Decl := TClassLayout.DeclNamed(ATree, Name);
   if Decl <> nil then
   begin
@@ -149,23 +159,31 @@ begin
       AHit.Ref := TMemberClassRef.Create(AFileName, Layout.Name);
       AHit.UnitName := TUsesClauses.OwnName(ATree.Tokens);
       if Layout.Ancestors <> nil then
+      begin
         AHit.Ancestor := Layout.Ancestors[0];
+      end;
     finally
       Layout.Free;
     end;
     Exit(True);
   end;
   if AIndex <> nil then
+  begin
     for Location in AIndex.FindSymbols(Name) do
+    begin
       if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') and
         not SameText(Location.FileName, AFileName) and not IsLibrary(AIndex, Location.FileName) then
       begin
         AHit.Ref := TMemberClassRef.Create(Location.FileName, Location.Symbol.Name);
         AHit.UnitName := Location.UnitName;
         if Location.Symbol.Ancestors <> nil then
+        begin
           AHit.Ancestor := Location.Symbol.Ancestors[0];
+        end;
         Exit(True);
       end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -212,8 +230,11 @@ begin
     end;
   end;
   if AIndex = nil then
+  begin
     Exit;
+  end;
   for Location in AIndex.Descendants(AClassName) do
+  begin
     if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and not SameText(Location.FileName, AFileName) and
       not IsLibrary(AIndex, Location.FileName) and (Location.Symbol.Ancestors <> nil) and
       SameText(PlainName(Location.Symbol.Ancestors[0]), AClassName) then
@@ -224,6 +245,7 @@ begin
       Hit.Ancestor := Location.Symbol.Ancestors[0];
       Result := Result + [Hit];
     end;
+  end;
 end;
 
 function KindText(AKind: TTransferKind): string;
@@ -243,7 +265,9 @@ var
   Reason: string;
 begin
   if not TMoveMember.Prepare(ATree, AText, APosition.Line, Result, Reason) then
+  begin
     raise Failed(Reason);
+  end;
 end;
 
 function Action(const ATitle, AUri: string; const APosition: TTextPosition; const ADirection: string): TJSONObject;
@@ -274,13 +298,19 @@ var
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) or not TMoveMember.Prepare(ATree, AText, APosition.Line, Found, Reason) then
+  begin
     Exit;
+  end;
   if FindClass(ATree, AText, AFileName, AIndex, Found.Ancestor, Hit) then
+  begin
     Result := Result + [Action(Format('„%s“ in Vorfahr verschieben …', [Found.SelectedName]), AUri, APosition,
       'up')];
+  end;
   if DirectDescendants(ATree, AText, AFileName, AIndex, Found.ClassName) <> nil then
+  begin
     Result := Result + [Action(Format('„%s“ in Nachfahren verschieben …', [Found.SelectedName]), AUri, APosition,
       'down')];
+  end;
 end;
 
 class function TLspMoveMember.Prepare(ATree: TSyntaxTree; const AText, AFileName: string;
@@ -298,13 +328,21 @@ begin
   Up := IsUp(ADirection);
   Found := Info(ATree, AText, APosition);
   if Up then
-    Hits := AncestorChain(ATree, AText, AFileName, AContext.Index, Found.Ancestor)
+  begin
+    Hits := AncestorChain(ATree, AText, AFileName, AContext.Index, Found.Ancestor);
+  end
   else
+  begin
     Hits := DirectDescendants(ATree, AText, AFileName, AContext.Index, Found.ClassName);
+  end;
   if (Hits = nil) and Up then
+  begin
     raise Failed(Format('%s hat keinen Vorfahren im Projekt.', [Found.ClassName]));
+  end;
   if Hits = nil then
+  begin
     raise Failed(Format('%s hat keine Nachfahren im Projekt.', [Found.ClassName]));
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('className', Found.ClassName);
   Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
@@ -328,7 +366,9 @@ begin
     Entry.AddPair('abstract', TJSONBool.Create(False));
     Needs := TJSONArray.Create;
     for Need in Item.Needs do
+    begin
       Needs.AddElement(TJSONNumber.Create(Need));
+    end;
     Entry.AddPair('needs', Needs);
     List.AddElement(Entry);
   end;
@@ -348,9 +388,13 @@ begin
   Result.AddPair('needsRequired', TJSONBool.Create(Up));
   Option := TJSONObject.Create;
   if Up then
-    Option.AddPair('kind', 'overrideSiblings')
+  begin
+    Option.AddPair('kind', 'overrideSiblings');
+  end
   else
+  begin
     Option.AddPair('kind', 'keepAbstract');
+  end;
   Option.AddPair('value', TJSONBool.Create(Up));
   Result.AddPair('option', Option);
   Result.AddPair('notes', TJSONArray.Create);
@@ -363,9 +407,15 @@ begin
   Result := nil;
   Value := AObject.GetValue(AKey);
   if Value is TJSONArray then
+  begin
     for Item in TJSONArray(Value) do
+    begin
       if Item is TJSONNumber then
+      begin
         Result := Result + [TJSONNumber(Item).AsInt];
+      end;
+    end;
+  end;
 end;
 
 function Names(AObject: TJSONObject; const AKey: string): TArray<string>;
@@ -375,15 +425,21 @@ begin
   Result := nil;
   Value := AObject.GetValue(AKey);
   if Value is TJSONArray then
+  begin
     for Item in TJSONArray(Value) do
+    begin
       Result := Result + [Trim(Item.Value)];
+    end;
+  end;
 end;
 
 /// <summary>Text der Datei; EJsonRpcError, wenn sie nicht lesbar ist.</summary>
 function ReadFile(const AContext: TMoveMemberContext; const AFileName: string): string;
 begin
   if not (Assigned(AContext.ReadText) and AContext.ReadText(AFileName, Result)) then
+  begin
     raise Failed(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
+  end;
 end;
 
 type
@@ -404,12 +460,14 @@ begin
   Range.Last := ALayout.EndLine;
   Result := [Range];
   for Member in ALayout.Members do
+  begin
     if Member.Body <> nil then
     begin
       Range.First := Member.BodyFirstLine;
       Range.Last := Member.BodyLastLine;
       Result := Result + [Range];
     end;
+  end;
 end;
 
 function InRanges(const ARanges: TArray<TLineRange>; const AFileName: string; ALine: Integer): Boolean;
@@ -417,8 +475,12 @@ var
   Range: TLineRange;
 begin
   for Range in ARanges do
+  begin
     if SameText(Range.FileName, AFileName) and (ALine >= Range.First) and (ALine <= Range.Last) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -432,7 +494,9 @@ begin
   while (mIndex <= High(ATree.Tokens)) and (ATree.Tokens[mIndex].Offset < ANode.EndOffset) do
   begin
     if (ATree.Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATree.Tokens[mIndex].Text, AName) then
+    begin
       Exit(ATree.Tokens[mIndex].StartPos);
+    end;
     Inc(mIndex);
   end;
   Result := ANode.StartPos;
@@ -445,13 +509,17 @@ var
   Name: string;
 begin
   if ANode = nil then
+  begin
     Exit;
+  end;
   if (ANode.Kind = TSyntaxKind.Identifier) and ((ANode.Parent = nil) or
     (ANode.Parent.Kind <> TSyntaxKind.GenericParams)) then
   begin
     Name := ANode.Name;
     if Name.StartsWith('&') then
+    begin
       Name := Name.Substring(1);
+    end;
     ANames := ANames + [TArray<string>.Create(Name)];
     AOffsets := AOffsets + [ANode.StartOffset];
   end
@@ -461,7 +529,9 @@ begin
     AOffsets := AOffsets + [ANode.StartOffset];
   end;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     CollectNames(ANode[Index], ANames, AOffsets);
+  end;
 end;
 
 function SectionLine(ATree: TSyntaxTree; AKind: TSyntaxKind): Integer;
@@ -469,8 +539,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ATree.Root.ChildCount - 1 do
+  begin
     if ATree.Root[Index].Kind = AKind then
+    begin
       Exit(ATree.Root[Index].StartPos.Line);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -479,8 +553,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ATree.Root.ChildCount - 1 do
+  begin
     if ATree.Root[Index].Kind = AKind then
+    begin
       Exit(ATree.Root[Index].StartOffset + 1);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -511,7 +589,9 @@ begin
   ImplementationLine := SectionLine(ATree, TSyntaxKind.ImplementationSection);
   Target := TMemberTransfer.ParseLayout(AFiles.Text(ATarget.FileName), ATarget.ClassName, TargetTree);
   if Target = nil then
+  begin
     raise Failed(Format('%s ist nach dem Umbau nicht mehr lesbar.', [ATarget.ClassName]));
+  end;
   try
     TargetUnit := TUsesClauses.OwnName(TargetTree.Tokens);
     InInterface := Target.InInterface;
@@ -521,15 +601,22 @@ begin
     AResolver.PinTree(ATree, AFileName);
     try
       for Id in AIds do
+      begin
         for Pass := 0 to 1 do
         begin
           // Erst die Deklaration, dann der Rumpf.
           if Pass = 0 then
-            Node := ASource.Members[Id].Node
+          begin
+            Node := ASource.Members[Id].Node;
+          end
           else if TMemberTransfer.Has(ABodyIds, Id) then
-            Node := ASource.Members[Id].Body
+          begin
+            Node := ASource.Members[Id].Body;
+          end
           else
+          begin
             Node := nil;
+          end;
           NameList := nil;
           Offsets := nil;
           CollectNames(Node, NameList, Offsets);
@@ -538,35 +625,52 @@ begin
             Meaning := Lookup(ATree, AFileName, NameList[Index], Offsets[Index]);
             if not Meaning.Found or Meaning.IsLocal or (Meaning.UnitName = '') or
               SameText(Meaning.UnitName, 'System') or SameText(Meaning.UnitName, TargetUnit) then
+            begin
               Continue;
+            end;
             // Mitglieder der Klasse selbst (sie wandern mit oder sind geerbt).
             if SameText(Meaning.FileName, AFileName) and InRanges(Ranges, AFileName, Meaning.Position.Line) then
+            begin
               Continue;
+            end;
             Display := string.Join('.', NameList[Index]);
             if SameText(Meaning.UnitName, SourceUnit) then
             begin
               if (ImplementationLine >= 0) and (Meaning.Position.Line > ImplementationLine) then
+              begin
                 raise Failed(Format('%s steht nur im implementation-Teil von %s und ist in %s nicht sichtbar.',
                   [Display, SourceUnit, TargetUnit]));
+              end;
               // Nachfahren binden die Quelle ohnehin ein.
               if not AUp then
+              begin
                 Continue;
+              end;
               if (Pass = 0) and InInterface then
+              begin
                 raise Failed(Format('%s stammt aus %s, die %s im interface einbinden müsste (Kreisverweis).',
                   [Display, SourceUnit, TargetUnit]));
+              end;
               if IndexText(SourceUnit, ImplementationUnits) < 0 then
+              begin
                 ImplementationUnits := ImplementationUnits + [SourceUnit];
+              end;
               Continue;
             end;
             if (Pass = 0) and InInterface then
             begin
               if IndexText(Meaning.UnitName, InterfaceUnits) < 0 then
+              begin
                 InterfaceUnits := InterfaceUnits + [Meaning.UnitName];
+              end;
             end
             else if IndexText(Meaning.UnitName, ImplementationUnits) < 0 then
+            begin
               ImplementationUnits := ImplementationUnits + [Meaning.UnitName];
+            end;
           end;
         end;
+      end;
     finally
       AResolver.UnpinTree;
     end;
@@ -576,22 +680,36 @@ begin
     Edits := nil;
     Missing := nil;
     for Display in InterfaceUnits do
+    begin
       if not TUsesClauses.IsUsed(Used, Display, nil) then
+      begin
         Missing := Missing + [Display];
+      end;
+    end;
     Offset := SectionOffset(TargetTree, TSyntaxKind.InterfaceSection);
     if (Missing <> nil) and (Offset >= 0) and TUsesClauses.AddUnit(TargetTree.Tokens, Offset,
       string.Join(', ', Missing), LineBreak, Edit) then
+    begin
       Edits := Edits + [Edit];
+    end;
     Missing := nil;
     for Display in ImplementationUnits do
+    begin
       if not TUsesClauses.IsUsed(Used, Display, nil) and (IndexText(Display, InterfaceUnits) < 0) then
+      begin
         Missing := Missing + [Display];
+      end;
+    end;
     Offset := SectionOffset(TargetTree, TSyntaxKind.ImplementationSection);
     if (Missing <> nil) and (Offset >= 0) and TUsesClauses.AddUnit(TargetTree.Tokens, Offset,
       string.Join(', ', Missing), LineBreak, Edit) then
+    begin
       Edits := Edits + [Edit];
+    end;
     if Edits <> nil then
+    begin
       AFiles.Put(ATarget.FileName, TTextChanges.Apply(Text, Edits));
+    end;
   finally
     Target.Free;
     TargetTree.Free;
@@ -607,7 +725,9 @@ begin
   Result := 0;
   Layout := TMemberTransfer.ParseLayout(AText, AClassName, Tree);
   if Layout = nil then
+  begin
     Exit;
+  end;
   try
     Result := Layout.HeaderLine;
   finally
@@ -625,8 +745,10 @@ begin
   Check := TSyntaxTreeCache.Parse(ANewText);
   try
     if Length(Check.Diagnostics) > Length(Before.Diagnostics) then
+    begin
       raise Failed(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
         [ExtractFileName(AFileName), Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
+    end;
   finally
     Check.Free;
     Before.Free;
@@ -658,7 +780,9 @@ var
   Changes: TWorkspaceChanges;
 begin
   if not (ARequest is TJSONObject) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Anfrage mit members und targets fehlt');
+  end;
   Body := TJSONObject(ARequest);
   Up := IsUp(ADirection);
   Found := Info(ATree, AText, APosition);
@@ -668,27 +792,45 @@ begin
   Request.RaiseVisibility := TClassVisibility.Protected_;
   Wanted := Names(Body, 'targets');
   if (Body.GetValue('option') is TJSONBool) and Up then
-    Request.OverrideSiblings := TJSONBool(Body.GetValue('option')).AsBoolean
+  begin
+    Request.OverrideSiblings := TJSONBool(Body.GetValue('option')).AsBoolean;
+  end
   else if Body.GetValue('option') is TJSONBool then
+  begin
     Request.KeepAbstract := TJSONBool(Body.GetValue('option')).AsBoolean;
+  end;
   if Up then
-    Hits := AncestorChain(ATree, AText, AFileName, AContext.Index, Found.Ancestor)
+  begin
+    Hits := AncestorChain(ATree, AText, AFileName, AContext.Index, Found.Ancestor);
+  end
   else
+  begin
     Hits := DirectDescendants(ATree, AText, AFileName, AContext.Index, Found.ClassName);
+  end;
   Targets := nil;
   for Hit in Hits do
+  begin
     if (IndexText(Hit.Ref.ClassName, Wanted) >= 0) and ((Targets = nil) or not Up) then
+    begin
       Targets := Targets + [Hit.Ref];
+    end;
+  end;
   if Targets = nil then
+  begin
     raise Failed('Bitte ein Ziel wählen, das im Projekt liegt.');
+  end;
   Files := TMemberFiles.Create;
   Source := TClassLayout.Read(ATree, AText, TClassLayout.DeclNamed(ATree, Found.ClassName));
   Changes := TWorkspaceChanges.Create;
   try
     Files.Add(AFileName, AText);
     for Ref in Targets do
+    begin
       if not Files.Has(Ref.FileName) then
+      begin
         Files.Add(Ref.FileName, ReadFile(AContext, Ref.FileName));
+      end;
+    end;
     if Up then
     begin
       // Andere Nachfahren des Ziels (für override).
@@ -696,12 +838,16 @@ begin
       for Hit in Siblings do
       begin
         if not Files.Has(Hit.Ref.FileName) then
+        begin
           Files.Add(Hit.Ref.FileName, ReadFile(AContext, Hit.Ref.FileName));
+        end;
         Request.Siblings := Request.Siblings + [Hit.Ref];
       end;
       if not TMoveMember.PullUp(Files, TMemberClassRef.Create(AFileName, Found.ClassName), Targets[0], Request,
         Plan, Reason) then
+      begin
         raise Failed(Reason);
+      end;
     end
     else
     begin
@@ -712,7 +858,9 @@ begin
       begin
         Layout := TMemberTransfer.ParseLayout(Files.Text(Ref.FileName), Ref.ClassName, Tree);
         if Layout = nil then
+        begin
           Continue;
+        end;
         try
           Ranges := Ranges + ClassRanges(Layout, Ref.FileName);
         finally
@@ -723,34 +871,54 @@ begin
       for Id in Request.Members do
       begin
         if (Id < 0) or (Id > High(Source.Members)) then
+        begin
           Continue;
+        end;
         for Location in TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName,
           NamePosition(ATree, Source.Members[Id].Node, Source.Members[Id].Name), False, AContext.Files,
           AContext.ReadText) do
+        begin
           if not InRanges(Ranges, Location.FileName, Location.Range.StartPos.Line) then
+          begin
             Request.Usages := Request.Usages + [TMemberUsage.Create(Id, Format('%s:%d',
               [ExtractFileName(Location.FileName), Location.Range.StartPos.Line + 1]))];
+          end;
+        end;
       end;
       if not TMoveMember.PushDown(Files, TMemberClassRef.Create(AFileName, Found.ClassName), Targets, Request,
         Plan, Reason) then
+      begin
         raise Failed(Reason);
+      end;
     end;
     // uses der Ziele in anderen Units; abstrakt nach oben wandert nur die Deklaration.
     BodyIds := nil;
     for Id in Request.Members do
+    begin
       if not (Up and TMemberTransfer.Has(Request.Abstract, Id)) then
+      begin
         BodyIds := BodyIds + [Id];
+      end;
+    end;
     for Ref in Targets do
+    begin
       if not SameText(Ref.FileName, AFileName) then
+      begin
         AddUses(AResolver, ATree, AFileName, Source, Request.Members, BodyIds, Files, Ref, Up);
+      end;
+    end;
     for Warning in Plan.Warnings do
+    begin
       Changes.Warn(Warning);
+    end;
     for FileName in Files.Files do
+    begin
       if Files.Changed(FileName) then
       begin
         CheckParses(FileName, Files.Original(FileName), Files.Text(FileName));
         Changes.Add(FileName, TTextChanges.Diff(Files.Original(FileName), Files.Text(FileName)));
       end;
+    end;
     Description := Format('%d Mitglieder, %d Dateien', [Length(Plan.Moved) + Length(Plan.Abstracts),
       Changes.FileCount]);
     Result := TJSONObject.Create;

@@ -131,7 +131,9 @@ begin
   Literal := Concat(Long, TStringLiteralBreak.SLineBreak, 40);
   Assert.IsTrue(Length(Literal.Split([#10])) > 1, Literal);
   for Line in Literal.Split([#10]) do
+  begin
     Assert.IsTrue(Length(Line) <= 40, Line);
+  end;
   Assert.AreEqual(Long, Plain(Literal));
 end;
 

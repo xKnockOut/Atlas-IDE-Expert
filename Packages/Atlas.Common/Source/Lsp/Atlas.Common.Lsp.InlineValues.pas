@@ -105,7 +105,9 @@ begin
       begin
         Node := Child;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
@@ -119,9 +121,13 @@ var
   Token: TPascalToken;
 begin
   for Token in ATokens do
+  begin
     if (Token.StartPos.Line >= ALine) and not (Token.Kind in [TPascalTokenKind.Comment,
       TPascalTokenKind.Directive]) then
+    begin
       Exit(Token.Offset);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -161,8 +167,12 @@ var
   Range: TOffsetRange;
 begin
   for Range in ARanges do
+  begin
     if (Range.StartOffset <= AOffset) and (AOffset < Range.EndOffset) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -211,18 +221,28 @@ begin
   Tokens := ATree.Tokens;
   Offset := LineOffset(Tokens, AStoppedLine);
   if Offset < 0 then
+  begin
     Exit;
+  end;
   Routine := RoutineAt(ATree.Root, Offset);
   if Routine = nil then
+  begin
     Exit;
+  end;
   FirstLine := Routine.StartPos.Line;
   if ARange.StartPos.Line > FirstLine then
+  begin
     FirstLine := ARange.StartPos.Line;
+  end;
   LastLine := AStoppedLine;
   if ARange.EndPos.Line < LastLine then
+  begin
     LastLine := ARange.EndPos.Line;
+  end;
   if FirstLine > LastLine then
+  begin
     Exit;
+  end;
   // Felder nur in Methoden („TKlasse.Name“), dort gehören sie Self.
   IsMethod := Pos('.', Routine.Name) > 0;
   Withs := WithRanges(Routine);
@@ -234,40 +254,62 @@ begin
     begin
       Token := Tokens[Index];
       if Token.StartPos.Line > LastLine then
+      begin
         Break;
+      end;
       if (Token.StartPos.Line < FirstLine) or (Token.Offset < Routine.StartOffset) or
         (Token.Kind <> TPascalTokenKind.Identifier) or ATree.IsControlCharPart(Index) then
+      begin
         Continue;
+      end;
       // Kein Mitglied eines anderen Ausdrucks (X.Name) und kein Aufruf bzw. keine Umwandlung (Name(…)).
       Before := Index - 1;
       while (Before >= 0) and not Significant(Tokens[Before]) do
+      begin
         Dec(Before);
+      end;
       if (Before >= 0) and (Tokens[Before].IsSymbol('.') or Tokens[Before].IsSymbol('@') or
         Tokens[Before].IsSymbol('^')) then
+      begin
         Continue;
+      end;
       After := Index + 1;
       while (After <= High(Tokens)) and not Significant(Tokens[After]) do
+      begin
         Inc(After);
+      end;
       if (After <= High(Tokens)) and Tokens[After].IsSymbol('(') then
+      begin
         Continue;
+      end;
       Key := IntToStr(Token.StartPos.Line) + ':' + LowerCase(Token.Text);
       if Seen.ContainsKey(Key) then
+      begin
         Continue;
+      end;
       Symbol := AResolver.Resolve(ATree, AFileName, Token.StartPos);
       if (Symbol.Kind = TResolvedKind.Local) and (Symbol.SymbolKind = TIndexSymbolKind.Variable) then
-        Value.Kind := TInlineValueKind.Local
+      begin
+        Value.Kind := TInlineValueKind.Local;
+      end
       else if IsMethod and (Symbol.Kind = TResolvedKind.Symbol) and (Symbol.SymbolKind = TIndexSymbolKind.Field) and
         (Symbol.Container <> '') and not InAny(Withs, Token.Offset) then
-        Value.Kind := TInlineValueKind.Field
+      begin
+        Value.Kind := TInlineValueKind.Field;
+      end
       else
+      begin
         Continue;
+      end;
       Seen.Add(Key, True);
       Value.Range := TTextRange.Create(Token.StartPos, Token.EndPos);
       Value.Name := Token.Text;
       Value.TypeName := Symbol.TypeName;
       Found.Add(Value);
       if Found.Count >= MaxValues then
+      begin
         Break;
+      end;
     end;
     Result := Found.ToArray;
   finally
@@ -290,7 +332,9 @@ begin
     Item.AddPair('variableName', Value.Name);
     Item.AddPair('caseSensitiveLookup', TJSONBool.Create(False));
     if Value.TypeName <> '' then
+    begin
       Item.AddPair('atlasType', Value.TypeName);
+    end;
     Result.AddElement(Item);
   end;
 end;
@@ -308,10 +352,14 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('context.stoppedLocation', StoppedValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri", "range" und "context.stoppedLocation" fehlen in ' + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);

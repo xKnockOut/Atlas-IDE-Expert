@@ -107,9 +107,13 @@ function TScanner.Peek(ADelta: Integer): Char;
 begin
   // FPos zählt ab 0, der string ab 1.
   if FPos + ADelta < FLength then
-    Result := FText[FPos + ADelta + 1]
+  begin
+    Result := FText[FPos + ADelta + 1];
+  end
   else
+  begin
     Result := #0;
+  end;
 end;
 
 function TScanner.Peek: Char;
@@ -125,7 +129,9 @@ end;
 procedure TScanner.SkipToLineEnd;
 begin
   while (FPos < FLength) and not AtLineBreak do
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TScanner.ScanUntil(const ACloser: string): Boolean;
@@ -136,9 +142,13 @@ begin
   Found := Pos(ACloser, FText, FPos + 1);
   Result := Found > 0;
   if Result then
-    FPos := Found - 1 + Length(ACloser)
+  begin
+    FPos := Found - 1 + Length(ACloser);
+  end
   else
+  begin
     FPos := FLength;
+  end;
 end;
 
 function TScanner.ScanString: Boolean;
@@ -150,7 +160,9 @@ begin
     if Peek = '''' then
     begin
       if Peek(1) = '''' then
-        Inc(FPos, 2)
+      begin
+        Inc(FPos, 2);
+      end
       else
       begin
         Inc(FPos);
@@ -158,9 +170,13 @@ begin
       end;
     end
     else if AtLineBreak then
-      Exit(False)
+    begin
+      Exit(False);
+    end
     else
+    begin
       Inc(FPos);
+    end;
   end;
   Result := False;
 end;
@@ -178,14 +194,22 @@ begin
   ATerminated := False;
   QuoteCount := 0;
   while Peek(QuoteCount) = '''' do
+  begin
     Inc(QuoteCount);
+  end;
   if (QuoteCount < 3) or not Odd(QuoteCount) then
+  begin
     Exit(False);
+  end;
   Scan := QuoteCount;
   while CharInSet(Peek(Scan), [' ', #9]) do
+  begin
     Inc(Scan);
+  end;
   if not CharInSet(Peek(Scan), [#13, #10]) then
+  begin
     Exit(False);
+  end;
 
   Result := True;
   Inc(FPos, Scan);
@@ -193,15 +217,23 @@ begin
   begin
     // Zeilenumbruch überspringen, dann Leerraum am Zeilenanfang.
     if Peek = #13 then
+    begin
       Inc(FPos);
+    end;
     if Peek = #10 then
+    begin
       Inc(FPos);
+    end;
     LineScan := 0;
     while CharInSet(Peek(LineScan), [' ', #9]) do
+    begin
       Inc(LineScan);
+    end;
     Count := 0;
     while Peek(LineScan + Count) = '''' do
+    begin
       Inc(Count);
+    end;
     if Count = QuoteCount then
     begin
       Inc(FPos, LineScan + Count);
@@ -215,7 +247,9 @@ end;
 procedure TScanner.ScanDigits(const AAllowed: TSysCharSet);
 begin
   while CharInSet(Peek, AAllowed) do
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TScanner.ScanDecimal: Boolean;
@@ -246,7 +280,9 @@ end;
 procedure TScanner.ScanIdentifier;
 begin
   while IsIdentifierPart(Peek) do
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TScanner.ScanSymbol: Boolean;
@@ -256,14 +292,18 @@ var
 begin
   Pair := Peek + Peek(1);
   for Symbol in TwoCharSymbols do
+  begin
     if Pair = Symbol then
     begin
       Inc(FPos, 2);
       Exit(True);
     end;
+  end;
   Result := Pos(Peek, OneCharSymbols) > 0;
   if Result then
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TScanner.Next(out AToken: TPascalToken; out AEndOffset: Integer): Boolean;
@@ -274,9 +314,13 @@ var
   Kind: TPascalTokenKind;
 begin
   while (FPos < FLength) and (Peek <= ' ') do
+  begin
     Inc(FPos);
+  end;
   if FPos >= FLength then
+  begin
     Exit(False);
+  end;
 
   Start := FPos;
   C := Peek;
@@ -291,17 +335,25 @@ begin
   else if C = '{' then
   begin
     if Peek(1) = '$' then
-      Kind := TPascalTokenKind.Directive
+    begin
+      Kind := TPascalTokenKind.Directive;
+    end
     else
+    begin
       Kind := TPascalTokenKind.Comment;
+    end;
     Terminated := ScanUntil('}');
   end
   else if (C = '(') and (Peek(1) = '*') then
   begin
     if Peek(2) = '$' then
-      Kind := TPascalTokenKind.Directive
+    begin
+      Kind := TPascalTokenKind.Directive;
+    end
     else
+    begin
       Kind := TPascalTokenKind.Comment;
+    end;
     Inc(FPos, 2);
     Terminated := ScanUntil('*)');
   end
@@ -309,7 +361,9 @@ begin
   begin
     Kind := TPascalTokenKind.StringLiteral;
     if not TryScanMultilineString(Terminated) then
+    begin
       Terminated := ScanString;
+    end;
   end
   else if C = '#' then
   begin
@@ -321,7 +375,9 @@ begin
       ScanDigits(['0'..'9', 'A'..'F', 'a'..'f', '_']);
     end
     else
+    begin
       ScanDigits(['0'..'9', '_']);
+    end;
   end
   else if C = '$' then
   begin
@@ -369,14 +425,22 @@ begin
     // wie @@End im asm-Block beenden den Block nicht (#861).
     if ((Start = 0) or (FText[Start] <> '@')) and
       TPascalLexer.IsReservedWord(Copy(FText, Start + 1, FPos - Start)) then
-      Kind := TPascalTokenKind.Keyword
+    begin
+      Kind := TPascalTokenKind.Keyword;
+    end
     else
+    begin
       Kind := TPascalTokenKind.Identifier;
+    end;
   end
   else if ScanSymbol then
-    Kind := TPascalTokenKind.Symbol
+  begin
+    Kind := TPascalTokenKind.Symbol;
+  end
   else
+  begin
     Inc(FPos);
+  end;
 
   AToken := Default(TPascalToken);
   AToken.Kind := Kind;
@@ -424,7 +488,9 @@ begin
     begin
       // LF nach CR gehört zum selben Zeilenumbruch.
       if not ((FOffset > 0) and (FText[FOffset] = #13)) then
+      begin
         Inc(FLine);
+      end;
       FLineStart := FOffset + 1;
     end;
     Inc(FOffset);
@@ -444,14 +510,22 @@ var
   Start, Stop: Integer;
 begin
   if Copy(AText, 1, 2) = '{$' then
-    Start := 3
+  begin
+    Start := 3;
+  end
   else if Copy(AText, 1, 3) = '(*$' then
-    Start := 4
+  begin
+    Start := 4;
+  end
   else
+  begin
     Exit('');
+  end;
   Stop := Start;
   while (Stop <= Length(AText)) and CharInSet(AText[Stop], ['A'..'Z', 'a'..'z']) do
+  begin
     Inc(Stop);
+  end;
   Result := UpperCase(Copy(AText, Start, Stop - Start));
 end;
 
@@ -478,9 +552,13 @@ end;
 class function TPascalLexer.SourceName(const AName: string): string;
 begin
   if (AName <> '') and ((AName[1] = '&') or IsReservedWord(AName)) then
-    Result := '&' + AName
+  begin
+    Result := '&' + AName;
+  end
   else
+  begin
     Result := AName;
+  end;
 end;
 
 class function TPascalLexer.ReservedWordList: TArray<string>;
@@ -489,7 +567,9 @@ var
 begin
   SetLength(Result, Length(ReservedWords));
   for Index := 0 to High(ReservedWords) do
+  begin
     Result[Index] := ReservedWords[Index];
+  end;
 end;
 
 class function TPascalLexer.Tokenize(const AText: string): TArray<TPascalToken>;
@@ -522,7 +602,9 @@ var
 begin
   ReservedWordSet := TDictionary<string, Boolean>.Create;
   for Word in ReservedWords do
+  begin
     ReservedWordSet.Add(Word, True);
+  end;
 end;
 
 initialization

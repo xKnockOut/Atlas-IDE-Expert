@@ -173,11 +173,13 @@ var
   Item: TCompletionItem;
 begin
   for Item in AItems.Items do
+  begin
     if SameText(Item.Name, AName) and (Item.Kind = AKind) then
     begin
       AItem := Item;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -219,11 +221,19 @@ begin
   Member := -1;
   Postfix := -1;
   for Index := 0 to High(Items.Items) do
+  begin
     if SameText(Items.Items[Index].Name, 'tryf') then
+    begin
       if Items.Items[Index].Kind = KindSnippet then
-        Postfix := Index
+      begin
+        Postfix := Index;
+      end
       else
+      begin
         Member := Index;
+      end;
+    end;
+  end;
   Assert.IsTrue((Member >= 0) and (Member < Postfix));
 end;
 
@@ -274,8 +284,12 @@ begin
   try
     Entry := nil;
     for Index := 0 to TJSONArray(Json.GetValue('items')).Count - 1 do
+    begin
       if TJSONArray(Json.GetValue('items')).Items[Index].GetValue<Integer>('kind') = KindSnippet then
+      begin
         Entry := TJSONObject(TJSONArray(Json.GetValue('items')).Items[Index]);
+      end;
+    end;
     Assert.IsNotNull(Entry);
     Assert.AreEqual('if Assigned(Wert) then'#10'    ', Entry.GetValue<string>('textEdit.newText'));
     Assert.AreEqual('Wert.ifa', Entry.GetValue<string>('filterText'));

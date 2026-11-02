@@ -134,7 +134,9 @@ var
 begin
   Settings := TServerSettings.Default;
   if AConfig <> '' then
+  begin
     Settings := TConfigurationParser.Parse(AConfig, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -144,17 +146,25 @@ begin
     Context.Tree := Tree;
     Context.FormText := AFormText;
     if AFormText <> '' then
+    begin
       Context.FormFile := 'C:\P\Form1.dfm';
+    end;
     Context.ReadFile :=
       function(const AName: string; out AData: TBytes): Boolean
       begin
         Result := True;
         if SameText(AName, 'Form1.pas') and (AUnitBytes <> nil) then
-          AData := AUnitBytes
+        begin
+          AData := AUnitBytes;
+        end
         else if SameText(AName, 'Form1.dfm') and (AFormBytes <> nil) then
-          AData := AFormBytes
+        begin
+          AData := AFormBytes;
+        end
         else
+        begin
           Result := False;
+        end;
       end;
     Result := TRuleEngine.Run([ARule], Settings, Context);
   finally
@@ -179,7 +189,9 @@ var
 begin
   SetLength(Result, Length(AValues));
   for Index := 0 to High(AValues) do
+  begin
     Result[Index] := AValues[Index];
+  end;
 end;
 
 { TUnicodeRuleTests }

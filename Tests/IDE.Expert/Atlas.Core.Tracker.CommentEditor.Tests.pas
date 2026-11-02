@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCommentEditorTests = class
   public
     /// <summary>"@an" am Ende und mitten im Satz; Start und Länge wie SelStart eines Memos.</summary>
@@ -73,6 +74,7 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,

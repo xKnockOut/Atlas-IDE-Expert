@@ -158,16 +158,22 @@ function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Intege
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
   if Result > High(ATokens) then
+  begin
     Result := -1;
+  end;
 end;
 
 function PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function IsSymbolAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const ASymbol: string): Boolean;
@@ -192,12 +198,16 @@ begin
   while Result <= High(ATokens) do
   begin
     if IsSymbolAt(ATokens, Result, '(') or IsSymbolAt(ATokens, Result, '[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if IsSymbolAt(ATokens, Result, ')') or IsSymbolAt(ATokens, Result, ']') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
     Inc(Result);
   end;
@@ -214,12 +224,16 @@ begin
   while Result >= 0 do
   begin
     if IsSymbolAt(ATokens, Result, ')') or IsSymbolAt(ATokens, Result, ']') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if IsSymbolAt(ATokens, Result, '(') or IsSymbolAt(ATokens, Result, '[') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
     Dec(Result);
   end;
@@ -232,20 +246,28 @@ var
 begin
   Result := AIndex;
   if not IsSymbolAt(ATokens, AIndex, '<') then
+  begin
     Exit;
+  end;
   Depth := 0;
   while Result <= High(ATokens) do
   begin
     if IsSymbolAt(ATokens, Result, '<') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if IsSymbolAt(ATokens, Result, '>') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit(NextToken(ATokens, Result));
+      end;
     end
     else if IsSymbolAt(ATokens, Result, ';') or IsSymbolAt(ATokens, Result, ':=') then
+    begin
       Exit(AIndex);
+    end;
     Inc(Result);
   end;
   Result := AIndex;
@@ -265,19 +287,29 @@ begin
     begin
       Part := Opening(ATokens, Part);
       if Part < 0 then
+      begin
         Exit;
+      end;
       // Name vor der Klammer (Aufruf, Index); ohne Name ist die Klammer der Anfang.
       if (PreviousToken(ATokens, Part) >= 0) and
         (ATokens[PreviousToken(ATokens, Part)].Kind = TPascalTokenKind.Identifier) then
-        Part := PreviousToken(ATokens, Part)
+      begin
+        Part := PreviousToken(ATokens, Part);
+      end
       else if IsSymbolAt(ATokens, PreviousToken(ATokens, Part), ')') or
         IsSymbolAt(ATokens, PreviousToken(ATokens, Part), ']') then
-        Part := PreviousToken(ATokens, Part)
+      begin
+        Part := PreviousToken(ATokens, Part);
+      end
       else
+      begin
         Break;
+      end;
     end;
     if Part < 0 then
+    begin
       Exit;
+    end;
     Result := Part;
     Dot := PreviousToken(ATokens, Result);
   end;
@@ -294,11 +326,17 @@ begin
   while (Index >= 0) and (Index < AClose) do
   begin
     if IsSymbolAt(ATokens, Index, '(') or IsSymbolAt(ATokens, Index, '[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if IsSymbolAt(ATokens, Index, ')') or IsSymbolAt(ATokens, Index, ']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and IsSymbolAt(ATokens, Index, ',') then
+    begin
       Result := Result + [Index];
+    end;
     Index := NextToken(ATokens, Index);
   end;
 end;
@@ -331,13 +369,21 @@ begin
   Result := Default;
   Result.Prefixes := APrefixes;
   if SameText(ASection, 'public') then
-    Result.Section := TPropertySectionChoice.Public_
+  begin
+    Result.Section := TPropertySectionChoice.Public_;
+  end
   else if SameText(ASection, 'published') then
+  begin
     Result.Section := TPropertySectionChoice.Published_;
+  end;
   if SameText(AHiding, 'private') then
-    Result.Hiding := TAccessorHiding.Private_
+  begin
+    Result.Hiding := TAccessorHiding.Private_;
+  end
   else if SameText(AHiding, 'protected') then
+  begin
     Result.Hiding := TAccessorHiding.Protected_;
+  end;
 end;
 
 { TAccessorMethod }
@@ -358,14 +404,22 @@ function TAccessorProperty.Declaration: string;
 begin
   Result := 'property ' + Name;
   if IsIndexed then
+  begin
     Result := Result + '[' + IndexParameters + ']';
+  end;
   Result := Result + ': ' + TypeName;
   if ReadField <> '' then
-    Result := Result + ' read ' + ReadField
+  begin
+    Result := Result + ' read ' + ReadField;
+  end
   else if Getter.Exists then
+  begin
     Result := Result + ' read ' + Getter.Name;
+  end;
   if Setter.Exists then
+  begin
     Result := Result + ' write ' + Setter.Name;
+  end;
   Result := Result + ';';
 end;
 
@@ -373,13 +427,21 @@ function TAccessorProperty.Section(AChoice: TPropertySectionChoice): TMemberSect
 begin
   Result := TMemberSection.Private_;
   if Getter.Exists and (Getter.Section > Result) then
+  begin
     Result := Getter.Section;
+  end;
   if Setter.Exists and (Setter.Section > Result) then
+  begin
     Result := Setter.Section;
+  end;
   if (AChoice = TPropertySectionChoice.Public_) and (Result < TMemberSection.Public_) then
-    Result := TMemberSection.Public_
+  begin
+    Result := TMemberSection.Public_;
+  end
   else if AChoice = TPropertySectionChoice.Published_ then
+  begin
     Result := TMemberSection.Published_;
+  end;
 end;
 
 { Klassen lesen }
@@ -441,13 +503,21 @@ function SectionOf(const AName: string; out AIsStrict: Boolean): TMemberSection;
 begin
   AIsStrict := ContainsText(AName, 'strict');
   if EndsText('private', AName) then
-    Result := TMemberSection.Private_
+  begin
+    Result := TMemberSection.Private_;
+  end
   else if EndsText('protected', AName) then
-    Result := TMemberSection.Protected_
+  begin
+    Result := TMemberSection.Protected_;
+  end
   else if EndsText('published', AName) then
-    Result := TMemberSection.Published_
+  begin
+    Result := TMemberSection.Published_;
+  end
   else
+  begin
     Result := TMemberSection.Public_;
+  end;
 end;
 
 constructor TClassReader.Create(ATree: TSyntaxTree; const AText: string; const ALines: TArray<string>;
@@ -491,7 +561,9 @@ begin
           FMembers := FMembers + [Child.Name];
           TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
           if TypeRef <> nil then
+          begin
             FFields.AddOrSetValue(UpperCase(Child.Name), Collapse(NodeText(FText, TypeRef)));
+          end;
         end;
       TSyntaxKind.RoutineHeader:
         begin
@@ -512,7 +584,9 @@ begin
         end;
     else
       if Child.Kind <> TSyntaxKind.TypeReference then
+      begin
         Current.MemberLines := Current.MemberLines + [Child.EndPos.Line];
+      end;
     end;
   end;
   Sections := Sections + [Current];
@@ -544,7 +618,9 @@ begin
   Head := Copy(FText, ANode.StartOffset + 1, 20);
   Info.IsClassMethod := TRegEx.IsMatch(Head, '^class\s', [roIgnoreCase]);
   if Info.IsClassMethod then
+  begin
     Head := TrimLeft(Copy(Head, 6, MaxInt));
+  end;
   Info.IsFunction := StartsText('function', Head);
   // Generische Methoden kann eine Property nicht benutzen.
   Info.PlainParameters := ANode.FindChild(TSyntaxKind.GenericParams) = nil;
@@ -552,12 +628,17 @@ begin
   begin
     Child := ANode[Index];
     if Child.Kind = TSyntaxKind.TypeReference then
-      Info.ResultType := Collapse(NodeText(FText, Child))
+    begin
+      Info.ResultType := Collapse(NodeText(FText, Child));
+    end
     else if (Child.Kind = TSyntaxKind.Directive) and (IndexText(Child.Name, VirtualDirectives) >= 0) then
+    begin
       Info.Virtual_ := True;
+    end;
   end;
   Parameters := ANode.FindChild(TSyntaxKind.Parameters);
   if Parameters <> nil then
+  begin
     for Index := 0 to Parameters.ChildCount - 1 do
     begin
       Parameter := Parameters[Index];
@@ -572,7 +653,9 @@ begin
       TypeName := Collapse(NodeText(FText, TypeRef));
       Modifier := '';
       if Parameter.Modifier = TParameterModifier.ConstParam then
+      begin
         Modifier := 'const ';
+      end;
       Names := Parameter.Name.Split([',']);
       for Part := 0 to High(Names) do
       begin
@@ -580,6 +663,7 @@ begin
         Info.ParameterTypes := Info.ParameterTypes + [TypeName];
       end;
     end;
+  end;
   FRoutines := FRoutines + [Info];
 end;
 
@@ -589,8 +673,12 @@ var
 begin
   Result := 0;
   for Routine in FRoutines do
+  begin
     if SameText(Routine.Name, AName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TClassReader.HasMember(const AName: string): Boolean;
@@ -607,16 +695,24 @@ begin
   begin
     if (Prefix = '') or (Length(AName) <= Length(Prefix)) or not StartsText(Prefix, AName) or
       not CharInSet(AName[Length(Prefix) + 1], ['A'..'Z', '_']) then
+    begin
       Continue;
+    end;
     if AGetter then
     begin
       if SameText(Prefix, 'Set') then
+      begin
         Continue;
+      end;
       if (SameText(Prefix, 'Is') or SameText(Prefix, 'Has')) and not SameText(AResultType, 'Boolean') then
+      begin
         Continue;
+      end;
     end
     else if SameText(Prefix, 'Get') or SameText(Prefix, 'Is') or SameText(Prefix, 'Has') then
+    begin
       Continue;
+    end;
     ABase := Copy(AName, Length(Prefix) + 1, MaxInt);
     Exit(True);
   end;
@@ -635,15 +731,19 @@ begin
   Result.NamePos := ARoutine.Node.StartPos;
   Tokens := FTree.Tokens;
   for Token := TSyntaxTree.FirstTokenOf(Tokens, ARoutine.Node.StartOffset) to High(Tokens) do
+  begin
     if (Tokens[Token].Offset >= ARoutine.Node.StartOffset) and (Tokens[Token].Kind = TPascalTokenKind.Identifier) and
       SameText(Tokens[Token].Text, ARoutine.Name) then
     begin
       Result.NamePos := Tokens[Token].StartPos;
       Break;
     end;
+  end;
   Result.FirstLine := ARoutine.Node.StartPos.Line;
   while (Result.FirstLine > 0) and StartsText('///', Trim(FLines[Result.FirstLine - 1])) do
+  begin
     Dec(Result.FirstLine);
+  end;
   Result.LastLine := ARoutine.Node.EndPos.Line;
 end;
 
@@ -658,14 +758,18 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if (Found = nil) and (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, Qualified) then
+      begin
         Found := ANode;
+      end;
       Result := Found = nil;
     end);
   Result := False;
   // Nur Kopf und Rumpf, im Rumpf genau "Result := FX;".
   if (Found = nil) or (Found.ChildCount <> 2) or (Found[1].Kind <> TSyntaxKind.Block) or
     (Found[1].ChildCount <> 1) then
+  begin
     Exit;
+  end;
   Found := Found[1][0];
   Result := (Found.Kind = TSyntaxKind.AssignStatement) and SameText(Found.Name, 'Result') and
     (Found.ChildCount = 2) and (Found[1].Kind = TSyntaxKind.Identifier) and SameText(Found[1].Name, AField);
@@ -677,9 +781,15 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for Index := 0 to High(A) do
+    begin
       if not SameText(A[Index], B[Index]) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 function TClassReader.Properties: TArray<TAccessorProperty>;
@@ -701,30 +811,44 @@ begin
     begin
       if Routine.IsClassMethod or not Routine.PlainParameters or (Count(Routine.Name) <> 1) or
         (IndexText(Routine.Name, FUsedAccessors) >= 0) then
+      begin
         Continue;
+      end;
       if Routine.IsFunction and (Routine.ResultType <> '') then
       begin
         if not Strip(Routine.Name, True, Routine.ResultType, Base) then
+        begin
           Continue;
+        end;
         Key := UpperCase(Base);
         // Bei GetX und IsX gewinnt der Präfix, der zuerst eingestellt ist.
         if Getters.ContainsKey(Key) then
+        begin
           Continue;
+        end;
         Getters.Add(Key, Routine);
       end
       else if not Routine.IsFunction and (Length(Routine.ParameterTypes) > 0) then
       begin
         if not Strip(Routine.Name, False, '', Base) then
+        begin
           Continue;
+        end;
         Key := UpperCase(Base);
         if Setters.ContainsKey(Key) then
+        begin
           Continue;
+        end;
         Setters.Add(Key, Routine);
       end
       else
+      begin
         Continue;
+      end;
       if Order.IndexOf(Key) < 0 then
+      begin
         Order.Add(Key);
+      end;
     end;
     for Key in Order do
     begin
@@ -741,7 +865,9 @@ begin
         // Nicht zusammenpassende Paare: die Property entsteht nur aus dem Getter.
         if not SameText(Getter.ResultType, Setter.ParameterTypes[High(Setter.ParameterTypes)]) or
           not SameTypes(Getter.ParameterTypes, IndexTypes) then
+        begin
           HasSetter := False;
+        end;
       end;
       if HasGetter then
       begin
@@ -759,16 +885,24 @@ begin
         Item.IndexCount := Length(Setter.ParameterTexts) - 1;
       end;
       if HasSetter then
+      begin
         Item.Setter := Method(Setter);
+      end;
       Name := Base;
       if Item.IsIndexed and not HasMember(TPropertyFromAccessors.Plural(Base)) then
+      begin
         Name := TPropertyFromAccessors.Plural(Base);
+      end;
       if HasMember(Name) then
+      begin
         Continue;
+      end;
       Item.Name := Name;
       if HasGetter and not Item.IsIndexed and FFields.TryGetValue(UpperCase('F' + Base), FieldType) and
         SameText(FieldType, Item.TypeName) and TrivialGetter(Getter.Name, 'F' + Base) then
+      begin
         Item.ReadField := 'F' + Base;
+      end;
       Result := Result + [Item];
     end;
   finally
@@ -785,14 +919,18 @@ var
 begin
   Found := nil;
   if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.ClassType) <> nil) and
           (ANode.FindChild(TSyntaxKind.ClassType).EndPos.Line > ANode.StartPos.Line) then
+        begin
           Found := Found + [ANode];
+        end;
         Result := True;
       end);
+  end;
   Result := Found;
 end;
 
@@ -818,15 +956,23 @@ var
 begin
   Result := AName;
   if AName = '' then
+  begin
     Exit;
+  end;
   Last := AName[Length(AName)];
   if CharInSet(Last, ['y', 'Y']) and (Length(AName) > 1) and not CharInSet(AName[Length(AName) - 1],
     ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']) then
-    Result := Copy(AName, 1, Length(AName) - 1) + 'ies'
+  begin
+    Result := Copy(AName, 1, Length(AName) - 1) + 'ies';
+  end
   else if CharInSet(Last, ['s', 'x', 'z', 'S', 'X', 'Z']) or EndsText('ch', AName) or EndsText('sh', AName) then
-    Result := AName + 'es'
+  begin
+    Result := AName + 'es';
+  end
   else
+  begin
     Result := AName + 's';
+  end;
 end;
 
 class function TPropertyFromAccessors.Find(ATree: TSyntaxTree; const AText: string;
@@ -857,6 +1003,7 @@ begin
   Result := nil;
   AWholeClass := False;
   for Item in Find(ATree, AText, AOptions) do
+  begin
     if Item.ClassLine = ALine then
     begin
       AWholeClass := True;
@@ -868,6 +1015,7 @@ begin
       Result := [Item];
       Exit;
     end;
+  end;
 end;
 
 class function TPropertyFromAccessors.CanHide(const AMethod: TAccessorMethod;
@@ -877,10 +1025,14 @@ var
 begin
   Result := False;
   if not AMethod.Exists or AMethod.Virtual_ or (AOptions.Hiding = TAccessorHiding.Off) then
+  begin
     Exit;
+  end;
   Target := TMemberSection.Private_;
   if AOptions.Hiding = TAccessorHiding.Protected_ then
+  begin
     Target := TMemberSection.Protected_;
+  end;
   Result := AMethod.Section > Target;
 end;
 
@@ -888,9 +1040,13 @@ function Accessors(const AProperty: TAccessorProperty): TArray<TAccessorMethod>;
 begin
   Result := nil;
   if AProperty.Getter.Exists then
+  begin
     Result := Result + [AProperty.Getter];
+  end;
   if AProperty.Setter.Exists then
+  begin
     Result := Result + [AProperty.Setter];
+  end;
 end;
 
 type
@@ -905,11 +1061,13 @@ var
   Item: TInsertion;
 begin
   for Index := 0 to High(AInsertions) do
+  begin
     if AInsertions[Index].Position = APosition then
     begin
       AInsertions[Index].Text := AInsertions[Index].Text + AText;
       Exit;
     end;
+  end;
   Item.Position := APosition;
   Item.Text := AText;
   AInsertions := AInsertions + [Item];
@@ -937,15 +1095,21 @@ var
   begin
     Result := ASection.HeadLine;
     for Index := High(ASection.MemberLines) downto 0 do
+    begin
       if not IsDeleted(ASection.MemberLines[Index]) then
+      begin
         Exit(ASection.MemberLines[Index]);
+      end;
+    end;
   end;
 
   function LastLine(const ASection: TClassSection): Integer;
   begin
     Result := ASection.HeadLine;
     if ASection.MemberLines <> nil then
+    begin
       Result := ASection.MemberLines[High(ASection.MemberLines)];
+    end;
   end;
 
   function LineEnd(ALine: Integer): TTextPosition;
@@ -974,10 +1138,18 @@ begin
   try
     // Zuerst alle wandernden Methoden: Die Einfügestellen dürfen nicht in gelöschten Zeilen liegen.
     for Item in AProperties do
+    begin
       for Method in Accessors(Item) do
+      begin
         if (IndexText(Method.Name, AHidden) >= 0) and CanHide(Method, AOptions) then
+        begin
           for Line := Method.FirstLine to Method.LastLine do
+          begin
             Deleted.AddOrSetValue(Line, True);
+          end;
+        end;
+      end;
+    end;
     for Decl in ClassDecls(ATree) do
     begin
       Reader := TClassReader.Create(ATree, AText, Lines, Decl, AOptions);
@@ -985,55 +1157,78 @@ begin
         ClassIndent := TTextLines.IndentOf(Lines[Decl.StartPos.Line]);
         MemberIndent := ClassIndent + '  ';
         for Index := 0 to High(Reader.Sections) do
+        begin
           if Reader.Sections[Index].MemberLines <> nil then
           begin
             MemberIndent := TTextLines.IndentOf(Lines[Reader.Sections[Index].MemberLines[0]]);
             Break;
           end;
+        end;
         for Item in AProperties do
         begin
           if (Item.ClassLine <> Decl.StartPos.Line) or not SameText(Item.ClassName, Decl.Name) then
+          begin
             Continue;
+          end;
           Section := Item.Section(AOptions.Section);
           After := -1;
           if Item.Getter.Exists then
+          begin
             After := Item.Getter.LastLine;
+          end;
           if Item.Setter.Exists and (Item.Setter.LastLine > After) then
+          begin
             After := Item.Setter.LastLine;
+          end;
           // Einfügestelle: Ende des letzten passenden Abschnitts hinter den Zugriffsmethoden.
           Anchor := -1;
           for Index := High(Reader.Sections) downto 0 do
+          begin
             if (Reader.Sections[Index].Section = Section) and not Reader.Sections[Index].IsStrict and
               (LastLine(Reader.Sections[Index]) >= After) then
             begin
               Anchor := LastKept(Reader.Sections[Index]);
               Break;
             end;
+          end;
           // Verborgene Methoden in einen private- bzw. protected-Abschnitt vor der Property.
           Methods := nil;
           for Method in Accessors(Item) do
+          begin
             if (IndexText(Method.Name, AHidden) >= 0) and CanHide(Method, AOptions) then
+            begin
               Methods := Methods + [Method];
+            end;
+          end;
           Moved := '';
           for Method in Methods do
+          begin
             for Line := Method.FirstLine to Method.LastLine do
+            begin
               Moved := Moved + Lines[Line] + LB;
+            end;
+          end;
           Head := '';
           if Anchor < 0 then
           begin
             // Neuer Abschnitt vor "end": hinter die letzte bleibende Zeile der Klasse.
             Anchor := Reader.ClassNode.EndPos.Line - 1;
             while (Anchor > Decl.StartPos.Line) and IsDeleted(Anchor) do
+            begin
               Dec(Anchor);
+            end;
             Head := ClassIndent + SectionName(Section) + LB;
           end;
           if Moved <> '' then
           begin
             Target := TMemberSection.Private_;
             if AOptions.Hiding = TAccessorHiding.Protected_ then
+            begin
               Target := TMemberSection.Protected_;
+            end;
             Found := False;
             for HideIndex := High(Reader.Sections) downto 0 do
+            begin
               if (Reader.Sections[HideIndex].Section = Target) and not Reader.Sections[HideIndex].IsStrict and
                 (LastKept(Reader.Sections[HideIndex]) < Anchor) then
               begin
@@ -1042,6 +1237,7 @@ begin
                 Found := True;
                 Break;
               end;
+            end;
             if not Found then
             begin
               // Eigener Abschnitt direkt vor der Property, danach geht ihr Abschnitt weiter.
@@ -1052,12 +1248,18 @@ begin
           if Opened.TryGetValue(Anchor, Opening_) then
           begin
             if (Head = '') and (Opening_ <> SectionName(Section)) then
-              Head := ClassIndent + SectionName(Section) + LB
+            begin
+              Head := ClassIndent + SectionName(Section) + LB;
+            end
             else if (Moved = '') and (Opening_ = SectionName(Section)) then
+            begin
               Head := '';
+            end;
           end;
           if Head <> '' then
+          begin
             Opened.AddOrSetValue(Anchor, SectionName(Section));
+          end;
           AddInsertion(Insertions, LineEnd(Anchor), LB + Head + MemberIndent + Item.Declaration);
         end;
       finally
@@ -1065,15 +1267,21 @@ begin
       end;
     end;
     for Line in Deleted.Keys do
+    begin
       if not Deleted.ContainsKey(Line - 1) then
       begin
         Index := Line;
         while Deleted.ContainsKey(Index + 1) do
+        begin
           Inc(Index);
+        end;
         Result := Result + [TTextEdit.Create(TTextRange.Create(Line, 0, Index + 1, 0), '')];
       end;
+    end;
     for Insertion in Insertions do
+    begin
       Result := Result + [TTextEdit.Create(TTextRange.Create(Insertion.Position, Insertion.Position), Insertion.Text)];
+    end;
   finally
     Deleted.Free;
     Opened.Free;
@@ -1096,32 +1304,50 @@ begin
   Start := ChainStart(ATokens, ANameToken);
   Before := PreviousToken(ATokens, Start);
   if IsWordAt(ATokens, Before, ['read', 'write', 'stored', 'inherited', 'function', 'procedure']) then
+  begin
     Exit(TAccessorUse.Keep);
+  end;
   if IsSymbolAt(ATokens, Before, '@') or IsSymbolAt(ATokens, Before, '@@') then
+  begin
     Exit(TAccessorUse.Pointer_);
+  end;
   After := SkipGenericArgs(ATokens, NextToken(ATokens, ANameToken));
   if AIsGetter then
   begin
     if IsSymbolAt(ATokens, After, '(') then
+    begin
       Exit(TAccessorUse.Call);
+    end;
     if IsSymbolAt(ATokens, After, ':=') then
+    begin
       Exit(TAccessorUse.Keep);
+    end;
     // Als Anweisung (X.GetCaption;) gibt es keine Property-Form.
     if ((Before < 0) or IsWordAt(ATokens, Before, StatementStarts)) and IsWordAt(ATokens, After, StatementEnds) then
+    begin
       Exit(TAccessorUse.Keep);
+    end;
     // Zuweisung oder Argument: Methodenzeiger möglich, der Typ des Ziels entscheidet.
     if UnclearTarget(ATokens, ANameToken, Argument) >= 0 then
+    begin
       Exit(TAccessorUse.Unclear);
+    end;
     Exit(TAccessorUse.Call);
   end;
   if not IsSymbolAt(ATokens, After, '(') then
+  begin
     Exit(TAccessorUse.Pointer_);
+  end;
   Close := Closing(ATokens, After);
   if (Close >= 0) and ((Before < 0) or IsWordAt(ATokens, Before, StatementStarts) or IsSymbolAt(ATokens, Before, ':'))
     and ((NextToken(ATokens, Close) < 0) or IsWordAt(ATokens, NextToken(ATokens, Close), StatementEnds)) then
-    Result := TAccessorUse.Call
+  begin
+    Result := TAccessorUse.Call;
+  end
   else
+  begin
     Result := TAccessorUse.Keep;
+  end;
 end;
 
 class function TPropertyFromAccessors.UnclearTarget(const ATokens: TArray<TPascalToken>; ANameToken: Integer;
@@ -1138,15 +1364,21 @@ begin
   if IsSymbolAt(ATokens, Before, ':=') then
   begin
     if not ((Index < 0) or IsWordAt(ATokens, Index, StatementEnds)) then
+    begin
       Exit;
+    end;
     Result := PreviousToken(ATokens, Before);
     if (Result >= 0) and (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
+    begin
       Result := -1;
+    end;
     Exit;
   end;
   if not (IsSymbolAt(ATokens, Before, '(') or IsSymbolAt(ATokens, Before, ',')) or
     not (IsSymbolAt(ATokens, Index, ')') or IsSymbolAt(ATokens, Index, ',')) then
+  begin
     Exit;
+  end;
   // Öffnende Klammer des Aufrufs und die Stelle des Arguments suchen.
   Depth := 0;
   Index := Before;
@@ -1154,17 +1386,25 @@ begin
   while Index >= 0 do
   begin
     if IsSymbolAt(ATokens, Index, ')') or IsSymbolAt(ATokens, Index, ']') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if IsSymbolAt(ATokens, Index, '(') or IsSymbolAt(ATokens, Index, '[') then
     begin
       if Depth = 0 then
+      begin
         Break;
+      end;
       Dec(Depth);
     end
     else if (Depth = 0) and IsSymbolAt(ATokens, Index, ',') then
-      Inc(AArgument)
+    begin
+      Inc(AArgument);
+    end
     else if (Depth = 0) and (IsSymbolAt(ATokens, Index, ';') or IsWordAt(ATokens, Index, ['begin', 'then', 'do'])) then
+    begin
       Break;
+    end;
     Dec(Index);
   end;
   if not IsSymbolAt(ATokens, Index, '(') then
@@ -1174,9 +1414,13 @@ begin
   end;
   Callee := PreviousToken(ATokens, Index);
   if (Callee >= 0) and (ATokens[Callee].Kind = TPascalTokenKind.Identifier) then
-    Result := Callee
+  begin
+    Result := Callee;
+  end
   else
+  begin
     AArgument := -1;
+  end;
 end;
 
 class function TPropertyFromAccessors.CallEdit(const ATokens: TArray<TPascalToken>; ANameToken: Integer;
@@ -1197,27 +1441,41 @@ begin
   begin
     Close := Closing(ATokens, Open);
     if Close < 0 then
+    begin
       Exit;
+    end;
     Commas := TopLevelCommas(ATokens, Open, Close);
     if NextToken(ATokens, Open) <> Close then
+    begin
       Count := Length(Commas) + 1;
+    end;
   end;
   if AIsGetter then
   begin
     if Count <> AProperty.IndexCount then
+    begin
       Exit;
+    end;
     if Close < 0 then
-      AEdits := [TTextEdit.Create(TTextRange.Create(NameStart, ATokens[ANameToken].EndPos), AProperty.Name)]
+    begin
+      AEdits := [TTextEdit.Create(TTextRange.Create(NameStart, ATokens[ANameToken].EndPos), AProperty.Name)];
+    end
     else if not AProperty.IsIndexed then
-      AEdits := [TTextEdit.Create(TTextRange.Create(NameStart, ATokens[Close].EndPos), AProperty.Name)]
+    begin
+      AEdits := [TTextEdit.Create(TTextRange.Create(NameStart, ATokens[Close].EndPos), AProperty.Name)];
+    end
     else
+    begin
       // GetItem(I) → Items[I]: nur Name und Klammern, das Argument bleibt.
       AEdits := [TTextEdit.Create(TTextRange.Create(NameStart, ATokens[Open].EndPos), AProperty.Name + '['),
         TTextEdit.Create(TTextRange.Create(ATokens[Close].StartPos, ATokens[Close].EndPos), ']')];
+    end;
     Exit(True);
   end;
   if (Close < 0) or (Count <> AProperty.IndexCount + 1) then
+  begin
     Exit;
+  end;
   if AProperty.IsIndexed then
   begin
     // SetItem(I, V) → Items[I] := V

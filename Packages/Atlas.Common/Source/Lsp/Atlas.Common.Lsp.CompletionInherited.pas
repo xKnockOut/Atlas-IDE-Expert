@@ -92,15 +92,21 @@ begin
   Depth := 0;
   Start := 1;
   for Index := 1 to Length(AText) do
+  begin
     if CharInSet(AText[Index], ['(', '[', '<']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if CharInSet(AText[Index], [')', ']', '>']) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (AText[Index] = ADelimiter) and (Depth <= 0) then
     begin
       Result := Result + [Copy(AText, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   Result := Result + [Copy(AText, Start, MaxInt)];
 end;
 
@@ -111,14 +117,20 @@ var
 begin
   Depth := 0;
   for Index := AOpen to Length(AText) do
+  begin
     if AText[Index] = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if AText[Index] = ')' then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit(Index);
+      end;
     end;
+  end;
   Result := 0;
 end;
 
@@ -128,8 +140,12 @@ var
 begin
   Result := Trim(AText);
   for Modifier in ['constref ', 'const ', 'var ', 'out '] do
+  begin
     if StartsText(Modifier, Result) then
+    begin
       Exit(Trim(Copy(Result, Length(Modifier) + 1, MaxInt)));
+    end;
+  end;
 end;
 
 class function TInheritedHeader.Parse(const AText: string; out AHeader: TInheritedHeader): Boolean;
@@ -141,43 +157,59 @@ begin
   AHeader := Default(TInheritedHeader);
   Text := Trim(AText);
   if StartsText('class ', Text) then
+  begin
     Text := Trim(Copy(Text, 7, MaxInt));
+  end;
   Space := Pos(' ', Text);
   Result := Space > 0;
   if not Result then
+  begin
     Exit;
+  end;
   AHeader.Kind := LowerCase(Copy(Text, 1, Space - 1));
   Result := MatchStr(AHeader.Kind, ['procedure', 'function', 'constructor', 'destructor']);
   if not Result then
+  begin
     Exit;
+  end;
   Rest := Trim(Copy(Text, Space + 1, MaxInt));
   // Name bis "(", ":" oder ";".
   Stop := Length(Rest) + 1;
   for Open := 1 to Length(Rest) do
+  begin
     if CharInSet(Rest[Open], ['(', ':', ';']) then
     begin
       Stop := Open;
       Break;
     end;
+  end;
   Name := Trim(Copy(Rest, 1, Stop - 1));
   // TAussen.TInnen.Create: nur der letzte Teil; Typargumente "TFoo<T>.Bar" stören nicht.
   Dot := LastDelimiter('.', Name);
   if Dot > 0 then
+  begin
     Name := Copy(Name, Dot + 1, MaxInt);
+  end;
   AHeader.Name := Name;
   Result := Name <> '';
   if not Result then
+  begin
     Exit;
+  end;
   Rest := Copy(Rest, Stop, MaxInt);
   if StartsStr('(', Rest) then
   begin
     Close := MatchingParen(Rest, 1);
     if Close = 0 then
+    begin
       Close := Length(Rest) + 1;
+    end;
     for Group in SplitTopLevel(Copy(Rest, 2, Close - 2), ';') do
     begin
       if Trim(Group) = '' then
+      begin
         Continue;
+      end;
       Colon := Pos(':', Group);
       if Colon > 0 then
       begin
@@ -185,7 +217,9 @@ begin
         TypeName := Copy(Group, Colon + 1, MaxInt);
         Equal := Pos('=', TypeName);
         if Equal > 0 then
+        begin
           TypeName := Copy(TypeName, 1, Equal - 1);
+        end;
         TypeName := Trim(TypeName);
       end
       else
@@ -194,19 +228,25 @@ begin
         TypeName := '';
       end;
       for Name in StripModifier(Names).Split([',']) do
+      begin
         if Trim(Name) <> '' then
         begin
           Param.Name := Trim(Name);
           Param.TypeName := TypeName;
           AHeader.Params := AHeader.Params + [Param];
         end;
+      end;
     end;
     Rest := Copy(Rest, Close + 1, MaxInt);
   end;
   // Direktiven hinter dem Kopf.
   for Group in SplitTopLevel(Rest, ';') do
+  begin
     if SameText(Trim(Group), 'abstract') then
+    begin
       AHeader.IsAbstract := True;
+    end;
+  end;
 end;
 
 function TInheritedHeader.SameParams(const AOther: TInheritedHeader): Boolean;
@@ -215,17 +255,25 @@ var
 begin
   Result := Length(Params) = Length(AOther.Params);
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Params) do
+  begin
     if not SameText(Params[Index].TypeName, AOther.Params[Index].TypeName) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TInheritedCall.Text: string;
 begin
   Result := Name;
   if Length(Arguments) > 0 then
+  begin
     Result := Result + '(' + string.Join(', ', Arguments) + ')';
+  end;
 end;
 
 class function TCompletionInherited.Arguments(const ACurrent, ATarget: TInheritedHeader): TArray<string>;
@@ -240,35 +288,47 @@ begin
   begin
     Result[Index] := '';
     for Own := 0 to High(ACurrent.Params) do
+    begin
       if not Used[Own] and SameText(ACurrent.Params[Own].Name, ATarget.Params[Index].Name) then
       begin
         Used[Own] := True;
         Result[Index] := ACurrent.Params[Own].Name;
         Break;
       end;
+    end;
   end;
   for Index := 0 to High(ATarget.Params) do
   begin
     if Result[Index] <> '' then
+    begin
       Continue;
+    end;
     Found := -1;
     if (Index <= High(ACurrent.Params)) and not Used[Index] and
       SameText(ACurrent.Params[Index].TypeName, ATarget.Params[Index].TypeName) then
-      Found := Index
+    begin
+      Found := Index;
+    end
     else
+    begin
       for Own := 0 to High(ACurrent.Params) do
+      begin
         if not Used[Own] and SameText(ACurrent.Params[Own].TypeName, ATarget.Params[Index].TypeName) then
         begin
           Found := Own;
           Break;
         end;
+      end;
+    end;
     if Found >= 0 then
     begin
       Used[Found] := True;
       Result[Index] := ACurrent.Params[Found].Name;
     end
     else
+    begin
       Result[Index] := ATarget.Params[Index].Name;
+    end;
   end;
 end;
 
@@ -278,7 +338,9 @@ var
 begin
   Result := UpperCase(AHeader.Name) + '(';
   for Param in AHeader.Params do
+  begin
     Result := Result + UpperCase(Param.TypeName) + ';';
+  end;
 end;
 
 class function TCompletionInherited.Calls(const ACurrent: TInheritedHeader;
@@ -299,17 +361,23 @@ begin
   begin
     if not SameText(Method.Header.Name, ACurrent.Name) and
       (not Special or (Method.Header.Kind <> ACurrent.Kind)) then
+    begin
       Continue;
+    end;
     // Nächster Vorfahr zuerst: was er überschreibt, gilt nicht mehr.
     Key := KeyOf(Method.Header);
     if MatchText(Key, Seen) then
+    begin
       Continue;
+    end;
     Seen := Seen + [Key];
     if Method.Header.IsAbstract then
     begin
       Name := Method.Container + '.' + Method.Header.Name;
       if not MatchText(Name, AAbstract) then
+      begin
         AAbstract := AAbstract + [Name];
+      end;
       Continue;
     end;
     Call := Default(TInheritedCall);
@@ -318,11 +386,17 @@ begin
     Call.Container := Method.Container;
     Call.Depth := Method.Depth;
     if not SameText(Method.Header.Name, ACurrent.Name) then
-      Call.Match := TInheritedMatch.Sibling
+    begin
+      Call.Match := TInheritedMatch.Sibling;
+    end
     else if Method.Header.SameParams(ACurrent) then
-      Call.Match := TInheritedMatch.Same
+    begin
+      Call.Match := TInheritedMatch.Same;
+    end
     else
+    begin
       Call.Match := TInheritedMatch.Overload;
+    end;
     Result := Result + [Call];
   end;
   // Stabil nach Art: gleiche Parameter, Überladungen, übrige.
@@ -347,18 +421,28 @@ var
 begin
   Result := False;
   if ACurrent.Kind <> 'function' then
+  begin
     Exit;
+  end;
   Line := TrimLeft(ALineBefore);
   if not StartsText('inherited', Line) then
+  begin
     Exit;
+  end;
   // Hinter inherited nur Leerzeichen und der angefangene Name.
   Line := Copy(Line, Length('inherited') + 1, MaxInt);
   if (Line = '') or not CharInSet(Line[1], [' ', #9]) then
+  begin
     Exit;
+  end;
   Line := TrimLeft(Line);
   for Index := 1 to Length(Line) do
+  begin
     if not CharInSet(Line[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 
@@ -369,15 +453,21 @@ begin
   Depth := 0;
   Result := Copy(AText, AStart, MaxInt);
   for Index := AStart to Length(AText) do
+  begin
     if AText[Index] = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if AText[Index] = ')' then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (AText[Index] = ';') and (Depth <= 0) then
     begin
       Result := Copy(AText, AStart, Index - AStart);
       Break;
     end;
+  end;
   Result := StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
 end;
 

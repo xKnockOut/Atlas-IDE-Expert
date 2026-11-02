@@ -247,9 +247,13 @@ const
 function LineAt(const ALines: TArray<string>; ALine: Integer): string;
 begin
   if (ALine >= 0) and (ALine <= High(ALines)) then
-    Result := ALines[ALine]
+  begin
+    Result := ALines[ALine];
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 /// Zeile ALine (0-basiert) von AText; Zeilen wie TTextLines.SplitLines.
@@ -268,15 +272,21 @@ begin
   try
     Pending := False;
     for C in AText do
+    begin
       if CharInSet(C, [' ', #9, #13, #10]) then
-        Pending := Builder.Length > 0
+      begin
+        Pending := Builder.Length > 0;
+      end
       else
       begin
         if Pending then
+        begin
           Builder.Append(' ');
+        end;
         Pending := False;
         Builder.Append(C);
       end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -313,10 +323,14 @@ begin
     for Line := ALine - TRuleBaseline.ContextLines to ALine + TRuleBaseline.ContextLines do
     begin
       if Line > ALine - TRuleBaseline.ContextLines then
+      begin
         Builder.Append(#10);
+      end;
       // Der Kopf trägt den Namen der Routine: Umbenennen soll den Kontext nicht ändern.
       if Line <> AHeaderLine then
+      begin
         Builder.Append(CollapseWhitespace(LineAt(ALines, Line)));
+      end;
     end;
     Result := Fnv1a(Builder.ToString);
   finally
@@ -332,7 +346,9 @@ var
 begin
   Result := 0;
   for Orphan in Orphans do
+  begin
     Inc(Result, Orphan.Count);
+  end;
 end;
 
 function TBaselineUpdate.CountersJson: string;
@@ -348,7 +364,9 @@ begin
     for Index := 0 to High(Orphans) do
     begin
       if Index > 0 then
+      begin
         Builder.Append(', ');
+      end;
       Builder.Append('{"path": ').Append(TJsonText.Quote(Orphans[Index].Path));
       Builder.Append(Format(', "count": %d}', [Orphans[Index].Count]));
     end;
@@ -424,15 +442,24 @@ var
 begin
   // Gleiche Einträge (auch doppelt in der Datei) zusammenzählen.
   if AEntry.Routine <> '' then
-    Key := ExactKey(AEntry.Path, AEntry.RuleId, AEntry.Routine, AEntry.Fingerprint)
+  begin
+    Key := ExactKey(AEntry.Path, AEntry.RuleId, AEntry.Routine, AEntry.Fingerprint);
+  end
   else
+  begin
     Key := LegacyKey(AEntry.Path, AEntry.RuleId, AEntry.Fingerprint);
+  end;
   Indices := nil;
   if AEntry.Routine <> '' then
-    FExact.TryGetValue(Key, Indices)
+  begin
+    FExact.TryGetValue(Key, Indices);
+  end
   else
+  begin
     FLegacy.TryGetValue(Key, Indices);
+  end;
   for Existing in Indices do
+  begin
     if FEntries[Existing].Context = AEntry.Context then
     begin
       Entry := FEntries[Existing];
@@ -440,9 +467,12 @@ begin
       FEntries[Existing] := Entry;
       Inc(FTotal, AEntry.Count);
       if AEntry.Routine = '' then
+      begin
         Inc(FLegacyTotal, AEntry.Count);
+      end;
       Exit;
     end;
+  end;
   Index := FEntries.Add(AEntry);
   Indices := Indices + [Index];
   if AEntry.Routine <> '' then
@@ -479,8 +509,12 @@ var
 begin
   Result := 0;
   if FByPath.TryGetValue(PathKey(ARelativePath), Indices) then
+  begin
     for Index in Indices do
+    begin
       Inc(Result, FEntries[Index].Count);
+    end;
+  end;
 end;
 
 function TRuleBaseline.Paths: TArray<string>;
@@ -491,7 +525,9 @@ begin
   List := TList<string>.Create;
   try
     for Indices in FByPath.Values do
+    begin
       List.Add(FEntries[Indices[0]].Path);
+    end;
     List.Sort(TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
       begin
@@ -514,9 +550,15 @@ var
 begin
   Result := (Length(ARuleId) = 5) and CharInSet(UpCase(ARuleId[1]), ['E', 'W', 'H', 'F']);
   if Result then
+  begin
     for Index := 2 to 5 do
+    begin
       if not CharInSet(ARuleId[Index], ['0'..'9']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 class function TRuleBaseline.MarksOf(const ALines: TArray<string>; const AScopes: TFindingScopes;
@@ -571,6 +613,7 @@ var
     // Bevorzugt den Eintrag mit gleichem Kontext; sonst irgendeinen mit Rest.
     Chosen := -1;
     for Candidate in ACandidates do
+    begin
       if Left.TryGetValue(Candidate, Value) and (Value > 0) then
       begin
         if FEntries[Candidate].Context = AContext then
@@ -579,19 +622,28 @@ var
           Break;
         end;
         if Chosen < 0 then
+        begin
           Chosen := Candidate;
+        end;
       end;
+    end;
     Result := Chosen >= 0;
     if Result then
+    begin
       Left[Chosen] := Left[Chosen] - 1;
+    end;
   end;
 
 begin
   Marks := MarksOf(TTextLines.SplitLines(AText), AScopes, AFindings);
   for Index := 0 to High(Marks) do
+  begin
     Marks[Index].State := TBaselineState.New;
+  end;
   if not FByPath.TryGetValue(PathKey(ARelativePath), PathEntries) then
+  begin
     Exit(Marks);
+  end;
   // Eigene Zähler je Aufruf: die Baseline selbst bleibt unverändert.
   Left := TDictionary<Integer, Integer>.Create;
   Known := TList<string>.Create;
@@ -600,7 +652,9 @@ begin
     begin
       Left.Add(EntryIndex, FEntries[EntryIndex].Count);
       if (FEntries[EntryIndex].Routine <> '') and not Known.Contains(LowerCase(FEntries[EntryIndex].Routine)) then
+      begin
         Known.Add(LowerCase(FEntries[EntryIndex].Routine));
+      end;
     end;
     // 1. Gleiche Routine und Zeile, sonst Einträge ohne Routine (ältere Datei).
     for Index := 0 to High(Marks) do
@@ -622,14 +676,18 @@ begin
     for Index := 0 to High(Marks) do
     begin
       if (Marks[Index].State <> TBaselineState.New) or Known.Contains(LowerCase(Marks[Index].Routine)) then
+      begin
         Continue;
+      end;
       for EntryIndex in PathEntries do
       begin
         Entry := FEntries[EntryIndex];
         if (Entry.Routine = '') or (Entry.Context = '') or (Entry.Context <> Marks[Index].Context) or
           not SameText(Entry.RuleId, Marks[Index].Finding.RuleId) or AScopes.HasRoutine(Entry.Routine) or
           (Left[EntryIndex] <= 0) then
+        begin
           Continue;
+        end;
         Left[EntryIndex] := Left[EntryIndex] - 1;
         Marks[Index].State := TBaselineState.Unchanged;
         Marks[Index].Match := TBaselineMatch.Renamed;
@@ -644,9 +702,13 @@ begin
       Entry := FEntries[EntryIndex];
       // Compilermeldungen (#530) sieht die Regelprüfung nicht: nie als verschwunden melden.
       if IsCompilerCode(Entry.RuleId) then
+      begin
         Continue;
+      end;
       for Copies := 1 to Remaining do
+      begin
         Result := Result + [AbsentMark(Entry.RuleId, Entry.Routine, Entry.Fingerprint, Entry.Context)];
+      end;
     end;
   finally
     Known.Free;
@@ -662,14 +724,20 @@ var
 begin
   Result := nil;
   if not FByPath.TryGetValue(PathKey(ARelativePath), Indices) then
+  begin
     Exit;
+  end;
   for Index in Indices do
   begin
     Entry := FEntries[Index];
     if IsCompilerCode(Entry.RuleId) then
+    begin
       Continue;
+    end;
     for Copies := 1 to Entry.Count do
+    begin
       Result := Result + [AbsentMark(Entry.RuleId, Entry.Routine, Entry.Fingerprint, Entry.Context)];
+    end;
   end;
 end;
 
@@ -679,12 +747,18 @@ var
   Scopes: TFindingScopes;
 begin
   if (FTotal = 0) or (Length(AFindings) = 0) or not FByPath.ContainsKey(PathKey(ARelativePath)) then
+  begin
     Exit(AFindings);
+  end;
   // Routinen braucht nur eine Baseline mit Routinen; ältere Dateien kommen ohne Parsen aus.
   if FHasRoutines then
-    Scopes := TFindingScopes.FromText(AText)
+  begin
+    Scopes := TFindingScopes.FromText(AText);
+  end
   else
+  begin
     Scopes := TFindingScopes.FromTree(nil);
+  end;
   Result := Filter(ARelativePath, AText, Scopes, AFindings);
 end;
 
@@ -694,11 +768,17 @@ var
   Mark: TBaselineMark;
 begin
   if (FTotal = 0) or (Length(AFindings) = 0) or not FByPath.ContainsKey(PathKey(ARelativePath)) then
+  begin
     Exit(AFindings);
+  end;
   Result := nil;
   for Mark in Classify(ARelativePath, AText, AScopes, AFindings) do
+  begin
     if Mark.State = TBaselineState.New then
+    begin
       Result := Result + [Mark.Finding];
+    end;
+  end;
 end;
 
 class function TRuleBaseline.FromJson(const AJson: string): IRuleBaseline;
@@ -716,9 +796,13 @@ var
   begin
     Field := Item.GetValue(AName);
     if Field is TJSONString then
-      Result := TJSONString(Field).Value
+    begin
+      Result := TJSONString(Field).Value;
+    end
     else
+    begin
       Result := '';
+    end;
   end;
 
 begin
@@ -727,29 +811,45 @@ begin
   Root := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Root is TJSONObject) then
+    begin
       raise ERuleBaseline.Create('Baseline: Objekt erwartet');
+    end;
     Value := TJSONObject(Root).GetValue('version');
     if not ((Value is TJSONNumber) and (TJSONNumber(Value).AsInt = FormatVersion)) then
+    begin
       raise ERuleBaseline.CreateFmt('Baseline: Formatversion %d erwartet', [FormatVersion]);
+    end;
     Value := TJSONObject(Root).GetValue('findings');
     if not (Value is TJSONArray) then
+    begin
       raise ERuleBaseline.Create('Baseline: "findings" fehlt');
+    end;
     Items := TJSONArray(Value);
     for I := 0 to Items.Count - 1 do
     begin
       if not (Items.Items[I] is TJSONObject) then
+      begin
         raise ERuleBaseline.Create('Baseline: Eintrag ist kein Objekt');
+      end;
       Item := TJSONObject(Items.Items[I]);
       if not ((Item.GetValue('path') is TJSONString) and (Item.GetValue('rule') is TJSONString) and
         (Item.GetValue('fingerprint') is TJSONString)) then
+      begin
         raise ERuleBaseline.Create('Baseline: Eintrag ohne path, rule oder fingerprint');
+      end;
       Value := Item.GetValue('count');
       if Value is TJSONNumber then
-        Count := TJSONNumber(Value).AsInt
+      begin
+        Count := TJSONNumber(Value).AsInt;
+      end
       else
+      begin
         Count := 1;
+      end;
       if Count < 1 then
+      begin
         Continue;
+      end;
       Entry := Default(TEntry);
       Entry.Path := NormalizePath(TJSONString(Item.GetValue('path')).Value);
       Entry.RuleId := LowerCase(TJSONString(Item.GetValue('rule')).Value);
@@ -772,13 +872,21 @@ function CompareBuildEntries(const ALeft, ARight: TBuildEntry): Integer;
 begin
   Result := CompareText(ALeft.Path, ARight.Path);
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.RuleId, ARight.RuleId);
+  end;
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.Routine, ARight.Routine);
+  end;
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft.Fingerprint, ARight.Fingerprint);
+  end;
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft.Context, ARight.Context);
+  end;
 end;
 
 class function TRuleBaseline.BuildJson(const ASources: TArray<TBaselineSource>;
@@ -797,6 +905,7 @@ begin
   Builder := TStringBuilder.Create;
   try
     for SourceIndex := 0 to High(ASources) do
+    begin
       for Item in Mark(ASources[SourceIndex].Text, AScopes[SourceIndex], ASources[SourceIndex].Findings) do
       begin
         Entry := Default(TBuildEntry);
@@ -808,11 +917,16 @@ begin
         K := ExactKey(Entry.Path, Entry.RuleId, Entry.Routine, Entry.Fingerprint) + #0 + Entry.Context;
         // TryGetValue leert Existing bei Misserfolg, daher getrennt.
         if Entries.TryGetValue(K, Existing) then
-          Entry.Count := Existing.Count + 1
+        begin
+          Entry.Count := Existing.Count + 1;
+        end
         else
+        begin
           Entry.Count := 1;
+        end;
         Entries.AddOrSetValue(K, Entry);
       end;
+    end;
     // Übernommene Einträge (#530) unverändert; trifft einer einen neuen, zählen beide zusammen.
     for Entry in AKept do
     begin
@@ -823,7 +937,9 @@ begin
         Entries[K] := Existing;
       end
       else
+      begin
         Entries.Add(K, Entry);
+      end;
     end;
     Sorted.AddRange(Entries.Values);
     Sorted.Sort;
@@ -833,7 +949,9 @@ begin
     for I := 0 to Sorted.Count - 1 do
     begin
       if I > 0 then
+      begin
         Builder.Append(',');
+      end;
       Builder.Append(sLineBreak);
       Builder.Append('    {"path": ').Append(TJsonText.Quote(Sorted[I].Path));
       Builder.Append(', "rule": ').Append(TJsonText.Quote(Sorted[I].RuleId));
@@ -843,7 +961,9 @@ begin
       Builder.Append(', "context": ').Append(TJsonText.Quote(Sorted[I].Context)).Append('}');
     end;
     if Sorted.Count > 0 then
+    begin
       Builder.Append(sLineBreak).Append('  ');
+    end;
     Builder.Append(']').Append(sLineBreak).Append('}').Append(sLineBreak);
     Result := Builder.ToString;
   finally
@@ -859,11 +979,17 @@ var
 begin
   SetLength(Result, Length(ASources));
   for Index := 0 to High(ASources) do
+  begin
     // Ohne Treffer braucht es keine Routinen: kein Parsen.
     if Length(ASources[Index].Findings) > 0 then
-      Result[Index] := TFindingScopes.FromText(ASources[Index].Text)
+    begin
+      Result[Index] := TFindingScopes.FromText(ASources[Index].Text);
+    end
     else
+    begin
       Result[Index] := TFindingScopes.FromTree(nil);
+    end;
+  end;
 end;
 
 class function TRuleBaseline.Build(const ASources: TArray<TBaselineSource>): string;
@@ -891,23 +1017,31 @@ begin
   Checked := TList<string>.Create;
   try
     for Index := 0 to High(ASources) do
+    begin
       Checked.Add(PathKey(ASources[Index].Path));
+    end;
     // Compilermeldungen (#530) entstehen nicht aus den Regeln: übernehmen, solange ihre Datei existiert.
     if AOld <> nil then
+    begin
       for Entry in AOld.Entries do
+      begin
         if IsCompilerCode(Entry.RuleId) and (Checked.Contains(PathKey(Entry.Path)) or
           (Assigned(AExists) and AExists(Entry.Path))) then
           begin
             Kept := Kept + [Entry];
             Inc(Result.Compiler, Entry.Count);
           end;
+      end;
+    end;
     Result.Json := BuildJson(ASources, Scopes, Kept);
     Matched := 0;
     for Index := 0 to High(ASources) do
     begin
       Inc(Result.Total, Length(ASources[Index].Findings));
       if AOld = nil then
+      begin
         Continue;
+      end;
       for Mark in AOld.Classify(ASources[Index].Path, ASources[Index].Text, Scopes[Index],
         ASources[Index].Findings) do
         case Mark.State of
@@ -917,7 +1051,9 @@ begin
             begin
               Inc(Matched);
               if Mark.Match = TBaselineMatch.Legacy then
+              begin
                 Inc(Result.Completed);
+              end;
             end;
           TBaselineState.None: ;
           TBaselineState.Absent: ;
@@ -932,12 +1068,14 @@ begin
     // Herausgefallene Compilermeldungen (Datei weg) zählen mit, übernommene nicht.
     Result.Removed := AOld.Count - Matched - Result.Compiler;
     for Path in AOld.Paths do
+    begin
       if not Checked.Contains(PathKey(Path)) and not (Assigned(AExists) and AExists(Path)) then
       begin
         Orphan.Path := Path;
         Orphan.Count := AOld.CountOf(Path);
         Result.Orphans := Result.Orphans + [Orphan];
       end;
+    end;
   finally
     Checked.Free;
   end;
@@ -970,25 +1108,39 @@ begin
     if AOld <> nil then
     begin
       for Entry in AOld.Entries do
+      begin
         if IsCompilerCode(Entry.RuleId) and Replaced.Contains(PathKey(Entry.Path)) then
-          Inc(Before, Entry.Count)
+        begin
+          Inc(Before, Entry.Count);
+        end
         else
         begin
           Kept := Kept + [Entry];
           if IsCompilerCode(Entry.RuleId) then
+          begin
             Inc(Result.Total, Entry.Count);
+          end;
         end;
+      end;
       for Index := 0 to High(ASources) do
+      begin
         for Mark in AOld.Classify(ASources[Index].Path, ASources[Index].Text, Scopes[Index],
           ASources[Index].Findings) do
+        begin
           if Mark.State = TBaselineState.Unchanged then
+          begin
             Inc(Matched);
+          end;
+        end;
+      end;
     end;
     Result.Json := BuildJson(ASources, Scopes, Kept);
     Result.Compiler := Result.Total;
     Result.Unchanged := Matched;
     for Index := 0 to High(ASources) do
+    begin
       Inc(Result.Added, Length(ASources[Index].Findings));
+    end;
     Dec(Result.Added, Matched);
     Result.Removed := Before - Matched;
   finally

@@ -102,8 +102,12 @@ var
   Word: string;
 begin
   for Word in AWords do
+  begin
     if SameText(AText, Word) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -112,8 +116,12 @@ var
   Word: string;
 begin
   for Word in AWords do
+  begin
     if ContainsText(AText, Word) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -129,14 +137,20 @@ var
 begin
   Depth := 0;
   for Result := AOpen to High(ATokens) do
+  begin
     if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
+  end;
   Result := -1;
 end;
 
@@ -151,13 +165,19 @@ begin
   for Index := AOpen + 1 to AClose do
   begin
     if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if (ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']')) and (Depth > 0) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and (ATokens[Index].IsSymbol(',') or (Index = AClose)) then
     begin
       if Index > Start then
+      begin
         Result := Result + [TArray<Integer>.Create(Start, Index - 1)];
+      end;
       Start := Index + 1;
     end;
   end;
@@ -172,15 +192,23 @@ begin
   Joined := False;
   Variable := False;
   for Index := AFirst to ALast do
+  begin
     if ATokens[Index].IsSymbol('+') then
-      Joined := True
+    begin
+      Joined := True;
+    end
     else if ATokens[Index].Kind = TPascalTokenKind.Identifier then
     begin
       if IsOneOf(ATokens[Index].Text, ['Format', 'Concat']) then
-        Joined := True
+      begin
+        Joined := True;
+      end
       else if not IsOneOf(ATokens[Index].Text, ['PChar', 'PWideChar', 'PAnsiChar', 'string', 'nil']) then
+      begin
         Variable := True;
+      end;
     end;
+  end;
   Result := Joined and Variable;
 end;
 
@@ -215,7 +243,9 @@ begin
   if (Length(AArgs) < 4) or (AArgs[2][0] <> AArgs[2][1]) or
     (ATokens[AArgs[2][0]].Kind <> TPascalTokenKind.StringLiteral) or
     IsOneOf(ExtractFileName(LiteralValue(ATokens[AArgs[2][0]])), ShellPrograms) then
+  begin
     Exit;
+  end;
   First := AArgs[3][0];
   Last := AArgs[3][1];
   // PChar(…) um die Parameter.
@@ -232,22 +262,30 @@ begin
   while Index <= Last do
   begin
     if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-      Index := MatchingParen(ATokens, Index)
+    begin
+      Index := MatchingParen(ATokens, Index);
+    end
     else if ATokens[Index].IsSymbol('+') then
     begin
       Parts := Parts + [TArray<Integer>.Create(Part, Index - 1)];
       Part := Index + 1;
     end;
     if Index < 0 then
+    begin
       Exit;
+    end;
     Inc(Index);
   end;
   Parts := Parts + [TArray<Integer>.Create(Part, Last)];
   for Index := 0 to High(Parts) do
+  begin
     if not IsLiteral(Parts[Index]) and ((Index = 0) or (Index = High(Parts)) or not IsLiteral(Parts[Index - 1]) or
       not IsLiteral(Parts[Index + 1]) or not EndsStr('"', LiteralValue(ATokens[Parts[Index - 1][0]])) or
       not StartsStr('"', LiteralValue(ATokens[Parts[Index + 1][0]]))) then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 
@@ -261,7 +299,9 @@ begin
       ATokens[Result - 1].IsKeyword('then') or ATokens[Result - 1].IsKeyword('else') or
       ATokens[Result - 1].IsKeyword('do') or ATokens[Result - 1].IsKeyword('try') or
       ATokens[Result - 1].IsKeyword('finally') or ATokens[Result - 1].IsKeyword('except') then
+    begin
       Exit;
+    end;
     Dec(Result);
   end;
 end;
@@ -275,12 +315,18 @@ begin
   for Result := AIndex to High(ATokens) do
   begin
     if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth <= 0) and (ATokens[Result].IsSymbol(';') or ATokens[Result].IsKeyword('end') or
       ATokens[Result].IsKeyword('else')) then
+    begin
       Exit;
+    end;
   end;
   Result := High(ATokens);
 end;
@@ -301,23 +347,31 @@ var
 begin
   Tokens := CodeTokens(AContext);
   for Index := 0 to High(Tokens) - 1 do
+  begin
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and IsOneOf(Tokens[Index].Text, CommandCalls) and
       Tokens[Index + 1].IsSymbol('(') then
     begin
       Close := MatchingParen(Tokens, Index + 1);
       if Close < 0 then
+      begin
         Continue;
+      end;
       if StartsText('ShellExecute', Tokens[Index].Text) and
         QuotedForFixedProgram(Tokens, Arguments(Tokens, Index + 1, Close)) then
+      begin
         Continue;
+      end;
       for Argument in Arguments(Tokens, Index + 1, Close) do
+      begin
         if IsComposed(Tokens, Argument[0], Argument[1]) then
         begin
           AReport.Add(TokenRange(Tokens[Index]), Format('%s mit zusammengesetztem Argument: Eingaben könnten ' +
             'weitere Befehle einschleusen', [Tokens[Index].Text]), TRuleConfidence.Medium);
           Break;
         end;
+      end;
     end;
+  end;
 end;
 
 { TSecurityPathTraversalRule }
@@ -338,27 +392,41 @@ begin
   for Index := 0 to High(Tokens) - 1 do
   begin
     if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not Tokens[Index + 1].IsSymbol('(') then
+    begin
       Continue;
+    end;
     IsFileCall := IsOneOf(Tokens[Index].Text, FileCalls) or
       (SameText(Tokens[Index].Text, 'Create') and (Index >= 2) and SameText(Tokens[Index - 2].Text, 'TFileStream'));
     if not IsFileCall then
+    begin
       Continue;
+    end;
     Close := MatchingParen(Tokens, Index + 1);
     if Close < 0 then
+    begin
       Continue;
+    end;
     FromInput := False;
     Checked := False;
     for Inner := Index + 2 to Close - 1 do
+    begin
       if Tokens[Inner].Kind = TPascalTokenKind.Identifier then
       begin
         if IsOneOf(Tokens[Inner].Text, InputMarkers) then
+        begin
           FromInput := True;
+        end;
         if IsOneOf(Tokens[Inner].Text, ['GetFullPath', 'ExpandFileName', 'ExtractFileName']) then
+        begin
           Checked := True;
+        end;
       end;
+    end;
     if FromInput and not Checked then
+    begin
       AReport.Add(TokenRange(Tokens[Index]), Format('%s mit einem Pfad aus Eingabedaten ohne Prüfung; ".." ' +
         'könnte Dateien außerhalb des erwarteten Ordners erreichen', [Tokens[Index].Text]), TRuleConfidence.Medium);
+    end;
   end;
 end;
 
@@ -378,17 +446,23 @@ var
 begin
   Tokens := CodeTokens(AContext);
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and IsOneOf(Tokens[Index].Text, WeakCrypto) then
     begin
       // Prüfsummen sind legitim; nur mit Kennwort, Geheimnis oder Signatur in der Anweisung ist es mittel.
       Confidence := TRuleConfidence.Low;
       Stop := StatementEnd(Tokens, Index);
       for Inner := StatementStart(Tokens, Index) to Stop do
+      begin
         if (Tokens[Inner].Kind = TPascalTokenKind.Identifier) and ContainsOneOf(Tokens[Inner].Text, SensitiveHash) then
+        begin
           Confidence := TRuleConfidence.Medium;
+        end;
+      end;
       AReport.Add(TokenRange(Tokens[Index]), Format('%s ist für Sicherheitszwecke zu schwach; für Kennwörter und ' +
         'Signaturen SHA-256 oder besser verwenden', [Tokens[Index].Text]), Confidence);
     end;
+  end;
 end;
 
 { TSecurityTlsVerificationDisabledRule }
@@ -423,15 +497,23 @@ begin
     begin
       Header := Header + ' ' + Tokens[Index].Text;
       if Tokens[Index].IsSymbol('(') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Tokens[Index].IsSymbol(')') then
-        Dec(Depth)
+      begin
+        Dec(Depth);
+      end
       else if (Depth = 0) and Tokens[Index].IsSymbol(';') then
+      begin
         InHeader := False;
+      end;
       Continue;
     end;
     if Index + 3 > High(Tokens) then
+    begin
       Continue;
+    end;
     // Indy: SSLOptions.VerifyMode := [];
     if SameText(Tokens[Index].Text, 'VerifyMode') and Tokens[Index + 1].IsSymbol(':=') and
       Tokens[Index + 2].IsSymbol('[') and Tokens[Index + 3].IsSymbol(']') then
@@ -447,22 +529,30 @@ begin
       Start := StatementStart(Tokens, Index);
       if (Start <> Index) or ((Index > 0) and (Tokens[Index - 1].IsKeyword('then') or
         Tokens[Index - 1].IsKeyword('else'))) then
+      begin
         Continue;
+      end;
       // Steht vorher im Rumpf eine Bedingung, wird geprüft.
       Inner := Index - 1;
       while (Inner > 0) and not (Tokens[Inner].IsKeyword('procedure') or Tokens[Inner].IsKeyword('function')) do
       begin
         if Tokens[Inner].IsKeyword('if') or Tokens[Inner].IsKeyword('case') then
+        begin
           Break;
+        end;
         Dec(Inner);
       end;
       if (Inner > 0) and (Tokens[Inner].IsKeyword('if') or Tokens[Inner].IsKeyword('case')) then
+      begin
         Continue;
+      end;
       if (IsOneOf(Tokens[Index].Text, ['Accepted', 'AAccepted']) and ContainsText(Header, 'Certificate')) or
         (SameText(Tokens[Index].Text, 'Result') and (ContainsText(Header, 'TIdX509') or
         ContainsText(Header, 'VerifyPeer'))) then
+      begin
         AReport.Add(TokenRange(Tokens[Index]), 'Der Handler akzeptiert jedes Serverzertifikat ohne Prüfung',
           TRuleConfidence.High);
+      end;
     end;
   end;
 end;
@@ -487,10 +577,14 @@ begin
   for Index := 0 to High(Tokens) do
   begin
     if Tokens[Index].Kind <> TPascalTokenKind.StringLiteral then
+    begin
       Continue;
+    end;
     Lower := LowerCase(Tokens[Index].Text);
     if Pos('xmlns', Lower) > 0 then
+    begin
       Continue;
+    end;
     // Erste URL mit Rechnernamen: Ein bloßes 'http://' (StartsText('http://', Url), Hilfetext "http:// oder
     // https://") nennt kein Ziel (#1109).
     Offset := Pos('http://', Lower);
@@ -498,14 +592,22 @@ begin
     begin
       Excepted := not CharInSet(Copy(Lower + ' ', Offset + Length('http://'), 1)[1], ['a'..'z', '0'..'9', '[']);
       for Exception_ in HttpExceptions do
+      begin
         if Copy(Lower, Offset, Length(Exception_)) = Exception_ then
+        begin
           Excepted := True;
+        end;
+      end;
       if not Excepted then
+      begin
         Break;
+      end;
       Offset := PosEx('http://', Lower, Offset + 1);
     end;
     if Offset = 0 then
+    begin
       Continue;
+    end;
     // Einzeilige Strings: Spalte des "http://" im Token.
     if Tokens[Index].StartPos.Line <> Tokens[Index].EndPos.Line then
     begin
@@ -538,20 +640,26 @@ begin
   for Index := 1 to High(Tokens) do
   begin
     if not Tokens[Index].IsSymbol(':=') then
+    begin
       Continue;
+    end;
     // Ziel der Zuweisung: letzter Bezeichner vor := (auch Self.FToken).
     Target := Index - 1;
     if (Tokens[Target].Kind <> TPascalTokenKind.Identifier) or
       not ContainsOneOf(Tokens[Target].Text, SensitiveRandom) then
+    begin
       Continue;
+    end;
     Stop := StatementEnd(Tokens, Index + 1);
     for Inner := Index + 1 to Stop do
+    begin
       if (Tokens[Inner].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Inner].Text, 'Random') then
       begin
         AReport.Add(TokenRange(Tokens[Inner]), Format('Random ist vorhersagbar und für %s ungeeignet; einen ' +
           'kryptografischen Zufallsgenerator verwenden', [Tokens[Target].Text]), TRuleConfidence.Medium);
         Break;
       end;
+    end;
   end;
 end;
 
@@ -588,21 +696,33 @@ begin
   begin
     // "const" in Parameterlisten ist kein Konstantenabschnitt.
     if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if Depth > 0 then
-      Continue
+    begin
+      Continue;
+    end
     else if ATokens[Index].IsKeyword('const') or ATokens[Index].IsKeyword('resourcestring') then
-      InConst := True
+    begin
+      InConst := True;
+    end
     else if ATokens[Index].IsKeyword('var') or ATokens[Index].IsKeyword('type') or
       ATokens[Index].IsKeyword('begin') or ATokens[Index].IsKeyword('procedure') or
       ATokens[Index].IsKeyword('function') or ATokens[Index].IsKeyword('implementation') then
-      InConst := False
+    begin
+      InConst := False;
+    end
     else if InConst and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
       (ATokens[Index + 1].IsSymbol('=') or ATokens[Index + 1].IsSymbol(':')) and
       ((Index = 0) or not ATokens[Index - 1].IsSymbol('.')) then
+    begin
       Result := Result + [ATokens[Index].Text];
+    end;
   end;
 end;
 
@@ -613,6 +733,7 @@ var
   Text, Word: string;
 begin
   for Index := AFirst to ALast do
+  begin
     if ATokens[Index].Kind = TPascalTokenKind.StringLiteral then
     begin
       Text := LowerCase(LiteralValue(ATokens[Index]));
@@ -624,11 +745,14 @@ begin
           After := Start + Length(Word);
           if ((Start = 1) or not CharInSet(Text[Start - 1], ['a'..'z', '0'..'9', '_'])) and
             ((After > Length(Text)) or not CharInSet(Text[After], ['a'..'z', '0'..'9', '_'])) then
+          begin
             Exit(True);
+          end;
           Start := PosEx(Word, Text, Start + 1);
         end;
       end;
     end;
+  end;
   Result := False;
 end;
 
@@ -647,7 +771,9 @@ begin
   while Index <= ALast do
   begin
     if ATokens[Index].IsSymbol('+') then
-      Joined := True
+    begin
+      Joined := True;
+    end
     else if ATokens[Index].Kind = TPascalTokenKind.Identifier then
     begin
       if IsOneOf(ATokens[Index].Text, SafeConversions) and (Index < ALast) and ATokens[Index + 1].IsSymbol('(') then
@@ -655,16 +781,22 @@ begin
         // IntToStr(Id), QuotedStr(Name): Inhalt überspringen.
         Close := MatchingParen(ATokens, Index + 1);
         if Close > 0 then
+        begin
           Index := Close;
+        end;
       end
       else if IsOneOf(ATokens[Index].Text, ['Format', 'Concat']) then
-        Joined := True
+      begin
+        Joined := True;
+      end
       else if not IsOneOf(ATokens[Index].Text, AConstants) and
         not IsOneOf(ATokens[Index].Text, ['string', 'nil', 'sLineBreak']) then
       begin
         Variable := True;
         if IsOneOf(ATokens[Index].Text, UserInputs) then
+        begin
           AFromInput := True;
+        end;
       end;
     end;
     Inc(Index);
@@ -687,7 +819,9 @@ begin
   for Index := 0 to High(Tokens) - 2 do
   begin
     if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+    begin
       Continue;
+    end;
     First := -1;
     Last := -1;
     Sink := Tokens[Index];
@@ -706,7 +840,9 @@ begin
     begin
       Close := MatchingParen(Tokens, Index + 1);
       if Close < 0 then
+      begin
         Continue;
+      end;
       for Argument in Arguments(Tokens, Index + 1, Close) do
       begin
         // Nur das erste Argument ist der SQL-Text; weitere sind Parameterwerte.
@@ -716,15 +852,25 @@ begin
       end;
     end;
     if (First < 0) or (Last < First) then
+    begin
       Continue;
+    end;
     if not IsComposedSql(Tokens, First, Last, Constants, FromInput) then
+    begin
       Continue;
+    end;
     if IsOneOf(Sink.Text, GenericSqlCalls) and not HasSqlLiteral(Tokens, First, Last) then
+    begin
       Continue;
+    end;
     if FromInput then
-      Confidence := TRuleConfidence.High
+    begin
+      Confidence := TRuleConfidence.High;
+    end
     else
+    begin
       Confidence := TRuleConfidence.Medium;
+    end;
     AReport.Add(TokenRange(Sink), 'SQL-Text wird aus Werten zusammengesetzt: Eingaben könnten SQL einschleusen. ' +
       'Parameter verwenden (:Name, ParamByName)', Confidence);
   end;

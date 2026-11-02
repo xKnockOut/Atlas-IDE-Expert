@@ -347,7 +347,9 @@ var
 begin
   Result := '';
   for Finding in AFound do
+  begin
     Result := Result + Finding.Message + ' | ';
+  end;
 end;
 
 function InitFindings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -570,9 +572,13 @@ begin
     for mIndex := 0 to AValues - 1 do
     begin
       if mIndex > 0 then
+      begin
         mBuilder.Append(', ');
+      end;
       if mIndex mod 20 = 0 then
+      begin
         mBuilder.Append(#10'    ');
+      end;
       mBuilder.Append(mIndex);
     end;
     mBuilder.Append(');'#10);
@@ -623,7 +629,9 @@ function Befehle(const AUses, ABody: string): string;
 begin
   Result := 'unit Befehle;'#10'interface'#10'implementation'#10;
   if AUses <> '' then
+  begin
     Result := Result + 'uses'#10'  ' + AUses + ';'#10;
+  end;
   Result := Result + 'procedure Ausfuehren(const Befehl: string);'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
@@ -640,24 +648,32 @@ var
   begin
     Offset := 1;
     for Line := 1 to APosition.Line do
+    begin
       Offset := Pos(#10, AText, Offset) + 1;
+    end;
     Result := Offset + APosition.Character;
   end;
 
 begin
   Edits := Copy(AFix.Edits);
   for Index := 0 to High(Edits) do
+  begin
     for Inner := Index + 1 to High(Edits) do
+    begin
       if OffsetOf(Edits[Inner].Range.StartPos) > OffsetOf(Edits[Index].Range.StartPos) then
       begin
         Swap := Edits[Index];
         Edits[Index] := Edits[Inner];
         Edits[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index := 0 to High(Edits) do
+  begin
     Result := Copy(Result, 1, OffsetOf(Edits[Index].Range.StartPos) - 1) + Edits[Index].NewText +
       Copy(Result, OffsetOf(Edits[Index].Range.EndPos), MaxInt);
+  end;
 end;
 
 procedure TCaseSelectorNotOrdinalTests.IssueExampleWithFix;

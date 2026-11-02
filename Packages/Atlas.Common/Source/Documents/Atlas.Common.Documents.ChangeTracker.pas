@@ -70,16 +70,24 @@ begin
       begin
         Key := LowerCase(FileName);
         if (FileName = '') or Keep.ContainsKey(Key) then
+        begin
           Continue;
+        end;
         FFiles.Add(FileName);
         if FStamps.ContainsKey(Key) then
-          Keep.Add(Key, FStamps[Key])
+        begin
+          Keep.Add(Key, FStamps[Key]);
+        end
         else
+        begin
           Keep.Add(Key, FStamp(FileName));
+        end;
       end;
       FStamps.Clear;
       for Key in Keep.Keys do
+      begin
         FStamps.Add(Key, Keep[Key]);
+      end;
     finally
       Keep.Free;
     end;
@@ -130,13 +138,21 @@ begin
   begin
     Dir := ExtractFileDir(FileName);
     if Dir = '' then
+    begin
       Continue;
+    end;
     Found := False;
     for Known in Result do
+    begin
       if SameText(Known, Dir) then
+      begin
         Found := True;
+      end;
+    end;
     if not Found then
+    begin
       Result := Result + [Dir];
+    end;
   end;
 end;
 

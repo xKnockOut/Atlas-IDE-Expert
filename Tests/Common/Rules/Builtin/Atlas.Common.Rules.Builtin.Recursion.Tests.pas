@@ -235,8 +235,12 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = SetterRecursionRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 
@@ -311,7 +315,9 @@ var
   Body: string;
 begin
   for Body in Bodies do
+  begin
     Assert.AreEqual(0, Integer(Length(RecursionFindings(Baum(Body)))), Body);
+  end;
 end;
 
 procedure TUnconditionalRecursionTests.OverloadsAndAccessorsAreSilent;

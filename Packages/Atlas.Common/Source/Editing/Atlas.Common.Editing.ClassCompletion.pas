@@ -159,11 +159,17 @@ begin
   for Line := ARange.StartPos.Line to ARange.EndPos.Line do
   begin
     if (Line < 0) or (Line > High(ALines)) then
+    begin
       Break;
+    end;
     if Line = ARange.StartPos.Line then
-      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt)
+    begin
+      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt);
+    end
     else
+    begin
       Result := Result + ' ' + Trim(ALines[Line]);
+    end;
   end;
 end;
 
@@ -178,19 +184,29 @@ begin
   Quoted := False;
   Start := 1;
   for Index := 1 to Length(AText) do
+  begin
     if AText[Index] = '''' then
-      Quoted := not Quoted
+    begin
+      Quoted := not Quoted;
+    end
     else if Quoted then
-      Continue
+    begin
+      Continue;
+    end
     else if CharInSet(AText[Index], ['(', '[', '<']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if CharInSet(AText[Index], [')', ']', '>']) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and (AText[Index] = ADelimiter) then
     begin
       Result := Result + [Copy(AText, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   Result := Result + [Copy(AText, Start, MaxInt)];
 end;
 
@@ -206,7 +222,9 @@ begin
     if ((Index = 1) or not CharInSet(Lower[Index - 1], ['a'..'z', '0'..'9', '_'])) and
       ((Index + Length(AWord) > Length(Lower)) or
       not CharInSet(Lower[Index + Length(AWord)], ['a'..'z', '0'..'9', '_'])) then
+    begin
       Exit(True);
+    end;
     Index := PosEx(AWord, Lower, Index + 1);
   end;
   Result := False;
@@ -220,7 +238,9 @@ begin
   // Der Name folgt auf procedure/function/constructor/destructor/operator.
   Index := Pos(LowerCase(' ' + AMethodName), LowerCase(ASignature));
   if Index = 0 then
+  begin
     Exit('');
+  end;
   Result := Copy(ASignature, 1, Index) + ATypeName + '.' + Copy(ASignature, Index + 1, MaxInt) + ';';
 end;
 
@@ -237,19 +257,29 @@ begin
   for Index := 0 to High(Tokens) do
   begin
     if Tokens[Index].Kind <> TPascalTokenKind.Keyword then
+    begin
       Continue;
+    end;
     if Tokens[Index].IsKeyword('implementation') then
-      InImplementation := True
+    begin
+      InImplementation := True;
+    end
     else if InImplementation and (Tokens[Index].IsKeyword('initialization') or
       Tokens[Index].IsKeyword('finalization')) then
-      Exit(Tokens[Index].StartPos.Line)
+    begin
+      Exit(Tokens[Index].StartPos.Line);
+    end
     else if InImplementation and Tokens[Index].IsKeyword('end') then
     begin
       Next := Index + 1;
       while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      begin
         Inc(Next);
+      end;
       if (Next <= High(Tokens)) and Tokens[Next].IsSymbol('.') then
+      begin
         Result := Tokens[Index].StartPos.Line;
+      end;
     end;
   end;
 end;
@@ -257,9 +287,13 @@ end;
 function TypeNameOf(const ASymbol: TIndexSymbol): string;
 begin
   if ASymbol.Container <> '' then
-    Result := ASymbol.Container + '.' + ASymbol.Name
+  begin
+    Result := ASymbol.Container + '.' + ASymbol.Name;
+  end
   else
+  begin
     Result := ASymbol.Name;
+  end;
 end;
 
 /// <summary>Bereich und Text hinter dem Methodennamen bis vor das erste ";" außerhalb von Klammern,
@@ -277,34 +311,52 @@ begin
   Name := -1;
   mAngles := 0;
   for Index := 0 to High(Tokens) do
+  begin
     if Tokens[Index].EndPos = ASymbol.SelectionRange.EndPos then
     begin
       Name := Index;
       Break;
     end;
+  end;
   if Name < 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   Last := -1;
   for Index := Name + 1 to High(Tokens) do
   begin
     if Tokens[Index].Kind = TPascalTokenKind.Comment then
+    begin
       Continue;
+    end;
     if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     // Constraints der Typparameter enthalten ";" (<TI: IInterface; TC: class>, #1325).
     else if (Depth = 0) and Tokens[Index].IsSymbol('<') then
-      Inc(mAngles)
+    begin
+      Inc(mAngles);
+    end
     else if (Depth = 0) and (mAngles > 0) and Tokens[Index].IsSymbol('>') then
-      Dec(mAngles)
+    begin
+      Dec(mAngles);
+    end
     else if (Depth = 0) and (mAngles = 0) and Tokens[Index].IsSymbol(';') then
+    begin
       Break;
+    end;
     Last := Index;
   end;
   if Last < 0 then
+  begin
     Exit;
+  end;
   StartOffset := Tokens[Name].Offset + Length(Tokens[Name].Text);
   ARange := TTextRange.Create(Tokens[Name].EndPos, Tokens[Last].EndPos);
   ATail := Copy(AText, StartOffset + 1, Tokens[Last].Offset + Length(Tokens[Last].Text) - StartOffset);
@@ -340,12 +392,16 @@ begin
     begin
       if (ATokens[mIndex].Kind = TPascalTokenKind.Directive) and
         MatchText(TPascalLexer.DirectiveName(ATokens[mIndex].Text), cConditionalDirectives) then
+      begin
         AConditional := True;
+      end;
       mGap := True;
       Continue;
     end;
     if (Result <> '') and (mGap or (ATokens[mIndex].Offset > mEnd)) then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + ATokens[mIndex].Text;
     mEnd := ATokens[mIndex].Offset + Length(ATokens[mIndex].Text);
     mGap := False;
@@ -360,19 +416,29 @@ begin
   Result := '';
   mDepth := 0;
   for mIndex := 1 to Length(AText) do
+  begin
     if AText[mIndex] = '[' then
-      Inc(mDepth)
+    begin
+      Inc(mDepth);
+    end
     else if AText[mIndex] = ']' then
     begin
       if mDepth > 0 then
+      begin
         Dec(mDepth);
+      end;
       Result := Result + ' ';
     end
     else if mDepth = 0 then
+    begin
       Result := Result + AText[mIndex];
+    end;
+  end;
   Result := Trim(Result);
   while Pos('  ', Result) > 0 do
+  begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  end;
 end;
 
 /// <summary>Zerlegt "(A: Integer = 1; const B: string): Boolean" in Parametergruppen und den Rest.</summary>
@@ -387,16 +453,22 @@ begin
   AAfter := Tail;
   Result := (Tail <> '') and (Tail[1] = '(');
   if not Result then
+  begin
     Exit;
+  end;
   Depth := 0;
   Quoted := False;
   Start := 2;
   for Index := 1 to Length(Tail) do
   begin
     if Tail[Index] = '''' then
+    begin
       Quoted := not Quoted;
+    end;
     if Quoted then
+    begin
       Continue;
+    end;
     case Tail[Index] of
       '(', '[':
         Inc(Depth);
@@ -406,7 +478,9 @@ begin
           if Depth = 0 then
           begin
             if Trim(Copy(Tail, Start, Index - Start)) <> '' then
+            begin
               AGroups := AGroups + [Trim(Copy(Tail, Start, Index - Start))];
+            end;
             AAfter := Copy(Tail, Index + 1, MaxInt);
             Exit;
           end;
@@ -433,9 +507,13 @@ begin
   for Index := 1 to Length(AGroup) do
   begin
     if AGroup[Index] = '''' then
+    begin
       Quoted := not Quoted;
+    end;
     if Quoted then
+    begin
       Continue;
+    end;
     case AGroup[Index] of
       '(', '[', '<':
         Inc(Depth);
@@ -443,7 +521,9 @@ begin
         Dec(Depth);
       '=':
         if Depth = 0 then
+        begin
           Exit(Index);
+        end;
     end;
   end;
   Result := 0;
@@ -459,18 +539,24 @@ var
 begin
   Colon := Pos(':', AGroup);
   if Colon = 0 then
-    Names := AGroup
+  begin
+    Names := AGroup;
+  end
   else
+  begin
     Names := Copy(AGroup, 1, Colon - 1);
+  end;
   Names := LowerCase(Trim(Names));
   // Attribute wie [ref] stehen vor den Namen, auch hinter dem Modifizierer: const [ref] A (#1324).
   Names := WithoutAttributes(Names);
   for Index := 0 to High(Modifiers) do
+  begin
     if Pos(Modifiers[Index] + ' ', Names) = 1 then
     begin
       Names := Trim(Copy(Names, Length(Modifiers[Index]) + 1, MaxInt));
       Break;
     end;
+  end;
   Result := StringReplace(StringReplace(Names, ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]);
 end;
 
@@ -482,7 +568,9 @@ begin
   for Index := 0 to High(AGroups) do
   begin
     if Index > 0 then
+    begin
       Result := Result + '; ';
+    end;
     Result := Result + AGroups[Index];
   end;
   Result := Result + ')' + AAfter;
@@ -496,12 +584,16 @@ var
   Index, Equals: Integer;
 begin
   if not SplitParameters(ATail, Groups, After) then
+  begin
     Exit(TrimLeft(ATail));
+  end;
   for Index := 0 to High(Groups) do
   begin
     Equals := DefaultPos(Groups[Index]);
     if Equals > 0 then
+    begin
       Groups[Index] := TrimRight(Copy(Groups[Index], 1, Equals - 1));
+    end;
   end;
   Result := JoinGroups(Groups, After);
 end;
@@ -515,16 +607,24 @@ var
   Index, Inner, Equals: Integer;
 begin
   if not SplitParameters(ABodyTail, Groups, After) then
+  begin
     Exit(TrimLeft(ABodyTail));
+  end;
   if SplitParameters(ADeclTail, Old, OldAfter) then
+  begin
     for Index := 0 to High(Groups) do
+    begin
       for Inner := 0 to High(Old) do
       begin
         Equals := DefaultPos(Old[Inner]);
         if (Equals > 0) and (DefaultPos(Groups[Index]) = 0) and
           (GroupNames(Groups[Index]) = GroupNames(Copy(Old[Inner], 1, Equals - 1))) then
+        begin
           Groups[Index] := Groups[Index] + ' ' + Trim(Copy(Old[Inner], Equals, MaxInt));
+        end;
       end;
+    end;
+  end;
   Result := JoinGroups(Groups, After);
 end;
 
@@ -547,7 +647,9 @@ begin
   Group := AGroup;
   Equals := DefaultPos(Group);
   if Equals > 0 then
+  begin
     Group := Copy(Group, 1, Equals - 1);
+  end;
   Colon := Pos(':', Group);
   if Colon > 0 then
   begin
@@ -569,7 +671,9 @@ begin
     Names := Trim(Copy(Names, Space + 1, MaxInt));
   end;
   while Pos('  ', TypeName) > 0 do
+  begin
     TypeName := StringReplace(TypeName, '  ', ' ', [rfReplaceAll]);
+  end;
   for Name in SplitTopLevel(Names, ',') do
   begin
     Parameter.Modifier := Modifier;
@@ -591,20 +695,32 @@ var
 begin
   Result := 0;
   if Length(ADeclaration.Parameters) = Length(ABody.Parameters) then
+  begin
     Inc(Result, 100);
+  end;
   for Index := 0 to Min(High(ADeclaration.Parameters), High(ABody.Parameters)) do
   begin
     if SameTypeName(ADeclaration.Parameters[Index].TypeName, ABody.Parameters[Index].TypeName) then
+    begin
       Inc(Result, 10);
+    end;
     if SameText(ADeclaration.Parameters[Index].Name, ABody.Parameters[Index].Name) then
+    begin
       Inc(Result, 5);
+    end;
     if ADeclaration.Parameters[Index].Modifier = ABody.Parameters[Index].Modifier then
+    begin
       Inc(Result, 1);
+    end;
   end;
   if SameTypeName(ADeclaration.ResultType, ABody.ResultType) then
+  begin
     Inc(Result, 3);
+  end;
   if ADeclaration.Kind = ABody.Kind then
+  begin
     Inc(Result, 3);
+  end;
 end;
 
 /// <summary>Aufrufkonvention aus den Direktiven hinter dem Kopf ("overload; stdcall; …"); '' ohne.</summary>
@@ -619,11 +735,17 @@ begin
     Word := LowerCase(Trim(Part));
     Space := Pos(' ', Word);
     if Space > 0 then
+    begin
       Word := Copy(Word, 1, Space - 1);
+    end;
     if MatchText(Word, Conventions) then
+    begin
       Exit(Word);
+    end;
     if not MatchText(Word, Directives) then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -634,7 +756,9 @@ var
 begin
   Declaration := ADeclaration;
   if Declaration = '' then
+  begin
     Declaration := 'register';
+  end;
   Result := (ABody <> '') and (ABody <> Declaration);
 end;
 
@@ -653,54 +777,80 @@ begin
   AShape := Default(TSignatureShape);
   Result := SignatureTail(ATree, AText, ASymbol, Range, Tail, mName, mLast);
   if not Result then
+  begin
     Exit;
+  end;
   // Verglichen wird der Kopf ohne Kommentare und Direktiven (#1324).
   Tail := CleanTail(ATree.Tokens, mName + 1, mLast, AShape.Conditional);
   Header := TRoutineSignatures.Head(RangeText(TTextLines.SplitLines(AText), ASymbol.Range), Rest);
   for Word in Kinds do
+  begin
     if HasWord(Header, Word) then
     begin
       AShape.Kind := Word;
       Break;
     end;
+  end;
   if SplitParameters(Tail, Groups, After) then
+  begin
     for Group in Groups do
+    begin
       AShape.Parameters := AShape.Parameters + GroupParameters(Group);
+    end;
+  end;
   After := Trim(After);
   if StartsStr(':', After) then
+  begin
     AShape.ResultType := Trim(Copy(After, 2, MaxInt));
+  end;
   // Direktiven hinter dem Kopf: "; overload; stdcall;"
   Tokens := ATree.Tokens;
   Index := 0;
   while (Index <= High(Tokens)) and not (Tokens[Index].EndPos = Range.EndPos) do
+  begin
     Inc(Index);
+  end;
   Inc(Index);
   while Index <= High(Tokens) do
   begin
     while (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Comment) do
+    begin
       Inc(Index);
+    end;
     if (Index > High(Tokens)) or not Tokens[Index].IsSymbol(';') then
+    begin
       Break;
+    end;
     Inc(Index);
     while (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Comment) do
+    begin
       Inc(Index);
+    end;
     if Index > High(Tokens) then
+    begin
       Break;
+    end;
     if MatchText(Tokens[Index].Text, Conventions) then
     begin
       AShape.Convention := LowerCase(Tokens[Index].Text);
       AShape.ConventionRange := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
     end
     else if not MatchText(Tokens[Index].Text, Directives) then
+    begin
       Break;
+    end;
     // Argumente wie message WM_PAINT oder deprecated 'Grund' überspringen.
     Depth := 0;
     while (Index < High(Tokens)) and not ((Depth = 0) and Tokens[Index + 1].IsSymbol(';')) do
     begin
       if Tokens[Index].IsSymbol('(') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Tokens[Index].IsSymbol(')') then
+      begin
         Dec(Depth);
+      end;
       Inc(Index);
     end;
     Inc(Index);
@@ -724,9 +874,13 @@ var
   function Score(A, B: Integer): Integer;
   begin
     if Items[A].Declared then
-      Result := Closeness(Shapes[A], Shapes[B])
+    begin
+      Result := Closeness(Shapes[A], Shapes[B]);
+    end
     else
+    begin
       Result := Closeness(Shapes[B], Shapes[A]);
+    end;
   end;
 
   /// <summary>Eindeutig nächstliegender Partner von A; -1 ohne oder bei Gleichstand.</summary>
@@ -738,7 +892,9 @@ var
     Top := -1;
     Count := 0;
     for B := 0 to High(Items) do
+    begin
       if Candidate(A, B) then
+      begin
         if Score(A, B) > Top then
         begin
           Top := Score(A, B);
@@ -746,9 +902,15 @@ var
           Count := 1;
         end
         else if Score(A, B) = Top then
+        begin
           Inc(Count);
+        end;
+      end;
+    end;
     if Count <> 1 then
+    begin
       Result := -1;
+    end;
   end;
 
 begin
@@ -757,14 +919,20 @@ begin
   SetLength(Shapes, Length(Items));
   SetLength(Valid, Length(Items));
   for Index := 0 to High(Items) do
+  begin
     Valid[Index] := Shape(ATree, AText, Items[Index].Symbol, Shapes[Index]);
+  end;
   for Index := 0 to High(Items) do
   begin
     if Items[Index].Declared then
+    begin
       Continue;
+    end;
     Other := Best(Index);
     if (Other < 0) or (Best(Other) <> Index) then
+    begin
       Continue;
+    end;
     Pair.Declaration := Items[Other];
     Pair.Body := Items[Index];
     Pair.DeclarationShape := Shapes[Other];
@@ -785,7 +953,9 @@ begin
   Result := SignatureTail(ATree, AText, APair.Declaration.Symbol, DeclRange, DeclTail) and
     SignatureTail(ATree, AText, APair.Body.Symbol, BodyRange, BodyTail);
   if not Result then
+  begin
     Exit;
+  end;
   Name := APair.Body.Symbol.Name;
   Fix := Default(TCodeAction);
   Fix.Kind := QuickFixKind;
@@ -796,7 +966,9 @@ begin
   begin
     Convention := APair.DeclarationShape.Convention;
     if Convention = '' then
+    begin
       Convention := 'register';
+    end;
     Fix.Edits := Fix.Edits + [TTextEdit.Create(APair.BodyShape.ConventionRange, Convention)];
   end;
   AFixes := AFixes + [Fix];
@@ -806,9 +978,13 @@ begin
   if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
   begin
     if APair.DeclarationShape.Convention <> '' then
-      Fix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)]
+    begin
+      Fix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)];
+    end
     else
+    begin
       DeclTailText := DeclTailText + '; ' + APair.BodyShape.Convention;
+    end;
   end;
   Fix.Edits := [TTextEdit.Create(DeclRange, DeclTailText)] + Fix.Edits;
   AFixes := AFixes + [Fix];
@@ -868,20 +1044,28 @@ var
     for mPart := 0 to High(mParts) - 1 do
     begin
       if mPrefix <> '' then
+      begin
         mPrefix := mPrefix + '.';
+      end;
       mPrefix := mPrefix + mParts[mPart];
       mFound := False;
       for mOuter in UnitIndex.Symbols do
+      begin
         if (mOuter.Kind in TypeKinds) and SameText(TypeNameOf(mOuter), mPrefix) and
           ContainsLine(mOuter.Range, AType.Range.StartPos.Line) then
         begin
           mFound := IsGeneric(mOuter);
           Break;
         end;
+      end;
       if mFound then
-        Result := Result + '1'
+      begin
+        Result := Result + '1';
+      end
       else
+      begin
         Result := Result + '0';
+      end;
     end;
     Result := Result + '0';
   end;
@@ -893,8 +1077,12 @@ var
     mRange: TTextRange;
   begin
     for mRange in mTypeRanges do
+    begin
       if ContainsLine(mRange, ALine) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -903,8 +1091,12 @@ var
     Candidate: Integer;
   begin
     for Candidate := 0 to High(BodyKeys) do
+    begin
       if not Match.BodyUsed[Candidate] and (BodyKeys[Candidate] = AKey) then
+      begin
         Exit(Candidate);
+      end;
+    end;
     Result := -1;
   end;
 
@@ -914,15 +1106,23 @@ begin
   UnitIndex := TIndexExtractor.Extract(ATree, '');
   mTypeRanges := nil;
   for TypeSymbol in UnitIndex.Symbols do
+  begin
     if TypeSymbol.Kind in TypeKinds then
+    begin
       mTypeRanges := mTypeRanges + [TypeSymbol.Range];
+    end;
+  end;
   for TypeSymbol in UnitIndex.Symbols do
   begin
     if not (TypeSymbol.Kind in TypeKinds) then
+    begin
       Continue;
+    end;
     // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
     if IsGeneric(TypeSymbol) then
+    begin
       Continue;
+    end;
     mMask := TypeMask(TypeSymbol);
     Match := Default(TTypeMatch);
     Match.TypeName := TypeNameOf(TypeSymbol);
@@ -931,7 +1131,9 @@ begin
     for Symbol in UnitIndex.Symbols do
     begin
       if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, Match.TypeName) then
+      begin
         Continue;
+      end;
       Header := TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest);
       if ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
       begin
@@ -967,12 +1169,18 @@ begin
       Body := FreeBody(Key);
       // Ohne Parameterliste im Rumpf passt er zur ersten Deklaration gleichen Namens.
       if Body < 0 then
+      begin
         Body := FreeBody(LowerCase(Symbol.Name));
+      end;
       // Eine andere ausdrückliche Aufrufkonvention im Rumpf passt nicht (E2037).
       if (Body >= 0) and ConventionDiffers(BodyConventions[Body], ConventionOfRest(Rest)) then
+      begin
         Body := -1;
+      end;
       if Body >= 0 then
+      begin
         Match.BodyUsed[Body] := True;
+      end;
       Match.BodyOf[Declaration] := Body;
     end;
     Result := Result + [Match];
@@ -989,6 +1197,7 @@ begin
   for Match in MatchMethods(ATree, AText) do
   begin
     for Index := 0 to High(Match.Declarations) do
+    begin
       if Match.BodyOf[Index] = -1 then
       begin
         Item := Default(TUnmatchedMethod);
@@ -998,7 +1207,9 @@ begin
         Item.Header := Match.DeclarationHeaders[Index];
         Result := Result + [Item];
       end;
+    end;
     for Index := 0 to High(Match.Bodies) do
+    begin
       if not Match.BodyUsed[Index] then
       begin
         Item := Default(TUnmatchedMethod);
@@ -1007,6 +1218,7 @@ begin
         Item.Header := Match.BodyHeaders[Index];
         Result := Result + [Item];
       end;
+    end;
   end;
 end;
 
@@ -1019,10 +1231,13 @@ begin
   Result := nil;
   Matches := MatchMethods(ATree, AText);
   for TypeIndex := 0 to High(Matches) do
+  begin
     for Index := 0 to High(Matches[TypeIndex].Declarations) do
     begin
       if Matches[TypeIndex].BodyOf[Index] = -2 then
+      begin
         Continue;
+      end;
       Item := Default(TDeclaredMethod);
       Item.TypeName := Matches[TypeIndex].TypeName;
       Item.TypeOrder := TypeIndex;
@@ -1030,9 +1245,12 @@ begin
       Item.Declaration := Matches[TypeIndex].Declarations[Index];
       Item.HasBody := Matches[TypeIndex].BodyOf[Index] >= 0;
       if Item.HasBody then
+      begin
         Item.Body := Matches[TypeIndex].Bodies[Matches[TypeIndex].BodyOf[Index]];
+      end;
       Result := Result + [Item];
     end;
+  end;
 end;
 
 class function TClassCompletion.AddDeclaration(ATree: TSyntaxTree; const AText: string;
@@ -1048,34 +1266,48 @@ begin
   Result := False;
   AEdit := Default(TTextEdit);
   if AMethod.Declared then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AText);
   UnitIndex := TIndexExtractor.Extract(ATree, '');
   Found := False;
   TypeSymbol := Default(TIndexSymbol);
   for Symbol in UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in TypeKinds) and SameText(TypeNameOf(Symbol), AMethod.TypeName) then
     begin
       TypeSymbol := Symbol;
       Found := True;
       Break;
     end;
+  end;
   if not Found or (TypeSymbol.Range.EndPos.Line <= TypeSymbol.Range.StartPos.Line) or
     (TypeSymbol.Range.EndPos.Line > High(Lines)) then
+  begin
     Exit;
+  end;
   // "procedure TFoo.Bar(A: Integer)" wird "procedure Bar(A: Integer);".
   Index := Pos(LowerCase(AMethod.TypeName + '.'), LowerCase(AMethod.Header));
   if Index = 0 then
+  begin
     Exit;
+  end;
   Declaration := Copy(AMethod.Header, 1, Index - 1) + Copy(AMethod.Header, Index + Length(AMethod.TypeName) + 1,
     MaxInt) + ';';
   Overloaded := False;
   for Symbol in UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in MethodKinds) and SameText(Symbol.Container, AMethod.TypeName) and
       SameText(Symbol.Name, AMethod.Symbol.Name) and ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
+    begin
       Overloaded := True;
+    end;
+  end;
   if Overloaded and not HasWord(Declaration, 'overload') then
+  begin
     Declaration := Declaration + ' overload;';
+  end;
   LB := TTextLines.LineBreakOf(AText);
   // Vorhandener private-Abschnitt (nicht strict private) direkt im Typ.
   for Line := TypeSymbol.Range.StartPos.Line + 1 to TypeSymbol.Range.EndPos.Line - 1 do
@@ -1091,7 +1323,9 @@ begin
   // Sonst einen anlegen, vor dem "end" des Typs.
   EndLine := TypeSymbol.Range.EndPos.Line;
   if not LowerCase(TrimLeft(Lines[EndLine])).StartsWith('end') then
+  begin
     Exit;
+  end;
   AEdit := TTextEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0),
     TTextLines.IndentOf(Lines[EndLine]) + 'private' + LB + TTextLines.IndentOf(Lines[EndLine]) + '  ' +
     Declaration + LB);
@@ -1114,28 +1348,40 @@ begin
   Found := False;
   TypeSymbol := Default(TIndexSymbol);
   for Symbol in UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in TypeKinds) and SameText(TypeNameOf(Symbol), ATypeName) then
     begin
       TypeSymbol := Symbol;
       Found := True;
       Break;
     end;
+  end;
   if not Found then
+  begin
     Exit(False);
+  end;
   LastLine := -1;
   for Symbol in UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in MethodKinds) and SameText(Symbol.Container, ATypeName) and
       not ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) and (Symbol.Range.EndPos.Line > LastLine) then
+    begin
       LastLine := Symbol.Range.EndPos.Line;
+    end;
+  end;
   LB := TTextLines.LineBreakOf(AText);
   if LastLine >= 0 then
+  begin
     AEdit := TTextEdit.Create(TTextRange.Create(LastLine, Length(Lines[LastLine]), LastLine, Length(Lines[LastLine])),
-      LB + LB + ABody)
+      LB + LB + ABody);
+  end
   else
   begin
     InsertLine := ImplementationEndLine(ATree);
     if InsertLine < 0 then
+    begin
       Exit(False);
+    end;
     AEdit := TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0), ABody + LB + LB);
   end;
   Result := True;
@@ -1162,22 +1408,32 @@ begin
   Found := False;
   TypeSymbol := Default(TIndexSymbol);
   for Symbol in UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in TypeKinds) and ContainsLine(Symbol.Range, APosition.Line) and
       (not Found or (Symbol.Range.StartPos.Line >= TypeSymbol.Range.StartPos.Line)) then
     begin
       TypeSymbol := Symbol;
       Found := True;
     end;
+  end;
   if not Found then
+  begin
     Exit;
+  end;
   if TypeSymbol.Container <> '' then
-    TypeName := TypeSymbol.Container + '.' + TypeSymbol.Name
+  begin
+    TypeName := TypeSymbol.Container + '.' + TypeSymbol.Name;
+  end
   else
+  begin
     TypeName := TypeSymbol.Name;
+  end;
   // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
   Rest := Copy(Lines[TypeSymbol.SelectionRange.EndPos.Line], TypeSymbol.SelectionRange.EndPos.Character + 1, MaxInt);
   if TrimLeft(Rest).StartsWith('<') then
+  begin
     Exit;
+  end;
   Declarations := TList<TIndexSymbol>.Create;
   Missing := TList<TIndexSymbol>.Create;
   Implemented := TList<string>.Create;
@@ -1186,15 +1442,21 @@ begin
     for Symbol in UnitIndex.Symbols do
     begin
       if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, TypeName) then
+      begin
         Continue;
+      end;
       if ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
-        Declarations.Add(Symbol)
+      begin
+        Declarations.Add(Symbol);
+      end
       else
       begin
         Implemented.Add(LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(TRoutineSignatures.Head(
           RangeText(Lines, Symbol.Range), Rest)));
         if Symbol.Range.EndPos.Line > LastLine then
+        begin
           LastLine := Symbol.Range.EndPos.Line;
+        end;
       end;
     end;
     OnMethod := False;
@@ -1202,12 +1464,16 @@ begin
     begin
       Header := TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest);
       if HasWord(Rest, 'abstract') then
+      begin
         Continue;
+      end;
       Key := LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(Header);
       Index := Implemented.IndexOf(Key);
       // Ohne Parameterliste in der Implementierung passt sie zur ersten Deklaration gleichen Namens.
       if Index < 0 then
+      begin
         Index := Implemented.IndexOf(LowerCase(Symbol.Name));
+      end;
       if Index >= 0 then
       begin
         Implemented.Delete(Index);
@@ -1223,7 +1489,9 @@ begin
       Missing.Add(Symbol);
     end;
     if Missing.Count = 0 then
+    begin
       Exit;
+    end;
     LB := TTextLines.LineBreakOf(AText);
     Bodies := '';
     for Symbol in Missing do
@@ -1231,11 +1499,15 @@ begin
       Header := QualifiedHeader(TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest), Symbol.Name,
         TypeName);
       if Header = '' then
+      begin
         Continue;
+      end;
       Bodies := Bodies + LB + Header + LB + 'begin' + LB + LB + 'end;' + LB;
     end;
     if Bodies = '' then
+    begin
       Exit;
+    end;
     if LastLine >= 0 then
     begin
       InsertLine := LastLine;
@@ -1246,16 +1518,24 @@ begin
     begin
       InsertLine := ImplementationEndLine(ATree);
       if InsertLine < 0 then
+      begin
         Exit;
+      end;
       AAction.Edits := [TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0),
         Copy(Bodies, Length(LB) + 1, MaxInt) + LB)];
     end;
     if OnMethod then
-      AAction.Title := Format('Methodenrumpf für %s.%s erzeugen', [TypeName, Missing[0].Name])
+    begin
+      AAction.Title := Format('Methodenrumpf für %s.%s erzeugen', [TypeName, Missing[0].Name]);
+    end
     else if Missing.Count = 1 then
-      AAction.Title := Format('Fehlenden Methodenrumpf für %s erzeugen', [TypeName])
+    begin
+      AAction.Title := Format('Fehlenden Methodenrumpf für %s erzeugen', [TypeName]);
+    end
     else
+    begin
       AAction.Title := Format('%d fehlende Methodenrümpfe für %s erzeugen', [Missing.Count, TypeName]);
+    end;
     AAction.Kind := RewriteKind;
     AAction.Tag := ClassBodiesTag;
     Result := True;

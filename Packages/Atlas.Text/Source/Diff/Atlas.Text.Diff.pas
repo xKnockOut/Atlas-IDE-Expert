@@ -54,92 +54,170 @@ class procedure TTextDiff.CommonPrefixSuffix(const AOld, ANew: TArray<string>; o
 begin
   APrefix := 0;
   while (APrefix < Length(AOld)) and (APrefix < Length(ANew)) and (AOld[APrefix] = ANew[APrefix]) do
+  begin
     Inc(APrefix);
+  end;
   ASuffix := 0;
   while (ASuffix < Length(AOld) - APrefix) and (ASuffix < Length(ANew) - APrefix) and
     (AOld[High(AOld) - ASuffix] = ANew[High(ANew) - ASuffix]) do
+  begin
     Inc(ASuffix);
+  end;
+end;
+
+type
+  /// <summary>Schritt auf dem Weg durch die Mitte: gleiche Zeile, Zeile nur alt, Zeile nur neu.</summary>
+  TDiffStep = (Same, OldOnly, NewOnly);
+
+  /// <summary>Längste gemeinsame Teilfolge der Mitte (ohne gleichen Anfang und gleiches Ende).</summary>
+  TDiffMiddle = record
+    OldLines, NewLines: TArray<string>;
+    Prefix, OldCount, NewCount: Integer;
+    /// <summary>Von hinten: Table[Row * (NewCount + 1) + Column] für OldLines[Row..] und NewLines[Column..].</summary>
+    Table: TArray<Integer>;
+    procedure Build;
+    function Cell(ARow, AColumn: Integer): Integer;
+    function Step(ARow, AColumn: Integer): TDiffStep;
+  end;
+
+  /// <summary>Sammelt die Blöcke beim Weg durch die Mitte.</summary>
+  THunkCollector = record
+    Hunks: TArray<TTextLineHunk>;
+    Hunk: TTextLineHunk;
+    Open: Boolean;
+    procedure Flush;
+    procedure Touch(AOldLine, ANewLine: Integer);
+  end;
+
+{ TDiffMiddle }
+
+function TDiffMiddle.Cell(ARow, AColumn: Integer): Integer;
+begin
+  Result := Table[ARow * (NewCount + 1) + AColumn];
+end;
+
+procedure TDiffMiddle.Build;
+var
+  mRow, mColumn: Integer;
+begin
+  Table := nil;
+  SetLength(Table, (OldCount + 1) * (NewCount + 1));
+  for mRow := OldCount - 1 downto 0 do
+  begin
+    for mColumn := NewCount - 1 downto 0 do
+    begin
+      if OldLines[Prefix + mRow] = NewLines[Prefix + mColumn] then
+      begin
+        Table[mRow * (NewCount + 1) + mColumn] := Cell(mRow + 1, mColumn + 1) + 1;
+      end
+      else
+      begin
+        Table[mRow * (NewCount + 1) + mColumn] := Max(Cell(mRow + 1, mColumn), Cell(mRow, mColumn + 1));
+      end;
+    end;
+  end;
+end;
+
+function TDiffMiddle.Step(ARow, AColumn: Integer): TDiffStep;
+begin
+  if (ARow < OldCount) and (AColumn < NewCount) and (OldLines[Prefix + ARow] = NewLines[Prefix + AColumn]) then
+  begin
+    Result := TDiffStep.Same;
+  end
+  else if (AColumn = NewCount) or ((ARow < OldCount) and (Cell(ARow + 1, AColumn) >= Cell(ARow, AColumn + 1))) then
+  begin
+    Result := TDiffStep.OldOnly;
+  end
+  else
+  begin
+    Result := TDiffStep.NewOnly;
+  end;
+end;
+
+{ THunkCollector }
+
+procedure THunkCollector.Flush;
+begin
+  if Open then
+  begin
+    Hunks := Hunks + [Hunk];
+  end;
+  Open := False;
+end;
+
+procedure THunkCollector.Touch(AOldLine, ANewLine: Integer);
+begin
+  if Open then
+  begin
+    Exit;
+  end;
+  Open := True;
+  Hunk.OldStart := AOldLine;
+  Hunk.NewStart := ANewLine;
+  Hunk.OldCount := 0;
+  Hunk.NewCount := 0;
+end;
+
+// Nur auf einer Seite etwas oder zu groß für den genauen Vergleich: ein Block.
+function IsSingleHunk(AOldCount, ANewCount: Integer): Boolean;
+begin
+  Result := (AOldCount = 0) or (ANewCount = 0) or (Int64(AOldCount + 1) * (ANewCount + 1) > TTextDiff.MaxCells);
 end;
 
 class function TTextDiff.Hunks(const AOld, ANew: TArray<string>): TArray<TTextLineHunk>;
 var
-  Prefix, Suffix, OldCount, NewCount, Row, Column, Width: Integer;
-  Table: TArray<Integer>;
-  Hunk: TTextLineHunk;
-  Open: Boolean;
-
-  procedure Flush;
-  begin
-    if Open then
-      Result := Result + [Hunk];
-    Open := False;
-  end;
-
-  procedure Touch(AOldLine, ANewLine: Integer);
-  begin
-    if Open then
-      Exit;
-    Open := True;
-    Hunk.OldStart := AOldLine;
-    Hunk.NewStart := ANewLine;
-    Hunk.OldCount := 0;
-    Hunk.NewCount := 0;
-  end;
-
+  mMiddle: TDiffMiddle;
+  mCollector: THunkCollector;
+  mSuffix, mRow, mColumn: Integer;
 begin
   Result := nil;
-  CommonPrefixSuffix(AOld, ANew, Prefix, Suffix);
-  OldCount := Length(AOld) - Prefix - Suffix;
-  NewCount := Length(ANew) - Prefix - Suffix;
-  if (OldCount = 0) and (NewCount = 0) then
-    Exit;
-  Hunk := Default(TTextLineHunk);
-  if (OldCount = 0) or (NewCount = 0) or (Int64(OldCount + 1) * (NewCount + 1) > MaxCells) then
+  mMiddle := Default(TDiffMiddle);
+  mMiddle.OldLines := AOld;
+  mMiddle.NewLines := ANew;
+  CommonPrefixSuffix(AOld, ANew, mMiddle.Prefix, mSuffix);
+  mMiddle.OldCount := Length(AOld) - mMiddle.Prefix - mSuffix;
+  mMiddle.NewCount := Length(ANew) - mMiddle.Prefix - mSuffix;
+  if (mMiddle.OldCount = 0) and (mMiddle.NewCount = 0) then
   begin
-    // Nur auf einer Seite etwas oder zu groß: ein Block.
-    Hunk.OldStart := Prefix;
-    Hunk.OldCount := OldCount;
-    Hunk.NewStart := Prefix;
-    Hunk.NewCount := NewCount;
-    Result := [Hunk];
     Exit;
   end;
-  // Längste gemeinsame Teilfolge der Mitte, von hinten: Table[Row, Column] für AOld[Row..] und ANew[Column..].
-  Width := NewCount + 1;
-  Table := nil;
-  SetLength(Table, (OldCount + 1) * Width);
-  for Row := OldCount - 1 downto 0 do
-    for Column := NewCount - 1 downto 0 do
-      if AOld[Prefix + Row] = ANew[Prefix + Column] then
-        Table[Row * Width + Column] := Table[(Row + 1) * Width + Column + 1] + 1
-      else
-        Table[Row * Width + Column] := Max(Table[(Row + 1) * Width + Column], Table[Row * Width + Column + 1]);
-  Open := False;
-  Row := 0;
-  Column := 0;
-  while (Row < OldCount) or (Column < NewCount) do
+  mCollector := Default(THunkCollector);
+  if IsSingleHunk(mMiddle.OldCount, mMiddle.NewCount) then
   begin
-    if (Row < OldCount) and (Column < NewCount) and (AOld[Prefix + Row] = ANew[Prefix + Column]) then
-    begin
-      Flush;
-      Inc(Row);
-      Inc(Column);
-    end
-    else if (Column = NewCount) or ((Row < OldCount) and
-      (Table[(Row + 1) * Width + Column] >= Table[Row * Width + Column + 1])) then
-    begin
-      Touch(Prefix + Row, Prefix + Column);
-      Inc(Hunk.OldCount);
-      Inc(Row);
-    end
-    else
-    begin
-      Touch(Prefix + Row, Prefix + Column);
-      Inc(Hunk.NewCount);
-      Inc(Column);
+    mCollector.Touch(mMiddle.Prefix, mMiddle.Prefix);
+    mCollector.Hunk.OldCount := mMiddle.OldCount;
+    mCollector.Hunk.NewCount := mMiddle.NewCount;
+    mCollector.Flush;
+    Exit(mCollector.Hunks);
+  end;
+  mMiddle.Build;
+  mRow := 0;
+  mColumn := 0;
+  while (mRow < mMiddle.OldCount) or (mColumn < mMiddle.NewCount) do
+  begin
+    case mMiddle.Step(mRow, mColumn) of
+      TDiffStep.Same:
+        begin
+          mCollector.Flush;
+          Inc(mRow);
+          Inc(mColumn);
+        end;
+      TDiffStep.OldOnly:
+        begin
+          mCollector.Touch(mMiddle.Prefix + mRow, mMiddle.Prefix + mColumn);
+          Inc(mCollector.Hunk.OldCount);
+          Inc(mRow);
+        end;
+      TDiffStep.NewOnly:
+        begin
+          mCollector.Touch(mMiddle.Prefix + mRow, mMiddle.Prefix + mColumn);
+          Inc(mCollector.Hunk.NewCount);
+          Inc(mColumn);
+        end;
     end;
   end;
-  Flush;
+  mCollector.Flush;
+  Result := mCollector.Hunks;
 end;
 
 class function TTextDiff.ChangedLines(const AOld, ANew: TArray<string>; AMaxLines: Integer): TArray<string>;
@@ -150,19 +228,25 @@ var
   procedure Add(const AText: string);
   begin
     if Full then
+    begin
       Exit;
+    end;
     if (AMaxLines >= 0) and (Count >= AMaxLines) then
     begin
       // Begrenzung erreicht: einmal "…", danach nichts mehr.
       Full := True;
       if Count = Length(Result) then
+      begin
         SetLength(Result, Count * 2 + 1);
+      end;
       Result[Count] := '…';
       Inc(Count);
       Exit;
     end;
     if Count = Length(Result) then
+    begin
       SetLength(Result, Count * 2 + 8);
+    end;
     Result[Count] := AText;
     Inc(Count);
   end;
@@ -173,25 +257,33 @@ begin
   Full := False;
   CommonPrefixSuffix(AOld, ANew, Prefix, Suffix);
   if (Prefix = Length(AOld)) and (Prefix = Length(ANew)) then
+  begin
     Exit;
+  end;
   if Length(AOld) = Length(ANew) then
   begin
     // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen.
     for Index := Prefix to High(AOld) - Suffix do
+    begin
       if AOld[Index] <> ANew[Index] then
       begin
         Add(Format('Zeile %d:', [Index + 1]));
         Add('- ' + AOld[Index]);
         Add('+ ' + ANew[Index]);
       end;
+    end;
   end
   else
   begin
     Add(Format('ab Zeile %d:', [Prefix + 1]));
     for Index := Prefix to High(AOld) - Suffix do
+    begin
       Add('- ' + AOld[Index]);
+    end;
     for Index := Prefix to High(ANew) - Suffix do
+    begin
       Add('+ ' + ANew[Index]);
+    end;
   end;
   SetLength(Result, Count);
 end;
@@ -205,34 +297,62 @@ end;
 function UnifiedRange(AStart, ACount: Integer): string;
 begin
   if ACount = 0 then
-    Result := Format('%d,0', [AStart])
+  begin
+    Result := Format('%d,0', [AStart]);
+  end
   else if ACount = 1 then
-    Result := IntToStr(AStart + 1)
+  begin
+    Result := IntToStr(AStart + 1);
+  end
   else
+  begin
     Result := Format('%d,%d', [AStart + 1, ACount]);
+  end;
+end;
+
+// Hängt ALines[AFrom..ATo - 1] mit Kennzeichen AMark an; Ergebnis ist die Zahl der Zeilen.
+function AppendLines(var ABlock: TArray<string>; const AMark: string; const ALines: TArray<string>;
+  AFrom, ATo: Integer): Integer;
+var
+  mLine: Integer;
+begin
+  for mLine := AFrom to ATo - 1 do
+  begin
+    ABlock := ABlock + [AMark + ALines[mLine]];
+  end;
+  Result := Max(ATo - AFrom, 0);
+end;
+
+// Letzter Block des Abschnitts ab AFirst: Folgeblöcke, deren Umgebung an die des vorigen stößt, gehören dazu.
+function SectionEnd(const AHunks: TArray<TTextLineHunk>; AFirst, AContext: Integer): Integer;
+begin
+  Result := AFirst;
+  while (Result < High(AHunks)) and
+    (AHunks[Result + 1].OldStart - (AHunks[Result].OldStart + AHunks[Result].OldCount) <= 2 * AContext) do
+  begin
+    Inc(Result);
+  end;
 end;
 
 class function TTextDiff.Unified(const AOldName, ANewName: string; const AOld, ANew: TArray<string>;
   AContext: Integer): TArray<string>;
 var
   mHunks: TArray<TTextLineHunk>;
-  mFirst, mLast, mIndex, mOldStart, mOldStop, mNewStart, mOldLine, mNewLine, mContext: Integer;
+  mFirst, mLast, mIndex, mOldStart, mOldStop, mNewStart, mOldLine, mNewLine, mContext, mCount: Integer;
   mBlock: TArray<string>;
 begin
   Result := nil;
   mHunks := Hunks(AOld, ANew);
   if Length(mHunks) = 0 then
+  begin
     Exit;
+  end;
   mContext := Max(AContext, 0);
   Result := ['--- ' + AOldName, '+++ ' + ANewName];
   mFirst := 0;
   while mFirst <= High(mHunks) do
   begin
-    // Folgeblöcke, deren Umgebung an die des vorigen stößt, gehören in denselben Abschnitt.
-    mLast := mFirst;
-    while (mLast < High(mHunks)) and (mHunks[mLast + 1].OldStart - (mHunks[mLast].OldStart +
-      mHunks[mLast].OldCount) <= 2 * mContext) do
-      Inc(mLast);
+    mLast := SectionEnd(mHunks, mFirst, mContext);
     mOldStart := Max(mHunks[mFirst].OldStart - mContext, 0);
     mNewStart := mHunks[mFirst].NewStart - (mHunks[mFirst].OldStart - mOldStart);
     mOldStop := Min(mHunks[mLast].OldStart + mHunks[mLast].OldCount + mContext, Length(AOld));
@@ -241,29 +361,15 @@ begin
     mNewLine := mNewStart;
     for mIndex := mFirst to mLast do
     begin
-      while mOldLine < mHunks[mIndex].OldStart do
-      begin
-        mBlock := mBlock + [' ' + AOld[mOldLine]];
-        Inc(mOldLine);
-        Inc(mNewLine);
-      end;
-      while mOldLine < mHunks[mIndex].OldStart + mHunks[mIndex].OldCount do
-      begin
-        mBlock := mBlock + ['-' + AOld[mOldLine]];
-        Inc(mOldLine);
-      end;
-      while mNewLine < mHunks[mIndex].NewStart + mHunks[mIndex].NewCount do
-      begin
-        mBlock := mBlock + ['+' + ANew[mNewLine]];
-        Inc(mNewLine);
-      end;
+      mCount := AppendLines(mBlock, ' ', AOld, mOldLine, mHunks[mIndex].OldStart);
+      Inc(mOldLine, mCount);
+      Inc(mNewLine, mCount);
+      Inc(mOldLine, AppendLines(mBlock, '-', AOld, mOldLine, mHunks[mIndex].OldStart + mHunks[mIndex].OldCount));
+      Inc(mNewLine, AppendLines(mBlock, '+', ANew, mNewLine, mHunks[mIndex].NewStart + mHunks[mIndex].NewCount));
     end;
-    while mOldLine < mOldStop do
-    begin
-      mBlock := mBlock + [' ' + AOld[mOldLine]];
-      Inc(mOldLine);
-      Inc(mNewLine);
-    end;
+    mCount := AppendLines(mBlock, ' ', AOld, mOldLine, mOldStop);
+    Inc(mOldLine, mCount);
+    Inc(mNewLine, mCount);
     Result := Result + [Format('@@ -%s +%s @@', [UnifiedRange(mOldStart, mOldStop - mOldStart),
       UnifiedRange(mNewStart, mNewLine - mNewStart)])] + mBlock;
     mFirst := mLast + 1;

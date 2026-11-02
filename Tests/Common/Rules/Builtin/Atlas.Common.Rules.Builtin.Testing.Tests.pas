@@ -2,7 +2,7 @@
 
 // Tests der Regel dunitx-test-without-assert (#945): Test ohne Prüfung,
 // Prüfung in Hilfsmethoden und Routinen der Unit, eigene Prüfklassen,
-// WillRaise und Ignore, Korrekturen, Optionen.
+// WillRaise und Ignore, Korrekturen, Optionen, Hilfsroutinen anderer Units über den Index.
 
 interface
 
@@ -22,6 +22,8 @@ type
     [Test]
     procedure HelperMethodsAreFollowed;
     [Test]
+    procedure HelperInOtherUnitIsFollowed;
+    [Test]
     procedure WillRaiseAndIgnoreAreSilent;
     [Test]
     procedure AssertPatternsOption;
@@ -37,6 +39,9 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Testing,
   Atlas.Tests.RuleAssert;
@@ -59,6 +64,54 @@ begin
     ABody +
     'end;'#10 +
     'end.';
+end;
+
+const
+  cHelperFile = 'C:\Gemeinsam\Gemeinsam.Tests.pas';
+
+/// <summary>Unit Gemeinsam.Tests mit der freien Routine PruefePaar; ABody ist ihr Rumpf.</summary>
+function HelperUnit(const ABody: string): string;
+begin
+  Result :=
+    'unit Gemeinsam.Tests;'#10 +
+    'interface'#10 +
+    'procedure PruefePaar(const A, B: string);'#10 +
+    'implementation'#10 +
+    'procedure Vergleiche(const A, B: string);'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'procedure PruefePaar(const A, B: string);'#10 +
+    'begin'#10 +
+    '  Vergleiche(A, B);'#10 +
+    'end;'#10 +
+    'end.';
+end;
+
+/// <summary>Kontext wie im Server: Testunit ImportTests, die PruefePaar ruft; Index und ReadFile kennen
+/// Gemeinsam.Tests mit AHelper.</summary>
+function OtherUnitContext(const AHelper: string): TRuleContext;
+var
+  mIndex: ISymbolIndex;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(AHelper, cHelperFile, nil));
+  Result := Default(TRuleContext);
+  Result.RelativePath := 'Tests/ImportTests.pas';
+  Result.FileName := 'C:\Projekt\Tests\ImportTests.pas';
+  Result.UnitName := 'ImportTests';
+  Result.Text := TestUnit('  PruefePaar(''a'', ''b'');'#10);
+  Result.Index := mIndex;
+  Result.ReadFile :=
+    function(const AName: string; out AData: TBytes): Boolean
+    begin
+      AData := nil;
+      Result := SameText(AName, cHelperFile);
+      if Result then
+      begin
+        AData := TEncoding.UTF8.GetBytes(AHelper);
+      end;
+    end;
 end;
 
 { TTestingRulesTests }
@@ -152,6 +205,29 @@ begin
   // Ohne Prüfung im Helfer meldet die Regel den TestCase.
   TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, StringReplace(Source, '  Assert.AreEqual(1, 1);'#10,
     '  Laden;'#10, []));
+end;
+
+procedure TTestingRulesTests.HelperInOtherUnitIsFollowed;
+var
+  mContext: TRuleContext;
+begin
+  // Prüfung in einer Routine der anderen Unit, die PruefePaar ruft.
+  mContext := OtherUnitContext(HelperUnit('  Assert.AreEqual(A, B);'#10));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TDUnitXTestWithoutAssertRule.Create, mContext,
+    ''))));
+  // Prüft der Helfer nichts, bleibt der Test gemeldet.
+  mContext := OtherUnitContext(HelperUnit('  Writeln(A, B);'#10));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TDUnitXTestWithoutAssertRule.Create, mContext,
+    ''))));
+  // Ohne Datei bzw. ohne Index keine Auflösung: gemeldet wie bisher.
+  mContext := OtherUnitContext(HelperUnit('  Assert.AreEqual(A, B);'#10));
+  mContext.ReadFile := nil;
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TDUnitXTestWithoutAssertRule.Create, mContext,
+    ''))));
+  mContext := OtherUnitContext(HelperUnit('  Assert.AreEqual(A, B);'#10));
+  mContext.Index := nil;
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TDUnitXTestWithoutAssertRule.Create, mContext,
+    ''))));
 end;
 
 procedure TTestingRulesTests.WillRaiseAndIgnoreAreSilent;

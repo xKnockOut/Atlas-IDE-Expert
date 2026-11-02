@@ -153,9 +153,13 @@ begin
   begin
     Candidate := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data', 'Protocol')));
     if TDirectory.Exists(Candidate) then
+    begin
       Exit(Candidate);
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   raise EProtocolMismatch.Create('Ordner Tests\Data\Protocol nicht gefunden');
@@ -171,34 +175,48 @@ begin
   if AExpected is TJSONObject then
   begin
     if not (AActual is TJSONObject) then
+    begin
       Exit(Format('%s: Objekt erwartet, %s gefunden', [APath, AActual.ToJSON]));
+    end;
     for Pair in TJSONObject(AExpected) do
     begin
       ActualValue := TJSONObject(AActual).GetValue(Pair.JsonString.Value);
       if ActualValue = nil then
+      begin
         Exit(Format('%s.%s fehlt', [APath, Pair.JsonString.Value]));
+      end;
       Result := Mismatch(Pair.JsonValue, ActualValue, APath + '.' + Pair.JsonString.Value);
       if Result <> '' then
+      begin
         Exit;
+      end;
     end;
   end
   else if AExpected is TJSONArray then
   begin
     if not (AActual is TJSONArray) then
+    begin
       Exit(Format('%s: Array erwartet, %s gefunden', [APath, AActual.ToJSON]));
+    end;
     if TJSONArray(AExpected).Count <> TJSONArray(AActual).Count then
+    begin
       Exit(Format('%s: %d Elemente erwartet, %d gefunden: %s',
         [APath, TJSONArray(AExpected).Count, TJSONArray(AActual).Count, AActual.ToJSON]));
+    end;
     for Index := 0 to TJSONArray(AExpected).Count - 1 do
     begin
       Result := Mismatch(TJSONArray(AExpected).Items[Index], TJSONArray(AActual).Items[Index],
         Format('%s[%d]', [APath, Index]));
       if Result <> '' then
+      begin
         Exit;
+      end;
     end;
   end
   else if AExpected.ToJSON <> AActual.ToJSON then
+  begin
     Result := Format('%s: %s erwartet, %s gefunden', [APath, AExpected.ToJSON, AActual.ToJSON]);
+  end;
 end;
 
 procedure TProtocolReplay.Send(const AMessage: TJSONObject);
@@ -207,7 +225,9 @@ var
 begin
   Response := FDispatcher.DispatchMessage(AMessage);
   if Response <> nil then
+  begin
     FOutput.Enqueue(Response);
+  end;
 end;
 
 procedure TProtocolReplay.Expect(const AExpected: TJSONObject; AStep: Integer);
@@ -216,13 +236,17 @@ var
   Difference: string;
 begin
   if FOutput.Count = 0 then
+  begin
     raise EProtocolMismatch.CreateFmt('Schritt %d: keine Nachricht vom Server, erwartet %s',
       [AStep, AExpected.ToJSON]);
+  end;
   Actual := FOutput.Extract;
   try
     Difference := Mismatch(AExpected, Actual, '$');
     if Difference <> '' then
+    begin
       raise EProtocolMismatch.CreateFmt('Schritt %d: %s', [AStep, Difference]);
+    end;
   finally
     Actual.Free;
   end;
@@ -236,19 +260,29 @@ var
   Value: TJSONObject;
 begin
   if not ARecording.TryGetValue<TJSONArray>('steps', Steps) then
+  begin
     raise EProtocolMismatch.Create('Feld "steps" fehlt');
+  end;
   for Index := 0 to Steps.Count - 1 do
   begin
     Step := Steps.Items[Index] as TJSONObject;
     if Step.TryGetValue<TJSONObject>('send', Value) then
-      Send(Value)
+    begin
+      Send(Value);
+    end
     else if Step.TryGetValue<TJSONObject>('expect', Value) then
-      Expect(Value, Index)
+    begin
+      Expect(Value, Index);
+    end
     else
+    begin
       raise EProtocolMismatch.CreateFmt('Schritt %d: "send" oder "expect" fehlt', [Index]);
+    end;
   end;
   if FOutput.Count > 0 then
+  begin
     raise EProtocolMismatch.CreateFmt('Unerwartete Nachricht vom Server: %s', [FOutput.Peek.ToJSON]);
+  end;
 end;
 
 end.

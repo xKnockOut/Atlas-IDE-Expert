@@ -59,10 +59,14 @@ begin
   Result := Trim(ATypeName);
   Angle := Pos('<', Result);
   if Angle > 0 then
+  begin
     Result := Copy(Result, 1, Angle - 1);
+  end;
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, Dot + 1, MaxInt);
+  end;
 end;
 
 class function TTypeMembers.Contains(const AMembers: TArray<TTypeMember>; const AName: string): Boolean;
@@ -70,8 +74,12 @@ var
   Member: TTypeMember;
 begin
   for Member in AMembers do
+  begin
     if SameText(Member.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -83,21 +91,27 @@ var
   Location: TSymbolLocation;
 begin
   for Symbol in ALocal.Symbols do
+  begin
     if (Symbol.Kind in TTypeMembers.ClassKinds) and SameText(Symbol.Name, AName) then
     begin
       AUnit := ALocal;
       ASymbol := Symbol;
       Exit(True);
     end;
+  end;
   Result := False;
   if AIndex = nil then
+  begin
     Exit;
+  end;
   for Location in AIndex.FindSymbols(AName) do
+  begin
     if (Location.Symbol.Kind in TTypeMembers.ClassKinds) and AIndex.FindUnit(Location.UnitName, AUnit) then
     begin
       ASymbol := Location.Symbol;
       Exit(True);
     end;
+  end;
 end;
 
 class function TTypeMembers.Collect(const ALocal: TUnitIndex; const AIndex: ISymbolIndex; const AType: TIndexSymbol;
@@ -115,7 +129,9 @@ var
     Member: TTypeMember;
   begin
     if Seen.ContainsKey(LowerCase(AName)) then
+    begin
       Exit;
+    end;
     Seen.Add(LowerCase(AName), True);
     Member.Name := AName;
     Member.Kind := AKind;
@@ -130,8 +146,12 @@ var
     Symbol: TIndexSymbol;
   begin
     for Symbol in AUnit.Symbols do
+    begin
       if (Symbol.Kind in MemberKinds) and SameText(Symbol.Container, AQualified) then
+      begin
         AddMember(Symbol.Name, AQualified, Symbol.Kind, Symbol.TypeName, ADepth);
+      end;
+    end;
   end;
 
 begin
@@ -140,21 +160,29 @@ begin
   try
     AddOf(ALocal, AType.QualifiedName, 0);
     if not (AType.Kind in ClassKinds) then
+    begin
       Exit(True);
+    end;
     Current := AType;
     for Depth := 1 to MaxDepth do
     begin
       Ancestor := '';
       if Length(Current.Ancestors) > 0 then
+      begin
         Ancestor := ShortName(Current.Ancestors[0]);
+      end;
       if (Ancestor = '') or SameText(Ancestor, 'TObject') then
       begin
         for Name in ObjectMembers do
+        begin
           AddMember(Name, 'TObject', TIndexSymbolKind.Method, '', Depth);
+        end;
         Exit(True);
       end;
       if not FindClass(ALocal, AIndex, Ancestor, Owner, Current) then
+      begin
         Exit(False);
+      end;
       AddOf(Owner, Current.QualifiedName, Depth);
     end;
     Result := False;

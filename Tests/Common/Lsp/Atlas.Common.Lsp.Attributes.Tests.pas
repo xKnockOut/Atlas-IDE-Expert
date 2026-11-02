@@ -94,15 +94,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for Run := 1 to Index - 1 do
+  begin
     if AText[Run] = #10 then
     begin
       Inc(Line);
       LineStart := Run + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -192,7 +196,9 @@ begin
   end;
   Text := '';
   for Location in Found do
+  begin
     Text := Text + Format('%s:%d ', [ExtractFileName(Location.FileName), Location.Range.StartPos.Line]);
+  end;
   // Deklaration, [TestFixture], [DUnitX.Attributes.TestFixture(…)] und [TestFixtureAttribute].
   Assert.AreEqual('Haupt.pas:4 Haupt.pas:5 Haupt.pas:7 DUnitX.Attributes.pas:5', Trim(Text));
 end;

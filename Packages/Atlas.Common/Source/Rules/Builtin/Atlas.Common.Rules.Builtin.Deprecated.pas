@@ -126,8 +126,12 @@ var
   Word: string;
 begin
   for Word in KindWords do
+  begin
     if IndexText(Word, ADirectives) >= 0 then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -172,7 +176,9 @@ begin
     begin
       Result := True;
       if not (ANode.Kind in NamedKinds + [TSyntaxKind.EnumType]) then
+      begin
         Exit;
+      end;
       // Erstes Token des Knotens (Tokens sind nach Offset sortiert).
       Low_ := 0;
       High_ := Length(Tokens);
@@ -180,9 +186,13 @@ begin
       begin
         Middle := (Low_ + High_) div 2;
         if Tokens[Middle].Offset < ANode.StartOffset then
-          Low_ := Middle + 1
+        begin
+          Low_ := Middle + 1;
+        end
         else
+        begin
           High_ := Middle;
+        end;
       end;
       if ANode.Kind = TSyntaxKind.EnumType then
       begin
@@ -190,10 +200,14 @@ begin
         for Index := Low_ + 1 to High(Tokens) do
         begin
           if Tokens[Index].Offset >= ANode.EndOffset then
+          begin
             Break;
+          end;
           if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
             (Tokens[Index - 1].IsSymbol('(') or Tokens[Index - 1].IsSymbol(',')) then
+          begin
             Offsets.AddOrSetValue(Tokens[Index].Offset, True);
+          end;
         end;
         Exit;
       end;
@@ -202,9 +216,13 @@ begin
         if (Tokens[Index].Offset >= ANode.EndOffset) or Tokens[Index].IsSymbol('(') or
           Tokens[Index].IsSymbol(':') or Tokens[Index].IsSymbol(';') or Tokens[Index].IsSymbol('=') or
           Tokens[Index].IsSymbol('[') or Tokens[Index].IsSymbol('<') then
+        begin
           Break;
+        end;
         if Tokens[Index].Kind = TPascalTokenKind.Identifier then
+        begin
           Offsets.AddOrSetValue(Tokens[Index].Offset, True);
+        end;
       end;
     end);
   Result := Offsets;
@@ -219,7 +237,9 @@ begin
   FReport := AReport;
   FIndex := AContext.Index;
   if FIndex = nil then
+  begin
     FIndex := TSymbolIndex.Create;
+  end;
   FResolver := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
   FScope := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
@@ -246,7 +266,9 @@ var
 begin
   mTokens := FContext.Tree.Tokens;
   for mIndex := 0 to High(mTokens) do
+  begin
     FTokenIndex.AddOrSetValue(mTokens[mIndex].Offset, mIndex);
+  end;
 end;
 
 function TDeprecatedCheck.StateAt(AKind: Integer; AUnitLevel: Boolean; ATokenIndex: Integer): TRuleWarnState;
@@ -254,11 +276,17 @@ var
   mKey: string;
 begin
   if IndexText(KindWords[AKind], FKinds) < 0 then
+  begin
     Exit(TRuleWarnState.Disabled);
+  end;
   if AUnitLevel then
-    mKey := UnitSwitches[AKind]
+  begin
+    mKey := UnitSwitches[AKind];
+  end
   else
+  begin
     mKey := SymbolSwitches[AKind];
+  end;
   // dcc meldet alle acht Warnungen ab Werk.
   Result := FSwitches.StateAt(mKey, True, ATokenIndex);
 end;
@@ -268,10 +296,16 @@ var
   Namespace: string;
 begin
   if FIndex.FindUnit(AName, AUnit) then
+  begin
     Exit(True);
+  end;
   for Namespace in FContext.Namespaces do
+  begin
     if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -282,19 +316,27 @@ var
 begin
   Result := False;
   if not AResolved.Found or (AResolved.Kind <> TResolvedKind.Symbol) then
+  begin
     Exit;
+  end;
   // Symbole der eigenen Datei stehen in ihrem Index, nicht im (womöglich älteren) Projektindex.
   if SameText(AResolved.FileName, FContext.RelativePath) or SameText(AResolved.UnitName, FOwn.UnitName) then
-    AOwner := FOwn
+  begin
+    AOwner := FOwn;
+  end
   else if not FResolver.DeclaringUnit(AResolved, AOwner) then
+  begin
     Exit;
+  end;
   for Symbol in AOwner.Symbols do
+  begin
     if (Symbol.SelectionRange.StartPos = AResolved.SelectionRange.StartPos) and SameText(Symbol.Name, AResolved.Name)
       and SameText(Symbol.Container, AResolved.Container) then
     begin
       ASymbol := Symbol;
       Exit(True);
     end;
+  end;
 end;
 
 function TDeprecatedCheck.Fits(const ASymbol: TIndexSymbol; const AOwner: TUnitIndex; const ACandidate: string;
@@ -306,14 +348,18 @@ begin
   Result := False;
   Group := KindGroup(ASymbol.Kind);
   if (Group = 0) or SameText(ACandidate, ASymbol.Name) then
+  begin
     Exit;
+  end;
   Dot := Pos('.', ACandidate);
   if ASymbol.Container <> '' then
   begin
     // Mitglied: Ersatz im selben Typ (oder seinen Vorfahren).
     if (Dot > 0) or not FScope.ResolveTypeFrom(AOwner, ASymbol.Container, OwnerType) or
       not FScope.DeclaredMember(OwnerType, ACandidate, Found) then
+    begin
       Exit;
+    end;
   end
   else if Dot > 0 then
   begin
@@ -322,10 +368,14 @@ begin
       not FScope.ResolveNameFrom(FOwn, Copy(ACandidate, 1, Dot - 1), TypeSymbol) or
       (KindGroup(TypeSymbol.SymbolKind) <> 2) or
       not FScope.DeclaredMember(TypeSymbol, Copy(ACandidate, Dot + 1, MaxInt), Found) then
+    begin
       Exit;
+    end;
   end
   else if AQualified or not FScope.ResolveNameFrom(FOwn, ACandidate, Found) then
+  begin
     Exit;
+  end;
   Result := Found.Found and (Found.Kind = TResolvedKind.Symbol) and (KindGroup(Found.SymbolKind) = Group);
 end;
 
@@ -343,8 +393,12 @@ begin
     if ASymbol.DeprecatedText <> '' then
     begin
       for Match in TRegEx.Matches(ASymbol.DeprecatedText, '[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*') do
+      begin
         if (Candidates.IndexOf(Match.Value) < 0) and Fits(ASymbol, AOwner, Match.Value, AQualified) then
+        begin
           Candidates.Add(Match.Value);
+        end;
+      end;
     end
     else if IndexText(AOwner.UnitName, KnownUnits) >= 0 then
     begin
@@ -353,12 +407,16 @@ begin
       begin
         Name := KnownNew[Index];
         if Fits(ASymbol, AOwner, Name, AQualified) then
+        begin
           Candidates.Add(Name);
+        end;
       end;
     end;
     // Eindeutig heißt: genau ein Name aus dem Text passt.
     if Candidates.Count = 1 then
+    begin
       Result := Candidates[0];
+    end;
   finally
     Candidates.Free;
   end;
@@ -376,10 +434,14 @@ begin
   for Kind := Low(KindWords) to High(KindWords) do
   begin
     if IndexText(KindWords[Kind], ADirectives) < 0 then
+    begin
       Continue;
+    end;
     State := StateAt(Kind, AUnitLevel, ATokenIndex);
     if not TRuleWarnSwitches.Reported(State) then
+    begin
       Continue;
+    end;
     if AUnitLevel then
     begin
       Prefix := 'Unit ';
@@ -392,18 +454,26 @@ begin
     end;
     Message := Format('%s%s ist %s', [Prefix, AName, KindWords[Kind]]);
     if (Kind = 0) and (AReason <> '') then
-      Message := Message + ': ' + AReason
+    begin
+      Message := Message + ': ' + AReason;
+    end
     else if AReplacement <> '' then
+    begin
       Message := Message + '; besser ' + AReplacement;
+    end;
     Message := Message + Format(' (wie %s).', [Code]);
     Fixes := nil;
     if AReplacement <> '' then
+    begin
       Fixes := [TRuleFix.Create(Format('Durch %s ersetzen', [AReplacement]),
         [TTextEdit.Create(ARange, AReplacement)])];
+    end;
     // {$WARN … ERROR} macht die Warnung zum Fehler.
     Severity := TRuleSeverity.Default;
     if State = TRuleWarnState.AsError then
+    begin
       Severity := TRuleSeverity.Error;
+    end;
     FReport.AddWithSeverity(ARange, Message, Severity, Fixes);
   end;
 end;
@@ -424,18 +494,24 @@ begin
       begin
         Result := True;
         if ANode.Kind = TSyntaxKind.UsedUnit then
+        begin
           Items.Add(ANode);
+        end;
       end);
     for Item in Items do
     begin
       if (Item.Name = '') or SameText(Item.Name, FOwn.UnitName) or not FTokenIndex.TryGetValue(Item.StartOffset, First)
         or not FindIndexedUnit(Item.Name, UnitIndex) or not HasHint(UnitIndex.Directives) then
+      begin
         Continue;
+      end;
       // Name samt Punkten, ohne "in '…'".
       Last := First;
       while (Last + 2 <= High(Tokens)) and Tokens[Last + 1].IsSymbol('.') and
         (Tokens[Last + 2].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) do
+      begin
         Inc(Last, 2);
+      end;
       ReportKinds(TTextRange.Create(Tokens[First].StartPos, Tokens[Last].EndPos), First, Item.Name,
         UnitIndex.Directives, UnitIndex.DeprecatedText, '', True);
     end;
@@ -464,43 +540,61 @@ begin
     begin
       Token := Tokens[Index];
       if (Token.Kind <> TPascalTokenKind.Identifier) or Headers.ContainsKey(Token.Offset) then
+      begin
         Continue;
+      end;
       // Vorfilter: Gibt es in der Datei oder im Index ein gleichnamiges Symbol mit Hinweis?
       if not Candidates.TryGetValue(LowerCase(Token.Text), Hinted) then
       begin
         Hinted := False;
         for Symbol in FOwn.Symbols do
+        begin
           if SameText(Symbol.Name, Token.Text) and HasHint(Symbol.Directives) then
+          begin
             Hinted := True;
+          end;
+        end;
         if not Hinted then
+        begin
           Hinted := FIndex.HasSymbol(Token.Text,
             function(const ACandidate: TIndexSymbol): Boolean
             begin
               Result := HasHint(ACandidate.Directives);
             end);
+        end;
         Candidates.Add(LowerCase(Token.Text), Hinted);
       end;
       if not Hinted then
+      begin
         Continue;
+      end;
       // Bei Überladungen zählt die Überladung, die der Aufruf wählt (FileAge(Name, Alter) nicht die veraltete
       // FileAge(Name)). Bleibt die Wahl offen, meldet die Regel nur, wenn alle Kandidaten den Hinweis tragen.
       Resolved := Default(TResolvedSymbol);
       Unsure := False;
       for Candidate in FResolver.ResolveAll(FContext.Tree, FContext.RelativePath, Token.StartPos) do
+      begin
         if not SymbolOf(Candidate, CandidateUnit, CandidateSymbol) or not HasHint(CandidateSymbol.Directives) then
-          Unsure := True
+        begin
+          Unsure := True;
+        end
         else if not Resolved.Found then
         begin
           Resolved := Candidate;
           OwnerUnit := CandidateUnit;
           Symbol := CandidateSymbol;
         end;
+      end;
       if Unsure or not Resolved.Found or (Resolved.SelectionRange.StartPos = Token.StartPos) and
         SameText(Resolved.FileName, FContext.RelativePath) then
+      begin
         Continue;
+      end;
       Previous := Index - 1;
       while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      begin
         Dec(Previous);
+      end;
       Qualified := (Previous >= 0) and Tokens[Previous].IsSymbol('.');
       ReportKinds(TTextRange.Create(Token.StartPos, Token.EndPos), Index, Token.Text, Symbol.Directives,
         Symbol.DeprecatedText, ReplacementOf(Symbol, OwnerUnit, Qualified), False);
@@ -525,12 +619,18 @@ begin
         Result := True;
         if (ANode.Kind = TSyntaxKind.Visibility) and (ANode.Name = 'automated') and (ANode.Parent <> nil) and
           (ANode.Parent.Kind = TSyntaxKind.ClassType) then
+        begin
           mSections.Add(ANode);
+        end;
       end);
     for mSection in mSections do
+    begin
       if FTokenIndex.TryGetValue(mSection.StartOffset, mToken) then
+      begin
         ReportKinds(TTextRange.Create(mSection.StartPos, mSection.EndPos), mToken, 'automated', ['deprecated'], '',
           '', False);
+      end;
+    end;
   finally
     mSections.Free;
   end;
@@ -549,16 +649,24 @@ begin
   for mIndex := 0 to High(mTokens) do
   begin
     if mTokens[mIndex].Kind <> TPascalTokenKind.Directive then
+    begin
       Continue;
+    end;
     mName := TPascalLexer.DirectiveName(mTokens[mIndex].Text);
     if IndexText(mName, cNetDirectives) < 0 then
+    begin
       Continue;
+    end;
     mState := StateAt(cPlatformKind, False, mIndex);
     if not TRuleWarnSwitches.Reported(mState) then
+    begin
       Continue;
+    end;
     mSeverity := TRuleSeverity.Default;
     if mState = TRuleWarnState.AsError then
+    begin
       mSeverity := TRuleSeverity.Error;
+    end;
     mRange := TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos);
     FReport.AddWithSeverity(mRange, Format('Den Schalter %s gibt es nur für .NET; er ist plattformspezifisch ' +
       'und wirkt hier nicht (wie W1002).', [mName]), mSeverity,
@@ -600,7 +708,9 @@ var
   Check: TDeprecatedCheck;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Check := TDeprecatedCheck.Create(AContext, AReport);
   try
     Check.Run;

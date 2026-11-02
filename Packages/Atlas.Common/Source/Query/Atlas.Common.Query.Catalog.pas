@@ -134,11 +134,13 @@ var
   mEntity: TQueryEntity;
 begin
   for mEntity := Low(TQueryEntity) to High(TQueryEntity) do
+  begin
     if SameText(EntityName(mEntity), AName) then
     begin
       AEntity := mEntity;
       Exit(True);
     end;
+  end;
   AEntity := TQueryEntity.Units;
   Result := False;
 end;
@@ -149,7 +151,9 @@ var
 begin
   Result := nil;
   for mEntity := Low(TQueryEntity) to High(TQueryEntity) do
+  begin
     Result := Result + [EntityName(mEntity)];
+  end;
 end;
 
 class function TQueryCatalog.Fields: TArray<TQueryFieldInfo>;
@@ -202,8 +206,12 @@ var
 begin
   Result := nil;
   for mField in Fields do
+  begin
     if AEntity in mField.Entities then
+    begin
       Result := Result + [mField];
+    end;
+  end;
 end;
 
 class function TQueryCatalog.TryField(const AName: string; out AField: TQueryFieldInfo): Boolean;
@@ -211,11 +219,13 @@ var
   mField: TQueryFieldInfo;
 begin
   for mField in Fields do
+  begin
     if SameText(mField.Name, AName) then
     begin
       AField := mField;
       Exit(True);
     end;
+  end;
   AField := Default(TQueryFieldInfo);
   Result := False;
 end;
@@ -226,7 +236,9 @@ var
 begin
   Result := nil;
   for mField in FieldsOf(AEntity) do
+  begin
     Result := Result + [mField.Name];
+  end;
 end;
 
 class function TQueryCatalog.FieldNames: TArray<string>;
@@ -235,7 +247,9 @@ var
 begin
   Result := nil;
   for mField in Fields do
+  begin
     Result := Result + [mField.Name];
+  end;
 end;
 
 class function TQueryCatalog.PredicateName(AKind: TQueryPredicateKind): string;
@@ -314,18 +328,26 @@ begin
     'Vergleiche `=`, `<>`, `<`, `>`, `<=`, `>=`, `like` mit `*` und `?`; `and`, `or`, `not`, Klammern. Texte in ' +
     'einfachen oder doppelten Anführungszeichen, Namen auch ohne.' + sLineBreak + sLineBreak + 'Mengen:' + sLineBreak;
   for mEntity := Low(TQueryEntity) to High(TQueryEntity) do
+  begin
     Result := Result + Format('- `%s`: %s; Felder %s', [EntityName(mEntity), EntityCaption(mEntity),
       string.Join(', ', FieldNames(mEntity))]) + sLineBreak;
+  end;
   Result := Result + sLineBreak + 'Prädikate:' + sLineBreak;
   for mKind := Low(TQueryPredicateKind) to High(TQueryPredicateKind) do
+  begin
     Result := Result + Format('- `%s <Name>`: %s', [PredicateName(mKind), PredicateDescription(mKind)]) + sLineBreak;
+  end;
   Result := Result + sLineBreak + 'Felder:' + sLineBreak;
   for mField in Fields do
   begin
     mNames := '';
     for mEntity := Low(TQueryEntity) to High(TQueryEntity) do
+    begin
       if mEntity in mField.Entities then
+      begin
         mNames := mNames + IfThen(mNames = '', '', ', ') + EntityName(mEntity);
+      end;
+    end;
     Result := Result + Format('- `%s` (%s; %s): %s', [mField.Name, FieldTypeName(mField.FieldType), mNames,
       mField.Description]) + sLineBreak;
   end;

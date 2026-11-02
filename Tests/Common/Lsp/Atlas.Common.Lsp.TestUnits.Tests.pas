@@ -142,7 +142,9 @@ begin
     function(const AFileName: string): string
     begin
       if not Files.TryGetValue(AFileName, Result) then
+      begin
         Result := '';
+      end;
     end;
   Result.Exists :=
     function(const AFileName: string): Boolean
@@ -153,7 +155,9 @@ begin
     function(const AUnitName: string): string
     begin
       if not Units.TryGetValue(LowerCase(AUnitName), Result) then
+      begin
         Result := '';
+      end;
     end;
 end;
 
@@ -182,8 +186,12 @@ var
 begin
   Result := nil;
   for Item in AChanges do
+  begin
     if TJSONObject(Item).TryGetValue<string>('textDocument.uri', Uri) and TDocumentUris.SameFile(Uri, AUri) then
+    begin
       Exit(TJSONObject(Item));
+    end;
+  end;
 end;
 
 function FirstNewText(const AChange: TJSONObject): string;
@@ -234,7 +242,9 @@ begin
     Assert.AreEqual(TLspTestUnits.OpenFileCommand, Actions[0].GetValue<string>('command.command'));
   finally
     for Action in Actions do
+    begin
       Action.Free;
+    end;
   end;
   // Außerhalb der Klasse kein Anlegen (Code-Aktion auf einer Klasse, #274).
   Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 1);
@@ -258,7 +268,9 @@ begin
       Arguments.Items[0].Value));
   finally
     for Action in Actions do
+    begin
       Action.Free;
+    end;
   end;
   Target := TLspTestUnits.Resolve('C:\P\Tests\Kunden.Tests.pas', KundenTestsText, 0, Context);
   Assert.IsTrue(Target.IsTest);

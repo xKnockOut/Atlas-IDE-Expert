@@ -43,7 +43,9 @@ begin
   begin
     // Ohne Zugriffsrecht nicht beenden; nur ein fehlender Prozess zählt als beendet.
     if GetLastError = ERROR_INVALID_PARAMETER then
+    begin
       AOnExited();
+    end;
     Exit;
   end;
   FStop := CreateEvent(nil, True, False, nil);
@@ -58,7 +60,9 @@ begin
       Handles[0] := Process;
       Handles[1] := Stop;
       if WaitForMultipleObjects(2, @Handles[0], False, INFINITE) = WAIT_OBJECT_0 then
+      begin
         OnExited();
+      end;
     end);
   FThread.FreeOnTerminate := False;
   FThread.Start;
@@ -73,9 +77,13 @@ begin
     FThread.Free;
   end;
   if FStop <> 0 then
+  begin
     CloseHandle(FStop);
+  end;
   if FProcess <> 0 then
+  begin
     CloseHandle(FProcess);
+  end;
   inherited;
 end;
 

@@ -52,7 +52,9 @@ var
 begin
   SetLength(Result, Length(Values));
   for Index := 0 to High(Values) do
+  begin
     Result[Index] := Values[Index];
+  end;
 end;
 
 /// <summary>Zweig-Stelle am "|" in AMarked.</summary>
@@ -64,13 +66,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   Text := StringReplace(AMarked, '|', '', []);
   Result := TCaseCompletion.BranchSlot(Text, TPascalLexer.Tokenize(Text), TTextPosition.Create(Line, Character), ASlot);
 end;
@@ -82,7 +88,9 @@ var
   Missing: TArray<string>;
 begin
   if not SlotAt(AMarked, Slot) then
+  begin
     Exit('-');
+  end;
   Assert.IsTrue(TCaseCompletion.Missing(AllValues, Slot.Labels, Missing));
   Result := TCaseCompletion.BranchesText(Slot, Missing, APrefix, #10);
 end;
@@ -188,7 +196,9 @@ var
 begin
   SetLength(Result, Length(Aligns));
   for Index := 0 to High(Aligns) do
+  begin
     Result[Index] := Aligns[Index];
+  end;
 end;
 
 /// <summary>Ergebnis von Complete für die case-Anweisung in Zeile 1 von AText; '-' ohne Angebot.</summary>
@@ -205,7 +215,9 @@ begin
     CaseNode := TCaseCompletion.CaseAt(Tree, TTextPosition.Create(3, 4));
     if (CaseNode = nil) or not TCaseCompletion.Complete(AText, Tree, CaseNode, AlignValues, APrefix, Edits, ACount,
       AHasElse) then
+    begin
       Exit('-');
+    end;
     Result := TChangeSignature.ApplyEdits(AText, Edits);
   finally
     Tree.Free;
@@ -245,7 +257,9 @@ begin
   // Nichts fehlt: keine Aktion.
   All := '';
   for Index := 0 to High(Aligns) do
+  begin
     All := All + '    ' + Aligns[Index] + ': ;'#10;
+  end;
   Assert.AreEqual('-', CompleteText('procedure P(A: TAlign);'#10'begin'#10'  case A of'#10 + All + '  end;'#10 +
     'end;'#10, '', Count, HasElse));
   // Eine Marke, die kein Wert ist.

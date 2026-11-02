@@ -103,8 +103,12 @@ var
 begin
   Result := '';
   for mFinding in AFindings do
+  begin
     if mFinding.RuleId = UnusedUsesRuleId then
+    begin
       Result := Result + mFinding.Message + ';';
+    end;
+  end;
 end;
 
 procedure TUnusedUsesTests.ReportsUnusedEntryWithSafeFix;

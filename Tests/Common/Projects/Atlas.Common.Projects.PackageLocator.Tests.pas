@@ -12,6 +12,10 @@ type
   [TestFixture]
   TPackageLocatorTests = class
   public
+    /// <summary>Datei- und Zeitfunktionen legen beim ersten Aufruf Objekte an, die bis Prozessende leben (z. B.
+    /// die Zeitzone); der Leckmonitor zählte sie sonst im ersten Test mit .dcp auf der Platte.</summary>
+    [SetupFixture]
+    procedure WarmUpFileTimes;
     [Test]
     procedure SourceAnswersFromContains;
     [Test]
@@ -33,6 +37,13 @@ type
     procedure RequiredFilesFollowRequires;
     [Test]
     procedure RequiresComeFromSource;
+    /// <summary>Speicher (Rückmeldung 01.11.2026): Jeder Arbeitsbereich und jeder Indexstart hat einen eigenen
+    /// Locator; dieselbe .dcp liegt trotzdem nur einmal im Speicher.</summary>
+    [Test]
+    procedure CompiledFilesAreShared;
+    /// <summary>Eine neu übersetzte .dcp (anderer Zeitstempel oder Größe) wird neu gelesen.</summary>
+    [Test]
+    procedure ChangedCompiledFileIsReread;
   end;
 
 implementation
@@ -65,13 +76,17 @@ begin
       Item: TPair<string, TBytes>;
     begin
       if AReads <> nil then
+      begin
         AReads.Add(AFileName);
+      end;
       for Item in Map do
+      begin
         if SameText(Item.Key, AFileName) then
         begin
           AData := Item.Value;
           Exit(True);
         end;
+      end;
       AData := nil;
       Result := False;
     end;
@@ -89,7 +104,9 @@ begin
   // Wie im .dcp: Namen als ShortString mit Längenbyte zwischen Binärdaten.
   Result := 'PKX0'#0#1;
   for Name in ANames do
+  begin
     Result := Result + Chr(Length(Name)) + Name + #0#2;
+  end;
 end;
 
 { TPackageLocatorTests }
@@ -292,6 +309,79 @@ begin
     Assert.AreEqual(0, Integer(Length(Locator.Requires('Fehlt'))));
   finally
     Locator.Free;
+  end;
+end;
+
+procedure TPackageLocatorTests.WarmUpFileTimes;
+var
+  mFolder: string;
+  mLocator: TPackageLocator;
+  mContains: Boolean;
+begin
+  // Einmal der ganze Weg der Tests mit .dcp auf der Platte (Ordner, Zeitstempel, geteiltes Lesen).
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDcpWarmUp' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(mFolder);
+  TFile.WriteAllBytes(TPath.Combine(mFolder, 'Warm.dcp'), TEncoding.ASCII.GetBytes('WARM'));
+  mLocator := TPackageLocator.Create([mFolder]);
+  try
+    mLocator.Provides('Warm', 'Warm', mContains);
+  finally
+    mLocator.Free;
+    TPackageCompiledFiles.Clear;
+    TDirectory.Delete(mFolder, True);
+  end;
+end;
+
+procedure TPackageLocatorTests.CompiledFilesAreShared;
+var
+  mFolder: string;
+  mFirst, mSecond: TPackageLocator;
+  mContains: Boolean;
+  mBefore: Int64;
+begin
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDcpShared' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(mFolder);
+  TFile.WriteAllBytes(TPath.Combine(mFolder, 'Geteilt.dcp'), TEncoding.ASCII.GetBytes('xx GETEILT.EINS yy'));
+  mBefore := TPackageCompiledFiles.Bytes;
+  mFirst := TPackageLocator.Create([mFolder]);
+  mSecond := TPackageLocator.Create([mFolder]);
+  try
+    Assert.IsTrue(mFirst.Provides('Geteilt', 'Geteilt.Eins', mContains));
+    Assert.IsTrue(mContains);
+    Assert.IsTrue(mSecond.Provides('Geteilt', 'Geteilt.Eins', mContains));
+    Assert.IsTrue(mContains);
+    // Zwei Locatoren, eine Kopie: die Bytes der Datei zählen einmal.
+    Assert.AreEqual(Int64(18), TPackageCompiledFiles.Bytes - mBefore);
+  finally
+    mSecond.Free;
+    mFirst.Free;
+    TPackageCompiledFiles.Clear;
+    TDirectory.Delete(mFolder, True);
+  end;
+end;
+
+procedure TPackageLocatorTests.ChangedCompiledFileIsReread;
+var
+  mFolder, mFile: string;
+  mData: TBytes;
+begin
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDcpChanged' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(mFolder);
+  mFile := TPath.Combine(mFolder, 'Neu.dcp');
+  try
+    TFile.WriteAllBytes(mFile, TEncoding.ASCII.GetBytes('ALT'));
+    TFile.SetLastWriteTime(mFile, EncodeDate(2026, 1, 1));
+    Assert.IsTrue(TPackageCompiledFiles.Read(mFile, mData));
+    Assert.AreEqual('ALT', TEncoding.ASCII.GetString(mData));
+    TFile.WriteAllBytes(mFile, TEncoding.ASCII.GetBytes('NEUER'));
+    TFile.SetLastWriteTime(mFile, EncodeDate(2026, 2, 1));
+    Assert.IsTrue(TPackageCompiledFiles.Read(mFile, mData));
+    Assert.AreEqual('NEUER', TEncoding.ASCII.GetString(mData));
+    Assert.IsFalse(TPackageCompiledFiles.Read(TPath.Combine(mFolder, 'Fehlt.dcp'), mData));
+  finally
+    mData := nil;
+    TPackageCompiledFiles.Clear;
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 

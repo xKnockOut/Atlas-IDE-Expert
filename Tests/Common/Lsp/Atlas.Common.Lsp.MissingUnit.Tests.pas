@@ -57,7 +57,9 @@ var
 begin
   Folder := Copy(AFileName, 1, LastDelimiter('\', AFileName) - 1);
   if not Files.TryGetValue(LowerCase(Folder), Items) then
+  begin
     Items := nil;
+  end;
   Files.AddOrSetValue(LowerCase(Folder), Items + [AFileName]);
 end;
 
@@ -66,7 +68,9 @@ var
   Items: TArray<string>;
 begin
   if not Folders.TryGetValue(LowerCase(AParent), Items) then
+  begin
     Items := nil;
+  end;
   Folders.AddOrSetValue(LowerCase(AParent), Items + [AParent + '\' + AChild]);
 end;
 
@@ -80,13 +84,17 @@ begin
     function(AFolder: string): TArray<string>
     begin
       if not Files.TryGetValue(LowerCase(AFolder), Result) then
+      begin
         Result := nil;
+      end;
     end;
   Result.ListFolders :=
     function(AFolder: string): TArray<string>
     begin
       if not Folders.TryGetValue(LowerCase(AFolder), Result) then
+      begin
         Result := nil;
+      end;
     end;
 end;
 
@@ -133,11 +141,15 @@ begin
       for Index := 0 to Values.Count - 1 do
       begin
         if Index > 0 then
+        begin
           Text := Text + '|';
+        end;
         Text := Text + Values.Items[Index].Value;
       end;
       if Action.GetValue('isPreferred') <> nil then
+      begin
         Text := Text + ' *';
+      end;
       Result := Result + [Action.GetValue<string>('title', '') + ' => ' + Command.GetValue<string>('command', '') +
         ' [' + Text + ']'];
     finally

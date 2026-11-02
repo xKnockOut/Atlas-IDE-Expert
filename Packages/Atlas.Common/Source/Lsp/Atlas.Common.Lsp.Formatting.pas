@@ -133,24 +133,33 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "position" fehlen');
+  end;
   Result := TJSONArray.Create;
   try
     if not TJSONObject(AParams).TryGetValue<string>('ch', Character) or ((Character <> #10) and
       (Character <> '/')) then
+    begin
       Exit;
+    end;
     if not FStore.TryGet(Uri, Document) then
+    begin
       Exit;
+    end;
     if Character = '/' then
     begin
       // Abgeschaltet: "///" bleibt, wie getippt.
       if Assigned(FDocCommentsFor) and not FDocCommentsFor(Uri) then
+      begin
         Exit;
+      end;
       // Abbruchsignal an den Parser (Code-Review A-06).
       Cancellation := TRequestCancellation.Create(ACancellation);
       Shared := TSyntaxTreeCache.Get(Document, Cancellation);
       // Über einer Methodenimplementierung zwei Bearbeitungen: Gerüst an der Deklaration, "///" weg.
       if TDocComments.AfterSlash(Document.Text, Shared.Tree, TLspPositions.ReadPosition(PositionValue), Edits) then
+      begin
         for Edit in Edits do
         begin
           Item := TJSONObject.Create;
@@ -158,21 +167,28 @@ begin
           Item.AddPair('newText', Edit.NewText);
           TJSONArray(Result).AddElement(Item);
         end;
+      end;
       Exit;
     end;
     Disabled := nil;
     Version := '';
     if Assigned(FDelphiVersionFor) then
+    begin
       Version := FDelphiVersionFor(Uri);
+    end;
     // Abgebrochen (Watchdog, $/cancelRequest): keine Schnellbefehle mehr ausführen, die Projekt und Platte
     // ändern (A-06).
     ACancellation.ThrowIfCancellationRequested;
     // Einrückung der Befehle wie beim Formatieren (#43): Editor-Optionen, .editorconfig, "format".
     Configured := TFormatStyle.Default;
     if Assigned(FSettingsProvider) then
+    begin
       Configured := FSettingsProvider(Uri);
+    end;
     if not TJSONObject(AParams).TryGetValue<TJSONValue>('options', Options) then
+    begin
       Options := nil;
+    end;
     Style := Resolve(Options, TDocumentUris.ToPath(Uri), Configured, FReadFile);
     if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
       TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
@@ -202,34 +218,62 @@ begin
   if AOptions is TJSONObject then
   begin
     if AOptions.TryGetValue<Integer>('tabSize', Size) and (Size >= 1) then
+    begin
       Result.IndentSize := Size;
+    end;
     if AOptions.TryGetValue<Boolean>('insertSpaces', Flag) then
+    begin
       Result.UseTabs := not Flag;
+    end;
     if AOptions.TryGetValue<Boolean>('trimTrailingWhitespace', Flag) then
+    begin
       Result.TrimTrailingWhitespace := Flag;
+    end;
     if AOptions.TryGetValue<Boolean>('insertFinalNewline', Flag) then
+    begin
       Result.InsertFinalNewline := Flag;
+    end;
   end;
   if Assigned(AReadFile) and (AFileName <> '') then
+  begin
     Result := TEditorConfig.ForFile(AFileName, AReadFile, Result);
+  end;
   if TFormatKey.IndentSize in AConfigured.Given then
+  begin
     Result.IndentSize := AConfigured.IndentSize;
+  end;
   if TFormatKey.UseTabs in AConfigured.Given then
+  begin
     Result.UseTabs := AConfigured.UseTabs;
+  end;
   if TFormatKey.KeywordCase in AConfigured.Given then
+  begin
     Result.KeywordCase := AConfigured.KeywordCase;
+  end;
   if TFormatKey.TrimTrailingWhitespace in AConfigured.Given then
+  begin
     Result.TrimTrailingWhitespace := AConfigured.TrimTrailingWhitespace;
+  end;
   if TFormatKey.InsertFinalNewline in AConfigured.Given then
+  begin
     Result.InsertFinalNewline := AConfigured.InsertFinalNewline;
+  end;
   if TFormatKey.SpaceAroundAssignment in AConfigured.Given then
+  begin
     Result.SpaceAroundAssignment := AConfigured.SpaceAroundAssignment;
+  end;
   if TFormatKey.SpaceAfterComma in AConfigured.Given then
+  begin
     Result.SpaceAfterComma := AConfigured.SpaceAfterComma;
+  end;
   if TFormatKey.EndOfLine in AConfigured.Given then
+  begin
     Result.EndOfLine := AConfigured.EndOfLine;
+  end;
   if TFormatKey.MaxLineLength in AConfigured.Given then
+  begin
     Result.MaxLineLength := AConfigured.MaxLineLength;
+  end;
   // Diese Schalter kennt weder der Editor noch .editorconfig (#43).
   Result.Reindent := AConfigured.Reindent;
   Result.BeginPlacement := AConfigured.BeginPlacement;
@@ -254,28 +298,42 @@ var
   FirstLine, LastLine: Integer;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   if not TJSONObject(AParams).TryGetValue<TJSONValue>('options', Options) then
+  begin
     Options := nil;
+  end;
   if Assigned(FSettingsProvider) then
-    Configured := FSettingsProvider(Uri)
+  begin
+    Configured := FSettingsProvider(Uri);
+  end
   else
+  begin
     Configured := TFormatStyle.Default;
+  end;
   Settings := Resolve(Options, TDocumentUris.ToPath(Uri), Configured, FReadFile);
   FirstLine := 0;
   LastLine := -1;
   if AWithRange then
   begin
     if not TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) then
+    begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "range" fehlt in ' + RangeMethod);
+    end;
     Range := TLspPositions.ReadRange(RangeValue);
     FirstLine := Range.StartPos.Line;
     LastLine := Range.EndPos.Line;
     // Bereich bis zum Anfang einer Zeile: diese Zeile gehört nicht dazu.
     if (Range.EndPos.Character = 0) and (LastLine > FirstLine) then
+    begin
       Dec(LastLine);
+    end;
   end;
   // Die Einstellungen können Dateien lesen (.editorconfig); danach nicht mehr formatieren (A-06).
   ACancellation.ThrowIfCancellationRequested;

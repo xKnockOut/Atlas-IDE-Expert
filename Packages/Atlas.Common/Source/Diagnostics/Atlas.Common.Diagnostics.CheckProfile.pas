@@ -178,9 +178,13 @@ begin
   Result.AddPair('serial', TJSONNumber.Create(Serial));
   Result.AddPair('active', TJSONBool.Create(Active));
   if Started = 0 then
-    Result.AddPair('started', '')
+  begin
+    Result.AddPair('started', '');
+  end
   else
+  begin
     Result.AddPair('started', DateToISO8601(Started, False));
+  end;
   Result.AddPair('durationMs', TJSONNumber.Create(DurationMs));
   Result.AddPair('units', TJSONNumber.Create(Units));
   Result.AddPair('unitMs', TJSONNumber.Create(UnitMs));
@@ -191,7 +195,9 @@ begin
     mItem := TJSONObject.Create;
     mItem.AddPair('name', mUnit.Name);
     if mUnit.FileName <> '' then
+    begin
       mItem.AddPair('file', mUnit.FileName);
+    end;
     mItem.AddPair('ms', TJSONNumber.Create(mUnit.Ms));
     mItems.AddElement(mItem);
   end;
@@ -215,15 +221,23 @@ var
   mRule: TCheckProfileRule;
 begin
   if Serial = 0 then
+  begin
     Exit('');
+  end;
   mBuilder := TStringBuilder.Create;
   try
     if Active then
-      mBuilder.Append(Format('Prüflauf läuft seit %d ms: %d Units geprüft', [DurationMs, Units]))
+    begin
+      mBuilder.Append(Format('Prüflauf läuft seit %d ms: %d Units geprüft', [DurationMs, Units]));
+    end
     else
+    begin
       mBuilder.Append(Format('Letzter Prüflauf: %d Units in %d ms', [Units, DurationMs]));
+    end;
     if Started <> 0 then
+    begin
       mBuilder.Append(', Beginn ').Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss', Started));
+    end;
     mBuilder.Append(Format(' (Summe Units %s ms, Summe Regeln %s ms)', [MsText(UnitMs), MsText(RuleMs)]));
     mBuilder.Append(#10);
     if Length(SlowUnits) > 0 then
@@ -231,14 +245,18 @@ begin
       mBuilder.Append(#10).Append('| Langsamste Units | ms |').Append(#10);
       mBuilder.Append('|---|---:|').Append(#10);
       for mUnit in SlowUnits do
+      begin
         mBuilder.Append(Format('| %s | %s |', [mUnit.Name, MsText(mUnit.Ms)])).Append(#10);
+      end;
     end;
     if Length(SlowRules) > 0 then
     begin
       mBuilder.Append(#10).Append('| Langsamste Regeln | ms | Aufrufe |').Append(#10);
       mBuilder.Append('|---|---:|---:|').Append(#10);
       for mRule in SlowRules do
+      begin
         mBuilder.Append(Format('| %s | %s | %d |', [mRule.Id, MsText(mRule.Ms), mRule.Calls])).Append(#10);
+      end;
     end;
     Result := mBuilder.ToString;
   finally
@@ -266,9 +284,13 @@ begin
   try
     mBuilder.Append('# Atlas --check: Zeitprofil').Append(#10#10);
     if IndexMs >= 0 then
-      mBuilder.Append(Format('- Symbolindex: %d Units in %d ms', [IndexUnits, IndexMs])).Append(#10)
+    begin
+      mBuilder.Append(Format('- Symbolindex: %d Units in %d ms', [IndexUnits, IndexMs])).Append(#10);
+    end
     else
+    begin
       mBuilder.Append('- Symbolindex: keiner (--no-index)').Append(#10);
+    end;
     mBuilder.Append(Format('- Prüfung: %d Units in %d ms', [Profile.Units, Profile.DurationMs])).Append(#10);
     mBuilder.Append(#10).Append('| Speicher | MB |').Append(#10);
     mBuilder.Append('|---|---:|').Append(#10);
@@ -276,9 +298,13 @@ begin
     mBuilder.Append('| Bibliotheks-Units | ').Append(MegaBytes(LibraryBytes)).Append(' |').Append(#10);
     mBuilder.Append('| Verwendungen | ').Append(MegaBytes(UsageBytes)).Append(' |').Append(#10);
     if TotalBytes >= 0 then
+    begin
       mBuilder.Append('| Gesamt (Heap) | ').Append(MegaBytes(TotalBytes)).Append(' |').Append(#10);
+    end;
     if Profile.Serial > 0 then
+    begin
       mBuilder.Append(#10).Append(Profile.ToMarkdown);
+    end;
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
@@ -374,7 +400,9 @@ begin
   FLock.Enter;
   try
     if not FRules.TryGetValue(ARuleId, mEntry) then
+    begin
       mEntry := Default(TRuleEntry);
+    end;
     Inc(mEntry.Microseconds, AMicroseconds);
     Inc(mEntry.Calls);
     FRules.AddOrSetValue(ARuleId, mEntry);
@@ -411,7 +439,9 @@ begin
       Result.Started := FStarted;
       Result.DurationMs := FDurationMs;
       if FActive and (ARunningMs >= 0) then
+      begin
         Result.DurationMs := ARunningMs;
+      end;
       Result.Units := FUnits.Count;
       for mUnitPair in FUnits do
       begin
@@ -440,23 +470,35 @@ begin
       begin
         Result := CompareValue(ARight.Ms, ALeft.Ms);
         if Result = 0 then
+        begin
           Result := CompareText(ALeft.Name, ARight.Name);
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(ALeft.FileName, ARight.FileName);
+        end;
         if Result = 0 then
+        begin
           Result := CompareStr(ALeft.FileName, ARight.FileName);
+        end;
       end));
     mRules.Sort(TComparer<TCheckProfileRule>.Construct(
       function(const ALeft, ARight: TCheckProfileRule): Integer
       begin
         Result := CompareValue(ARight.Ms, ALeft.Ms);
         if Result = 0 then
+        begin
           Result := CompareStr(ALeft.Id, ARight.Id);
+        end;
       end));
     while mUnits.Count > ACount do
+    begin
       mUnits.Delete(mUnits.Count - 1);
+    end;
     while mRules.Count > ACount do
+    begin
       mRules.Delete(mRules.Count - 1);
+    end;
     Result.SlowUnits := mUnits.ToArray;
     Result.SlowRules := mRules.ToArray;
   finally
@@ -477,13 +519,17 @@ var
 begin
   mProfiler := CurrentProfiler;
   if mProfiler <> nil then
+  begin
     mProfiler.AddRule(ARuleId, AMicroseconds);
+  end;
 end;
 
 class function TCheckProfiler.TicksToMicroseconds(ATicks, AFrequency: Int64): Int64;
 begin
   if AFrequency <= 0 then
+  begin
     Exit(0);
+  end;
   // In zwei Schritten, damit ATicks * 1000000 bei langen Läufen nicht überläuft.
   Result := (ATicks div AFrequency) * 1000000 + ((ATicks mod AFrequency) * 1000000) div AFrequency;
 end;

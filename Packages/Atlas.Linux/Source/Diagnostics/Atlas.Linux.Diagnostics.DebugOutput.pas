@@ -30,7 +30,9 @@ var
 begin
   Bytes := TEncoding.UTF8.GetBytes(AText + #10);
   if Length(Bytes) > 0 then
+  begin
     FpWrite(StdErrorFd, Bytes[0], Length(Bytes));
+  end;
 end;
 
 end.

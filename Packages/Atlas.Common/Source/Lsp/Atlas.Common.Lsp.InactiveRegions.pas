@@ -90,7 +90,9 @@ var
 begin
   SetLength(Result, Length(ARegions));
   for Index := 0 to High(ARegions) do
+  begin
     Result[Index] := ARegions[Index].Range;
+  end;
 end;
 
 class function TLspInactiveRegions.FromRanges(const ARanges: TArray<TTextRange>): TArray<TLspInactiveRegion>;
@@ -99,7 +101,9 @@ var
 begin
   SetLength(Result, Length(ARanges));
   for Index := 0 to High(ARanges) do
+  begin
     Result[Index] := TLspInactiveRegion.Create(ARanges[Index], '');
+  end;
 end;
 
 class function TLspInactiveRegions.Regions(const AText: string; const ADefines: TArray<string>;
@@ -129,38 +133,54 @@ begin
   AIssues := nil;
   // Ohne Resolver wäre jedes $I "nicht gefunden"; dann nichts melden.
   if AReportIncludes then
+  begin
     for Issue in AProcessed.Issues do
+    begin
       if Issue.Kind <> TPreprocessorIssueKind.General then
       begin
         Duplicate := False;
         for Known in AIssues do
+        begin
           Duplicate := Duplicate or (Known.Range.StartPos = Issue.RootRange.StartPos);
+        end;
         if Duplicate then
+        begin
           Continue;
+        end;
         AIssues := AIssues + [Issue];
         AIssues[High(AIssues)].Range := Issue.RootRange;
         // Befund aus einer eingebundenen Datei: Ort in der .inc nennen.
         if Issue.FileIndex <> 0 then
+        begin
           AIssues[High(AIssues)].Message := Format('%s (in %s, Zeile %d)',
             [Issue.Message, ExtractFileName(AProcessed.Files[Issue.FileIndex]), Issue.Range.StartPos.Line + 1]);
+        end;
         AIssues[High(AIssues)].FileIndex := 0;
       end;
+    end;
+  end;
   for Inactive in AProcessed.InactiveRanges do
   begin
     if Inactive.FileIndex <> 0 then
+    begin
       Continue;
+    end;
     Range := Inactive.Range;
     // Leere Bereiche ({$IFDEF X}{$ENDIF}) nicht melden.
     if Range.StartPos = Range.EndPos then
+    begin
       Continue;
+    end;
     // Der Bereich beginnt hinter der Direktive, die den Zweig abschaltet, wie der Zweig selbst.
     Condition := '';
     for Conditional in AProcessed.Conditionals do
+    begin
       if (Conditional.FileIndex = 0) and not Conditional.Active and (Conditional.Range.StartPos = Range.StartPos) then
       begin
         Condition := Conditional.Condition;
         Break;
       end;
+    end;
     Result := Result + [TLspInactiveRegion.Create(Range, Condition)];
   end;
 end;

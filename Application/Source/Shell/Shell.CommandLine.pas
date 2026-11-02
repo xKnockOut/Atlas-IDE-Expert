@@ -203,20 +203,30 @@ uses
 
 class function TCommandLineOptions.TryParseLogLevel(const AText: string; out ALevel: TLogLevel): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := AText.Trim.ToLower;
+  mText := AText.Trim.ToLower;
   Result := True;
-  if Text = 'debug' then
-    ALevel := TLogLevel.Debug
-  else if Text = 'info' then
-    ALevel := TLogLevel.Info
-  else if (Text = 'warning') or (Text = 'warn') then
-    ALevel := TLogLevel.Warning
-  else if Text = 'error' then
-    ALevel := TLogLevel.Error
+  if mText = 'debug' then
+  begin
+    ALevel := TLogLevel.Debug;
+  end
+  else if mText = 'info' then
+  begin
+    ALevel := TLogLevel.Info;
+  end
+  else if (mText = 'warning') or (mText = 'warn') then
+  begin
+    ALevel := TLogLevel.Warning;
+  end
+  else if mText = 'error' then
+  begin
+    ALevel := TLogLevel.Error;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 /// <summary>"-log" und "–log" (Gedankenstrich, z. B. aus Word oder Chat kopiert) gelten als "--log" (#647).</summary>
@@ -224,9 +234,18 @@ function NormalizeDashes(const AArg: string): string;
 begin
   Result := AArg;
   if (Result <> '') and ((Result[1] = #$2013) or (Result[1] = #$2014)) then
-    Result := '--' + Result.Substring(1)
+  begin
+    Result := '--' + Result.Substring(1);
+  end
   else if (Length(Result) > 1) and (Result[1] = '-') and CharInSet(Result[2], ['A'..'Z', 'a'..'z']) then
+  begin
     Result := '-' + Result;
+  end;
+end;
+
+procedure AddWarning(var AOptions: TCommandLineOptions; const AText: string);
+begin
+  AOptions.Warnings := AOptions.Warnings + [AText];
 end;
 
 type
@@ -245,6 +264,89 @@ type
     Target: PBoolean;
   end;
 
+  /// <summary>Wertet den Wert eines Parameters aus und setzt die Felder dazu.</summary>
+  TValueHandler = procedure(var AOptions: TCommandLineOptions; const AValue: string);
+
+  /// <summary>Parameter mit Wert, den ein eigener Handler prüft.</summary>
+  TValueOption = record
+    Name: string;
+    Apply: TValueHandler;
+  end;
+
+  /// <summary>Die Tabellen der Parameter eines Aufrufs von Parse.</summary>
+  TOptionTables = record
+    Strings: TArray<TStringOption>;
+    Flags: TArray<TFlagOption>;
+    Values: TArray<TValueOption>;
+  end;
+
+  /// <summary>Liest die Parameter der Reihe nach; Name und Value gehören zum aktuellen.</summary>
+  TArgReader = record
+    Args: TArray<string>;
+    Index: Integer;
+    Arg: string;
+    Name: string;
+    Value: string;
+    HasValue: Boolean;
+    /// <summary>Geht zum nächsten Parameter und zerlegt "--name=wert"; False am Ende.</summary>
+    function Next: Boolean;
+    /// <summary>Wert aus "=" oder dem folgenden Argument; ohne beides eine Warnung in AOptions.</summary>
+    function TakeValue(var AOptions: TCommandLineOptions): Boolean;
+    /// <summary>Optionaler Wert: aus "=" oder dem folgenden Argument, wenn es nicht mit "-" beginnt.</summary>
+    function OptionalValue(out AValue: string): Boolean;
+  end;
+
+function TArgReader.Next: Boolean;
+var
+  mSeparator: Integer;
+begin
+  Inc(Index);
+  Result := Index <= High(Args);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Arg := NormalizeDashes(Args[Index]);
+  mSeparator := Arg.IndexOf('=');
+  HasValue := mSeparator > 0;
+  Name := Arg.ToLower;
+  Value := '';
+  if HasValue then
+  begin
+    Name := Arg.Substring(0, mSeparator).ToLower;
+    Value := Arg.Substring(mSeparator + 1);
+  end;
+end;
+
+function TArgReader.TakeValue(var AOptions: TCommandLineOptions): Boolean;
+begin
+  Result := True;
+  if HasValue then
+  begin
+    Exit;
+  end;
+  if Index < High(Args) then
+  begin
+    Inc(Index);
+    Value := Args[Index];
+    Exit;
+  end;
+  AddWarning(AOptions, Format('Parameter %s erwartet einen Wert', [Name]));
+  Result := False;
+end;
+
+function TArgReader.OptionalValue(out AValue: string): Boolean;
+begin
+  AValue := Value;
+  Result := HasValue;
+  if not Result and (Index < High(Args)) and not Args[Index + 1].StartsWith('-') then
+  begin
+    Inc(Index);
+    AValue := Args[Index];
+    Result := True;
+  end;
+end;
+
 function StringOption(const AName: string; ATarget: PStringField): TStringOption;
 begin
   Result.Name := AName;
@@ -257,231 +359,246 @@ begin
   Result.Target := ATarget;
 end;
 
-class function TCommandLineOptions.Parse(const AArgs: TArray<string>): TCommandLineOptions;
+function ValueOption(const AName: string; AApply: TValueHandler): TValueOption;
+begin
+  Result.Name := AName;
+  Result.Apply := AApply;
+end;
+
+procedure ApplyLogLevel(var AOptions: TCommandLineOptions; const AValue: string);
 var
-  Index: Integer;
-  Arg: string;
-  Name: string;
-  Value: string;
-  HasValue: Boolean;
-  Separator: Integer;
-
-  procedure AddWarning(const AText: string);
+  mLevel: TLogLevel;
+begin
+  if TCommandLineOptions.TryParseLogLevel(AValue, mLevel) then
   begin
-    Result.Warnings := Result.Warnings + [AText];
+    AOptions.LogLevel := mLevel;
+  end
+  else
+  begin
+    AddWarning(AOptions, Format('Unbekannte Log-Stufe "%s", verwendet wird info', [AValue]));
   end;
+end;
 
-  function TakeValue: Boolean;
+procedure ApplyFormat(var AOptions: TCommandLineOptions; const AValue: string);
+var
+  mFormat: TFindingsFormat;
+begin
+  AOptions.FormatText := AValue;
+  // diff gibt es nur beim Formatieren (#1358); die Prüfung dort lehnt es ohne --format-check ab.
+  if SameText(AValue.Trim, 'diff') then
   begin
-    if HasValue then
-      Exit(True);
-    if Index < High(AArgs) then
+    AOptions.FormatDiff := True;
+  end
+  else if TFindingsOutput.TryParseFormat(AValue, mFormat) then
+  begin
+    AOptions.CheckFormat := mFormat;
+    AOptions.FormatDiff := False;
+  end
+  // dunitx gibt es nur für --affected-tests (#1353), csv nur für --query (#1351); dort wird der Wert geprüft.
+  else if not SameText(AValue, 'dunitx') and not SameText(AValue, 'csv') then
+  begin
+    AddWarning(AOptions, Format('Unbekanntes Format "%s", verwendet wird text', [AValue]));
+  end;
+end;
+
+procedure ApplyRules(var AOptions: TCommandLineOptions; const AValue: string);
+begin
+  AOptions.RuleFilter := TFindingFilter.SplitList(AValue);
+end;
+
+procedure ApplyUnits(var AOptions: TCommandLineOptions; const AValue: string);
+begin
+  AOptions.UnitFilter := TFindingFilter.SplitList(AValue);
+end;
+
+procedure ApplyFix(var AOptions: TCommandLineOptions; const AValue: string);
+begin
+  AOptions.FixRules := TFindingFilter.SplitList(AValue);
+  if AOptions.FixRules = nil then
+  begin
+    AddWarning(AOptions, '--fix erwartet Regeln, z. B. --fix redundant-cast oder --fix all');
+  end;
+end;
+
+procedure ApplyMinSeverity(var AOptions: TCommandLineOptions; const AValue: string);
+var
+  mSeverity: TRuleSeverity;
+begin
+  if TConfigurationParser.TryParseSeverity(AValue, mSeverity) and (mSeverity <> TRuleSeverity.Off) then
+  begin
+    AOptions.MinSeverity := mSeverity;
+  end
+  else
+  begin
+    AddWarning(AOptions, Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [AValue]));
+  end;
+end;
+
+procedure ApplyFailOn(var AOptions: TCommandLineOptions; const AValue: string);
+var
+  mFailOn: TFailOn;
+  mKinds: TArchitectureFailKinds;
+  mKindError: string;
+begin
+  AOptions.FailOnText := AValue;
+  if TFindingsOutput.TryParseFailOn(AValue, mFailOn) then
+  begin
+    AOptions.FailOn := mFailOn;
+  end
+  // Abweichungsarten für --compare (#1121) prüft der Architekturbericht.
+  else if not TArchitectureComparer.ParseKindList(AValue, mKinds, mKindError) then
+  begin
+    AddWarning(AOptions, Format('Unbekannter Wert "%s" für --fail-on, verwendet wird error', [AValue]));
+  end;
+end;
+
+procedure ApplyDiff(var AOptions: TCommandLineOptions; const AValue: string);
+begin
+  AOptions.ChangedRef := AValue;
+  AOptions.ChangedMergeBase := False;
+end;
+
+procedure ApplyClientProcessId(var AOptions: TCommandLineOptions; const AValue: string);
+var
+  mProcessId: Cardinal;
+begin
+  if TryStrToUInt(AValue, mProcessId) then
+  begin
+    AOptions.ClientProcessId := mProcessId;
+  end
+  else
+  begin
+    AddWarning(AOptions, Format('Ungültige Prozess-ID "%s" wird ignoriert', [AValue]));
+  end;
+end;
+
+/// <summary>Tabellen mit Zeigern in AOptions; AOptions muss so lange leben wie die Tabellen.</summary>
+function OptionTables(var AOptions: TCommandLineOptions): TOptionTables;
+begin
+  Result.Strings := [StringOption('--log', @AOptions.LogFile), StringOption('--trace', @AOptions.TraceFile),
+    StringOption('--check', @AOptions.CheckTarget), StringOption('--output', @AOptions.OutputFile),
+    StringOption('--source-root', @AOptions.SourceRoot), StringOption('--profile', @AOptions.Profile),
+    StringOption('--baseline', @AOptions.BaselineFile), StringOption('--root', @AOptions.McpRoot),
+    StringOption('--index-cache', @AOptions.IndexCacheFolder),
+    StringOption('--architecture', @AOptions.ArchitectureFile), StringOption('--compare', @AOptions.CompareFile),
+    StringOption('--replay', @AOptions.ReplayFile), StringOption('--hotspots', @AOptions.HotspotsFile),
+    StringOption('--query', @AOptions.QueryText)];
+  Result.Flags := [FlagOption('--log-names', @AOptions.LogNames), FlagOption('--mcp', @AOptions.Mcp),
+    FlagOption('--restricted', @AOptions.Restricted), FlagOption('--clear-cache', @AOptions.ClearCache),
+    FlagOption('--include-uncommitted', @AOptions.IncludeUncommitted),
+    FlagOption('--changed-lines', @AOptions.ChangedLines), FlagOption('--update-baseline', @AOptions.UpdateBaseline),
+    FlagOption('--suppression-stats', @AOptions.SuppressionStats), FlagOption('--metrics', @AOptions.Metrics),
+    FlagOption('--todos', @AOptions.Todos), FlagOption('--no-index', @AOptions.NoIndex),
+    FlagOption('--fix-dry-run', @AOptions.FixDryRun), FlagOption('--fail-on-match', @AOptions.FailOnMatch),
+    FlagOption('--format-check', @AOptions.FormatCheck), FlagOption('--format-write', @AOptions.FormatWrite)];
+  Result.Values := [ValueOption('--log-level', ApplyLogLevel), ValueOption('--format', ApplyFormat),
+    ValueOption('--rules', ApplyRules), ValueOption('--units', ApplyUnits), ValueOption('--fix', ApplyFix),
+    ValueOption('--min-severity', ApplyMinSeverity), ValueOption('--fail-on', ApplyFailOn),
+    ValueOption('--diff', ApplyDiff), ValueOption('--clientprocessid', ApplyClientProcessId)];
+end;
+
+/// <summary>Parameter aus den Tabellen; False, wenn AReader.Name in keiner steht.</summary>
+function ApplyTabled(var AOptions: TCommandLineOptions; var AReader: TArgReader;
+  const ATables: TOptionTables): Boolean;
+var
+  mString: TStringOption;
+  mFlag: TFlagOption;
+  mValue: TValueOption;
+begin
+  Result := True;
+  for mString in ATables.Strings do
+  begin
+    if mString.Name = AReader.Name then
     begin
-      Inc(Index);
-      Value := AArgs[Index];
-      Exit(True);
+      if AReader.TakeValue(AOptions) then
+      begin
+        mString.Target^ := AReader.Value;
+      end;
+      Exit;
     end;
-    AddWarning(Format('Parameter %s erwartet einen Wert', [Name]));
+  end;
+  for mFlag in ATables.Flags do
+  begin
+    if mFlag.Name = AReader.Name then
+    begin
+      mFlag.Target^ := True;
+      Exit;
+    end;
+  end;
+  for mValue in ATables.Values do
+  begin
+    if mValue.Name = AReader.Name then
+    begin
+      if AReader.TakeValue(AOptions) then
+      begin
+        mValue.Apply(AOptions, AReader.Value);
+      end;
+      Exit;
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Parameter mit optionalem Wert (--changed, --affected-tests, --timings); False bei anderen.</summary>
+function ApplyOptional(var AOptions: TCommandLineOptions; var AReader: TArgReader): Boolean;
+var
+  mValue: string;
+begin
+  Result := True;
+  if AReader.Name = '--changed' then
+  begin
+    // Basis optional: --changed, --changed=dev oder --changed dev
+    AOptions.ChangedMergeBase := True;
+    AOptions.ChangedRef := TCommandLineOptions.DefaultChangedBase;
+    if AReader.OptionalValue(mValue) then
+    begin
+      AOptions.ChangedRef := mValue;
+    end;
+  end
+  else if AReader.Name = '--affected-tests' then
+  begin
+    // Basis optional wie bei --changed: --affected-tests, --affected-tests=dev oder --affected-tests dev
+    AOptions.AffectedTests := True;
+    if AReader.OptionalValue(mValue) then
+    begin
+      AOptions.AffectedBase := mValue;
+    end;
+  end
+  else if AReader.Name = '--timings' then
+  begin
+    // Datei optional: --timings, --timings=profil.md oder --timings profil.md
+    AOptions.Timings := True;
+    if AReader.OptionalValue(mValue) then
+    begin
+      AOptions.TimingsFile := mValue;
+    end;
+  end
+  else
+  begin
     Result := False;
   end;
+end;
 
+class function TCommandLineOptions.Parse(const AArgs: TArray<string>): TCommandLineOptions;
 var
-  Level: TLogLevel;
-  CheckFormat: TFindingsFormat;
-  FailOn: TFailOn;
-  Kinds: TArchitectureFailKinds;
-  KindError: string;
-  Severity: TRuleSeverity;
-  ProcessId: Cardinal;
-  Strings: TArray<TStringOption>;
-  Flags: TArray<TFlagOption>;
-  StringHit: TStringOption;
-  FlagHit: TFlagOption;
-  Found: Boolean;
+  mReader: TArgReader;
+  mTables: TOptionTables;
 begin
   Result := Default(TCommandLineOptions);
   Result.LogLevel := DefaultLogLevel;
   Result.FailOn := TFailOn.Error;
-  Strings := [StringOption('--log', @Result.LogFile), StringOption('--trace', @Result.TraceFile),
-    StringOption('--check', @Result.CheckTarget), StringOption('--output', @Result.OutputFile),
-    StringOption('--source-root', @Result.SourceRoot), StringOption('--profile', @Result.Profile),
-    StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
-    StringOption('--index-cache', @Result.IndexCacheFolder),
-    StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile),
-    StringOption('--replay', @Result.ReplayFile),
-    StringOption('--hotspots', @Result.HotspotsFile),
-    StringOption('--query', @Result.QueryText), StringOption('--hotspots', @Result.HotspotsFile)];
-  Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
-    FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
-    FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
-    FlagOption('--changed-lines', @Result.ChangedLines), FlagOption('--update-baseline', @Result.UpdateBaseline),
-    FlagOption('--suppression-stats', @Result.SuppressionStats), FlagOption('--metrics', @Result.Metrics),
-    FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex),
-    FlagOption('--fix-dry-run', @Result.FixDryRun), FlagOption('--fail-on-match', @Result.FailOnMatch),
-    FlagOption('--format-check', @Result.FormatCheck), FlagOption('--format-write', @Result.FormatWrite)];
-
-  Index := Low(AArgs);
-  while Index <= High(AArgs) do
+  mTables := OptionTables(Result);
+  mReader := Default(TArgReader);
+  mReader.Args := AArgs;
+  mReader.Index := Low(AArgs) - 1;
+  while mReader.Next do
   begin
-    Arg := NormalizeDashes(AArgs[Index]);
-    Separator := Arg.IndexOf('=');
-    HasValue := Separator > 0;
-    if HasValue then
+    // --stdio hängen Editoren an; ohne Bedeutung für den Server.
+    if not ApplyTabled(Result, mReader, mTables) and not ApplyOptional(Result, mReader)
+      and (mReader.Name <> '--stdio') then
     begin
-      Name := Arg.Substring(0, Separator).ToLower;
-      Value := Arg.Substring(Separator + 1);
-    end
-    else
-    begin
-      Name := Arg.ToLower;
-      Value := '';
+      AddWarning(Result, Format('Unbekannter Parameter "%s" wird ignoriert', [mReader.Arg]));
     end;
-
-    Found := False;
-    for StringHit in Strings do
-      if StringHit.Name = Name then
-      begin
-        Found := True;
-        if TakeValue then
-          StringHit.Target^ := Value;
-        Break;
-      end;
-    if not Found then
-      for FlagHit in Flags do
-        if FlagHit.Name = Name then
-        begin
-          Found := True;
-          FlagHit.Target^ := True;
-          Break;
-        end;
-
-    if Found then
-      // schon erledigt
-    else if Name = '--log-level' then
-    begin
-      if TakeValue then
-        if TryParseLogLevel(Value, Level) then
-          Result.LogLevel := Level
-        else
-          AddWarning(Format('Unbekannte Log-Stufe "%s", verwendet wird info', [Value]));
-    end
-    else if Name = '--format' then
-    begin
-      if TakeValue then
-      begin
-        Result.FormatText := Value;
-        // diff gibt es nur beim Formatieren (#1358); die Prüfung dort lehnt es ohne --format-check ab.
-        if SameText(Value.Trim, 'diff') then
-          Result.FormatDiff := True
-        else if TFindingsOutput.TryParseFormat(Value, CheckFormat) then
-        begin
-          Result.CheckFormat := CheckFormat;
-          Result.FormatDiff := False;
-        end
-        // dunitx gibt es nur für --affected-tests (#1353), csv nur für --query (#1351); dort wird der Wert geprüft.
-        else if not SameText(Value, 'dunitx') and not SameText(Value, 'csv') then
-          AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
-      end;
-    end
-    else if Name = '--rules' then
-    begin
-      if TakeValue then
-        Result.RuleFilter := TFindingFilter.SplitList(Value);
-    end
-    else if Name = '--units' then
-    begin
-      if TakeValue then
-        Result.UnitFilter := TFindingFilter.SplitList(Value);
-    end
-    else if Name = '--fix' then
-    begin
-      if TakeValue then
-      begin
-        Result.FixRules := TFindingFilter.SplitList(Value);
-        if Result.FixRules = nil then
-          AddWarning('--fix erwartet Regeln, z. B. --fix redundant-cast oder --fix all');
-      end;
-    end
-    else if Name = '--min-severity' then
-    begin
-      if TakeValue then
-        if TConfigurationParser.TryParseSeverity(Value, Severity) and (Severity <> TRuleSeverity.Off) then
-          Result.MinSeverity := Severity
-        else
-          AddWarning(Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [Value]));
-    end
-    else if Name = '--fail-on' then
-    begin
-      if TakeValue then
-      begin
-        Result.FailOnText := Value;
-        if TFindingsOutput.TryParseFailOn(Value, FailOn) then
-          Result.FailOn := FailOn
-        // Abweichungsarten für --compare (#1121) prüft der Architekturbericht.
-        else if not TArchitectureComparer.ParseKindList(Value, Kinds, KindError) then
-          AddWarning(Format('Unbekannter Wert "%s" für --fail-on, verwendet wird error', [Value]));
-      end;
-    end
-    else if Name = '--changed' then
-    begin
-      // Basis optional: --changed, --changed=dev oder --changed dev
-      Result.ChangedMergeBase := True;
-      if HasValue then
-        Result.ChangedRef := Value
-      else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
-      begin
-        Inc(Index);
-        Result.ChangedRef := AArgs[Index];
-      end
-      else
-        Result.ChangedRef := DefaultChangedBase;
-    end
-    else if Name = '--affected-tests' then
-    begin
-      // Basis optional wie bei --changed: --affected-tests, --affected-tests=dev oder --affected-tests dev
-      Result.AffectedTests := True;
-      if HasValue then
-        Result.AffectedBase := Value
-      else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
-      begin
-        Inc(Index);
-        Result.AffectedBase := AArgs[Index];
-      end;
-    end
-    else if Name = '--timings' then
-    begin
-      // Datei optional: --timings, --timings=profil.md oder --timings profil.md
-      Result.Timings := True;
-      if HasValue then
-        Result.TimingsFile := Value
-      else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
-      begin
-        Inc(Index);
-        Result.TimingsFile := AArgs[Index];
-      end;
-    end
-    else if Name = '--diff' then
-    begin
-      if TakeValue then
-      begin
-        Result.ChangedRef := Value;
-        Result.ChangedMergeBase := False;
-      end;
-    end
-    else if Name = '--clientprocessid' then
-    begin
-      if TakeValue then
-        if TryStrToUInt(Value, ProcessId) then
-          Result.ClientProcessId := ProcessId
-        else
-          AddWarning(Format('Ungültige Prozess-ID "%s" wird ignoriert', [Value]));
-    end
-    else if Name = '--stdio' then
-      // von Editoren angehängt, ohne Bedeutung für den Server
-    else
-      AddWarning(Format('Unbekannter Parameter "%s" wird ignoriert', [Arg]));
-
-    Inc(Index);
   end;
   // Mit --affected-tests gilt --include-uncommitted für dessen Basis, nicht als --changed.
   if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') and not Result.AffectedTests then
@@ -499,7 +616,9 @@ var
 begin
   SetLength(Args, ParamCount);
   for I := 1 to ParamCount do
+  begin
     Args[I - 1] := ParamStr(I);
+  end;
   Result := Parse(Args);
 end;
 

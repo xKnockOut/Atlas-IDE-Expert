@@ -133,7 +133,9 @@ var
 begin
   Result := ',';
   for Value in AAnswer.GetValue('items') as TJSONArray do
+  begin
     Result := Result + (Value as TJSONObject).GetValue('label').Value + ',';
+  end;
 end;
 
 procedure TLspExpressionCompletionTests.PlacesBeforeStatementAndAfterBegin;

@@ -94,15 +94,25 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, BasisFile) then
-    Result := UnitBasis
+  begin
+    Result := UnitBasis;
+  end
   else if SameText(AFileName, AusgabeFile) then
-    Result := UnitAusgabe
+  begin
+    Result := UnitAusgabe;
+  end
   else if SameText(AFileName, ProgramFile) then
-    Result := TextProgram
+  begin
+    Result := TextProgram;
+  end
   else if SameText(AFileName, ProjectFile) then
-    Result := TextProject
+  begin
+    Result := TextProject;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function ProjectUnit(const AName, AFileName: string): TProjectUnit;
@@ -146,7 +156,9 @@ begin
   Result.AddPair('unit', AUnit);
   Members := TJSONArray.Create;
   for Id in AMembers do
+  begin
     Members.AddElement(TJSONNumber.Create(Id));
+  end;
   Result.AddPair('members', Members);
   Result.AddPair('abstract', TJSONArray.Create);
 end;
@@ -164,10 +176,14 @@ begin
   begin
     Document := TJSONObject(Item);
     if Document.GetValue('textDocument') = nil then
+    begin
       Continue;
+    end;
     Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
     if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    begin
       Continue;
+    end;
     Edits := nil;
     for Edit in Document.GetValue('edits') as TJSONArray do
     begin
@@ -214,7 +230,9 @@ var
   Item: TJSONObject;
 begin
   for Item in AItems do
+  begin
     Item.Free;
+  end;
 end;
 
 procedure TLspExtractSuperclassTests.OffersOnClassHeader;

@@ -246,15 +246,21 @@ begin
   try
     Space := False;
     for Index := 1 to Length(AText) do
+    begin
       if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-        Space := True
+      begin
+        Space := True;
+      end
       else
       begin
         if Space and (Builder.Length > 0) then
+        begin
           Builder.Append(' ');
+        end;
         Space := False;
         Builder.Append(AText[Index]);
       end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -268,15 +274,23 @@ var
 begin
   Name := AName;
   if Name.StartsWith('&') then
+  begin
     Name := Name.Substring(1);
+  end;
   Result := (Name <> '') and (CharInSet(Name[1], ['A'..'Z', 'a'..'z', '_']) or (Ord(Name[1]) > 127) and
     Name[1].IsLetter);
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 2 to Length(Name) do
+  begin
     if not (CharInSet(Name[Index], ['A'..'Z', 'a'..'z', '_', '0'..'9']) or (Ord(Name[Index]) > 127) and
       Name[Index].IsLetterOrDigit) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
@@ -294,9 +308,13 @@ begin
   begin
     Middle := (Low_ + High_) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Low_ := Middle + 1
+    begin
+      Low_ := Middle + 1;
+    end
     else
+    begin
       High_ := Middle;
+    end;
   end;
   Result := Low_;
 end;
@@ -323,8 +341,12 @@ var
   Name: string;
 begin
   for Name in VirtualDirectives do
+  begin
     if HasDirective(Name) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -365,7 +387,9 @@ var
 begin
   Result := False;
   if ANode.Kind <> TSyntaxKind.TypeDecl then
+  begin
     Exit;
+  end;
   Body := ANode.FindChild(TSyntaxKind.ClassType);
   Result := Body <> nil;
 end;
@@ -381,7 +405,9 @@ begin
       // Rümpfe von Routinen enthalten keine Klassen, die ein Umbau anfasst.
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
       if Result and IsClassDecl(ANode) then
+      begin
         Found := Found + [ANode];
+      end;
     end);
   Result := Found;
 end;
@@ -393,8 +419,12 @@ begin
   // Die innerste Klasse gewinnt (verschachtelte Typen stehen hinter ihrer äußeren in AllDecls).
   Result := nil;
   for Decl in AllDecls(ATree) do
+  begin
     if (Decl.StartPos.Line = ALine) or AInside and (ALine >= Decl.StartPos.Line) and (ALine <= Decl.EndPos.Line) then
+    begin
       Result := Decl;
+    end;
+  end;
 end;
 
 class function TClassLayout.DeclNamed(ATree: TSyntaxTree; const AName: string): TSyntaxNode;
@@ -402,8 +432,12 @@ var
   Decl: TSyntaxNode;
 begin
   for Decl in AllDecls(ATree) do
+  begin
     if SameText(Decl.Name, AName) then
+    begin
       Exit(Decl);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -428,9 +462,13 @@ begin
   for Index := TokenIndexAt(Tokens, AFirstOffset) to High(Tokens) do
   begin
     if Tokens[Index].Offset >= ALastOffset then
+    begin
       Break;
+    end;
     if AFirst < 0 then
+    begin
       AFirst := Index;
+    end;
     ALast := Index;
   end;
   Result := AFirst >= 0;
@@ -444,7 +482,9 @@ begin
   Tokens := FTree.Tokens;
   Index := TokenIndexAt(Tokens, AOffset) - 1;
   while (Index >= 0) and IsTrivia(Tokens[Index]) do
+  begin
     Dec(Index);
+  end;
   Result := (Index >= 0) and Tokens[Index].IsKeyword('class');
 end;
 
@@ -470,7 +510,9 @@ begin
   // Attribute stehen als Geschwister vor der Deklaration.
   Previous := nil;
   if Decl.Parent <> nil then
+  begin
     for Index := 0 to Decl.Parent.ChildCount - 1 do
+    begin
       if Decl.Parent[Index] = Decl then
       begin
         Depth := Index - 1;
@@ -481,11 +523,17 @@ begin
         end;
         Break;
       end;
+    end;
+  end;
   if Previous <> nil then
+  begin
     FirstLine := Previous.StartPos.Line;
+  end;
   Doc := DocStart(FirstLine);
   if Doc >= 0 then
+  begin
     FirstLine := Doc;
+  end;
   Indent := TTextLines.IndentOf(FLines[HeaderLine]);
   EndLine := ClassNode.EndPos.Line;
   InInterface := False;
@@ -493,18 +541,24 @@ begin
   while Child <> nil do
   begin
     if Child.Kind = TSyntaxKind.InterfaceSection then
+    begin
       InInterface := True;
+    end;
     Child := Child.Parent;
   end;
   Params := Decl.FindChild(TSyntaxKind.GenericParams);
   if Params <> nil then
+  begin
     GenericParams := CollapseSpace(NodeText(Params));
+  end;
   Ancestors := nil;
   for Index := 0 to ClassNode.ChildCount - 1 do
   begin
     Child := ClassNode[Index];
     if Child.Kind <> TSyntaxKind.TypeReference then
+    begin
       Break;
+    end;
     Ancestors := Ancestors + [CollapseSpace(NodeText(Child))];
   end;
   // Klammern der Vorfahrenliste und Stelle hinter class [abstract|sealed].
@@ -516,14 +570,18 @@ begin
   begin
     Index := First + 1;
     while (Index <= Last) and IsTrivia(Tokens[Index]) do
+    begin
       Inc(Index);
+    end;
     if (Index <= Last) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
       MatchText(Tokens[Index].Text, ['abstract', 'sealed']) then
     begin
       HeritageInsert := Tokens[Index].Offset + Length(Tokens[Index].Text);
       Inc(Index);
       while (Index <= Last) and IsTrivia(Tokens[Index]) do
+      begin
         Inc(Index);
+      end;
     end;
     if (Index <= Last) and Tokens[Index].IsSymbol('(') then
     begin
@@ -532,7 +590,9 @@ begin
       while Index <= Last do
       begin
         if Tokens[Index].IsSymbol('(') then
-          Inc(Depth)
+        begin
+          Inc(Depth);
+        end
         else if Tokens[Index].IsSymbol(')') then
         begin
           Dec(Depth);
@@ -572,13 +632,17 @@ begin
         MatchText(ATokens[Index].Text, PropertySpecifiers)) do
       begin
         if not IsTrivia(ATokens[Index]) then
+        begin
           Result := Result + ATokens[Index].Text;
+        end;
         Inc(Index);
       end;
       Exit;
     end;
     if ATokens[Index].IsSymbol(';') then
+    begin
       Exit;
+    end;
     Inc(Index);
   end;
 end;
@@ -610,10 +674,14 @@ var
     Result.Visibility := Visibility;
     Result.FirstLine := ANode.StartPos.Line;
     if Pending >= 0 then
+    begin
       Result.FirstLine := Pending;
+    end;
     Result.DocLine := DocStart(Result.FirstLine);
     if Result.DocLine >= 0 then
+    begin
       Result.FirstLine := Result.DocLine;
+    end;
     Result.LastLine := ANode.EndPos.Line;
     Result.BodyFirstLine := -1;
     Result.BodyLastLine := -1;
@@ -636,7 +704,9 @@ begin
       TSyntaxKind.Visibility:
         begin
           if (Section.HeadLine >= 0) or (Section.Members <> nil) then
+          begin
             Sections := Sections + [Section];
+          end;
           Visibility := TClassEdits.VisibilityOf(Child.Name);
           Section := Default(TClassSection);
           Section.Visibility := Visibility;
@@ -645,18 +715,26 @@ begin
         end;
       TSyntaxKind.Attribute:
         if Pending < 0 then
+        begin
           Pending := Child.StartPos.Line;
+        end;
       TSyntaxKind.Field:
         begin
           GroupNames := nil;
           for Names in Child.Name.Split([',']) do
+          begin
             GroupNames := GroupNames + [Trim(Names)];
+          end;
           TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
           TypeText := '';
           if Child.ChildCount > 0 then
+          begin
             TypeText := CollapseSpace(NodeText(Child[0]));
+          end;
           if TypeRef <> nil then
+          begin
             TypeText := CollapseSpace(NodeText(TypeRef));
+          end;
           for Part := 0 to High(GroupNames) do
           begin
             Member := NewMember(TClassMemberKind.Field, Child, GroupNames[Part]);
@@ -674,21 +752,31 @@ begin
           begin
             Inner := Child[Part];
             if Inner.Kind <> TSyntaxKind.VarDecl then
+            begin
               Continue;
+            end;
             GroupNames := nil;
             for Names in Inner.Name.Split([',']) do
+            begin
               GroupNames := GroupNames + [Trim(Names)];
+            end;
             TypeRef := Inner.FindChild(TSyntaxKind.TypeReference);
             for Names in GroupNames do
             begin
               if IsClassPrefix then
-                Member := NewMember(TClassMemberKind.ClassVar, Inner, Names)
+              begin
+                Member := NewMember(TClassMemberKind.ClassVar, Inner, Names);
+              end
               else
+              begin
                 Member := NewMember(TClassMemberKind.Field, Inner, Names);
+              end;
               Member.GroupNames := GroupNames;
               Member.IsClassMember := IsClassPrefix;
               if TypeRef <> nil then
+              begin
                 Member.TypeName := CollapseSpace(NodeText(TypeRef));
+              end;
               Add(Member);
             end;
           end;
@@ -705,21 +793,33 @@ begin
           Member := NewMember(TClassMemberKind.Method, Child, Child.Name);
           Member.IsClassMember := StartsText('class', Head) and (Length(Head) > 5) and not Head[6].IsLetterOrDigit;
           if Member.IsClassMember then
+          begin
             Head := TrimLeft(Copy(Head, 6, MaxInt));
+          end;
           if StartsText('constructor', Head) then
-            Member.Kind := TClassMemberKind.Constructor_
+          begin
+            Member.Kind := TClassMemberKind.Constructor_;
+          end
           else if StartsText('destructor', Head) then
-            Member.Kind := TClassMemberKind.Destructor_
+          begin
+            Member.Kind := TClassMemberKind.Destructor_;
+          end
           else if StartsText('operator', Head) then
+          begin
             Member.Kind := TClassMemberKind.Other;
+          end;
           Member.IsGeneric := Child.FindChild(TSyntaxKind.GenericParams) <> nil;
           for Part := 0 to Child.ChildCount - 1 do
           begin
             Inner := Child[Part];
             if Inner.Kind = TSyntaxKind.TypeReference then
-              Member.TypeName := CollapseSpace(NodeText(Inner))
+            begin
+              Member.TypeName := CollapseSpace(NodeText(Inner));
+            end
             else if Inner.Kind = TSyntaxKind.Directive then
+            begin
               Member.Directives := Member.Directives + [Inner.Name];
+            end;
           end;
           Parameters := Child.FindChild(TSyntaxKind.Parameters);
           if Parameters <> nil then
@@ -731,12 +831,18 @@ begin
               Parameter := Parameters[Part];
               TypeRef := Parameter.FindChild(TSyntaxKind.TypeReference);
               if TypeRef = nil then
+              begin
                 TypeRef := Parameter.FindChild(TSyntaxKind.ArrayType);
+              end;
               TypeText := '';
               if TypeRef <> nil then
+              begin
                 TypeText := CollapseSpace(NodeText(TypeRef));
+              end;
               for Names in Parameter.Name.Split([',']) do
+              begin
                 Member.ParameterTypes := Member.ParameterTypes + [UpperCase(TypeText)];
+              end;
             end;
           end;
           Add(Member);
@@ -749,7 +855,9 @@ begin
           TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
           Member.IsRedeclaration := TypeRef = nil;
           if TypeRef <> nil then
+          begin
             Member.TypeName := CollapseSpace(NodeText(TypeRef));
+          end;
           Parameters := Child.FindChild(TSyntaxKind.Parameters);
           if Parameters <> nil then
           begin
@@ -759,7 +867,9 @@ begin
           // Spezifizierer erst hinter dem Typ suchen, damit Parameternamen wie "Index" nicht stören.
           TokenRange(Child.StartOffset, Child.EndOffset, First, Last);
           if TypeRef <> nil then
+          begin
             TokenRange(TypeRef.EndOffset, Child.EndOffset, First, Last);
+          end;
           if First >= 0 then
           begin
             Member.ReadAccessor := SpecifierAfter(FTree.Tokens, First, Last, 'read');
@@ -768,14 +878,18 @@ begin
             Member.StoredSpecifier := SpecifierAfter(FTree.Tokens, First, Last, 'stored');
             // "; default;" hinter dem Semikolon der Deklaration.
             for Part := First to Last - 1 do
+            begin
               if FTree.Tokens[Part].IsSymbol(';') then
               begin
                 Next := Part + 1;
                 while (Next <= Last) and IsTrivia(FTree.Tokens[Next]) do
+                begin
                   Inc(Next);
+                end;
                 Member.IsDefaultArray := (Next <= Last) and SameText(FTree.Tokens[Next].Text, 'default');
                 Break;
               end;
+            end;
           end;
           Add(Member);
           Pending := -1;
@@ -808,15 +922,23 @@ var
   begin
     Result := Length(A) = Length(B);
     if Result then
+    begin
       for Position := 0 to High(A) do
+      begin
         if not SameText(A[Position], B[Position]) then
+        begin
           Exit(False);
+        end;
+      end;
+    end;
   end;
 
 begin
   Prefix := Decl.EnclosingTypeName;
   if Prefix = '' then
+  begin
     Prefix := Name;
+  end;
   Routines := nil;
   FTree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -824,50 +946,78 @@ begin
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
       if not Result and StartsText(Prefix + '.', ANode.Name) and
         (Pos('.', Copy(ANode.Name, Length(Prefix) + 2, MaxInt)) = 0) then
+      begin
         Routines := Routines + [ANode];
+      end;
     end);
   for Index := 0 to High(Members) do
   begin
     if not Members[Index].IsMethod and (Members[Index].Kind <> TClassMemberKind.Other) then
+    begin
       Continue;
+    end;
     if (Members[Index].Kind = TClassMemberKind.Other) and (Members[Index].Node.Kind <> TSyntaxKind.RoutineHeader) then
+    begin
       Continue;
+    end;
     Overloaded := False;
     for Other := 0 to High(Members) do
+    begin
       if (Other <> Index) and Members[Other].IsMethod and SameText(Members[Other].Name, Members[Index].Name) then
+      begin
         Overloaded := True;
+      end;
+    end;
     for Routine in Routines do
     begin
       if not SameText(Routine.Name, Prefix + '.' + Members[Index].Name) then
+      begin
         Continue;
+      end;
       if Overloaded then
       begin
         Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
         Types := nil;
         Parameters := nil;
         if Header <> nil then
+        begin
           Parameters := Header.FindChild(TSyntaxKind.Parameters);
+        end;
         if Parameters <> nil then
+        begin
           for Other := 0 to Parameters.ChildCount - 1 do
           begin
             Parameter := Parameters[Other];
             TypeRef := Parameter.FindChild(TSyntaxKind.TypeReference);
             if TypeRef = nil then
+            begin
               TypeRef := Parameter.FindChild(TSyntaxKind.ArrayType);
+            end;
             for Names in Parameter.Name.Split([',']) do
+            begin
               if TypeRef <> nil then
-                Types := Types + [UpperCase(CollapseSpace(NodeText(TypeRef)))]
+              begin
+                Types := Types + [UpperCase(CollapseSpace(NodeText(TypeRef)))];
+              end
               else
+              begin
                 Types := Types + [''];
+              end;
+            end;
           end;
+        end;
         if not SameTypes(Types, Members[Index].ParameterTypes) then
+        begin
           Continue;
+        end;
       end;
       Members[Index].Body := Routine;
       Members[Index].BodyFirstLine := Routine.StartPos.Line;
       Doc := DocStart(Routine.StartPos.Line);
       if Doc >= 0 then
+      begin
         Members[Index].BodyFirstLine := Doc;
+      end;
       Members[Index].BodyLastLine := Routine.EndPos.Line;
       Break;
     end;
@@ -880,8 +1030,12 @@ var
 begin
   Result := nil;
   for Index := 0 to High(Members) do
+  begin
     if SameText(Members[Index].Name, AName) then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 function TClassLayout.MemberAtLine(ALine: Integer): Integer;
@@ -889,9 +1043,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Members) do
+  begin
     if (ALine >= Members[Index].FirstLine) and (ALine <= Members[Index].LastLine) and
       (Members[Index].Kind <> TClassMemberKind.Other) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -905,21 +1063,33 @@ begin
   for Index := TSyntaxTree.FirstTokenOf(ATokens, AFirst) to High(ATokens) do
   begin
     if ATokens[Index].Offset < AFirst then
+    begin
       Continue;
+    end;
     if ATokens[Index].Offset >= ALast then
+    begin
       Break;
+    end;
     if ATokens[Index].Kind <> TPascalTokenKind.Identifier then
+    begin
       Continue;
+    end;
     Previous := Index - 1;
     while (Previous >= 0) and IsTrivia(ATokens[Previous]) do
+    begin
       Dec(Previous);
+    end;
     if (Previous >= 0) and ATokens[Previous].IsSymbol('.') then
     begin
       Before := Previous - 1;
       while (Before >= 0) and IsTrivia(ATokens[Before]) do
+      begin
         Dec(Before);
+      end;
       if (Before < 0) or not SameText(ATokens[Before].Text, 'Self') then
+      begin
         Continue;
+      end;
     end;
     Result := Result + [ATokens[Index].Text];
   end;
@@ -936,33 +1106,47 @@ begin
   Member := Members[AIndex];
   Names := nil;
   if Member.Kind = TClassMemberKind.Property_ then
+  begin
     Names := MemberNames(FTree.Tokens, Member.Node.StartOffset, Member.Node.EndOffset);
+  end;
   Body := Member.Body;
   if Body <> nil then
   begin
     // Ohne den Kopf: dessen Name ist kein Aufruf.
     Start := Body.StartOffset;
     if Body.FindChild(TSyntaxKind.RoutineHeader) <> nil then
+    begin
       Start := Body.FindChild(TSyntaxKind.RoutineHeader).EndOffset;
+    end;
     Names := Names + MemberNames(FTree.Tokens, Start, Body.EndOffset);
   end;
   Result := nil;
   for Index := 0 to High(Members) do
   begin
     if (Index = AIndex) or (Members[Index].Kind = TClassMemberKind.Other) then
+    begin
       Continue;
+    end;
     for Other := 0 to High(Names) do
+    begin
       if SameText(Names[Other], Members[Index].Name) then
       begin
         Result := Result + [Index];
         Break;
       end;
+    end;
   end;
   // Der Name der Property selbst ist keine Verwendung.
   if Member.Kind = TClassMemberKind.Property_ then
+  begin
     for Index := High(Result) downto 0 do
+    begin
       if SameText(Members[Result[Index]].Name, Member.Name) then
+      begin
         Delete(Result, Index, 1);
+      end;
+    end;
+  end;
 end;
 
 function TClassLayout.UsersOf(AIndex: Integer): TArray<Integer>;
@@ -973,13 +1157,17 @@ begin
   for Index := 0 to High(Members) do
   begin
     if (Index = AIndex) or (Members[Index].Kind = TClassMemberKind.Other) then
+    begin
       Continue;
+    end;
     for Used in UsedBy(Index) do
+    begin
       if SameText(Members[Used].Name, Members[AIndex].Name) then
       begin
         Result := Result + [Index];
         Break;
       end;
+    end;
   end;
 end;
 
@@ -993,14 +1181,20 @@ begin
   begin
     Result := Member.Name + ': ' + Member.TypeName + ';';
     if Member.Kind = TClassMemberKind.ClassVar then
+    begin
       Result := 'class var ' + Result;
+    end;
     Exit;
   end;
   Result := CollapseSpace(NodeText(Member.Node));
   if Member.IsClassMember and (Member.Kind = TClassMemberKind.Property_) then
+  begin
     Result := 'class ' + Result;
+  end;
   if not Result.EndsWith(';') then
+  begin
     Result := Result + ';';
+  end;
 end;
 
 function TClassLayout.DocLines(AIndex: Integer): TArray<string>;
@@ -1009,11 +1203,17 @@ var
 begin
   Result := nil;
   if Members[AIndex].DocLine < 0 then
+  begin
     Exit;
+  end;
   Stop := Members[AIndex].Node.StartPos.Line - 1;
   for Line := Members[AIndex].DocLine to Stop do
+  begin
     if StartsText('///', Trim(FLines[Line])) then
+    begin
       Result := Result + [Trim(FLines[Line])];
+    end;
+  end;
 end;
 
 function TClassLayout.Head(AIndex: Integer): string;
@@ -1025,7 +1225,9 @@ begin
   Member := Members[AIndex];
   Node := Member.Node;
   if Node.Kind <> TSyntaxKind.RoutineHeader then
+  begin
     Exit(Declaration(AIndex));
+  end;
   Stop := Node.EndOffset;
   for Index := 0 to Node.ChildCount - 1 do
   begin
@@ -1038,7 +1240,9 @@ begin
   end;
   Result := CollapseSpace(Copy(FText, Node.StartOffset + 1, Stop - Node.StartOffset));
   if not Result.EndsWith(';') then
+  begin
     Result := Result + ';';
+  end;
 end;
 
 function TClassLayout.LinesText(AFirst, ALast: Integer): string;
@@ -1047,7 +1251,9 @@ var
 begin
   Result := '';
   for Line := AFirst to ALast do
+  begin
     Result := Result + FLines[Line] + LineBreak;
+  end;
 end;
 
 { TClassEdits }
@@ -1076,17 +1282,29 @@ var
 begin
   Name := LowerCase(CollapseSpace(AName));
   if Name = 'strict private' then
-    Result := TClassVisibility.StrictPrivate
+  begin
+    Result := TClassVisibility.StrictPrivate;
+  end
   else if Name = 'private' then
-    Result := TClassVisibility.Private_
+  begin
+    Result := TClassVisibility.Private_;
+  end
   else if Name = 'strict protected' then
-    Result := TClassVisibility.StrictProtected
+  begin
+    Result := TClassVisibility.StrictProtected;
+  end
   else if Name = 'protected' then
-    Result := TClassVisibility.Protected_
+  begin
+    Result := TClassVisibility.Protected_;
+  end
   else if Name = 'published' then
-    Result := TClassVisibility.Published_
+  begin
+    Result := TClassVisibility.Published_;
+  end
   else
+  begin
     Result := TClassVisibility.Public_;
+  end;
 end;
 
 class function TClassEdits.DeleteLines(ALayout: TClassLayout; AFirst, ALast: Integer): TTextEdit;
@@ -1097,7 +1315,9 @@ begin
   // Eine Leerzeile dahinter mitnehmen, wenn davor auch eine steht (Rümpfe sind durch Leerzeilen getrennt).
   if (ALast + 1 <= High(Lines)) and (Trim(Lines[ALast + 1]) = '') and (AFirst > 0) and
     (Trim(Lines[AFirst - 1]) = '') then
+  begin
     Inc(ALast);
+  end;
   Result := TTextEdit.Create(TTextRange.Create(AFirst, 0, ALast + 1, 0), '');
 end;
 
@@ -1129,10 +1349,16 @@ begin
     Node := Member.Node;
     Dropped := False;
     for Other := 0 to High(Done) do
+    begin
       if Done[Other] = Node then
+      begin
         Dropped := True;
+      end;
+    end;
     if Dropped then
+    begin
       Continue;
+    end;
     Done := Done + [Node];
     if Member.IsFieldGroup then
     begin
@@ -1142,10 +1368,16 @@ begin
       begin
         Dropped := False;
         for Other in AIndexes do
+        begin
           if (ALayout.Members[Other].Node = Node) and SameText(ALayout.Members[Other].Name, Name) then
+          begin
             Dropped := True;
+          end;
+        end;
         if not Dropped then
+        begin
           Remaining := Remaining + [Name];
+        end;
       end;
       if Remaining <> nil then
       begin
@@ -1156,13 +1388,19 @@ begin
       end;
     end;
     if (Node.Kind = TSyntaxKind.VarDecl) and (Node.Parent <> nil) and (Node.Parent.ChildCount = 1) then
+    begin
       // Einziger Eintrag eines var-Abschnitts: der ganze Abschnitt samt "class var".
       Result := Result + [TTextEdit.Create(TTextRange.Create(Node.Parent.StartPos.Line, 0, Member.LastLine + 1, 0),
-        '')]
+        '')];
+    end
     else
+    begin
       Result := Result + [TTextEdit.Create(TTextRange.Create(Member.FirstLine, 0, Member.LastLine + 1, 0), '')];
+    end;
     if ABodies and (Member.Body <> nil) then
+    begin
       Result := Result + [DeleteLines(ALayout, Member.BodyFirstLine, Member.BodyLastLine)];
+    end;
   end;
 end;
 
@@ -1176,39 +1414,61 @@ var
 begin
   Body := '';
   for Item in ADeclarations do
+  begin
     for Part in Item.Split([#10]) do
+    begin
       Body := Body + ALayout.MemberIndent + TrimRight(Part) + ALayout.LineBreak;
+    end;
+  end;
   Found := -1;
   for Index := 0 to High(ALayout.Sections) do
+  begin
     if (ALayout.Sections[Index].Visibility = AVisibility) and
       ((ALayout.Sections[Index].HeadLine >= 0) or (AVisibility = TClassVisibility.Public_)) then
+    begin
       Found := Index;
+    end;
+  end;
   if Found < 0 then
   begin
     // Neuer Abschnitt in der Reihenfolge der Sichtbarkeit: vor den ersten mit höherer, sonst vor end.
     Line := ALayout.EndLine;
     for Index := High(ALayout.Sections) downto 0 do
+    begin
       if (ALayout.Sections[Index].HeadLine >= 0) and (ALayout.Sections[Index].Visibility > AVisibility) then
+      begin
         Line := ALayout.Sections[Index].HeadLine;
+      end;
+    end;
     Result := InsertBeforeLine(Line, ALayout.Indent + VisibilityName(AVisibility) +
       ALayout.LineBreak + Body);
     Exit;
   end;
   Section := ALayout.Sections[Found];
   if AFields then
+  begin
     for Index in Section.Members do
     begin
       Member := ALayout.Members[Index];
       if Member.IsMethod or (Member.Kind = TClassMemberKind.Property_) then
+      begin
         Exit(InsertBeforeLine(Member.FirstLine, Body));
+      end;
     end;
+  end;
   // Hinter das letzte Mitglied bzw. die Kopfzeile des Abschnitts.
   Line := Section.HeadLine;
   if Line < 0 then
+  begin
     Line := ALayout.HeaderLine;
+  end;
   for Index in Section.Members do
+  begin
     if ALayout.Members[Index].LastLine > Line then
+    begin
       Line := ALayout.Members[Index].LastLine;
+    end;
+  end;
   Result := InsertBeforeLine(Line + 1, Body);
 end;
 
@@ -1220,13 +1480,19 @@ begin
   Table := TLineTable.Build(ALayout.Text);
   List := '';
   if AAncestors <> nil then
+  begin
     List := '(' + string.Join(', ', AAncestors) + ')';
+  end;
   if ALayout.HeritageOpen >= 0 then
+  begin
     Result := TTextEdit.Create(TTextRange.Create(Table.PositionAt(ALayout.HeritageOpen),
-      Table.PositionAt(ALayout.HeritageClose + 1)), List)
+      Table.PositionAt(ALayout.HeritageClose + 1)), List);
+  end
   else
+  begin
     Result := TTextEdit.Create(TTextRange.Create(Table.PositionAt(ALayout.HeritageInsert),
       Table.PositionAt(ALayout.HeritageInsert)), List);
+  end;
 end;
 
 class function TClassEdits.BodyText(ALayout: TClassLayout; AIndex: Integer; const AClassName: string): string;
@@ -1239,7 +1505,9 @@ var
 begin
   Member := ALayout.Members[AIndex];
   if Member.Body = nil then
+  begin
     Exit('');
+  end;
   Table := TLineTable.Build(ALayout.Text);
   Start := Table.LineStart(Member.BodyFirstLine);
   Text := Copy(ALayout.Text, Start + 1, Member.Body.EndOffset - Start);
@@ -1248,7 +1516,9 @@ begin
   for Index := TokenIndexAt(Tokens, Member.Body.StartOffset) to High(Tokens) do
   begin
     if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol(';') then
+    begin
       Break;
+    end;
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, ALayout.Name) then
     begin
       Offset := Tokens[Index].Offset - Start;
@@ -1271,20 +1541,32 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.ImplementationSection then
+      begin
         Implementation_ := ANode;
+      end;
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
       if not Result and StartsText(AClassName + '.', ANode.Name) and (ANode.EndPos.Line > Last) then
+      begin
         Last := ANode.EndPos.Line;
+      end;
     end);
   if Last >= 0 then
+  begin
     Exit(Last);
+  end;
   if Implementation_ = nil then
+  begin
     Exit(-1);
+  end;
   // Hinter die letzte Deklaration der implementation, sonst hinter "implementation" bzw. dessen uses.
   Result := Implementation_.StartPos.Line;
   for Index := 0 to Implementation_.ChildCount - 1 do
+  begin
     if Implementation_[Index].EndPos.Line > Result then
+    begin
       Result := Implementation_[Index].EndPos.Line;
+    end;
+  end;
 end;
 
 class function TClassEdits.InsertBodies(const AText: string; ALine: Integer;
@@ -1295,7 +1577,9 @@ begin
   LineBreak := TTextLines.LineBreakOf(AText);
   NewText := '';
   for Body in ABodies do
+  begin
     NewText := NewText + LineBreak + Body + LineBreak;
+  end;
   Result := InsertBeforeLine(ALine + 1, NewText);
 end;
 
@@ -1310,7 +1594,9 @@ begin
   Start := Node.StartOffset;
   TypeRef := Node.FindChild(TSyntaxKind.TypeReference);
   if TypeRef <> nil then
+  begin
     Start := TypeRef.EndOffset;
+  end;
   Tokens := ALayout.Tree.Tokens;
   Index := TokenIndexAt(Tokens, Start);
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) and not Tokens[Index].IsSymbol(';') do
@@ -1320,9 +1606,13 @@ begin
     begin
       Next := Index + 1;
       while (Next <= High(Tokens)) and IsTrivia(Tokens[Next]) do
+      begin
         Inc(Next);
+      end;
       if (Next > High(Tokens)) or (Tokens[Next].Kind <> TPascalTokenKind.Identifier) then
+      begin
         Exit(False);
+      end;
       AEdit := TTextEdit.Create(TTextRange.Create(Tokens[Next].StartPos, Tokens[Next].EndPos), ANewName);
       Exit(True);
     end;

@@ -30,6 +30,10 @@ type
     procedure BuildCountsSingularAndPlural;
   end;
 
+/// <summary>Ein Text eines Moduls (#1455) in beiden Sprachen: nicht leer, gleiche Platzhalter in gleicher Folge.
+/// AIndex ist die Ordnungszahl der Id für die Meldung.</summary>
+procedure AssertTextPair(const AGerman, AEnglish: string; AIndex: Integer);
+
 implementation
 
 uses
@@ -48,6 +52,12 @@ begin
   for Index := 1 to Length(AText) - 1 do
     if AText[Index] = '%' then
       Result := Result + AText[Index + 1];
+end;
+
+procedure AssertTextPair(const AGerman, AEnglish: string; AIndex: Integer);
+begin
+  Assert.IsTrue((AGerman <> '') and (AEnglish <> ''), AIndex.ToString);
+  Assert.AreEqual(Placeholders(AGerman), Placeholders(AEnglish), AGerman + ' / ' + AEnglish);
 end;
 
 procedure TAtlasStringsTests.EveryTextExistsInBothLanguagesWithSamePlaceholders;

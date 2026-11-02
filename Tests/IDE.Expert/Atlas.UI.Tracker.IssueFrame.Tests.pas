@@ -14,10 +14,11 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssueFrameTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -151,7 +152,7 @@ begin
     mFrame.ShowEmpty;
     Assert.IsFalse(mFrame.HasDetails);
     Assert.IsTrue(mFrame.EmptyLabel.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewEmpty), mFrame.EmptyLabel.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEmpty), mFrame.EmptyLabel.Caption);
     Assert.IsFalse(mFrame.StartButton.Enabled);
     Assert.IsFalse(mFrame.BrowseButton.Enabled);
     Assert.IsFalse(mFrame.CopyKeyButton.Enabled);
@@ -192,8 +193,8 @@ begin
     // Zustand, Priorität, Label, erstellt, aktualisiert.
     Assert.AreEqual(5, Integer(Length(mFrame.Badges.Texts)));
     Assert.AreEqual('In Progress', mFrame.Badges.Texts[0]);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewBadgeUpdated,
-      [TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewHours, [3])]), mFrame.Badges.Texts[4]);
+    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated,
+      [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewHours, [3])]), mFrame.Badges.Texts[4]);
     // Beschreibung in zwei Doku-Stücken um das Bild, dazu der Kommentar.
     Assert.AreEqual(3, mFrame.DocCount);
     Assert.AreEqual(1, Integer(Length(mFrame.ImageUrls)));
@@ -224,12 +225,13 @@ begin
     mFrame.Parent := mHost;
     mFrame.ShowDetails(Sample(TAtlasIssuePreview.ShownComments + 2), cNow, '', False);
     Assert.IsNotNull(mFrame.OlderLabel);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewOlderComments, [2]), mFrame.OlderLabel.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewOlderComments, [2]),
+      mFrame.OlderLabel.Caption);
     Assert.IsFalse(mFrame.CommentsExpanded);
     // Beschreibung (zwei Stücke) und die neuesten Kommentare.
     Assert.AreEqual(2 + TAtlasIssuePreview.ShownComments, mFrame.DocCount);
     mFrame.ShowDetails(Sample(TAtlasIssuePreview.ShownComments + 1), cNow, '', False);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewOlderComment), mFrame.OlderLabel.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment), mFrame.OlderLabel.Caption);
   finally
     mHost.Free;
   end;
@@ -289,14 +291,14 @@ begin
     mFrame.SetLoading(True);
     Assert.IsTrue(mFrame.Loading);
     Assert.IsTrue(mFrame.Progress.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewLoading), mFrame.StatusText);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading), mFrame.StatusText);
     Assert.IsTrue(mFrame.RefreshButton.Enabled, 'Abbrechen');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCancel), mFrame.RefreshButton.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCancel), mFrame.RefreshButton.Caption);
     mFrame.SetLoading(False);
     mFrame.ShowError(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken), TAtlasIssueFix.EnterToken);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken), mFrame.StatusText);
     Assert.IsTrue(mFrame.FixButton.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewFixToken), mFrame.FixButton.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixToken), mFrame.FixButton.Caption);
     mFrame.FixButton.Click;
     Assert.IsTrue(mFix = TAtlasIssueFix.EnterToken);
     // Alter Stand mit Hinweis statt Fehler.
@@ -358,7 +360,7 @@ begin
     Assert.IsTrue(mFrame.TaskBox.HasTasks);
     Assert.IsFalse(mFrame.TaskBox.TasksLocked);
     Assert.IsNotNull(mFrame.AddTaskLabel);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssueChecklistAdd), mFrame.AddTaskLabel.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAdd), mFrame.AddTaskLabel.Caption);
     // Geschrieben: neuer Text ohne Neuladen.
     mFrame.ReplaceDescription('- [x] a' + #10 + '- [x] b' + #10 + '1. [x] c');
     Assert.AreEqual('3/3', mFrame.ProgressText);
@@ -366,7 +368,7 @@ begin
     // Während des Schreibens die Meldung „Wird gespeichert …“.
     mFrame.SetChecklistBusy(True);
     Assert.IsTrue(mFrame.ChecklistBusy);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssueChecklistSaving), mFrame.StatusText);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistSaving), mFrame.StatusText);
     mFrame.SetChecklistBusy(False);
     Assert.IsFalse(mFrame.ChecklistBusy);
   finally
@@ -390,7 +392,7 @@ begin
     mFrame.ShowDetails(mDetails, cNow, '', False);
     Assert.AreEqual('1/2', mFrame.ProgressText, 'Fortschritt auch ohne Schreibrecht');
     Assert.IsTrue(mFrame.TaskBox.TasksLocked);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssueChecklistReadOnly), mFrame.TaskBox.TaskHint);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistReadOnly), mFrame.TaskBox.TaskHint);
     Assert.IsNull(mFrame.AddTaskLabel, 'ohne Schreibrecht nichts hinzufügen');
     // issues.preview.checklists aus: Listen wie geschrieben, kein Fortschritt.
     mFrame.ChecklistReadOnly := False;
@@ -537,8 +539,10 @@ begin
       end;
     mFrame.ShowDetails(Sample(1), cNow, '', False);
     Assert.AreEqual(2, mFrame.Pages.PageCount);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDetails), mFrame.Pages.Pages[0].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDevelopment), mFrame.Pages.Pages[1].Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewTabDetails),
+      mFrame.Pages.Pages[0].Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewTabDevelopment),
+      mFrame.Pages.Pages[1].Caption);
     Assert.IsTrue(mFrame.DevelopmentVisible, 'Vorgabe an');
     Assert.IsFalse(mFrame.DevelopmentActive, 'Details zuerst');
     Assert.AreEqual(0, mShown, 'gesucht wird erst beim Zeigen');
@@ -588,7 +592,7 @@ begin
     mFrame.ShowDetails(Sample(1), cNow, '', False);
     Assert.IsTrue(mFrame.AttachButton.Enabled);
     Assert.IsTrue(mFrame.AttachMenuItem.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.AttachCommand), mFrame.AttachMenuItem.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), mFrame.AttachMenuItem.Caption);
     mFrame.AttachButton.Click;
     mFrame.AttachMenuItem.Click;
     Assert.AreEqual(2, mCalls);

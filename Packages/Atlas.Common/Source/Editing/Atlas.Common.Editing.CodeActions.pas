@@ -158,7 +158,9 @@ begin
     Result := Token.Offset;
     if (Token.EndPos.Line > APosition.Line) or
       ((Token.EndPos.Line = APosition.Line) and (Token.EndPos.Character >= APosition.Character)) then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -190,7 +192,9 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if (Found <> nil) or (ANode.StartPos.Line > ALine) or (ANode.EndPos.Line < ALine) then
+      begin
         Exit(False);
+      end;
       if (ANode.StartPos.Line = ALine) and (ANode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.InlineVar]) and
         (ANode.Parent <> nil) and IsStatementList(ANode.Parent.Kind) then
       begin
@@ -207,8 +211,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ANode.Parent.ChildCount - 1 do
+  begin
     if ANode.Parent[Index] = ANode then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -221,15 +229,21 @@ begin
   Result := '';
   Space := False;
   for Index := 1 to Length(AText) do
+  begin
     if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-      Space := True
+    begin
+      Space := True;
+    end
     else
     begin
       if Space and (Result <> '') then
+      begin
         Result := Result + ' ';
+      end;
       Space := False;
       Result := Result + AText[Index];
     end;
+  end;
 end;
 
 function SourceOf(const AText: string; ANode: TSyntaxNode): string;
@@ -244,12 +258,18 @@ var
 begin
   Result := False;
   if (ANode.StartPos.Line > High(ALines)) or (ANode.EndPos.Line > High(ALines)) then
+  begin
     Exit;
+  end;
   if Trim(Copy(ALines[ANode.StartPos.Line], 1, ANode.StartPos.Character)) <> '' then
+  begin
     Exit;
+  end;
   After := Trim(Copy(ALines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
   if StartsStr(';', After) then
+  begin
     After := Trim(Copy(After, 2, MaxInt));
+  end;
   Result := (After = '') or StartsStr('//', After);
 end;
 
@@ -281,11 +301,17 @@ end;
 function IndentUnit(const AStyle: TFormatStyle): string;
 begin
   if AStyle.UseTabs then
+  begin
     Exit(#9);
+  end;
   if AStyle.IndentSize > 0 then
-    Result := StringOfChar(' ', AStyle.IndentSize)
+  begin
+    Result := StringOfChar(' ', AStyle.IndentSize);
+  end
   else
+  begin
     Result := '  ';
+  end;
 end;
 
 { TCodeActions }
@@ -300,12 +326,18 @@ begin
   begin
     Above := Lines[ALine - 1];
     if StartsText('// lsp-ignore:', TrimLeft(Above)) then
+    begin
       Exit(TTextEdit.Create(TTextRange.Create(ALine - 1, Length(Above), ALine - 1, Length(Above)), ', ' + ARuleId));
+    end;
   end;
   if (ALine >= 0) and (ALine <= High(Lines)) then
-    Line := Lines[ALine]
+  begin
+    Line := Lines[ALine];
+  end
   else
+  begin
     Line := '';
+  end;
   Result := TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0),
     TTextLines.IndentOf(Line) + '// lsp-ignore: ' + ARuleId + TTextLines.LineBreakOf(AText));
 end;
@@ -342,79 +374,119 @@ begin
   Result := False;
   Lines := TTextLines.SplitLines(AText);
   if (ATree = nil) or (ATree.Root = nil) or (ARange.StartPos.Line < 0) or (ARange.StartPos.Line > High(Lines)) then
+  begin
     Exit;
+  end;
   Statement := CreateStatementAt(ATree, ARange.StartPos.Line);
   if (Statement = nil) or not OwnsLines(Lines, Statement) then
+  begin
     Exit;
+  end;
   // Ziel ist ein einfacher Name: Self.F und F[I] sind keine Zuweisung an eine lokale Variable.
   if (Statement.Kind = TSyntaxKind.AssignStatement) and
     ((Statement.ChildCount < 2) or (Statement[0].Kind <> TSyntaxKind.Identifier)) then
+  begin
     Exit;
+  end;
   // Leerraum und Zeilenumbrüche zusammenfassen: Der Aufruf darf über mehrere Zeilen gehen. Leere Alternativen
   // halten jede Gruppe belegt.
   Match := TRegEx.Match(CollapseSpace(SourceOf(AText, Statement)),
     '^(var |)(\w+) ?(:|)([^:=]*):= ?([A-Za-z_][\w.]*)(<[^;()]*>|) ?\. ?Create\w* ?(\(.*\)|) ?;?$',
     [roIgnoreCase]);
   if not Match.Success then
+  begin
     Exit;
+  end;
   Target := Match.Groups[2].Value;
   IsResult := SameText(Target, 'Result');
   if SameText(Target, 'Self') then
+  begin
     Exit;
+  end;
   if Statement.Kind = TSyntaxKind.InlineVar then
-    DeclaredType := Trim(Match.Groups[4].Value)
+  begin
+    DeclaredType := Trim(Match.Groups[4].Value);
+  end
   else if not IsResult and not TGuardFree.LocalVariableType(ATree, AText, Target, Statement.StartPos.Line,
     DeclaredType) then
+  begin
     // Feld, globale Variable oder Parameter: Wem das Objekt gehört, sieht man hier nicht.
     Exit;
+  end;
   if TRegEx.IsMatch(DeclaredType, '^I[A-Z]') then
+  begin
     Exit;
+  end;
   // Ein Owner gibt frei.
   if TRegEx.IsMatch(Match.Groups[7].Value, '^\( ?(Self|Application|Owner|AOwner) ?[,)]', [roIgnoreCase]) then
+  begin
     Exit;
+  end;
   // Folgende Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl.
   SelectionEnd := ARange.EndPos.Line;
   if (SelectionEnd > ARange.StartPos.Line) and (ARange.EndPos.Character = 0) then
+  begin
     Dec(SelectionEnd);
+  end;
   if SelectionEnd <= Statement.EndPos.Line then
+  begin
     SelectionEnd := MaxInt;
+  end;
   Parent := Statement.Parent;
   First := IndexInParent(Statement) + 1;
   // Schon geschützt.
   if (First < Parent.ChildCount) and (Parent[First].Kind = TSyntaxKind.TryStatement) then
+  begin
     Exit;
+  end;
   Last := nil;
   Index := First;
   while (Index < Parent.ChildCount) and IsStatement(Parent[Index].Kind) and
     (Parent[Index].StartPos.Line <= SelectionEnd) do
   begin
     if Parent[Index].Kind <> TSyntaxKind.EmptyStatement then
+    begin
       Last := Parent[Index];
+    end;
     Inc(Index);
   end;
   if (Last = nil) or not OwnsLines(Lines, Last) or (Parent[First].StartPos.Line <= Statement.EndPos.Line) then
+  begin
     Exit;
+  end;
   // Eine Freigabe als letzte Anweisung wandert ins finally; jede andere Freigabe oder Weitergabe verbietet die
   // Aktion, auch hinter dem eingeschlossenen Teil.
   ReleaseNode := nil;
   if not IsResult and IsRelease(SourceOf(AText, Last), Target) then
+  begin
     ReleaseNode := Last;
+  end;
   Rest := '';
   for Index := First to Parent.ChildCount - 1 do
+  begin
     if Parent[Index] <> ReleaseNode then
+    begin
       Rest := Rest + SourceOf(AText, Parent[Index]) + ';' + #10;
+    end;
+  end;
   if not IsResult and EscapesOrFrees(Rest, Target) then
+  begin
     Exit;
+  end;
   BodyEnd := Last.EndPos.Line;
   if ReleaseNode <> nil then
   begin
     BodyEnd := ReleaseNode.StartPos.Line - 1;
     // Nur die Freigabe: Der try-Block bliebe leer.
     if ReleaseNode = Parent[First] then
+    begin
       Exit;
+    end;
   end;
   while (BodyEnd > Statement.EndPos.Line) and (Trim(Lines[BodyEnd]) = '') do
+  begin
     Dec(BodyEnd);
+  end;
   Indent := TTextLines.IndentOf(Lines[Statement.StartPos.Line]);
   Step := IndentUnit(AStyle);
   LB := TTextLines.LineBreakOf(AText);
@@ -422,7 +494,9 @@ begin
   for Line := Statement.EndPos.Line + 1 to BodyEnd do
   begin
     if Trim(Lines[Line]) <> '' then
+    begin
       Body := Body + Step + Lines[Line];
+    end;
     Body := Body + LB;
   end;
   AAction.Kind := RewriteKind;
@@ -435,9 +509,13 @@ begin
   begin
     AAction.Title := Format('try/finally mit %s.Free ergänzen', [Target]);
     if ReleaseNode <> nil then
-      Release := Trim(SourceOf(AText, ReleaseNode)) + ';'
+    begin
+      Release := Trim(SourceOf(AText, ReleaseNode)) + ';';
+    end
     else
+    begin
       Release := Target + '.Free;';
+    end;
     Body := Body + Indent + 'finally' + LB + Indent + Step + Release;
   end;
   AAction.Edits := [TTextEdit.Create(TTextRange.Create(Statement.EndPos.Line, Length(Lines[Statement.EndPos.Line]),
@@ -459,7 +537,9 @@ begin
   Result := TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, TTextLines.LineBreakOf(AText), Edits,
     AByNamespace);
   if not Result then
+  begin
     Exit;
+  end;
   AAction.Title := 'uses aufräumen';
   AAction.Kind := OrganizeImportsKind;
   AAction.Edits := Edits;
@@ -500,11 +580,15 @@ var
 begin
   Result := nil;
   if not Assigned(AContext.Info) then
+  begin
     Exit;
+  end;
   Tokens := TPascalLexer.Tokenize(AText);
   if AEditing and Assigned(AContext.Declaring) then
+  begin
     for UnitName in TUsesActions.MissingUnits(Tokens, ATree, ARange.StartPos, AContext.Declaring,
       AContext.Namespaces) do
+    begin
       if TUsesClauses.AddUnit(Tokens, OffsetNear(Tokens, ARange.StartPos), UnitName, TTextLines.LineBreakOf(AText),
         Edit) then
       begin
@@ -514,6 +598,8 @@ begin
         Action.Edits := [Edit];
         Result := Result + [Action];
       end;
+    end;
+  end;
   if AEditing then
   begin
     Units := TUsesActions.MovableUnits(Tokens, AContext.Info);
@@ -540,17 +626,25 @@ begin
     end;
   end;
   if not AEditing then
+  begin
     Exit;
+  end;
   // Einzelne Einträge an der Stelle (#621), auch in Listen mit {$IFDEF}.
   Entries := TUsesActions.Entries(Tokens, AInactive, AContext.Info, AContext.Keep);
   Unused := nil;
   for Entry in Entries do
+  begin
     if Entry.State = TUsesEntryState.Unused then
+    begin
       Unused := Unused + [Entry.Range];
+    end;
+  end;
   for Entry in Entries do
   begin
     if not Touches(Entry.Range, ARange) then
+    begin
       Continue;
+    end;
     if Entry.State = TUsesEntryState.Unused then
     begin
       if TUsesActions.RemoveEntries(AText, [Entry.Range], Edit) then
@@ -574,14 +668,20 @@ begin
       end;
     end
     else if Entry.State <> TUsesEntryState.OnlyImplementation then
-      Continue
+    begin
+      Continue;
+    end
     // Allein verschiebbar: Die Aktion für alle oben hat schon denselben Titel und bekommt die Kennung.
     else if (Length(Movable) = 1) and SameText(Movable[0], Entry.Name) then
     begin
       for Index := 0 to High(Result) do
+      begin
         if (Result[Index].Kind = RewriteKind) and
           SameText(Result[Index].Title, Format('%s ins implementation-uses verschieben', [Entry.Name])) then
+        begin
           Result[Index].Tag := UsesMoveTag;
+        end;
+      end;
     end
     else if TUsesActions.MoveUnits(Tokens, AText, [Entry.Name], TTextLines.LineBreakOf(AText), Edits) then
     begin
@@ -600,11 +700,17 @@ var
   Only: string;
 begin
   if AOnly = nil then
+  begin
     Exit(True);
+  end;
   // "source" umfasst "source.fixAll", aber nicht "sourceX".
   for Only in AOnly do
+  begin
     if SameText(AKind, Only) or StartsText(Only + '.', AKind) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -642,29 +748,45 @@ begin
     Exit;
   end;
   if (ARange.StartPos.Line = ARange.EndPos.Line) and (ARange.StartPos.Character = ARange.EndPos.Character) then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AText);
   First := ARange.StartPos.Line;
   Last := ARange.EndPos.Line;
   if (Last > First) and (ARange.EndPos.Character = 0) then
+  begin
     Dec(Last);
+  end;
   if Last > High(Lines) then
+  begin
     Last := High(Lines);
+  end;
   if (First < 0) or (First > Last) then
+  begin
     Exit;
+  end;
   // Gemeinsame Einrückung entfernen; die erste Zeile gibt die Einrückung des Literals vor.
   Common := MaxInt;
   for Line := First to Last do
+  begin
     if (Trim(Lines[Line]) <> '') and (Length(TTextLines.IndentOf(Lines[Line])) < Common) then
+    begin
       Common := Length(TTextLines.IndentOf(Lines[Line]));
+    end;
+  end;
   if Common = MaxInt then
+  begin
     Exit;
+  end;
   Indent := TTextLines.IndentOf(Lines[First]);
   Plain := '';
   for Line := First to Last do
   begin
     if Line > First then
+    begin
       Plain := Plain + #10;
+    end;
     Plain := Plain + Copy(Lines[Line], Common + 1, MaxInt);
   end;
   Action := Default(TCodeAction);

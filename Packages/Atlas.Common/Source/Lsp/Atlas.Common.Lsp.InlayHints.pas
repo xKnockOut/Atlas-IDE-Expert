@@ -169,9 +169,13 @@ const
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function InRange(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
@@ -188,15 +192,21 @@ function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Intege
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 /// <summary>Index des ersten Tokens mit Offset >= AOffset.</summary>
@@ -210,9 +220,13 @@ begin
   begin
     Middle := (Low + High) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High := Middle;
+    end;
   end;
   Result := Low;
 end;
@@ -229,7 +243,9 @@ begin
     function(AChild: TSyntaxNode): Boolean
     begin
       if AChild.Kind in Kinds then
+      begin
         List.Add(AChild);
+      end;
       Result := True;
     end);
 end;
@@ -242,14 +258,22 @@ var
 begin
   Result := Trim(AText);
   for Modifier in ParameterModifiers do
+  begin
     if StartsText(Modifier, Result) then
+    begin
       Delete(Result, 1, Length(Modifier));
+    end;
+  end;
   Colon := Pos(':', Result);
   if Colon > 0 then
+  begin
     Result := Copy(Result, 1, Colon - 1);
+  end;
   Colon := Pos('=', Result);
   if Colon > 0 then
+  begin
     Result := Copy(Result, 1, Colon - 1);
+  end;
   Result := Trim(Result);
 end;
 
@@ -267,18 +291,26 @@ begin
   begin
     Token := ATokens[Index];
     if IsTrivia(Token) then
+    begin
       Continue;
+    end;
     if Token.IsKeyword('then') or Token.IsKeyword('do') or Token.IsKeyword('of') then
+    begin
       Break;
+    end;
     // Kein Leerzeichen nach ( [ . und vor ) ] , . ; sowie zwischen Name und Aufrufklammer.
     if not (Glue or Token.IsSymbol(')') or Token.IsSymbol(']') or Token.IsSymbol(',') or Token.IsSymbol('.') or
       Token.IsSymbol(';') or AfterName and (Token.IsSymbol('(') or Token.IsSymbol('['))) then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Token.Text;
     Glue := Token.IsSymbol('(') or Token.IsSymbol('[') or Token.IsSymbol('.');
     AfterName := Token.Kind = TPascalTokenKind.Identifier;
     if Length(Result) > AMaxLength then
+    begin
       Exit(TrimRight(Copy(Result, 1, AMaxLength)) + '…');
+    end;
   end;
 end;
 
@@ -343,76 +375,110 @@ begin
     for Index := 0 to High(Tokens) - 1 do
     begin
       if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+      begin
         Continue;
+      end;
       Open := NextToken(Tokens, Index);
       if (Open > High(Tokens)) or not Tokens[Open].IsSymbol('(') or not InRange(ARange, Tokens[Open].EndPos) then
+      begin
         Continue;
+      end;
       InBlock := False;
       for Block in Blocks do
+      begin
         if (Block.StartOffset <= Tokens[Index].Offset) and (Tokens[Index].Offset < Block.EndOffset) then
         begin
           InBlock := True;
           Break;
         end;
+      end;
       if not InBlock then
+      begin
         Continue;
+      end;
       // Argumente bis zur passenden Klammer.
       Starts.Clear;
       Depth := 0;
       Scan := NextToken(Tokens, Open);
       if (Scan <= High(Tokens)) and not Tokens[Scan].IsSymbol(')') then
+      begin
         Starts.Add(Scan);
+      end;
       while Scan <= High(Tokens) do
       begin
         if Tokens[Scan].IsSymbol('(') or Tokens[Scan].IsSymbol('[') then
-          Inc(Depth)
+        begin
+          Inc(Depth);
+        end
         else if Tokens[Scan].IsSymbol(')') or Tokens[Scan].IsSymbol(']') then
         begin
           if Depth = 0 then
+          begin
             Break;
+          end;
           Dec(Depth);
         end
         else if (Depth = 0) and Tokens[Scan].IsSymbol(',') then
-          Starts.Add(NextToken(Tokens, Scan))
+        begin
+          Starts.Add(NextToken(Tokens, Scan));
+        end
         else if (Depth = 0) and Tokens[Scan].IsSymbol(';') then
+        begin
           Break;
+        end;
         Scan := NextToken(Tokens, Scan);
       end;
       if Starts.Count = 0 then
+      begin
         Continue;
+      end;
       Help := TLspSignatureHelp.HelpAt(AResolver, AIndex, ATree, ATreeText, AFileName, Tokens[Open].EndPos, AReadText);
       // Parameternamen der Compiler-Routinen (Assigned(P), Inc(X) ...) sagen nichts: keine Hinweise (#880).
       if Help.Intrinsic then
+      begin
         Help.Signatures := nil;
+      end;
       Chosen := -1;
       for Scan := 0 to High(Help.Signatures) do
+      begin
         if Length(Help.Signatures[Scan].Parameters) >= Starts.Count then
         begin
           Chosen := Scan;
           Break;
         end;
+      end;
       if Chosen < 0 then
+      begin
         Continue;
+      end;
       Signature := Help.Signatures[Chosen];
       for Argument := 0 to Starts.Count - 1 do
       begin
         Scan := Starts[Argument];
         if Scan > High(Tokens) then
+        begin
           Continue;
+        end;
         Name := ParameterName(Copy(Signature.Text, Signature.Parameters[Argument].StartIndex + 1,
           Signature.Parameters[Argument].EndIndex - Signature.Parameters[Argument].StartIndex));
         if Name = '' then
+        begin
           Continue;
+        end;
         // Argument heißt schon wie der Parameter (auch Self.Name, FName).
         Last := Scan;
         while (NextToken(Tokens, Last) <= High(Tokens)) and Tokens[NextToken(Tokens, Last)].IsSymbol('.') and
           (NextToken(Tokens, NextToken(Tokens, Last)) <= High(Tokens)) and
           (Tokens[NextToken(Tokens, NextToken(Tokens, Last))].Kind = TPascalTokenKind.Identifier) do
+        begin
           Last := NextToken(Tokens, NextToken(Tokens, Last));
+        end;
         if (Tokens[Last].Kind = TPascalTokenKind.Identifier) and
           (SameText(CleanName(Tokens[Last].Text), Name) or SameText(CleanName(Tokens[Last].Text), 'F' + Name) or
           SameText(CleanName(Tokens[Last].Text), 'A' + Name)) then
+        begin
           Continue;
+        end;
         Hint := Default(TInlayHint);
         Hint.Position := Tokens[Scan].StartPos;
         Hint.Text := Name + ':';
@@ -437,10 +503,14 @@ var
 begin
   Result := AType.Name;
   if Length(AType.Bindings) = 0 then
+  begin
     Exit;
+  end;
   Values := nil;
   for Binding in AType.Bindings do
+  begin
     Values := Values + [AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+  end;
   Result := Result + '<' + string.Join(', ', Values) + '>';
 end;
 
@@ -452,8 +522,10 @@ var
 begin
   Unqualified := nil;
   for Binding in ABindings do
+  begin
     Unqualified := Unqualified + [Copy(Binding, 1, Pos('=', Binding)) +
       AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+  end;
   Result := TInterfaceStubs.SubstituteWords(AText, Unqualified);
 end;
 
@@ -476,39 +548,59 @@ begin
   while Index <= ALast do
   begin
     if ATokens[Index].Kind <> TPascalTokenKind.Identifier then
+    begin
       Exit;
+    end;
     Names := Names + [CleanName(ATokens[Index].Text)];
     Index := NextToken(ATokens, Index);
     if Index > ALast then
+    begin
       Break;
+    end;
     if not ATokens[Index].IsSymbol('.') then
+    begin
       Exit;
+    end;
     Index := NextToken(ATokens, Index);
   end;
   if (Length(Names) = 0) or not AResolver.ChainType(ATree, AFileName, Names, ATokens[ALast].Offset, Owner, TypeInfo,
     TypeFound) then
+  begin
     Exit;
+  end;
   AOrigin := Owner;
   OwnerType := Owner.TypeName;
   if Owner.TypeArgs <> '' then
+  begin
     OwnerType := OwnerType + '<' + Owner.TypeArgs + '>';
+  end;
   Result := TPostfixTemplates.ElementOf(OwnerType);
   if (Result = '') and TypeFound then
+  begin
     Result := TPostfixTemplates.ElementOf(TypeInfo.TypeName);
+  end;
   if Result <> '' then
+  begin
     Exit;
+  end;
   if TPostfixTemplates.IsStringType(Owner.TypeName) or
     (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsStringType(TypeInfo.Name)) then
+  begin
     Exit('Char');
+  end;
   if not TypeFound or TypeInfo.Builtin then
+  begin
     Exit;
+  end;
   // Enumerator: Current von GetEnumerator, mit eingesetzten Typparametern.
   for Member in AResolver.MemberCandidates(ATree, AFileName, Names + ['GetEnumerator'], ATokens[ALast].Offset) do
+  begin
     if SameText(Member.Name, 'Current') and (Member.TypeName <> '') then
     begin
       AOrigin := Member;
       Exit(BoundText(AResolver, Member.TypeName, Member.Bindings));
     end;
+  end;
 end;
 
 class function TLspInlayHints.Inferred(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -533,7 +625,9 @@ begin
     for Node in Nodes do
     begin
       if not InRange(ARange, Node.StartPos) or (Pos(',', Node.Name) > 0) then
+      begin
         Continue;
+      end;
       TypeName := '';
       TypeUnit := '';
       Origin := Default(TResolvedSymbol);
@@ -543,21 +637,31 @@ begin
         // for var X in Ausdruck do: "var", Name, dann "in" ohne ":" dazwischen.
         Index := FirstTokenAt(Tokens, Node.StartOffset);
         if (Index + 3 > High(Tokens)) or not Tokens[Index].IsKeyword('for') then
+        begin
           Continue;
+        end;
         Index := NextToken(Tokens, Index);
         if not Tokens[Index].IsKeyword('var') then
+        begin
           Continue;
+        end;
         NameToken := NextToken(Tokens, Index);
         First := NextToken(Tokens, NameToken);
         if (First > High(Tokens)) or not Tokens[First].IsKeyword('in') then
+        begin
           Continue;
+        end;
         First := NextToken(Tokens, First);
         Last := First;
         while (NextToken(Tokens, Last) <= High(Tokens)) and not Tokens[NextToken(Tokens, Last)].IsKeyword('do') and
           (Tokens[NextToken(Tokens, Last)].Offset < Node.EndOffset) do
+        begin
           Last := NextToken(Tokens, Last);
+        end;
         if First > High(Tokens) then
+        begin
           Continue;
+        end;
         TypeName := ForInElement(AResolver, ATree, AFileName, Tokens, First, Last, Origin);
       end
       else
@@ -569,9 +673,13 @@ begin
         while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) do
         begin
           if (NameToken < 0) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
-            NameToken := Index
+          begin
+            NameToken := Index;
+          end
           else if Tokens[Index].IsSymbol(':') then
-            Typed := True
+          begin
+            Typed := True;
+          end
           else if Tokens[Index].IsSymbol(':=') or ((Node.Kind = TSyntaxKind.InlineConst) and
             Tokens[Index].IsSymbol('=')) then
           begin
@@ -581,32 +689,48 @@ begin
           Inc(Index);
         end;
         if Typed or (NameToken < 0) or (Assign < 0) then
+        begin
           Continue;
+        end;
         First := NextToken(Tokens, Assign);
         Last := First;
         while (NextToken(Tokens, Last) <= High(Tokens)) and (Tokens[NextToken(Tokens, Last)].Offset < Node.EndOffset) and
           not Tokens[NextToken(Tokens, Last)].IsSymbol(';') do
+        begin
           Last := NextToken(Tokens, Last);
+        end;
         if First > High(Tokens) then
+        begin
           Continue;
+        end;
         if First = Last then
           case Tokens[First].Kind of
             TPascalTokenKind.Number:
               if (Tokens[First].Text[1] <> '$') and (Tokens[First].Text[1] <> '%') and
                 ((Pos('.', Tokens[First].Text) > 0) or (Pos('e', LowerCase(Tokens[First].Text)) > 0)) then
-                TypeName := 'Extended'
+              begin
+                TypeName := 'Extended';
+              end
               else
+              begin
                 TypeName := 'Integer';
+              end;
             TPascalTokenKind.StringLiteral:
               if (Length(Tokens[First].Text) = 3) or (Tokens[First].Text = '''''''''') then
-                TypeName := 'Char'
+              begin
+                TypeName := 'Char';
+              end
               else
+              begin
                 TypeName := 'string';
+              end;
             TPascalTokenKind.CharLiteral:
               TypeName := 'Char';
             TPascalTokenKind.Identifier:
               if SameText(Tokens[First].Text, 'True') or SameText(Tokens[First].Text, 'False') then
+              begin
                 TypeName := 'Boolean';
+              end;
           end;
         // Typ aus dem Ausdruck über die Namensauflösung (#453): auch generisch, TList<TKunde>.Create.
         if (TypeName = '') and AResolver.ChainType(ATree, AFileName, [CleanName(Tokens[NameToken].Text)],
@@ -614,7 +738,9 @@ begin
         begin
           TypeName := TypeDisplay(AResolver, TypeInfo);
           if not TypeInfo.Builtin then
+          begin
             TypeUnit := TypeInfo.UnitName;
+          end;
           Origin := TypeInfo;
         end;
         if (TypeName = '') and (Tokens[First].Kind = TPascalTokenKind.Identifier) then
@@ -624,7 +750,9 @@ begin
           while (NextToken(Tokens, Scan) <= Last) and Tokens[NextToken(Tokens, Scan)].IsSymbol('.') and
             (NextToken(Tokens, NextToken(Tokens, Scan)) <= Last) and
             (Tokens[NextToken(Tokens, NextToken(Tokens, Scan))].Kind = TPascalTokenKind.Identifier) do
+          begin
             Scan := NextToken(Tokens, NextToken(Tokens, Scan));
+          end;
           Index := Scan;
           if (Index < Last) and Tokens[NextToken(Tokens, Index)].IsSymbol('(') then
           begin
@@ -633,12 +761,16 @@ begin
             while Index <= Last do
             begin
               if Tokens[Index].IsSymbol('(') then
-                Inc(Depth)
+              begin
+                Inc(Depth);
+              end
               else if Tokens[Index].IsSymbol(')') then
               begin
                 Dec(Depth);
                 if Depth = 0 then
+                begin
                   Break;
+                end;
               end;
               Index := NextToken(Tokens, Index);
             end;
@@ -647,23 +779,37 @@ begin
           begin
             Resolved := AResolver.Resolve(ATree, AFileName, Tokens[Scan].StartPos);
             if Resolved.Found and (Resolved.Kind <> TResolvedKind.UnitName) then
+            begin
               Origin := Resolved;
+            end;
             if Resolved.Found and (Resolved.Kind <> TResolvedKind.UnitName) then
+            begin
               if Resolved.SymbolKind = TIndexSymbolKind.Constructor_ then
-                TypeName := Resolved.Container
+              begin
+                TypeName := Resolved.Container;
+              end
               else if Resolved.IsType then
+              begin
                 // Typumwandlung TFoo(X)
-                TypeName := Resolved.Name
+                TypeName := Resolved.Name;
+              end
               else if Resolved.TypeName <> '' then
-                TypeName := BoundText(AResolver, Resolved.TypeName, Resolved.Bindings)
+              begin
+                TypeName := BoundText(AResolver, Resolved.TypeName, Resolved.Bindings);
+              end
               else if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
+              begin
                 // Enum-Werte stehen im Index unter ihrem Typ.
                 TypeName := Resolved.Container;
+              end;
+            end;
           end;
         end;
       end;
       if (TypeName = '') or (NameToken < 0) then
+      begin
         Continue;
+      end;
       Found := Default(TInferredType);
       Found.NameStart := Tokens[NameToken].StartPos;
       Found.NameEnd := Tokens[NameToken].EndPos;
@@ -720,9 +866,12 @@ begin
   AAction := Default(TCodeAction);
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   for Candidate in Inferred(AResolver, ATree, AFileName, TTextRange.Create(APosition.Line, 0, APosition.Line,
     MaxInt)) do
+  begin
     if (Candidate.NameStart.Line = APosition.Line) and (Candidate.NameStart.Character <= APosition.Character) and
       (APosition.Character <= Candidate.NameEnd.Character) then
     begin
@@ -730,8 +879,11 @@ begin
       Result := True;
       Break;
     end;
+  end;
   if not Result then
+  begin
     Exit;
+  end;
   AAction.Title := 'Typ ausschreiben';
   AAction.Kind := RewriteKind;
   AAction.Edits := [TTextEdit.Create(TTextRange.Create(Found.NameEnd, Found.NameEnd), ': ' + Found.TypeName)];
@@ -739,34 +891,46 @@ begin
   Tokens := ATree.Tokens;
   Offset := 0;
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].StartPos.Line = Found.NameStart.Line) and
       (Tokens[Index].StartPos.Character = Found.NameStart.Character) then
     begin
       Offset := Tokens[Index].Offset;
       Break;
     end;
+  end;
   Own := AResolver.ExtractedUnit(ATree, AFileName);
   OwnName := TUsesClauses.OwnName(Tokens);
   Used := TUsesClauses.UsedUnits(Tokens);
   Added := nil;
   Base := Found.TypeName;
   if Pos('<', Base) > 0 then
+  begin
     Base := Copy(Base, 1, Pos('<', Base) - 1);
+  end;
   Words := Found.TypeName.Split([' ', '<', '>', ',', '^', '[', ']', '(', ')'], TStringSplitOptions.ExcludeEmpty);
   for Word in Words do
   begin
     if SameText(Word, 'array') or SameText(Word, 'of') or SameText(Word, 'string') or
       AResolver.ResolveTypeFrom(Own, Word, Resolved) then
+    begin
       Continue;
+    end;
     UnitName := '';
     if SameText(Word, Base) and (Found.TypeUnit <> '') then
-      UnitName := Found.TypeUnit
+    begin
+      UnitName := Found.TypeUnit;
+    end
     else if (Found.Origin.Name <> '') and AResolver.DeclaringUnit(Found.Origin, FromUnit) and
       AResolver.ResolveTypeFrom(FromUnit, Word, Resolved) and not Resolved.Builtin then
+    begin
       UnitName := Resolved.UnitName;
+    end;
     if (UnitName = '') or SameText(UnitName, OwnName) or SameText(UnitName, 'System') or
       TUsesClauses.IsUsed(Used, UnitName, AResolver.Namespaces) or (IndexText(UnitName, Added) >= 0) then
+    begin
       Continue;
+    end;
     if TUsesClauses.AddUnit(Tokens, Offset, UnitName, ALineBreak, Edit) then
     begin
       AAction.Edits := AAction.Edits + [Edit];
@@ -796,37 +960,53 @@ begin
     for Node in Nodes do
     begin
       if Node.EndPos.Line - Node.StartPos.Line + 1 < AMinLines then
+      begin
         Continue;
+      end;
       // Letztes Token des Knotens muss "end" sein (bei Routinen das des Rumpfs).
       Body := Node;
       if Node.Kind = TSyntaxKind.RoutineDecl then
       begin
         Body := Node.FindChild(TSyntaxKind.Block);
         if Body = nil then
+        begin
           Continue;
+        end;
       end;
       EndToken := FirstTokenAt(Tokens, Body.EndOffset) - 1;
       while (EndToken >= 0) and (IsTrivia(Tokens[EndToken]) or Tokens[EndToken].IsSymbol(';')) do
+      begin
         Dec(EndToken);
+      end;
       if (EndToken < 0) or not Tokens[EndToken].IsKeyword('end') then
+      begin
         Continue;
+      end;
       case Node.Kind of
         TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl:
           Text := Node.Name;
         // Woran der Block endet: try (finally) bzw. try (except).
         TSyntaxKind.TryStatement:
           if Node.FindChild(TSyntaxKind.FinallyBlock) <> nil then
-            Text := 'try (finally)'
+          begin
+            Text := 'try (finally)';
+          end
           else if Node.FindChild(TSyntaxKind.ExceptBlock) <> nil then
-            Text := 'try (except)'
+          begin
+            Text := 'try (except)';
+          end
           else
+          begin
             Text := 'try';
+          end;
       else
         First := FirstTokenAt(Tokens, Node.StartOffset);
         Text := HeaderText(Tokens, First, EndToken, MaxEndLabelLength);
       end;
       if Text = '' then
+      begin
         Continue;
+      end;
       Hint := Default(TInlayHint);
       Hint.Position := Tokens[EndToken].EndPos;
       Next := NextToken(Tokens, EndToken);
@@ -837,12 +1017,16 @@ begin
         EndToken := Next;
       end;
       if not InRange(ARange, Hint.Position) then
+      begin
         Continue;
+      end;
       // Steht hinter dem end schon ein Kommentar, sagt der genug.
       Next := EndToken + 1;
       if (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Comment) and
         (Tokens[Next].StartPos.Line = Hint.Position.Line) then
+      begin
         Continue;
+      end;
       Hint.Text := '// ' + Text;
       Hint.PaddingLeft := True;
       Hint.BlockStart := Node.StartPos;
@@ -867,30 +1051,48 @@ begin
   for Token in ATree.Tokens do
   begin
     if Token.Kind <> TPascalTokenKind.Directive then
+    begin
       Continue;
+    end;
     Text := UpperCase(Token.Text);
     if Text.StartsWith('{$') then
-      Text := Copy(Text, 3, MaxInt)
+    begin
+      Text := Copy(Text, 3, MaxInt);
+    end
     else if Text.StartsWith('(*$') then
-      Text := Copy(Text, 4, MaxInt)
+    begin
+      Text := Copy(Text, 4, MaxInt);
+    end
     else
+    begin
       Continue;
+    end;
     Index := 1;
     while (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) do
+    begin
       Inc(Index);
+    end;
     Head := Copy(Text, 1, Index - 1);
     if (Head <> 'IFDEF') and (Head <> 'IFNDEF') and (Head <> 'IF') and (Head <> 'ELSEIF') then
+    begin
       Continue;
+    end;
     while Index <= Length(Text) do
+    begin
       if TTextChars.IsIdentStart(Text[Index]) then
       begin
         Start := Index;
         while (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) do
+        begin
           Inc(Index);
+        end;
         Result.AddOrSetValue(Copy(Text, Start, Index - Start), True);
       end
       else
+      begin
         Inc(Index);
+      end;
+    end;
   end;
 end;
 
@@ -907,38 +1109,58 @@ var
 begin
   Result := nil;
   if Length(AProcessed.DefineSites) = 0 then
+  begin
     Exit;
+  end;
   Used := ConditionWords(ATree);
   try
     for Token in ATree.Tokens do
     begin
       if (Token.Kind <> TPascalTokenKind.Directive) or not InRange(ARange, Token.StartPos) or
         not TPascalPreprocessor.IncludeFileOf(Token.Text, IncludeName) then
+      begin
         Continue;
+      end;
       // Stand nach der Include-Datei: ein späteres $UNDEF dort nimmt das Symbol wieder heraus.
       Names := nil;
       for Site in AProcessed.DefineSites do
       begin
         if (Site.FileIndex = 0) or (Site.RootPos <> Token.StartPos) or not Used.ContainsKey(UpperCase(Site.Name)) then
+        begin
           Continue;
+        end;
         Index := IndexText(Site.Name, Names);
         if Site.Undefine and (Index >= 0) then
-          Delete(Names, Index, 1)
+        begin
+          Delete(Names, Index, 1);
+        end
         else if not Site.Undefine and (Index < 0) then
+        begin
           Names := Names + [Site.Name];
+        end;
       end;
       if Length(Names) = 0 then
+      begin
         Continue;
+      end;
       Hint := Default(TInlayHint);
       Hint.Position := Token.EndPos;
       Hint.Text := DefinesPrefix;
       for Name in Names do
+      begin
         if Hint.Text = DefinesPrefix then
-          Hint.Text := Hint.Text + Name
+        begin
+          Hint.Text := Hint.Text + Name;
+        end
         else
+        begin
           Hint.Text := Hint.Text + ', ' + Name;
+        end;
+      end;
       if Length(Hint.Text) > MaxLabelLength then
+      begin
         Hint.Text := Copy(Hint.Text, 1, MaxLabelLength - 1) + '…';
+      end;
       Hint.PaddingLeft := True;
       Hint.Defines := Names;
       Hint.IncludeFile := ExtractFileName(StringReplace(Trim(IncludeName), '''', '', [rfReplaceAll]));
@@ -956,7 +1178,9 @@ var
 begin
   Node := ANode.Parent;
   while (Node <> nil) and not (Node.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst]) do
+  begin
     Node := Node.Parent;
+  end;
   Result := Node <> nil;
 end;
 
@@ -977,7 +1201,9 @@ begin
       if (Node.EndOffset - Node.StartOffset <> 2) or (Node.StartOffset >= Length(ATreeText)) or
         (ATreeText[Node.StartOffset + 1] <> '^') or not Node.Name.StartsWith('#') or
         not InRange(ARange, Node.StartPos) or not InConstant(Node) then
+      begin
         Continue;
+      end;
       Hint := Default(TInlayHint);
       Hint.Position := Node.EndPos;
       Hint.Text := Node.Name;
@@ -1044,17 +1270,29 @@ begin
   List := TList<TInlayHint>.Create(TComparer<TInlayHint>.Construct(CompareHints));
   try
     if ASettings.ParameterNames then
+    begin
       List.AddRange(ParameterNames(AResolver, AIndex, ATree, ATreeText, AFileName, ARange, AReadText));
+    end;
     if ASettings.InferredTypes then
+    begin
       List.AddRange(InferredTypes(AResolver, ATree, AFileName, ARange));
+    end;
     if ASettings.EndMarkers then
+    begin
       List.AddRange(EndMarkers(ATree, ARange, ASettings.EndMarkerMinLines));
+    end;
     if ASettings.IncludeDefines then
+    begin
       List.AddRange(IncludeDefines(ATree, AProcessed, ARange));
+    end;
     if ASettings.ControlChars then
+    begin
       List.AddRange(ControlChars(ATree, ATreeText, ARange));
+    end;
     if ASettings.MethodWithoutSelf and (AResolver <> nil) then
+    begin
       List.AddRange(MethodMarkers(AResolver, ATree, ATreeText, AFileName, ARange, AReadText));
+    end;
     List.Sort;
     Result := List.ToArray;
   finally
@@ -1077,31 +1315,45 @@ begin
     Entry.AddPair('position', TLspPositions.PositionToJson(Hint.Position));
     Entry.AddPair('label', Hint.Text);
     if Hint.Kind <> 0 then
+    begin
       Entry.AddPair('kind', TJSONNumber.Create(Hint.Kind));
+    end;
     if Hint.PaddingLeft then
+    begin
       Entry.AddPair('paddingLeft', TJSONBool.Create(True));
+    end;
     if Hint.PaddingRight then
+    begin
       Entry.AddPair('paddingRight', TJSONBool.Create(True));
+    end;
     // Blockanfang für den Sprung per Klick (#620).
     if Hint.HasBlockStart then
+    begin
       Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('blockStart',
         TLspPositions.PositionToJson(Hint.BlockStart))));
+    end;
     // Symbole hinter {$I} (#860), für das Plugin getrennt von Endmarken.
     if Length(Hint.Defines) > 0 then
     begin
       Defines := TJSONArray.Create;
       for Name in Hint.Defines do
+      begin
         Defines.Add(Name);
+      end;
       Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('includeDefines',
         TJSONObject.Create.AddPair('file', Hint.IncludeFile).AddPair('names', Defines))));
     end;
     // Code eines Steuerzeichens (#862), für das Plugin getrennt von Endmarken.
     if Hint.ControlChar then
+    begin
       Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('controlChar',
         TJSONObject.Create(TJSONPair.Create('code', TJSONNumber.Create(Hint.CharCode))))));
+    end;
     // Methode ohne Self (#686): Das Plugin beschriftet die Marke in der Sprache der IDE.
     if Hint.MethodWithoutSelf then
+    begin
       Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('methodWithoutSelf', TJSONBool.Create(True))));
+    end;
   end;
 end;
 
@@ -1119,16 +1371,26 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "range" fehlen');
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   if Assigned(FSettings) then
-    Settings := FSettings(Uri)
+  begin
+    Settings := FSettings(Uri);
+  end
   else
+  begin
     Settings := TInlayHintSettings.Default;
+  end;
   // Mindestlänge des Plugins (#620).
   if TJSONObject(AParams).TryGetValue<Integer>(MinLinesParam, MinLines) and (MinLines > 0) then
+  begin
     Settings.EndMarkerMinLines := MinLines;
+  end;
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;

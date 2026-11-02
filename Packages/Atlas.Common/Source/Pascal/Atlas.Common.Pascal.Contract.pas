@@ -127,26 +127,38 @@ end;
 class function TPascalNamePrefixes.Follows(const AName, APrefix: string): Boolean;
 begin
   if APrefix = '' then
+  begin
     Exit(True);
+  end;
   if (Length(AName) <= Length(APrefix)) or not StartsStr(APrefix, AName) then
+  begin
     Exit(False);
+  end;
   Result := not IsLetter(APrefix[Length(APrefix)]) or IsUpperOrDigit(AName[Length(APrefix) + 1]);
 end;
 
 class function TPascalNamePrefixes.Expected(const AName, APrefix: string): string;
 begin
   if (APrefix <> '') and IsLetter(APrefix[Length(APrefix)]) and (AName <> '') then
-    Result := APrefix + AnsiUpperCase(AName[1]) + Copy(AName, 2, MaxInt)
+  begin
+    Result := APrefix + AnsiUpperCase(AName[1]) + Copy(AName, 2, MaxInt);
+  end
   else
+  begin
     Result := APrefix + AName;
+  end;
 end;
 
 class function TPascalNamePrefixes.WithPrefix(const AName, APrefix: string): string;
 begin
   if Follows(AName, APrefix) then
-    Result := AName
+  begin
+    Result := AName;
+  end
   else
+  begin
     Result := Expected(AName, APrefix);
+  end;
 end;
 
 function TPascalNamePrefixes.Local(const AName: string): string;

@@ -397,7 +397,9 @@ var
 begin
   Ids := '';
   for Rule in BuiltinRules do
+  begin
     Ids := Ids + ' ' + Rule.Descriptor.Id;
+  end;
   Assert.IsTrue(Pos(' ' + PathConcatWithoutDelimiterRuleId, Ids) > 0);
   Assert.IsTrue(Pos(' ' + HardcodedPathRuleId, Ids) > 0);
   Assert.IsTrue(Pos(' ' + FilenameCompareCaseRuleId, Ids) > 0);

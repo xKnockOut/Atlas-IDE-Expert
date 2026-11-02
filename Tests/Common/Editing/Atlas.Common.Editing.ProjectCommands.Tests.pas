@@ -194,11 +194,13 @@ var
   Pair: TPair<string, string>;
 begin
   for Pair in Files do
+  begin
     if SameFile(Pair.Key, AFileName) then
     begin
       AText := Pair.Value;
       Exit(True);
     end;
+  end;
   AText := '';
   Result := False;
 end;
@@ -208,8 +210,12 @@ var
   Folder: string;
 begin
   for Folder in Folders do
+  begin
     if SameFile(Folder, APath) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -244,11 +250,17 @@ end;
 function TFakeHost.Setting(const AUri, AName: string): string;
 begin
   if AName = TSlashSettings.LogCall then
-    Result := LogCallValue
+  begin
+    Result := LogCallValue;
+  end
   else if AName = TSlashSettings.ComponentPalette then
-    Result := PaletteValue
+  begin
+    Result := PaletteValue;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TFakeHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
@@ -744,13 +756,17 @@ begin
   // Von hinten anwenden, damit frühere Positionen gültig bleiben.
   Table := TLineTable.Build(AText);
   for Index := 0 to High(Edits) do
+  begin
     for Next := Index + 1 to High(Edits) do
+    begin
       if Table.OffsetAt(Edits[Next].Range.StartPos) > Table.OffsetAt(Edits[Index].Range.StartPos) then
       begin
         Swap := Edits[Index];
         Edits[Index] := Edits[Next];
         Edits[Next] := Swap;
       end;
+    end;
+  end;
   for Index := 0 to High(Edits) do
   begin
     Start := Table.OffsetAt(Edits[Index].Range.StartPos);
@@ -876,7 +892,9 @@ begin
   begin
     Problems := TSlashCommandRegistry.Shared.Problems(AText, nil);
     if Length(Problems) > 0 then
+    begin
       AReason := Problems[0].Message;
+    end;
   end;
 end;
 

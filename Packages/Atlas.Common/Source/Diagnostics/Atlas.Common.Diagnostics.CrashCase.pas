@@ -166,13 +166,17 @@ function TCrashCase.SnapshotName: string;
 begin
   Result := '';
   if not HasText then
+  begin
     Exit;
+  end;
   Result := ExtractFileName(FileName);
   // Kein Name, der mit den festen Dateien des Falls zusammenfällt.
   if (Result = '') or SameText(Result, TCrashCases.RequestName) or SameText(Result, TCrashCases.StackName) or
     SameText(Result, TCrashCases.ReplayName) or SameText(Result, 'atlas.json') or
     SameText(Result, 'settings.json') then
+  begin
     Result := TCrashCases.BufferName;
+  end;
 end;
 
 function TCrashCase.Summary: string;
@@ -181,19 +185,33 @@ var
 begin
   mWhere := '';
   if FileName <> '' then
-    mWhere := ExtractFileName(FileName)
+  begin
+    mWhere := ExtractFileName(FileName);
+  end
   else if Uri <> '' then
+  begin
     mWhere := Uri;
+  end;
   if (mWhere <> '') and (Line >= 0) then
+  begin
     mWhere := mWhere + ':' + IntToStr(Line + 1);
+  end;
   if Kind = TCrashCaseKind.Timeout then
-    mWhat := Format('überschritt das Zeitlimit von %d ms', [TimeoutMs])
+  begin
+    mWhat := Format('überschritt das Zeitlimit von %d ms', [TimeoutMs]);
+  end
   else
+  begin
     mWhat := 'löste ' + ExceptionClass + ' aus';
+  end;
   if mWhere <> '' then
-    Result := Format('%s in %s %s', [Method, mWhere, mWhat])
+  begin
+    Result := Format('%s in %s %s', [Method, mWhere, mWhat]);
+  end
   else
+  begin
     Result := Method + ' ' + mWhat;
+  end;
 end;
 
 { TCrashCases }
@@ -209,8 +227,12 @@ var
 begin
   mName := LowerCase(AName);
   for mPart in cSecretParts do
+  begin
     if Pos(mPart, mName) > 0 then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -225,17 +247,25 @@ begin
     // Ende der Autorität: erstes /, ?, # oder Leerraum nach dem Schema.
     mEnd := Length(Result) + 1;
     for mIndex := mScheme + 3 to Length(Result) do
+    begin
       if CharInSet(Result[mIndex], ['/', '?', '#', ' ', #9, #10, #13, '"']) then
       begin
         mEnd := mIndex;
         Break;
       end;
+    end;
     mAt := 0;
     for mIndex := mScheme + 3 to mEnd - 1 do
+    begin
       if Result[mIndex] = '@' then
+      begin
         mAt := mIndex;
+      end;
+    end;
     if mAt > 0 then
+    begin
       Delete(Result, mScheme + 3, mAt - mScheme - 2);
+    end;
     mScheme := Pos('://', Result, mScheme + 3);
   end;
 end;
@@ -261,7 +291,9 @@ begin
       mPair := mObject.Pairs[mIndex];
       mName := mPair.JsonString.Value;
       if IsSecretKey(mName) then
-        mObject.RemovePair(mName).Free
+      begin
+        mObject.RemovePair(mName).Free;
+      end
       // TJSONNumber erbt von TJSONString; Zahlen tragen keine Adressen.
       else if (mPair.JsonValue is TJSONString) and not (mPair.JsonValue is TJSONNumber) then
       begin
@@ -274,14 +306,18 @@ begin
         end;
       end
       else
+      begin
         RedactValue(mPair.JsonValue);
+      end;
     end;
   end
   else if AValue is TJSONArray then
   begin
     mArray := TJSONArray(AValue);
     for mIndex := 0 to mArray.Count - 1 do
+    begin
       RedactValue(mArray.Items[mIndex]);
+    end;
   end;
 end;
 
@@ -291,10 +327,14 @@ var
 begin
   Result := '';
   if Trim(AJsonText) = '' then
+  begin
     Exit;
+  end;
   mValue := ParseOrNil(TJsoncScanner.StripComments(AJsonText));
   if mValue = nil then
+  begin
     Exit;
+  end;
   try
     RedactValue(mValue);
     Result := mValue.ToJSON;
@@ -312,18 +352,24 @@ begin
   ALine := -1;
   Result := False;
   if not (AParams is TJSONObject) then
+  begin
     Exit;
+  end;
   mDocument := TJSONObject(AParams).GetValue('textDocument');
   if mDocument is TJSONObject then
   begin
     mDocument := TJSONObject(mDocument).GetValue('uri');
     if mDocument is TJSONString then
+    begin
       AUri := mDocument.Value;
+    end;
   end;
   mPosition := TJSONObject(AParams).GetValue('position');
   mLine := nil;
   if mPosition is TJSONObject then
-    mLine := TJSONObject(mPosition).GetValue('line')
+  begin
+    mLine := TJSONObject(mPosition).GetValue('line');
+  end
   else
   begin
     mRange := TJSONObject(AParams).GetValue('range');
@@ -331,11 +377,15 @@ begin
     begin
       mRange := TJSONObject(mRange).GetValue('start');
       if mRange is TJSONObject then
+      begin
         mLine := TJSONObject(mRange).GetValue('line');
+      end;
     end;
   end;
   if mLine is TJSONNumber then
+  begin
     ALine := TJSONNumber(mLine).AsInt;
+  end;
   Result := AUri <> '';
 end;
 
@@ -358,23 +408,39 @@ begin
     begin
       mValue := ParseOrNil(ACase.Id);
       if mValue <> nil then
+      begin
         mRoot.AddPair('id', mValue);
+      end;
     end;
     mValue := nil;
     if ACase.Params <> '' then
+    begin
       mValue := ParseOrNil(Redact(ACase.Params));
+    end;
     if mValue <> nil then
-      mRoot.AddPair('params', mValue)
+    begin
+      mRoot.AddPair('params', mValue);
+    end
     else
+    begin
       mRoot.AddPair('params', TJSONNull.Create);
+    end;
     if ACase.Uri <> '' then
+    begin
       mRoot.AddPair('uri', ACase.Uri);
+    end;
     if ACase.FileName <> '' then
+    begin
       mRoot.AddPair('file', ACase.FileName);
+    end;
     if ACase.Line >= 0 then
+    begin
       mRoot.AddPair('line', TJSONNumber.Create(ACase.Line));
+    end;
     if ACase.Kind = TCrashCaseKind.Timeout then
+    begin
       mRoot.AddPair('timeoutMs', TJSONNumber.Create(ACase.TimeoutMs));
+    end;
     mException := TJSONObject.Create;
     mRoot.AddPair('exception', mException);
     mException.AddPair('class', ACase.ExceptionClass);
@@ -382,21 +448,31 @@ begin
     mRoot.AddPair('atlasVersion', ACase.AtlasVersion);
     mRoot.AddPair('buildCompiler', ACase.BuildCompiler);
     if ACase.Client <> '' then
+    begin
       mRoot.AddPair('client', ACase.Client);
+    end;
     mFiles := TJSONObject.Create;
     mRoot.AddPair('files', mFiles);
     if ACase.HasText then
+    begin
       mFiles.AddPair('snapshot', ACase.SnapshotName);
+    end;
     mFiles.AddPair('stack', StackName);
     mSettings := TJSONArray.Create;
     mFiles.AddPair('settings', mSettings);
     for mSetting in ACase.Settings do
+    begin
       mSettings.Add(mSetting.Name);
+    end;
     mValue := nil;
     if ACase.Initialize <> '' then
+    begin
       mValue := ParseOrNil(Redact(ACase.Initialize));
+    end;
     if mValue <> nil then
+    begin
       mRoot.AddPair('initialize', mValue);
+    end;
     mRecent := TJSONArray.Create;
     mRoot.AddPair('recent', mRecent);
     for mText in ACase.Recent do
@@ -409,7 +485,9 @@ begin
         mRecent.AddElement(mValue);
       end
       else
+      begin
         mRecent.Add(WithoutUserInfo(mText));
+      end;
     end;
     Result := mRoot.Format(2);
   finally
@@ -426,25 +504,39 @@ begin
     mLines.Append('Atlas-Absturzfall ').Append(FolderName(ACase.Time, ACase.ProcessId)).Append(sLineBreak);
     mLines.Append(ACase.Summary).Append(sLineBreak).Append(sLineBreak);
     if ACase.Kind = TCrashCaseKind.Timeout then
-      mLines.Append('Art: Abbruch durch den Watchdog').Append(sLineBreak)
+    begin
+      mLines.Append('Art: Abbruch durch den Watchdog').Append(sLineBreak);
+    end
     else
+    begin
       mLines.Append('Art: unbehandelte Ausnahme').Append(sLineBreak);
+    end;
     mLines.Append('Ausnahme: ').Append(ACase.ExceptionClass).Append(sLineBreak);
     mLines.Append('Meldung: ').Append(WithoutUserInfo(ACase.ExceptionMessage)).Append(sLineBreak);
     mLines.Append('Methode: ').Append(ACase.Method).Append(sLineBreak);
     if ACase.FileName <> '' then
+    begin
       mLines.Append('Datei: ').Append(ACase.FileName).Append(sLineBreak);
+    end;
     if ACase.Line >= 0 then
+    begin
       mLines.Append('Zeile: ').Append(IntToStr(ACase.Line + 1)).Append(sLineBreak);
+    end;
     mLines.Append('Atlas: ').Append(ACase.AtlasVersion).Append(sLineBreak);
     mLines.Append('Gebaut mit: ').Append(ACase.BuildCompiler).Append(sLineBreak);
     if ACase.Client <> '' then
+    begin
       mLines.Append('Client: ').Append(ACase.Client).Append(sLineBreak);
+    end;
     mLines.Append(sLineBreak).Append('Aufrufstapel:').Append(sLineBreak);
     if Trim(ACase.Stack) <> '' then
-      mLines.Append(ACase.Stack).Append(sLineBreak)
+    begin
+      mLines.Append(ACase.Stack).Append(sLineBreak);
+    end
     else
+    begin
       mLines.Append('(keiner: ohne Debug-Informationen oder beim Abbruch durch den Watchdog)').Append(sLineBreak);
+    end;
     Result := mLines.ToString;
   finally
     mLines.Free;
@@ -457,7 +549,9 @@ var
 begin
   mServer := ACase.ServerPath;
   if mServer = '' then
+  begin
     mServer := 'AtlasServer';
+  end;
   Result := '@echo off' + sLineBreak +
     'rem Atlas-Absturzfall nachstellen (#1355): Exit-Code 1 = reproduziert, 0 = nicht reproduziert.' + sLineBreak +
     'cd /d "%~dp0"' + sLineBreak +
@@ -473,12 +567,18 @@ var
 begin
   Result := nil;
   if (ARoot = '') or not TDirectory.Exists(ARoot) then
+  begin
     Exit;
+  end;
   mList := TList<string>.Create;
   try
     for mFolder in TDirectory.GetDirectories(ARoot) do
+    begin
       if TFile.Exists(TPath.Combine(mFolder, RequestName)) then
+      begin
         mList.Add(mFolder);
+      end;
+    end;
     // Der Name beginnt mit dem Zeitpunkt; gleiche Namen gibt es nicht (Write hängt -2, -3 an).
     mList.Sort(TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
@@ -524,13 +624,17 @@ begin
   end;
   TDirectory.CreateDirectory(Result);
   if ACase.HasText then
+  begin
     TFile.WriteAllText(TPath.Combine(Result, ACase.SnapshotName), ACase.Text, TEncoding.UTF8);
+  end;
   for mSetting in ACase.Settings do
   begin
     // Nicht lesbar: lieber ohne die Datei als mit möglichen Zugangsdaten.
     mText := Redact(mSetting.Text);
     if mText <> '' then
+    begin
       TFile.WriteAllText(TPath.Combine(Result, mSetting.Name), mText, TEncoding.UTF8);
+    end;
   end;
   TFile.WriteAllText(TPath.Combine(Result, StackName), StackText(ACase), TEncoding.UTF8);
   // Ohne BOM: cmd.exe liest sonst „ï»¿@echo“ als Befehl.
@@ -547,7 +651,9 @@ begin
   Result := '';
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := mValue.Value;
+  end;
 end;
 
 class function TCrashCases.Load(const AFileName: string; out ACase: TCrashCase; out AError: string): Boolean;
@@ -585,26 +691,40 @@ begin
       Exit;
     end;
     if StringOf(mObject, 'kind') = cKindNames[TCrashCaseKind.Timeout] then
+    begin
       ACase.Kind := TCrashCaseKind.Timeout;
+    end;
     if TryISO8601ToDate(StringOf(mObject, 'time'), mTime, False) then
+    begin
       ACase.Time := mTime;
+    end;
     mValue := mObject.GetValue('processId');
     if mValue is TJSONNumber then
+    begin
       ACase.ProcessId := Cardinal(TJSONNumber(mValue).AsInt64);
+    end;
     mValue := mObject.GetValue('id');
     if mValue <> nil then
+    begin
       ACase.Id := mValue.ToJSON;
+    end;
     mValue := mObject.GetValue('params');
     if (mValue <> nil) and not (mValue is TJSONNull) then
+    begin
       ACase.Params := mValue.ToJSON;
+    end;
     ACase.Uri := StringOf(mObject, 'uri');
     ACase.FileName := StringOf(mObject, 'file');
     mValue := mObject.GetValue('line');
     if mValue is TJSONNumber then
+    begin
       ACase.Line := TJSONNumber(mValue).AsInt;
+    end;
     mValue := mObject.GetValue('timeoutMs');
     if mValue is TJSONNumber then
+    begin
       ACase.TimeoutMs := Cardinal(TJSONNumber(mValue).AsInt64);
+    end;
     mValue := mObject.GetValue('exception');
     if mValue is TJSONObject then
     begin
@@ -616,7 +736,9 @@ begin
     ACase.Client := StringOf(mObject, 'client');
     mValue := mObject.GetValue('initialize');
     if mValue <> nil then
+    begin
       ACase.Initialize := mValue.ToJSON;
+    end;
     mValue := mObject.GetValue('files');
     if mValue is TJSONObject then
     begin
@@ -628,7 +750,9 @@ begin
         ACase.HasText := True;
         // SnapshotName nimmt den Namen aus FileName; ohne Pfad im Fall den gespeicherten Namen.
         if ACase.FileName = '' then
+        begin
           ACase.FileName := mName;
+        end;
       end;
       mValue := mFiles.GetValue('settings');
       if mValue is TJSONArray then
@@ -638,8 +762,10 @@ begin
         begin
           mName := ExtractFileName(mSettings.Items[mIndex].Value);
           if (mName <> '') and TFile.Exists(TPath.Combine(mFolder, mName)) then
+          begin
             ACase.Settings := ACase.Settings + [TCrashCaseSetting.Create(mName,
               TFile.ReadAllText(TPath.Combine(mFolder, mName), TEncoding.UTF8))];
+          end;
         end;
       end;
     end;

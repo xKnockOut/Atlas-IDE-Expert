@@ -334,8 +334,12 @@ var
   Word: string;
 begin
   for Word in AWords do
+  begin
     if SameText(AText, Word) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -351,8 +355,12 @@ var
   Range: TTextRange;
 begin
   for Range in ARanges do
+  begin
     if not Before(APos, Range.StartPos) and Before(APos, Range.EndPos) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -376,12 +384,16 @@ begin
   Significant := TList<TPascalToken>.Create;
   try
     for Token in FAllTokens do
+    begin
       if ((ASkip = nil) or not InRanges(Token.StartPos, ASkip)) and
         (not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) or
         ((Token.Kind = TPascalTokenKind.Directive) and (Significant.Count > 0) and
         TPascalPreprocessor.IncludeFileOf(Token.Text, IncludeName) and
         TPascalParser.IncludeAsValue(Significant[Significant.Count - 1]))) then
+      begin
         Significant.Add(Token);
+      end;
+    end;
     FTokens := Significant.ToArray;
   finally
     Significant.Free;
@@ -423,7 +435,9 @@ end;
 function TParser.PeekToken(ADelta: Integer): TPascalToken;
 begin
   if (FIndex + ADelta >= 0) and (FIndex + ADelta < Length(FTokens)) then
-    Result := FTokens[FIndex + ADelta]
+  begin
+    Result := FTokens[FIndex + ADelta];
+  end
   else
   begin
     // Platzhalter hinter dem letzten Token.
@@ -473,39 +487,51 @@ end;
 procedure TParser.Advance;
 begin
   if AtEnd then
+  begin
     Exit;
+  end;
   Inc(FIndex);
   // Abbruch nur gelegentlich abfragen; danach gilt der Rest als gelesen.
   Inc(FAdvances);
   if ((FAdvances and 4095) = 0) and (FCancellation <> nil) and FCancellation.IsCancelled then
+  begin
     FIndex := Length(FTokens);
+  end;
 end;
 
 function TParser.AcceptKw(const AWord: string): Boolean;
 begin
   Result := IsKw(AWord);
   if Result then
+  begin
     Advance;
+  end;
 end;
 
 function TParser.AcceptSym(const ASymbol: string): Boolean;
 begin
   Result := IsSym(ASymbol);
   if Result then
+  begin
     Advance;
+  end;
 end;
 
 procedure TParser.ExpectKw(const AWord: string);
 begin
   if not AcceptKw(AWord) then
+  begin
     DiagnoseUnexpected('"' + AWord + '"');
+  end;
 end;
 
 function DiagnosticBefore(const A, B: TSyntaxDiagnostic): Integer;
 begin
   Result := A.StartPos.Line - B.StartPos.Line;
   if Result = 0 then
+  begin
     Result := A.StartPos.Character - B.StartPos.Character;
+  end;
 end;
 
 procedure TParser.CheckTokensAndTree(ARoot: TSyntaxNode);
@@ -524,43 +550,67 @@ begin
   for Token in FAllTokens do
   begin
     if Token.Terminated or ((FSkip <> nil) and InRanges(Token.StartPos, FSkip)) then
+    begin
       Continue;
+    end;
     if Token.Kind = TPascalTokenKind.StringLiteral then
     begin
       for Index := FDiagnostics.Count - 1 downto 0 do
+      begin
         if (FDiagnostics[Index].StartPos.Line = Token.StartPos.Line) and
           not Before(FDiagnostics[Index].StartPos, Token.StartPos) then
+        begin
           FDiagnostics.Delete(Index);
+        end;
+      end;
       if Token.StartPos.Line = Token.EndPos.Line then
+      begin
         DiagnoseCode('E2052', 'Unvollständiger String', Token.StartPos, Token.EndPos, 'String schließen',
-          [TTextEdit.Create(TTextRange.Create(Token.EndPos, Token.EndPos), '''')], False)
+          [TTextEdit.Create(TTextRange.Create(Token.EndPos, Token.EndPos), '''')], False);
+      end
       else
+      begin
         DiagnoseCode('E2052', 'Unvollständiger String', Token.StartPos, Token.StartPos);
+      end;
     end
     else if Token.Kind = TPascalTokenKind.Number then
+    begin
       // 1.5e: Exponent ohne Ziffern (#1382).
-      DiagnoseCode('E2053', 'Syntaxfehler in Gleitkommazahl', Token.StartPos, Token.EndPos)
+      DiagnoseCode('E2053', 'Syntaxfehler in Gleitkommazahl', Token.StartPos, Token.EndPos);
+    end
     else if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
     begin
       First := Token.StartPos;
       for Index := FDiagnostics.Count - 1 downto 0 do
+      begin
         if not Before(FDiagnostics[Index].StartPos, First) then
+        begin
           FDiagnostics.Delete(Index);
+        end;
+      end;
       if StartsStr('(*', Token.Text) then
-        Closer := '*)'
+      begin
+        Closer := '*)';
+      end
       else
+      begin
         Closer := '}';
+      end;
       // Geschlossen wird am Ende der ersten Zeile: Meist fehlt dort die Klammer.
       LineEnd := First;
       Index := Pos(#10, Token.Text);
       if Index > 0 then
       begin
         if (Index > 1) and (Token.Text[Index - 1] = #13) then
+        begin
           Dec(Index);
+        end;
         LineEnd.Character := First.Character + Index - 1;
       end
       else
+      begin
         LineEnd := Token.EndPos;
+      end;
       DiagnoseCode('E2057', Format('Unerwartetes Dateiende im Kommentar ab Zeile %d', [First.Line + 1]), First,
         TTextPosition.Create(First.Line, First.Character + Length(Closer)),
         Format('Kommentar in Zeile %d schließen', [First.Line + 1]),
@@ -568,21 +618,31 @@ begin
       Found := True;
     end;
     if Found then
+    begin
       Break;
+    end;
   end;
   for Diagnostic in TSyntaxChecks.Check(ARoot, FAllTokens) do
+  begin
     AddDiagnostic(Diagnostic);
+  end;
   FDiagnostics.Sort(TComparer<TSyntaxDiagnostic>.Construct(DiagnosticBefore));
 end;
 
 procedure TParser.ExpectSym(const ASymbol: string);
 begin
   if AcceptSym(ASymbol) then
+  begin
     Exit;
+  end;
   if ASymbol = ';' then
-    DiagnoseMissingSemicolon
+  begin
+    DiagnoseMissingSemicolon;
+  end
   else
+  begin
     DiagnoseUnexpected('"' + ASymbol + '"');
+  end;
 end;
 
 procedure TParser.DiagnoseMissingSemicolon;
@@ -597,20 +657,30 @@ var
 begin
   // Folgefehler: An dieser Stelle wurde schon etwas gemeldet.
   if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = Current.StartPos) then
+  begin
     Exit;
+  end;
   Previous := PeekToken(-1);
   // Am Zeilenende dort melden, wo es fehlt, nicht erst in der nächsten Zeile.
   Code := 'E2029';
   if AStatement then
+  begin
     Code := 'E2066';
+  end;
   if (FIndex > 0) and (AtEnd or (Current.StartPos.Line > Previous.EndPos.Line)) then
+  begin
     DiagnoseCode(Code, ''';'' fehlt', Previous.EndPos, Previous.EndPos, ''';'' ergänzen',
-      [TTextEdit.Create(TTextRange.Create(Previous.EndPos, Previous.EndPos), ';')], False)
+      [TTextEdit.Create(TTextRange.Create(Previous.EndPos, Previous.EndPos), ';')], False);
+  end
   else if AStatement then
+  begin
     // B := 1 2; – es fehlt ein Operator oder das Semikolon.
-    DiagnoseCode(Code, 'Operator oder '';'' fehlt', Current.StartPos, Current.EndPos)
+    DiagnoseCode(Code, 'Operator oder '';'' fehlt', Current.StartPos, Current.EndPos);
+  end
   else
+  begin
     DiagnoseUnexpected('";"');
+  end;
 end;
 
 function TParser.ExpectIdent: string;
@@ -649,7 +719,9 @@ procedure TParser.AddDiagnostic(const ADiagnostic: TSyntaxDiagnostic);
 begin
   // Mehrere Folgefehler an derselben Stelle melden wir nur einmal.
   if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = ADiagnostic.StartPos) then
+  begin
     Exit;
+  end;
   FDiagnostics.Add(ADiagnostic);
 end;
 
@@ -686,10 +758,14 @@ begin
   // Wie der Compiler: '%s' erwartet, aber '%s' gefunden.
   Expected := StringReplace(AExpected, '"', '''', [rfReplaceAll]);
   if AtEnd then
-    DiagnoseCode(ACode, Expected + ' erwartet, aber Dateiende gefunden', Current.StartPos, Current.EndPos)
+  begin
+    DiagnoseCode(ACode, Expected + ' erwartet, aber Dateiende gefunden', Current.StartPos, Current.EndPos);
+  end
   else
+  begin
     DiagnoseCode(ACode, Format('%s erwartet, aber ''%s'' gefunden', [Expected, Current.Text]), Current.StartPos,
       Current.EndPos);
+  end;
 end;
 
 function TParser.NodeStart: Integer;
@@ -752,7 +828,9 @@ var
 begin
   // Mindestens ein Token überspringen, damit der Aufrufer weiterkommt.
   if AtEnd then
+  begin
     Exit;
+  end;
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.Error);
   case ARecovery of
@@ -785,11 +863,17 @@ begin
   else
   begin
     if IsKw('library') then
-      Result := StartNode(TSyntaxKind.LibraryFile)
+    begin
+      Result := StartNode(TSyntaxKind.LibraryFile);
+    end
     else if IsIdentText('package') then
-      Result := StartNode(TSyntaxKind.PackageFile)
+    begin
+      Result := StartNode(TSyntaxKind.PackageFile);
+    end
     else
+    begin
       Result := StartNode(TSyntaxKind.ProgramFile);
+    end;
     ParseProgram(Result);
   end;
   // Alles nach dem abschließenden Punkt ignoriert der Compiler.
@@ -827,7 +911,9 @@ begin
     // Anweisungen bis zum implementation-Teil überspringen.
     DiagnoseCode('E2050', 'Anweisungen sind im interface-Teil nicht erlaubt', Current.StartPos, Current.EndPos);
     while not AtEnd and not IsKw('implementation') do
+    begin
       Advance;
+    end;
   end;
   ParseImplementationSection(ANode);
 
@@ -835,10 +921,14 @@ begin
   begin
     ParseStatementSection(ANode, TSyntaxKind.InitializationSection);
     if IsKw('finalization') then
+    begin
       ParseStatementSection(ANode, TSyntaxKind.FinalizationSection);
+    end;
   end
   else if IsKw('begin') then
+  begin
     ParseStatementSection(ANode, TSyntaxKind.InitializationSection);
+  end;
   ExpectKw('end');
   ExpectSym('.');
 end;
@@ -854,14 +944,18 @@ begin
       // program Name(Input, Output);
       Advance;
       while not AtEnd and not IsSym(')') and not IsSym(';') do
+      begin
         Advance;
+      end;
       AcceptSym(')');
     end;
     ExpectSym(';');
   end;
   FInImplementation := True;
   while IsKw('uses') or IsIdentText('contains') or IsIdentText('requires') do
+  begin
     ParseUses(ANode);
+  end;
   ParseDeclarations(ANode);
   if IsKw('begin') or IsKw('asm') then
   begin
@@ -875,7 +969,9 @@ begin
     ExpectSym('.');
   end
   else if not AtEnd then
+  begin
     DiagnoseUnexpected('"begin"');
+  end;
 end;
 
 procedure TParser.ParseUses(AParent: TSyntaxNode);
@@ -896,14 +992,20 @@ begin
     if AcceptKw('in') then
     begin
       if Current.Kind = TPascalTokenKind.StringLiteral then
-        Advance
+      begin
+        Advance;
+      end
       else
+      begin
         DiagnoseUnexpected('Dateiname');
+      end;
     end;
     FinishNode(Item, ItemStart);
     Node.Add(Item);
     if Item.Name = '' then
+    begin
       Break;
+    end;
   until not AcceptSym(',');
   ExpectSym(';');
   FinishNode(Node, Start);
@@ -920,7 +1022,9 @@ begin
   ExpectKw('interface');
   FInImplementation := False;
   if IsKw('uses') then
+  begin
     ParseUses(Node);
+  end;
   ParseDeclarations(Node);
   FinishNode(Node, Start);
 end;
@@ -936,7 +1040,9 @@ begin
   ExpectKw('implementation');
   FInImplementation := True;
   if IsKw('uses') then
+  begin
     ParseUses(Node);
+  end;
   ParseDeclarations(Node);
   FinishNode(Node, Start);
 end;
@@ -968,29 +1074,49 @@ end;
 procedure TParser.ParseDeclarations(AParent: TSyntaxNode);
 begin
   while not IsSectionEnd do
+  begin
     if not ParseDeclaration(AParent) then
+    begin
       SkipError(AParent, TRecovery.Declarations);
+    end;
+  end;
 end;
 
 function TParser.ParseDeclaration(AParent: TSyntaxNode): Boolean;
 begin
   Result := True;
   if IsKw('type') then
-    ParseTypeSection(AParent)
+  begin
+    ParseTypeSection(AParent);
+  end
   else if IsKw(['const', 'resourcestring']) then
-    ParseConstSection(AParent)
+  begin
+    ParseConstSection(AParent);
+  end
   else if IsKw(['var', 'threadvar']) then
-    ParseVarSection(AParent)
+  begin
+    ParseVarSection(AParent);
+  end
   else if IsKw('label') then
-    ParseLabelSection(AParent)
+  begin
+    ParseLabelSection(AParent);
+  end
   else if IsKw('exports') then
-    ParseExports(AParent)
+  begin
+    ParseExports(AParent);
+  end
   else if IsSym('[') then
-    ParseAttributes(AParent)
+  begin
+    ParseAttributes(AParent);
+  end
   else if IsRoutineStart then
-    ParseRoutine(AParent, FInImplementation)
+  begin
+    ParseRoutine(AParent, FInImplementation);
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { Deklarationen }
@@ -1008,11 +1134,17 @@ begin
     AParent.Add(Node);
     Advance;
     if not IsSym(']') then
-      ParseArguments(Node, ']')
+    begin
+      ParseArguments(Node, ']');
+    end
     else
+    begin
       Advance;
+    end;
     if Node.ChildCount > 0 then
+    begin
       Node.Name := Node.Children[0].Name;
+    end;
     FinishNode(Node, Start);
   end;
 end;
@@ -1029,9 +1161,13 @@ begin
   while IsDeclStart do
   begin
     if IsSym('[') then
-      ParseAttributes(Node)
+    begin
+      ParseAttributes(Node);
+    end
     else
+    begin
       ParseTypeDecl(Node);
+    end;
   end;
   FinishNode(Node, Start);
 end;
@@ -1046,7 +1182,9 @@ begin
   AParent.Add(Node);
   Node.Name := ExpectIdent;
   if not (IsSym('<') and ParseGenericParams(Node)) then
+  begin
     ExpectSym('=');
+  end;
   AcceptKw('type'); // type TNeu = type Integer;
   ParseType(Node);
   ParseHints;
@@ -1087,10 +1225,14 @@ begin
         Advance;
       end
       else
+      begin
         Advance;
+      end;
     end
     else if IsSym('=') or IsSym('(') or IsSym(')') or IsKw(['begin', 'end']) then
-      Break
+    begin
+      Break;
+    end
     else if (Depth = 1) and (IsSym(':') or IsSym(';')) then
     begin
       InConstraints := IsSym(':');
@@ -1098,12 +1240,18 @@ begin
     end
     else if IsIdent and (Depth = 1) and not InConstraints and (PeekIsSym(-1, '<') or PeekIsSym(-1, ',') or
       PeekIsSym(-1, ';')) then
-      Node.Add(Leaf(TSyntaxKind.Identifier, Current.Text))
+    begin
+      Node.Add(Leaf(TSyntaxKind.Identifier, Current.Text));
+    end
     else
+    begin
       Advance;
+    end;
   end;
   if Depth > 0 then
+  begin
     DiagnoseUnexpected('">"');
+  end;
   FinishNode(Node, Start);
 end;
 
@@ -1118,12 +1266,18 @@ begin
     Depth := 0;
     repeat
       if FIndex + Delta >= Length(FTokens) then
+      begin
         Exit(False);
+      end;
       Token := PeekToken(Delta);
       if Token.IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token.IsSymbol(']') then
+      begin
         Dec(Depth);
+      end;
       Inc(Delta);
     until Depth = 0;
   end;
@@ -1149,10 +1303,16 @@ begin
   AParent.Add(Node);
   Advance;
   while IsDeclStart do
+  begin
     if IsSym('[') then
-      ParseAttributes(Node)
+    begin
+      ParseAttributes(Node);
+    end
     else
+    begin
       ParseConstDecl(Node);
+    end;
+  end;
   FinishNode(Node, Start);
 end;
 
@@ -1197,7 +1357,9 @@ begin
     FinishNode(Node, Start);
   end
   else
+  begin
     ParseExpression(AParent);
+  end;
 end;
 
 procedure TParser.ParseVarSection(AParent: TSyntaxNode);
@@ -1211,10 +1373,16 @@ begin
   AParent.Add(Node);
   Advance;
   while IsDeclStart do
+  begin
     if IsSym('[') then
-      ParseAttributes(Node)
+    begin
+      ParseAttributes(Node);
+    end
     else
+    begin
       ParseVarDecl(Node);
+    end;
+  end;
   FinishNode(Node, Start);
 end;
 
@@ -1230,7 +1398,9 @@ begin
   AParent.Add(Node);
   Names := ExpectIdent;
   while AcceptSym(',') do
+  begin
     Names := Names + ',' + ExpectIdent;
+  end;
   Node.Name := Names;
   ExpectSym(':');
   ParseType(Node);
@@ -1238,18 +1408,24 @@ begin
   begin
     Advance;
     if IsIdent then
-      ParseExpression(Node)
+    begin
+      ParseExpression(Node);
+    end
     else
     begin
       // absolute $40:$17: Adressen kennt Delphi nicht mehr, nur Variablen (wie E2088, #1382). Bis zum ';'
       // überspringen, sonst folgen Fehler zum ':'.
       DiagnoseUnexpected('E2088', 'Variable');
       while not AtEnd and not IsSym(';') do
+      begin
         Advance;
+      end;
     end;
   end
   else if AcceptSym('=') then
+  begin
     ParseInitializer(Node);
+  end;
   ParseHints;
   ExpectSym(';');
   FinishNode(Node, Start);
@@ -1265,7 +1441,9 @@ begin
   AParent.Add(Node);
   Advance; // label
   while not AtEnd and not IsSym(';') and not IsSectionEnd do
+  begin
     Advance;
+  end;
   ExpectSym(';');
   FinishNode(Node, Start);
 end;
@@ -1284,9 +1462,13 @@ begin
   while not AtEnd and ((Depth > 0) or (not IsSym(';') and not IsSectionEnd)) do
   begin
     if IsSym('(') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if IsSym(')') and (Depth > 0) then
+    begin
       Dec(Depth);
+    end;
     Advance;
   end;
   ExpectSym(';');
@@ -1325,10 +1507,14 @@ begin
     Advance;
   end
   else
+  begin
     Name := ExpectIdent;
+  end;
   repeat
     if IsSym('<') then
+    begin
       ParseGenericParams(Result);
+    end;
     if IsSym('.') and (PeekToken(1).Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
     begin
       Advance;
@@ -1336,11 +1522,15 @@ begin
       Advance;
     end
     else
+    begin
       Break;
+    end;
   until False;
   Result.Name := Name;
   if IsSym('(') then
+  begin
     ParseParameters(Result);
+  end;
   if AcceptSym(':') then
   begin
     ParseAttributes(Result);
@@ -1355,20 +1545,30 @@ begin
     Result.Add(Clause);
     Advance;
     if IsIdent then
-      Clause.Add(Leaf(TSyntaxKind.Identifier, Current.Text))
+    begin
+      Clause.Add(Leaf(TSyntaxKind.Identifier, Current.Text));
+    end
     else
+    begin
       ExpectIdent;
+    end;
     FinishNode(Clause, ClauseStart);
   end;
   // Aufrufkonvention oder Direktive ohne Semikolon davor: function F: Integer stdcall; (#849)
   if IsDirectiveStart then
-    ParseDirectives(Result)
+  begin
+    ParseDirectives(Result);
+  end
   else
   begin
     if not IsSym(';') and not IsSym(')') and not IsSym(']') then
-      DiagnoseMissingSemicolon
+    begin
+      DiagnoseMissingSemicolon;
+    end
     else
+    begin
       AcceptSym(';');
+    end;
     ParseDirectives(Result);
   end;
   FinishNode(Result, Start);
@@ -1387,9 +1587,13 @@ begin
   Node := StartNode(TSyntaxKind.Parameters);
   AParent.Add(Node);
   if IsSym('[') then
-    Closer := ']'
+  begin
+    Closer := ']';
+  end
   else
+  begin
     Closer := ')';
+  end;
   Advance; // ( oder [
   while not AtEnd and not IsSym(Closer) do
   begin
@@ -1402,32 +1606,50 @@ begin
       (PeekToken(1).Kind = TPascalTokenKind.Identifier)) then
     begin
       if IsKw('const') then
-        Param.Modifier := TParameterModifier.ConstParam
+      begin
+        Param.Modifier := TParameterModifier.ConstParam;
+      end
       else if IsKw('var') then
-        Param.Modifier := TParameterModifier.VarParam
+      begin
+        Param.Modifier := TParameterModifier.VarParam;
+      end
       else if IsIdentText('out') then
-        Param.Modifier := TParameterModifier.OutParam
+      begin
+        Param.Modifier := TParameterModifier.OutParam;
+      end
       else
+      begin
         Param.Modifier := TParameterModifier.ConstRefParam;
+      end;
       Advance;
     end;
     ParseAttributes(Param);
     Names := ExpectIdent;
     while AcceptSym(',') do
+    begin
       Names := Names + ',' + ExpectIdent;
+    end;
     Param.Name := Names;
     if AcceptSym(':') then
     begin
       if IsKw('array') then
-        ParseType(Param)
+      begin
+        ParseType(Param);
+      end
       else
+      begin
         ParseTypeReference(Param);
+      end;
     end;
     if AcceptSym('=') then
+    begin
       ParseExpression(Param);
+    end;
     FinishNode(Param, ParamStart);
     if not AcceptSym(';') then
+    begin
       Break;
+    end;
   end;
   ExpectSym(Closer);
   FinishNode(Node, Start);
@@ -1458,7 +1680,9 @@ begin
     // Argumente der Direktive bis zum Semikolon; "assembler asm" ohne Semikolon (#849).
     while not AtEnd and not IsSym(';') and not IsKw(['begin', 'asm', 'var', 'const', 'type', 'end', 'label']) and
       not IsRoutineStart and not IsDirectiveStart do
+    begin
       Advance;
+    end;
     FinishNode(Node, Start);
     AcceptSym(';');
   end;
@@ -1471,7 +1695,9 @@ begin
   begin
     Advance;
     if Current.Kind = TPascalTokenKind.StringLiteral then
+    begin
       Advance;
+    end;
   end;
 end;
 
@@ -1504,22 +1730,34 @@ begin
   Node.Name := Header.Name;
   NoBody := False;
   for Index := 0 to Header.ChildCount - 1 do
+  begin
     if (Header.Children[Index].Kind = TSyntaxKind.Directive) and
       ((Header.Children[Index].Name = 'forward') or (Header.Children[Index].Name = 'external')) then
+    begin
       NoBody := True;
+    end;
+  end;
   if AWithBody and not NoBody then
   begin
     // Lokale Deklarationen, dann der Rumpf. exports ist hier ein Fehler des Compilers (E2191), aber kein
     // Syntaxfehler: Der Baum behält die Klausel, damit exports-invalid sie melden kann.
     while not AtEnd and (IsKw(['type', 'const', 'resourcestring', 'var', 'threadvar', 'label', 'exports']) or
       IsRoutineStart or IsSym('[')) do
+    begin
       ParseDeclaration(Node);
+    end;
     if IsKw('asm') then
-      ParseAsm(Node)
+    begin
+      ParseAsm(Node);
+    end
     else if IsKw('begin') then
-      ParseBlock(Node)
+    begin
+      ParseBlock(Node);
+    end
     else
+    begin
       DiagnoseUnexpected('"begin"');
+    end;
     ExpectSym(';');
   end;
   FinishNode(Node, Start);
@@ -1562,10 +1800,14 @@ begin
     Advance;
   end
   else
+  begin
     DiagnoseUnexpected('Typ');
+  end;
   repeat
     if IsSym('<') and LooksLikeGenericArgs(True) then
+    begin
       ParseGenericArgs(Result);
+    end;
     if IsSym('.') and (PeekToken(1).Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
     begin
       Advance;
@@ -1573,7 +1815,9 @@ begin
       Advance;
     end
     else
+    begin
       Break;
+    end;
   until False;
   if SameWord(Name, 'string') and IsSym('[') then
   begin
@@ -1646,7 +1890,9 @@ begin
       Advance;
       // abstract, sealed
       while IsIdentText('abstract') or IsIdentText('sealed') do
+      begin
         Advance;
+      end;
       ParseClassBody(Result, TSyntaxKind.ClassType);
     end;
   end
@@ -1703,13 +1949,21 @@ begin
     while not AtEnd and not IsSym(')') do
     begin
       if IsIdent then
-        Result.Add(Leaf(TSyntaxKind.Identifier, Current.Text))
+      begin
+        Result.Add(Leaf(TSyntaxKind.Identifier, Current.Text));
+      end
       else
+      begin
         DiagnoseUnexpected('Bezeichner');
+      end;
       if AcceptSym('=') then
+      begin
         ParseExpression(Result);
+      end;
       if not AcceptSym(',') then
+      begin
         Break;
+      end;
     end;
     ExpectSym(')');
   end
@@ -1733,9 +1987,13 @@ begin
     end;
     ExpectKw('of');
     if IsKw('const') then
-      ParseTypeReference(Result)
+    begin
+      ParseTypeReference(Result);
+    end
     else
+    begin
       ParseType(Result);
+    end;
   end
   else if IsSym('^') then
   begin
@@ -1791,11 +2049,17 @@ begin
     Result := StartNode(TSyntaxKind.SubrangeType);
     Expr := ParseExpression(Result);
     if AcceptSym('..') then
-      Result.Add(ParseSimpleExpression)
+    begin
+      Result.Add(ParseSimpleExpression);
+    end
     else if Expr.Kind = TSyntaxKind.Identifier then
-      Result.Kind := TSyntaxKind.TypeReference
+    begin
+      Result.Kind := TSyntaxKind.TypeReference;
+    end
     else
+    begin
       DiagnoseUnexpected('Typ');
+    end;
   end;
   FinishNode(Result, Start);
   AParent.Add(Result);
@@ -1805,13 +2069,21 @@ procedure TParser.ParseProcedureType(ANode: TSyntaxNode);
 begin
   // procedure(A: Integer) of object; function: Boolean; reference to procedure
   if IsKw(['procedure', 'function']) then
-    Advance
+  begin
+    Advance;
+  end
   else
+  begin
     DiagnoseUnexpected('"procedure"');
+  end;
   if IsSym('(') then
+  begin
     ParseParameters(ANode);
+  end;
   if AcceptSym(':') then
+  begin
     ParseTypeReference(ANode);
+  end;
   if IsKw('of') and SameWord(PeekToken(1).Text, 'object') then
   begin
     Advance;
@@ -1819,13 +2091,21 @@ begin
   end;
   // Aufrufkonventionen mit oder ohne Semikolon davor: procedure stdcall; procedure; cdecl
   while True do
+  begin
     if IsIdent and InWords(Current.Text, CallingConventions) then
-      Advance
+    begin
+      Advance;
+    end
     else if IsSym(';') and (PeekToken(1).Kind = TPascalTokenKind.Identifier) and
       InWords(PeekToken(1).Text, CallingConventions) then
-      Advance
+    begin
+      Advance;
+    end
     else
+    begin
       Break;
+    end;
+  end;
 end;
 
 procedure TParser.ParseClassBody(ANode: TSyntaxNode; AKind: TSyntaxKind);
@@ -1838,7 +2118,9 @@ begin
     begin
       ParseTypeReference(ANode);
       if not AcceptSym(',') then
+      begin
         Break;
+      end;
     end;
     ExpectSym(')');
   end;
@@ -1849,7 +2131,9 @@ begin
   end;
   // Kurzform ohne Rumpf: TFehler = class(Exception);
   if IsSym(';') then
+  begin
     Exit;
+  end;
   if (AKind = TSyntaxKind.InterfaceType) and IsSym('[') then
   begin
     // GUID
@@ -1883,12 +2167,16 @@ begin
         Advance;
       end
       else if Node.Name = 'strict' then
+      begin
         DiagnoseUnexpected('E2375', '"private" oder "protected"');
+      end;
       FinishNode(Node, Start);
       AParent.Add(Node);
     end
     else if IsSym('[') then
-      ParseAttributes(AParent)
+    begin
+      ParseAttributes(AParent);
+    end
     else if IsKw('class') and (PeekIsKw(1, 'var') or PeekIsKw(1, 'threadvar')) then
     begin
       // class var und class threadvar (#1140).
@@ -1901,19 +2189,33 @@ begin
       ParseProperty(AParent);
     end
     else if IsKw(['var', 'threadvar']) then
-      ParseVarSection(AParent)
+    begin
+      ParseVarSection(AParent);
+    end
     else if IsKw(['const', 'resourcestring']) then
-      ParseConstSection(AParent)
+    begin
+      ParseConstSection(AParent);
+    end
     else if IsKw('type') then
-      ParseTypeSection(AParent)
+    begin
+      ParseTypeSection(AParent);
+    end
     else if IsKw('property') then
-      ParseProperty(AParent)
+    begin
+      ParseProperty(AParent);
+    end
     else if IsRoutineStart then
-      ParseRoutineHeader(AParent, TSyntaxKind.RoutineHeader)
+    begin
+      ParseRoutineHeader(AParent, TSyntaxKind.RoutineHeader);
+    end
     else if IsKw('case') then
-      ParseVariantPart(AParent)
+    begin
+      ParseVariantPart(AParent);
+    end
     else if IsIdent then
-      ParseFieldDecl(AParent)
+    begin
+      ParseFieldDecl(AParent);
+    end
     else if IsKw('class') then
     begin
       // class vor etwas anderem als Routine, var, property; Delphi 13 meldet E2123 (#1382).
@@ -1928,10 +2230,14 @@ begin
       Exit;
     end
     else
+    begin
       SkipError(AParent, TRecovery.Members);
+    end;
     AcceptSym(';');
     if FIndex = Before then
+    begin
       Advance;
+    end;
   end;
 end;
 
@@ -1951,14 +2257,18 @@ begin
   AParent.Add(Node);
   Names := ExpectIdent;
   while AcceptSym(',') do
+  begin
     Names := Names + ',' + ExpectIdent;
+  end;
   Node.Name := Names;
   ExpectSym(':');
   ParseType(Node);
   ParseHints;
   // Das letzte Feld darf vor end bzw. vor der ")" eines varianten Zweigs ohne Semikolon stehen (#849).
   if not IsKw('end') and (not AInVariant or not IsSym(')')) then
+  begin
     ExpectSym(';');
+  end;
   FinishNode(Node, Start);
 end;
 
@@ -1974,12 +2284,18 @@ begin
   Advance; // property
   Node.Name := ExpectIdent;
   if IsSym('[') then
+  begin
     ParseParameters(Node);
+  end;
   if AcceptSym(':') then
+  begin
     ParseTypeReference(Node);
+  end;
   // Spezifizierer (read, write, index, default, stored, implements ...) bis ;
   while not AtEnd and not IsSym(';') and not IsKw('end') do
+  begin
     Advance;
+  end;
   ExpectSym(';');
   if IsIdentText('default') and PeekIsSym(1, ';') then
   begin
@@ -2045,7 +2361,9 @@ begin
     ANode.Name := Selector.Name;
   end
   else
+  begin
     ParseTypeReference(ANode);
+  end;
   ExpectKw('of');
   while not AtEnd and not IsKw('end') and not IsSym(')') do
   begin
@@ -2059,9 +2377,13 @@ begin
       not IsKw('end') do
     begin
       if IsSym(',') then
-        Labels := Labels + ', '
+      begin
+        Labels := Labels + ', ';
+      end
       else
+      begin
         Labels := Labels + Current.Text;
+      end;
       Advance;
     end;
     Item.Name := Labels;
@@ -2072,11 +2394,15 @@ begin
       ExpectSym(')');
     end
     else
+    begin
       DiagnoseUnexpected('"("');
+    end;
     FinishNode(Item, ItemStart);
     AcceptSym(';');
     if FIndex = Before then
+    begin
       Advance;
+    end;
   end;
 end;
 
@@ -2088,17 +2414,27 @@ begin
   begin
     Before := FIndex;
     if IsKw('case') then
-      ParseVariantPart(AParent)
+    begin
+      ParseVariantPart(AParent);
+    end
     else if IsSym('[') then
+    begin
       // Attribut an einem Feld im varianten Zweig (#1142).
-      ParseAttributes(AParent)
+      ParseAttributes(AParent);
+    end
     else if IsIdent then
-      ParseFieldDecl(AParent, True)
+    begin
+      ParseFieldDecl(AParent, True);
+    end
     else
+    begin
       DiagnoseUnexpected('Feldname');
+    end;
     AcceptSym(';');
     if FIndex = Before then
+    begin
       Advance;
+    end;
   end;
 end;
 
@@ -2135,7 +2471,9 @@ begin
   AParent.Add(Node);
   Advance; // asm
   while not AtEnd and not IsKw('end') do
+  begin
     Advance;
+  end;
   ExpectKw('end');
   FinishNode(Node, Start);
 end;
@@ -2151,7 +2489,9 @@ begin
   FInCaseItem := False;
   SetLength(FTerminators, Length(ATerminators));
   for Index := 0 to High(ATerminators) do
+  begin
     FTerminators[Index] := ATerminators[Index];
+  end;
   try
     ParseStatementsUntil(AParent);
   finally
@@ -2169,17 +2509,27 @@ begin
     Before := FIndex;
     ParseStatement(AParent);
     if AcceptSym(';') then
+    begin
       Continue;
+    end;
     if AtEnd or IsKw(FTerminators) then
+    begin
       Break;
+    end;
     if FIndex = Before then
+    begin
       // Die Anweisung hat nichts verbraucht: Token überspringen.
-      SkipError(AParent, TRecovery.Statements)
+      SkipError(AParent, TRecovery.Statements);
+    end
     else if IsKw(['implementation', 'initialization', 'finalization']) or IsRoutineStart then
+    begin
       // Fehlendes end: Der Rest gehört nicht mehr zu diesem Block.
-      Break
+      Break;
+    end
     else
+    begin
       DiagnoseMissingSemicolon(True);
+    end;
   end;
 end;
 
@@ -2204,7 +2554,9 @@ var
   Target: TSyntaxNode;
 begin
   if AtEnd or IsSym(';') or IsKw(['end', 'until', 'except', 'finally', 'else']) then
-    Exit; // leere Anweisung
+  begin
+    Exit;
+  end; // leere Anweisung
   // Sprungmarke: Name: Anweisung
   if ((Current.Kind = TPascalTokenKind.Identifier) or (Current.Kind = TPascalTokenKind.Number)) and
     PeekIsSym(1, ':') then
@@ -2221,27 +2573,49 @@ begin
   end;
 
   if IsKw('begin') then
-    ParseBlock(AParent)
+  begin
+    ParseBlock(AParent);
+  end
   else if IsKw('asm') then
-    ParseAsm(AParent)
+  begin
+    ParseAsm(AParent);
+  end
   else if IsKw('if') then
-    ParseIf(AParent)
+  begin
+    ParseIf(AParent);
+  end
   else if IsKw('case') then
-    ParseCase(AParent)
+  begin
+    ParseCase(AParent);
+  end
   else if IsKw('for') then
-    ParseFor(AParent)
+  begin
+    ParseFor(AParent);
+  end
   else if IsKw('while') then
-    ParseWhile(AParent)
+  begin
+    ParseWhile(AParent);
+  end
   else if IsKw('repeat') then
-    ParseRepeat(AParent)
+  begin
+    ParseRepeat(AParent);
+  end
   else if IsKw('with') then
-    ParseWith(AParent)
+  begin
+    ParseWith(AParent);
+  end
   else if IsKw('try') then
-    ParseTry(AParent)
+  begin
+    ParseTry(AParent);
+  end
   else if IsKw('raise') then
-    ParseRaise(AParent)
+  begin
+    ParseRaise(AParent);
+  end
   else if IsKw(['var', 'const']) then
-    ParseInlineDecl(AParent)
+  begin
+    ParseInlineDecl(AParent);
+  end
   else if IsKw('goto') then
   begin
     Start := NodeStart;
@@ -2313,7 +2687,9 @@ begin
         FinishNode(Empty, FIndex);
       end;
       if not AcceptKw('else') then
+      begin
         Break;
+      end;
       if not IsKw('if') then
       begin
         ParseStatement(Nodes.Last);
@@ -2322,7 +2698,9 @@ begin
       Parent := Nodes.Last;
     until False;
     for Index := Nodes.Count - 1 downto 0 do
+    begin
       FinishNode(Nodes[Index], Starts[Index]);
+    end;
   finally
     Starts.Free;
     Nodes.Free;
@@ -2372,9 +2750,13 @@ begin
     begin
       DiagnoseMissingSemicolon(True);
       if FIndex = Before then
+      begin
         Advance;
+      end;
       if IsKw(['implementation', 'initialization', 'finalization']) or IsRoutineStart then
+      begin
         Break;
+      end;
     end;
   end;
   if IsKw('else') then
@@ -2402,11 +2784,17 @@ begin
   Advance; // for
   AcceptKw('var');
   if IsIdent then
-    Node.Name := ExpectIdent
+  begin
+    Node.Name := ExpectIdent;
+  end
   else
+  begin
     DiagnoseUnexpected('E2088', 'Variablenname');
+  end;
   if AcceptSym(':') then
+  begin
     ParseTypeReference(Node);
+  end;
   if AcceptKw('in') then
   begin
     Node.Kind := TSyntaxKind.ForInStatement;
@@ -2417,7 +2805,9 @@ begin
     ExpectSym(':=');
     ParseExpression(Node);
     if not AcceptKw('to') then
+    begin
       ExpectKw('downto');
+    end;
     ParseExpression(Node);
   end;
   ExpectKw('do');
@@ -2524,14 +2914,20 @@ begin
         AcceptSym(';');
       end;
       if AcceptKw('else') then
+      begin
         ParseStatementList(Part, ['end']);
+      end;
     end
     else
+    begin
       ParseStatementList(Part, ['end']);
+    end;
     FinishNode(Part, PartStart);
   end
   else
+  begin
     DiagnoseUnexpected('E2125', '"except" oder "finally"');
+  end;
   ExpectKw('end');
   FinishNode(Node, Start);
 end;
@@ -2566,9 +2962,13 @@ begin
   // var X: Integer := 1; var A, B: string; const C = 5; var Y := Ausdruck;
   Start := NodeStart;
   if IsKw('const') then
-    Node := StartNode(TSyntaxKind.InlineConst)
+  begin
+    Node := StartNode(TSyntaxKind.InlineConst);
+  end
   else
+  begin
     Node := StartNode(TSyntaxKind.InlineVar);
+  end;
   AParent.Add(Node);
   Advance;
   // var [Weak] Obj: IInterface := nil; (#1167): Die Kinder der Inline-Variablen bleiben Typ und Wert, die
@@ -2584,12 +2984,18 @@ begin
   end;
   Names := ExpectIdent;
   while AcceptSym(',') do
+  begin
     Names := Names + ',' + ExpectIdent;
+  end;
   Node.Name := Names;
   if AcceptSym(':') then
+  begin
     ParseType(Node);
+  end;
   if AcceptSym(':=') or AcceptSym('=') then
+  begin
     ParseExpression(Node);
+  end;
   FinishNode(Node, Start);
 end;
 
@@ -2624,7 +3030,9 @@ var
   Middle: Integer;
 begin
   if ALow = AHigh then
+  begin
     Exit(ARun.Operands[ALow].Node);
+  end;
   // Rekursionstiefe log2(Anzahl), auch bei Zehntausenden Operanden flach.
   Middle := (ALow + AHigh) div 2;
   Result := BinaryUpTo(ARun.Operator, BalancedRun(ARun, ALow, Middle), BalancedRun(ARun, Middle + 1, AHigh),
@@ -2637,20 +3045,26 @@ var
 begin
   Result := ALeft;
   if ARun.Count = 0 then
+  begin
     Exit;
+  end;
   if ARun.Count < BalancedRunFrom then
   begin
     // Kurze Folge: linkslastig wie bisher, mit denselben Bereichen wie Binary.
     for Index := 0 to ARun.Count - 1 do
+    begin
       Result := BinaryUpTo(ARun.Operator, Result, ARun.Operands[Index].Node, AStartIndex,
         ARun.Operands[Index].EndIndex);
+    end;
   end
   else
+  begin
     // Lange Folge desselben assoziativen Operators, etwa 'a' + #10 + 'b' + … in erzeugten Units:
     // A + x1 + … + xn = A + (x1 + … + xn), der rechte Teil ausgeglichen. Linkslastig wäre der Baum so
     // tief wie die Kette lang, und rekursive Auswertungen (Prüfregeln, Index) sprengten den Stapel.
     Result := BinaryUpTo(ARun.Operator, Result, BalancedRun(ARun, 0, ARun.Count - 1), AStartIndex,
       ARun.Operands[ARun.Count - 1].EndIndex);
+  end;
   ARun.Operator := '';
   ARun.Operands := nil;
   ARun.Count := 0;
@@ -2663,7 +3077,9 @@ var
 begin
   Result := ALeft;
   if (ARun.Count > 0) and (ARun.Operator <> AOperator) then
+  begin
     Result := FlushRun(Result, AStartIndex, ARun);
+  end;
   // Nicht assoziativ (a - b - c) oder leerer Operand (fehlender Ausdruck): sofort anhängen wie bisher.
   if not InWords(AOperator, AssociativeOperators) or (FIndex <= AOperandStart) then
   begin
@@ -2675,7 +3091,9 @@ begin
   Operand.EndIndex := FIndex;
   ARun.Operator := AOperator;
   if ARun.Count = Length(ARun.Operands) then
+  begin
     SetLength(ARun.Operands, 2 * ARun.Count + 8);
+  end;
   ARun.Operands[ARun.Count] := Operand;
   Inc(ARun.Count);
 end;
@@ -2706,7 +3124,9 @@ begin
     Result := Binary(Op, Result, ParseSimpleExpression, Start);
   end;
   if AParent <> nil then
+  begin
     AParent.Add(Result);
+  end;
 end;
 
 function TParser.ParseSimpleExpression: TSyntaxNode;
@@ -2755,7 +3175,9 @@ function TParser.EnterNesting: Boolean;
 begin
   Result := FDepth < MaxNesting;
   if Result then
+  begin
     Inc(FDepth);
+  end;
 end;
 
 function TParser.TooDeep: TSyntaxNode;
@@ -2773,7 +3195,9 @@ end;
 function TParser.ParseFactor: TSyntaxNode;
 begin
   if not EnterNesting then
+  begin
     Exit(TooDeep);
+  end;
   try
     Result := ParseFactorBody;
   finally
@@ -2814,7 +3238,9 @@ begin
     FinishNode(Result, Start);
   end
   else
+  begin
     Result := ParsePrimary;
+  end;
 end;
 
 function TParser.IsControlChar: Boolean;
@@ -2823,7 +3249,9 @@ var
 begin
   Result := IsSym('^');
   if not Result then
+  begin
     Exit;
+  end;
   Next := PeekToken(1);
   // Ohne Leerraum dahinter; als Typ (^TFoo) kommt der Parser nicht hierher, P^ ist nachgestellt.
   Result := (Next.Offset = Current.Offset + 1) and (Length(Next.Text) = 1) and
@@ -2838,6 +3266,7 @@ begin
   Start := NodeStart;
   Text := '';
   while not AtEnd do
+  begin
     if Current.Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral] then
     begin
       Text := Text + Current.Text;
@@ -2850,7 +3279,10 @@ begin
       Advance;
     end
     else
+    begin
       Break;
+    end;
+  end;
   Result := StartNode(TSyntaxKind.Literal);
   Result.Name := Text;
   FinishNode(Result, Start);
@@ -2874,19 +3306,29 @@ begin
   repeat
     Token := PeekToken(Delta);
     if Token.IsSymbol('<') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Token.IsSymbol('>') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if AInType and (Depth = 1) and Token.IsSymbol('>=') then
+    begin
       // Baz: IBaz<string>=nil: das = gehört zum Vorgabewert (#1142).
-      Exit(True)
+      Exit(True);
+    end
     else if not ((Token.Kind = TPascalTokenKind.Identifier) or Token.IsSymbol('.') or Token.IsSymbol(',') or
       Token.IsKeyword('string')) then
+    begin
       Exit(False);
+    end;
     Inc(Delta);
   until (Depth = 0) or (FIndex + Delta >= Length(FTokens));
   if Depth <> 0 then
+  begin
     Exit(False);
+  end;
   Token := PeekToken(Delta);
   Result := AInType and (Token.Kind = TPascalTokenKind.Identifier);
   Result := Result or not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number,
@@ -2921,10 +3363,14 @@ begin
   begin
     ParseTypeReference(Node);
     if not AcceptSym(',') then
+    begin
       Break;
+    end;
   end;
   if IsSym('>=') then
+  begin
     SplitGreaterEqual;
+  end;
   ExpectSym('>');
   FinishNode(Node, Start);
 end;
@@ -2943,9 +3389,13 @@ begin
     end;
     ParseExpression(AParent);
     while AcceptSym(':') do
+    begin
       ParseExpression(AParent);
+    end;
     if not AcceptSym(',') then
+    begin
       Break;
+    end;
   end;
   ExpectSym(ACloser);
 end;
@@ -2960,18 +3410,30 @@ begin
   Result.Name := LowerCase(Current.Text);
   Advance;
   if IsSym('(') then
+  begin
     ParseParameters(Result);
+  end;
   if AcceptSym(':') then
+  begin
     ParseTypeReference(Result);
+  end;
   // Aufrufkonvention: function(const S: string): Boolean register begin … end (#1167).
   while IsIdent and InWords(Current.Text, CallingConventions) do
+  begin
     Advance;
+  end;
   // Lokale Abschnitte und Routinen vor dem begin (#849).
   while IsKw(['var', 'const', 'type', 'label']) or IsRoutineStart do
+  begin
     if IsRoutineStart then
-      ParseRoutine(Result, True)
+    begin
+      ParseRoutine(Result, True);
+    end
     else
+    begin
       ParseDeclaration(Result);
+    end;
+  end;
   ParseBlock(Result);
   FinishNode(Result, Start);
 end;
@@ -3003,22 +3465,32 @@ begin
       Result := ParseStringLiteral;
   else
     if IsKw('nil') then
-      Result := Leaf(TSyntaxKind.Literal, 'nil')
+    begin
+      Result := Leaf(TSyntaxKind.Literal, 'nil');
+    end
     else if IsKw('inherited') then
     begin
       Result := StartNode(TSyntaxKind.InheritedExpr);
       Advance;
       if IsIdent then
+      begin
         Result.Name := Current.Text;
+      end;
       if IsIdent then
+      begin
         Advance;
+      end;
       FinishNode(Result, Start);
     end
     // string und file als Typname im Ausdruck: string(P), SizeOf(string), Default(File) (#1084).
     else if IsKw(['string', 'file']) then
-      Result := Leaf(TSyntaxKind.Identifier, Current.Text)
+    begin
+      Result := Leaf(TSyntaxKind.Identifier, Current.Text);
+    end
     else if IsKw(['procedure', 'function']) then
-      Result := ParseAnonymousMethod
+    begin
+      Result := ParseAnonymousMethod;
+    end
     else if IsSym('(') then
     begin
       Result := StartNode(TSyntaxKind.ParenExpr);
@@ -3026,13 +3498,19 @@ begin
       ParseExpression(Result);
       // Record-Konstanten: (X: 1; Y: 2) und Array-Konstanten: (1, 2, 3)
       while AcceptSym(',') or AcceptSym(';') or AcceptSym(':') do
+      begin
         if not IsSym(')') then
+        begin
           ParseExpression(Result);
+        end;
+      end;
       ExpectSym(')');
       FinishNode(Result, Start);
     end
     else if IsControlChar then
-      Result := ParseStringLiteral
+    begin
+      Result := ParseStringLiteral;
+    end
     else if IsSym('[') then
     begin
       Result := StartNode(TSyntaxKind.SetConstructor);
@@ -3050,7 +3528,9 @@ begin
           Result.Add(Node);
         end;
         if not AcceptSym(',') then
+        begin
           Break;
+        end;
       end;
       ExpectSym(']');
       FinishNode(Result, Start);
@@ -3106,7 +3586,9 @@ begin
       ParseGenericArgs(Node);
     end
     else
+    begin
       Break;
+    end;
     FinishNode(Node, Start);
     Result := Node;
   end;
@@ -3157,7 +3639,9 @@ begin
   // Schnell: ohne bedingte Direktive und ohne $I gibt es nichts zu überspringen und zu melden.
   if not TPascalPreprocessor.HasConditionals(AText) and
     not (Assigned(AOptions.ResolveInclude) and TPascalPreprocessor.HasIncludes(AText)) then
-    Result := Parse(AText, ACancellation)
+  begin
+    Result := Parse(AText, ACancellation);
+  end
   else
   begin
     AProcessed := TPascalPreprocessor.Process(AText, AOptions);
@@ -3193,10 +3677,14 @@ var
 begin
   ADiagnostics := nil;
   if not TPascalPreprocessor.HasConditionals(AText) then
+  begin
     Exit(False);
+  end;
   Skip := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(AText, AOptions));
   if Skip = nil then
+  begin
     Exit(False);
+  end;
   Parser := TParser.Create(AText, nil, Skip);
   try
     Tree := Parser.Run;

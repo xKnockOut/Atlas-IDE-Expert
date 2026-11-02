@@ -10,8 +10,13 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasTaskDefinitionsTests = class
   public
+    /// <summary>Der Optionsdialog (Base) kennt das Modul Build nicht und nimmt TasksBeforeBuildNames (#1455).
+    /// </summary>
+    [Test]
+    procedure BeforeBuildNamesMatchSettings;
     [Test]
     procedure ExampleOfTheIssueIsRead;
     [Test]
@@ -32,6 +37,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Tasks.Definitions;
 
 const
@@ -45,6 +51,15 @@ const
     '"group": "other" }' + sLineBreak +
     '  ]' + sLineBreak +
     '}';
+
+procedure TAtlasTaskDefinitionsTests.BeforeBuildNamesMatchSettings;
+var
+  mMode: TAtlasTaskBeforeBuild;
+begin
+  Assert.AreEqual(Integer(Length(TasksBeforeBuildNames)), Ord(High(TAtlasTaskBeforeBuild)) + 1);
+  for mMode := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
+    Assert.AreEqual(TAtlasTasks.BeforeBuildNames[mMode], TasksBeforeBuildNames[Ord(mMode)]);
+end;
 
 procedure TAtlasTaskDefinitionsTests.ExampleOfTheIssueIsRead;
 var

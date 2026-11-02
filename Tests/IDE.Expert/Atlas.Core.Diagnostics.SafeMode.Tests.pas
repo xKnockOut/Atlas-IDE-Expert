@@ -53,6 +53,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.QuickToggles,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.SafeMode;
 
 function Options: TAtlasSafeOptions;

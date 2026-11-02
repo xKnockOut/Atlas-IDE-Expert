@@ -9,16 +9,19 @@ Atlas ist eine einzelne Datei, `AtlasServer.exe` (Windows, Win64). Sie spricht L
 
 ## RAD Studio (Release-Paket)
 
-Das Plugin `Atlas.IDE.Expert` bindet den Server in die IDE ein: [RAD-Studio.md](RAD-Studio.md).
+Das Plugin `Atlas.IDE.Base` bindet den Server in die IDE ein: [RAD-Studio.md](RAD-Studio.md).
 
 Für das IDE-Plugin (#495) enthält jedes Release `atlas-ide-expert-<Version>.zip`:
 
 ```
 AtlasServer.exe         Server (Win64)
 AtlasServer.map         Map-Datei: Stacktraces im Server-Log mit Unit, Routine und Zeile
-Win32\Atlas.IDE.Expert370.bpl   Plugin für die klassische IDE
-Win64\Atlas.IDE.Expert370.bpl   Plugin für die 64-Bit-IDE
-Win32\Atlas.IDE.Expert370.map, Win64\…   Map-Dateien des Plugins für Stacktraces im atlas.log
+Win32\Atlas.IDE.Base370.bpl   Kern des Plugins für die klassische IDE
+Win64\Atlas.IDE.Base370.bpl   Kern des Plugins für die 64-Bit-IDE
+Win32\Atlas.IDE.Contracts370.bpl, Win64\…   ab 2.0 die Verträge zwischen den Modulen (#1456)
+Win32\Atlas.IDE.<Modul>370.bpl, Win64\…   ab 2.0 je Modul eine BPL (#1456): Debugger, Designer, Rules, Tests,
+                        Bookmarks, Analysis, Search, Build, BuildPipeline, Tracker, Welcome
+Win32\Atlas.IDE.*370.map, Win64\…   Map-Dateien jeder Plugin-BPL für Stacktraces im atlas.log
 LICENSE, THIRD-PARTY-NOTICES.md
 EULA.txt                Lizenzvereinbarung
 whatsnew.json           Neuerungen je Version für die Karte „Neu in Atlas“ (#756)
@@ -33,7 +36,7 @@ Profile\                Einstellungsprofile „Atlas-Standard“, „Minimal“ 
 Bis 1.1.0 lag dem Paket der Installer `AtlasSetup.exe` bei (ADR 0009). Seit 1.2.0 gibt es ihn nicht mehr; das Paket wird von Hand eingebunden:
 
 1. Delphi schließen und das ZIP in einen festen Ordner entpacken, z. B. `%LOCALAPPDATA%\Programs\Atlas` (dort lag auch die Installation des früheren Installers). Die Ordnerstruktur beibehalten: Das Plugin sucht den Server und die Daten (`whatsnew.json`, `tips.json`, `Vorlagen` …) neben der BPL und eine Ebene darüber.
-2. Delphi starten, *Komponente › Packages installieren › Hinzufügen* und `Win32\Atlas.IDE.Expert370.bpl` wählen (Delphi 12: `…290.bpl`, sofern im Paket; 64-Bit-IDE ab Delphi 12.3: `Win64\…`).
+2. Delphi starten, *Komponente › Packages installieren › Hinzufügen* und `Win32\Atlas.IDE.Base370.bpl` wählen (Delphi 12: `…290.bpl`, sofern im Paket; 64-Bit-IDE ab Delphi 12.3: `Win64\…`). Ab 2.0 danach `Atlas.IDE.Contracts370.bpl` und jedes Modul-Package aus demselben Ordner hinzufügen (`Atlas.IDE.Debugger370.bpl` …): erst den Kern, dann die Verträge, dann die Module; beim Deinstallieren umgekehrt. Ein Modul lädt den Kern mit, findet ihn aber nur, wenn er schon geladen ist oder auf dem PATH liegt (ADR 0017, Entscheidung 1: Ablage im Bpl-Ordner von RAD Studio).
 3. Delphi einmal neu starten: Atlas schaltet Help Insight und die Strukturhervorhebung der IDE ab, die IDE liest diese Schalter nur beim Start.
 
 **Deinstallieren:** *Komponente › Packages installieren*, „Atlas IDE Expert“ wählen und „Entfernen“, danach den Ordner löschen. Einstellungen (`HKCU\Software\Atlas`, `%APPDATA%\Atlas`), Index und Protokolle (`%LOCALAPPDATA%\Atlas`) und eigene Snippets (`%APPDATA%\Atlas\Snippets`) bleiben und lassen sich von Hand löschen. Eine Installation mit dem früheren Installer entfernt weiterhin der Eintrag „Atlas IDE Expert“ unter *Einstellungen › Apps › Installierte Apps*.

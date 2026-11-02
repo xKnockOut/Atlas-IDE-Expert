@@ -130,8 +130,12 @@ var
 begin
   // Der Prozessläufer übergibt den Programmnamen direkt an CreateProcess, das PATH nicht durchsucht.
   for Dir in GetEnvironmentVariable('PATH').Split([PathSep]) do
+  begin
     if (Dir <> '') and TFile.Exists(TPath.Combine(Dir.Trim(['"']), AName + '.exe')) then
+    begin
       Exit(TPath.Combine(Dir.Trim(['"']), AName + '.exe'));
+    end;
+  end;
   Result := AName;
 end;
 
@@ -151,8 +155,10 @@ begin
       Output := Output + [ALine];
     end);
   if ACheck and (AExitCode <> 0) then
+  begin
     raise EVcsChanges.CreateFmt('%s %s ist fehlgeschlagen (Exit-Code %d): %s',
       [AExecutable, string.Join(' ', AArguments), AExitCode, string.Join(' ', Output)]);
+  end;
   Result := Output;
 end;
 
@@ -175,12 +181,18 @@ var
 begin
   // Ohne eigenen Pfad der gemerkte Fund (auch TAtlasVcsTools.Preset), sonst neu suchen.
   if AConfigured = '' then
-    mLocation := TAtlasVcsTools.Where(AKind)
+  begin
+    mLocation := TAtlasVcsTools.Where(AKind);
+  end
   else
+  begin
     mLocation := TAtlasVcsTools.Probe(AKind, AConfigured);
+  end;
   if mLocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
+  begin
     raise EVcsChanges.CreateFmt('%s nicht gefunden unter %s (vcs.%s.path)',
       [TAtlasVcsTools.ProgramName(AKind), mLocation.Configured, TAtlasVcsTools.ProgramName(AKind)]);
+  end;
   Result := mLocation.Executable;
 end;
 
@@ -199,10 +211,14 @@ var
 begin
   mTimeoutMs := TAtlasVcsCommand.DefaultTimeoutMs;
   if (ATimeoutSeconds >= 1) and (ATimeoutSeconds <= 300) then
+  begin
     mTimeoutMs := Cardinal(ATimeoutSeconds) * 1000;
+  end;
   Provider := AtlasVcsProviderOf(AProvider);
   if Provider = TAtlasVcsProvider.Off then
+  begin
     raise EVcsChanges.Create('Versionsverwaltung abgeschaltet (vcs.provider = off)');
+  end;
   WorkingCopy := TAtlasVcsDetection.Find(AWorkingDir, Provider);
   case WorkingCopy.Kind of
     TAtlasVcsKind.Git:
@@ -211,17 +227,23 @@ begin
       begin
         SvnExe := ToolFor(TAtlasVcsKind.Svn, ASvnPath);
         if SvnExe = '' then
+        begin
           raise EVcsChanges.CreateFmt('%s liegt in einer SVN-Arbeitskopie, aber svn ist nicht installiert ' +
             '(TortoiseSVN mit Kommandozeilenwerkzeugen genügt)', [AWorkingDir]);
+        end;
         Result := TSvnChanges.Create(AProcess, AWorkingDir, WorkingCopy, SvnExe, mTimeoutMs * 4);
       end;
   else
     if Provider = TAtlasVcsProvider.Auto then
+    begin
       raise EVcsChanges.CreateFmt('%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie',
-        [AWorkingDir])
+        [AWorkingDir]);
+    end
     else
+    begin
       raise EVcsChanges.CreateFmt('%s liegt in keiner Arbeitskopie für vcs.provider = %s',
         [AWorkingDir, AtlasVcsProviderText(Provider)]);
+    end;
   end;
 end;
 
@@ -250,9 +272,13 @@ begin
   // Pfade mit Sonderzeichen kommen als Oktalfolgen (core.quotepath) und damit
   // unabhängig von der Codepage, in der der Prozessläufer liest.
   if FGit <> '' then
-    Result := Run(FGit, ['-c', 'core.quotepath=on'] + AArguments, True, ExitCode)
+  begin
+    Result := Run(FGit, ['-c', 'core.quotepath=on'] + AArguments, True, ExitCode);
+  end
   else
+  begin
     Result := Run('git', ['-c', 'core.quotepath=on'] + AArguments, True, ExitCode);
+  end;
 end;
 
 procedure TGitChanges.Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean);
@@ -262,31 +288,49 @@ var
 begin
   Output := Git(['rev-parse', '--show-toplevel']);
   if Length(Output) = 0 then
+  begin
     raise EVcsChanges.Create('Kein Git-Repository');
+  end;
   FRepoRoot := ExcludeTrailingPathDelimiter(StringReplace(Trim(Output[0]), '/', PathDelim, [rfReplaceAll]));
   Ref := ARef;
   if AMergeBase then
   begin
     Output := Git(['merge-base', ARef, 'HEAD']);
     if Length(Output) = 0 then
+    begin
       raise EVcsChanges.CreateFmt('Keine Merge-Base mit %s', [ARef]);
+    end;
     Ref := Trim(Output[0]);
   end;
   // Ohne HEAD vergleicht git diff mit dem Arbeitsverzeichnis, Index eingeschlossen.
   if AIncludeUncommitted then
-    Range := [Ref]
+  begin
+    Range := [Ref];
+  end
   else
+  begin
     Range := [Ref, 'HEAD'];
+  end;
   FFiles := nil;
   for Path in TChangedFiles.ParseNameStatus(Git(['diff', '--name-status', '-M', '--no-color'] + Range)) do
+  begin
     FFiles := FFiles + [TChangedFiles.FullPath(FRepoRoot, Path)];
+  end;
   FLines := nil;
   if AWithLines then
+  begin
     FLines := TChangedFiles.ParseHunks(Git(['diff', '-U0', '-M', '--no-color', '--no-ext-diff'] + Range));
+  end;
   if AIncludeUncommitted then
+  begin
     for Path in Git(['ls-files', '--others', '--exclude-standard', '--full-name', ':/']) do
+    begin
       if Trim(Path) <> '' then
+      begin
         AddWholeFile(TChangedFiles.UnquotePath(Trim(Path)));
+      end;
+    end;
+  end;
 end;
 
 { TSvnChanges }
@@ -299,7 +343,9 @@ begin
   inherited Create(AProcess, AWorkingDir);
   FSvn := ASvn;
   if FSvn = '' then
+  begin
     FSvn := 'svn';
+  end;
   // Kommandozeile: kein Fenster, der Hauptthread darf warten.
   Runner := TShellPlatform.CreateVcsRunner(True, nil);
   FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, Runner, ASvn, ATimeoutMs);
@@ -318,50 +364,84 @@ begin
   Result := Run(FSvn, ['--non-interactive'] + AArguments, True, ExitCode);
 end;
 
+// Geänderte Dateien zum Prüfen: A, M und R; gelöschte und fehlende Dateien gibt es nicht zu prüfen.
+function CheckedPaths(const AChanges: TArray<TAtlasVcsChange>): TArray<string>;
+var
+  mChange: TAtlasVcsChange;
+begin
+  Result := nil;
+  for mChange in AChanges do
+  begin
+    if mChange.Kind in [TAtlasVcsChangeKind.Modified, TAtlasVcsChangeKind.Added, TAtlasVcsChangeKind.Replaced] then
+    begin
+      Result := Result + [mChange.Path];
+    end;
+  end;
+end;
+
+// Unversionierte Dateien relativ zu ARoot.
+function UntrackedPaths(const ARoot: string; const AChanges: TArray<TAtlasVcsChange>): TArray<string>;
+var
+  mChange: TAtlasVcsChange;
+  mRelative: string;
+begin
+  Result := nil;
+  for mChange in AChanges do
+  begin
+    if (mChange.Kind = TAtlasVcsChangeKind.Untracked) and
+      TAtlasVcsDetection.RelativePath(ARoot, mChange.Path, mRelative) then
+    begin
+      Result := Result + [mRelative];
+    end;
+  end;
+end;
+
 procedure TSvnChanges.Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean);
 var
-  Range: TArray<string>;
-  Changes: TArray<TAtlasVcsChange>;
-  Change: TAtlasVcsChange;
-  Path, Relative: string;
-  Outcome: TAtlasVcsOutcome;
+  mRange: TArray<string>;
+  mChanges: TArray<TAtlasVcsChange>;
+  mPath: string;
+  mOutcome: TAtlasVcsOutcome;
 begin
   FRepoRoot := FVcs.WorkingCopy.Root;
   // Pfade relativ zur Wurzel: svn läuft dort.
   FWorkingDir := FRepoRoot;
   FFiles := nil;
   FLines := nil;
-  Changes := nil;
+  mChanges := nil;
   if ADefaultBase or AIncludeUncommitted then
   begin
-    Outcome := FVcs.Changes(Changes);
-    if Outcome <> TAtlasVcsOutcome.Ok then
-      raise EVcsChanges.CreateFmt('svn status ist fehlgeschlagen (%s)',
-        [AtlasVcsOutcomeName(Outcome)]);
+    mOutcome := FVcs.Changes(mChanges);
+    if mOutcome <> TAtlasVcsOutcome.Ok then
+    begin
+      raise EVcsChanges.CreateFmt('svn status ist fehlgeschlagen (%s)', [AtlasVcsOutcomeName(mOutcome)]);
+    end;
   end;
   // SVN kennt keine Merge-Base: --changed ohne eigene Basis vergleicht mit BASE.
+  mRange := nil;
   if ADefaultBase then
   begin
-    Range := nil;
-    // Wie bisher A, M und R; gelöschte und fehlende Dateien gibt es nicht zu prüfen.
-    for Change in Changes do
-      if (Change.Kind = TAtlasVcsChangeKind.Modified) or (Change.Kind = TAtlasVcsChangeKind.Added) or
-        (Change.Kind = TAtlasVcsChangeKind.Replaced) then
-        FFiles := FFiles + [Change.Path];
+    FFiles := CheckedPaths(mChanges);
   end
   else
   begin
-    Range := ['-r', ARef];
-    for Path in TChangedFiles.ParseSvnSummarize(Svn(['diff', '--summarize'] + Range)) do
-      FFiles := FFiles + [TChangedFiles.FullPath(FRepoRoot, Path)];
+    mRange := TArray<string>.Create('-r', ARef);
+    for mPath in TChangedFiles.ParseSvnSummarize(Svn(TArray<string>.Create('diff', '--summarize') + mRange)) do
+    begin
+      FFiles := FFiles + [TChangedFiles.FullPath(FRepoRoot, mPath)];
+    end;
   end;
   if AWithLines then
-    FLines := TChangedFiles.ParseSvnDiff(Svn(['diff', '--internal-diff'] + Range));
+  begin
+    FLines := TChangedFiles.ParseSvnDiff(Svn(TArray<string>.Create('diff', '--internal-diff') + mRange));
+  end;
   if AIncludeUncommitted then
-    for Change in Changes do
-      if (Change.Kind = TAtlasVcsChangeKind.Untracked) and
-        TAtlasVcsDetection.RelativePath(FRepoRoot, Change.Path, Relative) then
-        AddWholeFile(Relative);
+  begin
+    for mPath in UntrackedPaths(FRepoRoot, mChanges) do
+    begin
+      AddWholeFile(mPath);
+    end;
+  end;
 end;
 
 end.

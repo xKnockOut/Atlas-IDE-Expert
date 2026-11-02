@@ -81,9 +81,13 @@ function Chain(const AType: string): TArray<string>;
 begin
   Result := nil;
   if SameText(AType, 'TBasisForm') then
-    Result := ['Vcl.Forms.TForm']
+  begin
+    Result := ['Vcl.Forms.TForm'];
+  end
   else if SameText(AType, 'TKreis') then
+  begin
     Result := ['TKreis'];
+  end;
 end;
 
 const
@@ -148,11 +152,17 @@ begin
     function(AFile: string): string
     begin
       if SameText(AFile, 'C:\P\Haupt.dfm') then
-        Result := FormText
+      begin
+        Result := FormText;
+      end
       else if SameText(AFile, 'C:\P\Haupt.pas') then
-        Result := '// Hauptfenster'#13#10'// der Anwendung'#13#10'unit Haupt;'#13#10'interface'#13#10'end.'
+      begin
+        Result := '// Hauptfenster'#13#10'// der Anwendung'#13#10'unit Haupt;'#13#10'interface'#13#10'end.';
+      end
       else
+      begin
         Result := '';
+      end;
     end;
   Result.Modified :=
     function(AFile: string): TDateTime
@@ -261,8 +271,12 @@ var
   Item: TJSONValue;
 begin
   for Item in AUnits do
+  begin
     if TJSONObject(Item).GetValue<string>('name') = AName then
+    begin
       Exit(TJSONObject(Item));
+    end;
+  end;
   Result := nil;
 end;
 
@@ -401,7 +415,9 @@ function DeclaringKunde(const AName: string): TArray<string>;
 begin
   Result := nil;
   if SameText(AName, 'TKunde') then
+  begin
     Result := ['Kunden'];
+  end;
 end;
 
 procedure TUnitSearchTests.AddUsesBuildsWorkspaceEdit;
@@ -442,7 +458,9 @@ var
 begin
   Result := '';
   for Item in AEdits do
+  begin
     Result := Result + (Item as TJSONObject).GetValue<string>('newText');
+  end;
 end;
 
 procedure TUnitSearchTests.AddUsesTakesSection;

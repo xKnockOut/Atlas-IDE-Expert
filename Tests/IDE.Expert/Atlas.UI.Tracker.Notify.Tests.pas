@@ -10,6 +10,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerNoticeTextTests = class
   public
     /// <summary>Abnahme: „ATL-123: neuer Kommentar von …“, „… dir zugewiesen“, „Zustand → …“.</summary>
@@ -25,7 +26,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Notify;

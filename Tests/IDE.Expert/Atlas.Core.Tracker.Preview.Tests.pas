@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssuePreviewTests = class
   public
     [Test]
@@ -41,6 +42,13 @@ type
     procedure KeyFromInput;
     [Test]
     procedure SafeFileNames;
+    /// <summary>Abnahme (#1455 Paket 2d): Browse öffnet nur, was MayBrowse erlaubt, und nur über die Shell des
+    /// Trackers.</summary>
+    [Test]
+    procedure BrowseOnlyAllowedThroughShell;
+    /// <summary>Ausführbares und Dateien ohne Endung zeigt Atlas im Explorer, alles andere öffnet es.</summary>
+    [Test]
+    procedure OpenDownloadedRevealsRisky;
   end;
 
 implementation
@@ -48,9 +56,41 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Contract.Files,
+  Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.Preview;
+
+type
+  /// <summary>Shell, die nur mitschreibt.</summary>
+  TAtlasPreviewShell = class(TInterfacedObject, IAtlasTrackerShell)
+  private
+    FLog: string;
+  public
+    function Open(const ATarget: string): Boolean;
+    function OpenFile(const AFileName: string): Boolean;
+    function Reveal(const AFileName: string): Boolean;
+    property Log: string read FLog;
+  end;
+
+function TAtlasPreviewShell.Open(const ATarget: string): Boolean;
+begin
+  FLog := FLog + 'open:' + ATarget + ';';
+  Result := True;
+end;
+
+function TAtlasPreviewShell.OpenFile(const AFileName: string): Boolean;
+begin
+  FLog := FLog + 'file:' + AFileName + ';';
+  Result := True;
+end;
+
+function TAtlasPreviewShell.Reveal(const AFileName: string): Boolean;
+begin
+  FLog := FLog + 'reveal:' + AFileName + ';';
+  Result := True;
+end;
 
 function Entry(const AKey: string): TAtlasIssueHistoryEntry;
 begin
@@ -265,6 +305,46 @@ begin
   Assert.AreEqual('bashrc', TAtlasIssuePreview.SafeFileName('.bashrc'));
   Assert.AreEqual('anhang', TAtlasIssuePreview.SafeFileName(' .. '));
   Assert.AreEqual(Integer(120), Integer(Length(TAtlasIssuePreview.SafeFileName(StringOfChar('x', 300)))));
+end;
+
+procedure TAtlasIssuePreviewTests.BrowseOnlyAllowedThroughShell;
+var
+  mShell: TAtlasPreviewShell;
+  mRef: IAtlasTrackerShell;
+begin
+  mShell := TAtlasPreviewShell.Create;
+  mRef := mShell;
+  TAtlasTrackerFiles.Install(nil, mRef);
+  try
+    Assert.IsTrue(TAtlasIssuePreview.Browse('https://github.com/a/b/issues/1'));
+    Assert.IsFalse(TAtlasIssuePreview.Browse('file:///C:/Windows/notepad.exe'));
+    Assert.IsFalse(TAtlasIssuePreview.Browse('https://user:pass@h.de/'));
+    Assert.IsFalse(TAtlasIssuePreview.BrowseIssue(nil, Entry('#1').Target, '#1'), 'ohne Anbieter');
+    Assert.AreEqual('open:https://github.com/a/b/issues/1;', mShell.Log);
+  finally
+    TAtlasTrackerFiles.Uninstall;
+  end;
+  Assert.IsFalse(TAtlasIssuePreview.Browse('https://github.com/a/b/issues/1'), 'ohne Shell');
+end;
+
+procedure TAtlasIssuePreviewTests.OpenDownloadedRevealsRisky;
+var
+  mShell: TAtlasPreviewShell;
+  mRef: IAtlasTrackerShell;
+begin
+  Assert.IsTrue(TAtlasIssuePreview.IsRisky('setup.EXE'));
+  Assert.IsTrue(TAtlasIssuePreview.IsRisky('README'));
+  Assert.IsFalse(TAtlasIssuePreview.IsRisky('bild.png'));
+  mShell := TAtlasPreviewShell.Create;
+  mRef := mShell;
+  TAtlasTrackerFiles.Install(nil, mRef);
+  try
+    TAtlasIssuePreview.OpenDownloaded('a.cmd');
+    TAtlasIssuePreview.OpenDownloaded('b.pdf');
+    Assert.AreEqual('reveal:a.cmd;file:b.pdf;', mShell.Log);
+  finally
+    TAtlasTrackerFiles.Uninstall;
+  end;
 end;
 
 initialization

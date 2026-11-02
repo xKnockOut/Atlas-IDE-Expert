@@ -376,7 +376,9 @@ begin
       '    procedure Lauf(A: Integer); virtual;'#10'  end;'#10 +
       'implementation'#10'procedure Rechne;'#10'begin'#10'  X := 1');
     for Index := 1 to 3000 do
+    begin
       Builder.Append(' - 1');
+    end;
     Builder.Append(';'#10'end;'#10'end.');
     Text := Builder.ToString;
   finally
@@ -398,7 +400,9 @@ begin
         Rule: IRule;
       begin
         for Rule in Rules do
+        begin
           Rule.Check(Context, Report);
+        end;
       end);
     // Der Ableitungscache hält Verweise in den Baum: vor ihm leeren.
     Context.Derived := nil;
@@ -968,7 +972,9 @@ var
 begin
   Result := 1;
   for Line := 1 to APosition.Line do
+  begin
     Result := Pos(#10, AText, Result) + 1;
+  end;
   Inc(Result, APosition.Character);
 end;
 
@@ -1083,17 +1089,23 @@ var
 begin
   Edits := Copy(AFix.Edits);
   for Index := 0 to High(Edits) - 1 do
+  begin
     for Later := Index + 1 to High(Edits) do
+    begin
       if OffsetOf(AText, Edits[Later].Range.StartPos) > OffsetOf(AText, Edits[Index].Range.StartPos) then
       begin
         Edit := Edits[Index];
         Edits[Index] := Edits[Later];
         Edits[Later] := Edit;
       end;
+    end;
+  end;
   Result := AText;
   for Edit in Edits do
+  begin
     Result := Copy(Result, 1, OffsetOf(Result, Edit.Range.StartPos) - 1) + Edit.NewText +
       Copy(Result, OffsetOf(Result, Edit.Range.EndPos), MaxInt);
+  end;
 end;
 
 procedure TInheritanceRulesTests.ClassRefConstructorIssueExample;

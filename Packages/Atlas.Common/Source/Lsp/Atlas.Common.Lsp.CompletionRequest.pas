@@ -348,8 +348,12 @@ begin
     FLines := nil;
     FLines := FText.Split([#10]);
     for mIndex := 0 to High(FLines) do
+    begin
       if FLines[mIndex].EndsWith(#13) then
+      begin
         FLines[mIndex] := Copy(FLines[mIndex], 1, Length(FLines[mIndex]) - 1);
+      end;
+    end;
     FLinesReady := True;
   end;
   Result := FLines;
@@ -359,7 +363,9 @@ function TCompletionRequest.LineText(ALine: Integer): string;
 begin
   Lines;
   if (ALine < 0) or (ALine > High(FLines)) then
+  begin
     Exit('');
+  end;
   Result := FLines[ALine];
 end;
 
@@ -372,11 +378,15 @@ begin
   begin
     Start := PosEx(#10, FText, Start) + 1;
     if Start = 1 then
+    begin
       Exit('');
+    end;
   end;
   Stop := Start;
   while (Stop <= Length(FText)) and (FText[Stop] <> #10) and (FText[Stop] <> #13) do
+  begin
     Inc(Stop);
+  end;
   Result := Copy(FText, Start, Min(FPosition.Character, Stop - Start));
 end;
 
@@ -389,7 +399,9 @@ begin
   while (Line < APosition.Line) and (mIndex <= Length(FText)) do
   begin
     if FText[mIndex] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(mIndex);
   end;
   Result := mIndex - 1 + APosition.Character;
@@ -398,9 +410,13 @@ end;
 function TCompletionRequest.LineBreak: string;
 begin
   if Pos(#13#10, FText) > 0 then
-    Result := #13#10
+  begin
+    Result := #13#10;
+  end
   else
+  begin
     Result := #10;
+  end;
 end;
 
 function TCompletionRequest.UnitIndex: TUnitIndex;

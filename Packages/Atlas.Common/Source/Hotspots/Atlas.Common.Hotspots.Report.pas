@@ -81,17 +81,25 @@ end;
 function DateText(ADate: TDateTime): string;
 begin
   if ADate <= 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := FormatDateTime('yyyy"-"mm"-"dd', ADate);
+  end;
 end;
 
 function IsoText(ADate: TDateTime): string;
 begin
   if ADate <= 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss"Z"', ADate);
+  end;
 end;
 
 function HtmlEscape(const AText: string): string;
@@ -109,22 +117,28 @@ end;
 
 function ScoreText(AValue: Double): string;
 begin
-  Result := FormatFloat('0.00', AValue);
+  Result := FormatFloat('0.00', AValue, TFormatSettings.Invariant);
 end;
 
 function ChurnText(const AChanges: THotspotChanges): string;
 begin
   if AChanges.Added < 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := Format('+%d/−%d', [AChanges.Added, AChanges.Deleted]);
+  end;
 end;
 
 function TrendText(const AEntry: THotspotEntry): string;
 begin
   Result := THotspotReport.TrendCaption(AEntry.Trend);
   if (Result <> '') and (AEntry.PastComplexity >= 0) then
+  begin
     Result := Format('%s (%d → %d)', [Result, AEntry.PastComplexity, AEntry.Complexity]);
+  end;
 end;
 
 { THotspotReport }
@@ -133,9 +147,13 @@ class function THotspotReport.ParseSection(const AText: string; out ASection: TH
 begin
   Result := True;
   if (AText = '') or SameText(AText, 'hotspots') then
-    ASection := THotspotSection.Hotspots
+  begin
+    ASection := THotspotSection.Hotspots;
+  end
   else if SameText(AText, 'coupling') then
-    ASection := THotspotSection.Coupling
+  begin
+    ASection := THotspotSection.Coupling;
+  end
   else
   begin
     ASection := THotspotSection.Hotspots;
@@ -146,9 +164,13 @@ end;
 class function THotspotReport.SectionName(ASection: THotspotSection): string;
 begin
   if ASection = THotspotSection.Coupling then
-    Result := 'coupling'
+  begin
+    Result := 'coupling';
+  end
   else
+  begin
     Result := 'hotspots';
+  end;
 end;
 
 class function THotspotReport.TrendCaption(ATrend: THotspotTrend): string;
@@ -170,17 +192,25 @@ end;
 class function THotspotReport.Entries(const AResult: THotspotResult): TArray<THotspotEntry>;
 begin
   if AResult.Level = THotspotLevel.Methods then
-    Result := AResult.Methods
+  begin
+    Result := AResult.Methods;
+  end
   else
+  begin
     Result := AResult.Units;
+  end;
 end;
 
 class function THotspotReport.EntryName(const AEntry: THotspotEntry): string;
 begin
   if AEntry.Method <> '' then
-    Result := Format('%s (%s:%d)', [AEntry.Method, AEntry.Path, AEntry.Line])
+  begin
+    Result := Format('%s (%s:%d)', [AEntry.Method, AEntry.Path, AEntry.Line]);
+  end
   else
+  begin
     Result := Format('%s (%s)', [AEntry.UnitName, AEntry.Path]);
+  end;
 end;
 
 class function THotspotReport.RangeText(const AResult: THotspotResult): string;
@@ -210,7 +240,9 @@ begin
     mBuilder.Append('{"unit":').Append(JsonText(AEntry.UnitName));
     mBuilder.Append(',"path":').Append(JsonText(AEntry.Path));
     if AEntry.Method <> '' then
+    begin
       mBuilder.Append(',"method":').Append(JsonText(AEntry.Method));
+    end;
     mBuilder.Append(',"line":').Append(AEntry.Line);
     mBuilder.Append(',"endLine":').Append(AEntry.EndLine);
     mBuilder.Append(',"changes":').Append(AEntry.Changes.Changes);
@@ -219,7 +251,9 @@ begin
     for mIndex := 0 to High(AEntry.Changes.Authors) do
     begin
       if mIndex > 0 then
+      begin
         mBuilder.Append(',');
+      end;
       mBuilder.Append(JsonText(AEntry.Changes.Authors[mIndex]));
     end;
     mBuilder.Append('],"added":').Append(AEntry.Changes.Added);
@@ -235,7 +269,9 @@ begin
     begin
       mCommit := AEntry.Changes.History[mIndex];
       if mIndex > 0 then
+      begin
         mBuilder.Append(',');
+      end;
       mBuilder.Append('{"revision":').Append(JsonText(mCommit.Revision));
       mBuilder.Append(',"author":').Append(JsonText(mCommit.Author));
       mBuilder.Append(',"date":').Append(JsonText(IsoText(mCommit.Date)));
@@ -259,7 +295,9 @@ begin
   for mIndex := 0 to High(AEntries) do
   begin
     if mIndex > 0 then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + EntryJson(AEntries[mIndex]);
   end;
   Result := Result + ']';
@@ -293,7 +331,9 @@ begin
     begin
       mPair := AResult.Coupling[mIndex];
       if mIndex > 0 then
+      begin
         mBuilder.Append(',');
+      end;
       mBuilder.Append('{"first":').Append(UnitJson(mPair.First));
       mBuilder.Append(',"second":').Append(UnitJson(mPair.Second));
       mBuilder.Append(',"shared":').Append(mPair.Shared);
@@ -325,7 +365,9 @@ var
 begin
   mLimit := ALimit;
   if mLimit <= 0 then
+  begin
     mLimit := MaxInt;
+  end;
   mBuilder := TStringBuilder.Create;
   try
     if ASection = THotspotSection.Coupling then
@@ -334,17 +376,25 @@ begin
         'werden, %d von %d:', [RangeText(AResult), Min(mLimit, Length(AResult.Coupling)),
         Length(AResult.Coupling)])).Append(cLineBreak);
       for mIndex := 0 to Min(mLimit, Length(AResult.Coupling)) - 1 do
+      begin
         mBuilder.Append('- ').Append(CouplingLine(AResult.Coupling[mIndex])).Append(cLineBreak);
+      end;
       if Length(AResult.Coupling) = 0 then
+      begin
         mBuilder.Append('Keine Paare.').Append(cLineBreak);
+      end;
     end
     else
     begin
       mEntries := Entries(AResult);
       if AResult.Level = THotspotLevel.Methods then
-        mLevel := 'Methoden'
+      begin
+        mLevel := 'Methoden';
+      end
       else
+      begin
         mLevel := 'Units';
+      end;
       mBuilder.Append(Format('Hotspots (%s), %s, %d von %d; Wert = normierte Änderungen × normierte kognitive ' +
         'Komplexität:', [RangeText(AResult), mLevel, Min(mLimit, Length(mEntries)), Length(mEntries)]))
         .Append(cLineBreak);
@@ -353,17 +403,23 @@ begin
         mEntry := mEntries[mIndex];
         mTrend := TrendText(mEntry);
         if mTrend <> '' then
+        begin
           mTrend := ' · Trend ' + mTrend;
+        end;
         mChurn := ChurnText(mEntry.Changes);
         if mChurn <> '' then
+        begin
           mChurn := ' · ' + mChurn + ' Zeilen';
+        end;
         mBuilder.Append(Format('%d. %s: Wert %s · %d Änderungen · %d Autoren · kognitiv %d · %d Zeilen%s%s · ' +
           'zuletzt %s', [mIndex + 1, EntryName(mEntry), ScoreText(mEntry.Score), mEntry.Changes.Changes,
           Length(mEntry.Changes.Authors), mEntry.Complexity, mEntry.Lines, mChurn, mTrend,
           DateText(mEntry.Changes.LastChange)])).Append(cLineBreak);
       end;
       if Length(mEntries) = 0 then
+      begin
         mBuilder.Append('Keine geänderten Units im Zeitraum.').Append(cLineBreak);
+      end;
     end;
     Result := mBuilder.ToString;
   finally
@@ -379,9 +435,13 @@ var
 begin
   ABuilder.Append('| # | ');
   if AMethods then
-    ABuilder.Append('Methode')
+  begin
+    ABuilder.Append('Methode');
+  end
   else
+  begin
     ABuilder.Append('Unit');
+  end;
   ABuilder.Append(' | Wert | Änderungen | Autoren | Komplexität | Zeilen | Geändert | Trend | Zuletzt |')
     .Append(cLineBreak);
   ABuilder.Append('|---:|---|---:|---:|---:|---:|---:|---|---|---|').Append(cLineBreak);
@@ -389,9 +449,13 @@ begin
   begin
     mEntry := AEntries[mIndex];
     if AMethods then
-      mName := Format('%s (`%s:%d`)', [mEntry.Method, mEntry.Path, mEntry.Line])
+    begin
+      mName := Format('%s (`%s:%d`)', [mEntry.Method, mEntry.Path, mEntry.Line]);
+    end
     else
+    begin
       mName := Format('%s (`%s`)', [mEntry.UnitName, mEntry.Path]);
+    end;
     ABuilder.Append(Format('| %d | %s | %s | %d | %d | %d | %d | %s | %s | %s |', [mIndex + 1, Cell(mName),
       ScoreText(mEntry.Score), mEntry.Changes.Changes, Length(mEntry.Changes.Authors), mEntry.Complexity, mEntry.Lines,
       ChurnText(mEntry.Changes), Cell(TrendText(mEntry)), DateText(mEntry.Changes.LastChange)])).Append(cLineBreak);
@@ -410,25 +474,39 @@ begin
       '(0–1); Trend gegenüber dem Stand vor 3 Monaten.').Append(cLineBreak).Append(cLineBreak);
     mBuilder.Append('## Units').Append(cLineBreak).Append(cLineBreak);
     if Length(AResult.Units) = 0 then
-      mBuilder.Append('Keine geänderten Units im Zeitraum.').Append(cLineBreak)
+    begin
+      mBuilder.Append('Keine geänderten Units im Zeitraum.').Append(cLineBreak);
+    end
     else
+    begin
       MarkdownTable(mBuilder, AResult.Units, False);
+    end;
     if AResult.Level = THotspotLevel.Methods then
     begin
       mBuilder.Append(cLineBreak).Append('## Methoden').Append(cLineBreak).Append(cLineBreak);
       if Length(AResult.Methods) = 0 then
-        mBuilder.Append('Keine geänderten Methoden im Zeitraum.').Append(cLineBreak)
+      begin
+        mBuilder.Append('Keine geänderten Methoden im Zeitraum.').Append(cLineBreak);
+      end
       else
+      begin
         MarkdownTable(mBuilder, AResult.Methods, True);
+      end;
     end;
     mBuilder.Append(cLineBreak).Append('## Änderungskopplung').Append(cLineBreak).Append(cLineBreak);
     mBuilder.Append('Paare ohne uses-Kante, die fast immer zusammen geändert werden.').Append(cLineBreak)
       .Append(cLineBreak);
     if Length(AResult.Coupling) = 0 then
-      mBuilder.Append('Keine Paare.').Append(cLineBreak)
+    begin
+      mBuilder.Append('Keine Paare.').Append(cLineBreak);
+    end
     else
+    begin
       for mPair in AResult.Coupling do
+      begin
         mBuilder.Append('- ').Append(Cell(CouplingLine(mPair))).Append(cLineBreak);
+      end;
+    end;
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
@@ -506,19 +584,27 @@ var
 begin
   ABuilder.Append('<table><thead><tr><th>#</th><th>');
   if AMethods then
-    ABuilder.Append('Methode')
+  begin
+    ABuilder.Append('Methode');
+  end
   else
+  begin
     ABuilder.Append('Unit');
+  end;
   ABuilder.Append('</th><th>Wert</th><th>Änderungen</th><th>Autoren</th><th>Komplexität</th><th>Zeilen</th>' +
     '<th>Geändert</th><th>Trend</th><th>Zuletzt</th></tr></thead><tbody>').Append(cLineBreak);
   for mIndex := 0 to High(AEntries) do
   begin
     mEntry := AEntries[mIndex];
     if AMethods then
+    begin
       mName := Format('%s <span class="path">%s:%d</span>', [HtmlEscape(mEntry.Method), HtmlEscape(mEntry.Path),
-        mEntry.Line])
+        mEntry.Line]);
+    end
     else
+    begin
       mName := Format('%s <span class="path">%s</span>', [HtmlEscape(mEntry.UnitName), HtmlEscape(mEntry.Path)]);
+    end;
     ABuilder.Append(Format('<tr><td>%d</td><td>%s</td><td>%s</td><td>%d</td><td title="%s">%d</td><td>%d</td>' +
       '<td>%d</td><td>%s</td><td>%s</td><td>%s</td></tr>', [mIndex + 1, mName, ScoreText(mEntry.Score),
       mEntry.Changes.Changes, HtmlEscape(string.Join(', ', mEntry.Changes.Authors)), Length(mEntry.Changes.Authors),
@@ -554,27 +640,39 @@ begin
     HtmlChart(mBuilder, Entries(AResult));
     mBuilder.Append('<h2>Units</h2>').Append(cLineBreak);
     if Length(AResult.Units) = 0 then
-      mBuilder.Append('<p>Keine geänderten Units im Zeitraum.</p>').Append(cLineBreak)
+    begin
+      mBuilder.Append('<p>Keine geänderten Units im Zeitraum.</p>').Append(cLineBreak);
+    end
     else
+    begin
       HtmlTable(mBuilder, AResult.Units, False);
+    end;
     if AResult.Level = THotspotLevel.Methods then
     begin
       mBuilder.Append('<h2>Methoden</h2>').Append(cLineBreak);
       if Length(AResult.Methods) = 0 then
-        mBuilder.Append('<p>Keine geänderten Methoden im Zeitraum.</p>').Append(cLineBreak)
+      begin
+        mBuilder.Append('<p>Keine geänderten Methoden im Zeitraum.</p>').Append(cLineBreak);
+      end
       else
+      begin
         HtmlTable(mBuilder, AResult.Methods, True);
+      end;
     end;
     mBuilder.Append('<h2>Änderungskopplung</h2>').Append(cLineBreak);
     mBuilder.Append('<p class="note">Paare ohne uses-Kante, die fast immer zusammen geändert werden.</p>')
       .Append(cLineBreak);
     if Length(AResult.Coupling) = 0 then
-      mBuilder.Append('<p>Keine Paare.</p>').Append(cLineBreak)
+    begin
+      mBuilder.Append('<p>Keine Paare.</p>').Append(cLineBreak);
+    end
     else
     begin
       mBuilder.Append('<ul>');
       for mPair in AResult.Coupling do
+      begin
         mBuilder.Append('<li>').Append(HtmlEscape(CouplingLine(mPair))).Append('</li>');
+      end;
       mBuilder.Append('</ul>').Append(cLineBreak);
     end;
     mBuilder.Append('</body></html>').Append(cLineBreak);
@@ -590,11 +688,17 @@ var
 begin
   mExtension := LowerCase(ExtractFileExt(AFileName));
   if (mExtension = '.html') or (mExtension = '.htm') then
-    Result := Html(AResult)
+  begin
+    Result := Html(AResult);
+  end
   else if mExtension = '.json' then
-    Result := Json(AResult)
+  begin
+    Result := Json(AResult);
+  end
   else
+  begin
     Result := Markdown(AResult);
+  end;
 end;
 
 end.

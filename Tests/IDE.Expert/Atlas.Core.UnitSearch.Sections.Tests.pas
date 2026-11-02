@@ -8,6 +8,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasPreviewSectionsTests = class
   private
     function Inputs: TAtlasSectionInputs;

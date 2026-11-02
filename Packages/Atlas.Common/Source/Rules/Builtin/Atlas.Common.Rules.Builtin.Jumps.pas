@@ -88,9 +88,13 @@ var
   Diagnostic: TSyntaxDiagnostic;
 begin
   for Diagnostic in ATree.Diagnostics do
+  begin
     if not Diagnostic.TreeIntact and ((AScope = nil) or ((Diagnostic.StartPos.Line >= AScope.StartPos.Line) and
       (Diagnostic.StartPos.Line <= AScope.EndPos.Line))) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -123,8 +127,12 @@ begin
       if (ANode.Name <> '') and (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
         TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.Field, TSyntaxKind.PropertyDecl,
         TSyntaxKind.Parameter, TSyntaxKind.TypeDecl, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst]) then
+      begin
         for Part in ANode.Name.Split([',', '.']) do
+        begin
           Names.AddOrSetValue(LowerCase(Trim(Part)), True);
+        end;
+      end;
       Result := True;
     end);
   Result := Names;
@@ -144,12 +152,18 @@ var
 begin
   Result := '';
   if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
+  begin
     Exit;
+  end;
   Target := AStatement[0];
   if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+  begin
     Target := Target[0];
+  end;
   if Target.Kind = TSyntaxKind.Identifier then
+  begin
     Result := LowerCase(Target.Name);
+  end;
 end;
 
 procedure TJumpOutsideAllowedScopeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -162,12 +176,16 @@ var
     Fixes: TArray<TRuleFix>;
   begin
     if ParserBroken(AContext.Tree, AScope) then
+    begin
       Exit;
+    end;
     Range := TTextRange.Create(AStatement.StartPos,
       TTextPosition.Create(AStatement.StartPos.Line, AStatement.StartPos.Character + Length(AName)));
     Fixes := nil;
     if AWithFix then
+    begin
       Fixes := [TRuleFix.Create('Break durch Exit ersetzen', [TRuleEdit.Create(Range, 'Exit')])];
+    end;
     AReport.Add(Range, AMessage, TRuleConfidence.High, Fixes);
   end;
 
@@ -215,11 +233,15 @@ var
           begin
             Written := Copy(AContext.Text, Node.StartOffset + 1, Length(Name));
             if (Name <> 'exit') and not Entry.HasLoop then
+            begin
               Report(Node, Entry.Scope, Name, Format('%s außerhalb einer Schleife (wie E2097).', [Written]),
-                (Name = 'break') and not Entry.InFinally)
+                (Name = 'break') and not Entry.InFinally);
+            end
             else if ((Name <> 'exit') and Entry.FinallySinceLoop) or ((Name = 'exit') and Entry.InFinally) then
+            begin
               Report(Node, Entry.Scope, Name, Format('%s darf einen finally-Block nicht verlassen (wie E2126).',
                 [Written]), False);
+            end;
           end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
@@ -236,7 +258,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Declared := DeclaredNames(AContext.Tree.Root);
   try
     Visit(AContext.Tree.Root);
@@ -258,9 +282,13 @@ var
 begin
   // Ziffernmarken vergleicht Delphi als Zahl: 007 und 7 sind dieselbe Marke.
   if (AName <> '') and CharInSet(AName[1], ['0'..'9']) and TryStrToInt(AName, Number) then
-    Result := IntToStr(Number)
+  begin
+    Result := IntToStr(Number);
+  end
   else
+  begin
     Result := LowerCase(AName);
+  end;
 end;
 
 procedure TLabelMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -278,9 +306,13 @@ var
     begin
       Middle := (Low + High) div 2;
       if Tokens[Middle].Offset < AOffset then
-        Low := Middle + 1
+      begin
+        Low := Middle + 1;
+      end
       else
+      begin
         High := Middle;
+      end;
     end;
     Result := Low;
   end;
@@ -300,7 +332,9 @@ var
     while (Node <> nil) and (Node <> AScope) do
     begin
       if Node.Kind in [TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
+      begin
         Result := [Node] + Result;
+      end;
       Node := Node.Parent;
     end;
   end;
@@ -311,10 +345,16 @@ var
     Index: Integer;
   begin
     if Length(AOuter) > Length(AInner) then
+    begin
       Exit(False);
+    end;
     for Index := 0 to High(AOuter) do
+    begin
       if AOuter[Index] <> AInner[Index] then
+      begin
         Exit(False);
+      end;
+    end;
     Result := True;
   end;
 
@@ -348,21 +388,27 @@ var
     while (Outer <> nil) and not Result do
     begin
       if Outer.Kind = TSyntaxKind.RoutineDecl then
+      begin
         for Index := 0 to Outer.ChildCount - 1 do
         begin
           Section := Outer[Index];
           if Section.Kind <> TSyntaxKind.LabelSection then
+          begin
             Continue;
+          end;
           First := TokenAt(Section.StartOffset) + 1;
           while (First <= High(Tokens)) and (Tokens[First].Offset < Section.EndOffset) and
             not Tokens[First].IsSymbol(';') do
           begin
             if (Tokens[First].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number]) and
               (LabelKey(Tokens[First].Text) = AKey) then
+            begin
               Result := True;
+            end;
             Inc(First);
           end;
         end;
+      end;
       Outer := Outer.Parent;
     end;
   end;
@@ -396,9 +442,13 @@ var
           Node := Pending.Pop;
           // Verschachtelte Routinen und anonyme Methoden haben eigene Marken.
           if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          begin
             Continue;
+          end;
           if Node.Kind = TSyntaxKind.AsmBlock then
-            HasAsm := True
+          begin
+            HasAsm := True;
+          end
           else if Node.Kind = TSyntaxKind.LabeledStatement then
           begin
             Name := LabelKey(Node.Name);
@@ -410,9 +460,13 @@ var
             List.Add(Node);
           end
           else if (Node.Kind = TSyntaxKind.GotoStatement) and (Node.Name <> '') then
+          begin
             Gotos.Add(Node);
+          end;
           for Child := Node.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(Node[Child]);
+          end;
         end;
       finally
         Pending.Free;
@@ -429,22 +483,29 @@ var
       begin
         Section := AScope[Index];
         if Section.Kind <> TSyntaxKind.LabelSection then
+        begin
           Continue;
+        end;
         First := TokenAt(Section.StartOffset) + 1;
         while (First <= High(Tokens)) and (Tokens[First].Offset < Section.EndOffset) and
           not Tokens[First].IsSymbol(';') do
         begin
           if Tokens[First].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number] then
+          begin
             Declared.AddOrSetValue(LabelKey(Tokens[First].Text), First);
+          end;
           Inc(First);
         end;
       end;
       HasAsm := False;
       Collect(ABody);
       if HasAsm then
-        Exit; // Marken im asm-Block sieht der Baum nicht.
+      begin
+        Exit;
+      end; // Marken im asm-Block sieht der Baum nicht.
       // E2073: dieselbe Marke zweimal gesetzt, wenn die spätere nie ohne die frühere übersetzt wird.
       for Key in Sets.Keys do
+      begin
         for Index := 1 to Sets[Key].Count - 1 do
         begin
           Node := Sets[Key][Index];
@@ -459,12 +520,19 @@ var
             end;
           end;
         end;
+      end;
       // E2093: gesetzt oder angesprungen, aber in dieser Routine nicht deklariert.
       for Key in Sets.Keys do
+      begin
         if not Declared.ContainsKey(Key) then
+        begin
           for Node in Sets[Key] do
+          begin
             AReport.Add(NameRange(Node, Node.Name), Format('Marke %s ist in dieser Routine nicht deklariert ' +
               '(wie E2093).', [Node.Name]), TRuleConfidence.High);
+          end;
+        end;
+      end;
       for Node in Gotos do
       begin
         Key := LabelKey(Node.Name);
@@ -472,40 +540,58 @@ var
         begin
           // Nirgends deklariert und nirgends gesetzt: das meldet schon die Syntaxprüfung (E2031).
           if not Sets.ContainsKey(Key) and DeclaredOutside(AScope, Key) then
+          begin
             AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('Marke %s ist in dieser Routine ' +
               'nicht deklariert (wie E2093).', [Node.Name]), TRuleConfidence.High);
+          end;
           Continue;
         end;
         // E2127: goto in einen try-Block hinein oder aus ihm heraus; nur bei genau einem Ziel.
         if not Sets.ContainsKey(Key) or (Sets[Key].Count <> 1) then
+        begin
           Continue;
+        end;
         Target := Sets[Key][0];
         GotoChain := TryChain(Node, AScope);
         TargetChain := TryChain(Target, AScope);
         if (Length(GotoChain) = Length(TargetChain)) and IsPrefix(GotoChain, TargetChain) then
+        begin
           Continue;
+        end;
         // Gemeinsamer Anfang beider Ketten; der erste Block danach steht in der Meldung.
         First := 0;
         while (First < Length(GotoChain)) and (First < Length(TargetChain)) and
           (GotoChain[First] = TargetChain[First]) do
+        begin
           Inc(First);
+        end;
         if First = Length(GotoChain) then
+        begin
           AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('goto %s springt in einen %s ' +
-            '(wie E2127).', [Node.Name, BlockName(TargetChain[First])]), TRuleConfidence.High)
+            '(wie E2127).', [Node.Name, BlockName(TargetChain[First])]), TRuleConfidence.High);
+        end
         else
+        begin
           AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('goto %s verlässt einen %s ' +
             '(wie E2127).', [Node.Name, BlockName(GotoChain[First])]), TRuleConfidence.High);
+        end;
       end;
       // E2074: deklariert und angesprungen, aber nie gesetzt.
       for Pair in Declared do
+      begin
         if not Sets.ContainsKey(Pair.Key) then
+        begin
           for Node in Gotos do
+          begin
             if LabelKey(Node.Name) = Pair.Key then
             begin
               AReport.Add(TTextRange.Create(Tokens[Pair.Value].StartPos, Tokens[Pair.Value].EndPos), Format('Marke %s wird angesprungen, aber nie ' +
                 'gesetzt (wie E2074).', [Tokens[Pair.Value].Text]), TRuleConfidence.High);
               Break;
             end;
+          end;
+        end;
+      end;
     finally
       Gotos.Free;
       Sets.Free;
@@ -531,10 +617,14 @@ var
         begin
           Body := Node.FindChild(TSyntaxKind.Block);
           if (Body <> nil) and not ParserBroken(AContext.Tree, Node) then
+          begin
             CheckScope(Node, Body);
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -544,7 +634,9 @@ var
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
     not (ContainsText(AContext.Text, 'goto') or ContainsText(AContext.Text, 'label')) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);
   Visit(AContext.Tree.Root);

@@ -60,7 +60,9 @@ function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode;
   while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+  begin
     Result := Result[0];
+  end;
 end;
 
 { TTypedScope }
@@ -71,9 +73,13 @@ begin
   FContext := AContext;
   FFileName := AContext.FileName;
   if FFileName = '' then
+  begin
     FFileName := AContext.RelativePath;
+  end;
   if FFileName = '' then
+  begin
     FFileName := AContext.UnitName + '.pas';
+  end;
   FTokens := AContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
   // Der Resolver des Laufs (TRuleDerived.Resolver): Seine Antworten teilen sich alle Regeln einer Datei.
@@ -88,7 +94,9 @@ begin
   FValues.Free;
   // Der Resolver gehört dem Cache.
   if FResolver <> nil then
+  begin
     FResolver.UnpinTree;
+  end;
   FCache := nil;
   inherited;
 end;
@@ -103,15 +111,21 @@ begin
   Result := '';
   Space := False;
   for Index := 1 to Length(Raw) do
+  begin
     if CharInSet(Raw[Index], [' ', #9, #10, #13]) then
-      Space := True
+    begin
+      Space := True;
+    end
     else
     begin
       if Space and (Result <> '') then
+      begin
         Result := Result + ' ';
+      end;
       Space := False;
       Result := Result + Raw[Index];
     end;
+  end;
 end;
 
 function TTypedScope.TokenAtPosition(const APosition: TTextPosition): Integer;
@@ -125,9 +139,13 @@ begin
     Middle := (Low + High) div 2;
     if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
       (FTokens[Middle].StartPos.Character < APosition.Character)) then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High := Middle;
+    end;
   end;
   Result := Low;
 end;
@@ -137,13 +155,19 @@ var
   Use: Integer;
 begin
   if ASymbol.Condition <> '' then
+  begin
     Exit(False);
+  end;
   if (ASymbol.Kind <> TResolvedKind.Local) and (ASymbol.FileName <> '') and not SameText(ASymbol.FileName,
     FFileName) then
+  begin
     Exit(True);
+  end;
   // Deklaration in dieser Datei: Der Baum enthält beide Zweige von {$IFDEF} … {$ELSE}.
   if FPaths = nil then
+  begin
     Exit(True);
+  end;
   Use := TConstantValues.TokenFrom(FTokens, ANode.StartOffset);
   Result := TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, Use),
     TConditionalBranches.PathAt(FPaths, TokenAtPosition(ASymbol.Range.StartPos)));

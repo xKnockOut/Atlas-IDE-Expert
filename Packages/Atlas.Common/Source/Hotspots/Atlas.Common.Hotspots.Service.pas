@@ -131,7 +131,9 @@ var
 begin
   Result := 0;
   for mRoutine in ARoutines do
+  begin
     Inc(Result, mRoutine.Values[TMetricKind.Cognitive]);
+  end;
 end;
 
 function LineCount(const AText: string): Integer;
@@ -139,11 +141,17 @@ var
   mChar: Char;
 begin
   if AText = '' then
+  begin
     Exit(0);
+  end;
   Result := 1;
   for mChar in AText do
+  begin
     if mChar = #10 then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 /// <summary>Pfad relativ zu ARoot mit "/"; False außerhalb.</summary>
@@ -154,12 +162,18 @@ begin
   mFile := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
   mRoot := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
   if (mRoot <> '') and (mRoot[Length(mRoot)] <> '/') then
+  begin
     mRoot := mRoot + '/';
+  end;
   Result := (mRoot <> '') and StartsText(mRoot, mFile) and (Length(mFile) > Length(mRoot));
   if Result then
-    ARelative := Copy(mFile, Length(mRoot) + 1, MaxInt)
+  begin
+    ARelative := Copy(mFile, Length(mRoot) + 1, MaxInt);
+  end
   else
+  begin
     ARelative := '';
+  end;
 end;
 
 /// <summary>Schlüssel einer ungerichteten Kante zwischen zwei Units (Index in der Unit-Liste).</summary>
@@ -190,6 +204,7 @@ begin
   begin
     mNested := False;
     for mOuter := 0 to High(ARoutines) do
+    begin
       if (mOuter <> mIndex) and (ARoutines[mOuter].Range.StartPos.Line <= ARoutines[mIndex].Range.StartPos.Line) and
         (ARoutines[mOuter].Range.EndPos.Line >= ARoutines[mIndex].Range.EndPos.Line) and
         ((ARoutines[mOuter].Range.StartPos.Line < ARoutines[mIndex].Range.StartPos.Line) or
@@ -198,8 +213,11 @@ begin
         mNested := True;
         Break;
       end;
+    end;
     if not mNested then
+    begin
       Result := Result + [ARoutines[mIndex]];
+    end;
   end;
 end;
 
@@ -223,10 +241,12 @@ begin
   // Klein vor dem Sortieren: Reihenfolge und Schreibweise der Dateien ändern den Schlüssel nicht.
   mFiles := Copy(Files);
   for mIndex := 0 to High(mFiles) do
+  begin
     mFiles[mIndex] := LowerCase(mFiles[mIndex]);
+  end;
   TArray.Sort<string>(mFiles);
   Result := Title + #1 + Root + #1 + IntToStr(Ord(Level)) + #1 + IntToStr(Options.Months) + #1 +
-    IntToStr(Options.MinSharedCommits) + #1 + FloatToStr(Options.MinCouplingRatio) + #1 +
+    IntToStr(Options.MinSharedCommits) + #1 + FloatToStr(Options.MinCouplingRatio, TFormatSettings.Invariant) + #1 +
     IntToStr(Options.MaxCommitFiles) + #1 + IntToStr(Options.MethodCandidates) + #1 +
     IntToStr(Options.TrendCandidates) + #1 + IntToStr(Options.TrendMonths) + #1 + string.Join(#2, Exclude) + #1 +
     string.Join(#2, Namespaces) + #1 + string.Join(#2, mFiles);
@@ -268,13 +288,19 @@ begin
   AKey := THotspots.KindName(AVcs.Kind) + #1 + AVcs.Root + #1 + mHead + #1 + IntToStr(AMonths) + #1 +
     FormatDateTime('yyyymmdd', mSince);
   if (mHead <> '') and (AKey = FHistoryKey) then
+  begin
     Exit(FHistory);
+  end;
   if not AVcs.Log(mSince, mCommits, mError) then
+  begin
     raise EHotspots.Create(mError);
+  end;
   Inc(FHistoryReads);
   Result := THotspotHistory.FollowRenames(mCommits);
   if mHead = '' then
+  begin
     AKey := AKey + #1 + IntToStr(FHistoryReads);
+  end;
   if FHistoryKey <> AKey then
   begin
     // Neuer Stand: gemerkte Methodenverläufe und alte Texte gehören zum alten.
@@ -305,14 +331,20 @@ begin
   mInScope := TDictionary<string, Boolean>.Create;
   try
     for mFileName in ARequest.Files do
+    begin
       mInScope.AddOrSetValue(LowerCase(mFileName), True);
+    end;
     mSelected := nil;
     for mItem in mUnits do
     begin
       if mItem.Library_ or SameText(ExtractFileExt(mItem.FileName), '.dpk') then
+      begin
         Continue;
+      end;
       if (mInScope.Count > 0) and not mInScope.ContainsKey(LowerCase(mItem.FileName)) then
+      begin
         Continue;
+      end;
       mSelected := mSelected + [mItem];
     end;
   finally
@@ -330,7 +362,9 @@ begin
     for mNode in mGraph.SortedNodes do
     begin
       if not RelativePath(AVcsRoot, mGraph.Node(mNode).FileName, mRelative) then
+      begin
         Continue;
+      end;
       mUnit.UnitName := mGraph.Node(mNode).UnitName;
       mUnit.FileName := mGraph.Node(mNode).FileName;
       mUnit.Path := mRelative;
@@ -339,10 +373,18 @@ begin
     end;
     mCount := mList.Count;
     for mNode in mGraph.SortedNodes do
+    begin
       if mNodeToUnit.TryGetValue(mNode, mIndex) then
+      begin
         for mTarget in mGraph.DirectDependencies(mNode, AllUsesSections) do
+        begin
           if mNodeToUnit.ContainsKey(mTarget) then
+          begin
             AEdges.AddOrSetValue(EdgeKey(mIndex, mNodeToUnit[mTarget], mCount), True);
+          end;
+        end;
+      end;
+    end;
     Result := mList.ToArray;
   finally
     mList.Free;
@@ -361,10 +403,16 @@ begin
   for mCommit in FHistory do
   begin
     if mCommit.Date <= ADate then
+    begin
       Break;
+    end;
     for mFile in mCommit.Files do
+    begin
       if (mFile.Kind = THotspotChangeKind.Renamed) and (mFile.OldPath <> '') and SameText(mFile.Path, APath) then
+      begin
         Result := mFile.OldPath;
+      end;
+    end;
   end;
 end;
 
@@ -380,7 +428,9 @@ begin
     mPast.State := AVcs.TextAt(PathAt(APath, ADate), ADate, mText);
     mPast.Routines := nil;
     if mPast.State = THotspotTextState.Found then
+    begin
       mPast.Routines := TMetricsCalculator.ForText(mText);
+    end;
     FPast.Add(mKey, mPast);
   end;
   ARoutines := mPast.Routines;
@@ -400,24 +450,34 @@ begin
   begin
     mState := PastRoutines(AVcs, AEntries[mIndex].Path, ADate, mRoutines);
     if mState = THotspotTextState.Missing then
-      mPast := -2
+    begin
+      mPast := -2;
+    end
     else if mState = THotspotTextState.Unknown then
-      mPast := -1
+    begin
+      mPast := -1;
+    end
     else if AEntries[mIndex].Method = '' then
-      mPast := HotspotComplexity(mRoutines)
+    begin
+      mPast := HotspotComplexity(mRoutines);
+    end
     else
     begin
       mFound := False;
       mPast := -2;
       for mRoutine in mRoutines do
+      begin
         if SameText(mRoutine.Name, AEntries[mIndex].Method) then
         begin
           mPast := mRoutine.Values[TMetricKind.Cognitive];
           mFound := True;
           Break;
         end;
+      end;
       if not mFound then
+      begin
         mPast := -2;
+      end;
     end;
     AEntries[mIndex].Trend := THotspotAnalyzer.TrendOf(AEntries[mIndex].Complexity, mPast);
     AEntries[mIndex].PastComplexity := Max(mPast, -1);
@@ -446,17 +506,23 @@ var
 begin
   mMaxChanges := 1;
   for mUnit in AUnits do
+  begin
     mMaxChanges := Max(mMaxChanges, mUnit.Changes.Changes);
+  end;
   mCandidates := TList<TMethodCandidate>.Create;
   try
     for mUnit in AUnits do
     begin
       if not ARoutines.TryGetValue(LowerCase(mUnit.Path), mRoutines) then
+      begin
         Continue;
+      end;
       for mRoutine in TopLevel(mRoutines) do
       begin
         if mRoutine.Values[TMetricKind.Cognitive] <= 0 then
+        begin
           Continue;
+        end;
         mCandidate.Entry := Default(THotspotEntry);
         mCandidate.Entry.UnitName := mUnit.UnitName;
         mCandidate.Entry.Path := mUnit.Path;
@@ -476,9 +542,13 @@ begin
       begin
         Result := CompareValue(ARight.Weight, ALeft.Weight);
         if Result = 0 then
+        begin
           Result := CompareText(ALeft.Entry.Path, ARight.Entry.Path);
+        end;
         if Result = 0 then
+        begin
           Result := ALeft.Entry.Line - ARight.Entry.Line;
+        end;
       end));
     mEntries := nil;
     for mIndex := 0 to Min(ARequest.Options.MethodCandidates, mCandidates.Count) - 1 do
@@ -491,7 +561,9 @@ begin
         Inc(FLineLogReads);
         if not AVcs.LineLog(mCandidate.Entry.FileName, mCandidate.Entry.Line, mCandidate.Entry.EndLine, FSince,
           mCommits) then
+        begin
           mCommits := nil;
+        end;
         FLineLogs.AddOrSetValue(mKey, mCommits);
       end;
       mCandidate.Entry.Changes := THotspotAnalyzer.LineChanges(mCommits);
@@ -536,9 +608,13 @@ begin
     for mIndex := 0 to High(mUnits) do
     begin
       if mChanges[mIndex].Changes = 0 then
+      begin
         Continue;
+      end;
       if not (Assigned(FReadText) and FReadText(mUnits[mIndex].FileName, mText)) then
+      begin
         Continue;
+      end;
       mRoutines := FMetrics.FileRoutines(mUnits[mIndex].FileName, mText);
       mAllRoutines.AddOrSetValue(LowerCase(mUnits[mIndex].Path), mRoutines);
       mEntry := Default(THotspotEntry);
@@ -581,7 +657,9 @@ var
   mGeneration: Int64;
 begin
   if AVcs = nil then
+  begin
     raise EHotspots.Create('Keine Versionsverwaltung');
+  end;
   System.TMonitor.Enter(FLock);
   try
     History(AVcs, Max(1, ARequest.Options.Months), ANow, mHistoryKey);

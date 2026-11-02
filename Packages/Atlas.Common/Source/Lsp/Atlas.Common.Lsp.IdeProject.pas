@@ -133,10 +133,16 @@ begin
   Result := nil;
   AFound := AObject.TryGetValue<TJSONArray>(AName, Items);
   if not AFound then
+  begin
     Exit;
+  end;
   for Item in Items do
+  begin
     if (Item is TJSONString) and (Trim(Item.Value) <> '') then
+    begin
       Result := Result + [Trim(Item.Value)];
+    end;
+  end;
 end;
 
 function WithTarget(const AVariables: TArray<TPair<string, string>>; const AProject: TProjectInfo):
@@ -162,10 +168,14 @@ begin
       Path := TProjectPaths.ExpandVariables(Item, AVariables);
       // Verweis auf den geerbten Wert, den die IDE nicht aufgelöst hat: kein Pfad.
       if Pos('$(', Path) > 0 then
+      begin
         Continue;
+      end;
       Path := TProjectPaths.Combine(ABase, Path);
       if Known.Contains(LowerCase(Path)) then
+      begin
         Continue;
+      end;
       Known.Add(LowerCase(Path));
       Result := Result + [Path];
     end;
@@ -187,7 +197,9 @@ var
 begin
   Result := Default(TIdeProjectContext);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Item := TJSONObject(AValue);
   Result.Project := Item.GetValue<string>('project', '');
   Result.Configuration := Item.GetValue<string>('configuration', '');
@@ -200,7 +212,9 @@ begin
   Result.LibraryPaths := StringsOf(Item, 'libraryPaths', Ignored);
   Result.HasActive := Item.GetValue('active') is TJSONBool;
   if Result.HasActive then
+  begin
     Result.Active := TJSONBool(Item.GetValue('active')).AsBoolean;
+  end;
   if Item.TryGetValue<TJSONObject>('naming', Prefixes) then
   begin
     for Kind := Low(TNamingKind) to High(TNamingKind) do
@@ -221,14 +235,20 @@ begin
     end;
   end;
   if Item.TryGetValue<TJSONArray>('formatFunctions', Functions) then
+  begin
     for Entry in Functions do
+    begin
       if Entry is TJSONObject then
       begin
         Name := Trim(TJSONObject(Entry).GetValue<string>('name', ''));
         if Name <> '' then
+        begin
           Result.FormatFunctions := Result.FormatFunctions + [TFormatRoutines.Custom(Name,
             TJSONObject(Entry).GetValue<Integer>('formatIndex', -1))];
+        end;
       end;
+    end;
+  end;
 end;
 
 function TIdeProjectContext.NamingKey: string;
@@ -238,12 +258,20 @@ var
 begin
   Result := '';
   for Kind := Low(TNamingKind) to High(TNamingKind) do
+  begin
     if HasNaming[Kind] then
+    begin
       Result := Result + NamingKeys[Kind] + '=' + Naming[Kind] + '|';
+    end;
+  end;
   if HasConstantPrefix then
+  begin
     Result := Result + 'constant=' + ConstantPrefix + '|';
+  end;
   for Routine in FormatFunctions do
+  begin
     Result := Result + 'format=' + Routine.Name + ':' + IntToStr(Routine.FormatIndex) + '|';
+  end;
 end;
 
 function TIdeProjectContext.RuleNaming: TRuleNaming;
@@ -255,11 +283,13 @@ var
 begin
   Result := Default(TRuleNaming);
   for Kind := Low(TNamingKind) to High(TNamingKind) do
+  begin
     if HasNaming[Kind] then
     begin
       Result.Known[Kinds[Kind]] := True;
       Result.Prefixes[Kinds[Kind]] := Naming[Kind];
     end;
+  end;
   if HasConstantPrefix then
   begin
     Result.Known[TRuleNamingKind.Constant] := True;
@@ -281,7 +311,9 @@ var
   Namespace: string;
 begin
   if not HasOptions then
+  begin
     Exit;
+  end;
   Variables := WithTarget(AVariables, AProject);
   AProject.Defines := nil;
   for Define in Defines do
@@ -289,14 +321,20 @@ begin
     Upper := UpperCase(Trim(TProjectPaths.ExpandVariables(Define, Variables)));
     // Unaufgelöster Verweis wie $(DCC_Define): kein Symbol.
     if (Upper = '') or (Pos('$(', Upper) > 0) or (IndexStr(Upper, AProject.Defines) >= 0) then
+    begin
       Continue;
+    end;
     AProject.Defines := AProject.Defines + [Upper];
   end;
   AProject.SearchPaths := UniquePaths(TProjectPaths.DirectoryOf(AProject.FileName), SearchPaths, Variables);
   AProject.Namespaces := nil;
   for Namespace in Namespaces do
+  begin
     if (Pos('$(', Namespace) = 0) and (IndexText(Namespace, AProject.Namespaces) < 0) then
+    begin
       AProject.Namespaces := AProject.Namespaces + [Namespace];
+    end;
+  end;
 end;
 
 function TIdeProjectContext.ExpandedLibraryPaths(const AProject: TProjectInfo;
@@ -336,12 +374,16 @@ begin
   if not ((AParams is TJSONObject) and
     TJSONObject(AParams).TryGetValue<TJSONObject>('initializationOptions', Options) and
     Options.TryGetValue<TJSONArray>('projectContexts', Items)) then
+  begin
     Exit;
+  end;
   for Item in Items do
   begin
     Context := TIdeProjectContext.FromJson(Item);
     if Context.Project <> '' then
+    begin
       Update(Context);
+    end;
   end;
 end;
 
@@ -365,11 +407,17 @@ begin
     Result := not Found or (Known.Key <> AContext.Key);
     ANamingChanged := Found and not Result and (Known.NamingKey <> AContext.NamingKey);
     if Result or ANamingChanged or (Known.Active <> AContext.Active) then
+    begin
       FContexts.AddOrSetValue(Key, AContext);
+    end;
     if AContext.HasActive and AContext.Active then
-      FActive := AContext.Project
+    begin
+      FActive := AContext.Project;
+    end
     else if AContext.HasActive and SameText(FActive, AContext.Project) then
+    begin
       FActive := '';
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -402,14 +450,20 @@ var
 begin
   Context := TIdeProjectContext.FromJson(AParams);
   if Context.Project = '' then
+  begin
     Exit;
+  end;
   if Update(Context, NamingChanged) then
   begin
     if Assigned(FOnChanged) then
+    begin
       FOnChanged(Context);
+    end;
   end
   else if NamingChanged and Assigned(FOnNamingChanged) then
+  begin
     FOnNamingChanged(Context);
+  end;
 end;
 
 end.

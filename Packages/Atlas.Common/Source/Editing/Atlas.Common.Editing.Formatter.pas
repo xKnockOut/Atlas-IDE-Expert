@@ -78,9 +78,13 @@ begin
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
   begin
     if ALine[Index] = #9 then
-      Result := (Result div AIndentSize + 1) * AIndentSize
+    begin
+      Result := (Result div AIndentSize + 1) * AIndentSize;
+    end
     else
+    begin
       Inc(Result);
+    end;
     Inc(Index);
   end;
   ALength := Index - 1;
@@ -94,14 +98,22 @@ begin
   Columns := LeadingColumns(ALine, ASettings.IndentSize, Index);
   Inc(Index);
   if Index > Length(ALine) then
+  begin
     // Nur Leerraum: Zeile wird leer (falls getrimmt) oder bleibt.
     Exit(ALine);
+  end;
   if AColumn >= 0 then
+  begin
     Columns := AColumn;
+  end;
   if ASettings.UseTabs then
-    Result := StringOfChar(#9, Columns div ASettings.IndentSize) + StringOfChar(' ', Columns mod ASettings.IndentSize)
+  begin
+    Result := StringOfChar(#9, Columns div ASettings.IndentSize) + StringOfChar(' ', Columns mod ASettings.IndentSize);
+  end
   else
+  begin
     Result := StringOfChar(' ', Columns);
+  end;
   Result := Result + Copy(ALine, Index, MaxInt);
 end;
 
@@ -132,7 +144,9 @@ begin
   SetLength(Info, Length(ALines));
   SetLength(Gaps, Length(ALines));
   for Line := 0 to High(ALines) do
+  begin
     Gaps[Line] := TList<TGapEdit>.Create;
+  end;
   try
     // Mehrzeilige Tokens und asm-Blöcke einfrieren.
     AsmDepth := 0;
@@ -140,15 +154,21 @@ begin
     begin
       Token := ATokens[Index];
       if Token.StartPos.Line > High(ALines) then
+      begin
         Break;
+      end;
       if Token.EndPos.Line > Token.StartPos.Line then
       begin
         Info[Token.StartPos.Line].KeepEnd := True;
         for Line := Token.StartPos.Line + 1 to Min(Token.EndPos.Line, High(ALines)) do
+        begin
           Info[Line].Frozen := True;
+        end;
       end;
       if (Token.Kind = TPascalTokenKind.Keyword) and Token.IsKeyword('asm') then
-        Inc(AsmDepth)
+      begin
+        Inc(AsmDepth);
+      end
       else if (AsmDepth > 0) and (Token.Kind = TPascalTokenKind.Keyword) and Token.IsKeyword('end') then
       begin
         Dec(AsmDepth);
@@ -158,24 +178,38 @@ begin
       begin
         // Zeilen nach "asm" bis zum end bleiben, wie sie sind.
         if not Token.IsKeyword('asm') then
+        begin
           for Line := Token.StartPos.Line to Min(Token.EndPos.Line, High(ALines)) do
+          begin
             Info[Line].Frozen := True;
+          end;
+        end;
         Continue;
       end;
       if Info[Token.StartPos.Line].Frozen then
+      begin
         Continue;
+      end;
       // Schreibweise reservierter Wörter.
       if (Token.Kind = TPascalTokenKind.Keyword) and (ASettings.KeywordCase <> TKeywordCase.Preserve) then
       begin
         if ASettings.KeywordCase = TKeywordCase.Lower then
-          Wanted := LowerCase(Token.Text)
+        begin
+          Wanted := LowerCase(Token.Text);
+        end
         else
+        begin
           Wanted := UpperCase(Token.Text);
+        end;
         if Wanted <> Token.Text then
+        begin
           AddGap(Gaps[Token.StartPos.Line], Token.StartPos.Character, Token.EndPos.Character, Wanted);
+        end;
       end;
       if Token.Kind <> TPascalTokenKind.Symbol then
+      begin
         Continue;
+      end;
       if (Token.Text = ':=') and ASettings.SpaceAroundAssignment then
       begin
         if Index > 0 then
@@ -183,20 +217,26 @@ begin
           Previous := ATokens[Index - 1];
           if (Previous.EndPos.Line = Token.StartPos.Line) and
             (Token.StartPos.Character - Previous.EndPos.Character <> 1) then
+          begin
             AddGap(Gaps[Token.StartPos.Line], Previous.EndPos.Character, Token.StartPos.Character, ' ');
+          end;
         end;
         if Index < High(ATokens) then
         begin
           Next := ATokens[Index + 1];
           if (Next.StartPos.Line = Token.EndPos.Line) and (Next.StartPos.Character - Token.EndPos.Character <> 1) then
+          begin
             AddGap(Gaps[Token.StartPos.Line], Token.EndPos.Character, Next.StartPos.Character, ' ');
+          end;
         end;
       end
       else if (Token.Text = ',') and ASettings.SpaceAfterComma and (Index < High(ATokens)) then
       begin
         Next := ATokens[Index + 1];
         if (Next.StartPos.Line = Token.EndPos.Line) and (Next.StartPos.Character - Token.EndPos.Character <> 1) then
+        begin
           AddGap(Gaps[Token.StartPos.Line], Token.EndPos.Character, Next.StartPos.Character, ' ');
+        end;
       end;
     end;
     // Einrückung aus der Blockstruktur (#43).
@@ -205,13 +245,17 @@ begin
     begin
       SetLength(Leading, Length(ALines));
       for Line := 0 to High(ALines) do
+      begin
         Leading[Line] := LeadingColumns(ALines[Line].Text, ASettings.IndentSize, Width);
+      end;
       Columns := TBlockIndenter.Columns(ATokens, Leading, ASettings.IndentSize);
     end;
     for Line := 0 to High(ALines) do
     begin
       if Info[Line].Frozen or (ALines[Line].Origin < AFirst) or (ALines[Line].Origin > ALast) then
+      begin
         Continue;
+      end;
       Text := ALines[Line].Text;
       // Von rechts nach links, damit die Spalten gültig bleiben.
       Gaps[Line].Sort(TComparer<TGapEdit>.Construct(
@@ -220,18 +264,28 @@ begin
           Result := B.StartColumn - A.StartColumn;
         end));
       for Gap in Gaps[Line] do
+      begin
         Text := Copy(Text, 1, Gap.StartColumn) + Gap.Text + Copy(Text, Gap.EndColumn + 1, MaxInt);
+      end;
       if Columns <> nil then
-        Text := Reindent(Text, ASettings, Columns[Line])
+      begin
+        Text := Reindent(Text, ASettings, Columns[Line]);
+      end
       else
+      begin
         Text := Reindent(Text, ASettings, -1);
+      end;
       if ASettings.TrimTrailingWhitespace and not Info[Line].KeepEnd then
+      begin
         Text := TrimRight(Text);
+      end;
       ALines[Line].Text := Text;
     end;
   finally
     for Line := 0 to High(Gaps) do
+    begin
       Gaps[Line].Free;
+    end;
   end;
 end;
 
@@ -245,7 +299,9 @@ begin
     for Index := 0 to High(ALines) do
     begin
       if Index > 0 then
+      begin
         Builder.Append(ALineBreak);
+      end;
       Builder.Append(ALines[Index].Text);
     end;
     Result := Builder.ToString;
@@ -263,14 +319,22 @@ begin
   Result := False;
   AOff := False;
   if AToken.Kind <> TPascalTokenKind.Comment then
+  begin
     Exit;
+  end;
   mText := AToken.Text;
   if mText.StartsWith('//') then
-    mText := Copy(mText, 3, MaxInt)
+  begin
+    mText := Copy(mText, 3, MaxInt);
+  end
   else if mText.StartsWith('(*') then
-    mText := Copy(mText, 3, Length(mText) - 4)
+  begin
+    mText := Copy(mText, 3, Length(mText) - 4);
+  end
   else if mText.StartsWith('{') then
+  begin
     mText := Copy(mText, 2, Length(mText) - 2);
+  end;
   mText := LowerCase(StringReplace(mText, ' ', '', [rfReplaceAll])).Trim;
   if mText = 'atlas-format:off' then
   begin
@@ -278,7 +342,9 @@ begin
     Result := True;
   end
   else
+  begin
     Result := mText = 'atlas-format:on';
+  end;
 end;
 
 /// <summary>Zeilen von ALineCount, die zwischen den Marken liegen (#1358), samt der Zeilen der Marken.</summary>
@@ -293,19 +359,29 @@ begin
   for mToken in ATokens do
   begin
     if not IsFormatMarker(mToken, mIsOff) then
+    begin
       Continue;
+    end;
     if mIsOff and (mOffLine < 0) then
-      mOffLine := mToken.StartPos.Line
+    begin
+      mOffLine := mToken.StartPos.Line;
+    end
     else if not mIsOff and (mOffLine >= 0) then
     begin
       for mLine := mOffLine to Min(mToken.EndPos.Line, ALineCount - 1) do
+      begin
         Result[mLine] := True;
+      end;
       mOffLine := -1;
     end;
   end;
   if mOffLine >= 0 then
+  begin
     for mLine := mOffLine to ALineCount - 1 do
+    begin
       Result[mLine] := True;
+    end;
+  end;
 end;
 
 /// <summary>Geschützte Zeilen (#1358) wie im Original: Jede Gruppe aus einer Ursprungszeile und den an sie
@@ -320,9 +396,13 @@ var
 begin
   mAny := False;
   for mEach := 0 to High(AProtected) do
+  begin
     mAny := mAny or AProtected[mEach];
+  end;
   if not mAny then
+  begin
     Exit;
+  end;
   mKept := TList<TFormatLine>.Create;
   try
     mIndex := 0;
@@ -331,14 +411,20 @@ begin
     begin
       mStop := mLine;
       while (mStop < High(AOriginal)) and AJoined[mStop + 1] do
+      begin
         Inc(mStop);
+      end;
       mHit := False;
       for mEach := mLine to mStop do
+      begin
         mHit := mHit or AProtected[mEach];
+      end;
       if mHit then
       begin
         while (mIndex <= High(ALines)) and (ALines[mIndex].Origin <= mStop) do
+        begin
           Inc(mIndex);
+        end;
         for mEach := mLine to mStop do
         begin
           mItem.Text := AOriginal[mEach];
@@ -348,11 +434,13 @@ begin
         end;
       end
       else
+      begin
         while (mIndex <= High(ALines)) and (ALines[mIndex].Origin <= mStop) do
         begin
           mKept.Add(ALines[mIndex]);
           Inc(mIndex);
         end;
+      end;
       mLine := mStop + 1;
     end;
     while mIndex <= High(ALines) do
@@ -378,29 +466,49 @@ var
 begin
   Settings := ASettings;
   if Settings.IndentSize < 1 then
+  begin
     Settings.IndentSize := 2;
+  end;
   LB := TTextLines.LineBreakOf(AText);
   AOriginal := TTextLines.SplitLines(AText);
   First := Max(AFirstLine, 0);
   if ALastLine < 0 then
-    Last := High(AOriginal)
+  begin
+    Last := High(AOriginal);
+  end
   else
+  begin
     Last := Min(ALastLine, High(AOriginal));
+  end;
   Result := TFormatLayout.Place(AOriginal, ATokens, Settings, First, Last, AJoined);
   if Length(Result) = Length(AOriginal) then
-    Tokens := ATokens
+  begin
+    Tokens := ATokens;
+  end
   else
+  begin
     Tokens := TPascalLexer.Tokenize(JoinTexts(Result, LB));
+  end;
   FormatLines(Result, Tokens, Settings, First, Last);
   for Kind := Low(TFormatAlignment) to High(TFormatAlignment) do
+  begin
     if ((Kind = TFormatAlignment.Assignments) and Settings.AlignAssignments) or
       ((Kind in [TFormatAlignment.Declarations, TFormatAlignment.Constants]) and Settings.AlignDeclarations) or
       ((Kind = TFormatAlignment.Comments) and Settings.AlignComments) then
+    begin
       TFormatLayout.Align(Result, TPascalLexer.Tokenize(JoinTexts(Result, LB)), Kind, First, Last);
+    end;
+  end;
   if Settings.MaxLineLength > 0 then
+  begin
     for Round := 1 to 64 do
+    begin
       if not TFormatLayout.Wrap(Result, TPascalLexer.Tokenize(JoinTexts(Result, LB)), Settings, First, Last) then
+      begin
         Break;
+      end;
+    end;
+  end;
   KeepProtected(Result, AOriginal, AJoined, ProtectedLines(ATokens, Length(AOriginal)));
 end;
 
@@ -437,7 +545,9 @@ begin
       // Neue Zeilenenden: die ganze Datei auf einmal ersetzen.
       Text := JoinTexts(Lines, ASettings.EndOfLine);
       if ASettings.InsertFinalNewline and (Text <> '') and not Text.EndsWith(ASettings.EndOfLine) then
+      begin
         Text := Text + ASettings.EndOfLine;
+      end;
       Found.Add(TTextEdit.Create(TTextRange.Create(0, 0, High(Original), Length(Original[High(Original)])), Text));
       Exit(Found.ToArray);
     end;
@@ -446,27 +556,37 @@ begin
     for Line := 0 to High(Original) do
     begin
       if Joined[Line] then
+      begin
         Continue;
+      end;
       Stop := Line;
       while (Stop < High(Original)) and Joined[Stop + 1] do
+      begin
         Inc(Stop);
+      end;
       Text := '';
       OldText := Original[Line];
       FirstPart := True;
       while (Index <= High(Lines)) and (Lines[Index].Origin <= Stop) do
       begin
         if not FirstPart then
+        begin
           Text := Text + LB;
+        end;
         FirstPart := False;
         Text := Text + Lines[Index].Text;
         Inc(Index);
       end;
       if (Stop > Line) or (Text <> OldText) then
+      begin
         Found.Add(TTextEdit.Create(TTextRange.Create(Line, 0, Stop, Length(Original[Stop])), Text));
+      end;
     end;
     if WholeFile and ASettings.InsertFinalNewline and (Lines <> nil) and (Lines[High(Lines)].Text <> '') then
+    begin
       Found.Add(TTextEdit.Create(TTextRange.Create(High(Original), Length(Original[High(Original)]),
         High(Original), Length(Original[High(Original)])), LB));
+    end;
     Result := Found.ToArray;
   finally
     Found.Free;
@@ -484,10 +604,14 @@ begin
   Lines := Pipeline(AText, ATokens, ASettings, 0, -1, Original, Joined);
   LB := TTextLines.LineBreakOf(AText);
   if (ASettings.EndOfLine <> '') and (Length(Original) > 1) then
+  begin
     LB := ASettings.EndOfLine;
+  end;
   Result := JoinTexts(Lines, LB);
   if ASettings.InsertFinalNewline and (Lines <> nil) and (Lines[High(Lines)].Text <> '') then
+  begin
     Result := Result + LB;
+  end;
 end;
 
 end.

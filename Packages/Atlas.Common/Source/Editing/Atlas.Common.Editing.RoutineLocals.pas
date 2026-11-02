@@ -83,7 +83,9 @@ begin
     function(AChild: TSyntaxNode): Boolean
     begin
       if AChild.Kind = Kind then
+      begin
         List.Add(AChild);
+      end;
       Result := True;
     end);
 end;
@@ -99,7 +101,9 @@ begin
     begin
       Result := TSyntaxSearchStep.Descend;
       if AChild.Kind = Kind then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end) <> nil;
 end;
 
@@ -115,7 +119,9 @@ class function TRoutineLocals.TypeChildText(const AText: string; ANode: TSyntaxN
 begin
   Result := '';
   if (ANode.ChildCount > 0) and (ANode[0].Kind in TRoutineLocals.TypeKinds) then
+  begin
     Result := TRoutineBody.TextOf(AText, ANode[0]);
+  end;
 end;
 
 class function TRoutineLocals.Collect(const AText: string; ATree: TSyntaxTree;
@@ -131,19 +137,27 @@ begin
   Result := nil;
   Body := TRoutineBody.BodyOf(ARoutine);
   if Body = nil then
+  begin
     Exit;
+  end;
   List := TList<TRoutineLocal>.Create;
   Nodes := TList<TSyntaxNode>.Create;
   try
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
     Parameters := nil;
     if Header <> nil then
-      Parameters := Header.FindChild(TSyntaxKind.Parameters)
+    begin
+      Parameters := Header.FindChild(TSyntaxKind.Parameters);
+    end
     else if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
+    begin
       // Die anonyme Methode trägt ihre Parameter selbst (#680).
       Parameters := ARoutine.FindChild(TSyntaxKind.Parameters);
+    end;
     if Parameters <> nil then
+    begin
       for Index := 0 to Parameters.ChildCount - 1 do
+      begin
         // "A, B: Integer" ist ein Knoten mit beiden Namen.
         for Name in Parameters[Index].Name.Split([',']) do
         begin
@@ -156,11 +170,15 @@ begin
           Local.ScopeEnd := Body.EndOffset;
           List.Add(Local);
         end;
+      end;
+    end;
     for Index := 0 to ARoutine.ChildCount - 1 do
     begin
       Section := ARoutine[Index];
       if Section.Kind = TSyntaxKind.VarSection then
+      begin
         for Inner := 0 to Section.ChildCount - 1 do
+        begin
           for Name in Section[Inner].Name.Split([',']) do
           begin
             Local := Default(TRoutineLocal);
@@ -171,8 +189,11 @@ begin
             Local.ScopeStart := Body.StartOffset;
             Local.ScopeEnd := Body.EndOffset;
             List.Add(Local);
-          end
+          end;
+        end;
+      end
       else if Section.Kind = TSyntaxKind.ConstSection then
+      begin
         for Inner := 0 to Section.ChildCount - 1 do
         begin
           Local := Default(TRoutineLocal);
@@ -183,10 +204,12 @@ begin
           Local.ScopeEnd := Body.EndOffset;
           List.Add(Local);
         end;
+      end;
     end;
     CollectKind(Body, TSyntaxKind.InlineVar, Nodes);
     CollectKind(Body, TSyntaxKind.InlineConst, Nodes);
     for Node in Nodes do
+    begin
       for Name in Node.Name.Split([',']) do
       begin
         Local := Default(TRoutineLocal);
@@ -196,15 +219,19 @@ begin
         Local.Statement := Node;
         Local.TypeText := TypeChildText(AText, Node);
         if (Local.TypeText = '') and (Node.ChildCount > 0) then
+        begin
           Local.Initializer := Node[Node.ChildCount - 1];
+        end;
         Local.ScopeStart := Node.StartOffset;
         Local.ScopeEnd := Node.Parent.EndOffset;
         List.Add(Local);
       end;
+    end;
     Nodes.Clear;
     CollectKind(Body, TSyntaxKind.ForStatement, Nodes);
     CollectKind(Body, TSyntaxKind.ForInStatement, Nodes);
     for Node in Nodes do
+    begin
       if IsInlineFor(ATree.Tokens, Node) then
       begin
         Local := Default(TRoutineLocal);
@@ -213,11 +240,14 @@ begin
         Local.Decl := Node;
         Local.Statement := Node;
         if Node.ChildCount > 0 then
+        begin
           Local.Initializer := Node[0];
+        end;
         Local.ScopeStart := Node.StartOffset;
         Local.ScopeEnd := Node.EndOffset;
         List.Add(Local);
       end;
+    end;
     Result := List.ToArray;
   finally
     Nodes.Free;
@@ -232,10 +262,14 @@ var
 begin
   Result := -1;
   for Index := 0 to High(ALocals) do
+  begin
     if SameText(ALocals[Index].Name, AName) and (ALocals[Index].ScopeStart <= AOffset) and
       (AOffset <= ALocals[Index].ScopeEnd) and
       ((Result < 0) or (ALocals[Index].ScopeStart >= ALocals[Result].ScopeStart)) then
+    begin
       Result := Index;
+    end;
+  end;
 end;
 
 class function TRoutineLocals.AccessOf(ANode: TSyntaxNode; const ALookup: TFlowSignatureLookup): TLocalAccess;
@@ -247,30 +281,46 @@ begin
   Result := TLocalAccess.Read;
   Parent := ANode.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent[0] = ANode) then
+  begin
     Exit(TLocalAccess.Write);
+  end;
   if Parent.Kind = TSyntaxKind.AddressOf then
+  begin
     Exit(TLocalAccess.ReadWrite);
+  end;
   // Teil eines Ziels: A.Feld := …, A[I] := …
   Node := ANode;
   while (Node.Parent <> nil) and (Node.Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
     TSyntaxKind.Dereference]) and (Node.Parent[0] = Node) do
+  begin
     Node := Node.Parent;
+  end;
   if (Node <> ANode) and (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.AssignStatement) and
     (Node.Parent[0] = Node) then
+  begin
     Exit(TLocalAccess.ReadWrite);
+  end;
   // Argument eines Aufrufs: var/out oder unbekannte Signatur ändern womöglich.
   if (Parent.Kind = TSyntaxKind.Call) and (Parent[0] <> ANode) then
   begin
     Index := 0;
     while (Index < Parent.ChildCount) and (Parent[Index] <> ANode) do
+    begin
       Inc(Index);
+    end;
     Mode := TFlowArgumentMode.Unknown;
     if Assigned(ALookup) then
+    begin
       Mode := ALookup(Parent, Index - 1);
+    end;
     if Mode <> TFlowArgumentMode.Value then
+    begin
       Result := TLocalAccess.ReadWrite;
+    end;
   end;
 end;
 
@@ -288,18 +338,28 @@ begin
   Names := ADecl.Name.Split([',']);
   Kept := nil;
   for Name in Names do
+  begin
     if IndexText(Trim(Name), ARemoved) < 0 then
+    begin
       Kept := Kept + [Trim(Name)];
+    end;
+  end;
   if Length(Kept) = Length(Names) then
+  begin
     Exit;
+  end;
   if Kept <> nil then
   begin
     Tokens := ATree.Tokens;
     Colon := TRoutineBody.TokenAt(Tokens, ADecl.StartOffset);
     while (Colon <= High(Tokens)) and not Tokens[Colon].IsSymbol(':') do
+    begin
       Inc(Colon);
+    end;
     if Colon > High(Tokens) then
+    begin
       Exit;
+    end;
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos, Tokens[Colon].StartPos),
       string.Join(', ', Kept))];
     Exit;
@@ -308,10 +368,18 @@ begin
   Section := ADecl.Parent;
   AllRemoved := True;
   for Index := 0 to Section.ChildCount - 1 do
+  begin
     if Section[Index] <> ADecl then
+    begin
       for Name in Section[Index].Name.Split([',']) do
+      begin
         if IndexText(Trim(Name), ARemoved) < 0 then
+        begin
           AllRemoved := False;
+        end;
+      end;
+    end;
+  end;
   if AllRemoved and (Section[0] = ADecl) then
   begin
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Section.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')];
@@ -323,20 +391,30 @@ begin
   Next := -1;
   Shared := False;
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].Kind <> TPascalTokenKind.Comment) and (Tokens[Index].Text <> '') and
       (Tokens[Index].StartPos.Line >= ADecl.StartPos.Line) and (Tokens[Index].StartPos.Line <= ADecl.EndPos.Line) and
       ((Tokens[Index].Offset < ADecl.StartOffset) or (Tokens[Index].Offset >= ADecl.EndOffset)) then
     begin
       Shared := True;
       if (Next < 0) and (Tokens[Index].Offset >= ADecl.EndOffset) then
+      begin
         Next := Index;
+      end;
     end;
+  end;
   if not Shared then
-    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')]
+  begin
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')];
+  end
   else if Next >= 0 then
-    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos, Tokens[Next].StartPos), '')]
+  begin
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos, Tokens[Next].StartPos), '')];
+  end
   else
+  begin
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos, ADecl.EndPos), '')];
+  end;
 end;
 
 end.

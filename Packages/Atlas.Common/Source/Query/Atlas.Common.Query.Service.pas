@@ -61,7 +61,9 @@ begin
   // Result zuweisen statt Exit(ASecond): Delphi riefe die Methodenreferenz dort auf (E2010).
   Result := ASecond;
   if not Assigned(AFirst) then
+  begin
     Exit;
+  end;
   Result :=
     function: Boolean
     begin
@@ -117,16 +119,22 @@ begin
   System.TMonitor.Enter(FLock);
   try
     if FCache.TryGetValue(mKey, mEntry) and (mEntry.Generation = mGeneration) and (mEntry.Scope = mScope) then
+    begin
       Exit(mEntry.Result);
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
   if Assigned(ARequest.Cancelled) then
+  begin
     mSource.Cancelled := CombinedCancel(mSource.Cancelled, ARequest.Cancelled);
+  end;
   Result := TCodeQueryEngine.Run(mSource, ARequest, FCollector);
   // Abgebrochene Läufe nicht merken: Der nächste Aufruf soll rechnen.
   if Result.Failed and (Result.ErrorColumn = 0) then
+  begin
     Exit;
+  end;
   mEntry.Generation := mGeneration;
   mEntry.Scope := mScope;
   mEntry.Result := Result;
@@ -134,7 +142,9 @@ begin
   try
     Inc(FComputations);
     if (FCache.Count >= cMaxEntries) and not FCache.ContainsKey(mKey) then
+    begin
       FCache.Clear;
+    end;
     FCache.AddOrSetValue(mKey, mEntry);
   finally
     System.TMonitor.Exit(FLock);

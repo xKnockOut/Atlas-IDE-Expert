@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerNotifyTests = class
   private
     FDir: string;
@@ -60,7 +61,9 @@ uses
   System.DateUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Notify;
+  Atlas.Core.Tracker.Notify,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 function At(AMinute: Integer): TDateTime;
 begin
@@ -85,11 +88,13 @@ end;
 
 procedure TAtlasTrackerNotifyTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FDir := TPath.Combine(TPath.GetTempPath, 'AtlasNotifyTests' + IntToStr(Random(1000000)));
 end;
 
 procedure TAtlasTrackerNotifyTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FDir) then
     TDirectory.Delete(FDir, True);
   FDir := '';

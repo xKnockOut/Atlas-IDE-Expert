@@ -115,24 +115,32 @@ begin
       if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.Name <> '') and HasBody(Child) then
       begin
         if Outer = '' then
-          Name := Child.Name
+        begin
+          Name := Child.Name;
+        end
         else
+        begin
           Name := Outer + '.' + Child.Name;
+        end;
         ARoutines := ARoutines + [Scope(Name, Child)];
       end
       else if Outer = '' then
       begin
         Section := SectionName(Child.Kind);
         if Section <> '' then
+        begin
           ASections := ASections + [Scope(Section, Child)];
+        end;
       end;
       // Routinen stehen nie in Anweisungen und Ausdrücken; dort nicht absteigen (#1094).
       if not (Child.Kind in [TSyntaxKind.Block .. TSyntaxKind.IfExpr]) then
+      begin
         for Index := Child.ChildCount - 1 downto 0 do
         begin
           Pending.Push(Child[Index]);
           PendingOuter.Push(Name);
         end;
+      end;
     end;
   finally
     PendingOuter.Free;
@@ -149,10 +157,14 @@ begin
   Result.FRoutines := nil;
   Result.FSections := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Section := SectionName(ATree.Root.Kind);
   if Section <> '' then
+  begin
     Result.FSections := [Scope(Section, ATree.Root)];
+  end;
   Collect(ATree.Root, Result.FRoutines, Result.FSections);
 end;
 
@@ -174,16 +186,28 @@ var
 begin
   // Die letzte passende Routine ist die innerste: innere stehen hinter ihrer äußeren.
   for Index := High(FRoutines) downto 0 do
+  begin
     if (FRoutines[Index].FirstLine <= ALine) and (ALine <= FRoutines[Index].LastLine) then
+    begin
       Exit(FRoutines[Index].Name);
+    end;
+  end;
   for Index := High(FSections) downto 0 do
+  begin
     if (FSections[Index].FirstLine <= ALine) and (ALine <= FSections[Index].LastLine) then
+    begin
       Exit(FSections[Index].Name);
+    end;
+  end;
   // Hinter dem Ende des Baums (z. B. Text nach "end."): die Datei.
   if Length(FSections) > 0 then
-    Result := FSections[0].Name
+  begin
+    Result := FSections[0].Name;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TFindingScopes.HeaderLine(ALine: Integer): Integer;
@@ -191,8 +215,12 @@ var
   Index: Integer;
 begin
   for Index := High(FRoutines) downto 0 do
+  begin
     if (FRoutines[Index].FirstLine <= ALine) and (ALine <= FRoutines[Index].LastLine) then
+    begin
       Exit(FRoutines[Index].FirstLine);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -201,8 +229,12 @@ var
   Item: TFindingScope;
 begin
   for Item in FRoutines do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 

@@ -254,15 +254,19 @@ begin
   TMonitor.Enter(DefaultsLock);
   try
     if DefaultFolders.Count = 0 then
+    begin
       Exit;
+    end;
     Name := AnsiUpperCase(ExpandFileName(AFileName));
     Best := 0;
     for Pair in DefaultFolders do
+    begin
       if (Length(Pair.Key) > Best) and (Copy(Name, 1, Length(Pair.Key)) = Pair.Key) then
       begin
         Best := Length(Pair.Key);
         Result := Pair.Value;
       end;
+    end;
   finally
     TMonitor.Exit(DefaultsLock);
   end;
@@ -275,17 +279,29 @@ var
   HasNonAscii: Boolean;
 begin
   if TFileEncoding.IsBinaryForm(ABytes) then
+  begin
     Exit;
+  end;
   if TTextEncodingProbe.HasPrefix(ABytes, [$EF, $BB, $BF]) then
-    Inc(Utf8)
+  begin
+    Inc(Utf8);
+  end
   else if TTextEncodingProbe.HasPrefix(ABytes, [$FF, $FE]) or TTextEncodingProbe.HasPrefix(ABytes, [$FE, $FF]) then
-    Inc(Utf16)
+  begin
+    Inc(Utf16);
+  end
   else if not TTextEncodingProbe.IsValidUtf8(ABytes, 0, HasNonAscii) then
-    Inc(Ansi)
+  begin
+    Inc(Ansi);
+  end
   else if HasNonAscii then
-    Inc(Utf8)
+  begin
+    Inc(Utf8);
+  end
   else
+  begin
     Inc(Ascii);
+  end;
 end;
 
 function TEncodingSurvey.IsMixed: Boolean;
@@ -298,25 +314,37 @@ function TEncodingSurvey.Describe: string;
   procedure Append(ACount: Integer; const AName: string);
   begin
     if ACount = 0 then
+    begin
       Exit;
+    end;
     if Result = '' then
     begin
       if ACount = 1 then
-        Result := '1 Datei in ' + AName
+      begin
+        Result := '1 Datei in ' + AName;
+      end
       else
+      begin
         Result := Format('%d Dateien in %s', [ACount, AName]);
+      end;
     end
     else
+    begin
       Result := Result + Format(', %d in %s', [ACount, AName]);
+    end;
   end;
 
 begin
   Result := '';
   // Mit Vorgabe UTF-8 liest der Server ungültiges UTF-8 als Windows-1252.
   if (AnsiCodePage = 0) or (AnsiCodePage = TFileEncoding.Utf8CodePage) then
-    Append(Ansi, 'Windows-1252')
+  begin
+    Append(Ansi, 'Windows-1252');
+  end
   else
+  begin
     Append(Ansi, 'Windows-' + IntToStr(AnsiCodePage));
+  end;
   Append(Utf8, 'UTF-8');
   Append(Utf16, 'UTF-16');
   Append(Ascii, 'reinem ASCII');
@@ -337,7 +365,9 @@ var
   Encoding: TEncoding;
 begin
   if (ACodePage = 0) or (ACodePage = 1252) then
+  begin
     Exit(DecodeCp1252(ABytes));
+  end;
   Encoding := TEncoding.GetEncoding(ACodePage);
   try
     Result := Encoding.GetString(ABytes);
@@ -351,7 +381,9 @@ var
   Encoding: TEncoding;
 begin
   if (ACodePage = 0) or (ACodePage = 1252) then
+  begin
     Exit(EncodeCp1252(AText));
+  end;
   Encoding := TEncoding.GetEncoding(ACodePage);
   try
     Result := Encoding.GetBytes(AText);
@@ -371,7 +403,9 @@ var
   CodePoint: Cardinal;
 begin
   if TTextEncodingProbe.IsValidUtf8(ABytes, AStart) then
+  begin
     Exit(TEncoding.UTF8.GetString(ABytes, AStart, Length(ABytes) - AStart));
+  end;
   SetLength(Result, 2 * (Length(ABytes) - AStart));
   Len := 0;
   Index := AStart;
@@ -450,9 +484,13 @@ begin
     First := ABytes[AStart + 2 * Index];
     Second := ABytes[AStart + 2 * Index + 1];
     if ABigEndian then
-      Result[Index + 1] := Char((First shl 8) or Second)
+    begin
+      Result[Index + 1] := Char((First shl 8) or Second);
+    end
     else
+    begin
       Result[Index + 1] := Char((Second shl 8) or First);
+    end;
   end;
 end;
 
@@ -510,22 +548,38 @@ var
   HasNonAscii: Boolean;
 begin
   if TTextEncodingProbe.HasPrefix(ABytes, [$EF, $BB, $BF]) then
+  begin
     Exit(TFileEncodingKind.Utf8Bom);
+  end;
   if TTextEncodingProbe.HasPrefix(ABytes, [$FF, $FE]) then
+  begin
     Exit(TFileEncodingKind.Utf16LE);
+  end;
   if TTextEncodingProbe.HasPrefix(ABytes, [$FE, $FF]) then
+  begin
     Exit(TFileEncodingKind.Utf16BE);
+  end;
   if not TTextEncodingProbe.IsValidUtf8(ABytes, 0, HasNonAscii) then
+  begin
     Exit(TFileEncodingKind.Ansi1252);
+  end;
   if HasNonAscii then
+  begin
     Exit(TFileEncodingKind.Utf8);
+  end;
   // Reines ASCII: Utf8Bom als Vorgabe heißt nur „UTF-8“, eine BOM fehlt ja.
   if ADefault = TFileEncodingKind.Utf8Bom then
-    Result := TFileEncodingKind.Utf8
+  begin
+    Result := TFileEncodingKind.Utf8;
+  end
   else if ADefault in [TFileEncodingKind.Utf16LE, TFileEncodingKind.Utf16BE] then
-    Result := TFileEncodingKind.Utf8
+  begin
+    Result := TFileEncodingKind.Utf8;
+  end
   else
+  begin
     Result := ADefault;
+  end;
 end;
 
 class function TFileEncoding.DetectLineBreak(const AText: string; out AMixed: Boolean;
@@ -575,12 +629,16 @@ var
   HasNonAscii, Mixed: Boolean;
 begin
   if (ACodePage = Utf8CodePage) or (ACodePage = 0) then
+  begin
     Exit(Decode(ABytes, AFormat));
+  end;
   AFormat.Encoding := DetectEncoding(ABytes);
   // Reines ASCII gilt bei einer ANSI-Vorgabe als ANSI: Eingefügte Umlaute landen dann in der Codepage.
   if (AFormat.Encoding = TFileEncodingKind.Utf8) and TTextEncodingProbe.IsValidUtf8(ABytes, 0, HasNonAscii) and
     not HasNonAscii then
+  begin
     AFormat.Encoding := TFileEncodingKind.Ansi1252;
+  end;
   case AFormat.Encoding of
     TFileEncodingKind.Utf8Bom:
       Result := DecodeUtf8(ABytes, 3);
@@ -613,10 +671,14 @@ var
 begin
   Result := nil;
   if AFormat.Encoding in [TFileEncodingKind.Utf16LE, TFileEncodingKind.Utf16BE] then
+  begin
     Exit;
+  end;
   Index := 0;
   if AFormat.Encoding = TFileEncodingKind.Utf8Bom then
+  begin
     Index := 3;
+  end;
   Line := 0;
   Column := 0;
   mMultibyteCount := 0;
@@ -631,7 +693,9 @@ begin
         Column := 0;
       end
       else
+      begin
         Inc(Column);
+      end;
       Inc(Index);
       Continue;
     end;
@@ -667,11 +731,17 @@ begin
       Inc(mMultibyteCount);
       // Im ANSI-Text ein Zeichen je Byte, im UTF-8-Text eines bzw. ein Surrogatpaar.
       if AFormat.Encoding = TFileEncodingKind.Ansi1252 then
-        Inc(Column, Count + 1)
+      begin
+        Inc(Column, Count + 1);
+      end
       else if CodePoint >= $10000 then
-        Inc(Column, 2)
+      begin
+        Inc(Column, 2);
+      end
       else
+      begin
         Inc(Column);
+      end;
       Inc(Index, Count + 1);
       Continue;
     end;
@@ -680,16 +750,22 @@ begin
     Item.Position := TTextPosition.Create(Line, Column);
     Result := Result + [Item];
     if AFormat.Encoding = TFileEncodingKind.Ansi1252 then
-      Inc(Column, Valid + 1)
+    begin
+      Inc(Column, Valid + 1);
+    end
     else
+    begin
       Inc(Column);
+    end;
     Inc(Index, Valid + 1);
   end;
   // Ohne BOM liest dcc jede Datei, die nicht ganz gültiges UTF-8 ist, als ANSI. Beschädigtes UTF-8 ist sie nur,
   // wenn die gültigen Folgen überwiegen (ein eingestreutes ANSI-Byte in einer UTF-8-Datei). Ein zufällig
   // gültiges Paar wie "Â°" in einer ANSI-Datei mit Umlauten macht deren Umlaute nicht zu Fehlstellen (#1327).
   if (AFormat.Encoding = TFileEncodingKind.Ansi1252) and (mMultibyteCount <= Length(Result)) then
+  begin
     Result := nil;
+  end;
 end;
 
 class function TFileEncoding.IsBinaryForm(const ABytes: TBytes): Boolean;
@@ -738,7 +814,9 @@ begin
         Result[1] := $BB;
         Result[2] := $BF;
         if Length(Body) > 0 then
+        begin
           Move(Body[0], Result[3], Length(Body));
+        end;
       end;
     TFileEncodingKind.Utf16LE:
       Result := EncodeUtf16(Text, False);
@@ -756,13 +834,17 @@ var
 begin
   Custom := FReader;
   if Assigned(Custom) then
+  begin
     Exit(Custom(AFileName));
+  end;
   // Schreiben teilen: Wer die Datei gerade schreibt (die IDE beim Speichern), scheitert nicht an diesem Leser.
   Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
   try
     SetLength(Result, Stream.Size);
     if Length(Result) > 0 then
+    begin
       Stream.ReadBuffer(Result[0], Length(Result));
+    end;
   finally
     Stream.Free;
   end;
@@ -790,7 +872,9 @@ class function TFileEncoding.LoadLines(const AFileName: string): TArray<string>;
 begin
   Result := TTextLines.SplitLines(LoadText(AFileName));
   if (Length(Result) > 0) and (Result[High(Result)] = '') then
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 class function TFileEncoding.IsBinaryFormFile(const AFileName: string): Boolean;
@@ -800,15 +884,21 @@ var
 begin
   Result := False;
   if not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   try
     Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
     try
       SetLength(Head, Stream.Size);
       if Length(Head) > 4 then
+      begin
         SetLength(Head, 4);
+      end;
       if Length(Head) > 0 then
+      begin
         Stream.ReadBuffer(Head[0], Length(Head));
+      end;
     finally
       Stream.Free;
     end;
@@ -826,13 +916,17 @@ var
 begin
   // Binäre Formulare nie überschreiben (#121): Positionen und Text passen nicht zur Datei.
   if IsBinaryFormFile(AFileName) then
+  begin
     // Ohne Dateinamen (#647): die Meldung kann im Diagnoseprotokoll landen.
     raise EFileEncodingError.Create('Binär gespeichertes Formular wird nicht geändert; zuerst in Text umwandeln.');
+  end;
   Bytes := Encode(AText, AFormat);
   Stream := TFileStream.Create(AFileName, fmCreate);
   try
     if Length(Bytes) > 0 then
+    begin
       Stream.WriteBuffer(Bytes[0], Length(Bytes));
+    end;
   finally
     Stream.Free;
   end;

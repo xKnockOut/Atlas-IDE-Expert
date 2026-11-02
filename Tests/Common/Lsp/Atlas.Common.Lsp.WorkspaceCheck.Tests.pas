@@ -174,10 +174,16 @@ begin
   mFileName := TDocumentUris.ToPath(ADocument.Uri);
   mKind := '';
   for mPair in Behavior do
+  begin
     if SameText(mPair.Key, mFileName) then
+    begin
       mKind := mPair.Value;
+    end;
+  end;
   if mKind = 'fail' then
+  begin
     raise EArgumentException.Create('Unit kaputt');
+  end;
   if mKind = 'slow' then
   begin
     mClock := TStopwatch.StartNew;
@@ -218,7 +224,9 @@ begin
   mReports := Collect;
   try
     for mReport in mReports do
+    begin
       Result.AddOrSetValue(mReport.GetValue<string>('uri'), mReport.GetValue<string>('resultId'));
+    end;
   finally
     mReports.Free;
   end;
@@ -366,7 +374,9 @@ begin
         Result := nil;
         // B hat A in uses; D gehört nicht zum Projekt.
         if SameText(AFileName, cFileA) then
+        begin
           Result := TArray<string>.Create(cFileB, 'C:\Anderswo\D.pas');
+        end;
       end;
     mFixture.Check.Want;
     Assert.IsTrue(mFixture.Check.WaitIdle(cIdleMs));
@@ -379,7 +389,9 @@ begin
       mReports := mFixture.Check.Collect(mIds, 100);
       try
         for mReport in mReports do
+        begin
           mUris.Add(UriOf(mReport));
+        end;
         mUris.Sort;
         Assert.AreEqual(2, mUris.Count);
         Assert.AreEqual(TDocumentUris.FromPath(cFileA), mUris[0]);
@@ -572,11 +584,13 @@ begin
       Assert.AreEqual(3, Integer(mReports.Count));
       mEmpty := 0;
       for mReport in mReports do
+      begin
         if mReport.GetValue<TJSONArray>('items').Count = 0 then
         begin
           Inc(mEmpty);
           Assert.AreEqual(TDocumentUris.FromPath(cFileA), UriOf(mReport));
         end;
+      end;
       Assert.AreEqual(1, mEmpty);
     finally
       mReports.Free;
@@ -605,7 +619,9 @@ begin
     try
       Assert.AreEqual(2, Integer(mReports.Count));
       for mReport in mReports do
+      begin
         Assert.AreNotEqual(TDocumentUris.FromPath(cFileB), UriOf(mReport));
+      end;
     finally
       mReports.Free;
     end;

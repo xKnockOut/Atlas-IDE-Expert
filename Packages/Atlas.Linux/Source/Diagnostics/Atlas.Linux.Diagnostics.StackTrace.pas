@@ -60,7 +60,9 @@ begin
   Result := '';
   Count := CaptureBacktrace(1, Length(Frames), @Frames[0]);
   for Index := 0 to Count - 1 do
+  begin
     Result := Result + DescribeAddress(Frames[Index]) + sLineBreak;
+  end;
 end;
 
 class function TStackTrace.OfException(AError: Exception): string;
@@ -70,11 +72,15 @@ var
 begin
   Result := '';
   if (AError = nil) or (ExceptObject <> AError) then
+  begin
     Exit;
+  end;
   Result := DescribeAddress(ExceptAddr) + sLineBreak;
   Frames := ExceptFrames;
   for Index := 0 to ExceptFrameCount - 1 do
+  begin
     Result := Result + DescribeAddress(Frames[Index]) + sLineBreak;
+  end;
 end;
 
 end.

@@ -62,7 +62,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + LF;
+  end;
 end;
 
 /// <summary>Unit mit der Klasse TFoo (Rumpf AMembers) und der Implementierung AImplementation.</summary>
@@ -115,10 +117,14 @@ begin
     Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
     Result := TPromoteVariable.Target(AText, Tree, PositionOf(AText, AMarker), TestLookup(Tree), ATarget, AReason);
     if not Result then
+    begin
       Exit;
+    end;
     Name := AName;
     if Name = '' then
+    begin
       Name := ATarget.Suggested;
+    end;
     Result := TPromoteVariable.Execute(AText, Tree, PositionOf(AText, AMarker), TestLookup(Tree),
       TFormatStyle.Default, Name, APromoted, AReason);
     if Result then

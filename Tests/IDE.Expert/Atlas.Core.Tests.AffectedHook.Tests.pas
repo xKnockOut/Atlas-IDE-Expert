@@ -9,6 +9,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tests')]
   TAtlasAffectedHookTests = class
   private
     FDir: string;

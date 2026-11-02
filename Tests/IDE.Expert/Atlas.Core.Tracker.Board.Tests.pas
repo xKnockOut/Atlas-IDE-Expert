@@ -15,8 +15,13 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerBoardTests = class
   public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
     [Test]
     procedure InitialsFromNames;
     [Test]
@@ -38,6 +43,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasYouTrackBoardTests = class
   public
     /// <summary>Board zum Projekt des Ziels, Spalten mit deutschen Werten wie auf dem Server.</summary>
@@ -70,6 +76,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasGitHubBoardTests = class
   public
     [Test]
@@ -111,12 +118,15 @@ uses
   System.DateUtils,
   System.JSON,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.Providers.GitHub;
+  Atlas.Core.Tracker.Providers.GitHub,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang (GET) bzw. Adressanfang und Textstück im Inhalt
@@ -256,6 +266,16 @@ begin
 end;
 
 { TAtlasTrackerBoardTests }
+
+procedure TAtlasTrackerBoardTests.Setup;
+begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
+end;
+
+procedure TAtlasTrackerBoardTests.TearDown;
+begin
+  TAtlasTrackerFiles.Uninstall;
+end;
 
 procedure TAtlasTrackerBoardTests.InitialsFromNames;
 begin

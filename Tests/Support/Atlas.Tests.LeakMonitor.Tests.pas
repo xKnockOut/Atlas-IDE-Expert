@@ -102,7 +102,9 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FSlots) do
+  begin
     FSlots[Index].Free;
+  end;
   inherited;
 end;
 
@@ -112,7 +114,9 @@ var
 begin
   Slot := TInterlocked.Increment(FCount) - 1;
   if Slot <= High(FSlots) then
+  begin
     FSlots[Slot] := TStringBuilder.Create(256);
+  end;
 end;
 
 type
@@ -147,7 +151,9 @@ begin
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       if Assigned(ALeak) then
+      begin
         ALeak.Leak;
+      end;
       Result := TJSONString.Create('aus dem Worker');
     end);
   // Läuft, bis $/cancelRequest eintrifft (höchstens 10 s).
@@ -158,7 +164,9 @@ begin
     begin
       Watch := TStopwatch.StartNew;
       while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
+      begin
         TThread.Sleep(1);
+      end;
       ACancellation.ThrowIfCancellationRequested;
       Result := TJSONString.Create('nicht abgebrochen');
     end);
@@ -170,7 +178,9 @@ begin
     begin
       Watch := TStopwatch.StartNew;
       while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
+      begin
         TThread.Sleep(1);
+      end;
       ACancellation.ThrowIfCancellationRequested;
       Result := TJSONString.Create('kein Zeitlimit');
     end);
@@ -318,7 +328,9 @@ begin
       Soak.WaitIdle;
       Result := Min(Result, AllocatedBytes - Before);
       if Result <= AllowedGrowth then
+      begin
         Break;
+      end;
     end;
     // Jede "stuck"-Anfrage lief ins Zeitlimit, jede Änderungsrunde lief durch den Debouncer.
     Assert.IsTrue(Soak.Timeouts >= (SoakRounds + 2) * SoakGroups, Format('nur %d Zeitlimits', [Soak.Timeouts]));
@@ -442,9 +454,13 @@ begin
     begin
       Value := TJSONObject.ParseJSONValue(TFile.ReadAllText(FileName, TEncoding.UTF8));
       if Value is TJSONObject then
-        Recordings.Add(TJSONObject(Value))
+      begin
+        Recordings.Add(TJSONObject(Value));
+      end
       else
+      begin
         Value.Free;
+      end;
     end;
     Assert.IsTrue(Recordings.Count > 0, 'Keine Aufzeichnungen gefunden');
 
@@ -452,7 +468,9 @@ begin
     ReplayAll;
     Before := AllocatedBytes;
     for Pass := 1 to ReplayRounds do
+    begin
       ReplayAll;
+    end;
     Assert.IsTrue(AllocatedBytes - Before <= AllowedGrowth,
       Format('Speicher nach %d Durchläufen um %d Bytes gewachsen',
         [ReplayRounds, AllocatedBytes - Before]));

@@ -131,9 +131,13 @@ function ResolverFileName(const AContext: TRuleContext): string;
 begin
   Result := AContext.FileName;
   if Result = '' then
+  begin
     Result := AContext.RelativePath;
+  end;
   if Result = '' then
+  begin
     Result := AContext.UnitName + '.pas';
+  end;
 end;
 
 /// <summary>Alle Knoten unter ARoot in Pre-Order über einen eigenen Stapel (tiefe Ausdrucksketten, Bericht M1).
@@ -147,7 +151,9 @@ var
 begin
   Result := nil;
   if ARoot = nil then
+  begin
     Exit;
+  end;
   mPending := TStack<TSyntaxNode>.Create;
   mNodes := TList<TSyntaxNode>.Create;
   try
@@ -157,7 +163,9 @@ begin
       mNode := mPending.Pop;
       mNodes.Add(mNode);
       for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
         mPending.Push(mNode[mIndex]);
+      end;
     end;
     Result := mNodes.ToArray;
   finally
@@ -181,8 +189,12 @@ var
 begin
   Result := nil;
   for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
     if ANode[mIndex].Kind = TSyntaxKind.TypeReference then
+    begin
       Result := Result + [ANode[mIndex]];
+    end;
+  end;
 end;
 
 /// <summary>Position von ANode unter den Argumenten seines Aufrufs (1 = erstes); 0, wenn ANode kein Argument ist.
@@ -195,10 +207,16 @@ begin
   Result := 0;
   mParent := ANode.Parent;
   if (mParent = nil) or (mParent.Kind <> TSyntaxKind.Call) then
+  begin
     Exit;
+  end;
   for mIndex := 1 to mParent.ChildCount - 1 do
+  begin
     if mParent[mIndex] = ANode then
+    begin
       Exit(mIndex);
+    end;
+  end;
 end;
 
 { TTypeKindChecker }
@@ -234,7 +252,9 @@ begin
   AKind := TResolvedTypeKind.Unknown;
   mNode := ANode;
   while (mNode.Kind = TSyntaxKind.ParenExpr) and (mNode.ChildCount = 1) do
+  begin
     mNode := mNode[0];
+  end;
   Result := (mNode.Kind in cExpressionKinds) and
     FResolver.NodeType(FContext.Tree, FFileName, mNode, ASymbol, AType, mFound) and mFound and
     not ASymbol.IsType and (ASymbol.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and
@@ -256,7 +276,9 @@ begin
   AType := Default(TResolvedSymbol);
   mName := Trim(ATypeRef.Name);
   if (mName = '') or ContainsStr(mName, '<') then
+  begin
     Exit;
+  end;
   if (Pos('.', mName) = 0) and TNameResolver.IsBuiltinTypeName(mName) then
   begin
     Result := TResolvedTypeKinds.OfBuiltin(mName);
@@ -266,9 +288,13 @@ begin
   mResolved := FResolver.ResolveChain(FContext.Tree, FFileName, mName.Split(['.']), ATypeRef.StartOffset);
   if not mResolved.Found or not mResolved.IsType or (mResolved.Condition <> '') or
     not FResolver.TypeOf(mResolved, AType) then
+  begin
     Exit;
+  end;
   if AType.TypeParams <> '' then
+  begin
     Exit;
+  end;
   Result := TResolvedTypeKinds.OfType(AType);
 end;
 
@@ -279,14 +305,20 @@ var
   mName: string;
 begin
   if not FUsesKnown then
+  begin
     Exit(True);
+  end;
   // Helfer gelten auch für eingebaute Aliase (TIntegerHelper für LongInt) und für den Alias, mit dem der Wert
   // deklariert ist (record helper for TZahl mit TZahl = Integer).
   mNames := TArray<string>.Create(AType.Name, TTypeIdentity.BuiltinName(AType.Name), DeclaredTypeText(ASymbol));
   for mName in mNames do
+  begin
     if (mName <> '') and IsValidIdent(mName, True) and
       FResolver.VisibleHelper(FContext.Tree, FFileName, mName, ANode.StartOffset, mHelper) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -305,13 +337,19 @@ var
 begin
   Result := False;
   if (ACall.Kind <> TSyntaxKind.Call) or (ACall.ChildCount = 0) then
+  begin
     Exit;
+  end;
   mCallee := ACall[0];
   if (mCallee.Kind <> TSyntaxKind.Identifier) or not SameText(mCallee.Name, AName) then
+  begin
     Exit;
+  end;
   // Ohne Deklaration im Index ist es die eingebaute Routine, sofern keine unbekannte Unit eine gleichnamige bringt.
   if not FResolver.NodeType(FContext.Tree, FFileName, mCallee, mSymbol, mType, mFound) then
+  begin
     Exit(FUsesKnown);
+  end;
   Result := mSymbol.Builtin or SameText(mSymbol.UnitName, 'System');
 end;
 
@@ -322,22 +360,36 @@ var
 begin
   Result := Trim(ASymbol.TypeName);
   if Result <> '' then
+  begin
     Exit;
+  end;
   Result := TResolvedTypeKinds.DeclaredText(ASymbol.Signature);
   if (Result <> '') or (ASymbol.Kind <> TResolvedKind.Local) then
+  begin
     Exit;
+  end;
   // Lokale Variable mit Typ ohne Namen (mZeiger: ^Byte): Text des Typknotens ihrer Deklaration, die innerste
   // um den Namen.
   mDecl := nil;
   for mNode in PreOrder(FContext.Tree.Root) do
+  begin
     if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.Field, TSyntaxKind.InlineVar]) and
       Covers(mNode, ASymbol.SelectionRange.StartPos) then
+    begin
       mDecl := mNode;
+    end;
+  end;
   if mDecl <> nil then
+  begin
     for mIndex := 0 to mDecl.ChildCount - 1 do
+    begin
       if mDecl[mIndex].Kind in [TSyntaxKind.TypeReference, TSyntaxKind.PointerType, TSyntaxKind.ArrayType,
         TSyntaxKind.FileType, TSyntaxKind.SetType] then
+      begin
         Exit(Trim(NodeText(mDecl[mIndex])));
+      end;
+    end;
+  end;
 end;
 
 function TTypeKindChecker.PointeeName(ANode: TSyntaxNode): string;
@@ -350,13 +402,19 @@ begin
   if not (ANode.Kind in cExpressionKinds) or
     not FResolver.NodeType(FContext.Tree, FFileName, ANode, mSymbol, mType, mFound) or mSymbol.IsType or
     not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) or (mSymbol.Condition <> '') then
+  begin
     Exit;
+  end;
   mText := DeclaredTypeText(mSymbol);
   if not StartsStr('^', mText) and mFound and not mType.Builtin and
     (mType.SymbolKind = TIndexSymbolKind.TypeAlias) then
+  begin
     mText := TResolvedTypeKinds.DeclaredText(mType.Signature);
+  end;
   if StartsStr('^', mText) then
+  begin
     Result := Trim(Copy(mText, 2, MaxInt));
+  end;
 end;
 
 function TTypeKindChecker.IsTextFile(ANode: TSyntaxNode): Boolean;
@@ -369,13 +427,19 @@ begin
   if not (ANode.Kind in cExpressionKinds) or
     not FResolver.NodeType(FContext.Tree, FFileName, ANode, mSymbol, mType, mFound) or mSymbol.IsType or
     not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+  begin
     Exit;
+  end;
   mText := DeclaredTypeText(mSymbol);
   if StartsText('System.', mText) then
+  begin
     mText := Copy(mText, 8, MaxInt);
+  end;
   Result := MatchText(mText, ['Text', 'TextFile']);
   if not Result and mFound and not mType.Builtin and (mType.SymbolKind = TIndexSymbolKind.TypeAlias) then
+  begin
     Result := MatchText(TResolvedTypeKinds.DeclaredText(mType.Signature), ['Text', 'TextFile']);
+  end;
 end;
 
 procedure TTypeKindChecker.CheckIndex(ANode: TSyntaxNode);
@@ -387,7 +451,9 @@ begin
   if (ANode.ChildCount = 0) or not ValueType(ANode[0], mSymbol, mType, mKind) or
     not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Constant]) or
     not TResolvedTypeKinds.IsSimpleValue(mKind) or HelperPossible(mSymbol, mType, ANode) then
+  begin
     Exit;
+  end;
   FReport.Add(Range(ANode), Format('%s ist %s (%s), kein Array; ein Index ist hier nicht möglich (wie E2016).',
     [NodeText(ANode[0]), TResolvedTypeKinds.Describe(mKind), mType.Name]), TRuleConfidence.High);
 end;
@@ -400,17 +466,23 @@ var
   mBase: string;
 begin
   if (ANode.ChildCount <> 1) or not ValueType(ANode[0], mSymbol, mType, mKind) then
+  begin
     Exit;
+  end;
   if not TResolvedTypeKinds.IsSimpleValue(mKind) and not (mKind in [TResolvedTypeKind.Class_,
     TResolvedTypeKind.Record_, TResolvedTypeKind.Interface_]) then
+  begin
     Exit;
+  end;
   mBase := NodeText(ANode[0]);
   mFixes := nil;
   // Obj^.Feld: Klassen und Interfaces sind schon Verweise, Records erreicht der Punkt direkt.
   if not TResolvedTypeKinds.IsSimpleValue(mKind) and (ANode.Parent <> nil) and
     (ANode.Parent.Kind = TSyntaxKind.MemberAccess) and (ANode.Parent.ChildCount > 0) and
     (ANode.Parent[0] = ANode) then
+  begin
     mFixes := [TRuleFix.Create('^ entfernen', [TTextEdit.Create(Range(ANode), mBase)], True)];
+  end;
   FReport.Add(Range(ANode), Format('%s ist %s (%s), kein Zeiger; ^ ist hier nicht möglich (wie E2017).',
     [mBase, TResolvedTypeKinds.Describe(mKind), mType.Name]), TRuleConfidence.High, mFixes);
 end;
@@ -423,11 +495,15 @@ begin
   // X.TryGetValue<Integer>: Der Parser legt um X.TryGetValue einen Knoten gleichen Namens mit den Typargumenten;
   // das ist kein Punkt auf dem Ergebnis.
   if (ANode.ChildCount > 1) and (ANode[ANode.ChildCount - 1].Kind = TSyntaxKind.GenericArgs) then
+  begin
     Exit;
+  end;
   if (ANode.ChildCount = 0) or not ValueType(ANode[0], mSymbol, mType, mKind) or
     not TResolvedTypeKinds.IsSimpleValue(mKind) or HelperPossible(mSymbol, mType, ANode) or
     FResolver.FindMember(mType, ANode.Name, mMember) then
+  begin
     Exit;
+  end;
   FReport.Add(Range(ANode), Format('%s ist %s (%s), kein Record, keine Klasse und kein object-Typ; .%s ist hier ' +
     'nicht möglich (wie E2018).', [NodeText(ANode[0]), TResolvedTypeKinds.Describe(mKind), mType.Name, ANode.Name]),
     TRuleConfidence.High);
@@ -446,7 +522,9 @@ begin
     if not (mElement.Kind in cExpressionKinds + [TSyntaxKind.ParenExpr]) or
       not ValueType(mElement, mSymbol, mType, mKind) or not TResolvedTypeKinds.IsSimpleValue(mKind) or
       HelperPossible(mSymbol, mType, mElement) then
+    begin
       Continue;
+    end;
     FReport.Add(Range(mElement), Format('with braucht einen Record, eine Klasse oder einen object-Typ; %s ist %s ' +
       '(%s) (wie E2018).', [NodeText(mElement), TResolvedTypeKinds.Describe(mKind), mType.Name]),
       TRuleConfidence.High);
@@ -461,11 +539,15 @@ var
 begin
   mRefs := TypeReferences(ANode);
   if Length(mRefs) = 0 then
+  begin
     Exit;
+  end;
   mKind := ReferencedKind(mRefs[0], mType);
   if not (mKind in [TResolvedTypeKind.Class_, TResolvedTypeKind.Record_, TResolvedTypeKind.Interface_,
     TResolvedTypeKind.Helper]) then
+  begin
     Exit;
+  end;
   FReport.Add(Range(mRefs[0]), Format('Der Vorfahr eines object-Typs muss ein object-Typ sein; %s ist %s ' +
     '(wie E2019).', [mRefs[0].Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
 end;
@@ -478,11 +560,15 @@ var
 begin
   mRefs := TypeReferences(ANode);
   if Length(mRefs) = 0 then
+  begin
     Exit;
+  end;
   mKind := ReferencedKind(mRefs[0], mType);
   if (mKind in [TResolvedTypeKind.Unknown, TResolvedTypeKind.Class_, TResolvedTypeKind.Interface_,
     TResolvedTypeKind.Helper, TResolvedTypeKind.Object_]) then
+  begin
     Exit;
+  end;
   FReport.Add(Range(mRefs[0]), Format('Der Vorfahr einer Klasse muss eine Klasse sein; %s ist %s (wie E2021).',
     [mRefs[0].Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
 end;
@@ -496,7 +582,9 @@ var
 begin
   mRefs := TypeReferences(ANode);
   if Length(mRefs) = 0 then
+  begin
     Exit;
+  end;
   mTarget := mRefs[High(mRefs)];
   if SameText(ANode.Name, 'class') and (Length(mRefs) = 2) then
   begin
@@ -504,16 +592,20 @@ begin
     mKind := ReferencedKind(mRefs[0], mType);
     if mKind in [TResolvedTypeKind.Class_, TResolvedTypeKind.Record_, TResolvedTypeKind.Interface_,
       TResolvedTypeKind.Object_] then
+    begin
       FReport.Add(Range(mRefs[0]), Format('Der Vorfahr eines Class-Helpers muss ein Class-Helper sein; %s ist %s ' +
         '(wie E2022).', [mRefs[0].Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
+    end;
   end
   else if SameText(ANode.Name, 'record') then
   begin
     mKind := ReferencedKind(mTarget, mType);
     if mKind in [TResolvedTypeKind.Class_, TResolvedTypeKind.Interface_] then
+    begin
       FReport.Add(Range(mTarget), Format('Ein Record-Helper braucht einen Record oder einfachen Typ; %s ist %s, ' +
         'dafür gibt es class helper (wie E2474).', [mTarget.Name, TResolvedTypeKinds.Describe(mKind)]),
         TRuleConfidence.High);
+    end;
   end;
 end;
 
@@ -524,7 +616,9 @@ var
 begin
   // New(P, Init) bzw. Dispose(P, Done): erweiterte Form nur für Zeiger auf object-Typen.
   if ANode.ChildCount < 3 then
+  begin
     Exit;
+  end;
   if IsIntrinsic(ANode, 'New') then
   begin
     mRoutine := 'New mit Konstruktor braucht einen Zeiger auf einen Record oder object-Typ';
@@ -536,13 +630,19 @@ begin
     mCode := 'E2019';
   end
   else
+  begin
     Exit;
+  end;
   mPointee := PointeeName(ANode[1]);
   if (mPointee = '') or not TNameResolver.IsBuiltinTypeName(mPointee) then
+  begin
     Exit;
+  end;
   mKind := TResolvedTypeKinds.OfBuiltin(mPointee);
   if not TResolvedTypeKinds.IsSimpleValue(mKind) then
+  begin
     Exit;
+  end;
   FReport.Add(Range(ANode[1]), Format('%s; %s zeigt auf %s (wie %s).', [mRoutine, NodeText(ANode[1]), mPointee,
     mCode]), TRuleConfidence.High);
 end;
@@ -554,7 +654,9 @@ var
 begin
   if (ANode.ChildCount <> 2) or not IsIntrinsic(ANode, 'TypeOf') or
     not ValueType(ANode[1], mSymbol, mType, mKind) or not TResolvedTypeKinds.IsSimpleValue(mKind) then
+  begin
     Exit;
+  end;
   FReport.Add(Range(ANode[1]), Format('TypeOf braucht einen object-Typ mit VMT; %s ist %s (%s) (wie E2019).',
     [NodeText(ANode[1]), TResolvedTypeKinds.Describe(mKind), mType.Name]), TRuleConfidence.High);
 end;
@@ -569,32 +671,44 @@ var
   mParam: string;
 begin
   if not IsIntrinsic(ANode, 'Slice') then
+  begin
     Exit;
+  end;
   mParent := ANode.Parent;
   if mParent = nil then
+  begin
     Exit;
+  end;
   mPosition := ArgumentPosition(ANode);
   if mPosition = 0 then
   begin
     // Als Wert einer Zuweisung, in einem Ausdruck oder als Startwert einer Inline-Variablen.
     if not (mParent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.BinaryExpr, TSyntaxKind.InlineVar]) then
+    begin
       Exit;
+    end;
   end
   else
   begin
     // Argument eines Aufrufs: nur, wenn jede mögliche Routine dort einen Parameter einfacher Art erwartet.
     mCandidates := FResolver.CallCandidates(FContext.Tree, FFileName, mParent[0]);
     if Length(mCandidates) = 0 then
+    begin
       Exit;
+    end;
     for mCandidate in mCandidates do
     begin
       if mCandidate.Builtin or not (mCandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
         (Length(mCandidate.ParamTypes) < mPosition) then
+      begin
         Exit;
+      end;
       mParam := mCandidate.ParamTypes[mPosition - 1];
       mKind := TResolvedTypeKinds.OfText(mParam);
       if (mKind = TResolvedTypeKind.Unknown) or (mKind = TResolvedTypeKind.Array_) then
+      begin
         Exit;
+      end;
     end;
   end;
   FReport.Add(Range(ANode), 'Slice ist nur als Argument für einen offenen Array-Parameter möglich (wie E2193).',
@@ -611,20 +725,30 @@ var
 begin
   mPosition := ArgumentPosition(ANode);
   if mPosition = 0 then
+  begin
     Exit;
+  end;
   mCandidates := FResolver.CallCandidates(FContext.Tree, FFileName, ANode.Parent[0]);
   if Length(mCandidates) = 0 then
+  begin
     Exit;
+  end;
   for mCandidate in mCandidates do
+  begin
     if mCandidate.Builtin or (Length(mCandidate.ParamTypes) < mPosition) or
       not SameText(Trim(mCandidate.ParamTypes[mPosition - 1]), 'array of const') then
+    begin
       Exit;
+    end;
+  end;
   for mIndex := 0 to ANode.ChildCount - 1 do
   begin
     mElement := ANode[mIndex];
     if not ValueType(mElement, mSymbol, mType, mKind) or (mKind <> TResolvedTypeKind.Record_) or
       HasImplicit(mType) then
+    begin
       Continue;
+    end;
     FReport.Add(Range(mElement), Format('%s ist ein Record (%s); array of const nimmt keine Records (wie E2150).',
       [NodeText(mElement), mType.Name]), TRuleConfidence.High);
   end;
@@ -640,21 +764,29 @@ var
   mFixes: TArray<TRuleFix>;
 begin
   if ANode.ChildCount < 2 then
+  begin
     Exit;
+  end;
   mRoutine := ANode[0].Name;
   mFirst := 1;
   mArg := ANode[1];
   if (mArg.Kind = TSyntaxKind.Identifier) and MatchText(mArg.Name, cStandardTextFiles) and
     not ValueType(mArg, mSymbol, mType, mKind) then
+  begin
     // Input, Output, ErrOutput aus System, auch ohne System im Index.
-    mFirst := 2
+    mFirst := 2;
+  end
   else if IsTextFile(mArg) then
-    mFirst := 2
+  begin
+    mFirst := 2;
+  end
   else
   begin
     if not ValueType(mArg, mSymbol, mType, mKind) or (mKind = TResolvedTypeKind.File_) then
+    begin
       // Unbekanntes erstes Argument oder typisierte Datei (Write(F, Datensatz)).
       Exit;
+    end;
   end;
   for mIndex := mFirst to ANode.ChildCount - 1 do
   begin
@@ -662,19 +794,25 @@ begin
     if not ValueType(mArg, mSymbol, mType, mKind) or not (mKind in [TResolvedTypeKind.Class_,
       TResolvedTypeKind.Record_, TResolvedTypeKind.Interface_]) or
       ((mKind = TResolvedTypeKind.Record_) and HasImplicit(mType)) then
+    begin
       Continue;
+    end;
     mText := NodeText(mArg);
     mFixes := nil;
     if AWrite then
     begin
       if mKind = TResolvedTypeKind.Class_ then
+      begin
         mFixes := [TRuleFix.Create(mText + '.ToString', [TTextEdit.Create(Range(mArg), mText + '.ToString')])];
+      end;
       FReport.Add(Range(mArg), Format('%s kann %s nicht ausgeben: %s ist %s (wie E2054).', [mRoutine, mText,
         mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High, mFixes);
     end
     else
+    begin
       FReport.Add(Range(mArg), Format('%s kann %s nicht einlesen: %s ist %s (wie E2055).', [mRoutine, mText,
         mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
+    end;
   end;
 end;
 
@@ -689,26 +827,40 @@ var
 begin
   // TBasis.Machen als Anweisung oder vor Klammern.
   if (ANode.ChildCount <> 1) or (ANode.Parent = nil) then
+  begin
     Exit;
+  end;
   if not ((ANode.Parent.Kind = TSyntaxKind.CallStatement) or ((ANode.Parent.Kind = TSyntaxKind.Call) and
     (ANode.Parent[0] = ANode))) then
+  begin
     Exit;
+  end;
   mBase := ANode[0];
   if (mBase.Kind <> TSyntaxKind.Identifier) or
     not FResolver.NodeType(FContext.Tree, FFileName, mBase, mBaseSymbol, mBaseType, mFound) or
     not mBaseSymbol.IsType or (mBaseSymbol.SymbolKind <> TIndexSymbolKind.ClassType) or
     (mBaseSymbol.TypeParams <> '') or (mBaseSymbol.Condition <> '') then
+  begin
     Exit;
+  end;
   if not FResolver.NodeType(FContext.Tree, FFileName, ANode, mMember, mMemberType, mFound) or
     (mMember.SymbolKind <> TIndexSymbolKind.Method) or (mMember.Condition <> '') then
+  begin
     Exit;
+  end;
   mCandidates := FResolver.CallCandidates(FContext.Tree, FFileName, ANode);
   if Length(mCandidates) = 0 then
+  begin
     Exit;
+  end;
   for mCandidate in mCandidates do
+  begin
     if (mCandidate.SymbolKind <> TIndexSymbolKind.Method) or MatchText('class', mCandidate.Directives) or
       MatchText('static', mCandidate.Directives) or StartsText('class ', Trim(mCandidate.Signature)) then
+    begin
       Exit;
+    end;
+  end;
   // In Methoden der Klasse und ihrer Nachfahren ruft TBasis.Machen die Methode mit Self auf.
   mOuter := ANode.Parent;
   while mOuter <> nil do
@@ -720,12 +872,18 @@ begin
       mOwner := FResolver.ResolveChain(FContext.Tree, FFileName, mClassPart.Split(['.']), mOuter.StartOffset);
       if not mOwner.Found or not FResolver.TypeOf(mOwner, mOwnerType) or
         (mOwnerType.SymbolKind <> TIndexSymbolKind.ClassType) then
+      begin
         Exit;
+      end;
       if SameText(mOwnerType.QualifiedName, mBaseType.QualifiedName) then
+      begin
         Exit;
+      end;
       mAncestors := FResolver.AncestorNames(mOwnerType, mComplete);
       if not mComplete or MatchText(mBaseType.Name, mAncestors) then
+      begin
         Exit;
+      end;
     end;
     mOuter := mOuter.Parent;
   end;
@@ -738,18 +896,30 @@ var
   mCallee: string;
 begin
   if (ANode.ChildCount = 0) or (ANode[0].Kind <> TSyntaxKind.Identifier) then
+  begin
     Exit;
+  end;
   mCallee := ANode[0].Name;
   if MatchText(mCallee, ['New', 'Dispose']) then
-    CheckConstructorForm(ANode)
+  begin
+    CheckConstructorForm(ANode);
+  end
   else if SameText(mCallee, 'TypeOf') then
-    CheckTypeOf(ANode)
+  begin
+    CheckTypeOf(ANode);
+  end
   else if SameText(mCallee, 'Slice') then
-    CheckSlice(ANode)
+  begin
+    CheckSlice(ANode);
+  end
   else if MatchText(mCallee, ['Write', 'Writeln']) and IsIntrinsic(ANode, mCallee) then
-    CheckTextIo(ANode, True)
+  begin
+    CheckTextIo(ANode, True);
+  end
   else if MatchText(mCallee, ['Read', 'Readln']) and IsIntrinsic(ANode, mCallee) then
+  begin
     CheckTextIo(ANode, False);
+  end;
 end;
 
 procedure TTypeKindChecker.Run;
@@ -800,24 +970,23 @@ var
   mFileName: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mFileName := ResolverFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    mResolver.PinTree(AContext.Tree, mFileName);
+    mChecker := TTypeKindChecker.Create(AContext, AReport, mResolver);
     try
-      mChecker := TTypeKindChecker.Create(AContext, AReport, mResolver);
-      try
-        mChecker.Run;
-      finally
-        mChecker.Free;
-      end;
+      mChecker.Run;
     finally
-      mResolver.UnpinTree;
+      mChecker.Free;
     end;
   finally
+    mResolver.UnpinTree;
   end;
 end;
 

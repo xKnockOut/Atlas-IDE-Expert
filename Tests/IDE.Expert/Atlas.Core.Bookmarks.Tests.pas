@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasBookmarkFindTests = class
   public
     /// <summary>Akzeptanzkriterium: Das Lesezeichen überlebt das Verschieben der Methode um 50 Zeilen.</summary>
@@ -47,6 +48,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasBookmarkListTests = class
   public
     [Test]
@@ -71,6 +73,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasBookmarkStorageTests = class
   private
     FFolder: string;

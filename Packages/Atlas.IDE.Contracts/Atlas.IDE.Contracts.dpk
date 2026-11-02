@@ -1,0 +1,48 @@
+﻿package Atlas.IDE.Contracts;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Verträge zwischen Modulen'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Verträge zwischen Modulen (#1456, ADR 0017 Regel 6): nur Interfaces, Records und Aufzählungen, kein
+// Code, kein Zustand. Requiret nur rtl und vcl (Steuerelemente in Kacheln), weder den Kern noch ein Modul;
+// der Kern requiret dieses Package nicht. Die Module requiren den Kern und dieses Package.
+
+requires
+  rtl,
+  vcl;
+
+contains
+  Atlas.IDE.Contracts.DebugReport in 'Source\Contracts\Atlas.IDE.Contracts.DebugReport.pas',
+  Atlas.IDE.Contracts.BuildTools in 'Source\Contracts\Atlas.IDE.Contracts.BuildTools.pas',
+  Atlas.IDE.Contracts.BuildPipeline in 'Source\Contracts\Atlas.IDE.Contracts.BuildPipeline.pas',
+  Atlas.IDE.Contracts.WelcomeTiles in 'Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas',
+  Atlas.IDE.Contracts.Tests in 'Source\Contracts\Atlas.IDE.Contracts.Tests.pas',
+  Atlas.IDE.Contracts.Rules in 'Source\Contracts\Atlas.IDE.Contracts.Rules.pas';
+
+end.

@@ -72,7 +72,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + LF;
+  end;
 end;
 
 /// <summary>Unit mit der Klasse TFoo (Mitglieder AMembers) und der Implementierung AImplementation.</summary>

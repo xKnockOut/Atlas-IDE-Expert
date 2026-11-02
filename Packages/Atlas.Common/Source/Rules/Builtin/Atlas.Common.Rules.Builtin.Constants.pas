@@ -191,7 +191,9 @@ var
 begin
   Name := LowerCase(ATypeName);
   if Name.StartsWith('system.') then
+  begin
     Name := Copy(Name, Length('system.') + 1, MaxInt);
+  end;
   Result := (Name <> 'char') and (Name <> 'widechar') and (Name <> 'ansichar') and (Name <> 'boolean') and
     (Name <> 'bytebool') and TOrdinalConstants.FixedType(Name, ALow, AHigh, HighKnown, Size) and HighKnown;
 end;
@@ -205,13 +207,19 @@ begin
   Result := False;
   Equals := Pos('=', ASignature);
   if Equals = 0 then
+  begin
     Exit;
+  end;
   Text := Trim(Copy(ASignature, Equals + 1, MaxInt));
   if Text.EndsWith(';') then
+  begin
     Text := Trim(Copy(Text, 1, Length(Text) - 1));
+  end;
   Dots := Pos('..', Text);
   if Dots = 0 then
+  begin
     Exit;
+  end;
   Result := TOrdinalConstants.Evaluate(Copy(Text, 1, Dots - 1), nil, ALow) and
     TOrdinalConstants.Evaluate(Copy(Text, Dots + 2, MaxInt), nil, AHigh) and (ALow <= AHigh);
 end;
@@ -225,10 +233,14 @@ begin
   Result := '';
   Equals := Pos('=', ASignature);
   if (Equals = 0) or ASignature.EndsWith('…') then
+  begin
     Exit;
+  end;
   Result := Trim(Copy(ASignature, Equals + 1, MaxInt));
   if Result.EndsWith(';') then
+  begin
     Result := Trim(Copy(Result, 1, Length(Result) - 1));
+  end;
 end;
 
 type
@@ -247,28 +259,46 @@ begin
   Result := Default(TIntegerKind);
   Name := LowerCase(ATypeName);
   if Name.StartsWith('system.') then
+  begin
     Name := Copy(Name, Length('system.') + 1, MaxInt);
+  end;
   if (Name = 'shortint') or (Name = 'int8') then
-    Result.Bits := 8
+  begin
+    Result.Bits := 8;
+  end
   else if (Name = 'smallint') or (Name = 'int16') then
-    Result.Bits := 16
+  begin
+    Result.Bits := 16;
+  end
   else if (Name = 'integer') or (Name = 'longint') or (Name = 'int32') then
-    Result.Bits := 32
+  begin
+    Result.Bits := 32;
+  end
   else if Name = 'int64' then
+  begin
     Result.Bits := 64;
+  end;
   if Result.Bits > 0 then
   begin
     Result.Signed := True;
     Exit;
   end;
   if (Name = 'byte') or (Name = 'uint8') then
-    Result.Bits := 8
+  begin
+    Result.Bits := 8;
+  end
   else if (Name = 'word') or (Name = 'uint16') then
-    Result.Bits := 16
+  begin
+    Result.Bits := 16;
+  end
   else if (Name = 'cardinal') or (Name = 'longword') or (Name = 'uint32') or (Name = 'dword') then
-    Result.Bits := 32
+  begin
+    Result.Bits := 32;
+  end
   else if Name = 'uint64' then
+  begin
     Result.Bits := 64;
+  end;
 end;
 
 /// <summary>Wörter einer Deklaration oder Signatur (Namen, Typen) ohne Satzzeichen.</summary>
@@ -313,7 +343,9 @@ begin
   FText := AContext.Text;
   FWanted := TDictionary<string, Boolean>.Create;
   for Name in AWanted do
+  begin
     FWanted.AddOrSetValue(TNarrowingAssignmentRule.CanonicalTypeName(Name), True);
+  end;
   FTypes := TDictionary<string, Boolean>.Create;
   FLocal := TDictionary<string, Boolean>.Create;
   FSuspects := TDictionary<string, Boolean>.Create;
@@ -344,18 +376,24 @@ var
 begin
   Key := TNarrowingAssignmentRule.CanonicalTypeName(ATypeName);
   if FWanted.ContainsKey(Key) then
+  begin
     Exit(True);
+  end;
   if FTypes.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   // Vorläufig False: schützt vor zyklischen Aliasen.
   FTypes.Add(Key, False);
   Result := False;
   if (FIndex <> nil) and IsValidIdent(ATypeName, True) then
+  begin
     Result := FIndex.HasSymbol(ATypeName,
       function(const ASymbol: TIndexSymbol): Boolean
       begin
         Result := (ASymbol.Kind = TIndexSymbolKind.TypeAlias) and Wanted(TypeBodyOf(ASymbol.Signature));
       end);
+  end;
   FTypes[Key] := Result;
 end;
 
@@ -364,8 +402,12 @@ var
   Word: string;
 begin
   for Word in DeclarationWords(AText) do
+  begin
     if Wanted(Word) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -387,10 +429,14 @@ begin
       begin
         Body := Trim(NodeText(Node[0]));
         if (Pos(' ', Body) = 0) and Wanted(Body) then
+        begin
           FTypes.AddOrSetValue(TNarrowingAssignmentRule.CanonicalTypeName(Node.Name), True);
+        end;
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -414,17 +460,25 @@ begin
       if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.ConstDecl,
         TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar]) and (Node.ChildCount > 0) and
         Mentions(NodeText(Node[0])) then
+      begin
         for Name in Node.Name.Split([',']) do
+        begin
           FLocal.AddOrSetValue(LowerCase(Trim(Name)), True);
+        end;
+      end;
       // Funktionen mit gesuchtem Ergebnistyp.
       if Node.Kind = TSyntaxKind.RoutineHeader then
       begin
         Header := NodeText(Node);
         if Mentions(Copy(Header, LastDelimiter(')', Header) + 1, MaxInt)) then
+        begin
           FLocal.AddOrSetValue(LowerCase(Copy(Node.Name, LastDelimiter('.', Node.Name) + 1, MaxInt)), True);
+        end;
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -437,11 +491,16 @@ var
 begin
   Key := LowerCase(AName);
   if (Key = '') or FLocal.ContainsKey(Key) then
+  begin
     Exit(Key <> '');
+  end;
   if FSuspects.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   Result := False;
   if FIndex <> nil then
+  begin
     Result := FIndex.HasSymbol(AName,
       function(const ASymbol: TIndexSymbol): Boolean
       begin
@@ -449,6 +508,7 @@ begin
           TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]) and
           (ASymbol.TypeName <> '') and Wanted(ASymbol.TypeName);
       end);
+  end;
   FSuspects.Add(Key, Result);
 end;
 
@@ -461,10 +521,14 @@ begin
   Node := ANode;
   while ((Node.Kind in [TSyntaxKind.Call, TSyntaxKind.IndexAccess]) and (Node.ChildCount > 0)) or
     ((Node.Kind = TSyntaxKind.ParenExpr) and (Node.ChildCount = 1)) do
+  begin
     Node := Node[0];
+  end;
   Result := '';
   if Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+  begin
     Result := Node.Name;
+  end;
 end;
 
 /// <summary>Ganzzahliger Typ des Operanden ANode (Variable, Feld, Property, Funktionsergebnis, Element) über die
@@ -482,12 +546,16 @@ begin
   // Iterativ (Bericht M1): Klammern ablösen statt sich selbst aufzurufen.
   Node := ANode;
   while (Node.Kind = TSyntaxKind.ParenExpr) and (Node.ChildCount = 1) do
+  begin
     Node := Node[0];
+  end;
   if not (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
     TSyntaxKind.IndexAccess]) or not AResolver.NodeType(ATree, AFileName, Node, Symbol, TypeInfo, TypeFound) or
     not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
     TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
+  begin
     Exit;
+  end;
   ATypeName := Symbol.TypeName;
   AKind := IntegerKindOf(ATypeName);
   // Eigene Aliase (type TGroesse = UInt64) über den aufgelösten Typ.
@@ -495,7 +563,9 @@ begin
   begin
     AKind := IntegerKindOf(TypeInfo.Name);
     if AKind.Bits = 0 then
+    begin
       AKind := IntegerKindOf(TypeBodyOf(TypeInfo.Signature));
+    end;
   end;
   Result := AKind.Bits > 0;
 end;
@@ -516,7 +586,9 @@ begin
   Result := False;
   Text := StringReplace(ATokenText, '_', '', [rfReplaceAll]);
   if Length(Text) < 2 then
+  begin
     Exit;
+  end;
   case Text[1] of
     '$':
       Bits := 4;
@@ -531,7 +603,9 @@ begin
   for Index := 2 to Length(Text) do
   begin
     if Text[Index] = '0' then
+    begin
       Continue;
+    end;
     case Text[Index] of
       '0'..'9':
         Digit := Ord(Text[Index]) - Ord('0');
@@ -561,15 +635,23 @@ begin
   Result := False;
   mKind := IntegerKindOf(ATypeName);
   if (mKind.Bits = 0) or not IntegerRange(ATypeName, mLow, mHigh) or ((AValue >= mLow) and (AValue <= mHigh)) then
+  begin
     Exit;
+  end;
   if mKind.Bits >= 64 then
+  begin
     Exit(True);
+  end;
   // Passt der Wert in den gleich breiten Typ mit anderem Vorzeichen, legt dcc die Bits nur anders aus und warnt
   // (W1012); sonst ist es ein Fehler (E1012, #1372).
   if mKind.Signed then
-    Result := (AValue < mLow) or (AValue > (Int64(1) shl mKind.Bits) - 1)
+  begin
+    Result := (AValue < mLow) or (AValue > (Int64(1) shl mKind.Bits) - 1);
+  end
   else
+  begin
     Result := (AValue > mHigh) or (AValue < -(Int64(1) shl (mKind.Bits - 1)));
+  end;
 end;
 
 class function TConstantExpressionErrorRule.InvalidRttiVisibility(const ADirective: string): string;
@@ -584,37 +666,55 @@ begin
   begin
     mStart := Pos(mKey, mUpper);
     if mStart = 0 then
+    begin
       Continue;
+    end;
     mOpen := mStart + Length(mKey);
     while (mOpen <= Length(mUpper)) and CharInSet(mUpper[mOpen], [' ', #9, #10, #13]) do
+    begin
       Inc(mOpen);
+    end;
     if (mOpen > Length(mUpper)) or (mUpper[mOpen] <> '(') then
+    begin
       Continue;
+    end;
     // Passende schließende Klammer.
     mDepth := 0;
     mClose := mOpen;
     while mClose <= Length(ADirective) do
     begin
       if ADirective[mClose] = '(' then
-        Inc(mDepth)
+      begin
+        Inc(mDepth);
+      end
       else if ADirective[mClose] = ')' then
       begin
         Dec(mDepth);
         if mDepth = 0 then
+        begin
           Break;
+        end;
       end;
       Inc(mClose);
     end;
     if mClose > Length(ADirective) then
+    begin
       Continue;
+    end;
     mContent := Trim(Copy(ADirective, mOpen + 1, mClose - mOpen - 1));
     // Nur Mengen mit Zahlen, Strings oder Zeichen als Element sind sicher keine Sichtbarkeiten; Namen können
     // Konstanten vom Typ TVisibilityClass sein.
     if (Length(mContent) < 2) or (mContent[1] <> '[') or (mContent[Length(mContent)] <> ']') then
+    begin
       Continue;
+    end;
     for mElement in Copy(mContent, 2, Length(mContent) - 2).Split(TArray<string>.Create(',', '..')) do
+    begin
       if (Trim(mElement) <> '') and CharInSet(Trim(mElement)[1], ['0'..'9', '$', '%', '#', '''', '-', '+']) then
+      begin
         Exit(Copy(ADirective, mStart, mClose - mStart + 1));
+      end;
+    end;
   end;
 end;
 
@@ -627,12 +727,16 @@ begin
   Result := False;
   mText := StringReplace(ATokenText, '_', '', [rfReplaceAll]);
   if Length(mText) < 2 then
+  begin
     Exit;
+  end;
   if mText[1] = '$' then
   begin
     mText := Copy(mText, 2, MaxInt);
     if Length(mText) < 16 then
+    begin
       Exit;
+    end;
     Result := CharInSet(mText[Length(mText) - 15], ['8'..'9', 'A'..'F', 'a'..'f']);
   end
   else if mText[1] = '%' then
@@ -694,12 +798,18 @@ var
     // Erst der Teiler: meist ist er keine Null, dann bleibt die linke Seite unausgewertet.
     if (ANode.ChildCount <> 2) or not (SameText(ANode.Name, 'div') or SameText(ANode.Name, 'mod')) or
       not ValueOf(ANode[1], Right) or (Right <> 0) or not ValueOf(ANode[0], Left) then
+    begin
       Exit;
+    end;
     if ANode[1].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+    begin
       Message := Format('Division durch null in einem konstanten Ausdruck (%s = 0, wie E2098).',
-        [Copy(AContext.Text, ANode[1].StartOffset + 1, ANode[1].EndOffset - ANode[1].StartOffset)])
+        [Copy(AContext.Text, ANode[1].StartOffset + 1, ANode[1].EndOffset - ANode[1].StartOffset)]);
+    end
     else
+    begin
       Message := 'Division durch null in einem konstanten Ausdruck (wie E2098).';
+    end;
     AReport.Add(NodeRange(ANode), Message, TRuleConfidence.High);
   end;
 
@@ -722,9 +832,13 @@ var
         if ((Node.Kind = TSyntaxKind.BinaryExpr) and (Node.Name = '*')) or
           ((Node.Kind = TSyntaxKind.Literal) and (Length(Node.Name) >= 10)) or
           ((Node.Kind = TSyntaxKind.Identifier) and (SameText(Node.Name, 'High') or SameText(Node.Name, 'Low'))) then
+        begin
           Exit(True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -737,9 +851,11 @@ var
   begin
     if IsExpressionRoot(ANode) and MayOverflow(ANode) and
       (Values.Check(ANode, Value) = TOrdinalStatus.Overflow) then
+    begin
       AReport.Add(NodeRange(ANode),
         'Überlauf in einem konstanten Ausdruck: Das Ergebnis passt in keinen Ganzzahltyp (wie E2099).',
         TRuleConfidence.High);
+    end;
   end;
 
   procedure CheckSubrange(ANode: TSyntaxNode);
@@ -748,8 +864,10 @@ var
   begin
     if (ANode.ChildCount = 2) and ValueOf(ANode[0], Lowest) and ValueOf(ANode[1], Highest) and
       (Lowest > Highest) then
+    begin
       AReport.Add(NodeRange(ANode), Format('Die Untergrenze %d liegt über der Obergrenze %d (wie E2011).',
         [Lowest, Highest]), TRuleConfidence.High);
+    end;
   end;
 
   /// <summary>Bereich des Typs ATypeName (Typ fester Größe oder Teilbereichstyp, aufgelöst an ANode); ASubrange
@@ -761,10 +879,14 @@ var
   begin
     ASubrange := False;
     if IntegerRange(ATypeName, ALow, AHigh) then
+    begin
       Exit(True);
+    end;
     Result := False;
     if (ATypeNode = nil) or (ATypeName = '') or (Pos('<', ATypeName) > 0) then
+    begin
       Exit;
+    end;
     TypeSymbol := Resolver.ResolveType(AContext.Tree, FileName, ATypeNode.StartPos);
     Result := TypeSymbol.Found and SubrangeOf(TypeSymbol.Signature, ALow, AHigh);
     ASubrange := Result;
@@ -776,12 +898,16 @@ var
     ASubrange: Boolean);
   begin
     if ASubrange or OutsideIsError(AValue, ATypeName) then
+    begin
       AReport.Add(NodeRange(AValueNode), Format('%d liegt außerhalb des Bereichs von %s (%d..%d, wie E1012).',
-        [AValue, ATypeName, ALow, AHigh]), TRuleConfidence.High)
+        [AValue, ATypeName, ALow, AHigh]), TRuleConfidence.High);
+    end
     else
+    begin
       AReport.AddWithSeverity(NodeRange(AValueNode), Format(
         '%d liegt außerhalb des Bereichs von %s (%d..%d, wie W1012).', [AValue, ATypeName, ALow, AHigh]),
         TRuleSeverity.Warning, nil);
+    end;
   end;
 
   /// <summary>Zu großes Literal an Int64: dcc kürzt es auf 64 Bit und warnt zusätzlich zu E2102 (W1012).</summary>
@@ -791,12 +917,16 @@ var
   begin
     if (AValueNode.Kind <> TSyntaxKind.Literal) or not TooLargeLiteral(AValueNode.Name) or
       not LowBitsAboveInt64(AValueNode.Name) then
+    begin
       Exit;
+    end;
     mKind := IntegerKindOf(ATypeName);
     if (mKind.Bits = 64) and mKind.Signed then
+    begin
       AReport.AddWithSeverity(NodeRange(AValueNode), Format(
         '%s passt auf 64 Bit gekürzt nicht in %s (wie W1012).', [AValueNode.Name, ATypeName]),
         TRuleSeverity.Warning, nil);
+    end;
   end;
 
   /// <summary>Typisierte Konstante bzw. initialisierte Variable: Typ und Wert sind Kinder der Deklaration.</summary>
@@ -807,16 +937,24 @@ var
     mSubrange: Boolean;
   begin
     if (ADecl.ChildCount < 2) or (ADecl[0].Kind <> TSyntaxKind.TypeReference) or (ADecl[0].ChildCount > 0) then
+    begin
       Exit;
+    end;
     TypeNode := ADecl[0];
     ValueNode := ADecl[ADecl.ChildCount - 1];
     if ValueNode.Kind = TSyntaxKind.TypeReference then
+    begin
       Exit;
+    end;
     CheckTruncatedLiteral(ValueNode, TypeNode.Name);
     if not ValueOf(ValueNode, Value) or not TargetRange(TypeNode, TypeNode.Name, Lowest, Highest, mSubrange) then
+    begin
       Exit;
+    end;
     if (Value < Lowest) or (Value > Highest) then
+    begin
       ReportRange(ValueNode, Value, Lowest, Highest, TypeNode.Name, mSubrange);
+    end;
   end;
 
   procedure CheckAssignment(AStatement: TSyntaxNode);
@@ -829,11 +967,15 @@ var
     mSubrange: Boolean;
   begin
     if AStatement.ChildCount <> 2 then
+    begin
       Exit;
+    end;
     Target := AStatement[0];
     Source := AStatement[1];
     if not (Target.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+    begin
       Exit;
+    end;
     if (Source.Kind = TSyntaxKind.Literal) and TooLargeLiteral(Source.Name) and LowBitsAboveInt64(Source.Name) and
       Resolver.NodeType(AContext.Tree, FileName, Target, Symbol, TypeInfo, TypeFound) and
       (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
@@ -844,25 +986,35 @@ var
     if not (Source.Kind in [TSyntaxKind.Literal, TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr,
       TSyntaxKind.ParenExpr, TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) or
       not ValueOf(Source, Value) then
+    begin
       Exit;
+    end;
     // 0..127 passt in jeden ganzzahligen Typ; Teilbereichstypen prüft die Regel nur ab hier, damit nicht jede
     // Zuweisung einer kleinen Zahl die Namensauflösung braucht.
     if (Value >= 0) and (Value <= 127) then
+    begin
       Exit;
+    end;
     if not Resolver.NodeType(AContext.Tree, FileName, Target, Symbol, TypeInfo, TypeFound) or
       not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+    begin
       Exit;
+    end;
     TypeName := Symbol.TypeName;
     mSubrange := False;
     if not IntegerRange(TypeName, Lowest, Highest) then
     begin
       if not TypeFound or not SubrangeOf(TypeInfo.Signature, Lowest, Highest) then
+      begin
         Exit;
+      end;
       TypeName := TypeInfo.Name;
       mSubrange := True;
     end;
     if (Value < Lowest) or (Value > Highest) then
+    begin
       ReportRange(Source, Value, Lowest, Highest, TypeName, mSubrange);
+    end;
   end;
 
   /// <summary>Text des Knotens wie im Quelltext.</summary>
@@ -887,7 +1039,9 @@ var
       begin
         mName := TPascalLexer.DirectiveName(mTokens[mIndex].Text);
         if StartsText('IF', mName) or StartsText('ELSE', mName) or SameText(mName, 'ENDIF') then
+        begin
           Exit(True);
+        end;
       end;
       Inc(mIndex);
     end;
@@ -906,7 +1060,9 @@ var
     Result := nil;
     if (ASymbol.Kind <> TResolvedKind.Local) and (ASymbol.FileName <> '') and not SameText(ASymbol.FileName,
       FileName) then
+    begin
       Exit;
+    end;
     mLine := ASymbol.SelectionRange.StartPos.Line;
     // Iterativ (Bericht M1).
     mPending := TStack<TSyntaxNode>.Create;
@@ -916,19 +1072,31 @@ var
       begin
         mNode := mPending.Pop;
         if (mNode.StartPos.Line > mLine) or (mNode.EndPos.Line < mLine) then
+        begin
           Continue;
+        end;
         if mNode.Kind in AKinds then
+        begin
           for mName in mNode.Name.Split([',']) do
+          begin
             if SameText(Trim(mName), ASymbol.Name) then
+            begin
               Result := mNode;
+            end;
+          end;
+        end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
     end;
     if (Result <> nil) and HasConditional(Result) then
+    begin
       Result := nil;
+    end;
   end;
 
   /// <summary>Statisches Array hinter dem Typknoten ATypeNode, auch über einen benannten Typ dieser Datei; nil bei
@@ -943,23 +1111,33 @@ var
     if ATypeNode.Kind = TSyntaxKind.TypeReference then
     begin
       if (ATypeNode.ChildCount > 0) or (Pos('.', ATypeNode.Name) > 0) then
+      begin
         Exit;
+      end;
       mTypeSymbol := Resolver.ResolveType(AContext.Tree, FileName, ATypeNode.StartPos);
       if not mTypeSymbol.Found or not Scope.DeclarationSure(mTypeSymbol, ATypeNode) then
+      begin
         Exit;
+      end;
       mDecl := DeclarationOf(mTypeSymbol, [TSyntaxKind.TypeDecl]);
       if mDecl = nil then
+      begin
         Exit;
+      end;
       for mIndex := 0 to mDecl.ChildCount - 1 do
+      begin
         if not (mDecl[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
         begin
           ATypeNode := mDecl[mIndex];
           Break;
         end;
+      end;
     end;
     // Ein Kind mehr als die Indextypen: der Elementtyp. Ohne Indextyp ist das Array dynamisch.
     if (ATypeNode.Kind = TSyntaxKind.ArrayType) and (ATypeNode.ChildCount >= 2) then
+    begin
       Result := ATypeNode;
+    end;
   end;
 
   function InWith(ANode: TSyntaxNode): Boolean;
@@ -969,7 +1147,9 @@ var
     // Ein with-Objekt kann den Namen verdecken.
     mNode := ANode.Parent;
     while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.WithStatement) do
+    begin
       mNode := mNode.Parent;
+    end;
     Result := mNode <> nil;
   end;
 
@@ -983,36 +1163,54 @@ var
     mAny: Boolean;
   begin
     if (AAccess.ChildCount < 2) or (AAccess[0].Kind <> TSyntaxKind.Identifier) then
+    begin
       Exit;
+    end;
     // Erst die Indizes: Meist ist keiner konstant, dann bleibt die Namensauflösung aus.
     mAny := False;
     for mIndex := 1 to AAccess.ChildCount - 1 do
+    begin
       if ValueOf(AAccess[mIndex], mValue) then
+      begin
         mAny := True;
+      end;
+    end;
     if not mAny or InWith(AAccess) then
+    begin
       Exit;
+    end;
     mBase := AAccess[0];
     mSymbol := Resolver.Resolve(AContext.Tree, FileName, mBase.StartPos);
     // Der Baum enthält beide Zweige von {$IFDEF} … {$ELSE}: Die Deklaration muss immer mit der Stelle gelten.
     if not mSymbol.Found or not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
       TIndexSymbolKind.Constant]) or not Scope.DeclarationSure(mSymbol, mBase) then
+    begin
       Exit;
+    end;
     mDecl := DeclarationOf(mSymbol, [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.ConstDecl]);
     if (mDecl = nil) or (mDecl.ChildCount = 0) then
+    begin
       Exit;
+    end;
     mArray := StaticArrayOf(mDecl[0]);
     if mArray = nil then
+    begin
       Exit;
+    end;
     for mIndex := 1 to AAccess.ChildCount - 1 do
     begin
       if mIndex > mArray.ChildCount - 1 then
+      begin
         Break;
+      end;
       mBound := mArray[mIndex - 1];
       if (mBound.Kind = TSyntaxKind.SubrangeType) and (mBound.ChildCount = 2) and ValueOf(mBound[0], mLow) and
         ValueOf(mBound[1], mHigh) and ValueOf(AAccess[mIndex], mValue) and ((mValue < mLow) or (mValue > mHigh)) then
+      begin
         AReport.Add(NodeRange(AAccess[mIndex]), Format(
           'Index %d liegt außerhalb der Grenzen von %s (%d..%d, wie E1012).', [mValue, mBase.Name, mLow, mHigh]),
           TRuleConfidence.High);
+      end;
     end;
   end;
 
@@ -1028,39 +1226,57 @@ var
     mTypeName: string;
   begin
     if ACase.ChildCount < 2 then
+    begin
       Exit;
+    end;
     // Erst die Marken: 0..127 passt in jeden Typ, dann bleibt die Namensauflösung aus.
     mAny := False;
     for mItemIndex := 1 to ACase.ChildCount - 1 do
     begin
       mItem := ACase[mItemIndex];
       if mItem.Kind = TSyntaxKind.CaseItem then
+      begin
         for mLabelIndex := 0 to mItem.ChildCount - 2 do
+        begin
           if (mItem[mLabelIndex].Kind <> TSyntaxKind.RangeExpr) and ValueOf(mItem[mLabelIndex], mValue) and
             ((mValue < 0) or (mValue > 127)) then
+          begin
             mAny := True;
+          end;
+        end;
+      end;
     end;
     if not mAny then
+    begin
       Exit;
+    end;
     // Typ wie in comparison-always-constant: sicher bekannt und eingebaut.
     if not Scope.SureType(Unwrapped(ACase[0]), mSymbol, mTypeInfo) or not (mTypeInfo.Builtin or
       SameText(mTypeInfo.UnitName, 'System')) then
+    begin
       Exit;
+    end;
     mTypeName := mTypeInfo.Name;
     if not IntegerRange(mTypeName, mLow, mHigh) then
+    begin
       Exit;
+    end;
     for mItemIndex := 1 to ACase.ChildCount - 1 do
     begin
       mItem := ACase[mItemIndex];
       if mItem.Kind <> TSyntaxKind.CaseItem then
+      begin
         Continue;
+      end;
       // Das letzte Kind ist die Anweisung, davor stehen die Marken.
       for mLabelIndex := 0 to mItem.ChildCount - 2 do
       begin
         mLabel := mItem[mLabelIndex];
         if (mLabel.Kind <> TSyntaxKind.RangeExpr) and ValueOf(mLabel, mValue) and OutsideIsError(mValue, mTypeName) then
+        begin
           AReport.Add(NodeRange(mLabel), Format('%d liegt außerhalb des Bereichs von %s (%d..%d, wie E1012).',
             [mValue, mTypeName, mLow, mHigh]), TRuleConfidence.High);
+        end;
       end;
     end;
   end;
@@ -1075,20 +1291,26 @@ var
     mRange: Boolean;
   begin
     if ASet.ChildCount <> 1 then
+    begin
       Exit;
+    end;
     mBase := ASet[0];
     mValues := '';
     mRange := False;
     mLow := 0;
     mHigh := 0;
     if (mBase.Kind = TSyntaxKind.SubrangeType) and (mBase.ChildCount = 2) then
-      mRange := ValueOf(mBase[0], mLow) and ValueOf(mBase[1], mHigh)
+    begin
+      mRange := ValueOf(mBase[0], mLow) and ValueOf(mBase[1], mHigh);
+    end
     else if (mBase.Kind = TSyntaxKind.TypeReference) and (mBase.ChildCount = 0) and (Pos('.', mBase.Name) = 0) then
     begin
       mSymbol := Resolver.Resolve(AContext.Tree, FileName, mBase.StartPos);
       if not mSymbol.Found or SameText(mSymbol.UnitName, 'System') then
+      begin
         // Eingebaute Typen haben keine Deklaration im Quelltext.
-        mValues := WideOrdinalValues(mBase.Name)
+        mValues := WideOrdinalValues(mBase.Name);
+      end
       else
       begin
         mTypeSymbol := Resolver.ResolveType(AContext.Tree, FileName, mBase.StartPos);
@@ -1099,13 +1321,19 @@ var
     if mRange and (mLow <= mHigh) and (((mLow < 0) and (mHigh > High(Int64) + mLow)) or (mHigh - mLow >= 256)) then
     begin
       if (mLow < 0) and (mHigh > High(Int64) + mLow) then
-        mValues := 'mehr als 4294967296'
+      begin
+        mValues := 'mehr als 4294967296';
+      end
       else
+      begin
         mValues := IntToStr(mHigh - mLow + 1);
+      end;
     end;
     if mValues <> '' then
+    begin
       AReport.Add(NodeRange(ASet), Format('%s hat %s Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).',
         [NodeText(ASet), mValues]), TRuleConfidence.High);
+    end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
@@ -1145,7 +1373,9 @@ var
           // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1161,11 +1391,17 @@ var
       function(ANode: TSyntaxNode): TSyntaxSearchStep
       begin
         if (AOffset < ANode.StartOffset) or (AOffset >= ANode.EndOffset) then
-          Result := TSyntaxSearchStep.Skip
+        begin
+          Result := TSyntaxSearchStep.Skip;
+        end
         else if ANode.Kind = TSyntaxKind.AsmBlock then
-          Result := TSyntaxSearchStep.Found
+        begin
+          Result := TSyntaxSearchStep.Found;
+        end
         else
+        begin
           Result := TSyntaxSearchStep.Descend;
+        end;
       end);
     Result := mFound <> nil;
   end;
@@ -1179,21 +1415,27 @@ var
   mVisibility: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mTokens := AContext.Tree.Tokens;
   mPathsKnown := False;
   for mIndex := 0 to High(mTokens) do
   begin
     Token := mTokens[mIndex];
     if (Token.Kind = TPascalTokenKind.Number) and TooLargeLiteral(Token.Text) and not InAsm(Token.Offset) then
+    begin
       AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos),
         Format('Ganzzahlkonstante zu groß: %s passt nicht in 64 Bit (wie E2102).', [Token.Text]),
-        TRuleConfidence.High)
+        TRuleConfidence.High);
+    end
     else if (Token.Kind = TPascalTokenKind.Directive) and (TPascalLexer.DirectiveName(Token.Text) = 'RTTI') then
     begin
       mVisibility := InvalidRttiVisibility(Token.Text);
       if mVisibility = '' then
+      begin
         Continue;
+      end;
       // Nur außerhalb bedingter Zweige: Einen Zweig, den dcc nicht übersetzt, prüft es auch nicht.
       if not mPathsKnown then
       begin
@@ -1201,9 +1443,11 @@ begin
         mPathsKnown := True;
       end;
       if TConditionalBranches.PathAt(mPaths, mIndex) = '' then
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Format(
           '%s in {$RTTI} ist keine Menge aus vcPrivate, vcProtected, vcPublic und vcPublished (wie E2572).',
           [mVisibility]), TRuleConfidence.High);
+      end;
     end;
   end;
   Scope := TTypedScope.Create(AContext);
@@ -1277,14 +1521,20 @@ var
     Result := '';
     Header := AParameters.Parent;
     if (Header = nil) or (Header.Kind <> TSyntaxKind.RoutineHeader) then
+    begin
       Exit;
+    end;
     Result := Header.Name;
     Node := Header.Parent;
     while (Node <> nil) and not (Node.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl,
       TSyntaxKind.ImplementationSection]) do
+    begin
       Node := Node.Parent;
+    end;
     if (Node <> nil) and (Node.Kind = TSyntaxKind.TypeDecl) then
+    begin
       Result := Node.Name + '.' + Result;
+    end;
   end;
 
   function NamesKey(AParameters: TSyntaxNode): string;
@@ -1293,8 +1543,12 @@ var
   begin
     Result := '';
     for Index := 0 to AParameters.ChildCount - 1 do
+    begin
       if AParameters[Index].Kind = TSyntaxKind.Parameter then
+      begin
         Result := Result + LowerCase(AParameters[Index].Name) + ';';
+      end;
+    end;
   end;
 
   function FindPaired(ANode, AParameters: TSyntaxNode; const AName, AKey: string): TSyntaxNode;
@@ -1313,9 +1567,13 @@ var
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.Parameters) and (Node <> AParameters) and
           SameText(QualifiedRoutine(Node), AName) and (NamesKey(Node) = AKey) then
+        begin
           Exit(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1330,7 +1588,9 @@ var
     Result := nil;
     Name := QualifiedRoutine(AParameters);
     if Name <> '' then
+    begin
       Result := FindPaired(AContext.Tree.Root, AParameters, Name, NamesKey(AParameters));
+    end;
   end;
 
   /// <summary>Parameterliste mit den Parametern ohne Standardwert zuerst; die Standardwerte stehen nur in
@@ -1347,11 +1607,17 @@ var
     begin
       Parameter := AParameters[Index];
       if Parameter.Kind <> TSyntaxKind.Parameter then
+      begin
         Continue;
+      end;
       if Pos(';' + LowerCase(Parameter.Name) + ';', ADefaults) > 0 then
-        Back := Back + [NodeText(Parameter)]
+      begin
+        Back := Back + [NodeText(Parameter)];
+      end
       else
+      begin
         Front := Front + [NodeText(Parameter)];
+      end;
     end;
     Result := string.Join('; ', Front + Back);
   end;
@@ -1364,15 +1630,21 @@ var
     First := nil;
     Last := nil;
     for Index := 0 to AParameters.ChildCount - 1 do
+    begin
       if AParameters[Index].Kind = TSyntaxKind.Parameter then
       begin
         if First = nil then
+        begin
           First := AParameters[Index];
+        end;
         Last := AParameters[Index];
       end;
+    end;
     Result := First <> nil;
     if Result then
+    begin
       ARange := TTextRange.Create(First.StartPos, Last.EndPos);
+    end;
   end;
 
   function MoveFix(AParameters: TSyntaxNode; out AFix: TRuleFix): Boolean;
@@ -1387,21 +1659,33 @@ var
     Result := False;
     Defaults := ';';
     for Index := 0 to AParameters.ChildCount - 1 do
+    begin
       if AParameters[Index].Kind = TSyntaxKind.Parameter then
       begin
         if Pos(',', AParameters[Index].Name) > 0 then
+        begin
           Exit;
+        end;
         if HasDefault(AParameters[Index]) then
+        begin
           Defaults := Defaults + LowerCase(AParameters[Index].Name) + ';';
+        end;
       end
       else
+      begin
         Exit;
+      end;
+    end;
     if not ListRange(AParameters, Range) then
+    begin
       Exit;
+    end;
     Edits := [TTextEdit.Create(Range, Reordered(AParameters, Defaults))];
     Paired := PairedParameters(AParameters);
     if (Paired <> nil) and ListRange(Paired, Range) then
+    begin
       Edits := Edits + [TTextEdit.Create(Range, Reordered(Paired, Defaults))];
+    end;
     AFix := TRuleFix.Create('Parameter mit Standardwert ans Ende verschieben', Edits);
     Result := True;
   end;
@@ -1423,7 +1707,9 @@ var
   begin
     Result := 0;
     if ABody.StartsWith('(') and ABody.EndsWith(')') then
+    begin
       Result := Length(ABody.Split([',']));
+    end;
   end;
 
   /// <summary>Belegt eine Menge mit dem Basistyp ABase sicher mehr als 4 Byte (keine "kleine Menge")?</summary>
@@ -1436,9 +1722,13 @@ var
   begin
     Base := LowerCase(Trim(ABase));
     if (Base = 'ansichar') or (Base = 'char') or (Base = 'widechar') or (Base = 'byte') or (Base = 'word') then
+    begin
       Exit(True);
+    end;
     if EnumCount(Base) > 0 then
+    begin
       Exit(EnumCount(Base) > 32);
+    end;
     Dots := Pos('..', Base);
     if Dots > 0 then
     begin
@@ -1465,7 +1755,9 @@ var
       'cardinal', 'int64', 'uint64', 'nativeint', 'nativeuint', 'byte', 'word', 'smallint', 'shortint',
       'longint', 'longword', 'boolean', 'char', 'ansichar', 'widechar', 'double', 'single', 'extended',
       'currency', 'real', 'pointer', 'pchar', 'tobject', 'tclass', 'variant', 'tdatetime']) >= 0) then
+    begin
       Exit;
+    end;
     EnsureResolver;
     AType := Resolver.ResolveType(AContext.Tree, FileName, ATypeNode.StartPos);
     Result := AType.Found;
@@ -1505,7 +1797,9 @@ var
     begin
       Parameter := AParameters[Index];
       if Parameter.Kind <> TSyntaxKind.Parameter then
+      begin
         Continue;
+      end;
       if HasDefault(Parameter) then
       begin
         SeenDefault := True;
@@ -1517,7 +1811,9 @@ var
           for Name in Names do
           begin
             if Text <> '' then
+            begin
               Text := Text + '; ';
+            end;
             Text := Text + ModifierText(Parameter) + Trim(Name) + ': ' + TypeAndDefault(Parameter);
           end;
           AReport.Add(NodeRange(Parameter), Format('%s: Standardwerte gibt es nur für einzeln deklarierte ' +
@@ -1526,17 +1822,23 @@ var
             [TTextEdit.Create(NodeRange(Parameter), Text)])]);
         end;
         if Parameter.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam] then
+        begin
           AReport.Add(NodeRange(Parameter), Format('%s ist ein %s-Parameter und kann keinen Standardwert haben ' +
-            '(wie E2239).', [Parameter.Name, Trim(ModifierText(Parameter))]), TRuleConfidence.High)
+            '(wie E2239).', [Parameter.Name, Trim(ModifierText(Parameter))]), TRuleConfidence.High);
+        end
         else if ParameterType(Parameter[0], ParamType) then
         begin
           if NoDefaultType(ParamType) then
+          begin
             AReport.Add(NodeRange(Parameter), Format('Parameter vom Typ %s können keinen Standardwert haben ' +
-              '(wie E2268).', [Parameter[0].Name]), TRuleConfidence.High)
+              '(wie E2268).', [Parameter[0].Name]), TRuleConfidence.High);
+          end
           else if LargeSetType(ParamType) then
+          begin
             AReport.Add(NodeRange(Parameter), Format('%s ist eine Menge über 4 Byte; Standardwerte gibt es nur ' +
               'für ordinale, Zeiger- und kleine Mengentypen (wie E2146).', [Parameter[0].Name]),
               TRuleConfidence.Medium);
+          end;
         end;
       end
       else if SeenDefault then
@@ -1544,7 +1846,9 @@ var
         Fixes := nil;
         // Die Korrektur nur am ersten betroffenen Parameter; sie ordnet die ganze Liste.
         if not Moved and MoveFix(AParameters, Fix) then
+        begin
           Fixes := [Fix];
+        end;
         Moved := True;
         AReport.Add(NodeRange(Parameter), Format('%s braucht einen Standardwert, weil ein vorheriger Parameter ' +
           'einen hat (wie E2238).', [StringReplace(Parameter.Name, ',', ', ', [rfReplaceAll])]),
@@ -1567,9 +1871,13 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.Parameters then
+        begin
           CheckParameters(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1578,12 +1886,18 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Resolver := nil;
   try
     Visit(AContext.Tree.Root);
@@ -1630,9 +1944,13 @@ var
       (ANode.Name = '<=') or (ANode.Name = '>=');
     if (ANode.ChildCount <> 2) or not (Comparison or (ANode.Name = '+') or (ANode.Name = '-') or
       (ANode.Name = '*') or SameText(ANode.Name, 'div') or SameText(ANode.Name, 'mod')) then
+    begin
       Exit;
+    end;
     if not Unsigned.Suspect(OperandName(ANode[0])) and not Unsigned.Suspect(OperandName(ANode[1])) then
+    begin
       Exit;
+    end;
     if Resolver = nil then
     begin
       // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
@@ -1643,7 +1961,9 @@ var
     if not OperandKind(Resolver, AContext.Tree, FileName, ANode[0], LeftKind, LeftType) or
       not OperandKind(Resolver, AContext.Tree, FileName, ANode[1], RightKind, RightType) or
       (LeftKind.Signed = RightKind.Signed) then
+    begin
       Exit;
+    end;
     if LeftKind.Signed then
     begin
       SignedKind := LeftKind;
@@ -1664,29 +1984,45 @@ var
     end;
     // Byte und Word passen in Integer, Cardinal passt in Int64: dann rechnet Delphi ohne Warnung.
     if (UnsignedKind.Bits < 32) or ((UnsignedKind.Bits = 32) and (SignedKind.Bits = 64)) then
+    begin
       Exit;
+    end;
     if Comparison then
-      Subject := 'verglichen'
+    begin
+      Subject := 'verglichen';
+    end
     else
+    begin
       Subject := 'gemischt';
+    end;
     SignedText := NodeText(SignedNode);
     if (Length(SignedText) > MaxOperandText) or (Pos(#10, SignedText) > 0) then
+    begin
       SignedText := 'Wert';
+    end;
     if UnsignedKind.Bits = 64 then
     begin
       if Comparison then
+      begin
         Message := Format('%s und %s verglichen: ein negativer Wert in %s wird vorzeichenlos verglichen (wie W1023).',
-          [SignedType, UnsignedType, SignedText])
+          [SignedType, UnsignedType, SignedText]);
+      end
       else
+      begin
         Message := Format('%s und %s gemischt: ein negativer Wert in %s wird vorzeichenlos gerechnet (wie W1073).',
           [SignedType, UnsignedType, SignedText]);
+      end;
     end
     else if Comparison then
+    begin
       Message := Format('%s und %s %s: beide Operanden werden auf Int64 erweitert (wie W1023).',
-        [SignedType, UnsignedType, Subject])
+        [SignedType, UnsignedType, Subject]);
+    end
     else
+    begin
       Message := Format('%s und %s %s: beide Operanden werden auf Int64 erweitert (wie W1024).',
         [SignedType, UnsignedType, Subject]);
+    end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Message, TRuleConfidence.Medium,
       [TRuleFix.Create(Format('%s in Int64 umwandeln', [NodeText(UnsignedNode)]),
       [TTextEdit.Create(TTextRange.Create(UnsignedNode.StartPos, UnsignedNode.EndPos),
@@ -1707,9 +2043,13 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.BinaryExpr then
+        begin
           CheckMix(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1718,12 +2058,18 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Resolver := nil;
   Unsigned := TTypedNames.Create(AContext, ['Cardinal', 'UInt64']);
   try
@@ -1754,25 +2100,45 @@ class function TNarrowingAssignmentRule.CanonicalTypeName(const ATypeName: strin
 begin
   Result := LowerCase(Trim(ATypeName));
   if Result.StartsWith('system.') then
+  begin
     Result := Copy(Result, Length('system.') + 1, MaxInt);
+  end;
   if (Result = 'longint') or (Result = 'int32') then
-    Result := 'integer'
+  begin
+    Result := 'integer';
+  end
   else if (Result = 'longword') or (Result = 'uint32') or (Result = 'dword') then
-    Result := 'cardinal'
+  begin
+    Result := 'cardinal';
+  end
   else if Result = 'int16' then
-    Result := 'smallint'
+  begin
+    Result := 'smallint';
+  end
   else if Result = 'int8' then
-    Result := 'shortint'
+  begin
+    Result := 'shortint';
+  end
   else if Result = 'uint16' then
-    Result := 'word'
+  begin
+    Result := 'word';
+  end
   else if Result = 'uint8' then
-    Result := 'byte'
+  begin
+    Result := 'byte';
+  end
   else if Result = 'intptr' then
-    Result := 'nativeint'
+  begin
+    Result := 'nativeint';
+  end
   else if Result = 'uintptr' then
-    Result := 'nativeuint'
+  begin
+    Result := 'nativeuint';
+  end
   else if Result = 'real' then
+  begin
     Result := 'double';
+  end;
 end;
 
 /// <summary>Ist der einheitliche Typname ein Gleitkommatyp?</summary>
@@ -1788,11 +2154,17 @@ function IntegerWidth(const ACanonical: string): Integer;
 begin
   Result := 0;
   if (ACanonical = 'int64') or (ACanonical = 'uint64') then
-    Result := 64
+  begin
+    Result := 64;
+  end
   else if (ACanonical = 'nativeint') or (ACanonical = 'nativeuint') then
-    Result := 48
+  begin
+    Result := 48;
+  end
   else if IntegerKindOf(ACanonical).Bits > 0 then
+  begin
     Result := 32;
+  end;
 end;
 
 procedure TNarrowingAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1830,13 +2202,19 @@ var
   begin
     Result := CanonicalTypeName(ATypeName);
     if (IntegerWidth(Result) > 0) or IsFloatName(Result) or not ATypeFound then
+    begin
       Exit;
+    end;
     // Aufgelöst ist entweder der Zieltyp selbst (Integer) oder der Alias mit Signatur (TZahl = Integer).
     Body := CanonicalTypeName(ATypeInfo.Name);
     if (IntegerWidth(Body) = 0) and not IsFloatName(Body) then
+    begin
       Body := CanonicalTypeName(TypeBodyOf(ATypeInfo.Signature));
+    end;
     if (IntegerWidth(Body) > 0) or IsFloatName(Body) then
+    begin
       Result := Body;
+    end;
   end;
 
   /// <summary>Typ des Ausdrucks ANode: Operand mit sicher bekanntem Typ oder ganzzahlige Rechnung daraus.
@@ -1886,8 +2264,12 @@ var
         begin
           Pending.Push(TSyntaxPostOrderEntry.Create(Node, True));
           if NeedsOperands(Node) then
+          begin
             for Index := Node.ChildCount - 1 downto 0 do
+            begin
               Pending.Push(TSyntaxPostOrderEntry.Create(Node[Index], False));
+            end;
+          end;
           Continue;
         end;
         Known := False;
@@ -1896,7 +2278,9 @@ var
         case Node.Kind of
           TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr:
             if NeedsOperands(Node) then
+            begin
               Known := Canonicals.TryGetValue(Node[0], NodeCanonical) and Displays.TryGetValue(Node[0], NodeDisplay);
+            end;
           TSyntaxKind.Literal:
             // Nur innerhalb ganzzahliger Rechnungen: kleine Zahlen ändern die Breite nicht.
             if TOrdinalConstants.Evaluate(NodeText(Node), nil, Value) and (Value >= Low(Integer)) and
@@ -1976,11 +2360,17 @@ var
           TSyntaxKind.IndexAccess] then
         begin
           if Sources.Suspect(OperandName(Node)) then
+          begin
             Exit(True);
+          end;
         end
         else if Node.Kind in [TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr] then
+        begin
           for Index := Node.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(Node[Index]);
+          end;
+        end;
       end;
     finally
       Pending.Free;
@@ -2015,7 +2405,9 @@ var
             Exit;
           end;
           for Index := Node.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(Node[Index]);
+          end;
         end;
       finally
         Pending.Free;
@@ -2026,7 +2418,9 @@ var
     Found := nil;
     if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
       SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName)) then
+    begin
       Search(AContext.Tree.Root);
+    end;
     Result := Found;
   end;
 
@@ -2038,26 +2432,36 @@ var
   begin
     if not MaySource(AValue) or not ExpressionType(AValue, SourceCanonical, SourceDisplay) or
       not Pairs.ContainsKey(SourceCanonical + '>' + ATargetCanonical) then
+    begin
       Exit;
+    end;
     CodeSuffix := '';
     if IsFloatName(ATargetCanonical) then
     begin
       if (SourceCanonical = 'extended') and (ATargetCanonical = 'double') then
-        CodeSuffix := ' (wie W1066)'
+      begin
+        CodeSuffix := ' (wie W1066)';
+      end
       else
+      begin
         CodeSuffix := ' (wie W1072)';
+      end;
     end;
     ValueText := NodeText(AValue);
     if (Length(ValueText) > MaxValueText) or (Pos(#10, ValueText) > 0) then
+    begin
       ValueText := 'Der Wert';
+    end;
     Message := Format('%s ist %s; die Zuweisung an %s kann Daten verlieren%s.',
       [ValueText, SourceDisplay, ATargetDisplay, CodeSuffix]);
     Fixes := [TRuleFix.Create('Ausdrücklich in ' + ATargetDisplay + ' umwandeln',
       [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos),
       ATargetDisplay + '(' + NodeText(AValue) + ')')])];
     if ATargetTypeNode <> nil then
+    begin
       Fixes := Fixes + [TRuleFix.Create('Zieltyp auf ' + SourceDisplay + ' vergrößern',
         [TTextEdit.Create(TTextRange.Create(ATargetTypeNode.StartPos, ATargetTypeNode.EndPos), SourceDisplay)])];
+    end;
     AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), Message, TRuleConfidence.Medium, Fixes);
   end;
 
@@ -2068,18 +2472,26 @@ var
     Target: string;
   begin
     if (ANode.ChildCount <> 2) or not MaySource(ANode[1]) then
+    begin
       Exit;
+    end;
     EnsureResolver;
     if not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
       not Resolver.NodeType(AContext.Tree, FileName, ANode[0], Symbol, TypeInfo, TypeFound) or
       not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
       TIndexSymbolKind.Property_]) or (Symbol.TypeName = '') then
+    begin
       Exit;
+    end;
     Target := Canonical(Symbol.TypeName, TypeInfo, TypeFound);
     if (ANode[0].Kind = TSyntaxKind.Identifier) and not Symbol.IsParameter then
-      Report(ANode[1], Symbol.TypeName, Target, DeclarationTypeNode(Symbol))
+    begin
+      Report(ANode[1], Symbol.TypeName, Target, DeclarationTypeNode(Symbol));
+    end
     else
+    begin
       Report(ANode[1], Symbol.TypeName, Target, nil);
+    end;
   end;
 
   procedure CheckInlineVar(ANode: TSyntaxNode);
@@ -2089,7 +2501,9 @@ var
   begin
     if (ANode.ChildCount <> 2) or (ANode[0].Kind <> TSyntaxKind.TypeReference) or (Pos(',', ANode.Name) > 0) or
       not MaySource(ANode[1]) then
+    begin
       Exit;
+    end;
     EnsureResolver;
     TypeName := NodeText(ANode[0]);
     TypeInfo := Resolver.ResolveType(AContext.Tree, FileName, ANode[0].StartPos);
@@ -2110,11 +2524,17 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.AssignStatement then
-          CheckAssignment(Node)
+        begin
+          CheckAssignment(Node);
+        end
         else if Node.Kind = TSyntaxKind.InlineVar then
+        begin
           CheckInlineVar(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2127,12 +2547,18 @@ var
   Separator: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Pairs := TDictionary<string, Boolean>.Create;
   Resolver := nil;
   Sources := nil;
@@ -2142,16 +2568,22 @@ begin
     begin
       Separator := Pos('>', Pair);
       if Separator = 0 then
+      begin
         Continue;
+      end;
       SourceName := CanonicalTypeName(Copy(Pair, 1, Separator - 1));
       TargetName := CanonicalTypeName(Copy(Pair, Separator + 1, MaxInt));
       if (SourceName = '') or (TargetName = '') then
+      begin
         Continue;
+      end;
       Pairs.AddOrSetValue(SourceName + '>' + TargetName, True);
       SourceNames := SourceNames + [SourceName];
     end;
     if Pairs.Count = 0 then
+    begin
       Exit;
+    end;
     Sources := TTypedNames.Create(AContext, SourceNames);
     Visit(AContext.Tree.Root);
   finally
@@ -2181,12 +2613,17 @@ begin
   Result := nil;
   Open := Pos('(', ASignature);
   if Open = 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   Close := 0;
   for Index := Open to Length(ASignature) do
+  begin
     if ASignature[Index] = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ASignature[Index] = ')' then
     begin
       Dec(Depth);
@@ -2196,28 +2633,41 @@ begin
         Break;
       end;
     end;
+  end;
   if Close = 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   Start := Open + 1;
   for Index := Open + 1 to Close do
   begin
     if CharInSet(ASignature[Index], ['(', '[', '<']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if CharInSet(ASignature[Index], [']', '>']) or ((ASignature[Index] = ')') and (Index < Close)) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if ((ASignature[Index] = ';') and (Depth = 0)) or (Index = Close) then
     begin
       Group := Trim(Copy(ASignature, Start, Index - Start));
       Start := Index + 1;
       if Group = '' then
+      begin
         Continue;
+      end;
       // Standardwert und Typ abschneiden: nur die Namen zählen.
       Colon := Pos(':', Group);
       if Colon > 0 then
-        Names := Trim(Copy(Group, 1, Colon - 1))
+      begin
+        Names := Trim(Copy(Group, 1, Colon - 1));
+      end
       else
+      begin
         Names := Group;
+      end;
       Head := LowerCase(Names);
       IsVar := Head.StartsWith('var ') or Head.StartsWith('out ');
       Count := Length(Names.Split([','], TStringSplitOptions.ExcludeEmpty));
@@ -2239,14 +2689,22 @@ begin
   Result := nil;
   Name := LowerCase(AName);
   if Name.StartsWith('system.') then
+  begin
     Name := Copy(Name, Length('system.') + 1, MaxInt);
+  end;
   if (Name = 'inc') or (Name = 'dec') or (Name = 'include') or (Name = 'exclude') or (Name = 'setlength') or
     (Name = 'delete') or (Name = 'fillchar') or (Name = 'initialize') or (Name = 'finalize') then
-    Result := [0]
+  begin
+    Result := [0];
+  end
   else if (Name = 'insert') or (Name = 'str') or (Name = 'move') then
-    Result := [1]
+  begin
+    Result := [1];
+  end
   else if Name = 'val' then
+  begin
     Result := [1, 2];
+  end;
 end;
 
 /// <summary>Ist die Konstante typisiert? Bei zusammengesetzten Typen (array[0..1] of Integer) fehlt TypeName,
@@ -2256,7 +2714,9 @@ var
   Colon, Equals: Integer;
 begin
   if ATypeName <> '' then
+  begin
     Exit(True);
+  end;
   Colon := Pos(':', ASignature);
   Equals := Pos('=', ASignature);
   Result := (Colon > 0) and ((Equals = 0) or (Colon < Equals));
@@ -2269,7 +2729,9 @@ var
 begin
   Name := LowerCase(Trim(ATypeName));
   if Name.StartsWith('system.') then
+  begin
     Name := Copy(Name, Length('system.') + 1, MaxInt);
+  end;
   Result := (Name = 'pointer') or (Name = 'pchar') or (Name = 'pansichar') or (Name = 'pwidechar') or
     (Name = 'pbyte') or (Name = 'pword') or (Name = 'pinteger') or (Name = 'pcardinal') or (Name = 'pint64') or
     (Name = 'puint64') or (Name = 'psingle') or (Name = 'pdouble') or (Name = 'pextended') or
@@ -2307,7 +2769,9 @@ var
     AText := '';
     Result := (AName <> '') and Assigned(AContext.ReadFile) and AContext.ReadFile(AName, mBytes);
     if Result then
+    begin
       AText := TFileEncoding.Decode(mBytes, mFormat);
+    end;
   end;
 
   /// <summary>Wendet die Direktive ADirective auf AState an. {$I Datei} bzw. {$INCLUDE Datei} spielt die
@@ -2319,38 +2783,56 @@ var
     mToken: TPascalToken;
   begin
     if not (ADirective.StartsWith('{$') or ADirective.StartsWith('(*$')) then
+    begin
       Exit;
+    end;
     mBody := TDirectiveNames.Body(ADirective);
     mName := UpperCase(TDirectiveNames.LeadingName(mBody));
     mRest := Trim(Copy(mBody, Length(mName) + 1, MaxInt));
     if ((mName = 'I') or (mName = 'INCLUDE')) and (mRest <> '') and not CharInSet(mRest[1], ['+', '-']) then
     begin
       if (Length(mRest) >= 2) and (mRest[1] = '''') and (mRest[Length(mRest)] = '''') then
+      begin
         mRest := Copy(mRest, 2, Length(mRest) - 2);
+      end;
       if (ADepth >= 8) or not ReadInclude(mRest, mInclude) then
       begin
         AState := TWriteable.Unknown;
         Exit;
       end;
       for mToken in TPascalLexer.Tokenize(mInclude) do
+      begin
         if mToken.Kind = TPascalTokenKind.Directive then
+        begin
           ApplyDirective(mToken.Text, ADepth + 1, AState);
+        end;
+      end;
       Exit;
     end;
     mText := UpperCase(StringReplace(mBody, ' ', '', [rfReplaceAll]));
     if mText.StartsWith('WRITEABLECONST') then
     begin
       if (mText = 'WRITEABLECONSTON') or (mText = 'WRITEABLECONST+') then
-        AState := TWriteable.On_
+      begin
+        AState := TWriteable.On_;
+      end
       else if (mText = 'WRITEABLECONSTOFF') or (mText = 'WRITEABLECONST-') then
+      begin
         AState := TWriteable.Off;
+      end;
       Exit;
     end;
     for mItem in mText.Split([',']) do
+    begin
       if mItem = 'J+' then
-        AState := TWriteable.On_
+      begin
+        AState := TWriteable.On_;
+      end
       else if mItem = 'J-' then
+      begin
         AState := TWriteable.Off;
+      end;
+    end;
   end;
 
   /// <summary>Letzte Einstellung von {$J±} bzw. {$WRITEABLECONST} vor APosition in dieser Datei, samt
@@ -2363,9 +2845,13 @@ var
     for Token in AContext.Tree.Tokens do
     begin
       if not Before(Token.StartPos, APosition) then
+      begin
         Break;
+      end;
       if Token.Kind = TPascalTokenKind.Directive then
+      begin
         ApplyDirective(Token.Text, 0, Result);
+      end;
     end;
   end;
 
@@ -2383,9 +2869,13 @@ var
       begin
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.ConstDecl) and (Node.ChildCount = 2) then
+        begin
           LocalNames.AddOrSetValue(LowerCase(Node.Name), True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2398,16 +2888,22 @@ var
   begin
     Key := LowerCase(AName);
     if (Key = '') or LocalNames.ContainsKey(Key) then
+    begin
       Exit(Key <> '');
+    end;
     if Suspects.TryGetValue(Key, Result) then
+    begin
       Exit;
+    end;
     Result := False;
     if AContext.Index <> nil then
+    begin
       Result := AContext.Index.HasSymbol(AName,
         function(const ASymbol: TIndexSymbol): Boolean
         begin
           Result := (ASymbol.Kind = TIndexSymbolKind.Constant) and IsTypedConstant(ASymbol.TypeName, ASymbol.Signature);
         end);
+    end;
     Suspects.Add(Key, Result);
   end;
 
@@ -2425,15 +2921,21 @@ var
         TSyntaxKind.MemberAccess:
           begin
             if Suspect(Node.Name) then
+            begin
               Exit(True);
+            end;
             if Node.ChildCount = 0 then
+            begin
               Exit(False);
+            end;
             Node := Node[0];
           end;
         TSyntaxKind.IndexAccess:
           begin
             if Node.ChildCount = 0 then
+            begin
               Exit(False);
+            end;
             Node := Node[0];
           end;
       else
@@ -2471,21 +2973,29 @@ var
     begin
       if not (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
         not MentionsSuspect(Node) then
+      begin
         Exit;
+      end;
       EnsureResolver;
       if Node.Kind = TSyntaxKind.IndexAccess then
       begin
         // Element: nur Arrays und Strings, nicht der Speicher hinter einem Zeiger.
         if Node.ChildCount = 0 then
+        begin
           Exit;
+        end;
         Elements := Elements + [Node];
         Node := Node[0];
         Continue;
       end;
       if not Resolver.NodeType(AContext.Tree, FileName, Node, ASymbol, TypeInfo, TypeFound) then
+      begin
         Exit;
+      end;
       if (ASymbol.SymbolKind = TIndexSymbolKind.Constant) and IsTypedConstant(ASymbol.TypeName, ASymbol.Signature) then
+      begin
         Break;
+      end;
       // Feld eines Records: weiter zum Empfänger.
       if (Node.Kind = TSyntaxKind.MemberAccess) and (ASymbol.SymbolKind = TIndexSymbolKind.Field) and
         (Node.ChildCount > 0) then
@@ -2498,10 +3008,14 @@ var
     for Index := High(Elements) downto 0 do
     begin
       if IsPointerName(ASymbol.TypeName) or ASymbol.TypeName.StartsWith('^') then
+      begin
         Exit;
+      end;
       if Resolver.NodeType(AContext.Tree, FileName, Elements[Index][0], ASymbol, TypeInfo, TypeFound) and
         TypeFound and (Pos('^', TypeBodyOf(TypeInfo.Signature)) > 0) then
+      begin
         Exit;
+      end;
     end;
     Result := True;
   end;
@@ -2531,7 +3045,9 @@ var
             Exit;
           end;
           for Index := Node.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(Node[Index]);
+          end;
         end;
       finally
         Pending.Free;
@@ -2542,7 +3058,9 @@ var
     Found := nil;
     if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
       SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName)) then
+    begin
       Search(AContext.Tree.Root);
+    end;
     Result := Found;
   end;
 
@@ -2550,11 +3068,15 @@ var
   function IndentBefore(const APosition: TTextPosition; out AIndent: string): Boolean;
   begin
     if Lines = nil then
+    begin
       Lines := TTextLines.SplitLines(AContext.Text);
+    end;
     Result := False;
     AIndent := '';
     if (APosition.Line < 0) or (APosition.Line > High(Lines)) then
+    begin
       Exit;
+    end;
     AIndent := Copy(Lines[APosition.Line], 1, APosition.Character);
     Result := Trim(AIndent) = '';
   end;
@@ -2573,22 +3095,34 @@ var
     if (Section = nil) or (Section.Kind <> TSyntaxKind.ConstSection) or (Section.Parent = nil) or
       not (Section.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) or
       not SameText(Copy(NodeText(Section), 1, 5), 'const') or not IndentBefore(Section.StartPos, SectionIndent) then
+    begin
       Exit;
+    end;
     Position := -1;
     for Indent := 0 to Section.ChildCount - 1 do
+    begin
       if Section[Indent] = ADecl then
+      begin
         Position := Indent;
+      end;
+    end;
     if Position < 0 then
+    begin
       Exit;
+    end;
     Edits := nil;
     if Position = 0 then
+    begin
       Edits := Edits + [TTextEdit.Create(TTextRange.Create(Section.StartPos,
-        TTextPosition.Create(Section.StartPos.Line, Section.StartPos.Character + Length('const'))), 'var')]
+        TTextPosition.Create(Section.StartPos.Line, Section.StartPos.Character + Length('const'))), 'var')];
+    end
     else
     begin
       Previous := Section[Position - 1];
       if (Previous.EndPos.Line >= ADecl.StartPos.Line) or not IndentBefore(ADecl.StartPos, Dummy) then
+      begin
         Exit;
+      end;
       DeclIndent := ADecl.StartPos.Line;
       Edits := Edits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(DeclIndent, 0),
         TTextPosition.Create(DeclIndent, 0)), SectionIndent + 'var' + LineBreak)];
@@ -2597,7 +3131,9 @@ var
     begin
       Next := Section[Position + 1];
       if (ADecl.EndPos.Line >= Next.StartPos.Line) or not IndentBefore(Next.StartPos, Dummy) then
+      begin
         Exit;
+      end;
       Edits := Edits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Next.StartPos.Line, 0),
         TTextPosition.Create(Next.StartPos.Line, 0)), SectionIndent + 'const' + LineBreak)];
     end;
@@ -2614,18 +3150,26 @@ var
     Code: string;
   begin
     if not ModifiedConstant(ATarget, Symbol) then
+    begin
       Exit;
+    end;
     Fixes := nil;
     Decl := DeclarationOf(Symbol);
     if (Decl <> nil) and VarFix(Decl, Fix) then
+    begin
       Fixes := [Fix];
+    end;
     // Mit {$J-} vor der Deklaration übersetzt Delphi die Änderung nicht.
     if (Decl <> nil) and (WriteableAt(Decl.StartPos) = TWriteable.Off) then
     begin
       if AsArgument then
-        Code := 'E2197'
+      begin
+        Code := 'E2197';
+      end
       else
+      begin
         Code := 'E2064';
+      end;
       AReport.AddWithSeverity(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Format('%s ist eine ' +
         'typisierte Konstante und kann ohne {$J+} nicht verändert werden (wie %s).', [Symbol.Name, Code]),
         TRuleSeverity.Error, Fixes);
@@ -2633,11 +3177,17 @@ var
     end;
     // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3, dcc-Lauf vom 29.10.2026, #1328).
     if (Decl <> nil) and (WriteableAt(Decl.StartPos) = TWriteable.On_) then
+    begin
       Exit;
+    end;
     if AsArgument then
-      Code := 'W1016'
+    begin
+      Code := 'W1016';
+    end
     else
+    begin
       Code := 'W1017';
+    end;
     AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Format('%s ist eine typisierte Konstante ' +
       'und wird verändert (wie %s).', [Symbol.Name, Code]), TRuleConfidence.High, Fixes);
   end;
@@ -2652,13 +3202,21 @@ var
     Index, Position: Integer;
   begin
     if ANode.ChildCount < 2 then
+    begin
       Exit;
+    end;
     Any := False;
     for Index := 1 to ANode.ChildCount - 1 do
+    begin
       if MentionsSuspect(ANode[Index]) then
+      begin
         Any := True;
+      end;
+    end;
     if not Any then
+    begin
       Exit;
+    end;
     Callee := ANode[0];
     VarArgs := nil;
     EnsureResolver;
@@ -2668,20 +3226,30 @@ var
       // Überladungen können andere Parameter haben: dann keine Aussage.
       if not (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
         TIndexSymbolKind.Constructor_]) or (Length(Symbol.Overloads) > 0) or (Length(Symbol.VariantParams) > 1) then
+      begin
         Exit;
+      end;
       VarArgs := VarParameters(Symbol.Signature);
     end
     else if Callee.Kind = TSyntaxKind.Identifier then
     begin
       Builtin := BuiltinVarArguments(Callee.Name);
       for Position in Builtin do
+      begin
         if Position + 1 < ANode.ChildCount then
+        begin
           Report(ANode[Position + 1], True);
+        end;
+      end;
       Exit;
     end;
     for Index := 1 to ANode.ChildCount - 1 do
+    begin
       if (Index - 1 <= High(VarArgs)) and VarArgs[Index - 1] then
+      begin
         Report(ANode[Index], True);
+      end;
+    end;
   end;
 
   /// <summary>0 als Wert einer Zeigerkonstante bzw. initialisierten Zeigervariable (W1013).</summary>
@@ -2692,11 +3260,15 @@ var
     IsPointer: Boolean;
   begin
     if ANode.ChildCount <> 2 then
+    begin
       Exit;
+    end;
     TypeNode := ANode[0];
     Value := ANode[1];
     if (Value.Kind <> TSyntaxKind.Literal) or (Trim(NodeText(Value)) <> '0') then
+    begin
       Exit;
+    end;
     IsPointer := (TypeNode.Kind = TSyntaxKind.PointerType) or
       ((TypeNode.Kind = TSyntaxKind.TypeReference) and IsPointerName(NodeText(TypeNode)));
     if not IsPointer and (TypeNode.Kind = TSyntaxKind.TypeReference) then
@@ -2707,7 +3279,9 @@ var
         ((Pos('^', TypeBodyOf(TypeInfo.Signature)) = 1) or IsPointerName(TypeBodyOf(TypeInfo.Signature)));
     end;
     if not IsPointer then
+    begin
       Exit;
+    end;
     AReport.Add(TTextRange.Create(Value.StartPos, Value.EndPos), Format('%s ist ein Zeiger; die 0 wird zu nil ' +
       'umgewandelt (wie W1013).', [ANode.Name]), TRuleConfidence.High,
       [TRuleFix.Create('nil schreiben', [TTextEdit.Create(TTextRange.Create(Value.StartPos, Value.EndPos), 'nil')],
@@ -2730,7 +3304,9 @@ var
         case Node.Kind of
           TSyntaxKind.AssignStatement:
             if Node.ChildCount = 2 then
+            begin
               Report(Node[0], False);
+            end;
           TSyntaxKind.Call:
             CheckCall(Node);
           TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl:
@@ -2739,7 +3315,9 @@ var
           // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2748,12 +3326,18 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
   Lines := nil;
   Resolver := nil;
@@ -2788,8 +3372,11 @@ begin
   Index := 1;
   // Mehrzeilige Strings (''' … ''') zählen nicht.
   if AText.StartsWith('''''''') then
+  begin
     Exit(-1);
+  end;
   while Index <= Length(AText) do
+  begin
     if AText[Index] = '''' then
     begin
       Segment := 0;
@@ -2797,23 +3384,33 @@ begin
       while True do
       begin
         if Index > Length(AText) then
+        begin
           Exit(-1);
+        end;
         if AText[Index] = '''' then
         begin
           if (Index < Length(AText)) and (AText[Index + 1] = '''') then
-            Inc(Index)
+          begin
+            Inc(Index);
+          end
           else
+          begin
             Break;
+          end;
         end;
         // Ein Zeichen außerhalb der Basisebene ist ein Element, aber zwei UTF-16-Einheiten.
         if not ((Ord(AText[Index]) >= $DC00) and (Ord(AText[Index]) <= $DFFF)) then
+        begin
           Inc(Segment);
+        end;
         Inc(Index);
       end;
       Inc(Index);
       Inc(Result, Segment);
       if Segment > ALongest then
+      begin
         ALongest := Segment;
+      end;
     end
     else if AText[Index] = '#' then
     begin
@@ -2822,15 +3419,24 @@ begin
       begin
         Inc(Index);
         while (Index <= Length(AText)) and CharInSet(AText[Index], ['0'..'9', 'a'..'f', 'A'..'F']) do
+        begin
           Inc(Index);
+        end;
       end
       else
+      begin
         while (Index <= Length(AText)) and CharInSet(AText[Index], ['0'..'9']) do
+        begin
           Inc(Index);
+        end;
+      end;
       Inc(Result);
     end
     else
+    begin
       Exit(-1);
+    end;
+  end;
 end;
 
 class function TStringLengthLimitRule.ShortStringLength(const AText: string): Integer;
@@ -2842,29 +3448,45 @@ begin
   Result := 0;
   Text := LowerCase(AText);
   for Inner in DeclarationWords(Text) do
+  begin
     if (Inner = 'shortstring') or (Inner = 'system.shortstring') then
+    begin
       Exit(255);
+    end;
+  end;
   Start := 1;
   while True do
   begin
     Open := PosEx('string', Text, Start);
     if Open = 0 then
+    begin
       Exit;
+    end;
     Start := Open + Length('string');
     // Ganzes Wort: nicht Teil von "AnsiString" oder "TStringList".
     if (Open > 1) and CharInSet(Text[Open - 1], ['a'..'z', '0'..'9', '_', '.']) then
+    begin
       Continue;
+    end;
     Open := Start;
     while (Open <= Length(Text)) and CharInSet(Text[Open], [' ', #9]) do
+    begin
       Inc(Open);
+    end;
     if (Open > Length(Text)) or (Text[Open] <> '[') then
+    begin
       Continue;
+    end;
     Close := PosEx(']', Text, Open);
     if Close = 0 then
+    begin
       Exit;
+    end;
     Inner := Copy(AText, Open + 1, Close - Open - 1);
     if TOrdinalConstants.Evaluate(Inner, nil, Value) and (Value >= 1) and (Value <= 255) then
+    begin
       Result := Value;
+    end;
     Exit;
   end;
 end;
@@ -2888,15 +3510,21 @@ begin
     begin
       Result := 0;
       if mIndex = nil then
+      begin
         Exit;
+      end;
       mLocations := mIndex.FindSymbols(mName);
       for mPosition := 0 to High(mLocations) do
+      begin
         if mLocations[mPosition].Symbol.Kind = TIndexSymbolKind.TypeAlias then
         begin
           Result := TStringLengthLimitRule.ShortStringLength(TypeBodyOf(mLocations[mPosition].Symbol.Signature));
           if Result > 0 then
+          begin
             Exit;
+          end;
         end;
+      end;
     end);
 end;
 
@@ -2921,9 +3549,12 @@ begin
     begin
       Result := 0;
       if mIndex = nil then
+      begin
         Exit;
+      end;
       mLocations := mIndex.FindSymbols(mName);
       for mPosition := 0 to High(mLocations) do
+      begin
         if mLocations[mPosition].Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
           TIndexSymbolKind.Property_] then
         begin
@@ -2931,8 +3562,11 @@ begin
           if (TStringLengthLimitRule.ShortStringLength(mLocations[mPosition].Symbol.Signature) > 0) or
             ((mTypeName <> '') and ((TStringLengthLimitRule.ShortStringLength(mTypeName) > 0) or
             (IsValidIdent(mTypeName, True) and (IndexShortAlias(mFacts, mIndex, mTypeName) > 0)))) then
+          begin
             Exit(1);
+          end;
         end;
+      end;
     end) <> 0;
 end;
 
@@ -2980,12 +3614,18 @@ var
     Result := 0;
     if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or not SameText(ATypeNode.Name, 'string') or
       (ATypeNode.ChildCount <> 1) then
+    begin
       Exit;
+    end;
     EnsureResolver;
     if Values = nil then
+    begin
       Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
+    end;
     if (Values.Check(ATypeNode[0], Value) = TOrdinalStatus.Value) and (Value >= 1) and (Value <= 255) then
+    begin
       Result := Value;
+    end;
   end;
 
   /// <summary>Nennt der Typknoten string[…], ShortString oder einen eigenen Alias darauf?</summary>
@@ -3026,21 +3666,31 @@ var
         begin
           Pending.Push(TSyntaxPostOrderEntry.Create(Node, True));
           if Combines(Node) then
+          begin
             for Index := Node.ChildCount - 1 downto 0 do
+            begin
               Pending.Push(TSyntaxPostOrderEntry.Create(Node[Index], False));
+            end;
+          end;
           Continue;
         end;
         Chars := -1;
         if Node.Kind = TSyntaxKind.Literal then
-          Chars := LiteralLength(NodeText(Node), Longest)
+        begin
+          Chars := LiteralLength(NodeText(Node), Longest);
+        end
         else if Combines(Node) and (Node.Kind = TSyntaxKind.ParenExpr) then
-          Chars := Lengths[Node[0]]
+        begin
+          Chars := Lengths[Node[0]];
+        end
         else if Combines(Node) then
         begin
           Left := Lengths[Node[0]];
           Right := Lengths[Node[1]];
           if (Left >= 0) and (Right >= 0) then
+          begin
             Chars := Left + Right;
+          end;
         end;
         Lengths.AddOrSetValue(Node, Chars);
       end;
@@ -3056,9 +3706,13 @@ var
   begin
     Result := ShortStringLength(ATypeName);
     if (Result > 0) or not IsValidIdent(ATypeName, True) then
+    begin
       Exit;
+    end;
     if ShortTypes.ContainsKey(LowerCase(ATypeName)) then
+    begin
       Exit(1);
+    end;
     Result := IndexShortAlias(AContext.NameFacts, AContext.Index, ATypeName);
   end;
 
@@ -3076,9 +3730,13 @@ var
       begin
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.ChildCount > 0) and IsShortTypeNode(Node[0]) then
+        begin
           ShortTypes.AddOrSetValue(LowerCase(Node.Name), True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3101,10 +3759,16 @@ var
         Node := Pending.Pop;
         if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl,
           TSyntaxKind.InlineVar]) and (Node.ChildCount > 0) and IsShortTypeNode(Node[0]) then
+        begin
           for Name in Node.Name.Split([',']) do
+          begin
             LocalNames.AddOrSetValue(LowerCase(Trim(Name)), True);
+          end;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3118,15 +3782,23 @@ var
   begin
     Key := LowerCase(AName);
     if (Key = '') or LocalNames.ContainsKey(Key) then
+    begin
       Exit(Key <> '');
+    end;
     if Suspects.TryGetValue(Key, Result) then
+    begin
       Exit;
+    end;
     Result := False;
     // Ohne eigene Aliase der Datei hängt die Antwort nur vom Index ab: über alle Units gemerkt.
     if ShortTypes.Count = 0 then
-      Result := IndexShortVariable(AContext.NameFacts, AContext.Index, AName)
+    begin
+      Result := IndexShortVariable(AContext.NameFacts, AContext.Index, AName);
+    end
     else if AContext.Index <> nil then
+    begin
       for Location in AContext.Index.FindSymbols(AName) do
+      begin
         if (Location.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
           TIndexSymbolKind.Property_]) and ((ShortStringLength(Location.Symbol.Signature) > 0) or
           ((Location.Symbol.TypeName <> '') and (AliasLength(Location.Symbol.TypeName) > 0))) then
@@ -3134,6 +3806,8 @@ var
           Result := True;
           Break;
         end;
+      end;
+    end;
     Suspects.Add(Key, Result);
   end;
 
@@ -3149,7 +3823,9 @@ var
     Nodes: TList<TSyntaxNode>;
   begin
     if Declarations <> nil then
+    begin
       Exit;
+    end;
     Declarations := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
     TypeBodies := TDictionary<string, TSyntaxNode>.Create;
     // Iterativ (Bericht M1); Vorordnung wie die frühere Suche, damit der erste Treffer gleich bleibt.
@@ -3161,9 +3837,12 @@ var
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.ChildCount > 0) and
           not TypeBodies.ContainsKey(LowerCase(Node.Name)) then
+        begin
           TypeBodies.Add(LowerCase(Node.Name), Node[0]);
+        end;
         if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.Field,
           TSyntaxKind.Parameter]) and (Node.ChildCount > 0) then
+        begin
           for Name in Node.Name.Split([',']) do
           begin
             Key := LowerCase(Trim(Name));
@@ -3174,8 +3853,11 @@ var
             end;
             Nodes.Add(Node);
           end;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3187,7 +3869,9 @@ var
   begin
     EnsureDeclarations;
     if not TypeBodies.TryGetValue(LowerCase(ATypeName), Result) then
+    begin
       Result := nil;
+    end;
   end;
 
   // TypeNodeLength und TypeNameLength rufen sich gegenseitig auf; die Rekursion bleibt (Bericht M1): sie folgt
@@ -3199,9 +3883,13 @@ var
   begin
     Result := BracketLength(ATypeNode);
     if Result = 0 then
+    begin
       Result := ShortStringLength(NodeText(ATypeNode));
+    end;
     if (Result = 0) and (ATypeNode.Kind = TSyntaxKind.TypeReference) then
+    begin
       Result := TypeNameLength(Trim(NodeText(ATypeNode)), ATypeNode);
+    end;
   end;
 
   /// <summary>N des Alias ATypeName: eigener Alias aus dem Baum (auch string[Laenge]), sonst aus der Signatur
@@ -3215,10 +3903,14 @@ var
     begin
       Body := LocalTypeBody(ATypeName);
       if (Body <> nil) and (Body <> AFrom) then
+      begin
         Result := TypeNodeLength(Body);
+      end;
     end
     else
+    begin
       Result := AliasLength(ATypeName);
+    end;
   end;
 
   /// <summary>Typknoten der Deklaration von ASymbol in dieser Datei; nil, wenn sie woanders steht. AFixable:
@@ -3233,11 +3925,16 @@ var
     AFixable := False;
     if not ((ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
       SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName))) then
+    begin
       Exit;
+    end;
     EnsureDeclarations;
     if not Declarations.TryGetValue(LowerCase(ASymbol.Name), Nodes) then
+    begin
       Exit;
+    end;
     for Node in Nodes do
+    begin
       if (Node.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
         (Node.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
       begin
@@ -3246,6 +3943,7 @@ var
           (Pos(',', Node.Name) = 0) and (Result.Kind = TSyntaxKind.TypeReference);
         Exit;
       end;
+    end;
   end;
 
   procedure ReportTruncated(AValue: TSyntaxNode; ALength, ALimit: Integer; ATypeNode: TSyntaxNode);
@@ -3254,8 +3952,10 @@ var
   begin
     Fixes := nil;
     if ATypeNode <> nil then
+    begin
       Fixes := [TRuleFix.Create('Als string deklarieren', [TTextEdit.Create(TTextRange.Create(ATypeNode.StartPos,
         ATypeNode.EndPos), 'string')])];
+    end;
     AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('Das Literal hat %d Zeichen und wird ' +
       'auf %d gekürzt (wie W1014).', [ALength, ALimit]), TRuleConfidence.High, Fixes);
   end;
@@ -3267,16 +3967,24 @@ var
     TypeNode: TSyntaxNode;
   begin
     if ANode.ChildCount <> 2 then
+    begin
       Exit;
+    end;
     Chars := ExpressionLength(ANode[1]);
     if Chars <= 0 then
+    begin
       Exit;
+    end;
     Limit := TypeNodeLength(ANode[0]);
     if (Limit = 0) or (Chars <= Limit) then
+    begin
       Exit;
+    end;
     TypeNode := nil;
     if (Pos(',', ANode.Name) = 0) and (ANode[0].Kind = TSyntaxKind.TypeReference) then
+    begin
       TypeNode := ANode[0];
+    end;
     ReportTruncated(ANode[1], Chars, Limit, TypeNode);
   end;
 
@@ -3289,30 +3997,46 @@ var
   begin
     if (ANode.ChildCount <> 2) or not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
       not Suspect(ANode[0].Name) then
+    begin
       Exit;
+    end;
     Chars := ExpressionLength(ANode[1]);
     if Chars <= 0 then
+    begin
       Exit;
+    end;
     EnsureResolver;
     if not Resolver.NodeType(AContext.Tree, FileName, ANode[0], Symbol, TypeInfo, TypeFound) or
       not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+    begin
       Exit;
+    end;
     // Deklaration in dieser Datei: Länge aus dem Baum (auch string[Laenge]); sonst aus der Signatur.
     TypeNode := DeclarationTypeNode(Symbol, Fixable);
     if TypeNode <> nil then
-      Limit := TypeNodeLength(TypeNode)
+    begin
+      Limit := TypeNodeLength(TypeNode);
+    end
     else
     begin
       Limit := ShortStringLength(Copy(Symbol.Signature, Pos(':', Symbol.Signature) + 1, MaxInt));
       if (Limit = 0) and (Symbol.TypeName <> '') then
+      begin
         Limit := TypeNameLength(Symbol.TypeName, nil);
+      end;
     end;
     if (Limit = 0) or (Chars <= Limit) then
+    begin
       Exit;
+    end;
     if Fixable and (ANode[0].Kind = TSyntaxKind.Identifier) then
-      ReportTruncated(ANode[1], Chars, Limit, TypeNode)
+    begin
+      ReportTruncated(ANode[1], Chars, Limit, TypeNode);
+    end
     else
+    begin
       ReportTruncated(ANode[1], Chars, Limit, nil);
+    end;
   end;
 
   procedure CheckResourceStrings(ASection: TSyntaxNode);
@@ -3324,12 +4048,16 @@ var
     begin
       Decl := ASection[Index];
       if (Decl.Kind <> TSyntaxKind.ConstDecl) or (Decl.ChildCount = 0) then
+      begin
         Continue;
+      end;
       Chars := ExpressionLength(Decl[Decl.ChildCount - 1]);
       if Chars > MaxResourceString then
+      begin
         AReport.AddWithSeverity(TTextRange.Create(Decl[Decl.ChildCount - 1].StartPos,
           Decl[Decl.ChildCount - 1].EndPos), Format('Der resourcestring %s hat %d Zeichen; Windows erlaubt höchstens ' +
           '%d (wie E2381).', [Decl.Name, Chars, MaxResourceString]), TRuleSeverity.Error, nil);
+      end;
     end;
   end;
 
@@ -3342,7 +4070,9 @@ var
   begin
     Result := '';
     if (Length(ATokenText) < 2) or (ATokenText[1] <> '''') or (ATokenText[Length(ATokenText)] <> '''') then
+    begin
       Exit;
+    end;
     Part := '';
     Count := 0;
     Index := 2;
@@ -3358,7 +4088,9 @@ var
       begin
         // Nur verdoppelte Anführungszeichen dürfen innen stehen.
         if (Index + 1 >= Length(ATokenText)) or (ATokenText[Index + 1] <> '''') then
+        begin
           Exit('');
+        end;
         Part := Part + '''''';
         Inc(Index, 2);
       end
@@ -3388,20 +4120,26 @@ var
   begin
     Major := StrToIntDef(Copy(AContext.DelphiVersion, 1, Pos('.', AContext.DelphiVersion + '.') - 1), 0);
     if (Major <= 0) or (Major >= LongLiteralVersion) then
+    begin
       Exit;
+    end;
     for Token in AContext.Tree.Tokens do
+    begin
       if (Token.Kind = TPascalTokenKind.StringLiteral) and (Length(Token.Text) > MaxLiteral) and
         (LiteralLength(Token.Text, Longest) >= 0) and (Longest > MaxLiteral) then
       begin
         Fixes := nil;
         Split := SplitLiteral(Token.Text);
         if Split <> '' then
+        begin
           Fixes := [TRuleFix.Create('Literal teilen', [TTextEdit.Create(TTextRange.Create(Token.StartPos,
             Token.EndPos), Split)])];
+        end;
         AReport.AddWithSeverity(TTextRange.Create(Token.StartPos, Token.EndPos), Format('Das Literal hat %d ' +
           'Zeichen in Anführungszeichen; vor Delphi 12 sind höchstens %d erlaubt (wie E2056).',
           [Longest, MaxLiteral]), TRuleSeverity.Error, Fixes);
       end;
+    end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
@@ -3424,12 +4162,16 @@ var
             CheckDeclaration(Node);
           TSyntaxKind.ConstSection:
             if SameText(Node.Name, 'resourcestring') then
+            begin
               CheckResourceStrings(Node);
+            end;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3438,12 +4180,18 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Resolver := nil;
   Values := nil;
   Declarations := nil;
@@ -3459,7 +4207,9 @@ begin
   finally
     Values.Free;
     if Resolver <> nil then
+    begin
       Resolver.UnpinTree;
+    end;
     TypeBodies.Free;
     Declarations.Free;
     Suspects.Free;

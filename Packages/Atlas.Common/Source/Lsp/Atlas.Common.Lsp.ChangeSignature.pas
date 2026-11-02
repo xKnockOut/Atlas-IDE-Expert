@@ -265,10 +265,16 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for Index := 0 to High(A) do
+    begin
       if not SameText(StringReplace(A[Index], ' ', '', [rfReplaceAll]), StringReplace(B[Index], ' ', '',
         [rfReplaceAll])) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
@@ -351,10 +357,14 @@ var
   Text: string;
 begin
   if FSources.TryGetValue(UpperCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   if not (Assigned(FReadText) and FReadText(AFileName, Text)) then
+  begin
     Exit;
+  end;
   Result := TSourceFile.Create;
   Result.FileName := AFileName;
   Result.Text := Text;
@@ -392,7 +402,9 @@ begin
     // Auf dem Namen einer Deklaration bzw. eines Rumpfs.
     Current := Source(AFileName);
     if Current <> nil then
+    begin
       for Symbol in Current.Symbols do
+      begin
         if (Symbol.Kind in RoutineKinds) and Within(APosition, Symbol.SelectionRange) then
         begin
           AFile := AFileName;
@@ -400,18 +412,26 @@ begin
           Found := True;
           Break;
         end;
+      end;
+    end;
   end;
   if not Found then
+  begin
     Exit;
+  end;
   Current := Source(AFile);
   if Current = nil then
+  begin
     Exit;
+  end;
   for Symbol in Current.Symbols do
+  begin
     if (Symbol.Kind in RoutineKinds) and (Symbol.SelectionRange.StartPos = Position) then
     begin
       // Vom Rumpf zur Deklaration: die erste Fundstelle mit denselben Parametern.
       ADecl := Symbol;
       for Candidate in Current.Symbols do
+      begin
         if (Candidate.Kind in RoutineKinds) and SameText(Candidate.Container, Symbol.Container) and
           SameText(Candidate.Name, Symbol.Name) and (SameTypes(Candidate.ParamTypes, Symbol.ParamTypes) or
           (Length(Symbol.ParamTypes) = 0)) then
@@ -419,8 +439,10 @@ begin
           ADecl := Candidate;
           Break;
         end;
+      end;
       Exit(True);
     end;
+  end;
 end;
 
 function TSignatureCollector.TypeSymbol(const ATypeName: string; out ALocation: TSymbolLocation): Boolean;
@@ -430,14 +452,18 @@ var
 begin
   Name := ATypeName;
   if LastDelimiter('.', Name) > 0 then
+  begin
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  end;
   for Location in FIndex.FindSymbols(Name) do
+  begin
     if (Location.Symbol.Kind in ClassKinds + [TIndexSymbolKind.InterfaceType]) and
       (SameText(Location.Symbol.QualifiedName, ATypeName) or SameText(Location.Symbol.Name, ATypeName)) then
     begin
       ALocation := Location;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -450,18 +476,24 @@ var
 begin
   Result := False;
   if not TypeSymbol(ATypeName, Location) then
+  begin
     Exit;
+  end;
   AFile := Location.FileName;
   Unit_ := Source(AFile);
   if (Unit_ = nil) or (Unit_.Tree = nil) then
+  begin
     Exit;
+  end;
   for Symbol in Unit_.Symbols do
+  begin
     if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Location.Symbol.QualifiedName) and
       SameText(Symbol.Name, AName) and SameTypes(Symbol.ParamTypes, AParamTypes) then
     begin
       ADecl := Symbol;
       Exit(True);
     end;
+  end;
 end;
 
 function TSignatureCollector.AddMember(AKind: TMemberKind; const AFileName: string; const ADecl: TIndexSymbol;
@@ -478,16 +510,24 @@ begin
   Key := UpperCase(AFileName + '|' + ADecl.Container + '|' + ADecl.Name + '|' +
     IntToStr(ADecl.SelectionRange.StartPos.Line));
   if FSeen.ContainsKey(Key) then
+  begin
     Exit(True);
+  end;
   FSeen.Add(Key, True);
   if Length(Members) >= MaxMembers then
+  begin
     Exit;
+  end;
   if not InProject(AFileName) then
+  begin
     raise Fail(Format('%s steht außerhalb des Projekts (%s); dort lässt sich die Signatur nicht ändern.',
       [ADecl.QualifiedName, ExtractFileName(AFileName)]));
+  end;
   Unit_ := Source(AFileName);
   if (Unit_ = nil) or (Unit_.Tree = nil) then
+  begin
     raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
+  end;
   Member := Default(TMember);
   Member.Kind := AKind;
   Member.FileName := AFileName;
@@ -497,7 +537,9 @@ begin
   Member.BodyLast := -1;
   Token := TChangeSignature.NameTokenAt(Unit_.Tokens, ADecl.SelectionRange.StartPos);
   if not TChangeSignature.ReadHeader(Unit_.Text, Unit_.Tokens, Token, Member.Decl) then
+  begin
     raise Fail(Format('Der Kopf von %s lässt sich nicht lesen.', [ADecl.QualifiedName]));
+  end;
   // Routine nur im implementation-Teil: der Kopf des Rumpfs ist die Deklaration.
   Index := TChangeSignature.BodyEnd(Unit_.Tree, Member.Decl);
   if Index >= 0 then
@@ -508,25 +550,35 @@ begin
     Member.BodyLast := Index;
   end
   else if AKind <> TMemberKind.InterfaceMethod then
+  begin
     for Symbol in Unit_.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, ADecl.Container) and
         SameText(Symbol.Name, ADecl.Name) and (Symbol.SelectionRange.StartPos <> ADecl.SelectionRange.StartPos) then
       begin
         Token := TChangeSignature.NameTokenAt(Unit_.Tokens, Symbol.SelectionRange.StartPos);
         if not TChangeSignature.ReadHeader(Unit_.Text, Unit_.Tokens, Token, Header) then
+        begin
           Continue;
+        end;
         // Überladungen: gleiche Parameter; ein Rumpf ohne Parameterliste gehört zur einzigen Deklaration.
         if not (SameTypes(Header.ParamTypes, Member.Decl.ParamTypes) or
           ((Header.OpenToken < 0) and (Length(Member.Decl.Parameters) > 0))) then
+        begin
           Continue;
+        end;
         Index := TChangeSignature.BodyEnd(Unit_.Tree, Header);
         if Index < 0 then
+        begin
           Continue;
+        end;
         Member.HasBody := True;
         Member.Body := Header;
         Member.BodyLast := Index;
         Break;
       end;
+    end;
+  end;
   Members := Members + [Member];
   Result := True;
 end;
@@ -550,7 +602,9 @@ begin
   while Root.HasDirective('override') do
   begin
     if not TypeSymbol(Root.Container, Owner) or (Length(Owner.Symbol.Ancestors) = 0) then
+    begin
       raise Fail(Format('%s überschreibt eine Methode, deren Vorfahr nicht im Index steht.', [Root.QualifiedName]));
+    end;
     Ancestor := Owner.Symbol.Ancestors[0];
     Found := Default(TIndexSymbol);
     MemberFile := '';
@@ -560,15 +614,23 @@ begin
     begin
       Inc(Index);
       if TypeSymbol(Climb, Owner) and (Length(Owner.Symbol.Ancestors) > 0) then
-        Climb := Owner.Symbol.Ancestors[0]
+      begin
+        Climb := Owner.Symbol.Ancestors[0];
+      end
       else
+      begin
         Climb := '';
+      end;
     end;
     if Found.Name = '' then
+    begin
       raise Fail(Format('Die überschriebene Methode von %s steht nicht im Index.', [Root.QualifiedName]));
+    end;
     if not InProject(MemberFile) then
+    begin
       raise Fail(Format('%s überschreibt %s außerhalb des Projekts (%s); dort lässt sich die Signatur nicht ' +
         'ändern.', [Root.QualifiedName, Found.QualifiedName, ExtractFileName(MemberFile)]));
+    end;
     Root := Found;
     RootFile := MemberFile;
   end;
@@ -584,7 +646,9 @@ begin
     AddMember(TMemberKind.InterfaceMethod, RootFile, Root, True);
   end
   else
+  begin
     AddMember(TMemberKind.Method, RootFile, Root, True);
+  end;
 
   // Nachfahren, implementierende Klassen und implementierte Interfaces.
   Pending := TQueue<TPair<string, Integer>>.Create;
@@ -595,12 +659,18 @@ begin
     while Pending.Count > 0 do
     begin
       if Assigned(FCancellation) then
+      begin
         FCancellation.ThrowIfCancellationRequested;
+      end;
       Current := Pending.Dequeue;
       if Current.Value >= MaxDepth then
+      begin
         Continue;
+      end;
       if not TypeSymbol(Current.Key, Owner) then
+      begin
         Continue;
+      end;
       IsInterface := Owner.Symbol.Kind = TIndexSymbolKind.InterfaceType;
       Declares := DeclaredIn(Current.Key, Root.Name, Types, MemberFile, Found);
       if Declares and not SameText(Found.QualifiedName, Root.QualifiedName) then
@@ -611,15 +681,20 @@ begin
           AddMember(TMemberKind.InterfaceMethod, MemberFile, Found, False);
         end
         else if Found.HasDirective('override') or InterfaceMethod then
+        begin
           AddMember(TMemberKind.Method, MemberFile, Found, False);
+        end;
       end;
       // Interfaces in der Vorfahrenliste einer Klasse.
       if not IsInterface then
+      begin
         for Index := 1 to High(Owner.Symbol.Ancestors) do
         begin
           Ancestor := Owner.Symbol.Ancestors[Index];
           if Visited.ContainsKey(TypeKey(Ancestor)) then
+          begin
             Continue;
+          end;
           if TypeSymbol(Ancestor, Location) and (Location.Symbol.Kind = TIndexSymbolKind.InterfaceType) and
             DeclaredIn(Ancestor, Root.Name, Types, MemberFile, Found) then
           begin
@@ -627,12 +702,17 @@ begin
             Pending.Enqueue(TPair<string, Integer>.Create(Location.Symbol.QualifiedName, Current.Value + 1));
           end;
         end;
+      end;
       for Location in FIndex.Descendants(Owner.Symbol.Name) do
       begin
         if not (Location.Symbol.Kind in ClassKinds + [TIndexSymbolKind.InterfaceType]) then
+        begin
           Continue;
+        end;
         if Visited.ContainsKey(TypeKey(Location.Symbol.QualifiedName)) then
+        begin
           Continue;
+        end;
         Visited.Add(TypeKey(Location.Symbol.QualifiedName), True);
         // Eine Klasse, die das Interface über eine geerbte Methode erfüllt: deren Klasse gehört dazu.
         if IsInterface and (Location.Symbol.Kind <> TIndexSymbolKind.InterfaceType) and
@@ -640,7 +720,9 @@ begin
         begin
           Climb := '';
           if Length(Location.Symbol.Ancestors) > 0 then
+          begin
             Climb := Location.Symbol.Ancestors[0];
+          end;
           Index := 0;
           while (Climb <> '') and (Index < MaxDepth) do
           begin
@@ -656,9 +738,13 @@ begin
               Break;
             end;
             if TypeSymbol(Climb, Owner) and (Length(Owner.Symbol.Ancestors) > 0) then
-              Climb := Owner.Symbol.Ancestors[0]
+            begin
+              Climb := Owner.Symbol.Ancestors[0];
+            end
             else
+            begin
               Climb := '';
+            end;
           end;
         end;
         Pending.Enqueue(TPair<string, Integer>.Create(Location.Symbol.QualifiedName, Current.Value + 1));
@@ -678,12 +764,18 @@ begin
   for Member in Members do
   begin
     if not SameText(Member.FileName, AFileName) then
+    begin
       Continue;
+    end;
     Unit_ := Source(Member.FileName);
     if Unit_.Tokens[Member.Decl.NameToken].StartPos = APosition then
+    begin
       Exit(True);
+    end;
     if Member.HasBody and (Unit_.Tokens[Member.Body.NameToken].StartPos = APosition) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -693,9 +785,13 @@ var
   Member: TMember;
 begin
   for Member in Members do
+  begin
     if SameText(Member.FileName, AFileName) and Member.HasBody and (ATokenIndex > Member.Body.LastToken) and
       (ATokenIndex <= Member.BodyLast) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -716,20 +812,34 @@ begin
   begin
     Inc(Depth);
     if not TypeSymbol(Climb, Owner) then
+    begin
       Exit;
+    end;
     Unit_ := Source(Owner.FileName);
     if (Unit_ <> nil) and (Unit_.Tree <> nil) then
-      Symbols := Unit_.Symbols
+    begin
+      Symbols := Unit_.Symbols;
+    end
     else if FIndex.FindFile(Owner.FileName, UnitIndex) then
-      Symbols := UnitIndex.Symbols
+    begin
+      Symbols := UnitIndex.Symbols;
+    end
     else
+    begin
       Symbols := nil;
+    end;
     for Symbol in Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Container, Owner.Symbol.QualifiedName) and
         SameText(Symbol.Name, AProperty) and (Symbol.TypeName <> '') then
+      begin
         Exit(Symbol.TypeName);
+      end;
+    end;
     if Length(Owner.Symbol.Ancestors) = 0 then
+    begin
       Exit;
+    end;
     Climb := Owner.Symbol.Ancestors[0];
   end;
 end;
@@ -751,26 +861,36 @@ var
     Child: TDfmObject;
   begin
     for Item in AObject.Properties do
+    begin
       if Item.IsEvent and (Item.ValueRange.StartPos = APosition) then
       begin
         ComponentClass := AObject.TypeName;
         PropertyName := Item.Name;
         Exit(True);
       end;
+    end;
     for Child in AObject.Children do
+    begin
       if Search(Child) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   Form := Source(AFormFile);
   if Form = nil then
+  begin
     Exit;
+  end;
   Document := TDfmParser.Parse(Form.Text);
   try
     if (Document.Root = nil) or not Search(Document.Root) then
+    begin
       Exit;
+    end;
   finally
     Document.Free;
   end;
@@ -784,12 +904,16 @@ begin
   BoundEvent := EventType;
   // Ereignistyp im Projekt: seine Parameterliste ändert sich mit.
   for Location in FIndex.FindSymbols(EventType) do
+  begin
     if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and InProject(Location.FileName) then
     begin
       Unit_ := Source(Location.FileName);
       if (Unit_ = nil) or (Unit_.Tree = nil) then
+      begin
         Continue;
+      end;
       for Symbol in Unit_.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.TypeAlias) and SameText(Symbol.Name, EventType) then
         begin
           Member := Default(TMember);
@@ -810,7 +934,9 @@ begin
             Exit;
           end;
         end;
+      end;
     end;
+  end;
   EventFixed := True;
 end;
 
@@ -830,15 +956,21 @@ var
 begin
   HasRequired := False;
   for Parameter in Root.Decl.Parameters do
+  begin
     if Parameter.DefaultValue = '' then
+    begin
       HasRequired := True;
+    end;
+  end;
   Seen := TDictionary<string, Boolean>.Create;
   try
     Snapshot := Members;
     for Member in Snapshot do
     begin
       if Member.Kind = TMemberKind.EventType then
+      begin
         Continue;
+      end;
       Unit_ := Source(Member.FileName);
       for Location in TLspReferences.Find(FResolver, FIndex, Unit_.Tree, Member.FileName,
         Unit_.Tokens[Member.Decl.NameToken].StartPos, True, FFiles, FReadText, FCancellation) do
@@ -846,10 +978,14 @@ begin
         Key := UpperCase(Location.FileName) + '|' + IntToStr(Location.Range.StartPos.Line) + ':' +
           IntToStr(Location.Range.StartPos.Character);
         if Seen.ContainsKey(Key) then
+        begin
           Continue;
+        end;
         Seen.Add(Key, True);
         if IsHeaderName(Location.FileName, Location.Range.StartPos) then
+        begin
           Continue;
+        end;
         Extension := LowerCase(ExtractFileExt(Location.FileName));
         if (Extension = '.dfm') or (Extension = '.fmx') then
         begin
@@ -858,10 +994,14 @@ begin
         end;
         Other := Source(Location.FileName);
         if (Other = nil) or (Other.Tree = nil) then
+        begin
           Continue;
+        end;
         Token := TChangeSignature.NameTokenAt(Other.Tokens, Location.Range.StartPos);
         if Token < 0 then
+        begin
           Continue;
+        end;
         Use := TChangeSignature.UseOf(Other.Tokens, Token, HasRequired);
         case Use of
           TSignatureUse.Accessor:
@@ -877,7 +1017,9 @@ begin
           Previous := Token - 1;
           while (Previous >= 0) and (Other.Tokens[Previous].Kind in [TPascalTokenKind.Comment,
             TPascalTokenKind.Directive]) do
+          begin
             Dec(Previous);
+          end;
           Site.InheritedInMember := (Previous >= 0) and Other.Tokens[Previous].IsKeyword('inherited') and
             InMemberBody(Location.FileName, Token);
           Calls := Calls + [Site];
@@ -888,8 +1030,10 @@ begin
     Seen.Free;
   end;
   if BoundEvent <> '' then
+  begin
     Warnings := Warnings + ['Die Methode ist in einer Formulardatei gebunden; Aufrufe über das Ereignis findet ' +
       'Atlas nicht.'];
+  end;
 end;
 
 function TSignatureCollector.Root: TMember;
@@ -897,8 +1041,12 @@ var
   Member: TMember;
 begin
   for Member in Members do
+  begin
     if Member.IsRoot then
+    begin
       Exit(Member);
+    end;
+  end;
   Result := Members[0];
 end;
 
@@ -908,9 +1056,13 @@ var
   Decl: TIndexSymbol;
 begin
   if not FindTarget(ATree, AFileName, APosition, DeclFile, Decl) then
+  begin
     raise Fail('Hier steht keine Routine.');
+  end;
   if not InProject(DeclFile) then
+  begin
     raise Fail(Format('"%s" ist außerhalb des Projekts deklariert (%s).', [Decl.Name, ExtractFileName(DeclFile)]));
+  end;
   CollectHierarchy(DeclFile, Decl);
   CollectUses(Decl);
 end;
@@ -926,11 +1078,17 @@ var
   Existing: TFileEdit;
 begin
   if not AEdits.TryGetValue(UpperCase(AFileName), List) then
+  begin
     List := nil;
+  end;
   for Existing in List do
+  begin
     if (Existing.Range.StartPos = AEdit.Range.StartPos) and (Existing.Range.EndPos = AEdit.Range.EndPos) and
       (Existing.Kind = AEdit.Kind) and (Existing.NewText = AEdit.NewText) then
+    begin
       Exit;
+    end;
+  end;
   AEdits.AddOrSetValue(UpperCase(AFileName), List + [AEdit]);
 end;
 
@@ -948,7 +1106,9 @@ var
 begin
   SetLength(Result, Length(AEdits));
   for Index := 0 to High(AEdits) do
+  begin
     Result[Index] := TTextEdit.Create(AEdits[Index].Range, AEdits[Index].NewText);
+  end;
 end;
 
 /// <summary>Verschachtelte Aufrufe (Foo(Foo(1))): Der äußere Aufruf wird auf dem Text mit den inneren
@@ -976,16 +1136,22 @@ var
 begin
   SetLength(Order, Length(AEdits));
   for Index := 0 to High(AEdits) do
+  begin
     Order[Index] := Index;
+  end;
   // Kleinste zuerst, damit innere Aufrufe fertig sind, bevor der äußere sie aufnimmt.
   for I := 0 to High(Order) - 1 do
+  begin
     for J := I + 1 to High(Order) do
+    begin
       if Size(AEdits[Order[J]]) < Size(AEdits[Order[I]]) then
       begin
         Swap := Order[I];
         Order[I] := Order[J];
         Order[J] := Swap;
       end;
+    end;
+  end;
   Result := Copy(AEdits);
   SetLength(Done, Length(AEdits));
   for Index in Order do
@@ -993,35 +1159,55 @@ begin
     Edit := Result[Index];
     Inner := nil;
     for Other := 0 to High(Result) do
+    begin
       if (Other <> Index) and not Done[Other] and Contains(Edit.Range, Result[Other].Range) then
       begin
         // Nur die äußersten der enthaltenen Änderungen; deren Inneres steckt schon in ihnen.
         Maximal := True;
         for J := 0 to High(Result) do
+        begin
           if (J <> Other) and (J <> Index) and not Done[J] and Contains(Edit.Range, Result[J].Range) and
             Contains(Result[J].Range, Result[Other].Range) then
+          begin
             Maximal := False;
+          end;
+        end;
         if Maximal then
+        begin
           Inner := Inner + [Result[Other]];
+        end;
       end;
+    end;
     if Length(Inner) = 0 then
+    begin
       Continue;
+    end;
     for Other := 0 to High(Result) do
+    begin
       if (Other <> Index) and Contains(Edit.Range, Result[Other].Range) then
+      begin
         Done[Other] := True;
+      end;
+    end;
     if Edit.Kind = TEditKind.Call then
     begin
       Modified := TChangeSignature.ApplyEdits(AText, ToTextEdits(Inner));
       Tokens := TPascalLexer.Tokenize(Modified);
       Token := TChangeSignature.NameTokenAt(Tokens, Edit.NamePos);
       if (Token >= 0) and TChangeSignature.CallEdit(Modified, Tokens, Token, AOld, AChanges, Edit.Values, Rebuilt) then
+      begin
         Result[Index].NewText := Rebuilt.NewText;
+      end;
     end;
   end;
   Inner := nil;
   for Index := 0 to High(Result) do
+  begin
     if not Done[Index] then
+    begin
       Inner := Inner + [Result[Index]];
+    end;
+  end;
   Result := Inner;
 end;
 
@@ -1049,19 +1235,29 @@ end;
 class function TLspChangeSignature.ModeName(AMode: TNewParameterMode): string;
 begin
   if AMode = TNewParameterMode.UpdateCallers then
-    Result := 'updateCallers'
+  begin
+    Result := 'updateCallers';
+  end
   else
+  begin
     Result := 'overload';
+  end;
 end;
 
 class function TLspChangeSignature.ModeOf(const AName: string; ADefault: TNewParameterMode): TNewParameterMode;
 begin
   if SameText(AName, 'updateCallers') then
-    Result := TNewParameterMode.UpdateCallers
+  begin
+    Result := TNewParameterMode.UpdateCallers;
+  end
   else if SameText(AName, 'overload') then
-    Result := TNewParameterMode.Overload
+  begin
+    Result := TNewParameterMode.Overload;
+  end
   else
+  begin
     Result := ADefault;
+  end;
 end;
 
 class function TLspChangeSignature.IsOffered(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -1074,14 +1270,20 @@ var
 begin
   Result := False;
   if (ATree = nil) or (AResolver = nil) then
+  begin
     Exit;
+  end;
   Token := TChangeSignature.NameTokenAt(ATree.Tokens, APosition);
   if Token < 0 then
+  begin
     Exit;
+  end;
   // Kopf einer Routine: ohne Namensauflösung. Den Text braucht ReadHeader nur für die Parameter.
   Text := '';
   if TChangeSignature.ReadHeader(Text, ATree.Tokens, Token, Header) then
+  begin
     Exit(True);
+  end;
   Resolved := AResolver.Resolve(ATree, AFileName, APosition);
   Result := (Resolved.Kind = TResolvedKind.Symbol) and (Resolved.SymbolKind in RoutineKinds);
 end;
@@ -1109,7 +1311,9 @@ class function TLspChangeSignature.Actions(AEnabled: Boolean; AResolver: TNameRe
 begin
   Result := nil;
   if AEnabled and IsOffered(AResolver, ATree, AFileName, APosition) then
+  begin
     Result := [ActionJson(AUri, APosition)];
+  end;
 end;
 
 class function TLspChangeSignature.Prepare(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -1135,8 +1339,10 @@ begin
     Result.EventFixed := Collector.EventFixed;
     Result.Warnings := Collector.Warnings;
     if Length(Collector.Accessors) > 0 then
+    begin
       Result.Warnings := Result.Warnings + [Format('Zugriffsmethode einer Property (%s): Parameter lassen sich nur ' +
         'umbenennen.', [Collector.Accessors[0]])];
+    end;
   finally
     Collector.Free;
   end;
@@ -1161,7 +1367,9 @@ var
   begin
     Unit_ := Collector.Source(AFile);
     if (Unit_ = nil) or (AHeader.NameToken < 0) then
+    begin
       Exit;
+    end;
     Tokens := Unit_.Tokens;
     Header.FileName := AFile;
     Header.NamePos := Tokens[AHeader.NameToken].StartPos;
@@ -1174,6 +1382,7 @@ var
     begin
       Position := TTextPosition.Create(-1, 0);
       if Token >= 0 then
+      begin
         while (Token < AHeader.CloseToken) and (Token <= High(Tokens)) do
         begin
           Inc(Token);
@@ -1184,6 +1393,7 @@ var
             Break;
           end;
         end;
+      end;
       Header.ParameterPos := Header.ParameterPos + [Position];
     end;
     Result.Headers := Result.Headers + [Header];
@@ -1198,10 +1408,14 @@ begin
     for Member in Collector.Members do
     begin
       if Member.Kind = TMemberKind.EventType then
+      begin
         Continue;
+      end;
       AddHeader(Member.FileName, Member.Decl, Member.DeclIsBody);
       if Member.HasBody and not Member.DeclIsBody then
+      begin
         AddHeader(Member.FileName, Member.Body, True);
+      end;
     end;
     for Site in Collector.Calls do
     begin
@@ -1222,7 +1436,9 @@ function BodyUses(AUnit: TSourceFile; const AMember: TMember; const AName: strin
 begin
   Result := nil;
   if AMember.HasBody then
+  begin
     Result := TChangeSignature.Uses_(AUnit.Tokens, AMember.Body.LastToken + 1, AMember.BodyLast, AName);
+  end;
 end;
 
 class function TLspChangeSignature.Execute(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -1263,25 +1479,37 @@ begin
     Changes := ARequest.Changes;
     Error := TChangeSignature.Validate(Root.Decl.Parameters, Changes);
     if Error <> '' then
+    begin
       raise Fail(Error);
+    end;
     SetLength(RootNames, Length(Root.Decl.Parameters));
     for Index := 0 to High(Root.Decl.Parameters) do
+    begin
       RootNames[Index] := Root.Decl.Parameters[Index].Name;
+    end;
     Added := False;
     TypesChanged := Length(Changes) <> Length(Root.Decl.Parameters);
     for Index := 0 to High(Changes) do
     begin
       if Changes[Index].Origin < 0 then
+      begin
         Added := True;
+      end;
       if Changes[Index].Origin <> Index then
+      begin
         TypesChanged := True;
+      end;
     end;
     if TypesChanged and Collector.EventFixed then
+    begin
       raise Fail(Format('Die Methode ist in einer Formulardatei an %s gebunden; der Ereignistyp stammt nicht aus ' +
         'dem Projekt. Die Parameter lassen sich nur umbenennen.', [Collector.BoundEvent]));
+    end;
     if TypesChanged and (Length(Collector.Accessors) > 0) then
+    begin
       raise Fail(Format('Die Methode ist Zugriffsmethode einer Property (%s); die Parameter lassen sich nur ' +
         'umbenennen.', [Collector.Accessors[0]]));
+    end;
     // Entfernte Parameter dürfen im Rumpf nicht mehr vorkommen.
     for Member in Collector.Members do
     begin
@@ -1290,15 +1518,23 @@ begin
       begin
         Kept := False;
         for Change in Changes do
+        begin
           if Change.Origin = Index then
+          begin
             Kept := True;
+          end;
+        end;
         if Kept then
+        begin
           Continue;
+        end;
         Found := BodyUses(Unit_, Member, Member.Decl.Parameters[Index].Name);
         if Length(Found) > 0 then
+        begin
           raise Fail(Format('Der Parameter "%s" wird in %s, Zeile %d noch verwendet; erst die Verwendung entfernen.',
             [Member.Decl.Parameters[Index].Name, ExtractFileName(Member.FileName),
             Unit_.Tokens[Found[0]].StartPos.Line + 1]));
+        end;
       end;
     end;
     UseOverload := Added and (ARequest.Mode = TNewParameterMode.Overload);
@@ -1309,21 +1545,31 @@ begin
         'das Interface bzw. den Ereignistyp nicht; alle Aufrufer übergeben den neuen Wert.'];
     end;
     if UseOverload then
-      Result.Mode := TNewParameterMode.Overload
+    begin
+      Result.Mode := TNewParameterMode.Overload;
+    end
     else
+    begin
       Result.Mode := TNewParameterMode.UpdateCallers;
+    end;
     // Kollision mit einer vorhandenen Überladung.
     NewParameters := TChangeSignature.NewParameters(Root.Decl.Parameters, Changes, RootNames, True);
     SetLength(NewTypes, Length(NewParameters));
     for Index := 0 to High(NewParameters) do
+    begin
       NewTypes[Index] := NewParameters[Index].TypeName;
+    end;
     Unit_ := Collector.Source(Root.FileName);
     for Symbol in Unit_.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Root.Container) and
         SameText(Symbol.Name, Root.Name) and SameTypes(Symbol.ParamTypes, NewTypes) and
         not SameTypes(Symbol.ParamTypes, Root.Decl.ParamTypes) then
+      begin
         raise Fail(Format('Die neue Signatur kollidiert mit einer vorhandenen Überladung von %s (Zeile %d).',
           [Root.Name, Symbol.SelectionRange.StartPos.Line + 1]));
+      end;
+    end;
 
     // Köpfe, Umbenennungen im Rumpf, Doku-Kommentare.
     for Member in Collector.Members do
@@ -1333,35 +1579,49 @@ begin
       Text := TChangeSignature.ParameterList(NewParameters, True);
       Edit := MakeEdit(TEditKind.Header, TChangeSignature.HeaderEdit(Unit_.Tokens, Member.Decl, Text).Range, Text);
       if Text <> TChangeSignature.ParameterList(Member.Decl.Parameters, True) then
+      begin
         AddEdit(Edits, Member.FileName, Edit);
+      end;
       if Member.HasBody and not Member.DeclIsBody then
       begin
         NewParameters := TChangeSignature.NewParameters(Member.Decl.Parameters, Changes, RootNames, False);
         Text := TChangeSignature.ParameterList(NewParameters, False);
         Edit := MakeEdit(TEditKind.Header, TChangeSignature.HeaderEdit(Unit_.Tokens, Member.Body, Text).Range, Text);
         if (Member.Body.OpenToken < 0) or (Text <> TChangeSignature.ParameterList(Member.Body.Parameters, False)) then
+        begin
           if (Text <> '') or (Member.Body.OpenToken >= 0) then
+          begin
             AddEdit(Edits, Member.FileName, Edit);
+          end;
+        end;
       end;
       for Change in Changes do
       begin
         if (Change.Origin < 0) or (Change.Origin > High(Member.Decl.Parameters)) then
+        begin
           Continue;
+        end;
         OldName := Member.Decl.Parameters[Change.Origin].Name;
         NewName := TChangeSignature.NewParameters(Member.Decl.Parameters, [Change], RootNames, False)[0].Name;
         if SameStr(OldName, NewName) then
+        begin
           Continue;
+        end;
         for Token in BodyUses(Unit_, Member, OldName) do
+        begin
           AddEdit(Edits, Member.FileName, MakeEdit(TEditKind.Rename, TTextRange.Create(Unit_.Tokens[Token].StartPos,
             Unit_.Tokens[Token].EndPos), NewName));
+        end;
         // <param name="Alt"> in den ///-Zeilen über der Deklaration.
         for Token in DocComments(Unit_.Tokens, Member.Decl.StartToken) do
         begin
           Comment := Unit_.Tokens[Token].Text;
           if ContainsText(Comment, 'name="' + OldName + '"') then
+          begin
             AddEdit(Edits, Member.FileName, MakeEdit(TEditKind.Rename, TTextRange.Create(Unit_.Tokens[Token].StartPos,
               Unit_.Tokens[Token].EndPos), StringReplace(Comment, 'name="' + OldName + '"', 'name="' + NewName + '"',
               [rfIgnoreCase])));
+          end;
         end;
       end;
       // Doku entfernter Parameter: einzeilige <param>-Zeilen löschen.
@@ -1369,10 +1629,16 @@ begin
       begin
         Removed := True;
         for Change in Changes do
+        begin
           if Change.Origin = Index then
+          begin
             Removed := False;
+          end;
+        end;
         if not Removed then
+        begin
           Continue;
+        end;
         for Token in DocComments(Unit_.Tokens, Member.Decl.StartToken) do
         begin
           Comment := Unit_.Tokens[Token].Text;
@@ -1397,8 +1663,10 @@ begin
       Indent := IndentAt(Unit_.Text, Unit_.Tokens[Root.Decl.StartToken].StartPos.Line);
       Text := '';
       if not Root.DeclIsBody then
+      begin
         Text := LineBreak + Indent + TChangeSignature.HeaderText(Root.Decl, Root.Name, OldParameters, True) +
           TChangeSignature.OverloadDirectives(Root.Decl, Virtual_);
+      end;
       // Ohne weitere Direktiven fallen beide Einfügungen auf dieselbe Stelle: ein Edit, feste Reihenfolge.
       if not Root.Decl.HasDirective('overload') then
       begin
@@ -1407,38 +1675,58 @@ begin
           Text := ' overload;' + Text;
         end
         else
+        begin
           AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, TTextRange.Create(
             Unit_.Tokens[Root.Decl.EndToken].EndPos, Unit_.Tokens[Root.Decl.EndToken].EndPos), ' overload;'));
+        end;
       end;
       if Text <> '' then
+      begin
         AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, TTextRange.Create(
           Unit_.Tokens[Root.Decl.LastToken].EndPos, Unit_.Tokens[Root.Decl.LastToken].EndPos), Text));
+      end;
       if Root.HasBody then
-        Qualified := Root.Body.QualifiedName
+      begin
+        Qualified := Root.Body.QualifiedName;
+      end
       else if Root.Container <> '' then
-        Qualified := Root.Container + '.' + Root.Name
+      begin
+        Qualified := Root.Container + '.' + Root.Name;
+      end
       else
+      begin
         Qualified := Root.Name;
+      end;
       Body := TChangeSignature.HeaderText(Root.Decl, Qualified, OldParameters, False);
       if Root.DeclIsBody then
+      begin
         Body := Body + TChangeSignature.OverloadDirectives(Root.Decl, False);
+      end;
       Body := Body + LineBreak + 'begin' + LineBreak + '  ' + TChangeSignature.ForwardCall(Root.Decl, OldParameters,
         Changes) + LineBreak + 'end;';
       if Root.HasBody then
+      begin
         AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, TTextRange.Create(
-          Unit_.Tokens[Root.BodyLast].EndPos, Unit_.Tokens[Root.BodyLast].EndPos), LineBreak + LineBreak + Body))
+          Unit_.Tokens[Root.BodyLast].EndPos, Unit_.Tokens[Root.BodyLast].EndPos), LineBreak + LineBreak + Body));
+      end
       else if TClassCompletion.BodyEdit(Unit_.Tree, Unit_.Text, Root.Container, Body, Rebuilt) then
-        AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, Rebuilt.Range, Rebuilt.NewText))
+      begin
+        AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, Rebuilt.Range, Rebuilt.NewText));
+      end
       else
+      begin
         raise Fail(Format('Für die Überladung von %s fehlt ein Platz im implementation-Teil.', [Root.Name]));
+      end;
       // Überschreibungen bekommen overload, sonst verdecken sie die alte Überladung des Vorfahren.
       for Member in Collector.Members do
+      begin
         if not Member.IsRoot and (Member.Kind = TMemberKind.Method) and not Member.Decl.HasDirective('overload') then
         begin
           Unit_ := Collector.Source(Member.FileName);
           AddEdit(Edits, Member.FileName, MakeEdit(TEditKind.Insert, TTextRange.Create(
             Unit_.Tokens[Member.Decl.EndToken].EndPos, Unit_.Tokens[Member.Decl.EndToken].EndPos), ' overload;'));
         end;
+      end;
     end;
 
     // Aufrufer: im Modus overload nur inherited-Aufrufe in den Rümpfen (sonst riefe die Überschreibung sich
@@ -1446,7 +1734,9 @@ begin
     for Site in Collector.Calls do
     begin
       if UseOverload and not Site.InheritedInMember then
+      begin
         Continue;
+      end;
       Unit_ := Collector.Source(Site.FileName);
       Token := TChangeSignature.NameTokenAt(Unit_.Tokens, Site.NamePos);
       Values := nil;
@@ -1454,12 +1744,18 @@ begin
       begin
         SetLength(Values, Length(Changes));
         for Index := 0 to High(Changes) do
+        begin
           if Changes[Index].Origin < 0 then
+          begin
             Values[Index] := Changes[Index].Name;
+          end;
+        end;
       end;
       if not TChangeSignature.CallEdit(Unit_.Text, Unit_.Tokens, Token, Root.Decl.Parameters, Changes, Values,
         Rebuilt) then
+      begin
         Continue;
+      end;
       Edit := MakeEdit(TEditKind.Call, Rebuilt.Range, Rebuilt.NewText);
       Edit.NamePos := Site.NamePos;
       Edit.Values := Values;
@@ -1472,30 +1768,52 @@ begin
     begin
       FileEdits := Edits[Key];
       if Length(FileEdits) = 0 then
+      begin
         Continue;
+      end;
       Name := '';
       for Member in Collector.Members do
+      begin
         if SameText(UpperCase(Member.FileName), Key) then
+        begin
           Name := Member.FileName;
+        end;
+      end;
       for Site in Collector.Calls do
+      begin
         if (Name = '') and SameText(UpperCase(Site.FileName), Key) then
+        begin
           Name := Site.FileName;
+        end;
+      end;
       Unit_ := Collector.Source(Name);
       Final := ResolveNesting(Unit_.Text, FileEdits, Root.Decl.Parameters, Changes);
       for Index := 0 to High(Final) do
+      begin
         for Token := Index + 1 to High(Final) do
+        begin
           if Overlaps(Final[Index].Range, Final[Token].Range) then
+          begin
             raise Fail(Format('Die Änderungen in %s überschneiden sich (Zeile %d).', [ExtractFileName(Name),
               Final[Index].Range.StartPos.Line + 1]));
+          end;
+        end;
+      end;
       HeaderInFile := False;
       for Edit in Final do
+      begin
         if Edit.Kind in [TEditKind.Header, TEditKind.Insert, TEditKind.Rename] then
+        begin
           HeaderInFile := True;
+        end;
+      end;
       if not Collector.InProject(Name) or (Assigned(AIsReadOnly) and AIsReadOnly(Name)) then
       begin
         if HeaderInFile then
+        begin
           raise Fail(Format('%s ist schreibgeschützt bzw. nicht im Projekt; dort steht eine Deklaration der Methode.',
             [ExtractFileName(Name)]));
+        end;
         Result.Warnings := Result.Warnings + [Format('%s ist schreibgeschützt bzw. nicht im Projekt; %d Aufrufe dort ' +
           'bleiben unverändert.', [ExtractFileName(Name), Length(Final)])];
         Continue;
@@ -1566,7 +1884,9 @@ begin
   Warnings := TJSONArray.Create;
   Result.AddPair('warnings', Warnings);
   for Warning in AInfo.Warnings do
+  begin
     Warnings.Add(Warning);
+  end;
 end;
 
 class function TLspChangeSignature.ReadRequest(const AValue: TJSONValue; ADefaultMode: TNewParameterMode;
@@ -1582,19 +1902,29 @@ begin
   Result.Mode := ADefaultMode;
   Result.VirtualOverload := ADefaultVirtual;
   if not (AValue is TJSONObject) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Die neue Signatur fehlt.');
+  end;
   if TJSONObject(AValue).TryGetValue<string>('newParameter', Text) then
+  begin
     Result.Mode := ModeOf(Text, ADefaultMode);
+  end;
   // TryGetValue setzt den Ausgabewert unter Delphi auch ohne Feld zurück: nur bei Erfolg übernehmen.
   if TJSONObject(AValue).TryGetValue<Boolean>('virtualOverload', Flag) then
+  begin
     Result.VirtualOverload := Flag;
+  end;
   Items := TJSONObject(AValue).GetValue('parameters') as TJSONArray;
   if Items = nil then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "parameters" fehlt.');
+  end;
   for Item in Items do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Change := Default(TParameterChange);
     Change.Origin := TJSONObject(Item).GetValue<Integer>('origin', -1);
     Change.Name := Trim(TJSONObject(Item).GetValue<string>('name', ''));
@@ -1635,7 +1965,9 @@ begin
   Warnings := TJSONArray.Create;
   Result.AddPair('warnings', Warnings);
   for Warning in AOutcome.Warnings do
+  begin
     Warnings.Add(Warning);
+  end;
   Result.AddPair('newParameter', ModeName(AOutcome.Mode));
 end;
 

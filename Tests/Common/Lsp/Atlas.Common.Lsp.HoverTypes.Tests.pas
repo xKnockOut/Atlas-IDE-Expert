@@ -116,15 +116,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for Run := 1 to Index - 1 do
+  begin
     if AText[Run] = #10 then
     begin
       Inc(Line);
       LineStart := Run + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -132,13 +136,21 @@ function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, BasisFile) then
-    AText := UnitBasis
+  begin
+    AText := UnitBasis;
+  end
   else if SameText(AFileName, SystemFile) then
-    AText := UnitSystem
+  begin
+    AText := UnitSystem;
+  end
   else if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { TLspHoverTypesTests }

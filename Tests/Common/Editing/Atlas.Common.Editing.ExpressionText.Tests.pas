@@ -52,7 +52,9 @@ begin
     begin
       Result := TSyntaxSearchStep.Descend;
       if ANode.Kind = TSyntaxKind.IfStatement then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end);
   Result := IfNode[0];
 end;
@@ -193,7 +195,9 @@ begin
   try
     Condition := ConditionOf(Tree);
     while Condition.Kind <> TSyntaxKind.IfExpr do
+    begin
       Condition := Condition[0];
+    end;
     Assert.AreEqual(PrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[0]));
     Assert.AreEqual(PrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[1]));
     Assert.AreEqual(PrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[2]));

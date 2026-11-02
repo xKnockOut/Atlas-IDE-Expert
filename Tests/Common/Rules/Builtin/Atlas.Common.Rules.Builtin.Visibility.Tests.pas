@@ -377,8 +377,12 @@ begin
     Lines := Result.Split([#10]);
     Text := '';
     for Index := 0 to High(Lines) do
+    begin
       if (Index < AFix.Edits[Edit].Range.StartPos.Line) or (Index >= AFix.Edits[Edit].Range.EndPos.Line) then
+      begin
         Text := Text + Lines[Index] + #10;
+      end;
+    end;
     Result := Copy(Text, 1, Length(Text) - 1);
   end;
 end;

@@ -10,10 +10,11 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasAttachDialogTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -49,7 +50,9 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.Attach,
   Atlas.UI.Tracker.Capture,
-  Atlas.UI.Tracker.AttachDialog;
+  Atlas.UI.Tracker.AttachDialog,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 function Input: TAtlasAttachDialogInput;
 begin
@@ -91,6 +94,7 @@ end;
 
 procedure TAtlasAttachDialogTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FLanguage := TAtlasStrings.Language;
   TAtlasStrings.Language := TAtlasLanguage.German;
   FDir := TPath.Combine(TPath.GetTempPath, 'AtlasAttachDialogTests-' + TGUID.NewGuid.ToString);
@@ -98,6 +102,7 @@ end;
 
 procedure TAtlasAttachDialogTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   TAtlasStrings.Language := FLanguage;
   if TDirectory.Exists(FDir) then
     TDirectory.Delete(FDir, True);
@@ -121,7 +126,8 @@ begin
       Assert.IsFalse(mDialog.ExceptionsCheck.Enabled, 'leerer Verlauf');
       Assert.AreEqual(0, mDialog.FileList.Items.Count);
       Assert.IsFalse(mDialog.SendButton.Enabled, 'nichts zu senden');
-      Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.AttachUploadHint, ['YouTrack']), mDialog.HintLabel.Caption);
+      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachUploadHint, ['YouTrack']),
+        mDialog.HintLabel.Caption);
     finally
       mDialog.Free;
     end;
@@ -149,8 +155,10 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, mTemp);
     try
       mDialog.HandleNeeded;
-      Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.AttachFallbackHint, ['GitHub']), mDialog.HintLabel.Caption);
-      Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.AttachExceptions, [3]), mDialog.ExceptionsCheck.Caption);
+      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachFallbackHint, ['GitHub']),
+        mDialog.HintLabel.Caption);
+      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachExceptions, [3]),
+        mDialog.ExceptionsCheck.Caption);
       mDialog.DebugNoteCheck.Checked := True;
       mDialog.ExceptionsCheck.Checked := True;
       mFiles := mDialog.Files;
@@ -195,7 +203,7 @@ begin
     try
       mDialog.HandleNeeded;
       Assert.IsTrue(mDialog.FormCheck.Enabled);
-      Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.AttachForm, ['Form1']), mDialog.FormCheck.Caption);
+      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachForm, ['Form1']), mDialog.FormCheck.Caption);
       mDialog.SetScreenshot(mShot);
       Assert.IsTrue(mDialog.ScreenshotCheck.Checked, 'aufgenommen = angehakt');
       mDialog.FormCheck.Checked := True;
@@ -312,7 +320,8 @@ begin
       mDialog.CommentMemo.Lines.Text := 'Siehe Anhang';
       Assert.IsTrue(mDialog.CanSend);
       Assert.AreEqual('Siehe Anhang', mDialog.CommentText);
-      Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.AttachCommentOnly), mDialog.FileList.Items[0].Caption);
+      Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommentOnly),
+        mDialog.FileList.Items[0].Caption);
       mDialog.IssueBox.Text := 'kaputt';
       Assert.AreEqual('', mDialog.Key);
       Assert.IsFalse(mDialog.CanSend, 'ungültige Kennung');

@@ -119,7 +119,9 @@ begin
   mItems := TJSONArray.Create;
   try
     for mIndex := 1 to 50 do
+    begin
       mItems.AddElement(Diagnostic(mIndex, 'Bezeichner sollte mit m beginnen'));
+    end;
     Assert.IsTrue(Length(TCompactJson.Pack(mItems)) * 2 <= Length(mItems.ToJSON) * SizeOf(Char));
   finally
     mItems.Free;

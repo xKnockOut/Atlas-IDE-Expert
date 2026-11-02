@@ -73,12 +73,16 @@ var
   Index: Integer;
 begin
   if ANode.Kind = AKind then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindNode(ANode[Index], AKind);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -90,8 +94,12 @@ var
 begin
   Result := '';
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Container = AContainer) and (Symbol.Kind = TIndexSymbolKind.Field) then
+    begin
       Result := Result + Symbol.Name + '=' + Symbol.VariantBranch + ';';
+    end;
+  end;
 end;
 
 /// <summary>Namen der Kinder eines Gliederungssymbols, eine Gruppe als "[Name: Kinder]".</summary>
@@ -102,16 +110,24 @@ var
 begin
   Result := '';
   if not (AChildren is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AChildren) do
   begin
     Entry := TJSONObject(Item);
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     if Entry.GetValue<Integer>('kind', 0) = TLspSymbolKind.Namespace then
-      Result := Result + '[' + Entry.GetValue<string>('name', '') + ': ' + Names(Entry.GetValue('children')) + ']'
+    begin
+      Result := Result + '[' + Entry.GetValue<string>('name', '') + ': ' + Names(Entry.GetValue('children')) + ']';
+    end
     else
+    begin
       Result := Result + Entry.GetValue<string>('name', '');
+    end;
   end;
 end;
 
@@ -122,11 +138,21 @@ var
 begin
   Result := '';
   for Root in ASymbols do
+  begin
     for Section in TJSONArray(TJSONObject(Root).GetValue('children')) do
+    begin
       if TJSONObject(Section).GetValue('children') is TJSONArray then
+      begin
         for Entry in TJSONArray(TJSONObject(Section).GetValue('children')) do
+        begin
           if TJSONObject(Entry).GetValue<string>('name', '') = ATypeName then
+          begin
             Exit(Names(TJSONObject(Entry).GetValue('children')));
+          end;
+        end;
+      end;
+    end;
+  end;
 end;
 
 { TVariantRecordsTests }
@@ -166,11 +192,13 @@ begin
   Assert.AreEqual('Left=0;Top=0;Right=0;Bottom=0;TopLeft=1;BottomRight=1;', Branches(U, 'TRect2'));
   Found := False;
   for Symbol in U.Symbols do
+  begin
     if (Symbol.Container = 'TRect2') and (Symbol.Name = 'TopLeft') then
     begin
       Found := True;
       Assert.AreEqual('TPoint', Symbol.TypeName);
     end;
+  end;
   Assert.IsTrue(Found);
   // Gewöhnliche Felder haben keinen Zweig.
   Assert.AreEqual('X=;Y=;', Branches(U, 'TPoint'));
@@ -251,7 +279,9 @@ begin
   begin
     Listed := Listed + Item.Name + ' ';
     if Item.Name = 'Left' then
+    begin
       Position := Length(Listed);
+    end;
   end;
   Assert.IsTrue(Position > 0, Listed);
   Assert.Contains(Listed, 'BottomRight ');
@@ -261,8 +291,12 @@ begin
   try
     Data := nil;
     for Position := 0 to Json.Count - 1 do
+    begin
       if TJSONObject(Json.Items[Position]).GetValue<string>('label', '') = 'TopLeft' then
+      begin
         Data := TJSONObject(TJSONObject(Json.Items[Position]).GetValue('data'));
+      end;
+    end;
     Assert.IsNotNull(Data);
     Assert.AreEqual('1', Data.GetValue<string>('variant', ''));
   finally

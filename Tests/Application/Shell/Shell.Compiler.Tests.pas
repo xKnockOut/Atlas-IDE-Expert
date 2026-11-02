@@ -95,7 +95,9 @@ begin
   Output := nil;
   Result := FAnswer(ARequest, Output);
   for Line in Output do
+  begin
     AOnLine(Line);
+  end;
 end;
 
 procedure TFakeProcess.Cancel;
@@ -138,7 +140,9 @@ end;
 procedure TShellCompilerTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;
@@ -260,14 +264,20 @@ begin
     begin
       Command := '';
       if Length(ARequest.Arguments) > 6 then
+      begin
         Command := ARequest.Arguments[6];
+      end;
       AOutput := nil;
       Result := 0;
       if Command = 'start' then
-        AOutput := TArray<string>.Create('IDE started : pid ' + IntToStr(APid))
+      begin
+        AOutput := TArray<string>.Create('IDE started : pid ' + IntToStr(APid));
+      end
       else if Command = 'build' then
+      begin
         AOutput := TArray<string>.Create('{"ok": false, "outputWritten": false, "logFile": "' +
           StringReplace(ALog, '\', '\\', [rfReplaceAll]) + '"}');
+      end;
     end;
 end;
 
@@ -344,7 +354,9 @@ begin
     Assert.IsTrue(Pos('eigenen IDE', Error) > 0, Error);
     Assert.AreEqual(Cardinal(0), Ide.Pid);
     for Call in Process.Calls do
+    begin
       Assert.IsFalse(Pos(' build ', ' ' + Call + ' ') > 0, Call);
+    end;
   finally
     Ide.Free;
     Running.Free;

@@ -880,7 +880,7 @@ var
   Name: string;
   Issues: TArray<string>;
 begin
-  Assert.AreEqual(4, Integer(Length(AtlasProfileFiles)));
+  Assert.AreEqual(5, Integer(Length(AtlasProfileFiles)));
   for Name in AtlasProfileFiles do
   begin
     Assert.IsTrue(AtlasProfileJson(Name) <> '', Name);
@@ -928,6 +928,27 @@ begin
     Macros(), '', '');
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(S, '{"logLevel": "debug"}'), Preview);
   Assert.AreEqual(0, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, After))));
+  // Nur Code Insight (#1454): alle Module aus, der Kern wie Atlas-Standard.
+  S := After.Plugin;
+  S.PairColors := False;
+  Source := TAtlasSettingsTransfer.ParseFile(AtlasProfileJson('nur-code-insight.json'));
+  Assert.IsTrue(TAtlasSettingsTransfer.ModeOf(Source) = imReplace);
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, ''), Source, imReplace, nil, Macros(), '', '');
+  After := TAtlasSettingsTransfer.Apply(FCatalog, State(S, ''), Preview);
+  Assert.IsTrue(After.Plugin.Enabled);
+  Assert.IsTrue(After.Plugin.PairColors, 'Kern auf Vorgabe');
+  Assert.IsFalse(After.Plugin.DebugEnabled);
+  Assert.IsFalse(After.Plugin.IssuesEnabled);
+  Assert.IsFalse(After.Plugin.AnalysisEnabled);
+  Assert.IsFalse(After.Plugin.TestsEnabled);
+  Assert.IsFalse(After.Plugin.BuildToolsEnabled);
+  Assert.IsFalse(After.Plugin.BookmarksEnabled);
+  Assert.IsFalse(After.Plugin.DesignerEnabled);
+  Assert.IsFalse(After.Plugin.RuleChecksEnabled);
+  Assert.IsFalse(After.Plugin.SearchEnabled);
+  Assert.IsFalse(After.Plugin.WelcomePage);
+  Assert.IsTrue(After.Plugin.DebugInlineValues, 'Einzelschalter auf Vorgabe, nur das Modul ist aus');
+  Assert.AreEqual(10, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, After))));
 end;
 
 initialization

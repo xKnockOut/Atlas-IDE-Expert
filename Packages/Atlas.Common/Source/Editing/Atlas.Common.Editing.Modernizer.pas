@@ -50,13 +50,19 @@ begin
   while Index <= Length(ALine) - Length(AWord) + 1 do
   begin
     if ALine[Index] = '''' then
-      InString := not InString
+    begin
+      InString := not InString;
+    end
     else if not InString and (Index >= AFrom) and SameText(Copy(ALine, Index, Length(AWord)), AWord) and
       ((Index = 1) or not TTextChars.IsAsciiIdentChar(ALine[Index - 1])) and
       ((Index + Length(AWord) > Length(ALine)) or not TTextChars.IsAsciiIdentChar(ALine[Index + Length(AWord)])) then
-      Exit(Index)
+    begin
+      Exit(Index);
+    end
     else if not InString and (Copy(ALine, Index, 2) = '//') then
+    begin
       Exit(0);
+    end;
     Inc(Index);
   end;
   Result := 0;
@@ -67,8 +73,12 @@ var
   Line: Integer;
 begin
   for Line := AFirst to ALast do
+  begin
     if TModernizer.WordPos(AWord, ALines[Line]) > 0 then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -77,7 +87,9 @@ var
   Line: Integer;
 begin
   for Line := AIndex to High(ALines) - 1 do
+  begin
     ALines[Line] := ALines[Line + 1];
+  end;
   SetLength(ALines, Length(ALines) - 1);
 end;
 
@@ -87,9 +99,13 @@ var
   Line: Integer;
 begin
   for Line := 1 to High(ALines) do
+  begin
     if SameText(Trim(ALines[Line]), 'begin') and
       (TTextLines.IndentLength(ALines[Line]) = TTextLines.IndentLength(ALines[0])) then
+    begin
       Exit(Line);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -126,14 +142,22 @@ begin
   Text := Trim(AUpper);
   Result := '';
   if EndsText('.Count - 1', Text) then
-    Result := Copy(Text, 1, Length(Text) - 10)
+  begin
+    Result := Copy(Text, 1, Length(Text) - 10);
+  end
   else if StartsText('High(', Text) and EndsStr(')', Text) then
-    Result := Copy(Text, 6, Length(Text) - 6)
+  begin
+    Result := Copy(Text, 6, Length(Text) - 6);
+  end
   else if StartsText('Length(', Text) and EndsText(') - 1', Text) then
+  begin
     Result := Copy(Text, 8, Length(Text) - 11);
+  end;
   Result := Trim(Result);
   if (Result = '') or (Pos('(', Result) > 0) or (Pos(' ', Result) > 0) then
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Letzte Zeile des Schleifenrumpfs ab AFirst; -1, wenn er nicht sicher erkennbar ist.</summary>
@@ -142,23 +166,31 @@ var
   Line: Integer;
 begin
   if AFirst > High(ALines) then
+  begin
     Exit(-1);
+  end;
   if SameText(Trim(ALines[AFirst]), 'begin') then
   begin
     for Line := AFirst + 1 to High(ALines) do
+    begin
       if (TTextLines.IndentLength(ALines[Line]) <= TTextLines.IndentLength(ALines[AFirst])) and
         (Trim(ALines[Line]) <> '') then
       begin
         if StartsText('end', Trim(ALines[Line])) and
           (TTextLines.IndentLength(ALines[Line]) = TTextLines.IndentLength(ALines[AFirst])) then
+        begin
           Exit(Line);
+        end;
         Exit(-1);
       end;
+    end;
     Exit(-1);
   end;
   // Einzelne Anweisung in einer Zeile.
   if (TTextLines.IndentLength(ALines[AFirst]) > AHeaderIndent) and EndsStr(';', TrimRight(ALines[AFirst])) then
+  begin
     Exit(AFirst);
+  end;
   Result := -1;
 end;
 
@@ -174,11 +206,17 @@ begin
   repeat
     At := Pos(LowerCase(Access), LowerCase(Rest));
     if (At > 1) and (TTextChars.IsAsciiIdentChar(Rest[At - 1]) or (Rest[At - 1] = '.')) then
+    begin
       At := 0;
+    end;
     if At = 0 then
+    begin
       Break;
+    end;
     if StartsStr(':=', TrimLeft(Copy(Rest, At + Length(Access), MaxInt))) then
+    begin
       Exit(False);
+    end;
     ALine := ALine + Copy(Rest, 1, At - 1) + AItem;
     Rest := Copy(Rest, At + Length(Access), MaxInt);
   until False;
@@ -205,45 +243,69 @@ begin
   begin
     Text := Trim(ALines[Line]);
     if not StartsText('for ', Text) or not EndsText(' do', Text) then
+    begin
       Continue;
+    end;
     Assign := Pos(' := ', Text);
     ToPos := Pos(' to ', LowerCase(Text));
     if (Assign = 0) or (ToPos < Assign) or (Trim(Copy(Text, Assign + 4, ToPos - Assign - 4)) <> '0') then
+    begin
       Continue;
+    end;
     Index := Trim(Copy(Text, 5, Assign - 5));
     if not IsValidIdent(Index) then
+    begin
       Continue;
+    end;
     Upper := Copy(Text, ToPos + 4, Length(Text) - ToPos - 6);
     List := ListOf(Upper);
     if List = '' then
+    begin
       Continue;
+    end;
     Indent := TTextLines.IndentLength(ALines[Line]);
     Last := BodyEnd(ALines, Line + 1, Indent);
     if Last < 0 then
+    begin
       Continue;
+    end;
     Item := 'Item';
     if Occurs(Item, ALines, 0, High(ALines)) then
+    begin
       Item := 'Element';
+    end;
     if Occurs(Item, ALines, 0, High(ALines)) then
+    begin
       Continue;
+    end;
     Ok := True;
     SetLength(Replaced, Last - Line);
     for Body := Line + 1 to Last do
     begin
       Changed := ALines[Body];
       if not ReplaceAccess(Changed, List, Index, Item) then
+      begin
         Ok := False;
+      end;
       for Mutator in Mutators do
+      begin
         if Pos(LowerCase(List + '.' + Mutator + '('), LowerCase(Changed)) > 0 then
+        begin
           Ok := False;
+        end;
+      end;
       Replaced[Body - Line - 1] := Changed;
     end;
     // Ohne Zugriff L[I] im Rumpf bringt for-in nichts.
     if not Ok or not Occurs(Item, Replaced, 0, High(Replaced)) then
+    begin
       Continue;
+    end;
     ALines[Line] := Copy(ALines[Line], 1, Indent) + Format('for var %s in %s do', [Item, List]);
     for Body := Line + 1 to Last do
+    begin
       ALines[Body] := Replaced[Body - Line - 1];
+    end;
     AFreed := AFreed + [Index];
     Inc(Result);
   end;
@@ -260,7 +322,9 @@ begin
   Result := (Colon > 1) and EndsStr(';', Text) and (Pos('=', Text) = 0) and (Pos(',', Text) = 0) and
     (Pos('//', Text) = 0) and (Pos('{', Text) = 0);
   if not Result then
+  begin
     Exit;
+  end;
   AName := Trim(Copy(Text, 1, Colon - 1));
   AType := Trim(Copy(Text, Colon + 1, Length(Text) - Colon - 1));
   Result := IsValidIdent(AName) and (AType <> '');
@@ -278,7 +342,9 @@ begin
     Done := True;
     BeginLine := MainBegin(ALines);
     if BeginLine < 0 then
+    begin
       Exit;
+    end;
     Line := 1;
     while Line < BeginLine do
     begin
@@ -290,47 +356,67 @@ begin
       Start := Line + 1;
       Stop := Start;
       while (Stop < BeginLine) and (TTextLines.IndentLength(ALines[Stop]) > TTextLines.IndentLength(ALines[Line])) do
+      begin
         Inc(Stop);
+      end;
       for Declaration := Start to Stop - 1 do
       begin
         if not SingleDeclaration(ALines[Declaration], Name, TypeName) then
+        begin
           Continue;
+        end;
         // Nicht in verschachtelten Routinen oder weiteren Deklarationen verwendet.
         if Occurs(Name, ALines, Stop, BeginLine) then
+        begin
           Continue;
+        end;
         Use := BeginLine + 1;
         while (Use <= High(ALines)) and (TModernizer.WordPos(Name, ALines[Use]) = 0) do
+        begin
           Inc(Use);
+        end;
         if Use > High(ALines) then
         begin
           // Zählvariable einer umgewandelten Schleife, die nicht mehr gebraucht wird.
           if (IndexText(Name, AFreed) < 0) or Occurs(Name, ALines, 0, Line - 1) then
+          begin
             Continue;
+          end;
           Delete(ALines, Declaration);
           if Start = Stop - 1 then
+          begin
             Delete(ALines, Line);
+          end;
           Done := False;
           Break;
         end;
         if not AInline then
+        begin
           Continue;
+        end;
         Text := Trim(ALines[Use]);
         if (TTextLines.IndentLength(ALines[Use]) <> TTextLines.IndentLength(ALines[BeginLine]) + 2) or
           not StartsText(Name + ' := ', Text) or not EndsStr(';', Text) or
           (TModernizer.WordPos(Name, Text, Length(Name) + 1) > 0) then
+        begin
           Continue;
+        end;
         ALines[Use] := Copy(ALines[Use], 1, TTextLines.IndentLength(ALines[Use])) +
           Format('var %s: %s := %s', [Name, TypeName, Copy(Text, Length(Name) + 5, MaxInt)]);
         Delete(ALines, Declaration);
         // Leerer var-Abschnitt fällt weg.
         if Start = Stop - 1 then
+        begin
           Delete(ALines, Line);
+        end;
         Inc(Result);
         Done := False;
         Break;
       end;
       if not Done then
+      begin
         Break;
+      end;
       Line := Stop;
     end;
   until Done;
@@ -345,11 +431,17 @@ begin
   Result := Copy(ALines);
   ACount := 0;
   if TModernization.FreeAndNilCall in AKinds then
+  begin
     ACount := ACount + ApplyFreeAndNil(Result);
+  end;
   if TModernization.ForIn in AKinds then
+  begin
     ACount := ACount + ApplyForIn(Result, Freed);
+  end;
   if (TModernization.InlineVar in AKinds) or (Freed <> nil) then
+  begin
     ACount := ACount + ApplyInlineVar(Result, TModernization.InlineVar in AKinds, Freed);
+  end;
 end;
 
 end.

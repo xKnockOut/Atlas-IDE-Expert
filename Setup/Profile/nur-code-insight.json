@@ -1,0 +1,23 @@
+{
+  "format": "atlas-settings",
+  "formatVersion": 1,
+  "schemaVersion": 1,
+  "name": "Nur Code Insight",
+  "nameEn": "Code Insight only",
+  "description": "Alle Module aus (Debugger, Issue-Tracker, Analyse, Tests, Build-Werkzeuge, Lesezeichen, Designer, Prüfregeln, Suche, Willkommensseite, #1454); der Kern mit Vervollständigung, Hover, Diagnosen und Editor wie „Atlas-Standard“ (Ersetzen). Projekt- und Teamwerte bleiben unberührt.",
+  "descriptionEn": "All modules off (debugger, issue tracker, analysis, tests, build tools, bookmarks, designer, rule checks, search, welcome page, #1454); the core with completion, hover, diagnostics and editor as in “Atlas default” (replace). Project and team values stay untouched.",
+  "mode": "replace",
+  "settings": {
+    "debug.enabled": false,
+    "issues.enabled": false,
+    "analysis.enabled": false,
+    "tests.enabled": false,
+    "buildTools.enabled": false,
+    "buildPipeline.enabled": false,
+    "bookmarks.enabled": false,
+    "designer.enabled": false,
+    "ruleChecks.enabled": false,
+    "search.enabled": false,
+    "welcomePage.enabled": false
+  }
+}

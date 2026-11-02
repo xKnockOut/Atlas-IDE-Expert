@@ -39,8 +39,12 @@ var
 begin
   Result := AName <> '';
   for Index := 1 to Length(AName) do
+  begin
     if not CharInSet(AName[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := Result and not CharInSet(AName[1], ['0'..'9', '.']) and (AName[Length(AName)] <> '.');
 end;
 
@@ -51,14 +55,20 @@ begin
   AUnits := nil;
   Rest := Trim(ALine);
   if not Rest.StartsWith('/uses ', True) then
+  begin
     Exit(False);
+  end;
   Rest := Trim(Copy(Rest, 7, MaxInt));
   if Rest.EndsWith(';') then
+  begin
     Rest := Trim(Copy(Rest, 1, Length(Rest) - 1));
+  end;
   for Name in Rest.Split([',']) do
   begin
     if not IsUnitName(Trim(Name)) then
+    begin
       Exit(False);
+    end;
     AUnits := AUnits + [Trim(Name)];
   end;
   Result := Length(AUnits) > 0;
@@ -78,23 +88,33 @@ begin
   LineBreak := TTextLines.LineBreakOf(AText);
   Lines := AText.Split([LineBreak]);
   if (Line < 0) or (Line >= High(Lines) + 1) or not Parse(Lines[Line], Units) then
+  begin
     Exit(False);
+  end;
   Offset := 0;
   for Index := 0 to Line - 1 do
+  begin
     Inc(Offset, Length(Lines[Index]) + Length(LineBreak));
+  end;
   Blanked := Copy(AText, 1, Offset) + StringOfChar(' ', Length(Lines[Line])) +
     Copy(AText, Offset + Length(Lines[Line]) + 1, MaxInt);
   Tokens := TPascalLexer.Tokenize(Blanked);
   Used := TUsesClauses.UsedUnits(Tokens);
   Missing := nil;
   for Name in Units do
+  begin
     if not TUsesClauses.IsUsed(Used + Missing, Name, ANamespaces) then
+    begin
       Missing := Missing + [Name];
+    end;
+  end;
   // Die Befehlszeile samt Zeilenende verschwindet in jedem Fall.
   AEdits := [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Line, 0), TTextPosition.Create(Line + 1, 0)), '')];
   if (Length(Missing) > 0) and
     TUsesClauses.AddUnit(Tokens, Offset, string.Join(', ', Missing), LineBreak, Edit) then
+  begin
     AEdits := [Edit] + AEdits;
+  end;
   Result := True;
 end;
 

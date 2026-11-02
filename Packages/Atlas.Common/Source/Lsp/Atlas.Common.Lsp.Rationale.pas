@@ -111,9 +111,15 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for mIndex := 0 to High(A) do
+    begin
       if not SameText(A[mIndex], B[mIndex]) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 function IsRoutine(AKind: TIndexSymbolKind): Boolean;
@@ -139,32 +145,50 @@ begin
     mFile := AUnit.SymbolFile(ASymbol);
     mCandidates := nil;
     for mOther in AUnit.Symbols do
+    begin
       if (mOther.Kind = ASymbol.Kind) and SameText(mOther.Name, ASymbol.Name) and
         SameText(mOther.Container, ASymbol.Container) and
         not (mOther.SelectionRange.StartPos = ASymbol.SelectionRange.StartPos) and
         SameText(AUnit.SymbolFile(mOther), mFile) then
+      begin
         mCandidates := mCandidates + [mOther];
+      end;
+    end;
     if Length(mCandidates) = 1 then
-      mParts := mParts + mCandidates
+    begin
+      mParts := mParts + mCandidates;
+    end
     else
+    begin
       for mOther in mCandidates do
+      begin
         if SameParamTypes(mOther.ParamTypes, ASymbol.ParamTypes) then
         begin
           mParts := mParts + [mOther];
           Break;
         end;
+      end;
+    end;
   end;
   Result := nil;
   for mOther in mParts do
+  begin
     for mEntry in TRationale.DecodeAll(mOther.Rationale) do
     begin
       mDuplicate := False;
       for mKnown in Result do
+      begin
         if (mKnown.Line = mEntry.Line) and (mKnown.Marker = mEntry.Marker) then
+        begin
           mDuplicate := True;
+        end;
+      end;
       if not mDuplicate then
+      begin
         Result := Result + [mEntry];
+      end;
     end;
+  end;
   // Nach Zeile; Einfügen hält gleiche Zeilen in ihrer Reihenfolge.
   for mIndex := 1 to High(Result) do
   begin
@@ -183,7 +207,9 @@ class function TLspRationale.Markers(const AHints: THintSettings): TArray<string
 begin
   Result := AHints.RationaleMarkers;
   if Length(Result) = 0 then
+  begin
     Result := TRationale.DefaultMarkers;
+  end;
 end;
 
 class function TLspRationale.ByMarkers(const AEntries: TArray<TRationaleEntry>;
@@ -197,19 +223,27 @@ class function TLspRationale.Select(const AEntries: TArray<TRationaleEntry>;
 begin
   Result := nil;
   if AOptions.Enabled then
+  begin
     Result := ByMarkers(AEntries, AOptions);
+  end;
 end;
 
 class function TLspRationale.AdrFolder(const AFolder, ARoot: string): string;
 begin
   Result := Trim(AFolder);
   if Result = '' then
+  begin
     Result := TRationale.DefaultAdrFolder;
+  end;
   Result := StringReplace(StringReplace(Result, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
   if TPath.IsPathRooted(Result) then
+  begin
     Exit;
+  end;
   if ARoot = '' then
+  begin
     Exit('');
+  end;
   Result := ExcludeTrailingPathDelimiter(TPath.Combine(ARoot, Result));
 end;
 
@@ -219,10 +253,14 @@ var
 begin
   Result := nil;
   if (AFolder = '') or not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   try
     for mFile in TDirectory.GetFiles(AFolder) do
+    begin
       Result := Result + [mFile];
+    end;
   except
     // Ordner nicht lesbar: Verweise bleiben Text.
     // EInOutError schließt EDirectoryNotFoundException ein.
@@ -247,7 +285,9 @@ begin
       begin
         mFile := TRationaleReferences.AdrFile(ALink.Key, AAdrFiles);
         if mFile = '' then
+        begin
           Exit(TextRun(AText));
+        end;
         Result := TJSONObject.Create;
         Result.AddPair('kind', 'ref');
         Result.AddPair('text', AText);
@@ -292,12 +332,16 @@ begin
     for mLink in TRationaleReferences.Find(mEntry.Text) do
     begin
       if mLink.Start > mPos then
+      begin
         mRuns.AddElement(TextRun(Copy(mEntry.Text, mPos + 1, mLink.Start - mPos)));
+      end;
       mRuns.AddElement(LinkRun(mLink, Copy(mEntry.Text, mLink.Start + 1, mLink.Length), AAdrFiles));
       mPos := mLink.Start + mLink.Length;
     end;
     if mPos < Length(mEntry.Text) then
+    begin
       mRuns.AddElement(TextRun(Copy(mEntry.Text, mPos + 1, MaxInt)));
+    end;
     mSection.AddPair('runs', mRuns);
     ASections.AddElement(mSection);
   end;
@@ -309,10 +353,14 @@ var
 begin
   Result := '';
   if Length(AEntries) = 0 then
+  begin
     Exit;
+  end;
   Result := '**Begründung**' + #10;
   for mEntry in AEntries do
+  begin
     Result := Result + #10 + '- **' + mEntry.Marker + ':** ' + mEntry.Text;
+  end;
 end;
 
 class function TLspRationale.ToPlainText(const AEntries: TArray<TRationaleEntry>): string;
@@ -321,10 +369,14 @@ var
 begin
   Result := '';
   if Length(AEntries) = 0 then
+  begin
     Exit;
+  end;
   Result := 'Begründung';
   for mEntry in AEntries do
+  begin
     Result := Result + #10 + mEntry.Marker + ': ' + mEntry.Text;
+  end;
 end;
 
 end.

@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasStepIntoWindowTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>

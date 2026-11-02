@@ -77,16 +77,23 @@ begin
   Result[1].Open := 'RegisterPackageWizard';
   Result[1].Close := 'RemoveWizard';
   if Trim(AOptions) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     List := TJSONObject(Value).GetValue('registerPairs');
     if not (List is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := nil;
     for Item in TJSONArray(List) do
+    begin
       if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('open', Pair.Open) and
         TJSONObject(Item).TryGetValue<string>('close', Pair.Close) and (Trim(Pair.Open) <> '') and
         (Trim(Pair.Close) <> '') then
@@ -95,6 +102,7 @@ begin
         Pair.Close := Trim(Pair.Close);
         Result := Result + [Pair];
       end;
+    end;
   finally
     Value.Free;
   end;
@@ -104,9 +112,13 @@ class function TOtaNotifierNotRemovedRule.IndexName(const AOpen: string): string
 begin
   Result := AOpen;
   if StartsText('Add', Result) and (Length(Result) > 3) then
-    Result := Copy(Result, 4, MaxInt)
+  begin
+    Result := Copy(Result, 4, MaxInt);
+  end
   else if StartsText('Register', Result) and (Length(Result) > 8) then
+  begin
     Result := Copy(Result, 9, MaxInt);
+  end;
   Result := UpperCase(Copy(Result, 1, 1)) + Copy(Result, 2, MaxInt) + 'Index';
 end;
 
@@ -136,17 +148,25 @@ var
   begin
     Step := 1;
     if Token(APosition).IsSymbol(')') or Token(APosition).IsSymbol(']') then
+    begin
       Step := -1;
+    end;
     Depth := 0;
     Result := APosition;
     while (Result >= 0) and (Result <= High(Code)) do
     begin
       if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-        Inc(Depth, Step)
+      begin
+        Inc(Depth, Step);
+      end
       else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
+      begin
         Dec(Depth, Step);
+      end;
       if Depth = 0 then
+      begin
         Exit;
+      end;
       Inc(Result, Step);
     end;
     Result := -1;
@@ -160,11 +180,14 @@ var
     Result := ADot;
     Position := ADot - 1;
     while Position >= 0 do
+    begin
       if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
       begin
         Position := Matching(Position);
         if Position < 0 then
+        begin
           Exit(-1);
+        end;
         Result := Position;
         Dec(Position);
       end
@@ -173,12 +196,19 @@ var
         Result := Position;
         Dec(Position);
         if (Position >= 0) and Token(Position).IsSymbol('.') then
-          Dec(Position)
+        begin
+          Dec(Position);
+        end
         else
+        begin
           Break;
+        end;
       end
       else
+      begin
         Break;
+      end;
+    end;
   end;
 
   function TextOf(AFirst, ALast: Integer): string;
@@ -193,7 +223,9 @@ var
     Result := LowerCase(StringReplace(StringReplace(StringReplace(AText, ' ', '', [rfReplaceAll]), #10, '',
       [rfReplaceAll]), #13, '', [rfReplaceAll]));
     if StartsStr('self.', Result) then
+    begin
       Result := Copy(Result, 6, MaxInt);
+    end;
   end;
 
   // Gibt die Unit ATarget an AClose weiter: AClose(ATarget) bzw. X.AClose(ATarget)? Es zählen auch der letzte
@@ -206,27 +238,43 @@ var
     Names := [ATarget];
     Dot := LastDelimiter('.', ATarget);
     if Dot > 0 then
+    begin
       Names := Names + [Copy(ATarget, Dot + 1, MaxInt)];
+    end;
     for Position := 1 to High(Code) - 2 do
+    begin
       if IsWord(Position - 1) and Token(Position).IsSymbol(':=') then
       begin
         Stop := Position + 1;
         while (Stop <= High(Code)) and not Token(Stop).IsSymbol(';') and not Token(Stop).IsKeyword('end') do
+        begin
           Inc(Stop);
+        end;
         if MatchText(Normalized(TextOf(Position + 1, Stop - 1)), Names) then
+        begin
           Names := Names + [LowerCase(Token(Position - 1).Text)];
+        end;
       end;
+    end;
     for Position := 0 to High(Code) - 1 do
+    begin
       if IsWord(Position) and SameText(Token(Position).Text, AClose) and Token(Position + 1).IsSymbol('(') then
       begin
         Close := Matching(Position + 1);
         if (Close > Position + 2) and MatchText(Normalized(TextOf(Position + 2, Close - 1)), Names) then
+        begin
           Exit(True);
+        end;
         // Verschobener Index: RemoveNotifier(FIndex - 1), wenn AddNotifier(…) + 1 gespeichert wurde.
         for Stop := Position + 2 to Close - 1 do
+        begin
           if IsWord(Stop) and MatchText(Token(Stop).Text, Names) then
+          begin
             Exit(True);
+          end;
+        end;
       end;
+    end;
     Result := False;
   end;
 
@@ -246,14 +294,18 @@ var
       begin
         Node := Pending.Pop;
         if (AOffset < Node.StartOffset) or (AOffset >= Node.EndOffset) then
+        begin
           Continue;
+        end;
         if Node.Kind = TSyntaxKind.RoutineDecl then
         begin
           Result := Node;
           Pending.Clear;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -275,11 +327,17 @@ var
       begin
         Node := Pending.Pop;
         if (AOffset < Node.StartOffset) or (AOffset >= Node.EndOffset) then
+        begin
           Continue;
+        end;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Exit(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -294,7 +352,9 @@ var
   begin
     Result := Copy(AEdits);
     for Index := 0 to High(Result) - 1 do
+    begin
       for Other := Index + 1 to High(Result) do
+      begin
         if (Result[Other].Range.StartPos.Line < Result[Index].Range.StartPos.Line) or
           ((Result[Other].Range.StartPos.Line = Result[Index].Range.StartPos.Line) and
           (Result[Other].Range.StartPos.Character < Result[Index].Range.StartPos.Character)) then
@@ -303,6 +363,8 @@ var
           Result[Index] := Result[Other];
           Result[Other] := Swap;
         end;
+      end;
+    end;
   end;
 
   // Iterativ (Bericht M1).
@@ -321,11 +383,17 @@ var
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, AName) and
           (Node.FindChild(TSyntaxKind.ClassType) <> nil) then
+        begin
           Exit(Node);
+        end;
         if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -341,11 +409,17 @@ var
     Result := False;
     Block := ARoutine.FindChild(TSyntaxKind.Block);
     if Block = nil then
+    begin
       Exit;
+    end;
     for Position := 0 to High(Code) do
+    begin
       if (Token(Position).Offset >= ARoutine.StartOffset) and (Token(Position).Offset < Block.StartOffset) and
         IsWord(Position) and SameText(Token(Position).Text, AName) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
   // Kommt AName als Bezeichner in der Unit vor?
@@ -354,8 +428,12 @@ var
     Position: Integer;
   begin
     for Position := 0 to High(Code) do
+    begin
       if IsWord(Position) and SameText(Token(Position).Text, AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -366,8 +444,12 @@ var
   begin
     Result := '';
     for Position := AFirst to ALast do
+    begin
       if IsWord(Position) and not SameText(Token(Position).Text, 'Self') then
+      begin
         Exit(Token(Position).Text);
+      end;
+    end;
   end;
 
   // "FName: Integer;" in den ersten private-Abschnitt, sonst als neuer Abschnitt vor das "end" der Klasse.
@@ -394,7 +476,9 @@ var
     end;
     Line := ClassNode.EndPos.Line;
     if (Line > High(Lines)) or (Trim(Copy(Lines[Line], 1, ClassNode.EndPos.Character - 3)) <> '') then
+    begin
       Exit;
+    end;
     Indent := TTextLines.IndentOf(Lines[Line]);
     AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), Indent + 'private' + LineBreak + Indent + '  ' +
       AField + ': Integer;' + LineBreak);
@@ -411,9 +495,14 @@ var
     Result := False;
     Head := 'initialization' + LineBreak + LineBreak;
     for Position := 0 to High(Code) do
+    begin
       if Token(Position).IsKeyword('initialization') then
+      begin
         Head := '';
+      end;
+    end;
     for Position := 0 to High(Code) do
+    begin
       if Token(Position).IsKeyword('finalization') then
       begin
         Line := Token(Position).EndPos.Line;
@@ -421,13 +510,18 @@ var
           TTextPosition.Create(Line, Length(Lines[Line]))), LineBreak + AStatement);
         Exit(True);
       end;
+    end;
     // "end." am Ende der Unit, allein in seiner Zeile.
     Position := High(Code);
     if (Position < 1) or not Token(Position).IsSymbol('.') or not Token(Position - 1).IsKeyword('end') then
+    begin
       Exit;
+    end;
     Line := Token(Position - 1).StartPos.Line;
     if Trim(Copy(Lines[Line], 1, Token(Position - 1).StartPos.Character)) <> '' then
+    begin
       Exit;
+    end;
     AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), Head + 'finalization' + LineBreak + AStatement +
       LineBreak + LineBreak);
     Result := True;
@@ -446,14 +540,18 @@ var
   begin
     Result := False;
     if ARoutine = nil then
+    begin
       Exit;
+    end;
     Receiver := '';
     if AReceiverFirst >= 0 then
     begin
       // Lokale Empfänger gibt es im Destruktor bzw. in finalization nicht.
       Name := FirstName(AReceiverFirst, AReceiverLast);
       if (Name <> '') and IsLocal(ARoutine, Name) then
+      begin
         Exit;
+      end;
       Receiver := TextOf(AReceiverFirst, AReceiverLast) + '.';
     end;
     Dot := LastDelimiter('.', ARoutine.Name);
@@ -464,41 +562,57 @@ var
       ClassName := Copy(ARoutine.Name, 1, Dot - 1);
       Method := Copy(ARoutine.Name, Dot + 1, MaxInt);
       if SameText(Method, 'Destroy') then
+      begin
         Exit;
+      end;
       Decl := FindClassDecl(AContext.Tree.Root, ClassName);
       if Decl = nil then
+      begin
         Exit;
+      end;
       Name := ATarget;
       if Name = '' then
       begin
         Name := 'F' + IndexName(APair.Open);
         if Used(Name) or not FieldEdit(Decl, Name, Edit) then
+        begin
           Exit;
+        end;
         Edits := [Edit, TTextEdit.Create(TTextRange.Create(Token(AStart).StartPos, Token(AStart).StartPos),
           Name + ' := ')];
       end
       else if IsLocal(ARoutine, Normalized(ATarget)) then
+      begin
         Exit;
+      end;
       if not TFreeFields.DestructorEdits(AContext.Tree, AContext.Text, ClassName, Decl.StartPos.Line,
         [Receiver + APair.Close + '(' + Name + ');'], Destroying) then
+      begin
         Exit;
+      end;
       AFix := TRuleFix.Create(Format('Index in ein Feld legen und %s im Destruktor ergänzen', [APair.Close]),
         Sorted(Edits + Destroying));
       if ATarget <> '' then
+      begin
         AFix := TRuleFix.Create(Format('%s im Destruktor ergänzen', [APair.Close]), Sorted(Edits + Destroying));
+      end;
       Exit(True);
     end;
     // Prozedur der Unit: globale Variable und finalization; nur in Units und nicht in verschachtelten Routinen.
     if (Length(Code) = 0) or not Token(0).IsKeyword('unit') or
       (OuterRoutineAt(AContext.Tree.Root, ARoutine.StartOffset) <> ARoutine) then
+    begin
       Exit;
+    end;
     Name := ATarget;
     Indent := '  ';
     if Name = '' then
     begin
       Name := IndexName(APair.Open);
       if Used(Name) then
+      begin
         Exit;
+      end;
       Edits := [TTextEdit.Create(TTextRange.Create(ARoutine.StartPos.Line, 0, ARoutine.StartPos.Line, 0),
         'var' + LineBreak + Indent + Name + ': Integer = -1;' + LineBreak + LineBreak),
         TTextEdit.Create(TTextRange.Create(Token(AStart).StartPos, Token(AStart).StartPos), Name + ' := ')];
@@ -508,17 +622,25 @@ var
     else
     begin
       if IsLocal(ARoutine, Name) then
+      begin
         Exit;
+      end;
       Statement := Indent + Receiver + APair.Close + '(' + Name + ');';
     end;
     if not FinalizationEdit(Statement, Edit) then
+    begin
       Exit;
+    end;
     // Die finalization steht hinter der Routine.
     Edits := Edits + [Edit];
     if ATarget = '' then
-      AFix := TRuleFix.Create(Format('Index merken und %s in finalization ergänzen', [APair.Close]), Edits)
+    begin
+      AFix := TRuleFix.Create(Format('Index merken und %s in finalization ergänzen', [APair.Close]), Edits);
+    end
     else
+    begin
       AFix := TRuleFix.Create(Format('%s in finalization ergänzen', [APair.Close]), Edits);
+    end;
     Result := True;
   end;
 
@@ -538,38 +660,54 @@ var
     begin
       ReceiverFirst := ReceiverStart(APosition - 1);
       if ReceiverFirst < 0 then
+      begin
         Exit;
+      end;
       ReceiverLast := APosition - 2;
       Start := ReceiverFirst;
     end;
     Routine := RoutineAt(AContext.Tree.Root, Token(APosition).Offset);
     // Register…-Aufrufe in Register: die IDE entfernt diese Wizards beim Entladen selbst.
     if StartsText('Register', APair.Open) and (Routine <> nil) and SameText(Routine.Name, 'Register') then
+    begin
       Exit;
+    end;
     Range := TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos);
     Before := Start - 1;
     Fixes := nil;
     if (Before < 0) or MatchText(Token(Before).Text, StatementStarts) then
     begin
       if FixFor(APair, Routine, Start, ReceiverFirst, ReceiverLast, '', Fix) then
+      begin
         Fixes := [Fix];
+      end;
       AReport.Add(Range, Format('Der Index von %s wird nicht gemerkt; ohne %s ruft die IDE nach dem Entladen ' +
         'ins Leere.', [APair.Open, APair.Close]), TRuleConfidence.Medium, Fixes);
       Exit;
     end;
     if not Token(Before).IsSymbol(':=') then
+    begin
       Exit;
+    end;
     // Ziel der Zuweisung: Namen und Punkte bis zum Anfang der Anweisung.
     Start := Before - 1;
     while (Start > 0) and (IsWord(Start - 1) or Token(Start - 1).IsSymbol('.')) do
+    begin
       Dec(Start);
+    end;
     if (Start < 0) or not IsWord(Start) then
+    begin
       Exit;
+    end;
     Target := Normalized(TextOf(Start, Before - 1));
     if Removed(APair.Close, Target) then
+    begin
       Exit;
+    end;
     if FixFor(APair, Routine, Start, ReceiverFirst, ReceiverLast, TextOf(Start, Before - 1), Fix) then
+    begin
       Fixes := [Fix];
+    end;
     AReport.Add(Range, Format('Der Index %s von %s geht nie an %s; die IDE ruft nach dem Entladen ins Leere.',
       [TextOf(Start, Before - 1), APair.Open, APair.Close]), TRuleConfidence.Medium, Fixes);
   end;
@@ -579,19 +717,33 @@ var
   Pair: TRegisterPair;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   RegisterPairs := Pairs(AContext.Options);
   for Index := 0 to High(Code) - 1 do
+  begin
     if IsWord(Index) and Token(Index + 1).IsSymbol('(') then
+    begin
       for Pair in RegisterPairs do
+      begin
         if SameText(Token(Index).Text, Pair.Open) then
+        begin
           CheckCall(Index, Pair);
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure RegisterOpenToolsRules(const ARegistry: TRuleRegistry);

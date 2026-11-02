@@ -16,6 +16,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasArchitectureFrameTests = class
   private
     FForm: TForm;
@@ -78,7 +79,7 @@ uses
   System.StrUtils,
   Vcl.Controls,
   Vcl.Menus,
-  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.Model.Tests,
   Atlas.UI.Architecture.Assignment;
@@ -146,9 +147,11 @@ begin
   Assert.IsTrue(Length(FFrame.SubsystemText) >= 7, 'Teilsysteme und ihre sechs Units');
   // Zyklus mit Weg und seinen beiden uses-Einträgen.
   Assert.AreEqual(3, Integer(Length(FFrame.CycleText)));
-  Assert.IsTrue(StartsStr(TAtlasStrings.Text(TAtlasTextId.ArchitectureCycleImplementation), FFrame.CycleText[0]));
+  Assert.IsTrue(StartsStr(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleImplementation),
+    FFrame.CycleText[0]));
   Assert.IsTrue(Pos('App.Data.Cache', Joined(FFrame.CycleText)) > 0);
-  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatus, [6, Length(FFrame.Model.Subsystems), 1,
+  Assert.IsTrue(Pos(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatus,
+    [6, Length(FFrame.Model.Subsystems), 1,
     Length(FFrame.Model.CrossLinks), Integer(FFrame.Model.Generation and $7FFFFFFF), FFrame.Model.DurationMs]),
     FFrame.StatusLabel.Caption) = 1);
   // Aktive Ausschlüsse stehen in der Statuszeile.
@@ -223,10 +226,10 @@ var
   Scope: string;
   Library_: Boolean;
 begin
-  FFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureLoading), True);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureLoading), FFrame.StatusLabel.Caption);
+  FFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLoading), True);
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLoading), FFrame.StatusLabel.Caption);
   Assert.IsTrue(FFrame.HasModel, 'bisherige Daten bleiben');
-  FFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureNoProject), False);
+  FFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), False);
   Assert.IsFalse(FFrame.HasModel);
   Assert.AreEqual(0, Integer(Length(FFrame.CentralText)));
   Assert.IsFalse(FFrame.SaveButton.Enabled);
@@ -287,10 +290,10 @@ begin
   Db := FFrame.Model.IndexOf('App.Data.Db');
   // Weg wie in der HTML-Karte; die Zeile unter der Karte nennt ihn.
   Assert.IsTrue(FFrame.Map.ShowPath(Main, Cache));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitecturePath, [3,
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitecturePath, [3,
     'App.Main → App.Data → App.Data.Db → App.Data.Cache']), FFrame.InfoLabel.Caption);
   Assert.IsFalse(FFrame.Map.ShowPath(Cache, Main));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureNoPath, ['App.Data.Cache', 'App.Main']),
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureNoPath, ['App.Data.Cache', 'App.Main']),
     FFrame.InfoLabel.Caption);
   // Ohne implementation-uses gibt es Cache → Db nicht mehr; der Weg wird neu gesucht.
   Assert.IsTrue(FFrame.Map.ShowPath(Cache, Db));
@@ -302,7 +305,7 @@ begin
   // Esc hebt den Weg auf, danach wieder der Hinweis.
   FFrame.Map.ClearPath;
   Assert.AreEqual(-1, FFrame.Map.PathFrom);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureMapHint), FFrame.InfoLabel.Caption);
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint), FFrame.InfoLabel.Caption);
   FFrame.Map.ClearPath;
   Assert.AreEqual(-1, FFrame.Map.PathTo, 'zweimal aufheben schadet nicht');
   // Zyklen markieren.
@@ -332,14 +335,16 @@ begin
   Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, Model, Enabled));
   FFrame.SetModel(Model);
   Text := Joined(FFrame.ComparisonText);
-  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureChangeNewCycles, [1]), Text) > 0, Text);
-  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureChangeRemovedUnits, [1]), Text) > 0, Text);
+  Assert.IsTrue(Pos(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureChangeNewCycles, [1]), Text) > 0, Text);
+  Assert.IsTrue(Pos(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureChangeRemovedUnits, [1]), Text) > 0,
+    Text);
   Assert.IsTrue(Pos('App.Old', Text) > 0);
   // Leere Abschnitte stehen nicht da.
-  Assert.AreEqual(0, Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureChangeRemovedCycles, [0]), Text));
+  Assert.AreEqual(0, Pos(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureChangeRemovedCycles, [0]), Text));
   Assert.IsTrue(Pos('stand.json', FFrame.ComparisonInfo.Caption) > 0, FFrame.ComparisonInfo.Caption);
   Assert.IsTrue(Pos('newCycle', FFrame.ComparisonInfo.Caption) > 0, 'verletzte Art aus failOn');
-  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusComparison, [Model.Comparison.Count]),
+  Assert.IsTrue(Pos(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusComparison,
+    [Model.Comparison.Count]),
     FFrame.StatusLabel.Caption) > 0);
   Assert.IsTrue(FFrame.ChangesCheck.Enabled);
   Assert.IsTrue(FFrame.Map.ShowChanges);
@@ -381,7 +386,8 @@ var
   Answer: string;
 begin
   Assert.AreEqual(0, Integer(Length(FFrame.ComparisonText)));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureNoComparison), FFrame.ComparisonInfo.Caption);
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoComparison),
+    FFrame.ComparisonInfo.Caption);
   Assert.IsFalse(FFrame.ChangesCheck.Enabled);
   Assert.IsFalse(FFrame.ClearCompareButton.Enabled);
   Assert.IsTrue(FFrame.SaveStateButton.Enabled);
@@ -407,7 +413,7 @@ begin
   FFrame.Map.ShowRoute(Units, Edges);
   Assert.IsTrue(FFrame.Map.PathFound);
   Assert.AreEqual(4, Integer(Length(FFrame.Map.Route)));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureRoute, [4,
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureRoute, [4,
     'App.Main → App.Data → App.Data.Db → App.Data.Cache']), FFrame.InfoLabel.Caption);
   // Er bleibt ohne implementation-uses stehen und blendet ein ausgeblendetes Teilsystem wieder ein.
   FFrame.ImplementationCheck.Checked := False;
@@ -423,7 +429,7 @@ begin
   FFrame.Map.ShowRoute(Units, Edges);
   FFrame.Map.ClearPath;
   Assert.AreEqual(0, Integer(Length(FFrame.Map.Route)));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureMapHint), FFrame.InfoLabel.Caption);
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint), FFrame.InfoLabel.Caption);
   // Ungültige Nummern: kein Weg.
   FFrame.Map.ShowRoute(TArray<Integer>.Create(999), nil);
   Assert.AreEqual(-1, FFrame.Map.PathFrom);
@@ -444,12 +450,12 @@ begin
     end;
   Assert.AreEqual(Double(1), FFrame.ResolutionValue, 1E-9);
   // Mit dem Wert der Karte steht die Zahl der Teilsysteme daneben.
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionInfo,
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureResolutionInfo,
     [TAtlasArchResolution.Text(1, FormatSettings), FFrame.Model.SubsystemCount]), FFrame.ResolutionInfo.Caption);
   // Ziehen zeigt nur den Wert, meldet aber noch nichts.
   FFrame.ResolutionSlider.MoveTo(75, False);
   Assert.AreEqual(0, mCount);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionValue,
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureResolutionValue,
     [TAtlasArchResolution.Text(2.24, FormatSettings)]), FFrame.ResolutionInfo.Caption);
   // Loslassen meldet den Wert einmal.
   FFrame.ResolutionSlider.MoveTo(75, True);
@@ -484,7 +490,7 @@ var
   mEnabled: Boolean;
   mNote: string;
 begin
-  mNote := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonResolution,
+  mNote := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonResolution,
     [TAtlasArchResolution.Text(1, FormatSettings), TAtlasArchResolution.Text(2, FormatSettings)]);
   Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleResolutionAnswer, mModel, mEnabled));
   FFrame.SetModel(mModel);
@@ -508,7 +514,7 @@ begin
   // Menü: Überschrift „App (nachgeteilt in 2 Teile)“, darunter die beiden Teile eingerückt.
   FFrame.FillSubsystemsMenu;
   Assert.AreEqual(Integer(Length(mModel.Subsystems)) + 3, FFrame.SubsystemsMenu.Items.Count);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemFamily, ['App', 2]),
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemFamily, ['App', 2]),
     FFrame.SubsystemsMenu.Items[0].Caption);
   Assert.IsFalse(FFrame.SubsystemsMenu.Items[0].Enabled);
   Assert.AreEqual(0, Integer(FFrame.SubsystemsMenu.Items[1].Tag));
@@ -520,7 +526,8 @@ begin
   // Reiter Teilsysteme: „… · Teil von App“, die Teile beieinander (erst das erste Teil mit seinen Units, dann das
   // letzte Teilsystem).
   mFirst := FFrame.SubsystemText[0];
-  Assert.IsTrue(EndsStr(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemPart, ['', 'App']), mFirst), mFirst);
+  Assert.IsTrue(EndsStr(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemPart, ['', 'App']),
+    mFirst), mFirst);
   mLines := nil;
   for mLine in FFrame.SubsystemText do
     if not StartsStr(' ', mLine) then
@@ -538,14 +545,16 @@ begin
   Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleFoundationAnswer, mModel, mEnabled));
   FFrame.SetModel(mModel);
   // Reiter: „Fundament (n Units, übergreifende Fundamente)“, darunter zuerst die Regel.
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureFoundationLine, ['Fundament',
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureFoundationLine, ['Fundament',
     Length(mModel.Subsystems[0].Units)]), FFrame.SubsystemText[0]);
-  Assert.AreEqual('  ' + TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationRule), FFrame.SubsystemText[1]);
+  Assert.AreEqual('  ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationRule),
+    FFrame.SubsystemText[1]);
   // Menü: Schalter „Kanten zum Fundament“ vor „Alle einblenden“.
   FFrame.FillSubsystemsMenu;
   mToggle := nil;
   for mIndex := 0 to FFrame.SubsystemsMenu.Items.Count - 1 do
-    if FFrame.SubsystemsMenu.Items[mIndex].Caption = TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationEdges) then
+    if FFrame.SubsystemsMenu.Items[mIndex].Caption = TAtlasAnalysisStrings.Text(
+      TAtlasAnalysisTextId.ArchitectureFoundationEdges) then
       mToggle := FFrame.SubsystemsMenu.Items[mIndex];
   Assert.IsNotNull(mToggle);
   Assert.IsTrue(mToggle.Checked);
@@ -572,7 +581,8 @@ begin
   FFrame.ExplainButton.Click;
   Assert.AreEqual(TAtlasArchitectureAssignment.Explanation(FFrame.Model), FFrame.ExplanationLabel.Caption);
   FFrame.ExplainButton.Click;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint), FFrame.ExplanationLabel.Caption);
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint),
+    FFrame.ExplanationLabel.Caption);
   // Steckbrief unter der Karte, sobald eine Unit gewählt ist.
   Assert.IsFalse(FFrame.AssignmentBox.Visible);
   FFrame.Map.SelectUnit(mMid, False);
@@ -607,7 +617,8 @@ begin
   Assert.AreEqual(0, Pos('angeglichen', FFrame.StatusLabel.Caption));
   Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAlignedAnswer, mModel, mEnabled));
   FFrame.SetModel(mModel);
-  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedBaseline, ['2026-10-29 14:23']),
+  Assert.IsTrue(Pos(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusAlignedBaseline,
+    ['2026-10-29 14:23']),
     FFrame.StatusLabel.Caption) > 0, FFrame.StatusLabel.Caption);
   mRenamed := 0;
   FFrame.OnRenameSubsystems :=
@@ -617,7 +628,7 @@ begin
     end;
   FFrame.FillSubsystemsMenu;
   mCount := FFrame.SubsystemsMenu.Items.Count;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameSubsystems),
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRenameSubsystems),
     FFrame.SubsystemsMenu.Items[mCount - 1].Caption);
   FFrame.SubsystemsMenu.Items[mCount - 1].Click;
   Assert.AreEqual(1, mRenamed);

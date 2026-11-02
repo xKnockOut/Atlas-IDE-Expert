@@ -80,32 +80,46 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := Trim(mValue.Value);
+  end;
 end;
 
 function PathOf(const AText: string): string;
 begin
   if StartsText('file:', AText) then
-    Result := TDocumentUris.ToPath(AText)
+  begin
+    Result := TDocumentUris.ToPath(AText);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function ParamsOf(const AParams: TJSONValue): TJSONObject;
 begin
   if AParams is TJSONObject then
-    Result := TJSONObject(AParams)
+  begin
+    Result := TJSONObject(AParams);
+  end
   else
+  begin
     Result := nil;
+  end;
 end;
 
 function CancelOf(const ACancellation: IJsonRpcCancellationToken): TQueryCancelled;
 begin
   if ACancellation = nil then
+  begin
     Exit(nil);
+  end;
   Result :=
     function: Boolean
     begin
@@ -116,9 +130,13 @@ end;
 function QualifiedOf(const AItem: THierarchyItem): string;
 begin
   if AItem.Container <> '' then
-    Result := AItem.Container + '.' + AItem.Name
+  begin
+    Result := AItem.Container + '.' + AItem.Name;
+  end
   else
+  begin
     Result := AItem.Name;
+  end;
 end;
 
 /// <summary>TQueryReadText über AReadText; eigene Routine, damit die Methodenreferenz nur AReadText festhält.
@@ -170,9 +188,13 @@ var
 begin
   mFormatText := StringOf(AParams, 'format');
   if not TQueryOutput.TryParseFormat(mFormatText, TQueryOutputFormat.Json, mFormat) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"format" ist json, markdown, csv oder text');
+  end;
   if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(StringOf(AParams, 'uri')), mSettings, mRoot)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
+  end;
   mAnswer := TJSONObject.Create;
   try
     mAnswer.AddPair('enabled', TJSONBool.Create(mSettings.QueryEnabled));
@@ -180,25 +202,39 @@ begin
     begin
       mQuery := StringOf(AParams, 'query');
       if mQuery = '' then
+      begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"query" fehlt');
+      end;
       mLimit := 0;
       if AParams <> nil then
+      begin
         AParams.TryGetValue<Integer>('limit', mLimit);
+      end;
       mRequest := TQueryRequest.Create(mQuery, mLimit);
       if (AParams <> nil) and AParams.TryGetValue<TJSONArray>('fields', mFields) then
+      begin
         for mValue in mFields do
+        begin
           if mValue is TJSONString then
+          begin
             mRequest.Fields := mRequest.Fields + [mValue.Value];
+          end;
+        end;
+      end;
       mRequest.Cancelled := CancelOf(ACancellation);
       mResult := FQueries.Execute(mRequest);
       if (ACancellation <> nil) and ACancellation.IsCancellationRequested then
+      begin
         ACancellation.ThrowIfCancellationRequested;
+      end;
       mAnswer.AddPair('root', mRoot);
       if mFormat = TQueryOutputFormat.Json then
       begin
         mValue := TJSONObject.ParseJSONValue(TQueryOutput.Json(mResult));
         if mValue = nil then
+        begin
           raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Abfrageergebnis ist kein gültiges JSON');
+        end;
         mAnswer.AddPair('format', 'json');
         mAnswer.AddPair('data', mValue);
       end
@@ -228,7 +264,9 @@ var
   mValue: TJSONValue;
 begin
   if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(StringOf(ParamsOf(AParams), 'uri')), mSettings, mRoot)) then
+  begin
     mSettings := TServerSettings.Default;
+  end;
   mAnswer := TJSONObject.Create;
   try
     mAnswer.AddPair('enabled', TJSONBool.Create(mSettings.QueryEnabled));
@@ -236,7 +274,9 @@ begin
     begin
       mValue := TJSONObject.ParseJSONValue(TQueryOutput.CatalogJson(mSettings.Queries));
       if mValue = nil then
+      begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Katalog ist kein gültiges JSON');
+      end;
       mAnswer.AddPair('catalog', mValue);
     end;
     Result := mAnswer;
@@ -254,11 +294,19 @@ begin
   mParams := TJSONObject.Create;
   try
     if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+    begin
       mParams.AddPair('uri', AArguments.Items[0].Value);
+    end;
     if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
+    begin
       for mPair in TJSONObject(AArguments.Items[1]) do
+      begin
         if mPair.JsonString.Value <> 'uri' then
+        begin
           mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
+        end;
+      end;
+    end;
     Result := Answer(mParams, nil);
   finally
     mParams.Free;
@@ -283,9 +331,13 @@ begin
       try
         mResolver.Namespaces := ANamespaces;
         if AIncoming then
-          mCalls := TLspHierarchies.IncomingCalls(mResolver, AIndex, mItem, AFiles, AReadText, ASettings, nil)
+        begin
+          mCalls := TLspHierarchies.IncomingCalls(mResolver, AIndex, mItem, AFiles, AReadText, ASettings, nil);
+        end
         else
+        begin
           mCalls := TLspHierarchies.OutgoingCalls(mResolver, AIndex, mItem, AReadText, nil);
+        end;
       finally
         mResolver.Free;
       end;

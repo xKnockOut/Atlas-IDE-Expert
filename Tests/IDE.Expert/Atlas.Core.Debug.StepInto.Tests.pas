@@ -8,6 +8,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TCoreDebugStepIntoTests = class
   private
     FAnswer: TAtlasStepAnswer;

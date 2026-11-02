@@ -99,7 +99,9 @@ begin
           if mMessage.GetValue('id') <> nil then
           begin
             if (mMethod = 'textDocument/hover') and (ACode <> 0) then
-              mAnswer := ErrorResponse(ACode, AText)
+            begin
+              mAnswer := ErrorResponse(ACode, AText);
+            end
             else
             begin
               mAnswer := TJSONObject.Create;
@@ -114,7 +116,9 @@ begin
             end;
           end;
           if mMethod = 'exit' then
+          begin
             Exit;
+          end;
         finally
           mMessage.Free;
         end;

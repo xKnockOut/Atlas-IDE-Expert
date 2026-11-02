@@ -133,8 +133,12 @@ var
 begin
   Result := AId <> '';
   for Index := 1 to Length(AId) do
+  begin
     if not CharInSet(AId[Index], ['a'..'z', '0'..'9', '-']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function Contains(const AValues: TArray<string>; const AValue: string): Boolean;
@@ -142,8 +146,12 @@ var
   Value: string;
 begin
   for Value in AValues do
+  begin
     if SameText(Value, AValue) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -159,9 +167,13 @@ end;
 function TRuleRate.FalseAlarmRate: Double;
 begin
   if Correct + Wrong = 0 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := Wrong / (Correct + Wrong);
+  end;
 end;
 
 { TRuleHitRate }
@@ -169,9 +181,13 @@ end;
 function TRuleHitRate.HitRate: Double;
 begin
   if Mutations = 0 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := Found / Mutations;
+  end;
 end;
 
 { TGoldenCorpus }
@@ -193,12 +209,18 @@ class function TGoldenCorpus.Markers(const AText: string; AWithIndex: Boolean): 
   begin
     Start := Pos('// ' + AMarker, ALine);
     if Start = 0 then
+    begin
       Exit;
+    end;
     Ids := Copy(ALine, Start + Length(AMarker) + 3, MaxInt).Split([',']);
     // Erklärende Kommentare wie "// ERWARTET: <regel>" sind keine Markierung.
     for Id in Ids do
+    begin
       if not IsRuleId(Trim(Id)) then
+      begin
         Exit;
+      end;
+    end;
     for Id in Ids do
     begin
       Marker.Line := ALineIndex;
@@ -219,7 +241,9 @@ begin
     ReadMarkers(Lines[Index], Index, ExpectedMarker, True, Result);
     ReadMarkers(Lines[Index], Index, NoFindingMarker, False, Result);
     if AWithIndex then
+    begin
       ReadMarkers(Lines[Index], Index, IndexMarker, True, Result);
+    end;
   end;
 end;
 
@@ -232,10 +256,14 @@ begin
   begin
     Id := Line;
     if Pos('#', Id) > 0 then
+    begin
       Id := Copy(Id, 1, Pos('#', Id) - 1);
+    end;
     Id := Trim(Id);
     if Id <> '' then
+    begin
       Result := Result + [Id];
+    end;
   end;
 end;
 
@@ -257,14 +285,22 @@ begin
     end;
     Id := Trim(Id);
     if Id = '' then
+    begin
       Continue;
+    end;
     // Gesucht ist "#" mit mindestens einer Ziffer dahinter, z. B. "# #56".
     HasIssue := False;
     for Index := 1 to Length(Note) - 1 do
+    begin
       if (Note[Index] = '#') and CharInSet(Note[Index + 1], ['0'..'9']) then
+      begin
         HasIssue := True;
+      end;
+    end;
     if not HasIssue then
+    begin
       Result := Result + [Id];
+    end;
   end;
 end;
 
@@ -283,22 +319,32 @@ begin
     if not Contains(AKnownIds, Marker.RuleId) then
     begin
       if Contains(APlannedIds, Marker.RuleId) then
-        Result.Skipped := Result.Skipped + [Place + ' ist geplant und wird übersprungen']
+      begin
+        Result.Skipped := Result.Skipped + [Place + ' ist geplant und wird übersprungen'];
+      end
       else
+      begin
         Result.Unknown := Result.Unknown + [Place + ' ist keine bekannte Regel'];
+      end;
       Continue;
     end;
     Found := False;
     for Finding in AFindings do
+    begin
       if SameText(Finding.RuleId, Marker.RuleId) and (Finding.Range.StartPos.Line = Marker.Line) then
       begin
         Found := True;
         Break;
       end;
+    end;
     if Marker.Expected and not Found then
-      Result.Missing := Result.Missing + [Place + ' erwartet, aber nicht gemeldet']
+    begin
+      Result.Missing := Result.Missing + [Place + ' erwartet, aber nicht gemeldet'];
+    end
     else if not Marker.Expected and Found then
-      Result.FalseAlarms := Result.FalseAlarms + [Place + ' gemeldet, obwohl KEIN-TREFFER']
+    begin
+      Result.FalseAlarms := Result.FalseAlarms + [Place + ' gemeldet, obwohl KEIN-TREFFER'];
+    end
   end;
 end;
 
@@ -316,11 +362,17 @@ begin
   begin
     Columns := Lines[Index].Split([',']);
     if Length(Columns) < 4 then
+    begin
       Continue;
+    end;
     Rate := -1;
     for Swap := 0 to High(Result) do
+    begin
       if SameText(Result[Swap].RuleId, Trim(Columns[0])) then
+      begin
         Rate := Swap;
+      end;
+    end;
     if Rate < 0 then
     begin
       Temp := Default(TRuleRate);
@@ -330,12 +382,18 @@ begin
     end;
     Verdict := LowerCase(Trim(Columns[3]));
     if Verdict = 'richtig' then
-      Inc(Result[Rate].Correct)
+    begin
+      Inc(Result[Rate].Correct);
+    end
     else if Verdict = 'falsch' then
-      Inc(Result[Rate].Wrong)
+    begin
+      Inc(Result[Rate].Wrong);
+    end
     else
+    begin
       raise EArgumentException.CreateFmt('Zeile %d: Bewertung "%s" ist weder richtig noch falsch',
         [Index + 1, Columns[3]]);
+    end;
   end;
   // Wenige Regeln: einfaches Einfügesortieren.
   for Index := 1 to High(Result) do
@@ -375,7 +433,9 @@ begin
       Part := '';
     end
     else
+    begin
       Part := Part + ALine[Index];
+    end;
     Inc(Index);
   end;
   Result := Result + [Trim(Part)];
@@ -433,7 +493,9 @@ begin
   begin
     Line := Trim(Lines[Index]);
     if (Line = '') or StartsStr('#', Line) then
+    begin
       Continue;
+    end;
     Parts := SplitParts(Line);
     if (Length(Parts) <> 4) or (Parts[0] = '') or (Parts[1] = '') or (Parts[2] = '') then
     begin
@@ -458,13 +520,17 @@ begin
   AMutated := AText;
   LineBreak := #10;
   if Pos(#13#10, AText) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Search := Unescape(AMutation.Search, LineBreak);
   First := Pos(Search, AText);
   Result := (First > 0) and (Pos(Search, AText, First + 1) = 0);
   if Result then
+  begin
     AMutated := Copy(AText, 1, First - 1) + Unescape(AMutation.Replacement, LineBreak) +
       Copy(AText, First + Length(Search), MaxInt);
+  end;
 end;
 
 class function TGoldenCorpus.Detected(const ABefore, AAfter: TArray<TRuleFinding>; const ARuleId: string): Boolean;
@@ -475,8 +541,12 @@ class function TGoldenCorpus.Detected(const ABefore, AAfter: TArray<TRuleFinding
   begin
     Result := 0;
     for Finding in AFindings do
+    begin
       if SameText(Finding.RuleId, ARuleId) then
+      begin
         Inc(Result);
+      end;
+    end;
   end;
 
 begin
@@ -494,8 +564,12 @@ begin
   begin
     Rate := -1;
     for Swap := 0 to High(Result) do
+    begin
       if SameText(Result[Swap].RuleId, AMutations[Index].RuleId) then
+      begin
         Rate := Swap;
+      end;
+    end;
     if Rate < 0 then
     begin
       Temp := Default(TRuleHitRate);
@@ -505,7 +579,9 @@ begin
     end;
     Inc(Result[Rate].Mutations);
     if (Index <= High(AFound)) and AFound[Index] then
+    begin
       Inc(Result[Rate].Found);
+    end;
   end;
   for Index := 1 to High(Result) do
   begin
@@ -533,7 +609,9 @@ begin
   begin
     Watch := TStopwatch.StartNew;
     for Text in ATexts do
+    begin
       TFileChecker.CheckText([Rule], ASettings, '', Text);
+    end;
     Timing.RuleId := Rule.Descriptor.Id;
     Timing.Milliseconds := Watch.Elapsed.TotalMilliseconds;
     Result := Result + [Timing];

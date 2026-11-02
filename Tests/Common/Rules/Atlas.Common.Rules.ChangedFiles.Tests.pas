@@ -108,11 +108,17 @@ begin
     function(const AFileName: string): TArray<string>
     begin
       if SameText(ExtractFileName(AFileName), 'A.pas') then
-        Result := ['..\Inc\Defines.inc']
+      begin
+        Result := ['..\Inc\Defines.inc'];
+      end
       else if SameText(ExtractFileName(AFileName), 'B.pas') then
-        Result := ['Defines']
+      begin
+        Result := ['Defines'];
+      end
       else
+      begin
         Result := ['Andere.inc'];
+      end;
     end);
   Assert.AreEqual(2, Integer(Length(Selected)));
   Assert.AreEqual(P('Src/B.pas'), Selected[1]);

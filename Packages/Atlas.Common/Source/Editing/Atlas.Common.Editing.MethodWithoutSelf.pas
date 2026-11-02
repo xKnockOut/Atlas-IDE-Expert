@@ -206,7 +206,9 @@ function Capitalized(const AName: string): string;
 begin
   Result := AName;
   if Result <> '' then
+  begin
     Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+  end;
 end;
 
 /// <summary>Erster Teil eines Typ- oder Bezeichnernamens: TInner aus TInner&lt;X&gt;, A aus A.B.</summary>
@@ -214,9 +216,13 @@ function HeadName(const AName: string): string;
 begin
   Result := AName;
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   if Pos('.', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('.', Result) - 1);
+  end;
   Result := Trim(Result);
 end;
 
@@ -229,9 +235,13 @@ end;
 function Where(const AFileName: string; ALine: Integer): string;
 begin
   if AFileName = '' then
-    Result := Format('Zeile %d', [ALine + 1])
+  begin
+    Result := Format('Zeile %d', [ALine + 1]);
+  end
   else
+  begin
     Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), ALine + 1]);
+  end;
 end;
 
 { TMethodLookup }
@@ -246,12 +256,16 @@ begin
   while Node <> nil do
   begin
     if (Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
+    begin
       Exit(Node);
+    end;
     if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.Parent <> nil) and
       (Node.Parent.Kind = TSyntaxKind.ImplementationSection) then
     begin
       if TRoutineBody.QualifierOf(Node.Name) <> '' then
+      begin
         Result := TRoutineBody.TypeBody(ATree.Root, TRoutineBody.QualifierOf(Node.Name));
+      end;
       Exit;
     end;
     Node := Node.Parent;
@@ -265,7 +279,9 @@ var
 begin
   Index := TRoutineBody.TokenAt(ATokens, ANode.StartOffset);
   if (Index <= High(ATokens)) and ATokens[Index].IsKeyword('class') then
+  begin
     Exit(True);
+  end;
   // class var: Der Abschnitt beginnt erst bei var.
   Index := TRoutineBody.PreviousToken(ATokens, Index);
   Result := (Index >= 0) and ATokens[Index].IsKeyword('class');
@@ -277,7 +293,9 @@ var
 begin
   Result := Copy(ANames, 0, MaxInt);
   for Index := 0 to High(Result) do
+  begin
     Result[Index] := Trim(Result[Index]);
+  end;
 end;
 
 /// <summary>Art des Mitglieds AName, wie es in ABody deklariert ist; False, wenn ABody es nicht deklariert.</summary>
@@ -312,16 +330,26 @@ begin
       // Übrige Arten: nichts zu tun.
     end;
     if IndexText(AName, TrimmedNames(Names)) < 0 then
+    begin
       Continue;
+    end;
     Result := True;
     if Visibility = 'strict private' then
-      AVisibility := TIndexVisibility.StrictPrivate
+    begin
+      AVisibility := TIndexVisibility.StrictPrivate;
+    end
     else if Visibility = 'strict protected' then
-      AVisibility := TIndexVisibility.StrictProtected
+    begin
+      AVisibility := TIndexVisibility.StrictProtected;
+    end
     else if Visibility = 'private' then
-      AVisibility := TIndexVisibility.Private
+    begin
+      AVisibility := TIndexVisibility.Private;
+    end
     else if Visibility = 'protected' then
+    begin
       AVisibility := TIndexVisibility.Protected;
+    end;
     case Child.Kind of
       TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
         ALevel := TMemberLevel.StaticLevel;
@@ -329,21 +357,35 @@ begin
         ALevel := TMemberLevel.Instance;
       TSyntaxKind.VarSection:
         if StartsWithClass(ATokens, Child) then
-          ALevel := TMemberLevel.StaticLevel
+        begin
+          ALevel := TMemberLevel.StaticLevel;
+        end
         else
+        begin
           ALevel := TMemberLevel.Instance;
+        end;
       TSyntaxKind.RoutineHeader:
         if not StartsWithClass(ATokens, Child) then
-          ALevel := TMemberLevel.Instance
+        begin
+          ALevel := TMemberLevel.Instance;
+        end
         else if TRoutineParts.HasWord(ATokens, Child, ['static']) then
-          ALevel := TMemberLevel.StaticLevel
+        begin
+          ALevel := TMemberLevel.StaticLevel;
+        end
         else
+        begin
           ALevel := TMemberLevel.ClassLevel;
+        end;
       TSyntaxKind.PropertyDecl:
         if StartsWithClass(ATokens, Child) then
-          ALevel := TMemberLevel.StaticLevel
+        begin
+          ALevel := TMemberLevel.StaticLevel;
+        end
         else
+        begin
           ALevel := TMemberLevel.Instance;
+        end;
     else
       // Übrige Arten: nichts zu tun.
     end;
@@ -364,7 +406,9 @@ var
 begin
   Result := Default(TMethodLookup);
   if ATree = nil then
+  begin
     Exit;
+  end;
   Names := TRoutineParts.UnitNames(ATree.Root);
   Result.Flow := TNestedRoutineLookup.FromTree(ATree).Flow;
   Result.MemberLevel :=
@@ -377,13 +421,21 @@ begin
       Name := HeadName(ANode.Name);
       Body := OwnerBody(ATree, ANode);
       if (Body <> nil) and DeclaredLevel(ATree.Tokens, Body, Name, Result, AVisibility) then
+      begin
         Exit;
+      end;
       if ANode.Kind = TSyntaxKind.TypeReference then
+      begin
         Exit(TMemberLevel.NotMember);
+      end;
       if (IndexText(Name, Names) >= 0) or TSystemIntrinsics.IsKnown(Name) then
+      begin
         Exit(TMemberLevel.NotMember);
+      end;
       if (Body <> nil) and HasUnknownAncestor(Body) then
+      begin
         Exit(TMemberLevel.Unknown);
+      end;
       Result := TMemberLevel.NotMember;
     end;
   Result.InterfaceMember :=
@@ -401,14 +453,22 @@ begin
           Result := TSyntaxSearchStep.Descend;
           if (ANode.Kind = TSyntaxKind.InterfaceType) and (ANode.Parent <> nil) and SameText(ANode.Parent.Name, Name)
           then
+          begin
             Result := TSyntaxSearchStep.Found;
+          end;
         end);
       if Body = nil then
+      begin
         Exit;
+      end;
       for Index := 0 to Body.ChildCount - 1 do
+      begin
         if (Body[Index].Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) and
           SameText(Body[Index].Name, AName) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
   Result.VisibleHelper :=
     function(const ATypeName: string; AOffset: Integer): string
@@ -420,17 +480,23 @@ begin
       Result := '';
       Index := IndexText(ATypeName, RtlHelpedTypes);
       if Index < 0 then
+      begin
         Exit;
+      end;
       Used := False;
       for Section := 0 to ATree.Root.ChildCount - 1 do
       begin
         Clause := ATree.Root[Section].FindChild(TSyntaxKind.UsesClause);
         if (Clause <> nil) and ((IndexText('System.SysUtils', TRoutineParts.ChildNames(Clause)) >= 0) or
           (IndexText('SysUtils', TRoutineParts.ChildNames(Clause)) >= 0)) then
+        begin
           Used := True;
+        end;
       end;
       if Used then
+      begin
         Result := RtlHelpers[Index];
+      end;
     end;
 end;
 
@@ -456,27 +522,41 @@ begin
       if Resolved.Kind = TResolvedKind.None then
       begin
         if TSystemIntrinsics.IsKnown(Name) then
+        begin
           Exit(TMemberLevel.NotMember);
+        end;
         Exit(TMemberLevel.Unknown);
       end;
       if (Resolved.Kind <> TResolvedKind.Symbol) or Resolved.Builtin or (Resolved.Container = '') then
+      begin
         Exit(TMemberLevel.NotMember);
+      end;
       AVisibility := Resolved.Visibility;
       IsClass := IndexText('class', Resolved.Directives) >= 0;
       IsStatic := IndexText('static', Resolved.Directives) >= 0;
       case Resolved.SymbolKind of
         TIndexSymbolKind.Field, TIndexSymbolKind.Property_:
           if IsClass then
-            Result := TMemberLevel.StaticLevel
+          begin
+            Result := TMemberLevel.StaticLevel;
+          end
           else
+          begin
             Result := TMemberLevel.Instance;
+          end;
         TIndexSymbolKind.Method:
           if IsClass and IsStatic then
-            Result := TMemberLevel.StaticLevel
+          begin
+            Result := TMemberLevel.StaticLevel;
+          end
           else if IsClass then
-            Result := TMemberLevel.ClassLevel
+          begin
+            Result := TMemberLevel.ClassLevel;
+          end
           else
+          begin
             Result := TMemberLevel.Instance;
+          end;
         TIndexSymbolKind.Constructor_, TIndexSymbolKind.Variable:
           Result := TMemberLevel.Instance;
         TIndexSymbolKind.Routine:
@@ -493,7 +573,9 @@ begin
     begin
       Resolved := AResolver.ResolveChain(ATree, FileName, HeadName(ATypeName).Split(['.']), AOffset);
       if not Resolved.Found then
+      begin
         Exit(Fallback.InterfaceMember(ATypeName, AName, AOffset));
+      end;
       Result := (Resolved.SymbolKind = TIndexSymbolKind.InterfaceType) and AResolver.ResolveChain(ATree, FileName,
         [HeadName(ATypeName), AName], AOffset).Found;
     end;
@@ -503,7 +585,9 @@ begin
       Helper: TResolvedSymbol;
     begin
       if AResolver.VisibleHelper(ATree, FileName, ATypeName, AOffset, Helper) then
+      begin
         Exit(Helper.Name);
+      end;
       Result := Fallback.VisibleHelper(ATypeName, AOffset);
     end;
   Result.NameVisible :=
@@ -519,9 +603,13 @@ function TMethodTarget.Conversions: TArray<TMethodConversion>;
 begin
   Result := [TMethodConversion.ClassMethod, TMethodConversion.ClassMethodCalls];
   if RoutineReason = '' then
+  begin
     Result := Result + [TMethodConversion.Routine];
+  end;
   if HelperReason = '' then
+  begin
     Result := Result + [TMethodConversion.Helper];
+  end;
 end;
 
 function TMethodTarget.Title(AConversion: TMethodConversion): string;
@@ -628,45 +716,69 @@ begin
   Result := False;
   AReason := '';
   if (Tree = nil) or (Tree.Root = nil) then
+  begin
     Exit(Fail('kein Baum', AReason));
+  end;
   Routine := TRoutineParts.TopRoutineAt(Tree, AOffset, Declaration);
   if (Routine = nil) or (Routine.Parent = nil) or (Routine.Parent.Kind <> TSyntaxKind.ImplementationSection) then
+  begin
     Exit(Fail('keine Methode mit Rumpf in dieser Unit', AReason));
+  end;
   Header := TRoutineParts.HeaderOf(Routine);
   Body := TRoutineBody.BodyOf(Routine);
   if (Header = nil) or (Body = nil) then
+  begin
     Exit(Fail('Methode ohne Rumpf', AReason));
+  end;
   Target.Name := TRoutineBody.ShortNameOf(Routine.Name);
   Target.ClassName := TRoutineBody.QualifierOf(Routine.Name);
   if Target.ClassName = '' then
+  begin
     Exit(Fail('keine Methode', AReason));
+  end;
   if (Pos('<', Target.ClassName) > 0) or (Pos('.', Target.ClassName) > 0) then
+  begin
     Exit(Fail('Methode eines generischen oder verschachtelten Typs', AReason));
+  end;
   Index := TRoutineBody.TokenAt(Tokens, Header.StartOffset);
   if (Index <= High(Tokens)) and (Tokens[Index].IsKeyword('constructor') or Tokens[Index].IsKeyword('destructor') or
     Tokens[Index].IsKeyword('operator')) then
+  begin
     Exit(Fail('Konstruktor, Destruktor oder Operator', AReason));
+  end;
   if TRoutineParts.IsClassHeader(Tokens, Header) then
+  begin
     Exit(Fail('schon eine class-Methode', AReason));
+  end;
   if TRoutineParts.HasWord(Tokens, Header, ['forward', 'external', 'assembler']) then
+  begin
     Exit(Fail('nicht unterstützte Form', AReason));
+  end;
   TypeBody := TRoutineBody.TypeBody(Tree.Root, Target.ClassName);
   if (TypeBody = nil) or not (TypeBody.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
+  begin
     Exit(Fail('Klasse ' + Target.ClassName + ' nicht in der Datei', AReason));
+  end;
   Target.IsRecord := TypeBody.Kind = TSyntaxKind.RecordType;
   Found := 0;
   Declaration := nil;
   for Index := 0 to TypeBody.ChildCount - 1 do
+  begin
     if (TypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and not TypeBody[Index].IsMethodResolution and
       SameText(TypeBody[Index].Name, Target.Name) then
     begin
       Inc(Found);
       Declaration := TypeBody[Index];
     end;
+  end;
   if Found > 1 then
+  begin
     Exit(Fail('überladen', AReason));
+  end;
   if Declaration = nil then
+  begin
     Exit(Fail('Deklaration fehlt', AReason));
+  end;
   Visibility := TRoutineBody.VisibilityOf(TypeBody, Declaration);
   Section := Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
   ClassInInterface := (Section <> nil) and TRoutineBody.Within(TypeBody, Section);
@@ -674,11 +786,17 @@ begin
   Parameters := TRoutineParts.ParameterTexts(Text, Declaration);
   if (Parameters = nil) and (Declaration.FindChild(TSyntaxKind.Parameters) <> nil) and
     (Declaration.FindChild(TSyntaxKind.Parameters).ChildCount > 0) then
+  begin
     Exit(Fail('nicht unterstützte Parameter', AReason));
+  end;
   if not CheckDeclaration(AReason) or not ScanNames(AReason) or not CheckLocalUses(AReason) then
+  begin
     Exit;
+  end;
   if not TRoutineParts.NameTokens(Tokens, Header, First, Last) then
+  begin
     Exit(Fail('Name im Kopf nicht gefunden', AReason));
+  end;
   Target.NamePosition := Tokens[Last].StartPos;
   Target.HeaderEnd := Header.EndPos;
   CheckRoutine;
@@ -694,18 +812,24 @@ var
 begin
   if TRoutineParts.HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract', 'message',
     'reintroduce', 'final']) then
+  begin
     Exit(Fail('virtuell, override oder Botschaft', AReason));
+  end;
   for Index := 0 to TypeBody.ChildCount - 1 do
   begin
     Child := TypeBody[Index];
     // Methodenzuordnung "procedure IFoo.Bar = Name".
     if (Child.Kind = TSyntaxKind.RoutineHeader) and Child.IsMethodResolution and
       SameText(Child.ResolutionTarget, Target.Name) then
+    begin
       Exit(Fail('Methode eines Interfaces (' + Child.Name + ')', AReason));
+    end;
     // Vorfahrenliste: Interfaces, deren Mitglied die Methode ist.
     if (Child.Kind = TSyntaxKind.TypeReference) and Assigned(Lookup.InterfaceMember) and
       Lookup.InterfaceMember(Child.Name, Target.Name, Child.StartOffset) then
+    begin
       Exit(Fail('gehört zum Interface ' + Child.Name, AReason));
+    end;
     if Child.Kind = TSyntaxKind.PropertyDecl then
     begin
       InClause := False;
@@ -713,15 +837,21 @@ begin
       while (Token <= High(Tokens)) and (Tokens[Token].Offset < Child.EndOffset) do
       begin
         if MatchText(Tokens[Token].Text, ['read', 'write', 'stored']) then
-          InClause := True
+        begin
+          InClause := True;
+        end
         else if InClause and SameText(Tokens[Token].Text, Target.Name) then
+        begin
           Exit(Fail('Zugriffsmethode der Property ' + Child.Name, AReason));
+        end;
         Inc(Token);
       end;
     end;
   end;
   if Assigned(Lookup.InForm) and Lookup.InForm(Target.Name) then
+  begin
     Exit(Fail('steht als Ereignis in der Formulardatei', AReason));
+  end;
   Result := True;
 end;
 
@@ -736,16 +866,22 @@ var
 begin
   Statics := nil;
   if not Assigned(Lookup.MemberLevel) then
+  begin
     Exit(Fail('Namen nicht auflösbar', AReason));
+  end;
   Index := TRoutineBody.TokenAt(Tokens, Routine.StartOffset);
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < Routine.EndOffset) do
   begin
     if Tokens[Index].IsKeyword('inherited') then
+    begin
       Exit(Fail('benutzt inherited', AReason));
+    end;
     Inc(Index);
   end;
   if TRoutineLocals.HasKind(Routine, TSyntaxKind.WithStatement) then
+  begin
     Exit(Fail('benutzt with', AReason));
+  end;
   Nodes := TList<TSyntaxNode>.Create;
   try
     TRoutineLocals.CollectKind(Routine, TSyntaxKind.Identifier, Nodes);
@@ -756,17 +892,27 @@ begin
     begin
       InHead := TRoutineBody.Within(Node, Declaration) or TRoutineBody.Within(Node, Header);
       if (Node.Kind = TSyntaxKind.TypeReference) and TRoutineBody.Within(Node, Header) then
+      begin
         Continue;
+      end;
       if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, 'Self') then
+      begin
         Exit(Fail(Format('benutzt Self (%s)', [Where('', Node.StartPos.Line)]), AReason));
+      end;
       if (Node.Kind = TSyntaxKind.TypeReference) and (Pos('.', Node.Name) > 0) then
+      begin
         Continue;
+      end;
       if not InHead and TRoutineParts.Shadowed(Cache, Node, Routine, HeadName(Node.Name), True) then
+      begin
         Continue;
+      end;
       Level := Lookup.MemberLevel(Node, Visible);
       // Ein Typname ist nie ein Instanzmitglied; unbekannte Typen ändern nichts.
       if (Node.Kind = TSyntaxKind.TypeReference) and (Level in [TMemberLevel.Instance, TMemberLevel.Unknown]) then
+      begin
         Level := TMemberLevel.NotMember;
+      end;
       case Level of
         TMemberLevel.Instance:
           Exit(Fail(Format('benutzt %s (%s)', [Node.Name, Where('', Node.StartPos.Line)]), AReason));
@@ -776,14 +922,22 @@ begin
         TMemberLevel.ClassLevel, TMemberLevel.StaticLevel:
           begin
             if Level = TMemberLevel.ClassLevel then
+            begin
               UsesClassLevel := True;
+            end;
             if InHead then
-              HeadUsesClassType := True
+            begin
+              HeadUsesClassType := True;
+            end
             else
+            begin
               Statics := Statics + [Node];
+            end;
             if (StrictName = '') and (Visible in [TIndexVisibility.StrictPrivate,
               TIndexVisibility.StrictProtected]) then
+            begin
               StrictName := HeadName(Node.Name);
+            end;
           end;
         TMemberLevel.NotMember: ;
       end;
@@ -811,16 +965,22 @@ begin
       Other := Implementation_[Index];
       if (Other.Kind <> TSyntaxKind.RoutineDecl) or not SameText(TRoutineBody.QualifierOf(Other.Name),
         Target.ClassName) then
+      begin
         Continue;
+      end;
       Uses_.Clear;
       TRoutineLocals.CollectKind(Other, TSyntaxKind.Identifier, Uses_);
       for Node in Uses_ do
       begin
         if not SameText(Node.Name, Target.Name) or TRoutineBody.Within(Node, TRoutineParts.HeaderOf(Other)) then
+        begin
           Continue;
+        end;
         Use := TMethodWithoutSelf.UseAt(Tree, Node.StartOffset, Target.Name, Callee, Call);
         if IsPointer(Use) then
+        begin
           Exit(Fail(Format('wird als Methodenzeiger benutzt (%s)', [Where('', Node.StartPos.Line)]), AReason));
+        end;
       end;
     end;
   finally
@@ -833,11 +993,17 @@ procedure TMethodPlan.CheckRoutine;
 begin
   Target.RoutineReason := '';
   if StrictName <> '' then
-    Target.RoutineReason := 'benutzt ' + StrictName + ' (strict)'
+  begin
+    Target.RoutineReason := 'benutzt ' + StrictName + ' (strict)';
+  end
   else if HeadUsesClassType then
-    Target.RoutineReason := 'der Kopf nennt einen Typ der Klasse'
+  begin
+    Target.RoutineReason := 'der Kopf nennt einen Typ der Klasse';
+  end
   else if IndexText(Target.Name, TRoutineParts.UnitNames(Tree.Root)) >= 0 then
+  begin
     Target.RoutineReason := Target.Name + ' gibt es schon in der Unit';
+  end;
 end;
 
 function TMethodPlan.FirstParameterNodes: TArray<TSyntaxNode>;
@@ -847,14 +1013,20 @@ var
 begin
   Result := nil;
   if Parameters = nil then
+  begin
     Exit;
+  end;
   Nodes := TList<TSyntaxNode>.Create;
   try
     TRoutineLocals.CollectKind(Body, TSyntaxKind.Identifier, Nodes);
     for Node in Nodes do
+    begin
       if SameText(Node.Name, Parameters[0].Name) and not TRoutineParts.Shadowed(Cache, Node, Routine,
         Parameters[0].Name, False) then
+      begin
         Result := Result + [Node];
+      end;
+    end;
   finally
     Nodes.Free;
   end;
@@ -870,11 +1042,17 @@ begin
   begin
     // const schreibt der Compiler ohnehin nicht; ein Wertparameter würde als Self den Wert des Aufrufers ändern.
     if (Parameters[0].Modifier = '') and (TRoutineLocals.AccessOf(Node, Lookup.Flow) <> TLocalAccess.Read) then
+    begin
       Exit(not Fail(Parameters[0].Name + ' wird geschrieben', AReason));
+    end;
     if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.AddressOf) then
+    begin
       Exit(not Fail('@' + Parameters[0].Name, AReason));
+    end;
     if TRoutineParts.InAnonymous(Node, Routine) then
+    begin
       Exit(not Fail(Parameters[0].Name + ' in einer anonymen Methode', AReason));
+    end;
   end;
 end;
 
@@ -885,11 +1063,17 @@ begin
   Target.HelperReason := '';
   Target.HelperType := '';
   if StrictName <> '' then
-    Target.HelperReason := 'benutzt ' + StrictName + ' (strict)'
+  begin
+    Target.HelperReason := 'benutzt ' + StrictName + ' (strict)';
+  end
   else if HeadUsesClassType then
+  begin
     Target.HelperReason := 'der Kopf nennt einen Typ der Klasse';
+  end;
   if Target.HelperReason <> '' then
+  begin
     Exit;
+  end;
   if Parameters = nil then
   begin
     Target.HelperReason := 'ohne Parameter';
@@ -949,7 +1133,9 @@ begin
   Offsets := ASource.Offsets;
   Declaring := ADeclaring;
   if Tree <> nil then
+  begin
     Names := TRoutineParts.UnitNames(Tree.Root);
+  end;
 end;
 
 /// <summary>Bearbeitung, die ANode samt Zeile entfernt, wenn die Zeile sonst leer ist; sonst nur den Bereich.</summary>
@@ -960,12 +1146,18 @@ begin
   LineStart := ALines.LineStart(ANode.StartPos.Line);
   NextStart := ALines.LineStart(ANode.EndPos.Line + 1);
   if ANode.EndPos.Line + 1 >= ALines.LineCount then
+  begin
     NextStart := Length(AText);
+  end;
   if (Trim(Copy(AText, LineStart + 1, ANode.StartOffset - LineStart)) = '') and
     (Trim(Copy(AText, ANode.EndOffset + 1, NextStart - ANode.EndOffset)) = '') then
-    Result := TOffsetEdit.Create(LineStart, NextStart, '')
+  begin
+    Result := TOffsetEdit.Create(LineStart, NextStart, '');
+  end
   else
+  begin
     Result := TOffsetEdit.Create(ANode.StartOffset, ANode.EndOffset, '');
+  end;
 end;
 
 /// <summary>Direktiven der Deklaration, die mitkommen ("inline; stdcall;"), mit führendem Leerzeichen.</summary>
@@ -979,7 +1171,9 @@ begin
   begin
     Child := ADeclaration[Index];
     if (Child.Kind = TSyntaxKind.Directive) and (IndexText(Child.Name, DroppedDirectives) < 0) then
+    begin
       Result := Result + ' ' + TRoutineBody.TextOf(AText, Child) + ';';
+    end;
   end;
 end;
 
@@ -1045,7 +1239,9 @@ end;
 procedure TMethodBuild.Warn(const AText: string);
 begin
   if IndexStr(AText, Warnings) < 0 then
+  begin
     Warnings := Warnings + [AText];
+  end;
 end;
 
 function TMethodBuild.AddSite(AWork: TFileWork; AOffset: Integer; out AReason: string): Boolean;
@@ -1060,7 +1256,9 @@ begin
   Line := AWork.Lines.PositionAt(AOffset).Line;
   Use := TMethodWithoutSelf.UseAt(AWork.Tree, AOffset, Plan.Target.Name, Callee, Call);
   if Plan.IsPointer(Use) then
+  begin
     Exit(Fail(Where(AWork.FileName, Line) + ': als Methodenzeiger benutzt', AReason));
+  end;
   case Use of
     TMethodUse.Inherited_:
       Exit(Fail(Where(AWork.FileName, Line) + ': inherited-Aufruf', AReason));
@@ -1071,12 +1269,18 @@ begin
     TMethodUse.Call, TMethodUse.Value, TMethodUse.Pointer: ;
   end;
   if AWork.Declaring and not TRoutineBody.Within(Callee, Plan.Routine) and (AOffset < FirstUse) then
+  begin
     FirstUse := AOffset;
+  end;
   if not AWork.Declaring then
+  begin
     CalledOutside := True;
+  end;
   Receiver := nil;
   if Callee.Kind = TSyntaxKind.MemberAccess then
+  begin
     Receiver := Callee[0];
+  end;
   Edit := TOffsetEdit.Create(0, 0, '');
   Changed := False;
   case Conversion of
@@ -1091,11 +1295,15 @@ begin
       if Receiver <> nil then
       begin
         if not TRoutineBody.IsVariableChain(Receiver) then
+        begin
           Warn(Format('%s: %s wird nicht mehr ausgewertet.', [Where(AWork.FileName, Line),
             TRoutineBody.TextOf(AWork.Text, Receiver)]));
+        end;
         NewText := '';
         if not AWork.Declaring and (IndexText(Plan.Target.Name, AWork.Names) >= 0) then
+        begin
           NewText := Plan.UnitName + '.';
+        end;
         Edit := TOffsetEdit.Create(Receiver.StartOffset, AOffset, NewText);
         Changed := True;
       end
@@ -1107,14 +1315,20 @@ begin
     TMethodConversion.Helper:
       begin
         if (Call = nil) or (Call.ChildCount < 2) then
+        begin
           Exit(Fail(Where(AWork.FileName, Line) + ': Aufruf ohne Argumente', AReason));
+        end;
         if (Receiver <> nil) and not TRoutineBody.IsVariableChain(Receiver) then
+        begin
           Warn(Format('%s: %s wird nicht mehr ausgewertet.', [Where(AWork.FileName, Line),
             TRoutineBody.TextOf(AWork.Text, Receiver)]));
+        end;
         First := Call[1];
         NewText := TRoutineBody.TextOf(AWork.Text, First);
         if not TRoutineBody.IsVariableChain(First) then
+        begin
           NewText := '(' + NewText + ')';
+        end;
         NewText := NewText + '.' + Plan.Target.Name;
         if Call.ChildCount > 2 then
         begin
@@ -1131,7 +1345,9 @@ begin
   begin
     AWork.Edits := AWork.Edits + [Edit];
     if not AWork.Declaring then
+    begin
       AWork.NeedsUses := True;
+    end;
     Inc(Calls);
     if AWork.Lines.PositionAt(Edit.Start).Line = AWork.Lines.PositionAt(Edit.Stop).Line then
     begin
@@ -1142,7 +1358,9 @@ begin
     end;
   end
   else if (Conversion in [TMethodConversion.Routine, TMethodConversion.Helper]) and not AWork.Declaring then
+  begin
     AWork.NeedsUses := True;
+  end;
   Result := True;
 end;
 
@@ -1152,7 +1370,9 @@ var
 begin
   Result := nil;
   for Node in Plan.Statics do
+  begin
     Result := Result + [TOffsetEdit.Create(Node.StartOffset, Node.StartOffset, Plan.Target.ClassName + '.')];
+  end;
 end;
 
 procedure TMethodBuild.ClassMethodEdits;
@@ -1170,8 +1390,10 @@ begin
   Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Declaration.StartOffset, Plan.Declaration.StartOffset,
     'class '), TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.StartOffset, 'class ')];
   if WithStatic then
+  begin
     Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Declaration.EndOffset, Plan.Declaration.EndOffset,
       ' static;')];
+  end;
 end;
 
 /// <summary>Bearbeitungen, die AInner (im Bereich AStart..AStop) in den verschobenen Text übernehmen; die übrigen
@@ -1184,10 +1406,16 @@ begin
   Result := nil;
   Kept := nil;
   for Edit in AEdits do
+  begin
     if (Edit.Start >= AStart) and (Edit.Stop <= AStop) then
-      Result := Result + [Edit]
+    begin
+      Result := Result + [Edit];
+    end
     else
+    begin
       Kept := Kept + [Edit];
+    end;
+  end;
   AEdits := Kept;
 end;
 
@@ -1198,9 +1426,13 @@ var
 begin
   Result := nil;
   for Index := 0 to AImplementation.ChildCount - 1 do
+  begin
     if (AImplementation[Index].Kind = TSyntaxKind.RoutineDecl) and
       TRoutineParts.Encloses(AImplementation[Index], AOffset) then
+    begin
       Exit(AImplementation[Index]);
+    end;
+  end;
 end;
 
 /// <summary>Bereich der Routine samt Kommentaren darüber bis zum Anfang der Folgezeile, dazu eine Leerzeile
@@ -1214,9 +1446,13 @@ begin
   Next := ARoutine.EndPos.Line + 1;
   AStop := ALines.LineStart(Next);
   if Next >= ALines.LineCount then
-    AStop := Length(AText)
+  begin
+    AStop := Length(AText);
+  end
   else if Trim(LineText(AText, ALines, Next)) = '' then
+  begin
     AStop := ALines.LineStart(Next + 1);
+  end;
 end;
 
 function TMethodBuild.RoutineEdits(out AReason: string): Boolean;
@@ -1229,7 +1465,9 @@ var
 begin
   Work := Works[0];
   if CalledOutside and not Plan.ClassInInterface then
+  begin
     Exit(Fail('andere Units rufen auf, die Klasse steht aber im implementation-Teil', AReason));
+  end;
   Head := TRoutineParts.HeadText(Plan.Text, Plan.Declaration, Plan.Target.Name, Plan.Parameters, False);
   Work.Edits := Work.Edits + [RemoveLine(Plan.Text, Plan.Lines, Plan.Declaration)];
   if CalledOutside then
@@ -1241,8 +1479,10 @@ begin
     Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.EndOffset, Head)];
   end
   else
+  begin
     Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.EndOffset,
       Head + KeptDirectives(Plan.Text, Plan.Declaration))];
+  end;
   Work.Edits := Work.Edits + QualifyStatics;
   // Ohne Deklaration im interface muss die Routine vor ihrer ersten Verwendung stehen.
   if not CalledOutside and (FirstUse < Plan.Routine.StartOffset) then
@@ -1250,12 +1490,16 @@ begin
     Implementation_ := Plan.Routine.Parent;
     First := TopLevelAt(Implementation_, FirstUse);
     if First = nil then
+    begin
       Exit(Fail('erste Verwendung nicht in einer Routine', AReason));
+    end;
     RoutineSpan(Plan.Text, Plan.Lines, Plan.Routine, Start, Stop);
     Inner := SplitEdits(Work.Edits, Start, Stop);
     Moved := TRoutineParts.ApplyEdits(Copy(Plan.Text, Start + 1, Stop - Start), Start, Inner);
     if not EndsStr(LineBreak + LineBreak, Moved) then
+    begin
       Moved := Moved + LineBreak;
+    end;
     InsertAt := Plan.Lines.LineStart(TRoutineBody.RoutineInsertLine(Plan.Text, First));
     Work.Edits := Work.Edits + [TOffsetEdit.Create(Start, Stop, ''), TOffsetEdit.Create(InsertAt, InsertAt, Moved)];
   end;
@@ -1276,36 +1520,48 @@ begin
       Result := TSyntaxSearchStep.Descend;
       if (ANode.Kind = TSyntaxKind.HelperType) and SameText(ANode.Name, 'record') and (ANode.ChildCount > 0) and
         (ANode[0].Kind = TSyntaxKind.TypeReference) and SameTypeName(HeadName(ANode[0].Name), TypeName) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end);
   Interface_ := Plan.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
   Visible := '';
   if Assigned(Plan.Lookup.VisibleHelper) then
+  begin
     Visible := Plan.Lookup.VisibleHelper(TypeName, Plan.Routine.StartOffset);
+  end;
   if Found <> nil then
   begin
     if CalledOutside and ((Interface_ = nil) or not TRoutineBody.Within(Found, Interface_)) then
+    begin
       Exit(Fail(Format('der Helper %s steht im implementation-Teil, andere Units rufen aber auf',
         [Found.Parent.Name]), AReason));
+    end;
     HelperNode := Found;
     HelperName := Found.Parent.Name;
   end
   else
   begin
     if CalledOutside and not Plan.ClassInInterface then
+    begin
       Exit(Fail('andere Units rufen auf, die Klasse steht aber im implementation-Teil', AReason));
+    end;
     Taken := TRoutineParts.UnitNames(Plan.Tree.Root);
     Base := TMethodWithoutSelf.HelperNameFor(TypeName);
     // Den Namen eines sichtbaren Helpers (TStringHelper der RTL) nicht verdecken: THauptStringHelper.
     if SameText(Base, Visible) or (Assigned(Plan.Lookup.NameVisible) and Plan.Lookup.NameVisible(Base,
       Plan.Routine.StartOffset)) then
+    begin
       Base := 'T' + Capitalized(Plan.UnitName.Substring(Plan.UnitName.LastIndexOf('.') + 1)) + Copy(Base, 2,
         MaxInt);
+    end;
     HelperName := TRoutineParts.FreeName(Base, Taken);
   end;
   if (Visible <> '') and not SameText(Visible, HelperName) then
+  begin
     Warn(Format('Für %s ist schon %s sichtbar. Nur ein Helper je Typ wirkt: Wo %s gilt, sind die Methoden von ' +
       '%s nicht mehr erreichbar.', [TypeName, Visible, HelperName, Visible]));
+  end;
   Result := True;
 end;
 
@@ -1320,7 +1576,9 @@ var
 begin
   Result := False;
   if not ChooseHelper(AReason) then
+  begin
     Exit;
+  end;
   Work := Works[0];
   Tokens := Plan.Tokens;
   Rest := Copy(Plan.Parameters, 1, MaxInt);
@@ -1336,14 +1594,20 @@ begin
     while (Index <= High(Tokens)) and (Tokens[Index].Offset < HelperNode.EndOffset) do
     begin
       if Tokens[Index].IsKeyword('end') then
+      begin
         EndToken := Index;
+      end;
       Inc(Index);
     end;
     if EndToken < 0 then
+    begin
       Exit(Fail('Ende des Helpers nicht gefunden', AReason));
+    end;
     Line := Tokens[EndToken].StartPos.Line;
     if Trim(Copy(LineText(Plan.Text, Plan.Lines, Line), 1, Tokens[EndToken].StartPos.Character)) <> '' then
+    begin
       Exit(Fail('end des Helpers steht nicht allein in der Zeile', AReason));
+    end;
     Indent := IndentAt(Plan.Text, Plan.Lines, Line) + Inner;
     Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Lines.LineStart(Line), Plan.Lines.LineStart(Line),
       Indent + Decl + LineBreak)];
@@ -1357,7 +1621,9 @@ begin
       Indent + Inner + Decl + LineBreak + Indent + 'end;' + LineBreak;
     At := Plan.Lines.LineStart(TypeDecl.EndPos.Line + 1);
     if TypeDecl.EndPos.Line + 1 >= Plan.Lines.LineCount then
+    begin
       At := Length(Plan.Text);
+    end;
     Work.Edits := Work.Edits + [TOffsetEdit.Create(At, At, Block)];
   end
   else
@@ -1366,9 +1632,13 @@ begin
     Implementation_ := Plan.Routine.Parent;
     Clause := Implementation_.FindChild(TSyntaxKind.UsesClause);
     if Clause <> nil then
-      Line := Clause.EndPos.Line + 1
+    begin
+      Line := Clause.EndPos.Line + 1;
+    end
     else
+    begin
       Line := Implementation_.StartPos.Line + 1;
+    end;
     Block := LineBreak + 'type' + LineBreak + Inner + HelperName + ' = record helper for ' +
       Plan.Target.HelperType + LineBreak + Inner + Inner + Decl + LineBreak + Inner + 'end;' + LineBreak;
     At := Plan.Lines.LineStart(Line);
@@ -1378,7 +1648,9 @@ begin
     TRoutineParts.HeadText(Plan.Text, Plan.Declaration, HelperName + '.' + Plan.Target.Name, Rest, False))];
   Work.Edits := Work.Edits + QualifyStatics;
   for Node in Plan.FirstParameterNodes do
+  begin
     Work.Edits := Work.Edits + [TOffsetEdit.Create(Node.StartOffset, Node.EndOffset, 'Self')];
+  end;
   Result := True;
 end;
 
@@ -1402,9 +1674,15 @@ var
   Index, Other: Integer;
 begin
   for Index := 0 to High(AEdits) do
+  begin
     for Other := Index + 1 to High(AEdits) do
+    begin
       if (AEdits[Index].Start < AEdits[Other].Stop) and (AEdits[Other].Start < AEdits[Index].Stop) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -1423,24 +1701,34 @@ begin
   for Work in Works do
   begin
     if Overlapping(Work.Edits) then
+    begin
       Exit(Fail(Where(Work.FileName, 0) + ': verschachtelte Aufrufe', AReason));
+    end;
     Item.FileName := Work.FileName;
     Item.Edits := nil;
     for Edit in Work.Edits do
+    begin
       Item.Edits := Item.Edits + [TTextEdit.Create(TTextRange.Create(Work.Lines.PositionAt(Edit.Start),
         Work.Lines.PositionAt(Edit.Stop)), Edit.Text)];
+    end;
     if Work.NeedsUses and TUsesActions.AddUnits(Work.Tree.Tokens, [Plan.UnitName], nil, nil,
       TTextLines.LineBreakOf(Work.Text), UsesEdits, Added) then
+    begin
       Item.Edits := Item.Edits + UsesEdits;
+    end;
     if Item.Edits = nil then
+    begin
       Continue;
+    end;
     NewText := TChangeSignature.ApplyEdits(Work.Text, Item.Edits);
     Tree := TSyntaxTreeCache.Parse(NewText);
     try
       if Length(Tree.Diagnostics) > Length(Work.Tree.Diagnostics) then
+      begin
         Exit(Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)',
           [ExtractFileName(Work.FileName), Tree.Diagnostics[0].StartPos.Line + 1, Tree.Diagnostics[0].Message]),
           AReason));
+      end;
     finally
       Tree.Free;
     end;
@@ -1457,7 +1745,9 @@ begin
   end;
   AResult.Preview := Action + Format(', %d geänderte Aufrufe.', [Calls]);
   if PreviewLines <> nil then
+  begin
     AResult.Preview := AResult.Preview + sLineBreak + string.Join(sLineBreak, PreviewLines);
+  end;
   AResult.Warnings := Warnings;
   AResult.Calls := Calls;
   Result := True;
@@ -1473,12 +1763,16 @@ begin
   ATarget := Default(TMethodTarget);
   AReason := '';
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit(Fail('kein Baum', AReason));
+  end;
   Plan := TMethodPlan.Create(AText, ATree, ALookup);
   try
     Result := Plan.Analyze(Plan.Lines.OffsetAt(APosition), AReason);
     if Result then
+    begin
       ATarget := Plan.Target;
+    end;
   finally
     Plan.Free;
   end;
@@ -1494,18 +1788,26 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Implementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Implementation_ = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Implementation_.ChildCount - 1 do
   begin
     Routine := Implementation_[Index];
     if (Routine.Kind <> TSyntaxKind.RoutineDecl) or (TRoutineBody.QualifierOf(Routine.Name) = '') then
+    begin
       Continue;
+    end;
     Header := TRoutineParts.HeaderOf(Routine);
     if (Header <> nil) and Target(AText, ATree, Header.EndPos, ALookup, Found, Reason) then
+    begin
       Result := Result + [Found];
+    end;
   end;
 end;
 
@@ -1530,24 +1832,40 @@ begin
     begin
       Result := (ANode.StartOffset <= Offset) and (Offset < ANode.EndOffset);
       if not Result then
+      begin
         Exit;
+      end;
       if ANode.Kind = TSyntaxKind.PropertyDecl then
-        InProperty := True
+      begin
+        InProperty := True;
+      end
       else if (ANode.Kind = TSyntaxKind.InheritedExpr) and SameText(ANode.Name, Name) then
-        InInherited := True
+      begin
+        InInherited := True;
+      end
       else if (ANode.Kind = TSyntaxKind.Identifier) and (ANode.StartOffset = Offset) and SameText(ANode.Name, Name)
       then
-        Found := ANode
+      begin
+        Found := ANode;
+      end
       else if (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, Name) and
         (ANode.EndOffset = Offset + Length(Name)) then
+      begin
         Found := ANode;
+      end;
     end);
   if InProperty then
+  begin
     Exit(TMethodUse.Accessor);
+  end;
   if InInherited then
+  begin
     Exit(TMethodUse.Inherited_);
+  end;
   if Found = nil then
+  begin
     Exit(TMethodUse.Unknown);
+  end;
   ACallee := Found;
   Parent := Found.Parent;
   if (Parent <> nil) and (Parent.Kind = TSyntaxKind.Call) and (Parent[0] = Found) then
@@ -1556,11 +1874,17 @@ begin
     Result := TMethodUse.Call;
   end
   else if (Parent <> nil) and (Parent.Kind = TSyntaxKind.CallStatement) then
-    Result := TMethodUse.Call
+  begin
+    Result := TMethodUse.Call;
+  end
   else if (Parent <> nil) and (Parent.Kind = TSyntaxKind.AddressOf) then
-    Result := TMethodUse.Pointer
+  begin
+    Result := TMethodUse.Pointer;
+  end
   else
+  begin
     Result := TMethodUse.Value;
+  end;
 end;
 
 class function TMethodWithoutSelf.Execute(const ADeclaring: TMethodSource; const AOthers: TArray<TMethodSource>;
@@ -1577,19 +1901,27 @@ begin
   AResult := Default(TMethodResult);
   AReason := '';
   if (ADeclaring.Tree = nil) or (ADeclaring.Tree.Root = nil) then
+  begin
     Exit(Fail('kein Baum', AReason));
+  end;
   Plan := TMethodPlan.Create(ADeclaring.Text, ADeclaring.Tree, ALookup);
   Build := TMethodBuild.Create(Plan);
   try
     if not Plan.Analyze(Plan.Lines.OffsetAt(APosition), AReason) then
+    begin
       Exit(False);
+    end;
     case AConversion of
       TMethodConversion.Routine:
         if Plan.Target.RoutineReason <> '' then
+        begin
           Exit(Fail(Plan.Target.RoutineReason, AReason));
+        end;
       TMethodConversion.Helper:
         if Plan.Target.HelperReason <> '' then
+        begin
           Exit(Fail(Plan.Target.HelperReason, AReason));
+        end;
       TMethodConversion.ClassMethod, TMethodConversion.ClassMethodCalls: ;
     end;
     Build.Conversion := AConversion;
@@ -1597,20 +1929,32 @@ begin
     Build.Style := AStyle;
     Build.Works.Add(TFileWork.Create(ADeclaring, True));
     for Source in AOthers do
+    begin
       if (Source.Tree <> nil) and not SameText(Source.FileName, ADeclaring.FileName) then
+      begin
         Build.Works.Add(TFileWork.Create(Source, False));
+      end;
+    end;
     for Work in Build.Works do
+    begin
       for Offset in Work.Offsets do
       begin
         // Deklaration und Kopf der Implementierung zählen nicht.
         if Work.Declaring and (TRoutineParts.Encloses(Plan.Declaration, Offset) or
           TRoutineParts.Encloses(Plan.Header, Offset)) then
+        begin
           Continue;
+        end;
         if not Build.AddSite(Work, Offset, AReason) then
+        begin
           Exit(False);
+        end;
       end;
+    end;
     if not Build.DeclaringEdits(AReason) then
+    begin
       Exit(False);
+    end;
     Result := Build.Finish(AResult, AReason);
   finally
     Build.Free;
@@ -1637,11 +1981,13 @@ var
   Item: TMethodConversion;
 begin
   for Item := Low(TMethodConversion) to High(TMethodConversion) do
+  begin
     if SameText(ConversionName(Item), AName) then
     begin
       AConversion := Item;
       Exit(True);
     end;
+  end;
   AConversion := TMethodConversion.ClassMethod;
   Result := False;
 end;
@@ -1657,9 +2003,13 @@ var
 begin
   Name := Trim(ATypeName);
   if (Length(Name) > 1) and (Name[1] = 'T') and CharInSet(Name[2], ['A'..'Z']) then
+  begin
     Name := Copy(Name, 2, MaxInt);
+  end;
   if SameText(Name, 'UnicodeString') then
+  begin
     Name := 'String';
+  end;
   Result := 'T' + Capitalized(Name) + 'Helper';
 end;
 

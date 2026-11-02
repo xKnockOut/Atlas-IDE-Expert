@@ -86,11 +86,13 @@ begin
     Result.Symbols := Copy(AExtracted.Symbols);
     SetLength(Result.Symbols, mCount + Length(mIndexed.Symbols));
     for mPosition := 0 to High(mIndexed.Symbols) do
+    begin
       if mIndexed.Symbols[mPosition].FileName <> '' then
       begin
         Result.Symbols[mCount] := mIndexed.Symbols[mPosition];
         Inc(mCount);
       end;
+    end;
     SetLength(Result.Symbols, mCount);
     Result.Includes := mIndexed.Includes;
   end;
@@ -102,8 +104,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to FEntries.Count - 1 do
+  begin
     if SameText(FEntries[mIndex].FileName, AFileName) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -119,9 +125,13 @@ var
 begin
   mIndex := EntryIndex(AFileName);
   if mIndex >= 0 then
+  begin
     Exit(FEntries[mIndex].Extracted);
+  end;
   if FTree = nil then
+  begin
     raise EInvalidOpException.Create('TTreeUnits.Extracted ohne Baum');
+  end;
   mEntry := Default(TEntry);
   mEntry.FileName := AFileName;
   mEntry.Extracted := TIndexExtractor.Extract(FTree, AFileName);
@@ -139,7 +149,9 @@ begin
   mIndex := EntryIndex(AFileName);
   mEntry := FEntries[mIndex];
   if mEntry.HasMerged and (mEntry.MergedIndex = AIndex) then
+  begin
     Exit(mEntry.Merged);
+  end;
   // Ein anderer Index ersetzt den gemerkten Stand; in einem Lauf ist es immer derselbe.
   mEntry.Merged := Merge(AIndex, mEntry.Extracted, AFileName);
   mEntry.MergedIndex := AIndex;

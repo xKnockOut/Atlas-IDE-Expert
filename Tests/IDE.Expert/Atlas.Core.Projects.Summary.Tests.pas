@@ -72,6 +72,9 @@ type
     /// <summary>#69: letzter Testlauf für die Karte Tests (#763) und „Fehlgeschlagene erneut ausführen“.</summary>
     [Test]
     procedure TestsRoundTripAndLimits;
+    /// <summary>#1455: Das Modul Tests liest die fehlgeschlagenen Tests ohne die Willkommensseite.</summary>
+    [Test]
+    procedure FailedTestsOfStoredRun;
     /// <summary>#533: Release-Wächter, letzte Prüfung und Versionen je Konfiguration und Plattform.</summary>
     [Test]
     procedure ReleaseRoundTripAndRemember;
@@ -88,7 +91,7 @@ uses
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.Summary;
 
@@ -554,6 +557,34 @@ begin
   Assert.IsTrue(Read.Tests.Known);
   Assert.AreEqual(3, Read.Tests.Passed);
   Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"jenkins":{"job":"x"}');
+end;
+
+procedure TAtlasProjectSummaryTests.FailedTestsOfStoredRun;
+const
+  TestProject = 'C:\Projekte\Demo.Tests.dproj';
+var
+  mSummary: TAtlasProjectSummary;
+  mFailure: TAtlasProjectTestFailure;
+  mNames: TArray<string>;
+begin
+  Assert.AreEqual(0, Integer(Length(TAtlasProjectSummaries.FailedTestsOf(FFolder, TestProject))), 'ohne Datei');
+  mSummary := TAtlasProjectSummary.Create(TestProject);
+  mSummary.Tests.Known := True;
+  mSummary.Tests.Project := TestProject;
+  mSummary.Tests.Failed := 1;
+  mFailure := Default(TAtlasProjectTestFailure);
+  mFailure.Test := 'Demo.Tests.TRechner.Teilt';
+  mSummary.Tests.Failures := [mFailure, mFailure];
+  Assert.IsTrue(TAtlasProjectSummaries.Save(FFolder, mSummary));
+  mNames := TAtlasProjectSummaries.FailedTestsOf(FFolder, 'c:\projekte\demo.tests.dproj');
+  Assert.AreEqual(1, Integer(Length(mNames)), 'andere Schreibweise, jeder Test einmal');
+  Assert.AreEqual('Demo.Tests.TRechner.Teilt', mNames[0]);
+  Assert.AreEqual(0, Integer(Length(TAtlasProjectSummaries.FailedTestsOf(FFolder, ''))), 'ohne Projekt');
+  // Der Lauf gehört zu einem anderen Testprojekt (Gruppe, #69): nichts.
+  mSummary.Tests.Project := 'C:\Projekte\Andere.Tests.dproj';
+  Assert.IsTrue(TAtlasProjectSummaries.Save(FFolder, mSummary));
+  Assert.AreEqual(0, Integer(Length(TAtlasProjectSummaries.FailedTestsOf(FFolder, TestProject))));
+  Assert.Contains(TAtlasProjectSummaries.DefaultFolder, TAtlasProjectSummaries.FolderName);
 end;
 
 procedure TAtlasProjectSummaryTests.ReleaseRoundTripAndRemember;

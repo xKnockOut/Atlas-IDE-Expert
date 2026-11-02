@@ -195,17 +195,21 @@ begin
   repeat
     Index := Pos(AMarker, AText, Index + 1);
     if Index = 0 then
+    begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    end;
     Inc(Found);
   until Found = AOccurrence;
   Line := 0;
   LineStart := 1;
   for Found := 1 to Index - 1 do
+  begin
     if AText[Found] = #10 then
     begin
       Inc(Line);
       LineStart := Found + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -251,9 +255,13 @@ var
 begin
   Results := ResolveAllAt(AText, AMarker, AOccurrence);
   if Length(Results) > 0 then
-    Result := Results[0]
+  begin
+    Result := Results[0];
+  end
   else
+  begin
     Result := Default(TResolvedSymbol);
+  end;
 end;
 
 procedure TNameResolverStage2Tests.ChoosesOverloadByArgumentCount;
@@ -506,6 +514,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Units)));
   Checked := 0;
   for Symbol in Units[0].Symbols do
+  begin
     if (Symbol.Name = 'TList') then
     begin
       Assert.AreEqual('T', Symbol.TypeParams);
@@ -522,7 +531,9 @@ begin
       Assert.AreEqual(Ord(TIndexVisibility.Private), Ord(Symbol.Visibility));
       Inc(Checked);
     end;
+  end;
   for Symbol in Units[1].Symbols do
+  begin
     if Symbol.Name = 'TKundenListe' then
     begin
       Assert.AreEqual('TObjectList', Symbol.Ancestors[0]);
@@ -530,6 +541,7 @@ begin
       Assert.AreEqual('TKunde', Symbol.AncestorArgs[0]);
       Inc(Checked);
     end;
+  end;
   Assert.AreEqual(4, Checked);
 end;
 

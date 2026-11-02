@@ -86,11 +86,17 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       if SameText(AFileName, Root + '\' + LegacyConfigurationFileName) then
-        AText := FLegacyText
+      begin
+        AText := FLegacyText;
+      end
       else if SameText(AFileName, Root + '\' + ConfigurationFileName) then
-        AText := FDiskText
+      begin
+        AText := FDiskText;
+      end
       else
+      begin
         AText := '';
+      end;
       Result := AText <> '';
     end);
   FConfiguration.OnChanged :=
@@ -217,7 +223,9 @@ begin
     begin
       Result := nil;
       if Known then
+      begin
         Exit;
+      end;
       Issue := Default(TConfigurationIssue);
       Issue.Range := ASettings.DfmPropertyRules[0].ClassRange;
       Issue.Message := 'unbekannt: ' + ASettings.DfmPropertyRules[0].ClassName;

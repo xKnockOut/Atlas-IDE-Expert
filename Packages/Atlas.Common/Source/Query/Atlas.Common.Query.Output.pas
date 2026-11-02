@@ -52,21 +52,33 @@ end;
 function CsvCell(const AText: string): string;
 begin
   if (Pos(';', AText) > 0) or (Pos('"', AText) > 0) or (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) then
-    Result := '"' + StringReplace(AText, '"', '""', [rfReplaceAll]) + '"'
+  begin
+    Result := '"' + StringReplace(AText, '"', '""', [rfReplaceAll]) + '"';
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function Summary(const AResult: TQueryResult): string;
 begin
   if AResult.Truncated then
-    Result := Format('%d von %d Treffern', [Length(AResult.Rows), AResult.Total])
+  begin
+    Result := Format('%d von %d Treffern', [Length(AResult.Rows), AResult.Total]);
+  end
   else if AResult.Total = 1 then
-    Result := '1 Treffer'
+  begin
+    Result := '1 Treffer';
+  end
   else
+  begin
     Result := Format('%d Treffer', [AResult.Total]);
+  end;
   if AResult.InferredCount > 0 then
+  begin
     Result := Result + Format(', %d davon erschlossen', [AResult.InferredCount]);
+  end;
   Result := Result + Format(' in %d ms', [AResult.ElapsedMs]);
 end;
 
@@ -77,15 +89,25 @@ class function TQueryOutput.TryParseFormat(const AText: string; AFallback: TQuer
 begin
   Result := True;
   if AText = '' then
-    AFormat := AFallback
+  begin
+    AFormat := AFallback;
+  end
   else if SameText(AText, 'markdown') then
-    AFormat := TQueryOutputFormat.Markdown
+  begin
+    AFormat := TQueryOutputFormat.Markdown;
+  end
   else if SameText(AText, 'json') then
-    AFormat := TQueryOutputFormat.Json
+  begin
+    AFormat := TQueryOutputFormat.Json;
+  end
   else if SameText(AText, 'csv') then
-    AFormat := TQueryOutputFormat.Csv
+  begin
+    AFormat := TQueryOutputFormat.Csv;
+  end
   else if SameText(AText, 'text') then
-    AFormat := TQueryOutputFormat.Text
+  begin
+    AFormat := TQueryOutputFormat.Text;
+  end
   else
   begin
     AFormat := AFallback;
@@ -110,12 +132,18 @@ end;
 class function TQueryOutput.ErrorText(const AResult: TQueryResult): string;
 begin
   if AResult.ErrorColumn > 0 then
+  begin
     Result := Format('Spalte %d: %s', [AResult.ErrorColumn, AResult.Error]) + sLineBreak + '  ' + AResult.Query +
-      sLineBreak + '  ' + StringOfChar(' ', AResult.ErrorColumn - 1) + '^'
+      sLineBreak + '  ' + StringOfChar(' ', AResult.ErrorColumn - 1) + '^';
+  end
   else
+  begin
     Result := AResult.Error;
+  end;
   if (AResult.Suggestion <> '') and not ContainsText(AResult.Error, '`' + AResult.Suggestion + '`') then
+  begin
     Result := Result + sLineBreak + Format('Vorschlag: %s', [AResult.Suggestion]);
+  end;
 end;
 
 class function TQueryOutput.Markdown(const AResult: TQueryResult): string;
@@ -126,18 +154,26 @@ var
   mFirst: string;
 begin
   if AResult.Failed then
+  begin
     Exit('```' + sLineBreak + ErrorText(AResult) + sLineBreak + '```');
+  end;
   mBuilder := TStringBuilder.Create;
   try
     mBuilder.Append('`').Append(AResult.Query).Append('`: ').Append(Summary(AResult)).Append(sLineBreak);
     if Length(AResult.Rows) = 0 then
+    begin
       Exit(mBuilder.ToString);
+    end;
     mBuilder.Append(sLineBreak).Append('|');
     for mIndex := 0 to High(AResult.Columns) do
+    begin
       mBuilder.Append(' ').Append(AResult.Columns[mIndex]).Append(' |');
+    end;
     mBuilder.Append(' Datei |').Append(sLineBreak).Append('|');
     for mIndex := 0 to High(AResult.Columns) + 1 do
+    begin
       mBuilder.Append('---|');
+    end;
     mBuilder.Append(sLineBreak);
     for mRow in AResult.Rows do
     begin
@@ -146,26 +182,36 @@ begin
       begin
         mFirst := MarkdownCell(TQueryResult.CellText(mRow, mIndex));
         if (mIndex = 0) and mRow.Inferred then
+        begin
           mFirst := mFirst + ' (erschlossen)';
+        end;
         mBuilder.Append(' ').Append(mFirst).Append(' |');
       end;
       if AResult.Entity <> 'units' then
+      begin
         mBuilder.Append(' ').Append(MarkdownCell(mRow.Path)).Append(':').Append(mRow.Range.StartPos.Line + 1)
-          .Append(' |')
+          .Append(' |');
+      end
       else
+      begin
         mBuilder.Append(' ').Append(MarkdownCell(mRow.Path)).Append(' |');
+      end;
       mBuilder.Append(sLineBreak);
     end;
     if AResult.Truncated then
+    begin
       mBuilder.Append(sLineBreak).Append(Format('Weitere %d Treffer nicht gezeigt (limit).',
         [AResult.Total - Length(AResult.Rows)])).Append(sLineBreak);
+    end;
     for mRow in AResult.Rows do
+    begin
       if mRow.Inferred then
       begin
         mBuilder.Append(sLineBreak).Append('Erschlossen heißt: Ein Aufruf zählt mit, den die Namensauflösung nicht ' +
           'sicher zuordnet (Interface, virtuelle Methode, Überladung; siehe get_call_hierarchy).').Append(sLineBreak);
         Break;
       end;
+    end;
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
@@ -181,9 +227,13 @@ begin
       Result := TMetricsReport.JsonString(AValue.Text);
     TQueryValueKind.Flag:
       if AValue.Number <> 0 then
-        Result := 'true'
+      begin
+        Result := 'true';
+      end
       else
+      begin
         Result := 'false';
+      end;
   else
     Result := 'null';
   end;
@@ -209,7 +259,9 @@ begin
     for mIndex := 0 to High(AResult.Columns) do
     begin
       if mIndex > 0 then
+      begin
         mBuilder.Append(', ');
+      end;
       mBuilder.Append(TMetricsReport.JsonString(AResult.Columns[mIndex]));
     end;
     mBuilder.Append('], "total": ').Append(AResult.Total).Append(', "truncated": ')
@@ -219,7 +271,9 @@ begin
     begin
       mRow := AResult.Rows[mIndex];
       if mIndex > 0 then
+      begin
         mBuilder.Append(', ');
+      end;
       mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(mRow.Name))
         .Append(', "container": ').Append(TMetricsReport.JsonString(mRow.Container))
         .Append(', "unit": ').Append(TMetricsReport.JsonString(mRow.UnitName))
@@ -229,17 +283,25 @@ begin
         .Append(', "character": ').Append(mRow.Range.StartPos.Character + 1)
         .Append(', "inferred": ').Append(LowerCase(BoolToStr(mRow.Inferred, True)));
       if mRow.Inferred then
+      begin
         mBuilder.Append(', "inferredDetail": ').Append(TMetricsReport.JsonString(mRow.InferredDetail));
+      end;
       mBuilder.Append(', "values": {');
       for mColumn := 0 to High(AResult.Columns) do
       begin
         if mColumn > 0 then
+        begin
           mBuilder.Append(', ');
+        end;
         mBuilder.Append(TMetricsReport.JsonString(AResult.Columns[mColumn])).Append(': ');
         if mColumn <= High(mRow.Values) then
-          mBuilder.Append(JsonValue(mRow.Values[mColumn]))
+        begin
+          mBuilder.Append(JsonValue(mRow.Values[mColumn]));
+        end
         else
+        begin
           mBuilder.Append('null');
+        end;
       end;
       mBuilder.Append('}}');
     end;
@@ -257,19 +319,27 @@ var
   mIndex: Integer;
 begin
   if AResult.Failed then
+  begin
     Exit(ErrorText(AResult));
+  end;
   mBuilder := TStringBuilder.Create;
   try
     for mIndex := 0 to High(AResult.Columns) do
+    begin
       mBuilder.Append(CsvCell(AResult.Columns[mIndex])).Append(';');
+    end;
     mBuilder.Append('path;inferred').Append(sLineBreak);
     for mRow in AResult.Rows do
     begin
       for mIndex := 0 to High(AResult.Columns) do
+      begin
         mBuilder.Append(CsvCell(TQueryResult.CellText(mRow, mIndex))).Append(';');
+      end;
       mBuilder.Append(CsvCell(mRow.Path)).Append(';');
       if mRow.Inferred then
+      begin
         mBuilder.Append('erschlossen');
+      end;
       mBuilder.Append(sLineBreak);
     end;
     Result := mBuilder.ToString;
@@ -287,18 +357,30 @@ var
   mCell: string;
 begin
   if AResult.Failed then
+  begin
     Exit(ErrorText(AResult));
+  end;
   SetLength(mWidths, Length(AResult.Columns));
   for mIndex := 0 to High(AResult.Columns) do
+  begin
     mWidths[mIndex] := Length(AResult.Columns[mIndex]);
+  end;
   for mRow in AResult.Rows do
+  begin
     for mIndex := 0 to High(AResult.Columns) do
+    begin
       if Length(TQueryResult.CellText(mRow, mIndex)) > mWidths[mIndex] then
+      begin
         mWidths[mIndex] := Length(TQueryResult.CellText(mRow, mIndex));
+      end;
+    end;
+  end;
   mBuilder := TStringBuilder.Create;
   try
     for mIndex := 0 to High(AResult.Columns) do
+    begin
       mBuilder.Append(AResult.Columns[mIndex].PadRight(mWidths[mIndex] + 2));
+    end;
     mBuilder.Append('path').Append(sLineBreak);
     for mRow in AResult.Rows do
     begin
@@ -309,7 +391,9 @@ begin
       end;
       mBuilder.Append(mRow.Path);
       if mRow.Inferred then
+      begin
         mBuilder.Append('  (erschlossen)');
+      end;
       mBuilder.Append(sLineBreak);
     end;
     mBuilder.Append(Summary(AResult)).Append(sLineBreak);
@@ -327,7 +411,9 @@ begin
   for mIndex := 0 to High(AItems) do
   begin
     if mIndex > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + TMetricsReport.JsonString(AItems[mIndex]);
   end;
   Result := Result + ']';
@@ -336,9 +422,13 @@ end;
 function JsonFlag(AValue: Boolean): string;
 begin
   if AValue then
-    Result := 'true'
+  begin
+    Result := 'true';
+  end
   else
+  begin
     Result := 'false';
+  end;
 end;
 
 class function TQueryOutput.CatalogJson(const AQueries: TArray<TSavedQuery>): string;
@@ -356,7 +446,9 @@ begin
     for mEntity := Low(TQueryEntity) to High(TQueryEntity) do
     begin
       if mEntity <> Low(TQueryEntity) then
+      begin
         mBuilder.Append(', ');
+      end;
       mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(TQueryCatalog.EntityName(mEntity)))
         .Append(', "caption": ').Append(TMetricsReport.JsonString(TQueryCatalog.EntityCaption(mEntity)))
         .Append(', "fields": [');
@@ -364,7 +456,9 @@ begin
       for mField in TQueryCatalog.FieldsOf(mEntity) do
       begin
         if not mFirst then
+        begin
           mBuilder.Append(', ');
+        end;
         mFirst := False;
         mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(mField.Name))
           .Append(', "type": ').Append(TMetricsReport.JsonString(TQueryCatalog.FieldTypeName(mField.FieldType)))
@@ -373,22 +467,28 @@ begin
       mBuilder.Append('], "predicates": [');
       mFirst := True;
       for mKind := Low(TQueryPredicateKind) to High(TQueryPredicateKind) do
+      begin
         if mEntity in TQueryCatalog.PredicateEntities(mKind) then
         begin
           if not mFirst then
+          begin
             mBuilder.Append(', ');
+          end;
           mFirst := False;
           mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(TQueryCatalog.PredicateName(mKind)))
             .Append(', "description": ').Append(TMetricsReport.JsonString(TQueryCatalog.PredicateDescription(mKind)))
             .Append('}');
         end;
+      end;
       mBuilder.Append(']}');
     end;
     mBuilder.Append('], "keywords": ').Append(JsonStrings(TQueryCatalog.Keywords)).Append(', "queries": [');
     for mIndex := 0 to High(AQueries) do
     begin
       if mIndex > 0 then
+      begin
         mBuilder.Append(', ');
+      end;
       mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Name))
         .Append(', "query": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Query))
         .Append(', "description": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Description))

@@ -65,11 +65,13 @@ begin
   FSearchPaths := ASearchPaths;
   FFileExists := AFileExists;
   if not Assigned(FFileExists) then
+  begin
     FFileExists :=
       function(const AFileName: string): Boolean
       begin
         Result := FileExists(AFileName);
       end;
+  end;
 end;
 
 procedure TLspDocumentLinks.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -88,7 +90,9 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('range', TLspPositions.RangeToJson(ALink.Range));
   if ALink.IsUrl then
-    Result.AddPair('target', ALink.Target)
+  begin
+    Result.AddPair('target', ALink.Target);
+  end
   else
   begin
     Result.AddPair('target', TDocumentUris.FromPath(ALink.Target));
@@ -106,18 +110,26 @@ var
   Links: TArray<TDocumentLink>;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   SearchPaths := nil;
   if Assigned(FSearchPaths) then
+  begin
     SearchPaths := FSearchPaths(Uri);
+  end;
   Links := TDocumentLinks.Find(Document.Text, TDocumentUris.ToPath(Uri), SearchPaths, FFileExists);
   ACancellation.ThrowIfCancellationRequested;
   // Ergebnis erst nach der Suche anlegen, damit ein Abbruch nichts verliert.
   Result := TJSONArray.Create;
   for Link in Links do
+  begin
     TJSONArray(Result).AddElement(LinkToJson(Link));
+  end;
 end;
 
 end.

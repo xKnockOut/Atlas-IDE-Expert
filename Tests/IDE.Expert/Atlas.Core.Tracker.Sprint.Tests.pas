@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerSprintTests = class
   public
     /// <summary>Montag bis Freitag, Arbeitstage laut Board, ohne Arbeitstag im Zeitraum alle Tage.</summary>

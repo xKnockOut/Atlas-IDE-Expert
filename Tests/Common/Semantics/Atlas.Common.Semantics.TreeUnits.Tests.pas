@@ -115,10 +115,16 @@ begin
       mFound: Boolean;
     begin
       if (ANode.Kind = TSyntaxKind.Identifier) or (ANode.Kind = TSyntaxKind.MemberAccess) then
+      begin
         if AResolver.NodeType(ATree, cFileName, ANode, mSymbol, mType, mFound) and mFound then
-          mTypes := mTypes + mType.Name + ','
+        begin
+          mTypes := mTypes + mType.Name + ',';
+        end
         else
+        begin
           mTypes := mTypes + '?,';
+        end;
+      end;
       Result := True;
     end);
   Result := mTypes;

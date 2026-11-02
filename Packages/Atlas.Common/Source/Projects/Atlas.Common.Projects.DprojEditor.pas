@@ -65,16 +65,24 @@ begin
   Result := '';
   Start := FindText(AName + '=', ATag, 1);
   if Start = 0 then
+  begin
     Exit;
+  end;
   Start := Start + Length(AName) + 1;
   if Start > Length(ATag) then
+  begin
     Exit;
+  end;
   Quote := ATag[Start];
   if (Quote <> '"') and (Quote <> '''') then
+  begin
     Exit;
+  end;
   Stop := Pos(Quote, ATag, Start + 1);
   if Stop > 0 then
+  begin
     Result := Copy(ATag, Start + 1, Stop - Start - 1);
+  end;
 end;
 
 function WithoutSpaces(const AText: string): string;
@@ -83,8 +91,12 @@ var
 begin
   Result := '';
   for Ch in AText do
+  begin
     if Ch > ' ' then
+    begin
       Result := Result + Ch;
+    end;
+  end;
 end;
 
 /// <summary>Einrückung der Zeile, in der Position APos (ab 1) steht.</summary>
@@ -94,10 +106,14 @@ var
 begin
   Start := APos;
   while (Start > 1) and (AText[Start - 1] <> #10) do
+  begin
     Dec(Start);
+  end;
   Index := Start;
   while (Index <= Length(AText)) and ((AText[Index] = ' ') or (AText[Index] = #9)) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(AText, Start, Index - Start);
 end;
 
@@ -106,7 +122,9 @@ function ListItem(const AItem: string): string;
 begin
   Result := Trim(AItem);
   while (Result <> '') and ((Result[Length(Result)] = '\') or (Result[Length(Result)] = '/')) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 { TDprojEditor }
@@ -116,21 +134,27 @@ var
   Start, TagEnd, Stop, KeyStart, KeyEnd: Integer;
 begin
   if SameText(AConfig, 'Base') then
+  begin
     Exit('Base');
+  end;
   Result := '';
   Start := FindText('<BuildConfiguration', AText, 1);
   while Start > 0 do
   begin
     TagEnd := Pos('>', AText, Start);
     if TagEnd = 0 then
+    begin
       Exit;
+    end;
     Stop := FindText('</BuildConfiguration>', AText, TagEnd);
     if (Stop > 0) and SameText(Attribute(Copy(AText, Start, TagEnd - Start + 1), 'Include'), AConfig) then
     begin
       KeyStart := FindText('<Key>', AText, TagEnd);
       KeyEnd := FindText('</Key>', AText, KeyStart);
       if (KeyStart > 0) and (KeyStart < Stop) and (KeyEnd > 0) then
+      begin
         Result := Trim(Copy(AText, KeyStart + 5, KeyEnd - KeyStart - 5));
+      end;
       Exit;
     end;
     Start := FindText('<BuildConfiguration', AText, TagEnd);
@@ -147,7 +171,9 @@ begin
   while Separator > 0 do
   begin
     if SameText(ListItem(Copy(Rest, 1, Separator - 1)), ListItem(AValue)) then
+    begin
       Exit(True);
+    end;
     Delete(Rest, 1, Separator);
     Separator := Pos(';', Rest);
   end;
@@ -167,34 +193,50 @@ begin
   begin
     TagEnd := Pos('>', AText, Start);
     if TagEnd = 0 then
+    begin
       Break;
+    end;
     if SameText(WithoutSpaces(Attribute(Copy(AText, Start, TagEnd - Start + 1), 'Condition')), Wanted) then
     begin
       GroupEnd := FindText('</PropertyGroup>', AText, TagEnd);
       if GroupEnd = 0 then
+      begin
         Break;
+      end;
       OpenPos := FindText('<' + AProperty + '>', AText, TagEnd);
       if (OpenPos > 0) and (OpenPos < GroupEnd) then
       begin
         ValueStart := OpenPos + Length(AProperty) + 2;
         ValueEnd := FindText('</' + AProperty + '>', AText, ValueStart);
         if (ValueEnd = 0) or (ValueEnd > GroupEnd) then
+        begin
           Break;
+        end;
         if ListContains(Copy(AText, ValueStart, ValueEnd - ValueStart), AValue) then
+        begin
           Exit(TDprojEditResult.Present);
+        end;
         if ValueEnd = ValueStart then
-          ANewText := Copy(AText, 1, ValueStart - 1) + EscapeXml(AValue) + Copy(AText, ValueStart, MaxInt)
+        begin
+          ANewText := Copy(AText, 1, ValueStart - 1) + EscapeXml(AValue) + Copy(AText, ValueStart, MaxInt);
+        end
         else
+        begin
           ANewText := Copy(AText, 1, ValueStart - 1) + EscapeXml(AValue) + ';' + Copy(AText, ValueStart, MaxInt);
+        end;
         Exit(TDprojEditResult.Added);
       end;
       // Neue Zeile direkt nach dem öffnenden Tag, eingerückt wie die erste Eigenschaft.
       LineEnd := Pos(#10, AText, TagEnd);
       if LineEnd = 0 then
+      begin
         Break;
+      end;
       Indent := IndentAt(AText, LineEnd + 1);
       if LineEnd + 1 + Length(Indent) >= GroupEnd then
+      begin
         Indent := IndentAt(AText, Start) + '    ';
+      end;
       Line := Format('%s<%s>%s;$(%s)</%s>', [Indent, AProperty, EscapeXml(AValue), AProperty, AProperty]) +
         TTextLines.LineBreakOf(AText);
       ANewText := Copy(AText, 1, LineEnd) + Line + Copy(AText, LineEnd + 1, MaxInt);

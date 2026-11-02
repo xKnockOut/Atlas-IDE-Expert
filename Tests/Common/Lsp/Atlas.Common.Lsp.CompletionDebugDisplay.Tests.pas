@@ -74,7 +74,9 @@ var
 begin
   Result := '';
   for Item in AItems.Items do
+  begin
     Result := Result + Item.Name + ' ';
+  end;
 end;
 
 function ColumnAfter(const ALine, AText: string): Integer;

@@ -73,11 +73,17 @@ begin
     begin
       Result := True;
       if SameText(AFileName, ProgramFile) then
-        AText := TextProgram
+      begin
+        AText := TextProgram;
+      end
       else if SameText(AFileName, ProjectFile) then
-        AText := AProjectText
+      begin
+        AText := AProjectText;
+      end
       else
+      begin
         Result := False;
+      end;
     end;
 end;
 

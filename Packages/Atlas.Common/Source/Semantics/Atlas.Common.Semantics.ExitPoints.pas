@@ -173,8 +173,12 @@ var
 begin
   Result := 0;
   for Point in Points do
+  begin
     if Point.IsExit then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TExitPointSet.ResultMissing: Boolean;
@@ -183,8 +187,12 @@ var
 begin
   Result := False;
   for Point in Points do
+  begin
     if Point.ResultMissing then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 { TExitPointOptions }
@@ -219,11 +227,17 @@ begin
   begin
     Middle := (Low + High) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else if ATokens[Middle].Offset > AOffset then
-      High := Middle - 1
+    begin
+      High := Middle - 1;
+    end
     else
+    begin
       Exit(Middle);
+    end;
   end;
   Result := -1;
 end;
@@ -239,10 +253,14 @@ begin
     Token := ATokens[Index];
     if (Token.StartPos.Line > APosition.Line) or
       ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    begin
       Break;
+    end;
     if (Token.EndPos.Line = APosition.Line) and (APosition.Character <= Token.EndPos.Character) and
       (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -257,9 +275,13 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].Offset >= AEndOffset then
+    begin
       Break;
+    end;
     if (ATokens[Index].Offset >= AStartOffset) and ATokens[Index].IsKeyword(AWord) then
+    begin
       Result := Index;
+    end;
   end;
 end;
 
@@ -277,17 +299,25 @@ begin
   begin
     Child := nil;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (AOffset >= Node[Index].StartOffset) and (AOffset < Node[Index].EndOffset) then
       begin
         Child := Node[Index];
         Break;
       end;
+    end;
     if Child = nil then
+    begin
       Break;
+    end;
     if Child.Kind in AKinds then
-      Result := Child
+    begin
+      Result := Child;
+    end
     else if Child.Kind in ABoundaries then
+    begin
       Result := nil;
+    end;
     Node := Child;
   end;
 end;
@@ -296,7 +326,9 @@ function BodyOf(ARoutine: TSyntaxNode): TSyntaxNode;
 begin
   Result := nil;
   if ARoutine <> nil then
+  begin
     Result := ARoutine.FindChild(TSyntaxKind.Block);
+  end;
 end;
 
 /// <summary>Knoten unter ARoot ohne verschachtelte Routinen und anonyme Methoden, in Baumreihenfolge.</summary>
@@ -314,9 +346,13 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode <> Root) and (ANode.Kind in RoutineKinds) then
+        begin
           Exit(False);
+        end;
         if ANode.Kind in Kinds then
+        begin
           List.Add(ANode);
+        end;
         Result := True;
       end);
     Result := List.ToArray;
@@ -331,11 +367,17 @@ var
 begin
   Result := False;
   if ARoutine = nil then
+  begin
     Exit;
+  end;
   if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
-    Header := ARoutine
+  begin
+    Header := ARoutine;
+  end
   else
+  begin
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  end;
   Result := (Header <> nil) and (Header.FindChild(TSyntaxKind.TypeReference) <> nil);
 end;
 
@@ -343,12 +385,18 @@ class function TExitPoints.PlainCallee(ACallee: TSyntaxNode): string;
 begin
   Result := '';
   if ACallee = nil then
+  begin
     Exit;
+  end;
   if ACallee.Kind = TSyntaxKind.Identifier then
-    Result := ACallee.Name
+  begin
+    Result := ACallee.Name;
+  end
   else if (ACallee.Kind = TSyntaxKind.MemberAccess) and (ACallee.ChildCount = 1) and
     (ACallee[0].Kind = TSyntaxKind.Identifier) and SameText(ACallee[0].Name, 'Self') then
+  begin
     Result := ACallee.Name;
+  end;
 end;
 
 /// <summary>Ziel eines Aufrufs: bei CallStatement der Ausdruck (bzw. dessen Ziel, wenn es ein Aufruf mit
@@ -357,10 +405,14 @@ function CalleeOf(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := nil;
   if ANode.ChildCount = 0 then
+  begin
     Exit;
+  end;
   Result := ANode[0];
   if (ANode.Kind = TSyntaxKind.CallStatement) and (Result.Kind = TSyntaxKind.Call) and (Result.ChildCount > 0) then
+  begin
     Result := Result[0];
+  end;
 end;
 
 /// <summary>Name einer Anweisung wie Exit, Break, Abort: nur ohne Objekt davor (TMonitor.Exit(FLock) zählt
@@ -369,13 +421,21 @@ function StatementWord(AStatement: TSyntaxNode): string;
 begin
   Result := '';
   if AStatement.Kind <> TSyntaxKind.CallStatement then
+  begin
     Exit;
+  end;
   if AStatement.ChildCount = 0 then
-    Result := AStatement.Name
+  begin
+    Result := AStatement.Name;
+  end
   else
+  begin
     Result := TExitPoints.PlainCallee(CalleeOf(AStatement));
+  end;
   if (Result <> '') and (Pos('.', Result) > 0) then
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Bereich des Namens am Ende des Aufrufziels (Foo bzw. Bar in Obj.Bar).</summary>
@@ -385,12 +445,16 @@ var
 begin
   Result := TTextRange.Create(ACallee.StartPos, ACallee.EndPos);
   for Index := High(ATokens) downto 0 do
+  begin
     if ATokens[Index].Offset < ACallee.EndOffset then
     begin
       if ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+      begin
         Result := TokenRange(ATokens[Index]);
+      end;
       Break;
     end;
+  end;
 end;
 
 function WordWanted(const AOptions: TExitPointOptions; const AWord: string): Boolean;
@@ -403,9 +467,13 @@ function ComparePoints(const A, B: TExitPoint): Integer;
 begin
   Result := A.Range.StartPos.Line - B.Range.StartPos.Line;
   if Result = 0 then
+  begin
     Result := A.Range.StartPos.Character - B.Range.StartPos.Character;
+  end;
   if Result = 0 then
+  begin
     Result := Ord(A.Kind) - Ord(B.Kind);
+  end;
 end;
 
 /// <summary>Nach Position, je Stelle nur der erste Eintrag (TArray.Sort ist nicht stabil: Art als dritter
@@ -424,7 +492,9 @@ begin
   for Point in Items do
   begin
     if (Count > 0) and (Result[Count - 1].Range.StartPos = Point.Range.StartPos) then
+    begin
       Continue;
+    end;
     Result[Count] := Point;
     Inc(Count);
   end;
@@ -462,16 +532,22 @@ begin
   inherited Create;
   FNames := TDictionary<string, Boolean>.Create;
   for Name in TExitPoints.RaisingRoutines do
+  begin
     FNames.AddOrSetValue(UpperCase(Name), True);
+  end;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Routines := TList<TSyntaxNode>.Create;
   try
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil) then
+        begin
           Routines.Add(ANode);
+        end;
         // Anonyme Methoden haben keinen Namen; was in ihnen steht, zählt nicht.
         Result := ANode.Kind <> TSyntaxKind.AnonymousMethod;
       end);
@@ -480,12 +556,16 @@ begin
       Body := BodyOf(Routine);
       // Vorfilter: Ohne raise und Abort im eigenen Rumpf kann die Routine nicht immer auslösen.
       if Length(OwnNodes(Body, [TSyntaxKind.RaiseStatement])) = 0 then
+      begin
         Continue;
+      end;
       Graph := TControlFlowGraph.Build(Routine);
       try
         if Graph.Complete and (Graph.IsReachable(Graph.ExitNode) = TFlowAnswer.No) and
           (Graph.IsReachable(Graph.RaiseExit) = TFlowAnswer.Yes) then
+        begin
           FNames.AddOrSetValue(UpperCase(ShortName(Routine.Name)), True);
+        end;
       finally
         Graph.Free;
       end;
@@ -520,12 +600,16 @@ var
 begin
   AEnds := nil;
   if not AGraph.Complete then
+  begin
     Exit(True);
+  end;
   Ends := TDictionary<TFlowNode, Boolean>.Create;
   Stack := TStack<TFlowNode>.Create;
   try
     for Node in AGraph.FallThrough do
+    begin
       Ends.AddOrSetValue(Node, True);
+    end;
     SetLength(Seen, AGraph.Nodes.Count);
     Stack.Push(AGraph.Entry);
     Seen[AGraph.Entry.Index] := True;
@@ -535,15 +619,21 @@ begin
       // RunError beendet das Programm wie Halt (das ControlFlow schon ans Ende führt).
       if (Node.Syntax <> nil) and (Node.Syntax.Kind = TSyntaxKind.CallStatement) and
         (ARaising.Contains(StatementWord(Node.Syntax)) or SameText(StatementWord(Node.Syntax), 'RunError')) then
+      begin
         Continue;
+      end;
       if Ends.ContainsKey(Node) then
+      begin
         AEnds := AEnds + [Node];
+      end;
       for Next in Node.Successors do
+      begin
         if not Seen[Next.Index] then
         begin
           Seen[Next.Index] := True;
           Stack.Push(Next);
         end;
+      end;
     end;
   finally
     Stack.Free;
@@ -561,7 +651,9 @@ function MissingAt(AGraph: TControlFlowGraph; ANode: TFlowNode; const AName: str
     Reaching: TReachingDefinitions;
   begin
     if AAfter and (SameText(ANode.Defines, AVariable) or ANode.TouchesName(AVariable)) then
+    begin
       Exit(False);
+    end;
     Reaching := AGraph.ReachingDefinitions(ANode, AVariable);
     Result := Reaching.FromEntry;
   end;
@@ -589,7 +681,9 @@ begin
   Body := BodyOf(ARoutine);
   Result := Body <> nil;
   if not Result then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   ASet.RoutineName := ARoutine.Name;
   ASet.IsFunction := IsFunctionRoutine(ARoutine);
@@ -598,10 +692,13 @@ begin
   begin
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
     if Header <> nil then
+    begin
       for Index := 0 to High(Tokens) do
       begin
         if Tokens[Index].Offset >= Header.EndOffset then
+        begin
           Break;
+        end;
         if (Tokens[Index].Offset >= Header.StartOffset) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
           SameText(Tokens[Index].Text, Name) then
         begin
@@ -610,6 +707,7 @@ begin
           Break;
         end;
       end;
+    end;
   end;
   Points := TList<TExitPoint>.Create;
   Graph := TControlFlowGraph.Build(ARoutine);
@@ -618,7 +716,9 @@ begin
     begin
       Index := TokenAtOffset(Tokens, Node.StartOffset);
       if Index < 0 then
+      begin
         Continue;
+      end;
       Wanted := False;
       Kind := TExitPointKind.ExitCall;
       Word := '';
@@ -631,7 +731,9 @@ begin
       begin
         Word := StatementWord(Node);
         if SameText(Word, 'Exit') then
-          Wanted := WordWanted(AOptions, 'Exit')
+        begin
+          Wanted := WordWanted(AOptions, 'Exit');
+        end
         else if SameText(Word, 'Abort') then
         begin
           Kind := TExitPointKind.RaiseStatement;
@@ -652,14 +754,20 @@ begin
         end;
       end;
       if not Wanted then
+      begin
         Continue;
+      end;
       Point := MakePoint(Kind, TokenRange(Tokens[Index]), '');
       if Kind = TExitPointKind.RaisingCall then
+      begin
         Point.Detail := Word;
+      end;
       // Exit ohne Wert in einer Funktion: Ist das Ergebnis auf einem Weg hierher noch ungesetzt?
       if ASet.IsFunction and (Kind = TExitPointKind.ExitCall) and not ((Node.ChildCount > 0) and
         (Node[0].Kind = TSyntaxKind.Call) and (Node[0].ChildCount > 1)) then
+      begin
         Point.ResultMissing := MissingAt(Graph, Graph.NodeOf(Node), Name, False);
+      end;
       Points.Add(Point);
     end;
     // Abschließendes end, wenn ein Weg herausfällt.
@@ -670,8 +778,12 @@ begin
       begin
         Point := MakePoint(TExitPointKind.FallThrough, TokenRange(Tokens[Index]), '');
         if ASet.IsFunction then
+        begin
           for EndNode in Ends do
+          begin
             Point.ResultMissing := Point.ResultMissing or MissingAt(Graph, EndNode, Name, True);
+          end;
+        end;
         Points.Add(Point);
       end;
     end;
@@ -699,9 +811,13 @@ begin
   Result := nil;
   Name := ShortName(ARoutine.Name);
   for Node in OwnNodes(BodyOf(ARoutine), [TSyntaxKind.AssignStatement]) do
+  begin
     if IsResultTarget(Node, Name) then
+    begin
       Result := Result + [MakePoint(TExitPointKind.ResultAssign,
         TTextRange.Create(Node[0].StartPos, Node[0].EndPos), '')];
+    end;
+  end;
 end;
 
 { Exceptions }
@@ -713,7 +829,9 @@ begin
   Result := '';
   TypeNode := AHandler.FindChild(TSyntaxKind.TypeReference);
   if TypeNode <> nil then
+  begin
     Result := TypeNode.Name;
+  end;
 end;
 
 /// <summary>Klasse eines raise-Ausdrucks: EFoo.Create(…) bzw. EFoo.CreateFmt(…) → EFoo; '' sonst.</summary>
@@ -723,13 +841,19 @@ var
 begin
   Result := '';
   if ARaise.ChildCount = 0 then
+  begin
     Exit;
+  end;
   Node := ARaise[0];
   if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+  begin
     Node := Node[0];
+  end;
   if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) and
     (Node[0].Kind = TSyntaxKind.Identifier) and StartsText('Create', Node.Name) then
+  begin
     Result := Node[0].Name;
+  end;
 end;
 
 function ExceptionSources(ATree: TSyntaxTree; ATry: TSyntaxNode; const AClasses: TArray<string>;
@@ -747,13 +871,21 @@ var
   begin
     Result := '';
     if AClass = '' then
+    begin
       Exit;
+    end;
     // Bloßes except ohne Handler: jede Exception passt.
     if AClasses = nil then
+    begin
       Exit(AClass);
+    end;
     for Candidate in AClasses do
+    begin
       if SameText(AClass, Candidate) or (Assigned(AIsA) and AIsA(AClass, Candidate, AOffset)) then
+      begin
         Exit(AClass);
+      end;
+    end;
   end;
 
 begin
@@ -762,7 +894,9 @@ begin
   begin
     Part := ATry[Index];
     if Part.Kind in [TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
+    begin
       Continue;
+    end;
     for Node in OwnNodes(Part, [TSyntaxKind.CallStatement, TSyntaxKind.Call, TSyntaxKind.RaiseStatement]) do
     begin
       if Node.Kind = TSyntaxKind.RaiseStatement then
@@ -781,16 +915,22 @@ begin
       end;
       // Foo(1); steht als CallStatement über einem Call: nur der Call zählt.
       if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount > 0) and (Node[0].Kind = TSyntaxKind.Call) then
+      begin
         Continue;
+      end;
       Callee := CalleeOf(Node);
       if (Callee = nil) or not Assigned(AExceptions) then
+      begin
         Continue;
+      end;
       Documented := AExceptions(Callee);
       for Handler in Documented do
       begin
         Matched := Matching(Handler);
         if Matched = '' then
+        begin
           Continue;
+        end;
         Point := MakePoint(TExitPointKind.ExceptionSource, CalleeNameRange(ATree.Tokens, Callee), Callee.Name);
         Point.ExceptionClass := Matched;
         Result := Result + [Point];
@@ -817,13 +957,19 @@ begin
         Word: string;
       begin
         if (ANode <> Loop) and (ANode.Kind in RoutineKinds + LoopKinds) then
+        begin
           Exit(False);
+        end;
         Result := True;
         if ANode.Kind <> TSyntaxKind.CallStatement then
+        begin
           Exit;
+        end;
         Word := StatementWord(ANode);
         if SameText(Word, 'Break') or SameText(Word, 'Continue') then
+        begin
           List.Add(ANode);
+        end;
       end);
     Result := List.ToArray;
   finally
@@ -841,24 +987,32 @@ begin
   Tokens := ATree.Tokens;
   Index := TokenAtOffset(Tokens, ALoop.StartOffset);
   if Index >= 0 then
+  begin
     Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(Tokens[Index]), '')];
+  end;
   if ALoop.Kind = TSyntaxKind.RepeatStatement then
   begin
     Index := LastKeyword(Tokens, ALoop.StartOffset, ALoop.EndOffset, 'until');
     if Index >= 0 then
+    begin
       Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(Tokens[Index]), '')];
+    end;
   end
   else if ALoop.ChildCount > 0 then
   begin
     Body := ALoop[ALoop.ChildCount - 1];
     Index := LastKeyword(Tokens, ALoop.StartOffset, Body.StartOffset, 'do');
     if Index >= 0 then
+    begin
       Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(Tokens[Index]), '')];
+    end;
     if Body.Kind = TSyntaxKind.Block then
     begin
       Index := LastKeyword(Tokens, Body.StartOffset, Body.EndOffset, 'end');
       if Index >= 0 then
+      begin
         Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(Tokens[Index]), '')];
+      end;
     end;
   end;
   // Break und Continue dieser Schleife, nicht die einer inneren.
@@ -866,7 +1020,9 @@ begin
   begin
     Index := TokenAtOffset(Tokens, Body.StartOffset);
     if Index >= 0 then
+    begin
       Result := Result + [MakePoint(TExitPointKind.LoopJump, TokenRange(Tokens[Index]), '')];
+    end;
   end;
 end;
 
@@ -880,7 +1036,9 @@ begin
   Raising := TRaisingRoutines.Create(ATree);
   try
     if ExitPointsOf(ATree, ARoutine, AOptions, Raising, Result) then
+    begin
       Result.Query := TExitPointQuery.Routine;
+    end;
   finally
     Raising.Free;
   end;
@@ -900,10 +1058,14 @@ begin
   Result := nil;
   Routine := Innermost(ARoot, AOffset, [TSyntaxKind.RoutineDecl], []);
   if (Routine = nil) or (BodyOf(Routine) = nil) then
+  begin
     Exit;
+  end;
   Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
   if (Header <> nil) and (AOffset >= Header.StartOffset) and (AOffset < Header.EndOffset) then
+  begin
     Result := Routine;
+  end;
 end;
 
 class function TExitPoints.Find(ATree: TSyntaxTree; const APosition: TTextPosition;
@@ -922,11 +1084,15 @@ var
 begin
   Result := Default(TExitPointSet);
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Index := WordAt(Tokens, APosition);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Token := Tokens[Index];
   // Foo.Exit, Obj.Break, Obj.Result: kein Austritt (der Kopf TFoo.Run zählt).
   Qualified := (Index > 0) and Tokens[Index - 1].IsSymbol('.');
@@ -939,7 +1105,9 @@ begin
     begin
       Loop := Innermost(ATree.Root, Token.Offset, LoopKinds, RoutineKinds);
       if (Loop = nil) or not AOptions.Loops then
+      begin
         Exit;
+      end;
       Result.Query := TExitPointQuery.Loop;
       Result.Points := Sorted(LoopPoints(ATree, Loop));
       Exit;
@@ -960,24 +1128,38 @@ begin
         Child := Handler.FindChild(TSyntaxKind.TypeReference);
         if not (SameText(Word, 'on') and (Token.Offset = Handler.StartOffset)) and
           not ((Child <> nil) and (Token.Offset >= Child.StartOffset) and (Token.Offset < Child.EndOffset)) then
+        begin
           Handler := nil;
+        end;
         ExceptPart := nil;
         if Handler <> nil then
+        begin
           ExceptPart := Handler.Parent;
+        end;
       end;
       if (ExceptPart <> nil) and (ExceptPart.Kind = TSyntaxKind.ExceptBlock) and
         ((Handler <> nil) or Token.IsKeyword('except')) then
       begin
         if not AOptions.Exceptions then
+        begin
           Exit;
+        end;
         TryNode := ExceptPart.Parent;
         Classes := nil;
         if Handler <> nil then
-          Classes := [HandlerClass(Handler)]
+        begin
+          Classes := [HandlerClass(Handler)];
+        end
         else
+        begin
           for Index := 0 to ExceptPart.ChildCount - 1 do
+          begin
             if ExceptPart[Index].Kind = TSyntaxKind.ExceptionHandler then
+            begin
               Classes := Classes + [HandlerClass(ExceptPart[Index])];
+            end;
+          end;
+        end;
         Points := ExceptionSources(ATree, TryNode, Classes, Token.Offset, AExceptions, AIsA);
         Points := Points + [MakePoint(TExitPointKind.Handler, TokenRange(Token), '')];
         Result.Query := TExitPointQuery.Exceptions;
@@ -992,12 +1174,16 @@ begin
       if (Statement <> nil) and SameText(Word, ShortName(Statement.Name)) then
       begin
         if ExitPointsOf(ATree, Statement, AOptions, Raising, Result) then
+        begin
           Result.Query := TExitPointQuery.Routine;
+        end;
         Exit;
       end;
     end;
     if Qualified or (Routine = nil) or (BodyOf(Routine) = nil) or (Token.Offset < BodyOf(Routine).StartOffset) then
+    begin
       Exit;
+    end;
     // Result bzw. der Funktionsname als Ziel einer Zuweisung: Austritte und Zuweisungen.
     if IsFunctionRoutine(Routine) and (Token.Kind = TPascalTokenKind.Identifier) then
     begin
@@ -1017,14 +1203,20 @@ begin
     Statement := Innermost(ATree.Root, Token.Offset, [TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement],
       RoutineKinds);
     if (Statement = nil) or (Statement.StartOffset <> Token.Offset) then
+    begin
       Exit;
+    end;
     if not ((Statement.Kind = TSyntaxKind.RaiseStatement) or MatchText(StatementWord(Statement),
       ['Exit', 'Abort', 'Halt', 'RunError']) or Raising.Contains(StatementWord(Statement)) or
       ((AOptions.Keywords <> nil) and (StatementWord(Statement) <> '') and
       MatchText(StatementWord(Statement), AOptions.Keywords))) then
+    begin
       Exit;
+    end;
     if ExitPointsOf(ATree, Routine, AOptions, Raising, Result) then
+    begin
       Result.Query := TExitPointQuery.Routine;
+    end;
   finally
     Raising.Free;
   end;
@@ -1046,6 +1238,7 @@ begin
   Lines := ALines;
   // Deklarationen in Klassen und Rümpfe: der ///-Kommentar darüber. Einmal je Lookup gelesen.
   if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       var
@@ -1058,19 +1251,28 @@ begin
         if not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader]) or
           ((ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
           (ANode.Parent.Kind = TSyntaxKind.RoutineDecl)) then
+        begin
           Exit;
+        end;
         Comment := TXmlDoc.CommentAbove(Lines, ANode.StartPos.Line);
         if Comment = '' then
+        begin
           Exit;
+        end;
         Doc := TXmlDoc.Parse(Comment);
         if Length(Doc.Exceptions) = 0 then
+        begin
           Exit;
+        end;
         Item.Name := ShortName(ANode.Name);
         Item.Classes := nil;
         for Entry in Doc.Exceptions do
+        begin
           Item.Classes := Item.Classes + [TXmlDoc.NormalizeCref(Entry.Name)];
+        end;
         Docs := Docs + [Item];
       end);
+  end;
   Result :=
     function(ACallee: TSyntaxNode): TArray<string>
     var
@@ -1080,12 +1282,20 @@ begin
       Result := nil;
       Name := PlainCallee(ACallee);
       if (Name = '') and (ACallee <> nil) and (ACallee.Kind = TSyntaxKind.MemberAccess) then
+      begin
         Name := ACallee.Name;
+      end;
       if Name = '' then
+      begin
         Exit;
+      end;
       for Item in Docs do
+      begin
         if SameText(Item.Name, Name) then
+        begin
           Result := Result + Item.Classes;
+        end;
+      end;
     end;
 end;
 
@@ -1104,10 +1314,14 @@ begin
       // Jede Exception-Klasse stammt von Exception ab (Konvention der RTL).
       if SameText(AHandler, 'Exception') or SameText(AHandler, 'System.SysUtils.Exception') or
         SameText(AClass, AHandler) then
+      begin
         Exit(True);
+      end;
       Result := False;
       if Tree = nil then
+      begin
         Exit;
+      end;
       Current := AClass;
       for Depth := 1 to 32 do
       begin
@@ -1120,19 +1334,29 @@ begin
           begin
             Result := not Found;
             if Found or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, Current) then
+            begin
               Exit;
+            end;
             ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
             if ClassNode = nil then
+            begin
               Exit;
+            end;
             Found := True;
             First := ClassNode.FindChild(TSyntaxKind.TypeReference);
             if First <> nil then
+            begin
               Ancestor := First.Name;
+            end;
           end);
         if Ancestor = '' then
+        begin
           Exit;
+        end;
         if SameText(Ancestor, AHandler) then
+        begin
           Exit(True);
+        end;
         Current := Ancestor;
       end;
     end;

@@ -203,9 +203,13 @@ var
 begin
   Index := NewIndex;
   if AConfigJson = '' then
-    Settings := TServerSettings.Default
+  begin
+    Settings := TServerSettings.Default;
+  end
   else
+  begin
     Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Tree := TPascalParser.Parse(ASource);
   try
     Context := Default(TRuleContext);
@@ -214,7 +218,9 @@ begin
     Context.Text := ASource;
     Context.Tree := Tree;
     if AWithIndex then
+    begin
       Context.Index := Index;
+    end;
     Result := TRuleEngine.Run([IRule(TDeprecatedSymbolRule.Create)], Settings, Context);
   finally
     Tree.Free;
@@ -227,8 +233,10 @@ var
 begin
   Result := '';
   for Finding in AFindings do
+  begin
     Result := Result + Format('%d:%d %s|', [Finding.Range.StartPos.Line, Finding.Range.StartPos.Character,
       Finding.Message]);
+  end;
 end;
 
 /// <summary>Haupt mit uses AUses und dem Rumpf ABody in Lauf.</summary>
@@ -284,6 +292,7 @@ begin
     '10:2 Ohne ist deprecated (wie W1000).|11:5 Grenze ist platform (wie W1002).|12:4 Bib ist library (wie W1001).|',
     Text);
   for Finding in Findings do
+  begin
     if Finding.Message.StartsWith('Alt ') then
     begin
       Assert.AreEqual(DeprecatedSymbolRuleId, Finding.RuleId);
@@ -296,7 +305,10 @@ begin
       Assert.AreEqual('Neu', Finding.Fixes[0].Edits[0].NewText);
     end
     else
+    begin
       Assert.AreEqual(0, Integer(Length(Finding.Fixes)), Finding.Message);
+    end;
+  end;
   // Methode: Ersatz im selben Typ.
   Findings := Run(Haupt('Werkzeug', '  L.Anhaengen;'#10), '', True);
   Assert.AreEqual('9:4 Anhaengen ist deprecated: Use Add (wie W1000).|', Messages(Findings));
@@ -572,8 +584,12 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = DeprecatedSymbolRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 

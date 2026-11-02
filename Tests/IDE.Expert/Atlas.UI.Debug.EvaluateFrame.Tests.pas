@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugEvaluateFrameTests = class
   private
     FLanguage: TAtlasLanguage;

@@ -127,11 +127,13 @@ var
   Entry: TTestFile;
 begin
   for Index := 0 to High(Files) do
+  begin
     if SameText(Files[Index].Name, AName) then
     begin
       Files[Index].Text := AText;
       Exit;
     end;
+  end;
   Entry.Name := AName;
   Entry.Text := AText;
   Files := Files + [Entry];
@@ -143,8 +145,12 @@ var
 begin
   Result := '';
   for Entry in Files do
+  begin
     if SameText(Entry.Name, AName) then
+    begin
       Result := Entry.Text;
+    end;
+  end;
 end;
 
 function FileOf(const AUnit: string): string;
@@ -158,10 +164,14 @@ function UnitText(const AName, AInterface, AImplementation, ABody: string): stri
 begin
   Result := 'unit ' + AName + ';'#10'interface'#10;
   if AInterface <> '' then
+  begin
     Result := Result + 'uses'#10'  ' + AInterface + ';'#10;
+  end;
   Result := Result + 'implementation'#10;
   if AImplementation <> '' then
+  begin
     Result := Result + 'uses'#10'  ' + AImplementation + ';'#10;
+  end;
   Result := Result + ABody + 'end.';
 end;
 
@@ -188,7 +198,9 @@ begin
     Result.Put(FileOf(Item[0]), UnitText(Item[0], Item[1], Item[2], ''));
     Sources := Sources + [FileOf(Item[0])];
     if Names <> '' then
+    begin
       Names := Names + ', ';
+    end;
     Names := Names + Item[0];
   end;
   Result.Put(AppFile, 'program App;'#10'uses'#10'  ' + Names + ';'#10'begin'#10'end.');
@@ -221,12 +233,18 @@ begin
     begin
       Texts.AddOrSetValue(UpperCase(Entry.Name), Entry.Text);
       if not SameText(ExtractFileExt(Entry.Name), '.dfm') then
+      begin
         Index.AddUnit(TIndexExtractor.ExtractText(Entry.Text, Entry.Name, nil, nil, True));
+      end;
     end;
     if AScenario.Config = '' then
-      Settings := TServerSettings.Default
+    begin
+      Settings := TServerSettings.Default;
+    end
     else
+    begin
       Settings := TConfigurationParser.Parse(AScenario.Config, Issues);
+    end;
     Tree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
     try
       Context := Default(TRuleContext);
@@ -239,6 +257,7 @@ begin
       Context.FormText := AScenario.Text(ChangeFileExt(ACheck, '.dfm'));
       Context.Live := AScenario.Live;
       if not AScenario.NoProjects then
+      begin
         Context.ProjectFiles := TRuleProjectFiles.Create(AScenario.Projects, Index,
           function(const AFileName: string; out AText: string): Boolean
           begin
@@ -248,8 +267,11 @@ begin
           begin
             Result := not Incomplete;
             if Incomplete then
+            begin
               AReason := 'Index läuft';
+            end;
           end);
+      end;
       for Round := 0 to AScenario.Repeats do
       begin
         Watch := TStopwatch.StartNew;
@@ -273,8 +295,12 @@ var
 begin
   Result := '';
   for Finding in AFindings do
+  begin
     if SameText(Finding.RuleId, ARule) then
+    begin
       Result := Result + Finding.Message + #10;
+    end;
+  end;
 end;
 
 procedure TDeadCodeTests.CycleOverImplementationWithFullPath;
@@ -541,8 +567,12 @@ var
   Finding: TRuleFinding;
 begin
   for Finding in AFindings do
+  begin
     if SameText(Finding.RuleId, UsesCycleRuleId) then
+    begin
       Exit(Finding);
+    end;
+  end;
   Result := Default(TRuleFinding);
 end;
 
@@ -555,7 +585,9 @@ begin
   for Related in AFinding.Related do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Format('%s@%s:%d:%d', [Related.Message, ExtractFileName(Related.FileName),
       Related.Range.StartPos.Line, Related.Range.StartPos.Character]);
   end;
@@ -568,7 +600,9 @@ var
 begin
   Result := '';
   for Fix in AFinding.Fixes do
+  begin
     Result := Result + Fix.Title + #10;
+  end;
 end;
 
 procedure TDeadCodeTests.LiveInterfaceCycleWithPathAndPlaces;
@@ -754,8 +788,10 @@ begin
   // ein Eintrag im implementation-uses, der keinen Zyklus bildet.
   Units := nil;
   for Index := 1 to UnitCount do
+  begin
     Units := Units + [TArray<string>.Create(Format('E%d', [Index]), Format('E%d', [Index mod UnitCount + 1]),
       Format('E%d', [(Index + 1) mod UnitCount + 1]))];
+  end;
   Data := Group(Units);
   Data.Live := True;
   // Beim Tippen steht der Graph schon (inkrementell, #268): gemessen wird die zweite Prüfung.
@@ -797,9 +833,13 @@ begin
   begin
     Result := TPath.Combine(Directory, TPath.Combine('Tests', 'Referenzprojekt'));
     if TDirectory.Exists(Result) then
+    begin
       Exit;
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   Result := '';
@@ -827,7 +867,9 @@ var
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   // Units von RefApp aus den in-Klauseln der .dpr.
   MainFile := TPath.Combine(Folder, 'RefApp.dpr');
   Data := Default(TScenario);
@@ -836,6 +878,7 @@ begin
   Tree := TSyntaxTreeCache.Parse(Data.Text(MainFile));
   try
     for Token in Tree.Tokens do
+    begin
       if (Token.Kind = TPascalTokenKind.StringLiteral) and EndsText('.pas''', Token.Text) then
       begin
         Source := TPath.Combine(Folder, StringReplace(Copy(Token.Text, 2, Length(Token.Text) - 2), '\',
@@ -843,6 +886,7 @@ begin
         Sources := Sources + [Source];
         Data.Put(Source, ReadSource(Source));
       end;
+    end;
   finally
     Tree.Free;
   end;
@@ -855,19 +899,31 @@ begin
   begin
     Lines := Data.Text(Source).Replace(#13#10, #10).Split([#10]);
     for Rule in Rules do
+    begin
       for Index := 0 to High(Lines) do
+      begin
         if Lines[Index].Contains('// ERWARTET-PROJEKT: ' + Rule) then
+        begin
           Expected := Expected + Format('%s:%d %s'#10, [ExtractFileName(Source), Index + 1, Rule]);
+        end;
+      end;
+    end;
     if SameText(ExtractFileExt(Source), '.pas') then
     begin
       for Rule in Rules do
+      begin
         for Finding in Run(Data, Source) do
+        begin
           if SameText(Finding.RuleId, Rule) then
           begin
             Actual := Actual + Format('%s:%d %s'#10, [ExtractFileName(Source), Finding.Range.StartPos.Line + 1, Rule]);
             if Rule = UsesCycleRuleId then
+            begin
               Paths := Paths + Finding.Message + #10;
+            end;
           end;
+        end;
+      end;
     end;
   end;
   Assert.AreEqual(Expected, Actual);
@@ -889,7 +945,9 @@ begin
   // Kette E1 -> E2 -> … -> E400 über implementation, E400 schließt den Kreis.
   Units := nil;
   for Index := 1 to UnitCount do
+  begin
     Units := Units + [TArray<string>.Create(Format('E%d', [Index]), '', Format('E%d', [Index mod UnitCount + 1]))];
+  end;
   Data := Group(Units);
   Watch := TStopwatch.StartNew;
   Assert.AreEqual(1, Integer(Length(Run(Data, FileOf('E1')))));

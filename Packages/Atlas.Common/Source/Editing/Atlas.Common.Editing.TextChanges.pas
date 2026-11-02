@@ -42,13 +42,21 @@ begin
     function(const A, B: TTextEdit): Integer
     begin
       if A.Range.StartPos.Line <> B.Range.StartPos.Line then
-        Result := B.Range.StartPos.Line - A.Range.StartPos.Line
+      begin
+        Result := B.Range.StartPos.Line - A.Range.StartPos.Line;
+      end
       else if A.Range.StartPos.Character <> B.Range.StartPos.Character then
-        Result := B.Range.StartPos.Character - A.Range.StartPos.Character
+      begin
+        Result := B.Range.StartPos.Character - A.Range.StartPos.Character;
+      end
       else if A.Range.EndPos.Line <> B.Range.EndPos.Line then
-        Result := B.Range.EndPos.Line - A.Range.EndPos.Line
+      begin
+        Result := B.Range.EndPos.Line - A.Range.EndPos.Line;
+      end
       else
+      begin
         Result := B.Range.EndPos.Character - A.Range.EndPos.Character;
+      end;
     end));
   Lines := TLineTable.Build(AText);
   Result := AText;
@@ -70,13 +78,19 @@ var
 begin
   Result := nil;
   if AOld = ANew then
+  begin
     Exit;
+  end;
   OldLines := TTextLines.SplitLines(AOld);
   NewLines := TTextLines.SplitLines(ANew, LineBreak);
   if not AOld.Contains(#10) and not AOld.Contains(#13) then
-    LineBreak := TTextLines.LineBreakOf(ANew)
+  begin
+    LineBreak := TTextLines.LineBreakOf(ANew);
+  end
   else
+  begin
     LineBreak := TTextLines.LineBreakOf(AOld);
+  end;
   for Hunk in TTextDiff.Hunks(OldLines, NewLines) do
   begin
     NewText := '';
@@ -86,7 +100,9 @@ begin
       StartPos := TTextPosition.Create(Hunk.OldStart, 0);
       EndPos := TTextPosition.Create(Hunk.OldStart + Hunk.OldCount, 0);
       for Line := Hunk.NewStart to Hunk.NewStart + Hunk.NewCount - 1 do
+      begin
         NewText := NewText + NewLines[Line] + LineBreak;
+      end;
     end
     else if Hunk.OldStart > 0 then
     begin
@@ -94,7 +110,9 @@ begin
       StartPos := TTextPosition.Create(Hunk.OldStart - 1, Length(OldLines[Hunk.OldStart - 1]));
       EndPos := TTextPosition.Create(High(OldLines), Length(OldLines[High(OldLines)]));
       for Line := Hunk.NewStart to Hunk.NewStart + Hunk.NewCount - 1 do
+      begin
         NewText := NewText + LineBreak + NewLines[Line];
+      end;
     end
     else
     begin

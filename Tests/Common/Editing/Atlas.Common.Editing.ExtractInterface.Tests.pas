@@ -166,9 +166,15 @@ var
 begin
   Result := nil;
   for Name in ANames do
+  begin
     for Item in AInfo.Candidates do
+    begin
       if SameText(Item.Name, Name) and ((Item.Kind = TExtractCandidateKind.Method) or not ContainsText(Name, '(')) then
+      begin
         Result := Result + [Item.Id];
+      end;
+    end;
+  end;
 end;
 
 function DefaultIds(const AInfo: TExtractInterfaceInfo): TArray<Integer>;
@@ -177,8 +183,12 @@ var
 begin
   Result := nil;
   for Item in AInfo.Candidates do
+  begin
     if Item.Checked then
+    begin
       Result := Result + [Item.Id];
+    end;
+  end;
 end;
 
 function TryPlan(const AText: string; ALine: Integer; const AMembers: TArray<Integer>; const AName: string;
@@ -221,7 +231,9 @@ begin
     Layout := TClassLayout.Read(Tree, Result, TClassLayout.DeclNamed(Tree, APlan.ClassName));
     try
       for Method in APlan.Methods do
+      begin
         Assert.IsTrue(Layout.Find(Method) <> nil, Method + ' fehlt: ' + Result);
+      end;
     finally
       Layout.Free;
     end;
@@ -259,15 +271,21 @@ begin
   for Item in Data.Candidates do
   begin
     if Item.Checked then
+    begin
       Checked := Checked + Item.Name + ' ';
+    end;
     if not Item.Enabled then
+    begin
       Disabled := Disabled + Item.Name + ' ';
+    end;
   end;
   // Vorgabe: public-Methoden; Properties wählbar, aber nicht gewählt; private Mitglieder nicht in der Liste.
   Assert.AreEqual('Find Find Save ', Checked);
   Assert.AreEqual('Create Destroy Default_ Convert ', Disabled);
   for Item in Data.Candidates do
+  begin
     Assert.IsFalse(SameText(Item.Name, 'GetItem'), 'private');
+  end;
   Assert.AreEqual(0, Integer(Length(Data.Notes)), 'ohne Vorfahr kein Hinweis');
 end;
 
@@ -336,7 +354,9 @@ begin
   // Paare Klasse, Vorfahr.
   Pairs := nil;
   for Index := 0 to High(ANames) do
+  begin
     Pairs := Pairs + [ANames[Index]];
+  end;
   Result :=
     function(const AClassName: string; out AAncestors: TArray<string>): Boolean
     var

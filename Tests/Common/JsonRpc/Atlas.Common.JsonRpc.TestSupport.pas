@@ -49,7 +49,9 @@ var
 begin
   Data := nil;
   for Json in AJsonMessages do
+  begin
     Data := Data + Frame(Json);
+  end;
   Result := TBytesStream.Create(Data);
 end;
 
@@ -69,7 +71,9 @@ begin
     Transport := TJsonRpcStreamTransport.Create(Input, nil, False);
     try
       while True do
+      begin
         Result.Add(Transport.ReadMessage);
+      end;
     except
       on EJsonRpcTransportClosed do
         ; // alle Nachrichten gelesen

@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasAttachTests = class
   private
     FDir: string;
@@ -82,10 +83,13 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Attach,
   Atlas.Core.Tracker.Providers.GitHub,
-  Atlas.Core.Tracker.Providers.YouTrack;
+  Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 type
   /// <summary>Transport mit festen Antworten auf POST; merkt sich Adressen, Inhaltstypen und Rümpfe.</summary>
@@ -205,12 +209,14 @@ end;
 
 procedure TAtlasAttachTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FDir := TPath.Combine(TPath.GetTempPath, 'AtlasAttachTests-' + IntToStr(Random(MaxInt)));
   ForceDirectories(FDir);
 end;
 
 procedure TAtlasAttachTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FDir) then
     TDirectory.Delete(FDir, True);
   FDir := '';
@@ -290,12 +296,16 @@ begin
   mFileName := TPath.Combine(FDir, 'app.log');
   TFile.WriteAllText(mFileName, NumberedLines(1, 100), TEncoding.ASCII);
   // Alles lesen: letzte 10 Zeilen.
-  Assert.AreEqual(NumberedLines(91, 100).TrimRight, TAtlasAttachLog.ReadTail(mFileName, 10, 0));
+  Assert.IsTrue(TAtlasAttachLog.ReadTail(mFileName, 10, 0, mText));
+  Assert.AreEqual(NumberedLines(91, 100).TrimRight, mText);
   // Nur 30 Bytes von hinten: die angeschnittene Zeile entfällt.
   mBytes := TFile.ReadAllBytes(mFileName);
-  mText := TAtlasAttachLog.ReadTail(mFileName, 0, 30);
+  Assert.IsTrue(TAtlasAttachLog.ReadTail(mFileName, 0, 30, mText));
   Assert.AreEqual('Zeile 99'#13#10'Zeile 100', mText);
   Assert.IsTrue(Length(mBytes) > 30);
+  // Fehlt die Datei: False und kein Text, keine Ausnahme.
+  Assert.IsFalse(TAtlasAttachLog.ReadTail(TPath.Combine(FDir, 'fehlt.log'), 10, 0, mText));
+  Assert.AreEqual('', mText);
 end;
 
 procedure TAtlasAttachTests.DecodeUtf8AndAnsi;

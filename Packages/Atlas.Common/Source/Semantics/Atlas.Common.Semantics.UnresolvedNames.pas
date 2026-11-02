@@ -86,25 +86,39 @@ var
 begin
   // Dieselbe Liste wie Hover und Namensauflösung: Sqr, Pi, Int … fehlten hier und galten als nicht deklariert.
   if TSystemIntrinsics.IsKnown(AName) then
+  begin
     Exit(True);
+  end;
   for Name in Intrinsics do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
 class function TUnresolvedNames.Describe(const AName: TUnresolvedName): string;
 begin
   if AName.Code = 'E2601' then
+  begin
     Result := Format('"%s" ist kein Konstruktor von %s; New braucht einen Konstruktor des object-Typs (wie E2601).',
-      [AName.Name, AName.Owner])
+      [AName.Name, AName.Owner]);
+  end
   else if AName.Code = 'E2602' then
+  begin
     Result := Format('"%s" ist kein Destruktor von %s; Dispose braucht einen Destruktor des object-Typs ' +
-      '(wie E2602).', [AName.Name, AName.Owner])
+      '(wie E2602).', [AName.Name, AName.Owner]);
+  end
   else if AName.Code = 'E2078' then
-    Result := 'Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).'
+  begin
+    Result := 'Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).';
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Object-Typ hinter dem Zeiger APointer (Variable oder Zeigertyp wie PAltObjekt = ^TAltObjekt).
@@ -117,10 +131,14 @@ var
 begin
   AType := Default(TResolvedSymbol);
   if APointer.Kind <> TSyntaxKind.Identifier then
+  begin
     Exit(False);
+  end;
   mPointer := AResolver.ResolveType(ATree, AFileName, APointer.StartPos);
   if not mPointer.Found then
+  begin
     Exit(False);
+  end;
   if mPointer.SymbolKind = TIndexSymbolKind.ObjectType then
   begin
     AType := mPointer;
@@ -128,12 +146,18 @@ begin
   end;
   mTarget := mPointer.Signature;
   if Pos('^', mTarget) = 0 then
+  begin
     Exit(False);
+  end;
   mTarget := Trim(Copy(mTarget, Pos('^', mTarget) + 1, MaxInt));
   if EndsStr(';', mTarget) then
+  begin
     mTarget := Trim(Copy(mTarget, 1, Length(mTarget) - 1));
+  end;
   if (mTarget = '') or not IsValidIdent(mTarget, True) then
+  begin
     Exit(False);
+  end;
   AType := AResolver.ResolveChain(ATree, AFileName, mTarget.Split(['.']), APointer.StartOffset);
   Result := AType.Found and (AType.SymbolKind = TIndexSymbolKind.ObjectType);
 end;
@@ -146,18 +170,28 @@ var
 begin
   mNode := ANode.Parent;
   while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
     mNode := mNode.Parent;
+  end;
   if mNode = nil then
+  begin
     Exit(False);
+  end;
   for mToken in ATree.Tokens do
+  begin
     if mToken.Offset >= mNode.StartOffset then
     begin
       if mToken.IsKeyword('constructor') then
+      begin
         Exit(True);
+      end;
       if not mToken.IsKeyword('class') and not (mToken.Kind in [TPascalTokenKind.Comment,
         TPascalTokenKind.Directive]) then
+      begin
         Exit(False);
+      end;
     end;
+  end;
   Result := False;
 end;
 
@@ -192,12 +226,20 @@ begin
   begin
     Known := AIndex.FindUnit(Name, Found);
     for Namespace in ANamespaces do
+    begin
       if not Known then
+      begin
         Known := AIndex.FindUnit(Namespace + '.' + Name, Found);
+      end;
+    end;
     if not Known and Assigned(AEnsureUnit) then
+    begin
       Known := AEnsureUnit(Name);
+    end;
     if not Known then
+    begin
       Exit(False);
+    end;
   end;
   Result := True;
 end;
@@ -231,9 +273,13 @@ var
         Node := Pending.Pop;
         if (Node.Kind in [TSyntaxKind.ExceptionHandler, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
           TSyntaxKind.LabeledStatement, TSyntaxKind.GotoStatement]) and (Node.Name <> '') then
+        begin
           Declared.AddOrSetValue(UpperCase(Node.Name), True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -252,28 +298,44 @@ var
     if (ACall.ChildCount < 3) or (ACall[0].Kind <> TSyntaxKind.Identifier) or
       not MatchText(ACall[0].Name, ['New', 'Dispose']) or IsDeclared(ACall[0].Name) or
       AResolver.ResolveChain(ATree, AFileName, [ACall[0].Name], ACall[0].StartOffset).Found then
+    begin
       Exit;
+    end;
     mMember := ACall[2];
     if (mMember.Kind = TSyntaxKind.Call) and (mMember.ChildCount > 0) then
+    begin
       mMember := mMember[0];
+    end;
     if (mMember.Kind <> TSyntaxKind.Identifier) or (mMember.Name = '') then
+    begin
       Exit;
+    end;
     mMembers.AddOrSetValue(mMember, True);
     if not ObjectTarget(AResolver, ATree, AFileName, ACall[1], mType) then
+    begin
       Exit;
+    end;
     AResolver.AncestorNames(mType, mComplete);
     if not mComplete then
+    begin
       Exit;
+    end;
     if AResolver.FindMember(mType, mMember.Name, mFound) then
+    begin
       Exit;
+    end;
     mItem := Default(TUnresolvedName);
     mItem.Name := mMember.Name;
     mItem.Range := TTextRange.Create(mMember.StartPos, mMember.EndPos);
     mItem.Owner := mType.Name;
     if SameText(ACall[0].Name, 'Dispose') then
-      mItem.Code := 'E2602'
+    begin
+      mItem.Code := 'E2602';
+    end
     else
+    begin
       mItem.Code := 'E2601';
+    end;
     Result := Result + [mItem];
   end;
 
@@ -284,7 +346,9 @@ var
   begin
     if not SameText(ANode.Name, 'Fail') or IsDeclared(ANode.Name) or InConstructor(ATree, ANode) or
       AResolver.ResolveChain(ATree, AFileName, [ANode.Name], ANode.StartOffset).Found then
+    begin
       Exit;
+    end;
     mItem := Default(TUnresolvedName);
     mItem.Name := ANode.Name;
     mItem.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
@@ -314,17 +378,27 @@ var
         InStatements := Entry.InStatements;
         if Node.Kind in [TSyntaxKind.WithStatement, TSyntaxKind.AsmBlock, TSyntaxKind.AnonymousMethod,
           TSyntaxKind.Error] then
+        begin
           Continue;
+        end;
         // Anweisungen stehen in Blöcken von Routinen und in initialization/finalization.
         if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection] then
-          InStatements := True
+        begin
+          InStatements := True;
+        end
         else if Node.Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection,
           TSyntaxKind.RoutineHeader, TSyntaxKind.Parameters, TSyntaxKind.GenericArgs] then
+        begin
           InStatements := False;
+        end;
         if InStatements and (Node.Kind = TSyntaxKind.Call) then
+        begin
           CheckAllocation(Node);
+        end;
         if InStatements and (Node.Kind = TSyntaxKind.Identifier) and (Node.Name <> '') then
+        begin
           CheckFail(Node);
+        end;
         // Typumwandlungen und Typhelfer (Integer(X), string.Join) sowie der Anfang eines Unit-Namens
         // (Winapi in Winapi.Windows.TextOut) sind keine fehlenden Bezeichner (#647).
         if InStatements and (Node.Kind = TSyntaxKind.Identifier) and (Node.Name <> '') and
@@ -342,7 +416,9 @@ var
           end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(UnresolvedEntry(Node[Index], InStatements));
+        end;
       end;
     finally
       Pending.Free;
@@ -352,7 +428,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Declared := TDictionary<string, Boolean>.Create;
   mMembers := TDictionary<TSyntaxNode, Boolean>.Create;
   try

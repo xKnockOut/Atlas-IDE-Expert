@@ -167,15 +167,21 @@ begin
   Result := '';
   Space := False;
   for Index := 1 to Length(AText) do
+  begin
     if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-      Space := True
+    begin
+      Space := True;
+    end
     else
     begin
       if Space and (Result <> '') then
+      begin
         Result := Result + ' ';
+      end;
       Space := False;
       Result := Result + AText[Index];
     end;
+  end;
 end;
 
 /// <summary>Methoden, die ein übergebenes Objekt übernehmen können: Add, Insert, Push, Enqueue, Register,
@@ -194,7 +200,9 @@ begin
   Result := Trim(ATypeName);
   Angle := Pos('<', Result);
   if Angle > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Angle - 1));
+  end;
 end;
 
 /// <summary>Erzeugung mit dem Argument False, z. B. TObjectList&lt;TFoo&gt;.Create(False).</summary>
@@ -204,11 +212,17 @@ var
 begin
   Result := False;
   if (AValue = nil) or (AValue.Kind <> TSyntaxKind.Call) then
+  begin
     Exit;
+  end;
   for Index := 1 to AValue.ChildCount - 1 do
+  begin
     if (AValue[Index].Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and
       SameText(AValue[Index].Name, 'False') then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 { TClassAnalyzer }
@@ -274,10 +288,16 @@ begin
   Result := nil;
   Section := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Section = nil then
+  begin
     Section := ATree.Root;
+  end;
   for Index := 0 to Section.ChildCount - 1 do
+  begin
     if Section[Index].Kind = TSyntaxKind.RoutineDecl then
+    begin
       Result := Result + [Section[Index]];
+    end;
+  end;
 end;
 
 /// <summary>Methoden TKlasse.Name mit Rumpf, ohne Methoden verschachtelter Klassen.</summary>
@@ -288,12 +308,16 @@ var
 begin
   Result := nil;
   for Decl in RoutineDecls(ATree) do
+  begin
     if StartsText(AClassName + '.', Decl.Name) and (Decl.FindChild(TSyntaxKind.Block) <> nil) then
     begin
       Rest := Copy(Decl.Name, Length(AClassName) + 2, MaxInt);
       if (Rest <> '') and (Pos('.', Rest) = 0) then
+      begin
         Result := Result + [Decl];
+      end;
     end;
+  end;
 end;
 
 function HeaderOf(ADecl: TSyntaxNode): TSyntaxNode;
@@ -334,7 +358,9 @@ begin
   FDecl := ADecl;
   // Ohne Klasse (ADecl = nil) nur für Typen und Erzeugungen außerhalb von Klassen (#971).
   if ADecl = nil then
+  begin
     Exit;
+  end;
   FClassNode := ADecl.FindChild(TSyntaxKind.ClassType);
   FClassName := ADecl.Name;
 end;
@@ -344,8 +370,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FFields) do
+  begin
     if SameText(FFields[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -355,33 +385,51 @@ var
 begin
   Result := FieldRef(ANode);
   if (Result < 0) and (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) then
+  begin
     for Index := High(FAliasNames) downto 0 do
+    begin
       if SameText(FAliasNames[Index], ANode.Name) then
+      begin
         Exit(FAliasFields[Index]);
+      end;
+    end;
+  end;
 end;
 
 function TClassAnalyzer.FieldRef(ANode: TSyntaxNode): Integer;
 begin
   Result := -1;
   if ANode = nil then
+  begin
     Exit;
+  end;
   if ANode.Kind = TSyntaxKind.Identifier then
-    Result := FieldIndex(ANode.Name)
+  begin
+    Result := FieldIndex(ANode.Name);
+  end
   else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
     (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+  begin
     Result := FieldIndex(ANode.Name);
+  end;
 end;
 
 function TClassAnalyzer.IsInterfaceField(ANode: TSyntaxNode): Boolean;
 begin
   Result := False;
   if ANode = nil then
+  begin
     Exit;
+  end;
   if ANode.Kind = TSyntaxKind.Identifier then
-    Result := MatchText(ANode.Name, FInterfaceFields)
+  begin
+    Result := MatchText(ANode.Name, FInterfaceFields);
+  end
   else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
     (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+  begin
     Result := MatchText(ANode.Name, FInterfaceFields);
+  end;
 end;
 
 function TClassAnalyzer.MethodBody(const AName: string): TSyntaxNode;
@@ -389,8 +437,12 @@ var
   Decl: TSyntaxNode;
 begin
   for Decl in FMethods do
+  begin
     if SameText(Decl.Name, FClassName + '.' + AName) then
+    begin
       Exit(Decl);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -416,7 +468,9 @@ var
       begin
         Result := Guess = tgUnknown;
         if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, AName) then
+        begin
           Exit;
+        end;
         for Index := 0 to ANode.ChildCount - 1 do
           case ANode[Index].Kind of
             TSyntaxKind.ClassType:
@@ -431,7 +485,9 @@ var
               Guess := tgOther;
             TSyntaxKind.TypeReference:
               if Found = '' then
+              begin
                 Found := ANode[Index].Name;
+              end;
           end;
       end);
     AAlias := Found;
@@ -448,17 +504,25 @@ begin
   // keine Typparameter.
   Generic := Pos('<', ATypeName) > 0;
   if Generic and SameText(Base, 'TArray') then
+  begin
     Exit(tgOther);
+  end;
   for Depth := 1 to 8 do
   begin
     if Base = '' then
+    begin
       Exit;
+    end;
     Result := FromFile(Base, Alias);
     if Result <> tgUnknown then
+    begin
       Exit;
+    end;
     Found := False;
     if (Alias = '') and (FIndex <> nil) then
+    begin
       for Location in FIndex.FindSymbols(Base) do
+      begin
         // Mit Typargumenten zählen nur generische Typen gleichen Namens.
         if (Location.Symbol.Container = '') and not (Generic and (Location.Symbol.TypeParams = '')) then
         begin
@@ -477,18 +541,28 @@ begin
           Found := True;
           Break;
         end;
+      end;
+    end;
     if Found then
+    begin
       Exit;
+    end;
     // Alias in der Datei (TFoo = TBar): weiter mit TBar.
     if Alias = '' then
+    begin
       Break;
+    end;
     Base := BaseName(Alias);
     Generic := Pos('<', Alias) > 0;
   end;
   if MatchText(Base, KnownRecords) then
-    Result := tgRecord
+  begin
+    Result := tgRecord;
+  end
   else if TRegEx.IsMatch(Base, '^I[A-Z]') then
+  begin
     Result := tgInterface;
+  end;
 end;
 
 function TClassAnalyzer.ComponentChain(const ATypeName: string; out AEndsKnown: Boolean): TArray<string>;
@@ -515,32 +589,48 @@ begin
         begin
           Kind := ANode.FindChild(TSyntaxKind.ClassType);
           if Kind = nil then
+          begin
             Exit;
+          end;
           Declared := True;
           if (Kind.ChildCount > 0) and (Kind[0].Kind = TSyntaxKind.TypeReference) then
+          begin
             Next := Kind[0].Name;
+          end;
         end;
       end);
     if not Declared and (FIndex <> nil) then
+    begin
       for Location in FIndex.FindSymbols(Name) do
+      begin
         if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
         begin
           Declared := True;
           if Length(Location.Symbol.Ancestors) > 0 then
+          begin
             Next := BaseName(Location.Symbol.Ancestors[0]);
+          end;
           Break;
         end;
+      end;
+    end;
     // Klasse ohne Vorfahren stammt von TObject ab: das Ende ist bekannt.
     if Declared and (Next = '') then
+    begin
       AEndsKnown := True;
+    end;
     if (Next = '') or (IndexText(Next, Result) >= 0) then
+    begin
       Break;
+    end;
     Result := Result + [Next];
     Name := Next;
   end;
   if DescendsFrom(Result, ComponentRoots) or DescendsFrom(Result, KnownComponents) or
     DescendsFrom(Result, KnownNonComponents) then
+  begin
     AEndsKnown := True;
+  end;
 end;
 
 function TClassAnalyzer.IsComponent(const ATypeName: string): Boolean;
@@ -566,52 +656,78 @@ begin
   ATypeName := '';
   AOwned := False;
   if AValue = nil then
+  begin
     Exit;
+  end;
   Argument := nil;
   if (AValue.Kind = TSyntaxKind.Call) and (AValue.ChildCount >= 1) and
     (AValue[0].Kind = TSyntaxKind.MemberAccess) then
   begin
     Access := AValue[0];
     if AValue.ChildCount >= 2 then
+    begin
       Argument := AValue[1];
+    end;
   end
   else if AValue.Kind = TSyntaxKind.MemberAccess then
-    Access := AValue
+  begin
+    Access := AValue;
+  end
   else
+  begin
     Exit;
+  end;
   if not StartsText('Create', Access.Name) or (Access.ChildCount < 1) then
+  begin
     Exit;
+  end;
   Receiver := Access[0];
   if Receiver.Kind = TSyntaxKind.Identifier then
   begin
     if SameText(Receiver.Name, 'Self') or (FieldIndex(Receiver.Name) >= 0) then
+    begin
       Exit;
+    end;
     ATypeName := Receiver.Name;
   end
   else if (Receiver.Kind = TSyntaxKind.MemberAccess) and (Receiver.ChildCount >= 2) and
     (Receiver[0].Kind = TSyntaxKind.Identifier) and (Receiver[1].Kind = TSyntaxKind.GenericArgs) then
-    ATypeName := Collapse(NodeText(FText, Receiver))
+  begin
+    ATypeName := Collapse(NodeText(FText, Receiver));
+  end
   else
+  begin
     Exit;
+  end;
   if TypeGuess(ATypeName) in [tgRecord, tgInterface, tgOther] then
+  begin
     Exit;
+  end;
   Result := True;
   // Owner ungleich nil: die Komponente gibt ihr Owner frei.
   if (Argument = nil) or ((Argument.Kind = TSyntaxKind.Literal) and SameText(Argument.Name, 'nil')) then
+  begin
     Exit;
+  end;
   if IsComponent(ATypeName) then
-    AOwned := True
+  begin
+    AOwned := True;
+  end
   else if not ComponentKnown(ATypeName) then
   begin
     // Unbekannte Vorfahren (z. B. VCL-Klassen ohne Index): Owner am Argument erkennen.
     Name := '';
     if Argument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+    begin
       Name := Argument.Name;
+    end;
     AOwned := MatchText(Name, OwnerNames);
   end;
   // Owner ist ein Komponentenfeld der Klasse (Host := TForm.Create…; Box := TFoo.Create(Host)).
   if not AOwned and (FieldRef(Argument) >= 0) and IsComponent(FFields[FieldRef(Argument)].TypeName) then
+  begin
     AOwned := True;
+  end;
 end;
 
 function TClassAnalyzer.IsCreation(AValue: TSyntaxNode): Boolean;
@@ -628,17 +744,27 @@ var
 begin
   Result := '';
   if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount < 1) then
+  begin
     Exit;
+  end;
   Target := AStatement[0];
   if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount >= 1) then
+  begin
     Target := Target[0];
+  end;
   if Target.Kind = TSyntaxKind.Identifier then
-    Result := Target.Name
+  begin
+    Result := Target.Name;
+  end
   else if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
     (Target[0].Kind = TSyntaxKind.Identifier) and SameText(Target[0].Name, 'Self') then
+  begin
     Result := Target.Name;
+  end;
   if IndexText(Result, FPrivate) < 0 then
+  begin
     Result := '';
+  end;
 end;
 
 function TClassAnalyzer.ClassFieldTypes(const AClassName: string): TArray<string>;
@@ -661,34 +787,50 @@ begin
     begin
       Result := not Declared;
       if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, AClassName) then
+      begin
         Exit;
+      end;
       ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
       if ClassNode = nil then
+      begin
         Exit;
+      end;
       Declared := True;
       for Index := 0 to ClassNode.ChildCount - 1 do
+      begin
         if ClassNode[Index].Kind = TSyntaxKind.Field then
         begin
           TypeRef := ClassNode[Index].FindChild(TSyntaxKind.TypeReference);
           if TypeRef <> nil then
+          begin
             Found := Found + [Collapse(NodeText(FText, TypeRef))];
+          end;
         end;
+      end;
     end);
   if not Declared and (FIndex <> nil) then
+  begin
     for Location in FIndex.FindSymbols(AClassName) do
+    begin
       if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') and
         FIndex.FindUnit(Location.UnitName, UnitIndex) then
       begin
         for Symbol in UnitIndex.Symbols do
+        begin
           if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, AClassName) then
           begin
             TypeName := BaseName(Symbol.TypeName);
             if Symbol.TypeArgs <> '' then
+            begin
               TypeName := TypeName + '<' + Symbol.TypeArgs + '>';
+            end;
             Found := Found + [TypeName];
           end;
+        end;
         Break;
       end;
+    end;
+  end;
   Result := Found;
 end;
 
@@ -706,10 +848,14 @@ var
   begin
     Result := MatchText(BaseName(AContainer), OwningContainers);
     if not Result or (Pos('<', AContainer) = 0) then
+    begin
       Exit;
+    end;
     Args := Copy(AContainer, Pos('<', AContainer) + 1, MaxInt);
     if EndsText('>', Args) then
+    begin
       Args := Copy(Args, 1, Length(Args) - 1);
+    end;
     Result := MatchText(BaseName(Args), Elements);
   end;
 
@@ -717,22 +863,34 @@ begin
   Result := False;
   Receiver := FieldRef(AReceiver);
   if (Receiver < 0) or (AField < 0) then
+  begin
     Exit;
+  end;
   FieldType := FFields[AField].CreatedType;
   if FieldType = '' then
+  begin
     FieldType := FFields[AField].TypeName;
+  end;
   Elements := ComponentChain(FieldType, EndsKnown) + [BaseName(FFields[AField].TypeName), 'TObject'];
   if Owns(FFields[Receiver].TypeName) then
   begin
     // TObjectList.Create(False) besitzt nichts.
     for Index in FNotOwning do
+    begin
       if Index = Receiver then
+      begin
         Exit(False);
+      end;
+    end;
     Exit(True);
   end;
   for FieldType in ClassFieldTypes(BaseName(FFields[Receiver].TypeName)) do
+  begin
     if Owns(FieldType) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TClassAnalyzer.ScanCreations(ANode: TSyntaxNode);
@@ -758,7 +916,9 @@ begin
       Entry := Pending.Pop;
       Node := Entry.Node;
       if (Node = nil) or (Node.Kind = TSyntaxKind.AnonymousMethod) then
+      begin
         Continue;
+      end;
       FCurrent := Entry.Method;
       if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount >= 2) then
       begin
@@ -771,9 +931,13 @@ begin
           FCreated := FCreated + [Field];
           // Komponenten mit Owner gelten als erzeugt, aber nicht als eigen.
           if Owned then
+          begin
             FFields[Field].Reason := OwnedReason;
+          end;
           if CreatedWithFalse(Node[1]) then
+          begin
             FNotOwning := FNotOwning + [Field];
+          end;
         end;
       end;
       Next.Method := Entry.Method;
@@ -830,10 +994,14 @@ begin
     begin
       Node := Pending.Pop;
       if Node = nil then
+      begin
         Continue;
+      end;
       CheckUse(Node, AMethod, AFreed);
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -852,23 +1020,31 @@ begin
       begin
         Field := FreedRef(ANode[0]);
         if Field >= 0 then
+        begin
           AFreed[Field] := True;
+        end;
       end;
     TSyntaxKind.Call:
       if (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) then
       begin
         Field := FieldRef(ANode[1]);
         if SameText(ANode[0].Name, 'FreeAndNil') and (FreedRef(ANode[1]) >= 0) then
-          AFreed[FreedRef(ANode[1])] := True
+        begin
+          AFreed[FreedRef(ANode[1])] := True;
+        end
         else if SameText(ANode[0].Name, 'Exit') then
+        begin
           SetUnclear(Field, Format('wird von %s zurückgegeben', [AMethod]));
+        end;
       end
       else if (ANode.ChildCount >= 2) and (ANode[0].Kind = TSyntaxKind.MemberAccess) and
         (ANode[0].ChildCount = 1) and not ((ANode[0][0].Kind = TSyntaxKind.Identifier) and
         SameText(ANode[0][0].Name, 'Self')) and HandsOver(ANode[0].Name) then
+      begin
         // Liste.Add(FFeld), Dienst.Register(FFeld): das andere Objekt kann es übernehmen (#918). Besitzt es
         // seine Elemente (TObjectList oder eine Klasse mit einer), gibt es das Objekt frei.
         for Index := 1 to ANode.ChildCount - 1 do
+        begin
           if TakesOver(ANode[0][0], FieldRef(ANode[Index])) then
           begin
             Field := FieldRef(ANode[Index]);
@@ -876,8 +1052,12 @@ begin
             FFields[Field].Reason := OwnedReason;
           end
           else
+          begin
             SetUnclear(FieldRef(ANode[Index]), Format('wird in %s an %s übergeben',
               [AMethod, Collapse(NodeText(FText, ANode[0]))]));
+          end;
+        end;
+      end;
     TSyntaxKind.AssignStatement:
       if ANode.ChildCount >= 2 then
       begin
@@ -886,7 +1066,9 @@ begin
         // Typumwandlung TKlasse(FFeld) zählt wie FFeld.
         if (Field < 0) and (ANode[1].Kind = TSyntaxKind.Call) and (ANode[1].ChildCount = 2) and
           (ANode[1][0].Kind = TSyntaxKind.Identifier) and IsInterfaceField(Target) then
+        begin
           Field := FieldRef(ANode[1][1]);
+        end;
         if (Field >= 0) and IsInterfaceField(Target) then
         begin
           // Das Interface-Feld übernimmt das Objekt; Free wäre eine doppelte Freigabe.
@@ -896,7 +1078,9 @@ begin
         else if Field >= 0 then
         begin
           if (Target.Kind = TSyntaxKind.Identifier) and SameText(Target.Name, 'Result') then
-            SetUnclear(Field, Format('wird von %s zurückgegeben', [AMethod]))
+          begin
+            SetUnclear(Field, Format('wird von %s zurückgegeben', [AMethod]));
+          end
           else if (Target.Kind = TSyntaxKind.Identifier) and (FieldRef(Target) < 0) then
           begin
             // Lokale Kopie: Gibt die Methode sie frei, ist das Feld freigegeben.
@@ -904,12 +1088,16 @@ begin
             FAliasFields := FAliasFields + [Field];
           end
           else if (Target.Kind = TSyntaxKind.MemberAccess) and (FieldRef(Target) < 0) then
+          begin
             SetUnclear(Field, Format('wird in %s an %s übergeben', [AMethod, Collapse(NodeText(FText, Target))]));
+          end;
         end;
         Field := FieldRef(Target);
         if (Field >= 0) and not IsCreation(ANode[1]) and
           not ((ANode[1].Kind = TSyntaxKind.Literal) and SameText(ANode[1].Name, 'nil')) then
+        begin
           SetUnclear(Field, Format('wird in %s auch ohne Create zugewiesen', [AMethod]));
+        end;
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.
@@ -934,18 +1122,28 @@ begin
         Section := Child.Name;
       TSyntaxKind.RoutineHeader:
         if EndsText('private', Section) then
+        begin
           FPrivate := FPrivate + [Child.Name];
+        end;
       TSyntaxKind.Field:
         begin
           TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
           if TypeRef = nil then
+          begin
             Continue;
+          end;
           TypeName := Collapse(NodeText(FText, TypeRef));
           if TypeGuess(TypeName) = tgInterface then
+          begin
             for Name in Child.Name.Split([',']) do
+            begin
               FInterfaceFields := FInterfaceFields + [Trim(Name)];
+            end;
+          end;
           if TypeGuess(TypeName) in [tgRecord, tgInterface, tgOther] then
+          begin
             Continue;
+          end;
           for Name in Child.Name.Split([',']) do
           begin
             Field := Default(TOwnedField);
@@ -955,12 +1153,14 @@ begin
             Field.TypeName := TypeName;
             Field.Range := TTextRange.Create(Child.StartPos, Child.StartPos);
             for Token := TSyntaxTree.FirstTokenOf(Tokens, Child.StartOffset) to High(Tokens) do
+            begin
               if (Tokens[Token].Offset >= Child.StartOffset) and (Tokens[Token].Offset < TypeRef.StartOffset) and
                 (Tokens[Token].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Token].Text, Field.Name) then
               begin
                 Field.Range := TTextRange.Create(Tokens[Token].StartPos, Tokens[Token].EndPos);
                 Break;
               end;
+            end;
             Field.Order := -1;
             FFields := FFields + [Field];
           end;
@@ -980,37 +1180,55 @@ var
 begin
   Result := nil;
   if FClassNode = nil then
+  begin
     Exit;
+  end;
   ReadClass;
   if FFields = nil then
+  begin
     Exit;
+  end;
   FMethods := ClassMethods(FTree, FClassName);
   for Decl in FMethods do
+  begin
     if IsConstructorDecl(FText, Decl) then
     begin
       FCurrent := Decl.Name;
       FVisited := nil;
       ScanCreations(Decl.FindChild(TSyntaxKind.Block));
     end;
+  end;
   if FCreated = nil then
+  begin
     Exit;
+  end;
   SetLength(Freed, Length(FFields));
   for Decl in FMethods do
+  begin
     ScanUses(Decl.FindChild(TSyntaxKind.Block), Decl.Name, Freed);
+  end;
   // write FFeld: Das Objekt kann von außen kommen.
   for Index := 0 to FClassNode.ChildCount - 1 do
   begin
     Child := FClassNode[Index];
     if Child.Kind <> TSyntaxKind.PropertyDecl then
+    begin
       Continue;
+    end;
     Match := TRegEx.Match(NodeText(FText, Child), '\bwrite\s+(\w+)', [roIgnoreCase]);
     if Match.Success then
+    begin
       SetUnclear(FieldIndex(Match.Groups[1].Value), Format('kann über die Property %s von außen gesetzt werden',
         [Child.Name]));
+    end;
   end;
   for Index in FCreated do
+  begin
     if not Freed[Index] and (FFields[Index].Reason <> OwnedReason) and (FFields[Index].Reason <> InterfaceReason) then
+    begin
       Result := Result + [FFields[Index]];
+    end;
+  end;
 end;
 
 { Destruktor }
@@ -1036,7 +1254,9 @@ begin
       Result := Found = nil;
       if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.StartPos.Line = ALine) and
         SameText(ANode.Name, AClassName) and (ANode.FindChild(TSyntaxKind.ClassType) <> nil) then
+      begin
         Found := ANode;
+      end;
     end);
   Result := Found;
 end;
@@ -1049,16 +1269,24 @@ begin
   Result := Default(TDestructorPlace);
   ClassNode := ADecl.FindChild(TSyntaxKind.ClassType);
   for Index := 0 to ClassNode.ChildCount - 1 do
+  begin
     if IsDestructorHeader(AText, ClassNode[Index]) and (ClassNode[Index].Kind = TSyntaxKind.RoutineHeader) then
+    begin
       Result.Declaration := ClassNode[Index];
+    end;
+  end;
   for Decl in ClassMethods(ATree, ADecl.Name) do
   begin
     Header := HeaderOf(Decl);
     if SameText(Decl.Name, ADecl.Name + '.Destroy') and (Header <> nil) and
       StartsWithWord(NodeText(AText, Header), 'destructor') then
-      Result.Body := Decl
+    begin
+      Result.Body := Decl;
+    end
     else if IsConstructorDecl(AText, Decl) then
+    begin
       Result.LastConstructor := Decl;
+    end;
   end;
 end;
 
@@ -1076,13 +1304,19 @@ begin
   Header := Trim(Copy(Header, Pos('constructor', LowerCase(Header)) + Length('constructor'), MaxInt));
   Stop := Pos('(', Header);
   if Stop = 0 then
+  begin
     Stop := Pos(';', Header);
+  end;
   if Stop > 0 then
+  begin
     Header := Copy(Header, 1, Stop - 1);
+  end;
   Stop := LastDelimiter('.', Header);
   Result := AClassName;
   if Stop > 1 then
+  begin
     Result := Trim(Copy(Header, 1, Stop - 1));
+  end;
 end;
 
 function IsInheritedCall(ANode: TSyntaxNode): Boolean;
@@ -1129,20 +1363,26 @@ begin
   end;
   Prefix := '';
   if Position.Line <= High(ALines) then
+  begin
     Prefix := Copy(ALines[Position.Line], 1, Position.Character);
+  end;
   Text := '';
   if Trim(Prefix) = '' then
   begin
     // Eigene Zeilen vor der Ankerzeile, eingerückt wie sie (bzw. eine Stufe tiefer als "end").
     Indent := Prefix + Indent;
     for Statement in AStatements do
+    begin
       Text := Text + Indent + Statement + ALineBreak;
+    end;
     Result := InsertAt(TTextPosition.Create(Position.Line, 0), Text);
   end
   else
   begin
     for Statement in AStatements do
+    begin
       Text := Text + Statement + ' ';
+    end;
     Result := InsertAt(Position, Text);
   end;
 end;
@@ -1179,13 +1419,19 @@ begin
       Continue;
     end;
     if not InPublic or (Child.Kind = TSyntaxKind.TypeReference) then
+    begin
       Continue;
+    end;
     LastMember := Child;
     if (Child.Kind = TSyntaxKind.RoutineHeader) and StartsWithWord(NodeText(AText, Child), 'constructor') then
+    begin
       AfterConstructor := Child;
+    end;
   end;
   if AfterConstructor <> nil then
+  begin
     LastMember := AfterConstructor;
+  end;
   if LastMember <> nil then
   begin
     Line := LastMember.EndPos.Line;
@@ -1203,7 +1449,9 @@ begin
   // Neuer Abschnitt vor dem "end" der Klasse, wenn es allein auf seiner Zeile steht.
   Line := ClassNode.EndPos.Line;
   if (Line > High(ALines)) or (Trim(Copy(ALines[Line], 1, ClassNode.EndPos.Character - 3)) <> '') then
+  begin
     Exit;
+  end;
   Indent := TTextLines.IndentOf(ALines[Line]);
   AEdit := InsertAt(TTextPosition.Create(Line, 0), Indent + 'public' + ALineBreak + Indent + '  ' + Declaration +
     ALineBreak);
@@ -1215,9 +1463,13 @@ end;
 class function TFreeFields.StyleOf(const AName: string): TFreeFieldsStyle;
 begin
   if SameText(AName, 'freeAndNil') then
-    Result := TFreeFieldsStyle.FreeAndNil
+  begin
+    Result := TFreeFieldsStyle.FreeAndNil;
+  end
   else
+  begin
     Result := TFreeFieldsStyle.Free;
+  end;
 end;
 
 class function TFreeFields.Analyze(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex):
@@ -1229,7 +1481,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Decls := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -1237,7 +1491,9 @@ begin
       // Klassen in Typabschnitten; verschachtelte Klassen nicht.
       Result := ANode.Kind <> TSyntaxKind.ClassType;
       if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.ClassType) <> nil) then
+      begin
         Decls := Decls + [ANode];
+      end;
     end);
   for Decl in Decls do
   begin
@@ -1253,9 +1509,13 @@ end;
 class function TFreeFields.Statement(const AField: string; AStyle: TFreeFieldsStyle): string;
 begin
   if AStyle = TFreeFieldsStyle.FreeAndNil then
-    Result := Format('FreeAndNil(%s);', [AField])
+  begin
+    Result := Format('FreeAndNil(%s);', [AField]);
+  end
   else
+  begin
     Result := AField + '.Free;';
+  end;
 end;
 
 class function TFreeFields.Edits(ATree: TSyntaxTree; const AText: string; const AFields: TArray<TOwnedField>;
@@ -1268,22 +1528,32 @@ begin
   AEdits := nil;
   Result := False;
   if (ATree = nil) or (Length(AFields) = 0) then
+  begin
     Exit;
+  end;
   // Umgekehrte Erzeugungsreihenfolge.
   Order := nil;
   for Index := 0 to High(AFields) do
+  begin
     Order := Order + [Index];
+  end;
   for Index := 0 to High(Order) - 1 do
+  begin
     for Other := Index + 1 to High(Order) do
+    begin
       if AFields[Order[Other]].Order > AFields[Order[Index]].Order then
       begin
         Swap := Order[Index];
         Order[Index] := Order[Other];
         Order[Other] := Swap;
       end;
+    end;
+  end;
   Statements := nil;
   for Index in Order do
+  begin
     Statements := Statements + [Statement(AFields[Index].Name, AStyle)];
+  end;
   Result := DestructorEdits(ATree, AText, AFields[0].ClassName, AFields[0].ClassLine, Statements, AEdits);
 end;
 
@@ -1299,10 +1569,14 @@ begin
   AEdits := nil;
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) or (Length(AStatements) = 0) then
+  begin
     Exit;
+  end;
   Decl := FindClassDecl(ATree, AClassName, ALine);
   if Decl = nil then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AText, LineBreak);
   Place := PlaceOf(ATree, AText, Decl);
   if Place.Body <> nil then
@@ -1311,18 +1585,24 @@ begin
     Exit(True);
   end;
   if Place.LastConstructor = nil then
+  begin
     Exit;
+  end;
   if Place.Declaration = nil then
   begin
     if not DeclarationEdit(Lines, AText, Decl, LineBreak, Edit) then
+    begin
       Exit;
+    end;
     AEdits := [Edit];
   end;
   Indent := StringOfChar(' ', Place.LastConstructor.StartPos.Character);
   Body := Indent + Format('destructor %s.Destroy;', [Qualifier(AText, Place.LastConstructor, Decl.Name)]) +
     LineBreak + Indent + 'begin';
   for Line in AStatements do
+  begin
     Body := Body + LineBreak + Indent + '  ' + Line;
+  end;
   Body := Body + LineBreak + Indent + '  inherited;' + LineBreak + Indent + 'end;';
   AEdits := AEdits + [InsertAt(Place.LastConstructor.EndPos, LineBreak + LineBreak + Body)];
   Result := True;
@@ -1343,7 +1623,9 @@ begin
   OnClass := False;
   Hit := Default(TOwnedField);
   for Field in All do
+  begin
     if Field.State = TOwnedFieldState.NotFreed then
+    begin
       if Field.Range.StartPos.Line = ALine then
       begin
         Hit := Field;
@@ -1355,13 +1637,21 @@ begin
         Hit := Field;
         OnClass := True;
       end;
+    end;
+  end;
   if not (OnField or OnClass) then
+  begin
     Exit;
+  end;
   OfClass := nil;
   for Field in All do
+  begin
     if (Field.State = TOwnedFieldState.NotFreed) and (Field.ClassLine = Hit.ClassLine) and
       SameText(Field.ClassName, Hit.ClassName) then
+    begin
       OfClass := OfClass + [Field];
+    end;
+  end;
   if OnField and AWithFieldAction and Edits(ATree, AText, [Hit], AStyle, Edits_) then
   begin
     Action := Default(TCodeAction);
@@ -1414,7 +1704,9 @@ var
 begin
   Result := False;
   if AHeader = nil then
+  begin
     Exit;
+  end;
   Text := Collapse(NodeText(AText, AHeader));
   Result := StartsWithWord(Text, 'class') and StartsWithWord(Trim(Copy(Text, Length('class') + 1, MaxInt)), AKind);
 end;
@@ -1430,36 +1722,52 @@ begin
   AEdits := nil;
   Result := False;
   if (ATree = nil) or (AClassDecl = nil) or (Length(AStatements) = 0) then
+  begin
     Exit;
+  end;
   ClassNode := AClassDecl.FindChild(TSyntaxKind.ClassType);
   if ClassNode = nil then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AText, LineBreak);
   Declaration := nil;
   for Index := 0 to ClassNode.ChildCount - 1 do
   begin
     Child := ClassNode[Index];
     if (Child.Kind = TSyntaxKind.RoutineHeader) and IsClassStructor(AText, Child, 'constructor') then
+    begin
       Declaration := Child;
+    end;
   end;
   Body := nil;
   LastConstructor := nil;
   for Decl in ClassMethods(ATree, AClassDecl.Name) do
+  begin
     if IsClassStructor(AText, HeaderOf(Decl), 'destructor') then
-      Body := Decl
+    begin
+      Body := Decl;
+    end
     else if IsClassStructor(AText, HeaderOf(Decl), 'constructor') then
+    begin
       LastConstructor := Decl;
+    end;
+  end;
   if Body <> nil then
   begin
     AEdits := [BodyEdit(Lines, Body, AStatements, LineBreak)];
     Exit(True);
   end;
   if (Declaration = nil) or (LastConstructor = nil) then
+  begin
     Exit;
+  end;
   // Deklaration in eigener Zeile hinter dem class constructor, gleich eingerückt.
   Line := Declaration.EndPos.Line;
   if Line > High(Lines) then
+  begin
     Exit;
+  end;
   Indent := TTextLines.IndentOf(Lines[Declaration.StartPos.Line]);
   AEdits := [InsertAt(TTextPosition.Create(Line, Length(Lines[Line])), LineBreak + Indent +
     'class destructor Destroy;')];
@@ -1467,7 +1775,9 @@ begin
   Text := Indent + Format('class destructor %s.Destroy;', [Qualifier(AText, LastConstructor, AClassDecl.Name)]) +
     LineBreak + Indent + 'begin';
   for Statement in AStatements do
+  begin
     Text := Text + LineBreak + Indent + '  ' + Statement;
+  end;
   Text := Text + LineBreak + Indent + 'end;';
   AEdits := AEdits + [InsertAt(LastConstructor.EndPos, LineBreak + LineBreak + Text)];
   Result := True;

@@ -55,10 +55,14 @@ begin
   APrefix := '';
   Result := False;
   if (ACharacter < 0) or (ACharacter > Length(ALine)) then
+  begin
     Exit;
+  end;
   // Angefangener Name links vom Cursor.
   while (AStart > 0) and IsNameChar(ALine[AStart]) do
+  begin
     Dec(AStart);
+  end;
   APrefix := Copy(ALine, AStart + 1, ACharacter - AStart);
   if APlace = TDebugDisplayCompletionPlace.Template then
   begin
@@ -68,11 +72,17 @@ begin
     while Index <= AStart do
     begin
       if (ALine[Index] = '{') and (Index < AStart) and (ALine[Index + 1] = '{') then
-        Inc(Index)
+      begin
+        Inc(Index);
+      end
       else if ALine[Index] = '{' then
-        Open := Index
+      begin
+        Open := Index;
+      end
       else if ALine[Index] = '}' then
+      begin
         Open := -1;
+      end;
       Inc(Index);
     end;
     Result := (Open > 0) and (Open = AStart);
@@ -81,10 +91,14 @@ begin
   begin
     Index := AStart;
     while (Index > 0) and (ALine[Index] = ' ') do
+    begin
       Dec(Index);
+    end;
     Before := #0;
     if Index > 0 then
+    begin
       Before := ALine[Index];
+    end;
     Result := CharInSet(Before, [':', ',', '(', '''']);
   end;
 end;
@@ -120,14 +134,22 @@ begin
   Result := False;
   Lines := ARequest.Lines;
   if (ARequest.Position.Line < 0) or (ARequest.Position.Line > High(Lines)) then
+  begin
     Exit;
+  end;
   Line := Lines[ARequest.Position.Line];
   if not (ContainsText(Line, 'atlas-debug') or ContainsText(Line, 'AtlasDebug')) then
+  begin
     Exit;
+  end;
   if ARequest.Tree <> nil then
-    Local := TIndexExtractor.Extract(ARequest.Tree, ARequest.FileName)
+  begin
+    Local := TIndexExtractor.Extract(ARequest.Tree, ARequest.FileName);
+  end
   else
+  begin
     Local := TIndexExtractor.ExtractText(ARequest.Text, ARequest.FileName, nil);
+  end;
   // Der Typ, zu dessen Regel die Zeile gehört.
   Place := TDebugDisplayCompletionPlace.None;
   Column := 0;
@@ -136,28 +158,38 @@ begin
   begin
     if not (Symbol.Kind in TTypeMembers.RuleKinds) or (Symbol.FileName <> '') or
       not TDebugDisplayText.RuleAbove(Lines, Symbol.Range.StartPos.Line, Source) then
+    begin
       Continue;
+    end;
     if Source.HasTemplate and (Source.TemplateLine = ARequest.Position.Line) then
     begin
       Place := TDebugDisplayCompletionPlace.Template;
       Column := Source.TemplateColumn;
     end
     else if (Source.Children <> nil) and (Source.ChildrenLine = ARequest.Position.Line) then
-      Place := TDebugDisplayCompletionPlace.Children
+    begin
+      Place := TDebugDisplayCompletionPlace.Children;
+    end
     else
+    begin
       Continue;
+    end;
     Target := Symbol;
     Break;
   end;
   if (Place = TDebugDisplayCompletionPlace.None) or
     not PrefixAt(Line, ARequest.Position.Character, Column, Place, Start, Prefix) then
+  begin
     Exit;
+  end;
   Result := True;
   TTypeMembers.Collect(Local, ARequest.Index, Target, Members);
   for Member in Members do
   begin
     if (Prefix <> '') and not StartsText(Prefix, Member.Name) then
+    begin
       Continue;
+    end;
     Item := Default(TCompletionItem);
     Item.Name := Member.Name;
     Item.Detail := Member.TypeName;

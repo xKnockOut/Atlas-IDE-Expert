@@ -93,9 +93,15 @@ var
 begin
   Result := (AKeyword <> '') and not SameText(AKeyword, TTodos.DoneKeyword);
   if Result then
+  begin
     for Ch in AKeyword do
+    begin
       if not CharInSet(Ch, ['A'..'Z', 'a'..'z']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 class function TTodoRules.KeywordsFromOptions(const AOptions: string): TArray<string>;
@@ -111,16 +117,24 @@ begin
       begin
         Keywords := TJSONObject(Value).GetValue(TodoKeywordsOption);
         if Keywords is TJSONArray then
+        begin
           for Item in TJSONArray(Keywords) do
+          begin
             if (Item is TJSONString) and IsValidKeyword(Trim(Item.Value)) then
+            begin
               Result := Result + [UpperCase(Trim(Item.Value))];
+            end;
+          end;
+        end;
       end;
     finally
       Value.Free;
     end;
   end;
   if Length(Result) = 0 then
+  begin
     Result := TTodos.DefaultKeywords;
+  end;
 end;
 
 class function TTodoRules.Keywords(const ASettings: TServerSettings): TArray<string>;
@@ -144,12 +158,20 @@ var
 begin
   Keywords := TTodoRules.KeywordsFromOptions(AContext.Options);
   if AContext.Tree <> nil then
-    Entries := TTodoScanner.FromTokens(AContext.Tree.Tokens, Keywords)
+  begin
+    Entries := TTodoScanner.FromTokens(AContext.Tree.Tokens, Keywords);
+  end
   else
+  begin
     Entries := TTodoScanner.FromTokens(TPascalLexer.Tokenize(AContext.Text), Keywords);
+  end;
   for Entry in Entries do
+  begin
     if not Entry.Done then
+    begin
       AReport.Add(Entry.Range, TTodoReport.Caption(Entry));
+    end;
+  end;
 end;
 
 type
@@ -178,9 +200,13 @@ var
 begin
   Line := Trim(ALine);
   if Line = '' then
+  begin
     Exit(False);
+  end;
   if EndsStr(';', Line) or (Pos(':=', Line) > 0) or MatchText(Line, BlockWords) then
+  begin
     Exit(True);
+  end;
   Space := LastDelimiter(' ', Line);
   Last := Copy(Line, Space + 1, MaxInt);
   Result := (Space > 0) and MatchText(Last, LastWords);
@@ -203,7 +229,9 @@ begin
     Tree := TSyntaxTreeCache.Parse(Wrappers[Index, 0] + Code + Wrappers[Index, 1]);
     try
       if Length(Tree.Diagnostics) = 0 then
+      begin
         Exit(True);
+      end;
     finally
       Tree.Free;
     end;
@@ -227,27 +255,43 @@ var
     AFirst := 0;
     ALast := High(ALines);
     while (AFirst <= ALast) and not LooksLikeCode(ALines[AFirst].Text) do
+    begin
       Inc(AFirst);
+    end;
     while (ALast >= AFirst) and not LooksLikeCode(ALines[ALast].Text) do
+    begin
       Dec(ALast);
+    end;
     if ALast - AFirst + 1 < MinLines then
+    begin
       Exit;
+    end;
     // Beispiel in der Dokumentation: <code> im Kommentar oder eingeleitet von „…:“.
     for Index := 0 to High(ALines) do
+    begin
       if ContainsText(ALines[Index].Text, '<code') then
+      begin
         Exit;
+      end;
+    end;
     Previous := AFirst - 1;
     while (Previous >= 0) and (Trim(ALines[Previous].Text) = '') do
+    begin
       Dec(Previous);
+    end;
     if (Previous >= 0) and EndsStr(':', Trim(ALines[Previous].Text)) then
+    begin
       Exit;
+    end;
     Texts := nil;
     Signals := 0;
     for Index := AFirst to ALast do
     begin
       Texts := Texts + [ALines[Index].Text];
       if LooksLikeCode(ALines[Index].Text) then
+      begin
         Inc(Signals);
+      end;
     end;
     Result := (Signals * 2 >= Length(Texts)) and ParsesAsCode(Texts);
   end;
@@ -265,8 +309,10 @@ var
     First, Last: Integer;
   begin
     if (Length(Run) >= MinLines) and IsCode(Run, First, Last) then
+    begin
       Report(TTextRange.Create(Run[First].Range.StartPos, Run[Last].Range.EndPos), Last - First + 1,
         Run[First].Line, Run[Last].Line);
+    end;
     Run := nil;
   end;
 
@@ -288,9 +334,13 @@ var
   begin
     Token := Tokens[AIndex];
     if StartsStr('(*', Token.Text) then
-      Inner := Copy(Token.Text, 3, Length(Token.Text) - 4)
+    begin
+      Inner := Copy(Token.Text, 3, Length(Token.Text) - 4);
+    end
     else
+    begin
       Inner := Copy(Token.Text, 2, Length(Token.Text) - 2);
+    end;
     Parts := TTextLines.SplitLines(Inner);
     Lines := nil;
     for Index := 0 to High(Parts) do
@@ -303,10 +353,14 @@ var
     // Nur wenn der Kommentar allein in seinen Zeilen steht, lässt er sich zeilenweise entfernen.
     if not FirstInLine(AIndex) or ((AIndex < High(Tokens)) and
       (Tokens[AIndex + 1].StartPos.Line = Token.EndPos.Line)) then
+    begin
       Exit;
+    end;
     if IsCode(Lines, First, Last) then
+    begin
       Report(TTextRange.Create(Token.StartPos, Token.EndPos), Last - First + 1, Token.StartPos.Line,
         Token.EndPos.Line);
+    end;
   end;
 
 var
@@ -315,16 +369,22 @@ var
   Item: TCommentLine;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   MinLines := TRuleOptions.Int(AContext.Options, 'minLines', DefaultMinLines);
   if MinLines < 1 then
+  begin
     MinLines := DefaultMinLines;
+  end;
   // Kommentare vor dem ersten Token sind der Dateikopf (Lizenz, Beschreibung).
   FirstCode := 0;
   while (FirstCode <= High(Tokens)) and (Tokens[FirstCode].Kind in [TPascalTokenKind.Comment,
     TPascalTokenKind.Directive]) do
+  begin
     Inc(FirstCode);
+  end;
   Run := nil;
   for Index := FirstCode to High(Tokens) do
   begin
@@ -343,7 +403,9 @@ begin
         Continue;
       end;
       if (Run <> nil) and (Run[High(Run)].Line + 1 <> Token.StartPos.Line) then
+      begin
         Flush;
+      end;
       Item.Line := Token.StartPos.Line;
       Item.Text := Copy(Token.Text, 3, MaxInt);
       Item.Range := TTextRange.Create(Token.StartPos, Token.EndPos);
@@ -353,7 +415,9 @@ begin
     begin
       Flush;
       if Token.EndPos.Line > Token.StartPos.Line then
+      begin
         JudgeBlock(Index);
+      end;
     end;
   end;
   Flush;

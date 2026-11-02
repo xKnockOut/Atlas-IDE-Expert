@@ -93,11 +93,15 @@ var
   Tree: TSyntaxTree;
 begin
   if FBodies.TryGetValue(LowerCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := TDictionary<string, TEventHandlerBody>.Create;
   FBodies.Add(LowerCase(AFileName), Result);
   if not (Assigned(FReadText) and FReadText(AFileName, Text)) then
+  begin
     Exit;
+  end;
   Tree := TSyntaxTreeCache.Parse(Text, nil);
   try
     TEventHandlers.Bodies(Tree, Result);
@@ -115,7 +119,9 @@ var
 begin
   Result := False;
   if FIndex = nil then
+  begin
     Exit;
+  end;
   // Die Klasse selbst (Rumpf in einer anderen Unit, etwa per Include) und ihre Vorfahren.
   ClassName := AHandler.Container;
   Depth := 0;
@@ -125,15 +131,21 @@ begin
     for Location in FIndex.FindSymbols(ClassName) do
     begin
       if not (Location.Symbol.Kind in ClassKinds) then
+      begin
         Continue;
+      end;
       FileName := Location.FileName;
       Container := AHandler.Container;
       AHandler.Container := ClassName;
       if TEventHandlers.Resolve(AHandler, FileName, BodiesOf(FileName)) then
+      begin
         Exit(True);
+      end;
       AHandler.Container := Container;
       if (Next = '') and (Length(Location.Symbol.Ancestors) > 0) then
+      begin
         Next := Location.Symbol.Ancestors[0];
+      end;
     end;
     ClassName := Next;
     Inc(Depth);
@@ -156,25 +168,41 @@ begin
   if Length(AFiles) > 0 then
   begin
     for FileName in AFiles do
+    begin
       if SameText(ExtractFileExt(FileName), '.pas') then
+      begin
         Files := Files + [FileName];
+      end;
+    end;
   end
   else if FIndex <> nil then
+  begin
     for UnitIndex in FIndex.Units do
+    begin
       if not UnitIndex.Library_ then
+      begin
         Files := Files + [UnitIndex.FileName];
+      end;
+    end;
+  end;
   if not Assigned(FReadText) then
+  begin
     Exit;
+  end;
   for FileName in Files do
   begin
     if not FReadText(FileName, Text) then
+    begin
       Continue;
+    end;
     Forms := nil;
     for FormFile in TFormFiles.FormFiles(FileName, Text) do
     begin
       Form.FileName := FormFile;
       if FReadText(FormFile, Form.Text) then
+      begin
         Forms := Forms + [Form];
+      end;
     end;
     for Found in TEventHandlers.Collect(FileName, Text, Forms) do
     begin
@@ -218,7 +246,9 @@ begin
       Item.AddPair('source', Handler.SourceFile);
       Item.AddPair('sourceLine', TJSONNumber.Create(Handler.SourceLine));
       if Handler.Interval >= 0 then
+      begin
         Item.AddPair('interval', TJSONNumber.Create(Handler.Interval));
+      end;
     end;
     Root.AddPair('unresolved', TJSONNumber.Create(AUnresolved));
     Result := Root.ToJSON;
@@ -236,9 +266,13 @@ var
 begin
   FileName := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
   if not (Assigned(FSourceFor) and FSourceFor(FileName, True, Source)) then
+  begin
     Source := Default(TLspMetricsSource);
+  end;
   Handlers := Collect(Source.Files, Unresolved);
   Result := TJSONObject.ParseJSONValue(ToJson(Handlers, Unresolved));
 end;

@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Rules')]
   TAtlasBulkFixPreviewTests = class
   public
     [Test]

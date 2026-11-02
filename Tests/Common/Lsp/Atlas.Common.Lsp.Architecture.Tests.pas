@@ -295,7 +295,9 @@ begin
     Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '<!doctype html>');
   finally
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
     Lsp.Free;
     Service.Free;
   end;
@@ -415,7 +417,9 @@ begin
     BaselineSetting := '';
     ProjectRoot := 'C:\Projekt';
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
     LaterLsp.Free;
     Later.Free;
     Lsp.Free;
@@ -492,7 +496,9 @@ begin
   finally
     ResolutionSetting := 1;
     if TDirectory.Exists(mFolder) then
+    begin
       TDirectory.Delete(mFolder, True);
+    end;
     mLsp.Free;
     mService.Free;
   end;

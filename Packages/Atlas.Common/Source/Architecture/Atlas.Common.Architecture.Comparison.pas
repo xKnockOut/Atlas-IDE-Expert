@@ -178,15 +178,21 @@ function CompareNames(const ALeft, ARight: string): Integer;
 begin
   Result := CompareText(ALeft, ARight);
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft, ARight);
+  end;
 end;
 
 function SectionText(AInterface: Boolean): string;
 begin
   if AInterface then
-    Result := 'interface'
+  begin
+    Result := 'interface';
+  end
   else
+  begin
     Result := 'implementation';
+  end;
 end;
 
 { TArchitectureComparison }
@@ -200,23 +206,33 @@ function TArchitectureComparison.GroupingNote: string;
 begin
   Result := '';
   if ResolutionDiffers then
+  begin
     Result := 'Hinweis: Der gespeicherte Stand wurde mit Feinheit γ = ' +
       TArchitectureGrouping.ResolutionText(BaselineGrouping.Clamped.Resolution) + ' gerechnet, der aktuelle mit γ = ' +
       TArchitectureGrouping.ResolutionText(Grouping.Clamped.Resolution) +
       '; Teilsystemwechsel können daher kommen.';
+  end;
 end;
 
 function TArchitectureComparison.Kinds: TArchitectureFailKinds;
 begin
   Result := [];
   if Length(NewCycles) > 0 then
+  begin
     Include(Result, TArchitectureFailKind.NewCycle);
+  end;
   if Length(NewCrossLinks) > 0 then
+  begin
     Include(Result, TArchitectureFailKind.NewCrossLink);
+  end;
   if Length(Moves) > 0 then
+  begin
     Include(Result, TArchitectureFailKind.SubsystemChange);
+  end;
   if Length(Growth) > 0 then
+  begin
     Include(Result, TArchitectureFailKind.CentralGrowth);
+  end;
 end;
 
 function TArchitectureComparison.IsEmpty: Boolean;
@@ -231,8 +247,12 @@ var
   Match: TComparisonMatch;
 begin
   for Match in Matches do
+  begin
     if SameText(Match.NewName, ANewName) then
+    begin
       Exit(Match.OldName);
+    end;
+  end;
   Result := '';
 end;
 
@@ -254,8 +274,12 @@ var
 begin
   Result := nil;
   for Kind := Low(TArchitectureFailKind) to High(TArchitectureFailKind) do
+  begin
     if Kind in AKinds then
+    begin
       Result := Result + [KindName(Kind)];
+    end;
+  end;
 end;
 
 class function TArchitectureComparer.ParseKinds(const ANames: TArray<string>; out AKinds: TArchitectureFailKinds;
@@ -271,11 +295,13 @@ begin
   begin
     Found := False;
     for Kind := Low(TArchitectureFailKind) to High(TArchitectureFailKind) do
+    begin
       if SameText(Trim(Name), KindName(Kind)) then
       begin
         Include(AKinds, Kind);
         Found := True;
       end;
+    end;
     if not Found then
     begin
       AError := 'Unbekannte Abweichung "' + Name + '" (erlaubt: ' + string.Join(', ', KindNameList) + ')';
@@ -303,7 +329,9 @@ var
 begin
   Result := TDictionary<string, Integer>.Create;
   for Index := 0 to High(ASnapshot.Units) do
+  begin
     Result.AddOrSetValue(LowerCase(ASnapshot.Units[Index].Name), Index);
+  end;
 end;
 
 function EdgeKeys(const AEdges: TArray<TSnapshotEdge>): TDictionary<string, Boolean>;
@@ -312,7 +340,9 @@ var
 begin
   Result := TDictionary<string, Boolean>.Create;
   for Edge in AEdges do
+  begin
     Result.AddOrSetValue(Edge.Key, True);
+  end;
 end;
 
 function SubsystemOfUnit(const ASnapshot: TArchitectureSnapshot; AUnits: TDictionary<string, Integer>;
@@ -321,9 +351,13 @@ var
   Index: Integer;
 begin
   if AUnits.TryGetValue(LowerCase(AName), Index) then
-    Result := ASnapshot.Units[Index].Subsystem
+  begin
+    Result := ASnapshot.Units[Index].Subsystem;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function ChangeOf(const AEdge: TSnapshotEdge; const ASnapshot: TArchitectureSnapshot;
@@ -359,8 +393,12 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if SameText(Item, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -393,47 +431,79 @@ begin
   try
     // uses-Kanten (die Snapshots sind sortiert, die Listen damit auch).
     for Edge in ANew.Edges do
+    begin
       if not OldEdges.ContainsKey(Edge.Key) then
       begin
         Change := ChangeOf(Edge, ANew, NewUnits);
         Result.AddedEdges := Result.AddedEdges + [Change];
         if not SameText(Change.FromSubsystem, Change.ToSubsystem) then
+        begin
           Result.NewEdges := Result.NewEdges + [Change];
+        end;
       end;
+    end;
     for Edge in AOld.Edges do
+    begin
       if not NewEdges.ContainsKey(Edge.Key) then
       begin
         Change := ChangeOf(Edge, AOld, OldUnits);
         Result.DroppedEdges := Result.DroppedEdges + [Change];
         if not SameText(Change.FromSubsystem, Change.ToSubsystem) then
+        begin
           Result.RemovedEdges := Result.RemovedEdges + [Change];
+        end;
       end;
+    end;
     // Zyklen.
     Keys.Clear;
     for Cycle in AOld.Cycles do
+    begin
       Keys.AddOrSetValue(Cycle.Key, True);
+    end;
     for Cycle in ANew.Cycles do
+    begin
       if not Keys.ContainsKey(Cycle.Key) then
+      begin
         Result.NewCycles := Result.NewCycles + [CycleOf(Cycle)];
+      end;
+    end;
     Keys.Clear;
     for Cycle in ANew.Cycles do
+    begin
       Keys.AddOrSetValue(Cycle.Key, True);
+    end;
     for Cycle in AOld.Cycles do
+    begin
       if not Keys.ContainsKey(Cycle.Key) then
+      begin
         Result.RemovedCycles := Result.RemovedCycles + [CycleOf(Cycle)];
+      end;
+    end;
     // Querverbindungen.
     Keys.Clear;
     for Link in AOld.CrossLinks do
+    begin
       Keys.AddOrSetValue(Link.Edge.Key, True);
+    end;
     for Link in ANew.CrossLinks do
+    begin
       if not Keys.ContainsKey(Link.Edge.Key) then
+      begin
         Result.NewCrossLinks := Result.NewCrossLinks + [LinkOf(Link)];
+      end;
+    end;
     Keys.Clear;
     for Link in ANew.CrossLinks do
+    begin
       Keys.AddOrSetValue(Link.Edge.Key, True);
+    end;
     for Link in AOld.CrossLinks do
+    begin
       if not Keys.ContainsKey(Link.Edge.Key) then
+      begin
         Result.RemovedCrossLinks := Result.RemovedCrossLinks + [LinkOf(Link)];
+      end;
+    end;
     // Units: neu, Teilsystemwechsel, Wachstum.
     for Item in ANew.Units do
     begin
@@ -461,15 +531,21 @@ begin
       end;
     end;
     for Item in AOld.Units do
+    begin
       if not NewUnits.ContainsKey(LowerCase(Item.Name)) then
+      begin
         Result.RemovedUnits := Result.RemovedUnits + [Item.Name];
+      end;
+    end;
     // Stärkster Zuwachs zuerst, bei Gleichstand nach Name.
     TArray.Sort<TComparisonGrowth>(Result.Growth, TComparer<TComparisonGrowth>.Construct(
       function(const ALeft, ARight: TComparisonGrowth): Integer
       begin
         Result := (ARight.After - ARight.Before) - (ALeft.After - ALeft.Before);
         if Result = 0 then
+        begin
           Result := CompareNames(ALeft.Unit_, ARight.Unit_);
+        end;
       end));
   finally
     Keys.Free;
@@ -488,7 +564,9 @@ begin
   AComparison := Default(TArchitectureComparison);
   Result := TArchitectureSnapshots.Load(AFileName, Baseline, AError);
   if Result then
+  begin
     AComparison := Compare(Baseline, TArchitectureSnapshots.FromOverview(AOverview));
+  end;
 end;
 
 class function TArchitectureComparer.ResolvePath(const ARoot, APath: string): string;
@@ -497,7 +575,9 @@ var
 begin
   Path := Trim(APath);
   if (Path = '') or (ARoot = '') or TPath.IsPathRooted(Path) then
+  begin
     Exit(Path);
+  end;
   Result := TPath.GetFullPath(TPath.Combine(ARoot, Path));
 end;
 
@@ -505,7 +585,9 @@ class function TArchitectureComparer.CyclePath(const ACycle: TComparisonCycle): 
 begin
   Result := string.Join(' → ', ACycle.Units);
   if Length(ACycle.Units) > 0 then
+  begin
     Result := Result + ' → ' + ACycle.Units[0];
+  end;
 end;
 
 class function TArchitectureComparer.EdgeText(const AEdge: TComparisonEdge): string;
@@ -516,19 +598,29 @@ end;
 function CycleCaption(const ACycle: TComparisonCycle): string;
 begin
   if ACycle.InterfaceOnly then
-    Result := 'nur über interface'
+  begin
+    Result := 'nur über interface';
+  end
   else
+  begin
     Result := 'über implementation';
+  end;
 end;
 
 function ReasonCaption(const AReason: string): string;
 begin
   if AReason = 'rare' then
-    Result := 'selten'
+  begin
+    Result := 'selten';
+  end
   else if AReason = 'againstDirection' then
-    Result := 'gegen die Hauptrichtung'
+  begin
+    Result := 'gegen die Hauptrichtung';
+  end
   else
+  begin
     Result := AReason;
+  end;
 end;
 
 function GrowthText(const AGrowth: TComparisonGrowth): string;
@@ -536,9 +628,13 @@ var
   Percent: Integer;
 begin
   if AGrowth.Before > 0 then
-    Percent := Round((AGrowth.After - AGrowth.Before) * 100 / AGrowth.Before)
+  begin
+    Percent := Round((AGrowth.After - AGrowth.Before) * 100 / AGrowth.Before);
+  end
   else
+  begin
     Percent := 100;
+  end;
   Result := AGrowth.Unit_ + ': gesamt abhängig ' + IntToStr(AGrowth.Before) + ' → ' + IntToStr(AGrowth.After) +
     ' (+' + IntToStr(AGrowth.After - AGrowth.Before) + ', +' + IntToStr(Percent) + ' %)';
 end;
@@ -557,11 +653,17 @@ begin
   Result := ATitle + ': ' + IntToStr(Length(ALines)) + LineBreak;
   Count := Length(ALines);
   if (ALimit > 0) and (Count > ALimit) then
+  begin
     Count := ALimit;
+  end;
   for Index := 0 to Count - 1 do
+  begin
     Result := Result + '  ' + ALines[Index] + LineBreak;
+  end;
   if Count < Length(ALines) then
+  begin
     Result := Result + '  … ' + IntToStr(Length(ALines) - Count) + ' weitere' + LineBreak;
+  end;
 end;
 
 function CycleLines(const ACycles: TArray<TComparisonCycle>): TArray<string>;
@@ -570,7 +672,9 @@ var
 begin
   Result := nil;
   for Cycle in ACycles do
+  begin
     Result := Result + [TArchitectureComparer.CyclePath(Cycle) + ' (' + CycleCaption(Cycle) + ')'];
+  end;
 end;
 
 function LinkLines(const ALinks: TArray<TComparisonEdge>; AReason: Boolean): TArray<string>;
@@ -583,7 +687,9 @@ begin
   begin
     Line := TArchitectureComparer.EdgeText(Link) + ' ' + SubsystemPair(Link);
     if AReason and (Link.Reason <> '') then
+    begin
       Line := Line + ', ' + ReasonCaption(Link.Reason);
+    end;
     Result := Result + [Line];
   end;
 end;
@@ -594,7 +700,9 @@ var
 begin
   Result := nil;
   for Moved in AMoves do
+  begin
     Result := Result + [Moved.Unit_ + ': ' + Moved.FromSubsystem + ' → ' + Moved.ToSubsystem];
+  end;
 end;
 
 function GrowthLines(const AGrowth: TArray<TComparisonGrowth>): TArray<string>;
@@ -603,7 +711,9 @@ var
 begin
   Result := nil;
   for Growth in AGrowth do
+  begin
     Result := Result + [GrowthText(Growth)];
+  end;
 end;
 
 class function TArchitectureComparer.Text(const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds;
@@ -615,7 +725,9 @@ begin
     IntToStr(AComparison.BaselineUnits) + ' Units, ' + IntToStr(AComparison.BaselineEdges) + ' uses-Kanten)' +
     LineBreak;
   if AComparison.GroupingNote <> '' then
+  begin
     Result := Result + AComparison.GroupingNote + LineBreak;
+  end;
   Result := Result + Section('Neue Zyklen', CycleLines(AComparison.NewCycles), ALimit) +
     Section('Entfernte Zyklen', CycleLines(AComparison.RemovedCycles), ALimit) +
     Section('Neue Querverbindungen', LinkLines(AComparison.NewCrossLinks, True), ALimit) +
@@ -628,12 +740,18 @@ begin
     Section('Entfernte Units', AComparison.RemovedUnits, ALimit);
   Failed := AComparison.Kinds * AFailOn;
   if AFailOn = [] then
-    Result := Result + 'Ergebnis: keine Abweichung gilt als Fehler (fail-on leer)'
+  begin
+    Result := Result + 'Ergebnis: keine Abweichung gilt als Fehler (fail-on leer)';
+  end
   else if Failed = [] then
-    Result := Result + 'Ergebnis: keine Abweichung der Arten ' + string.Join(', ', KindNames(AFailOn))
+  begin
+    Result := Result + 'Ergebnis: keine Abweichung der Arten ' + string.Join(', ', KindNames(AFailOn));
+  end
   else
+  begin
     Result := Result + 'Ergebnis: Abweichung ' + string.Join(', ', KindNames(Failed)) + ' (fail-on ' +
       string.Join(', ', KindNames(AFailOn)) + ')';
+  end;
 end;
 
 function ResolutionJson(const AGrouping: TArchitectureGrouping): string;
@@ -652,9 +770,13 @@ var
 begin
   Result := '### ' + ATitle + ' (' + IntToStr(Length(ALines)) + ')' + LineBreak + LineBreak;
   if Length(ALines) = 0 then
+  begin
     Exit(Result + 'Keine.' + LineBreak + LineBreak);
+  end;
   for Line in ALines do
+  begin
     Result := Result + '- ' + Cell(Line) + LineBreak;
+  end;
   Result := Result + LineBreak;
 end;
 
@@ -664,9 +786,13 @@ begin
     '“ (' + IntToStr(AComparison.BaselineUnits) + ' Units, ' + IntToStr(AComparison.BaselineEdges) +
     ' uses-Kanten).' + LineBreak + LineBreak;
   if AComparison.GroupingNote <> '' then
+  begin
     Result := Result + AComparison.GroupingNote + LineBreak + LineBreak;
+  end;
   if AComparison.IsEmpty then
+  begin
     Result := Result + 'Keine Abweichung.' + LineBreak + LineBreak;
+  end;
   Result := Result + MarkdownList('Neue Zyklen', CycleLines(AComparison.NewCycles)) +
     MarkdownList('Entfernte Zyklen', CycleLines(AComparison.RemovedCycles)) +
     MarkdownList('Neue Querverbindungen', LinkLines(AComparison.NewCrossLinks, True)) +
@@ -692,7 +818,9 @@ begin
   for Index := 0 to High(ANames) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + JsonText(ANames[Index]);
   end;
   Result := Result + ']';
@@ -706,7 +834,9 @@ begin
   for Index := 0 to High(ACycles) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + '{"interfaceOnly":' + LowerCase(BoolToStr(ACycles[Index].InterfaceOnly, True)) +
       ',"units":' + JsonNames(ACycles[Index].Units) + '}';
   end;
@@ -723,12 +853,16 @@ begin
   begin
     Edge := AEdges[Index];
     if Index > 0 then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + '{"source":' + JsonText(Edge.Source) + ',"target":' + JsonText(Edge.Target) + ',"section":' +
       JsonText(SectionText(Edge.Interface_)) + ',"from":' + JsonText(Edge.FromSubsystem) + ',"to":' +
       JsonText(Edge.ToSubsystem);
     if AReason then
+    begin
       Result := Result + ',"reason":' + JsonText(Edge.Reason);
+    end;
     Result := Result + '}';
   end;
   Result := Result + ']';
@@ -745,15 +879,23 @@ begin
     for Index := 0 to High(AEdges) do
     begin
       if Index > 0 then
+      begin
         Builder.Append(',');
+      end;
       // Höchstens 20 Kanten je Zeile: Zeilen über 1023 Zeichen machen erzeugte Dateien unhandlich.
       if (Index > 0) and (Index mod 20 = 0) then
+      begin
         Builder.Append(LineBreak);
+      end;
       Builder.Append('[').Append(JsonText(AEdges[Index].Source)).Append(',').Append(JsonText(AEdges[Index].Target));
       if AEdges[Index].Interface_ then
-        Builder.Append(',"i"]')
+      begin
+        Builder.Append(',"i"]');
+      end
       else
+      begin
         Builder.Append(',"m"]');
+      end;
     end;
     Builder.Append(']');
     Result := Builder.ToString;
@@ -772,7 +914,9 @@ begin
   for Index := 0 to High(AComparison.Moves) do
   begin
     if Index > 0 then
+    begin
       Moves := Moves + ',';
+    end;
     Moves := Moves + '{"unit":' + JsonText(AComparison.Moves[Index].Unit_) + ',"from":' +
       JsonText(AComparison.Moves[Index].FromSubsystem) + ',"to":' + JsonText(AComparison.Moves[Index].ToSubsystem) +
       '}';
@@ -782,7 +926,9 @@ begin
   for Index := 0 to High(AComparison.Growth) do
   begin
     if Index > 0 then
+    begin
       Growth := Growth + ',';
+    end;
     Growth := Growth + '{"unit":' + JsonText(AComparison.Growth[Index].Unit_) + ',"before":' +
       IntToStr(AComparison.Growth[Index].Before) + ',"after":' + IntToStr(AComparison.Growth[Index].After) + '}';
   end;

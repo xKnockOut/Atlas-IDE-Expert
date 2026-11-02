@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeClockTests = class
   private
     FNow: TDateTime;
@@ -48,10 +49,13 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeLogTests = class
   private
     FFolder: string;
   public
+    [Setup]
+    procedure Setup;
     [TearDown]
     procedure TearDown;
     /// <summary>Zwei IDE-Instanzen melden dieselbe Zeit: sie zählt einmal.</summary>
@@ -78,6 +82,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeRoundingTests = class
   public
     [Test]
@@ -89,6 +94,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerTimeWriterTests = class
   public
     [Test]
@@ -115,8 +121,11 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Providers.YouTrack;
+  Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 type
   /// <summary>Transport mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe und Inhalte.</summary>
@@ -355,8 +364,14 @@ end;
 
 { TAtlasTimeLogTests }
 
+procedure TAtlasTimeLogTests.Setup;
+begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
+end;
+
 procedure TAtlasTimeLogTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   if (FFolder <> '') and TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
   FFolder := '';

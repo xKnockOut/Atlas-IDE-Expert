@@ -144,14 +144,20 @@ var
   Range: TTextRange;
 begin
   for Token in AContext.Tree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Marker') then
     begin
       Range := TTextRange.Create(Token.StartPos, Token.EndPos);
       if FWithFix then
-        AReport.Add(Range, 'Marker gefunden', [TRuleFix.Create('Umbenennen', [TRuleEdit.Create(Range, 'Zeichen')])])
+      begin
+        AReport.Add(Range, 'Marker gefunden', [TRuleFix.Create('Umbenennen', [TRuleEdit.Create(Range, 'Zeichen')])]);
+      end
       else
+      begin
         AReport.Add(Range, 'Marker gefunden');
+      end;
     end;
+  end;
 end;
 
 var
@@ -247,7 +253,9 @@ end;
 procedure TFailingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   if Assigned(FBefore) then
+  begin
     FBefore();
+  end;
   AReport.Add(TTextRange.Create(0, 0, 0, 4), 'halber Treffer');
   raise FError.Create('Regel gescheitert');
 end;
@@ -258,7 +266,9 @@ var
 begin
   Result := ' ';
   for Note in ANotes.Notes do
+  begin
     Result := Result + Note + ' ';
+  end;
 end;
 
 /// <summary>Prozedur mit einer Kette aus ACount Subtraktionen: linkslastig und so tief wie lang.</summary>
@@ -272,7 +282,9 @@ begin
     Builder.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
     Builder.Append('  Marker := 1');
     for Index := 1 to ACount do
+    begin
       Builder.Append(' - 1');
+    end;
     Builder.Append(';'#13#10'end;'#13#10'end.');
     Result := Builder.ToString;
   finally
@@ -636,7 +648,9 @@ begin
   end;
   Joined := '';
   for Note in Notes.Notes do
+  begin
     Joined := Joined + Note + ' ';
+  end;
   Assert.Contains(Joined, 'slowRule=langsam ');
   Assert.Contains(Joined, 'slowRuleMs=');
   Assert.DoesNotContain(Joined, 'schnell');

@@ -159,7 +159,9 @@ begin
   for Run in ARuns do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + TXmlDoc.RunKindName(Run.Kind);
   end;
 end;
@@ -218,10 +220,14 @@ begin
     ' <seealso href="https://example.org">Web</seealso>');
   Names := '';
   for Kind := Low(TXmlDocSectionKind) to High(TXmlDocSectionKind) do
+  begin
     Assert.IsTrue(Doc.IndexOf(Kind) >= 0, 'Abschnitt fehlt: ' + TXmlDoc.SectionName(Kind));
+  end;
   // Nach Art sortiert, nicht nach Kommentarreihenfolge.
   for Kind := Low(TXmlDocSectionKind) to High(TXmlDocSectionKind) do
+  begin
     Names := Names + TXmlDoc.SectionName(Doc.Sections[Ord(Kind)].Kind) + ' ';
+  end;
   Assert.AreEqual('summary param typeparam returns value exception remarks example seealso ', Names);
   Assert.AreEqual('T', Doc.Sections[Doc.IndexOf(TXmlDocSectionKind.TypeParam)].Name);
   Assert.AreEqual('EFoo', Doc.Sections[Doc.IndexOf(TXmlDocSectionKind.Exception)].Name);
@@ -380,7 +386,9 @@ var
 begin
   Lines := ['/// <summary>'];
   for Index := 1 to 40 do
+  begin
     Lines := Lines + ['/// Zeile ' + IntToStr(Index) + '<br/>'];
+  end;
   Lines := Lines + ['/// </summary>', 'procedure P;'];
   Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, High(Lines)));
   Assert.AreEqual(40, Integer(Length(Doc.Summary.Split([#10]))));

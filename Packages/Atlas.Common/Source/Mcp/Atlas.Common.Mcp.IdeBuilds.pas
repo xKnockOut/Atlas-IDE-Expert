@@ -15,7 +15,7 @@
 // Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück.
 // Welche IDE welche Projekte offen hat, steht unter "projects" und
 // "activeProject" in editor-dirty-<pid>.json (TAtlasDirtyExport im Plugin).
-// Gegenstück im Plugin: Atlas.Core.Build.Inbox und Atlas.IDE.Build.Inbox.
+// Gegenstück im Plugin: Atlas.Core.BuildPipeline.Inbox und Atlas.IDE.BuildPipeline.Inbox.
 
 interface
 
@@ -109,14 +109,22 @@ begin
   try
     Result := (Value is TJSONObject) and TJSONObject(Value).TryGetValue<Int64>('pid', Pid) and (Pid > 0);
     if not Result then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     AEntry.Pid := Cardinal(Pid);
     AEntry.ActiveProject := Root.GetValue<string>('activeProject', '');
     if Root.TryGetValue<TJSONArray>('projects', Items) then
+    begin
       for Item in Items do
+      begin
         if Item is TJSONString then
+        begin
           AEntry.Projects := AEntry.Projects + [TJSONString(Item).Value];
+        end;
+      end;
+    end;
   finally
     Value.Free;
   end;
@@ -128,7 +136,9 @@ var
 begin
   Name := Copy(AProjectFile, Length(TProjectPaths.DirectoryOf(AProjectFile)) + 1, MaxInt);
   if (Name <> '') and CharInSet(Name[1], ['\', '/']) then
+  begin
     Delete(Name, 1, 1);
+  end;
   Result := SameText(TProjectPaths.Normalize(AProjectFile), TProjectPaths.Normalize(AWanted)) or
     SameText(Name, AWanted) or SameText(TProjectPaths.BaseName(AProjectFile), AWanted) or
     SameText(TProjectPaths.BaseName(AProjectFile), TProjectPaths.BaseName(AWanted));
@@ -139,7 +149,9 @@ var
   Root: string;
 begin
   if ARoot = '' then
+  begin
     Exit(True);
+  end;
   Root := TProjectPaths.Normalize(ARoot);
   Result := SameText(Copy(TProjectPaths.Normalize(AFileName), 1, Length(Root) + 1), Root + '\') or
     SameText(Copy(TProjectPaths.Normalize(AFileName), 1, Length(Root) + 1), Root + '/');
@@ -175,6 +187,7 @@ begin
     end;
     Candidates := Entry.Projects + [Entry.ActiveProject];
     for Project in Candidates do
+    begin
       if (Project <> '') and Matches(Project, AProject) and
         (TProjectPaths.IsAbsolute(AProject) or Inside(ARoot, Project)) then
       begin
@@ -182,13 +195,18 @@ begin
         AProjectFile := Project;
         Exit(True);
       end;
+    end;
   end;
   if AProject = '' then
+  begin
     AReason := 'Keine laufende IDE mit Atlas-Plugin hat ein Projekt unter dem Arbeitsordner als aktives Projekt. ' +
-      'Projekt in der IDE öffnen oder "project" angeben.'
+      'Projekt in der IDE öffnen oder "project" angeben.';
+  end
   else
+  begin
     AReason := Format('Keine laufende IDE mit Atlas-Plugin hat das Projekt %s offen. Projekt in der IDE öffnen ' +
       'und erneut aufrufen.', [AProject]);
+  end;
   Result := False;
 end;
 
@@ -220,18 +238,24 @@ begin
   try
     Result := Value is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     AOk := TJSONObject(Value).GetValue<Boolean>('ok', False);
     AReason := TJSONObject(Value).GetValue<string>('reason', '');
     Build := TJSONObject(Value).GetValue('build');
     if Build is TJSONObject then
+    begin
       ABuildText := Build.ToJSON;
+    end;
     // Ohne Ergebnis gilt der Auftrag als abgelehnt.
     if AOk and (ABuildText = '') then
     begin
       AOk := False;
       if AReason = '' then
+      begin
         AReason := 'Die IDE hat kein Ergebnis geliefert.';
+      end;
     end;
   finally
     Value.Free;
@@ -242,7 +266,9 @@ procedure DeleteQuietly(const AFileName: string);
 begin
   try
     if FileExists(AFileName) then
+    begin
       TFile.Delete(AFileName);
+    end;
   except
     on Exception do
       ;
@@ -273,7 +299,9 @@ begin
   Started := AClock();
   // Warten, bis das Plugin den Auftrag übernimmt (die .json verschwindet) oder schon antwortet.
   while (AClock() - Started < ATakeMs) and FileExists(Request) and not FileExists(Answer) do
+  begin
     AWait();
+  end;
   if FileExists(Request) and not FileExists(Answer) and DeleteFile(Request) then
   begin
     AReason := 'Die IDE hat den Build nicht angenommen (Plugin beschäftigt, abgeschaltet oder zu alt).';
@@ -281,7 +309,9 @@ begin
   end;
   Started := AClock();
   while (AClock() - Started < ABuildMs) and not FileExists(Answer) do
+  begin
     AWait();
+  end;
   if not FileExists(Answer) then
   begin
     AReason := 'Die IDE hat den Build angenommen, aber nicht rechtzeitig gemeldet.';
@@ -300,9 +330,13 @@ begin
     Exit(TMcpIdeBuildOutcome.Refused);
   end;
   if Ok then
-    Result := TMcpIdeBuildOutcome.Done
+  begin
+    Result := TMcpIdeBuildOutcome.Done;
+  end
   else
+  begin
     Result := TMcpIdeBuildOutcome.Refused;
+  end;
 end;
 
 end.

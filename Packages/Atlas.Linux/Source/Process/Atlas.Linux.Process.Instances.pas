@@ -33,7 +33,9 @@ var
 begin
   Result := ExtractFileName(string(FpReadLink(RawByteString(AProcDir + '/exe'))));
   if Result <> '' then
+  begin
     Exit;
+  end;
   Lines := TStringList.Create;
   try
     try
@@ -43,7 +45,9 @@ begin
         Exit('');
     end;
     if Lines.Count > 0 then
+    begin
       Result := Trim(Lines[0]);
+    end;
   finally
     Lines.Free;
   end;
@@ -58,12 +62,16 @@ var
 begin
   Result := nil;
   if FindFirst('/proc/*', faDirectory, Search) <> 0 then
+  begin
     Exit;
+  end;
   try
     repeat
       if TryStrToInt(Search.Name, Pid) and (Pid > 0) and
         SameText(ProgramNameOf('/proc/' + Search.Name), AExeName) then
+      begin
         Result := Result + [Cardinal(Pid)];
+      end;
     until FindNext(Search) <> 0;
   finally
     FindClose(Search);

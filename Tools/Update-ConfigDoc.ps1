@@ -67,7 +67,7 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $Schema = Get-Content -Raw -Encoding utf8 $SchemaPath | ConvertFrom-Json -AsHashtable
 $PluginSchemaPath = Join-Path $Root 'schemas/atlas-plugin.schema.json'
 $PluginSchema = Get-Content -Raw -Encoding utf8 $PluginSchemaPath | ConvertFrom-Json -AsHashtable
-$PluginPath = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Settings/Atlas.Core.Settings.Plugin.pas'
+$PluginPath = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.Plugin.pas'
 $ProfileFolder = Join-Path $Root 'Setup/Profile'
 
 function Has([hashtable] $Node, [string] $Key) { $Node.ContainsKey($Key) -and $null -ne $Node[$Key] }
@@ -623,6 +623,28 @@ else {
     }
 }
 
+# Modul-Schalter (#1454): x-module nur an booleschen Plugin-Einstellungen mit Vorgabe an und eindeutiger Kennung;
+# die Profile setzen jeden Schalter (Minimal und Nur Code Insight aus, Alles an ein).
+$ModuleKeys = New-Object System.Collections.Generic.List[string]
+$ModuleIds = @{}
+foreach ($Name in $PluginSchema['properties'].PSBase.Keys) {
+    $P = $PluginSchema['properties'][$Name]
+    if (-not (Has $P 'x-module')) { continue }
+    if ($P['type'] -ne 'boolean' -or $P['default'] -ne $true) { $Problems.Add("Plugin-Katalog: Modul-Schalter ""$Name"" muss boolesch mit Vorgabe true sein") }
+    if ($ModuleIds.ContainsKey($P['x-module'])) { $Problems.Add("Plugin-Katalog: Modul ""$($P['x-module'])"" hat zwei Schalter") }
+    $ModuleIds[$P['x-module']] = $Name
+    $ModuleKeys.Add($P['x-key'])
+}
+foreach ($Wanted in @(@{ File = 'minimal.json'; On = $false }, @{ File = 'nur-code-insight.json'; On = $false },
+        @{ File = 'alles-an.json'; On = $true }, @{ File = 'alles-an-experimentell.json'; On = $true })) {
+    $ProfilePath = Join-Path $ProfileFolder $Wanted.File
+    if (-not (Test-Path $ProfilePath)) { $Problems.Add("Setup/Profile/$($Wanted.File) fehlt"); continue }
+    $ProfileSettings = (Get-Content -Raw -Encoding utf8 $ProfilePath | ConvertFrom-Json -AsHashtable)['settings']
+    foreach ($Key in $ModuleKeys) {
+        if (-not ($ProfileSettings.ContainsKey($Key) -and ($ProfileSettings[$Key] -eq $Wanted.On))) { $Problems.Add("Setup/Profile/$($Wanted.File): Modul-Schalter ""$Key"" muss $($Wanted.On.ToString().ToLowerInvariant()) sein") }
+    }
+}
+
 # --- Schreiben oder prüfen ---
 $Targets = @(
     @{ Path = $DocPath; Text = $Text; Name = 'docs/Konfiguration.md' },
@@ -674,7 +696,7 @@ function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [
         @('', "function $FunctionName`: string;", 'var', '  Line: string;', 'begin', "  Result := '';",
         '  for Line in Lines do', '    Result := Result + Line + #10;', 'end;', '', 'end.')
 }
-$SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Settings'
+$SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 
 # Schema für den Einstellungsdialog im Plugin (#227)
 Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.SchemaData.pas') (Text-Unit 'Atlas.Core.Settings.SchemaData' @(

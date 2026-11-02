@@ -60,7 +60,9 @@ const
 procedure AddRange(AList: TList<TFoldingRange>; AStartLine, AEndLine: Integer; const AKind: string);
 begin
   if AEndLine > AStartLine then
+  begin
     AList.Add(TFoldingRange.Create(AStartLine, AEndLine, AKind));
+  end;
 end;
 
 procedure CollectNodes(ARoot: TSyntaxNode; AList: TList<TFoldingRange>);
@@ -95,7 +97,9 @@ begin
         // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := 0 to Node.ChildCount - 1 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -109,11 +113,17 @@ begin
   // {$REGION 'x'} oder (*$REGION*); Groß- und Kleinschreibung egal.
   Text := AToken.Text;
   if Text.StartsWith('{$') then
-    Text := Text.Substring(2)
+  begin
+    Text := Text.Substring(2);
+  end
   else if Text.StartsWith('(*$') then
-    Text := Text.Substring(3)
+  begin
+    Text := Text.Substring(3);
+  end
   else
+  begin
     Exit(False);
+  end;
   Result := Text.ToUpper.StartsWith(AName) and
     ((Length(Text) = Length(AName)) or not CharInSet(Text.Chars[Length(AName)], ['A'..'Z', 'a'..'z', '0'..'9', '_']));
 end;
@@ -136,31 +146,43 @@ begin
       if Token.Kind = TPascalTokenKind.Directive then
       begin
         if IsDirective(Token, 'REGION') then
-          Regions.Push(Token.StartPos.Line)
+        begin
+          Regions.Push(Token.StartPos.Line);
+        end
         else if IsDirective(Token, 'ENDREGION') and (Regions.Count > 0) then
+        begin
           AddRange(AList, Regions.Pop, Token.EndPos.Line, KindRegion);
+        end;
       end;
       if (Token.Kind = TPascalTokenKind.Comment) and Token.Text.StartsWith('//') and
         (Token.StartPos.Line > PreviousLine) then
       begin
         // Zeilenkommentar am Zeilenanfang: Block fortsetzen oder neu beginnen.
         if (LineStart >= 0) and (Token.StartPos.Line = LineEnd + 1) then
-          LineEnd := Token.StartPos.Line
+        begin
+          LineEnd := Token.StartPos.Line;
+        end
         else
         begin
           if LineStart >= 0 then
+          begin
             AddRange(AList, LineStart, LineEnd, KindComment);
+          end;
           LineStart := Token.StartPos.Line;
           LineEnd := LineStart;
         end;
       end
       else if Token.Kind = TPascalTokenKind.Comment then
+      begin
         // Blockkommentar über mehrere Zeilen.
         AddRange(AList, Token.StartPos.Line, Token.EndPos.Line, KindComment);
+      end;
       PreviousLine := Token.EndPos.Line;
     end;
     if LineStart >= 0 then
+    begin
       AddRange(AList, LineStart, LineEnd, KindComment);
+    end;
   finally
     Regions.Free;
   end;
@@ -206,11 +228,17 @@ begin
       begin
         Result := ALeft.StartLine - ARight.StartLine;
         if Result = 0 then
+        begin
           Result := ARight.EndLine - ALeft.EndLine;
+        end;
       end));
     for Range in List do
+    begin
       if (Unique.Count = 0) or (Unique.Last.StartLine <> Range.StartLine) then
+      begin
         Unique.Add(Range);
+      end;
+    end;
     Result := Unique.ToArray;
   finally
     Unique.Free;
@@ -230,7 +258,9 @@ begin
     Item.AddPair('startLine', TJSONNumber.Create(Range.StartLine));
     Item.AddPair('endLine', TJSONNumber.Create(Range.EndLine));
     if Range.Kind <> '' then
+    begin
       Item.AddPair('kind', Range.Kind);
+    end;
     Result.AddElement(Item);
   end;
 end;
@@ -246,10 +276,14 @@ var
   Form: TDfmDocument;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + Method);
+  end;
   // Nicht geöffnete Dokumente haben keine Faltbereiche.
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Formulardateien (#44) haben einen eigenen Baum.
   if TDfmParser.IsFormFile(Uri) then
   begin

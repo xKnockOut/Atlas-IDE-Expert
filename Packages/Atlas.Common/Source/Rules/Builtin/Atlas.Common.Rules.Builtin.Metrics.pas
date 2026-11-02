@@ -159,14 +159,20 @@ var
 begin
   Result := ADefault;
   if AOptions = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Limit := TJSONObject(Value).GetValue(MetricLimitOption);
     if (Limit is TJSONNumber) and TryStrToInt(Limit.Value, Number) and (Number >= 1) then
+    begin
       Result := Number;
+    end;
   finally
     Value.Free;
   end;
@@ -179,10 +185,14 @@ var
 begin
   Result := TMetricLimits.Default;
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     Result.Values[Kind] := LimitFromOptions(TRuleEngine.RuleOptions(RuleId(Kind), ASettings), Result.Values[Kind]);
+  end;
   for Structure := Low(TStructureKind) to High(TStructureKind) do
+  begin
     Result.Structure[Structure] := LimitFromOptions(TRuleEngine.RuleOptions(RuleId(Structure), ASettings),
       Result.Structure[Structure]);
+  end;
 end;
 
 class function TMetricRules.Message(AKind: TMetricKind; const AName: string; AValue, ALimit: Integer): string;
@@ -232,9 +242,13 @@ class function TMetricRules.Message(AKind: TStructureKind; const AName: string; 
   AAtLeast: Boolean): string;
 begin
   if AAtLeast and (AKind = TStructureKind.InheritanceDepth) then
-    Result := Format('%s hat Vererbungstiefe mindestens %d ohne RTL und VCL (Grenze %d).', [AName, AValue, ALimit])
+  begin
+    Result := Format('%s hat Vererbungstiefe mindestens %d ohne RTL und VCL (Grenze %d).', [AName, AValue, ALimit]);
+  end
   else
+  begin
     Result := Message(AKind, AName, AValue, ALimit);
+  end;
 end;
 
 class function TMetricRules.InheritanceDepths(ATree: TSyntaxTree; const AIndex: ISymbolIndex;
@@ -249,7 +263,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or TLibraryUnits.IsLibrary(AIndex, ALocal.UnitName) then
+  begin
     Exit;
+  end;
   Ancestry := TAncestry.Create(AIndex, ALocal);
   Seen := TDictionary<string, Integer>.Create;
   try
@@ -257,16 +273,26 @@ begin
     begin
       // Nur Klassen der obersten Ebene; object-Typen und verschachtelte Klassen kennt TAncestry nicht.
       if (Item.Kind <> TStructureKind.ClassSize) or not Ancestry.FindClass(Item.Name, Location) then
+      begin
         Continue;
+      end;
       Count := 0;
       ReachedLibrary := False;
       for Location in Ancestry.Ancestors(Item.Name, Complete, ObjectMissing) do
+      begin
         if (Location.UnitName <> '') and TLibraryUnits.IsLibrary(AIndex, Location.UnitName) then
-          ReachedLibrary := True
+        begin
+          ReachedLibrary := True;
+        end
         else if not SameText(Location.Symbol.Name, 'TObject') then
+        begin
           Inc(Count);
+        end;
+      end;
       if Count = 0 then
+      begin
         Continue;
+      end;
       Depth := Item;
       Depth.Kind := TStructureKind.InheritanceDepth;
       Depth.Value := Count;
@@ -274,7 +300,9 @@ begin
       Depth.AtLeast := not Complete and not ReachedLibrary;
       // Vorwärtsdeklaration und Deklaration: die spätere zählt.
       if Seen.TryGetValue(UpperCase(Item.Name), Index) then
-        Result[Index] := Depth
+      begin
+        Result[Index] := Depth;
+      end
       else
       begin
         Seen.Add(UpperCase(Item.Name), Length(Result));
@@ -317,16 +345,26 @@ var
   Items: TArray<TStructureMetrics>;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Limit := TMetricRules.LimitFromOptions(AContext.Options, TMetricLimits.Default.Structure[FKind]);
   if FKind = TStructureKind.InheritanceDepth then
+  begin
     Items := TMetricRules.InheritanceDepths(AContext.Tree, AContext.Index,
-      TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext))
+      TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  end
   else
+  begin
     Items := TMetricsCalculator.Structure(AContext.Tree);
+  end;
   for Item in Items do
+  begin
     if (Item.Kind = FKind) and (Item.Value > Limit) then
+    begin
       AReport.Add(Item.NameRange, TMetricRules.Message(FKind, Item.Name, Item.Value, Limit, Item.AtLeast));
+    end;
+  end;
 end;
 
 { TMetricRule }
@@ -378,14 +416,18 @@ begin
   Options := TExtractOptions.Default;
   Options.Style := AContext.Formatting;
   for Condition in TMetricsCalculator.Conditions(AContext.Tree) do
+  begin
     if Condition.Operands > ALimit then
     begin
       Fixes := nil;
       if TExtractRefactoring.ExtractCondition(AContext.Text, AContext.Tree, Condition.Range, Options, Action) then
+      begin
         Fixes := [TRuleFix.Create(Action.Title, Action.Edits)];
+      end;
       AReport.Add(Condition.Range, TMetricRules.Message(TMetricKind.BooleanOperands, '', Condition.Operands, ALimit),
         Fixes);
     end;
+  end;
 end;
 
 procedure TMetricRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -394,7 +436,9 @@ var
   Routine: TRoutineMetrics;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Limit := TMetricRules.LimitFromOptions(AContext.Options, TMetricLimits.Default.Values[FKind]);
   if FKind = TMetricKind.BooleanOperands then
   begin
@@ -402,8 +446,12 @@ begin
     Exit;
   end;
   for Routine in TMetricsCalculator.Routines(AContext.Tree) do
+  begin
     if Routine.Values[FKind] > Limit then
+    begin
       AReport.Add(Routine.NameRange, TMetricRules.Message(FKind, Routine.Name, Routine.Values[FKind], Limit));
+    end;
+  end;
 end;
 
 procedure RegisterMetricRules(const ARegistry: TRuleRegistry);
@@ -412,9 +460,13 @@ var
   Structure: TStructureKind;
 begin
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     ARegistry.Register(TMetricRule.Create(Kind));
+  end;
   for Structure := Low(TStructureKind) to High(TStructureKind) do
+  begin
     ARegistry.Register(TStructureMetricRule.Create(Structure));
+  end;
 end;
 
 end.

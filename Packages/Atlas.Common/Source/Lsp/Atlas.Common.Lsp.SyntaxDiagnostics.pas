@@ -277,9 +277,13 @@ begin
   FSendLock := TObject.Create;
   FDebouncer := TDebouncer.Create(ADelayMs);
   if ADelayMs = 0 then
-    FRefreshDebouncer := TDebouncer.Create(0)
+  begin
+    FRefreshDebouncer := TDebouncer.Create(0);
+  end
   else
+  begin
     FRefreshDebouncer := TDebouncer.Create(RefreshDelayMs);
+  end;
 end;
 
 constructor TLspSyntaxDiagnostics.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -328,9 +332,13 @@ var
 begin
   Provider := FProviders.Version;
   if Assigned(Provider) then
-    Result := Provider(AUri)
+  begin
+    Result := Provider(AUri);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TLspSyntaxDiagnostics.CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
@@ -427,9 +435,13 @@ var
 begin
   Provider := FProviders.CompilerMessages;
   if Assigned(Provider) then
-    Result := Provider(AFileName)
+  begin
+    Result := Provider(AFileName);
+  end
   else
+  begin
     Result := nil;
+  end;
 end;
 
 class function TLspSyntaxDiagnostics.CompilerMessageToJson(const AMessage: TCompilerMessage;
@@ -449,14 +461,18 @@ begin
       First := Min(AMessage.Column, Length(ALineText));
       Last := First + 1;
       while (Last < Length(ALineText)) and CharInSet(ALineText[Last + 1], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      begin
         Inc(Last);
+      end;
     end
     else
     begin
       // Ganze Zeile ohne Einrückung.
       First := 0;
       while (First < Length(ALineText)) and CharInSet(ALineText[First + 1], [' ', #9]) do
+      begin
         Inc(First);
+      end;
       Last := Length(ALineText);
     end;
     Range.StartPos := TTextPosition.Create(Range.StartPos.Line, First);
@@ -479,7 +495,9 @@ begin
   Result.AddPair('range', TLspPositions.RangeToJson(Range));
   Result.AddPair('severity', TJSONNumber.Create(Severity));
   if AMessage.Code <> '' then
+  begin
     Result.AddPair('code', AMessage.Code);
+  end;
   Result.AddPair('source', CompilerSource);
   Result.AddPair('message', AMessage.Text);
 end;
@@ -495,9 +513,13 @@ begin
   if FPullMode then
   begin
     if Assigned(FOnPullFilesChanged) then
-      FOnPullFilesChanged(AFileNames)
+    begin
+      FOnPullFilesChanged(AFileNames);
+    end
     else if Assigned(FOnPullChanged) then
+    begin
       FOnPullChanged();
+    end;
     Exit;
   end;
   for FileName in AFileNames do
@@ -510,7 +532,9 @@ begin
     end;
     Items := TJSONArray.Create;
     for Item in CurrentCompilerMessages(FileName) do
+    begin
       Items.AddElement(CompilerMessageToJson(Item, '', False));
+    end;
     Params := TJSONObject.Create;
     Params.AddPair('uri', Uri);
     Params.AddPair('diagnostics', Items);
@@ -523,7 +547,9 @@ begin
         ScheduleParse(Document);
       end
       else
+      begin
         Send(FTransport, Params);
+      end;
     finally
       TMonitor.Exit(FSendLock);
     end;
@@ -537,12 +563,18 @@ begin
   if FPullMode then
   begin
     if Assigned(FOnPullChanged) then
+    begin
       FOnPullChanged();
+    end;
     Exit;
   end;
   for Document in FStore.Documents do
+  begin
     if not SameText(ExtractFileExt(Document.Uri), '.json') then
+    begin
       ScheduleParse(Document);
+    end;
+  end;
 end;
 
 procedure TLspSyntaxDiagnostics.RefreshLater;
@@ -559,7 +591,9 @@ begin
   // JSON-Dateien wie atlas.json prüft TLspConfiguration.
   // Im Pull-Modus fragt der Client nach Änderungen selbst nach.
   if SameText(ExtractFileExt(ADocument.Uri), '.json') or FPullMode then
+  begin
     Exit;
+  end;
   case AKind of
     TDocumentEventKind.Opened, TDocumentEventKind.Changed:
       ScheduleParse(ADocument);
@@ -625,9 +659,13 @@ begin
       Result.AddPair('uri', ADocument.Uri);
       // Binär gespeichert (#122): ein Hinweis statt Lesefehlern.
       if TFormModel.IsBinary(ADocument.Text) then
-        Result.AddPair('diagnostics', TLspFormFiles.BinaryDiagnostics)
+      begin
+        Result.AddPair('diagnostics', TLspFormFiles.BinaryDiagnostics);
+      end
       else
+      begin
         Result.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
+      end;
     finally
       Form.Free;
     end;
@@ -642,9 +680,13 @@ begin
     Inactive := TLspInactiveRegions.Regions(Shared.Processed, Shared.IncludesResolved, Issues);
   end
   else
+  begin
     Defines := nil;
+  end;
   if not CurrentRules(ADocument.Uri, Rules) then
+  begin
     Rules := Default(TRuleCheckContext);
+  end;
   Rules.Cancelled := ACancelled;
   CurrentTarget(ADocument.Uri, Platform, Config);
   Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules, Platform, Config, Defines);
@@ -654,9 +696,13 @@ begin
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(Issue.Range));
     if Issue.Kind = TPreprocessorIssueKind.IncludeCycle then
-      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning))
+    begin
+      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
+    end
     else
+    begin
       Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
+    end;
     Item.AddPair('source', Source);
     Item.AddPair('message', Issue.Message);
     Items.AddElement(Item);
@@ -667,11 +713,17 @@ begin
   begin
     HasSyntaxErrors := Length(TSyntaxTreeCache.GetFor(ADocument, Defines).Tree.Diagnostics) > 0;
     if not HasSyntaxErrors then
+    begin
       AddUsesDiagnostics(Items, ADocument.Text, TLspInactiveRegions.RangesOf(Inactive), UsesContext);
+    end;
   end;
   for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
+  begin
     if Compiled.Line < ADocument.LineCount then
+    begin
       Items.AddElement(CompilerMessageToJson(Compiled, ADocument.LineText(Max(Compiled.Line, 0)), True));
+    end;
+  end;
 end;
 
 procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
@@ -693,9 +745,13 @@ begin
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.
     if IsCurrent(ADocument) then
-      Send(FTransport, Params)
+    begin
+      Send(FTransport, Params);
+    end
     else
+    begin
       Params.Free;
+    end;
   finally
     TMonitor.Exit(FSendLock);
   end;
@@ -762,7 +818,9 @@ begin
     begin
       Codes := TJSONArray.Create;
       for Code in Entry.CompilerCodes do
+      begin
         Codes.Add(Code);
+      end;
       Data.AddPair('compilerCodes', Codes);
     end;
   end;
@@ -771,11 +829,15 @@ begin
   begin
     Fix := AFinding.Fixes[0];
     if not Fix.Alternative then
+    begin
       Data.AddPair('fix', Fix.Title);
+    end;
   end;
   // Zusatz für den Befund-Hover, z. B. der durchsuchte Bereich projektweiter Regeln (#1102).
   if AFinding.Details <> '' then
+  begin
     Data.AddPair('details', AFinding.Details);
+  end;
   Result.AddPair('data', Data);
   // Weitere Stellen (#896), z. B. die uses-Einträge eines Zyklus: anklickbar im Befund-Hover.
   if AFinding.Related <> nil then
@@ -814,16 +876,24 @@ var
   Platform, Config: string;
 begin
   if ACondition = '' then
+  begin
     Exit(InactiveMessage);
+  end;
   Result := Format(InactiveConditionMessage, [ACondition]);
   if (APlatform = '') and (AConfig = '') then
+  begin
     Exit;
+  end;
   Platform := APlatform;
   Config := AConfig;
   if Platform = '' then
+  begin
     Platform := '?';
+  end;
   if Config = '' then
+  begin
     Config := '?';
+  end;
   Result := Result + Format(InactiveTargetSuffix, [Platform, Config]);
 end;
 
@@ -857,12 +927,16 @@ begin
   // Syntaxfehler als Treffer der Regel "syntax" (#1022): Schweregrad und Gruppe aus der Konfiguration,
   // Code und Korrektur wie bei den übrigen Regeln. Ohne Konfiguration gilt Default = Fehler.
   for RuleFinding in TFileChecker.SyntaxFindings(Tree.Diagnostics, ARules.Settings) do
+  begin
     Items.AddElement(FindingToJson(RuleFinding));
+  end;
   // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109). Als Treffer der Regel
   // language-feature wie im Linter und in den MCP-Werkzeugen (#1126); ADelphiVersion ist der Sprachstand.
   for RuleFinding in TFileChecker.LanguageFeatureFindings(Tree, ARules.Settings, ADelphiVersion,
     TLspInactiveRegions.RangesOf(AInactive)) do
+  begin
     Items.AddElement(FindingToJson(RuleFinding));
+  end;
   if Length(ARules.Rules) > 0 then
   begin
     // Abbruch (ERuleCheckCancelled): Die bis dahin gesammelten Meldungen freigeben.
@@ -874,9 +948,13 @@ begin
     end;
     // Routinen aus demselben Baum: Die Baseline (#97) braucht sie für ihren Schlüssel.
     if ARules.Baseline <> nil then
+    begin
       Findings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, TFindingScopes.FromTree(Tree), Findings);
+    end;
     for RuleFinding in Findings do
+    begin
       Items.AddElement(FindingToJson(RuleFinding));
+    end;
   end;
   for Region in AInactive do
   begin
@@ -909,7 +987,9 @@ var
   Context: TRuleContext;
 begin
   if Length(ARules.Rules) = 0 then
+  begin
     Exit(nil);
+  end;
   Context := Default(TRuleContext);
   Context.RelativePath := ARules.RelativePath;
   Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');

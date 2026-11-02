@@ -149,8 +149,12 @@ var
   Item: TEventHandler;
 begin
   for Item in FHandlers do
+  begin
     if SameText(Item.Component, AComponent) and SameText(Item.Event, AEvent) then
+    begin
       Exit(Item);
+    end;
+  end;
   Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
   Result := Default(TEventHandler);
 end;
@@ -190,7 +194,9 @@ begin
   FHandlers := FCommand.Collect(TArray<string>.Create(KundeFile), Unresolved);
   Assert.AreEqual(1, Unresolved);
   for Item in FHandlers do
+  begin
     Assert.AreNotEqual('btnWeg', Item.Component);
+  end;
 end;
 
 procedure TLspEventHandlersTests.WithoutFilesUsesIndexUnits;

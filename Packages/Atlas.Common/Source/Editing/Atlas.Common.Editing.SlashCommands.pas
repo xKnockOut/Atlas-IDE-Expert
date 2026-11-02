@@ -138,8 +138,12 @@ var
   Name: string;
 begin
   for Name in ADisabled do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -176,7 +180,9 @@ begin
       Result := TUsesCommand.AfterEnter(AContext.Text, TTextPosition.Create(AContext.Line + 1, 0),
         AContext.Namespaces, AEdits);
       if not Result then
+      begin
         AReason := 'Erwartet werden Unit-Namen, z. B. /uses System.SysUtils, System.Classes';
+      end;
     end;
 end;
 
@@ -217,7 +223,9 @@ begin
     RegisterTaskCommands(mRegister);
     RegisterRecordCommands(mRegister);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
+    begin
       Created.Free;
+    end;
   end;
   Result := FShared;
 end;
@@ -227,7 +235,9 @@ var
   Existing: TSlashCommand;
 begin
   if Find(ACommand.Name, Existing) then
+  begin
     raise EArgumentException.CreateFmt('Schnellbefehl /%s ist schon eingetragen', [ACommand.Name]);
+  end;
   TMonitor.Enter(FLock);
   try
     FCommands.Add(ACommand);
@@ -243,11 +253,13 @@ begin
   TMonitor.Enter(FLock);
   try
     for Command in FCommands do
+    begin
       if SameText(Command.Name, AName) then
       begin
         ACommand := Command;
         Exit(True);
       end;
+    end;
     Result := False;
   finally
     TMonitor.Exit(FLock);
@@ -279,12 +291,18 @@ begin
   Text := Trim(ALine);
   // "/name": Buchstabe direkt nach "/"; "//" ist ein Kommentar.
   if (Length(Text) < 2) or (Text[1] <> '/') or not CharInSet(Text[2], ['A'..'Z', 'a'..'z']) then
+  begin
     Exit(False);
+  end;
   Index := 2;
   while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '!', '-']) do
+  begin
     Inc(Index);
+  end;
   if (Index <= Length(Text)) and (Text[Index] <> ' ') then
+  begin
     Exit(False);
+  end;
   AName := Copy(Text, 2, Index - 2);
   AArguments := Trim(Copy(Text, Index, MaxInt));
   Result := True;
@@ -299,17 +317,25 @@ begin
   for Token in ATokens do
   begin
     if Token.StartPos.Line > ALine then
+    begin
       Break;
+    end;
     // Mehrzeiliger Kommentar oder String über der Zeile.
     if (Token.StartPos.Line < ALine) and (Token.EndPos.Line >= ALine) and
       (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) then
+    begin
       Exit(False);
+    end;
     if Token.StartPos.Line < ALine then
     begin
       if Token.IsKeyword('asm') then
-        InAsm := True
+      begin
+        InAsm := True;
+      end
       else if InAsm and Token.IsKeyword('end') then
+      begin
         InAsm := False;
+      end;
     end;
   end;
   Result := not InAsm;
@@ -376,7 +402,9 @@ class function TSlashCommandRegistry.Reindent(const AText: string; const AEdits:
   begin
     Count := 0;
     while (Count < Length(ALine)) and CharInSet(ALine[Count + 1], [' ', #9]) do
+    begin
       Inc(Count);
+    end;
     Result := Copy(ALine, 1, Count);
   end;
 
@@ -388,39 +416,61 @@ var
 begin
   Result := Copy(AEdits);
   if AStyle.UseTabs then
-    LevelUnit := #9
+  begin
+    LevelUnit := #9;
+  end
   else if AStyle.IndentSize >= 1 then
-    LevelUnit := StringOfChar(' ', AStyle.IndentSize)
+  begin
+    LevelUnit := StringOfChar(' ', AStyle.IndentSize);
+  end
   else
+  begin
     LevelUnit := '  ';
+  end;
   if LevelUnit = '  ' then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AText);
   for Index := 0 to High(Result) do
   begin
     Edit := Result[Index];
     Base := '';
     if (Edit.Range.StartPos.Line >= 0) and (Edit.Range.StartPos.Line <= High(Lines)) then
+    begin
       Base := Leading(Lines[Edit.Range.StartPos.Line]);
+    end;
     Parts := Edit.NewText.Split([#10]);
     for PartIndex := 0 to High(Parts) do
     begin
       // Erste Zeile mitten in einer Zeile: dort gibt es keine Einrückung.
       if (PartIndex = 0) and (Edit.Range.StartPos.Character > 0) then
+      begin
         Continue;
+      end;
       Part := Parts[PartIndex];
       Indent := Leading(Part);
       if Length(Indent) = Length(Part) then
+      begin
         Continue;
+      end;
       // Zusatz hinter der Einrückung der Zeile oder (eingerückte vorhandene Zeilen) davor.
       if Indent.StartsWith(Base) then
-        Extra := Copy(Indent, Length(Base) + 1, MaxInt)
+      begin
+        Extra := Copy(Indent, Length(Base) + 1, MaxInt);
+      end
       else if Indent.EndsWith(Base) then
-        Extra := Copy(Indent, 1, Length(Indent) - Length(Base))
+      begin
+        Extra := Copy(Indent, 1, Length(Indent) - Length(Base));
+      end
       else
+      begin
         Continue;
+      end;
       if (Extra = '') or (Pos(#9, Extra) > 0) then
+      begin
         Continue;
+      end;
       Levels := Length(Extra) div 2;
       Rest := Length(Extra) mod 2;
       Extra := '';
@@ -454,10 +504,14 @@ begin
   Context.Line := ALine;
   Lines := TTextLines.SplitLines(AText, LineBreak);
   if (Context.Line < 0) or (Context.Line > High(Lines)) then
+  begin
     Exit(False);
+  end;
   Context.LineText := Lines[Context.Line];
   if not Split(Context.LineText, Context.Name, Context.Arguments) then
+  begin
     Exit(False);
+  end;
   if not Find(Context.Name, Command) then
   begin
     AReason := Format('Unbekannter Schnellbefehl /%s', [Context.Name]);
@@ -488,13 +542,17 @@ begin
     begin
       AEdits := Reindent(AText, AEdits, AStyle);
       for Action in Context.Actions do
+      begin
         Action();
+      end;
     end
     else
     begin
       AEdits := nil;
       if AReason = '' then
+      begin
         AReason := Format('Schnellbefehl /%s passt hier nicht', [Context.Name]);
+      end;
     end;
   finally
     Context.Actions.Free;
@@ -530,16 +588,26 @@ begin
   for Line := 0 to High(Lines) do
   begin
     if not Split(Lines[Line], Name, Arguments) then
+    begin
       Continue;
+    end;
     if Tokens = nil then
+    begin
       Tokens := TPascalLexer.Tokenize(AText);
+    end;
     if not IsCodeLine(Tokens, Line) then
+    begin
       Continue;
+    end;
     Reason := '';
     if not Find(Name, Command) then
-      Reason := Format('Unbekannter Schnellbefehl /%s', [Name])
+    begin
+      Reason := Format('Unbekannter Schnellbefehl /%s', [Name]);
+    end
     else if IsDisabled(Name, ADisabled) then
-      Reason := Format('Schnellbefehl /%s ist abgeschaltet (slashCommands.disabled)', [Name])
+    begin
+      Reason := Format('Schnellbefehl /%s ist abgeschaltet (slashCommands.disabled)', [Name]);
+    end
     else
     begin
       Context := Default(TSlashContext);
@@ -551,10 +619,14 @@ begin
       Context.Index := AIndex;
       Context.DelphiVersion := ADelphiVersion;
       if not Command.Execute(Context, Edits, Reason) and (Reason = '') then
+      begin
         Reason := Format('Schnellbefehl /%s passt hier nicht', [Name]);
+      end;
     end;
     if Reason = '' then
+    begin
       Continue;
+    end;
     Start := Pos('/', Lines[Line]) - 1;
     Problem.Range := TTextRange.Create(Line, Start, Line, Length(TrimRight(Lines[Line])));
     Problem.Message := Reason;
@@ -568,8 +640,12 @@ var
 begin
   Result := nil;
   for Command in Commands do
+  begin
     if StartsText(APrefix, Command.Name) and not IsDisabled(Command.Name, ADisabled) then
+    begin
       Result := Result + [Command];
+    end;
+  end;
 end;
 
 end.

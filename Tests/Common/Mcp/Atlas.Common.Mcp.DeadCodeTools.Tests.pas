@@ -88,12 +88,20 @@ begin
   Result.Texts := Texts;
   Result.Index := TSymbolIndex.Create;
   for Pair in Texts do
+  begin
     if Pair.Key = UpperCase(AppFile) then
-      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, AppFile, nil, nil, True))
+    begin
+      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, AppFile, nil, nil, True));
+    end
     else if Pair.Key = UpperCase(MainFile) then
-      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, MainFile, nil, nil, True))
+    begin
+      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, MainFile, nil, nil, True));
+    end
     else
+    begin
       Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, OrphanFile, nil, nil, True));
+    end;
+  end;
   Result.Sources := [AppFile, MainFile, OrphanFile];
   Project := Default(TRuleProject);
   Project.FileName := 'C:\P\App.dproj';
@@ -108,7 +116,9 @@ begin
     begin
       Result := not Incomplete;
       if Incomplete then
+      begin
         AReason := 'Index wird aufgebaut';
+      end;
     end);
 end;
 

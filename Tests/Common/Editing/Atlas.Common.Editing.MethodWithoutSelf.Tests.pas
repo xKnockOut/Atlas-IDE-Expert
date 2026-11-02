@@ -105,9 +105,13 @@ begin
   Result := nil;
   Tokens := ATree.Tokens;
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) and
       not ((Index > 0) and (Tokens[Index - 1].IsKeyword('function') or Tokens[Index - 1].IsKeyword('procedure'))) then
+    begin
       Result := Result + [Tokens[Index].Offset];
+    end;
+  end;
 end;
 
 function EditsOf(const AResult: TMethodResult; const AFileName: string): TArray<TTextEdit>;
@@ -116,8 +120,12 @@ var
 begin
   Result := nil;
   for Item in AResult.Files do
+  begin
     if SameText(Item.FileName, AFileName) then
+    begin
       Exit(Item.Edits);
+    end;
+  end;
 end;
 
 /// <summary>Wandelt die Methode an ALine/ACharacter in ADeclaring um; AOther (oder '') ruft auf.</summary>
@@ -134,7 +142,9 @@ begin
   try
     Lookup := TMethodLookup.FromTree(Tree);
     if not AHelperLookup then
+    begin
       Lookup.VisibleHelper := nil;
+    end;
     Others := nil;
     if AOther <> '' then
     begin

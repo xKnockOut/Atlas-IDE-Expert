@@ -141,7 +141,9 @@ function ReadDispatch(const AFileName: string; out AText: string): Boolean;
 begin
   Result := SameText(AFileName, DispatchFile);
   if Result then
+  begin
     AText := UnitDispatch;
+  end;
 end;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
@@ -150,15 +152,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -166,11 +172,17 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else if SameText(AFileName, WerkzeugFile) then
-    AText := UnitWerkzeug
+  begin
+    AText := UnitWerkzeug;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { TLspHierarchiesTests }
@@ -197,14 +209,20 @@ begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
     if ACall then
-      Found := TLspHierarchies.CallItemAt(FResolver, Tree, HauptFile, PositionOf(UnitHaupt, AMarker), Result)
+    begin
+      Found := TLspHierarchies.CallItemAt(FResolver, Tree, HauptFile, PositionOf(UnitHaupt, AMarker), Result);
+    end
     else
+    begin
       Found := TLspHierarchies.TypeItemAt(FResolver, Tree, HauptFile, PositionOf(UnitHaupt, AMarker), Result);
+    end;
   finally
     Tree.Free;
   end;
   if not Found then
+  begin
     raise Exception.CreateFmt('Kein Element bei "%s"', [AMarker]);
+  end;
 end;
 
 function TLspHierarchiesTests.Names(const AItems: TArray<THierarchyItem>): string;
@@ -213,7 +231,9 @@ var
 begin
   Result := '';
   for Item in AItems do
+  begin
     Result := Result + Item.Name + ' ';
+  end;
   Result := Trim(Result);
 end;
 
@@ -223,7 +243,9 @@ var
 begin
   Result := '';
   for Call in ACalls do
+  begin
     Result := Result + Call.Item.Name + '(' + IntToStr(Length(Call.Ranges)) + ') ';
+  end;
   Result := Trim(Result);
 end;
 

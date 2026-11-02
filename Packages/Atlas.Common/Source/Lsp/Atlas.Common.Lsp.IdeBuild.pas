@@ -108,13 +108,21 @@ end;
 function SeverityOf(const AText: string): TCompilerSeverity;
 begin
   if SameText(AText, 'fatal') then
-    Result := TCompilerSeverity.Fatal
+  begin
+    Result := TCompilerSeverity.Fatal;
+  end
   else if SameText(AText, 'error') then
-    Result := TCompilerSeverity.Error
+  begin
+    Result := TCompilerSeverity.Error;
+  end
   else if SameText(AText, 'warning') then
-    Result := TCompilerSeverity.Warning
+  begin
+    Result := TCompilerSeverity.Warning;
+  end
   else
+  begin
     Result := TCompilerSeverity.Hint;
+  end;
 end;
 
 class function TLspIdeBuild.ParseMessages(const AParams: TJSONValue): TArray<TCompilerMessage>;
@@ -126,18 +134,24 @@ var
 begin
   Result := nil;
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('messages', Items)) then
+  begin
     Exit;
+  end;
   for Value in Items do
   begin
     if not (Value is TJSONObject) then
+    begin
       Continue;
+    end;
     Item := TJSONObject(Value);
     Message := Default(TCompilerMessage);
     Message.FileName := Item.GetValue<string>('file', '');
     Message.Line := Item.GetValue<Integer>('line', 0) - 1;
     Message.Column := Item.GetValue<Integer>('column', 0) - 1;
     if Message.Line < 0 then
+    begin
       Message.Column := -1;
+    end;
     Message.Severity := SeverityOf(Item.GetValue<string>('severity', ''));
     Message.Code := Item.GetValue<string>('code', '');
     Message.Text := Item.GetValue<string>('text', '');
@@ -150,11 +164,15 @@ var
   Params: TJSONObject;
 begin
   if not (AParams is TJSONObject) then
+  begin
     Exit;
+  end;
   Track(AParams, False);
   Params := TJSONObject(AParams);
   if Params.GetValue<Boolean>('background', False) then
+  begin
     Exit;
+  end;
   // Der Gruppenlauf hat kein Projekt; dann bleibt das Projekt des letzten Laufs.
   TMonitor.Enter(FLock);
   try
@@ -179,7 +197,9 @@ end;
 procedure TLspIdeBuild.Changed;
 begin
   if Assigned(FOnChanged) then
+  begin
     FOnChanged(LastBuild);
+  end;
 end;
 
 procedure TLspIdeBuild.HandleMessages(const AParams: TJSONValue);
@@ -190,7 +210,9 @@ begin
   if (AParams is TJSONObject) and TJSONObject(AParams).GetValue<Boolean>('background', False) then
   begin
     if Assigned(FOnMessages) then
+    begin
       FOnMessages(Messages);
+    end;
     Exit;
   end;
   TMonitor.Enter(FLock);
@@ -200,17 +222,23 @@ begin
     if AParams is TJSONObject then
     begin
       if TJSONObject(AParams).GetValue<string>('project', '') <> '' then
+      begin
         FLast.Project := TJSONObject(AParams).GetValue<string>('project', '');
+      end;
       FLast.Platform := TJSONObject(AParams).GetValue<string>('platform', FLast.Platform);
       FLast.Success := TJSONObject(AParams).GetValue<Boolean>('success', FLast.Success);
     end;
     if FLast.FinishedAt = 0 then
+    begin
       FLast.FinishedAt := Now;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
   if Assigned(FOnMessages) then
+  begin
     FOnMessages(Messages);
+  end;
   Changed;
 end;
 
@@ -220,29 +248,45 @@ var
   mBefore, mAfter: Boolean;
 begin
   if not (AParams is TJSONObject) then
+  begin
     Exit;
+  end;
   if TJSONObject(AParams).GetValue<Boolean>('group', False) then
-    mKey := 'group'
+  begin
+    mKey := 'group';
+  end
   else
+  begin
     mKey := AnsiLowerCase(TJSONObject(AParams).GetValue<string>('project', ''));
+  end;
   if mKey = '' then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FLock);
   try
     mBefore := FRunning.Count > 0;
     if ARunning then
-      FRunning.AddOrSetValue(mKey, True)
+    begin
+      FRunning.AddOrSetValue(mKey, True);
+    end
     else if mKey = 'group' then
+    begin
       // Ein Gruppenlauf endet erst nach allen Projekten; fehlt ein Projektende, endet es hier.
-      FRunning.Clear
+      FRunning.Clear;
+    end
     else
+    begin
       FRunning.Remove(mKey);
+    end;
     mAfter := FRunning.Count > 0;
   finally
     TMonitor.Exit(FLock);
   end;
   if (mBefore <> mAfter) and Assigned(FOnCompiling) then
+  begin
     FOnCompiling(mAfter);
+  end;
 end;
 
 function TLspIdeBuild.Compiling: Boolean;

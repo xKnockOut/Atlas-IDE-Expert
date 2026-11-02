@@ -777,6 +777,9 @@ type
     /// <summary>Code-Abfragen (#1351, query.enabled): Fenster „Atlas-Abfrage“, MCP query_code, --query und die
     /// Regeln aus Queries; aus = nichts davon.</summary>
     QueryEnabled: Boolean;
+    /// <summary>Prüfregeln in der LSP-Sitzung (#1454, ruleChecks.enabled, Modul-Schalter des Plugins); aus = die
+    /// Sitzung der IDE prüft keine Regeln. --check und MCP lesen den Wert nicht.</summary>
+    RuleChecksEnabled: Boolean;
     /// <summary>Gespeicherte Abfragen (queries, #1351), optional als Regel query:&lt;Name&gt;.</summary>
     Queries: TArray<TSavedQuery>;
     /// <summary>Übergreifende Fundament-Units (#1365): "group" (mitgruppieren), "attach" (anhängen) oder
@@ -862,8 +865,12 @@ var
   Index: Integer;
 begin
   for Index := Low(FormerIds) to High(FormerIds) do
+  begin
     if SameText(AId, FormerIds[Index]) then
+    begin
       Exit(CurrentIds[Index]);
+    end;
+  end;
   Result := AId;
 end;
 
@@ -878,10 +885,14 @@ var
 begin
   Result := IncludeTrailingPathDelimiter(ADirectory) + AFileName;
   if FileExists(Result) then
+  begin
     Exit;
+  end;
   Legacy := IncludeTrailingPathDelimiter(ADirectory) + ALegacyFileName;
   if FileExists(Legacy) then
+  begin
     Result := Legacy;
+  end;
 end;
 
 function BdsVersionOf(const AText: string): string;
@@ -898,34 +909,52 @@ begin
   Result := '';
   Text := Trim(AText);
   if not TryStrToFloat(Text, Value, TFormatSettings.Invariant) or (Value <= 0) then
+  begin
     Exit;
+  end;
   // BDS-Nummern nur bekannter Versionen: 14.0 (XE6) bis 23.0 (Delphi 12) und 37.0 (Delphi 13).
   // Andere Werte wie "99" sind ein Tippfehler und erzeugen eine Konfigurationswarnung (#109).
   if Value >= 14 then
   begin
     if ((Trunc(Value) >= 14) and (Trunc(Value) <= 23)) or (Trunc(Value) = 37) then
+    begin
       Result := Text;
+    end;
     Exit;
   end;
   // "12.0", "12.3" usw. meinen Delphi 12; nur bei 10 zählt die Nachkommastelle.
   if Trunc(Value) <> 10 then
-    Text := IntToStr(Trunc(Value))
+  begin
+    Text := IntToStr(Trunc(Value));
+  end
   else if Pos('.', Text) > 0 then
+  begin
     Text := '10.' + Copy(Text, Pos('.', Text) + 1, 1);
+  end;
   if Text = '10.0' then
+  begin
     Text := '10';
+  end;
   for Index := Low(Products) to High(Products) do
+  begin
     if Products[Index][0] = Text then
+    begin
       Exit(Products[Index][1]);
+    end;
+  end;
 end;
 
 function NormalizeSlashes(const APath: string): string;
 begin
   Result := LowerCase(StringReplace(APath, '\', '/', [rfReplaceAll]));
   while (Result <> '') and (Result[1] = '/') do
+  begin
     Delete(Result, 1, 1);
+  end;
   if Copy(Result, 1, 2) = './' then
+  begin
     Delete(Result, 1, 2);
+  end;
 end;
 
 function MatchAt(const APattern: string; APatternIndex: Integer; const APath: string; APathIndex: Integer): Boolean;
@@ -944,33 +973,47 @@ begin
             if (APatternIndex <= Length(APattern)) and (APattern[APatternIndex] = '/') then
             begin
               if MatchAt(APattern, APatternIndex + 1, APath, APathIndex) then
+              begin
                 Exit(True);
+              end;
             end;
             for Index := APathIndex to Length(APath) + 1 do
+            begin
               if MatchAt(APattern, APatternIndex, APath, Index) then
+              begin
                 Exit(True);
+              end;
+            end;
             Exit(False);
           end;
           Inc(APatternIndex);
           for Index := APathIndex to Length(APath) + 1 do
           begin
             if MatchAt(APattern, APatternIndex, APath, Index) then
+            begin
               Exit(True);
+            end;
             if (Index <= Length(APath)) and (APath[Index] = '/') then
+            begin
               Exit(False);
+            end;
           end;
           Exit(False);
         end;
       '?':
         begin
           if (APathIndex > Length(APath)) or (APath[APathIndex] = '/') then
+          begin
             Exit(False);
+          end;
           Inc(APatternIndex);
           Inc(APathIndex);
         end;
     else
       if (APathIndex > Length(APath)) or (APattern[APatternIndex] <> APath[APathIndex]) then
+      begin
         Exit(False);
+      end;
       Inc(APatternIndex);
       Inc(APathIndex);
     end;
@@ -985,7 +1028,9 @@ begin
   Pattern := NormalizeSlashes(APattern);
   // Ein Ordnername ohne Platzhalter schließt alles darunter aus.
   if (Pattern <> '') and (Pattern[Length(Pattern)] = '/') then
+  begin
     Pattern := Pattern + '**';
+  end;
   Result := MatchAt(Pattern, 1, NormalizeSlashes(APath), 1) or
     ((Pos('*', Pattern) = 0) and (Pos('?', Pattern) = 0) and MatchAt(Pattern + '/**', 1, NormalizeSlashes(APath), 1));
 end;
@@ -1003,8 +1048,12 @@ var
   mName: string;
 begin
   for mName in KnownIncludes do
+  begin
     if mName = AName then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1350,6 +1399,7 @@ begin
   Result.ArchitectureGroupingMaxShare := 0.25;
   Result.ArchitectureGroupingMinCohesion := 0.3;
   Result.QueryEnabled := True;
+  Result.RuleChecksEnabled := True;
   Result.Queries := nil;
   Result.ArchitectureGroupingFoundations := 'separate';
   Result.ArchitectureGroupingKeepPrevious := True;
@@ -1371,8 +1421,12 @@ var
   Rule: TRuleSetting;
 begin
   for Rule in Rules do
+  begin
     if SameText(Rule.Id, ARuleId) then
+    begin
       Exit(Rule.Severity <> TRuleSeverity.Off);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1381,8 +1435,12 @@ var
   Rule: TRuleSetting;
 begin
   for Rule in Rules do
+  begin
     if SameText(Rule.Id, ARuleId) and (Rule.Severity <> TRuleSeverity.Default) then
+    begin
       Exit(Rule.Severity);
+    end;
+  end;
   Result := ADefault;
 end;
 
@@ -1391,11 +1449,13 @@ var
   Profile: TRuleProfile;
 begin
   for Profile in Profiles do
+  begin
     if SameText(Profile.Name, AName) then
     begin
       AProfile := Profile;
       Exit(True);
     end;
+  end;
   // Nicht Default(…): innerhalb von TServerSettings träfe das die gleichnamige Klassenfunktion.
   AProfile.Name := '';
   AProfile.Extends := '';
@@ -1410,10 +1470,16 @@ var
   Profile: TRuleProfile;
 begin
   if AName = '' then
+  begin
     Exit(True);
+  end;
   for Name in BuiltinProfileNames do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := TryFindProfile(AName, Profile);
 end;
 
@@ -1422,8 +1488,12 @@ var
   Pattern: string;
 begin
   for Pattern in IndexExclude do
+  begin
     if MatchesGlob(Pattern, AFileName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1432,8 +1502,12 @@ var
   Pattern: string;
 begin
   for Pattern in Exclude do
+  begin
     if MatchesGlob(Pattern, ARelativePath) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 

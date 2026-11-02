@@ -78,9 +78,13 @@ begin
     ANode := ANode[0];
   end;
   if ANode.Kind = TSyntaxKind.Identifier then
-    Result := ANode.Name + Suffix
+  begin
+    Result := ANode.Name + Suffix;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function FindAttribute(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
@@ -97,10 +101,16 @@ begin
     begin
       Node := Pending.Pop;
       if Node.Kind = TSyntaxKind.Attribute then
+      begin
         Exit(Node);
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         if Contains(Node[Index], APosition) then
+        begin
           Pending.Push(Node[Index]);
+        end;
+      end;
     end;
   finally
     Pending.Free;
@@ -115,24 +125,36 @@ var
 begin
   AUse := Default(TAttributeUse);
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit(False);
+  end;
   Attribute := FindAttribute(ATree.Root, APosition);
   if Attribute = nil then
+  begin
     Exit(False);
+  end;
   for Index := 0 to Attribute.ChildCount - 1 do
   begin
     Item := Attribute[Index];
     NameNode := Item;
     if (Item.Kind = TSyntaxKind.Call) and (Item.ChildCount > 0) then
+    begin
       NameNode := Item[0];
+    end;
     if not Contains(NameNode, APosition) then
+    begin
       Continue;
+    end;
     AUse.Name := DottedName(NameNode);
     if AUse.Name = '' then
+    begin
       Exit(False);
+    end;
     AUse.NameRange := TTextRange.Create(NameNode.StartPos, NameNode.EndPos);
     if Item <> NameNode then
+    begin
       AUse.ArgCount := Item.ChildCount - 1;
+    end;
     Exit(True);
   end;
   Result := False;
@@ -146,19 +168,27 @@ var
 begin
   Result := nil;
   if (AAttribute = nil) or (AAttribute.Kind <> TSyntaxKind.Attribute) then
+  begin
     Exit;
+  end;
   for Index := 0 to AAttribute.ChildCount - 1 do
   begin
     Item := AAttribute[Index];
     if (Item.Kind = TSyntaxKind.Call) and (Item.ChildCount > 0) then
+    begin
       Item := Item[0];
+    end;
     Name := DottedName(Item);
     if Name = '' then
+    begin
       Continue;
+    end;
     Dot := LastDelimiter('.', Name);
     Name := Copy(Name, Dot + 1, MaxInt);
     if EndsText('Attribute', Name) and (Length(Name) > Length('Attribute')) then
+    begin
       Name := Copy(Name, 1, Length(Name) - Length('Attribute'));
+    end;
     Result := Result + [Name];
   end;
 end;
@@ -176,7 +206,9 @@ function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): In
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Öffnende Klammer zu der schließenden an AClose ("(" zu ")", "[" zu "]"); -1 ohne.</summary>
@@ -189,12 +221,16 @@ begin
   while Result >= 0 do
   begin
     if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
     Dec(Result);
   end;
@@ -208,7 +244,9 @@ var
 begin
   Index := PreviousIndex(ATokens, AOpen);
   while (Index >= 0) and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol('.')) do
+  begin
     Index := PreviousIndex(ATokens, Index);
+  end;
   Result := (Index >= 0) and (ATokens[Index].IsKeyword('procedure') or ATokens[Index].IsKeyword('function') or
     ATokens[Index].IsKeyword('constructor') or ATokens[Index].IsKeyword('destructor') or
     ATokens[Index].IsKeyword('property'));
@@ -237,13 +275,19 @@ var
 begin
   Result := False;
   if (AOpen < 0) or (AOpen > High(ATokens)) or not ATokens[AOpen].IsSymbol('[') or (ADepth > MaxChainedBrackets) then
+  begin
     Exit;
+  end;
   Prev := PreviousIndex(ATokens, AOpen);
   if Prev < 0 then
+  begin
     Exit(True);
+  end;
   LineStart := ATokens[Prev].EndPos.Line < ATokens[AOpen].StartPos.Line;
   if ATokens[Prev].IsSymbol(';') then
+  begin
     Exit(True);
+  end;
   if ATokens[Prev].Kind = TPascalTokenKind.Keyword then
   begin
     // "IFoo = interface [" ist die GUID; "interface" als Abschnitt steht hinter "unit X;".
@@ -259,7 +303,9 @@ begin
   end;
   // Parameter: "procedure Foo([Ref] const A".
   if ATokens[Prev].IsSymbol('(') then
+  begin
     Exit(OpensParameters(ATokens, Prev));
+  end;
   // "TFoo = class(TBasis)" und darunter das Attribut eines Felds.
   if ATokens[Prev].IsSymbol(')') then
   begin
@@ -268,11 +314,17 @@ begin
   end;
   // Sichtbarkeit und weitere Attribute nur am Zeilenanfang: "Private[0]" und "A[1][2]" sind Indizes.
   if not LineStart then
+  begin
     Exit;
+  end;
   if IsVisibility(ATokens[Prev]) then
+  begin
     Exit(True);
+  end;
   if ATokens[Prev].IsSymbol(']') then
+  begin
     Exit(OpensAt(ATokens, OpeningOf(ATokens, Prev), ADepth + 1));
+  end;
 end;
 
 class function TAttributes.Opens(const ATokens: TArray<TPascalToken>; AOpen: Integer): Boolean;
@@ -286,32 +338,46 @@ var
 begin
   Result := False;
   if (ALast < 0) or (ALast > High(ATokens)) then
+  begin
     Exit;
+  end;
   if ATokens[ALast].IsSymbol('[') then
+  begin
     Exit(Opens(ATokens, ALast));
+  end;
   if not ATokens[ALast].IsSymbol(',') then
+  begin
     Exit;
+  end;
   // Zur offenen "[" zurück; eine offene "(" davor heißt: in den Argumenten.
   Depth := 0;
   Index := PreviousIndex(ATokens, ALast);
   while Index >= 0 do
   begin
     if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsSymbol('(') then
     begin
       if Depth = 0 then
+      begin
         Exit;
+      end;
       Dec(Depth);
     end
     else if ATokens[Index].IsSymbol('[') then
     begin
       if Depth = 0 then
+      begin
         Exit(Opens(ATokens, Index));
+      end;
       Dec(Depth);
     end
     else if (Depth = 0) and (ATokens[Index].IsSymbol(';') or (ATokens[Index].Kind = TPascalTokenKind.Keyword)) then
+    begin
       Exit;
+    end;
     Index := PreviousIndex(ATokens, Index);
   end;
 end;
@@ -320,15 +386,21 @@ class function TAttributes.ShortName(const AName: string): string;
 begin
   Result := AName;
   if EndsText('Attribute', Result) and (Length(Result) > Length('Attribute')) then
+  begin
     Result := Copy(Result, 1, Length(Result) - Length('Attribute'));
+  end;
 end;
 
 class function TAttributes.ClassNames(const AName: string): TArray<string>;
 begin
   if EndsText('Attribute', AName) then
-    Result := [AName]
+  begin
+    Result := [AName];
+  end
   else
+  begin
     Result := [AName + 'Attribute', AName];
+  end;
 end;
 
 end.

@@ -79,10 +79,16 @@ var
 begin
   InString := False;
   for I := 1 to Length(ALine) do
+  begin
     if ALine[I] = '''' then
-      InString := not InString
+    begin
+      InString := not InString;
+    end
     else if not InString and ((ALine[I] = '{') or (Copy(ALine, I, 2) = '//') or (Copy(ALine, I, 2) = '(*')) then
+    begin
       Exit(I);
+    end;
+  end;
   Result := Length(ALine) + 1;
 end;
 
@@ -94,10 +100,16 @@ var
 begin
   InString := False;
   for I := 1 to ACodeEnd - Length(AWhat) do
+  begin
     if ALine[I] = '''' then
-      InString := not InString
+    begin
+      InString := not InString;
+    end
     else if not InString and (I >= AFrom) and (Copy(ALine, I, Length(AWhat)) = AWhat) then
+    begin
       Exit(I);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -112,27 +124,39 @@ begin
   CodeEnd := CommentStart(ALine);
   Assign := CodePos(':=', ALine, 1, CodeEnd);
   if Assign = 0 then
+  begin
     Exit(False);
+  end;
   Start := 1;
   while (Start < Assign) and IsBlank(ALine[Start]) do
+  begin
     Inc(Start);
+  end;
   AAssignment.Indent := Copy(ALine, 1, Start - 1);
   Before := Copy(ALine, Start, Assign - Start);
   AAssignment.Left := TrimRight(Before);
   AAssignment.GapBefore := Copy(Before, Length(AAssignment.Left) + 1, MaxInt);
   Semi := CodePos(';', ALine, Assign + 2, CodeEnd);
   if Semi = 0 then
+  begin
     Semi := CodeEnd;
+  end;
   After := Copy(ALine, Assign + 2, Semi - Assign - 2);
   AAssignment.Right := Trim(After);
   AAssignment.GapAfter := Copy(After, 1, Length(After) - Length(TrimLeft(After)));
   AAssignment.Semicolon := Copy(After, Length(AAssignment.GapAfter + AAssignment.Right) + 1, MaxInt);
   if Semi < CodeEnd then
+  begin
     AAssignment.Semicolon := AAssignment.Semicolon + ';';
+  end;
   if Semi < CodeEnd then
-    AAssignment.Tail := Copy(ALine, Semi + 1, MaxInt)
+  begin
+    AAssignment.Tail := Copy(ALine, Semi + 1, MaxInt);
+  end
   else
+  begin
     AAssignment.Tail := Copy(ALine, CodeEnd, MaxInt);
+  end;
   // Hinter dem Semikolon darf nur noch Leerraum und ein Kommentar stehen.
   Result := (AAssignment.Left <> '') and (AAssignment.Right <> '') and
     (Trim(Copy(AAssignment.Tail, 1, CommentStart(AAssignment.Tail) - 1)) = '');
@@ -146,35 +170,55 @@ begin
   Expression := Trim(AExpression);
   if (Expression = '') or SameText(Expression, 'nil') or SameText(Expression, 'True') or
     SameText(Expression, 'False') then
+  begin
     Exit(False);
+  end;
   I := 1;
   while I <= Length(Expression) do
   begin
     if not TTextChars.IsIdentStart(Expression[I]) then
+    begin
       Exit(False);
+    end;
     while (I <= Length(Expression)) and TTextChars.IsIdentChar(Expression[I]) do
+    begin
       Inc(I);
+    end;
     // Nach einem Bezeichner: Indizes und ^, dann ein Punkt oder das Ende.
     while (I <= Length(Expression)) and CharInSet(Expression[I], ['[', '^']) do
+    begin
       if Expression[I] = '^' then
-        Inc(I)
+      begin
+        Inc(I);
+      end
       else
       begin
         Depth := 0;
         repeat
           if Expression[I] = '[' then
-            Inc(Depth)
+          begin
+            Inc(Depth);
+          end
           else if Expression[I] = ']' then
+          begin
             Dec(Depth);
+          end;
           Inc(I);
         until (Depth = 0) or (I > Length(Expression));
         if Depth <> 0 then
+        begin
           Exit(False);
+        end;
       end;
+    end;
     if I > Length(Expression) then
+    begin
       Exit(True);
+    end;
     if Expression[I] <> '.' then
+    begin
       Exit(False);
+    end;
     Inc(I);
   end;
   Result := False;
@@ -187,12 +231,18 @@ var
 begin
   Rest := TrimLeft(ATail);
   if StartsStr('//', Rest) then
+  begin
     Result := Copy(ATail, 1, Length(ATail) - Length(Rest)) + '// ' + TAssignmentSwap.Marker + ';' +
-      Copy(Rest, 3, MaxInt)
+      Copy(Rest, 3, MaxInt);
+  end
   else if Rest = '' then
-    Result := ' // ' + TAssignmentSwap.Marker
+  begin
+    Result := ' // ' + TAssignmentSwap.Marker;
+  end
   else
+  begin
     Result := ' // ' + TAssignmentSwap.Marker + ' ' + Rest;
+  end;
 end;
 
 class function TAssignmentSwap.Swap(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
@@ -211,11 +261,17 @@ begin
   LastLine := ARange.EndPos.Line;
   // Markierung bis zum Zeilenanfang: Diese Zeile gehört nicht mehr dazu.
   if (LastLine > First) and (ARange.EndPos.Character = 0) then
+  begin
     Dec(LastLine);
+  end;
   if LastLine > High(Lines) then
+  begin
     LastLine := High(Lines);
+  end;
   if (First < 0) or (First > LastLine) then
+  begin
     Exit(False);
+  end;
   Count := LastLine - First + 1;
   SetLength(Parsed, Count);
   SetLength(IsAssignment, Count);
@@ -231,39 +287,61 @@ begin
     Swappable[Index] := IsAssignment[Index] and IsAssignable(Parsed[Index].Left) and
       IsAssignable(Parsed[Index].Right) and not (Assigned(AReadOnly) and AReadOnly(Parsed[Index].Right));
     if not Swappable[Index] then
+    begin
       Continue;
+    end;
     Result := True;
     if Column < 0 then
-      Column := Length(Parsed[Index].Indent + Parsed[Index].Left + Parsed[Index].GapBefore)
+    begin
+      Column := Length(Parsed[Index].Indent + Parsed[Index].Left + Parsed[Index].GapBefore);
+    end
     else if Column <> Length(Parsed[Index].Indent + Parsed[Index].Left + Parsed[Index].GapBefore) then
+    begin
       Aligned := False;
+    end;
     if Length(Parsed[Index].GapBefore) < MinGap then
+    begin
       MinGap := Length(Parsed[Index].GapBefore);
+    end;
     if Length(Parsed[Index].Indent + Parsed[Index].Right) > Width then
+    begin
       Width := Length(Parsed[Index].Indent + Parsed[Index].Right);
+    end;
   end;
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to Count - 1 do
   begin
     if not IsAssignment[Index] then
+    begin
       Continue;
+    end;
     Text := Lines[First + Index];
     if Swappable[Index] then
     begin
       Gap := Parsed[Index].GapBefore;
       if Aligned then
+      begin
         Gap := StringOfChar(' ', Width + MinGap - Length(Parsed[Index].Indent + Parsed[Index].Right));
+      end;
       NewText := Parsed[Index].Indent + Parsed[Index].Right + Gap + ':=' + Parsed[Index].GapAfter +
         Parsed[Index].Left + Parsed[Index].Semicolon + Parsed[Index].Tail;
     end
     else if ContainsText(Parsed[Index].Tail, TAssignmentSwap.Marker) then
-      Continue
+    begin
+      Continue;
+    end
     else
+    begin
       NewText := Copy(Text, 1, Length(Text) - Length(Parsed[Index].Tail)) + MarkTail(Parsed[Index].Tail);
+    end;
     if NewText <> Text then
+    begin
       AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(First + Index, 0, First + Index, Length(Text)),
         NewText)];
+    end;
   end;
 end;
 
@@ -275,10 +353,16 @@ var
 begin
   Expression := Trim(AExpression);
   while (Expression <> '') and CharInSet(Expression[Length(Expression)], [']', '^']) do
+  begin
     if Expression[Length(Expression)] = '^' then
-      Expression := Copy(Expression, 1, Length(Expression) - 1)
+    begin
+      Expression := Copy(Expression, 1, Length(Expression) - 1);
+    end
     else
+    begin
       Expression := Copy(Expression, 1, LastDelimiter('[', Expression) - 1);
+    end;
+  end;
   Dot := LastDelimiter('.', Expression);
   Result := Copy(Expression, Dot + 1, MaxInt);
 end;
@@ -292,8 +376,12 @@ begin
   Result := '';
   Lines := TTextLines.SplitLines(AText);
   for Line := ARange.StartPos.Line to ARange.EndPos.Line do
+  begin
     if (Line >= 0) and (Line <= High(Lines)) then
+    begin
       Result := Result + ' ' + Lines[Line];
+    end;
+  end;
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
@@ -307,7 +395,9 @@ begin
   begin
     if ((Start = 1) or not TTextChars.IsIdentChar(Lower[Start - 1])) and
       ((Start + Length(AWord) > Length(Lower)) or not TTextChars.IsIdentChar(Lower[Start + Length(AWord)])) then
+    begin
       Exit(True);
+    end;
     Start := PosEx(AWord, Lower, Start + 1);
   end;
   Result := False;
@@ -321,13 +411,19 @@ var
 begin
   Result := False;
   if AIndex = nil then
+  begin
     Exit;
+  end;
   for Location in AIndex.FindSymbols(LastName(AExpression)) do
   begin
     if Location.Symbol.Kind <> TIndexSymbolKind.Property_ then
+    begin
       Continue;
+    end;
     if SameText(Location.FileName, AFileName) then
-      Text := AText
+    begin
+      Text := AText;
+    end
     else
       try
         Text := TFileEncoding.LoadText(Location.FileName);
@@ -341,9 +437,13 @@ begin
     Declaration := RangeText(Text, Location.Symbol.Range);
     // "property X;" hebt nur die Sichtbarkeit an und sagt nichts über write.
     if not HasWord(Declaration, 'read') and not HasWord(Declaration, 'write') then
+    begin
       Continue;
+    end;
     if HasWord(Declaration, 'write') then
+    begin
       Exit(False);
+    end;
     Result := True;
   end;
 end;

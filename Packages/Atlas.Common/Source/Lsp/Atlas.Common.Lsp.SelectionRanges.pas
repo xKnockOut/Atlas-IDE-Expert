@@ -46,8 +46,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if (ANode[Index].StartOffset <= AStart) and (AEnd <= ANode[Index].EndOffset) then
+    begin
       Exit(ANode[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -56,7 +60,9 @@ begin
   // Gleiche Bereiche hintereinander (z. B. Anweisung und ihr einziger Ausdruck) nur einmal.
   if (Length(ARanges) > 0) and (ARanges[High(ARanges)].StartPos = ARange.StartPos) and
     (ARanges[High(ARanges)].EndPos = ARange.EndPos) then
+  begin
     Exit;
+  end;
   ARanges := ARanges + [ARange];
 end;
 
@@ -93,11 +99,15 @@ begin
   for Token in ATree.Tokens do
   begin
     if Token.Offset > AOffset then
+    begin
       Break;
+    end;
     if AOffset < Token.Offset + Length(Token.Text) then
     begin
       if not (Found and (Token.Kind = TPascalTokenKind.Symbol) and (Best.Kind <> TPascalTokenKind.Symbol)) then
+      begin
         Best := Token;
+      end;
       Found := True;
       Break;
     end;
@@ -130,7 +140,9 @@ begin
       Node := Path[Index];
       // Jeder Bereich muss den inneren umschließen (z. B. nicht bei Cursor vor dem ersten Token).
       if (Node.StartOffset > InnerStart) or (Node.EndOffset < InnerEnd) then
+      begin
         Continue;
+      end;
       AddRange(Result, TTextRange.Create(Node.StartPos, Node.EndPos));
       InnerStart := Node.StartOffset;
       InnerEnd := Node.EndOffset;
@@ -151,7 +163,9 @@ begin
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(ARanges[Index]));
     if Result <> nil then
+    begin
       Item.AddPair('parent', Result);
+    end;
     Result := Item;
   end;
 end;
@@ -171,10 +185,14 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONArray>('positions', Positions)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "positions" fehlen in ' + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);

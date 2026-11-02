@@ -90,13 +90,21 @@ class function TDirectiveNames.Body(const ADirective: string): string;
 begin
   Result := Trim(ADirective);
   if StartsStr('{$', Result) then
-    Result := Copy(Result, 3, MaxInt)
+  begin
+    Result := Copy(Result, 3, MaxInt);
+  end
   else if StartsStr('(*$', Result) then
+  begin
     Result := Copy(Result, 4, MaxInt);
+  end;
   if EndsStr('*)', Result) then
-    Result := Copy(Result, 1, Length(Result) - 2)
+  begin
+    Result := Copy(Result, 1, Length(Result) - 2);
+  end
   else if EndsStr('}', Result) then
+  begin
     Result := Copy(Result, 1, Length(Result) - 1);
+  end;
   Result := Trim(Result);
 end;
 
@@ -106,7 +114,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_']) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(AText, 1, Index - 1);
 end;
 
@@ -116,14 +126,18 @@ var
 begin
   SetLength(Result, Length(DirectiveNames));
   for Index := 0 to High(DirectiveNames) do
+  begin
     Result[Index] := DirectiveNames[Index];
+  end;
 end;
 
 class function TDirectiveNames.IsDirective(const AName: string): Boolean;
 begin
   Result := (Length(AName) = 1) and CharInSet(AName[1], ['A'..'Z', 'a'..'z']);
   if not Result then
+  begin
     Result := MatchText(AName, DirectiveNames);
+  end;
 end;
 
 class function TDirectiveNames.Warnings: TArray<string>;
@@ -132,7 +146,9 @@ var
 begin
   SetLength(Result, Length(WarningNames));
   for Index := 0 to High(WarningNames) do
+  begin
     Result[Index] := WarningNames[Index];
+  end;
 end;
 
 class function TDirectiveNames.IsWarning(const AName: string): Boolean;
@@ -146,7 +162,9 @@ var
 begin
   SetLength(Result, Length(RoutineDirectiveNames));
   for Index := 0 to High(RoutineDirectiveNames) do
+  begin
     Result[Index] := RoutineDirectiveNames[Index];
+  end;
 end;
 
 class function TDirectiveNames.IsRoutineDirective(const AName: string): Boolean;

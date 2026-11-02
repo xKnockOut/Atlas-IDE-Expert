@@ -72,7 +72,9 @@ var
 begin
   SetLength(Result, Length(RechnerTests));
   for Index := 0 to High(RechnerTests) do
+  begin
     Result[Index] := RechnerTests[Index];
+  end;
 end;
 
 function Reader: TMcpReadLines;
@@ -82,9 +84,13 @@ begin
     begin
       Result := AFileName.EndsWith('Rechner.Tests.pas');
       if Result then
-        ALines := Lines
+      begin
+        ALines := Lines;
+      end
       else
+      begin
         ALines := nil;
+      end;
     end;
 end;
 

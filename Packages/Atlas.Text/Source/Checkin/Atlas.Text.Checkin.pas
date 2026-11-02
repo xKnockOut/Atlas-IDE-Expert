@@ -60,8 +60,12 @@ var
 begin
   Result := '';
   for Ch in AName do
+  begin
     if (Ch <> '-') and (Ch <> '_') and (Ch <> '.') and (Ch <> ' ') then
+    begin
       Result := Result + Ch;
+    end;
+  end;
   Result := LowerCase(Result);
 end;
 
@@ -84,13 +88,17 @@ begin
   Result := nil;
   Start := 1;
   for Index := 1 to Length(APath) + 1 do
+  begin
     if (Index > Length(APath)) or IsSeparator(APath[Index]) then
     begin
       Part := Trim(Copy(APath, Start, Index - Start));
       if (Part <> '') and (Part <> '.') then
+      begin
         Result := Result + [LowerCase(Part)];
+      end;
       Start := Index + 1;
     end;
+  end;
 end;
 
 { TTextCheckin }
@@ -101,8 +109,12 @@ var
 begin
   Name := Normalized(AKey);
   for Item in CredentialKeys do
+  begin
     if Name = Item then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -111,53 +123,96 @@ var
   Name, Item: string;
 begin
   if IsCredentialKey(AName) then
+  begin
     Exit(True);
+  end;
   Name := Normalized(AName);
   for Item in CredentialEndings do
+  begin
     if (Length(Name) > Length(Item)) and (Copy(Name, Length(Name) - Length(Item) + 1, Length(Item)) = Item) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
+end;
+
+// Benutzer oder Kennwort im Authority-Teil (https://user:pass@host)?
+function HasAuthorityCredentials(const AValue: string): Boolean;
+var
+  mScheme, mStop, mIndex: Integer;
+begin
+  mScheme := Pos('://', AValue);
+  if mScheme = 0 then
+  begin
+    Exit(False);
+  end;
+  mStop := Length(AValue) + 1;
+  for mIndex := mScheme + 3 to Length(AValue) do
+  begin
+    if CharInSet(AValue[mIndex], ['/', '?', '#']) then
+    begin
+      mStop := mIndex;
+      Break;
+    end;
+  end;
+  Result := Pos('@', Copy(AValue, mScheme + 3, mStop - mScheme - 3)) > 0;
+end;
+
+// Abfrageteil ohne ? und ohne Fragment; '' ohne Abfrage.
+function QueryOf(const AValue: string): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := Pos('?', AValue);
+  if mIndex = 0 then
+  begin
+    Exit('');
+  end;
+  Result := Copy(AValue, mIndex + 1, MaxInt);
+  mIndex := Pos('#', Result);
+  if mIndex > 0 then
+  begin
+    Result := Copy(Result, 1, mIndex - 1);
+  end;
+end;
+
+// Name eines Abfrageparameters ("token" aus "token=abc").
+function ParameterName(const APair: string): string;
+var
+  mEquals: Integer;
+begin
+  Result := APair;
+  mEquals := Pos('=', Result);
+  if mEquals > 0 then
+  begin
+    Result := Copy(Result, 1, mEquals - 1);
+  end;
 end;
 
 class function TTextCheckin.HasUrlCredentials(const AValue: string): Boolean;
 var
-  Scheme, Stop, Index, Start, Equals: Integer;
-  Authority, Query, Pair: string;
+  mQuery: string;
+  mIndex, mStart: Integer;
 begin
-  Result := False;
-  Scheme := Pos('://', AValue);
-  if Scheme > 0 then
+  if HasAuthorityCredentials(AValue) then
   begin
-    Stop := Length(AValue) + 1;
-    for Index := Scheme + 3 to Length(AValue) do
-      if (AValue[Index] = '/') or (AValue[Index] = '?') or (AValue[Index] = '#') then
-      begin
-        Stop := Index;
-        Break;
-      end;
-    Authority := Copy(AValue, Scheme + 3, Stop - Scheme - 3);
-    if Pos('@', Authority) > 0 then
-      Exit(True);
+    Exit(True);
   end;
-  Index := Pos('?', AValue);
-  if Index = 0 then
-    Exit;
-  Query := Copy(AValue, Index + 1, MaxInt);
-  Index := Pos('#', Query);
-  if Index > 0 then
-    Query := Copy(Query, 1, Index - 1);
-  Start := 1;
-  for Index := 1 to Length(Query) + 1 do
-    if (Index > Length(Query)) or (Query[Index] = '&') or (Query[Index] = ';') then
+  mQuery := QueryOf(AValue);
+  mStart := 1;
+  for mIndex := 1 to Length(mQuery) + 1 do
+  begin
+    if (mIndex > Length(mQuery)) or CharInSet(mQuery[mIndex], ['&', ';']) then
     begin
-      Pair := Copy(Query, Start, Index - Start);
-      Equals := Pos('=', Pair);
-      if Equals > 0 then
-        Pair := Copy(Pair, 1, Equals - 1);
-      if IsCredentialKey(Pair) then
+      if IsCredentialKey(ParameterName(Copy(mQuery, mStart, mIndex - mStart))) then
+      begin
         Exit(True);
-      Start := Index + 1;
+      end;
+      mStart := mIndex + 1;
     end;
+  end;
+  Result := False;
 end;
 
 class function TTextCheckin.IsMachinePath(const APath: string): Boolean;
@@ -166,7 +221,9 @@ var
 begin
   Path := Trim(APath);
   if (Length(Path) >= 2) and IsLetter(Path[1]) and (Path[2] = ':') then
+  begin
     Exit(True);
+  end;
   Result := (Length(Path) >= 3) and IsSeparator(Path[1]) and IsSeparator(Path[2]) and not IsSeparator(Path[3]) and
     (Path[3] <> '*');
 end;
@@ -176,7 +233,9 @@ var
   Path: string;
 begin
   if IsMachinePath(APath) then
+  begin
     Exit(True);
+  end;
   Path := Trim(APath);
   Result := (Path <> '') and (IsSeparator(Path[1]) or (Path[1] = '~'));
 end;
@@ -188,13 +247,17 @@ var
 begin
   Start := 1;
   for Index := 1 to Length(AText) + 1 do
+  begin
     if (Index > Length(AText)) or CharInSet(AText[Index], [' ', #9, #10, #13, '"', '''', '=', ';', ',']) then
     begin
       Word := Copy(AText, Start, Index - Start);
       if (Word <> '') and IsMachinePath(Word) then
+      begin
         Exit(True);
+      end;
       Start := Index + 1;
     end;
+  end;
   Result := False;
 end;
 
@@ -204,25 +267,39 @@ var
   Index, Depth: Integer;
 begin
   if IsAbsolutePath(ARelative) then
+  begin
     Exit(False);
+  end;
   Root := Segments(ARoot);
   Base := Segments(ABase);
   if Length(Base) < Length(Root) then
+  begin
     Exit(False);
+  end;
   for Index := 0 to High(Root) do
+  begin
     if Root[Index] <> Base[Index] then
+    begin
       Exit(False);
+    end;
+  end;
   Depth := Length(Base) - Length(Root);
   Relative := Segments(ARelative);
   for Index := 0 to High(Relative) do
+  begin
     if Relative[Index] = '..' then
     begin
       Dec(Depth);
       if Depth < 0 then
+      begin
         Exit(False);
+      end;
     end
     else
+    begin
       Inc(Depth);
+    end;
+  end;
   Result := True;
 end;
 

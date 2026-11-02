@@ -91,9 +91,13 @@ var
   Number: Int64;
 begin
   if TryStrToInt64(AText, Number) then
-    Result := IntToStr(Number)
+  begin
+    Result := IntToStr(Number);
+  end
   else
+  begin
     Result := LowerCase(AText);
+  end;
 end;
 
 { TTreeChecker }
@@ -106,7 +110,9 @@ begin
   FTokens := ATokens;
   FByOffset := TDictionary<Integer, Integer>.Create;
   for Index := 0 to High(FTokens) do
+  begin
     FByOffset.AddOrSetValue(FTokens[Index].Offset, Index);
+  end;
   FResult := TList<TSyntaxDiagnostic>.Create;
   FWithResult := TDictionary<string, Boolean>.Create;
 end;
@@ -135,7 +141,9 @@ end;
 function TTreeChecker.IndexAt(AOffset: Integer): Integer;
 begin
   if not FByOffset.TryGetValue(AOffset, Result) then
+  begin
     Result := -1;
+  end;
 end;
 
 function TTreeChecker.IndexFrom(AOffset: Integer): Integer;
@@ -148,9 +156,13 @@ begin
   begin
     Middle := (Lower + Upper) div 2;
     if FTokens[Middle].Offset < AOffset then
-      Lower := Middle + 1
+    begin
+      Lower := Middle + 1;
+    end
     else
+    begin
       Upper := Middle;
+    end;
   end;
   Result := Lower;
 end;
@@ -160,9 +172,13 @@ begin
   Result := AIndex + 1;
   while (Result <= High(FTokens)) and (FTokens[Result].Kind in [TPascalTokenKind.Comment,
     TPascalTokenKind.Directive]) do
+  begin
     Inc(Result);
+  end;
   if Result > High(FTokens) then
+  begin
     Result := -1;
+  end;
 end;
 
 function TTreeChecker.SymbolBetween(const ASymbol: string; AFrom, ATo: Integer): Integer;
@@ -173,7 +189,9 @@ begin
   while (Index <= High(FTokens)) and (FTokens[Index].Offset < ATo) do
   begin
     if FTokens[Index].IsSymbol(ASymbol) then
+    begin
       Exit(Index);
+    end;
     Inc(Index);
   end;
   Result := -1;
@@ -188,7 +206,9 @@ begin
   begin
     if (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
       SameText(FTokens[Index].Text, AWord) then
+    begin
       Exit(True);
+    end;
     Inc(Index);
   end;
   Result := False;
@@ -201,11 +221,17 @@ begin
   Result := '';
   Index := IndexAt(AHeader.StartOffset);
   if Index < 0 then
+  begin
     Exit;
+  end;
   if FTokens[Index].IsKeyword('class') then
+  begin
     Index := NextCode(Index);
+  end;
   if Index >= 0 then
+  begin
     Result := LowerCase(FTokens[Index].Text);
+  end;
 end;
 
 function TTreeChecker.ResultTypeOf(AHeader: TSyntaxNode): TSyntaxNode;
@@ -214,8 +240,12 @@ var
 begin
   // Kinder des Kopfs: Typparameter, Parameter, Direktiven, Attribute und der Ergebnistyp.
   for Index := 0 to AHeader.ChildCount - 1 do
+  begin
     if not (AHeader[Index].Kind in HeaderParts) then
+    begin
       Exit(AHeader[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -227,7 +257,9 @@ begin
   while Node <> nil do
   begin
     if Node.Kind = TSyntaxKind.RoutineDecl then
+    begin
       Exit(True);
+    end;
     Node := Node.Parent;
   end;
   Result := False;
@@ -240,7 +272,9 @@ begin
     begin
       Result := True;
       if (ANode.Kind = TSyntaxKind.RoutineHeader) and (ResultTypeOf(ANode) <> nil) then
+      begin
         FWithResult.AddOrSetValue(LowerCase(ANode.Name), True);
+      end;
     end);
 end;
 
@@ -252,7 +286,9 @@ var
 begin
   Owner := AHeader.Parent;
   if (Owner = nil) or (AHeader.Name = '') then
+  begin
     Exit;
+  end;
   Word := HeaderWord(AHeader);
   ResultType := ResultTypeOf(AHeader);
   if (Word = 'procedure') and (ResultType <> nil) then
@@ -262,19 +298,29 @@ begin
   end;
   // Eine Methodenzuordnung (function IFoo.GetX = MyGetX) hat nie einen Ergebnistyp (#1134).
   if (Word <> 'function') or (ResultType <> nil) or AHeader.IsMethodResolution then
+  begin
     Exit;
+  end;
   // Deklaration: in einem Typ, im interface-Teil, forward/external oder eine freie Routine ohne
   // Deklaration mit Ergebnistyp in der Datei.
   if Owner.Kind in TypeKinds then
-    Declaration := True
+  begin
+    Declaration := True;
+  end
   else if Owner.Kind = TSyntaxKind.RoutineDecl then
+  begin
     Declaration := ((Owner.Parent <> nil) and (Owner.Parent.Kind = TSyntaxKind.InterfaceSection)) or
-      ((Pos('.', AHeader.Name) = 0) and not FWithResult.ContainsKey(LowerCase(AHeader.Name)))
+      ((Pos('.', AHeader.Name) = 0) and not FWithResult.ContainsKey(LowerCase(AHeader.Name)));
+  end
   else
+  begin
     Declaration := False;
+  end;
   if Declaration then
+  begin
     Add('E2023', Format('Die Funktion %s braucht einen Ergebnistyp', [AHeader.Name]), AHeader.StartPos,
       AHeader.EndPos);
+  end;
 end;
 
 procedure TTreeChecker.CheckParameter(AParameter: TSyntaxNode);
@@ -282,7 +328,9 @@ begin
   // procedure Foo(A); – nur const, var, out und constref dürfen ohne Typ stehen.
   if (AParameter.Name = '') or (AParameter.Modifier <> TParameterModifier.None) or
     (SymbolBetween(':', AParameter.StartOffset, AParameter.EndOffset) >= 0) then
+  begin
     Exit;
+  end;
   Add('E2067', Format('Parametertyp fehlt bei %s', [StringReplace(AParameter.Name, ',', ', ', [rfReplaceAll])]),
     AParameter.StartPos, AParameter.EndPos);
 end;
@@ -297,25 +345,39 @@ begin
   Section := ADecl.Parent;
   if (Section = nil) or (Section.Kind <> TSyntaxKind.VarSection) or (Section.Parent = nil) or
     (ADecl.ChildCount < 2) then
+  begin
     Exit;
+  end;
   Owner := Section.Parent;
   if Owner.Kind = TSyntaxKind.RoutineDecl then
-    Local := True
+  begin
+    Local := True;
+  end
   else if Owner.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.ProgramFile,
     TSyntaxKind.LibraryFile, TSyntaxKind.PackageFile] then
-    Local := False
+  begin
+    Local := False;
+  end
   else
+  begin
     Exit;
+  end;
   // X: Typ = Wert: das "=" zwischen Typ und Ausdruck; absolute hat keins.
   Equal := SymbolBetween('=', ADecl[0].EndOffset, ADecl[1].StartOffset);
   if (Equal < 0) or WordBetween('absolute', ADecl[0].EndOffset, ADecl[1].StartOffset) then
+  begin
     Exit;
+  end;
   if Pos(',', ADecl.Name) > 0 then
+  begin
     Add('E2196', 'Mehrere Variablen lassen sich nicht gemeinsam initialisieren', FTokens[Equal].StartPos,
-      FTokens[Equal].EndPos)
+      FTokens[Equal].EndPos);
+  end
   else if Local then
+  begin
     Add('E2195', 'Lokale Variablen lassen sich im var-Abschnitt nicht initialisieren', FTokens[Equal].StartPos,
       FTokens[Equal].EndPos);
+  end;
 end;
 
 procedure TTreeChecker.CheckFieldType(ADecl: TSyntaxNode);
@@ -324,17 +386,23 @@ var
 begin
   // var X: class … end; – Klassen, Interfaces und Objekte brauchen einen Namen aus dem type-Abschnitt.
   if ADecl.ChildCount = 0 then
+  begin
     Exit;
+  end;
   TypeNode := ADecl[0];
   if not (TypeNode.Kind in [TSyntaxKind.ObjectType, TSyntaxKind.ClassType, TSyntaxKind.InterfaceType]) then
+  begin
     Exit;
+  end;
   // Delphi 13 meldet für alle drei Arten E2058, in einer Routine zusätzlich E2059 (lokaler Typ). Zwei Meldungen
   // an derselben Stelle fasst der Parser zusammen: E2059 steht deshalb am Namen.
   Add('E2058', 'Klassen-, Interface- und Objekttypen sind nur im type-Abschnitt erlaubt', TypeNode.StartPos,
     TypeNode.EndPos);
   if InRoutine(ADecl) then
+  begin
     Add('E2059', 'Lokale Klassen-, Interface- und Objekttypen sind nicht erlaubt', ADecl.StartPos,
       TypeNode.StartPos);
+  end;
 end;
 
 procedure TTreeChecker.CheckTypeDecl(ADecl: TSyntaxNode);
@@ -343,16 +411,22 @@ var
   TypeNode: TSyntaxNode;
 begin
   if not InRoutine(ADecl) then
+  begin
     Exit;
+  end;
   TypeNode := nil;
   for Index := 0 to ADecl.ChildCount - 1 do
+  begin
     if ADecl[Index].Kind in ClassLikeKinds then
     begin
       TypeNode := ADecl[Index];
       Break;
     end;
+  end;
   if TypeNode = nil then
+  begin
     Exit;
+  end;
   Add('E2059', 'Lokale Klassen-, Interface- und Objekttypen sind nicht erlaubt', ADecl.StartPos, ADecl.EndPos);
 end;
 
@@ -362,13 +436,19 @@ var
 begin
   if (AHeader.Parent = nil) or not (AHeader.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
     TSyntaxKind.InterfaceType]) then
+  begin
     Exit;
+  end;
   mIndex := IndexAt(AHeader.StartOffset);
   if (mIndex < 0) or not FTokens[mIndex].IsKeyword('class') then
+  begin
     Exit;
+  end;
   mIndex := NextCode(mIndex);
   if (mIndex < 0) or not SameText(FTokens[mIndex].Text, 'operator') then
+  begin
     Exit;
+  end;
   Add('E2123', Format('''procedure'', ''function'', ''property'' oder ''var'' erwartet, aber ''%s'' gefunden',
     [FTokens[mIndex].Text]), FTokens[mIndex].StartPos, FTokens[mIndex].EndPos);
 end;
@@ -383,26 +463,40 @@ begin
   Containers := [AScope];
   // Auf Datei-Ebene stehen die Marken in den Abschnitten.
   if AScope.Kind <> TSyntaxKind.RoutineDecl then
+  begin
     for Index := 0 to AScope.ChildCount - 1 do
+    begin
       if AScope[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+      begin
         Containers := Containers + [AScope[Index]];
+      end;
+    end;
+  end;
   for Container in Containers do
+  begin
     for Inner := 0 to Container.ChildCount - 1 do
     begin
       Section := Container[Inner];
       if Section.Kind <> TSyntaxKind.LabelSection then
+      begin
         Continue;
+      end;
       TokenIndex := IndexAt(Section.StartOffset);
       if TokenIndex < 0 then
+      begin
         Continue;
+      end;
       TokenIndex := NextCode(TokenIndex);
       while (TokenIndex >= 0) and (FTokens[TokenIndex].Offset < Section.EndOffset) do
       begin
         if FTokens[TokenIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number] then
+        begin
           Result := Result + [LabelKey(FTokens[TokenIndex].Text)];
+        end;
         TokenIndex := NextCode(TokenIndex);
       end;
     end;
+  end;
 end;
 
 procedure TTreeChecker.CheckGoto(AGoto: TSyntaxNode);
@@ -412,33 +506,47 @@ var
   Labels: TArray<string>;
 begin
   if AGoto.Name = '' then
+  begin
     Exit;
+  end;
   Scope := AGoto.Parent;
   while (Scope <> nil) and (Scope.Parent <> nil) and (Scope.Kind <> TSyntaxKind.RoutineDecl) do
   begin
     // Marken anonymer Methoden kennt der Baum nicht sicher genug.
     if Scope.Kind = TSyntaxKind.AnonymousMethod then
+    begin
       Exit;
+    end;
     Scope := Scope.Parent;
   end;
   if Scope = nil then
+  begin
     Exit;
+  end;
   Labels := LabelsOf(Scope);
   if IndexStr(LabelKey(AGoto.Name), Labels) >= 0 then
+  begin
     Exit;
+  end;
   // In einer umgebenden Routine deklariert: das meldet label-misuse genauer (E2093, #995).
   Outer := Scope.Parent;
   while Outer <> nil do
   begin
     if (Outer.Kind = TSyntaxKind.RoutineDecl) and (IndexStr(LabelKey(AGoto.Name), LabelsOf(Outer)) >= 0) then
+    begin
       Exit;
+    end;
     Outer := Outer.Parent;
   end;
   NameIndex := IndexAt(AGoto.StartOffset);
   if NameIndex >= 0 then
+  begin
     NameIndex := NextCode(NameIndex);
+  end;
   if NameIndex < 0 then
+  begin
     Exit;
+  end;
   Add('E2031', Format('Marke erwartet: %s ist nicht als label deklariert', [AGoto.Name]),
     FTokens[NameIndex].StartPos, FTokens[NameIndex].EndPos);
 end;
@@ -468,7 +576,9 @@ begin
           CheckTypeDecl(ANode);
         TSyntaxKind.LabelSection:
           if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.InterfaceSection) then
+          begin
             Add('E2049', 'Label-Deklarationen sind im interface-Teil nicht erlaubt', ANode.StartPos, ANode.EndPos);
+          end;
         TSyntaxKind.GotoStatement:
           CheckGoto(ANode);
       else
@@ -486,7 +596,9 @@ var
   Checker: TTreeChecker;
 begin
   if ARoot = nil then
+  begin
     Exit(nil);
+  end;
   Checker := TTreeChecker.Create(ATokens);
   try
     Result := Checker.Run(ARoot);

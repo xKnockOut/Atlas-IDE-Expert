@@ -92,7 +92,9 @@ function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 /// <summary>Vorheriges Code-Token vor AIndex; -1 ohne.</summary>
@@ -100,14 +102,18 @@ function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Beginnt hinter ATokens[AIndex] eine Anweisung?</summary>
 function EndsStatement(const ATokens: TTokens; AIndex: Integer): Boolean;
 begin
   if AIndex < 0 then
+  begin
     Exit(False);
+  end;
   Result := ATokens[AIndex].IsSymbol(';') or ATokens[AIndex].IsKeyword('begin') or
     ATokens[AIndex].IsKeyword('then') or ATokens[AIndex].IsKeyword('else') or ATokens[AIndex].IsKeyword('do') or
     ATokens[AIndex].IsKeyword('try') or ATokens[AIndex].IsKeyword('finally') or
@@ -118,7 +124,9 @@ end;
 function IsStatementEnd(const ATokens: TTokens; AIndex: Integer): Boolean;
 begin
   if AIndex > High(ATokens) then
+  begin
     Exit(True);
+  end;
   Result := ATokens[AIndex].IsSymbol(';') or ATokens[AIndex].IsKeyword('end') or
     ATokens[AIndex].IsKeyword('else') or ATokens[AIndex].IsKeyword('until') or
     ATokens[AIndex].IsKeyword('except') or ATokens[AIndex].IsKeyword('finally');
@@ -131,14 +139,20 @@ var
 begin
   Depth := 0;
   for Result := AOpen to High(ATokens) do
+  begin
     if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
+  end;
   Result := -1;
 end;
 
@@ -149,8 +163,12 @@ var
 begin
   Result := '';
   for Index := AFirst to ALast do
+  begin
     if not IsTrivia(ATokens[Index]) then
+    begin
       Result := Result + ' ' + LowerCase(ATokens[Index].Text);
+    end;
+  end;
 end;
 
 /// <summary>Bezeichnerkette aus Bezeichnern, Punkten, Indizes und ^?</summary>
@@ -159,19 +177,29 @@ var
   Index, Depth: Integer;
 begin
   if (AFirst > ALast) or (ATokens[AFirst].Kind <> TPascalTokenKind.Identifier) then
+  begin
     Exit(False);
+  end;
   Depth := 0;
   for Index := AFirst to ALast do
   begin
     if IsTrivia(ATokens[Index]) then
+    begin
       Continue;
+    end;
     if ATokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and not ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or
       ATokens[Index].IsSymbol('.') or ATokens[Index].IsSymbol('^')) then
+    begin
       Exit(False);
+    end;
   end;
   Result := Depth = 0;
 end;
@@ -193,9 +221,13 @@ begin
   for Index := AOpen + 1 to AClose do
   begin
     if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if (ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']')) and (Index < AClose) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and (ATokens[Index].IsSymbol(',') or (Index = AClose)) then
     begin
       Span.First := Start;
@@ -233,67 +265,78 @@ var
   Message: string;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Resolver := nil;
-  try
-    Tokens := AContext.Tree.Tokens;
-    for Index := 0 to High(Tokens) do
+  Tokens := AContext.Tree.Tokens;
+  for Index := 0 to High(Tokens) do
+  begin
+    if not Tokens[Index].IsSymbol(':=') then
     begin
-      if not Tokens[Index].IsSymbol(':=') then
-        Continue;
-      // Linke Seite bis zum Anweisungsbeginn zurück.
-      Start := PreviousCode(Tokens, Index);
-      Before := PreviousCode(Tokens, Start);
-      while (Before >= 0) and not EndsStatement(Tokens, Before) and not Tokens[Before].IsKeyword('var') and
-        not Tokens[Before].IsSymbol(':') and not Tokens[Before].IsSymbol(':=') do
-      begin
-        Start := Before;
-        Before := PreviousCode(Tokens, Start);
-      end;
-      if (Before < 0) or not EndsStatement(Tokens, Before) then
-        Continue;
-      Stop := NextCode(Tokens, Index + 1);
-      while not IsStatementEnd(Tokens, Stop) do
-        Stop := NextCode(Tokens, Stop + 1);
-      if (Stop > High(Tokens)) or not IsDesignator(Tokens, Start, PreviousCode(Tokens, Index)) or
-        (Normalized(Tokens, Start, Index - 1) <> Normalized(Tokens, Index + 1, Stop - 1)) then
-        Continue;
-      if Tokens[Stop].IsSymbol(';') then
-        Removal := RangeOf(Tokens, Start, Stop)
-      else
-        Removal := RangeOf(Tokens, Start, PreviousCode(Tokens, Stop));
-      Name := SourceText(AContext.Text, Tokens, Start, PreviousCode(Tokens, Index));
-      Message := Format('%s wird sich selbst zugewiesen; gemeint ist vermutlich ein anderer Wert', [Name]);
-      Fixes := [TRuleFix.Create('Anweisung entfernen', [TRuleEdit.Create(Removal, '')])];
-      // Name := Name, wenn ein Parameter oder eine lokale Variable das gleichnamige Feld verdeckt:
-      // gemeint ist fast immer Self.Name := Name.
-      if (Start = PreviousCode(Tokens, Index)) and (Tokens[Start].Kind = TPascalTokenKind.Identifier) and
-        (AContext.Index <> nil) then
-      begin
-        if Resolver = nil then
-        begin
-          // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-          mCache := TRuleDerived.Open(AContext);
-          Resolver := TRuleDerived.Resolver(mCache, AContext);
-        end;
-        Local := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, [Name], Tokens[Start].Offset, False);
-        if Local.Kind = TResolvedKind.Local then
-        begin
-          Member := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, ['Self', Name], Tokens[Start].Offset,
-            False);
-          if (Member.Kind = TResolvedKind.Symbol) and
-            (Member.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
-          begin
-            Message := Format('%s wird sich selbst zugewiesen: %s verdeckt %s; gemeint ist vermutlich Self.%s := %s',
-              [Name, TNameResolver.ShadowText(Local), TNameResolver.ShadowText(Member), Name, Name]);
-            Insert := TTextRange.Create(Tokens[Start].StartPos, Tokens[Start].StartPos);
-            Fixes := [TRuleFix.Create('Self. ergänzen', [TRuleEdit.Create(Insert, 'Self.')])] + Fixes;
-          end;
-        end;
-      end;
-      AReport.Add(RangeOf(Tokens, Start, PreviousCode(Tokens, Stop)), Message, TRuleConfidence.High, Fixes);
+      Continue;
     end;
-  finally
+    // Linke Seite bis zum Anweisungsbeginn zurück.
+    Start := PreviousCode(Tokens, Index);
+    Before := PreviousCode(Tokens, Start);
+    while (Before >= 0) and not EndsStatement(Tokens, Before) and not Tokens[Before].IsKeyword('var') and
+      not Tokens[Before].IsSymbol(':') and not Tokens[Before].IsSymbol(':=') do
+    begin
+      Start := Before;
+      Before := PreviousCode(Tokens, Start);
+    end;
+    if (Before < 0) or not EndsStatement(Tokens, Before) then
+    begin
+      Continue;
+    end;
+    Stop := NextCode(Tokens, Index + 1);
+    while not IsStatementEnd(Tokens, Stop) do
+    begin
+      Stop := NextCode(Tokens, Stop + 1);
+    end;
+    if (Stop > High(Tokens)) or not IsDesignator(Tokens, Start, PreviousCode(Tokens, Index)) or
+      (Normalized(Tokens, Start, Index - 1) <> Normalized(Tokens, Index + 1, Stop - 1)) then
+    begin
+      Continue;
+    end;
+    if Tokens[Stop].IsSymbol(';') then
+    begin
+      Removal := RangeOf(Tokens, Start, Stop);
+    end
+    else
+    begin
+      Removal := RangeOf(Tokens, Start, PreviousCode(Tokens, Stop));
+    end;
+    Name := SourceText(AContext.Text, Tokens, Start, PreviousCode(Tokens, Index));
+    Message := Format('%s wird sich selbst zugewiesen; gemeint ist vermutlich ein anderer Wert', [Name]);
+    Fixes := [TRuleFix.Create('Anweisung entfernen', [TRuleEdit.Create(Removal, '')])];
+    // Name := Name, wenn ein Parameter oder eine lokale Variable das gleichnamige Feld verdeckt:
+    // gemeint ist fast immer Self.Name := Name.
+    if (Start = PreviousCode(Tokens, Index)) and (Tokens[Start].Kind = TPascalTokenKind.Identifier) and
+      (AContext.Index <> nil) then
+    begin
+      if Resolver = nil then
+      begin
+        // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+        mCache := TRuleDerived.Open(AContext);
+        Resolver := TRuleDerived.Resolver(mCache, AContext);
+      end;
+      Local := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, [Name], Tokens[Start].Offset, False);
+      if Local.Kind = TResolvedKind.Local then
+      begin
+        Member := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, ['Self', Name], Tokens[Start].Offset,
+          False);
+        if (Member.Kind = TResolvedKind.Symbol) and
+          (Member.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+        begin
+          Message := Format('%s wird sich selbst zugewiesen: %s verdeckt %s; gemeint ist vermutlich Self.%s := %s',
+            [Name, TNameResolver.ShadowText(Local), TNameResolver.ShadowText(Member), Name, Name]);
+          Insert := TTextRange.Create(Tokens[Start].StartPos, Tokens[Start].StartPos);
+          Fixes := [TRuleFix.Create('Self. ergänzen', [TRuleEdit.Create(Insert, 'Self.')])] + Fixes;
+        end;
+      end;
+    end;
+    AReport.Add(RangeOf(Tokens, Start, PreviousCode(Tokens, Stop)), Message, TRuleConfidence.High, Fixes);
   end;
 end;
 
@@ -312,10 +355,14 @@ var
 begin
   Result := False;
   if (AIndex > High(ATokens)) or not SameText(ATokens[AIndex].Text, AName) then
+  begin
     Exit;
+  end;
   Open := NextCode(ATokens, AIndex + 1);
   if (Open > High(ATokens)) or not ATokens[Open].IsSymbol('(') then
+  begin
     Exit;
+  end;
   Result := NextCode(ATokens, Closing(ATokens, Open) + 1) = AStop;
 end;
 
@@ -334,18 +381,24 @@ begin
   if (AFirst <= High(ATokens)) and (ATokens[AFirst].IsSymbol('-') or ATokens[AFirst].IsSymbol('+')) then
   begin
     if ATokens[AFirst].IsSymbol('-') then
+    begin
       Sign := -1;
+    end;
     AFirst := NextCode(ATokens, AFirst + 1);
   end;
   if (AFirst > High(ATokens)) or (NextCode(ATokens, AFirst + 1) <> AStop) then
+  begin
     Exit;
+  end;
   Text := ATokens[AFirst].Text;
   case ATokens[AFirst].Kind of
     TPascalTokenKind.Number:
       begin
         // $-Hex versteht TryStrToInt64; %-Binär und Gleitkommazahlen bleiben still.
         if not TryStrToInt64(Text, AValue) then
+        begin
           Exit;
+        end;
         AValue := Sign * AValue;
         Result := True;
       end;
@@ -375,36 +428,56 @@ var
   Fix: TRuleFix;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
     if not Tokens[Index].IsKeyword('for') then
+    begin
       Continue;
+    end;
     // for I := …, for var I := … und for var I: Integer := ….
     Assign := NextCode(Tokens, Index + 1);
     if (Assign <= High(Tokens)) and Tokens[Assign].IsKeyword('var') then
+    begin
       Assign := NextCode(Tokens, Assign + 1);
+    end;
     Assign := NextCode(Tokens, Assign + 1);
     if (Assign <= High(Tokens)) and Tokens[Assign].IsSymbol(':') then
+    begin
       while (Assign <= High(Tokens)) and not Tokens[Assign].IsSymbol(':=') and
         not Tokens[Assign].IsKeyword('do') do
+      begin
         Assign := NextCode(Tokens, Assign + 1);
+      end;
+    end;
     if (Assign > High(Tokens)) or not Tokens[Assign].IsSymbol(':=') then
+    begin
       Continue;
+    end;
     StartExpr := NextCode(Tokens, Assign + 1);
     ToToken := StartExpr;
     while (ToToken <= High(Tokens)) and not Tokens[ToToken].IsKeyword('to') and
       not Tokens[ToToken].IsKeyword('downto') and not Tokens[ToToken].IsKeyword('do') do
+    begin
       Inc(ToToken);
+    end;
     if (ToToken > High(Tokens)) or not Tokens[ToToken].IsKeyword('to') then
+    begin
       Continue;
+    end;
     EndExpr := NextCode(Tokens, ToToken + 1);
     DoToken := EndExpr;
     while (DoToken <= High(Tokens)) and not Tokens[DoToken].IsKeyword('do') do
+    begin
       Inc(DoToken);
+    end;
     if DoToken > High(Tokens) then
+    begin
       Continue;
+    end;
     // High(A) to Low(A) bzw. … Count - 1 to 0.
     Suspicious := IsCallUntil(Tokens, StartExpr, ToToken, 'High') and IsCallUntil(Tokens, EndExpr, DoToken, 'Low');
     if not Suspicious then
@@ -418,16 +491,20 @@ begin
     Fix := TRuleFix.Create('to durch downto ersetzen', [TRuleEdit.Create(RangeOf(Tokens, ToToken, ToToken),
       'downto')], True);
     if Suspicious then
+    begin
       AReport.Add(RangeOf(Tokens, Index, DoToken), 'Die Schleife läuft vom oberen zum unteren Wert mit to und ' +
-        'wird daher nie ausgeführt; downto verwenden', TRuleConfidence.High, [Fix])
+        'wird daher nie ausgeführt; downto verwenden', TRuleConfidence.High, [Fix]);
+    end
     // Konstante Grenzen: 10 to 1, -1 to -5, 'z' to 'a', #13 to #10 (#1023, wie H2135).
     else if LiteralBound(Tokens, StartExpr, ToToken, StartValue, StartIsChar) and
       LiteralBound(Tokens, EndExpr, DoToken, EndValue, EndIsChar) and (StartIsChar = EndIsChar) and
       (StartValue > EndValue) then
+    begin
       AReport.Add(RangeOf(Tokens, Index, DoToken), Format('Die Schleife läuft nie (%s to %s); gemeint war downto ' +
         '(wie H2135).', [Trim(Copy(AContext.Text, Tokens[StartExpr].Offset + 1,
         Tokens[ToToken].Offset - Tokens[StartExpr].Offset)), Trim(Copy(AContext.Text, Tokens[EndExpr].Offset + 1,
         Tokens[DoToken].Offset - Tokens[EndExpr].Offset))]), TRuleConfidence.High, [Fix]);
+    end;
   end;
 end;
 
@@ -451,24 +528,36 @@ var
   Index, Dot, Ctor, Stop, Before: Integer;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
     if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not IsExceptionClass(Tokens[Index].Text) then
+    begin
       Continue;
+    end;
     Before := PreviousCode(Tokens, Index);
     if not EndsStatement(Tokens, Before) then
+    begin
       Continue;
+    end;
     Dot := NextCode(Tokens, Index + 1);
     Ctor := NextCode(Tokens, Dot + 1);
     if (Ctor > High(Tokens)) or not Tokens[Dot].IsSymbol('.') or not StartsText('Create', Tokens[Ctor].Text) then
+    begin
       Continue;
+    end;
     Stop := NextCode(Tokens, Ctor + 1);
     if (Stop <= High(Tokens)) and Tokens[Stop].IsSymbol('(') then
+    begin
       Stop := NextCode(Tokens, Closing(Tokens, Stop) + 1);
+    end;
     if not IsStatementEnd(Tokens, Stop) then
+    begin
       Continue;
+    end;
     AReport.Add(RangeOf(Tokens, Index, PreviousCode(Tokens, Stop)),
       Format('%s wird erzeugt, aber nicht ausgelöst; raise fehlt', [Tokens[Index].Text]), TRuleConfidence.High,
       [TRuleFix.Create('raise voranstellen', [TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos,
@@ -492,17 +581,25 @@ var
 begin
   SetLength(Result, Length(DefaultMutatingMethods));
   for Index := 0 to High(DefaultMutatingMethods) do
+  begin
     Result[Index] := DefaultMutatingMethods[Index];
+  end;
   if Trim(AOptions) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if (Value is TJSONObject) and TJSONObject(Value).TryGetValue<TJSONArray>('mutatingMethods', Items) then
     begin
       Result := nil;
       for Item in Items do
+      begin
         if Item is TJSONString then
+        begin
           Result := Result + [Item.Value];
+        end;
+      end;
     end;
   finally
     Value.Free;
@@ -517,41 +614,61 @@ var
   Effect: string;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Methods := MutatingMethods(AContext.Options);
   for Index := 0 to High(Tokens) do
   begin
     if not ((Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, 'Assert')) then
+    begin
       Continue;
+    end;
     Open := NextCode(Tokens, Index + 1);
     if (Open > High(Tokens)) or not Tokens[Open].IsSymbol('(') then
+    begin
       Continue;
+    end;
     Close := Closing(Tokens, Open);
     if Close < 0 then
+    begin
       Continue;
+    end;
     Effect := '';
     for Inner := Open + 1 to Close - 1 do
     begin
       if Tokens[Inner].Kind <> TPascalTokenKind.Identifier then
+      begin
         Continue;
+      end;
       Next := NextCode(Tokens, Inner + 1);
       if MatchText(Tokens[Inner].Text, ['Inc', 'Dec']) and (Next < Close) and Tokens[Next].IsSymbol('(') then
-        Effect := Tokens[Inner].Text
+      begin
+        Effect := Tokens[Inner].Text;
+      end
       // Try…-Funktionen geben ihr Ergebnis über einen out-Parameter zurück.
       else if StartsText('Try', Tokens[Inner].Text) and (Length(Tokens[Inner].Text) > 3) and
         CharInSet(Tokens[Inner].Text[4], ['A'..'Z']) and (Next < Close) and Tokens[Next].IsSymbol('(') then
-        Effect := Tokens[Inner].Text
+      begin
+        Effect := Tokens[Inner].Text;
+      end
       else if MatchText(Tokens[Inner].Text, Methods) and (Inner > Open + 1) and
         Tokens[PreviousCode(Tokens, Inner)].IsSymbol('.') then
+      begin
         Effect := Tokens[Inner].Text;
+      end;
       if Effect <> '' then
+      begin
         Break;
+      end;
     end;
     if Effect <> '' then
+    begin
       AReport.Add(RangeOf(Tokens, Index, Close), Format('%s im Assert verändert Daten; mit {$C-} entfällt der ' +
         'ganze Aufruf samt Seiteneffekt. Vorher ausführen und nur das Ergebnis prüfen', [Effect]),
         TRuleConfidence.High);
+    end;
   end;
 end;
 
@@ -576,13 +693,17 @@ begin
     begin
       Name := NextCode(ATokens, Next + 1);
       if Name <= ALast then
+      begin
         Result := Result + [LowerCase(ATokens[Name].Text)];
+      end;
     end
     else if ATokens[Index].IsKeyword('nil') then
     begin
       Name := PreviousCode(ATokens, PreviousCode(ATokens, Index));
       if (Name >= AFirst) and (ATokens[Name].Kind = TPascalTokenKind.Identifier) then
+      begin
         Result := Result + [LowerCase(ATokens[Name].Text)];
+      end;
     end;
   end;
 end;
@@ -595,7 +716,9 @@ var
 begin
   Dot := PreviousCode(ATokens, AName);
   if (Dot < 0) or not ATokens[Dot].IsSymbol('.') then
+  begin
     Exit(TPureRoutines.IsPure(ATokens[AName].Text));
+  end;
   Owner := PreviousCode(ATokens, Dot);
   Result := (Owner >= 0) and TPureRoutines.IsPure(ATokens[Owner].Text + '.' + ATokens[AName].Text);
 end;
@@ -619,30 +742,43 @@ var
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
     if not ((Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, 'IfThen')) then
+    begin
       Continue;
+    end;
     Open := NextCode(Tokens, Index + 1);
     if (Open > High(Tokens)) or not Tokens[Open].IsSymbol('(') then
+    begin
       Continue;
+    end;
     Close := Closing(Tokens, Open);
     if Close < 0 then
+    begin
       Continue;
+    end;
     Args := Arguments(Tokens, Open, Close);
     if Length(Args) <> 3 then
+    begin
       Continue;
+    end;
     Checked := CheckedNames(Tokens, Args[0].First, Args[0].Last);
     Found := False;
     Confidence := TRuleConfidence.Medium;
     for Arg := 1 to 2 do
+    begin
       for Inner := Args[Arg].First to Args[Arg].Last do
       begin
         Next := NextCode(Tokens, Inner + 1);
         if Tokens[Inner].Kind <> TPascalTokenKind.Identifier then
+        begin
           Continue;
+        end;
         // Zugriff auf einen in der Bedingung geprüften Bezeichner: X.Name oder X^.
         if MatchText(Tokens[Inner].Text, Checked) and (Next <= Args[Arg].Last) and
           (Tokens[Next].IsSymbol('.') or Tokens[Next].IsSymbol('^')) and
@@ -652,10 +788,15 @@ begin
           Confidence := TRuleConfidence.High;
         end
         else if (Next <= Args[Arg].Last) and Tokens[Next].IsSymbol('(') and not PureCall(Tokens, Inner) then
+        begin
           Found := True;
+        end;
       end;
+    end;
     if not Found then
+    begin
       Continue;
+    end;
     // V := IfThen(B, X, Y); → if B then V := X else V := Y;
     Fixes := nil;
     Assign := PreviousCode(Tokens, Index);
@@ -664,7 +805,9 @@ begin
     begin
       Target := PreviousCode(Tokens, Assign);
       while (Target > 0) and not EndsStatement(Tokens, PreviousCode(Tokens, Target)) do
+      begin
         Target := PreviousCode(Tokens, Target);
+      end;
       if (Target >= 0) and IsDesignator(Tokens, Target, PreviousCode(Tokens, Assign)) then
       begin
         Text := Slice(Target, PreviousCode(Tokens, Assign));
@@ -692,19 +835,31 @@ var
   Index, First: Integer;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   First := -1;
   for Index := 0 to High(Tokens) do
+  begin
     if Tokens[Index].Kind = TPascalTokenKind.Identifier then
+    begin
       if SameText(Tokens[Index].Text, 'Randomize') then
-        Exit
+      begin
+        Exit;
+      end
       else if (First < 0) and SameText(Tokens[Index].Text, 'Random') and
         ((Index = 0) or not Tokens[PreviousCode(Tokens, Index)].IsSymbol('.')) then
+      begin
         First := Index;
+      end;
+    end;
+  end;
   if First >= 0 then
+  begin
     AReport.Add(RangeOf(Tokens, First, First), 'Random ohne Randomize in dieser Unit liefert bei jedem Start ' +
       'dieselbe Folge; Randomize einmal beim Programmstart aufrufen', TRuleConfidence.Low);
+  end;
 end;
 
 procedure RegisterRtlPatternRules(const ARegistry: TRuleRegistry);

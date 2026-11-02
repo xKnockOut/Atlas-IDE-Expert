@@ -54,11 +54,17 @@ begin
   begin
     Middle := (Low_ + High_) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Low_ := Middle + 1
+    begin
+      Low_ := Middle + 1;
+    end
     else if ATokens[Middle].Offset > AOffset then
-      High_ := Middle - 1
+    begin
+      High_ := Middle - 1;
+    end
     else
+    begin
       Exit(Middle);
+    end;
   end;
   Result := -1;
 end;
@@ -73,9 +79,13 @@ begin
   Close := 0;
   Depth := 0;
   if Open > 0 then
+  begin
     for Index := Open to Length(ASignature) do
+    begin
       if ASignature[Index] = '(' then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if ASignature[Index] = ')' then
       begin
         Dec(Depth);
@@ -85,10 +95,16 @@ begin
           Break;
         end;
       end;
+    end;
+  end;
   Result := Close > 0;
   if Result then
+  begin
     for Parameter in TChangeSignature.ParseParameters(Copy(ASignature, Open + 1, Close - Open - 1)) do
+    begin
       AModes := AModes + [LowerCase(Trim(Parameter.Modifier))];
+    end;
+  end;
 end;
 
 class function TResolvedSignatures.Mode(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -103,42 +119,70 @@ var
 begin
   Result := TFlowArgumentMode.Unknown;
   if (ACall = nil) or (ACall.ChildCount = 0) or (ATree = nil) then
+  begin
     Exit;
+  end;
   Callee := ACall[0];
   if (Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name, ValueCasts) then
+  begin
     Exit(TFlowArgumentMode.Value);
+  end;
   if AResolver = nil then
+  begin
     Exit;
+  end;
   if Callee.Kind = TSyntaxKind.Identifier then
-    Offset := Callee.StartOffset
+  begin
+    Offset := Callee.StartOffset;
+  end
   else if Callee.Kind = TSyntaxKind.MemberAccess then
-    Offset := Callee.EndOffset - Length(Callee.Name)
+  begin
+    Offset := Callee.EndOffset - Length(Callee.Name);
+  end
   else
+  begin
     Exit;
+  end;
   Token := TokenStartingAt(ATree.Tokens, Offset);
   if (Token < 0) or not SameText(ATree.Tokens[Token].Text, Callee.Name) then
+  begin
     Exit;
+  end;
   // Alle gleich guten Kandidaten: Ist die Überladung nicht eindeutig, zählt die Art nur, wenn alle übereinstimmen.
   Symbols := AResolver.ResolveAll(ATree, AFileName, ATree.Tokens[Token].StartPos);
   for Index := 0 to High(Symbols) do
   begin
     Symbol := Symbols[Index];
     if not Symbol.Found then
+    begin
       Exit(TFlowArgumentMode.Unknown);
+    end;
     if Symbol.IsType then
-      Found := TFlowArgumentMode.Value
+    begin
+      Found := TFlowArgumentMode.Value;
+    end
     // Weitere Varianten derselben Datei: nicht sicher, welche gemeint ist.
     else if (Length(Symbol.Overloads) > 0) or (Length(Symbol.VariantParams) > 1) or
       not SignatureModes(Symbol.Signature, Modes) or (AArgument >= Length(Modes)) then
-      Exit(TFlowArgumentMode.Unknown)
-    else if Modes[AArgument] = 'out' then
-      Found := TFlowArgumentMode.Output
-    else if Modes[AArgument] = 'var' then
-      Found := TFlowArgumentMode.Reference
-    else
-      Found := TFlowArgumentMode.Value;
-    if (Index > 0) and (Found <> Result) then
+    begin
       Exit(TFlowArgumentMode.Unknown);
+    end
+    else if Modes[AArgument] = 'out' then
+    begin
+      Found := TFlowArgumentMode.Output;
+    end
+    else if Modes[AArgument] = 'var' then
+    begin
+      Found := TFlowArgumentMode.Reference;
+    end
+    else
+    begin
+      Found := TFlowArgumentMode.Value;
+    end;
+    if (Index > 0) and (Found <> Result) then
+    begin
+      Exit(TFlowArgumentMode.Unknown);
+    end;
     Result := Found;
   end;
 end;
@@ -153,7 +197,9 @@ var
 begin
   Local := nil;
   if ATree <> nil then
+  begin
     Local := TFlowSignatures.FromTree(ATree.Root);
+  end;
   Resolver := AResolver;
   Tree := ATree;
   FileName := AFileName;
@@ -162,9 +208,13 @@ begin
     begin
       Result := TFlowArgumentMode.Unknown;
       if Assigned(Local) then
+      begin
         Result := Local(ACall, AArgument);
+      end;
       if Result = TFlowArgumentMode.Unknown then
+      begin
         Result := TResolvedSignatures.Mode(Resolver, Tree, FileName, ACall, AArgument);
+      end;
     end;
 end;
 

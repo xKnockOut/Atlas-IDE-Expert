@@ -60,7 +60,9 @@ var
 begin
   Result := '';
   for mFinding in AFound do
+  begin
     Result := Result + Format('%d: %s', [mFinding.Range.StartPos.Line + 1, mFinding.Message]) + #10;
+  end;
 end;
 
 /// <summary>Unit Auto mit ATypes im interface-Teil und ABodies im implementation-Teil.</summary>

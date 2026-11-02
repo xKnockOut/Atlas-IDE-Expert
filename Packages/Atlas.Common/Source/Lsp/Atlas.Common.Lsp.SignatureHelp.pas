@@ -156,9 +156,13 @@ const
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function CollapseSpaces(const AText: string): string;
@@ -169,15 +173,21 @@ begin
   Result := '';
   Space := False;
   for Index := 1 to Length(AText) do
+  begin
     if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-      Space := Result <> ''
+    begin
+      Space := Result <> '';
+    end
     else
     begin
       if Space then
+      begin
         Result := Result + ' ';
+      end;
       Space := False;
       Result := Result + AText[Index];
     end;
+  end;
 end;
 
 { TSignatureHelp }
@@ -243,13 +253,17 @@ var
 begin
   Result := Default(TCallSite);
   if ATree = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Last := -1;
   for Index := 0 to High(Tokens) do
   begin
     if ComparePositions(Tokens[Index].StartPos, APosition) >= 0 then
+    begin
       Break;
+    end;
     Last := Index;
   end;
   Depth := 0;
@@ -262,9 +276,13 @@ begin
   begin
     Token := Tokens[Index];
     if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
       Continue;
+    end;
     if Token.IsSymbol(')') or Token.IsSymbol(']') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Token.IsSymbol('(') or Token.IsSymbol('[') then
     begin
       if Depth > 0 then
@@ -274,7 +292,9 @@ begin
       end;
       Previous := Index - 1;
       while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      begin
         Dec(Previous);
+      end;
       if Token.IsSymbol('(') and (Previous >= 0) and (Tokens[Previous].Kind = TPascalTokenKind.Identifier) then
       begin
         Result.NamePosition := Tokens[Previous].StartPos;
@@ -303,7 +323,9 @@ begin
       end
       else if Token.IsSymbol(';') or Token.IsKeyword('begin') or Token.IsKeyword('end') or
         Token.IsKeyword('then') or Token.IsKeyword('do') or Token.IsKeyword('var') then
+      begin
         Exit;
+      end;
     end;
   end;
 end;
@@ -327,11 +349,15 @@ var
     Inc(AFrom, Skip);
     GroupText := Trim(GroupText);
     if GroupText = '' then
+    begin
       Exit;
+    end;
     ColonAt := Pos(':', GroupText);
     TypeText := '';
     if ColonAt = 0 then
-      NamesText := GroupText
+    begin
+      NamesText := GroupText;
+    end
     else
     begin
       NamesText := Copy(GroupText, 1, ColonAt - 1);
@@ -339,16 +365,24 @@ var
       TypeText := Copy(GroupText, ColonAt + 1, MaxInt);
       EqualAt := Pos('=', TypeText);
       if EqualAt > 0 then
+      begin
         TypeText := Copy(TypeText, 1, EqualAt - 1);
+      end;
       TypeText := Trim(TypeText);
       if (Pos('<', TypeText) = 0) and (Pos(' ', TypeText) = 0) and (LastDelimiter('.', TypeText) > 0) then
+      begin
         TypeText := Copy(TypeText, LastDelimiter('.', TypeText) + 1, MaxInt);
+      end;
     end;
     Parameter.TypeName := TypeText;
     // const/var/out/constref vor den Namen überspringen.
     for Modifier in ParameterModifiers do
+    begin
       if StartsText(Modifier, NamesText) then
+      begin
         Delete(NamesText, 1, Length(Modifier));
+      end;
+    end;
     if Pos(',', NamesText) = 0 then
     begin
       Parameter.StartIndex := AFrom - 1;
@@ -382,9 +416,13 @@ begin
   while not Done and (Line <= High(ALines)) and (Line < ALine + MaxHeaderLines) do
   begin
     if Line = ALine then
-      Text := Copy(ALines[Line], AColumn + 1, MaxInt)
+    begin
+      Text := Copy(ALines[Line], AColumn + 1, MaxInt);
+    end
     else
+    begin
       Text := ALines[Line];
+    end;
     for Index := 1 to Length(Text) do
     begin
       case Text[Index] of
@@ -400,7 +438,9 @@ begin
       end;
     end;
     if not Done then
+    begin
       Raw := Raw + Text + ' ';
+    end;
     Inc(Line);
   end;
   Text := CollapseSpaces(Raw);
@@ -410,9 +450,13 @@ begin
   if Keyword > 0 then
   begin
     if Open > 0 then
-      Dot := LastDelimiter('.', Copy(Text, 1, Open - 1))
+    begin
+      Dot := LastDelimiter('.', Copy(Text, 1, Open - 1));
+    end
     else
+    begin
       Dot := LastDelimiter('.', Text);
+    end;
     if Dot > Keyword then
     begin
       Delete(Text, Keyword + 1, Dot - Keyword);
@@ -422,12 +466,17 @@ begin
   Result.Text := Text;
   Open := Pos('(', Text);
   if Open = 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   Close := 0;
   for Index := Open to Length(Text) do
+  begin
     if Text[Index] = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Text[Index] = ')' then
     begin
       Dec(Depth);
@@ -437,22 +486,31 @@ begin
         Break;
       end;
     end;
+  end;
   if Close = 0 then
+  begin
     Exit;
+  end;
   Groups := TList<TSignatureParameter>.Create;
   try
     Start := Open + 1;
     Depth := 0;
     for Index := Open + 1 to Close do
+    begin
       if (Index = Close) or (Text[Index] = ';') and (Depth = 0) then
       begin
         AddGroup(Start, Index);
         Start := Index + 1;
       end
       else if Text[Index] = '(' then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Text[Index] = ')' then
+      begin
         Dec(Depth);
+      end;
+    end;
     Result.Parameters := Groups.ToArray;
   finally
     Groups.Free;
@@ -463,16 +521,22 @@ end;
 function LastPart(const AName: string): string;
 begin
   if Pos('<', AName) > 0 then
-    Result := AName
+  begin
+    Result := AName;
+  end
   else
+  begin
     Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+  end;
 end;
 
 /// <summary>Zeichen in einem String-Literal ('it''s' = 4); -1 bei mehrzeiligen.</summary>
 function LiteralLength(const AText: string): Integer;
 begin
   if StartsStr('''''''', AText) then
+  begin
     Exit(-1);
+  end;
   Result := Length(StringReplace(Copy(AText, 2, Length(AText) - 2), '''''', '''', [rfReplaceAll]));
 end;
 
@@ -487,81 +551,131 @@ var
 begin
   Result := '';
   if (ATree = nil) or (AFirst > ALast) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Parts := nil;
   for Index := Max(AFirst, 0) to Min(ALast, High(Tokens)) do
+  begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Parts := Parts + [Tokens[Index]];
+    end;
+  end;
   if Length(Parts) = 0 then
+  begin
     Exit;
+  end;
   if Parts[0].IsSymbol('[') then
+  begin
     Exit('[]');
+  end;
   // Zeichen und Strings, auch zusammengesetzt wie 'a'#13'b'; ein offenes Literal wird noch getippt.
   Chars := 0;
   Literal := True;
   for Token in Parts do
+  begin
     if not Token.Terminated then
-      Exit
+    begin
+      Exit;
+    end
     else if Token.Kind = TPascalTokenKind.StringLiteral then
     begin
       Count := LiteralLength(Token.Text);
       if Count < 0 then
+      begin
         Exit('string');
+      end;
       Inc(Chars, Count);
     end
     else if Token.Kind = TPascalTokenKind.CharLiteral then
-      Inc(Chars)
+    begin
+      Inc(Chars);
+    end
     else
+    begin
       Literal := False;
+    end;
+  end;
   if Literal then
   begin
     if Chars = 1 then
-      Result := 'Char'
+    begin
+      Result := 'Char';
+    end
     else
+    begin
       Result := 'string';
+    end;
     Exit;
   end;
   // Zahlen, auch mit Vorzeichen.
   Start := 0;
   if (Length(Parts) = 2) and (Parts[0].IsSymbol('-') or Parts[0].IsSymbol('+')) then
+  begin
     Start := 1;
+  end;
   if (Length(Parts) = Start + 1) and (Parts[Start].Kind = TPascalTokenKind.Number) then
   begin
     if not CharInSet(Parts[Start].Text[1], ['$', '%']) and ((Pos('.', Parts[Start].Text) > 0) or
       ContainsText(Parts[Start].Text, 'e')) then
-      Result := 'Double'
+    begin
+      Result := 'Double';
+    end
     else
+    begin
       Result := 'Integer';
+    end;
     Exit;
   end;
   if Length(Parts) = 1 then
   begin
     if Parts[0].IsKeyword('nil') then
+    begin
       Exit('nil');
+    end;
     if (Parts[0].Kind = TPascalTokenKind.Identifier) and (SameText(Parts[0].Text, 'True') or
       SameText(Parts[0].Text, 'False')) then
+    begin
       Exit('Boolean');
+    end;
   end;
   // Bezeichner oder Kette A.B.C; alles andere (Aufrufe, Ausdrücke) bleibt unbekannt.
   if not Odd(Length(Parts)) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Parts) do
+  begin
     if Odd(Index) and not Parts[Index].IsSymbol('.') then
-      Exit
-    else if not Odd(Index) and (Parts[Index].Kind <> TPascalTokenKind.Identifier) then
+    begin
       Exit;
+    end
+    else if not Odd(Index) and (Parts[Index].Kind <> TPascalTokenKind.Identifier) then
+    begin
+      Exit;
+    end;
+  end;
   if AResolver = nil then
+  begin
     Exit;
+  end;
   Resolved := AResolver.Resolve(ATree, AFileName, Parts[High(Parts)].StartPos);
   if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
+  begin
     Exit;
+  end;
   // Aufzählungswerte tragen ihren Typ als Container; Routinen bleiben unbekannt (Methodenzeiger).
   if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
-    Result := LastPart(Resolved.Container)
+  begin
+    Result := LastPart(Resolved.Container);
+  end
   else if Resolved.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
     TIndexSymbolKind.Constant] then
+  begin
     Result := LastPart(Trim(Resolved.TypeName));
+  end;
 end;
 
 class procedure TLspSignatureHelp.Match(var ASignature: TSignature; const AArgumentTypes: TArray<string>);
@@ -572,12 +686,14 @@ begin
   ASignature.Mismatch := -1;
   // Zu viele Argumente zählt der Hint selbst; hier nur die Typen.
   for Index := 0 to Min(High(AArgumentTypes), High(ASignature.Parameters)) do
+  begin
     if not TNameResolver.ArgumentFits(ASignature.Parameters[Index].TypeName, AArgumentTypes[Index]) then
     begin
       ASignature.Fits := False;
       ASignature.Mismatch := Index;
       Exit;
     end;
+  end;
 end;
 
 procedure ApplyDocumentation(var ASignature: TSignature; const ADoc: TXmlDoc);
@@ -592,7 +708,9 @@ begin
   for Section in ADoc.Sections do
   begin
     if Section.Kind <> TXmlDocSectionKind.Param then
+    begin
       Continue;
+    end;
     Name := Section.Name;
     for Index := 0 to High(ASignature.Parameters) do
     begin
@@ -616,8 +734,12 @@ var
 begin
   Result := 0;
   for Index := 0 to High(ASignatures) do
+  begin
     if Length(ASignatures[Index].Parameters) > AActiveParameter then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 /// <summary>Steht der Name an APosition in einer Attributklammer ("[TestCase(")? ANameToken: sein Token.</summary>
@@ -629,14 +751,18 @@ begin
   Result := False;
   Tokens := ATree.Tokens;
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].StartPos.Line = APosition.Line) and (Tokens[Index].StartPos.Character = APosition.Character) then
     begin
       Prev := Index - 1;
       while (Prev >= 0) and (Tokens[Prev].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      begin
         Dec(Prev);
+      end;
       ANameToken := Tokens[Index];
       Exit((Tokens[Index].Kind = TPascalTokenKind.Identifier) and TAttributes.InBracket(Tokens, Prev));
     end;
+  end;
 end;
 
 /// <summary>Attribut (#465): Konstruktor der Attributklasse hinter dem Namen; [Foo] meint zuerst FooAttribute.
@@ -650,11 +776,15 @@ begin
   Result := False;
   ACtor := Default(TResolvedSymbol);
   if not AttributeName(ATree, APosition, NameToken) then
+  begin
     Exit;
+  end;
   if not AResolver.AttributeClassOf(AResolved, AttributeClass) and
     not AResolver.AttributeClassOf(AResolver.ResolveChain(ATree, AFileName,
       TArray<string>.Create(TAttributes.ShortName(NameToken.Text) + 'Attribute'), NameToken.Offset), AttributeClass) then
+  begin
     Exit;
+  end;
   Result := AResolver.DeclaredMember(AttributeClass, 'Create', ACtor) and
     (ACtor.SymbolKind = TIndexSymbolKind.Constructor_);
 end;
@@ -667,14 +797,18 @@ var
 begin
   Result := nil;
   for Intrinsic in TSystemIntrinsics.Find(AName) do
+  begin
     if Intrinsic.Kind = TIndexSymbolKind.Routine then
     begin
       Signature := TLspSignatureHelp.ParseSignature([Intrinsic.Declaration], 0, 0);
       if Signature.Text = '' then
+      begin
         Continue;
+      end;
       Signature.Documentation := Intrinsic.Documentation;
       Result := Result + [Signature];
     end;
+  end;
 end;
 
 class function TLspSignatureHelp.HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -716,11 +850,15 @@ begin
   Result := Default(TSignatureHelp);
   Site := CallSiteAt(ATree, APosition);
   if not Site.Found then
+  begin
     Exit;
+  end;
   Resolved := AResolver.Resolve(ATree, AFileName, Site.NamePosition);
   // Attribut (#465): [TestCase('Name', |] zeigt den Konstruktor von TestCaseAttribute.
   if AttributeConstructor(AResolver, ATree, AFileName, Site.NamePosition, Resolved, Ctor) then
+  begin
     Resolved := Ctor;
+  end;
   if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
   begin
     // Unbekannt: vielleicht eine Routine von System ohne Quelltext (SetLength, Inc ...; #880).
@@ -734,19 +872,27 @@ begin
     Exit;
   end;
   if not (Resolved.SymbolKind in RoutineKinds) then
+  begin
     Exit;
+  end;
   if SameText(Resolved.FileName, AFileName) then
-    Text := ATreeText
+  begin
+    Text := ATreeText;
+  end
   else if not (Assigned(AReadText) and AReadText(Resolved.FileName, Text)) then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(Text);
   Reader := TLspDocumentation.Reader(AFileName, ATreeText, AReadText);
   Starts := TList<TTextPosition>.Create;
   // Typargumente ohne Unit davor ("T=TKunde" statt "T=Listen.TKunde").
   Bindings := nil;
   for Binding in Resolved.Bindings do
+  begin
     Bindings := Bindings + [Copy(Binding, 1, Pos('=', Binding)) +
       AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+  end;
   StartSymbols := TList<TResolvedSymbol>.Create;
   Signatures := TList<TSignature>.Create;
   Seen := TList<string>.Create;
@@ -764,16 +910,25 @@ begin
     else
     begin
       if SameText(Resolved.FileName, AFileName) then
-        OwnerUnit := TIndexExtractor.Extract(ATree, AFileName)
+      begin
+        OwnerUnit := TIndexExtractor.Extract(ATree, AFileName);
+      end
       else if not TIndexFiles.UnitOf(AIndex, Resolved.FileName, OwnerUnit) then
+      begin
         Exit;
+      end;
       HasInterface := False;
       for Symbol in OwnerUnit.Symbols do
+      begin
         if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
           SameText(Symbol.Container, Resolved.Container) and Symbol.InInterface then
+        begin
           HasInterface := True;
+        end;
+      end;
       // Rümpfe globaler Routinen aus interface weglassen: sie dürfen die Parameter auslassen.
       for Symbol in OwnerUnit.Symbols do
+      begin
         if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
           SameText(Symbol.Container, Resolved.Container) and (Symbol.InInterface or not HasInterface) and
           SameText(OwnerUnit.SymbolFile(Symbol), Resolved.FileName) then
@@ -781,12 +936,15 @@ begin
           Starts.Add(Symbol.Range.StartPos);
           StartSymbols.Add(AResolver.SymbolFrom(OwnerUnit, Symbol));
         end;
+      end;
     end;
     for Index := 0 to Starts.Count - 1 do
     begin
       Start := Starts[Index];
       if (Start.Line < 0) or (Start.Line > High(Lines)) then
+      begin
         Continue;
+      end;
       // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde). Nur die
       // Zeilen des Kopfs; die Spalte des Anfangs bleibt, weil davor kein Typparameter steht.
       SignatureLines := Lines;
@@ -794,13 +952,17 @@ begin
       begin
         SignatureLines := Copy(Lines);
         for Line := Start.Line to Min(High(SignatureLines), Start.Line + MaxHeaderLines) do
+        begin
           SignatureLines[Line] := TInterfaceStubs.SubstituteWords(SignatureLines[Line], Bindings);
+        end;
       end;
       Signature := ParseSignature(SignatureLines, Start.Line, Start.Character);
       // Deklaration und Rumpf derselben Routine nur einmal; die Deklaration steht vorn und trägt die Doku.
       Key := UpperCase(StringReplace(Signature.Text, ' ', '', [rfReplaceAll]));
       if (Signature.Text = '') or Signature.Qualified or Seen.Contains(Key) then
+      begin
         Continue;
+      end;
       Seen.Add(Key);
       ApplyDocumentation(Signature, TLspDocumentation.Load(AResolver, StartSymbols[Index], Lines, Start.Line,
         Reader));
@@ -817,32 +979,46 @@ begin
   // Argumenttypen (#498), erst nach dem Einsammeln der Überladungen aufgelöst.
   ArgumentTypes := nil;
   for Index := 0 to High(Site.ArgumentFirst) do
+  begin
     ArgumentTypes := ArgumentTypes + [ArgumentType(AResolver, ATree, AFileName, Site.ArgumentFirst[Index],
       Site.ArgumentLast[Index])];
+  end;
   for Index := 0 to High(Result.Signatures) do
+  begin
     Match(Result.Signatures[Index], ArgumentTypes);
+  end;
   // Erste verträgliche Überladung mit genug Parametern, sonst die erste mit genug Parametern.
   Result.ActiveSignature := -1;
   for Index := 0 to High(Result.Signatures) do
+  begin
     if (Length(Result.Signatures[Index].Parameters) > Site.ActiveParameter) and Result.Signatures[Index].Fits then
     begin
       Result.ActiveSignature := Index;
       Break;
     end;
+  end;
   if Result.ActiveSignature < 0 then
+  begin
     for Index := 0 to High(Result.Signatures) do
+    begin
       if Length(Result.Signatures[Index].Parameters) > Site.ActiveParameter then
       begin
         Result.ActiveSignature := Index;
         Break;
       end;
+    end;
+  end;
   if Result.ActiveSignature < 0 then
+  begin
     Result.ActiveSignature := 0;
+  end;
   // Platzhalter einer Formatroutine (#451), nach dem voll qualifizierten Namen.
   if (Length(Result.Signatures) > 0) and TFormatRoutines.FindQualified(ARoutines,
     Resolved.UnitName + '.' + Resolved.QualifiedName, Routine) then
+  begin
     Result.Format := TSignatureFormats.Analyze(AResolver, ATree, AFileName, Site.ArgumentFirst, Site.ArgumentLast,
       Site.ActiveParameter, Routine);
+  end;
 end;
 
 class function TLspSignatureHelp.ToJson(const AHelp: TSignatureHelp): TJSONValue;
@@ -853,7 +1029,9 @@ var
   Index: Integer;
 begin
   if not AHelp.Found then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Signatures := TJSONArray.Create;
   for Item in AHelp.Signatures do
   begin
@@ -878,7 +1056,9 @@ begin
       LabelRange.Add(Item.Parameters[Index].EndIndex);
       Parameter.AddPair('label', LabelRange);
       if Item.Parameters[Index].Documentation <> '' then
+      begin
         Parameter.AddPair('documentation', Item.Parameters[Index].Documentation);
+      end;
     end;
     // Verträglichkeit der bisherigen Argumente (#498), für den Parameter-Hint des Plugins.
     Data := TJSONObject.Create;
@@ -893,7 +1073,9 @@ begin
   // Platzhalter (#451), Erweiterung von Atlas.
   FormatJson := TSignatureFormats.ToJson(AHelp.Format);
   if FormatJson <> nil then
+  begin
     TJSONObject(Result).AddPair('format', FormatJson);
+  end;
 end;
 
 function TLspSignatureHelp.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -910,18 +1092,26 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen');
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
   if Assigned(FFormatRoutinesFor) then
-    Routines := FFormatRoutinesFor(Uri)
+  begin
+    Routines := FFormatRoutinesFor(Uri);
+  end
   else
+  begin
     Routines := TFormatRoutines.Defaults;
+  end;
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := Namespaces;

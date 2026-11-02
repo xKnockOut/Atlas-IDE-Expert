@@ -94,8 +94,12 @@ var
   Token: TPascalToken;
 begin
   for Token in AContext.Tree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Marker') then
+    begin
       AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), 'Marker gefunden');
+    end;
+  end;
 end;
 
 const
@@ -206,7 +210,9 @@ var
   begin
     Result := 0;
     for L := 0 to APos.Line - 1 do
+    begin
       Inc(Result, Length(Lines[L]) + 1);
+    end;
     Inc(Result, APos.Character);
   end;
 begin
@@ -243,9 +249,13 @@ begin
     begin
       Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
       if TFile.Exists(Result) then
+      begin
         Exit;
+      end;
       if ExtractFileDir(Directory) = Directory then
+      begin
         Break;
+      end;
       Directory := ExtractFileDir(Directory);
     end;
   end;
@@ -267,7 +277,9 @@ begin
     Tree.Free;
   end;
   if Result then
+  begin
     ANewText := Apply(AText, Action.Edits[0]);
+  end;
 end;
 
 { TCodeActionTests }
@@ -465,13 +477,17 @@ begin
   Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden');
   Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Golden <> '') and (Golden[1] = #$FEFF) then
+  begin
     Delete(Golden, 1, 1);
+  end;
   Text := TryFinallyBefore;
   for Index := 0 to High(Lines) do
   begin
     Assert.AreEqual(Expected[Index], TCodeActions.TryFinally(Text, Lines[Index], Action), IntToStr(Lines[Index]));
     if Expected[Index] then
+    begin
       Text := Apply(Text, Action.Edits[0]);
+    end;
   end;
   Assert.AreEqual(Golden, Text);
   Assert.AreEqual(0, SyntaxErrors(Text));

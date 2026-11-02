@@ -71,8 +71,12 @@ var
 begin
   Count := 0;
   for Rename in TDfmComponentRename.Handlers(Form, 'button1', 'btnSpeichern') do
+  begin
     if Rename.OldName = 'Button1Click' then
+    begin
       Inc(Count);
+    end;
+  end;
   Assert.AreEqual(1, Count);
 end;
 

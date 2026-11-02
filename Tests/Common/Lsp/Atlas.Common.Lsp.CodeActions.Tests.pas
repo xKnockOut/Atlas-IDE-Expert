@@ -55,7 +55,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CodeActions;
 
@@ -136,7 +135,9 @@ begin
     Assert.IsTrue(Response.GetValue('result') is TJSONArray, Response.ToJSON);
     Result := '';
     for Item in TJSONArray(Response.GetValue('result')) do
+    begin
       Result := Result + TJSONObject(Item).GetValue<string>('title') + '|';
+    end;
   finally
     Response.Free;
   end;
@@ -190,12 +191,14 @@ begin
   try
     NewText := '';
     for Item in Response.GetValue<TJSONArray>('result') do
+    begin
       if StartsText('try/finally', TJSONObject(Item).GetValue<string>('title')) then
         // Der Schlüssel ist die URI mit Punkten; deshalb über das erste Paar statt über einen Pfad.
       begin
         Edits := TJSONObject(Item).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
         NewText := TJSONObject(Edits.Items[0]).GetValue<string>('newText');
       end;
+    end;
     Assert.IsTrue(Pos('try' + LB + #9'  L.Add(nil);', NewText) > 0, NewText);
   finally
     Response.Free;
@@ -275,8 +278,10 @@ begin
     begin
       Data := TJSONObject(Item).GetValue('data');
       if Data is TJSONObject then
+      begin
         Tags := Tags + TJSONObject(Item).GetValue<string>('title') + '=' + TJSONObject(Data).GetValue<string>('tag') +
           '|';
+      end;
     end;
     // X fehlt: Vcl.Forms zählt nicht, also zwei ungenutzte (Vcl.Grids, Vcl.Menus).
     Assert.AreEqual('Vcl.Grids entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', Tags);

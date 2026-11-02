@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerConnectionsTests = class
   public
     /// <summary>Abnahme: zwei Verbindungen (YouTrack selbst gehostet, GitHub) hin und zurück.</summary>
@@ -45,6 +46,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,

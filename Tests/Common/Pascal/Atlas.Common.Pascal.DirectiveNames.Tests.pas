@@ -82,7 +82,9 @@ procedure TDirectiveNamesTests.ListsHaveNoDuplicates;
     begin
       Assert.AreEqual(UpperCase(ANames[Outer]), ANames[Outer]);
       for Inner := Outer + 1 to High(ANames) do
+      begin
         Assert.IsFalse(SameText(ANames[Outer], ANames[Inner]), ANames[Outer]);
+      end;
     end;
   end;
 

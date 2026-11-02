@@ -126,12 +126,20 @@ begin
           Result := not Found;
           if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) and
             (ANode.FindChild(TSyntaxKind.InterfaceType) <> nil) then
+          begin
             Found := True;
+          end;
         end);
       if not Found and (AIndex <> nil) then
+      begin
         for Location in AIndex.FindSymbols(AName) do
+        begin
           if (Location.Symbol.Kind = TIndexSymbolKind.InterfaceType) and (Location.Symbol.Container = '') then
+          begin
             Found := True;
+          end;
+        end;
+      end;
       Result := Found;
     end;
 end;
@@ -151,14 +159,22 @@ begin
         begin
           Result := not Found;
           if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
+          begin
             Found := True;
+          end;
         end);
       if not Found and (AIndex <> nil) then
+      begin
         for Location in AIndex.FindSymbols(AName) do
+        begin
           if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.ClassType,
             TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
             TIndexSymbolKind.TypeAlias]) then
+          begin
             Found := True;
+          end;
+        end;
+      end;
       Result := Found;
     end;
 end;
@@ -173,9 +189,13 @@ var
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) or (TExtractSuperclass.ClassAt(ATree, APosition.Line) = nil) then
+  begin
     Exit;
+  end;
   if not TExtractSuperclass.Prepare(ATree, AText, APosition.Line, 'Base', nil, Info, Reason) then
+  begin
     Exit;
+  end;
   Title := Format('Basisklasse aus %s herauslösen …', [Info.ClassName]);
   Arguments := TJSONArray.Create;
   Arguments.Add(AUri);
@@ -203,7 +223,9 @@ var
 begin
   if not TExtractSuperclass.Prepare(ATree, AText, APosition.Line, AContext.NameSuffix,
     NameCheck(ATree, AContext.Index), Info, Reason) then
+  begin
     raise Failed(Reason);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('className', Info.ClassName);
   Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
@@ -225,14 +247,18 @@ begin
     Entry.AddPair('abstract', TJSONBool.Create(Item.CanAbstract and SameText(AContext.MethodMode, 'abstract')));
     Needs := TJSONArray.Create;
     for Need in Item.Needs do
+    begin
       Needs.AddElement(TJSONNumber.Create(Need));
+    end;
     Entry.AddPair('needs', Needs);
     List.AddElement(Entry);
   end;
   Result.AddPair('candidates', List);
   Notes := TJSONArray.Create;
   for Note in Info.Notes do
+  begin
     Notes.Add(Note);
+  end;
   Result.AddPair('notes', Notes);
   // Ziele: dieselbe Unit oder eine neue mit dem Namen der Basisklasse ohne T.
   NewUnit := TMoveClass.DefaultUnitName(Info.SuggestedName);
@@ -240,9 +266,13 @@ begin
   Units.Add(NewUnit);
   Result.AddPair('units', Units);
   if SameText(AContext.Target, 'newUnit') then
-    Result.AddPair('unit', NewUnit)
+  begin
+    Result.AddPair('unit', NewUnit);
+  end
   else
+  begin
     Result.AddPair('unit', '');
+  end;
 end;
 
 function Ids(AObject: TJSONObject; const AKey: string): TArray<Integer>;
@@ -252,16 +282,24 @@ begin
   Result := nil;
   Value := AObject.GetValue(AKey);
   if Value is TJSONArray then
+  begin
     for Item in TJSONArray(Value) do
+    begin
       if Item is TJSONNumber then
+      begin
         Result := Result + [TJSONNumber(Item).AsInt];
+      end;
+    end;
+  end;
 end;
 
 function Field(AObject: TJSONObject; const AKey: string): string;
 begin
   Result := '';
   if AObject.GetValue(AKey) <> nil then
+  begin
     Result := Trim(AObject.GetValue(AKey).Value);
+  end;
 end;
 
 /// <summary>Fehlerfrei parsen wie vorher; sonst EJsonRpcError mit der ersten Meldung.</summary>
@@ -272,8 +310,10 @@ begin
   Check := TSyntaxTreeCache.Parse(ANewText);
   try
     if Length(Check.Diagnostics) > ABefore then
+    begin
       raise Failed(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
         [ExtractFileName(AFileName), Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
+    end;
   finally
     Check.Free;
   end;
@@ -294,7 +334,9 @@ var
   Warning: string;
 begin
   if not (ARequest is TJSONObject) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Anfrage mit name, unit und members fehlt');
+  end;
   Body := TJSONObject(ARequest);
   Request := Default(TSuperclassRequest);
   Request.Name := Field(Body, 'name');
@@ -304,18 +346,28 @@ begin
   OwnUnit := TUsesClauses.OwnName(ATree.Tokens);
   Request.SameUnit := (UnitName = '') or SameText(UnitName, OwnUnit);
   if SameText(AContext.RaiseVisibility, 'strictProtected') then
-    Request.RaiseVisibility := TClassVisibility.StrictProtected
+  begin
+    Request.RaiseVisibility := TClassVisibility.StrictProtected;
+  end
   else
+  begin
     Request.RaiseVisibility := TClassVisibility.Protected_;
+  end;
   if not Request.SameUnit and not IsIdentifier(StringReplace(UnitName, '.', '_', [rfReplaceAll])) then
+  begin
     raise Failed(Format('"%s" ist kein gültiger Unit-Name.', [UnitName]));
+  end;
   if not TExtractSuperclass.Plan(ATree, AText, APosition.Line, Request, InterfaceCheck(ATree, AContext.Index),
     NameCheck(ATree, AContext.Index), Plan, Reason) then
+  begin
     raise Failed(Reason);
+  end;
   Changes := TWorkspaceChanges.Create;
   try
     for Warning in Plan.Warnings do
+    begin
       Changes.Warn(Warning);
+    end;
     NewFile := AFileName;
     NewText := Plan.Text;
     if not Request.SameUnit then
@@ -323,18 +375,28 @@ begin
       // Die Basisklasse steht jetzt über der Klasse; „Klasse verschieben“ bringt sie in die neue Unit.
       NewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), UnitName + '.pas');
       if Assigned(AContext.Exists) and AContext.Exists(NewFile) then
+      begin
         raise Failed(Format('%s gibt es schon.', [ExtractFileName(NewFile)]));
+      end;
       if AContext.HasProject then
+      begin
         for Item in AContext.Project.Units do
+        begin
           if SameText(Item.Name, UnitName) then
+          begin
             raise Failed(Format('%s steht schon im Projekt.', [UnitName]));
+          end;
+        end;
+      end;
       Tree := TSyntaxTreeCache.Parse(Plan.Text);
       try
         AResolver.PinTree(Tree, AFileName);
         try
           if not TMoveClass.Plan(AFileName, Plan.Text, Tree, TTextPosition.Create(Plan.BaseLine, 0), UnitName,
             TLspMoveClass.Lookup(AResolver), Move, Reason) then
+          begin
             raise Failed(Format('Die Basisklasse lässt sich nicht in eine eigene Unit verschieben: %s', [Reason]));
+          end;
         finally
           AResolver.UnpinTree;
         end;
@@ -344,13 +406,17 @@ begin
       NewText := TTextChanges.Apply(Plan.Text, Move.OriginEdits);
       Changes.CreateFile(NewFile, Move.Text);
       if Move.Unresolved <> nil then
+      begin
         Changes.Warn(Format('Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der alten.',
           [string.Join(', ', Move.Unresolved)]));
+      end;
     end;
     CheckParses(AFileName, NewText, Length(ATree.Diagnostics));
     Changes.Add(AFileName, TTextChanges.Diff(AText, NewText));
     if not Request.SameUnit then
+    begin
       Changes.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, NewFile, UnitName);
+    end;
     Description := Format('%s mit %d Mitgliedern, %d Dateien', [Plan.BaseName,
       Length(Plan.Moved) + Length(Plan.Abstracts), Changes.FileCount]);
     Result := TJSONObject.Create;
@@ -359,9 +425,13 @@ begin
     Result.AddPair('file', TDocumentUris.FromPath(NewFile));
     // Zeile der Basisklasse in derselben Unit; in der neuen Unit vom Anfang an.
     if Request.SameUnit then
-      Result.AddPair('line', TJSONNumber.Create(Plan.BaseLine))
+    begin
+      Result.AddPair('line', TJSONNumber.Create(Plan.BaseLine));
+    end
     else
+    begin
       Result.AddPair('line', TJSONNumber.Create(0));
+    end;
     Result.AddPair('name', Plan.BaseName);
     Result.AddPair('moved', TJSONNumber.Create(Length(Plan.Moved) + Length(Plan.Abstracts)));
   finally

@@ -78,7 +78,9 @@ begin
   try
     Arguments.Add(Uri);
     if AOptions <> '' then
+    begin
       Arguments.AddElement(TJSONObject.ParseJSONValue(AOptions));
+    end;
     Reply := TLspMethodOrder.Execute(FStore, Arguments);
   finally
     Arguments.Free;

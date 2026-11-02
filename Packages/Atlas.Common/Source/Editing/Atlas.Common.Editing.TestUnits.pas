@@ -74,7 +74,9 @@ function PatternOrDefault(const APattern: string): string;
 begin
   Result := APattern;
   if Pos(TTestUnits.Placeholder, Result) = 0 then
+  begin
     Result := TTestUnits.DefaultPattern;
+  end;
 end;
 
 class function TTestUnits.TestUnitName(const AUnitName, APattern: string): string;
@@ -95,7 +97,9 @@ begin
   Result := (Length(ATestUnitName) > Length(Prefix) + Length(Suffix)) and StartsText(Prefix, ATestUnitName) and
     EndsText(Suffix, ATestUnitName);
   if Result then
+  begin
     AUnitName := Copy(ATestUnitName, Length(Prefix) + 1, Length(ATestUnitName) - Length(Prefix) - Length(Suffix));
+  end;
 end;
 
 class function TTestUnits.FixtureName(const AClassName, AUnitName: string): string;
@@ -107,14 +111,18 @@ begin
   begin
     Name := AClassName;
     if (Length(Name) > 1) and CharInSet(Name[1], ['T', 't']) and CharInSet(Name[2], ['A'..'Z']) then
+    begin
       Name := Copy(Name, 2, MaxInt);
+    end;
   end
   else
   begin
     Name := AUnitName;
     Dot := Name.LastIndexOf('.');
     if Dot >= 0 then
+    begin
       Name := Name.Substring(Dot + 1);
+    end;
   end;
   Result := 'T' + Name + 'Tests';
 end;
@@ -131,12 +139,17 @@ var
 begin
   Result := '';
   for Symbol in AUnit.Symbols do
+  begin
     if IsClass(Symbol) and (Symbol.Range.StartPos.Line <= ALine) and (Symbol.Range.EndPos.Line >= ALine) then
+    begin
       Exit(Symbol.Name);
+    end;
+  end;
   // Im implementation-Teil: die letzte Routine, die vor der Zeile beginnt.
   Found := False;
   Last := Default(TIndexSymbol);
   for Symbol in AUnit.Symbols do
+  begin
     if not Symbol.InInterface and (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
       TIndexSymbolKind.Routine]) and (Symbol.Range.StartPos.Line <= ALine) and
       (not Found or (Symbol.Range.StartPos.Line > Last.Range.StartPos.Line)) then
@@ -144,10 +157,17 @@ begin
       Last := Symbol;
       Found := True;
     end;
+  end;
   if Found and (Last.Kind <> TIndexSymbolKind.Routine) then
+  begin
     for Symbol in AUnit.Symbols do
+    begin
       if IsClass(Symbol) and SameText(Symbol.Name, Last.Container) then
+      begin
         Exit(Symbol.Name);
+      end;
+    end;
+  end;
 end;
 
 class function TTestUnits.FirstClass(const AUnit: TUnitIndex): string;
@@ -156,8 +176,12 @@ var
 begin
   Result := '';
   for Symbol in AUnit.Symbols do
+  begin
     if IsClass(Symbol) and Symbol.InInterface then
+    begin
       Exit(Symbol.Name);
+    end;
+  end;
 end;
 
 class function TTestUnits.TestMethods(const AUnit: TUnitIndex; const AClassName: string): TArray<TTestUnitMethod>;
@@ -171,24 +195,38 @@ begin
   for Symbol in AUnit.Symbols do
   begin
     if not Symbol.InInterface then
+    begin
       Continue;
+    end;
     if AClassName <> '' then
+    begin
       Wanted := (Symbol.Kind = TIndexSymbolKind.Method) and SameText(Symbol.Container, AClassName) and
         (Symbol.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and
-        not SameText(Symbol.Name, 'Destroy')
+        not SameText(Symbol.Name, 'Destroy');
+    end
     else
+    begin
       Wanted := (Symbol.Kind = TIndexSymbolKind.Routine) and (Symbol.Container = '');
+    end;
     if not Wanted then
+    begin
       Continue;
+    end;
     // Überladene Methoden: TestBerechne, TestBerechne2, …
     Count := 1;
     for Index := 0 to High(Result) do
+    begin
       if SameText(Result[Index].Target, Symbol.QualifiedName) then
+      begin
         Inc(Count);
+      end;
+    end;
     Method.Target := Symbol.QualifiedName;
     Method.Name := 'Test' + Symbol.Name;
     if Count > 1 then
+    begin
       Method.Name := Method.Name + IntToStr(Count);
+    end;
     Result := Result + [Method];
   end;
 end;
@@ -209,31 +247,47 @@ begin
     if IsClass(Symbol) and SameText(Symbol.Name, AClassName) then
     begin
       if Symbol.TypeParams <> '' then
+      begin
         Exit('');
+      end;
       // Ohne eigenen Konstruktor: der des Vorfahren; bei Komponenten mit Owner.
       if (Length(Symbol.Ancestors) > 0) and MatchText(Symbol.Ancestors[0], ComponentAncestors) then
+      begin
         Result := AClassName + '.Create(nil)';
+      end;
     end;
     if (Symbol.Kind <> TIndexSymbolKind.Constructor_) or not SameText(Symbol.Container, AClassName) or
       not Symbol.InInterface then
+    begin
       Continue;
+    end;
     HasConstructor := True;
     if not (Symbol.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) then
+    begin
       Continue;
+    end;
     if Symbol.MinArgs = 0 then
     begin
       if SameText(Symbol.Name, 'Create') then
+      begin
         Exit(AClassName + '.Create');
+      end;
       Exit(AClassName + '.' + Symbol.Name);
     end;
     if (Symbol.MinArgs = 1) and (Length(Symbol.ParamTypes) > 0) and
       MatchText(Symbol.ParamTypes[0], ['TComponent', 'TObject']) then
+    begin
       Exit(AClassName + '.' + Symbol.Name + '(nil)');
+    end;
   end;
   if HasConstructor then
+  begin
     Exit('');
+  end;
   if Result = '' then
+  begin
     Result := AClassName + '.Create';
+  end;
 end;
 
 class function TTestUnits.UnitText(const ATestUnitName: string; const AUnit: TUnitIndex;
@@ -256,11 +310,17 @@ begin
   Methods := TestMethods(AUnit, AClassName);
   Generic := False;
   for Symbol in AUnit.Symbols do
+  begin
     if IsClass(Symbol) and SameText(Symbol.Name, AClassName) and (Symbol.TypeParams <> '') then
+    begin
       Generic := True;
+    end;
+  end;
   CreateText := '';
   if AClassName <> '' then
+  begin
     CreateText := CreateExpression(AUnit, AClassName);
+  end;
   Builder := TStringBuilder.Create;
   try
     Line('unit ' + ATestUnitName + ';');
@@ -298,12 +358,18 @@ begin
     if (AClassName <> '') and not Generic then
     begin
       if CreateText <> '' then
-        Line('  FSubject := ' + CreateText + ';')
+      begin
+        Line('  FSubject := ' + CreateText + ';');
+      end
       else
+      begin
         Line('  // ' + AClassName + ' braucht Argumente im Konstruktor: FSubject hier anlegen.');
+      end;
     end
     else if Generic then
+    begin
       Line('  // ' + AClassName + ' ist generisch: Objekt mit konkreten Typargumenten im Test anlegen.');
+    end;
     Line('end;');
     Line('');
     Line('procedure ' + Fixture + '.TearDown;');
@@ -341,11 +407,17 @@ begin
   Tokens := TPascalLexer.Tokenize(AText);
   Result := False;
   for Index := 0 to High(Tokens) do
+  begin
     if Tokens[Index].IsKeyword('program') then
-      Exit(TUsesClauses.IsTestUnit(Tokens))
+    begin
+      Exit(TUsesClauses.IsTestUnit(Tokens));
+    end
     else if Tokens[Index].IsKeyword('unit') or Tokens[Index].IsKeyword('library') or
       Tokens[Index].IsKeyword('package') then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TTestUnits.FindTestProgram(const ACandidates: TArray<string>;
@@ -355,8 +427,12 @@ var
 begin
   Result := '';
   for Candidate in ACandidates do
+  begin
     if SameText(ExtractFileExt(Candidate), '.dpr') and IsTestProgram(AReadText(Candidate)) then
+    begin
       Exit(Candidate);
+    end;
+  end;
 end;
 
 function SplitPath(const APath: string): TArray<string>;
@@ -365,8 +441,12 @@ var
 begin
   Result := nil;
   for Part in StringReplace(APath, '/', '\', [rfReplaceAll]).Split(['\']) do
+  begin
     if (Part <> '') and (Part <> '.') then
+    begin
       Result := Result + [Part];
+    end;
+  end;
 end;
 
 class function TTestUnits.RelativePath(const ABaseDir, AFileName: string): string;
@@ -378,18 +458,26 @@ begin
   Target := SplitPath(AFileName);
   Common := 0;
   while (Common < Length(Base)) and (Common < Length(Target) - 1) and SameText(Base[Common], Target[Common]) do
+  begin
     Inc(Common);
+  end;
   // Anderes Laufwerk (oder kein gemeinsamer Anfang bei absoluten Pfaden): vollständiger Pfad.
   if (Common = 0) and (Length(Base) > 0) and (Length(Target) > 0) and (Pos(':', Target[0]) > 0) then
+  begin
     Exit(StringReplace(AFileName, '/', '\', [rfReplaceAll]));
+  end;
   Result := '';
   for Index := Common to High(Base) do
+  begin
     Result := Result + '..\';
+  end;
   for Index := Common to High(Target) do
   begin
     Result := Result + Target[Index];
     if Index < High(Target) then
+    begin
       Result := Result + '\';
+    end;
   end;
 end;
 

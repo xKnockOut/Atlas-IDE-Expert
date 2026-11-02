@@ -80,7 +80,9 @@ begin
   // Generische Typen vergleichen ohne Typparameter: TObjectList<TFoo> -> TObjectList.
   Declared := AField.TypeName;
   if Pos('<', Declared) > 0 then
+  begin
     Declared := Copy(Declared, 1, Pos('<', Declared) - 1);
+  end;
   Result := MatchText(Trim(AField.CreatedType), AIgnoreTypes) or MatchText(Trim(Declared), AIgnoreTypes) or
     MatchText(Trim(AField.TypeName), AIgnoreTypes);
 end;
@@ -94,19 +96,27 @@ var
   IgnoreTypes: TArray<string>;
 begin
   if (AContext.Tree = nil) or AContext.NoFreeFields then
+  begin
     Exit;
+  end;
   IgnoreTypes := TRuleOptions.Strings(AContext.Options, 'ignoreTypes', nil);
   Style := TFreeFieldsStyle.Free;
   if AContext.FreeFieldsFreeAndNil then
+  begin
     Style := TFreeFieldsStyle.FreeAndNil;
+  end;
   for Field in TFreeFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
   begin
     if (Field.State <> TOwnedFieldState.NotFreed) or Ignored(Field, IgnoreTypes) then
+    begin
       Continue;
+    end;
     Fixes := nil;
     // Nicht sicher: Ob die Klasse das Objekt besitzt, weiß nur der Entwickler.
     if TFreeFields.Edits(AContext.Tree, AContext.Text, [Field], Style, Edits) then
+    begin
       Fixes := [TRuleFix.Create(TFreeFields.FieldTitle, Edits, False)];
+    end;
     // Mittel: Ob das Objekt anderswo freigegeben wird, sieht die Regel nicht immer.
     AReport.Add(Field.Range, Format('%s wird im Konstruktor erzeugt, aber im Destruktor nicht freigegeben ' +
       '(Speicherleck).', [Field.Name]), TRuleConfidence.Medium, Fixes);
@@ -126,11 +136,17 @@ var
   Field: TOwnedField;
 begin
   if (AContext.Tree = nil) or AContext.NoFreeFields then
+  begin
     Exit;
+  end;
   for Field in TFreeFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
+  begin
     if Field.State = TOwnedFieldState.Unclear then
+    begin
       AReport.Add(Field.Range, Format('"%s" wird in %s erzeugt und nicht freigegeben; ob %s es freigeben muss, ' +
         'ist unklar: Es %s', [Field.Name, Field.CreatedIn, Field.ClassName, Field.Reason]));
+    end;
+  end;
 end;
 
 { TInitializationNotFinalizedRule }
@@ -188,16 +204,22 @@ begin
   FContext := AContext;
   FName := ACreation.Name;
   if ACreation.ClassDecl <> nil then
+  begin
     FClassName := ACreation.ClassDecl.Name;
+  end;
 end;
 
 function TInitUses.IsRef(ANode: TSyntaxNode): Boolean;
 begin
   Result := False;
   if ANode = nil then
+  begin
     Exit;
+  end;
   if ANode.Kind = TSyntaxKind.Identifier then
+  begin
     Exit(SameText(ANode.Name, FName));
+  end;
   // Self.FInstanz bzw. TKlasse.FInstanz
   Result := (FClassName <> '') and (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, FName) and
     (ANode.ChildCount = 1) and (ANode[0].Kind = TSyntaxKind.Identifier) and
@@ -229,36 +251,56 @@ begin
           if (Node.ChildCount >= 1) and IsRef(Node[0]) then
           begin
             if MatchText(Node.Name, ReleasingMethods) then
-              FFreed := True
+            begin
+              FFreed := True;
+            end
             else if SameText(Node.Name, 'FreeOnTerminate') then
+            begin
               // Ein Thread, der sich selbst freigibt.
-              FEscaped := True
+              FEscaped := True;
+            end
             else
+            begin
               Harmless(Node[0]);
+            end;
           end;
         TSyntaxKind.Call:
           if (Node.ChildCount = 2) and (Node[0].Kind = TSyntaxKind.Identifier) and IsRef(Node[1]) then
           begin
             if SameText(Node[0].Name, 'FreeAndNil') then
-              FFreed := True
+            begin
+              FFreed := True;
+            end
             else if SameText(Node[0].Name, 'Assigned') then
+            begin
               Harmless(Node[1]);
+            end;
           end;
         TSyntaxKind.BinaryExpr:
           if (Node.Name = '=') or (Node.Name = '<>') then
+          begin
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               if IsRef(Node[Index]) then
+              begin
                 Harmless(Node[Index]);
+              end;
+            end;
+          end;
         TSyntaxKind.AssignStatement:
           if (Node.ChildCount >= 2) and IsRef(Node[0]) and (((Node[1].Kind = TSyntaxKind.Literal) and
             SameText(Node[1].Name, 'nil')) or (TFreeFields.ObjectCreation(FContext.Tree, FContext.Text,
             FContext.Index, Node[1], TypeName, Owned) and not Owned)) then
+          begin
             Harmless(Node[0]);
+          end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -273,19 +315,29 @@ var
 begin
   Visit(FContext.Tree.Root);
   if FFreed or FEscaped then
+  begin
     Exit(False);
+  end;
   // Jede Erwähnung im Text muss eine der harmlosen sein (auch in Properties, with und asm).
   for Token in FContext.Tree.Tokens do
   begin
     if (Token.Kind <> TPascalTokenKind.Identifier) or not SameText(Token.Text, FName) or
       ((Token.Offset >= ACreation.DeclStart) and (Token.Offset < ACreation.DeclEnd)) then
+    begin
       Continue;
+    end;
     Known := False;
     for Node in FHarmless do
+    begin
       if (Token.Offset >= Node.StartOffset) and (Token.Offset < Node.EndOffset) then
+      begin
         Known := True;
+      end;
+    end;
     if not Known then
+    begin
       Exit(False);
+    end;
   end;
   Result := True;
 end;
@@ -298,12 +350,22 @@ var
 begin
   Result := False;
   if AContext.Index = nil then
+  begin
     Exit;
+  end;
   for UnitIndex in AContext.Index.Units do
+  begin
     if not SameText(UnitIndex.UnitName, AContext.UnitName) then
+    begin
       for Usage in UnitIndex.Usages do
+      begin
         if SameText(Usage.Name, AName) then
+        begin
           Exit(True);
+        end;
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Typname der Deklaration, '' ohne einfachen Typverweis.</summary>
@@ -314,7 +376,9 @@ begin
   Result := '';
   TypeRef := ADecl.FindChild(TSyntaxKind.TypeReference);
   if TypeRef <> nil then
+  begin
     Result := Trim(Copy(AText, TypeRef.StartOffset + 1, TypeRef.EndOffset - TypeRef.StartOffset));
+  end;
 end;
 
 /// <summary>Steht vor ANode das Schlüsselwort class (class var)?</summary>
@@ -324,12 +388,16 @@ var
 begin
   Result := False;
   for Index := High(ATokens) downto 0 do
+  begin
     if ATokens[Index].Offset < ANode.StartOffset then
     begin
       if ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      begin
         Continue;
+      end;
       Exit(ATokens[Index].IsKeyword('class'));
     end;
+  end;
 end;
 
 /// <summary>Variablen mit Objekttyp aus dem Abschnitt ASection: Unit-Variablen (var) und class vars der
@@ -346,13 +414,16 @@ begin
   begin
     Child := ASection[Index];
     if (Child.Kind = TSyntaxKind.VarSection) and SameText(Child.Name, 'var') then
+    begin
       for DeclIndex := 0 to Child.ChildCount - 1 do
       begin
         Decl := Child[DeclIndex];
         if (Decl.Kind <> TSyntaxKind.VarDecl) or (DeclaredType(AContext.Text, Decl) = '') or
           not TFreeFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index,
           DeclaredType(AContext.Text, Decl)) then
+        begin
           Continue;
+        end;
         for Name in Decl.Name.Split([',']) do
         begin
           Variable := Default(TInitVariable);
@@ -363,29 +434,40 @@ begin
           AVariables := AVariables + [Variable];
         end;
       end;
+    end;
     if Child.Kind <> TSyntaxKind.TypeSection then
+    begin
       Continue;
+    end;
     for TypeIndex := 0 to Child.ChildCount - 1 do
     begin
       TypeDecl := Child[TypeIndex];
       ClassNode := TypeDecl.FindChild(TSyntaxKind.ClassType);
       if (TypeDecl.Kind <> TSyntaxKind.TypeDecl) or (ClassNode = nil) then
+      begin
         Continue;
+      end;
       Visibility := 'public';
       for MemberIndex := 0 to ClassNode.ChildCount - 1 do
       begin
         Member := ClassNode[MemberIndex];
         if Member.Kind = TSyntaxKind.Visibility then
+        begin
           Visibility := Member.Name;
+        end;
         if (Member.Kind <> TSyntaxKind.VarSection) or not AfterClassKeyword(AContext.Tree.Tokens, Member) then
+        begin
           Continue;
+        end;
         for DeclIndex := 0 to Member.ChildCount - 1 do
         begin
           Decl := Member[DeclIndex];
           if (Decl.Kind <> TSyntaxKind.VarDecl) or (DeclaredType(AContext.Text, Decl) = '') or
             not TFreeFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index,
             DeclaredType(AContext.Text, Decl)) then
+          begin
             Continue;
+          end;
           for Name in Decl.Name.Split([',']) do
           begin
             Variable := Default(TInitVariable);
@@ -423,24 +505,36 @@ begin
     begin
       Node := Pending.Pop;
       if Node.Kind = TSyntaxKind.AnonymousMethod then
+      begin
         Continue;
+      end;
       if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount >= 2) then
       begin
         Target := Node[0];
         Name := '';
         if Target.Kind = TSyntaxKind.Identifier then
-          Name := Target.Name
+        begin
+          Name := Target.Name;
+        end
         else if (AClassDecl <> nil) and (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
           (Target[0].Kind = TSyntaxKind.Identifier) and (SameText(Target[0].Name, 'Self') or
           SameText(Target[0].Name, AClassDecl.Name)) then
+        begin
           Name := Target.Name;
+        end;
         Known := False;
         for Creation in ACreations do
+        begin
           if SameText(Creation.Name, Name) and (Creation.ClassDecl = AClassDecl) then
+          begin
             Known := True;
+          end;
+        end;
         if (Name <> '') and not Known and TFreeFields.ObjectCreation(AContext.Tree, AContext.Text, AContext.Index,
           Node[1], TypeName, Owned) and not Owned then
+        begin
           for Variable in AVariables do
+          begin
             if SameText(Variable.Name, Name) and (Variable.ClassDecl = AClassDecl) then
             begin
               Creation := Default(TInitCreation);
@@ -453,9 +547,13 @@ begin
               ACreations := ACreations + [Creation];
               Break;
             end;
+          end;
+        end;
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -480,31 +578,45 @@ begin
   // "end" vor dem letzten Punkt.
   EndIndex := -1;
   for Index := High(Tokens) downto 1 do
+  begin
     if Tokens[Index].IsSymbol('.') then
     begin
       Previous := Index - 1;
       while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      begin
         Dec(Previous);
+      end;
       if (Previous >= 0) and Tokens[Previous].IsKeyword('end') then
+      begin
         EndIndex := Previous;
+      end;
       Break;
     end;
+  end;
   if EndIndex < 1 then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   // Nur wenn "end." am Zeilenanfang steht; sonst gäbe es keine saubere Stelle.
   if (Tokens[EndIndex].StartPos.Line > High(Lines)) or
     (Trim(Copy(Lines[Tokens[EndIndex].StartPos.Line], 1, Tokens[EndIndex].StartPos.Character)) <> '') then
+  begin
     Exit;
+  end;
   Section := AContext.Tree.Root.FindChild(TSyntaxKind.FinalizationSection);
   Previous := EndIndex - 1;
   while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Dec(Previous);
+  end;
   if Section <> nil then
   begin
     // Letzte Anweisung ohne Semikolon: erst eins ergänzen.
     if (Previous >= 0) and not Tokens[Previous].IsSymbol(';') and not Tokens[Previous].IsKeyword('finalization') then
+    begin
       AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Previous].EndPos, Tokens[Previous].EndPos), ';')];
+    end;
     Text := '  ' + AStatement + LineBreak;
   end
   else
@@ -512,7 +624,9 @@ begin
     ACreated := True;
     Text := 'finalization' + LineBreak + '  ' + AStatement + LineBreak;
     if (Tokens[EndIndex].StartPos.Line = 0) or (Trim(Lines[Tokens[EndIndex].StartPos.Line - 1]) <> '') then
+    begin
       Text := LineBreak + Text;
+    end;
   end;
   AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Tokens[EndIndex].StartPos.Line, 0),
     TTextPosition.Create(Tokens[EndIndex].StartPos.Line, 0)), Text)];
@@ -542,27 +656,42 @@ var
   Classes: TArray<TSyntaxNode>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Variables := nil;
   Section := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
   if Section <> nil then
+  begin
     ReadVariables(AContext, Section, True, Variables);
+  end;
   Section := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Section <> nil then
+  begin
     ReadVariables(AContext, Section, False, Variables);
+  end;
   if Variables = nil then
+  begin
     Exit;
+  end;
   Creations := nil;
   Section := AContext.Tree.Root.FindChild(TSyntaxKind.InitializationSection);
   if Section <> nil then
+  begin
     FindCreations(AContext, Section, nil, Variables, Creations);
+  end;
   // class constructor der Klassen mit class vars
   Classes := nil;
   for Variable in Variables do
+  begin
     if (Variable.ClassDecl <> nil) and not ((Classes <> nil) and (Classes[High(Classes)] = Variable.ClassDecl)) then
+    begin
       Classes := Classes + [Variable.ClassDecl];
+    end;
+  end;
   Section := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if (Section <> nil) and (Classes <> nil) then
+  begin
     for Index := 0 to Section.ChildCount - 1 do
     begin
       Decl := Section[Index];
@@ -570,14 +699,19 @@ begin
       if (Decl.Kind <> TSyntaxKind.RoutineDecl) or (Header = nil) or (Decl.FindChild(TSyntaxKind.Block) = nil) or
         not TRegEx.IsMatch(Copy(AContext.Text, Header.StartOffset + 1, Header.EndOffset - Header.StartOffset),
         '^class\s+constructor\b', [roIgnoreCase]) then
+      begin
         Continue;
+      end;
       for Variable in Variables do
+      begin
         if (Variable.ClassDecl <> nil) and StartsText(Variable.ClassDecl.Name + '.', Decl.Name) then
         begin
           FindCreations(AContext, Decl.FindChild(TSyntaxKind.Block), Variable.ClassDecl, Variables, Creations);
           Break;
         end;
+      end;
     end;
+  end;
   for Creation in Creations do
   begin
     Scan := TInitUses.Create(AContext, Creation);
@@ -587,7 +721,9 @@ begin
       Scan.Free;
     end;
     if not Leaks or (Creation.Visible and UsedElsewhere(AContext, Creation.Name)) then
+    begin
       Continue;
+    end;
     Statement := Format('FreeAndNil(%s);', [Creation.Name]);
     if Creation.ClassDecl = nil then
     begin
@@ -603,13 +739,16 @@ begin
       Title := 'Im class destructor freigeben';
       if not TFreeFields.ClassDestructorEdits(AContext.Tree, AContext.Text, Creation.ClassDecl, [Statement],
         Edits) then
+      begin
         Edits := nil;
+      end;
       Safe := Length(Edits) = 1;
     end;
     // Mehrere neu angelegte Abschnitte oder uses-Einträge an derselben Stelle vertragen sich nicht:
     // solche Korrekturen nur einzeln (nicht sicher).
     if (Edits <> nil) and not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(AContext.Tree.Tokens), 'System.SysUtils',
       AContext.Namespaces) then
+    begin
       if TUsesClauses.AddUnit(AContext.Tree.Tokens, Creation.Assignment.StartOffset, 'System.SysUtils',
         TTextLines.LineBreakOf(AContext.Text), UsesEdit) then
       begin
@@ -617,10 +756,15 @@ begin
         Safe := False;
       end
       else
+      begin
         Edits := nil;
+      end;
+    end;
     Fixes := nil;
     if Edits <> nil then
+    begin
       Fixes := [TRuleFix.Create(Title, Edits, Safe)];
+    end;
     AReport.Add(TTextRange.Create(Creation.Assignment[0].StartPos, Creation.Assignment[0].EndPos), Message,
       TRuleConfidence.High, Fixes);
   end;

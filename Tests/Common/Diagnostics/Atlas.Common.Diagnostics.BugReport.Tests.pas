@@ -70,7 +70,9 @@ begin
   Statistics := TJsonRpcStatistics.Create;
   Assert.AreEqual(0, Integer(Length(Statistics.Recent)));
   for Index := 1 to TJsonRpcStatistics.RecentCapacity + 7 do
+  begin
     Statistics.Add('m' + IntToStr(Index), Index, Index mod 2 = 0);
+  end;
   Recent := Statistics.Recent;
   Assert.AreEqual(TJsonRpcStatistics.RecentCapacity, Integer(Length(Recent)));
   // Die ältesten sieben sind verdrängt, Reihenfolge älteste zuerst.
@@ -90,7 +92,9 @@ begin
   Lines := Sink;
   Assert.AreEqual(0, Integer(Length(Lines.Lines)));
   for Index := 1 to 5 do
+  begin
     Sink.Write(TLogEntry.Create(Now, TLogLevel.Info, 'Zeile ' + IntToStr(Index)));
+  end;
   Assert.AreEqual(3, Integer(Length(Lines.Lines)));
   Assert.EndsWith('Zeile 3', Lines.Lines[0]);
   Assert.EndsWith('Zeile 5', Lines.Lines[2]);

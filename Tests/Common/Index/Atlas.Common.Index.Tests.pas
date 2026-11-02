@@ -233,6 +233,29 @@ type
     procedure RestartDoesNotWaitForRunningBuild;
   end;
 
+  /// <summary>Speicher bei Projektgruppen (Rückmeldung 01.11.2026): gemeinsamer Suchpfad-Cache und keine doppelte
+  /// Übernahme. Eigene Klasse neben TIndexBuilderTests, deren Dateien sie über PutBuilderFiles teilt.</summary>
+  [TestFixture]
+  TIndexGroupCacheTests = class
+  private
+    FFileSystem: IIndexFileSystem;
+    FIndex: ISymbolIndex;
+    function Resolve(const AUnitName: string): string;
+  public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+    /// <summary>Speicher (Rückmeldung 01.11.2026): Suchpfad-Units stehen in einem gemeinsamen Cache statt im Cache
+    /// jedes Projekts; ein zweites Projekt mit denselben Suchpfaden liest sie von dort.</summary>
+    [Test]
+    procedure ServiceSharesSearchPathCache;
+    /// <summary>Speicher (Rückmeldung 01.11.2026): Ein weiteres Projekt der Gruppe übernimmt Units, die mit gleichem
+    /// Stand und gleichen Defines schon im Index stehen, nicht noch einmal; mit anderen Defines liest es neu.</summary>
+    [Test]
+    procedure BuilderSkipsUnitsAlreadyIndexed;
+  end;
+
   [TestFixture]
   TIndexSchedulerTests = class
   public
@@ -313,11 +336,13 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.QualifiedName, AQualifiedName) then
     begin
       ASymbol := Symbol;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -327,8 +352,12 @@ var
 begin
   Result := 0;
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.QualifiedName, AQualifiedName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function MakeUnit(const AName, AFileName: string; const ASymbols: array of string;
@@ -346,7 +375,9 @@ begin
     Result.Symbols[I].Name := ASymbols[I];
     Result.Symbols[I].Kind := TIndexSymbolKind.ClassType;
     if AAncestor <> '' then
+    begin
       Result.Symbols[I].Ancestors := [AAncestor];
+    end;
   end;
 end;
 
@@ -396,7 +427,9 @@ end;
 function TMemoryIndexFileSystem.ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   if Assigned(FBeforeReadText) then
+  begin
     FBeforeReadText(AFileName);
+  end;
   TMonitor.Enter(Self);
   try
     Inc(FReads);
@@ -423,7 +456,9 @@ var
   After: TProc<string>;
 begin
   if FFailReads then
+  begin
     raise EInOutError.Create('simuliert');
+  end;
   TMonitor.Enter(Self);
   try
     Inc(FReads);
@@ -433,7 +468,9 @@ begin
     TMonitor.Exit(Self);
   end;
   if Assigned(After) then
+  begin
     After(AFileName);
+  end;
 end;
 
 function TMemoryIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes;
@@ -443,9 +480,13 @@ var
 begin
   AError := '';
   if Assigned(FBeforeWrite) then
+  begin
     FBeforeWrite();
+  end;
   if FFailWrites then
+  begin
     raise EInOutError.Create('simuliert');
+  end;
   if FRefuseWrites then
   begin
     AError := 'simuliert';
@@ -457,7 +498,9 @@ begin
     // Jedes Schreiben ändert den Zeitstempel wie auf der Platte; TSharedCacheWrites erkennt daran fremde
     // Schreiber.
     if not FStamps.TryGetValue(UpperCase(AFileName), Stamp) then
+    begin
       Stamp := 0;
+    end;
     FStamps.AddOrSetValue(UpperCase(AFileName), Stamp + 1);
     Result := True;
   finally
@@ -501,7 +544,9 @@ begin
   TMonitor.Enter(Self);
   try
     if FLocked.ContainsKey(UpperCase(AFileName)) then
+    begin
       Exit(nil);
+    end;
     FLocked.Add(UpperCase(AFileName), True);
   finally
     TMonitor.Exit(Self);
@@ -650,8 +695,12 @@ begin
   Assert.IsTrue(S.InInterface);
   Seen := False;
   for S in U.Symbols do
+  begin
     if (S.QualifiedName = 'TFoo.Run') and not S.InInterface then
+    begin
       Seen := True;
+    end;
+  end;
   Assert.IsTrue(Seen, 'Rumpf in implementation');
 end;
 
@@ -709,8 +758,12 @@ begin
   U := TIndexExtractor.ExtractText(Source, 'C:\P\Plattform.pas', ['WIN32', 'MSWINDOWS']);
   Conditions := '';
   for Symbol in U.Symbols do
+  begin
     if Symbol.Container = '' then
+    begin
       Conditions := Conditions + Symbol.Name + '=' + Symbol.Condition + ';';
+    end;
+  end;
   Assert.Contains(Conditions, 'TNur32=not WIN64;');
   Assert.Contains(Conditions, 'TImmer=;');
   Assert.Contains(Conditions, 'NurWindows=MSWINDOWS;');
@@ -718,7 +771,9 @@ begin
   Assert.DoesNotContain(Conditions, 'TNur64');
   Missing := '';
   for Symbol in U.Unavailable do
+  begin
     Missing := Missing + Symbol.Name + '=' + Symbol.Condition + ';';
+  end;
   Assert.AreEqual('TNur64=WIN64;', Missing);
   Assert.IsTrue(U.Unavailable[0].InInterface);
   Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.ClassType);
@@ -736,8 +791,12 @@ begin
     'Satz.pas', nil);
   Found := '';
   for Symbol in U.Symbols do
+  begin
     if Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable] then
+    begin
       Found := Found + Symbol.Signature + '|' + Symbol.TypeName + #10;
+    end;
+  end;
   Assert.AreEqual('Kennung: string[8]|string'#10'Kurz: string[Laenge]|string'#10'Name: string|string'#10 +
     'Liste: TList<string>|TList'#10'Global: string[5]|string'#10, Found);
 end;
@@ -772,14 +831,20 @@ begin
   U := TIndexExtractor.ExtractText(Source, 'C:\P\Mitglieder.pas', ['WIN32', 'MSWINDOWS']);
   Conditions := '';
   for Symbol in U.Symbols do
+  begin
     if Symbol.Container = 'TGeraet' then
+    begin
       Conditions := Conditions + Symbol.Name + '=' + Symbol.Condition + ';';
+    end;
+  end;
   Assert.Contains(Conditions, 'FHandle32=not WIN64;');
   Assert.Contains(Conditions, 'Nur32=not WIN64;');
   Assert.Contains(Conditions, 'Immer=;');
   Missing := '';
   for Symbol in U.Unavailable do
+  begin
     Missing := Missing + Symbol.Container + '.' + Symbol.Name + '=' + Symbol.Condition + ';';
+  end;
   Assert.AreEqual('TGeraet.FHandle64=WIN64;TGeraet.FExtra=WIN64;TGeraet.Nur64=WIN64;TGeraet.Groesse64=WIN64;',
     Missing);
   Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.Field);
@@ -814,7 +879,9 @@ begin
   U := TIndexExtractor.ExtractText(Source, 'C:\P\Start.pas', ['WIN32', 'MSWINDOWS']);
   Missing := '';
   for Symbol in U.Unavailable do
+  begin
     Missing := Missing + Symbol.Name + '=' + Symbol.Condition + ';';
+  end;
   Assert.AreEqual('ApplyAppIcon=FPC;', Missing);
   Assert.IsFalse(U.Unavailable[0].InInterface);
   Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.Routine);
@@ -962,10 +1029,16 @@ begin
   Index := TSymbolIndex.Create;
   Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TFoo'], 'TBase'));
   for Round := 1 to 3 * TSymbolIndex.RebuildDeadRefs do
+  begin
     if Odd(Round) then
-      Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar'], 'TBase'))
+    begin
+      Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar'], 'TBase'));
+    end
     else
+    begin
       Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TBar', 'TFoo', 'TBaz'], 'X.TBase'));
+    end;
+  end;
   Found := Index.FindSymbols('TFoo');
   Assert.AreEqual<NativeInt>(2, Length(Found));
   Assert.AreEqual<NativeInt>(1, Length(Index.FindSymbols('TBaz')));
@@ -1136,8 +1209,10 @@ begin
       Position: Integer;
     begin
       for Position := 1 to ACount do
+      begin
         AIndex.AddUnit(MakeUnit(Format('U%d_%d', [AThread, Position]), Format('C:\U%d_%d.pas', [AThread, Position]),
           ['Gemeinsam', 'Eigen' + IntToStr(Position)]));
+      end;
     end);
   Result.FreeOnTerminate := False;
 end;
@@ -1154,15 +1229,23 @@ var
 begin
   Index := TSymbolIndex.Create;
   for Number := 0 to ThreadCount - 1 do
+  begin
     Threads[Number] := AddUnitsThread(Index, Number, PerThread);
+  end;
   try
     for Number := 0 to ThreadCount - 1 do
+    begin
       Threads[Number].Start;
+    end;
     for Number := 0 to ThreadCount - 1 do
+    begin
       Threads[Number].WaitFor;
+    end;
   finally
     for Number := 0 to ThreadCount - 1 do
+    begin
       Threads[Number].Free;
+    end;
   end;
   Assert.AreEqual(ThreadCount * PerThread, Index.UnitCount);
   Assert.AreEqual<NativeInt>(ThreadCount * PerThread, Length(Index.Units));
@@ -1282,11 +1365,13 @@ begin
   // Implementierung: Begründung im Rumpf.
   mFound := False;
   for mSymbol in mOriginal.Symbols do
+  begin
     if SameText(mSymbol.QualifiedName, 'TFoo.Lauf') and not mSymbol.InInterface then
     begin
       mFound := True;
       Assert.AreEqual('HACK'#9'13'#9'bis #312 behoben ist', String.Join('|', mSymbol.Rationale));
     end;
+  end;
   Assert.IsTrue(mFound);
   mLoaded := TIndexCache.Deserialize(TIndexCache.Serialize([mOriginal]))[0];
   Assert.AreEqual(String.Join('|', mOriginal.Rationale), String.Join('|', mLoaded.Rationale));
@@ -1376,6 +1461,31 @@ begin
   Assert.AreEqual<NativeInt>(0, Length(U.Symbols));
 end;
 
+/// <summary>Projekt P mit A und die Bibliothek B bis F der Index-Aufbau-Tests.</summary>
+procedure PutBuilderFiles(AFiles: TMemoryIndexFileSystem);
+begin
+  AFiles.Put('C:\P\P.dpr', 'program P;'#10'uses A in ''A.pas'';'#10'begin end.', 1);
+  AFiles.Put('C:\P\A.pas', UnitA, 1);
+  AFiles.Put('C:\Lib\B.pas', 'unit B;'#10'interface'#10'uses D;'#10'type TB = class end;'#10'implementation'#10'uses E;'#10'end.', 1);
+  AFiles.Put('C:\Lib\C.pas', 'unit C;'#10'interface'#10'implementation'#10'end.', 1);
+  AFiles.Put('C:\Lib\D.pas', 'unit D;'#10'interface'#10'implementation'#10'end.', 1);
+  AFiles.Put('C:\Lib\E.pas', 'unit E;'#10'interface'#10'implementation'#10'end.', 1);
+  AFiles.Put('C:\Lib\F.pas', 'unit F;'#10'interface'#10'type TF = class end;'#10'implementation'#10'end.', 1);
+end;
+
+/// <summary>Units der Tests liegen unter C:\Lib; System.SysUtils gibt es nicht.</summary>
+function ResolveLibraryUnit(const AUnitName: string): string;
+begin
+  if SameText(AUnitName, 'System.SysUtils') then
+  begin
+    Result := '';
+  end
+  else
+  begin
+    Result := 'C:\Lib\' + AUnitName + '.pas';
+  end;
+end;
+
 { TIndexBuilderTests }
 
 procedure TIndexBuilderTests.WarmUpFirstUse;
@@ -1392,13 +1502,7 @@ procedure TIndexBuilderTests.Setup;
 begin
   FFiles := TMemoryIndexFileSystem.Create;
   FFileSystem := FFiles;
-  FFiles.Put('C:\P\P.dpr', 'program P;'#10'uses A in ''A.pas'';'#10'begin end.', 1);
-  FFiles.Put('C:\P\A.pas', UnitA, 1);
-  FFiles.Put('C:\Lib\B.pas', 'unit B;'#10'interface'#10'uses D;'#10'type TB = class end;'#10'implementation'#10'uses E;'#10'end.', 1);
-  FFiles.Put('C:\Lib\C.pas', 'unit C;'#10'interface'#10'implementation'#10'end.', 1);
-  FFiles.Put('C:\Lib\D.pas', 'unit D;'#10'interface'#10'implementation'#10'end.', 1);
-  FFiles.Put('C:\Lib\E.pas', 'unit E;'#10'interface'#10'implementation'#10'end.', 1);
-  FFiles.Put('C:\Lib\F.pas', 'unit F;'#10'interface'#10'type TF = class end;'#10'implementation'#10'end.', 1);
+  PutBuilderFiles(FFiles);
   FIndex := TSymbolIndex.Create;
 end;
 
@@ -1410,10 +1514,7 @@ end;
 
 function TIndexBuilderTests.Resolve(const AUnitName: string): string;
 begin
-  if SameText(AUnitName, 'System.SysUtils') then
-    Result := ''
-  else
-    Result := 'C:\Lib\' + AUnitName + '.pas';
+  Result := ResolveLibraryUnit(AUnitName);
 end;
 
 procedure TIndexBuilderTests.IndexesProjectAndReferencedUnits;
@@ -1498,9 +1599,13 @@ begin
     function(const AUnitName: string): string
     begin
       if SameText(AUnitName, 'Forms') then
-        Result := 'C:\Lib\Vcl.Forms.pas'
+      begin
+        Result := 'C:\Lib\Vcl.Forms.pas';
+      end
       else
+      begin
         Result := '';
+      end;
     end;
   Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, ResolveScoped);
   try
@@ -1534,11 +1639,17 @@ begin
     function(const AUnitName: string): string
     begin
       if SameText(AUnitName, 'RtlUnit') then
-        Result := 'C:\BDS\source\rtl\RtlUnit.pas'
+      begin
+        Result := 'C:\BDS\source\rtl\RtlUnit.pas';
+      end
       else if SameText(AUnitName, 'FirmaUnit') then
-        Result := 'C:\Firma\FirmaUnit.pas'
+      begin
+        Result := 'C:\Firma\FirmaUnit.pas';
+      end
       else
+      begin
         Result := '';
+      end;
     end;
   Builder := TIndexBuilder.Create(FIndex, FFileSystem, ['APP', 'MSWINDOWS'], ResolveScoped);
   try
@@ -1571,7 +1682,9 @@ begin
       begin
         // In einer Projektgruppe endet der ganze Aufbau erst spät; der Cache muss vorher stehen (#647).
         if FFileSystem.ReadBytes('C:\Cache\index.json', StageData) then
+        begin
           StageUnits := Length(TIndexCache.Deserialize(StageData));
+        end;
       end;
     Request := Default(TIndexRequest);
     Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
@@ -1910,11 +2023,13 @@ begin
   // Den Symbolblock von F nach dem Lesen der Köpfe beschädigen (in der Datei fiele das schon an der
   // Prüfsumme auf, #492); die Einträge teilen sich die Daten.
   for Entry in Entries do
+  begin
     if SameText(Entry.Header.UnitName, 'F') then
     begin
       Entry.Data[Entry.SymbolOffset] := $FF;
       Entry.Data[Entry.SymbolOffset + 1] := $7F;
     end;
+  end;
   FIndex := TSymbolIndex.Create;
   FFiles.Reads := 0;
   Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
@@ -2017,12 +2132,16 @@ begin
         procedure
         begin
           if Builder.EnsureUnit('F') then
+          begin
             TInterlocked.Increment(Found);
+          end;
         end);
       Threads[Index].FreeOnTerminate := False;
     end;
     for Index := 0 to cThreads - 1 do
+    begin
       Threads[Index].Start;
+    end;
     for Index := 0 to cThreads - 1 do
     begin
       Threads[Index].WaitFor;
@@ -2256,7 +2375,9 @@ begin
   end;
   Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt1.json', Data));
   for UnitIndex in TIndexCache.Deserialize(Data) do
+  begin
     Assert.IsFalse(UnitIndex.Library_, 'keine Bibliothek im Projekt-Cache: ' + UnitIndex.FileName);
+  end;
   Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\bibliothek.json', Data));
   Assert.AreEqual<NativeInt>(3, Length(TIndexCache.Deserialize(Data)));
   // Zweites Projekt mit eigenem Cache: die Bibliothek kommt aus dem gemeinsamen.
@@ -2287,13 +2408,109 @@ begin
   Names := TStringList.Create;
   try
     for UnitIndex in TIndexCache.Deserialize(AData) do
+    begin
       Names.Add(UpperCase(ExtractFileName(UnitIndex.FileName)));
+    end;
     Names.Sort;
     Result := Names.CommaText;
   finally
     Names.Free;
   end;
 end;
+
+{ TIndexGroupCacheTests }
+
+procedure TIndexGroupCacheTests.Setup;
+var
+  mFiles: TMemoryIndexFileSystem;
+begin
+  mFiles := TMemoryIndexFileSystem.Create;
+  FFileSystem := mFiles;
+  PutBuilderFiles(mFiles);
+  FIndex := TSymbolIndex.Create;
+end;
+
+procedure TIndexGroupCacheTests.TearDown;
+begin
+  FIndex := nil;
+  FFileSystem := nil;
+end;
+
+function TIndexGroupCacheTests.Resolve(const AUnitName: string): string;
+begin
+  Result := ResolveLibraryUnit(AUnitName);
+end;
+
+procedure TIndexGroupCacheTests.ServiceSharesSearchPathCache;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Data: TBytes;
+  FromCache: Integer;
+begin
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.SearchFiles := ['C:\Lib\F.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\projekt1.json';
+    Request.LibraryCacheFile := 'C:\Cache\bibliothek.json';
+    Request.SearchCacheFile := 'C:\Cache\suchpfade.json';
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt1.json', Data));
+  Assert.AreEqual('A.PAS,P.DPR', CachedNames(Data), 'Suchpfad-Unit nicht im Projekt-Cache');
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\suchpfade.json', Data));
+  Assert.AreEqual('F.PAS', CachedNames(Data));
+  // Zweites Projekt mit denselben Suchpfaden: F kommt aus dem gemeinsamen Cache.
+  FIndex := TSymbolIndex.Create;
+  FromCache := -1;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnFinished :=
+      procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+      begin
+        FromCache := AResult.FromCache;
+      end;
+    Request.CacheFile := 'C:\Cache\projekt2.json';
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  Assert.AreEqual(4, FromCache, 'Bibliothek und Suchpfad-Unit aus den gemeinsamen Caches');
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt2.json', Data));
+  Assert.AreEqual('A.PAS,P.DPR', CachedNames(Data));
+end;
+
+procedure TIndexGroupCacheTests.BuilderSkipsUnitsAlreadyIndexed;
+
+  function Parsed(const ADefines: TArray<string>): Integer;
+  var
+    mBuilder: TIndexBuilder;
+  begin
+    mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, ADefines, Resolve);
+    try
+      Result := mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], nil, nil, nil, nil).Parsed;
+    finally
+      mBuilder.Free;
+    end;
+  end;
+
+begin
+  Assert.IsTrue(Parsed(['WIN64']) > 0);
+  // Der zweite Lauf findet über die implementation-uses der Bibliothek noch Units (E); danach ist alles da.
+  Parsed(['WIN64']);
+  Assert.AreEqual(0, Parsed(['WIN64']), 'gleiche Defines: nichts erneut übernehmen');
+  // Projektdateien (P, A) mit anderen Defines neu. Suchpfad-Units (F) und über uses erreichte überspringt der
+  // Aufbau wie bisher, sobald sie im Index stehen.
+  Assert.AreEqual(2, Parsed(['WIN64', 'DEBUG']), 'andere Defines: Projektdateien neu einlesen');
+end;
+
 
 procedure TIndexBuilderTests.ServiceKeepsLibraryUnitsOfOtherWriters;
 const
@@ -2465,7 +2682,9 @@ begin
       procedure(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64)
       begin
         if ALibrary then
+        begin
           TInterlocked.Increment(LibraryWrites);
+        end;
       end;
     First := TIndexService.Create(FIndex, FFileSystem);
     Second := TIndexService.Create(FIndex, FFileSystem);
@@ -2484,7 +2703,9 @@ begin
       Second.Start(Request);
       Watch := TStopwatch.StartNew;
       while (TInterlocked.CompareExchange(Waiting, 0, 0) = 0) and (Watch.ElapsedMilliseconds < 5000) do
+      begin
         TThread.Sleep(10);
+      end;
       // Der zweite Aufbau hat dann längst gelesen und wartet auf das Schreiben.
       TThread.Sleep(300);
       Gate.SetEvent;
@@ -2518,8 +2739,12 @@ begin
   Cache := Copy(FIndex.Units);
   // Kompakte Projekt-Unit taugt nicht; geänderte Datei wird neu gelesen; F kommt aus dem Cache.
   for Position := 0 to High(Cache) do
+  begin
     if SameText(Cache[Position].UnitName, 'P') then
+    begin
       Cache[Position] := TIndexMemory.Compacted(Cache[Position]);
+    end;
+  end;
   FFiles.Put('C:\P\A.pas', UnitA + ' ', 2);
   FIndex := TSymbolIndex.Create;
   Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
@@ -2655,9 +2880,13 @@ begin
     begin
       Listed := Listed + AFolder + ';';
       if SameText(AFolder, 'C:\A') then
-        Result := ['C:\A\Z.pas', 'C:\A\Y.pas']
+      begin
+        Result := ['C:\A\Z.pas', 'C:\A\Y.pas'];
+      end
       else
+      begin
         Result := ['C:\B\W.pas', 'C:\B\Demos\X.pas', 'c:\a\y.pas'];
+      end;
     end,
     function(const AFileName: string): Boolean
     begin
@@ -2826,7 +3055,9 @@ begin
   Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
   HasDebug := False;
   for Define in TIndexProjectFiles.Defines(Project, '37.0') do
+  begin
     HasDebug := HasDebug or (Define = '$R+');
+  end;
   Assert.IsTrue(HasDebug);
   Project.Properties := nil;
   // Delphi 12: BDS 23.0 ergibt VER360, nicht VER230.
@@ -2844,6 +3075,7 @@ initialization
   TDUnitX.RegisterTestFixture(TSymbolIndexTests);
   TDUnitX.RegisterTestFixture(TIndexCacheTests);
   TDUnitX.RegisterTestFixture(TIndexBuilderTests);
+  TDUnitX.RegisterTestFixture(TIndexGroupCacheTests);
   TDUnitX.RegisterTestFixture(TIndexProjectFilesTests);
   TDUnitX.RegisterTestFixture(TIndexSchedulerTests);
 

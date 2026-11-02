@@ -93,7 +93,9 @@ var
 begin
   Result := '';
   for Finding in AFound do
+  begin
     Result := Result + ' | ' + Finding.Message;
+  end;
 end;
 
 procedure Silent(const ASource: string);
@@ -111,7 +113,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -336,7 +340,9 @@ begin
   // Aus dem Index, mit einer Parameterliste über TIndexSymbol.MaxSignature hinaus: Das Merkmal "of object" gilt.
   mParameters := '';
   for mNumber := 1 to 40 do
+  begin
     mParameters := mParameters + Format('    AParameter%d: Integer;'#10, [mNumber]);
+  end;
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(TIndexExtractor.ExtractText('unit Ereignisse;'#10'interface'#10'type'#10 +
     '  TLang = procedure(Sender: TObject;'#10 + mParameters + '    AEnde: Integer) of object;'#10 +

@@ -77,8 +77,12 @@ var
   Edge: TUsesEdge;
 begin
   for Edge in AGraph.Node(AGraph.IndexOf(ASource)).Outgoing do
+  begin
     if SameText(AGraph.Node(Edge.Target).UnitName, ATarget) then
+    begin
       Exit(Edge);
+    end;
+  end;
   raise Exception.Create('Kante fehlt: ' + ASource + ' → ' + ATarget);
 end;
 

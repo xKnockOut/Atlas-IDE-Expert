@@ -136,8 +136,12 @@ begin
     TRoutineLocals.CollectKind(Anonymous, TSyntaxKind.Identifier, Nodes);
     Inside := nil;
     for Node in Nodes do
+    begin
       if Node.Name = 'X' then
+      begin
         Inside := Node;
+      end;
+    end;
     Assert.IsNotNull(Inside);
     Assert.IsTrue(TRoutineParts.Shadowed(Cache, Inside, Routine, 'X', False));
     Assert.IsFalse(TRoutineParts.Shadowed(Cache, Inside, Routine, 'C', False));

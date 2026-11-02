@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasBoardFrameTests = class
   private
     FSaved: Integer;
@@ -49,7 +50,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Atlas.Core.Tracker.Board,
-  Atlas.UI.Strings,
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.BoardFrame,
   Atlas.UI.Tracker.MoveDialog;
 
@@ -257,14 +258,14 @@ begin
   try
     mFrame.SetSnapshot(Snapshot, '');
     Assert.AreEqual('In Arbeit', mFrame.ColumnCaption(1));
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.BoardNoColumn), mFrame.ColumnCaption(-1));
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoColumn), mFrame.ColumnCaption(-1));
     mSnapshot := TAtlasBoardSnapshot.Empty;
     mSnapshot.Kind := TAtlasBoardKind.Repository;
     mSnapshot.Columns := [TAtlasBoardColumn.Create('open', TArray<string>.Create('open'), '', False),
       TAtlasBoardColumn.Create('closed', TArray<string>.Create('closed'), '', True)];
     mFrame.SetSnapshot(mSnapshot, '');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.BoardColumnOpen), mFrame.ColumnCaption(0));
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.BoardColumnClosed), mFrame.ColumnCaption(1));
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardColumnOpen), mFrame.ColumnCaption(0));
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardColumnClosed), mFrame.ColumnCaption(1));
   finally
     mFrame.Free;
   end;
@@ -293,7 +294,7 @@ var
 begin
   mDialog := TAtlasBoardMoveDialog.CreateDialog(nil, 'ATL-123', 'Zur Prüfung');
   try
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.BoardMoveQuestion, ['ATL-123', 'Zur Prüfung']),
+    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveQuestion, ['ATL-123', 'Zur Prüfung']),
       mDialog.QuestionLabel.Caption);
     Assert.IsFalse(mDialog.DontAskCheck.Checked);
     Assert.IsTrue(mDialog.MoveButton.Default);

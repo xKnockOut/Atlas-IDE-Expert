@@ -85,8 +85,12 @@ var
 begin
   Result := nil;
   for Token in TPascalLexer.Tokenize(AText) do
+  begin
     if not IsTrivia(Token) then
+    begin
       Result := Result + [Token];
+    end;
+  end;
 end;
 
 /// <summary>Text von ATokens[AFirst] bis vor ATokens[AStop] aus AText (AStop = Length: bis zum Ende).</summary>
@@ -95,11 +99,17 @@ var
   StopOffset: Integer;
 begin
   if (AFirst < 0) or (AFirst >= AStop) or (AFirst > High(ATokens)) then
+  begin
     Exit('');
+  end;
   if AStop > High(ATokens) then
-    StopOffset := ATokens[High(ATokens)].Offset + Length(ATokens[High(ATokens)].Text)
+  begin
+    StopOffset := ATokens[High(ATokens)].Offset + Length(ATokens[High(ATokens)].Text);
+  end
   else
+  begin
     StopOffset := ATokens[AStop].Offset;
+  end;
   Result := Trim(Copy(AText, ATokens[AFirst].Offset + 1, StopOffset - ATokens[AFirst].Offset));
 end;
 
@@ -123,12 +133,16 @@ begin
   while Result <= High(ATokens) do
   begin
     if Opens(ATokens[Result]) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Closes(ATokens[Result]) then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
     Inc(Result);
   end;
@@ -155,16 +169,22 @@ begin
   while Index <= AClose do
   begin
     if (Index < AClose) and Opens(ATokens[Index]) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if (Index < AClose) and Closes(ATokens[Index]) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Index = AClose) or ((Depth = 0) and ATokens[Index].IsSymbol(';')) then
     begin
       // Eine Gruppe "const A, B: T = Wert".
       NameIndex := GroupStart;
       // Attribute wie [Ref] überspringen.
       while (NameIndex < Index) and ATokens[NameIndex].IsSymbol('[') do
+      begin
         NameIndex := Matching(ATokens, NameIndex) + 1;
+      end;
       Modifier := '';
       if (NameIndex < Index) and IsModifier(ATokens[NameIndex]) then
       begin
@@ -173,13 +193,17 @@ begin
       end;
       Colon := NameIndex;
       while (Colon < Index) and not ATokens[Colon].IsSymbol(':') do
+      begin
         Inc(Colon);
+      end;
       TypeText := '';
       if Colon < Index then
       begin
         TypeStop := Colon + 1;
         while (TypeStop < Index) and not ATokens[TypeStop].IsSymbol('=') do
+        begin
           Inc(TypeStop);
+        end;
         TypeText := Slice(AText, ATokens, Colon + 1, TypeStop);
       end;
       while NameIndex < Colon do
@@ -231,57 +255,81 @@ begin
       begin
         Inc(Index);
         if Tokens[Index].IsSymbol(':') then
-          InConstraint := True
+        begin
+          InConstraint := True;
+        end
         else if Tokens[Index].IsSymbol(',') or Tokens[Index].IsSymbol(';') then
         begin
           // "T: class; U": nach ";" beginnt ein neuer Parameter, nach "," nur ohne Constraint.
           if Tokens[Index].IsSymbol(';') then
+          begin
             InConstraint := False;
+          end;
         end
         else if not InConstraint and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
+        begin
           ATypeParams := ATypeParams + [Tokens[Index].Text];
+        end;
       end;
     end;
     Inc(Index);
   end;
   if Equal < 0 then
+  begin
     Exit;
+  end;
   Index := Equal + 1;
   // Ende der Deklaration: ";" oder Textende.
   Stop := Index;
   while (Stop <= High(Tokens)) and not Tokens[Stop].IsSymbol(';') do
+  begin
     Inc(Stop);
+  end;
   if not ((Index + 1 <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
     SameText(Tokens[Index].Text, 'reference') and Tokens[Index + 1].IsKeyword('to')) then
   begin
     // Alias auf einen benannten Typ; "procedure of object" und andere Typen zählen nicht.
     if (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
+    begin
       ATarget := Slice(ASignature, Tokens, Index, Stop);
+    end;
     Exit;
   end;
   Inc(Index, 2);
   if Index > High(Tokens) then
+  begin
     Exit;
+  end;
   if Tokens[Index].IsKeyword('function') then
-    AMethodRef.IsFunction := True
+  begin
+    AMethodRef.IsFunction := True;
+  end
   else if not Tokens[Index].IsKeyword('procedure') then
+  begin
     Exit;
+  end;
   Inc(Index);
   if (Index < Stop) and Tokens[Index].IsSymbol('(') then
   begin
     Close := Matching(Tokens, Index);
     if Close > High(Tokens) then
+    begin
       Exit;
+    end;
     AMethodRef.Params := ParseParams(ASignature, Tokens, Index, Close);
     Index := Close + 1;
   end;
   if AMethodRef.IsFunction then
   begin
     if (Index >= Stop) or not Tokens[Index].IsSymbol(':') then
+    begin
       Exit;
+    end;
     AMethodRef.ResultType := Slice(ASignature, Tokens, Index + 1, Stop);
     if AMethodRef.ResultType = '' then
+    begin
       Exit;
+    end;
   end;
   Result := True;
 end;
@@ -332,20 +380,28 @@ begin
     begin
       Start := Index;
       while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      begin
         Inc(Index);
+      end;
       Word := Copy(AText, Start, Index - Start);
       Replaced := False;
       // Nach einem Punkt ist es ein Teil eines qualifizierten Namens, kein Typparameter.
       if (Start = 1) or (AText[Start - 1] <> '.') then
+      begin
         for Name := 0 to Min(High(ANames), High(AValues)) do
+        begin
           if SameText(Word, ANames[Name]) then
           begin
             Result := Result + AValues[Name];
             Replaced := True;
             Break;
           end;
+        end;
+      end;
       if not Replaced then
+      begin
         Result := Result + Word;
+      end;
     end
     else
     begin
@@ -363,23 +419,37 @@ begin
   Result := '';
   Name := ABase;
   if StartsText('System.SysUtils.', Name) then
-    Name := Copy(Name, Length('System.SysUtils.') + 1, MaxInt)
+  begin
+    Name := Copy(Name, Length('System.SysUtils.') + 1, MaxInt);
+  end
   else if StartsText('SysUtils.', Name) then
+  begin
     Name := Copy(Name, Length('SysUtils.') + 1, MaxInt);
+  end;
   if SameText(Name, 'TPredicate') then
   begin
     if AArgCount = 1 then
+    begin
       Result := 'TPredicate<T> = reference to function(Arg1: T): Boolean;';
+    end;
     Exit;
   end;
   if SameText(Name, 'TProc') then
-    Count := AArgCount
+  begin
+    Count := AArgCount;
+  end
   else if SameText(Name, 'TFunc') then
-    Count := AArgCount - 1
+  begin
+    Count := AArgCount - 1;
+  end
   else
+  begin
     Exit;
+  end;
   if (Count < 0) or (Count > 4) then
+  begin
     Exit;
+  end;
   Params := '';
   Generic := '';
   for Index := 1 to Count do
@@ -401,17 +471,23 @@ begin
     end;
   end;
   if Params <> '' then
+  begin
     Params := '(' + Params + ')';
+  end;
   if SameText(Name, 'TProc') then
   begin
     if Generic <> '' then
+    begin
       Generic := '<' + Generic + '>';
+    end;
     Result := 'TProc' + Generic + ' = reference to procedure' + Params + ';';
   end
   else
   begin
     if Generic <> '' then
+    begin
       Generic := Generic + ', ';
+    end;
     Result := 'TFunc<' + Generic + 'TResult> = reference to function' + Params + ': TResult;';
   end;
 end;
@@ -423,9 +499,15 @@ var
 begin
   Result := (Length(AName) > 3) and StartsStr('Arg', AName);
   if Result then
+  begin
     for Index := 4 to Length(AName) do
+    begin
       if not CharInSet(AName[Index], ['0'..'9']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Benannter Typ mit Präfix T oder I (TKunde, IFoo): daraus ein Name; sonst ''.</summary>
@@ -437,10 +519,14 @@ begin
   Result := '';
   Plain := Copy(ATypeText, LastDelimiter('.', ATypeText) + 1, MaxInt);
   if (Length(Plain) < 2) or not CharInSet(Plain[1], ['T', 'I']) or not CharInSet(Plain[2], ['A'..'Z']) then
+  begin
     Exit;
+  end;
   Bases := TNameSuggestions.Bases(ATypeText);
   if Length(Bases) > 0 then
+  begin
     Result := Bases[0];
+  end;
 end;
 
 class function TCompletionAnonymous.Named(const AMethodRef: TMethodRef; const APrefix: string): TMethodRef;
@@ -452,33 +538,51 @@ begin
   Result := AMethodRef;
   Count := 0;
   for Index := 0 to High(Result.Params) do
+  begin
     if IsArgName(Result.Params[Index].Name) then
+    begin
       Inc(Count);
+    end;
+  end;
   if Count = 0 then
+  begin
     Exit;
+  end;
   Taken := nil;
   for Index := 0 to High(Result.Params) do
+  begin
     if not IsArgName(Result.Params[Index].Name) then
+    begin
       Taken := Taken + [Result.Params[Index].Name];
+    end;
+  end;
   Number := 0;
   for Index := 0 to High(Result.Params) do
   begin
     if not IsArgName(Result.Params[Index].Name) then
+    begin
       Continue;
+    end;
     Inc(Number);
     if Count = 1 then
-      Name := 'Value'
+    begin
+      Name := 'Value';
+    end
     else
     begin
       Name := TypeBase(Result.Params[Index].TypeText);
       if Name = '' then
+      begin
         Name := 'Value' + IntToStr(Number);
+      end;
     end;
     Name := TNameSuggestions.Unique(TNameSuggestions.Prefixed(Name, APrefix), Taken);
     Taken := Taken + [Name];
     Result.Params[Index].Name := Name;
     if Result.Params[Index].Modifier = '' then
+    begin
       Result.Params[Index].Modifier := 'const';
+    end;
   end;
 end;
 
@@ -489,23 +593,35 @@ var
   Part: string;
 begin
   if AMethodRef.IsFunction then
-    Result := 'function'
+  begin
+    Result := 'function';
+  end
   else
+  begin
     Result := 'procedure';
+  end;
   Parts := nil;
   for Param in AMethodRef.Params do
   begin
     Part := Param.Name;
     if Param.Modifier <> '' then
+    begin
       Part := Param.Modifier + ' ' + Part;
+    end;
     if Param.TypeText <> '' then
+    begin
       Part := Part + ': ' + Param.TypeText;
+    end;
     Parts := Parts + [Part];
   end;
   if Length(Parts) > 0 then
+  begin
     Result := Result + '(' + string.Join('; ', Parts) + ')';
+  end;
   if AMethodRef.IsFunction then
+  begin
     Result := Result + ': ' + AMethodRef.ResultType;
+  end;
 end;
 
 /// <summary>Zeichen, die in einem LSP-Snippet eine Bedeutung haben, maskieren.</summary>
@@ -522,7 +638,9 @@ var
 begin
   Body := '$0';
   if AMethodRef.IsFunction then
+  begin
     Body := 'Result := $0';
+  end;
   Result := EscapeSnippet(Header(AMethodRef)) + #10 + IndentUnit + 'begin' + #10 + IndentUnit + IndentUnit + Body +
     #10 + IndentUnit + 'end';
 end;
@@ -534,7 +652,9 @@ begin
   // Leere Rumpfzeile ohne Einrückung: sonst bliebe Leerraum am Zeilenende stehen.
   Body := '';
   if AMethodRef.IsFunction then
+  begin
     Body := AIndent + IndentUnit + IndentUnit + 'Result := ';
+  end;
   Result := Header(AMethodRef) + ALineBreak + AIndent + IndentUnit + 'begin' + ALineBreak + Body + ALineBreak +
     AIndent + IndentUnit + 'end';
 end;

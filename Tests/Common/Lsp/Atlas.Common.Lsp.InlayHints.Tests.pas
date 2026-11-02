@@ -274,7 +274,9 @@ var
 begin
   Result := '';
   for Hint in AHints do
+  begin
     Result := Result + Format('%d:%d %s|', [Hint.Position.Line, Hint.Position.Character, Hint.Text]);
+  end;
 end;
 
 procedure TLspInlayHintsTests.ParameterNamesBeforeArguments;
@@ -465,8 +467,10 @@ var
 begin
   Result := '';
   for Hint in AHints do
+  begin
     Result := Result + Format('%d:%d %s @%d:%d|', [Hint.Position.Line, Hint.Position.Character, Hint.Text,
       Hint.BlockStart.Line, Hint.BlockStart.Character]);
+  end;
 end;
 
 procedure TLspInlayHintsTests.EndMarkersForEveryBlockKind;
@@ -533,9 +537,13 @@ var
     try
       Result := '';
       for Item in Response.GetValue<TJSONArray>('result') do
+      begin
         if TJSONObject(Item).GetValue('data') <> nil then
+        begin
           Result := Result + Format('%s @%d|', [TJSONObject(Item).GetValue<string>('label'),
             TJSONObject(Item).GetValue<Integer>('data.blockStart.line')]);
+        end;
+      end;
     finally
       Response.Free;
     end;

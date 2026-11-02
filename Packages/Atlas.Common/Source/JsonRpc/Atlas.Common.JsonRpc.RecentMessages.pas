@@ -79,9 +79,13 @@ var
   mValue: TJSONString;
 begin
   if Length(AText) > AMaxString then
-    mValue := TJSONString.Create(Copy(AText, 1, AMaxString) + Format('… (%d Zeichen)', [Length(AText)]))
+  begin
+    mValue := TJSONString.Create(Copy(AText, 1, AMaxString) + Format('… (%d Zeichen)', [Length(AText)]));
+  end
   else
+  begin
     mValue := TJSONString.Create(AText);
+  end;
   try
     Result := mValue.ToJSON;
   finally
@@ -97,12 +101,18 @@ var
   mArray: TJSONArray;
 begin
   if AValue = nil then
-    AOut.Append('null')
+  begin
+    AOut.Append('null');
+  end
   // TJSONNumber erbt von TJSONString: Zahlen zuerst, sonst würden sie zu Zeichenketten.
   else if AValue is TJSONNumber then
-    AOut.Append(AValue.ToJSON)
+  begin
+    AOut.Append(AValue.ToJSON);
+  end
   else if AValue is TJSONString then
-    AOut.Append(ShortenedText(TJSONString(AValue).Value, AMaxString))
+  begin
+    AOut.Append(ShortenedText(TJSONString(AValue).Value, AMaxString));
+  end
   else if AValue is TJSONObject then
   begin
     mObject := TJSONObject(AValue);
@@ -110,7 +120,9 @@ begin
     for mIndex := 0 to mObject.Count - 1 do
     begin
       if mIndex > 0 then
+      begin
         AOut.Append(',');
+      end;
       // Über der Grenze: ein Platzhalter für den Rest, damit das Ergebnis gültiges JSON bleibt.
       if AOut.Length > AMaxLength then
       begin
@@ -130,7 +142,9 @@ begin
     for mIndex := 0 to mArray.Count - 1 do
     begin
       if mIndex > 0 then
+      begin
         AOut.Append(',');
+      end;
       if AOut.Length > AMaxLength then
       begin
         AOut.Append(cRest);
@@ -141,7 +155,9 @@ begin
     AOut.Append(']');
   end
   else
+  begin
     AOut.Append(AValue.ToJSON);
+  end;
 end;
 
 { TJsonRpcRecentMessages }
@@ -178,7 +194,9 @@ var
   mIsRequest: Boolean;
 begin
   if AMessage = nil then
+  begin
     Exit;
+  end;
   mText := Shortened(AMessage, MaxString, MaxMessage);
   mIdValue := AMessage.GetValue('id');
   mMethodValue := AMessage.GetValue('method');
@@ -195,7 +213,9 @@ begin
     begin
       mParams := mParamsValue.ToJSON;
       if Length(mParams) > MaxParams then
+      begin
         mParams := Shortened(mParamsValue, MaxString, MaxParams);
+      end;
     end;
   end;
   System.TMonitor.Enter(FLock);
@@ -203,7 +223,9 @@ begin
     FMessages[FMessageNext] := mText;
     FMessageNext := (FMessageNext + 1) mod Capacity;
     if FMessageCount < Capacity then
+    begin
       Inc(FMessageCount);
+    end;
     if mIsRequest then
     begin
       FRequests[FRequestNext].Id := mId;
@@ -225,13 +247,19 @@ begin
   try
     mCount := ACount;
     if mCount > FMessageCount then
+    begin
       mCount := FMessageCount;
+    end;
     if mCount <= 0 then
+    begin
       Exit;
+    end;
     SetLength(Result, mCount);
     mStart := (FMessageNext - mCount + Capacity) mod Capacity;
     for mIndex := 0 to mCount - 1 do
+    begin
       Result[mIndex] := FMessages[(mStart + mIndex) mod Capacity];
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -245,7 +273,9 @@ begin
   AParams := '';
   Result := False;
   if AId = '' then
+  begin
     Exit;
+  end;
   System.TMonitor.Enter(FLock);
   try
     // Die jüngste Anfrage mit dieser id zuerst: Clients vergeben ids nach einem Neustart neu.

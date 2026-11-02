@@ -1,0 +1,122 @@
+﻿unit Atlas.UI.BuildPipeline.Strings;
+
+// Oberflächentexte des Moduls Build-Pipeline auf Deutsch und Englisch (ADR 0017, #1455). Die Sprache
+// bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu, ein Sprachwechsel braucht
+// daher keine eigene Meldung. Kerntexte bleiben in `Atlas.UI.Strings`.
+
+interface
+
+{$SCOPEDENUMS ON}
+
+type
+  TAtlasBuildPipelineTextId = (
+    McpBuildStarted, McpBuildFinished, McpBuildRefused, ReleaseCheckCommand, ReleaseNoProject,
+    ReleaseNoConfiguration, ReleaseUnreadable, ReleaseClean, ReleaseFindings, ReleaseBlocked, ReleaseOverridden,
+    ReleaseBlockReason, ReleaseOn, ReleaseOff, ReleaseIssueDebugDefine, ReleaseIssueDebugInfo,
+    ReleaseIssueDebugInfoInExe, ReleaseIssueStackFrames, ReleaseIssueAssertions, ReleaseIssueRangeChecks,
+    ReleaseIssueOverflowChecks, ReleaseIssueMemoryLeaks, ReleaseIssueVersionMissing, ReleaseIssueVersionUnchanged,
+    ReleaseIssueOutputFolder, GateFindings, GateBlocked, GateOverridden, GateTimedOut, GateBlockReason,
+    BuildSummaryClean, BuildSummaryCounts, BuildSummaryRejected, BuildSummaryRejectedCodes, BuildSummaryFailed,
+    BuildSummaryBaselined);
+
+  TAtlasBuildPipelineStrings = class
+  public
+    class function Text(AId: TAtlasBuildPipelineTextId): string; static;
+    /// <summary>Text mit Platzhaltern wie Format.</summary>
+    class function Fmt(AId: TAtlasBuildPipelineTextId; const AArgs: array of const): string; static;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.UI.Strings;
+
+const
+  Texts: array[TAtlasLanguage, TAtlasBuildPipelineTextId] of string = (
+    ('Claude Code baut %s in der IDE …',
+     'Build für Claude Code beendet: %s, %d Fehler',
+     'Build für Claude Code abgelehnt: %s (%s)',
+     'Release-Build prüfen',
+     'Release-Build prüfen: Kein Projekt geöffnet.',
+     'Release-Build prüfen: %s hat keine Release-Konfiguration („Release“ oder build.releaseConfigs).',
+     'Release-Wächter: Die Optionen von %s sind in der IDE nicht lesbar.',
+     'Release-Wächter: %s (%s, %s) ohne Befund.',
+     'Release-Wächter: %d Befund(e) in %s (%s, %s):',
+     'Release-Wächter: Build abgebrochen (build.gate = block). Ein zweiter Build binnen 10 s läuft trotzdem.',
+     'Release-Wächter: bewusst übergangen, der Build läuft trotz der Befunde.',
+     '%d Befund(e) des Release-Wächters',
+     'an',
+     'aus',
+     'Symbol DEBUG ist definiert. Ändern: Projekt › Optionen › Erzeugen › Delphi-Compiler › Bedingte Definitionen (%s, %s).',
+     'Debug-Informationen sind %s (Soll: %s). Ändern: Projekt › Optionen › Erzeugen › Delphi-Compiler › Compilieren › Debuggen › Debug-Informationen (%s, %s).',
+     'Debug-Informationen werden in die Ausgabedatei gelinkt. Ändern: Projekt › Optionen › Erzeugen › Delphi-Compiler › Linken › Debug-Informationen (%s, %s).',
+     'Stack-Frames sind %s (Soll: %s). Ändern: Projekt › Optionen › Erzeugen › Delphi-Compiler › Compilieren › Codeerzeugung › Stack-Frames (%s, %s).',
+     'Assertions sind %s (Soll: %s). Ändern: Projekt › Optionen › Erzeugen › Delphi-Compiler › Compilieren › Debuggen › Assertion (%s, %s).',
+     'Bereichsprüfung ist %s (Soll: %s). Ändern: Projekt › Optionen › Erzeugen › Delphi-Compiler › Compilieren › Laufzeitfehler › Bereichsprüfung (%s, %s).',
+     'Überlaufprüfung ist %s (Soll: %s). Ändern: Projekt › Optionen › Erzeugen › Delphi-Compiler › Compilieren › Laufzeitfehler › Überlaufprüfung (%s, %s).',
+     'ReportMemoryLeaksOnShutdown := True gilt auch im Release. Ändern: Zuweisung in {$IFDEF DEBUG} … {$ENDIF} setzen.',
+     'Keine Versionsinformationen. Ändern: Projekt › Optionen › Anwendung › Versionsinformationen › Versionsinformationen in Projekt aufnehmen (%s, %s).',
+     'Version %s wie beim letzten Release-Build. Ändern: Projekt › Optionen › Anwendung › Versionsinformationen › Versionsnummer erhöhen (%s, %s).',
+     'Ausgabeordner %s wie in Debug. Ändern: Projekt › Optionen › Erzeugen › Delphi-Compiler › Ausgabeverzeichnis (%s, %s).',
+     'Prüfung vor dem Compile: %d Fehler in %s (%d geänderte Unit(s) geprüft):',
+     'Prüfung vor dem Compile: Compile abgebrochen (build.gate = block). Ein zweiter Compile ohne Änderung binnen 10 s läuft trotzdem.',
+     'Prüfung vor dem Compile: bewusst übergangen, der Compile läuft trotz der Fehler.',
+     'Prüfung vor dem Compile: Zeitlimit von %d ms (build.gateTimeoutMs) überschritten, der Compile läuft ungeprüft. Dieser Hinweis erscheint einmal je Sitzung.',
+     '%d Fehler der Prüfung vor dem Compile',
+     'Build %s erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise',
+     'Build %s erfolgreich, aber %s',
+     'Build %s gilt als gescheitert: %s (build.zeroHints)',
+     'Build %s gilt als gescheitert: %s; %s zählt als Fehler (build.warningsAsErrors)',
+     'Build %s fehlgeschlagen: %d Fehler',
+     ' (%d weitere in der Basislinie)'),
+    ('Claude Code is building %s in the IDE …',
+     'Build for Claude Code finished: %s, %d errors',
+     'Build for Claude Code refused: %s (%s)',
+     'Check release build',
+     'Check release build: No project is open.',
+     'Check release build: %s has no release configuration (“Release” or build.releaseConfigs).',
+     'Release guard: The options of %s cannot be read in the IDE.',
+     'Release guard: %s (%s, %s) has no findings.',
+     'Release guard: %d finding(s) in %s (%s, %s):',
+     'Release guard: Build cancelled (build.gate = block). A second build within 10 s runs anyway.',
+     'Release guard: deliberately overridden, the build runs despite the findings.',
+     '%d release guard finding(s)',
+     'on',
+     'off',
+     'Symbol DEBUG is defined. Change: Project › Options › Building › Delphi Compiler › Conditional defines (%s, %s).',
+     'Debug information is %s (expected: %s). Change: Project › Options › Building › Delphi Compiler › Compiling › Debugging › Debug information (%s, %s).',
+     'Debug information is linked into the output file. Change: Project › Options › Building › Delphi Compiler › Linking › Debug information (%s, %s).',
+     'Stack frames are %s (expected: %s). Change: Project › Options › Building › Delphi Compiler › Compiling › Code generation › Stack frames (%s, %s).',
+     'Assertions are %s (expected: %s). Change: Project › Options › Building › Delphi Compiler › Compiling › Debugging › Assertions (%s, %s).',
+     'Range checking is %s (expected: %s). Change: Project › Options › Building › Delphi Compiler › Compiling › Runtime errors › Range checking (%s, %s).',
+     'Overflow checking is %s (expected: %s). Change: Project › Options › Building › Delphi Compiler › Compiling › Runtime errors › Overflow checking (%s, %s).',
+     'ReportMemoryLeaksOnShutdown := True also applies in release. Change: put the assignment inside {$IFDEF DEBUG} … {$ENDIF}.',
+     'No version information. Change: Project › Options › Application › Version Info › Include version information in project (%s, %s).',
+     'Version %s as in the last release build. Change: Project › Options › Application › Version Info › increase the version number (%s, %s).',
+     'Output folder %s as in Debug. Change: Project › Options › Building › Delphi Compiler › Output directory (%s, %s).',
+     'Check before compiling: %d error(s) in %s (%d changed unit(s) checked):',
+     'Check before compiling: compile cancelled (build.gate = block). A second compile without changes within 10 s runs anyway.',
+     'Check before compiling: deliberately overridden, the compile runs despite the errors.',
+     'Check before compiling: time limit of %d ms (build.gateTimeoutMs) exceeded, the compile runs unchecked. This notice appears once per session.',
+     '%d error(s) of the check before compiling',
+     'Build %s succeeded: 0 errors, 0 warnings, 0 hints',
+     'Build %s succeeded, but %s',
+     'Build %s counts as failed: %s (build.zeroHints)',
+     'Build %s counts as failed: %s; %s counts as an error (build.warningsAsErrors)',
+     'Build %s failed: %d error(s)',
+     ' (%d more in the baseline)'));
+
+{ TAtlasBuildPipelineStrings }
+
+class function TAtlasBuildPipelineStrings.Text(AId: TAtlasBuildPipelineTextId): string;
+begin
+  Result := Texts[TAtlasStrings.Language, AId];
+end;
+
+class function TAtlasBuildPipelineStrings.Fmt(AId: TAtlasBuildPipelineTextId; const AArgs: array of const): string;
+begin
+  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+end;
+
+end.

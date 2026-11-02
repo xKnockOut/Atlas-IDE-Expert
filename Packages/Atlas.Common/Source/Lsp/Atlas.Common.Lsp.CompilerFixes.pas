@@ -44,8 +44,12 @@ var
 begin
   Result := nil;
   for Message in AMessages do
+  begin
     if Message.Line >= 0 then
+    begin
       Result := Result + [TFixMessage.Create(Message.Code, Message.Line, Message.Column, Message.Text)];
+    end;
+  end;
 end;
 
 function ToAction(const AUri: string; const AFix: TCompilerFix): TJSONObject;
@@ -67,9 +71,13 @@ var
   Token: TPascalToken;
 begin
   for Token in ATree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and (Token.StartPos.Line = APosition.Line) and
       (Token.StartPos.Character <= APosition.Character) and (APosition.Character <= Token.EndPos.Character) then
+    begin
       Exit(SameText(Token.Text, AName));
+    end;
+  end;
   Result := False;
 end;
 
@@ -85,29 +93,41 @@ var
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) then
+  begin
     Exit;
+  end;
   Messages := FixMessages(AMessages);
   Seen := nil;
   Counted := nil;
   for Message in Messages do
   begin
     if (Message.Line < ARange.StartPos.Line) or (Message.Line > ARange.EndPos.Line) then
+    begin
       Continue;
+    end;
     // Dieselbe Meldung kommt bei mehreren Plattformen doppelt.
     Key := Message.Code + '@' + IntToStr(Message.Line) + '@' + Message.Text;
     if IndexText(Key, Seen) >= 0 then
+    begin
       Continue;
+    end;
     Seen := Seen + [Key];
     if (Message.Code = 'E2003') and (Length(TCompilerFixes.QuotedNames(Message.Text)) > 0) and
       OnName(ATree, ARange.StartPos, TCompilerFixes.QuotedNames(Message.Text)[0]) then
+    begin
       Continue;
+    end;
     for Item in TCompilerFixes.Fixes(AText, ATree, Message, AContext) do
+    begin
       Result := Result + [ToAction(AUri, Item)];
+    end;
     if TCompilerFixes.CanFixAll(Message.Code) and (IndexText(Message.Code, Counted) < 0) then
     begin
       Counted := Counted + [Message.Code];
       if TCompilerFixes.FixAll(AText, ATree, Messages, Message.Code, AContext, Item) then
+      begin
         Result := Result + [ToAction(AUri, Item)];
+      end;
     end;
   end;
 end;

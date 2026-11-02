@@ -76,10 +76,14 @@ function UnitSource(const AName: string; const AInterface, AImplementation: TArr
 begin
   Result := 'unit ' + AName + ';'#10 + 'interface'#10;
   if AInterface <> nil then
+  begin
     Result := Result + 'uses'#10 + '  ' + string.Join(', ', AInterface) + ';'#10;
+  end;
   Result := Result + 'implementation'#10;
   if AImplementation <> nil then
+  begin
     Result := Result + 'uses'#10 + '  ' + string.Join(', ', AImplementation) + ';'#10;
+  end;
   Result := Result + 'end.';
 end;
 
@@ -102,8 +106,12 @@ var
   Relation: TUnitRelation;
 begin
   for Relation in ARelations do
+  begin
     if SameText(Relation.Name, AName) then
+    begin
       Exit(Relation);
+    end;
+  end;
   Assert.Fail(AName + ' fehlt');
   Result := Default(TUnitRelation);
 end;
@@ -116,7 +124,9 @@ begin
   for Relation in ARelations do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Relation.Name;
   end;
 end;

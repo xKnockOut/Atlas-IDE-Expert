@@ -561,7 +561,9 @@ begin
   AItems := Default(TCompletionItems);
   Result := TConditionalSymbols.IsSymbolContext(ARequest.LineBefore, Prefix);
   if not Result or not AContext.CompletionEnabled then
+  begin
     Exit;
+  end;
   for Symbol in TConditionalSymbols.Candidates(ARequest.Text, AContext) do
   begin
     Item := Default(TCompletionItem);
@@ -585,16 +587,22 @@ begin
   AItems := Default(TCompletionItems);
   Result := TCompilerDirectives.CompletionAt(ARequest.LineBefore, Names, IsWarning);
   if not Result then
+  begin
     Exit;
+  end;
   for Name in Names do
   begin
     Item := Default(TCompletionItem);
     Item.Name := Name;
     Item.Kind := KindKeyword;
     if IsWarning then
-      Item.Detail := 'Compiler-Warnung'
+    begin
+      Item.Detail := 'Compiler-Warnung';
+    end
     else if TCompilerDirectives.Find(Name, Info) then
+    begin
       Item.Detail := Info.Text;
+    end;
     AItems.Items := AItems.Items + [Item];
   end;
 end;
@@ -610,11 +618,15 @@ var
 begin
   Result := nil;
   if AKind <> TSlashArgumentKind.Rules then
+  begin
     Exit;
+  end;
   Catalog := TRuleCatalog.Create(RuleCatalogBaseJson);
   try
     for Entry in Catalog.Entries do
+    begin
       Result := Result + [Entry.Id];
+    end;
   finally
     Catalog.Free;
   end;
@@ -635,9 +647,13 @@ begin
     Lines := TTextLines.SplitLines(ARequest.Text, LineBreak);
     Line := ARequest.Position.Line;
     if (Line >= 0) and (Line <= High(Lines)) then
+    begin
       Lines[Line] := StringOfChar(' ', Length(Lines[Line]));
+    end;
     if ARuleIdsAt(ARequest.Uri, TTextLines.JoinLines(Lines, LineBreak), Line + 1, Result) then
+    begin
       Exit;
+    end;
   end;
   Result := RuleIds(AKind);
 end;
@@ -658,14 +674,20 @@ begin
   // /filter mit Sammlungen und Mitgliedern des Elementtyps (#319).
   Before := ARequest.LineBefore;
   if Trim(Before) = '/' then
-    Name := ''
+  begin
+    Name := '';
+  end
   else if not TSlashCommandRegistry.Split(Before, Name, Arguments) then
-    Exit(False)
+  begin
+    Exit(False);
+  end
   else if (Arguments <> '') or (Before[Length(Before)] = ' ') then
   begin
     if MatchText(Name, ADisabled) or
       not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line) then
+    begin
       Exit(False);
+    end;
     Kind := TSlashMenu.ArgumentKind(Name, Arguments);
     Choices := TSlashMenu.ArgumentChoices(ARequest.Text, ARequest.Position.Line, Name, Arguments, ARequest.Index,
       RuleIdsBelow(ARequest, Kind, ARuleIdsAt));
@@ -687,8 +709,10 @@ begin
         Item.Kind := KindField;
         Item.Detail := '/' + Name;
         if Resolver <> nil then
+        begin
           Item.AdditionalEdits := TypeUnitEdits(Resolver, ARequest.Index, Tree, ARequest.FileName, Choice,
             ARequest.LineBreak, ARequest.OffsetAt(ARequest.Position));
+        end;
         AItems.Items := AItems.Items + [Item];
       end;
     finally
@@ -698,7 +722,9 @@ begin
     Exit(Length(Choices) > 0);
   end;
   if not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line) then
+  begin
     Exit(False);
+  end;
   for Command in TSlashCommandRegistry.Shared.Matching(Name, ADisabled) do
   begin
     Item := Default(TCompletionItem);
@@ -714,17 +740,25 @@ end;
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
@@ -736,7 +770,9 @@ function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): In
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Index der öffnenden Klammer zu ")" an AIndex; -1, wenn sie fehlt.</summary>
@@ -749,15 +785,21 @@ begin
   while Result >= 0 do
   begin
     if ATokens[Result].IsSymbol(')') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Result].IsSymbol('(') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end
     else if ATokens[Result].IsSymbol(';') or ATokens[Result].IsKeyword('begin') then
+    begin
       Break;
+    end;
     Dec(Result);
   end;
   Result := -1;
@@ -772,10 +814,14 @@ begin
   begin
     Token := ATokens[AIndex];
     if Token.IsKeyword('uses') or Token.IsKeyword('contains') or Token.IsKeyword('requires') then
+    begin
       Exit(True);
+    end;
     if not ((Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.StringLiteral]) or
       Token.IsSymbol('.') or Token.IsSymbol(',') or Token.IsKeyword('in') or IsTrivia(Token)) then
+    begin
       Exit(False);
+    end;
     Dec(AIndex);
   end;
   Result := False;
@@ -826,7 +872,9 @@ begin
   // unverändert ist.
   if ((FStore <> nil) and FStore.TryGet(TDocumentUris.FromPath(AFileName), Document)) or
     not FileAge(AFileName, Stamp) then
+  begin
     Exit(FReadText(AFileName, AText));
+  end;
   TMonitor.Enter(FCacheLock);
   try
     if SameText(FCacheFile, AFileName) and (FCacheStamp = Stamp) then
@@ -839,7 +887,9 @@ begin
   end;
   Result := FReadText(AFileName, AText);
   if not Result then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FCacheLock);
   try
     FCacheFile := AFileName;
@@ -865,20 +915,28 @@ var
 begin
   Result := nil;
   if not (AParams is TJSONObject) then
+  begin
     Exit;
+  end;
   Templates := TJSONObject(AParams).GetValue('templates');
   if not (Templates is TJSONArray) then
+  begin
     Exit;
+  end;
   for Value in TJSONArray(Templates) do
   begin
     if not (Value is TJSONObject) then
+    begin
       Continue;
+    end;
     Item := TJSONObject(Value);
     Key := Item.GetValue<string>('key', '');
     Body := Item.GetValue<string>('body', '');
     // Nur Kürzel aus Buchstaben, Ziffern und _; sie stehen hinter einem Punkt.
     if (Key = '') or (Body = '') or not IsValidIdent(Key) then
+    begin
       Continue;
+    end;
     Result := Result + [TPostfixTemplate.Custom(Key, Item.GetValue<string>('description', ''), Body,
       Item.GetValue<string>('type', ''))];
   end;
@@ -935,7 +993,9 @@ var
 begin
   Result := TCompletionPlace.Unknown;
   if ARoot = nil then
+  begin
     Exit;
+  end;
   Node := ARoot;
   repeat
     Found := False;
@@ -954,9 +1014,13 @@ begin
   begin
     if Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
       TSyntaxKind.InterfaceType, TSyntaxKind.HelperType] then
+    begin
       Exit(TCompletionPlace.ClassBody);
+    end;
     if Node.Kind in [TSyntaxKind.Block .. TSyntaxKind.EmptyStatement] then
+    begin
       Exit(TCompletionPlace.Statement);
+    end;
     Node := Node.Parent;
   end;
   Result := TCompletionPlace.Declaration;
@@ -973,9 +1037,13 @@ begin
   AKeywords := False;
   Result := False;
   if ALast < 0 then
+  begin
     Exit;
+  end;
   if ATokens[ALast].IsKeyword('is') or ATokens[ALast].IsKeyword('as') then
+  begin
     Exit(True);
+  end;
   if ATokens[ALast].IsKeyword('not') then
   begin
     Before := PreviousIndex(ATokens, ALast);
@@ -984,7 +1052,9 @@ begin
   if ATokens[ALast].IsSymbol(':') then
   begin
     if APlace <> TCompletionPlace.Statement then
-      Result := True
+    begin
+      Result := True;
+    end
     else
     begin
       // var A, B: | bzw. on E: |
@@ -1006,9 +1076,13 @@ begin
   Index := ALast;
   while (Index >= 0) and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol(',') or
     ATokens[Index].IsSymbol('.')) do
+  begin
     Index := PreviousIndex(ATokens, Index);
+  end;
   if (Index < 0) or not ATokens[Index].IsSymbol('(') then
+  begin
     Exit;
+  end;
   Before := PreviousIndex(ATokens, Index);
   Result := (Before >= 0) and (ATokens[Before].IsKeyword('class') or ATokens[Before].IsKeyword('interface') or
     ATokens[Before].IsKeyword('object') or ATokens[Before].IsKeyword('dispinterface'));
@@ -1027,14 +1101,18 @@ begin
   Result := Default(TCompletionContext);
   Result.Kind := TCompletionContextKind.None;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   // Letztes Token, das vor dem Cursor beginnt.
   Last := -1;
   for Index := 0 to High(Tokens) do
   begin
     if ComparePositions(Tokens[Index].StartPos, APosition) >= 0 then
+    begin
       Break;
+    end;
     Last := Index;
   end;
   Result.Offset := 0;
@@ -1059,25 +1137,35 @@ begin
       end;
       // Cursor mitten in einem Token: in Kommentaren, Strings und Zahlen nichts anbieten.
       if Token.Kind <> TPascalTokenKind.Identifier then
+      begin
         Exit;
+      end;
     end;
     if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
       (ComparePositions(APosition, Token.EndPos) <= 0) then
     begin
       // Angefangener Name; auch ein halbes Schlüsselwort wie "beg" gilt als Anfang.
       if Token.Kind = TPascalTokenKind.Identifier then
-        Result.Prefix := CleanName(Copy(Token.Text, 1, APosition.Character - Token.StartPos.Character))
+      begin
+        Result.Prefix := CleanName(Copy(Token.Text, 1, APosition.Character - Token.StartPos.Character));
+      end
       else
+      begin
         Result.Prefix := Copy(Token.Text, 1, APosition.Character - Token.StartPos.Character);
+      end;
       Result.Offset := Token.Offset;
       Last := PreviousIndex(Tokens, Last);
     end
     else if IsTrivia(Token) and (ComparePositions(APosition, Token.EndPos) <= 0) and
       Token.Text.StartsWith('//') then
+    begin
       // Zeilenkommentar reicht bis zum Zeilenende.
-      Exit
+      Exit;
+    end
     else if IsTrivia(Token) then
+    begin
       Last := PreviousIndex(Tokens, Last + 1);
+    end;
   end;
 
   if (Last >= 0) and Tokens[Last].IsSymbol('.') then
@@ -1093,26 +1181,40 @@ begin
         begin
           Index := OpeningParen(Tokens, Index);
           if Index < 0 then
+          begin
             Exit;
+          end;
           Index := PreviousIndex(Tokens, Index);
           if (Index < 0) or (Tokens[Index].Kind <> TPascalTokenKind.Identifier) then
+          begin
             Exit;
+          end;
           if Names.Count = 0 then
+          begin
             Result.Called := True;
+          end;
         end;
         if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+        begin
           Break;
+        end;
         Names.Insert(0, CleanName(Tokens[Index].Text));
         Result.ChainStart := Tokens[Index].StartPos;
         Index := PreviousIndex(Tokens, Index);
         if (Index >= 0) and Tokens[Index].IsSymbol('.') then
-          Index := PreviousIndex(Tokens, Index)
+        begin
+          Index := PreviousIndex(Tokens, Index);
+        end
         else
+        begin
           Break;
+        end;
       end;
       // 1. oder "a".: nicht auflösbar.
       if (Names.Count = 0) or (Index >= 0) and Tokens[Index].IsSymbol('.') then
+      begin
         Exit;
+      end;
       if InUsesClause(Tokens, Last) then
       begin
         // uses System.Sys…: der Anfang gehört zum Unit-Namen.
@@ -1138,9 +1240,13 @@ begin
   // Kontexte ohne Typauflösung (#31).
   Result.Place := PlaceAt(ATree.Root, Result.Offset);
   if (Last >= 0) and Tokens[Last].IsKeyword('inherited') then
-    Result.Filter := TCompletionFilter.InheritedCall
+  begin
+    Result.Filter := TCompletionFilter.InheritedCall;
+  end
   else if TypePosition(Tokens, Last, Result.Place, Result.TypeKeywords) then
+  begin
     Result.Filter := TCompletionFilter.Types;
+  end;
   // Attribut nach "[" vor einer Deklaration (#465); ob es gilt, entscheidet Collect nach der Einstellung.
   if (Result.Filter = TCompletionFilter.Any) and TCompletionAttributes.SiteAt(Tokens, Last) then
   begin
@@ -1191,7 +1297,9 @@ var
 begin
   Result := '';
   if ATree = nil then
+  begin
     Exit;
+  end;
   // Argument eines Aufrufs: Typ des aktiven Parameters (erste passende Überladung).
   Site := TLspSignatureHelp.CallSiteAt(ATree, APosition);
   if Site.Found then
@@ -1199,7 +1307,9 @@ begin
     Callee := AResolver.Resolve(ATree, AFileName, Site.NamePosition);
     // Mitglied einer generischen Instanz (TBox<TKunde>.Where): Typparameter der Klasse einsetzen (#468).
     if Callee.Found and (Site.ActiveParameter < Length(Callee.ParamTypes)) then
+    begin
       Result := TInterfaceStubs.SubstituteWords(Callee.ParamTypes[Site.ActiveParameter], Callee.Bindings);
+    end;
     Exit;
   end;
   // Zuweisung: "Ziel := A.B.Anf|" – rückwärts über die Kette rechts bis zum ":=".
@@ -1208,18 +1318,24 @@ begin
   for Index := 0 to High(Tokens) do
   begin
     if ComparePositions(Tokens[Index].StartPos, APosition) >= 0 then
+    begin
       Break;
+    end;
     Last := Index;
   end;
   Index := PreviousIndex(Tokens, Last + 1);
   if (Index >= 0) and (Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
     (ComparePositions(APosition, Tokens[Index].EndPos) <= 0) then
+  begin
     Index := PreviousIndex(Tokens, Index);
+  end;
   while (Index >= 0) and Tokens[Index].IsSymbol('.') do
   begin
     Index := PreviousIndex(Tokens, Index);
     if (Index < 0) or (Tokens[Index].Kind <> TPascalTokenKind.Identifier) then
+    begin
       Exit;
+    end;
     Index := PreviousIndex(Tokens, Index);
   end;
   if (Index < 0) or not Tokens[Index].IsSymbol(':=') then
@@ -1230,9 +1346,13 @@ begin
     begin
       Target := AResolver.ResolveChain(ATree, AFileName, Slot.Names, Slot.Offset);
       if Target.Found and Target.IsType then
-        Result := Target.Name
+      begin
+        Result := Target.Name;
+      end
       else if Target.Found then
+      begin
         Result := Target.TypeName;
+      end;
     end;
     Exit;
   end;
@@ -1244,28 +1364,40 @@ begin
     Names := [CleanName(Tokens[Index].Text)] + Names;
     Index := PreviousIndex(Tokens, Index);
     if (Index >= 0) and Tokens[Index].IsSymbol('.') then
-      Index := PreviousIndex(Tokens, Index)
+    begin
+      Index := PreviousIndex(Tokens, Index);
+    end
     else
+    begin
       Break;
+    end;
   end;
   if Names = nil then
+  begin
     Exit;
+  end;
   Target := AResolver.ResolveChain(ATree, AFileName, Names, Last);
   if Target.Found and not Target.IsType and (Target.SymbolKind <> TIndexSymbolKind.Routine) and
     (Target.SymbolKind <> TIndexSymbolKind.Method) then
   begin
     Result := Target.TypeName;
     if AWithArgs and (Result <> '') and (Target.TypeArgs <> '') then
+    begin
       Result := Result + '<' + Target.TypeArgs + '>';
+    end;
   end;
   // Result: Rückgabetyp der umgebenden Funktion.
   if (Result = '') and (Length(Names) = 1) and SameText(Names[0], 'Result') then
   begin
     UnitIndex := AResolver.ExtractedUnit(ATree, AFileName);
     for Symbol in UnitIndex.Symbols do
+    begin
       if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and (Symbol.TypeName <> '') and
         (Symbol.Range.StartPos.Line < APosition.Line) and (Symbol.Range.EndPos.Line >= APosition.Line) then
+      begin
         Result := Symbol.TypeName;
+      end;
+    end;
   end;
 end;
 
@@ -1327,7 +1459,9 @@ begin
   for Key in Path do
   begin
     if not (Node is TJSONObject) then
+    begin
       Exit;
+    end;
     Node := TJSONObject(Node).GetValue(Key);
   end;
   Result := (Node is TJSONArray) and (TJSONArray(Node).Count > 0) and (TJSONArray(Node).Items[0] is TJSONString) and
@@ -1341,7 +1475,9 @@ var
 begin
   Result := nil;
   if ADetails = nil then
+  begin
     Exit;
+  end;
   if AMarkdown and ADetails.TryGetValue<string>('documentationMarkdown', Text) and (Text <> '') then
   begin
     Markup := TJSONObject.Create;
@@ -1352,7 +1488,9 @@ begin
   // Klartext (RAD Studio: documentationFormat ["plaintext"]): ganzer Text, sonst der Kurztext.
   if (ADetails.TryGetValue<string>('documentationText', Text) and (Text <> '')) or
     (ADetails.TryGetValue<string>('summary', Text) and (Text <> '')) then
+  begin
     Result := TJSONString.Create(Text);
+  end;
 end;
 
 class function TLspCompletion.Keywords(APlace: TCompletionPlace): TArray<string>;
@@ -1363,13 +1501,19 @@ begin
   case APlace of
     TCompletionPlace.Statement:
       for Word in StatementKeywords do
+      begin
         Result := Result + [Word];
+      end;
     TCompletionPlace.Declaration:
       for Word in DeclarationKeywords do
+      begin
         Result := Result + [Word];
+      end;
     TCompletionPlace.ClassBody:
       for Word in ClassBodyKeywords do
+      begin
         Result := Result + [Word];
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -1405,7 +1549,9 @@ begin
   // Getipptes Wort vor dem Cursor; TContextSnippets prüft, dass sonst nichts in der Zeile steht.
   Start := Min(ARequest.Position.Character, Length(LineText));
   while (Start > 0) and CharInSet(LineText[Start], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  begin
     Dec(Start);
+  end;
   Word := Copy(LineText, Start + 1, ARequest.Position.Character - Start);
   Slash := Default(TSlashContext);
   Slash.Text := ARequest.Text;
@@ -1417,7 +1563,9 @@ begin
   begin
     if (MatchScore(Snippet.Prefix, Word, ARequest.Matching) = TFuzzyMatch.NoMatch) and
       (MatchScore(Snippet.Name, Word, ARequest.Matching) = TFuzzyMatch.NoMatch) then
+    begin
       Continue;
+    end;
     Item := Default(TCompletionItem);
     Item.Name := Snippet.Name;
     Item.Detail := Snippet.Description;
@@ -1426,11 +1574,15 @@ begin
     Item.HasTextEdit := True;
     Item.Snippet := ASnippetSupport;
     if ASnippetSupport then
+    begin
       Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line, Start, ARequest.Position.Line,
-        ARequest.Position.Character), Snippet.Text)
+        ARequest.Position.Character), Snippet.Text);
+    end
     else
+    begin
       Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line, Start, ARequest.Position.Line,
         ARequest.Position.Character), TContextSnippets.ToPlain(Snippet.Text));
+    end;
     Item.AdditionalEdits := Snippet.AdditionalEdits;
     // Atlas wertet die weiteren Änderungen dann nicht als uses-Ergänzung.
     Item.Action := 'snippet';
@@ -1455,13 +1607,17 @@ function InFunctionAt(ATree: TSyntaxTree; const AText: string; AOffset: Integer)
     begin
       Child := nil;
       for Index := 0 to Node.ChildCount - 1 do
+      begin
         if (Node[Index].StartOffset <= AOffset) and (AOffset <= Node[Index].EndOffset) then
         begin
           Child := Node[Index];
           Break;
         end;
+      end;
       if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) then
+      begin
         Result := Child;
+      end;
       Node := Child;
     end;
   end;
@@ -1472,13 +1628,19 @@ var
 begin
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Routine := Innermost(ATree.Root);
   if Routine = nil then
+  begin
     Exit;
+  end;
   Head := LowerCase(TrimLeft(Copy(AText, Routine.StartOffset + 1, 40)));
   if StartsStr('class ', Head) then
+  begin
     Head := TrimLeft(Copy(Head, Length('class ') + 1, MaxInt));
+  end;
   Result := StartsStr('function', Head) or StartsStr('operator', Head);
 end;
 
@@ -1494,14 +1656,22 @@ begin
   // Ein Typ ist kein Wert, außer als Typumwandlung TFoo(X) (#188).
   if not AResolver.ChainType(ATree, AFileName, AContext.Names, AContext.Offset, Owner, TypeInfo, TypeFound) or
     (Owner.Kind = TResolvedKind.UnitName) or (Owner.IsType and not AContext.Called) then
+  begin
     Exit(False);
+  end;
   // Typargumente stehen getrennt: TArray mit TypeArgs Integer.
   if Owner.IsType then
-    OwnerType := Owner.Name
+  begin
+    OwnerType := Owner.Name;
+  end
   else
+  begin
     OwnerType := Owner.TypeName;
+  end;
   if Owner.TypeArgs <> '' then
+  begin
     OwnerType := OwnerType + '<' + Owner.TypeArgs + '>';
+  end;
   // Typ für eine Deklaration im var-Abschnitt; TFoo.Create liefert ein TFoo.
   if Owner.SymbolKind = TIndexSymbolKind.Constructor_ then
   begin
@@ -1509,26 +1679,40 @@ begin
     ATraits.TypeName := Owner.Container;
   end
   else if OwnerType <> '' then
-    ATraits.TypeName := OwnerType
+  begin
+    ATraits.TypeName := OwnerType;
+  end
   else if TypeFound then
+  begin
     ATraits.TypeName := TypeInfo.Name;
+  end;
   ATraits.ElementType := TPostfixTemplates.ElementOf(OwnerType);
   if (ATraits.ElementType = '') and TypeFound then
+  begin
     ATraits.ElementType := TPostfixTemplates.ElementOf(TypeInfo.TypeName);
+  end;
   ATraits.Enumerable := ATraits.ElementType <> '';
   if TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind in [TIndexSymbolKind.ClassType,
     TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType]) then
+  begin
     for Member in AMembers do
+    begin
       if SameText(Member.Name, 'GetEnumerator') then
       begin
         ATraits.Enumerable := True;
         // Elementtyp für die klassische Schleife: Current des Enumerators.
         for Enumerator in AResolver.MemberCandidates(ATree, AFileName, AContext.Names + ['GetEnumerator'],
           AContext.Offset) do
+        begin
           if SameText(Enumerator.Name, 'Current') then
+          begin
             ATraits.ElementType := Enumerator.TypeName;
+          end;
+        end;
         Break;
       end;
+    end;
+  end;
   ATraits.IsString := TPostfixTemplates.IsStringType(Owner.TypeName) or
     (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsStringType(TypeInfo.Name));
   ATraits.IsBoolean := TPostfixTemplates.IsBooleanType(Owner.TypeName) or
@@ -1571,7 +1755,9 @@ begin
   // Nur einzeilige Ausdrücke; der Typ muss bekannt sein.
   if (AContext.ChainStart.Line <> ARequest.Position.Line) or (AContext.DotPos.Line <> ARequest.Position.Line) or
     not PostfixTraits(ARequest.Resolver, ARequest.Tree, ARequest.FileName, AContext, ACandidates, Traits) then
+  begin
     Exit;
+  end;
   Traits.InFunction := InFunctionAt(ARequest.Tree, ARequest.Text, AContext.Offset);
   LineText := ARequest.LineText(ARequest.Position.Line);
   Before := Copy(LineText, 1, AContext.ChainStart.Character);
@@ -1595,7 +1781,9 @@ begin
     if not TPostfixTemplates.Applies(Template, Traits, APostfix.InlineVar, Descends) or
       (Template.Statement and (Trim(Before) <> '')) or
       (MatchScore(Template.Key, AContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch) then
+    begin
       Continue;
+    end;
     Expansion := TPostfixTemplates.Expand(Template, Expr, Indent, LineBreak, Traits, APostfix.InlineVar,
       APostfix.Snippet);
     Item := Default(TCompletionItem);
@@ -1619,7 +1807,9 @@ begin
       try
         Routine := Source.RoutineAt;
         if Routine = nil then
+        begin
           Continue;
+        end;
         Item.AdditionalEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var', Expansion.Declaration)];
       finally
         Source.Free;
@@ -1654,9 +1844,12 @@ begin
   Symbols := ARequest.Resolver.InheritedOverloads(ARequest.Tree, ARequest.FileName, AContext.Offset, Start, Depths);
   if (Start < 0) or not TInheritedHeader.Parse(TCompletionInherited.HeaderText(ARequest.Text, Start + 1),
     Current) then
+  begin
     Exit;
+  end;
   Methods := nil;
   for Index := 0 to High(Symbols) do
+  begin
     if TInheritedHeader.Parse(Symbols[Index].Signature, Header) then
     begin
       Method.Header := Header;
@@ -1664,6 +1857,7 @@ begin
       Method.Depth := Depths[Index];
       Methods := Methods + [Method];
     end;
+  end;
   Calls := TCompletionInherited.Calls(Current, Methods, Abstract_);
   LineBefore := ARequest.LineBefore;
   WithResult := TCompletionInherited.NeedsResult(Current, LineBefore);
@@ -1671,38 +1865,54 @@ begin
   After := Copy(ARequest.LineText(ARequest.Position.Line), ARequest.Position.Character + 1, MaxInt);
   Names := nil;
   for Index := 0 to High(Calls) do
+  begin
     Names := Names + [Calls[Index].Name];
+  end;
   // Unter den Namen fallen die abstrakten weg (auch für die Fußzeile) und die, deren Aufruf oben steht.
   Kept := nil;
   for Candidate in ACandidates do
+  begin
     if TInheritedHeader.Parse(Candidate.Signature, Header) and Header.IsAbstract then
     begin
       if not MatchText(Candidate.Container + '.' + Candidate.Name, Abstract_) then
+      begin
         Abstract_ := Abstract_ + [Candidate.Container + '.' + Candidate.Name];
+      end;
     end
     else if not MatchText(Candidate.Name, Names) then
+    begin
       Kept := Kept + [Candidate];
+    end;
+  end;
   ACandidates := Kept;
   for Index := 0 to High(Calls) do
   begin
     Score := MatchScore(Calls[Index].Name, AContext.Prefix, ARequest.Matching);
     if Score = TFuzzyMatch.NoMatch then
+    begin
       Continue;
+    end;
     Item := Default(TCompletionItem);
     Item.Name := Calls[Index].Text;
     Item.FilterText := Calls[Index].Name;
     Item.Detail := Calls[Index].Container;
     if Current.Kind = 'constructor' then
-      Item.Kind := KindConstructor
+    begin
+      Item.Kind := KindConstructor;
+    end
     else
+    begin
       Item.Kind := KindMethod;
+    end;
     Item.Container := Calls[Index].Container;
     Item.Depth := Calls[Index].Depth;
     Item.InheritedMatch := TCompletionInherited.MatchNames[Calls[Index].Match];
     Item.InheritedAbstract := Abstract_;
     Text := Calls[Index].Text;
     if Trim(After) = '' then
+    begin
       Text := Text + ';';
+    end;
     Item.HasTextEdit := True;
     if WithResult then
     begin
@@ -1711,9 +1921,11 @@ begin
         ARequest.Position.Character), 'Result := inherited ' + Text);
     end
     else
+    begin
       Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line,
         ARequest.Position.Character - Length(AContext.Prefix), ARequest.Position.Line,
         ARequest.Position.Character), Text);
+    end;
     ACollector.AddItem(Item, Score + CallBonus - Index);
   end;
 end;
@@ -1726,16 +1938,24 @@ var
 begin
   Result := nil;
   if AContext.Prefix = '' then
+  begin
     Exit;
+  end;
   if AContext.Filter = TCompletionFilter.Types then
   begin
     if not AContext.TypeKeywords then
+    begin
       Exit;
+    end;
     for Word in TypeKeywords do
+    begin
       Result := Result + [Word];
+    end;
   end
   else
+  begin
     Result := TLspCompletion.Keywords(AContext.Place);
+  end;
 end;
 
 class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -1766,11 +1986,19 @@ var
 begin
   Result := nil;
   for Name in TCompletionExceptions.CommonNames do
+  begin
     Result := Result + [Name];
+  end;
   if TCompletionExceptions.SiteAt(ARequest.Tree.Tokens, AContext.ExceptionToken, Site) then
+  begin
     for Name in TCompletionExceptions.TryClasses(ARequest, Site, Units) do
+    begin
       if IndexText(Name, Result) < 0 then
+      begin
         Result := Result + [Name];
+      end;
+    end;
+  end;
 end;
 
 class function TLspCompletion.Collect(ARequest: TCompletionRequest; const APostfix: TPostfixOptions;
@@ -1796,6 +2024,7 @@ begin
   begin
     Context.Generic := False;
     for Candidate in ARequest.Resolver.ResolveAll(ARequest.Tree, ARequest.FileName, Context.GenericOwnerPos) do
+    begin
       if Candidate.IsType and (Candidate.TypeParams <> '') then
       begin
         GenericOwner := Candidate;
@@ -1805,9 +2034,12 @@ begin
         OnPartial := nil;
         Break;
       end;
+    end;
   end
   else
+  begin
     Context.Generic := False;
+  end;
   // Attribute (#465): erst die ganze Liste filtern und sortieren, deshalb nicht gestaffelt.
   if Context.Attribute and not ARequest.Settings.Attributes then
   begin
@@ -1815,7 +2047,9 @@ begin
     Context.Filter := TCompletionFilter.Any;
   end;
   if Context.Attribute then
+  begin
     OnPartial := nil;
+  end;
   // Exception-Klassen (#483): ebenso erst die ganze Liste; aus: die gewöhnliche Liste.
   if Context.Exceptions and not ARequest.Settings.ExceptionClasses then
   begin
@@ -1823,35 +2057,55 @@ begin
     Context.Filter := TCompletionFilter.Any;
   end;
   if Context.Exceptions then
+  begin
     OnPartial := nil;
+  end;
   // Diagnoselog (#647): nur Art und Längen, nie die Namen selbst.
   TRequestDiagnostics.Note('ctx', ContextCodes[Context.Kind]);
   TRequestDiagnostics.Note('prefixLen', Length(Context.Prefix));
   if Context.Kind = TCompletionContextKind.Member then
-    TRequestDiagnostics.Note('chainLen', Length(Context.Names))
+  begin
+    TRequestDiagnostics.Note('chainLen', Length(Context.Names));
+  end
   else if Context.Kind = TCompletionContextKind.None then
+  begin
     TRequestDiagnostics.Reason('noContext');
+  end;
   Expected := '';
   if Context.Kind in [TCompletionContextKind.Member, TCompletionContextKind.Scope] then
+  begin
     Expected := ExpectedType(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ARequest.Position);
+  end;
   // Viele Auflösungen auf demselben Baum: einmal auswerten (Code-Review P-02). Hat Handle den Baum schon
   // gepinnt, zählt das nur hoch.
   if ARequest.Tree <> nil then
+  begin
     ARequest.Resolver.PinTree(ARequest.Tree, ARequest.FileName);
+  end;
   Collector := TCompletionCollector.Create(ARequest, Context, Expected, OnPartial);
   try
     if Context.Attribute then
+    begin
       Collector.SetAdmit(TCompletionAttributes.Admit(ARequest.Resolver));
+    end;
     if Context.Exceptions then
+    begin
       Collector.SetAdmit(TCompletionExceptions.Admit(ARequest.Resolver));
+    end;
     case Context.Kind of
       TCompletionContextKind.UsesClause:
         // Gruppen, Hinweise und Zirkelbezüge (#469); aus: alle Units als schlichte Liste.
         if ARequest.Settings.UsesDetails then
-          TCompletionUses.Collect(ARequest, Context, Collector)
+        begin
+          TCompletionUses.Collect(ARequest, Context, Collector);
+        end
         else
+        begin
           for UnitInfo in ARequest.Index.Units do
+          begin
             Collector.Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule, Default(TResolvedSymbol));
+          end;
+        end;
       TCompletionContextKind.Member, TCompletionContextKind.Scope:
         begin
           // Nur passende Namen aufbauen (#616); ohne Eingabe passt ohnehin alles. Der Filter gilt nur beim
@@ -1883,7 +2137,9 @@ begin
             end;
             // Vollständiger Aufruf mit den eigenen Parametern zuerst (#482).
             if ARequest.Settings.InheritedCall then
+            begin
               AddInheritedCalls(ARequest, Context, Collector, Candidates);
+            end;
             Collector.AddCandidates(Candidates);
           end
           else
@@ -1916,36 +2172,52 @@ begin
             // Danach die nicht eingebundenen Units.
             Collector.SendStage;
             if Length(Context.Prefix) >= MinImportPrefix then
-              Collector.AddFromOtherUnits
+            begin
+              Collector.AddFromOtherUnits;
+            end
             else if Context.Attribute then
+            begin
               // Bekannte Attribute (DUnitX, JSON) schon nach "[" mit uses-Eintrag (#465).
-              Collector.AddFromOtherUnits(TCompletionAttributes.KnownClassNames)
+              Collector.AddFromOtherUnits(TCompletionAttributes.KnownClassNames);
+            end
             else if Context.Exceptions then
+            begin
               // Gängige Exception-Klassen schon nach "raise " bzw. "on E: " mit uses-Eintrag (#483).
               Collector.AddFromOtherUnits(ExceptionImportNames(ARequest, Context));
+            end;
             Collector.AddUnavailable;
             Collector.AddKeywords(KeywordsAt(Context));
           end;
           // Postfix-Vorlagen stehen immer hinter den echten Mitgliedern.
           if (Context.Kind = TCompletionContextKind.Member) and APostfix.Enabled and (ARequest.Text <> '') then
+          begin
             Postfix := PostfixItems(ARequest, Context, Candidates, APostfix);
+          end;
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
     Result.Items := Collector.Finish(Result.Incomplete);
     if Context.Generic then
+    begin
       Result.Items := TCompletionGenerics.Apply(ARequest, Context, GenericOwner, Result.Items);
+    end;
     if Context.Attribute then
+    begin
       Result.Items := TCompletionAttributes.Apply(ARequest, Context, Result.Items);
+    end;
     if Context.Exceptions then
+    begin
       // Platzhalter wie bei den Postfix-Vorlagen nach snippetSupport des Clients.
       Result.Items := TCompletionExceptions.Apply(ARequest, Context, APostfix.Snippet, Result.Items);
+    end;
     Result.Items := Result.Items + Postfix;
   finally
     Collector.Free;
     if ARequest.Tree <> nil then
+    begin
       ARequest.Resolver.UnpinTree;
+    end;
   end;
 end;
 
@@ -1970,11 +2242,13 @@ begin
   SetLength(Result, Length(AItems));
   Count := 0;
   for Item in AItems do
+  begin
     if Item.Kind <> KindKeyword then
     begin
       Result[Count] := Item;
       Inc(Count);
     end;
+  end;
   SetLength(Result, Count);
 end;
 
@@ -1986,20 +2260,26 @@ var
   Count: Integer;
 begin
   if Length(ANames) = 0 then
+  begin
     Exit(AItems);
+  end;
   Names := TDictionary<string, Boolean>.Create;
   try
     for Item in ANames do
+    begin
       Names.AddOrSetValue(LowerCase(Item.Name), True);
+    end;
     Result := nil;
     SetLength(Result, Length(AItems));
     Count := 0;
     for Item in AItems do
+    begin
       if not Names.ContainsKey(LowerCase(Item.Name)) then
       begin
         Result[Count] := Item;
         Inc(Count);
       end;
+    end;
     SetLength(Result, Count);
   finally
     Names.Free;
@@ -2013,8 +2293,12 @@ var
   Step: TCompletionCase;
 begin
   for Step in ACases do
+  begin
     if Step(ARequest, AAnswer) = TCompletionOutcome.Answered then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -2034,10 +2318,14 @@ begin
   Tokens := ARequest.Tree.Tokens;
   Index := 0;
   while (Index <= High(Tokens)) and (ComparePositions(Tokens[Index].EndPos, ARequest.Position) < 0) do
+  begin
     Inc(Index);
+  end;
   if (Index > High(Tokens)) or not Tokens[Index].IsKeyword('with') or
     (ComparePositions(Tokens[Index].StartPos, ARequest.Position) > 0) or not AWithFor(ARequest, Edits) then
+  begin
     Exit;
+  end;
   AItem.Name := 'with auflösen';
   AItem.Kind := KindSnippet;
   AItem.Detail := 'Atlas';
@@ -2048,6 +2336,7 @@ begin
   AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos), '');
   Found := False;
   for Edit in Edits do
+  begin
     if (Edit.Range.StartPos.Line = Tokens[Index].StartPos.Line) and
       (Edit.Range.StartPos.Character = Tokens[Index].StartPos.Character) then
     begin
@@ -2056,7 +2345,10 @@ begin
       Found := True;
     end
     else
+    begin
       AItem.AdditionalEdits := AItem.AdditionalEdits + [Edit];
+    end;
+  end;
   Result := Found;
 end;
 
@@ -2070,7 +2362,9 @@ begin
   AItem := Default(TCompletionItem);
   Result := TDocComments.AdjustBlock(ARequest.Text, ARequest.Tree, ARequest.Position.Line, Action);
   if not Result then
+  begin
     Exit;
+  end;
   AItem.Name := Action.Title;
   AItem.Kind := KindSnippet;
   AItem.Detail := 'Atlas';
@@ -2097,7 +2391,9 @@ begin
   Result := False;
   if (ARequest.Tree = nil) or not TCreateMethod.Site(ARequest.Tree.Tokens, ARequest.Position, Site) or
     not ACreateFor(ARequest, Title, Detail, Edits) then
+  begin
     Exit;
+  end;
   AItem.Name := Title;
   AItem.Kind := KindMethod;
   AItem.Detail := Detail;
@@ -2107,11 +2403,17 @@ begin
   AItem.Unknown := Site.Name;
   AItem.HasTextEdit := True;
   if ARequest.Trigger = '(' then
-    AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '')
+  begin
+    AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
+  end
   else
+  begin
     AItem.TextEdit := TRuleEdit.Create(Site.NameRange, Site.Name);
+  end;
   for Edit in Edits do
+  begin
     AItem.AdditionalEdits := AItem.AdditionalEdits + [Edit];
+  end;
   Result := True;
 end;
 
@@ -2123,17 +2425,23 @@ var
 begin
   Result := '';
   if AIndex = nil then
+  begin
     Exit;
+  end;
   Count := Default(TNamingCount);
   Units := AIndex.Units;
   for Index := 0 to High(Units) do
+  begin
     if not Units[Index].Library_ then
     begin
       Inc(Count.Total, Units[Index].Naming[AKind].Total);
       Inc(Count.Prefixed, Units[Index].Naming[AKind].Prefixed);
     end;
+  end;
   if TNameSuggestions.UsesPrefix(Count) then
+  begin
     Result := NamingPrefixes[AKind];
+  end;
 end;
 
 /// <summary>Namen, die an der Namensposition ASite schon vergeben sind: sichtbare Namen (lokal, eigene Klasse,
@@ -2151,51 +2459,85 @@ begin
   Result := nil;
   Own := '';
   if ComparePositions(ASite.NameRange.StartPos, ASite.NameRange.EndPos) <> 0 then
+  begin
     Own := Copy(ARequest.LineText(ASite.NameRange.StartPos.Line), ASite.NameRange.StartPos.Character + 1,
       ASite.NameRange.EndPos.Character - ASite.NameRange.StartPos.Character);
+  end;
   if ARequest.Resolver <> nil then
+  begin
     for Candidate in ARequest.Resolver.OwnScopeCandidates(ARequest.Tree, ARequest.FileName, ASite.Offset) do
+    begin
       Result := Result + [Candidate.Name];
+    end;
+  end;
   Node := ARequest.Tree.Root;
   while Node <> nil do
   begin
     Child := nil;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (Node[Index].StartOffset <= ASite.Offset) and (ASite.Offset <= Node[Index].EndOffset) then
+      begin
         Child := Node[Index];
+      end;
+    end;
     if Child = nil then
+    begin
       Break;
+    end;
     Node := Child;
   end;
   if ASite.Kind = TNamingKind.Parameter then
   begin
     while (Node <> nil) and (Node.Kind <> TSyntaxKind.Parameters) do
+    begin
       Node := Node.Parent;
+    end;
     if Node <> nil then
+    begin
       for Index := 0 to Node.ChildCount - 1 do
+      begin
         for Name in Node[Index].Name.Split([',']) do
+        begin
           if Trim(Name) <> '' then
+          begin
             Result := Result + [Trim(Name)];
+          end;
+        end;
+      end;
+    end;
   end
   else if (ASite.Kind = TNamingKind.Field) and not ASite.Global then
   begin
     while (Node <> nil) and not (Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
       TSyntaxKind.RecordType, TSyntaxKind.HelperType]) do
+    begin
       Node := Node.Parent;
+    end;
     if (Node <> nil) and (Node.Parent <> nil) then
     begin
       Container := Node.Parent.Name;
       for Symbol in ARequest.UnitIndex.Symbols do
+      begin
         if (Symbol.Container <> '') and SameText(Symbol.Container.Substring(Symbol.Container.LastIndexOf('.') + 1),
           Container) then
+        begin
           Result := Result + [Symbol.Name];
+        end;
+      end;
     end;
   end;
   if Own = '' then
+  begin
     Exit;
+  end;
   for Index := High(Result) downto 0 do
+  begin
     if SameText(Result[Index], Own) then
+    begin
       Delete(Result, Index, 1);
+    end;
+  end;
 end;
 
 class function TLspCompletion.NameItems(ARequest: TCompletionRequest; const ANamingFor: TCompletionNamingFunc;
@@ -2209,21 +2551,33 @@ begin
   Result := False;
   if not ARequest.Settings.NameSuggestions or (ARequest.Tree = nil) or
     not TNameSuggestions.Site(ARequest.Tree, ARequest.Position, Site) then
+  begin
     Exit;
+  end;
   if Site.Global then
-    Prefix := ''
+  begin
+    Prefix := '';
+  end
   else if Assigned(ANamingFor) then
-    Prefix := ANamingFor(ARequest.Uri, Site.Kind)
+  begin
+    Prefix := ANamingFor(ARequest.Uri, Site.Kind);
+  end
   else
+  begin
     Prefix := NamingPrefix(ARequest.Index, Site.Kind);
+  end;
   for Name in TNameSuggestions.Suggest(Site.TypeText, Prefix, TakenNames(ARequest, Site)) do
   begin
     Item := Default(TCompletionItem);
     Item.Name := Name;
     if Site.Kind = TNamingKind.Field then
-      Item.Kind := KindField
+    begin
+      Item.Kind := KindField;
+    end
     else
+    begin
       Item.Kind := KindVariable;
+    end;
     Item.Detail := Site.TypeText;
     Item.Fits := True;
     Item.HasTextEdit := True;
@@ -2253,7 +2607,9 @@ begin
       Disabled := nil;
       if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(ARequest.Uri, Disabled)) and
         SlashItems(ARequest, Disabled, FRuleIdsFor, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   AddCase(FTextCases,
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
@@ -2263,13 +2619,17 @@ begin
       Result := TCompletionOutcome.Next;
       Context := TConditionalContext.Default;
       if Assigned(FSymbolsFor) then
+      begin
         Context := FSymbolsFor(ARequest.Uri);
+      end;
       if SymbolItems(ARequest, Context, AAnswer.Exclusive) or DirectiveItems(ARequest, AAnswer.Exclusive) then
       begin
         Result := TCompletionOutcome.Answered;
         // Abgeschaltet (directives.completion): in der Direktive gar nichts, auch nicht die übrige Liste.
         if not Context.CompletionEnabled then
+        begin
           AAnswer.Exclusive := Default(TCompletionItems);
+        end;
       end;
     end);
   AddCase(FTextCases,
@@ -2277,7 +2637,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if DataNameItems(ARequest, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   // Platzhalter in Wertdarstellungen (#854): in // atlas-debug: bzw. [AtlasDebugDisplay] nur die Mitglieder des Typs.
   AddCase(FTextCases,
@@ -2285,7 +2647,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if TCompletionDebugDisplay.Items(ARequest, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   // Mit Baum und Resolver, in dieser Reihenfolge.
   // „Parameter abgleichen“ (#88): Strg+Leer in einem ///-Block, dessen Routine andere Parameter hat; dann nur
@@ -2309,7 +2673,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if ResourceStringItems(ARequest, FSnippetSupport, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   // Freigabe absichern (#489): Das Plugin fragt nach dem ";" bzw. dem Zeilenende (#10) hinter einem
   // übernommenen Konstruktor mit diesem Auslöser; dann gibt es nur dieses Angebot oder nichts.
@@ -2318,10 +2684,14 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if (ARequest.Trigger <> ';') and (ARequest.Trigger <> #10) then
+      begin
         Exit;
+      end;
       if not (ARequest.Settings.OfferTryFinally and GuardItems(ARequest, ARequest.Trigger = #10,
         AAnswer.Exclusive)) then
+      begin
         AAnswer.Exclusive := Default(TCompletionItems);
+      end;
       Result := TCompletionOutcome.Answered;
     end);
   // Anonyme Methoden (#468): Erwartet das Argument einen Methodenreferenztyp, nach "(" nur das Gerüst (dort
@@ -2333,7 +2703,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if not AnonymousItem(ARequest, FSnippetSupport, FNamingFor, Item) then
+      begin
         Exit;
+      end;
       if ARequest.Trigger = '(' then
       begin
         AAnswer.Exclusive := Default(TCompletionItems);
@@ -2356,11 +2728,15 @@ begin
       begin
         AAnswer.Exclusive := Default(TCompletionItems);
         if Found then
+        begin
           AAnswer.Exclusive.Items := [Item];
+        end;
         Result := TCompletionOutcome.Answered;
       end
       else if Found then
+      begin
         AAnswer.Hints := AAnswer.Hints + [Item];
+      end;
     end);
   // with auflösen (#50): auf dem Wort with oben in der Liste, die übrige Liste bleibt.
   AddCase(FTreeCases,
@@ -2370,7 +2746,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if Assigned(FWithFor) and WithItem(ARequest, FWithFor, Item) then
+      begin
         AAnswer.Hints := AAnswer.Hints + [Item];
+      end;
     end);
   // Alle Felder zuweisen (#491): hinter "Ausdruck." am Anweisungsanfang ganz oben, die übrige Liste bleibt.
   AddCase(FTreeCases,
@@ -2380,7 +2758,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if AssignAllItem(ARequest, FSnippetSupport, Item) then
+      begin
         AAnswer.Hints := AAnswer.Hints + [Item];
+      end;
     end);
   // Namensvorschläge (#452): an der Namensposition einer Deklaration mit bekanntem Typ nur die Namen.
   AddCase(FTreeCases,
@@ -2388,7 +2768,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if NameItems(ARequest, FNamingFor, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   // Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.
   AddCase(FTreeCases,
@@ -2396,7 +2778,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if OverrideItems(ARequest, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   // Property-Zugriffe (#31): nach read bzw. write nur passende Felder und Methoden.
   AddCase(FTreeCases,
@@ -2404,7 +2788,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if PropertyItems(ARequest, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   // Ereignis-Zuweisung (#444).
   AddCase(FTreeCases,
@@ -2412,7 +2798,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if EventItems(ARequest, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   // Interface implementieren (#466): auf leerer Zeile der Klasse nur die fehlenden Methoden mit
   // Kontrollkästchen; bei angefangenem Wort ein Hinweis oben in der normalen Liste.
@@ -2424,7 +2812,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if not InterfaceItems(ARequest, Items, Batch) then
+      begin
         Exit;
+      end;
       if Batch then
       begin
         AAnswer.Exclusive := Default(TCompletionItems);
@@ -2444,12 +2834,16 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if EnumItems(ARequest, Items, SetMode) then
+      begin
         AAnswer.Prefetched := Items;
+      end;
       if SetMode or (ARequest.Trigger = '[') then
       begin
         AAnswer.Exclusive := Default(TCompletionItems);
         if SetMode then
+        begin
           AAnswer.Exclusive.Items := AAnswer.Prefetched;
+        end;
         Result := TCompletionOutcome.Answered;
       end;
     end);
@@ -2461,7 +2855,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if ComponentItemsFromForm(ARequest, AAnswer.Forms, Items) then
+      begin
         AAnswer.Prefetched := AAnswer.Prefetched + Items;
+      end;
     end);
   // Postfix-Vorlagen je Dokument; gestaffelt (#616), wenn der Client einen partialResultToken mitschickt:
   // Teilergebnisse als $/progress mit CompletionItem[], die vorab bestimmten Einträge zuerst, der Rest in
@@ -2474,13 +2870,19 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if Assigned(FPostfixFor) then
-        AAnswer.Postfix := FPostfixFor(ARequest.Uri)
+      begin
+        AAnswer.Postfix := FPostfixFor(ARequest.Uri);
+      end
       else
+      begin
         AAnswer.Postfix := TPostfixOptions.Default;
+      end;
       AAnswer.Postfix.Snippet := FSnippetSupport;
       AAnswer.Postfix.Custom := CustomPostfix;
       if AAnswer.Token = '' then
+      begin
         Exit;
+      end;
       Notify := FNotify;
       AAnswer.Partial :=
         procedure(const AItems: TArray<TCompletionItem>)
@@ -2492,7 +2894,9 @@ begin
           // Die vorab bestimmten Einträge kamen schon (#448).
           Items := WithoutNames(AItems, AAnswer.Prefetched);
           if Length(Items) = 0 then
+          begin
             Exit;
+          end;
           Progress := TJSONObject.Create;
           Progress.AddPair('token', AAnswer.Token);
           Progress.AddPair('value', ToJson(Items, AAnswer.SentCount));
@@ -2514,7 +2918,9 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if SenderItemsFromForm(ARequest, AAnswer.Forms, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+      end;
     end);
   // Die allgemeine Liste ohne die vorab bestimmten Namen; Schlüsselwörter abschaltbar (#31,
   // completion.keywords).
@@ -2527,7 +2933,9 @@ begin
       Collected := Collect(ARequest, AAnswer.Postfix, AAnswer.Partial);
       AAnswer.Body := WithoutNames(Collected.Items, AAnswer.Prefetched);
       if not ARequest.Settings.Keywords then
+      begin
         AAnswer.Body := WithoutKeywords(AAnswer.Body);
+      end;
       AAnswer.Incomplete := Collected.Incomplete;
     end);
   // Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.
@@ -2561,8 +2969,10 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen');
+  end;
   if not FStore.TryGet(Uri, Document) then
   begin
     TRequestDiagnostics.Reason('documentNotOpen');
@@ -2606,7 +3016,9 @@ begin
     Request.ReadText := FReadText;
     Trigger := '';
     if AParams <> nil then
+    begin
       AParams.TryGetValue<string>('context.triggerCharacter', Trigger);
+    end;
     Request.Trigger := Trigger;
     Answer.Cancellation := ACancellation;
     // Formulare über den Zwischenspeicher der Instanz (Code-Review P-06).
@@ -2616,9 +3028,13 @@ begin
         Result := FormSnapshot(ASourceFile, ASourceText, ASnapshot);
       end;
     if Assigned(FNotify) and (AParams <> nil) and (AParams.GetValue('partialResultToken') is TJSONString) then
+    begin
       Answer.Token := TJSONString(AParams.GetValue('partialResultToken')).Value;
+    end;
     if RunCases(FTextCases, Request, Answer) then
+    begin
       Exit(ToJson(Answer.Exclusive));
+    end;
     Shared := TSyntaxTreeCache.Get(Document, Cancellation);
     Request.Tree := Shared.Tree;
     ACancellation.ThrowIfCancellationRequested;
@@ -2633,33 +3049,51 @@ begin
       Resolver.PinTree(Request.Tree, Request.FileName);
       try
         if Assigned(FSettingsFor) then
-          Request.Settings := FSettingsFor(Uri)
+        begin
+          Request.Settings := FSettingsFor(Uri);
+        end
         else
+        begin
           Request.Settings := TCompletionSettings.Default;
+        end;
         if Assigned(FMatchingFor) then
-          Request.Matching := FMatchingFor(Uri)
+        begin
+          Request.Matching := FMatchingFor(Uri);
+        end
         else
+        begin
           Request.Matching := TCompletionMatching.Fuzzy;
+        end;
         if RunCases(FTreeCases, Request, Answer) then
+        begin
           Exit(ToJson(Answer.Exclusive));
+        end;
         // Hinweise oben, die vorab gesendeten Einträge nur ohne Staffelung in der Antwort.
         Items := Answer.Hints;
         if Answer.Token = '' then
+        begin
           Items := Items + Answer.Prefetched;
+        end;
         Items := Items + Answer.Body + Answer.Tail;
         Result := CompletionListToJson(Items, Answer.Incomplete, Answer.SentCount);
         // Hinweis bei unvollständigem Code (#457): Syntaxfehler vor dem Cursor in der aktuellen Routine.
         if Request.Settings.SyntaxNotice then
+        begin
           TCompletionSyntax.WriteJson(Result as TJSONObject, TCompletionSyntax.Assess(Request.Tree, Request.Text, Request.Position,
             Answer.SentCount + Length(Items)));
+        end;
         // Vorab als $/progress gesendete Einträge zählen mit (#616).
         TRequestDiagnostics.ResultCount(Answer.SentCount + Length(Items));
         if Answer.SentCount + Length(Items) = 0 then
+        begin
           TRequestDiagnostics.DefaultReason('noCandidates');
+        end;
         if Assigned(FLog) then
+        begin
           FLog(Format('completion: %d Einträge (%d vorab), unvollständig %s, Baum %d ms, gesamt %d ms',
             [Answer.SentCount + Length(Items), Answer.SentCount, BoolToStr(Answer.Incomplete, True), ParseMs,
             Watch.ElapsedMilliseconds]));
+        end;
       finally
         Resolver.UnpinTree;
       end;
@@ -2692,8 +3126,12 @@ var
 begin
   Result := AText.Split([#10]);
   for Index := 0 to High(Result) do
+  begin
     if Result[Index].EndsWith(#13) then
+    begin
       Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+    end;
+  end;
 end;
 
 /// <summary>Deklaration von ARange; über mehr als MaxLines Zeilen (Klassen, Records) nur die erste.</summary>
@@ -2721,9 +3159,13 @@ begin
   begin
     ALines := nil;
     if SameText(AFileName, AOwnFile) then
-      ALines := TextLines(AText)
+    begin
+      ALines := TextLines(AText);
+    end
     else if Assigned(AReadText) and AReadText(AFileName, Source) then
+    begin
       ALines := TextLines(Source);
+    end;
     // nil steht für "nicht lesbar"; TextLines liefert sonst mindestens eine Zeile.
     ACache.Add(Key, ALines);
   end;
@@ -2765,9 +3207,13 @@ begin
     begin
       Quote := PosEx('''', ADeclaration, Index + 1);
       if Quote = 0 then
+      begin
         Quote := Length(ADeclaration);
+      end;
       if EndsText('deprecated', TrimRight(Text)) then
+      begin
         ADeprecated := Copy(ADeclaration, Index + 1, Quote - Index - 1);
+      end;
       Text := Text + ' ';
       Index := Quote + 1;
       Continue;
@@ -2778,25 +3224,37 @@ begin
   Words := nil;
   Start := 0;
   for Index := 1 to Length(Text) + 1 do
+  begin
     if (Index > Length(Text)) or not CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
     begin
       if Index - 1 > Start then
+      begin
         Words := Words + [LowerCase(Copy(Text, Start + 1, Index - 1 - Start))];
+      end;
       Start := Index;
     end;
+  end;
   // "class" nur am Anfang (class function), sonst wäre jeder Klassentyp eine Klassenmethode.
   for Index := 0 to High(Words) do
   begin
     Word := Words[Index];
     if not MatchStr(Word, Known) or ((Word = 'class') and (Index > 0)) then
+    begin
       Continue;
+    end;
     if (Word = 'class') and ((High(Words) < 1) or not MatchStr(Words[1], ['function', 'procedure', 'property',
       'operator', 'constructor', 'destructor', 'var'])) then
+    begin
       Continue;
+    end;
     if Word = 'deprecated' then
+    begin
       AIsDeprecated := True;
+    end;
     if IndexStr(Word, Result) < 0 then
+    begin
       Result := Result + [Word];
+    end;
   end;
 end;
 
@@ -2833,6 +3291,7 @@ begin
   begin
     Result.AddPair('unit', UnitInfo.UnitName);
     for Candidate in UnitInfo.Symbols do
+    begin
       if (Candidate.SelectionRange.StartPos.Line = APosition.Line) and
         (Candidate.SelectionRange.StartPos.Character = APosition.Character) and
         SameText(UnitInfo.SymbolFile(Candidate), AFileName) then
@@ -2841,9 +3300,12 @@ begin
         Found := True;
         Break;
       end;
+    end;
   end;
   if Found then
-    Range := Symbol.Range
+  begin
+    Range := Symbol.Range;
+  end
   else
   begin
     // Nicht im Index (lokale Variable, Parameter): die Zeile ab dem Namen.
@@ -2852,37 +3314,49 @@ begin
   end;
   Declaration := DeclarationOf(Lines, Range);
   if Declaration <> '' then
+  begin
     Result.AddPair('declaration', Declaration);
+  end;
   if Found and (Symbol.Container <> '') then
   begin
     Result.AddPair('container', Symbol.Container);
     Result.AddPair('visibility', VisibilityText(Symbol.Visibility));
     // Mitglied eines Helpers (#456): Das Panel zeigt dann „Helper · Unit“.
     for Candidate in UnitInfo.Symbols do
+    begin
       if (Candidate.Kind = TIndexSymbolKind.HelperType) and SameText(Candidate.QualifiedName, Symbol.Container) then
       begin
         Result.AddPair('helper', TJSONBool.Create(True));
         Break;
       end;
+    end;
   end;
   Directives := DirectivesOf(Declaration, Deprecated, IsDeprecated);
   if Length(Directives) > 0 then
   begin
     List := TJSONArray.Create;
     for Directive in Directives do
+    begin
       List.Add(Directive);
+    end;
     Result.AddPair('directives', List);
   end;
   if IsDeprecated then
+  begin
     Result.AddPair('deprecated', Deprecated);
+  end;
   // XMLDoc wie im Hover (#654): mit <inheritdoc/> und den Fundorten der cref-Verweise.
   Resolver := TNameResolver.Create(AIndex);
   try
     if Found then
+    begin
       Doc := TLspDocumentation.Load(Resolver, Resolver.SymbolFrom(UnitInfo, Symbol), Lines, Range.StartPos.Line,
-        TLspDocumentation.Reader(AFileName, AText, AReadText))
+        TLspDocumentation.Reader(AFileName, AText, AReadText));
+    end
     else
+    begin
       Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, Range.StartPos.Line));
+    end;
     if not Doc.IsEmpty then
     begin
       Container := '';
@@ -2890,12 +3364,16 @@ begin
       begin
         Container := Symbol.Container;
         if Container = '' then
+        begin
           Container := Symbol.Name;
+        end;
         Result.AddPair('documentation', TLspDocumentation.ToJson(Doc,
           TLspDocumentation.Targets(Resolver, UnitInfo, Container, Doc)));
       end
       else
+      begin
         Result.AddPair('documentation', TLspDocumentation.ToJson(Doc, nil));
+      end;
       Result.AddPair('documentationText', Doc.ToPlainText);
       // Nur für documentation in completionItem/resolve; HandleResolve nimmt es wieder heraus.
       Result.AddPair('documentationMarkdown', Doc.ToMarkdown);
@@ -2904,11 +3382,17 @@ begin
     Resolver.Free;
   end;
   if Doc.Summary <> '' then
+  begin
     Result.AddPair('summary', Doc.Summary);
+  end;
   if Doc.Returns <> '' then
+  begin
     Result.AddPair('returns', Doc.Returns);
+  end;
   if Doc.Remarks <> '' then
+  begin
     Result.AddPair('remarks', Doc.Remarks);
+  end;
   if Length(Doc.Params) > 0 then
   begin
     List := TJSONArray.Create;
@@ -2945,24 +3429,36 @@ var
   Bindings: TArray<string>;
 begin
   if not (AParams is TJSONObject) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'CompletionItem fehlt in ' + ResolveMethod);
+  end;
   // Antwort ist der Eintrag selbst, ergänzt um Details; ohne data unverändert.
   Item := TJSONObject(AParams.Clone);
   Result := Item;
   if not (Item.GetValue('data') is TJSONObject) or not Assigned(FReadText) then
+  begin
     Exit;
+  end;
   Data := TJSONObject(Item.GetValue('data'));
   if not (Data.TryGetValue<string>('file', FileName) and Data.TryGetValue<Integer>('line', Position.Line) and
     Data.TryGetValue<Integer>('character', Position.Character)) then
+  begin
     Exit;
+  end;
   if not ReadCached(FileName, Text) then
+  begin
     Exit;
+  end;
   Details := TLspCompletion.Details(FIndex, FileName, Text, Position, ReadCached);
   // Gebundene Typparameter (#450): "procedure Add(const Value: T)" wird zu "... Value: TKunde)".
   Bindings := nil;
   if Data.GetValue('bindings') is TJSONArray then
+  begin
     for Binding in TJSONArray(Data.GetValue('bindings')) do
+    begin
       Bindings := Bindings + [Binding.Value];
+    end;
+  end;
   if (Length(Bindings) > 0) and Details.TryGetValue<string>('declaration', Text) then
   begin
     Details.RemovePair('declaration').Free;
@@ -2977,10 +3473,14 @@ begin
   // Doku als Klartext oder Markdown, je nach documentationFormat des Clients (#31).
   Documentation := ResolveDocumentation(Details, FDocumentationMarkdown);
   if Documentation <> nil then
+  begin
     Item.AddPair('documentation', Documentation);
+  end;
   Details.RemovePair('documentationMarkdown').Free;
   if Assigned(FHintsFor) then
+  begin
     Details.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHintsFor(TDocumentUris.FromPath(FileName))));
+  end;
   Data.AddPair('atlas', Details);
 end;
 
@@ -2994,19 +3494,31 @@ begin
   Open := Pos('(', AHead);
   Close := LastDelimiter(')', AHead);
   if (Open = 0) or (Close <= Open) then
+  begin
     Exit;
+  end;
   for Group in Copy(AHead, Open + 1, Close - Open - 1).Split([';']) do
   begin
     Names := Group;
     if Pos(':', Names) > 0 then
+    begin
       Names := Copy(Names, 1, Pos(':', Names) - 1);
+    end;
     Names := Trim(Names);
     for Name in ['const ', 'var ', 'out ', 'constref '] do
+    begin
       if StartsText(Name, Names) then
+      begin
         Names := Trim(Copy(Names, Length(Name) + 1, MaxInt));
+      end;
+    end;
     for Name in Names.Split([',']) do
+    begin
       if Trim(Name) <> '' then
+      begin
         Result := Result + [Trim(Name)];
+      end;
+    end;
   end;
 end;
 
@@ -3027,10 +3539,14 @@ begin
   ATypeName := '';
   Kinds := [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
   if ARecords then
+  begin
     Include(Kinds, TIndexSymbolKind.RecordType);
+  end;
   Result := EnclosingTypeAt(AUnit, ALine, Kinds, 0, True, TypeSymbol);
   if Result then
+  begin
     ATypeName := QualifiedTypeName(TypeSymbol);
+  end;
 end;
 
 class function TLspCompletion.PropertyItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
@@ -3072,14 +3588,20 @@ begin
   if not ARequest.Settings.ResourceStrings or (ARequest.Trigger <> '') or (ARequest.Tree = nil) or
     not TResourceStrings.LiteralAt(ARequest.Text, ARequest.Tree.Tokens, ARequest.Position, Literal) or
     not TResourceStrings.Allowed(ARequest.Tree, Literal.StartOffset) then
+  begin
     Exit;
+  end;
   LB := ARequest.LineBreak;
   Entries := TResourceStrings.Entries(ARequest.Text, ARequest.Tree.Tokens);
   Taken := nil;
   for Symbol in ARequest.UnitIndex.Symbols do
+  begin
     Taken := Taken + [Symbol.Name];
+  end;
   for Existing in Entries do
+  begin
     Taken := Taken + [Existing.Name];
+  end;
   // Festgelegte Unit (completion.resourceStringUnit): nur wenn der Index sie kennt und sie lesbar ist.
   HasTarget := False;
   TargetText := '';
@@ -3092,20 +3614,30 @@ begin
     HasTarget := True;
     TargetEntries := TResourceStrings.Entries(TargetText, TPascalLexer.Tokenize(TargetText));
     for Symbol in Target.Symbols do
+    begin
       Taken := Taken + [Symbol.Name];
+    end;
     for Existing in TargetEntries do
+    begin
       Taken := Taken + [Existing.Name];
+    end;
     if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ARequest.Tree.Tokens), Target.UnitName,
       ARequest.Resolver.Namespaces) and TUsesClauses.AddUnit(ARequest.Tree.Tokens, Literal.StartOffset,
       Target.UnitName, LB, UsesEdit) then
+    begin
       UsesEdits := [UsesEdit];
+    end;
     HasExisting := TResourceStrings.SameText(TargetEntries, Literal.Text, True, -1, Existing);
   end
   else
+  begin
     HasExisting := TResourceStrings.SameText(Entries, Literal.Text, False, Literal.Range.StartPos.Line, Existing);
+  end;
   Range := Literal.Source;
   if Length(Range) > 40 then
+  begin
     Range := Copy(Range, 1, 39) + '…';
+  end;
   // Gleicher Text schon vorhanden: zuerst diesen verwenden.
   if HasExisting then
   begin
@@ -3144,7 +3676,9 @@ begin
   begin
     if not TResourceStrings.Insertion(ARequest.Text, ARequest.Tree.Tokens, False, Literal.Range.StartPos.Line,
       Declaration, LB, Edit) then
+    begin
       Exit(Length(AItems.Items) > 0);
+    end;
     Item.Detail := Format('%s = %s', [Name, Range]);
     Item.TextEdit := TRuleEdit.Create(Literal.Range, Name);
     // Platzhalter-Modus (#51): Der Name ist an beiden Stellen derselbe Platzhalter.
@@ -3182,22 +3716,32 @@ begin
   // Ein Feld nur ohne Indexparameter: read FWert[I] gibt es nicht.
   Kinds := nil;
   if AIndexParameters = '' then
+  begin
     Kinds := [TAccessorKind.Field];
+  end;
   if AIsWrite then
-    Kinds := Kinds + [TAccessorKind.Setter]
+  begin
+    Kinds := Kinds + [TAccessorKind.Setter];
+  end
   else
+  begin
     Kinds := Kinds + [TAccessorKind.Getter];
+  end;
   Lines := ARequest.Lines;
   Slash := Default(TSlashContext);
   Slash.Text := ARequest.Text;
   Slash.Line := ARequest.Position.Line;
   if ARequest.Position.Line <= High(Lines) then
+  begin
     Slash.LineText := Lines[ARequest.Position.Line];
+  end;
   Slash.Index := ARequest.Index;
   Source := TCommandSource.Create(Slash);
   try
     if not Source.ClassAt(ClassSymbol) then
+    begin
       Exit;
+    end;
     for Kind in Kinds do
     begin
       Plan := Default(TAccessorPlan);
@@ -3207,14 +3751,20 @@ begin
       Plan.IndexParameters := AIndexParameters;
       Plan.MethodSection := 'private';
       if ARequest.Settings.AccessorSection = TCompletionAccessorSection.Protected then
+      begin
         Plan.MethodSection := 'protected';
+      end;
       if not TAccessorCreation.Edits(Source, ARequest.Index, ClassSymbol, Plan, Edits, WithField) then
+      begin
         Continue;
+      end;
       Item := Default(TCompletionItem);
       Item.Name := Format(Titles[Kind], [Plan.Name]);
       Item.Kind := KindMethod;
       if Kind = TAccessorKind.Field then
+      begin
         Item.Kind := KindField;
+      end;
       Item.Detail := TAccessorCreation.Declaration(Plan);
       Item.Fits := True;
       Item.Pinned := True;
@@ -3252,49 +3802,73 @@ begin
   Match := TRegEx.Match(ARequest.LineBefore, '^\s*(?:class\s+)?property\s+(\w+)\s*(\[[^\]]*\])?\s*:\s*' +
     '([\w.<>, ]+?)\s+(?:index\s+\S+\s+)?(?:read\s+\w+\s+)?(read|write)\s+(\w*)$', [roIgnoreCase]);
   if not Match.Success then
+  begin
     Exit;
+  end;
   UnitIndex := ARequest.UnitIndex;
   if not EnclosingType(UnitIndex, ARequest.Position.Line, True, TypeName) then
+  begin
     Exit;
+  end;
   Result := True;
   PropType := Match.Groups[3].Value;
   IsWrite := SameText(Match.Groups[4].Value, 'write');
   Prefix := Match.Groups[5].Value;
   // Feld und Zugriffsmethoden anlegen (#467): oben vor den passenden Mitgliedern.
   if ARequest.Settings.CreateAccessors then
+  begin
     AItems.Items := AccessorItems(ARequest, Match.Groups[1].Value, PropType,
       Match.Groups[2].Value.Trim(['[', ']']).Trim, IsWrite, Prefix);
+  end;
   // Indexparameter: "[I, J: Integer; const S: string]" sind drei.
   IndexCount := 0;
   for Param in Match.Groups[2].Value.Trim(['[', ']']).Split([';']) do
+  begin
     if Pos(':', Param) > 0 then
+    begin
       Inc(IndexCount, Length(Copy(Param, 1, Pos(':', Param) - 1).Split([','])));
+    end;
+  end;
   for Candidate in ARequest.Resolver.AccessorCandidates(UnitIndex, TypeName) do
   begin
     if Candidate.SymbolKind = TIndexSymbolKind.Field then
-      Fits := (IndexCount = 0) and (PlainType(Candidate.TypeName) = PlainType(PropType))
+    begin
+      Fits := (IndexCount = 0) and (PlainType(Candidate.TypeName) = PlainType(PropType));
+    end
     else if IsWrite then
+    begin
       Fits := (Candidate.TypeName = '') and (Candidate.MinArgs <= IndexCount + 1) and
         (Candidate.MaxArgs >= IndexCount + 1) and (Length(Candidate.ParamTypes) > IndexCount) and
-        (PlainType(Candidate.ParamTypes[IndexCount]) = PlainType(PropType))
+        (PlainType(Candidate.ParamTypes[IndexCount]) = PlainType(PropType));
+    end
     else
+    begin
       Fits := (Candidate.TypeName <> '') and (PlainType(Candidate.TypeName) = PlainType(PropType)) and
         (Candidate.MinArgs <= IndexCount) and (Candidate.MaxArgs >= IndexCount);
+    end;
     if not Fits or (MatchScore(Candidate.Name, Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch) then
+    begin
       Continue;
+    end;
     Item := Default(TCompletionItem);
     Item.Name := Candidate.Name;
     Item.Kind := KindOf(Candidate.SymbolKind);
     if Candidate.TypeName <> '' then
-      Item.Detail := Candidate.TypeName
+    begin
+      Item.Detail := Candidate.TypeName;
+    end
     else
+    begin
       Item.Detail := Candidate.Container;
+    end;
     Item.Container := Candidate.Container;
     Item.Depth := Candidate.Depth;
     Item.SourceFile := Candidate.FileName;
     Item.SourcePosition := Candidate.SelectionRange.StartPos;
     if (ARequest.Matching = TCompletionMatching.Fuzzy) and not Candidate.Name.StartsWith(Prefix, True) then
+    begin
       Item.FilterText := Prefix;
+    end;
     AItems.Items := AItems.Items + [Item];
   end;
 end;
@@ -3348,13 +3922,17 @@ begin
     // "    override Ch|" (#31): beide Arten; Übernehmen macht aus der Zeile die Deklaration.
     Match := TRegEx.Match(Line, '^(\s*)override\s+(\w*)$', [roIgnoreCase]);
     if not Match.Success then
+    begin
       Exit;
+    end;
     AfterOverride := True;
   end;
   // Innerster Klassentyp, in dessen Deklaration die Zeile liegt.
   UnitIndex := ARequest.UnitIndex;
   if not EnclosingType(UnitIndex, ARequest.Position.Line, False, TypeName) then
+  begin
     Exit;
+  end;
   Result := True;
   LB := ARequest.LineBreak;
   // Je Vorfahren-Unit einmal lesen und zerlegen statt je Kandidat (Code-Review P-07); das Muster für
@@ -3367,15 +3945,21 @@ begin
     begin
       if not CachedLines(Files, Candidate.FileName, ARequest.FileName, ARequest.Text, ARequest.ReadText,
         SourceLines) then
+      begin
         Continue;
+      end;
       Declaration := DeclarationOf(SourceLines, Candidate.Range);
       if not SplitOverrideDeclaration(Declaration, IsClass, Kind, Head, Directives) or
         (not AfterOverride and ((Kind <> TypedKind) or (IsClass <> TypedClass))) then
+      begin
         Continue;
+      end;
       IsAbstract := Directives.Contains(' abstract ');
       Insert := Head + ';';
       if Directives.Contains(' overload ') then
+      begin
         Insert := Insert + ' overload;';
+      end;
       Insert := Insert + ' override;';
       // Rumpf: Kopf mit Typ, inherited bzw. Result := inherited ...; abstrakt ohne inherited.
       MethodName := Candidate.Name;
@@ -3383,16 +3967,26 @@ begin
       // Standardwerte stehen nur in der Deklaration.
       Body := Kind + ' ' + TypeName + '.' + DefaultValue.Replace(Head, '') + ';';
       if IsClass then
+      begin
         Body := 'class ' + Body;
+      end;
       Body := Body + LB + 'begin' + LB;
       if IsAbstract then
-        Body := Body + LB
+      begin
+        Body := Body + LB;
+      end
       else if Kind = 'procedure' then
-        Body := Body + '  inherited;' + LB
+      begin
+        Body := Body + '  inherited;' + LB;
+      end
       else if Args <> '' then
-        Body := Body + '  Result := inherited ' + MethodName + '(' + Args + ');' + LB
+      begin
+        Body := Body + '  Result := inherited ' + MethodName + '(' + Args + ');' + LB;
+      end
       else
+      begin
         Body := Body + '  Result := inherited ' + MethodName + ';' + LB;
+      end;
       Body := Body + 'end;';
       Item := Default(TCompletionItem);
       Item.Name := MethodName;
@@ -3409,7 +4003,9 @@ begin
         // "override Name" wird zu "procedure Name(...); override;".
         Lead := Kind + ' ';
         if IsClass then
+        begin
           Lead := 'class ' + Lead;
+        end;
         Item.InsertText := '';
         Item.HasTextEdit := True;
         Item.TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
@@ -3417,7 +4013,9 @@ begin
         Item.FilterText := 'override ' + MethodName;
       end;
       if TClassCompletion.BodyEdit(ARequest.Tree, ARequest.Text, TypeName, Body, Edit) then
+      begin
         Item.AdditionalEdits := [Edit];
+      end;
       Items.Add(Item);
     end;
     AItems.Items := Items.ToArray;
@@ -3474,12 +4072,18 @@ var
     Hint: TCompletionItem;
   begin
     if Count = 0 then
+    begin
       Exit;
+    end;
     Hint := Default(TCompletionItem);
     if Count = 1 then
-      Hint.Name := Format('1 Methode von %s fehlt', [AInterface])
+    begin
+      Hint.Name := Format('1 Methode von %s fehlt', [AInterface]);
+    end
     else
+    begin
       Hint.Name := Format('%d Methoden von %s fehlen', [Count, AInterface]);
+    end;
     Hint.Detail := 'Interface implementieren';
     Hint.Kind := KindSnippet;
     Hint.Hint := True;
@@ -3499,29 +4103,41 @@ begin
   // "    |" (Strg+Leer auf leerer Zeile) bzw. "    Exp|"
   Match := TRegEx.Match(ARequest.LineBefore, '^(\s*)(\w*)$');
   if not Match.Success then
+  begin
     Exit;
+  end;
   Lines := ARequest.Lines;
   if (ARequest.Position.Line < 0) or (ARequest.Position.Line > High(Lines)) then
+  begin
     Exit;
+  end;
   ABatch := Match.Groups[2].Length = 0;
   // Leere Zeile nur, wenn auch dahinter nichts steht; vor einer vorhandenen Deklaration bleibt Strg+Leer normal.
   if ABatch and (Trim(Copy(Lines[ARequest.Position.Line], ARequest.Position.Character + 1, MaxInt)) <> '') then
+  begin
     Exit;
+  end;
   // Innerste Klasse, zwischen deren Kopf und "end" der Cursor steht.
   UnitIndex := ARequest.UnitIndex;
   // Nur Klassen mit Interfaces in der Vorfahrenliste; "end" in der Zeile des Cursors zählt nicht mehr dazu.
   if not EnclosingTypeAt(UnitIndex, ARequest.Position.Line, [TIndexSymbolKind.ClassType], 2, False, TypeSymbol) then
+  begin
     Exit;
+  end;
   EndLine := TypeSymbol.Range.EndPos.Line;
   if (EndLine > High(Lines)) or not TRegEx.IsMatch(Lines[EndLine], '^\s*end\b', [roIgnoreCase]) then
+  begin
     Exit;
+  end;
   Indent := Copy(Lines[EndLine], 1, Length(Lines[EndLine]) - Length(TrimLeft(Lines[EndLine])));
   TypeName := QualifiedTypeName(TypeSymbol);
   // Vorfahrenliste aus dem Quelltext: Der Index kennt die Typargumente nur beim ersten Vorfahren.
   Missing := ARequest.Resolver.MissingInterfaceMembers(UnitIndex, TypeName,
     HeaderAncestors(Lines, TypeSymbol.Range.StartPos.Line));
   if Length(Missing) = 0 then
+  begin
     Exit;
+  end;
   LB := ARequest.LineBreak;
   Section := SectionNames[ARequest.Settings.InterfaceSection];
   NeedHeader := TInterfaceStubs.LastSection(ARequest.Tree.Tokens, TypeSymbol.Range.StartPos.Line, EndLine) <> Section;
@@ -3537,26 +4153,36 @@ begin
     begin
       if not CachedLines(Files, Missing[Index].FileName, ARequest.FileName, ARequest.Text, ARequest.ReadText,
         SourceLines) then
+      begin
         SourceLines := TextLines('');
+      end;
       // Generische Interfaces: Typargumente in die Deklaration einsetzen (IComparer<TKunde>: T → TKunde).
       if not TInterfaceStubs.Make(GenericName(Missing[Index].Container, Missing[Index].Bindings), TypeName,
         SubstituteWords(DeclarationOf(SourceLines, Missing[Index].Range), Missing[Index].Bindings), LB, Stub) then
+      begin
         Continue;
+      end;
       if (Length(Interfaces) = 0) or not SameText(Interfaces[High(Interfaces)], Stub.InterfaceName) then
       begin
         if not ABatch and (Length(Interfaces) > 0) then
+        begin
           AddHint(Interfaces[High(Interfaces)]);
+        end;
         Interfaces := Interfaces + [Stub.InterfaceName];
         Group := nil;
         Count := 0;
       end;
       Edits := TInterfaceStubs.ClassEdits(Stub, EndLine, Indent, Section, NeedHeader, LB);
       if TClassCompletion.BodyEdit(ARequest.Tree, ARequest.Text, TypeName, Stub.Body, Edit) then
+      begin
         Edits := Edits + [Edit];
+      end;
       Group := Group + Edits;
       Inc(Count);
       if not ABatch then
+      begin
         Continue;
+      end;
       Item := Default(TCompletionItem);
       Item.Name := Stub.Name;
       Item.Kind := KindMethod;
@@ -3576,15 +4202,19 @@ begin
     Files.Free;
   end;
   if not ABatch and (Length(Interfaces) > 0) then
+  begin
     AddHint(Interfaces[High(Interfaces)]);
+  end;
   // Eine Überschrift über der ganzen Liste: „Fehlende Methoden von IExporter, IInterface“.
   for Index := 0 to High(AItems) do
+  begin
     if AItems[Index].Batch then
     begin
       AItems[Index].SetOf := string.Join(', ', Interfaces);
       AItems[Index].Expected := AItems[Index].SetOf;
       AItems[Index].Fits := True;
     end;
+  end;
   Result := Length(AItems) > 0;
 end;
 
@@ -3605,6 +4235,7 @@ begin
   Result := False;
   ARoutine := Default(TIndexSymbol);
   for Index := 0 to High(AUnit.Symbols) do
+  begin
     if (AUnit.Symbols[Index].Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
       TIndexSymbolKind.Routine]) and RangeHas(AUnit.Symbols[Index].Range, APosition) and
       (not Result or (AUnit.Symbols[Index].Range.StartPos.Line >= ARoutine.Range.StartPos.Line)) then
@@ -3612,6 +4243,7 @@ begin
       ARoutine := AUnit.Symbols[Index];
       Result := True;
     end;
+  end;
 end;
 
 /// <summary>Zerlegt AFormText; False, wenn die Datei kein Wurzelobjekt hat.</summary>
@@ -3624,7 +4256,9 @@ begin
   try
     Result := Document.Root <> nil;
     if Result then
+    begin
       ASnapshot := TFormSnapshotCache.FromDocument(AFormFile, Document);
+    end;
   finally
     Document.Free;
   end;
@@ -3636,7 +4270,9 @@ function UncachedForms(const AReadText: TCompletionReadText): TCompletionFormFun
 begin
   Result := nil;
   if not Assigned(AReadText) then
+  begin
     Exit;
+  end;
   Result :=
     function(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean
     var
@@ -3644,8 +4280,12 @@ begin
     begin
       ASnapshot := Default(TFormSnapshot);
       for FormFile in TFormFiles.FormFiles(ASourceFile, ASourceText) do
+      begin
         if AReadText(FormFile, FormText) and ParseForm(FormFile, FormText, ASnapshot) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
 end;
@@ -3659,7 +4299,9 @@ begin
   ASnapshot := Default(TFormSnapshot);
   Result := False;
   if not Assigned(FReadText) then
+  begin
     Exit;
+  end;
   for FormFile in TFormFiles.FormFiles(ASourceFile, ASourceText) do
   begin
     // Stand des Auszugs (Code-Review P-06): Offene Formulare (Designer) über ihren Text – die Versionsnummer
@@ -3670,19 +4312,29 @@ begin
     if (FStore <> nil) and FStore.TryGet(TDocumentUris.FromPath(FormFile), Document) then
     begin
       if not FReadText(FormFile, FormText) then
+      begin
         Continue;
+      end;
       Stamp := 'd' + FormText;
     end
     else if FileAge(FormFile, Age) then
+    begin
       Stamp := 't' + FloatToStr(Age, TFormatSettings.Invariant);
+    end;
     if (Stamp <> '') and FForms.TryGet(FormFile, Stamp, ASnapshot) then
+    begin
       Exit(True);
+    end;
     if (FormText = '') and not FReadText(FormFile, FormText) then
+    begin
       Continue;
+    end;
     if ParseForm(FormFile, FormText, ASnapshot) then
     begin
       if Stamp <> '' then
+      begin
         FForms.Put(FormFile, Stamp, ASnapshot);
+      end;
       Exit(True);
     end;
   end;
@@ -3692,9 +4344,13 @@ end;
 function TypeWord(const ATypeName: string): string;
 begin
   if (Length(ATypeName) > 1) and CharInSet(ATypeName[1], ['T', 't']) then
-    Result := Copy(ATypeName, 2, MaxInt)
+  begin
+    Result := Copy(ATypeName, 2, MaxInt);
+  end
   else
+  begin
     Result := ATypeName;
+  end;
 end;
 
 /// <summary>Ein Typ aus AChain heißt ohne "T" genau AWord.</summary>
@@ -3703,8 +4359,12 @@ var
   Name: string;
 begin
   for Name in AChain do
+  begin
     if SameText(TypeWord(Name), AWord) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -3755,17 +4415,25 @@ begin
   AItems := nil;
   Result := False;
   if not Assigned(AForms) then
+  begin
     Exit;
+  end;
   Context := Analyze(ARequest.Tree, ARequest.Position);
   if Context.Kind <> TCompletionContextKind.Scope then
+  begin
     Exit;
+  end;
   // Komponenten gibt es nur in Routinen (Methoden der Formularklasse): außerhalb das Formular gar nicht
   // erst lesen (Code-Review P-06).
   UnitIndex := ARequest.UnitIndex;
   if not RoutineAt(UnitIndex, ARequest.Position, Routine) then
+  begin
     Exit;
+  end;
   if not AForms(ARequest.FileName, ARequest.Text, Form) then
+  begin
     Exit;
+  end;
   Ancestors := TDictionary<string, TArray<string>>.Create;
   Items := TList<TCompletionItem>.Create;
   try
@@ -3783,10 +4451,14 @@ begin
       end;
       Inc(Probes);
       if Probes >= MaxProbes then
+      begin
         Break;
+      end;
     end;
     if not Visible then
+    begin
       Exit;
+    end;
     for Component in Form.Components do
     begin
       ByType := MatchScore(Component.Name, Context.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch;
@@ -3795,24 +4467,32 @@ begin
       if ByType then
       begin
         if Length(Context.Prefix) < 2 then
+        begin
           Continue;
+        end;
         if not StartsText(Context.Prefix, TypeWord(Component.TypeName)) then
         begin
           if not Ancestors.TryGetValue(LowerCase(Component.TypeName), Chain) then
           begin
             Chain := nil;
             if ARequest.Resolver.ResolveTypeFrom(UnitIndex, Component.TypeName, TypeSymbol) then
+            begin
               for Depth := 1 to 32 do
               begin
                 if not ARequest.Resolver.AncestorOf(TypeSymbol, Ancestor) then
+                begin
                   Break;
+                end;
                 Chain := Chain + [Ancestor.Name];
                 TypeSymbol := Ancestor;
               end;
+            end;
             Ancestors.Add(LowerCase(Component.TypeName), Chain);
           end;
           if not ChainHas(Chain, Context.Prefix) then
+          begin
             Continue;
+          end;
         end;
       end;
       Item := Default(TCompletionItem);
@@ -3827,7 +4507,9 @@ begin
       // filterText, sonst verwirft ein Editor mit eigenem Präfixfilter (VS Code) alles ohne passenden Anfang.
       if (ARequest.Matching = TCompletionMatching.Fuzzy) and (Context.Prefix <> '') and
         not Component.Name.StartsWith(Context.Prefix, True) then
+      begin
         Item.FilterText := Context.Prefix;
+      end;
       // Liste statt AItems := AItems + [...] (Code-Review P-08).
       Items.Add(Item);
     end;
@@ -3898,7 +4580,9 @@ begin
   Context := Analyze(ARequest.Tree, ARequest.Position);
   if (Context.Kind <> TCompletionContextKind.Member) or (Length(Context.Names) <> 1) or
     not SameText(Context.Names[0], 'Sender') or not Assigned(AForms) then
+  begin
     Exit;
+  end;
   // Muster einmal je Aufruf übersetzen (Code-Review P-11); lokal, weil die Vervollständigung nebenläufig läuft.
   SenderParam := TRegEx.Create('\b(Sender\s*:\s*)TObject\b', [roIgnoreCase]);
   // Kopf der umgebenden Methode "procedure TForm1.btnAnyClick(Sender: TObject);" oberhalb des Cursors: aus dem
@@ -3929,33 +4613,47 @@ begin
     end;
   end;
   if HeaderLine < 0 then
+  begin
     Exit;
+  end;
   ParamLine := -1;
   for Line := HeaderLine to Min(HeaderLine + MaxHeaderLines - 1, ARequest.Position.Line - 1) do
+  begin
     if SenderParam.IsMatch(Lines[Line]) then
     begin
       ParamLine := Line;
       Break;
     end;
+  end;
   if ParamLine < 0 then
+  begin
     Exit;
+  end;
   // Komponenten, deren Ereignis im Formular auf diese Methode zeigt; je Objekt die erste Zuweisung.
   if not AForms(ARequest.FileName, ARequest.Text, Form) then
+  begin
     Exit;
+  end;
   Types := nil;
   Names := nil;
   LastObject := -1;
   for Handler in Form.Handlers do
+  begin
     if (Handler.ObjectIndex <> LastObject) and SameText(Handler.MethodName, MethodName) and
       (Handler.TypeName <> '') then
     begin
       LastObject := Handler.ObjectIndex;
       Names := Names + [Handler.ObjectName];
       if IndexText(Handler.TypeName, Types) < 0 then
+      begin
         Types := Types + [Handler.TypeName];
+      end;
     end;
+  end;
   if Length(Types) = 0 then
+  begin
     Exit;
+  end;
   // Nächster gemeinsamer Vorfahr: der erste Typ in der Kette des ersten, den alle Ketten enthalten.
   First := TypeChain(ARequest.Resolver, UnitIndex, Types[0]);
   CommonType := '';
@@ -3978,7 +4676,9 @@ begin
     end;
   end;
   if (CommonType = '') or SameText(CommonType, 'TObject') then
+  begin
     Exit;
+  end;
   // Mitglieder wie bei "Sender: <Typ>": Parameter im Kopf umschreiben und neu zerlegen; die Zeile des Cursors
   // bleibt gleich, also auch ARequest.Position.
   LB := ARequest.LineBreak;
@@ -3994,23 +4694,33 @@ begin
     PatchedTree.Free;
   end;
   if ARequest.Settings.SenderCast = TCompletionSenderCast.HardCast then
-    Cast := CommonType + '(' + Context.Names[0] + ')'
+  begin
+    Cast := CommonType + '(' + Context.Names[0] + ')';
+  end
   else
+  begin
     Cast := '(' + Context.Names[0] + ' as ' + CommonType + ')';
+  end;
   for Index := 0 to High(AItems.Items) do
   begin
     AItems.Items[Index].Sender := CommonType;
     AItems.Items[Index].SenderOf := string.Join(', ', Names);
     if AItems.Items[Index].HasTextEdit then
+    begin
       Continue;
+    end;
     // "Sender.Cap" → "(Sender as TButton).Caption"
     AItems.Items[Index].HasTextEdit := True;
     if AItems.Items[Index].InsertText <> '' then
+    begin
       AItems.Items[Index].TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, ARequest.Position),
-        Cast + '.' + AItems.Items[Index].InsertText)
+        Cast + '.' + AItems.Items[Index].InsertText);
+    end
     else
+    begin
       AItems.Items[Index].TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, ARequest.Position),
         Cast + '.' + AItems.Items[Index].Name);
+    end;
   end;
   Result := True;
 end;
@@ -4045,10 +4755,14 @@ begin
   Lines := ARequest.Lines;
   if (ARequest.Position.Line < 0) or (ARequest.Position.Line > High(Lines)) or
     not TDataFieldNames.CallAt(Lines[ARequest.Position.Line], ARequest.Position.Character, Call) then
+  begin
     Exit(False);
+  end;
   Result := True;
   if not Assigned(ARequest.ReadText) then
+  begin
     Exit;
+  end;
   // Nur aus der Formulardatei: Ohne Designer-Informationen kein geratener Vorschlag.
   Names := TDataFieldNames.Lookup(ARequest.Text, ARequest.FileName, Call, ARequest.Index,
     function(const AName: string; out AContent: string): Boolean
@@ -4063,9 +4777,13 @@ begin
     Item.Name := Name.Name;
     Item.Detail := Name.TypeName;
     if Call.Kind = TDataNameKind.Param then
-      Item.Kind := KindVariable
+    begin
+      Item.Kind := KindVariable;
+    end
     else
+    begin
       Item.Kind := KindField;
+    end;
     // Schreibweise wie in der Quelle; ersetzt den ganzen Inhalt zwischen den Anführungszeichen.
     Item.HasTextEdit := True;
     Item.TextEdit := TRuleEdit.Create(Range, StringReplace(Name.Name, '''', '''''', [rfReplaceAll]));
@@ -4113,7 +4831,9 @@ begin
     Lines := ARequest.Lines;
     Line := ARequest.Position.Line - 1;
     if (Line < 0) or (ARequest.Position.Line > High(Lines)) or (Trim(Lines[ARequest.Position.Line]) <> '') then
+    begin
       Exit;
+    end;
   end;
   UnitIndex := ARequest.UnitIndex;
   // Art des erzeugten Typs: Record oder Interface schließen aus, TComponent-Nachfahren prüfen den Owner.
@@ -4123,25 +4843,41 @@ begin
       Symbol: TResolvedSymbol;
     begin
       if not ARequest.Resolver.ResolveTypeFrom(UnitIndex, ATypeName, Symbol) then
+      begin
         Exit(TGuardTypeKind.Unknown);
+      end;
       if Symbol.SymbolKind <> TIndexSymbolKind.ClassType then
+      begin
         Exit(TGuardTypeKind.Other);
+      end;
       if IndexText('TComponent', TypeChain(ARequest.Resolver, UnitIndex, ATypeName)) >= 0 then
-        Result := TGuardTypeKind.Component
+      begin
+        Result := TGuardTypeKind.Component;
+      end
       else
+      begin
         Result := TGuardTypeKind.Class_;
+      end;
     end, Offer);
   if not Result then
+  begin
     Exit;
+  end;
   if ANewLine then
+  begin
     Offer.BlankLine := ARequest.Position.Line;
+  end;
   Item := Default(TCompletionItem);
   Item.Kind := KindSnippet;
   Item.HasTextEdit := True;
   if ARequest.Settings.FreeStyle = TCompletionFreeStyle.FreeAndNil then
-    Item.Detail := 'FreeAndNil(' + Offer.Variable + ')'
+  begin
+    Item.Detail := 'FreeAndNil(' + Offer.Variable + ')';
+  end
   else
+  begin
     Item.Detail := Offer.Variable + '.Free';
+  end;
   Item.Name := 'Mit try…finally absichern';
   Item.Guard := 'newLine';
   Item.TextEdit := TGuardFree.Edit(ARequest.Text, Offer, TGuardScope.NewLine, ARequest.Settings.FreeStyle);
@@ -4165,7 +4901,9 @@ begin
   for Group in AParams.Split([';']) do
   begin
     if Trim(Group) = '' then
+    begin
       Continue;
+    end;
     Names := Group;
     TypeText := '';
     if Pos(':', Group) > 0 then
@@ -4173,11 +4911,15 @@ begin
       Names := Copy(Group, 1, Pos(':', Group) - 1);
       TypeText := Copy(Group, Pos(':', Group) + 1, MaxInt);
       if Pos('=', TypeText) > 0 then
+      begin
         TypeText := Copy(TypeText, 1, Pos('=', TypeText) - 1);
+      end;
     end;
     Count := Length(Names.Split([',']));
     for Index := 1 to Count do
+    begin
       Result := Result + [Trim(TypeText)];
+    end;
   end;
 end;
 
@@ -4218,36 +4960,54 @@ begin
   // "btnSave.OnClick := btn|", "OnClick := |"; nicht "A.B := " in Ausdrücken mit "=" davor.
   Match := TRegEx.Match(ARequest.LineBefore, '(?:^|[^\w.&])((?:&?\w+\.)*)&?(\w+)\s*:=\s*(\w*)$');
   if not Match.Success then
+  begin
     Exit;
+  end;
   Prefix := Match.Groups[3].Value;
   Names := nil;
   for Name in Match.Groups[1].Value.Split(['.']) do
+  begin
     if Name <> '' then
+    begin
       Names := Names + [CleanName(Name)];
+    end;
+  end;
   Names := Names + [Match.Groups[2].Value];
   Offset := Analyze(ARequest.Tree, ARequest.Position).Offset;
   Event := ARequest.Resolver.ResolveChain(ARequest.Tree, ARequest.FileName, Names, Offset);
   if not Event.Found or not (Event.SymbolKind in [TIndexSymbolKind.Property_, TIndexSymbolKind.Field,
     TIndexSymbolKind.Variable]) or (Event.TypeName = '') then
+  begin
     Exit;
+  end;
   // Methodenzeigertyp auflösen: wie im Quelltext, sonst über die Unit der Eigenschaft.
   TypeNames := Event.TypeName.Split(['.']);
   EventType := ARequest.Resolver.ResolveChain(ARequest.Tree, ARequest.FileName, TypeNames, Offset);
   if not EventType.Found and (Event.UnitName <> '') then
+  begin
     EventType := ARequest.Resolver.ResolveChain(ARequest.Tree, ARequest.FileName,
       Event.UnitName.Split(['.']) + TypeNames, Offset);
+  end;
   if not EventType.Found or (EventType.FileName = '') then
+  begin
     Exit;
+  end;
   if SameText(EventType.FileName, ARequest.FileName) then
-    Source := ARequest.Text
+  begin
+    Source := ARequest.Text;
+  end
   else if not (Assigned(ARequest.ReadText) and ARequest.ReadText(EventType.FileName, Source)) then
+  begin
     Exit;
+  end;
   Declaration := DeclarationOf(TextLines(Source), EventType.Range);
   TypeMatch := TRegEx.Match(Declaration,
     '=\s*(reference\s+to\s+)?(procedure|function)\s*(?:\((.*)\))?\s*(?::\s*([\w.<>, ]+?))?\s*(of\s+object)?\s*;',
     [roIgnoreCase]);
   if not TypeMatch.Success or ((TypeMatch.Groups[1].Length = 0) and (TypeMatch.Groups[5].Length = 0)) then
+  begin
     Exit;
+  end;
   Kind := LowerCase(TypeMatch.Groups[2].Value);
   Params := Trim(TypeMatch.Groups[3].Value);
   ResultType := Trim(TypeMatch.Groups[4].Value);
@@ -4256,19 +5016,29 @@ begin
   UnitIndex := ARequest.UnitIndex;
   TypeName := '';
   for Symbol in UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and (Symbol.Container <> '') and
       (Symbol.Range.StartPos.Line < ARequest.Position.Line) and
       (Symbol.Range.EndPos.Line >= ARequest.Position.Line) then
+    begin
       TypeName := Symbol.Container;
+    end;
+  end;
   if TypeName = '' then
+  begin
     Exit;
+  end;
   Result := True;
   LB := ARequest.LineBreak;
   Taken := TDictionary<string, Boolean>.Create;
   try
     for Symbol in UnitIndex.Symbols do
+    begin
       if SameText(Symbol.Container, TypeName) then
+      begin
         Taken.AddOrSetValue(LowerCase(Symbol.Name), True);
+      end;
+    end;
     // Passende Methoden der Klasse samt geerbter.
     for Candidate in ARequest.Resolver.MemberCandidates(ARequest.Tree, ARequest.FileName, ['Self'], Offset) do
     begin
@@ -4276,13 +5046,21 @@ begin
       if (Candidate.SymbolKind <> TIndexSymbolKind.Method) or (Length(Candidate.ParamTypes) <> Length(ParamTypes)) or
         ((Kind = 'function') <> (Candidate.TypeName <> '')) or
         ((Kind = 'function') and (PlainType(Candidate.TypeName) <> PlainType(ResultType))) then
+      begin
         Continue;
+      end;
       Fits := True;
       for Index := 0 to High(ParamTypes) do
+      begin
         if PlainType(Candidate.ParamTypes[Index]) <> PlainType(ParamTypes[Index]) then
+        begin
           Fits := False;
+        end;
+      end;
       if not Fits then
+      begin
         Continue;
+      end;
       Item := Default(TCompletionItem);
       Item.Name := Candidate.Name;
       Item.Kind := KindMethod;
@@ -4297,15 +5075,25 @@ begin
     end;
     // Neue Methode: Objekt + Ereignis ohne "On" (btnSave.OnClick → btnSaveClick), eindeutig gemacht.
     if (Length(Names) > 1) and not SameText(Names[High(Names) - 1], 'Self') then
-      Base := Names[High(Names) - 1]
+    begin
+      Base := Names[High(Names) - 1];
+    end
     else if StartsText('T', TypeName) and (Pos('.', TypeName) = 0) then
-      Base := Copy(TypeName, 2, MaxInt)
+    begin
+      Base := Copy(TypeName, 2, MaxInt);
+    end
     else
+    begin
       Base := TypeName.Substring(TypeName.LastIndexOf('.') + 1);
+    end;
     if StartsText('On', Match.Groups[2].Value) then
-      Base := Base + Copy(Match.Groups[2].Value, 3, MaxInt)
+    begin
+      Base := Base + Copy(Match.Groups[2].Value, 3, MaxInt);
+    end
     else
+    begin
       Base := Base + Match.Groups[2].Value;
+    end;
     Name := Base;
     Number := 1;
     while Taken.ContainsKey(LowerCase(Name)) do
@@ -4318,9 +5106,13 @@ begin
   end;
   Header := Kind + ' ' + TypeName + '.' + Name;
   if Params <> '' then
+  begin
     Header := Header + '(' + Params + ')';
+  end;
   if Kind = 'function' then
+  begin
     Header := Header + ': ' + ResultType;
+  end;
   Item := Default(TCompletionItem);
   Item.Name := 'Neue Methode ' + Name + ' …';
   Item.Kind := KindMethod;
@@ -4335,10 +5127,14 @@ begin
   Method.Symbol.Name := Name;
   Method.Declared := False;
   if TClassCompletion.AddDeclaration(ARequest.Tree, ARequest.Text, Method, Edit) then
+  begin
     Item.AdditionalEdits := Item.AdditionalEdits + [Edit];
+  end;
   Body := Header + ';' + LB + 'begin' + LB + LB + 'end;';
   if TClassCompletion.BodyEdit(ARequest.Tree, ARequest.Text, TypeName, Body, Edit) then
+  begin
     Item.AdditionalEdits := Item.AdditionalEdits + [Edit];
+  end;
   AItems.Items := AItems.Items + [Item];
 end;
 
@@ -4365,10 +5161,16 @@ begin
   Result := '';
   Lines := TextLines(AText);
   for Line := Max(0, ARange.StartPos.Line) to Min(Min(ARange.EndPos.Line, ARange.StartPos.Line + 400), High(Lines)) do
+  begin
     if Line = ARange.StartPos.Line then
-      Result := Copy(Lines[Line], ARange.StartPos.Character + 1, MaxInt)
+    begin
+      Result := Copy(Lines[Line], ARange.StartPos.Character + 1, MaxInt);
+    end
     else
+    begin
       Result := Result + #10 + Lines[Line];
+    end;
+  end;
 end;
 
 /// <summary>Offset (0-basiert) von APosition in AText.</summary>
@@ -4381,7 +5183,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index - 1 + APosition.Character;
@@ -4423,13 +5227,19 @@ begin
   // Eingebaute Typen (Integer, string) stehen nicht im Index: nicht danach suchen (Code-Review P-12).
   if (Result.Found and Result.IsType) or (AIndex = nil) or (Pos('.', ATypeName) > 0) or
     TNameResolver.IsBuiltinTypeName(ATypeName) then
+  begin
     Exit;
+  end;
   // Typ einer Eigenschaft aus einer Unit, die hier nicht eingebunden ist (TAnchors aus Vcl.Controls).
   for Location in AIndex.FindSymbols(ATypeName) do
+  begin
     if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.EnumType,
       TIndexSymbolKind.TypeAlias]) and AIndex.FindUnit(Location.UnitName, Owner) and
       AResolver.ResolveTypeFrom(Owner, ATypeName, Result) then
+    begin
       Exit;
+    end;
+  end;
 end;
 
 /// <summary>Aufzählung zu AType, Aliase verfolgt; mit AAllowSet auch der Elementtyp einer Menge.</summary>
@@ -4453,7 +5263,9 @@ begin
     // Erst die Art prüfen: Klassen und eingebaute Typen brauchen den Quelltext nicht.
     if not AType.Found or not AType.IsType or not (AType.SymbolKind in [TIndexSymbolKind.EnumType,
       TIndexSymbolKind.TypeAlias]) or not SourceOf(AType, AText, AFileName, AReadText, Source) then
+    begin
       Exit;
+    end;
     Declaration := RangeText(Source, AType.Range);
     if AType.SymbolKind = TIndexSymbolKind.EnumType then
     begin
@@ -4462,38 +5274,62 @@ begin
     end;
     // Alias oder Menge: von der Unit der Deklaration aus weiter auflösen.
     if not OwnerUnit(AResolver, AIndex, ATree, AFileName, AType, Owner) then
+    begin
       Exit;
+    end;
     Element := TCompletionEnums.SetElement(Declaration);
     if Element <> '' then
     begin
       if not AAllowSet or (AEnum.SetName <> '') then
+      begin
         Exit;
+      end;
       AEnum.SetName := AType.Name;
       if not AResolver.ResolveTypeFrom(Owner, Element, AType) then
+      begin
         Exit;
+      end;
     end
     else if (AType.TypeName = '') or not AResolver.ResolveTypeFrom(Owner, AType.TypeName, AType) then
+    begin
       Exit;
+    end;
   end;
   if not Found then
+  begin
     Exit;
+  end;
   AEnum.Values := TCompletionEnums.EnumValues(Declaration);
   if AEnum.Values = nil then
+  begin
     Exit;
+  end;
   AEnum.Name := AType.Name;
   AEnum.FileName := AType.FileName;
   AEnum.Scoped := TCompletionEnums.ScopedAt(Source, OffsetOf(Source, AType.Range.StartPos));
   // Namenspositionen für completionItem/resolve.
   SetLength(AEnum.Positions, Length(AEnum.Values));
   for Index := 0 to High(AEnum.Positions) do
+  begin
     AEnum.Positions[Index] := TTextPosition.Create(-1, 0);
+  end;
   Container := AType.QualifiedName;
   if OwnerUnit(AResolver, AIndex, ATree, AFileName, AType, Owner) then
+  begin
     for Symbol in Owner.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Container) then
+      begin
         for Index := 0 to High(AEnum.Values) do
+        begin
           if SameText(AEnum.Values[Index], Symbol.Name) then
+          begin
             AEnum.Positions[Index] := Symbol.SelectionRange.StartPos;
+          end;
+        end;
+      end;
+    end;
+  end;
   Result := True;
 end;
 
@@ -4508,7 +5344,9 @@ begin
   Result.Ordinal := AIndex + 1;
   Result.Fits := True;
   if AEnum.Scoped then
+  begin
     Result.InsertText := AEnum.Name + '.' + AEnum.Values[AIndex];
+  end;
   if AEnum.Positions[AIndex].Line >= 0 then
   begin
     Result.SourceFile := AEnum.FileName;
@@ -4528,21 +5366,31 @@ begin
   Result := False;
   if not TCaseCompletion.BranchSlot(AText, ATokens, APosition, Slot) or
     not TCaseCompletion.Missing(AEnum.Values, Slot.Labels, Missing) or (Missing = nil) then
+  begin
     Exit;
+  end;
   if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
+  begin
+    LineBreak := #13#10;
+  end
   else
+  begin
     LineBreak := #10;
+  end;
   Prefix := '';
   if AEnum.Scoped then
+  begin
     Prefix := AEnum.Name + '.';
+  end;
   if Slot.Labels = nil then
   begin
     AItem.Name := 'Alle Werte einfügen';
     AItem.Count := Length(Missing);
   end
   else
+  begin
     AItem.Name := Format('Fehlende Werte ergänzen (%d)', [Length(Missing)]);
+  end;
   AItem.Kind := KindSnippet;
   AItem.Detail := AEnum.Name;
   AItem.Fits := True;
@@ -4553,7 +5401,9 @@ begin
   AItem.TextEdit := TRuleEdit.Create(Slot.EditRange, TCaseCompletion.BranchesText(Slot, Missing, Prefix, LineBreak));
   EndText := TCaseCompletion.EndText(Slot, LineBreak);
   if EndText <> '' then
+  begin
     AItem.AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(Slot.EndInsert, Slot.EndInsert), EndText)];
+  end;
   Result := True;
 end;
 
@@ -4562,15 +5412,25 @@ function TypeOfResolved(const ASymbol: TResolvedSymbol): string;
 begin
   Result := '';
   if not ASymbol.Found or (ASymbol.Kind = TResolvedKind.UnitName) then
+  begin
     Exit;
+  end;
   if ASymbol.SymbolKind = TIndexSymbolKind.Constructor_ then
-    Result := ASymbol.Container
-  else if ASymbol.IsType then
-    Result := ASymbol.Name
-  else if ASymbol.TypeName <> '' then
-    Result := ASymbol.TypeName
-  else if ASymbol.SymbolKind = TIndexSymbolKind.EnumMember then
+  begin
     Result := ASymbol.Container;
+  end
+  else if ASymbol.IsType then
+  begin
+    Result := ASymbol.Name;
+  end
+  else if ASymbol.TypeName <> '' then
+  begin
+    Result := ASymbol.TypeName;
+  end
+  else if ASymbol.SymbolKind = TIndexSymbolKind.EnumMember then
+  begin
+    Result := ASymbol.Container;
+  end;
 end;
 
 /// <summary>uses-Eintrag für ATypeName (#180), wenn der Typ an AOffset nicht sichtbar ist und der Index ihn
@@ -4586,8 +5446,11 @@ begin
   if (AIndex = nil) or (ATypeName = '') or (Pos('<', ATypeName) > 0) or (Pos('.', ATypeName) > 0) or
     (Pos('{', ATypeName) > 0) or TNameResolver.IsBuiltinTypeName(ATypeName) or
     AResolver.ResolveChain(ATree, AFileName, [ATypeName], AOffset).Found then
+  begin
     Exit;
+  end;
   for Location in AIndex.FindSymbols(ATypeName) do
+  begin
     if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.ClassType,
       TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
       TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias]) and not SameText(Location.UnitName, 'System') and
@@ -4595,6 +5458,7 @@ begin
       not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATree.Tokens), Location.UnitName, AResolver.Namespaces) and
       TUsesClauses.AddUnit(ATree.Tokens, AOffset, Location.UnitName, ALineBreak, Edit) then
       begin Result := [Edit]; Exit; end;
+  end;
 end;
 
 class function TLspCompletion.DeclareItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -4633,37 +5497,55 @@ begin
   AItems := nil;
   Result := False;
   if (ARequest.Tree = nil) or not TDeclareUnknown.Slot(ARequest.Tree.Tokens, ARequest.Position, Slot) then
+  begin
     Exit;
+  end;
   // Bekannt: ein Eintrag passt genau oder die Namensauflösung findet ihn.
   for Known in AKnown do
+  begin
     if SameText(Known.Name, Slot.Name) then
+    begin
       Exit;
+    end;
+  end;
   if ARequest.Resolver.Resolve(ARequest.Tree, ARequest.FileName, Slot.NameRange.StartPos).Found then
+  begin
     Exit;
+  end;
   // Typ: rechte Seite der Zuweisung, sonst der erwartete Typ (Argument, Wert einer Zuweisung).
   TypeName := '';
   if Slot.AssignTarget then
   begin
     TypeName := TDeclareUnknown.Shape(ARequest.Tree.Tokens, Slot.ValueFirst, Slot.ValueLast, TermFirst, TermLast);
     if (TypeName = '') and (TermFirst >= 0) and (TermFirst = TermLast) then
+    begin
       TypeName := TDeclareUnknown.LiteralType(ARequest.Tree.Tokens[TermFirst]);
+    end;
     if (TypeName = '') and (TermFirst >= 0) then
     begin
       NameToken := TDeclareUnknown.TermName(ARequest.Tree.Tokens, TermFirst, TermLast);
       if NameToken >= 0 then
+      begin
         TypeName := TypeOfResolved(ARequest.Resolver.Resolve(ARequest.Tree, ARequest.FileName,
           ARequest.Tree.Tokens[NameToken].StartPos));
+      end;
     end;
   end
   else
+  begin
     TypeName := ExpectedType(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ARequest.Position);
+  end;
   DeclType := TypeName;
   if DeclType = '' then
+  begin
     DeclType := TDeclareUnknown.TypePlaceholder;
+  end;
   Lines := ARequest.Lines;
   LineText := '';
   if ARequest.Position.Line <= High(Lines) then
+  begin
     LineText := Lines[ARequest.Position.Line];
+  end;
   Slash := Default(TSlashContext);
   Slash.Text := ARequest.Text;
   Slash.Line := ARequest.Position.Line;
@@ -4673,7 +5555,9 @@ begin
     // Nur im Rumpf einer Routine: dort sind Variablen, Felder und Konstanten Deklarationen wert.
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit;
+    end;
     Base := Default(TCompletionItem);
     Base.Action := 'declare';
     Base.Unknown := Slot.Name;
@@ -4704,9 +5588,13 @@ begin
     begin
       Fields := nil;
       for Symbol in Source.UnitIndex.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.Field) and (SameText(Symbol.Container, ClassSymbol.QualifiedName) or
           SameText(Symbol.Container, ClassSymbol.Name)) then
+        begin
           Fields := Fields + [Symbol.Name];
+        end;
+      end;
       Field := TDeclareUnknown.FieldName(Slot.Name, TDeclareUnknown.UsesFieldPrefix(Fields));
       if not MatchText(Field, Fields) then
       begin
@@ -4719,11 +5607,15 @@ begin
           Slot.CursorOffset + Length(Field) - Length(Slot.Name)));
         Line := Source.PrivateLine(ClassSymbol);
         if Line >= 0 then
-          Edit := Source.AfterLine(Line, Source.Indent(Line) + '  ' + Format('%s: %s;', [Field, DeclType]))
+        begin
+          Edit := Source.AfterLine(Line, Source.Indent(Line) + '  ' + Format('%s: %s;', [Field, DeclType]));
+        end
         else
+        begin
           Edit := Source.BeforeLine(ClassSymbol.Range.EndPos.Line, Source.Indent(ClassSymbol.Range.EndPos.Line) +
             'private' + Source.LineBreak + Source.Indent(ClassSymbol.Range.EndPos.Line) + '  ' +
             Format('%s: %s;', [Field, DeclType]));
+        end;
         Item.AdditionalEdits := [Edit] + TypeUnitEdits(ARequest.Resolver, ARequest.Index, ARequest.Tree,
           ARequest.FileName, TypeName, Source.LineBreak, Source.Offset(ClassSymbol.Range.StartPos.Line));
         AItems := AItems + [Item];
@@ -4740,14 +5632,24 @@ begin
       Section := Source.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
       Node := nil;
       if Section <> nil then
+      begin
         for Index := 0 to Section.ChildCount - 1 do
+        begin
           if (Section[Index].Kind = TSyntaxKind.ConstSection) and (Node = nil) then
+          begin
             Node := Section[Index];
+          end;
+        end;
+      end;
       if Node <> nil then
-        Edit := Source.AfterLine(Node.EndPos.Line, '  ' + Item.Detail)
+      begin
+        Edit := Source.AfterLine(Node.EndPos.Line, '  ' + Item.Detail);
+      end
       else
+      begin
         Edit := Source.AfterLine(Source.ImplementationStart, Source.LineBreak + 'const' + Source.LineBreak + '  ' +
           Item.Detail);
+      end;
       Item.AdditionalEdits := [Edit];
       AItems := AItems + [Item];
     end;
@@ -4792,7 +5694,9 @@ begin
   ASetMode := False;
   Result := False;
   if ARequest.Tree = nil then
+  begin
     Exit;
+  end;
   // Mengenkonstruktor: "X in [" nimmt den Typ von X, sonst gilt der erwartete Typ an der Klammer.
   if TCompletionEnums.SetSlot(ARequest.Tree.Tokens, ARequest.Position, Slot) then
   begin
@@ -4800,7 +5704,9 @@ begin
     begin
       Target := ARequest.Resolver.ResolveChain(ARequest.Tree, ARequest.FileName, Slot.ElementOf, Slot.Offset);
       if not Target.Found or Target.IsType or (Target.TypeName = '') then
+      begin
         Exit;
+      end;
       TypeInfo := TypeAt(ARequest.Resolver, ARequest.Index, ARequest.Tree, ARequest.FileName, Slot.Offset,
         Target.TypeName);
     end
@@ -4808,20 +5714,28 @@ begin
     begin
       Expected := ExpectedType(ARequest.Resolver, ARequest.Tree, ARequest.FileName, Slot.Bracket);
       if Expected = '' then
+      begin
         Exit;
+      end;
       TypeInfo := TypeAt(ARequest.Resolver, ARequest.Index, ARequest.Tree, ARequest.FileName, Slot.Offset, Expected);
     end;
     if not EnumOf(ARequest.Resolver, ARequest.Index, ARequest.Tree, ARequest.Text, ARequest.FileName, TypeInfo,
       ARequest.ReadText, Slot.ElementOf = nil, Enum) or
       not TCompletionEnums.Checked(Enum.Values, Slot.Present, Checked) then
+    begin
       Exit;
+    end;
     for Index := 0 to High(Enum.Values) do
     begin
       Item := EnumItem(Enum, Index);
       if Enum.SetName <> '' then
-        Item.Expected := Enum.SetName
+      begin
+        Item.Expected := Enum.SetName;
+      end
       else
+      begin
         Item.Expected := 'set of ' + Enum.Name;
+      end;
       Item.SetOf := Enum.Name;
       Item.SetChecked := Checked[Index];
       Item.SetRange := Slot.EditRange;
@@ -4833,14 +5747,20 @@ begin
   // Werte: nur ohne Punkt davor ("TAlign." zeigt die Mitglieder selbst).
   Context := Analyze(ARequest.Tree, ARequest.Position);
   if Context.Kind <> TCompletionContextKind.Scope then
+  begin
     Exit;
+  end;
   Expected := ExpectedType(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ARequest.Position);
   if Expected = '' then
+  begin
     Exit;
+  end;
   TypeInfo := TypeAt(ARequest.Resolver, ARequest.Index, ARequest.Tree, ARequest.FileName, Context.Offset, Expected);
   if not EnumOf(ARequest.Resolver, ARequest.Index, ARequest.Tree, ARequest.Text, ARequest.FileName, TypeInfo,
     ARequest.ReadText, False, Enum) then
+  begin
     Exit;
+  end;
   // Am Anfang eines case-Zweigs (#449): fehlende Zweige auf einmal, als erster Eintrag.
   if CaseItem(Enum, ARequest.Text, ARequest.Tree.Tokens, ARequest.Position, Item) then
   begin
@@ -4848,12 +5768,14 @@ begin
     AItems := AItems + [Item];
   end;
   for Index := 0 to High(Enum.Values) do
+  begin
     if MatchScore(Enum.Values[Index], Context.Prefix, ARequest.Matching) <> TFuzzyMatch.NoMatch then
     begin
       Item := EnumItem(Enum, Index);
       Item.Expected := Expected;
       AItems := AItems + [Item];
     end;
+  end;
   Result := True;
 end;
 
@@ -4869,17 +5791,25 @@ begin
   APrefix := '';
   Result := False;
   if ATree = nil then
+  begin
     Exit;
+  end;
   // Am Anfang eines Zweigs ist der erwartete Typ der des Selektors (#448).
   Expected := ExpectedType(AResolver, ATree, AFileName, APosition);
   if Expected = '' then
+  begin
     Exit;
+  end;
   TypeInfo := TypeAt(AResolver, AIndex, ATree, AFileName, OffsetOf(AText, APosition), Expected);
   if not EnumOf(AResolver, AIndex, ATree, AText, AFileName, TypeInfo, AReadText, False, Enum) then
+  begin
     Exit;
+  end;
   AValues := Enum.Values;
   if Enum.Scoped then
+  begin
     APrefix := Enum.Name + '.';
+  end;
   Result := True;
 end;
 
@@ -4894,16 +5824,24 @@ begin
   AValues := nil;
   Result := False;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Member := AResolver.Resolve(ATree, AFileName, APosition);
   if not Member.Found or (Member.SymbolKind <> TIndexSymbolKind.EnumMember) or (Member.Container = '') then
+  begin
     Exit;
+  end;
   // Der Typ, wie er an der Stelle sichtbar ist; sonst von der Unit des Werts aus.
   TypeInfo := TypeAt(AResolver, AIndex, ATree, AFileName, OffsetOf(AText, APosition), Member.Container);
   if not (TypeInfo.Found and TypeInfo.IsType) and OwnerUnit(AResolver, AIndex, ATree, AFileName, Member, Owner) then
+  begin
     AResolver.ResolveTypeFrom(Owner, Member.Container, TypeInfo);
+  end;
   if not EnumOf(AResolver, AIndex, ATree, AText, AFileName, TypeInfo, AReadText, False, Enum) then
+  begin
     Exit;
+  end;
   AValues := Enum.Values;
   Result := True;
 end;
@@ -4916,9 +5854,13 @@ var
 begin
   Index := -1;
   while (Index < High(ATokens)) and (ComparePositions(ATokens[Index + 1].EndPos, APosition) <= 0) do
+  begin
     Inc(Index);
+  end;
   while (Index >= 0) and (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Dec(Index);
+  end;
   Result := (Index < 0) or ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(':') or
     ATokens[Index].IsKeyword('begin') or ATokens[Index].IsKeyword('then') or ATokens[Index].IsKeyword('else') or
     ATokens[Index].IsKeyword('do') or ATokens[Index].IsKeyword('try') or ATokens[Index].IsKeyword('finally') or
@@ -4941,13 +5883,19 @@ begin
   for Step := 1 to 4 do
   begin
     if TAssignFields.KindOfText(Current, Kind) then
+    begin
       Exit(TAssignFields.DefaultValue(Kind, ATypeName, ''));
+    end;
     // Typargumente gehören nicht zum Namen: TList<Integer> ist eine Klasse.
     if Pos('<', Current) > 0 then
+    begin
       Current := Trim(Copy(Current, 1, Pos('<', Current) - 1));
+    end;
     TypeInfo := TypeAt(ARequest.Resolver, ARequest.Index, ARequest.Tree, ARequest.FileName, AOffset, Current);
     if not TypeInfo.Found or not TypeInfo.IsType then
+    begin
       Break;
+    end;
     case TypeInfo.SymbolKind of
       TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
         Exit('nil');
@@ -4957,27 +5905,37 @@ begin
         begin
           First := Enum.Values[0];
           if Enum.Scoped then
+          begin
             First := Enum.Name + '.' + First;
+          end;
           Exit(TAssignFields.DefaultValue(TAssignValueKind.Enum, ATypeName, First));
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
     if TypeInfo.SymbolKind <> TIndexSymbolKind.TypeAlias then
+    begin
       Break;
+    end;
     // "TKinds = set of TKind": die rechte Seite steht nur im Quelltext.
     if SourceOf(TypeInfo, ARequest.Text, ARequest.FileName, ARequest.ReadText, Source) then
     begin
       Declaration := RangeText(Source, TypeInfo.Range);
       if (Pos('=', Declaration) > 0) and TAssignFields.KindOfText(Trim(StringReplace(Copy(Declaration,
         Pos('=', Declaration) + 1, MaxInt), ';', '', [])), Kind) then
+      begin
         Exit(TAssignFields.DefaultValue(Kind, ATypeName, ''));
+      end;
     end;
     if TypeInfo.TypeName = '' then
+    begin
       Break;
+    end;
     Current := TypeInfo.TypeName;
     if TypeInfo.TypeArgs <> '' then
+    begin
       Current := Current + '<' + TypeInfo.TypeArgs + '>';
+    end;
   end;
   Result := TAssignFields.DefaultValue(TAssignValueKind.Other, ATypeName, '');
 end;
@@ -5002,9 +5960,13 @@ var
   begin
     // Vorfahren zuerst, darin nach der Stelle der Deklaration.
     if A.Depth <> B.Depth then
+    begin
       Exit(A.Depth > B.Depth);
+    end;
     if not SameText(A.FileName, B.FileName) then
+    begin
       Exit(CompareText(A.FileName, B.FileName) < 0);
+    end;
     Result := ComparePositions(A.Range.StartPos, B.Range.StartPos) < 0;
   end;
 
@@ -5012,26 +5974,35 @@ begin
   AItem := Default(TCompletionItem);
   Result := False;
   if not ARequest.Settings.AssignAllFields or (ARequest.Tree = nil) or (ARequest.Text = '') then
+  begin
     Exit;
+  end;
   Context := Analyze(ARequest.Tree, ARequest.Position);
   if (Context.Kind <> TCompletionContextKind.Member) or (Context.Prefix <> '') or
     (Context.ChainStart.Line <> ARequest.Position.Line) or (Context.DotPos.Line <> ARequest.Position.Line) then
+  begin
     Exit;
+  end;
   // Am Anfang einer Anweisung, allein in der Zeile.
   LineText := ARequest.LineText(ARequest.Position.Line);
   if (Trim(Copy(LineText, 1, Context.ChainStart.Character)) <> '') or
     (Trim(Copy(LineText, ARequest.Position.Character + 1, MaxInt)) <> '') or
     not AtStatementStart(ARequest.Tree.Tokens, Context.ChainStart) then
+  begin
     Exit;
+  end;
   // Ein Wert vom Typ Record oder Klasse; TFoo. allein ist ein Typ, TFoo(X). eine Typumwandlung.
   if not ARequest.Resolver.ChainType(ARequest.Tree, ARequest.FileName, Context.Names, Context.Offset, Owner,
     TypeInfo, TypeFound) or not TypeFound or (Owner.Kind = TResolvedKind.UnitName) or
     (Owner.IsType and not Context.Called) or TypeInfo.Builtin or not (TypeInfo.SymbolKind in
     [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType]) then
+  begin
     Exit;
+  end;
   Candidates := ARequest.Resolver.MemberCandidates(ARequest.Tree, ARequest.FileName, Context.Names, Context.Offset);
   // "property Caption;" hebt nur die Sichtbarkeit an: Typ, Zugriff und Stelle der Deklaration weiter oben.
   for Index := 0 to High(Candidates) do
+  begin
     if (Candidates[Index].SymbolKind = TIndexSymbolKind.Property_) and (Candidates[Index].TypeName = '') and
       ARequest.Resolver.TypedProperty(TypeInfo, Candidates[Index].Name, Swap, Other) then
     begin
@@ -5039,6 +6010,7 @@ begin
       Swap.Depth := Other;
       Candidates[Index] := Swap;
     end;
+  end;
   // Wenige Mitglieder: Einfügen genügt.
   for Index := 1 to High(Candidates) do
   begin
@@ -5056,14 +6028,18 @@ begin
   begin
     if Candidates[Index].IsHelper or not (Candidates[Index].SymbolKind in [TIndexSymbolKind.Field,
       TIndexSymbolKind.Property_]) then
+    begin
       Continue;
+    end;
     Member := Default(TAssignMember);
     Member.Name := Candidates[Index].Name;
     Member.Kind := Candidates[Index].SymbolKind;
     Member.Signature := Candidates[Index].Signature;
     TypeText := Candidates[Index].TypeName;
     if (TypeText <> '') and (Candidates[Index].TypeArgs <> '') then
+    begin
       TypeText := TypeText + '<' + Candidates[Index].TypeArgs + '>';
+    end;
     // Generische Typen: TPair<string, Integer>.Key ist ein string.
     Member.TypeName := SubstituteWords(TypeText, Candidates[Index].Bindings);
     Member.Visibility := Candidates[Index].Visibility;
@@ -5076,7 +6052,9 @@ begin
     for Member in TAssignFields.Merge(Members) do
     begin
       if not TAssignFields.Writable(Member) then
+      begin
         Continue;
+      end;
       Field.Name := Member.Name;
       Field.TypeName := Member.TypeName;
       if not Values.TryGetValue(LowerCase(Member.TypeName), Field.Value) then
@@ -5094,7 +6072,9 @@ begin
   Fields := TAssignFields.Without(Fields, TAssignFields.AssignedAfter(TextLines(ARequest.Text),
     ARequest.Position.Line, Expr));
   if Length(Fields) = 0 then
+  begin
     Exit;
+  end;
   Indent := Copy(LineText, 1, Context.ChainStart.Character);
   LineBreak := ARequest.LineBreak;
   AItem.Name := TAssignFields.Title(Length(Fields));
@@ -5125,7 +6105,9 @@ begin
     AItem.TextEdit.NewText := TAssignFields.Snippet(Expr, Fields);
   end
   else
+  begin
     AItem.TextEdit.NewText := TAssignFields.Plain(Expr, Indent, LineBreak, Fields);
+  end;
   Result := True;
 end;
 
@@ -5149,23 +6131,33 @@ begin
     Signature := '';
     if (AResolver <> nil) and AResolver.ResolveTypeTextFrom(FromUnit, TypeText, Resolved) and
       not Resolved.Builtin then
+    begin
       Signature := Resolved.Signature;
+    end;
     // Ohne Quellen der RTL im Index: die Deklarationen von System.SysUtils.
     if Signature = '' then
+    begin
       Signature := TCompletionAnonymous.RtlDeclaration(Base, Length(Args));
+    end;
     if Signature = '' then
+    begin
       Exit;
+    end;
     if TCompletionAnonymous.Parse(Signature, TypeParams, AMethodRef, Target) then
     begin
       for Index := 0 to High(AMethodRef.Params) do
+      begin
         AMethodRef.Params[Index].TypeText := TCompletionAnonymous.Substitute(AMethodRef.Params[Index].TypeText,
           TypeParams, Args);
+      end;
       AMethodRef.ResultType := TCompletionAnonymous.Substitute(AMethodRef.ResultType, TypeParams, Args);
       Exit(True);
     end;
     // Alias ("TKundenFilter = TPredicate<TKunde>"): weiter mit dem Ziel, gelesen in der Unit des Alias.
     if (Target = '') or not AResolver.DeclaringUnit(Resolved, FromUnit) then
+    begin
       Exit;
+    end;
     TypeText := TCompletionAnonymous.Substitute(Target, TypeParams, Args);
   end;
 end;
@@ -5182,33 +6174,51 @@ begin
   AItem := Default(TCompletionItem);
   Result := False;
   if not ARequest.Settings.AnonymousMethods or (ARequest.Tree = nil) or (ARequest.Resolver = nil) then
+  begin
     Exit;
+  end;
   Context := Analyze(ARequest.Tree, ARequest.Position);
   if (Context.Kind <> TCompletionContextKind.Scope) or (Context.Filter <> TCompletionFilter.Any) or
     Context.Attribute or Context.Generic then
+  begin
     Exit;
+  end;
   if (Context.Prefix <> '') and not StartsText(Context.Prefix, 'procedure') and
     not StartsText(Context.Prefix, 'function') then
+  begin
     Exit;
+  end;
   Expected := ExpectedFullType(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ARequest.Position);
   if (Expected = '') or not MethodRefOf(ARequest.Resolver, ARequest.UnitIndex, Expected, MethodRef) then
+  begin
     Exit;
+  end;
   // Bindungen generischer Instanzen sind qualifiziert ("Kunden.TKunde"); im Gerüst wie im Quelltext üblich.
   Expected := ARequest.Resolver.UnqualifyType(Expected, ARequest.UnitIndex.UnitName);
   for Index := 0 to High(MethodRef.Params) do
+  begin
     MethodRef.Params[Index].TypeText := ARequest.Resolver.UnqualifyType(MethodRef.Params[Index].TypeText,
       ARequest.UnitIndex.UnitName);
+  end;
   MethodRef.ResultType := ARequest.Resolver.UnqualifyType(MethodRef.ResultType, ARequest.UnitIndex.UnitName);
   if Assigned(ANamingFor) then
-    Prefix := ANamingFor(ARequest.Uri, TNamingKind.Parameter)
+  begin
+    Prefix := ANamingFor(ARequest.Uri, TNamingKind.Parameter);
+  end
   else
+  begin
     Prefix := NamingPrefix(ARequest.Index, TNamingKind.Parameter);
+  end;
   MethodRef := TCompletionAnonymous.Named(MethodRef, Prefix);
   AItem.Name := TCompletionAnonymous.Header(MethodRef);
   if MethodRef.IsFunction then
-    AItem.FilterText := 'function'
+  begin
+    AItem.FilterText := 'function';
+  end
   else
+  begin
     AItem.FilterText := 'procedure';
+  end;
   AItem.Kind := KindSnippet;
   // Den Typ zeigt Atlas als Tag (MethodRef); rechts steht, was der Eintrag ist.
   AItem.Detail := 'anonyme Methode';
@@ -5233,7 +6243,9 @@ begin
     LineText := ARequest.LineText(ARequest.Position.Line);
     Index := 1;
     while (Index <= Length(LineText)) and CharInSet(LineText[Index], [' ', #9]) do
+    begin
       Inc(Index);
+    end;
     Indent := Copy(LineText, 1, Index - 1);
     AItem.TextEdit.NewText := TCompletionAnonymous.Plain(MethodRef, Indent, ARequest.LineBreak);
   end;

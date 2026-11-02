@@ -28,9 +28,13 @@ implementation
 function CloneOrNull(const AValue: TJSONValue): TJSONValue;
 begin
   if AValue = nil then
-    Result := TJSONNull.Create
+  begin
+    Result := TJSONNull.Create;
+  end
   else
+  begin
     Result := TJSONValue(AValue.Clone);
+  end;
 end;
 
 { TJsonRpcMessages }
@@ -38,7 +42,9 @@ end;
 class function TJsonRpcMessages.Response(const AId: TJSONValue; AResult: TJSONValue): TJSONObject;
 begin
   if AResult = nil then
+  begin
     AResult := TJSONNull.Create;
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('jsonrpc', Version);
   Result.AddPair('id', CloneOrNull(AId));
@@ -65,7 +71,9 @@ begin
   Result.AddPair('jsonrpc', Version);
   Result.AddPair('method', AMethod);
   if AParams <> nil then
+  begin
     Result.AddPair('params', AParams);
+  end;
 end;
 
 end.

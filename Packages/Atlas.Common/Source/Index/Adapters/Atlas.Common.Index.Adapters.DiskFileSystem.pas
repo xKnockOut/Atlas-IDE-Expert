@@ -63,9 +63,13 @@ function ErrorReason(E: Exception): string;
 begin
   Result := E.ClassName;
   if E is EInOutError then
-    Result := Format('%s %d', [Result, EInOutError(E).ErrorCode])
+  begin
+    Result := Format('%s %d', [Result, EInOutError(E).ErrorCode]);
+  end
   else if E is EOSError then
+  begin
     Result := Format('%s %d', [Result, EOSError(E).ErrorCode]);
+  end;
 end;
 
 { TDiskIndexFileSystem }
@@ -76,9 +80,13 @@ var
 begin
   Result := FileAge(AFileName, Age);
   if Result then
-    AStamp := Round(Age * MSecsPerDay)
+  begin
+    AStamp := Round(Age * MSecsPerDay);
+  end
   else
+  begin
     AStamp := 0;
+  end;
 end;
 
 function TDiskIndexFileSystem.ReadText(const AFileName: string; out AText: string): Boolean;
@@ -95,7 +103,9 @@ begin
       Result := False;
   end;
   if not Result then
+  begin
     AText := '';
+  end;
 end;
 
 function TDiskIndexFileSystem.ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
@@ -118,7 +128,9 @@ begin
       Result := False;
   end;
   if not Result then
+  begin
     ABytes := nil;
+  end;
 end;
 
 function TDiskIndexFileSystem.WriteText(const AFileName, AText: string): Boolean;
@@ -145,9 +157,13 @@ begin
     TFile.WriteAllBytes(Temp, ABytes);
     Written := True;
     if FileExists(AFileName) then
-      TFile.Replace(Temp, AFileName, Backup)
+    begin
+      TFile.Replace(Temp, AFileName, Backup);
+    end
     else
+    begin
       RenameFile(Temp, AFileName);
+    end;
   except
     // Gemeldet, nicht verschluckt: Der Aufrufer schreibt den Grund ins Log.
     on E: Exception do
@@ -162,14 +178,22 @@ begin
   // nachzuschieben (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2). Die temporäre Datei ist vollständig
   // geschrieben, also an ihre Stelle setzen.
   if Written and not Result and not FileExists(AFileName) then
+  begin
     Result := RenameFile(Temp, AFileName);
+  end;
   if not Result and (AError = '') then
+  begin
     AError := 'Ziel nicht ersetzt';
+  end;
   // Keine Reste, weder bei Erfolg noch bei Fehler (Test FailedReplaceLeavesNoRemains).
   if FileExists(Temp) then
+  begin
     System.SysUtils.DeleteFile(Temp);
+  end;
   if FileExists(Backup) then
+  begin
     System.SysUtils.DeleteFile(Backup);
+  end;
 end;
 
 function TDiskIndexFileSystem.TryLockWrite(const AFileName: string): IInterface;

@@ -9,7 +9,7 @@
       Atlas.Common.Architecture.MapTemplate mit der Funktion
       ArchitectureMapHtml; TArchitectureReport.Html setzt Titel ({{TITLE}})
       und Daten ({{DATA}}) ein.
-    - Packages/Atlas.IDE.Expert/Source/Core/Results/Aufrufdiagramm.html wird
+    - Packages/Atlas.IDE.Base/Source/Core/Results/Aufrufdiagramm.html wird
       Atlas.Core.Results.CallDiagramTemplate mit der Funktion
       CallDiagramHtml; TAtlasCallDiagram.Html setzt Titel und Daten ein.
     Jede Zeile der Vorlage wird ein Element eines Feldes, lange Zeilen in
@@ -36,7 +36,7 @@ $Templates = @(
     @{ Folder = 'Packages/Atlas.Common/Source/Architecture'; Source = 'Architekturkarte.html';
        Unit = 'Atlas.Common.Architecture.MapTemplate'; Function = 'ArchitectureMapHtml';
        Purpose = 'Vorlage des HTML-Berichts der Architekturübersicht (#1118).' },
-    @{ Folder = 'Packages/Atlas.IDE.Expert/Source/Core/Results'; Source = 'Aufrufdiagramm.html';
+    @{ Folder = 'Packages/Atlas.IDE.Base/Source/Core/Results'; Source = 'Aufrufdiagramm.html';
        Unit = 'Atlas.Core.Results.CallDiagramTemplate'; Function = 'CallDiagramHtml';
        Purpose = 'Vorlage des Aufrufdiagramms als HTML (#1122).' }
 )
@@ -78,7 +78,7 @@ for ($Index = 0; $Index -lt $Lines.Count; $Index++) {
     $Text.Add('    ' + ($Pieces -join " +`r`n      ") + $End)
 }
 foreach ($Line in @('', "function $($Template.Function): string;", 'var', '  Line: string;', 'begin', "  Result := '';",
-    '  for Line in Lines do', '    Result := Result + Line + #10;', 'end;', '', 'end.')) { $Text.Add($Line) }
+    '  for Line in Lines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '', 'end.')) { $Text.Add($Line) }
 $Result = ($Text -join "`r`n") + "`r`n"
 
 $Current = if (Test-Path $UnitPath) { [IO.File]::ReadAllText($UnitPath).TrimStart([char]0xFEFF) } else { '' }

@@ -95,8 +95,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := AFirst to ALast do
+  begin
     if Significant(ATokens[mIndex]) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -118,16 +122,22 @@ begin
   begin
     mToken := ATokens[mIndex];
     if not Significant(mToken) or mToken.IsSymbol('+') then
+    begin
       Continue;
+    end;
     // Mehrzeilige Literale (''') und offene Strings bleiben unbekannt.
     if not (mToken.Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]) or not mToken.Terminated or
       (mToken.StartPos.Line <> mToken.EndPos.Line) or
       not TFormatString.LiteralOffsets(mToken.Text, mPart, mOffsets) then
+    begin
       Exit(False);
+    end;
     AValue := AValue + mPart;
     for mChar := 0 to High(mOffsets) do
+    begin
       APositions := APositions + [TTextPosition.Create(mToken.StartPos.Line,
         mToken.StartPos.Character + mOffsets[mChar])];
+    end;
     mAny := True;
   end;
   Result := mAny;
@@ -143,22 +153,34 @@ begin
   AValue := '';
   Result := False;
   if AResolver = nil then
+  begin
     Exit;
+  end;
   mLast := -1;
   for mIndex := AFirst to ALast do
+  begin
     if Significant(ATokens[mIndex]) then
     begin
       if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
-        mLast := mIndex
+      begin
+        mLast := mIndex;
+      end
       else if not ATokens[mIndex].IsSymbol('.') then
+      begin
         Exit;
+      end;
     end;
+  end;
   if mLast < 0 then
+  begin
     Exit;
+  end;
   mSymbol := AResolver.Resolve(ATree, AFileName, ATokens[mLast].StartPos);
   if (mSymbol.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and
     (mSymbol.SymbolKind = TIndexSymbolKind.Constant) then
+  begin
     Result := TFormatString.ConstantValue(mSymbol.Signature, AValue);
+  end;
 end;
 
 /// <summary>Art eines Listeneintrags aus genau einem Literal (auch negativ) bzw. True/False; Unknown sonst.
@@ -177,15 +199,21 @@ begin
   begin
     mToken := ATokens[mIndex];
     if not Significant(mToken) then
+    begin
       Continue;
+    end;
     // Literale wie 'a'#13'b' sind mehrere Tokens; ein Vorzeichen nur vorn; alles andere ist ein Ausdruck.
     if (mToken.Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]) or
       (mToken.Kind = TPascalTokenKind.Number) and ((mText = '') or (mText = '-')) or
       (mText = '') and mToken.IsSymbol('-') or
       (mText = '') and (mToken.Kind = TPascalTokenKind.Identifier) then
-      mText := mText + mToken.Text
+    begin
+      mText := mText + mToken.Text;
+    end
     else
+    begin
       Exit;
+    end;
   end;
   if SameText(mText, 'True') or SameText(mText, 'False') then
   begin
@@ -229,7 +257,9 @@ var
     mFrom := FirstSignificant(mTokens, AFrom, ATo);
     mTo := ATo;
     while (mTo >= AFrom) and not Significant(mTokens[mTo]) do
+    begin
       Dec(mTo);
+    end;
     if mFrom < 0 then
     begin
       // Leerer Eintrag: Lage hinter dem Trennzeichen davor.
@@ -248,7 +278,9 @@ var
   procedure Report(AProblem: TSignatureFormatProblem; ASpec, AArgument: Integer; const AKind: string);
   begin
     if Result.Problem <> TSignatureFormatProblem.None then
+    begin
       Exit;
+    end;
     Result.Problem := AProblem;
     Result.ProblemSpec := ASpec;
     Result.ProblemArgument := AArgument;
@@ -258,10 +290,14 @@ var
   procedure CheckArgument(ASpec: Integer; AType: Char; AArgument: Integer);
   begin
     if (AArgument < 0) or (AArgument > High(mElementFirst)) or (mElementFirst[AArgument] < 0) then
+    begin
       Exit;
+    end;
     mClass := ElementClass(mTokens, mElementFirst[AArgument], mElementLast[AArgument], mKind);
     if not TFormatString.Fits(AType, mClass) then
+    begin
       Report(TSignatureFormatProblem.TypeConflict, ASpec, AArgument, mKind);
+    end;
   end;
 
 begin
@@ -272,12 +308,16 @@ begin
   Result.ProblemSpec := -1;
   Result.ProblemArgument := -1;
   if (ATree = nil) or (Length(AFirsts) = 0) then
+  begin
     Exit;
+  end;
   mTokens := ATree.Tokens;
   // Liste: erstes Argument, das mit "[" beginnt (hinter dem Formatstring, wenn dessen Stelle bekannt ist).
   mFirst := 1;
   if ARoutine.FormatIndex >= 0 then
+  begin
     mFirst := ARoutine.FormatIndex + 1;
+  end;
   for mIndex := mFirst to High(AFirsts) do
   begin
     mOpen := FirstSignificant(mTokens, AFirsts[mIndex], Min(ALasts[mIndex], High(mTokens)));
@@ -288,23 +328,35 @@ begin
     end;
   end;
   if ARoutine.FormatIndex >= 0 then
-    Result.FormatParameter := ARoutine.FormatIndex
+  begin
+    Result.FormatParameter := ARoutine.FormatIndex;
+  end
   else if Result.ListParameter > 0 then
-    Result.FormatParameter := Result.ListParameter - 1
+  begin
+    Result.FormatParameter := Result.ListParameter - 1;
+  end
   else
+  begin
     Exit;
+  end;
   // Der Formatstring wird gerade getippt bzw. fehlt noch.
   if (Result.FormatParameter > High(AFirsts)) or (AActiveParameter = Result.FormatParameter) then
+  begin
     Exit;
+  end;
   if Result.ListParameter < 0 then
+  begin
     Result.ListParameter := Result.FormatParameter + 1;
+  end;
   if not LiteralFormat(mTokens, AFirsts[Result.FormatParameter], ALasts[Result.FormatParameter], mValue,
     mPositions) then
   begin
     mPositions := nil;
     if not ConstantFormat(AResolver, ATree, AFileName, mTokens, AFirsts[Result.FormatParameter],
       ALasts[Result.FormatParameter], mValue) then
+    begin
       Exit;
+    end;
   end;
   Result.Found := True;
   mFormat := TFormatString.Parse(mValue);
@@ -320,9 +372,11 @@ begin
     mItem.PrecisionArgument := mSpec.PrecisionArgument;
     mItem.Range := TTextRange.Create(-1, -1, -1, -1);
     if (mPositions <> nil) and (mSpec.Offset + Length(mSpec.Text) - 1 <= Length(mPositions)) then
+    begin
       mItem.Range := TTextRange.Create(mPositions[mSpec.Offset - 1],
         TTextPosition.Create(mPositions[mSpec.Offset + Length(mSpec.Text) - 2].Line,
         mPositions[mSpec.Offset + Length(mSpec.Text) - 2].Character + 1));
+    end;
     Result.Specs := Result.Specs + [mItem];
   end;
   // Einträge der Liste, auch hinter dem Cursor.
@@ -345,9 +399,13 @@ begin
         if Significant(mToken) then
         begin
           if mToken.IsSymbol('(') or mToken.IsSymbol('[') then
-            Inc(mDepth)
+          begin
+            Inc(mDepth);
+          end
           else if (mDepth > 0) and (mToken.IsSymbol(')') or mToken.IsSymbol(']')) then
-            Dec(mDepth)
+          begin
+            Dec(mDepth);
+          end
           else if mDepth = 0 then
           begin
             if mToken.IsSymbol(']') then
@@ -374,43 +432,63 @@ begin
         Inc(mIndex);
       end;
       if (mStart <= mLastToken) or (Length(Result.Arguments) > 0) or (mClose >= 0) then
+      begin
         AddElement(mStart, mLastToken);
+      end;
       // Eintrag am Cursor: Kommas zwischen "[" und dem letzten Token vor dem Cursor.
       if (AActiveParameter = Result.ListParameter) and ((mClose < 0) or (mClose > ALasts[Result.ListParameter])) then
       begin
         mCommas := 0;
         mDepth := 0;
         for mIndex := mOpen + 1 to Min(ALasts[Result.ListParameter], High(mTokens)) do
+        begin
           if Significant(mTokens[mIndex]) then
           begin
             if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
-              Inc(mDepth)
+            begin
+              Inc(mDepth);
+            end
             else if mTokens[mIndex].IsSymbol(')') or mTokens[mIndex].IsSymbol(']') then
-              Dec(mDepth)
+            begin
+              Dec(mDepth);
+            end
             else if (mDepth = 0) and mTokens[mIndex].IsSymbol(',') then
+            begin
               Inc(mCommas);
+            end;
           end;
+        end;
         Result.ActiveArgument := mCommas;
       end;
     end;
   end;
   // Probleme: ungültiger Platzhalter, überzählige Argumente, Typkonflikt mit einem Literal.
   for mIndex := 0 to High(Result.Specs) do
+  begin
     if not Result.Specs[mIndex].Valid then
+    begin
       Report(TSignatureFormatProblem.Invalid, mIndex, -1, '');
+    end;
+  end;
   if (Result.ArgumentCount >= 0) and (Result.FilledArguments > Result.ArgumentCount) then
+  begin
     for mArgument := Result.ArgumentCount to High(mElementFirst) do
+    begin
       if mElementFirst[mArgument] >= 0 then
       begin
         Report(TSignatureFormatProblem.TooManyArguments, -1, mArgument, '');
         Break;
       end;
+    end;
+  end;
   for mIndex := 0 to High(Result.Specs) do
   begin
     CheckArgument(mIndex, '*', Result.Specs[mIndex].WidthArgument);
     CheckArgument(mIndex, '*', Result.Specs[mIndex].PrecisionArgument);
     if Result.Specs[mIndex].Valid then
+    begin
       CheckArgument(mIndex, Result.Specs[mIndex].TypeChar, Result.Specs[mIndex].Argument);
+    end;
   end;
 end;
 
@@ -424,7 +502,9 @@ var
   mRange: TTextRange;
 begin
   if not AFormat.Found then
+  begin
     Exit(nil);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('formatParameter', TJSONNumber.Create(AFormat.FormatParameter));
   Result.AddPair('listParameter', TJSONNumber.Create(AFormat.ListParameter));
@@ -438,18 +518,24 @@ begin
     mSpecs.AddElement(mItem);
     mItem.AddPair('text', mSpec.Text);
     if mSpec.Valid then
+    begin
       mItem.AddPair('type', string(mSpec.TypeChar));
+    end;
     mItem.AddPair('valid', TJSONBool.Create(mSpec.Valid));
     mItem.AddPair('argument', TJSONNumber.Create(mSpec.Argument));
     mItem.AddPair('width', TJSONNumber.Create(mSpec.WidthArgument));
     mItem.AddPair('precision', TJSONNumber.Create(mSpec.PrecisionArgument));
     if mSpec.Range.StartPos.Line >= 0 then
+    begin
       mItem.AddPair('range', TLspPositions.RangeToJson(mSpec.Range));
+    end;
   end;
   mArguments := TJSONArray.Create;
   Result.AddPair('arguments', mArguments);
   for mRange in AFormat.Arguments do
+  begin
     mArguments.AddElement(TLspPositions.RangeToJson(mRange));
+  end;
   if AFormat.Problem <> TSignatureFormatProblem.None then
   begin
     mProblem := TJSONObject.Create;
@@ -458,7 +544,9 @@ begin
     mProblem.AddPair('placeholder', TJSONNumber.Create(AFormat.ProblemSpec));
     mProblem.AddPair('argument', TJSONNumber.Create(AFormat.ProblemArgument));
     if AFormat.ProblemKind <> '' then
+    begin
       mProblem.AddPair('argumentKind', AFormat.ProblemKind);
+    end;
   end;
 end;
 

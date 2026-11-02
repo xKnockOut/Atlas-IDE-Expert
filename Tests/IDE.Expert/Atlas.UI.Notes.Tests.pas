@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasNoteDialogTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -34,6 +35,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasNotesListTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -51,22 +53,17 @@ type
     procedure MenuEditsDeletesAndOpens;
     [Test]
     procedure OtherListsHideNoteMenu;
+    /// <summary>#1455: Nach ReleaseItems erreicht die Liste das Modul nicht mehr (Regel 3).</summary>
+    [Test]
+    procedure ReleasedListHasNoActions;
   end;
 
   [TestFixture]
-  TAtlasNoteTipTests = class
+  [Category('Atlas.IDE.Bookmarks')]
+  TAtlasNoteLineTests = class
   public
     [Test]
-    procedure MeasuresWrappedText;
-    [Test]
     procedure SeveralNotesOnOneLine;
-    /// <summary>#623: Links unter dem Text machen den Tooltip höher; ohne Zeichnen gibt es kein Klickziel.</summary>
-    [Test]
-    procedure LinksAddLines;
-    /// <summary>#1281: Der Bereich des Textes ist beim Zeichnen so hoch wie gemessen (vorher zwei Pixel zu
-    /// wenig, die letzte Zeile wurde unten abgeschnitten).</summary>
-    [Test]
-    procedure BodyAreaHoldsMeasuredText;
   end;
 
 implementation
@@ -81,7 +78,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Notes.Store,
   Atlas.UI.Notes.Dialog,
-  Atlas.UI.Notes.Tip,
+  Atlas.UI.Notes.List,
   Atlas.UI.Results.Frame;
 
 const
@@ -253,8 +250,9 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.ShowNotes('Notizen', Book.Groups);
-    Assert.IsTrue(Frame.ShowsNotes);
+    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil, nil));
+    Assert.IsTrue(Frame.ShowsItemsOf(TAtlasNotesList.Owner));
+    Assert.IsFalse(Frame.ShowsItemsOf('andere'));
     // Gruppe Kunde.pas mit zwei Notizen nach Zeile, dann „Verwaist (1)“.
     Assert.AreEqual(5, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual('Kunde.pas (2)', Frame.Tree.Items[0].Text);
@@ -264,8 +262,8 @@ begin
     Assert.AreEqual('Auftrag.pas, Zeile 3: Weg damit', Frame.Tree.Items[4].Text);
     Assert.IsTrue(Frame.Tree.Items[0].Expanded);
     // Auswahl nach Kennung.
-    Frame.ShowNotes('Notizen', Book.Groups, Book.Notes[0].Id);
-    Assert.AreEqual(Book.Notes[0].Id, Frame.SelectedNoteId);
+    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, Book.Notes[0].Id, nil, nil));
+    Assert.AreEqual(Book.Notes[0].Id, Frame.SelectedItemId);
     Assert.IsTrue(Frame.Tree.Selected = Frame.Tree.Items[2]);
   finally
     Host.Free;
@@ -286,23 +284,21 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.OnNoteEdit :=
-      procedure(const AId: string)
-      begin
-        Edited := AId;
-      end;
-    Frame.OnNoteDelete :=
-      procedure(const AId: string)
-      begin
-        Deleted := AId;
-      end;
     Frame.OnOpen :=
       procedure(const AFileName: string; ALine, ACharacter: Integer)
       begin
         Opened := AFileName;
         OpenedLine := ALine;
       end;
-    Frame.ShowNotes('Notizen', Book.Groups);
+    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, '',
+      procedure(const AId: string)
+      begin
+        Edited := AId;
+      end,
+      procedure(const AId: string)
+      begin
+        Deleted := AId;
+      end));
     // Gruppe gewählt: Einträge sichtbar, aber gesperrt; Änderungsbefehle (#721) unsichtbar.
     Frame.Menu.OnPopup(Frame.Menu);
     Assert.IsFalse(Frame.Menu.Items[0].Visible);
@@ -351,14 +347,13 @@ begin
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
     Deleted := '';
-    Frame.OnNoteDelete :=
+    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil,
       procedure(const AId: string)
       begin
         Deleted := AId;
-      end;
-    Frame.ShowNotes('Notizen', Book.Groups);
+      end));
     Frame.ShowEntries('Referenzen', nil);
-    Assert.IsFalse(Frame.ShowsNotes);
+    Assert.IsFalse(Frame.ShowsItemsOf(TAtlasNotesList.Owner));
     Frame.Menu.OnPopup(Frame.Menu);
     Assert.IsFalse(Frame.Menu.Items[3].Visible);
     Assert.IsFalse(Frame.Menu.Items[4].Visible);
@@ -370,72 +365,44 @@ begin
   end;
 end;
 
-{ TAtlasNoteTipTests }
-
-procedure TAtlasNoteTipTests.MeasuresWrappedText;
+procedure TAtlasNotesListTests.ReleasedListHasNoActions;
 var
-  Tip: TAtlasNoteTip;
-  One, Two, Long: TSize;
+  Host: TForm;
+  Frame: TAtlasResultsFrame;
+  Book: TAtlasNoteBook;
+  Deleted: string;
+  Key: Word;
 begin
-  Tip := TAtlasNoteTip.Create(nil);
+  Book := SampleBook;
+  Host := TForm.CreateNew(nil);
   try
-    Tip.Colors := TAtlasColors.Light;
-    Tip.SetScaling(96, 1, 'Segoe UI', 9);
-    One := Tip.Measure('Notiz vom 15.10.2026', 'Eine Zeile');
-    Two := Tip.Measure('Notiz vom 15.10.2026', 'Eine Zeile' + #10 + 'Noch eine');
-    Assert.IsTrue(Two.cy > One.cy, 'zweite Zeile macht den Tooltip höher');
-    Assert.AreEqual('Eine Zeile' + #13#10 + 'Noch eine', Tip.Text);
-    Long := Tip.Measure('Notiz', StringOfChar('x', 20) + ' ' + StringOfChar('y', 400));
-    Assert.IsTrue(Long.cx <= TAtlasNoteTip.MaxWidth + 2 * TAtlasNoteTip.Padding, 'Breite begrenzt');
+    Frame := TAtlasResultsFrame.Create(Host);
+    Frame.Parent := Host;
+    Deleted := '';
+    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil,
+      procedure(const AId: string)
+      begin
+        Deleted := AId;
+      end));
+    Frame.ReleaseItems('andere');
+    Frame.Tree.Selected := Frame.Tree.Items[1];
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsTrue(Frame.Menu.Items[4].Visible, 'fremder Besitzer gibt nichts frei');
+    Frame.ReleaseItems(TAtlasNotesList.Owner);
+    Assert.IsTrue(Frame.ShowsItemsOf(TAtlasNotesList.Owner), 'Liste bleibt sichtbar');
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsFalse(Frame.Menu.Items[4].Visible, 'Löschen weg');
+    Key := VK_DELETE;
+    Frame.Tree.OnKeyDown(Frame.Tree, Key, []);
+    Assert.AreEqual('', Deleted);
   finally
-    Tip.Free;
+    Host.Free;
   end;
 end;
 
-procedure TAtlasNoteTipTests.LinksAddLines;
-var
-  Tip: TAtlasNoteTip;
-  Plain, Linked: TSize;
-begin
-  Tip := TAtlasNoteTip.Create(nil);
-  try
-    Tip.Colors := TAtlasColors.Light;
-    Tip.SetScaling(96, 1, 'Segoe UI', 9);
-    Plain := Tip.Measure('Rekursion über 2 Methoden', 'Speichern → Pruefen → Speichern');
-    Linked := Tip.Measure('Rekursion über 2 Methoden', 'Speichern → Pruefen → Speichern',
-      ['TFoo.Speichern', 'TFoo.Pruefen']);
-    Assert.IsTrue(Linked.cy > Plain.cy, 'zwei Zeilen mehr');
-    Assert.AreEqual(2, Integer(Length(Tip.Links)));
-    Assert.AreEqual(-1, Tip.LinkAt(1, 1), 'noch nicht gezeichnet');
-    Tip.Measure('Notiz', 'Text');
-    Assert.AreEqual(0, Integer(Length(Tip.Links)), 'ohne Links wieder leer');
-  finally
-    Tip.Free;
-  end;
-end;
+{ TAtlasNoteLineTests }
 
-procedure TAtlasNoteTipTests.BodyAreaHoldsMeasuredText;
-var
-  Tip: TAtlasNoteTip;
-  Size: TSize;
-  Ppi: Integer;
-begin
-  Tip := TAtlasNoteTip.Create(nil);
-  try
-    Tip.Colors := TAtlasColors.Light;
-    for Ppi in TArray<Integer>.Create(96, 144, 192) do
-    begin
-      Tip.SetScaling(Ppi, 1, 'Segoe UI', 9);
-      Size := Tip.Measure('Lesezeichen 1', 'Klick setzt ein Lesezeichen' + #10 + 'Zweite Zeile mit Unterlängen gpy');
-      Assert.IsTrue(Tip.BodyArea(Size).Height >= Tip.BodyHeight, Format('Text passt bei %d dpi', [Ppi]));
-      Assert.IsTrue(Tip.BodyArea(Size).Width > 0, Format('Breite bei %d dpi', [Ppi]));
-    end;
-  finally
-    Tip.Free;
-  end;
-end;
-
-procedure TAtlasNoteTipTests.SeveralNotesOnOneLine;
+procedure TAtlasNoteLineTests.SeveralNotesOnOneLine;
 var
   Book: TAtlasNoteBook;
   Notes: TArray<TAtlasNote>;
@@ -451,6 +418,6 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TAtlasNoteDialogTests);
   TDUnitX.RegisterTestFixture(TAtlasNotesListTests);
-  TDUnitX.RegisterTestFixture(TAtlasNoteTipTests);
+  TDUnitX.RegisterTestFixture(TAtlasNoteLineTests);
 
 end.

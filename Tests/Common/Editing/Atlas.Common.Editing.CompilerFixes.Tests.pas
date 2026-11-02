@@ -66,9 +66,13 @@ begin
     begin
       Result := nil;
       if SameText(AName, 'TStringList') then
-        Result := TArray<string>.Create('Meine.Listen', 'Vcl.Klassen.Alt', 'System.Classes')
+      begin
+        Result := TArray<string>.Create('Meine.Listen', 'Vcl.Klassen.Alt', 'System.Classes');
+      end
       else if SameText(AName, 'TJSONArray') then
+      begin
         Result := TArray<string>.Create('System.JSON');
+      end;
     end;
   Result.Namespaces := TArray<string>.Create('System', 'Vcl');
 end;
@@ -88,11 +92,15 @@ begin
     begin
       ATitles := ATitles + Item.Title;
       if Item.Preferred then
+      begin
         ATitles := ATitles + ' *';
+      end;
       ATitles := ATitles + '|';
     end;
     if Length(Fixes) > 0 then
+    begin
       Result := TChangeSignature.ApplyEdits(AText, Fixes[0].Edits);
+    end;
   finally
     Tree.Free;
   end;
@@ -353,9 +361,13 @@ begin
     begin
       Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
       if TFile.Exists(Result) then
+      begin
         Exit;
+      end;
       if ExtractFileDir(Directory) = Directory then
+      begin
         Break;
+      end;
       Directory := ExtractFileDir(Directory);
     end;
   end;
@@ -385,7 +397,9 @@ begin
   Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden');
   Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Golden <> '') and (Golden[1] = #$FEFF) then
+  begin
     Delete(Golden, 1, 1);
+  end;
   Assert.AreEqual(Golden, Text);
 end;
 

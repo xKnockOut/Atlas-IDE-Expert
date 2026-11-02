@@ -206,9 +206,13 @@ begin
   begin
     Result := TPath.Combine(Directory, TPath.Combine('Tests', 'Referenzprojekt'));
     if TDirectory.Exists(Result) then
+    begin
       Exit;
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   Result := '';
@@ -230,7 +234,9 @@ var
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Exit;
+  end;
   Rules := BuiltinRules;
   Texts := nil;
   for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
@@ -254,17 +260,23 @@ var
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   Rules := BuiltinRules;
   Known := [SyntaxRuleId];
   for Rule in Rules do
+  begin
     Known := Known + [Rule.Descriptor.Id];
+  end;
   Text := ReadSource(TPath.Combine(Folder, 'geplante-regeln.txt'));
   Planned := TGoldenCorpus.PlannedIds(Text);
   // Jede geplante ID gehört zu einem offenen Issue (#94).
   Problems := '';
   for Line in TGoldenCorpus.PlannedWithoutIssue(Text) do
+  begin
     Problems := Problems + sLineBreak + Line + ' in geplante-regeln.txt nennt kein Issue';
+  end;
   Texts := nil;
   Markers := 0;
   for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
@@ -276,14 +288,20 @@ begin
       TFileChecker.CheckText(Rules, TServerSettings.Default, ExtractFileName(FileName), Text), Known, Planned);
     // Writeln statt CurrentRunner.Log: DUnitX hält Log-Meldungen bis zum Ende des Laufs (Leck-Monitor).
     for Line in Outcome.Skipped do
+    begin
       System.Writeln('  übersprungen: ', Line);
+    end;
     for Line in Outcome.Missing + Outcome.FalseAlarms + Outcome.Unknown do
+    begin
       Problems := Problems + sLineBreak + Line;
+    end;
   end;
   Assert.IsTrue(Markers > 0, 'Keine Markierungen im Referenzprojekt gefunden');
   // Laufzeit je Regel über den ganzen Korpus, um langsame Regeln zu erkennen.
   for Timing in TGoldenCorpus.TimeRules(Rules, TServerSettings.Default, Texts) do
+  begin
     System.Writeln(Format('  %s: %.1f ms', [Timing.RuleId, Timing.Milliseconds]));
+  end;
   Assert.AreEqual('', Problems, 'Golden-Korpus weicht ab:' + Problems);
 end;
 
@@ -324,8 +342,12 @@ var
     Plain: TGoldenMarker;
   begin
     for Plain in TGoldenCorpus.Markers(AText) do
+    begin
       if (Plain.Line = AMarker.Line) and SameText(Plain.RuleId, AMarker.RuleId) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -334,8 +356,12 @@ var
     Setting: TRuleSetting;
   begin
     for Setting in Settings.Rules do
+    begin
       if SameText(Setting.Id, ARuleId) then
+      begin
         Exit;
+      end;
+    end;
     Setting := Default(TRuleSetting);
     Setting.Id := ARuleId;
     Setting.Severity := TRuleSeverity.Information;
@@ -347,11 +373,15 @@ begin
   // Dateinamen wie der Lauf ohne Index, damit nur der Index den Unterschied macht.
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   Rules := BuiltinRules;
   Known := [SyntaxRuleId];
   for Rule in Rules do
+  begin
     Known := Known + [Rule.Descriptor.Id];
+  end;
   Planned := TGoldenCorpus.PlannedIds(ReadSource(TPath.Combine(Folder, 'geplante-regeln.txt')));
   Index := TSymbolIndex.Create;
   TRtlStubs.AddTo(Index);
@@ -369,9 +399,15 @@ begin
   // mit den Standardeinstellungen nie: ausdrücklich einschalten, wie es ein Projekt in atlas.json täte.
   Settings := TServerSettings.Default;
   for FileIndex := 0 to High(Texts) do
+  begin
     for Marker in TGoldenCorpus.Markers(Texts[FileIndex], True) do
+    begin
       if Marker.Expected and not HasPlain(Texts[FileIndex], Marker) then
+      begin
         Enable(Marker.RuleId);
+      end;
+    end;
+  end;
   Problems := '';
   for FileIndex := 0 to High(Files) do
   begin
@@ -379,7 +415,9 @@ begin
       TGoldenCorpus.Markers(Texts[FileIndex], True), TFileChecker.CheckText(Rules, Settings,
       ExtractFileName(Files[FileIndex]), Texts[FileIndex], Project, TCheckSource.Default, Scopes), Known, Planned);
     for Line in Outcome.Missing + Outcome.FalseAlarms + Outcome.Unknown do
+    begin
       Problems := Problems + sLineBreak + Line;
+    end;
   end;
   Files := nil;
   Texts := nil;
@@ -464,6 +502,7 @@ begin
   // Gegenregeln (#1025) aus: Solange eine an ist, läuft die Regel nicht (redundant-begin-end neben
   // missing-begin-end).
   if TRuleCatalog.Shared.TryFind(ADescriptor.Id, Entry) then
+  begin
     for Other in Entry.OverriddenBy do
     begin
       Setting := Default(TRuleSetting);
@@ -471,6 +510,7 @@ begin
       Setting.Severity := TRuleSeverity.Off;
       Result.Rules := Result.Rules + [Setting];
     end;
+  end;
   Result.MinConfidence := TRuleConfidence.Low;
   Result.MinConfidenceGiven := True;
 end;
@@ -496,28 +536,40 @@ var
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   Rules := BuiltinRules;
   // Units der Packages RefRuntime und RefDesign prüfen wie der Linter als Package-Units (#943).
   Packages := nil;
   for FileName in TDirectory.GetFiles(Folder, '*.dpk') do
+  begin
     Packages := Packages + [TPackageReader.Read(ReadSource(FileName))];
+  end;
   Programs := nil;
   for FileName in TDirectory.GetFiles(Folder, '*.dpr') do
+  begin
     Programs := Programs + [ReadSource(FileName)];
+  end;
   // Syntaxfehler (#1022) sind keine IRule, prüft aber TFileChecker.CheckText mit.
   Descriptors := nil;
   for Rule in Rules do
+  begin
     Descriptors := Descriptors + [Rule.Descriptor];
+  end;
   Descriptors := Descriptors + [TFileChecker.SyntaxDescriptor];
   Known := nil;
   for Descriptor in Descriptors do
+  begin
     Known := Known + [Descriptor.Id];
+  end;
   Mutations := TGoldenCorpus.Mutations(ReadSource(TPath.Combine(Folder, 'mutationen.txt')),
     Errors);
   Problems := '';
   for Line in Errors do
+  begin
     Problems := Problems + sLineBreak + 'mutationen.txt ' + Line;
+  end;
   Assert.IsTrue(Length(Mutations) > 0, 'Keine Mutationen gefunden');
   Found := nil;
   for Mutation in Mutations do
@@ -526,37 +578,49 @@ begin
     FileName := TPath.Combine(TPath.Combine(Folder, 'Source'), Mutation.FileName);
     RuleIndex := IndexText(Mutation.RuleId, Known);
     if RuleIndex < 0 then
-      Problems := Problems + sLineBreak + Format('Zeile %d: unbekannte Regel %s', [Mutation.Line, Mutation.RuleId])
+    begin
+      Problems := Problems + sLineBreak + Format('Zeile %d: unbekannte Regel %s', [Mutation.Line, Mutation.RuleId]);
+    end
     else if not TFile.Exists(FileName) then
-      Problems := Problems + sLineBreak + Format('Zeile %d: Datei %s fehlt', [Mutation.Line, Mutation.FileName])
+    begin
+      Problems := Problems + sLineBreak + Format('Zeile %d: Datei %s fehlt', [Mutation.Line, Mutation.FileName]);
+    end
     else
     begin
       Text := ReadSource(FileName);
       if not TGoldenCorpus.Mutate(Text, Mutation, Mutated) then
+      begin
         Problems := Problems + sLineBreak + Format('Zeile %d: Suchtext nicht genau einmal in %s',
-          [Mutation.Line, Mutation.FileName])
+          [Mutation.Line, Mutation.FileName]);
+      end
       else
       begin
         Settings := MutationSettings(Descriptors[RuleIndex]);
         Project := TFileChecker.PackageOf(Packages, ChangeFileExt(Mutation.FileName, ''));
         // Units eines Programms: CreateForm-Reihenfolge seiner .dpr wie im Linter (#956).
         if Project.Name = '' then
+        begin
           Project.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(Programs,
             ChangeFileExt(Mutation.FileName, ''));
+        end;
         // Formulardatei neben der Unit wie im Linter (#1054).
         Project.FileName := FileName;
         Detected := TGoldenCorpus.Detected(TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Text, Project),
           TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Mutated, Project), Mutation.RuleId);
         if not Detected then
+        begin
           Problems := Problems + sLineBreak + Format('Zeile %d: %s findet die Mutation in %s nicht',
             [Mutation.Line, Mutation.RuleId, Mutation.FileName]);
+        end;
       end;
     end;
     Found := Found + [Detected];
   end;
   // Trefferquote je Regel ins Protokoll (wie die Laufzeit oben).
   for Rate in TGoldenCorpus.HitRates(Mutations, Found) do
+  begin
     System.Writeln(Format('  %s: %d von %d gefunden', [Rate.RuleId, Rate.Found, Rate.Mutations]));
+  end;
   Assert.AreEqual('', Problems, 'Mutationen:' + Problems);
 end;
 
@@ -570,10 +634,14 @@ var
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   Known := nil;
   for Rule in BuiltinRules do
+  begin
     Known := Known + [Rule.Descriptor.Id];
+  end;
   // Rates wirft bei ungültiger Bewertung; die Quote ist so aus der Datei reproduzierbar.
   Rates := TGoldenCorpus.Rates(ReadSource(TPath.Combine(Folder, 'bewertungen.csv')));
   Assert.IsTrue(Length(Rates) > 0, 'bewertungen.csv enthält keine Bewertungen');
@@ -581,7 +649,9 @@ begin
   for Rate in Rates do
   begin
     if IndexText(Rate.RuleId, Known) < 0 then
+    begin
       Problems := Problems + sLineBreak + 'unbekannte Regel ' + Rate.RuleId;
+    end;
     System.Writeln(Format('  %s: %d richtig, %d falsch, Fehlalarmquote %.1f %%',
       [Rate.RuleId, Rate.Correct, Rate.Wrong, Rate.FalseAlarmRate * 100], TFormatSettings.Invariant));
   end;

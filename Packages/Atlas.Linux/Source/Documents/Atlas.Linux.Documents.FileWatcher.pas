@@ -44,6 +44,29 @@ uses
   BaseUnix,
   Linux;
 
+type
+  /// <summary>Beobachter-Thread: inotify auf die Ordner des Trackers, Abgleich spätestens alle PollMs.</summary>
+  TWatchThread = class(TThread)
+  private
+    FTracker: TFileChangeTracker;
+    FStop: TEvent;
+    FReconfigure: TEvent;
+    FOnChanged: TFileWatcherChanged;
+    /// <summary>Seit dem letzten Abgleich gewartete Zeit.</summary>
+    FWaited: Integer;
+    function OpenInotify: cint;
+    /// <summary>Wartet eine Scheibe von SliceMs auf Meldungen; False, wenn dabei Stop kam.</summary>
+    function WaitSlice(AInotify: cint): Boolean;
+    procedure PollIfDue;
+    /// <summary>Beobachtet bis zur neuen Dateiliste (True) oder bis Stop bzw. Terminate (False).</summary>
+    function Watch(AInotify: cint): Boolean;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(ATracker: TFileChangeTracker; AStop, AReconfigure: TEvent;
+      const AOnChanged: TFileWatcherChanged);
+  end;
+
 { TFileWatcher }
 
 class function TFileWatcher.Stamp(const AFileName: string): string;
@@ -51,9 +74,13 @@ var
   Info: Stat;
 begin
   if FpStat(RawByteString(UTF8String(AFileName)), Info) <> 0 then
+  begin
     Exit('');
+  end;
   if FpS_ISDIR(Info.st_mode) then
+  begin
     Exit('');
+  end;
   Result := Format('%d.%d.%d', [Int64(Info.st_mtime), Int64(Info.st_mtime_nsec), Int64(Info.st_size)]);
 end;
 
@@ -73,16 +100,119 @@ begin
   Poll.events := POLLIN;
   Poll.revents := 0;
   if FpPoll(@Poll, 1, ATimeoutMs) <= 0 then
+  begin
     Exit;
+  end;
   while FpRead(AInotify, Buffer, SizeOf(Buffer)) > 0 do
+  begin
     Result := True;
+  end;
 end;
 
-constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged);
+{ TWatchThread }
+
+constructor TWatchThread.Create(ATracker: TFileChangeTracker; AStop, AReconfigure: TEvent;
+  const AOnChanged: TFileWatcherChanged);
+begin
+  inherited Create(True);
+  FreeOnTerminate := False;
+  FTracker := ATracker;
+  FStop := AStop;
+  FReconfigure := AReconfigure;
+  FOnChanged := AOnChanged;
+end;
+
+function TWatchThread.OpenInotify: cint;
 var
-  Tracker: TFileChangeTracker;
-  Stop, Reconfigure: TEvent;
-  OnChanged: TFileWatcherChanged;
+  mDir: string;
+begin
+  Result := inotify_init1(IN_NONBLOCK or IN_CLOEXEC);
+  if Result < 0 then
+  begin
+    Exit;
+  end;
+  for mDir in FTracker.Directories do
+  begin
+    inotify_add_watch(Result, PAnsiChar(UTF8String(mDir)),
+      IN_MODIFY or IN_CLOSE_WRITE or IN_MOVED_TO or IN_MOVED_FROM or IN_CREATE or IN_DELETE);
+  end;
+end;
+
+function TWatchThread.WaitSlice(AInotify: cint): Boolean;
+begin
+  Result := True;
+  if not WaitForEvents(AInotify, TFileWatcher.SliceMs) then
+  begin
+    Inc(FWaited, TFileWatcher.SliceMs);
+    Exit;
+  end;
+  // Mehrere Meldungen eines Speichervorgangs zusammenfassen.
+  if FStop.WaitFor(TFileWatcher.SettleMs) = wrSignaled then
+  begin
+    Exit(False);
+  end;
+  WaitForEvents(AInotify, 0);
+  FWaited := TFileWatcher.PollMs;
+end;
+
+procedure TWatchThread.PollIfDue;
+var
+  mChanged: TArray<string>;
+begin
+  if FWaited < TFileWatcher.PollMs then
+  begin
+    Exit;
+  end;
+  FWaited := 0;
+  mChanged := FTracker.Poll;
+  if Length(mChanged) > 0 then
+  begin
+    FOnChanged(mChanged);
+  end;
+end;
+
+function TWatchThread.Watch(AInotify: cint): Boolean;
+begin
+  FWaited := 0;
+  repeat
+    if FStop.WaitFor(0) = wrSignaled then
+    begin
+      Exit(False);
+    end;
+    if FReconfigure.WaitFor(0) = wrSignaled then
+    begin
+      Exit(True);
+    end;
+    if not WaitSlice(AInotify) then
+    begin
+      Exit(False);
+    end;
+    PollIfDue;
+  until Terminated;
+  Result := False;
+end;
+
+procedure TWatchThread.Execute;
+var
+  mInotify: cint;
+  mGoOn: Boolean;
+begin
+  repeat
+    mInotify := OpenInotify;
+    try
+      mGoOn := Watch(mInotify);
+    finally
+      if mInotify >= 0 then
+      begin
+        FpClose(mInotify);
+      end;
+    end;
+  until Terminated or not mGoOn;
+end;
+
+{ TFileWatcher }
+
+constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged);
 begin
   inherited Create;
   FTracker := TFileChangeTracker.Create(
@@ -92,56 +222,7 @@ begin
     end);
   FStop := TEvent.Create(nil, True, False, '');
   FReconfigure := TEvent.Create(nil, False, False, '');
-  Tracker := FTracker;
-  Stop := FStop;
-  Reconfigure := FReconfigure;
-  OnChanged := AOnChanged;
-  FThread := TThread.CreateAnonymousThread(
-    procedure
-    var
-      Inotify: cint;
-      Dir: string;
-      Waited: Integer;
-      Changed: TArray<string>;
-    begin
-      repeat
-        Inotify := inotify_init1(IN_NONBLOCK or IN_CLOEXEC);
-        try
-          if Inotify >= 0 then
-            for Dir in Tracker.Directories do
-              inotify_add_watch(Inotify, PAnsiChar(UTF8String(Dir)),
-                IN_MODIFY or IN_CLOSE_WRITE or IN_MOVED_TO or IN_MOVED_FROM or IN_CREATE or IN_DELETE);
-          Waited := 0;
-          repeat
-            if Stop.WaitFor(0) = wrSignaled then
-              Exit;
-            if Reconfigure.WaitFor(0) = wrSignaled then
-              Break;
-            if WaitForEvents(Inotify, SliceMs) then
-            begin
-              // Mehrere Meldungen eines Speichervorgangs zusammenfassen.
-              if Stop.WaitFor(SettleMs) = wrSignaled then
-                Exit;
-              WaitForEvents(Inotify, 0);
-              Waited := PollMs;
-            end
-            else
-              Inc(Waited, SliceMs);
-            if Waited >= PollMs then
-            begin
-              Waited := 0;
-              Changed := Tracker.Poll;
-              if Length(Changed) > 0 then
-                OnChanged(Changed);
-            end;
-          until False;
-        finally
-          if Inotify >= 0 then
-            FpClose(Inotify);
-        end;
-      until False;
-    end);
-  FThread.FreeOnTerminate := False;
+  FThread := TWatchThread.Create(FTracker, FStop, FReconfigure, AOnChanged);
   FThread.Start;
 end;
 
@@ -149,6 +230,7 @@ destructor TFileWatcher.Destroy;
 begin
   if FThread <> nil then
   begin
+    FThread.Terminate;
     FStop.SetEvent;
     FThread.WaitFor;
     FThread.Free;

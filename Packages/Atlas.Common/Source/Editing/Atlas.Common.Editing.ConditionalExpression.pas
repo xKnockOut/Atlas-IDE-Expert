@@ -109,20 +109,30 @@ class function TConditionalLookup.KindOfType(const AType: TResolvedSymbol): TVal
 begin
   Result := TValueType.Create(TValueKind.Unknown, '');
   if not AType.Found then
+  begin
     Exit;
+  end;
   if AType.Builtin or SameText(AType.UnitName, 'System') then
   begin
     if MatchText(AType.Name, ['Integer', 'Cardinal', 'ShortInt', 'SmallInt', 'Word', 'Byte', 'LongInt', 'LongWord',
       'Int8', 'Int16', 'Int32', 'Int64', 'UInt8', 'UInt16', 'UInt32', 'UInt64', 'NativeInt', 'NativeUInt',
       'FixedInt', 'FixedUInt']) then
+    begin
       Exit(TValueType.Create(TValueKind.Whole, ''));
+    end;
     if MatchText(AType.Name, ['Single', 'Double', 'Extended', 'Real', 'Currency', 'Comp']) then
+    begin
       Exit(TValueType.Create(TValueKind.Float, ''));
+    end;
     if MatchText(AType.Name, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString', 'Char',
       'WideChar', 'AnsiChar', 'RawByteString', 'UTF8String']) then
+    begin
       Exit(TValueType.Create(TValueKind.Text, ''));
+    end;
     if SameText(AType.Name, 'Boolean') then
+    begin
       Exit(TValueType.Create(TValueKind.Logical, ''));
+    end;
   end;
   Result := TValueType.Create(TValueKind.Named, AType.Name);
 end;
@@ -142,12 +152,18 @@ begin
       Result := TValueType.Create(TValueKind.Unknown, '');
       if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
         TSyntaxKind.Call]) or not AResolver.NodeType(ATree, FileName, ANode, Symbol, TypeInfo, TypeFound) then
+      begin
         Exit;
+      end;
       if TypeFound then
-        Result := KindOfType(TypeInfo)
+      begin
+        Result := KindOfType(TypeInfo);
+      end
       // Ein Aufzählungswert hat den Typ seiner Aufzählung.
       else if (Symbol.SymbolKind = TIndexSymbolKind.EnumMember) and (Symbol.Container <> '') then
+      begin
         Result := TValueType.Create(TValueKind.Named, Symbol.Container);
+      end;
     end;
   Result.IfThen :=
     function(ACall: TSyntaxNode; out ADefault: string): Boolean
@@ -161,9 +177,13 @@ begin
       if Result then
       begin
         if EndsText('StrUtils', Symbol.UnitName) then
-          ADefault := ''''''
+        begin
+          ADefault := '''''';
+        end
         else
+        begin
           ADefault := '0';
+        end;
       end;
     end;
 end;
@@ -183,66 +203,106 @@ begin
     begin
       Source := TExpressionText.Source(AText, Node);
       if Source = '' then
+      begin
         Exit;
+      end;
       if CharInSet(Source[1], ['''', '#']) then
-        Result := TValueType.Create(TValueKind.Text, '')
+      begin
+        Result := TValueType.Create(TValueKind.Text, '');
+      end
       else if CharInSet(Source[1], ['$', '%', '&']) then
-        Result := TValueType.Create(TValueKind.Whole, '')
+      begin
+        Result := TValueType.Create(TValueKind.Whole, '');
+      end
       else if CharInSet(Source[1], ['0'..'9']) then
       begin
         if (Pos('.', Source) > 0) or (Pos('e', LowerCase(Source)) > 0) then
-          Result := TValueType.Create(TValueKind.Float, '')
+        begin
+          Result := TValueType.Create(TValueKind.Float, '');
+        end
         else
+        begin
           Result := TValueType.Create(TValueKind.Whole, '');
+        end;
       end
       else if TExpressionText.IsBooleanLiteral(Node) then
-        Result := TValueType.Create(TValueKind.Logical, '')
+      begin
+        Result := TValueType.Create(TValueKind.Logical, '');
+      end
       else if SameText(Source, 'nil') then
+      begin
         Result := TValueType.Create(TValueKind.NilValue, '');
+      end;
     end;
     TSyntaxKind.Identifier:
       if TExpressionText.IsBooleanLiteral(Node) then
-        Result := TValueType.Create(TValueKind.Logical, '')
+      begin
+        Result := TValueType.Create(TValueKind.Logical, '');
+      end
       else if SameText(Node.Name, 'nil') then
-        Result := TValueType.Create(TValueKind.NilValue, '')
+      begin
+        Result := TValueType.Create(TValueKind.NilValue, '');
+      end
       else if Assigned(ALookup.ValueType) then
+      begin
         Result := ALookup.ValueType(Node);
+      end;
     TSyntaxKind.UnaryExpr:
       if SameText(Node.Name, 'not') then
-        Result := TValueType.Create(TValueKind.Logical, '')
+      begin
+        Result := TValueType.Create(TValueKind.Logical, '');
+      end
       else if (Node.ChildCount = 1) and MatchStr(Node.Name, ['-', '+']) then
+      begin
         Result := ValueKindOf(AText, Node[0], ALookup);
+      end;
     TSyntaxKind.BinaryExpr:
       if Node.ChildCount = 2 then
       begin
         Op := LowerCase(Node.Name);
         if TExpressionText.OperatorPrecedence(Op) = PrecedenceRelational then
+        begin
           Exit(TValueType.Create(TValueKind.Logical, ''));
+        end;
         Left := ValueKindOf(AText, Node[0], ALookup);
         Right := ValueKindOf(AText, Node[1], ALookup);
         if MatchStr(Op, ['and', 'or', 'xor']) and (Left.Kind = TValueKind.Logical) and
           (Right.Kind = TValueKind.Logical) then
-          Result := Left
+        begin
+          Result := Left;
+        end
         else if MatchStr(Op, ['div', 'mod', 'shl', 'shr']) and (Left.Kind = TValueKind.Whole) and
           (Right.Kind = TValueKind.Whole) then
-          Result := Left
+        begin
+          Result := Left;
+        end
         else if (Op = '/') and (Left.Kind in [TValueKind.Whole, TValueKind.Float]) and
           (Right.Kind in [TValueKind.Whole, TValueKind.Float]) then
-          Result := TValueType.Create(TValueKind.Float, '')
+        begin
+          Result := TValueType.Create(TValueKind.Float, '');
+        end
         else if MatchStr(Op, ['+', '-', '*']) and (Left.Kind in [TValueKind.Whole, TValueKind.Float]) and
           (Right.Kind in [TValueKind.Whole, TValueKind.Float]) then
         begin
           if (Left.Kind = TValueKind.Float) or (Right.Kind = TValueKind.Float) then
-            Result := TValueType.Create(TValueKind.Float, '')
+          begin
+            Result := TValueType.Create(TValueKind.Float, '');
+          end
           else
+          begin
             Result := Left;
+          end;
         end
         else if (Op = '+') and (Left.Kind = TValueKind.Text) and (Right.Kind = TValueKind.Text) then
+        begin
           Result := Left;
+        end;
       end;
     TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Call:
       if Assigned(ALookup.ValueType) then
+      begin
         Result := ALookup.ValueType(Node);
+      end;
     TSyntaxKind.IfExpr:
       if Node.ChildCount = 3 then
       begin
@@ -251,9 +311,13 @@ begin
         if TConditionalExpression.Compatible(Left, Right) then
         begin
           if Left.Kind in [TValueKind.Whole, TValueKind.NilValue] then
-            Result := Right
+          begin
+            Result := Right;
+          end
           else
+          begin
             Result := Left;
+          end;
         end;
       end;
   else
@@ -281,7 +345,9 @@ begin
   Result := nil;
   Statements := TStatementText.Statements(ABranch);
   if Length(Statements) = 1 then
+  begin
     Result := Statements[0];
+  end;
 end;
 
 /// <summary>Aufruf einer Aufrufanweisung (Name mit Argumenten); nil ohne Klammern.</summary>
@@ -290,7 +356,9 @@ begin
   Result := nil;
   if (AStatement.Kind = TSyntaxKind.CallStatement) and (AStatement.ChildCount = 1) and
     (AStatement[0].Kind = TSyntaxKind.Call) and (AStatement[0].ChildCount >= 2) then
+  begin
     Result := AStatement[0];
+  end;
 end;
 
 function IsExit(ACall: TSyntaxNode): Boolean;
@@ -303,13 +371,21 @@ end;
 class function TConditionalExpression.Compatible(const A, B: TValueType): Boolean;
 begin
   if (A.Kind = TValueKind.Unknown) or (B.Kind = TValueKind.Unknown) then
+  begin
     Exit(False);
+  end;
   if (A.Kind in [TValueKind.Whole, TValueKind.Float]) and (B.Kind in [TValueKind.Whole, TValueKind.Float]) then
+  begin
     Exit(True);
+  end;
   if (A.Kind = TValueKind.NilValue) and (B.Kind in [TValueKind.NilValue, TValueKind.Named]) then
+  begin
     Exit(True);
+  end;
   if (B.Kind = TValueKind.NilValue) and (A.Kind = TValueKind.Named) then
+  begin
     Exit(True);
+  end;
   Result := (A.Kind = B.Kind) and ((A.Kind <> TValueKind.Named) or SameText(A.Name, B.Name));
 end;
 
@@ -322,10 +398,14 @@ begin
   while (Node <> nil) and not TRoutineBody.IsStatement(Node) do
   begin
     if Node.Kind = TSyntaxKind.IfExpr then
+    begin
       Result := Node;
+    end;
     // Eine anonyme Methode beginnt einen eigenen Rumpf.
     if Node.Kind = TSyntaxKind.AnonymousMethod then
+    begin
       Break;
+    end;
     Node := Node.Parent;
   end;
 end;
@@ -343,7 +423,9 @@ begin
   ARewrite := Default(TStatementRewrite);
   Head := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
   if Head = nil then
+  begin
     Exit;
+  end;
   // Kette lesen: Bedingungen, je eine Anweisung, abschließendes else.
   Conditions := nil;
   Statements := nil;
@@ -351,25 +433,35 @@ begin
   while True do
   begin
     if Node.ChildCount < 3 then
+    begin
       Exit;
+    end;
     Statement := SoleStatement(Node[1]);
     if Statement = nil then
+    begin
       Exit;
+    end;
     Conditions := Conditions + [Node[0]];
     Statements := Statements + [Statement];
     if (Node[2].Kind = TSyntaxKind.IfStatement) and (SoleStatement(Node[2]) = Node[2]) then
-      Node := Node[2]
+    begin
+      Node := Node[2];
+    end
     else
     begin
       Statement := SoleStatement(Node[2]);
       if Statement = nil then
+      begin
         Exit;
+      end;
       Statements := Statements + [Statement];
       Break;
     end;
   end;
   if (Length(Conditions) > MaxConditions) or TStatementText.HasComment(ATree, Head.StartOffset, Head.EndOffset) then
+  begin
     Exit;
+  end;
   // Gleiche Form: Zuweisung an dasselbe Ziel oder derselbe Aufruf mit genau einem anderen Argument.
   First := Statements[0];
   Values := nil;
@@ -377,12 +469,16 @@ begin
   if First.Kind = TSyntaxKind.AssignStatement then
   begin
     if First.ChildCount <> 2 then
+    begin
       Exit;
+    end;
     for Statement in Statements do
     begin
       if (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.ChildCount <> 2) or
         not TExpressionText.Same(ATree, Statement[0], First[0]) then
+      begin
         Exit;
+      end;
       Values := Values + [Statement[1]];
     end;
   end
@@ -390,48 +486,72 @@ begin
   begin
     FirstCall := CallOf(First);
     if FirstCall = nil then
+    begin
       Exit;
+    end;
     for Statement in Statements do
     begin
       Call := CallOf(Statement);
       if (Call = nil) or (Call.ChildCount <> FirstCall.ChildCount) or
         not TExpressionText.Same(ATree, Call[0], FirstCall[0]) then
+      begin
         Exit;
+      end;
       for Arg := 1 to Call.ChildCount - 1 do
+      begin
         if not TExpressionText.Same(ATree, Call[Arg], FirstCall[Arg]) then
         begin
           if (Differs >= 0) and (Differs <> Arg) then
+          begin
             Exit;
+          end;
           Differs := Arg;
         end;
+      end;
     end;
     // Exit(A)/Exit(A) oder Log('a')/Log('a'): nichts zu verbinden.
     if Differs < 0 then
+    begin
       Exit;
+    end;
     for Statement in Statements do
     begin
       Call := CallOf(Statement);
       // Nur bei Exit dürfen die Werte Seiteneffekte haben: Bei anderen Aufrufen liefe die Bedingung sonst nach
       // den Argumenten davor statt vor allen.
       if not IsExit(FirstCall) then
+      begin
         for Arg := 1 to Call.ChildCount - 1 do
+        begin
           if not TExpressionText.IsSideEffectFree(Call[Arg]) then
+          begin
             Exit;
+          end;
+        end;
+      end;
       Values := Values + [Call[Differs]];
     end;
   end;
   // Verträgliche Typen.
   FirstType := ValueKindOf(AText, Values[0], ALookup);
   for Index := 1 to High(Values) do
+  begin
     if not Compatible(FirstType, ValueKindOf(AText, Values[Index], ALookup)) then
+    begin
       Exit;
+    end;
+  end;
   if FirstType.Kind = TValueKind.Unknown then
+  begin
     Exit;
+  end;
   Expression := '';
   for Index := 0 to High(Conditions) do
   begin
     if Index > 0 then
+    begin
       Expression := Expression + ' else ';
+    end;
     Expression := Expression + 'if ' + Inner(AText, Conditions[Index]) + ' then ' + Inner(AText, Values[Index]);
   end;
   Expression := Expression + ' else ' + TExpressionText.Source(AText, Values[High(Values)]);
@@ -454,7 +574,9 @@ begin
     begin
       Result := TSyntaxSearchStep.Descend;
       if ANode = AExpression then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       case ANode.Kind of
         TSyntaxKind.IfExpr, TSyntaxKind.AnonymousMethod, TSyntaxKind.InheritedExpr, TSyntaxKind.Error:
           Result := TSyntaxSearchStep.Found;
@@ -463,10 +585,14 @@ begin
           begin
             Callee := nil;
             if ANode.ChildCount > 0 then
+            begin
               Callee := ANode[0];
+            end;
             if (Callee = nil) or (Callee.Kind <> TSyntaxKind.Identifier) or
               not TPureRoutines.IsPure(Callee.Name) then
+            begin
               Result := TSyntaxSearchStep.Found;
+            end;
           end;
       else
         // Übrige Arten: nichts zu tun.
@@ -502,11 +628,15 @@ begin
   Value := TExpressionText.Strip(AValue);
   Deeper := ALayout.Deeper;
   if Value.Kind = TSyntaxKind.IfExpr then
+  begin
     // Ein inneres if vor else braucht begin … end.
     Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak + Deeper.Indent +
-      Chain(Value, Deeper) + ';' + ALayout.LineBreak + ALayout.Indent + 'end'
+      Chain(Value, Deeper) + ';' + ALayout.LineBreak + ALayout.Indent + 'end';
+  end
   else
+  begin
     Result := ALayout.LineBreak + Deeper.Indent + Statement(Value);
+  end;
 end;
 
 function TStatementBuilder.Chain(AExpression: TSyntaxNode; const ALayout: TStatementLayout): string;
@@ -545,34 +675,48 @@ begin
   Result := False;
   ARewrite := Default(TStatementRewrite);
   if (AExpression = nil) or (AExpression.Kind <> TSyntaxKind.IfExpr) then
+  begin
     Exit;
+  end;
   Expression := Outermost(AExpression);
   if (Expression = nil) or (Expression.ChildCount <> 3) then
+  begin
     Exit;
+  end;
   Statement := Expression.Parent;
   while (Statement <> nil) and not TRoutineBody.IsStatement(Statement) do
   begin
     if Statement.Kind = TSyntaxKind.AnonymousMethod then
+    begin
       Exit;
+    end;
     Statement := Statement.Parent;
   end;
   if Statement = nil then
+  begin
     Exit;
+  end;
   // Alle Bedingungsausdrücke der Kette brauchen drei Teile.
   Node := Expression.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
       if (ACandidate.Kind = TSyntaxKind.IfExpr) and (ACandidate.ChildCount <> 3) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end);
   if (Node <> nil) or TStatementText.HasComment(ATree, Statement.StartOffset, Statement.EndOffset) then
+  begin
     Exit;
+  end;
   // Der Wert ersetzt den Ausdruck samt umschließender Klammern; Klammern setzt der Vorrang.
   Replaced := Expression;
   while (Replaced.Parent <> nil) and (Replaced.Parent.Kind = TSyntaxKind.ParenExpr) and
     (Replaced.Parent.ChildCount = 1) do
+  begin
     Replaced := Replaced.Parent;
+  end;
   Call := nil;
   Declaration := '';
   Builder.Text := AText;
@@ -589,7 +733,9 @@ begin
       begin
         Call := CallOf(Statement);
         if Call = nil then
+        begin
           Exit;
+        end;
         Builder.Prefix := Slice(AText, Statement.StartOffset, Replaced.StartOffset);
         Builder.Suffix := Slice(AText, Replaced.EndOffset, Statement.EndOffset);
       end;
@@ -598,7 +744,9 @@ begin
         // var X: T := if … wird var X: T; und Zuweisungen; ohne Typ kein Angebot.
         if (Statement.ChildCount <> 2) or (Statement[0].Kind <> TSyntaxKind.TypeReference) or
           (Statement[1] <> Replaced) then
+        begin
           Exit;
+        end;
         Declaration := 'var ' + Statement.Name + ': ' + TExpressionText.Source(AText, Statement[0]) + ';' +
           ALayout.LineBreak + Builder.Layout.Indent;
         Builder.Prefix := Statement.Name + ' := ';
@@ -608,18 +756,26 @@ begin
     Exit;
   end;
   if RestIsUnsafe(Statement, Expression, Call) then
+  begin
     Exit;
+  end;
   // In einer Aufrufanweisung muss der Ausdruck ein Argument sein oder in einem stecken, nicht im Namen.
   if Call <> nil then
   begin
     Node := Replaced;
     while (Node <> nil) and (Node.Parent <> Call) do
+    begin
       Node := Node.Parent;
+    end;
     Index := -1;
     if Node <> nil then
+    begin
       Index := TStatementText.ChildIndex(Call, Node);
+    end;
     if Index < 1 then
+    begin
       Exit;
+    end;
   end;
   ARewrite := TStatementRewrite.Create(ToStatementTitle, TTextEdit.Create(TTextRange.Create(Statement.StartPos,
     Statement.EndPos), Declaration + Builder.Chain(Expression, Builder.Layout)));
@@ -635,16 +791,22 @@ begin
   Result := False;
   ARewrite := Default(TStatementRewrite);
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Position := APosition;
   Found := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       if not TStatementText.Encloses(ANode, Position) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
       if ANode.Kind = TSyntaxKind.IfExpr then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end);
   Result := ToStatement(AText, ATree, Found, ALayout, ARewrite);
 end;
@@ -659,7 +821,9 @@ begin
   Result := False;
   ARewrite := Default(TStatementRewrite);
   if (ATree = nil) or (ATree.Root = nil) or not Assigned(ALookup.IfThen) then
+  begin
     Exit;
+  end;
   Position := APosition;
   Call := nil;
   // Der innerste IfThen-Aufruf an der Stelle.
@@ -669,15 +833,23 @@ begin
       Result := TStatementText.Encloses(ANode, Position);
       if Result and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount in [3, 4]) and
         (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'IfThen') then
+      begin
         Call := ANode;
+      end;
     end);
   if (Call = nil) or not ALookup.IfThen(Call, Fallback) or
     TStatementText.HasComment(ATree, Call.StartOffset, Call.EndOffset) then
+  begin
     Exit;
+  end;
   if Call.ChildCount = 4 then
-    ElseValue := TExpressionText.Source(AText, Call[3])
+  begin
+    ElseValue := TExpressionText.Source(AText, Call[3]);
+  end
   else
+  begin
     ElseValue := Fallback;
+  end;
   Expression := 'if ' + Inner(AText, Call[1]) + ' then ' + Inner(AText, Call[2]) + ' else ' + ElseValue;
   ARewrite := TStatementRewrite.Create(IfThenTitle, TTextEdit.Create(TTextRange.Create(Call.StartPos, Call.EndPos),
     TExpressionPart.Create(Expression, PrecedenceIfExpr).AtLeast(TExpressionText.ContextPrecedence(Call))));

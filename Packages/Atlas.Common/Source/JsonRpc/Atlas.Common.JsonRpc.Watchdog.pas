@@ -126,7 +126,9 @@ begin
     FThread.Free;
   end;
   for Entry in FEntries.Values do
+  begin
     Entry.Id.Free;
+  end;
   FEntries.Free;
   inherited;
 end;
@@ -142,7 +144,9 @@ var
   Entry: TEntry;
 begin
   if FThread = nil then
+  begin
     Exit(0);
+  end;
   Entry.Id := TJSONValue(AId.Clone);
   Entry.Method := AMethod;
   Entry.Token := AToken;
@@ -164,11 +168,15 @@ var
   Entry: TEntry;
 begin
   if ATicket = 0 then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FEntries);
   try
     if not FEntries.TryGetValue(ATicket, Entry) then
+    begin
       Exit;
+    end;
     FEntries.Remove(ATicket);
   finally
     TMonitor.Exit(FEntries);
@@ -179,7 +187,9 @@ end;
 procedure TJsonRpcWatchdog.SetTimeout(ATimeoutMs: Cardinal);
 begin
   if (FThread = nil) or (ATimeoutMs = 0) then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FEntries);
   try
     FTimeout := ATimeoutMs;
@@ -217,18 +227,26 @@ begin
       try
         Answered := FPending.Expire(AEntry.Token);
         if Answered then
+        begin
           AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.RequestCancelled,
             Format('Zeitlimit von %d ms überschritten', [Limit])));
+        end;
       finally
         FPending.EndWork;
       end;
     end
     else
+    begin
       FPending.Cancel(AEntry.Id);
+    end;
     if Assigned(FOnTimeout) then
+    begin
       FOnTimeout(AEntry.Method, Limit, Answered);
+    end;
     if Assigned(FOnExpired) then
+    begin
       FOnExpired(AEntry.Id.ToJSON, AEntry.Method, Limit);
+    end;
   finally
     AEntry.Id.Free;
   end;
@@ -249,23 +267,39 @@ begin
       TMonitor.Enter(FEntries);
       try
         if FStopping then
+        begin
           Exit;
+        end;
         Ticks := TThread.GetTickCount64;
         NextDue := High(UInt64);
         for Pair in FEntries do
+        begin
           if Pair.Value.Due <= Ticks then
-            Expired.Add(Pair.Value)
+          begin
+            Expired.Add(Pair.Value);
+          end
           else if Pair.Value.Due < NextDue then
+          begin
             NextDue := Pair.Value.Due;
+          end;
+        end;
         for Pair in FEntries.ToArray do
+        begin
           if Pair.Value.Due <= Ticks then
+          begin
             FEntries.Remove(Pair.Key);
+          end;
+        end;
         if Expired.Count = 0 then
         begin
           if NextDue = High(UInt64) then
-            TMonitor.Wait(FEntries, WaitForever)
+          begin
+            TMonitor.Wait(FEntries, WaitForever);
+          end
           else
+          begin
             TMonitor.Wait(FEntries, Cardinal(NextDue - Ticks));
+          end;
         end;
       finally
         TMonitor.Exit(FEntries);

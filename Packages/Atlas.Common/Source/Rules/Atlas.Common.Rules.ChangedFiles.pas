@@ -81,8 +81,12 @@ var
   Span: TLineSpan;
 begin
   for Span in Spans do
+  begin
     if (ALine >= Span.First) and (ALine <= Span.Last) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -92,7 +96,9 @@ class function TChangedFiles.FullPath(const ARepoRoot, AGitPath: string): string
 begin
   Result := IncludeTrailingPathDelimiter(ARepoRoot) + StringReplace(AGitPath, '/', PathDelim, [rfReplaceAll]);
   if PathDelim = '/' then
+  begin
     Result := StringReplace(Result, '\', '/', [rfReplaceAll]);
+  end;
 end;
 
 class function TChangedFiles.UnquotePath(const APath: string): string;
@@ -109,7 +115,9 @@ var
 
 begin
   if (Length(APath) < 2) or (APath[1] <> '"') or (APath[Length(APath)] <> '"') then
+  begin
     Exit(APath);
+  end;
   SetLength(Bytes, Length(APath) * 3);
   Count := 0;
   Index := 2;
@@ -134,11 +142,17 @@ begin
         end;
     end
     else if Ord(APath[Index]) < 128 then
-      Add(Ord(APath[Index]))
+    begin
+      Add(Ord(APath[Index]));
+    end
     else
+    begin
       // Zeichen außerhalb von ASCII ohne Oktalfolge: als UTF-8 übernehmen.
       for Extra in TEncoding.UTF8.GetBytes(string(APath[Index])) do
+      begin
         Add(Extra);
+      end;
+    end;
     Inc(Index);
   end;
   SetLength(Bytes, Count);
@@ -156,17 +170,23 @@ begin
     // "M<Tab>Pfad", "R087<Tab>Alt<Tab>Neu"
     Tab := Pos(#9, Line);
     if Tab < 2 then
+    begin
       Continue;
+    end;
     Status := UpperCase(Copy(Line, 1, 1));
     Rest := Copy(Line, Tab + 1, MaxInt);
     if (Status = 'R') or (Status = 'C') then
     begin
       Tab := Pos(#9, Rest);
       if Tab > 0 then
+      begin
         Result := Result + [UnquotePath(Copy(Rest, Tab + 1, MaxInt))];
+      end;
     end
     else if ((Status = 'A') or (Status = 'M') or (Status = 'T')) and (Rest <> '') then
+    begin
       Result := Result + [UnquotePath(Rest)];
+    end;
   end;
 end;
 
@@ -200,10 +220,14 @@ begin
       // @@ -a[,b] +c[,d] @@: neue Zeilen c .. c+d-1 (1-basiert), d fehlt = 1, d = 0 nur gelöscht
       Plus := Pos(' +', Line);
       if Plus = 0 then
+      begin
         Continue;
+      end;
       Space := PosEx(' ', Line, Plus + 2);
       if Space = 0 then
+      begin
         Continue;
+      end;
       Header := Copy(Line, Plus + 2, Space - Plus - 2);
       Comma := Pos(',', Header);
       if Comma > 0 then
@@ -223,7 +247,9 @@ begin
         Continue;
       end;
       if (Count <= 0) or (Start <= 0) then
+      begin
         Continue;
+      end;
       Span.First := Start - 1;
       Span.Last := Start + Count - 2;
       Result[Current].Spans := Result[Current].Spans + [Span];
@@ -236,7 +262,9 @@ function SvnPath(const ALine: string; const AStates: string): string;
 begin
   Result := '';
   if (Length(ALine) < 9) or (Pos(ALine[1], AStates) = 0) then
+  begin
     Exit;
+  end;
   Result := Trim(Copy(ALine, 9, MaxInt));
 end;
 
@@ -247,12 +275,16 @@ begin
   Result := nil;
   States := 'AMR';
   if AUnversioned then
+  begin
     States := States + '?';
+  end;
   for Line in ALines do
   begin
     Path := SvnPath(Line, States);
     if Path <> '' then
+    begin
       Result := Result + [Path];
+    end;
   end;
 end;
 
@@ -265,7 +297,9 @@ begin
   begin
     Path := SvnPath(Line, 'AMR');
     if Path <> '' then
+    begin
       Result := Result + [Path];
+    end;
   end;
 end;
 
@@ -280,7 +314,9 @@ var
   procedure FlushRemoved;
   begin
     if (mRemovedAt >= 0) and (Current >= 0) then
+    begin
       Result[Current].Gaps := Result[Current].Gaps + [mRemovedAt];
+    end;
     mRemovedAt := -1;
   end;
 
@@ -297,7 +333,9 @@ begin
       // "+++ Src/Kunde.pas	(working copy)"
       Header := Copy(Line, Length('+++ ') + 1, MaxInt);
       if Pos(#9, Header) > 0 then
+      begin
         Header := Copy(Header, 1, Pos(#9, Header) - 1);
+      end;
       Item := Default(TChangedLines);
       Item.Path := Trim(Header);
       Result := Result + [Item];
@@ -315,11 +353,15 @@ begin
         Header := Copy(Line, Plus + 2, Space - Plus - 2);
         Comma := Pos(',', Header);
         if Comma > 0 then
+        begin
           Header := Copy(Header, 1, Comma - 1);
+        end;
         NewLine := StrToIntDef(Header, -1) - 1;
         // "+0,0": Die neue Fassung ist leer.
         if NewLine = -1 then
+        begin
           NewLine := 0;
+        end;
       end;
     end
     else if (Current >= 0) and (NewLine >= 0) and (Line <> '') then
@@ -335,7 +377,9 @@ begin
             // Benachbarte Zeilen zu einem Bereich zusammenfassen.
             if (Length(Result[Current].Spans) > 0) and
               (Result[Current].Spans[High(Result[Current].Spans)].Last = NewLine - 1) then
-              Result[Current].Spans[High(Result[Current].Spans)].Last := NewLine
+            begin
+              Result[Current].Spans[High(Result[Current].Spans)].Last := NewLine;
+            end
             else
             begin
               Span.First := NewLine;
@@ -346,7 +390,9 @@ begin
           end;
         '-':
           if mRemovedAt < 0 then
+          begin
             mRemovedAt := NewLine;
+          end;
         '\':
           ;
       else
@@ -371,9 +417,13 @@ begin
   while Index <= Length(Upper) do
   begin
     if (Upper[Index] = '{') and (Copy(Upper, Index + 1, 1) = '$') then
-      Start := Index + 2
+    begin
+      Start := Index + 2;
+    end
     else if (Copy(Upper, Index, 3) = '(*$') then
-      Start := Index + 3
+    begin
+      Start := Index + 3;
+    end
     else
     begin
       Inc(Index);
@@ -381,18 +431,30 @@ begin
     end;
     Index := Start;
     if Copy(Upper, Start, 7) = 'INCLUDE' then
-      Start := Start + 7
+    begin
+      Start := Start + 7;
+    end
     else if (Copy(Upper, Start, 1) = 'I') and (Copy(Upper, Start + 1, 1) <> '') and
       CharInSet(Upper[Start + 1], [' ', #9]) then
-      Start := Start + 1
+    begin
+      Start := Start + 1;
+    end
     else
+    begin
       Continue;
+    end;
     if (Start > Length(Upper)) or not CharInSet(Upper[Start], [' ', #9]) then
+    begin
       Continue;
+    end;
     while (Start <= Length(Upper)) and CharInSet(Upper[Start], [' ', #9]) do
+    begin
       Inc(Start);
+    end;
     if (Start > Length(Upper)) or CharInSet(Upper[Start], ['+', '-']) then
+    begin
       Continue;
+    end;
     Quoted := Upper[Start] = '''';
     if Quoted then
     begin
@@ -403,13 +465,19 @@ begin
     begin
       Stop := Start;
       while (Stop <= Length(AText)) and not CharInSet(AText[Stop], [' ', #9, '}', '*', #10, #13]) do
+      begin
         Inc(Stop);
+      end;
     end;
     if Stop <= Start then
+    begin
       Continue;
+    end;
     Name := Copy(AText, Start, Stop - Start);
     if Name <> '' then
+    begin
       Result := Result + [Name];
+    end;
     Index := Stop;
   end;
 end;
@@ -439,7 +507,9 @@ begin
   // Abgleich über den Dateinamen; Suchpfade sind hier nicht bekannt.
   Name := BaseName(AIncludeName);
   if Pos('.', Name) = 0 then
+  begin
     Name := Name + '.inc';
+  end;
   Result := SameText(Name, BaseName(AIncludeFile));
 end;
 
@@ -457,25 +527,49 @@ begin
   begin
     Ext := LowerCase(ExtractFileExt(Changed));
     if MatchText(Ext, ['.dproj', '.dpk', '.dpr']) or SameText(ExtractFileName(Changed), 'atlas.json') then
+    begin
       Exit(Copy(ACandidates));
+    end;
     if MatchText(Ext, ['.inc']) then
+    begin
       Includes := Includes + [Changed];
+    end;
     for Index := 0 to High(ACandidates) do
+    begin
       if (Normalize(ACandidates[Index]) = Normalize(Changed)) or
         (MatchText(Ext, ['.dfm', '.fmx']) and (WithoutExt(ACandidates[Index]) = WithoutExt(Changed))) then
+      begin
         Wanted[Index] := True;
+      end;
+    end;
   end;
   if (Includes <> nil) and Assigned(AIncludeNamesOf) then
+  begin
     for Index := 0 to High(ACandidates) do
+    begin
       if not Wanted[Index] then
+      begin
         for IncludeName in AIncludeNamesOf(ACandidates[Index]) do
+        begin
           for Changed in Includes do
+          begin
             if IncludeMatches(IncludeName, Changed) then
+            begin
               Wanted[Index] := True;
+            end;
+          end;
+        end;
+      end;
+    end;
+  end;
   Result := nil;
   for Index := 0 to High(ACandidates) do
+  begin
     if Wanted[Index] then
+    begin
       Result := Result + [ACandidates[Index]];
+    end;
+  end;
 end;
 
 class function TChangedFiles.LinesOf(const AChanges: TArray<TChangedLines>; const ARepoRoot, AFullPath: string;
@@ -484,11 +578,13 @@ var
   Item: TChangedLines;
 begin
   for Item in AChanges do
+  begin
     if Normalize(FullPath(ARepoRoot, Item.Path)) = Normalize(AFullPath) then
     begin
       ALines := Item;
       Exit(True);
     end;
+  end;
   ALines := Default(TChangedLines);
   Result := False;
 end;

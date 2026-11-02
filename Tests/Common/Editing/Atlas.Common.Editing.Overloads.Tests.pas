@@ -142,7 +142,9 @@ var
 begin
   Result := '';
   for Placeholder in AResult.Placeholders do
+  begin
     Result := Result + IntToStr(Placeholder.Number);
+  end;
 end;
 
 procedure TOverloadsTests.CopyMethod;

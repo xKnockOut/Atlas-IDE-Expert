@@ -68,19 +68,29 @@ uses
 function TMethodStatistics.AverageMs: Double;
 begin
   if Count = 0 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := TotalMs / Count;
+  end;
 end;
 
 function CompareBySlowest(const ALeft, ARight: TMethodStatistics): Integer;
 begin
   if ALeft.AverageMs > ARight.AverageMs then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else if ALeft.AverageMs < ARight.AverageMs then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := CompareStr(ALeft.Method, ARight.Method);
+  end;
 end;
 
 { TJsonRpcStatistics }
@@ -113,9 +123,13 @@ begin
     Inc(Entry.Count);
     Inc(Entry.TotalMs, AElapsedMs);
     if AElapsedMs > Entry.MaxMs then
+    begin
       Entry.MaxMs := AElapsedMs;
+    end;
     if AFailed then
+    begin
       Inc(Entry.Failed);
+    end;
     FMethods.AddOrSetValue(AMethod, Entry);
     FRecent[FRecentNext].Finished := Now;
     FRecent[FRecentNext].Method := AMethod;
@@ -123,7 +137,9 @@ begin
     FRecent[FRecentNext].Failed := AFailed;
     FRecentNext := (FRecentNext + 1) mod RecentCapacity;
     if FRecentCount < RecentCapacity then
+    begin
       Inc(FRecentCount);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -158,7 +174,9 @@ begin
     // Ältester Eintrag: bei vollem Ring der nächste Platz, sonst der erste.
     First := (FRecentNext - FRecentCount + RecentCapacity) mod RecentCapacity;
     for Index := 0 to FRecentCount - 1 do
+    begin
       Result[Index] := FRecent[(First + Index) mod RecentCapacity];
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

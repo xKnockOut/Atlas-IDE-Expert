@@ -218,16 +218,22 @@ begin
   Open := Pos('(', ADeclaration);
   Close := Pos(')', ADeclaration);
   if (Open = 0) or (Close < Open) then
+  begin
     Exit;
+  end;
   for Group in Copy(ADeclaration, Open + 1, Close - Open - 1).Split([';']) do
   begin
     Names := Group;
     if Pos(':', Names) > 0 then
+    begin
       Names := Copy(Names, 1, Pos(':', Names) - 1);
+    end;
     Count := Length(Names.Split([',']));
     Inc(AMax, Count);
     if Pos('=', Group) = 0 then
+    begin
       Inc(AMin, Count);
+    end;
   end;
 end;
 
@@ -242,17 +248,25 @@ begin
     Parts := Entries[Index].Split(['|']);
     Result[Index].Name := Parts[0];
     if Parts[1] = 'T' then
-      Result[Index].Kind := TIndexSymbolKind.RecordType
+    begin
+      Result[Index].Kind := TIndexSymbolKind.RecordType;
+    end
     else if Parts[1] = 'C' then
-      Result[Index].Kind := TIndexSymbolKind.Constant
+    begin
+      Result[Index].Kind := TIndexSymbolKind.Constant;
+    end
     else
+    begin
       Result[Index].Kind := TIndexSymbolKind.Routine;
+    end;
     Result[Index].Declaration := Parts[2];
     Result[Index].Documentation := Parts[3];
     Result[Index].MinArgs := 0;
     Result[Index].MaxArgs := 0;
     if Result[Index].Kind = TIndexSymbolKind.Routine then
+    begin
       CountArgs(Parts[2], Result[Index].MinArgs, Result[Index].MaxArgs);
+    end;
   end;
 end;
 
@@ -269,8 +283,12 @@ var
 begin
   Result := nil;
   for Entry in GEntries do
+  begin
     if SameText(Entry.Name, AName) then
+    begin
       Result := Result + [Entry];
+    end;
+  end;
 end;
 
 class function TSystemIntrinsics.IsKnown(const AName: string): Boolean;
@@ -283,8 +301,12 @@ var
   mEntry: TSystemIntrinsic;
 begin
   for mEntry in GEntries do
+  begin
     if (mEntry.Kind = TIndexSymbolKind.RecordType) and SameText(mEntry.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -297,20 +319,30 @@ begin
   AName := '';
   Result := False;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
     if (Tokens[Index].StartPos.Line <> APosition.Line) or (Tokens[Index].StartPos.Character > APosition.Character) or
       (Tokens[Index].EndPos.Line <> APosition.Line) or (Tokens[Index].EndPos.Character < APosition.Character) then
+    begin
       Continue;
+    end;
     if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or Tokens[Index].Text.StartsWith('&') then
+    begin
       Continue;
+    end;
     Previous := Index - 1;
     while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    begin
       Dec(Previous);
+    end;
     if (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
+    begin
       Exit;
+    end;
     if IsKnown(Tokens[Index].Text) then
     begin
       AName := Tokens[Index].Text;

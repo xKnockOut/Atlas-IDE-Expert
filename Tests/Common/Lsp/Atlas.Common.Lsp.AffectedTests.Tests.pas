@@ -253,23 +253,41 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, BasisFile) then
-    Result := UnitBasis
+  begin
+    Result := UnitBasis;
+  end
   else if SameText(AFileName, AndereFile) then
-    Result := UnitAndere
+  begin
+    Result := UnitAndere;
+  end
   else if SameText(AFileName, FormularFile) then
-    Result := UnitFormular
+  begin
+    Result := UnitFormular;
+  end
   else if SameText(AFileName, FormularForm) then
-    Result := FormFormular
+  begin
+    Result := FormFormular;
+  end
   else if SameText(AFileName, FormularInclude) then
-    Result := IncludeFormular
+  begin
+    Result := IncludeFormular;
+  end
   else if SameText(AFileName, BasisTestFile) then
-    Result := UnitBasisTests
+  begin
+    Result := UnitBasisTests;
+  end
   else if SameText(AFileName, FormularTestFile) then
-    Result := UnitFormularTests
+  begin
+    Result := UnitFormularTests;
+  end
   else if SameText(AFileName, ProgramFile) then
-    Result := ProgramTests
+  begin
+    Result := ProgramTests;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -290,11 +308,17 @@ var
 begin
   mIndex := Pos(AMarker, AText);
   if mIndex = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Result := 0;
   for mScan := 1 to mIndex - 1 do
+  begin
     if AText[mScan] = #10 then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function Span(AFirst, ALast: Integer): TChangedLines;
@@ -338,11 +362,13 @@ var
   mTest: TAffectedTest;
 begin
   for mTest in AResult.Tests do
+  begin
     if mTest.Name = AName then
     begin
       ATest := mTest;
       Exit(True);
     end;
+  end;
   ATest := Default(TAffectedTest);
   Result := False;
 end;
@@ -353,7 +379,9 @@ var
 begin
   Result := '';
   for mTest in AResult.Tests do
+  begin
     Result := Result + mTest.Name + ' ';
+  end;
 end;
 
 function Fake(const AName, AFixture, AMethod: string): TAffectedTest;
@@ -654,7 +682,9 @@ begin
     end;
   mTests := nil;
   for mIndex := 1 to 4 do
+  begin
     mTests := mTests + [Fake(Format('U.TFix.T%d', [mIndex]), 'TFix', Format('T%d', [mIndex]))];
+  end;
   // 4 von 5 = 80 %: nicht mehr als 80 %, die Methoden bleiben.
   mCollapsed := TAffectedTests.Collapse(mTests, mTotal, mRun);
   Assert.AreEqual(4, Integer(Length(mCollapsed)));
@@ -774,12 +804,16 @@ begin
   begin
     mFiles[mIndex] := Format('C:\B\Stufe%d.pas', [mIndex]);
     if mIndex = 0 then
+    begin
       mTexts[mIndex] := 'unit Stufe0;'#10'interface'#10'procedure Lauf0;'#10'implementation'#10 +
-        'procedure Lauf0;'#10'begin'#10'end;'#10'end.'
+        'procedure Lauf0;'#10'begin'#10'end;'#10'end.';
+    end
     else
+    begin
       mTexts[mIndex] := Format('unit Stufe%d;'#10'interface'#10'uses Stufe%d;'#10'procedure Lauf%d;'#10 +
         'implementation'#10'procedure Lauf%d;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
         [mIndex, mIndex - 1, mIndex, mIndex, mIndex - 1]);
+    end;
   end;
   for mIndex := 0 to cUnits div 10 - 1 do
   begin
@@ -790,10 +824,14 @@ begin
       [mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10]);
   end;
   for mIndex := 0 to High(mTexts) do
+  begin
     mBig.AddUnit(TIndexExtractor.ExtractText(mTexts[mIndex], mFiles[mIndex], nil, nil, True));
+  end;
   mInputs := nil;
   for mIndex := 0 to cChanged - 1 do
+  begin
     mInputs := mInputs + [Input(mFiles[mIndex * 37], LinesAt(mTexts[mIndex * 37], 'begin'))];
+  end;
   mRequest := Default(TAffectedRequest);
   mRequest.Files := mFiles;
   mRequest.Options := TImpactOptions.Default;
@@ -808,11 +846,13 @@ begin
         mSlot: Integer;
       begin
         for mSlot := 0 to High(mFiles) do
+        begin
           if SameText(mFiles[mSlot], AFileName) then
           begin
             AText := mTexts[mSlot];
             Exit(True);
           end;
+        end;
         Result := False;
       end, nil);
     mWatch.Stop;

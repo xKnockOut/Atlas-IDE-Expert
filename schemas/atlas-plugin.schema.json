@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Plugin-Einstellungen",
-  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
+  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. x-module (#1454): Kennung des Moduls an dessen Modul-Schalter; alles darunter (x-parent bzw. Präfixregel) gehört zum Modul. Ist der Schalter aus, liefern die wirksamen Werte für jede boolesche Einstellung des Moduls „aus“ und für eine mit x-offValue diesen Wert; gespeichert bleibt der eigene Wert. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
   "x-version": 1,
   "x-areas": {
     "editor": {
@@ -385,6 +385,21 @@
       "x-page": "Allgemein",
       "x-issue": "#1356"
     },
+    "AnalysisEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Analyse (#1454): Architekturübersicht, Unit-Beziehungen, Symbolpfad und Hotspots; aus = keine dieser Fenster, Befehle und Menüeinträge. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "analysis.enabled",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "analysis",
+      "x-quickToggle": true,
+      "x-caption": "Analysefenster",
+      "x-captionEn": "Analysis windows",
+      "x-issue": "#1454"
+    },
     "ArchitectureEnabled": {
       "type": "boolean",
       "default": true,
@@ -397,7 +412,8 @@
       "x-quickToggle": true,
       "x-caption": "Architekturübersicht",
       "x-captionEn": "Architecture overview",
-      "x-issue": "#1118"
+      "x-issue": "#1118",
+      "x-parent": "analysis.enabled"
     },
     "ArchitectureScope": {
       "type": "string",
@@ -447,7 +463,8 @@
       "x-quickToggle": true,
       "x-caption": "Code-Abfragen",
       "x-captionEn": "Code queries",
-      "x-issue": "#1351"
+      "x-issue": "#1351",
+      "x-parent": "search.enabled"
     },
     "ArchitectureWindowPlaced": {
       "type": "boolean",
@@ -469,7 +486,8 @@
       "x-quickToggle": true,
       "x-caption": "Hotspots",
       "x-captionEn": "Hotspots",
-      "x-issue": "#1354"
+      "x-issue": "#1354",
+      "x-parent": "analysis.enabled"
     },
     "HotspotsMonths": {
       "type": "integer",
@@ -729,7 +747,23 @@
       "x-drawing": true,
       "x-caption": "Notizen",
       "x-captionEn": "Notes",
-      "x-issue": "#545"
+      "x-issue": "#545",
+      "x-parent": "bookmarks.enabled"
+    },
+    "BookmarksEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Lesezeichen und Notizen (#1454): benannte und schnelle Lesezeichen, persönliche Notizen; aus = nichts davon, kein Reiter „Gemerkt“ auf der Willkommensseite. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "bookmarks.enabled",
+      "x-area": "bookmarks",
+      "x-page": "Editor",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "bookmarks",
+      "x-quickToggle": true,
+      "x-caption": "Lesezeichen und Notizen",
+      "x-captionEn": "Bookmarks and notes",
+      "x-issue": "#1454"
     },
     "BookmarksNamed": {
       "type": "boolean",
@@ -822,7 +856,8 @@
       "x-quickToggle": true,
       "x-caption": "Baseline aktualisieren",
       "x-captionEn": "Update baseline",
-      "x-issue": "#97"
+      "x-issue": "#97",
+      "x-parent": "ruleChecks.enabled"
     },
     "MetricsReport": {
       "type": "boolean",
@@ -849,7 +884,8 @@
       "x-quickToggle": true,
       "x-caption": "Eigenschaftsregeln anwenden",
       "x-captionEn": "Apply property rules",
-      "x-issue": "#309"
+      "x-issue": "#309",
+      "x-parent": "ruleChecks.enabled"
     },
     "TeamFile": {
       "type": "boolean",
@@ -1011,11 +1047,42 @@
       "x-key": "compiler.mcpBuild",
       "x-area": "build",
       "x-feature": "Build",
+      "x-parent": "buildPipeline.enabled",
       "x-page": "Compiler",
       "x-quickToggle": true,
       "x-caption": "Builds für Claude Code",
       "x-captionEn": "Builds for Claude Code",
       "x-issue": "#261"
+    },
+    "BuildToolsEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Build-Werkzeuge (#1454): Compilerschalter, Bauen beim Öffnen, Projektaufgaben und Startprofile; aus = nichts davon. Compilermeldungen und Prüfen nach dem Speichern laufen weiter. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "buildTools.enabled",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "buildTools",
+      "x-quickToggle": true,
+      "x-caption": "Build-Werkzeuge",
+      "x-captionEn": "Build tools",
+      "x-issue": "#1454"
+    },
+    "BuildPipelineEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Build-Pipeline (#1455): Builds auf Auftrag (Claude Code, Schnellaktion Build, Tests vor dem Lauf), Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel und Build-Zusammenfassung; aus = nichts davon. Compilermeldungen und Prüfen nach dem Speichern laufen weiter. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "buildPipeline.enabled",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "buildPipeline",
+      "x-quickToggle": true,
+      "x-caption": "Build-Pipeline",
+      "x-captionEn": "Build pipeline",
+      "x-issue": "#1455"
     },
     "BuildOnOpen": {
       "type": "boolean",
@@ -1027,7 +1094,8 @@
       "x-node": "compiler.openBuild",
       "x-quickToggle": true,
       "x-caption": "Beim Öffnen einmal bauen",
-      "x-captionEn": "Build once on opening"
+      "x-captionEn": "Build once on opening",
+      "x-parent": "buildTools.enabled"
     },
     "StartProfiles": {
       "type": "boolean",
@@ -1040,7 +1108,8 @@
       "x-quickToggle": true,
       "x-caption": "Startprofile",
       "x-captionEn": "Start profiles",
-      "x-issue": "#575"
+      "x-issue": "#575",
+      "x-parent": "buildTools.enabled"
     },
     "StartProfilesStatusField": {
       "type": "boolean",
@@ -1054,6 +1123,21 @@
       "x-captionEn": "Start profile in the status bar",
       "x-issue": "#575"
     },
+    "TestsEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Tests (#1454): DUnitX-Ergebnisse, Testbefehle, betroffene Tests, Tests im Debugger und CodeLens der Tests; aus = nichts davon. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "tests.enabled",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "tests",
+      "x-quickToggle": true,
+      "x-caption": "DUnitX-Tests",
+      "x-captionEn": "DUnitX tests",
+      "x-issue": "#1454"
+    },
     "TestRun": {
       "type": "boolean",
       "default": true,
@@ -1061,7 +1145,7 @@
       "x-area": "build",
       "x-feature": "Build",
       "x-page": "Compiler",
-      "x-parent": "completion.enabled",
+      "x-parent": "tests.enabled",
       "x-node": "compiler.tests",
       "x-quickToggle": true,
       "x-caption": "Tests ausführen",
@@ -1139,6 +1223,21 @@
       "x-caption": "Beim Test-Debuggen am Anfang der Methode anhalten",
       "x-captionEn": "Stop at the start of the method when debugging a test",
       "x-issue": "#585"
+    },
+    "DebugEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Debugger (#1454): alle Debugger-Funktionen von Atlas (Exception-Verlauf, Werte im Editor und im Hover, Auswerten, Schrittfilter, Visualisierer, Wertdarstellungen); aus = kein Debugger-Teil von Atlas läuft, keine Befehle, keine Werte im Hover. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "debug.enabled",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "debug",
+      "x-quickToggle": true,
+      "x-caption": "Debugger-Funktionen von Atlas",
+      "x-captionEn": "Atlas debugger features",
+      "x-issue": "#1454"
     },
     "DebugHoverValues": {
       "type": "boolean",
@@ -1522,7 +1621,7 @@
       "x-area": "build",
       "x-feature": "Build",
       "x-page": "Release-Build",
-      "x-parent": "completion.enabled",
+      "x-parent": "buildPipeline.enabled",
       "x-quickToggle": true,
       "x-caption": "Release-Build-Wächter",
       "x-captionEn": "Release build guard",
@@ -1533,6 +1632,7 @@
       "default": false,
       "x-key": "build.zeroHints",
       "x-area": "build",
+      "x-parent": "buildPipeline.enabled",
       "x-page": "Compiler",
       "x-caption": "Build nur ohne Warnungen und Hinweise erfolgreich",
       "x-captionEn": "Build succeeds only without warnings and hints",
@@ -1562,7 +1662,8 @@
       "x-captionEn": "Project tasks",
       "x-control": "Kontrollkästchen",
       "description": "Aufgaben aus dem Abschnitt „tasks“ von atlas.json anbieten: Befehle „Aufgabe ausführen …“, „Alle Prüfungen ausführen“, „Letzte Aufgabe wiederholen“, Menü Atlas › Aufgaben, Taste je Aufgabe, Statusfeld und Schnellaktion; aus = nichts davon und kein Lauf vor dem Build",
-      "x-issue": "#900"
+      "x-issue": "#900",
+      "x-parent": "buildTools.enabled"
     },
     "TasksProblemsFromOutput": {
       "type": "boolean",
@@ -1593,7 +1694,8 @@
       "x-captionEn": "Checks before the build",
       "x-control": "Auswahl",
       "description": "Aufgaben der Gruppe „check“ vor jedem Compile/Build: off, warn (Build läuft, Befunde erscheinen) oder block (Exit-Code ungleich 0 oder Fehler brechen den Build mit Meldung ab); „beforeBuild“ einer Aufgabe überschreibt den Wert",
-      "x-issue": "#900"
+      "x-issue": "#900",
+      "x-offValue": "off"
     },
     "TasksSaveBeforeRun": {
       "type": "boolean",
@@ -1642,13 +1744,15 @@
       "x-page": "Compiler",
       "x-caption": "Zusammenfassung nach jedem Build",
       "x-captionEn": "Summary after every build",
-      "x-issue": "#530"
+      "x-issue": "#530",
+      "x-parent": "buildPipeline.enabled"
     },
     "BuildWarningsAsErrors": {
       "type": "string",
       "default": "",
       "x-key": "build.warningsAsErrors",
       "x-area": "build",
+      "x-parent": "buildPipeline.enabled",
       "x-page": "Compiler",
       "x-issue": "#530"
     },
@@ -1662,7 +1766,8 @@
       "x-quickToggle": true,
       "x-caption": "Fenster „Compiler-Schalter“",
       "x-captionEn": "Compiler switches window",
-      "x-issue": "#558"
+      "x-issue": "#558",
+      "x-parent": "buildTools.enabled"
     },
     "BuildSwitchesInStatusBar": {
       "type": "boolean",
@@ -1682,6 +1787,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-module": "welcome",
       "x-quickToggle": true,
       "x-caption": "Atlas-Willkommensseite",
       "x-captionEn": "Atlas welcome page",
@@ -2164,6 +2270,21 @@
       "x-page": "Befehle",
       "x-issue": "#509"
     },
+    "SearchEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Suche (#1454): Atlas-Suche, Unitsuche und Code-Abfragen; aus = nichts davon, die Suche der IDE bleibt. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "search.enabled",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "search",
+      "x-quickToggle": true,
+      "x-caption": "Atlas-Suche",
+      "x-captionEn": "Atlas search",
+      "x-issue": "#1454"
+    },
     "SearchReplaceIde": {
       "type": "boolean",
       "default": true,
@@ -2517,6 +2638,21 @@
       "x-page": "Befehle",
       "x-issue": "#1101"
     },
+    "RuleChecksEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Prüfregeln (#1454): Der Server prüft Regeln; dazu Baseline, Sammelkorrektur, Erklären und Unterdrücken am Element und DFM-Eigenschaftsregeln. Aus = der Server prüft in der LSP-Sitzung keine Regeln, es erscheinen nur Syntaxfehler und Compilermeldungen; --check und MCP bleiben unverändert. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "ruleChecks.enabled",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "ruleChecks",
+      "x-quickToggle": true,
+      "x-caption": "Prüfregeln",
+      "x-captionEn": "Rule checks",
+      "x-issue": "#1454"
+    },
     "ProblemsLive": {
       "type": "boolean",
       "default": true,
@@ -2535,7 +2671,7 @@
       "x-key": "fix.bulk",
       "x-area": "rules",
       "x-page": "Prüfregeln",
-      "x-parent": "problems.window",
+      "x-parent": "ruleChecks.enabled",
       "x-node": "rules.window",
       "x-control": "Schalter „Sammelkorrektur im Fenster Atlas-Prüfung“",
       "x-issue": "#1352"
@@ -3295,7 +3431,9 @@
       "x-key": "build.gate",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-issue": "#529, #533"
+      "x-issue": "#529, #533",
+      "x-parent": "buildPipeline.enabled",
+      "x-offValue": "off"
     },
     "BuildGateTimeoutMs": {
       "type": "integer",
@@ -3305,7 +3443,8 @@
       "x-key": "build.gateTimeoutMs",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-issue": "#529"
+      "x-issue": "#529",
+      "x-parent": "buildPipeline.enabled"
     },
     "ReleaseConfigs": {
       "type": "string",
@@ -3674,7 +3813,8 @@
       "default": true,
       "x-key": "unitSearch.enabled",
       "x-area": "editor",
-      "x-page": "Units suchen"
+      "x-page": "Units suchen",
+      "x-parent": "search.enabled"
     },
     "UnitSearchReplaceIdeDialog": {
       "type": "boolean",
@@ -4080,7 +4220,7 @@
       "x-key": "navigation.symbolPath",
       "x-area": "editor",
       "x-page": "Befehle",
-      "x-parent": "",
+      "x-parent": "analysis.enabled",
       "x-node": "commands.symbolPath",
       "x-quickToggle": true,
       "x-caption": "Weg zwischen Symbolen",
@@ -4231,6 +4371,21 @@
       "x-captionEn": "Atlas status bar",
       "x-issue": "#1155"
     },
+    "DesignerEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Designer (#1454): Designer-Leiste und Komponentensuche; aus = nichts davon. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "designer.enabled",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "designer",
+      "x-quickToggle": true,
+      "x-caption": "Designer-Werkzeuge",
+      "x-captionEn": "Designer tools",
+      "x-issue": "#1454"
+    },
     "EditorDesignerBar": {
       "description": "Symbolleiste im Formular-Designer an Stelle von Brotkrumen und Editorleiste: Komponenten suchen (eigenes Fenster), Nichtvisuelle ein- und ausblenden (löst Strg+H der IDE aus und zeigt deren Zustand), Elternelement auswählen, Tab-Reihenfolge als Nummern auf den Steuerelementen (Sprünge gegen die Lesereihenfolge hervorgehoben) und, experimentell, Ausrichten. Brotkrumen und Editorleiste stehen nur im Code-Editor, nicht auf der Willkommensseite, auch wenn diese Leiste aus ist.",
       "type": "boolean",
@@ -4243,7 +4398,8 @@
       "x-quickToggle": true,
       "x-caption": "Designer-Leiste",
       "x-captionEn": "Designer bar",
-      "x-issue": "#1442"
+      "x-issue": "#1442",
+      "x-parent": "designer.enabled"
     },
     "DesignerSearchKey": {
       "description": "Taste für das Fenster „Komponenten suchen“; wirkt nur, solange der Formular-Designer den Fokus hat, nicht im Code-Editor. 0 = keine Taste (nur der Knopf in der Designer-Leiste). Vorgabe Alt+^.",
@@ -5296,7 +5452,8 @@
       "default": false,
       "x-key": "welcomePage.tests.ci",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-parent": "issues.enabled"
     },
     "WelcomePageTestsCiProvider": {
       "type": "string",
@@ -5365,7 +5522,8 @@
       "x-quickToggle": true,
       "x-caption": "Meine Issues aus dem Tracker",
       "x-captionEn": "My issues from the tracker",
-      "x-issue": "#765"
+      "x-issue": "#765",
+      "x-parent": "issues.enabled"
     },
     "WelcomePageSprint": {
       "type": "boolean",
@@ -5380,7 +5538,8 @@
       "x-quickToggle": true,
       "x-caption": "Sprint mit Burndown",
       "x-captionEn": "Sprint with burndown",
-      "x-issue": "#1277"
+      "x-issue": "#1277",
+      "x-parent": "issues.enabled"
     },
     "WelcomePageCustomLayout": {
       "type": "boolean",
@@ -5480,6 +5639,21 @@
       "description": "Zugangsdaten beim Export: omit lässt sie aus, placeholder schreibt den Platzhalter \"<secret>\"",
       "x-control": "Auswahl",
       "x-issue": "#723"
+    },
+    "IssuesEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Modul Issue-Tracker und Build-Server (#1454); aus = kein Netzzugriff auf Tracker oder Build-Server, keine Bereiche „Meine Issues“, „Sprint“ und Build-Server-Zeilen auf der Willkommensseite, keine Issue-Kennungen im Code. Die Einzelschalter behalten ihre Werte.",
+      "x-key": "issues.enabled",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-node": "",
+      "x-parent": "",
+      "x-module": "issues",
+      "x-quickToggle": true,
+      "x-caption": "Issue-Tracker und Build-Server",
+      "x-captionEn": "Issue tracker and build server",
+      "x-issue": "#1454"
     },
     "IssuesTracker": {
       "type": "string",

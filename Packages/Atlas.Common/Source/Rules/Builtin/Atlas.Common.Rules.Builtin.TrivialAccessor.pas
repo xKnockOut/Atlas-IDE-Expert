@@ -55,7 +55,9 @@ var
   Verb: string;
 begin
   if (AContext.Tree = nil) or not AContext.InlineAccessorDiagnostic then
+  begin
     Exit;
+  end;
   Options := TInlineAccessorOptions.Default;
   Options.EqualityCheck := not AContext.NoAccessorEqualityCheck;
   Interfaces := TInlineAccessor.IndexInterfaces(AContext.Index);
@@ -67,7 +69,9 @@ begin
       begin
         Verb := 'setzt';
         if Accessor.IsGetter then
+        begin
           Verb := 'liefert';
+        end;
         // Mittel: Aufrufe in anderen Units sieht die Regel nicht.
         AReport.Add(Accessor.NameRange, Format('%s %s nur %s: Die Property kann direkt auf das Feld zeigen ' +
           '(Glühbirne „Zugriffsmethode durch Feld ersetzen“).', [Accessor.Name, Verb, Accessor.Field]),

@@ -71,7 +71,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + LF;
+  end;
 end;
 
 /// <summary>Unit mit der Klasse TFoo (Mitglieder AMembers) und der Implementierung AImplementation.</summary>
@@ -111,23 +113,31 @@ begin
   AResult := '';
   SetLength(ConstTypes, Length(AConstTypes));
   for Index := 0 to High(AConstTypes) do
+  begin
     ConstTypes[Index] := AConstTypes[Index];
+  end;
   Tree := TPascalParser.Parse(AText);
   try
     Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
     Lookup := NoLookup(Tree);
     if ConstTypes <> nil then
+    begin
       Lookup.ConstType :=
         function(const ATypeName: string; AOffset: Integer): Boolean
         begin
           Result := IndexText(ATypeName, ConstTypes) >= 0;
         end;
+    end;
     if AEmbed then
+    begin
       Result := TNestedRoutines.Embed(AText, Tree, PositionOf(AText, AMarker), Lookup, TFormatStyle.Default,
-        APassThrough, AAction, AReason)
+        APassThrough, AAction, AReason);
+    end
     else
+    begin
       Result := TNestedRoutines.Extract(AText, Tree, PositionOf(AText, AMarker), Lookup, TFormatStyle.Default,
         AAction, AReason);
+    end;
     if Result and (AAction.Disabled = '') then
     begin
       AResult := TChangeSignature.ApplyEdits(AText, AAction.Edits);

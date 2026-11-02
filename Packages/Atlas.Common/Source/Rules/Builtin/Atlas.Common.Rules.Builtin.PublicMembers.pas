@@ -129,14 +129,22 @@ begin
       Result := 'Published-' + Noun;
     TIndexVisibility.Protected, TIndexVisibility.StrictProtected:
       if Neuter then
-        Result := 'Geschütztes ' + Noun
+      begin
+        Result := 'Geschütztes ' + Noun;
+      end
       else
+      begin
         Result := 'Geschützte ' + Noun;
+      end;
   else
     if Neuter then
-      Result := 'Öffentliches ' + Noun
+    begin
+      Result := 'Öffentliches ' + Noun;
+    end
     else
+    begin
       Result := 'Öffentliche ' + Noun;
+    end;
   end;
 end;
 
@@ -204,12 +212,20 @@ begin
   Result := '';
   Depth := 0;
   for Index := 1 to Length(AName) do
+  begin
     if AName[Index] = '<' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if AName[Index] = '>' then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if Depth = 0 then
+    begin
       Result := Result + AName[Index];
+    end;
+  end;
 end;
 
 /// <summary>Kurzform einer Attributklasse ([Behalten] für BehaltenAttribute), sonst ''.</summary>
@@ -218,7 +234,9 @@ begin
   Result := '';
   if (ASymbol.Kind = TIndexSymbolKind.ClassType) and (Length(ASymbol.Name) > Length('Attribute')) and
     EndsText('Attribute', ASymbol.Name) then
+  begin
     Result := Copy(ASymbol.Name, 1, Length(ASymbol.Name) - Length('Attribute'));
+  end;
 end;
 
 function ProjectKindKey(AKind: TRuleProjectKind): string;
@@ -238,17 +256,25 @@ end;
 function QualifiedOf(const ASymbol: TIndexSymbol): string;
 begin
   if ASymbol.Container <> '' then
-    Result := ASymbol.Container + '.' + ASymbol.Name
+  begin
+    Result := ASymbol.Container + '.' + ASymbol.Name;
+  end
   else
+  begin
     Result := ASymbol.Name;
+  end;
 end;
 
 function CleanName(const AText: string): string;
 begin
   if StartsStr('&', AText) then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function SamePosition(const A, B: TTextPosition): Boolean;
@@ -296,12 +322,16 @@ var
     Name: string;
   begin
     for Token in AContext.Tree.Tokens do
+    begin
       if Token.Kind = TPascalTokenKind.Directive then
       begin
         Name := TDirectiveNames.LeadingName(TDirectiveNames.Body(Token.Text));
         if SameText(Name, 'I') or SameText(Name, 'INCLUDE') then
+        begin
           Exit(True);
+        end;
       end;
+    end;
     Result := False;
   end;
 
@@ -312,9 +342,15 @@ var
     Source: string;
   begin
     for Project in Projects do
+    begin
       for Source in Project.Sources do
+      begin
         if SameText(Source, FileName) and not Contains(ProjectKinds, ProjectKindKey(Project.Kind)) then
+        begin
           Exit(False);
+        end;
+      end;
+    end;
     Result := True;
   end;
 
@@ -336,6 +372,7 @@ var
       for Project in Projects do
       begin
         for Source in Project.Sources do
+        begin
           if Seen.TryGetValue(UpperCase(Source), Position) then
           begin
             // Gehört die Datei auch zu einem Projekt, das kein Test ist, zählt sie normal.
@@ -353,13 +390,20 @@ var
             Entry.FileName := Source;
             Entry.OnlyTests := Project.IsTest;
             if Project.IsTest then
+            begin
               Entry.TestProject := ChangeFileExt(ExtractFileName(Project.FileName), '');
+            end;
             Seen.Add(UpperCase(Source), Files.Count);
             Files.Add(Entry);
           end;
+        end;
         for Form in Project.Forms do
+        begin
           if not Forms.Contains(Form) then
+          begin
             Forms.Add(Form);
+          end;
+        end;
       end;
     finally
       Seen.Free;
@@ -374,10 +418,14 @@ var
       Exit(True);
     end;
     if Texts.TryGetValue(UpperCase(AFile), AText) then
+    begin
       Exit(True);
+    end;
     Result := AContext.ProjectFiles.ReadText(AFile, AText);
     if Result then
+    begin
       Texts.Add(UpperCase(AFile), AText);
+    end;
   end;
 
   function IsTarget(const AResolved: TResolvedSymbol; const ASymbol: TIndexSymbol; AAmbiguous: Boolean): Boolean;
@@ -388,7 +436,9 @@ var
     // Bei eindeutig aufgelösten Überladungen zählt nur die passende.
     if Result and not AAmbiguous and (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
       ASymbol.HasDirective('overload') and (AResolved.ParamTypes <> nil) then
+    begin
       Result := AnsiSameText(string.Join(',', AResolved.ParamTypes), string.Join(',', ASymbol.ParamTypes));
+    end;
   end;
 
   /// <summary>Deklarationen mit dem Namen in AFile: dort ist der Name keine Verwendung.</summary>
@@ -402,13 +452,21 @@ var
     if SameText(AFile, FileName) then
     begin
       for Position in Local.SymbolsNamed(AName) do
+      begin
         Result := Result + [Local.Symbols[Position].SelectionRange.StartPos];
+      end;
       Exit;
     end;
     if AContext.Index.FindFile(AFile, Indexed) then
+    begin
       for Symbol in Indexed.Symbols do
+      begin
         if SameText(Symbol.Name, AName) and (Symbol.FileName = '') then
+        begin
           Result := Result + [Symbol.SelectionRange.StartPos];
+        end;
+      end;
+    end;
   end;
 
   /// <summary>Bereiche von ASymbol in der eigenen Datei, deren Vorkommen keine Verwendung sind: die Rümpfe der
@@ -420,15 +478,25 @@ var
   begin
     Result := nil;
     if ASymbol.Container <> '' then
-      Wanted := ASymbol.Container + '.' + ASymbol.Name
+    begin
+      Wanted := ASymbol.Container + '.' + ASymbol.Name;
+    end
     else
+    begin
       Wanted := ASymbol.Name;
+    end;
     if IsTypeSymbol(ASymbol) then
+    begin
       Result := [ASymbol.Range];
+    end;
     for Node in TRuleDerived.Routines(Cache, AContext) do
+    begin
       if SameText(Node.Name, Wanted) or (IsTypeSymbol(ASymbol) and
         StartsText(ASymbol.Name + '.', WithoutTypeParams(Node.Name))) then
+      begin
         Result := Result + [TTextRange.Create(Node.StartPos, Node.EndPos)];
+      end;
+    end;
   end;
 
   function Inside(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
@@ -436,10 +504,14 @@ var
     Range: TTextRange;
   begin
     for Range in ARanges do
+    begin
       if ((APosition.Line > Range.StartPos.Line) or ((APosition.Line = Range.StartPos.Line) and
         (APosition.Character >= Range.StartPos.Character))) and ((APosition.Line < Range.EndPos.Line) or
         ((APosition.Line = Range.EndPos.Line) and (APosition.Character <= Range.EndPos.Character))) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -460,35 +532,57 @@ var
     Declared := DeclaredAt(AFile, ASymbol.Name);
     Bodies := nil;
     if SameText(AFile, FileName) then
+    begin
       Bodies := OwnRanges(ASymbol);
+    end;
     Short := AttributeShortName(ASymbol);
     Resolver.PinTree(ATree, AFile);
     try
       for Index := 0 to High(ATree.Tokens) do
       begin
         if ATree.Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+        begin
           Continue;
+        end;
         Name := CleanName(ATree.Tokens[Index].Text);
         // [Behalten] verwendet BehaltenAttribute; die Namensauflösung kennt die Kurzform nicht.
         if (Short <> '') and SameText(Name, Short) and not Inside(ATree.Tokens[Index].StartPos, Bodies) then
+        begin
           Exit(True);
+        end;
         if not SameText(Name, ASymbol.Name) then
+        begin
           Continue;
+        end;
         Position := ATree.Tokens[Index].StartPos;
         Excluded := False;
         for Skip in Declared do
+        begin
           if SamePosition(Skip, Position) then
+          begin
             Excluded := True;
+          end;
+        end;
         if Excluded or Inside(Position, Bodies) then
+        begin
           Continue;
+        end;
         if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+        begin
           raise ERuleCheckCancelled.Create(UnusedPublicMemberRuleId);
+        end;
         Results := Resolver.ResolveAll(ATree, AFile, Position);
         if (Results = nil) or not Results[0].Found then
+        begin
           Exit(True);
+        end;
         for Resolved in Results do
+        begin
           if IsTarget(Resolved, ASymbol, Length(Results) > 1) then
+          begin
             Exit(True);
+          end;
+        end;
       end;
     finally
       Resolver.UnpinTree;
@@ -503,11 +597,15 @@ var
     for Form in Forms do
     begin
       if not TextOf(Form, Text) or not ContainsText(Text, AName) then
+      begin
         Continue;
+      end;
       Model := TFormModel.Create(Text);
       try
         if Model.Occurrences(AName) <> nil then
+        begin
           Exit(True);
+        end;
       finally
         Model.Free;
       end;
@@ -525,8 +623,12 @@ var
     begin
       FormsState := 1;
       for Form in Forms do
+      begin
         if not TextOf(Form, Text) then
+        begin
           FormsState := 2;
+        end;
+      end;
     end;
     Result := FormsState = 2;
   end;
@@ -538,6 +640,7 @@ var
     Index, At, Depth: Integer;
   begin
     for Index := 0 to High(ATokens) - 1 do
+    begin
       if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (IndexText(CleanName(ATokens[Index].Text),
         RegisterCalls) >= 0) and ATokens[Index + 1].IsSymbol('(') then
       begin
@@ -547,18 +650,25 @@ var
         while At <= High(ATokens) do
         begin
           if ATokens[At].IsSymbol('(') then
-            Inc(Depth)
+          begin
+            Inc(Depth);
+          end
           else if ATokens[At].IsSymbol(')') then
           begin
             Dec(Depth);
             if Depth = 0 then
+            begin
               Break;
+            end;
           end
           else if (ATokens[At].Kind = TPascalTokenKind.Identifier) and SameText(CleanName(ATokens[At].Text), AClass) then
+          begin
             Exit(True);
+          end;
           Inc(At);
         end;
       end;
+    end;
     Result := False;
   end;
 
@@ -573,12 +683,16 @@ var
   begin
     Short := Copy(AContainer, LastDelimiter('.', AContainer) + 1, MaxInt);
     if Registered.TryGetValue(LowerCase(Short), Result) then
+    begin
       Exit;
+    end;
     Result := False;
     for Entry in Files do
     begin
       if SameText(Entry.FileName, FileName) then
-        Result := RegistersIn(AContext.Tree.Tokens, Short)
+      begin
+        Result := RegistersIn(AContext.Tree.Tokens, Short);
+      end
       else
       begin
         Mentioned := False;
@@ -592,7 +706,9 @@ var
         if Mentioned and not Result then
         begin
           if not TextOf(Entry.FileName, Text) then
-            Result := True
+          begin
+            Result := True;
+          end
           else
           begin
             Tree := TSyntaxTreeCache.Parse(Text);
@@ -605,7 +721,9 @@ var
         end;
       end;
       if Result then
+      begin
         Break;
+      end;
     end;
     Registered.Add(LowerCase(Short), Result);
   end;
@@ -622,19 +740,27 @@ var
     for Entry in Files do
     begin
       if not TextOf(Entry.FileName, Text) or not ContainsText(Text, '''' + AName + '''') then
+      begin
         Continue;
+      end;
       Tree := nil;
       try
         if SameText(Entry.FileName, FileName) then
-          Found := AContext.Tree.Tokens
+        begin
+          Found := AContext.Tree.Tokens;
+        end
         else
         begin
           Tree := TSyntaxTreeCache.Parse(Text);
           Found := Tree.Tokens;
         end;
         for Token in Found do
+        begin
           if (Token.Kind = TPascalTokenKind.StringLiteral) and SameText(Token.Text, '''' + AName + '''') then
+          begin
             Exit(True);
+          end;
+        end;
       finally
         Tree.Free;
       end;
@@ -647,7 +773,9 @@ var
   begin
     Result := AContext.ProjectFiles.NameIn(AFile, ASymbol.Name);
     if (Result = TRuleNameAnswer.Absent) and (AttributeShortName(ASymbol) <> '') then
+    begin
       Result := AContext.ProjectFiles.NameIn(AFile, AttributeShortName(ASymbol));
+    end;
   end;
 
   /// <summary>Wo wird ASymbol verwendet? ATestProject: das Testprojekt bei OnlyTests. Was nicht sicher zu
@@ -664,7 +792,9 @@ var
     for Entry in Files do
     begin
       if SameText(Entry.FileName, FileName) then
-        Used := UsedInTree(AContext.Tree, FileName, ASymbol)
+      begin
+        Used := UsedInTree(AContext.Tree, FileName, ASymbol);
+      end
       else
       begin
         case NameInFile(Entry.FileName, ASymbol) of
@@ -674,7 +804,9 @@ var
             Exit(TUsage.Used);
         end;
         if not TextOf(Entry.FileName, Text) then
+        begin
           Exit(TUsage.Used);
+        end;
         Tree := TSyntaxTreeCache.Parse(Text);
         try
           Used := UsedInTree(Tree, Entry.FileName, ASymbol);
@@ -683,18 +815,24 @@ var
         end;
       end;
       if not Used then
+      begin
         Continue;
+      end;
       if Entry.OnlyTests and not TestsCount then
       begin
         if ATestProject = '' then
+        begin
           ATestProject := Entry.TestProject;
+        end;
         Result := TUsage.OnlyTests;
         Continue;
       end;
       Exit(TUsage.Used);
     end;
     if InForms(ASymbol.Name) or (StringsCount and InStrings(ASymbol.Name)) then
+    begin
       Exit(TUsage.Used);
+    end;
   end;
 
   function IgnoreFix(const ASymbol: TIndexSymbol): TRuleFix;
@@ -705,7 +843,9 @@ var
     Line := ASymbol.Range.StartPos.Line;
     Indent := '';
     if Line < Length(Lines) then
+    begin
       Indent := Copy(Lines[Line], 1, Length(Lines[Line]) - Length(TrimLeft(Lines[Line])));
+    end;
     Result := TRuleFix.Create('Als bewusst öffentlich markieren (lsp-ignore)',
       [TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), Indent + '// lsp-ignore: ' +
       UnusedPublicMemberRuleId + LineBreak)]);
@@ -715,13 +855,19 @@ var
   function Wanted(const ASymbol: TIndexSymbol): Boolean;
   begin
     if ASymbol.Unavailable or (ASymbol.FileName <> '') then
+    begin
       Exit(False);
+    end;
     // Unit-Ebene: Arten aus unitKinds (#64), unabhängig von memberKinds.
     if ASymbol.Container = '' then
+    begin
       Exit(UnitLevel and ASymbol.InInterface and (UnitKindKey(ASymbol) <> '') and
         Contains(UnitKinds, UnitKindKey(ASymbol)));
+    end;
     if not Contains(MemberKinds, MemberKindKey(ASymbol)) then
+    begin
       Exit(False);
+    end;
     Result := (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constant, TIndexSymbolKind.Property_,
       TIndexSymbolKind.Field, TIndexSymbolKind.Variable]) and Contains(Visibilities, VisibilityKey(ASymbol.Visibility));
   end;
@@ -733,19 +879,29 @@ var
     function Counted(ACount: Integer; const AOne, AMany: string): string;
     begin
       if ACount = 1 then
-        Result := '1 ' + AOne
+      begin
+        Result := '1 ' + AOne;
+      end
       else
+      begin
         Result := Format('%d %s', [ACount, AMany]);
+      end;
     end;
 
   begin
     Result := 'Durchsucht: ' + Counted(Files.Count, 'Datei', 'Dateien');
     if Forms.Count > 0 then
+    begin
       Result := Result + ' und ' + Counted(Forms.Count, 'Formular', 'Formulare');
+    end;
     if WholeGroup then
-      Result := Result + ' der Projektgruppe'
+    begin
+      Result := Result + ' der Projektgruppe';
+    end
     else
+    begin
       Result := Result + ' des Projekts';
+    end;
   end;
 
   procedure CheckSymbol(const ASymbol: TIndexSymbol);
@@ -753,13 +909,19 @@ var
     TestProject: string;
   begin
     if Considered.Reason(ASymbol) <> TConsideredUsedReason.None then
+    begin
       Exit;
+    end;
     if (ASymbol.Visibility = TIndexVisibility.Published) and (ASymbol.Container <> '') and
       (((ASymbol.Kind = TIndexSymbolKind.Method) and FormUnreadable) or IsRegistered(ASymbol.Container)) then
+    begin
       Exit;
+    end;
     // Registrierte Klassen erreichen Streaming und Objektinspektor über RTTI (#64).
     if IsTypeSymbol(ASymbol) and IsRegistered(ASymbol.Name) then
+    begin
       Exit;
+    end;
     case UsageOf(ASymbol, TestProject) of
       TUsage.Unused:
         AReport.AddWithDetails(ASymbol.SelectionRange, Format('%s %s wird im Projekt nirgends verwendet.',
@@ -778,7 +940,9 @@ var
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.ProjectFiles = nil) or
     (AContext.Index = nil) or (AContext.FileName = '') or HasIncludes then
+  begin
     Exit;
+  end;
   FileName := AContext.FileName;
   Visibilities := TRuleOptions.Strings(AContext.Options, 'visibilities', ['public', 'published']);
   MemberKinds := TRuleOptions.Strings(AContext.Options, 'memberKinds', ['method', 'constant', 'property']);
@@ -790,13 +954,17 @@ begin
   StringsCount := TRuleOptions.Bool(AContext.Options, 'stringLiteralsCountAsUse', True);
   Projects := AContext.ProjectFiles.ProjectsOf(FileName, WholeGroup);
   if (Projects = nil) or not KindsAllowed or not AContext.ProjectFiles.Complete(Reason) then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Local := TRuleDerived.UnitIndex(Cache, AContext);
   Tokens := TRuleDerived.CodeTokens(Cache, AContext);
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   if LineBreak = '' then
+  begin
     LineBreak := sLineBreak;
+  end;
   Files := TList<TSearchFile>.Create;
   Forms := TList<string>.Create;
   Texts := TDictionary<string, string>.Create;
@@ -815,16 +983,22 @@ begin
     for Symbol in Local.Symbols do
     begin
       if Symbol.Unavailable or (Symbol.FileName <> '') then
+      begin
         Continue;
+      end;
       // Nur die erste Deklaration (im Typ bzw. im interface-Teil) entscheidet, nicht der Rumpf; Überladungen
       // einzeln. Auch eine nicht gewünschte Deklaration (protected) zählt als gesehen, sonst prüfte die Regel den
       // Rumpf, der im Index als public steht.
       Key := LowerCase(Symbol.Container + '.' + Symbol.Name + '(' + string.Join(',', Symbol.ParamTypes) + ')');
       if Seen.ContainsKey(Key) then
+      begin
         Continue;
+      end;
       Seen.Add(Key, True);
       if Wanted(Symbol) then
+      begin
         CheckSymbol(Symbol);
+      end;
     end;
   finally
     Considered.Free;

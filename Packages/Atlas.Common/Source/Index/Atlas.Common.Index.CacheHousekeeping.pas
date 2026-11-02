@@ -65,11 +65,17 @@ uses
 function CompareOldestFirst(const ALeft, ARight: TCacheFileInfo): Integer;
 begin
   if ALeft.LastWrite < ARight.LastWrite then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else if ALeft.LastWrite > ARight.LastWrite then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := CompareText(ALeft.FileName, ARight.FileName);
+  end;
 end;
 
 class function TIndexCacheHousekeeping.SelectForRemoval(const AFiles: TArray<TCacheFileInfo>;
@@ -84,8 +90,12 @@ var
 begin
   Result := False;
   for Keep in AKeep do
+  begin
     if SameText(AFileName, Keep) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TIndexCacheHousekeeping.SelectForRemoval(const AFiles: TArray<TCacheFileInfo>;
@@ -98,9 +108,13 @@ begin
   Result := nil;
   Total := 0;
   for Info in AFiles do
+  begin
     Inc(Total, Info.Size);
+  end;
   if Total <= AMaxBytes then
+  begin
     Exit;
+  end;
   Sorted := TList<TCacheFileInfo>.Create(TComparer<TCacheFileInfo>.Construct(CompareOldestFirst));
   try
     Sorted.AddRange(AFiles);
@@ -108,9 +122,13 @@ begin
     for Info in Sorted do
     begin
       if Total <= AMaxBytes then
+      begin
         Break;
+      end;
       if Info.Locked or IsKept(Info.FileName, AKeep) then
+      begin
         Continue;
+      end;
       Result := Result + [Info.FileName];
       Dec(Total, Info.Size);
     end;
@@ -130,10 +148,13 @@ begin
   for Info in AFiles do
   begin
     if Info.Locked or IsKept(Info.FileName, AKeep) then
+    begin
       Continue;
+    end;
     Known := False;
     Alive := False;
     for Origin in Info.Origins do
+    begin
       if Origin <> '' then
       begin
         Known := True;
@@ -143,8 +164,11 @@ begin
           Break;
         end;
       end;
+    end;
     if Known and not Alive then
+    begin
       Result := Result + [Info.FileName];
+    end;
   end;
 end;
 
@@ -155,18 +179,28 @@ var
 begin
   Result := nil;
   if AMaxAgeDays <= 0 then
+  begin
     Exit;
+  end;
   for Info in AFiles do
+  begin
     if not Info.Locked and not IsKept(Info.FileName, AKeep) and (Info.LastWrite < ANow - AMaxAgeDays) then
+    begin
       Result := Result + [Info.FileName];
+    end;
+  end;
 end;
 
 class function TIndexCacheHousekeeping.MaxBytesOf(AMaxMb: Integer): Int64;
 begin
   if AMaxMb <= 0 then
-    Result := High(Int64)
+  begin
+    Result := High(Int64);
+  end
   else
+  begin
     Result := Int64(AMaxMb) * 1024 * 1024;
+  end;
 end;
 
 end.

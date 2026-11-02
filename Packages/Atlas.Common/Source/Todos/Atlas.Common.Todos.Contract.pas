@@ -115,16 +115,26 @@ function TTodoFilter.Matches(const AFile: TFileTodos; const AEntry: TTodoEntry):
 begin
   Result := False;
   if AEntry.Done and not IncludeDone then
+  begin
     Exit;
+  end;
   if (Category <> '') and not SameText(Category, AEntry.Category) then
+  begin
     Exit;
+  end;
   if (Owner <> '') and not SameText(Owner, AEntry.Owner) then
+  begin
     Exit;
+  end;
   if (Keyword <> '') and not SameText(Keyword, AEntry.Keyword) then
+  begin
     Exit;
+  end;
   if (UnitName <> '') and not SameText(UnitName, AFile.UnitName) and not SameText(UnitName, AFile.Path) and
     not SameText(StringReplace(UnitName, '\', '/', [rfReplaceAll]), AFile.Path) then
+  begin
     Exit;
+  end;
   Result := True;
 end;
 
@@ -141,14 +151,18 @@ var
 begin
   Result := APath;
   for Index := Length(Result) downto 1 do
+  begin
     if (Result[Index] = '/') or (Result[Index] = '\') then
     begin
       Result := Copy(Result, Index + 1, MaxInt);
       Break;
     end;
+  end;
   Index := LastDelimiter('.', Result);
   if Index > 1 then
+  begin
     Result := Copy(Result, 1, Index - 1);
+  end;
 end;
 
 end.

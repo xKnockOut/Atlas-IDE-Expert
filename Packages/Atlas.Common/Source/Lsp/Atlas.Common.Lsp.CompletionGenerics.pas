@@ -95,7 +95,9 @@ function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): In
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Name ohne Typargumente und ohne Unit davor: "Generics.IComparer&lt;T&gt;" → "IComparer".</summary>
@@ -103,7 +105,9 @@ function PlainName(const AName: string): string;
 begin
   Result := Trim(AName);
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
 
@@ -119,12 +123,16 @@ begin
   Commas := 0;
   Index := ALast;
   if (Index >= 0) and IsTrivia(ATokens[Index]) then
+  begin
     Index := PreviousIndex(ATokens, Index);
+  end;
   while Index >= 0 do
   begin
     Token := ATokens[Index];
     if Token.IsSymbol('>') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Token.IsSymbol('<') then
     begin
       if Depth = 0 then
@@ -143,11 +151,15 @@ begin
     else if Token.IsSymbol(',') then
     begin
       if Depth = 0 then
+      begin
         Inc(Commas);
+      end;
     end
     // Nur, was in einer Typargumentliste stehen kann: Namen, Punkte und string.
     else if not ((Token.Kind = TPascalTokenKind.Identifier) or Token.IsSymbol('.') or Token.IsKeyword('string')) then
+    begin
       Exit;
+    end;
     Index := PreviousIndex(ATokens, Index);
   end;
 end;
@@ -166,28 +178,43 @@ begin
   for Line := ALine to Min(High(ALines), ALine + 20) do
   begin
     if Line = ALine then
-      Text := Text + Copy(ALines[Line], ACharacter + 1, MaxInt)
+    begin
+      Text := Text + Copy(ALines[Line], ACharacter + 1, MaxInt);
+    end
     else
+    begin
       Text := Text + ' ' + ALines[Line];
+    end;
     if Pos('>', Text) > 0 then
+    begin
       Break;
+    end;
   end;
   Open := 0;
   for Index := 1 to Length(Text) do
+  begin
     if Text[Index] = '<' then
     begin
       Open := Index;
       Break;
     end
     else if not CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', ' ', #9]) then
+    begin
       Exit;
+    end;
+  end;
   if Open = 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   Close := 0;
   for Index := Open to Length(Text) do
+  begin
     if Text[Index] = '<' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Text[Index] = '>' then
     begin
       Dec(Depth);
@@ -197,27 +224,42 @@ begin
         Break;
       end;
     end;
+  end;
   if Close = 0 then
+  begin
     Exit;
+  end;
   Inner := Copy(Text, Open + 1, Close - Open - 1);
   // Gruppen durch ";", darin "K, V: class, constructor".
   for Group in Inner.Split([';']) do
   begin
     ColonAt := Pos(':', Group);
     if ColonAt > 0 then
-      NamesText := Copy(Group, 1, ColonAt - 1)
+    begin
+      NamesText := Copy(Group, 1, ColonAt - 1);
+    end
     else
+    begin
       NamesText := Group;
+    end;
     for Name in NamesText.Split([',']) do
     begin
       if Trim(Name) = '' then
+      begin
         Continue;
+      end;
       Param := Default(TGenericParam);
       Param.Name := Trim(Name);
       if ColonAt > 0 then
+      begin
         for Constraint in Copy(Group, ColonAt + 1, MaxInt).Split([',']) do
+        begin
           if Trim(Constraint) <> '' then
+          begin
             Param.Constraints := Param.Constraints + [Trim(Constraint)];
+          end;
+        end;
+      end;
       Result := Result + [Param];
     end;
   end;
@@ -229,17 +271,29 @@ var
 begin
   Result := '';
   for Constraint in AConstraints do
+  begin
     if SameText(Constraint, 'constructor') then
+    begin
       Exit('constructible');
+    end;
+  end;
   for Constraint in AConstraints do
+  begin
     if SameText(Constraint, 'class') then
-      Exit('classes')
+    begin
+      Exit('classes');
+    end
     else if SameText(Constraint, 'record') then
+    begin
       Exit('values');
+    end;
+  end;
   for Constraint in AConstraints do
   begin
     if AInterface then
+    begin
       Exit('implements:' + Constraint);
+    end;
     Exit('descends:' + Constraint);
   end;
 end;
@@ -251,15 +305,25 @@ var
 begin
   Result := True;
   for Constraint in AConstraints do
+  begin
     if SameText(Constraint, 'class') then
-      Result := Result and (AKind = TTypeArgKind.Class_)
+    begin
+      Result := Result and (AKind = TTypeArgKind.Class_);
+    end
     else if SameText(Constraint, 'record') then
-      Result := Result and (AKind in [TTypeArgKind.Record_, TTypeArgKind.Enum, TTypeArgKind.Basic])
+    begin
+      Result := Result and (AKind in [TTypeArgKind.Record_, TTypeArgKind.Enum, TTypeArgKind.Basic]);
+    end
     else if SameText(Constraint, 'constructor') then
-      Result := Result and (AKind = TTypeArgKind.Class_) and AConstructible()
+    begin
+      Result := Result and (AKind = TTypeArgKind.Class_) and AConstructible();
+    end
     else
+    begin
       // Typ-Constraint: Klassen, Interfaces (und Records bei Interfaces nicht) prüft die Namensauflösung.
       Result := Result and (AKind in [TTypeArgKind.Class_, TTypeArgKind.Interface_]) and ASatisfiesType(Constraint);
+    end;
+  end;
 end;
 
 function KindOfSymbol(const ASymbol: TResolvedSymbol): TTypeArgKind;
@@ -311,25 +375,37 @@ begin
   for Depth := 0 to MaxAncestorDepth do
   begin
     if SameText(PlainName(Current.Name), PlainName(AName)) then
+    begin
       Exit(True);
+    end;
     for Ancestor in Current.Ancestors do
     begin
       if SameText(PlainName(Ancestor), PlainName(AName)) then
+      begin
         Exit(True);
+      end;
       // Interface, das von AName abstammt (IFooEx = interface(IFoo)).
       if AResolver.DeclaringUnit(Current, FromUnit) and AResolver.ResolveTypeFrom(FromUnit, Ancestor, Listed) and
         (Listed.SymbolKind = TIndexSymbolKind.InterfaceType) then
+      begin
         for Inner := 0 to MaxAncestorDepth do
         begin
           if SameText(PlainName(Listed.Name), PlainName(AName)) then
+          begin
             Exit(True);
+          end;
           if not AResolver.AncestorOf(Listed, Next) then
+          begin
             Break;
+          end;
           Listed := Next;
         end;
+      end;
     end;
     if not AResolver.AncestorOf(Current, Next) then
+    begin
       Exit;
+    end;
     Current := Next;
   end;
 end;
@@ -342,11 +418,17 @@ var
   Params: string;
 begin
   if not AResolver.DeclaredMember(AType, 'Create', Ctor) or (Ctor.MinArgs = 0) then
+  begin
     Exit(True);
+  end;
   Result := False;
   for Params in Ctor.VariantParams do
+  begin
     if Params = '' then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TCompletionGenerics.ItemSymbol(ARequest: TCompletionRequest; AUnits: TDictionary<string, TUnitIndex>;
@@ -358,17 +440,24 @@ begin
   Result := False;
   ASymbol := Default(TResolvedSymbol);
   if AItem.SourceFile = '' then
+  begin
     Exit;
+  end;
   if not AUnits.TryGetValue(UpperCase(AItem.SourceFile), UnitInfo) then
   begin
     // Die eigene Unit aus dem Baum, sie steht vielleicht noch nicht (aktuell) im Index.
     if SameText(AItem.SourceFile, ARequest.FileName) and (ARequest.Tree <> nil) then
-      UnitInfo := ARequest.UnitIndex
+    begin
+      UnitInfo := ARequest.UnitIndex;
+    end
     else if (ARequest.Index = nil) or not TIndexFiles.UnitOf(ARequest.Index, AItem.SourceFile, UnitInfo) then
+    begin
       UnitInfo := Default(TUnitIndex);
+    end;
     AUnits.Add(UpperCase(AItem.SourceFile), UnitInfo);
   end;
   for Symbol in UnitInfo.Symbols do
+  begin
     if (Symbol.SelectionRange.StartPos.Line = AItem.SourcePosition.Line) and
       (Symbol.SelectionRange.StartPos.Character = AItem.SourcePosition.Character) and
       SameText(Symbol.Name, AItem.Name) then
@@ -376,6 +465,7 @@ begin
       ASymbol := ARequest.Resolver.SymbolFrom(UnitInfo, Symbol);
       Exit(True);
     end;
+  end;
 end;
 
 class function TCompletionGenerics.Apply(ARequest: TCompletionRequest; const AContext: TCompletionContext;
@@ -415,7 +505,9 @@ var
         Result := Constructible(Lookup, Symbol);
       end);
     if not Result and (KindCode(AKind) <> '') and not HiddenKinds.Contains(KindCode(AKind)) then
+    begin
       HiddenKinds.Add(KindCode(AKind));
+    end;
   end;
 
   procedure Label_(var AItem: TCompletionItem);
@@ -431,9 +523,13 @@ var
   begin
     if Names.ContainsKey(UpperCase(AName)) or
       (MatchScore(AName, AContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch) then
+    begin
       Exit;
+    end;
     if not Admit(TTypeArgKind.Basic, Default(TResolvedSymbol)) then
+    begin
       Exit;
+    end;
     Basic := Default(TCompletionItem);
     Basic.Name := AName;
     Basic.Detail := 'System';
@@ -448,8 +544,10 @@ begin
   Resolver := ARequest.Resolver;
   Params := nil;
   if SameText(AOwner.FileName, ARequest.FileName) then
+  begin
     Params := TCompletionGenerics.Params(ARequest.Lines, AOwner.SelectionRange.StartPos.Line,
-      AOwner.SelectionRange.StartPos.Character)
+      AOwner.SelectionRange.StartPos.Character);
+  end
   else if Assigned(ARequest.ReadText) and ARequest.ReadText(AOwner.FileName, Text) then
   begin
     // Ein #13 am Zeilenende stört Params nicht.
@@ -459,21 +557,27 @@ begin
   end;
   // Quelle nicht lesbar: die Namen aus dem Index, ohne Constraints.
   if Length(Params) = 0 then
+  begin
     for Name in AOwner.TypeParams.Split([',']) do
     begin
       Param := Default(TGenericParam);
       Param.Name := Trim(Name);
       Params := Params + [Param];
     end;
+  end;
   if (AContext.GenericParam < 0) or (AContext.GenericParam > High(Params)) then
+  begin
     Exit;
+  end;
   Param := Params[AContext.GenericParam];
   // Ein Typ-Constraint, der ein Interface ist, heißt „implementieren“, sonst „abgeleitet“.
   IsInterface := False;
   if Length(Param.Constraints) > 0 then
+  begin
     IsInterface := Resolver.DeclaringUnit(AOwner, UnitInfo) and
       Resolver.ResolveTypeFrom(UnitInfo, Param.Constraints[High(Param.Constraints)], ConstraintType) and
       (ConstraintType.SymbolKind = TIndexSymbolKind.InterfaceType);
+  end;
   Code := HintCode(Param.Constraints, IsInterface);
   Units := TDictionary<string, TUnitIndex>.Create;
   Names := TDictionary<string, Boolean>.Create;
@@ -485,31 +589,49 @@ begin
       // Art aus dem Index, über Datei und Namensposition des Eintrags.
       Found := ItemSymbol(ARequest, Units, Item, Resolved);
       if Found then
-        Kind := KindOfSymbol(Resolved)
+      begin
+        Kind := KindOfSymbol(Resolved);
+      end
       else if MatchText(Item.Name, ValueTypes) then
-        Kind := TTypeArgKind.Basic
+      begin
+        Kind := TTypeArgKind.Basic;
+      end
       else
+      begin
         Kind := TTypeArgKind.Unknown;
+      end;
       // Unbekannte Art (Alias, Typparameter): nur ohne Constraint.
       if (Kind = TTypeArgKind.Unknown) and (Length(Param.Constraints) > 0) then
+      begin
         Continue;
+      end;
       if (Kind <> TTypeArgKind.Unknown) and not Admit(Kind, Resolved) then
+      begin
         Continue;
+      end;
       Current := Item;
       Label_(Current);
       Kept.Add(Current);
       Names.AddOrSetValue(UpperCase(Item.Name), True);
     end;
     for Name in ValueTypes do
+    begin
       AddBasic(Name);
+    end;
     if Length(Param.Constraints) = 0 then
+    begin
       for Name in OtherBasicTypes do
+      begin
         AddBasic(Name);
+      end;
+    end;
     Hidden := string.Join(',', HiddenKinds.ToArray);
     Result := Kept.ToArray;
     // Ausgeblendete Arten an jedem Eintrag; das Plugin liest sie am ersten.
     for Index := 0 to High(Result) do
+    begin
       Result[Index].HiddenKinds := Hidden;
+    end;
   finally
     Kept.Free;
     HiddenKinds.Free;
