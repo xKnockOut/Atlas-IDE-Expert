@@ -1,0 +1,177 @@
+﻿unit Shell.Composition.Completion;
+
+// Internals-Rolle Shell: Vervollständigung im Editor und in den Debug-Dialogen (#538) samt der Rückfragen, die nur
+// sie stellt: Abgleich, Postfix-Vorlagen (#188), with auflösen (#50) und Methode aus Aufruf anlegen (#472). Die
+// Komposition reicht Dokumente, Index, Quelltext und die Einstellungen der Arbeitsbereiche als Dienste herein.
+
+interface
+
+uses
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Lsp.Documentation,
+  Atlas.Common.Lsp.ConditionalSymbols,
+  Atlas.Common.Lsp.Refactorings,
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.ExpressionCompletion;
+
+type
+  TShellRefactoringSettingsFunc = reference to function(const AUri: string): TRefactoringSettings;
+  TShellLanguageLevelFunc = reference to function(const AUri: string): string;
+  TShellRefactoringContextFunc = reference to function(const AUri: string): TRefactoringContext;
+
+  /// <summary>Was die Vervollständigung von der Komposition braucht.</summary>
+  TShellCompletionServices = record
+    Documents: IDocumentStore;
+    Index: ISymbolIndex;
+    EnsureUnit: TEnsureUnitFunc;
+    ReadText: TCompletionReadText;
+    /// <summary>Abschnitt für Interface-Methoden (#466), Typumwandlung von Sender (#480), Abgleich.</summary>
+    CompletionSettingsFor: TCompletionSettingsFunc;
+    RefactoringSettingsFor: TShellRefactoringSettingsFunc;
+    LanguageLevelFor: TShellLanguageLevelFunc;
+    /// <summary>Kontext der Refactorings für with auflösen und Methode anlegen.</summary>
+    RefactoringContextFor: TShellRefactoringContextFunc;
+    SlashCommandsFor: TSlashCommandsProvider;
+    RuleIdsFor: TSlashRuleIdsFunc;
+    /// <summary>Präfix der Namensvorschläge (#452).</summary>
+    NamingFor: TCompletionNamingFunc;
+    /// <summary>Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).</summary>
+    HintsFor: TDocHintsProvider;
+    /// <summary>„Parameter abgleichen“ in ///-Blöcken (#88) hängt an completeBlocks.docComment.</summary>
+    DocCommentsFor: TCompletionEnabledFunc;
+    /// <summary>Bedingte Symbole in {$IFDEF } und Co. (#102).</summary>
+    SymbolsFor: TConditionalContextFunc;
+    /// <summary>Teilergebnisse (#616) als $/progress.</summary>
+    Notify: TCompletionNotifyProc;
+    /// <summary>Zeiten je Anfrage im Debug-Protokoll.</summary>
+    Log: TCompletionLogProc;
+  end;
+
+  /// <summary>Vervollständigung im Editor und in den Debug-Dialogen.</summary>
+  TShellCompletion = class
+  private
+    FServices: TShellCompletionServices;
+    FCompletion: TLspCompletion;
+    FExpressionCompletion: TLspExpressionCompletion;
+    function MatchingFor(const AUri: string): TCompletionMatching;
+    function PostfixOptionsFor(const AUri: string): TPostfixOptions;
+    function WithEdits(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
+    function CreateMethod(ARequest: TCompletionRequest; out ATitle, ADetail: string;
+      out AEdits: TArray<TTextEdit>): Boolean;
+    procedure WireCallbacks;
+  public
+    constructor Create(const AServices: TShellCompletionServices);
+    destructor Destroy; override;
+    /// <summary>Anfragen der Vervollständigung am Dispatcher.</summary>
+    procedure Attach(ADispatcher: TJsonRpcDispatcher);
+    /// <summary>Vervollständigung im Editor; das Erzeugen-Menü (#719) und die Fähigkeiten des Clients greifen zu.
+    /// </summary>
+    property Completion: TLspCompletion read FCompletion;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Pascal.LanguageFeatures;
+
+constructor TShellCompletion.Create(const AServices: TShellCompletionServices);
+begin
+  inherited Create;
+  FServices := AServices;
+  FCompletion := TLspCompletion.Create(FServices.Documents, FServices.Index, FServices.EnsureUnit);
+  WireCallbacks;
+  // Ausdrücke in den Debug-Dialogen (#538) mit denselben Einträgen wie im Editor.
+  FExpressionCompletion := TLspExpressionCompletion.Create(FServices.Documents, FCompletion);
+end;
+
+procedure TShellCompletion.WireCallbacks;
+begin
+  FCompletion.MatchingFor := MatchingFor;
+  FCompletion.SettingsFor := FServices.CompletionSettingsFor;
+  FCompletion.SlashCommandsFor := FServices.SlashCommandsFor;
+  FCompletion.RuleIdsFor := FServices.RuleIdsFor;
+  FCompletion.PostfixFor := PostfixOptionsFor;
+  // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
+  FCompletion.WithFor := WithEdits;
+  // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
+  FCompletion.CreateFor := CreateMethod;
+  FCompletion.NamingFor := FServices.NamingFor;
+  FCompletion.HintsFor := FServices.HintsFor;
+  FCompletion.DocCommentsFor := FServices.DocCommentsFor;
+  FCompletion.SymbolsFor := FServices.SymbolsFor;
+  FCompletion.ReadText := FServices.ReadText;
+  FCompletion.Notify := FServices.Notify;
+  FCompletion.Log := FServices.Log;
+end;
+
+destructor TShellCompletion.Destroy;
+begin
+  FreeAndNil(FExpressionCompletion);
+  FreeAndNil(FCompletion);
+  inherited Destroy;
+end;
+
+procedure TShellCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  FCompletion.Attach(ADispatcher);
+  FExpressionCompletion.Attach(ADispatcher);
+end;
+
+function TShellCompletion.MatchingFor(const AUri: string): TCompletionMatching;
+begin
+  Result := FServices.CompletionSettingsFor(AUri).Matching;
+end;
+
+function TShellCompletion.PostfixOptionsFor(const AUri: string): TPostfixOptions;
+begin
+  // Postfix-Vorlagen (#188): abschaltbar mit completion.postfixTemplates; for var und var Name := nur, wenn die
+  // Sprachversion Inline-Variablen kennt und refactoring.inlineVar sie nicht abschaltet.
+  Result := TPostfixOptions.Default;
+  Result.Enabled := FServices.CompletionSettingsFor(AUri).PostfixTemplates;
+  Result.InlineVar := FServices.RefactoringSettingsFor(AUri).InlineVar and
+    TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, FServices.LanguageLevelFor(AUri));
+end;
+
+function TShellCompletion.WithEdits(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mContext: TRefactoringContext;
+  mAction: TCodeAction;
+begin
+  AEdits := nil;
+  mContext := FServices.RefactoringContextFor(ARequest.Uri);
+  Result := mContext.Settings.ResolveWith and TLspRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
+    ARequest.Text, ARequest.Position, mContext, mAction);
+  if Result then
+  begin
+    AEdits := mAction.Edits;
+  end;
+end;
+
+function TShellCompletion.CreateMethod(ARequest: TCompletionRequest; out ATitle, ADetail: string;
+  out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mContext: TRefactoringContext;
+  mCreated: TCreatedMethod;
+begin
+  ATitle := '';
+  ADetail := '';
+  AEdits := nil;
+  mContext := FServices.RefactoringContextFor(ARequest.Uri);
+  // Nur Änderungen in dieser Datei; die Klasse in einer anderen Unit bekommt die Code-Aktion.
+  Result := mContext.Settings.CreateMethod and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
+    ARequest.Text, ARequest.Position, mContext, True, mCreated) and (mCreated.FileEdits = nil);
+  if Result then
+  begin
+    ATitle := mCreated.Title;
+    ADetail := mCreated.Detail;
+    AEdits := mCreated.Edits;
+  end;
+end;
+
+end.
