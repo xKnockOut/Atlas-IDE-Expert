@@ -75,6 +75,7 @@ uses
   Shell.Composition.Contract,
   Shell.Composition.UnitSearch,
   Shell.Composition.TestUnits,
+  Shell.Composition.Workspaces,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -206,9 +207,6 @@ type
     FIdeProject: TLspIdeProject;
     /// <summary>Gemerkte Projektwahl über Neustarts (#46): selectBuild je Projekt, selectProject je Ordner.</summary>
     FProjectSelection: TProjectSelection;
-    /// <summary>Zuletzt gewähltes Projekt je Datei, die zu mehreren Projekten gehört (#46), fürs Log; unter
-    /// FWorkspacesLock.</summary>
-    FProjectChoices: TDictionary<string, string>;
     FWorkspaceFolders: TLspWorkspaceFolders;
     /// <summary>Für atlas.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
     FLooseConfiguration: TLspConfiguration;
@@ -216,34 +214,21 @@ type
     FIndex: ISymbolIndex;
     /// <summary>Uses-Graph über FIndex für uses-cycle und unused-unit (#64); lebt so lange wie der Index.</summary>
     FUsesGraph: TUsesGraphService;
-    // Ordner des Arbeitsbereichs. Ändern nur im Thread der Nachrichtenschleife,
-    // unter FWorkspacesLock, weil Anfrage-Threads lesen.
-    FWorkspaces: TObjectList<TShellWorkspace>;
-    FWorkspacesLock: TObject;
-    // Projekte aller gemeldeten Projektgruppen, schon bevor ihre Arbeitsbereiche geladen sind. Unter
-    // FWorkspacesLock.
-    FGroupProjectFiles: TArray<string>;
-    /// <summary>Je Arbeitsbereich die Anfragen, die ihn außerhalb von FWorkspacesLock nutzen (EnsureUnit);
-    /// ein entfernter wird erst freigegeben, wenn er hier fehlt. Nur unter FWorkspacesLock.</summary>
-    FWorkspaceUsers: TDictionary<TShellWorkspace, Integer>;
+    /// <summary>Ordner des Arbeitsbereichs mit Sperre, Nutzern und Prüfprojekten (Shell.Composition.Workspaces).
+    /// </summary>
+    FWorkspaces: TShellWorkspaceRegistry;
     FWorkspaceCounter: Integer;
-    /// <summary>Projekte aller Arbeitsbereiche für projektweite Prüfregeln (#1102). Gültig, solange
-    /// FRuleProjectsStamp = FWorkspacesStamp; FWorkspacesStamp steigt mit jedem geladenen Projekt und jedem
-    /// hinzugefügten oder entfernten Arbeitsbereich. Nur unter FWorkspacesLock.</summary>
-    FRuleProjects: TArray<TRuleProject>;
-    FRuleProjectsStamp: Integer;
-    FWorkspacesStamp: Integer;
     /// <summary>Reihenfolge der Indexaufbauten aller Projekte (#648); kleiner = früher.</summary>
     FIndexScheduler: TIndexScheduler;
     FWorkspacePriority: Integer;
-    /// <summary>Schreibt nur die Nachrichtenschleife, unter FWorkspacesLock; der nebenläufige Fehlerbericht
+    /// <summary>Schreibt nur die Nachrichtenschleife, unter FWorkspaces.Lock; der nebenläufige Fehlerbericht
     /// (#874) liest es unter derselben Sperre.</summary>
     FEditorSettings: string;
     // Globale Benutzerdatei (#227) als unterste Ebene; Pfad, Inhalt und der Beobachter für sie und die
     // atlas.json aller Ordner. FGlobalSettings nur im Thread der Nachrichtenschleife.
     FGlobalSettingsFile: string;
     FGlobalSettings: string;
-    /// <summary>Einstellungen für Dateien ohne Arbeitsbereich: global und Editor (S-02). Unter FWorkspacesLock.</summary>
+    /// <summary>Einstellungen für Dateien ohne Arbeitsbereich: global und Editor (S-02). Unter FWorkspaces.Lock.</summary>
     FLooseSettings: TServerSettings;
     /// <summary>Zuletzt gesehener Stand von ruleChecks.enabled (#1454): 1 an, 0 aus; nur über TInterlocked.</summary>
     FRuleChecksState: Integer;
@@ -259,16 +244,10 @@ type
     procedure AddWorkspace(const AFolder: TWorkspaceFolder);
     /// <summary>Ein Arbeitsbereich; AProjectFile '' = Projekt im Ordner suchen (#648).</summary>
     procedure AddProjectWorkspace(const ARoot, AName, AProjectFile, AOrigin: string; ADeferred: Boolean);
-    /// <summary>Gibt es schon einen Arbeitsbereich für AProjectFile?</summary>
-    function HasProjectWorkspace(const AProjectFile: string): Boolean;
     /// <summary>Neuer Arbeitsbereich mit Setup, noch ohne Ereignisse und nicht in der Liste.</summary>
     function NewWorkspace(const ARoot, AName, AProjectFile, AOrigin: string; ADeferred: Boolean): TShellWorkspace;
     /// <summary>Hängt Ereignisse und Rückfragen des Arbeitsbereichs an die Komposition.</summary>
     procedure WireWorkspaceEvents(AWorkspace: TShellWorkspace);
-    /// <summary>Projektdateien der Gruppe und aller Arbeitsbereiche.</summary>
-    function GroupProjectFiles: TArray<string>;
-    /// <summary>Ordner der Projekte aller Arbeitsbereiche, für requires-Packages (#46).</summary>
-    function PackageFolders: TArray<string>;
     /// <summary>Namen, die das Server-Log nicht im Klartext zeigt (#647).</summary>
     procedure AddLogNames(ANames: TArray<string>);
     /// <summary>Ereignis des Indexaufbaus ins Diagnoselog.</summary>
@@ -285,12 +264,8 @@ type
     /// <summary>Legt zur Datei den Ordner mit der nächsten Projektdatei an, falls sie in keinem Ordner liegt.</summary>
     procedure DeriveWorkspace(const AFileName: string);
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
-    /// <summary>Nimmt die Arbeitsbereiche mit Herkunft AOrigin aus der Liste; ARemaining sind die übrigen.</summary>
-    function ExtractWorkspaces(const AOrigin: string; out ARemaining: TArray<TShellWorkspace>): TArray<TShellWorkspace>;
     /// <summary>Units, die nur entfernte Arbeitsbereiche enthalten, verlassen den Index.</summary>
     procedure RemoveOwnedUnits(const ARemoved, ARemaining: TArray<TShellWorkspace>);
-    /// <summary>Gibt AWorkspace frei, sobald keine Anfrage ihn mehr nutzt.</summary>
-    procedure FreeWhenUnused(AWorkspace: TShellWorkspace);
     /// <summary>Teil von Create (S-02): Dispatcher mit Watchdog und Fehlerprotokoll, Lebenszyklus (initialize/shutdown).</summary>
     procedure WireProtocol;
     /// <summary>Meldung des Watchdogs, wenn eine Anfrage ihr Zeitlimit überschreitet.</summary>
@@ -330,10 +305,13 @@ type
     procedure WireEditors;
     /// <summary>Arbeitsbereich der Datei für die Schnellbefehle.</summary>
     function SlashWorkspaceOf(const AUri: string): TShellWorkspace;
-    /// <summary>Einstellungen des Ordners von AUri unter FWorkspacesLock; False ohne Ordner.</summary>
+    /// <summary>Einstellungen des Ordners von AUri unter FWorkspaces.Lock; False ohne Ordner.</summary>
     function WorkspaceSettingsOf(const AUri: string; out ASettings: TServerSettings): Boolean;
     /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
     procedure WireWorkspaces;
+    /// <summary>Dienste des Registers der Arbeitsbereiche; Projektwahl und IDE-Projekt entstehen erst danach.
+    /// </summary>
+    function WorkspaceRegistryServices: TShellWorkspaceRegistryServices;
     /// <summary>Teil von Create (S-02): Symbolindex und Diagnoselog.</summary>
     procedure WireIndex;
     /// <summary>Teil von Create (S-02): Definition, Hover, Arbeitsbereichssymbole, Hervorhebungen, Verweise, Umbenennen.</summary>
@@ -377,7 +355,7 @@ type
     procedure WireStatus;
     /// <summary>Teil von WireStatus: Zustände von Compiler, Prüflauf und Index-Warteschlange.</summary>
     procedure WireStatusStates(var AServices: TShellStatusServices);
-    /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter FWorkspacesLock auf.</summary>
+    /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter FWorkspaces.Lock auf.</summary>
     procedure VisitWorkspaces(const AVisit: TShellWorkspacesProc);
     /// <summary>Arbeitsbereich der Datei hinter AUri, mit '' alle; unter der Sperre der Arbeitsbereiche.</summary>
     function CommandWorkspaces(const AUri: string): TArray<TShellWorkspace>;
@@ -417,30 +395,14 @@ type
     procedure StartSettingsWatch;
     /// <summary>Änderungen auf der Platte wie eine Meldung des Clients einreihen.</summary>
     procedure FilesChangedOnDisk(const AFiles: TArray<string>);
-    /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
-    function WorkspaceOf(const AFileName: string): TShellWorkspace;
-    /// <summary>Unter mehreren Projekten mit der Datei (#46): ausgewählt (selectProject), dann aktiv in der IDE,
-    /// dann das erste der Gruppe. Ein Wechsel steht im Log. Aufrufer hält FWorkspacesLock.</summary>
-    function ChooseProject(const AFileName: string; const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
-    /// <summary>Ist AWorkspace per selectProject gewählt (#46)?</summary>
-    function IsSelectedProject(AWorkspace: TShellWorkspace): Boolean;
-    /// <summary>Arbeitsbereich zur Datei; ohne Treffer bei genau einem Arbeitsbereich dieser, sonst nil
-    /// (TShellWorkspace.Choose, S-02). Aufrufer hält FWorkspacesLock.</summary>
-    function PickWorkspace(const AFileName: string): TShellWorkspace;
-    /// <summary>Wirksame Einstellungen zur Datei (S-02): die des Arbeitsbereichs (PickWorkspace), ohne
+    /// <summary>Wirksame Einstellungen zur Datei (S-02): die des Arbeitsbereichs (FWorkspaces.Pick), ohne
     /// Arbeitsbereich globale Datei und Editor-Einstellungen. Sperrt selbst und liefert eine Kopie.</summary>
     function SettingsFor(const AUri: string): TServerSettings;
     /// <summary>FLooseSettings aus globaler Datei und Editor-Einstellungen neu berechnen; Nachrichtenschleife.</summary>
     procedure UpdateLooseSettings;
-    /// <summary>Setzt FEditorSettings unter FWorkspacesLock (#874).</summary>
+    /// <summary>Setzt FEditorSettings unter FWorkspaces.Lock (#874).</summary>
     procedure SetEditorSettings(const AText: string);
     function EnsureUnit(const AUnitName: string): Boolean;
-    /// <summary>Hält die Arbeitsbereiche gegen Freigabe fest. Aufrufer hält FWorkspacesLock.</summary>
-    procedure HoldWorkspaces(const AWorkspaces: TArray<TShellWorkspace>);
-    /// <summary>Gibt festgehaltene Arbeitsbereiche wieder frei und weckt Wartende.</summary>
-    procedure ReleaseWorkspaces(const AWorkspaces: TArray<TShellWorkspace>);
-    /// <summary>Fortschritt des Indexaufbaus in Prozent über alle Projekte; -1, wenn keiner läuft.</summary>
-    function IndexLoading: Integer;
     /// <summary>Ein Indexaufbau ist fertig: Befunde neu prüfen, falls die Projektstufe das nicht schon getan hat.
     /// Index-Thread.</summary>
     procedure IndexFinished;
@@ -448,15 +410,8 @@ type
     procedure ProjectReady;
     /// <summary>Gemeinsamer Teil von ProjectReady und IndexFinished.</summary>
     procedure IndexStageDone(AProjectStage: Boolean);
-    /// <summary>True, solange ein Projekt seine Projektstufe noch nicht indiziert hat.</summary>
-    function ProjectIndexPending: Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
-    /// <summary>Projekte aller Arbeitsbereiche mit Art, Testkennung und Formulardateien (#1102); zwischengespeichert
-    /// bis zum nächsten geladenen Projekt. Hintergrund-Thread.</summary>
-    function RuleProjects: TArray<TRuleProject>;
-    /// <summary>Sind alle Projekte geladen und vollständig indiziert? Sonst der Grund in AReason (#1102).</summary>
-    function RuleProjectsComplete(out AReason: string): Boolean;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
     function TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
@@ -477,7 +432,7 @@ type
     function RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
     /// <summary>Suche nach AUnitName im Projekt der Datei AFileName vorbereiten (#550).</summary>
     function MissingUnitSetupFor(const AFileName, AUnitName: string; out ASetup: TMissingUnitSetup): Boolean;
-    /// <summary>Übrige Projekte der Gruppe mit ihren Suchpfaden. Aufrufer hält FWorkspacesLock.</summary>
+    /// <summary>Übrige Projekte der Gruppe mit ihren Suchpfaden. Aufrufer hält FWorkspaces.Lock.</summary>
     function GroupMembersOf(AWorkspace: TShellWorkspace): TArray<TMissingUnitProject>;
     /// <summary>Datei einer Unit aus dem Index, ohne nachzuladen; '' wenn unbekannt.</summary>
     function IndexUnitFile(AName: string): string;
@@ -507,24 +462,24 @@ type
     /// Ordner oder '' (einziger Arbeitsbereich).</summary>
     function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
     /// <summary>Arbeitsbereich für Metriken: Projekt der Projektdatei, sonst der der Datei bzw. der einzige.
-    /// Aufrufer hält FWorkspacesLock.</summary>
+    /// Aufrufer hält FWorkspaces.Lock.</summary>
     function MetricsWorkspaceOf(const AFileName: string): TShellWorkspace;
-    /// <summary>Arbeitsbereich, dessen Projekt AFileName ist (.dproj, .dpr, .dpk). Aufrufer hält FWorkspacesLock.</summary>
+    /// <summary>Arbeitsbereich, dessen Projekt AFileName ist (.dproj, .dpr, .dpk). Aufrufer hält FWorkspaces.Lock.</summary>
     function ProjectWorkspaceOf(const AFileName: string): TShellWorkspace;
     /// <summary>Anfrage der Architekturübersicht (#1118) zum Arbeitsbereich von AFileName: Einstellungen, Wurzel,
     /// Titel, Namensräume und Dateien des Projekts (AScope "project") bzw. aller Projekte (sonst; leer =
     /// architecture.scope).</summary>
     function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
       out ASettings: TServerSettings): Boolean;
-    /// <summary>Projektdateien aller Arbeitsbereiche. Aufrufer hält FWorkspacesLock.</summary>
+    /// <summary>Projektdateien aller Arbeitsbereiche. Aufrufer hält FWorkspaces.Lock.</summary>
     function AllProjectFiles: TArray<string>;
-    /// <summary>Namensräume des Arbeitsbereichs zu AFileName bzw. des einzigen. Aufrufer hält FWorkspacesLock.</summary>
+    /// <summary>Namensräume des Arbeitsbereichs zu AFileName bzw. des einzigen. Aufrufer hält FWorkspaces.Lock.</summary>
     function NamespacesNear(const AFileName: string): TArray<string>;
     /// <summary>Datenquelle der Code-Abfragen (#1351): alle Projekte der Gruppe wie die Architekturübersicht,
     /// Wurzel und Namensräume des gewählten Arbeitsbereichs; False ohne Arbeitsbereich.</summary>
     function QuerySource(out ASource: TQuerySource): Boolean;
     /// <summary>Arbeitsbereich der Abfragen: aktiv in der IDE, sonst ausgewählt, sonst der erste.
-    /// Aufrufer hält FWorkspacesLock.</summary>
+    /// Aufrufer hält FWorkspaces.Lock.</summary>
     function QueryWorkspace: TShellWorkspace;
     /// <summary>Einstellungen und Projektordner für atlas/query zum Arbeitsbereich von AFileName.</summary>
     function QuerySettingsFor(const AFileName: string; out ASettings: TServerSettings; out ARoot: string): Boolean;
@@ -571,7 +526,7 @@ type
     /// <summary>Einstellungen, Baseline, Dienste und Projekte aus dem Arbeitsbereich der Datei.</summary>
     procedure RuleWorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
       out AProjects: TArray<TProjectInfo>; out ALibrary: Boolean);
-    /// <summary>Projekte mit der Datei: das des Arbeitsbereichs, dann weitere. Aufrufer hält FWorkspacesLock.</summary>
+    /// <summary>Projekte mit der Datei: das des Arbeitsbereichs, dann weitere. Aufrufer hält FWorkspaces.Lock.</summary>
     function ProjectsWithFile(AWorkspace: TShellWorkspace; const AFileName: string): TArray<TProjectInfo>;
     /// <summary>Anwendungsart, Projektname und Formulare der .dpr in den Prüfkontext.</summary>
     procedure ApplyRuleProject(const AProjects: TArray<TProjectInfo>; const AFileName: string;
@@ -584,9 +539,6 @@ type
     /// ruleChecks.enabled aus ist (#1454); jeder Wechsel steht einmal im Protokoll. Baseline, Sammelkorrektur,
     /// --check und MCP nehmen RuleContextFor.</summary>
     function LiveRuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-    /// <summary>AFileName gehört zu keinem Projekt und liegt in der Delphi-Installation oder einem Bibliothekspfad
-    /// (diagnostics.librarySources). Nur unter FWorkspacesLock.</summary>
-    function IsLibrarySource(const AFileName: string): Boolean;
     /// <summary>Zielplattform und Konfiguration des Projekts zu AUri für den Hinweis inaktiver Zweige (#615).
     /// </summary>
     function BuildTargetFor(const AUri: string; out APlatform, AConfig: string): Boolean;
@@ -600,7 +552,7 @@ type
     /// <summary>Gibt die Namespaces an alle Features und den Uses-Graphen.</summary>
     procedure ApplyNamespaces(const ANamespaces: TArray<string>);
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-    /// <summary>WorkspaceOf unter FWorkspacesLock.</summary>
+    /// <summary>WorkspaceOf unter FWorkspaces.Lock.</summary>
     function LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
     /// <summary>Index und Arbeitsbereiche zu einem Dokumentereignis einer Datei auf der Platte.</summary>
     procedure DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
@@ -670,7 +622,6 @@ uses
   System.IOUtils,
   Shell.Composition.Refactorings.Services,
   System.SyncObjs,
-  System.Math,
   System.StrUtils,
   Atlas.Common.Product.Version,
   Atlas.Common.Query.Language,
@@ -697,7 +648,6 @@ uses
   Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.LibrarySources,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Parser,
@@ -725,7 +675,6 @@ uses
 
 const
   /// <summary>Ohne Zeitlimit warten (INFINITE, ohne Winapi.Windows).</summary>
-  WaitForever = Cardinal($FFFFFFFF);
   /// <summary>Längste Pause der Projektprüfung für einen Compile, falls sein Ende nie ankommt (#1247).</summary>
   CompilePauseLimitMs = 10 * 60 * 1000;
 
@@ -928,20 +877,20 @@ begin
       begin
         Result := Result + [FGlobalSettingsFile];
       end;
-      if not StartsText('file:', AUri) or (FWorkspacesLock = nil) then
+      if not StartsText('file:', AUri) or (FWorkspaces.Lock = nil) then
       begin
         Exit;
       end;
-      System.TMonitor.Enter(FWorkspacesLock);
+      System.TMonitor.Enter(FWorkspaces.Lock);
       try
-        mWorkspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        mWorkspace := FWorkspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
         if mWorkspace <> nil then
         begin
           Result := Result + [ExistingOrLegacyFile(mWorkspace.Root, ConfigurationFileName,
             LegacyConfigurationFileName)];
         end;
       finally
-        System.TMonitor.Exit(FWorkspacesLock);
+        System.TMonitor.Exit(FWorkspaces.Lock);
       end;
     end;
   FCrashCases.Notify := NotifyClient;
@@ -1047,7 +996,11 @@ begin
   FIndexRecheck := TWorkspaceCheckIndexGate.Create;
   FPullDiagnostics := TLspPullDiagnostics.Create(FDocuments, FSyntaxDiagnostics, FTransport, CheckSourceFiles,
     FileStampOf, LoadExistingFile);
-  FPullDiagnostics.Busy := ProjectIndexPending;
+  FPullDiagnostics.Busy :=
+    function: Boolean
+    begin
+      Result := FWorkspaces.ProjectIndexPending;
+    end;
   // Unit im Diagnoselog nur anonym (#1094); das Diagnoselog entsteht erst später.
   FPullDiagnostics.FileLabel := DiagnosticsFileLabel;
   // Long-Polling endet vor dem Zeitlimit des Watchdogs (Code-Review P-14).
@@ -1158,11 +1111,11 @@ end;
 
 function TServerComposition.SlashWorkspaceOf(const AUri: string): TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Result := PickWorkspace(TDocumentUris.ToPath(AUri));
+    Result := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -1170,9 +1123,9 @@ function TServerComposition.WorkspaceSettingsOf(const AUri: string; out ASetting
 var
   mWorkspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    mWorkspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     Result := mWorkspace <> nil;
     if Result then
     begin
@@ -1183,17 +1136,31 @@ begin
       ASettings := Default(TServerSettings);
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
+end;
+
+function TServerComposition.WorkspaceRegistryServices: TShellWorkspaceRegistryServices;
+begin
+  Result := Default(TShellWorkspaceRegistryServices);
+  Result.Logger := FLogger;
+  Result.SelectedProject :=
+    function(const AOrigin: string): string
+    begin
+      Result := FProjectSelection.Project(AOrigin);
+    end;
+  Result.ActiveProject :=
+    function: string
+    begin
+      Result := FIdeProject.ActiveProject;
+    end;
+  Result.ReadText := ReadSourceText;
 end;
 
 procedure TServerComposition.WireWorkspaces;
 begin
-  FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
-  FRuleProjectsStamp := -1;
+  FWorkspaces := TShellWorkspaceRegistry.Create(WorkspaceRegistryServices);
   FLooseSettings := TServerSettings.Default;
-  FWorkspacesLock := TObject.Create;
-  FWorkspaceUsers := TDictionary<TShellWorkspace, Integer>.Create;
   FIndexScheduler := TIndexScheduler.Create;
   FLooseConfiguration := TLspConfiguration.Create(FDocuments, FTransport,
     function(const AFileName: string; out AText: string): Boolean
@@ -1241,7 +1208,7 @@ begin
   FDiagnostics.IndexLoading :=
     function: Integer
     begin
-      Result := IndexLoading;
+      Result := FWorkspaces.IndexLoading;
     end;
   FDispatcher.Observer := FDiagnosticsRef;
 end;
@@ -1271,9 +1238,9 @@ function TServerComposition.HighlightSettingsFor(const AUri: string): THighlight
 var
   mWorkspace: TShellWorkspace;
 begin
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    mWorkspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     if mWorkspace <> nil then
     begin
       Result := mWorkspace.Configuration.Settings.Highlight;
@@ -1283,7 +1250,7 @@ begin
       Result := THighlightSettings.Default;
     end;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -1329,7 +1296,7 @@ var
   mContext: TIdeProjectContext;
 begin
   // Vorgabe der Projektdatei .atlas aus dem Projektkontext der IDE, sonst die Zählung im Index.
-  mWorkspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+  mWorkspace := FWorkspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
   if (mWorkspace <> nil) and mWorkspace.State.Project(mProject) and FIdeProject.Find(mProject.FileName, mContext) and
     mContext.HasNaming[AKind] then
   begin
@@ -1488,7 +1455,11 @@ begin
   mServices.Index := FIndex;
   mServices.ReadText := ReadSourceText;
   mServices.VisitWorkspaces := VisitWorkspaces;
-  mServices.PickWorkspace := PickWorkspace;
+  mServices.PickWorkspace :=
+    function(const AFileName: string): TShellWorkspace
+    begin
+      Result := FWorkspaces.Pick(AFileName);
+    end;
   FTestUnits := TShellTestUnits.Create(mServices);
 end;
 
@@ -1498,9 +1469,9 @@ var
 begin
   Result := Default(TShellCodeActionWorkspace);
   Result.MemberOrder := TMemberOrderSettings.Default;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    mWorkspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     if mWorkspace <> nil then
     begin
       Result.Found := True;
@@ -1512,7 +1483,7 @@ begin
       Result.IncludePaths := mWorkspace.State.IncludePaths;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -1623,7 +1594,11 @@ begin
       Result := FCompile.Start(AFileName, True, AChoice);
     end;
   mServices.Workspaces := CommandWorkspaces;
-  mServices.IsSelectedProject := IsSelectedProject;
+  mServices.IsSelectedProject :=
+    function(AWorkspace: TShellWorkspace): Boolean
+    begin
+      Result := FWorkspaces.IsSelected(AWorkspace);
+    end;
   mServices.ActiveProject :=
     function: string
     begin
@@ -1660,11 +1635,11 @@ begin
   mServices.EditorSettings :=
     function: string
     begin
-      System.TMonitor.Enter(FWorkspacesLock);
+      System.TMonitor.Enter(FWorkspaces.Lock);
       try
         Result := FEditorSettings;
       finally
-        System.TMonitor.Exit(FWorkspacesLock);
+        System.TMonitor.Exit(FWorkspaces.Lock);
       end;
     end;
   mServices.ActiveProject :=
@@ -1672,7 +1647,11 @@ begin
     begin
       Result := FIdeProject.ActiveProject;
     end;
-  mServices.IsSelectedProject := IsSelectedProject;
+  mServices.IsSelectedProject :=
+    function(AWorkspace: TShellWorkspace): Boolean
+    begin
+      Result := FWorkspaces.IsSelected(AWorkspace);
+    end;
   // Protokoll, Mitschnitt und Anonymisierung setzt CreateForStdio erst nach Create.
   mServices.RecentLog :=
     function: IRecentLogLines
@@ -1719,12 +1698,7 @@ end;
 
 procedure TServerComposition.VisitWorkspaces(const AVisit: TShellWorkspacesProc);
 begin
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    AVisit(FWorkspaces.ToArray);
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
+  FWorkspaces.Visit(AVisit);
 end;
 
 function TServerComposition.CommandWorkspaces(const AUri: string): TArray<TShellWorkspace>;
@@ -1732,22 +1706,22 @@ var
   mWorkspace: TShellWorkspace;
 begin
   Result := nil;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
     if AUri = '' then
     begin
-      Result := FWorkspaces.ToArray;
+      Result := FWorkspaces.Items.ToArray;
     end
     else
     begin
-      mWorkspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+      mWorkspace := FWorkspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
       if mWorkspace <> nil then
       begin
         Result := [mWorkspace];
       end;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -1764,11 +1738,11 @@ begin
       Updated: Boolean;
     begin
       Updated := False;
-      TMonitor.Enter(FWorkspacesLock);
+      TMonitor.Enter(FWorkspaces.Lock);
       try
-        Targets := FWorkspaces.ToArray;
+        Targets := FWorkspaces.Items.ToArray;
       finally
-        TMonitor.Exit(FWorkspacesLock);
+        TMonitor.Exit(FWorkspaces.Lock);
       end;
       for Workspace in Targets do
       begin
@@ -1810,7 +1784,6 @@ begin
   // Projektwahl je Benutzer über Neustarts (#46).
   FProjectSelection := TProjectSelection.Create(TPath.Combine(TIndexCacheDirectory.DefaultRoot,
     'projektauswahl.json'));
-  FProjectChoices := TDictionary<string, string>.Create;
   // Konfiguration, Plattform und Optionen aus der IDE (#396): betroffene Projekte neu laden.
   FIdeProject := TLspIdeProject.Create;
   FIdeProject.OnChanged := IdeProjectChanged;
@@ -1837,9 +1810,9 @@ function TServerComposition.BuildRootOf(const AProject: string): string;
 var
   mWorkspace: TShellWorkspace;
 begin
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    mWorkspace := PickWorkspace(AProject);
+    mWorkspace := FWorkspaces.Pick(AProject);
     if mWorkspace <> nil then
     begin
       Result := mWorkspace.Root;
@@ -1849,7 +1822,7 @@ begin
       Result := ExtractFileDir(AProject);
     end;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -1885,9 +1858,9 @@ var
   mProject: TProjectInfo;
 begin
   Result := nil;
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    for mWorkspace in FWorkspaces do
+    for mWorkspace in FWorkspaces.Items do
     begin
       if SameText(mWorkspace.Setup.ProjectFile, AProject) or
         (mWorkspace.State.Project(mProject) and SameText(mProject.FileName, AProject)) then
@@ -1896,7 +1869,7 @@ begin
       end;
     end;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -2076,7 +2049,7 @@ begin
   begin
     Exit;
   end;
-  for Workspace in FWorkspaces do
+  for Workspace in FWorkspaces.Items do
   begin
     Workspace.Stop;
   end;
@@ -2088,11 +2061,10 @@ begin
   FPullDiagnostics.Free;
   FSyntaxDiagnostics.Free;
   // Ordner vor dem Index: ihre Index-Threads laufen noch.
-  FWorkspaces.Free;
+  FWorkspaces.FreeWorkspaces;
   // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
   FIndexRecheck.Free;
-  FWorkspaceUsers.Free;
-  FWorkspacesLock.Free;
+  FWorkspaces.Free;
   // Nach den Ordnern: Ihre Index-Threads sind beendet und abgemeldet.
   FIndexScheduler.Free;
   FLooseConfiguration.Free;
@@ -2136,7 +2108,6 @@ begin
   FreeAndNil(FWatchedFiles);
   FreeAndNil(FIdeBuild);
   FreeAndNil(FIdeProject);
-  FreeAndNil(FProjectChoices);
   FreeAndNil(FProjectSelection);
   FreeAndNil(FTextDocumentSync);
   // Nach der Verbindung und dem Watchdog: Niemand meldet mehr einen Absturz.
@@ -2198,13 +2169,7 @@ begin
   end;
   // Projektgruppe (#648): Das erste Projekt ist das aktive (das Plugin meldet es zuerst). Die übrigen
   // warten mit index.projectGroup = false, bis eine ihrer Dateien geöffnet wird.
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    HasOthers := FWorkspaces.Count > 0;
-    FGroupProjectFiles := FGroupProjectFiles + Projects;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  HasOthers := FWorkspaces.AddGroupProjects(Projects);
   for mIndex := 0 to High(Projects) do
   begin
     AddProjectWorkspace(ExtractFileDir(Projects[mIndex]), ChangeFileExt(ExtractFileName(Projects[mIndex]), ''),
@@ -2217,7 +2182,7 @@ procedure TServerComposition.AddProjectWorkspace(const ARoot, AName, AProjectFil
 var
   mWorkspace: TShellWorkspace;
 begin
-  if (AProjectFile <> '') and HasProjectWorkspace(AProjectFile) then
+  if (AProjectFile <> '') and FWorkspaces.HasProject(AProjectFile) then
   begin
     Exit;
   end;
@@ -2230,13 +2195,7 @@ begin
   WireWorkspaceEvents(mWorkspace);
   mWorkspace.Configuration.SetGlobalSettings(FGlobalSettings);
   mWorkspace.Configuration.SetEditorSettings(FEditorSettings);
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    FWorkspaces.Add(mWorkspace);
-    Inc(FWorkspacesStamp);
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
+  FWorkspaces.Add(mWorkspace);
   UpdateWatchedSettings;
   if AProjectFile <> '' then
   begin
@@ -2247,25 +2206,6 @@ begin
     FLogger.Info('Arbeitsbereichsordner: ' + ARoot);
   end;
   mWorkspace.Load;
-end;
-
-function TServerComposition.HasProjectWorkspace(const AProjectFile: string): Boolean;
-var
-  mExisting: TShellWorkspace;
-begin
-  Result := False;
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    for mExisting in FWorkspaces do
-    begin
-      if SameText(mExisting.Setup.ProjectFile, AProjectFile) then
-      begin
-        Exit(True);
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
 end;
 
 function TServerComposition.NewWorkspace(const ARoot, AName, AProjectFile, AOrigin: string;
@@ -2298,9 +2238,17 @@ end;
 procedure TServerComposition.WireWorkspaceEvents(AWorkspace: TShellWorkspace);
 begin
   // uses-unit-not-found: Was ein Projekt der Gruppe in einen Suchpfad übersetzt, gibt es beim Bau der Gruppe.
-  AWorkspace.Setup.OnGroupProjects := GroupProjectFiles;
+  AWorkspace.Setup.OnGroupProjects :=
+    function: TArray<string>
+    begin
+      Result := FWorkspaces.GroupProjectFiles;
+    end;
   // requires-Packages als Quelle zuerst bei den Projekten der Gruppe suchen (#46).
-  AWorkspace.Setup.OnPackageFolders := PackageFolders;
+  AWorkspace.Setup.OnPackageFolders :=
+    function: TArray<string>
+    begin
+      Result := FWorkspaces.PackageFolders;
+    end;
   AWorkspace.Events.OnProjectLoaded := ProjectLoaded;
   AWorkspace.Events.OnIndexFinished := IndexFinished;
   AWorkspace.Events.OnProjectReady := ProjectReady;
@@ -2312,45 +2260,6 @@ begin
   // Eigenschaftsregeln mit unbekannter Klasse oder Property (#309): erst mit fertigem Index, sonst
   // fehlten die Klassen nur, weil sie noch nicht gelesen sind; IndexFinished prüft dann neu.
   AWorkspace.Configuration.ExtraIssues := ConfigurationExtraIssues;
-end;
-
-function TServerComposition.GroupProjectFiles: TArray<string>;
-var
-  mOther: TShellWorkspace;
-begin
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    // Auch Projekte, deren Arbeitsbereich erst nach diesem entsteht: Die Unit-Suche wird beim Laden gebaut.
-    Result := FGroupProjectFiles;
-    for mOther in FWorkspaces do
-    begin
-      if mOther.Setup.ProjectFile <> '' then
-      begin
-        Result := Result + [mOther.Setup.ProjectFile];
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
-end;
-
-function TServerComposition.PackageFolders: TArray<string>;
-var
-  mOther: TShellWorkspace;
-begin
-  Result := nil;
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    for mOther in FWorkspaces do
-    begin
-      if mOther.Setup.ProjectFile <> '' then
-      begin
-        Result := Result + [ExtractFileDir(mOther.Setup.ProjectFile)];
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
 end;
 
 procedure TServerComposition.AddLogNames(ANames: TArray<string>);
@@ -2387,7 +2296,7 @@ function TServerComposition.ConfigurationExtraIssues(const ASettings: TServerSet
 begin
   // Gespeicherte Abfragen mit Fehler (#1351) an der Stelle in atlas.json, unabhängig vom Index.
   Result := TQueryParser.ConfigurationIssues(ASettings.Queries);
-  if (Length(ASettings.DfmPropertyRules) = 0) or ProjectIndexPending or (Length(FIndex.Units) = 0) then
+  if (Length(ASettings.DfmPropertyRules) = 0) or FWorkspaces.ProjectIndexPending or (Length(FIndex.Units) = 0) then
   begin
     Exit;
   end;
@@ -2438,7 +2347,7 @@ var
   mWorkspace: TShellWorkspace;
 begin
   // Ein Eintrag (Ordner, .dproj oder .groupproj) kann mehrere Arbeitsbereiche erzeugt haben (#648).
-  mRemoved := ExtractWorkspaces(AFolder.Key, mRemaining);
+  mRemoved := FWorkspaces.Extract(AFolder.Key, mRemaining);
   if Length(mRemoved) = 0 then
   begin
     Exit;
@@ -2451,32 +2360,10 @@ begin
   RemoveOwnedUnits(mRemoved, mRemaining);
   for mWorkspace in mRemoved do
   begin
-    FreeWhenUnused(mWorkspace);
+    FWorkspaces.FreeWhenUnused(mWorkspace);
   end;
   UpdateWatchedSettings;
   ProjectLoaded;
-end;
-
-function TServerComposition.ExtractWorkspaces(const AOrigin: string;
-  out ARemaining: TArray<TShellWorkspace>): TArray<TShellWorkspace>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    for mIndex := FWorkspaces.Count - 1 downto 0 do
-    begin
-      if SameText(FWorkspaces[mIndex].Setup.Origin, AOrigin) then
-      begin
-        Result := Result + [FWorkspaces.Extract(FWorkspaces[mIndex])];
-      end;
-    end;
-    ARemaining := FWorkspaces.ToArray;
-    Inc(FWorkspacesStamp);
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
 end;
 
 procedure TServerComposition.RemoveOwnedUnits(const ARemoved, ARemaining: TArray<TShellWorkspace>);
@@ -2492,22 +2379,6 @@ begin
       FIndex.RemoveFile(mUnit.FileName);
     end;
   end;
-end;
-
-procedure TServerComposition.FreeWhenUnused(AWorkspace: TShellWorkspace);
-begin
-  // Erst freigeben, wenn keine Anfrage ihn mehr außerhalb der Sperre nutzt (EnsureUnit). Neue Anfragen
-  // sehen ihn nicht mehr, das Warten endet also.
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    while FWorkspaceUsers.ContainsKey(AWorkspace) do
-    begin
-      System.TMonitor.Wait(FWorkspacesLock, WaitForever);
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
-  AWorkspace.Free;
 end;
 
 function HasProjectFile(const AFolder: string): Boolean;
@@ -2527,11 +2398,11 @@ var
   Known: Boolean;
   Folder: string;
 begin
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Known := WorkspaceOf(AFileName) <> nil;
+    Known := FWorkspaces.WorkspaceOf(AFileName) <> nil;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   if Known then
   begin
@@ -2544,147 +2415,13 @@ begin
   end;
 end;
 
-function TServerComposition.WorkspaceOf(const AFileName: string): TShellWorkspace;
-var
-  Folders: TArray<TWorkspaceFolder>;
-  Workspace: TShellWorkspace;
-  Candidates: TArray<TShellWorkspace>;
-  mIndex: Integer;
-begin
-  // Die .dproj gehört zu ihrem eigenen Projekt (#46), auch wenn mehrere im selben Ordner liegen.
-  if SameText(ExtractFileExt(AFileName), '.dproj') then
-  begin
-    for Workspace in FWorkspaces do
-    begin
-      if SameText(Workspace.State.ProjectFileName, AFileName) then
-      begin
-        Exit(Workspace);
-      end;
-    end;
-  end;
-  // Zuerst das Projekt, das die Datei enthält (#648); mehrere Projekte können im selben Ordner liegen,
-  // und eine Unit kann in mehreren Projekten der Gruppe stehen (#46).
-  Candidates := nil;
-  for Workspace in FWorkspaces do
-  begin
-    if Workspace.State.ContainsFile(AFileName) then
-    begin
-      Candidates := Candidates + [Workspace];
-    end;
-  end;
-  if Length(Candidates) = 1 then
-  begin
-    Exit(Candidates[0]);
-  end;
-  if Length(Candidates) > 1 then
-  begin
-    Exit(ChooseProject(AFileName, Candidates));
-  end;
-  Folders := nil;
-  for Workspace in FWorkspaces do
-  begin
-    Folders := Folders + [TWorkspaceFolder.Create(Workspace.Root, Workspace.Name)];
-  end;
-  mIndex := TLspWorkspaceFolders.FolderOf(Folders, AFileName);
-  if mIndex < 0 then
-  begin
-    Result := nil;
-  end
-  else
-  begin
-    Result := FWorkspaces[mIndex];
-  end;
-end;
-
-function TServerComposition.IsSelectedProject(AWorkspace: TShellWorkspace): Boolean;
-var
-  Selected: string;
-begin
-  Selected := FProjectSelection.Project(AWorkspace.Setup.Origin);
-  Result := (Selected <> '') and SameText(Selected, AWorkspace.State.ProjectFileName);
-end;
-
-function TServerComposition.ChooseProject(const AFileName: string;
-  const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
-var
-  Workspace: TShellWorkspace;
-  Active, Reason, Known: string;
-begin
-  Result := nil;
-  Reason := '';
-  for Workspace in ACandidates do
-  begin
-    if IsSelectedProject(Workspace) then
-    begin
-      Result := Workspace;
-      Reason := 'ausgewählt';
-      Break;
-    end;
-  end;
-  Active := FIdeProject.ActiveProject;
-  if (Result = nil) and (Active <> '') then
-  begin
-    for Workspace in ACandidates do
-    begin
-      if SameText(Workspace.State.ProjectFileName, Active) then
-      begin
-        Result := Workspace;
-        Reason := 'aktiv in der IDE';
-        Break;
-      end;
-    end;
-  end;
-  if Result = nil then
-  begin
-    Result := ACandidates[0];
-    Reason := 'erstes der Gruppe';
-  end;
-  // Nur Wechsel ins Log, nicht jede Anfrage.
-  if not FProjectChoices.TryGetValue(AnsiUpperCase(AFileName), Known) or not SameText(Known, Result.Name) then
-  begin
-    FProjectChoices.AddOrSetValue(AnsiUpperCase(AFileName), Result.Name);
-    FLogger.Info(Format('%s gehört zu %d Projekten; es gilt %s (%s)',
-      [ExtractFileName(AFileName), Length(ACandidates), Result.Name, Reason]));
-  end;
-end;
-
-function TServerComposition.IsLibrarySource(const AFileName: string): Boolean;
-var
-  mWorkspace: TShellWorkspace;
-  mRoots, mProjectRoots: TArray<string>;
-  mSources: TLibrarySources;
-begin
-  mRoots := nil;
-  mProjectRoots := nil;
-  for mWorkspace in FWorkspaces do
-  begin
-    if mWorkspace.State.ContainsFile(AFileName) then
-    begin
-      Exit(False);
-    end;
-    mProjectRoots := mProjectRoots + [mWorkspace.Root];
-    if mWorkspace.State.BdsRoot <> '' then
-    begin
-      mRoots := mRoots + [mWorkspace.State.BdsRoot];
-    end;
-    mRoots := mRoots + mWorkspace.State.Install.LibraryPaths;
-  end;
-  mSources := TLibrarySources.Create(mRoots, mProjectRoots);
-  Result := mSources.IsLibraryFile(AFileName);
-end;
-
-function TServerComposition.PickWorkspace(const AFileName: string): TShellWorkspace;
-begin
-  Result := TShellWorkspaces.Choose(WorkspaceOf(AFileName), FWorkspaces);
-end;
-
 function TServerComposition.SettingsFor(const AUri: string): TServerSettings;
 var
   Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     if Workspace = nil then
     begin
       Result := FLooseSettings;
@@ -2694,17 +2431,17 @@ begin
       Result := Workspace.Configuration.Settings;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
 procedure TServerComposition.SetEditorSettings(const AText: string);
 begin
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
     FEditorSettings := AText;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -2714,11 +2451,11 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   Settings := TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalSettings, FEditorSettings, ''), Issues);
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
     FLooseSettings := Settings;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -2728,14 +2465,14 @@ var
   mTargets: TArray<TShellWorkspace>;
 begin
   // Anfrage-Threads: jeder Ordner versucht es mit seinen Suchpfaden. Das Parsen läuft außerhalb von
-  // FWorkspacesLock (#647): Sonst warteten alle Anfragen, die nur kurz einen Arbeitsbereich suchen
+  // FWorkspaces.Lock (#647): Sonst warteten alle Anfragen, die nur kurz einen Arbeitsbereich suchen
   // (Defines, Einstellungen, Diagnoselog), auf das Parsen einer Unit, und Hover dauerte Minuten.
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    mTargets := FWorkspaces.ToArray;
-    HoldWorkspaces(mTargets);
+    mTargets := FWorkspaces.Items.ToArray;
+    FWorkspaces.Hold(mTargets);
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
   try
     Result := False;
@@ -2749,66 +2486,7 @@ begin
       end;
     end;
   finally
-    ReleaseWorkspaces(mTargets);
-  end;
-end;
-
-procedure TServerComposition.HoldWorkspaces(const AWorkspaces: TArray<TShellWorkspace>);
-var
-  mWorkspace: TShellWorkspace;
-  mUsers: Integer;
-begin
-  for mWorkspace in AWorkspaces do
-  begin
-    if FWorkspaceUsers.TryGetValue(mWorkspace, mUsers) then
-    begin
-      FWorkspaceUsers[mWorkspace] := mUsers + 1;
-    end
-    else
-    begin
-      FWorkspaceUsers.Add(mWorkspace, 1);
-    end;
-  end;
-end;
-
-procedure TServerComposition.ReleaseWorkspaces(const AWorkspaces: TArray<TShellWorkspace>);
-var
-  mWorkspace: TShellWorkspace;
-  mUsers: Integer;
-begin
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    for mWorkspace in AWorkspaces do
-    begin
-      mUsers := FWorkspaceUsers[mWorkspace] - 1;
-      if mUsers = 0 then
-      begin
-        FWorkspaceUsers.Remove(mWorkspace);
-      end
-      else
-      begin
-        FWorkspaceUsers[mWorkspace] := mUsers;
-      end;
-    end;
-    System.TMonitor.PulseAll(FWorkspacesLock);
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
-end;
-
-function TServerComposition.IndexLoading: Integer;
-var
-  Workspace: TShellWorkspace;
-begin
-  Result := -1;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    for Workspace in FWorkspaces do
-    begin
-      Result := Max(Result, Workspace.IndexLoading);
-    end;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
+    FWorkspaces.Release(mTargets);
   end;
 end;
 
@@ -2839,7 +2517,7 @@ begin
   // Gebündelt: Die große Datei zu prüfen dauerte im Log über 20 s, und jedes Projekt meldet sich.
   // In einer Projektgruppe erst, wenn kein Projekt mehr indiziert wird: Sonst prüfte jedes fertige
   // Projekt alle Dateien neu (CPU-Last beim Start).
-  if not ProjectIndexPending then
+  if not FWorkspaces.ProjectIndexPending then
   begin
     // Nach der Projektstufe kennt der Index alles, was das Projekt über uses erreicht. Das Ende des Aufbaus
     // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn (Diagnose-Log 29.10.2026).
@@ -2856,11 +2534,11 @@ begin
           Workspace: TShellWorkspace;
           Workspaces: TArray<TShellWorkspace>;
         begin
-          TMonitor.Enter(FWorkspacesLock);
+          TMonitor.Enter(FWorkspaces.Lock);
           try
-            Workspaces := FWorkspaces.ToArray;
+            Workspaces := FWorkspaces.Items.ToArray;
           finally
-            TMonitor.Exit(FWorkspacesLock);
+            TMonitor.Exit(FWorkspaces.Lock);
           end;
           for Workspace in Workspaces do
           begin
@@ -2871,109 +2549,21 @@ begin
   end;
 end;
 
-function TServerComposition.ProjectIndexPending: Boolean;
-var
-  Workspace: TShellWorkspace;
-begin
-  Result := False;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    for Workspace in FWorkspaces do
-    begin
-      if Workspace.State.ProjectPending then
-      begin
-        Exit(True);
-      end;
-    end;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-end;
-
-function TServerComposition.RuleProjects: TArray<TRuleProject>;
-var
-  Workspace: TShellWorkspace;
-  Stamp, mIndex: Integer;
-  Built: TArray<TRuleProject>;
-  Project: TRuleProject;
-  MainSources: TArray<string>;
-  MainSource: string;
-begin
-  Built := nil;
-  MainSources := nil;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    if FRuleProjectsStamp = FWorkspacesStamp then
-    begin
-      Exit(FRuleProjects);
-    end;
-    Stamp := FWorkspacesStamp;
-    for Workspace in FWorkspaces do
-    begin
-      if Workspace.State.RuleProject(Project, MainSource) then
-      begin
-        Built := Built + [Project];
-        MainSources := MainSources + [MainSource];
-      end;
-    end;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-  // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen (dieselbe Regel wie find_unused_code, #64).
-  for mIndex := 0 to High(Built) do
-  begin
-    Built[mIndex] := TRuleProjectFiles.ProjectOf(Built[mIndex].FileName, MainSources[mIndex], Built[mIndex].Sources,
-      ReadSourceText);
-  end;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
-    if Stamp = FWorkspacesStamp then
-    begin
-      FRuleProjects := Built;
-      FRuleProjectsStamp := Stamp;
-    end;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-  Result := Built;
-end;
-
-function TServerComposition.RuleProjectsComplete(out AReason: string): Boolean;
-var
-  Workspace: TShellWorkspace;
-begin
-  AReason := '';
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    for Workspace in FWorkspaces do
-    begin
-      if not Workspace.RuleReady(AReason) then
-      begin
-        Exit(False);
-      end;
-    end;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-  Result := True;
-end;
-
 function TServerComposition.IncludeResolverFor(const AUri: string): TIncludeResolver;
 var
   Workspace: TShellWorkspace;
   IncludePaths: TArray<string>;
 begin
   IncludePaths := nil;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     if Workspace <> nil then
     begin
       IncludePaths := Workspace.State.IncludePaths;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   // Ohne Projekt sucht der Resolver im Ordner der Datei.
   Result := TIncludeFiles.Resolver(IncludePaths);
@@ -2984,18 +2574,18 @@ var
   Workspace: TShellWorkspace;
 begin
   ADefines := nil;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    Workspace := FWorkspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
     Result := (Workspace <> nil) and Workspace.State.Defines(ADefines);
     // Datei keinem Projekt zugeordnet oder dessen Projekt noch nicht geladen (Projektgruppe): wie das
     // aktive Projekt, das die IDE zuerst meldet. Sonst blieben inaktive Zweige dort ungedimmt (#615).
-    if not Result and (FWorkspaces.Count > 0) then
+    if not Result and (FWorkspaces.Items.Count > 0) then
     begin
-      Result := FWorkspaces[0].State.Defines(ADefines);
+      Result := FWorkspaces.Items[0].State.Defines(ADefines);
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -3030,9 +2620,9 @@ var
   FileName: string;
 begin
   Result := nil;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    for Workspace in FWorkspaces do
+    for Workspace in FWorkspaces.Items do
     begin
       for FileName in Workspace.State.ProjectFiles do
       begin
@@ -3040,7 +2630,7 @@ begin
       end;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   // Geöffnete Dateien außerhalb des Projekts zählen mit.
   for Document in FDocuments.Documents do
@@ -3061,14 +2651,14 @@ begin
   Result := nil;
   mSeen := TDictionary<string, Boolean>.Create;
   try
-    System.TMonitor.Enter(FWorkspacesLock);
+    System.TMonitor.Enter(FWorkspaces.Lock);
     try
-      for mWorkspace in FWorkspaces do
+      for mWorkspace in FWorkspaces.Items do
       begin
         Result := Result + CheckFilesOf(mWorkspace, mSeen);
       end;
     finally
-      System.TMonitor.Exit(FWorkspacesLock);
+      System.TMonitor.Exit(FWorkspaces.Lock);
     end;
   finally
     mSeen.Free;
@@ -3140,10 +2730,10 @@ begin
     Exit;
   end;
   Result := nil;
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    mPicked := PickWorkspace(AFileName);
-    for mWorkspace in FWorkspaces do
+    mPicked := FWorkspaces.Pick(AFileName);
+    for mWorkspace in FWorkspaces.Items do
     begin
       if SameText(AScope, TLspDfmPropertyRules.ScopeGroup) or (mWorkspace = mPicked) then
       begin
@@ -3151,7 +2741,7 @@ begin
       end;
     end;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -3199,12 +2789,12 @@ var
   Workspace: TShellWorkspace;
 begin
   AProject := Default(TProjectInfo);
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(AFileName);
+    Workspace := FWorkspaces.Pick(AFileName);
     Result := (Workspace <> nil) and Workspace.State.Project(AProject);
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -3216,18 +2806,18 @@ var
   mProject: TProjectInfo;
 begin
   ASetup := Default(TMissingUnitSetup);
-  // Arbeitsbereich festhalten, die .dproj-Dateien aber außerhalb von FWorkspacesLock lesen (#647).
-  System.TMonitor.Enter(FWorkspacesLock);
+  // Arbeitsbereich festhalten, die .dproj-Dateien aber außerhalb von FWorkspaces.Lock lesen (#647).
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    mWorkspace := PickWorkspace(AFileName);
+    mWorkspace := FWorkspaces.Pick(AFileName);
     if mWorkspace = nil then
     begin
       Exit(False);
     end;
     mGroup := GroupMembersOf(mWorkspace);
-    HoldWorkspaces(TArray<TShellWorkspace>.Create(mWorkspace));
+    FWorkspaces.Hold(TArray<TShellWorkspace>.Create(mWorkspace));
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
   try
     Result := mWorkspace.State.Project(mProject);
@@ -3236,7 +2826,7 @@ begin
       ASetup := TShellWorkspaceJobs.MissingUnitSetupOf(mProject, mWorkspace.State.Install);
     end;
   finally
-    ReleaseWorkspaces(TArray<TShellWorkspace>.Create(mWorkspace));
+    FWorkspaces.Release(TArray<TShellWorkspace>.Create(mWorkspace));
   end;
   if not Result then
   begin
@@ -3255,7 +2845,7 @@ var
   mOtherProject: TProjectInfo;
 begin
   Result := nil;
-  for mOther in FWorkspaces do
+  for mOther in FWorkspaces.Items do
   begin
     if (mOther <> AWorkspace) and mOther.State.Project(mOtherProject) and
       not SameFileName(mOtherProject.FileName, AWorkspace.State.ProjectFileName) then
@@ -3291,9 +2881,9 @@ var
 begin
   FileName := TDocumentUris.ToPath(AUri);
   Context := Default(TRuleContext);
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(FileName);
+    Workspace := FWorkspaces.Pick(FileName);
     if Workspace = nil then
     begin
       Settings := FLooseSettings;
@@ -3305,7 +2895,7 @@ begin
       Context.Naming := Workspace.RuleServices.Naming;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   Context.UnitName := ChangeFileExt(ExtractFileName(FileName), '');
   Result := TRuleEngine.NewNames(BuiltinRules, Settings, Context);
@@ -3344,9 +2934,9 @@ function TServerComposition.DelphiVersionFor(const AUri: string): string;
 var
   Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     if Workspace = nil then
     begin
       Result := '';
@@ -3361,7 +2951,7 @@ begin
       end;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -3391,7 +2981,7 @@ begin
       Result := Result + [TFormatRoutines.Custom(Name, -1)];
     end;
   end;
-  Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+  Workspace := FWorkspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
   if (Workspace <> nil) and Workspace.State.Project(Project) and FIdeProject.Find(Project.FileName, Context) then
   begin
     Result := Result + Context.FormatFunctions;
@@ -3480,16 +3070,16 @@ var
   mWorkspace: TShellWorkspace;
 begin
   Result := Default(TShellAffectedQuery);
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    mWorkspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     if mWorkspace = nil then
     begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, 'Kein Arbeitsbereich zu ' + AUri);
     end;
     Result.WorkingDir := mWorkspace.Root;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
   if not AParams.TryGetValue<string>('base', Result.Base) then
   begin
@@ -3542,7 +3132,7 @@ var
 begin
   ASource := Default(TLspMetricsSource);
   ASource.Settings := TServerSettings.Default;
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
     mWorkspace := MetricsWorkspaceOf(AFileName);
     if mWorkspace = nil then
@@ -3565,7 +3155,7 @@ begin
     end;
     Result := True;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -3579,9 +3169,9 @@ begin
   end;
   if (Result = nil) and (AFileName <> '') then
   begin
-    Result := WorkspaceOf(AFileName);
+    Result := FWorkspaces.WorkspaceOf(AFileName);
   end;
-  Result := TShellWorkspaces.Choose(Result, FWorkspaces);
+  Result := TShellWorkspaces.Choose(Result, FWorkspaces.Items);
 end;
 
 function TServerComposition.ProjectWorkspaceOf(const AFileName: string): TShellWorkspace;
@@ -3589,7 +3179,7 @@ var
   mCandidate: TShellWorkspace;
   mProject: TProjectInfo;
 begin
-  for mCandidate in FWorkspaces do
+  for mCandidate in FWorkspaces.Items do
   begin
     if (mCandidate.State.Project(mProject) and (SameText(mProject.FileName, AFileName) or
       SameText(mProject.MainSource, AFileName) or SameText(ChangeFileExt(mProject.FileName, '.dproj'),
@@ -3615,20 +3205,20 @@ begin
     Exit;
   end;
   ASettings := Source.Settings;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
     Workspace := nil;
     if AFileName <> '' then
     begin
-      Workspace := WorkspaceOf(AFileName);
+      Workspace := FWorkspaces.WorkspaceOf(AFileName);
     end;
-    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces);
+    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces.Items);
     if Workspace <> nil then
     begin
       ANamespaces := Workspace.State.Namespaces;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -3653,7 +3243,7 @@ begin
   end;
   ARequest.Root := mSource.Root;
   ARequest.Title := mSource.Title;
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
     if ARequest.Scope = 'project' then
     begin
@@ -3666,7 +3256,7 @@ begin
     end;
     ARequest.Namespaces := NamespacesNear(AFileName);
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
   // Zuletzt berechneter Stand je Projekt bzw. Projektgruppe für die Angleichung (#1367).
   ARequest.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot,
@@ -3678,7 +3268,7 @@ var
   mWorkspace: TShellWorkspace;
 begin
   Result := nil;
-  for mWorkspace in FWorkspaces do
+  for mWorkspace in FWorkspaces.Items do
   begin
     Result := Result + mWorkspace.State.ProjectFiles;
   end;
@@ -3691,9 +3281,9 @@ begin
   mWorkspace := nil;
   if AFileName <> '' then
   begin
-    mWorkspace := WorkspaceOf(AFileName);
+    mWorkspace := FWorkspaces.WorkspaceOf(AFileName);
   end;
-  mWorkspace := TShellWorkspaces.Choose(mWorkspace, FWorkspaces);
+  mWorkspace := TShellWorkspaces.Choose(mWorkspace, FWorkspaces.Items);
   Result := nil;
   if mWorkspace <> nil then
   begin
@@ -3734,7 +3324,7 @@ var
   mReferences: TReferenceSettings;
 begin
   ASource := Default(TQuerySource);
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
     mWorkspace := QueryWorkspace;
     if mWorkspace = nil then
@@ -3745,7 +3335,7 @@ begin
     // Wurzel für die Spalte "Datei": gemeinsamer Ordner aller Projekte der Gruppe (bei Atlas der Stamm des
     // Repositorys). Mit der Wurzel des aktiven Projekts stand für jede Unit der anderen Projekte der volle Pfad da.
     mRoot := mWorkspace.Root;
-    for mCandidate in FWorkspaces do
+    for mCandidate in FWorkspaces.Items do
     begin
       mRoot := TProjectPaths.CommonFolder(mRoot, mCandidate.Root);
     end;
@@ -3753,7 +3343,7 @@ begin
     // Projektgruppe (#648): die Dateien aller geladenen Projekte.
     mFiles := AllProjectFiles;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
   ASource := TLspQuery.Source(FIndex, EnsureUnit, mRoot, mFiles, mNamespaces, ReadSourceText, mReferences);
   Result := True;
@@ -3767,7 +3357,7 @@ begin
   // geladen". Wurzel, Namensräume und Einstellungen vom in der IDE aktiven Projekt, sonst vom ausgewählten,
   // sonst vom ersten.
   Result := nil;
-  for mCandidate in FWorkspaces do
+  for mCandidate in FWorkspaces.Items do
   begin
     if (mCandidate.State.ProjectFileName <> '') and
       SameText(mCandidate.State.ProjectFileName, FIdeProject.ActiveProject) then
@@ -3779,16 +3369,16 @@ begin
   begin
     Exit;
   end;
-  for mCandidate in FWorkspaces do
+  for mCandidate in FWorkspaces.Items do
   begin
-    if IsSelectedProject(mCandidate) then
+    if FWorkspaces.IsSelected(mCandidate) then
     begin
       Exit(mCandidate);
     end;
   end;
-  if FWorkspaces.Count > 0 then
+  if FWorkspaces.Items.Count > 0 then
   begin
-    Result := FWorkspaces[0];
+    Result := FWorkspaces.Items[0];
   end;
 end;
 
@@ -3808,21 +3398,21 @@ var
 begin
   Result := TUsesGraphOptions.Default;
   Result.IncludeLibrary := True;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
     Workspace := nil;
     if AFileName <> '' then
     begin
-      Workspace := WorkspaceOf(AFileName);
+      Workspace := FWorkspaces.WorkspaceOf(AFileName);
     end;
-    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces);
+    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces.Items);
     if Workspace <> nil then
     begin
       Result.Root := Workspace.Root;
       Result.Namespaces := Workspace.State.Namespaces;
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -3845,9 +3435,9 @@ function TServerComposition.RationaleOptionsFor(const AUri: string): TRationaleO
 var
   Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     // ADR-Ordner relativ zum Arbeitsbereich; ohne Arbeitsbereich nur ein absoluter.
     if Workspace = nil then
     begin
@@ -3858,7 +3448,7 @@ begin
       Result := TRationaleOptions.FromSettings(Workspace.Configuration.Settings, Workspace.Root);
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -3883,16 +3473,16 @@ begin
   end;
   IncludePaths := nil;
   HasProject := False;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(Result.FileName);
+    Workspace := FWorkspaces.Pick(Result.FileName);
     if Workspace <> nil then
     begin
       IncludePaths := Workspace.State.IncludePaths;
       HasProject := Workspace.State.Project(Project);
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   Result.ResolveInclude := TIncludeFiles.Resolver(IncludePaths);
   // Dieselben Symbole wie beim Abblenden inaktiver Zweige.
@@ -3934,16 +3524,16 @@ begin
   Result := Default(TCompilerSwitchContext);
   Result.FileName := TDocumentUris.ToPath(AUri);
   IncludePaths := nil;
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(Result.FileName);
+    Workspace := FWorkspaces.Pick(Result.FileName);
     if Workspace <> nil then
     begin
       IncludePaths := Workspace.State.IncludePaths;
       Result.HasProject := Workspace.State.Project(Project);
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   Result.ResolveInclude := TIncludeFiles.Resolver(IncludePaths);
   if not Result.HasProject then
@@ -4006,12 +3596,12 @@ var
 begin
   APlatform := '';
   AConfig := '';
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
     Result := (Workspace <> nil) and Workspace.State.Project(Project);
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   if Result then
   begin
@@ -4138,9 +3728,9 @@ var
   mWorkspace: TShellWorkspace;
 begin
   AProjects := nil;
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    mWorkspace := PickWorkspace(AFileName);
+    mWorkspace := FWorkspaces.Pick(AFileName);
     if mWorkspace = nil then
     begin
       AContext.Settings := FLooseSettings;
@@ -4159,9 +3749,9 @@ begin
     end;
     // RTL, VCL und Komponenten außerhalb der Projekte (diagnostics.librarySources): Wer mit Strg+Klick in
     // System.Net.HttpClient.pas springt, soll dort keine Befunde zu fremdem Code sehen.
-    ALibrary := not AContext.Settings.DiagnosticsLibrarySources and IsLibrarySource(AFileName);
+    ALibrary := not AContext.Settings.DiagnosticsLibrarySources and FWorkspaces.IsLibrarySource(AFileName);
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -4178,7 +3768,7 @@ begin
   end;
   // Weitere Projekte mit der Datei (#1112): Eine Unit im Testprogramm und im Package hat keine
   // eindeutige Anwendungsart (MergeRuleProjects).
-  for mOther in FWorkspaces do
+  for mOther in FWorkspaces.Items do
   begin
     if (mOther <> AWorkspace) and mOther.State.ContainsFile(AFileName) and mOther.State.Project(mProject) then
     begin
@@ -4210,13 +3800,16 @@ begin
   // Solange Projekte laden oder der Index aufgebaut wird, ohne Index prüfen: Ein halber Index kennt Units noch
   // nicht, Regeln wie unresolved-identifier meldeten dann Bezeichner aus ihnen als nicht deklariert. Ohne Index
   // schweigen diese Regeln (wie mit --no-index); IndexFinished prüft danach alle Dateien neu.
-  if not RuleProjectsComplete(mPending) then
+  if not FWorkspaces.RuleProjectsComplete(mPending) then
   begin
     AContext.Services.Index := nil;
     AContext.Services.EnsureUnit := nil;
   end;
-  AContext.Services.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText,
-    RuleProjectsComplete, FUsesGraph);
+  AContext.Services.ProjectFiles := TRuleProjectFiles.Create(FWorkspaces.RuleProjects, FIndex, ReadSourceText,
+    function(out AReason: string): Boolean
+    begin
+      Result := FWorkspaces.RuleProjectsComplete(AReason);
+    end, FUsesGraph);
 end;
 
 procedure TServerComposition.ReadRuleFormFile(const AFileName: string; var AContext: TRuleCheckContext);
@@ -4267,11 +3860,11 @@ begin
   // Die Features kennen eine Liste: die Namespaces aller Projekte ohne Doppelte.
   ANamespaces := nil;
   ALibraryRoots := nil;
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
     // Projekte für projektweite Prüfregeln neu bestimmen (#1102).
-    Inc(FWorkspacesStamp);
-    for mWorkspace in FWorkspaces do
+    FWorkspaces.Touch;
+    for mWorkspace in FWorkspaces.Items do
     begin
       for mNamespace in mWorkspace.State.Namespaces do
       begin
@@ -4287,7 +3880,7 @@ begin
       end;
     end;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -4334,11 +3927,11 @@ end;
 
 function TServerComposition.LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
 begin
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    Result := WorkspaceOf(AFileName);
+    Result := FWorkspaces.WorkspaceOf(AFileName);
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -4404,12 +3997,12 @@ begin
   begin
     HandleWatchedFiles([TFileChange.Create(AFileName, TFileChangeKind.Changed)]);
   end;
-  System.TMonitor.Enter(FWorkspacesLock);
+  System.TMonitor.Enter(FWorkspaces.Lock);
   try
-    mWorkspace := WorkspaceOf(AFileName);
+    mWorkspace := FWorkspaces.WorkspaceOf(AFileName);
     mOnSave := (mWorkspace <> nil) and mWorkspace.Configuration.Settings.Compiler.OnSave;
   finally
-    System.TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspaces.Lock);
   end;
   if mOnSave then
   begin
@@ -4440,14 +4033,14 @@ var
 begin
   AJob := Default(TShellCompileJob);
   AError := '';
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
     mWorkspace := nil;
     if AFileName <> '' then
     begin
-      mWorkspace := WorkspaceOf(AFileName);
+      mWorkspace := FWorkspaces.WorkspaceOf(AFileName);
     end;
-    mWorkspace := TShellWorkspaces.Choose(mWorkspace, FWorkspaces);
+    mWorkspace := TShellWorkspaces.Choose(mWorkspace, FWorkspaces.Items);
     if mWorkspace = nil then
     begin
       AError := 'Kein Ordner mit Projekt geöffnet';
@@ -4457,7 +4050,7 @@ begin
       AError := '';
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   Result := AError = '';
 end;
@@ -4468,7 +4061,7 @@ var
 begin
   SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
   UpdateLooseSettings;
-  for Workspace in FWorkspaces.ToArray do
+  for Workspace in FWorkspaces.Items.ToArray do
   begin
     Workspace.Configuration.SetEditorSettings(FEditorSettings);
   end;
@@ -4510,7 +4103,7 @@ begin
         Issue.Range.StartPos.Character + 1, Issue.Message]));
     end;
   end;
-  for Workspace in FWorkspaces.ToArray do
+  for Workspace in FWorkspaces.Items.ToArray do
   begin
     Workspace.Configuration.SetGlobalSettings(FGlobalSettings);
   end;
@@ -4526,14 +4119,14 @@ begin
     Exit;
   end;
   Files := [FGlobalSettingsFile];
-  TMonitor.Enter(FWorkspacesLock);
+  TMonitor.Enter(FWorkspaces.Lock);
   try
-    for Workspace in FWorkspaces do
+    for Workspace in FWorkspaces.Items do
     begin
       Files := Files + [Workspace.Configuration.PrimaryFileName, Workspace.Configuration.LegacyFileName];
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    TMonitor.Exit(FWorkspaces.Lock);
   end;
   FFileWatcher.SetFiles(Files);
 end;
@@ -4600,7 +4193,7 @@ var
   mWorkspace: TShellWorkspace;
 begin
   // atlas.json von außen geändert (#227, etwa im Dialog des Plugins): ohne Neustart übernehmen.
-  for mWorkspace in FWorkspaces.ToArray do
+  for mWorkspace in FWorkspaces.Items.ToArray do
   begin
     if mWorkspace.Configuration.FileChanged(AFileName) then
     begin
@@ -4630,7 +4223,7 @@ var
 begin
   // Jeder Ordner aktualisiert die Units, die sein Aufbau kennt.
   mUpdated := 0;
-  for mWorkspace in FWorkspaces.ToArray do
+  for mWorkspace in FWorkspaces.Items.ToArray do
   begin
     Inc(mUpdated, mWorkspace.ApplyChanges(ASources));
   end;
