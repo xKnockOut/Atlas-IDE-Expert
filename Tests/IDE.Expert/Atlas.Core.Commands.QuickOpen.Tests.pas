@@ -43,7 +43,9 @@ var
 begin
   Result := '';
   for Index in AOrder do
+  begin
     Result := Result + AFiles[Index].Name + '|';
+  end;
 end;
 
 function FakeLister: TAtlasQuickOpenLister;
@@ -53,12 +55,18 @@ begin
     begin
       Result := nil;
       if AFolder = 'C:\Gruppe\Haupt' then
+      begin
         Result := ['C:\Gruppe\Haupt\FrmHaupt.pas', 'C:\Gruppe\Haupt\FrmHaupt.dfm', 'C:\Gruppe\Haupt\Defs.inc',
-          'C:\Gruppe\Haupt\Bild.png', 'C:\Gruppe\Haupt\Haupt.res']
+          'C:\Gruppe\Haupt\Bild.png', 'C:\Gruppe\Haupt\Haupt.res'];
+      end
       else if AFolder = 'C:\Lib\Pfad' then
-        Result := ['C:\Lib\Pfad\Kunden.pas', 'C:\Gruppe\Haupt\FrmHaupt.pas']
+      begin
+        Result := ['C:\Lib\Pfad\Kunden.pas', 'C:\Gruppe\Haupt\FrmHaupt.pas'];
+      end
       else if (AFolder = 'C:\BDS\source') and ARecursive then
+      begin
         Result := ['C:\BDS\source\rtl\sys\System.SysUtils.pas', 'C:\BDS\source\vcl\Vcl.Forms.pas'];
+      end;
     end;
 end;
 
@@ -114,7 +122,9 @@ begin
   Files := TAtlasQuickOpen.Collect(Sources, FakeLister());
   Listed := '';
   for Index := 0 to High(Files) do
+  begin
     Listed := Listed + Files[Index].Name + '=' + IntToStr(Ord(Files[Index].Origin)) + '|';
+  end;
   // Projektdateien zuerst (Herkunft 0); .png und .res fehlen; FrmHaupt.pas nur einmal, als Projektdatei.
   Assert.AreEqual('Haupt.dproj=0|Haupt.dpr=0|FrmHaupt.pas=0|FrmHaupt.dfm=0|Defs.inc=1|Kunden.pas=1|', Listed);
   Assert.AreEqual('Haupt\FrmHaupt.pas', Files[2].RelativePath);
@@ -148,7 +158,9 @@ begin
   Input := Default(TAtlasQuickOpenSources);
   Input.Root := 'C:\Gruppe';
   for Index := 1 to 999 do
+  begin
     Input.ProjectFiles := Input.ProjectFiles + [Format('C:\Gruppe\P%d\Unit%d.pas', [Index mod 20, Index])];
+  end;
   Input.ProjectFiles := Input.ProjectFiles + ['C:\Gruppe\Haupt\FrmHaupt.pas'];
   Files := TAtlasQuickOpen.Collect(Input, FakeLister());
   Assert.AreEqual(1000, Integer(Length(Files)));

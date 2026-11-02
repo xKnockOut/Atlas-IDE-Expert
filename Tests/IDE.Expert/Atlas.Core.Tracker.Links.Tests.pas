@@ -128,7 +128,9 @@ var
   mKind: TAtlasTrackerLinkKind;
 begin
   for mKind := Low(TAtlasTrackerLinkKind) to High(TAtlasTrackerLinkKind) do
+  begin
     Assert.IsTrue(TAtlasTrackerLink.KindOf(TAtlasTrackerLink.KindKey(mKind)) = mKind, TAtlasTrackerLink.KindKey(mKind));
+  end;
   Assert.AreEqual('dependsOn', TAtlasTrackerLink.KindKey(TAtlasTrackerLinkKind.DependsOn));
   Assert.AreEqual('', TAtlasTrackerLink.KindKey(TAtlasTrackerLinkKind.Other));
   Assert.IsTrue(TAtlasTrackerLink.KindOf('unbekannt') = TAtlasTrackerLinkKind.Other);
@@ -267,7 +269,9 @@ var
 begin
   mText := 'Benötigt:';
   for mIndex := 1 to 15 do
+  begin
     mText := mText + ' #' + IntToStr(mIndex) + ',';
+  end;
   Assert.AreEqual(Integer(TAtlasTrackerLinks.MaxTextDependencies),
     Integer(Length(TAtlasTrackerLinks.TextDependencies(mText))));
   Assert.AreEqual(Integer(0), Integer(Length(TAtlasTrackerLinks.TextDependencies(''))));

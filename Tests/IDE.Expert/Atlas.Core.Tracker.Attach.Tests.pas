@@ -121,7 +121,9 @@ var
 begin
   SetLength(FStatus, Length(AStatus));
   for mIndex := 0 to High(AStatus) do
+  begin
     FStatus[mIndex] := AStatus[mIndex];
+  end;
 end;
 
 function TFakeSend.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -145,7 +147,9 @@ begin
     begin
       SetLength(Result, Length(ABody));
       for mIndex := 0 to High(ABody) do
+      begin
         Result[mIndex + 1] := Char(ABody[mIndex]);
+      end;
     end;
   end;
 end;
@@ -161,7 +165,9 @@ begin
   Bodies := Bodies + [BodyText(ABody)];
   AStatus := 200;
   if mIndex < Length(FStatus) then
+  begin
     AStatus := FStatus[mIndex];
+  end;
   AText := '{}';
   AError := TAtlasCiFetchError.None;
   Result := True;
@@ -192,7 +198,9 @@ var
 begin
   Result := '';
   for mIndex := AFirst to ALast do
+  begin
     Result := Result + 'Zeile ' + IntToStr(mIndex) + #13#10;
+  end;
 end;
 
 { TAtlasAttachTests }
@@ -218,7 +226,9 @@ procedure TAtlasAttachTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
 end;
 

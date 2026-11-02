@@ -74,15 +74,21 @@ var
 begin
   SetLength(Paths, Length(APaths));
   for Index := 0 to High(APaths) do
+  begin
     Paths[Index] := APaths[Index];
+  end;
   Result :=
     function(const APath: string): Boolean
     var
       Item: string;
     begin
       for Item in Paths do
+      begin
         if SameText(Item, APath) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
 end;
@@ -98,8 +104,12 @@ var
   Issue: TAtlasTeamIssue;
 begin
   for Issue in ATeam.Issues do
+  begin
     if (Issue.Kind = AKind) and (Issue.Path = APath) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 

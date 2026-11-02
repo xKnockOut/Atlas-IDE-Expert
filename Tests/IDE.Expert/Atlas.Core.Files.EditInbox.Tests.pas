@@ -45,7 +45,9 @@ end;
 procedure TAtlasEditInboxTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 

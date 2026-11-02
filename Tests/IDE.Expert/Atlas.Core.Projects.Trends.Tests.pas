@@ -138,7 +138,9 @@ var
 begin
   Summary := TAtlasProjectSummary.Create(Project);
   for Index := 0 to High(Hints) do
+  begin
     Build(Summary, Stamp(Index), 0, Hints[Index], 30);
+  end;
   View := TAtlasWelcomeTrends.View(Summary, [TAtlasTrendSeries.Warnings], 30);
   Assert.AreEqual(1, Integer(Length(View.Tiles)));
   Tile := View.Tiles[0];
@@ -148,7 +150,9 @@ begin
   Assert.IsTrue(Tile.Previous(Previous));
   Assert.AreEqual(30, Previous, 'vorher 3');
   for Index := 1 to High(Tile.Values) do
+  begin
     Assert.IsTrue(Tile.Values[Index] < Tile.Values[Index - 1], 'fallend');
+  end;
   Assert.AreEqual(0, Tile.Bottom, 'Nulllinie');
   Assert.AreEqual(120, Tile.Top);
   Assert.AreEqual('0', TAtlasWelcomeTrends.ValueText(Tile.Series, Tile.Last, ','));
@@ -162,7 +166,9 @@ var
 begin
   Summary := TAtlasProjectSummary.Create(Project);
   for Index := 1 to 31 do
+  begin
     Build(Summary, Stamp(Index), Index, 0, 30);
+  end;
   Assert.AreEqual(30, Integer(Length(Summary.Trends.Points)));
   Assert.AreEqual(31, Summary.Trends.Builds);
   Assert.AreEqual(2, Summary.Trends.Points[0].Build, 'der älteste fällt weg');
@@ -182,12 +188,16 @@ var
 begin
   Summary := TAtlasProjectSummary.Create(Project);
   for Index := 1 to 5 do
+  begin
     Build(Summary, Stamp(Index), 0, 0, 1);
+  end;
   Assert.AreEqual(TAtlasProjectTrendLog.MinPoints, Integer(Length(Summary.Trends.Points)));
   // Kleinere Grenze danach: kürzt beim nächsten Build.
   Summary := TAtlasProjectSummary.Create(Project);
   for Index := 1 to 10 do
+  begin
     Build(Summary, Stamp(Index), 0, 0, 30);
+  end;
   Build(Summary, Stamp(11), 0, 0, 4);
   Assert.AreEqual(4, Integer(Length(Summary.Trends.Points)));
   Assert.AreEqual(11, Summary.Trends.Points[3].Build);
@@ -450,7 +460,9 @@ begin
   Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Summary));
   Assert.AreEqual(3, Integer(Length(Summary.Trends.Points)));
   for Index := 1 to High(Summary.Trends.Points) do
+  begin
     Assert.IsTrue(Summary.Trends.Points[Index].Build > Summary.Trends.Points[Index - 1].Build, 'aufsteigend, eindeutig');
+  end;
   Assert.IsTrue(Summary.Trends.Builds >= Summary.Trends.Points[2].Build, 'Zähler mindestens die höchste Nummer');
 end;
 

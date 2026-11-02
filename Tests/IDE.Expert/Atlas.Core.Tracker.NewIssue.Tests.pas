@@ -106,12 +106,14 @@ begin
   AText := '';
   Result := True;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if (FMethods[mIndex] = AMethod) and AUrl.StartsWith(FPrefixes[mIndex]) then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit;
     end;
+  end;
 end;
 
 function TFakeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -153,18 +155,30 @@ begin
     for mPart in APath.Split(['.']) do
     begin
       if (mValue is TJSONArray) and TryStrToInt(mPart, mIndex) and (mIndex < TJSONArray(mValue).Count) then
-        mValue := TJSONArray(mValue).Items[mIndex]
+      begin
+        mValue := TJSONArray(mValue).Items[mIndex];
+      end
       else if mValue is TJSONObject then
-        mValue := TJSONObject(mValue).Values[mPart]
+      begin
+        mValue := TJSONObject(mValue).Values[mPart];
+      end
       else
+      begin
         mValue := nil;
+      end;
       if mValue = nil then
+      begin
         Exit;
+      end;
     end;
     if mValue is TJSONString then
-      Result := TJSONString(mValue).Value
+    begin
+      Result := TJSONString(mValue).Value;
+    end
     else
+    begin
       Result := mValue.ToJSON;
+    end;
   finally
     mRoot.Free;
   end;
@@ -244,7 +258,9 @@ begin
   mContext := TAtlasNewIssueContext.Empty;
   SetLength(mContext.Lines, 20);
   for mIndex := 0 to High(mContext.Lines) do
+  begin
     mContext.Lines[mIndex] := '    Zeile' + IntToStr(mIndex + 1) + ';';
+  end;
   mContext.FileName := 'C:\Projekte\Kasse\Source\Main.pas';
   mContext.Line := 10;
   mContext.Method := 'TMainForm.FormClose';

@@ -196,7 +196,9 @@ begin
     // Der älteste verbliebene Eintrag ist U51.
     Target := At('U151.pas', 1);
     while History.StepBack(Target, Next) do
+    begin
       Target := Next;
+    end;
     Assert.AreEqual('U51.pas', Target.FileName);
   finally
     History.Free;

@@ -75,19 +75,29 @@ end;
 function TProbeBar.PartAt(X, Y: Integer): Integer;
 begin
   if (X < 0) or (Y < 0) or (X >= ClientWidth) or (Y >= ClientHeight) then
+  begin
     Exit(PartNone);
+  end;
   if X < ClientWidth div 2 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := 1;
+  end;
 end;
 
 function TProbeBar.PartHint(APart: Integer): string;
 begin
   if APart = PartNone then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := 'Teil ' + IntToStr(APart);
+  end;
 end;
 
 procedure TProbeBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);

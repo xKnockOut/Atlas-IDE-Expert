@@ -163,12 +163,14 @@ begin
   AText := '';
   Result := True;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if (FMethods[mIndex] = AMethod) and (Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex]) then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit;
     end;
+  end;
 end;
 
 function TFakeTimeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -229,7 +231,9 @@ var
 begin
   Result := 0;
   for mSpan in ASpans do
+  begin
     Inc(Result, mSpan.Seconds);
+  end;
 end;
 
 procedure TAtlasTimeClockTests.IdleStopsAndIsNotCounted;
@@ -353,7 +357,9 @@ begin
   FClock.Activity(EncodeDateTime(2026, 10, 29, 0, 10, 0, 0));
   mLog := TAtlasTimeLog.Empty;
   for mSpan in FClock.Take do
+  begin
     mLog.Add(mSpan);
+  end;
   Assert.AreEqual(2, Integer(Length(mLog.Entries)));
   Assert.AreEqual(Integer(Trunc(At(0, 0))), mLog.Entries[0].Day);
   Assert.AreEqual(10 * 60, Integer(mLog.Entries[0].Seconds), 'bis Mitternacht');
@@ -373,7 +379,9 @@ procedure TAtlasTimeLogTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
   if (FFolder <> '') and TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 

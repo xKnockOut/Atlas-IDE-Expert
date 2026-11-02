@@ -248,7 +248,9 @@ var
 begin
   Data := Default(TAtlasHoverData);
   for Index := 0 to 4 do
+  begin
     Data.Ancestors := Data.Ancestors + [Ref('T' + IntToStr(Index), Index)];
+  end;
   Assert.AreEqual(5, Integer(Length(Data.VisibleChain)), 'fünf Glieder ganz');
   Data.Ancestors := Data.Ancestors + [Ref('T5', 5), Ref('TObject', 6)];
   Chain := Data.VisibleChain;
@@ -353,7 +355,9 @@ begin
     History.Start(DataFor(Ref('TStart', 0)));
     // Elf Klicks: zehn Schritte bleiben, die ältesten fallen weg.
     for Index := 1 to 11 do
+    begin
       Assert.IsTrue(History.Open(Ref('T' + IntToStr(Index), Index)));
+    end;
     Assert.AreEqual(TAtlasHoverHistory.MaxSteps, History.Count);
     Assert.AreEqual('T2', History.Items[0].Location.Name);
     Assert.AreEqual('T11', History.Current.Location.Name);

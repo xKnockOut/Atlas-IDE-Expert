@@ -83,7 +83,9 @@ begin
   Assert.AreEqual('HINTS OFF', View.Summary);
   Names := '';
   for Row in View.Rows do
+  begin
     Names := Names + IntToStr(Ord(Row.Section)) + ':' + Row.Name + ' ';
+  end;
   Assert.AreEqual('0:R 0:Q 1:HINTS 1:WARNINGS 1:SYMBOL_PLATFORM 2:DEBUG 3:platform 3:configuration ', Names);
   Assert.AreEqual('RANGECHECKS', View.Rows[0].LongName);
   Assert.AreEqual('Konfiguration Debug (.dproj)', View.Rows[5].OriginText);

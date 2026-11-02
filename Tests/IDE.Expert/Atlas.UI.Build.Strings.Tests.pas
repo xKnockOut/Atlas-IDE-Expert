@@ -62,7 +62,9 @@ begin
       mGerman := TAtlasBuildStrings.Text(mId);
       TAtlasStrings.Language := TAtlasLanguage.English;
       if mGerman <> TAtlasBuildStrings.Text(mId) then
+      begin
         Inc(mDiffers);
+      end;
     end;
   finally
     TAtlasStrings.Language := mSaved;

@@ -94,9 +94,13 @@ begin
   TAtlasDataFile.ForgetReports;
   TAtlasGuard.RotatingLog.Folder := FOldLogFolder;
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   if TDirectory.Exists(FLogFolder) then
+  begin
     TDirectory.Delete(FLogFolder, True);
+  end;
   FFolder := '';
   FLogFolder := '';
   FOldLogFolder := '';
@@ -114,7 +118,9 @@ begin
   Result := '';
   FileName := TPath.Combine(FLogFolder, 'atlas.log');
   if TFile.Exists(FileName) then
+  begin
     Result := TFile.ReadAllText(FileName, TEncoding.UTF8);
+  end;
 end;
 
 procedure TAtlasDataFileTests.MissingFileIsMissing;
@@ -208,7 +214,9 @@ begin
     function(const AText: string): Boolean
     begin
       if AText <> '' then
+      begin
         raise EConvertError.Create('geheimer Inhalt');
+      end;
       Result := True;
     end;
   Assert.IsTrue(TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse) = TAtlasDataLoad.Kept);

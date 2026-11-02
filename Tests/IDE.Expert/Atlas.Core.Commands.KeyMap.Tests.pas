@@ -116,20 +116,26 @@ end;
 function TKeyStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
 begin
   if not FIntegers.TryGetValue(AName, Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TKeyStore.WriteInteger(const AName: string; AValue: Integer);
 begin
   if not FIntegers.ContainsKey(AName) then
+  begin
     FNames.Add(AName);
+  end;
   FIntegers.AddOrSetValue(AName, AValue);
 end;
 
 function TKeyStore.ReadString(const AName, ADefault: string): string;
 begin
   if not FStrings.TryGetValue(AName, Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TKeyStore.WriteString(const AName, AValue: string);
@@ -143,8 +149,12 @@ var
 begin
   Result := TAtlasKeyEntry.Create(AFunc, 0, False, False);
   for Entry in AEntries do
+  begin
     if Entry.Func = AFunc then
+    begin
       Exit(Entry);
+    end;
+  end;
 end;
 
 function AtlasKey(AFunc: TAtlasKeyFunction; AKey: Word; APriority, AActive: Boolean): TAtlasKeyItem;
@@ -187,8 +197,12 @@ begin
   begin
     Found := False;
     for Entry in Entries do
+    begin
       if Entry.Func = Func then
+      begin
         Found := True;
+      end;
+    end;
     Assert.IsTrue(Found, 'Funktion ' + IntToStr(Ord(Func)));
   end;
   Assert.AreEqual(Ord(TAtlasKeyFunction.DiagnosticMode), Ord(Entries[5].Func));
@@ -267,12 +281,14 @@ begin
     Settings.Save(StoreRef);
     Count := 0;
     for Name in Store.Names.ToArray do
+    begin
       if Name.EndsWith('Key') then
       begin
         Inc(Count);
         Keys.Add(Name, TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt or (Ord('A') + Count));
         Store.WriteInteger(Name, Keys[Name]);
       end;
+    end;
     Assert.IsTrue(Count >= 18, 'Tasten-Einstellungen gefunden: ' + IntToStr(Count));
     Settings := TAtlasPluginSettings.Defaults;
     Settings.Load(StoreRef);
@@ -281,8 +297,12 @@ begin
     begin
       Found := False;
       for Entry in Entries do
+      begin
         if (Entry.Key = Pair.Value) and not Entry.Disabled then
+        begin
           Found := True;
+        end;
+      end;
       Assert.IsTrue(Found, Pair.Key + ' fehlt in TAtlasKeyEntry.AllFromSettings');
     end;
   finally
@@ -479,8 +499,12 @@ begin
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MultiCursorSkip)));
   // Zurück in die Einstellungen (Eintrag gezielt suchen: weitere Funktionen stehen dahinter).
   for Index := 0 to High(Entries) do
+  begin
     if Entries[Index].Func = TAtlasKeyFunction.MultiCursorBelow then
+    begin
       Entries[Index].Key := $A028;
+    end;
+  end;
   Saved := Settings;
   TAtlasKeyEntry.ToSettings(Entries, Saved);
   Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
@@ -521,6 +545,7 @@ begin
   Settings.ExpressionType := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
+  begin
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
       TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch,
       TAtlasKeyFunction.Bookmark, TAtlasKeyFunction.GenerateMenu, TAtlasKeyFunction.Notifications,
@@ -542,7 +567,10 @@ begin
         'kein Konflikt: ' + IntToStr(Ord(Entry.Func)));
     end
     else
+    begin
       Assert.IsFalse(Entry.Disabled, 'an: ' + IntToStr(Ord(Entry.Func)));
+    end;
+  end;
   // Die Taste bleibt eingestellt; nur der Schalter ist aus.
   Assert.AreEqual(CtrlShiftUp, Integer(EntryOf(Entries, TAtlasKeyFunction.MethodToggleUp).Key));
   // Unit ⇄ Testunit (#189) hat keinen eigenen Schalter (abschalten heißt Taste 0), bleibt also an.

@@ -181,10 +181,14 @@ end;
 procedure TLogListener.SettingsChanged(const AChange: TAtlasSettingsChange);
 begin
   if Text <> '' then
+  begin
     Text := Text + ' ';
+  end;
   Text := Text + cKindNames[AChange.Kind] + ':' + AChange.OwnerId + ':' + AChange.Key;
   if AChange.OldKey <> '' then
+  begin
     Text := Text + '<' + AChange.OldKey;
+  end;
 end;
 
 { TFakeModule }
@@ -685,9 +689,13 @@ begin
 end;
 
 procedure TSettingsPartsTests.GlobalPartsExist;
+var
+  mFirst, mSecond: IAtlasSettingsParts;
 begin
-  Assert.IsTrue(AtlasSettingsParts <> nil);
-  Assert.IsTrue(AtlasSettingsParts = AtlasSettingsParts);
+  mFirst := AtlasSettingsParts;
+  mSecond := AtlasSettingsParts;
+  Assert.IsTrue(mFirst <> nil);
+  Assert.IsTrue(mFirst = mSecond, 'jeder Aufruf liefert dieselbe Instanz');
 end;
 
 initialization

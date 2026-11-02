@@ -47,7 +47,9 @@ var
 begin
   Result := '';
   for Decision in ADecisions do
+  begin
     Result := Result + ExtractFileName(Decision.FileName) + '=' + Names[Decision.Action] + ' ';
+  end;
 end;
 
 procedure TAtlasExternalChangesTests.FirstLookOnlyRemembers;

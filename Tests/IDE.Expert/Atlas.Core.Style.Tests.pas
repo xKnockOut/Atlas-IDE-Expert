@@ -153,7 +153,9 @@ begin
   for Value in AValues do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Value.ToString;
   end;
 end;
@@ -224,7 +226,9 @@ var
   HSL: TAtlasHSL;
 begin
   for Hex in ['#0D5EAF', '#1B2230', '#FCEBDD', '#000000', '#FFFFFF', '#24634B'] do
+  begin
     Assert.AreEqual(Hex, TAtlasColorMath.ToHex(TAtlasHSL.FromColor(TAtlasColorMath.FromHex(Hex)).ToColor), Hex);
+  end;
   HSL := TAtlasHSL.FromColor(TAtlasColorMath.FromHex('#0D5EAF'));
   Assert.AreEqual(210.0, HSL.H, 1.0);
   Assert.IsTrue(TAtlasColorMath.Luminance(TAtlasColorMath.Lighten(TAtlasColorMath.FromHex('#0D5EAF'), 0.2)) >
@@ -280,11 +284,15 @@ begin
     Pair := AColors.Pairs[Index];
     Name := Format('%s Paar %d (%s)', [AMode, Index, TAtlasColorMath.ToHex(Pair)]);
     for Hex in ABackgrounds do
+    begin
       Assert.IsTrue(TAtlasColorMath.Contrast(Pair, TAtlasColorMath.FromHex(Hex)) >= 4.5,
         Name + ' auf ' + Hex);
+    end;
     Assert.IsTrue(TAtlasColorMath.Contrast(Pair, AColors.Surface) >= 4.5, Name + ' auf Surface');
     for Hex in ATexts do
+    begin
       CheckText(TAtlasColorMath.FromHex(Hex));
+    end;
     CheckText(AColors.Text);
     Other := AColors.Pairs[(Index + 1) mod Length(AColors.Pairs)];
     Assert.IsTrue(TAtlasColorMath.DeltaE2000(Pair, Other) >= 20, Name + ' gegen die nächste Tiefe');
@@ -315,8 +323,10 @@ procedure TAtlasPaletteTests.PlaceholderColorsDiffer;
       Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[Index], AColors.Error) >= 20,
         Format('%s Platzhalter %d gegen Fehler', [AMode, Index]));
       for Other := Index + 1 to High(AColors.Placeholders) do
+      begin
         Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[Index], AColors.Placeholders[Other]) >= 15,
           Format('%s Platzhalter %d gegen %d', [AMode, Index, Other]));
+      end;
     end;
   end;
 
@@ -360,11 +370,15 @@ begin
   Pair('Fehler', AColors.Error, AColors.Surface);
   // Klammer- und Blockpaare (#514): jede Tiefe lesbar.
   for Index := 0 to High(AColors.Pairs) do
+  begin
     Pair('Paar ' + IntToStr(Index), AColors.Pairs[Index], AColors.Surface);
+  end;
   Pair('Fehler auf Fehlerfläche', AColors.Error, AColors.ErrorSoft);
   Pair('Fehler auf Gutter', AColors.Error, AColors.Gutter);
   for Kind := Low(TAtlasBadgeKind) to High(TAtlasBadgeKind) do
+  begin
     Pair('Badge ' + Ord(Kind).ToString, AColors.Badges[Kind].Text, AColors.Badges[Kind].Background);
+  end;
 end;
 
 procedure TAtlasPaletteTests.LightRolesMeetContrast;
@@ -444,7 +458,9 @@ const
 begin
   Result := '';
   for Token in TAtlasSyntax.Tokens(AText) do
+  begin
     Result := Result + Names[Token.Kind] + ':' + Copy(AText, Token.Start + 1, Token.Stop - Token.Start) + '|';
+  end;
 end;
 
 procedure TAtlasSyntaxTests.ColorsKeywordsAndStrings;
@@ -473,7 +489,9 @@ begin
     end;
     Assert.AreEqual(0, Tokens[0].Start, Text);
     for Index := 1 to High(Tokens) do
+    begin
       Assert.AreEqual(Tokens[Index - 1].Stop, Tokens[Index].Start, Text);
+    end;
     Assert.AreEqual(Integer(Length(Text)), Tokens[High(Tokens)].Stop, Text);
   end;
 end;
@@ -491,7 +509,9 @@ var
 begin
   Result := '';
   for Range in TAtlasSyntax.DefaultRanges(ASignature) do
+  begin
     Result := Result + '[' + Copy(ASignature, Range.X + 1, Range.Y - Range.X) + ']';
+  end;
 end;
 
 procedure TAtlasSyntaxTests.FindsDefaultValues;
@@ -522,7 +542,9 @@ begin
   for Line := 0 to High(Lines) do
   begin
     for Token in Lines[Line] do
+    begin
       Result := Result + Names[Token.Kind] + ':' + Copy(ALines[Line], Token.Start + 1, Token.Stop - Token.Start) + '|';
+    end;
     Result := Result + '/';
   end;
 end;
@@ -700,7 +722,9 @@ procedure TAtlasPresentationTests.ScopeTagsNameOrigin;
     Entry.DeclaringUnit := AUnit;
     Tags := TAtlasItemPresentation.Tags(Entry);
     if Length(Tags) = 0 then
+    begin
       Exit('');
+    end;
     Result := Tags[0].Text;
   end;
 
@@ -793,7 +817,9 @@ begin
   Result := nil;
   SetLength(Result, Length(AText) + 1);
   for Index := 0 to Length(AText) do
+  begin
     Result[Index] := 10 * Index;
+  end;
 end;
 
 procedure TAtlasWrapTests.WrapFitsOneLine;

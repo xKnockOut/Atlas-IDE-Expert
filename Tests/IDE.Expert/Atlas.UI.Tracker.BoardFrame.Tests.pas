@@ -61,7 +61,9 @@ begin
   Result.Title := 'Titel ' + AKey;
   Result.State := AState;
   if ALogin <> '' then
+  begin
     Result.Logins := TArray<string>.Create(ALogin);
+  end;
 end;
 
 function Snapshot: TAtlasBoardSnapshot;

@@ -99,16 +99,22 @@ begin
     begin
       Result := '';
       if SameText(AUnitName, 'Rechner.Tests') then
+      begin
         Result := UnitFile;
+      end;
     end,
     function(const AFileName: string; out ALines: TArray<string>): Boolean
     begin
       Inc(Reads);
       Result := SameText(AFileName, UnitFile);
       if Result then
-        ALines := Source
+      begin
+        ALines := Source;
+      end
       else
+      begin
         ALines := nil;
+      end;
     end);
   AReads := Reads;
 end;

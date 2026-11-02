@@ -114,11 +114,17 @@ begin
     begin
       Result := True;
       if SameText(AFileName, AFile) then
-        AContent := AText
+      begin
+        AContent := AText;
+      end
       else if SameText(AFileName, BFile) then
-        AContent := BText
+      begin
+        AContent := BText;
+      end
       else
+      begin
         Result := False;
+      end;
     end,
     function(const AFileName: string): TArray<string>
     begin

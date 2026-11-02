@@ -348,17 +348,21 @@ begin
   Assert.IsTrue(Summary.Rules.At = 46000);
   Found := False;
   for Pill in TAtlasWelcomeProjects.Pills(Entry(Summary)) do
+  begin
     if Pill.Kind = TAtlasProjectPillKind.Rules then
     begin
       Found := True;
       Assert.AreEqual(4, Pill.A);
     end;
+  end;
   Assert.IsTrue(Found);
   // 0 neue Treffer: bekannt, aber keine Marke.
   TAtlasProjectRecording.RecordRules(Summary, 0, 46001);
   Assert.IsTrue(Summary.Rules.Known);
   for Pill in TAtlasWelcomeProjects.Pills(Entry(Summary)) do
+  begin
     Assert.IsFalse(Pill.Kind = TAtlasProjectPillKind.Rules);
+  end;
 end;
 
 initialization

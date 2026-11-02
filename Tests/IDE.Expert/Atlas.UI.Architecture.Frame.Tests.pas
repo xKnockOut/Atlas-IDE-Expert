@@ -191,7 +191,9 @@ begin
   Assert.IsTrue(FFrame.Pages.ActivePage = FFrame.CentralList.Parent, 'Reiter „Zentrale Units“');
   Lines := FFrame.CentralText;
   for Index := 1 to High(Lines) do
+  begin
     Assert.IsTrue(StrToInt(Lines[Index - 1].Split([#9])[3]) >= StrToInt(Lines[Index].Split([#9])[3]));
+  end;
 end;
 
 procedure TAtlasArchitectureFrameTests.FilterNarrowsEverything;
@@ -351,11 +353,13 @@ begin
   Assert.IsTrue(FFrame.ClearCompareButton.Enabled);
   // Doppelklick auf einen Eintrag öffnet die Unit.
   for Index := 0 to FFrame.ComparisonTree.Items.Count - 1 do
+  begin
     if FFrame.ComparisonTree.Items[Index].Data <> nil then
     begin
       FFrame.ComparisonTree.Selected := FFrame.ComparisonTree.Items[Index];
       Break;
     end;
+  end;
   FFrame.ComparisonTree.OnDblClick(FFrame.ComparisonTree);
   Assert.IsTrue(EndsStr('.pas', FOpened), FOpened);
   // Karte ohne Änderungen.
@@ -530,8 +534,12 @@ begin
     mFirst), mFirst);
   mLines := nil;
   for mLine in FFrame.SubsystemText do
+  begin
     if not StartsStr(' ', mLine) then
+    begin
       mLines := mLines + [mLine];
+    end;
+  end;
   Assert.IsTrue(StartsStr(mModel.Subsystems[mLast].Name + ' ', mLines[1]), mLines[1]);
 end;
 
@@ -553,9 +561,13 @@ begin
   FFrame.FillSubsystemsMenu;
   mToggle := nil;
   for mIndex := 0 to FFrame.SubsystemsMenu.Items.Count - 1 do
+  begin
     if FFrame.SubsystemsMenu.Items[mIndex].Caption = TAtlasAnalysisStrings.Text(
       TAtlasAnalysisTextId.ArchitectureFoundationEdges) then
+    begin
       mToggle := FFrame.SubsystemsMenu.Items[mIndex];
+    end;
+  end;
   Assert.IsNotNull(mToggle);
   Assert.IsTrue(mToggle.Checked);
   mToggle.Click;

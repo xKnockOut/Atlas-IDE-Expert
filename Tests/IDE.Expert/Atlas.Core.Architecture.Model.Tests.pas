@@ -307,11 +307,13 @@ begin
   mU2 := mModel.IndexOf('App.Ui.U2');
   mFound := False;
   for mRow in mModel.Units[mU2].Assignment do
+  begin
     if mModel.Subsystems[mRow.Subsystem].Foundation then
     begin
       mFound := True;
       Assert.IsFalse(mRow.Counts);
     end;
+  end;
   Assert.IsTrue(mFound);
   Assert.AreEqual(-1, mModel.RivalRow(mU2));
   // Teilsystem außerhalb und falscher Aufbau: Antwort ungültig.
@@ -386,10 +388,14 @@ begin
   Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, Model, Enabled));
   All := nil;
   for Index := 0 to High(Model.Units) do
+  begin
     All := All + [Index];
+  end;
   Sorted := Model.Sorted(All, TAtlasArchColumn.Name, False);
   for Index := 1 to High(Sorted) do
+  begin
     Assert.IsTrue(CompareText(Model.Units[Sorted[Index - 1]].Name, Model.Units[Sorted[Index]].Name) < 0);
+  end;
   Sorted := Model.Sorted(All, TAtlasArchColumn.Name, True);
   Assert.AreEqual('App.Ui.Grid', Model.Units[Sorted[0]].Name);
   Sorted := Model.Sorted(All, TAtlasArchColumn.Total, True);
@@ -398,7 +404,9 @@ begin
     Assert.IsTrue(Model.Units[Sorted[Index - 1]].Total >= Model.Units[Sorted[Index]].Total);
     // Gleichstand: nach Name aufsteigend, auch absteigend sortiert.
     if Model.Units[Sorted[Index - 1]].Total = Model.Units[Sorted[Index]].Total then
+    begin
       Assert.IsTrue(CompareText(Model.Units[Sorted[Index - 1]].Name, Model.Units[Sorted[Index]].Name) < 0);
+    end;
   end;
   Assert.IsTrue(Model.Matches(Model.IndexOf('App.Data.Db'), 'data db'));
   Assert.IsFalse(Model.Matches(Model.IndexOf('App.Data.Db'), 'data ui'));
@@ -568,7 +576,9 @@ begin
   // Karte: neue Kanten als Nummern in Edges (Grid → Data, Cache → Db), entfernte nur zwischen Units, die es gibt.
   Names := nil;
   for Edge in Model.Comparison.AddedEdges do
+  begin
     Names := Names + [Model.Units[Model.Edges[Edge].Source].Name + '>' + Model.Units[Model.Edges[Edge].Target].Name];
+  end;
   Assert.AreEqual(2, Integer(Length(Names)));
   Assert.Contains(string.Join(' ', Names), 'App.Ui.Grid>App.Data');
   Assert.Contains(string.Join(' ', Names), 'App.Data.Cache>App.Data.Db');
@@ -810,6 +820,7 @@ begin
   mInside := False;
   mOutside := False;
   for mEdge in mModel.Edges do
+  begin
     if (mModel.Units[mEdge.Source].Subsystem = 0) or (mModel.Units[mEdge.Target].Subsystem = 0) then
     begin
       Assert.IsTrue(mModel.TouchesFoundation(mEdge));
@@ -820,6 +831,7 @@ begin
       Assert.IsFalse(mModel.TouchesFoundation(mEdge));
       mOutside := True;
     end;
+  end;
   Assert.IsTrue(mInside and mOutside);
 end;
 

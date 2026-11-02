@@ -234,8 +234,12 @@ var
 begin
   Result := False;
   for mName in AList do
+  begin
     if mName = AName then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TPlanVcs.Kind: TAtlasVcsKind;
@@ -314,11 +318,13 @@ begin
   AText := '';
   Result := TAtlasVcsOutcome.Failed;
   for mEntry in FolderVersions do
+  begin
     if mEntry.StartsWith(AFolder + '=') then
     begin
       AText := Copy(mEntry, Length(AFolder) + 2, MaxInt);
       Result := TAtlasVcsOutcome.Ok;
     end;
+  end;
 end;
 
 function TPlanVcs.ExternalsXml(out AText: string): TAtlasVcsOutcome;
@@ -352,7 +358,9 @@ begin
   ARevision := '';
   Result := ServerOutcome;
   if Result = TAtlasVcsOutcome.Ok then
+  begin
     ARevision := '48230';
+  end;
 end;
 
 function TPlanVcs.HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
@@ -372,7 +380,9 @@ begin
   Calls := Calls + ['run ' + string.Join(' ', AStep.Arguments)];
   Result := TAtlasVcsOutcome.Ok;
   if AStep.Arguments[0] = FailOn then
+  begin
     Result := TAtlasVcsOutcome.LoginNeeded;
+  end;
 end;
 
 function TPlanVcs.SwitchBranch(const AName: string): TAtlasVcsOutcome;
@@ -398,7 +408,9 @@ begin
   mBranch.Name := 'main';
   mBranch.Remote := MainRemote;
   if MainRemote <> '' then
+  begin
     mBranch.Upstream := MainRemote + '/main';
+  end;
   ABranches := TArray<TAtlasVcsBranch>.Create(mBranch);
   Result := TAtlasVcsOutcome.Ok;
 end;
@@ -505,7 +517,9 @@ begin
   Result.Outcome := TAtlasVcsOutcome.Ok;
   Result.Current := ACurrent;
   if ALocal or ARemote then
+  begin
     Result.MainBranch := 'main';
+  end;
   Result.LocalMain := ALocal;
   Result.RemoteMain := ARemote;
 end;
@@ -1038,9 +1052,13 @@ var
   mRoot: string;
 begin
   if PathDelim = '\' then
-    mRoot := 'C:\Projekte\Kasse'
+  begin
+    mRoot := 'C:\Projekte\Kasse';
+  end
   else
+  begin
     mRoot := '/projekte/kasse';
+  end;
   Assert.AreEqual(ExtractFilePath(mRoot) + 'Kasse-KASSE-42' + PathDelim + 'Gruppe' + PathDelim + 'Kasse.groupproj',
     TAtlasVcsBranchPlan.CheckoutTarget(mRoot, ExtractFilePath(mRoot) + 'Kasse-KASSE-42',
     mRoot + PathDelim + 'Gruppe' + PathDelim + 'Kasse.groupproj'));

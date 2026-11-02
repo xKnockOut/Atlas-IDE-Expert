@@ -164,11 +164,17 @@ begin
     begin
       Result := True;
       if AExpression = 'Kunde.ClassName' then
-        AValue := '''TSonderkunde'''
+      begin
+        AValue := '''TSonderkunde''';
+      end
       else if AExpression = 'Kunde.ClassParent.ClassName' then
-        AValue := '''TStammkunde'''
+      begin
+        AValue := '''TStammkunde''';
+      end
       else
+      begin
         Result := False;
+      end;
     end, Target));
   Assert.AreEqual('C:\P\Stamm.pas', Target.FileName);
 end;

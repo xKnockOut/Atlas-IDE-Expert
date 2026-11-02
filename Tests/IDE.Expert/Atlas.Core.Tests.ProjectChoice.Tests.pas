@@ -82,7 +82,9 @@ begin
   TAtlasTestProjectChoices.Remember(Choices, ['A', 'B'], '');
   Assert.AreEqual('B', Choices[0].Project, 'leeres Projekt ändert nichts');
   for Index := 1 to TAtlasTestProjectChoices.MaxEntries + 5 do
+  begin
     TAtlasTestProjectChoices.Remember(Choices, ['P' + IntToStr(Index), 'Q'], 'Q');
+  end;
   Assert.AreEqual(TAtlasTestProjectChoices.MaxEntries, Integer(Length(Choices)));
   Assert.AreEqual('p' + IntToStr(TAtlasTestProjectChoices.MaxEntries + 5) + '|q', Choices[0].Key);
 end;
@@ -135,7 +137,9 @@ begin
     Assert.AreEqual(9, TAtlasTestProjectChoices.FormatOf(TFile.ReadAllText(FileName, TEncoding.UTF8)));
   finally
     if FileExists(FileName) then
+    begin
       System.SysUtils.DeleteFile(FileName);
+    end;
     RemoveDir(Folder);
   end;
 end;

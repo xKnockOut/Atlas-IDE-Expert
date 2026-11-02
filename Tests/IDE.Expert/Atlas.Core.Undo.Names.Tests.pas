@@ -31,7 +31,9 @@ var
   Mode: TAtlasUndoConflictMode;
 begin
   for Mode := Low(TAtlasUndoConflictMode) to High(TAtlasUndoConflictMode) do
+  begin
     Assert.AreEqual(Ord(Mode), Ord(TAtlasUndoNames.ParseConflictMode(TAtlasUndoNames.ConflictModeName(Mode))));
+  end;
   Assert.AreEqual('abort', TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode.Abort));
 end;
 
@@ -40,7 +42,9 @@ var
   Mode: TAtlasNewFilesMode;
 begin
   for Mode := Low(TAtlasNewFilesMode) to High(TAtlasNewFilesMode) do
+  begin
     Assert.AreEqual(Ord(Mode), Ord(TAtlasUndoNames.ParseNewFiles(TAtlasUndoNames.NewFilesName(Mode))));
+  end;
   Assert.AreEqual('recycleBin', TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode.RecycleBin));
 end;
 

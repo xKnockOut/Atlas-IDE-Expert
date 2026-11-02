@@ -94,7 +94,9 @@ begin
   for Used in AScan.Units do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + Used.Name;
   end;
 end;
@@ -107,7 +109,9 @@ var
 begin
   Result := '';
   for Used in AScan.Units do
+  begin
     Result := Result + Names[Used.State];
+  end;
 end;
 
 function FindingNames(const AFindings: TArray<TAtlasPathFinding>): string;
@@ -118,7 +122,9 @@ begin
   for Finding in AFindings do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + Finding.Name;
   end;
 end;
@@ -166,10 +172,16 @@ begin
   Result := nil;
   Folder := UpperCase(AFolder);
   if not Folder.EndsWith('\') then
+  begin
     Folder := Folder + '\';
+  end;
   for Path in FFiles.Keys do
+  begin
     if Path.StartsWith(Folder) and (Pos('\', Copy(Path, Length(Folder) + 1, MaxInt)) = 0) then
+    begin
       Result := Result + [Copy(Path, Length(Folder) + 1, MaxInt)];
+    end;
+  end;
 end;
 
 function RunOn(ADisk: TFakeDisk; const AInput: TAtlasPathCheckInput): TAtlasPathCheckResult;
@@ -452,9 +464,13 @@ begin
     begin
       Result := '';
       if SameText(AName, 'BDS') then
-        Result := 'C:\Delphi'
+      begin
+        Result := 'C:\Delphi';
+      end
       else if SameText(AName, 'Platform') then
+      begin
         Result := 'Win64';
+      end;
     end;
   Assert.AreEqual('C:\Delphi\lib\Win64\release', TAtlasPathCheck.ExpandPath('$(BDS)\lib\$(Platform)\release\',
     'C:\P', Variable));
@@ -485,11 +501,17 @@ begin
     begin
       Result := '';
       if SameText(AName, 'BDS') then
-        Result := 'C:\Delphi'
+      begin
+        Result := 'C:\Delphi';
+      end
       else if SameText(AName, 'BDSLIB') then
-        Result := '$(BDS)\lib'
+      begin
+        Result := '$(BDS)\lib';
+      end
       else if SameText(AName, 'Loop') then
+      begin
         Result := '$(Loop)';
+      end;
     end;
   Assert.AreEqual('C:\Delphi\lib\x', TAtlasPathCheck.ExpandPath('$(BDSLIB)\x', 'C:\P', Variable, Unknown));
   Assert.AreEqual('', Unknown);
@@ -512,11 +534,17 @@ begin
     begin
       Result := '';
       if SameText(AName, 'BDSLIB') then
-        Result := 'E:\Env\lib'
+      begin
+        Result := 'E:\Env\lib';
+      end
       else if SameText(AName, 'MYLIB') then
-        Result := 'E:\MyLib'
+      begin
+        Result := 'E:\MyLib';
+      end
       else if SameText(AName, 'BDSCOMMONDIR') then
+      begin
         Result := 'E:\Public';
+      end;
     end);
   // Umgebungsvariable aus den IDE-Optionen überschreibt die des Prozesses.
   Macros.Add('MyLib', 'D:\Override');
@@ -559,7 +587,9 @@ begin
     begin
       Result := '';
       if SameText(AName, 'BDS') then
+      begin
         Result := 'C:\Delphi';
+      end;
     end;
   Skipped := ['OLD'];
   Paths := TAtlasPathCheck.ExpandPaths(['$(BDS)\lib', '$(MyLib)\src', '$(MYLIB)\inc', '$(Other)', '', 'Rel',

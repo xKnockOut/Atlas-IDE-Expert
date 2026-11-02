@@ -82,7 +82,9 @@ begin
   Result.Expression := AExpression;
   Result.Name := AExpression;
   if LastDelimiter('.', AExpression) > 0 then
+  begin
     Result.Name := Copy(AExpression, LastDelimiter('.', AExpression) + 1, MaxInt);
+  end;
   Result.Kind := AKind;
   Result.TypeName := ATypeName;
 end;
@@ -159,12 +161,18 @@ begin
     FAsked := FAsked + [Request.Expression];
     FSideEffects := FSideEffects + [Request.SideEffects];
     if FAnswers.TryGetValue(Request.Expression, Value) then
-      AAnalysis.Answer(True, Value)
+    begin
+      AAnalysis.Answer(True, Value);
+    end
     else
+    begin
       AAnalysis.Answer(False, 'E2003 Undeklarierter Bezeichner');
+    end;
     Inc(Steps);
     if Steps > 200 then
+    begin
       Assert.Fail('Die Analyse endet nicht');
+    end;
   end;
   Assert.IsTrue(AAnalysis.Done);
 end;
@@ -174,8 +182,12 @@ var
   Item: string;
 begin
   for Item in FAsked do
+  begin
     if Item = AExpression then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -528,7 +540,9 @@ begin
     Assert.IsTrue(Analysis.Verdict.Kind = TAtlasAvVerdictKind.NilLink);
     Assert.AreEqual('Auftrag.Kunde', Analysis.Verdict.Culprit.Expression);
     for Index := 0 to High(FAsked) do
+    begin
       Assert.AreEqual(FAsked[Index] = 'Pointer(Auftrag.Kunde)', FSideEffects[Index], FAsked[Index]);
+    end;
   finally
     Analysis.Free;
   end;

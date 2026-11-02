@@ -169,8 +169,12 @@ begin
     Assert.IsFalse(Catalog[Index].Experimental, 'der Hauptschalter ist selbst nicht experimentell');
     // Jede experimentelle Einstellung hat aus als Vorgabe (wie der Wächter in Update-ConfigDoc.ps1).
     for Index := 0 to Catalog.Count - 1 do
+    begin
       if Catalog[Index].Experimental and (Catalog[Index].Kind = akBoolean) then
+      begin
         Assert.AreEqual('false', Catalog[Index].DefaultJson, Catalog[Index].Key);
+      end;
+    end;
   finally
     Catalog.Free;
   end;
@@ -224,9 +228,13 @@ begin
       Value := Values.GetValue(Key);
       Assert.IsNotNull(Value, Key);
       if Value is TJSONBool then
-        Assert.IsTrue(TJSONBool(Value).AsBoolean, Key)
+      begin
+        Assert.IsTrue(TJSONBool(Value).AsBoolean, Key);
+      end
       else
+      begin
         Assert.AreNotEqual('off', Value.Value, Key);
+      end;
     end;
   finally
     AllOnExperimental.Free;

@@ -155,7 +155,9 @@ var
 begin
   Result := '';
   for Item in AView.Visible do
+  begin
     Result := Result + Item.Location + ' ';
+  end;
   Result := Result.Trim;
 end;
 
@@ -519,16 +521,24 @@ begin
     View.Grouping := TAtlasFindingGrouping.None;
     View.SetFindings(Copy(Sample, 0, 2));
     for Row in View.Rows do
+    begin
       Assert.IsFalse(Row.IsNew);
+    end;
     View.SetFindings(Sample);
     NewCount := 0;
     for Row in View.Rows do
+    begin
       if Row.IsNew then
+      begin
         Inc(NewCount);
+      end;
+    end;
     Assert.AreEqual(2, NewCount);
     View.ClearNew;
     for Row in View.Rows do
+    begin
       Assert.IsFalse(Row.IsNew);
+    end;
   finally
     View.Free;
   end;
@@ -673,9 +683,11 @@ var
 begin
   Result := nil;
   for Name in ['C', 'Z', 'B', 'D', 'A'] do
+  begin
     Result := Result + TAtlasFindings.FromProblems('C:\P\' + Name + '.pas',
       [Problem(5, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning),
       Problem(2, 'syntax', 'Fehlt', TAtlasProblemSeverity.Error)], nil);
+  end;
 end;
 
 function TierView: TAtlasFindingsView;
@@ -701,16 +713,26 @@ begin
       Part := 'S' + IntToStr(Ord(Row.Tier)) + ':' + Row.Caption + ':' + IntToStr(Row.Units) + '/' +
         IntToStr(Row.Count);
       if Row.IsCleanActive then
+      begin
         Part := Part + ':clean';
+      end;
     end
     else if Row.IsGroup then
-      Part := 'G:' + Row.Caption
+    begin
+      Part := 'G:' + Row.Caption;
+    end
     else
+    begin
       Part := 'F:' + AView.Finding(Row.Finding).Location;
+    end;
     if Row.Pinned then
+    begin
       Part := Part + '*';
+    end;
     if Row.Dimmed then
+    begin
       Part := Part + '~';
+    end;
     Result := Result + Part + ' ';
   end;
   Result := Result.Trim;
@@ -1050,7 +1072,9 @@ begin
       TAtlasColorMath.ToHex(Dimmed));
     // Ausgegraut heißt: weniger Kontrast als der Text, solange das Maß es erlaubt; zu blasser Text wird kräftiger.
     if TAtlasColorMath.Contrast(Text, Back) >= AtlasDimmedMinContrast then
+    begin
       Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) <= TAtlasColorMath.Contrast(Text, Back) + 0.01);
+    end;
   end;
   Assert.AreNotEqual(TAtlasColorMath.ToHex(Texts[0]), TAtlasColorMath.ToHex(DimmedTextColor(Texts[0], Backs[0])));
   // Symbole bleiben unterscheidbar.
@@ -1086,7 +1110,9 @@ begin
       Inc(Count);
       SetLength(Result, 40);
       for Index := 0 to High(Result) do
+      begin
         Result[Index] := Format('%s %d', [ExtractFileName(AFileName), Index]);
+      end;
     end;
 end;
 
@@ -1096,8 +1122,10 @@ var
 begin
   SetLength(Result, ACount);
   for Index := 0 to ACount - 1 do
+  begin
     Result[Index] := Problem(Index, 'r' + IntToStr(Index mod 7), 'Treffer ' + IntToStr(Index),
       TAtlasProblemSeverity.Warning);
+  end;
 end;
 
 procedure TAtlasFindingsTests.ReadLinesOncePerFile;
@@ -1253,7 +1281,9 @@ begin
   Counter := TReadCounter.Create;
   try
     for Index := 0 to Files - 1 do
+    begin
       Store.Update(Format('C:\P\Unit%d.pas', [Index]), '', False, ManyProblems(PerFile), '', True);
+    end;
     Watch := TStopwatch.StartNew;
     Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
     FirstMs := Watch.ElapsedMilliseconds;

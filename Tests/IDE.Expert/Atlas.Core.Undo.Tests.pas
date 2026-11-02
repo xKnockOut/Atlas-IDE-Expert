@@ -129,7 +129,9 @@ end;
 procedure TMemoryTarget.Write(const AFileName: string; const AContent: TAtlasTextFileContent);
 begin
   if AFileName = FailOn then
+  begin
     raise EInOutError.Create('schreibgeschützt');
+  end;
   Files.AddOrSetValue(AFileName, AContent);
   Writes.AddOrSetValue(AFileName, WriteCount(AFileName) + 1);
 end;
@@ -157,13 +159,17 @@ var
 begin
   Result := '<fehlt>';
   if Files.TryGetValue(AFileName, Value) then
+  begin
     Result := Value.Text;
+  end;
 end;
 
 function TMemoryTarget.WriteCount(const AFileName: string): Integer;
 begin
   if not Writes.TryGetValue(AFileName, Result) then
+  begin
     Result := 0;
+  end;
 end;
 
 /// <summary>Satz für AFiles (Name, vorher, nachher) anlegen und den Stand „nachher“ ins Ziel schreiben.</summary>
@@ -262,7 +268,9 @@ end;
 procedure TAtlasUndoJournalTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 

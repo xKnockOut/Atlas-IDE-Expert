@@ -95,6 +95,7 @@ begin
     Assert.AreEqual(7, Integer(Length(Frame.Rows)));
     Seen := False;
     for Row in Frame.Rows do
+    begin
       if (Row.Kind = TAtlasTimingRowKind.Provider) and (Row.Name = 'Server') then
       begin
         Seen := True;
@@ -102,6 +103,7 @@ begin
         Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.DiagnosticRowProvider, ['Server']),
           TAtlasTimingFrame.Caption(Row));
       end;
+    end;
     Assert.IsTrue(Seen);
     // Zeichnen mit Warnfläche darf nicht scheitern.
     Form.Show;

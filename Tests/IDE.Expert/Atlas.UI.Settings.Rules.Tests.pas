@@ -190,8 +190,10 @@ begin
       Editor.SeverityChoice.Parent, Editor.ExcludeEdit, Editor.OptionsTitleLabel, Editor.OptionsBox,
       Editor.BadLabel, Editor.BadMemo, Editor.GoodLabel, Editor.GoodMemo);
     for Index := 1 to High(Order) do
+    begin
       Assert.IsTrue(Order[Index - 1].Top + Order[Index - 1].Height <= Order[Index].Top,
         Format('%d (%s) vor %d (%s)', [Index - 1, Order[Index - 1].ClassName, Index, Order[Index].ClassName]));
+    end;
     // Ungültige Zahl: Die Meldung steht unter den Optionen, nicht unter den Beispielen.
     (Editor.OptionControls[1] as TEdit).Text := 'x';
     Assert.IsTrue(Editor.InvalidLabel.Visible);

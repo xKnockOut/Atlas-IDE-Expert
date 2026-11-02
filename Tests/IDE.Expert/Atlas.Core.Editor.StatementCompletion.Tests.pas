@@ -69,13 +69,17 @@ begin
   Lines := AText.Split([#10]);
   Line := -1;
   for Index := 0 to High(Lines) do
+  begin
     if Pos('|', Lines[Index]) > 0 then
     begin
       Line := Index;
       Lines[Index] := StringReplace(Lines[Index], '|', '', []);
     end;
+  end;
   if not TAtlasStatementCompleter.Complete(string.Join(#10, Lines), Line, AOptions, Edit) then
+  begin
     Exit;
+  end;
   NewLines := TAtlasStatementCompleter.Apply(Lines, Edit);
   NewLines[Edit.CursorLine] := Copy(NewLines[Edit.CursorLine], 1, Edit.CursorCharacter) + '|' +
     Copy(NewLines[Edit.CursorLine], Edit.CursorCharacter + 1, MaxInt);

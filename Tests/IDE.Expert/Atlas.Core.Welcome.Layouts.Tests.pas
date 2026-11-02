@@ -110,7 +110,9 @@ begin
   begin
     Column := TAtlasWelcomeColumn.Left;
     if Slot.Column > 0 then
+    begin
       Column := TAtlasWelcomeColumn.Right;
+    end;
     Result := Result + [Section(Slot.Id, Column)];
   end;
 end;
@@ -123,7 +125,9 @@ begin
   for Id in AIds do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Id;
   end;
 end;
@@ -139,7 +143,9 @@ function Step(AOk: Boolean; var ATarget: TAtlasWelcomeLayouts; const ANext: TAtl
 begin
   Result := AOk;
   if AOk then
+  begin
     ATarget := ANext;
+  end;
 end;
 
 function AllVisible(const ALayout: TAtlasWelcomeLayout): TAtlasWelcomeLayout;
@@ -149,7 +155,9 @@ begin
   Result := ALayout;
   Result.Slots := Copy(ALayout.Slots);
   for Index := 0 to High(Result.Slots) do
+  begin
     Result.Slots[Index].Visible := True;
+  end;
 end;
 
 { TAtlasWelcomeArrangeTests }
@@ -250,14 +258,22 @@ begin
   Span := 0;
   Cells := Wide.Cells(AtlasSections, 2);
   for Item in Cells[0] do
+  begin
     if Item.Id = TAtlasWelcomeIds.Projects then
+    begin
       Span := Item.Span;
+    end;
+  end;
   Assert.AreEqual(2, Span);
   // Eine Spalte: höchstens so breit wie die Fläche.
   Cells := Wide.Cells(AtlasSections, 1);
   for Item in Cells[0] do
+  begin
     if Item.Id = TAtlasWelcomeIds.Projects then
+    begin
       Span := Item.Span;
+    end;
+  end;
   Assert.AreEqual(1, Span);
 end;
 
@@ -311,7 +327,9 @@ begin
     begin
       Result := 10;
       if AId = TAtlasWelcomeIds.History then
+      begin
         Result := 500;
+      end;
     end, Added);
   Assert.IsTrue(Layout.SlotOf('plugin.neu', Slot));
   Assert.AreEqual(1, Slot.Column);
@@ -352,11 +370,17 @@ end;
 function FlowHeight(const AId: string): Integer;
 begin
   if AId = 'a' then
-    Result := 100
+  begin
+    Result := 100;
+  end
   else if AId = 'b' then
-    Result := 50
+  begin
+    Result := 50;
+  end
   else
+  begin
     Result := 40;
+  end;
 end;
 
 function Placed: TArray<TAtlasWelcomePlaced>;
@@ -537,7 +561,9 @@ begin
   end;
   // Alle Bereiche des Atlas-Layouts stehen im Katalog („Bereich hinzufügen“ listet sie).
   for Slot in TAtlasWelcomeLayout.Atlas.Slots do
+  begin
     Assert.IsTrue(TAtlasWelcomeCustomizing.InCatalog(Slot.Id), Slot.Id);
+  end;
   Assert.IsFalse(TAtlasWelcomeCustomizing.InCatalog(TAtlasWelcomeIds.Header));
   Assert.AreEqual('WelcomePageTests', TAtlasWelcomeCustomizing.SettingOf(TAtlasWelcomeIds.Tests));
   Assert.IsTrue(TAtlasWelcomeCustomizing.IsOn(TAtlasPluginSettings.Defaults, 'plugin.fremd'), 'ohne Schalter');
@@ -678,8 +704,12 @@ begin
   // Ein gespeichertes Layout einer früheren Version ohne „Meine Issues“ und „Hilfe“.
   Layout := TAtlasWelcomeLayout.Atlas.MovedTo(TAtlasWelcomeIds.State, 0, '');
   for Index := High(Layout.Slots) downto 0 do
+  begin
     if (Layout.Slots[Index].Id = TAtlasWelcomeIds.Issues) or (Layout.Slots[Index].Id = TAtlasWelcomeIds.Help) then
+    begin
       Delete(Layout.Slots, Index, 1);
+    end;
+  end;
   Layouts.Items := [Layout];
   Layouts.Active := 0;
   Settings := TAtlasWelcomeCustomizing.Stored(Settings, Layouts);

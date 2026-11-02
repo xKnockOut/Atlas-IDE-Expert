@@ -39,8 +39,12 @@ begin
   Assert.IsTrue(TAtlasToolbarIcons.IconOf('Atlas.Rename') = TAtlasToolbarIcon.Letter, 'unbekannt');
   // Jeder Knopf der Vorgabe hat ein eigenes Symbol.
   for Id in TAtlasToolbarItems.Default do
+  begin
     if not TAtlasToolbarItems.IsSeparator(Id) then
+    begin
       Assert.IsFalse(TAtlasToolbarIcons.IconOf(Id) = TAtlasToolbarIcon.Letter, Id);
+    end;
+  end;
 end;
 
 procedure TAtlasToolbarIconsTests.GlyphsStayInTheBox;
@@ -59,7 +63,9 @@ begin
     begin
       Assert.IsTrue(Length(Shape.Points) >= 2, 'mindestens eine Strecke');
       if Shape.Filled then
+      begin
         Assert.IsTrue(Shape.Closed, 'Flächen sind geschlossen');
+      end;
       for Point in Shape.Points do
       begin
         Assert.IsTrue((Point.X >= 0) and (Point.X <= TAtlasGlyphs.Size), 'X im Feld');
@@ -80,18 +86,26 @@ begin
   Shapes := TAtlasGlyphs.Shapes(TAtlasToolbarIcon.Gear);
   Assert.AreEqual(2, Integer(Length(Shapes)), 'Zahnkranz und Loch');
   for Shape in Shapes do
+  begin
     Assert.IsTrue(Shape.Closed, 'nur geschlossene Umrisse, keine Strahlen');
+  end;
   Outer := 0;
   Inner := 0;
   for Point in Shapes[0].Points do
   begin
     Radius := Sqrt(Sqr(Point.X - 8) + Sqr(Point.Y - 8));
     if Abs(Radius - 6.8) < 0.01 then
-      Inc(Outer)
+    begin
+      Inc(Outer);
+    end
     else if Abs(Radius - 5) < 0.01 then
-      Inc(Inner)
+    begin
+      Inc(Inner);
+    end
     else
+    begin
       Assert.Fail(Format('Punkt %.2f/%.2f weder Kopf noch Fuß', [Point.X, Point.Y]));
+    end;
   end;
   Assert.AreEqual(16, Outer, 'acht Zähne mit je zwei Kopfpunkten');
   Assert.AreEqual(16, Inner, 'acht Lücken mit je zwei Fußpunkten');

@@ -159,7 +159,9 @@ begin
   Usage := TAtlasCommandUsage.Create;
   try
     for Index := 1 to 2 do
+    begin
       Usage.Count(ClassCompletion, TAtlasCommandInput.Keyboard, Moment(9, Index, 0));
+    end;
     Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
     Assert.IsTrue(TAtlasShortcutTips.Decide(Usage.Entry(ClassCompletion), Situation(Moment(10, 0, 0))) =
       TAtlasTipVerdict.Show, 'zwei Mal über das Kürzel: noch ein Tipp');
@@ -366,8 +368,12 @@ begin
   Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('atlas.expandselection', Func), 'ohne Groß/klein');
   Key := 0;
   for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
+  begin
     if Entry.Func = Func then
+    begin
       Key := Entry.Key;
+    end;
+  end;
   Assert.AreEqual(Integer(TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt or Ord('E')), Integer(Key));
 end;
 
@@ -562,7 +568,9 @@ begin
     Loaded.Free;
     Usage.Free;
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
 end;
 
@@ -614,17 +622,25 @@ begin
     Names.Sorted := True;
     Names.Duplicates := dupIgnore;
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Commands := TJSONObject(Root).GetValue('commands');
     if not (Commands is TJSONObject) then
+    begin
       Exit;
+    end;
     for Index := 0 to TJSONObject(Commands).Count - 1 do
+    begin
       if TJSONObject(Commands).Pairs[Index].JsonValue is TJSONObject then
       begin
         Item := TJSONObject(TJSONObject(Commands).Pairs[Index].JsonValue);
         for Inner := 0 to Item.Count - 1 do
+        begin
           Names.Add(Item.Pairs[Inner].JsonString.Value);
+        end;
       end;
+    end;
     Result := Names.CommaText;
   finally
     Names.Free;
@@ -645,8 +661,12 @@ begin
   try
     Names.Sorted := True;
     if Root is TJSONObject then
+    begin
       for Index := 0 to TJSONObject(Root).Count - 1 do
+      begin
         Names.Add(TJSONObject(Root).Pairs[Index].JsonString.Value);
+      end;
+    end;
     Result := Names.CommaText;
   finally
     Names.Free;
@@ -771,7 +791,9 @@ begin
     Loaded.Free;
     Usage.Free;
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
 end;
 

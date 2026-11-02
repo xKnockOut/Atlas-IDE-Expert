@@ -45,7 +45,9 @@ var
 begin
   SetLength(Lines, Length(ALines));
   for Index := 0 to High(ALines) do
+  begin
     Lines[Index] := ALines[Index];
+  end;
   Result := TAtlasSectionScanner.Scan(Lines);
 end;
 

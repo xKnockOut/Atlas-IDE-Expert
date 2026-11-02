@@ -55,7 +55,9 @@ var
 begin
   Watch := TStopwatch.StartNew;
   while not AThread.Finished and (Watch.ElapsedMilliseconds < 5000) do
+  begin
     Sleep(1);
+  end;
 end;
 
 { TAtlasMainThreadTests }
@@ -78,7 +80,9 @@ begin
   TAtlasGuard.Fuse.ResetAll;
   TAtlasGuard.RotatingLog.Folder := FOldFolder;
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
   FOldFolder := '';
 end;

@@ -191,6 +191,7 @@ begin
   Fields := TAtlasSettingsSchema.Fields(AtlasSchemaJson);
   Seen := 0;
   for Field in Fields do
+  begin
     if Field.Path = 'logFile' then
     begin
       Assert.IsTrue(Field.PicksFile);
@@ -209,6 +210,7 @@ begin
       Assert.AreEqual('Auswahl aus der .dproj', Field.Control);
       Inc(Seen);
     end;
+  end;
   Assert.AreEqual(3, Seen);
 end;
 
@@ -432,7 +434,9 @@ begin
     Saved := TAtlasTextFile.Encode(Content);
     Assert.AreEqual(Integer(Length(Bytes)), Integer(Length(Saved)));
     for Index := 0 to High(Bytes) do
+    begin
       Assert.AreEqual(Bytes[Index], Saved[Index]);
+    end;
     Settings.SetValue(Settings.IndexOf('language'), '"en"');
     Content.Text := Settings.ResultText;
     Assert.AreEqual(StringReplace(Text, '"de"', '"en"', []), Content.Text);

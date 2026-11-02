@@ -74,8 +74,12 @@ begin
   Empty := False;
   Checked := '';
   for Index in AOrder do
+  begin
     if not TAtlasRanking.IsHeader(Index) and AItems[Index].Checked then
+    begin
       Checked := Checked + AItems[Index].Name + ' ';
+    end;
+  end;
   Checked := Checked.Trim;
 end;
 
@@ -129,7 +133,9 @@ begin
   repeat
     CheckSynchronize(5);
     if ACondition() then
+    begin
       Exit(True);
+    end;
   until TThread.GetTickCount64 - Start > 3000;
   Result := False;
 end;
@@ -140,10 +146,16 @@ var
 begin
   Result := '';
   for Index in AOrder do
+  begin
     if TAtlasRanking.IsHeader(Index) then
-      Result := Result + '# '
+    begin
+      Result := Result + '# ';
+    end
     else
+    begin
       Result := Result + AItems[Index].Name + ' ';
+    end;
+  end;
   Result := Result.Trim;
 end;
 

@@ -421,7 +421,9 @@ begin
     Assert.IsFalse(TFile.Exists(TAtlasSessionFiles.StateFile(Folder) + '.bak'), 'keine Sicherung');
   finally
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
   State := TAtlasSessionFiles.ReadState(Folder);
   Assert.AreEqual(0, State.CrashCount, 'ohne Datei leer');

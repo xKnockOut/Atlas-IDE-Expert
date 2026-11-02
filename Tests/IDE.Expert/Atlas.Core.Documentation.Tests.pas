@@ -90,9 +90,13 @@ uses
 function Measure(const AText: string; const AFace: TAtlasDocFace): Integer;
 begin
   if AFace.Font = TAtlasDocFont.Mono then
-    Result := 8 * Length(AText)
+  begin
+    Result := 8 * Length(AText);
+  end
   else
+  begin
     Result := 7 * Length(AText);
+  end;
 end;
 
 function Metrics: TAtlasDocMetrics;
@@ -118,7 +122,9 @@ var
 begin
   Result := '';
   for Span in ALine.Spans do
+  begin
     Result := Result + Span.Text;
+  end;
 end;
 
 function Summary(const AText: string): string;
@@ -134,7 +140,9 @@ var
 begin
   Result := '';
   for Line in ALayout.Lines do
+  begin
     Result := Result + LineText(Line) + '|';
+  end;
 end;
 
 procedure TAtlasDocumentationTests.Setup;
@@ -269,7 +277,9 @@ begin
   Result_ := Layout(Summary('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 70);
   Assert.AreEqual(3, Integer(Length(Result_.Lines)));
   for Line in Result_.Lines do
+  begin
     Assert.IsTrue(Line.Spans[High(Line.Spans)].Right <= 70);
+  end;
   Assert.AreEqual('ABCDEFGHIJ', LineText(Result_.Lines[0]));
 end;
 
@@ -470,8 +480,12 @@ begin
     'SIEHE AUCH  TList|Weniger anzeigen ▴|', Texts(Result_));
   Rules := 0;
   for Line in Result_.Lines do
+  begin
     if Line.Rule then
+    begin
       Inc(Rules);
+    end;
+  end;
   // SIEHE AUCH steht in der Zeile der Verweise, ohne Linie.
   Assert.AreEqual(4, Rules);
   Assert.AreEqual(Ord(TAtlasDocColor.Muted), Ord(Result_.Lines[6].Spans[0].Color));
@@ -508,11 +522,13 @@ begin
   // Ausnahmen in Fehlerfarbe, der Rest gedämpft.
   ErrorSeen := False;
   for Span in Result_.Lines[1].Spans do
+  begin
     if Span.Color = TAtlasDocColor.Error then
     begin
       Assert.AreEqual('1 Ausnahme', Span.Text);
       ErrorSeen := True;
     end;
+  end;
   Assert.IsTrue(ErrorSeen);
   Parts := TAtlasDocLayout.HiddenParts(DocOf(Json), TAtlasDocSignature.Parse(Declaration), TAtlasDocLabels.German,
     Colors);
@@ -685,7 +701,9 @@ var
 begin
   Long := '';
   for Index := 1 to 200 do
+  begin
     Long := Long + 'Wort ';
+  end;
   Result_ := Layout(Summary(Long), 140);
   Assert.AreEqual(50, Integer(Length(Result_.Lines)));
   Assert.AreEqual(50 * 16, Result_.Height);
