@@ -95,7 +95,9 @@ begin
   Result := '';
   mIndex := FWindow.SelectedItem;
   if mIndex >= 0 then
+  begin
     Result := Items[mIndex].Name;
+  end;
 end;
 
 procedure TAtlasComponentSearchWindowTests.WarmUpFirstUse;
@@ -156,7 +158,9 @@ begin
   begin
     FWindow.MoveSelection(1);
     if SelectedName <> mSeen[High(mSeen)] then
+    begin
       mSeen := mSeen + [SelectedName];
+    end;
   end;
   Assert.AreEqual(4, Integer(Length(mSeen)), 'alle vier, Köpfe übersprungen, am Ende stehen bleiben');
   FWindow.MoveSelection(-100);
@@ -179,7 +183,9 @@ begin
   Assert.IsTrue(FWindow.Kind = TAtlasDesignerKind.All, 'klein: alle Arten');
   Assert.IsFalse(FWindow.PreviewVisible, 'klein: ohne Vorschau');
   for mRow in FWindow.Rows do
+  begin
     Assert.IsFalse(mRow.Header);
+  end;
   FWindow.SetPattern('btn');
   Assert.AreEqual('btnOK', SelectedName);
 end;

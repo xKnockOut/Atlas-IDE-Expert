@@ -46,9 +46,13 @@ var
   Target: TAtlasMatchSpot;
 begin
   if TAtlasJumpToMatch.Target(AText, ALine, ACharacter, Target) then
-    Result := Format('%d:%d', [Target.Line, Target.Character])
+  begin
+    Result := Format('%d:%d', [Target.Line, Target.Character]);
+  end
   else
+  begin
     Result := '-';
+  end;
 end;
 
 procedure TAtlasJumpToMatchTests.BeginEndNested;

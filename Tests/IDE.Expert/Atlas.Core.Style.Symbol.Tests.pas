@@ -45,7 +45,9 @@ begin
   Assert.AreEqual(16, TAtlasSymbol.Size(0));
   Assert.AreEqual(256, TAtlasSymbol.Size(TAtlasSymbol.SizeCount - 1));
   for Index := 1 to TAtlasSymbol.SizeCount - 1 do
+  begin
     Assert.IsTrue(TAtlasSymbol.Size(Index) > TAtlasSymbol.Size(Index - 1));
+  end;
 end;
 
 procedure TAtlasSymbolTests.MenuSizeFollowsScaling;

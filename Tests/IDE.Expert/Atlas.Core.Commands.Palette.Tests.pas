@@ -70,7 +70,9 @@ var
 begin
   Result := '';
   for Index in AOrder do
+  begin
     Result := Result + ACommands[Index].Caption + '|';
+  end;
 end;
 
 function Sample: TArray<TAtlasCommand>;
@@ -100,7 +102,9 @@ procedure TFakeRegistry.RegisterCommand(const AId, ACaption, ADescription: strin
 begin
   RegisterCommand(AId, ACaption, ADescription, AProc);
   if Assigned(AVisible) and AVisible() then
+  begin
     Inc(Conditional);
+  end;
 end;
 
 /// <summary>Wie ein Feature, das seine Befehle anmeldet (A-09: nur die Schnittstelle aus dem Core).</summary>
@@ -259,7 +263,9 @@ begin
   mItems := nil;
   SetLength(mItems, ACount);
   for mIndex := 0 to ACount - 1 do
+  begin
     mItems[mIndex] := Command('ATL-' + IntToStr(mIndex + 1), 'Eintrag ' + IntToStr(mIndex + 1));
+  end;
   Result := TAtlasPaletteGroup.Create('Issues', AStatus, '', mItems);
 end;
 

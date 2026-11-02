@@ -211,9 +211,13 @@ begin
       procedure(ABackward: Boolean)
       begin
         if ABackward then
-          Log := Log + 'zurück;'
+        begin
+          Log := Log + 'zurück;';
+        end
         else
+        begin
           Log := Log + 'vor;';
+        end;
       end;
     Bar.OnList :=
       procedure
@@ -314,7 +318,9 @@ var
 begin
   Key := AKey;
   if AControl is TComboBox then
+  begin
     TComboBox(AControl).OnKeyDown(AControl, Key, AShift);
+  end;
   Assert.AreEqual(0, Integer(Key), 'Taste verbraucht');
 end;
 

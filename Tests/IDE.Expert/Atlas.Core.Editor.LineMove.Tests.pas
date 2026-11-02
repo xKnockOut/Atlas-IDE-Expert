@@ -95,7 +95,9 @@ var
 begin
   Result := '-';
   if TAtlasLineMover.Compute(AText, AFirst, ALast, AMethodLine, AKind, 2, Move) then
+  begin
     Result := Joined(TAtlasLineMover.Apply(AText.Split([#10]), Move));
+  end;
 end;
 
 { TAtlasLineMoveTests }

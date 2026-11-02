@@ -125,11 +125,17 @@ begin
   for Index in AOrder do
   begin
     if Names <> '' then
+    begin
       Names := Names + ',';
+    end;
     if TAtlasRanking.IsHeader(Index) then
-      Names := Names + '#'
+    begin
+      Names := Names + '#';
+    end
     else
+    begin
       Names := Names + AItems[Index].Name;
+    end;
   end;
   Selected := ASelected;
 end;
@@ -182,11 +188,17 @@ begin
     ASink.AddItems([Second]);
   end
   else
+  begin
     ASink.AddItems([First, Second]);
+  end;
   if not CompleteList then
+  begin
     ASink.MarkIncomplete;
+  end;
   if Syntax.Trust <> TAtlasSyntaxTrust.Sure then
+  begin
     ASink.MarkSyntax(Syntax);
+  end;
   ASink.Complete;
 end;
 
@@ -217,7 +229,9 @@ begin
   repeat
     CheckSynchronize(5);
     if ACondition() then
+    begin
       Exit(True);
+    end;
   until TThread.GetTickCount64 - Start > ATimeoutMs;
   Result := False;
 end;
@@ -851,7 +865,9 @@ begin
   SlowWarn := False;
   FastSeen := False;
   for Row in Rows do
+  begin
     if Row.Kind = TAtlasTimingRowKind.Provider then
+    begin
       if Row.Name = 'Langsam' then
       begin
         Assert.IsTrue(Row.Last >= 150, 'Verzögerung gemessen');
@@ -862,6 +878,8 @@ begin
         FastSeen := True;
         Assert.IsFalse(Row.LastWarn, 'schnelle Quelle im Budget');
       end;
+    end;
+  end;
   Assert.IsTrue(SlowWarn, 'verzögerte Quelle über dem Budget');
   Assert.IsTrue(FastSeen);
 end;

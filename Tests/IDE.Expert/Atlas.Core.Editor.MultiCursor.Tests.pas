@@ -92,9 +92,13 @@ begin
   for Caret in ACarets do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     if Caret.HasSelection then
+    begin
       Result := Result + Format('%d:%d>', [Caret.AnchorLine, Caret.AnchorCharacter]);
+    end;
     Result := Result + Format('%d:%d', [Caret.Line, Caret.Character]);
   end;
 end;
@@ -106,7 +110,9 @@ begin
   Result := nil;
   SetLength(Result, Length(AItems));
   for Index := 0 to High(AItems) do
+  begin
     Result[Index] := AItems[Index];
+  end;
 end;
 
 function At(ALine, ACharacter: Integer): TAtlasCaret;

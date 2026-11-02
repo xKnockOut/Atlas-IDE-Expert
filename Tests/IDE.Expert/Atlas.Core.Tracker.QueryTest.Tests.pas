@@ -97,12 +97,14 @@ begin
   AText := '';
   AError := TAtlasCiFetchError.None;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if AUrl.StartsWith(FPrefixes[mIndex]) then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit(True);
     end;
+  end;
   AStatus := 404;
   Result := True;
 end;
@@ -118,9 +120,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
@@ -341,7 +347,9 @@ begin
   mTemplates := TAtlasTrackerTemplates.Templates('youtrack', 'de');
   Assert.AreEqual(4, Integer(Length(mTemplates)));
   for mTemplate in mTemplates do
+  begin
     Assert.AreEqual('de', mTemplate.Language);
+  end;
   Assert.AreEqual('assignee: meine #Ungelöst', mTemplates[0].Query);
   Assert.AreEqual(8, Integer(Length(TAtlasTrackerTemplates.Templates('youtrack', ''))), 'beide Sprachen');
   Assert.AreEqual('assignee: me #Unresolved', TAtlasTrackerTemplates.QueryOf('youtrack', 'en_US',

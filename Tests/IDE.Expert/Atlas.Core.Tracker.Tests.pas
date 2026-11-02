@@ -284,14 +284,18 @@ begin
   AText := '';
   AError := FFail;
   if FFail <> TAtlasCiFetchError.None then
+  begin
     Exit(False);
+  end;
   for Index := 0 to High(FPrefixes) do
+  begin
     if Copy(AUrl, 1, Length(FPrefixes[Index])) = FPrefixes[Index] then
     begin
       AStatus := FStatus[Index];
       AText := FTexts[Index];
       Exit(True);
     end;
+  end;
   AStatus := 404;
   Result := True;
 end;
@@ -333,12 +337,14 @@ begin
   AError := TAtlasCiFetchError.None;
   Result := True;
   for mIndex := 0 to High(FPostPrefixes) do
+  begin
     if Copy(AUrl, 1, Length(FPostPrefixes[mIndex])) = FPostPrefixes[mIndex] then
     begin
       AStatus := FPostStatus[mIndex];
       AText := FPostTexts[mIndex];
       Exit;
     end;
+  end;
 end;
 
 /// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
@@ -352,9 +358,13 @@ begin
     FileName := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(FileName) then
+    begin
       Exit(TFile.ReadAllText(FileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
@@ -437,7 +447,9 @@ var
   Checks: TAtlasTrackerChecks;
 begin
   for Checks := Low(TAtlasTrackerChecks) to High(TAtlasTrackerChecks) do
+  begin
     Assert.IsTrue(TAtlasTrackerPullRequest.ChecksOf(TAtlasTrackerPullRequest.ChecksKey(Checks)) = Checks);
+  end;
   Assert.IsTrue(TAtlasTrackerPullRequest.ChecksOf('neu') = TAtlasTrackerChecks.Unknown);
 end;
 
@@ -781,7 +793,9 @@ procedure TAtlasCommitHookTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
 end;
 
@@ -989,7 +1003,9 @@ begin
   Assert.IsTrue(mProvider.Details(GitHubTarget, mTransportRef, '#753', False, 5000, mDetails, mError));
   Assert.IsFalse(mDetails.CommentsLoaded);
   for mCall in mTransport.Calls do
+  begin
     Assert.IsFalse(mCall.Contains('/comments'));
+  end;
 end;
 
 procedure TAtlasTrackerDetailsTests.DetailsErrors;
@@ -1175,8 +1191,12 @@ var
   mLink: TAtlasTrackerLink;
 begin
   for mLink in ADetails.Links do
+  begin
     if mLink.Key = AKey then
+    begin
       Exit(mLink);
+    end;
+  end;
   raise Exception.Create(AKey + ' fehlt');
 end;
 
@@ -1393,7 +1413,9 @@ begin
   // gefragt, mit „blocked by“ gelten keine Abhängigkeiten aus dem Text.
   Assert.AreEqual(4, Integer(Length(mTransport.Calls)));
   for mCall in mTransport.Calls do
+  begin
     Assert.IsFalse(mCall.Contains('/dependencies/blocking'), mCall);
+  end;
   Assert.AreEqual(5, Integer(Length(mDetails.Links)));
   Assert.IsTrue(LinkOf(mDetails, 'andere/repo#12').Kind = TAtlasTrackerLinkKind.Subtask, 'Erwähnung ersetzt');
   Assert.IsTrue(TAtlasTrackerLinks.Progress(mDetails.Links, mDone, mTotal));

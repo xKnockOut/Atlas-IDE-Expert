@@ -102,12 +102,16 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ANodes) do
+  begin
     if ANodes[Index].Name = AName then
     begin
       if ANth = 0 then
+      begin
         Exit(Index);
+      end;
       Dec(ANth);
     end;
+  end;
   Result := -1;
 end;
 
@@ -125,10 +129,14 @@ begin
   for Row in ARows do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + ANodes[Row.Node].Name;
     if Row.Matched then
+    begin
       Result := Result + '*';
+    end;
   end;
 end;
 

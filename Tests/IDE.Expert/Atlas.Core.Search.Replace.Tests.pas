@@ -83,7 +83,9 @@ begin
   for Hit in AHits do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Format('%d:%d+%d', [Hit.Line, Hit.Character, Hit.Length]);
   end;
 end;
@@ -318,9 +320,13 @@ begin
     function(const AFileName: string): string
     begin
       if SameText(ExtractFileName(AFileName), 'Neu.pas') then
-        Result := 'xa'
+      begin
+        Result := 'xa';
+      end
       else
+      begin
         Result := 'a';
+      end;
     end;
   Search := Query('a', False, False, False, False);
   List := TAtlasReplaceList.Create(Search, 'b');
@@ -409,6 +415,7 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Found := False;
   for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
+  begin
     if Entry.Func = TAtlasKeyFunction.SearchReplace then
     begin
       Found := True;
@@ -416,21 +423,34 @@ begin
       Assert.IsFalse(Entry.Disabled);
       Assert.IsTrue(Entry.Priority, 'bewusst übernommen wie Strg+F');
     end;
+  end;
   Assert.IsTrue(Found);
   Assert.AreEqual('Atlas.SearchReplace', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SearchReplace));
   Settings.SearchReplace := False;
   for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
+  begin
     if Entry.Func = TAtlasKeyFunction.SearchReplace then
+    begin
       Assert.IsTrue(Entry.Disabled);
+    end;
+  end;
   Settings := TAtlasPluginSettings.Defaults;
   Settings.SearchReplaceIde := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
+  begin
     if Entry.Func = TAtlasKeyFunction.SearchReplace then
+    begin
       Assert.IsTrue(Entry.Disabled);
+    end;
+  end;
   for Index := 0 to High(Entries) do
+  begin
     if Entries[Index].Func = TAtlasKeyFunction.SearchReplace then
+    begin
       Entries[Index].Key := $C048;
+    end;
+  end;
   TAtlasKeyEntry.ToSettings(Entries, Settings);
   Assert.AreEqual($C048, Settings.SearchReplaceKey);
 end;

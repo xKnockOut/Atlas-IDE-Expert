@@ -77,7 +77,9 @@ begin
   for Range in ARanges do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Format('%d:%d+%d', [Range.Line, Range.Character, Range.Length]);
   end;
 end;

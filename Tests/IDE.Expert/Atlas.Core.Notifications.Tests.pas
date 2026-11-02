@@ -248,7 +248,9 @@ begin
   Center.SetMaxEntries(5000);
   Assert.AreEqual(TAtlasNotificationCenter.MaxMaxEntries, Center.MaxEntries, 'nach oben begrenzt');
   for Index := 1 to 15 do
+  begin
     Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Eintrag ' + IntToStr(Index), '');
+  end;
   Center.SetMaxEntries(10);
   Assert.AreEqual(10, Integer(Length(Center.Items())), 'Verkleinern kürzt die Liste');
   Assert.AreEqual('Eintrag 15', Center.Items()[0].Title);

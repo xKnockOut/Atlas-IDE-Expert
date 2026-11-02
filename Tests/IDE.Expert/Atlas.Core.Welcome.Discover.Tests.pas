@@ -260,7 +260,9 @@ begin
     Loaded.Free;
     Usage.Free;
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
 end;
 
@@ -525,7 +527,9 @@ begin
     Loaded.Free;
     Usage.Free;
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
 end;
 

@@ -96,7 +96,9 @@ begin
     procedure(AText: string)
     begin
       if AFlag = nil then
+      begin
         raise Exception.Create('Flagge fehlt');
+      end;
     end;
 end;
 

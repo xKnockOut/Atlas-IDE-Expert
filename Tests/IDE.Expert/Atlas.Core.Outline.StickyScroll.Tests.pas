@@ -107,7 +107,9 @@ var
   Index: Integer;
 begin
   for Index := 1 to ACount do
+  begin
     Add(ALines, AIndent + 'X := ' + IntToStr(Index) + ';');
+  end;
 end;
 
 function Build: TSource;
@@ -211,7 +213,9 @@ begin
   for Row in ARows do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' | ';
+    end;
     Result := Result + Row.Text;
   end;
 end;
@@ -283,8 +287,12 @@ var
 begin
   Source := Build;
   for Node in Source.Nodes do
+  begin
     if Node.Name = 'Pruefe' then
+    begin
       Assert.AreEqual('function Pruefe(…): Boolean;', TAtlasStickyScroll.Header(Source.Lines, Node));
+    end;
+  end;
   Node := Default(TAtlasOutlineNode);
   Node.NameLine := 0;
   Node.EndLine := 0;
@@ -342,8 +350,12 @@ var
 begin
   Result := nil;
   for Token in ATokens do
+  begin
     if Token.Line = ALine then
+    begin
       Result := Result + [Token];
+    end;
+  end;
 end;
 
 /// <summary>„Art:Text“ je Stück ohne Lücken, durch | getrennt.</summary>
@@ -355,8 +367,12 @@ var
 begin
   Result := '';
   for Token in TAtlasStickyScroll.Syntax(AText) do
+  begin
     if Token.Kind <> TAtlasStickySyntax.Plain then
+    begin
       Result := Result + Names[Token.Kind] + ':' + Copy(AText, Token.Start, Token.Length) + '|';
+    end;
+  end;
 end;
 
 procedure TAtlasStickyScrollTests.SyntaxLikeTheEditor;
@@ -382,7 +398,9 @@ var
 begin
   SetLength(Lines, 60);
   for Index := 0 to High(Lines) do
+  begin
     Lines[Index] := '      Tue;';
+  end;
   Lines[2] := '  if Gueltig then';
   Lines[3] := '  begin';
   Lines[10] := '    else if Leer then';
@@ -425,7 +443,9 @@ begin
   Assert.AreEqual('(', Copy('procedure Innen(…): Boolean;', Spans[High(Spans)].Start, 1), 'Klammer vor „…“');
   // Ohne Besitzer (PairOwners aus) bleibt procedure ungefärbt wie im Editor.
   for var Span in TAtlasPairs.Spans('procedure Innen(…): Boolean;', Lines[1], Line1, False) do
+  begin
     Assert.AreNotEqual(1, Span.Start);
+  end;
 end;
 
 function Row(ALine: Integer; ASummary: Boolean): TAtlasStickyRow;
@@ -471,7 +491,9 @@ begin
   Assert.AreEqual(1.0, TAtlasStickyScroll.FadeWeight(19, 20), 1e-9, 'unterste Pixelzeile voll');
   Assert.IsTrue(TAtlasStickyScroll.FadeWeight(0, 20) < 0.01, 'oben fast unsichtbar');
   for Offset := 1 to 19 do
+  begin
     Assert.IsTrue(TAtlasStickyScroll.FadeWeight(Offset, 20) > TAtlasStickyScroll.FadeWeight(Offset - 1, 20));
+  end;
   // Weich: in der Mitte noch unter der Hälfte.
   Assert.IsTrue(TAtlasStickyScroll.FadeWeight(9, 20) < 0.5);
   Assert.AreEqual(1.0, TAtlasStickyScroll.FadeWeight(0, 1), 1e-9, 'eine Pixelzeile');

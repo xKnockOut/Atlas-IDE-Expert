@@ -114,7 +114,9 @@ begin
       Result := (AAddress = Self_.FMemoryAddress) and (ACount <= Length(Self_.FMemory));
       ABytes := nil;
       if Result then
+      begin
         ABytes := Copy(Self_.FMemory, 0, ACount);
+      end;
     end;
 end;
 
@@ -169,19 +171,27 @@ begin
   Types := TAtlasVisualizers.SupportedTypes(TAtlasVisualizerKind.Lists);
   Found := False;
   for Item in Types do
+  begin
     if Item.TypeName = 'System.Generics.Collections.TObjectList<T>' then
     begin
       Found := True;
       Assert.IsTrue(Item.IsGeneric);
       Assert.IsTrue(Item.AllDescendants);
     end;
+  end;
   Assert.IsTrue(Found);
   for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
     Assert.IsTrue(Length(TAtlasVisualizers.SupportedTypes(Kind)) > 0, TAtlasVisualizerSettings.KindNames[Kind]);
+  end;
   Found := False;
   for Item in TAtlasVisualizers.SupportedTypes(TAtlasVisualizerKind.DataSets) do
+  begin
     if (Item.TypeName = 'Data.DB.TDataSet') and Item.AllDescendants and not Item.IsGeneric then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, 'TDataSet samt Nachfahren');
 end;
 
@@ -271,7 +281,9 @@ begin
   // Count nur über das Feld der Hilfsstruktur, Elemente über FItems, sieben Einträge: fünf und „…“.
   FValues.Add('Zahlen.FListHelper.FCount', '7');
   for Index := 0 to 6 do
+  begin
     FValues.Add(Format('Zahlen.FItems[%d]', [Index]), IntToStr(Index * 10));
+  end;
   Text := TAtlasVisualizers.Replacement(TAtlasVisualizerKind.Lists, 'Zahlen', 'TList<System.Integer>', '',
     Options(TAtlasVisualizerEvaluation.Fields), Context);
   Assert.AreEqual('TList<Integer> · Count = 7 · [0, 10, 20, 30, 40, …]', Text);
@@ -376,7 +388,9 @@ begin
   // 4096 Bytes: Länge und Anfang; das Fenster liest alles aus dem Speicher.
   SetLength(FMemory, 4096);
   for Index := 0 to High(FMemory) do
+  begin
     FMemory[Index] := Byte(Index);
+  end;
   FMemoryAddress := $10000;
   FValues.Add('Length(Gross)', '4096');
   FValues.Add('Pointer(Gross)', '$10000');

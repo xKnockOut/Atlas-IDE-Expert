@@ -127,14 +127,18 @@ begin
   AText := '';
   AError := FFail;
   if FFail <> TAtlasCiFetchError.None then
+  begin
     Exit(False);
+  end;
   for Index := 0 to High(FPrefixes) do
+  begin
     if Copy(AUrl, 1, Length(FPrefixes[Index])) = FPrefixes[Index] then
     begin
       AStatus := FStatus[Index];
       AText := FTexts[Index];
       Exit(True);
     end;
+  end;
   AStatus := 404;
   Result := True;
 end;
@@ -150,9 +154,13 @@ begin
     FileName := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine('Jenkins', AName))));
     if TFile.Exists(FileName) then
+    begin
       Exit(TFile.ReadAllText(FileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   raise Exception.Create('Tests\Data\Jenkins\' + AName + ' nicht gefunden');
@@ -212,9 +220,13 @@ var
   Error: TAtlasCiFetchError;
 begin
   for Outcome := Low(TAtlasCiOutcome) to High(TAtlasCiOutcome) do
+  begin
     Assert.IsTrue(TAtlasCiBuild.OutcomeOf(TAtlasCiBuild.OutcomeKey(Outcome)) = Outcome);
+  end;
   for Error := Low(TAtlasCiFetchError) to High(TAtlasCiFetchError) do
+  begin
     Assert.IsTrue(TAtlasCiBuild.ErrorOf(TAtlasCiBuild.ErrorKey(Error)) = Error);
+  end;
   Assert.AreEqual('', TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.None));
   Assert.IsTrue(TAtlasCiBuild.OutcomeOf('seltsam') = TAtlasCiOutcome.Unknown);
   Assert.IsTrue(TAtlasCiBuild.ErrorOf('seltsam') = TAtlasCiFetchError.Network);
@@ -347,7 +359,9 @@ begin
   for Index := 1 to 70 do
   begin
     if Index > 1 then
+    begin
       Text := Text + ',';
+    end;
     Text := Text + '{"className": "U.T", "name": "M' + IntToStr(Index) + '", "status": "FAILED", ' +
       '"errorDetails": "' + StringOfChar('x', 400) + '"}';
   end;

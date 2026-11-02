@@ -166,8 +166,12 @@ var
 begin
   Result := -1;
   for Index := 0 to High(ALines) do
+  begin
     if ALines[Index] = AText then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 /// <summary>Kleine Unit mit zwei Methoden; Runde enthält RoundLine.</summary>
@@ -187,7 +191,9 @@ var
 begin
   Result := ['procedure ' + AName + ';', 'begin'];
   for Index := 1 to ACount - 3 do
+  begin
     Result := Result + ['  Schritt' + IntToStr(Index) + ';'];
+  end;
   Result := Result + ['end;'];
 end;
 
@@ -447,7 +453,9 @@ var
   begin
     Result := '';
     for Mark in List.Bookmarks do
+    begin
       Result := Result + Mark.Name;
+    end;
   end;
 
 begin
@@ -601,7 +609,9 @@ end;
 procedure TAtlasBookmarkStorageTests.TearDown;
 begin
   if DirectoryExists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;

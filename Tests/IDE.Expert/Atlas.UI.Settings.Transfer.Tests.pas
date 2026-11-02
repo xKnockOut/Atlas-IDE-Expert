@@ -64,7 +64,9 @@ begin
   while (AControl <> nil) and (Result = nil) do
   begin
     if AControl is TTabSheet then
+    begin
       Result := TTabSheet(AControl);
+    end;
     AControl := AControl.Parent;
   end;
 end;
@@ -337,9 +339,13 @@ begin
       for Index := 0 to Dialog.List.Items.Count - 1 do
       begin
         if Dialog.List.Items[Index].Caption = 'gibt.esNicht' then
+        begin
           Unknown := Index;
+        end;
         if Dialog.List.Items[Index].Caption = 'notes.enabled' then
+        begin
           Notes := Index;
+        end;
       end;
       Assert.IsTrue(Unknown >= 0, 'unbekannter Schlüssel gemeldet');
       Assert.IsTrue(Notes >= 0);
@@ -350,8 +356,12 @@ begin
       Dialog.List.Items[Notes].Checked := False;
       Chosen := Dialog.Result_;
       for Index := 0 to High(Chosen.Items) do
+      begin
         if Chosen.Items[Index].Key = 'notes.enabled' then
+        begin
           Assert.IsFalse(Chosen.Items[Index].Selected, 'abgewählt');
+        end;
+      end;
       Assert.AreEqual(1, Chosen.SelectedCount, 'nur noch settings.backupBeforeImport');
     finally
       Dialog.Free;

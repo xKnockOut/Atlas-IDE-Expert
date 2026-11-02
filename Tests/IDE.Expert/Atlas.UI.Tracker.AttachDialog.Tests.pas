@@ -65,7 +65,9 @@ begin
     begin
       Result := '';
       if (Pos('-', AInput) > 1) and (Pos(' ', AInput) = 0) then
+      begin
         Result := UpperCase(AInput);
+      end;
     end;
 end;
 
@@ -105,7 +107,9 @@ begin
   TAtlasTrackerFiles.Uninstall;
   TAtlasStrings.Language := FLanguage;
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
 end;
 
@@ -240,7 +244,9 @@ begin
   mLines := TStringList.Create;
   try
     for mIndex := 1 to 300 do
+    begin
       mLines.Add('Zeile ' + IntToStr(mIndex));
+    end;
     mLines.SaveToFile(mLog, TEncoding.UTF8);
   finally
     mLines.Free;

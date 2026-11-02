@@ -113,14 +113,18 @@ begin
   AText := '';
   AError := FFail;
   if FFail <> TAtlasCiFetchError.None then
+  begin
     Exit(False);
+  end;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex] then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit(True);
     end;
+  end;
   AStatus := 404;
   Result := True;
 end;
@@ -136,9 +140,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
@@ -514,7 +522,9 @@ begin
     Assert.AreEqual(0, mRecent.Items(GitHubTarget)[0].PullRequest.Number);
     // Höchstens MaxRecent je Tracker, MaxStored insgesamt.
     for mIndex := 1 to TAtlasRecentIssues.MaxStored + 5 do
+    begin
       mRecent.Add(YouTrackTarget, Issue('ATL-' + IntToStr(100 + mIndex), 'Nr. ' + IntToStr(mIndex)));
+    end;
     Assert.AreEqual(TAtlasRecentIssues.MaxStored, mRecent.Count);
     mItems := mRecent.Items(YouTrackTarget);
     Assert.AreEqual(TAtlasRecentIssues.MaxRecent, Integer(Length(mItems)));

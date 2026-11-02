@@ -152,12 +152,14 @@ begin
   AText := '';
   Result := True;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if (FMethods[mIndex] = AMethod) and (Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex]) then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit;
     end;
+  end;
 end;
 
 function TFakeSendTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -219,7 +221,9 @@ begin
   Asked := Asked + [AUpstream];
   ACommits := nil;
   if AUpstream <> FGoodBase then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   ACommits := FCommits;
   Result := TAtlasVcsOutcome.Ok;
 end;
@@ -271,9 +275,13 @@ begin
     begin
       mItem := TJSONObject(mValue).Values[AName];
       if mItem is TJSONArray then
-        Result := mItem.ToJSON
+      begin
+        Result := mItem.ToJSON;
+      end
       else if mItem <> nil then
+      begin
         Result := mItem.Value;
+      end;
     end;
   finally
     mValue.Free;
@@ -348,7 +356,9 @@ begin
   Assert.AreEqual('', TAtlasTrackerWorkflow.CommitLines(mCommits, 'ATL-9'));
   mCommits := nil;
   for mIndex := 1 to TAtlasTrackerWorkflow.MaxCommits + 5 do
+  begin
     mCommits := mCommits + [Commit(Format('%.7d', [mIndex]), 'ATL-123: ' + IntToStr(mIndex))];
+  end;
   mLines := TAtlasTrackerWorkflow.CommitLines(mCommits, 'ATL-123').Split([#10]);
   Assert.AreEqual(TAtlasTrackerWorkflow.MaxCommits, Integer(Length(mLines)), 'höchstens MaxCommits');
 end;

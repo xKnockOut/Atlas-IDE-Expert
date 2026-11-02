@@ -146,7 +146,9 @@ begin
   for mUser in AUsers do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + mUser.Login;
   end;
 end;
@@ -402,7 +404,9 @@ begin
     Assert.AreEqual(1, mDrafts.Count);
     mDrafts.Clear;
     for mIndex := 1 to TAtlasCommentDrafts.MaxDrafts + 5 do
+    begin
       mDrafts.Put('t', 'ATL-' + IntToStr(mIndex), TAtlasCommentDrafts.FieldPreview, 'x', mIndex);
+    end;
     Assert.AreEqual(TAtlasCommentDrafts.MaxDrafts, mDrafts.Count, 'höchstens MaxDrafts');
     Assert.IsFalse(mDrafts.Get('t', 'ATL-1', TAtlasCommentDrafts.FieldPreview, mText, mSaved), 'älteste weg');
     Assert.IsTrue(mDrafts.Get('t', 'ATL-105', TAtlasCommentDrafts.FieldPreview, mText, mSaved), 'neueste bleibt');
@@ -438,7 +442,9 @@ begin
     Assert.AreEqual(0, mRead.Count);
   finally
     if TFile.Exists(mFile) then
+    begin
       TFile.Delete(mFile);
+    end;
     mRead.Free;
     mDrafts.Free;
   end;

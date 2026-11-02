@@ -172,14 +172,18 @@ procedure TSource.EditorViewActivated;
 begin
   Log := Log + 'view;';
   if FFail then
+  begin
     raise EInvalidOp.Create('kaputt');
+  end;
 end;
 
 procedure TSource.ApplySettings;
 begin
   Log := Log + 'settings;';
   if FFail then
+  begin
     raise EInvalidOp.Create('kaputt');
+  end;
 end;
 
 procedure TSource.ThemeChanged;

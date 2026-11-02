@@ -86,7 +86,9 @@ var
 begin
   Result := '';
   for mEntry in ASwitch.Members do
+  begin
     Result := Result + mEntry.Name + ';';
+  end;
 end;
 
 procedure TAtlasModuleSwitchesTests.ReadFindsSwitchesAndMembers;
@@ -192,11 +194,13 @@ begin
   begin
     mFound := False;
     for mSwitch in mSwitches do
+    begin
       if mSwitch.Module = mModule then
       begin
         mFound := True;
         Assert.IsTrue(Length(mSwitch.Members) > 0, mModule + ' ohne Einstellungen');
       end;
+    end;
     Assert.IsTrue(mFound, mModule);
   end;
   Assert.AreEqual('debug', TAtlasModuleSwitches.ModuleOf(mSwitches, 'debug.inlineValues'));

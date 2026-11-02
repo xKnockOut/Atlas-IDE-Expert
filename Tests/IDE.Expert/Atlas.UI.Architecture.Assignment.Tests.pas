@@ -134,12 +134,14 @@ begin
   mU2 := mModel.IndexOf('App.Ui.U2');
   mFound := False;
   for mRow := 0 to High(mModel.Units[mU2].Assignment) do
+  begin
     if not mModel.Units[mU2].Assignment[mRow].Counts then
     begin
       mFound := True;
       Assert.AreEqual('Fundament|1 × interface|0 × impl.|zählt nicht',
         string.Join('|', TAtlasArchitectureAssignment.Cells(mModel, mU2, mRow)));
     end;
+  end;
   Assert.IsTrue(mFound);
 end;
 

@@ -96,7 +96,9 @@ procedure TAtlasTrackerNotifyTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
 end;
 
@@ -123,7 +125,9 @@ var
   mScope: TAtlasTrackerNotifyScope;
 begin
   for mScope := Low(TAtlasTrackerNotifyScope) to High(TAtlasTrackerNotifyScope) do
+  begin
     Assert.IsTrue(TAtlasTrackerNotify.ScopeOf(TAtlasTrackerNotify.ScopeName(mScope)) = mScope);
+  end;
   Assert.IsTrue(TAtlasTrackerNotify.ScopeOf(' WATCHED ') = TAtlasTrackerNotifyScope.Watched);
   Assert.IsTrue(TAtlasTrackerNotify.ScopeOf('alles') = TAtlasTrackerNotifyScope.AssignedOrCreated, 'Vorgabe');
   // Die Einstellungen kennen den Kern der Meldungen nicht (A-09): dieselben Werte wie dort.
@@ -266,7 +270,9 @@ var
 begin
   mChanges := nil;
   for mIndex := 1 to 13 do
+  begin
     mChanges := mChanges + [Change('ATL-' + IntToStr(mIndex), TAtlasTrackerChangeKind.Comment, 'anna', mIndex)];
+  end;
   // Gleiche Kennung in zwei Repositories: zwei Meldungen.
   mState := Change('#1', TAtlasTrackerChangeKind.State, 'ben', 30);
   mState.Project := 'beispiel/a';
@@ -314,7 +320,9 @@ begin
   // Höchstens MaxUnseen: die ältesten fallen heraus.
   mNotices := nil;
   for mIndex := 1 to TAtlasTrackerNotify.MaxUnseen + 5 do
+  begin
     mNotices := mNotices + [Notice('WEB-' + IntToStr(mIndex), 0)];
+  end;
   TAtlasTrackerNotify.MarkUnseen(mConnection, mNotices);
   Assert.AreEqual(Integer(TAtlasTrackerNotify.MaxUnseen), Integer(Length(mConnection.Unseen)));
   Assert.AreEqual(-1, mConnection.IndexOfUnseen('ATL-2', ''));

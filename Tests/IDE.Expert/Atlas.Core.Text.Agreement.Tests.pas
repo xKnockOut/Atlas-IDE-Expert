@@ -151,7 +151,9 @@ var
 begin
   for Sample in TArray<TBytes>.Create(TBytes.Create(Ord('T'), Ord('P'), Ord('F'), Ord('0')),
     TBytes.Create($FF, $0A, $00, 1), TBytes.Create(Ord('o'), Ord('b'), Ord('j')), nil) do
+  begin
     Assert.AreEqual(TFileEncoding.IsBinaryForm(Sample), TAtlasTextFile.IsBinaryForm(Sample));
+  end;
 end;
 
 { TFuzzyCompletionAgreementTests }
@@ -188,8 +190,10 @@ begin
   for Line in TArray<string>.Create('Öffne C:\Projekte\Atlas\Src\A.pas',
     'URI file:///c%3A/Projekte/Atlas/B.pas geladen', 'Fehler in D:\Fremd\X.pas: "Wert" fehlt',
     'Benutzer marco auf WERKBANK', 'don''t touch \\server\share\c.pas', 'ohne alles') do
+  begin
     Assert.AreEqual(TBugReport.AnonymizeLogLine(Line, Roots, Identity),
       TAtlasBugReport.AnonymizeLogLine(Line, Roots, Identity), Line);
+  end;
 end;
 
 initialization

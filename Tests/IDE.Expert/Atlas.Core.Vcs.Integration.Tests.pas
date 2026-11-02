@@ -64,8 +64,10 @@ var
 begin
   Answer := ARunner.Run(AExecutable, AArguments, AWorkingDir, 30000);
   if (Answer.Outcome <> TAtlasVcsOutcome.Ok) or (Answer.ExitCode <> 0) then
+  begin
     raise Exception.CreateFmt('%s %s: Exit-Code %d, %s', [ExtractFileName(AExecutable),
       string.Join(' ', AArguments), Answer.ExitCode, Answer.ErrorText]);
+  end;
   Result := Trim(TEncoding.UTF8.GetString(Answer.Output));
 end;
 
@@ -80,7 +82,9 @@ var
   FileName: string;
 begin
   if not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   // git legt schreibgeschützte Objektdateien an.
   for FileName in TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories) do
   begin
@@ -103,11 +107,13 @@ var
   Item: TAtlasVcsChange;
 begin
   for Item in AChanges do
+  begin
     if SameText(Item.Path, APath) then
     begin
       AChange := Item;
       Exit(True);
     end;
+  end;
   AChange := Default(TAtlasVcsChange);
   Result := False;
 end;
@@ -145,7 +151,9 @@ var
 begin
   GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if GitExe = '' then
+  begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
+  end;
   // Im Test erlaubt: Der Hauptthread des Testprogramms ist keine IDE.
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   Folder := NewFolder('git');
@@ -226,10 +234,14 @@ begin
   // im Ergebnis, und der Leckmonitor zählte sie als Leck.
   SvnExe := TAtlasVcsTools.Find(TAtlasVcsKind.Svn);
   if SvnExe = '' then
+  begin
     Exit;
+  end;
   SvnAdmin := TPath.Combine(ExtractFilePath(SvnExe), 'svnadmin.exe');
   if not TFile.Exists(SvnAdmin) then
+  begin
     Exit;
+  end;
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   Folder := NewFolder('svn');
   try
@@ -310,7 +322,9 @@ var
 begin
   GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if GitExe = '' then
+  begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
+  end;
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   Remote := NewFolder('git-remote');
   Folder := NewFolder('git-local');
@@ -326,7 +340,9 @@ begin
     Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Folder);
     Names := ['A', 'B', 'C', 'D'];
     for Name in Names do
+    begin
       TFile.WriteAllText(TPath.Combine(Folder, Name + '.pas'), 'unit ' + Name + ';'#10, TEncoding.ASCII);
+    end;
     Exec(Runner, GitExe, ['add', '.'], Folder);
     Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
     Exec(Runner, GitExe, ['remote', 'add', 'origin', Remote], Folder);
@@ -334,7 +350,9 @@ begin
     // Abnahme: 3 ungepushte Commits, 1 Stash, 4 geänderte Dateien.
     Names := ['Zwei', 'Drei', 'Vier'];
     for Name in Names do
+    begin
       Exec(Runner, GitExe, ['commit', '-q', '--allow-empty', '-m', Name], Folder);
+    end;
     TFile.AppendAllText(TPath.Combine(Folder, 'A.pas'), '// Versuch'#10, TEncoding.ASCII);
     Exec(Runner, GitExe, ['stash', 'push', '-q', '-m', 'Versuch'], Folder);
     TFile.AppendAllText(TPath.Combine(Folder, 'A.pas'), '// neu'#10, TEncoding.ASCII);
@@ -415,7 +433,9 @@ begin
     Assert.AreEqual(2, Integer(Length(Branches)));
     Names := ['feature/lokal', 'main'];
     for Name in Names do
+    begin
       Assert.IsTrue((Branches[0].Name = Name) or (Branches[1].Name = Name), Name);
+    end;
     Assert.IsTrue(Branches[0].Tracked and Branches[1].Tracked, 'beide verfolgt');
     Assert.AreEqual(0, Branches[0].Ahead + Branches[1].Ahead, 'alles gepusht');
     Assert.IsTrue(Local.Push('-x', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Failed,
@@ -441,7 +461,9 @@ var
 begin
   GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if GitExe = '' then
+  begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
+  end;
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   Remote := NewFolder('git-in-remote');
   Folder := NewFolder('git-in-local');
@@ -458,7 +480,9 @@ begin
     Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Folder);
     Names := ['Kunde', 'Fremd'];
     for Name in Names do
+    begin
       TFile.WriteAllText(TPath.Combine(Folder, Name + '.pas'), 'unit ' + Name + ';'#10, TEncoding.ASCII);
+    end;
     Exec(Runner, GitExe, ['add', '.'], Folder);
     Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
     Exec(Runner, GitExe, ['remote', 'add', 'origin', Remote], Folder);
@@ -547,7 +571,9 @@ var
 begin
   GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if GitExe = '' then
+  begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
+  end;
   // Der Läufer der IDE: lehnt den Hauptthread ab, im Worker läuft er.
   Runner := TAtlasVcsProcessRunner.Create;
   Vcs := TAtlasVersionControl.ForWorkingCopy(Default(TAtlasVcsWorkingCopy), Runner, GitExe, 5000);

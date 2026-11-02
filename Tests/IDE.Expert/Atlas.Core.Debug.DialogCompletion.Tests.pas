@@ -124,7 +124,9 @@ begin
   History := TAtlasExpressionHistory.Create;
   try
     for Index := 1 to 25 do
+    begin
       History.Add('C:\P\Haupt.dproj', 'Wert' + IntToStr(Index));
+    end;
     Items := History.Items('c:\p\haupt.dproj');
     Assert.AreEqual(TAtlasExpressionHistory.MaxPerProject, Integer(Length(Items)));
     Assert.AreEqual('Wert25', Items[0]);
@@ -176,7 +178,9 @@ begin
   try
     Assert.AreEqual(50, History.Limit);
     for Index := 1 to 60 do
+    begin
       History.Add('P', 'W' + IntToStr(Index));
+    end;
     Assert.AreEqual(50, Integer(Length(History.Items('P'))));
     Assert.IsTrue(History.Remove('P', ' W60 '));
     Assert.AreEqual('W59', History.Items('P')[0]);

@@ -214,7 +214,9 @@ begin
     Assert.IsTrue(TAtlasHideMenu.ElementName(Element, False) <> '', 'Einzahl ' + IntToStr(Ord(Element)));
     Assert.IsTrue(TAtlasHideMenu.ElementName(Element, True) <> '', 'Mehrzahl ' + IntToStr(Ord(Element)));
     for Scope := Low(TAtlasHideScope) to High(TAtlasHideScope) do
+    begin
       Assert.IsTrue(TAtlasHideMenu.ScopeCaption(Element, Scope) <> '');
+    end;
   end;
   TAtlasStrings.Language := TAtlasLanguage.English;
   Assert.AreEqual('Hide block end labels everywhere',
@@ -293,7 +295,9 @@ begin
     end;
     // Bereiche der Willkommensseite (#767) über ihren Schlüssel.
     for Section in TAtlasDrawnElements.KnownSections do
+    begin
       Assert.IsNotNull(Page.ControlOf(TAtlasDrawnElements.SectionSetting(Section)), 'Zeile für ' + Section);
+    end;
     Assert.IsNull(Page.ControlOf('GibtEsNicht'));
     Assert.IsFalse(Page.Reveal('GibtEsNicht'));
     // Reveal wählt den Reiter der Zeile und hebt sie hervor.
@@ -301,7 +305,9 @@ begin
     Control := Page.ControlOf('BlockEndLabels');
     Parent := Control.Parent;
     while (Parent <> nil) and not (Parent is TTabSheet) do
+    begin
       Parent := Parent.Parent;
+    end;
     Assert.IsNotNull(Parent);
     Assert.IsTrue(Page.Pages.ActivePage = Parent, 'Reiter der Zeile gewählt');
     Assert.IsTrue(fsBold in TCheckBox(Control).Font.Style, 'Zeile hervorgehoben');

@@ -271,8 +271,12 @@ begin
     Assert.IsFalse(Caption.EndsWith(':') or Caption.EndsWith('…'), Caption);
     // Jede Funktion hat ihren eigenen Namen: Eine neue Funktion ohne eigenen Zweig fiele hier auf.
     for Other := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+    begin
       if Other <> Func then
+      begin
         Assert.AreNotEqual(Caption, TAtlasKeyMapWindow.FunctionCaption(Other), Caption);
+      end;
+    end;
   end;
   Assert.AreEqual('Deklaration/Implementierung wechseln',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MethodToggleUp));

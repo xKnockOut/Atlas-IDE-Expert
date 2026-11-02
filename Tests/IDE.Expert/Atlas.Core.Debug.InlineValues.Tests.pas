@@ -81,7 +81,9 @@ begin
   while FValues.NextPending(Name) do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Name;
     FValues.Put(Name, Name + ASuffix, True);
   end;

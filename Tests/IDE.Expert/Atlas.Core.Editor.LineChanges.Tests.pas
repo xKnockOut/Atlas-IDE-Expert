@@ -48,7 +48,9 @@ var
   begin
     Result := 0;
     for Line := 0 to ALine - 1 do
+    begin
       Inc(Result, Length(ALines[Line]) + 1);
+    end;
     Inc(Result, ACharacter);
   end;
 
@@ -57,7 +59,9 @@ begin
   for Index := 0 to High(ALines) do
   begin
     if Index > 0 then
+    begin
       Text := Text + #10;
+    end;
     Text := Text + ALines[Index];
   end;
   Start := Offset(AEdit.StartLine, AEdit.StartCharacter);
@@ -137,7 +141,9 @@ var
 begin
   SetLength(OldLines, Length(Old));
   for Index := 0 to High(Old) do
+  begin
     OldLines[Index] := Old[Index];
+  end;
   NewLines := ['a', 'neu', 'b', 'C', 'd', 'f'];
   Changes := TAtlasLineChanges.Compute(OldLines, NewLines);
   // Jeden Block einzeln zurücksetzen.

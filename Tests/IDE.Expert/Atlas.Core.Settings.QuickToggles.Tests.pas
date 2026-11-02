@@ -117,7 +117,9 @@ begin
   Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'XmlDocExpand', Toggle));
   Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'XmlDocFull', Toggle));
   for Toggle in Toggles do
+  begin
     Assert.IsFalse(Toggle.ProjectPath.StartsWith('hints.') or Toggle.ProjectPath.StartsWith('index.'), Toggle.Key);
+  end;
   Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'StatusFieldSummary', Toggle), 'ohne x-quickToggle');
   // Diagnosemodus (#479): Schalter auf der Seite Allgemein, keine Zeichnung.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'DiagnosticMode', Toggle));
@@ -383,12 +385,14 @@ var
   Ordinal: Integer;
 begin
   for Toggle in TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson) do
+  begin
     if Toggle.Feature <> '' then
     begin
       Ordinal := GetEnumValue(TypeInfo(TAtlasFeature), Toggle.Feature);
       Assert.IsTrue(Ordinal >= 0, Toggle.Key + ': ' + Toggle.Feature);
       Assert.AreEqual(Toggle.Feature, GetEnumName(TypeInfo(TAtlasFeature), Ordinal), Toggle.Key);
     end;
+  end;
 end;
 
 initialization

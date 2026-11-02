@@ -122,8 +122,12 @@ var
 begin
   Result := False;
   for Name in Names do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TFakeFiles.Read(const AName: string; out ALines: TArray<string>): Boolean;
@@ -133,11 +137,13 @@ begin
   ALines := nil;
   Result := False;
   for Index := 0 to High(Names) do
+  begin
     if SameText(Names[Index], AName) then
     begin
       ALines := Texts[Index].Split([#10]);
       Exit(True);
     end;
+  end;
 end;
 
 { TAtlasWelcomeQuickActionsTests }
@@ -237,14 +243,18 @@ begin
   Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
     TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 0), True);
   for Button in Buttons do
+  begin
     Assert.IsTrue(((Button.Action = TAtlasQuickAction.Folder) or (Button.Action = TAtlasQuickAction.Console)) =
       Button.Enabled, TAtlasWelcomeQuickActions.Names[Button.Action]);
+  end;
   // Aktion eines anderen Projekts in der IDE: nur die Knöpfe, die die IDE brauchen, sind gesperrt.
   Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
     TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 0), False, True);
   for Button in Buttons do
+  begin
     Assert.IsTrue(TAtlasWelcomeQuickActions.UsesIde(Button.Action) <> Button.Enabled,
       TAtlasWelcomeQuickActions.Names[Button.Action]);
+  end;
   Assert.IsTrue(Buttons[TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Pull)].Block =
     TAtlasPullBlock.None);
 end;

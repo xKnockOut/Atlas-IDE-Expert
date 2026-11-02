@@ -184,11 +184,13 @@ begin
   Calls := Calls + ['outgoing ' + ABranch + ' ' + AUpstream];
   ACommits := nil;
   for Index := 0 to High(FOutgoingBranch) do
+  begin
     if (FOutgoingBranch[Index] = ABranch) and (FOutgoingUpstream[Index] = AUpstream) then
     begin
       ACommits := Copy(FOutgoing[Index], 0, AMax);
       Break;
     end;
+  end;
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -333,11 +335,17 @@ begin
     begin
       Result := True;
       if SameText(ExtractFileName(AFileName), 'A.pas') then
-        AUtc := HoursAgo(48)
+      begin
+        AUtc := HoursAgo(48);
+      end
       else if SameText(ExtractFileName(AFileName), 'Weg.pas') then
-        Result := False
+      begin
+        Result := False;
+      end
       else
+      begin
         AUtc := HoursAgo(3);
+      end;
     end;
 end;
 
@@ -369,7 +377,9 @@ function Item(AKind: TAtlasUnsavedKind; ACount: Integer; AHoursAgo: Double): TAt
 begin
   Result := TAtlasUnsavedItem.Create(AKind, ACount);
   if AHoursAgo >= 0 then
+  begin
     Result.Since := HoursAgo(AHoursAgo);
+  end;
 end;
 
 { TAtlasWelcomeUnsavedTests }
@@ -859,7 +869,9 @@ begin
   Fake.AddOutgoing('main', 'origin/main', [Commit('c3', 1), Commit('c2', 2), Commit('c1', 3)]);
   Many := nil;
   for Index := 1 to TAtlasWelcomeUnsaved.PushListMax + 5 do
+  begin
     Many := Many + [Commit('x' + IntToStr(Index), Index)];
+  end;
   Fake.AddOutgoing('feature/x', '', Many);
   Pending := Item(TAtlasUnsavedKind.Commits, 3, 3);
   Pending.Branches := ['main', 'dev'];

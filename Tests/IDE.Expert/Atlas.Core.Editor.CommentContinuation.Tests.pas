@@ -65,14 +65,18 @@ begin
   Line := -1;
   Character := -1;
   for Index := 0 to High(Lines) do
+  begin
     if Pos('|', Lines[Index]) > 0 then
     begin
       Line := Index;
       Character := Pos('|', Lines[Index]) - 1;
       Lines[Index] := StringReplace(Lines[Index], '|', '', []);
     end;
+  end;
   if not TAtlasCommentContinuation.OnEnter(string.Join(#10, Lines), Line, Character, AOptions, Edit) then
+  begin
     Exit;
+  end;
   NewLines := Copy(Lines, 0, Edit.StartLine) + Edit.Lines + Copy(Lines, Edit.StartLine + Edit.OldCount, MaxInt);
   NewLines[Edit.CursorLine] := Copy(NewLines[Edit.CursorLine], 1, Edit.CursorCharacter) + '|' +
     Copy(NewLines[Edit.CursorLine], Edit.CursorCharacter + 1, MaxInt);

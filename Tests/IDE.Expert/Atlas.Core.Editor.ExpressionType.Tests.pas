@@ -67,7 +67,9 @@ var
 begin
   Result := '';
   for Row in ARows do
+  begin
     Result := Result + Row.Text + '|';
+  end;
 end;
 
 { TAtlasExpressionTypeTests }

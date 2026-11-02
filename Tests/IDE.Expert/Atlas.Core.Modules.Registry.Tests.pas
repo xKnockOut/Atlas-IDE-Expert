@@ -150,7 +150,9 @@ const
 procedure TLog.Add(const AEntry: string);
 begin
   if Text <> '' then
+  begin
     Text := Text + ' ';
+  end;
   Text := Text + AEntry;
 end;
 
@@ -199,7 +201,9 @@ procedure TFakeModule.Stop;
 begin
   FLog.Add('stop:' + FInfo.Id);
   if FFailStop then
+  begin
     raise EInvalidOp.Create('Stop gescheitert');
+  end;
   FActive := False;
 end;
 
@@ -220,11 +224,15 @@ end;
 procedure TLoggedRegistration.Revoke;
 begin
   if FRevoked then
+  begin
     Exit;
+  end;
   FRevoked := True;
   FLog.Add('revoke:' + FName);
   if FFailRevoke then
+  begin
     raise EInvalidOp.Create('Lösen gescheitert');
+  end;
 end;
 
 function TLoggedRegistration.IsRevoked: Boolean;
@@ -250,7 +258,9 @@ begin
     FRevokeOnCall := nil;
   end;
   if FFail then
+  begin
     raise EInvalidOp.Create('Hörer gescheitert');
+  end;
 end;
 
 { TModuleRegistryTests }
@@ -806,9 +816,13 @@ begin
 end;
 
 procedure TModuleRegistryTests.GlobalRegistryExists;
+var
+  mFirst, mSecond: IAtlasModuleRegistry;
 begin
-  Assert.IsTrue(AtlasModuleRegistry <> nil);
-  Assert.IsTrue(AtlasModuleRegistry = AtlasModuleRegistry);
+  mFirst := AtlasModuleRegistry;
+  mSecond := AtlasModuleRegistry;
+  Assert.IsTrue(mFirst <> nil);
+  Assert.IsTrue(mFirst = mSecond, 'jeder Aufruf liefert dieselbe Instanz');
   Assert.IsTrue(AtlasModuleRegistryInstance <> nil);
 end;
 

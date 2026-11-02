@@ -96,12 +96,14 @@ begin
   Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Ok, 0, nil);
   // Der zuletzt eingetragene passende Schlüssel gewinnt ("remote get-url" nach "remote").
   for mIndex := 0 to High(Keys) do
+  begin
     if Pos(Keys[mIndex], mCall) = 1 then
     begin
       Result := TAtlasVcsRunResult.Make(Outcomes[mIndex], ExitCodes[mIndex],
         TEncoding.UTF8.GetBytes(Outputs[mIndex]));
       Result.ErrorText := Errors[mIndex];
     end;
+  end;
 end;
 
 function Answer(AOutcome: TAtlasVcsOutcome; AExitCode: Integer; const AError: string): TAtlasVcsRunResult;

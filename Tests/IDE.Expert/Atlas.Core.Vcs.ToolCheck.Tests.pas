@@ -61,9 +61,13 @@ type
 function Root: string;
 begin
   if PathDelim = '\' then
-    Result := 'C:\Werkzeuge'
+  begin
+    Result := 'C:\Werkzeuge';
+  end
   else
+  begin
     Result := '/werkzeuge';
+  end;
 end;
 
 function Under(const ARelative: string): string;
@@ -75,7 +79,9 @@ function Exe(const AName: string): string;
 begin
   Result := AName;
   if PathDelim = '\' then
+  begin
     Result := AName + '.exe';
+  end;
 end;
 
 function Run(AOutcome: TAtlasVcsOutcome; AExitCode: Integer; const AOutput: string): TAtlasVcsRunResult;

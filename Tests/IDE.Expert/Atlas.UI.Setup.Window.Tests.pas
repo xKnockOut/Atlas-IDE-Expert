@@ -124,8 +124,10 @@ begin
   try
     Window.SetResults(Results);
     for Index := 0 to High(Results) do
+    begin
       Assert.IsTrue((Results[Index].State <> TAtlasStatusState.Green) = Window.FixButtons[Index].Visible,
         'Knopf genau bei gelb oder rot: ' + IntToStr(Index));
+    end;
     Assert.AreEqual('Jetzt aufbauen', Window.FixButtons[3].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SetupCopy), Window.CopyButton.Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SetupRecheck), Window.RecheckButton.Caption);

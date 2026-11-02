@@ -90,7 +90,9 @@ begin
   for mRow in AAnswer.Rows do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + mRow.Cells[0].Text;
   end;
 end;
@@ -103,7 +105,9 @@ begin
   for mItem in ASuggestions do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + mItem.Text;
   end;
 end;

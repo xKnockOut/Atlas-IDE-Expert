@@ -53,7 +53,9 @@ var
 begin
   SetLength(Result, Length(A));
   for mIndex := 0 to High(A) do
+  begin
     Result[mIndex] := A[mIndex];
+  end;
 end;
 
 { TAtlasProjectMatchingTests }

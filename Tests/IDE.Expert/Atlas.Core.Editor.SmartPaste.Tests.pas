@@ -45,7 +45,9 @@ begin
   Lines := Copy(APasted);
   Lines[0] := APrefix + Lines[0];
   for Edit in AEdits do
+  begin
     Lines[Edit.Line] := Edit.Indent + Copy(Lines[Edit.Line], Edit.Remove + 1, MaxInt);
+  end;
   Result := string.Join('|', Lines);
 end;
 

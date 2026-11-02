@@ -61,10 +61,14 @@ begin
   for Source in ASources do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + ExtractFileName(Source.FileName);
     if Source.HasText then
+    begin
       Result := Result + '*';
+    end;
   end;
 end;
 
@@ -77,7 +81,9 @@ end;
 procedure TAtlasSearchFilesTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 
@@ -112,11 +118,17 @@ begin
       Result := AFileName <> 'Fehlt.pas';
       AText := '';
       if AFileName = 'B.pas' then
+      begin
         AText := 'x' + #13#10 + 'Foo';
+      end;
       if AFileName = 'Binaer.dfm' then
+      begin
         AText := 'TPF0'#0'foo';
+      end;
       if AFileName = 'Leer.pas' then
+      begin
         AText := 'nichts';
+      end;
     end;
   Found := nil;
   Report :=
