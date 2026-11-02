@@ -150,9 +150,13 @@ end;
 class function TAtlasUnopenedPolicies.FromSetting(AOpenForEdits: Boolean): TAtlasUnopenedPolicy;
 begin
   if AOpenForEdits then
-    Result := TAtlasUnopenedPolicy.OpenInEditor
+  begin
+    Result := TAtlasUnopenedPolicy.OpenInEditor;
+  end
   else
+  begin
     Result := TAtlasUnopenedPolicy.WriteToDisk;
+  end;
 end;
 
 { TPlanBuilder }
@@ -195,11 +199,17 @@ var
   Item: TReplacedFile;
 begin
   if FPending.ContainsKey(KeyOf(AFileName)) then
+  begin
     Exit(FCreates[FPending[KeyOf(AFileName)]].Content);
+  end;
   if not FEnvironment.Read(AFileName, Result) then
+  begin
     raise ELspEditError.Create('Datei nicht gefunden');
+  end;
   if FReplaced.TryGetValue(KeyOf(AFileName), Item) then
+  begin
     Result.Text := Item.Base;
+  end;
 end;
 
 procedure TPlanBuilder.Replace(const AFileName, ABase: string);
@@ -261,15 +271,21 @@ begin
     Replace(AFileName, AContent.Text);
   end
   else
+  begin
     AddCreate(AFileName, AProject, AContent);
+  end;
 end;
 
 function TPlanBuilder.MayReplace(const AFileName: string; const AOperation: TLspFileOperation): Boolean;
 begin
   if AOperation.Overwrite then
+  begin
     Exit(True);
+  end;
   if AOperation.IgnoreIfExists then
+  begin
     Exit(False);
+  end;
   raise ELspEditError.CreateFmt('%s existiert bereits', [ExtractFileName(AFileName)]);
 end;
 
@@ -285,19 +301,29 @@ begin
     FCreates[FPending[KeyOf(AFileName)]] := Changed;
   end
   else if Exists(AFileName) then
-    Replace(AFileName, AContent.Text)
+  begin
+    Replace(AFileName, AContent.Text);
+  end
   else
+  begin
     PlanCreate(AFileName, AProject, AContent);
+  end;
 end;
 
 function TPlanBuilder.NewFileProject(const AFileName: string): string;
 begin
   if FOwner = '' then
-    Result := FEnvironment.ProjectForNewFile(AFileName)
+  begin
+    Result := FEnvironment.ProjectForNewFile(AFileName);
+  end
   else if FOwnerLoaded and SameText(ExtractFileExt(AFileName), '.pas') then
-    Result := FOwner
+  begin
+    Result := FOwner;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 procedure TPlanBuilder.PlanOperation(const AOperation: TLspFileOperation);
@@ -309,17 +335,25 @@ begin
     TLspFileOperationKind.Create:
       begin
         if Exists(AOperation.FileName) and not MayReplace(AOperation.FileName, AOperation) then
+        begin
           Exit;
+        end;
         SetTarget(AOperation.FileName, NewFileProject(AOperation.FileName), Content(AOperation.FileName, ''));
       end;
     TLspFileOperationKind.Rename:
       begin
         if not Exists(AOperation.FileName) then
+        begin
           raise ELspEditError.Create('Datei nicht gefunden');
+        end;
         if SameText(AOperation.FileName, AOperation.NewFileName) then
+        begin
           Exit;
+        end;
         if Exists(AOperation.NewFileName) and not MayReplace(AOperation.NewFileName, AOperation) then
+        begin
           Exit;
+        end;
         Source := ReadCurrent(AOperation.FileName);
         if FPending.ContainsKey(KeyOf(AOperation.FileName)) then
         begin
@@ -342,11 +376,15 @@ begin
           Exit;
         end;
         if FEnvironment.IsDirectory(AOperation.FileName) then
+        begin
           raise ELspEditError.Create('Ordner löscht Atlas nicht');
+        end;
         if not Exists(AOperation.FileName) then
         begin
           if AOperation.IgnoreIfNotExists then
+          begin
             Exit;
+          end;
           raise ELspEditError.Create('Datei nicht gefunden');
         end;
         AddRemove(AOperation.FileName);
@@ -402,8 +440,12 @@ begin
     begin
       Listed := False;
       for Entry in Files do
+      begin
         if SameText(Entry.FileName, Existing.FileName) then
+        begin
           Listed := True;
+        end;
+      end;
       if not Listed then
       begin
         Entry := Default(TAtlasPlannedEdit);
@@ -416,7 +458,9 @@ begin
       Entry := Files[Index];
       Entry.HasBase := FReplaced.TryGetValue(KeyOf(Entry.FileName), Replacement);
       if Entry.HasBase then
+      begin
         Entry.Base := Replacement.Base;
+      end;
       Files[Index] := Entry;
     end;
     APlan.Files := Files.ToArray;
@@ -435,8 +479,12 @@ begin
   Kept := TList<TAtlasPlannedOperation>.Create;
   try
     for Item in AList do
+    begin
       if Item.FileName <> '' then
+      begin
         Kept.Add(Item);
+      end;
+    end;
     Result := Kept.ToArray;
   finally
     Kept.Free;
@@ -452,7 +500,9 @@ begin
   FOwner := AEdit.ProjectFile;
   FOwnerLoaded := (FOwner <> '') and (Length(AEdit.Operations) > 0) and FEnvironment.ProjectLoaded(FOwner);
   if FOwnerLoaded then
+  begin
     Result.Edit := AEdit.WithoutProject(FOwner);
+  end;
   for Operation in Result.Edit.Operations do
     try
       PlanOperation(Operation);
@@ -464,7 +514,9 @@ begin
       end;
     end;
   if not PlanTexts(Result.Edit.Files, Result) then
+  begin
     Exit;
+  end;
   Result.Creates := Operations(FCreates);
   Result.Removes := Operations(FRemoves);
 end;

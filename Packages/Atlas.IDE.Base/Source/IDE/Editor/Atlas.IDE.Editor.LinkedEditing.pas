@@ -183,11 +183,17 @@ function CurrentShift: TShiftState;
 begin
   Result := [];
   if GetKeyState(VK_SHIFT) < 0 then
+  begin
     Include(Result, ssShift);
+  end;
   if GetKeyState(VK_CONTROL) < 0 then
+  begin
     Include(Result, ssCtrl);
+  end;
   if GetKeyState(VK_MENU) < 0 then
+  begin
     Include(Result, ssAlt);
+  end;
 end;
 
 function IsEditorWindow(AWnd: HWND): Boolean;
@@ -202,7 +208,9 @@ function LineOf(const ALines: TArray<string>; ALine: Integer): string;
 begin
   Result := '';
   if (ALine >= 0) and (ALine < Length(ALines)) then
+  begin
     Result := ALines[ALine];
+  end;
 end;
 
 /// <summary>Steht an oder vor ACharacter ein Zeichen eines Bezeichners?</summary>
@@ -248,7 +256,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasIdeLinkedEditing.Destroy;
@@ -257,9 +267,13 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   if FEvents <> nil then
+  begin
     FEvents.OnEditorPaintLine := nil;
+  end;
   FEventsRef := nil;
   FreeAndNil(FMessages);
   FreeAndNil(FTimer);
@@ -267,7 +281,9 @@ begin
   ReapWorkers(True);
   FreeAndNil(FWorkers);
   if Assigned(FStatus) and IsActive then
+  begin
     FStatus('', '');
+  end;
   FView := nil;
   FRanges := nil;
   FCandidate := Default(TCandidate);
@@ -278,7 +294,9 @@ class procedure TAtlasIdeLinkedEditing.Install(const ABusy: TFunc<Boolean>; cons
   const AStatus: TAtlasLinkedStatusProc);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeLinkedEditing.Create(ABusy, ASession, AStatus);
+  end;
 end;
 
 class procedure TAtlasIdeLinkedEditing.Uninstall;
@@ -314,7 +332,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 class procedure TAtlasIdeLinkedEditing.ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
@@ -356,14 +376,18 @@ var
   Index: Integer;
 begin
   if FWorkers = nil then
+  begin
     Exit;
+  end;
   for Index := FWorkers.Count - 1 downto 0 do
+  begin
     if AWait or FWorkers[Index].Finished then
     begin
       FWorkers[Index].WaitFor;
       FWorkers[Index].Free;
       FWorkers.Delete(Index);
     end;
+  end;
 end;
 
 procedure TAtlasIdeLinkedEditing.Ask(const AView: IOTAEditView; ALine, ACharacter: Integer);
@@ -374,10 +398,14 @@ var
   Worker: TThread;
 begin
   if not Assigned(FSession) then
+  begin
     Exit;
+  end;
   Session := FSession();
   if Session = nil then
+  begin
     Exit;
+  end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   FileName := AView.Buffer.FileName;
   Text := TAtlasEditorBuffer.Text(AView.Buffer);
@@ -410,12 +438,16 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             TAtlasGuard.Run(TAtlasFeature.LinkedEditing,
               procedure
               begin
                 if FInstance <> nil then
+                begin
                   FInstance.Accept(Request, FileName, Text, Ranges, Conflicts);
+                end;
               end);
+          end;
         end);
     end);
   Worker.FreeOnTerminate := False;
@@ -428,7 +460,9 @@ procedure TAtlasIdeLinkedEditing.Accept(ARequest: Integer; const AFileName, ATex
 begin
   // Nur die jüngste Antwort zählt.
   if ARequest <> FRequest then
+  begin
     Exit;
+  end;
   FCandidate.Valid := Length(ARanges) > 0;
   FCandidate.FileName := AFileName;
   FCandidate.Text := AText;
@@ -443,10 +477,14 @@ var
   LineText, Key: string;
 begin
   if not Enabled or IsBusy or not Application.Active then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or View.Buffer.IsReadOnly then
+  begin
     Exit;
+  end;
   ReadCaret(View, Line, Character);
   LineText := TAtlasEditorBuffer.LineText(View, Line + 1);
   Key := Format('%s|%d|%d|', [View.Buffer.FileName, Line, Character]) + LineText;
@@ -458,11 +496,15 @@ begin
   end;
   Inc(FIdleCount);
   if (FIdleCount <> IdleTicks) or (Key = FAskedKey) or not NearIdentifier(LineText, Character) then
+  begin
     Exit;
+  end;
   // Die letzte Antwort deckt den Cursor noch ab; jede Änderung am Text verwirft sie (EditorModified).
   if FCandidate.Valid and SameText(FCandidate.FileName, View.Buffer.FileName) and
     (TAtlasLinkedEditing.IndexAt(FCandidate.Ranges, Line, Character) >= 0) then
+  begin
     Exit;
+  end;
   FAskedKey := Key;
   FCandidate.Valid := False;
   Ask(View, Line, Character);
@@ -477,17 +519,25 @@ begin
   Result := False;
   if not Enabled or IsBusy or not FCandidate.Valid or (AView = nil) or (AView.Buffer = nil) or
     AView.Buffer.IsReadOnly or not SameText(FCandidate.FileName, AView.Buffer.FileName) or HasBlock(AView) then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(AView.Buffer);
   if Text <> FCandidate.Text then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(Text);
   if not TAtlasLinkedEditing.Matches(Lines, FCandidate.Ranges) then
+  begin
     Exit;
+  end;
   ReadCaret(AView, Line, Character);
   Primary := TAtlasLinkedEditing.IndexAt(FCandidate.Ranges, Line, Character);
   if Primary < 0 then
+  begin
     Exit;
+  end;
   FView := AView;
   FPrimary := Primary;
   FConflicts := FCandidate.Conflicts;
@@ -525,6 +575,7 @@ begin
   FWriting := True;
   try
     for Index := 0 to High(ARanges) do
+    begin
       if Index <> ASkip then
       begin
         Offset := Table.LineStart(ARanges[Index].Line) + ARanges[Index].Character;
@@ -534,6 +585,7 @@ begin
           Lengths.Add(Offset, ARanges[Index].Length);
         end;
       end;
+    end;
     Starts.Sort;
     Utf8 := UTF8Encode(AName);
     // Ein Schreiber: ein Rückgängig-Schritt; nur die Namen, der Text dazwischen bleibt unberührt.
@@ -543,7 +595,9 @@ begin
       Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(ABase, 1, Offset)));
       Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(ABase, 1, Offset + Lengths[Offset])));
       if Utf8 <> '' then
+      begin
         Writer.Insert(PAnsiChar(Utf8));
+      end;
     end;
     Writer := nil;
   finally
@@ -567,11 +621,17 @@ begin
   Result := False;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   if IsActive and not SameText(View.Buffer.FileName, FView.Buffer.FileName) then
+  begin
     Finish;
+  end;
   if not IsActive and not Start(View) then
+  begin
     Exit;
+  end;
   Buffer := View.Buffer;
   // Mit Markierung ersetzt die Taste die Markierung: das bleibt der IDE.
   if HasBlock(View) then
@@ -607,7 +667,9 @@ begin
     else
     begin
       if TAtlasEditorBuffer.Text(Buffer) <> FText then
+      begin
         Buffer.Redo;
+      end;
       // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
       if TAtlasEditorBuffer.Text(Buffer) <> FText then
       begin
@@ -649,24 +711,38 @@ var
 begin
   Result := False;
   if not IsActive then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AText);
   Line := FRanges[FPrimary].Line;
   if Length(Lines) <> Length(FLines) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Lines) do
+  begin
     if (Index <> Line) and (Lines[Index] <> FLines[Index]) then
+    begin
       Exit;
+    end;
+  end;
   if not TAtlasLinkedEditing.Follow(FLines[Line], Lines[Line], FRanges[FPrimary], Name) or
     not TAtlasLinkedEditing.IsName(Name) then
+  begin
     Exit;
+  end;
   Ranges := TAtlasLinkedEditing.Resized(FRanges, FPrimary, Length(Name));
   if not TAtlasLinkedEditing.Rename(AText, Ranges, Name, NewText, NewRanges) then
+  begin
     Exit;
+  end;
   // Die Änderung der IDE liegt jetzt oben in der Rückgängig-Liste: ab hier ein Schritt je Taste.
   WriteNames(FView.Buffer, AText, Ranges, Name, FPrimary);
   if TAtlasEditorBuffer.Text(FView.Buffer) <> NewText then
+  begin
     Exit;
+  end;
   FGrouped := False;
   SetState(NewText, NewRanges);
   UpdateProblem;
@@ -679,7 +755,9 @@ var
   Text: string;
 begin
   if not IsActive or (FView = nil) or (FView.Buffer = nil) then
+  begin
     Exit;
+  end;
   Buffer := FView.Buffer;
   Text := TAtlasEditorBuffer.Text(Buffer);
   if FGrouped and (Text = FText) and Buffer.Undo and (TAtlasEditorBuffer.Text(Buffer) = FOriginalText) then
@@ -689,7 +767,9 @@ begin
     Exit;
   end;
   if TAtlasEditorBuffer.Text(Buffer) <> FText then
+  begin
     Buffer.Redo;
+  end;
   if TAtlasEditorBuffer.Text(Buffer) = FText then
   begin
     WriteNames(Buffer, FText, FRanges, FOriginal, -1);
@@ -703,14 +783,22 @@ var
   Text: string;
 begin
   if not IsActive or (FView = nil) or (FView.Buffer = nil) then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(FView.Buffer);
   if Text = FText then
+  begin
     Exit;
+  end;
   if Follow(Text) then
-    Refresh
+  begin
+    Refresh;
+  end
   else
+  begin
     Finish;
+  end;
 end;
 
 procedure TAtlasIdeLinkedEditing.UpdateProblem;
@@ -724,7 +812,9 @@ var
   Text, Hint: string;
 begin
   if not IsActive then
+  begin
     Exit;
+  end;
   if Assigned(FStatus) then
   begin
     Text := TAtlasStrings.Fmt(TAtlasTextId.LinkedEditingCount, [Length(FRanges)]);
@@ -769,7 +859,9 @@ begin
   if Was then
   begin
     if Assigned(FStatus) then
+    begin
       FStatus('', '');
+    end;
     Invalidate;
   end;
 end;
@@ -786,7 +878,9 @@ end;
 class procedure TAtlasIdeLinkedEditing.EditorModified(const AView: IOTAEditView);
 begin
   if (FInstance = nil) or FInstance.FWriting then
+  begin
     Exit;
+  end;
   // Ohne Sitzung gilt die letzte Antwort nicht mehr; beim nächsten Ruhen fragt Atlas neu.
   if not FInstance.IsActive then
   begin
@@ -797,7 +891,9 @@ begin
   if (AView = nil) or
     (AView.Buffer = nil) or (FInstance.FView = nil) or
     not SameText(AView.Buffer.FileName, FInstance.FView.Buffer.FileName) then
+  begin
     Exit;
+  end;
   // Nie im Notifier schreiben: nach der Änderung, in der Warteschlange des Hauptthreads.
   TAtlasMainThread.ForceQueue(TAtlasFeature.LinkedEditing,
     procedure
@@ -806,7 +902,9 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             FInstance.Reconcile;
+          end;
         end);
     end);
 end;
@@ -814,7 +912,9 @@ end;
 procedure TAtlasIdeLinkedEditing.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
+  begin
     Exit;
+  end;
   try
     case Msg.message of
       WM_KEYDOWN, WM_SYSKEYDOWN:
@@ -837,7 +937,9 @@ var
   Key: Word;
 begin
   if not IsEditorWindow(Msg.hwnd) then
+  begin
     Exit;
+  end;
   if not Enabled or IsBusy then
   begin
     Finish;
@@ -846,13 +948,17 @@ begin
   Key := Word(Msg.wParam);
   // Mit Strg, Alt oder Umschalt (Wort löschen, Rückgängig ...) arbeitet die IDE; Follow bzw. der Takt ziehen nach.
   if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) or (CurrentShift <> []) then
+  begin
     Exit;
+  end;
   case Key of
     VK_ESCAPE:
       if IsActive then
       begin
         if FProblem <> TAtlasLinkedProblem.None then
+        begin
           Restore;
+        end;
         Finish;
         Handled := True;
       end;
@@ -875,10 +981,14 @@ var
   Pair: string;
 begin
   if not IsEditorWindow(Msg.hwnd) or not Enabled or IsBusy then
+  begin
     Exit;
+  end;
   Typed := Char(Msg.wParam);
   if (Typed < ' ') or (Typed = #127) then
+  begin
     Exit;
+  end;
   // Zeichen außerhalb der Grundebene kommen als zwei WM_CHAR; nur in einer laufenden Sitzung.
   if (Typed >= #$D800) and (Typed <= #$DBFF) then
   begin
@@ -895,7 +1005,9 @@ begin
     FHighSurrogate := #0;
     Handled := True;
     if not Edit(TAtlasLinkedKey.Insert, Pair) and (TAtlasEditorBuffer.ActiveView <> nil) then
+    begin
       TAtlasEditorBuffer.ActiveView.Position.InsertText(Pair);
+    end;
     Exit;
   end;
   FHighSurrogate := #0;
@@ -918,7 +1030,9 @@ var
 begin
   try
     if TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
+    begin
       Exit;
+    end;
     ReapWorkers(False);
     if not IsActive then
     begin
@@ -926,7 +1040,9 @@ begin
       Exit;
     end;
     if FWriting then
+    begin
       Exit;
+    end;
     View := TAtlasEditorBuffer.ActiveView;
     // Datei gewechselt, Formular angezeigt oder abgeschaltet: Sitzung zu Ende.
     if (View = nil) or (View.Buffer = nil) or (FView = nil) or
@@ -946,13 +1062,19 @@ begin
     end;
     // Eine Änderung, deren Meldung noch aussteht, zuerst nachziehen.
     if TAtlasEditorBuffer.LineText(View, FRanges[FPrimary].Line + 1) <> FLines[FRanges[FPrimary].Line] then
+    begin
       Reconcile;
+    end;
     if not IsActive then
+    begin
       Exit;
+    end;
     // Cursor hat den Namen verlassen.
     ReadCaret(View, Line, Character);
     if not FRanges[FPrimary].Contains(Line, Character) then
+    begin
       Finish;
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.LinkedEditing, E);
@@ -977,23 +1099,35 @@ var
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not IsActive or
     TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
+  begin
     Exit;
+  end;
   try
     if (FView = nil) or not SameText(Context.FileName, FView.Buffer.FileName) then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     if LineState = nil then
+    begin
       Exit;
+    end;
     Line := Context.LogicalLineNum - 1;
     Text := LineOf(FLines, Line);
     // Nur, wenn die Zeile im Editor dem bekannten Stand entspricht (sonst steht gleich ein Reconcile an).
     if TrimRight(LineState.Text) <> TrimRight(Text) then
+    begin
       Exit;
+    end;
     TabWidth := TAtlasEditorBuffer.TabWidth(FView.Buffer);
     if FProblem = TAtlasLinkedProblem.None then
-      Color := COLORREF(ColorToRGB(TColor(TAtlasIdeStyle.Colors.Accent)))
+    begin
+      Color := COLORREF(ColorToRGB(TColor(TAtlasIdeStyle.Colors.Accent)));
+    end
     else
+    begin
       Color := COLORREF(ColorToRGB(TColor(TAtlasIdeStyle.Colors.Error)));
+    end;
     DC := Context.Canvas.Handle;
     Code := LineState.CodeRect;
     Saved := SaveDC(DC);
@@ -1001,12 +1135,16 @@ begin
     Pen := CreatePen(PS_DOT, 1, Color);
     try
       if Code.Right > Code.Left then
+      begin
         IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      end;
       for Index := 0 to High(FRanges) do
       begin
         Range := FRanges[Index];
         if Range.Line <> Line then
+        begin
           Continue;
+        end;
         First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Range.Character, TabWidth),
           Context.EditorLineNum);
         Last := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Range.EndCharacter,
@@ -1014,7 +1152,9 @@ begin
         // Ein leerer Name bleibt als schmaler Rahmen sichtbar.
         Frame := TRect.Create(First.Left - 1, Rect.Top, Max(Last.Left + 1, First.Left + 2), Rect.Bottom);
         if Index = FPrimary then
-          FrameRect(DC, Frame, Brush)
+        begin
+          FrameRect(DC, Frame, Brush);
+        end
         else
         begin
           OldPen := SelectObject(DC, Pen);
