@@ -416,6 +416,52 @@ begin
   Result := Snapshot(ACount, -1);
 end;
 
+// Nicht stabil sortiert: bei Gleichstand eindeutig über Name und Datei bzw. Kennung.
+
+/// <summary>Langsamste Units zuerst, nur die ersten ACount.</summary>
+procedure SortUnits(AUnits: TList<TCheckProfileUnit>; ACount: Integer);
+begin
+  AUnits.Sort(TComparer<TCheckProfileUnit>.Construct(
+    function(const ALeft, ARight: TCheckProfileUnit): Integer
+    begin
+      Result := CompareValue(ARight.Ms, ALeft.Ms);
+      if Result = 0 then
+      begin
+        Result := CompareText(ALeft.Name, ARight.Name);
+      end;
+      if Result = 0 then
+      begin
+        Result := CompareText(ALeft.FileName, ARight.FileName);
+      end;
+      if Result = 0 then
+      begin
+        Result := CompareStr(ALeft.FileName, ARight.FileName);
+      end;
+    end));
+  while AUnits.Count > ACount do
+  begin
+    AUnits.Delete(AUnits.Count - 1);
+  end;
+end;
+
+/// <summary>Langsamste Regeln zuerst, nur die ersten ACount.</summary>
+procedure SortRules(ARules: TList<TCheckProfileRule>; ACount: Integer);
+begin
+  ARules.Sort(TComparer<TCheckProfileRule>.Construct(
+    function(const ALeft, ARight: TCheckProfileRule): Integer
+    begin
+      Result := CompareValue(ARight.Ms, ALeft.Ms);
+      if Result = 0 then
+      begin
+        Result := CompareStr(ALeft.Id, ARight.Id);
+      end;
+    end));
+  while ARules.Count > ACount do
+  begin
+    ARules.Delete(ARules.Count - 1);
+  end;
+end;
+
 function TCheckProfiler.Snapshot(ACount: Integer; ARunningMs: Int64): TCheckRunProfile;
 var
   mUnits: TList<TCheckProfileUnit>;
@@ -464,41 +510,8 @@ begin
     end;
     Result.UnitMs := TCheckRunProfile.Milliseconds(mUnitSum);
     Result.RuleMs := TCheckRunProfile.Milliseconds(mRuleSum);
-    // Nicht stabil sortiert: bei Gleichstand eindeutig über Name und Datei bzw. Kennung.
-    mUnits.Sort(TComparer<TCheckProfileUnit>.Construct(
-      function(const ALeft, ARight: TCheckProfileUnit): Integer
-      begin
-        Result := CompareValue(ARight.Ms, ALeft.Ms);
-        if Result = 0 then
-        begin
-          Result := CompareText(ALeft.Name, ARight.Name);
-        end;
-        if Result = 0 then
-        begin
-          Result := CompareText(ALeft.FileName, ARight.FileName);
-        end;
-        if Result = 0 then
-        begin
-          Result := CompareStr(ALeft.FileName, ARight.FileName);
-        end;
-      end));
-    mRules.Sort(TComparer<TCheckProfileRule>.Construct(
-      function(const ALeft, ARight: TCheckProfileRule): Integer
-      begin
-        Result := CompareValue(ARight.Ms, ALeft.Ms);
-        if Result = 0 then
-        begin
-          Result := CompareStr(ALeft.Id, ARight.Id);
-        end;
-      end));
-    while mUnits.Count > ACount do
-    begin
-      mUnits.Delete(mUnits.Count - 1);
-    end;
-    while mRules.Count > ACount do
-    begin
-      mRules.Delete(mRules.Count - 1);
-    end;
+    SortUnits(mUnits, ACount);
+    SortRules(mRules, ACount);
     Result.SlowUnits := mUnits.ToArray;
     Result.SlowRules := mRules.ToArray;
   finally
