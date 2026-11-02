@@ -33,19 +33,12 @@ uses
   Atlas.Common.Lsp.WorkspaceCheck,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
-  Atlas.Common.Lsp.LinkedEditing,
-  Atlas.Common.Lsp.InlineValues,
   Atlas.Common.Lsp.CompilerSwitches,
-  Atlas.Common.Lsp.DebugUnavailable,
   Atlas.Common.Lsp.ExpressionCompletion,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SelectionRanges,
-  Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.Rationale,
-  Atlas.Common.Lsp.WorkspaceSymbols,
-  Atlas.Common.Editing.Bookmarks,
-  Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Lsp.TestUnits,
@@ -53,7 +46,6 @@ uses
   Atlas.Common.Lsp.DocumentLinks,
   Atlas.Common.Lsp.Colors,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.ConditionalSymbols,
@@ -88,6 +80,7 @@ uses
   Shell.Composition.Baselines,
   Shell.Composition.Overviews,
   Shell.Composition.Analysis,
+  Shell.Composition.Navigation,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -165,21 +158,12 @@ type
     FIndexRecheck: TWorkspaceCheckIndexGate;
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
-    FLinkedEditing: TLspLinkedEditing;
-    FInlineValues: TLspInlineValues;
-    FCompilerSwitches: TLspCompilerSwitches;
-    FDebugUnavailable: TLspDebugUnavailable;
     FFormatting: TLspFormatting;
     FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
-    FDefinition: TLspDefinition;
-    FHover: TLspHover;
-    FWorkspaceSymbols: TLspWorkspaceSymbols;
-    /// <summary>Lesezeichen "// @bookmark Name" für die Symbolsuche (#306).</summary>
-    FBookmarks: TBookmarkStore;
-    FDocumentHighlights: TLspDocumentHighlights;
-    FReferences: TLspReferences;
-    FRename: TLspRename;
+    /// <summary>Navigation: Definition, Hover, Symbolsuche mit Lesezeichen, Hervorhebungen, verknüpftes
+    /// Bearbeiten, Werte beim Debuggen, Compilerschalter, Referenzen und Umbenennen.</summary>
+    FNavigation: TShellNavigation;
     /// <summary>Prozessnummer des Editors aus der Befehlszeile (#283); 0 = keine.</summary>
     FClientProcessId: Cardinal;
     /// <summary>clientInfo.name aus initialize, für „Prozesse am Projekt“ (#62).</summary>
@@ -597,7 +581,6 @@ type
     /// (dieselbe Entscheidung wie in der Prüfung, TRuleEngine.NewNames).</summary>
     function NewNamesFor(const AUri: string): TPascalNamePrefixes;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
-    function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
     /// <summary>Status als JSON für atlas.server.status und das Diagnosepaket (#1356); AAnonymize ersetzt die
     /// Unit-Namen der langsamsten Units durch name#N und lässt die Pfade weg. Nicht anonym schreibt es ihn
@@ -1527,50 +1510,24 @@ begin
 end;
 
 procedure TServerComposition.WireNavigation;
+var
+  mServices: TShellNavigationServices;
 begin
-  FDefinition := TLspDefinition.Create(FDocuments, FIndex,
-    EnsureUnit);
-  FDefinition.ReadText := ReadSourceText;
-  FDefinition.Attach(FDispatcher);
-  FHover := TLspHover.Create(FDocuments, FIndex,
-    ReadSourceText,
-    EnsureUnit);
-  FHover.VersionProvider := DelphiVersionFor;
-  FHover.HintsFor := HintSettingsFor;
-  FHover.RationaleFor := RationaleOptionsFor;
-  // Zustand und Herkunft bedingter Symbole (#102).
-  FHover.SymbolsFor := ConditionalContextFor;
-  FHover.Attach(FDispatcher);
-  FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
-  FBookmarks := TBookmarkStore.Create;
-  FWorkspaceSymbols.BookmarksFor := CollectBookmarks;
-  FWorkspaceSymbols.Attach(FDispatcher);
-  FDocumentHighlights := TLspDocumentHighlights.Create(FDocuments, FIndex,
-    EnsureUnit);
-  FDocumentHighlights.SettingsFor := HighlightSettingsFor;
-  FDocumentHighlights.Attach(FDispatcher);
-  // Lokale Bezeichner brauchen den Index (#658).
-  FLinkedEditing := TLspLinkedEditing.Create(FDocuments, FIndex, EnsureUnit);
-  FLinkedEditing.Attach(FDispatcher);
-  // Werte beim Debuggen am Zeilenende (#508).
-  FInlineValues := TLspInlineValues.Create(FDocuments, FIndex, EnsureUnit);
-  FInlineValues.Attach(FDispatcher);
-  FCompilerSwitches := TLspCompilerSwitches.Create(FDocuments, CompilerSwitchContextFor);
-  FCompilerSwitches.Attach(FDispatcher);
-  FDebugUnavailable := TLspDebugUnavailable.Create(FDocuments, FIndex, EnsureUnit, CompilerSwitchContextFor);
-  FDebugUnavailable.Attach(FDispatcher);
-  FReferences := TLspReferences.Create(FDocuments, FIndex,
-    ReadSourceText,
-    ProjectSourceFiles,
-    EnsureUnit);
-  FReferences.SettingsFor := ReferenceSettingsFor;
-  FReferences.Attach(FDispatcher);
-  FRename := TLspRename.Create(FDocuments, FIndex,
-    ReadSourceText,
-    ProjectSourceFiles,
-    EnsureUnit);
-  FRename.SettingsFor := ReferenceSettingsFor;
-  FRename.Attach(FDispatcher);
+  mServices := Default(TShellNavigationServices);
+  mServices.Documents := FDocuments;
+  mServices.Index := FIndex;
+  mServices.ReadText := ReadSourceText;
+  mServices.ProjectFiles := ProjectSourceFiles;
+  mServices.EnsureUnit := EnsureUnit;
+  mServices.DelphiVersionFor := DelphiVersionFor;
+  mServices.HintSettingsFor := HintSettingsFor;
+  mServices.RationaleOptionsFor := RationaleOptionsFor;
+  mServices.ConditionalContextFor := ConditionalContextFor;
+  mServices.HighlightSettingsFor := HighlightSettingsFor;
+  mServices.CompilerSwitchContextFor := CompilerSwitchContextFor;
+  mServices.ReferenceSettingsFor := ReferenceSettingsFor;
+  FNavigation := TShellNavigation.Create(mServices);
+  FNavigation.Attach(FDispatcher);
 end;
 
 function TServerComposition.HighlightSettingsFor(const AUri: string): THighlightSettings;
@@ -1791,7 +1748,7 @@ begin
   mServices.Namespaces :=
     function: TArray<string>
     begin
-      Result := FRename.Namespaces;
+      Result := FNavigation.Namespaces;
     end;
   mServices.ProjectFiles := ProjectSourceFiles;
   mServices.ReadText := ReadSourceText;
@@ -2132,18 +2089,18 @@ end;
 
 function TServerComposition.RunExitPoints(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TLspExitPoints.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, FReadSourceTextRef,
-    FDocumentHighlights.SettingsFor, AArguments);
+  Result := TLspExitPoints.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces, FReadSourceTextRef,
+    HighlightSettingsFor, AArguments);
 end;
 
 function TServerComposition.RunReassigned(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TLspReassigned.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+  Result := TLspReassigned.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces, AArguments);
 end;
 
 function TServerComposition.RunExpressionType(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TLspExpressionType.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+  Result := TLspExpressionType.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces, AArguments);
 end;
 
 function TServerComposition.RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
@@ -2153,7 +2110,7 @@ end;
 
 function TServerComposition.RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TLspOverrideMarks.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+  Result := TLspOverrideMarks.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces, AArguments);
 end;
 
 function TServerComposition.RunBaseline(const AArguments: TJSONArray): TJSONValue;
@@ -2207,12 +2164,12 @@ end;
 function TServerComposition.RunQualifiedNames(const AArguments: TJSONArray): TJSONValue;
 begin
   Result := TQualifiedNames.Execute(FDocuments, FIndex,
-    FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+    FEnsureUnitRef, FNavigation.Namespaces, AArguments);
 end;
 
 function TServerComposition.RunEnumValue(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TEnumValueCommands.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces,
+  Result := TEnumValueCommands.Execute(FDocuments, FIndex, FEnsureUnitRef, FNavigation.Namespaces,
     FReadSourceTextRef, AArguments);
 end;
 
@@ -2723,7 +2680,7 @@ begin
     SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams.GetValue('initializationOptions')));
   end;
   UpdateLooseSettings;
-  FHover.Markdown := TLspHover.ClientSupportsMarkdown(AParams);
+  FNavigation.Hover.Markdown := TLspHover.ClientSupportsMarkdown(AParams);
   // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
   FCompletion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
   FCompletion.DocumentationMarkdown := TLspCompletion.ClientPrefersMarkdown(AParams);
@@ -2849,19 +2806,9 @@ procedure TServerComposition.FreeEditorFeatures;
 begin
   FreeAndNil(FDocumentSymbols);
   FreeAndNil(FFoldingRanges);
-  FreeAndNil(FLinkedEditing);
-  FreeAndNil(FInlineValues);
-  FreeAndNil(FCompilerSwitches);
-  FreeAndNil(FDebugUnavailable);
   FreeAndNil(FFormatting);
   FreeAndNil(FSlashMenu);
   FreeAndNil(FSelectionRanges);
-  FreeAndNil(FDefinition);
-  FreeAndNil(FHover);
-  FreeAndNil(FWorkspaceSymbols);
-  FreeAndNil(FBookmarks);
-  FreeAndNil(FDocumentHighlights);
-  FreeAndNil(FReferences);
 end;
 
 procedure TServerComposition.FreeAnalysisFeatures;
@@ -2876,7 +2823,7 @@ begin
   FreeAndNil(FExpressionCompletion);
   FreeAndNil(FCompletion);
   FreeAndNil(FRefactorings);
-  FreeAndNil(FRename);
+  FreeAndNil(FNavigation);
   FreeAndNil(FCodeActions);
   FreeAndNil(FTestUnits);
   FreeAndNil(FTestPrograms);
@@ -4330,35 +4277,6 @@ begin
   Result := TRuleEngine.NewNames(BuiltinRules, Settings, Context);
 end;
 
-function TServerComposition.CollectBookmarks: TArray<TBookmarkHit>;
-var
-  Files: TArray<string>;
-  FileName: string;
-  Document: ITextDocument;
-  Stamp: Int64;
-begin
-  Files := ProjectSourceFiles;
-  for FileName in Files do
-  begin
-    // Geöffnete Dateien nach Version (negativ), sonst nach Änderungszeit der Datei.
-    if FDocuments.TryGet(TDocumentUris.FromPath(FileName), Document) then
-    begin
-      Stamp := -1 - Document.Version;
-    end
-    else if FileExists(FileName) then
-    begin
-      Stamp := Trunc(TFile.GetLastWriteTimeUtc(FileName) * MSecsPerDay);
-    end
-    else
-    begin
-      Stamp := 0;
-    end;
-    FBookmarks.Update(FileName, Stamp, ReadSourceText);
-  end;
-  FBookmarks.Retain(Files);
-  Result := FBookmarks.All;
-end;
-
 function TServerComposition.ConfigurationReport: string;
 var
   Root, Item, Effective, Choice: TJSONObject;
@@ -5785,8 +5703,7 @@ procedure TServerComposition.ApplyNamespaces(const ANamespaces: TArray<string>);
 var
   mGraphOptions: TUsesGraphOptions;
 begin
-  FDefinition.Namespaces := ANamespaces;
-  FHover.Namespaces := ANamespaces;
+  FNavigation.SetNamespaces(ANamespaces);
   // Uses-Graph (#64) löst Namen ohne Namensraum über dieselbe Liste auf; neu aufgebaut nur bei Änderung.
   mGraphOptions := FUsesGraph.Options;
   if string.Join(';', mGraphOptions.Namespaces) <> string.Join(';', ANamespaces) then
@@ -5794,11 +5711,6 @@ begin
     mGraphOptions.Namespaces := ANamespaces;
     FUsesGraph.SetOptions(mGraphOptions);
   end;
-  FDocumentHighlights.Namespaces := ANamespaces;
-  FLinkedEditing.Namespaces := ANamespaces;
-  FInlineValues.Namespaces := ANamespaces;
-  FReferences.Namespaces := ANamespaces;
-  FRename.Namespaces := ANamespaces;
   FCompletion.Namespaces := ANamespaces;
   FAnalysis.SetNamespaces(ANamespaces);
 end;
