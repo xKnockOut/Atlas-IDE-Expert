@@ -96,11 +96,12 @@ uses
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Baseline,
+  Atlas.Common.Lsp.BulkFix,
+  Atlas.Common.Lsp.CompilerBaseline,
+  Shell.Composition.Baselines,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
-  Atlas.Common.Lsp.BulkFix,
-  Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -239,11 +240,9 @@ type
     FDebugDisplay: TLspDebugDisplay;
     FEventHandlers: TLspEventHandlers;
     FRecursion: TLspRecursion;
-    /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
-    FBaseline: TLspBaseline;
-    FBulkFix: TLspBulkFix;
-    /// <summary>Compilermeldungen in der Baseline (#530).</summary>
-    FCompilerBaseline: TLspCompilerBaseline;
+    /// <summary>Baseline für Altprojekte (#97, atlas.updateBaseline), Compilermeldungen darin (#530) und die
+    /// Sammelkorrektur (#1352).</summary>
+    FBaselines: TShellBaselines;
     FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     FRefactorings: TShellRefactorings;
@@ -435,12 +434,8 @@ type
     function DefinesOfFile(const AFileName: string): TArray<string>;
     /// <summary>Grenzen der Metrik-Linse; False, wenn Metriken oder die Linse abgeschaltet sind.</summary>
     function CodeLensMetricsFor(const AUri: string; out ALimits: TMetricLimits): Boolean;
-    /// <summary>Text und Befunde einer Datei für die Baseline (#97) wie im Editor.</summary>
-    function BaselineCheckFor(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean;
-    /// <summary>Nach dem Schreiben einer Baseline offene Dokumente neu prüfen.</summary>
-    procedure BaselineWritten(AFileName: string);
-    /// <summary>Eingaben der Sammelkorrektur (#1352): Text, Regeln, Projekt, Index und Baseline.</summary>
-    function BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
+    /// <summary>Offene Dokumente bald neu prüfen.</summary>
+    procedure RefreshDiagnosticsLater;
     /// <summary>Teil von Create (S-02): Refactorings und Befehle des Debuggers (Shell.Composition.Refactorings).
     /// </summary>
     procedure WireRefactorings;
@@ -590,8 +585,6 @@ type
     function RuleProjects: TArray<TRuleProject>;
     /// <summary>Sind alle Projekte geladen und vollständig indiziert? Sonst der Grund in AReason (#1102).</summary>
     function RuleProjectsComplete(out AReason: string): Boolean;
-    /// <summary>Dateizugriffe für atlas.updateBaseline (#97): schreibt UTF-8 ohne BOM wie --update-baseline.</summary>
-    function BaselineFiles: TLspBaselineFiles;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
     function TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
     /// <summary>Einstellungen, Wurzel und Hauptdateien der Projekte; False ohne Arbeitsbereich.</summary>
@@ -864,7 +857,6 @@ uses
   System.SyncObjs,
   System.Math,
   System.StrUtils,
-  Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Product.Version,
   Atlas.Common.Query.Service,
   Atlas.Common.Query.Language,
@@ -1847,21 +1839,22 @@ begin
 end;
 
 procedure TServerComposition.WireBaselines;
+var
+  mServices: TShellBaselineServices;
 begin
-  // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
-  FBaseline := TLspBaseline.Create(MetricsSourceFor,
-    BaselineCheckFor,
-    BaselineFiles);
-  // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
-  FBaseline.OnWritten := BaselineWritten;
-  // Sammelkorrektur für das Plugin (#1352): Text, Regeln, Projekt, Index und Baseline wie die Editor-Prüfung, aber
-  // nicht Live (unused-uses meldet sich nur außerhalb des Editors) und mit den Symbolen des Projekts wie der Linter.
-  FBulkFix := TLspBulkFix.Create(BulkFixInputFor);
-  // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
-  FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSourceFor,
-    ReadSourceText,
-    BaselineFiles);
-  FCompilerBaseline.OnWritten := BaselineWritten;
+  mServices := Default(TShellBaselineServices);
+  mServices.MetricsSourceFor := MetricsSourceFor;
+  mServices.ReadText := ReadSourceText;
+  mServices.RuleContextFor := RuleContextFor;
+  mServices.DefinesFor := DefinesFor;
+  mServices.IncludeResolverFor := IncludeResolverFor;
+  mServices.RefreshLater := RefreshDiagnosticsLater;
+  FBaselines := TShellBaselines.Create(mServices);
+end;
+
+procedure TServerComposition.RefreshDiagnosticsLater;
+begin
+  FSyntaxDiagnostics.RefreshLater;
 end;
 
 function TServerComposition.DefinesOfFile(const AFileName: string): TArray<string>;
@@ -1882,69 +1875,6 @@ begin
   end;
   ALimits := TMetricRules.Limits(mSource.Settings);
   Result := mSource.Settings.Metrics and mSource.Settings.CodeLens.Metrics;
-end;
-
-function TServerComposition.BaselineCheckFor(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean;
-var
-  mContext: TRuleCheckContext;
-  mTree: TSyntaxTree;
-  mExtension: string;
-begin
-  ACheck := Default(TLspBaselineCheck);
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := ((mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk')) and
-    ReadSourceText(AFileName, ACheck.Text) and RuleContextFor(TDocumentUris.FromPath(AFileName), mContext) and
-    (mContext.RelativePath <> '');
-  if not Result then
-  begin
-    Exit;
-  end;
-  ACheck.RelativePath := mContext.RelativePath;
-  mTree := TSyntaxTreeCache.Parse(ACheck.Text);
-  try
-    ACheck.Findings := TLspSyntaxDiagnostics.RuleFindings(ACheck.Text, mTree, mContext);
-  finally
-    mTree.Free;
-  end;
-end;
-
-procedure TServerComposition.BaselineWritten(AFileName: string);
-begin
-  FSyntaxDiagnostics.RefreshLater;
-end;
-
-function TServerComposition.BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
-var
-  mContext: TRuleCheckContext;
-  mDefines: TArray<string>;
-  mUri: string;
-begin
-  AInput := Default(TLspBulkFixInput);
-  mUri := TDocumentUris.FromPath(AFileName);
-  Result := ReadSourceText(AFileName, AInput.Text) and RuleContextFor(mUri, mContext);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AInput.Rules := mContext.Rules;
-  AInput.Settings := mContext.Settings;
-  AInput.RelativePath := mContext.RelativePath;
-  if AInput.RelativePath = '' then
-  begin
-    AInput.RelativePath := ExtractFileName(AFileName);
-  end;
-  AInput.Baseline := mContext.Baseline;
-  AInput.Project.Application := mContext.Application;
-  AInput.Project.Name := mContext.ProjectName;
-  AInput.Project.AutoCreateForms := mContext.AutoCreateForms;
-  AInput.Project.ProjectMainSource := mContext.ProjectMainSource;
-  AInput.Project.FileName := AFileName;
-  AInput.Project.Services := mContext.Services;
-  if not DefinesFor(mUri, mDefines) then
-  begin
-    mDefines := nil;
-  end;
-  AInput.Source := TCheckSource.Create(AFileName, mDefines, IncludeResolverFor(mUri));
 end;
 
 procedure TServerComposition.WireRefactorings;
@@ -2303,7 +2233,7 @@ begin
   FCommands.Register(TLspCompilerBaseline.ClassifyCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := FCompilerBaseline.ExecuteClassify(AArguments);
+      Result := FBaselines.CompilerBaseline.ExecuteClassify(AArguments);
     end);
   FCommands.Register(TLspSlashMenu.MenuCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2413,7 +2343,7 @@ var
 begin
   // Prüft das ganze Projekt: in großen Altprojekten dauert das; nur Zahlen ins Log, keine Pfade.
   Watch := TStopwatch.StartNew;
-  Result := FBaseline.Execute(AArguments);
+  Result := FBaselines.Baseline.Execute(AArguments);
   if Result is TJSONObject then
   begin
     FLogger.Info(Format('Baseline aktualisiert: %d Treffer, %d Dateien geprüft ' +
@@ -2431,7 +2361,7 @@ var
 begin
   // Nur die Vorschau; geschrieben wird im Plugin. Ins Log nur Zahlen und Regeln, keine Pfade.
   Watch := TStopwatch.StartNew;
-  Result := FBulkFix.Execute(AArguments);
+  Result := FBaselines.BulkFix.Execute(AArguments);
   if not (Result is TJSONObject) then
   begin
     Exit;
@@ -2446,7 +2376,7 @@ end;
 
 function TServerComposition.RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := FCompilerBaseline.ExecuteAdd(AArguments);
+  Result := FBaselines.CompilerBaseline.ExecuteAdd(AArguments);
   if Result is TJSONObject then
   begin
     FLogger.Info(Format('Compilermeldungen in die Baseline: %d Einträge (%d neu, %d entfernt)',
@@ -3133,9 +3063,7 @@ begin
   FreeAndNil(FDebugDisplay);
   FreeAndNil(FEventHandlers);
   FreeAndNil(FRecursion);
-  FreeAndNil(FCompilerBaseline);
-  FreeAndNil(FBaseline);
-  FreeAndNil(FBulkFix);
+  FreeAndNil(FBaselines);
   FreeAndNil(FInlayHints);
   FreeAndNil(FImplementations);
   FreeAndNil(FImpact);
@@ -4042,52 +3970,6 @@ begin
     Exit(True);
   end;
   Result := TShellBootstrap.ReadSourceText(AFileName, AText);
-end;
-
-function TServerComposition.BaselineFiles: TLspBaselineFiles;
-begin
-  Result.Exists :=
-    function(const AFileName: string): Boolean
-    begin
-      Result := TFile.Exists(AFileName);
-    end;
-  Result.Read :=
-    function(const AFileName: string; out AText: string): Boolean
-    var
-      FileFormat: TFileFormat;
-    begin
-      Result := TFile.Exists(AFileName);
-      if Result then
-      begin
-        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
-      end
-      else
-      begin
-        AText := '';
-      end;
-    end;
-  Result.Write :=
-    procedure(const AFileName, AText: string)
-    var
-      Disk: IIndexFileSystem;
-      Error: string;
-    begin
-      // Atomar wie der Index-Cache (Bericht N3): Der Arbeitsbereich liest die Datei nach dem Zeitstempel und sah
-      // mit TFile.WriteAllText womöglich einen halben Stand; ein Abbruch hinterließ eine kaputte Baseline.
-      // UTF-8 ohne BOM wie bisher.
-      Disk := TDiskIndexFileSystem.Create;
-      if not Disk.WriteBytes(AFileName, TEncoding.UTF8.GetBytes(AText), Error) then
-      begin
-        raise EInOutError.Create('Baseline nicht geschrieben (' + Error + ')');
-      end;
-    end;
-  Result.SetAside :=
-    function(const AFileName: string; out ATarget: string): Boolean
-    begin
-      ATarget := AFileName + '.defekt';
-      // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand.
-      Result := TShellPlatform.MoveReplacing(AFileName, ATarget);
-    end;
 end;
 
 function TServerComposition.TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
