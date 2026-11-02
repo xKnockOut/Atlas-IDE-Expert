@@ -77,6 +77,7 @@ uses
   Shell.Composition.TestUnits,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
+  Shell.Composition.RuleContext,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -226,8 +227,8 @@ type
     // Globale Benutzerdatei (#227) als unterste Ebene; Pfad und der Beobachter für sie und die atlas.json aller
     // Ordner.
     FGlobalSettingsFile: string;
-    /// <summary>Zuletzt gesehener Stand von ruleChecks.enabled (#1454): 1 an, 0 aus; nur über TInterlocked.</summary>
-    FRuleChecksState: Integer;
+    /// <summary>Umfeld der Prüfregeln je Datei (Shell.Composition.RuleContext).</summary>
+    FRuleContext: TShellRuleContext;
     FFileWatcher: TFileWatcher;
     FCompilerProcess: ICompilerProcess;
     /// <summary>Compilerläufe (#40, #261): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.</summary>
@@ -306,6 +307,9 @@ type
     /// <summary>Dienste des Registers der Arbeitsbereiche; Projektwahl und IDE-Projekt entstehen erst danach.
     /// </summary>
     function WorkspaceRegistryServices: TShellWorkspaceRegistryServices;
+    /// <summary>Dienste des Umfelds der Prüfregeln; Index, Uses-Graph und Abfragen werden je Prüfung gefragt.
+    /// </summary>
+    function RuleContextServices: TShellRuleContextServices;
     /// <summary>Teil von Create (S-02): Symbolindex und Diagnoselog.</summary>
     procedure WireIndex;
     /// <summary>Teil von Create (S-02): Definition, Hover, Arbeitsbereichssymbole, Hervorhebungen, Verweise, Umbenennen.</summary>
@@ -499,23 +503,6 @@ type
     function FormatStyleFor(const AUri: string): TFormatStyle;
     /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
     function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
-    function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-    /// <summary>Einstellungen, Baseline, Dienste und Projekte aus dem Arbeitsbereich der Datei.</summary>
-    procedure RuleWorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
-      out AProjects: TArray<TProjectInfo>; out ALibrary: Boolean);
-    /// <summary>Projekte mit der Datei: das des Arbeitsbereichs, dann weitere. Aufrufer hält FWorkspaces.Lock.</summary>
-    function ProjectsWithFile(AWorkspace: TShellWorkspace; const AFileName: string): TArray<TProjectInfo>;
-    /// <summary>Anwendungsart, Projektname und Formulare der .dpr in den Prüfkontext.</summary>
-    procedure ApplyRuleProject(const AProjects: TArray<TProjectInfo>; const AFileName: string;
-      var AContext: TRuleCheckContext);
-    /// <summary>Index, Nachladen und Projektdateien; ohne Index, solange Projekte laden.</summary>
-    procedure RuleIndexServices(var AContext: TRuleCheckContext);
-    /// <summary>Formulardatei (.dfm, sonst .fmx) neben der Unit.</summary>
-    procedure ReadRuleFormFile(const AFileName: string; var AContext: TRuleCheckContext);
-    /// <summary>Wie RuleContextFor für die Prüfung im Editor (LSP-Sitzung): ohne Regeln, solange der Modul-Schalter
-    /// ruleChecks.enabled aus ist (#1454); jeder Wechsel steht einmal im Protokoll. Baseline, Sammelkorrektur,
-    /// --check und MCP nehmen RuleContextFor.</summary>
-    function LiveRuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     /// <summary>Zielplattform und Konfiguration des Projekts zu AUri für den Hinweis inaktiver Zweige (#615).
     /// </summary>
     function BuildTargetFor(const AUri: string; out APlatform, AConfig: string): Boolean;
@@ -598,7 +585,6 @@ implementation
 uses
   System.IOUtils,
   Shell.Composition.Refactorings.Services,
-  System.SyncObjs,
   System.StrUtils,
   Atlas.Common.Product.Version,
   Atlas.Common.Query.Language,
@@ -616,15 +602,12 @@ uses
   Atlas.Common.Pascal.IncludeFiles,
   Shell.Workspace.Setup,
   Shell.Workspace.Jobs,
-  Shell.Workspace.RuleProjects,
   Shell.VcsChanges,
   Shell.Hotspots,
   Shell.Bootstrap,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.FormatArgs,
-  Atlas.Common.Rules.ProjectFiles,
-  Atlas.Common.Rules.Checker,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Parser,
@@ -695,7 +678,6 @@ begin
   inherited Create;
   FTransport := ATransport;
   FLogger := ALogger;
-  FRuleChecksState := 1;
   WireProtocol;
   WireDocuments;
   WireEditing;
@@ -1071,7 +1053,11 @@ begin
       Result := FSettings.WorkspaceSettingsOf(AUri, ASettings);
     end;
   mServices.TestUnitContextFor := TestUnitContextFor;
-  mServices.RuleContextFor := RuleContextFor;
+  mServices.RuleContextFor :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      Result := FRuleContext.RuleContextFor(AUri, AContext);
+    end;
   mServices.UsesContextFor := UsesContextFor;
   FSlash := TShellSlash.Create(mServices);
   FEditing.UseSlashHost(FSlash.Host);
@@ -1120,6 +1106,31 @@ begin
   Result.ReadText := ReadSourceText;
 end;
 
+function TServerComposition.RuleContextServices: TShellRuleContextServices;
+begin
+  Result := Default(TShellRuleContextServices);
+  Result.Logger := FLogger;
+  Result.Workspaces := FWorkspaces;
+  Result.Settings := FSettings;
+  Result.Index :=
+    function: ISymbolIndex
+    begin
+      Result := FIndex;
+    end;
+  Result.UsesGraph :=
+    function: TUsesGraphService
+    begin
+      Result := FUsesGraph;
+    end;
+  Result.Queries :=
+    function: ICodeQueries
+    begin
+      Result := FOverviews.Queries;
+    end;
+  Result.EnsureUnit := EnsureUnit;
+  Result.ReadText := ReadSourceText;
+end;
+
 procedure TServerComposition.WireWorkspaces;
 begin
   FWorkspaces := TShellWorkspaceRegistry.Create(WorkspaceRegistryServices);
@@ -1128,6 +1139,7 @@ begin
     begin
       Result := LanguageLevelFor(AUri);
     end);
+  FRuleContext := TShellRuleContext.Create(RuleContextServices);
   FIndexScheduler := TIndexScheduler.Create;
   FLooseConfiguration := TLspConfiguration.Create(FDocuments, FTransport,
     function(const AFileName: string; out AText: string): Boolean
@@ -1335,7 +1347,11 @@ begin
   mServices := Default(TShellBaselineServices);
   mServices.MetricsSourceFor := MetricsSourceFor;
   mServices.ReadText := ReadSourceText;
-  mServices.RuleContextFor := RuleContextFor;
+  mServices.RuleContextFor :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      Result := FRuleContext.RuleContextFor(AUri, AContext);
+    end;
   mServices.DefinesFor := DefinesFor;
   mServices.IncludeResolverFor := IncludeResolverFor;
   mServices.RefreshLater := RefreshDiagnosticsLater;
@@ -1414,7 +1430,11 @@ begin
   mServices.Documents := FDocuments;
   mServices.Index := FIndex;
   mServices.EnsureUnit := EnsureUnit;
-  mServices.RuleContextFor := RuleContextFor;
+  mServices.RuleContextFor :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      Result := FRuleContext.RuleContextFor(AUri, AContext);
+    end;
   mServices.StringLiteralFor :=
     function(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings
     begin
@@ -2062,6 +2082,7 @@ begin
   FWorkspaces.FreeWorkspaces;
   // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
   FIndexRecheck.Free;
+  FreeAndNil(FRuleContext);
   FreeAndNil(FSettings);
   FWorkspaces.Free;
   // Nach den Ordnern: Ihre Index-Threads sind beendet und abgemeldet.
@@ -2723,7 +2744,7 @@ var
 begin
   AFindings := nil;
   Result := SameText(ExtractFileExt(AFileName), '.pas') and
-    RuleContextFor(TDocumentUris.FromPath(AFileName), mContext) and (mContext.FormFile <> '') and
+    FRuleContext.RuleContextFor(TDocumentUris.FromPath(AFileName), mContext) and (mContext.FormFile <> '') and
     ReadSourceText(AFileName, mText);
   if not Result then
   begin
@@ -3536,7 +3557,11 @@ begin
   // Sprachstand (#1126): minDelphiVersion begrenzt, was die Regeln als verfügbar ansehen.
   Result.Version := LanguageLevelFor;
   Result.BuildTarget := BuildTargetFor;
-  Result.Rules := LiveRuleContextFor;
+  Result.Rules :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      Result := FRuleContext.LiveRuleContextFor(AUri, AContext);
+    end;
   Result.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
@@ -3544,209 +3569,6 @@ begin
     end;
   // Ungenutzte uses (#621): dieselbe Analyse wie die uses-Aktionen, auch für die Diagnosen.
   Result.UsesContext := UsesContextFor;
-end;
-
-function TServerComposition.LiveRuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-var
-  mState: Integer;
-begin
-  Result := RuleContextFor(AUri, AContext);
-  if not Result then
-  begin
-    Exit;
-  end;
-  mState := Ord(AContext.Settings.RuleChecksEnabled);
-  if TInterlocked.Exchange(FRuleChecksState, mState) <> mState then
-  begin
-    if mState = 0 then
-    begin
-      FLogger.Info('Prüfregeln aus (ruleChecks.enabled): Die Prüfung im Editor meldet nur Syntaxfehler und ' +
-        'Compilermeldungen; --check und MCP prüfen weiter nach atlas.json.');
-    end
-    else
-    begin
-      FLogger.Info('Prüfregeln wieder an (ruleChecks.enabled).');
-    end;
-  end;
-  if mState = 0 then
-  begin
-    AContext.Rules := nil;
-  end;
-end;
-
-/// <summary>Liest Ressourcen neben der Unit, z. B. die .dcr mit den Palettensymbolen (#114).</summary>
-function FolderFileReader(const AFolder: string): TRuleFileReader;
-begin
-  Result :=
-    function(const AName: string; out AData: TBytes): Boolean
-    begin
-      Result := TFile.Exists(TPath.Combine(AFolder, AName));
-      if Result then
-      try
-        AData := TFile.ReadAllBytes(TPath.Combine(AFolder, AName));
-      except
-        on EInOutError do
-          Result := False;
-        on EFileStreamError do
-          Result := False;
-      end;
-    end;
-end;
-
-/// <summary>Fehlende Dateien aus {$I} und {$R} (#1379) neben der Unit.</summary>
-function FolderFileExists(const AFolder: string): TRuleFileExists;
-begin
-  Result :=
-    function(const AName: string): Boolean
-    begin
-      Result := TFile.Exists(TPath.Combine(AFolder, AName));
-    end;
-end;
-
-function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-var
-  mFileName: string;
-  mProjects: TArray<TProjectInfo>;
-  mLibrary: Boolean;
-begin
-  AContext := Default(TRuleCheckContext);
-  mFileName := TDocumentUris.ToPath(AUri);
-  AContext.FileName := mFileName;
-  RuleWorkspaceContext(mFileName, AContext, mProjects, mLibrary);
-  // Anwendungsart, Projektname und Formulare der .dpr (#926, #943, #956, #1055), wie bei MCP und Linter.
-  if mProjects <> nil then
-  begin
-    ApplyRuleProject(mProjects, mFileName, AContext);
-  end;
-  // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen. Ohne Regeln bleibt die
-  // Datei still (TLspSyntaxDiagnostics.RuleFindings).
-  if mLibrary then
-  begin
-    AContext.Rules := nil;
-  end
-  else
-  begin
-    AContext.Rules := BuiltinRules;
-  end;
-  RuleIndexServices(AContext);
-  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
-  // dort diagnostics.usesCycleLive.
-  AContext.Live := True;
-  if SameText(ExtractFileExt(mFileName), '.pas') then
-  begin
-    ReadRuleFormFile(mFileName, AContext);
-  end;
-  AContext.ReadFile := FolderFileReader(ExtractFilePath(mFileName));
-  AContext.FileExists := FolderFileExists(ExtractFilePath(mFileName));
-  Result := True;
-end;
-
-procedure TServerComposition.RuleWorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
-  out AProjects: TArray<TProjectInfo>; out ALibrary: Boolean);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  AProjects := nil;
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mWorkspace := FWorkspaces.Pick(AFileName);
-    if mWorkspace = nil then
-    begin
-      AContext.Settings := FSettings.Loose;
-    end
-    else
-    begin
-      AContext.Settings := mWorkspace.Configuration.Settings;
-      AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mWorkspace.Root), AFileName);
-      AContext.Baseline := mWorkspace.Baseline;
-      // Index, Namespaces, Unit-Suche, Packages und Namenskonvention auf demselben Weg wie MCP und Linter
-      // (#1112).
-      AContext.Services := mWorkspace.RuleServices;
-      // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
-      AContext.Services.Queries := FOverviews.Queries;
-      AProjects := ProjectsWithFile(mWorkspace, AFileName);
-    end;
-    // RTL, VCL und Komponenten außerhalb der Projekte (diagnostics.librarySources): Wer mit Strg+Klick in
-    // System.Net.HttpClient.pas springt, soll dort keine Befunde zu fremdem Code sehen.
-    ALibrary := not AContext.Settings.DiagnosticsLibrarySources and FWorkspaces.IsLibrarySource(AFileName);
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-function TServerComposition.ProjectsWithFile(AWorkspace: TShellWorkspace;
-  const AFileName: string): TArray<TProjectInfo>;
-var
-  mOther: TShellWorkspace;
-  mProject: TProjectInfo;
-begin
-  Result := nil;
-  if AWorkspace.State.Project(mProject) then
-  begin
-    Result := Result + [mProject];
-  end;
-  // Weitere Projekte mit der Datei (#1112): Eine Unit im Testprogramm und im Package hat keine
-  // eindeutige Anwendungsart (MergeRuleProjects).
-  for mOther in FWorkspaces.Items do
-  begin
-    if (mOther <> AWorkspace) and mOther.State.ContainsFile(AFileName) and mOther.State.Project(mProject) then
-    begin
-      Result := Result + [mProject];
-    end;
-  end;
-end;
-
-procedure TServerComposition.ApplyRuleProject(const AProjects: TArray<TProjectInfo>; const AFileName: string;
-  var AContext: TRuleCheckContext);
-var
-  mRuleProject: TCheckProject;
-begin
-  mRuleProject := TShellRuleProjects.RuleProjectOf(AProjects, AFileName, ReadSourceText);
-  AContext.Application := mRuleProject.Application;
-  AContext.ProjectName := mRuleProject.Name;
-  AContext.AutoCreateForms := mRuleProject.AutoCreateForms;
-  AContext.ProjectMainSource := mRuleProject.ProjectMainSource;
-end;
-
-procedure TServerComposition.RuleIndexServices(var AContext: TRuleCheckContext);
-var
-  mPending: string;
-begin
-  // Der Server hält alle Ordner: ein Index, Nachladen über alle Ordner (auch für Dateien ohne Ordner) und die
-  // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
-  AContext.Services.Index := FIndex;
-  AContext.Services.EnsureUnit := EnsureUnit;
-  // Solange Projekte laden oder der Index aufgebaut wird, ohne Index prüfen: Ein halber Index kennt Units noch
-  // nicht, Regeln wie unresolved-identifier meldeten dann Bezeichner aus ihnen als nicht deklariert. Ohne Index
-  // schweigen diese Regeln (wie mit --no-index); IndexFinished prüft danach alle Dateien neu.
-  if not FWorkspaces.RuleProjectsComplete(mPending) then
-  begin
-    AContext.Services.Index := nil;
-    AContext.Services.EnsureUnit := nil;
-  end;
-  AContext.Services.ProjectFiles := TRuleProjectFiles.Create(FWorkspaces.RuleProjects, FIndex, ReadSourceText,
-    function(out AReason: string): Boolean
-    begin
-      Result := FWorkspaces.RuleProjectsComplete(AReason);
-    end, FUsesGraph);
-end;
-
-procedure TServerComposition.ReadRuleFormFile(const AFileName: string; var AContext: TRuleCheckContext);
-begin
-  // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
-  // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
-  if ReadSourceText(ChangeFileExt(AFileName, '.dfm'), AContext.FormText) then
-  begin
-    AContext.FormFile := ChangeFileExt(AFileName, '.dfm');
-  end
-  else if ReadSourceText(ChangeFileExt(AFileName, '.fmx'), AContext.FormText) then
-  begin
-    AContext.FormFile := ChangeFileExt(AFileName, '.fmx');
-  end
-  else
-  begin
-    AContext.FormText := '';
-  end;
 end;
 
 procedure TServerComposition.ProjectLoaded;

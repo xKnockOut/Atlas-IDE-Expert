@@ -77,6 +77,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.TestUnits.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Workspaces.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Settings.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.RuleContext.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>
