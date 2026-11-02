@@ -78,6 +78,7 @@ uses
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
   Shell.Composition.RuleContext,
+  Shell.Composition.Ide,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -96,9 +97,7 @@ uses
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Lsp.WatchedFiles,
   Atlas.Common.Lsp.IndexRefresh,
-  Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Lsp.IdeProject,
-  Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Lsp.WorkspaceFolders,
   Atlas.Common.Lsp.Configuration,
@@ -202,10 +201,9 @@ type
     FIndexRefresh: TLspIndexRefresh;
     /// <summary>uses-Listen der übernommenen Puffer (#896): bei Änderung andere offene Units neu prüfen.</summary>
     FUsesChanges: TLspUsesChanges;
-    /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
-    FIdeBuild: TLspIdeBuild;
-    /// <summary>Projektkontext aus der IDE (#396).</summary>
-    FIdeProject: TLspIdeProject;
+    /// <summary>Build-Ergebnisse, Compilermeldungen (#528) und Projektkontext (#396) aus der IDE
+    /// (Shell.Composition.Ide).</summary>
+    FIde: TShellIde;
     /// <summary>Gemerkte Projektwahl über Neustarts (#46): selectBuild je Projekt, selectProject je Ordner.</summary>
     FProjectSelection: TProjectSelection;
     FWorkspaceFolders: TLspWorkspaceFolders;
@@ -365,20 +363,9 @@ type
     procedure WireWatchedFiles;
     /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
     procedure WireIde;
-    /// <summary>Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs (#528).</summary>
-    procedure IdeMessagesReceived(const AMessages: TArray<TCompilerMessage>);
-    /// <summary>Wurzel des Arbeitsbereichs zum Projekt AProject, sonst dessen Ordner.</summary>
-    function BuildRootOf(const AProject: string): string;
-    /// <summary>Legt den letzten Build für den MCP-Prozess ab (#556).</summary>
-    procedure IdeBuildChanged(const ABuild: TIdeBuild);
-    /// <summary>Während die IDE kompiliert, ruht die Projektprüfung (#1247).</summary>
-    procedure IdeCompiling(ARunning: Boolean);
-    /// <summary>Arbeitsbereiche, die das Projekt AProject laden.</summary>
-    function WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
-    /// <summary>Konfiguration, Plattform und Optionen aus der IDE (#396): betroffene Projekte neu laden.</summary>
-    procedure IdeProjectChanged(const AContext: TIdeProjectContext);
-    /// <summary>Neue Präfixe aus .atlas (#1111): naming-prefix und shadowed-name prüfen neu.</summary>
-    procedure IdeNamingChanged(const AContext: TIdeProjectContext);
+    /// <summary>Dienste der IDE-Nachrichten: Meldungen ersetzen die des letzten Laufs, Pause der Projektprüfung
+    /// während eines Compiles, Neuprüfung nach neuen Präfixen.</summary>
+    function IdeServices: TShellIdeServices;
     /// <summary>Teil von Create (S-02): Arbeitsbereichsordner und Ereignisse nach initialized.</summary>
     procedure WireWorkspaceFolders;
     /// <summary>Arbeitsbereichsordner entfernen und hinzufügen, wie der Client sie meldet.</summary>
@@ -1101,7 +1088,7 @@ begin
   Result.ActiveProject :=
     function: string
     begin
-      Result := FIdeProject.ActiveProject;
+      Result := FIde.Project.ActiveProject;
     end;
   Result.ReadText := ReadSourceText;
 end;
@@ -1280,7 +1267,7 @@ var
 begin
   // Vorgabe der Projektdatei .atlas aus dem Projektkontext der IDE, sonst die Zählung im Index.
   mWorkspace := FWorkspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
-  if (mWorkspace <> nil) and mWorkspace.State.Project(mProject) and FIdeProject.Find(mProject.FileName, mContext) and
+  if (mWorkspace <> nil) and mWorkspace.State.Project(mProject) and FIde.Project.Find(mProject.FileName, mContext) and
     mContext.HasNaming[AKind] then
   begin
     Exit(mContext.Naming[AKind]);
@@ -1621,7 +1608,7 @@ begin
   mServices.ActiveProject :=
     function: string
     begin
-      Result := FIdeProject.ActiveProject;
+      Result := FIde.Project.ActiveProject;
     end;
   mServices.SetProject :=
     procedure(const AScope, AProject: string)
@@ -1659,7 +1646,7 @@ begin
   mServices.ActiveProject :=
     function: string
     begin
-      Result := FIdeProject.ActiveProject;
+      Result := FIde.Project.ActiveProject;
     end;
   mServices.IsSelectedProject :=
     function(AWorkspace: TShellWorkspace): Boolean
@@ -1784,26 +1771,36 @@ begin
   FWatchedFiles.Attach(FDispatcher);
 end;
 
+function TServerComposition.IdeServices: TShellIdeServices;
+begin
+  Result := Default(TShellIdeServices);
+  Result.Logger := FLogger;
+  Result.Workspaces := FWorkspaces;
+  Result.MessagesReceived :=
+    procedure(const AMessages: TArray<TCompilerMessage>)
+    begin
+      FSyntaxDiagnostics.RefreshFiles(FCompile.Results.Replace(AMessages));
+    end;
+  Result.Compiling :=
+    procedure(ARunning: Boolean)
+    begin
+      // Die Frist ist ein Sicherheitsnetz für ein verlorenes Ende, keine Steuerung.
+      FPullDiagnostics.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
+    end;
+  Result.NamingChanged :=
+    procedure
+    begin
+      FSyntaxDiagnostics.RefreshLater;
+    end;
+end;
+
 procedure TServerComposition.WireIde;
 begin
-  // Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs wie ein eigener Compile (#528).
-  FIdeBuild := TLspIdeBuild.Create;
-  FIdeBuild.OnMessages := IdeMessagesReceived;
-  // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Atlas-Cache.
-  FIdeBuild.OnChanged := IdeBuildChanged;
-  // Während die IDE kompiliert, ruht die Projektprüfung (#1247). Die Frist ist ein Sicherheitsnetz für ein
-  // verlorenes Ende, keine Steuerung.
-  FIdeBuild.OnCompiling := IdeCompiling;
-  FIdeBuild.Attach(FDispatcher);
+  FIde := TShellIde.Create(IdeServices);
+  FIde.Attach(FDispatcher);
   // Projektwahl je Benutzer über Neustarts (#46).
   FProjectSelection := TProjectSelection.Create(TPath.Combine(TIndexCacheDirectory.DefaultRoot,
     'projektauswahl.json'));
-  // Konfiguration, Plattform und Optionen aus der IDE (#396): betroffene Projekte neu laden.
-  FIdeProject := TLspIdeProject.Create;
-  FIdeProject.OnChanged := IdeProjectChanged;
-  // Neue Präfixe aus .atlas (#1111): naming-prefix und shadowed-name prüfen neu, das Projekt bleibt geladen.
-  FIdeProject.OnNamingChanged := IdeNamingChanged;
-  FIdeProject.Attach(FDispatcher);
 end;
 
 procedure TServerComposition.WireWorkspaceFolders;
@@ -1812,96 +1809,6 @@ begin
   FWorkspaceFolders.OnChanged := WorkspaceFoldersChanged;
   FWorkspaceFolders.Attach(FDispatcher);
   FLifecycle.OnInitialized := ClientInitialized;
-end;
-
-procedure TServerComposition.IdeMessagesReceived(const AMessages: TArray<TCompilerMessage>);
-begin
-  FSyntaxDiagnostics.RefreshFiles(FCompile.Results.Replace(AMessages));
-  FLogger.Info(Format('Compilermeldungen aus der IDE: %d', [Length(AMessages)]));
-end;
-
-function TServerComposition.BuildRootOf(const AProject: string): string;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mWorkspace := FWorkspaces.Pick(AProject);
-    if mWorkspace <> nil then
-    begin
-      Result := mWorkspace.Root;
-    end
-    else
-    begin
-      Result := ExtractFileDir(AProject);
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-procedure TServerComposition.IdeBuildChanged(const ABuild: TIdeBuild);
-var
-  mRoot: string;
-begin
-  // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Atlas-Cache.
-  mRoot := BuildRootOf(ABuild.Project);
-  if mRoot = '' then
-  begin
-    Exit;
-  end;
-  try
-    ForceDirectories(TIndexCacheDirectory.DefaultRoot);
-    TFile.WriteAllText(TIndexCacheDirectory.BuildFileFor(TIndexCacheDirectory.DefaultRoot, mRoot),
-      TMcpBuildTools.ToFileText(ABuild), TEncoding.UTF8);
-  except
-    on E: Exception do
-      FLogger.Warning(Format('Letzter Build nicht gespeichert: %s', [E.Message]));
-  end;
-end;
-
-procedure TServerComposition.IdeCompiling(ARunning: Boolean);
-begin
-  // Die Frist ist ein Sicherheitsnetz für ein verlorenes Ende, keine Steuerung.
-  FPullDiagnostics.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
-end;
-
-function TServerComposition.WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
-var
-  mWorkspace: TShellWorkspace;
-  mProject: TProjectInfo;
-begin
-  Result := nil;
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    for mWorkspace in FWorkspaces.Items do
-    begin
-      if SameText(mWorkspace.Setup.ProjectFile, AProject) or
-        (mWorkspace.State.Project(mProject) and SameText(mProject.FileName, AProject)) then
-      begin
-        Result := Result + [mWorkspace];
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-procedure TServerComposition.IdeProjectChanged(const AContext: TIdeProjectContext);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  FLogger.Info(Format('Projektkontext aus der IDE: %s (%s, %s)',
-    [ExtractFileName(AContext.Project), AContext.Configuration, AContext.Platform]));
-  for mWorkspace in WorkspacesOfProject(AContext.Project) do
-  begin
-    mWorkspace.Reload;
-  end;
-end;
-
-procedure TServerComposition.IdeNamingChanged(const AContext: TIdeProjectContext);
-begin
-  FSyntaxDiagnostics.RefreshLater;
 end;
 
 procedure TServerComposition.WorkspaceFoldersChanged(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
@@ -1927,7 +1834,7 @@ begin
   ApplyClientInfo(FLifecycle.InitializeParams);
   mFolders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
   // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
-  FIdeProject.LoadInitialize(FLifecycle.InitializeParams);
+  FIde.Project.LoadInitialize(FLifecycle.InitializeParams);
   // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
   // Projekte weiter einen abgeleiteten Arbeitsbereich.
   FDeriveWorkspaces := True;
@@ -2126,8 +2033,7 @@ begin
   FreeAndNil(FCompile);
   FCompilerProcess := nil;
   FreeAndNil(FWatchedFiles);
-  FreeAndNil(FIdeBuild);
-  FreeAndNil(FIdeProject);
+  FreeAndNil(FIde);
   FreeAndNil(FProjectSelection);
   FreeAndNil(FTextDocumentSync);
   // Nach der Verbindung und dem Watchdog: Niemand meldet mehr einen Absturz.
@@ -2241,7 +2147,7 @@ begin
   Inc(FWorkspacePriority);
   Result.Setup.Scheduler := FIndexScheduler;
   Result.Setup.Deferred := ADeferred;
-  Result.Setup.IdeProjects := FIdeProject;
+  Result.Setup.IdeProjects := FIde.Project;
   Result.Setup.Origin := AOrigin;
   Result.Setup.Selection := FProjectSelection;
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).
@@ -2953,7 +2859,7 @@ begin
     end;
   end;
   Workspace := FWorkspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
-  if (Workspace <> nil) and Workspace.State.Project(Project) and FIdeProject.Find(Project.FileName, Context) then
+  if (Workspace <> nil) and Workspace.State.Project(Project) and FIde.Project.Find(Project.FileName, Context) then
   begin
     Result := Result + Context.FormatFunctions;
   end;
@@ -3315,7 +3221,7 @@ begin
   for mCandidate in FWorkspaces.Items do
   begin
     if (mCandidate.State.ProjectFileName <> '') and
-      SameText(mCandidate.State.ProjectFileName, FIdeProject.ActiveProject) then
+      SameText(mCandidate.State.ProjectFileName, FIde.Project.ActiveProject) then
     begin
       Result := mCandidate;
     end;
