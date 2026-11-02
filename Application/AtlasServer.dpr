@@ -24,6 +24,7 @@ uses
   Shell.Composition.Stepping in 'Source\Shell\Shell.Composition.Stepping.pas',
   Shell.Composition.Baselines in 'Source\Shell\Shell.Composition.Baselines.pas',
   Shell.Composition.Overviews in 'Source\Shell\Shell.Composition.Overviews.pas',
+  Shell.Composition.Analysis in 'Source\Shell\Shell.Composition.Analysis.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',

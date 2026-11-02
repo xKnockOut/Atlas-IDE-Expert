@@ -63,15 +63,9 @@ uses
   Atlas.Common.Pascal.CompilerSwitches,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Pascal.FormatRoutines,
-  Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Impact,
-  Atlas.Common.Lsp.DataFlow,
-  Atlas.Common.Lsp.AccessChains,
-  Atlas.Common.Lsp.Implementations,
-  Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
-  Atlas.Common.Lsp.Todos,
   Atlas.Common.Query.Contract,
   Atlas.Common.Lsp.Query,
   Atlas.Common.Hotspots.Contract,
@@ -93,6 +87,7 @@ uses
   Atlas.Common.Lsp.CompilerBaseline,
   Shell.Composition.Baselines,
   Shell.Composition.Overviews,
+  Shell.Composition.Analysis,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -199,27 +194,15 @@ type
     FRequestTimeout: Cardinal;
     FCompletion: TLspCompletion;
     FExpressionCompletion: TLspExpressionCompletion;
-    FSignatureHelp: TLspSignatureHelp;
-    FHierarchies: TLspHierarchies;
-    FImpact: TImpactAnalysis;
-    // Datenfluss „Woher/Wohin geht der Wert?“ (#690).
-    FDataFlow: TLspDataFlow;
-    // Zugriffsketten am Ausführungspunkt (#865).
-    FAccessChains: TLspAccessChains;
-    FImplementations: TLspImplementations;
-    FInlayHints: TLspInlayHints;
-    FCodeLens: TLspCodeLens;
-    /// <summary>Code-Metriken (#66): Befehl atlas.server.metrics mit Zwischenspeicher je Datei.</summary>
-    FMetrics: TLspMetrics;
-    /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
-    FTodos: TLspTodos;
+    /// <summary>Analysen: Signaturhilfe, Hierarchien, Auswirkungen, Datenfluss, Zugriffsketten,
+    /// Implementierungen, Inlay-Hinweise, Code-Linsen, Metriken, TODOs, semantische Hervorhebung.</summary>
+    FAnalysis: TShellAnalysis;
     /// <summary>Übersichten (#1118, #1351, #1354, #593, #1117, #854, #623): Architektur, Abfragen, Hotspots,
     /// Unit-Beziehungen, Weg zwischen Symbolen, Wertdarstellungen, Ereignisbehandlungen, Rekursion.</summary>
     FOverviews: TShellOverviews;
     /// <summary>Baseline für Altprojekte (#97, atlas.updateBaseline), Compilermeldungen darin (#530) und die
     /// Sammelkorrektur (#1352).</summary>
     FBaselines: TShellBaselines;
-    FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     FRefactorings: TShellRefactorings;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
@@ -1714,61 +1697,26 @@ begin
 end;
 
 procedure TServerComposition.WireAnalysis;
+var
+  mServices: TShellAnalysisServices;
 begin
-  FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
-    ReadSourceText,
-    EnsureUnit);
-  // Platzhalter von Format und eigenen Formatroutinen (#451).
-  FSignatureHelp.FormatRoutinesFor := FormatRoutinesFor;
-  FSignatureHelp.Attach(FDispatcher);
-  FHierarchies := TLspHierarchies.Create(FDocuments, FIndex,
-    ReadSourceText,
-    ProjectSourceFiles,
-    EnsureUnit);
-  FHierarchies.SettingsFor := ReferenceSettingsFor;
-  FHierarchies.Attach(FDispatcher);
-  FImpact := TImpactAnalysis.Create(FDocuments, FIndex,
-    ReadSourceText,
-    ProjectSourceFiles,
-    EnsureUnit);
-  FImpact.OptionsFor := ImpactOptionsFor;
-  FImpact.Attach(FDispatcher);
+  mServices := Default(TShellAnalysisServices);
+  mServices.Documents := FDocuments;
+  mServices.Index := FIndex;
+  mServices.ReadText := ReadSourceText;
+  mServices.ProjectFiles := ProjectSourceFiles;
+  mServices.EnsureUnit := EnsureUnit;
+  mServices.FormatRoutinesFor := FormatRoutinesFor;
+  mServices.ReferenceSettingsFor := ReferenceSettingsFor;
+  mServices.ImpactOptionsFor := ImpactOptionsFor;
+  mServices.InlayHintSettingsFor := InlayHintSettingsFor;
+  mServices.CodeLensMetricsFor := CodeLensMetricsFor;
+  mServices.MetricsSourceFor := MetricsSourceFor;
+  FAnalysis := TShellAnalysis.Create(mServices);
+  FAnalysis.Attach(FDispatcher);
   FDispatcher.RegisterConcurrentRequest(TAffectedTests.Method, HandleAffectedTests);
-  FDataFlow := TLspDataFlow.Create(FDocuments, FIndex,
-    ReadSourceText,
-    ProjectSourceFiles,
-    EnsureUnit);
-  FDataFlow.Attach(FDispatcher);
-  FAccessChains := TLspAccessChains.Create(FDocuments, FIndex,
-    ReadSourceText,
-    EnsureUnit);
-  FAccessChains.Attach(FDispatcher);
-  FImplementations := TLspImplementations.Create(FDocuments, FIndex,
-    EnsureUnit);
-  FImplementations.Attach(FDispatcher);
-  FInlayHints := TLspInlayHints.Create(FDocuments, FIndex,
-    ReadSourceText,
-    InlayHintSettingsFor,
-    EnsureUnit);
-  FInlayHints.Attach(FDispatcher);
-  FCodeLens := TLspCodeLens.Create(FDocuments, FIndex,
-    ReadSourceText,
-    ProjectSourceFiles,
-    EnsureUnit);
-  FCodeLens.MetricsFor := CodeLensMetricsFor;
-  FCodeLens.Attach(FDispatcher);
-  FMetrics := TLspMetrics.Create(MetricsSourceFor,
-    ReadSourceText);
-  // Vererbungstiefe in der Metrik-Linse des Plugins (#980).
-  FMetrics.Index := FIndex;
-  // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
-  FTodos := TLspTodos.Create(MetricsSourceFor,
-    ReadSourceText);
   WireOverviews;
   WireBaselines;
-  FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
-    EnsureUnit);
-  FSemanticTokens.Attach(FDispatcher);
 end;
 
 procedure TServerComposition.WireOverviews;
@@ -2095,16 +2043,7 @@ end;
 
 procedure TServerComposition.WireReportCommands;
 begin
-  FCommands.Register(TLspMetrics.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FMetrics.Execute(AArguments);
-    end);
-  FCommands.Register(TLspTodos.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FTodos.Execute(AArguments);
-    end);
+  FAnalysis.RegisterReportCommands(FCommands);
   FOverviews.RegisterReportCommands(FCommands);
 end;
 
@@ -2927,19 +2866,9 @@ end;
 
 procedure TServerComposition.FreeAnalysisFeatures;
 begin
-  FreeAndNil(FSemanticTokens);
-  FreeAndNil(FCodeLens);
-  FreeAndNil(FMetrics);
-  FreeAndNil(FTodos);
+  FreeAndNil(FAnalysis);
   FreeAndNil(FOverviews);
   FreeAndNil(FBaselines);
-  FreeAndNil(FInlayHints);
-  FreeAndNil(FImplementations);
-  FreeAndNil(FImpact);
-  FreeAndNil(FAccessChains);
-  FreeAndNil(FDataFlow);
-  FreeAndNil(FHierarchies);
-  FreeAndNil(FSignatureHelp);
 end;
 
 procedure TServerComposition.FreeCodeFeatures;
@@ -5015,7 +4944,7 @@ begin
   mEnsureUnit := EnsureUnit;
   mResolver := TNameResolver.Create(FIndex, mEnsureUnit);
   try
-    mResolver.Namespaces := FImpact.Namespaces;
+    mResolver.Namespaces := FAnalysis.Namespaces;
     try
       // Eigener Prozessstarter: git/svn laufen neben einem Compilerlauf. Über eine Variable: nie ein frisches
       // Objekt an einen const-Interface-Parameter.
@@ -5871,15 +5800,7 @@ begin
   FReferences.Namespaces := ANamespaces;
   FRename.Namespaces := ANamespaces;
   FCompletion.Namespaces := ANamespaces;
-  FSignatureHelp.Namespaces := ANamespaces;
-  FHierarchies.Namespaces := ANamespaces;
-  FImpact.Namespaces := ANamespaces;
-  FDataFlow.Namespaces := ANamespaces;
-  FAccessChains.Namespaces := ANamespaces;
-  FImplementations.Namespaces := ANamespaces;
-  FInlayHints.Namespaces := ANamespaces;
-  FCodeLens.Namespaces := ANamespaces;
-  FSemanticTokens.Namespaces := ANamespaces;
+  FAnalysis.SetNamespaces(ANamespaces);
 end;
 
 procedure TServerComposition.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
