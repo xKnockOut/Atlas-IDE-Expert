@@ -88,6 +88,8 @@ type
     FEndOffset: Integer;
     function GetChild(AIndex: Integer): TSyntaxNode;
     function GetChildCount: Integer;
+    /// <summary>Legt alle Kinder auf APending und löst sie vom Knoten, ohne sie freizugeben.</summary>
+    procedure DetachChildren(APending: TStack<TSyntaxNode>);
   public
     constructor Create(AKind: TSyntaxKind);
     destructor Destroy; override;
@@ -216,11 +218,26 @@ begin
   FKind := AKind;
 end;
 
+procedure TSyntaxNode.DetachChildren(APending: TStack<TSyntaxNode>);
+var
+  mIndex: Integer;
+begin
+  if FChildren = nil then
+  begin
+    Exit;
+  end;
+  FChildren.OwnsObjects := False;
+  for mIndex := 0 to FChildren.Count - 1 do
+  begin
+    APending.Push(FChildren[mIndex]);
+  end;
+  FChildren.Clear;
+end;
+
 destructor TSyntaxNode.Destroy;
 var
   Pending: TStack<TSyntaxNode>;
   Node: TSyntaxNode;
-  Index: Integer;
 begin
   // Iterativ statt rekursiv: Lange Ketten wie 1+1+...+1 ergeben sehr tiefe
   // Bäume, die rekursiv den Stapel sprengen würden.
@@ -228,23 +245,11 @@ begin
   begin
     Pending := TStack<TSyntaxNode>.Create;
     try
-      FChildren.OwnsObjects := False;
-      for Index := 0 to FChildren.Count - 1 do
-      begin
-        Pending.Push(FChildren[Index]);
-      end;
+      DetachChildren(Pending);
       while Pending.Count > 0 do
       begin
         Node := Pending.Pop;
-        if Node.FChildren <> nil then
-        begin
-          Node.FChildren.OwnsObjects := False;
-          for Index := 0 to Node.FChildren.Count - 1 do
-          begin
-            Pending.Push(Node.FChildren[Index]);
-          end;
-          Node.FChildren.Clear;
-        end;
+        Node.DetachChildren(Pending);
         Node.Free;
       end;
     finally
