@@ -33,7 +33,6 @@ uses
   Atlas.Common.Lsp.CompilerSwitches,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.Hover,
-  Atlas.Common.Lsp.Rationale,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.DocumentLinks,
@@ -49,15 +48,9 @@ uses
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.CodeLens,
-  Atlas.Common.Lsp.Metrics,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Lsp.Query,
-  Atlas.Common.Hotspots.Contract,
-  Atlas.Common.Hotspots.Service,
-  Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
-  Atlas.Common.Projects.Paths,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Baseline,
@@ -81,9 +74,9 @@ uses
   Shell.Composition.Ide,
   Shell.Composition.Configuration,
   Shell.Composition.FileChanges,
+  Shell.Composition.Sources,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
-  Atlas.Common.Metrics.Contract,
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -222,6 +215,8 @@ type
     FConfiguration: TShellConfiguration;
     /// <summary>Umfeld der Prüfregeln je Datei (Shell.Composition.RuleContext).</summary>
     FRuleContext: TShellRuleContext;
+    /// <summary>Datenquellen der Übersichten und Analysen (Shell.Composition.Sources).</summary>
+    FSources: TShellSources;
     FCompilerProcess: ICompilerProcess;
     /// <summary>Compilerläufe (#40, #261): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.</summary>
     FCompile: TShellCompileHost;
@@ -302,6 +297,7 @@ type
     /// <summary>Dienste des Umfelds der Prüfregeln; Index, Uses-Graph und Abfragen werden je Prüfung gefragt.
     /// </summary>
     function RuleContextServices: TShellRuleContextServices;
+    function SourcesServices: TShellSourcesServices;
     /// <summary>Teil von Create (S-02): Symbolindex und Diagnoselog.</summary>
     procedure WireIndex;
     /// <summary>Teil von Create (S-02): Definition, Hover, Arbeitsbereichssymbole, Hervorhebungen, Verweise, Umbenennen.</summary>
@@ -318,8 +314,6 @@ type
     procedure WireBaselines;
     /// <summary>Defines des Projekts zur Datei AFileName; nil ohne Projekt.</summary>
     function DefinesOfFile(const AFileName: string): TArray<string>;
-    /// <summary>Grenzen der Metrik-Linse; False, wenn Metriken oder die Linse abgeschaltet sind.</summary>
-    function CodeLensMetricsFor(const AUri: string; out ALimits: TMetricLimits): Boolean;
     /// <summary>Offene Dokumente bald neu prüfen.</summary>
     procedure RefreshDiagnosticsLater;
     /// <summary>Teil von Create (S-02): Refactorings und Befehle des Debuggers (Shell.Composition.Refactorings).
@@ -420,47 +414,8 @@ type
     /// <summary>Index und usesKeep für /sortuses (#297) und die uses-Diagnosen (#621); False, solange die
     /// Code-Aktionen fehlen.</summary>
     function UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
-    /// <summary>Optionen des Graphen der Unit-Beziehungen (#593): Wurzel und Namensräume des Projekts der
-    /// Datei, ohne Ausschlüsse der Architektur, damit „Wird verwendet von“ vollständig bleibt.</summary>
-    function UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
     /// <summary>"completeBlocks.docComment" (#88).</summary>
     function DocCommentsFor(const AUri: string): Boolean;
-    /// <summary>Einstellungen, Wurzel und Dateien für die Code-Metriken (#66): Datei, Projekt (.dproj/.dpr/.dpk),
-    /// Ordner oder '' (einziger Arbeitsbereich).</summary>
-    function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
-    /// <summary>Arbeitsbereich für Metriken: Projekt der Projektdatei, sonst der der Datei bzw. der einzige.
-    /// Aufrufer hält FWorkspaces.Lock.</summary>
-    function MetricsWorkspaceOf(const AFileName: string): TShellWorkspace;
-    /// <summary>Arbeitsbereich, dessen Projekt AFileName ist (.dproj, .dpr, .dpk). Aufrufer hält FWorkspaces.Lock.</summary>
-    function ProjectWorkspaceOf(const AFileName: string): TShellWorkspace;
-    /// <summary>Anfrage der Architekturübersicht (#1118) zum Arbeitsbereich von AFileName: Einstellungen, Wurzel,
-    /// Titel, Namensräume und Dateien des Projekts (AScope "project") bzw. aller Projekte (sonst; leer =
-    /// architecture.scope).</summary>
-    function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
-      out ASettings: TServerSettings): Boolean;
-    /// <summary>Projektdateien aller Arbeitsbereiche. Aufrufer hält FWorkspaces.Lock.</summary>
-    function AllProjectFiles: TArray<string>;
-    /// <summary>Namensräume des Arbeitsbereichs zu AFileName bzw. des einzigen. Aufrufer hält FWorkspaces.Lock.</summary>
-    function NamespacesNear(const AFileName: string): TArray<string>;
-    /// <summary>Datenquelle der Code-Abfragen (#1351): alle Projekte der Gruppe wie die Architekturübersicht,
-    /// Wurzel und Namensräume des gewählten Arbeitsbereichs; False ohne Arbeitsbereich.</summary>
-    function QuerySource(out ASource: TQuerySource): Boolean;
-    /// <summary>Arbeitsbereich der Abfragen: aktiv in der IDE, sonst ausgewählt, sonst der erste.
-    /// Aufrufer hält FWorkspaces.Lock.</summary>
-    function QueryWorkspace: TShellWorkspace;
-    /// <summary>Einstellungen und Projektordner für atlas/query zum Arbeitsbereich von AFileName.</summary>
-    function QuerySettingsFor(const AFileName: string; out ASettings: TServerSettings; out ARoot: string): Boolean;
-    /// <summary>Anfrage, Einstellungen und Versionsverwaltung für die Hotspots (#1354): Umfang wie die
-    /// Architekturübersicht mit architecture.scope.</summary>
-    function HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest; out ASettings: TServerSettings;
-      out AVcs: IHotspotVcs; out AError: string): Boolean;
-    /// <summary>Einstellungen und Namensräume für den Weg zwischen Symbolen (#1117) zum Arbeitsbereich von
-    /// AFileName.</summary>
-    function SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
-      out ANamespaces: TArray<string>): Boolean;
-    /// <summary>Begründungen (#1123): hints.rationale, Marken, TODO-Marken und ADR-Ordner des Arbeitsbereichs.
-    /// </summary>
-    function RationaleOptionsFor(const AUri: string): TRationaleOptions;
     /// <summary>Bedingte Symbole für Hover und Vervollständigung in Direktiven (#102): Symbole des Projekts mit
     /// Herkunft aus der .dproj, Compiler-Vorgaben, Include-Pfade und der Schalter "directives".</summary>
     function ConditionalContextFor(const AUri: string): TConditionalContext;
@@ -558,7 +513,6 @@ uses
   Shell.Workspace.Setup,
   Shell.Workspace.Jobs,
   Shell.VcsChanges,
-  Shell.Hotspots,
   Shell.Bootstrap,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Options,
@@ -580,7 +534,6 @@ uses
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Common.Compiler.Edition,
   Atlas.Common.Logging.RotatingFileStream,
@@ -1085,6 +1038,25 @@ begin
   Result.ReadText := ReadSourceText;
 end;
 
+function TServerComposition.SourcesServices: TShellSourcesServices;
+begin
+  Result := Default(TShellSourcesServices);
+  Result.Workspaces := FWorkspaces;
+  Result.Settings := FSettings;
+  Result.Index :=
+    function: ISymbolIndex
+    begin
+      Result := FIndex;
+    end;
+  Result.EnsureUnit := EnsureUnit;
+  Result.ReadText := ReadSourceText;
+  Result.ActiveProject :=
+    function: string
+    begin
+      Result := FIde.Project.ActiveProject;
+    end;
+end;
+
 procedure TServerComposition.WireWorkspaces;
 begin
   FWorkspaces := TShellWorkspaceRegistry.Create(WorkspaceRegistryServices);
@@ -1094,6 +1066,7 @@ begin
       Result := LanguageLevelFor(AUri);
     end);
   FRuleContext := TShellRuleContext.Create(RuleContextServices);
+  FSources := TShellSources.Create(SourcesServices);
   FIndexScheduler := TIndexScheduler.Create;
   FConfiguration := TShellConfiguration.Create(ConfigurationServices);
   FDocuments.Subscribe(HandleDocumentEvent);
@@ -1157,7 +1130,7 @@ begin
     begin
       Result := FSettings.Hints(AUri);
     end;
-  mServices.RationaleOptionsFor := RationaleOptionsFor;
+  mServices.RationaleOptionsFor := FSources.RationaleOptions();
   mServices.ConditionalContextFor := ConditionalContextFor;
   mServices.HighlightSettingsFor :=
     function(const AUri: string): THighlightSettings
@@ -1259,8 +1232,8 @@ begin
     begin
       Result := FSettings.InlayHints(AUri);
     end;
-  mServices.CodeLensMetricsFor := CodeLensMetricsFor;
-  mServices.MetricsSourceFor := MetricsSourceFor;
+  mServices.CodeLensMetricsFor := FSources.CodeLensMetrics();
+  mServices.MetricsSourceFor := FSources.MetricsSource();
   FAnalysis := TShellAnalysis.Create(mServices);
   FAnalysis.Attach(FDispatcher);
   FDispatcher.RegisterConcurrentRequest(TAffectedTests.Method, HandleAffectedTests);
@@ -1277,14 +1250,14 @@ begin
   mServices.ReadText := ReadSourceText;
   mServices.DefinesOf := DefinesOfFile;
   mServices.EnsureUnit := EnsureUnit;
-  mServices.MetricsSourceFor := MetricsSourceFor;
+  mServices.MetricsSourceFor := FSources.MetricsSource();
   mServices.UsesContextFor := UsesContextFor;
-  mServices.ArchitectureSourceFor := ArchitectureSourceFor;
-  mServices.QuerySource := QuerySource;
-  mServices.QuerySettingsFor := QuerySettingsFor;
-  mServices.HotspotSourceFor := HotspotSourceFor;
-  mServices.UnitRelationsOptionsFor := UnitRelationsOptionsFor;
-  mServices.SymbolPathSourceFor := SymbolPathSourceFor;
+  mServices.ArchitectureSourceFor := FSources.ArchitectureSource();
+  mServices.QuerySource := FSources.QuerySource();
+  mServices.QuerySettingsFor := FSources.QuerySettings();
+  mServices.HotspotSourceFor := FSources.HotspotSource();
+  mServices.UnitRelationsOptionsFor := FSources.UnitRelationsOptions();
+  mServices.SymbolPathSourceFor := FSources.SymbolPathSource();
   FOverviews := TShellOverviews.Create(mServices);
   FOverviews.Attach(FDispatcher);
 end;
@@ -1294,7 +1267,7 @@ var
   mServices: TShellBaselineServices;
 begin
   mServices := Default(TShellBaselineServices);
-  mServices.MetricsSourceFor := MetricsSourceFor;
+  mServices.MetricsSourceFor := FSources.MetricsSource();
   mServices.ReadText := ReadSourceText;
   mServices.RuleContextFor :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
@@ -1319,18 +1292,6 @@ begin
   begin
     Result := nil;
   end;
-end;
-
-function TServerComposition.CodeLensMetricsFor(const AUri: string; out ALimits: TMetricLimits): Boolean;
-var
-  mSource: TLspMetricsSource;
-begin
-  if not MetricsSourceFor(TDocumentUris.ToPath(AUri), False, mSource) then
-  begin
-    mSource.Settings := TServerSettings.Default;
-  end;
-  ALimits := TMetricRules.Limits(mSource.Settings);
-  Result := mSource.Settings.Metrics and mSource.Settings.CodeLens.Metrics;
 end;
 
 procedure TServerComposition.WireRefactorings;
@@ -1945,6 +1906,7 @@ begin
   FWorkspaces.FreeWorkspaces;
   // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
   FIndexRecheck.Free;
+  FreeAndNil(FSources);
   FreeAndNil(FRuleContext);
   FreeAndNil(FSettings);
   FWorkspaces.Free;
@@ -2939,319 +2901,6 @@ begin
   Result.Options := ImpactOptionsFor(AUri);
   Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms,
     ReadSourceText);
-end;
-
-function TServerComposition.MetricsSourceFor(const AFileName: string; AProject: Boolean;
-  out ASource: TLspMetricsSource): Boolean;
-var
-  mWorkspace: TShellWorkspace;
-  mProject: TProjectInfo;
-begin
-  ASource := Default(TLspMetricsSource);
-  ASource.Settings := TServerSettings.Default;
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mWorkspace := MetricsWorkspaceOf(AFileName);
-    if mWorkspace = nil then
-    begin
-      Exit(False);
-    end;
-    ASource.Settings := mWorkspace.Configuration.Settings;
-    ASource.Root := mWorkspace.Root;
-    if mWorkspace.State.Project(mProject) then
-    begin
-      ASource.Title := ChangeFileExt(ExtractFileName(mProject.FileName), '');
-    end
-    else
-    begin
-      ASource.Title := mWorkspace.Name;
-    end;
-    if AProject then
-    begin
-      ASource.Files := mWorkspace.State.ProjectFiles;
-    end;
-    Result := True;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-function TServerComposition.MetricsWorkspaceOf(const AFileName: string): TShellWorkspace;
-begin
-  Result := nil;
-  // Projektdatei: der Arbeitsbereich dieses Projekts (Projektgruppe, #648).
-  if MatchText(ExtractFileExt(AFileName), ['.dproj', '.dpr', '.dpk']) then
-  begin
-    Result := ProjectWorkspaceOf(AFileName);
-  end;
-  if (Result = nil) and (AFileName <> '') then
-  begin
-    Result := FWorkspaces.WorkspaceOf(AFileName);
-  end;
-  Result := TShellWorkspaces.Choose(Result, FWorkspaces.Items);
-end;
-
-function TServerComposition.ProjectWorkspaceOf(const AFileName: string): TShellWorkspace;
-var
-  mCandidate: TShellWorkspace;
-  mProject: TProjectInfo;
-begin
-  for mCandidate in FWorkspaces.Items do
-  begin
-    if (mCandidate.State.Project(mProject) and (SameText(mProject.FileName, AFileName) or
-      SameText(mProject.MainSource, AFileName) or SameText(ChangeFileExt(mProject.FileName, '.dproj'),
-      ChangeFileExt(AFileName, '.dproj')))) or SameText(mCandidate.Setup.ProjectFile, AFileName) then
-    begin
-      Exit(mCandidate);
-    end;
-  end;
-  Result := nil;
-end;
-
-function TServerComposition.SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
-  out ANamespaces: TArray<string>): Boolean;
-var
-  Source: TLspMetricsSource;
-  Workspace: TShellWorkspace;
-begin
-  ASettings := TServerSettings.Default;
-  ANamespaces := nil;
-  Result := MetricsSourceFor(AFileName, True, Source);
-  if not Result then
-  begin
-    Exit;
-  end;
-  ASettings := Source.Settings;
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := nil;
-    if AFileName <> '' then
-    begin
-      Workspace := FWorkspaces.WorkspaceOf(AFileName);
-    end;
-    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces.Items);
-    if Workspace <> nil then
-    begin
-      ANamespaces := Workspace.State.Namespaces;
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-function TServerComposition.ArchitectureSourceFor(const AFileName, AScope: string;
-  out ARequest: TArchitectureRequest; out ASettings: TServerSettings): Boolean;
-var
-  mSource: TLspMetricsSource;
-begin
-  ARequest := Default(TArchitectureRequest);
-  ASettings := TServerSettings.Default;
-  Result := MetricsSourceFor(AFileName, True, mSource);
-  if not Result then
-  begin
-    Exit;
-  end;
-  ASettings := mSource.Settings;
-  ARequest := TArchitectureRequest.FromSettings(ASettings);
-  ARequest.Scope := AScope;
-  if ARequest.Scope = '' then
-  begin
-    ARequest.Scope := ASettings.ArchitectureScope;
-  end;
-  ARequest.Root := mSource.Root;
-  ARequest.Title := mSource.Title;
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    if ARequest.Scope = 'project' then
-    begin
-      ARequest.Files := mSource.Files;
-    end
-    else
-    begin
-      // Projektgruppe (#648): die Dateien aller geladenen Projekte.
-      ARequest.Files := AllProjectFiles;
-    end;
-    ARequest.Namespaces := NamespacesNear(AFileName);
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  // Zuletzt berechneter Stand je Projekt bzw. Projektgruppe für die Angleichung (#1367).
-  ARequest.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot,
-    ARequest.ScopeKey);
-end;
-
-function TServerComposition.AllProjectFiles: TArray<string>;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  Result := nil;
-  for mWorkspace in FWorkspaces.Items do
-  begin
-    Result := Result + mWorkspace.State.ProjectFiles;
-  end;
-end;
-
-function TServerComposition.NamespacesNear(const AFileName: string): TArray<string>;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  mWorkspace := nil;
-  if AFileName <> '' then
-  begin
-    mWorkspace := FWorkspaces.WorkspaceOf(AFileName);
-  end;
-  mWorkspace := TShellWorkspaces.Choose(mWorkspace, FWorkspaces.Items);
-  Result := nil;
-  if mWorkspace <> nil then
-  begin
-    Result := mWorkspace.State.Namespaces;
-  end;
-end;
-
-function TServerComposition.HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest;
-  out ASettings: TServerSettings; out AVcs: IHotspotVcs; out AError: string): Boolean;
-var
-  mArchitecture: TArchitectureRequest;
-begin
-  ARequest := Default(THotspotRequest);
-  AVcs := nil;
-  AError := '';
-  Result := ArchitectureSourceFor(AFileName, '', mArchitecture, ASettings);
-  if not Result then
-  begin
-    Exit;
-  end;
-  ARequest := THotspotRequest.FromSettings(ASettings);
-  ARequest.Title := mArchitecture.Title;
-  ARequest.Root := mArchitecture.Root;
-  ARequest.Namespaces := mArchitecture.Namespaces;
-  ARequest.Files := mArchitecture.Files;
-  // Ohne Hotspots kein Prozess; ohne Arbeitskopie meldet die Antwort den Grund statt einer leeren Liste.
-  if ASettings.HotspotsEnabled then
-  begin
-    TShellHotspotVcs.Detect(mArchitecture.Root, ASettings, AVcs, AError);
-  end;
-end;
-
-function TServerComposition.QuerySource(out ASource: TQuerySource): Boolean;
-var
-  mWorkspace, mCandidate: TShellWorkspace;
-  mFiles, mNamespaces: TArray<string>;
-  mRoot: string;
-  mReferences: TReferenceSettings;
-begin
-  ASource := Default(TQuerySource);
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mWorkspace := QueryWorkspace;
-    if mWorkspace = nil then
-    begin
-      Exit(False);
-    end;
-    mNamespaces := mWorkspace.State.Namespaces;
-    // Wurzel für die Spalte "Datei": gemeinsamer Ordner aller Projekte der Gruppe (bei Atlas der Stamm des
-    // Repositorys). Mit der Wurzel des aktiven Projekts stand für jede Unit der anderen Projekte der volle Pfad da.
-    mRoot := mWorkspace.Root;
-    for mCandidate in FWorkspaces.Items do
-    begin
-      mRoot := TProjectPaths.CommonFolder(mRoot, mCandidate.Root);
-    end;
-    mReferences := mWorkspace.Configuration.Settings.References;
-    // Projektgruppe (#648): die Dateien aller geladenen Projekte.
-    mFiles := AllProjectFiles;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  ASource := TLspQuery.Source(FIndex, EnsureUnit, mRoot, mFiles, mNamespaces, ReadSourceText, mReferences);
-  Result := True;
-end;
-
-function TServerComposition.QueryWorkspace: TShellWorkspace;
-var
-  mCandidate: TShellWorkspace;
-begin
-  // Projektgruppe: Choose liefert nur bei genau einem Arbeitsbereich etwas; sonst hieß es "Kein Projekt
-  // geladen". Wurzel, Namensräume und Einstellungen vom in der IDE aktiven Projekt, sonst vom ausgewählten,
-  // sonst vom ersten.
-  Result := nil;
-  for mCandidate in FWorkspaces.Items do
-  begin
-    if (mCandidate.State.ProjectFileName <> '') and
-      SameText(mCandidate.State.ProjectFileName, FIde.Project.ActiveProject) then
-    begin
-      Result := mCandidate;
-    end;
-  end;
-  if Result <> nil then
-  begin
-    Exit;
-  end;
-  for mCandidate in FWorkspaces.Items do
-  begin
-    if FWorkspaces.IsSelected(mCandidate) then
-    begin
-      Exit(mCandidate);
-    end;
-  end;
-  if FWorkspaces.Items.Count > 0 then
-  begin
-    Result := FWorkspaces.Items[0];
-  end;
-end;
-
-function TServerComposition.QuerySettingsFor(const AFileName: string; out ASettings: TServerSettings;
-  out ARoot: string): Boolean;
-var
-  mSource: TLspMetricsSource;
-begin
-  Result := MetricsSourceFor(AFileName, False, mSource);
-  ASettings := mSource.Settings;
-  ARoot := mSource.Root;
-end;
-
-function TServerComposition.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
-var
-  Workspace: TShellWorkspace;
-begin
-  Result := TUsesGraphOptions.Default;
-  Result.IncludeLibrary := True;
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := nil;
-    if AFileName <> '' then
-    begin
-      Workspace := FWorkspaces.WorkspaceOf(AFileName);
-    end;
-    Workspace := TShellWorkspaces.Choose(Workspace, FWorkspaces.Items);
-    if Workspace <> nil then
-    begin
-      Result.Root := Workspace.Root;
-      Result.Namespaces := Workspace.State.Namespaces;
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-function TServerComposition.RationaleOptionsFor(const AUri: string): TRationaleOptions;
-var
-  Workspace: TShellWorkspace;
-begin
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
-    // ADR-Ordner relativ zum Arbeitsbereich; ohne Arbeitsbereich nur ein absoluter.
-    if Workspace = nil then
-    begin
-      Result := TRationaleOptions.FromSettings(FSettings.Loose, '');
-    end
-    else
-    begin
-      Result := TRationaleOptions.FromSettings(Workspace.Configuration.Settings, Workspace.Root);
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
 end;
 
 function TServerComposition.ConditionalContextFor(const AUri: string): TConditionalContext;
