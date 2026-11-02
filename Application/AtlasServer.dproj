@@ -80,6 +80,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.RuleContext.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Ide.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Configuration.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.FileChanges.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>
