@@ -119,7 +119,9 @@ function Frame: TAtlasServerFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasServerFrame) then
+  begin
     Result := TAtlasServerFrame(Host.Frame);
+  end;
 end;
 
 procedure UpdateIcon;
@@ -127,7 +129,9 @@ var
   mIcon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -143,63 +147,77 @@ begin
   AFrame.SetColors(TAtlasIdeStyle.Colors);
 end;
 
+procedure ShowState;
+begin
+  if State <> nil then
+  begin
+    State.Refresh(True);
+  end;
+end;
+
+/// <summary>Fragt den Server sofort ab und zeigt danach; läuft gerade eine Abfrage (oder kein Server), zeigt es,
+/// was da ist.</summary>
+procedure RefreshNow;
+begin
+  if Assigned(TAtlasIdeServerWindow.FHooks.QueryNow) and TAtlasIdeServerWindow.FHooks.QueryNow(ShowState) then
+  begin
+    Exit;
+  end;
+  ShowState;
+end;
+
 procedure Wire(AFrame: TAtlasServerFrame);
 begin
-  AFrame.OnRefresh :=
+  AFrame.Buttons.OnRefresh :=
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.Status,
-        procedure
-        begin
-          if Assigned(TAtlasIdeServerWindow.FHooks.QueryNow) and TAtlasIdeServerWindow.FHooks.QueryNow(
-            procedure
-            begin
-              if State <> nil then
-                State.Refresh(True);
-            end) then
-            Exit;
-          // Läuft gerade eine Abfrage (oder kein Server): zeigen, was da ist.
-          if State <> nil then
-            State.Refresh(True);
-        end);
+      TAtlasGuard.Run(TAtlasFeature.Status, RefreshNow);
     end;
-  AFrame.OnRebuild :=
+  AFrame.Buttons.OnRebuild :=
     procedure
     begin
       if Assigned(TAtlasIdeServerWindow.FHooks.Rebuild) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Status, TAtlasIdeServerWindow.FHooks.Rebuild);
+      end;
     end;
-  AFrame.OnPackage :=
+  AFrame.Buttons.OnPackage :=
     procedure
     begin
       if Assigned(TAtlasIdeServerWindow.FHooks.Package) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Status, TAtlasIdeServerWindow.FHooks.Package);
+      end;
     end;
-  AFrame.OnOpenUnit :=
+  AFrame.Tables.OnOpenUnit :=
     procedure(AUnit: TAtlasServerSlowUnit)
     var
       mUnit: TAtlasServerSlowUnit;
     begin
       mUnit := AUnit;
       if Assigned(TAtlasIdeServerWindow.FHooks.OpenUnit) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Status,
           procedure
           begin
             TAtlasIdeServerWindow.FHooks.OpenUnit(mUnit);
           end);
+      end;
     end;
-  AFrame.OnOpenRule :=
+  AFrame.Tables.OnOpenRule :=
     procedure(ARule: string)
     var
       mRule: string;
     begin
       mRule := ARule;
       if Assigned(TAtlasIdeServerWindow.FHooks.OpenRule) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Status,
           procedure
           begin
             TAtlasIdeServerWindow.FHooks.OpenRule(mRule);
           end);
+      end;
     end;
 end;
 
@@ -223,14 +241,20 @@ end;
 procedure TServerDock.FrameCreated(AFrame: TCustomFrame);
 begin
   if not (AFrame is TAtlasServerFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   UpdateIcon;
   Theme(TAtlasServerFrame(AFrame));
   Wire(TAtlasServerFrame(AFrame));
   if State <> nil then
+  begin
     State.Refresh(True);
+  end;
 end;
 
 function TServerDock.GetMenuActionList: TCustomActionList;
@@ -304,7 +328,9 @@ begin
     begin
       // Geschlossen, verdeckt oder als Reiter im Hintergrund: nichts lesen, nichts zeichnen.
       if (Host = nil) or not Host.Shown then
+      begin
         Exit;
+      end;
       Refresh(False);
     end);
 end;
@@ -318,16 +344,24 @@ var
 begin
   mFrame := Frame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   mJson := '';
   if Assigned(TAtlasIdeServerWindow.FHooks.StatusJson) then
+  begin
     mJson := TAtlasIdeServerWindow.FHooks.StatusJson();
+  end;
   mRunning := Assigned(TAtlasIdeServerWindow.FHooks.Running) and TAtlasIdeServerWindow.FHooks.Running();
   mRestarts := 0;
   if Assigned(TAtlasIdeServerWindow.FHooks.Restarts) then
+  begin
     mRestarts := TAtlasIdeServerWindow.FHooks.Restarts();
+  end;
   if not AForce and (mJson = FShownJson) and (mRunning = FShownRunning) and (mRestarts = FShownRestarts) then
+  begin
     Exit;
+  end;
   FShownJson := mJson;
   FShownRunning := mRunning;
   FShownRestarts := mRestarts;
@@ -353,15 +387,23 @@ var
   mCreated: Boolean;
 begin
   if not Enabled then
+  begin
     Exit;
+  end;
   // Nicht im Desktop: geöffnet nur auf Befehl, damit ohne Fenster nichts mitliest.
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TServerDock.Create, False);
+  end;
   if State = nil then
+  begin
     State := TServerState.Create;
+  end;
   Host.Show(mCreated);
   if mCreated then
+  begin
     UpdateIcon;
+  end;
   State.Refresh(True);
 end;
 
@@ -373,7 +415,9 @@ end;
 class procedure TAtlasIdeServerWindow.ApplySettings;
 begin
   if not Enabled and (Host <> nil) then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeServerWindow.ApplyTheme;
@@ -382,7 +426,9 @@ var
 begin
   mFrame := Frame;
   if mFrame <> nil then
+  begin
     Theme(mFrame);
+  end;
   UpdateIcon;
 end;
 

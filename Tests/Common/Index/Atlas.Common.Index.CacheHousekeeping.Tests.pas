@@ -278,14 +278,64 @@ end;
 
 { TIndexCacheDirectoryTests }
 
+/// <summary>TFile.Replace prüft, ob Quelle und Ziel existieren; im Wettlauf fehlt das Ziel kurz
+/// (EFileNotFoundException mit Ressourcentext). Beide Fälle einmal auslösen.</summary>
+procedure WarmUpReplaceFailures(const ARoot, ATarget: string);
+var
+  mMissing: string;
+begin
+  for mMissing in [TPath.Combine(ARoot, 'fehlt-ziel.json'), TPath.Combine(ARoot, 'fehlt-quelle.json')] do
+    try
+      if mMissing.Contains('ziel') then
+      begin
+        TFile.Replace(ATarget, mMissing, ATarget + '.bak');
+      end
+      else
+      begin
+        TFile.Replace(mMissing, ATarget, ATarget + '.bak');
+      end;
+    except
+      on Exception do
+        ;
+    end;
+end;
+
+/// <summary>Schreibt ATarget in einem eigenen Thread, während es gesperrt ist.</summary>
+procedure WarmUpLockInOtherThread(const ADisk: IIndexFileSystem; const ATarget: string);
+var
+  mDisk: IIndexFileSystem;
+  mTarget: string;
+  mWorker: TThread;
+begin
+  mDisk := ADisk;
+  mTarget := ATarget;
+  mWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mThreadLock: TFileStream;
+    begin
+      mThreadLock := TFileStream.Create(mTarget, fmOpenRead or fmShareExclusive);
+      try
+        mDisk.WriteText(mTarget, 'v');
+      finally
+        mThreadLock.Free;
+      end;
+    end);
+  try
+    mWorker.FreeOnTerminate := False;
+    mWorker.Start;
+    mWorker.WaitFor;
+  finally
+    mWorker.Free;
+  end;
+end;
+
 procedure WarmUpFailures(const ARoot: string);
 var
   Target: string;
   Lock, BackupLock: TFileStream;
   Disk: IIndexFileSystem;
-  Missing: string;
   CacheLock: TStream;
-  Worker: TThread;
 begin
   Disk := TDiskIndexFileSystem.Create;
   Target := TPath.Combine(ARoot, 'index-00000001.json');
@@ -312,42 +362,9 @@ begin
   finally
     BackupLock.Free;
   end;
-  // TFile.Replace prüft, ob Quelle und Ziel existieren; im Wettlauf fehlt das Ziel kurz (EFileNotFoundException
-  // mit Ressourcentext). Beide Fälle einmal auslösen.
-  for Missing in [TPath.Combine(ARoot, 'fehlt-ziel.json'), TPath.Combine(ARoot, 'fehlt-quelle.json')] do
-    try
-      if Missing.Contains('ziel') then
-      begin
-        TFile.Replace(Target, Missing, Target + '.bak');
-      end
-      else
-      begin
-        TFile.Replace(Missing, Target, Target + '.bak');
-      end;
-    except
-      on Exception do
-        ;
-    end;
+  WarmUpReplaceFailures(ARoot, Target);
   // Dasselbe in einem anderen Thread: Thread-lokale Daten der RTL legt jeder Thread selbst an.
-  Worker := TThread.CreateAnonymousThread(
-    procedure
-    var
-      ThreadLock: TFileStream;
-    begin
-      ThreadLock := TFileStream.Create(Target, fmOpenRead or fmShareExclusive);
-      try
-        Disk.WriteText(Target, 'v');
-      finally
-        ThreadLock.Free;
-      end;
-    end);
-  try
-    Worker.FreeOnTerminate := False;
-    Worker.Start;
-    Worker.WaitFor;
-  finally
-    Worker.Free;
-  end;
+  WarmUpLockInOtherThread(Disk, Target);
 end;
 
 procedure TIndexCacheDirectoryTests.WarmUpFirstUse;
