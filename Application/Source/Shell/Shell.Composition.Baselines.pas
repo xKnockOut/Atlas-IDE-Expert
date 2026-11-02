@@ -20,7 +20,6 @@ uses
 type
   TShellReadTextFunc = reference to function(const AFileName: string; out AText: string): Boolean;
   TShellRuleContextFunc = reference to function(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-  TShellDefinesFunc = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
   TShellIncludeResolverFunc = reference to function(const AUri: string): TIncludeResolver;
   TShellRefreshProc = reference to procedure;
 
@@ -29,7 +28,7 @@ type
     MetricsSourceFor: TLspMetricsSourceFunc;
     ReadText: TShellReadTextFunc;
     RuleContextFor: TShellRuleContextFunc;
-    DefinesFor: TShellDefinesFunc;
+    DefinesFor: TDefinesProvider;
     IncludeResolverFor: TShellIncludeResolverFunc;
     /// <summary>Offene Dokumente bald neu prüfen.</summary>
     RefreshLater: TShellRefreshProc;
