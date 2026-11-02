@@ -114,7 +114,9 @@ begin
   Params.Style := WS_POPUP;
   Params.ExStyle := Params.ExStyle or WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW;
   if FOwnerWindow <> 0 then
+  begin
     Params.WndParent := FOwnerWindow;
+  end;
 end;
 
 procedure TAtlasTabOrderOverlay.WMMouseActivate(var Message: TWMMouseActivate);
@@ -139,12 +141,18 @@ var
   mStyle: NativeInt;
 begin
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   mStyle := GetWindowLongPtr(Handle, GWL_EXSTYLE);
   if FClickable then
-    mStyle := mStyle and not WS_EX_TRANSPARENT
+  begin
+    mStyle := mStyle and not WS_EX_TRANSPARENT;
+  end
   else
+  begin
     mStyle := mStyle or WS_EX_TRANSPARENT;
+  end;
   SetWindowLongPtr(Handle, GWL_EXSTYLE, mStyle);
 end;
 
@@ -155,15 +163,21 @@ var
 begin
   mSame := Length(ABadges) = Length(FBadges);
   if mSame then
+  begin
     for mIndex := 0 to High(ABadges) do
+    begin
       if (ABadges[mIndex].Name <> FBadges[mIndex].Name) or (ABadges[mIndex].Number <> FBadges[mIndex].Number) or
         (ABadges[mIndex].Warn <> FBadges[mIndex].Warn) or (ABadges[mIndex].Anchor <> FBadges[mIndex].Anchor) then
       begin
         mSame := False;
         Break;
       end;
+    end;
+  end;
   if mSame then
+  begin
     Exit;
+  end;
   FBadges := Copy(ABadges);
   Invalidate;
 end;
@@ -185,8 +199,12 @@ var
 begin
   // Rückwärts: Später gezeichnete Marken liegen oben.
   for mIndex := High(FBadges) downto 0 do
+  begin
     if BadgeRect(mIndex).Contains(Point(X, Y)) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -204,9 +222,13 @@ begin
   begin
     mRect := BadgeRect(mIndex);
     if FBadges[mIndex].Warn then
-      mBack := TColor(FColors.Warn)
+    begin
+      mBack := TColor(FColors.Warn);
+    end
     else
+    begin
       mBack := TColor(FColors.Accent);
+    end;
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := mBack;
     Canvas.Pen.Color := mBack;
@@ -225,10 +247,14 @@ var
 begin
   inherited;
   if not FClickable or (Button <> mbLeft) then
+  begin
     Exit;
+  end;
   mIndex := BadgeAt(X, Y);
   if (mIndex >= 0) and Assigned(FOnBadgeClick) then
+  begin
     FOnBadgeClick(FBadges[mIndex].Name);
+  end;
 end;
 
 procedure TAtlasTabOrderOverlay.ShowAt(const AScreen: TRect);
@@ -248,7 +274,9 @@ end;
 procedure TAtlasTabOrderOverlay.HideOverlay;
 begin
   if FShown and HandleAllocated then
+  begin
     ShowWindow(Handle, SW_HIDE);
+  end;
   FShown := False;
 end;
 
