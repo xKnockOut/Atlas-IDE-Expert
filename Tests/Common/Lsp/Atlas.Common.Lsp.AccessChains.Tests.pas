@@ -137,16 +137,20 @@ end;
 
 function TLspAccessChainsTests.Chains(ALine, APointerSize: Integer): TAccessChainsResult;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mSource: TAccessChainSource;
 begin
-  Tree := TPascalParser.Parse(UnitText);
-  Resolver := TNameResolver.Create(FIndex);
+  mSource := Default(TAccessChainSource);
+  mSource.Tree := TPascalParser.Parse(UnitText);
+  mSource.Resolver := TNameResolver.Create(FIndex);
   try
-    Result := TLspAccessChains.Collect(Resolver, FIndex, nil, Tree, UnitText, FileName, ALine, APointerSize);
+    mSource.Index := FIndex;
+    mSource.Text := UnitText;
+    mSource.FileName := FileName;
+    mSource.PointerSize := APointerSize;
+    Result := TLspAccessChains.Collect(mSource, ALine);
   finally
-    Resolver.Free;
-    Tree.Free;
+    mSource.Resolver.Free;
+    mSource.Tree.Free;
   end;
 end;
 
