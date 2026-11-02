@@ -56,11 +56,18 @@ type
     function PeekWord: string;
     function ReadWord: string;
     function ReadQualifiedName: string;
+    /// <summary>Leerzeichen und Tabulatoren, keine Zeilenumbrüche.</summary>
+    procedure SkipSpaces;
+    procedure ReadQuoted;
+    procedure ReadCharCode;
     procedure ReadString;
     procedure ReadBracketed(AOpen, AClose: Char);
     procedure ReadCollection(AOwner: TDfmObject);
     procedure ReadValue(AOwner: TDfmObject);
+    procedure ReadChild(AObject: TDfmObject);
+    procedure ReadProperty(AObject: TDfmObject);
     procedure ReadBody(AObject: TDfmObject; const AEndWord: string);
+    procedure ReadObjectNames(AObject: TDfmObject);
   public
     constructor Create(const AText: string);
     destructor Destroy; override;
@@ -184,6 +191,42 @@ begin
   Result := Copy(FText, Start, FIndex - Start);
 end;
 
+procedure TScanner.SkipSpaces;
+begin
+  while CharInSet(Current, [' ', #9]) do
+  begin
+    Advance;
+  end;
+end;
+
+procedure TScanner.ReadQuoted;
+begin
+  // 'Text' mit '' für ein Hochkomma, höchstens bis zum Zeilenende.
+  Advance;
+  while not AtEnd and (Current <> #10) do
+  begin
+    if Current = '''' then
+    begin
+      Advance;
+      if Current <> '''' then
+      begin
+        Exit;
+      end;
+    end;
+    Advance;
+  end;
+end;
+
+procedure TScanner.ReadCharCode;
+begin
+  // #13 bzw. #$0D
+  Advance;
+  while not AtEnd and (TTextChars.IsAsciiIdentChar(Current) or (Current = '$')) do
+  begin
+    Advance;
+  end;
+end;
+
 procedure TScanner.ReadString;
 begin
   // Folge aus 'Text' und #13 bzw. #$0D, mit "+" auch über Zeilen.
@@ -192,36 +235,17 @@ begin
     begin
       if Current = '''' then
       begin
-        Advance;
-        while not AtEnd and (Current <> #10) do
-        begin
-          if Current = '''' then
-          begin
-            Advance;
-            if Current <> '''' then
-            begin
-              Break;
-            end;
-          end;
-          Advance;
-        end;
+        ReadQuoted;
       end
       else
       begin
-        Advance;
-        while not AtEnd and (TTextChars.IsAsciiIdentChar(Current) or (Current = '$')) do
-        begin
-          Advance;
-        end;
+        ReadCharCode;
       end;
     end;
     // "+" am Zeilenende verbindet mit der nächsten Zeile.
-    if Current = ' ' then
+    while Current = ' ' do
     begin
-      while Current = ' ' do
-      begin
-        Advance;
-      end;
+      Advance;
     end;
     if Current <> '+' then
     begin
@@ -320,105 +344,143 @@ begin
   end;
 end;
 
+procedure TScanner.ReadChild(AObject: TDfmObject);
+var
+  mChild: TDfmObject;
+begin
+  if FDepth >= MaxDepth then
+  begin
+    Error('Zu tief verschachtelt');
+    SkipLine;
+    Exit;
+  end;
+  mChild := ReadObject;
+  if mChild <> nil then
+  begin
+    AObject.Children.Add(mChild);
+  end;
+end;
+
+procedure TScanner.ReadProperty(AObject: TDfmObject);
+var
+  mItem: TDfmProperty;
+  mStart: Integer;
+begin
+  mItem := Default(TDfmProperty);
+  mItem.NameRange.StartPos := Position;
+  mItem.Name := ReadQualifiedName;
+  mItem.NameRange.EndPos := Position;
+  SkipSpaces;
+  if Current <> '=' then
+  begin
+    Error(Format('"=" nach "%s" erwartet', [mItem.Name]));
+    SkipLine;
+    Exit;
+  end;
+  Advance;
+  SkipSpaces;
+  // Lange Strings schreibt Delphi in die nächste Zeile ("Hint = " und darunter "'Bla'#123 +", #1235).
+  if CharInSet(Current, [#13, #10]) then
+  begin
+    SkipBlanks;
+  end;
+  mItem.ValueRange.StartPos := Position;
+  mStart := FIndex;
+  ReadValue(AObject);
+  mItem.ValueRange.EndPos := Position;
+  mItem.Value := TrimRight(Copy(FText, mStart, FIndex - mStart));
+  AObject.Properties := AObject.Properties + [mItem];
+end;
+
 procedure TScanner.ReadBody(AObject: TDfmObject; const AEndWord: string);
 var
-  Word: string;
-  Item: TDfmProperty;
-  Child: TDfmObject;
-  Start: Integer;
+  mWord: string;
 begin
   Inc(FDepth);
   try
-    while True do
+    SkipBlanks;
+    mWord := PeekWord;
+    while not AtEnd and (mWord <> AEndWord) do
     begin
-      SkipBlanks;
-      if AtEnd then
+      if (mWord = 'object') or (mWord = 'inherited') or (mWord = 'inline') then
       begin
-        Error('"end" fehlt');
-        AObject.Range.EndPos := Position;
-        Exit;
-      end;
-      Word := PeekWord;
-      if Word = AEndWord then
+        ReadChild(AObject);
+      end
+      else if TTextChars.IsAsciiIdentChar(Current) then
       begin
-        ReadWord;
-        AObject.Range.EndPos := Position;
-        Exit;
-      end;
-      if (Word = 'object') or (Word = 'inherited') or (Word = 'inline') then
-      begin
-        if FDepth >= MaxDepth then
-        begin
-          Error('Zu tief verschachtelt');
-          SkipLine;
-          Continue;
-        end;
-        Child := ReadObject;
-        if Child <> nil then
-        begin
-          AObject.Children.Add(Child);
-        end;
-        Continue;
-      end;
-      if not (TTextChars.IsAsciiIdentChar(Current)) then
+        ReadProperty(AObject);
+      end
+      else
       begin
         Error('Property oder "end" erwartet');
         Advance;
         SkipLine;
-        Continue;
       end;
-      Item := Default(TDfmProperty);
-      Item.NameRange.StartPos := Position;
-      Item.Name := ReadQualifiedName;
-      Item.NameRange.EndPos := Position;
-      while CharInSet(Current, [' ', #9]) do
-      begin
-        Advance;
-      end;
-      if Current <> '=' then
-      begin
-        Error(Format('"=" nach "%s" erwartet', [Item.Name]));
-        SkipLine;
-        Continue;
-      end;
-      Advance;
-      while CharInSet(Current, [' ', #9]) do
-      begin
-        Advance;
-      end;
-      // Lange Strings schreibt Delphi in die nächste Zeile ("Hint = " und darunter "'Bla'#123 +", #1235).
-      if CharInSet(Current, [#13, #10]) then
-      begin
-        SkipBlanks;
-      end;
-      Item.ValueRange.StartPos := Position;
-      Start := FIndex;
-      ReadValue(AObject);
-      Item.ValueRange.EndPos := Position;
-      Item.Value := TrimRight(Copy(FText, Start, FIndex - Start));
-      AObject.Properties := AObject.Properties + [Item];
+      SkipBlanks;
+      mWord := PeekWord;
     end;
+    if AtEnd then
+    begin
+      Error('"end" fehlt');
+    end
+    else
+    begin
+      ReadWord;
+    end;
+    AObject.Range.EndPos := Position;
   finally
     Dec(FDepth);
   end;
 end;
 
+procedure TScanner.ReadObjectNames(AObject: TDfmObject);
+var
+  mFirst: string;
+  mFirstRange: TTextRange;
+begin
+  SkipSpaces;
+  mFirstRange.StartPos := Position;
+  mFirst := ReadQualifiedName;
+  mFirstRange.EndPos := Position;
+  SkipSpaces;
+  if Current = ':' then
+  begin
+    // object Name: TKlasse
+    AObject.Name := mFirst;
+    AObject.NameRange := mFirstRange;
+    Advance;
+    SkipSpaces;
+    AObject.TypeRange.StartPos := Position;
+    AObject.TypeName := ReadQualifiedName;
+    AObject.TypeRange.EndPos := Position;
+  end
+  else
+  begin
+    // object TKlasse (ohne Namen)
+    AObject.TypeName := mFirst;
+    AObject.TypeRange := mFirstRange;
+    AObject.NameRange := mFirstRange;
+  end;
+  if AObject.TypeName = '' then
+  begin
+    Error('Klassenname erwartet');
+  end;
+end;
+
 function TScanner.ReadObject: TDfmObject;
 var
-  Word: string;
-  First: string;
-  FirstRange: TTextRange;
+  mWord: string;
 begin
   SkipBlanks;
   Result := TDfmObject.Create;
   try
     Result.Range.StartPos := Position;
-    Word := LowerCase(ReadWord);
-    if Word = 'inherited' then
+    mWord := LowerCase(ReadWord);
+    if mWord = 'inherited' then
     begin
       Result.Kind := TDfmObjectKind.Inherited_;
     end
-    else if Word = 'inline' then
+    else if mWord = 'inline' then
     begin
       Result.Kind := TDfmObjectKind.Inline_;
     end
@@ -426,47 +488,9 @@ begin
     begin
       Result.Kind := TDfmObjectKind.Object_;
     end;
-    while CharInSet(Current, [' ', #9]) do
-    begin
-      Advance;
-    end;
-    FirstRange.StartPos := Position;
-    First := ReadQualifiedName;
-    FirstRange.EndPos := Position;
-    while CharInSet(Current, [' ', #9]) do
-    begin
-      Advance;
-    end;
-    if Current = ':' then
-    begin
-      // object Name: TKlasse
-      Result.Name := First;
-      Result.NameRange := FirstRange;
-      Advance;
-      while CharInSet(Current, [' ', #9]) do
-      begin
-        Advance;
-      end;
-      Result.TypeRange.StartPos := Position;
-      Result.TypeName := ReadQualifiedName;
-      Result.TypeRange.EndPos := Position;
-    end
-    else
-    begin
-      // object TKlasse (ohne Namen)
-      Result.TypeName := First;
-      Result.TypeRange := FirstRange;
-      Result.NameRange := FirstRange;
-    end;
-    if Result.TypeName = '' then
-    begin
-      Error('Klassenname erwartet');
-    end;
+    ReadObjectNames(Result);
     // Optionaler Index: [2]
-    while CharInSet(Current, [' ', #9]) do
-    begin
-      Advance;
-    end;
+    SkipSpaces;
     if Current = '[' then
     begin
       ReadBracketed('[', ']');
