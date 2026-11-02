@@ -650,7 +650,6 @@ begin
   end;
 end;
 
-/// <summary>Bytes zum Text, der als Windows-1252 dekodiert wurde; False bei fremden Zeichen.</summary>
 /// <summary>Byte zu ACode in Windows-1252; 0, wenn das Zeichen dort fehlt.</summary>
 function Cp1252Byte(ACode: Integer): Byte;
 var
@@ -670,6 +669,7 @@ begin
   Result := 0;
 end;
 
+/// <summary>Bytes zum Text, der als Windows-1252 dekodiert wurde; False bei fremden Zeichen.</summary>
 function Cp1252Bytes(const AText: string; out ABytes: TBytes): Boolean;
 var
   mIndex: Integer;
