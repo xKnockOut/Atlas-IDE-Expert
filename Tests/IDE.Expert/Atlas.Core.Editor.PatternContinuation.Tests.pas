@@ -79,7 +79,9 @@ begin
   Result := '-';
   Lines := AText.Split([#10]);
   if TAtlasPatternContinuation.Suggest(Lines, High(Lines), AMinLines, AEnums, AExists, ASuggestion) then
+  begin
     Result := ASuggestion.Indent + ASuggestion.Text;
+  end;
 end;
 
 function Suggested(const AText: string): string; overload;
@@ -296,7 +298,9 @@ var
 begin
   SetLength(Lines, 5001);
   for Index := 0 to 4999 do
+  begin
     Lines[Index] := Format('  Grid.Cells[%d, %d] := Werte[%d]; // Zeile', [Index mod 1000, Index, Index]);
+  end;
   Lines[5000] := '';
   Watch := TStopwatch.StartNew;
   Found := TAtlasPatternContinuation.Suggest(Lines, 5000, TAtlasPatternContinuation.MinLines, nil, nil,

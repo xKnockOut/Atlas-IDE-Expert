@@ -41,7 +41,9 @@ procedure TCountingRegistration.DoRevoke;
 begin
   Inc(Count);
   if Fail then
+  begin
     raise EInvalidOp.Create('Lösen gescheitert');
+  end;
 end;
 
 { TRegistrationTests }

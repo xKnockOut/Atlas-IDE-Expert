@@ -94,12 +94,20 @@ var
 begin
   Result := '';
   for Index in AOrder do
+  begin
     if Index = TAtlasRanking.UnknownHeader then
-      Result := Result + '? '
+    begin
+      Result := Result + '? ';
+    end
     else if TAtlasRanking.IsHeader(Index) then
-      Result := Result + '# '
+    begin
+      Result := Result + '# ';
+    end
     else
+    begin
       Result := Result + AItems[Index].Name + ' ';
+    end;
+  end;
   Result := Result.Trim;
 end;
 
@@ -133,7 +141,9 @@ begin
   repeat
     CheckSynchronize(5);
     if ACondition() then
+    begin
       Exit(True);
+    end;
   until TThread.GetTickCount64 - Start > 3000;
   Result := False;
 end;

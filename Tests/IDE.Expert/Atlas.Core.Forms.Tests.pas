@@ -63,7 +63,9 @@ var
   Index: Integer;
 begin
   for Index := 0 to ComponentCount - 1 do
+  begin
     Proc(Components[Index]);
+  end;
 end;
 
 { TTestHandler }
@@ -118,9 +120,13 @@ begin
       begin
         // Im Designer weiß das der Designer; hier reicht ein fester Name.
         if AMethod.Data = Pointer(Handler) then
-          Result := 'Ping1Ping'
+        begin
+          Result := 'Ping1Ping';
+        end
         else
+        begin
           Result := '';
+        end;
       end);
   finally
     Handler.Free;

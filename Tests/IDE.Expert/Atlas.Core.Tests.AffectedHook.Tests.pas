@@ -50,7 +50,9 @@ end;
 procedure TAtlasAffectedHookTests.TearDown;
 begin
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
 end;
 

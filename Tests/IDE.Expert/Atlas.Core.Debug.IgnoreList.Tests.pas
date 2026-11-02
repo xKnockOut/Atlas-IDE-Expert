@@ -46,7 +46,9 @@ const
 procedure TAtlasDebugIgnoreListTests.TearDown;
 begin
   if (FFolder <> '') and TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 

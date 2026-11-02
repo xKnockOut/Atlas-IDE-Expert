@@ -56,9 +56,13 @@ var
 begin
   Value := '0';
   if AType = 'boolean' then
+  begin
     Value := 'true';
+  end;
   if AType = 'string' then
+  begin
     Value := '""';
+  end;
   Result := Format('"%s":{"type":"%s","default":%s,"x-key":"%s","x-area":"general","x-page":"Allgemein"%s}',
     [AName, AType, Value, AKey, AExtra]);
 end;
@@ -331,10 +335,16 @@ begin
       Used.AddOrSetValue(LowerCase(Node), 0);
       Found := 0;
       for Index := 0 to High(Subject.Nodes) do
+      begin
         if SameText(Subject.NodeOf(Name), Subject.Nodes[Index].Id) then
+        begin
           Inc(Found);
+        end;
+      end;
       if Node <> '' then
+      begin
         Assert.AreEqual(1, Found, Name);
+      end;
       Parent := Subject.ParentOf(Name);
       if Parent <> '' then
       begin
@@ -345,8 +355,10 @@ begin
       end;
     end;
     for Index := 0 to High(Subject.Nodes) do
+    begin
       Assert.IsTrue(Used.ContainsKey(LowerCase(Subject.Nodes[Index].Id)), 'Unterpunkt ohne Einstellung: ' +
         Subject.Nodes[Index].Id);
+    end;
   finally
     Used.Free;
     Subject.Free;

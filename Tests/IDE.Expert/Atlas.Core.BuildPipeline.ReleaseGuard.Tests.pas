@@ -103,7 +103,9 @@ begin
   for Item in AFindings do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + TAtlasReleaseGuard.OptionNames[Item.Issue];
   end;
 end;

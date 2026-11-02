@@ -60,7 +60,9 @@ begin
   AError := '';
   Result := not Fails;
   if Fails then
+  begin
     AError := 'HTTP 404';
+  end;
 end;
 
 procedure TAtlasUpdatesTests.ComparesSemanticVersions;

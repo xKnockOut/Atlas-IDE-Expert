@@ -102,7 +102,9 @@ begin
   try
     Text := '';
     for Index := 1 to 200 do
+    begin
       Text := Text + 'X;'#13#10;
+    end;
     Store.SetText('A.pas', Text);
     Assert.IsTrue(Store.Missing('A.pas', 50, 80, From, Till));
     Assert.AreEqual(50 - TAtlasInlayHintStore.Margin, From);
@@ -192,7 +194,9 @@ begin
     'end;';
   Types := [H(1, 11, 'Integer'), H(2, 14, StringOfChar('T', 60)), H(1, 11, 'Integer'), H(3, 0, '')];
   for Index := 0 to High(Types) do
+  begin
     Types[Index].TypeHint := True;
+  end;
   Store := TAtlasInlayHintStore.Create;
   try
     Store.SetText('A.pas', Text);
@@ -220,7 +224,9 @@ begin
   Text := 'unit U;' + sLineBreak + '{$I JVCL.INC}' + sLineBreak + '{$IFDEF COMPLIB_VCL}' + sLineBreak + '{$ENDIF}';
   Defines := [H(1, 13, 'COMPLIB_VCL'), H(1, 13, 'COMPLIB_VCL'), H(2, 0, '')];
   for Index := 0 to High(Defines) do
+  begin
     Defines[Index].DefineHint := True;
+  end;
   Store := TAtlasInlayHintStore.Create;
   try
     Store.SetText('A.pas', Text);
@@ -246,7 +252,9 @@ begin
   Text := 'const' + sLineBreak + '  CtrlC = ^C; Esc = ^[;';
   Chars := [H(1, 12, '#3'), H(1, 12, '#3'), H(1, 22, '#27')];
   for Index := 0 to High(Chars) do
+  begin
     Chars[Index].CharHint := True;
+  end;
   Store := TAtlasInlayHintStore.Create;
   try
     Store.SetText('A.pas', Text);

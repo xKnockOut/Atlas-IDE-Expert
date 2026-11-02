@@ -71,10 +71,14 @@ var
 begin
   Result := '';
   for Match in AList.Matches do
+  begin
     Result := Result + Format('%d:%d ', [Match.Line, Match.Character]);
+  end;
   Result := Trim(Result);
   if AList.Truncated then
+  begin
     Result := Result + ' +';
+  end;
 end;
 
 function TAtlasSelectionMatchesTests.Options(ACaseSensitive, AWholeWord: Boolean): TAtlasSelectionMatchOptions;

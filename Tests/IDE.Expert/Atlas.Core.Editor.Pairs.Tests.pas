@@ -71,12 +71,18 @@ begin
   for Token in TAtlasPairs.Analyze(AText) do
   begin
     if Token.Owner and not AOwners then
+    begin
       Continue;
+    end;
     Result := Result + Copy(Lines[Token.Line], Token.Character + 1, Token.Length) + '@' + IntToStr(Token.Depth);
     if Token.Owner then
+    begin
       Result := Result + '*';
+    end;
     if Token.Unpaired then
+    begin
       Result := Result + '!';
+    end;
     Result := Result + ' ';
   end;
   Result := Trim(Result);
@@ -170,7 +176,9 @@ var
 begin
   Result := '';
   for Guide in TAtlasGuides.Compute(AText, ATabWidth) do
+  begin
     Result := Result + Format('%d-%d@%d:%d ', [Guide.FirstLine, Guide.LastLine, Guide.Column, Guide.Depth]);
+  end;
   Result := Trim(Result);
 end;
 
@@ -311,7 +319,9 @@ begin
   TAtlasPairs.Analyze(AText, Blocks);
   Result := '';
   for Guide in TAtlasGuides.FromBlocks(AText.Split([#10]), Blocks, ATabWidth, True) do
+  begin
     Result := Result + Format('%d-%d@%d:%d ', [Guide.FirstLine, Guide.LastLine, Guide.Column, Guide.Depth]);
+  end;
   Result := Trim(Result);
 end;
 

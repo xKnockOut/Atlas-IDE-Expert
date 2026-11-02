@@ -147,11 +147,13 @@ var
   Item: TAtlasSnippet;
 begin
   for Item in AList do
+  begin
     if SameText(Item.Prefix, APrefix) then
     begin
       ASnippet := Item;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -167,7 +169,9 @@ var
 begin
   Result := AText;
   for Index := High(AEdits) downto 0 do
+  begin
     Result := Replace(Result, AEdits[Index].Start, AEdits[Index].Stop, AEdits[Index].Text);
+  end;
 end;
 
 { TAtlasSnippetsTests }
@@ -268,14 +272,22 @@ begin
     Code := TAtlasSnippets.Expand(Snippet.Body, '    ', #10).Text;
     // Je nach Art an die passende Stelle einer Unit.
     if (Snippet.Prefix = 'class') or (Snippet.Prefix = 'record') or (Snippet.Prefix = 'comp') then
-      Text := 'unit U;'#10'interface'#10'type'#10'  ' + Code + #10'implementation'#10'end.'
+    begin
+      Text := 'unit U;'#10'interface'#10'type'#10'  ' + Code + #10'implementation'#10'end.';
+    end
     else if Snippet.Prefix = 'prop' then
+    begin
       Text := 'unit U;'#10'interface'#10'type'#10'  T = class'#10'  public'#10'    ' + Code + #10'  end;'#10 +
-        'implementation'#10'end.'
+        'implementation'#10'end.';
+    end
     else if (Snippet.Prefix = 'propset') or (Snippet.Prefix = 'reg') then
-      Text := 'unit U;'#10'interface'#10'implementation'#10 + Code + #10'end.'
+    begin
+      Text := 'unit U;'#10'interface'#10'implementation'#10 + Code + #10'end.';
+    end
     else
+    begin
       Text := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'    ' + Code + #10'end;'#10'end.';
+    end;
     Assert.IsTrue(Parses(Text), Snippet.Prefix + ': ' + Text);
     Assert.IsTrue(Snippet.Description <> '', Snippet.Prefix);
   end;
@@ -633,7 +645,9 @@ begin
   Assert.IsFalse(TAtlasSnippets.FitsContext('class', ['record']));
   // Mitgelieferte Vorlagen haben einen Kontext.
   for Snippet in TAtlasSnippets.BuiltIn do
+  begin
     Assert.IsTrue(Snippet.Context <> '', Snippet.Prefix);
+  end;
   // Dateivorlage (#759): Kopf "file:", nur unit, form oder test; bleibt beim Speichern erhalten.
   Assert.IsTrue(TAtlasSnippets.Parse('prefix: svc'#10'file: Unit'#10'---'#10'unit %Unit%;', '', Snippet, Error), Error);
   Assert.AreEqual('unit', Snippet.FileKind);
@@ -760,11 +774,17 @@ begin
     Assert.IsFalse(Catalog.Replaced(0));
     Assert.IsFalse(Catalog.Replaced(1));
     for Index := 2 to Catalog.Count - 1 do
+    begin
       if SameText(Catalog.Entry(Index).Snippet.Prefix, 'tryf') or
         SameText(Catalog.Entry(Index).Snippet.Prefix, 'forin') then
-        Assert.IsTrue(Catalog.Replaced(Index), Catalog.Entry(Index).Snippet.Prefix)
+      begin
+        Assert.IsTrue(Catalog.Replaced(Index), Catalog.Entry(Index).Snippet.Prefix);
+      end
       else
+      begin
         Assert.IsFalse(Catalog.Replaced(Index), Catalog.Entry(Index).Snippet.Prefix);
+      end;
+    end;
   finally
     Catalog.Free;
   end;
@@ -873,7 +893,9 @@ begin
     Assert.IsTrue(FileExists(TPath.Combine(Folder, 'liste.atlas-snippet')));
   finally
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
 end;
 
@@ -888,9 +910,13 @@ begin
   begin
     Candidate := TPath.Combine(Directory, 'Tests\Data\LiveTemplates\Delphi12');
     if TDirectory.Exists(Candidate) then
+    begin
       Exit(Candidate);
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   Result := '';
@@ -1011,8 +1037,12 @@ begin
   Items := TAtlasSnippetCompletionProvider.Items(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, List));
   Found := False;
   for Item in Items do
+  begin
     if Item.Name = 'forb' then
+    begin
       Found := Item.Snippet <> '';
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 

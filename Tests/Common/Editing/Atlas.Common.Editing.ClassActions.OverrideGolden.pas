@@ -31,7 +31,9 @@ function TGoldenBasis.Beschreibung(AKurz: Boolean): string;
 begin
   Result := '';
   if AKurz then
+  begin
     Result := 'Basis';
+  end;
 end;
 
 procedure TGoldenFigur.Zeichne;

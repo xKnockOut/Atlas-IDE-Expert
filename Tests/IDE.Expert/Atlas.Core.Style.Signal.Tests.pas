@@ -56,9 +56,13 @@ var
 begin
   mSignals := TAtlasSignals.Light;
   for mKind := Low(TAtlasSignalKind) to High(TAtlasSignalKind) do
+  begin
     for mBar in LightBars do
+    begin
       Assert.IsTrue(TAtlasColorMath.Contrast(mSignals.Get(mKind).Ring, TAtlasColorMath.FromHex(mBar)) >= 4.0,
         Name(mKind) + ' auf ' + mBar);
+    end;
+  end;
 end;
 
 procedure TAtlasSignalTests.DarkFillsStandOutOnBars;
@@ -69,9 +73,13 @@ var
 begin
   mSignals := TAtlasSignals.Dark;
   for mKind := Low(TAtlasSignalKind) to High(TAtlasSignalKind) do
+  begin
     for mBar in DarkBars do
+    begin
       Assert.IsTrue(TAtlasColorMath.Contrast(mSignals.Get(mKind).Fill, TAtlasColorMath.FromHex(mBar)) >= 4.0,
         Name(mKind) + ' auf ' + mBar);
+    end;
+  end;
 end;
 
 procedure TAtlasSignalTests.MarksReadableOnFill;
@@ -111,6 +119,7 @@ var
 begin
   // Der eigentliche Fehler (#1255): Die Punkte waren im hellen Design kaum zu unterscheiden.
   for mLeft := 0 to High(Kinds) do
+  begin
     for mRight := mLeft + 1 to High(Kinds) do
     begin
       Assert.IsTrue(TAtlasColorMath.DeltaE2000(TAtlasSignals.Light.Get(Kinds[mLeft]).Fill,
@@ -118,6 +127,7 @@ begin
       Assert.IsTrue(TAtlasColorMath.DeltaE2000(TAtlasSignals.Dark.Get(Kinds[mLeft]).Fill,
         TAtlasSignals.Dark.Get(Kinds[mRight]).Fill) >= 20, 'dunkel');
     end;
+  end;
 end;
 
 procedure TAtlasSignalTests.StatusStatesMapToSignals;

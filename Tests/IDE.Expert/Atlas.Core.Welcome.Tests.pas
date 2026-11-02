@@ -177,10 +177,16 @@ var
 begin
   Result := '';
   for Id in AIds do
+  begin
     if Result = '' then
-      Result := Id
+    begin
+      Result := Id;
+    end
     else
+    begin
       Result := Result + ',' + Id;
+    end;
+  end;
 end;
 
 function Number(const AName: string; AValue: Integer): TAtlasRegValue;
@@ -854,7 +860,9 @@ var
 begin
   Result := '';
   for Step in ASteps do
+  begin
     Result := Result + IntToStr(Ord(Step)) + ';';
+  end;
 end;
 
 function Expected(const ASteps: array of TAtlasIdePageStep): string;
@@ -863,7 +871,9 @@ var
 begin
   Result := '';
   for Step in ASteps do
+  begin
     Result := Result + IntToStr(Ord(Step)) + ';';
+  end;
 end;
 
 procedure TAtlasIdePageStepsTests.FirstSyncDoesNothing;
@@ -1040,7 +1050,9 @@ var
 begin
   Result := ADefault;
   if FValues.TryGetValue(AName, Text) then
+  begin
     Result := StrToIntDef(Text, ADefault);
+  end;
 end;
 
 procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
@@ -1051,7 +1063,9 @@ end;
 function TMemoryStore.ReadString(const AName, ADefault: string): string;
 begin
   if not FValues.TryGetValue(AName, Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TMemoryStore.WriteString(const AName, AValue: string);

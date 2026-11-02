@@ -70,7 +70,9 @@ begin
   for Item in AFiles do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Item.Name;
   end;
 end;
@@ -80,11 +82,13 @@ var
   Item: TAtlasPackageFile;
 begin
   for Item in AFiles do
+  begin
     if Item.Name = AName then
     begin
       AFile := Item;
       Exit(True);
     end;
+  end;
   AFile := Default(TAtlasPackageFile);
   Result := False;
 end;
@@ -110,7 +114,9 @@ end;
 procedure TAtlasDiagnosticPackageTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown: Zeichenkette freigeben.
   FFolder := '';
 end;
@@ -224,7 +230,9 @@ begin
   Builder := TStringBuilder.Create;
   try
     for Index := 1 to TAtlasDiagnosticPackage.PluginLogLines + 5 do
+    begin
       Builder.Append('Zeile ').Append(Index).Append(sLineBreak);
+    end;
     TFile.WriteAllText(TPath.Combine(FFolder, 'atlas.log'), Builder.ToString, TEncoding.UTF8);
   finally
     Builder.Free;
@@ -289,7 +297,9 @@ begin
     begin
       Result := False;
       for Name in Taken do
+      begin
         Result := Result or SameText(Name, AFileName);
+      end;
     end);
   Assert.AreEqual(IncludeTrailingPathDelimiter(FFolder) + 'Atlas-Diagnose-2026-10-15-3.zip', Target,
     'vorhandene ZIP wird nicht überschrieben');
@@ -322,7 +332,9 @@ begin
       Assert.AreEqual(Item.Text, TEncoding.UTF8.GetString(Bytes), Item.Name);
     end;
     for Name in Names do
+    begin
       Assert.IsFalse(Name.Contains('einstellungen') or Name.Contains('diagnosemodus'), Name);
+    end;
     Zip.Close;
   finally
     Zip.Free;

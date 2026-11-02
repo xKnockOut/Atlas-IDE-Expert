@@ -112,10 +112,16 @@ begin
   Message.Address := AAddress;
   Result := TAtlasAvAnalysis.Create(AChains, Message, 4, AAllowCalls);
   while Result.Next(Request) do
+  begin
     if FAnswers.TryGetValue(Request.Expression, Value) then
-      Result.Answer(True, Value)
+    begin
+      Result.Answer(True, Value);
+    end
     else
+    begin
       Result.Answer(False, '');
+    end;
+  end;
 end;
 
 procedure TAtlasAvTextsTests.NilLinkNamesFieldAndOffset;

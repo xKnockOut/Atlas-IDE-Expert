@@ -82,7 +82,9 @@ begin
     Dialog.Prepare;
     Assert.IsFalse(Dialog.OneRadio.Enabled, 'ohne Formulare');
     for Category := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
+    begin
       Dialog.CategoryCheck(Category).Checked := False;
+    end;
     Assert.IsFalse(Dialog.OkButton.Enabled);
   finally
     Dialog.Free;

@@ -165,6 +165,7 @@ begin
   AStatus := 404;
   AText := '';
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if (Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex]) and
       ((FParts[mIndex] = '') or (Pos(FParts[mIndex], ABody) > 0)) then
     begin
@@ -172,6 +173,7 @@ begin
       AText := FTexts[mIndex];
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -208,9 +210,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
@@ -228,7 +234,9 @@ begin
     begin
       mItem := TJSONObject(mValue).Values[AName];
       if mItem <> nil then
+      begin
         Result := mItem.Value;
+      end;
     end;
   finally
     mValue.Free;
@@ -434,7 +442,9 @@ begin
     Assert.AreEqual('', TAtlasTrackerBoard.CacheFile('', YouTrackTarget));
   finally
     if TDirectory.Exists(mFolder) then
+    begin
       TDirectory.Delete(mFolder, True);
+    end;
   end;
 end;
 

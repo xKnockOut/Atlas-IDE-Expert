@@ -157,7 +157,9 @@ begin
       end;
       Inc(Clock, CheckMs);
       if not Problems.TryGetValue(UpperCase(AFileName), AProblems) then
+      begin
         AProblems := nil;
+      end;
       Result := True;
     end,
     function(const AProject: TAtlasCompileProject; const AFindings: TAtlasGateFindings; ACheckedUnits: Integer;
@@ -167,10 +169,14 @@ begin
     begin
       Reported := Reported + OutcomeNames[AOutcome] + ':';
       for Finding in AFindings do
+      begin
         Reported := Reported + ExtractFileName(Finding.FileName) + '/' + Finding.Problem.Code + ',';
+      end;
       Reported := Reported + ' ';
       if ANotifyTimeout then
+      begin
         Inc(Notified);
+      end;
       Result := Format('%d Fehler', [Length(AFindings)]);
     end,
     function: Int64

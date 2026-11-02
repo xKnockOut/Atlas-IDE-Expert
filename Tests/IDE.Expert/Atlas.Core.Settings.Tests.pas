@@ -262,7 +262,9 @@ end;
 function TMemoryStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
 begin
   if not FValues.TryGetValue(AName, Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
@@ -273,7 +275,9 @@ end;
 function TMemoryStore.ReadString(const AName, ADefault: string): string;
 begin
   if not FStrings.TryGetValue(AName, Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TMemoryStore.WriteString(const AName, AValue: string);
@@ -2938,7 +2942,9 @@ begin
   Global := TAtlasSettingsSchema.ForScope(Fields, True, TAtlasSettingsScopes.IdeManagedPaths);
   Paths := '|';
   for Field in Project do
+  begin
     Paths := Paths + Field.Path + '|';
+  end;
   Assert.Contains(Paths, '|rules|');
   Assert.Contains(Paths, '|index.exclude|');
   Assert.Contains(Paths, '|completion.senderCast|');
@@ -2949,14 +2955,18 @@ begin
   Assert.Contains(Paths, '|diagnostics.usesCycleImplementation|');
   Assert.DoesNotContain(Paths, '|diagnostics.log|');
   for Field in Project do
+  begin
     if Field.Path = 'diagnostics.usesCycleLive' then
     begin
       Assert.AreEqual('Prüfregeln', Field.Page);
       Assert.AreEqual('true', Field.DefaultJson);
     end;
+  end;
   Paths := '|';
   for Field in Global do
+  begin
     Paths := Paths + Field.Path + '|';
+  end;
   Assert.Contains(Paths, '|language|');
   Assert.Contains(Paths, '|completion.matching|');
   // Versionsverwaltung (#571) hat seit #1285 eine eigene Seite, Issue-Tracker seit #1260: Das ganze Objekt
@@ -2965,8 +2975,12 @@ begin
   Assert.DoesNotContain(Paths, '|vcs.provider|');
   Assert.DoesNotContain(Paths, '|issues|');
   for Field in Fields do
+  begin
     if Field.Path = 'vcs' then
+    begin
       Assert.IsTrue(Field.Global, 'vcs bleibt global');
+    end;
+  end;
   // Auf den Reitern der Optionsseite bzw. von der IDE gesetzt: nicht noch einmal im Dialog.
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|hints.xmlDocFull|');
@@ -2975,9 +2989,13 @@ begin
   Assert.Contains(Paths, '|rules|');
   // Jedes umgeleitete Feld ist im Schema global.
   for Field in Fields do
+  begin
     if Pos('|' + Field.Path + '|',
       '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|references.inferred|') > 0 then
+    begin
       Assert.IsTrue(Field.Global, Field.Path);
+    end;
+  end;
 end;
 
 procedure TAtlasPluginSettingsTests.ProblemsWindowOptions;

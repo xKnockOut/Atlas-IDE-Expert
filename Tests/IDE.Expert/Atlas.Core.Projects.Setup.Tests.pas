@@ -59,9 +59,13 @@ begin
     begin
       Candidate := IncludeTrailingPathDelimiter(Directory) + 'Setup' + PathDelim + 'Vorlagen';
       if DirectoryExists(Candidate) then
+      begin
         Exit(Candidate);
+      end;
       if ExtractFileDir(Directory) = Directory then
+      begin
         Break;
+      end;
       Directory := ExtractFileDir(Directory);
     end;
   end;
@@ -78,7 +82,9 @@ begin
   Result.Setup.Known := AChecked;
   Result.Setup.Checked := AChecked;
   if AChecked and not AClean then
+  begin
     Result.Setup.MissingUnitCount := 1;
+  end;
 end;
 
 { TAtlasProjectSetupTests }
@@ -95,7 +101,9 @@ begin
     Assert.IsTrue(TAtlasProjectSetups.ValidTemplate(TAtlasProjectSetups.BuiltIn(Template), AtlasSchemaJson, Issues),
       TAtlasProjectSetups.TemplateId(Template) + ': ' + string.Join('; ', Issues));
     if Folder = '' then
+    begin
       Continue;
+    end;
     Text := TFile.ReadAllText(IncludeTrailingPathDelimiter(Folder) + TAtlasProjectSetups.TemplateFile(Template),
       TEncoding.UTF8);
     Assert.IsTrue(TAtlasProjectSetups.ValidTemplate(Text, AtlasSchemaJson, Issues),
@@ -114,7 +122,9 @@ var
 begin
   Folder := RepoTemplates;
   if Folder = '' then
+  begin
     Exit;
+  end;
   for Template := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
   begin
     Text := TFile.ReadAllText(IncludeTrailingPathDelimiter(Folder) + TAtlasProjectSetups.TemplateFile(Template),
@@ -168,7 +178,9 @@ begin
       AText := '';
       Result := SameText(AFileName, 'C:\Atlas\Vorlagen\atlas-strict.json');
       if Result then
+      begin
         AText := '{"profile": "fast"}';
+      end;
     end;
   Assert.AreEqual('{"profile": "fast"}', TAtlasProjectSetups.TemplateText(TAtlasSetupTemplate.NewStrict,
     'C:\Atlas\Vorlagen', Read));
@@ -199,8 +211,12 @@ begin
     begin
       Result := False;
       for Each in Present do
+      begin
         if SameText(Each, AFileName) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
   Present := ['C:\P\delphi-lsp.json'];
   Assert.AreEqual('C:\P\delphi-lsp.json', TAtlasProjectSetups.ExistingConfig('C:\P\App.dproj', Exists));

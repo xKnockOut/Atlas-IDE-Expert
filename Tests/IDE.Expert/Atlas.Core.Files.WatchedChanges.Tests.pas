@@ -35,7 +35,9 @@ var
 begin
   Result := '';
   for Change in AChanges do
+  begin
     Result := Result + ExtractFileName(Change.FileName) + '=' + Names[Change.Kind] + ' ';
+  end;
 end;
 
 procedure TAtlasWatchedChangesTests.WaitsUntilQuiet;

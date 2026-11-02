@@ -1653,7 +1653,9 @@ begin
     Results := Runner.Execute;
     // Ein Speicherleck zählt als Fehlschlag.
     if (not Results.AllPassed) or (Results.MemoryLeakCount > 0) then
+    begin
       System.ExitCode := EXIT_ERRORS;
+    end;
 
     {$IFNDEF CI}
     if TDUnitX.Options.ExitBehavior = TDUnitXExitBehavior.Pause then

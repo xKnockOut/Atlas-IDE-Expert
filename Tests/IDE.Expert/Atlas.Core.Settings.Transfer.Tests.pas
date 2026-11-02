@@ -130,13 +130,21 @@ begin
     begin
       Result := '';
       if SameText(AName, 'LOCALAPPDATA') then
-        Result := 'C:\Users\max\AppData\Local'
+      begin
+        Result := 'C:\Users\max\AppData\Local';
+      end
       else if SameText(AName, 'APPDATA') then
-        Result := 'C:\Users\max\AppData\Roaming'
+      begin
+        Result := 'C:\Users\max\AppData\Roaming';
+      end
       else if SameText(AName, 'USERPROFILE') then
-        Result := 'C:\Users\max'
+      begin
+        Result := 'C:\Users\max';
+      end
       else if SameText(AName, 'USERNAME') then
+      begin
         Result := 'max';
+      end;
     end;
 end;
 
@@ -156,8 +164,12 @@ var
   Item: TAtlasImportItem;
 begin
   for Item in APreview.Items do
+  begin
     if Item.Key = AKey then
+    begin
       Exit(Item);
+    end;
+  end;
   Result := Default(TAtlasImportItem);
   Assert.IsTrue(False, 'Eintrag fehlt: ' + AKey);
 end;
@@ -168,8 +180,12 @@ var
 begin
   Result := False;
   for Item in APreview.Items do
+  begin
     if Item.Key = AKey then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 { TAtlasSettingsCatalogTests }
@@ -193,11 +209,17 @@ begin
   // Jede Einstellung aus Save steht im Katalog (der Wächter in Update-ConfigDoc prüft dasselbe am Text).
   Store := TAtlasMemorySettingsStore.FromSettings(TAtlasPluginSettings.Defaults);
   for Name in Store.Names do
+  begin
     Assert.IsTrue(FCatalog.IndexOfName(Name) >= 0, 'fehlt im Plugin-Katalog: ' + Name);
+  end;
   Plugin := 0;
   for Index := 0 to FCatalog.Count - 1 do
+  begin
     if FCatalog[Index].Source = asPlugin then
+    begin
       Inc(Plugin);
+    end;
+  end;
   Assert.AreEqual(Integer(Length(Store.Names)), Plugin, 'Katalog hat Einträge ohne Save');
   Assert.IsTrue(FCatalog.IndexOfKey('settings.exportImport') >= 0);
   Assert.IsTrue(FCatalog.IndexOfKey('settings.exportSecrets') >= 0);
@@ -212,7 +234,9 @@ begin
   begin
     Entry := FCatalog[Index];
     if Entry.Source <> asPlugin then
+    begin
       Continue;
+    end;
     Assert.IsTrue(TAtlasJsonValues.Same(Entry.DefaultJson, TAtlasSettingsTransfer.DefaultJson(FCatalog, Index)),
       Entry.Name + ': Schema ' + Entry.DefaultJson + ', Defaults ' + TAtlasSettingsTransfer.DefaultJson(FCatalog, Index));
   end;
@@ -255,11 +279,15 @@ begin
   begin
     Assert.IsTrue(FCatalog.HasArea(FCatalog[Index].Area), FCatalog[Index].Key + ': Bereich ' + FCatalog[Index].Area);
     if FCatalog[Index].Source = asPlugin then
+    begin
       Assert.IsTrue(FCatalog[Index].Page <> '', FCatalog[Index].Key + ' ohne Seite');
+    end;
   end;
   // Die Bereiche aus dem Issue.
   for Area in IssueAreas do
+  begin
     Assert.IsTrue(FCatalog.HasArea(Area), Area);
+  end;
   Assert.AreEqual('Lesezeichen', FCatalog.AreaCaption('bookmarks', False));
   Assert.AreEqual('Bookmarks', FCatalog.AreaCaption('bookmarks', True));
 end;
@@ -274,7 +302,9 @@ begin
     Assert.AreEqual(Index, Other, 'doppelter Schlüssel ' + FCatalog[Index].Key);
     // Nur Schlüssel mit x-scope "both" (rules) sind zugleich Projektpfad; atlas.json überdeckt sie.
     if FCatalog[Index].ProjectPath <> FCatalog[Index].Key then
+    begin
       Assert.IsFalse(FCatalog.IsProjectPath(FCatalog[Index].Key), 'Projektschlüssel im Katalog: ' + FCatalog[Index].Key);
+    end;
   end;
 end;
 
@@ -511,8 +541,12 @@ begin
   Assert.AreEqual(3, Preview.SelectedCount);
   // Nur die gewählten Werte: keys.palette abwählen.
   for Index := 0 to High(Preview.Items) do
+  begin
     if Preview.Items[Index].Key = 'keys.palette' then
+    begin
       Preview.Items[Index].Selected := False;
+    end;
+  end;
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(S, '{"language": "de"}'), Preview);
   Assert.IsFalse(After.Plugin.PairColors);
   Assert.AreEqual(TAtlasPluginSettings.Defaults.PaletteKey, After.Plugin.PaletteKey);

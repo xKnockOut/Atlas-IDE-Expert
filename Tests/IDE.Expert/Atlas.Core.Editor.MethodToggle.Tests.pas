@@ -69,7 +69,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + #13#10;
+  end;
 end;
 
 /// <summary>Ziel als "Zeile:Zeichen" (0-basiert) oder "-" ohne Gegenstück.</summary>
@@ -78,9 +80,13 @@ var
   Target: TAtlasMethodPlace;
 begin
   if TAtlasMethodToggle.Counterpart(AText, ALine, ACharacter, Target) then
-    Result := IntToStr(Target.Line) + ':' + IntToStr(Target.Character)
+  begin
+    Result := IntToStr(Target.Line) + ':' + IntToStr(Target.Character);
+  end
   else
+  begin
     Result := '-';
+  end;
 end;
 
 /// <summary>Wie oben, Cursor am Zeilenanfang.</summary>
@@ -576,8 +582,12 @@ var
   begin
     Result := -1;
     for Place in APlaces do
+    begin
       if Place.IsBody and (Place.Name = 'Clock') then
+      begin
         Result := Place.LastLine;
+      end;
+    end;
   end;
 
 begin

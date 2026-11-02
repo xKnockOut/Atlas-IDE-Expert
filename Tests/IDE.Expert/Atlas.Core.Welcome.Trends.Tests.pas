@@ -82,7 +82,9 @@ begin
     Point := TAtlasTrendPoint.Create(EncodeDateTime(2026, 10, 1, 8, 0, 0, 0) + Index / MinsPerDay, Index);
     Point.SetValue(TAtlasTrendSeries.Warnings, Index * 10);
     if not Odd(Index) then
+    begin
       Point.SetValue(TAtlasTrendSeries.Todos, Index * 10);
+    end;
     Result.Trends.Points := Result.Trends.Points + [Point];
   end;
   Result.Trends.Builds := ACount;
@@ -273,7 +275,9 @@ var
 begin
   Result := ADefault;
   if FValues.TryGetValue(AName, Text) then
+  begin
     Result := StrToIntDef(Text, ADefault);
+  end;
 end;
 
 procedure TTrendStore.WriteInteger(const AName: string; AValue: Integer);
@@ -284,7 +288,9 @@ end;
 function TTrendStore.ReadString(const AName, ADefault: string): string;
 begin
   if not FValues.TryGetValue(AName, Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TTrendStore.WriteString(const AName, AValue: string);

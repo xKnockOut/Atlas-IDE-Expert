@@ -184,8 +184,10 @@ begin
   Explanation.Busy := False;
   Explanation.Headline := 'Auftrag.Kunde ist nil';
   for Index := 1 to 8 do
+  begin
     Explanation.Lines := Explanation.Lines + [TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok,
       'Glied ' + IntToStr(Index))];
+  end;
   Explanation.CopyText := 'Text';
   FBar.SetExplanation(Explanation);
   Assert.AreEqual(3 + 1 + 6 + 1 + 1, FBar.Rows);

@@ -77,12 +77,18 @@ function TRecorder.CancelCompile(const AProject: TAtlasCompileProject; out AReas
 begin
   Trace := Trace + 'C';
   if AProject.Background then
+  begin
     Trace := Trace + 'b';
+  end;
   if AProject.RequestedBy <> '' then
+  begin
     Trace := Trace + '[' + AProject.RequestedBy + ']';
+  end;
   Trace := Trace + ' ';
   if Fail then
+  begin
     raise Exception.Create('kaputt');
+  end;
   Result := Cancel;
   AReason := 'Hinweise vorhanden';
 end;
@@ -91,7 +97,9 @@ procedure TRecorder.ProjectStarted(const AProject: TAtlasCompileProject);
 begin
   Trace := Trace + 'P+' + ExtractFileName(AProject.FileName) + ' ';
   if Fail then
+  begin
     raise Exception.Create('kaputt');
+  end;
 end;
 
 procedure TRecorder.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64);
@@ -338,7 +346,9 @@ end;
 destructor TFreeRecorder.Destroy;
 begin
   if Freed <> nil then
+  begin
     Freed^ := True;
+  end;
   inherited;
 end;
 

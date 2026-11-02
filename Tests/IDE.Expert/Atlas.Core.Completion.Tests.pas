@@ -171,7 +171,9 @@ begin
   FLock.Enter;
   try
     for Item in AItems do
+    begin
       FNames.Add(Item.Name);
+    end;
   finally
     FLock.Leave;
   end;
@@ -678,7 +680,9 @@ var
 begin
   ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
   if not FileExists(ServerExe) then
+  begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+  end;
   Server := TLspServerProcess.Create(ServerExe, '');
   try
     Session := TLspSession.Create(Server.Client, 5000);
@@ -744,7 +748,9 @@ begin
   Assert.AreEqual('Customer,Rate,Extra', String.Join(',', TAtlasXmlDoc.ParamNames(Declaration)));
   Names := '';
   for Item in TAtlasXmlDoc.TagItems(Declaration) do
+  begin
     Names := Names + Item.Name + '|';
+  end;
   Assert.IsTrue(Names.StartsWith('summary|param name="Customer"|param name="Rate"|param name="Extra"|returns|'),
     Names);
   Assert.AreEqual('summary>$0</summary>', TAtlasXmlDoc.TagItems(Declaration)[0].InsertText);

@@ -75,7 +75,9 @@ begin
   for mLine in ALines do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + mLine.Split([' | '])[0];
   end;
 end;

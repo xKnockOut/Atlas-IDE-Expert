@@ -94,7 +94,9 @@ begin
     try
       repeat
         if (Search.Attr and faDirectory) = 0 then
+        begin
           System.SysUtils.DeleteFile(IncludeTrailingPathDelimiter(AFolder) + Search.Name);
+        end;
       until FindNext(Search) <> 0;
     finally
       FindClose(Search);

@@ -87,7 +87,9 @@ var
 begin
   Result := ['unit Kunde;', '', 'implementation', '', 'procedure Laden;', 'begin'];
   for Index := Length(Result) to ACount - 3 do
+  begin
     Result := Result + ['  Schritt' + IntToStr(Index) + ';'];
+  end;
   Result := Result + ['end;', 'end.'];
 end;
 
@@ -180,7 +182,9 @@ begin
   TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 10, 0);
   Assert.AreEqual(2, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 10)[0].Number);
   for Number := 1 to 9 do
+  begin
     TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 20 + Number, Number, 0);
+  end;
   Assert.AreEqual(0, TAtlasQuickBookmarks.FreeNumber(FList), 'alle belegt');
   TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 40, 0);
   Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 40)[0].Number, 'dann ohne Nummer');
@@ -289,7 +293,9 @@ begin
   // 50 Zeilen über der Methode eingefügt: Der Marker wandert mit (Anker wie #622).
   Moved := Copy(Code, 0, 3);
   for Index := 1 to 50 do
+  begin
     Moved := Moved + ['// Zeile ' + IntToStr(Index)];
+  end;
   Moved := Moved + Copy(Code, 3, Length(Code) - 3);
   Assert.IsTrue(FList.Relocate(KundeFile, string.Join(#13#10, Moved)));
   Assert.AreEqual(83, FList.Bookmarks[0].Line);

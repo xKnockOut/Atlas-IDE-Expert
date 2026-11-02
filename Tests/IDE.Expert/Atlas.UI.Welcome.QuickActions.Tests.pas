@@ -139,7 +139,9 @@ function TAtlasFakeQuickActions.Buttons(const AProject: string): TAtlasQuickActi
 begin
   Result := TAtlasWelcomeQuickActions.Buttons(Items, Vcs, Busy);
   if AskExternals then
+  begin
     TAtlasWelcomeQuickActions.AskExternals(Result);
+  end;
 end;
 
 function TAtlasFakeQuickActions.State(const AProject: string): TAtlasQuickActionState;
@@ -284,8 +286,12 @@ begin
   // Linke Hälfte des Knopfs: „Öffnen und bauen“ ohne den Teil ▾.
   Result := Point(-1, -1);
   for X := 200 to 790 do
+  begin
     if Bar.HitTest(X, ARow * 40 + 18, Row, Index, Menu) and (Row = ARow) and (Index = AIndex) and not Menu then
+    begin
       Exit(Point(X + 2, ARow * 40 + 18));
+    end;
+  end;
 end;
 
 { TAtlasQuickActionsBarTests }
@@ -676,8 +682,12 @@ begin
     Host.Bar.PrepareMenu(1);
     Visible := nil;
     for Index := 0 to Menu.Items.Count - 1 do
+    begin
       if Menu.Items[Index].Visible then
+      begin
         Visible := Visible + [StripHotkey(Menu.Items[Index].Caption)];
+      end;
+    end;
     // Ohne „Tests“ und „Konsole“; SVN: „Aktualisieren“.
     Assert.AreEqual(5, Integer(Length(Visible)));
     Assert.AreEqual('-', Visible[0]);
@@ -686,8 +696,12 @@ begin
     Assert.AreEqual('Starten mit', Visible[3]);
     Assert.AreEqual('Aktualisieren', Visible[4]);
     for Index := 0 to Menu.Items.Count - 1 do
+    begin
       if StripHotkey(Menu.Items[Index].Caption) = 'Aktualisieren' then
+      begin
         Menu.Items[Index].Click;
+      end;
+    end;
     CheckSynchronize;
     Assert.AreEqual(1, Integer(Length(Fake.Calls)));
     Assert.AreEqual('pull ' + ProjectTwo, Fake.Calls[0]);
@@ -696,7 +710,9 @@ begin
     Host.Bar.SetRows([ProjectOne, ProjectTwo]);
     Host.Bar.PrepareMenu(0);
     for Index := 0 to Menu.Items.Count - 1 do
+    begin
       Assert.IsFalse(Menu.Items[Index].Visible, Menu.Items[Index].Caption);
+    end;
   finally
     Host.Free;
   end;
@@ -738,8 +754,12 @@ begin
     mHost.Bar.PrepareMenu(1);
     mUpdate := nil;
     for mIndex := 0 to mMenu.Items.Count - 1 do
+    begin
       if mMenu.Items[mIndex].Visible and (StripHotkey(mMenu.Items[mIndex].Caption) = 'Aktualisieren') then
+      begin
         mUpdate := mMenu.Items[mIndex];
+      end;
+    end;
     Assert.IsNotNull(mUpdate);
     Assert.AreEqual(2, Integer(mUpdate.Count));
     mUpdate[0].Click;
@@ -794,8 +814,12 @@ begin
     Host.Bar.PrepareMenu(1);
     Items := nil;
     for Index := 0 to Menu.Items.Count - 1 do
+    begin
       if StripHotkey(Menu.Items[Index].Caption) = 'Aufgabe ausführen' then
+      begin
         Items := Menu.Items[Index];
+      end;
+    end;
     Assert.IsNotNull(Items);
     Assert.IsTrue(Items.Visible);
     Assert.AreEqual(2, Integer(Items.Count));

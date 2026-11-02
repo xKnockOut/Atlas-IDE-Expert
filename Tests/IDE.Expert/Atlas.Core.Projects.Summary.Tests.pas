@@ -147,7 +147,9 @@ end;
 procedure TAtlasProjectSummaryTests.TearDown;
 begin
   if DirectoryExists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;
@@ -625,7 +627,9 @@ begin
   Assert.IsTrue(SameTime(At(2026, 10, 2, 8, 0, 0), Read.Release.Builds[1].At));
   // Höchstens MaxBuilds Einträge, der neueste zuerst; unbekannte Felder bleiben.
   for Index := 1 to TAtlasProjectRelease.MaxBuilds + 3 do
+  begin
     Summary.Release.Remember('Release', 'P' + IntToStr(Index), IntToStr(Index), 0);
+  end;
   Assert.AreEqual(TAtlasProjectRelease.MaxBuilds, Integer(Length(Summary.Release.Builds)));
   Assert.AreEqual('P' + IntToStr(TAtlasProjectRelease.MaxBuilds + 3), Summary.Release.Builds[0].Platform);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "release": {"findings": 1, "gate": ' +

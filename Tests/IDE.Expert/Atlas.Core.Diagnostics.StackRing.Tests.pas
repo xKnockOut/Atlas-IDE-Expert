@@ -60,10 +60,14 @@ begin
   Result.ThreadId := AThread;
   Result.Address := AAddress;
   for Index := 0 to High(AParams) do
+  begin
     Result.Params[Index] := AParams[Index];
+  end;
   Result.ParamCount := Length(AParams);
   for Index := 0 to High(AFrames) do
+  begin
     Result.Frames[Index] := AFrames[Index];
+  end;
   Result.Count := Length(AFrames);
 end;
 
@@ -130,7 +134,9 @@ begin
   Ring := TAtlasStackRing.Create;
   try
     for Index := 1 to TAtlasStackRing.SlotCount + 8 do
+    begin
       Ring.Add(Entry(1, NativeUInt(Index), [], []));
+    end;
     Assert.IsFalse(Ring.Find(1, [1], Found), 'älteste überschrieben');
     Assert.IsFalse(Ring.Find(1, [8], Found));
     Assert.IsTrue(Ring.Find(1, [9], Found));

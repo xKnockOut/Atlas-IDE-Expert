@@ -99,9 +99,13 @@ type
 function Root: string;
 begin
   if PathDelim = '\' then
-    Result := 'C:\Projekte\Kasse'
+  begin
+    Result := 'C:\Projekte\Kasse';
+  end
   else
+  begin
     Result := '/projekte/kasse';
+  end;
 end;
 
 function Under(const ARelative: string): string;
@@ -332,7 +336,9 @@ begin
   // Höchstens MaxBranches.
   mRefs := nil;
   for mIndex := 1 to TAtlasIssueDevelopmentRequest.MaxBranches + 3 do
+  begin
     mRefs := mRefs + [Ref('ATL-123-v' + IntToStr(mIndex), 'ATL-123-v' + IntToStr(mIndex), True, False)];
+  end;
   mBranches := TAtlasIssueDevelopmentQuery.BranchesOf(mRequest, mRefs);
   Assert.AreEqual(TAtlasIssueDevelopmentRequest.MaxBranches, Integer(Length(mBranches)));
 end;
@@ -534,7 +540,9 @@ begin
   mFake := TFakeHistory.Create;
   mVcs := mFake;
   for mIndex := 1 to 5 do
+  begin
     mFake.Entries := mFake.Entries + [Entry(IntToStr(mIndex), '#753', nil)];
+  end;
   mRequest := GitHubRequest(nil);
   mRequest.MaxCommits := 5;
   Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment) = TAtlasVcsOutcome.Ok);
@@ -563,7 +571,9 @@ begin
   mInput := CreateFile(PChar(AInput), GENERIC_READ, FILE_SHARE_READ, @mSecurity, OPEN_EXISTING,
     FILE_ATTRIBUTE_NORMAL, 0);
   if mInput = INVALID_HANDLE_VALUE then
+  begin
     RaiseLastOSError;
+  end;
   mOutput := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, @mSecurity, OPEN_EXISTING,
     FILE_ATTRIBUTE_NORMAL, 0);
   try
@@ -575,15 +585,21 @@ begin
     mStartup.hStdError := mOutput;
     mLine := TAtlasVcsProcessRunner.QuoteArgument(AExecutable);
     for mArgument in AArguments do
+    begin
       mLine := mLine + ' ' + TAtlasVcsProcessRunner.QuoteArgument(mArgument);
+    end;
     UniqueString(mLine);
     if not CreateProcess(PChar(AExecutable), PChar(mLine), nil, nil, True, CREATE_NO_WINDOW, nil,
       PChar(AWorkingDir), mStartup, mProcess) then
+    begin
       RaiseLastOSError;
+    end;
     try
       WaitForSingleObject(mProcess.hProcess, 120000);
       if not GetExitCodeProcess(mProcess.hProcess, Result) then
+      begin
         Result := High(Cardinal);
+      end;
     finally
       CloseHandle(mProcess.hThread);
       CloseHandle(mProcess.hProcess);
@@ -591,7 +607,9 @@ begin
   finally
     CloseHandle(mInput);
     if mOutput <> INVALID_HANDLE_VALUE then
+    begin
       CloseHandle(mOutput);
+    end;
   end;
 end;
 
@@ -609,18 +627,26 @@ begin
     for mIndex := 1 to ACount do
     begin
       if mIndex mod 100 = 0 then
-        mMessage := Format('ATL-77 Schritt %d', [mIndex])
+      begin
+        mMessage := Format('ATL-77 Schritt %d', [mIndex]);
+      end
       else if mIndex mod 1000 = 550 then
-        mMessage := Format('ATL-770 anderes Issue %d', [mIndex])
+      begin
+        mMessage := Format('ATL-770 anderes Issue %d', [mIndex]);
+      end
       else
+      begin
         mMessage := Format('Commit %d', [mIndex]);
+      end;
       mContent := Format('unit U%d;'#10'// Stand %d'#10'end.'#10, [mIndex mod 7, mIndex]);
       mBuilder.Append('commit refs/heads/main'#10);
       mBuilder.Append(Format('mark :%d'#10, [mIndex]));
       mBuilder.Append(Format('committer Atlas Test <test@example.org> %d +0000'#10, [1761000000 + mIndex * 60]));
       mBuilder.Append(Format('data %d'#10'%s'#10, [Length(mMessage), mMessage]));
       if mIndex > 1 then
+      begin
         mBuilder.Append(Format('from :%d'#10, [mIndex - 1]));
+      end;
       mBuilder.Append(Format('M 100644 inline src/U%d.pas'#10, [mIndex mod 7]));
       mBuilder.Append(Format('data %d'#10'%s'#10, [Length(mContent), mContent]));
     end;
@@ -646,7 +672,9 @@ var
 begin
   mGit := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if mGit = '' then
+  begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
+  end;
   // Im Test erlaubt: Der Hauptthread des Testprogramms ist keine IDE.
   mRunner := TAtlasVcsProcessRunner.Create(True, nil);
   mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDev-' + TGUID.NewGuid.ToString.Substring(1, 8));

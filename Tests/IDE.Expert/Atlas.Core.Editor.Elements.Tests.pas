@@ -78,8 +78,12 @@ begin
   // Umgekehrt: jede Zeichnung im Katalog ist ein bekanntes Element.
   Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, '');
   for Toggle in Toggles do
+  begin
     if Toggle.Drawing then
+    begin
       Assert.IsTrue(TAtlasDrawnElements.ForSetting(Toggle.Key, Element), 'Zeichnung ohne Element: ' + Toggle.Key);
+    end;
+  end;
 end;
 
 procedure TAtlasDrawnElementsTests.KeysAreUniqueAndFindable;
@@ -149,7 +153,9 @@ begin
     Assert.IsTrue(Key <> '', Id);
     Found := False;
     for Name in Names do
+    begin
       Found := Found or SameText(Name, Key);
+    end;
     Assert.IsTrue(Found, 'keine Einstellung: ' + Key);
   end;
   Assert.AreEqual('WelcomePageStatusTile', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.State));
