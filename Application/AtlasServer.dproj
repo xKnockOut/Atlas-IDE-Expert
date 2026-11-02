@@ -71,6 +71,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.ServerCommands.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CodeActions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Status.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Slash.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>
