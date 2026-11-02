@@ -69,10 +69,14 @@ var
 begin
   Result := 0;
   if AEditorParent = nil then
+  begin
     Exit;
+  end;
   mForm := GetParentForm(AEditorParent, False);
   if (mForm <> nil) and mForm.HandleAllocated then
+  begin
     Result := mForm.Handle;
+  end;
 end;
 
 function TopEditWindowHandle: THandle;
@@ -82,10 +86,14 @@ var
 begin
   Result := 0;
   if not Supports(BorlandIDEServices, INTAEditorServices, mServices) then
+  begin
     Exit;
+  end;
   mWindow := mServices.TopEditWindow;
   if (mWindow <> nil) and (mWindow.Form <> nil) and mWindow.Form.HandleAllocated then
+  begin
     Result := mWindow.Form.Handle;
+  end;
 end;
 
 function CurrentModule: IOTAModule;
@@ -94,7 +102,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
     Result := mModules.CurrentModule;
+  end;
 end;
 
 { TAtlasIdeDesignerView }
@@ -106,13 +116,19 @@ var
 begin
   Result := False;
   if (AWindow = 0) or not (ARoot is TWinControl) or not TWinControl(ARoot).HandleAllocated then
+  begin
     Exit;
+  end;
   mRoot := TWinControl(ARoot).Handle;
   if not IsWindowVisible(mRoot) then
+  begin
     Exit;
+  end;
   Result := IsChild(AWindow, mRoot);
   if Result or FForeignLogged then
+  begin
     Exit;
+  end;
   // Sichtbar, aber nicht in diesem Editorfenster: schwebender Designer oder ein anderes Editorfenster. Einmal
   // protokollieren, falls eine Delphi-Version den Designer anders einhängt.
   FForeignLogged := True;
@@ -129,11 +145,17 @@ var
 begin
   Result := nil;
   if (AModule = nil) or (AWindow = 0) then
+  begin
     Exit;
+  end;
   for mIndex := 0 to AModule.ModuleFileCount - 1 do
+  begin
     if Supports(AModule.ModuleFileEditors[mIndex], IOTAFormEditor, mEditor) and
       RootWindowShown(RootOf(mEditor), AWindow) then
+    begin
       Exit(mEditor);
+    end;
+  end;
 end;
 
 class function TAtlasIdeDesignerView.CurrentFormEditor: IOTAFormEditor;
@@ -144,17 +166,25 @@ begin
   Result := nil;
   mModule := CurrentModule;
   if mModule = nil then
+  begin
     Exit;
+  end;
   // Formular oder Frame: sichtbar im vordersten Editorfenster.
   Result := FormEditorShownIn(mModule, TopEditWindowHandle);
   if Result <> nil then
+  begin
     Exit;
+  end;
   // Datenmodul: keine Wurzel mit Fenster; dann zählt der aktuelle Editor des Moduls.
   mEditor := mModule.CurrentEditor;
   if (mEditor = nil) or not Supports(mEditor, IOTAFormEditor, Result) then
+  begin
     Exit(nil);
+  end;
   if RootOf(Result) is TWinControl then
+  begin
     Result := nil;
+  end;
 end;
 
 class function TAtlasIdeDesignerView.RootOf(const AEditor: IOTAFormEditor): TComponent;
@@ -163,7 +193,9 @@ var
 begin
   Result := nil;
   if (AEditor <> nil) and Supports(AEditor.GetRootComponent, INTAComponent, mComponent) then
+  begin
     Result := mComponent.GetComponent;
+  end;
 end;
 
 class function TAtlasIdeDesignerView.Shown(AEditorParent: TWinControl): Boolean;
@@ -176,15 +208,25 @@ begin
   Result := False;
   mWindow := EditWindowHandle(AEditorParent);
   if mWindow = 0 then
+  begin
     Exit;
+  end;
   // Jedes Editorfenster für sich: Ein zweites Fenster kann ein anderes Modul im Designer zeigen.
   if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
     for mIndex := 0 to mModules.ModuleCount - 1 do
+    begin
       if FormEditorShownIn(mModules.Modules[mIndex], mWindow) <> nil then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   // Datenmodul: nur im vordersten Editorfenster.
   if mWindow <> TopEditWindowHandle then
+  begin
     Exit;
+  end;
   mEditor := CurrentFormEditor;
   Result := (mEditor <> nil) and not (RootOf(mEditor) is TWinControl);
 end;
@@ -200,32 +242,46 @@ var
 begin
   Result := False;
   if (AEditor = nil) or not AEditor.HandleAllocated then
+  begin
     Exit;
+  end;
   mForm := GetParentForm(AEditor, False);
   if (mForm = nil) or not mForm.HandleAllocated then
+  begin
     Exit;
+  end;
   mHandle := AEditor.Handle;
   if not IsWindowVisible(mHandle) or not GetWindowRect(mHandle, mRect) or (mRect.Width <= 0) or
     (mRect.Height <= 0) then
+  begin
     Exit;
+  end;
   // Von der Mitte des Editors aus abwärts durch die Kindfenster: Liegt etwas darüber, endet der Weg dort.
   mPoint := mRect.CenterPoint;
   mWindow := mForm.Handle;
   while True do
   begin
     if (mWindow = mHandle) or IsChild(mHandle, mWindow) then
+    begin
       Exit(True);
+    end;
     // Eigene Fenster von Atlas über dem Editor (Definition einblenden, Minimap …) verdecken ihn nicht.
     mControl := FindControl(mWindow);
     if (mControl <> nil) and mControl.ClassName.StartsWith('TAtlas') then
+    begin
       Exit(True);
+    end;
     if (mWindow <> mForm.Handle) and not IsChild(mWindow, mHandle) then
+    begin
       Break;
+    end;
     mPoint := mRect.CenterPoint;
     ScreenToClient(mWindow, mPoint);
     mChild := ChildWindowFromPointEx(mWindow, mPoint, CWP_SKIPINVISIBLE or CWP_SKIPTRANSPARENT);
     if (mChild = 0) or (mChild = mWindow) then
+    begin
       Break;
+    end;
     mWindow := mChild;
   end;
   if not FCoveredLogged then

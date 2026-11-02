@@ -114,7 +114,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Result := Editors.TopView;
+  end;
 end;
 
 /// <summary>Caret in Bildschirmkoordinaten und das Fenster des Editors; False ohne Caret.</summary>
@@ -126,7 +128,9 @@ begin
   Info.cbSize := SizeOf(Info);
   Result := GetGUIThreadInfo(GetCurrentThreadId, Info) and (Info.hwndCaret <> 0);
   if not Result then
+  begin
     Exit;
+  end;
   AEditor := Info.hwndCaret;
   ARect := Info.rcCaret;
   MapWindowPoints(Info.hwndCaret, 0, ARect, 2);
@@ -153,7 +157,9 @@ var
 begin
   try
     if (FOwner.Window = nil) or (FOwner.Window.View = nil) then
+    begin
       Exit;
+    end;
     View := FOwner.Window.View;
     case AKey of
       VK_ESCAPE:
@@ -162,21 +168,31 @@ begin
         FOwner.Open;
       VK_UP:
         if View.Count > 1 then
-          View.SelectPrevious
+        begin
+          View.SelectPrevious;
+        end
         else
+        begin
           View.ScrollBy(-1);
+        end;
       VK_DOWN:
         if View.Count > 1 then
-          View.SelectNext
+        begin
+          View.SelectNext;
+        end
         else
+        begin
           View.ScrollBy(1);
+        end;
       VK_PRIOR:
         View.PageUp;
       VK_NEXT:
         View.PageDown;
     end;
     if (AKey <> VK_ESCAPE) and (AKey <> VK_RETURN) and (FOwner.Window.View <> nil) then
+    begin
       FOwner.Window.ViewChanged;
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Peek, E);
@@ -202,7 +218,9 @@ destructor TPeekState.Destroy;
 begin
   Timer.Enabled := False;
   if TAtlasKeyHook.Contains(Keys) then
+  begin
     TAtlasKeyHook.Remove(Keys);
+  end;
   Keys.Free;
   inherited Destroy;
 end;
@@ -211,7 +229,9 @@ procedure TPeekState.Hide;
 begin
   Timer.Enabled := False;
   if TAtlasKeyHook.Contains(Keys) then
+  begin
     TAtlasKeyHook.Remove(Keys);
+  end;
   Window.Dismiss;
 end;
 
@@ -220,11 +240,15 @@ var
   Place: TAtlasPeekPlace;
 begin
   if (Window.View = nil) or (Window.View.Count = 0) then
+  begin
     Exit;
+  end;
   Place := Window.View.OpenPlace;
   Hide;
   if Place.FileName <> '' then
+  begin
     TAtlasIdeNavigation.GoToLocation(Place.FileName, Place.Line, Place.Character);
+  end;
 end;
 
 procedure TPeekState.WindowOpen(Sender: TObject);
@@ -250,7 +274,9 @@ begin
     if not Application.Active or (View = nil) or (Pointer(View) <> ShownView) or
       (View.CursorPos.Line <> ShownCursor.Line) or (View.CursorPos.Col <> ShownCursor.Col) or
       (View.TopRow <> ShownTop) then
+    begin
       Hide;
+    end;
   except
     on E: Exception do
     begin
@@ -278,9 +304,13 @@ begin
   Height := Window.HeightForLines(TAtlasIdeSettings.Current.PeekHeightLines);
   // Unter der Cursorzeile, sonst darüber; nie größer als der Platz.
   if (Caret.Bottom + Height <= Area.Bottom) or (Caret.Top - Area.Top < Area.Bottom - Caret.Bottom) then
-    Bounds := Rect(Editor.Left, Caret.Bottom + 1, Editor.Right, Min(Area.Bottom, Caret.Bottom + 1 + Height))
+  begin
+    Bounds := Rect(Editor.Left, Caret.Bottom + 1, Editor.Right, Min(Area.Bottom, Caret.Bottom + 1 + Height));
+  end
   else
+  begin
     Bounds := Rect(Editor.Left, Max(Area.Top, Caret.Top - 1 - Height), Editor.Right, Caret.Top - 1);
+  end;
   Bounds.Left := Max(Bounds.Left, Area.Left);
   Bounds.Right := Min(Bounds.Right, Area.Right);
   ShownView := Pointer(View);
@@ -288,7 +318,9 @@ begin
   ShownTop := View.TopRow;
   Window.ShowView(AView, Bounds);
   if not TAtlasKeyHook.Contains(Keys) then
+  begin
     TAtlasKeyHook.Add(Keys);
+  end;
   Timer.Enabled := True;
 end;
 
@@ -323,7 +355,9 @@ var
 begin
   Key := AnsiUpperCase(AFileName);
   if FLines.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   try
     Text := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
   except
@@ -347,7 +381,9 @@ begin
   Result := 8;
   View := TopView;
   if (View <> nil) and (View.Buffer <> nil) then
+  begin
     Result := TAtlasEditorBuffer.TabWidth(View.Buffer);
+  end;
 end;
 
 function DefinitionEntries(ASession: TLspSession; const ADeclaration: TAtlasPeekPlace): TArray<TAtlasPeekEntry>;
@@ -369,7 +405,9 @@ begin
       Places := nil;
   end;
   if Length(Places) = 0 then
+  begin
     Places := [ADeclaration];
+  end;
   Targets := TAtlasPeek.Pair(Places,
     function(const APlace: TAtlasPeekPlace; out ATarget: TAtlasPeekPlace): Boolean
     var
@@ -398,12 +436,18 @@ begin
       Lines := Cache.Lines(Targets[Index].Place.FileName);
       Result[Index].Target := Targets[Index];
       if (Targets[Index].Place.Line >= 0) and (Targets[Index].Place.Line <= High(Lines)) then
+      begin
         Result[Index].Excerpt := TAtlasPeek.Excerpt(Lines[Targets[Index].Place.Line]);
+      end;
       if Targets[Index].HasBody then
+      begin
         Result[Index].Rows := TAtlasPeek.DefinitionRows(Targets[Index], Lines,
-          Cache.Lines(Targets[Index].Body.FileName), Show, Tabs)
+          Cache.Lines(Targets[Index].Body.FileName), Show, Tabs);
+      end
       else
+      begin
         Result[Index].Rows := TAtlasPeek.DefinitionRows(Targets[Index], Lines, nil, Show, Tabs);
+      end;
     end;
   finally
     Cache.Free;
@@ -430,10 +474,14 @@ begin
       Result[Index].Target.Place := Place;
       Result[Index].Target.HasBody := False;
       if (Place.Line >= 0) and (Place.Line <= High(Lines)) then
+      begin
         Result[Index].Excerpt := TAtlasPeek.Excerpt(Lines[Place.Line]);
+      end;
       // Erschlossene Treffer (#1119) wie im Ergebnisfenster mit ≈.
       if ALocations[Index].Confidence.Inferred then
+      begin
         Result[Index].Excerpt := '≈ ' + Result[Index].Excerpt;
+      end;
       Result[Index].Rows := TAtlasPeek.ReferenceRows(Place, Lines, Tabs);
     end;
   finally
@@ -453,13 +501,19 @@ var
 begin
   Owner := State;
   if (Owner = nil) or not TAtlasIdeSettings.Current.Peek then
+  begin
     Exit;
+  end;
   Owner.Hide;
   if not TAtlasIdeResults.AtCursor(FileName, Line, Character, Name) then
+  begin
     Exit;
+  end;
   Current := TAtlasIdeResults.Session;
   if Current = nil then
+  begin
     Exit;
+  end;
   Entries := nil;
   Cursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
@@ -469,7 +523,9 @@ begin
       begin
         Found := Current.Declarations(FileName, Line, Character);
         if Length(Found) > 0 then
+        begin
           Entries := DefinitionEntries(Current, ToPlace(Found[0]));
+        end;
         Title := TAtlasStrings.Fmt(TAtlasTextId.PeekTitleDefinition, [Name]);
       end
       else
@@ -491,9 +547,13 @@ begin
   if Length(Entries) = 0 then
   begin
     if AMode = TAtlasPeekMode.Definition then
-      TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoDefinition, [Name]))
+    begin
+      TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoDefinition, [Name]));
+    end
     else
+    begin
       TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoReferences, [Name]));
+    end;
     Exit;
   end;
   Owner.Show(TAtlasPeekView.Create(AMode, Title, Entries));
@@ -504,7 +564,9 @@ end;
 class procedure TAtlasIdePeek.Install;
 begin
   if FState = nil then
+  begin
     FState := TPeekState.Create(nil);
+  end;
 end;
 
 class procedure TAtlasIdePeek.Uninstall;
@@ -514,7 +576,9 @@ begin
   Owner := State;
   FState := nil;
   if Owner = nil then
+  begin
     Exit;
+  end;
   Owner.Hide;
   Owner.Free;
 end;
@@ -537,7 +601,9 @@ end;
 class procedure TAtlasIdePeek.Close;
 begin
   if State <> nil then
+  begin
     State.Hide;
+  end;
 end;
 
 end.

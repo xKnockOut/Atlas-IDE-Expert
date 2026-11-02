@@ -89,12 +89,18 @@ begin
     Results.OnOpen := AOnOpen;
     Entries := nil;
     for Group in AGroups do
+    begin
       Entries := Entries + Group.Entries;
+    end;
     if TAtlasResults.InferredCount(Entries) > 0 then
+    begin
       Results.ShowRated(AHint, Entries, TAtlasStrings.Text(TAtlasTextId.RenameChangedGroup),
-        TAtlasStrings.Text(TAtlasTextId.RenameUnchangedGroup))
+        TAtlasStrings.Text(TAtlasTextId.RenameUnchangedGroup));
+    end
     else
+    begin
       Results.ShowEntries(AHint, AGroups);
+    end;
     Dialog.ActiveControl := Apply;
     Result := Dialog.ShowModal = mrOk;
   finally

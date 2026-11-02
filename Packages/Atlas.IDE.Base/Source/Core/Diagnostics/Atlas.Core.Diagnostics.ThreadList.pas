@@ -71,16 +71,20 @@ begin
     FLock.Enter;
     try
       for Index := FThreads.Count - 1 downto 0 do
+      begin
         if FThreads[Index].Finished then
         begin
           Done.Add(FThreads[Index]);
           FThreads.Delete(Index);
         end;
+      end;
     finally
       FLock.Leave;
     end;
     for Thread in Done do
+    begin
       Thread.Free;
+    end;
   finally
     Done.Free;
   end;
@@ -124,11 +128,17 @@ begin
   end;
   Result := TAtlasShutdown.WaitForThreads(Threads, AMs);
   for Thread in Threads do
+  begin
     if Thread.Finished then
-      Thread.Free
+    begin
+      Thread.Free;
+    end
     else
+    begin
       // Wie TAtlasTimeLimit.StopAll: Liest der Thread FreeOnTerminate vor dem Setzen, bleibt höchstens ein Leck.
       Thread.FreeOnTerminate := True;
+    end;
+  end;
 end;
 
 end.

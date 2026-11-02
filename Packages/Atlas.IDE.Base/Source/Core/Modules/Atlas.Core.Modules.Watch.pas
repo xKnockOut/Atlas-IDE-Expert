@@ -51,11 +51,15 @@ implementation
 procedure TAtlasProvidedWatch.TListener.RegistryChanged(const AChange: TAtlasRegistryChange);
 begin
   if FOwner = nil then
+  begin
     Exit;
+  end;
   case AChange.Kind of
     rcProvided, rcRevoked:
       if IsEqualGUID(AChange.IID, FOwner.FIID) then
+      begin
         FOwner.Refresh;
+      end;
     rcModuleRemoved:
       // Sicherheitsnetz: Ein abgemeldetes Modul hat seine Objekte schon zurückgezogen (rcRevoked).
       FOwner.Refresh;
@@ -72,7 +76,9 @@ begin
   FRegistry := ARegistry;
   FIID := AIID;
   if FRegistry = nil then
+  begin
     Exit;
+  end;
   FListener := TListener.Create;
   FListener.FOwner := Self;
   FListenerRef := FListener;
@@ -83,9 +89,13 @@ end;
 destructor TAtlasProvidedWatch.Destroy;
 begin
   if FListener <> nil then
+  begin
     FListener.FOwner := nil;
+  end;
   if FSubscription <> nil then
+  begin
     FSubscription.Revoke;
+  end;
   FSubscription := nil;
   FListenerRef := nil;
   FItems := nil;
@@ -100,10 +110,16 @@ var
 begin
   Result := Length(A) = Length(B);
   if not Result then
+  begin
     Exit;
+  end;
   for mIndex := 0 to High(A) do
+  begin
     if A[mIndex] <> B[mIndex] then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 procedure TAtlasProvidedWatch.Refresh;
@@ -112,10 +128,14 @@ var
 begin
   mItems := FRegistry.FindAll(FIID);
   if SameItems(mItems, FItems) then
+  begin
     Exit;
+  end;
   FItems := mItems;
   if Assigned(FOnChanged) then
+  begin
     FOnChanged();
+  end;
 end;
 
 end.

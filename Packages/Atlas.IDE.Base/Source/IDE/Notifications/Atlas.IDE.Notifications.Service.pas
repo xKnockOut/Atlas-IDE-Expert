@@ -112,12 +112,16 @@ begin
     begin
       // Aus jedem Thread: gesammelt einmal im Hauptthread nachführen.
       if AtomicExchange(Service.FPending, 1) <> 0 then
+      begin
         Exit;
+      end;
       TAtlasMainThread.ForceQueue(TAtlasFeature.Notifications,
         procedure
         begin
           if FInstance <> Service then
+          begin
             Exit;
+          end;
           AtomicExchange(Service.FPending, 0);
           Service.Refresh;
         end);
@@ -130,7 +134,9 @@ begin
   // Erst abmelden, dann freigeben (#493).
   TAtlasNotificationCenter.Default.RemoveListener(FListener);
   if FInstance = Self then
+  begin
     FInstance := nil;
+  end;
   if FWindow <> nil then
   begin
     FWindow.RemoveFreeNotification(Self);
@@ -144,7 +150,9 @@ procedure TAtlasIdeNotifications.Notification(AComponent: TComponent; Operation:
 begin
   inherited;
   if (Operation = opRemove) and (AComponent = FWindow) then
+  begin
     FWindow := nil;
+  end;
 end;
 
 class function TAtlasIdeNotifications.Instance: TAtlasIdeNotifications;
@@ -160,7 +168,9 @@ end;
 class procedure TAtlasIdeNotifications.ShowList;
 begin
   if (FInstance <> nil) and Active then
+  begin
     FInstance.Show;
+  end;
 end;
 
 class procedure TAtlasIdeNotifications.SaveMode(const ASource: string; AMode: TAtlasNotificationMode);
@@ -186,7 +196,9 @@ begin
   begin
     FCheckErrors.Clear;
     if FWindow <> nil then
+    begin
       FWindow.Dismiss;
+    end;
   end;
   Changed;
 end;
@@ -206,11 +218,17 @@ begin
   Unread := 0;
   Worst := TAtlasNotificationSeverity.Info;
   if Active and Center.WorstUnread(Worst) then
+  begin
     Unread := Center.UnreadCount;
+  end;
   if Assigned(FOnBadge) then
+  begin
     FOnBadge(Unread, Worst);
+  end;
   if FWindow <> nil then
+  begin
     FWindow.Reload;
+  end;
 end;
 
 procedure TAtlasIdeNotifications.Show(const AAnchor: TPoint);
@@ -222,7 +240,9 @@ begin
     Exit;
   end;
   if not Active then
+  begin
     Exit;
+  end;
   FWindow := TAtlasNotificationsWindow.CreateList(Application, TAtlasIdeStyle.Colors,
     TAtlasNotificationCenter.Default);
   FWindow.FreeNotification(Self);
@@ -245,16 +265,24 @@ var
 begin
   Anchor := Point(MaxInt, MaxInt);
   if Assigned(FOnAnchor) then
+  begin
     Anchor := FOnAnchor();
+  end;
   if Anchor.X = MaxInt then
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
     if Screen.ActiveForm <> nil then
-      Area := Screen.ActiveForm.BoundsRect
+    begin
+      Area := Screen.ActiveForm.BoundsRect;
+    end
     else if Application.MainForm <> nil then
-      Area := Application.MainForm.BoundsRect
+    begin
+      Area := Application.MainForm.BoundsRect;
+    end
     else
+    begin
       Area := Screen.WorkAreaRect;
+    end;
     Anchor := Point(Area.Left + 40, Area.Bottom - 40);
   end;
   Show(Anchor);
@@ -268,14 +296,20 @@ var
   Key: string;
 begin
   if not Active then
+  begin
     Exit;
+  end;
   Key := LowerCase(AProject.FileName);
   Previous := -1;
   if AProject.Background and not FCheckErrors.TryGetValue(Key, Previous) then
+  begin
     Previous := -1;
+  end;
   Notice := TAtlasBuildNotices.FromRun(AMessages, ASucceeded, AReadable, AProject.Background, Previous);
   if AProject.Background and AReadable then
+  begin
     FCheckErrors.AddOrSetValue(Key, Notice.Errors);
+  end;
   Post(Notice, AProject);
 end;
 
@@ -283,7 +317,9 @@ procedure TAtlasIdeNotifications.BuildEvaluated(const AMessages: TArray<TAtlasCo
   const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
 begin
   if Active then
+  begin
     Post(TAtlasBuildNotices.FromVerdict(AMessages, AVerdict), AProject);
+  end;
 end;
 
 procedure TAtlasIdeNotifications.Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
@@ -312,9 +348,13 @@ begin
     TAtlasBuildNoticeKind.Rejected:
       begin
         if Notice.Reason = TAtlasBuildVerdictReason.WarningsAsErrors then
-          Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildRejectedCodes, [Notice.PromotedCode])
+        begin
+          Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildRejectedCodes, [Notice.PromotedCode]);
+        end
         else
+        begin
           Title := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildRejected);
+        end;
         Action := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToMessage);
       end;
   else
@@ -323,7 +363,9 @@ begin
   Text := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildText, [Project, Notice.Errors, Notice.Warnings,
     Notice.Hints]);
   if Notice.Baselined > 0 then
+  begin
     Text := Text + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildBaselined, [Notice.Baselined]);
+  end;
   Actions := nil;
   if Notice.HasTarget then
   begin
