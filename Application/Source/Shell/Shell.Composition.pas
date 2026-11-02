@@ -76,6 +76,7 @@ uses
   Shell.Composition.UnitSearch,
   Shell.Composition.TestUnits,
   Shell.Composition.Workspaces,
+  Shell.Composition.Settings,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -88,7 +89,6 @@ uses
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
-  Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Logging.Providers.RecentSink,
@@ -221,15 +221,11 @@ type
     /// <summary>Reihenfolge der Indexaufbauten aller Projekte (#648); kleiner = früher.</summary>
     FIndexScheduler: TIndexScheduler;
     FWorkspacePriority: Integer;
-    /// <summary>Schreibt nur die Nachrichtenschleife, unter FWorkspaces.Lock; der nebenläufige Fehlerbericht
-    /// (#874) liest es unter derselben Sperre.</summary>
-    FEditorSettings: string;
-    // Globale Benutzerdatei (#227) als unterste Ebene; Pfad, Inhalt und der Beobachter für sie und die
-    // atlas.json aller Ordner. FGlobalSettings nur im Thread der Nachrichtenschleife.
+    /// <summary>Ebenen global und Editor, wirksame Einstellungen je Datei (Shell.Composition.Settings).</summary>
+    FSettings: TShellSettings;
+    // Globale Benutzerdatei (#227) als unterste Ebene; Pfad und der Beobachter für sie und die atlas.json aller
+    // Ordner.
     FGlobalSettingsFile: string;
-    FGlobalSettings: string;
-    /// <summary>Einstellungen für Dateien ohne Arbeitsbereich: global und Editor (S-02). Unter FWorkspaces.Lock.</summary>
-    FLooseSettings: TServerSettings;
     /// <summary>Zuletzt gesehener Stand von ruleChecks.enabled (#1454): 1 an, 0 aus; nur über TInterlocked.</summary>
     FRuleChecksState: Integer;
     FFileWatcher: TFileWatcher;
@@ -305,8 +301,6 @@ type
     procedure WireEditors;
     /// <summary>Arbeitsbereich der Datei für die Schnellbefehle.</summary>
     function SlashWorkspaceOf(const AUri: string): TShellWorkspace;
-    /// <summary>Einstellungen des Ordners von AUri unter FWorkspaces.Lock; False ohne Ordner.</summary>
-    function WorkspaceSettingsOf(const AUri: string; out ASettings: TServerSettings): Boolean;
     /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
     procedure WireWorkspaces;
     /// <summary>Dienste des Registers der Arbeitsbereiche; Projektwahl und IDE-Projekt entstehen erst danach.
@@ -316,8 +310,6 @@ type
     procedure WireIndex;
     /// <summary>Teil von Create (S-02): Definition, Hover, Arbeitsbereichssymbole, Hervorhebungen, Verweise, Umbenennen.</summary>
     procedure WireNavigation;
-    /// <summary>Einstellungen der Hervorhebungen aus dem Arbeitsbereich von AUri.</summary>
-    function HighlightSettingsFor(const AUri: string): THighlightSettings;
     /// <summary>Teil von Create (S-02): Vervollständigung mit Einstellungen, Postfix-Vorlagen und Teilergebnissen.</summary>
     procedure WireCompletion;
     /// <summary>Präfix der Namensvorschläge (#452).</summary>
@@ -395,13 +387,6 @@ type
     procedure StartSettingsWatch;
     /// <summary>Änderungen auf der Platte wie eine Meldung des Clients einreihen.</summary>
     procedure FilesChangedOnDisk(const AFiles: TArray<string>);
-    /// <summary>Wirksame Einstellungen zur Datei (S-02): die des Arbeitsbereichs (FWorkspaces.Pick), ohne
-    /// Arbeitsbereich globale Datei und Editor-Einstellungen. Sperrt selbst und liefert eine Kopie.</summary>
-    function SettingsFor(const AUri: string): TServerSettings;
-    /// <summary>FLooseSettings aus globaler Datei und Editor-Einstellungen neu berechnen; Nachrichtenschleife.</summary>
-    procedure UpdateLooseSettings;
-    /// <summary>Setzt FEditorSettings unter FWorkspaces.Lock (#874).</summary>
-    procedure SetEditorSettings(const AText: string);
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Ein Indexaufbau ist fertig: Befunde neu prüfen, falls die Projektstufe das nicht schon getan hat.
     /// Index-Thread.</summary>
@@ -457,7 +442,6 @@ type
     function UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
     /// <summary>"completeBlocks.docComment" (#88).</summary>
     function DocCommentsFor(const AUri: string): Boolean;
-    function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
     /// <summary>Einstellungen, Wurzel und Dateien für die Code-Metriken (#66): Datei, Projekt (.dproj/.dpr/.dpk),
     /// Ordner oder '' (einziger Arbeitsbereich).</summary>
     function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
@@ -491,7 +475,6 @@ type
     /// AFileName.</summary>
     function SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
       out ANamespaces: TArray<string>): Boolean;
-    function HintSettingsFor(const AUri: string): THintSettings;
     /// <summary>Begründungen (#1123): hints.rationale, Marken, TODO-Marken und ADR-Ordner des Arbeitsbereichs.
     /// </summary>
     function RationaleOptionsFor(const AUri: string): TRationaleOptions;
@@ -500,13 +483,9 @@ type
     function ConditionalContextFor(const AUri: string): TConditionalContext;
     /// <summary>Projektstand für atlas/compilerSwitches (#558), unabhängig von directives.*.</summary>
     function CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
-    function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
-    function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
     /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
     function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
-    /// <summary>"references" (#1119): Treffersicherheit für Verwendungen, Aufrufer und Umbenennen.</summary>
-    function ReferenceSettingsFor(const AUri: string): TReferenceSettings;
     /// <summary>Auswirkungsanalyse (#1120): Tiefe aus "navigation", Treffersicherheit, Testunits des Testprogramms
     /// und ein Zeitlimit unter dem der Anfrage, damit die Antwort mit Hinweis statt eines Abbruchs kommt.</summary>
     function ImpactOptionsFor(const AUri: string): TImpactOptions;
@@ -517,8 +496,6 @@ type
     function AffectedQueryFor(AParams: TJSONObject; const AUri: string): TShellAffectedQuery;
     /// <summary>Dateien, Testprogramme und Optionen für betroffene Tests zu AUri.</summary>
     function AffectedRequestFor(const AUri: string; const ASettings: TServerSettings): TAffectedRequest;
-    /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
-    function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
     /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
     function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
@@ -1083,8 +1060,16 @@ begin
         FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
       end;
     end;
-  mServices.SettingsFor := SettingsFor;
-  mServices.WorkspaceSettingsOf := WorkspaceSettingsOf;
+  mServices.SettingsFor :=
+    function(const AUri: string): TServerSettings
+    begin
+      Result := FSettings.SettingsFor(AUri);
+    end;
+  mServices.WorkspaceSettingsOf :=
+    function(const AUri: string; out ASettings: TServerSettings): Boolean
+    begin
+      Result := FSettings.WorkspaceSettingsOf(AUri, ASettings);
+    end;
   mServices.TestUnitContextFor := TestUnitContextFor;
   mServices.RuleContextFor := RuleContextFor;
   mServices.UsesContextFor := UsesContextFor;
@@ -1118,27 +1103,6 @@ begin
   end;
 end;
 
-function TServerComposition.WorkspaceSettingsOf(const AUri: string; out ASettings: TServerSettings): Boolean;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mWorkspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
-    Result := mWorkspace <> nil;
-    if Result then
-    begin
-      ASettings := mWorkspace.Configuration.Settings;
-    end
-    else
-    begin
-      ASettings := Default(TServerSettings);
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
 function TServerComposition.WorkspaceRegistryServices: TShellWorkspaceRegistryServices;
 begin
   Result := Default(TShellWorkspaceRegistryServices);
@@ -1159,7 +1123,11 @@ end;
 procedure TServerComposition.WireWorkspaces;
 begin
   FWorkspaces := TShellWorkspaceRegistry.Create(WorkspaceRegistryServices);
-  FLooseSettings := TServerSettings.Default;
+  FSettings := TShellSettings.Create(FWorkspaces,
+    function(const AUri: string): string
+    begin
+      Result := LanguageLevelFor(AUri);
+    end);
   FIndexScheduler := TIndexScheduler.Create;
   FLooseConfiguration := TLspConfiguration.Create(FDocuments, FTransport,
     function(const AFileName: string; out AText: string): Boolean
@@ -1223,34 +1191,26 @@ begin
   mServices.ProjectFiles := ProjectSourceFiles;
   mServices.EnsureUnit := EnsureUnit;
   mServices.DelphiVersionFor := DelphiVersionFor;
-  mServices.HintSettingsFor := HintSettingsFor;
+  mServices.HintSettingsFor :=
+    function(const AUri: string): THintSettings
+    begin
+      Result := FSettings.Hints(AUri);
+    end;
   mServices.RationaleOptionsFor := RationaleOptionsFor;
   mServices.ConditionalContextFor := ConditionalContextFor;
-  mServices.HighlightSettingsFor := HighlightSettingsFor;
+  mServices.HighlightSettingsFor :=
+    function(const AUri: string): THighlightSettings
+    begin
+      Result := FSettings.Highlight(AUri);
+    end;
   mServices.CompilerSwitchContextFor := CompilerSwitchContextFor;
-  mServices.ReferenceSettingsFor := ReferenceSettingsFor;
+  mServices.ReferenceSettingsFor :=
+    function(const AUri: string): TReferenceSettings
+    begin
+      Result := FSettings.References(AUri);
+    end;
   FNavigation := TShellNavigation.Create(mServices);
   FNavigation.Attach(FDispatcher);
-end;
-
-function TServerComposition.HighlightSettingsFor(const AUri: string): THighlightSettings;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mWorkspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
-    if mWorkspace <> nil then
-    begin
-      Result := mWorkspace.Configuration.Settings.Highlight;
-    end
-    else
-    begin
-      Result := THighlightSettings.Default;
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
 end;
 
 procedure TServerComposition.WireCompletion;
@@ -1262,8 +1222,16 @@ begin
   mServices.Index := FIndex;
   mServices.EnsureUnit := EnsureUnit;
   mServices.ReadText := ReadSourceText;
-  mServices.CompletionSettingsFor := CompletionSettingsFor;
-  mServices.RefactoringSettingsFor := RefactoringSettingsFor;
+  mServices.CompletionSettingsFor :=
+    function(const AUri: string): TCompletionSettings
+    begin
+      Result := FSettings.Completion(AUri);
+    end;
+  mServices.RefactoringSettingsFor :=
+    function(const AUri: string): TRefactoringSettings
+    begin
+      Result := FSettings.Refactoring(AUri);
+    end;
   mServices.LanguageLevelFor := LanguageLevelFor;
   mServices.RefactoringContextFor :=
     function(const AUri: string): TRefactoringContext
@@ -1277,7 +1245,11 @@ begin
       Result := FSlash.RuleIdsAt(AUri, AText, ALine, AIds);
     end;
   mServices.NamingFor := NamingPrefixFor;
-  mServices.HintsFor := HintSettingsFor;
+  mServices.HintsFor :=
+    function(const AUri: string): THintSettings
+    begin
+      Result := FSettings.Hints(AUri);
+    end;
   mServices.DocCommentsFor := DocCommentsFor;
   mServices.SymbolsFor := ConditionalContextFor;
   mServices.Notify := NotifyClient;
@@ -1315,9 +1287,17 @@ begin
   mServices.ProjectFiles := ProjectSourceFiles;
   mServices.EnsureUnit := EnsureUnit;
   mServices.FormatRoutinesFor := FormatRoutinesFor;
-  mServices.ReferenceSettingsFor := ReferenceSettingsFor;
+  mServices.ReferenceSettingsFor :=
+    function(const AUri: string): TReferenceSettings
+    begin
+      Result := FSettings.References(AUri);
+    end;
   mServices.ImpactOptionsFor := ImpactOptionsFor;
-  mServices.InlayHintSettingsFor := InlayHintSettingsFor;
+  mServices.InlayHintSettingsFor :=
+    function(const AUri: string): TInlayHintSettings
+    begin
+      Result := FSettings.InlayHints(AUri);
+    end;
   mServices.CodeLensMetricsFor := CodeLensMetricsFor;
   mServices.MetricsSourceFor := MetricsSourceFor;
   FAnalysis := TShellAnalysis.Create(mServices);
@@ -1404,7 +1384,11 @@ begin
     end;
   mServices.ProjectFiles := ProjectSourceFiles;
   mServices.ReadText := ReadSourceText;
-  mServices.SettingsFor := RefactoringSettingsFor;
+  mServices.SettingsFor :=
+    function(const AUri: string): TRefactoringSettings
+    begin
+      Result := FSettings.Refactoring(AUri);
+    end;
   mServices.FormatStyleFor := ResolvedFormatStyleFor;
   mServices.LanguageLevelFor := LanguageLevelFor;
   mServices.DelphiVersionFor := DelphiVersionFor;
@@ -1431,10 +1415,18 @@ begin
   mServices.Index := FIndex;
   mServices.EnsureUnit := EnsureUnit;
   mServices.RuleContextFor := RuleContextFor;
-  mServices.StringLiteralFor := StringLiteralFor;
+  mServices.StringLiteralFor :=
+    function(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings
+    begin
+      Result := FSettings.StringLiteral(AUri, AMultiline);
+    end;
   mServices.DocCommentsFor := DocCommentsFor;
   mServices.FormatStyleFor := ResolvedFormatStyleFor;
-  mServices.RefactoringFor := RefactoringSettingsFor;
+  mServices.RefactoringFor :=
+    function(const AUri: string): TRefactoringSettings
+    begin
+      Result := FSettings.Refactoring(AUri);
+    end;
   mServices.DefinesFor := DefinesFor;
   mServices.ExtraActions := ExtraCodeActions;
   mServices.LanguageLevelFor := LanguageLevelFor;
@@ -1506,8 +1498,16 @@ begin
     begin
       Result := FNavigation.Namespaces;
     end;
-  mServices.HighlightSettingsFor := HighlightSettingsFor;
-  mServices.StringLiteralFor := StringLiteralFor;
+  mServices.HighlightSettingsFor :=
+    function(const AUri: string): THighlightSettings
+    begin
+      Result := FSettings.Highlight(AUri);
+    end;
+  mServices.StringLiteralFor :=
+    function(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings
+    begin
+      Result := FSettings.StringLiteral(AUri, AMultiline);
+    end;
   mServices.ResourceStringWrite := FSlash.ResourceStringWrite;
   FEditorCommands := TShellEditorCommands.Create(mServices);
 end;
@@ -1634,12 +1634,7 @@ begin
   mServices.EditorSettings :=
     function: string
     begin
-      System.TMonitor.Enter(FWorkspaces.Lock);
-      try
-        Result := FEditorSettings;
-      finally
-        System.TMonitor.Exit(FWorkspaces.Lock);
-      end;
+      Result := FSettings.EditorSettings;
     end;
   mServices.ActiveProject :=
     function: string
@@ -1952,9 +1947,13 @@ begin
   // Einstellungen mehr: Es schreibt settings.json, die der Server selbst liest und beobachtet.
   if AParams <> nil then
   begin
-    SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams.GetValue('initializationOptions')));
+    FSettings.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams.GetValue('initializationOptions')));
+  end
+  else
+  begin
+    // Ohne Parameter bleibt die Editor-Ebene leer; die Einstellungen ohne Arbeitsbereich gelten trotzdem neu.
+    FSettings.SetEditorSettings(FSettings.EditorSettings);
   end;
-  UpdateLooseSettings;
   FNavigation.Hover.Markdown := TLspHover.ClientSupportsMarkdown(AParams);
   // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
   FCompletion.Completion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
@@ -2063,6 +2062,7 @@ begin
   FWorkspaces.FreeWorkspaces;
   // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
   FIndexRecheck.Free;
+  FreeAndNil(FSettings);
   FWorkspaces.Free;
   // Nach den Ordnern: Ihre Index-Threads sind beendet und abgemeldet.
   FIndexScheduler.Free;
@@ -2192,8 +2192,8 @@ begin
   end;
   mWorkspace := NewWorkspace(ARoot, AName, AProjectFile, AOrigin, ADeferred);
   WireWorkspaceEvents(mWorkspace);
-  mWorkspace.Configuration.SetGlobalSettings(FGlobalSettings);
-  mWorkspace.Configuration.SetEditorSettings(FEditorSettings);
+  mWorkspace.Configuration.SetGlobalSettings(FSettings.GlobalSettings);
+  mWorkspace.Configuration.SetEditorSettings(FSettings.EditorSettings);
   FWorkspaces.Add(mWorkspace);
   UpdateWatchedSettings;
   if AProjectFile <> '' then
@@ -2411,50 +2411,6 @@ begin
   if Folder <> '' then
   begin
     AddWorkspace(TWorkspaceFolder.Create(Folder, ExtractFileName(Folder)));
-  end;
-end;
-
-function TServerComposition.SettingsFor(const AUri: string): TServerSettings;
-var
-  Workspace: TShellWorkspace;
-begin
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
-    if Workspace = nil then
-    begin
-      Result := FLooseSettings;
-    end
-    else
-    begin
-      Result := Workspace.Configuration.Settings;
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-procedure TServerComposition.SetEditorSettings(const AText: string);
-begin
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    FEditorSettings := AText;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-procedure TServerComposition.UpdateLooseSettings;
-var
-  Settings: TServerSettings;
-  Issues: TArray<TConfigurationIssue>;
-begin
-  Settings := TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalSettings, FEditorSettings, ''), Issues);
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    FLooseSettings := Settings;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -2885,7 +2841,7 @@ begin
     Workspace := FWorkspaces.Pick(FileName);
     if Workspace = nil then
     begin
-      Settings := FLooseSettings;
+      Settings := FSettings.Loose;
     end
     else
     begin
@@ -2914,7 +2870,7 @@ function TServerComposition.SlashCommandsFor(const AUri: string; out ADisabled: 
 var
   Settings: TServerSettings;
 begin
-  Settings := SettingsFor(AUri);
+  Settings := FSettings.SettingsFor(AUri);
   Result := Settings.SlashCommands;
   ADisabled := Settings.SlashCommandsDisabled;
   // usesCommand bleibt als Alias erhalten (#254).
@@ -2926,7 +2882,7 @@ end;
 
 function TServerComposition.DocCommentsFor(const AUri: string): Boolean;
 begin
-  Result := SettingsFor(AUri).CompleteBlocksDocComment;
+  Result := FSettings.SettingsFor(AUri).CompleteBlocksDocComment;
 end;
 
 function TServerComposition.DelphiVersionFor(const AUri: string): string;
@@ -2956,12 +2912,7 @@ end;
 
 function TServerComposition.LanguageLevelFor(const AUri: string): string;
 begin
-  Result := TLanguageFeatures.LanguageLevel(DelphiVersionFor(AUri), SettingsFor(AUri).MinDelphiVersion);
-end;
-
-function TServerComposition.CompletionSettingsFor(const AUri: string): TCompletionSettings;
-begin
-  Result := SettingsFor(AUri).Completion;
+  Result := TLanguageFeatures.LanguageLevel(DelphiVersionFor(AUri), FSettings.SettingsFor(AUri).MinDelphiVersion);
 end;
 
 function TServerComposition.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
@@ -2972,7 +2923,7 @@ var
   Name: string;
 begin
   Result := TFormatRoutines.Defaults;
-  for Name in TRuleOptions.Strings(TRuleEngine.RuleOptions(FormatArgsRuleId, SettingsFor(AUri)), 'formatMethods',
+  for Name in TRuleOptions.Strings(TRuleEngine.RuleOptions(FormatArgsRuleId, FSettings.SettingsFor(AUri)), 'formatMethods',
     nil) do
   begin
     if Trim(Name) <> '' then
@@ -2987,19 +2938,14 @@ begin
   end;
 end;
 
-function TServerComposition.ReferenceSettingsFor(const AUri: string): TReferenceSettings;
-begin
-  Result := SettingsFor(AUri).References;
-end;
-
 function TServerComposition.ImpactOptionsFor(const AUri: string): TImpactOptions;
 var
   Context: TTestUnitContext;
   Text: string;
 begin
   Result := TImpactOptions.Default;
-  Result.Depth := SettingsFor(AUri).Navigation.ImpactDepth;
-  Result.References := ReferenceSettingsFor(AUri);
+  Result.Depth := FSettings.SettingsFor(AUri).Navigation.ImpactDepth;
+  Result.References := FSettings.References(AUri);
   // Vier Fünftel des Zeitlimits der Anfrage: Danach bräche der Watchdog sie ohne Ergebnis ab.
   Result.TimeoutMs := Integer(FRequestTimeout div 5 * 4);
   if TestUnitContextFor(AUri, Context) then
@@ -3036,7 +2982,7 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Feld "textDocument.uri" fehlt in ' + TAffectedTests.Method);
   end;
-  mSettings := SettingsFor(mUri);
+  mSettings := FSettings.SettingsFor(mUri);
   mQuery := AffectedQueryFor(TJSONObject(AParams), mUri);
   mRequest := AffectedRequestFor(mUri, mSettings);
   // Typisierte Variable: TNameResolver.Create ist überladen.
@@ -3110,17 +3056,6 @@ begin
   Result.Options := ImpactOptionsFor(AUri);
   Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms,
     ReadSourceText);
-end;
-
-function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
-begin
-  Result := SettingsFor(AUri).Refactoring;
-end;
-
-function TServerComposition.StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
-begin
-  Result := SettingsFor(AUri).StringLiteral;
-  AMultiline := TStringLiterals.UseMultiline(Result.Style, LanguageLevelFor(AUri));
 end;
 
 function TServerComposition.MetricsSourceFor(const AFileName: string; AProject: Boolean;
@@ -3415,21 +3350,6 @@ begin
   end;
 end;
 
-function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
-var
-  Settings: TServerSettings;
-begin
-  Settings := SettingsFor(AUri);
-  Result := Settings.InlayHints;
-  // Marke „ohne Self“ (#686) hängt an der Umwandlung, nicht an inlayHints.
-  Result.MethodWithoutSelf := Settings.Refactoring.MethodKind and Settings.Refactoring.MethodKindMarker;
-end;
-
-function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;
-begin
-  Result := SettingsFor(AUri).Hints;
-end;
-
 function TServerComposition.RationaleOptionsFor(const AUri: string): TRationaleOptions;
 var
   Workspace: TShellWorkspace;
@@ -3440,7 +3360,7 @@ begin
     // ADR-Ordner relativ zum Arbeitsbereich; ohne Arbeitsbereich nur ein absoluter.
     if Workspace = nil then
     begin
-      Result := TRationaleOptions.FromSettings(FLooseSettings, '');
+      Result := TRationaleOptions.FromSettings(FSettings.Loose, '');
     end
     else
     begin
@@ -3461,7 +3381,7 @@ var
   IncludePaths: TArray<string>;
   Define: string;
 begin
-  Settings := SettingsFor(AUri).Directives;
+  Settings := FSettings.SettingsFor(AUri).Directives;
   Result := TConditionalContext.Default;
   Result.CompletionEnabled := Settings.Completion;
   Result.HoverEnabled := Settings.Hover;
@@ -3572,7 +3492,7 @@ end;
 
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
 begin
-  Result := SettingsFor(AUri).Formatting;
+  Result := FSettings.SettingsFor(AUri).Formatting;
 end;
 
 function TServerComposition.ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
@@ -3732,7 +3652,7 @@ begin
     mWorkspace := FWorkspaces.Pick(AFileName);
     if mWorkspace = nil then
     begin
-      AContext.Settings := FLooseSettings;
+      AContext.Settings := FSettings.Loose;
     end
     else
     begin
@@ -4058,11 +3978,10 @@ procedure TServerComposition.HandleDidChangeConfiguration(const AParams: TJSONVa
 var
   Workspace: TShellWorkspace;
 begin
-  SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
-  UpdateLooseSettings;
+  FSettings.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
   for Workspace in FWorkspaces.Items.ToArray do
   begin
-    Workspace.Configuration.SetEditorSettings(FEditorSettings);
+    Workspace.Configuration.SetEditorSettings(FSettings.EditorSettings);
   end;
 end;
 
@@ -4081,12 +4000,10 @@ var
 begin
   // Nicht lesbar (gerade geschrieben oder gesperrt): Warnung im Log, der Beobachter meldet die Datei erneut.
   Text := TShellBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FLogger);
-  if Text = FGlobalSettings then
+  if not FSettings.SetGlobalSettings(Text) then
   begin
     Exit;
   end;
-  FGlobalSettings := Text;
-  UpdateLooseSettings;
   if Text <> '' then
   begin
     Settings := TConfigurationParser.Parse(Text, Issues);
@@ -4104,7 +4021,7 @@ begin
   end;
   for Workspace in FWorkspaces.Items.ToArray do
   begin
-    Workspace.Configuration.SetGlobalSettings(FGlobalSettings);
+    Workspace.Configuration.SetGlobalSettings(FSettings.GlobalSettings);
   end;
 end;
 
