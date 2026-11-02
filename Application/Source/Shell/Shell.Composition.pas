@@ -36,11 +36,9 @@ uses
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Editing.ClassActions,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.UnitSearch,
   Atlas.Common.Lsp.DocumentLinks,
-  Atlas.Common.Lsp.Colors,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.Completion,
@@ -73,6 +71,7 @@ uses
   Shell.Composition.Editing,
   Shell.Composition.EditorCommands,
   Shell.Composition.ServerCommands,
+  Shell.Composition.CodeActions,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -175,7 +174,8 @@ type
     /// <summary>Baseline für Altprojekte (#97, atlas.updateBaseline), Compilermeldungen darin (#530) und die
     /// Sammelkorrektur (#1352).</summary>
     FBaselines: TShellBaselines;
-    FCodeActions: TLspCodeActions;
+    /// <summary>Code-Aktionen, Dokumentlinks und Farben.</summary>
+    FCodeActions: TShellCodeActions;
     FRefactorings: TShellRefactorings;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
     FTestUnits: TLspTestUnits;
@@ -183,8 +183,6 @@ type
     FTestPrograms: TDictionary<string, TPair<string, UInt64>>;
     /// <summary>Daten des Fensters „Units suchen“ im Plugin (#777).</summary>
     FUnitSearch: TUnitSearch;
-    FDocumentLinks: TLspDocumentLinks;
-    FColors: TLspColors;
     FCommands: TLspCommands;
     // Methodenreferenzen für die Befehle, vorab gebildet (Free Pascal). Je Empfänger der eigene Typ: Delphi 12 nimmt
     // TCompletionReadText nicht als TResourceStringRead an, obwohl die Signatur gleich ist.
@@ -368,18 +366,10 @@ type
     procedure WireRefactorings;
     /// <summary>Teil von Create (S-02): Code-Aktionen, Testunits, Dokumentlinks und Farben.</summary>
     procedure WireCodeActions;
-    /// <summary>Umfeld der Klassen-Aktionen: Index, Sprachversion, Host der Schnellbefehle.</summary>
-    function ClassActionContextOf(const AUri: string): TClassActionContext;
-    /// <summary>Reihenfolge der Mitglieder aus der atlas.json des Ordners.</summary>
-    function MemberOrderOf(const AUri: string): TMemberOrderSettings;
-    function SortUsesOf(const AUri: string): Boolean;
-    function SortUsesByNamespaceOf(const AUri: string): Boolean;
-    /// <summary>uses-Umfeld der Code-Aktionen: Einstellungen und Namensräume des Ordners, Wissen des Index.</summary>
-    function CodeActionUsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Was die Code-Aktionen vom Arbeitsbereich der Datei brauchen, unter der Sperre gelesen.</summary>
+    function CodeActionWorkspaceOf(const AUri: string): TShellCodeActionWorkspace;
     /// <summary>Code-Aktionen für Testunits und der Refactorings.</summary>
     function ExtraCodeActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
-    /// <summary>Include-Pfade des Projekts für die Dokumentlinks.</summary>
-    function IncludePathsOf(const AUri: string): TArray<string>;
     /// <summary>Teil von Create (S-02): workspace/executeCommand: alle Befehle des Servers.</summary>
     procedure WireCommands;
     /// <summary>Teil von WireCommands: Befehle des Plugins am Editor.</summary>
@@ -767,13 +757,11 @@ uses
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
-  Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Editing.SmartPaste,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.DfmProperties,
-  Atlas.Common.Dfm.FormModel,
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
@@ -1633,197 +1621,58 @@ begin
   FRefactorings := TShellRefactorings.Create(mServices);
 end;
 
-/// <summary>Code-Aktion für binär gespeicherte Formulare (#122): Umwandeln in Text.</summary>
-function FormActionsFunc(): TFormActionsFunc;
-begin
-  Result :=
-    function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>
-    var
-      mAction: TCodeAction;
-    begin
-      Result := nil;
-      if TFormModel.IsBinary(AText) then
-      begin
-        mAction := Default(TCodeAction);
-        mAction.Title := 'Formular in Text umwandeln';
-        mAction.Kind := QuickFixKind;
-        mAction.IsPreferred := True;
-        mAction.Command := TLspFormFiles.ConvertCommand;
-        mAction.CommandArguments := [AUri];
-        Result := [mAction];
-      end;
-    end;
-end;
-
-/// <summary>Was der Index über eine Unit für die uses-Analyse weiß; lädt sie bei Bedarf über AEnsureUnit.</summary>
-function UsesInfoFunc(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc): TUsesUnitInfoFunc;
-begin
-  Result :=
-    function(const AUnitName: string): TUsesUnitInfo
-    var
-      mUnit: TUnitIndex;
-      mSymbol: TIndexSymbol;
-    begin
-      Result := Default(TUsesUnitInfo);
-      AEnsureUnit(AUnitName);
-      if not AIndex.FindUnit(AUnitName, mUnit) then
-      begin
-        Exit;
-      end;
-      Result.Known := True;
-      Result.HasInitialization := mUnit.HasInitialization;
-      for mSymbol in mUnit.Symbols do
-      begin
-        if mSymbol.InInterface then
-        begin
-          Result.Names := Result.Names + [mSymbol.Name];
-        end;
-      end;
-    end;
-end;
-
-/// <summary>Units, die AName im interface auf oberster Ebene deklarieren.</summary>
-function DeclaringFunc(const AIndex: ISymbolIndex): TUnitsDeclaringFunc;
-begin
-  Result :=
-    function(const AName: string): TArray<string>
-    var
-      mLocation: TSymbolLocation;
-    begin
-      Result := nil;
-      for mLocation in AIndex.FindSymbols(AName) do
-      begin
-        if mLocation.Symbol.InInterface and (mLocation.Symbol.Container = '') and
-          (IndexText(mLocation.UnitName, Result) < 0) then
-        begin
-          Result := Result + [mLocation.UnitName];
-        end;
-      end;
-    end;
-end;
-
 procedure TServerComposition.WireCodeActions;
+var
+  mServices: TShellCodeActionServices;
 begin
-  FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
-  FCodeActions.FormActions := FormActionsFunc();
-  FCodeActions.StringLiteralFor := StringLiteralFor;
-  FCodeActions.DocCommentsFor := DocCommentsFor;
-  // try/finally rückt wie das Formatieren ein (#42, #43).
-  FCodeActions.FormatStyleFor := ResolvedFormatStyleFor;
-  FCodeActions.RefactoringFor := RefactoringSettingsFor;
-  FCodeActions.ClassActionContextFor := ClassActionContextOf;
-  FCodeActions.MemberOrderFor := MemberOrderOf;
-  FCodeActions.SortUsesFor := SortUsesOf;
-  FCodeActions.SortUsesByNamespaceFor := SortUsesByNamespaceOf;
-  FCodeActions.UsesContextFor := CodeActionUsesContext;
   FTestPrograms := TDictionary<string, TPair<string, UInt64>>.Create;
   FTestUnits := TLspTestUnits.Create(FDocuments, TestUnitContextFor);
-  FCodeActions.DefinesFor := DefinesFor;
-  FCodeActions.ExtraActions := ExtraCodeActions;
+  mServices := Default(TShellCodeActionServices);
+  mServices.Documents := FDocuments;
+  mServices.Index := FIndex;
+  mServices.EnsureUnit := EnsureUnit;
+  mServices.RuleContextFor := RuleContextFor;
+  mServices.StringLiteralFor := StringLiteralFor;
+  mServices.DocCommentsFor := DocCommentsFor;
+  mServices.FormatStyleFor := ResolvedFormatStyleFor;
+  mServices.RefactoringFor := RefactoringSettingsFor;
+  mServices.DefinesFor := DefinesFor;
+  mServices.ExtraActions := ExtraCodeActions;
+  mServices.LanguageLevelFor := LanguageLevelFor;
+  mServices.WorkspaceOf := CodeActionWorkspaceOf;
+  mServices.SlashHost := FEditing.SlashHost;
+  FCodeActions := TShellCodeActions.Create(mServices);
   FCodeActions.Attach(FDispatcher);
-  FDocumentLinks := TLspDocumentLinks.Create(FDocuments, IncludePathsOf);
-  FDocumentLinks.Attach(FDispatcher);
-  FColors := TLspColors.Create(FDocuments, PlatformSystemColor);
-  FColors.Attach(FDispatcher);
 end;
 
-function TServerComposition.ClassActionContextOf(const AUri: string): TClassActionContext;
-begin
-  Result := TClassActionContext.Default;
-  Result.Index := FIndex;
-  Result.DelphiVersion := LanguageLevelFor(AUri);
-  Result.Uri := AUri;
-  Result.Host := FEditing.SlashHost;
-end;
-
-function TServerComposition.MemberOrderOf(const AUri: string): TMemberOrderSettings;
+function TServerComposition.CodeActionWorkspaceOf(const AUri: string): TShellCodeActionWorkspace;
 var
   mWorkspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-    if mWorkspace = nil then
-    begin
-      Result := TMemberOrderSettings.Default;
-    end
-    else
-    begin
-      Result := mWorkspace.Configuration.Settings.MemberOrder;
-    end;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-end;
-
-function TServerComposition.SortUsesOf(const AUri: string): Boolean;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-    Result := (mWorkspace <> nil) and mWorkspace.Configuration.Settings.SortUses;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-end;
-
-function TServerComposition.SortUsesByNamespaceOf(const AUri: string): Boolean;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-    Result := (mWorkspace <> nil) and mWorkspace.Configuration.Settings.SortUsesByNamespace;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-end;
-
-function TServerComposition.CodeActionUsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  AContext := Default(TUsesContext);
+  Result := Default(TShellCodeActionWorkspace);
+  Result.MemberOrder := TMemberOrderSettings.Default;
   TMonitor.Enter(FWorkspacesLock);
   try
     mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
     if mWorkspace <> nil then
     begin
-      AContext.Keep := mWorkspace.Configuration.Settings.UsesKeep;
-      AContext.Namespaces := mWorkspace.State.Namespaces;
+      Result.Found := True;
+      Result.MemberOrder := mWorkspace.Configuration.Settings.MemberOrder;
+      Result.SortUses := mWorkspace.Configuration.Settings.SortUses;
+      Result.SortUsesByNamespace := mWorkspace.Configuration.Settings.SortUsesByNamespace;
+      Result.UsesKeep := mWorkspace.Configuration.Settings.UsesKeep;
+      Result.Namespaces := mWorkspace.State.Namespaces;
+      Result.IncludePaths := mWorkspace.State.IncludePaths;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  AContext.Info := UsesInfoFunc(FIndex, FEnsureUnitRef);
-  AContext.Declaring := DeclaringFunc(FIndex);
-  Result := True;
 end;
 
 function TServerComposition.ExtraCodeActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
 begin
   Result := FTestUnits.Actions(AUri, ARange.StartPos.Line);
   Result := Result + FRefactorings.Actions(AUri, ARange);
-end;
-
-function TServerComposition.IncludePathsOf(const AUri: string): TArray<string>;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  Result := nil;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-    if mWorkspace <> nil then
-    begin
-      Result := mWorkspace.State.IncludePaths;
-    end;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
 end;
 
 procedure TServerComposition.WireEditorCommands;
@@ -2349,8 +2198,6 @@ begin
   FreeAndNil(FTestUnits);
   FreeAndNil(FTestPrograms);
   FreeAndNil(FUnitSearch);
-  FreeAndNil(FDocumentLinks);
-  FreeAndNil(FColors);
   FreeAndNil(FCommands);
   FreeAndNil(FCompile);
   FCompilerProcess := nil;
@@ -3466,11 +3313,8 @@ begin
 end;
 
 function TServerComposition.SearchUsesContext(AUri: string): TUsesContext;
-var
-  mProvider: TUsesContextProvider;
 begin
-  mProvider := FCodeActions.UsesContextFor;
-  if not Assigned(mProvider) or not mProvider(AUri, Result) then
+  if not UsesContextFor(AUri, Result) then
   begin
     Result := Default(TUsesContext);
   end;
@@ -4246,8 +4090,7 @@ end;
 function TServerComposition.UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
 begin
   AContext := Default(TUsesContext);
-  Result := (FCodeActions <> nil) and Assigned(FCodeActions.UsesContextFor) and
-    FCodeActions.UsesContextFor(AUri, AContext);
+  Result := (FCodeActions <> nil) and FCodeActions.UsesContextOf(AUri, AContext);
 end;
 
 function TServerComposition.SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
