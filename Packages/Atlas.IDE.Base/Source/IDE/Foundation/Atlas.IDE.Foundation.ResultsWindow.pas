@@ -160,59 +160,79 @@ var
   ResultsFrame: TAtlasResultsFrame;
 begin
   if not (AFrame is TAtlasResultsFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   ResultsFrame := TAtlasResultsFrame(AFrame);
   TAtlasIdeResultsWindow.UpdateIcon;
   ResultsFrame.OnOpen :=
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnOpen) then
+      begin
         TAtlasIdeResultsWindow.OnOpen(AFileName, ALine, ACharacter);
+      end;
     end;
   ResultsFrame.OnChangeUndo :=
     procedure(ASetId: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnChangeUndo) then
+      begin
         TAtlasIdeResultsWindow.OnChangeUndo(ASetId);
+      end;
     end;
   ResultsFrame.OnChangeRedo :=
     procedure(ASetId: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnChangeRedo) then
+      begin
         TAtlasIdeResultsWindow.OnChangeRedo(ASetId);
+      end;
     end;
   ResultsFrame.OnChangeDiff :=
     procedure(ASetId: Integer; const AFileName: string)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnChangeDiff) then
+      begin
         TAtlasIdeResultsWindow.OnChangeDiff(ASetId, AFileName);
+      end;
     end;
   ResultsFrame.OnShowRoute :=
     procedure(const AUnits: TArray<string>)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnShowRoute) then
+      begin
         TAtlasIdeResultsWindow.OnShowRoute(AUnits);
+      end;
     end;
   ResultsFrame.OnImpactDepth :=
     procedure(ADepth: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnImpactDepth) then
+      begin
         TAtlasIdeResultsWindow.OnImpactDepth(ADepth);
+      end;
     end;
   ResultsFrame.OnImpactRunTests :=
     procedure(const AImpact: TAtlasImpact)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnImpactRunTests) then
+      begin
         TAtlasIdeResultsWindow.OnImpactRunTests(AImpact);
+      end;
     end;
   ResultsFrame.OnExpand :=
     function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
     begin
       Result := nil;
       if Assigned(TAtlasIdeResultsWindow.OnExpand) then
+      begin
         Result := TAtlasIdeResultsWindow.OnExpand(ADirection, AItem);
+      end;
     end;
   ResultsFrame.OnFlowExpand :=
     function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
@@ -220,25 +240,33 @@ begin
     begin
       Result := Default(TAtlasDataFlowResult);
       if Assigned(TAtlasIdeResultsWindow.OnFlowExpand) then
+      begin
         Result := TAtlasIdeResultsWindow.OnFlowExpand(ADirection, ASource, APath);
+      end;
     end;
   ResultsFrame.OnFlowFilter :=
     procedure(AOnlyProject, AExcludeTests: Boolean)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnFlowFilter) then
+      begin
         TAtlasIdeResultsWindow.OnFlowFilter(AOnlyProject, AExcludeTests);
+      end;
     end;
   ResultsFrame.OnIssueOpen :=
     procedure(AList, AId: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnIssueOpen) then
+      begin
         TAtlasIdeResultsWindow.OnIssueOpen(AList, AId);
+      end;
     end;
   ResultsFrame.OnIssueCommit :=
     procedure(AList, AId: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnIssueCommit) then
+      begin
         TAtlasIdeResultsWindow.OnIssueCommit(AList, AId);
+      end;
     end;
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
@@ -292,7 +320,9 @@ end;
 procedure EnsureHost;
 begin
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TResultsDock.Create, True);
+  end;
 end;
 
 { TAtlasIdeResultsWindow }
@@ -305,7 +335,9 @@ begin
   EnsureHost;
   Host.Show(Created);
   if Created then
+  begin
     UpdateIcon;
+  end;
   Result := ExistingFrame;
 end;
 
@@ -315,7 +347,9 @@ var
 begin
   Target := Frame;
   if Target <> nil then
+  begin
     Target.ShowEntries(ATitle, TAtlasResults.Group(AEntries));
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowReferences(const ATitle: string;
@@ -325,8 +359,10 @@ var
 begin
   Target := Frame;
   if Target <> nil then
+  begin
     Target.ShowRated(ATitle, AEntries, TAtlasStrings.Text(TAtlasTextId.ResultsSureGroup),
       TAtlasStrings.Text(TAtlasTextId.ResultsInferredGroup));
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
@@ -342,7 +378,9 @@ var
 begin
   Target := Frame;
   if Target = nil then
+  begin
     Exit;
+  end;
   Target.DiagramAllowed := Assigned(DiagramAllowed) and DiagramAllowed();
   Target.IsProjectFile := IsProjectFile;
   Target.ShowHierarchy(ATitle, ADirection, ARoots, AAsDiagram);
@@ -354,7 +392,9 @@ var
 begin
   Target := ExistingFrame;
   if Target <> nil then
+  begin
     Target.DiagramAllowed := Assigned(DiagramAllowed) and DiagramAllowed();
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>);
@@ -363,7 +403,9 @@ var
 begin
   Target := Frame;
   if Target <> nil then
+  begin
     Target.ShowChanges(ATitle, ASets, Now, False);
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowItems(const AList: TAtlasResultsItemList);
@@ -372,7 +414,9 @@ var
 begin
   Target := Frame;
   if Target <> nil then
+  begin
     Target.ShowItems(AList);
+  end;
 end;
 
 class function TAtlasIdeResultsWindow.ShowsItemsOf(const AOwner: string): Boolean;
@@ -383,7 +427,9 @@ end;
 class procedure TAtlasIdeResultsWindow.ReleaseItems(const AOwner: string);
 begin
   if ResultsFrame <> nil then
+  begin
     ResultsFrame.ReleaseItems(AOwner);
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;
@@ -393,7 +439,9 @@ var
 begin
   Target := Frame;
   if Target <> nil then
+  begin
     Target.ShowSymbolPath(ATitle, AAnswer, AMapAvailable);
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowSymbolPathMessage(const ATitle, AText: string);
@@ -402,7 +450,9 @@ var
 begin
   Target := Frame;
   if Target <> nil then
+  begin
     Target.ShowSymbolPathMessage(ATitle, AText);
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowImpact(const ATitle: string; const AImpact: TAtlasImpact);
@@ -411,7 +461,9 @@ var
 begin
   Target := Frame;
   if Target <> nil then
+  begin
     Target.ShowImpact(ATitle, AImpact);
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
@@ -421,7 +473,9 @@ var
 begin
   Target := Frame;
   if Target <> nil then
+  begin
     Target.ShowDataFlow(ATitle, ADirection, AResult, AMaxDepth, AOnlyProject, AExcludeTests);
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowIssues(const ATitle: string; AList: Integer;
@@ -431,7 +485,9 @@ var
 begin
   mTarget := Frame;
   if mTarget <> nil then
+  begin
     mTarget.ShowIssues(ATitle, AList, AIssues);
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.SetIssueText(AList, AId: Integer; const AText: string);
@@ -440,14 +496,18 @@ var
 begin
   mTarget := ExistingFrame;
   if mTarget <> nil then
+  begin
     mTarget.SetIssueText(AList, AId, AText);
+  end;
 end;
 
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasResultsFrame) then
+  begin
     Result := TAtlasResultsFrame(Host.Frame);
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.UpdateIcon;
@@ -455,7 +515,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -471,7 +533,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     TAtlasIdeDockWindow.ApplyIdeTheme(Frame);
+  end;
   UpdateIcon;
 end;
 

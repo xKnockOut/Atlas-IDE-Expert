@@ -154,7 +154,9 @@ function NormalizedUrl(const AUrl: string): string;
 begin
   Result := Trim(AUrl);
   while (Result <> '') and (Result[Length(Result)] = '/') do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TAtlasTrackerConnection.Create(const AName, AProvider, AUrl: string): TAtlasTrackerConnection;
@@ -209,9 +211,13 @@ end;
 class function TAtlasTrackerTokenStatus.Stored(AHasToken: Boolean): TAtlasTrackerTokenStatus;
 begin
   if AHasToken then
-    Result := Create(TAtlasTrackerTokenState.Saved, 0, 0)
+  begin
+    Result := Create(TAtlasTrackerTokenState.Saved, 0, 0);
+  end
   else
+  begin
     Result := Create(TAtlasTrackerTokenState.Missing, 0, 0);
+  end;
 end;
 
 { TAtlasTrackerConnections }
@@ -235,7 +241,9 @@ begin
   Result := '';
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 /// <summary>Liste von Texten (#1266, endStates); leere Einträge entfallen.</summary>
@@ -246,9 +254,15 @@ begin
   Result := nil;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONArray then
+  begin
     for mItem in TJSONArray(mValue) do
+    begin
       if (mItem is TJSONString) and (Trim(TJSONString(mItem).Value) <> '') then
+      begin
         Result := Result + [Trim(TJSONString(mItem).Value)];
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Die Felder aus #1266, nur wenn gesetzt: ', "stateField": …' usw.</summary>
@@ -259,16 +273,26 @@ var
 begin
   Result := '';
   if AItem.StateField <> '' then
+  begin
     Result := Result + ', "stateField": ' + Quoted(AItem.StateField);
+  end;
   if AItem.AssigneeField <> '' then
+  begin
     Result := Result + ', "assigneeField": ' + Quoted(AItem.AssigneeField);
+  end;
   if AItem.StartState <> '' then
+  begin
     Result := Result + ', "startState": ' + Quoted(AItem.StartState);
+  end;
   if Length(AItem.EndStates) = 0 then
+  begin
     Exit;
+  end;
   mParts := nil;
   for mState in AItem.EndStates do
+  begin
     mParts := mParts + [Quoted(mState)];
+  end;
   Result := Result + ', "endStates": [' + string.Join(', ', mParts) + ']';
 end;
 
@@ -280,20 +304,28 @@ var
 begin
   Result := nil;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mRoot is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mRoot) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mConnection := TAtlasTrackerConnection.Create(TextOf(TJSONObject(mItem), 'name'),
         TextOf(TJSONObject(mItem), 'provider'), TextOf(TJSONObject(mItem), 'url'));
       if (mConnection.Name = '') or (mConnection.Provider = '') or (mConnection.Url = '') or
         (IndexOfName(Result, mConnection.Name) >= 0) then
+      begin
         Continue;
+      end;
       mConnection.Language := TAtlasTrackerTemplates.NormalLanguage(TextOf(TJSONObject(mItem), 'language'));
       mConnection.StateField := Trim(TextOf(TJSONObject(mItem), 'stateField'));
       mConnection.AssigneeField := Trim(TextOf(TJSONObject(mItem), 'assigneeField'));
@@ -314,14 +346,18 @@ var
 begin
   mParts := nil;
   for mItem in AItems do
+  begin
     if not mItem.ReadOnly then
     begin
       mPart := '{"name": ' + Quoted(mItem.Name) + ', "provider": ' + Quoted(mItem.Provider) + ', "url": ' +
         Quoted(mItem.Url);
       if mItem.Language <> '' then
+      begin
         mPart := mPart + ', "language": ' + Quoted(mItem.Language);
+      end;
       mParts := mParts + [mPart + StateJson(mItem) + '}'];
     end;
+  end;
   Result := '[' + string.Join(', ', mParts) + ']';
 end;
 
@@ -332,18 +368,28 @@ var
 begin
   mUrl := Trim(AUrl);
   if mUrl = '' then
+  begin
     Exit(TAtlasTrackerUrlCheck.Empty);
+  end;
   if not SameText(Copy(mUrl, 1, 8), 'https://') then
+  begin
     Exit(TAtlasTrackerUrlCheck.NotHttps);
+  end;
   mHost := Copy(mUrl, 9, MaxInt);
   mSlash := Pos('/', mHost);
   if mSlash > 0 then
+  begin
     mHost := Copy(mHost, 1, mSlash - 1);
+  end;
   // Benutzer oder Token in der Adresse („user:token@host“) nie: das Token gehört in den Anmeldespeicher.
   if Pos('@', mHost) > 0 then
+  begin
     Exit(TAtlasTrackerUrlCheck.WithUser);
+  end;
   if (mHost = '') or (Pos(' ', mUrl) > 0) or (TAtlasTrackerTarget.Create('', mUrl, '', '').Server = '') then
+  begin
     Exit(TAtlasTrackerUrlCheck.Invalid);
+  end;
   Result := TAtlasTrackerUrlCheck.Valid;
 end;
 
@@ -353,8 +399,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(AItems) do
+  begin
     if SameText(AItems[mIndex].Name, Trim(AName)) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -364,10 +414,16 @@ var
   mIndex: Integer;
 begin
   if Trim(AName) = '' then
+  begin
     Exit(True);
+  end;
   for mIndex := 0 to High(AItems) do
+  begin
     if (mIndex <> AExcept) and SameText(AItems[mIndex].Name, Trim(AName)) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -392,11 +448,17 @@ var
 begin
   Result := '';
   if ATarget.Server = '' then
+  begin
     Exit;
+  end;
   for mItem in AItems do
+  begin
     if (mItem.Language <> '') and SameText(mItem.Provider, ATarget.Provider) and
       (mItem.Target.Server = ATarget.Server) then
+    begin
       Exit(mItem.Language);
+    end;
+  end;
 end;
 
 /// <summary>Antwort ist ein JSON-Objekt mit einem nicht leeren "login" (YouTrack und GitHub).</summary>
@@ -408,7 +470,9 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     if mRoot is TJSONObject then
+    begin
       Result := TextOf(TJSONObject(mRoot), 'login') <> '';
+    end;
   finally
     mRoot.Free;
   end;
@@ -418,14 +482,20 @@ class function TAtlasTrackerConnections.StateOf(AAnswered: Boolean; AStatus: Int
   const AText: string): TAtlasTrackerTokenState;
 begin
   if not AAnswered then
+  begin
     Exit(TAtlasTrackerTokenState.Unreachable);
+  end;
   case AStatus of
     200:
       // Eine Anmeldeseite oder ein Proxy antwortet auch mit 200; geprüft ist nur, wer den Benutzer nennt.
       if HasLogin(AText) then
-        Result := TAtlasTrackerTokenState.Verified
+      begin
+        Result := TAtlasTrackerTokenState.Verified;
+      end
       else
+      begin
         Result := TAtlasTrackerTokenState.Unexpected;
+      end;
     401, 403:
       Result := TAtlasTrackerTokenState.Rejected;
   else
@@ -444,23 +514,35 @@ var
   mRest: Int64;
 begin
   if ATransport = nil then
+  begin
     Exit(TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Missing, ANow, 0));
+  end;
   mUrl := '';
   if AProvider <> nil then
+  begin
     mUrl := AProvider.ProbeUrl(ATarget);
+  end;
   if mUrl = '' then
+  begin
     Exit(TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Unexpected, ANow, 0));
+  end;
   mWatch := TStopwatch.StartNew;
   mAnswered := ATransport.Get(mUrl, CheckTimeoutMs, mStatus, mText, mError);
   if not mAnswered then
+  begin
     mStatus := 0;
+  end;
   Result := TAtlasTrackerTokenStatus.Create(StateOf(mAnswered, mStatus, mText), ANow, mStatus);
   if Result.State <> TAtlasTrackerTokenState.Verified then
+  begin
     Exit;
+  end;
   // In der restlichen Zeit: Sprache der Oberfläche für die Vorgabe der Abfrage (#1263).
   mRest := CheckTimeoutMs - mWatch.ElapsedMilliseconds;
   if mRest > 0 then
+  begin
     Result.Language := TAtlasTrackerQueryTest.DetectLanguage(AProvider, ATarget, ATransport, Integer(mRest));
+  end;
 end;
 
 end.

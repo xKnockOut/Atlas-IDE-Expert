@@ -48,8 +48,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Ids) do
+  begin
     if SameText(Ids[Index], AId) then
+    begin
       Exit(Icons[Index]);
+    end;
+  end;
   Result := TAtlasToolbarIcon.Letter;
 end;
 

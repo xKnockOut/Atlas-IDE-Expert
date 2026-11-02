@@ -84,26 +84,36 @@ begin
   Rejected := (AVerdict.Reason = TAtlasBuildVerdictReason.WarningsAsErrors) or
     (AVerdict.Reason = TAtlasBuildVerdictReason.ZeroHints);
   if not (ASummary or Rejected) then
+  begin
     Exit;
+  end;
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   // Gruppe nicht dauerhaft halten (Hinweis in ToolsAPI); bei Bedarf neu anlegen.
   Group := Messages.GetGroup(MessageGroup);
   if Group = nil then
+  begin
     Group := Messages.AddMessageGroup(MessageGroup);
+  end;
   Messages.AddTitleMessage(Headline(AProject.FileName, AVerdict), Group);
   if (AVerdict.First >= 0) and (AVerdict.First <= High(AMessages)) then
   begin
     Target := AMessages[AVerdict.First];
     Text := Target.Text;
     if Target.Code <> '' then
+    begin
       Text := Target.Code + ' ' + Text;
+    end;
     Messages.AddToolMessage(Target.FileName, Text, TAtlasCompilerMessages.SeverityText(Target.Severity),
       Target.Line, Target.Column, nil, LineRef, Group);
   end;
   // Nur ein Build, den Atlas anders bewertet als der Compiler, holt die Gruppe nach vorn.
   if Rejected then
+  begin
     Messages.ShowMessageView(Group);
+  end;
 end;
 
 end.

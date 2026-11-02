@@ -103,7 +103,9 @@ begin
   FDoc := ADoc;
   FColors := AColors;
   if AMono <> nil then
+  begin
     FMono.Assign(AMono);
+  end;
   FBuiltWidth := -1;
   Rebuild;
 end;
@@ -121,14 +123,18 @@ var
   mHeight: Integer;
 begin
   if not HandleAllocated or (ClientWidth <= 0) or (ClientWidth = FBuiltWidth) then
+  begin
     Exit;
+  end;
   FBuiltWidth := ClientWidth;
   Canvas.Font := Font;
   FView.Build(Canvas, FDoc, ClientWidth, FMono, Font, CurrentPPI, TAtlasDocLabels.German,
     Default(TAtlasDocSignature), True);
   mHeight := Max(FView.Height, 1);
   if Height <> mHeight then
+  begin
     Height := mHeight;
+  end;
   Invalidate;
 end;
 
@@ -152,20 +158,28 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   if CanFocus then
+  begin
     SetFocus;
+  end;
   mLink := FView.LinkAt(X, Y);
   if mLink >= 0 then
   begin
     // Kästchen nur lesend (#1273): kein Klick.
     if FTasksLocked and TaskAt(X, Y) then
+    begin
       Exit;
+    end;
     if FView.Link(mLink).Kind = TAtlasDocLinkKind.Url then
     begin
       mUrl := FView.Link(mLink).Url;
       if Assigned(FOnLink) then
+      begin
         FOnLink(mUrl);
+      end;
     end;
     Exit;
   end;
@@ -200,7 +214,9 @@ begin
       mLink := -1;
     end
     else
+    begin
       Cursor := crHandPoint;
+    end;
   end
   else
   begin
@@ -210,9 +226,13 @@ begin
       Application.CancelHint;
     end;
     if mLink >= 0 then
-      Cursor := crHandPoint
+    begin
+      Cursor := crHandPoint;
+    end
     else
+    begin
       Cursor := crIBeam;
+    end;
   end;
   if mLink <> FView.HotLink then
   begin
@@ -238,9 +258,15 @@ var
 begin
   Result := False;
   for mSection in FDoc.Sections do
+  begin
     for mRun in mSection.Runs do
+    begin
       if (mRun.Kind = TAtlasDocRunKind.Bullet) and TAtlasTrackerMarkdown.TaskIndexOf(mRun.Target, mIndex) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 procedure TAtlasIssueDocBox.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

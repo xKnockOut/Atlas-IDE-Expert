@@ -135,7 +135,9 @@ end;
 function Debugger: IOTADebuggerServices;
 begin
   if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 { TOverviewState }
@@ -177,7 +179,9 @@ end;
 procedure TOverviewState.Removed(ARuler: TControl);
 begin
   if FHoverRuler = ARuler then
+  begin
     HoverEnd;
+  end;
 end;
 
 procedure TOverviewState.Reset;
@@ -233,7 +237,9 @@ end;
 procedure TOverviewState.Place(ARuler: TAtlasOverviewRuler; AParent: TWinControl);
 begin
   if ARuler.Parent = AParent then
+  begin
     Exit;
+  end;
   // Rechts neben dem Editor: zuerst ganz rechts einhängen, dann rechts ausrichten.
   ARuler.Left := AParent.ClientWidth;
   ARuler.Align := alRight;
@@ -260,10 +266,16 @@ begin
   AMarks := nil;
   mRegistry := AtlasModuleRegistry;
   if mRegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in TAtlasModuleContributions.Active(mRegistry, IAtlasOverviewBookmarks) do
+  begin
     if (mItem as IAtlasOverviewBookmarks).Marks(AFileName, AMarks) then
+    begin
       Exit(True);
+    end;
+  end;
   AMarks := nil;
 end;
 
@@ -288,11 +300,14 @@ begin
   begin
     Store := TAtlasProblemsController.Current;
     if Store <> nil then
+    begin
       for Problem in Store.ForFile(FileName) do
       begin
         // Inaktive Zweige und uses-Einträge sind keine Befunde.
         if Problem.Unnecessary or (Problem.UsesUnit <> '') then
+        begin
           Continue;
+        end;
         case Problem.Severity of
           TAtlasProblemSeverity.Error:
             Kind := TAtlasOverviewMarkKind.Error;
@@ -304,13 +319,19 @@ begin
         Result := Result + [TAtlasOverviewMark.Create(Kind, Problem.StartLine,
           Max(1, Problem.EndLine - Problem.StartLine + 1), Problem.Message)];
       end;
+    end;
   end;
   if (TAtlasOverviewKind.Search in AKinds) and (ASearchTerm <> '') then
+  begin
     for Line in ASearchLines do
+    begin
       Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, Line, 1,
         TAtlasStrings.Fmt(TAtlasTextId.OverviewSearch, [ASearchTerm]))];
+    end;
+  end;
   if (TAtlasOverviewKind.Changes in AKinds) and TAtlasIdeLineChanges.Snapshot(FileName, Changes, ChangeLines) and
     (ChangeLines = ALineCount) then
+  begin
     for Change in Changes do
       case Change.Kind of
         TAtlasLineChangeKind.Added:
@@ -323,31 +344,44 @@ begin
         Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Deleted,
           Min(Change.Line, Max(0, ALineCount - 1)), 1, TAtlasStrings.Text(TAtlasTextId.OverviewDeleted))];
       end;
+  end;
   if TAtlasOverviewKind.Breakpoints in AKinds then
   begin
     Services := Debugger;
     if Services <> nil then
+    begin
       for Index := 0 to Services.SourceBkptCount - 1 do
       begin
         Breakpoint := Services.SourceBkpts[Index];
         if (Breakpoint <> nil) and SameText(Breakpoint.FileName, FileName) and (Breakpoint.LineNumber > 0) then
+        begin
           Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Breakpoint, Breakpoint.LineNumber - 1,
             1, TAtlasStrings.Text(TAtlasTextId.OverviewBreakpoint))];
+        end;
       end;
+    end;
   end;
   if (TAtlasOverviewKind.Bookmarks in AKinds) and ModuleBookmarks(FileName, Own) then
-    Result := Result + Own
+  begin
+    Result := Result + Own;
+  end
   else if TAtlasOverviewKind.Bookmarks in AKinds then
+  begin
     for Index := 0 to BookmarkCount - 1 do
     begin
       Bookmark := AView.BookmarkPos[Index];
       if Bookmark.Line > 0 then
+      begin
         Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, Bookmark.Line - 1, 1,
           TAtlasStrings.Fmt(TAtlasTextId.OverviewBookmark, [Index]))];
+      end;
     end;
+  end;
   if TAtlasOverviewKind.Cursor in AKinds then
+  begin
     Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Cursor, AView.CursorPos.Line - 1, 1,
       TAtlasStrings.Text(TAtlasTextId.OverviewCursor))];
+  end;
 end;
 
 procedure TOverviewState.Update;
@@ -364,24 +398,32 @@ begin
   Ruler := ActiveRuler;
   View := TAtlasEditorBuffer.ActiveView;
   if (Ruler = nil) or (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   LineCount := View.Buffer.GetLinesInBuffer;
   // Suchtext aus der Markierung (einzeilig); nur dann kostet der Text des Puffers etwas.
   Term := '';
   Matching := TAtlasIdeSettings.SelectionMatchesOn(Options, NavigateF3);
   Key := '';
   if Matching then
+  begin
     Key := Format('%d|%d|%d|%d', [Options.MinLength, Ord(Options.CaseSensitive), Ord(Options.WholeWord),
       Options.MaxMatches]);
+  end;
   if TAtlasOverviewKind.Search in FKinds then
   begin
     Block := View.Block;
     if (Block <> nil) and Block.IsValid and (Block.Size > 0) and (Block.StartingRow = Block.EndingRow) then
     begin
       if Matching then
-        TAtlasSelectionMatches.Term(Block.Text, Options, Term)
+      begin
+        TAtlasSelectionMatches.Term(Block.Text, Options, Term);
+      end
       else
+      begin
         TAtlasOverview.SearchTerm(Block.Text, Term);
+      end;
     end;
   end;
   if not SameText(FFileName, View.Buffer.FileName) then
@@ -411,9 +453,13 @@ begin
     begin
       FLines := TTextLines.SplitLines(FText);
       if Matching then
-        FSearchLines := TAtlasSelectionMatches.Lines(TAtlasSelectionMatches.Find(FLines, Term, Options))
+      begin
+        FSearchLines := TAtlasSelectionMatches.Lines(TAtlasSelectionMatches.Find(FLines, Term, Options));
+      end
       else
+      begin
         FSearchLines := TAtlasOverview.Occurrences(FLines, Term);
+      end;
       FSearchOptions := Key;
       FSearchTerm := Term;
       FSearchText := FText;
@@ -423,7 +469,9 @@ begin
   // Vorschau nach kurzer Zeit über der Marke.
   if (FHoverRuler <> nil) and (FHoverLine >= 0) and not FTip.IsShown and
     (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+  begin
     ShowPreview;
+  end;
 end;
 
 procedure TOverviewState.Jump(ARuler: TAtlasOverviewRuler; ALine: Integer);
@@ -433,14 +481,18 @@ begin
   HoverEnd;
   View := TAtlasEditorBuffer.ActiveView;
   if (ARuler <> ActiveRuler) or (View = nil) or (View.Buffer = nil) or (ALine < 0) then
+  begin
     Exit;
+  end;
   TAtlasIdeNavigation.GoToLocation(View.Buffer.FileName, ALine, 0);
 end;
 
 procedure TOverviewState.Hover(ARuler: TAtlasOverviewRuler; ALine, AMark: Integer; const APoint: TPoint);
 begin
   if FTip.IsShown then
+  begin
     FTip.HidePopup;
+  end;
   FHoverRuler := ARuler;
   FHoverLine := ALine;
   FHoverMark := AMark;
@@ -454,7 +506,9 @@ begin
   FHoverLine := -1;
   FHoverMark := -1;
   if (FTip <> nil) and FTip.IsShown then
+  begin
     FTip.HidePopup;
+  end;
 end;
 
 procedure TOverviewState.ShowPreview;
@@ -472,11 +526,17 @@ begin
   Title := TAtlasStrings.Fmt(TAtlasTextId.OverviewLine, [FHoverLine + 1]);
   Text := Trim(TAtlasEditorBuffer.LineText(View, FHoverLine + 1));
   if Length(Text) > MaxPreview then
+  begin
     Text := Copy(Text, 1, MaxPreview) + '…';
+  end;
   if (FHoverMark >= 0) and (FHoverMark <= High(FHoverRuler.Marks)) and (FHoverRuler.Marks[FHoverMark].Text <> '') then
+  begin
     Title := Title + ' · ' + FHoverRuler.Marks[FHoverMark].Text;
+  end;
   if Text = '' then
+  begin
     Text := ' ';
+  end;
   TAtlasIdeStyle.Apply(FTip, TRect.Create(FHoverPoint, FHoverPoint));
   // Links neben dem Streifen, damit die Maus ihn nicht verdeckt.
   Width := FTip.Measure(Title, Text).cx;
@@ -487,7 +547,9 @@ procedure TOverviewState.Tick(Sender: TObject);
 begin
   // Löst die Sicherung aus, blendet Guard die Streifen aus und danach wieder ein.
   if not TAtlasIdeSettings.Current.OverviewRuler or not FHost.Guard then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.OverviewRuler,
     procedure
     begin
@@ -501,7 +563,9 @@ class procedure TAtlasIdeOverviewRuler.Install;
 begin
   FreeAndNil(FState);
   if Active then
+  begin
     FState := TOverviewState.Create;
+  end;
 end;
 
 class procedure TAtlasIdeOverviewRuler.Uninstall;
@@ -518,15 +582,21 @@ begin
     Exit;
   end;
   if FState = nil then
-    FState := TOverviewState.Create
+  begin
+    FState := TOverviewState.Create;
+  end
   else
+  begin
     TOverviewState(FState).Reset;
+  end;
 end;
 
 class procedure TAtlasIdeOverviewRuler.ThemeChanged;
 begin
   if FState <> nil then
+  begin
     TOverviewState(FState).ApplyTheme;
+  end;
 end;
 
 end.

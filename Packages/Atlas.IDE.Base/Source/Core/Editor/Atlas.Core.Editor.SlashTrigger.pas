@@ -55,19 +55,27 @@ var
 begin
   Result := TAtlasSlashKind.None;
   if TrimLeft(ABefore) = '///' then
+  begin
     Exit(TAtlasSlashKind.DocComment);
+  end;
   if Trim(ABefore) <> '' then
+  begin
     Exit;
+  end;
   Previous := TrimLeft(APrevious);
   if (Length(Previous) >= 2) and (Previous[1] = '/') and IsLetter(Previous[2]) then
+  begin
     Result := TAtlasSlashKind.Command;
+  end;
 end;
 
 class function TAtlasSlashTrigger.TriggerChar(AKind: TAtlasSlashKind): string;
 begin
   Result := '/';
   if AKind = TAtlasSlashKind.Command then
+  begin
     Result := #10;
+  end;
 end;
 
 class function TAtlasSlashTrigger.Key(const AFileName: string; ALine: Integer; AKind: TAtlasSlashKind;
@@ -96,10 +104,14 @@ begin
     Index := Pos('></', AText, Index + 3);
   end;
   if Number = 0 then
+  begin
     Exit;
+  end;
   Stop := Length(AText);
   while (Stop > 0) and CharInSet(AText[Stop], [#13, #10]) do
+  begin
     Dec(Stop);
+  end;
   Field.Number := 0;
   Field.Start := Stop;
   Field.Length := 0;

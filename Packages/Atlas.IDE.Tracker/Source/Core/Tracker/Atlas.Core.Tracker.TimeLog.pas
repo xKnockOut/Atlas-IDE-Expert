@@ -147,7 +147,9 @@ begin
   Result.Provider := LowerCase(Trim(AProvider));
   Result.Url := Trim(AUrl);
   while Result.Url.EndsWith('/') do
+  begin
     Result.Url := Copy(Result.Url, 1, Length(Result.Url) - 1);
+  end;
   Result.Project := Trim(AProject);
   Result.Key := Trim(AKey);
 end;
@@ -185,7 +187,9 @@ function TAtlasTimeSpan.Seconds: Int64;
 begin
   Result := 0;
   if EndAt > StartAt then
+  begin
     Result := Round((EndAt - StartAt) * SecsPerDay);
+  end;
 end;
 
 { TAtlasTimeLog }
@@ -210,7 +214,9 @@ begin
     TryStrToInt(Copy(AText, 9, 2), mDay) and TryEncodeDate(mYear, mMonth, mDay, mDate);
   ADay := 0;
   if Result then
+  begin
     ADay := Trunc(mDate);
+  end;
 end;
 
 function ParseTime(const AText: string; out ATime: TDateTime): Boolean;
@@ -223,7 +229,9 @@ begin
     TryStrToInt(Copy(AText, 12, 2), mHour) and TryStrToInt(Copy(AText, 15, 2), mMinute) and
     TryStrToInt(Copy(AText, 18, 2), mSecond) and TryEncodeTime(mHour, mMinute, mSecond, 0, mClock);
   if Result then
+  begin
     ATime := mDay + mClock;
+  end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -233,7 +241,9 @@ begin
   Result := '';
   mValue := AObject.Values[AName];
   if mValue is TJSONString then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 class function TAtlasTimeLog.Empty: TAtlasTimeLog;
@@ -252,27 +262,41 @@ begin
   mText := AJson;
   // Mit oder ohne BOM geschrieben.
   if mText.StartsWith(#$FEFF) then
+  begin
     mText := Copy(mText, 2, MaxInt);
+  end;
   if Trim(mText) = '' then
+  begin
     Exit(True);
+  end;
   Result := False;
   mValue := TJSONObject.ParseJSONValue(mText);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mVersion := TJSONObject(mValue).Values['version'];
     if not (mVersion is TJSONNumber) or (TJSONNumber(mVersion).AsInt <> Version) then
+    begin
       Exit;
+    end;
     mItems := TJSONObject(mValue).Values['entries'];
     if (mItems <> nil) and not (mItems is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     if mItems = nil then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mItems) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mObject := TJSONObject(mItem);
       mEntry.Issue := TAtlasTimeIssue.Create(TextOf(mObject, 'provider'), TextOf(mObject, 'url'),
         TextOf(mObject, 'project'), TextOf(mObject, 'key'));
@@ -280,12 +304,18 @@ begin
       // Unvollständige Einträge fallen weg, der Rest bleibt.
       if mEntry.Issue.IsEmpty or not (mSeconds is TJSONNumber) or
         not ParseDay(TextOf(mObject, 'date'), mEntry.Day) then
+      begin
         Continue;
+      end;
       mEntry.Seconds := TJSONNumber(mSeconds).AsInt64;
       if mEntry.Seconds < 0 then
+      begin
         mEntry.Seconds := 0;
+      end;
       if not ParseTime(TextOf(mObject, 'last'), mEntry.Last) then
+      begin
         mEntry.Last := 0;
+      end;
       ALog.Entries := ALog.Entries + [mEntry];
     end;
   finally
@@ -314,7 +344,9 @@ begin
       mObject.AddPair('date', DayText(mEntry.Day));
       mObject.AddPair('seconds', TJSONNumber.Create(mEntry.Seconds));
       if mEntry.Last > 0 then
+      begin
         mObject.AddPair('last', TimeText(mEntry.Last));
+      end;
       mItems.AddElement(mObject);
     end;
     Result := mRoot.ToJSON;
@@ -328,8 +360,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Entries) do
+  begin
     if (Entries[mIndex].Day = ADay) and Entries[mIndex].Issue.Same(AIssue) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -339,7 +375,9 @@ var
 begin
   Result := IndexOf(AIssue, ADay);
   if Result >= 0 then
+  begin
     Exit;
+  end;
   mEntry.Issue := AIssue;
   mEntry.Day := ADay;
   mEntry.Seconds := 0;
@@ -355,7 +393,9 @@ var
   mPart: TAtlasTimeSpan;
 begin
   if ASpan.Issue.IsEmpty or (ASpan.EndAt <= ASpan.StartAt) then
+  begin
     Exit;
+  end;
   mFrom := ASpan.StartAt;
   while mFrom < ASpan.EndAt do
   begin
@@ -363,14 +403,20 @@ begin
     mDayEnd := Trunc(mFrom) + 1;
     mTo := ASpan.EndAt;
     if mTo > mDayEnd then
+    begin
       mTo := mDayEnd;
+    end;
     mIndex := AddEntry(ASpan.Issue, Trunc(mFrom));
     mPart := TAtlasTimeSpan.Create(ASpan.Issue, mFrom, mTo);
     if Entries[mIndex].Last > mPart.StartAt then
+    begin
       mPart.StartAt := Entries[mIndex].Last;
+    end;
     Inc(Entries[mIndex].Seconds, mPart.Seconds);
     if mTo > Entries[mIndex].Last then
+    begin
       Entries[mIndex].Last := mTo;
+    end;
     mFrom := mTo;
   end;
 end;
@@ -381,8 +427,12 @@ var
 begin
   Result := 0;
   for mEntry in Entries do
+  begin
     if mEntry.Issue.Same(AIssue) then
+    begin
       Inc(Result, mEntry.Seconds);
+    end;
+  end;
 end;
 
 procedure TAtlasTimeLog.Prune(const AIssue: TAtlasTimeIssue);
@@ -392,11 +442,19 @@ begin
   // Leere Tage fallen weg; der jüngste bleibt mit "last", damit eine andere Instanz nichts neu zählt.
   mNewest := -1;
   for mIndex := 0 to High(Entries) do
+  begin
     if Entries[mIndex].Issue.Same(AIssue) and ((mNewest < 0) or (Entries[mIndex].Day > Entries[mNewest].Day)) then
+    begin
       mNewest := mIndex;
+    end;
+  end;
   for mIndex := High(Entries) downto 0 do
+  begin
     if (mIndex <> mNewest) and (Entries[mIndex].Seconds = 0) and Entries[mIndex].Issue.Same(AIssue) then
+    begin
       Delete(Entries, mIndex, 1);
+    end;
+  end;
 end;
 
 procedure TAtlasTimeLog.Subtract(const AIssue: TAtlasTimeIssue; ASeconds: Int64);
@@ -408,14 +466,22 @@ begin
   begin
     mOldest := -1;
     for mIndex := 0 to High(Entries) do
+    begin
       if Entries[mIndex].Issue.Same(AIssue) and (Entries[mIndex].Seconds > 0) and
         ((mOldest < 0) or (Entries[mIndex].Day < Entries[mOldest].Day)) then
+      begin
         mOldest := mIndex;
+      end;
+    end;
     if mOldest < 0 then
+    begin
       Break;
+    end;
     mTake := Entries[mOldest].Seconds;
     if mTake > ASeconds then
+    begin
       mTake := ASeconds;
+    end;
     Dec(Entries[mOldest].Seconds, mTake);
     Dec(ASeconds, mTake);
   end;
@@ -428,20 +494,30 @@ var
   mLast: TDateTime;
 begin
   if AIssue.IsEmpty then
+  begin
     Exit;
+  end;
   mLast := 0;
   for mIndex := 0 to High(Entries) do
+  begin
     if Entries[mIndex].Issue.Same(AIssue) then
     begin
       if Entries[mIndex].Last > mLast then
+      begin
         mLast := Entries[mIndex].Last;
+      end;
       Entries[mIndex].Seconds := 0;
     end;
+  end;
   mIndex := AddEntry(AIssue, Trunc(AToday));
   if ASeconds > 0 then
+  begin
     Entries[mIndex].Seconds := ASeconds;
+  end;
   if mLast > Entries[mIndex].Last then
+  begin
     Entries[mIndex].Last := mLast;
+  end;
   Prune(AIssue);
 end;
 
@@ -455,11 +531,17 @@ begin
   for mEntry in Entries do
   begin
     if mEntry.Seconds <= 0 then
+    begin
       Continue;
+    end;
     mFound := -1;
     for mIndex := 0 to High(Result) do
+    begin
       if Result[mIndex].Issue.Same(mEntry.Issue) then
+      begin
         mFound := mIndex;
+      end;
+    end;
     if mFound < 0 then
     begin
       mItem.Issue := mEntry.Issue;
@@ -471,9 +553,13 @@ begin
     end;
     Inc(Result[mFound].Seconds, mEntry.Seconds);
     if mEntry.Day < Result[mFound].FirstDay then
+    begin
       Result[mFound].FirstDay := mEntry.Day;
+    end;
     if mEntry.Day > Result[mFound].LastDay then
+    begin
       Result[mFound].LastDay := mEntry.Day;
+    end;
   end;
   // Sort ist nicht stabil: bei gleichem Tag nach Kennung weiter.
   TArray.Sort<TAtlasTimeOpen>(Result, TComparer<TAtlasTimeOpen>.Construct(
@@ -481,7 +567,9 @@ begin
     begin
       Result := ARight.LastDay - ALeft.LastDay;
       if Result = 0 then
+      begin
         Result := CompareText(ALeft.Issue.Id, ARight.Issue.Id);
+      end;
     end));
 end;
 
@@ -549,19 +637,27 @@ class function TAtlasTimeRounding.Minutes(ASeconds: Int64; AStep: Integer): Inte
 begin
   Result := 0;
   if ASeconds <= 0 then
+  begin
     Exit;
+  end;
   if AStep < 1 then
+  begin
     AStep := 1;
+  end;
   // Kaufmännisch (Round rundet bei .5 zur geraden Zahl).
   Result := Trunc(ASeconds / (60 * AStep) + 0.5) * AStep;
   if Result < AStep then
+  begin
     Result := AStep;
+  end;
 end;
 
 class function TAtlasTimeRounding.ClockText(ASeconds: Int64): string;
 begin
   if ASeconds < 0 then
+  begin
     ASeconds := 0;
+  end;
   Result := Format('%d:%.2d', [ASeconds div 3600, (ASeconds mod 3600) div 60]);
 end;
 
@@ -569,11 +665,17 @@ class function TAtlasTimeRounding.Presentation(AMinutes: Integer): string;
 begin
   Result := '';
   if AMinutes <= 0 then
+  begin
     Exit;
+  end;
   if AMinutes < 60 then
+  begin
     Exit(Format('%dm', [AMinutes]));
+  end;
   if AMinutes mod 60 = 0 then
+  begin
     Exit(Format('%dh', [AMinutes div 60]));
+  end;
   Result := Format('%dh %dm', [AMinutes div 60, AMinutes mod 60]);
 end;
 
@@ -596,14 +698,18 @@ begin
   Result := False;
   mText := LowerCase(Trim(AText));
   if mText = '' then
+  begin
     Exit;
+  end;
   mColon := Pos(':', mText);
   if mColon > 0 then
   begin
     if not TryStrToInt(Trim(Copy(mText, 1, mColon - 1)), mHours) or
       not TryStrToInt(Trim(Copy(mText, mColon + 1, MaxInt)), mRest) or (mHours < 0) or (mRest < 0) or
       (mRest > 59) then
+    begin
       Exit;
+    end;
     AMinutes := mHours * 60 + mRest;
   end
   else
@@ -615,9 +721,13 @@ begin
     while mIndex <= Length(mText) do
     begin
       while (mIndex <= Length(mText)) and (mText[mIndex] = ' ') do
+      begin
         Inc(mIndex);
+      end;
       if mIndex > Length(mText) then
+      begin
         Break;
+      end;
       mNumber := '';
       while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], ['0'..'9', ',', '.']) do
       begin
@@ -625,9 +735,13 @@ begin
         Inc(mIndex);
       end;
       if not ParseNumber(mNumber, mValue) then
+      begin
         Exit;
+      end;
       while (mIndex <= Length(mText)) and (mText[mIndex] = ' ') do
+      begin
         Inc(mIndex);
+      end;
       mUnit := '';
       while (mIndex <= Length(mText)) and not CharInSet(mText[mIndex], ['0'..'9', ',', '.', ' ']) do
       begin
@@ -635,20 +749,30 @@ begin
         Inc(mIndex);
       end;
       if (mUnit = 'h') or (mUnit = 'std') or (mUnit = 'std.') or (mUnit = 'stunde') or (mUnit = 'stunden') then
-        mTotal := mTotal + mValue * 60
+      begin
+        mTotal := mTotal + mValue * 60;
+      end
       else if (mUnit = '') or (mUnit = 'm') or (mUnit = 'min') or (mUnit = 'min.') or (mUnit = 'minuten') then
-        mTotal := mTotal + mValue
+      begin
+        mTotal := mTotal + mValue;
+      end
       else
+      begin
         Exit;
+      end;
       mAny := True;
     end;
     if not mAny or (mTotal > MaxMinutes) then
+    begin
       Exit;
+    end;
     AMinutes := Trunc(mTotal + 0.5);
   end;
   Result := (AMinutes > 0) and (AMinutes <= MaxMinutes);
   if not Result then
+  begin
     AMinutes := 0;
+  end;
 end;
 
 end.

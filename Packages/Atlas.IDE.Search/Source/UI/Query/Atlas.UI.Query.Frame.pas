@@ -295,7 +295,9 @@ begin
   // Rechts an die bisherigen Steuerelemente anhängen (alLeft ordnet nach Left).
   mLeft := 0;
   for mIndex := 0 to FTop.ControlCount - 1 do
+  begin
     mLeft := Max(mLeft, FTop.Controls[mIndex].Left + FTop.Controls[mIndex].Width + 1);
+  end;
   Result := TButton.Create(Self);
   Result.Parent := FTop;
   Result.Align := alLeft;
@@ -327,7 +329,9 @@ var
   mSaved: TAtlasSavedQuery;
 begin
   if not CanFill(FSaved) then
+  begin
     Exit;
+  end;
   FUpdating := True;
   try
     FSaved.Items.BeginUpdate;
@@ -336,10 +340,16 @@ begin
       // Erster Eintrag: Hinweis statt Wahl (eine Klappliste zeigt keinen TextHint).
       FSaved.Items.Add(TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySavedHint));
       for mSaved in FCatalog.Saved do
+      begin
         if mSaved.Description <> '' then
-          FSaved.Items.Add(mSaved.Name + ' – ' + mSaved.Description)
+        begin
+          FSaved.Items.Add(mSaved.Name + ' – ' + mSaved.Description);
+        end
         else
+        begin
           FSaved.Items.Add(mSaved.Name);
+        end;
+      end;
     finally
       FSaved.Items.EndUpdate;
     end;
@@ -360,16 +370,22 @@ begin
   try
     FList.Columns.Clear;
     if not FHasAnswer then
+    begin
       Exit;
+    end;
     for mIndex := 0 to High(FAnswer.Columns) do
     begin
       mName := FAnswer.Columns[mIndex];
       mColumn := FList.Columns.Add;
       mColumn.Caption := mName;
       if mIndex = 0 then
-        mColumn.Width := MulDiv(220, CurrentPPI, 96)
+      begin
+        mColumn.Width := MulDiv(220, CurrentPPI, 96);
+      end
       else
+      begin
         mColumn.Width := MulDiv(90, CurrentPPI, 96);
+      end;
     end;
     mColumn := FList.Columns.Add;
     mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryColumnFile);
@@ -382,13 +398,19 @@ end;
 procedure TAtlasCodeQueryFrame.FillRows;
 begin
   if not CanFill(FList) then
+  begin
     Exit;
+  end;
   FList.Items.BeginUpdate;
   try
     if FHasAnswer then
-      FList.Items.Count := Length(FAnswer.Rows)
+    begin
+      FList.Items.Count := Length(FAnswer.Rows);
+    end
     else
+    begin
       FList.Items.Count := 0;
+    end;
   finally
     FList.Items.EndUpdate;
   end;
@@ -420,14 +442,22 @@ begin
       begin
         Names := nil;
         for Field in Entity.Fields do
+        begin
           Names := Names + [Field.Name];
+        end;
         for Field in Entity.Predicates do
+        begin
           Names := Names + [Field.Name];
+        end;
         Text.Append(sLineBreak).Append('  ').Append(Entity.Name);
         if Entity.Caption <> '' then
+        begin
           Text.Append(' (').Append(Entity.Caption).Append(')');
+        end;
         if Names <> nil then
+        begin
           Text.Append(': ').Append(string.Join(', ', Names));
+        end;
       end;
     end;
     FHelp.Text := Text.ToString;
@@ -436,18 +466,26 @@ begin
   end;
   // Ohne Ergebnis steht die Hilfe an der Stelle der leeren Liste; der Knopf blendet sie ein und aus.
   if FHelpChoice = 0 then
-    FHelp.Visible := not FHasAnswer
+  begin
+    FHelp.Visible := not FHasAnswer;
+  end
   else
+  begin
     FHelp.Visible := FHelpChoice > 0;
+  end;
   FList.Visible := not FHelp.Visible;
 end;
 
 procedure TAtlasCodeQueryFrame.HelpClick(Sender: TObject);
 begin
   if FHelp.Visible then
-    FHelpChoice := -1
+  begin
+    FHelpChoice := -1;
+  end
   else
+  begin
     FHelpChoice := 1;
+  end;
   UpdateHelp;
 end;
 
@@ -458,9 +496,13 @@ begin
   FRunning := False;
   FMessageText := '';
   if (FSortColumn >= 0) and (FSortColumn <= High(FAnswer.Columns)) then
-    FAnswer.Sort(FSortColumn, FSortDescending)
+  begin
+    FAnswer.Sort(FSortColumn, FSortDescending);
+  end
   else
+  begin
     FSortColumn := -1;
+  end;
   FHelpChoice := 0;
   FillColumns;
   FillRows;
@@ -474,7 +516,9 @@ procedure TAtlasCodeQueryFrame.SetRunning(ARunning: Boolean);
 begin
   FRunning := ARunning;
   if ARunning then
+  begin
     FMessageText := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRunning);
+  end;
   UpdateButtons;
   UpdateStatus;
 end;
@@ -510,20 +554,32 @@ var
   mText: string;
 begin
   if FMessageText <> '' then
-    mText := FMessageText
+  begin
+    mText := FMessageText;
+  end
   else if not FHasAnswer or FAnswer.Failed then
-    mText := ''
+  begin
+    mText := '';
+  end
   else if Length(FAnswer.Rows) = 0 then
-    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryEmpty)
+  begin
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryEmpty);
+  end
   else
   begin
     if FAnswer.Truncated then
+    begin
       mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatusTruncated, [Length(FAnswer.Rows), FAnswer.Total,
-        FAnswer.ElapsedMs])
+        FAnswer.ElapsedMs]);
+    end
     else
+    begin
       mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatus, [FAnswer.Total, FAnswer.ElapsedMs]);
+    end;
     if FAnswer.InferredCount > 0 then
+    begin
       mText := mText + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatusInferred, [FAnswer.InferredCount]);
+    end;
   end;
   FStatus.Caption := mText;
 end;
@@ -539,11 +595,17 @@ begin
     Exit;
   end;
   if FAnswer.ErrorColumn > 0 then
-    mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryError, [FAnswer.ErrorColumn, FAnswer.Error])
+  begin
+    mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryError, [FAnswer.ErrorColumn, FAnswer.Error]);
+  end
   else
+  begin
     mText := FAnswer.Error;
+  end;
   if FAnswer.Suggestion <> '' then
+  begin
     mText := mText + ' ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QuerySuggestion, [FAnswer.Suggestion]);
+  end;
   FError.Caption := mText;
   FError.Visible := True;
   // Schreibmarke an die Fehlerstelle, damit man gleich verbessern kann.
@@ -561,9 +623,13 @@ begin
   HideSuggest;
   mText := Trim(FInput.Text);
   if (mText = '') or FRunning then
+  begin
     Exit;
+  end;
   if Assigned(FOnRun) then
+  begin
     FOnRun(mText);
+  end;
 end;
 
 procedure TAtlasCodeQueryFrame.ShowSuggestions;
@@ -584,11 +650,13 @@ begin
     mSeen.Sorted := True;
     mSeen.Duplicates := dupIgnore;
     for mItem in mItems do
+    begin
       if mSeen.IndexOf(mItem.Text) < 0 then
       begin
         mSeen.Add(mItem.Text);
         FSuggestions := FSuggestions + [mItem.Text];
       end;
+    end;
     if TAtlasQueryCompletion.SymbolPredicate(FInput.Text, FInput.SelStart, mSymbolStart, mPrefix, mPredicate) and
       (Length(mPrefix) >= cSymbolMinChars) and Assigned(FOnSymbols) then
     begin
@@ -597,7 +665,9 @@ begin
       for mName in mNames do
       begin
         if Length(FSuggestions) >= cMaxSymbols then
+        begin
           Break;
+        end;
         if (mName <> '') and (mSeen.IndexOf(mName) < 0) then
         begin
           mSeen.Add(mName);
@@ -617,7 +687,9 @@ begin
   try
     FSuggest.Items.Clear;
     for mName in FSuggestions do
+    begin
       FSuggest.Items.Add(mName);
+    end;
   finally
     FSuggest.Items.EndUpdate;
   end;
@@ -649,7 +721,9 @@ var
   mCursor: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(FSuggestions)) then
+  begin
     Exit;
+  end;
   mWord := FSuggestions[AIndex];
   mText := FInput.Text;
   mCursor := Min(FInput.SelStart, Length(mText));
@@ -668,12 +742,18 @@ end;
 procedure TAtlasCodeQueryFrame.SortBy(AColumn: Integer);
 begin
   if not FHasAnswer then
+  begin
     Exit;
+  end;
   if (AColumn < 0) or (AColumn > High(FAnswer.Columns)) then
+  begin
     // Spalte „Datei“: Reihenfolge nach Pfad, Zeile und Spalte.
     AColumn := -1;
+  end;
   if AColumn = FSortColumn then
-    FSortDescending := not FSortDescending
+  begin
+    FSortDescending := not FSortDescending;
+  end
   else
   begin
     FSortColumn := AColumn;
@@ -690,28 +770,40 @@ var
   mRow: TAtlasQueryRow;
 begin
   if not FHasAnswer or (AIndex < 0) or (AIndex > High(FAnswer.Rows)) then
+  begin
     Exit;
+  end;
   mRow := FAnswer.Rows[AIndex];
   if (mRow.FileName <> '') and Assigned(FOnOpenLocation) then
+  begin
     FOnOpenLocation(mRow.FileName, Max(1, mRow.Line), Max(1, mRow.Character));
+  end;
 end;
 
 function TAtlasCodeQueryFrame.CsvText: string;
 begin
   Result := '';
   if FHasAnswer then
+  begin
     Result := FAnswer.Csv;
+  end;
 end;
 
 function LocationText(const ARow: TAtlasQueryRow): string;
 begin
   Result := ARow.Path;
   if Result = '' then
+  begin
     Result := ARow.FileName;
+  end;
   if ARow.Line > 0 then
+  begin
     Result := Result + ':' + IntToStr(ARow.Line);
+  end;
   if ARow.Inferred then
+  begin
     Result := Result + ' · ' + TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryInferred);
+  end;
 end;
 
 function TAtlasCodeQueryFrame.RowText: TArray<string>;
@@ -722,12 +814,16 @@ var
 begin
   Result := nil;
   if not FHasAnswer then
+  begin
     Exit;
+  end;
   for mRow in FAnswer.Rows do
   begin
     mCells := nil;
     for mCell in mRow.Cells do
+    begin
       mCells := mCells + [mCell.Text];
+    end;
     mCells := mCells + [LocationText(mRow)];
     Result := Result + [string.Join(' | ', mCells)];
   end;
@@ -738,10 +834,14 @@ var
   mIndex: Integer;
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   mIndex := FSaved.ItemIndex - 1;
   if (mIndex < 0) or (mIndex > High(FCatalog.Saved)) then
+  begin
     Exit;
+  end;
   FUpdating := True;
   try
     FInput.Text := FCatalog.Saved[mIndex].Query;
@@ -761,34 +861,46 @@ end;
 procedure TAtlasCodeQueryFrame.CancelClick(Sender: TObject);
 begin
   if FRunning and Assigned(FOnCancel) then
+  begin
     FOnCancel();
+  end;
 end;
 
 procedure TAtlasCodeQueryFrame.SaveRuleClick(Sender: TObject);
 begin
   HideSuggest;
   if (Trim(FInput.Text) <> '') and Assigned(FOnSaveRule) then
+  begin
     FOnSaveRule(Trim(FInput.Text));
+  end;
 end;
 
 procedure TAtlasCodeQueryFrame.CopyCsvClick(Sender: TObject);
 begin
   if not FHasAnswer or (Length(FAnswer.Rows) = 0) then
+  begin
     Exit;
+  end;
   Clipboard.AsText := FAnswer.Csv;
   FMessageText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryCopied, [Length(FAnswer.Rows)]);
   UpdateStatus;
   if Assigned(FOnCopied) then
+  begin
     FOnCopied(Length(FAnswer.Rows));
+  end;
 end;
 
 procedure TAtlasCodeQueryFrame.InputChange(Sender: TObject);
 begin
   UpdateButtons;
   if FUpdating then
+  begin
     Exit;
+  end;
   if FInput.Focused then
+  begin
     ShowSuggestions;
+  end;
 end;
 
 procedure TAtlasCodeQueryFrame.InputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -815,9 +927,13 @@ begin
       begin
         mIndex := FSuggest.ItemIndex;
         if Key = VK_DOWN then
-          Inc(mIndex)
+        begin
+          Inc(mIndex);
+        end
         else
+        begin
           Dec(mIndex);
+        end;
         FSuggest.ItemIndex := EnsureRange(mIndex, 0, FSuggest.Items.Count - 1);
         Key := 0;
       end;
@@ -838,21 +954,27 @@ procedure TAtlasCodeQueryFrame.InputKeyPress(Sender: TObject; var Key: Char);
 begin
   // Enter, Esc und Strg+Leer sind schon verarbeitet: kein Piepen, kein Leerzeichen.
   if (Key = #13) or (Key = #27) or ((Key = ' ') and (GetKeyState(VK_CONTROL) < 0)) then
+  begin
     Key := #0;
+  end;
 end;
 
 procedure TAtlasCodeQueryFrame.InputExit(Sender: TObject);
 begin
   // Ein Klick in die Vorschlagsliste nimmt den Fokus nicht (TabStop aus, OnClick übernimmt vorher).
   if not FSuggest.Focused then
+  begin
     HideSuggest;
+  end;
 end;
 
 procedure TAtlasCodeQueryFrame.SuggestClick(Sender: TObject);
 begin
   AcceptSuggestion(FSuggest.ItemIndex);
   if FInput.CanFocus and Showing then
+  begin
     FInput.SetFocus;
+  end;
 end;
 
 procedure TAtlasCodeQueryFrame.ListData(Sender: TObject; Item: TListItem);
@@ -861,17 +983,27 @@ var
   mIndex: Integer;
 begin
   if not FHasAnswer or (Item.Index < 0) or (Item.Index > High(FAnswer.Rows)) then
+  begin
     Exit;
+  end;
   mRow := FAnswer.Rows[Item.Index];
   if Length(mRow.Cells) > 0 then
-    Item.Caption := mRow.Cells[0].Text
+  begin
+    Item.Caption := mRow.Cells[0].Text;
+  end
   else
+  begin
     Item.Caption := '';
+  end;
   for mIndex := 1 to High(mRow.Cells) do
+  begin
     Item.SubItems.Add(mRow.Cells[mIndex].Text);
+  end;
   // Fehlen Zellen (kürzere Zeile), bleibt „Datei“ trotzdem in seiner Spalte.
   for mIndex := Max(1, Length(mRow.Cells)) to High(FAnswer.Columns) do
+  begin
     Item.SubItems.Add('');
+  end;
   Item.SubItems.Add(LocationText(mRow));
 end;
 
@@ -888,7 +1020,9 @@ end;
 procedure TAtlasCodeQueryFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key <> VK_RETURN then
+  begin
     Exit;
+  end;
   OpenRow(FList.ItemIndex);
   Key := 0;
 end;

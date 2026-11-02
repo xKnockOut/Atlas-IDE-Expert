@@ -156,7 +156,9 @@ var
 begin
   mSession := TAtlasIdeHost.RunningSession;
   if mSession = nil then
+  begin
     Exit(nil);
+  end;
   try
     mSymbols := mSession.WorkspaceSymbols(APrefix, QuerySymbolTimeoutMs);
   except
@@ -444,7 +446,9 @@ begin
   Result := nil;
   mAction := TAtlasIdeUnitSearch.HookedAction;
   if (mAction = nil) or (mAction.Name = '') then
+  begin
     Exit;
+  end;
   mTaken := Default(TAtlasTakenAction);
   mTaken.Func := TAtlasKeyFunction.UnitSearchIde;
   mTaken.ActionName := mAction.Name;
@@ -471,7 +475,9 @@ begin
   Result := False;
   mRegistry := AtlasModuleRegistry;
   if (mRegistry = nil) or (GScope <> nil) then
+  begin
     Exit;
+  end;
   // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
@@ -483,7 +489,9 @@ begin
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
+  begin
     GScope.Provide(IAtlasFeaturePart, mPart);
+  end;
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasKeySource, mRef);
@@ -499,13 +507,19 @@ var
   mFailure: string;
 begin
   if GScope = nil then
+  begin
     Exit;
+  end;
   GScope := nil;
   // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
+  begin
     for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    begin
       TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+    end;
+  end;
 end;
 
 initialization

@@ -59,7 +59,9 @@ begin
   try
     SetLength(Result, Stream.Size);
     if Length(Result) > 0 then
+    begin
       Stream.ReadBuffer(Result, Length(Result));
+    end;
   finally
     Stream.Free;
   end;
@@ -81,15 +83,23 @@ var
 begin
   Result := nil;
   if (AFolder = '') or not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   if ADays <= 0 then
+  begin
     ADays := DefaultDays;
+  end;
   Limit := IncDay(ANow, -ADays);
   List := TList<string>.Create;
   try
     for FileName in TDirectory.GetFiles(AFolder, LogPattern) do
+    begin
       if not ExtractFileName(FileName).StartsWith('diag-map-', True) and (TFile.GetLastWriteTime(FileName) >= Limit) then
+      begin
         List.Add(FileName);
+      end;
+    end;
     List.Sort;
     Result := List.ToArray;
   finally
@@ -124,13 +134,17 @@ begin
       for Line in Lines do
       begin
         if Shown >= AMaxLines then
+        begin
           Break;
+        end;
         Builder.Append(Line).Append(sLineBreak);
         Inc(Shown);
       end;
     end;
     if Total > Shown then
+    begin
       Builder.Append(Format('… %d weitere Zeilen', [Total - Shown])).Append(sLineBreak);
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -160,7 +174,9 @@ var
   Content: TBytesStream;
 begin
   if FileExists(ATarget) then
+  begin
     System.SysUtils.DeleteFile(ATarget);
+  end;
   Zip := TZipFile.Create;
   try
     Zip.Open(ATarget, TZipMode.zmWrite);

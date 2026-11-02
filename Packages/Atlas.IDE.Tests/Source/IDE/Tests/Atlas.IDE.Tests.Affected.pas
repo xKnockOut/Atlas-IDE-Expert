@@ -111,10 +111,14 @@ var
 begin
   Result := '';
   if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
     Exit;
+  end;
   mProject := mServices.GetActiveProject;
   if mProject <> nil then
+  begin
     Result := mProject.FileName;
+  end;
 end;
 
 class procedure TAtlasIdeAffectedTests.Reap(AWait: Boolean);
@@ -124,13 +128,17 @@ var
 begin
   mRemaining := nil;
   for mIndex := 0 to High(FWorkers) do
+  begin
     if AWait or FWorkers[mIndex].Finished then
     begin
       FWorkers[mIndex].WaitFor;
       FWorkers[mIndex].Free;
     end
     else
+    begin
       mRemaining := mRemaining + [FWorkers[mIndex]];
+    end;
+  end;
   FWorkers := mRemaining;
 end;
 
@@ -201,16 +209,26 @@ var
   mTest: TAtlasAffectedTest;
 begin
   if AFound.All then
+  begin
     Exit(TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedAll, [AFound.AllReason])));
+  end;
   if Length(AFound.Tests) = 0 then
+  begin
     Exit(TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedNone, [AFound.Base])));
+  end;
   Result := TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedFound,
     [AFound.Base, AFound.Depth, Length(AFound.Tests)]));
   for mTest in AFound.Tests do
+  begin
     if Length(mTest.Reasons) > 0 then
-      Result := Result + ['  ' + mTest.Name + ' – ' + String.Join('; ', mTest.Reasons)]
+    begin
+      Result := Result + ['  ' + mTest.Name + ' – ' + String.Join('; ', mTest.Reasons)];
+    end
     else
+    begin
       Result := Result + ['  ' + mTest.Name];
+    end;
+  end;
 end;
 
 class procedure TAtlasIdeAffectedTests.Show(ARequest: Integer; const AFound: TAtlasAffectedTests;
@@ -220,22 +238,30 @@ var
 begin
   // Eine neuere Anfrage läuft schon oder das Package wird entladen.
   if ARequest <> FRequest then
+  begin
     Exit;
+  end;
   if AError <> '' then
   begin
     TAtlasIdeResults.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedFailed, [AError]));
     Exit;
   end;
   for mLine in Lines(AFound) do
+  begin
     TAtlasIdeResults.Say(mLine);
+  end;
   if AFound.All then
   begin
     if Assigned(FHooks.RunAll) then
+    begin
       FHooks.RunAll();
+    end;
   end
   else if (Length(AFound.Tests) > 0) and Assigned(FHooks.RunTests) then
+  begin
     // Der Server meldet nur Tests aus Testprogrammen: Eine Datei genügt, um das Testprojekt zu finden.
     FHooks.RunTests(AFound.Tests[0].FileName, AFound.Run);
+  end;
 end;
 
 class procedure TAtlasIdeAffectedTests.ApplySettings;
@@ -245,16 +271,20 @@ begin
   if TAtlasIdeSettings.Current.TestsAffectedBeforeCommit and Enabled then
   begin
     if Assigned(FHooks.ResolveTarget) then
+    begin
       FHooks.ResolveTarget(
         procedure(const ATarget: TAtlasTestTarget)
         begin
           InstallHook(ATarget);
         end);
+    end;
     Exit;
   end;
   mProject := ActiveProject;
   if mProject <> '' then
+  begin
     RemoveHook(ExtractFilePath(mProject));
+  end;
 end;
 
 class procedure TAtlasIdeAffectedTests.InstallHook(const ATarget: TAtlasTestTarget);
@@ -263,7 +293,9 @@ var
   mFolder: string;
 begin
   if (ATarget.Project = '') or not Assigned(FHooks.ServerPath) then
+  begin
     Exit;
+  end;
   mConfig := Default(TAtlasAffectedHookConfig);
   mConfig.ServerPath := FHooks.ServerPath();
   mConfig.Project := ATarget.Project;
@@ -280,12 +312,18 @@ begin
       // SVN hat keine Hooks auf dem Client: Nur Git kennt HookFolders.
       if not Supports(mVcs, IAtlasVcsBranching, mBranching) or
         (mBranching.HookFolders(mHooks, mGitDir) <> TAtlasVcsOutcome.Ok) then
+      begin
         Exit;
+      end;
       if TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Foreign then
-        mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedHookForeign, [mHooks])
+      begin
+        mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedHookForeign, [mHooks]);
+      end
       else if (TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Missing) and
         TAtlasAffectedHook.Install(mHooks, mGitDir, mConfig) then
-        mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedHookInstalled, [mHooks])
+      begin
+        mText := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedHookInstalled, [mHooks]);
+      end
       else
       begin
         // Eigener Hook: Skript und Angaben auf den Stand bringen (Testprojekt, Serverpfad).
@@ -293,11 +331,13 @@ begin
         mText := '';
       end;
       if mText <> '' then
+      begin
         TAtlasMainThread.Queue(TAtlasFeature.Build,
           procedure
           begin
             ReportOnce(mHooks, mText);
           end);
+      end;
     end);
 end;
 
@@ -314,7 +354,9 @@ begin
       if Supports(mVcs, IAtlasVcsBranching, mBranching) and
         (mBranching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) and
         (TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Own) then
+      begin
         TAtlasAffectedHook.Uninstall(mHooks, mGitDir);
+      end;
     end);
 end;
 
@@ -323,8 +365,12 @@ var
   mDir: string;
 begin
   for mDir in FReported do
+  begin
     if SameText(mDir, AHooksDir) then
+    begin
       Exit;
+    end;
+  end;
   FReported := FReported + [AHooksDir];
   TAtlasIdeResults.Say(AText);
 end;

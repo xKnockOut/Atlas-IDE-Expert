@@ -88,6 +88,12 @@ type
     FWorkCount: Integer;
     FIdle: TLightweightEvent;
     class function KeyOf(const AId: TJSONValue): string; static;
+    /// <summary>Benachrichtigungen der Methode AName ändern ein Dokument.</summary>
+    function IsChangeMethod(const AName: string): Boolean;
+    /// <summary>Vermerkt die Anfrage AId als offen, mit dem Dokument aus AMessage.</summary>
+    procedure ObserveRequest(const AMessage: TJSONObject; const AId: TJSONValue);
+    /// <summary>Cancel, wenn AId gesetzt ist.</summary>
+    procedure CancelById(const AId: TJSONValue);
   public
     constructor Create;
     destructor Destroy; override;
@@ -197,86 +203,95 @@ begin
   end;
 end;
 
-function TJsonRpcPendingRequests.Observe(const AMessage: TJSONObject): Boolean;
+/// <summary>Id der abzubrechenden Anfrage aus params.AKey; nil ohne.</summary>
+function CancelledId(const AMessage: TJSONObject; const AKey: string): TJSONValue;
 var
-  Method: TJSONValue;
-  Id: TJSONValue;
-  Params: TJSONValue;
-  Uri: string;
+  mParams: TJSONValue;
+begin
+  Result := nil;
+  mParams := AMessage.GetValue('params');
+  if mParams is TJSONObject then
+  begin
+    Result := TJSONObject(mParams).GetValue(AKey);
+  end;
+end;
 
-  function IsChangeMethod(const AName: string): Boolean;
-  var
-    Name: string;
+function TJsonRpcPendingRequests.IsChangeMethod(const AName: string): Boolean;
+var
+  mName: string;
+begin
+  FLock.Enter;
+  try
+    for mName in FChangeMethods do
+    begin
+      if mName = AName then
+      begin
+        Exit(True);
+      end;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  Result := False;
+end;
+
+procedure TJsonRpcPendingRequests.ObserveRequest(const AMessage: TJSONObject; const AId: TJSONValue);
+var
+  mUri: string;
+begin
+  Acquire(AId);
+  mUri := DocumentUri(AMessage);
+  if mUri <> '' then
   begin
     FLock.Enter;
     try
-      for Name in FChangeMethods do
-      begin
-        if Name = AName then
-        begin
-          Exit(True);
-        end;
-      end;
+      FUris.AddOrSetValue(KeyOf(AId), mUri);
     finally
       FLock.Leave;
     end;
-    Result := False;
   end;
+end;
 
+procedure TJsonRpcPendingRequests.CancelById(const AId: TJSONValue);
+begin
+  if AId <> nil then
+  begin
+    Cancel(AId);
+  end;
+end;
+
+function TJsonRpcPendingRequests.Observe(const AMessage: TJSONObject): Boolean;
+var
+  mMethod, mId: TJSONValue;
+  mUri: string;
 begin
   Result := False;
-  Method := AMessage.GetValue('method');
-  if not (Method is TJSONString) then
+  mMethod := AMessage.GetValue('method');
+  if not (mMethod is TJSONString) then
   begin
     Exit;
   end;
-  Id := AMessage.GetValue('id');
-  if Id <> nil then
+  mId := AMessage.GetValue('id');
+  if mId <> nil then
   begin
-    Acquire(Id);
-    Uri := DocumentUri(AMessage);
-    if Uri <> '' then
-    begin
-      FLock.Enter;
-      try
-        FUris.AddOrSetValue(KeyOf(Id), Uri);
-      finally
-        FLock.Leave;
-      end;
-    end;
+    ObserveRequest(AMessage, mId);
   end
-  else if Method.Value = JsonRpcCancelRequestMethod then
+  else if mMethod.Value = JsonRpcCancelRequestMethod then
   begin
-    Params := AMessage.GetValue('params');
-    if Params is TJSONObject then
-    begin
-      Id := TJSONObject(Params).GetValue('id');
-      if Id <> nil then
-      begin
-        Cancel(Id);
-      end;
-    end;
+    CancelById(CancelledId(AMessage, 'id'));
     Result := True;
   end
-  else if Method.Value = McpCancelledMethod then
+  else if mMethod.Value = McpCancelledMethod then
   begin
-    Params := AMessage.GetValue('params');
-    if Params is TJSONObject then
-    begin
-      Id := TJSONObject(Params).GetValue('requestId');
-      if Id <> nil then
-      begin
-        Cancel(Id);
-      end;
-    end;
+    CancelById(CancelledId(AMessage, 'requestId'));
     Result := True;
   end
-  else if IsChangeMethod(Method.Value) then
+  else if IsChangeMethod(mMethod.Value) then
   begin
-    Uri := DocumentUri(AMessage);
-    if Uri <> '' then
+    mUri := DocumentUri(AMessage);
+    if mUri <> '' then
     begin
-      CancelForUri(Uri);
+      CancelForUri(mUri);
     end;
   end;
 end;
