@@ -28,10 +28,14 @@ class function TAtlasFolderList.Normal(const AFolder: string): string;
 begin
   Result := Trim(AFolder);
   if Result = '' then
+  begin
     Exit;
+  end;
   Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
   while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TAtlasFolderList.Parse(const AText: string): TArray<string>;
@@ -45,16 +49,22 @@ begin
   begin
     mFolder := Normal(mPart);
     if mFolder = '' then
+    begin
       Continue;
+    end;
     mSeen := False;
     for mKnown in Result do
+    begin
       if SameText(mKnown, mFolder) then
       begin
         mSeen := True;
         Break;
       end;
+    end;
     if not mSeen then
+    begin
       Result := Result + [mFolder];
+    end;
   end;
 end;
 

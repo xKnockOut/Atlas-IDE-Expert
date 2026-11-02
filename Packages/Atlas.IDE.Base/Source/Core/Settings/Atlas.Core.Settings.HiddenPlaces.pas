@@ -121,10 +121,16 @@ var
 begin
   Result := Trim(APath);
   for Index := 1 to Length(Result) do
+  begin
     if Result[Index] = '\' then
+    begin
       Result[Index] := '/';
+    end;
+  end;
   while Result.StartsWith('./') do
+  begin
     Result := Copy(Result, 3, MaxInt);
+  end;
 end;
 
 class function TAtlasHiddenPlaces.Relative(const AFolder, AFileName: string; out ARelative: string): Boolean;
@@ -134,12 +140,16 @@ begin
   ARelative := '';
   Folder := NormalizePath(AFolder);
   while (Folder <> '') and IsSeparator(Folder[Length(Folder)]) do
+  begin
     Delete(Folder, Length(Folder), 1);
+  end;
   FileName := NormalizePath(AFileName);
   Result := (Folder <> '') and (Length(FileName) > Length(Folder) + 1) and
     SameText(Copy(FileName, 1, Length(Folder)), Folder) and (FileName[Length(Folder) + 1] = '/');
   if Result then
+  begin
     ARelative := Copy(FileName, Length(Folder) + 2, MaxInt);
+  end;
   // Kein Ausbruch über "..": der Pfad bleibt unter dem Ordner.
   if Result and ((Pos('/../', '/' + ARelative + '/') > 0)) then
   begin
@@ -154,8 +164,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(APlaces) do
+  begin
     if APlaces[Index].SameAs(APlace) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -166,17 +180,23 @@ var
   Item: string;
 begin
   if Length(APlaces) = 0 then
+  begin
     Exit('[]');
+  end;
   Result := '[';
   for Index := 0 to High(APlaces) do
   begin
     Item := '{"setting": ' + TAtlasJsonText.Quote(APlaces[Index].Setting) + ', "file": ' +
       TAtlasJsonText.Quote(NormalizePath(APlaces[Index].FileName));
     if APlaces[Index].Anchor <> '' then
+    begin
       Item := Item + ', "anchor": ' + TAtlasJsonText.Quote(APlaces[Index].Anchor);
+    end;
     Item := Item + '}';
     if Index < High(APlaces) then
+    begin
       Item := Item + ',';
+    end;
     Result := Result + ALineBreak + AIndent + '  ' + Item;
   end;
   Result := Result + ALineBreak + AIndent + ']';
@@ -191,19 +211,27 @@ begin
   Result := nil;
   Root := TAtlasJsonText.Parse(AText);
   if Root = nil then
+  begin
     Exit;
+  end;
   try
     Value := Root.GetValue(Key);
     if not (Value is TJSONArray) then
+    begin
       Exit;
+    end;
     for Item in TJSONArray(Value) do
     begin
       if not (Item is TJSONObject) then
+      begin
         Continue;
+      end;
       Place := TAtlasHiddenPlace.Create(TJSONObject(Item).GetValue<string>('setting', ''),
         TJSONObject(Item).GetValue<string>('file', ''), TJSONObject(Item).GetValue<string>('anchor', ''));
       if (Place.Setting <> '') and (Place.FileName <> '') then
+      begin
         Result := Result + [Place];
+      end;
     end;
   finally
     Root.Free;
@@ -216,10 +244,14 @@ var
 begin
   Result := AText;
   if Trim(Result) = '' then
+  begin
     Result := ASkeleton;
+  end;
   Places := FromText(Result);
   if IndexOf(Places, APlace) >= 0 then
+  begin
     Exit;
+  end;
   Places := Places + [APlace];
   Result := TAtlasJsonText.SetValue(Result, Key, ToJson(Places, '  ', TTextLines.LineBreakOf(Result)));
 end;
@@ -233,7 +265,9 @@ begin
   Places := FromText(Result);
   Index := IndexOf(Places, APlace);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Delete(Places, Index, 1);
   Result := TAtlasJsonText.SetValue(Result, Key, ToJson(Places, '  ', TTextLines.LineBreakOf(Result)));
 end;
@@ -250,7 +284,9 @@ begin
   FFolder := AFolder;
   FAnchors := TObjectDictionary<string, TList<string>>.Create([doOwnsValues]);
   if AFolder = '' then
+  begin
     Exit;
+  end;
   for Place in APlaces do
   begin
     Name := LowerCase(Place.Setting + '|' + TAtlasHiddenPlaces.NormalizePath(Place.FileName));
@@ -278,7 +314,9 @@ function TAtlasHiddenIndex.Lookup(const ASetting, AFileName: string; out AAnchor
 begin
   AAnchors := nil;
   if FAnchors.Count = 0 then
+  begin
     Exit(False);
+  end;
   // Beim Zeichnen kommt dieselbe Datei Zeile für Zeile: Pfad nur einmal umrechnen.
   if not SameFileName(AFileName, FLastFile) then
   begin
