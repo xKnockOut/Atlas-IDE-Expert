@@ -96,9 +96,23 @@ begin
     end;
 end;
 
-/// <summary>Verschiebt die Klasse auf der Zeile mit AMarker; '-' mit Grund, sonst neue Unit und geänderte
-/// Ursprungs-Unit.</summary>
-function Relocate(const AText, AMarker, ANewUnit: string; const ALookup: TMoveClassLookup; out ANewText, AOrigin,
+type
+  /// <summary>Ziel-Unit einer Verschiebung und das Lookup für die Units, die sie verwenden.</summary>
+  TMoveTarget = record
+    NewUnit: string;
+    Lookup: TMoveClassLookup;
+  end;
+
+function Into(const ANewUnit: string; const ALookup: TMoveClassLookup): TMoveTarget;
+begin
+  Result := Default(TMoveTarget);
+  Result.NewUnit := ANewUnit;
+  Result.Lookup := ALookup;
+end;
+
+/// <summary>Verschiebt die Klasse auf der Zeile mit AMarker nach ATarget; '-' mit Grund, sonst neue Unit und
+/// geänderte Ursprungs-Unit.</summary>
+function Relocate(const AText, AMarker: string; const ATarget: TMoveTarget; out ANewText, AOrigin,
   AReason: string): Boolean; overload;
 var
   Tree: TSyntaxTree;
@@ -118,8 +132,8 @@ begin
   end;
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TMoveClass.Plan('lager.pas', AText, Tree, TTextPosition.Create(Line, 4), ANewUnit, ALookup, Plan,
-      AReason);
+    Result := TMoveClass.Plan('lager.pas', AText, Tree, TTextPosition.Create(Line, 4), ATarget.NewUnit,
+      ATarget.Lookup, Plan, AReason);
     if not Result then
     begin
       Exit;
@@ -137,7 +151,7 @@ function Relocate(const AText, AMarker: string; out ANewText, AOrigin: string): 
 var
   Reason: string;
 begin
-  Result := Relocate(AText, AMarker, 'Stock', FakeLookup(), ANewText, AOrigin, Reason);
+  Result := Relocate(AText, AMarker, Into('Stock', FakeLookup()), ANewText, AOrigin, Reason);
   Assert.IsTrue(Result, Reason);
 end;
 
@@ -145,7 +159,7 @@ function Rejected(const AText, AMarker: string): string;
 var
   NewText, Origin: string;
 begin
-  Assert.IsFalse(Relocate(AText, AMarker, 'Stock', FakeLookup(), NewText, Origin, Result));
+  Assert.IsFalse(Relocate(AText, AMarker, Into('Stock', FakeLookup()), NewText, Origin, Result));
 end;
 
 procedure TMoveClassTests.DefaultUnitNameDropsT;
@@ -214,7 +228,7 @@ begin
   Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'uses', '  Classes;', '', 'type',
     '  TStock = class', '    FItems: TStrings;', '    procedure Add;', '  end;', '', 'implementation', '', 'uses',
     '  SysUtils;', '', 'procedure TStock.Add;', 'begin', '  FItems.Add(IntToStr(1));', 'end;', '', 'end.']),
-    'TStock = class', 'Lager.Stock', nil, NewText, Origin, Reason), Reason);
+    'TStock = class', Into('Lager.Stock', nil), NewText, Origin, Reason), Reason);
   Assert.AreEqual(Join(['unit Lager.Stock;', '', 'interface', '', 'uses', '  Classes;', '', 'type',
     '  TStock = class', '    FItems: TStrings;', '    procedure Add;', '  end;', '', 'implementation', '', 'uses',
     '  SysUtils;', '', 'procedure TStock.Add;', 'begin', '  FItems.Add(IntToStr(1));', 'end;', '', 'end.']), NewText);
@@ -250,9 +264,9 @@ begin
     'end;', '{$ENDIF}', '', 'end.']), 'TStock = class'), 'bedingt');
   // Kein Klassentyp an der Stelle, ungültiger Name.
   Assert.IsFalse(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TKind = (kA, kB);', '',
-    'implementation', '', 'end.']), 'TKind', 'Stock', FakeLookup(), NewText, Origin, Reason));
+    'implementation', '', 'end.']), 'TKind', Into('Stock', FakeLookup()), NewText, Origin, Reason));
   Assert.IsFalse(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TStock = class', '  end;', '',
-    'implementation', '', 'end.']), 'TStock', 'Neue Unit', FakeLookup(), NewText, Origin, Reason));
+    'implementation', '', 'end.']), 'TStock', Into('Neue Unit', FakeLookup()), NewText, Origin, Reason));
   Assert.Contains(Reason, 'gültig');
 end;
 
