@@ -588,16 +588,47 @@ type
     function BaselineFiles: TLspBaselineFiles;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
     function TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
+    /// <summary>Einstellungen, Wurzel und Hauptdateien der Projekte; False ohne Arbeitsbereich.</summary>
+    function TestUnitWorkspace(const AFileName: string; var AContext: TTestUnitContext;
+      out ACandidates: TArray<string>): Boolean;
+    /// <summary>Quelltext einer Datei, '' wenn sie fehlt.</summary>
+    function SourceTextOrEmpty(const AFileName: string): string;
+    /// <summary>Datei auf der Platte oder als offenes Dokument.</summary>
+    function DocumentOrFileExists(const AFileName: string): Boolean;
+    /// <summary>Datei einer Projekt-Unit aus dem Index; '' für unbekannte und Bibliotheks-Units.</summary>
+    function ProjectUnitFile(const AUnitName: string): string;
+    /// <summary>Gemerktes Testprogramm der Wurzel, solange es frisch ist.</summary>
+    function CachedTestProgram(const ARoot: string; out AProgram: string): Boolean;
+    /// <summary>Merkt das Testprogramm der Wurzel.</summary>
+    procedure StoreTestProgram(const ARoot, AProgram: string);
+    /// <summary>.dpr in der Wurzel und eine Ebene darunter (ohne Punktordner).</summary>
+    function DprFilesNear(const ARoot: string): TArray<string>;
     /// <summary>Index, Projekte und Dateizugriffe für „Units suchen“ (#777).</summary>
     function UnitSearchContext(out AContext: TUnitSearchContext): Boolean;
+    /// <summary>Projekte aller Arbeitsbereiche für die Unit-Suche.</summary>
+    function UnitSearchProjects: TArray<TUnitSearchProject>;
+    /// <summary>Vorfahren der Klasse AType aus dem Index.</summary>
+    function IndexAncestorsOf(AType: string): TArray<string>;
+    function SearchSourceText(AFileName: string): string;
+    function SearchGitState(AFileName: string): string;
+    /// <summary>uses-Umfeld der Code-Aktionen für AUri; leer, solange es fehlt.</summary>
+    function SearchUsesContext(AUri: string): TUsesContext;
     /// <summary>Git-Zustand einer Datei für die Vorschau (#777); '' ohne Git oder Repository.</summary>
     function GitStateOf(const AFileName: string): string;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
     /// <summary>Dateien der Projektprüfung: ProjectSourceFiles ohne Testunits, wenn excludeTests gilt.</summary>
     function CheckSourceFiles: TArray<string>;
+    /// <summary>Noch nicht gesehene Projektdateien von AWorkspace, mit excludeTests ohne Testunits.</summary>
+    function CheckFilesOf(AWorkspace: TShellWorkspace; ASeen: TDictionary<string, Boolean>): TArray<string>;
+    /// <summary>Hat die Unit laut Index ein Test-Framework im uses?</summary>
+    function IsIndexedTestUnit(const AFileName: string): Boolean;
     /// <summary>Befehl „Eigenschaftsregeln anwenden“ (#309): WorkspaceEdit über die Formulardateien.</summary>
     function ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Units im Bereich form, project oder group zur Unit AFileName.</summary>
+    function DfmPropertyUnits(const AFileName, AScope: string): TArray<string>;
+    /// <summary>Befunde nur der Regel dfm-property für eine Unit mit Formulardatei.</summary>
+    function DfmPropertyFindings(const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean;
     /// <summary>Projekt der Datei AFileName für Umbauten mit neuen Units; False ohne Projekt.</summary>
     function RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
     /// <summary>Suche nach AUnitName im Projekt der Datei AFileName vorbereiten (#550).</summary>
@@ -699,6 +730,18 @@ type
     /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
     function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+    /// <summary>Einstellungen, Baseline, Dienste und Projekte aus dem Arbeitsbereich der Datei.</summary>
+    procedure RuleWorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
+      out AProjects: TArray<TProjectInfo>; out ALibrary: Boolean);
+    /// <summary>Projekte mit der Datei: das des Arbeitsbereichs, dann weitere. Aufrufer hält FWorkspacesLock.</summary>
+    function ProjectsWithFile(AWorkspace: TShellWorkspace; const AFileName: string): TArray<TProjectInfo>;
+    /// <summary>Anwendungsart, Projektname und Formulare der .dpr in den Prüfkontext.</summary>
+    procedure ApplyRuleProject(const AProjects: TArray<TProjectInfo>; const AFileName: string;
+      var AContext: TRuleCheckContext);
+    /// <summary>Index, Nachladen und Projektdateien; ohne Index, solange Projekte laden.</summary>
+    procedure RuleIndexServices(var AContext: TRuleCheckContext);
+    /// <summary>Formulardatei (.dfm, sonst .fmx) neben der Unit.</summary>
+    procedure ReadRuleFormFile(const AFileName: string; var AContext: TRuleCheckContext);
     /// <summary>Wie RuleContextFor für die Prüfung im Editor (LSP-Sitzung): ohne Regeln, solange der Modul-Schalter
     /// ruleChecks.enabled aus ist (#1454); jeder Wechsel steht einmal im Protokoll. Baseline, Sammelkorrektur,
     /// --check und MCP nehmen RuleContextFor.</summary>
@@ -3983,200 +4026,241 @@ begin
 end;
 
 function TServerComposition.TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
-const
-  // Testprogramm höchstens so lange merken; ein neu angelegtes wird danach gefunden.
-  CacheMs = 10000;
 var
-  Workspace, Other: TShellWorkspace;
-  Info: TProjectInfo;
-  Candidates: TArray<string>;
-  Root, Folder, Found: string;
-  Cached: TPair<string, UInt64>;
-  HasCached: Boolean;
+  mCandidates: TArray<string>;
+  mFound: string;
 begin
   AContext := Default(TTestUnitContext);
-  Candidates := nil;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-    if Workspace = nil then
-    begin
-      Exit(False);
-    end;
-    AContext.Settings := Workspace.Configuration.Settings.TestUnits;
-    Root := Workspace.Root;
-    // Projekte der Gruppe zuerst, dann .dpr in der Wurzel und eine Ebene darunter.
-    for Other in FWorkspaces do
-    begin
-      if Other.State.Project(Info) and (Info.MainSource <> '') then
-      begin
-        Candidates := Candidates + [Info.MainSource];
-      end;
-    end;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
+  if not TestUnitWorkspace(TDocumentUris.ToPath(AUri), AContext, mCandidates) then
+  begin
+    Exit(False);
   end;
-  AContext.Root := Root;
-  AContext.ReadText :=
-    function(const AFileName: string): string
-    begin
-      if not ReadSourceText(AFileName, Result) then
-      begin
-        Result := '';
-      end;
-    end;
-  AContext.Exists :=
-    function(const AFileName: string): Boolean
-    var
-      Document: ITextDocument;
-    begin
-      Result := FileExists(AFileName) or FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Document);
-    end;
-  AContext.FindUnit :=
-    function(const AUnitName: string): string
-    var
-      UnitIndex: TUnitIndex;
-    begin
-      // Nur der Index: Diese Abfrage läuft bei jeder Code-Aktion und soll nichts nachladen.
-      if FIndex.FindUnit(AUnitName, UnitIndex) and not UnitIndex.Library_ then
-      begin
-        Result := UnitIndex.FileName;
-      end
-      else
-      begin
-        Result := '';
-      end;
-    end;
+  AContext.ReadText := SourceTextOrEmpty;
+  AContext.Exists := DocumentOrFileExists;
+  // Nur der Index: Diese Abfrage läuft bei jeder Code-Aktion und soll nichts nachladen.
+  AContext.FindUnit := ProjectUnitFile;
+  Result := True;
   if AContext.Settings.Project <> '' then
   begin
-    Found := AContext.Settings.Project;
-    if not TPath.IsPathRooted(Found) then
+    mFound := AContext.Settings.Project;
+    if not TPath.IsPathRooted(mFound) then
     begin
-      Found := TPath.Combine(Root, Found);
+      mFound := TPath.Combine(AContext.Root, mFound);
     end;
-    AContext.TestProgram := ChangeFileExt(ExpandFileName(Found), '.dpr');
-    Exit(True);
-  end;
-  TMonitor.Enter(FTestPrograms);
-  try
-    HasCached := FTestPrograms.TryGetValue(LowerCase(Root), Cached) and
-      (TThread.GetTickCount64 - Cached.Value < CacheMs);
-  finally
-    TMonitor.Exit(FTestPrograms);
-  end;
-  if HasCached then
+    AContext.TestProgram := ChangeFileExt(ExpandFileName(mFound), '.dpr');
+  end
+  else if not CachedTestProgram(AContext.Root, AContext.TestProgram) then
   begin
-    AContext.TestProgram := Cached.Key;
-    Exit(True);
+    AContext.TestProgram := TTestUnits.FindTestProgram(mCandidates + DprFilesNear(AContext.Root), AContext.ReadText);
+    StoreTestProgram(AContext.Root, AContext.TestProgram);
   end;
+end;
+
+function TServerComposition.TestUnitWorkspace(const AFileName: string; var AContext: TTestUnitContext;
+  out ACandidates: TArray<string>): Boolean;
+var
+  mWorkspace, mOther: TShellWorkspace;
+  mInfo: TProjectInfo;
+begin
+  ACandidates := nil;
+  System.TMonitor.Enter(FWorkspacesLock);
   try
-    Candidates := Candidates + TDirectory.GetFiles(Root, '*.dpr', TSearchOption.soTopDirectoryOnly);
-    for Folder in TDirectory.GetDirectories(Root) do
+    mWorkspace := PickWorkspace(AFileName);
+    Result := mWorkspace <> nil;
+    if not Result then
     begin
-      if not ExtractFileName(Folder).StartsWith('.') then
+      Exit;
+    end;
+    AContext.Settings := mWorkspace.Configuration.Settings.TestUnits;
+    AContext.Root := mWorkspace.Root;
+    // Projekte der Gruppe zuerst, dann .dpr in der Wurzel und eine Ebene darunter.
+    for mOther in FWorkspaces do
+    begin
+      if mOther.State.Project(mInfo) and (mInfo.MainSource <> '') then
       begin
-        Candidates := Candidates + TDirectory.GetFiles(Folder, '*.dpr', TSearchOption.soTopDirectoryOnly);
+        ACandidates := ACandidates + [mInfo.MainSource];
+      end;
+    end;
+  finally
+    System.TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.SourceTextOrEmpty(const AFileName: string): string;
+begin
+  if not ReadSourceText(AFileName, Result) then
+  begin
+    Result := '';
+  end;
+end;
+
+function TServerComposition.DocumentOrFileExists(const AFileName: string): Boolean;
+var
+  mDocument: ITextDocument;
+begin
+  Result := FileExists(AFileName) or FDocuments.TryGet(TDocumentUris.FromPath(AFileName), mDocument);
+end;
+
+function TServerComposition.ProjectUnitFile(const AUnitName: string): string;
+var
+  mUnit: TUnitIndex;
+begin
+  if FIndex.FindUnit(AUnitName, mUnit) and not mUnit.Library_ then
+  begin
+    Result := mUnit.FileName;
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+function TServerComposition.CachedTestProgram(const ARoot: string; out AProgram: string): Boolean;
+const
+  // Testprogramm höchstens so lange merken; ein neu angelegtes wird danach gefunden.
+  cCacheMs = 10000;
+var
+  mCached: TPair<string, UInt64>;
+begin
+  System.TMonitor.Enter(FTestPrograms);
+  try
+    Result := FTestPrograms.TryGetValue(LowerCase(ARoot), mCached) and
+      (TThread.GetTickCount64 - mCached.Value < cCacheMs);
+  finally
+    System.TMonitor.Exit(FTestPrograms);
+  end;
+  AProgram := '';
+  if Result then
+  begin
+    AProgram := mCached.Key;
+  end;
+end;
+
+procedure TServerComposition.StoreTestProgram(const ARoot, AProgram: string);
+begin
+  System.TMonitor.Enter(FTestPrograms);
+  try
+    FTestPrograms.AddOrSetValue(LowerCase(ARoot), TPair<string, UInt64>.Create(AProgram, TThread.GetTickCount64));
+  finally
+    System.TMonitor.Exit(FTestPrograms);
+  end;
+end;
+
+function TServerComposition.DprFilesNear(const ARoot: string): TArray<string>;
+var
+  mFolder: string;
+begin
+  Result := nil;
+  try
+    Result := TDirectory.GetFiles(ARoot, '*.dpr', TSearchOption.soTopDirectoryOnly);
+    for mFolder in TDirectory.GetDirectories(ARoot) do
+    begin
+      if not ExtractFileName(mFolder).StartsWith('.') then
+      begin
+        Result := Result + TDirectory.GetFiles(mFolder, '*.dpr', TSearchOption.soTopDirectoryOnly);
       end;
     end;
   except
     on E: EInOutError do
       FLogger.Debug('Testprojekt: Ordner nicht lesbar: ' + E.Message);
   end;
-  AContext.TestProgram := TTestUnits.FindTestProgram(Candidates, AContext.ReadText);
-  TMonitor.Enter(FTestPrograms);
-  try
-    FTestPrograms.AddOrSetValue(LowerCase(Root), TPair<string, UInt64>.Create(AContext.TestProgram,
-      TThread.GetTickCount64));
-  finally
-    TMonitor.Exit(FTestPrograms);
+end;
+
+/// <summary>Gibt es die Datei auf der Platte?</summary>
+function FileOnDisk(AFileName: string): Boolean;
+begin
+  Result := FileExists(AFileName);
+end;
+
+/// <summary>Letzte Änderung der Datei; 0, wenn sie fehlt.</summary>
+function FileModified(AFileName: string): TDateTime;
+begin
+  Result := 0;
+  if FileExists(AFileName) then
+  begin
+    Result := TFile.GetLastWriteTime(AFileName);
   end;
-  Result := True;
 end;
 
 function TServerComposition.UnitSearchContext(out AContext: TUnitSearchContext): Boolean;
-var
-  Workspace: TShellWorkspace;
-  Info: TProjectInfo;
-  Project: TUnitSearchProject;
-  Text: string;
 begin
   AContext := Default(TUnitSearchContext);
   AContext.Units := FIndex.Units;
-  TMonitor.Enter(FWorkspacesLock);
+  AContext.Projects := UnitSearchProjects;
+  AContext.AncestorsOf := IndexAncestorsOf;
+  AContext.Exists := FileOnDisk;
+  AContext.ReadText := SearchSourceText;
+  AContext.Modified := FileModified;
+  AContext.GitState := SearchGitState;
+  AContext.UsesFor := SearchUsesContext;
+  Result := True;
+end;
+
+function TServerComposition.UnitSearchProjects: TArray<TUnitSearchProject>;
+var
+  mWorkspace: TShellWorkspace;
+  mInfo: TProjectInfo;
+  mProject: TUnitSearchProject;
+  mText: string;
+begin
+  Result := nil;
+  System.TMonitor.Enter(FWorkspacesLock);
   try
-    for Workspace in FWorkspaces do
+    for mWorkspace in FWorkspaces do
     begin
-      Project := Default(TUnitSearchProject);
-      Project.Files := Workspace.State.ProjectFiles;
-      if Workspace.State.Project(Info) then
+      mProject := Default(TUnitSearchProject);
+      mProject.Files := mWorkspace.State.ProjectFiles;
+      if mWorkspace.State.Project(mInfo) then
       begin
-        Project.FileName := Info.FileName;
-        Project.Name := ChangeFileExt(ExtractFileName(Info.FileName), '');
-        Project.IsTest := (Info.MainSource <> '') and ReadSourceText(Info.MainSource, Text) and
-          TTestUnits.IsTestProgram(Text);
+        mProject.FileName := mInfo.FileName;
+        mProject.Name := ChangeFileExt(ExtractFileName(mInfo.FileName), '');
+        mProject.IsTest := (mInfo.MainSource <> '') and ReadSourceText(mInfo.MainSource, mText) and
+          TTestUnits.IsTestProgram(mText);
       end
       else
       begin
-        Project.Name := Workspace.Name;
+        mProject.Name := mWorkspace.Name;
       end;
-      AContext.Projects := AContext.Projects + [Project];
+      Result := Result + [mProject];
     end;
   finally
-    TMonitor.Exit(FWorkspacesLock);
+    System.TMonitor.Exit(FWorkspacesLock);
   end;
-  AContext.AncestorsOf :=
-    function(AType: string): TArray<string>
-    var
-      Location: TSymbolLocation;
+end;
+
+function TServerComposition.IndexAncestorsOf(AType: string): TArray<string>;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := nil;
+  for mLocation in FIndex.FindSymbols(AType) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
     begin
-      Result := nil;
-      for Location in FIndex.FindSymbols(AType) do
-      begin
-        if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
-        begin
-          Exit(Location.Symbol.Ancestors);
-        end;
-      end;
+      Exit(mLocation.Symbol.Ancestors);
     end;
-  AContext.Exists :=
-    function(AFileName: string): Boolean
-    begin
-      Result := FileExists(AFileName);
-    end;
-  AContext.ReadText :=
-    function(AFileName: string): string
-    begin
-      if not ReadSourceText(AFileName, Result) then
-      begin
-        Result := '';
-      end;
-    end;
-  AContext.Modified :=
-    function(AFileName: string): TDateTime
-    begin
-      Result := 0;
-      if FileExists(AFileName) then
-      begin
-        Result := TFile.GetLastWriteTime(AFileName);
-      end;
-    end;
-  AContext.GitState :=
-    function(AFileName: string): string
-    begin
-      Result := GitStateOf(AFileName);
-    end;
-  AContext.UsesFor :=
-    function(AUri: string): TUsesContext
-    var
-      Provider: TUsesContextProvider;
-    begin
-      Provider := FCodeActions.UsesContextFor;
-      if not Assigned(Provider) or not Provider(AUri, Result) then
-      begin
-        Result := Default(TUsesContext);
-      end;
-    end;
-  Result := True;
+  end;
+end;
+
+function TServerComposition.SearchSourceText(AFileName: string): string;
+begin
+  Result := SourceTextOrEmpty(AFileName);
+end;
+
+function TServerComposition.SearchGitState(AFileName: string): string;
+begin
+  Result := GitStateOf(AFileName);
+end;
+
+function TServerComposition.SearchUsesContext(AUri: string): TUsesContext;
+var
+  mProvider: TUsesContextProvider;
+begin
+  mProvider := FCodeActions.UsesContextFor;
+  if not Assigned(mProvider) or not mProvider(AUri, Result) then
+  begin
+    Result := Default(TUsesContext);
+  end;
 end;
 
 function TServerComposition.GitStateOf(const AFileName: string): string;
@@ -4241,127 +4325,147 @@ end;
 
 function TServerComposition.CheckSourceFiles: TArray<string>;
 var
-  Workspace: TShellWorkspace;
-  Document: ITextDocument;
-  FileName: string;
-  Indexed: TUnitIndex;
-  Seen: TDictionary<string, Boolean>;
+  mWorkspace: TShellWorkspace;
+  mDocument: ITextDocument;
+  mSeen: TDictionary<string, Boolean>;
 begin
   // Wie ProjectSourceFiles, aber mit excludeTests ohne Testunits: Sonst stehen sie in der Warteschlange der
   // Projektprüfung, werden gezählt und eingelesen und erst in der Regel-Engine übersprungen. Ob eine Unit eine
   // Testunit ist, sagt ihr uses im Index; nicht indizierte Dateien bleiben drin (die Engine entscheidet dann).
   Result := nil;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    TMonitor.Enter(FWorkspacesLock);
+    System.TMonitor.Enter(FWorkspacesLock);
     try
-      for Workspace in FWorkspaces do
+      for mWorkspace in FWorkspaces do
       begin
-        for FileName in Workspace.State.ProjectFiles do
-        begin
-          if Seen.ContainsKey(AnsiLowerCase(FileName)) then
-          begin
-            Continue;
-          end;
-          Seen.Add(AnsiLowerCase(FileName), True);
-          if Workspace.Configuration.Settings.ExcludeTests and (FIndex <> nil) and
-            FIndex.FindFile(FileName, Indexed) and
-            TUsesClauses.UsesTestFramework(Indexed.InterfaceUses + Indexed.ImplementationUses) then
-          begin
-            Continue;
-          end;
-          Result := Result + [FileName];
-        end;
+        Result := Result + CheckFilesOf(mWorkspace, mSeen);
       end;
     finally
-      TMonitor.Exit(FWorkspacesLock);
+      System.TMonitor.Exit(FWorkspacesLock);
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
   // Geöffnete Dateien außerhalb des Projekts zählen mit; geöffnete Testunits prüft der Editor ohnehin.
-  for Document in FDocuments.Documents do
+  for mDocument in FDocuments.Documents do
   begin
-    Result := Result + [TDocumentUris.ToPath(Document.Uri)];
+    Result := Result + [TDocumentUris.ToPath(mDocument.Uri)];
   end;
+end;
+
+function TServerComposition.CheckFilesOf(AWorkspace: TShellWorkspace;
+  ASeen: TDictionary<string, Boolean>): TArray<string>;
+var
+  mFileName: string;
+begin
+  Result := nil;
+  for mFileName in AWorkspace.State.ProjectFiles do
+  begin
+    if ASeen.ContainsKey(AnsiLowerCase(mFileName)) then
+    begin
+      Continue;
+    end;
+    ASeen.Add(AnsiLowerCase(mFileName), True);
+    if not (AWorkspace.Configuration.Settings.ExcludeTests and IsIndexedTestUnit(mFileName)) then
+    begin
+      Result := Result + [mFileName];
+    end;
+  end;
+end;
+
+function TServerComposition.IsIndexedTestUnit(const AFileName: string): Boolean;
+var
+  mIndexed: TUnitIndex;
+begin
+  Result := (FIndex <> nil) and FIndex.FindFile(AFileName, mIndexed) and
+    TUsesClauses.UsesTestFramework(mIndexed.InterfaceUses + mIndexed.ImplementationUses);
 end;
 
 function TServerComposition.ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
 var
-  Uri, Scope, FileName: string;
-  Units: TArray<string>;
-  Workspace, Picked: TShellWorkspace;
-  Files, Edits: Integer;
+  mScope: string;
+  mFiles, mEdits: Integer;
 begin
   // Argumente: URI der Unit oder Formulardatei, Bereich form (Vorgabe), project oder group.
   if (AArguments = nil) or (AArguments.Count = 0) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument "uri" fehlt');
   end;
-  Uri := AArguments.Items[0].Value;
-  Scope := TLspDfmPropertyRules.ScopeForm;
+  mScope := TLspDfmPropertyRules.ScopeForm;
   if AArguments.Count > 1 then
   begin
-    Scope := AArguments.Items[1].Value;
+    mScope := AArguments.Items[1].Value;
   end;
-  FileName := TLspDfmPropertyRules.UnitOf(TDocumentUris.ToPath(Uri));
-  Units := nil;
-  if SameText(Scope, TLspDfmPropertyRules.ScopeForm) then
+  Result := TLspDfmPropertyRules.BuildEdit(
+    DfmPropertyUnits(TLspDfmPropertyRules.UnitOf(TDocumentUris.ToPath(AArguments.Items[0].Value)), mScope),
+    DfmPropertyFindings, mFiles, mEdits);
+  // Nur Zahlen ins Log, keine Pfade (#647).
+  FLogger.Info(Format('Eigenschaftsregeln: %d Änderungen in %d Formulardateien vorgeschlagen', [mEdits, mFiles]));
+end;
+
+function TServerComposition.DfmPropertyUnits(const AFileName, AScope: string): TArray<string>;
+var
+  mWorkspace, mPicked: TShellWorkspace;
+begin
+  if SameText(AScope, TLspDfmPropertyRules.ScopeForm) then
   begin
-    Units := [FileName];
-  end
-  else
-  begin
-    TMonitor.Enter(FWorkspacesLock);
-    try
-      Picked := PickWorkspace(FileName);
-      for Workspace in FWorkspaces do
+    Result := TArray<string>.Create(AFileName);
+    Exit;
+  end;
+  Result := nil;
+  System.TMonitor.Enter(FWorkspacesLock);
+  try
+    mPicked := PickWorkspace(AFileName);
+    for mWorkspace in FWorkspaces do
+    begin
+      if SameText(AScope, TLspDfmPropertyRules.ScopeGroup) or (mWorkspace = mPicked) then
       begin
-        if SameText(Scope, TLspDfmPropertyRules.ScopeGroup) or (Workspace = Picked) then
-        begin
-          Units := Units + Workspace.State.ProjectFiles;
-        end;
+        Result := Result + mWorkspace.State.ProjectFiles;
       end;
-    finally
-      TMonitor.Exit(FWorkspacesLock);
+    end;
+  finally
+    System.TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+/// <summary>Nur die Regeln mit der Kennung AId.</summary>
+function RulesWithId(const ARules: TArray<IRule>; const AId: string): TArray<IRule>;
+var
+  mRule: IRule;
+begin
+  Result := nil;
+  for mRule in ARules do
+  begin
+    if SameText(mRule.Descriptor.Id, AId) then
+    begin
+      Result := Result + [mRule];
     end;
   end;
-  Result := TLspDfmPropertyRules.BuildEdit(Units,
-    function(const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean
-    var
-      Context: TRuleCheckContext;
-      Rule: IRule;
-      Rules: TArray<IRule>;
-      Text: string;
-      Tree: TSyntaxTree;
-    begin
-      AFindings := nil;
-      Result := SameText(ExtractFileExt(AFileName), '.pas') and
-        RuleContextFor(TDocumentUris.FromPath(AFileName), Context) and (Context.FormFile <> '') and
-        ReadSourceText(AFileName, Text);
-      if not Result then
-      begin
-        Exit;
-      end;
-      // Nur dfm-property; RuleFindings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
-      Rules := nil;
-      for Rule in Context.Rules do
-      begin
-        if SameText(Rule.Descriptor.Id, TLspDfmPropertyRules.RuleId) then
-        begin
-          Rules := Rules + [Rule];
-        end;
-      end;
-      Context.Rules := Rules;
-      Tree := TSyntaxTreeCache.Parse(Text);
-      try
-        AFindings := TLspSyntaxDiagnostics.RuleFindings(Text, Tree, Context);
-      finally
-        Tree.Free;
-      end;
-    end, Files, Edits);
-  // Nur Zahlen ins Log, keine Pfade (#647).
-  FLogger.Info(Format('Eigenschaftsregeln: %d Änderungen in %d Formulardateien vorgeschlagen', [Edits, Files]));
+end;
+
+function TServerComposition.DfmPropertyFindings(const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean;
+var
+  mContext: TRuleCheckContext;
+  mText: string;
+  mTree: TSyntaxTree;
+begin
+  AFindings := nil;
+  Result := SameText(ExtractFileExt(AFileName), '.pas') and
+    RuleContextFor(TDocumentUris.FromPath(AFileName), mContext) and (mContext.FormFile <> '') and
+    ReadSourceText(AFileName, mText);
+  if not Result then
+  begin
+    Exit;
+  end;
+  // Nur dfm-property; RuleFindings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
+  mContext.Rules := RulesWithId(mContext.Rules, TLspDfmPropertyRules.RuleId);
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    AFindings := TLspSyntaxDiagnostics.RuleFindings(mText, mTree, mContext);
+  finally
+    mTree.Free;
+  end;
 end;
 
 function TServerComposition.RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
@@ -5700,65 +5804,49 @@ begin
   end;
 end;
 
+/// <summary>Liest Ressourcen neben der Unit, z. B. die .dcr mit den Palettensymbolen (#114).</summary>
+function FolderFileReader(const AFolder: string): TRuleFileReader;
+begin
+  Result :=
+    function(const AName: string; out AData: TBytes): Boolean
+    begin
+      Result := TFile.Exists(TPath.Combine(AFolder, AName));
+      if Result then
+      try
+        AData := TFile.ReadAllBytes(TPath.Combine(AFolder, AName));
+      except
+        on EInOutError do
+          Result := False;
+        on EFileStreamError do
+          Result := False;
+      end;
+    end;
+end;
+
+/// <summary>Fehlende Dateien aus {$I} und {$R} (#1379) neben der Unit.</summary>
+function FolderFileExists(const AFolder: string): TRuleFileExists;
+begin
+  Result :=
+    function(const AName: string): Boolean
+    begin
+      Result := TFile.Exists(TPath.Combine(AFolder, AName));
+    end;
+end;
+
 function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
 var
-  Workspace, Other: TShellWorkspace;
-  FileName, Folder: string;
-  Project: TProjectInfo;
-  Projects: TArray<TProjectInfo>;
-  RuleProject: TCheckProject;
-  Pending: string;
+  mFileName: string;
+  mProjects: TArray<TProjectInfo>;
   mLibrary: Boolean;
 begin
   AContext := Default(TRuleCheckContext);
-  FileName := TDocumentUris.ToPath(AUri);
-  AContext.FileName := FileName;
-  Projects := nil;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := PickWorkspace(FileName);
-    if Workspace = nil then
-    begin
-      AContext.Settings := FLooseSettings;
-    end
-    else
-    begin
-      AContext.Settings := Workspace.Configuration.Settings;
-      AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
-      AContext.Baseline := Workspace.Baseline;
-      // Index, Namespaces, Unit-Suche, Packages und Namenskonvention auf demselben Weg wie MCP und Linter
-      // (#1112).
-      AContext.Services := Workspace.RuleServices;
-      // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
-      AContext.Services.Queries := FQueries;
-      if Workspace.State.Project(Project) then
-      begin
-        Projects := Projects + [Project];
-      end;
-      // Weitere Projekte mit der Datei (#1112): Eine Unit im Testprogramm und im Package hat keine
-      // eindeutige Anwendungsart (MergeRuleProjects).
-      for Other in FWorkspaces do
-      begin
-        if (Other <> Workspace) and Other.State.ContainsFile(FileName) and Other.State.Project(Project) then
-        begin
-          Projects := Projects + [Project];
-        end;
-      end;
-    end;
-    // RTL, VCL und Komponenten außerhalb der Projekte (diagnostics.librarySources): Wer mit Strg+Klick in
-    // System.Net.HttpClient.pas springt, soll dort keine Befunde zu fremdem Code sehen.
-    mLibrary := not AContext.Settings.DiagnosticsLibrarySources and IsLibrarySource(FileName);
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  mFileName := TDocumentUris.ToPath(AUri);
+  AContext.FileName := mFileName;
+  RuleWorkspaceContext(mFileName, AContext, mProjects, mLibrary);
   // Anwendungsart, Projektname und Formulare der .dpr (#926, #943, #956, #1055), wie bei MCP und Linter.
-  if Projects <> nil then
+  if mProjects <> nil then
   begin
-    RuleProject := TShellRuleProjects.RuleProjectOf(Projects, FileName, ReadSourceText);
-    AContext.Application := RuleProject.Application;
-    AContext.ProjectName := RuleProject.Name;
-    AContext.AutoCreateForms := RuleProject.AutoCreateForms;
-    AContext.ProjectMainSource := RuleProject.ProjectMainSource;
+    ApplyRuleProject(mProjects, mFileName, AContext);
   end;
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen. Ohne Regeln bleibt die
   // Datei still (TLspSyntaxDiagnostics.RuleFindings).
@@ -5770,6 +5858,90 @@ begin
   begin
     AContext.Rules := BuiltinRules;
   end;
+  RuleIndexServices(AContext);
+  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
+  // dort diagnostics.usesCycleLive.
+  AContext.Live := True;
+  if SameText(ExtractFileExt(mFileName), '.pas') then
+  begin
+    ReadRuleFormFile(mFileName, AContext);
+  end;
+  AContext.ReadFile := FolderFileReader(ExtractFilePath(mFileName));
+  AContext.FileExists := FolderFileExists(ExtractFilePath(mFileName));
+  Result := True;
+end;
+
+procedure TServerComposition.RuleWorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
+  out AProjects: TArray<TProjectInfo>; out ALibrary: Boolean);
+var
+  mWorkspace: TShellWorkspace;
+begin
+  AProjects := nil;
+  System.TMonitor.Enter(FWorkspacesLock);
+  try
+    mWorkspace := PickWorkspace(AFileName);
+    if mWorkspace = nil then
+    begin
+      AContext.Settings := FLooseSettings;
+    end
+    else
+    begin
+      AContext.Settings := mWorkspace.Configuration.Settings;
+      AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mWorkspace.Root), AFileName);
+      AContext.Baseline := mWorkspace.Baseline;
+      // Index, Namespaces, Unit-Suche, Packages und Namenskonvention auf demselben Weg wie MCP und Linter
+      // (#1112).
+      AContext.Services := mWorkspace.RuleServices;
+      // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
+      AContext.Services.Queries := FQueries;
+      AProjects := ProjectsWithFile(mWorkspace, AFileName);
+    end;
+    // RTL, VCL und Komponenten außerhalb der Projekte (diagnostics.librarySources): Wer mit Strg+Klick in
+    // System.Net.HttpClient.pas springt, soll dort keine Befunde zu fremdem Code sehen.
+    ALibrary := not AContext.Settings.DiagnosticsLibrarySources and IsLibrarySource(AFileName);
+  finally
+    System.TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.ProjectsWithFile(AWorkspace: TShellWorkspace;
+  const AFileName: string): TArray<TProjectInfo>;
+var
+  mOther: TShellWorkspace;
+  mProject: TProjectInfo;
+begin
+  Result := nil;
+  if AWorkspace.State.Project(mProject) then
+  begin
+    Result := Result + [mProject];
+  end;
+  // Weitere Projekte mit der Datei (#1112): Eine Unit im Testprogramm und im Package hat keine
+  // eindeutige Anwendungsart (MergeRuleProjects).
+  for mOther in FWorkspaces do
+  begin
+    if (mOther <> AWorkspace) and mOther.State.ContainsFile(AFileName) and mOther.State.Project(mProject) then
+    begin
+      Result := Result + [mProject];
+    end;
+  end;
+end;
+
+procedure TServerComposition.ApplyRuleProject(const AProjects: TArray<TProjectInfo>; const AFileName: string;
+  var AContext: TRuleCheckContext);
+var
+  mRuleProject: TCheckProject;
+begin
+  mRuleProject := TShellRuleProjects.RuleProjectOf(AProjects, AFileName, ReadSourceText);
+  AContext.Application := mRuleProject.Application;
+  AContext.ProjectName := mRuleProject.Name;
+  AContext.AutoCreateForms := mRuleProject.AutoCreateForms;
+  AContext.ProjectMainSource := mRuleProject.ProjectMainSource;
+end;
+
+procedure TServerComposition.RuleIndexServices(var AContext: TRuleCheckContext);
+var
+  mPending: string;
+begin
   // Der Server hält alle Ordner: ein Index, Nachladen über alle Ordner (auch für Dateien ohne Ordner) und die
   // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
   AContext.Services.Index := FIndex;
@@ -5777,56 +5949,31 @@ begin
   // Solange Projekte laden oder der Index aufgebaut wird, ohne Index prüfen: Ein halber Index kennt Units noch
   // nicht, Regeln wie unresolved-identifier meldeten dann Bezeichner aus ihnen als nicht deklariert. Ohne Index
   // schweigen diese Regeln (wie mit --no-index); IndexFinished prüft danach alle Dateien neu.
-  if not RuleProjectsComplete(Pending) then
+  if not RuleProjectsComplete(mPending) then
   begin
     AContext.Services.Index := nil;
     AContext.Services.EnsureUnit := nil;
   end;
   AContext.Services.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText,
     RuleProjectsComplete, FUsesGraph);
-  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
-  // dort diagnostics.usesCycleLive.
-  AContext.Live := True;
+end;
+
+procedure TServerComposition.ReadRuleFormFile(const AFileName: string; var AContext: TRuleCheckContext);
+begin
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
-  if SameText(ExtractFileExt(FileName), '.pas') then
+  if ReadSourceText(ChangeFileExt(AFileName, '.dfm'), AContext.FormText) then
   begin
-    if ReadSourceText(ChangeFileExt(FileName, '.dfm'), AContext.FormText) then
-    begin
-      AContext.FormFile := ChangeFileExt(FileName, '.dfm');
-    end
-    else if ReadSourceText(ChangeFileExt(FileName, '.fmx'), AContext.FormText) then
-    begin
-      AContext.FormFile := ChangeFileExt(FileName, '.fmx');
-    end
-    else
-    begin
-      AContext.FormText := '';
-    end;
+    AContext.FormFile := ChangeFileExt(AFileName, '.dfm');
+  end
+  else if ReadSourceText(ChangeFileExt(AFileName, '.fmx'), AContext.FormText) then
+  begin
+    AContext.FormFile := ChangeFileExt(AFileName, '.fmx');
+  end
+  else
+  begin
+    AContext.FormText := '';
   end;
-  // Ressourcen neben der Unit, z. B. die .dcr mit den Palettensymbolen (#114).
-  Folder := ExtractFilePath(FileName);
-  AContext.ReadFile :=
-    function(const AName: string; out AData: TBytes): Boolean
-    begin
-      Result := TFile.Exists(TPath.Combine(Folder, AName));
-      if Result then
-      try
-        AData := TFile.ReadAllBytes(TPath.Combine(Folder, AName));
-      except
-        on EInOutError do
-          Result := False;
-        on EFileStreamError do
-          Result := False;
-      end;
-    end;
-  // Fehlende Dateien aus {$I} und {$R} (#1379).
-  AContext.FileExists :=
-    function(const AName: string): Boolean
-    begin
-      Result := TFile.Exists(TPath.Combine(Folder, AName));
-    end;
-  Result := True;
 end;
 
 procedure TServerComposition.ProjectLoaded;
