@@ -144,7 +144,9 @@ end;
 class function TAtlasStatusRegistry.Default: IAtlasStatusRegistry;
 begin
   if FDefault = nil then
+  begin
     FDefault := TAtlasStatusRegistry.Create;
+  end;
   Result := FDefault;
 end;
 
@@ -158,17 +160,25 @@ var
   Index: Integer;
 begin
   for Index := 0 to FItems.Count - 1 do
+  begin
     if SameText(FItems[Index].Id, AId) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
 function Comes(const ALeft, ARight: IAtlasStatusItem): Boolean;
 begin
   if ALeft.Order <> ARight.Order then
-    Result := ALeft.Order < ARight.Order
+  begin
+    Result := ALeft.Order < ARight.Order;
+  end
   else
+  begin
     Result := CompareText(ALeft.Id, ARight.Id) < 0;
+  end;
 end;
 
 procedure TAtlasStatusRegistry.Add(const AItem: IAtlasStatusItem);
@@ -176,15 +186,21 @@ var
   Index, Existing: Integer;
 begin
   if AItem = nil then
+  begin
     Exit;
+  end;
   FLock.Enter;
   try
     Existing := IndexOf(AItem.Id);
     if Existing >= 0 then
+    begin
       FItems.Delete(Existing);
+    end;
     Index := 0;
     while (Index < FItems.Count) and not Comes(AItem, FItems[Index]) do
+    begin
       Inc(Index);
+    end;
     FItems.Insert(Index, AItem);
   finally
     FLock.Leave;
@@ -200,7 +216,9 @@ begin
   try
     Index := IndexOf(AId);
     if Index < 0 then
+    begin
       Exit;
+    end;
     FItems.Delete(Index);
   finally
     FLock.Leave;
@@ -216,9 +234,13 @@ begin
   try
     Index := IndexOf(AId);
     if Index >= 0 then
-      Result := FItems[Index]
+    begin
+      Result := FItems[Index];
+    end
     else
+    begin
       Result := nil;
+    end;
   finally
     FLock.Leave;
   end;
@@ -374,7 +396,9 @@ end;
 procedure TAtlasStatusLine.Execute;
 begin
   if HasAction then
+  begin
     FAction();
+  end;
 end;
 
 function TAtlasStatusLine.Brief: string;
@@ -427,7 +451,9 @@ begin
     FLock.Leave;
   end;
   if Different and (Registry <> nil) then
+  begin
     IAtlasStatusRegistry(Registry).Changed;
+  end;
 end;
 
 procedure TAtlasStatusLine.Detach;
@@ -454,10 +480,16 @@ begin
   begin
     Skip := False;
     for Hidden in AHidden do
+    begin
       if SameText(Trim(Hidden), Item.Id) then
+      begin
         Skip := True;
+      end;
+    end;
     if not Skip then
+    begin
       Result := Result + [Item];
+    end;
   end;
 end;
 
@@ -467,8 +499,12 @@ var
 begin
   Result := TAtlasStatusState.Neutral;
   for Item in AItems do
+  begin
     if Ord(Item.State) > Ord(Result) then
+    begin
       Result := Item.State;
+    end;
+  end;
 end;
 
 class function TAtlasStatusSummary.Leading(const AItems: TArray<IAtlasStatusItem>): IAtlasStatusItem;
@@ -478,8 +514,12 @@ begin
   // AItems ist nach Reihenfolge sortiert: die erste Zeile mit dem schlechtesten Zustand.
   Result := nil;
   for Item in AItems do
+  begin
     if (Result = nil) or (Ord(Item.State) > Ord(Result.State)) then
+    begin
       Result := Item;
+    end;
+  end;
 end;
 
 class function TAtlasStatusSummary.FieldText(const AItems: TArray<IAtlasStatusItem>;
@@ -496,20 +536,30 @@ begin
   Result := FieldCaption;
   Lead := nil;
   if AShowSummary then
+  begin
     Lead := Leading(AItems);
+  end;
   if (Lead <> nil) and (Ord(Lead.State) >= Ord(TAtlasStatusState.Yellow)) and (Lead.Summary <> '') then
-    Result := Result + Separator + Lead.Summary
+  begin
+    Result := Result + Separator + Lead.Summary;
+  end
   else
+  begin
     Lead := nil;
+  end;
   if AAlwaysId = '' then
+  begin
     Exit;
+  end;
   for Item in AItems do
+  begin
     if SameText(Item.Id, AAlwaysId) and (Item <> Lead) and (Ord(Item.State) >= Ord(TAtlasStatusState.Yellow)) and
       (Item.Summary <> '') then
     begin
       Result := Result + Separator + Item.Summary;
       Exit;
     end;
+  end;
 end;
 
 class function TAtlasStatusSummary.Tooltip(const AItems: TArray<IAtlasStatusItem>): string;
@@ -519,12 +569,20 @@ var
 begin
   Lines := nil;
   for Item in AItems do
+  begin
     if (Item.State <> TAtlasStatusState.Green) and (Item.Text <> '') then
+    begin
       Lines := Lines + [Item.Text];
+    end;
+  end;
   if Length(Lines) = 0 then
-    Result := FieldCaption + ': alles in Ordnung'
+  begin
+    Result := FieldCaption + ': alles in Ordnung';
+  end
   else
+  begin
     Result := string.Join(sLineBreak, Lines);
+  end;
 end;
 
 class function TAtlasStatusSummary.ParseIds(const AText: string): TArray<string>;
@@ -533,8 +591,12 @@ var
 begin
   Result := nil;
   for Part in AText.Split([',', ';', ' ', #9, #13, #10]) do
+  begin
     if Trim(Part) <> '' then
+    begin
       Result := Result + [Trim(Part)];
+    end;
+  end;
 end;
 
 class function TAtlasStatusSummary.JoinIds(const AIds: TArray<string>): string;

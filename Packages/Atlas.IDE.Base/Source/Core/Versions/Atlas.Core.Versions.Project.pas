@@ -29,18 +29,26 @@ var
 begin
   mValue := LowerCase(Trim(AValue));
   if (mValue = 'true') or (mValue = '1') or (mValue = '2') then
-    Result := True
+  begin
+    Result := True;
+  end
   else if (mValue = 'false') or (mValue = '0') then
-    Result := False
+  begin
+    Result := False;
+  end
   else
+  begin
     Result := ADefault;
+  end;
 end;
 
 function VersionPart(const AValue, ADefault: string): string;
 begin
   Result := Trim(AValue);
   if Result = '' then
+  begin
     Result := ADefault;
+  end;
 end;
 
 class function TAtlasProjectVersion.FromOptions(const AIncludeVersionInfo, AVersionKeys, AMajor, AMinor, ARelease,
@@ -50,19 +58,27 @@ var
 begin
   Result := '';
   if not IsOn(AIncludeVersionInfo, False) then
+  begin
     Exit;
+  end;
   for mPart in AVersionKeys.Split([';']) do
+  begin
     if SameText(Trim(Copy(mPart, 1, Pos('=', mPart) - 1)), 'FileVersion') then
     begin
       Result := Trim(Copy(mPart, Pos('=', mPart) + 1, MaxInt));
       // $(…) setzt erst MSBuild ein; dann gelten die Einzelwerte.
       if Pos('$(', Result) > 0 then
+      begin
         Result := '';
+      end;
       Break;
     end;
+  end;
   if Result = '' then
+  begin
     Result := VersionPart(AMajor, '1') + '.' + VersionPart(AMinor, '0') + '.' + VersionPart(ARelease, '0') + '.' +
       VersionPart(ABuild, '0');
+  end;
 end;
 
 end.

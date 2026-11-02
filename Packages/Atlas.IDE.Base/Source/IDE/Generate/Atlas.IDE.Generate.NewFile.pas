@@ -116,9 +116,13 @@ end;
 function TAtlasFileCreator.GetCreatorType: string;
 begin
   if FKind = TAtlasNewFileKind.FormFile then
-    Result := sForm
+  begin
+    Result := sForm;
+  end
   else
+  begin
     Result := sUnit;
+  end;
 end;
 
 function TAtlasFileCreator.GetExisting: Boolean;
@@ -217,7 +221,9 @@ begin
   try
     Result := Modules.CreateModule(TAtlasFileCreator.Create(AKind, ATemplate.Body, Project)) <> nil;
     if not Result then
+    begin
       AError := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupNewFailed, [ATemplate.Prefix]);
+    end;
   except
     on E: Exception do
     begin
@@ -244,14 +250,18 @@ begin
   if GetActiveProject = nil then
   begin
     if Assigned(Say) then
+    begin
       Say(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNewNoProject));
+    end;
     Exit;
   end;
   Settings := TAtlasIdeSettings.Current;
   Templates := TAtlasFileTemplates.OfKind(AUser, AKind);
   Entries := TAtlasFileTemplates.Entries(Templates);
   for Index := 0 to High(Entries) do
+  begin
     Entries[Index].Caption := TAtlasGenerateWindow.EntryCaption(Entries[Index]);
+  end;
   // Nur die Gruppe Vorlagen; ausgeblendete Einträge und Namen der Befehle wie im Erzeugen-Menü.
   Options := TAtlasGenerateOptions.Create(Settings.GenerateMenuGroups, Settings.GenerateMenuHidden, False,
     Settings.GenerateMenuShowCommandNames).Only([TAtlasGenerateGroup.Templates]);
@@ -265,7 +275,9 @@ begin
       Next.GenerateMenuHidden := TAtlasGenerateOptions.AddHidden(Next.GenerateMenuHidden, AEntry.Id);
       TAtlasIdeSettings.Update(Next);
       if Assigned(Say) then
+      begin
         Say(TAtlasStrings.Fmt(TAtlasTextId.GenerateHiddenSaved, [AEntry.Caption]));
+      end;
     end;
   Window.OnExecute :=
     procedure(const AEntry: TAtlasGenerateEntry; const AArgument: string)
@@ -279,16 +291,24 @@ begin
           Error: string;
         begin
           if (Entry.Source < 0) or (Entry.Source > High(Templates)) then
+          begin
             Exit;
+          end;
           if not CreateFile(AKind, Templates[Entry.Source], Error) and Assigned(Say) then
+          begin
             Say(Error);
+          end;
         end);
     end;
   // Über dem Hauptfenster: Die Willkommensseite hat keinen Cursor.
   if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Window.ShowOver(Area);
 end;
 

@@ -72,9 +72,13 @@ uses
 class function TAtlasBuildNotices.SourceOf(ABackground: Boolean): string;
 begin
   if ABackground then
-    Result := TAtlasNotificationSources.Check
+  begin
+    Result := TAtlasNotificationSources.Check;
+  end
   else
+  begin
     Result := TAtlasNotificationSources.Build;
+  end;
 end;
 
 class function TAtlasBuildNotices.FromRun(const AMessages: TArray<TAtlasCompilerMessage>; ASucceeded, AReadable,
@@ -110,9 +114,13 @@ begin
       Result.Severity := TAtlasNotificationSeverity.Error;
     end
     else if AReadable and ASucceeded and (APreviousErrors > 0) then
-      Result.Kind := TAtlasBuildNoticeKind.CheckClean
+    begin
+      Result.Kind := TAtlasBuildNoticeKind.CheckClean;
+    end
     else
+    begin
       Result.Kind := TAtlasBuildNoticeKind.None;
+    end;
     Exit;
   end;
   if Result.Errors > 0 then
@@ -132,7 +140,9 @@ begin
     Result.Severity := TAtlasNotificationSeverity.Warning;
   end
   else
+  begin
     Result.Kind := TAtlasBuildNoticeKind.Succeeded;
+  end;
 end;
 
 class function TAtlasBuildNotices.FromVerdict(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -147,15 +157,21 @@ begin
   Result.PromotedCode := AVerdict.PromotedCode;
   Result.HasTarget := (AVerdict.First >= 0) and (AVerdict.First <= High(AMessages));
   if Result.HasTarget then
+  begin
     Result.Target := AMessages[AVerdict.First];
+  end;
   case AVerdict.Reason of
     TAtlasBuildVerdictReason.CompilerFailed:
       begin
         Result.Severity := TAtlasNotificationSeverity.Error;
         if Result.Errors > 0 then
-          Result.Kind := TAtlasBuildNoticeKind.Errors
+        begin
+          Result.Kind := TAtlasBuildNoticeKind.Errors;
+        end
         else
+        begin
           Result.Kind := TAtlasBuildNoticeKind.Failed;
+        end;
       end;
     TAtlasBuildVerdictReason.WarningsAsErrors, TAtlasBuildVerdictReason.ZeroHints:
       begin

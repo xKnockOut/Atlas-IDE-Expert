@@ -156,7 +156,9 @@ begin
       FlushFileBuffers(Handle);
       Result := SetFileInformation(Handle, FileRenameInfoEx, Info, Size);
       if not Result then
+      begin
         AError := GetLastError;
+      end;
     finally
       FreeMem(Info);
     end;
@@ -178,11 +180,15 @@ function TryReplace(const ASource, ATarget: string; out AError: DWORD): Boolean;
 begin
   Result := PosixReplace(ASource, ATarget, AError);
   if Result or not PosixUnsupported(AError) then
+  begin
     Exit;
+  end;
   // Klassisch ersetzen: gelingt nur, solange niemand die Zieldatei offen hat.
   Result := MoveFileEx(PChar(ASource), PChar(ATarget), MOVEFILE_REPLACE_EXISTING or MOVEFILE_WRITE_THROUGH);
   if not Result then
+  begin
     AError := GetLastError;
+  end;
 end;
 
 /// <summary>Ersetzt ATarget in einem Schritt durch ASource; EAtlasTextFileError, wenn ein fremdes Programm
@@ -196,9 +202,11 @@ begin
   while not TryReplace(ASource, ATarget, Error) do
   begin
     if Attempt >= ReplaceAttempts then
+    begin
       // Ohne Dateinamen: Die Meldung kann im Protokoll landen.
       raise EAtlasTextFileError.CreateFmt('Datei ist von einem anderen Programm gesperrt und bleibt unverändert (%s)',
         [SysErrorMessage(Error)]);
+    end;
     // Netz (siehe ReplaceAttempts).
     Inc(Attempt);
     Sleep(ReplaceWaitMs);
@@ -214,21 +222,29 @@ begin
   Handle := CreateFile(PChar(AFileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
     nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0);
   if Handle = INVALID_HANDLE_VALUE then
+  begin
     raise EFOpenError.CreateResFmt(@SFOpenErrorEx, [ExpandFileName(AFileName), SysErrorMessage(GetLastError)]);
+  end;
   try
     Size := FileSeek(Handle, Int64(0), 2);
     if (Size < 0) or (Size > MaxInt) or (FileSeek(Handle, Int64(0), 0) <> 0) then
+    begin
       raise EReadError.CreateRes(@SReadError);
+    end;
     SetLength(Result, Integer(Size));
     Total := 0;
     while Total < Length(Result) do
     begin
       Count := FileRead(Handle, Result[Total], Length(Result) - Total);
       if Count < 0 then
+      begin
         raise EReadError.CreateRes(@SReadError);
+      end;
       // Kürzer geworden (jemand schreibt an Ort und Stelle): lesen, was da ist.
       if Count = 0 then
+      begin
         Break;
+      end;
       Inc(Total, Count);
     end;
     SetLength(Result, Total);
@@ -257,7 +273,9 @@ var
   Encoding: TEncoding;
 begin
   if ACodePage <= 0 then
+  begin
     Exit(TEncoding.ANSI.GetString(ABytes));
+  end;
   Encoding := TEncoding.GetEncoding(ACodePage);
   try
     Result := Encoding.GetString(ABytes);
@@ -271,7 +289,9 @@ var
   Encoding: TEncoding;
 begin
   if ACodePage <= 0 then
+  begin
     Exit(TEncoding.ANSI.GetBytes(AText));
+  end;
   Encoding := TEncoding.GetEncoding(ACodePage);
   try
     Result := Encoding.GetBytes(AText);
@@ -329,7 +349,9 @@ begin
   begin
     Result.Encoding := TAtlasTextEncoding.Ansi;
     if IsAnsiDefault(ADefaultCodePage) then
+    begin
       Result.CodePage := ADefaultCodePage;
+    end;
     Result.Text := AnsiText(ABytes, Result.CodePage);
   end;
 end;
@@ -361,7 +383,9 @@ var
 begin
   Bytes := ReadAllBytes(AFileName);
   if IsBinaryForm(Bytes) then
+  begin
     raise EAtlasTextFileError.Create('binär gespeichertes Formular; bitte in der IDE als Text speichern');
+  end;
   Result := Decode(Bytes, ADefaultCodePage);
 end;
 
@@ -379,13 +403,17 @@ class function TAtlasTextFile.LoadLines(const AFileName: string): TArray<string>
 begin
   Result := TTextLines.SplitLines(LoadText(AFileName));
   if (Length(Result) > 0) and (Result[High(Result)] = '') then
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 class procedure TAtlasTextFile.Save(const AFileName: string; const AContent: TAtlasTextFileContent);
 begin
   if TFile.Exists(AFileName) and IsBinaryForm(ReadAllBytes(AFileName)) then
+  begin
     raise EAtlasTextFileError.Create('binär gespeichertes Formular wird nicht überschrieben');
+  end;
   Replace(AFileName, Encode(AContent));
 end;
 
@@ -400,7 +428,9 @@ begin
     ReplaceWith(Temporary, AFileName);
   except
     if TFile.Exists(Temporary) then
+    begin
       TFile.Delete(Temporary);
+    end;
     raise;
   end;
 end;

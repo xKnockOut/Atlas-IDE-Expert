@@ -81,14 +81,18 @@ end;
 function EnsureEntries: TDictionary<string, TEntry>;
 begin
   if Entries = nil then
+  begin
     Entries := TDictionary<string, TEntry>.Create;
+  end;
   Result := Entries;
 end;
 
 procedure InvalidateView(const AView: IOTAEditView);
 begin
   if (AView <> nil) and (AView.Buffer <> nil) then
+  begin
     TAtlasEditorSnapshots.Invalidate(AView.Buffer.FileName);
+  end;
 end;
 
 { TSnapshotNotifier }
@@ -149,7 +153,9 @@ begin
   Result.FileName := Buffer.FileName;
   Key := KeyOf(Result.FileName);
   if not EnsureEntries.TryGetValue(Key, Entry) then
+  begin
     Entry := Default(TEntry);
+  end;
   Lines := Buffer.GetLinesInBuffer;
   Modified := Buffer.GetModified;
   Stamp := GetTickCount;
@@ -179,7 +185,9 @@ var
   Entry: TEntry;
 begin
   if Entries = nil then
+  begin
     Exit;
+  end;
   Key := KeyOf(AFileName);
   if Entries.TryGetValue(Key, Entry) then
   begin
@@ -195,7 +203,9 @@ var
   Entry: TEntry;
 begin
   if Entries = nil then
+  begin
     Exit;
+  end;
   Keys := Entries.Keys.ToArray;
   for Key in Keys do
   begin
@@ -210,9 +220,13 @@ var
   Editors: IOTAEditorServices;
 begin
   if NotifierIndex >= 0 then
+  begin
     Exit;
+  end;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     NotifierIndex := Editors.AddNotifier(TSnapshotNotifier.Create);
+  end;
 end;
 
 class procedure TAtlasEditorSnapshots.Uninstall;
@@ -221,7 +235,9 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (NotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Editors.RemoveNotifier(NotifierIndex);
+  end;
   NotifierIndex := -1;
   FreeAndNil(Entries);
 end;

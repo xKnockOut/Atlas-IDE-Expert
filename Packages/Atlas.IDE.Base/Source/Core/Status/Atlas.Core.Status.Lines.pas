@@ -160,9 +160,13 @@ function SkippedText(const AInfo: TAtlasServerInfo): string;
 begin
   Result := '';
   if AInfo.Skipped = 1 then
-    Result := '1 Anfrage übersprungen nach Absturz'
+  begin
+    Result := '1 Anfrage übersprungen nach Absturz';
+  end
   else if AInfo.Skipped > 1 then
+  begin
     Result := Format('%d Anfragen übersprungen nach Absturz', [AInfo.Skipped]);
+  end;
 end;
 
 { TAtlasStatusLines }
@@ -170,11 +174,17 @@ end;
 class function TAtlasStatusLines.When(AValue, ANow: TDateTime): string;
 begin
   if AValue <= 0 then
+  begin
     Exit('');
+  end;
   if Trunc(AValue) = Trunc(ANow) then
-    Result := FormatDateTime('hh":"nn', AValue)
+  begin
+    Result := FormatDateTime('hh":"nn', AValue);
+  end
   else
+  begin
     Result := FormatDateTime('dd"."mm"." hh":"nn', AValue);
+  end;
 end;
 
 class function TAtlasStatusLines.ServerText(const AInfo: TAtlasServerInfo): string;
@@ -191,39 +201,57 @@ begin
       begin
         Result := 'Server: läuft';
         if AInfo.Since > 0 then
+        begin
           Result := Result + ' seit ' + When(AInfo.Since, ANow);
+        end;
         if AInfo.Samples > 0 then
         begin
           Result := Result + Format(', %s im Mittel der letzten %d Anfragen', [Milliseconds(AInfo.AverageMs),
             AInfo.Samples]);
           if AInfo.AverageMs >= SlowMs then
+          begin
             Result := Result + ' (langsam)';
+          end;
         end;
         if AInfo.Skipped > 0 then
+        begin
           Result := Result + ', ' + SkippedText(AInfo);
+        end;
       end;
     TAtlasServerPhase.Stopped:
       begin
         if AInfo.Ended then
-          Result := 'Server: beendet'
+        begin
+          Result := 'Server: beendet';
+        end
         else
+        begin
           Result := 'Server: abgestürzt';
+        end;
         if AInfo.Since > 0 then
+        begin
           Result := Result + ' um ' + When(AInfo.Since, ANow);
+        end;
         if not AInfo.Ended and (AInfo.Error <> '') then
+        begin
           Result := Result + ' (' + AInfo.Error + ')';
+        end;
       end;
     TAtlasServerPhase.Failed:
       begin
         Result := 'Server: Start fehlgeschlagen';
         if AInfo.Error <> '' then
+        begin
           Result := Result + ' (' + AInfo.Error + ')';
+        end;
       end;
   else
     Result := 'Server: nicht gestartet';
   end;
   if AInfo.Version <> '' then
+  begin
     Result := Result + ', Version ' + AInfo.Version;
+  end;
 end;
 
 class function TAtlasStatusLines.ServerState(const AInfo: TAtlasServerInfo): TAtlasStatusState;
@@ -234,15 +262,23 @@ begin
     TAtlasServerPhase.Running:
       // Übersprungene Anfragen (#1355) sichtbar wie ein langsamer Server.
       if IsSlow(AInfo) or (AInfo.Skipped > 0) then
-        Result := TAtlasStatusState.Yellow
+      begin
+        Result := TAtlasStatusState.Yellow;
+      end
       else
+      begin
         Result := TAtlasStatusState.Green;
+      end;
     TAtlasServerPhase.Stopped:
       // Von Atlas beendet ist kein Fehler; abgestürzt schon.
       if AInfo.Ended then
-        Result := TAtlasStatusState.Neutral
+      begin
+        Result := TAtlasStatusState.Neutral;
+      end
       else
+      begin
         Result := TAtlasStatusState.Red;
+      end;
     TAtlasServerPhase.Failed:
       Result := TAtlasStatusState.Red;
   else
@@ -257,16 +293,26 @@ begin
       Result := 'startet';
     TAtlasServerPhase.Running:
       if AInfo.Skipped > 0 then
-        Result := 'übersprungen nach Absturz'
+      begin
+        Result := 'übersprungen nach Absturz';
+      end
       else if IsSlow(AInfo) then
-        Result := 'Server langsam'
+      begin
+        Result := 'Server langsam';
+      end
       else
+      begin
         Result := '';
+      end;
     TAtlasServerPhase.Stopped:
       if AInfo.Ended then
-        Result := ''
+      begin
+        Result := '';
+      end
       else
+      begin
         Result := 'Server abgestürzt';
+      end;
     TAtlasServerPhase.Failed:
       Result := 'Server fehlt';
   else
@@ -281,16 +327,26 @@ begin
       Result := 'Server startet';
     TAtlasServerPhase.Running:
       if AInfo.Skipped > 0 then
-        Result := 'Server läuft, ' + SkippedText(AInfo)
+      begin
+        Result := 'Server läuft, ' + SkippedText(AInfo);
+      end
       else if IsSlow(AInfo) then
-        Result := 'Server läuft langsam'
+      begin
+        Result := 'Server läuft langsam';
+      end
       else
+      begin
         Result := 'Server läuft';
+      end;
     TAtlasServerPhase.Stopped:
       if AInfo.Ended then
-        Result := 'Server beendet'
+      begin
+        Result := 'Server beendet';
+      end
       else
+      begin
         Result := 'Server abgestürzt';
+      end;
     TAtlasServerPhase.Failed:
       Result := 'Server-Start fehlgeschlagen';
   else
@@ -310,20 +366,32 @@ begin
     TAtlasServerPhase.Running:
       begin
         if AInfo.Since > 0 then
+        begin
           Result := 'seit ' + When(AInfo.Since, ANow);
+        end;
         if (AInfo.Skipped > 0) and (Result <> '') then
-          Result := Result + ', ' + SkippedText(AInfo)
+        begin
+          Result := Result + ', ' + SkippedText(AInfo);
+        end
         else if AInfo.Skipped > 0 then
+        begin
           Result := SkippedText(AInfo);
+        end;
       end;
     TAtlasServerPhase.Stopped:
       begin
         if AInfo.Since > 0 then
+        begin
           Result := 'um ' + When(AInfo.Since, ANow);
+        end;
         if not AInfo.Ended and (AInfo.Error <> '') and (Result <> '') then
-          Result := Result + ', ' + AInfo.Error
+        begin
+          Result := Result + ', ' + AInfo.Error;
+        end
         else if not AInfo.Ended and (AInfo.Error <> '') then
+        begin
           Result := AInfo.Error;
+        end;
       end;
     TAtlasServerPhase.Failed:
       Result := AInfo.Error;
@@ -343,58 +411,90 @@ begin
   begin
     // Ohne Server nur gespeicherte Werte (#754).
     if (AInfo.Units >= 0) and (AInfo.StoredAt > 0) then
-      Result := Format('Index: %d Units, Stand vom %s (Server läuft nicht)', [AInfo.Units, When(AInfo.StoredAt, ANow)])
+    begin
+      Result := Format('Index: %d Units, Stand vom %s (Server läuft nicht)', [AInfo.Units, When(AInfo.StoredAt, ANow)]);
+    end
     else
+    begin
       Result := 'Index: Server läuft nicht';
+    end;
   end
   else if AInfo.Indexing then
   begin
     Result := 'Index: wird aufgebaut';
     if AInfo.Percent >= 0 then
+    begin
       Result := Result + Format(' (%d %%)', [AInfo.Percent]);
+    end;
     if AInfo.Units >= 0 then
+    begin
       Result := Result + Format(', bisher %d Units', [AInfo.Units]);
+    end;
   end
   else if AInfo.Units >= 0 then
   begin
     Result := Format('Index: %d Units', [AInfo.Units]);
     if AInfo.FullAt > 0 then
+    begin
       Result := Result + ', vollständig indiziert ' + When(AInfo.FullAt, ANow);
+    end;
   end
   else
+  begin
     Result := 'Index: unbekannt';
+  end;
 end;
 
 class function TAtlasStatusLines.IndexState(const AInfo: TAtlasIndexInfo): TAtlasStatusState;
 begin
   if AInfo.Offline then
-    Result := TAtlasStatusState.Neutral
-  else if AInfo.Indexing then
-    Result := TAtlasStatusState.Yellow
-  else if AInfo.Units >= 0 then
-    Result := TAtlasStatusState.Green
-  else
+  begin
     Result := TAtlasStatusState.Neutral;
+  end
+  else if AInfo.Indexing then
+  begin
+    Result := TAtlasStatusState.Yellow;
+  end
+  else if AInfo.Units >= 0 then
+  begin
+    Result := TAtlasStatusState.Green;
+  end
+  else
+  begin
+    Result := TAtlasStatusState.Neutral;
+  end;
 end;
 
 class function TAtlasStatusLines.IndexSummary(const AInfo: TAtlasIndexInfo): string;
 begin
   if AInfo.Offline or not AInfo.Indexing then
-    Result := ''
+  begin
+    Result := '';
+  end
   else if AInfo.Percent >= 0 then
-    Result := Format('Index %d %%', [AInfo.Percent])
+  begin
+    Result := Format('Index %d %%', [AInfo.Percent]);
+  end
   else
+  begin
     Result := 'Index …';
+  end;
 end;
 
 class function TAtlasStatusLines.IndexBrief(const AInfo: TAtlasIndexInfo): string;
 begin
   if not AInfo.Offline and AInfo.Indexing then
-    Result := 'Index wird aufgebaut'
+  begin
+    Result := 'Index wird aufgebaut';
+  end
   else if (AInfo.Units >= 0) and (not AInfo.Offline or (AInfo.StoredAt > 0)) then
-    Result := Format('Index: %d Units', [AInfo.Units])
+  begin
+    Result := Format('Index: %d Units', [AInfo.Units]);
+  end
   else
+  begin
     Result := 'Index unbekannt';
+  end;
 end;
 
 class function TAtlasStatusLines.IndexDetail(const AInfo: TAtlasIndexInfo): string;
@@ -408,17 +508,25 @@ begin
   if AInfo.Offline then
   begin
     if (AInfo.Units >= 0) and (AInfo.StoredAt > 0) then
-      Result := 'Stand vom ' + When(AInfo.StoredAt, ANow)
+    begin
+      Result := 'Stand vom ' + When(AInfo.StoredAt, ANow);
+    end
     else
+    begin
       Result := 'Server läuft nicht';
+    end;
   end
   else if AInfo.Indexing then
   begin
     if AInfo.Percent >= 0 then
+    begin
       Result := Format('%d %%', [AInfo.Percent]);
+    end;
   end
   else if (AInfo.Units >= 0) and (AInfo.FullAt > 0) then
+  begin
     Result := 'indiziert ' + When(AInfo.FullAt, ANow);
+  end;
 end;
 
 class function TAtlasStatusLines.UpdateAvailable(const AInfo: TAtlasVersionInfo): Boolean;
@@ -430,73 +538,117 @@ class function TAtlasStatusLines.VersionText(const AInfo: TAtlasVersionInfo): st
 begin
   Result := 'Version: Atlas ' + AInfo.Installed;
   if UpdateAvailable(AInfo) then
-    Result := Result + ', Update ' + AInfo.Available + ' bereit'
+  begin
+    Result := Result + ', Update ' + AInfo.Available + ' bereit';
+  end
   else if not AInfo.CheckEnabled then
-    Result := Result + ' (Update-Prüfung aus)'
+  begin
+    Result := Result + ' (Update-Prüfung aus)';
+  end
   else if AInfo.Checked then
-    Result := Result + ' (aktuell)'
+  begin
+    Result := Result + ' (aktuell)';
+  end
   else
+  begin
     Result := Result + ' (noch nicht geprüft)';
+  end;
 end;
 
 class function TAtlasStatusLines.VersionState(const AInfo: TAtlasVersionInfo): TAtlasStatusState;
 begin
   if UpdateAvailable(AInfo) then
-    Result := TAtlasStatusState.Yellow
+  begin
+    Result := TAtlasStatusState.Yellow;
+  end
   else if AInfo.CheckEnabled and AInfo.Checked then
-    Result := TAtlasStatusState.Green
+  begin
+    Result := TAtlasStatusState.Green;
+  end
   else
+  begin
     Result := TAtlasStatusState.Neutral;
+  end;
 end;
 
 class function TAtlasStatusLines.VersionSummary(const AInfo: TAtlasVersionInfo): string;
 begin
   if UpdateAvailable(AInfo) then
-    Result := 'Update ' + AInfo.Available
+  begin
+    Result := 'Update ' + AInfo.Available;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TAtlasStatusLines.VersionBrief(const AInfo: TAtlasVersionInfo): string;
 begin
   if UpdateAvailable(AInfo) then
-    Result := 'Update ' + AInfo.Available + ' bereit'
+  begin
+    Result := 'Update ' + AInfo.Available + ' bereit';
+  end
   else
+  begin
     Result := 'Atlas ' + AInfo.Installed;
+  end;
 end;
 
 class function TAtlasStatusLines.VersionDetail(const AInfo: TAtlasVersionInfo): string;
 begin
   if UpdateAvailable(AInfo) then
-    Result := 'installiert ' + AInfo.Installed
+  begin
+    Result := 'installiert ' + AInfo.Installed;
+  end
   else if not AInfo.CheckEnabled then
-    Result := 'Update-Prüfung aus'
+  begin
+    Result := 'Update-Prüfung aus';
+  end
   else if AInfo.Checked then
-    Result := 'aktuell'
+  begin
+    Result := 'aktuell';
+  end
   else
+  begin
     Result := 'noch nicht geprüft';
+  end;
 end;
 
 class function TAtlasStatusLines.FileText(const AInfo: TAtlasFileInfo): string;
 begin
   if AInfo.Name = '' then
+  begin
     Exit('Datei: keine aktiv');
+  end;
   if not AInfo.Known then
-    Result := Format('Datei %s: noch nicht gespeichert', [AInfo.Name])
+  begin
+    Result := Format('Datei %s: noch nicht gespeichert', [AInfo.Name]);
+  end
   else
+  begin
     Result := Format('Datei %s: %s', [AInfo.Name, AInfo.Format.Text]);
+  end;
   if AInfo.HasTarget then
+  begin
     Result := Result + Format(' → %s beim Speichern', [AInfo.Target.Text]);
+  end;
 end;
 
 class function TAtlasStatusLines.FileState(const AInfo: TAtlasFileInfo): TAtlasStatusState;
 begin
   if (AInfo.Name = '') or not AInfo.Known then
-    Result := TAtlasStatusState.Neutral
+  begin
+    Result := TAtlasStatusState.Neutral;
+  end
   else if AInfo.Format.LineBreak = TAtlasLineBreak.Mixed then
-    Result := TAtlasStatusState.Yellow
+  begin
+    Result := TAtlasStatusState.Yellow;
+  end
   else
+  begin
     Result := TAtlasStatusState.Green;
+  end;
 end;
 
 class function TAtlasStatusLines.UnitsOf(const AStatusJson: string): Integer;
@@ -507,7 +659,9 @@ begin
   Value := TJSONObject.ParseJSONValue(AStatusJson);
   try
     if Value is TJSONObject then
+    begin
       Result := TJSONObject(Value).GetValue<Integer>('units', -1);
+    end;
   finally
     Value.Free;
   end;

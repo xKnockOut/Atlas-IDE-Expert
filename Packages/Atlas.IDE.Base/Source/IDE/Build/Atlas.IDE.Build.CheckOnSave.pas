@@ -109,26 +109,34 @@ end;
 procedure TAtlasIdeCheckOnSave.TWatcher.GroupStarted(AKind: TAtlasCompileKind);
 begin
   if (FOwner <> nil) and not FOwner.FChecking then
+  begin
     FOwner.FCore.BuildStarted;
+  end;
 end;
 
 procedure TAtlasIdeCheckOnSave.TWatcher.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
 begin
   if (FOwner <> nil) and not FOwner.FChecking then
+  begin
     FOwner.FCore.BuildFinished;
+  end;
 end;
 
 procedure TAtlasIdeCheckOnSave.TWatcher.ProjectStarted(const AProject: TAtlasCompileProject);
 begin
   if (FOwner <> nil) and not AProject.Background then
+  begin
     FOwner.FCore.BuildStarted;
+  end;
 end;
 
 procedure TAtlasIdeCheckOnSave.TWatcher.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
   ADurationMs: Int64);
 begin
   if (FOwner <> nil) and not AProject.Background then
+  begin
     FOwner.FCore.BuildFinished;
+  end;
 end;
 
 { TAtlasIdeCheckOnSave.TBinding }
@@ -151,7 +159,9 @@ end;
 procedure TAtlasIdeCheckOnSave.TBinding.BindKeyboard(const BindingServices: IOTAKeyBindingServices);
 begin
   if (FOwner <> nil) and (FOwner.FKey <> 0) then
+  begin
     BindingServices.AddKeyBinding([FOwner.FKey], Check, nil);
+  end;
 end;
 
 procedure TAtlasIdeCheckOnSave.TBinding.Check(const Context: IOTAKeyContext; KeyCode: TShortCut;
@@ -160,7 +170,9 @@ begin
   BindingResult := krHandled;
   // Nicht im Tastaturhandler compilieren: der Timer holt es ab.
   if FOwner <> nil then
+  begin
     FOwner.FManual := True;
+  end;
 end;
 
 { TAtlasIdeCheckOnSave }
@@ -196,18 +208,28 @@ var
   Key: Word;
 begin
   if FBinding = nil then
+  begin
     Exit;
+  end;
   Key := Word(TAtlasIdeSettings.Current.CheckKey);
   if not TAtlasIdeKeys.Decide(Key, TAtlasIdeSettings.Current.CheckKeyPriority,
     TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey)) then
+  begin
     Key := 0;
+  end;
   if (Key = FKey) and ((FBindingIndex >= 0) = (Key <> 0)) then
+  begin
     Exit;
+  end;
   FKey := Key;
   if FKey = 0 then
-    TAtlasIdeKeys.Unbind(FBindingIndex)
+  begin
+    TAtlasIdeKeys.Unbind(FBindingIndex);
+  end
   else
+  begin
     TAtlasIdeKeys.Bind(FBinding, FBindingIndex);
+  end;
 end;
 
 destructor TAtlasIdeCheckOnSave.Destroy;
@@ -220,9 +242,13 @@ begin
     FTimer.Free;
   end;
   if FBinding <> nil then
+  begin
     FBinding.FOwner := nil;
+  end;
   if (FBindingIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
+  begin
     Keyboard.RemoveKeyboardBinding(FBindingIndex);
+  end;
   FWatcher.FOwner := nil;
   FCore.Free;
   inherited;
@@ -234,7 +260,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Result := Services.GetActiveProject;
+  end;
 end;
 
 class function TAtlasIdeCheckOnSave.Debugging: Boolean;
@@ -250,10 +278,14 @@ var
   Group: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Group := Messages.GetGroup('Atlas');
   if Group = nil then
+  begin
     Group := Messages.AddMessageGroup('Atlas');
+  end;
   Messages.AddTitleMessage(AText, Group);
 end;
 
@@ -268,8 +300,11 @@ begin
   begin
     Form := Screen.Forms[Index];
     if not SameText(Form.ClassName, 'TProgressForm') or not Form.Visible then
+    begin
       Continue;
+    end;
     for Child := 0 to Form.ComponentCount - 1 do
+    begin
       if (Form.Components[Child] is TButton) then
       begin
         Button := TButton(Form.Components[Child]);
@@ -279,6 +314,7 @@ begin
           Exit;
         end;
       end;
+    end;
   end;
 end;
 
@@ -290,19 +326,31 @@ var
 begin
   try
     if FChecking or not TAtlasIdeSettings.Current.CheckOnSave then
+    begin
       Exit;
+    end;
     Project := ActiveProject;
     if Project = nil then
+    begin
       Exit;
+    end;
     Belongs := False;
     for Index := 0 to Project.GetModuleCount - 1 do
+    begin
       if SameText(Project.GetModule(Index).FileName, AFileName) then
+      begin
         Belongs := True;
+      end;
+    end;
     if SameText(ChangeFileExt(Project.FileName, '.dpr'), AFileName) or
       SameText(ChangeFileExt(Project.FileName, '.dpk'), AFileName) then
+    begin
       Belongs := True;
+    end;
     if Belongs then
+    begin
       FCore.Saved(Project.FileName, NowMs);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.CheckOnSave, E);
@@ -330,7 +378,9 @@ begin
     FCore.DelayMs := Settings.CheckOnSaveDelayMs;
     FCore.MaxMs := Settings.CheckOnSaveMaxMs;
     if Settings.CheckOnSave and FCore.Due(NowMs, Debugging) then
+    begin
       Run(FCore.Take, False);
+    end;
   except
     // Keine Exception an die IDE (#493).
     on E: Exception do
@@ -344,7 +394,9 @@ var
 begin
   Project := ActiveProject;
   if (Project <> nil) and not FChecking and not FCore.BuildRunning and not Debugging then
+  begin
     Run(Project.FileName, True);
+  end;
 end;
 
 procedure TAtlasIdeCheckOnSave.Run(const AProject: string; AManual: Boolean);
@@ -357,7 +409,9 @@ var
 begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) or
     not Supports(Services.FindModule(AProject), IOTAProject, Project) or (Project.ProjectBuilder = nil) then
+  begin
     Exit;
+  end;
   Activity := TAtlasActivity.Scope('Compilerprüfung nach dem Speichern');
   FChecking := True;
   FEvents.Background := True;
@@ -370,15 +424,19 @@ begin
   end;
   Duration := NowMs - Started;
   if Assigned(FReport) then
+  begin
     FReport(Format('Compilerprüfung %s: %s, %d ms', [IfThen(AManual, 'von Hand', 'nach dem Speichern'),
       ExtractFileName(AProject), Duration]));
+  end;
   if not AManual and FCore.CheckFinished(AProject, Duration) then
   begin
     Text := TAtlasStrings.Fmt(TAtlasTextId.CheckOnSaveDisabled, [ExtractFileName(AProject), Duration, FCore.MaxMs]);
     // Benachrichtigungszentrale (#601, Quelle check): Meldungsfenster nur bei „einblenden“.
     if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Check, TAtlasNotificationSeverity.Warning,
       TAtlasStrings.Text(TAtlasTextId.NotificationsCheckDisabled), Text) = TAtlasNotificationMode.Show then
+    begin
       AddMessage(Text);
+    end;
   end;
 end;
 

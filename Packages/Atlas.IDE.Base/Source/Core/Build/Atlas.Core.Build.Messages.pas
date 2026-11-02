@@ -73,13 +73,21 @@ begin
   end;
   Kind := LowerCase(AKind);
   if Kind.Contains('fatal') then
-    Result.Severity := TAtlasCompilerSeverity.Fatal
+  begin
+    Result.Severity := TAtlasCompilerSeverity.Fatal;
+  end
   else if Kind.Contains('error') then
-    Result.Severity := TAtlasCompilerSeverity.Error
+  begin
+    Result.Severity := TAtlasCompilerSeverity.Error;
+  end
   else if Kind.Contains('warn') then
-    Result.Severity := TAtlasCompilerSeverity.Warning
+  begin
+    Result.Severity := TAtlasCompilerSeverity.Warning;
+  end
   else if Kind.Contains('hint') then
-    Result.Severity := TAtlasCompilerSeverity.Hint
+  begin
+    Result.Severity := TAtlasCompilerSeverity.Hint;
+  end
   else if Result.Code <> '' then
     // Unbekannte Art: nach dem Code.
     case Result.Code[1] of
@@ -91,7 +99,9 @@ begin
       Result.Severity := TAtlasCompilerSeverity.Info;
     end
   else
+  begin
     Result.Severity := TAtlasCompilerSeverity.Info;
+  end;
 end;
 
 class function TAtlasCompilerMessages.Resolve(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -106,20 +116,28 @@ begin
   begin
     Name := StringReplace(Result[Index].FileName, '/', PathDelim, [rfReplaceAll]);
     if (Name = '') or (ExtractFileDrive(Name) <> '') or Name.StartsWith(PathDelim) then
+    begin
       Continue;
+    end;
     Found := False;
     for Known in AKnownFiles do
+    begin
       if SameText(Known, Name) or EndsText(PathDelim + Name, Known) then
       begin
         Result[Index].FileName := Known;
         Found := True;
         Break;
       end;
+    end;
     if Found or (AProjectFile = '') then
+    begin
       Continue;
+    end;
     Candidate := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(AProjectFile)) + Name);
     if FileExists(Candidate) then
+    begin
       Result[Index].FileName := Candidate;
+    end;
   end;
 end;
 
@@ -148,13 +166,17 @@ begin
   Result.AddPair('platform', APlatform);
   Result.AddPair('success', TJSONBool.Create(ASucceeded));
   if ABackground then
+  begin
     Result.AddPair('background', TJSONBool.Create(True));
+  end;
   Items := TJSONArray.Create;
   Result.AddPair('messages', Items);
   for Message in AMessages do
   begin
     if Message.Severity = TAtlasCompilerSeverity.Info then
+    begin
       Continue;
+    end;
     Item := TJSONObject.Create;
     Item.AddPair('file', Message.FileName);
     Item.AddPair('line', TJSONNumber.Create(Message.Line));
