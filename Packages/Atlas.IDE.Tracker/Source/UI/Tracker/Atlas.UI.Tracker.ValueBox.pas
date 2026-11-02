@@ -53,14 +53,18 @@ var
 begin
   FValues := Copy(AItems);
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   // Items.Clear leert auch das Eingabefeld: Text merken und wieder setzen.
   mText := Text;
   Items.BeginUpdate;
   try
     Items.Clear;
     for mItem in FValues do
+    begin
       Items.Add(mItem);
+    end;
   finally
     Items.EndUpdate;
   end;
@@ -73,8 +77,12 @@ var
 begin
   inherited CreateWnd;
   if Items.Count = 0 then
+  begin
     for mItem in FValues do
+    begin
       Items.Add(mItem);
+    end;
+  end;
   Text := FValue;
 end;
 
@@ -88,16 +96,22 @@ end;
 function TAtlasValueBox.GetValue: string;
 begin
   if HandleAllocated then
-    Result := Trim(Text)
+  begin
+    Result := Trim(Text);
+  end
   else
+  begin
     Result := Trim(FValue);
+  end;
 end;
 
 procedure TAtlasValueBox.SetValue(const AValue: string);
 begin
   FValue := AValue;
   if HandleAllocated then
+  begin
     Text := AValue;
+  end;
 end;
 
 end.
