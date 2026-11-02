@@ -197,7 +197,9 @@ begin
   try
     Builder.Append('1');
     for Index := 1 to ACount do
+    begin
       Builder.Append(' ').Append(AOperators[Index mod Length(AOperators)]).Append(' 1');
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -209,9 +211,13 @@ end;
 function DeepUnit(AShape: Integer): string;
 begin
   if AShape = 0 then
-    Result := StringReplace(RichUnit, '§', Chain(ChainLength, ['-']), [rfReplaceAll])
+  begin
+    Result := StringReplace(RichUnit, '§', Chain(ChainLength, ['-']), [rfReplaceAll]);
+  end
   else
+  begin
     Result := StringReplace(RichUnit, '§', Chain(ChainLength, ['+', '-']), [rfReplaceAll]);
+  end;
 end;
 
 procedure TBuiltinRulesTests.AllRulesHandleDeepTrees;
@@ -285,7 +291,9 @@ begin
   end;
   Ids := ' ';
   for Finding in Findings do
+  begin
     Ids := Ids + Finding.RuleId + ' ';
+  end;
   Assert.IsFalse(Pos(' ' + UnitTooDeepRuleId + ' ', Ids) > 0, 'nicht übersprungen');
   Assert.IsTrue(Pos(' thread-resume-suspend ', Ids) > 0, Ids);
   Assert.IsTrue(Pos(' thread-vcl-access ', Ids) > 0, Ids);

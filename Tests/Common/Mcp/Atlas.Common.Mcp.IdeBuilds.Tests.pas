@@ -2,7 +2,7 @@
 
 // Tests für build_project über die laufende IDE (#261). Die Rolle des Plugins
 // spielt der Warte-Rückruf: Er übernimmt den Auftrag und antwortet im Format
-// von Atlas.Core.Build.Inbox.
+// von Atlas.Core.BuildPipeline.Inbox.
 
 interface
 
@@ -72,16 +72,22 @@ var
 begin
   Result := False;
   if not TDirectory.Exists(AInbox) then
+  begin
     Exit;
+  end;
   for Request in TDirectory.GetFiles(AInbox, '*.json') do
+  begin
     if not Request.EndsWith('.result.json') then
     begin
       RenameFile(Request, ChangeFileExt(Request, '.taken'));
       ARequest := TFile.ReadAllText(ChangeFileExt(Request, '.taken'), TEncoding.UTF8);
       if AAnswer <> '' then
+      begin
         TFile.WriteAllText(ChangeFileExt(Request, '') + '.result.json', AAnswer, TEncoding.UTF8);
+      end;
       Exit(True);
     end;
+  end;
 end;
 
 function Ide(APid: Cardinal; const AProjects: TArray<string>; const AActive: string): TMcpIdeEntry;
@@ -109,7 +115,9 @@ end;
 procedure TMcpIdeBuildsTests.TearDown;
 begin
   if TDirectory.Exists(FInbox) then
+  begin
     TDirectory.Delete(FInbox, True);
+  end;
   FInbox := '';
 end;
 

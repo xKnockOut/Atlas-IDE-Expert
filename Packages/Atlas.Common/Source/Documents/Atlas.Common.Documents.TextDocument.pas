@@ -82,7 +82,9 @@ end;
 function TTextDocument.LineText(ALine: Integer): string;
 begin
   if (ALine < 0) or (ALine >= FLines.LineCount) then
+  begin
     Exit('');
+  end;
   Result := Copy(FText, FLines.LineStart(ALine) + 1, FLines.LineContentEnd(ALine) - FLines.LineStart(ALine));
 end;
 
@@ -108,12 +110,16 @@ begin
   TMonitor.Enter(Self);
   try
     if (FDerived <> nil) and FDerived.TryGetValue(AKey, Result) then
+    begin
       Exit;
+    end;
     Result := AFactory();
     if Result <> nil then
     begin
       if FDerived = nil then
+      begin
         FDerived := TDictionary<string, IInterface>.Create;
+      end;
       FDerived.Add(AKey, Result);
     end;
   finally
@@ -148,15 +154,21 @@ begin
         EndOffset := Intermediate.OffsetAt(Change.Range.EndPos);
       end;
       if EndOffset < StartOffset then
+      begin
         raise EDocumentError.CreateFmt('Ungültiger Bereich in %s: Ende liegt vor dem Anfang', [FUri]);
+      end;
       Text := Copy(Text, 1, StartOffset) + Change.Text + Copy(Text, EndOffset + 1, MaxInt);
     end
     else
+    begin
       Text := Change.Text;
+    end;
     Intermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, Text);
   end;
   if Intermediate = nil then
+  begin
     Intermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, Text);
+  end;
   Result := Intermediate;
 end;
 

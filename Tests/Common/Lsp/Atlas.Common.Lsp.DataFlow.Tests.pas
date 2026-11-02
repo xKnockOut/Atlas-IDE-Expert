@@ -160,15 +160,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -176,13 +180,21 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, DatenFile) then
-    AText := UnitDaten
+  begin
+    AText := UnitDaten;
+  end
   else if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else if SameText(AFileName, PruefFile) then
-    AText := UnitPruefung
+  begin
+    AText := UnitPruefung;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { TLspDataFlowTests }
@@ -235,13 +247,21 @@ begin
   begin
     Line := TLspDataFlow.KindName(Node.Kind) + '[' + Node.Detail + ']';
     if Node.Via <> '' then
+    begin
       Line := Line + '(' + Node.Via + ')';
+    end;
     if Length(Node.Places) > 1 then
+    begin
       Line := Line + 'x' + IntToStr(Length(Node.Places));
+    end;
     if Node.Literal then
+    begin
       Line := Line + '!lit';
+    end;
     if Node.Unsafe then
+    begin
       Line := Line + '!' + Node.UnsafeReason;
+    end;
     if Length(Node.Sources) > 0 then
     begin
       Line := Line + '<-';
@@ -249,13 +269,17 @@ begin
       begin
         Line := Line + Source.Name;
         if Source.Leaf <> TDataFlowLeaf.None then
+        begin
           Line := Line + '/' + TLspDataFlow.LeafName(Source.Leaf);
+        end;
         Line := Line + ',';
       end;
       SetLength(Line, Length(Line) - 1);
     end;
     if Result <> '' then
+    begin
       Result := Result + '; ';
+    end;
     Result := Result + Line;
   end;
 end;

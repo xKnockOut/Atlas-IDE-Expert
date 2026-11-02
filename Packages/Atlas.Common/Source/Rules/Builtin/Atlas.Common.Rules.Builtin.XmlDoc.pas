@@ -201,11 +201,13 @@ var
   Item: TDocAttribute;
 begin
   for Item in Attributes do
+  begin
     if SameText(Item.Name, AName) then
     begin
       AAttribute := Item;
       Exit(True);
     end;
+  end;
   AAttribute := Default(TDocAttribute);
   Result := False;
 end;
@@ -214,7 +216,9 @@ function TDocBlock.RowOf(AIndex: Integer): Integer;
 begin
   Result := High(Starts);
   while (Result > 0) and (Starts[Result] > AIndex) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function TDocBlock.OffsetOf(AIndex: Integer): Integer;
@@ -233,14 +237,18 @@ begin
   while Index < AStart do
   begin
     if not CharInSet(Xml[Index], [' ', #9]) then
+    begin
       Exit(False);
+    end;
     Inc(Index);
   end;
   Index := AStop;
   while (Index <= Length(Xml)) and (Xml[Index] <> #10) do
   begin
     if not CharInSet(Xml[Index], [' ', #9]) then
+    begin
       Exit(False);
+    end;
     Inc(Index);
   end;
   Result := True;
@@ -306,7 +314,9 @@ begin
   Flaw.Structural := AStructural;
   FFlaws.Add(Flaw);
   if AStructural then
+  begin
     FBroken := True;
+  end;
 end;
 
 procedure TDocScanner.EscapeLess(AIndex: Integer; const ACode: string);
@@ -341,13 +351,21 @@ begin
     begin
       Inc(Index);
       while (Index <= FLength) and CharInSet(FXml[Index], ['0'..'9', 'a'..'f', 'A'..'F']) do
+      begin
         Inc(Index);
+      end;
     end
     else
+    begin
       while (Index <= FLength) and CharInSet(FXml[Index], ['0'..'9']) do
+      begin
         Inc(Index);
+      end;
+    end;
     if (Index <= FLength) and (FXml[Index] = ';') and not CharInSet(FXml[Index - 1], ['#', 'x', 'X']) then
-      AIndex := Index + 1
+    begin
+      AIndex := Index + 1;
+    end
     else
     begin
       Escape('''&'' muss &amp; heißen.');
@@ -362,7 +380,9 @@ begin
     Exit;
   end;
   while IsNameCharAt(Index) do
+  begin
     Inc(Index);
+  end;
   Name := Copy(FXml, AIndex + 1, Index - AIndex - 1);
   if (Index > FLength) or (FXml[Index] <> ';') then
   begin
@@ -371,7 +391,9 @@ begin
     Exit;
   end;
   if IndexText(Name, XmlEntities) < 0 then
+  begin
     Escape(Format('&%s; ist in XML nicht definiert.', [Name]));
+  end;
   AIndex := Index + 1;
 end;
 
@@ -387,7 +409,9 @@ begin
     AIndex := FLength + 1;
   end
   else
+  begin
     AIndex := Close + Length(AClose);
+  end;
 end;
 
 procedure TDocScanner.ScanStartTag(var AIndex: Integer);
@@ -412,7 +436,9 @@ begin
   end;
   Index := AIndex + 1;
   while IsNameCharAt(Index) do
+  begin
     Inc(Index);
+  end;
   NameStop := Index;
   if (Index <= FLength) and not IsSpaceAt(Index) and (FXml[Index] <> '>') and (FXml[Index] <> '/') then
   begin
@@ -429,7 +455,9 @@ begin
   begin
     HadSpace := IsSpaceAt(Index);
     while IsSpaceAt(Index) do
+    begin
       Inc(Index);
+    end;
     if Index > FLength then
     begin
       EscapeLess(AIndex, '');
@@ -457,10 +485,14 @@ begin
     Attribute := Default(TDocAttribute);
     ValueStart := Index;
     while IsNameCharAt(Index) do
+    begin
       Inc(Index);
+    end;
     Attribute.Name := Copy(FXml, ValueStart, Index - ValueStart);
     while IsSpaceAt(Index) do
+    begin
       Inc(Index);
+    end;
     if (Index > FLength) or (FXml[Index] <> '=') then
     begin
       EscapeLess(AIndex, '');
@@ -469,7 +501,9 @@ begin
     end;
     Inc(Index);
     while IsSpaceAt(Index) do
+    begin
       Inc(Index);
+    end;
     if (Index <= FLength) and ((FXml[Index] = '"') or (FXml[Index] = '''')) then
     begin
       Quote := FXml[Index];
@@ -493,7 +527,9 @@ begin
       ValueStart := Index;
       while (Index <= FLength) and not IsSpaceAt(Index) and (FXml[Index] <> '>') and
         not ((FXml[Index] = '/') and (Index < FLength) and (FXml[Index + 1] = '>')) do
+      begin
         Inc(Index);
+      end;
       if Index = ValueStart then
       begin
         EscapeLess(AIndex, '');
@@ -517,7 +553,9 @@ begin
   end;
   FElements.Add(Element);
   if Element.Stop = 0 then
+  begin
     FStack.Add(FElements.Count - 1);
+  end;
   AIndex := Element.OpenStop;
 end;
 
@@ -529,24 +567,38 @@ begin
   Element := FElements[AElement];
   // Ein offener Abschnitt endet vor dem nächsten Abschnitt darin, hinter dem letzten Zeichen davor.
   if IndexText(Element.Name, BlockSections) >= 0 then
+  begin
     for Index := FElements.Count - 1 downto AElement + 1 do
+    begin
       if IndexText(FElements[Index].Name, BlockSections) >= 0 then
+      begin
         AInsertAt := FElements[Index].Start;
+      end;
+    end;
+  end;
   while (AInsertAt > Element.OpenStop) and IsSpaceAt(AInsertAt - 1) do
+  begin
     Dec(AInsertAt);
+  end;
   if SameText(Element.Name, 'br') then
+  begin
     AddFlaw(Element.Start, Element.OpenStop, '<br> wird nicht geschlossen.', '', '<br/> schreiben',
-      [TDocReplacement.Create(Element.OpenStop - 1, Element.OpenStop - 1, '/')], True)
+      [TDocReplacement.Create(Element.OpenStop - 1, Element.OpenStop - 1, '/')], True);
+  end
   else if (Length(Element.Attributes) = 0) and not Element.HasChildren and
     ((IndexText(Element.Name, DocTags) < 0) or (IndexText(Element.Name, AttributeTags) >= 0)) then
+  begin
     // Fremder Name oder Tag ohne sein Attribut, ohne Inhalt: gemeint ist Text wie TList<T>.
     AddFlaw(Element.Start, Element.OpenStop, Format('<%s> wird nicht geschlossen.', [Element.Name]), '',
       Format('<%s> als Text schreiben', [Element.Name]), [TDocReplacement.Create(Element.Start, Element.Start + 1,
-      '&lt;'), TDocReplacement.Create(Element.OpenStop - 1, Element.OpenStop, '&gt;')], True)
+      '&lt;'), TDocReplacement.Create(Element.OpenStop - 1, Element.OpenStop, '&gt;')], True);
+  end
   else
+  begin
     AddFlaw(Element.Start, Element.OpenStop, Format('<%s> wird nicht geschlossen.', [Element.Name]), '',
       Format('</%s> ergänzen', [Element.Name]), [TDocReplacement.Create(AInsertAt, AInsertAt,
       Format('</%s>', [Element.Name]))], True);
+  end;
 end;
 
 procedure TDocScanner.ScanEndTag(var AIndex: Integer);
@@ -563,10 +615,14 @@ begin
     Exit;
   end;
   while IsNameCharAt(Index) do
+  begin
     Inc(Index);
+  end;
   Name := Copy(FXml, AIndex + 2, Index - AIndex - 2);
   while IsSpaceAt(Index) do
+  begin
     Inc(Index);
+  end;
   if (Index > FLength) or (FXml[Index] <> '>') then
   begin
     EscapeLess(AIndex, '');
@@ -575,7 +631,9 @@ begin
   end;
   Level := FStack.Count - 1;
   while (Level >= 0) and (FElements[FStack[Level]].Name <> Name) do
+  begin
     Dec(Level);
+  end;
   if Level < 0 then
   begin
     AddFlaw(AIndex, Index + 1, Format('</%s> hat kein öffnendes Tag.', [Name]), '',
@@ -608,15 +666,25 @@ begin
         ScanEntity(Index);
       '<':
         if Copy(FXml, Index, 4) = '<!--' then
-          Skip(Index, '<!--', '-->')
+        begin
+          Skip(Index, '<!--', '-->');
+        end
         else if Copy(FXml, Index, 9) = '<![CDATA[' then
-          Skip(Index, '<![CDATA[', ']]>')
+        begin
+          Skip(Index, '<![CDATA[', ']]>');
+        end
         else if Copy(FXml, Index, 2) = '<?' then
-          Skip(Index, '<?', '?>')
+        begin
+          Skip(Index, '<?', '?>');
+        end
         else if Copy(FXml, Index, 2) = '</' then
-          ScanEndTag(Index)
+        begin
+          ScanEndTag(Index);
+        end
         else
+        begin
           ScanStartTag(Index);
+        end;
     else
       Inc(Index);
     end;
@@ -625,7 +693,9 @@ begin
     // Endtag hinter dem letzten Zeichen, das kein Leerraum ist.
     Stop := FLength + 1;
     while (Stop > 1) and IsSpaceAt(Stop - 1) do
+    begin
       Dec(Stop);
+    end;
     Unclosed(FStack.Last, Stop);
   end;
 end;
@@ -664,11 +734,15 @@ begin
     Block.FirstToken := Index;
     Line := '';
     if ATokens[Index].StartPos.Line <= High(ALines) then
+    begin
       Line := ALines[ATokens[Index].StartPos.Line];
+    end;
     Block.Indent := Copy(Line, 1, ATokens[Index].StartPos.Character);
     repeat
       if Block.Xml <> '' then
+      begin
         Block.Xml := Block.Xml + #10;
+      end;
       Block.Starts := Block.Starts + [Length(Block.Xml) + 1];
       Block.Offsets := Block.Offsets + [ATokens[Index].Offset + 3];
       Block.Lines := Block.Lines + [ATokens[Index].StartPos.Line];
@@ -692,14 +766,20 @@ begin
     Depth := 0;
     repeat
       if ATokens[Result].IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if ATokens[Result].IsSymbol(']') then
+      begin
         Dec(Depth);
+      end;
       Inc(Result);
     until (Result > High(ATokens)) or (Depth = 0);
   end;
   if Result > High(ATokens) then
+  begin
     Result := -1;
+  end;
 end;
 
 // Iterativ (Bericht M1).
@@ -717,11 +797,17 @@ begin
       Node := Pending.Pop;
       if (Node.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl, TSyntaxKind.TypeDecl,
         TSyntaxKind.Field, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) and not AMap.ContainsKey(Node.StartOffset) then
+      begin
         AMap.Add(Node.StartOffset, Node);
+      end;
       if Node.Kind = TSyntaxKind.Block then
+      begin
         Continue;
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -736,15 +822,27 @@ var
 begin
   Result := Default(TDocSignature);
   for Index := 0 to AHeader.ChildCount - 1 do
+  begin
     if AHeader[Index].Kind = TSyntaxKind.TypeReference then
+    begin
       Result.HasResult := True;
+    end;
+  end;
   Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
   if Parameters = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Parameters.ChildCount - 1 do
+  begin
     if Parameters[Index].Kind = TSyntaxKind.Parameter then
+    begin
       for Name in Parameters[Index].Name.Split([',']) do
+      begin
         Result.Params := Result.Params + [Trim(Name)];
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Typ, in dem ANode deklariert ist ("TAussen.TInnen"), bei TFoo.Bar im implementation-Teil "TFoo";
@@ -755,15 +853,23 @@ var
 begin
   Result := '';
   if (ANode.Kind = TSyntaxKind.RoutineHeader) and (LastDelimiter('.', ANode.Name) > 0) then
+  begin
     Exit(Copy(ANode.Name, 1, LastDelimiter('.', ANode.Name) - 1));
+  end;
   Node := ANode;
   while Node <> nil do
   begin
     if Node.Kind = TSyntaxKind.TypeDecl then
+    begin
       if Result = '' then
-        Result := Node.Name
+      begin
+        Result := Node.Name;
+      end
       else
+      begin
         Result := Node.Name + '.' + Result;
+      end;
+    end;
     Node := Node.Parent;
   end;
 end;
@@ -776,16 +882,22 @@ begin
   Index := AStart;
   while (Index <= High(ATokens)) and ((ATokens[Index].Kind = TPascalTokenKind.Comment) or
     MatchText(ATokens[Index].Text, RoutineWords) or SameText(ATokens[Index].Text, 'property')) do
+  begin
     Inc(Index);
+  end;
   Result := (Index <= High(ATokens)) and (ATokens[Index].Kind in [TPascalTokenKind.Identifier,
     TPascalTokenKind.Keyword]);
   if not Result then
+  begin
     Exit;
+  end;
   AFrom := Index;
   ATo := Index;
   while (ATo + 2 <= High(ATokens)) and ATokens[ATo + 1].IsSymbol('.') and
     (ATokens[ATo + 2].Kind = TPascalTokenKind.Identifier) do
+  begin
     Inc(ATo, 2);
+  end;
 end;
 
 /// <summary>Edits nach Anfang sortiert (stabil), wie Clients und Tests sie von hinten anwenden.</summary>
@@ -820,12 +932,20 @@ var
 begin
   Result := '';
   for Index := 0 to High(ANames) do
+  begin
     if Index = 0 then
-      Result := ANames[Index]
+    begin
+      Result := ANames[Index];
+    end
     else if Index = High(ANames) then
-      Result := Result + ' und ' + ANames[Index]
+    begin
+      Result := Result + ' und ' + ANames[Index];
+    end
     else
+    begin
       Result := Result + ', ' + ANames[Index];
+    end;
+  end;
 end;
 
 function Contains(const ANames: TArray<string>; const AName: string): Boolean;
@@ -833,8 +953,12 @@ var
   Name: string;
 begin
   for Name in ANames do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -879,11 +1003,17 @@ var
   begin
     Result := AMessage;
     if (ACode = '') or not CompilerChecks(ABlock) then
+    begin
       Exit;
+    end;
     if EndsStr('.', Result) then
-      Result := Copy(Result, 1, Length(Result) - 1) + ' (wie ' + ACode + ').'
+    begin
+      Result := Copy(Result, 1, Length(Result) - 1) + ' (wie ' + ACode + ').';
+    end
     else
+    begin
       Result := Result + ' (wie ' + ACode + ')';
+    end;
   end;
 
   function TokenAt(AOffset: Integer): Integer;
@@ -896,11 +1026,17 @@ var
     begin
       Middle := (Low + High_) div 2;
       if Tokens[Middle].Offset < AOffset then
-        Low := Middle + 1
+      begin
+        Low := Middle + 1;
+      end
       else if Tokens[Middle].Offset > AOffset then
-        High_ := Middle - 1
+      begin
+        High_ := Middle - 1;
+      end
       else
+      begin
         Exit(Middle);
+      end;
     end;
     Result := -1;
   end;
@@ -911,9 +1047,13 @@ var
   begin
     First := TokenAt(ANode.StartOffset);
     if (First >= 0) and NameRange(Tokens, First, First, Last) then
-      Result := TTextRange.Create(Tokens[First].StartPos, Tokens[Last].EndPos)
+    begin
+      Result := TTextRange.Create(Tokens[First].StartPos, Tokens[Last].EndPos);
+    end
     else
+    begin
       Result := TTextRange.Create(ANode.StartPos, ANode.StartPos);
+    end;
   end;
 
   function XmlRange(const ABlock: TDocBlock; AStart, AStop: Integer): TTextRange;
@@ -930,10 +1070,14 @@ var
   function RemoveEdit(const ABlock: TDocBlock; const AElement: TDocElement): TRuleEdit;
   begin
     if ABlock.OwnsLines(AElement.Start, AElement.Stop) then
+    begin
       Result := TRuleEdit.Create(TTextRange.Create(ABlock.Lines[ABlock.RowOf(AElement.Start)], 0,
-        ABlock.Lines[ABlock.RowOf(AElement.Stop)] + 1, 0), '')
+        ABlock.Lines[ABlock.RowOf(AElement.Stop)] + 1, 0), '');
+    end
     else
+    begin
       Result := TRuleEdit.Create(XmlRange(ABlock, AElement.Start, AElement.Stop), '');
+    end;
   end;
 
   function DocLine(const ABlock: TDocBlock; const AText: string): string;
@@ -951,12 +1095,18 @@ var
     begin
       Edits := nil;
       for Replacement in Flaw.Replacements do
+      begin
         Edits := Edits + [ReplacementEdit(ABlock, Replacement)];
+      end;
       if Length(Edits) > 0 then
+      begin
         AReport.Add(XmlRange(ABlock, Flaw.Start, Flaw.Stop), WithCode(ABlock, Flaw.Message, Flaw.Code),
-          [TRuleFix.Create(Flaw.FixTitle, Sorted(Edits))])
+          [TRuleFix.Create(Flaw.FixTitle, Sorted(Edits))]);
+      end
       else
+      begin
         AReport.Add(XmlRange(ABlock, Flaw.Start, Flaw.Stop), WithCode(ABlock, Flaw.Message, Flaw.Code));
+      end;
     end;
   end;
 
@@ -982,9 +1132,13 @@ var
     procedure Insert(ARow: Integer; const AText: string);
     begin
       if Inserts.ContainsKey(ARow) then
-        Inserts[ARow] := Inserts[ARow] + DocLine(ABlock, AText)
+      begin
+        Inserts[ARow] := Inserts[ARow] + DocLine(ABlock, AText);
+      end
       else
+      begin
         Inserts.Add(ARow, DocLine(ABlock, AText));
+      end;
     end;
 
   begin
@@ -999,9 +1153,13 @@ var
     for Element in AElements do
     begin
       if SameText(Element.Name, 'inheritdoc') then
+      begin
         Inherits := True;
+      end;
       if Element.Depth > 0 then
+      begin
         Continue;
+      end;
       if SameText(Element.Name, 'returns') then
       begin
         HasReturns := True;
@@ -1012,38 +1170,60 @@ var
         Params := Params + [Element];
         ParamNames := ParamNames + [Trim(Attribute.Value)];
         if Contains(Signature.Params, Trim(Attribute.Value)) then
-          Seen := Seen + [Trim(Attribute.Value)]
+        begin
+          Seen := Seen + [Trim(Attribute.Value)];
+        end
         else
+        begin
           Unknown := Unknown + [High(Params)];
+        end;
       end;
     end;
     Missing := nil;
     if (Length(Params) > 0) and not Inherits then
+    begin
       for Name in Signature.Params do
+      begin
         if not Contains(Seen, Name) then
+        begin
           Missing := Missing + [Name];
+        end;
+      end;
+    end;
     StrayReturns := CheckReturns and HasReturns and not Signature.HasResult;
     // Fehlendes <returns> nur, wenn vollständige Doku verlangt ist: Die korrigierte Form aus #979 beschreibt
     // die Parameter einer Funktion ohne <returns> und gilt als passend.
     MissingReturns := CheckReturns and RequirePublic and Signature.HasResult and not HasReturns and not Inherits;
     if (Length(Unknown) = 0) and (Length(Missing) = 0) and not StrayReturns and not MissingReturns then
+    begin
       Exit;
+    end;
     Parts := nil;
     if Length(Unknown) > 0 then
     begin
       Names := nil;
       for Position in Unknown do
+      begin
         Names := Names + [Format('<param name="%s">', [ParamNames[Position]])];
+      end;
       Parts := Parts + [WithCode(ABlock, Joined(Names) + ' gibt es nicht', 'W1207')];
     end;
     if Length(Missing) = 1 then
-      Parts := Parts + [WithCode(ABlock, Missing[0] + ' ist nicht beschrieben', 'W1208')]
+    begin
+      Parts := Parts + [WithCode(ABlock, Missing[0] + ' ist nicht beschrieben', 'W1208')];
+    end
     else if Length(Missing) > 1 then
+    begin
       Parts := Parts + [WithCode(ABlock, Joined(Missing) + ' sind nicht beschrieben', 'W1208')];
+    end;
     if StrayReturns then
+    begin
       Parts := Parts + ['<returns> steht an einer Routine ohne Ergebnis'];
+    end;
     if MissingReturns then
+    begin
       Parts := Parts + ['<returns> fehlt'];
+    end;
     Message := String.Join('; ', Parts) + '.';
     // Korrektur: unbekannte der Reihe nach auf die fehlenden umbenennen, übrige unbekannte entfernen.
     Edits := nil;
@@ -1060,8 +1240,12 @@ var
       Name := ParamNames[Index];
       Position := -1;
       for Row := 0 to High(Unknown) do
+      begin
         if Unknown[Row] = Index then
+        begin
           Position := Row;
+        end;
+      end;
       if Position >= Length(Missing) then
       begin
         Edits := Edits + [RemoveEdit(ABlock, Params[Index])];
@@ -1075,11 +1259,13 @@ var
       end;
       Previous := ABlock.RowOf(Params[Index].Stop - 1);
       for Row := 0 to High(Signature.Params) do
+      begin
         if SameText(Signature.Params[Row], Name) and (FirstRows[Row] < 0) then
         begin
           FirstRows[Row] := ABlock.RowOf(Params[Index].Start);
           LastRows[Row] := Previous;
         end;
+      end;
     end;
     Inserts := TDictionary<Integer, string>.Create;
     try
@@ -1088,40 +1274,70 @@ var
       for Index := 0 to High(Signature.Params) do
       begin
         if FirstRows[Index] >= 0 then
+        begin
           Continue;
+        end;
         Row := -1;
         for Position := Index - 1 downto 0 do
+        begin
           if (Row < 0) and (LastRows[Position] >= 0) then
+          begin
             Row := ABlock.Lines[LastRows[Position]] + 1;
+          end;
+        end;
         for Position := Index + 1 to High(Signature.Params) do
+        begin
           if (Row < 0) and (FirstRows[Position] >= 0) then
+          begin
             Row := ABlock.Lines[FirstRows[Position]];
+          end;
+        end;
         if (Row < 0) and (Previous >= 0) then
+        begin
           Row := ABlock.Lines[Previous] + 1;
+        end;
         if Row < 0 then
+        begin
           Row := ABlock.Lines[High(ABlock.Lines)] + 1;
+        end;
         Insert(Row, Format('<param name="%s"></param>', [Signature.Params[Index]]));
       end;
       if MissingReturns then
+      begin
         if Previous >= 0 then
-          Insert(ABlock.Lines[Previous] + 1, '<returns></returns>')
+        begin
+          Insert(ABlock.Lines[Previous] + 1, '<returns></returns>');
+        end
         else
+        begin
           Insert(ABlock.Lines[High(ABlock.Lines)] + 1, '<returns></returns>');
+        end;
+      end;
       Keys := Inserts.Keys.ToArray;
       TArray.Sort<Integer>(Keys);
       for Row in Keys do
+      begin
         Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Row, 0, Row, 0), Inserts[Row])];
+      end;
     finally
       Inserts.Free;
     end;
     if StrayReturns then
+    begin
       Edits := Edits + [RemoveEdit(ABlock, Returns)];
+    end;
     if Length(Unknown) > 0 then
-      Range := XmlRange(ABlock, Params[Unknown[0]].Start, Params[Unknown[0]].OpenStop)
+    begin
+      Range := XmlRange(ABlock, Params[Unknown[0]].Start, Params[Unknown[0]].OpenStop);
+    end
     else if StrayReturns then
-      Range := XmlRange(ABlock, Returns.Start, Returns.OpenStop)
+    begin
+      Range := XmlRange(ABlock, Returns.Start, Returns.OpenStop);
+    end
     else
+    begin
       Range := DeclarationRange(AHeader);
+    end;
     AReport.Add(Range, Message, [TRuleFix.Create('Doku an die Signatur anpassen', Sorted(Edits))]);
   end;
 
@@ -1135,11 +1351,15 @@ var
     for Steps := 1 to 64 do
     begin
       if Current.SymbolKind = TIndexSymbolKind.HelperType then
+      begin
         Exit(False);
+      end;
       if not Resolver.AncestorOf(Current, Ancestor) then
+      begin
         Exit((Length(Current.Ancestors) = 0) and (SameText(Current.Name, 'TObject') or
           SameText(Current.Name, 'IInterface') or not (Current.SymbolKind in [TIndexSymbolKind.ClassType,
           TIndexSymbolKind.InterfaceType])));
+      end;
       Current := Ancestor;
     end;
     Result := False;
@@ -1158,27 +1378,39 @@ var
     Result := False;
     if (AName = '') or (LastDelimiter('<>{}`', AName) > 0) or TNameResolver.IsBuiltinTypeName(AName) or
       TUnresolvedNames.IsIntrinsic(AName) then
+    begin
       Exit;
+    end;
     if Resolver.LocateCref(FromUnit, AContainer, AName, Found) then
+    begin
       Exit;
+    end;
     Parts := AName.Split(['.']);
     Prefix := '';
     for Index := 0 to High(Parts) do
     begin
       if Prefix <> '' then
+      begin
         Prefix := Prefix + '.';
+      end;
       Prefix := Prefix + Parts[Index];
       if AContext.Index.FindUnit(Prefix, Ignored) then
+      begin
         Exit;
+      end;
     end;
     if Length(Parts) > 1 then
     begin
       Prefix := Copy(AName, 1, LastDelimiter('.', AName) - 1);
       if Resolver.ResolveTypeFrom(FromUnit, Prefix, Owner) and not ChainKnown(Owner) then
+      begin
         Exit;
+      end;
     end
     else if (AContainer <> '') and Resolver.ResolveTypeFrom(FromUnit, AContainer, Owner) and not ChainKnown(Owner) then
+    begin
       Exit;
+    end;
     Result := True;
   end;
 
@@ -1188,7 +1420,9 @@ var
   begin
     Result := nil;
     for Symbol in ASymbols do
+    begin
       Result := Result + [Symbol.Name];
+    end;
   end;
 
   procedure CheckCref(const ABlock: TDocBlock; const AElement: TDocElement; const AAttribute: TDocAttribute;
@@ -1216,7 +1450,9 @@ var
     end;
     Name := Trim(Value);
     if not CrefMissing(AContainer, Name) then
+    begin
       Exit;
+    end;
     // Ähnlichster Name: Mitglied hinter dem Typ bzw. ein Name im Bereich der Deklaration.
     Dot := LastDelimiter('.', Name);
     Head := Copy(Name, 1, Dot);
@@ -1229,14 +1465,18 @@ var
       end;
     try
       if Dot > 0 then
+      begin
         Candidates := CandidateNames(Resolver.MemberCandidates(AContext.Tree, AContext.RelativePath,
-          Copy(Name, 1, Dot - 1).Split(['.']), AOffset))
+          Copy(Name, 1, Dot - 1).Split(['.']), AOffset));
+      end
       else
       begin
         Candidates := CandidateNames(Resolver.ScopeCandidates(AContext.Tree, AContext.RelativePath, AOffset));
         if AContainer <> '' then
+        begin
           Candidates := Candidates + CandidateNames(Resolver.MemberCandidates(AContext.Tree, AContext.RelativePath,
             AContainer.Split(['.']), AOffset));
+        end;
       end;
     finally
       Resolver.NameFilter := nil;
@@ -1270,28 +1510,46 @@ var
     Declaration := nil;
     Token := DeclarationToken(Tokens, ABlock.LastToken);
     if Token >= 0 then
+    begin
       Declarations.TryGetValue(Tokens[Token].Offset, Declaration);
+    end;
     if Declaration <> nil then
+    begin
       Documented.AddOrSetValue(Declaration, True);
+    end;
     Scanner := TDocScanner.Create(ABlock.Xml);
     try
       Scanner.Scan;
       ReportFlaws(ABlock, Scanner.Flaws);
       if Scanner.Broken then
+      begin
         Exit;
+      end;
       Elements := Scanner.Elements;
     finally
       Scanner.Free;
     end;
     if (Declaration <> nil) and (Declaration.Kind = TSyntaxKind.RoutineHeader) then
+    begin
       CheckSignature(ABlock, Elements, Declaration);
+    end;
     if CrefsKnown then
+    begin
       for Element in Elements do
+      begin
         if Element.Attribute('cref', Attribute) then
+        begin
           if Declaration <> nil then
-            CheckCref(ABlock, Element, Attribute, ContainerOf(Declaration), Declaration.StartOffset)
+          begin
+            CheckCref(ABlock, Element, Attribute, ContainerOf(Declaration), Declaration.StartOffset);
+          end
           else
+          begin
             CheckCref(ABlock, Element, Attribute, '', Tokens[ABlock.FirstToken].Offset);
+          end;
+        end;
+      end;
+    end;
   end;
 
   function Overrides(AMember: TSyntaxNode): Boolean;
@@ -1299,8 +1557,12 @@ var
     Index: Integer;
   begin
     for Index := 0 to AMember.ChildCount - 1 do
+    begin
       if (AMember[Index].Kind = TSyntaxKind.Directive) and SameText(AMember[Index].Name, 'override') then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1324,16 +1586,22 @@ var
         TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
         TSyntaxKind.RecordType, TSyntaxKind.InterfaceType:
           if Visible then
+          begin
             CheckPublic(Member, True);
+          end;
         TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl:
           begin
             if not Visible or Documented.ContainsKey(Member) or Overrides(Member) or
               not (ANode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
               TSyntaxKind.InterfaceType]) then
+            begin
               Continue;
+            end;
             // Property ohne Typ veröffentlicht eine geerbte neu, deren Doku gilt.
             if (Member.Kind = TSyntaxKind.PropertyDecl) and (Member.FindChild(TSyntaxKind.TypeReference) = nil) then
+            begin
               Continue;
+            end;
             // Gerüst über den Attributen.
             First := TokenAt(Member.StartOffset);
             Row := Member.StartPos.Line;
@@ -1363,7 +1631,9 @@ var
   Token: TPascalToken;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Tokens := AContext.Tree.Tokens;
   Lines := TTextLines.SplitLines(AContext.Text);
@@ -1375,9 +1645,13 @@ begin
   // Mit Include-Dateien kann ein Ziel dort deklariert sein.
   CrefLevel := TRuleConfidence.High;
   for Token in Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', Token.Text) or
       StartsText('{$INCLUDE ', Token.Text)) then
+    begin
       CrefLevel := TRuleConfidence.Medium;
+    end;
+  end;
   Declarations := TDictionary<Integer, TSyntaxNode>.Create;
   Documented := TDictionary<TSyntaxNode, Boolean>.Create;
   Resolver := nil;
@@ -1386,11 +1660,13 @@ begin
     InterfaceStart := 0;
     InterfaceStop := 0;
     for Index := 0 to AContext.Tree.Root.ChildCount - 1 do
+    begin
       if AContext.Tree.Root[Index].Kind = TSyntaxKind.InterfaceSection then
       begin
         InterfaceStart := AContext.Tree.Root[Index].StartOffset;
         InterfaceStop := AContext.Tree.Root[Index].EndOffset;
       end;
+    end;
     if CrefsKnown then
     begin
       // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
@@ -1399,14 +1675,20 @@ begin
       FromUnit := TRuleDerived.UnitIndex(Cache, AContext);
     end;
     for Block in DocBlocks(Tokens, Lines) do
+    begin
       CheckBlock(Block);
+    end;
     if RequirePublic then
+    begin
       for Index := 0 to AContext.Tree.Root.ChildCount - 1 do
       begin
         Section := AContext.Tree.Root[Index];
         if Section.Kind = TSyntaxKind.InterfaceSection then
+        begin
           CheckPublic(Section, True);
+        end;
       end;
+    end;
   finally
     Documented.Free;
     Declarations.Free;

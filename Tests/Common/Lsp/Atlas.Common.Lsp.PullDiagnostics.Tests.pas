@@ -647,7 +647,9 @@ begin
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       if SameText(TDocumentUris.ToPath(AUri), FailingFile) then
+      begin
         raise EArgumentException.Create('Unit kaputt');
+      end;
       AContext := Default(TRuleCheckContext);
       AContext.Settings := TServerSettings.Default;
       Result := True;
@@ -658,7 +660,9 @@ function LabelOfFile(const AFileName: string): string;
 begin
   Result := 'unit#2';
   if SameText(AFileName, FailingFile) then
+  begin
     Result := 'unit#1';
+  end;
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceSkipsFailingFile;
@@ -718,13 +722,17 @@ begin
       Empty := 0;
       Found := 0;
       for Item in Items do
+      begin
         if Item.GetValue<TJSONArray>('items').Count = 0 then
         begin
           Inc(Empty);
           Assert.AreEqual(TDocumentUris.FromPath(FailingFile), Item.GetValue<string>('uri'), 'übersprungen');
         end
         else
+        begin
           Inc(Found);
+        end;
+      end;
       Assert.AreEqual(1, Empty);
       Assert.AreEqual(1, Found, 'die nächste Datei läuft weiter');
     finally
@@ -914,7 +922,9 @@ var
 begin
   mFiles := nil;
   for mIndex := 1 to cFileCount do
+  begin
     mFiles := mFiles + [Format('C:\P\U%d.pas', [mIndex])];
+  end;
   mStore := TDocumentStore.Create;
   mProviders := Default(TSyntaxDiagnosticsProviders);
   // Jede Unit braucht etwas Zeit, wie im echten Lauf.

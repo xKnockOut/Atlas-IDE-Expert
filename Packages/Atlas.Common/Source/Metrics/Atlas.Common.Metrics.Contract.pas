@@ -164,8 +164,12 @@ var
 begin
   Result := nil;
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     if Exceeds(Kind, AValues[Kind]) then
+    begin
       Result := Result + [Kind];
+    end;
+  end;
 end;
 
 { TFileMetrics }
@@ -227,11 +231,13 @@ var
   Kind: TMetricKind;
 begin
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     if SameText(Key(Kind), Trim(AKey)) then
     begin
       AKind := Kind;
       Exit(True);
     end;
+  end;
   AKind := TMetricKind.MethodLength;
   Result := False;
 end;

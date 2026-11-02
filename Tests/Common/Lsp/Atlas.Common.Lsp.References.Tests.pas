@@ -101,15 +101,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for I := 1 to Index - 1 do
+  begin
     if AText[I] = #10 then
     begin
       Inc(Line);
       LineStart := I + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -140,11 +144,17 @@ begin
       begin
         Result := True;
         if SameText(AFileName, WerkzeugFile) then
-          AText := UnitWerkzeug
+        begin
+          AText := UnitWerkzeug;
+        end
         else if SameText(AFileName, WerkzeugDfm) then
-          AText := FormWerkzeug
+        begin
+          AText := FormWerkzeug;
+        end
         else
+        begin
           Result := False;
+        end;
       end);
   finally
     Tree.Free;
@@ -157,8 +167,10 @@ var
 begin
   Result := '';
   for Location in ALocations do
+  begin
     Result := Result + Format('%s:%d:%d ', [ExtractFileName(Location.FileName), Location.Range.StartPos.Line,
       Location.Range.StartPos.Character]);
+  end;
   Result := Trim(Result);
 end;
 
@@ -223,7 +235,9 @@ begin
   Text := 'unit Haupt;'#10'interface'#10'uses Werkzeug;'#10'implementation'#10'procedure Lauf;'#10'var'#10 +
     '  R: TRechner;'#10'begin'#10;
   for Index := 1 to Count do
+  begin
     Text := Text + '  R.Summe(1, 2);'#10;
+  end;
   Text := Text + 'end;'#10'end.';
   Tree := TPascalParser.Parse(Text);
   try
@@ -233,7 +247,9 @@ begin
       begin
         Result := SameText(AFileName, WerkzeugFile);
         if Result then
+        begin
           AText := UnitWerkzeug;
+        end;
       end);
   finally
     Tree.Free;
@@ -268,7 +284,9 @@ begin
         begin
           Result := SameText(AFileName, WerkzeugFile);
           if Result then
+          begin
             AText := UnitWerkzeug;
+          end;
         end);
       Assert.AreEqual('Haupt.pas:8:4 Haupt.pas:9:4 Haupt.pas:9:12 Werkzeug.pas:8:18', Describe(Found));
       Again := FResolver.ExtractedUnit(Tree, HauptFile);

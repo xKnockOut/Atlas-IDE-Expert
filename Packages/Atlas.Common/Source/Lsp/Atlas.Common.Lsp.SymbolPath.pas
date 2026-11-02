@@ -75,19 +75,27 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := Trim(Value.Value);
+  end;
 end;
 
 /// <summary>Pfad aus einer file-URI oder unverändert, wenn AText schon ein Pfad ist.</summary>
 function PathOf(const AText: string): string;
 begin
   if StartsText('file:', AText) then
-    Result := TDocumentUris.ToPath(AText)
+  begin
+    Result := TDocumentUris.ToPath(AText);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 /// <summary>Uses-Graph mit Bibliotheks-Units: Sie sind Start oder Ziel eines Wegs.</summary>
@@ -146,45 +154,69 @@ begin
   Result.From := StringOf(AParams, 'from');
   Result.To_ := StringOf(AParams, 'to');
   if (Result.From = '') or (Result.To_ = '') then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"from" und "to" sind nötig');
+  end;
   Value := nil;
   if AParams <> nil then
+  begin
     Value := AParams.GetValue('via');
+  end;
   if Value is TJSONArray then
   begin
     Result.Via := [];
     for Item in TJSONArray(Value) do
     begin
       if not (Item is TJSONString) or not TSymbolPathSearch.TryParseEdge(Item.Value, Kind, Library_) then
+      begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"via" kennt uses, inherits, implements, ' +
           'hasField, parameter, result, calls, contains und library');
+      end;
       if Library_ then
-        Result.ThroughLibrary := True
+      begin
+        Result.ThroughLibrary := True;
+      end
       else
+      begin
         Include(Result.Via, Kind);
+      end;
     end;
     // Nur "library": alle Kantenarten, Bibliothek als Durchgang.
     if Result.Via = [] then
+    begin
       Result.Via := AllSymbolPathEdges;
+    end;
   end;
   if AParams <> nil then
-    Value := AParams.GetValue('maxSteps')
+  begin
+    Value := AParams.GetValue('maxSteps');
+  end
   else
+  begin
     Value := nil;
+  end;
   if Value is TJSONNumber then
   begin
     Steps := TJSONNumber(Value).AsInt;
     if (Steps < 1) or (Steps > TSymbolPathRequest.MaxStepsLimit) then
+    begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"maxSteps" liegt zwischen 1 und %d',
         [TSymbolPathRequest.MaxStepsLimit]));
+    end;
     Result.MaxSteps := Steps;
   end;
   if AParams <> nil then
-    Value := AParams.GetValue('all')
+  begin
+    Value := AParams.GetValue('all');
+  end
   else
+  begin
     Value := nil;
+  end;
   if Value is TJSONBool then
+  begin
     Result.All := TJSONBool(Value).AsBoolean;
+  end;
 end;
 
 function TLspSymbolPath.Request(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -199,11 +231,17 @@ var
   Token: IJsonRpcCancellationToken;
 begin
   if AParams is TJSONObject then
-    Params := TJSONObject(AParams)
+  begin
+    Params := TJSONObject(AParams);
+  end
   else
+  begin
     Params := nil;
+  end;
   if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(Params, 'uri')), Settings, Namespaces)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
+  end;
   Answer := TJSONObject.Create;
   try
     Answer.AddPair('enabled', TJSONBool.Create(Settings.Navigation.SymbolPath));
@@ -213,7 +251,9 @@ begin
       Search.TimeoutMs := Settings.RequestTimeoutMs div 5 * 4;
       // Namensräume des Projekts: neuer Graph nur, wenn sie sich ändern.
       if string.Join(',', FGraphs.Options.Namespaces) <> string.Join(',', Namespaces) then
+      begin
         FGraphs.SetOptions(GraphOptions(Namespaces));
+      end;
       Token := ACancellation;
       Found := TSymbolPathSearch.Run(FIndex, FGraphs, FLocator, FReadText, FEnsureUnit, Namespaces, Search,
         function: Boolean
@@ -223,7 +263,9 @@ begin
       Data := TSymbolPathSearch.ToJson(Found);
       try
         for Pair in Data do
+        begin
           Answer.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+        end;
       finally
         Data.Free;
       end;
@@ -244,13 +286,19 @@ begin
   Params := TJSONObject.Create;
   try
     if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+    begin
       Params.AddPair('uri', AArguments.Items[0].Value);
+    end;
     if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
     begin
       Options := TJSONObject(AArguments.Items[1]);
       for Pair in Options do
+      begin
         if Pair.JsonString.Value <> 'uri' then
+        begin
           Params.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+        end;
+      end;
     end;
     // Befehle laufen ohne eigenes Token-Argument: Abbruch über die laufende Anfrage (A-06).
     Result := Request(Params, TJsonRpcCurrentRequest.Token);

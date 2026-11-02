@@ -56,6 +56,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasQuickActionsBarTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -105,7 +106,8 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.Menus,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.Core.Vcs.Pull;
 
 const
   ProjectOne = 'C:\P\Eins.dproj';

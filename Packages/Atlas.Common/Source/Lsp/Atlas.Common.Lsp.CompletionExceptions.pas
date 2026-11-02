@@ -117,14 +117,18 @@ function PreviousSignificant(const ATokens: TArray<TPascalToken>; AIndex: Intege
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function NextSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function IsWord(const AToken: TPascalToken; const AWord: string): Boolean;
@@ -150,13 +154,19 @@ begin
   while Result >= 0 do
   begin
     if ATokens[Result].IsKeyword('end') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if (Depth = 0) and ATokens[Result].IsKeyword(AWord) then
-      Exit
+    begin
+      Exit;
+    end
     else if OpensBlock(ATokens[Result]) then
     begin
       if Depth = 0 then
+      begin
         Exit(-1);
+      end;
       Dec(Depth);
     end;
     Result := PreviousSignificant(ATokens, Result);
@@ -172,17 +182,23 @@ begin
   Index := NextSignificant(ATokens, AOn);
   if (Index <= High(ATokens)) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
     (NextSignificant(ATokens, Index) <= High(ATokens)) and ATokens[NextSignificant(ATokens, Index)].IsSymbol(':') then
+  begin
     Index := NextSignificant(ATokens, NextSignificant(ATokens, Index));
+  end;
   while (Index <= High(ATokens)) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) do
   begin
     Result := ATokens[Index].Text;
     Index := NextSignificant(ATokens, Index);
     if (Index > High(ATokens)) or not ATokens[Index].IsSymbol('.') then
+    begin
       Break;
+    end;
     Index := NextSignificant(ATokens, Index);
   end;
   if (Index > High(ATokens)) or not ATokens[Index].IsKeyword('do') then
+  begin
     Result := '';
+  end;
 end;
 
 { TCompletionExceptions }
@@ -198,7 +214,9 @@ begin
   ASite.TryLast := -1;
   Result := False;
   if (ALast < 0) or (ALast > High(ATokens)) then
+  begin
     Exit;
+  end;
   if ATokens[ALast].IsKeyword('raise') then
   begin
     ASite.Kind := TExceptionSiteKind.Raise_;
@@ -206,15 +224,21 @@ begin
   end;
   // "on E: |"
   if not ATokens[ALast].IsSymbol(':') then
+  begin
     Exit;
+  end;
   NameIndex := PreviousSignificant(ATokens, ALast);
   OnIndex := PreviousSignificant(ATokens, NameIndex);
   if (NameIndex < 0) or (ATokens[NameIndex].Kind <> TPascalTokenKind.Identifier) or (OnIndex < 0) or
     not IsWord(ATokens[OnIndex], 'on') then
+  begin
     Exit;
+  end;
   ExceptIndex := BackTo(ATokens, OnIndex, 'except');
   if ExceptIndex < 0 then
+  begin
     Exit;
+  end;
   TryIndex := BackTo(ATokens, ExceptIndex, 'try');
   ASite.Kind := TExceptionSiteKind.Handler;
   if TryIndex >= 0 then
@@ -230,11 +254,15 @@ begin
     if ATokens[Index].IsKeyword('end') then
     begin
       if Depth = 0 then
+      begin
         Break;
+      end;
       Dec(Depth);
     end
     else if OpensBlock(ATokens[Index]) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if (Depth = 0) and (Index <> OnIndex) and IsWord(ATokens[Index], 'on') then
     begin
       Name := HandlerClass(ATokens, Index);
@@ -242,7 +270,9 @@ begin
       begin
         ASite.Handled := ASite.Handled + [Name];
         if Index < OnIndex then
+        begin
           ASite.Earlier := ASite.Earlier + [Name];
+        end;
       end;
     end;
     Index := NextSignificant(ATokens, Index);
@@ -267,8 +297,12 @@ var
 begin
   Result := nil;
   for Known in KnownRaiseTable do
+  begin
     if SameText(Known.Routine, AName) then
+    begin
       Result := Result + [Known];
+    end;
+  end;
 end;
 
 class function TCompletionExceptions.TryClasses(ARequest: TCompletionRequest; const ASite: TExceptionSite;
@@ -294,7 +328,9 @@ var
   begin
     Plain := Copy(AName, LastDelimiter('.:', AName) + 1, MaxInt);
     if (Plain = '') or Seen.ContainsKey(UpperCase(Plain)) then
+    begin
       Exit;
+    end;
     Seen.Add(UpperCase(Plain), True);
     Result := Result + [Plain];
     AUnits := AUnits + [AUnit];
@@ -304,7 +340,9 @@ begin
   Result := nil;
   AUnits := nil;
   if (ASite.TryFirst < 0) or (ARequest.Tree = nil) or (ARequest.Resolver = nil) then
+  begin
     Exit;
+  end;
   Tokens := ARequest.Tree.Tokens;
   Reader := TLspDocumentation.Reader(ARequest.FileName, ARequest.Text, ARequest.ReadText);
   Seen := TDictionary<string, Boolean>.Create;
@@ -315,14 +353,20 @@ begin
     for Index := ASite.TryFirst to Min(ASite.TryLast, High(Tokens)) do
     begin
       if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+      begin
         Continue;
+      end;
       // Zuweisungsziele und Deklarationen rufen nichts auf.
       Next := NextSignificant(Tokens, Index);
       if (Next <= High(Tokens)) and (Tokens[Next].IsSymbol(':=') or Tokens[Next].IsSymbol(':')) then
+      begin
         Continue;
+      end;
       Inc(Count);
       if Count > MaxCallees then
+      begin
         Break;
+      end;
       FromLibrary := True;
       Symbol := ARequest.Resolver.Resolve(ARequest.Tree, ARequest.FileName, Tokens[Index].StartPos);
       if Symbol.Found and (Symbol.SymbolKind in [TIndexSymbolKind.Routine, TIndexSymbolKind.Method,
@@ -337,21 +381,29 @@ begin
           begin
             FileLines := nil;
             if Reader(Symbol.FileName, Text) then
+            begin
               FileLines := TLspDocumentation.SplitLines(Text);
+            end;
             Lines.Add(UpperCase(Symbol.FileName), FileLines);
           end;
           if FileLines <> nil then
           begin
             Doc := TLspDocumentation.Load(ARequest.Resolver, Symbol, FileLines, Symbol.Range.StartPos.Line, Reader);
             for Entry in Doc.Exceptions do
+            begin
               AddClass(Entry.Name, '');
+            end;
           end;
         end;
       end;
       // Bekannte Fälle der RTL, deren Quelltext keine XMLDoc hat; eine eigene Routine gleichen Namens zählt nicht.
       if FromLibrary then
+      begin
         for Known in KnownRaises(Tokens[Index].Text) do
+        begin
           AddClass(Known.ClassName, Known.UnitName);
+        end;
+      end;
     end;
   finally
     Lines.Free;
@@ -377,8 +429,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AList) do
+  begin
     if SameText(AList[Index], AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -401,11 +457,15 @@ var
 begin
   Result := AItems;
   if not SiteAt(ARequest.Tree.Tokens, AContext.ExceptionToken, Site) then
+  begin
     Exit;
+  end;
   TryNames := nil;
   TryUnits := nil;
   if Site.Kind = TExceptionSiteKind.Handler then
+  begin
     TryNames := TryClasses(ARequest, Site, TryUnits);
+  end;
   Units := TDictionary<string, TUnitIndex>.Create;
   ByKey := TDictionary<string, Integer>.Create;
   Entries := TList<TExceptionEntry>.Create;
@@ -416,26 +476,36 @@ begin
       if not TCompletionGenerics.ItemSymbol(ARequest, Units, Item, Symbol) or
         not ARequest.Resolver.ExceptionClassOf(Symbol, ExceptionClass) or
         (IndexOfText(Item.Name, Site.Handled) >= 0) then
+      begin
         Continue;
+      end;
       Entry := Default(TExceptionEntry);
       Entry.Item := Item;
       Entry.Key := UpperCase(ExceptionClass.UnitName + '.' + ExceptionClass.QualifiedName);
       if Length(Item.AdditionalEdits) = 0 then
-        Entry.Preference := 0
+      begin
+        Entry.Preference := 0;
+      end
       else if Symbol.SymbolKind = TIndexSymbolKind.TypeAlias then
-        Entry.Preference := 1
+      begin
+        Entry.Preference := 1;
+      end
       else
+      begin
         Entry.Preference := 2;
+      end;
       Entry.Library_ := ARequest.Resolver.DeclaringUnit(ExceptionClass, DeclaringUnit) and DeclaringUnit.Library_;
       Entry.TryRank := IndexOfText(Item.Name, TryNames);
       // Reihenfolge der Zweige: Ein früherer Zweig fängt schon alle Nachfahren seiner Klasse.
       Ancestors := ARequest.Resolver.AncestorNames(ExceptionClass);
       for Earlier in Site.Earlier do
+      begin
         if IndexOfText(Earlier, Ancestors) > 0 then
         begin
           Entry.Item.Unreachable := Earlier;
           Break;
         end;
+      end;
       Entry.Order := Order;
       Inc(Order);
       if ByKey.TryGetValue(Entry.Key, Existing) then
@@ -455,11 +525,17 @@ begin
     begin
       Existing := -1;
       for Index := 0 to Entries.Count - 1 do
+      begin
         if SameText(Entries[Index].Item.Name, TryNames[Rank]) then
+        begin
           Existing := Index;
+        end;
+      end;
       if (Existing >= 0) or (IndexOfText(TryNames[Rank], Site.Handled) >= 0) or
         (MatchScore(TryNames[Rank], AContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch) then
+      begin
         Continue;
+      end;
       Entry := Default(TExceptionEntry);
       Entry.Item.Name := TryNames[Rank];
       Entry.Item.Kind := KindClass;
@@ -478,26 +554,42 @@ begin
         if (A.TryRank >= 0) <> (B.TryRank >= 0) then
         begin
           if A.TryRank >= 0 then
-            Result := -1
+          begin
+            Result := -1;
+          end
           else
+          begin
             Result := 1;
+          end;
         end
         else if (A.TryRank >= 0) and (A.TryRank <> B.TryRank) then
-          Result := A.TryRank - B.TryRank
+        begin
+          Result := A.TryRank - B.TryRank;
+        end
         else if A.Library_ <> B.Library_ then
         begin
           if B.Library_ then
-            Result := -1
+          begin
+            Result := -1;
+          end
           else
+          begin
             Result := 1;
+          end;
         end
         else
+        begin
           Result := A.Order - B.Order;
+        end;
       end));
     AnyTry := False;
     for Entry in Sorted do
+    begin
       if Entry.TryRank >= 0 then
+      begin
         AnyTry := True;
+      end;
+    end;
     Result := nil;
     for Entry in Sorted do
     begin
@@ -531,9 +623,13 @@ begin
         Item.Expected := 'Exception';
         Item.Fits := Entry.TryRank >= 0;
         if Item.Fits then
-          Item.ExceptionGroup := GroupTry
+        begin
+          Item.ExceptionGroup := GroupTry;
+        end
         else
+        begin
           Item.ExceptionGroup := GroupGeneral;
+        end;
       end;
       Result := Result + [Item];
     end;

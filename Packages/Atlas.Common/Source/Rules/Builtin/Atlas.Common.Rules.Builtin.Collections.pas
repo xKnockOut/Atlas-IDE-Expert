@@ -159,7 +159,9 @@ function Unparenthesized(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode;
   while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+  begin
     Result := Result[0];
+  end;
 end;
 
 function IsMember(const AName: string; const AMembers: TArray<string>): Boolean;
@@ -168,8 +170,12 @@ var
 begin
   Result := False;
   for Member in AMembers do
+  begin
     if SameText(Member, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TLegacyCollections.DeclaredIn(const ASymbol: TResolvedSymbol; const AFileName: string): Boolean;
@@ -193,14 +199,22 @@ var
     Result := False;
     if (ANode = nil) or not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess,
       TSyntaxKind.IndexAccess, TSyntaxKind.Call]) then
+    begin
       Exit;
+    end;
     if not AResolver.NodeType(ATree, AFileName, ANode, ASymbol, AType, TypeFound) or not TypeFound or
       ASymbol.IsType or not AType.IsType or (AType.TypeParams <> '') or (Pos('<', ASymbol.TypeName) > 0) then
+    begin
       Exit;
+    end;
     for Wanted in ATypes do
+    begin
       if SameText(AType.Name, Wanted.TypeName) and (SameText(AType.UnitName, Wanted.UnitName) or
         SameText(AType.UnitName, Wanted.ShortUnitName)) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
   /// <summary>Liest AValue ein Element einer gesuchten Sammlung? Dann deren Ausdruck, Deklaration und Typ.
@@ -213,13 +227,17 @@ var
     ACollection := nil;
     AValue := Unparenthesized(AValue);
     if AValue = nil then
+    begin
       Exit;
+    end;
     case AValue.Kind of
       TSyntaxKind.IndexAccess:
         begin
           // Liste[I], Liste.Items[I], Objekt.Liste[I]
           if not AIndexed or (AValue.ChildCount <> 2) then
+          begin
             Exit;
+          end;
           Base := AValue[0];
           if (Base.Kind = TSyntaxKind.MemberAccess) and SameText(Base.Name, 'Items') and (Base.ChildCount = 1) and
             IsLegacyCollection(Base[0], ASymbol, AType) then
@@ -263,9 +281,13 @@ var
   begin
     Result := False;
     if (ANode = nil) or (ANode.Kind <> TSyntaxKind.Identifier) or SameText(ANode.Name, 'Pointer') then
+    begin
       Exit;
+    end;
     if not AResolver.NodeType(ATree, AFileName, ANode, Symbol, AType, TypeFound) or not Symbol.IsType then
+    begin
       Exit;
+    end;
     AType := Symbol;
     Result := not SameText(Symbol.Name, 'Pointer');
   end;
@@ -276,7 +298,9 @@ var
   begin
     if not ElementRead(AValue, Read.Collection, Read.Symbol, Read.CollectionType) or
       not IsCastType(ATypeNode, Read.CastType) then
+    begin
       Exit;
+    end;
     Read.Cast := ACast;
     Found.Add(Read);
   end;
@@ -296,12 +320,18 @@ var
         Node := Pending.Pop;
         // T(Wert): Aufruf mit einem Argument, dessen Name ein Typ ist.
         if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount = 2) and (Node[0].Kind = TSyntaxKind.Identifier) then
-          Add(Node, Node[1], Node[0])
+        begin
+          Add(Node, Node[1], Node[0]);
+        end
         // Wert as T
         else if (Node.Kind = TSyntaxKind.BinaryExpr) and SameText(Node.Name, 'as') and (Node.ChildCount = 2) then
+        begin
           Add(Node, Node[0], Unparenthesized(Node[1]));
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -311,7 +341,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Found := TList<TLegacyCollectionRead>.Create;
   try
     Visit(ATree.Root);
@@ -345,9 +377,15 @@ var
 begin
   Result := False;
   for Project in AProjects do
+  begin
     for Source in Project.Sources do
+    begin
       if SameText(Source, AFileName) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Die Units der Projektgruppe, die die Sammlung unter einem ihrer äußeren Namen erreichen, in die
@@ -362,7 +400,9 @@ var
 begin
   Names := AConversion.ExternalNames;
   if Names = nil then
+  begin
     Exit;
+  end;
   if AContext.ProjectFiles = nil then
   begin
     AConversion.Reject(Format('%s ist auch in anderen Units sichtbar, und ohne geladenes Projekt lassen sie sich ' +
@@ -379,10 +419,13 @@ begin
   try
     Seen.Add(LowerCase(ADeclarationFile));
     for Project in AContext.ProjectFiles.ProjectsOf(ADeclarationFile, True) do
+    begin
       for Source in Project.Sources do
       begin
         if Seen.Contains(LowerCase(Source)) then
+        begin
           Continue;
+        end;
         Seen.Add(LowerCase(Source));
         case NamesIn(AContext.ProjectFiles, Source, Names) of
           TRuleNameAnswer.Absent:
@@ -395,7 +438,9 @@ begin
         end;
         // Die geprüfte Unit mit dem Text des Editors, alle anderen über die Projektdateien.
         if SameText(Source, AFileName) then
-          Text := AContext.Text
+        begin
+          Text := AContext.Text;
+        end
         else if not AContext.ProjectFiles.ReadText(Source, Text) then
         begin
           AConversion.Reject(Format('%s ist nicht lesbar', [ExtractFileName(Source)]));
@@ -403,6 +448,7 @@ begin
         end;
         AConversion.AddFile(Text, Source);
       end;
+    end;
   finally
     Seen.Free;
   end;
@@ -428,10 +474,16 @@ begin
     FileEdits.Edits := APlan.Edits;
     Others := [FileEdits];
     for FileEdits in APlan.FileEdits do
+    begin
       if SameText(FileEdits.FileName, AFileName) then
-        Result.Edits := FileEdits.Edits
+      begin
+        Result.Edits := FileEdits.Edits;
+      end
       else
+      begin
         Others := Others + [FileEdits];
+      end;
+    end;
   end;
   for FileEdits in Others do
   begin
@@ -508,7 +560,9 @@ begin
     Conversion := TGenericListConversion.Create(Kind, AResolver);
     try
       if Conversion.Start(Tree, Text, DeclarationFile, Declaration, Name) then
+      begin
         AddOtherUnits(AContext, AFileName, DeclarationFile, Conversion);
+      end;
       if not Conversion.Finish(Plan) then
       begin
         AReason := Conversion.Reason;
@@ -519,7 +573,9 @@ begin
     end;
   finally
     if OwnsTree then
+    begin
       Tree.Free;
+    end;
   end;
   AFix := FixFromPlan(Plan, AFileName, DeclarationFile);
   Result := True;
@@ -542,12 +598,18 @@ var
 begin
   // Kein Vorfilter über den Text: Die Liste kann in einer anderen Unit deklariert sein (Objekt.Liste[I]).
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.Index = nil) then
+  begin
     Exit;
+  end;
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Keys := nil;
   CastTypes := nil;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
@@ -568,23 +630,37 @@ begin
     begin
       Key := Read.Key;
       if Keys.Contains(Key) then
+      begin
         Continue;
+      end;
       Keys.Add(Key);
       First := Read;
       CastTypes.Clear;
       for Index := 0 to High(Reads) do
+      begin
         if (Reads[Index].Key = Key) and not CastTypes.Contains(Reads[Index].CastType.Name) then
+        begin
           CastTypes.Add(Reads[Index].CastType.Name);
+        end;
+      end;
       if TLegacyCollections.DeclaredIn(First.Symbol, FileName) then
-        Range := First.Symbol.SelectionRange
+      begin
+        Range := First.Symbol.SelectionRange;
+      end
       else
+      begin
         Range := TTextRange.Create(First.Cast.StartPos, First.Cast.EndPos);
+      end;
       if TLegacyCollections.ConversionFix(AContext, FileName, First, Resolver, Fix, Reason) then
+      begin
         AReport.Add(Range, FindingMessage(First.CollectionType.Name, CastTypes.ToArray), TRuleConfidence.High,
-          [Fix])
+          [Fix]);
+      end
       else
+      begin
         AReport.AddWithDetails(Range, FindingMessage(First.CollectionType.Name, CastTypes.ToArray),
           'Keine Schnellkorrektur: ' + Reason + '.', TRuleConfidence.High, nil);
+      end;
     end;
   finally
     CastTypes.Free;
@@ -619,11 +695,15 @@ end;
 function TLegacyTListRule.FindingMessage(const ACollectionType: string; const ACastTypes: TArray<string>): string;
 begin
   if Length(ACastTypes) = 1 then
+  begin
     Result := Format('Ungenerische %s mit Cast beim Lesen; %s<%s> prüft den Typ beim Übersetzen.',
-      [ACollectionType, ACollectionType, ACastTypes[0]])
+      [ACollectionType, ACollectionType, ACastTypes[0]]);
+  end
   else
+  begin
     Result := Format('Ungenerische %s mit Casts auf %s beim Lesen; eine generische Liste prüft den Typ ' +
       'beim Übersetzen.', [ACollectionType, string.Join(', ', ACastTypes)]);
+  end;
 end;
 
 { TLegacyStackQueueRule }
@@ -672,11 +752,15 @@ begin
     Generic := 'eine generische Warteschlange';
   end;
   if Length(ACastTypes) = 1 then
+  begin
     Result := Format('%s %s mit Cast beim Lesen; %s<%s> prüft den Typ beim Übersetzen.',
-      [Adjective, ACollectionType, ACollectionType, ACastTypes[0]])
+      [Adjective, ACollectionType, ACollectionType, ACastTypes[0]]);
+  end
   else
+  begin
     Result := Format('%s %s mit Casts auf %s beim Lesen; %s prüft den Typ beim Übersetzen.',
       [Adjective, ACollectionType, string.Join(', ', ACastTypes), Generic]);
+  end;
 end;
 
 procedure RegisterCollectionRules(const ARegistry: TRuleRegistry);

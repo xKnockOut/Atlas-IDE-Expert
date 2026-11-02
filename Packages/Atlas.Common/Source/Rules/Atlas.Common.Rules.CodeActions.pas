@@ -53,8 +53,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AAction.FileEdits) do
+  begin
     if SameText(AAction.FileEdits[Index].FileName, AFileName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -76,7 +80,9 @@ begin
     AAction.FileEdits := AAction.FileEdits + [Entry];
   end
   else
+  begin
     AAction.FileEdits[Index].Edits := AAction.FileEdits[Index].Edits + AEdits;
+  end;
 end;
 
 /// <summary>Edits der Korrektur in die Aktion: ins Dokument oder in die Datei der Korrektur (#309), dazu die
@@ -87,7 +93,9 @@ var
 begin
   AddFileEdits(AAction, AFix.FileName, AFix.Edits);
   for Other in AFix.OtherFiles do
+  begin
     AddFileEdits(AAction, Other.FileName, Other.Edits);
+  end;
 end;
 
 { TRuleCodeActions }
@@ -104,7 +112,9 @@ begin
   for Finding in AFindings do
   begin
     if (Finding.Range.EndPos.Line < ARange.StartPos.Line) or (Finding.Range.StartPos.Line > ARange.EndPos.Line) then
+    begin
       Continue;
+    end;
     First := True;
     for Fix in Finding.Fixes do
     begin
@@ -117,18 +127,24 @@ begin
       begin
         Action.Command := GoToPositionCommand;
         if Fix.OpensSignature then
+        begin
           Action.Command := ShowSignatureHelpCommand;
+        end;
         Action.CommandArguments := [IntToStr(Fix.JumpTo.Line), IntToStr(Fix.JumpTo.Character)];
       end;
       // „Graph zeigen“ an einem Unit-Zyklus (#896): der Client öffnet die Unit-Beziehungen.
       if Fix.ShowsUnitRelations then
+      begin
         Action.Command := ShowUnitRelationsCommand;
+      end;
       Action.IsPreferred := First and not Fix.Alternative;
       Action.RuleId := Finding.RuleId;
       Action.DiagnosticRange := Finding.Range;
       // Fenster „Atlas-Prüfung“ und Befund-Hover suchen die Schnellkorrektur über das Tag (#909).
       if Action.IsPreferred then
+      begin
         Action.Tag := RuleFixTag;
+      end;
       Result := Result + [Action];
       First := False;
     end;
@@ -136,7 +152,9 @@ begin
     // Sprachmerkmale für neuere Versionen gehören in {$IF CompilerVersion >= …}.
     if SameText(Finding.RuleId, 'unused-suppression') or SameText(Finding.RuleId, 'syntax') or
       SameText(Finding.RuleId, 'language-feature') then
+    begin
       Continue;
+    end;
     Action := Default(TCodeAction);
     Action.Title := Format('"%s" für diese Zeile unterdrücken', [Finding.RuleId]);
     Action.Kind := QuickFixKind;
@@ -165,29 +183,47 @@ begin
   AAction.Title := 'Alle sicheren Korrekturen anwenden';
   AAction.Kind := FixAllKind;
   for Finding in AFindings do
+  begin
     for Fix in Finding.Fixes do
     begin
       // Korrekturen über mehrere Dateien (#1105) nie beim Speichern.
       if not Fix.Safe or (Fix.OtherFiles <> nil) then
+      begin
         Continue;
+      end;
       // Überlappung je Datei: das Dokument oder z. B. die Formulardatei (#309).
       Target := FileEditsIndex(AAction, Fix.FileName);
       if Fix.FileName = '' then
-        Existing := AAction.Edits
+      begin
+        Existing := AAction.Edits;
+      end
       else if Target >= 0 then
-        Existing := AAction.FileEdits[Target].Edits
+      begin
+        Existing := AAction.FileEdits[Target].Edits;
+      end
       else
+      begin
         Existing := nil;
+      end;
       Fits := True;
       for Edit in Fix.Edits do
+      begin
         for Taken in Existing do
+        begin
           if Overlaps(Edit.Range, Taken.Range) then
+          begin
             Fits := False;
+          end;
+        end;
+      end;
       // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
       if Fits then
+      begin
         AddFixEdits(AAction, Fix);
+      end;
       Break;
     end;
+  end;
   Result := (AAction.Edits <> nil) or (AAction.FileEdits <> nil);
 end;
 
@@ -198,7 +234,9 @@ var
 begin
   Result := ForFindings(AFindings, AText, ARange);
   if TCodeActions.TryFinally(AText, ARange.StartPos.Line, Action) then
+  begin
     Result := Result + [Action];
+  end;
 end;
 
 class function TRuleCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
@@ -208,7 +246,9 @@ var
 begin
   Result := ForFindings(AFindings, AText, ARange);
   if TCodeActions.TryFinally(AText, ATree, ARange, AStyle, Action) then
+  begin
     Result := Result + [Action];
+  end;
 end;
 
 end.

@@ -37,6 +37,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeHeaderTests = class
   public
     [Test]
@@ -52,6 +53,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeBoardTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -74,6 +76,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeArrangeBoardTests = class
   public
     /// <summary>Erste Benutzung (Menüs, Bearbeitungsleiste) ungemessen vorwegnehmen.</summary>
@@ -96,6 +99,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSearchBoxTests = class
   public
     [Test]
@@ -111,6 +115,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeWhatsNewFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -131,6 +136,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeProjectsFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -157,6 +163,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeContinueFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -179,6 +186,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeUnsavedFrameTests = class
   public
     [Test]
@@ -192,6 +200,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeStateFrameTests = class
   public
     [Test]
@@ -205,6 +214,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeDiscoverFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -221,6 +231,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeHelpFrameTests = class
   public
     [Test]
@@ -233,6 +244,7 @@ type
 
   /// <summary>Bereich „&lt;Projekt&gt; für Atlas einrichten“ (#759).</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSetupFrameTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -263,6 +275,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeTrendsFrameTests = class
   public
     /// <summary>Abnahme: 12, 9, 6, 3, 0 Hinweise ergeben „0“ und „vorher 3“; Einheiten je Sprache.</summary>
@@ -297,6 +310,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Layout,
   Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,
   Atlas.UI.Welcome.Board,
@@ -801,7 +815,7 @@ begin
     // welcomePage.greeting aus: nur „Atlas“.
     Info.Greeting := False;
     Header.ShowInfo(Info);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeHeaderTitle), Header.GreetingLabel.Caption);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle), Header.GreetingLabel.Caption);
   finally
     Header.Free;
     TAtlasStrings.Language := Saved;
@@ -1709,7 +1723,7 @@ begin
     Assert.IsNull(Frame.Rows[1].Switch, 'ohne Einstellung kein Schalter');
     Assert.IsNull(Frame.Rows[1].TryButton, 'ohne Befehl und Beispiel kein „Ausprobieren“');
     Assert.IsFalse(Frame.Rows[2].Switch.Checked);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeNewsRead), Frame.DismissButton.Caption);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsRead), Frame.DismissButton.Caption);
     Assert.IsTrue(Frame.Rows[1].Title.Top > Frame.Rows[0].Text.Top, 'Zeilen untereinander');
     Assert.IsTrue(Frame.Rows[0].Switch.Left > Frame.Rows[0].Title.Left + Frame.Rows[0].Title.Width,
       'Schalter rechts vom Titel');
@@ -1718,7 +1732,7 @@ begin
     // Danach ohne Ungelesenes: „Schließen“ statt „Gelesen“.
     Fake.FView := TAtlasWhatsNewView.Current;
     Frame.UpdateContent;
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeNewsClose), Frame.DismissButton.Caption);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose), Frame.DismissButton.Caption);
     Fake.FView := TAtlasWhatsNewView.Hidden;
     Fake.FVersions := nil;
     Frame.UpdateContent;
@@ -1785,7 +1799,7 @@ begin
     // Neu lesen behält den Zustand, solange „Alle Versionen“ bleibt.
     Frame.UpdateContent;
     Assert.AreEqual('Erste', Frame.Rows[0].Title.Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeNewsClose), Frame.DismissButton.Caption);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose), Frame.DismissButton.Caption);
   finally
     Host.Free;
   end;
@@ -1984,7 +1998,7 @@ begin
     Assert.Contains(Hint, 'E2003');
     Item.Summary.Build := TAtlasProjectBuild.Empty;
     Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Item),
-      TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintNoBuild));
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintNoBuild));
     Assert.AreEqual('', TAtlasWelcomeProjectsFrame.LocalText(0));
   finally
     TAtlasStrings.Language := Saved;
@@ -2162,9 +2176,9 @@ begin
     Fake.FSelected := 'c:/p/eins.DPROJ';
     Assert.AreEqual(0, Frame.SelectedRow, 'Schreibweise egal');
     Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Fake.FEntries[0], True),
-      TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintSelect));
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintSelect));
     Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Fake.FEntries[0], False),
-      TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintClick));
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintClick));
   finally
     Host.Free;
   end;
@@ -2189,7 +2203,8 @@ begin
     Assert.AreEqual('vorher 3', TAtlasWelcomeTrendsFrame.PreviousLine(Tile));
     // Regeltreffer ohne Baseline: kein Wert statt 0, kein Vorwert.
     Tile := View.Tiles[1];
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsNoValue), TAtlasWelcomeTrendsFrame.ValueLine(Tile));
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue),
+      TAtlasWelcomeTrendsFrame.ValueLine(Tile));
     Assert.AreEqual('', TAtlasWelcomeTrendsFrame.PreviousLine(Tile));
     Assert.AreEqual('7', TAtlasWelcomeTrendsFrame.ValueLine(View.Tiles[2]));
     Assert.AreEqual('12,5 s', TAtlasWelcomeTrendsFrame.ValueLine(View.Tiles[3]));
@@ -2225,7 +2240,8 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     Frame := TrendsFrame(Host, Source);
     Assert.AreEqual('Kasse · letzte 30 Builds', Frame.HeadingText);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsClickHint), Frame.InfoText, 'vor dem Klick');
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsClickHint), Frame.InfoText,
+      'vor dem Klick');
     Hit.Tile := 0;
     Hit.Point := 2;
     Frame.ClickAt(Hit);
@@ -2242,7 +2258,8 @@ begin
     Hit.Tile := 2;
     Hit.Point := 0;
     Frame.ClickAt(Hit);
-    Assert.Contains(Frame.InfoText, 'Offene TODOs: ' + TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsNoValue));
+    Assert.Contains(Frame.InfoText,
+      'Offene TODOs: ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue));
     // Daneben: nichts ändert sich.
     Hit.Tile := -1;
     Hit.Point := -1;
@@ -2348,7 +2365,7 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     Frame := TrendsFrame(Host, Source);
     Assert.AreEqual('', Frame.HeadingText);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsNoProject), Frame.InfoText);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoProject), Frame.InfoText);
     Assert.IsTrue(Frame.PreferredHeight > 0);
     Fake.FView := TAtlasWelcomeTrends.View(TAtlasProjectSummary.Create('C:\P\Neu.dproj'),
       [TAtlasTrendSeries.Warnings], 30);
@@ -2357,7 +2374,7 @@ begin
     Assert.AreEqual(-1, Frame.HitTest(20, 60).Tile, 'ohne Punkte keine Kacheln');
     Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [1, 2]), nil, 30);
     Frame.UpdateContent;
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsNoSeries), Frame.InfoText);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoSeries), Frame.InfoText);
   finally
     Host.Free;
     TAtlasStrings.Language := Saved;
@@ -3036,7 +3053,7 @@ begin
       'genug Breite: eine Reihe');
     Assert.IsTrue(Frame.Button(TAtlasHelpButton.Keys).Left > Frame.Button(TAtlasHelpButton.Docs).Left);
     Assert.IsTrue(Frame.NoteLabel.Top > Frame.Button(TAtlasHelpButton.Docs).Top, 'Hinweis unter den Knöpfen');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeHelpNote), Frame.NoteLabel.Caption);
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpNote), Frame.NoteLabel.Caption);
     Assert.IsTrue(Frame.PreferredHeight > Frame.NoteLabel.Top, 'Höhe nach dem Inhalt');
     Wide := Frame.PreferredHeight;
     // Schmal: weitere Reihen, der Bereich wird höher.
@@ -3256,7 +3273,7 @@ begin
     Assert.AreEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Baseline).Caption);
     Assert.IsFalse(Frame.Button(TAtlasSetupButton.Baseline).Visible);
     Assert.IsTrue(Frame.BaselineInfo.Visible);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupBaselineResult, [120, 14, 0]),
+    Assert.AreEqual(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupBaselineResult, [120, 14, 0]),
       Frame.BaselineInfo.Caption);
     Assert.Contains(Frame.BaselineInfo.Caption, ': 0');
     // Ohne geöffnetes Projekt heißen die Knöpfe „Projekt öffnen“.
@@ -3264,9 +3281,9 @@ begin
     Fake.Card_.Baseline := TAtlasSetupRun.Idle;
     Fake.Card_.ProjectOpen := False;
     Frame.UpdateContent;
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupOpenProject),
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupOpenProject),
       Frame.Button(TAtlasSetupButton.Baseline).Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupOpenProject),
+    Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupOpenProject),
       Frame.Button(TAtlasSetupButton.Paths).Caption);
   finally
     Host.Free;

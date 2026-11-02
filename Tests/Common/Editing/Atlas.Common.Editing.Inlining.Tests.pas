@@ -73,7 +73,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 function PositionOf(const AText: string; AIndex: Integer): TTextPosition;
@@ -83,13 +85,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to AIndex - 1 do
+  begin
     if AText[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   Result := TTextPosition.Create(Line, Character);
 end;
 
@@ -128,14 +134,22 @@ begin
         Result.Container := 'TCounter';
         Result.Visibility := TInlineVisibility.Private;
         if SameText(Name, 'FSecret') then
+        begin
           Result.Visibility := TInlineVisibility.StrictPrivate;
+        end;
       end;
       if MatchText(Name, ['Next', 'Log', 'Writeln', 'Inc', 'Run']) then
+      begin
         Result.IsRoutine := True;
+      end;
       if MatchText(Name, ['Integer', 'string']) then
+      begin
         Result.IsType := True;
+      end;
       if SameText(Name, 'Limit') and (ATree = AShadowTree) then
+      begin
         Result.Key := 'local.limit';
+      end;
     end;
 end;
 
@@ -173,7 +187,9 @@ begin
   try
     if not TInlineRefactoring.InlineVariable(TInlineSource.Create('u.pas', Text, Tree), Position, Options(True),
       Action, AReason) then
+    begin
       Exit('-');
+    end;
     Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
     CheckParses(Result);
   finally
@@ -207,13 +223,19 @@ begin
   try
     Source := TInlineSource.Create('u.pas', Text, Tree);
     if not TInlineRefactoring.CallAt(Tree, Text, Position, Call) then
+    begin
       Exit('-');
+    end;
     Routines := TInlineRefactoring.FindRoutines(Tree, Call.Name);
     if Length(Routines) <> 1 then
+    begin
       Exit('-');
+    end;
     if not TInlineRefactoring.InlineMethod(Source, Position, Source, Routines[0], Options(AInline), Action,
       AReason) then
+    begin
       Exit('-');
+    end;
     ATitle := Action.Title;
     Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
     CheckParses(Result);

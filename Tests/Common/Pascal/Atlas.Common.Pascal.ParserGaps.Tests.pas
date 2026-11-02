@@ -165,12 +165,16 @@ var
   Index: Integer;
 begin
   if (ANode.Kind = AKind) and ((AName = '') or SameText(ANode.Name, AName)) then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := Find(ANode[Index], AKind, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -184,8 +188,10 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     for Diagnostic in Tree.Diagnostics do
+    begin
       Result := Result + Format('%d:%d %s; ', [Diagnostic.StartPos.Line, Diagnostic.StartPos.Character,
         Diagnostic.Message]);
+    end;
   finally
     Tree.Free;
   end;
@@ -199,11 +205,13 @@ begin
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -212,8 +220,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -412,9 +424,15 @@ begin
   // Das Feld ist ein Klassenfeld wie bei class var.
   ClassField := False;
   for Symbol in U.Symbols do
+  begin
     if SameText(Symbol.Container, 'TFoo') and SameText(Symbol.Name, 'FCurrent') then
+    begin
       for Directive in Symbol.Directives do
+      begin
         ClassField := ClassField or SameText(Directive, 'class');
+      end;
+    end;
+  end;
   Assert.IsTrue(ClassField);
 end;
 

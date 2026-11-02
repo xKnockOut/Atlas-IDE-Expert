@@ -53,7 +53,9 @@ function CompareNames(const ALeft, ARight: string): Integer;
 begin
   Result := CompareText(ALeft, ARight);
   if Result = 0 then
+  begin
     Result := CompareStr(ALeft, ARight);
+  end;
 end;
 
 /// <summary>Teilsystemnamen eines Stands mit ihren Units (klein geschrieben).</summary>
@@ -73,7 +75,9 @@ begin
     begin
       mKey := LowerCase(ASnapshot.Subsystems[mIndex].Name);
       if mLookup.ContainsKey(mKey) then
+      begin
         Continue;
+      end;
       mLookup.Add(mKey, Length(ANames));
       ANames := ANames + [ASnapshot.Subsystems[mIndex].Name];
       Result := Result + [TDictionary<string, Boolean>.Create];
@@ -100,7 +104,9 @@ var
   mGroup: TDictionary<string, Boolean>;
 begin
   for mGroup in AGroups do
+  begin
     mGroup.Free;
+  end;
 end;
 
 /// <summary>Strikte Mehrheit beider Seiten: mehr als die Hälfte der Units des neuen und des alten.</summary>
@@ -128,64 +134,96 @@ begin
     mNewGroups := GroupsOf(ANew, mNewNames);
     mCandidates := TList<TMatchCandidate>.Create;
     for mNewIndex := 0 to High(mNewGroups) do
+    begin
       for mOldIndex := 0 to High(mOldGroups) do
       begin
         mOverlap := 0;
         for mKey in mNewGroups[mNewIndex].Keys do
+        begin
           if mOldGroups[mOldIndex].ContainsKey(mKey) then
+          begin
             Inc(mOverlap);
+          end;
+        end;
         if mOverlap = 0 then
+        begin
           Continue;
+        end;
         if (AMode = TSubsystemMatchMode.Majority) and
           not IsMajority(mOverlap, mNewGroups[mNewIndex].Count, mOldGroups[mOldIndex].Count) then
+        begin
           Continue;
+        end;
         mCandidate.NewIndex := mNewIndex;
         mCandidate.OldIndex := mOldIndex;
         mCandidate.Overlap := mOverlap;
         mCandidate.SameName := SameText(mNewNames[mNewIndex], mOldNames[mOldIndex]);
         mCandidates.Add(mCandidate);
       end;
+    end;
     // Größte Überschneidung zuerst, bei Gleichstand derselbe Name, dann nach Namen (eindeutig).
     mCandidates.Sort(TComparer<TMatchCandidate>.Construct(
       function(const ALeft, ARight: TMatchCandidate): Integer
       begin
         Result := ARight.Overlap - ALeft.Overlap;
         if Result = 0 then
+        begin
           Result := Ord(ARight.SameName) - Ord(ALeft.SameName);
+        end;
         if Result = 0 then
+        begin
           Result := CompareNames(mNewNames[ALeft.NewIndex], mNewNames[ARight.NewIndex]);
+        end;
         if Result = 0 then
+        begin
           Result := CompareNames(mOldNames[ALeft.OldIndex], mOldNames[ARight.OldIndex]);
+        end;
       end));
     SetLength(mOldTaken, Length(mOldGroups));
     SetLength(mAssigned, Length(mNewGroups));
     for mNewIndex := 0 to High(mAssigned) do
+    begin
       mAssigned[mNewIndex] := -1;
+    end;
     for mCandidate in mCandidates do
+    begin
       if (mAssigned[mCandidate.NewIndex] < 0) and not mOldTaken[mCandidate.OldIndex] then
       begin
         mAssigned[mCandidate.NewIndex] := mCandidate.OldIndex;
         mOldTaken[mCandidate.OldIndex] := True;
       end;
+    end;
     // Vergleich: ohne gemeinsame Units derselbe Name, wenn das alte Teilsystem noch frei ist.
     if AMode = TSubsystemMatchMode.Overlap then
+    begin
       for mNewIndex := 0 to High(mAssigned) do
+      begin
         if mAssigned[mNewIndex] < 0 then
+        begin
           for mOldIndex := 0 to High(mOldNames) do
+          begin
             if not mOldTaken[mOldIndex] and SameText(mOldNames[mOldIndex], mNewNames[mNewIndex]) then
             begin
               mAssigned[mNewIndex] := mOldIndex;
               mOldTaken[mOldIndex] := True;
               Break;
             end;
+          end;
+        end;
+      end;
+    end;
     SetLength(Result, Length(mNewNames));
     for mNewIndex := 0 to High(mNewNames) do
     begin
       Result[mNewIndex].NewName := mNewNames[mNewIndex];
       if mAssigned[mNewIndex] >= 0 then
-        Result[mNewIndex].OldName := mOldNames[mAssigned[mNewIndex]]
+      begin
+        Result[mNewIndex].OldName := mOldNames[mAssigned[mNewIndex]];
+      end
       else
+      begin
         Result[mNewIndex].OldName := '';
+      end;
     end;
     TArray.Sort<TSubsystemMatch>(Result, TComparer<TSubsystemMatch>.Construct(
       function(const ALeft, ARight: TSubsystemMatch): Integer

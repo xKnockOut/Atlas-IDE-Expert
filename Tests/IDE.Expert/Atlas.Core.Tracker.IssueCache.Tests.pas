@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerIssueCacheTests = class
   private
     FFolder: string;
@@ -43,7 +44,9 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.IssueCache;
+  Atlas.Core.Tracker.IssueCache,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 const
   cNow = 46323.5;
@@ -101,11 +104,13 @@ end;
 
 procedure TAtlasTrackerIssueCacheTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasIssueCache-' + TGUID.NewGuid.ToString);
 end;
 
 procedure TAtlasTrackerIssueCacheTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
   FFolder := '';

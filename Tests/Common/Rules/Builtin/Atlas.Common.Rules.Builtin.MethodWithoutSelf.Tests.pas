@@ -78,7 +78,9 @@ begin
   Assert.IsFalse(Found[0].Fixes[0].Safe);
   Inserted := '';
   for Edit in Found[0].Fixes[0].Edits do
+  begin
     Inserted := Inserted + Edit.NewText + '|';
+  end;
   Assert.IsTrue(Pos('class ', Inserted) > 0, Inserted);
   Assert.IsTrue(Pos('static;', Inserted) > 0, Inserted);
 end;
@@ -90,7 +92,9 @@ var
 begin
   Found := TRuleAssert.Findings(Rule, Source, Enabled);
   for Finding in Found do
+  begin
     Assert.IsTrue(Pos('TRechner.Wert', Finding.Message) = 0, Finding.Message);
+  end;
 end;
 
 procedure TMethodWithoutSelfRuleTests.ExperimentalAndSwitchedOff;

@@ -51,7 +51,9 @@ var
 begin
   Result := '-';
   if TResourceStringCommands.AddEdit(AText, AName, AValue, Edit) then
+  begin
     Result := TResourceStringCommands.Applied(AText, Edit);
+  end;
 end;
 
 { TResourceStringCommandsTests }

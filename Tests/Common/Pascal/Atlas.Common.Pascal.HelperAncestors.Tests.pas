@@ -68,12 +68,16 @@ var
   Index: Integer;
 begin
   if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindType(ANode[Index], AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -84,8 +88,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ADecl.ChildCount - 1 do
+  begin
     if ADecl[Index].Kind = AKind then
+    begin
       Exit(ADecl[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -96,12 +104,16 @@ var
 begin
   Result := '';
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if ANode[Index].Kind = AKind then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + ANode[Index].Name;
     end;
+  end;
 end;
 
 function SymbolOf(const AUnit: TUnitIndex; const AName: string): TIndexSymbol;
@@ -109,8 +121,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+    begin
       Exit(Symbol);
+    end;
+  end;
   raise Exception.CreateFmt('%s fehlt im Index', [AName]);
 end;
 
@@ -122,11 +138,13 @@ begin
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -192,7 +210,9 @@ begin
   Assert.IsTrue(Symbol.Kind = TIndexSymbolKind.ClassType);
   // Keine Felder namens "helper" oder "TFoo" mehr.
   for Symbol in U.Symbols do
+  begin
     Assert.IsFalse(Symbol.Kind = TIndexSymbolKind.Field, Symbol.Name);
+  end;
 end;
 
 procedure THelperAncestorsTests.ResolvesMemberOfAncestorHelper;
@@ -234,7 +254,9 @@ begin
   try
     Listed := '';
     for Candidate in Resolver.MemberCandidates(Tree, MainFile, ['Foo'], Pos('Foo.'#10, UnitMain) + 3) do
+    begin
       Listed := Listed + Candidate.Container + '.' + Candidate.Name + ' ';
+    end;
   finally
     Tree.Free;
     Resolver.Free;

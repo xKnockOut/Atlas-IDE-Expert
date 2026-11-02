@@ -61,7 +61,9 @@ var
 begin
   Result := not ASymbol.Builtin and (ASymbol.SymbolKind = TIndexSymbolKind.ClassType) and (ASymbol.TypeParams = '');
   if not Result then
+  begin
     Exit;
+  end;
   // Klassenreferenzen (class of) führt der Index als ClassType ohne Vorfahren.
   mText := LowerCase(ASymbol.Signature);
   mEqual := Pos('=', mText);
@@ -89,10 +91,14 @@ var
   begin
     mState := mSwitches.StateAt(AName, False, mScope.TokenAtPosition(ANode.StartPos));
     if not TRuleWarnSwitches.Reported(mState) then
+    begin
       Exit;
+    end;
     mSeverity := TRuleSeverity.Default;
     if mState = TRuleWarnState.AsError then
+    begin
       mSeverity := TRuleSeverity.Error;
+    end;
     AReport.AddWithSeverity(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, mSeverity, nil);
   end;
 
@@ -102,13 +108,19 @@ var
     mSymbol, mType: TResolvedSymbol;
   begin
     if ANode.ChildCount <> 1 then
+    begin
       Exit;
+    end;
     mOperand := Unwrapped(ANode[0]);
     if (mOperand = nil) or (mOperand.Kind <> TSyntaxKind.Identifier) then
+    begin
       Exit;
+    end;
     if not mScope.SureType(mOperand, mSymbol, mType) or mSymbol.IsType or
       not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+    begin
       Exit;
+    end;
     Report(ANode, cUnsafeCode, Format('@%s: Der @-Operator ist unsicherer Code (wie W1047).', [mOperand.Name]));
   end;
 
@@ -123,14 +135,18 @@ var
     begin
       Result := mTargetSymbol.IsType and IsPlainClass(mTargetType);
       if Result then
+      begin
         AName := mTargetType.Name;
+      end;
       Exit;
     end;
     // TObject ohne System im Index (Linter ohne RTL): nur, wenn der Name nichts anderes meint.
     Result := (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'TObject') and
       not mScope.Resolver.Resolve(AContext.Tree, mScope.FileName, ANode[0].StartPos).Found;
     if Result then
+    begin
       AName := 'TObject';
+    end;
   end;
 
   procedure CheckCast(ANode: TSyntaxNode);
@@ -142,13 +158,19 @@ var
     // T(X): Bezeichner bzw. qualifizierter Name ohne Typargumente und genau ein Argument.
     if (ANode.ChildCount <> 2) or not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
       (ANode[0].FindChild(TSyntaxKind.GenericArgs) <> nil) then
+    begin
       Exit;
+    end;
     if not TargetClass(ANode, mTarget) then
+    begin
       Exit;
+    end;
     mArgument := Unwrapped(ANode[1]);
     if not mScope.SureType(mArgument, mSourceSymbol, mSourceType) or mSourceSymbol.IsType or
       not mSourceType.Builtin or not SameText(mSourceType.Name, 'Pointer') then
+    begin
       Exit;
+    end;
     Report(ANode, cUnsafeCast, Format('Umwandlung von Pointer nach %s ist unsicher (wie W1048).', [mTarget]));
   end;
 
@@ -166,11 +188,17 @@ var
       begin
         mNode := mPending.Pop;
         if mNode.Kind = TSyntaxKind.AddressOf then
-          CheckAddress(mNode)
+        begin
+          CheckAddress(mNode);
+        end
         else if mNode.Kind = TSyntaxKind.Call then
+        begin
           CheckCast(mNode);
+        end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
@@ -179,14 +207,18 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mSwitches := TRuleWarnSwitches.Create(AContext);
   try
     // Ohne eingeschaltete Warnung gibt es nichts zu melden; der Baum wird dann gar nicht aufgelöst.
     if not TRuleWarnSwitches.Reported(mSwitches.ProjectState(cUnsafeCode, False)) and
       not TRuleWarnSwitches.Reported(mSwitches.ProjectState(cUnsafeCast, False)) and
       not mSwitches.MentionsAny([cUnsafeCode, cUnsafeCast]) then
+    begin
       Exit;
+    end;
     mScope := TTypedScope.Create(AContext);
     try
       Visit(AContext.Tree.Root);

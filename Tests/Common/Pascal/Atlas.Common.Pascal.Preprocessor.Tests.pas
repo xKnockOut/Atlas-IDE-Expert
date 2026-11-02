@@ -94,7 +94,9 @@ begin
   Result := TPreprocessorOptions.Default;
   SetLength(Result.Defines, Length(ADefines));
   for I := 0 to High(ADefines) do
+  begin
     Result.Defines[I] := ADefines[I];
+  end;
   Result.CompilerVersion := 37.0;
   Result.RTLVersion := 37.0;
   Result.FileName := 'Main.pas';
@@ -108,7 +110,9 @@ begin
   for Token in AResult.Tokens do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Token.Text;
   end;
 end;
@@ -120,12 +124,16 @@ var
 begin
   Result := '';
   for Token in AResult.Tokens do
+  begin
     if Token.Kind <> TPascalTokenKind.Directive then
     begin
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Token.Text;
     end;
+  end;
 end;
 
 function Run(const AText: string; const ADefines: array of string): TPreprocessorResult;
@@ -259,11 +267,17 @@ begin
   Result := True;
   AFileName := LowerCase(AName);
   if SameText(AName, 'defs.inc') then
-    AText := '{$DEFINE AUS_INC}'#10'  inc1'
+  begin
+    AText := '{$DEFINE AUS_INC}'#10'  inc1';
+  end
   else if SameText(AName, 'self.inc') then
-    AText := '{$I self.inc}'
+  begin
+    AText := '{$I self.inc}';
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 procedure TPascalPreprocessorTests.IncludesFilesWithOwnPositions;
@@ -347,8 +361,12 @@ var
   begin
     Result := False;
     for S in Symbols do
+    begin
       if S = AName then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
 begin
@@ -429,8 +447,12 @@ var
   Item: TConditionPart;
 begin
   for Item in AParts do
+  begin
     if Item.Text = AText then
+    begin
       Exit(Item);
+    end;
+  end;
   Result.Text := '';
   Result.Value := '';
   Result.Origin := '';

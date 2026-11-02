@@ -86,7 +86,9 @@ var
 begin
   Result := '';
   for mFinding in AFound do
+  begin
     Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + #10;
+  end;
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
@@ -99,7 +101,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;

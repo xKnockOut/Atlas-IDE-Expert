@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasBlameLinksTests = class
   public
     /// <summary>Abnahme: „ATL-123 …“ in einer Commit-Nachricht, auch mehrere je Nachricht.</summary>

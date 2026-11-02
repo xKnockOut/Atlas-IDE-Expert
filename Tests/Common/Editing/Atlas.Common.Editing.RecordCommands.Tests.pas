@@ -65,12 +65,16 @@ var
 begin
   if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, Edits, nil,
     AVersion) then
+  begin
     Exit('');
+  end;
   Lines := AText.Split([#10]);
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   TArray.Sort<TRuleEdit>(Edits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
@@ -135,8 +139,12 @@ begin
   Part := Copy(Part, 1, Pos(AStop, Part));
   Result := '';
   for Name in ['FNr', 'FName', 'FAdresse'] do
+  begin
     if ContainsText(Part, Name) then
+    begin
       Result := Result + Name + ' ';
+    end;
+  end;
 end;
 
 procedure TRecordCommandsTests.OperatorNames;

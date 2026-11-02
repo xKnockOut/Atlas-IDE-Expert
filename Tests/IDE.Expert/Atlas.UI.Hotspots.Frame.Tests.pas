@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasHotspotsFrameTests = class
   private
     FForm: TForm;
@@ -48,7 +49,7 @@ implementation
 uses
   System.SysUtils,
   Vcl.Controls,
-  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.Core.Hotspots.Model,
   Atlas.Core.Hotspots.Model.Tests;
 
@@ -124,7 +125,8 @@ begin
   Assert.AreEqual(2, Integer(Length(FFrame.HotspotText)));
   Assert.IsTrue(FFrame.HotspotText[0].Contains('TKern.Rechne'));
   Assert.AreEqual(1, FFrame.Selected, 'Methode der gewählten Unit App.Daten');
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.HotspotsColMethod), FFrame.HotspotList.Columns[1].Caption);
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColMethod),
+    FFrame.HotspotList.Columns[1].Caption);
   FFrame.LevelValue := 'unit';
   Assert.AreEqual(3, Integer(Length(FFrame.HotspotText)));
   Assert.AreEqual(1, FFrame.Selected);
@@ -175,15 +177,15 @@ end;
 
 procedure TAtlasHotspotsFrameTests.MessagesInsteadOfData;
 begin
-  FFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.HotspotsLoading), True);
+  FFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
   Assert.AreEqual(3, Integer(Length(FFrame.HotspotText)), 'Daten bleiben, während gerechnet wird');
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.HotspotsLoading), FFrame.StatusLabel.Caption);
-  FFrame.SetMessage(TAtlasStrings.Fmt(TAtlasTextId.HotspotsNoVcs, ['kein Repository']), False);
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), FFrame.StatusLabel.Caption);
+  FFrame.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsNoVcs, ['kein Repository']), False);
   Assert.AreEqual(0, Integer(Length(FFrame.HotspotText)));
   Assert.IsFalse(FFrame.HasModel);
   Assert.IsTrue(string(FFrame.StatusLabel.Caption).Contains('kein Repository'));
   Assert.AreEqual(0, Integer(Length(FFrame.Chart.Bubbles)));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.HotspotsChartHint), FFrame.Chart.EmptyText);
+  Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint), FFrame.Chart.EmptyText);
 end;
 
 initialization

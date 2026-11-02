@@ -60,6 +60,8 @@ type
     TreeCache: Int64;
     /// <summary>Text der geöffneten Dokumente.</summary>
     Documents: Int64;
+    /// <summary>Inhalt der übersetzten Packages (.dcp), einmal je Prozess (TPackageCompiledFiles).</summary>
+    Packages: Int64;
     /// <summary>Belegter Speicher des Prozesses (Heap); -1 = unbekannt.</summary>
     Total: Int64;
     /// <summary>Budget des Index; 0 = unbegrenzt.</summary>
@@ -154,9 +156,13 @@ uses
 function DateText(AValue: TDateTime): string;
 begin
   if AValue = 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := DateToISO8601(AValue, False);
+  end;
 end;
 
 function MegaBytes(ABytes: Int64): string;
@@ -170,29 +176,41 @@ function TWorkspaceStatus.ProjectText: string;
 begin
   Result := '';
   if Project = '' then
+  begin
     Exit;
+  end;
   if (Config <> '') or (Platform <> '') then
+  begin
     Result := ' · ' + Config + '/' + Platform;
+  end;
   if BuildChosen then
+  begin
     Result := Result + ' (gewählt)';
+  end;
   if Active then
+  begin
     Result := Result + ' · aktiv in der IDE';
+  end;
   if Selected then
+  begin
     Result := Result + ' · ausgewählt';
+  end;
 end;
 
 { TServerMemory }
 
 function TServerMemory.Estimated: Int64;
 begin
-  Result := Symbols + Usages + LibraryUnits + TreeCache + Documents;
+  Result := Symbols + Usages + LibraryUnits + TreeCache + Documents + Packages;
 end;
 
 function TServerMemory.Rest: Int64;
 begin
   Result := 0;
   if Total > Estimated then
+  begin
     Result := Total - Estimated;
+  end;
 end;
 
 function TServerMemory.OverBudget(ACompactUnits, AOffloadedUnits: Integer): Boolean;
@@ -211,24 +229,34 @@ begin
   mLoaded := 0;
   mCached := 0;
   for mWorkspace in AWorkspaces do
+  begin
     if mWorkspace.LastIndexMs >= 0 then
     begin
       Inc(mLoaded, mWorkspace.Parsed + mWorkspace.FromCache);
       Inc(mCached, mWorkspace.FromCache);
     end;
+  end;
   if mLoaded = 0 then
+  begin
     Exit(-1);
+  end;
   Result := Round(mCached * 100 / mLoaded);
 end;
 
 function TServerStatus.StateText: string;
 begin
   if State = StateLoading then
-    Result := 'lädt'
+  begin
+    Result := 'lädt';
+  end
   else if State = StateChecking then
-    Result := 'prüft'
+  begin
+    Result := 'prüft';
+  end
   else
+  begin
     Result := 'bereit';
+  end;
 end;
 
 procedure TServerStatus.AppendDiagnostics(ABuilder: TStringBuilder);
@@ -244,29 +272,46 @@ begin
   ABuilder.Append('| Bibliotheks-Units | ').Append(MegaBytes(Memory.LibraryUnits)).Append(' |').Append(#10);
   ABuilder.Append('| Syntaxbaum-Cache | ').Append(MegaBytes(Memory.TreeCache)).Append(' |').Append(#10);
   ABuilder.Append('| Offene Dokumente | ').Append(MegaBytes(Memory.Documents)).Append(' |').Append(#10);
+  ABuilder.Append('| Packages (.dcp) | ').Append(MegaBytes(Memory.Packages)).Append(' |').Append(#10);
   ABuilder.Append('| Rest | ').Append(MegaBytes(Memory.Rest)).Append(' |').Append(#10);
   if Memory.Total >= 0 then
+  begin
     ABuilder.Append('| Gesamt | ').Append(MegaBytes(Memory.Total)).Append(' |').Append(#10);
+  end;
   if Memory.Budget > 0 then
+  begin
     ABuilder.Append('| Budget des Index | ').Append(MegaBytes(Memory.Budget)).Append(' |').Append(#10);
+  end;
   if Memory.OverBudget(CompactUnits, OffloadedUnits) then
+  begin
     ABuilder.Append(#10).Append('Budget überschritten: Verwendungen werden ausgelagert.').Append(#10);
+  end;
   ABuilder.Append(#10).Append(Format('- Warteschlange: Index %d wartend, %d laufend; Prüfung %d wartend, %d laufend; ' +
     'älteste Wartezeit %d ms', [Queue.IndexWaiting, Queue.IndexRunning, Queue.CheckWaiting, Queue.CheckRunning,
     Queue.OldestWaitMs])).Append(#10);
   ABuilder.Append('- Cache-Treffer: ');
   if IndexCacheHitPercent >= 0 then
-    ABuilder.Append(Format('Index %d %%', [IndexCacheHitPercent]))
+  begin
+    ABuilder.Append(Format('Index %d %%', [IndexCacheHitPercent]));
+  end
   else
+  begin
     ABuilder.Append('Index –');
+  end;
   if TreeCacheHitPercent >= 0 then
-    ABuilder.Append(Format(', Syntaxbäume %d %% (%d im Speicher)', [TreeCacheHitPercent, TreeCacheTrees]))
+  begin
+    ABuilder.Append(Format(', Syntaxbäume %d %% (%d im Speicher)', [TreeCacheHitPercent, TreeCacheTrees]));
+  end
   else
+  begin
     ABuilder.Append(', Syntaxbäume –');
+  end;
   ABuilder.Append(#10);
   mProfile := CheckRun.ToMarkdown;
   if mProfile <> '' then
+  begin
     ABuilder.Append(#10).Append(mProfile);
+  end;
 end;
 
 function TServerStatus.ToMarkdown: string;
@@ -280,14 +325,22 @@ begin
     Builder.Append('**Atlas**').Append(#10#10);
     Builder.Append(Format('- Index: %d Units, %d Symbole', [Units, Symbols])).Append(#10);
     if MemoryBytes >= 0 then
+    begin
       Builder.Append('- Speicher: ').Append(MegaBytes(MemoryBytes)).Append(#10);
+    end;
     Builder.Append('- davon Symbolindex: ').Append(MegaBytes(IndexBytes));
     if BudgetBytes > 0 then
+    begin
       Builder.Append(' von ').Append(MegaBytes(BudgetBytes));
+    end;
     if CompactUnits > 0 then
+    begin
       Builder.Append(Format(', %d Units kompakt', [CompactUnits]));
+    end;
     if OffloadedUnits > 0 then
+    begin
       Builder.Append(Format(', Verwendungen von %d Units ausgelagert', [OffloadedUnits]));
+    end;
     Builder.Append(#10);
     Builder.Append('- Caches auf der Platte: ').Append(MegaBytes(DiskBytes)).Append(#10);
     Builder.Append('- davon geöffnete Dokumente: ').Append(MegaBytes(DocumentBytes)).Append(#10);
@@ -295,30 +348,42 @@ begin
     begin
       Builder.Append('- ').Append(Compiler).Append(#10);
       if CompilerReason <> '' then
+      begin
         Builder.Append('  ').Append(CompilerReason).Append(#10);
+      end;
     end;
     for Workspace in Workspaces do
+    begin
       if Workspace.LastIndexMs < 0 then
-        Builder.Append(Format('- %s%s: Index wird aufgebaut', [Workspace.Name, Workspace.ProjectText])).Append(#10)
+      begin
+        Builder.Append(Format('- %s%s: Index wird aufgebaut', [Workspace.Name, Workspace.ProjectText])).Append(#10);
+      end
       else
       begin
         Builder.Append(Format('- %s%s: letzter Indexlauf %d ms (%d neu eingelesen, %d aus dem Cache, %d fehlen)',
           [Workspace.Name, Workspace.ProjectText, Workspace.LastIndexMs, Workspace.Parsed, Workspace.FromCache,
           Workspace.Missing]));
         if Workspace.LastUpdate <> 0 then
+        begin
           Builder.Append(', aktualisiert ').Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss', Workspace.LastUpdate));
+        end;
         Builder.Append(', Cache ').Append(MegaBytes(Workspace.CacheBytes + Workspace.LibraryCacheBytes));
         Builder.Append(#10);
       end;
+    end;
     if ProcessId <> 0 then
+    begin
       AppendDiagnostics(Builder);
+    end;
     if Length(Requests) > 0 then
     begin
       Builder.Append(#10).Append('| Methode | Anzahl | Mittel ms | Max ms | Fehler |').Append(#10);
       Builder.Append('|---|---:|---:|---:|---:|').Append(#10);
       for Request in Requests do
+      begin
         Builder.Append(Format('| %s | %d | %s | %d | %d |', [Request.Method, Request.Count,
           FormatFloat('0.0', Request.AverageMs, TFormatSettings.Invariant), Request.MaxMs, Request.Failed])).Append(#10);
+      end;
     end;
     Result := Builder.ToString;
   finally
@@ -402,6 +467,7 @@ begin
     Item.AddPair('libraryUnits', TJSONNumber.Create(Memory.LibraryUnits));
     Item.AddPair('treeCache', TJSONNumber.Create(Memory.TreeCache));
     Item.AddPair('documents', TJSONNumber.Create(Memory.Documents));
+    Item.AddPair('packages', TJSONNumber.Create(Memory.Packages));
     Item.AddPair('rest', TJSONNumber.Create(Memory.Rest));
     Item.AddPair('total', TJSONNumber.Create(Memory.Total));
     Item.AddPair('budget', TJSONNumber.Create(Memory.Budget));

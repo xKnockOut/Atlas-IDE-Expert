@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasStepFilterTests = class
   private
     function Routine(const AName: string; const AKinds: string): TAtlasStepRoutine;

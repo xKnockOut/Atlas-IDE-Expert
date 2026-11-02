@@ -1,0 +1,55 @@
+﻿package Atlas.IDE.Rules;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Prüfregeln'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Prüfregeln (#1456, ADR 0017): Prüfbefunde der atlas.json im Editor, Schnellkorrekturen und Regelfenster.
+// Meldet sich in der Unit-Initialisierung von Atlas.IDE.Rules.Composition über die Registry
+// des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
+// (Regeln 1 bis 4). Requiret nur das Kern-Package und
+// Atlas.IDE.Contracts, kein anderes Modul (Regel 9).
+
+requires
+  rtl,
+  vcl,
+  vclwinx,
+  designide,
+  Atlas.IDE.Base,
+  Atlas.IDE.Contracts;
+
+contains
+  Atlas.IDE.Editor.DfmPropertyRules in 'Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas',
+  Atlas.IDE.Rules.Composition in 'Source\IDE\Rules\Atlas.IDE.Rules.Composition.pas',
+  Atlas.IDE.Rules.BulkFix in 'Source\IDE\Rules\Atlas.IDE.Rules.BulkFix.pas',
+  Atlas.IDE.Rules.Baseline in 'Source\IDE\Rules\Atlas.IDE.Rules.Baseline.pas',
+  Atlas.UI.Rules.Strings in 'Source\UI\Rules\Atlas.UI.Rules.Strings.pas',
+  Atlas.Core.Problems.BulkFix in 'Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas',
+  Atlas.UI.Problems.BulkFix in 'Source\UI\Problems\Atlas.UI.Problems.BulkFix.pas';
+
+end.

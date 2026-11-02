@@ -54,6 +54,16 @@
     "completion.assignAllFields": true,
     "editor.minimap": true,
     "editor.designerBar.tabOrderClick": true,
-    "editor.designerBar.align": true
+    "editor.designerBar.align": true,
+    "debug.enabled": true,
+    "issues.enabled": true,
+    "analysis.enabled": true,
+    "tests.enabled": true,
+    "buildTools.enabled": true,
+    "buildPipeline.enabled": true,
+    "bookmarks.enabled": true,
+    "designer.enabled": true,
+    "ruleChecks.enabled": true,
+    "search.enabled": true
   }
 }

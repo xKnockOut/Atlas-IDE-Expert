@@ -52,21 +52,29 @@ begin
   begin
     Line := ASource.PrivateLine(AClass);
     if Line >= 0 then
-      Result := [ASource.AfterLine(Line, ASource.Indent(Line) + '  ' + AField)]
+    begin
+      Result := [ASource.AfterLine(Line, ASource.Indent(Line) + '  ' + AField)];
+    end
     else
+    begin
       Body := Indent + 'private' + ASource.LineBreak + Indent + '  ' + AField;
+    end;
   end;
   // AMore: abwechselnd Abschnitt und Deklaration.
   Index := 0;
   while Index < High(AMore) do
   begin
     if Body <> '' then
+    begin
       Body := Body + ASource.LineBreak;
+    end;
     Body := Body + Indent + AMore[Index] + ASource.LineBreak + Indent + '  ' + AMore[Index + 1];
     Inc(Index, 2);
   end;
   if Body <> '' then
+  begin
     Result := Result + [ASource.BeforeLine(EndLine, Body)];
+  end;
 end;
 
 { /notify }
@@ -91,11 +99,17 @@ begin
   end;
   Text := '';
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if SameText(Symbol.Name, ATypeName) and (Symbol.Container = '') then
+    begin
       Text := RangeText(ASource.Lines, Symbol.Range);
+    end;
+  end;
   // Aus dem Index: der Kopf der Deklaration (#492), sonst der Text der Datei.
   if (Text = '') and (AIndex <> nil) then
+  begin
     for Location in AIndex.FindSymbols(ATypeName) do
+    begin
       if ContainsText(Location.Symbol.Signature, 'of object') then
       begin
         Text := Location.Symbol.Signature;
@@ -106,22 +120,34 @@ begin
         Text := RangeText(FileText.Replace(#13#10, #10).Split([#10]), Location.Symbol.Range);
         Break;
       end;
+    end;
+  end;
   Open := Pos('(', Text);
   Close := LastDelimiter(')', Text);
   OfPos := Pos('of object', LowerCase(Text));
   Result := (Text <> '') and (OfPos > 0);
   if not Result then
+  begin
     Exit;
+  end;
   if ContainsText(Copy(Text, 1, OfPos), 'function') then
+  begin
     AKind := 'function';
+  end;
   if (Open > 0) and (Close > Open) and (Close < OfPos) then
-    AParameters := Trim(Copy(Text, Open + 1, Close - Open - 1))
+  begin
+    AParameters := Trim(Copy(Text, Open + 1, Close - Open - 1));
+  end
   else
+  begin
     Close := Pos(AKind, LowerCase(Text)) + Length(AKind) - 1;
+  end;
   // Ergebnis: zwischen ")" bzw. "function" und "of object" hinter dem Doppelpunkt.
   Tail := Trim(Copy(Text, Close + 1, OfPos - Close - 1));
   if (AKind = 'function') and StartsStr(':', Tail) then
+  begin
     AResultType := Trim(Copy(Tail, 2, MaxInt));
+  end;
 end;
 
 /// <summary>Parameterliste des Ereignistyps ohne Klammern, z. B. "Sender: TObject; const AText: string".</summary>
@@ -147,19 +173,27 @@ begin
     TypeName := 'TNotifyEvent';
   end;
   if not IsValidIdent(Name) or not StartsText('On', Name) or (Length(Name) < 3) then
+  begin
     Exit(Fail('Erwartet wird /notify OnName[: Ereignistyp]', AReason));
+  end;
   Base := Copy(Name, 3, MaxInt);
   Field := 'F' + Name;
   Method := 'Do' + Base;
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
+    begin
       Exit(Fail('/notify gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+    end;
     if FindMember(Source, ClassSymbol, Name, [TIndexSymbolKind.Property_], Existing) or
       FindMember(Source, ClassSymbol, Field, [TIndexSymbolKind.Field], Existing) then
+    begin
       Exit(Fail(Format('%s hat schon %s', [ClassSymbol.Name, Name]), AReason));
+    end;
     if not EventParameters(Source, AContext.Index, TypeName, Parameters) then
+    begin
       Exit(Fail(Format('Ereignistyp %s nicht gefunden (procedure(...) of object)', [TypeName]), AReason));
+    end;
     // Sender: TObject am Anfang setzt Self ein; die übrigen Parameter reicht DoX durch.
     Groups := Parameters.Split([';']);
     if (Length(Groups) > 0) and ContainsText(Groups[0], 'Sender') then
@@ -167,9 +201,13 @@ begin
       Own := Trim(string.Join(';', Copy(Groups, 1, MaxInt)));
       Names := ParameterNames('(' + Own + ')');
       if Names <> '' then
-        Names := 'Self, ' + Names
+      begin
+        Names := 'Self, ' + Names;
+      end
       else
+      begin
         Names := 'Self';
+      end;
     end
     else
     begin
@@ -177,11 +215,17 @@ begin
       Names := ParameterNames('(' + Own + ')');
     end;
     if Own <> '' then
+    begin
       Own := '(' + Own + ')';
+    end;
     if DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ComponentRoots) then
-      Section := 'published'
+    begin
+      Section := 'published';
+    end
     else
+    begin
       Section := 'public';
+    end;
     LB := Source.LineBreak;
     AEdits := AddToClass(Source, ClassSymbol, Format('%s: %s;', [Field, TypeName]),
       ['protected', Format('procedure %s%s; virtual;', [Method, Own]), Section,
@@ -208,23 +252,33 @@ begin
   AEdits := nil;
   Name := Trim(AContext.Arguments);
   if not IsValidIdent(Name) then
+  begin
     Exit(Fail('Erwartet wird /changed Property', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
+    begin
       Exit(Fail('/changed gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+    end;
     if not FindMember(Source, ClassSymbol, Name, [TIndexSymbolKind.Property_], Prop) then
+    begin
       Exit(Fail(Format('%s hat keine Property %s', [ClassSymbol.Name, Name]), AReason));
+    end;
     Declaration := RangeText(Source.Lines, Prop.Range);
     Field := Accessor(Declaration, 'read');
     if Field = '' then
+    begin
       Field := 'F' + Name;
+    end;
     Writer := Accessor(Declaration, 'write');
     // Benachrichtigung: Invalidate bei Controls, sonst eine vorhandene Changed- bzw. DoChange-Methode; der Befehl
     // heißt "changed", deshalb ohne beide Changed.
     Call := TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol);
     if Call = '' then
+    begin
       Call := 'Changed';
+    end;
     LB := Source.LineBreak;
     Value := 'Value';
     Routine := nil;
@@ -232,10 +286,14 @@ begin
     begin
       Routine := FindBody(Source, ClassSymbol.Name, Writer);
       if Routine = nil then
+      begin
         Exit(Fail(Format('Rumpf von %s.%s nicht gefunden', [ClassSymbol.Name, Writer]), AReason));
+      end;
       Signature := RoutineSignature(Source.Lines[Routine.StartPos.Line]);
       if ParameterNames(Signature) <> '' then
+      begin
         Value := ParameterNames(Signature);
+      end;
     end;
     Body := TSetterGenerator.Body(Field, Value, Call, LB);
     if Routine <> nil then
@@ -248,14 +306,22 @@ begin
     // Ohne Setter: anlegen wie /prop und die Property darauf umstellen.
     Writer := 'Set' + Name;
     if (Prop.TypeName = '') then
+    begin
       Exit(Fail(Format('Typ von %s nicht erkannt', [Name]), AReason));
+    end;
     if Pos(' write ', Declaration) > 0 then
+    begin
       NewDeclaration := StringReplace(Declaration, ' write ' + Accessor(Declaration, 'write'), ' write ' + Writer,
-        [rfIgnoreCase])
+        [rfIgnoreCase]);
+    end
     else
+    begin
       NewDeclaration := StringReplace(Declaration, ';', ' write ' + Writer + ';', []);
+    end;
     if Prop.Range.StartPos.Line <> Prop.Range.EndPos.Line then
+    begin
       Exit(Fail('Mehrzeilige Property-Deklaration: Setter bitte mit /prop anlegen', AReason));
+    end;
     Indent := Source.Indent(ClassSymbol.Range.EndPos.Line);
     AEdits := [TTextEdit.Create(Prop.Range, NewDeclaration),
       Source.BeforeLine(ClassSymbol.Range.EndPos.Line, Indent + 'private' + LB + Indent + '  ' +
@@ -280,12 +346,18 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
+    begin
       Exit(Fail('/loaded gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+    end;
     if not DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ComponentRoots) then
+    begin
       Exit(Fail(Format('%s stammt nicht von TComponent ab; Loaded gibt es dort nicht', [ClassSymbol.Name]),
         AReason));
+    end;
     if FindMember(Source, ClassSymbol, 'Loaded', [TIndexSymbolKind.Method], Member) then
+    begin
       Exit(Fail(Format('%s hat schon Loaded', [ClassSymbol.Name]), AReason));
+    end;
     LB := Source.LineBreak;
     AEdits := AddToClass(Source, ClassSymbol, '', ['protected', 'procedure Loaded; override;']) +
       [Source.AddBody(ClassSymbol.Name, Format('procedure %s.Loaded;', [ClassSymbol.Name]) + LB + 'begin' + LB +
@@ -312,48 +384,69 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
+    begin
       Exit(Fail('/notification gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+    end;
     if not DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ComponentRoots) then
+    begin
       Exit(Fail(Format('%s stammt nicht von TComponent ab', [ClassSymbol.Name]), AReason));
+    end;
     Fields := nil;
     for Symbol in Source.UnitIndex.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
         ((AContext.Arguments = '') and IsComponentType(Source, AContext.Index, Symbol.TypeName) or
         SameText(Symbol.Name, Trim(AContext.Arguments))) then
+      begin
         Fields := Fields + [Symbol.Name];
+      end;
+    end;
     if Fields = nil then
+    begin
       Exit(Fail(IfThen(AContext.Arguments = '', 'Keine Felder mit Komponententyp',
         Format('%s hat kein Feld %s', [ClassSymbol.Name, AContext.Arguments])), AReason));
+    end;
     LB := Source.LineBreak;
     Routine := FindBody(Source, ClassSymbol.Name, 'Notification');
     BodyText := '';
     if Routine <> nil then
+    begin
       for Index := Routine.StartPos.Line to Routine.EndPos.Line do
+      begin
         BodyText := BodyText + Source.Lines[Index] + #10;
+      end;
+    end;
     // Vorhandene Bedingungen nicht verdoppeln.
     Lines_ := nil;
     for Field in Fields do
     begin
       Condition := Format('(AComponent = %s)', [Field]);
       if not ContainsText(BodyText, Condition) then
+      begin
         Lines_ := Lines_ + [Format('  if (Operation = opRemove) and %s then', [Condition]),
           Format('    %s := nil;', [Field])];
+      end;
     end;
     if Lines_ = nil then
+    begin
       Exit(Fail('Notification behandelt diese Felder schon', AReason));
+    end;
     if Routine <> nil then
     begin
       Block := Routine.FindChild(TSyntaxKind.Block);
       AEdits := [Source.BeforeLine(Block.EndPos.Line, string.Join(LB, Lines_))];
     end
     else
+    begin
       AEdits := AddToClass(Source, ClassSymbol, '', ['protected',
         'procedure Notification(AComponent: TComponent; Operation: TOperation); override;']) +
         [Source.AddBody(ClassSymbol.Name, Format('procedure %s.Notification(AComponent: TComponent; ' +
         'Operation: TOperation);', [ClassSymbol.Name]) + LB + 'begin' + LB +
         '  inherited Notification(AComponent, Operation);' + LB + string.Join(LB, Lines_) + LB + 'end;')];
+    end;
     // Setter der zugehörigen Properties melden sich beim neuen Wert an und beim alten ab.
     for Symbol in Source.UnitIndex.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Container, ClassSymbol.Name) then
       begin
         Prop := Symbol;
@@ -361,20 +454,29 @@ begin
         Field := Accessor(Declaration, 'read');
         Setter := Accessor(Declaration, 'write');
         if (IndexText(Field, Fields) < 0) or (Setter = '') or SameText(Setter, Field) then
+        begin
           Continue;
+        end;
         Routine := FindBody(Source, ClassSymbol.Name, Setter);
         if Routine = nil then
+        begin
           Continue;
+        end;
         BodyText := '';
         for Index := Routine.StartPos.Line to Routine.EndPos.Line do
+        begin
           BodyText := BodyText + Source.Lines[Index] + #10;
+        end;
         if ContainsText(BodyText, 'FreeNotification') then
+        begin
           Continue;
+        end;
         Block := Routine.FindChild(TSyntaxKind.Block);
         AEdits := AEdits + [Source.AfterLine(Block.StartPos.Line, Format('  if %s <> nil then', [Field]) + LB +
           Format('    %s.RemoveFreeNotification(Self);', [Field])), Source.BeforeLine(Block.EndPos.Line,
           Format('  if %s <> nil then', [Field]) + LB + Format('    %s.FreeNotification(Self);', [Field]))];
       end;
+    end;
     AEdits := AEdits + [Source.RemoveCommand];
     Result := True;
   finally
@@ -396,7 +498,9 @@ begin
     Word := LowerCase(Trim(ASource.Lines[Line]));
     if (Word = 'private') or (Word = 'protected') or (Word = 'public') or (Word = 'published') or
       StartsStr('strict ', Word) then
+    begin
       Exit(Line);
+    end;
   end;
   Result := AClass.Range.EndPos.Line;
 end;
@@ -407,12 +511,16 @@ var
   Child: TDfmObject;
 begin
   if SameText(AObject.Name, AName) then
+  begin
     Exit(AObject);
+  end;
   for Child in AObject.Children do
   begin
     Result := FindDfmObject(Child, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -422,7 +530,9 @@ function LineIndent(const ALines: TArray<string>; ALine: Integer): string;
 begin
   Result := '';
   if (ALine >= 0) and (ALine <= High(ALines)) then
+  begin
     Result := Copy(ALines[ALine], 1, Length(ALines[ALine]) - Length(TrimLeft(ALines[ALine])));
+  end;
 end;
 
 function ExecuteEvent(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -459,28 +569,42 @@ begin
   end;
   if ((Component <> '') and not IsValidIdent(Component)) or not IsValidIdent(Event) or
     not StartsText('On', Event) or (Length(Event) < 3) then
+  begin
     Exit(Fail(Usage, AReason));
+  end;
   if AContext.Host = nil then
+  begin
     Exit(Fail('/event braucht den Editor', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
+    begin
       Exit(Fail('/event gilt nur in einer Formularklasse oder einer ihrer Methoden', AReason));
+    end;
     // Typ der Komponente: Feld der Klasse, ohne Komponente die Klasse selbst.
     ComponentType := ClassSymbol.Name;
     if Component <> '' then
     begin
       ComponentType := '';
       for Symbol in Source.UnitIndex.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
           SameText(Symbol.Name, Component) then
+        begin
           ComponentType := Symbol.TypeName;
+        end;
+      end;
       if ComponentType = '' then
+      begin
         Exit(Fail(Format('%s hat kein Feld %s', [ClassSymbol.Name, Component]), AReason));
+      end;
     end;
     FileName := '';
     if AContext.Uri <> '' then
+    begin
       FileName := TDocumentUris.ToPath(AContext.Uri);
+    end;
     Own := Source.UnitIndex;
     Own.FileName := FileName;
     Resolver := TNameResolver.Create(AContext.Index);
@@ -489,23 +613,35 @@ begin
       if not Resolver.ResolveNameFrom(Own, ComponentType, TypeSymbol) or
         not Resolver.DeclaredMember(TypeSymbol, Event, EventSymbol) or
         (EventSymbol.SymbolKind <> TIndexSymbolKind.Property_) or (EventSymbol.TypeName = '') then
+      begin
         Exit(Fail(Format('%s hat kein Ereignis %s', [ComponentType, Event]), AReason));
+      end;
     finally
       Resolver.Free;
     end;
     Chain := EventSymbol.TypeName.Split(['.']);
     if not EventSignature(Source, AContext.Index, Chain[High(Chain)], Kind, Params, ResultType) then
+    begin
       Exit(Fail(Format('Ereignistyp %s nicht gefunden (procedure(...) of object)', [EventSymbol.TypeName]),
         AReason));
+    end;
     // Name wie in der IDE: Button1Click, für das Formular selbst FormCreate.
     if Component <> '' then
-      Base := Component
+    begin
+      Base := Component;
+    end
     else if DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ['TDataModule']) then
-      Base := 'DataModule'
+    begin
+      Base := 'DataModule';
+    end
     else if DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ['TFrame']) then
-      Base := 'Frame'
+    begin
+      Base := 'Frame';
+    end
     else
+    begin
       Base := 'Form';
+    end;
     Base := Base + Copy(Event, 3, MaxInt);
     Handler := Base;
     Number := 1;
@@ -517,31 +653,53 @@ begin
     // Formulardatei neben der Unit: Zuweisung eintragen.
     FormFile := '';
     for Extension in TArray<string>.Create('.dfm', '.fmx') do
+    begin
       if (FormFile = '') and (FileName <> '') and AContext.Host.ReadFile(ChangeFileExt(FileName, Extension),
         FormText) then
+      begin
         FormFile := ChangeFileExt(FileName, Extension);
+      end;
+    end;
     if FormFile = '' then
+    begin
       Exit(Fail('Neben der Unit liegt keine .dfm oder .fmx', AReason));
+    end;
     Document := TDfmParser.Parse(FormText);
     try
       if Document.Root = nil then
+      begin
         Exit(Fail(Format('%s ist keine Text-DFM', [ExtractFileName(FormFile)]), AReason));
+      end;
       if Component = '' then
-        Target := Document.Root
+      begin
+        Target := Document.Root;
+      end
       else
+      begin
         Target := FindDfmObject(Document.Root, Component);
+      end;
       if Target = nil then
+      begin
         Exit(Fail(Format('%s steht nicht in %s', [Component, ExtractFileName(FormFile)]), AReason));
+      end;
       for Prop in Target.Properties do
+      begin
         if SameText(Prop.Name, Event) then
+        begin
           Exit(Fail(Format('%s ist schon %s zugewiesen', [AContext.Arguments, Trim(Prop.Value)]), AReason));
+        end;
+      end;
       // Hinter die letzte Eigenschaft des Objekts, ohne Eigenschaften hinter seine Kopfzeile.
       FormLines := TTextLines.SplitLines(FormText, FormLB);
       Line := Target.Range.StartPos.Line;
       Indent := LineIndent(FormLines, Line) + '  ';
       for Prop in Target.Properties do
+      begin
         if Prop.ValueRange.EndPos.Line > Line then
+        begin
           Line := Prop.ValueRange.EndPos.Line;
+        end;
+      end;
       Insert(Indent + Event + ' = ' + Handler, FormLines, Line + 1);
       NewForm := TTextLines.JoinLines(FormLines, FormLB);
     finally
@@ -550,18 +708,26 @@ begin
     LB := Source.LineBreak;
     Header := Kind + ' ' + Handler;
     if Params <> '' then
+    begin
       Header := Header + '(' + Params + ')';
+    end;
     if ResultType <> '' then
+    begin
       Header := Header + ': ' + ResultType;
+    end;
     Declaration := Header + ';';
     Header := Kind + ' ' + ClassSymbol.Name + '.' + Copy(Header, Length(Kind) + 2, MaxInt);
     Body := Header + ';' + LB + 'begin' + LB + LB + 'end;';
     Line := HandlerLine(Source, ClassSymbol);
     AEdits := [Source.BeforeLine(Line, Source.Indent(ClassSymbol.Range.EndPos.Line) + '  ' + Declaration)];
     if TClassCompletion.BodyEdit(Source.Tree, Source.Text, ClassSymbol.Name, Body, Edit) then
-      AEdits := AEdits + [Edit]
+    begin
+      AEdits := AEdits + [Edit];
+    end
     else
+    begin
       AEdits := AEdits + [Source.AddBody(ClassSymbol.Name, Body)];
+    end;
     AEdits := AEdits + [Source.RemoveCommand];
   finally
     Source.Free;

@@ -164,14 +164,18 @@ function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Index der schließenden Klammer zu AOpen; -1 ohne.</summary>
@@ -181,14 +185,20 @@ var
 begin
   Depth := 0;
   for Result := AOpen to High(ATokens) do
+  begin
     if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
+  end;
   Result := -1;
 end;
 
@@ -215,11 +225,17 @@ begin
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       if AVisited = Root then
+      begin
         Exit(TSyntaxSearchStep.Descend);
+      end;
       if not (Before(AVisited.StartPos, Position) and Before(Position, AVisited.EndPos)) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       if AVisited.Kind = TSyntaxKind.Block then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end) <> nil;
 end;
@@ -233,10 +249,14 @@ begin
   for Index := AFirst to ALast do
   begin
     if IsTrivia(ATokens[Index]) then
+    begin
       Continue;
+    end;
     if (Result <> '') and (Index > AFirst) and ((ATokens[Index].StartPos.Line <> ATokens[Index - 1].EndPos.Line) or
       (ATokens[Index].StartPos.Character > ATokens[Index - 1].EndPos.Character)) then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + ATokens[Index].Text;
   end;
 end;
@@ -257,18 +277,24 @@ var
   Text: string;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     for Index := 0 to High(Tokens) do
     begin
       if not (Tokens[Index].IsSymbol('=') or Tokens[Index].IsSymbol('<>')) then
+      begin
         Continue;
+      end;
       Left := PreviousCode(Tokens, Index);
       Right := NextCode(Tokens, Index + 1);
       if (Left < 0) or (Right > High(Tokens)) then
+      begin
         Continue;
+      end;
       if MatchText(Tokens[Right].Text, ['True', 'False']) then
       begin
         Name := Left;
@@ -280,9 +306,13 @@ begin
         Literal := Left;
       end
       else
+      begin
         Continue;
+      end;
       if (Tokens[Name].Kind <> TPascalTokenKind.Identifier) or MatchText(Tokens[Name].Text, ['True', 'False']) then
+      begin
         Continue;
+      end;
       // Nur ganze Bedingungen: davor if/while/until/(/:=/, und danach then/do/)/;/,. Sonst bindet
       // z. B. "A and X = True" anders, als es aussieht.
       Prev := PreviousCode(Tokens, Left);
@@ -292,10 +322,14 @@ begin
         Tokens[Prev].IsSymbol('(') or Tokens[Prev].IsSymbol(':=') or Tokens[Prev].IsSymbol(',')) or
         not (Tokens[Next].IsKeyword('then') or Tokens[Next].IsKeyword('do') or Tokens[Next].IsSymbol(')') or
         Tokens[Next].IsSymbol(';') or Tokens[Next].IsSymbol(',') or Tokens[Next].IsKeyword('end')) then
+      begin
         Continue;
+      end;
       if not InStatements(AContext.Tree.Root, Tokens[Index].StartPos) or
         not SameText(Types.DeclaredType(Tokens[Name].Text, Tokens[Name].StartPos), 'Boolean') then
+      begin
         Continue;
+      end;
       Negate := SameText(Tokens[Literal].Text, 'False') <> Tokens[Index].IsSymbol('<>');
       Text := IfThen(Negate, 'not ', '') + Tokens[Name].Text;
       AReport.Add(RangeOf(Tokens, Left, Right), 'Vergleich mit ' + Tokens[Literal].Text + ' ist überflüssig',
@@ -325,7 +359,9 @@ begin
   while (AEnd <= High(ATokens)) and (Length(Text) < Length(APath)) do
   begin
     if not IsTrivia(ATokens[AEnd]) then
+    begin
       Text := Text + ATokens[AEnd].Text;
+    end;
     Inc(AEnd);
   end;
   Dec(AEnd);
@@ -341,54 +377,84 @@ var
   PathOk: Boolean;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
     if not Tokens[Index].IsKeyword('if') then
+    begin
       Continue;
+    end;
     At := NextCode(Tokens, Index + 1);
     if (At > High(Tokens)) or not SameText(Tokens[At].Text, 'Assigned') then
+    begin
       Continue;
+    end;
     Open := NextCode(Tokens, At + 1);
     if (Open > High(Tokens)) or not Tokens[Open].IsSymbol('(') then
+    begin
       Continue;
+    end;
     Close := Closing(Tokens, Open);
     if Close < 0 then
+    begin
       Continue;
+    end;
     // Nur Bezeichnerketten A.B.C in Assigned(…).
     Path := '';
     PathOk := Close > Open + 1;
     for Run := Open + 1 to Close - 1 do
+    begin
       if IsTrivia(Tokens[Run]) then
-        Continue
+      begin
+        Continue;
+      end
       else if (Tokens[Run].Kind = TPascalTokenKind.Identifier) or Tokens[Run].IsSymbol('.') then
-        Path := Path + Tokens[Run].Text
+      begin
+        Path := Path + Tokens[Run].Text;
+      end
       else
+      begin
         PathOk := False;
+      end;
+    end;
     Then_ := NextCode(Tokens, Close + 1);
     if not PathOk or (Then_ > High(Tokens)) or not Tokens[Then_].IsKeyword('then') then
+    begin
       Continue;
+    end;
     At := NextCode(Tokens, Then_ + 1);
     if At > High(Tokens) then
+    begin
       Continue;
+    end;
     if Tokens[At].IsKeyword('begin') then
     begin
       // begin X.Free; X := nil; end  →  FreeAndNil(X)
       if not MatchesPath(Tokens, NextCode(Tokens, At + 1), Path + '.Free;' + Path + ':=nil', PathEnd) then
+      begin
         Continue;
+      end;
       Last := NextCode(Tokens, PathEnd + 1);
       if (Last <= High(Tokens)) and Tokens[Last].IsSymbol(';') then
+      begin
         Last := NextCode(Tokens, Last + 1);
+      end;
       if (Last > High(Tokens)) or not Tokens[Last].IsKeyword('end') then
+      begin
         Continue;
+      end;
       Fix := 'FreeAndNil(' + Path + ')';
       Title := 'Durch FreeAndNil ersetzen';
     end
     else
     begin
       if not MatchesPath(Tokens, At, Path + '.Free', PathEnd) then
+      begin
         Continue;
+      end;
       Last := PathEnd;
       Fix := Path + '.Free';
       Title := 'Prüfung entfernen';
@@ -396,7 +462,9 @@ begin
     // if … then X.Free else … nicht anfassen.
     Next := NextCode(Tokens, Last + 1);
     if (Next <= High(Tokens)) and Tokens[Next].IsKeyword('else') then
+    begin
       Continue;
+    end;
     AReport.Add(RangeOf(Tokens, Index, Last), 'Free prüft selbst auf nil; Assigned davor ist überflüssig',
       TRuleConfidence.High, [TRuleFix.Create(Title, [TRuleEdit.Create(RangeOf(Tokens, Index, Last), Fix)], True)]);
   end;
@@ -443,35 +511,51 @@ begin
       if Node.Kind = TSyntaxKind.RaiseStatement then
       begin
         if InFinally then
+        begin
           AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
             Node.StartPos.Character + Length('raise'))), 'raise im finally-Block überdeckt eine laufende Ausnahme',
             TRuleConfidence.High);
+        end;
         Continue;
       end;
       // Anonyme Methoden und eingebettete Routinen laufen später bzw. eigenständig.
       if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      begin
         InFinally := False;
+      end;
       if Node.Kind = TSyntaxKind.TryStatement then
       begin
         HasExcept := False;
         for Index := 0 to Node.ChildCount - 1 do
+        begin
           if Node[Index].Kind = TSyntaxKind.ExceptBlock then
+          begin
             HasExcept := True;
+          end;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
         begin
           Child := Node[Index];
           if Child.Kind = TSyntaxKind.FinallyBlock then
-            Pending.Push(FinallyEntry(Child, True))
+          begin
+            Pending.Push(FinallyEntry(Child, True));
+          end
           else if Child.Kind = TSyntaxKind.ExceptBlock then
-            Pending.Push(FinallyEntry(Child, InFinally))
+          begin
+            Pending.Push(FinallyEntry(Child, InFinally));
+          end
           else
+          begin
             // Im try-Teil fängt ein eigenes except die Ausnahme ab.
             Pending.Push(FinallyEntry(Child, InFinally and not HasExcept));
+          end;
         end;
         Continue;
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(FinallyEntry(Node[Index], InFinally));
+      end;
     end;
   finally
     Pending.Free;
@@ -481,7 +565,9 @@ end;
 procedure TRaiseInFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
+  begin
     VisitFinally(AContext.Tree.Root, AReport);
+  end;
 end;
 
 { TRedundantParensRule }
@@ -498,34 +584,54 @@ var
   Fits: Boolean;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
     if not (Tokens[Index].IsKeyword('if') or Tokens[Index].IsKeyword('while') or Tokens[Index].IsKeyword('until') or
       Tokens[Index].IsKeyword('case') or Tokens[Index].IsSymbol(':=')) then
+    begin
       Continue;
+    end;
     Open := NextCode(Tokens, Index + 1);
     if (Open > High(Tokens)) or not Tokens[Open].IsSymbol('(') then
+    begin
       Continue;
+    end;
     Close := Closing(Tokens, Open);
     if (Close < 0) or not Tokens[Close].IsSymbol(')') then
+    begin
       Continue;
+    end;
     After := NextCode(Tokens, Close + 1);
     if After > High(Tokens) then
+    begin
       Continue;
+    end;
     // Die Klammer muss den ganzen Ausdruck umfassen.
     if Tokens[Index].IsKeyword('if') then
-      Fits := Tokens[After].IsKeyword('then')
+    begin
+      Fits := Tokens[After].IsKeyword('then');
+    end
     else if Tokens[Index].IsKeyword('while') then
-      Fits := Tokens[After].IsKeyword('do')
+    begin
+      Fits := Tokens[After].IsKeyword('do');
+    end
     else if Tokens[Index].IsKeyword('case') then
-      Fits := Tokens[After].IsKeyword('of')
+    begin
+      Fits := Tokens[After].IsKeyword('of');
+    end
     else
+    begin
       Fits := Tokens[After].IsSymbol(';') or Tokens[After].IsKeyword('end') or Tokens[After].IsKeyword('else') or
         Tokens[After].IsKeyword('until') or Tokens[After].IsKeyword('except') or Tokens[After].IsKeyword('finally');
+    end;
     if not Fits or not InStatements(AContext.Tree.Root, Tokens[Open].StartPos) then
+    begin
       Continue;
+    end;
     AReport.Add(RangeOf(Tokens, Open, Close), 'Die Klammern um den ganzen Ausdruck sind überflüssig',
       TRuleConfidence.High, [TRuleFix.Create('Klammern entfernen', [
       TRuleEdit.Create(RangeOf(Tokens, Open, Open), ''), TRuleEdit.Create(RangeOf(Tokens, Close, Close), '')],
@@ -558,12 +664,18 @@ begin
           Node := nil;
         end
         else
+        begin
           Node := Node[Node.ChildCount - 1];
+        end;
       TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.WithStatement:
         if Node.ChildCount = 0 then
-          Node := nil
+        begin
+          Node := nil;
+        end
         else
+        begin
           Node := Node[Node.ChildCount - 1];
+        end;
     else
       Node := nil;
     end;
@@ -572,9 +684,13 @@ end;
 function TokenIndexAt(const ATokens: TTokens; const APosition: TTextPosition): Integer;
 begin
   for Result := 0 to High(ATokens) do
+  begin
     if (ATokens[Result].StartPos.Line = APosition.Line) and
       (ATokens[Result].StartPos.Character = APosition.Character) then
+    begin
       Exit;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -591,34 +707,52 @@ begin
     if (Child.Kind <> TSyntaxKind.Block) or (Child.ChildCount <> 1) or not (ANode.Kind in [TSyntaxKind.IfStatement,
       TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.WithStatement,
       TSyntaxKind.CaseItem, TSyntaxKind.CaseElse, TSyntaxKind.ExceptionHandler]) then
+    begin
       Continue;
+    end;
     // Die Bedingung des if ist kein Rumpf.
     if (ANode.Kind = TSyntaxKind.IfStatement) and (Index = 0) then
+    begin
       Continue;
+    end;
     Statement := Child[0];
     // Dangling else: if A then begin if B then X; end else Y;
     IsThenOfElse := (ANode.Kind = TSyntaxKind.IfStatement) and (Index = 1) and (ANode.ChildCount > 2);
     if IsThenOfElse and EndsWithOpenIf(Statement) then
+    begin
       Continue;
+    end;
     First := TokenIndexAt(ATokens, Child.StartPos);
     if (First < 0) or not ATokens[First].IsKeyword('begin') then
+    begin
       Continue;
+    end;
     Last := First;
     while (Last <= High(ATokens)) and ((ATokens[Last].EndPos.Line < Child.EndPos.Line) or
       ((ATokens[Last].EndPos.Line = Child.EndPos.Line) and (ATokens[Last].EndPos.Character < Child.EndPos.Character)))
       do
+    begin
       Inc(Last);
+    end;
     if (Last > High(ATokens)) or not ATokens[Last].IsKeyword('end') then
+    begin
       Continue;
+    end;
     BodyFirst := TokenIndexAt(ATokens, Statement.StartPos);
     if BodyFirst < 0 then
+    begin
       Continue;
+    end;
     // Bis vor "end", ohne das abschließende Semikolon der Anweisung.
     BodyLast := PreviousCode(ATokens, Last);
     if ATokens[BodyLast].IsSymbol(';') then
+    begin
       BodyLast := PreviousCode(ATokens, BodyLast);
+    end;
     if BodyLast < BodyFirst then
+    begin
       Continue;
+    end;
     AReport.Add(RangeOf(ATokens, First, First), 'begin/end um eine einzelne Anweisung ist überflüssig',
       TRuleConfidence.High, [TRuleFix.Create('begin/end entfernen', [TRuleEdit.Create(RangeOf(ATokens, First, Last),
       TokenText(ATokens, BodyFirst, BodyLast))])]);
@@ -631,7 +765,9 @@ var
   Report: IRuleReport;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Report := AReport;
   // Iterativ (Bericht M1): Jeder Knoten prüft seine Kinder; die Treffer sortiert die Engine nach Position.
@@ -656,7 +792,9 @@ var
   Report: IRuleReport;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Report := AReport;
   // Iterativ (Bericht M1).
@@ -667,13 +805,17 @@ begin
     begin
       Result := True;
       if ANode.Kind <> TSyntaxKind.WithStatement then
+      begin
         Exit;
+      end;
       // Gemeldet wird das Schlüsselwort; die Aktion "with auflösen" liefert #50.
       Keyword := TokenIndexAt(Tokens, ANode.StartPos);
       if (Keyword >= 0) and Tokens[Keyword].IsKeyword('with') then
+      begin
         Report.Add(RangeOf(Tokens, Keyword, Keyword),
           'with verdeckt, zu welchem Objekt ein Bezeichner gehört; besser den Ausdruck ausschreiben',
           TRuleConfidence.High);
+      end;
     end);
 end;
 
@@ -706,10 +848,16 @@ var
   begin
     Result := ANode;
     while (Result <> nil) and (Result.Kind = TSyntaxKind.Block) do
+    begin
       if Result.ChildCount = 1 then
-        Result := Result[0]
+      begin
+        Result := Result[0];
+      end
       else
+      begin
         Result := nil;
+      end;
+    end;
   end;
 
   // 1 für True, 0 für False, -1 sonst.
@@ -717,10 +865,16 @@ var
   begin
     Result := -1;
     if (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) then
+    begin
       if SameText(ANode.Name, 'True') then
-        Result := 1
+      begin
+        Result := 1;
+      end
       else if SameText(ANode.Name, 'False') then
+      begin
         Result := 0;
+      end;
+    end;
   end;
 
   // X := True/False: Wert, Ziel in ATarget.
@@ -741,19 +895,27 @@ var
     Result := -1;
     if (ANode <> nil) and (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
       (ANode[0].Kind = TSyntaxKind.Call) and SameText(ANode[0].Name, 'Exit') and (ANode[0].ChildCount = 2) then
+    begin
       Result := BoolValue(ANode[0][1]);
+    end;
   end;
 
   function Negated(ACondition: TSyntaxNode): string;
   begin
     if (ACondition.Kind = TSyntaxKind.UnaryExpr) and SameText(ACondition.Name, 'not') and
       (ACondition.ChildCount = 1) then
-      Result := Text(ACondition[0])
+    begin
+      Result := Text(ACondition[0]);
+    end
     else if ACondition.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
       TSyntaxKind.IndexAccess, TSyntaxKind.ParenExpr] then
-      Result := 'not ' + Text(ACondition)
+    begin
+      Result := 'not ' + Text(ACondition);
+    end
     else
+    begin
       Result := 'not (' + Text(ACondition) + ')';
+    end;
   end;
 
   function HasComment(AStart, AEnd: Integer): Boolean;
@@ -765,7 +927,9 @@ var
     while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < AEnd) do
     begin
       if Tokens[mIndex].Kind = TPascalTokenKind.Comment then
+      begin
         Exit(True);
+      end;
       Inc(mIndex);
     end;
     Result := False;
@@ -777,17 +941,23 @@ var
   begin
     Fixes := nil;
     if not HasComment(AIf.StartOffset, ALast.EndOffset) then
+    begin
       Fixes := [TRuleFix.Create('Durch ' + ANewText + ' ersetzen', [TRuleEdit.Create(TTextRange.Create(AIf.StartPos,
         ALast.EndPos), ANewText)])];
+    end;
     AReport.Add(TTextRange.Create(AIf.StartPos, AIf[0].EndPos), Message, TRuleConfidence.High, Fixes);
   end;
 
   function Expression(ACondition: TSyntaxNode; AValue: Integer): string;
   begin
     if AValue = 1 then
-      Result := Text(ACondition)
+    begin
+      Result := Text(ACondition);
+    end
     else
+    begin
       Result := Negated(ACondition);
+    end;
   end;
 
   procedure CheckIf(AIf: TSyntaxNode; ANext: TSyntaxNode);
@@ -796,7 +966,9 @@ var
     ThenValue, ElseValue: Integer;
   begin
     if AIf.ChildCount < 2 then
+    begin
       Exit;
+    end;
     if AIf.ChildCount = 3 then
     begin
       // if B then X := True else X := False
@@ -811,14 +983,18 @@ var
       ThenValue := ExitValue(Single(AIf[1]));
       ElseValue := ExitValue(Single(AIf[2]));
       if (ThenValue >= 0) and (ElseValue >= 0) and (ThenValue <> ElseValue) then
+      begin
         Report(AIf, AIf, 'Exit(' + Expression(AIf[0], ThenValue) + ')');
+      end;
       Exit;
     end;
     // if B then Exit(True); Exit(False);
     ThenValue := ExitValue(Single(AIf[1]));
     ElseValue := ExitValue(ANext);
     if (ThenValue >= 0) and (ElseValue >= 0) and (ThenValue <> ElseValue) then
+    begin
       Report(AIf, ANext, 'Exit(' + Expression(AIf[0], ThenValue) + ')');
+    end;
   end;
 
   procedure Visit(ANode: TSyntaxNode);
@@ -848,7 +1024,9 @@ var
           // Folgeanweisung nur in Anweisungslisten, nicht im else-Zweig eines äußeren if.
           if (Index < Parent.ChildCount - 1) and (Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
             TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
+          begin
             Next := Parent[Index + 1];
+          end;
           CheckIf(Child, Next);
         end;
         for Item := Child.ChildCount - 1 downto 0 do
@@ -865,7 +1043,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Visit(AContext.Tree.Root);
 end;
@@ -898,7 +1078,9 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
   begin
     Result := ANode;
     while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+    begin
       Result := Result[0];
+    end;
   end;
 
   function CaseSide(ANode: TSyntaxNode; out ASide: TCaseSide): Boolean;
@@ -920,7 +1102,9 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     // X.ToUpper, X.ToLower() – die Helfer arbeiten mit Unicode wie AnsiSameText.
     Member := Node;
     if (Member.Kind = TSyntaxKind.Call) and (Member.ChildCount = 1) then
+    begin
       Member := Member[0];
+    end;
     if (Member.Kind = TSyntaxKind.MemberAccess) and (Member.ChildCount = 1) and
       MatchText(Member.Name, ['ToUpper', 'ToLower']) then
     begin
@@ -943,11 +1127,17 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     Value := Text(Node);
     Result := (Node.Kind = TSyntaxKind.Literal) and StartsStr('''', Value);
     if not Result then
+    begin
       Exit;
+    end;
     if AUpper then
-      Result := AnsiUpperCase(Value) = Value
+    begin
+      Result := AnsiUpperCase(Value) = Value;
+    end
     else
+    begin
       Result := AnsiLowerCase(Value) = Value;
+    end;
   end;
 
   procedure CheckComparison(ANode: TSyntaxNode);
@@ -957,14 +1147,18 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     First, Second, Name, SameName, Replacement: string;
   begin
     if ANode.ChildCount <> 2 then
+    begin
       Exit;
+    end;
     HasLeft := CaseSide(ANode[0], Left);
     HasRight := CaseSide(ANode[1], Right);
     if HasLeft and HasRight then
     begin
       // UpperCase(A) = LowerCase(B) ist ein anderer Fehler.
       if Left.Upper <> Right.Upper then
+      begin
         Exit;
+      end;
       First := Text(Left.Argument);
       Second := Text(Right.Argument);
       Name := Left.Name;
@@ -985,14 +1179,22 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
       Locale := Right.Locale;
     end
     else
+    begin
       Exit;
+    end;
     if Locale then
-      SameName := 'AnsiSameText'
+    begin
+      SameName := 'AnsiSameText';
+    end
     else
+    begin
       SameName := 'SameText';
+    end;
     Replacement := SameName + '(' + First + ', ' + Second + ')';
     if ANode.Name = '<>' then
+    begin
       Replacement := 'not ' + Replacement;
+    end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Vergleich über %s; %s vergleicht ohne ' +
       'Zwischenstrings.', [Name, SameName]), TRuleConfidence.High,
       [TRuleFix.Create('Durch ' + Replacement + ' ersetzen', [TRuleEdit.Create(TTextRange.Create(ANode.StartPos,
@@ -1013,9 +1215,13 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
       begin
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.BinaryExpr) and ((Node.Name = '=') or (Node.Name = '<>')) then
+        begin
           CheckComparison(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1024,7 +1230,9 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
 
 begin
   if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
+  begin
     Visit(AContext.Tree.Root);
+  end;
 end;
 
 { TMagicNumberRule }
@@ -1051,14 +1259,18 @@ var
   begin
     Result := False;
     if ALiteral = '' then
+    begin
       Exit;
+    end;
     if ALiteral[1] = '$' then
     begin
       Result := TryStrToInt64(ALiteral, Hex);
       AValue := Hex;
     end
     else if CharInSet(ALiteral[1], ['0'..'9']) then
+    begin
       Result := TryStrToFloat(ALiteral, AValue, Settings);
+    end;
   end;
 
   function IsAllowed(AValue: Double): Boolean;
@@ -1066,8 +1278,12 @@ var
     Value: Double;
   begin
     for Value in Allowed do
+    begin
       if SameValue(Value, AValue) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1080,7 +1296,9 @@ var
     Options: TExtractOptions;
   begin
     if not NumberValue(Text(ALiteral), Value) then
+    begin
       Exit;
+    end;
     Node := ALiteral;
     // -5: das Vorzeichen gehört zur Zahl.
     if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.UnaryExpr) and (Node.Parent.Name = '-') and
@@ -1090,14 +1308,18 @@ var
       Value := -Value;
     end;
     if IsAllowed(Value) then
+    begin
       Exit;
+    end;
     Fixes := nil;
     Options := TExtractOptions.Default;
     // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
     Options.Names := AContext.NewNames;
     if TExtractRefactoring.ExtractConstant(AContext.Text, AContext.Tree, TTextRange.Create(Node.StartPos, Node.EndPos),
       Options, False, Action) then
+    begin
       Fixes := [TRuleFix.Create('Konstante einführen', Action.Edits)];
+    end;
     AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('Zahl %s ohne Namen; als Konstante wird klar, ' +
       'was sie bedeutet.', [Text(Node)]), TRuleConfidence.Low, Fixes);
   end;
@@ -1131,7 +1353,9 @@ var
             InBody := True;
           TSyntaxKind.Literal:
             if InBody then
+            begin
               CheckLiteral(Node);
+            end;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
@@ -1152,10 +1376,14 @@ var
   Value: Double;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Defaults := nil;
   for Value in DefaultAllowed do
+  begin
     Defaults := Defaults + [Value];
+  end;
   Allowed := TRuleOptions.Numbers(AContext.Options, 'allowed', Defaults);
   Settings := TFormatSettings.Invariant;
   Visit(AContext.Tree.Root, False);
@@ -1183,7 +1411,9 @@ var
   begin
     Result := '';
     if (ALine >= 0) and (ALine <= High(Lines)) then
+    begin
       Result := Lines[ALine];
+    end;
   end;
 
   // Steht ANode allein in seiner Zeile (nur Leerraum davor und dahinter)?
@@ -1200,10 +1430,18 @@ var
     Name: string;
   begin
     for Index := 0 to AType.ChildCount - 1 do
+    begin
       if AType[Index].Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
+      begin
         for Name in AType[Index].Name.Split([',']) do
+        begin
           if SameText(Trim(Name), AName) then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -1220,17 +1458,25 @@ var
     Name := Trim(AField.Name);
     TypeRef := AField.FindChild(TSyntaxKind.TypeReference);
     if (Pos(',', Name) > 0) or (TypeRef = nil) or not AloneInLine(AField) then
+    begin
       Exit;
+    end;
     // Mit F-Präfix hieße die Property anders als das Feld; Zugriffe von außen gingen verloren.
     if (Length(Name) >= 2) and CharInSet(Name[1], ['F', 'f']) and CharInSet(Name[2], ['A'..'Z']) then
+    begin
       Exit;
+    end;
     FieldName := 'F' + UpperCase(Copy(Name, 1, 1)) + Copy(Name, 2, MaxInt);
     if HasMember(AType, FieldName) then
+    begin
       Exit;
+    end;
     TypeName := NodeText(TypeRef);
     EndLine := AType.EndPos.Line;
     if Trim(Copy(LineOf(EndLine), 1, AType.EndPos.Character - 3)) <> '' then
+    begin
       Exit;
+    end;
     Indent := TTextLines.IndentOf(LineOf(EndLine));
     Edits := [TTextEdit.Create(TTextRange.Create(AField.StartPos.Line, 0, AField.StartPos.Line + 1, 0), '')];
     // Einziges Mitglied seines Abschnitts: das Sichtbarkeitswort geht mit.
@@ -1238,15 +1484,23 @@ var
     begin
       Position := -1;
       for Index := 0 to AType.ChildCount - 1 do
+      begin
         if AType[Index] = AField then
+        begin
           Position := Index;
+        end;
+      end;
       Next := nil;
       if (Position >= 0) and (Position < AType.ChildCount - 1) then
+      begin
         Next := AType[Position + 1];
+      end;
       if (Position > 0) and (AType[Position - 1] = ASection) and
         ((Next = nil) or (Next.Kind = TSyntaxKind.Visibility)) then
+      begin
         Edits := [TTextEdit.Create(TTextRange.Create(ASection.StartPos.Line, 0, ASection.StartPos.Line + 1, 0), '')] +
           Edits;
+      end;
     end;
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0), Indent + 'private' + LineBreak +
       Indent + '  ' + FieldName + ': ' + TypeName + ';' + LineBreak + Indent + AVisibility + LineBreak + Indent +
@@ -1275,25 +1529,37 @@ var
         Continue;
       end;
       if Child.Kind <> TSyntaxKind.Field then
+      begin
         Continue;
+      end;
       if Visibility = '' then
       begin
         if not AImplicitCounts then
+        begin
           Continue;
+        end;
       end
       else if not MatchText(Visibility, ['public', 'published']) then
+      begin
         Continue;
+      end;
       Fixes := nil;
       if Visibility = '' then
       begin
         if Encapsulate(AType, Child, nil, AImplicit, Fix) then
+        begin
           Fixes := [Fix];
+        end;
       end
       else if Encapsulate(AType, Child, Section, Visibility, Fix) then
+      begin
         Fixes := [Fix];
+      end;
       for Name in Child.Name.Split([',']) do
+      begin
         AReport.Add(TTextRange.Create(Child.StartPos, Child.EndPos), Format('Öffentliches Feld %s; eine Property ' +
           'hält die Klasse änderbar.', [Trim(Name)]), Fixes);
+      end;
     end;
   end;
 
@@ -1324,14 +1590,18 @@ var
             CheckType(Node, PlainClass(Node), 'public');
           TSyntaxKind.RecordType:
             if IncludeRecords then
+            begin
               CheckType(Node, True, 'public');
+            end;
           TSyntaxKind.Block, TSyntaxKind.AsmBlock:
             Continue;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1340,7 +1610,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   IncludeRecords := TRuleOptions.Bool(AContext.Options, 'includeRecords', False);
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   Visit(AContext.Tree.Root);
@@ -1390,14 +1662,20 @@ var
           begin
             Ancestor := Body.FindChild(TSyntaxKind.TypeReference);
             if (Ancestor <> nil) and ((AContext.FormText <> '') or MatchText(NodeText(Ancestor), FormRoots)) then
+            begin
               FormClasses := FormClasses + [Node.Name];
+            end;
           end;
           Continue;
         end;
         if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1414,7 +1692,9 @@ var
     while (Index <= High(Tokens)) and (Tokens[Index].Offset < ADecl.EndOffset) do
     begin
       if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+      begin
         Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+      end;
       Inc(Index);
     end;
   end;
@@ -1429,13 +1709,19 @@ var
     begin
       Decl := ASection[Index];
       if Decl.Kind <> TSyntaxKind.VarDecl then
+      begin
         Continue;
+      end;
       TypeRef := Decl.FindChild(TSyntaxKind.TypeReference);
       if not IncludeForms and (TypeRef <> nil) and MatchText(NodeText(TypeRef), FormClasses) then
+      begin
         Continue;
+      end;
       for Name in Decl.Name.Split([',']) do
+      begin
         AReport.Add(NameRange(Decl, Trim(Name)), Format('Globale Variable %s ist in jeder Unit sichtbar, die ' +
           'diese verwendet.', [Trim(Name)]));
+      end;
     end;
   end;
 
@@ -1444,17 +1730,25 @@ var
   Index: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   InterfacePart := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
   if InterfacePart = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   IncludeForms := TRuleOptions.Bool(AContext.Options, 'includeFormVariables', False);
   FormClasses := nil;
   CollectForms(InterfacePart);
   for Index := 0 to InterfacePart.ChildCount - 1 do
+  begin
     if InterfacePart[Index].Kind = TSyntaxKind.VarSection then
+    begin
       CheckSection(InterfacePart[Index]);
+    end;
+  end;
 end;
 
 { TLineLengthRule }
@@ -1487,12 +1781,20 @@ var
     SetLength(Result, Length(ALine) + 1);
     Result[0] := 0;
     for Index := 1 to Length(ALine) do
+    begin
       if ALine[Index] = #9 then
-        Result[Index] := (Result[Index - 1] div TabWidth + 1) * TabWidth
+      begin
+        Result[Index] := (Result[Index - 1] div TabWidth + 1) * TabWidth;
+      end
       else if (ALine[Index] >= #$DC00) and (ALine[Index] <= #$DFFF) then
-        Result[Index] := Result[Index - 1]
+      begin
+        Result[Index] := Result[Index - 1];
+      end
       else
+      begin
         Result[Index] := Result[Index - 1] + 1;
+      end;
+    end;
   end;
 
   function Clamp(AValue, AHigh: Integer): Integer;
@@ -1512,13 +1814,19 @@ var
       Token := Tokens[TokenIndex];
       if not ((IgnoreStrings and (Token.Kind = TPascalTokenKind.StringLiteral)) or
         (IgnoreComments and (Token.Kind = TPascalTokenKind.Comment))) then
+      begin
         Continue;
+      end;
       First := 0;
       if Token.StartPos.Line = ALine then
+      begin
         First := Token.StartPos.Character;
+      end;
       Last := High(AColumns);
       if Token.EndPos.Line = ALine then
+      begin
         Last := Token.EndPos.Character;
+      end;
       First := Clamp(First, High(AColumns));
       Last := Clamp(Last, High(AColumns));
       Result := Result - Max(AColumns[Last] - AColumns[First] - 2, 0);
@@ -1532,7 +1840,9 @@ var
     Previous := Tokens[APrevious];
     Token := Tokens[AToken];
     if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
       Exit(False);
+    end;
     // Hinter einem Komma oder vor einem zweistelligen Operator, wie der Formatierer (#43).
     Result := Previous.IsSymbol(',') or (MatchText(Token.Text, Operators) and
       ((Previous.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number, TPascalTokenKind.StringLiteral,
@@ -1550,16 +1860,26 @@ var
     Result := nil;
     Items := nil;
     for Position in ByLine[ALine] do
+    begin
       if Tokens[Position].StartPos.Line = ALine then
+      begin
         Items := Items + [Position];
+      end;
+    end;
     if Spanned[ALine] or (Length(Items) < 2) then
+    begin
       Exit;
+    end;
     Candidates := nil;
     for Position := 1 to High(Items) do
+    begin
       if (Tokens[Items[Position]].EndPos.Line = ALine) and
         not (Tokens[Items[Position - 1]].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
         IsBreak(Items[Position - 1], Items[Position]) then
+      begin
         Candidates := Candidates + [Tokens[Items[Position]].StartPos.Character];
+      end;
+    end;
     Text := Lines[ALine];
     SegmentStart := TTextLines.IndentLength(Text);
     Prefix := AColumns[SegmentStart];
@@ -1573,7 +1893,9 @@ var
         MaxLength) do
       begin
         if Candidates[Position] > SegmentStart then
+        begin
           Best := Candidates[Position];
+        end;
         Inc(Position);
       end;
       if Best < 0 then
@@ -1587,10 +1909,16 @@ var
       SegmentStart := Best;
       Column := 0;
       for Cut := 1 to Length(Continuation) do
+      begin
         if Continuation[Cut] = #9 then
-          Column := (Column div TabWidth + 1) * TabWidth
+        begin
+          Column := (Column div TabWidth + 1) * TabWidth;
+        end
         else
+        begin
           Inc(Column);
+        end;
+      end;
       Prefix := Column;
       Best := -1;
     end;
@@ -1601,7 +1929,9 @@ var
   begin
     Result := 0;
     while (Result < High(AColumns)) and (AColumns[Result + 1] <= MaxLength) do
+    begin
       Inc(Result);
+    end;
   end;
 
   procedure CheckLine(ALine: Integer);
@@ -1630,11 +1960,15 @@ var
     ColumnsOfLine := Columns(Text);
     Width := ColumnsOfLine[High(ColumnsOfLine)];
     if (Width <= MaxLength) or (CountedWidth(ALine, ColumnsOfLine) <= MaxLength) then
+    begin
       Exit;
+    end;
     Fixes := nil;
     Edits := WrapEdits(ALine, ColumnsOfLine);
     if Edits <> nil then
+    begin
       Fixes := [TRuleFix.Create('Zeile umbrechen', Edits)];
+    end;
     AReport.Add(TTextRange.Create(TTextPosition.Create(ALine, OverflowStart(ColumnsOfLine)),
       TTextPosition.Create(ALine, Length(Text))), Format('Zeile hat %d Zeichen (Grenze %d).', [Width, MaxLength]),
       Fixes);
@@ -1644,31 +1978,44 @@ var
   Index, Line: Integer;
 begin
   if AContext.Text = '' then
+  begin
     Exit;
+  end;
   MaxLength := TRuleOptions.Int(AContext.Options, 'max', DefaultMax);
   if MaxLength <= 0 then
+  begin
     MaxLength := DefaultMax;
+  end;
   IgnoreStrings := TRuleOptions.Bool(AContext.Options, 'ignoreStrings', True);
   IgnoreComments := TRuleOptions.Bool(AContext.Options, 'ignoreComments', False);
   Style := AContext.Formatting;
   if Style.IndentSize <= 0 then
+  begin
     Style.IndentSize := 2;
+  end;
   TabWidth := Style.IndentSize;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   SetLength(ByLine, Length(Lines));
   SetLength(Spanned, Length(Lines));
   Tokens := nil;
   if AContext.Tree <> nil then
+  begin
     Tokens := AContext.Tree.Tokens;
+  end;
   for Index := 0 to High(Tokens) do
+  begin
     for Line := Max(Tokens[Index].StartPos.Line, 0) to Min(Tokens[Index].EndPos.Line, High(Lines)) do
     begin
       ByLine[Line] := ByLine[Line] + [Index];
       if Line > Tokens[Index].StartPos.Line then
+      begin
         Spanned[Line] := True;
+      end;
     end;
+  end;
   Continuation := '';
   for Line := 0 to High(Lines) do
+  begin
     // Ohne Tabs ist die Breite höchstens die Länge.
     if (Length(Lines[Line]) > Min(MaxLength, CompilerLimit)) or
       ((Pos(#9, Lines[Line]) > 0) and (Length(Lines[Line]) * TabWidth > MaxLength)) then
@@ -1676,6 +2023,7 @@ begin
       Continuation := TTextLines.IndentOf(Lines[Line]) + TFormatLayout.IndentUnit(Style);
       CheckLine(Line);
     end;
+  end;
   ByLine := nil;
 end;
 
@@ -1746,15 +2094,21 @@ begin
   FLines := TTextLines.SplitLines(AContext.Text, FLineBreak);
   Style := AContext.Formatting;
   if Style.IndentSize <= 0 then
+  begin
     Style.IndentSize := 2;
+  end;
   FIndentUnit := TFormatLayout.IndentUnit(Style);
   FElsePlacement := Style.ElsePlacement;
   if Style.EndOfLine <> '' then
+  begin
     FLineBreak := Style.EndOfLine;
+  end;
   FPaths := TConditionalBranches.Paths(FTokens);
   SetLength(FStatements, Length(TMissingBeginEndRule.DefaultStatements));
   for Index := 0 to High(TMissingBeginEndRule.DefaultStatements) do
+  begin
     FStatements[Index] := TMissingBeginEndRule.DefaultStatements[Index];
+  end;
   FStatements := TRuleOptions.Strings(AContext.Options, 'statements', FStatements);
   FAllowSingleLineExit := TRuleOptions.Bool(AContext.Options, 'allowSingleLineExit', False);
   FAllowSameLine := TRuleOptions.Bool(AContext.Options, 'allowSameLine', False);
@@ -1785,9 +2139,13 @@ begin
   begin
     Middle := (Result + Upper) div 2;
     if FTokens[Middle].Offset < AOffset then
-      Result := Middle + 1
+    begin
+      Result := Middle + 1;
+    end
     else
+    begin
       Upper := Middle;
+    end;
   end;
 end;
 
@@ -1817,11 +2175,17 @@ begin
   // Rumpf mit {$IFDEF}: Der Baum enthält beide Zweige; ohne sichere Lage keine Meldung.
   Result := False;
   if FPaths = nil then
+  begin
     Exit;
+  end;
   Path := TConditionalBranches.PathAt(FPaths, AFirst);
   for Index := AFirst to Min(ALast, High(FTokens)) do
+  begin
     if TConditionalBranches.PathAt(FPaths, Index) <> Path then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TBeginEndSites.Allowed(ALead, AFirst, ALast: Integer): Boolean;
@@ -1841,9 +2205,13 @@ begin
   // Schon Blöcke: begin … end, asm … end, try … end, repeat … until, case … end.
   if ABody.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.TryStatement, TSyntaxKind.RepeatStatement,
     TSyntaxKind.CaseStatement, TSyntaxKind.EmptyStatement, TSyntaxKind.Error] then
+  begin
     Exit;
+  end;
   if not Checked(AName) then
+  begin
     Exit;
+  end;
   Site := Default(TBodySite);
   Site.Name := AName;
   Site.Keyword := AKeyword;
@@ -1853,9 +2221,13 @@ begin
   Site.First := TokenAtOffset(ABody.StartOffset);
   Site.Last := LastTokenOf(ABody);
   if (Site.First > High(FTokens)) or (Site.Last < Site.First) or (FTokens[Site.First].Offset <> ABody.StartOffset) then
+  begin
     Exit;
+  end;
   if Conditional(ALead, NextCode(FTokens, Site.Last + 1)) or Allowed(ALead, Site.First, Site.Last) then
+  begin
     Exit;
+  end;
   FSites := FSites + [Site];
 end;
 
@@ -1879,7 +2251,9 @@ begin
     Node := Stack[Count];
     Routine := Routines[Count];
     if Node.Kind = TSyntaxKind.RoutineDecl then
+    begin
       Routine := Node;
+    end;
     if Count + Node.ChildCount > Length(Stack) then
     begin
       SetLength(Stack, 2 * (Count + Node.ChildCount));
@@ -1892,17 +2266,23 @@ begin
       Inc(Count);
     end;
     if Node.ChildCount = 0 then
+    begin
       Continue;
+    end;
     Keyword := TokenAtOffset(Node.StartOffset);
     if Keyword > High(FTokens) then
+    begin
       Continue;
+    end;
     Last := Node[Node.ChildCount - 1];
     case Node.Kind of
       TSyntaxKind.IfStatement:
         begin
           Lead := NextCode(FTokens, LastTokenOf(Node[0]) + 1);
           if (Lead > High(FTokens)) or not FTokens[Lead].IsKeyword('then') then
+          begin
             Continue;
+          end;
           Next := NextCode(FTokens, Lead + 1);
           Body := nil;
           if (Node.ChildCount > 1) and (Next <= High(FTokens)) and (Node[1].StartOffset = FTokens[Next].Offset) then
@@ -1917,9 +2297,13 @@ begin
             if (ElseToken >= 0) and FTokens[ElseToken].IsKeyword('else') then
             begin
               if StartsLine(ElseToken) then
-                Add('else', ElseToken, ElseToken, ElseToken, Last, Routine)
+              begin
+                Add('else', ElseToken, ElseToken, ElseToken, Last, Routine);
+              end
               else
+              begin
                 Add('else', ElseToken, ElseToken, Keyword, Last, Routine);
+              end;
             end;
           end;
         end;
@@ -1927,13 +2311,17 @@ begin
         begin
           Lead := PreviousCode(FTokens, TokenAtOffset(Last.StartOffset));
           if (Lead >= 0) and FTokens[Lead].IsKeyword('do') then
+          begin
             Add(LowerCase(FTokens[Keyword].Text), Keyword, Lead, Keyword, Last, Routine);
+          end;
         end;
       TSyntaxKind.CaseItem:
         begin
           Lead := PreviousCode(FTokens, TokenAtOffset(Last.StartOffset));
           if (Lead >= 0) and FTokens[Lead].IsSymbol(':') then
+          begin
             Add('case', Keyword, Lead, Keyword, Last, Routine);
+          end;
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
@@ -1947,12 +2335,18 @@ var
 begin
   Anchor := FSites[ASite].Anchor;
   if StartsLine(Anchor) then
+  begin
     Exit(TTextLines.IndentOf(FLines[FTokens[Anchor].StartPos.Line]));
+  end;
   // Steht die Anweisung hinter then/do in derselben Zeile, kommt sie mit der Korrektur in eine eigene Zeile.
   for Index := 0 to High(FSites) do
+  begin
     if AChosen[Index] and (FSites[Index].First = Anchor) and
       (FTokens[FSites[Index].Lead].StartPos.Line = FTokens[Anchor].StartPos.Line) then
+    begin
       Exit(Indent(Index, AChosen) + FIndentUnit);
+    end;
+  end;
   Result := TTextLines.IndentOf(FLines[FTokens[Anchor].StartPos.Line]);
 end;
 
@@ -1970,7 +2364,9 @@ begin
   SetLength(Chosen, Length(FSites));
   SetLength(Done, Length(FSites));
   for Site in ASites do
+  begin
     Chosen[Site] := True;
+  end;
   for Site in ASites do
   begin
     // Vorn: begin in eigener Zeile auf der Einrückung der Anweisung; ein Rumpf aus derselben Zeile rückt ein.
@@ -1978,12 +2374,16 @@ begin
     LeadEnd := FTokens[FSites[Site].Lead].Offset + Length(FTokens[FSites[Site].Lead].Text);
     Gap := Copy(FText, LeadEnd + 1, FTokens[FSites[Site].First].Offset - LeadEnd);
     if Pos(#10, Gap) > 0 then
-      Text := FLineBreak + Own + 'begin' + Gap
+    begin
+      Text := FLineBreak + Own + 'begin' + Gap;
+    end
     else
     begin
       Text := FLineBreak + Own + 'begin' + FLineBreak + Own + FIndentUnit + Trim(Gap);
       if Trim(Gap) <> '' then
+      begin
         Text := Text + ' ';
+      end;
     end;
     Result[Count] := TRuleEdit.Create(TTextRange.Create(FTokens[FSites[Site].Lead].EndPos,
       FTokens[FSites[Site].First].StartPos), Text);
@@ -1992,7 +2392,9 @@ begin
   for Site in ASites do
   begin
     if Done[Site] then
+    begin
       Continue;
+    end;
     // Hinten: alle Rümpfe, die am selben Token enden, innen zuerst. Das Semikolon steht im Block, vor else
     // also keins (E2153).
     Text := '';
@@ -2001,7 +2403,9 @@ begin
     for Index := High(FSites) downto 0 do
     begin
       if not Chosen[Index] or (FSites[Index].Last <> FSites[Site].Last) then
+      begin
         Continue;
+      end;
       Done[Index] := True;
       Outer := Index;
       Text := Text + ';' + FLineBreak + Indent(Index, Chosen) + 'end';
@@ -2044,7 +2448,9 @@ var
   Message: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Finder := TBeginEndSites.Create(AContext);
   try
     Sites := Finder.Sites;
@@ -2052,19 +2458,29 @@ begin
     SetLength(MethodEdits, Length(Sites));
     SetLength(MethodCounts, Length(Sites));
     for Index := 0 to High(Sites) do
+    begin
       All[Index] := Index;
+    end;
     // Die Stellen einer Routine folgen aufeinander (nach Schlüsselwort geordnet), außer bei verschachtelten
     // Routinen; deshalb über alle Stellen sammeln.
     for Index := 0 to High(Sites) do
     begin
       if (Sites[Index].Routine = nil) or (MethodCounts[Index] > 0) then
+      begin
         Continue;
+      end;
       Method := nil;
       for Other := Index to High(Sites) do
+      begin
         if Sites[Other].Routine = Sites[Index].Routine then
+        begin
           Method := Method + [Other];
+        end;
+      end;
       if Length(Method) > 1 then
+      begin
         MethodEdits[Index] := Finder.Edits(Method);
+      end;
       for Other in Method do
       begin
         MethodEdits[Other] := MethodEdits[Index];
@@ -2074,21 +2490,29 @@ begin
     AllEdits := nil;
     for Index := 0 to High(Sites) do
     begin
-      Fixes := [TRuleFix.Create('begin … end setzen', Finder.Edits([Index]))];
+      Fixes := [TRuleFix.Create('begin … end setzen', Finder.Edits([Index]), True)];
       if MethodCounts[Index] > 1 then
+      begin
         Fixes := Fixes + [TRuleFix.Create(Format('begin … end in der ganzen Methode setzen (%d Stellen)',
           [MethodCounts[Index]]), MethodEdits[Index])];
+      end;
       if Length(Sites) > Max(1, MethodCounts[Index]) then
       begin
         if AllEdits = nil then
+        begin
           AllEdits := Finder.Edits(All);
+        end;
         Fixes := Fixes + [TRuleFix.Create(Format('begin … end in der ganzen Datei setzen (%d Stellen)',
           [Length(Sites)]), AllEdits)];
       end;
       if Sites[Index].Name = 'case' then
-        Message := 'case-Zweig ohne begin … end'
+      begin
+        Message := 'case-Zweig ohne begin … end';
+      end
       else
+      begin
         Message := Sites[Index].Name + ' ohne begin … end';
+      end;
       AReport.Add(RangeOf(AContext.Tree.Tokens, Sites[Index].Keyword, Sites[Index].Keyword), Message,
         TRuleConfidence.High, Fixes);
     end;

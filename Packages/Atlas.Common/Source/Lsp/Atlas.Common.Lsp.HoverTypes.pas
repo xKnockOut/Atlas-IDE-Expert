@@ -121,26 +121,36 @@ begin
   Result := nil;
   // Helfer nur mit Vorfahr-Helfer (#848); der Zieltyp ist kein Vorfahr.
   if (AType.SymbolKind = TIndexSymbolKind.HelperType) and not AResolver.HelperParent(AType, Next) then
+  begin
     Exit;
+  end;
   if not (AType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) then
+  begin
     Exit;
+  end;
   Current := AType;
   Seen := nil;
   while Length(Result) < MaxChain do
   begin
     Key := UpperCase(Current.QualifiedName);
     if MatchStr(Key, Seen) then
+    begin
       Break;
+    end;
     Seen := Seen + [Key];
     Result := Result + [FromResolved(Current)];
     if Current.SymbolKind = TIndexSymbolKind.HelperType then
     begin
       if not AResolver.HelperParent(Current, Next) then
+      begin
         Break;
+      end;
     end
     else if not AResolver.AncestorOf(Current, Next) then
+    begin
       Break;
+    end;
     Current := Next;
   end;
 end;
@@ -151,9 +161,13 @@ var
 begin
   Match := TRegEx.Match(ADeclaration, '=\s*class\s+of\s+([A-Za-z_&][\w.]*)', [roIgnoreCase]);
   if Match.Success then
-    Result := Match.Groups[1].Value
+  begin
+    Result := Match.Groups[1].Value;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TLspHoverTypes.KindOf(AKind: TIndexSymbolKind; const ADeclaration: string): string;
@@ -161,9 +175,13 @@ begin
   case AKind of
     TIndexSymbolKind.ClassType:
       if ClassRefTarget(ADeclaration) <> '' then
-        Result := KindClassRef
+      begin
+        Result := KindClassRef;
+      end
       else
+      begin
         Result := 'class';
+      end;
     TIndexSymbolKind.ObjectType:
       Result := 'object';
     TIndexSymbolKind.RecordType:
@@ -198,13 +216,21 @@ end;
 class function TLspHoverTypes.Origin(const AUnitName: string): string;
 begin
   if not TDocWiki.IsLibraryUnit(AUnitName) then
+  begin
     Exit('');
+  end;
   if StartsText('Vcl.', AUnitName) then
-    Result := 'VCL'
+  begin
+    Result := 'VCL';
+  end
   else if StartsText('FMX.', AUnitName) then
-    Result := 'FMX'
+  begin
+    Result := 'FMX';
+  end
   else
+  begin
     Result := 'RTL';
+  end;
 end;
 
 end.

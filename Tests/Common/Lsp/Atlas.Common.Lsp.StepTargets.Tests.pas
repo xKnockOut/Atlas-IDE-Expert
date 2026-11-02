@@ -174,10 +174,14 @@ function TLspStepTargetsTests.Describe(const ACall: TLspStepCall): string;
 begin
   Result := ACall.Name;
   if ACall.Container <> '' then
+  begin
     Result := ACall.Container + '.' + Result;
+  end;
   Result := Result + ':' + ACall.Kind;
   if Length(ACall.Targets) = 0 then
+  begin
     Result := Result + '!';
+  end;
 end;
 
 function TLspStepTargetsTests.AnswerAt(const AMarker: string; out AAnswer: TLspStepAnswer): string;
@@ -191,14 +195,18 @@ begin
   Lines := UnitHaupt.Split([#10]);
   Line := 0;
   while (Line <= High(Lines)) and (Pos(AMarker, Lines[Line]) = 0) do
+  begin
     Inc(Line);
+  end;
   Assert.IsTrue(Line <= High(Lines), AMarker + ' nicht gefunden');
   Targets := TLspStepTargets.Create(FResolver, FIndex, FTree, UnitHaupt, HauptFile,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := SameText(AFileName, BasisFile);
       if Result then
+      begin
         AText := UnitBasis;
+      end;
     end);
   try
     Assert.IsTrue(Targets.Answer(Line, AAnswer));
@@ -207,7 +215,9 @@ begin
   end;
   Names := nil;
   for Call in AAnswer.Calls do
+  begin
     Names := Names + [Describe(Call)];
+  end;
   Result := string.Join(' ', Names);
 end;
 

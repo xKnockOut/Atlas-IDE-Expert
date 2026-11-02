@@ -71,15 +71,21 @@ begin
   Result := '';
   Pending := False;
   for Index := 1 to Length(AText) do
+  begin
     if IsSpace(AText[Index]) then
-      Pending := Result <> ''
+    begin
+      Pending := Result <> '';
+    end
     else
     begin
       if Pending then
+      begin
         Result := Result + ' ';
+      end;
       Pending := False;
       Result := Result + AText[Index];
     end;
+  end;
 end;
 
 function IsKeyword(const AWord: string; const AKeywords: TArray<string>): Boolean;
@@ -87,8 +93,12 @@ var
   Keyword: string;
 begin
   for Keyword in AKeywords do
+  begin
     if SameText(Trim(Keyword), AWord) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -104,19 +114,25 @@ begin
   begin
     First := 3;
     while (First <= Last) and (AComment[First] = '/') do
+    begin
       Inc(First);
+    end;
   end
   else if Copy(AComment, 1, 2) = '(*' then
   begin
     First := 3;
     if (Last >= 4) and (Copy(AComment, Last - 1, 2) = '*)') then
+    begin
       Dec(Last, 2);
+    end;
   end
   else if Copy(AComment, 1, 1) = '{' then
   begin
     First := 2;
     if (Last >= 2) and (AComment[Last] = '}') then
+    begin
       Dec(Last);
+    end;
   end;
   Result := Copy(AComment, First, Last - First + 1);
 end;
@@ -131,7 +147,9 @@ var
   procedure SkipSpaces;
   begin
     while (Position <= Len) and IsSpace(ABody[Position]) do
+    begin
       Inc(Position);
+    end;
   end;
 
   /// <summary>Beginnt an Index eine Option (-o, -c)?</summary>
@@ -148,23 +166,35 @@ begin
   SkipSpaces;
   Start := Position;
   while (Position <= Len) and IsLetter(ABody[Position]) do
+  begin
     Inc(Position);
+  end;
   Word := UpperCase(Copy(ABody, Start, Position - Start));
   if Word = '' then
+  begin
     Exit;
+  end;
   // Nach der Marke: Ende, Leerraum oder Doppelpunkt; sonst ist es ein gewöhnliches Wort.
   if (Position <= Len) and not IsSpace(ABody[Position]) and (ABody[Position] <> ':') then
+  begin
     Exit;
+  end;
   if Word = TTodos.DoneKeyword then
-    AEntry.Done := True
+  begin
+    AEntry.Done := True;
+  end
   else if not IsKeyword(Word, AKeywords) then
+  begin
     Exit;
+  end;
   AEntry.Keyword := Word;
   SkipSpaces;
   // Priorität
   Start := Position;
   while (Position <= Len) and CharInSet(ABody[Position], ['0'..'9']) do
+  begin
     Inc(Position);
+  end;
   if Position > Start then
   begin
     AEntry.Priority := StrToIntDef(Copy(ABody, Start, Position - Start), 0);
@@ -181,27 +211,39 @@ begin
       Inc(Position);
       Start := Position;
       while (Position <= Len) and (ABody[Position] <> Quote) do
+      begin
         Inc(Position);
+      end;
       Value := Copy(ABody, Start, Position - Start);
       if Position <= Len then
+      begin
         Inc(Position);
+      end;
     end
     else
     begin
       Start := Position;
       while (Position <= Len) and (ABody[Position] <> ':') and
         not (IsSpace(ABody[Position]) and OptionAt(Position + 1)) do
+      begin
         Inc(Position);
+      end;
       Value := Copy(ABody, Start, Position - Start);
     end;
     if Option = 'O' then
-      AEntry.Owner := Collapse(Value)
+    begin
+      AEntry.Owner := Collapse(Value);
+    end
     else
+    begin
       AEntry.Category := Collapse(Value);
+    end;
     SkipSpaces;
   end;
   if (Position <= Len) and (ABody[Position] = ':') then
+  begin
     Inc(Position);
+  end;
   AEntry.Text := Collapse(Copy(ABody, Position, MaxInt));
   Result := True;
 end;
@@ -214,12 +256,14 @@ var
 begin
   Result := nil;
   for Token in ATokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Comment) and ParseBody(CommentBody(Token.Text), AKeywords, Entry) then
     begin
       Entry.Range.StartPos := Token.StartPos;
       Entry.Range.EndPos := Token.EndPos;
       Result := Result + [Entry];
     end;
+  end;
 end;
 
 class function TTodoScanner.ForText(const AText: string; const AKeywords: TArray<string>): TArray<TTodoEntry>;
@@ -246,13 +290,19 @@ begin
     for FileName in AFiles do
     begin
       if not TMetricsCollector.IsSource(FileName) or Seen.ContainsKey(UpperCase(FileName)) then
+      begin
         Continue;
+      end;
       Seen.Add(UpperCase(FileName), True);
       if not Assigned(AReadText) or not AReadText(FileName, Text) then
+      begin
         Continue;
+      end;
       Entries := ForText(Text, AKeywords);
       if Length(Entries) > 0 then
+      begin
         List.Add(TFileTodos.Create(TMetricsCollector.RelativePath(ARoot, FileName), Entries));
+      end;
     end;
     Result := List.ToArray;
   finally
@@ -273,10 +323,16 @@ begin
     Kept := FileItem;
     Kept.Entries := nil;
     for Entry in FileItem.Entries do
+    begin
       if AFilter.Matches(FileItem, Entry) then
+      begin
         Kept.Entries := Kept.Entries + [Entry];
+      end;
+    end;
     if Length(Kept.Entries) > 0 then
+    begin
       Result := Result + [Kept];
+    end;
   end;
 end;
 

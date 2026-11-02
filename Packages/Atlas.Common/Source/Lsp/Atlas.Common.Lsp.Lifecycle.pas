@@ -80,15 +80,21 @@ procedure TLspLifecycle.CheckState(const AMethod: string; AIsRequest: Boolean);
 begin
   // exit ist in jedem Zustand erlaubt.
   if AMethod = TLspLifecycleMethod.ExitNotification then
+  begin
     Exit;
+  end;
 
   case FState of
     TLspServerState.Uninitialized:
       if AMethod <> TLspLifecycleMethod.InitializeRequest then
+      begin
         raise EJsonRpcError.Create(TLspErrorCode.ServerNotInitialized, 'Server ist noch nicht initialisiert');
+      end;
     TLspServerState.Running:
       if AMethod = TLspLifecycleMethod.InitializeRequest then
+      begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Server ist bereits initialisiert');
+      end;
     TLspServerState.ShuttingDown:
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Server wird beendet');
     TLspServerState.Exited:
@@ -104,13 +110,19 @@ var
 begin
   FreeAndNil(FInitializeParams);
   if AParams is TJSONObject then
+  begin
     FInitializeParams := TJSONObject(AParams.Clone);
+  end;
 
   Capabilities := nil;
   if Assigned(FCapabilities) then
+  begin
     Capabilities := FCapabilities();
+  end;
   if Capabilities = nil then
+  begin
     Capabilities := TJSONObject.Create;
+  end;
 
   ServerInfo := TJSONObject.Create;
   ServerInfo.AddPair('name', FServerName);
@@ -128,7 +140,9 @@ procedure TLspLifecycle.HandleInitialized(const AParams: TJSONValue);
 begin
   // Der Client bestätigt die Initialisierung; jetzt dürfen Features den Arbeitsbereich laden.
   if Assigned(FOnInitialized) then
+  begin
     FOnInitialized();
+  end;
 end;
 
 function TLspLifecycle.HandleShutdown(const AParams: TJSONValue): TJSONValue;
@@ -142,15 +156,21 @@ procedure TLspLifecycle.HandleExit(const AParams: TJSONValue);
 begin
   FState := TLspServerState.Exited;
   if Assigned(FOnExit) then
+  begin
     FOnExit();
+  end;
 end;
 
 function TLspLifecycle.GetExitCode: Integer;
 begin
   if FShutdownReceived then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := 1;
+  end;
 end;
 
 end.

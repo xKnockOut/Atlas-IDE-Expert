@@ -181,17 +181,25 @@ end;
 function TOverloadTarget.Title(AKind: TOverloadKind): string;
 begin
   if AKind = TOverloadKind.Forward then
-    Result := TOverloads.ForwardTitle
+  begin
+    Result := TOverloads.ForwardTitle;
+  end
   else
+  begin
     Result := TOverloads.CopyTitle;
+  end;
 end;
 
 function TOverloadTarget.Reason(AKind: TOverloadKind): string;
 begin
   if AKind = TOverloadKind.Forward then
-    Result := ForwardReason
+  begin
+    Result := ForwardReason;
+  end
   else
+  begin
     Result := CopyReason;
+  end;
 end;
 
 { Hilfen }
@@ -206,7 +214,9 @@ function ShortName(const AName: string): string;
 begin
   Result := AName;
   if LastDelimiter('.', Result) > 0 then
+  begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
 end;
 
 /// <summary>Token des Namens im Kopf AHeader: das erste Bezeichner-Token mit dem Kurznamen.</summary>
@@ -219,10 +229,14 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].Offset >= AHeader.EndOffset then
+    begin
       Break;
+    end;
     if (ATokens[Index].Offset >= AHeader.StartOffset) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
       SameText(ATokens[Index].Text, Name) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -240,10 +254,16 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for Index := 0 to High(A) do
+    begin
       if not SameText(StringReplace(A[Index], ' ', '', [rfReplaceAll]),
         StringReplace(B[Index], ' ', '', [rfReplaceAll])) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Klasse bzw. Record AName der Datei; nil ohne.</summary>
@@ -259,9 +279,15 @@ begin
     begin
       Result := Found = nil;
       if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
+      begin
         for Index := 0 to ANode.ChildCount - 1 do
+        begin
           if ANode[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType] then
+          begin
             Found := ANode[Index];
+          end;
+        end;
+      end;
     end);
   Result := Found;
 end;
@@ -278,20 +304,30 @@ begin
   if AType <> nil then
   begin
     for Index := 0 to AType.ChildCount - 1 do
+    begin
       if (AType[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(AType[Index].Name, AName) and
         ReadNode(AText, ATree, AType[Index], Header) then
+      begin
         Result := Result + [Header];
+      end;
+    end;
     Exit;
   end;
   for Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] do
   begin
     Section := ATree.Root.FindChild(Kind);
     if Section = nil then
+    begin
       Continue;
+    end;
     for Part := 0 to Section.ChildCount - 1 do
+    begin
       if (Section[Part].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Part].Name, AName) and
         ReadNode(AText, ATree, TRoutineParts.HeaderOf(Section[Part]), Header) then
+      begin
         Result := Result + [Header];
+      end;
+    end;
   end;
 end;
 
@@ -309,11 +345,14 @@ begin
   ABody := Default(TSignatureHeader);
   Section := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Section = nil then
+  begin
     Exit;
+  end;
   Count := 0;
   Single := nil;
   SingleHeader := Default(TSignatureHeader);
   for Index := 0 to Section.ChildCount - 1 do
+  begin
     if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AQualified) and
       (Section[Index].FindChild(TSyntaxKind.Block) <> nil) and
       ReadNode(AText, ATree, TRoutineParts.HeaderOf(Section[Index]), Header) then
@@ -327,6 +366,7 @@ begin
         Exit(Section[Index]);
       end;
     end;
+  end;
   // Ohne Überladung darf die Implementierung die Parameter weglassen.
   if (Count = 1) and (SingleHeader.OpenToken < 0) then
   begin
@@ -348,25 +388,37 @@ begin
   ADecl := Default(TSignatureHeader);
   Candidates := nil;
   if AType <> nil then
-    Candidates := Overloads(ATree, AText, AName, AType)
+  begin
+    Candidates := Overloads(ATree, AText, AName, AType);
+  end
   else
   begin
     Section := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
     if Section <> nil then
+    begin
       for Index := 0 to Section.ChildCount - 1 do
+      begin
         if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AName) and
           ReadNode(AText, ATree, TRoutineParts.HeaderOf(Section[Index]), Header) then
+        begin
           Candidates := Candidates + [Header];
+        end;
+      end;
+    end;
   end;
   for Candidate in Candidates do
+  begin
     if SameTypes(Candidate.ParamTypes, ABody.ParamTypes) then
     begin
       ADecl := Candidate;
       Exit(True);
     end;
+  end;
   Result := (Length(Candidates) = 1) and (ABody.OpenToken < 0);
   if Result then
+  begin
     ADecl := Candidates[0];
+  end;
 end;
 
 /// <summary>Anfang des Typs des letzten Parameters im Kopf AHeader; -1 ohne.</summary>
@@ -376,15 +428,23 @@ var
 begin
   Result := -1;
   if AHeader = nil then
+  begin
     Exit;
+  end;
   Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
   if (Parameters = nil) or (Parameters.ChildCount = 0) then
+  begin
     Exit;
+  end;
   Parameter := Parameters[Parameters.ChildCount - 1];
   if (Parameter.ChildCount > 0) and (Parameter[Parameter.ChildCount - 1].Kind = TSyntaxKind.TypeReference) then
-    Result := Parameter[Parameter.ChildCount - 1].StartOffset
+  begin
+    Result := Parameter[Parameter.ChildCount - 1].StartOffset;
+  end
   else if Parameter.ChildCount > 0 then
+  begin
     Result := Parameter[0].StartOffset;
+  end;
 end;
 
 /// <summary>Innerster Kopf (RoutineHeader), der AOffset enthält; nil ohne.</summary>
@@ -398,7 +458,9 @@ begin
     begin
       Result := TRoutineParts.Encloses(ANode, AOffset);
       if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) then
+      begin
         Found := ANode;
+      end;
     end);
   Result := Found;
 end;
@@ -408,8 +470,12 @@ var
   Part: string;
 begin
   for Part in AModifier.Split([' ']) do
+  begin
     if SameText(Part, AWord) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -431,7 +497,9 @@ begin
   Result := False;
   ATarget := Default(TOverloadTarget);
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Lines := TLineTable.Build(AText);
   Offset := Lines.OffsetAt(APosition);
@@ -443,13 +511,21 @@ begin
   begin
     if (Routine.Parent = nil) or not (Routine.Parent.Kind in [TSyntaxKind.InterfaceSection,
       TSyntaxKind.ImplementationSection]) then
+    begin
       Exit;
+    end;
     if Routine.FindChild(TSyntaxKind.Block) <> nil then
-      BodyNode := Routine
+    begin
+      BodyNode := Routine;
+    end
     else if Routine.Parent.Kind = TSyntaxKind.InterfaceSection then
-      DeclHeader := TRoutineParts.HeaderOf(Routine)
+    begin
+      DeclHeader := TRoutineParts.HeaderOf(Routine);
+    end
     else
+    begin
       Exit;
+    end;
   end
   else
   begin
@@ -461,10 +537,14 @@ begin
         Result := TRoutineParts.Encloses(ANode, Offset);
         if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
           (ANode.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType]) then
+        begin
           Found := ANode;
+        end;
       end);
     if (Found = nil) or (Found.Parent.Parent = nil) then
+    begin
       Exit;
+    end;
     DeclHeader := Found;
     TypeNode := Found.Parent;
     ATarget.Container := Found.Parent.Parent.Name;
@@ -473,30 +553,42 @@ begin
   if DeclHeader <> nil then
   begin
     if not ReadNode(AText, ATree, DeclHeader, ATarget.Decl) then
+    begin
       Exit;
+    end;
     ATarget.HasDecl := True;
     ATarget.Name := ShortName(ATarget.Decl.QualifiedName);
     Qualified := ATarget.Name;
     if ATarget.Container <> '' then
+    begin
       Qualified := ATarget.Container + '.' + ATarget.Name;
+    end;
     BodyNode := FindBody(ATree, AText, Qualified, ATarget.Decl, ATarget.Body);
     if BodyNode = nil then
+    begin
       Exit;
+    end;
     ATarget.LastTypeOffset := LastTypeOffset(DeclHeader);
   end
   else
   begin
     if not ReadNode(AText, ATree, TRoutineParts.HeaderOf(BodyNode), ATarget.Body) then
+    begin
       Exit;
+    end;
     ATarget.Name := ShortName(ATarget.Body.QualifiedName);
     if Pos('.', ATarget.Body.QualifiedName) > 0 then
     begin
       ATarget.Container := Copy(ATarget.Body.QualifiedName, 1, LastDelimiter('.', ATarget.Body.QualifiedName) - 1);
       if Pos('.', ATarget.Container) > 0 then
+      begin
         ATarget.Container := ShortName(ATarget.Container);
+      end;
       TypeNode := FindType(ATree.Root, ATarget.Container);
       if TypeNode = nil then
+      begin
         Exit;
+      end;
     end;
     if FindDecl(ATree, AText, TypeNode, ATarget.Name, ATarget.Body, Header) then
     begin
@@ -504,29 +596,45 @@ begin
       ATarget.HasDecl := True;
     end
     else if ATarget.Container <> '' then
-      Exit
+    begin
+      Exit;
+    end
     else
+    begin
       ATarget.Decl := ATarget.Body;
+    end;
     // Typ des letzten Parameters: aus der Deklaration, sonst aus dem Kopf der Implementierung.
     if ATarget.HasDecl then
-      ATarget.LastTypeOffset := LastTypeOffset(HeaderNodeAt(ATree, Tokens[ATarget.Decl.NameToken].Offset))
+    begin
+      ATarget.LastTypeOffset := LastTypeOffset(HeaderNodeAt(ATree, Tokens[ATarget.Decl.NameToken].Offset));
+    end
     else
+    begin
       ATarget.LastTypeOffset := LastTypeOffset(TRoutineParts.HeaderOf(BodyNode));
+    end;
   end;
 
   Block := BodyNode.FindChild(TSyntaxKind.Block);
   if Block = nil then
+  begin
     Exit;
+  end;
   ATarget.BlockBegin := TRoutineBody.TokenAt(Tokens, Block.StartOffset);
   ATarget.BodyLast := TChangeSignature.BodyEnd(ATree, ATarget.Body);
   if (ATarget.BlockBegin > High(Tokens)) or not Tokens[ATarget.BlockBegin].IsKeyword('begin') or
     (ATarget.BodyLast < 0) then
+  begin
     Exit;
+  end;
   ATarget.BlockEnd := ATarget.BodyLast;
   while (ATarget.BlockEnd > ATarget.BlockBegin) and not Tokens[ATarget.BlockEnd].IsKeyword('end') do
+  begin
     Dec(ATarget.BlockEnd);
+  end;
   if ATarget.BlockEnd <= ATarget.BlockBegin then
+  begin
     Exit;
+  end;
 
   if ATarget.Decl.Keyword = 'destructor' then
   begin
@@ -539,26 +647,34 @@ begin
     ATarget.ForwardReason := GenericReason;
   end
   else if Length(ATarget.Decl.Parameters) = 0 then
-    ATarget.ForwardReason := NoParameterReason
+  begin
+    ATarget.ForwardReason := NoParameterReason;
+  end
   else
   begin
     Last := ATarget.Decl.Parameters[High(ATarget.Decl.Parameters)];
     if IsModifier(Last.Modifier, 'var') or IsModifier(Last.Modifier, 'out') or (Last.TypeName = '') then
-      ATarget.ForwardReason := Format(VarParameterReason, [Last.Name])
+    begin
+      ATarget.ForwardReason := Format(VarParameterReason, [Last.Name]);
+    end
     else
     begin
       Wanted := Copy(ATarget.Decl.ParamTypes, 0, Length(ATarget.Decl.Parameters) - 1);
       Existing := Overloads(ATree, AText, ATarget.Name, TypeNode);
       for Header in Existing do
+      begin
         if SameTypes(Header.ParamTypes, Wanted) then
         begin
           ATarget.ForwardReason := Format(ExistsReason, [ATarget.Name, string.Join(', ', Wanted)]);
           Break;
         end;
+      end;
     end;
   end;
   if ATarget.Decl.HasDirective('override') then
+  begin
     ATarget.Note := Format(OverrideNote, [ATarget.Name]);
+  end;
   Result := True;
 end;
 
@@ -578,21 +694,37 @@ var
 begin
   Name := LowerCase(Trim(ATypeName));
   if StartsText('system.', Name) then
+  begin
     Name := Copy(Name, Length('system.') + 1, MaxInt);
+  end;
   if StartsText('array of ', Name) then
-    Result := '[]'
+  begin
+    Result := '[]';
+  end
   else if IndexText(Name, Numbers) >= 0 then
-    Result := '0'
+  begin
+    Result := '0';
+  end
   else if IndexText(Name, Strings) >= 0 then
-    Result := ''''''
+  begin
+    Result := '''''';
+  end
   else if IndexText(Name, Chars) >= 0 then
-    Result := '#0'
+  begin
+    Result := '#0';
+  end
   else if IndexText(Name, Booleans) >= 0 then
-    Result := 'False'
+  begin
+    Result := 'False';
+  end
   else if IndexText(Name, Pointers) >= 0 then
-    Result := 'nil'
+  begin
+    Result := 'nil';
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Der ///-Kommentar über Zeile ALine (Attribute dazwischen übersprungen), ohne Einrückung; bei
@@ -606,7 +738,9 @@ begin
   Result := nil;
   Line := ALine - 1;
   while (Line >= 0) and StartsStr('[', Trim(ALines[Line])) do
+  begin
     Dec(Line);
+  end;
   First := Line + 1;
   while (Line >= 0) and StartsStr('///', Trim(ALines[Line])) do
   begin
@@ -618,7 +752,9 @@ begin
   begin
     Text := Trim(ALines[Line]);
     if not StartsStr('///', Text) then
+    begin
       Continue;
+    end;
     if (ADropped <> '') and not Inside and ContainsText(Text, '<param name="' + ADropped + '"') then
     begin
       Inside := not ContainsText(Text, '</param>');
@@ -639,7 +775,9 @@ var
 begin
   Result := '';
   for Line in ADoc do
+  begin
     Result := Result + AIndent + Line + ALineBreak;
+  end;
 end;
 
 /// <summary>Text der Parameterliste ohne Klammern: wie im Original, mit Standardwerten ohne sie.</summary>
@@ -651,17 +789,25 @@ var
 begin
   HasDefault := False;
   for Parameter in AHeader.Parameters do
+  begin
     if Parameter.DefaultValue <> '' then
+    begin
       HasDefault := True;
+    end;
+  end;
   if HasDefault or (AHeader.OpenToken < 0) then
   begin
     Result := TChangeSignature.ParameterList(AHeader.Parameters, False);
     if Result <> '' then
+    begin
       Result := Copy(Result, 2, Length(Result) - 2);
+    end;
   end
   else
+  begin
     Result := Copy(AText, TokenEnd(ATokens, AHeader.OpenToken) + 1,
       ATokens[AHeader.CloseToken].Offset - TokenEnd(ATokens, AHeader.OpenToken));
+  end;
 end;
 
 /// <summary>Kopf bis einschließlich Name ("class function TFoo.Bar") wie im Text.</summary>
@@ -677,9 +823,13 @@ var
   From: Integer;
 begin
   if AHeader.CloseToken >= 0 then
-    From := TokenEnd(ATokens, AHeader.CloseToken)
+  begin
+    From := TokenEnd(ATokens, AHeader.CloseToken);
+  end
   else
+  begin
     From := TokenEnd(ATokens, AHeader.NameToken);
+  end;
   Result := Copy(AText, From + 1, TokenEnd(ATokens, AHeader.EndToken) - From);
 end;
 
@@ -691,7 +841,9 @@ begin
   ABuilder.Add(AParameters, 1);
   ABuilder.Add(')' + TailText(AText, ATokens, AHeader));
   if ADirectives then
+  begin
     ABuilder.Add(TChangeSignature.OverloadDirectives(AHeader, False));
+  end;
 end;
 
 /// <summary>" overload;" für das Original: hinter dem Kopf, ohne weitere Direktiven in derselben Einfügung wie
@@ -707,14 +859,20 @@ var
 begin
   Result := Copy(AInserts);
   for Index := 0 to High(Result) do
+  begin
     Result[Index].Sequence := Index;
+  end;
   TArray.Sort<TInsert>(Result, TComparer<TInsert>.Construct(
     function(const A, B: TInsert): Integer
     begin
       if A.Offset <> B.Offset then
-        Result := A.Offset - B.Offset
+      begin
+        Result := A.Offset - B.Offset;
+      end
       else
+      begin
         Result := A.Sequence - B.Sequence;
+      end;
     end));
 end;
 
@@ -745,7 +903,9 @@ begin
   AResult := Default(TOverloadResult);
   AReason := ATarget.Reason(AKind);
   if AReason <> '' then
+  begin
     Exit(False);
+  end;
   Result := True;
   Tokens := ATree.Tokens;
   Lines := TTextLines.SplitLines(AText);
@@ -762,10 +922,14 @@ begin
     Dropped := ATarget.Decl.Parameters[High(ATarget.Decl.Parameters)].Name;
     Parameters := TChangeSignature.ParameterList(Kept, False);
     if Parameters <> '' then
+    begin
       Parameters := Copy(Parameters, 2, Length(Parameters) - 2);
+    end;
   end
   else
+  begin
     Parameters := ParameterText(AText, Tokens, ATarget.Decl);
+  end;
   Doc := DocLines(Lines, Tokens[ATarget.Decl.StartToken].StartPos.Line, Dropped);
 
   // Deklaration: Kopie hinter dem Original, das selbst overload bekommt.
@@ -775,22 +939,30 @@ begin
     if NeedsOverload(ATarget.Decl) then
     begin
       if ATarget.Decl.LastToken = ATarget.Decl.EndToken then
-        Decl.Add(' overload;')
+      begin
+        Decl.Add(' overload;');
+      end
       else
+      begin
         Inserts := Inserts + [PlainInsert(TokenEnd(Tokens, ATarget.Decl.EndToken), ' overload;')];
+      end;
     end;
     Decl.Add(LineBreak + DocBlock(Doc, DeclIndent, LineBreak) + DeclIndent);
     AddHead(Decl, AText, Tokens, ATarget.Decl, Parameters, True);
     Inserts := Inserts + [MakeInsert(TokenEnd(Tokens, ATarget.Decl.LastToken), Decl)];
   end
   else if NeedsOverload(ATarget.Body) then
+  begin
     Inserts := Inserts + [PlainInsert(TokenEnd(Tokens, ATarget.Body.EndToken), ' overload;')];
+  end;
 
   // Implementierung hinter der des Originals.
   Body := Default(TInsertBuilder);
   Body.Add(LineBreak + LineBreak);
   if not ATarget.HasDecl then
+  begin
     Body.Add(DocBlock(Doc, BodyIndent, LineBreak));
+  end;
   AddHead(Body, AText, Tokens, ATarget.Body, Parameters, not ATarget.HasDecl);
   if AKind = TOverloadKind.Copy then
   begin
@@ -819,20 +991,30 @@ begin
     Body.Add(LineBreak + BodyIndent + 'begin' + LineBreak + BodyIndent + '  ');
     Call := '';
     if ATarget.Decl.IsFunction then
+    begin
       Call := 'Result := ';
+    end;
     Body.Add(Call + ATarget.Name + '(');
     Arguments := '';
     for Parameter in Kept do
+    begin
       Arguments := Arguments + Parameter.Name + ', ';
+    end;
     Body.Add(Arguments);
     Parameter := ATarget.Decl.Parameters[High(ATarget.Decl.Parameters)];
     Value := '';
     if Assigned(ADefault) then
+    begin
       Value := ADefault(Parameter.TypeName, ATarget.LastTypeOffset);
+    end;
     if Value = '' then
+    begin
       Value := DefaultValue(Parameter.TypeName);
+    end;
     if Value = '' then
+    begin
       Value := 'Default(' + Parameter.TypeName + ')';
+    end;
     Body.Add(Value, 2);
     Body.Add(');' + LineBreak + BodyIndent + 'end;');
   end;
@@ -843,8 +1025,10 @@ begin
   Inserts := MergeInserts(Inserts);
   AResult.NewText := AText;
   for Index := High(Inserts) downto 0 do
+  begin
     AResult.NewText := Copy(AResult.NewText, 1, Inserts[Index].Offset) + Inserts[Index].Text +
       Copy(AResult.NewText, Inserts[Index].Offset + 1, MaxInt);
+  end;
   NewLines := TLineTable.Build(AResult.NewText);
   Shift := 0;
   for Insert in Inserts do
@@ -861,7 +1045,9 @@ begin
     Shift := Shift + Length(Insert.Text);
   end;
   if ATarget.Note <> '' then
+  begin
     AResult.Warnings := [ATarget.Note];
+  end;
 end;
 
 end.

@@ -75,27 +75,41 @@ begin
   Result := '';
   InQuote := False;
   for C in ALine do
+  begin
     if Ord(C) < 32 then
     begin
       if InQuote then
+      begin
         Result := Result + '''';
+      end;
       InQuote := False;
       Result := Result + '#' + IntToStr(Ord(C));
     end
     else
     begin
       if not InQuote then
+      begin
         Result := Result + '''';
+      end;
       InQuote := True;
       if C = '''' then
-        Result := Result + ''''''
+      begin
+        Result := Result + '''''';
+      end
       else
+      begin
         Result := Result + C;
+      end;
     end;
+  end;
   if InQuote then
-    Result := Result + ''''
+  begin
+    Result := Result + '''';
+  end
   else if Result = '' then
+  begin
     Result := '''''';
+  end;
 end;
 
 /// <summary>Mehrzeiliger String geht nur ohne ''' und ohne Steuerzeichen außer Tab.</summary>
@@ -107,10 +121,16 @@ begin
   for Line in ALines do
   begin
     if Pos('''''''', Line) > 0 then
+    begin
       Exit(False);
+    end;
     for C in Line do
+    begin
       if (Ord(C) < 32) and (C <> #9) then
+      begin
         Exit(False);
+      end;
+    end;
   end;
   Result := True;
 end;
@@ -128,9 +148,13 @@ begin
   begin
     Size := Length(Rest) - 1;
     while (Size > 10) and (Length(TStringLiterals.Quote(Copy(Rest, 1, Size))) > AWidth) do
+    begin
       Dec(Size);
+    end;
     if LastDelimiter(' ', Copy(Rest, 1, Size)) > Size div 2 then
+    begin
       Size := LastDelimiter(' ', Copy(Rest, 1, Size));
+    end;
     Result := Result + [Copy(Rest, 1, Size)];
     Rest := Copy(Rest, Size + 1, MaxInt);
   end;
@@ -153,13 +177,20 @@ begin
     // Der Compiler entfernt die Einrückung der schließenden ''' aus allen Zeilen.
     Output := [''''''''];
     for Line in Lines do
+    begin
       if Line = '' then
-        Output := Output + ['']
+      begin
+        Output := Output + [''];
+      end
       else
+      begin
         Output := Output + [AIndent + '  ' + Line];
+      end;
+    end;
     Output := Output + [AIndent + '  ' + ''''''''];
   end
   else
+  begin
     for Index := 0 to High(Lines) do
     begin
       Line := Lines[Index];
@@ -178,29 +209,44 @@ begin
           // Übrige Werte bewusst ohne Wirkung.
         end;
       if AMaxLineLength > 0 then
-        Parts := Chunks(Line, AMaxLineLength - Length(AIndent) - Length(Separator) - 2)
+      begin
+        Parts := Chunks(Line, AMaxLineLength - Length(AIndent) - Length(Separator) - 2);
+      end
       else
+      begin
         Parts := [Line];
+      end;
       for Part := 0 to High(Parts) do
       begin
         Piece := AIndent + Quote(Parts[Part]);
         if Part = High(Parts) then
+        begin
           Piece := Piece + Separator;
+        end;
         if (Part < High(Parts)) or (Index < High(Lines)) then
+        begin
           Piece := Piece + ' +';
+        end;
         Output := Output + [Piece];
       end;
     end;
+  end;
   // Die erste Zeile steht hinter dem Text davor, z. B. hinter "SQL.Text := ".
   if AIndentFirst and Multiline then
-    Output[0] := AIndent + Output[0]
+  begin
+    Output[0] := AIndent + Output[0];
+  end
   else if not AIndentFirst and not Multiline then
+  begin
     Output[0] := Copy(Output[0], Length(AIndent) + 1, MaxInt);
+  end;
   Result := '';
   for Index := 0 to High(Output) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ALineEnd;
+    end;
     Result := Result + Output[Index];
   end;
 end;
@@ -215,12 +261,16 @@ begin
   Lines := TTextLines.SplitLines(AToken);
   Result := '';
   if Length(Lines) < 2 then
+  begin
     Exit;
+  end;
   Indent := Length(Lines[High(Lines)]) - Length(TrimLeft(Lines[High(Lines)]));
   for Index := 1 to High(Lines) - 1 do
   begin
     if Index > 1 then
+    begin
       Result := Result + TStringLiterals.PlainLineBreak;
+    end;
     Result := Result + Copy(Lines[Index], Indent + 1, MaxInt);
   end;
 end;
@@ -233,8 +283,12 @@ var
 begin
   Result := '';
   for Part in SplitString(Copy(AToken, 2, MaxInt), '#') do
+  begin
     if TryStrToInt(Part, Code) then
+    begin
       Result := Result + Char(Code);
+    end;
+  end;
 end;
 
 function IsLiteralToken(const AToken: TPascalToken): Boolean;
@@ -256,10 +310,14 @@ begin
         begin
           HasString := True;
           if StartsStr('''''''', Token.Text) then
-            AText := AText + MultilineText(Token.Text)
+          begin
+            AText := AText + MultilineText(Token.Text);
+          end
           else
+          begin
             AText := AText + StringReplace(Copy(Token.Text, 2, Length(Token.Text) - 2), '''''', '''',
               [rfReplaceAll]);
+          end;
         end;
       TPascalTokenKind.CharLiteral:
         AText := AText + CharValue(Token.Text);
@@ -267,12 +325,18 @@ begin
         ;
       TPascalTokenKind.Identifier:
         if SameText(Token.Text, 'sLineBreak') then
-          AText := AText + PlainLineBreak
+        begin
+          AText := AText + PlainLineBreak;
+        end
         else
+        begin
           Exit(False);
+        end;
       TPascalTokenKind.Symbol:
         if Token.Text <> '+' then
+        begin
           Exit(False);
+        end;
     else
       Exit(False);
     end;
@@ -298,33 +362,53 @@ begin
   Tokens := TPascalLexer.Tokenize(AText);
   Hit := -1;
   for Index := 0 to High(Tokens) do
+  begin
     if not Before(APosition, Tokens[Index].StartPos) and not Before(Tokens[Index].EndPos, APosition) and
       (IsLiteralToken(Tokens[Index]) or Tokens[Index].IsSymbol('+')) then
     begin
       Hit := Index;
       if IsLiteralToken(Tokens[Index]) then
+      begin
         Break;
+      end;
     end;
+  end;
   if Hit < 0 then
+  begin
     Exit(False);
+  end;
   // Nach beiden Seiten über Literale, sLineBreak, + und Kommentare ausdehnen.
   First := Hit;
   while (First > 0) and Joins(Tokens[First - 1]) do
+  begin
     Dec(First);
+  end;
   Last := Hit;
   while (Last < High(Tokens)) and Joins(Tokens[Last + 1]) do
+  begin
     Inc(Last);
+  end;
   while (First <= Last) and not IsLiteralToken(Tokens[First]) do
+  begin
     Inc(First);
+  end;
   while (Last >= First) and not IsLiteralToken(Tokens[Last]) do
+  begin
     Dec(Last);
+  end;
   Result := False;
   for Index := First to Last do
+  begin
     if Tokens[Index].Kind = TPascalTokenKind.StringLiteral then
+    begin
       Result := True;
+    end;
+  end;
   if Result then
+  begin
     ARange := TTextRange.Create(Tokens[First].StartPos.Line, Tokens[First].StartPos.Character,
       Tokens[Last].EndPos.Line, Tokens[Last].EndPos.Character);
+  end;
 end;
 
 class function TStringLiterals.TextOf(const AText: string; const ARange: TTextRange): string;
@@ -337,18 +421,30 @@ begin
   for Line := ARange.StartPos.Line to ARange.EndPos.Line do
   begin
     if (Line < 0) or (Line > High(Lines)) then
+    begin
       Continue;
+    end;
     if Line > ARange.StartPos.Line then
+    begin
       Result := Result + #10;
+    end;
     if (Line = ARange.StartPos.Line) and (Line = ARange.EndPos.Line) then
+    begin
       Result := Result + Copy(Lines[Line], ARange.StartPos.Character + 1, ARange.EndPos.Character -
-        ARange.StartPos.Character)
+        ARange.StartPos.Character);
+    end
     else if Line = ARange.StartPos.Line then
-      Result := Result + Copy(Lines[Line], ARange.StartPos.Character + 1, MaxInt)
+    begin
+      Result := Result + Copy(Lines[Line], ARange.StartPos.Character + 1, MaxInt);
+    end
     else if Line = ARange.EndPos.Line then
-      Result := Result + Copy(Lines[Line], 1, ARange.EndPos.Character)
+    begin
+      Result := Result + Copy(Lines[Line], 1, ARange.EndPos.Character);
+    end
     else
+    begin
       Result := Result + Lines[Line];
+    end;
   end;
 end;
 

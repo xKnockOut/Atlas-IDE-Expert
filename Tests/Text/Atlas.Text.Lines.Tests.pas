@@ -287,7 +287,9 @@ begin
   begin
     // Der Offset zwischen CR und LF hat keine eigene Position.
     if (Offset > 0) and (Offset < Length(Text)) and (Text[Offset] = #13) and (Text[Offset + 1] = #10) then
+    begin
       Continue;
+    end;
     Assert.AreEqual<Integer>(Offset, Table.OffsetAt(Table.PositionAt(Offset)), Format('Offset %d', [Offset]));
   end;
 end;

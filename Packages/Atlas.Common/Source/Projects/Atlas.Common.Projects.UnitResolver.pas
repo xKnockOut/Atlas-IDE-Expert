@@ -77,11 +77,17 @@ begin
   Directories := TList<string>.Create;
   try
     if AProject.FileName <> '' then
+    begin
       Directories.Add(TProjectPaths.DirectoryOf(AProject.FileName));
+    end;
     for Directory in AProject.SearchPaths do
+    begin
       Directories.Add(Directory);
+    end;
     for Directory in ALibraryPaths do
+    begin
       Directories.Add(Directory);
+    end;
     FDirectories := Directories.ToArray;
   finally
     Directories.Free;
@@ -105,7 +111,9 @@ begin
   try
     Names.Add(AUnitName);
     for Namespace in FProject.Namespaces do
+    begin
       Names.Add(Namespace + '.' + AUnitName);
+    end;
     Result := Names.ToArray;
   finally
     Names.Free;
@@ -129,7 +137,9 @@ begin
     begin
       Listing := TDictionary<string, string>.Create;
       for FileName in FListUnits(ADirectory) do
+      begin
         Listing.AddOrSetValue(LowerCase(ChangeFileExt(ExtractFileName(FileName), '')), FileName);
+      end;
       FListings.Add(Key, Listing);
     end;
     Result := Listing.TryGetValue(LowerCase(AName), APath);
@@ -148,17 +158,35 @@ var
 begin
   Names := Candidates(AUnitName);
   for Name in Names do
+  begin
     for ProjectUnit in FProject.Units do
+    begin
       if SameText(ProjectUnit.Name, Name) then
+      begin
         Exit(ProjectUnit.FileName);
+      end;
+    end;
+  end;
   if AFromDirectory <> '' then
+  begin
     for Name in Names do
+    begin
       if FileIn(AFromDirectory, Name, Candidate) then
+      begin
         Exit(Candidate);
+      end;
+    end;
+  end;
   for Directory in FDirectories do
+  begin
     for Name in Names do
+    begin
       if FileIn(Directory, Name, Candidate) then
+      begin
         Exit(Candidate);
+      end;
+    end;
+  end;
   Result := '';
 end;
 
@@ -172,12 +200,16 @@ var
   Key: string;
 begin
   if Trim(AUnitName) = '' then
+  begin
     Exit('');
+  end;
   Key := LowerCase(AUnitName) + '|' + LowerCase(AFromDirectory);
   TMonitor.Enter(FLock);
   try
     if FCache.TryGetValue(Key, Result) then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

@@ -130,7 +130,9 @@ begin
   AUnit := '';
   Resolved := AResolver.ResolveType(ATree, AFileName, ATable.IndexType.StartPos);
   if not Resolved.Found or (Resolved.SymbolKind <> TIndexSymbolKind.EnumType) then
+  begin
     Exit(False);
+  end;
   AUnit := Resolved.UnitName;
   Values := TConstantValues.Create(ATree, AFileName, AIndex, AResolver);
   try
@@ -150,7 +152,9 @@ var
 begin
   Name := '';
   if ATable.ElementType.Kind = TSyntaxKind.TypeReference then
+  begin
     Name := ATable.ElementType.Name;
+  end;
   Element := TEnumTables.ElementOf(Name);
   if (Element = TEnumTableElement.Other) and (Name <> '') then
   begin
@@ -185,7 +189,9 @@ begin
   begin
     Result := Result + [CreateAction(TEnumTables.CreateTitle, AUri, Target, AfterTypeName)];
     if Target.InInterface then
+    begin
       Result := Result + [CreateAction(TEnumTables.CreateImplementationTitle, AUri, Target, ImplementationName)];
+    end;
     Arguments := TJSONArray.Create;
     Arguments.Add(AUri);
     Arguments.AddElement(TLspPositions.PositionToJson(Target.NamePosition));
@@ -196,7 +202,9 @@ begin
   if not TEnumTables.TableAt(ATree, APosition, Table) or
     not IndexNames(AResolver, AIndex, ATree, FileName, Table, Names, UnitName) or
     not TEnumTables.Repair(AText, ATree, Table.Value, Names, ValuesOf(AResolver, ATree, FileName, Table), Repair) then
+  begin
     Exit;
+  end;
   Action := TJSONObject.Create;
   Action.AddPair('title', Repair.Title);
   Action.AddPair('kind', RepairKind);
@@ -243,7 +251,9 @@ var
 begin
   Changes := TJSONArray.Create;
   for Item in AFiles do
+  begin
     Changes.AddElement(EditsJson(TDocumentUris.FromPath(Item.FileName), Item.Edits));
+  end;
   Annotation := TJSONObject.Create;
   Annotation.AddPair('label', ALabel);
   Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
@@ -255,7 +265,9 @@ begin
   Edit.AddPair('changeAnnotations', Annotations);
   Warnings := TJSONArray.Create;
   for Warning in AWarnings do
+  begin
     Warnings.Add(Warning);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('edit', Edit);
   Result.AddPair('warnings', Warnings);
@@ -274,15 +286,23 @@ var
   Files: TArray<TFileEdits>;
 begin
   if SameText(APlacement, AfterTypeName) then
-    Placement := TEnumTablePlacement.AfterType
+  begin
+    Placement := TEnumTablePlacement.AfterType;
+  end
   else if SameText(APlacement, ImplementationName) then
-    Placement := TEnumTablePlacement.InImplementation
+  begin
+    Placement := TEnumTablePlacement.InImplementation;
+  end
   else
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Stelle "%s"', [APlacement]));
+  end;
   if not TEnumTables.Target(ATree, APosition, Target, Reason) or
     not TEnumTables.CreateTable(AText, ATree, APosition, Trim(AName), Placement, AContext.ResourceStrings, Edits,
     Reason) then
+  begin
     raise Fail('Namenstabelle geht nicht: ' + Reason);
+  end;
   SetLength(Files, 1);
   Files[0].FileName := AFileName;
   Files[0].Edits := Edits;
@@ -304,7 +324,9 @@ type
 destructor TSyncFile.Destroy;
 begin
   if OwnsTree then
+  begin
     Tree.Free;
+  end;
   inherited;
 end;
 
@@ -326,13 +348,21 @@ var
   procedure Check(ALabel: TSyntaxNode);
   begin
     if ALabel.Kind = TSyntaxKind.MemberAccess then
-      Prefix := ATypeName + '.'
+    begin
+      Prefix := ATypeName + '.';
+    end
     else if ALabel.Kind <> TSyntaxKind.Identifier then
+    begin
       Matching := False;
+    end;
     if IndexText(ALabel.Name, ANames) < 0 then
+    begin
       Matching := False;
+    end;
     if First = nil then
+    begin
       First := ALabel;
+    end;
   end;
 
 begin
@@ -340,12 +370,17 @@ begin
   Prefix := '';
   First := nil;
   for Item := 1 to ACase.ChildCount - 1 do
+  begin
     if ACase[Item].Kind = TSyntaxKind.CaseItem then
+    begin
       for Label_ := 0 to ACase[Item].ChildCount - 1 do
+      begin
         if ACase[Item][Label_].Kind = TSyntaxKind.RangeExpr then
         begin
           if ACase[Item][Label_].ChildCount <> 2 then
-            Matching := False
+          begin
+            Matching := False;
+          end
           else
           begin
             Check(ACase[Item][Label_][0]);
@@ -353,7 +388,12 @@ begin
           end;
         end
         else if not (ACase[Item][Label_].Kind in StatementKinds) then
+        begin
           Check(ACase[Item][Label_]);
+        end;
+      end;
+    end;
+  end;
   APrefix := Prefix;
   AFirst := First;
   Result := Matching and (First <> nil);
@@ -374,18 +414,22 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.CaseStatement then
+      begin
         Cases := Cases + [ANode];
+      end;
       Result := True;
     end);
   Found := nil;
   Prefixes := nil;
   for Node in Cases do
+  begin
     if CaseMatches(Node, ATypeName, ANames, Prefix, First) and
       SameText(AResolver.Resolve(ATree, AFileName, First.StartPos).UnitName, AUnit) then
     begin
       Found := Found + [Node];
       Prefixes := Prefixes + [Prefix];
     end;
+  end;
   APrefixes := Prefixes;
   Result := Found;
 end;
@@ -408,7 +452,9 @@ var
   Item: TFileEdits;
 begin
   if not TEnumTables.Target(ATree, APosition, Target, Reason) then
+  begin
     raise Fail('Nachziehen geht nicht: ' + Reason);
+  end;
   OwnUnit := TUsesClauses.OwnName(ATree.Tokens);
   SyncFiles := nil;
   Files := nil;
@@ -425,6 +471,7 @@ begin
     SyncFiles := SyncFiles + [SyncFile];
     // Andere Units nur, wenn ihr Text den Typ- oder einen Elementnamen nennt.
     for FileName in AContext.Files do
+    begin
       if not SameText(FileName, AFileName) and MatchText(ExtractFileExt(FileName), ['.pas', '.dpr']) and
         Assigned(AContext.ReadText) and AContext.ReadText(FileName, Text) and (ContainsText(Text, Target.TypeName) or
         ContainsText(Text, Target.Names[0])) then
@@ -436,6 +483,7 @@ begin
         SyncFile.Tree := TSyntaxTreeCache.Parse(Text);
         SyncFile.OwnsTree := True;
       end;
+    end;
     for SyncFile in SyncFiles do
     begin
       Item := Default(TFileEdits);
@@ -447,22 +495,29 @@ begin
           if not SameText(Copy(Table.IndexType.Name, LastDelimiter('.', Table.IndexType.Name) + 1, MaxInt),
             Target.TypeName) or not IndexNames(AResolver, AContext.Index, SyncFile.Tree, SyncFile.FileName, Table,
             Names, UnitName) or not SameText(UnitName, OwnUnit) then
+          begin
             Continue;
+          end;
           // Die Elemente aus dem Baum der eigenen Unit: Er ist neuer als der Index.
           if not TEnumTables.Repair(SyncFile.Text, SyncFile.Tree, Table.Value, Target.Names,
             ValuesOf(AResolver, SyncFile.Tree, SyncFile.FileName, Table), Repair) then
+          begin
             Continue;
+          end;
           Item.Edits := Item.Edits + Repair.Edits;
           Inc(TableCount);
           Preview := Preview + [Format('%s: %s: %s', [Where(SyncFile.FileName, SyncFile.Text,
             Table.Decl.StartOffset), Table.Decl.Name, Repair.Title])];
           if Repair.Uncertain then
+          begin
             Warnings := Warnings + [Format('%s: %s', [Where(SyncFile.FileName, SyncFile.Text,
               Table.Decl.StartOffset), TEnumTables.UncertainNote])];
+          end;
         end;
         Cases := CaseStatements(AResolver, SyncFile.Tree, SyncFile.FileName, Target.TypeName, OwnUnit,
           Target.Names, Prefixes);
         for Index := 0 to High(Cases) do
+        begin
           if TCaseCompletion.Complete(SyncFile.Text, SyncFile.Tree, Cases[Index], Target.Names, Prefixes[Index],
             CaseEdits, Count, HasElse) then
           begin
@@ -471,6 +526,7 @@ begin
             Preview := Preview + [Format('%s: case: %d Zweige ergänzt', [Where(SyncFile.FileName, SyncFile.Text,
               Cases[Index].StartOffset), Count])];
           end;
+        end;
       finally
         AResolver.UnpinTree;
       end;
@@ -482,7 +538,9 @@ begin
     end;
   finally
     for SyncFile in SyncFiles do
+    begin
       SyncFile.Free;
+    end;
   end;
   Result := AnswerJson(Files, Warnings, Places, Format(TEnumTables.SyncTitle, [Target.TypeName]),
     Format('%s: %d Tabellen und %d case-Anweisungen in %d Dateien.', [Target.TypeName, TableCount, CaseCount,

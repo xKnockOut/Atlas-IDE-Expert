@@ -128,6 +128,7 @@ begin
     Assert.AreEqual(Integer(Length(Entries)), Rules.Count);
     Found := False;
     for Index := 0 to Rules.Count - 1 do
+    begin
       if Rules.Items[Index].GetValue<string>('id') = 'syntax' then
       begin
         Found := True;
@@ -135,6 +136,7 @@ begin
         Assert.AreEqual('bug', Rules.Items[Index].GetValue<string>('category'));
         Assert.IsTrue(Rules.Items[Index].GetValue<string>('name') <> '');
       end;
+    end;
     Assert.IsTrue(Found);
     Assert.AreEqual('C:\Users\x\AppData\Roaming\Atlas\settings.json', Answer.GetValue<string>('globalFile'));
     Assert.IsTrue(Answer.GetValue<string>('version') <> '');

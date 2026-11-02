@@ -144,14 +144,18 @@ var
         while ANameIndex <= Length(Name) + 1 do
         begin
           if Match(ANameIndex, APatternIndex + 1) then
+          begin
             Exit(True);
+          end;
           Inc(ANameIndex);
         end;
         Exit(False);
       end;
       if (ANameIndex > Length(Name)) or ((Pattern[APatternIndex] <> '?') and
         (Pattern[APatternIndex] <> Name[ANameIndex])) then
+      begin
         Exit(False);
+      end;
       Inc(ANameIndex);
       Inc(APatternIndex);
     end;
@@ -171,16 +175,26 @@ var
 begin
   Result := nil;
   if AOptions = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Items := TJSONObject(Value).GetValue('ignore');
     if Items is TJSONArray then
+    begin
       for Item in TJSONArray(Items) do
+      begin
         if Item is TJSONString then
+        begin
           Result := Result + [Item.Value];
+        end;
+      end;
+    end;
   finally
     Value.Free;
   end;
@@ -191,8 +205,12 @@ var
   Pattern: string;
 begin
   for Pattern in APatterns do
+  begin
     if MatchesWildcard(AName, Pattern) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -202,8 +220,12 @@ var
 begin
   Result := nil;
   for Name in SplitString(ANames, ',') do
+  begin
     if Trim(Name) <> '' then
+    begin
       Result := Result + [Trim(Name)];
+    end;
+  end;
 end;
 
 function ShortName(const AName: string): string;
@@ -221,7 +243,9 @@ begin
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       if AVisited.Kind = Kind then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end) <> nil;
 end;
@@ -237,7 +261,9 @@ begin
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, Name) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end) <> nil;
 end;
@@ -254,7 +280,9 @@ begin
     function(AVisited: TSyntaxNode): Boolean
     begin
       if AVisited.Kind in [TSyntaxKind.Identifier, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
+      begin
         Names.AddOrSetValue(LowerCase(AVisited.Name), True);
+      end;
       Result := True;
     end);
 end;
@@ -265,16 +293,24 @@ function WholeLines(const AText: string; AStart, AEnd: Integer; out ALineStart, 
 begin
   ALineStart := AStart;
   while (ALineStart > 0) and CharInSet(AText[ALineStart], [' ', #9]) do
+  begin
     Dec(ALineStart);
+  end;
   if (ALineStart > 0) and (AText[ALineStart] <> #10) then
+  begin
     Exit(False);
+  end;
   ALineEnd := AEnd;
   while (ALineEnd < Length(AText)) and CharInSet(AText[ALineEnd + 1], [' ', #9, #13]) do
+  begin
     Inc(ALineEnd);
+  end;
   if ALineEnd < Length(AText) then
   begin
     if AText[ALineEnd + 1] <> #10 then
+    begin
       Exit(False);
+    end;
     Inc(ALineEnd);
   end;
   Result := True;
@@ -290,7 +326,9 @@ begin
   for mIndex := AContext.Tree.FirstTokenFrom(AStart) to High(AContext.Tree.Tokens) do
   begin
     if AContext.Tree.Tokens[mIndex].Offset >= AEnd then
+    begin
       Break;
+    end;
     if (AContext.Tree.Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and
       SameText(AContext.Tree.Tokens[mIndex].Text, AName) then
     begin
@@ -306,9 +344,13 @@ var
   Token: TPascalToken;
 begin
   if FindToken(AContext, ANode.StartOffset, ANode.EndOffset, AName, Token) then
-    Result := TTextRange.Create(Token.StartPos, Token.EndPos)
+  begin
+    Result := TTextRange.Create(Token.StartPos, Token.EndPos);
+  end
   else
+  begin
     Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+  end;
 end;
 
 /// <summary>Enthält die Routine Direktiven der bedingten Kompilierung?</summary>
@@ -321,13 +363,19 @@ begin
   for mIndex := AContext.Tree.FirstTokenFrom(ARoutine.StartOffset) to High(AContext.Tree.Tokens) do
   begin
     if AContext.Tree.Tokens[mIndex].Offset >= ARoutine.EndOffset then
+    begin
       Break;
+    end;
     if AContext.Tree.Tokens[mIndex].Kind <> TPascalTokenKind.Directive then
+    begin
       Continue;
+    end;
     Text := UpperCase(AContext.Tree.Tokens[mIndex].Text);
     if StartsStr('{$IF', Text) or StartsStr('(*$IF', Text) or StartsStr('{$ELSE', Text) or
       StartsStr('(*$ELSE', Text) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -351,7 +399,9 @@ begin
   while Position > 0 do
   begin
     if not IsWordChar(Position - 1) and not IsWordChar(Position + Length(Name)) then
+    begin
       Exit(True);
+    end;
     Position := PosEx(Name, Text, Position + 1);
   end;
   Result := False;
@@ -368,13 +418,17 @@ begin
   begin
     Section := ARoutine[Index];
     if Section.Kind <> TSyntaxKind.VarSection then
+    begin
       Continue;
+    end;
     Text := LowerCase(Copy(AContext.Text, Section.StartOffset + 1, Section.EndOffset - Section.StartOffset));
     Position := Pos('absolute', Text);
     while Position > 0 do
     begin
       if StartsStr(LowerCase(AName), TrimLeft(Copy(Text, Position + 8, MaxInt))) then
+      begin
         Exit(True);
+      end;
       Position := PosEx('absolute', Text, Position + 8);
     end;
   end;
@@ -388,12 +442,16 @@ begin
   Result := False;
   AConfidence := TRuleConfidence.High;
   if AUses.ContainsKey(LowerCase(AName)) or UsedByAbsolute(AContext, AInfo.Routine, AName) then
+  begin
     Exit;
+  end;
   if AInfo.Conditionals then
   begin
     // Vielleicht in einem inaktiven Zweig verwendet.
     if OccursInText(AContext.Text, AName, AAfterOffset, AInfo.Routine.EndOffset) then
+    begin
       Exit;
+    end;
     AConfidence := TRuleConfidence.Low;
   end;
   Result := True;
@@ -406,7 +464,9 @@ begin
   AInfo.Conditionals := False;
   Result := (AInfo.Block <> nil) and not ContainsKind(ARoutine, TSyntaxKind.AsmBlock);
   if Result then
+  begin
     AInfo.Conditionals := HasConditionals(AContext, ARoutine);
+  end;
 end;
 
 /// <summary>Inline-Variablen eines Rumpfs, ohne lokale Routinen und anonyme Methoden.</summary>
@@ -421,7 +481,9 @@ begin
     begin
       Result := not (AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
       if Result and (AVisited.Kind = TSyntaxKind.InlineVar) then
+      begin
         Vars := Vars + [AVisited];
+      end;
     end);
   AVars := Vars;
 end;
@@ -450,14 +512,22 @@ begin
   begin
     // Nur ohne oder mit einfachem Startwert: ein Aufruf hätte Nebenwirkungen.
     if (ADecl.ChildCount > 1) or ((ADecl.ChildCount = 1) and (ADecl[0].Kind <> TSyntaxKind.Literal)) then
+    begin
       Exit;
+    end;
     Stop := ADecl.EndOffset;
     while (Stop < Length(AContext.Text)) and (AContext.Text[Stop + 1] = ' ') do
+    begin
       Inc(Stop);
+    end;
     if (Stop < Length(AContext.Text)) and (AContext.Text[Stop + 1] = ';') then
+    begin
       Inc(Stop);
+    end;
     if not WholeLines(AContext.Text, ADecl.StartOffset, Stop, LineStart, LineEnd) then
+    begin
       Exit;
+    end;
     AFix := TRuleFix.Create(Title, [TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, LineStart, LineEnd),
       '')]);
     Exit(True);
@@ -467,22 +537,32 @@ begin
     // Nur den Namen aus der Liste nehmen: "I, J: Integer" wird "J: Integer".
     Position := -1;
     for Index := 0 to High(Names) do
+    begin
       if SameText(Names[Index], AName) then
+      begin
         Position := Index;
+      end;
+    end;
     if (Position < 0) or not FindToken(AContext, ADecl.StartOffset, ADecl.EndOffset, AName, Token) then
+    begin
       Exit;
+    end;
     if Position < High(Names) then
     begin
       if not FindToken(AContext, Token.Offset + Length(Token.Text), ADecl.EndOffset, Names[Position + 1],
         Neighbour) then
+      begin
         Exit;
+      end;
       Start := Token.Offset;
       Stop := Neighbour.Offset;
     end
     else
     begin
       if not FindToken(AContext, ADecl.StartOffset, ADecl.EndOffset, Names[Position - 1], Neighbour) then
+      begin
         Exit;
+      end;
       Start := Neighbour.Offset + Length(Neighbour.Text);
       Stop := Token.Offset + Length(Token.Text);
     end;
@@ -491,11 +571,17 @@ begin
   end;
   // Letzte Deklaration: der leer gewordene var-Abschnitt entfällt mit.
   if ASection.ChildCount = 1 then
-    Start := ASection.StartOffset
+  begin
+    Start := ASection.StartOffset;
+  end
   else
+  begin
     Start := ADecl.StartOffset;
+  end;
   if not WholeLines(AContext.Text, Start, ADecl.EndOffset, LineStart, LineEnd) then
+  begin
     Exit;
+  end;
   AFix := TRuleFix.Create(Title, [TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, LineStart, LineEnd),
     '')]);
   Result := True;
@@ -520,18 +606,26 @@ var
     for Name in SplitNames(ADecl.Name) do
     begin
       if IsIgnored(Name, Patterns) or not IsUnused(AContext, Info, Uses_, Name, ADecl.EndOffset, Confidence) then
+      begin
         Continue;
+      end;
       Message := Format('Variable "%s" wird nicht verwendet', [Name]);
       if RemoveVarFix(Cache, AContext, ASection, ADecl, Name, Fix) then
-        AReport.Add(NameRange(AContext, ADecl, Name), Message, Confidence, [Fix])
+      begin
+        AReport.Add(NameRange(AContext, ADecl, Name), Message, Confidence, [Fix]);
+      end
       else
+      begin
         AReport.Add(NameRange(AContext, ADecl, Name), Message, Confidence);
+      end;
     end;
   end;
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Patterns := IgnorePatterns(AContext.Options);
   Cache := TRuleDerived.Open(AContext);
   Routines := TRuleDerived.Routines(Cache, AContext);
@@ -540,24 +634,38 @@ begin
     for Routine in Routines do
     begin
       if not RoutineInfo(AContext, Routine, Info) then
+      begin
         Continue;
+      end;
       Uses_.Clear;
       // Lokale Routinen gehören dazu: sie dürfen Variablen der äußeren verwenden.
       for Index := 0 to Routine.ChildCount - 1 do
+      begin
         if Routine[Index].Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+        begin
           CollectUses(Routine[Index], Uses_);
+        end;
+      end;
       for Index := 0 to Routine.ChildCount - 1 do
       begin
         Section := Routine[Index];
         if Section.Kind = TSyntaxKind.VarSection then
+        begin
           for Inner := 0 to Section.ChildCount - 1 do
+          begin
             if Section[Inner].Kind = TSyntaxKind.VarDecl then
+            begin
               CheckDecl(Section, Section[Inner]);
+            end;
+          end;
+        end;
       end;
       InlineVars := nil;
       CollectInlineVars(Info.Block, InlineVars);
       for Decl in InlineVars do
+      begin
         CheckDecl(nil, Decl);
+      end;
     end;
   finally
     Uses_.Free;
@@ -577,9 +685,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to ADecl.ChildCount - 1 do
+  begin
     if ADecl[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
       TSyntaxKind.HelperType] then
+    begin
       Exit(ADecl[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -595,13 +707,19 @@ begin
     begin
       if (AVisited.Kind = TSyntaxKind.TypeDecl) and SameText(AVisited.Name, TypeName) and
         (TypeBodyOf(AVisited) <> nil) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
   if Decl = nil then
-    Result := nil
+  begin
+    Result := nil;
+  end
   else
+  begin
     Result := TypeBodyOf(Decl);
+  end;
 end;
 
 /// <summary>Ist die Signatur der Methode von außen vorgegeben (override, Interface, DFM …) oder unbekannt?</summary>
@@ -614,38 +732,54 @@ begin
   TypeName := Copy(AQualifiedName, 1, LastDelimiter('.', AQualifiedName) - 1);
   // TFoo<T>.Bar und verschachtelte Typen: nur der letzte Typname zählt.
   if Pos('<', TypeName) > 0 then
+  begin
     TypeName := Copy(TypeName, 1, Pos('<', TypeName) - 1);
+  end;
   TypeName := ShortName(TypeName);
   Name := ShortName(AQualifiedName);
   Body := FindTypeBody(ARoot, TypeName);
   if Body = nil then
+  begin
     Exit(True);
+  end;
   Ancestors := 0;
   Ancestor := nil;
   for Index := 0 to Body.ChildCount - 1 do
+  begin
     if Body[Index].Kind = TSyntaxKind.TypeReference then
     begin
       Inc(Ancestors);
       Ancestor := Body[Index];
     end;
+  end;
   // class(TBasis, IFoo) oder class(TInterfacedObject, IFoo): Methoden können ein Interface erfüllen.
   if (Ancestors > 1) or ((Ancestor <> nil) and StartsStr('I', Ancestor.Name) and (Length(Ancestor.Name) > 1) and
     CharInSet(Ancestor.Name[2], ['A'..'Z'])) then
+  begin
     Exit(True);
+  end;
   Visibility := '';
   for Index := 0 to Body.ChildCount - 1 do
   begin
     Member := Body[Index];
     if Member.Kind = TSyntaxKind.Visibility then
-      Visibility := LowerCase(Member.Name)
+    begin
+      Visibility := LowerCase(Member.Name);
+    end
     else if (Member.Kind = TSyntaxKind.RoutineHeader) and SameText(Member.Name, Name) then
     begin
       if Visibility = 'published' then
+      begin
         Exit(True);
+      end;
       for Inner := 0 to Member.ChildCount - 1 do
+      begin
         if (Member[Inner].Kind = TSyntaxKind.Directive) and MatchText(Member[Inner].Name,
           ['override', 'virtual', 'dynamic', 'abstract', 'message']) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
   end;
   Result := False;
@@ -659,10 +793,14 @@ begin
   // Self.Handler: die ganze Kette zählt.
   while (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.MemberAccess) and
     (ANode.Parent[ANode.Parent.ChildCount - 1] = ANode) do
+  begin
     ANode := ANode.Parent;
+  end;
   Parent := ANode.Parent;
   if Parent = nil then
+  begin
     Exit(False);
+  end;
   case Parent.Kind of
     TSyntaxKind.AddressOf:
       Result := True;
@@ -692,7 +830,9 @@ begin
       // Auch Objekt.Methode (Writer.OnFindMethodName := Namer.FindMethodName): Der Name steht am MemberAccess.
       if (AVisited.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and SameText(AVisited.Name, Name) and
         IsValueUse(AVisited) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end) <> nil;
 end;
@@ -711,7 +851,9 @@ var
   Cache: IRuleDerivedCache;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Patterns := IgnorePatterns(AContext.Options);
   Cache := TRuleDerived.Open(AContext);
   Routines := TRuleDerived.Routines(Cache, AContext);
@@ -720,38 +862,60 @@ begin
     for Routine in Routines do
     begin
       if not RoutineInfo(AContext, Routine, Info) then
+      begin
         Continue;
+      end;
       Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
       if Header = nil then
+      begin
         Continue;
+      end;
       Params := Header.FindChild(TSyntaxKind.Parameters);
       if Params = nil then
+      begin
         Continue;
+      end;
       Skip := False;
       for Index := 0 to Params.ChildCount - 1 do
+      begin
         for Name in SplitNames(Params[Index].Name) do
+        begin
           Skip := Skip or SameText(Name, 'Sender');
+        end;
+      end;
       if Skip or ((Pos('.', Routine.Name) > 0) and MethodSignatureFixed(AContext.Tree.Root, Routine.Name)) or
         UsedAsValue(AContext.Tree.Root, ShortName(Routine.Name)) then
+      begin
         Continue;
+      end;
       Uses_.Clear;
       for Index := 0 to Routine.ChildCount - 1 do
+      begin
         if Routine[Index].Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl, TSyntaxKind.VarSection] then
+        begin
           CollectUses(Routine[Index], Uses_);
+        end;
+      end;
       for Index := 0 to Params.ChildCount - 1 do
       begin
         Param := Params[Index];
         if Param.Kind <> TSyntaxKind.Parameter then
+        begin
           Continue;
+        end;
         for Name in SplitNames(Param.Name) do
+        begin
           if not IsIgnored(Name, Patterns) and IsUnused(AContext, Info, Uses_, Name, Header.EndOffset, Confidence) then
           begin
             // Parameter sind unsicherer als Variablen: die Signatur kann von außen vorgegeben sein.
             if Confidence = TRuleConfidence.High then
+            begin
               Confidence := TRuleConfidence.Medium;
+            end;
             AReport.Add(NameRange(AContext, Param, Name), Format('Parameter "%s" wird nicht verwendet', [Name]),
               Confidence);
           end;
+        end;
       end;
     end;
   finally
@@ -779,9 +943,13 @@ begin
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       if (AVisited = Root) or not (AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      begin
         Exit(TSyntaxSearchStep.Descend);
+      end;
       if MentionsName(AVisited, Name) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Skip;
     end) <> nil;
 end;
@@ -796,10 +964,14 @@ var
 begin
   TypeNode := ADecl.FindChild(TSyntaxKind.TypeReference);
   if TypeNode = nil then
+  begin
     Exit(False);
+  end;
   TypeName := TypeNode.Name;
   if LastDelimiter('.', TypeName) > 0 then
+  begin
     TypeName := Copy(TypeName, LastDelimiter('.', TypeName) + 1, MaxInt);
+  end;
   Result := (Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z']);
 end;
 
@@ -809,7 +981,9 @@ var
   Value: string;
 begin
   if (AWrite.Kind <> TSyntaxKind.AssignStatement) or (AWrite.ChildCount < 2) then
+  begin
     Exit(False);
+  end;
   Value := Copy(AText, AWrite[1].StartOffset + 1, AWrite[1].EndOffset - AWrite[1].StartOffset);
   Value := StringReplace(StringReplace(StringReplace(StringReplace(Value, ' ', '', [rfReplaceAll]), #9, '',
     [rfReplaceAll]), #13, '', [rfReplaceAll]), #10, '', [rfReplaceAll]);
@@ -837,7 +1011,9 @@ var
     Part: string;
   begin
     for Part in SplitNames(ADecl.Name) do
+    begin
       Types.AddOrSetValue(LowerCase(Part), Managed.NodeTypeText(ADecl));
+    end;
   end;
 
   /// <summary>" (wie H2077)", wenn dcc für den Typ von AName den Hinweis gibt: Typ bekannt und nicht verwaltet.
@@ -848,9 +1024,13 @@ var
   begin
     Result := '';
     if not Types.TryGetValue(LowerCase(AName), TypeText) or (TypeText = '') then
+    begin
       Exit;
+    end;
     if (Managed.Managed(TypeText, 0) = '') and not Managed.CustomManaged(TypeText, 0) then
+    begin
       Result := ' (wie H2077)';
+    end;
   end;
 
   procedure Collect(ARoot: TSyntaxNode);
@@ -868,18 +1048,26 @@ var
       begin
         Result := not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
         if not Result then
+        begin
           Exit;
+        end;
         if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, Target) then
         begin
           if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.AssignStatement) and
             (ANode.Parent[0] = ANode) then
-            TargetWrites.Add(ANode.Parent)
+          begin
+            TargetWrites.Add(ANode.Parent);
+          end
           else
+          begin
             TargetReads.Add(ANode);
+          end;
         end
         else if (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) and
           MatchText(Target, SplitNames(ANode.Name)) then
+        begin
           TargetWrites.Add(ANode);
+        end;
       end);
   end;
 
@@ -892,8 +1080,12 @@ var
     while (ANode <> nil) and (Result = nil) do
     begin
       for Node in Graph.Nodes do
+      begin
         if Node.Syntax = ANode then
+        begin
           Result := Result + [Node];
+        end;
+      end;
       ANode := ANode.Parent;
     end;
   end;
@@ -904,10 +1096,18 @@ var
     Node, Definition: TFlowNode;
   begin
     for Read in Reads do
+    begin
       for Node in FlowNodesOf(Read) do
+      begin
         for Definition in Graph.ReachingDefinitions(Node, Name).Definitions do
+        begin
           if Definition = ADefinition then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -918,10 +1118,18 @@ var
     Node, Definition: TFlowNode;
   begin
     for Node in Graph.Nodes do
+    begin
       if Node.Syntax = AWrite then
+      begin
         for Definition in Graph.ReachingDefinitions(Node, Name).Definitions do
+        begin
           if Definition.Syntax <> AWrite then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -933,16 +1141,24 @@ var
   begin
     if IsIgnored(Name, Patterns) or HasOpaqueUse(Info.Block, Name) or UsedInNested(Routine, Name) or
       UsedByAbsolute(AContext, Routine, Name) then
+    begin
       Exit;
+    end;
     Writes.Clear;
     Reads.Clear;
     Collect(Info.Block);
     if Writes.Count = 0 then
+    begin
       Exit;
+    end;
     if Graph = nil then
+    begin
       Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+    end;
     if not Graph.Complete then
+    begin
       Exit;
+    end;
     for Write in Writes do
     begin
       // Zuweisungen im finally stehen je Ausgang einmal im Graphen; gemeldet
@@ -950,18 +1166,26 @@ var
       Defined := False;
       Used := False;
       for Definition in Graph.Nodes do
+      begin
         if (Definition.Syntax = Write) and SameText(Definition.Defines, Name) and
           (Graph.IsReachable(Definition) = TFlowAnswer.Yes) then
         begin
           Defined := True;
           if IsRead(Definition) then
+          begin
             Used := True;
+          end;
         end;
+      end;
       if not Defined or Used then
+      begin
         Continue;
+      end;
       // Leeren eines gesetzten Werts ist Freigabe (Started := Default(…) am Testende, Lookup := nil vor Free).
       if ClearsValue(AContext.Text, Write) and HoldsValue(Write) then
+      begin
         Continue;
+      end;
       AReport.Add(NameRange(AContext, Write, Name), Format('Der an "%s" zugewiesene Wert wird nie gelesen%s',
         [Name, CodeSuffix(Name)]), TRuleConfidence.High);
     end;
@@ -969,7 +1193,9 @@ var
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Patterns := IgnorePatterns(AContext.Options);
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
   Cache := TRuleDerived.Open(AContext);
@@ -983,31 +1209,41 @@ begin
     begin
       // Mit bedingter Kompilierung ist nicht eindeutig, welche Lesezugriffe es gibt.
       if not RoutineInfo(AContext, Routine, Info) or Info.Conditionals then
+      begin
         Continue;
+      end;
       Names := nil;
       Types.Clear;
       for Index := 0 to Routine.ChildCount - 1 do
       begin
         Section := Routine[Index];
         if Section.Kind = TSyntaxKind.VarSection then
+        begin
           for Inner := 0 to Section.ChildCount - 1 do
+          begin
             if (Section[Inner].Kind = TSyntaxKind.VarDecl) and not IsInterfaceTyped(Section[Inner]) then
             begin
               Names := Names + SplitNames(Section[Inner].Name);
               AddTypes(Section[Inner]);
             end;
+          end;
+        end;
       end;
       Locals := nil;
       CollectInlineVars(Info.Block, Locals);
       for Decl in Locals do
+      begin
         if not IsInterfaceTyped(Decl) then
         begin
           Names := Names + SplitNames(Decl.Name);
           AddTypes(Decl);
         end;
+      end;
       Graph := nil;
       for Name in Names do
+      begin
         CheckName;
+      end;
     end;
   finally
     Managed.Free;
@@ -1051,7 +1287,9 @@ begin
     end;
     Result := '';
     if Node.Kind = TSyntaxKind.Identifier then
+    begin
       Result := Node.Name;
+    end;
     while Chain.Count > 0 do
     begin
       Node := Chain.Pop;
@@ -1060,12 +1298,18 @@ begin
       if Node.Kind = TSyntaxKind.MemberAccess then
       begin
         if SameText(Base, 'Self') then
-          Result := Node.Name
+        begin
+          Result := Node.Name;
+        end
         else if Base <> '' then
+        begin
           Result := Base + '.' + Node.Name;
+        end;
       end
       else if Base <> '' then
+      begin
         Result := Base + '^';
+      end;
     end;
   finally
     Chain.Free;
@@ -1077,10 +1321,16 @@ var
   Index: Integer;
 begin
   for Index := Low(CounterpartPairs) to High(CounterpartPairs) do
+  begin
     if SameText(CounterpartPairs[Index, 0], AName) then
-      Exit(CounterpartPairs[Index, 1])
+    begin
+      Exit(CounterpartPairs[Index, 1]);
+    end
     else if SameText(CounterpartPairs[Index, 1], AName) then
+    begin
       Exit(CounterpartPairs[Index, 0]);
+    end;
+  end;
   Result := '';
 end;
 
@@ -1107,11 +1357,17 @@ begin
     begin
       Node := Pending.Pop;
       if Node.Kind in [TSyntaxKind.Call, TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod] then
+      begin
         Exit(True);
+      end;
       if (Node.Kind = TSyntaxKind.Identifier) and MatchText(Node.Name, AParts) then
+      begin
         Exit(True);
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -1135,21 +1391,31 @@ begin
       begin
         Section := ANode[Index];
         if Section.Kind = TSyntaxKind.VarSection then
+        begin
           for Inner := 0 to Section.ChildCount - 1 do
-            Result := Result + SplitNames(Section[Inner].Name)
+          begin
+            Result := Result + SplitNames(Section[Inner].Name);
+          end;
+        end
         else if Section.Kind = TSyntaxKind.RoutineHeader then
         begin
           Parameters := Section.FindChild(TSyntaxKind.Parameters);
           if Parameters <> nil then
+          begin
             for Inner := 0 to Parameters.ChildCount - 1 do
+            begin
               Result := Result + SplitNames(Parameters[Inner].Name);
+            end;
+          end;
         end
         else if Section.Kind = TSyntaxKind.Block then
         begin
           InlineVars := nil;
           CollectInlineVars(Section, InlineVars);
           for Inner := 0 to High(InlineVars) do
+          begin
             Result := Result + SplitNames(InlineVars[Inner].Name);
+          end;
         end;
       end;
     end;
@@ -1181,9 +1447,13 @@ var
   function RootOf(const AKey: string): string;
   begin
     if Pos('.', AKey) = 0 then
-      Result := 'Self'
+    begin
+      Result := 'Self';
+    end
     else
+    begin
       Result := KeyParts(AKey)[0];
+    end;
   end;
 
   // Sucht ab AFirst + 1 die nächste Zuweisung an dasselbe Ziel; dazwischen nur Zuweisungen an andere Objekte,
@@ -1202,23 +1472,33 @@ var
     begin
       Second := AParent[Index];
       if (Second.Kind <> TSyntaxKind.AssignStatement) or (Second.ChildCount < 2) then
+      begin
         Exit;
+      end;
       Key := TargetKey(Second[0]);
       if Key = '' then
+      begin
         Exit;
+      end;
       if not SameText(Key, AKey) then
       begin
         if SameText(RootOf(Key), RootOf(AKey)) or MayRead(Second[1], Parts) then
+        begin
           Exit;
+        end;
         Continue;
       end;
       // Der zweite Wert darf den ersten nicht lesen; False/True im Wechsel stößt oft etwas an (Active, Open).
       if MayRead(Second[1], Parts) or
         (IsBooleanLiteral(First[1]) and IsBooleanLiteral(Second[1]) and not SameText(First[1].Name, Second[1].Name)) then
+      begin
         Exit;
+      end;
       // Bedingte Übersetzung: nur melden, wenn die zweite Zuweisung immer mit der ersten übersetzt wird.
       if not TConditionalBranches.Implies(PathOf(First), PathOf(Second)) then
+      begin
         Exit;
+      end;
       Name := Parts[High(Parts)];
       Display := NodeText(Second[0]);
       Hint := 'der erste Wert geht ungelesen verloren';
@@ -1227,11 +1507,17 @@ var
         Swapped := Copy(AKey, 1, Length(AKey) - Length(Name)) + Counterpart(Name);
         Mentioned := False;
         for Other := 0 to AParent.ChildCount - 1 do
+        begin
           if (AParent[Other].Kind = TSyntaxKind.AssignStatement) and (AParent[Other].ChildCount > 0) and
             SameText(TargetKey(AParent[Other][0]), Swapped) then
+          begin
             Mentioned := True;
+          end;
+        end;
         if not Mentioned then
+        begin
           Hint := 'gemeint ist vermutlich ' + Copy(Display, 1, Length(Display) - Length(Name)) + Counterpart(Name);
+        end;
       end;
       AReport.Add(TTextRange.Create(Second[0].StartPos, Second[0].EndPos),
         Format('%s wird in Zeile %d schon gesetzt; %s.', [Display, First.StartPos.Line + 1, Hint]),
@@ -1247,8 +1533,12 @@ var
   begin
     Parts := KeyParts(AKey);
     for Pattern in Allowed do
+    begin
       if MatchesWildcard(Parts[High(Parts)], Trim(Pattern)) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1283,7 +1573,9 @@ var
         begin
           Key := TargetKey(Child[0]);
           if (Key = '') or IsAllowed(Key) then
+          begin
             Continue;
+          end;
           // Lokale Variablen deckt unused-assignment ab.
           if Pos('.', Key) + Pos('^', Key) = 0 then
           begin
@@ -1293,7 +1585,9 @@ var
               LocalsOwner := Parent;
             end;
             if MatchText(Key, Locals) then
+            begin
               Continue;
+            end;
           end;
           CheckFrom(Parent, Index, Key);
         end;
@@ -1311,7 +1605,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (Pos(':=', AContext.Text) = 0) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);
   Allowed := TRuleOptions.Strings(AContext.Options, 'allowProperties', ['Visible', 'Enabled']);
@@ -1336,14 +1632,18 @@ begin
   AVisibility := '';
   Visibility := '';
   for Index := 0 to ATypeBody.ChildCount - 1 do
+  begin
     if ATypeBody[Index].Kind = TSyntaxKind.Visibility then
-      Visibility := LowerCase(ATypeBody[Index].Name)
+    begin
+      Visibility := LowerCase(ATypeBody[Index].Name);
+    end
     else if (ATypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(ATypeBody[Index].Name, AName) then
     begin
       Result := ATypeBody[Index];
       AVisibility := Visibility;
       Exit;
     end;
+  end;
 end;
 
 function NodesOfKind(ARoot: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
@@ -1355,7 +1655,9 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = AKind then
+      begin
         Found := Found + [ANode];
+      end;
       Result := True;
     end);
   Result := Found;
@@ -1369,16 +1671,22 @@ var
 begin
   Result := False;
   if ATypeBody = nil then
+  begin
     Exit;
+  end;
   Count := 0;
   for Index := 0 to ATypeBody.ChildCount - 1 do
+  begin
     if ATypeBody[Index].Kind = TSyntaxKind.TypeReference then
     begin
       Inc(Count);
       Name := ATypeBody[Index].Name;
       if (Count > 1) or ((Length(Name) > 1) and (Name[1] = 'I') and CharInSet(Name[2], ['A'..'Z'])) then
+      begin
         Exit(True);
+      end;
     end;
+  end;
 end;
 
 function HasDirectiveIn(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
@@ -1386,9 +1694,15 @@ var
   Index: Integer;
 begin
   if AHeader <> nil then
+  begin
     for Index := 0 to AHeader.ChildCount - 1 do
+    begin
       if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -1415,7 +1729,9 @@ var
     while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ARoutine.EndOffset) do
     begin
       if Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      begin
         Exit(True);
+      end;
       Inc(mIndex);
     end;
     Result := False;
@@ -1426,8 +1742,12 @@ var
     Index: Integer;
   begin
     for Index := 0 to ABlock.ChildCount - 1 do
+    begin
       if ABlock[Index].Kind <> TSyntaxKind.EmptyStatement then
+      begin
         Exit(False);
+      end;
+    end;
     Result := True;
   end;
 
@@ -1436,8 +1756,12 @@ var
     Node: TSyntaxNode;
   begin
     for Node in References do
+    begin
       if SameText(Node.Name, AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := ((AContext.FormText <> '') and TRegEx.IsMatch(AContext.FormText, '\b' + AName + '\b',
       [roIgnoreCase]));
   end;
@@ -1447,7 +1771,9 @@ var
   begin
     Result := 0;
     while (Result <= High(Tokens)) and (Tokens[Result].Offset < AOffset) do
+    begin
       Inc(Result);
+    end;
   end;
 
   // Ganze Zeilen von ANode samt ";" dahinter und ///-Kommentaren direkt darüber; False, wenn auf den Zeilen
@@ -1467,9 +1793,13 @@ var
     Last := ANode.EndOffset;
     Index := TokenAt(ANode.EndOffset);
     if (Index <= High(Tokens)) and Tokens[Index].IsSymbol(';') then
+    begin
       Last := Tokens[Index].Offset + 1;
+    end;
     if not WholeLines(AContext.Text, First, Last, LineStart, LineEnd) then
+    begin
       Exit;
+    end;
     // Eine Leerzeile davor fällt mit weg, damit keine doppelten Leerzeilen bleiben.
     if (LineStart >= 2) and (AContext.Text[LineStart] = #10) and
       ((AContext.Text[LineStart - 1] = #10) or ((AContext.Text[LineStart - 1] = #13) and (LineStart >= 3) and
@@ -1477,7 +1807,9 @@ var
     begin
       Dec(LineStart);
       if AContext.Text[LineStart] = #13 then
+      begin
         Dec(LineStart);
+      end;
     end;
     AEdit := TRuleEdit.Create(Range(LineStart, LineEnd), '');
     Result := True;
@@ -1497,34 +1829,48 @@ var
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
     Block := ARoutine.FindChild(TSyntaxKind.Block);
     if (Header = nil) or (Block = nil) or not IsEmpty(Block) or HasCommentOrDirective(Header, ARoutine) then
+    begin
       Exit;
+    end;
     Name := Header.Name;
     Short := ShortName(Name);
     IsMethod := Pos('.', Name) > 0;
     // Nachrichten-Handler ohne Inhalt schlucken die Nachricht absichtlich.
     if HasDirectiveIn(Header, ['message']) then
+    begin
       Exit;
+    end;
     Member := nil;
     Visibility := '';
     if IsMethod then
     begin
       TypeName := Copy(Name, 1, LastDelimiter('.', Name) - 1);
       if Pos('<', TypeName) > 0 then
+      begin
         TypeName := Copy(TypeName, 1, Pos('<', TypeName) - 1);
+      end;
       TypeBody := FindTypeBody(Root, ShortName(TypeName));
       if TypeBody <> nil then
+      begin
         Member := MemberHeader(TypeBody, Short, Visibility);
+      end;
       // Leere virtuelle Methode als Ersatz für abstract; leerer Nachrichten-Handler; Klasse mit Interfaces:
       // der Compiler verlangt jede Interface-Methode, auch wenn sie nichts zu tun hat (Notifier der Open Tools API).
       if HasDirectiveIn(Member, ['virtual', 'dynamic', 'message']) or ListsInterfaces(TypeBody) then
+      begin
         Exit;
+      end;
     end;
     // Ereignis-Handler aus der Formulardatei: die IDE entfernt sie beim Speichern selbst.
     if (AContext.FormText <> '') and TRegEx.IsMatch(AContext.FormText, '=\s*' + Short + '\b', [roIgnoreCase]) then
+    begin
       Exit;
+    end;
     Kind := 'Routine';
     if IsMethod then
+    begin
       Kind := 'Methode';
+    end;
     Fixes := nil;
     // Kommentar zwischen begin und end.
     BeginToken := TokenAt(Block.StartOffset);
@@ -1535,7 +1881,9 @@ var
       Lines := TTextLines.SplitLines(AContext.Text);
       Indent := '';
       if Tokens[BeginToken].StartPos.Line <= High(Lines) then
+      begin
         Indent := TTextLines.IndentOf(Lines[Tokens[BeginToken].StartPos.Line]);
+      end;
       Fixes := [TRuleFix.Create('Kommentar einfügen', [TRuleEdit.Create(TTextRange.Create(
         Tokens[BeginToken].EndPos, Tokens[EndToken].StartPos), LineBreak + Indent + '  // Absichtlich leer.' +
         LineBreak + Indent)])];
@@ -1543,34 +1891,54 @@ var
     // Entfernen nur, wo niemand außerhalb der Datei die Routine sehen kann und sie hier nicht vorkommt.
     Forward_ := nil;
     if IsMethod then
+    begin
       CanRemove := (Member <> nil) and ((Visibility = 'private') or (Visibility = 'strict private')) and
-        not MethodSignatureFixed(Root, Name) and not HasDirectiveIn(Member, ['override', 'overload'])
+        not MethodSignatureFixed(Root, Name) and not HasDirectiveIn(Member, ['override', 'overload']);
+    end
     else
     begin
       CanRemove := True;
       for Node in NodesOfKind(Root, TSyntaxKind.RoutineHeader) do
+      begin
         if (Node <> Header) and SameText(Node.Name, Name) then
+        begin
           if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.RoutineDecl) and
             (Node.Parent.FindChild(TSyntaxKind.Block) = nil) and (Node.Parent.Parent <> nil) and
             (Node.Parent.Parent.Kind = TSyntaxKind.ImplementationSection) and (Forward_ = nil) then
-            Forward_ := Node.Parent
+          begin
+            Forward_ := Node.Parent;
+          end
           else
+          begin
             CanRemove := False;
+          end;
+        end;
+      end;
     end;
     CanRemove := CanRemove and not Referenced(Short);
     if CanRemove and RemovalOf(ARoutine, Edit) then
     begin
       Edits := [Edit];
       if (Member <> nil) and RemovalOf(Member, Edit) then
-        Edits := Edits + [Edit]
+      begin
+        Edits := Edits + [Edit];
+      end
       else if Member <> nil then
+      begin
         Edits := nil;
+      end;
       if (Forward_ <> nil) and (Edits <> nil) and RemovalOf(Forward_, Edit) then
-        Edits := Edits + [Edit]
+      begin
+        Edits := Edits + [Edit];
+      end
       else if Forward_ <> nil then
+      begin
         Edits := nil;
+      end;
       if Edits <> nil then
+      begin
         Fixes := Fixes + [TRuleFix.Create(Kind + ' entfernen', Edits)];
+      end;
     end;
     AReport.Add(NameRange(AContext, Header, Short), Format('%s ist leer; entweder fehlt der Inhalt oder die %s ' +
       'kann weg.', [Short, Kind]), Fixes);
@@ -1580,16 +1948,22 @@ var
   Routine: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Root := AContext.Tree.Root;
   Tokens := AContext.Tree.Tokens;
   Cache := TRuleDerived.Open(AContext);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
   References := nil;
   for Routine in NodesOfKind(Root, TSyntaxKind.Identifier) + NodesOfKind(Root, TSyntaxKind.MemberAccess) do
+  begin
     References := References + [Routine];
+  end;
   for Routine in TRuleDerived.Routines(Cache, AContext) do
+  begin
     CheckRoutine(Routine);
+  end;
 end;
 
 procedure RegisterUnusedRules(const ARegistry: TRuleRegistry);

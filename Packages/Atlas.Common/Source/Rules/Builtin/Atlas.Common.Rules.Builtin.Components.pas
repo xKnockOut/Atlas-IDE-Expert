@@ -260,8 +260,12 @@ var
   Word: string;
 begin
   for Word in AWords do
+  begin
     if SameText(AText, Word) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -304,7 +308,9 @@ begin
         Info.Name := AVisited.Name;
         Info.Body := AVisited.FindChild(TSyntaxKind.ClassType);
         if Info.Body <> nil then
+        begin
           FClasses.Add(Info);
+        end;
       end
       else if AVisited.Kind = TSyntaxKind.RoutineDecl then
       begin
@@ -314,7 +320,9 @@ begin
         begin
           Method.ClassName := Copy(AVisited.Name, 1, Dot - 1);
           if Pos('<', Method.ClassName) > 0 then
+          begin
             Method.ClassName := Copy(Method.ClassName, 1, Pos('<', Method.ClassName) - 1);
+          end;
           Method.MethodName := Copy(AVisited.Name, Dot + 1, MaxInt);
           Method.Decl := AVisited;
           FMethods.Add(Method);
@@ -335,9 +343,13 @@ begin
   while (Name <> '') and (Depth < 64) do
   begin
     if IsIn(Name, ComponentBases) then
+    begin
       Exit(True);
+    end;
     if SameText(Name, 'TObject') then
+    begin
       Break;
+    end;
     Name := FAncestry.ParentOf(Name);
     Inc(Depth);
   end;
@@ -360,7 +372,9 @@ begin
   begin
     // Bekannte VCL-Klassen zuerst: Steht die VCL im Index, deklariert auch TCustomControl ein (leeres) Paint.
     if IsIn(mName, EmptyPaintBases) then
+    begin
       Exit(False);
+    end;
     if IsIn(mName, DrawingPaintBases) then
     begin
       AAncestor := mName;
@@ -373,12 +387,16 @@ begin
       Exit(True);
     end;
     if FAncestry.FindClass(mName, mType) then
+    begin
       for mSymbol in FAncestry.Methods(mType) do
+      begin
         if SameText(mSymbol.Name, 'Paint') then
         begin
           AAncestor := mName;
           Exit(True);
         end;
+      end;
+    end;
     mName := FAncestry.ParentOf(mName);
     Inc(mDepth);
   end;
@@ -390,9 +408,13 @@ var
   mToken: TPascalToken;
 begin
   for mToken in FContext.Tree.Tokens do
+  begin
     if ((mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'OnPaint')) or
       ((mToken.Kind = TPascalTokenKind.Directive) and ContainsText(mToken.Text, '.dfm')) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -401,11 +423,13 @@ var
   Method: TMethodImpl;
 begin
   for Method in FMethods do
+  begin
     if SameText(Method.ClassName, AClassName) and SameText(Method.MethodName, AMethodName) then
     begin
       AMethod := Method;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -418,10 +442,16 @@ begin
   begin
     Header := AClass.Body[Index];
     if (Header.Kind <> TSyntaxKind.RoutineHeader) or not SameText(Header.Name, AMethodName) then
+    begin
       Continue;
+    end;
     for Inner := 0 to Header.ChildCount - 1 do
+    begin
       if (Header[Inner].Kind = TSyntaxKind.Directive) and SameText(Header[Inner].Name, ADirective) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
   Result := False;
 end;
@@ -442,27 +472,41 @@ begin
   begin
     Decl := AClass.Body[Index];
     if Decl.Kind <> TSyntaxKind.PropertyDecl then
+    begin
       Continue;
+    end;
     Info := Default(TPropertyInfo);
     Info.Name := Decl.Name;
     TypeRef := Decl.FindChild(TSyntaxKind.TypeReference);
     if TypeRef <> nil then
+    begin
       Info.TypeName := TypeRef.Name;
+    end;
     Mode := '';
     Count := 0;
     for TokenIndex := TSyntaxTree.FirstTokenOf(Tokens, Decl.StartOffset) to High(Tokens) do
     begin
       Token := Tokens[TokenIndex];
       if Token.Offset < Decl.StartOffset then
+      begin
         Continue;
+      end;
       if Token.Offset >= Decl.EndOffset then
+      begin
         Break;
+      end;
       if Token.Kind = TPascalTokenKind.Comment then
+      begin
         Continue;
+      end;
       if (Info.NameToken.Text = '') and (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, Decl.Name) then
+      begin
         Info.NameToken := Token;
+      end;
       if Token.IsSymbol(';') then
-        Mode := ''
+      begin
+        Mode := '';
+      end
       else if IsIn(Token.Text, ['read', 'write', 'default', 'stored', 'nodefault', 'implements', 'index']) then
       begin
         Mode := LowerCase(Token.Text);
@@ -471,19 +515,25 @@ begin
       else if Mode = 'read' then
       begin
         if Count = 0 then
+        begin
           Info.ReadName := Token.Text;
+        end;
         Inc(Count);
       end
       else if Mode = 'write' then
       begin
         if Count = 0 then
+        begin
           Info.WriteName := Token.Text;
+        end;
         Inc(Count);
       end
       else if Mode = 'default' then
       begin
         if Count = 0 then
+        begin
           Info.DefaultFirst := Token;
+        end;
         Info.DefaultLast := Token;
         Info.DefaultText := Info.DefaultText + Token.Text;
         Info.HasDefault := True;
@@ -492,7 +542,9 @@ begin
     end;
     // Mehrteilige Feldzugriffe (FData.Wert) sind kein einfaches Feld.
     if Pos('.', Info.ReadName) > 0 then
+    begin
       Info.ReadName := '';
+    end;
     Result := Result + [Info];
   end;
 end;
@@ -506,11 +558,17 @@ begin
   begin
     Token := FContext.Tree.Tokens[mIndex];
     if Token.Offset < ANode.StartOffset then
+    begin
       Continue;
+    end;
     if Token.Offset >= ANode.EndOffset then
+    begin
       Break;
+    end;
     if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and IsIn(Token.Text, AWords) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -524,11 +582,17 @@ begin
   begin
     mToken := FContext.Tree.Tokens[mIndex];
     if mToken.Offset < ANode.StartOffset then
+    begin
       Continue;
+    end;
     if mToken.Offset >= ANode.EndOffset then
+    begin
       Break;
+    end;
     if (mToken.Kind = TPascalTokenKind.Identifier) and StartsText(APrefix, mToken.Text) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -547,15 +611,21 @@ begin
   Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
   Result := False;
   if Header = nil then
+  begin
     Exit;
+  end;
   // Der letzte passende Bezeichner im Kopf vor der Parameterliste.
   for mIndex := FContext.Tree.FirstTokenFrom(Header.StartOffset) to High(FContext.Tree.Tokens) do
   begin
     Token := FContext.Tree.Tokens[mIndex];
     if Token.Offset < Header.StartOffset then
+    begin
       Continue;
+    end;
     if (Token.Offset >= Header.EndOffset) or Token.IsSymbol('(') or Token.IsSymbol(';') or Token.IsSymbol(':') then
+    begin
       Break;
+    end;
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AMethod.MethodName) then
     begin
       AToken := Token;
@@ -573,14 +643,20 @@ begin
   // Höchstens das Token am Blockanfang kommt in Frage: binär dorthin statt ab Dateianfang (#1342).
   mIndex := FContext.Tree.FirstTokenFrom(ABlock.StartOffset);
   if mIndex > High(FContext.Tree.Tokens) then
+  begin
     Exit;
+  end;
   Token := FContext.Tree.Tokens[mIndex];
   if (Token.Offset = ABlock.StartOffset) and Token.IsKeyword('begin') then
   begin
     if ABlock.ChildCount > 0 then
-      Indent := ABlock[0].StartPos.Character
+    begin
+      Indent := ABlock[0].StartPos.Character;
+    end
     else
+    begin
       Indent := Token.StartPos.Character + 2;
+    end;
     AEdit := TRuleEdit.Create(TTextRange.Create(Token.EndPos, Token.EndPos),
       FLineBreak + StringOfChar(' ', Indent) + AText);
     Result := True;
@@ -604,29 +680,49 @@ begin
   begin
     Token := FContext.Tree.Tokens[mIndex];
     if Token.Offset < ABlock.StartOffset then
+    begin
       Continue;
+    end;
     if Token.Offset >= ABlock.EndOffset then
+    begin
       Break;
+    end;
     if Token.Kind = TPascalTokenKind.Comment then
+    begin
       Continue;
+    end;
     if Token.IsKeyword('end') and (Token.Offset + Length(Token.Text) = ABlock.EndOffset) then
+    begin
       Break;
+    end;
     if Begin_.Text = '' then
+    begin
       Begin_ := Token;
+    end;
     Last := Token;
     Found := True;
   end;
   if not Found then
+  begin
     Exit;
+  end;
   if ABlock.ChildCount > 0 then
-    Indent := ABlock[0].StartPos.Character
+  begin
+    Indent := ABlock[0].StartPos.Character;
+  end
   else
+  begin
     Indent := Begin_.StartPos.Character + 2;
+  end;
   // Fehlt das Semikolon nach der letzten Anweisung, kommt es dazu.
   if Last.IsSymbol(';') or Last.IsKeyword('begin') then
-    Prefix := ''
+  begin
+    Prefix := '';
+  end
   else
+  begin
     Prefix := ';';
+  end;
   AEdit := TRuleEdit.Create(TTextRange.Create(Last.EndPos, Last.EndPos),
     Prefix + FLineBreak + StringOfChar(' ', Indent) + AText);
   Result := True;
@@ -642,7 +738,9 @@ begin
   AModel := nil;
   Result := AContext.Tree <> nil;
   if not Result then
+  begin
     Exit;
+  end;
   // const-Parameter dürfen anonyme Methoden nicht erfassen (E2555): lokale Kopien.
   Context := AContext;
   Local := TRuleDerived.UnitIndex(ACache, AContext);
@@ -677,30 +775,44 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   for Info in Model.Classes do
   begin
     if not Model.IsComponent(Info.Name) then
+    begin
       Continue;
+    end;
     for Method in Model.Methods do
     begin
       if not SameText(Method.ClassName, Info.Name) or not IsIn(Method.MethodName, InheritedMethods) or
         not Model.DeclaredWith(Info, Method.MethodName, 'override') or
         Model.HasToken(Method.Block, ['inherited']) or not Model.NameToken(Method, Token) then
+      begin
         Continue;
+      end;
       // TCustomControl.Paint und TGraphicControl.Paint sind leer: Paint nur melden, wenn ein Vorfahr selbst
       // zeichnet. Die übrigen Methoden tun in jedem VCL-Vorfahren eigene Arbeit.
       if SameText(Method.MethodName, 'Paint') then
       begin
         if not Model.PaintingAncestor(Info.Name, Ancestor, mOnPaintOnly) then
+        begin
           Continue;
+        end;
         Confidence := TRuleConfidence.Medium;
         if not mOnPaintOnly then
-          Message := Format('%s.Paint ruft inherited nicht auf; %s.Paint zeichnet dort selbst', [Info.Name, Ancestor])
+        begin
+          Message := Format('%s.Paint ruft inherited nicht auf; %s.Paint zeichnet dort selbst', [Info.Name, Ancestor]);
+        end
         else if Model.MayUseOnPaint then
-          Message := Format('%s.Paint ruft inherited nicht auf; %s.Paint löst dort OnPaint aus', [Info.Name, Ancestor])
+        begin
+          Message := Format('%s.Paint ruft inherited nicht auf; %s.Paint löst dort OnPaint aus', [Info.Name, Ancestor]);
+        end
         else
+        begin
           Continue;
+        end;
       end
       else
       begin
@@ -710,14 +822,22 @@ begin
       end;
       // Im Destruktor zuletzt, sonst zuerst.
       if SameText(Method.MethodName, 'Destroy') then
-        Inserted := Model.InsertBeforeEnd(Method.Block, 'inherited;', Edit)
+      begin
+        Inserted := Model.InsertBeforeEnd(Method.Block, 'inherited;', Edit);
+      end
       else
+      begin
         Inserted := Model.InsertAfterBegin(Method.Block, 'inherited;', Edit);
+      end;
       if Inserted then
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, Confidence,
-          [TRuleFix.Create('"inherited;" einfügen', [Edit])])
+          [TRuleFix.Create('"inherited;" einfügen', [Edit])]);
+      end
       else
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, Confidence);
+      end;
     end;
   end;
 end;
@@ -750,15 +870,21 @@ begin
         if (Target.Kind = TSyntaxKind.Identifier) or ((Target.Kind = TSyntaxKind.MemberAccess) and
           (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) and
           SameText(Target[0].Name, 'Self')) then
+        begin
           Exit(TSyntaxSearchStep.Found);
+        end;
       end;
       if AVisited.Kind = TSyntaxKind.AnonymousMethod then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
   Result := Found <> nil;
   if Result then
+  begin
     AValue := Found[1];
+  end;
 end;
 
 /// <summary>Gleicher Wert? Zahlen werden verglichen ($-Hex wie dezimal), sonst der Text.</summary>
@@ -767,9 +893,13 @@ var
   NumberA, NumberB: Int64;
 begin
   if TryStrToInt64(A, NumberA) and TryStrToInt64(B, NumberB) then
-    Result := NumberA = NumberB
+  begin
+    Result := NumberA = NumberB;
+  end
   else
+  begin
     Result := SameText(StringReplace(A, ' ', '', [rfReplaceAll]), StringReplace(B, ' ', '', [rfReplaceAll]));
+  end;
 end;
 
 procedure TComponentDefaultMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -785,21 +915,31 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   for Info in Model.Classes do
   begin
     if not Model.IsComponent(Info.Name) or not Model.FindMethod(Info.Name, 'Create', Ctor) then
+    begin
       Continue;
+    end;
     for Prop in Model.Properties(Info) do
     begin
       if not Prop.HasDefault or (Prop.ReadName = '') or not FindAssignment(Ctor.Block, Prop.ReadName, Value) then
+      begin
         Continue;
+      end;
       // Nur feste Werte geben eine Aussage.
       if not (Value.Kind in [TSyntaxKind.Literal, TSyntaxKind.Identifier, TSyntaxKind.UnaryExpr]) then
+      begin
         Continue;
+      end;
       ValueText := Model.NodeText(Value);
       if SameValue(ValueText, Prop.DefaultText) then
+      begin
         Continue;
+      end;
       Range := TTextRange.Create(Prop.DefaultFirst.StartPos, Prop.DefaultLast.EndPos);
       AReport.Add(Range, Format('"%s" hat default %s, der Konstruktor setzt %s aber auf %s; der Wert wird ' +
         'dann nicht in der DFM gespeichert oder falsch geladen', [Prop.Name, Prop.DefaultText, Prop.ReadName,
@@ -825,10 +965,14 @@ begin
   Result := '';
   Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
   if Header = nil then
+  begin
     Exit;
+  end;
   Params := Header.FindChild(TSyntaxKind.Parameters);
   if (Params <> nil) and (Params.ChildCount > 0) then
+  begin
     Result := Params[Params.ChildCount - 1].Name;
+  end;
 end;
 
 procedure TComponentMissingFreeNotificationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -848,37 +992,53 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   for Info in Model.Classes do
   begin
     if not Model.IsComponent(Info.Name) then
+    begin
       Continue;
+    end;
     for Prop in Model.Properties(Info) do
     begin
       if (Prop.TypeName = '') or (Prop.WriteName = '') or (Prop.NameToken.Text = '') or
         not Model.IsComponent(Prop.TypeName) then
+      begin
         Continue;
+      end;
       // Eigene Unterkomponenten (im Konstruktor erzeugt) brauchen keine Benachrichtigung.
       if (Prop.ReadName <> '') and Model.FindMethod(Info.Name, 'Create', Ctor) and
         FindAssignment(Ctor.Block, Prop.ReadName, Value) and ContainsText(Model.NodeText(Value), '.Create') then
+      begin
         Continue;
+      end;
       Range := TTextRange.Create(Prop.NameToken.StartPos, Prop.NameToken.EndPos);
       if not Model.FindMethod(Info.Name, Prop.WriteName, Setter) then
       begin
         // write auf ein Feld: es gibt keinen Setter, in dem FreeNotification stehen könnte.
         if SameText(Prop.WriteName, Prop.ReadName) then
+        begin
           AReport.Add(Range, Format(Message, [Prop.Name]), TRuleConfidence.Medium);
+        end;
         Continue;
       end;
       if Model.HasToken(Setter.Block, ['FreeNotification']) then
+      begin
         Continue;
+      end;
       Parameter := LastParameter(Setter);
       if (Parameter <> '') and Model.InsertBeforeEnd(Setter.Block,
         Format('if %s <> nil then', [Parameter]) + ' ' + Format('%s.FreeNotification(Self);', [Parameter]), Edit) then
+      begin
         AReport.Add(Range, Format(Message, [Prop.Name]), TRuleConfidence.Medium,
-          [TRuleFix.Create('FreeNotification im Setter ergänzen', [Edit])])
+          [TRuleFix.Create('FreeNotification im Setter ergänzen', [Edit])]);
+      end
       else
+      begin
         AReport.Add(Range, Format(Message, [Prop.Name]), TRuleConfidence.Medium);
+      end;
     end;
   end;
 end;
@@ -905,25 +1065,35 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   for Info in Model.Classes do
   begin
     if not Model.IsComponent(Info.Name) or not Model.FindMethod(Info.Name, 'Paint', Paint) then
+    begin
       Continue;
+    end;
     for Prop in Model.Properties(Info) do
     begin
       if (Prop.ReadName = '') or not Model.FindMethod(Info.Name, Prop.WriteName, Setter) or
         not FindAssignment(Setter.Block, Prop.ReadName, Value) or
         not Model.HasToken(Paint.Block, [Prop.ReadName, Prop.Name]) or
         Model.HasToken(Setter.Block, RepaintCalls) or not Model.NameToken(Setter, Token) then
+      begin
         Continue;
+      end;
       Message := Format('%s ändert %s, das Paint liest, ohne Invalidate; die Anzeige bleibt veraltet',
         [Setter.MethodName, Prop.ReadName]);
       if Model.InsertBeforeEnd(Setter.Block, 'Invalidate;', Edit) then
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium,
-          [TRuleFix.Create('"Invalidate;" einfügen', [Edit])])
+          [TRuleFix.Create('"Invalidate;" einfügen', [Edit])]);
+      end
       else
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium);
+      end;
     end;
   end;
 end;
@@ -953,7 +1123,9 @@ var
 begin
   Name := AName;
   if LastDelimiter('.', Name) > 0 then
+  begin
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  end;
   Result := IsIn(Name, ScaleCalls) or StartsText('Scale', Name);
 end;
 
@@ -965,9 +1137,13 @@ var
 begin
   Result := nil;
   for mMethod in AModel.Methods do
+  begin
     if (mMethod.Block <> nil) and (AModel.HasToken(mMethod.Block, ScaleCalls) or
       AModel.HasTokenStarting(mMethod.Block, 'Scale')) then
+    begin
       Result := Result + [mMethod.MethodName];
+    end;
+  end;
 end;
 
 /// <summary>Steht der Wert in einem Zusammenhang, der kein Pixelwert ist oder schon skaliert? AHelpers: eigene
@@ -984,13 +1160,19 @@ begin
       TSyntaxKind.Call:
         if IsScaleCall(Parent.Name) or IsIn(Parent.Name, AHelpers) or
           IsIn(Parent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']) then
+        begin
           Exit(True);
+        end;
       TSyntaxKind.BinaryExpr:
         if (Child = ANode) and IsIn(Parent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor']) then
+        begin
           Exit(True);
+        end;
       TSyntaxKind.IndexAccess, TSyntaxKind.CaseItem, TSyntaxKind.ForStatement, TSyntaxKind.SetConstructor:
         if Child = ANode then
+        begin
           Exit(True);
+        end;
       TSyntaxKind.AssignStatement:
         Exit(IsIn(Parent.Name, NonPixelTargets));
       TSyntaxKind.Block, TSyntaxKind.RoutineDecl:
@@ -1017,7 +1199,9 @@ begin
     begin
       Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
       if Result and IsPixelLiteral(AVisited) and not Excluded(AVisited, mHelpers) then
+      begin
         List.Add(AVisited);
+      end;
     end);
 end;
 
@@ -1034,14 +1218,18 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   mHelpers := ScalingHelpers(Model);
   Literals := TList<TSyntaxNode>.Create;
   try
     for Method in Model.Methods do
     begin
       if not IsIn(Method.MethodName, PaintMethods) or not Model.IsComponent(Method.ClassName) then
+      begin
         Continue;
+      end;
       Literals.Clear;
       CollectPixels(Method.Block, Literals, mHelpers);
       // Ein Treffer je Ausdruck (z. B. Rect(0, 0, 16, 16)), nicht je Zahl.
@@ -1050,7 +1238,9 @@ begin
       begin
         Last := Index;
         while (Last + 1 < Literals.Count) and (Literals[Last + 1].Parent = Literals[Index].Parent) do
+        begin
           Inc(Last);
+        end;
         Edits := nil;
         while Index <= Last do
         begin
@@ -1089,7 +1279,9 @@ begin
     Argument := ACall[Index];
     if (Argument.Kind <> TSyntaxKind.Literal) or (Argument.Name = '') or
       not CharInSet(Argument.Name[1], ['$', '0'..'9']) then
+    begin
       Exit(False);
+    end;
   end;
 end;
 
@@ -1104,19 +1296,25 @@ begin
     begin
       Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
       if not Result then
+      begin
         Exit;
+      end;
       // RGB(…) und TColor(…) mit Zahlen; TColor(FColors.Surface) wandelt eine Farbe des Themas um (#1109).
       if (AVisited.Kind = TSyntaxKind.Call) and IsIn(AVisited.Name, ['RGB', 'TColor']) then
       begin
         if LiteralArguments(AVisited) then
+        begin
           List.Add(AVisited);
+        end;
         Exit(False);
       end;
       // $00BBGGRR oder eine Zahl, die einer …Color-Eigenschaft zugewiesen wird
       if (AVisited.Kind = TSyntaxKind.Literal) and (AVisited.Name <> '') and
         CharInSet(AVisited.Name[1], ['$', '0'..'9']) and (AVisited.Parent <> nil) and
         (AVisited.Parent.Kind = TSyntaxKind.AssignStatement) and EndsText('Color', AVisited.Parent.Name) then
+      begin
         List.Add(AVisited);
+      end;
     end);
 end;
 
@@ -1130,19 +1328,25 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   Colors := TList<TSyntaxNode>.Create;
   try
     for Method in Model.Methods do
     begin
       if not SameText(Method.MethodName, 'Paint') or not Model.IsComponent(Method.ClassName) then
+      begin
         Continue;
+      end;
       Colors.Clear;
       CollectColors(Method.Block, Colors);
       for Node in Colors do
+      begin
         AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), 'Feste Farbe in Paint: passt nicht zu ' +
           'VCL-Styles; Systemfarben (clBtnFace …) oder StyleServices.GetSystemColor verwenden',
           TRuleConfidence.Medium);
+      end;
     end;
   finally
     Colors.Free;
@@ -1167,9 +1371,13 @@ function DeclaredParent(const AClass: TClassInfo): string;
 begin
   Result := '';
   if (AClass.Body.ChildCount > 0) and (AClass.Body[0].Kind = TSyntaxKind.TypeReference) then
+  begin
     Result := AClass.Body[0].Name;
+  end;
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
 end;
 
 /// <summary>Kopf der Methode AName in der Klassendeklaration, sonst nil.</summary>
@@ -1178,8 +1386,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to AClass.Body.ChildCount - 1 do
+  begin
     if (AClass.Body[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(AClass.Body[Index].Name, AName) then
+    begin
       Exit(AClass.Body[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -1208,7 +1420,9 @@ var
     while (Name <> '') and not SameText(Name, 'TObject') and (Depth < 64) do
     begin
       if IsIn(Name, ComponentBases) or IsIn(Name, ConstructorBases) or Model.FAncestry.HasConstructor(Name) then
+      begin
         Exit(True);
+      end;
       Name := Model.FAncestry.ParentOf(Name);
       Inc(Depth);
     end;
@@ -1231,20 +1445,28 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.AnonymousMethod then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount > 0) then
         begin
           Target := Node[0];
           if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+          begin
             Target := Target[0];
+          end;
           if ((Target.Kind = TSyntaxKind.Identifier) or ((Target.Kind = TSyntaxKind.MemberAccess) and
             (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) and
             SameText(Target[0].Name, 'Self'))) and (IsIn(Target.Name, Constructors) or
             IsIn(Target.Name, AncestorConstructors)) then
+          begin
             Exit(True);
+          end;
         end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1254,73 +1476,111 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   Methods := TRuleOptions.Strings(AContext.Options, 'methods', DefaultMethods);
   for Info in Model.Classes do
   begin
     Parent := DeclaredParent(Info);
     // Ohne Vorfahr erbt die Klasse von TObject: dort gibt es nichts aufzurufen.
     if (Parent = '') or SameText(Parent, 'TObject') then
+    begin
       Continue;
+    end;
     Constructors := nil;
     for Index := 0 to Info.Body.ChildCount - 1 do
+    begin
       if (Info.Body[Index].Kind = TSyntaxKind.RoutineHeader) and
         StartsText('constructor', TrimLeft(Model.NodeText(Info.Body[Index]))) then
+      begin
         Constructors := Constructors + [Info.Body[Index].Name];
+      end;
+    end;
     for Method in Model.Methods do
     begin
       if not SameText(Method.ClassName, Info.Name) or Model.HasToken(Method.Block, ['inherited']) then
+      begin
         Continue;
+      end;
       Source := TrimLeft(Model.NodeText(Method.Decl));
       // Klassenkonstruktoren und Klassenmethoden haben kein inherited der Instanz.
       if StartsText('class ', Source) then
+      begin
         Continue;
+      end;
       IsConstructor := StartsText('constructor', Source);
       if IsConstructor then
       begin
         if not (IsIn(Method.MethodName, Methods) or (IsIn('Create', Methods) and
           StartsText('Create', Method.MethodName))) then
+        begin
           Continue;
+        end;
         if CallsOwnConstructor(Method.Block) or not AncestorConstructs(Parent) then
+        begin
           Continue;
+        end;
       end
       else
       begin
         if not IsIn(Method.MethodName, Methods) or not Model.DeclaredWith(Info, Method.MethodName, 'override') then
+        begin
           Continue;
+        end;
         // Komponenten: Destroy meldet component-missing-inherited (keine Doppelmeldung).
         if Model.IsComponent(Info.Name) and IsIn(Method.MethodName, InheritedMethods) then
+        begin
           Continue;
+        end;
       end;
       if not Model.NameToken(Method, Token) then
+      begin
         Continue;
+      end;
       AtEnd := SameText(Method.MethodName, 'Destroy') or SameText(Method.MethodName, 'BeforeDestruction') or
         (StartsText('destructor', Source));
       if AtEnd then
+      begin
         Message := Format('%s ruft inherited nicht auf; die Felder von %s werden nie freigegeben.',
-          [Method.MethodName, Parent])
+          [Method.MethodName, Parent]);
+      end
       else if IsConstructor then
+      begin
         Message := Format('%s ruft inherited nicht auf; die Felder von %s werden nie angelegt.',
-          [Method.MethodName, Parent])
+          [Method.MethodName, Parent]);
+      end
       else
+      begin
         Message := Format('%s ruft inherited nicht auf; die Arbeit von %s nach dem Erzeugen entfällt.',
           [Method.MethodName, Parent]);
+      end;
       // inherited; reicht die Parameter weiter. Ein eigener Konstruktor mit Parametern ohne override
       // ruft den des Vorfahren ohne Argumente.
       Statement := 'inherited;';
       Header := ClassHeader(Info, Method.MethodName);
       if IsConstructor and not Model.DeclaredWith(Info, Method.MethodName, 'override') and (Header <> nil) and
         (Pos('(', Model.NodeText(Header)) > 0) then
+      begin
         Statement := 'inherited Create;';
+      end;
       if AtEnd then
-        Inserted := Model.InsertBeforeEnd(Method.Block, Statement, Edit)
+      begin
+        Inserted := Model.InsertBeforeEnd(Method.Block, Statement, Edit);
+      end
       else
+      begin
         Inserted := Model.InsertAfterBegin(Method.Block, Statement, Edit);
+      end;
       if Inserted then
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.High,
-          [TRuleFix.Create(Format('"%s" einfügen', [Statement]), [Edit])])
+          [TRuleFix.Create(Format('"%s" einfügen', [Statement]), [Edit])]);
+      end
       else
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.High);
+      end;
     end;
   end;
 end;
@@ -1344,28 +1604,48 @@ var
 begin
   Name := UpperCase(Copy(AMessage, LastDelimiter('.', AMessage) + 1, MaxInt));
   if (Name = 'WM_SIZE') or (Name = 'WM_WINDOWPOSCHANGED') or (Name = 'WM_WINDOWPOSCHANGING') then
-    Result := 'die VCL passt Ausrichtung und Anker nicht mehr an'
+  begin
+    Result := 'die VCL passt Ausrichtung und Anker nicht mehr an';
+  end
   else if (Name = 'WM_CLOSE') or (Name = 'WM_QUERYENDSESSION') then
-    Result := 'das Fenster schließt nicht mehr'
+  begin
+    Result := 'das Fenster schließt nicht mehr';
+  end
   else if (Name = 'WM_PAINT') or (Name = 'WM_NCPAINT') or (Name = 'WM_PRINTCLIENT') then
-    Result := 'die VCL zeichnet das Steuerelement nicht mehr'
+  begin
+    Result := 'die VCL zeichnet das Steuerelement nicht mehr';
+  end
   else if (Name = 'WM_KEYDOWN') or (Name = 'WM_KEYUP') or (Name = 'WM_CHAR') or (Name = 'WM_SYSKEYDOWN') or
     (Name = 'WM_SYSCHAR') or (Name = 'CM_DIALOGKEY') or (Name = 'CM_DIALOGCHAR') or (Name = 'CM_WANTSPECIALKEY') then
-    Result := 'Tastatureingaben erreichen die Standardbehandlung nicht mehr'
+  begin
+    Result := 'Tastatureingaben erreichen die Standardbehandlung nicht mehr';
+  end
   else if (Name = 'WM_SETFOCUS') or (Name = 'WM_KILLFOCUS') or (Name = 'CM_ENTER') or (Name = 'CM_EXIT') then
-    Result := 'die Fokusbehandlung der VCL entfällt'
+  begin
+    Result := 'die Fokusbehandlung der VCL entfällt';
+  end
   else if StartsStr('WM_LBUTTON', Name) or StartsStr('WM_RBUTTON', Name) or StartsStr('WM_MBUTTON', Name) or
     (Name = 'WM_MOUSEMOVE') or (Name = 'WM_MOUSEWHEEL') or (Name = 'CM_MOUSEENTER') or (Name = 'CM_MOUSELEAVE') then
-    Result := 'Mausereignisse wie OnClick und OnMouseDown entfallen'
+  begin
+    Result := 'Mausereignisse wie OnClick und OnMouseDown entfallen';
+  end
   else if (Name = 'WM_DESTROY') or (Name = 'WM_NCDESTROY') then
-    Result := 'die VCL räumt das Fenster nicht mehr auf'
+  begin
+    Result := 'die VCL räumt das Fenster nicht mehr auf';
+  end
   else if (Name = 'WM_DPICHANGED') or (Name = 'CM_PARENTFONTCHANGED') or (Name = 'CM_FONTCHANGED') or
     (Name = 'CM_STYLECHANGED') then
-    Result := 'Schrift und Skalierung passen sich nicht mehr an'
+  begin
+    Result := 'Schrift und Skalierung passen sich nicht mehr an';
+  end
   else if StartsStr('CM_', Name) then
-    Result := 'die Standardbehandlung der VCL entfällt'
+  begin
+    Result := 'die Standardbehandlung der VCL entfällt';
+  end
   else
+  begin
     Result := 'die Standardbehandlung von Windows bzw. der VCL entfällt';
+  end;
 end;
 
 procedure TMessageHandlerWithoutInheritedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1397,52 +1677,74 @@ var
     while (Index <= High(mTokens)) and (mTokens[Index].Offset < ABlock.EndOffset) do
     begin
       if not (mTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      begin
         Code := Code + [mTokens[Index]];
+      end;
       Inc(Index);
     end;
     for Index := 1 to High(Code) - 1 do
+    begin
       if Code[Index - 1].IsSymbol('.') and SameText(Code[Index].Text, 'Result') and Code[Index + 1].IsSymbol(':=') then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   Cache := TRuleDerived.Open(AContext);
   if not ContainsText(AContext.Text, 'message') or not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   Swallow := TRuleOptions.Strings(AContext.Options, 'swallow', DefaultSwallow);
   for Info in Model.Classes do
   begin
     // Ohne Vorfahr behandelt TObject.DefaultHandler nichts.
     Parent := DeclaredParent(Info);
     if (Parent = '') or SameText(Parent, 'TObject') then
+    begin
       Continue;
+    end;
     for Index := 0 to Info.Body.ChildCount - 1 do
     begin
       Header := Info.Body[Index];
       if Header.Kind <> TSyntaxKind.RoutineHeader then
+      begin
         Continue;
+      end;
       Match := TRegEx.Match(Model.NodeText(Header), '\bmessage\s+([\w.]+)', [roIgnoreCase]);
       if not Match.Success then
+      begin
         Continue;
+      end;
       MessageName := Match.Groups[1].Value;
       // Eigene Nachricht der Unit (WM_ATLAS_X = WM_APP + 1): Windows und VCL kennen sie nicht (#1371).
       if TRegEx.IsMatch(AContext.Text, '\b' + TRegEx.Escape(MessageName) + '\s*=\s*(WM_APP|WM_USER)\b',
         [roIgnoreCase]) then
+      begin
         Continue;
+      end;
       if MatchText(Copy(MessageName, LastDelimiter('.', MessageName) + 1, MaxInt), Swallow) or
         not Model.FindMethod(Info.Name, Header.Name, Method) or (Method.Block = nil) or
         Model.HasToken(Method.Block, ['inherited', 'DefaultHandler', 'DefWindowProc', 'CallWindowProc']) or
         AnswersItself(Method.Block) or not Model.NameToken(Method, Token) then
+      begin
         Continue;
+      end;
       if Model.InsertAfterBegin(Method.Block, 'inherited;', Edit) then
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos),
           Format('%s ruft inherited nicht auf; %s.', [Method.MethodName, Consequence(MessageName)]),
-          TRuleConfidence.Medium, [TRuleFix.Create('"inherited;" am Anfang einfügen', [Edit])])
+          TRuleConfidence.Medium, [TRuleFix.Create('"inherited;" am Anfang einfügen', [Edit])]);
+      end
       else
+      begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos),
           Format('%s ruft inherited nicht auf; %s.', [Method.MethodName, Consequence(MessageName)]),
           TRuleConfidence.Medium);
+      end;
     end;
   end;
 end;
@@ -1462,12 +1764,18 @@ begin
   Result := False;
   AName := '';
   if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
+  begin
     Exit;
+  end;
   Node := AStatement[0];
   if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+  begin
     Node := Node[0];
+  end;
   if Node.Kind <> TSyntaxKind.InheritedExpr then
+  begin
     Exit;
+  end;
   AName := Node.Name;
   Result := True;
 end;
@@ -1480,10 +1788,18 @@ var
 begin
   Result := nil;
   for Index := 0 to AClass.Body.ChildCount - 1 do
+  begin
     if AClass.Body[Index].Kind = TSyntaxKind.Field then
+    begin
       for Name in AClass.Body[Index].Name.Split([',']) do
+      begin
         if Trim(Name) <> '' then
+        begin
           Result := Result + [Trim(Name)];
+        end;
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Namen der Felder, Properties und Methoden der Klasse selbst.</summary>
@@ -1493,8 +1809,12 @@ var
 begin
   Result := OwnFields(AClass);
   for Index := 0 to AClass.Body.ChildCount - 1 do
+  begin
     if AClass.Body[Index].Kind in [TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
+    begin
       Result := Result + [AClass.Body[Index].Name];
+    end;
+  end;
 end;
 
 /// <summary>Parameter und lokale Variablen (var-Abschnitte) einer Methode.</summary>
@@ -1510,15 +1830,29 @@ begin
   begin
     Section := Header.FindChild(TSyntaxKind.Parameters);
     if Section <> nil then
+    begin
       for Index := 0 to Section.ChildCount - 1 do
+      begin
         for Name in Section[Index].Name.Split([',']) do
+        begin
           Result := Result + [Trim(Name)];
+        end;
+      end;
+    end;
   end;
   for Index := 0 to AMethod.Decl.ChildCount - 1 do
+  begin
     if AMethod.Decl[Index].Kind = TSyntaxKind.VarSection then
+    begin
       for Inner := 0 to AMethod.Decl[Index].ChildCount - 1 do
+      begin
         for Name in AMethod.Decl[Index][Inner].Name.Split([',']) do
+        begin
           Result := Result + [Trim(Name)];
+        end;
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Bezeichner F bzw. Self.F als Ziel einer Freigabe: F.Free, F.DisposeOf, F.Destroy, FreeAndNil(F).</summary>
@@ -1530,17 +1864,27 @@ begin
   Target := nil;
   if (ANode.Kind = TSyntaxKind.MemberAccess) and IsIn(ANode.Name, ['Free', 'DisposeOf', 'Destroy']) and
     (ANode.ChildCount = 1) then
-    Target := ANode[0]
+  begin
+    Target := ANode[0];
+  end
   else if (ANode.Kind = TSyntaxKind.Call) and IsIn(ANode.Name, ['FreeAndNil', 'Dispose', 'FreeMem']) and
     (ANode.ChildCount = 2) then
+  begin
     Target := ANode[1];
+  end;
   if Target = nil then
+  begin
     Exit;
+  end;
   if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
     (Target[0].Kind = TSyntaxKind.Identifier) and SameText(Target[0].Name, 'Self') then
+  begin
     Exit(Target.Name);
+  end;
   if Target.Kind = TSyntaxKind.Identifier then
+  begin
     Result := Target.Name;
+  end;
 end;
 
 /// <summary>Erstes freigegebenes eigenes Feld in ANode, '' ohne.</summary>
@@ -1559,11 +1903,17 @@ begin
       Node := Pending.Pop;
       Result := FreedName(Node);
       if (Result <> '') and IsIn(Result, AFields) then
+      begin
         Exit;
+      end;
       if Node.Kind = TSyntaxKind.AnonymousMethod then
+      begin
         Continue;
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
     Result := '';
   finally
@@ -1583,11 +1933,13 @@ var
     Info: TClassInfo;
   begin
     for Info in Model.Classes do
+    begin
       if SameText(Info.Name, AName) then
       begin
         AInfo := Info;
         Exit(True);
       end;
+    end;
     Result := False;
   end;
 
@@ -1601,9 +1953,13 @@ var
     for Depth := 0 to 63 do
     begin
       if ContainsText(Name, 'Thread') then
+      begin
         Exit(True);
+      end;
       if (Name = '') or SameText(Name, 'TObject') then
+      begin
         Break;
+      end;
       Name := Model.FAncestry.ParentOf(Name);
     end;
     Result := False;
@@ -1625,19 +1981,31 @@ var
   begin
     Result := False;
     if not OwnLines(AStatement) then
+    begin
       Exit;
+    end;
     Text := Model.NodeText(AStatement) + ';';
     if AToEnd then
-      Result := Model.InsertBeforeEnd(ABlock, Text, Insert)
+    begin
+      Result := Model.InsertBeforeEnd(ABlock, Text, Insert);
+    end
     else
+    begin
       Result := Model.InsertAfterBegin(ABlock, Text, Insert);
+    end;
     if not Result then
+    begin
       Exit;
+    end;
     Remove := TRuleEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0), '');
     if AToEnd then
-      AFix := TRuleFix.Create('inherited an das Ende des Destruktors verschieben', [Remove, Insert])
+    begin
+      AFix := TRuleFix.Create('inherited an das Ende des Destruktors verschieben', [Remove, Insert]);
+    end
     else
+    begin
       AFix := TRuleFix.Create('inherited an den Anfang des Konstruktors verschieben', [Insert, Remove]);
+    end;
   end;
 
   procedure CheckDestructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
@@ -1648,27 +2016,39 @@ var
     Fix: TRuleFix;
   begin
     if WaitsInDestructor(AInfo.Name) then
+    begin
       Exit;
+    end;
     for Index := 0 to AMethod.Block.ChildCount - 1 do
     begin
       Statement := AMethod.Block[Index];
       if not IsInheritedCall(Statement, Name) then
+      begin
         Continue;
+      end;
       if (Name <> '') and not SameText(Name, AMethod.MethodName) then
+      begin
         Exit;
+      end;
       for Later := Index + 1 to AMethod.Block.ChildCount - 1 do
       begin
         Field := FirstFreedField(AMethod.Block[Later], OwnFields(AInfo));
         if Field = '' then
+        begin
           Continue;
+        end;
         if MoveFix(AMethod.Block, Statement, True, Fix) then
+        begin
           AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
             Format('inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf %s zugreifen.',
-            [Field]), TRuleConfidence.Medium, [Fix])
+            [Field]), TRuleConfidence.Medium, [Fix]);
+        end
         else
+        begin
           AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
             Format('inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf %s zugreifen.',
             [Field]), TRuleConfidence.Medium);
+        end;
         Exit;
       end;
       Exit;
@@ -1694,14 +2074,20 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.AnonymousMethod then
+        begin
           Continue;
+        end;
         Name := '';
         if (Node.Kind = TSyntaxKind.Identifier) and not ((Node.Parent <> nil) and
           (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node)) then
-          Name := Node.Name
+        begin
+          Name := Node.Name;
+        end
         else if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) and
           (Node[0].Kind = TSyntaxKind.Identifier) and SameText(Node[0].Name, 'Self') then
+        begin
           Name := Node.Name;
+        end;
         if (Name <> '') and not SameText(Name, 'Self') and not IsIn(Name, AExcluded) and
           Model.FAncestry.FindMember(AParent, Name, Member, Unresolved) and
           (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
@@ -1711,7 +2097,9 @@ var
           Exit(Node);
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1734,9 +2122,13 @@ var
       begin
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.Identifier) and IsIn(Node.Name, ALocals) then
+        begin
           Exit(True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1754,22 +2146,30 @@ var
   begin
     Parent := DeclaredParent(AInfo);
     if (Parent = '') or SameText(Parent, 'TObject') or Model.HasToken(AMethod.Block, ['with']) then
+    begin
       Exit;
+    end;
     Locals := MethodLocalNames(AMethod);
     Excluded := Locals + OwnMembers(AInfo);
     for Index := 0 to AMethod.Block.ChildCount - 1 do
     begin
       Statement := AMethod.Block[Index];
       if not IsInheritedCall(Statement, Name) then
+      begin
         Continue;
+      end;
       for Earlier := 0 to Index - 1 do
       begin
         Access := FirstInheritedAccess(AMethod.Block[Earlier], Parent, Excluded, Member, Owner);
         if Access = nil then
+        begin
           Continue;
+        end;
         Fixes := nil;
         if not ArgumentsUseLocals(Statement, Locals) and MoveFix(AMethod.Block, Statement, False, Fix) then
+        begin
           Fixes := [Fix];
+        end;
         AReport.Add(TTextRange.Create(Access.StartPos, Access.EndPos),
           Format('%s greift vor inherited auf %s aus %s zu; der Vorfahr ist noch nicht angelegt.',
           [AMethod.MethodName, Member, Owner]), TRuleConfidence.Medium, Fixes);
@@ -1786,17 +2186,25 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) or not ContainsText(AContext.Text, 'inherited') then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   for Method in Model.Methods do
   begin
     if not FindClassInfo(Method.ClassName, Info) then
+    begin
       Continue;
+    end;
     Source := TrimLeft(Model.NodeText(Method.Decl));
     if StartsText('destructor', Source) then
-      CheckDestructor(Method, Info)
+    begin
+      CheckDestructor(Method, Info);
+    end
     else if StartsText('constructor', Source) then
+    begin
       CheckConstructor(Method, Info);
+    end;
   end;
 end;
 
@@ -1819,7 +2227,9 @@ begin
     Separator := Pos('>', Pair);
     if (Separator > 0) and MatchesGlob(Trim(Copy(Pair, 1, Separator - 1)), AMethod) and
       MatchesGlob(Trim(Copy(Pair, Separator + 1, MaxInt)), AInherited) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -1835,11 +2245,13 @@ var
     Info: TClassInfo;
   begin
     for Info in Model.Classes do
+    begin
       if SameText(Info.Name, AName) then
       begin
         AInfo := Info;
         Exit(True);
       end;
+    end;
     Result := False;
   end;
 
@@ -1862,15 +2274,23 @@ var
         if Node.Kind = TSyntaxKind.InheritedExpr then
         begin
           if (Node.Name = '') or SameText(Node.Name, AMethodName) then
-            ASameName := True
+          begin
+            ASameName := True;
+          end
           else if (Node.Parent <> nil) and ((Node.Parent.Kind = TSyntaxKind.CallStatement) or
             ((Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node))) then
+          begin
             ACalls := ACalls + [Node];
+          end;
         end;
         if Node.Kind = TSyntaxKind.AnonymousMethod then
+        begin
           Continue;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1886,11 +2306,17 @@ var
     Result := 0;
     Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
     if Header = nil then
+    begin
       Exit;
+    end;
     Section := Header.FindChild(TSyntaxKind.Parameters);
     if Section <> nil then
+    begin
       for Index := 0 to Section.ChildCount - 1 do
+      begin
         Inc(Result, Length(Section[Index].Name.Split([','])));
+      end;
+    end;
   end;
 
 var
@@ -1905,7 +2331,9 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) or not ContainsText(AContext.Text, 'inherited') then
+  begin
     Exit;
+  end;
   Pairs := TRuleOptions.Strings(AContext.Options, 'allowed', nil);
   for Method in Model.Methods do
   begin
@@ -1913,27 +2341,37 @@ begin
     Source := TrimLeft(Model.NodeText(Method.Decl));
     if StartsText('constructor', Source) or StartsText('class ', Source) or
       not FindClassInfo(Method.ClassName, Info) or not Model.DeclaredWith(Info, Method.MethodName, 'override') then
+    begin
       Continue;
+    end;
     Calls := nil;
     SameName := False;
     CollectCalls(Method.Block, Calls, SameName, Method.MethodName);
     // Ruft die Methode auch sich selbst im Vorfahren auf, ist der andere Aufruf gewollt.
     if SameName then
+    begin
       Continue;
+    end;
     for Call in Calls do
     begin
       if Allowed(Pairs, Method.MethodName, Call.Name) then
+      begin
         Continue;
+      end;
       Message := Format('%s ruft inherited %s auf; gemeint ist vermutlich inherited %s.',
         [Method.MethodName, Call.Name, Method.MethodName]);
       Fixes := nil;
       // Mit gleicher Zahl an Argumenten wie Parametern passt der eigene Name.
       Arguments := 0;
       if Call.Parent.Kind = TSyntaxKind.Call then
+      begin
         Arguments := Call.Parent.ChildCount - 1;
+      end;
       if Arguments = ParameterCount(Method) then
+      begin
         Fixes := [TRuleFix.Create(Format('inherited %s aufrufen', [Method.MethodName]),
           [TRuleEdit.Create(TTextRange.Create(Call.StartPos, Call.EndPos), 'inherited ' + Method.MethodName)])];
+      end;
       AReport.Add(TTextRange.Create(Call.StartPos, Call.EndPos), Message, TRuleConfidence.High, Fixes);
     end;
   end;
@@ -1951,10 +2389,14 @@ function SelfMemberName(ANode: TSyntaxNode): string;
 begin
   Result := '';
   if ANode.Kind = TSyntaxKind.Identifier then
-    Result := ANode.Name
+  begin
+    Result := ANode.Name;
+  end
   else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
     (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+  begin
     Result := ANode.Name;
+  end;
 end;
 
 /// <summary>Namen (F, Self.F, Result, lokale Variablen), denen unter ANode zugewiesen wird.</summary>
@@ -1976,10 +2418,14 @@ begin
       begin
         Name := SelfMemberName(Node[0]);
         if Name <> '' then
+        begin
           ANames := ANames + [Name];
+        end;
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -2004,9 +2450,13 @@ begin
       Node := Pending.Pop;
       Name := SelfMemberName(Node);
       if (Name <> '') and IsIn(Name, ANames) then
+      begin
         Exit(True);
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -2029,9 +2479,13 @@ begin
     begin
       Node := Pending.Pop;
       if (Node.Kind = TSyntaxKind.MemberAccess) and StartsText('Create', Node.Name) then
+      begin
         Exit(True);
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -2051,13 +2505,17 @@ begin
     Condition := nil;
     if (Branch.Parent.Kind = TSyntaxKind.IfStatement) and (Branch.Parent.ChildCount > 1) and
       (Branch.Parent[0] <> Branch) then
+    begin
       Condition := Branch.Parent[0];
+    end;
     if Condition <> nil then
     begin
       AssignedNames := nil;
       CollectAssignedNames(Branch, AssignedNames);
       if MentionsName(Condition, AssignedNames) then
+      begin
         Exit(True);
+      end;
     end;
     Branch := Branch.Parent;
   end;
@@ -2080,9 +2538,13 @@ var
     Unresolved: string;
   begin
     if (AName = '') or SameText(AName, 'Result') or SameText(AName, 'Self') or IsIn(AName, Locals) then
+    begin
       Exit(False);
+    end;
     if IsIn(AName, Members) then
+    begin
       Exit(True);
+    end;
     Result := (Parent <> '') and Model.FAncestry.FindMember(Parent, AName, Member, Unresolved) and
       (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]);
   end;
@@ -2095,15 +2557,25 @@ var
   begin
     Result := nil;
     if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
-      Result := ANode[0]
+    begin
+      Result := ANode[0];
+    end
     else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
       (ANode[0].Kind = TSyntaxKind.Identifier) and IsIn(ANode[0].Name, ['Inc', 'Dec', 'Include', 'Exclude']) then
-      Result := ANode[1]
+    begin
+      Result := ANode[1];
+    end
     else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
       (ANode[0].Kind = TSyntaxKind.MemberAccess) and (ANode[0].ChildCount = 1) then
+    begin
       for Index := 1 to ANode.ChildCount - 1 do
+      begin
         if ContainsCreate(ANode[Index]) then
+        begin
           Exit(ANode[0][0]);
+        end;
+      end;
+    end;
   end;
 
   procedure Visit(ANode, ARoot: TSyntaxNode; const AGetter: string);
@@ -2121,7 +2593,9 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.AnonymousMethod then
+        begin
           Continue;
+        end;
         Target := ChangedTarget(Node);
         if Target <> nil then
         begin
@@ -2135,7 +2609,9 @@ var
           end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2150,22 +2626,35 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   AllowLazyInit := TRuleOptions.Bool(AContext.Options, 'allowLazyInit', True);
   for Info in Model.Classes do
   begin
     Getters := nil;
     for Prop in Model.Properties(Info) do
+    begin
       if (Prop.ReadName <> '') and not IsIn(Prop.ReadName, Getters) then
+      begin
         Getters := Getters + [Prop.ReadName];
+      end;
+    end;
     if Getters = nil then
+    begin
       Continue;
+    end;
     Parent := DeclaredParent(Info);
     Members := OwnFields(Info);
     for Index := 0 to Info.Body.ChildCount - 1 do
+    begin
       if Info.Body[Index].Kind = TSyntaxKind.PropertyDecl then
+      begin
         Members := Members + [Info.Body[Index].Name];
+      end;
+    end;
     for Method in Model.Methods do
+    begin
       if SameText(Method.ClassName, Info.Name) and IsIn(Method.MethodName, Getters) and
         not Model.HasToken(Method.Block, ['with']) then
       begin
@@ -2173,6 +2662,7 @@ begin
         Reported := nil;
         Visit(Method.Block, Method.Block, Method.MethodName);
       end;
+    end;
   end;
 end;
 
@@ -2197,8 +2687,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ABody.ChildCount - 1 do
+  begin
     if (ABody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(ABody[Index].Name, AName) then
+    begin
       Exit(ABody[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -2210,15 +2704,23 @@ var
   TypeRef: TSyntaxNode;
 begin
   for Index := 0 to ABody.ChildCount - 1 do
+  begin
     if ABody[Index].Kind = TSyntaxKind.Field then
+    begin
       for Name in ABody[Index].Name.Split([',']) do
+      begin
         if SameText(Trim(Name), AName) then
         begin
           TypeRef := ABody[Index].FindChild(TSyntaxKind.TypeReference);
           if TypeRef = nil then
+          begin
             Exit('');
+          end;
           Exit(TypeRef.Name);
         end;
+      end;
+    end;
+  end;
   Result := '';
 end;
 
@@ -2232,13 +2734,19 @@ begin
     // Vergleicht Equals ohne Groß-/Kleinschreibung, muss der Hashwert es ebenso tun.
     Value := AField;
     if MatchText(ACompare, ['SameText', 'CompareText']) then
-      Value := 'LowerCase(' + AField + ')'
+    begin
+      Value := 'LowerCase(' + AField + ')';
+    end
     else if MatchText(ACompare, ['AnsiSameText', 'AnsiCompareText']) then
+    begin
       Value := 'AnsiLowerCase(' + AField + ')';
+    end;
     Result := Format('THashBobJenkins.GetHashValue(%s, %s)', [Value, AInitial]);
   end
   else
+  begin
     Result := Format('THashBobJenkins.GetHashValue(%s, SizeOf(%s), %s)', [AField, AField, AInitial]);
+  end;
 end;
 
 procedure TEqualsWithoutGetHashCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -2257,10 +2765,18 @@ var
     Result := False;
     Chain := Model.FAncestry.Ancestors(AClass, AKnown, ObjectMissing);
     for Location in Chain do
+    begin
       if not SameText(Location.Symbol.Name, 'TObject') then
+      begin
         for Member in Model.FAncestry.Methods(Location) do
+        begin
           if SameText(Member.Name, AName) and Member.HasDirective('override') then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
+    end;
   end;
 
   // Eigene Felder in der Reihenfolge, in der Equals sie nennt, je mit dem Vergleich (SameText …), in dem sie stehen.
@@ -2283,12 +2799,16 @@ var
         begin
           Compare := '';
           if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] <> Node) then
+          begin
             Compare := Node.Parent.Name;
+          end;
           ANames := ANames + [Node.Name];
           ACompares := ACompares + [Compare];
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2310,18 +2830,24 @@ var
     Result := False;
     Found := False;
     for Method in Model.Methods do
+    begin
       if SameText(Method.ClassName, AInfo.Name) and SameText(Method.MethodName, 'Equals') then
       begin
         Equals_ := Method;
         Found := True;
       end;
+    end;
     if not Found then
+    begin
       Exit;
+    end;
     Names := nil;
     Compares := nil;
     CollectFields(Equals_.Block, OwnFields(AInfo), Names, Compares);
     if Names = nil then
+    begin
       Exit;
+    end;
     Body := '';
     Initial := '0';
     for Index := 0 to High(Names) do
@@ -2339,9 +2865,13 @@ var
       UsesEdit) then
     begin
       if UsesEdit.Range.StartPos.Line < AHeader.StartPos.Line then
-        Edits := [UsesEdit] + Edits
+      begin
+        Edits := [UsesEdit] + Edits;
+      end
       else
+      begin
         Edits := Edits + [UsesEdit];
+      end;
     end;
     Position := TTextPosition.Create(Equals_.Decl.EndPos.Line + 1, 0);
     Edit := TRuleEdit.Create(TTextRange.Create(Position, Position), Model.FLineBreak + 'function ' + AInfo.Name +
@@ -2365,22 +2895,30 @@ var
       HasEquals := Model.DeclaredWith(Info, 'Equals', 'override');
       HasHash := Model.DeclaredWith(Info, 'GetHashCode', 'override');
       if HasEquals = HasHash then
+      begin
         Continue;
+      end;
       if HasEquals then
       begin
         if AncestorOverrides(Info.Name, 'GetHashCode', Known) or not Known then
+        begin
           Continue;
+        end;
         Header := MemberHeader(Info.Body, 'Equals');
         Fixes := nil;
         if HashFix(Info, Header, Fix) then
+        begin
           Fixes := [Fix];
+        end;
         AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), 'Equals ist überschrieben, GetHashCode ' +
           'nicht; als Schlüssel in TDictionary finden sich gleiche Objekte nicht.', TRuleConfidence.High, Fixes);
       end
       else
       begin
         if AncestorOverrides(Info.Name, 'Equals', Known) or not Known then
+        begin
           Continue;
+        end;
         Header := MemberHeader(Info.Body, 'GetHashCode');
         AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), 'GetHashCode ist überschrieben, Equals ' +
           'nicht; als Schlüssel in TDictionary gelten gleiche Objekte weiter als verschieden.', TRuleConfidence.High);
@@ -2412,19 +2950,27 @@ var
             Header := MemberHeader(Body, 'Equal');
             Unsafe := False;
             for Index := 0 to Body.ChildCount - 1 do
+            begin
               if Body[Index].Kind = TSyntaxKind.Field then
               begin
                 TypeName := FieldTypeName(Body, Trim(Body[Index].Name.Split([','])[0]));
                 if MatchText(TypeName, BinaryUnsafeTypes) or SameText(TypeName, 'TArray') or
                   ((Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z'])) then
+                begin
                   Unsafe := True;
+                end;
               end;
+            end;
             if (Header <> nil) and ContainsText(Model.NodeText(Header), 'operator') and Unsafe then
+            begin
               ANames := ANames + [Node.Name];
+            end;
           end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2437,8 +2983,12 @@ var
     Index: Integer;
   begin
     for Index := 1 to ACall.ChildCount - 1 do
+    begin
       if not (ACall[Index].Kind in [TSyntaxKind.Literal, TSyntaxKind.SetConstructor]) then
+      begin
         Exit(False);
+      end;
+    end;
     Result := True;
   end;
 
@@ -2463,15 +3013,21 @@ var
           Args := Collection.FindChild(TSyntaxKind.GenericArgs);
           Key := '';
           if (Args <> nil) and (Args.ChildCount > 0) then
+          begin
             Key := Args[0].Name;
+          end;
           if (Key <> '') and IsIn(Key, ARecords) and (not ((Node.Parent <> nil) and
             (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node)) or OnlyConstants(Node.Parent)) then
+          begin
             AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos), Format('%s hat class operator ' +
               'Equal, %s vergleicht Schlüssel ohne Comparer aber Byte für Byte; gleiche Schlüssel finden sich nicht.',
               [Key, Collection.Name]), TRuleConfidence.High);
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2483,15 +3039,21 @@ var
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
+  begin
     Exit;
+  end;
   if ContainsText(AContext.Text, 'Equals') or ContainsText(AContext.Text, 'GetHashCode') then
+  begin
     CheckClasses;
+  end;
   if ContainsText(AContext.Text, 'operator') then
   begin
     Records := nil;
     CollectRecords(AContext.Tree.Root, Records);
     if Records <> nil then
+    begin
       CheckCreates(AContext.Tree.Root, Records);
+    end;
   end;
 end;
 

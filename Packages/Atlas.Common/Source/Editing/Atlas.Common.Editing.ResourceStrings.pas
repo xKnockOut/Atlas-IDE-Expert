@@ -96,14 +96,18 @@ function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Intege
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function TokenEnd(const AToken: TPascalToken): Integer;
@@ -123,7 +127,9 @@ var
   procedure Flush;
   begin
     if Word <> '' then
+    begin
       Words := Words + [Word];
+    end;
     Word := '';
   end;
 
@@ -140,9 +146,13 @@ begin
       Flush;
       Inc(Index);
       while (Index <= Length(AText)) and CharInSet(AText[Index], ['0'..'9', ':', '-', '.', '*']) do
+      begin
         Inc(Index);
+      end;
       if (Index <= Length(AText)) and CharInSet(AText[Index], ['a'..'z', 'A'..'Z', '%']) then
+      begin
         Inc(Index);
+      end;
       Continue;
     end;
     case C of
@@ -158,7 +168,9 @@ begin
       Letter := '';
       // Andere Buchstaben (é) fallen weg, ohne das Wort zu trennen.
       if not C.IsLetter then
+      begin
         Flush;
+      end;
     end;
     Word := Word + Letter;
     Inc(Index);
@@ -166,10 +178,16 @@ begin
   Flush;
   Meaningful := nil;
   for Word in Words do
+  begin
     if not MatchText(Word, StopWords) then
+    begin
       Meaningful := Meaningful + [Word];
+    end;
+  end;
   if Length(Meaningful) = 0 then
+  begin
     Meaningful := Words;
+  end;
   Result := 'S';
   Count := 0;
   for Word in Meaningful do
@@ -177,10 +195,14 @@ begin
     Result := Result + UpperCase(Copy(Word, 1, 1)) + Copy(Word, 2, MaxInt);
     Inc(Count);
     if Count = MaxWords then
+    begin
       Break;
+    end;
   end;
   if Result = 'S' then
+  begin
     Result := 'SText';
+  end;
 end;
 
 class function TResourceStrings.UniqueName(const ABase: string; const ATaken: TArray<string>): string;
@@ -207,28 +229,40 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].Kind <> TPascalTokenKind.StringLiteral then
+    begin
       Continue;
+    end;
     // Echt innerhalb: hinter dem öffnenden und vor dem schließenden Hochkomma.
     Inside := (ComparePositions(ATokens[Index].StartPos, APosition) < 0) and
       ((ComparePositions(APosition, ATokens[Index].EndPos) < 0) or not ATokens[Index].Terminated);
     if not Inside then
+    begin
       Continue;
+    end;
     if not ATokens[Index].Terminated then
+    begin
       Exit;
+    end;
     // Direkt angehängte Literale und Zeichenkonstanten gehören dazu: 'Zeile'#13#10'Zwei'.
     First := Index;
     while (First > 0) and (ATokens[First - 1].Kind in [TPascalTokenKind.StringLiteral,
       TPascalTokenKind.CharLiteral]) and (TokenEnd(ATokens[First - 1]) = ATokens[First].Offset) do
+    begin
       Dec(First);
+    end;
     Last := Index;
     while (Last < High(ATokens)) and (ATokens[Last + 1].Kind in [TPascalTokenKind.StringLiteral,
       TPascalTokenKind.CharLiteral]) and (TokenEnd(ATokens[Last]) = ATokens[Last + 1].Offset) do
+    begin
       Inc(Last);
+    end;
     ALiteral.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
     ALiteral.StartOffset := ATokens[First].Offset;
     ALiteral.Source := Copy(AText, ATokens[First].Offset + 1, TokenEnd(ATokens[Last]) - ATokens[First].Offset);
     if not TStringLiterals.PlainText(ALiteral.Source, ALiteral.Text) then
+    begin
       Exit;
+    end;
     Result := Length(ALiteral.Text) > 1;
     Exit;
   end;
@@ -242,17 +276,21 @@ var
 begin
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Node := ATree.Root;
   repeat
     Found := False;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (Node[Index].StartOffset <= AOffset) and (AOffset < Node[Index].EndOffset) then
       begin
         Node := Node[Index];
         Found := True;
         Break;
       end;
+    end;
   until not Found;
   // Von innen nach außen; erst ein Anweisungsblock macht die Stelle zulässig.
   InBody := False;
@@ -265,11 +303,15 @@ begin
       TSyntaxKind.TypeDecl, TSyntaxKind.SetConstructor, TSyntaxKind.RangeExpr, TSyntaxKind.ExportsClause,
       TSyntaxKind.AsmBlock, TSyntaxKind.VarDecl, TSyntaxKind.VarSection:
         if not InBody then
+        begin
           Exit;
+        end;
       TSyntaxKind.CaseItem:
         // Marken stehen vor der Anweisung, dem letzten Kind.
         if (Child <> nil) and (Node.ChildCount > 0) and (Node[Node.ChildCount - 1] <> Child) then
+        begin
           Exit;
+        end;
       TSyntaxKind.Block, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection:
         InBody := True;
     else
@@ -296,9 +338,13 @@ begin
   while Index <= High(ATokens) do
   begin
     if ATokens[Index].IsKeyword('interface') then
-      InInterface := True
+    begin
+      InInterface := True;
+    end
     else if ATokens[Index].IsKeyword('implementation') then
+    begin
       InInterface := False;
+    end;
     if ATokens[Index].IsKeyword('resourcestring') then
     begin
       InSection := True;
@@ -315,9 +361,13 @@ begin
         Value := NextIndex(ATokens, Next);
         Stop := Value;
         while (Stop <= High(ATokens)) and not ATokens[Stop].IsSymbol(';') do
+        begin
           Inc(Stop);
+        end;
         if Stop > High(ATokens) then
+        begin
           Break;
+        end;
         Entry := Default(TResourceEntry);
         Entry.Name := ATokens[Index].Text;
         Entry.InInterface := InInterface;
@@ -325,7 +375,9 @@ begin
         Entry.NameLine := ATokens[Index].StartPos.Line;
         Entry.Line := ATokens[Stop].StartPos.Line;
         if Value < Stop then
+        begin
           Entry.Value := Trim(Copy(AText, ATokens[Value].Offset + 1, ATokens[Stop].Offset - ATokens[Value].Offset));
+        end;
         Result := Result + [Entry];
         Index := NextIndex(ATokens, Stop);
         Continue;
@@ -343,12 +395,14 @@ var
   Text: string;
 begin
   for Entry in AEntries do
+  begin
     if (Entry.InInterface = AInterface) and ((ABefore < 0) or (Entry.Line < ABefore)) and
       TStringLiterals.PlainText(Entry.Value, Text) and (Text = AText) then
     begin
       AEntry := Entry;
       Exit(True);
     end;
+  end;
   AEntry := Default(TResourceEntry);
   Result := False;
 end;
@@ -373,22 +427,30 @@ begin
   Lines := AText.Replace(#13, '').Split([#10]);
   Implementation_ := -1;
   for Index := 0 to High(ATokens) do
+  begin
     if ATokens[Index].IsKeyword('implementation') then
     begin
       Implementation_ := Index;
       Break;
     end;
+  end;
   if Implementation_ < 0 then
+  begin
     Exit;
+  end;
   // Erster passender Abschnitt; der neue Eintrag kommt hinter dessen letzten.
   SectionLine := -1;
   InInterface := False;
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].IsKeyword('interface') then
-      InInterface := True
+    begin
+      InInterface := True;
+    end
     else if Index = Implementation_ then
+    begin
       InInterface := False;
+    end;
     if ATokens[Index].IsKeyword('resourcestring') and (InInterface = AInterface) and
       ((ABefore < 0) or (ATokens[Index].StartPos.Line < ABefore)) then
     begin
@@ -401,16 +463,22 @@ begin
     LastLine := SectionLine;
     Indent := '';
     for Entry in Entries(AText, ATokens) do
+    begin
       if Entry.Section = SectionLine then
       begin
         if Indent = '' then
+        begin
           Indent := Copy(Lines[Entry.NameLine], 1, Length(Lines[Entry.NameLine]) -
             Length(TrimLeft(Lines[Entry.NameLine])));
+        end;
         LastLine := Entry.Line;
       end;
+    end;
     // Eintrag in der Zeile von resourcestring ("resourcestring SA = 'a';"): mit zwei Leerzeichen darunter.
     if (Indent = '') or (LastLine = SectionLine) then
+    begin
       Indent := '  ';
+    end;
     AEdit := TTextEdit.Create(TTextRange.Create(LineEnd(LastLine), LineEnd(LastLine)),
       ALineBreak + Indent + ADeclaration);
     Exit(True);
@@ -429,9 +497,13 @@ begin
   if (Next <= High(ATokens)) and ATokens[Next].IsKeyword('uses') then
   begin
     while (Next <= High(ATokens)) and not ATokens[Next].IsSymbol(';') do
+    begin
       Inc(Next);
+    end;
     if Next <= High(ATokens) then
+    begin
       Line := ATokens[Next].EndPos.Line;
+    end;
   end;
   AEdit := TTextEdit.Create(TTextRange.Create(LineEnd(Line), LineEnd(Line)),
     ALineBreak + ALineBreak + 'resourcestring' + ALineBreak + '  ' + ADeclaration);

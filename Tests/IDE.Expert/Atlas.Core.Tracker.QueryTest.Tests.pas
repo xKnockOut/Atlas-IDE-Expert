@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerQueryTestTests = class
   public
     /// <summary>Abnahme: Antworten aus Beispieldateien → Meldungen.</summary>
@@ -47,6 +48,7 @@ uses
   System.IOUtils,
   Atlas.Text.Uris,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,

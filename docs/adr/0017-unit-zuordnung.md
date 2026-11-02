@@ -1,6 +1,6 @@
 # ADR 0017: Zuordnung der Units zu Packages
 
-- Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), Quellen unter `Packages/Atlas.IDE.Expert/Source`
+- Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Base/Source`
 - Bezug: [ADR 0017](0017-funktions-packages.md), Abschnitt „Fortschreibung: Laden, Entladen, Versionen“; #1455, #1456
 
 Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Dokument). Die Analyse enthielt nur Summen je Package, keine Liste je Unit. Die Liste hier ist aus dem Quellbaum erzeugt, nach diesen Regeln:
@@ -10,24 +10,61 @@ Diese Tabelle ersetzt den Verweis auf die Analyse vom 31.10.2026 (claude.ai-Doku
 | `Debug` | `Atlas.IDE.Debugger` |
 | `Tracker`, `Ci` | `Atlas.IDE.Tracker` |
 | `Welcome` | `Atlas.IDE.Welcome` |
-| `Architecture`, `UnitRelations`, `SymbolPath`, `Hotspots` | `Atlas.IDE.Analysis` |
+| `Analysis`, `Architecture`, `UnitRelations`, `SymbolPath`, `Hotspots` | `Atlas.IDE.Analysis` |
+| `Rules` | `Atlas.IDE.Rules` |
 | `Designer` | `Atlas.IDE.Designer` |
 | `Search`, `UnitSearch`, `Query` | `Atlas.IDE.Search` |
 | `Tests` | `Atlas.IDE.Tests` |
-| `Build`, `Tasks`, `StartProfiles` | `Atlas.IDE.Build` |
+| `Build`, `BuildTools`, `Tasks`, `StartProfiles` | `Atlas.IDE.Build` |
+| `BuildPipeline` | `Atlas.IDE.BuildPipeline` |
 | `Bookmarks`, `Notes`, `Todos` | `Atlas.IDE.Bookmarks` |
+| `Contracts` (direkt unter `Source/`) | `Atlas.IDE.Contracts` |
 | alle übrigen | `Atlas.IDE.Base` |
 
 Ausnahmen:
 
-- `Atlas.UI.Notes.Tip` bleibt im Kern (allgemeiner Tooltip, wandert vor dem Schnitt nach Foundation).
+- Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
+- Die Build-Pipeline ist ein eigenes Modul (#1455, Entscheidung Marco 01.11.2026 14:36): Läufer der Builds auf Auftrag mit MCP-Eingang, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel mit Zusammenfassung (Ordner `BuildPipeline`, Schalter `buildPipeline`). Im Kern bleiben die Bewertung als Typen und `IAtlasBuildVerdictListener` (`Build.Verdict`, die Benachrichtigungszentrale hört darauf), was Base der Pipeline gibt (`Build.Pipeline`), die Werte ihrer Einstellungen (`Build.PipelineSettings`, `Build.OpenBuildSettings`), die Meldungen des letzten Builds (`IDE.Build.LastMessages`), `Build.IdleGate` (Diagnose-Zeitmessung) und `IDE.Build.Target` (Probleme, Projekt-Einstellungen). Andere Module bauen über `Atlas.IDE.Contracts.BuildPipeline`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
+- Aus `SymbolPath/` liegen das Modell eines Wegs (`Core.SymbolPath.Model`) und seine Kette (`UI.SymbolPath.Chain`) im Kern (#1455): Das Ergebnisfenster von Base zeigt den Weg; Suche, Dialog und Befehle gehören zum Modul Analyse.
+- Aus `StartProfiles/` liegt die lokale Datei (`Core.StartProfiles.Store`) im Kern, dazu `IDE.Foundation.StartOptions` (#1455): Startoptionen schreiben und „Start“ auslösen brauchen die Startprofile (Modul Build) und „Test debuggen“ (Modul Tests); kein Modul kennt das andere.
 - Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
-- `Atlas.IDE.Rules` hat keinen eigenen Ordner. Die sieben Units mit „Rules“ in der Spalte Begründung sind ein **Vorschlag** aus Namen und Inhalt; die Analyse nannte 8 Units und rund 3 400 Zeilen. Vor #1455 prüfen und hier festschreiben.
+- `Atlas.IDE.Rules` (#1455, festgeschrieben): Ordner `IDE/Rules`, dazu Sammelkorrektur (`Core/UI.Problems.BulkFix`) und Eigenschaftsregeln (`IDE.Editor.DfmPropertyRules`). Im Kern bleiben Fenster „Atlas-Prüfung“ mit Erklären, Unterdrücken und Abschalten, Regeltabelle und Seite Prüfregeln, Stand und Format der Baseline-Datei und der Hinweis bei abgeschaltetem Modul (`RuleChecksNotice`): Sie laufen auch ohne das Modul.
 - `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen (ADR 0017, Fortschreibung).
 
-Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später als Daten führen (#1455). Bis dahin wird die Tabelle von Hand nachgezogen, wenn Units dazukommen oder umziehen.
+Das Prüfskript `Tools/Check-PackageDependencies.ps1` liest diese Datei als Daten (#1455): die Ordnertabelle oben, die Tabellen je Package unten (Einzelzeilen) und die Tabellen unter „Grenzen zwischen Base, Modulen und Verträgen“. Maßgeblich ist die Einzelzeile. Weicht sie von der Ordnertabelle ab, ist sie eine der Ausnahmen oben und braucht eine eigene Begründung (nicht nur „Ordner …“). Eine neue Unit unter `Packages/Atlas.IDE.Base/Source` braucht eine Zeile hier, sonst schlägt das Skript fehl; ebenso eine Zeile, deren Datei es nicht mehr gibt.
+
+## Grenzen zwischen Base, Modulen und Verträgen
+
+Regeln (ADR 0017, Abschnitt Verträge; Regel 9 „Base kennt kein Modul“), geprüft über alle `uses` der Units unter `Packages/Atlas.IDE.Base/Source`:
+
+- Base verwendet kein Modul und keinen Vertrag aus `Atlas.IDE.Contracts` (Base requiret Contracts nicht).
+- Ein Modul verwendet kein anderes Modul; Querbezüge laufen über `Atlas.IDE.Contracts`.
+- `Atlas.IDE.Contracts` verwendet weder Base noch Module (requires nur `rtl` und `vcl`).
+- Erlaubt: Modul → Base, Modul → Contracts, alles innerhalb eines Packages.
+
+In den beiden Tabellen steht unter „Von“ eine Unit, unter „Nach“ ein Package oder eine Unit. Eine Zeile, die nicht mehr vorkommt, meldet das Skript als Fehler: Sie wird dann gestrichen, die Listen sollen nur schrumpfen.
+
+### Befristete Ausnahmen
+
+Genehmigt im Auftrag zu #1455 (Paket 1, 01.11.2026). Das Skript übergeht diese Verweise.
+
+| Von | Nach | Grund |
+|---|---|---|
+
+Seit Paket 2c (#1455) leer: Die Kompositionswurzel baut weder „Testergebnisse“ noch den Zugang zum Tracker, „Issue anlegen“ erreicht sie über `IAtlasIssueCreation` von Base.
+
+### Bekannte Verstöße
+
+Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skript nennt jeden bei jedem Lauf und schlägt nur bei neuen fehl. Wer einen behebt, streicht die Zeile.
+
+| Von | Nach | Behebt |
+|---|---|---|
+
+Seit #1456 leer: Die Einstellungen der Willkommensseite baut das Modul als Abschnitt (`Atlas.UI.Welcome.SettingsSection`, Anbieter `Atlas.IDE.Welcome.Settings`), Base zeigt auf dem Reiter nur den Modulschalter.
 
 ## Summen
+
+Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Package | Units | Zeilen |
 |---|---:|---:|
@@ -50,8 +87,14 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 |---|---|---|
 | `Atlas.Core.Build.CheckOnSave` | `Core/Build/Atlas.Core.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
+| `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
 | `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.Core.Build.OpenBuildSettings` | `Core/Build/Atlas.Core.Build.OpenBuildSettings.pas` | Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455 |
+| `Atlas.Core.Build.Pipeline` | `Core/Build/Atlas.Core.Build.Pipeline.pas` | Was Base der Build-Pipeline gibt (Compilermeldungen, Bewertung) über die Registry, #1455 |
+| `Atlas.Core.Build.PipelineSettings` | `Core/Build/Atlas.Core.Build.PipelineSettings.pas` | Werte der Einstellungen von Prüfung vor dem Kompilieren und Release-Wächter für Einstellungen und Optionsdialog, #1455 |
 | `Atlas.Core.Build.Target` | `Core/Build/Atlas.Core.Build.Target.pas` | Konfiguration und Symbole für den Server ({$IFDEF}-Zweige, #615) |
+| `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Bewertung als Typen und `IAtlasBuildVerdictListener`; Benachrichtigungszentrale (Base) und Module lesen sie, #1455 |
+| `Atlas.Core.CiBuild.Contract` | `Core/CiBuild/Atlas.Core.CiBuild.Contract.pas` | CI-Stand als Daten (Lauf, Job, Fehler); Projektzusammenfassung, Willkommensseite und Modul Tracker lesen ihn, #1455 |
 | `Atlas.Core.Commands.KeyConflicts` | `Core/Commands/Atlas.Core.Commands.KeyConflicts.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyMap` | `Core/Commands/Atlas.Core.Commands.KeyMap.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.Palette` | `Core/Commands/Atlas.Core.Commands.Palette.pas` | Ordner `Core/Commands` |
@@ -89,6 +132,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Diagnostics.Guard` | `Core/Diagnostics/Atlas.Core.Diagnostics.Guard.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Hangs` | `Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.MainThread` | `Core/Diagnostics/Atlas.Core.Diagnostics.MainThread.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.ModuleHosting` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas` | Module und ihre Teile in der Feature-Tabelle, #1455 |
 | `Atlas.Core.Diagnostics.Package` | `Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Processes` | `Core/Diagnostics/Atlas.Core.Diagnostics.Processes.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.SafeMode` | `Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas` | Ordner `Core/Diagnostics` |
@@ -171,6 +215,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Generate.Protocol` | `Core/Generate/Atlas.Core.Generate.Protocol.pas` | Ordner `Core/Generate` |
 | `Atlas.Core.Hover.Contract` | `Core/Hover/Atlas.Core.Hover.Contract.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.DebugValue` | `Core/Hover/Atlas.Core.Hover.DebugValue.pas` | Ordner `Core/Hover` |
+| `Atlas.Core.Hover.Declaration` | `Core/Hover/Atlas.Core.Hover.Declaration.pas` | Ordner `Core/Hover`; Typ aus der Hover-Deklaration, bis #1455 im Debugger-Kern |
 | `Atlas.Core.Hover.History` | `Core/Hover/Atlas.Core.Hover.History.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Layout` | `Core/Hover/Atlas.Core.Hover.Layout.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.InlayHints.Store` | `Core/InlayHints/Atlas.Core.InlayHints.Store.pas` | Ordner `Core/InlayHints` |
@@ -186,6 +231,14 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Lsp.TextChanges` | `Core/Lsp/Atlas.Core.Lsp.TextChanges.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Uris` | `Core/Lsp/Atlas.Core.Lsp.Uris.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.WorkspaceEdits` | `Core/Lsp/Atlas.Core.Lsp.WorkspaceEdits.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Modules.Answer` | `Core/Modules/Atlas.Core.Modules.Answer.pas` | späte Antwort an ein Modul nur bei offenem Scope (Regel 3), #1455 |
+| `Atlas.Core.Modules.Contract` | `Core/Modules/Atlas.Core.Modules.Contract.pas` | Allgemeine Verträge (Modul, Registry, Scope, Beiträge), #1455 |
+| `Atlas.Core.Modules.Contributions` | `Core/Modules/Atlas.Core.Modules.Contributions.pas` | Beiträge der Module einsammeln, #1455 |
+| `Atlas.Core.Modules.FeatureParts` | `Core/Modules/Atlas.Core.Modules.FeatureParts.pas` | Teile eines Moduls für die Feature-Tabelle, #1455 |
+| `Atlas.Core.Modules.Handshake` | `Core/Modules/Atlas.Core.Modules.Handshake.pas` | Vertragsversion von Base (Regel 7), #1455 |
+| `Atlas.Core.Modules.Registration` | `Core/Modules/Atlas.Core.Modules.Registration.pas` | Ordner `Core/Modules`, #1455 |
+| `Atlas.Core.Modules.Registry` | `Core/Modules/Atlas.Core.Modules.Registry.pas` | Registry der Module (Regel 1), #1455 |
+| `Atlas.Core.Modules.Watch` | `Core/Modules/Atlas.Core.Modules.Watch.pas` | Liste bereitgestellter Objekte, folgt der Registry, #1455 |
 | `Atlas.Core.Notifications.Build` | `Core/Notifications/Atlas.Core.Notifications.Build.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Center` | `Core/Notifications/Atlas.Core.Notifications.Center.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Contract` | `Core/Notifications/Atlas.Core.Notifications.Contract.pas` | Ordner `Core/Notifications` |
@@ -201,9 +254,11 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Problems.InlineHints` | `Core/Problems/Atlas.Core.Problems.InlineHints.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Store` | `Core/Problems/Atlas.Core.Problems.Store.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
+| `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
 | `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Matching` | `Core/Projects/Atlas.Core.Projects.Matching.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.PathCheck` | `Core/Projects/Atlas.Core.Projects.PathCheck.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Projects.Recording` | `Core/Projects/Atlas.Core.Projects.Recording.pas` | Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455 |
 | `Atlas.Core.Projects.Setup` | `Core/Projects/Atlas.Core.Projects.Setup.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary` | `Core/Projects/Atlas.Core.Projects.Summary.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Todos` | `Core/Projects/Atlas.Core.Projects.Todos.pas` | Ordner `Core/Projects` |
@@ -214,16 +269,22 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Results.CallDiagramTemplate` | `Core/Results/Atlas.Core.Results.CallDiagramTemplate.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.DataFlow` | `Core/Results/Atlas.Core.Results.DataFlow.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.Model` | `Core/Results/Atlas.Core.Results.Model.pas` | Ordner `Core/Results` |
+| `Atlas.Core.SavedPlaces.Contract` | `Core/SavedPlaces/Atlas.Core.SavedPlaces.Contract.pas` | Gemerkte Stellen als Daten und Quelle (Lesezeichen → Willkommensseite), #1456 |
+| `Atlas.Core.Settings.Baseline` | `Core/Settings/Atlas.Core.Settings.Baseline.pas` | Format der Baseline-Datei; Einstellungsdialog und Stand der Datei, #1455 |
 | `Atlas.Core.Settings.Catalog` | `Core/Settings/Atlas.Core.Settings.Catalog.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Choices` | `Core/Settings/Atlas.Core.Settings.Choices.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Contract` | `Core/Settings/Atlas.Core.Settings.Contract.pas` | Ordner `Core/Settings`; Vertrag für die Einstellungsteile der Module (#1455, Entscheidung 3) |
 | `Atlas.Core.Settings.EventBreakNames` | `Core/Settings/Atlas.Core.Settings.EventBreakNames.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Experimental` | `Core/Settings/Atlas.Core.Settings.Experimental.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.FolderList` | `Core/Settings/Atlas.Core.Settings.FolderList.pas` | Ordnerliste als Einstellungswert; Optionsdialog ohne Debugger, #1455 |
 | `Atlas.Core.Settings.Groups` | `Core/Settings/Atlas.Core.Settings.Groups.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.HiddenPlaces` | `Core/Settings/Atlas.Core.Settings.HiddenPlaces.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.History` | `Core/Settings/Atlas.Core.Settings.History.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.JsonText` | `Core/Settings/Atlas.Core.Settings.JsonText.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Layers` | `Core/Settings/Atlas.Core.Settings.Layers.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.ModuleSwitches` | `Core/Settings/Atlas.Core.Settings.ModuleSwitches.pas` | Ordner `Core/Settings`; Modul-Schalter (#1454) |
 | `Atlas.Core.Settings.OverviewKinds` | `Core/Settings/Atlas.Core.Settings.OverviewKinds.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Parts` | `Core/Settings/Atlas.Core.Settings.Parts.pas` | Ordner `Core/Settings`; zentrale Stelle der Einstellungsteile (#1455, Entscheidung 3) |
 | `Atlas.Core.Settings.Plugin` | `Core/Settings/Atlas.Core.Settings.Plugin.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.PluginSchemaData` | `Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ProfileData` | `Core/Settings/Atlas.Core.Settings.ProfileData.pas` | Ordner `Core/Settings` |
@@ -231,11 +292,14 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Settings.QuickToggles` | `Core/Settings/Atlas.Core.Settings.QuickToggles.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Reassigned` | `Core/Settings/Atlas.Core.Settings.Reassigned.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Renames` | `Core/Settings/Atlas.Core.Settings.Renames.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.RuleChecksNotice` | `Core/Settings/Atlas.Core.Settings.RuleChecksNotice.pas` | Hinweis „Prüfregeln sind aus“, #1454 |
+| `Atlas.Core.Settings.RuleTable` | `Core/Settings/Atlas.Core.Settings.RuleTable.pas` | Regeltabelle für Einstellungsdialog und „Regel abschalten“ in „Atlas-Prüfung“, #1455 |
 | `Atlas.Core.Settings.Schema` | `Core/Settings/Atlas.Core.Settings.Schema.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.SchemaCheck` | `Core/Settings/Atlas.Core.Settings.SchemaCheck.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.SchemaData` | `Core/Settings/Atlas.Core.Settings.SchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Scopes` | `Core/Settings/Atlas.Core.Settings.Scopes.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.StatusBarItems` | `Core/Settings/Atlas.Core.Settings.StatusBarItems.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.StoreValues` | `Core/Settings/Atlas.Core.Settings.StoreValues.pas` | Ordner `Core/Settings`; Werte des zentralen Records nach Schlüssel für die Abschnitte der Module (#1455) |
 | `Atlas.Core.Settings.TeamFile` | `Core/Settings/Atlas.Core.Settings.TeamFile.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ToolbarItems` | `Core/Settings/Atlas.Core.Settings.ToolbarItems.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Transfer` | `Core/Settings/Atlas.Core.Settings.Transfer.pas` | Ordner `Core/Settings` |
@@ -247,6 +311,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Signature.Controller` | `Core/Signature/Atlas.Core.Signature.Controller.pas` | Ordner `Core/Signature` |
 | `Atlas.Core.Signature.Format` | `Core/Signature/Atlas.Core.Signature.Format.pas` | Ordner `Core/Signature` |
 | `Atlas.Core.Signature.Providers.Server` | `Core/Signature/Atlas.Core.Signature.Providers.Server.pas` | Ordner `Core/Signature` |
+| `Atlas.Core.StartProfiles.Store` | `Core/StartProfiles/Atlas.Core.StartProfiles.Store.pas` | Lokale Datei der Startoptionen; Base liest und schreibt darin die vorübergehenden Startparameter, #1455 |
 | `Atlas.Core.Status.Contract` | `Core/Status/Atlas.Core.Status.Contract.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.IndexStore` | `Core/Status/Atlas.Core.Status.IndexStore.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.Lines` | `Core/Status/Atlas.Core.Status.Lines.pas` | Ordner `Core/Status` |
@@ -261,6 +326,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Style.Symbol` | `Core/Style/Atlas.Core.Style.Symbol.pas` | Ordner `Core/Style` |
 | `Atlas.Core.Style.Syntax` | `Core/Style/Atlas.Core.Style.Syntax.pas` | Ordner `Core/Style` |
 | `Atlas.Core.Style.Wrap` | `Core/Style/Atlas.Core.Style.Wrap.pas` | Ordner `Core/Style` |
+| `Atlas.Core.SymbolPath.Model` | `Core/SymbolPath/Atlas.Core.SymbolPath.Model.pas` | Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455 |
 | `Atlas.Core.Undo.Adapters.DiskTarget` | `Core/Undo/Atlas.Core.Undo.Adapters.DiskTarget.pas` | Ordner `Core/Undo` |
 | `Atlas.Core.Undo.Adapters.FileStore` | `Core/Undo/Atlas.Core.Undo.Adapters.FileStore.pas` | Ordner `Core/Undo` |
 | `Atlas.Core.Undo.Contract` | `Core/Undo/Atlas.Core.Undo.Contract.pas` | Ordner `Core/Undo` |
@@ -271,6 +337,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Updates.Check` | `Core/Updates/Atlas.Core.Updates.Check.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Contract` | `Core/Updates/Atlas.Core.Updates.Contract.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Vcs.Adapters.ProcessRunner` | `Core/Vcs/Atlas.Core.Vcs.Adapters.ProcessRunner.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.BranchNames` | `Core/Vcs/Atlas.Core.Vcs.BranchNames.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.BranchPlan` | `Core/Vcs/Atlas.Core.Vcs.BranchPlan.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.Composition` | `Core/Vcs/Atlas.Core.Vcs.Composition.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.Contract` | `Core/Vcs/Atlas.Core.Vcs.Contract.pas` | Ordner `Core/Vcs` |
@@ -284,6 +351,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Vcs.Providers.Git` | `Core/Vcs/Atlas.Core.Vcs.Providers.Git.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.Providers.Null` | `Core/Vcs/Atlas.Core.Vcs.Providers.Null.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.Providers.Svn` | `Core/Vcs/Atlas.Core.Vcs.Providers.Svn.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Vcs.Pull` | `Core/Vcs/Atlas.Core.Vcs.Pull.pas` | Holen der Arbeitskopie, aus `Atlas.Core.Welcome.QuickActions` für die Willkommensseite und „Arbeitskopien“, #1456 |
 | `Atlas.Core.Vcs.ServerAccess` | `Core/Vcs/Atlas.Core.Vcs.ServerAccess.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.ServerCheck` | `Core/Vcs/Atlas.Core.Vcs.ServerCheck.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.Switches` | `Core/Vcs/Atlas.Core.Vcs.Switches.pas` | Ordner `Core/Vcs` |
@@ -291,9 +359,13 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Vcs.Tools` | `Core/Vcs/Atlas.Core.Vcs.Tools.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.Worker` | `Core/Vcs/Atlas.Core.Vcs.Worker.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.WorkingCopies` | `Core/Vcs/Atlas.Core.Vcs.WorkingCopies.pas` | Ordner `Core/Vcs` |
+| `Atlas.Core.Versions.Project` | `Core/Versions/Atlas.Core.Versions.Project.pas` | Versionsnummer eines Projekts; Release-Wächter und Modul Tracker lesen sie, #1455 |
 | `Atlas.IDE.Build.CheckOnSave` | `IDE/Build/Atlas.IDE.Build.CheckOnSave.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
+| `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
+| `Atlas.IDE.Build.LastMessages` | `IDE/Build/Atlas.IDE.Build.LastMessages.pas` | Compilermeldungen des letzten Builds; Modul Prüfregeln liest sie, auch ohne Build-Pipeline, #1455 |
 | `Atlas.IDE.Build.MessageView` | `IDE/Build/Atlas.IDE.Build.MessageView.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern (ADR 0017) |
 | `Atlas.IDE.Build.Notifier` | `IDE/Build/Atlas.IDE.Build.Notifier.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
+| `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Build-Auswahl für den Server; Probleme und Projekt-Einstellungen (Base), #1455 |
 | `Atlas.IDE.CodeInsight.Composition` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.Commands.Bindings` | `IDE/Commands/Atlas.IDE.Commands.Bindings.pas` | Ordner `IDE/Commands` |
@@ -322,7 +394,6 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Editor.BlockComment` | `IDE/Editor/Atlas.IDE.Editor.BlockComment.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.ChangeSignature` | `IDE/Editor/Atlas.IDE.Editor.ChangeSignature.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.CommentContinuation` | `IDE/Editor/Atlas.IDE.Editor.CommentContinuation.pas` | Ordner `IDE/Editor` |
-| `Atlas.IDE.Editor.DfmPropertyRules` | `IDE/Editor/Atlas.IDE.Editor.DfmPropertyRules.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.DisableWarning` | `IDE/Editor/Atlas.IDE.Editor.DisableWarning.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.EnterWatch` | `IDE/Editor/Atlas.IDE.Editor.EnterWatch.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.EnumTables` | `IDE/Editor/Atlas.IDE.Editor.EnumTables.pas` | Ordner `IDE/Editor` |
@@ -383,11 +454,13 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Foundation.Files` | `IDE/Foundation/Atlas.IDE.Foundation.Files.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterColumns` | `IDE/Foundation/Atlas.IDE.Foundation.GutterColumns.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterMarks` | `IDE/Foundation/Atlas.IDE.Foundation.GutterMarks.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.Host` | `IDE/Foundation/Atlas.IDE.Foundation.Host.pas` | Dienste von Base für die Module (Sitzung, Serverbefehle, Meldungen, Warnungen, Log, Statusfeld), #1455 |
 | `Atlas.IDE.Foundation.KeyHook` | `IDE/Foundation/Atlas.IDE.Foundation.KeyHook.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Keys` | `IDE/Foundation/Atlas.IDE.Foundation.Keys.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Navigation` | `IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.ResultsWindow` | `IDE/Foundation/Atlas.IDE.Foundation.ResultsWindow.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Settings` | `IDE/Foundation/Atlas.IDE.Foundation.Settings.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.StartOptions` | `IDE/Foundation/Atlas.IDE.Foundation.StartOptions.pas` | Startoptionen und vorübergehende Startparameter; Startprofile (Build) und „Test debuggen“ (Tests) brauchen sie, #1455 |
 | `Atlas.IDE.Foundation.StructureSwitch` | `IDE/Foundation/Atlas.IDE.Foundation.StructureSwitch.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Symbol` | `IDE/Foundation/Atlas.IDE.Foundation.Symbol.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.TeamFile` | `IDE/Foundation/Atlas.IDE.Foundation.TeamFile.pas` | Ordner `IDE/Foundation` |
@@ -409,6 +482,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Problems.Service` | `IDE/Problems/Atlas.IDE.Problems.Service.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Window` | `IDE/Problems/Atlas.IDE.Problems.Window.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Projects.Context` | `IDE/Projects/Atlas.IDE.Projects.Context.pas` | Ordner `IDE/Projects` |
+| `Atlas.IDE.Projects.Summaries` | `IDE/Projects/Atlas.IDE.Projects.Summaries.pas` | Projekt-Zusammenfassungen pflegen (auch ohne Willkommensseite), `IAtlasProjectSummaryListener`, #1455 |
 | `Atlas.IDE.Results.Commands` | `IDE/Results/Atlas.IDE.Results.Commands.pas` | Ordner `IDE/Results` |
 | `Atlas.IDE.Results.Impact` | `IDE/Results/Atlas.IDE.Results.Impact.pas` | Ordner `IDE/Results` |
 | `Atlas.IDE.Results.Peek` | `IDE/Results/Atlas.IDE.Results.Peek.pas` | Ordner `IDE/Results` |
@@ -416,6 +490,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Settings.Options` | `IDE/Settings/Atlas.IDE.Settings.Options.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.Project` | `IDE/Settings/Atlas.IDE.Settings.Project.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.QuickToggles` | `IDE/Settings/Atlas.IDE.Settings.QuickToggles.pas` | Ordner `IDE/Settings` |
+| `Atlas.IDE.Settings.RuleChecksNotice` | `IDE/Settings/Atlas.IDE.Settings.RuleChecksNotice.pas` | Hinweis „Prüfregeln sind aus“, #1454 |
 | `Atlas.IDE.Settings.ServerTool` | `IDE/Settings/Atlas.IDE.Settings.ServerTool.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.Transfer` | `IDE/Settings/Atlas.IDE.Settings.Transfer.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Setup.Checklist` | `IDE/Setup/Atlas.IDE.Setup.Checklist.pas` | Ordner `IDE/Setup` |
@@ -457,7 +532,6 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.UI.EditorToolbar.Glyphs` | `UI/EditorToolbar/Atlas.UI.EditorToolbar.Glyphs.pas` | Ordner `UI/EditorToolbar` |
 | `Atlas.UI.Generate.Window` | `UI/Generate/Atlas.UI.Generate.Window.pas` | Ordner `UI/Generate` |
 | `Atlas.UI.Hover.Tip` | `UI/Hover/Atlas.UI.Hover.Tip.pas` | Ordner `UI/Hover` |
-| `Atlas.UI.Notes.Tip` | `UI/Notes/Atlas.UI.Notes.Tip.pas` | allgemeiner Tooltip, wandert nach Foundation (ADR 0017) |
 | `Atlas.UI.Notifications.Notice` | `UI/Notifications/Atlas.UI.Notifications.Notice.pas` | Ordner `UI/Notifications` |
 | `Atlas.UI.Notifications.Window` | `UI/Notifications/Atlas.UI.Notifications.Window.pas` | Ordner `UI/Notifications` |
 | `Atlas.UI.Outline.Breadcrumbs` | `UI/Outline/Atlas.UI.Outline.Breadcrumbs.pas` | Ordner `UI/Outline` |
@@ -467,20 +541,23 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.UI.Popup.Draw` | `UI/Popup/Atlas.UI.Popup.Draw.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Styled` | `UI/Popup/Atlas.UI.Popup.Styled.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Tip` | `UI/Popup/Atlas.UI.Popup.Tip.pas` | Ordner `UI/Popup` |
+| `Atlas.UI.Popup.TitledTip` | `UI/Popup/Atlas.UI.Popup.TitledTip.pas` | allgemeiner Tooltip, bis #1455 `Atlas.UI.Notes.Tip` |
 | `Atlas.UI.Popup.Window` | `UI/Popup/Atlas.UI.Popup.Window.pas` | Ordner `UI/Popup` |
+| `Atlas.UI.Problems.Explain` | `UI/Problems/Atlas.UI.Problems.Explain.pas` | „Regel erklären“ in „Atlas-Prüfung“ (Base), #1455 |
 | `Atlas.UI.Problems.Frame` | `UI/Problems/Atlas.UI.Problems.Frame.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.KindIcon` | `UI/Problems/Atlas.UI.Problems.KindIcon.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Results.CallDiagram` | `UI/Results/Atlas.UI.Results.CallDiagram.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.Frame` | `UI/Results/Atlas.UI.Results.Frame.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.RenamePreview` | `UI/Results/Atlas.UI.Results.RenamePreview.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Settings.ChoiceBox` | `UI/Settings/Atlas.UI.Settings.ChoiceBox.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Contract` | `UI/Settings/Atlas.UI.Settings.Contract.pas` | Ordner `UI/Settings`; Abschnitte der Module im Optionsdialog (#1455, Entscheidung 3) |
 | `Atlas.UI.Settings.Group` | `UI/Settings/Atlas.UI.Settings.Group.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Keys` | `UI/Settings/Atlas.UI.Settings.Keys.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Marks` | `UI/Settings/Atlas.UI.Settings.Marks.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Page` | `UI/Settings/Atlas.UI.Settings.Page.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.ProjectDialog` | `UI/Settings/Atlas.UI.Settings.ProjectDialog.pas` | Ordner `UI/Settings` |
-| `Atlas.UI.Settings.QueryDialog` | `UI/Settings/Atlas.UI.Settings.QueryDialog.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.QuickToggles` | `UI/Settings/Atlas.UI.Settings.QuickToggles.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Rules` | `UI/Settings/Atlas.UI.Settings.Rules.pas` | Seite Prüfregeln im Projektdialog (Base), bis die Einstellungsseiten über Verträge laufen, #1455 |
 | `Atlas.UI.Settings.ServerPage` | `UI/Settings/Atlas.UI.Settings.ServerPage.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.SnippetsPage` | `UI/Settings/Atlas.UI.Settings.SnippetsPage.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Transfer` | `UI/Settings/Atlas.UI.Settings.Transfer.pas` | Ordner `UI/Settings` |
@@ -490,7 +567,9 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.UI.Status.Window` | `UI/Status/Atlas.UI.Status.Window.pas` | Ordner `UI/Status` |
 | `Atlas.UI.StatusBar.Bar` | `UI/StatusBar/Atlas.UI.StatusBar.Bar.pas` | Ordner `UI/StatusBar` |
 | `Atlas.UI.Strings` | `UI/Atlas.UI.Strings.pas` | Ordner `UI` |
+| `Atlas.UI.Style.Canvas` | `UI/Style/Atlas.UI.Style.Canvas.pas` | Zeichenfläche ohne Flackern für Bereiche und Kacheln, bis #1455 `TAtlasWelcomeCanvas` |
 | `Atlas.UI.Style.Symbol` | `UI/Style/Atlas.UI.Style.Symbol.pas` | Ordner `UI/Style` |
+| `Atlas.UI.SymbolPath.Chain` | `UI/SymbolPath/Atlas.UI.SymbolPath.Chain.pas` | Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455 |
 | `Atlas.UI.Undo.DiffView` | `UI/Undo/Atlas.UI.Undo.DiffView.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Undo.Messages` | `UI/Undo/Atlas.UI.Undo.Messages.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Updates.Consent` | `UI/Updates/Atlas.UI.Updates.Consent.pas` | Ordner `UI/Updates` |
@@ -520,6 +599,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Debug.Visualizers` | `Core/Debug/Atlas.Core.Debug.Visualizers.pas` | Ordner `Core/Debug` |
 | `Atlas.IDE.Debug.AccessViolation` | `IDE/Debug/Atlas.IDE.Debug.AccessViolation.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Breakpoints.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.Composition` | `IDE/Debug/Atlas.IDE.Debug.Composition.pas` | Anmeldung des Moduls `atlas.debugger`, #1455 |
 | `Atlas.IDE.Debug.DialogCompletion` | `IDE/Debug/Atlas.IDE.Debug.DialogCompletion.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DisplayRules` | `IDE/Debug/Atlas.IDE.Debug.DisplayRules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Evaluate` | `IDE/Debug/Atlas.IDE.Debug.Evaluate.pas` | Ordner `IDE/Debug` |
@@ -532,6 +612,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Debug.ExceptionsWindow` | `IDE/Debug/Atlas.IDE.Debug.ExceptionsWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.InlineValues` | `IDE/Debug/Atlas.IDE.Debug.InlineValues.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.OwnCode` | `IDE/Debug/Atlas.IDE.Debug.OwnCode.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.Report` | `IDE/Debug/Atlas.IDE.Debug.Report.pas` | Bericht über die Debug-Sitzung (IAtlasDebugReportSource), #1455 |
 | `Atlas.IDE.Debug.Session` | `IDE/Debug/Atlas.IDE.Debug.Session.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Sources` | `IDE/Debug/Atlas.IDE.Debug.Sources.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.StepFilter` | `IDE/Debug/Atlas.IDE.Debug.StepFilter.pas` | Ordner `IDE/Debug` |
@@ -547,6 +628,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.UI.Debug.ExceptionsFrame` | `UI/Debug/Atlas.UI.Debug.ExceptionsFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.Strings` | `UI/Debug/Atlas.UI.Debug.Strings.pas` | Texte des Moduls (Debugger), Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Viewer` | `UI/Debug/Atlas.UI.Debug.Viewer.pas` | Ordner `UI/Debug` |
 
 ## Atlas.IDE.Tracker
@@ -558,6 +640,8 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Ci.Contract` | `Core/Ci/Atlas.Core.Ci.Contract.pas` | Ordner `Core/Ci` |
 | `Atlas.Core.Ci.Internals.Addresses` | `Core/Ci/Atlas.Core.Ci.Internals.Addresses.pas` | Ordner `Core/Ci` |
 | `Atlas.Core.Ci.Providers.Jenkins` | `Core/Ci/Atlas.Core.Ci.Providers.Jenkins.pas` | Ordner `Core/Ci` |
+| `Atlas.Core.Tracker.Adapters.LocalFiles` | `Core/Tracker/Atlas.Core.Tracker.Adapters.LocalFiles.pas` | Ordner `Core/Tracker`; Platte über System.IOUtils, nur in der Composition erzeugt (Paket 2d) |
+| `Atlas.Core.Tracker.Adapters.Shell` | `Core/Tracker/Atlas.Core.Tracker.Adapters.Shell.pas` | Ordner `Core/Tracker`; ShellExecute, nur in der Composition erzeugt (Paket 2d) |
 | `Atlas.Core.Tracker.Attach` | `Core/Tracker/Atlas.Core.Tracker.Attach.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.BlameLinks` | `Core/Tracker/Atlas.Core.Tracker.BlameLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Board` | `Core/Tracker/Atlas.Core.Tracker.Board.pas` | Ordner `Core/Tracker` |
@@ -567,11 +651,14 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Tracker.CommitHook` | `Core/Tracker/Atlas.Core.Tracker.CommitHook.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Connections` | `Core/Tracker/Atlas.Core.Tracker.Connections.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Contract` | `Core/Tracker/Atlas.Core.Tracker.Contract.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Contract.Files` | `Core/Tracker/Atlas.Core.Tracker.Contract.Files.pas` | Ordner `Core/Tracker`; Verträge für Platte und Shell des Trackers (Paket 2d) |
 | `Atlas.Core.Tracker.Development` | `Core/Tracker/Atlas.Core.Tracker.Development.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Files` | `Core/Tracker/Atlas.Core.Tracker.Files.pas` | Ordner `Core/Tracker`; Anmeldung von Platte und Shell, leere Umsetzung ohne Anmeldung (Paket 2d) |
 | `Atlas.Core.Tracker.Internals.GitHubApi` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubApi.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.IssueCache` | `Core/Tracker/Atlas.Core.Tracker.IssueCache.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Links` | `Core/Tracker/Atlas.Core.Tracker.Links.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Markdown` | `Core/Tracker/Atlas.Core.Tracker.Markdown.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.MyIssues` | `Core/Tracker/Atlas.Core.Tracker.MyIssues.pas` | Ordner `Core/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.Core.Tracker.Naming` | `Core/Tracker/Atlas.Core.Tracker.Naming.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.NewIssue` | `Core/Tracker/Atlas.Core.Tracker.NewIssue.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Notify` | `Core/Tracker/Atlas.Core.Tracker.Notify.pas` | Ordner `Core/Tracker` |
@@ -582,27 +669,48 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Queries` | `Core/Tracker/Atlas.Core.Tracker.Queries.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.QueryTest` | `Core/Tracker/Atlas.Core.Tracker.QueryTest.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.SettingsTables` | `Core/Tracker/Atlas.Core.Tracker.SettingsTables.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Sprint` | `Core/Tracker/Atlas.Core.Tracker.Sprint.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Templates` | `Core/Tracker/Atlas.Core.Tracker.Templates.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.TestResults` | `Core/Tracker/Atlas.Core.Tracker.TestResults.pas` | Ordner `Core/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
 | `Atlas.Core.Tracker.TimeClock` | `Core/Tracker/Atlas.Core.Tracker.TimeClock.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.TimeLog` | `Core/Tracker/Atlas.Core.Tracker.TimeLog.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Workflow` | `Core/Tracker/Atlas.Core.Tracker.Workflow.pas` | Ordner `Core/Tracker` |
+| `Atlas.IDE.Tracker.Access` | `IDE/Tracker/Atlas.IDE.Tracker.Access.pas` | Ordner `IDE/Tracker`, Zugang zu Issue-Tracker und Build-Server aus der Kompositionswurzel, #1455 |
 | `Atlas.IDE.Tracker.Attach` | `IDE/Tracker/Atlas.IDE.Tracker.Attach.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BlameLinks` | `IDE/Tracker/Atlas.IDE.Tracker.BlameLinks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Board` | `IDE/Tracker/Atlas.IDE.Tracker.Board.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BoardWindow` | `IDE/Tracker/Atlas.IDE.Tracker.BoardWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CodeLinks` | `IDE/Tracker/Atlas.IDE.Tracker.CodeLinks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CommentAssist` | `IDE/Tracker/Atlas.IDE.Tracker.CommentAssist.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Composition` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Development` | `IDE/Tracker/Atlas.IDE.Tracker.Development.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.IssuesContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesContext.pas` | Ordner `IDE/Tracker`, gemeinsamer Stand von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.IssuesServices` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesServices.pas` | Ordner `IDE/Tracker`, Dienste von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.IssueCommands` | `IDE/Tracker/Atlas.IDE.Tracker.IssueCommands.pas` | Ordner `IDE/Tracker`, Befehle von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.IssueStart` | `IDE/Tracker/Atlas.IDE.Tracker.IssueStart.pas` | Ordner `IDE/Tracker`, „Beginnen“ und „Beenden“, #1455 |
+| `Atlas.IDE.Tracker.NewIssue` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssue.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.NewIssuePlace` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssuePlace.pas` | Ordner `IDE/Tracker`, Editorseite von „Issue anlegen“, #1455 |
 | `Atlas.IDE.Tracker.Notify` | `IDE/Tracker/Atlas.IDE.Tracker.Notify.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearch.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Parts` | `IDE/Tracker/Atlas.IDE.Tracker.Parts.pas` | Teile, Befehle und Menü des Moduls; die Komposition meldet nur an und baut die Adapter, #1455 |
+| `Atlas.IDE.Tracker.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Settings.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.SprintTile` | `IDE/Tracker/Atlas.IDE.Tracker.SprintTile.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.TestActions` | `IDE/Tracker/Atlas.IDE.Tracker.TestActions.pas` | Aktionen der Kachel „Testergebnisse“ (Test öffnen, erneut ausführen, debuggen, Build im Browser), #1455 |
+| `Atlas.IDE.Tracker.TestResults` | `IDE/Tracker/Atlas.IDE.Tracker.TestResults.pas` | Ordner `IDE/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.Tiles` | `IDE/Tracker/Atlas.IDE.Tracker.Tiles.pas` | Kacheln „Meine Issues“ und „Sprint“ (`IAtlasWelcomeTile`), #1455 |
 | `Atlas.IDE.Tracker.TimeTracking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.WelcomeLink` | `IDE/Tracker/Atlas.IDE.Tracker.WelcomeLink.pas` | Projekte und Meldungen der Willkommensseite über `Atlas.IDE.Contracts.WelcomeTiles`, #1455 |
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.AttachDialog` | `UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.BoardFrame` | `UI/Tracker/Atlas.UI.Tracker.BoardFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.Capture` | `UI/Tracker/Atlas.UI.Tracker.Capture.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.CiLogin` | `UI/Tracker/Atlas.UI.Tracker.CiLogin.pas` | Ordner `UI/Tracker`, Abfrage des Zugangs zu Build-Server und Tracker, #1455 |
 | `Atlas.UI.Tracker.CommentEditor` | `UI/Tracker/Atlas.UI.Tracker.CommentEditor.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.DevelopmentView` | `UI/Tracker/Atlas.UI.Tracker.DevelopmentView.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.DocBox` | `UI/Tracker/Atlas.UI.Tracker.DocBox.pas` | Ordner `UI/Tracker` |
@@ -612,7 +720,22 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.UI.Tracker.IssueTip` | `UI/Tracker/Atlas.UI.Tracker.IssueTip.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.MyIssues` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.NewIssueDialog` | `UI/Tracker/Atlas.UI.Tracker.NewIssueDialog.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.Notify` | `UI/Tracker/Atlas.UI.Tracker.Notify.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.QueryDialog` | `UI/Tracker/Atlas.UI.Tracker.QueryDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsConnections` | `UI/Tracker/Atlas.UI.Tracker.SettingsConnections.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsGeneral` | `UI/Tracker/Atlas.UI.Tracker.SettingsGeneral.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsProjects` | `UI/Tracker/Atlas.UI.Tracker.SettingsProjects.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsQueries` | `UI/Tracker/Atlas.UI.Tracker.SettingsQueries.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsRows` | `UI/Tracker/Atlas.UI.Tracker.SettingsRows.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsSection` | `UI/Tracker/Atlas.UI.Tracker.SettingsSection.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsSnippets` | `UI/Tracker/Atlas.UI.Tracker.SettingsSnippets.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SettingsWorkflow` | `UI/Tracker/Atlas.UI.Tracker.SettingsWorkflow.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.SprintTile` | `UI/Tracker/Atlas.UI.Tracker.SprintTile.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.Strings` | `UI/Tracker/Atlas.UI.Tracker.Strings.pas` | Texte des Moduls (Tracker), Sprache von Base, #1455 |
+| `Atlas.UI.Tracker.TestResults` | `UI/Tracker/Atlas.UI.Tracker.TestResults.pas` | Ordner `UI/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.TileView` | `UI/Tracker/Atlas.UI.Tracker.TileView.pas` | Grundlage der Kachel-Ansichten (`IAtlasWelcomeTileView`), #1455 |
 | `Atlas.UI.Tracker.TimeDialog` | `UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.TimeList` | `UI/Tracker/Atlas.UI.Tracker.TimeList.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.ValueBox` | `UI/Tracker/Atlas.UI.Tracker.ValueBox.pas` | Ordner `UI/Tracker` |
@@ -628,7 +751,6 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Welcome.Help` | `Core/Welcome/Atlas.Core.Welcome.Help.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.HostLayout` | `Core/Welcome/Atlas.Core.Welcome.HostLayout.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.IndexFiles` | `Core/Welcome/Atlas.Core.Welcome.IndexFiles.pas` | Ordner `Core/Welcome` |
-| `Atlas.Core.Welcome.Issues` | `Core/Welcome/Atlas.Core.Welcome.Issues.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Layout` | `Core/Welcome/Atlas.Core.Welcome.Layout.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Layouts` | `Core/Welcome/Atlas.Core.Welcome.Layouts.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Projects` | `Core/Welcome/Atlas.Core.Welcome.Projects.pas` | Ordner `Core/Welcome` |
@@ -639,26 +761,28 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Welcome.Sections` | `Core/Welcome/Atlas.Core.Welcome.Sections.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Setup` | `Core/Welcome/Atlas.Core.Welcome.Setup.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.State` | `Core/Welcome/Atlas.Core.Welcome.State.pas` | Ordner `Core/Welcome` |
-| `Atlas.Core.Welcome.TestResults` | `Core/Welcome/Atlas.Core.Welcome.TestResults.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Trends` | `Core/Welcome/Atlas.Core.Welcome.Trends.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Unsaved` | `Core/Welcome/Atlas.Core.Welcome.Unsaved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.WhatsNew` | `Core/Welcome/Atlas.Core.Welcome.WhatsNew.pas` | Ordner `Core/Welcome` |
 | `Atlas.IDE.Welcome.Commands` | `IDE/Welcome/Atlas.IDE.Welcome.Commands.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Composition` | `IDE/Welcome/Atlas.IDE.Welcome.Composition.pas` | Anmeldung des Moduls `atlas.welcome` (Teil Welcome, Befehle, Menüeinträge), #1455 |
 | `Atlas.IDE.Welcome.Continue` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Discover` | `IDE/Welcome/Atlas.IDE.Welcome.Discover.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Help` | `IDE/Welcome/Atlas.IDE.Welcome.Help.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Issues` | `IDE/Welcome/Atlas.IDE.Welcome.Issues.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Layouts` | `IDE/Welcome/Atlas.IDE.Welcome.Layouts.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.NewIssue` | `IDE/Welcome/Atlas.IDE.Welcome.NewIssue.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.TileProjects` | `IDE/Welcome/Atlas.IDE.Welcome.TileProjects.pas` | Bereich „Projekte“ für Kacheln anderer Module (IAtlasWelcomeProjects), #1455 |
+| `Atlas.IDE.Welcome.Tiles` | `IDE/Welcome/Atlas.IDE.Welcome.Tiles.pas` | Kacheln anderer Module über `Atlas.IDE.Contracts.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455 |
+| `Atlas.IDE.Welcome.Listener` | `IDE/Welcome/Atlas.IDE.Welcome.Listener.pas` | Ende von Projektaufgaben, Testläufen und Befehlsnutzung an die Seite, #1455 |
+| `Atlas.IDE.Welcome.Settings` | `IDE/Welcome/Atlas.IDE.Welcome.Settings.pas` | Anbieter des Abschnitts im Optionsdialog mit seinen Haken, #1456 |
+| `Atlas.IDE.Welcome.Neighbors` | `IDE/Welcome/Atlas.IDE.Welcome.Neighbors.pas` | Schnellaktionen und Einrichtung über die Verträge der Module Build-Pipeline, Tests, Build und Prüfregeln, #1455 |
 | `Atlas.IDE.Welcome.Page` | `IDE/Welcome/Atlas.IDE.Welcome.Page.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Projects` | `IDE/Welcome/Atlas.IDE.Welcome.Projects.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.QuickActions` | `IDE/Welcome/Atlas.IDE.Welcome.QuickActions.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Registry` | `IDE/Welcome/Atlas.IDE.Welcome.Registry.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Search` | `IDE/Welcome/Atlas.IDE.Welcome.Search.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Setup` | `IDE/Welcome/Atlas.IDE.Welcome.Setup.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Sprint` | `IDE/Welcome/Atlas.IDE.Welcome.Sprint.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Startup` | `IDE/Welcome/Atlas.IDE.Welcome.Startup.pas` | Aufbau und Abbau der Seite aus den Diensten von Base, Kacheln anderer Module, #1455 |
 | `Atlas.IDE.Welcome.State` | `IDE/Welcome/Atlas.IDE.Welcome.State.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.TestResults` | `IDE/Welcome/Atlas.IDE.Welcome.TestResults.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Trends` | `IDE/Welcome/Atlas.IDE.Welcome.Trends.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Unsaved` | `IDE/Welcome/Atlas.IDE.Welcome.Unsaved.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.WhatsNew` | `IDE/Welcome/Atlas.IDE.Welcome.WhatsNew.pas` | Ordner `IDE/Welcome` |
@@ -670,17 +794,16 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.UI.Welcome.Frame` | `UI/Welcome/Atlas.UI.Welcome.Frame.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Header` | `UI/Welcome/Atlas.UI.Welcome.Header.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Help` | `UI/Welcome/Atlas.UI.Welcome.Help.pas` | Ordner `UI/Welcome` |
-| `Atlas.UI.Welcome.Issues` | `UI/Welcome/Atlas.UI.Welcome.Issues.pas` | Ordner `UI/Welcome` |
-| `Atlas.UI.Welcome.NewIssue` | `UI/Welcome/Atlas.UI.Welcome.NewIssue.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Projects` | `UI/Welcome/Atlas.UI.Welcome.Projects.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Push` | `UI/Welcome/Atlas.UI.Welcome.Push.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.QuickActions` | `UI/Welcome/Atlas.UI.Welcome.QuickActions.pas` | Ordner `UI/Welcome` |
+| `Atlas.UI.Welcome.SettingsLayouts` | `UI/Welcome/Atlas.UI.Welcome.SettingsLayouts.pas` | Ordner `UI/Welcome` |
+| `Atlas.UI.Welcome.SettingsSection` | `UI/Welcome/Atlas.UI.Welcome.SettingsSection.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Search` | `UI/Welcome/Atlas.UI.Welcome.Search.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Setup` | `UI/Welcome/Atlas.UI.Welcome.Setup.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.SetupPreview` | `UI/Welcome/Atlas.UI.Welcome.SetupPreview.pas` | Ordner `UI/Welcome` |
-| `Atlas.UI.Welcome.Sprint` | `UI/Welcome/Atlas.UI.Welcome.Sprint.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.State` | `UI/Welcome/Atlas.UI.Welcome.State.pas` | Ordner `UI/Welcome` |
-| `Atlas.UI.Welcome.TestResults` | `UI/Welcome/Atlas.UI.Welcome.TestResults.pas` | Ordner `UI/Welcome` |
+| `Atlas.UI.Welcome.Strings` | `UI/Welcome/Atlas.UI.Welcome.Strings.pas` | Texte des Moduls (Willkommensseite), Sprache von Base, #1455 |
 | `Atlas.UI.Welcome.Trends` | `UI/Welcome/Atlas.UI.Welcome.Trends.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Unsaved` | `UI/Welcome/Atlas.UI.Welcome.Unsaved.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.WhatsNew` | `UI/Welcome/Atlas.UI.Welcome.WhatsNew.pas` | Ordner `UI/Welcome` |
@@ -691,9 +814,9 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 |---|---|---|
 | `Atlas.Core.Architecture.Model` | `Core/Architecture/Atlas.Core.Architecture.Model.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Hotspots.Model` | `Core/Hotspots/Atlas.Core.Hotspots.Model.pas` | Ordner `Core/Hotspots` |
-| `Atlas.Core.SymbolPath.Model` | `Core/SymbolPath/Atlas.Core.SymbolPath.Model.pas` | Ordner `Core/SymbolPath` |
 | `Atlas.Core.UnitRelations.InterfaceCost` | `Core/UnitRelations/Atlas.Core.UnitRelations.InterfaceCost.pas` | Ordner `Core/UnitRelations` |
 | `Atlas.Core.UnitRelations.Model` | `Core/UnitRelations/Atlas.Core.UnitRelations.Model.pas` | Ordner `Core/UnitRelations` |
+| `Atlas.IDE.Analysis.Composition` | `IDE/Analysis/Atlas.IDE.Analysis.Composition.pas` | Anmeldung des Moduls `atlas.analysis`, #1455 |
 | `Atlas.IDE.Architecture.Service` | `IDE/Architecture/Atlas.IDE.Architecture.Service.pas` | Ordner `IDE/Architecture` |
 | `Atlas.IDE.Architecture.Window` | `IDE/Architecture/Atlas.IDE.Architecture.Window.pas` | Ordner `IDE/Architecture` |
 | `Atlas.IDE.Hotspots.Service` | `IDE/Hotspots/Atlas.IDE.Hotspots.Service.pas` | Ordner `IDE/Hotspots` |
@@ -701,13 +824,13 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.SymbolPath.Service` | `IDE/SymbolPath/Atlas.IDE.SymbolPath.Service.pas` | Ordner `IDE/SymbolPath` |
 | `Atlas.IDE.UnitRelations.Service` | `IDE/UnitRelations/Atlas.IDE.UnitRelations.Service.pas` | Ordner `IDE/UnitRelations` |
 | `Atlas.IDE.UnitRelations.Window` | `IDE/UnitRelations/Atlas.IDE.UnitRelations.Window.pas` | Ordner `IDE/UnitRelations` |
+| `Atlas.UI.Analysis.Strings` | `UI/Analysis/Atlas.UI.Analysis.Strings.pas` | Texte des Moduls (Analyse), Sprache von Base, #1455 |
 | `Atlas.UI.Architecture.Assignment` | `UI/Architecture/Atlas.UI.Architecture.Assignment.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Frame` | `UI/Architecture/Atlas.UI.Architecture.Frame.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Map` | `UI/Architecture/Atlas.UI.Architecture.Map.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Architecture.Slider` | `UI/Architecture/Atlas.UI.Architecture.Slider.pas` | Ordner `UI/Architecture` |
 | `Atlas.UI.Hotspots.Chart` | `UI/Hotspots/Atlas.UI.Hotspots.Chart.pas` | Ordner `UI/Hotspots` |
 | `Atlas.UI.Hotspots.Frame` | `UI/Hotspots/Atlas.UI.Hotspots.Frame.pas` | Ordner `UI/Hotspots` |
-| `Atlas.UI.SymbolPath.Chain` | `UI/SymbolPath/Atlas.UI.SymbolPath.Chain.pas` | Ordner `UI/SymbolPath` |
 | `Atlas.UI.SymbolPath.Dialog` | `UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas` | Ordner `UI/SymbolPath` |
 | `Atlas.UI.UnitRelations.Frame` | `UI/UnitRelations/Atlas.UI.UnitRelations.Frame.pas` | Ordner `UI/UnitRelations` |
 
@@ -717,8 +840,10 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 |---|---|---|
 | `Atlas.Core.Designer.Components` | `Core/Designer/Atlas.Core.Designer.Components.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Composition` | `IDE/Designer/Atlas.IDE.Designer.Composition.pas` | Anmeldung des Moduls `atlas.designer`, #1455 |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Search` | `UI/Designer/Atlas.UI.Designer.Search.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Strings` | `UI/Designer/Atlas.UI.Designer.Strings.pas` | Texte des Moduls (Formulardesigner), Sprache von Base, #1455 |
 | `Atlas.UI.Designer.TabOverlay` | `UI/Designer/Atlas.UI.Designer.TabOverlay.pas` | Ordner `UI/Designer` |
 
 ## Atlas.IDE.Search
@@ -740,6 +865,7 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Query.Service` | `IDE/Query/Atlas.IDE.Query.Service.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Query.Window` | `IDE/Query/Atlas.IDE.Query.Window.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Search.Commands` | `IDE/Search/Atlas.IDE.Search.Commands.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Composition` | `IDE/Search/Atlas.IDE.Search.Composition.pas` | Anmeldung des Moduls `atlas.search`, #1455 |
 | `Atlas.IDE.Search.FileSearch` | `IDE/Search/Atlas.IDE.Search.FileSearch.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.MessageList` | `IDE/Search/Atlas.IDE.Search.MessageList.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.ReplaceWindow` | `IDE/Search/Atlas.IDE.Search.ReplaceWindow.pas` | Ordner `IDE/Search` |
@@ -747,19 +873,20 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.UI.Query.Frame` | `UI/Query/Atlas.UI.Query.Frame.pas` | Ordner `UI/Query` |
 | `Atlas.UI.Search.Bar` | `UI/Search/Atlas.UI.Search.Bar.pas` | Ordner `UI/Search` |
 | `Atlas.UI.Search.ReplaceFrame` | `UI/Search/Atlas.UI.Search.ReplaceFrame.pas` | Ordner `UI/Search` |
+| `Atlas.UI.Search.Strings` | `UI/Search/Atlas.UI.Search.Strings.pas` | Texte des Moduls (Suche), Sprache von Base, #1455 |
 | `Atlas.UI.UnitSearch.Window` | `UI/UnitSearch/Atlas.UI.UnitSearch.Window.pas` | Ordner `UI/UnitSearch` |
 
 ## Atlas.IDE.Rules
 
 | Unit | Datei | Begründung |
 |---|---|---|
-| `Atlas.Core.Problems.BulkFix` | `Core/Problems/Atlas.Core.Problems.BulkFix.pas` | Vorschlag (Rules-Units nicht nach Ordner trennbar, prüfen) |
-| `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Vorschlag (Rules-Units nicht nach Ordner trennbar, prüfen) |
-| `Atlas.Core.Settings.Baseline` | `Core/Settings/Atlas.Core.Settings.Baseline.pas` | Vorschlag (Rules-Units nicht nach Ordner trennbar, prüfen) |
-| `Atlas.Core.Settings.RuleTable` | `Core/Settings/Atlas.Core.Settings.RuleTable.pas` | Vorschlag (Rules-Units nicht nach Ordner trennbar, prüfen) |
-| `Atlas.UI.Problems.BulkFix` | `UI/Problems/Atlas.UI.Problems.BulkFix.pas` | Vorschlag (Rules-Units nicht nach Ordner trennbar, prüfen) |
-| `Atlas.UI.Problems.Explain` | `UI/Problems/Atlas.UI.Problems.Explain.pas` | Vorschlag (Rules-Units nicht nach Ordner trennbar, prüfen) |
-| `Atlas.UI.Settings.Rules` | `UI/Settings/Atlas.UI.Settings.Rules.pas` | Vorschlag (Rules-Units nicht nach Ordner trennbar, prüfen) |
+| `Atlas.Core.Problems.BulkFix` | `Core/Problems/Atlas.Core.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
+| `Atlas.IDE.Editor.DfmPropertyRules` | `IDE/Editor/Atlas.IDE.Editor.DfmPropertyRules.pas` | Eigenschaftsregeln anwenden (#309), Schalter dfmRules.apply unter ruleChecks, #1455 |
+| `Atlas.IDE.Rules.Baseline` | `IDE/Rules/Atlas.IDE.Rules.Baseline.pas` | Ordner `IDE/Rules`: Baseline aktualisieren, Compilermeldungen in die Baseline, #1455 |
+| `Atlas.IDE.Rules.BulkFix` | `IDE/Rules/Atlas.IDE.Rules.BulkFix.pas` | Ordner `IDE/Rules`: Sammelkorrektur, #1455 |
+| `Atlas.IDE.Rules.Composition` | `IDE/Rules/Atlas.IDE.Rules.Composition.pas` | Anmeldung des Moduls `atlas.rules`, #1455 |
+| `Atlas.UI.Problems.BulkFix` | `UI/Problems/Atlas.UI.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
+| `Atlas.UI.Rules.Strings` | `UI/Rules/Atlas.UI.Rules.Strings.pas` | Texte des Moduls (Prüfregeln), Sprache von Base, #1455 |
 
 ## Atlas.IDE.Tests
 
@@ -773,19 +900,15 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
+| `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
+| `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
 
 ## Atlas.IDE.Build
 
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Build.CompilerSwitches` | `Core/Build/Atlas.Core.Build.CompilerSwitches.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.Gate` | `Core/Build/Atlas.Core.Build.Gate.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.Inbox` | `Core/Build/Atlas.Core.Build.Inbox.pas` | Ordner `Core/Build` |
 | `Atlas.Core.Build.OpenBuild` | `Core/Build/Atlas.Core.Build.OpenBuild.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.ReleaseGuard` | `Core/Build/Atlas.Core.Build.ReleaseGuard.pas` | Ordner `Core/Build` |
-| `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Ordner `Core/Build` |
-| `Atlas.Core.StartProfiles.Store` | `Core/StartProfiles/Atlas.Core.StartProfiles.Store.pas` | Ordner `Core/StartProfiles` |
 | `Atlas.Core.Tasks.Adapters.Process` | `Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Commands` | `Core/Tasks/Atlas.Core.Tasks.Commands.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Definitions` | `Core/Tasks/Atlas.Core.Tasks.Definitions.pas` | Ordner `Core/Tasks` |
@@ -795,36 +918,64 @@ Das Prüfskript `Tools/Check-PackageDependencies.ps1` soll diese Regeln später 
 | `Atlas.Core.Tasks.Reports` | `Core/Tasks/Atlas.Core.Tasks.Reports.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Runs` | `Core/Tasks/Atlas.Core.Tasks.Runs.pas` | Ordner `Core/Tasks` |
 | `Atlas.IDE.Build.CompilerSwitches` | `IDE/Build/Atlas.IDE.Build.CompilerSwitches.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Gate` | `IDE/Build/Atlas.IDE.Build.Gate.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.IdleGate` | `IDE/Build/Atlas.IDE.Build.IdleGate.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Inbox` | `IDE/Build/Atlas.IDE.Build.Inbox.pas` | Ordner `IDE/Build` |
+| `Atlas.IDE.BuildTools.Composition` | `IDE/BuildTools/Atlas.IDE.BuildTools.Composition.pas` | Anmeldung des Moduls `atlas.build`, #1455 |
 | `Atlas.IDE.Build.OpenBuild` | `IDE/Build/Atlas.IDE.Build.OpenBuild.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.ReleaseGuard` | `IDE/Build/Atlas.IDE.Build.ReleaseGuard.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Runner` | `IDE/Build/Atlas.IDE.Build.Runner.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Summary` | `IDE/Build/Atlas.IDE.Build.Summary.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.Build.SwitchesWindow` | `IDE/Build/Atlas.IDE.Build.SwitchesWindow.pas` | Ordner `IDE/Build` |
-| `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.StartProfiles.Service` | `IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas` | Ordner `IDE/StartProfiles` |
 | `Atlas.IDE.Tasks.Output` | `IDE/Tasks/Atlas.IDE.Tasks.Output.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Runner` | `IDE/Tasks/Atlas.IDE.Tasks.Runner.pas` | Ordner `IDE/Tasks` |
+| `Atlas.UI.Build.Strings` | `UI/Build/Atlas.UI.Build.Strings.pas` | Texte des Moduls (Build-Werkzeuge), Sprache von Base, #1455 |
 | `Atlas.UI.Build.SwitchesFrame` | `UI/Build/Atlas.UI.Build.SwitchesFrame.pas` | Ordner `UI/Build` |
 | `Atlas.UI.Tasks.Texts` | `UI/Tasks/Atlas.UI.Tasks.Texts.pas` | Ordner `UI/Tasks` |
+
+## Atlas.IDE.BuildPipeline
+
+| Unit | Datei | Begründung |
+|---|---|---|
+| `Atlas.Core.BuildPipeline.Gate` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.Gate.pas` | Ordner `Core/BuildPipeline` |
+| `Atlas.Core.BuildPipeline.Inbox` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.Inbox.pas` | Ordner `Core/BuildPipeline` |
+| `Atlas.Core.BuildPipeline.ReleaseGuard` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas` | Ordner `Core/BuildPipeline` |
+| `Atlas.IDE.BuildPipeline.Gate` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Gate.pas` | Ordner `IDE/BuildPipeline` |
+| `Atlas.IDE.BuildPipeline.Inbox` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Inbox.pas` | Ordner `IDE/BuildPipeline` |
+| `Atlas.IDE.BuildPipeline.ReleaseGuard` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.ReleaseGuard.pas` | Ordner `IDE/BuildPipeline` |
+| `Atlas.IDE.BuildPipeline.Runner` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Runner.pas` | Ordner `IDE/BuildPipeline` |
+| `Atlas.IDE.BuildPipeline.Summary` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Summary.pas` | Ordner `IDE/BuildPipeline` |
+| `Atlas.IDE.BuildPipeline.Composition` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Composition.pas` | Anmeldung des Moduls `atlas.buildpipeline`, #1455 |
+| `Atlas.UI.BuildPipeline.Strings` | `UI/BuildPipeline/Atlas.UI.BuildPipeline.Strings.pas` | Texte des Moduls (Build-Pipeline), Sprache von Base, #1455 |
 
 ## Atlas.IDE.Bookmarks
 
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Bookmarks.Quick` | `Core/Bookmarks/Atlas.Core.Bookmarks.Quick.pas` | Ordner `Core/Bookmarks` |
+| `Atlas.Core.Bookmarks.SavedPlaces` | `Core/Bookmarks/Atlas.Core.Bookmarks.SavedPlaces.pas` | Notizen und Lesezeichen als gemerkte Stellen (Vertrag SavedPlaces), #1456 |
 | `Atlas.Core.Bookmarks.Store` | `Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas` | Ordner `Core/Bookmarks` |
 | `Atlas.Core.Notes.Store` | `Core/Notes/Atlas.Core.Notes.Store.pas` | Ordner `Core/Notes` |
 | `Atlas.IDE.Bookmarks.Gutter` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Gutter.pas` | Ordner `IDE/Bookmarks` |
+| `Atlas.IDE.Bookmarks.Composition` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.pas` | Anmeldung des Moduls `atlas.bookmarks`, #1455 |
 | `Atlas.IDE.Bookmarks.QuickChord` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickChord.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.QuickColumn` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickColumn.pas` | Ordner `IDE/Bookmarks` |
+| `Atlas.IDE.Bookmarks.SavedPlaces` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.SavedPlaces.pas` | IAtlasSavedPlacesSource für den Reiter „Gemerkt“ der Willkommensseite, #1456 |
 | `Atlas.IDE.Bookmarks.Service` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Service.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.Window` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Window.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Notes.Gutter` | `IDE/Notes/Atlas.IDE.Notes.Gutter.pas` | Ordner `IDE/Notes` |
 | `Atlas.IDE.Notes.Service` | `IDE/Notes/Atlas.IDE.Notes.Service.pas` | Ordner `IDE/Notes` |
 | `Atlas.UI.Bookmarks.Dialog` | `UI/Bookmarks/Atlas.UI.Bookmarks.Dialog.pas` | Ordner `UI/Bookmarks` |
 | `Atlas.UI.Bookmarks.Frame` | `UI/Bookmarks/Atlas.UI.Bookmarks.Frame.pas` | Ordner `UI/Bookmarks` |
+| `Atlas.UI.Bookmarks.Strings` | `UI/Bookmarks/Atlas.UI.Bookmarks.Strings.pas` | Texte des Moduls (Lesezeichen und Notizen), Sprache von Base, #1455 |
 | `Atlas.UI.Notes.Dialog` | `UI/Notes/Atlas.UI.Notes.Dialog.pas` | Ordner `UI/Notes` |
+| `Atlas.UI.Notes.List` | `UI/Notes/Atlas.UI.Notes.List.pas` | Notizen als Einträge der Ergebnisliste, #1455 |
 | `Atlas.UI.Todos.Dialog` | `UI/Todos/Atlas.UI.Todos.Dialog.pas` | Ordner `UI/Todos` |
+
+## Atlas.IDE.Contracts
+
+Verträge zwischen Modulen (Regel 6): nur Interfaces und Records. Eigenes Package `Packages/Atlas.IDE.Contracts` (#1456, requires rtl und vcl), Pfade relativ zu dessen `Source`.
+
+| Unit | Datei | Begründung |
+|---|---|---|
+| `Atlas.IDE.Contracts.BuildTools` | `Contracts/Atlas.IDE.Contracts.BuildTools.pas` | Startprofile und Projektaufgaben für andere Module, #1455 |
+| `Atlas.IDE.Contracts.BuildPipeline` | `Contracts/Atlas.IDE.Contracts.BuildPipeline.pas` | Builds auf Auftrag (Build-Pipeline → Tests, Build-Werkzeuge, Willkommensseite), #1455 |
+| `Atlas.IDE.Contracts.WelcomeTiles` | `Contracts/Atlas.IDE.Contracts.WelcomeTiles.pas` | Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), #1455 |
+| `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, #1455 |
+| `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), #1455 |
+| `Atlas.IDE.Contracts.Rules` | `Contracts/Atlas.IDE.Contracts.Rules.pas` | Baseline aktualisieren (Prüfregeln → Willkommensseite), #1455 |

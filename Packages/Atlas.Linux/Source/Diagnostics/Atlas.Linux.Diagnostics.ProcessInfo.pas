@@ -42,8 +42,12 @@ begin
         Exit;
     end;
     for Line in Lines do
+    begin
       if Line.StartsWith('Threads:') then
+      begin
         Exit(StrToIntDef(Trim(Copy(Line, Length('Threads:') + 1, MaxInt)), -1));
+      end;
+    end;
   finally
     Lines.Free;
   end;
@@ -54,7 +58,9 @@ var
   Time: timespec;
 begin
   if clock_gettime(CLOCK_THREAD_CPUTIME_ID, @Time) <> 0 then
+  begin
     Exit(-1);
+  end;
   Result := Int64(Time.tv_sec) * 1000 + Int64(Time.tv_nsec) div 1000000;
 end;
 
@@ -67,10 +73,16 @@ begin
   Result := nil;
   HostName := '';
   if FpUname(Host) = 0 then
+  begin
     HostName := string(PAnsiChar(@Host.Nodename[0]));
+  end;
   for Name in TArray<string>.Create(GetEnvironmentVariable('USER'), GetEnvironmentVariable('LOGNAME'), HostName) do
+  begin
     if (Name <> '') and (IndexStr(Name, Result) < 0) then
+    begin
       Result := Result + [Name];
+    end;
+  end;
 end;
 
 end.

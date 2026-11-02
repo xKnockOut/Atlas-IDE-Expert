@@ -170,7 +170,9 @@ begin
       TTextPosition.Create(ALine, ACharacter), FConflicts) do
     begin
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Format('%d:%d', [Range.StartPos.Line, Range.StartPos.Character]);
     end;
   finally
@@ -196,7 +198,9 @@ begin
     Linked.Attach(Dispatcher);
     Flag := '';
     if ALocalsOnly then
+    begin
       Flag := ',"atlasLocals":true';
+    end;
     Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspLinkedEditing.Method +
       '","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' +
       IntToStr(ALine) + ',"character":' + IntToStr(ACharacter) + '}' + Flag + '}}') as TJSONObject;
@@ -332,7 +336,9 @@ begin
   begin
     Names := Names + '|' + Conflict.Name;
     if Conflict.Name = 'RowCount' then
+    begin
       RowCount := Conflict.Detail;
+    end;
   end;
   Names := Names + '|';
   Assert.IsTrue(Pos('|Anzahl|', Names) > 0, Names);

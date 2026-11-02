@@ -143,11 +143,15 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].StartPos.Line > APosition.Line then
+    begin
       Break;
+    end;
     if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (ATokens[Index].StartPos.Line = APosition.Line) and
       (ATokens[Index].StartPos.Character <= APosition.Character) and
       (ATokens[Index].EndPos.Character >= APosition.Character) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -176,7 +180,9 @@ function LastPart(const AName: string): string;
 begin
   Result := AName;
   if Pos('.', Result) > 0 then
+  begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
 end;
 
 /// <summary>Erste Zeile von ANode samt Attributen (Geschwister davor) und Doku-Kommentar darüber.</summary>
@@ -191,7 +197,9 @@ begin
   begin
     Index := 0;
     while (Index < Parent.ChildCount) and (Parent[Index] <> ANode) do
+    begin
       Inc(Index);
+    end;
     Dec(Index);
     while (Index >= 0) and (Parent[Index].Kind = TSyntaxKind.Attribute) do
     begin
@@ -200,7 +208,9 @@ begin
     end;
   end;
   while (Result > 0) and StartsText('///', Trim(ALines[Result - 1])) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Steht ANode allein auf seinen Zeilen (davor und dahinter nur Leerraum bzw. Kommentar)?</summary>
@@ -224,7 +234,9 @@ begin
     begin
       Result := not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl]);
       if (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, AName) then
+      begin
         Found := Found + [ANode];
+      end;
     end);
   Result := Found;
 end;
@@ -236,10 +248,14 @@ begin
   Result := '';
   Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
   if Header = nil then
+  begin
     Exit;
+  end;
   Parameters := Header.FindChild(TSyntaxKind.Parameters);
   if Parameters <> nil then
+  begin
     Result := CollapseSpace(Copy(AText, Parameters.StartOffset + 1, Parameters.EndOffset - Parameters.StartOffset));
+  end;
 end;
 
 function IsInsideRoutine(ANode: TSyntaxNode): Boolean;
@@ -250,7 +266,9 @@ begin
   while Parent <> nil do
   begin
     if Parent.Kind = TSyntaxKind.RoutineDecl then
+    begin
       Exit(True);
+    end;
     Parent := Parent.Parent;
   end;
   Result := False;
@@ -279,7 +297,9 @@ begin
   Result.IsOverride := Member.HasDirective('override');
   Result.IsVirtual := Member.IsVirtual and not Result.IsOverride;
   if not NameRangeIn(ALayout.Tree, Member.Node, Member.Name, Result.NameRange) then
+  begin
     Result.NameRange := TTextRange.Create(Member.Node.StartPos, Member.Node.StartPos);
+  end;
 end;
 
 class function TSafeDelete.Find(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
@@ -322,16 +342,26 @@ begin
       end;
       Hit := Layout.MemberAtLine(APosition.Line);
       if Hit < 0 then
+      begin
         Exit;
+      end;
       // Aus einer Feldgruppe der Name unter dem Cursor.
       if (Token >= 0) and Layout.Members[Hit].IsFieldGroup then
+      begin
         for Index in Layout.Find(Tokens[Token].Text) do
+        begin
           if Layout.Members[Index].Node = Layout.Members[Hit].Node then
+          begin
             Hit := Index;
+          end;
+        end;
+      end;
       if Layout.Members[Hit].Kind = TClassMemberKind.Other then
       begin
         if Layout.Members[Hit].Node.Kind <> TSyntaxKind.RoutineHeader then
+        begin
           Exit(Fail(AReason, 'Diese Deklaration kann Atlas nicht sicher löschen.'));
+        end;
       end;
       ATarget := ForMember(Layout, Hit);
       Exit(True);
@@ -346,7 +376,9 @@ begin
     begin
       Result := (ANode.StartPos.Line <= APosition.Line) and (ANode.EndPos.Line >= APosition.Line);
       if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.StartPos.Line = APosition.Line) then
+      begin
         Routine := ANode;
+      end;
     end);
   if Routine <> nil then
   begin
@@ -363,15 +395,19 @@ begin
       ClassName := Copy(Routine.Name, 1, LastDelimiter('.', Routine.Name) - 1);
       Decl := TClassLayout.DeclNamed(ATree, LastPart(ClassName));
       if Decl = nil then
+      begin
         Exit(Fail(AReason, Format('Die Klasse %s steht nicht in dieser Unit.', [ClassName])));
+      end;
       Layout := TClassLayout.Read(ATree, AText, Decl);
       try
         for Index := 0 to High(Layout.Members) do
+        begin
           if Layout.Members[Index].Body = Routine then
           begin
             ATarget := ForMember(Layout, Index);
             Exit(True);
           end;
+        end;
       finally
         Layout.Free;
       end;
@@ -396,7 +432,9 @@ begin
       end;
     end);
   if Found = nil then
+  begin
     Exit;
+  end;
   ATarget.Node := Found;
   case Found.Kind of
     TSyntaxKind.TypeDecl:
@@ -404,7 +442,9 @@ begin
         ATarget.Kind := TSafeDeleteKind.Type_;
         ATarget.Name := Found.Name;
         if Pos('<', ATarget.Name) > 0 then
+        begin
           ATarget.Name := Copy(ATarget.Name, 1, Pos('<', ATarget.Name) - 1);
+        end;
       end;
     TSyntaxKind.ConstDecl:
       begin
@@ -416,15 +456,25 @@ begin
     Names := Found.Name.Split([',']);
     Name := Trim(Names[0]);
     if Token >= 0 then
+    begin
       for Index := 0 to High(Names) do
+      begin
         if SameText(Trim(Names[Index]), Tokens[Token].Text) then
+        begin
           Name := Trim(Names[Index]);
+        end;
+      end;
+    end;
     ATarget.Name := Name;
   end;
   if (Found.Kind = TSyntaxKind.VarDecl) and IsInsideRoutine(Found) then
+  begin
     Exit(Fail(AReason, 'Lokale Variablen löscht die Regel unused-local.'));
+  end;
   if not NameRangeIn(ATree, Found, ATarget.Name, ATarget.NameRange) then
+  begin
     ATarget.NameRange := TTextRange.Create(Found.StartPos, Found.StartPos);
+  end;
   Result := True;
 end;
 
@@ -445,13 +495,17 @@ begin
       begin
         Decl := TClassLayout.DeclNamed(ATree, ATarget.ClassName);
         if Decl = nil then
+        begin
           Exit;
+        end;
         Layout := TClassLayout.Read(ATree, AText, Decl);
         try
           Member := Layout.Members[ATarget.Member];
           Result := [TLineSpan.Create(Member.FirstLine, Member.LastLine)];
           if Member.Body <> nil then
+          begin
             Result := Result + [TLineSpan.Create(Member.BodyFirstLine, Member.BodyLastLine)];
+          end;
         finally
           Layout.Free;
         end;
@@ -466,7 +520,9 @@ begin
           begin
             Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
             if not Result and StartsText(Prefix, ANode.Name) then
+            begin
               Spans := Spans + [TLineSpan.Create(FirstLineOf(ANode, Lines), ANode.EndPos.Line)];
+            end;
           end);
         Result := Spans;
       end;
@@ -476,8 +532,12 @@ begin
       begin
         Parameters := ParameterText(AText, ATarget.Node);
         for Routine in TopRoutines(ATree, ATarget.Name) do
+        begin
           if ParameterText(AText, Routine) = Parameters then
+          begin
             Result := Result + [TLineSpan.Create(FirstLineOf(Routine, Lines), Routine.EndPos.Line)];
+          end;
+        end;
       end;
     TSafeDeleteKind.Unit_: ;
   end;
@@ -496,27 +556,39 @@ begin
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < ADecl.EndOffset) and not Tokens[Index].IsSymbol(':') do
   begin
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+    begin
       Name := Index;
+    end;
     Inc(Index);
   end;
   if Name < 0 then
+  begin
     Exit;
+  end;
   Next := Name + 1;
   while (Next <= High(Tokens)) and IsTrivia(Tokens[Next]) do
+  begin
     Inc(Next);
+  end;
   if (Next <= High(Tokens)) and Tokens[Next].IsSymbol(',') then
   begin
     Inc(Next);
     while (Next <= High(Tokens)) and IsTrivia(Tokens[Next]) do
+    begin
       Inc(Next);
+    end;
     AEdit := TTextEdit.Create(TTextRange.Create(Tokens[Name].StartPos, Tokens[Next].StartPos), '');
     Exit(True);
   end;
   Previous := Name - 1;
   while (Previous >= 0) and IsTrivia(Tokens[Previous]) do
+  begin
     Dec(Previous);
+  end;
   if (Previous < 0) or not Tokens[Previous].IsSymbol(',') then
+  begin
     Exit;
+  end;
   AEdit := TTextEdit.Create(TTextRange.Create(Tokens[Previous].StartPos, Tokens[Name].EndPos), '');
   Result := True;
 end;
@@ -531,8 +603,12 @@ var
   Item: TSyntaxNode;
 begin
   for Item in AList do
+  begin
     if Item = ANode then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -561,24 +637,38 @@ begin
   Nodes := nil;
   DeletedClasses := nil;
   for Target in ATargets do
+  begin
     if Target.Kind = TSafeDeleteKind.Type_ then
+    begin
       DeletedClasses := DeletedClasses + [Target.Name];
+    end;
+  end;
   // Mitglieder je Klasse in einem Schritt (Feldgruppen, leere Abschnitte).
   Classes := nil;
   for Target in ATargets do
+  begin
     if (Target.Member >= 0) and (IndexText(Target.ClassName, Classes) < 0) and
       (IndexText(Target.ClassName, DeletedClasses) < 0) then
+    begin
       Classes := Classes + [Target.ClassName];
+    end;
+  end;
   for ClassName in Classes do
   begin
     Decl := TClassLayout.DeclNamed(ATree, ClassName);
     if Decl = nil then
+    begin
       Continue;
+    end;
     Indexes := nil;
     for Target in ATargets do
+    begin
       if (Target.Member >= 0) and SameText(Target.ClassName, ClassName) and
         not TMemberTransfer.Has(Indexes, Target.Member) then
+      begin
         Indexes := Indexes + [Target.Member];
+      end;
+    end;
     Layout := TClassLayout.Read(ATree, AText, Decl);
     try
       Result := Result + TClassEdits.DeleteMembers(Layout, Indexes, True) +
@@ -596,7 +686,9 @@ begin
         begin
           Names := Target.Node.Name.Split([',']);
           if Length(Names) <= 1 then
-            Nodes := Nodes + [Target.Node]
+          begin
+            Nodes := Nodes + [Target.Node];
+          end
           else
           begin
             // Alle Namen der Gruppe gewählt: der ganze Knoten.
@@ -605,47 +697,71 @@ begin
             begin
               Taken := False;
               for Index := 0 to High(ATargets) do
+              begin
                 if (ATargets[Index].Node = Target.Node) and SameText(ATargets[Index].Name, Trim(Name)) then
+                begin
                   Taken := True;
+                end;
+              end;
               AllGone := AllGone and Taken;
             end;
             if AllGone then
             begin
               if not HasNode(Nodes, Target.Node) then
+              begin
                 Nodes := Nodes + [Target.Node];
+              end;
             end
             else if GroupNameEdit(ATree, Target.Node, Target.Name, Edit) then
+            begin
               Partial := Partial + [Edit];
+            end;
           end;
         end;
       TSafeDeleteKind.LocalRoutine:
         if AloneOnLines(Target.Node, Lines) then
-          Spans := Spans + [TLineSpan.Create(FirstLineOf(Target.Node, Lines), Target.Node.EndPos.Line)]
+        begin
+          Spans := Spans + [TLineSpan.Create(FirstLineOf(Target.Node, Lines), Target.Node.EndPos.Line)];
+        end
         else
+        begin
           Partial := Partial + [TTextEdit.Create(TTextRange.Create(Target.Node.StartPos, Target.Node.EndPos), '')];
+        end;
       TSafeDeleteKind.Routine:
         Spans := Spans + OwnLines(ATree, AText, Target);
       TSafeDeleteKind.Method, TSafeDeleteKind.Field, TSafeDeleteKind.Property_, TSafeDeleteKind.Unit_: ;
     end;
   // Rümpfe gelöschter Klassen.
   for Target in ATargets do
+  begin
     if Target.Kind = TSafeDeleteKind.Type_ then
     begin
       Merged := OwnLines(ATree, AText, Target);
       for Index := 1 to High(Merged) do
+      begin
         Spans := Spans + [Merged[Index]];
+      end;
     end;
+  end;
   // Abschnitte: ganz leer → der ganze Abschnitt, sonst je Knoten.
   Sections := nil;
   for Node in Nodes do
+  begin
     if (Node.Parent <> nil) and not HasNode(Sections, Node.Parent) then
+    begin
       Sections := Sections + [Node.Parent];
+    end;
+  end;
   for Section in Sections do
   begin
     AllGone := True;
     for Child := 0 to Section.ChildCount - 1 do
+    begin
       if IsDeclaration(Section[Child]) and not HasNode(Nodes, Section[Child]) then
+      begin
         AllGone := False;
+      end;
+    end;
     if AllGone and (Section.Kind in [TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection]) and
       AloneOnLines(Section, Lines) then
     begin
@@ -653,49 +769,73 @@ begin
       Continue;
     end;
     for Node in Nodes do
+    begin
       if Node.Parent = Section then
       begin
         if AloneOnLines(Node, Lines) then
-          Spans := Spans + [TLineSpan.Create(FirstLineOf(Node, Lines), Node.EndPos.Line)]
+        begin
+          Spans := Spans + [TLineSpan.Create(FirstLineOf(Node, Lines), Node.EndPos.Line)];
+        end
         else
+        begin
           Partial := Partial + [TTextEdit.Create(TTextRange.Create(Node.StartPos, Node.EndPos), '')];
+        end;
       end;
+    end;
   end;
   // Zeilenbereiche sortieren und zusammenfassen.
   for Index := 1 to High(Spans) do
+  begin
     for Child := Index downto 1 do
+    begin
       if Spans[Child].First < Spans[Child - 1].First then
       begin
         Swap := Spans[Child];
         Spans[Child] := Spans[Child - 1];
         Spans[Child - 1] := Swap;
       end;
+    end;
+  end;
   Merged := nil;
   for Span in Spans do
+  begin
     if (Merged <> nil) and (Span.First <= Merged[High(Merged)].Last + 1) then
     begin
       if Span.Last > Merged[High(Merged)].Last then
+      begin
         Merged[High(Merged)].Last := Span.Last;
+      end;
     end
     else
+    begin
       Merged := Merged + [Span];
+    end;
+  end;
   for Span in Merged do
   begin
     Last := Span.Last;
     // Eine Leerzeile dahinter mitnehmen, wenn davor auch eine steht.
     if (Last + 1 <= High(Lines)) and (Trim(Lines[Last + 1]) = '') and ((Span.First = 0) or
       (Trim(Lines[Span.First - 1]) = '')) then
+    begin
       Inc(Last);
+    end;
     Result := Result + [TTextEdit.Create(TTextRange.Create(Span.First, 0, Last + 1, 0), '')];
   end;
   for Edit in Partial do
   begin
     Taken := False;
     for Span in Merged do
+    begin
       if Span.Contains(Edit.Range.StartPos.Line) then
+      begin
         Taken := True;
+      end;
+    end;
     if not Taken then
+    begin
       Result := Result + [Edit];
+    end;
   end;
 end;
 
@@ -713,17 +853,23 @@ begin
     for Index := 0 to High(ALayout.Members) do
     begin
       if TMemberTransfer.Has(Deleted, Index) then
+      begin
         Continue;
+      end;
       Member := ALayout.Members[Index];
       if not (Member.Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_]) or
         (Member.Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_, TClassMemberKind.Other]) or
         Member.IsVirtual or Member.HasDirective('message') then
+      begin
         Continue;
+      end;
       // Nur, was gelöschte Mitglieder benutzt haben; was schon vorher unbenutzt war, meldet unused-private-member.
       Users := ALayout.UsersOf(Index);
       if (Users = nil) or not TMemberTransfer.HasAll(Users, Deleted) or
         TMemberTransfer.UsedOutside(ALayout, Member.Name) then
+      begin
         Continue;
+      end;
       Deleted := Deleted + [Index];
       Result := Result + [Index];
       Changed := True;

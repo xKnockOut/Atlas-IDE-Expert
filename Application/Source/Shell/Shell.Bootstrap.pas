@@ -53,9 +53,13 @@ var
 begin
   Result := (AFileName <> '') and FileExists(AFileName);
   if Result then
-    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
+  begin
+    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+  end
   else
+  begin
     AText := '';
+  end;
 end;
 
 class function TShellBootstrap.LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>;
@@ -64,12 +68,16 @@ begin
   try
     Result := TGroupProjReader.Load(AGroupFile);
     if ALogger <> nil then
+    begin
       ALogger.Info(Format('Projektgruppe %s: %d Projekte', [AGroupFile, Length(Result)]));
+    end;
   except
     on E: Exception do
     begin
       if ALogger <> nil then
+      begin
         ALogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [AGroupFile, E.Message]));
+      end;
       Result := nil;
     end;
   end;
@@ -88,7 +96,9 @@ begin
       Groups := nil;
   end;
   if Length(Groups) = 1 then
+  begin
     Result := LoadGroup(Groups[0], ALogger);
+  end;
 end;
 
 class function TShellBootstrap.GlobalSettingsFile: string;
@@ -112,7 +122,9 @@ var
 begin
   Result := '';
   if (AFileName = '') or not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   try
     Result := TFileEncoding.LoadFromFile(AFileName, FileFormat);
   except
@@ -120,7 +132,9 @@ begin
     on E: Exception do
     begin
       if ALogger = nil then
+      begin
         raise;
+      end;
       ALogger.Warning('Globale Einstellungen nicht lesbar: ' + E.Message);
     end;
   end;
@@ -132,7 +146,9 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   if not ReadSourceText(ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName), Text) then
+  begin
     Exit(TServerSettings.Default);
+  end;
   Result := TConfigurationParser.Parse(TConfigurationScopes.Filter(Text, TConfigurationScope.Project), Issues);
 end;
 

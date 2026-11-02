@@ -128,8 +128,12 @@ var
   Token: TPascalToken;
 begin
   for Token in AContext.Tree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Marker') then
+    begin
       AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), 'Marker gefunden');
+    end;
+  end;
 end;
 
 function Swap(const AText, AOld, ANew: string): string;
@@ -519,7 +523,9 @@ begin
     [Finding('a', 5)])]), [Source('U.pas', TwoRoutines, [Finding('w1035', 5)]), Source('Alt.pas', TwoRoutines,
     [Finding('h2164', 9)])]).Json);
   for Mark in Old.Classify('U.pas', TwoRoutines, TFindingScopes.FromText(TwoRoutines), [Finding('a', 5)]) do
+  begin
     Assert.IsTrue(Mark.State <> TBaselineState.Absent, 'Compilermeldung ist für die Regeln nicht verschwunden');
+  end;
   Assert.AreEqual<NativeInt>(0, Length(Old.AbsentOf('Alt.pas')));
   // Alt.pas gibt es nicht mehr: dessen Compilermeldung fällt heraus, die von U.pas bleibt.
   Outcome := TRuleBaseline.Update(Old, [Source('U.pas', TwoRoutines, [Finding('a', 5)])],
@@ -585,7 +591,9 @@ begin
   // Die Engine unterdrückt vor der Baseline: Der Kommentar hat gewirkt und wird nicht gemeldet.
   Assert.AreEqual<NativeInt>(1, Length(Findings));
   for Item in Findings do
+  begin
     Assert.AreNotEqual(UnusedSuppressionRuleId, Item.RuleId);
+  end;
   // Der übrige Treffer steht in der Baseline (Zeile 6 hat ihren Fingerabdruck behalten).
   Findings := Baseline.Filter('U.pas', Text, Findings);
   Assert.AreEqual<NativeInt>(0, Length(Findings));

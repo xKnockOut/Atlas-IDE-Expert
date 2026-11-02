@@ -71,7 +71,9 @@ var
 begin
   Store := TDocumentStore.Create;
   if AKnownDocument then
+  begin
     Store.Open(TDocumentUris.FromPath(FileName), 'delphi', 1, UnitText);
+  end;
   Switches := TLspCompilerSwitches.Create(Store, ProjectContext);
   Dispatcher := TJsonRpcDispatcher.Create;
   try
@@ -86,7 +88,9 @@ begin
     try
       Value := Response.GetValue('result');
       if Value = nil then
+      begin
         Value := Response.GetValue('error');
+      end;
       Result := Value.ToJSON;
     finally
       Response.Free;

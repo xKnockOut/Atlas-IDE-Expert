@@ -95,17 +95,21 @@ begin
   repeat
     Index := PosEx(AMarker, AText, Index + 1);
     if Index = 0 then
+    begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    end;
     Inc(Found);
   until Found = AOccurrence;
   Line := 0;
   LineStart := 1;
   for Found := 1 to Index - 1 do
+  begin
     if AText[Found] = #10 then
     begin
       Inc(Line);
       LineStart := Found + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -115,8 +119,12 @@ var
 begin
   Result := nil;
   for Item in AResult.Files do
+  begin
     if SameText(Item.FileName, AFileName) then
+    begin
       Exit(Item.Edits);
+    end;
+  end;
 end;
 
 /// <summary>Führt einen Alias an AMarker ein und liefert den neuen Text von AText.</summary>
@@ -130,7 +138,9 @@ begin
   try
     if TTypeAlias.Introduce(TTypeAliasSource.Create('Kunden.pas', AText, Tree), nil, PositionOf(AText, AMarker, 1),
       AName, AScope, TTypeAliasLookup.FromTree, AResult, AReason) then
+    begin
       Result := TChangeSignature.ApplyEdits(AText, EditsOf(AResult, 'Kunden.pas'));
+    end;
   finally
     Tree.Free;
   end;

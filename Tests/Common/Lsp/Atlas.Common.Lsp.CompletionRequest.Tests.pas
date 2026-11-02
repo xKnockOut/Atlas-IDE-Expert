@@ -126,12 +126,14 @@ begin
     Assert.AreEqual('file:///C:/P/U.pas', FromDocument.Uri);
     Assert.AreEqual(Text, FromDocument.Text);
     for Line := 0 to 3 do
+    begin
       for Character := 0 to Length(Document.LineText(Line)) do
       begin
         Position := TTextPosition.Create(Line, Character);
         Assert.AreEqual(Document.OffsetAt(Position), FromText.OffsetAt(Position), Format('%d:%d', [Line, Character]));
         Assert.AreEqual(FromText.OffsetAt(Position), FromDocument.OffsetAt(Position));
       end;
+    end;
     Assert.AreEqual(FromText.LineBefore, FromDocument.LineBefore);
   finally
     FromDocument.Free;

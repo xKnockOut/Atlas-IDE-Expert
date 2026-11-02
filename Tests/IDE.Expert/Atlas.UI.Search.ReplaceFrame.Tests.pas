@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasSearchReplaceFrameTests = class
   private
     FLanguage: TAtlasLanguage;

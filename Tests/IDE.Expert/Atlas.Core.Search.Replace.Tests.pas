@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasSearchReplaceTests = class
   public
     /// <summary>Einmalige Puffer der Regex-Engine (Fehlertexte, Gruppen) vor dem Leckmonitor anlegen.</summary>

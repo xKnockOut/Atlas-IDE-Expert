@@ -82,7 +82,9 @@ begin
   Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Double>('red', Red) and
     TJSONObject(AValue).TryGetValue<Double>('green', Green) and TJSONObject(AValue).TryGetValue<Double>('blue', Blue);
   if Result then
+  begin
     AColor := TRgbColor.Create(Channel(Red), Channel(Green), Channel(Blue));
+  end;
 end;
 
 function TLspColors.HandleColors(const AParams: TJSONValue;
@@ -95,9 +97,13 @@ var
   Item: TJSONObject;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + ColorMethod);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONArray.Create);
+  end;
   Matches := TSourceColors.Find(Document.Text, FSystemColors);
   ACancellation.ThrowIfCancellationRequested;
   Result := TJSONArray.Create;
@@ -126,15 +132,23 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('color', ColorValue) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) and TryReadColor(ColorValue, Color)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri", "color" und "range" fehlen in ' + PresentationMethod);
+  end;
   Range := TLspPositions.ReadRange(RangeValue);
   // Ohne Fundstelle an dieser Stelle gilt Hex als Ausgangsformat.
   SourceFormat := TColorFormat.Hex;
   if FStore.TryGet(Uri, Document) then
+  begin
     for Match in TSourceColors.Find(Document.Text, FSystemColors) do
+    begin
       if (Match.Range.StartPos = Range.StartPos) and (Match.Range.EndPos = Range.EndPos) then
+      begin
         SourceFormat := Match.Format;
+      end;
+    end;
+  end;
   ACancellation.ThrowIfCancellationRequested;
   Result := TJSONArray.Create;
   for Presentation in TSourceColors.Presentations(Color, SourceFormat) do

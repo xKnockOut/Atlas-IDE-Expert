@@ -55,16 +55,28 @@ begin
   for Token in TPascalLexer.Tokenize(AText) do
   begin
     if Token.Kind <> TPascalTokenKind.Identifier then
+    begin
       Continue;
+    end;
     if MatchText(Token.Text, VclNames) then
+    begin
       Exit(True);
+    end;
     TypeName := ATypes.DeclaredType(Token.Text, APosition);
     if TypeName = '' then
+    begin
       for Symbol in ASource.UnitIndex.Symbols do
+      begin
         if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Name, Token.Text) then
+        begin
           TypeName := Symbol.TypeName;
+        end;
+      end;
+    end;
     if MatchText(TypeName, VclTypes) or (StartsText('TCustom', TypeName) and EndsText('Control', TypeName)) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -76,14 +88,20 @@ var
   Stop, Index: Integer;
 begin
   if ASource.RoutineAt = nil then
+  begin
     Exit(Fail('/' + AName + ' gilt nur im Rumpf einer Routine', AReason));
+  end;
   Stop := BlockEnd(ASource, ASource.Line);
   // Nur Leerzeilen bis zum Blockende zählen nicht als Anweisungen.
   Index := ASource.Line + 1;
   while (Stop > 0) and (Index < Stop) and (Trim(ASource.Lines[Index]) = '') do
+  begin
     Inc(Index);
+  end;
   if (Stop < 0) or (Index >= Stop) then
+  begin
     Exit(Fail(NoStatementsReason(ASource, AName), AReason));
+  end;
   AFirst := ASource.Line + 1;
   ALast := Stop - 1;
   Result := True;
@@ -122,16 +140,26 @@ begin
       Entry := Pending.Pop;
       Node := Entry.Node;
       if Node.StartPos.Line >= ABefore then
+      begin
         Continue;
+      end;
       if ((Node.Kind = TSyntaxKind.VarDecl) and Entry.InSection) or (Node.Kind = TSyntaxKind.InlineVar) then
+      begin
         if (Node.Name <> '') and not MatchText(Node.Name, Result) then
+        begin
           Result := Result + [Node.Name];
+        end;
+      end;
       // Anonyme Methoden und lokale Routinen haben eigene Variablen.
       if (Node <> ARoutine) and (Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
+      begin
         Continue;
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(LocalNamesEntry(Node[Index],
           Entry.InSection or ((Node = ARoutine) and (Node[Index].Kind = TSyntaxKind.VarSection))));
+      end;
     end;
   finally
     Pending.Free;
@@ -151,12 +179,16 @@ begin
       Prev := Index - 1;
       if (ATokens[Prev].Kind = TPascalTokenKind.Identifier) and ((Prev = 0) or ATokens[Prev - 1].IsSymbol(';') or
         (ATokens[Prev - 1].Kind = TPascalTokenKind.Keyword)) and not MatchText(ATokens[Prev].Text, Result) then
+      begin
         Result := Result + [ATokens[Prev].Text];
+      end;
     end;
     if MatchText(ATokens[Index].Text, ['Inc', 'Dec']) and (Index + 2 <= High(ATokens)) and
       ATokens[Index + 1].IsSymbol('(') and (ATokens[Index + 2].Kind = TPascalTokenKind.Identifier) and
       not MatchText(ATokens[Index + 2].Text, Result) then
+    begin
       Result := Result + [ATokens[Index + 2].Text];
+    end;
   end;
 end;
 
@@ -166,7 +198,9 @@ var
 begin
   Result := '';
   for Line := AFirst to ALast do
+  begin
     Result := Result + ASource.Lines[Line] + #10;
+  end;
 end;
 
 /// <summary>Lokale Variablen, die in den Zeilen AFirst..ALast (dem Task) geschrieben und nach ALast in der Routine
@@ -182,19 +216,25 @@ begin
   Locals := LocalNames(ARoutine, ASource.Line);
   Written := WrittenNames(TPascalLexer.Tokenize(LinesText(ASource, AFirst, ALast)));
   if ALast + 1 > ARoutine.EndPos.Line then
+  begin
     Exit;
+  end;
   After := TPascalLexer.Tokenize(LinesText(ASource, ALast + 1, ARoutine.EndPos.Line));
   for Name in Written do
   begin
     if not MatchText(Name, Locals) then
+    begin
       Continue;
+    end;
     for Index := 0 to High(After) do
+    begin
       if (After[Index].Kind = TPascalTokenKind.Identifier) and SameText(After[Index].Text, Name) and
         ((Index = High(After)) or not After[Index + 1].IsSymbol(':=')) then
       begin
         Result := Result + [Name];
         Break;
       end;
+    end;
   end;
 end;
 
@@ -212,16 +252,22 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if not FollowingLines(Source, 'task', First, Last, AReason) then
+    begin
       Exit(False);
+    end;
     // VCL-Zeilen am Ende kommen in TThread.Queue.
     Types := TDeclaredTypes.Create(Source.Tree, Source.Text);
     try
       Split := Last + 1;
       while (Split > First) and ((Trim(Source.Lines[Split - 1]) = '') or
         TouchesVcl(Source, Types, Source.Lines[Split - 1], TTextPosition.Create(Split - 1, 0))) do
+      begin
         Dec(Split);
+      end;
       while (Split <= Last) and (Trim(Source.Lines[Split]) = '') do
+      begin
         Inc(Split);
+      end;
     finally
       Types.Free;
     end;
@@ -229,19 +275,31 @@ begin
     LB := Source.LineBreak;
     Text := Indent + 'TTask.Run(' + LB + Indent + '  procedure' + LB + Indent + '  begin' + LB;
     for Line := First to Split - 1 do
+    begin
       if Trim(Source.Lines[Line]) = '' then
-        Text := Text + LB
+      begin
+        Text := Text + LB;
+      end
       else
+      begin
         Text := Text + '    ' + Source.Lines[Line] + LB;
+      end;
+    end;
     if Split <= Last then
     begin
       Text := Text + Indent + '    TThread.Queue(nil,' + LB + Indent + '      procedure' + LB + Indent +
         '      begin' + LB;
       for Line := Split to Last do
+      begin
         if Trim(Source.Lines[Line]) = '' then
-          Text := Text + LB
+        begin
+          Text := Text + LB;
+        end
         else
+        begin
           Text := Text + '        ' + Source.Lines[Line] + LB;
+        end;
+      end;
       Text := Text + Indent + '      end);' + LB;
     end;
     Text := Text + Indent + '  end);' + LB;
@@ -250,15 +308,21 @@ begin
     // Hinweise: welche Zeilen in den Hauptthread wandern und welche Variablen danach gelesen werden.
     Notes := nil;
     if Split = Last then
+    begin
       Notes := Notes + [Format('Zeile %d fasst VCL-Objekte an und läuft jetzt über TThread.Queue im Hauptthread',
-        [Split + 1])]
+        [Split + 1])];
+    end
     else if Split < Last then
+    begin
       Notes := Notes + [Format('Zeilen %d bis %d fassen VCL-Objekte an und laufen jetzt über TThread.Queue im ' +
         'Hauptthread', [Split + 1, Last + 1])];
+    end;
     ReadAfter := ReadAfterTask(Source, Source.RoutineAt, First, Last);
     if Length(ReadAfter) > 0 then
+    begin
       Notes := Notes + [Format('%s wird im Task geschrieben und danach gelesen; der Task läuft nebenläufig, ' +
         'der Wert steht dort nicht sicher fest', [string.Join(', ', ReadAfter)])];
+    end;
     Host := AContext.Host;
     Uri := AContext.Uri;
     if (Host <> nil) and (Length(Notes) > 0) then
@@ -290,10 +354,14 @@ begin
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
       if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
       if (ACandidate.Kind = TSyntaxKind.ForStatement) and (ACandidate.StartPos.Line = Line) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end);
 end;
 
@@ -303,11 +371,15 @@ var
   Line: Integer;
 begin
   if ANode.StartPos.Line = ANode.EndPos.Line then
+  begin
     Exit(Copy(ALines[ANode.StartPos.Line], ANode.StartPos.Character + 1,
       ANode.EndPos.Character - ANode.StartPos.Character));
+  end;
   Result := Copy(ALines[ANode.StartPos.Line], ANode.StartPos.Character + 1, MaxInt);
   for Line := ANode.StartPos.Line + 1 to ANode.EndPos.Line - 1 do
+  begin
     Result := Result + ' ' + Trim(ALines[Line]);
+  end;
   Result := Result + ' ' + Trim(Copy(ALines[ANode.EndPos.Line], 1, ANode.EndPos.Character));
 end;
 
@@ -324,7 +396,9 @@ begin
   for Line := AFirst to ALast do
   begin
     if TouchesVcl(ASource, ATypes, ASource.Lines[Line], TTextPosition.Create(Line, 0)) then
+    begin
       Exit(Format('Zeile %d fasst VCL-Objekte an', [Line + 1]));
+    end;
     Text := Text + ASource.Lines[Line] + #10;
   end;
   Tokens := TPascalLexer.Tokenize(Text);
@@ -332,12 +406,18 @@ begin
   for Index := 0 to High(Tokens) do
   begin
     if Tokens[Index].Kind = TPascalTokenKind.Comment then
+    begin
       Continue;
+    end;
     if MatchText(Tokens[Index].Text, ['Break', 'Exit']) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
+    begin
       Exit(Tokens[Index].Text + ' ist in TParallel.For nicht möglich');
+    end;
     // Inline-Variablen im Rumpf sind lokal.
     if Tokens[Index].IsKeyword('var') and (Index < High(Tokens)) then
+    begin
       Locals := Locals + [Tokens[Index + 1].Text];
+    end;
     if Tokens[Index].IsSymbol(':=') and (Index > 0) then
     begin
       Prev := Index - 1;
@@ -345,13 +425,17 @@ begin
       if (Tokens[Prev].Kind = TPascalTokenKind.Identifier) and ((Prev = 0) or Tokens[Prev - 1].IsSymbol(';') or
         (Tokens[Prev - 1].Kind = TPascalTokenKind.Keyword)) and (IndexText(Tokens[Prev].Text, Locals) < 0) and
         not SameText(Tokens[Prev].Text, 'Result') then
+      begin
         Exit(Format('Der Rumpf schreibt die äußere Variable %s; TInterlocked verwenden', [Tokens[Prev].Text]));
+      end;
     end;
     if MatchText(Tokens[Index].Text, ['Inc', 'Dec']) and (Index + 2 <= High(Tokens)) and
       Tokens[Index + 1].IsSymbol('(') and (Tokens[Index + 2].Kind = TPascalTokenKind.Identifier) and
       ((Index + 3 > High(Tokens)) or not Tokens[Index + 3].IsSymbol('.')) and
       (IndexText(Tokens[Index + 2].Text, Locals) < 0) then
+    begin
       Exit(Format('Der Rumpf schreibt die äußere Variable %s; TInterlocked verwenden', [Tokens[Index + 2].Text]));
+    end;
   end;
   Result := '';
 end;
@@ -369,19 +453,31 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if Source.RoutineAt = nil then
+    begin
       Exit(Fail('/parallel gilt nur im Rumpf einer Routine', AReason));
+    end;
     ForNode := FindFor(Source.Tree.Root, Source.Line + 1);
     if (ForNode = nil) or (ForNode.ChildCount < 3) then
+    begin
       Exit(Fail('Unter /parallel steht keine Schleife for I := A to B do', AReason));
+    end;
     Header := Source.Lines[ForNode.StartPos.Line];
     if ContainsText(Header, ' downto ') then
+    begin
       Exit(Fail('TParallel.For zählt nur aufwärts (kein downto)', AReason));
+    end;
     Expressions := nil;
     for Index := 0 to ForNode.ChildCount - 2 do
+    begin
       if ForNode[Index].Kind <> TSyntaxKind.TypeReference then
+      begin
         Expressions := Expressions + [ForNode[Index]];
+      end;
+    end;
     if Length(Expressions) <> 2 then
+    begin
       Exit(Fail('Unter /parallel steht keine Schleife for I := A to B do', AReason));
+    end;
     Body := ForNode[ForNode.ChildCount - 1];
     if Body.Kind = TSyntaxKind.Block then
     begin
@@ -394,7 +490,9 @@ begin
       Last := Body.EndPos.Line;
     end;
     if (First > Last) or (First = ForNode.StartPos.Line) then
+    begin
       Exit(Fail('Rumpf der Schleife bitte auf eigene Zeilen setzen', AReason));
+    end;
     Types := TDeclaredTypes.Create(Source.Tree, Source.Text);
     try
       Problem := ParallelProblem(Source, Types, ForNode.Name, First, Last);
@@ -402,26 +500,38 @@ begin
       Types.Free;
     end;
     if Problem <> '' then
+    begin
       Exit(Fail(Problem, AReason));
+    end;
     // Rumpf neu einrücken: gemeinsame Einrückung weg, dann unter "begin" der anonymen Methode.
     Common := MaxInt;
     for Line := First to Last do
+    begin
       if Trim(Source.Lines[Line]) <> '' then
       begin
         Spaces := Length(Source.Lines[Line]) - Length(TrimLeft(Source.Lines[Line]));
         if Spaces < Common then
+        begin
           Common := Spaces;
+        end;
       end;
+    end;
     Indent := Source.Indent(ForNode.StartPos.Line);
     LB := Source.LineBreak;
     Text := Indent + Format('TParallel.For(%s, %s,', [NodeText(Source.Lines, Expressions[0]),
       NodeText(Source.Lines, Expressions[1])]) + LB + Indent + Format('  procedure(%s: Integer)',
       [ForNode.Name]) + LB + Indent + '  begin' + LB;
     for Line := First to Last do
+    begin
       if Trim(Source.Lines[Line]) = '' then
-        Text := Text + LB
+      begin
+        Text := Text + LB;
+      end
       else
+      begin
         Text := Text + Indent + '    ' + Copy(Source.Lines[Line], Common + 1, MaxInt) + LB;
+      end;
+    end;
     Text := Text + Indent + '  end);' + LB;
     AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, ForNode.EndPos.Line + 1, 0), Text)];
     AddUses(Source, AContext, Source.Line, ['System.Threading'], AEdits);
@@ -441,14 +551,20 @@ var
 begin
   Result := 0;
   for Edit in AEdits do
+  begin
     if Edit.Range.EndPos.Line <= ALine then
     begin
       Added := 0;
       for Index := 1 to Length(Edit.NewText) do
+      begin
         if Edit.NewText[Index] = #10 then
+        begin
           Inc(Added);
+        end;
+      end;
       Inc(Result, Added - (Edit.Range.EndPos.Line - Edit.Range.StartPos.Line));
     end;
+  end;
 end;
 
 function ExecuteFuture(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -462,24 +578,34 @@ var
 begin
   AEdits := nil;
   if not SplitDeclaration(AContext.Arguments, ':', Name, TypeName) then
+  begin
     Exit(Fail('Erwartet wird /future Name: Typ', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     UseInline := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion);
     if UseInline then
-      Head := Format('var %s := TTask.Future<%s>(', [Name, TypeName])
+    begin
+      Head := Format('var %s := TTask.Future<%s>(', [Name, TypeName]);
+    end
     else
+    begin
       Head := Format('%s := TTask.Future<%s>(', [Name, TypeName]);
+    end;
     // Zeile hinter dem Future, an der Name.Value gebraucht wird; dorthin kommt der Cursor.
     Stop := BlockEnd(Source, Source.Line);
     Result := Wrap(Source, 'future', [Head, Format('  function: %s', [TypeName]), '  begin'], ['  end);', ''], '    ',
       AEdits, AReason);
     if not Result then
+    begin
       Exit;
+    end;
     // Ohne Inline-Variablen (vor Delphi 10.3) in den var-Abschnitt.
     if not UseInline then
+    begin
       AEdits := AEdits + [AddLocal(Source, Source.RoutineAt, TSyntaxKind.VarSection, 'var',
         Format('%s: IFuture<%s>;', [Name, TypeName]))];
+    end;
     AddUses(Source, AContext, Source.Line, ['System.Threading'], AEdits);
     Host := AContext.Host;
     if (Host <> nil) and (Stop > 0) then
@@ -506,8 +632,12 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -521,14 +651,20 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if Source.RoutineAt = nil then
+    begin
       Exit(Fail('/atomic gilt nur im Rumpf einer Routine', AReason));
+    end;
     if Source.Line + 1 > High(Source.Lines) then
+    begin
       Exit(Fail('Unter /atomic steht keine Anweisung', AReason));
+    end;
     Line := Source.Lines[Source.Line + 1];
     Indent := Copy(Line, 1, Length(Line) - Length(TrimLeft(Line)));
     Statement := Trim(Line);
     if not EndsStr(';', Statement) then
+    begin
       Exit(Fail('Unter /atomic steht keine einzeilige Anweisung', AReason));
+    end;
     Statement := Trim(Copy(Statement, 1, Length(Statement) - 1));
     Call := '';
     if (StartsText('Inc(', Statement) or StartsText('Dec(', Statement)) and EndsStr(')', Statement) then
@@ -540,7 +676,9 @@ begin
         Target := Trim(Copy(Inner, 1, Comma - 1));
         Amount := Trim(Copy(Inner, Comma + 1, MaxInt));
         if StartsText('Dec', Statement) then
+        begin
           Amount := '-(' + Amount + ')';
+        end;
         Call := Format('TInterlocked.Add(%s, %s);', [Target, Amount]);
       end
       else
@@ -558,15 +696,23 @@ begin
         Target := Trim(Copy(Statement, 1, Assign - 1));
         Inner := Trim(Copy(Statement, Assign + 2, MaxInt));
         if StartsText(Target + ' + ', Inner) then
-          Call := Format('TInterlocked.Add(%s, %s);', [Target, Trim(Copy(Inner, Length(Target) + 4, MaxInt))])
+        begin
+          Call := Format('TInterlocked.Add(%s, %s);', [Target, Trim(Copy(Inner, Length(Target) + 4, MaxInt))]);
+        end
         else if StartsText(Target + ' - ', Inner) then
+        begin
           Call := Format('TInterlocked.Add(%s, -(%s));', [Target, Trim(Copy(Inner, Length(Target) + 4, MaxInt))]);
+        end;
       end;
     end;
     if Call = '' then
+    begin
       Exit(Fail('Erwartet wird darunter Inc(F), Dec(F) oder F := F + N', AReason));
+    end;
     if not IsField(Source, Target) then
+    begin
       Exit(Fail(Format('%s ist kein Feld; /atomic gilt für Felder', [Target]), AReason));
+    end;
     AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 2, 0), Indent + Call +
       Source.LineBreak)];
     AddUses(Source, AContext, Source.Line, ['System.SyncObjs'], AEdits);

@@ -118,10 +118,16 @@ var
 begin
   Result := Length(A) = Length(B);
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to High(A) do
+  begin
     if not SameText(A[Index], B[Index]) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function Target(const AFileName: string; const ARange, ASelectionRange: TTextRange): TDefinitionTarget;
@@ -193,6 +199,7 @@ begin
   // Über den Resolver: bei gepinntem Baum ohne neue Auswertung (Code-Review P-01).
   OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
   for Symbol in OwnerUnit.Symbols do
+  begin
     if SameText(OwnerUnit.SymbolFile(Symbol), AFileName) and Within(APosition, Symbol.SelectionRange) then
     begin
       Resolved.Kind := TResolvedKind.Symbol;
@@ -205,9 +212,12 @@ begin
       Resolved.ParamTypes := Symbol.ParamTypes;
       Break;
     end;
+  end;
   // Sonst die schon aufgelöste Verwendung des Aufrufers (TargetsOf, #1119).
   if Resolved.Kind = TResolvedKind.None then
+  begin
     Resolved := AResolved;
+  end;
   case Resolved.Kind of
     TResolvedKind.None:
       Exit;
@@ -228,47 +238,65 @@ begin
 
   Result := [Target(Resolved.FileName, Resolved.Range, Resolved.SelectionRange)];
   if not (Resolved.SymbolKind in RoutineKinds) then
+  begin
     Exit;
+  end;
   // Deklaration und Implementierung derselben Routine: erste und letzte Fundstelle derselben Variante. Steht der
   // Cursor auf einer Routine dieser Datei (Deklaration oder Implementierung), gilt deren Variante.
   Params := Resolved.ParamTypes;
   Here := AResolver.ExtractedUnit(ATree, AFileName);
   for Symbol in Here.Symbols do
+  begin
     if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
       Within(APosition, Symbol.SelectionRange) then
     begin
       Params := Symbol.ParamTypes;
       Break;
     end;
+  end;
   if SameText(Resolved.FileName, AFileName) then
-    OwnerUnit := Here
+  begin
+    OwnerUnit := Here;
+  end
   else if not TIndexFiles.UnitOf(AIndex, Resolved.FileName, OwnerUnit) then
+  begin
     Exit;
+  end;
   Same := nil;
   Variant := nil;
   for Symbol in OwnerUnit.Symbols do
+  begin
     if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Resolved.Container) and
       SameText(Symbol.Name, Resolved.Name) then
     begin
       Same := Same + [Symbol];
       if SameParams(Symbol.ParamTypes, Params) then
+      begin
         Variant := Variant + [Symbol];
+      end;
     end;
+  end;
   // Ohne zweite Fundstelle dieser Variante: Die Implementierung darf ihre Parameter weglassen, aber nur ohne
   // Überladungen; dann wie bisher das einzige Paar.
   if Length(Variant) < 2 then
   begin
     if Length(Same) <> 2 then
+    begin
       Exit;
+    end;
     Variant := Same;
   end;
   First := Variant[0];
   Last := Variant[High(Variant)];
   // Mit Include-Dateien (#500) kann jede Fundstelle in einer anderen Datei stehen.
   if ADeclaration or (SameText(OwnerUnit.SymbolFile(Last), AFileName) and Within(APosition, Last.SelectionRange)) then
-    Result := [Target(OwnerUnit.SymbolFile(First), First.Range, First.SelectionRange)]
+  begin
+    Result := [Target(OwnerUnit.SymbolFile(First), First.Range, First.SelectionRange)];
+  end
   else
+  begin
     Result := [Target(OwnerUnit.SymbolFile(Last), Last.Range, Last.SelectionRange)];
+  end;
 end;
 
 class function TLspDefinition.TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -278,9 +306,13 @@ var
 begin
   TypeInfo := AResolver.ResolveType(ATree, AFileName, APosition);
   if TypeInfo.Kind = TResolvedKind.Symbol then
-    Result := [Target(TypeInfo.FileName, TypeInfo.Range, TypeInfo.SelectionRange)]
+  begin
+    Result := [Target(TypeInfo.FileName, TypeInfo.Range, TypeInfo.SelectionRange)];
+  end
   else
+  begin
     Result := nil;
+  end;
 end;
 
 class function TLspDefinition.ToJson(const ATargets: TArray<TDefinitionTarget>): TJSONArray;
@@ -311,12 +343,18 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen');
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   if TDfmParser.IsFormFile(Uri) then
+  begin
     Exit(FormTargets(Document.Text, Uri, TLspPositions.ReadPosition(PositionValue)));
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -327,11 +365,15 @@ begin
   try
     Resolver.Namespaces := Namespaces;
     if AKind = TDefinitionRequestKind.TypeDefinition then
+    begin
       Result := ToJson(TypeTargets(Resolver, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue)))
+        TLspPositions.ReadPosition(PositionValue)));
+    end
     else
+    begin
       Result := ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
         TLspPositions.ReadPosition(PositionValue), AKind = TDefinitionRequestKind.Declaration));
+    end;
   finally
     Resolver.Free;
   end;
@@ -344,11 +386,15 @@ var
   Index: Integer;
 begin
   if not Assigned(FReadText) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Found := TDfmNavigation.Targets(AText, TDocumentUris.ToPath(AUri), APosition, FReadText);
   SetLength(Targets, Length(Found));
   for Index := 0 to High(Found) do
+  begin
     Targets[Index] := Target(Found[Index].FileName, Found[Index].Range, Found[Index].SelectionRange);
+  end;
   Result := ToJson(Targets);
 end;
 

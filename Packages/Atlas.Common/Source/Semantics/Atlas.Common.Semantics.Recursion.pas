@@ -136,12 +136,20 @@ begin
   Result := '';
   Depth := 0;
   for Index := 1 to Length(AName) do
+  begin
     if AName[Index] = '<' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if AName[Index] = '>' then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth <= 0) and (AName[Index] <> ' ') then
+    begin
       Result := Result + AName[Index];
+    end;
+  end;
 end;
 
 /// <summary>Teil vor dem letzten Punkt, '' ohne Punkt.</summary>
@@ -151,8 +159,12 @@ var
 begin
   Result := '';
   for Index := Length(AName) downto 1 do
+  begin
     if AName[Index] = '.' then
+    begin
       Exit(Copy(AName, 1, Index - 1));
+    end;
+  end;
 end;
 
 /// <summary>Teil hinter dem letzten Punkt.</summary>
@@ -162,8 +174,12 @@ var
 begin
   Result := AName;
   for Index := Length(AName) downto 1 do
+  begin
     if AName[Index] = '.' then
+    begin
       Exit(Copy(AName, Index + 1, MaxInt));
+    end;
+  end;
 end;
 
 /// <summary>Namen einer Deklaration mit Komma-Liste ("A, B") einzeln.</summary>
@@ -173,8 +189,12 @@ var
 begin
   Result := nil;
   for Part in ANames.Split([',']) do
+  begin
     if Trim(Part) <> '' then
+    begin
       Result := Result + [UpperCase(Trim(Part))];
+    end;
+  end;
 end;
 
 /// <summary>Qualifizierter Name der Typen um ANode, z. B. "TFoo.TInner".</summary>
@@ -189,9 +209,13 @@ begin
     if Parent.Kind = TSyntaxKind.TypeDecl then
     begin
       if Result = '' then
-        Result := PlainName(Parent.Name)
+      begin
+        Result := PlainName(Parent.Name);
+      end
       else
+      begin
         Result := PlainName(Parent.Name) + '.' + Result;
+      end;
     end;
     Parent := Parent.Parent;
   end;
@@ -207,9 +231,13 @@ begin
   begin
     Middle := (Left + Right) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Left := Middle + 1
+    begin
+      Left := Middle + 1;
+    end
     else
+    begin
       Right := Middle;
+    end;
   end;
   Result := Left;
 end;
@@ -232,7 +260,9 @@ begin
     end
     else if Seen and (ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol(':') or
       ATokens[Index].IsSymbol(';')) then
+    begin
       Break;
+    end;
     Inc(Index);
   end;
 end;
@@ -241,10 +271,14 @@ end;
 function TailRange(ANode: TSyntaxNode; const AName: string): TTextRange;
 begin
   if ANode.EndPos.Line = ANode.StartPos.Line then
+  begin
     Result := TTextRange.Create(ANode.EndPos.Line, ANode.EndPos.Character - Length(AName), ANode.EndPos.Line,
-      ANode.EndPos.Character)
+      ANode.EndPos.Character);
+  end
   else
+  begin
     Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+  end;
 end;
 
 { TGraph }
@@ -262,7 +296,9 @@ begin
   CollectTypes;
   CollectRoutines;
   for Routine in FRoutines do
+  begin
     CollectEdges(Routine);
+  end;
 end;
 
 destructor TGraph.Destroy;
@@ -303,9 +339,13 @@ begin
             (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
           begin
             if Text = 'read' then
-              Info.Reader := Tokens[Index + 1].Text
+            begin
+              Info.Reader := Tokens[Index + 1].Text;
+            end
             else
+            begin
               Info.Writer := Tokens[Index + 1].Text;
+            end;
           end;
           Inc(Index);
         end;
@@ -317,14 +357,22 @@ begin
       begin
         Owner := TypeOwner(Node);
         for Name in Node.Name.Split([',']) do
+        begin
           if Trim(Name) <> '' then
+          begin
             FFields.AddOrSetValue(UpperCase(Owner + '.' + Trim(Name)), Trim(Name));
+          end;
+        end;
         Continue;
       end;
       if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.RoutineDecl] then
+      begin
         Continue;
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Stack.Push(Node[Index]);
+      end;
     end;
   finally
     Stack.Free;
@@ -332,10 +380,14 @@ begin
   // Feldvorschlag je Property (#910): das Feld aus read bzw. write der Deklaration,
   // sonst F<Name> derselben Klasse.
   for Name in FProperties.Keys do
+  begin
     if FFields.TryGetValue(OwnerPart(Name) + '.' + UpperCase(FProperties[Name].Reader), Text) or
       FFields.TryGetValue(OwnerPart(Name) + '.' + UpperCase(FProperties[Name].Writer), Text) or
       FFields.TryGetValue(OwnerPart(Name) + '.F' + LastPart(Name), Text) then
+    begin
       FProperties[Name].Field := Text;
+    end;
+  end;
 end;
 
 procedure TGraph.CollectRoutines;
@@ -356,9 +408,13 @@ begin
         Continue;
       end;
       if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + TypeBodies then
+      begin
         Continue;
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Stack.Push(Node[Index]);
+      end;
     end;
   finally
     Stack.Free;
@@ -373,12 +429,18 @@ var
   Index, ItemIndex: Integer;
 begin
   if ANode.FindChild(TSyntaxKind.Block) = nil then
+  begin
     Exit;
+  end;
   Name := PlainName(ANode.Name);
   if AParent <> nil then
-    Key := AParent.Key + '.' + UpperCase(Name)
+  begin
+    Key := AParent.Key + '.' + UpperCase(Name);
+  end
   else
+  begin
     Key := UpperCase(Name);
+  end;
   if not FByKey.TryGetValue(Key, Info) then
   begin
     Info := TRoutineInfo.Create;
@@ -404,7 +466,9 @@ begin
       Info.IsFunction := Header.FindChild(TSyntaxKind.TypeReference) <> nil;
     end
     else
+    begin
       Info.NameRange := TTextRange.Create(ANode.StartPos, ANode.StartPos);
+    end;
   end;
   Info.Nodes := Info.Nodes + [ANode];
   // Verdeckende Namen: Parameter, Variablen und Konstanten der Routine.
@@ -413,22 +477,34 @@ begin
   begin
     Child := Header.FindChild(TSyntaxKind.Parameters);
     if Child <> nil then
+    begin
       for Index := 0 to Child.ChildCount - 1 do
+      begin
         if Child[Index].Kind = TSyntaxKind.Parameter then
+        begin
           Info.Hidden := Info.Hidden + NamesOf(Child[Index].Name);
+        end;
+      end;
+    end;
   end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Child := ANode[Index];
     if Child.Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection] then
+    begin
       for ItemIndex := 0 to Child.ChildCount - 1 do
       begin
         Item := Child[ItemIndex];
         if Item.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl] then
+        begin
           Info.Hidden := Info.Hidden + NamesOf(Item.Name);
-      end
+        end;
+      end;
+    end
     else if Child.Kind = TSyntaxKind.RoutineDecl then
+    begin
       AddRoutine(Child, Info);
+    end;
   end;
 end;
 
@@ -438,13 +514,19 @@ var
   Name: string;
 begin
   if SameText(AName, 'Result') or SameText(AName, 'Self') then
+  begin
     Exit(True);
+  end;
   Routine := ARoutine;
   while Routine <> nil do
   begin
     for Name in Routine.Hidden do
+    begin
       if Name = UpperCase(AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Routine := Routine.Parent;
   end;
   Result := False;
@@ -459,10 +541,16 @@ begin
   while Routine <> nil do
   begin
     if (Routine.Parent <> nil) and SameText(LastPart(Routine.Name), AName) then
+    begin
       Exit(Routine);
+    end;
     for Local in Routine.Locals do
+    begin
       if SameText(LastPart(Local.Name), AName) then
+      begin
         Exit(Local);
+      end;
+    end;
     Routine := Routine.Parent;
   end;
   Result := nil;
@@ -474,15 +562,21 @@ var
 begin
   Key := UpperCase(AName);
   if AOwner <> '' then
+  begin
     Key := UpperCase(AOwner) + '.' + Key;
+  end;
   if (AName = '') or not FByKey.TryGetValue(Key, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 function TGraph.PropertyOf(const AOwner, AName: string): TPropertyInfo;
 begin
   if not FProperties.TryGetValue(UpperCase(AOwner + '.' + AName), Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 /// <summary>Steht ANode an einer Aufrufstelle (Anweisung oder Funktor eines Aufrufs)?</summary>
@@ -514,14 +608,18 @@ var
   Written: Boolean;
 begin
   if (AName = '') or (ANode.Parent = nil) or (ANode.Parent.Kind = TSyntaxKind.AddressOf) then
+  begin
     Exit;
+  end;
   Written := IsAssigned(ANode);
   Target := nil;
   Prop := nil;
   if not ASelf then
   begin
     if Hides(ARoutine, AName) then
+    begin
       Exit;
+    end;
     Target := LocalRoutine(ARoutine, AName);
   end;
   if (Target = nil) and (ARoutine.Owner <> '') then
@@ -530,34 +628,52 @@ begin
     if Prop <> nil then
     begin
       if Written then
-        Target := Member(ARoutine.Owner, Prop.Writer)
+      begin
+        Target := Member(ARoutine.Owner, Prop.Writer);
+      end
       else
+      begin
         Target := Member(ARoutine.Owner, Prop.Reader);
+      end;
       if Target = nil then
+      begin
         Exit;
+      end;
     end
     else
+    begin
       Target := Member(ARoutine.Owner, AName);
+    end;
   end;
   if (Target = nil) and not ASelf then
+  begin
     Target := Member('', AName);
+  end;
   if Target = nil then
+  begin
     Exit;
+  end;
   if Prop = nil then
   begin
     // Zuweisung an den eigenen Namen ist das Funktionsergebnis; ein Prozedurname außerhalb einer Aufrufstelle
     // ein Methodenzeiger.
     if Written then
+    begin
       Exit;
+    end;
     if not Target.IsFunction and not AtCallSite(ANode) then
+    begin
       Exit;
+    end;
   end;
   Edge := Default(TEdge);
   Edge.Target := Target;
   Edge.Range := ARange;
   Edge.Write := Written;
   if Prop <> nil then
+  begin
     Edge.PropertyName := Prop.Name;
+  end;
   ARoutine.Edges := ARoutine.Edges + [Edge];
 end;
 
@@ -574,7 +690,9 @@ begin
     begin
       Body := Declaration.FindChild(TSyntaxKind.Block);
       if Body <> nil then
+      begin
         Stack.Push(Body);
+      end;
     end;
     while Stack.Count > 0 do
     begin
@@ -601,7 +719,9 @@ begin
         // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Stack.Push(Node[Index]);
+      end;
     end;
   finally
     Stack.Free;
@@ -647,6 +767,7 @@ begin
       for Current in Level do
       begin
         for Edge in Current.Edges do
+        begin
           if not Previous.ContainsKey(Edge.Target) then
           begin
             Previous.Add(Edge.Target, Current);
@@ -657,14 +778,19 @@ begin
             end;
             Next.Add(Edge.Target);
           end;
+        end;
         if Found then
+        begin
           Break;
+        end;
       end;
       Level.Clear;
       Level.AddRange(Next);
     end;
     if not Found then
+    begin
       Exit;
+    end;
     Step := ATo;
     while Step <> nil do
     begin
@@ -689,28 +815,40 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Depth := AMaxDepth;
   if Depth < MinDepth then
+  begin
     Depth := MinDepth;
+  end;
   if Depth > MaxDepth then
+  begin
     Depth := MaxDepth;
+  end;
   Graph := TGraph.Create(ATree);
   try
     for Routine in Graph.Routines do
+    begin
       for Edge in Routine.Edges do
       begin
         // Kreis Routine → Ziel → … → Routine aus höchstens Depth Routinen.
         Path := PathTo(Edge.Target, Routine, Depth - 1);
         if Path = nil then
+        begin
           Continue;
+        end;
         Call := Default(TRecursiveCall);
         Call.Range := Edge.Range;
         Call.Chain := [StepOf(Routine)];
         for Step in Path do
+        begin
           Call.Chain := Call.Chain + [StepOf(Step)];
+        end;
         Result := Result + [Call];
       end;
+    end;
   finally
     Graph.Free;
   end;
@@ -726,18 +864,25 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Graph := TGraph.Create(ATree);
   try
     for Routine in Graph.Routines do
+    begin
       for Edge in Routine.Edges do
       begin
         // Zugriff auf eine Property, deren Accessor die Routine selbst ist.
         if (Edge.PropertyName = '') or (Edge.Target <> Routine) then
+        begin
           Continue;
+        end;
         Prop := Graph.PropertyOf(Routine.Owner, Edge.PropertyName);
         if Prop = nil then
+        begin
           Continue;
+        end;
         Trap := Default(TAccessorTrap);
         Trap.Range := Edge.Range;
         Trap.PropertyName := Prop.Name;
@@ -746,6 +891,7 @@ begin
         Trap.Field := Prop.Field;
         Result := Result + [Trap];
       end;
+    end;
   finally
     Graph.Free;
   end;
@@ -759,7 +905,9 @@ begin
   for Step in ACall.Chain do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' → ';
+    end;
     Result := Result + LastPart(Step.Name);
   end;
 end;

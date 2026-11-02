@@ -77,27 +77,35 @@ begin
     Builder.Append('# Atlas-Fehlerbericht (Server)').Append(sLineBreak).Append(sLineBreak);
     Builder.Append('Erstellt: ').Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
     if AInput.Anonymize then
+    begin
       Builder.Append(' · anonymisiert');
+    end;
     Builder.Append(sLineBreak).Append(sLineBreak);
     Builder.Append('Quelltext steht nicht in diesem Bericht.').Append(sLineBreak).Append(sLineBreak);
 
     Builder.Append('## Version').Append(sLineBreak).Append(sLineBreak);
     Builder.Append('- Server: ').Append(AInput.ServerVersion).Append(sLineBreak);
     if AInput.Client <> '' then
+    begin
       Builder.Append('- Editor: ').Append(AInput.Client).Append(sLineBreak);
+    end;
     Builder.Append(sLineBreak);
 
     Builder.Append('## Wirksame Konfiguration').Append(sLineBreak).Append(sLineBreak);
     Text := AInput.Configuration;
     if AInput.Anonymize then
+    begin
       Text := AnonymizePaths(Text, AInput.Workspaces, AInput.Identity);
+    end;
     Builder.Append('```json').Append(sLineBreak).Append(Text.TrimRight).Append(sLineBreak).Append('```');
     Builder.Append(sLineBreak).Append(sLineBreak);
 
     Builder.Append(Format('## Letzte Anfragen (%d)', [Length(AInput.Requests)])).Append(sLineBreak);
     Builder.Append(sLineBreak);
     if Length(AInput.Requests) = 0 then
-      Builder.Append('Keine.').Append(sLineBreak)
+    begin
+      Builder.Append('Keine.').Append(sLineBreak);
+    end
     else
     begin
       Builder.Append('| Zeit | Methode | Dauer ms | Ergebnis |').Append(sLineBreak);
@@ -108,9 +116,13 @@ begin
         Builder.Append(' | ').Append(Request.Method);
         Builder.Append(' | ').Append(Request.ElapsedMs);
         if Request.Failed then
-          Builder.Append(' | Fehler |')
+        begin
+          Builder.Append(' | Fehler |');
+        end
         else
+        begin
           Builder.Append(' | ok |');
+        end;
         Builder.Append(sLineBreak);
       end;
     end;
@@ -122,7 +134,9 @@ begin
     begin
       Text := Line;
       if AInput.Anonymize then
+      begin
         Text := AnonymizeLogLine(Text, AInput.Workspaces, AInput.Identity);
+      end;
       // Mehrzeilige Einträge (z. B. Status) bleiben lesbar; ``` würde den Block schließen.
       Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
     end;

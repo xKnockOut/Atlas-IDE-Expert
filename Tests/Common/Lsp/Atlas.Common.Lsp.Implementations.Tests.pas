@@ -88,16 +88,20 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, AOffset);
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -134,7 +138,9 @@ var
 begin
   Result := '';
   for Item in ATargets do
+  begin
     Result := Result + IntToStr(Item.SelectionRange.StartPos.Line) + ' ';
+  end;
   Result := Trim(Result);
 end;
 

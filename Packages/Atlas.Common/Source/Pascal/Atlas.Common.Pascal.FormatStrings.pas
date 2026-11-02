@@ -83,7 +83,9 @@ function LowerChar(AChar: Char): Char;
 begin
   Result := AChar;
   if CharInSet(AChar, ['A'..'Z']) then
+  begin
     Result := Char(Ord(AChar) + Ord('a') - Ord('A'));
+  end;
 end;
 
 { TFormatString }
@@ -93,8 +95,12 @@ var
   mSpec: TFormatSpec;
 begin
   for mSpec in Specs do
+  begin
     if mSpec.Kind <> TFormatSpecKind.Valid then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -106,13 +112,21 @@ begin
   for mSpec in Specs do
   begin
     if mSpec.Dynamic then
+    begin
       Exit(-1);
+    end;
     if mSpec.WidthArgument >= Result then
+    begin
       Result := mSpec.WidthArgument + 1;
+    end;
     if mSpec.PrecisionArgument >= Result then
+    begin
       Result := mSpec.PrecisionArgument + 1;
+    end;
     if mSpec.Argument >= Result then
+    begin
       Result := mSpec.Argument + 1;
+    end;
   end;
 end;
 
@@ -121,8 +135,12 @@ var
   mSpec: TFormatSpec;
 begin
   for mSpec in Specs do
+  begin
     if mSpec.ExplicitIndex then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -136,8 +154,12 @@ var
   mSpec: TFormatSpec;
 begin
   for mSpec in Parse(AFormat).Specs do
+  begin
     if (mSpec.Kind = TFormatSpecKind.Valid) and IsLocaleType(mSpec.TypeChar) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -169,7 +191,9 @@ var
     while not AtEnd and CharInSet(AFormat[mPos], ['0'..'9']) do
     begin
       if AValue < 100000 then
+      begin
         AValue := AValue * 10 + Ord(AFormat[mPos]) - Ord('0');
+      end;
       Inc(mPos);
     end;
     Result := mPos > mFrom;
@@ -216,11 +240,17 @@ begin
       Inc(mPos);
       mSpec.ExplicitIndex := True;
       if mStar then
-        mDynamic := True
+      begin
+        mDynamic := True;
+      end
       else
+      begin
         mNext := mValue;
+      end;
       if not AtEnd and (AFormat[mPos] = '-') then
+      begin
         Inc(mPos);
+      end;
       mHasNumber := ReadNumber(mValue, mStar);
     end
     else if not mHasNumber and not AtEnd and (AFormat[mPos] = '-') then
@@ -229,16 +259,22 @@ begin
       mHasNumber := ReadNumber(mValue, mStar);
     end;
     if mHasNumber and mStar then
+    begin
       mSpec.WidthArgument := TakeArgument;
+    end;
     if not AtEnd and (AFormat[mPos] = '.') then
     begin
       Inc(mPos);
       if ReadNumber(mValue, mStar) and mStar then
+      begin
         mSpec.PrecisionArgument := TakeArgument;
+      end;
     end;
     mSpec.Dynamic := mDynamic;
     if AtEnd then
-      mSpec.Kind := TFormatSpecKind.Incomplete
+    begin
+      mSpec.Kind := TFormatSpecKind.Incomplete;
+    end
     else if CharInSet(LowerChar(AFormat[mPos]), cTypeChars) then
     begin
       mSpec.TypeChar := LowerChar(AFormat[mPos]);
@@ -248,9 +284,13 @@ begin
     else
     begin
       if mSpec.ExplicitIndex and not CharInSet(AFormat[mPos], ['a'..'z', 'A'..'Z']) then
-        mSpec.Kind := TFormatSpecKind.IndexWithoutType
+      begin
+        mSpec.Kind := TFormatSpecKind.IndexWithoutType;
+      end
       else
+      begin
         mSpec.Kind := TFormatSpecKind.UnknownType;
+      end;
       Inc(mPos);
     end;
     mSpec.Text := Copy(AFormat, mStart, mPos - mStart);
@@ -289,7 +329,9 @@ begin
   Result := False;
   // Mehrzeiliges Literal: ''' und ein Zeilenende (Delphi 12).
   if (AText = '') or AText.StartsWith('''''''') and (Length(AText) > 3) and CharInSet(AText[4], [#10, #13]) then
+  begin
     Exit;
+  end;
   mPos := 1;
   while mPos <= Length(AText) do
     case AText[mPos] of
@@ -298,7 +340,9 @@ begin
           Inc(mPos);
           repeat
             if mPos > Length(AText) then
+            begin
               Exit;
+            end;
             if AText[mPos] = '''' then
             begin
               if (mPos < Length(AText)) and (AText[mPos + 1] = '''') then
@@ -320,23 +364,33 @@ begin
           Inc(mPos);
           mHex := (mPos <= Length(AText)) and (AText[mPos] = '$');
           if mHex then
+          begin
             Inc(mPos);
+          end;
           mCode := 0;
           mDigits := 0;
           while (mPos <= Length(AText)) and (CharInSet(AText[mPos], ['0'..'9']) or mHex and
             CharInSet(AText[mPos], ['a'..'f', 'A'..'F'])) do
           begin
             if mHex then
-              mCode := mCode * 16 + StrToInt('$' + AText[mPos])
+            begin
+              mCode := mCode * 16 + StrToInt('$' + AText[mPos]);
+            end
             else
+            begin
               mCode := mCode * 10 + Ord(AText[mPos]) - Ord('0');
+            end;
             if mCode > $FFFF then
+            begin
               Exit;
+            end;
             Inc(mDigits);
             Inc(mPos);
           end;
           if mDigits = 0 then
+          begin
             Exit;
+          end;
           Add(Char(mCode), mStart - 1);
         end;
       ' ', #9, #10, #13:
@@ -359,11 +413,15 @@ begin
   for mPos := 1 to Length(AText) + 1 do
   begin
     if (mPos <= Length(AText)) and (AText[mPos] = '''') then
+    begin
       mQuoted := not mQuoted;
+    end;
     if (mPos > Length(AText)) or not mQuoted and (AText[mPos] = '+') then
     begin
       if not LiteralValue(Trim(Copy(AText, mStart, mPos - mStart)), mPart) then
+      begin
         Exit(False);
+      end;
       AValue := AValue + mPart;
       mStart := mPos + 1;
     end;
@@ -380,7 +438,9 @@ begin
   mQuote := Pos('''', ASignature);
   // Gekürzte Signatur bzw. "=" erst im Literal.
   if (mEqual = 0) or (Copy(ASignature, Length(ASignature), 1) = #$2026) or ((mQuote > 0) and (mQuote < mEqual)) then
+  begin
     Exit(False);
+  end;
   Result := ExpressionValue(Trim(Copy(ASignature, mEqual + 1, MaxInt)), AValue);
 end;
 
@@ -392,21 +452,29 @@ begin
   Result := TFormatArgumentClass.Unknown;
   mText := Trim(AText);
   if (mText <> '') and (mText[1] = '-') then
+  begin
     mText := Trim(Copy(mText, 2, MaxInt));
+  end;
   if mText = '' then
+  begin
     Exit;
+  end;
   if CharInSet(mText[1], ['''', '#']) and LiteralValue(mText, mValue) then
   begin
     ATypeName := 'ein String';
     if Length(mValue) = 1 then
+    begin
       Exit(TFormatArgumentClass.Character);
+    end;
     Exit(TFormatArgumentClass.Text);
   end;
   if CharInSet(mText[1], ['0'..'9', '$']) then
   begin
     ATypeName := 'eine Zahl';
     if (mText[1] <> '$') and ((Pos('.', mText) > 0) or (Pos('e', LowerCase(mText)) > 0)) then
+    begin
       Exit(TFormatArgumentClass.Float);
+    end;
     Exit(TFormatArgumentClass.Integer_);
   end;
 end;
@@ -414,7 +482,9 @@ end;
 class function TFormatString.Fits(AType: Char; AClass: TFormatArgumentClass): Boolean;
 begin
   if AClass in [TFormatArgumentClass.Unknown, TFormatArgumentClass.Variant_] then
+  begin
     Exit(True);
+  end;
   case AType of
     'd', 'u', 'x', '*':
       Result := AClass = TFormatArgumentClass.Integer_;

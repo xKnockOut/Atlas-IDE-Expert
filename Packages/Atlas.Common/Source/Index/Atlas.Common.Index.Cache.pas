@@ -197,7 +197,9 @@ var
 begin
   Result := 2166136261;
   for Index := AFrom to ATo - 1 do
+  begin
     Result := Cardinal(UInt64(Result xor AData[Index]) * 16777619);
+  end;
 end;
 
 { TCacheWriter }
@@ -221,11 +223,17 @@ begin
   Needed := FLength + ACount;
   Capacity := Length(FData);
   if Needed <= Capacity then
+  begin
     Exit;
+  end;
   if Capacity < 1024 then
+  begin
     Capacity := 1024;
+  end;
   while Capacity < Needed do
+  begin
     Capacity := Capacity * 2;
+  end;
   SetLength(FData, Capacity);
 end;
 
@@ -244,7 +252,9 @@ end;
 procedure TCacheWriter.WriteBytes(const AValue: TBytes; AIndex, ACount: Integer);
 begin
   if ACount <= 0 then
+  begin
     Exit;
+  end;
   if FCounting then
   begin
     Inc(FLength, ACount);
@@ -271,9 +281,13 @@ var
 begin
   // ZigZag: kleine negative Zahlen (-1) bleiben kurz.
   if AValue < 0 then
-    Encoded := (UInt64(not AValue) shl 1) or 1
+  begin
+    Encoded := (UInt64(not AValue) shl 1) or 1;
+  end
   else
+  begin
     Encoded := UInt64(AValue) shl 1;
+  end;
   WriteVar(Encoded);
 end;
 
@@ -282,7 +296,9 @@ begin
   Result := FData;
   FData := nil;
   if Length(Result) <> FLength then
+  begin
     SetLength(Result, FLength);
+  end;
   FLength := 0;
 end;
 
@@ -291,7 +307,9 @@ end;
 function TCacheReader.ReadByte: Byte;
 begin
   if Position >= Limit then
+  begin
     Fail;
+  end;
   Result := Data[Position];
   Inc(Position);
 end;
@@ -305,7 +323,9 @@ begin
   Shift := 0;
   repeat
     if Shift > 63 then
+    begin
       Fail;
+    end;
     Value := ReadByte;
     Result := Result or (UInt64(Value and $7F) shl Shift);
     Inc(Shift, 7);
@@ -318,7 +338,9 @@ var
 begin
   Value := ReadVar;
   if Value > UInt64(High(Integer)) then
+  begin
     Fail;
+  end;
   Result := Integer(Value);
 end;
 
@@ -329,7 +351,9 @@ begin
   Value := ReadVar;
   // Mehr Einträge als Bytes kann es nicht geben.
   if Value > UInt64(Limit) then
+  begin
     Fail;
+  end;
   Result := Integer(Value);
 end;
 
@@ -339,9 +363,13 @@ var
 begin
   Value := ReadVar;
   if (Value and 1) <> 0 then
-    Result := not Int64(Value shr 1)
+  begin
+    Result := not Int64(Value shr 1);
+  end
   else
+  begin
     Result := Int64(Value shr 1);
+  end;
 end;
 
 function TCacheReader.ReadInt32: Integer;
@@ -350,7 +378,9 @@ var
 begin
   Value := ReadInt;
   if (Value < Low(Integer)) or (Value > High(Integer)) then
+  begin
     Fail;
+  end;
   Result := Integer(Value);
 end;
 
@@ -360,7 +390,9 @@ var
 begin
   Index := ReadVar;
   if Index >= UInt64(Length(AStrings)) then
+  begin
     Fail;
+  end;
   Result := AStrings[Integer(Index)];
 end;
 
@@ -371,7 +403,9 @@ begin
   Count := ReadCount;
   SetLength(Result, Count);
   for Index := 0 to Count - 1 do
+  begin
     Result[Index] := ReadString(AStrings);
+  end;
 end;
 
 { TStringTable }
@@ -394,7 +428,9 @@ end;
 function TStringTable.IndexOf(const AValue: string): Integer;
 begin
   if FIndex.TryGetValue(AValue, Result) then
+  begin
     Exit;
+  end;
   Result := FItems.Add(AValue);
   FIndex.Add(AValue, Result);
 end;
@@ -416,7 +452,9 @@ var
 begin
   AWriter.WriteVar(Length(AValues));
   for Value in AValues do
+  begin
     AWriter.WriteVar(ATable.IndexOf(Value));
+  end;
 end;
 
 procedure WriteSymbol(AWriter: TCacheWriter; ATable: TStringTable; const ASymbol: TIndexSymbol);
@@ -436,15 +474,25 @@ begin
   AWriter.WriteInt(ASymbol.SelectionRange.EndPos.Character);
   Flags := 0;
   if ASymbol.InInterface then
+  begin
     Flags := Flags or SymbolInInterface;
+  end;
   if ASymbol.IsDefault then
+  begin
     Flags := Flags or SymbolDefault;
+  end;
   if ASymbol.IsVirtual then
+  begin
     Flags := Flags or SymbolVirtual;
+  end;
   if ASymbol.Unavailable then
+  begin
     Flags := Flags or SymbolUnavailable;
+  end;
   if ASymbol.ScopedEnum then
+  begin
     Flags := Flags or SymbolScopedEnum;
+  end;
   AWriter.WriteVar(Flags);
   WriteList(AWriter, ATable, ASymbol.Ancestors);
   AWriter.WriteVar(ATable.IndexOf(ASymbol.TypeName));
@@ -508,22 +556,34 @@ var
   Stamp: Int64;
 begin
   if AWriter.FCounting then
-    Block := TCacheWriter.Counter
+  begin
+    Block := TCacheWriter.Counter;
+  end
   else
+  begin
     Block := TCacheWriter.Create(64 * 1024);
+  end;
   try
     AWriter.WriteVar(Length(AUnits));
     for UnitIndex in AUnits do
     begin
       Flags := 0;
       if UnitIndex.Library_ then
+      begin
         Flags := Flags or FlagLibrary;
+      end;
       if UnitIndex.Compact then
+      begin
         Flags := Flags or FlagCompact;
+      end;
       if UnitIndex.HasInitialization then
+      begin
         Flags := Flags or FlagInitialization;
+      end;
       if UnitIndex.UsagesIndexed then
+      begin
         Flags := Flags or FlagUsages;
+      end;
       AWriter.WriteVar(ATable.IndexOf(UnitIndex.UnitName));
       AWriter.WriteVar(ATable.IndexOf(UnitIndex.FileName));
       AWriter.WriteInt(UnitIndex.Stamp);
@@ -534,7 +594,9 @@ begin
       WriteList(AWriter, ATable, UnitIndex.Includes);
       AWriter.WriteVar(Length(UnitIndex.IncludeStamps));
       for Stamp in UnitIndex.IncludeStamps do
+      begin
         AWriter.WriteInt(Stamp);
+      end;
       for Kind := Low(TNamingKind) to High(TNamingKind) do
       begin
         AWriter.WriteVar(UnitIndex.Naming[Kind].Total);
@@ -548,14 +610,20 @@ begin
       // Block erst sammeln, damit seine Länge davor stehen kann.
       Block.FLength := 0;
       for Symbol in UnitIndex.Symbols do
+      begin
         WriteSymbol(Block, ATable, Symbol);
+      end;
       for Symbol in UnitIndex.Unavailable do
+      begin
         WriteSymbol(Block, ATable, Symbol);
+      end;
       AWriter.WriteVar(Block.Length_);
       AWriter.WriteBytes(Block.FData, 0, Block.Length_);
       Block.FLength := 0;
       for Usage in UnitIndex.Usages do
+      begin
         WriteUsage(Block, ATable, Usage);
+      end;
       AWriter.WriteVar(Length(UnitIndex.Usages));
       AWriter.WriteVar(Block.Length_);
       AWriter.WriteBytes(Block.FData, 0, Block.Length_);
@@ -594,15 +662,21 @@ begin
       Inc(Capacity, VarSize(Size) + Size);
     end;
     if Capacity > MaxInt then
+    begin
       raise ECacheFormat.Create('Index-Cache zu groß');
+    end;
     Output := TCacheWriter.Create(Integer(Capacity));
     for MagicIndex := Low(Magic) to High(Magic) do
+    begin
       Output.WriteByte(Magic[MagicIndex]);
+    end;
     Output.WriteVar(FormatVersion);
     // Platz für die Prüfsumme; sie wird zuletzt über alles dahinter berechnet.
     ChecksumAt := Output.Length_;
     for MagicIndex := 1 to ChecksumSize do
+    begin
       Output.WriteByte(0);
+    end;
     Output.WriteVar(TextCount);
     for Value in Table.Items do
     begin
@@ -613,11 +687,15 @@ begin
     WriteUnits(Output, Table, AUnits);
     // Beide Läufe müssen dieselben Texte in derselben Reihenfolge sehen.
     if (Table.Items.Count <> TextCount) or (Output.Length_ <> Capacity) then
+    begin
       raise EInvalidOpException.Create('Index-Cache: Größe weicht von der Vorabzählung ab');
+    end;
     Result := Output.TakeBytes;
     Checksum := ChecksumOf(Result, ChecksumAt + ChecksumSize, Length(Result));
     for MagicIndex := 0 to ChecksumSize - 1 do
+    begin
       Result[ChecksumAt + MagicIndex] := Byte(Checksum shr (8 * MagicIndex));
+    end;
   finally
     Output.Free;
     Counter.Free;
@@ -638,7 +716,9 @@ begin
   Result.Container := AReader.ReadString(AStrings);
   Kind := AReader.ReadVar;
   if Kind > UInt64(Ord(High(TIndexSymbolKind))) then
+  begin
     Fail;
+  end;
   Result.Kind := TIndexSymbolKind(Integer(Kind));
   L1 := AReader.ReadInt32;
   C1 := AReader.ReadInt32;
@@ -663,7 +743,9 @@ begin
   Result.TypeParams := AReader.ReadString(AStrings);
   Kind := AReader.ReadVar;
   if Kind > UInt64(Ord(High(TIndexVisibility))) then
+  begin
     Fail;
+  end;
   Result.Visibility := TIndexVisibility(Integer(Kind));
   Result.MinArgs := AReader.ReadInt32;
   Result.MaxArgs := AReader.ReadInt32;
@@ -714,13 +796,21 @@ begin
   Result := nil;
   AReason := '';
   if Length(AData) = 0 then
+  begin
     Exit;
+  end;
   AReason := 'kein Atlas-Index (Kopf fehlt)';
   if Length(AData) < Length(Magic) then
+  begin
     Exit;
+  end;
   for Index := Low(Magic) to High(Magic) do
+  begin
     if AData[Index] <> Magic[Index] then
+    begin
       Exit;
+    end;
+  end;
   Reader.Data := AData;
   Reader.Position := Length(Magic);
   Reader.Limit := Length(AData);
@@ -733,10 +823,14 @@ begin
     end;
     // Prüfsumme (#492): abgeschnittene oder veränderte Dateien vor dem Dekodieren erkennen.
     if Reader.Position + ChecksumSize > Reader.Limit then
+    begin
       Fail;
+    end;
     Stored := 0;
     for Index := ChecksumSize - 1 downto 0 do
+    begin
       Stored := (Stored shl 8) or AData[Reader.Position + Index];
+    end;
     Inc(Reader.Position, ChecksumSize);
     if Stored <> ChecksumOf(AData, Reader.Position, Length(AData)) then
     begin
@@ -749,7 +843,9 @@ begin
     begin
       Size := Reader.ReadCount;
       if Reader.Position + Size > Reader.Limit then
+      begin
         Fail;
+      end;
       Strings[Index] := TEncoding.UTF8.GetString(AData, Reader.Position, Size);
       Inc(Reader.Position, Size);
     end;
@@ -772,7 +868,9 @@ begin
       Entry.Header.Includes := Reader.ReadList(Strings);
       SetLength(Entry.Header.IncludeStamps, Reader.ReadCount);
       for StampIndex := 0 to High(Entry.Header.IncludeStamps) do
+      begin
         Entry.Header.IncludeStamps[StampIndex] := Reader.ReadInt;
+      end;
       // Zahlen, keine Längen: ReadCount begrenzte sie auf die Dateigröße.
       for Kind := Low(TNamingKind) to High(TNamingKind) do
       begin
@@ -786,7 +884,9 @@ begin
       Entry.UnavailableCount := Reader.ReadCount;
       Size := Reader.ReadCount;
       if Reader.Position + Size > Reader.Limit then
+      begin
         Fail;
+      end;
       Entry.Data := AData;
       Entry.Strings := Strings;
       Entry.SymbolOffset := Reader.Position;
@@ -795,16 +895,22 @@ begin
       Entry.UsageCount := Reader.ReadCount;
       Size := Reader.ReadCount;
       if Reader.Position + Size > Reader.Limit then
+      begin
         Fail;
+      end;
       Entry.UsageOffset := Reader.Position;
       Entry.UsageEnd := Reader.Position + Size;
       Inc(Reader.Position, Size);
       if Entry.Header.FileName = '' then
+      begin
         Fail;
+      end;
       Result[Index] := Entry;
     end;
     if Reader.Position <> Reader.Limit then
+    begin
       Fail;
+    end;
     AReason := '';
   except
     on ECacheFormat do
@@ -832,14 +938,18 @@ begin
   try
     SetLength(AUsages, AEntry.UsageCount);
     for Index := 0 to AEntry.UsageCount - 1 do
+    begin
       AUsages[Index] := ReadUsage(Reader, AEntry.Strings);
+    end;
     Result := Reader.Position = Reader.Limit;
   except
     on ECacheFormat do
       Result := False;
   end;
   if not Result then
+  begin
     AUsages := nil;
+  end;
 end;
 
 class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex): Boolean;
@@ -854,17 +964,23 @@ var
 begin
   AUnit := AEntry.Header;
   if AEntry.Expanded then
+  begin
     Exit(True);
+  end;
   Reader.Data := AEntry.Data;
   Reader.Position := AEntry.SymbolOffset;
   Reader.Limit := AEntry.SymbolEnd;
   try
     SetLength(AUnit.Symbols, AEntry.SymbolCount);
     for Index := 0 to AEntry.SymbolCount - 1 do
+    begin
       AUnit.Symbols[Index] := ReadSymbol(Reader, AEntry.Strings);
+    end;
     SetLength(AUnit.Unavailable, AEntry.UnavailableCount);
     for Index := 0 to AEntry.UnavailableCount - 1 do
+    begin
       AUnit.Unavailable[Index] := ReadSymbol(Reader, AEntry.Strings);
+    end;
     Result := Reader.Position = Reader.Limit;
   except
     on ECacheFormat do
@@ -873,12 +989,18 @@ begin
   if Result and AEntry.Header.UsagesIndexed then
   begin
     if AUsages then
-      Result := ExpandUsages(AEntry, AUnit.Usages)
+    begin
+      Result := ExpandUsages(AEntry, AUnit.Usages);
+    end
     else
+    begin
       AUnit.UsagesOffloaded := AEntry.UsageCount > 0;
+    end;
   end;
   if not Result then
+  begin
     AUnit := AEntry.Header;
+  end;
 end;
 
 class function TIndexCache.Deserialize(const AData: TBytes): TArray<TUnitIndex>;
@@ -889,8 +1011,12 @@ begin
   Entries := ReadEntries(AData);
   SetLength(Result, Length(Entries));
   for Index := 0 to High(Entries) do
+  begin
     if not Expand(Entries[Index], Result[Index]) then
+    begin
       Exit(nil);
+    end;
+  end;
 end;
 
 class function TIndexCache.HashOf(const AText: string): string;

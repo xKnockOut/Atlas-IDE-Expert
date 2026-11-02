@@ -78,7 +78,9 @@ begin
   try
     TFile.WriteAllText(TPath.Combine(mFolder, TCrashCases.RequestName), ARequest, TEncoding.UTF8);
     for mFile in AFiles do
+    begin
       TFile.WriteAllText(TPath.Combine(mFolder, mFile.Name), mFile.Text, TEncoding.UTF8);
+    end;
     if not TCrashCases.Load(TPath.Combine(mFolder, TCrashCases.RequestName), mCase, mError) then
     begin
       Result := Default(TReplayResult);

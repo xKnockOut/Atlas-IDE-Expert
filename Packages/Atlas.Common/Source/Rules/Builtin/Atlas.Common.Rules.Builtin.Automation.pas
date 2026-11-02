@@ -140,7 +140,9 @@ begin
       mNode := mPending.Pop;
       mNodes.Add(mNode);
       for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
         mPending.Push(mNode[mIndex]);
+      end;
     end;
     Result := mNodes.ToArray;
   finally
@@ -156,7 +158,9 @@ var
 begin
   Result := '';
   if (AText <> '') and TryStrToInt64(AText, mValue) then
+  begin
     Result := IntToStr(mValue);
+  end;
 end;
 
 { TAutomationCheck }
@@ -170,9 +174,13 @@ begin
   FPaths := TConditionalBranches.Paths(FTokens);
   FFileName := AContext.FileName;
   if FFileName = '' then
+  begin
     FFileName := AContext.RelativePath;
+  end;
   if FFileName = '' then
+  begin
     FFileName := AContext.UnitName + '.pas';
+  end;
   FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
   FResolver.PinTree(AContext.Tree, FFileName);
@@ -202,14 +210,18 @@ function TAutomationCheck.NextCode(AIndex, AStop: Integer): Integer;
 begin
   Result := AIndex;
   while (Result < AStop) and IsTrivia(FTokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function TAutomationCheck.PreviousCode(AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(FTokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function TAutomationCheck.Unconditional(ANode: TSyntaxNode): Boolean;
@@ -234,11 +246,17 @@ var
 begin
   mName := ANode.Name;
   if Pos(',', mName) > 0 then
+  begin
     mName := Copy(mName, 1, Pos(',', mName) - 1);
+  end;
   mStop := StopToken(ANode);
   for mIndex := FirstToken(ANode) to mStop - 1 do
+  begin
     if (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[mIndex].Text, mName) then
+    begin
       Exit(TokenRange(mIndex));
+    end;
+  end;
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
 end;
 
@@ -248,8 +266,12 @@ var
 begin
   Result := '';
   for mIndex := AFirst to AStop - 1 do
+  begin
     if not IsTrivia(FTokens[mIndex]) then
+    begin
       Result := Result + FTokens[mIndex].Text;
+    end;
+  end;
 end;
 
 function TAutomationCheck.HasDirective(AHeader: TSyntaxNode; const AName: string): Boolean;
@@ -258,8 +280,12 @@ var
 begin
   Result := False;
   for mIndex := 0 to AHeader.ChildCount - 1 do
+  begin
     if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAutomationCheck.IllegalAutomatedType(ATypeNode: TSyntaxNode; out AName: string): Boolean;
@@ -271,24 +297,40 @@ begin
   AName := Trim(NodeText(ATypeNode));
   if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or (AName = '') or
     not FResolver.ResolveTypeTextFrom(FOwnUnit, AName, mSymbol) or (mSymbol.Condition <> '') then
+  begin
     Exit;
+  end;
   if mSymbol.Builtin then
+  begin
     Exit(SameText(mSymbol.Name, 'Pointer'));
+  end;
   if mSymbol.SymbolKind = TIndexSymbolKind.RecordType then
+  begin
     Exit(True);
+  end;
   if mSymbol.SymbolKind <> TIndexSymbolKind.TypeAlias then
+  begin
     Exit;
+  end;
   // Zeiger (PPunkt = ^TPunkt) und Mengen (TFarben = set of TFarbe) aus dem Kopf der Deklaration.
   mText := mSymbol.Signature;
   if Pos('=', mText) = 0 then
+  begin
     Exit;
+  end;
   mDeclared := Trim(Copy(mText, Pos('=', mText) + 1, MaxInt));
   if EndsStr(';', mDeclared) then
+  begin
     mDeclared := Trim(Copy(mDeclared, 1, Length(mDeclared) - 1));
+  end;
   if StartsStr('^', mDeclared) then
-    Result := not MatchText(Trim(Copy(mDeclared, 2, MaxInt)), cCharTypes)
+  begin
+    Result := not MatchText(Trim(Copy(mDeclared, 2, MaxInt)), cCharTypes);
+  end
   else
+  begin
     Result := StartsText('set of ', mDeclared);
+  end;
 end;
 
 procedure TAutomationCheck.CheckTypes(AMember: TSyntaxNode);
@@ -301,19 +343,31 @@ begin
   mTypes := TList<TSyntaxNode>.Create;
   try
     for mIndex := 0 to AMember.ChildCount - 1 do
+    begin
       if AMember[mIndex].Kind = TSyntaxKind.TypeReference then
-        mTypes.Add(AMember[mIndex])
+      begin
+        mTypes.Add(AMember[mIndex]);
+      end
       else if AMember[mIndex].Kind = TSyntaxKind.Parameters then
       begin
         mParameters := AMember[mIndex];
         for mInner := 0 to mParameters.ChildCount - 1 do
+        begin
           if (mParameters[mInner].Kind = TSyntaxKind.Parameter) and (mParameters[mInner].ChildCount > 0) then
+          begin
             mTypes.Add(mParameters[mInner][0]);
+          end;
+        end;
       end;
+    end;
     for mTypeNode in mTypes do
+    begin
       if IllegalAutomatedType(mTypeNode, mName) then
+      begin
         FReport.Add(TTextRange.Create(mTypeNode.StartPos, mTypeNode.EndPos),
           Format('Der Typ %s ist im Abschnitt automated nicht erlaubt (wie E2176).', [mName]));
+      end;
+    end;
   finally
     mTypes.Free;
   end;
@@ -328,15 +382,21 @@ begin
   // Schlüssel: der Wert einer Zahl, sonst der Text des Ausdrucks.
   mKey := NumberKey(AText);
   if mKey = '' then
+  begin
     mKey := UpperCase(AText);
+  end;
   if mKey = '' then
+  begin
     Exit;
+  end;
   for mDispid in ADispids do
+  begin
     if mDispid.Key = mKey then
     begin
       FReport.Add(ARange, Format('dispid %s ist schon an %s vergeben (wie E2180).', [AText, mDispid.Member]));
       Exit;
     end;
+  end;
   mDispid.Key := mKey;
   mDispid.Member := AMember;
   ADispids.Add(mDispid);
@@ -352,28 +412,40 @@ begin
   mFirst := NextCode(FirstToken(AHeader), StopToken(AHeader));
   mWord := LowerCase(FTokens[mFirst].Text);
   if (mWord = 'constructor') or (mWord = 'destructor') then
+  begin
     FReport.Add(TokenRange(mFirst),
       'Konstruktoren und Destruktoren sind im Abschnitt automated nicht erlaubt (wie E2177).');
+  end;
   for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
     mDirective := AHeader[mIndex];
     if mDirective.Kind <> TSyntaxKind.Directive then
+    begin
       Continue;
+    end;
     if MatchText(mDirective.Name, ['dynamic', 'message']) then
+    begin
       FReport.Add(TokenRange(FirstToken(mDirective)),
-        Format('%s ist im Abschnitt automated nicht erlaubt (wie E2178).', [mDirective.Name]))
+        Format('%s ist im Abschnitt automated nicht erlaubt (wie E2178).', [mDirective.Name]));
+    end
     else if MatchText(mDirective.Name, cForeignConventions) then
+    begin
       FReport.Add(TokenRange(FirstToken(mDirective)),
-        Format('Im Abschnitt automated ist nur register erlaubt, nicht %s (wie E2179).', [mDirective.Name]))
+        Format('Im Abschnitt automated ist nur register erlaubt, nicht %s (wie E2179).', [mDirective.Name]));
+    end
     else if SameText(mDirective.Name, 'dispid') then
     begin
       if HasDirective(AHeader, 'override') then
+      begin
         FReport.Add(TTextRange.Create(mDirective.StartPos, mDirective.EndPos),
           Format('Die überschriebene Methode %s übernimmt die dispid des Vorfahren und darf keine eigene ' +
-          'angeben (wie E2185).', [AHeader.Name]))
+          'angeben (wie E2185).', [AHeader.Name]));
+      end
       else
+      begin
         CheckDispid(TTextRange.Create(mDirective.StartPos, mDirective.EndPos),
           TokenText(FirstToken(mDirective) + 1, StopToken(mDirective)), AHeader.Name, ADispids);
+      end;
     end;
   end;
   CheckTypes(AHeader);
@@ -392,26 +464,34 @@ var
   begin
     Result := False;
     for mMember := 0 to AClass.ChildCount - 1 do
+    begin
       if AClass[mMember].Kind = TSyntaxKind.Field then
       begin
         mNames := AClass[mMember].Name.Split([',']);
         if MatchText(AName, mNames) then
+        begin
           Exit(True);
+        end;
       end;
+    end;
   end;
 
 begin
   mTyped := AProperty.FindChild(TSyntaxKind.TypeReference) <> nil;
   if not mTyped then
+  begin
     FReport.Add(NameRange(AProperty),
       Format('Die Property %s darf im Abschnitt automated nicht ohne Typ neu deklariert werden (wie E2181).',
       [AProperty.Name]));
+  end;
   // Klauseln hinter dem Typ bis zum ersten Semikolon auf Klammerebene 0.
   mIndex := FirstToken(AProperty);
   mStop := StopToken(AProperty);
   while (mIndex < mStop) and not ((FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
     SameText(FTokens[mIndex].Text, AProperty.Name)) do
+  begin
     Inc(mIndex);
+  end;
   mDepth := 0;
   mExpectArgument := False;
   Inc(mIndex);
@@ -423,17 +503,25 @@ begin
       Continue;
     end;
     if FTokens[mIndex].IsSymbol('[') or FTokens[mIndex].IsSymbol('(') then
-      Inc(mDepth)
+    begin
+      Inc(mDepth);
+    end
     else if FTokens[mIndex].IsSymbol(']') or FTokens[mIndex].IsSymbol(')') then
-      Dec(mDepth)
+    begin
+      Dec(mDepth);
+    end
     else if (mDepth = 0) and FTokens[mIndex].IsSymbol(';') then
-      Break
+    begin
+      Break;
+    end
     else if (mDepth = 0) and not mExpectArgument and (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) then
     begin
       mWord := LowerCase(FTokens[mIndex].Text);
       if MatchText(mWord, cForbiddenClauses) then
+      begin
         FReport.Add(TokenRange(mIndex),
           Format('%s ist an Properties im Abschnitt automated nicht erlaubt (wie E2182).', [mWord]));
+      end;
       if ((mWord = 'read') or (mWord = 'write')) and mTyped then
       begin
         mArgument := NextCode(mIndex + 1, mStop);
@@ -441,9 +529,11 @@ begin
         // read FPunkt.X ist ein Feldzugriff, aber nicht sicher dasselbe Feld.
         if (mArgument < mStop) and (FTokens[mArgument].Kind = TPascalTokenKind.Identifier) and
           ((mNext >= mStop) or not FTokens[mNext].IsSymbol('.')) and IsClassField(FTokens[mArgument].Text) then
+        begin
           FReport.Add(TokenRange(mArgument),
             Format('Im Abschnitt automated muss %s auf eine Methode zeigen; %s ist ein Feld (wie E2096).',
             [mWord, FTokens[mArgument].Text]));
+        end;
       end;
       if mWord = 'dispid' then
       begin
@@ -452,7 +542,9 @@ begin
         while (mArgument < mStop) and not FTokens[mArgument].IsSymbol(';') and
           not ((FTokens[mArgument].Kind = TPascalTokenKind.Identifier) and
           MatchText(FTokens[mArgument].Text, cArgumentClauses)) do
+        begin
           Inc(mArgument);
+        end;
         CheckDispid(TTextRange.Create(FTokens[mIndex].StartPos, FTokens[mArgument - 1].EndPos),
           TokenText(mIndex + 1, mArgument), AProperty.Name, ADispids);
       end;
@@ -464,7 +556,9 @@ begin
     Inc(mIndex);
   end;
   if mTyped then
+  begin
     CheckTypes(AProperty);
+  end;
 end;
 
 procedure TAutomationCheck.CheckClass(AClass: TSyntaxNode);
@@ -486,18 +580,24 @@ begin
         Continue;
       end;
       if not Unconditional(mMember) then
+      begin
         Continue;
+      end;
       if not mAutomated then
       begin
         // dispid außerhalb von automated: Delphi 13 meldet E2185 (Fall Cm.E2183).
         if mMember.Kind = TSyntaxKind.RoutineHeader then
+        begin
           for mInner := 0 to mMember.ChildCount - 1 do
           begin
             mDirective := mMember[mInner];
             if (mDirective.Kind = TSyntaxKind.Directive) and SameText(mDirective.Name, 'dispid') then
+            begin
               FReport.Add(TTextRange.Create(mDirective.StartPos, mDirective.EndPos),
                 'dispid ist nur im Abschnitt automated erlaubt (wie E2185).');
+            end;
           end;
+        end;
         Continue;
       end;
       case mMember.Kind of
@@ -505,7 +605,9 @@ begin
           FReport.Add(NameRange(mMember), 'Felder sind im Abschnitt automated nicht erlaubt (wie E2175).');
         TSyntaxKind.RoutineHeader:
           if not mMember.IsMethodResolution then
+          begin
             CheckRoutine(mMember, mDispids);
+          end;
         TSyntaxKind.PropertyDecl:
           CheckProperty(AClass, mMember, mDispids);
       else
@@ -532,13 +634,17 @@ begin
     if FResolver.NodeType(FContext.Tree, FFileName, mNode, mSymbol, mType, mFound) then
     begin
       if not mFound or not mType.Builtin or (mSymbol.Condition <> '') then
+      begin
         Exit;
+      end;
       AOle := SameText(mType.Name, 'OleVariant');
       Exit(AOle or SameText(mType.Name, 'Variant'));
     end;
     if not (mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Call, TSyntaxKind.IndexAccess]) or
       (mNode.ChildCount = 0) then
+    begin
       Exit;
+    end;
     mNode := mNode[0];
   end;
 end;
@@ -554,22 +660,32 @@ begin
   if not (AArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
     not FResolver.NodeType(FContext.Tree, FFileName, AArgument, mSymbol, mType, mFound) or not mFound or
     mSymbol.IsType or (mSymbol.Condition <> '') or (mSymbol.VariantBranch <> '') then
+  begin
     Exit;
+  end;
   AName := mType.Name;
   if mType.Builtin then
+  begin
     Exit(SameText(mType.Name, 'Pointer'));
+  end;
   if mType.SymbolKind = TIndexSymbolKind.RecordType then
+  begin
     // Ein Record mit Operatoren (Implicit nach Variant?) bleibt still.
     Exit(not FResolver.FindMember(mType, 'Implicit', mOperator) and
       not FResolver.FindMember(mType, 'Explicit', mOperator));
+  end;
   if mType.SymbolKind = TIndexSymbolKind.TypeAlias then
   begin
     mDeclared := mType.Signature;
     if Pos('=', mDeclared) = 0 then
+    begin
       Exit;
+    end;
     mDeclared := Trim(Copy(mDeclared, Pos('=', mDeclared) + 1, MaxInt));
     if EndsStr(';', mDeclared) then
+    begin
       mDeclared := Trim(Copy(mDeclared, 1, Length(mDeclared) - 1));
+    end;
     Result := StartsStr('^', mDeclared) and not MatchText(Trim(Copy(mDeclared, 2, MaxInt)), cCharTypes);
   end;
 end;
@@ -592,7 +708,9 @@ var
 begin
   if (ACall.ChildCount < 2) or (ACall[0].Kind <> TSyntaxKind.MemberAccess) or (ACall[0].ChildCount = 0) or
     not Unconditional(ACall) or not VariantReceiver(ACall[0][0], mOle) then
+  begin
     Exit;
+  end;
   if mOle then
   begin
     mCode := 'E2160';
@@ -608,13 +726,19 @@ begin
   begin
     mArgument := ACall[mIndex];
     if NamedArgument(mArgument) then
-      mNamedSeen := True
+    begin
+      mNamedSeen := True;
+    end
     else if mNamedSeen then
+    begin
       FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos),
         'Unbenannte Argumente müssen vor den benannten stehen (wie E2166).');
+    end;
     if IllegalDispatchArgument(mArgument, mName) then
+    begin
       FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos),
         Format('Der Typ %s ist in einem %s nicht erlaubt (wie %s).', [mName, mKind, mCode]));
+    end;
   end;
 end;
 
@@ -646,7 +770,9 @@ var
   mCheck: TAutomationCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mCheck := TAutomationCheck.Create(AContext, AReport);
   try
     mCheck.Run;

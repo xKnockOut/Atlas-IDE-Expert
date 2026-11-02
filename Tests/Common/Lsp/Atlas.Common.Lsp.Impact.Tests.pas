@@ -204,17 +204,29 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, WerkzeugFile) then
-    Result := UnitWerkzeug
+  begin
+    Result := UnitWerkzeug;
+  end
   else if SameText(AFileName, HauptFile) then
-    Result := UnitHaupt
+  begin
+    Result := UnitHaupt;
+  end
   else if SameText(AFileName, HauptForm) then
-    Result := FormHaupt
+  begin
+    Result := FormHaupt;
+  end
   else if SameText(AFileName, TestFile) then
-    Result := UnitTests
+  begin
+    Result := UnitTests;
+  end
   else if SameText(AFileName, AbseitsFile) then
-    Result := UnitAbseits
+  begin
+    Result := UnitAbseits;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -234,16 +246,20 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Index := Index + Pos(AName, AMarker) - 1;
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -253,9 +269,11 @@ var
 begin
   Result := '';
   for Place in AResult.Places do
+  begin
     Result := Result + Format('%s.%s@%d:%d(L%d c%d) ', [Place.Item.Container, Place.Item.Name,
       Place.Item.SelectionRange.StartPos.Line, Place.Item.SelectionRange.StartPos.Character, Place.Level,
       Place.Cause]);
+  end;
 end;
 
 function Options(ADepth: Integer): TImpactOptions;
@@ -315,8 +333,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AResult.Places) do
+  begin
     if SameText(AResult.Places[Index].Item.Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -380,17 +402,23 @@ begin
   Found := Analyze(ItemAt(WerkzeugFile, 'procedure Hilfe;', 'Hilfe'), 2);
   Terminal := False;
   for Index := 0 to High(Found.Places) do
+  begin
     if Found.Places[Index].Terminal then
     begin
       Terminal := True;
       Assert.AreEqual('Haupt', Found.Places[Index].Item.Name);
       Assert.AreEqual(1, Found.Places[Index].Level);
     end;
+  end;
   Assert.IsTrue(Terminal);
   // Die Unit selbst wird nicht weiter verfolgt: Keine Stelle nennt sie als Ursache.
   for Index := 0 to High(Found.Places) do
+  begin
     if Found.Places[Index].Cause >= 0 then
+    begin
       Assert.IsFalse(Found.Places[Found.Places[Index].Cause].Terminal);
+    end;
+  end;
 end;
 
 procedure TImpactAnalysisTests.AffectedTestsWithRunNames;
@@ -692,7 +720,9 @@ begin
     end, Options(3), nil);
   Assert.AreEqual(2, Integer(Length(mEach)));
   for mIndex := 0 to High(mStarts) do
+  begin
     Assert.AreEqual(Describe(Analyze(mStarts[mIndex], 3)), Describe(mEach[mIndex]), mStarts[mIndex].Name);
+  end;
   Assert.AreEqual(1, Integer(Length(mEach[0].Tests)));
   Assert.AreEqual(0, Integer(Length(TImpactAnalysis.AnalyzeEach(FResolver, FIndex, nil, ProjectFiles, nil, Options(3),
     nil))));
@@ -721,12 +751,16 @@ begin
   begin
     Files[Index] := Format('C:\B\Stufe%d.pas', [Index]);
     if Index = 0 then
+    begin
       Texts[Index] := 'unit Stufe0;'#10'interface'#10'procedure Lauf0;'#10'implementation'#10 +
-        'procedure Lauf0;'#10'begin'#10'end;'#10'end.'
+        'procedure Lauf0;'#10'begin'#10'end;'#10'end.';
+    end
     else
+    begin
       Texts[Index] := Format('unit Stufe%d;'#10'interface'#10'uses Stufe%d;'#10'procedure Lauf%d;'#10 +
         'implementation'#10'procedure Lauf%d;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
         [Index, Index - 1, Index, Index, Index - 1]);
+    end;
     Big.AddUnit(TIndexExtractor.ExtractText(Texts[Index], Files[Index], nil, nil, True));
   end;
   Resolver := TNameResolver.Create(Big);
@@ -746,11 +780,13 @@ begin
         Slot: Integer;
       begin
         for Slot := 0 to High(Files) do
+        begin
           if SameText(Files[Slot], AFileName) then
           begin
             AText := Texts[Slot];
             Exit(True);
           end;
+        end;
         Result := False;
       end, Settings, nil);
     Watch.Stop;

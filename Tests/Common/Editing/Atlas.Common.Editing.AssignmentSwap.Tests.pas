@@ -49,12 +49,16 @@ var
 begin
   Lines := AText.Split([#10]);
   for Edit in AEdits do
+  begin
     Lines[Edit.Range.StartPos.Line] := Edit.NewText;
+  end;
   Result := '';
   for Index := 0 to High(Lines) do
   begin
     if Index > 0 then
+    begin
       Result := Result + #10;
+    end;
     Result := Result + Lines[Index];
   end;
 end;

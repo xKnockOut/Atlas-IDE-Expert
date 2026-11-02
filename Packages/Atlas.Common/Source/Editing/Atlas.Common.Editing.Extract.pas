@@ -191,11 +191,15 @@ begin
   while (First <= High(ATokens)) and (ATokens[First].Offset < ALast) and
     ((ATokens[First].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) or
     ATokens[First].IsSymbol(';')) do
+  begin
     Inc(First);
+  end;
   Last := TRoutineBody.TokenAt(ATokens, ALast) - 1;
   while (Last >= First) and ((ATokens[Last].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) or
     ATokens[Last].IsSymbol(';')) do
+  begin
     Dec(Last);
+  end;
   Result := (First <= High(ATokens)) and (Last >= First) and (ATokens[Last].Offset < ALast);
   if Result then
   begin
@@ -253,18 +257,27 @@ begin
   begin
     Result := AOptions.Probe(ProbeText(AText, TRoutineBody.TextOf(AText, AExpression), AStatement, NamePos), NamePos);
     if Result.Name <> '' then
+    begin
       Exit;
+    end;
   end;
   Tokens := ATree.Tokens;
   First := TRoutineBody.TokenAt(Tokens, AExpression.StartOffset);
   Last := TRoutineBody.TokenAt(Tokens, AExpression.EndOffset) - 1;
   if (First > Last) or (Last > High(Tokens)) then
+  begin
     Exit;
+  end;
   if First = Last then
+  begin
     Result.Name := TDeclareUnknown.LiteralType(Tokens[First]);
+  end;
   if Result.Name = '' then
+  begin
     Result.Name := TDeclareUnknown.Shape(Tokens, First, Last, TermFirst, TermLast);
+  end;
   if (Result.Name = '') and (TermFirst >= 0) and (TermFirst = TermLast) then
+  begin
     if Tokens[TermFirst].Kind = TPascalTokenKind.Identifier then
     begin
       Declared := TDeclaredTypes.Create(ATree, AText);
@@ -275,7 +288,10 @@ begin
       end;
     end
     else
+    begin
       Result.Name := TDeclareUnknown.LiteralType(Tokens[TermFirst]);
+    end;
+  end;
   Result.IsValue := Result.Name <> '';
 end;
 
@@ -287,7 +303,9 @@ var
 begin
   if (AType.UnitName <> '') and TUsesClauses.AddUnit(ATree.Tokens, AOffset, AType.UnitName,
     TTextLines.LineBreakOf(AText), Edit) then
+  begin
     AEdits := AEdits + [Edit];
+  end;
 end;
 
 { Methode extrahieren }
@@ -319,13 +337,19 @@ begin
   begin
     Child := Container[Index];
     if (Child.EndOffset <= AStart) or (Child.StartOffset >= AEnd) then
+    begin
       Continue;
+    end;
     if (Child.StartOffset < AStart) or (Child.EndOffset > AEnd) or not TRoutineBody.InList(Child) then
+    begin
       Exit;
+    end;
     AStatements := AStatements + [Child];
   end;
   if AStatements = nil then
+  begin
     Exit;
+  end;
   // Zwischen den Anweisungen nur ";" und Kommentare.
   Tokens := ATree.Tokens;
   Token := TRoutineBody.TokenAt(Tokens, AStart);
@@ -333,11 +357,15 @@ begin
   while (Token <= High(Tokens)) and (Tokens[Token].Offset < AEnd) do
   begin
     while (Covered <= High(AStatements)) and (AStatements[Covered].EndOffset <= Tokens[Token].Offset) do
+    begin
       Inc(Covered);
+    end;
     if not ((Covered <= High(AStatements)) and (AStatements[Covered].StartOffset <= Tokens[Token].Offset)) and
       not Tokens[Token].IsSymbol(';') and
       not (Tokens[Token].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Exit;
+    end;
     Inc(Token);
   end;
   Result := (AStatements[0].StartOffset = AStart) and (AStatements[High(AStatements)].EndOffset = AEnd);
@@ -348,8 +376,12 @@ var
   Statement: TSyntaxNode;
 begin
   for Statement in AStatements do
+  begin
     if Statement = ANode then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -375,23 +407,35 @@ begin
     begin
       TRoutineLocals.CollectKind(Statement, TSyntaxKind.Identifier, Nodes);
       if TRoutineLocals.HasKind(Statement, TSyntaxKind.AsmBlock) then
+      begin
         Exit(Fail('asm in der Auswahl', AReason));
+      end;
       if TRoutineLocals.HasKind(Statement, TSyntaxKind.WithStatement) then
+      begin
         Exit(Fail('with in der Auswahl', AReason));
+      end;
     end;
     for Node in Nodes do
+    begin
       if SameText(Node.Name, 'Exit') and (Node.Parent <> nil) and
         (Node.Parent.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.Call]) then
-        Exit(Fail('Exit in der Auswahl', AReason))
+      begin
+        Exit(Fail('Exit in der Auswahl', AReason));
+      end
       else if (SameText(Node.Name, 'Break') or SameText(Node.Name, 'Continue')) and (Node.Parent <> nil) and
         (Node.Parent.Kind = TSyntaxKind.CallStatement) then
       begin
         Loop := Node.Parent;
         while (Loop <> nil) and not (Loop.Kind in LoopKinds) and (Loop.Kind <> TSyntaxKind.AnonymousMethod) do
+        begin
           Loop := Loop.Parent;
+        end;
         if (Loop = nil) or (Loop.Kind = TSyntaxKind.AnonymousMethod) or not InSelection(Loop, AStart, AEnd) then
+        begin
           Exit(Fail(Node.Name + ' springt aus der Auswahl', AReason));
+        end;
       end;
+    end;
     // goto und Marke müssen beide innen oder beide außen liegen.
     Nodes.Clear;
     TRoutineLocals.CollectKind(ABody, TSyntaxKind.GotoStatement, Nodes);
@@ -400,14 +444,20 @@ begin
     begin
       Found := False;
       for Statement in Labels do
+      begin
         if SameText(Statement.Name, Node.Name) then
         begin
           Found := True;
           if InSelection(Statement, AStart, AEnd) <> InSelection(Node, AStart, AEnd) then
+          begin
             Exit(Fail('goto über den Rand der Auswahl', AReason));
+          end;
         end;
+      end;
       if not Found and InSelection(Node, AStart, AEnd) then
+      begin
         Exit(Fail('goto mit unbekanntem Ziel', AReason));
+      end;
     end;
     Result := True;
   finally
@@ -433,7 +483,9 @@ begin
         end;
       TSyntaxKind.TypeSection:
         for Inner := 0 to ARoutine[Index].ChildCount - 1 do
+        begin
           Result := Result + [ARoutine[Index][Inner].Name];
+        end;
     end;
 end;
 
@@ -456,11 +508,17 @@ begin
   while (Node <> nil) and (Node <> ABody) do
   begin
     if Node.Kind = TSyntaxKind.AnonymousMethod then
+    begin
       Exit(not Fail('in einer anonymen Methode', AReason));
+    end;
     if Node.Kind = TSyntaxKind.WithStatement then
+    begin
       Exit(not Fail('in einem with-Rumpf', AReason));
+    end;
     if Node.Kind = TSyntaxKind.AsmBlock then
+    begin
       Exit(not Fail('asm', AReason));
+    end;
     Node := Node.Parent;
   end;
   Result := False;
@@ -488,11 +546,15 @@ begin
   AShortName := TRoutineBody.UniqueName(Tokens, ABaseName);
   Header := AKind + ' ';
   if IsClassRoutine(Tokens, ARoutine) then
+  begin
     Header := 'class ' + Header;
+  end;
   Name := ARoutine.Name;
   Qualifier := '';
   if Name.LastIndexOf('.') > 0 then
+  begin
     Qualifier := Name.Substring(0, Name.LastIndexOf('.'));
+  end;
   if (Qualifier = '') or (ARoutine.Parent = nil) or (ARoutine.Parent.Kind = TSyntaxKind.RoutineDecl) then
   begin
     AHead := Indent + Header + AShortName + AParams + AResult + ';' + LineBreak;
@@ -500,23 +562,33 @@ begin
   end;
   Name := Qualifier.Substring(Qualifier.LastIndexOf('.') + 1);
   if Pos('<', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('<', Name) - 1);
+  end;
   TypeBody := TRoutineBody.TypeBody(ATree.Root, Name);
   if TypeBody = nil then
+  begin
     Exit(Fail('Klasse ' + Name + ' nicht in der Datei', AReason));
+  end;
   IsStatic := False;
   Token := TRoutineBody.TokenAt(Tokens, ARoutine.StartOffset);
   while (Token <= High(Tokens)) and (Tokens[Token].Offset < ABody.StartOffset) do
   begin
     if (Tokens[Token].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Token].Text, 'static') then
+    begin
       IsStatic := True;
+    end;
     Inc(Token);
   end;
   ClassDecl := Header + AShortName + AParams + AResult + ';';
   if IsStatic then
+  begin
     ClassDecl := ClassDecl + ' static;';
+  end;
   if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, 'private', ClassDecl, AOptions.Style, Edit) then
+  begin
     Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
+  end;
   AEdits := AEdits + [Edit];
   AHead := Indent + Header + Qualifier + '.' + AShortName + AParams + AResult + ';' + LineBreak;
   Result := True;
@@ -558,21 +630,33 @@ begin
   AReason := '';
   Result := False;
   if (ATree = nil) or not OffsetRange(AText, ARange, First, Last) or (First = Last) then
+  begin
     Exit(Fail('keine Auswahl', AReason));
+  end;
   Tokens := ATree.Tokens;
   if not Trimmed(Tokens, First, Last, SelStart, SelEnd) then
+  begin
     Exit(Fail('keine Auswahl', AReason));
+  end;
   Routine := TRoutineBody.RoutineAt(ATree, SelStart);
   if (Routine = nil) or (TRoutineBody.RoutineAt(ATree, SelEnd) <> Routine) then
+  begin
     Exit(Fail('nicht im Rumpf einer Routine', AReason));
+  end;
   Body := TRoutineBody.BodyOf(Routine);
   if not SelectedStatements(ATree, Body, SelStart, SelEnd, Statements) then
+  begin
     Exit(Fail('keine vollständigen Anweisungen', AReason));
+  end;
   // In einer anonymen Methode oder einem with-Rumpf: Namen hätten außen eine andere Bedeutung.
   if InsideBlocked(Statements[0], Body, AReason) then
+  begin
     Exit;
+  end;
   if not JumpsInside(Body, Statements, SelStart, SelEnd, AReason) then
+  begin
     Exit;
+  end;
   Locals := TRoutineLocals.Collect(AText, ATree, Routine);
   OnlyNames := RoutineOnlyNames(Routine);
   Lookup := TFlowSignatures.FromTree(ATree.Root);
@@ -619,12 +703,18 @@ begin
       if InSelection(Node, SelStart, SelEnd) then
       begin
         if SameText(Node.Name, 'Result') and (LocalIndex < 0) then
+        begin
           Exit(Fail('Result in der Auswahl', AReason));
+        end;
         if (LocalIndex < 0) and (IndexText(Node.Name, OnlyNames) >= 0) then
+        begin
           Exit(Fail(Node.Name + ' ist nur in der Routine sichtbar', AReason));
+        end;
       end;
       if LocalIndex < 0 then
+      begin
         Continue;
+      end;
       Occurrence.Node := Node;
       Occurrence.Local := LocalIndex;
       Occurrence.Access := TRoutineLocals.AccessOf(Node, Lookup);
@@ -634,18 +724,28 @@ begin
     Identifiers.Clear;
     TRoutineLocals.CollectKind(Body, TSyntaxKind.ForStatement, Identifiers);
     for Node in Identifiers do
+    begin
       if not TRoutineLocals.IsInlineFor(Tokens, Node) then
       begin
         LocalIndex := TRoutineLocals.IndexOf(Locals, Node.Name, Node.StartOffset);
         if LocalIndex < 0 then
+        begin
           Continue;
+        end;
         if InSelection(Node, SelStart, SelEnd) then
-          WriteIn[LocalIndex] := True
+        begin
+          WriteIn[LocalIndex] := True;
+        end
         else if Node.StartOffset < SelStart then
-          Before[LocalIndex] := True
+        begin
+          Before[LocalIndex] := True;
+        end
         else
+        begin
           After[LocalIndex] := True;
+        end;
       end;
+    end;
     for Occurrence in Occurrences do
     begin
       LocalIndex := Occurrence.Local;
@@ -662,21 +762,31 @@ begin
         end
         else if FirstWrite[LocalIndex] and (Occurrence.Access <> TAccess.Write) and
           TRoutineBody.Within(Node, FirstNode[LocalIndex].Parent) then
+        begin
           // Die rechte Seite derselben Zuweisung liest vor dem Schreiben.
           FirstWrite[LocalIndex] := False;
+        end;
         if Occurrence.Access in [TAccess.Read, TAccess.ReadWrite] then
+        begin
           ReadIn[LocalIndex] := True;
+        end;
         if Occurrence.Access in [TAccess.Write, TAccess.ReadWrite] then
+        begin
           WriteIn[LocalIndex] := True;
+        end;
       end
       else if Node.StartOffset < SelStart then
       begin
         Before[LocalIndex] := True;
         if (Node.StartOffset >= LoopStart) and (Node.EndOffset <= LoopEnd) and (LoopStart < SelStart) then
+        begin
           After[LocalIndex] := True;
+        end;
       end
       else
+      begin
         After[LocalIndex] := True;
+      end;
     end;
     // Modus je Name, der in der Auswahl vorkommt.
     Removed := nil;
@@ -692,41 +802,65 @@ begin
           if InSelection(Locals[LocalIndex].Decl, SelStart, SelEnd) then
           begin
             if After[LocalIndex] then
+            begin
               Exit(Fail(Locals[LocalIndex].Name + ' wird nach der Auswahl noch gebraucht', AReason));
+            end;
             Continue;
           end;
       end;
       if not WriteIn[LocalIndex] then
       begin
         if (Locals[LocalIndex].Kind = TLocalKind.Variable) and not Before[LocalIndex] and not After[LocalIndex] then
-          Modes[LocalIndex] := TParameterMode.LocalVar
+        begin
+          Modes[LocalIndex] := TParameterMode.LocalVar;
+        end
         else
+        begin
           Modes[LocalIndex] := TParameterMode.Const_;
+        end;
       end
       else if After[LocalIndex] then
       begin
         if FirstWrite[LocalIndex] then
-          Modes[LocalIndex] := TParameterMode.Out_
+        begin
+          Modes[LocalIndex] := TParameterMode.Out_;
+        end
         else
+        begin
           Modes[LocalIndex] := TParameterMode.Var_;
+        end;
       end
       else if ReadIn[LocalIndex] and not FirstWrite[LocalIndex] and Before[LocalIndex] then
-        Modes[LocalIndex] := TParameterMode.Value
+      begin
+        Modes[LocalIndex] := TParameterMode.Value;
+      end
       else
+      begin
         Modes[LocalIndex] := TParameterMode.LocalVar;
+      end;
       if (Modes[LocalIndex] = TParameterMode.LocalVar) and (Locals[LocalIndex].Kind = TLocalKind.Variable) and
         not Before[LocalIndex] and not After[LocalIndex] then
+      begin
         Removed := Removed + [Locals[LocalIndex].Name];
+      end;
     end;
     // Anonyme Methoden dürfen var- und out-Parameter nicht einfangen.
     Identifiers.Clear;
     for Statement in Statements do
+    begin
       TRoutineLocals.CollectKind(Statement, TSyntaxKind.AnonymousMethod, Identifiers);
+    end;
     for Anonymous in Identifiers do
+    begin
       for Occurrence in Occurrences do
+      begin
         if TRoutineBody.Within(Occurrence.Node, Anonymous) and
           (Modes[Occurrence.Local] in [TParameterMode.Var_, TParameterMode.Out_]) then
+        begin
           Exit(Fail('eine anonyme Methode fängt ' + Locals[Occurrence.Local].Name + ' ein', AReason));
+        end;
+      end;
+    end;
   finally
     Identifiers.Free;
     Occurrences.Free;
@@ -743,13 +877,21 @@ begin
   // Eingaben zuerst, dann var, dann out; sonst in der Reihenfolge des ersten Vorkommens.
   Sorted := nil;
   for Group := 0 to 2 do
+  begin
     for LocalIndex in Order do
+    begin
       if GroupOf(Modes[LocalIndex]) = Group then
+      begin
         Sorted := Sorted + [LocalIndex];
+      end;
+    end;
+  end;
   for LocalIndex in Sorted do
   begin
     if Modes[LocalIndex] = TParameterMode.None then
+    begin
       Continue;
+    end;
     if Modes[LocalIndex] = TParameterMode.CopyConst then
     begin
       ConstLines := ConstLines + Indent + Unit_ + TRoutineBody.TextOf(AText, Locals[LocalIndex].Decl) + LineBreak;
@@ -764,9 +906,13 @@ begin
       AddUsesFor(ATree, AText, Probed, Routine.StartOffset, Edits);
     end;
     if TypeText = '' then
+    begin
       Exit(Fail('Typ von ' + Locals[LocalIndex].Name + ' unbekannt', AReason));
+    end;
     if Modes[LocalIndex] = TParameterMode.LocalVar then
-      VarLines := VarLines + Indent + Unit_ + Locals[LocalIndex].Name + ': ' + TypeText + ';' + LineBreak
+    begin
+      VarLines := VarLines + Indent + Unit_ + Locals[LocalIndex].Name + ': ' + TypeText + ';' + LineBreak;
+    end
     else
     begin
       if Params <> '' then
@@ -780,34 +926,52 @@ begin
   end;
   // Kopf: Methode der Klasse oder Routine vor der umgebenden.
   if Params <> '' then
+  begin
     Params := '(' + Params + ')';
+  end;
   if Args <> '' then
+  begin
     Args := '(' + Args + ')';
+  end;
   if not NewRoutineHead(AText, ATree, Routine, Body, MethodName, 'procedure', Params, '', AOptions, Edits, ShortName,
     MethodText, AReason) then
+  begin
     Exit;
+  end;
   if VarLines <> '' then
+  begin
     MethodText := MethodText + Indent + 'var' + LineBreak + VarLines;
+  end;
   if ConstLines <> '' then
+  begin
     MethodText := MethodText + Indent + 'const' + LineBreak + ConstLines;
+  end;
   // Rumpf: die Anweisungen eine Ebene unter begin.
   StatementIndent := TTextLines.IndentOf(AText, Statements[0].StartPos.Line);
   BodyText := Copy(AText, SelStart + 1, SelEnd - SelStart);
   if not EndsStr(';', BodyText) then
+  begin
     BodyText := BodyText + ';';
+  end;
   MethodText := MethodText + Indent + 'begin' + LineBreak + TRoutineBody.Reindent(BodyText, StatementIndent,
     Indent + Unit_, LineBreak) + LineBreak + Indent + 'end;' + LineBreak + LineBreak;
   Line := TRoutineBody.RoutineInsertLine(AText, Routine);
   Edits := Edits + [TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), MethodText)];
   // Lokale Variablen, die nur noch die neue Methode braucht.
   if Removed <> nil then
+  begin
     for Index := 0 to Routine.ChildCount - 1 do
+    begin
       if Routine[Index].Kind = TSyntaxKind.VarSection then
       begin
         Statement := Routine[Index];
         for LocalIndex := 0 to Statement.ChildCount - 1 do
+        begin
           TRoutineLocals.RemoveVariables(ATree, Statement[LocalIndex], Removed, Edits);
+        end;
       end;
+    end;
+  end;
   Edits := Edits + [TTextEdit.Create(TTextRange.Create(Statements[0].StartPos, Statements[High(Statements)].EndPos),
     ShortName + Args)];
   AAction.Title := 'Methode extrahieren';
@@ -830,10 +994,16 @@ begin
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < ANode.EndOffset) do
   begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       if Tokens[Index].Kind = TPascalTokenKind.StringLiteral then
-        Result := Result + Tokens[Index].Text + ' '
+      begin
+        Result := Result + Tokens[Index].Text + ' ';
+      end
       else
+      begin
         Result := Result + LowerCase(Tokens[Index].Text) + ' ';
+      end;
+    end;
     Inc(Index);
   end;
 end;
@@ -851,11 +1021,17 @@ begin
     // Übrige Werte bewusst ohne Wirkung.
   end;
   if StartsText('Get', Result) and (Length(Result) > 3) then
+  begin
     Result := Copy(Result, 4, MaxInt);
+  end;
   if (Result = '') or not CharInSet(Result[1], ['A'..'Z', 'a'..'z']) or (Pos('<', Result) > 0) then
-    Result := TExtractRefactoring.VariableName
+  begin
+    Result := TExtractRefactoring.VariableName;
+  end
   else
+  begin
     Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+  end;
 end;
 
 /// <summary>Namen, die im Ausdruck vorkommen.</summary>
@@ -869,7 +1045,9 @@ begin
   try
     TRoutineLocals.CollectKind(ANode, TSyntaxKind.Identifier, Nodes);
     for Node in Nodes do
+    begin
       Result := Result + [Node.Name];
+    end;
   finally
     Nodes.Free;
   end;
@@ -887,9 +1065,13 @@ begin
   try
     TRoutineLocals.CollectKind(ABody, TSyntaxKind.Identifier, Nodes);
     for Node in Nodes do
+    begin
       if (Node.StartOffset > AFrom) and (Node.StartOffset < ATo) and (IndexText(Node.Name, ANames) >= 0) and
         (TRoutineLocals.AccessOf(Node, nil) <> TAccess.Read) then
+      begin
         Exit(True);
+      end;
+    end;
   finally
     Nodes.Free;
   end;
@@ -910,21 +1092,31 @@ begin
   Result := False;
   if (ATree = nil) or not OffsetRange(AText, ARange, First, Last) or (First = Last) or
     not Trimmed(ATree.Tokens, First, Last, SelStart, SelEnd) then
+  begin
     Exit;
+  end;
   Routine := TRoutineBody.RoutineAt(ATree, SelStart);
   if Routine = nil then
+  begin
     Exit;
+  end;
   Body := TRoutineBody.BodyOf(Routine);
   Expression := TRoutineBody.Enclosing(Body, SelStart, SelEnd);
   if (Expression.StartOffset <> SelStart) or (Expression.EndOffset <> SelEnd) or
     not (Expression.Kind in ExpressionKinds) then
+  begin
     Exit;
+  end;
   // Klammern um den ganzen Ausdruck gehören nicht in die Variable.
   if (Expression.Kind = TSyntaxKind.ParenExpr) and (Expression.ChildCount = 1) then
+  begin
     Expression := Expression[0];
+  end;
   Host := TRoutineBody.HostStatement(Expression, Body);
   if Host = nil then
+  begin
     Exit;
+  end;
   Targets := [Expression];
   if AAll then
   begin
@@ -936,38 +1128,54 @@ begin
     try
       TRoutineLocals.CollectKind(Block, Expression.Kind, Nodes);
       for Node in Nodes do
+      begin
         if (Node.StartOffset >= Host.StartOffset) and (NormalText(ATree, Node) = Normal) and
           (TRoutineBody.HostStatement(Node, Body) <> nil) and ((Targets = nil) or
           (Node.StartOffset >= Targets[High(Targets)].EndOffset)) then
+        begin
           Targets := Targets + [Node];
+        end;
+      end;
     finally
       Nodes.Free;
     end;
     if (Length(Targets) < 2) or ChangedBetween(Body, NamesIn(Expression), Targets[0].StartOffset,
       Targets[High(Targets)].EndOffset) then
+    begin
       Exit;
+    end;
     Host := TRoutineBody.HostStatement(Targets[0], Body);
   end;
   Name := TRoutineBody.UniqueName(ATree.Tokens, AOptions.Names.Local(NameFor(Expression)));
   Expr := TRoutineBody.TextOf(AText, Expression);
   Edits := nil;
   if AOptions.InlineVar then
-    Edits := Edits + [TRoutineBody.InsertBefore(AText, Host, 'var ' + Name + ' := ' + Expr + ';')]
+  begin
+    Edits := Edits + [TRoutineBody.InsertBefore(AText, Host, 'var ' + Name + ' := ' + Expr + ';')];
+  end
   else
   begin
     Probed := TypeOfExpression(AText, ATree, Expression, Host, AOptions);
     if Probed.Name = '' then
+    begin
       Exit;
+    end;
     Edits := Edits + [TRoutineBody.AddVariable(AText, Routine, Name, Probed.Name, AOptions.Style),
       TRoutineBody.InsertBefore(AText, Host, Name + ' := ' + Expr + ';')];
     AddUsesFor(ATree, AText, Probed, Routine.StartOffset, Edits);
   end;
   for Node in Targets do
+  begin
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(Node.StartPos, Node.EndPos), Name)];
+  end;
   if AAll then
-    AAction.Title := Format('Variable einführen (alle %d Vorkommen)', [Length(Targets)])
+  begin
+    AAction.Title := Format('Variable einführen (alle %d Vorkommen)', [Length(Targets)]);
+  end
   else
+  begin
     AAction.Title := 'Variable einführen';
+  end;
   AAction.Kind := ExtractKind;
   AAction.Edits := Edits;
   Result := True;
@@ -986,36 +1194,50 @@ begin
   AAction := Default(TCodeAction);
   Result := False;
   if (ATree = nil) or not OffsetRange(AText, ARange, First, Last) then
+  begin
     Exit;
+  end;
   if First = Last then
   begin
     SelStart := First;
     SelEnd := First;
   end
   else if not Trimmed(ATree.Tokens, First, Last, SelStart, SelEnd) then
+  begin
     Exit;
+  end;
   Routine := TRoutineBody.RoutineAt(ATree, SelStart);
   if Routine = nil then
+  begin
     Exit;
+  end;
   Body := TRoutineBody.BodyOf(Routine);
   Literal := TRoutineBody.Enclosing(Body, SelStart, SelEnd);
   // Negative Zahl: das Vorzeichen gehört dazu.
   if (Literal.Kind = TSyntaxKind.Literal) and (Literal.Parent <> nil) and
     (Literal.Parent.Kind = TSyntaxKind.UnaryExpr) and (Literal.Parent.Name = '-') and (First <> Last) and
     (Literal.Parent.StartOffset = SelStart) then
+  begin
     Literal := Literal.Parent;
+  end;
   if not ((Literal.Kind = TSyntaxKind.Literal) or ((Literal.Kind = TSyntaxKind.UnaryExpr) and
     (Literal.ChildCount = 1) and (Literal[0].Kind = TSyntaxKind.Literal))) then
+  begin
     Exit;
+  end;
   if (First <> Last) and ((Literal.StartOffset <> SelStart) or (Literal.EndOffset <> SelEnd)) then
+  begin
     Exit;
+  end;
   // Nicht in asm und nicht als Ziel einer Zuweisung (das kann ein Literal nicht sein); True/False/nil sind
   // Bezeichner und keine Literale.
   Node := Literal.Parent;
   while (Node <> nil) and (Node <> Body) do
   begin
     if Node.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.InlineConst] then
+    begin
       Exit;
+    end;
     Node := Node.Parent;
   end;
   Name := TRoutineBody.UniqueName(ATree.Tokens, AOptions.Names.Constant(ConstantName));
@@ -1026,7 +1248,9 @@ begin
     // Vor die äußerste Routine, in der das Literal steht.
     Outer := Routine;
     while (Outer.Parent <> nil) and (Outer.Parent.Kind = TSyntaxKind.RoutineDecl) do
+    begin
       Outer := Outer.Parent;
+    end;
     Line := TRoutineBody.RoutineInsertLine(AText, Outer);
     Indent := TTextLines.IndentOf(AText, Outer.StartPos.Line);
     Edits := [TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), Indent + 'const' + LineBreak + Indent +
@@ -1054,7 +1278,9 @@ begin
   Result := False;
   Parent := ANode.Parent;
   if (Parent = nil) or (Parent.ChildCount = 0) or not (ANode.Kind in ExpressionKinds) then
+  begin
     Exit;
+  end;
   case Parent.Kind of
     TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.IfExpr:
       Result := Parent[0] = ANode;
@@ -1093,28 +1319,42 @@ begin
   AReason := '';
   if (ATree = nil) or not OffsetRange(AText, ARange, First, Last) or (First = Last) or
     not Trimmed(ATree.Tokens, First, Last, SelStart, SelEnd) then
+  begin
     Exit(Fail('keine Auswahl', AReason));
+  end;
   Routine := TRoutineBody.RoutineAt(ATree, SelStart);
   if (Routine = nil) or (TRoutineBody.RoutineAt(ATree, SelEnd) <> Routine) then
+  begin
     Exit(Fail('nicht im Rumpf einer Routine', AReason));
+  end;
   Body := TRoutineBody.BodyOf(Routine);
   Condition := TRoutineBody.Enclosing(Body, SelStart, SelEnd);
   // Deckungsgleiche Knoten: von innen nach außen bis zur Bedingung.
   while not IsConditionRoot(Condition) and (Condition.Parent <> nil) and
     (Condition.Parent.StartOffset = SelStart) and (Condition.Parent.EndOffset = SelEnd) do
+  begin
     Condition := Condition.Parent;
+  end;
   if (Condition.StartOffset <> SelStart) or (Condition.EndOffset <> SelEnd) or not IsConditionRoot(Condition) then
+  begin
     Exit(Fail('keine ganze Bedingung', AReason));
+  end;
   if InsideBlocked(Condition, Body, AReason) then
+  begin
     Exit(False);
+  end;
   if TRoutineLocals.HasKind(Condition, TSyntaxKind.AnonymousMethod) then
+  begin
     Exit(Fail('anonyme Methode in der Bedingung', AReason));
+  end;
   Locals := TRoutineLocals.Collect(AText, ATree, Routine);
   OnlyNames := RoutineOnlyNames(Routine);
   Lookup := TFlowSignatures.FromTree(ATree.Root);
   SetLength(Seen, Length(Locals));
   for LocalIndex := 0 to High(Seen) do
+  begin
     Seen[LocalIndex] := False;
+  end;
   Order := nil;
   Identifiers := TList<TSyntaxNode>.Create;
   try
@@ -1125,14 +1365,20 @@ begin
       if LocalIndex < 0 then
       begin
         if SameText(Node.Name, 'Result') then
+        begin
           Exit(Fail('Result in der Bedingung', AReason));
+        end;
         if IndexText(Node.Name, OnlyNames) >= 0 then
+        begin
           Exit(Fail(Node.Name + ' ist nur in der Routine sichtbar', AReason));
+        end;
         Continue;
       end;
       // Nur lesen: Die Funktion bekommt die Werte als const-Parameter.
       if TRoutineLocals.AccessOf(Node, Lookup) <> TAccess.Read then
+      begin
         Exit(Fail('die Bedingung ändert ' + Node.Name, AReason));
+      end;
       if not Seen[LocalIndex] then
       begin
         Seen[LocalIndex] := True;
@@ -1165,7 +1411,9 @@ begin
       AddUsesFor(ATree, AText, Probed, Routine.StartOffset, Edits);
     end;
     if TypeText = '' then
+    begin
       Exit(Fail('Typ von ' + Locals[LocalIndex].Name + ' unbekannt', AReason));
+    end;
     if Params <> '' then
     begin
       Params := Params + '; ';
@@ -1175,18 +1423,28 @@ begin
     Args := Args + Locals[LocalIndex].Name;
   end;
   if Params <> '' then
+  begin
     Params := '(' + Params + ')';
+  end;
   if Args <> '' then
+  begin
     Args := '(' + Args + ')';
+  end;
   if not NewRoutineHead(AText, ATree, Routine, Body, ConditionName, 'function', Params, ': Boolean', AOptions,
     Edits, ShortName, MethodText, AReason) then
+  begin
     Exit(False);
+  end;
   if ConstLines <> '' then
+  begin
     MethodText := MethodText + Indent + 'const' + LineBreak + ConstLines;
+  end;
   // Klammern um die ganze Bedingung braucht die Zuweisung nicht.
   Inner := Condition;
   if (Inner.Kind = TSyntaxKind.ParenExpr) and (Inner.ChildCount = 1) then
+  begin
     Inner := Inner[0];
+  end;
   MethodText := MethodText + Indent + 'begin' + LineBreak + TRoutineBody.Reindent('Result := ' +
     TRoutineBody.TextOf(AText, Inner) + ';', TTextLines.IndentOf(AText, Condition.StartPos.Line), Indent + Unit_,
     LineBreak) + LineBreak + Indent + 'end;' + LineBreak + LineBreak;
@@ -1206,17 +1464,29 @@ var
 begin
   Result := nil;
   if ExtractMethod(AText, ATree, ARange, AOptions, Action) then
+  begin
     Result := Result + [Action];
+  end;
   if IntroduceVariable(AText, ATree, ARange, AOptions, False, Action) then
+  begin
     Result := Result + [Action];
+  end;
   if IntroduceVariable(AText, ATree, ARange, AOptions, True, Action) then
+  begin
     Result := Result + [Action];
+  end;
   if ExtractConstant(AText, ATree, ARange, AOptions, False, Action) then
+  begin
     Result := Result + [Action];
+  end;
   if ExtractConstant(AText, ATree, ARange, AOptions, True, Action) then
+  begin
     Result := Result + [Action];
+  end;
   if ExtractCondition(AText, ATree, ARange, AOptions, Action) then
+  begin
     Result := Result + [Action];
+  end;
 end;
 
 end.

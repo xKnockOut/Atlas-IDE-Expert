@@ -254,9 +254,13 @@ const
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function NodeContains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
@@ -275,11 +279,17 @@ begin
   repeat
     Inner := nil;
     for Index := 0 to Result.ChildCount - 1 do
+    begin
       if NodeContains(Result[Index], APosition) and ((Inner = nil) or
         (ComparePositions(Result[Index].StartPos, Inner.StartPos) > 0)) then
+      begin
         Inner := Result[Index];
+      end;
+    end;
     if Inner <> nil then
+    begin
       Result := Inner;
+    end;
   until Inner = nil;
 end;
 
@@ -288,8 +298,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to AParent.ChildCount - 1 do
+  begin
     if AParent[Index] = AChild then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -304,11 +318,17 @@ begin
   begin
     Middle := (First + Last) div 2;
     if ComparePositions(ATree.Tokens[Middle].EndPos, APosition) <= 0 then
-      First := Middle + 1
+    begin
+      First := Middle + 1;
+    end
     else if ComparePositions(ATree.Tokens[Middle].StartPos, APosition) > 0 then
-      Last := Middle - 1
+    begin
+      Last := Middle - 1;
+    end
     else
+    begin
       Exit(Middle);
+    end;
   end;
   Result := -1;
 end;
@@ -316,9 +336,13 @@ end;
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 /// <summary>Position des Namens eines Bezeichners bzw. des Mitglieds hinter dem letzten Punkt.</summary>
@@ -329,16 +353,22 @@ var
 begin
   Result := ANode.StartPos;
   if ANode.Kind <> TSyntaxKind.MemberAccess then
+  begin
     Exit;
+  end;
   // Das Mitglied steht als letzter gleichnamiger Bezeichner im Knoten.
   for Index := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
     Token := ATree.Tokens[Index];
     if Token.Offset >= ANode.EndOffset then
+    begin
       Break;
+    end;
     if (Token.Offset >= ANode.StartOffset) and (Token.Kind = TPascalTokenKind.Identifier) and
       SameText(CleanName(Token.Text), CleanName(ANode.Name)) then
+    begin
       Result := Token.StartPos;
+    end;
   end;
 end;
 
@@ -352,7 +382,9 @@ begin
   begin
     Token := ATree.Tokens[Index];
     if Token.Offset >= ANode.EndOffset then
+    begin
       Break;
+    end;
     if (Token.Offset >= ANode.StartOffset) and (Token.Kind = TPascalTokenKind.Identifier) and
       SameText(CleanName(Token.Text), AName) then
     begin
@@ -373,7 +405,9 @@ function CalleeName(ACall: TSyntaxNode): string;
 begin
   Result := '';
   if ACall.ChildCount > 0 then
+  begin
     Result := LowerCase(CleanName(ShortName(ACall[0].Name)));
+  end;
 end;
 
 function SingleLine(const AText: string): string;
@@ -384,17 +418,25 @@ begin
   Result := '';
   Space := False;
   for Index := 1 to Length(AText) do
+  begin
     if CharInSet(AText[Index], [#9, #10, #13, ' ']) then
-      Space := Result <> ''
+    begin
+      Space := Result <> '';
+    end
     else
     begin
       if Space then
+      begin
         Result := Result + ' ';
+      end;
       Space := False;
       Result := Result + AText[Index];
     end;
+  end;
   if Length(Result) > MaxDetail then
+  begin
     Result := Copy(Result, 1, MaxDetail - 1) + '…';
+  end;
 end;
 
 function SymbolFromResolved(const AResolved: TResolvedSymbol): TDataFlowSymbol;
@@ -432,7 +474,9 @@ begin
   FCancellation := ACancellation;
   FProject := TDictionary<string, Boolean>.Create;
   for FileName in AFiles do
+  begin
     FProject.AddOrSetValue(AnsiUpperCase(FileName), True);
+  end;
   FProject.AddOrSetValue(AnsiUpperCase(AFileName), True);
   FTrees := TObjectDictionary<string, TSyntaxTree>.Create([doOwnsValues]);
   FTexts := TDictionary<string, string>.Create;
@@ -457,15 +501,21 @@ end;
 procedure TDataFlowRun.CheckCancelled;
 begin
   if FCancellation <> nil then
+  begin
     FCancellation.ThrowIfCancellationRequested;
+  end;
 end;
 
 function TDataFlowRun.TextOf(const AFileName: string): string;
 begin
   if FTexts.TryGetValue(AnsiUpperCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   if not (Assigned(FReadText) and FReadText(AFileName, Result)) then
+  begin
     Result := '';
+  end;
   FTexts.Add(AnsiUpperCase(AFileName), Result);
 end;
 
@@ -474,15 +524,23 @@ var
   Text: string;
 begin
   if SameText(AFileName, FOwnFile) then
+  begin
     Exit(FOwnTree);
+  end;
   if FTrees.TryGetValue(AnsiUpperCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   if AFileName = '' then
+  begin
     Exit;
+  end;
   Text := TextOf(AFileName);
   if Text = '' then
+  begin
     Exit;
+  end;
   Result := TSyntaxTreeCache.Parse(Text);
   FTrees.Add(AnsiUpperCase(AFileName), Result);
 end;
@@ -498,14 +556,18 @@ begin
   end;
   Result := '';
   if (ALine >= 0) and (ALine < Length(Lines)) then
+  begin
     Result := Trim(Lines[ALine]);
+  end;
 end;
 
 function TDataFlowRun.ExprText(const AFileName: string; ANode: TSyntaxNode): string;
 begin
   Result := '';
   if ANode <> nil then
+  begin
     Result := SingleLine(Copy(TextOf(AFileName), ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
 end;
 
 function TDataFlowRun.InProject(const AFileName: string): Boolean;
@@ -519,7 +581,9 @@ var
   Tree: TSyntaxTree;
 begin
   if FTests.TryGetValue(AnsiUpperCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Tree := TreeOf(AFileName);
   Result := (Tree <> nil) and TUsesClauses.IsTestUnit(Tree.Tokens);
   FTests.Add(AnsiUpperCase(AFileName), Result);
@@ -536,15 +600,25 @@ var
 begin
   Result := TDataFlowLeaf.None;
   if ASymbol.SymbolKind in ConstantKinds then
+  begin
     Exit(TDataFlowLeaf.Constant);
+  end;
   if not InProject(ASymbol.FileName) then
+  begin
     Exit(TDataFlowLeaf.Outside);
+  end;
   Key := ASymbol.Key;
   if Key = FCurrentKey then
+  begin
     Exit(TDataFlowLeaf.Cycle);
+  end;
   for Ancestor in FOptions.Path do
+  begin
     if SameText(Ancestor, Key) then
+    begin
       Exit(TDataFlowLeaf.Cycle);
+    end;
+  end;
 end;
 
 function TDataFlowRun.Place(const AFileName: string; const APosition: TTextPosition): TDataFlowPlace;
@@ -575,9 +649,13 @@ begin
   Result := False;
   Header := ARoutine;
   if ARoutine.Kind = TSyntaxKind.RoutineDecl then
+  begin
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  end;
   if Header = nil then
+  begin
     Exit;
+  end;
   Name := ShortName(Header.Name);
   Position := Header.StartPos;
   // Bei TFoo.Bar das letzte Vorkommen vor der Parameterliste.
@@ -586,21 +664,31 @@ begin
   begin
     Token := ATree.Tokens[Index];
     if Token.Offset >= Header.EndOffset then
+    begin
       Break;
+    end;
     if Token.Offset < Header.StartOffset then
+    begin
       Continue;
+    end;
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(CleanName(Token.Text), Name) then
     begin
       Position := Token.StartPos;
       Found := True;
     end;
     if Token.IsSymbol('(') or Token.IsSymbol(';') or Token.IsSymbol(':') then
+    begin
       Break;
+    end;
   end;
   if not Found then
+  begin
     Exit;
+  end;
   if ResolvedAt(ATree, AFileName, Position, Resolved) and (Resolved.SymbolKind in RoutineKinds) then
-    ASymbol := SymbolFromResolved(Resolved)
+  begin
+    ASymbol := SymbolFromResolved(Resolved);
+  end
   else
   begin
     ASymbol := Default(TDataFlowSymbol);
@@ -623,7 +711,9 @@ begin
   begin
     // Result in einer anonymen Methode gehört zu ihr, nicht zur Routine außen.
     if Current.Kind = TSyntaxKind.AnonymousMethod then
+    begin
       Exit(False);
+    end;
     Current := Current.Parent;
   end;
   Result := (Current <> nil) and FunctionOf(ATree, AFileName, Current, ASymbol);
@@ -641,7 +731,9 @@ begin
   // Result steht für die Funktion, in der es vorkommt.
   if (Index >= 0) and (ATree.Tokens[Index].Kind = TPascalTokenKind.Identifier) and
     SameText(ATree.Tokens[Index].Text, 'Result') then
+  begin
     Exit(EnclosingFunction(ATree, AFileName, NodeAt(ATree.Root, APosition), ASymbol));
+  end;
   if ResolvedAt(ATree, AFileName, APosition, Resolved) then
   begin
     ASymbol := SymbolFromResolved(Resolved);
@@ -650,12 +742,16 @@ begin
   Targets := TLspDefinition.Targets(FResolver, FIndex, ATree, AFileName, APosition, True);
   Result := Length(Targets) > 0;
   if not Result then
+  begin
     Exit;
+  end;
   ASymbol.FileName := Targets[0].FileName;
   ASymbol.Position := Targets[0].SelectionRange.StartPos;
   ASymbol.SymbolKind := TIndexSymbolKind.Variable;
   if Index >= 0 then
+  begin
     ASymbol.Name := CleanName(ATree.Tokens[Index].Text);
+  end;
 end;
 
 function TDataFlowRun.ParamsOf(const AFileName: string; const APosition: TTextPosition): TArray<TDataFlowParam>;
@@ -669,22 +765,34 @@ begin
   Result := nil;
   Tree := TreeOf(AFileName);
   if Tree = nil then
+  begin
     Exit;
+  end;
   Node := NodeAt(Tree.Root, APosition);
   if Node.Kind = TSyntaxKind.RoutineDecl then
+  begin
     Node := Node.FindChild(TSyntaxKind.RoutineHeader);
+  end;
   while (Node <> nil) and (Node.Kind <> TSyntaxKind.RoutineHeader) do
+  begin
     Node := Node.Parent;
+  end;
   if Node = nil then
+  begin
     Exit;
+  end;
   Parameters := Node.FindChild(TSyntaxKind.Parameters);
   if Parameters = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Parameters.ChildCount - 1 do
   begin
     Parameter := Parameters[Index];
     if Parameter.Kind <> TSyntaxKind.Parameter then
+    begin
       Continue;
+    end;
     for Name in Parameter.Name.Split([',']) do
     begin
       Param := Default(TDataFlowParam);
@@ -692,7 +800,9 @@ begin
       Param.Modifier := Parameter.Modifier;
       Param.FileName := AFileName;
       if not NameInNode(Tree, Parameter, CleanName(Param.Name), Param.Position) then
+      begin
         Param.Position := Parameter.StartPos;
+      end;
       Result := Result + [Param];
     end;
   end;
@@ -705,7 +815,9 @@ begin
   Result := nil;
   Tree := TreeOf(ASymbol.FileName);
   if Tree = nil then
+  begin
     Exit;
+  end;
   Result := TLspReferences.Find(FResolver, FIndex, Tree, ASymbol.FileName, ASymbol.Position, True, FFiles, FReadText,
     FCancellation);
 end;
@@ -716,8 +828,12 @@ var
   Symbol: TDataFlowSymbol;
 begin
   for Existing in ANode.Sources do
+  begin
     if Existing.Key = ASymbol.Key then
+    begin
       Exit;
+    end;
+  end;
   Symbol := ASymbol;
   Symbol.Leaf := LeafOf(Symbol);
   ANode.Sources := ANode.Sources + [Symbol];
@@ -735,7 +851,9 @@ var
   Outer: Boolean;
 begin
   if AExpr = nil then
+  begin
     Exit;
+  end;
   // Eigener Stapel statt Rekursion (Bericht M1).
   Pending := TStack<TSyntaxNode>.Create;
   try
@@ -750,14 +868,20 @@ begin
           begin
             Name := LowerCase(Node.Name);
             if (Name = 'nil') or (Name = 'true') or (Name = 'false') then
-              ANode.Literal := True
+            begin
+              ANode.Literal := True;
+            end
             else if ResolveSymbol(ATree, AFileName, Node.StartPos, Symbol) and not (Symbol.SymbolKind in TypeKinds) then
+            begin
               AddSource(ANode, Symbol);
+            end;
           end;
         TSyntaxKind.MemberAccess:
           if ResolveSymbol(ATree, AFileName, NamePosition(ATree, Node), Symbol) and
             not (Symbol.SymbolKind in TypeKinds) then
+          begin
             AddSource(ANode, Symbol);
+          end;
         TSyntaxKind.Call:
           begin
             // Routinen des Projekts liefern ihr Ergebnis; Typumwandlungen und Routinen von außen reichen
@@ -772,37 +896,55 @@ begin
                 Outer := False;
               end
               else if ANode.Via = '' then
+              begin
                 ANode.Via := ShortName(Node.Name);
+              end;
             end;
             if Outer then
+            begin
               for Index := Node.ChildCount - 1 downto 1 do
+              begin
                 Pending.Push(Node[Index]);
+              end;
+            end;
           end;
         TSyntaxKind.IndexAccess:
           if Node.ChildCount > 0 then
+          begin
             Pending.Push(Node[0]);
+          end;
         TSyntaxKind.Dereference:
           begin
             ANode.Unsafe := True;
             if ANode.UnsafeReason = '' then
+            begin
               ANode.UnsafeReason := 'pointer';
+            end;
             if Node.ChildCount > 0 then
+            begin
               Pending.Push(Node[0]);
+            end;
           end;
         TSyntaxKind.AddressOf:
           begin
             ANode.Unsafe := True;
             if ANode.UnsafeReason = '' then
+            begin
               ANode.UnsafeReason := 'address';
+            end;
           end;
         TSyntaxKind.IfExpr:
           for Index := Node.ChildCount - 1 downto 1 do
+          begin
             Pending.Push(Node[Index]);
+          end;
         TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod, TSyntaxKind.GenericArgs:
           ;
       else
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     end;
   finally
@@ -818,10 +960,14 @@ var
   Existing: TDataFlowNode;
 begin
   if Length(ANode.Places) = 0 then
+  begin
     Exit;
+  end;
   Key := IntToStr(Ord(ANode.Kind)) + '|' + ANode.Detail + '|' + ANode.Via + '|' + ANode.UnsafeReason;
   for Source in ANode.Sources do
+  begin
     Key := Key + '|' + Source.Key;
+  end;
   if FGroups.TryGetValue(Key, Slot) then
   begin
     Existing := FNodes[Slot];
@@ -829,7 +975,9 @@ begin
     FNodes[Slot] := Existing;
   end
   else if FNodes.Count < TLspDataFlow.MaxNodes then
+  begin
     FGroups.Add(Key, FNodes.Add(ANode));
+  end;
 end;
 
 function TDataFlowRun.NewNode(AKind: TDataFlowKind; const AFileName: string;
@@ -846,7 +994,9 @@ var
   Node: TDataFlowNode;
 begin
   if Excluded(AFileName) then
+  begin
     Exit;
+  end;
   Node := NewNode(AKind, AFileName, APosition);
   Node.Detail := ExprText(AFileName, AValue);
   Node.Via := AVia;
@@ -862,7 +1012,9 @@ var
   Node: TDataFlowNode;
 begin
   if Excluded(AFileName) then
+  begin
     Exit;
+  end;
   Node := NewNode(AKind, AFileName, APosition);
   Node.Detail := ADetail;
   Node.Via := AVia;
@@ -878,7 +1030,9 @@ var
   Node: TDataFlowNode;
 begin
   if Excluded(AFileName) then
+  begin
     Exit;
+  end;
   Node := NewNode(AKind, AFileName, APosition);
   Node.Detail := ADetail;
   Node.Via := AVia;
@@ -899,11 +1053,15 @@ begin
     (Current.ChildCount > 0) do
   begin
     if (Current.Kind = TSyntaxKind.Dereference) and (AUnsafeReason = '') then
+    begin
       AUnsafeReason := 'pointer';
+    end;
     Current := Current[0];
   end;
   if (Current <> nil) and (Current.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
     Result := ResolveSymbol(ATree, AFileName, NamePosition(ATree, Current), ASymbol);
+  end;
 end;
 
 function TDataFlowRun.WrittenTarget(ANode: TSyntaxNode; out AStatement: TSyntaxNode;
@@ -916,7 +1074,9 @@ begin
     (Current.Parent[0] = Current) do
   begin
     if Current.Parent.Kind = TSyntaxKind.Dereference then
+    begin
       AUnsafeReason := 'pointer';
+    end;
     Current := Current.Parent;
   end;
   AStatement := Current.Parent;
@@ -936,9 +1096,13 @@ begin
   Result := '';
   Index := TokenIndexAt(ATree, APosition) - 1;
   while (Index >= 0) and (ATree.Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Dec(Index);
+  end;
   if Index >= 0 then
+  begin
     Result := LowerCase(ATree.Tokens[Index].Text);
+  end;
 end;
 
 function TDataFlowRun.Accessor(ATree: TSyntaxTree; AProperty: TSyntaxNode; const AKeyword: string;
@@ -953,10 +1117,14 @@ begin
   begin
     Token := ATree.Tokens[Index];
     if Token.Offset >= AProperty.EndOffset then
+    begin
       Break;
+    end;
     if (Token.Offset < AProperty.StartOffset) or (Token.Kind in [TPascalTokenKind.Comment,
       TPascalTokenKind.Directive]) then
+    begin
       Continue;
+    end;
     if Armed and (Token.Kind = TPascalTokenKind.Identifier) then
     begin
       APosition := Token.StartPos;
@@ -980,9 +1148,13 @@ var
 begin
   // Indizierte Properties: Der Wert ist der letzte Parameter des Setters, davor stehen die Indizes.
   if AParamIndex < 0 then
+  begin
     Exit;
+  end;
   if not PropertyName(ATree, AProperty, Position) then
+  begin
     Exit;
+  end;
   if not ResolveSymbol(ATree, AFileName, Position, Prop) then
   begin
     Prop := Default(TDataFlowSymbol);
@@ -996,14 +1168,20 @@ begin
     CheckCancelled;
     Tree := TreeOf(Location.FileName);
     if Tree = nil then
+    begin
       Continue;
+    end;
     Node := NodeAt(Tree.Root, Location.Range.StartPos);
     if not (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+    begin
       Continue;
+    end;
     Reason := '';
     if WrittenTarget(Node, Statement, Reason) then
+    begin
       AddValueNode(TDataFlowKind.PropertyWrite, Tree, Location.FileName, Location.Range.StartPos, Statement[1],
         Prop.Name, Reason);
+    end;
   end;
 end;
 
@@ -1031,7 +1209,9 @@ begin
       begin
         Value := Declaration[Declaration.ChildCount - 1];
         if not (Value.Kind in TypeNodeKinds) then
+        begin
           Node.Detail := ExprText(ASymbol.FileName, Value);
+        end;
       end;
     end;
     AddNode(Node);
@@ -1051,14 +1231,20 @@ begin
   begin
     CheckCancelled;
     if SameText(ExtractFileExt(Location.FileName), '.dfm') or SameText(ExtractFileExt(Location.FileName), '.fmx') then
+    begin
       Continue;
+    end;
     ClassifyWrite(ASymbol, Location);
   end;
   Declaration := NodeAt(Tree.Root, ASymbol.Position);
   if Declaration.Kind = TSyntaxKind.Parameter then
+  begin
     CallerArguments(ASymbol, Declaration);
+  end;
   if ASymbol.SymbolKind = TIndexSymbolKind.Property_ then
+  begin
     PropertyReads(ASymbol);
+  end;
 end;
 
 procedure TDataFlowRun.ClassifyWrite(const ASymbol: TDataFlowSymbol; const ALocation: TReferenceLocation);
@@ -1075,7 +1261,9 @@ var
 begin
   Tree := TreeOf(ALocation.FileName);
   if Tree = nil then
+  begin
     Exit;
+  end;
   Position := ALocation.Range.StartPos;
   Node := NodeAt(Tree.Root, Position);
   case Node.Kind of
@@ -1083,34 +1271,48 @@ begin
       begin
         // Deklaration mit Wert: var X := …, X: T = …; X: T absolute Y ist eine unsichere Kante.
         if Node.ChildCount = 0 then
+        begin
           Exit;
+        end;
         Value := Node[Node.ChildCount - 1];
         if Value.Kind in TypeNodeKinds then
+        begin
           Exit;
+        end;
         Reason := '';
         if SameText(AccessorBefore(Tree, Value.StartPos), 'absolute') then
+        begin
           Reason := 'absolute';
+        end;
         AddValueNode(TDataFlowKind.Initializer, Tree, ALocation.FileName, Position, Value, '', Reason);
         Exit;
       end;
     TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
       begin
         if not SameText(CleanName(Node.Name), CleanName(ASymbol.Name)) or Excluded(ALocation.FileName) then
+        begin
           Exit;
+        end;
         Loop := NewNode(TDataFlowKind.Loop, ALocation.FileName, Position);
         Loop.Detail := '';
         for Index := 0 to Node.ChildCount - 1 do
         begin
           Child := Node[Index];
           if (Child.Kind in StatementKinds) or (Child.Kind in TypeNodeKinds) then
+          begin
             Continue;
+          end;
           if Loop.Detail <> '' then
+          begin
             Loop.Detail := Loop.Detail + ' .. ';
+          end;
           Loop.Detail := Loop.Detail + ExprText(ALocation.FileName, Child);
           CollectValue(Tree, ALocation.FileName, Child, Loop);
         end;
         if Node.Kind = TSyntaxKind.ForInStatement then
+        begin
           Loop.Via := 'in';
+        end;
         AddNode(Loop);
         Exit;
       end;
@@ -1118,7 +1320,9 @@ begin
       begin
         // Feld hinter write: Jede Zuweisung an die Property schreibt hinein.
         if (ASymbol.SymbolKind = TIndexSymbolKind.Field) and SameText(AccessorBefore(Tree, Position), 'write') then
+        begin
           PropertyWrites(Tree, ALocation.FileName, Node, 0);
+        end;
         Exit;
       end;
     TSyntaxKind.Identifier, TSyntaxKind.MemberAccess:
@@ -1137,7 +1341,9 @@ begin
       if (Parent.Kind = TSyntaxKind.PropertyDecl) and Accessor(TreeOf(ASymbol.FileName), Parent, 'write', Position) and
         ResolvedAt(TreeOf(ASymbol.FileName), ASymbol.FileName, Position, Setter) and
         (Setter.SymbolKind in RoutineKinds) then
+      begin
         Via := Setter.Name;
+      end;
       Position := ALocation.Range.StartPos;
     end;
     AddValueNode(TDataFlowKind.Assignment, Tree, ALocation.FileName, Position, Statement[1], Via, Reason);
@@ -1145,17 +1351,23 @@ begin
   end;
   Parent := Node.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   if (Parent.Kind = TSyntaxKind.VarDecl) and SameText(AccessorBefore(Tree, Position), 'absolute') then
   begin
     // X: T absolute Y: Jede Zuweisung an X ändert Y.
     if NameInNode(Tree, Parent, CleanName(Trim(Parent.Name.Split([','])[0])), Position) and
       ResolveSymbol(Tree, ALocation.FileName, Position, Alias) then
+    begin
       AddTargetNode(TDataFlowKind.Assignment, ALocation.FileName, ALocation.Range.StartPos, Alias,
         ExprText(ALocation.FileName, Parent), 'absolute', 'absolute');
+    end;
   end
   else if (Parent.Kind = TSyntaxKind.Call) and (Parent[0] <> Node) then
-    ArgumentWrite(ASymbol, Tree, ALocation.FileName, Parent, ChildIndex(Parent, Node) - 1, Position, Reason)
+  begin
+    ArgumentWrite(ASymbol, Tree, ALocation.FileName, Parent, ChildIndex(Parent, Node) - 1, Position, Reason);
+  end
   else if Parent.Kind = TSyntaxKind.AddressOf then
   begin
     // Über die Adresse kann der Wert sich überall ändern.
@@ -1186,14 +1398,20 @@ begin
     (Name = 'delete')) and (AArgument = 0) or (Name = 'insert') and (AArgument = 1) then
   begin
     if Excluded(AFileName) then
+    begin
       Exit;
+    end;
     Node := NewNode(TDataFlowKind.Modify, AFileName, APosition);
     Node.Detail := ExprText(AFileName, ACall);
     Node.Via := ShortName(ACall.Name);
     AddSource(Node, ASymbol);
     for Argument := 1 to ACall.ChildCount - 1 do
+    begin
       if Argument - 1 <> AArgument then
+      begin
         CollectValue(ATree, AFileName, ACall[Argument], Node);
+      end;
+    end;
     AddNode(Node);
     Exit;
   end;
@@ -1211,31 +1429,43 @@ begin
   if (Name = 'fillchar') and (AArgument = 0) then
   begin
     if ACall.ChildCount > 3 then
-      AddValueNode(TDataFlowKind.Assignment, ATree, AFileName, APosition, ACall[3], ShortName(ACall.Name), 'fillchar')
+    begin
+      AddValueNode(TDataFlowKind.Assignment, ATree, AFileName, APosition, ACall[3], ShortName(ACall.Name), 'fillchar');
+    end
     else
+    begin
       AddLeafNode(TDataFlowKind.Assignment, AFileName, APosition, ExprText(AFileName, ACall), ShortName(ACall.Name),
         'fillchar');
+    end;
     Exit;
   end;
   // Routine mit var- bzw. out-Parameter an dieser Stelle: Der Wert kommt aus ihrem Rumpf.
   if not ResolvedAt(ATree, AFileName, NamePosition(ATree, ACall[0]), Resolved) or
     not (Resolved.SymbolKind in RoutineKinds) then
+  begin
     Exit;
+  end;
   Params := ParamsOf(Resolved.FileName, Resolved.SelectionRange.StartPos);
   if (AArgument < 0) or (AArgument > High(Params)) or
     not (Params[AArgument].Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam]) then
+  begin
     Exit;
+  end;
   Param := Default(TDataFlowSymbol);
   Param.Name := Params[AArgument].Name;
   Param.FileName := Params[AArgument].FileName;
   Param.Position := Params[AArgument].Position;
   Param.SymbolKind := TIndexSymbolKind.Variable;
   if Params[AArgument].Modifier = TParameterModifier.OutParam then
+  begin
     AddTargetNode(TDataFlowKind.OutArgument, AFileName, APosition, Param, ExprText(AFileName, ACall), Resolved.Name,
-      AUnsafeReason)
+      AUnsafeReason);
+  end
   else
+  begin
     AddTargetNode(TDataFlowKind.VarArgument, AFileName, APosition, Param, ExprText(AFileName, ACall), Resolved.Name,
       AUnsafeReason);
+  end;
 end;
 
 procedure TDataFlowRun.CallerArguments(const ASymbol: TDataFlowSymbol; ADeclaration: TSyntaxNode);
@@ -1251,38 +1481,58 @@ begin
   Header := ADeclaration;
   while (Header <> nil) and not (Header.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.AnonymousMethod,
     TSyntaxKind.ProcedureType]) do
+  begin
     Header := Header.Parent;
+  end;
   if (Header = nil) or (Header.Kind <> TSyntaxKind.RoutineHeader) then
+  begin
     Exit;
+  end;
   Params := ParamsOf(ASymbol.FileName, Header.StartPos);
   ParamIndex := -1;
   for Index := 0 to High(Params) do
+  begin
     if Params[Index].Position = ASymbol.Position then
+    begin
       ParamIndex := Index;
+    end;
+  end;
   // out-Parameter bekommen vom Aufrufer keinen Wert.
   if (ParamIndex < 0) or (Params[ParamIndex].Modifier = TParameterModifier.OutParam) then
+  begin
     Exit;
+  end;
   if not FunctionOf(Tree, ASymbol.FileName, Header, Routine) then
+  begin
     Exit;
+  end;
   for Location in Occurrences(Routine) do
   begin
     CheckCancelled;
     CallTree := TreeOf(Location.FileName);
     if CallTree = nil then
+    begin
       Continue;
+    end;
     Node := NodeAt(CallTree.Root, Location.Range.StartPos);
     if Node.Kind = TSyntaxKind.PropertyDecl then
     begin
       // Setter einer Property: Der Wert jeder Zuweisung an sie kommt als letzter Parameter an.
       if SameText(AccessorBefore(CallTree, Location.Range.StartPos), 'write') and (ParamIndex = High(Params)) then
+      begin
         PropertyWrites(CallTree, Location.FileName, Node, ParamIndex);
+      end;
       Continue;
     end;
     if not (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+    begin
       Continue;
+    end;
     Call := Node.Parent;
     if (Call = nil) or (Call.Kind <> TSyntaxKind.Call) or (Call[0] <> Node) or (ParamIndex + 1 >= Call.ChildCount) then
+    begin
       Continue;
+    end;
     AddValueNode(TDataFlowKind.CallerArgument, CallTree, Location.FileName, Call[ParamIndex + 1].StartPos,
       Call[ParamIndex + 1], Routine.Name, '');
   end;
@@ -1310,12 +1560,18 @@ begin
   if (BodyTree <> nil) and InProject(BodyFile) then
   begin
     if Length(Targets) > 0 then
-      Body := NodeAt(BodyTree.Root, Targets[0].SelectionRange.StartPos)
+    begin
+      Body := NodeAt(BodyTree.Root, Targets[0].SelectionRange.StartPos);
+    end
     else
+    begin
       Body := NodeAt(BodyTree.Root, ASymbol.Position);
+    end;
     while (Body <> nil) and not ((Body.Kind = TSyntaxKind.RoutineDecl) and
       (Body.FindChild(TSyntaxKind.Block) <> nil)) do
+    begin
       Body := Body.Parent;
+    end;
   end;
   if Body = nil then
   begin
@@ -1335,18 +1591,26 @@ begin
         if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount >= 2) and
           (ANode[0].Kind = TSyntaxKind.Identifier) and (SameText(ANode[0].Name, 'Result') or
           SameText(CleanName(ANode[0].Name), Name)) then
-          Returns.Add(ANode)
+        begin
+          Returns.Add(ANode);
+        end
         else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and
           (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Exit') then
+        begin
           Returns.Add(ANode);
+        end;
       end);
     for Statement in Returns do
     begin
       CheckCancelled;
       if Statement.Kind = TSyntaxKind.AssignStatement then
-        AddValueNode(TDataFlowKind.Return, BodyTree, BodyFile, Statement.StartPos, Statement[1], '', '')
+      begin
+        AddValueNode(TDataFlowKind.Return, BodyTree, BodyFile, Statement.StartPos, Statement[1], '', '');
+      end
       else
+      begin
         AddValueNode(TDataFlowKind.Return, BodyTree, BodyFile, Statement.StartPos, Statement[1], 'Exit', '');
+      end;
     end;
   finally
     Returns.Free;
@@ -1365,7 +1629,9 @@ begin
   Declaration := NodeAt(Tree.Root, ASymbol.Position);
   if (Declaration.Kind <> TSyntaxKind.PropertyDecl) or not Accessor(Tree, Declaration, 'read', Position) or
     not ResolveSymbol(Tree, ASymbol.FileName, Position, Reader) then
+  begin
     Exit;
+  end;
   AddTargetNode(TDataFlowKind.PropertyRead, ASymbol.FileName, Position, Reader, 'read ' + Reader.Name, '', '');
 end;
 
@@ -1383,15 +1649,21 @@ var
 begin
   DeclarationTree := TreeOf(ASymbol.FileName);
   if DeclarationTree = nil then
+  begin
     Exit;
+  end;
   for Location in Occurrences(ASymbol) do
   begin
     CheckCancelled;
     if SameText(ExtractFileExt(Location.FileName), '.dfm') or SameText(ExtractFileExt(Location.FileName), '.fmx') then
+    begin
       Continue;
+    end;
     Tree := TreeOf(Location.FileName);
     if Tree = nil then
+    begin
       Continue;
+    end;
     Position := Location.Range.StartPos;
     Node := NodeAt(Tree.Root, Position);
     if Node.Kind = TSyntaxKind.PropertyDecl then
@@ -1399,26 +1671,36 @@ begin
       // Feld bzw. Getter hinter read: Der Wert geht in die Property.
       if SameText(AccessorBefore(Tree, Position), 'read') and PropertyName(Tree, Node, Position) and
         ResolveSymbol(Tree, Location.FileName, Position, Prop) then
+      begin
         AddTargetNode(TDataFlowKind.PropertyRead, Location.FileName, Location.Range.StartPos, Prop,
           'property ' + Prop.Name, '', '');
+      end;
       Continue;
     end;
     if not (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+    begin
       Continue;
+    end;
     // Köpfe von Deklaration und Implementierung sind keine Verwendung.
     InHeader := False;
     Ancestor := Node.Parent;
     while Ancestor <> nil do
     begin
       if Ancestor.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.Parameters] then
+      begin
         InHeader := True;
+      end;
       Ancestor := Ancestor.Parent;
     end;
     if InHeader then
+    begin
       Continue;
+    end;
     Reason := '';
     if WrittenTarget(Node, Statement, Reason) then
+    begin
       Continue;
+    end;
     FlowUp(Tree, Location.FileName, Position, Node);
   end;
 end;
@@ -1441,21 +1723,31 @@ begin
   begin
     Parent := Current.Parent;
     if Parent = nil then
+    begin
       Break;
+    end;
     case Parent.Kind of
       TSyntaxKind.ParenExpr, TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.SetConstructor,
         TSyntaxKind.RangeExpr:
         Current := Parent;
       TSyntaxKind.IfExpr:
         if Parent[0] = Current then
-          Break
+        begin
+          Break;
+        end
         else
+        begin
           Current := Parent;
+        end;
       TSyntaxKind.IndexAccess:
         if Parent[0] = Current then
-          Current := Parent
+        begin
+          Current := Parent;
+        end
         else
+        begin
           Break;
+        end;
       TSyntaxKind.Dereference:
         begin
           Reason := 'pointer';
@@ -1479,8 +1771,10 @@ begin
           if Name = 'exit' then
           begin
             if EnclosingFunction(ATree, AFileName, Parent, Target) then
+            begin
               AddTargetNode(TDataFlowKind.Return, AFileName, APosition, Target, ExprText(AFileName, Parent), 'Exit',
                 Reason);
+            end;
             Exit;
           end;
           if (Name = 'write') or (Name = 'writeln') then
@@ -1493,10 +1787,14 @@ begin
             (Parent.ChildCount > 2) then
           begin
             if Name = 'move' then
+            begin
               Reason := 'move';
+            end;
             if TargetRoot(ATree, AFileName, Parent[2], Reason, Target) then
+            begin
               AddTargetNode(TDataFlowKind.Assignment, AFileName, APosition, Target, ExprText(AFileName, Parent[2]),
                 ShortName(Parent.Name), Reason);
+            end;
             Exit;
           end;
           if not ResolvedAt(ATree, AFileName, NamePosition(ATree, Parent[0]), Resolved) or
@@ -1504,7 +1802,9 @@ begin
           begin
             // Typumwandlung oder Routine von außen: Der Wert steckt im Ergebnis.
             if Via = '' then
+            begin
               Via := ShortName(Parent.Name);
+            end;
             Current := Parent;
             Continue;
           end;
@@ -1525,7 +1825,9 @@ begin
       TSyntaxKind.AssignStatement:
         begin
           if (Parent.ChildCount < 2) or (Parent[1] <> Current) then
+          begin
             Break;
+          end;
           // Result := … bzw. Funktionsname := … gibt den Wert zurück.
           if (Parent[0].Kind = TSyntaxKind.Identifier) and EnclosingFunction(ATree, AFileName, Parent, Target) and
             (SameText(Parent[0].Name, 'Result') or SameText(CleanName(Parent[0].Name), ShortName(Target.Name))) then
@@ -1534,29 +1836,41 @@ begin
             Exit;
           end;
           if TargetRoot(ATree, AFileName, Parent[0], Reason, Target) then
+          begin
             AddTargetNode(TDataFlowKind.Assignment, AFileName, APosition, Target, ExprText(AFileName, Parent), Via,
               Reason);
+          end;
           Exit;
         end;
       TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl:
         begin
           if Current.Kind in TypeNodeKinds then
+          begin
             Break;
+          end;
           if SameText(AccessorBefore(ATree, Current.StartPos), 'absolute') then
+          begin
             Reason := 'absolute';
+          end;
           if NameInNode(ATree, Parent, CleanName(Trim(Parent.Name.Split([','])[0])), Position) and
             ResolveSymbol(ATree, AFileName, Position, Target) then
+          begin
             AddTargetNode(TDataFlowKind.Initializer, AFileName, APosition, Target, ExprText(AFileName, Parent), Via,
               Reason);
+          end;
           Exit;
         end;
       TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
         begin
           if (Current.Kind in StatementKinds) or (Current.Kind in TypeNodeKinds) then
+          begin
             Break;
+          end;
           if NameInNode(ATree, Parent, CleanName(Parent.Name), Position) and
             ResolveSymbol(ATree, AFileName, Position, Target) then
+          begin
             AddTargetNode(TDataFlowKind.Loop, AFileName, APosition, Target, ExprText(AFileName, Current), Via, Reason);
+          end;
           Exit;
         end;
     else
@@ -1572,12 +1886,18 @@ begin
   Result := Default(TDataFlowResult);
   Result.Found := ResolveSymbol(FOwnTree, FOwnFile, APosition, Result.Symbol);
   if not Result.Found then
+  begin
     Exit;
+  end;
   FCurrentKey := Result.Symbol.Key;
   if ADirection = TDataFlowDirection.Sources then
-    SourcesOf(Result.Symbol)
+  begin
+    SourcesOf(Result.Symbol);
+  end
   else
+  begin
     TargetsOf(Result.Symbol);
+  end;
   Result.Nodes := FNodes.ToArray;
 end;
 
@@ -1650,7 +1970,9 @@ begin
   Result.AddPair('key', ASymbol.Key);
   Result.AddPair('symbolKind', TJSONNumber.Create(Ord(ASymbol.SymbolKind)));
   if ASymbol.Leaf <> TDataFlowLeaf.None then
+  begin
     Result.AddPair('leaf', TLspDataFlow.LeafName(ASymbol.Leaf));
+  end;
 end;
 
 class function TLspDataFlow.ToJson(const AResult: TDataFlowResult): TJSONObject;
@@ -1664,7 +1986,9 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('found', TJSONBool.Create(AResult.Found));
   if not AResult.Found then
+  begin
     Exit;
+  end;
   Result.AddPair('symbol', SymbolToJson(AResult.Symbol));
   Nodes := TJSONArray.Create;
   Result.AddPair('nodes', Nodes);
@@ -1675,9 +1999,13 @@ begin
     Item.AddPair('kind', KindName(Node.Kind));
     Item.AddPair('detail', Node.Detail);
     if Node.Via <> '' then
+    begin
       Item.AddPair('via', Node.Via);
+    end;
     if Node.Literal then
+    begin
       Item.AddPair('literal', TJSONBool.Create(True));
+    end;
     if Node.Unsafe then
     begin
       Item.AddPair('unsafe', TJSONBool.Create(True));
@@ -1697,7 +2025,9 @@ begin
     Sources := TJSONArray.Create;
     Item.AddPair('sources', Sources);
     for Source in Node.Sources do
+    begin
       Sources.AddElement(SymbolToJson(Source));
+    end;
   end;
 end;
 
@@ -1720,19 +2050,31 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+  end;
   Params := TJSONObject(AParams);
   if not Params.TryGetValue<string>('direction', Direction) then
+  begin
     Direction := 'sources';
+  end;
   Options := Default(TDataFlowOptions);
   if not Params.TryGetValue<Boolean>('excludeTests', Options.ExcludeTests) then
+  begin
     Options.ExcludeTests := False;
+  end;
   if not Params.TryGetValue<Boolean>('onlyProject', Options.OnlyProject) then
+  begin
     Options.OnlyProject := False;
+  end;
   if Params.TryGetValue<TJSONValue>('path', PathValue) and (PathValue is TJSONArray) then
+  begin
     for Item in TJSONArray(PathValue) do
+    begin
       Options.Path := Options.Path + [Item.Value];
+    end;
+  end;
   Cancellation := TRequestCancellation.Create(ACancellation);
   OwnTree := nil;
   if FStore.TryGet(Uri, Document) then
@@ -1746,21 +2088,29 @@ begin
     Tree := OwnTree;
   end
   else
+  begin
     Exit(TJSONNull.Create);
+  end;
   try
     Files := nil;
     if Assigned(FFiles) then
+    begin
       Files := FFiles();
+    end;
     ACancellation.ThrowIfCancellationRequested;
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
       Resolver.Namespaces := Namespaces;
       if SameText(Direction, 'targets') then
+      begin
         Analysis := Analyze(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-          TDataFlowDirection.Targets, Options, Files, FReadText, ACancellation)
+          TDataFlowDirection.Targets, Options, Files, FReadText, ACancellation);
+      end
       else
+      begin
         Analysis := Analyze(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
           TDataFlowDirection.Sources, Options, Files, FReadText, ACancellation);
+      end;
     finally
       Resolver.Free;
     end;

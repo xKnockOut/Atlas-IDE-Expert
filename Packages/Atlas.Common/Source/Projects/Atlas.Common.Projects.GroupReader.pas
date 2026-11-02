@@ -47,23 +47,33 @@ begin
   Seen := TDictionary<string, Boolean>.Create;
   try
     if Root.Name <> 'Project' then
+    begin
       raise EProjectError.CreateFmt('%s: Wurzelelement <Project> erwartet', [AFileName]);
+    end;
     for GroupIndex := 0 to Root.ChildCount - 1 do
     begin
       Group := Root[GroupIndex];
       if Group.Name <> 'ItemGroup' then
+      begin
         Continue;
+      end;
       for ItemIndex := 0 to Group.ChildCount - 1 do
       begin
         Item := Group[ItemIndex];
         if Item.Name <> 'Projects' then
+        begin
           Continue;
+        end;
         Include := Trim(Item.Attribute('Include'));
         if not SameText(TProjectPaths.Extension(Include), '.dproj') then
+        begin
           Continue;
+        end;
         FileName := TProjectPaths.Combine(Directory, Include);
         if Seen.ContainsKey(AnsiUpperCase(FileName)) then
+        begin
           Continue;
+        end;
         Seen.Add(AnsiUpperCase(FileName), True);
         Found.Add(FileName);
       end;

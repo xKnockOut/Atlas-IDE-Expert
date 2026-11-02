@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Diagnostics.FeatureTable.Tests;
 
 // Startreihenfolge, Abbau und Stufen der Feature-Tabelle (Code-Review S-03);
-// Startanteile je Teil (Bericht N4).
+// Startanteile je Teil (Bericht N4); Modul-Schalter (#1454).
 
 interface
 
@@ -28,13 +28,19 @@ type
     procedure StopAllContinuesAfterFailure;
     [Test]
     procedure TimesEachStartedPart;
+    [Test]
+    procedure ModuleOffSkipsItsParts;
+    [Test]
+    procedure StopOffModulesStopsOnlyThoseInReverse;
+    [Test]
+    procedure JoinUnknownPartRaises;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.FeatureTable;
 
@@ -296,6 +302,102 @@ begin
     Times.Free;
     Probe.Free;
     Table.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.ModuleOffSkipsItsParts;
+var
+  mTable: TAtlasFeatureTable;
+  mProbe: TProbe;
+  mDebugOn: Boolean;
+begin
+  mTable := TAtlasFeatureTable.Create;
+  mProbe := TProbe.Create;
+  try
+    mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
+    mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Minimal);
+    mProbe.AddTo(mTable, 2, TAtlasSafeLevel.Minimal);
+    mTable.Join('debug', ['B', 'C']);
+    mDebugOn := False;
+    mTable.ModuleOn :=
+      function(const AModule: string): Boolean
+      begin
+        Result := (AModule <> 'debug') or mDebugOn;
+      end;
+    mTable.StartWanted(TAtlasSafeLevel.Normal);
+    Assert.AreEqual('+A', mProbe.Log);
+    Assert.AreEqual('debug', mTable.ModuleOf('C'));
+    Assert.AreEqual('', mTable.ModuleOf('A'), 'Kern');
+    // Wieder an: Die Teile starten beim nächsten Aufruf, ohne Neustart.
+    mDebugOn := True;
+    mTable.StartWanted(TAtlasSafeLevel.Normal);
+    Assert.AreEqual('+A+B+C', mProbe.Log);
+    mTable.ModuleOn := nil;
+  finally
+    mProbe.Free;
+    mTable.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.StopOffModulesStopsOnlyThoseInReverse;
+var
+  mTable: TAtlasFeatureTable;
+  mProbe: TProbe;
+  mDebugOn: Boolean;
+  mFailures: TArray<string>;
+begin
+  mTable := TAtlasFeatureTable.Create;
+  mProbe := TProbe.Create;
+  try
+    mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
+    mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Minimal);
+    mProbe.AddTo(mTable, 2, TAtlasSafeLevel.Minimal);
+    mProbe.AddTo(mTable, 3, TAtlasSafeLevel.Minimal);
+    mTable.Join('debug', ['B', 'D']);
+    mTable.Join('tests', ['C']);
+    mDebugOn := True;
+    mTable.ModuleOn :=
+      function(const AModule: string): Boolean
+      begin
+        Result := (AModule <> 'debug') or mDebugOn;
+      end;
+    mTable.StartWanted(TAtlasSafeLevel.Normal);
+    mProbe.Log := '';
+    mFailures := mTable.StopOffModules;
+    Assert.AreEqual('', mProbe.Log, 'alle Module an: nichts gestoppt');
+    mDebugOn := False;
+    mFailures := mTable.StopOffModules;
+    Assert.AreEqual('-D-B', mProbe.Log);
+    Assert.AreEqual(0, Integer(Length(mFailures)));
+    Assert.IsTrue(mProbe.Active[0]);
+    Assert.IsTrue(mProbe.Active[2], 'anderes Modul läuft weiter');
+    mProbe.Log := '';
+    mTable.StopOffModules;
+    Assert.AreEqual('', mProbe.Log, 'nur aktive Teile');
+    mTable.ModuleOn := nil;
+  finally
+    mProbe.Free;
+    mTable.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.JoinUnknownPartRaises;
+var
+  mTable: TAtlasFeatureTable;
+  mProbe: TProbe;
+begin
+  mTable := TAtlasFeatureTable.Create;
+  mProbe := TProbe.Create;
+  try
+    mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
+    Assert.WillRaise(
+      procedure
+      begin
+        mTable.Join('debug', ['A', 'Z']);
+      end, EArgumentException);
+  finally
+    mProbe.Free;
+    mTable.Free;
   end;
 end;
 

@@ -30,20 +30,28 @@ uses
 function ReadInteger(const AValue: TJSONValue; const AName, AContext: string): Integer;
 begin
   if not (AValue is TJSONObject) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, AContext + ' ist kein Objekt');
+  end;
   if not TJSONObject(AValue).TryGetValue<Integer>(AName, Result) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Feld "' + AName + '" fehlt oder ist keine Zahl in ' + AContext);
+  end;
 end;
 
 function ReadMember(const AValue: TJSONValue; const AName, AContext: string): TJSONValue;
 begin
   Result := nil;
   if AValue is TJSONObject then
+  begin
     Result := TJSONObject(AValue).GetValue(AName);
+  end;
   if Result = nil then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Feld "' + AName + '" fehlt in ' + AContext);
+  end;
 end;
 
 { TLspPositions }

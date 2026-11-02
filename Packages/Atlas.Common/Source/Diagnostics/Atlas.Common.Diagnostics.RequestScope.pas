@@ -87,7 +87,9 @@ threadvar
 class procedure TRequestDiagnostics.Open;
 begin
   if CurrentScope = nil then
+  begin
     CurrentScope := TScope.Create;
+  end;
   CurrentScope.Notes := Default(TRequestNotes);
   CurrentScope.Notes.Count := -1;
 end;
@@ -116,19 +118,25 @@ end;
 class procedure TRequestDiagnostics.Reason(const ACode: string);
 begin
   if CurrentScope <> nil then
+  begin
     CurrentScope.Notes.Reason := ACode;
+  end;
 end;
 
 class procedure TRequestDiagnostics.DefaultReason(const ACode: string);
 begin
   if (CurrentScope <> nil) and (CurrentScope.Notes.Reason = '') then
+  begin
     CurrentScope.Notes.Reason := ACode;
+  end;
 end;
 
 class procedure TRequestDiagnostics.ResolveFailed(const AStep: string);
 begin
   if (CurrentScope <> nil) and (CurrentScope.Notes.Resolve = '') then
+  begin
     CurrentScope.Notes.Resolve := AStep;
+  end;
 end;
 
 class procedure TRequestDiagnostics.Note(const AKey, AValue: string);
@@ -137,37 +145,51 @@ var
   Entry: string;
 begin
   if CurrentScope = nil then
+  begin
     Exit;
+  end;
   Entry := AKey + '=' + AValue;
   for Index := 0 to High(CurrentScope.Notes.Notes) do
+  begin
     if CurrentScope.Notes.Notes[Index].StartsWith(AKey + '=') then
     begin
       CurrentScope.Notes.Notes[Index] := Entry;
       Exit;
     end;
+  end;
   CurrentScope.Notes.Notes := CurrentScope.Notes.Notes + [Entry];
 end;
 
 class procedure TRequestDiagnostics.Note(const AKey: string; AValue: Integer);
 begin
   if CurrentScope <> nil then
+  begin
     Note(AKey, IntToStr(AValue));
+  end;
 end;
 
 class procedure TRequestDiagnostics.Note(const AKey: string; AValue: Boolean);
 begin
   if CurrentScope = nil then
+  begin
     Exit;
+  end;
   if AValue then
-    Note(AKey, 'true')
+  begin
+    Note(AKey, 'true');
+  end
   else
+  begin
     Note(AKey, 'false');
+  end;
 end;
 
 class procedure TRequestDiagnostics.ResultCount(ACount: Integer);
 begin
   if CurrentScope <> nil then
+  begin
     CurrentScope.Notes.Count := ACount;
+  end;
 end;
 
 class procedure TRequestDiagnostics.Increment(const AKey: string);
@@ -175,14 +197,18 @@ var
   Index: Integer;
 begin
   if CurrentScope = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(CurrentScope.Notes.Notes) do
+  begin
     if CurrentScope.Notes.Notes[Index].StartsWith(AKey + '=') then
     begin
       CurrentScope.Notes.Notes[Index] := AKey + '=' +
         IntToStr(StrToIntDef(Copy(CurrentScope.Notes.Notes[Index], Length(AKey) + 2, MaxInt), 0) + 1);
       Exit;
     end;
+  end;
   CurrentScope.Notes.Notes := CurrentScope.Notes.Notes + [AKey + '=1'];
 end;
 
@@ -192,13 +218,21 @@ var
   Known: Integer;
 begin
   if CurrentScope = nil then
+  begin
     Exit;
+  end;
   Known := -1;
   for Entry in CurrentScope.Notes.Notes do
+  begin
     if Entry.StartsWith(AKey + 'Ms=') then
+    begin
       Known := StrToIntDef(Copy(Entry, Length(AKey) + 4, MaxInt), -1);
+    end;
+  end;
   if AMs <= Known then
+  begin
     Exit;
+  end;
   Note(AKey, ALabel);
   Note(AKey + 'Ms', AMs);
 end;
@@ -206,26 +240,34 @@ end;
 class procedure TRequestDiagnostics.Subject(const ALabel: string);
 begin
   if CurrentScope <> nil then
+  begin
     CurrentScope.Notes.Subject := ALabel;
+  end;
 end;
 
 class procedure TRequestDiagnostics.CurrentRule(const ARuleId: string);
 begin
   if CurrentScope <> nil then
+  begin
     CurrentScope.Notes.Rule := ARuleId;
+  end;
 end;
 
 function CurrentSubject: string;
 begin
   Result := CurrentScope.Notes.Subject;
   if Result = '' then
+  begin
     Result := '-';
+  end;
 end;
 
 class procedure TRequestDiagnostics.RuleFailed(const ARuleId, AErrorClass: string);
 begin
   if CurrentScope = nil then
+  begin
     Exit;
+  end;
   Increment('failedRules');
   Note('failRule', ARuleId);
   Note('failRuleUnit', CurrentSubject);
@@ -235,7 +277,9 @@ end;
 class procedure TRequestDiagnostics.UnitFailed(const AErrorClass: string);
 begin
   if CurrentScope = nil then
+  begin
     Exit;
+  end;
   Increment('failedUnits');
   Note('failUnit', CurrentSubject);
   Note('failUnitClass', AErrorClass);
@@ -246,7 +290,9 @@ end;
 class procedure TRequestDiagnostics.TreeTooDeep(ADepth: Integer);
 begin
   if CurrentScope = nil then
+  begin
     Exit;
+  end;
   Increment('deepUnits');
   Note('deepUnit', CurrentSubject);
   Note('deepUnitDepth', ADepth);

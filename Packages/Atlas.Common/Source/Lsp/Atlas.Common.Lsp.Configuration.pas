@@ -176,7 +176,9 @@ procedure TLspConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   FStore.Subscribe(HandleDocumentEvent);
   if ADispatcher <> nil then
+  begin
     ADispatcher.RegisterNotification(DidChangeConfigurationMethod, HandleDidChangeConfiguration);
+  end;
 end;
 
 procedure TLspConfiguration.Recompute;
@@ -196,7 +198,9 @@ begin
   TConfigurationScopes.Filter(AText, TConfigurationScope.Project, Misplaced);
   Result := Result + Misplaced;
   if Assigned(FExtraIssues) then
+  begin
     Result := Result + FExtraIssues(mSettings);
+  end;
 end;
 
 procedure TLspConfiguration.Revalidate;
@@ -205,12 +209,18 @@ var
   Document: ITextDocument;
 begin
   if FFileName = '' then
+  begin
     Exit;
+  end;
   Uri := TDocumentUris.FromPath(FFileName);
   if (FStore <> nil) and FStore.TryGet(Uri, Document) then
-    Publish(Uri, Document.Version, FileIssues(Document.Text))
+  begin
+    Publish(Uri, Document.Version, FileIssues(Document.Text));
+  end
   else if FFileText <> '' then
+  begin
     Publish(Uri, -1, FileIssues(FFileText));
+  end;
 end;
 
 procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);
@@ -221,7 +231,9 @@ end;
 procedure TLspConfiguration.SetEditorSettings(const AText: string);
 begin
   if AText = FEditorText then
+  begin
     Exit;
+  end;
   FEditorText := AText;
   Recompute;
 end;
@@ -229,7 +241,9 @@ end;
 procedure TLspConfiguration.SetGlobalSettings(const AText: string);
 begin
   if AText = FGlobalText then
+  begin
     Exit;
+  end;
   FGlobalText := AText;
   Recompute;
 end;
@@ -240,10 +254,14 @@ var
 begin
   Result := (AFileName <> '') and (SameText(AFileName, FPrimaryFileName) or SameText(AFileName, FLegacyFileName));
   if not Result then
+  begin
     Exit;
+  end;
   // Im Editor geöffnet: Dort gilt der Text des Editors, bis er schließt.
   if (FFileName <> '') and FStore.TryGet(TDocumentUris.FromPath(FFileName), Document) then
+  begin
     Exit(False);
+  end;
   LoadFromDisk;
 end;
 
@@ -258,10 +276,14 @@ var
 begin
   Result := '';
   if not (AParams is TJSONObject) then
+  begin
     Exit;
+  end;
   Section := TJSONObject(AParams).FindValue('settings.' + EditorSection);
   if Section is TJSONObject then
+  begin
     Result := Section.ToJSON;
+  end;
 end;
 
 function TLspConfiguration.GetSettings: TServerSettings;
@@ -283,7 +305,9 @@ begin
     TMonitor.Exit(FLock);
   end;
   if Assigned(FOnChanged) then
+  begin
     FOnChanged(ASettings);
+  end;
 end;
 
 function TLspConfiguration.IsWorkspaceFile(const AUri: string): Boolean;
@@ -304,9 +328,13 @@ begin
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(Issue.Range));
     if Issue.IsError then
-      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Error))
+    begin
+      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Error));
+    end
     else
+    begin
       Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
+    end;
     Item.AddPair('source', DiagnosticSource);
     Item.AddPair('message', Issue.Message);
     Items.AddElement(Item);
@@ -314,7 +342,9 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('uri', AUri);
   if AVersion >= 0 then
+  begin
     Result.AddPair('version', TJSONNumber.Create(AVersion));
+  end;
   Result.AddPair('diagnostics', Items);
 end;
 
@@ -351,7 +381,9 @@ begin
     FFileText := Text;
   end
   else
+  begin
     FFileText := '';
+  end;
   Recompute;
 end;
 
@@ -374,13 +406,21 @@ begin
   else
   begin
     if Pos('\', ARootPath) > 0 then
-      Separator := '\'
+    begin
+      Separator := '\';
+    end
     else
+    begin
       Separator := '/';
+    end;
     if ARootPath[Length(ARootPath)] = Separator then
-      Dir := ARootPath
+    begin
+      Dir := ARootPath;
+    end
     else
+    begin
       Dir := ARootPath + Separator;
+    end;
     // Projekte einer Gruppe liegen oft in Unterordnern (Packages\X\X.dproj), atlas.json im Stamm: nach oben
     // suchen, bis zum Stamm des Repositorys (.git/.svn) bzw. des Laufwerks. Ohne Fund gilt die Wurzel selbst
     // (dort legt "atlas.json anlegen" die Datei an).
@@ -389,10 +429,14 @@ begin
     while not (FReadFile(Dir + ConfigurationFileName, Text) or FReadFile(Dir + LegacyConfigurationFileName, Text)) do
     begin
       if DirectoryExists(Dir + '.git') or DirectoryExists(Dir + '.svn') or FileExists(Dir + '.git') then
+      begin
         Break;
+      end;
       Parent := ExtractFilePath(ExcludeTrailingPathDelimiter(Dir));
       if (Parent = '') or SameText(Parent, Dir) then
+      begin
         Break;
+      end;
       Dir := Parent;
     end;
     if FReadFile(Dir + ConfigurationFileName, Text) or FReadFile(Dir + LegacyConfigurationFileName, Text) then
@@ -409,7 +453,9 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   if not IsConfigurationUri(ADocument.Uri) then
+  begin
     Exit;
+  end;
   case AKind of
     TDocumentEventKind.Opened, TDocumentEventKind.Changed:
       begin
@@ -423,9 +469,13 @@ begin
       end;
     TDocumentEventKind.Closed:
       if IsWorkspaceFile(ADocument.Uri) then
-        LoadFromDisk
+      begin
+        LoadFromDisk;
+      end
       else
+      begin
         Publish(ADocument.Uri, -1, nil);
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -438,10 +488,14 @@ var
 begin
   Result := '';
   if AParams = nil then
+  begin
     Exit;
+  end;
   Value := AParams.GetValue('rootUri');
   if (Value is TJSONString) and (Value.Value <> '') then
+  begin
     Exit(TDocumentUris.ToPath(Value.Value));
+  end;
   Value := AParams.GetValue('workspaceFolders');
   if Value is TJSONArray then
   begin
@@ -450,12 +504,16 @@ begin
     begin
       Value := TJSONObject(Folders.Items[0]).GetValue('uri');
       if Value is TJSONString then
+      begin
         Exit(TDocumentUris.ToPath(Value.Value));
+      end;
     end;
   end;
   Value := AParams.GetValue('rootPath');
   if Value is TJSONString then
+  begin
     Result := Value.Value;
+  end;
 end;
 
 end.

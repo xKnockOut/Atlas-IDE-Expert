@@ -53,27 +53,37 @@ begin
   Open := Pos('(', ASignature);
   Close := LastDelimiter(')', ASignature);
   if (Open = 0) or (Close < Open) then
+  begin
     Exit;
+  end;
   for Group in Copy(ASignature, Open + 1, Close - Open - 1).Split([';']) do
   begin
     Colon := Pos(':', Group);
     if Colon = 0 then
+    begin
       Continue;
+    end;
     Names := Trim(Copy(Group, 1, Colon - 1));
     TypeName := Trim(Copy(Group, Colon + 1, MaxInt));
     // Standardwert abschneiden.
     if Pos('=', TypeName) > 0 then
+    begin
       TypeName := Trim(Copy(TypeName, 1, Pos('=', TypeName) - 1));
+    end;
     if StartsText('const ', Names) or StartsText('var ', Names) or StartsText('out ', Names) or
       StartsText('constref ', Names) then
+    begin
       Names := Trim(Copy(Names, Pos(' ', Names) + 1, MaxInt));
+    end;
     for Name in Names.Split([',']) do
+    begin
       if Trim(Name) <> '' then
       begin
         Parameter.Name := Trim(Name);
         Parameter.TypeName := TypeName;
         Result := Result + [Parameter];
       end;
+    end;
   end;
 end;
 
@@ -85,16 +95,30 @@ var
 begin
   if (Length(ATypeName) < 2) or (Pos('<', ATypeName) > 0) or MatchText(ATypeName, ValueTypes) or
     EndsText('Event', ATypeName) then
+  begin
     Exit(False);
+  end;
   if SameText(ATypeName, 'Pointer') or SameText(ATypeName, 'IInterface') or SameText(ATypeName, 'TObject') then
+  begin
     Exit(True);
+  end;
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if SameText(Symbol.Name, ATypeName) and (Symbol.Container = '') then
+    begin
       Exit(Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType]);
+    end;
+  end;
   if AIndex <> nil then
+  begin
     for Location in AIndex.FindSymbols(ATypeName) do
+    begin
       if Location.Symbol.Container = '' then
+      begin
         Exit(Location.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType]);
+      end;
+    end;
+  end;
   // Unbekannt: nach Namenskonvention.
   Result := CharInSet(ATypeName[1], ['T', 'I', 'P']) and CharInSet(ATypeName[2], ['A'..'Z']);
 end;
@@ -121,45 +145,65 @@ var
 begin
   AEdits := nil;
   if (AContext.Arguments <> '') and not IsValidIdent(AContext.Arguments) then
+  begin
     Exit(Fail('Erwartet wird /guard [Parametername]', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit(Fail('/guard gilt nur im Rumpf einer Routine', AReason));
+    end;
     Block := Routine.FindChild(TSyntaxKind.Block);
     Header := '';
     for Index := Routine.StartPos.Line to Block.StartPos.Line - 1 do
+    begin
       Header := Header + ' ' + Source.Lines[Index];
+    end;
     Body := '';
     for Index := Block.StartPos.Line to Block.EndPos.Line do
+    begin
       Body := Body + ' ' + LowerCase(StringReplace(Source.Lines[Index], ' ', '', [rfReplaceAll]));
+    end;
     Indent := Source.Indent(Block.StartPos.Line) + '  ';
     Checks := '';
     for Parameter in RoutineParameters(RoutineSignature(Header)) do
     begin
       if (AContext.Arguments <> '') and not SameText(Parameter.Name, AContext.Arguments) then
+      begin
         Continue;
+      end;
       if not IsNilable(Source, AContext.Index, Parameter.TypeName) then
+      begin
         Continue;
+      end;
       // Vorhandene Prüfung nicht verdoppeln.
       if (Pos('assigned(' + LowerCase(Parameter.Name) + ')', Body) > 0) or
         (Pos(LowerCase(Parameter.Name) + '=nil', Body) > 0) then
+      begin
         Continue;
+      end;
       if Checks <> '' then
+      begin
         Checks := Checks + Source.LineBreak;
+      end;
       Checks := Checks + Indent + Format('if not Assigned(%s) then', [Parameter.Name]) + Source.LineBreak + Indent +
         Format('  raise EArgumentNilException.Create(%s);', [QuotedStr(Parameter.Name)]);
     end;
     if Checks = '' then
     begin
       if AContext.Arguments <> '' then
+      begin
         Exit(Fail(AContext.Arguments + ' ist kein ungeprüfter Objekt-, Interface- oder Zeigerparameter', AReason));
+      end;
       Exit(Fail('Keine ungeprüften Objekt-, Interface- oder Zeigerparameter', AReason));
     end;
     AEdits := [Source.AfterLine(Block.StartPos.Line, Checks), Source.RemoveCommand];
     if AddSysUtils(Source, AContext, Routine.StartPos.Line, UsesEdit) then
+    begin
       AEdits := AEdits + [UsesEdit];
+    end;
     Result := True;
   finally
     Source.Free;
@@ -173,10 +217,16 @@ var
   Symbol: TIndexSymbol;
 begin
   if MatchText(AName, KnownExceptions) then
+  begin
     Exit(True);
+  end;
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if SameText(Symbol.Name, AName) and (Symbol.Kind = TIndexSymbolKind.ClassType) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := (AIndex <> nil) and (Length(AIndex.FindSymbols(AName)) > 0);
 end;
 
@@ -191,28 +241,42 @@ begin
   AEdits := nil;
   Space := Pos(' ', AContext.Arguments);
   if Space = 0 then
+  begin
     Space := Length(AContext.Arguments) + 1;
+  end;
   Name := Copy(AContext.Arguments, 1, Space - 1);
   Message := Trim(Copy(AContext.Arguments, Space + 1, MaxInt));
   if not IsValidIdent(Name, True) or (Message = '') then
+  begin
     Exit(Fail('Erwartet wird /raise EKlasse Text', AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
+    begin
       Exit(Fail('/raise gilt nur im Rumpf einer Routine', AReason));
+    end;
     if Pos('%', Message) > 0 then
-      Statement := Format('raise %s.CreateFmt(%s, []);', [Name, QuotedStr(Message)])
+    begin
+      Statement := Format('raise %s.CreateFmt(%s, []);', [Name, QuotedStr(Message)]);
+    end
     else
+    begin
       Statement := Format('raise %s.Create(%s);', [Name, QuotedStr(Message)]);
+    end;
     AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
       Source.Indent(Source.Line) + Statement + Source.LineBreak)];
     // Unbekannte Klasse vor der Routine anlegen.
     if not IsKnownException(Source, AContext.Index, Name) then
+    begin
       AEdits := AEdits + [Source.BeforeLine(Routine.StartPos.Line, 'type' + Source.LineBreak +
         Format('  %s = class(Exception);', [Name]) + Source.LineBreak)];
+    end;
     if AddSysUtils(Source, AContext, Routine.StartPos.Line, UsesEdit) then
+    begin
       AEdits := AEdits + [UsesEdit];
+    end;
     Result := True;
   finally
     Source.Free;

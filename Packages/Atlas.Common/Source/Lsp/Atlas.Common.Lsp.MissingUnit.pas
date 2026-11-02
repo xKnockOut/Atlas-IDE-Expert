@@ -75,7 +75,9 @@ begin
   Result.AddPair('title', ATitle);
   Result.AddPair('kind', TLspMissingUnit.Kind);
   if APreferred then
+  begin
     Result.AddPair('isPreferred', TJSONBool.Create(True));
+  end;
   Result.AddPair('command', Command);
 end;
 
@@ -85,7 +87,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Value in AValues do
+  begin
     Result.Add(Value);
+  end;
 end;
 
 function InfoAction(const ATitle, AText: string): TJSONObject;
@@ -103,7 +107,9 @@ class function TLspMissingUnit.NotFoundText(const AUnitName: string; const ASear
 begin
   Result := Format('%s nicht gefunden', [AUnitName]);
   if Length(ASearched) > 0 then
+  begin
     Result := Result + '. Durchsucht: ' + string.Join('; ', ASearched);
+  end;
 end;
 
 class function TLspMissingUnit.ActionsFor(const ASetup: TMissingUnitSetup; const AHits: TArray<TMissingUnitHit>;
@@ -126,21 +132,31 @@ begin
     if Hit.Place = TMissingUnitPlace.OtherPlatformLibrary then
     begin
       if IndexText(Hit.Detail, Platforms) < 0 then
+      begin
         Platforms := Platforms + [Hit.Detail];
+      end;
       Continue;
     end;
     if Offered >= MaxFolders then
+    begin
       Continue;
+    end;
     Folder := TMissingUnitSearch.RelativePath(ASetup.Project.FileName, Hit.Folder);
     Origin := '';
     if Hit.Place = TMissingUnitPlace.OtherTarget then
-      Origin := Format(' (steht in %s)', [Hit.Detail])
+    begin
+      Origin := Format(' (steht in %s)', [Hit.Detail]);
+    end
     else if Hit.Place = TMissingUnitPlace.GroupProject then
+    begin
       Origin := Format(' (aus %s)', [Hit.Detail]);
+    end;
     if Config <> '' then
+    begin
       Result := Result + [CommandAction(Format('Ordner %s in den Suchpfad von %s aufnehmen%s',
         [Folder, Config, Origin]), SearchPathCommand, Arguments([ASetup.Project.FileName, Folder, Config]),
         Offered = 0)];
+    end;
     Result := Result + [CommandAction(Format('Ordner %s in den Suchpfad aller Konfigurationen aufnehmen%s',
       [Folder, Origin]), SearchPathCommand, Arguments([ASetup.Project.FileName, Folder, '']),
       (Offered = 0) and (Config = ''))];
@@ -153,13 +169,19 @@ begin
     Inc(Offered);
   end;
   if Offered > 0 then
+  begin
     Exit;
+  end;
   if Length(Platforms) > 0 then
+  begin
     Result := [InfoAction(PlatformText(ASetup.UnitName, ASetup.Project.Platform, Platforms),
-      PlatformText(ASetup.UnitName, ASetup.Project.Platform, Platforms))]
+      PlatformText(ASetup.UnitName, ASetup.Project.Platform, Platforms))];
+  end
   else
+  begin
     Result := [InfoAction(Format('%s nicht gefunden: durchsuchte Orte anzeigen', [ASetup.UnitName]),
       NotFoundText(ASetup.UnitName, ASearched))];
+  end;
 end;
 
 class function TLspMissingUnit.Actions(AEnabled: Boolean; AFirstLine, ALastLine: Integer;
@@ -174,19 +196,27 @@ var
 begin
   Result := nil;
   if not AEnabled or not Assigned(AResolve) then
+  begin
     Exit;
+  end;
   Seen := nil;
   for Message in AMessages do
   begin
     if not Handles(Message.Code) or (Message.Line < AFirstLine) or (Message.Line > ALastLine) then
+    begin
       Continue;
+    end;
     UnitName := TMissingUnitSearch.UnitOfMessage(Message.Code, Message.Text);
     // Dieselbe Unit kommt bei mehreren Plattformen oder als F2613 und F1026 doppelt.
     if (UnitName = '') or (IndexText(UnitName, Seen) >= 0) then
+    begin
       Continue;
+    end;
     Seen := Seen + [UnitName];
     if not AResolve(UnitName, Setup) then
+    begin
       Continue;
+    end;
     Setup.UnitName := UnitName;
     Hits := TMissingUnitSearch.Search(Setup, Searched);
     Result := Result + ActionsFor(Setup, Hits, Searched);

@@ -112,9 +112,13 @@ begin
     FProjects.Clear;
     FScopeKeys.Clear;
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     if TJSONObject(Root).TryGetValue<TJSONObject>('builds', Builds) then
+    begin
       for Pair in Builds do
+      begin
         if Pair.JsonValue is TJSONObject then
         begin
           Item := TJSONObject(Pair.JsonValue);
@@ -127,8 +131,12 @@ begin
             FBuildKeys.AddOrSetValue(AnsiUpperCase(Pair.JsonString.Value), Pair.JsonString.Value);
           end;
         end;
+      end;
+    end;
     if TJSONObject(Root).TryGetValue<TJSONObject>('projects', Projects) then
+    begin
       for Pair in Projects do
+      begin
         // TJSONNumber erbt von TJSONString.
         if (Pair.JsonValue is TJSONString) and not (Pair.JsonValue is TJSONNumber) and
           (Pair.JsonValue.Value <> '') then
@@ -136,6 +144,8 @@ begin
           FProjects.AddOrSetValue(AnsiUpperCase(Pair.JsonString.Value), Pair.JsonValue.Value);
           FScopeKeys.AddOrSetValue(AnsiUpperCase(Pair.JsonString.Value), Pair.JsonString.Value);
         end;
+      end;
+    end;
   finally
     TMonitor.Exit(FLock);
     Root.Free;
@@ -165,15 +175,21 @@ begin
         Choice := FBuilds[Key];
         Item := TJSONObject.Create;
         if Choice.Config <> '' then
+        begin
           Item.AddPair('config', Choice.Config);
+        end;
         if Choice.Platform <> '' then
+        begin
           Item.AddPair('platform', Choice.Platform);
+        end;
         Builds.AddPair(FBuildKeys[Key], Item);
       end;
       Keys := FProjects.Keys.ToArray;
       TArray.Sort<string>(Keys);
       for Key in Keys do
+      begin
         Projects.AddPair(FScopeKeys[Key], FProjects[Key]);
+      end;
     finally
       TMonitor.Exit(FLock);
     end;
@@ -186,7 +202,9 @@ end;
 procedure TProjectSelection.Save;
 begin
   if FFileName = '' then
+  begin
     Exit;
+  end;
   try
     TDirectory.CreateDirectory(ExtractFileDir(FFileName));
     TFile.WriteAllText(FFileName, ToText, TEncoding.UTF8);
@@ -213,16 +231,24 @@ var
   Key: string;
 begin
   if AProject = '' then
+  begin
     Exit;
+  end;
   Key := AnsiUpperCase(AProject);
   TMonitor.Enter(FLock);
   try
     if not FBuilds.TryGetValue(Key, Choice) then
+    begin
       Choice := Default(TProjectBuildChoice);
+    end;
     if AConfig <> '' then
+    begin
       Choice.Config := AConfig;
+    end;
     if APlatform <> '' then
+    begin
       Choice.Platform := APlatform;
+    end;
     if (AConfig = '') and (APlatform = '') then
     begin
       FBuilds.Remove(Key);
@@ -244,7 +270,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if not FProjects.TryGetValue(AnsiUpperCase(AScope), Result) then
+    begin
       Result := '';
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

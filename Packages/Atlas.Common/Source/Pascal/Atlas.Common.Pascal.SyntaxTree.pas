@@ -230,7 +230,9 @@ begin
     try
       FChildren.OwnsObjects := False;
       for Index := 0 to FChildren.Count - 1 do
+      begin
         Pending.Push(FChildren[Index]);
+      end;
       while Pending.Count > 0 do
       begin
         Node := Pending.Pop;
@@ -238,7 +240,9 @@ begin
         begin
           Node.FChildren.OwnsObjects := False;
           for Index := 0 to Node.FChildren.Count - 1 do
+          begin
             Pending.Push(Node.FChildren[Index]);
+          end;
           Node.FChildren.Clear;
         end;
         Node.Free;
@@ -254,7 +258,9 @@ end;
 procedure TSyntaxNode.Add(ANode: TSyntaxNode);
 begin
   if FChildren = nil then
+  begin
     FChildren := TObjectList<TSyntaxNode>.Create(True);
+  end;
   ANode.FParent := Self;
   FChildren.Add(ANode);
 end;
@@ -262,7 +268,9 @@ end;
 procedure TSyntaxNode.Extract(ANode: TSyntaxNode);
 begin
   if FChildren <> nil then
+  begin
     FChildren.Extract(ANode);
+  end;
   ANode.FParent := nil;
 end;
 
@@ -271,8 +279,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ChildCount - 1 do
+  begin
     if Children[Index].Kind = AKind then
+    begin
       Exit(Children[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -281,8 +293,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ChildCount - 1 do
+  begin
     if (Children[Index].Kind = TSyntaxKind.Directive) and (Children[Index].Name = 'resolution') then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -297,7 +313,9 @@ begin
     if (Clause.Kind = TSyntaxKind.Directive) and (Clause.Name = 'resolution') then
     begin
       if (Clause.ChildCount > 0) and (Clause[0].Kind = TSyntaxKind.Identifier) then
+      begin
         Exit(Clause[0].Name);
+      end;
       Break;
     end;
   end;
@@ -313,10 +331,16 @@ begin
   while Node <> nil do
   begin
     if Node.Kind = TSyntaxKind.TypeDecl then
+    begin
       if Result = '' then
-        Result := Node.Name
+      begin
+        Result := Node.Name;
+      end
       else
+      begin
         Result := Node.Name + '.' + Result;
+      end;
+    end;
     Node := Node.Parent;
   end;
 end;
@@ -329,9 +353,13 @@ end;
 function TSyntaxNode.GetChildCount: Integer;
 begin
   if FChildren = nil then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := FChildren.Count;
+  end;
 end;
 
 procedure TSyntaxNode.SetRange(const AStartPos, AEndPos: TTextPosition; AStartOffset, AEndOffset: Integer);
@@ -356,11 +384,15 @@ begin
       Exit;
   end;
   if ChildCount = 0 then
+  begin
     Exit;
+  end;
   Pending := TStack<TSyntaxNode>.Create;
   try
     for Index := ChildCount - 1 downto 0 do
+    begin
       Pending.Push(Children[Index]);
+    end;
     while Pending.Count > 0 do
     begin
       Node := Pending.Pop;
@@ -369,7 +401,9 @@ begin
           Exit(Node);
         TSyntaxSearchStep.Descend:
           for Index := Node.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(Node.Children[Index]);
+          end;
       end;
     end;
   finally
@@ -387,18 +421,26 @@ begin
   // kostete jede Ebene einen Stapelrahmen je Läufer. Die Kinder kommen in umgekehrter Reihenfolge auf den Stapel,
   // damit die Reihenfolge der Besuche die der Rekursion bleibt.
   if not AVisit(Self) or (ChildCount = 0) then
+  begin
     Exit;
+  end;
   Pending := TStack<TSyntaxNode>.Create;
   try
     for Index := ChildCount - 1 downto 0 do
+    begin
       Pending.Push(Children[Index]);
+    end;
     while Pending.Count > 0 do
     begin
       Node := Pending.Pop;
       if not AVisit(Node) then
+      begin
         Continue;
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node.Children[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -410,9 +452,13 @@ end;
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function TSyntaxTree.FirstTokenFrom(AOffset: Integer): Integer;
@@ -430,9 +476,13 @@ begin
   begin
     mMiddle := (mLow + mHigh) div 2;
     if ATokens[mMiddle].Offset < AOffset then
-      mLow := mMiddle + 1
+    begin
+      mLow := mMiddle + 1;
+    end
     else
+    begin
       mHigh := mMiddle;
+    end;
   end;
   Result := mLow;
 end;
@@ -450,9 +500,13 @@ begin
   begin
     mMiddle := (mLow + mHigh) div 2;
     if ComparePositions(FTokens[mMiddle].EndPos, APosition) < 0 then
-      mLow := mMiddle + 1
+    begin
+      mLow := mMiddle + 1;
+    end
     else
+    begin
       mHigh := mMiddle;
+    end;
   end;
   // Höchstens zwei Kandidaten: das Token, das vor APosition endet, und das, das dort beginnt; der frühere gewinnt.
   while (mLow <= High(FTokens)) and (ComparePositions(FTokens[mLow].StartPos, APosition) <= 0) do
@@ -460,7 +514,9 @@ begin
     if FTokens[mLow].Kind = TPascalTokenKind.Identifier then
     begin
       if IsControlCharPart(mLow) then
+      begin
         Exit(-1);
+      end;
       Exit(mLow);
     end;
     Inc(mLow);
@@ -477,21 +533,27 @@ begin
   Result := False;
   if (ATokenIndex < 1) or (ATokenIndex > High(FTokens)) or not FTokens[ATokenIndex - 1].IsSymbol('^') or
     (FTokens[ATokenIndex].Offset <> FTokens[ATokenIndex - 1].Offset + 1) then
+  begin
     Exit;
+  end;
   // Innerster Knoten über dem Token: ein Literal nur bei ^C, ein Zeigertyp ^T bleibt TypeReference.
   Offset := FTokens[ATokenIndex].Offset;
   Node := FRoot;
   repeat
     if Node.Kind = TSyntaxKind.Literal then
+    begin
       Exit(True);
+    end;
     Found := False;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (Node[Index].StartOffset <= Offset) and (Offset < Node[Index].EndOffset) then
       begin
         Node := Node[Index];
         Found := True;
         Break;
       end;
+    end;
   until not Found;
 end;
 
@@ -544,7 +606,9 @@ begin
       end;
       // Rückwärts auf den Stapel: Bei gleicher Tiefe gewinnt der erste Knoten in Baumreihenfolge.
       for Index := Item.Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(DepthEntry(Item.Node[Index], Item.Depth + 1));
+      end;
     end;
   finally
     Pending.Free;
@@ -558,14 +622,18 @@ end;
 function TSyntaxTree.Depth: Integer;
 begin
   if (FDepth = 0) and (FRoot <> nil) then
+  begin
     Measure;
+  end;
   Result := FDepth;
 end;
 
 function TSyntaxTree.Deepest: TSyntaxNode;
 begin
   if (FDepth = 0) and (FRoot <> nil) then
+  begin
     Measure;
+  end;
   Result := FDeepest;
 end;
 

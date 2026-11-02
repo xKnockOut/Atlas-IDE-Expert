@@ -64,14 +64,18 @@ var
 begin
   if (AContext.Tree = nil) or not (ContainsText(AContext.Text, 'atlas-debug')
     or ContainsText(AContext.Text, 'AtlasDebug')) then
+  begin
     Exit;
+  end;
   Local := TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext);
   Lines := TTextLines.SplitLines(AContext.Text);
   for Symbol in Local.Symbols do
   begin
     if not (Symbol.Kind in TTypeMembers.RuleKinds) or (Symbol.FileName <> '')
       or not TDebugDisplayText.RuleAbove(Lines, Symbol.Range.StartPos.Line, Source) then
+    begin
       Continue;
+    end;
     Template := Default(TDebugDisplayTemplate);
     if Source.HasTemplate then
     begin
@@ -88,12 +92,16 @@ begin
       end;
     end;
     if not TTypeMembers.Collect(Local, AContext.Index, Symbol, Members) then
+    begin
       Continue;
+    end;
     for Segment in Template.Placeholders do
     begin
       Root := Segment.Root;
       if (Root = '') or SameText(Root, 'Self') or TTypeMembers.Contains(Members, Root) then
+      begin
         Continue;
+      end;
       Column := TDebugDisplayText.SourceColumn(Lines[Source.TemplateLine], Source.TemplateColumn, Segment);
       AReport.Add(TTextRange.Create(Source.TemplateLine, Column, Source.TemplateLine, Column + Length(Root)),
         Format('%s hat kein Mitglied „%s“; der Platzhalter {%s} bleibt beim Debuggen leer.',
@@ -102,16 +110,24 @@ begin
     for Name in Source.Children do
     begin
       if TTypeMembers.Contains(Members, Name) then
+      begin
         Continue;
+      end;
       Line := Lines[Source.ChildrenLine];
       Found := Pos(LowerCase(TDebugDisplayText.ChildrenKey), LowerCase(Line));
       if Found > 0 then
-        Found := Found + Length(TDebugDisplayText.ChildrenKey)
+      begin
+        Found := Found + Length(TDebugDisplayText.ChildrenKey);
+      end
       else
+      begin
         Found := Pos('(', Line) + 1;
+      end;
       Found := Pos(LowerCase(Name), LowerCase(Line), Found);
       if Found = 0 then
+      begin
         Found := 1;
+      end;
       AReport.Add(TTextRange.Create(Source.ChildrenLine, Found - 1, Source.ChildrenLine, Found - 1 + Length(Name)),
         Format('%s hat kein Mitglied „%s“ für die Unterelemente.', [Symbol.Name, Name]));
     end;

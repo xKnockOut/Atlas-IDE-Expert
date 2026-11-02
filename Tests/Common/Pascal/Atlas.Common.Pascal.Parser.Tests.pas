@@ -79,14 +79,18 @@ var
 begin
   Result := SyntaxKindName(ANode.Kind);
   if ANode.Name <> '' then
+  begin
     Result := Result + ':' + ANode.Name;
+  end;
   if ANode.ChildCount > 0 then
   begin
     Result := Result + '(';
     for Index := 0 to ANode.ChildCount - 1 do
     begin
       if Index > 0 then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + Outline(ANode[Index]);
     end;
     Result := Result + ')';
@@ -99,12 +103,16 @@ var
   Index: Integer;
 begin
   if ANode.Kind = AKind then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindFirst(ANode[Index], AKind);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -116,7 +124,9 @@ var
 begin
   Result := Ord(ANode.Kind = AKind);
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     Inc(Result, CountKind(ANode[Index], AKind));
+  end;
 end;
 
 function Lines(const ALines: array of string): string;
@@ -127,8 +137,10 @@ end;
 procedure AssertNoDiagnostics(ATree: TSyntaxTree);
 begin
   if Length(ATree.Diagnostics) > 0 then
+  begin
     Assert.Fail(Format('Unerwartete Diagnose in %d:%d: %s', [ATree.Diagnostics[0].StartPos.Line,
       ATree.Diagnostics[0].StartPos.Character, ATree.Diagnostics[0].Message]));
+  end;
 end;
 
 type
@@ -610,7 +622,9 @@ begin
   try
     Text.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
     for Index := 1 to 5000 do
+    begin
       Text.Append('  X := X + 1;'#13#10);
+    end;
     Text.Append('end;'#13#10'end.');
     Cancellation := TCountingCancellation.Create;
     Token := Cancellation;

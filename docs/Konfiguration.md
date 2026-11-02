@@ -22,6 +22,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `rules` | global und Projekt | object | – |  | Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit "severity" und Optionen. Hauptschalter je Gruppe der Einstellungsseite (#909): "group:<gruppe>": "off" schaltet alle Regeln der Gruppe ab (Gruppen siehe Regeln.md, z. B. "group:threads"). Die Gruppe „Compiler vorab“ nimmt auch ein Objekt (#1024): "group:compiler": {"severity": "off", "typeLevel": "off"}; "typeLevel": "off" schaltet nur die Regeln der Stufe T ab, die Ausdruckstypen brauchen (Stufen siehe Regeln.md). Die Konfidenz eines Treffers begrenzt den Schweregrad auch hier: Bei mittlerer Konfidenz bleibt ein Treffer höchstens eine Warnung, bei niedriger höchstens ein Hinweis, auch mit "error". |
 | `profile` | Projekt (atlas.json) |  | `"standard"` | z. B. `"fast"`, `"strict"` | Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus "profiles". Als Objekt getrennt für Editor und Kommandozeile. |
 | `profiles` | Projekt (atlas.json) | object | – |  | Eigene Regelprofile: Name → { "extends": eingebautes oder eigenes Profil, "categories": nur diese Kategorien, "rules": Regel-ID → Schweregrad }. |
+| `ruleChecks` | global (settings.json) | object | – |  | Prüfregeln in der LSP-Sitzung (#1454): Modul-Schalter „Prüfregeln“ des Plugins (Tools › Optionen › Atlas › Prüfregeln). Aus = der Server prüft in der Sitzung der IDE keine Regeln; es erscheinen nur Syntaxfehler und Compilermeldungen. AtlasServer --check und das MCP-Werkzeug prüfen weiter nach atlas.json. |
 | `overrides` | Projekt (atlas.json) | array<object> | – |  | Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID "*" steht für alle Regeln; spätere Einträge haben Vorrang. |
 | `excludeTests` | global und Projekt | boolean | `false` |  | Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. Global für alle Projekte schaltbar; eine atlas.json, die den Schlüssel nennt, geht vor. |
 | `testProfile` | Projekt (atlas.json) | string | – | z. B. `"fast"` | Regelprofil für Test-Units und Testprojekte; leer: wie "profile". |
@@ -68,6 +69,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `logLevel` | global (settings.json) | string | `"info"` | `"debug"`, `"info"`, `"warning"`, `"error"` | Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang. |
 | `logFile` | global (settings.json) | string | `""` |  | Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang. |
 | `traceFile` | global (settings.json) | string | `""` |  | Optionaler Mitschnitt aller JSON-Nachrichten zur Fehlersuche. Gilt ab dem nächsten Start; --trace hat Vorrang. |
+
+## ruleChecks
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `ruleChecks.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = keine Regelprüfung in der LSP-Sitzung (Mitteilung beim Start und bei jeder Änderung); --check und MCP unverändert. |
 
 ## compiler
 

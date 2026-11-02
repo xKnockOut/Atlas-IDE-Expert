@@ -74,21 +74,31 @@ var
 begin
   Result := AFileName;
   if ARoot = '' then
+  begin
     Exit;
+  end;
   Prefix := ARoot;
   while (Prefix <> '') and CharInSet(Prefix[Length(Prefix)], ['\', '/']) do
+  begin
     Delete(Prefix, Length(Prefix), 1);
+  end;
   if (Length(AFileName) > Length(Prefix) + 1) and StartsText(Prefix, AFileName) and
     CharInSet(AFileName[Length(Prefix) + 1], ['\', '/']) then
+  begin
     Result := Copy(AFileName, Length(Prefix) + 2, MaxInt);
+  end;
 end;
 
 function SectionName(ASection: TUsesSection): string;
 begin
   if ASection = TUsesSection.Interface_ then
-    Result := 'interface'
+  begin
+    Result := 'interface';
+  end
   else
+  begin
     Result := 'implementation';
+  end;
 end;
 
 { TMcpDeadCodeTools }
@@ -99,8 +109,12 @@ var
 begin
   Result := nil;
   for Rule in ARules do
+  begin
     if IndexText(Rule.Descriptor.Id, DeadCodeIds) >= 0 then
+    begin
       Result := Result + [Rule];
+    end;
+  end;
 end;
 
 class function TMcpDeadCodeTools.FindUnused(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -148,13 +162,17 @@ begin
         Context.ProjectFiles := AProjectFiles;
         if SameText(ExtractFileExt(FileName), '.pas') and not AProjectFiles.ReadText(ChangeFileExt(FileName, '.dfm'),
           Context.FormText) then
+        begin
           AProjectFiles.ReadText(ChangeFileExt(FileName, '.fmx'), Context.FormText);
+        end;
         Current := '';
         for Finding in TRuleEngine.Run(Rules, ASettings, Context) do
         begin
           Inc(Count);
           if Count > MaxFindings then
+          begin
             Continue;
+          end;
           if Current = '' then
           begin
             Current := RelativeTo(ARoot, FileName);
@@ -179,16 +197,26 @@ begin
     Root.AddPair('files', TJSONNumber.Create(Checked));
     Root.AddPair('total', TJSONNumber.Create(Count));
     if not Complete then
+    begin
       Root.AddPair('incomplete', Reason);
+    end;
     if AJson then
+    begin
       Exit(Root.ToJSON);
+    end;
     if Count > MaxFindings then
+    begin
       Lines.Add(Format('… %d weitere Befunde', [Count - MaxFindings]));
+    end;
     if not Complete then
+    begin
       Lines.Insert(0, Format('Hinweis: %s; unused-public-member und unused-unit schweigen, bis alle Projekte ' +
         'geladen und indiziert sind.', [Reason]));
+    end;
     if Rules = nil then
+    begin
       Lines.Insert(0, 'Die Regeln für ungenutzten Code sind nicht verfügbar.');
+    end;
     Lines.Insert(0, Format('%d Befunde in %d Dateien (%s).', [Count, Checked, string.Join(', ', DeadCodeIds)]));
     Lines.Insert(0, '# Ungenutzter Code');
     Result := TrimRight(Lines.Text);
@@ -202,11 +230,17 @@ class function TMcpDeadCodeTools.ParseDirection(const AText: string; out ADirect
 begin
   Result := True;
   if (AText = '') or SameText(AText, 'both') then
-    ADirection := TMcpUsesDirection.Both
+  begin
+    ADirection := TMcpUsesDirection.Both;
+  end
   else if SameText(AText, 'uses') then
-    ADirection := TMcpUsesDirection.Uses_
+  begin
+    ADirection := TMcpUsesDirection.Uses_;
+  end
   else if SameText(AText, 'usedBy') then
-    ADirection := TMcpUsesDirection.UsedBy
+  begin
+    ADirection := TMcpUsesDirection.UsedBy;
+  end
   else
   begin
     ADirection := TMcpUsesDirection.Both;
@@ -249,7 +283,9 @@ var
       Names.Sorted := True;
       Names.Duplicates := dupIgnore;
       for Entry in ANodes do
+      begin
         Names.Add(AGraph.Node(Entry).UnitName);
+      end;
       Values := TJSONArray.Create;
       Root.AddPair(AKey, Values);
       Add('');
@@ -267,10 +303,14 @@ var
 begin
   Node := AGraph.IndexOf(AUnit);
   if Node < 0 then
+  begin
     Node := AGraph.IndexOfFile(AUnit);
+  end;
   if (Node < 0) or not AGraph.Node(Node).Active then
+  begin
     Exit(Format('Unit %s steht nicht im Uses-Graphen (nur Units der Projekte, ohne RTL/VCL; Index noch nicht ' +
       'vollständig?).', [AUnit]));
+  end;
   Current := AGraph.Node(Node);
   Output := '';
   Root := TJSONObject.Create;
@@ -295,7 +335,9 @@ begin
         Item.AddPair('section', SectionName(Edge.Section));
       end;
       if ATransitive then
+      begin
         AddNames('Alle Abhängigkeiten, transitiv', 'transitiveUses', AGraph.Dependencies(Node, AllUsesSections));
+      end;
     end;
     if ADirection in [TMcpUsesDirection.UsedBy, TMcpUsesDirection.Both] then
     begin
@@ -325,7 +367,9 @@ begin
         Users.Free;
       end;
       if ATransitive then
+      begin
         AddNames('Alle Nutzer, transitiv', 'transitiveUsedBy', AGraph.Dependents(Node, AllUsesSections));
+      end;
     end;
     // Zyklen durch die Unit: je uses-Eintrag der kürzeste Weg zurück, wie die Regel uses-cycle.
     List := TJSONArray.Create;
@@ -336,7 +380,9 @@ begin
     begin
       Other := Edge.Target;
       if Seen.ContainsKey(Other) then
+      begin
         Continue;
+      end;
       Seen.Add(Other, True);
       Path := nil;
       InterfaceOnly := False;
@@ -346,28 +392,42 @@ begin
         InterfaceOnly := Path <> nil;
       end;
       if Path = nil then
+      begin
         Path := AGraph.Path(Other, Node, AllUsesSections);
+      end;
       if Path = nil then
+      begin
         Continue;
+      end;
       Path := TArray<TUsesEdge>.Create(Edge) + Path;
       Text := AGraph.Describe(Path);
       if InterfaceOnly then
-        Add('- ' + Text + ' (nur interface-uses, Compilerfehler wie F2047)')
+      begin
+        Add('- ' + Text + ' (nur interface-uses, Compilerfehler wie F2047)');
+      end
       else
+      begin
         Add('- ' + Text + ' (über implementation-uses)');
+      end;
       Item := TJSONObject.Create;
       List.AddElement(Item);
       Steps := TJSONArray.Create;
       Item.AddPair('path', Steps);
       Steps.Add(Current.UnitName);
       for Back in Path do
+      begin
         Steps.Add(AGraph.Node(Back.Target).UnitName);
+      end;
       Item.AddPair('interfaceOnly', TJSONBool.Create(InterfaceOnly));
     end;
     if List.Count = 0 then
+    begin
       Add('- keine');
+    end;
     if AJson then
+    begin
       Exit(Root.ToJSON);
+    end;
     Result := TrimRight(Output);
   finally
     Seen.Free;

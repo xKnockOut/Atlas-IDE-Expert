@@ -112,14 +112,20 @@ begin
   for mToken in TPascalLexer.Tokenize(ATypeText) do
   begin
     if mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
       Continue;
+    end;
     mText := mToken.Text;
     if mToken.Kind = TPascalTokenKind.Identifier then
+    begin
       mText := TPascalLexer.PlainName(mText);
+    end;
     // Zwischen zwei Wörtern bleibt ein Leerzeichen (array of Byte), sonst keins (TList<Integer>).
     if (Result <> '') and (mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword,
       TPascalTokenKind.Number]) and CharInSet(Result[Length(Result)], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + mText;
   end;
 end;
@@ -132,7 +138,9 @@ begin
   while mIndex < High(cBuiltinAliases) do
   begin
     if SameText(AName, cBuiltinAliases[mIndex]) then
+    begin
       Exit(cBuiltinAliases[mIndex + 1]);
+    end;
     Inc(mIndex, 2);
   end;
   Result := AName;
@@ -160,13 +168,19 @@ begin
   if AType.Builtin or (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) or (AType.TypeName = '') or
     (ADepth >= cMaxDepth) or IsDistinctAlias(AType.Signature) or (AResolver = nil) or
     not AResolver.DeclaringUnit(AType, mUnit) then
+  begin
     Exit;
+  end;
   mTarget := AType.TypeName;
   if AType.TypeArgs <> '' then
+  begin
     mTarget := mTarget + '<' + AType.TypeArgs + '>';
+  end;
   mBody := Clean(Copy(AType.Signature, Pos('=', AType.Signature) + 1, MaxInt));
   if not SameText(mBody, Clean(mTarget)) then
+  begin
     Exit;
+  end;
   mResolver := AResolver;
   AParts := Parts(mTarget,
     function(const ANames: TArray<string>; out AResolved: TResolvedSymbol): Boolean
@@ -188,14 +202,18 @@ begin
   if Assigned(AResolve) and AResolve(ANames, mType) and mType.IsType then
   begin
     if Followed(mType, AResolver, ADepth, Result) then
+    begin
       Exit;
+    end;
     mPart.Text := LowerCase(BuiltinName(mType.Name));
     mPart.Known := True;
     if not mType.Builtin and not SameText(mType.UnitName, 'System') then
     begin
       mPart.Origin := LowerCase(mType.UnitName);
       if mType.Container <> '' then
+      begin
         mPart.Origin := mPart.Origin + '.' + LowerCase(mType.Container);
+      end;
     end;
   end
   else
@@ -254,24 +272,34 @@ var
   mIndex: Integer;
 begin
   if Length(ALeft) <> Length(ARight) then
+  begin
     Exit(TTypeMatch.Different);
+  end;
   Result := TTypeMatch.Same;
   for mIndex := 0 to High(ALeft) do
   begin
     if ALeft[mIndex].IsName <> ARight[mIndex].IsName then
+    begin
       Exit(TTypeMatch.Different);
+    end;
     if ALeft[mIndex].Text <> ARight[mIndex].Text then
     begin
       // Ein unbekannter Name kann ein Alias des anderen sein.
       if ALeft[mIndex].IsName and (not ALeft[mIndex].Known or not ARight[mIndex].Known) then
-        Result := TTypeMatch.Unknown
+      begin
+        Result := TTypeMatch.Unknown;
+      end
       else
+      begin
         Exit(TTypeMatch.Different);
+      end;
     end
     else if (ALeft[mIndex].Origin <> '') and (ARight[mIndex].Origin <> '') and
       (ALeft[mIndex].Origin <> ARight[mIndex].Origin) then
+    begin
       // Gleicher Name aus verschiedenen Units: Vcl.Graphics.TBitmap ist nicht FMX.Graphics.TBitmap.
       Exit(TTypeMatch.Different);
+    end;
   end;
 end;
 
@@ -285,7 +313,9 @@ class function TTypeIdentity.Compare(const ALeft, ARight: string; const AResolve
 begin
   // Gleicher Text ohne Kommentare ist immer derselbe Typ; die Auflösung braucht es nur bei Unterschieden.
   if SameText(Clean(ALeft), Clean(ARight)) then
+  begin
     Exit(TTypeMatch.Same);
+  end;
   Result := CompareParts(Parts(ALeft, AResolveLeft, AResolver, 0), Parts(ARight, AResolveRight, AResolver, 0));
 end;
 

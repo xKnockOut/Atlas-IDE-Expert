@@ -86,9 +86,13 @@ function CleanName(const AText: string): string;
 begin
   // &Begin → Begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
@@ -101,11 +105,15 @@ begin
     Token := ATokens[Index];
     if (Token.StartPos.Line > APosition.Line) or
       ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    begin
       Break;
+    end;
     // Cursor auf oder direkt hinter dem Bezeichner.
     if (Token.Kind = TPascalTokenKind.Identifier) and (Token.EndPos.Line = APosition.Line) and
       (APosition.Character <= Token.EndPos.Character) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -167,35 +175,51 @@ begin
   Tokens := ATree.Tokens;
   Index := TokenAt(Tokens, APosition);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Found := TList<TDocumentHighlight>.Create;
   // Den Baum einmal auswerten statt je Vorkommen (Code-Review P-01).
   AResolver.PinTree(ATree, AFileName);
   try
     Wanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
     if Length(Wanted) = 0 then
+    begin
       Exit;
+    end;
     Name := CleanName(Tokens[Index].Text);
     for Index := 0 to High(Tokens) do
     begin
       if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(CleanName(Tokens[Index].Text), Name) then
+      begin
         Continue;
+      end;
       if ACancellation <> nil then
+      begin
         ACancellation.ThrowIfCancellationRequested;
+      end;
       Candidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, Tokens[Index].StartPos, True);
       if (Length(Candidate) = 0) or not SameTarget(Candidate[0], Wanted[0]) then
+      begin
         Continue;
+      end;
       Highlight.Range := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
       if SameText(Wanted[0].FileName, AFileName) and (Wanted[0].SelectionRange.StartPos = Tokens[Index].StartPos) then
-        Highlight.Kind := THighlightKind.Text
+      begin
+        Highlight.Kind := THighlightKind.Text;
+      end
       else
       begin
         Highlight.Kind := THighlightKind.Read;
         Next := Index + 1;
         while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+        begin
           Inc(Next);
+        end;
         if (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Symbol) and (Tokens[Next].Text = ':=') then
+        begin
           Highlight.Kind := THighlightKind.Write;
+        end;
       end;
       // Liste statt Result := Result + [...] (Code-Review P-08).
       Found.Add(Highlight);
@@ -226,10 +250,14 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -237,9 +265,13 @@ begin
   ACancellation.ThrowIfCancellationRequested;
   // Zuerst zusammengehörige Schlüsselwörter (#307), sonst Bezeichner.
   if Assigned(FSettingsFor) then
-    Settings := FSettingsFor(Uri)
+  begin
+    Settings := FSettingsFor(Uri);
+  end
   else
+  begin
     Settings := THighlightSettings.Default;
+  end;
   if TKeywordHighlights.Find(Tree, TLspPositions.ReadPosition(PositionValue), Settings, Ranges) then
   begin
     SetLength(Found, Length(Ranges));

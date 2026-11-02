@@ -50,7 +50,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 procedure CheckParses(const AText: string);
@@ -79,11 +81,17 @@ begin
       Result := Default(TMoveClassMeaning);
       Name := ANames[High(ANames)];
       if MatchText(Name, ['TStrings', 'TStringList']) then
-        Result.UnitName := 'System.Classes'
+      begin
+        Result.UnitName := 'System.Classes';
+      end
       else if MatchText(Name, ['Format', 'IntToStr']) then
-        Result.UnitName := 'System.SysUtils'
+      begin
+        Result.UnitName := 'System.SysUtils';
+      end
       else if MatchText(Name, ['Integer', 'string', 'TObject', 'Inc']) then
+      begin
         Result.UnitName := 'System';
+      end;
       Result.Found := Result.UnitName <> '';
     end;
 end;
@@ -102,14 +110,20 @@ begin
   CheckParses(AText);
   Line := 0;
   for Index := 1 to Pos(AMarker, AText) - 1 do
+  begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
+  end;
   Tree := TPascalParser.Parse(AText);
   try
     Result := TMoveClass.Plan('lager.pas', AText, Tree, TTextPosition.Create(Line, 4), ANewUnit, ALookup, Plan,
       AReason);
     if not Result then
+    begin
       Exit;
+    end;
     ANewText := Plan.Text;
     AOrigin := TChangeSignature.ApplyEdits(AText, Plan.OriginEdits);
     CheckParses(ANewText);

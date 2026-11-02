@@ -10,10 +10,11 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssueTipTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -51,7 +52,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.UI.Tracker.IssueTip;
 
@@ -111,7 +112,7 @@ begin
   TAtlasIssueTip.Compose('ATL-1', TAtlasIssueTipState.Loading, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.None,
     cNow, True, mTitle, mText);
   Assert.AreEqual('ATL-1', mTitle);
-  Assert.IsTrue(mText.StartsWith(TAtlasStrings.Text(TAtlasTextId.IssuePreviewLoading) + #10#10));
+  Assert.IsTrue(mText.StartsWith(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading) + #10#10));
 end;
 
 procedure TAtlasIssueTipTests.NotFoundNamesKey;
@@ -132,7 +133,7 @@ begin
   Assert.IsTrue(mText.StartsWith(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken)), mText);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork),
     TAtlasIssueTip.ErrorText(TAtlasCiFetchError.Network, 'ATL-9'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorConfig),
+  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig),
     TAtlasIssueTip.ErrorText(TAtlasCiFetchError.UnknownProvider, 'ATL-9'));
 end;
 

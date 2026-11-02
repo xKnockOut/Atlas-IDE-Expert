@@ -120,25 +120,33 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
 function ReadWerkzeug(const AFileName: string; out AText: string): Boolean;
 begin
   if SameText(AFileName, ListenFile) then
-    AText := UnitListen
+  begin
+    AText := UnitListen;
+  end
   else
+  begin
     AText := UnitWerkzeug;
+  end;
   Result := SameText(AFileName, WerkzeugFile) or SameText(AFileName, ListenFile);
 end;
 
@@ -304,8 +312,10 @@ begin
     Assert.AreEqual(15, Integer(Length(Site.ArgumentFirst)));
     Types := '';
     for Index := 0 to High(Site.ArgumentFirst) do
+    begin
       Types := Types + TLspSignatureHelp.ArgumentType(nil, Tree, HauptFile, Site.ArgumentFirst[Index],
         Site.ArgumentLast[Index]) + '|';
+    end;
     // Ausdrücke, Aufrufe und das leere letzte Argument bleiben unbekannt.
     Assert.AreEqual('Char|string|Integer|Double|Integer|Integer|nil|[]|Boolean|Char|string|string||||', Types);
   finally
@@ -406,7 +416,9 @@ begin
   // Unbekannter Typ gilt als verträglich: lieber eine Variante zu viel.
   Help := HelpAt('  TListe.Create(Gibts.Nicht, ', 'TListe.Create(Gibts.Nicht, ');
   for Signature in Help.Signatures do
+  begin
     Assert.IsTrue(Signature.Fits);
+  end;
   Assert.AreEqual(2, Help.ActiveSignature);
   // Passt keine, bleibt die erste mit genug Parametern gewählt.
   Help := HelpAt('  TListe.Create(1.5, ', 'TListe.Create(1.5, ');

@@ -59,7 +59,9 @@ var
 begin
   Folder := Copy(AFileName, 1, LastDelimiter('\', AFileName) - 1);
   if not Files.TryGetValue(LowerCase(Folder), Items) then
+  begin
     Items := nil;
+  end;
   Files.AddOrSetValue(LowerCase(Folder), Items + [AFileName]);
 end;
 
@@ -68,7 +70,9 @@ var
   Items: TArray<string>;
 begin
   if not Folders.TryGetValue(LowerCase(AParent), Items) then
+  begin
     Items := nil;
+  end;
   Folders.AddOrSetValue(LowerCase(AParent), Items + [AParent + '\' + AChild]);
 end;
 
@@ -83,13 +87,17 @@ begin
     function(AFolder: string): TArray<string>
     begin
       if not Files.TryGetValue(LowerCase(AFolder), Result) then
+      begin
         Result := nil;
+      end;
     end;
   Result.ListFolders :=
     function(AFolder: string): TArray<string>
     begin
       if not Folders.TryGetValue(LowerCase(AFolder), Result) then
+      begin
         Result := nil;
+      end;
     end;
 end;
 
@@ -99,7 +107,9 @@ var
 begin
   Result := '';
   for Hit in AHits do
+  begin
     Result := Result + Format('%d %s (%s)|', [Ord(Hit.Place), Hit.FileName, Hit.Detail]);
+  end;
 end;
 
 procedure TMissingUnitTests.Setup;
@@ -209,7 +219,9 @@ begin
     begin
       Result := nil;
       if APlatform = 'Win32' then
+      begin
         Result := ['C:\BDS\lib\win32\release'];
+      end;
     end;
   Assert.AreEqual('3 C:\BDS\lib\win32\release\Winapi.Windows.dcu (Win32)|',
     Places(TMissingUnitSearch.Search(Setup, Searched)));

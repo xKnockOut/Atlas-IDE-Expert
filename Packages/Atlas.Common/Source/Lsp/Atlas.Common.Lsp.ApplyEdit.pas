@@ -79,7 +79,9 @@ var
 begin
   Lines := AText.Split([#10]);
   if Length(Lines) = 0 then
+  begin
     Lines := [''];
+  end;
   Result := TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)]));
 end;
 
@@ -107,7 +109,9 @@ begin
       Range := TTextRange.Create(0, 0, 0, 0);
     end
     else
+    begin
       Range := WholeRange(Change.OldText);
+    end;
     Document := TJSONObject.Create;
     Document.AddPair('uri', Uri);
     Document.AddPair('version', TJSONNull.Create);
@@ -136,7 +140,9 @@ begin
   // Ende des alten Texts: letzte Zeile, Länge in UTF-16-Einheiten wie im LSP üblich.
   Lines := AOldText.Split([#10]);
   if Length(Lines) = 0 then
+  begin
     Lines := [''];
+  end;
   Last := Lines[High(Lines)];
   Edit := TJSONObject.Create;
   Edit.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, High(Lines), Length(Last))));
@@ -176,7 +182,9 @@ var
 begin
   Params := TJSONObject.Create;
   if ALabel <> '' then
+  begin
     Params.AddPair('label', ALabel);
+  end;
   Params.AddPair('edit', AEdit);
   Result := TJSONObject.Create;
   Result.AddPair('jsonrpc', '2.0');
@@ -199,12 +207,16 @@ begin
   if AResponse.GetValue('error') <> nil then
   begin
     if not AResponse.TryGetValue<string>('error.message', AReason) then
+    begin
       AReason := 'Fehler';
+    end;
     Exit;
   end;
   Result := AResponse.TryGetValue<Boolean>('result.applied', Applied) and Applied;
   if not Result and not AResponse.TryGetValue<string>('result.failureReason', AReason) then
+  begin
     AReason := 'nicht übernommen';
+  end;
 end;
 
 end.

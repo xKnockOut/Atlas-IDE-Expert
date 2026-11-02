@@ -115,7 +115,9 @@ begin
       begin
         Node := Child;
         if (Node.Kind = TSyntaxKind.RoutineDecl) and not (AOuter and (Result <> nil)) then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
@@ -134,8 +136,12 @@ var
   Token: TPascalToken;
 begin
   for Token in ATokens do
+  begin
     if (Token.StartPos.Line >= ALine) and Significant(Token) then
+    begin
       Exit(Token.Offset);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -145,10 +151,16 @@ var
 begin
   Result := False;
   if AHeader = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to AHeader.ChildCount - 1 do
+  begin
     if (AHeader[Index].Kind = TSyntaxKind.Directive) and SameText(AHeader[Index].Name, 'inline') then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Name des umgebenden Typs eines Kopfs in einer Klassen- bzw. Record-Deklaration; '' sonst.</summary>
@@ -161,9 +173,13 @@ begin
   while Node <> nil do
   begin
     if Node.Kind = TSyntaxKind.TypeDecl then
+    begin
       Exit(Node.Name);
+    end;
     if Node.Kind in [TSyntaxKind.ImplementationSection, TSyntaxKind.RoutineDecl] then
+    begin
       Exit;
+    end;
     Node := Node.Parent;
   end;
 end;
@@ -177,7 +193,9 @@ begin
   while Node <> nil do
   begin
     if Node.Kind = TSyntaxKind.InterfaceSection then
+    begin
       Exit(True);
+    end;
     Node := Node.Parent;
   end;
 end;
@@ -190,11 +208,15 @@ var
 begin
   Result := HasInlineDirective(ARoutine.FindChild(TSyntaxKind.RoutineHeader));
   if Result then
+  begin
     Exit;
+  end;
   ShortName := LastPart(ARoutine.Name);
   TypeName := '';
   if Pos('.', ARoutine.Name) > 0 then
+  begin
     TypeName := LastPart(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1));
+  end;
   Found := False;
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -202,18 +224,28 @@ begin
       Result := not Found;
       if Found or (ANode.Kind <> TSyntaxKind.RoutineHeader) or (ANode.Parent = nil) or
         (ANode.Parent.Kind = TSyntaxKind.RoutineDecl) and (ANode.Parent = ARoutine) then
+      begin
         Exit;
+      end;
       if not SameText(LastPart(ANode.Name), ShortName) then
+      begin
         Exit;
+      end;
       if TypeName <> '' then
       begin
         if not SameText(OwnerTypeName(ANode), TypeName) then
+        begin
           Exit;
+        end;
       end
       else if not InInterface(ANode) then
+      begin
         Exit;
+      end;
       if HasInlineDirective(ANode) then
+      begin
         Found := True;
+      end;
     end);
   Result := Found;
 end;
@@ -226,16 +258,24 @@ begin
   Result := 0;
   Index := 0;
   while (Index <= High(ATokens)) and not Significant(ATokens[Index]) do
+  begin
     Inc(Index);
+  end;
   if (Index > High(ATokens)) or not (SameText(ATokens[Index].Text, 'unit') or
     SameText(ATokens[Index].Text, 'program') or SameText(ATokens[Index].Text, 'library') or
     SameText(ATokens[Index].Text, 'package')) then
+  begin
     Exit;
+  end;
   Last := Index;
   while (Last <= High(ATokens)) and not ATokens[Last].IsSymbol(';') do
+  begin
     Inc(Last);
+  end;
   if Last <= High(ATokens) then
+  begin
     Result := ATokens[Last].EndPos.Line + 1;
+  end;
 end;
 
 { TLspDebugUnavailable }
@@ -278,10 +318,14 @@ begin
     LineAfterHeader(Tokens), 0), '{$O-}' + LineEnd));
   Offset := LineOffset(Tokens, AStoppedLine);
   if Offset < 0 then
+  begin
     Exit;
+  end;
   Routine := RoutineAt(ATree.Root, Offset, False);
   if Routine = nil then
+  begin
     Exit;
+  end;
   Outer := RoutineAt(ATree.Root, Offset, True);
   Result.HasRoutine := True;
   Result.RoutineName := Routine.Name;
@@ -295,24 +339,36 @@ begin
       '{$OPTIMIZATION ON}' + LineEnd));
   Body := Routine.FindChild(TSyntaxKind.Block);
   if Body = nil then
+  begin
     Exit;
+  end;
   // Parameter: Name in der Parameterliste des Kopfs; deklariert: Name vor dem Rumpf (Parameter, var-Abschnitt).
   Params := nil;
   if Routine.FindChild(TSyntaxKind.RoutineHeader) <> nil then
+  begin
     Params := Routine.FindChild(TSyntaxKind.RoutineHeader).FindChild(TSyntaxKind.Parameters);
+  end;
   Declared := SameText(AName, 'Result');
   for mIndex := TSyntaxTree.FirstTokenOf(Tokens, Routine.StartOffset) to High(Tokens) do
   begin
     Token := Tokens[mIndex];
     if Token.Offset >= Body.StartOffset then
+    begin
       Break;
+    end;
     if (Token.Offset < Routine.StartOffset) or (Token.Kind <> TPascalTokenKind.Identifier) or
       not SameText(Token.Text, AName) then
+    begin
       Continue;
+    end;
     if (Params <> nil) and (Params.StartOffset <= Token.Offset) and (Token.Offset < Params.EndOffset) then
+    begin
       Result.IsParameter := True;
+    end;
     if not SameText(LastPart(Routine.Name), AName) then
+    begin
       Declared := True;
+    end;
   end;
   Loops := TList<TSyntaxNode>.Create;
   try
@@ -321,31 +377,45 @@ begin
       begin
         if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
           TSyntaxKind.RepeatStatement] then
+        begin
           Loops.Add(ANode);
+        end;
         // Anonyme Methoden haben eigene Lebensdauern.
         Result := ANode.Kind <> TSyntaxKind.AnonymousMethod;
       end);
     Resolved := False;
     if AResolver <> nil then
+    begin
       AResolver.PinTree(ATree, AFileName);
+    end;
     try
       for Index := TSyntaxTree.FirstTokenOf(Tokens, Body.StartOffset) to High(Tokens) do
       begin
         Token := Tokens[Index];
         if Token.Offset >= Body.EndOffset then
+        begin
           Break;
+        end;
         if (Token.Offset < Body.StartOffset) or (Token.Kind <> TPascalTokenKind.Identifier) or
           not SameText(Token.Text, AName) or ATree.IsControlCharPart(Index) then
+        begin
           Continue;
+        end;
         // Mitglied eines anderen Ausdrucks (X.Name) ist ein anderer Name.
         Before := Index - 1;
         while (Before >= 0) and not Significant(Tokens[Before]) do
+        begin
           Dec(Before);
+        end;
         if (Before >= 0) and Tokens[Before].IsSymbol('.') then
+        begin
           Continue;
+        end;
         // Inline-Variable (var Name) bzw. Schleifenvariable (for var Name) ist lokal.
         if (Before >= 0) and SameText(Tokens[Before].Text, 'var') then
+        begin
           Declared := True;
+        end;
         if not Resolved and (AResolver <> nil) then
         begin
           Symbol := AResolver.Resolve(ATree, AFileName, Token.StartPos);
@@ -355,41 +425,67 @@ begin
         Line := Token.StartPos.Line;
         FirstLine := Line;
         if (Result.FirstUse < 0) or (Line < Result.FirstUse) then
+        begin
           Result.FirstUse := Line;
+        end;
         LastLine := Line;
         for Loop in Loops do
+        begin
           if (Loop.StartOffset <= Token.Offset) and (Token.Offset < Loop.EndOffset) then
           begin
             if Loop.StartPos.Line < FirstLine then
+            begin
               FirstLine := Loop.StartPos.Line;
+            end;
             if Loop.EndPos.Line > LastLine then
+            begin
               LastLine := Loop.EndPos.Line;
+            end;
           end;
+        end;
         if FirstLine < Result.FirstUse then
+        begin
           Result.FirstUse := FirstLine;
+        end;
         if LastLine > Result.LastUse then
+        begin
           Result.LastUse := LastLine;
+        end;
       end;
     finally
       if AResolver <> nil then
+      begin
         AResolver.UnpinTree;
+      end;
     end;
   finally
     Loops.Free;
   end;
   // Deklaration in der Routine zählt auch, wenn der Index den Namen anders auflöst.
   if Result.IsParameter or Declared then
+  begin
     Result.Local := True;
+  end;
   if Result.IsParameter and (Result.FirstUse >= 0) then
+  begin
     Result.FirstUse := Result.RoutineStartLine;
+  end;
   if Result.FirstUse < 0 then
-    Result.Lifetime := TVariableLifetime.Unused
+  begin
+    Result.Lifetime := TVariableLifetime.Unused;
+  end
   else if AStoppedLine < Result.FirstUse then
-    Result.Lifetime := TVariableLifetime.Before
+  begin
+    Result.Lifetime := TVariableLifetime.Before;
+  end
   else if AStoppedLine > Result.LastUse then
-    Result.Lifetime := TVariableLifetime.After
+  begin
+    Result.Lifetime := TVariableLifetime.After;
+  end
   else
+  begin
     Result.Lifetime := TVariableLifetime.Within;
+  end;
 end;
 
 class function TLspDebugUnavailable.ToJson(const AFacts: TUnavailableFacts; const AState: TCompilerSwitchState;
@@ -402,8 +498,12 @@ begin
   Result := TJSONObject.Create;
   Switches := TJSONArray.Create;
   for Entry in AState.Switches do
+  begin
     if (Entry.Name = 'D') or (Entry.Name = 'L') or (Entry.Name = 'O') then
+    begin
       Switches.AddElement(TLspCompilerSwitches.EntryToJson(Entry));
+    end;
+  end;
   Result.AddPair('switches', Switches);
   if AFacts.HasRoutine then
   begin
@@ -423,9 +523,13 @@ begin
   Result.AddPair('variable', Variable);
   Fixes := TJSONObject.Create;
   if Length(AFacts.RoutineFix) > 0 then
+  begin
     Fixes.AddPair('routineOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.RoutineFix));
+  end;
   if Length(AFacts.UnitFix) > 0 then
+  begin
     Fixes.AddPair('unitOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.UnitFix));
+  end;
   Result.AddPair('fixes', Fixes);
 end;
 
@@ -445,10 +549,14 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue) and
     TJSONObject(AParams).TryGetValue<string>('name', Name)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri", "position" und "name" fehlen in ' + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -457,10 +565,14 @@ begin
   FileName := TDocumentUris.ToPath(Uri);
   Context := Default(TCompilerSwitchContext);
   if Assigned(FContextFor) then
+  begin
     Context := FContextFor(Uri);
+  end;
   Resolver := nil;
   if FIndex <> nil then
+  begin
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  end;
   try
     Facts := TLspDebugUnavailable.Facts(Resolver, Shared.Tree, FileName, Document.Text, Name, Position.Line);
   finally

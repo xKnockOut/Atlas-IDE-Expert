@@ -134,9 +134,13 @@ function Describe(const ALocation: TSymbolLocation): string;
 begin
   Result := Format('%s (%s', [ALocation.Symbol.QualifiedName, TMcpIndexTools.KindName(ALocation.Symbol.Kind)]);
   if ALocation.Symbol.TypeName <> '' then
+  begin
     Result := Result + ': ' + ALocation.Symbol.TypeName;
+  end;
   if not ALocation.Symbol.InInterface then
+  begin
     Result := Result + ', nur implementation';
+  end;
   Result := Result + Format(') – Unit %s, %s', [ALocation.UnitName, TMcpIndexTools.Location(ALocation)]);
 end;
 
@@ -156,15 +160,21 @@ begin
     Container := Copy(Name, 1, Dot - 1);
     // Unit-Präfix (System.SysUtils.TFoo.Bar) zählt nicht zum Container.
     if LastDelimiter('.', Container) > 0 then
+    begin
       Container := Copy(Container, LastDelimiter('.', Container) + 1, MaxInt);
+    end;
     Name := Copy(Name, Dot + 1, MaxInt);
   end;
   Found := TList<TSymbolLocation>.Create;
   try
     for Location in FIndex.FindSymbols(Name) do
+    begin
       if (Container = '') or SameText(Location.Symbol.Container, Container) or
         ((Dot > 0) and SameText(Location.UnitName, Copy(Query, 1, Dot - 1))) then
+      begin
         Found.Add(Location);
+      end;
+    end;
     Result := Found.ToArray;
   finally
     Found.Free;
@@ -179,8 +189,12 @@ begin
   Found := TList<TSymbolLocation>.Create;
   try
     for Location in Matches(AName) do
+    begin
       if Location.Symbol.Kind in TypeKinds then
+      begin
         Found.Add(Location);
+      end;
+    end;
     Result := Found.ToArray;
   finally
     Found.Free;
@@ -217,7 +231,9 @@ begin
     // Kein exakter Treffer: Teilstring im Namen, z. B. "Customer" findet TCustomerList.
     Count := 0;
     for UnitIndex in FIndex.Units do
+    begin
       for Symbol in UnitIndex.Symbols do
+      begin
         if ContainsText(Symbol.Name, AQuery) then
         begin
           if Count >= MaxResults then
@@ -231,8 +247,12 @@ begin
           Lines.Add(Describe(Location));
           Inc(Count);
         end;
+      end;
+    end;
     if Lines.Count = 0 then
+    begin
       Exit(Format('Kein Symbol "%s" im Index (%d Units).', [AQuery, FIndex.UnitCount]));
+    end;
     Result := 'Kein exakter Treffer, ähnliche Namen:' + sLineBreak + JoinLines(Lines);
   finally
     Lines.Free;
@@ -242,9 +262,13 @@ end;
 function TMcpIndexTools.RationaleOptions: TRationaleOptions;
 begin
   if Assigned(FRationaleOptions) then
-    Result := FRationaleOptions()
+  begin
+    Result := FRationaleOptions();
+  end
   else
+  begin
     Result := TRationaleOptions.Default;
+  end;
 end;
 
 /// <summary>"- WHY (Zeile 12): Text" je Eintrag (Zeilen ab 1).</summary>
@@ -253,7 +277,9 @@ var
   mEntry: TRationaleEntry;
 begin
   for mEntry in AEntries do
+  begin
     ALines.Add(Format('- %s (Zeile %d): %s', [mEntry.Marker, mEntry.Line + 1, mEntry.Text]));
+  end;
 end;
 
 /// <summary>Begründungen des Symbols an ALocation samt Implementierung bzw. Deklaration; leer ohne Unit.</summary>
@@ -263,7 +289,9 @@ var
 begin
   Result := nil;
   if AIndex.FindUnit(ALocation.UnitName, mUnit) then
+  begin
     Result := TLspRationale.OfSymbol(mUnit, ALocation.Symbol);
+  end;
 end;
 
 function TMcpIndexTools.Declaration(const AQuery: string): string;
@@ -289,14 +317,20 @@ begin
       end;
       Inc(Count);
       if Lines.Count > 0 then
+      begin
         Lines.Add('');
+      end;
       Lines.Add('// ' + Describe(Location));
       if Assigned(FReadText) and FReadText(Location.FileName, Text) then
       begin
         Source.Text := Text;
         for Line := Location.Symbol.Range.StartPos.Line to Location.Symbol.Range.EndPos.Line do
+        begin
           if (Line >= 0) and (Line < Source.Count) then
+          begin
             Lines.Add(Source[Line]);
+          end;
+        end;
       end;
       // Begründungen (#1123): über der Deklaration und im Rumpf der Implementierung.
       Entries := TLspRationale.Select(EntriesOf(FIndex, Location), Options);
@@ -307,7 +341,9 @@ begin
       end;
     end;
     if Count = 0 then
+    begin
       Exit(Format('Kein Symbol "%s" im Index.', [AQuery]));
+    end;
     Result := JoinLines(Lines);
   finally
     Source.Free;
@@ -326,7 +362,9 @@ var
   Count: Integer;
 begin
   if (Trim(AUnitOrFile) = '') = (Trim(AName) = '') then
+  begin
     Exit('Genau eins von "unit" und "name" angeben.');
+  end;
   // get_rationale ist über mcp.disabledTools abschaltbar; hints.rationale gilt für Hover und get_declaration.
   Options := RationaleOptions;
   Lines := TStringList.Create;
@@ -338,7 +376,9 @@ begin
       begin
         Entries := TLspRationale.ByMarkers(EntriesOf(FIndex, Location), Options);
         if Length(Entries) = 0 then
+        begin
           Continue;
+        end;
         if Count >= MaxDeclarations then
         begin
           Lines.Add('… weitere Symbole, Namen genauer fassen (TFoo.Bar)');
@@ -346,16 +386,22 @@ begin
         end;
         Inc(Count);
         if Lines.Count > 0 then
+        begin
           Lines.Add('');
+        end;
         Lines.Add(Describe(Location));
         AddEntries(Lines, Entries);
       end;
       if Count = 0 then
+      begin
         Exit(Format('Keine Begründungen zu "%s".', [AName]));
+      end;
       Exit(JoinLines(Lines));
     end;
     if not FIndex.FindUnit(AUnitOrFile, UnitIndex) and not FIndex.FindFile(AUnitOrFile, UnitIndex) then
+    begin
       Exit(Format('Unit "%s" nicht im Index.', [AUnitOrFile]));
+    end;
     Lines.Add(Format('unit %s – %s', [UnitIndex.UnitName, UnitIndex.FileName]));
     Entries := TLspRationale.ByMarkers(TRationale.DecodeAll(UnitIndex.Rationale), Options);
     if Length(Entries) > 0 then
@@ -369,7 +415,9 @@ begin
     begin
       Entries := TLspRationale.ByMarkers(TRationale.DecodeAll(Symbol.Rationale), Options);
       if Length(Entries) = 0 then
+      begin
         Continue;
+      end;
       Location.UnitName := UnitIndex.UnitName;
       Location.FileName := UnitIndex.SymbolFile(Symbol);
       Location.Symbol := Symbol;
@@ -378,7 +426,9 @@ begin
       Inc(Count, Length(Entries));
     end;
     if Count = 0 then
+    begin
       Exit(Format('Keine Begründungen in Unit %s.', [UnitIndex.UnitName]));
+    end;
     Result := JoinLines(Lines);
   finally
     Lines.Free;
@@ -392,12 +442,16 @@ var
   Key: string;
 begin
   if ADepth > MaxDepth then
+  begin
     Exit;
+  end;
   for Location in FIndex.Descendants(ATypeName) do
   begin
     Key := LowerCase(Location.UnitName + '.' + Location.Symbol.QualifiedName);
     if AVisited.ContainsKey(Key) then
+    begin
       Continue;
+    end;
     AVisited.Add(Key, True);
     ALines.Add(StringOfChar(' ', ADepth * 2) + '- ' + Describe(Location));
     AddDescendants(ALines, Location.Symbol.Name, ADepth + 1, AVisited);
@@ -421,19 +475,25 @@ begin
     Index := PosEx('''', AText, Start + Length(Call));
     Close := PosEx('''', AText, Index + 1);
     if (Index = 0) or (Close = 0) then
+    begin
       Break;
+    end;
     Page := Copy(AText, Index + 1, Close - Index - 1);
     Index := PosEx('[', AText, Close);
     Close := PosEx(']', AText, Index + 1);
     if (Index = 0) or (Close = 0) then
+    begin
       Break;
+    end;
     for Name in Copy(AText, Index + 1, Close - Index - 1).Split([',']) do
+    begin
       if Trim(Name) <> '' then
       begin
         Entry.Page := Page;
         Entry.ClassName := Trim(Name);
         Result := Result + [Entry];
       end;
+    end;
     Start := PosEx(Call, Lower, Close);
   end;
 end;
@@ -449,17 +509,27 @@ begin
   Start := Pos('contains', Lower);
   while (Start > 0) and (((Start > 1) and CharInSet(Lower[Start - 1], ['a'..'z', '0'..'9', '_', '.'])) or
     ((Start + 8 <= Length(Lower)) and CharInSet(Lower[Start + 8], ['a'..'z', '0'..'9', '_']))) do
+  begin
     Start := PosEx('contains', Lower, Start + 1);
+  end;
   if Start = 0 then
+  begin
     Exit;
+  end;
   Stop := PosEx(';', Lower, Start);
   if Stop = 0 then
+  begin
     Stop := Length(Lower) + 1;
+  end;
   Name := LowerCase(AUnitName);
   // Einträge: "Unit" oder "Unit in 'Pfad'", durch Kommas getrennt.
   for Entry in Copy(Lower, Start + 8, Stop - Start - 8).Split([',']) do
+  begin
     if SameText(Trim(Copy(Trim(Entry), 1, Pos(' ', Trim(Entry) + ' ') - 1)), Name) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TMcpIndexTools.ComponentInfo(const AClassName: string): string;
@@ -477,8 +547,10 @@ var
 begin
   Found := TypeMatches(AClassName);
   if Length(Found) = 0 then
+  begin
     Exit(Format('Keine Quellen zu "%s" im Index; nur der Name ist bekannt (z. B. nur als .dcu vorhanden).',
       [AClassName]));
+  end;
   Lines := TStringList.Create;
   Chain := TList<string>.Create;
   Files := TList<string>.Create;
@@ -494,7 +566,9 @@ begin
       Line := Line + ' → ' + Current.Symbol.Ancestors[0];
       Parents := TypeMatches(Current.Symbol.Ancestors[0]);
       if Length(Parents) = 0 then
+      begin
         Break;
+      end;
       Current := Parents[0];
     end;
     Lines.Add('Vorfahren: ' + Line);
@@ -502,30 +576,52 @@ begin
     Files.Add(Found[0].FileName);
     Routines := FIndex.FindSymbols('Register');
     for Routine in Routines do
+    begin
       if (Routine.Symbol.Container = '') and not Files.Contains(Routine.FileName) then
+      begin
         Files.Add(Routine.FileName);
+      end;
+    end;
     Pages := '';
     if Assigned(FReadText) then
+    begin
       for Line in Files do
+      begin
         if FReadText(Line, Text) then
+        begin
           for Registration in Registrations(Text) do
+          begin
             if SameText(Registration.ClassName, Found[0].Symbol.Name) and (Pos(Registration.Page, Pages) = 0) then
             begin
               if Pages <> '' then
+              begin
                 Pages := Pages + ', ';
+              end;
               Pages := Pages + Registration.Page;
             end;
+          end;
+        end;
+      end;
+    end;
     if Pages = '' then
+    begin
       Pages := 'keine';
+    end;
     Lines.Add('Registrierung (Palettenseite): ' + Pages);
     Package := '';
     if Assigned(FPackageOf) then
+    begin
       Package := FPackageOf(Found[0].UnitName);
+    end;
     if Package = '' then
+    begin
       Package := 'unbekannt';
+    end;
     Lines.Add('Package: ' + Package);
     if not Assigned(FReadText) then
+    begin
       Exit(JoinLines(Lines));
+    end;
     ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -534,26 +630,38 @@ begin
     Members := TPublishedMembers.Collect(FIndex, Found[0].Symbol.Name, ReadText);
     Lines.Add('Properties:');
     for Member in Members do
+    begin
       if not Member.IsEvent then
       begin
         Line := Format('  %s: %s', [Member.Name, Member.TypeName]);
         if TPublishedMembers.DefaultText(Member) <> '' then
+        begin
           Line := Line + ' ' + TPublishedMembers.DefaultText(Member);
+        end;
         if not SameText(Member.DeclaringClass, Found[0].Symbol.Name) then
+        begin
           Line := Line + ' (aus ' + Member.DeclaringClass + ')';
+        end;
         Lines.Add(Line);
       end;
+    end;
     Lines.Add('Ereignisse:');
     for Member in Members do
+    begin
       if Member.IsEvent then
       begin
         Line := Format('  %s: %s', [Member.Name, Member.TypeName]);
         if TPublishedMembers.EventTail(FIndex, ReadText, Found[0].Symbol.Name, Member.Name, Tail) then
+        begin
           Line := Line + ' – Signatur ' + Tail;
+        end;
         if not SameText(Member.DeclaringClass, Found[0].Symbol.Name) then
+        begin
           Line := Line + ' (aus ' + Member.DeclaringClass + ')';
+        end;
         Lines.Add(Line);
       end;
+    end;
     Result := JoinLines(Lines);
   finally
     Files.Free;
@@ -574,7 +682,9 @@ var
 begin
   Found := TypeMatches(ATypeName);
   if Length(Found) = 0 then
+  begin
     Exit(Format('Kein Typ "%s" im Index.', [ATypeName]));
+  end;
   Lines := TStringList.Create;
   Chain := TList<string>.Create;
   Visited := TDictionary<string, Boolean>.Create;
@@ -582,14 +692,18 @@ begin
     Current := Found[0];
     Lines.Add(Describe(Current));
     if Length(Current.Symbol.Ancestors) > 1 then
+    begin
       Lines.Add('Implementiert/erweitert: ' + string.Join(', ', Copy(Current.Symbol.Ancestors, 1, MaxInt)));
+    end;
     // Vorfahren über den jeweils ersten Eintrag (Basisklasse bzw. -interface).
     Lines.Add('Vorfahren:');
     while (Length(Current.Symbol.Ancestors) > 0) and (Chain.Count < MaxDepth) do
     begin
       Name := Current.Symbol.Ancestors[0];
       if Chain.Contains(LowerCase(Name)) then
+      begin
         Break;
+      end;
       Chain.Add(LowerCase(Name));
       Parents := TypeMatches(Name);
       if Length(Parents) = 0 then
@@ -601,14 +715,20 @@ begin
       Lines.Add('  - ' + Describe(Current));
     end;
     if Chain.Count = 0 then
+    begin
       Lines.Add('  (keine)');
+    end;
     Lines.Add('Nachfahren:');
     Index := Lines.Count;
     AddDescendants(Lines, Found[0].Symbol.Name, 1, Visited);
     if Lines.Count = Index then
+    begin
       Lines.Add('  (keine im Index)');
+    end;
     if Length(Found) > 1 then
+    begin
       Lines.Add(Format('Hinweis: %d Typen dieses Namens, gezeigt wird der erste.', [Length(Found)]));
+    end;
     Result := JoinLines(Lines);
   finally
     Visited.Free;
@@ -626,14 +746,20 @@ var
   InInterface: Boolean;
 begin
   if not FIndex.FindUnit(AUnitOrFile, UnitIndex) and not FIndex.FindFile(AUnitOrFile, UnitIndex) then
+  begin
     Exit(Format('Unit "%s" nicht im Index.', [AUnitOrFile]));
+  end;
   Lines := TStringList.Create;
   try
     Lines.Add(Format('unit %s – %s', [UnitIndex.UnitName, UnitIndex.FileName]));
     if Length(UnitIndex.InterfaceUses) > 0 then
+    begin
       Lines.Add('uses (interface): ' + string.Join(', ', UnitIndex.InterfaceUses));
+    end;
     if Length(UnitIndex.ImplementationUses) > 0 then
+    begin
       Lines.Add('uses (implementation): ' + string.Join(', ', UnitIndex.ImplementationUses));
+    end;
     InInterface := False;
     Section := '';
     for Symbol in UnitIndex.Symbols do

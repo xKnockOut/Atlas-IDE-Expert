@@ -181,7 +181,9 @@ begin
   Result := Default(TQueryValue);
   Result.Kind := TQueryValueKind.Flag;
   if AValue then
+  begin
     Result.Number := 1;
+  end;
 end;
 
 function TQueryValue.Display: string;
@@ -193,9 +195,13 @@ begin
       Result := Text;
     TQueryValueKind.Flag:
       if Number <> 0 then
-        Result := 'ja'
+      begin
+        Result := 'ja';
+      end
       else
+      begin
         Result := 'nein';
+      end;
   else
     Result := '';
   end;
@@ -206,9 +212,13 @@ end;
 function TQueryRow.QualifiedName: string;
 begin
   if Container = '' then
-    Result := Name
+  begin
+    Result := Name;
+  end
   else
+  begin
     Result := Container + '.' + Name;
+  end;
 end;
 
 { TQueryResult }
@@ -223,8 +233,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Columns) do
+  begin
     if SameText(Columns[mIndex], AName) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -236,9 +250,13 @@ end;
 class function TQueryResult.CellText(const ARow: TQueryRow; AColumn: Integer): string;
 begin
   if (AColumn >= 0) and (AColumn <= High(ARow.Values)) then
-    Result := ARow.Values[AColumn].Display
+  begin
+    Result := ARow.Values[AColumn].Display;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TQueryResult.Placeholders(const ATemplate: string): TArray<string>;
@@ -251,7 +269,9 @@ begin
   begin
     mStop := Pos('}', ATemplate, mStart + 1);
     if mStop = 0 then
+    begin
       Break;
+    end;
     Result := Result + [Copy(ATemplate, mStart + 1, mStop - mStart - 1)];
     mStart := Pos('{', ATemplate, mStop + 1);
   end;
@@ -264,16 +284,24 @@ var
 begin
   Result := ATemplate;
   if Result = '' then
+  begin
     Result := '{name}: Treffer der Abfrage {query}';
+  end;
   for mName in Placeholders(Result) do
   begin
     mColumn := ColumnOf(mName);
     if mColumn >= 0 then
-      Result := StringReplace(Result, '{' + mName + '}', CellText(ARow, mColumn), [rfReplaceAll])
+    begin
+      Result := StringReplace(Result, '{' + mName + '}', CellText(ARow, mColumn), [rfReplaceAll]);
+    end
     else if SameText(mName, 'query') then
-      Result := StringReplace(Result, '{' + mName + '}', Query, [rfReplaceAll])
+    begin
+      Result := StringReplace(Result, '{' + mName + '}', Query, [rfReplaceAll]);
+    end
     else if SameText(mName, 'path') then
+    begin
       Result := StringReplace(Result, '{' + mName + '}', ARow.Path, [rfReplaceAll]);
+    end;
   end;
 end;
 

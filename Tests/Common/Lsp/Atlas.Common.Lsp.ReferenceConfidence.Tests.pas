@@ -167,15 +167,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for I := 1 to Index - 1 do
+  begin
     if AText[I] = #10 then
     begin
       Inc(Line);
       LineStart := I + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -205,13 +209,21 @@ function TReferenceConfidenceTests.ReadText(const AFileName: string; out AText: 
 begin
   Result := True;
   if SameText(AFileName, KundenFile) then
-    AText := UnitKunden
+  begin
+    AText := UnitKunden;
+  end
   else if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else if SameText(AFileName, WerteFile) then
-    AText := UnitWerte
+  begin
+    AText := UnitWerte;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 function TReferenceConfidenceTests.FindSpeichern(const ASettings: TReferenceSettings): TArray<TReferenceLocation>;
@@ -237,7 +249,9 @@ begin
     Result := Result + Format('%s:%d:%d=%s', [ChangeFileExt(ExtractFileName(Location.FileName), ''),
       Location.Range.StartPos.Line, Location.Range.StartPos.Character, Location.Confidence.LevelName]);
     if not Location.Confidence.IsSure then
+    begin
       Result := Result + '/' + Location.Confidence.ReasonName;
+    end;
     Result := Result + ' ';
   end;
   Result := Trim(Result);
@@ -249,11 +263,13 @@ var
   Location: TReferenceLocation;
 begin
   for Location in ALocations do
+  begin
     if SameText(Location.FileName, AFileName) and (Location.Range.StartPos.Line = ALine) then
     begin
       ALocation := Location;
       Exit(True);
     end;
+  end;
   ALocation := Default(TReferenceLocation);
   Result := False;
 end;
@@ -458,7 +474,9 @@ begin
       Assert.IsTrue(Response.GetValue('result') is TJSONArray, Response.ToJSON);
       Reasons := '';
       for Item in TJSONArray(Response.GetValue('result')) do
+      begin
         Reasons := Reasons + TJSONObject(Item).GetValue<string>('atlasConfidence.level') + ' ';
+      end;
       Assert.AreEqual('sure sure inferred inferred inferred inferred', Trim(Reasons));
     finally
       Response.Free;
@@ -469,7 +487,9 @@ begin
       Assert.IsTrue(Response.GetValue('result') is TJSONObject, Response.ToJSON);
       Reasons := '';
       for Item in Response.GetValue<TJSONArray>('result.atlasUnchanged') do
+      begin
         Reasons := Reasons + TJSONObject(Item).GetValue<string>('atlasConfidence.reason') + ' ';
+      end;
       Assert.AreEqual('interface virtual unresolved', Trim(Reasons));
     finally
       Response.Free;
@@ -502,12 +522,16 @@ begin
   end;
   Lines := '';
   for Edit in Edits do
+  begin
     Lines := Lines + Format('%s:%d ', [ChangeFileExt(ExtractFileName(Edit.FileName), ''), Edit.Range.StartPos.Line]);
+  end;
   // Deklaration, Rumpf, sicherer Aufruf und die eindeutige Stelle im inaktiven Zweig.
   Assert.AreEqual('Kunden:10 Kunden:16 Haupt:6 Haupt:11', Trim(Lines));
   Lines := '';
   for Location in Unchanged do
+  begin
     Lines := Lines + Format('%d/%s ', [Location.Range.StartPos.Line, Location.Confidence.ReasonName]);
+  end;
   Assert.AreEqual('7/interface 8/virtual 9/unresolved', Trim(Lines));
 end;
 
@@ -609,16 +633,22 @@ begin
   Text := 'unit Haupt;'#10'interface'#10'uses Kunden;'#10'implementation'#10'procedure Lauf(K: TKunde);'#10 +
     'begin'#10;
   for Index := 1 to Count do
+  begin
     Text := Text + '  K.Speichern;'#10;
+  end;
   Text := Text + 'end;'#10'end.';
   Read :=
     function(const AFileName: string; out AResult: string): Boolean
     begin
       Result := True;
       if SameText(AFileName, HauptFile) then
-        AResult := Text
+      begin
+        AResult := Text;
+      end
       else
+      begin
         Result := ReadText(AFileName, AResult);
+      end;
     end;
   Tree := TPascalParser.Parse(UnitKunden);
   try

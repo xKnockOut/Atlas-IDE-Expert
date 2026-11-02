@@ -349,8 +349,12 @@ var
   Value: Integer;
 begin
   for Value in AValues do
+  begin
     if Value = AValue then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -368,13 +372,19 @@ function TArchitectureGrouping.Clamped: TArchitectureGrouping;
 begin
   Result := Self;
   if IsNan(Result.Resolution) or (Result.Resolution <= 0) then
+  begin
     Result.Resolution := 1;
+  end;
   Result.Resolution := EnsureRange(Result.Resolution, MinResolution, MaxResolution);
   if IsNan(Result.MaxShare) then
+  begin
     Result.MaxShare := DefaultMaxShare;
+  end;
   Result.MaxShare := EnsureRange(Result.MaxShare, 0, MaxMaxShare);
   if IsNan(Result.MinCohesion) then
+  begin
     Result.MinCohesion := DefaultMinCohesion;
+  end;
   Result.MinCohesion := EnsureRange(Result.MinCohesion, 0, 1);
 end;
 
@@ -410,11 +420,17 @@ class function TArchitectureGrouping.TryFoundations(const AText: string; out AVa
 begin
   Result := True;
   if AText = 'group' then
-    AValue := TArchitectureFoundations.Group
+  begin
+    AValue := TArchitectureFoundations.Group;
+  end
   else if AText = 'attach' then
-    AValue := TArchitectureFoundations.Attach
+  begin
+    AValue := TArchitectureFoundations.Attach;
+  end
   else if AText = 'separate' then
-    AValue := TArchitectureFoundations.Separate
+  begin
+    AValue := TArchitectureFoundations.Separate;
+  end
   else
   begin
     AValue := TArchitectureFoundations.Group;
@@ -453,8 +469,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Units) do
+  begin
     if SameText(Units[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -470,11 +490,17 @@ begin
   FileName := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
   RootPath := StringReplace(Root, '\', '/', [rfReplaceAll]);
   if (RootPath <> '') and (RootPath[Length(RootPath)] <> '/') then
+  begin
     RootPath := RootPath + '/';
+  end;
   if (RootPath <> '') and StartsText(RootPath, FileName) then
-    Result := Copy(FileName, Length(RootPath) + 1, MaxInt)
+  begin
+    Result := Copy(FileName, Length(RootPath) + 1, MaxInt);
+  end
   else
+  begin
     Result := FileName;
+  end;
 end;
 
 function TArchitectureOverview.Profile(AUnit: Integer): TOverviewProfile;
@@ -488,26 +514,46 @@ begin
   for Edge in Edges do
   begin
     if (Edge.Source = AUnit) and not ContainsInt(Edge.Target, Result.DependsOn) then
+    begin
       Result.DependsOn := Result.DependsOn + [Edge.Target];
+    end;
     if (Edge.Target = AUnit) and not ContainsInt(Edge.Source, Result.UsedBy) then
+    begin
       Result.UsedBy := Result.UsedBy + [Edge.Source];
+    end;
   end;
   for Index := 0 to High(Cycles) do
+  begin
     for Member in Cycles[Index].Component do
+    begin
       if Member = AUnit then
+      begin
         Result.Cycles := Result.Cycles + [Index];
+      end;
+    end;
+  end;
   for Index := 0 to High(CrossLinks) do
+  begin
     if (CrossLinks[Index].Edge.Source = AUnit) or (CrossLinks[Index].Edge.Target = AUnit) then
+    begin
       Result.CrossLinks := Result.CrossLinks + [Index];
+    end;
+  end;
   for Index := 0 to High(Outliers) do
+  begin
     if Outliers[Index].Unit_ = AUnit then
+    begin
       Result.Outlier := Index;
+    end;
+  end;
 end;
 
 function TArchitectureOverview.Assignment(AUnit: Integer): TOverviewAssignment;
 begin
   if (AUnit >= 0) and (AUnit < Length(Assignments)) then
+  begin
     Exit(Assignments[AUnit]);
+  end;
   Result := Default(TOverviewAssignment);
   Result.Own := -1;
   Result.Rival := -1;
@@ -529,8 +575,12 @@ var
 begin
   Result := 0;
   for mAssignment in Assignments do
+  begin
     if mAssignment.Close then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 { TOverviewAssignmentRow }
@@ -546,14 +596,18 @@ function TOverviewAssignment.OwnSum: Integer;
 begin
   Result := 0;
   if Own >= 0 then
+  begin
     Result := Rows[Own].Sum;
+  end;
 end;
 
 function TOverviewAssignment.RivalSum: Integer;
 begin
   Result := 0;
   if Rival >= 0 then
+  begin
     Result := Rows[Rival].Sum;
+  end;
 end;
 
 { TArchitectureAnalyzer }
@@ -576,7 +630,9 @@ var
 begin
   Parts := AUnitName.Split(['.']);
   if Length(Parts) <= 1 then
+  begin
     Exit(nil);
+  end;
   Result := Copy(Parts, 0, Length(Parts) - 1);
 end;
 
@@ -672,9 +728,13 @@ end;
 function TAnalysis.Weight(const AEdge: TOverviewEdge): Integer;
 begin
   if AEdge.Section = TUsesSection.Interface_ then
-    Result := TArchitectureAnalyzer.InterfaceWeight
+  begin
+    Result := TArchitectureAnalyzer.InterfaceWeight;
+  end
   else
+  begin
     Result := TArchitectureAnalyzer.ImplementationWeight;
+  end;
 end;
 
 procedure TAnalysis.CollectUnits;
@@ -687,7 +747,9 @@ begin
   Sorted := FGraph.SortedNodes;
   SetLength(FUnitOf, FGraph.NodeCount);
   for Index := 0 to High(FUnitOf) do
+  begin
     FUnitOf[Index] := -1;
+  end;
   SetLength(FResult.Units, Length(Sorted));
   for Index := 0 to High(Sorted) do
   begin
@@ -713,16 +775,20 @@ begin
   Edges := TList<TOverviewEdge>.Create;
   try
     for Index := 0 to High(FResult.Units) do
+    begin
       for GraphEdge in FGraph.Node(FResult.Units[Index].Node).Outgoing do
       begin
         if FUnitOf[GraphEdge.Target] < 0 then
+        begin
           Continue;
+        end;
         Edge := Default(TOverviewEdge);
         Edge.Source := Index;
         Edge.Target := FUnitOf[GraphEdge.Target];
         Edge.Section := GraphEdge.Section;
         Edges.Add(Edge);
       end;
+    end;
     FResult.Edges := Edges.ToArray;
   finally
     Edges.Free;
@@ -749,24 +815,34 @@ begin
     begin
       Ratio := Item.Uses_ / Count;
       if Ratio <= 0.25 then
-        Item.Role := TOverviewUnitRole.Foundation
+      begin
+        Item.Role := TOverviewUnitRole.Foundation;
+      end
       else if Item.Uses_ >= 3 then
+      begin
         Item.Role := TOverviewUnitRole.Hub;
+      end;
     end;
     FResult.Units[Index] := Item;
   end;
   Order := TList<Integer>.Create;
   try
     for Index := 0 to High(FResult.Units) do
+    begin
       Order.Add(Index);
+    end;
     Order.Sort(TComparer<Integer>.Construct(
       function(const ALeft, ARight: Integer): Integer
       begin
         Result := FResult.Units[ARight].Total - FResult.Units[ALeft].Total;
         if Result = 0 then
+        begin
           Result := FResult.Units[ARight].Direct - FResult.Units[ALeft].Direct;
+        end;
         if Result = 0 then
+        begin
           Result := ALeft - ARight;
+        end;
       end));
     FResult.Central := Order.ToArray;
   finally
@@ -796,7 +872,9 @@ begin
   end;
   Communities := TLouvain.Communities(Length(FResult.Units), Edges, FGrouping.Resolution);
   if FGrouping.Foundations <> TArchitectureFoundations.Group then
+  begin
     SeparateFoundations(Edges, Communities);
+  end;
   // Units ohne Kante bilden bei Louvain je eine eigene Gruppe; sie kommen in eine Sammelgruppe.
   SetLength(Degree, Length(FResult.Units));
   for Edge in FResult.Edges do
@@ -806,31 +884,43 @@ begin
   end;
   Isolated := -1;
   for Index := 0 to High(Communities) do
+  begin
     if Degree[Index] = 0 then
     begin
       if Isolated < 0 then
+      begin
         Isolated := Communities[Index];
+      end;
       Communities[Index] := Isolated;
     end;
+  end;
   Renumber(Communities);
   if Isolated >= 0 then
+  begin
     for Index := 0 to High(Communities) do
+    begin
       if Degree[Index] = 0 then
       begin
         Isolated := Communities[Index];
         Break;
       end;
+    end;
+  end;
   for Index := 0 to High(Communities) do
+  begin
     if InFoundation(Index) then
     begin
       FFoundation := Communities[Index];
       Break;
     end;
+  end;
   // Die Nachteilung lässt die Nummer ungeteilter Gruppen (also auch des Fundaments) stehen.
   Split(Communities, Isolated);
   Count := 0;
   for Member in Communities do
+  begin
     Count := Max(Count, Member + 1);
+  end;
   SetLength(FResult.Subsystems, Count);
   for Index := 0 to Count - 1 do
   begin
@@ -844,39 +934,57 @@ begin
     FResult.Subsystems[Communities[Index]].Units := FResult.Subsystems[Communities[Index]].Units + [Index];
   end;
   for Edge in FResult.Edges do
+  begin
     if FResult.Units[Edge.Source].Subsystem = FResult.Units[Edge.Target].Subsystem then
-      Inc(FResult.Subsystems[FResult.Units[Edge.Source].Subsystem].InnerEdges)
+    begin
+      Inc(FResult.Subsystems[FResult.Units[Edge.Source].Subsystem].InnerEdges);
+    end
     else if IsFoundation(FResult.Units[Edge.Source].Subsystem) or IsFoundation(FResult.Units[Edge.Target].Subsystem) then
+    begin
       // Kanten ins Fundament (#1365) gehen nicht in den Zusammenhalt ein.
-      Continue
+      Continue;
+    end
     else
     begin
       Inc(FResult.Subsystems[FResult.Units[Edge.Source].Subsystem].OuterEdges);
       Inc(FResult.Subsystems[FResult.Units[Edge.Target].Subsystem].OuterEdges);
     end;
+  end;
   for Index := 0 to High(FResult.Subsystems) do
   begin
     Subsystem := FResult.Subsystems[Index];
     Subsystem.Isolated := Index = Isolated;
     Subsystem.Foundation := IsFoundation(Index);
     if Subsystem.Foundation then
-      Subsystem.Cohesion := 0
+    begin
+      Subsystem.Cohesion := 0;
+    end
     else if Subsystem.InnerEdges + Subsystem.OuterEdges > 0 then
-      Subsystem.Cohesion := Subsystem.InnerEdges / (Subsystem.InnerEdges + Subsystem.OuterEdges)
+    begin
+      Subsystem.Cohesion := Subsystem.InnerEdges / (Subsystem.InnerEdges + Subsystem.OuterEdges);
+    end
     else
+    begin
       Subsystem.Cohesion := 1;
+    end;
     // Units nach gesamt abhängig absteigend; die erste ist die zentrale.
     TArray.Sort<Integer>(Subsystem.Units, TComparer<Integer>.Construct(
       function(const ALeft, ARight: Integer): Integer
       begin
         Result := FResult.Units[ARight].Total - FResult.Units[ALeft].Total;
         if Result = 0 then
+        begin
           Result := FResult.Units[ARight].Direct - FResult.Units[ALeft].Direct;
+        end;
         if Result = 0 then
+        begin
           Result := ALeft - ARight;
+        end;
       end));
     if Subsystem.Units <> nil then
+    begin
       Subsystem.Central := Subsystem.Units[0];
+    end;
     FResult.Subsystems[Index] := Subsystem;
   end;
 end;
@@ -945,8 +1053,12 @@ var
   begin
     Result := -1;
     for mCommunity := 0 to High(Weights) do
+    begin
       if (Weights[mCommunity] > 0) and ((Result < 0) or (Weights[mCommunity] > Weights[Result])) then
+      begin
         Result := mCommunity;
+      end;
+    end;
   end;
 
   /// <summary>Louvain ohne die Units AExcluded und ihre Kanten, fortlaufend nummeriert; ADegree: Kanten je Unit
@@ -960,12 +1072,14 @@ var
     mReduced := TList<TLouvainEdge>.Create;
     try
       for mEdge in AEdges do
+      begin
         if not AExcluded[mEdge.A] and not AExcluded[mEdge.B] then
         begin
           mReduced.Add(mEdge);
           Inc(ADegree[mEdge.A]);
           Inc(ADegree[mEdge.B]);
         end;
+      end;
       Result := TLouvain.Communities(Count, mReduced.ToArray, FGrouping.Resolution);
     finally
       mReduced.Free;
@@ -994,7 +1108,9 @@ begin
     Any := Any or Candidate[Unit_];
   end;
   if not Any then
+  begin
     Exit;
+  end;
   Probe := Without(Candidate, ReducedDegree);
   // Übergreifend: Abhängige (ohne Kandidaten und ohne Units, die nur an Kandidaten hängen) in mindestens drei
   // Teilsystemen oder höchstens 60 % im größten.
@@ -1004,24 +1120,34 @@ begin
     for Unit_ := 0 to Count - 1 do
     begin
       if not Candidate[Unit_] then
+      begin
         Continue;
+      end;
       Spread.Clear;
       Total := 0;
       for Index in Incoming[Unit_] do
       begin
         Other := AEdges[Index].A;
         if Candidate[Other] or (ReducedDegree[Other] = 0) then
+        begin
           Continue;
+        end;
         Inc(Total);
         if not Spread.TryGetValue(Probe[Other], Number) then
+        begin
           Number := 0;
+        end;
         Spread.AddOrSetValue(Probe[Other], Number + 1);
       end;
       if Total = 0 then
+      begin
         Continue;
+      end;
       Largest := 0;
       for Number in Spread.Values do
+      begin
         Largest := Max(Largest, Number);
+      end;
       Foundation[Unit_] := (Spread.Count >= TArchitectureGrouping.FoundationMinSpread) or
         (Largest * 100 <= TArchitectureGrouping.FoundationMaxOwnPercent * Total);
       Any := Any or Foundation[Unit_];
@@ -1030,19 +1156,29 @@ begin
     Spread.Free;
   end;
   if not Any then
+  begin
     Exit;
+  end;
   // Zweiter Lauf ohne die übergreifenden Fundamente und ohne ihre Kanten (sind es alle Kandidaten, ist es der Lauf
   // von eben).
   Same := True;
   for Unit_ := 0 to Count - 1 do
+  begin
     Same := Same and (Candidate[Unit_] = Foundation[Unit_]);
+  end;
   if Same then
-    Second := Probe
+  begin
+    Second := Probe;
+  end
   else
+  begin
     Second := Without(Foundation, ReducedDegree);
+  end;
   Next := 0;
   for Index in Second do
+  begin
     Next := Max(Next, Index + 1);
+  end;
   // Units, deren einzige Kanten zu Fundamenten führen, folgen dem Fundament mit dem größten Gewicht.
   SetLength(Follower, Count);
   SetLength(Follow, Count);
@@ -1051,29 +1187,45 @@ begin
   begin
     Follow[Unit_] := -1;
     if Foundation[Unit_] or (Degree[Unit_] = 0) or (ReducedDegree[Unit_] > 0) then
+    begin
       Continue;
+    end;
     for Index := 0 to Count - 1 do
+    begin
       Weights[Index] := 0;
+    end;
     for Edge in AEdges do
+    begin
       if Edge.A = Unit_ then
-        Weights[Edge.B] := Weights[Edge.B] + Edge.Weight
+      begin
+        Weights[Edge.B] := Weights[Edge.B] + Edge.Weight;
+      end
       else if Edge.B = Unit_ then
+      begin
         Weights[Edge.A] := Weights[Edge.A] + Edge.Weight;
+      end;
+    end;
     for Other := 0 to Count - 1 do
+    begin
       if Foundation[Other] and (Weights[Other] > 0) and
         ((Follow[Unit_] < 0) or (Weights[Other] > Weights[Follow[Unit_]])) then
+      begin
         Follow[Unit_] := Other;
+      end;
+    end;
     Follower[Unit_] := Follow[Unit_] >= 0;
   end;
   if FGrouping.Foundations = TArchitectureFoundations.Separate then
   begin
     SetLength(FInFoundation, Count);
     for Unit_ := 0 to Count - 1 do
+    begin
       if Foundation[Unit_] or Follower[Unit_] then
       begin
         Second[Unit_] := Next;
         FInFoundation[Unit_] := True;
       end;
+    end;
   end
   else
   begin
@@ -1082,7 +1234,9 @@ begin
     // solche ohne zugeordnete Abhängige zuletzt den Units, die sie verwenden.
     SetLength(Assigned_, Count);
     for Unit_ := 0 to Count - 1 do
+    begin
       Assigned_[Unit_] := not Foundation[Unit_] and not Follower[Unit_];
+    end;
     SetLength(Weights, Next);
     for Pass := 0 to 1 do
       repeat
@@ -1090,19 +1244,35 @@ begin
         for Unit_ := 0 to Count - 1 do
         begin
           if not Foundation[Unit_] or Assigned_[Unit_] then
+          begin
             Continue;
+          end;
           for Index := 0 to High(Weights) do
+          begin
             Weights[Index] := 0;
+          end;
           for Index in Incoming[Unit_] do
+          begin
             if Assigned_[AEdges[Index].A] then
+            begin
               Weights[Second[AEdges[Index].A]] := Weights[Second[AEdges[Index].A]] + AEdges[Index].Weight;
+            end;
+          end;
           if Pass = 1 then
+          begin
             for Edge in AEdges do
+            begin
               if (Edge.A = Unit_) and Assigned_[Edge.B] then
+              begin
                 Weights[Second[Edge.B]] := Weights[Second[Edge.B]] + Edge.Weight;
+              end;
+            end;
+          end;
           Best := Heaviest;
           if Best < 0 then
+          begin
             Continue;
+          end;
           Second[Unit_] := Best;
           Assigned_[Unit_] := True;
           Changed := True;
@@ -1110,14 +1280,20 @@ begin
       until not Changed;
     // Ohne jede Zuordnung (nur Kanten unter solchen Fundamenten): je ein eigenes Teilsystem.
     for Unit_ := 0 to Count - 1 do
+    begin
       if Foundation[Unit_] and not Assigned_[Unit_] then
       begin
         Second[Unit_] := Next;
         Inc(Next);
       end;
+    end;
     for Unit_ := 0 to Count - 1 do
+    begin
       if Follower[Unit_] then
+      begin
         Second[Unit_] := Second[Follow[Unit_]];
+      end;
+    end;
   end;
   ACommunities := Second;
 end;
@@ -1131,15 +1307,19 @@ var
 begin
   Count := 0;
   for Member in ACommunities do
+  begin
     Count := Max(Count, Member + 1);
+  end;
   // Kanten je Unit für Zusammenhalt und Teilgraphen.
   SetLength(Sizes, Length(FResult.Units));
   for Edge in FResult.Edges do
+  begin
     if Edge.Source <> Edge.Target then
     begin
       Inc(Sizes[Edge.Source]);
       Inc(Sizes[Edge.Target]);
     end;
+  end;
   SetLength(FIncident, Length(FResult.Units));
   for Index := 0 to High(FIncident) do
   begin
@@ -1150,7 +1330,9 @@ begin
   begin
     Edge := FResult.Edges[Index];
     if Edge.Source = Edge.Target then
+    begin
       Continue;
+    end;
     FIncident[Edge.Source][Sizes[Edge.Source]] := Index;
     Inc(Sizes[Edge.Source]);
     FIncident[Edge.Target][Sizes[Edge.Target]] := Index;
@@ -1158,13 +1340,19 @@ begin
   end;
   SetLength(FLocal, Length(FResult.Units));
   for Index := 0 to High(FLocal) do
+  begin
     FLocal[Index] := -1;
+  end;
   // Units nach Nummer (= nach Name): dieselbe Startreihenfolge wie im ersten Lauf.
   SetLength(Sizes, Count);
   for Index := 0 to Count - 1 do
+  begin
     Sizes[Index] := 0;
+  end;
   for Member in ACommunities do
+  begin
     Inc(Sizes[Member]);
+  end;
   SetLength(Groups, Count);
   for Index := 0 to Count - 1 do
   begin
@@ -1179,8 +1367,12 @@ begin
   Groups := TArchitectureAnalyzer.SplitGroups(Groups, AIsolated, TArchitectureGrouping.SplitDepth, SplitGroup,
     FFamily);
   for Index := 0 to High(Groups) do
+  begin
     for Member in Groups[Index] do
+    begin
       ACommunities[Member] := Index;
+    end;
+  end;
 end;
 
 function TAnalysis.SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
@@ -1202,31 +1394,49 @@ begin
   if (FGrouping.MinCohesion > 0) and (Length(AMembers) >= TArchitectureGrouping.LooseMinUnits) then
   begin
     for Member in AMembers do
+    begin
       FLocal[Member] := 0;
+    end;
     Inner := 0;
     Outer := 0;
     for Member in AMembers do
+    begin
       for EdgeIndex in FIncident[Member] do
       begin
         Edge := FResult.Edges[EdgeIndex];
         if Edge.Source = Member then
-          Other := Edge.Target
+        begin
+          Other := Edge.Target;
+        end
         else
+        begin
           Other := Edge.Source;
+        end;
         // Kanten ins Fundament zählen wie in Group nicht mit.
         if InFoundation(Other) then
+        begin
           Continue;
+        end;
         if FLocal[Other] >= 0 then
-          Inc(Inner)
+        begin
+          Inc(Inner);
+        end
         else
+        begin
           Inc(Outer);
+        end;
       end;
+    end;
     for Member in AMembers do
+    begin
       FLocal[Member] := -1;
+    end;
     // Innere Kanten stehen bei beiden Enden.
     Inner := Inner div 2;
     if Inner + Outer > 0 then
+    begin
       Cohesion := Inner / (Inner + Outer);
+    end;
   end;
   Result := FGrouping.NeedsSplit(Length(AMembers), Length(FResult.Units), Cohesion);
 end;
@@ -1243,16 +1453,21 @@ begin
   AParts := nil;
   SetLength(Degree, Length(AMembers));
   for Position := 0 to High(AMembers) do
+  begin
     FLocal[AMembers[Position]] := Position;
+  end;
   Edges := TList<TLouvainEdge>.Create;
   try
     for Position := 0 to High(AMembers) do
+    begin
       for EdgeIndex in FIncident[AMembers[Position]] do
       begin
         Edge := FResult.Edges[EdgeIndex];
         // Jede Kante einmal, bei ihrer Quelle; nur Kanten innerhalb des Teilsystems.
         if (Edge.Source <> AMembers[Position]) or (FLocal[Edge.Target] < 0) then
+        begin
           Continue;
+        end;
         Item.A := Position;
         Item.B := FLocal[Edge.Target];
         Item.Weight := Weight(Edge);
@@ -1260,11 +1475,14 @@ begin
         Inc(Degree[Item.A]);
         Inc(Degree[Item.B]);
       end;
+    end;
     Local := TLouvain.Communities(Length(AMembers), Edges.ToArray, FGrouping.Resolution);
   finally
     Edges.Free;
     for Position := 0 to High(AMembers) do
+    begin
       FLocal[AMembers[Position]] := -1;
+    end;
   end;
   // Teile fortlaufend in der Reihenfolge der Units; Units ohne Kante im Teilgraphen zählen nicht mit.
   Numbers := TDictionary<Integer, Integer>.Create;
@@ -1285,24 +1503,36 @@ begin
     end;
     Result := Numbers.Count > 1;
     if not Result then
+    begin
       Exit;
+    end;
     SetLength(Sizes, Numbers.Count);
   finally
     Numbers.Free;
   end;
   for Number in Local do
+  begin
     if Number >= 0 then
+    begin
       Inc(Sizes[Number]);
+    end;
+  end;
   // Units ohne Kante im Teilgraphen bleiben beim größten Teil (keine Teile aus einer einzelnen Unit).
   Largest := 0;
   for Number := 1 to High(Sizes) do
+  begin
     if Sizes[Number] > Sizes[Largest] then
+    begin
       Largest := Number;
+    end;
+  end;
   SetLength(AParts, Length(Sizes));
   for Position := 0 to High(Local) do
   begin
     if Local[Position] < 0 then
+    begin
       Local[Position] := Largest;
+    end;
     AParts[Local[Position]] := AParts[Local[Position]] + [AMembers[Position]];
   end;
 end;
@@ -1323,10 +1553,14 @@ begin
     begin
       Key := LowerCase(Part);
       if IndexStr(Key, Seen) >= 0 then
+      begin
         Continue;
+      end;
       Seen := Seen + [Key];
       if not Result.TryGetValue(Key, Count) then
+      begin
         Count := 0;
+      end;
       Result.AddOrSetValue(Key, Count + 1);
     end;
   end;
@@ -1353,7 +1587,9 @@ begin
     for Key in Keys do
     begin
       if not AGlobal.TryGetValue(Key, Global_) or (Global_ <= 0) then
+      begin
         Continue;
+      end;
       Score := Local[Key] * Ln(ATotal / Global_);
       if Score > AScore + 1E-9 then
       begin
@@ -1373,9 +1609,15 @@ var
   Part: string;
 begin
   for Member in AMembers do
+  begin
     for Part in AParts[Member] do
+    begin
       if SameText(Part, AKey) then
+      begin
         Exit(Part);
+      end;
+    end;
+  end;
   Result := AKey;
 end;
 
@@ -1399,18 +1641,28 @@ var
   begin
     AKey := BestPart(Parts, AMembers, ACounts, ATotal, Score);
     if AKey <> '' then
+    begin
       Exit(PartCaption(Parts, AMembers, AKey));
+    end;
     mCentral := -1;
     for mMember in AMembers do
+    begin
       if (mCentral < 0) or (FResult.Units[mMember].Total > FResult.Units[mCentral].Total) or
         ((FResult.Units[mMember].Total = FResult.Units[mCentral].Total) and
         ((FResult.Units[mMember].Direct > FResult.Units[mCentral].Direct) or
         ((FResult.Units[mMember].Direct = FResult.Units[mCentral].Direct) and (mMember < mCentral)))) then
+      begin
         mCentral := mMember;
+      end;
+    end;
     if mCentral >= 0 then
-      Result := FResult.Units[mCentral].Name
+    begin
+      Result := FResult.Units[mCentral].Name;
+    end
     else
+    begin
       Result := '';
+    end;
   end;
 
 begin
@@ -1437,9 +1689,13 @@ begin
     begin
       Key := '';
       if FResult.Subsystems[Index].Isolated then
-        Name := TArchitectureAnalyzer.IsolatedName
+      begin
+        Name := TArchitectureAnalyzer.IsolatedName;
+      end
       else if FResult.Subsystems[Index].Foundation then
-        Name := TArchitectureAnalyzer.FoundationName
+      begin
+        Name := TArchitectureAnalyzer.FoundationName;
+      end
       else if FamilySize[FFamily[Index]] > 1 then
       begin
         // Teil eines nachgeteilten Teilsystems: Abschnitt, der es innerhalb des ursprünglichen unterscheidet.
@@ -1453,7 +1709,9 @@ begin
           ParentKey);
       end
       else
+      begin
         Name := NameOf(FResult.Subsystems[Index].Units, Global_, Length(FResult.Units), Key);
+      end;
       FNamedByPart[Index] := Key <> '';
       FPartKey[Index] := Key;
       FResult.Subsystems[Index].Name := Name;
@@ -1469,8 +1727,12 @@ begin
     repeat
       Taken := False;
       for Other := 0 to Index - 1 do
+      begin
         if SameText(FResult.Subsystems[Other].Name, Name) then
+        begin
           Taken := True;
+        end;
+      end;
       if Taken then
       begin
         Inc(Suffix);
@@ -1495,24 +1757,36 @@ begin
     begin
       Result := ARight.Sum - ALeft.Sum;
       if (Result = 0) and (ALeft.Subsystem < Length(ANames)) and (ARight.Subsystem < Length(ANames)) then
+      begin
         Result := CompareText(ANames[ALeft.Subsystem], ANames[ARight.Subsystem]);
+      end;
       if Result = 0 then
+      begin
         Result := ALeft.Subsystem - ARight.Subsystem;
+      end;
     end));
   Result.Own := -1;
   Result.Rival := -1;
   for mIndex := 0 to High(Result.Rows) do
+  begin
     if Result.Rows[mIndex].Subsystem = AOwn then
-      Result.Own := mIndex
+    begin
+      Result.Own := mIndex;
+    end
     else if Result.Rows[mIndex].Counts and (Result.Rival < 0) then
+    begin
       Result.Rival := mIndex;
+    end;
+  end;
   mOwnSum := Result.OwnSum;
   mRivalSum := Result.RivalSum;
   // Ganzzahlig verglichen: 6 von 8 sind genau 75 %.
   Result.Close := (Result.Own >= 0) and Result.Rows[Result.Own].Counts and (Result.Rival >= 0) and (mOwnSum > 0) and
     (mRivalSum * 100 >= mOwnSum * ClosePercent);
   if Result.Close then
+  begin
     Result.Missing := Max(0, mOwnSum - mRivalSum + 1);
+  end;
 end;
 
 class function TArchitectureAnalyzer.Assignments(const AOverview: TArchitectureOverview):
@@ -1527,9 +1801,13 @@ var
   procedure Count(AUnit, ASubsystem: Integer; AInterface: Boolean);
   begin
     if AInterface then
-      Inc(mInterfaces[AUnit][ASubsystem])
+    begin
+      Inc(mInterfaces[AUnit][ASubsystem]);
+    end
     else
+    begin
       Inc(mImplementations[AUnit][ASubsystem]);
+    end;
   end;
 
 begin
@@ -1547,7 +1825,9 @@ begin
   end;
   SetLength(mNames, Length(AOverview.Subsystems));
   for mSubsystem := 0 to High(AOverview.Subsystems) do
+  begin
     mNames[mSubsystem] := AOverview.Subsystems[mSubsystem].Name;
+  end;
   SetLength(Result, Length(AOverview.Units));
   SetLength(mRows, Length(AOverview.Subsystems));
   for mIndex := 0 to High(AOverview.Units) do
@@ -1563,7 +1843,9 @@ begin
     begin
       if (mSubsystem <> mOwn) and (mInterfaces[mIndex][mSubsystem] = 0) and
         (mImplementations[mIndex][mSubsystem] = 0) then
+      begin
         Continue;
+      end;
       mRows[mCount].Subsystem := mSubsystem;
       mRows[mCount].Interfaces := mInterfaces[mIndex][mSubsystem];
       mRows[mCount].Implementations := mImplementations[mIndex][mSubsystem];
@@ -1597,8 +1879,12 @@ var
 begin
   Result := 0;
   for mRow in AAssignment.Rows do
+  begin
     if mRow.Subsystem = ASubsystem then
+    begin
       Exit(mRow.Edges);
+    end;
+  end;
 end;
 
 procedure TAnalysis.FindOutliers;
@@ -1617,7 +1903,9 @@ begin
     Own := FResult.Units[Index].Subsystem;
     // Ausreißer nur unter den übrigen Teilsystemen (#1365): weder aus dem Fundament noch dorthin.
     if IsFoundation(Own) then
+    begin
       Continue;
+    end;
     mAssignment := FResult.Assignments[Index];
     Outlier := Default(TOverviewOutlier);
     Outlier.Unit_ := Index;
@@ -1627,12 +1915,14 @@ begin
     Best := Own;
     mBestEdges := EdgesTo(mAssignment, Own);
     for mRow in mAssignment.Rows do
+    begin
       if (mRow.Subsystem <> Own) and not IsFoundation(mRow.Subsystem) and ((mRow.Edges > mBestEdges) or
         ((mRow.Edges = mBestEdges) and (Best <> Own) and (mRow.Subsystem < Best))) then
       begin
         Best := mRow.Subsystem;
         mBestEdges := mRow.Edges;
       end;
+    end;
     if Best <> Own then
     begin
       Outlier.Suggested := Best;
@@ -1645,24 +1935,36 @@ begin
       Parts := TArchitectureAnalyzer.NamespaceParts(FResult.Units[Index].Name);
       NameOwn := False;
       for Part in Parts do
+      begin
         if SameText(Part, FPartKey[Own]) then
+        begin
           NameOwn := True;
+        end;
+      end;
       if not NameOwn and FNamedByPart[Own] then
+      begin
         for Subsystem := 0 to High(FResult.Subsystems) do
         begin
           if (Subsystem = Own) or not FNamedByPart[Subsystem] or (Length(FResult.Subsystems[Subsystem].Units) < 2) or
             IsFoundation(Subsystem) then
+          begin
             Continue;
+          end;
           for Part in Parts do
+          begin
             if SameText(Part, FPartKey[Subsystem]) and (Outlier.Suggested < 0) then
             begin
               Outlier.Suggested := Subsystem;
               Outlier.Reason := TOverviewOutlierReason.Namespace;
             end;
+          end;
         end;
+      end;
     end;
     if Outlier.Suggested < 0 then
+    begin
       Continue;
+    end;
     Outlier.Inside := EdgesTo(mAssignment, Own);
     Outlier.Toward := EdgesTo(mAssignment, Outlier.Suggested);
     FResult.Outliers := FResult.Outliers + [Outlier];
@@ -1673,7 +1975,9 @@ function TAnalysis.Locate(var AEdge: TOverviewEdge; const AGraphEdge: TUsesEdge)
 begin
   Result := False;
   if FLocator = nil then
+  begin
     Exit;
+  end;
   Result := FLocator.Locate(FGraph, AGraphEdge, AEdge.Location);
   AEdge.Located := Result;
 end;
@@ -1691,9 +1995,13 @@ begin
     Item := Default(TOverviewCycle);
     Item.InterfaceOnly := Cycle.InterfaceOnly;
     for Node in Cycle.Units do
+    begin
       Item.Units := Item.Units + [FUnitOf[Node]];
+    end;
     for Node in Cycle.Component do
+    begin
       Item.Component := Item.Component + [FUnitOf[Node]];
+    end;
     for GraphEdge in Cycle.Edges do
     begin
       Edge := Default(TOverviewEdge);
@@ -1719,36 +2027,51 @@ begin
   Count := Length(FResult.Subsystems);
   SetLength(Pairs, Count);
   for Index := 0 to Count - 1 do
+  begin
     SetLength(Pairs[Index], Count);
+  end;
   for Edge in FResult.Edges do
   begin
     From_ := FResult.Units[Edge.Source].Subsystem;
     To_ := FResult.Units[Edge.Target].Subsystem;
     if From_ <> To_ then
+    begin
       Inc(Pairs[From_][To_]);
+    end;
   end;
   // In Quelltextreihenfolge je Unit (Units nach Name), damit die Liste stabil bleibt.
   for Index := 0 to High(FResult.Units) do
+  begin
     for GraphEdge in FGraph.Node(FResult.Units[Index].Node).Outgoing do
     begin
       if FUnitOf[GraphEdge.Target] < 0 then
+      begin
         Continue;
+      end;
       From_ := FResult.Units[Index].Subsystem;
       To_ := FResult.Units[FUnitOf[GraphEdge.Target]].Subsystem;
       // Kanten ins Fundament (#1365) sind gewollt, keine Querverbindung.
       if (From_ = To_) or IsFoundation(From_) or IsFoundation(To_) then
+      begin
         Continue;
+      end;
       Link := Default(TOverviewCrossLink);
       Link.FromSubsystem := From_;
       Link.ToSubsystem := To_;
       Link.Forward := Pairs[From_][To_];
       Link.Backward := Pairs[To_][From_];
       if Link.Forward + Link.Backward <= TArchitectureAnalyzer.RareLimit then
-        Link.Reason := TOverviewCrossReason.Rare
+      begin
+        Link.Reason := TOverviewCrossReason.Rare;
+      end
       else if Link.Forward < Link.Backward then
-        Link.Reason := TOverviewCrossReason.AgainstDirection
+      begin
+        Link.Reason := TOverviewCrossReason.AgainstDirection;
+      end
       else
+      begin
         Continue;
+      end;
       Edge := Default(TOverviewEdge);
       Edge.Source := Index;
       Edge.Target := FUnitOf[GraphEdge.Target];
@@ -1757,6 +2080,7 @@ begin
       Link.Edge := Edge;
       FResult.CrossLinks := FResult.CrossLinks + [Link];
     end;
+  end;
 end;
 
 procedure TAnalysis.SortSubsystems;
@@ -1769,20 +2093,30 @@ begin
   // Unit (Namen entstehen erst danach); die Sammelgruppe ohne uses-Beziehung zuletzt.
   SetLength(Order, Length(FResult.Subsystems));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
     function(const ALeft, ARight: Integer): Integer
     begin
       Result := Ord(FResult.Subsystems[ARight].Foundation) - Ord(FResult.Subsystems[ALeft].Foundation);
       if Result = 0 then
+      begin
         Result := Ord(FResult.Subsystems[ALeft].Isolated) - Ord(FResult.Subsystems[ARight].Isolated);
+      end;
       if Result = 0 then
+      begin
         Result := Length(FResult.Subsystems[ARight].Units) - Length(FResult.Subsystems[ALeft].Units);
+      end;
       if Result = 0 then
+      begin
         Result := CompareText(FResult.Units[FResult.Subsystems[ALeft].Central].Name,
           FResult.Units[FResult.Subsystems[ARight].Central].Name);
+      end;
       if Result = 0 then
+      begin
         Result := ALeft - ARight;
+      end;
     end));
   SetLength(Sorted, Length(Order));
   SetLength(Map, Length(Order));
@@ -1793,13 +2127,19 @@ begin
   end;
   FResult.Subsystems := Sorted;
   for Index := 0 to High(FResult.Units) do
+  begin
     FResult.Units[Index].Subsystem := Map[FResult.Units[Index].Subsystem];
+  end;
   SetLength(Family, Length(FFamily));
   for Index := 0 to High(FFamily) do
+  begin
     Family[Map[Index]] := Map[FFamily[Index]];
+  end;
   FFamily := Family;
   if FFoundation >= 0 then
+  begin
     FFoundation := Map[FFoundation];
+  end;
 end;
 
 procedure TAnalysis.AssignColors;
@@ -1827,15 +2167,23 @@ begin
         Slots.Add(FFamily[Index], Slot);
       end;
       if not Ranks.TryGetValue(FFamily[Index], Rank) then
+      begin
         Rank := 0;
+      end;
       Ranks.AddOrSetValue(FFamily[Index], Rank + 1);
       FResult.Subsystems[Index].ColorSlot := Slot;
       if Rank = 0 then
-        FResult.Subsystems[Index].Shade := 0
+      begin
+        FResult.Subsystems[Index].Shade := 0;
+      end
       else if Odd(Rank) then
-        FResult.Subsystems[Index].Shade := (Rank + 1) div 2
+      begin
+        FResult.Subsystems[Index].Shade := (Rank + 1) div 2;
+      end
       else
+      begin
         FResult.Subsystems[Index].Shade := -(Rank div 2);
+      end;
     end;
   finally
     Ranks.Free;
@@ -1860,7 +2208,9 @@ begin
   CollectCycles;
   CollectCrossLinks;
   if Length(FResult.Central) > ACentralCount then
+  begin
     SetLength(FResult.Central, ACentralCount);
+  end;
   Result := FResult;
 end;
 

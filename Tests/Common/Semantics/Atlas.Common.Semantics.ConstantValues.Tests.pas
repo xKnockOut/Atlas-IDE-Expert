@@ -85,7 +85,9 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if (ANode.Kind = TSyntaxKind.ConstDecl) and SameText(ANode.Name, AName) then
+      begin
         Found := ANode[ANode.ChildCount - 1];
+      end;
       Result := True;
     end);
   Assert.IsNotNull(Found, AName);
@@ -120,7 +122,9 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if (Found = nil) and (ANode.Kind = TSyntaxKind.ConstDecl) and SameText(ANode.Name, AName) then
+      begin
         Found := ANode[ANode.ChildCount - 1];
+      end;
       Result := Found = nil;
     end);
   Result := Found;

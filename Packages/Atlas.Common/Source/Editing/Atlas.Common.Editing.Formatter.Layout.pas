@@ -71,7 +71,9 @@ begin
   begin
     Line := ATokens[Index].StartPos.Line;
     if (Line >= 0) and (Line < ACount) then
+    begin
       Result[Line] := Result[Line] + [Index];
+    end;
   end;
 end;
 
@@ -80,9 +82,13 @@ end;
 class function TFormatLayout.IndentUnit(const AStyle: TFormatStyle): string;
 begin
   if AStyle.UseTabs then
-    Result := #9
+  begin
+    Result := #9;
+  end
   else
+  begin
     Result := StringOfChar(' ', Max(AStyle.IndentSize, 1));
+  end;
 end;
 
 class function TFormatLayout.FrozenLines(const ATokens: TArray<TPascalToken>; ACount: Integer): TArray<Boolean>;
@@ -96,13 +102,21 @@ begin
   begin
     Token := ATokens[Index];
     for Line := Token.StartPos.Line + 1 to Min(Token.EndPos.Line, ACount - 1) do
+    begin
       Result[Line] := True;
+    end;
     if (Token.Kind = TPascalTokenKind.Keyword) and Token.IsKeyword('asm') then
-      Inc(AsmDepth)
+    begin
+      Inc(AsmDepth);
+    end
     else if (AsmDepth > 0) and (Token.Kind = TPascalTokenKind.Keyword) and Token.IsKeyword('end') then
-      Dec(AsmDepth)
+    begin
+      Dec(AsmDepth);
+    end
     else if (AsmDepth > 0) and (Token.StartPos.Line < ACount) then
+    begin
       Result[Token.StartPos.Line] := True;
+    end;
   end;
 end;
 
@@ -148,14 +162,20 @@ begin
   Frozen := FrozenLines(ATokens, Length(ALines));
   Code := nil;
   for Index := 0 to High(ATokens) do
+  begin
     if IsCode(ATokens[Index]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   for K := 1 to High(Code) do
   begin
     Token := ATokens[Code[K]];
     Before := ATokens[Code[K - 1]];
     if Token.Kind <> TPascalTokenKind.Keyword then
+    begin
       Continue;
+    end;
     Word := LowerCase(Token.Text);
     Line := Token.StartPos.Line;
     Previous := LowerCase(Before.Text);
@@ -168,24 +188,32 @@ begin
         // Was hinter begin steht, kommt in eine eigene Zeile.
         if (Code[K] < High(ATokens)) and (ATokens[Code[K] + 1].StartPos.Line = Line) and
           IsCode(ATokens[Code[K] + 1]) then
+        begin
           AddSplit(Line, ATokens[Code[K] + 1].StartPos.Character, True);
+        end;
       end
       else if (AStyle.BeginPlacement = TBlockPlacement.SameLine) and (Before.EndPos.Line = Line - 1) and
         FirstOnLine(Code[K]) and LastOnLine(Code[K - 1]) and InRange(Line) and InRange(Line - 1) and
         (Splits[Line] = nil) then
+      begin
         // Auch an eine schon angehängte Zeile: "end" + "else" + "begin" werden in einem Lauf eine Zeile, sonst
         // erst im zweiten (#1358, Stabilität).
         AJoined[Line] := True;
+      end;
     end
     else if (Word = 'else') and (Previous = 'end') and (Before.Kind = TPascalTokenKind.Keyword) then
     begin
       if (AStyle.ElsePlacement = TBlockPlacement.NewLine) and (Before.EndPos.Line = Line) and InRange(Line) and
         (Code[K - 1] = Code[K] - 1) then
-        AddSplit(Line, Token.StartPos.Character, False)
+      begin
+        AddSplit(Line, Token.StartPos.Character, False);
+      end
       else if (AStyle.ElsePlacement = TBlockPlacement.SameLine) and (Before.EndPos.Line = Line - 1) and
         FirstOnLine(Code[K]) and LastOnLine(Code[K - 1]) and InRange(Line) and InRange(Line - 1) and
         (Splits[Line] = nil) then
+      begin
         AJoined[Line] := True;
+      end;
     end;
   end;
   Output := TList<TFormatLine>.Create;
@@ -216,15 +244,21 @@ begin
         begin
           Item.Text := Indent + TrimLeft(Item.Text);
           if Splits[Line][Part - 1].Deeper then
+          begin
             Item.Text := IndentUnit(AStyle) + Item.Text;
+          end;
         end;
         if Trim(Item.Text) <> '' then
+        begin
           Output.Add(Item);
+        end;
         Column := Splits[Line][Part].Column;
       end;
       Item.Text := Indent + TrimLeft(Copy(Text, Column + 1, MaxInt));
       if Splits[Line][High(Splits[Line])].Deeper then
+      begin
         Item.Text := IndentUnit(AStyle) + Item.Text;
+      end;
       Output.Add(Item);
     end;
     Result := Output.ToArray;
@@ -253,35 +287,51 @@ var
     AEnd := 0;
     if (ALine > High(ByLine)) or (ALines[ALine].Origin < AFirst) or (ALines[ALine].Origin > ALast) or
       Frozen[ALine] then
+    begin
       Exit;
+    end;
     Items := ByLine[ALine];
     if Items = nil then
+    begin
       Exit;
+    end;
     if AKind = TFormatAlignment.Comments then
     begin
       // Kommentar mit // am Ende einer Codezeile.
       Position := High(Items);
       Token := ATokens[Items[Position]];
       if (Position = 0) or (Token.Kind <> TPascalTokenKind.Comment) or not StartsStr('//', Token.Text) then
+      begin
         Exit;
+      end;
       AStart := ATokens[Items[Position - 1]].EndPos.Character;
       AEnd := Token.StartPos.Character;
       Exit(ATokens[Items[Position - 1]].EndPos.Line = ALine);
     end;
     if ATokens[Items[0]].Kind <> TPascalTokenKind.Identifier then
+    begin
       Exit;
+    end;
     Depth := 0;
     for Position := 1 to High(Items) do
     begin
       Token := ATokens[Items[Position]];
       if Token.Kind = TPascalTokenKind.Comment then
+      begin
         Exit;
+      end;
       if Token.IsSymbol('(') or Token.IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token.IsSymbol(')') or Token.IsSymbol(']') then
+      begin
         Dec(Depth);
+      end;
       if Depth > 0 then
+      begin
         Continue;
+      end;
       case AKind of
         TFormatAlignment.Assignments:
           if Token.IsSymbol(':=') then
@@ -292,30 +342,40 @@ var
           end
           else if not (Token.IsSymbol('.') or Token.IsSymbol(']') or Token.IsSymbol('^') or
             (Token.Kind = TPascalTokenKind.Identifier)) then
+          begin
             Exit;
+          end;
         TFormatAlignment.Declarations:
           if Token.IsSymbol(':') and (Position < High(Items)) then
           begin
             // Ausgerichtet wird der Typ hinter dem Doppelpunkt; nur ganze Deklarationen mit ;.
             if not ATokens[Items[High(Items)]].IsSymbol(';') then
+            begin
               Exit;
+            end;
             AStart := Token.EndPos.Character;
             AEnd := ATokens[Items[Position + 1]].StartPos.Character;
             Exit(True);
           end
           else if not (Token.IsSymbol(',') or (Token.Kind = TPascalTokenKind.Identifier)) then
+          begin
             Exit;
+          end;
         TFormatAlignment.Constants:
           if (Position = 1) and Token.IsSymbol('=') then
           begin
             if not ATokens[Items[High(Items)]].IsSymbol(';') then
+            begin
               Exit;
+            end;
             AStart := ATokens[Items[0]].EndPos.Character;
             AEnd := Token.StartPos.Character;
             Exit(True);
           end
           else
+          begin
             Exit;
+          end;
         TFormatAlignment.Comments: ;
       end;
     end;
@@ -331,13 +391,19 @@ var
     Item: Integer;
   begin
     if ATo - AFrom < 1 then
+    begin
       Exit;
+    end;
     Target := 0;
     for Item := AFrom to ATo do
+    begin
       Target := Max(Target, GapStart[Item] + 1);
+    end;
     for Item := AFrom to ATo do
+    begin
       ALines[Item].Text := Copy(ALines[Item].Text, 1, GapStart[Item]) +
         StringOfChar(' ', Target - GapStart[Item]) + Copy(ALines[Item].Text, GapEnd[Item] + 1, MaxInt);
+    end;
   end;
 
 var
@@ -355,12 +421,18 @@ begin
     // Eine Gruppe: aufeinanderfolgende passende Zeilen gleicher Einrückung (Kommentare: beliebige).
     if Fits and (GroupStart >= 0) and ((AKind = TFormatAlignment.Comments) or
       (IndentOfLine(Line) = IndentOfLine(GroupStart))) then
+    begin
       Continue;
+    end;
     if GroupStart >= 0 then
+    begin
       Flush(GroupStart, Line - 1);
+    end;
     GroupStart := -1;
     if Fits then
+    begin
       GroupStart := Line;
+    end;
   end;
 end;
 
@@ -380,7 +452,9 @@ var
 begin
   Result := False;
   if AStyle.MaxLineLength <= 0 then
+  begin
     Exit;
+  end;
   Frozen := FrozenLines(ATokens, Length(ALines));
   ByLine := TokensByLine(ATokens, Length(ALines));
   Output := TList<TFormatLine>.Create;
@@ -392,25 +466,37 @@ begin
       Best := -1;
       if (Length(Item.Text) > AStyle.MaxLineLength) and (Item.Origin >= AFirst) and (Item.Origin <= ALast) and
         not Frozen[Line] and (Length(Items) > 1) and IsCode(ATokens[Items[0]]) then
+      begin
         for Position := 1 to High(Items) do
         begin
           Token := ATokens[Items[Position]];
           Previous := ATokens[Items[Position - 1]];
           if Token.EndPos.Line <> Line then
+          begin
             Break;
+          end;
           Left := TrimRight(Copy(Item.Text, 1, Token.StartPos.Character));
           if Length(Left) > AStyle.MaxLineLength then
+          begin
             Break;
+          end;
           if Token.Kind = TPascalTokenKind.Comment then
+          begin
             Continue;
+          end;
           // Hinter einem Komma oder vor einem zweistelligen Operator.
           if Previous.IsSymbol(',') or (MatchText(Token.Text, Operators) and
             ((Previous.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number,
             TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]) or Previous.IsSymbol(')') or
             Previous.IsSymbol(']'))) then
+          begin
             if Trim(Left) <> '' then
+            begin
               Best := Position;
+            end;
+          end;
         end;
+      end;
       if Best < 0 then
       begin
         Output.Add(Item);
@@ -425,7 +511,9 @@ begin
       Result := True;
     end;
     if Result then
+    begin
       ALines := Output.ToArray;
+    end;
   finally
     Output.Free;
   end;

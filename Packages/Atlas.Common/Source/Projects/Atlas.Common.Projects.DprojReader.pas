@@ -57,8 +57,12 @@ begin
   Items := TList<string>.Create;
   try
     for Item in AItems do
+    begin
       if not Items.Contains(UpperCase(Item)) then
+      begin
         Items.Add(UpperCase(Item));
+      end;
+    end;
     Result := Items.ToArray;
   finally
     Items.Free;
@@ -101,26 +105,40 @@ begin
   Result := 'Projekt';
   Start := Pos('$(Base', ACondition);
   if Start = 0 then
+  begin
     Start := Pos('$(Cfg_', ACondition);
+  end;
   if Start = 0 then
+  begin
     Exit;
+  end;
   Stop := PosEx(')', ACondition, Start);
   if Stop = 0 then
+  begin
     Exit;
+  end;
   Name := Copy(ACondition, Start + 2, Stop - Start - 2);
   Platform := '';
   if StartsText('Base_', Name) then
-    Platform := Copy(Name, 6, MaxInt)
+  begin
+    Platform := Copy(Name, 6, MaxInt);
+  end
   else if StartsText('Cfg_', Name) and (PosEx('_', Name, 5) > 0) then
+  begin
     Platform := Copy(Name, PosEx('_', Name, 5) + 1, MaxInt);
+  end;
   if StartsText('Cfg_', Name) then
   begin
     Result := 'Konfiguration';
     if AConfig <> '' then
+    begin
       Result := Result + ' ' + AConfig;
+    end;
   end;
   if Platform <> '' then
+  begin
     Result := Result + ', Plattform ' + Platform;
+  end;
 end;
 
 /// <summary>Sammelt Konfigurationen und aktivierte Plattformen aus dem ganzen Baum.</summary>
@@ -133,16 +151,22 @@ begin
   begin
     Value := Trim(AElement.Attribute('Include'));
     if (Value <> '') and not SameText(Value, 'Base') and (IndexText(Value, AConfigs) < 0) then
+    begin
       AConfigs := AConfigs + [Value];
+    end;
   end
   else if (AElement.Name = 'Platform') and AElement.HasAttribute('value') then
   begin
     Value := Trim(AElement.Attribute('value'));
     if SameText(Trim(AElement.Text), 'True') and (Value <> '') and (IndexText(Value, APlatforms) < 0) then
+    begin
       APlatforms := APlatforms + [Value];
+    end;
   end;
   for Index := 0 to AElement.ChildCount - 1 do
+  begin
     CollectTargets(AElement[Index], AConfigs, APlatforms);
+  end;
 end;
 
 { TDprojReader }
@@ -176,21 +200,31 @@ begin
   Origins := TList<TPair<string, string>>.Create;
   try
     if Root.Name <> 'Project' then
+    begin
       raise EProjectError.CreateFmt('%s: Wurzelelement <Project> erwartet', [AFileName]);
+    end;
     for Variable in AOptions.Variables do
+    begin
       Properties.SetValue(Variable.Key, Variable.Value);
+    end;
     Properties.SetValue('MSBuildProjectDirectory', Directory);
     Properties.SetValue('MSBuildProjectName', TProjectPaths.BaseName(AFileName));
     if AOptions.Config <> '' then
+    begin
       Properties.SetValue('Config', AOptions.Config);
+    end;
     if AOptions.Platform <> '' then
+    begin
       Properties.SetValue('Platform', AOptions.Platform);
+    end;
 
     for GroupIndex := 0 to Root.ChildCount - 1 do
     begin
       Group := Root[GroupIndex];
       if not Properties.Evaluate(Group.Attribute('Condition')) then
+      begin
         Continue;
+      end;
       if Group.Name = 'PropertyGroup' then
       begin
         for ItemIndex := 0 to Group.ChildCount - 1 do
@@ -199,19 +233,31 @@ begin
           // Vorgegebene Konfiguration und Plattform haben Vorrang vor den Vorgaben der Datei.
           if ((AOptions.Config <> '') and SameText(Item.Name, 'Config')) or
             ((AOptions.Platform <> '') and SameText(Item.Name, 'Platform')) then
+          begin
             Continue;
+          end;
           if not Properties.Evaluate(Item.Attribute('Condition')) then
+          begin
             Continue;
+          end;
           Before := nil;
           if SameText(Item.Name, 'DCC_Define') then
+          begin
             Before := UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define')));
+          end;
           Properties.SetValue(Item.Name, Properties.Expand(Trim(Item.Text)));
           // Neue Symbole dieser Ebene (#102).
           if SameText(Item.Name, 'DCC_Define') then
+          begin
             for Define in UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define'))) do
+            begin
               if IndexStr(Define, Before) < 0 then
+              begin
                 Origins.Add(TPair<string, string>.Create(Define,
                   LevelOf(Group.Attribute('Condition'), Properties.Get('Config'))));
+              end;
+            end;
+          end;
         end;
       end
       else if Group.Name = 'ItemGroup' then
@@ -220,10 +266,14 @@ begin
         begin
           Item := Group[ItemIndex];
           if (Item.Name <> 'DCCReference') or not Properties.Evaluate(Item.Attribute('Condition')) then
+          begin
             Continue;
+          end;
           Include := Properties.Expand(Item.Attribute('Include'));
           if TProjectPaths.Extension(Include) <> '.pas' then
+          begin
             Continue;
+          end;
           ProjectUnit.Name := TProjectPaths.BaseName(Include);
           ProjectUnit.FileName := TProjectPaths.Combine(Directory, Include);
           Units.Add(ProjectUnit);
@@ -233,9 +283,13 @@ begin
 
     Result.FileName := AFileName;
     if Properties.Get('MainSource') <> '' then
-      Result.MainSource := TProjectPaths.Combine(Directory, Properties.Get('MainSource'))
+    begin
+      Result.MainSource := TProjectPaths.Combine(Directory, Properties.Get('MainSource'));
+    end
     else
+    begin
       Result.MainSource := '';
+    end;
     Result.Config := Properties.Get('Config');
     Result.Platform := Properties.Get('Platform');
     Result.Defines := UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define')));
@@ -267,11 +321,15 @@ begin
   Result := '';
   // Ohne Angaben in der Datei (ältere Projekte) wird nichts abgelehnt.
   if (AConfig <> '') and (Length(AProject.Configs) > 0) and (IndexText(AConfig, AProject.Configs) < 0) then
+  begin
     Exit(Format('Konfiguration "%s" gibt es im Projekt nicht (vorhanden: %s).',
       [AConfig, string.Join(', ', AProject.Configs)]));
+  end;
   if (APlatform <> '') and (Length(AProject.Platforms) > 0) and (IndexText(APlatform, AProject.Platforms) < 0) then
+  begin
     Exit(Format('Plattform "%s" ist im Projekt nicht aktiviert (vorhanden: %s).',
       [APlatform, string.Join(', ', AProject.Platforms)]));
+  end;
 end;
 
 end.

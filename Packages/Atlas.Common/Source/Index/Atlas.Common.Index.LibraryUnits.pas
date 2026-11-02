@@ -38,8 +38,12 @@ var
   Prefix: string;
 begin
   for Prefix in LibraryPrefixes do
+  begin
     if SameText(AUnitName, Prefix) or StartsText(Prefix + '.', AUnitName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -49,7 +53,9 @@ var
 begin
   Result := IsLibraryUnit(AUnitName);
   if not Result and (AIndex <> nil) and (AUnitName <> '') and AIndex.FindUnit(AUnitName, Found) then
+  begin
     Result := Found.Library_;
+  end;
 end;
 
 end.

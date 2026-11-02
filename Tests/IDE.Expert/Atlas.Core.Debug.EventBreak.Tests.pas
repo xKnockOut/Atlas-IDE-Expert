@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TCoreDebugEventBreakTests = class
   private
     FAnswer: TAtlasEventAnswer;

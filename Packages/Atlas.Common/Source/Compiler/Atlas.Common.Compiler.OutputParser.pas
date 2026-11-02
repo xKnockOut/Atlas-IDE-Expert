@@ -39,9 +39,15 @@ begin
     ((AIndex = 1) or CharInSet(AText[AIndex - 1], [' ', ':'])) and
     ((AIndex + 5 > Length(AText)) or CharInSet(AText[AIndex + 5], [' ', ':']));
   if Result then
+  begin
     for Offset := 1 to 4 do
+    begin
       if not CharInSet(AText[AIndex + Offset], ['0'..'9']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Liest "Datei(Zeile)" oder "Datei(Zeile,Spalte)" am Anfang; ARest ist der Text danach.</summary>
@@ -58,27 +64,41 @@ begin
   ARest := AText;
   Close := Pos(')', AText);
   if Close = 0 then
+  begin
     Exit;
+  end;
   Open := Close - 1;
   while (Open > 0) and (AText[Open] <> '(') do
+  begin
     Dec(Open);
+  end;
   if Open <= 1 then
+  begin
     Exit;
+  end;
   // Klammern im Meldungstext ("F1026 File not found: 'a(1).pas'") sind keine Fundstelle.
   for Index := 1 to Open - 1 do
+  begin
     if IsCodeAt(AText, Index) then
+    begin
       Exit;
+    end;
+  end;
   Inner := Copy(AText, Open + 1, Close - Open - 1);
   Comma := Pos(',', Inner);
   if Comma > 0 then
   begin
     if not TryStrToInt(Trim(Copy(Inner, 1, Comma - 1)), ALine) or
       not TryStrToInt(Trim(Copy(Inner, Comma + 1, MaxInt)), AColumn) then
+    begin
       Exit;
+    end;
     Dec(AColumn);
   end
   else if not TryStrToInt(Trim(Inner), ALine) then
+  begin
     Exit;
+  end;
   Dec(ALine);
   AFileName := Trim(Copy(AText, 1, Open - 1));
   ARest := Copy(AText, Close + 1, MaxInt);
@@ -99,18 +119,25 @@ begin
   Text := Trim(ALine);
   // MSBuild: "[dcc32 Error] ..."
   if (Text <> '') and (Text[1] = '[') and (Pos(']', Text) > 0) then
+  begin
     Text := Trim(Copy(Text, Pos(']', Text) + 1, MaxInt));
+  end;
   Rest := Text;
   if ReadLocation(Text, FileName, Line, Column, Rest) then
   begin
     if TProjectPaths.IsAbsolute(FileName) or (AWorkingDir = '') then
-      AMessage.FileName := FileName
+    begin
+      AMessage.FileName := FileName;
+    end
     else
+    begin
       AMessage.FileName := TProjectPaths.Combine(AWorkingDir, FileName);
+    end;
     AMessage.Line := Line;
     AMessage.Column := Column;
   end;
   for Index := 1 to Length(Rest) do
+  begin
     if IsCodeAt(Rest, Index) then
     begin
       AMessage.Code := Copy(Rest, Index, 5);
@@ -125,9 +152,12 @@ begin
       end;
       AMessage.Text := Trim(Copy(Rest, Index + 5, MaxInt));
       if (AMessage.Text <> '') and (AMessage.Text[1] = ':') then
+      begin
         AMessage.Text := Trim(Copy(AMessage.Text, 2, MaxInt));
+      end;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -143,15 +173,19 @@ begin
   Found := TList<TCompilerMessage>.Create;
   try
     for Line in ALines do
+    begin
       if ParseLine(Line, AWorkingDir, Item) then
       begin
         Key := LowerCase(Item.FileName) + '|' + IntToStr(Item.Line) + '|' + IntToStr(Item.Column) + '|' +
           Item.Code + '|' + Item.Text;
         if Seen.ContainsKey(Key) then
+        begin
           Continue;
+        end;
         Seen.Add(Key, True);
         Found.Add(Item);
       end;
+    end;
     Result := Found.ToArray;
   finally
     Found.Free;

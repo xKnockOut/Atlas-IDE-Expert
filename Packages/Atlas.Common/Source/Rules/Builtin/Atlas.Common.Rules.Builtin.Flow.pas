@@ -55,8 +55,9 @@
 //                             Paare stehen in BuiltinHandlePairs, eigene über
 //                             die Option pairs. Zurückgeben, Speichern und
 //                             Übergabe an unbekannte Routinen gelten als
-//                             Weitergabe; Zweige, in denen das Öffnen laut
-//                             if-Prüfung misslang, und Ausnahmewege
+//                             Weitergabe, ebenso [H] in einem Array-Ausdruck;
+//                             Zweige, in denen das Öffnen laut if-Prüfung
+//                             misslang, und Ausnahmewege
 //                             (pair-without-finally) zählen nicht. Korrektur:
 //                             die Anweisungen danach in try … finally mit dem
 //                             Schließen einschließen.
@@ -208,11 +209,17 @@ function RootName(ANode: TSyntaxNode): string;
 begin
   while (ANode <> nil) and (ANode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
     TSyntaxKind.Dereference]) and (ANode.ChildCount > 0) do
+  begin
     ANode := ANode[0];
+  end;
   if (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) then
-    Result := ANode.Name
+  begin
+    Result := ANode.Name;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function IsName(ANode: TSyntaxNode; const AName: string): Boolean;
@@ -240,20 +247,32 @@ begin
           // Auch X.Feld oder X[I] als Argument: Ein var- oder out-Parameter schreibt dann einen Teil von X
           // (Liste.Find(Name, Eintrag.Wert)).
           for Index := 1 to ANode.ChildCount - 1 do
+          begin
             if IsName(ANode[Index], Name) or ((ANode[Index].Kind in [TSyntaxKind.MemberAccess,
               TSyntaxKind.IndexAccess]) and SameText(RootName(ANode[Index]), Name)) then
+            begin
               Result := TSyntaxSearchStep.Found;
+            end;
+          end;
         TSyntaxKind.AddressOf:
           if (ANode.ChildCount > 0) and SameText(RootName(ANode[0]), Name) then
+          begin
             Result := TSyntaxSearchStep.Found;
+          end;
         TSyntaxKind.AssignStatement:
           if (ANode.ChildCount > 0) and (ANode[0].Kind <> TSyntaxKind.Identifier) and
             SameText(RootName(ANode[0]), Name) then
+          begin
             Result := TSyntaxSearchStep.Found;
+          end;
         TSyntaxKind.WithStatement:
           for Index := 0 to ANode.ChildCount - 2 do
+          begin
             if SameText(RootName(ANode[Index]), Name) then
+            begin
               Result := TSyntaxSearchStep.Found;
+            end;
+          end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
@@ -270,9 +289,13 @@ begin
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       if AVisited.Kind = Kind then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       if AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end) <> nil;
 end;
@@ -292,15 +315,21 @@ var
 begin
   Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
   if Header = nil then
+  begin
     Header := ARoutine;
+  end;
   Name := ShortName(ARoutine.Name);
   for Index := AContext.Tree.FirstTokenFrom(Header.StartOffset) to High(AContext.Tree.Tokens) do
   begin
     Token := AContext.Tree.Tokens[Index];
     if Token.Offset >= Header.EndOffset then
+    begin
       Break;
+    end;
     if (Token.Offset >= Header.StartOffset) and SameText(Token.Text, Name) then
+    begin
       Exit(TTextRange.Create(Token.StartPos, Token.EndPos));
+    end;
   end;
   Result := NodeRange(Header);
 end;
@@ -322,7 +351,9 @@ var
   Name: string;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
   Cache := TRuleDerived.Open(AContext);
   Routines := TRuleDerived.Routines(Cache, AContext);
@@ -331,17 +362,23 @@ begin
     Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
     // Nur Funktionen: der Kopf trägt einen Ergebnistyp.
     if (Header = nil) or (Header.FindChild(TSyntaxKind.TypeReference) = nil) then
+    begin
       Continue;
+    end;
     Block := Routine.FindChild(TSyntaxKind.Block);
     Name := ShortName(Routine.Name);
     if HasOpaqueUse(Block, 'Result') or HasOpaqueUse(Block, Name) or ContainsKind(Block, TSyntaxKind.InheritedExpr) then
+    begin
       Continue;
+    end;
     Graph := TRuleDerived.Graph(Cache, AContext, Routine);
     // Alte Schreibweise: Zuweisung an den Funktionsnamen setzt ebenfalls das Ergebnis.
     if (Graph.MayEndWithout('Result') = TFlowAnswer.Yes) and (Graph.MayEndWithout(Name) = TFlowAnswer.Yes) then
+    begin
       AReport.Add(HeaderNameRange(AContext, Routine),
         Format('"%s" kann enden, ohne Result zu setzen; der Rückgabewert ist dann undefiniert', [Name]),
         TRuleConfidence.High);
+    end;
   end;
 end;
 
@@ -405,14 +442,20 @@ var
         if ANode.ChildCount = 2 then
         begin
           if SameText(ANode.Name, 'and') then
-            Result := PositiveFlag(ANode[0], AFlag) or PositiveFlag(ANode[1], AFlag)
+          begin
+            Result := PositiveFlag(ANode[0], AFlag) or PositiveFlag(ANode[1], AFlag);
+          end
           else if ANode.Name = '<>' then
+          begin
             for Index := 0 to 1 do
+            begin
               if not Result and IsFalseValue(ANode[1 - Index]) and (ANode[Index].Kind = TSyntaxKind.Identifier) then
               begin
                 AFlag := ANode[Index].Name;
                 Result := True;
               end;
+            end;
+          end;
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
@@ -434,14 +477,20 @@ var
         if ANode.ChildCount = 2 then
         begin
           if SameText(ANode.Name, 'or') then
-            Result := NegativeFlag(ANode[0], AFlag) or NegativeFlag(ANode[1], AFlag)
+          begin
+            Result := NegativeFlag(ANode[0], AFlag) or NegativeFlag(ANode[1], AFlag);
+          end
           else if ANode.Name = '=' then
+          begin
             for Index := 0 to 1 do
+            begin
               if not Result and IsFalseValue(ANode[1 - Index]) and (ANode[Index].Kind = TSyntaxKind.Identifier) then
               begin
                 AFlag := ANode[Index].Name;
                 Result := True;
               end;
+            end;
+          end;
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
@@ -462,7 +511,9 @@ var
         begin
           Callee := AStatement[0];
           if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+          begin
             Callee := Callee[0];
+          end;
           Result := (Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name,
             ['Exit', 'Break', 'Continue', 'Abort', 'Halt']);
         end;
@@ -487,11 +538,17 @@ var
   begin
     Result := False;
     if (AStatement.Kind <> TSyntaxKind.Block) or not Leaves(AStatement) then
+    begin
       Exit;
+    end;
     for Child := 0 to AStatement.ChildCount - 1 do
+    begin
       if (AStatement[Child].Kind = TSyntaxKind.AssignStatement) and (AStatement[Child].ChildCount = 2) and
         IsName(AStatement[Child][0], Name) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
   // Folgt der Zuweisung ANode an AFlag in einer umgebenden Liste "if AFlag then begin Name := …; Break; end"
@@ -513,11 +570,17 @@ var
       begin
         Seen := False;
         for Index := 0 to Parent.ChildCount - 1 do
+        begin
           if Parent[Index] = Child then
-            Seen := True
+          begin
+            Seen := True;
+          end
           else if Seen and (Parent[Index].Kind = TSyntaxKind.IfStatement) and (Parent[Index].ChildCount = 2) and
             IsName(Parent[Index][0], AFlag) and AssignsAndLeaves(Parent[Index][1]) then
+          begin
             Exit(True);
+          end;
+        end;
       end;
       Child := Parent;
       Parent := Parent.Parent;
@@ -536,7 +599,9 @@ var
   begin
     Result := False;
     if SameText(AFlag, Name) or HasOpaqueUse(ABlock, AFlag) then
+    begin
       Exit;
+    end;
     Any := False;
     Pending := TStack<TSyntaxNode>.Create;
     try
@@ -545,25 +610,35 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and IsName(Node[0], AFlag) and
           not IsFalseValue(Node[1]) then
         begin
           Paired := False;
           if (Node.Parent <> nil) and IsStatementList(Node.Parent) then
+          begin
             for Child := 0 to Node.Parent.ChildCount - 1 do
             begin
               Sibling := Node.Parent[Child];
               if (Sibling <> Node) and (Sibling.Kind = TSyntaxKind.AssignStatement) and (Sibling.ChildCount = 2) and
                 IsName(Sibling[0], Name) then
+              begin
                 Paired := True;
+              end;
             end;
+          end;
           if not Paired and not CommittedAfter(ABlock, Node, AFlag) then
+          begin
             Exit;
+          end;
           Any := True;
         end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -586,20 +661,30 @@ var
     begin
       if (Parent.Kind = TSyntaxKind.IfStatement) and (Parent.ChildCount >= 2) and (Parent[1] = Child) and
         PositiveFlag(Parent[0], Flag) and IsFlagFor(ABlock, Flag) then
+      begin
         Exit(True);
+      end;
       if (Parent.Kind = TSyntaxKind.BinaryExpr) and (Parent.ChildCount = 2) and (Parent[1] = Child) and
         ((SameText(Parent.Name, 'and') and PositiveFlag(Parent[0], Flag)) or
         (SameText(Parent.Name, 'or') and NegativeFlag(Parent[0], Flag))) and IsFlagFor(ABlock, Flag) then
+      begin
         Exit(True);
+      end;
       if IsStatementList(Parent) then
+      begin
         for Index := 0 to Parent.ChildCount - 1 do
         begin
           if Parent[Index] = Child then
+          begin
             Break;
+          end;
           if (Parent[Index].Kind = TSyntaxKind.IfStatement) and (Parent[Index].ChildCount = 2) and
             NegativeFlag(Parent[Index][0], Flag) and Leaves(Parent[Index][1]) and IsFlagFor(ABlock, Flag) then
+          begin
             Exit(True);
+          end;
         end;
+      end;
       Child := Parent;
       Parent := Parent.Parent;
     end;
@@ -618,7 +703,9 @@ var
     Inner := TStack<TSyntaxNode>.Create;
     try
       for Child := ARoutine.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(ARoutine[Child]);
+      end;
       while Pending.Count > 0 do
       begin
         Node := Pending.Pop;
@@ -630,14 +717,20 @@ var
           begin
             Item := Inner.Pop;
             if IsName(Item, Name) then
+            begin
               Exit(True);
+            end;
             for Child := Item.ChildCount - 1 downto 0 do
+            begin
               Inner.Push(Item[Child]);
+            end;
           end;
           Continue;
         end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Inner.Free;
@@ -660,18 +753,28 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, ATypeName) then
         begin
           Body := Node.FindChild(TSyntaxKind.RecordType);
           if Body <> nil then
+          begin
             for Child := 0 to Body.ChildCount - 1 do
+            begin
               if (Body[Child].Kind = TSyntaxKind.RoutineHeader) and (Body[Child].Name <> '') then
+              begin
                 Result := Result + [Body[Child].Name];
+              end;
+            end;
+          end;
           Exit;
         end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -688,7 +791,9 @@ var
   begin
     Result := False;
     if AMethods = nil then
+    begin
       Exit;
+    end;
     Pending := TStack<TSyntaxNode>.Create;
     try
       Pending.Push(ABlock);
@@ -697,9 +802,13 @@ var
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) and IsName(Node[0], Name) and
           MatchText(Node.Name, AMethods) then
+        begin
           Exit(True);
+        end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -722,7 +831,9 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        begin
           Continue;
+        end;
         if IsName(Node, Name) and not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.AssignStatement) and
           (Node.Parent.ChildCount > 0) and (Node.Parent[0] = Node)) then
         begin
@@ -737,7 +848,9 @@ var
           end;
         end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -746,7 +859,9 @@ var
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
   Cache := TRuleDerived.Open(AContext);
   Routines := TRuleDerived.Routines(Cache, AContext);
@@ -758,7 +873,9 @@ begin
     begin
       Section := Routine[Index];
       if Section.Kind <> TSyntaxKind.VarSection then
+      begin
         Continue;
+      end;
       for Inner := 0 to Section.ChildCount - 1 do
       begin
         Decl := Section[Inner];
@@ -766,23 +883,37 @@ begin
         // var X: Integer = 0 ist vorbelegt; nur einfache Deklarationen mit Typverweis.
         if (Decl.Kind <> TSyntaxKind.VarDecl) or (TypeNode = nil) or (Decl.ChildCount <> 1) or
           (TypeNode.FindChild(TSyntaxKind.GenericArgs) <> nil) then
+        begin
           Continue;
+        end;
         TypeName := TypeNode.Name;
         if MatchText(TypeName, SimpleTypes) then
-          Confidence := TRuleConfidence.High
+        begin
+          Confidence := TRuleConfidence.High;
+        end
         else if StartsText('T', TypeName) and (Length(TypeName) > 1) and not MatchText(TypeName, ManagedTypes) then
-          Confidence := TRuleConfidence.Medium
+        begin
+          Confidence := TRuleConfidence.Medium;
+        end
         else
+        begin
           Continue;
+        end;
         for Name in Decl.Name.Split([',']) do
         begin
           if HasOpaqueUse(Block, Name.Trim) or UsedInNested(Routine) or
             CallsRecordMethod(Block, RecordMethods(TypeName)) then
+          begin
             Continue;
+          end;
           if Graph = nil then
+          begin
             Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+          end;
           if not Graph.Complete then
+          begin
             Break;
+          end;
           Reported := False;
           Visit(Block);
         end;
@@ -813,10 +944,14 @@ begin
     begin
       Token := AContext.Tree.Tokens[mIndex];
       if Token.Offset >= ANode.EndOffset then
+      begin
         Break;
+      end;
       if (Token.Offset >= ANode.StartOffset) and (Token.StartPos.Line = ANode.StartPos.Line) and
         (Token.Kind <> TPascalTokenKind.Comment) then
+      begin
         Last := Token.EndPos;
+      end;
     end;
   end;
   Result := TTextRange.Create(ANode.StartPos, Last);
@@ -837,8 +972,12 @@ var
     Item: TSyntaxNode;
   begin
     for Item in Dead do
+    begin
       if Item = ANode then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -854,7 +993,9 @@ var
       while Current <> nil do
       begin
         if Current = ANode then
+        begin
           Exit(True);
+        end;
         Current := Current.Parent;
       end;
     end;
@@ -873,7 +1014,9 @@ var
     while (Current <> nil) and (Current <> Routine) do
     begin
       if IsDead(Current) then
+      begin
         Exit(False);
+      end;
       Current := Current.Parent;
     end;
     Current := AStatement;
@@ -881,8 +1024,12 @@ var
     begin
       Parent := Current.Parent;
       for Index := 1 to Parent.ChildCount - 1 do
+      begin
         if Parent[Index] = Current then
+        begin
           Exit(not HasDead(Parent[Index - 1]));
+        end;
+      end;
       Current := Parent;
     end;
     Result := True;
@@ -890,7 +1037,9 @@ var
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
   Cache := TRuleDerived.Open(AContext);
   Routines := TRuleDerived.Routines(Cache, AContext);
@@ -898,16 +1047,26 @@ begin
   begin
     Graph := TRuleDerived.Graph(Cache, AContext, Routine);
     if not Graph.Complete then
+    begin
       Continue;
+    end;
     Unreachable := Graph.UnreachableStatements;
     Dead := nil;
     for Node in Unreachable do
+    begin
       if Node.Syntax <> nil then
+      begin
         Dead := Dead + [Node.Syntax];
+      end;
+    end;
     for Node in Unreachable do
+    begin
       if (Node.Syntax <> nil) and StartsDeadRun(Node.Syntax) then
+      begin
         AReport.Add(FirstLineRange(AContext, Node.Syntax), 'Diese Anweisung wird nie ausgeführt',
           TRuleConfidence.High);
+      end;
+    end;
   end;
 end;
 
@@ -932,13 +1091,21 @@ function FreedPath(ANode: TSyntaxNode): string;
 begin
   Result := '';
   if ANode = nil then
+  begin
     Exit;
+  end;
   if ANode.Kind = TSyntaxKind.Identifier then
-    Result := ANode.Name
-  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and IsName(ANode[0], 'Self') then
+  begin
     Result := ANode.Name;
+  end
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and IsName(ANode[0], 'Self') then
+  begin
+    Result := ANode.Name;
+  end;
   if SameText(Result, 'Self') or SameText(Result, 'inherited') then
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Gibt die Anweisung AStatement X frei? AToNil bei FreeAndNil.</summary>
@@ -950,15 +1117,21 @@ begin
   APath := '';
   AToNil := False;
   if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
+  begin
     Exit;
+  end;
   Callee := AStatement[0];
   Target := nil;
   // X.Free; bzw. X.Free();
   if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount = 1) then
+  begin
     Callee := Callee[0];
+  end;
   if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) and
     MatchText(Callee.Name, ['Free', 'Destroy', 'DisposeOf']) then
-    Target := Callee[0]
+  begin
+    Target := Callee[0];
+  end
   else if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount = 2) and (Callee[0].Kind = TSyntaxKind.Identifier) and
     MatchText(Callee[0].Name, ['FreeAndNil', 'Dispose']) then
   begin
@@ -984,8 +1157,12 @@ var
     Offset: Integer;
   begin
     for Offset in Reported do
+    begin
       if Offset = AOffset then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1007,7 +1184,9 @@ var
         begin
           E := Pending.Pop;
           if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+          begin
             Continue;
+          end;
           // Ab diesem Kind weiter absteigen; nach einem Zugriff X.… nicht mehr in X selbst.
           First := 0;
           case E.Kind of
@@ -1016,28 +1195,40 @@ var
               begin
                 // Nach FreeAndNil ist ein weiteres Free harmlos.
                 if not (AToNil and (E.Kind = TSyntaxKind.MemberAccess) and SameText(E.Name, 'Free')) then
+                begin
                   AUses := AUses + [E[0]];
+                end;
                 First := 1;
               end;
             TSyntaxKind.Call:
               begin
                 Callee := nil;
                 if E.ChildCount > 0 then
+                begin
                   Callee := E[0];
+                end;
                 for Index := 1 to E.ChildCount - 1 do
+                begin
                   if SameText(FreedPath(E[Index]), APath) then
                   begin
                     if (Callee <> nil) and (Callee.Kind = TSyntaxKind.Identifier) and
                       MatchText(Callee.Name, ['Assigned', 'FreeAndNil']) and not AToNil then
+                    begin
                       // Nach Free: Assigned(X) ist immer True, FreeAndNil(X) gibt doppelt frei.
-                      AUses := AUses + [E[Index]]
+                      AUses := AUses + [E[Index]];
+                    end
                     else if (Callee <> nil) and (Callee.Kind = TSyntaxKind.Identifier) and
                       SameText(Callee.Name, 'Assigned') then
-                      AGuarded := True
+                    begin
+                      AGuarded := True;
+                    end
                     else
+                    begin
                       // Übergabe: die Routine kann X neu setzen oder nur vergleichen (List.Remove(X)).
                       AStops := True;
+                    end;
                   end;
+                end;
               end;
             TSyntaxKind.AddressOf:
               if (E.ChildCount > 0) and SameText(FreedPath(E[0]), APath) then
@@ -1048,13 +1239,19 @@ var
             TSyntaxKind.BinaryExpr:
               // X = nil, X <> nil: eine Abfrage, die den Weg trennt.
               for Index := 0 to E.ChildCount - 1 do
+              begin
                 if SameText(FreedPath(E[Index]), APath) then
+                begin
                   AGuarded := True;
+                end;
+              end;
           else
             // Übrige Werte bewusst ohne Wirkung.
           end;
           for Index := E.ChildCount - 1 downto First do
+          begin
             Pending.Push(E[Index]);
+          end;
         end;
       finally
         Pending.Free;
@@ -1072,7 +1269,9 @@ var
     begin
       Child := ASyntax[Index];
       if not AllChildren and (Child.Kind in FlowStatementKinds) then
+      begin
         Continue;
+      end;
       if (Index = 0) and (ASyntax.Kind = TSyntaxKind.AssignStatement) and SameText(FreedPath(Child), APath) then
       begin
         AStops := True;
@@ -1104,8 +1303,12 @@ var
     // Wege nur über eine mögliche Ausnahme (die Anweisung wirkt dann nicht) bleiben aus: lieber zu wenig.
     Queue := nil;
     for Next in AFree.Successors do
+    begin
       if not AFree.IsImplicitRaiseEdge(Next) then
+      begin
         Queue := Queue + [Next];
+      end;
+    end;
     FreeLine := AFree.Syntax.StartPos.Line;
     Head := 0;
     while Head < Length(Queue) do
@@ -1113,7 +1316,9 @@ var
       Current := Queue[Head];
       Inc(Head);
       if Visited[Current.Index] then
+      begin
         Continue;
+      end;
       Visited[Current.Index] := True;
       // for und for … in weisen der Schleifenvariablen in jedem Durchlauf neu zu.
       Stops := SameText(Current.Defines, APath) or ((Current.Kind = TFlowNodeKind.Condition) and
@@ -1122,48 +1327,74 @@ var
       Guarded := False;
       Accesses := nil;
       if (Current.Syntax <> nil) and not Stops then
+      begin
         Inspect(Current.Syntax, APath, AToNil, Accesses, Stops, Guarded);
+      end;
       if Guarded and AToNil then
+      begin
         Continue;
+      end;
       for Access in Accesses do
       begin
         if AlreadyReported(Access.StartOffset) then
+        begin
           Continue;
+        end;
         Reported := Reported + [Access.StartOffset];
         // Im selben Block nacheinander: der Zugriff folgt sicher auf die Freigabe.
         Confidence := TRuleConfidence.Medium;
         if (Current.Syntax.Parent = AFree.Syntax.Parent) and (Current.Syntax.StartOffset > AFree.Syntax.StartOffset)
           then
+        begin
           Confidence := TRuleConfidence.High;
+        end;
         if AToNil then
+        begin
           Message := Format('%s wurde in Zeile %d mit FreeAndNil freigegeben und ist hier nil.',
-            [APath, FreeLine + 1])
+            [APath, FreeLine + 1]);
+        end
         else
+        begin
           Message := Format('%s wurde in Zeile %d freigegeben und wird hier wieder gelesen.', [APath, FreeLine + 1]);
+        end;
         AReport.Add(NodeRange(Access), Message, Confidence,
           [TRuleFix.Jump(Format('Zur Freigabe in Zeile %d springen', [FreeLine + 1]), AFree.Syntax.StartPos)]);
       end;
       if Stops or Guarded then
+      begin
         Continue;
+      end;
       for Next in Current.Successors do
+      begin
         if not Visited[Next.Index] and not Current.IsImplicitRaiseEdge(Next) then
+        begin
           Queue := Queue + [Next];
+        end;
+      end;
     end;
   end;
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Reported := nil;
   for Routine in TRuleDerived.Routines(Cache, AContext) do
   begin
     Graph := TRuleDerived.Graph(Cache, AContext, Routine);
     if not Graph.Complete then
+    begin
       Continue;
+    end;
     for Node in Graph.Nodes do
+    begin
       if (Node.Kind = TFlowNodeKind.Statement) and FreedBy(Node.Syntax, Path, ToNil) then
+      begin
         Follow(Node, Path, ToNil);
+      end;
+    end;
   end;
 end;
 
@@ -1184,12 +1415,18 @@ var
 begin
   Result := nil;
   if ASyntax = nil then
+  begin
     Exit;
+  end;
   AllChildren := ASyntax.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
     TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst];
   for Index := 0 to ASyntax.ChildCount - 1 do
+  begin
     if AllChildren or not (ASyntax[Index].Kind in FlowStatementKinds) then
+    begin
       Result := Result + [ASyntax[Index]];
+    end;
+  end;
 end;
 
 /// <summary>Enthält E Assigned(APath), APath = nil oder APath &lt;&gt; nil?</summary>
@@ -1208,16 +1445,24 @@ begin
     begin
       E := Pending.Pop;
       if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      begin
         Continue;
+      end;
       if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and IsName(E[0], 'Assigned') and
         SameText(FreedPath(E[1]), APath) then
+      begin
         Exit(True);
+      end;
       if (E.Kind = TSyntaxKind.BinaryExpr) and MatchText(E.Name, ['=', '<>']) and (E.ChildCount = 2) and
         ((SameText(FreedPath(E[0]), APath) and (E[1].Kind = TSyntaxKind.Literal) and SameText(E[1].Name, 'nil')) or
         (SameText(FreedPath(E[1]), APath) and (E[0].Kind = TSyntaxKind.Literal) and SameText(E[0].Name, 'nil'))) then
+      begin
         Exit(True);
+      end;
       for Index := E.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(E[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -1240,12 +1485,18 @@ begin
     begin
       E := Pending.Pop;
       if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      begin
         Continue;
+      end;
       if (E.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference]) and (E.ChildCount > 0) and
         (FreedPath(E[0]) <> '') then
+      begin
         AList := AList + [E[0]];
+      end;
       for Index := E.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(E[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -1260,10 +1511,14 @@ begin
   S := ANode.Syntax;
   Result := SameText(ANode.Defines, APath);
   if Result or (S = nil) then
+  begin
     Exit;
+  end;
   if (ANode.Kind = TFlowNodeKind.Condition) and (S.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
     SameText(S.Name, APath) then
+  begin
     Exit(True);
+  end;
   Result := (S.Kind = TSyntaxKind.AssignStatement) and (S.ChildCount > 0) and SameText(FreedPath(S[0]), APath);
 end;
 
@@ -1286,19 +1541,31 @@ function ChangesPath(ANode: TFlowNode; const APath: string; ALocal: Boolean): Bo
       begin
         E := Pending.Pop;
         if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         if (E.Kind = TSyntaxKind.Call) and (E.ChildCount > 0) and not IsName(E[0], 'Assigned') then
         begin
           if not ALocal then
+          begin
             Exit(True);
+          end;
           for Index := 1 to E.ChildCount - 1 do
+          begin
             if SameText(FreedPath(E[Index]), APath) then
+            begin
               Exit(True);
+            end;
+          end;
         end;
         if (E.Kind = TSyntaxKind.AddressOf) and (E.ChildCount > 0) and SameText(FreedPath(E[0]), APath) then
+        begin
           Exit(True);
+        end;
         for Index := E.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(E[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1311,13 +1578,21 @@ begin
   S := ANode.Syntax;
   Result := AssignsPath(ANode, APath);
   if Result or (S = nil) then
+  begin
     Exit;
+  end;
   // X.Methode ohne Klammern ist ein Aufruf.
   if not ALocal and (S.Kind = TSyntaxKind.CallStatement) then
+  begin
     Exit(True);
+  end;
   for Part in OwnParts(S) do
+  begin
     if Visit(Part) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Enthält E APath is TKlasse? Das ist für nil False und schützt wie Assigned (#1371).</summary>
@@ -1335,12 +1610,18 @@ begin
     begin
       E := Pending.Pop;
       if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      begin
         Continue;
+      end;
       if (E.Kind = TSyntaxKind.BinaryExpr) and SameText(E.Name, 'is') and (E.ChildCount = 2) and
         SameText(FreedPath(E[0]), APath) then
+      begin
         Exit(True);
+      end;
       for Index := E.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(E[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -1353,8 +1634,12 @@ var
 begin
   Result := False;
   for Part in OwnParts(ANode.Syntax) do
+  begin
     if ContainsNilCheck(Part, APath) or ContainsIsCheck(Part, APath) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Weist eine Anweisung unter ANode APath zu?</summary>
@@ -1374,9 +1659,13 @@ begin
       Node := Pending.Pop;
       if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) and
         SameText(FreedPath(Node[0]), APath) then
+      begin
         Exit(True);
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -1400,12 +1689,20 @@ begin
     begin
       E := Pending.Pop;
       if (E <> ARoutine) and (E.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      begin
         Continue;
+      end;
       if E.Kind in [TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+      begin
         for Name in E.Name.Split([',']) do
+        begin
           Result := Result + [Trim(Name)];
+        end;
+      end;
       for Index := E.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(E[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -1429,8 +1726,12 @@ var
     Item: string;
   begin
     for Item in AList do
+    begin
       if SameText(Item, AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1450,14 +1751,24 @@ var
         E := Pending.Pop;
         if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and IsName(E[0], 'Assigned') and
           (FreedPath(E[1]) <> '') and not Contains(Checked, FreedPath(E[1])) then
+        begin
           Checked := Checked + [FreedPath(E[1])];
+        end;
         if (E.Kind = TSyntaxKind.BinaryExpr) and (E.ChildCount = 2) then
+        begin
           for Index := 0 to 1 do
+          begin
             if (FreedPath(E[Index]) <> '') and (E[1 - Index].Kind = TSyntaxKind.Literal) and
               SameText(E[1 - Index].Name, 'nil') and not Contains(Checked, FreedPath(E[Index])) then
+            begin
               Checked := Checked + [FreedPath(E[Index])];
+            end;
+          end;
+        end;
         for Index := E.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(E[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1482,15 +1793,25 @@ var
       Current := Queue[Head];
       Inc(Head);
       if Visited[Current.Index] then
+      begin
         Continue;
+      end;
       Visited[Current.Index] := True;
       if (Current.Syntax <> nil) and NodeHasNilCheck(Current, APath) then
+      begin
         Exit(True);
+      end;
       if AssignsPath(Current, APath) then
+      begin
         Continue;
+      end;
       for Prev in Current.Predecessors do
+      begin
         if not Visited[Prev.Index] then
+        begin
           Queue := Queue + [Prev];
+        end;
+      end;
     end;
   end;
 
@@ -1506,23 +1827,37 @@ var
     SetLength(Visited, Graph.Nodes.Count);
     Queue := nil;
     for Next in ANode.Successors do
+    begin
       if not ANode.IsImplicitRaiseEdge(Next) then
+      begin
         Queue := Queue + [Next];
+      end;
+    end;
     Head := 0;
     while Head < Length(Queue) do
     begin
       Current := Queue[Head];
       Inc(Head);
       if Visited[Current.Index] or (Current = ANode) then
+      begin
         Continue;
+      end;
       Visited[Current.Index] := True;
       if (Current.Syntax <> nil) and NodeHasNilCheck(Current, APath) then
+      begin
         Exit(Current);
+      end;
       if ChangesPath(Current, APath, ALocal) then
+      begin
         Continue;
+      end;
       for Next in Current.Successors do
+      begin
         if not Visited[Next.Index] and not Current.IsImplicitRaiseEdge(Next) then
+        begin
           Queue := Queue + [Next];
+        end;
+      end;
     end;
   end;
 
@@ -1546,16 +1881,24 @@ var
       Current := Queue[Head];
       Inc(Head);
       if Visited[Current.Index] or (Current = AFrom) then
+      begin
         Continue;
+      end;
       Visited[Current.Index] := True;
       // FreeAndNil(X) setzt X ebenso neu (etwa im except-Zweig nach einem gescheiterten Laden): die spätere
       // Prüfung gilt diesem Weg.
       if AssignsPath(Current, APath) or (FreedBy(Current.Syntax, mFreed, mToNil) and mToNil and
         SameText(mFreed, APath)) then
+      begin
         Exit(True);
+      end;
       for Prev in Current.Predecessors do
+      begin
         if not Visited[Prev.Index] then
+        begin
           Queue := Queue + [Prev];
+        end;
+      end;
     end;
   end;
 
@@ -1571,7 +1914,9 @@ var
   begin
     Start := ANode.StartOffset;
     while (Start > 0) and CharInSet(AContext.Text[Start], [' ', #9]) do
+    begin
       Dec(Start);
+    end;
     AIndent := Copy(AContext.Text, Start + 1, ANode.StartOffset - Start);
     Result := (Start = 0) or CharInSet(AContext.Text[Start], [#10, #13]);
   end;
@@ -1589,7 +1934,9 @@ var
     begin
       Line := Lines[Index];
       if Trim(Line) = '' then
+      begin
         Continue;
+      end;
       Result := Result + AIndent + Line + LineBreak;
     end;
   end;
@@ -1606,30 +1953,48 @@ var
     IfNode := ACheck.Syntax;
     if (AAccess.Kind <> TFlowNodeKind.Statement) or (ACheck.Kind <> TFlowNodeKind.Condition) or
       (IfNode.Kind <> TSyntaxKind.IfStatement) or (Access.Parent = nil) or (Access.Parent <> IfNode.Parent) then
+    begin
       Exit;
+    end;
     Parent := Access.Parent;
     Position := -1;
     for Index := 0 to Parent.ChildCount - 1 do
+    begin
       if Parent[Index] = Access then
+      begin
         Position := Index;
+      end;
+    end;
     if (Position < 0) or (Position + 1 >= Parent.ChildCount) or (Parent[Position + 1] <> IfNode) then
+    begin
       Exit;
+    end;
     // if Bedingung then Rumpf, ohne else.
     Condition := nil;
     Body := nil;
     for Index := 0 to IfNode.ChildCount - 1 do
+    begin
       if IfNode[Index].Kind in FlowStatementKinds then
       begin
         if Body <> nil then
+        begin
           Exit;
+        end;
         Body := IfNode[Index];
       end
       else if Condition = nil then
+      begin
         Condition := IfNode[Index];
+      end;
+    end;
     if (Condition = nil) or (Body = nil) then
+    begin
       Exit;
+    end;
     if not Indent(Access, Outer) then
+    begin
       Exit;
+    end;
     Inner := Outer + '  ';
     if Body.Kind = TSyntaxKind.Block then
     begin
@@ -1639,7 +2004,9 @@ var
       BodyText := Reindented(BodyText, '');
     end
     else
+    begin
       BodyText := Inner + Trim(Source(Body)) + ';' + LineBreak;
+    end;
     Text := 'if ' + Trim(Source(Condition)) + ' then' + LineBreak + Outer + 'begin' + LineBreak +
       Inner + Trim(Source(Access)) + ';' + LineBreak + BodyText + Outer + 'end';
     AFix := TRuleFix.Create('Prüfung vor den Zugriff ziehen',
@@ -1653,58 +2020,84 @@ var
   IsLocal: Boolean;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   LineBreak := #10;
   if Pos(#13#10, AContext.Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Cache := TRuleDerived.Open(AContext);
   for Routine in TRuleDerived.Routines(Cache, AContext) do
   begin
     Checked := nil;
     CollectChecked(Routine);
     if Checked = nil then
+    begin
       Continue;
+    end;
     Graph := TRuleDerived.Graph(Cache, AContext, Routine);
     if not Graph.Complete then
+    begin
       Continue;
+    end;
     Locals := LocalNames(Routine);
     Done := nil;
     for Node in Graph.Nodes do
     begin
       if (Node.Syntax = nil) or not (Node.Kind in [TFlowNodeKind.Statement, TFlowNodeKind.Condition]) then
+      begin
         Continue;
+      end;
       Derefs := nil;
       for Part in OwnParts(Node.Syntax) do
+      begin
         CollectDerefs(Part, Derefs);
+      end;
       for Deref in Derefs do
       begin
         Path := FreedPath(Deref);
         if not Contains(Checked, Path) or NodeHasNilCheck(Node, Path) then
+        begin
           Continue;
+        end;
         IsLocal := Contains(Locals, Path);
         // X := X.Next: die spätere Prüfung gilt dem neuen Wert. Ebenso Supports(Y, IX, X) and X.Foo: die
         // Übergabe im selben Ausdruck setzt X erst.
         if ChangesPath(Node, Path, True) then
+        begin
           Continue;
+        end;
         CheckNode := CheckAfter(Node, Path, IsLocal);
         // Eine Prüfung weiter oben, die erst der nächste Schleifendurchlauf erreicht, schützt den Zugriff.
         if (CheckNode = nil) or (CheckNode.Syntax.StartOffset < Node.Syntax.StartOffset) then
+        begin
           Continue;
+        end;
         // Nur wenn jeder Weg zur Prüfung durch den Zugriff führt; sonst gilt sie den anderen Wegen
         // (X := TX.Create; X.Init; … if X <> nil nach einem Zweig ohne Create).
         if (Graph.Dominates(Node, CheckNode) <> TFlowAnswer.Yes) or AssignedOnWay(Node, CheckNode, Path) then
+        begin
           Continue;
+        end;
         // while X <> nil do … X := X.Parent: die Bedingung gilt den späteren Durchläufen.
         if (CheckNode.Syntax.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and
           SubtreeAssigns(CheckNode.Syntax, Path) then
+        begin
           Continue;
+        end;
         Key := LowerCase(Path) + '@' + IntToStr(CheckNode.Index);
         if Contains(Done, Key) or CheckedBefore(Node, Path) then
+        begin
           Continue;
+        end;
         Done := Done + [Key];
         Fixes := nil;
         if MoveCheckFix(Node, CheckNode, Fix) then
+        begin
           Fixes := [Fix];
+        end;
         AReport.Add(NodeRange(Deref), Format('%s wird hier benutzt, aber erst in Zeile %d auf nil geprüft.',
           [Path, CheckNode.Syntax.StartPos.Line + 1]), TRuleConfidence.Medium, Fixes);
       end;
@@ -1745,12 +2138,18 @@ begin
         // Ohne class-Teil (z. B. Vorwärtsdeklaration eines anderen Typs) weitersuchen.
         Result := Node.FindChild(TSyntaxKind.ClassType);
         if Result <> nil then
+        begin
           Exit;
+        end;
         Continue;
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         if not (Node[Index].Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ImplementationSection]) then
+        begin
           Pending.Push(Node[Index]);
+        end;
+      end;
     end;
   finally
     Pending.Free;
@@ -1768,7 +2167,9 @@ begin
   // Iterativ (Bericht M1).
   Result := nil;
   if AClass = nil then
+  begin
     Exit;
+  end;
   Pending := TStack<TSyntaxNode>.Create;
   try
     Pending.Push(AClass);
@@ -1776,11 +2177,19 @@ begin
     begin
       E := Pending.Pop;
       if E.Kind = TSyntaxKind.Field then
+      begin
         for Name in E.Name.Split([',']) do
+        begin
           Result := Result + [Trim(Name)];
+        end;
+      end;
       for Index := E.ChildCount - 1 downto 0 do
+      begin
         if E[Index].Kind <> TSyntaxKind.TypeSection then
+        begin
           Pending.Push(E[Index]);
+        end;
+      end;
     end;
   finally
     Pending.Free;
@@ -1797,22 +2206,32 @@ function TearDownMethods(AClass: TSyntaxNode): TArray<string>;
   begin
     Pending := False;
     for Index := 0 to E.ChildCount - 1 do
+    begin
       if E[Index].Kind = TSyntaxKind.Attribute then
-        Pending := Pending or MatchText(E[Index].Name, ['TearDown', 'TearDownFixture'])
+      begin
+        Pending := Pending or MatchText(E[Index].Name, ['TearDown', 'TearDownFixture']);
+      end
       else
       begin
         if Pending and (E[Index].Name <> '') then
+        begin
           Result := Result + [E[Index].Name];
+        end;
         Pending := False;
         if E[Index].Kind = TSyntaxKind.Visibility then
+        begin
           Visit(E[Index]);
+        end;
       end;
+    end;
   end;
 
 begin
   Result := nil;
   if AClass <> nil then
+  begin
     Visit(AClass);
+  end;
 end;
 
 procedure TFieldFreeWithoutNilRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1831,8 +2250,12 @@ var
     Item: string;
   begin
     for Item in AList do
+    begin
       if SameText(Item, AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1872,9 +2295,13 @@ var
           E := Pending.Pop;
           if ((E.Kind = TSyntaxKind.CallStatement) and (E.ChildCount > 0) and SameText(FreedPath(E[0]), AName)) or
             ((E.Kind = TSyntaxKind.Call) and (E.ChildCount > 0) and SameText(FreedPath(E[0]), AName)) then
+          begin
             Exit(True);
+          end;
           for Index := E.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(E[Index]);
+          end;
         end;
       finally
         Pending.Free;
@@ -1893,12 +2320,16 @@ var
   begin
     Callers := 0;
     for Other in Routines do
+    begin
       if (Other <> ARoutine) and Calls(Other, MethodOf(ARoutine)) then
       begin
         if not StartsText(QualifiedClass + '.', Other.Name) or not Releasing(Other) then
+        begin
           Exit(False);
+        end;
         Inc(Callers);
       end;
+    end;
     Result := Callers > 0;
   end;
 
@@ -1908,8 +2339,12 @@ var
     Other: TSyntaxNode;
   begin
     for Other in Routines do
+    begin
       if SameText(Other.Name, QualifiedClass + '.' + AName) and SubtreeAssigns(Other, APath) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1933,11 +2368,17 @@ var
           E := Pending.Pop;
           Name := '';
           if (E.Kind = TSyntaxKind.Call) and (E.ChildCount > 0) then
+          begin
             Name := FreedPath(E[0]);
+          end;
           if (Name <> '') and AssignerMethod(Name, APath) then
+          begin
             Exit(True);
+          end;
           for Index := E.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(E[Index]);
+          end;
         end;
       finally
         Pending.Free;
@@ -1949,14 +2390,22 @@ var
   begin
     Result := False;
     if ANode.Syntax = nil then
+    begin
       Exit;
+    end;
     // Aufruf ohne Klammern: "Laden;" bzw. "Self.Laden;".
     if (ANode.Syntax.Kind = TSyntaxKind.CallStatement) and (ANode.Syntax.ChildCount > 0) and
       (FreedPath(ANode.Syntax[0]) <> '') and AssignerMethod(FreedPath(ANode.Syntax[0]), APath) then
+    begin
       Exit(True);
+    end;
     for Part in OwnParts(ANode.Syntax) do
+    begin
       if Visit(Part) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
   // Erreicht ein Weg vom Free das normale Ende der Methode, ohne das Feld neu zu setzen?
@@ -1971,23 +2420,37 @@ var
     SetLength(Visited, Graph.Nodes.Count);
     Queue := nil;
     for Next in AFree.Successors do
+    begin
       if not AFree.IsImplicitRaiseEdge(Next) then
+      begin
         Queue := Queue + [Next];
+      end;
+    end;
     Head := 0;
     while Head < Length(Queue) do
     begin
       Current := Queue[Head];
       Inc(Head);
       if Visited[Current.Index] or (Current = AFree) then
+      begin
         Continue;
+      end;
       Visited[Current.Index] := True;
       if Current = Graph.ExitNode then
+      begin
         Exit(True);
+      end;
       if AssignsPath(Current, APath) or CallsAssigner(Current, APath) then
+      begin
         Continue;
+      end;
       for Next in Current.Successors do
+      begin
         if not Visited[Next.Index] and not Current.IsImplicitRaiseEdge(Next) then
+        begin
           Queue := Queue + [Next];
+        end;
+      end;
     end;
   end;
 
@@ -1996,17 +2459,25 @@ var
   begin
     Result := nil;
     if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
+    begin
       Exit;
+    end;
     Callee := AStatement[0];
     if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount = 1) then
+    begin
       Callee := Callee[0];
+    end;
     if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) and SameText(Callee.Name, 'Free') then
+    begin
       Result := Callee[0];
+    end;
   end;
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Ignore := TRuleOptions.Strings(AContext.Options, 'ignoreMethods', DefaultIgnoreMethods);
   Cache := TRuleDerived.Open(AContext);
   Routines := TRuleDerived.Routines(Cache, AContext);
@@ -2014,30 +2485,44 @@ begin
   begin
     Dot := LastDelimiter('.', Routine.Name);
     if Dot = 0 then
+    begin
       Continue;
+    end;
     QualifiedClass := Copy(Routine.Name, 1, Dot - 1);
     ClassName := Copy(QualifiedClass, LastDelimiter('.', QualifiedClass) + 1, MaxInt);
     // TStapel<T>.Ablegen: die Deklaration heißt TStapel.
     if Pos('<', ClassName) > 0 then
+    begin
       ClassName := Copy(ClassName, 1, Pos('<', ClassName) - 1);
+    end;
     Fields := ClassFields(FindClassType(AContext.Tree.Root, ClassName));
     if Fields = nil then
+    begin
       Continue;
+    end;
     TearDowns := TearDownMethods(FindClassType(AContext.Tree.Root, ClassName));
     if Releasing(Routine) or OnlyCalledWhileReleasing(Routine) then
+    begin
       Continue;
+    end;
     Locals := LocalNames(Routine);
     Graph := TRuleDerived.Graph(Cache, AContext, Routine);
     if not Graph.Complete then
+    begin
       Continue;
+    end;
     for Node in Graph.Nodes do
     begin
       if Node.Kind <> TFlowNodeKind.Statement then
+      begin
         Continue;
+      end;
       Target := FreeTarget(Node.Syntax);
       Path := FreedPath(Target);
       if (Path = '') or Contains(Locals, Path) or not Contains(Fields, Path) or not ReachesEnd(Node, Path) then
+      begin
         Continue;
+      end;
       AReport.Add(NodeRange(Node.Syntax), Format('%s bleibt nach Free gesetzt; ein späterer Zugriff trifft ' +
         'freigegebenen Speicher.', [Path]), TRuleConfidence.Medium,
         [TRuleFix.Create(Format('FreeAndNil(%s)', [Text(Target)]),
@@ -2106,8 +2591,12 @@ var
     Item: string;
   begin
     for Item in AList do
+    begin
       if SameText(Item, AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -2124,13 +2613,21 @@ var
   begin
     Result := nil;
     if AClass = nil then
+    begin
       Exit;
+    end;
     IsPrivate := False;
     for Index := 0 to AClass.ChildCount - 1 do
+    begin
       if AClass[Index].Kind = TSyntaxKind.Visibility then
-        IsPrivate := MatchText(AClass[Index].Name, ['private', 'strict private'])
+      begin
+        IsPrivate := MatchText(AClass[Index].Name, ['private', 'strict private']);
+      end
       else if IsPrivate and (AClass[Index].Kind = TSyntaxKind.RoutineHeader) and (AClass[Index].Name <> '') then
+      begin
         Result := Result + [AClass[Index].Name];
+      end;
+    end;
   end;
 
   function ClassOf(ARoutine: TSyntaxNode): string;
@@ -2156,13 +2653,19 @@ var
     Result := False;
     Callee := AValue;
     if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+    begin
       Callee := Callee[0];
+    end;
     if (Callee.Kind <> TSyntaxKind.MemberAccess) or (Callee.ChildCount = 0) or not StartsText('Create', Callee.Name) then
+    begin
       Exit;
+    end;
     // Records mit Create (TStopwatch.Create) brauchen keine Freigabe und sind nie nil.
     if MatchText(RootName(Callee[0]), ['TStopwatch', 'TTimeSpan', 'TRect', 'TPoint', 'TSize', 'TGUID',
       'TFormatSettings', 'TValue', 'TRegEx', 'TRttiContext']) then
+    begin
       Exit;
+    end;
     ACallee := Trim(Text(Callee));
     Result := True;
   end;
@@ -2179,17 +2682,25 @@ var
     begin
       // Nur feste Argumente wie TObjectList<T>.Create(True).
       for Index := 1 to Callee.ChildCount - 1 do
+      begin
         if (Callee[Index].Kind <> TSyntaxKind.Literal) and not ((Callee[Index].Kind = TSyntaxKind.Identifier) and
           MatchText(Callee[Index].Name, ['True', 'False', 'nil'])) then
+        begin
           Exit(False);
+        end;
+      end;
       Callee := Callee[0];
     end;
     Result := (Callee.Kind = TSyntaxKind.MemberAccess) and SameText(Callee.Name, 'Create') and (Callee.ChildCount > 0);
     if not Result then
+    begin
       Exit;
+    end;
     Name := Trim(Text(Callee[0]));
     if Pos('<', Name) > 0 then
+    begin
       Name := Copy(Name, 1, Pos('<', Name) - 1);
+    end;
     // Verschachtelte Klasse (TOwner.TEvents): der letzte Namensteil.
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
     Result := MatchText(Name, QuietConstructions) or Contains(QuietLocals, Name);
@@ -2200,7 +2711,9 @@ var
   begin
     Result := (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2);
     if not Result then
+    begin
       Exit;
+    end;
     AField := FreedPath(AStatement[0]);
     Result := (AField <> '') and Contains(Fields, AField) and CreationCall(AStatement[1], ACallee);
   end;
@@ -2221,17 +2734,25 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl, TSyntaxKind.InheritedExpr] then
+        begin
           Continue;
+        end;
         if Node.Kind = TSyntaxKind.RaiseStatement then
+        begin
           Exit('raise');
+        end;
         // Aufruf ohne Klammern als Anweisung: Laden; bzw. FLog.Oeffnen;
         if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount > 0) and
           (Node[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
         begin
           if (Node[0].Kind = TSyntaxKind.Identifier) and MatchText(Node[0].Name, QuietRoutines) then
+          begin
             Continue;
+          end;
           if QuietCreation(Node[0]) then
+          begin
             Continue;
+          end;
           Exit(Trim(Text(Node[0])));
         end;
         // TKlasse.Create ohne Klammern ist ebenfalls ein Aufruf.
@@ -2239,7 +2760,9 @@ var
           ((Node.Parent = nil) or (Node.Parent.Kind <> TSyntaxKind.Call)) then
         begin
           if QuietCreation(Node) then
+          begin
             Continue;
+          end;
           Exit(Trim(Text(Node)));
         end;
         if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
@@ -2247,11 +2770,15 @@ var
           Callee := Node[0];
           if (Callee.Kind = TSyntaxKind.InheritedExpr) or QuietCreation(Node) or
             ((Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name, QuietRoutines)) then
+          begin
             Continue;
+          end;
           Exit(Trim(Text(Callee)));
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2280,7 +2807,9 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Continue;
+        end;
         if Node.Kind = TSyntaxKind.TypeDecl then
         begin
           Body := Node.FindChild(TSyntaxKind.ClassType);
@@ -2289,13 +2818,19 @@ var
             Ancestor := Body.FindChild(TSyntaxKind.TypeReference);
             Names := Names + [Node.Name];
             if Ancestor = nil then
-              Ancestors := Ancestors + ['TObject']
+            begin
+              Ancestors := Ancestors + ['TObject'];
+            end
             else
+            begin
               Ancestors := Ancestors + [Copy(Ancestor.Name, LastDelimiter('.', Ancestor.Name) + 1, MaxInt)];
+            end;
           end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2306,14 +2841,20 @@ var
       begin
         if Contains(QuietLocals, Names[Index]) or
           not (MatchText(Ancestors[Index], QuietConstructions) or Contains(QuietLocals, Ancestors[Index])) then
+        begin
           Continue;
+        end;
         Quiet := True;
         for Routine in Routines do
+        begin
           if SameText(MethodOf(Routine), 'Create') and StartsWithWord(Routine, 'constructor') and
             SameText(Copy(ClassOf(Routine), LastDelimiter('.', ClassOf(Routine)) + 1, MaxInt), Names[Index]) and
             ((Routine.FindChild(TSyntaxKind.Block) = nil) or
             (RaisingCall(Routine.FindChild(TSyntaxKind.Block)) <> '')) then
+          begin
             Quiet := False;
+          end;
+        end;
         if Quiet then
         begin
           QuietLocals := QuietLocals + [Names[Index]];
@@ -2339,12 +2880,18 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
           SameText(FreedPath(Node[0]), AField) then
+        begin
           Exit(True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2363,10 +2910,14 @@ var
           Result := Result + [ANode[Index]];
         TSyntaxKind.IfStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse:
           if ANode[Index].Kind in FlowStatementKinds then
+          begin
             Result := Result + [ANode[Index]];
+          end;
         TSyntaxKind.CaseStatement:
           if ANode[Index].Kind in [TSyntaxKind.CaseItem, TSyntaxKind.CaseElse] then
+          begin
             Result := Result + [ANode[Index]];
+          end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
@@ -2395,17 +2946,23 @@ var
         if not Entry.Done then
         begin
           if Node.Kind = TSyntaxKind.AssignStatement then
-            Values.Push((Node.ChildCount = 2) and SameText(FreedPath(Node[0]), AField))
+          begin
+            Values.Push((Node.ChildCount = 2) and SameText(FreedPath(Node[0]), AField));
+          end
           else if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
             TSyntaxKind.CaseItem, TSyntaxKind.CaseElse] then
           begin
             Pending.Push(TSyntaxPostOrderEntry.Create(Node, True));
             Parts := AlwaysParts(Node);
             for Index := High(Parts) downto 0 do
+            begin
               Pending.Push(TSyntaxPostOrderEntry.Create(Parts[Index], False));
+            end;
           end
           else
+          begin
             Values.Push(False);
+          end;
           Continue;
         end;
         // Die Werte der Teile liegen oben auf dem Wertestapel.
@@ -2441,12 +2998,18 @@ var
     Item: TNilAtDestroy;
   begin
     for Item in Risky do
+    begin
       if SameText(Item.Field, AField) then
+      begin
         Exit;
+      end;
+    end;
     Item.Field := AField;
     Item.Raiser := ARaiser;
     if not AConditional and (ARaiser = '') then
+    begin
       Item.Raiser := 'der Konstruktor';
+    end;
     Item.Conditional := AConditional;
     Risky := Risky + [Item];
   end;
@@ -2460,15 +3023,21 @@ var
     Item: TGuardImplication;
   begin
     for Index := 0 to High(Implications) do
+    begin
       if SameText(Implications[Index].Guard, AGuard) then
       begin
         Kept := nil;
         for Name in Implications[Index].Implied do
+        begin
           if Contains(AAlways, Name) then
+          begin
             Kept := Kept + [Name];
+          end;
+        end;
         Implications[Index].Implied := Kept;
         Exit;
       end;
+    end;
     Item.Guard := AGuard;
     Item.Implied := AAlways;
     Implications := Implications + [Item];
@@ -2484,7 +3053,9 @@ var
   begin
     Body := AConstructor.FindChild(TSyntaxKind.Block);
     if Body = nil then
+    begin
       Exit;
+    end;
     Raiser := '';
     Done := nil;
     Always := nil;
@@ -2500,21 +3071,31 @@ var
         if Contains(Fields, Field) then
         begin
           if not Contains(Seen, Field) then
+          begin
             AddImplication(Field, Always);
+          end;
           Seen := Seen + [Field];
           Added := Added + [Field];
         end;
       end
       else if Statement.Kind in FlowStatementKinds then
+      begin
         for Created in Fields do
+        begin
           if AssignsField(Statement, Created) then
           begin
             if not Contains(Seen, Created) then
+            begin
               AddImplication(Created, Always);
+            end;
             Seen := Seen + [Created];
             if AssignsAlways(Statement, Created) then
+            begin
               Added := Added + [Created];
+            end;
           end;
+        end;
+      end;
       Always := Always + Added;
       if CreatesField(Statement, Field, Callee) then
       begin
@@ -2522,30 +3103,48 @@ var
         begin
           Done := Done + [Field];
           if Raiser <> '' then
-            AddRisky(Field, Raiser, False)
+          begin
+            AddRisky(Field, Raiser, False);
+          end
           else if not OnlyAfterRaising then
+          begin
             AddRisky(Field, Callee, False);
+          end;
         end;
         if not QuietCreation(Statement[1]) then
+        begin
           Raiser := Callee;
+        end;
         Continue;
       end;
       // In if, case, try, Schleife oder with angelegt: auf jedem Weg wie eine einfache Zuweisung, sonst bedingt.
       if (Statement.Kind in FlowStatementKinds) and (Statement.Kind <> TSyntaxKind.AssignStatement) then
+      begin
         for Created in Fields do
+        begin
           if not Contains(Done, Created) and AssignsField(Statement, Created) then
           begin
             Done := Done + [Created];
             if not AssignsAlways(Statement, Created) then
-              AddRisky(Created, '', True)
+            begin
+              AddRisky(Created, '', True);
+            end
             else if Raiser <> '' then
-              AddRisky(Created, Raiser, False)
+            begin
+              AddRisky(Created, Raiser, False);
+            end
             else if not OnlyAfterRaising then
+            begin
               AddRisky(Created, RaisingCall(Statement), False);
+            end;
           end;
+        end;
+      end;
       Callee := RaisingCall(Statement);
       if Callee <> '' then
+      begin
         Raiser := Callee;
+      end;
     end;
   end;
 
@@ -2554,11 +3153,13 @@ var
     Item: TNilAtDestroy;
   begin
     for Item in Risky do
+    begin
       if SameText(Item.Field, AField) then
       begin
         AItem := Item;
         Exit(True);
       end;
+    end;
     Result := False;
   end;
 
@@ -2581,9 +3182,13 @@ var
           E := Pending.Pop;
           if (E.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.Call]) and (E.ChildCount > 0) and
             SameText(FreedPath(E[0]), AName) then
+          begin
             Exit(True);
+          end;
           for Index := E.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(E[Index]);
+          end;
         end;
       finally
         Pending.Free;
@@ -2602,15 +3207,21 @@ var
     Callers: Integer;
   begin
     if not Contains(PrivateMethods, MethodOf(ARoutine)) then
+    begin
       Exit(False);
+    end;
     Callers := 0;
     for Other in Routines do
+    begin
       if (Other <> ARoutine) and Calls(Other, MethodOf(ARoutine)) then
       begin
         if not SameText(ClassOf(Other), QualifiedClass) or not StartsWithWord(Other, 'destructor') then
+        begin
           Exit(False);
+        end;
         Inc(Callers);
       end;
+    end;
     Result := Callers > 0;
   end;
 
@@ -2621,7 +3232,9 @@ var
   begin
     Start := ANode.StartOffset;
     while (Start > 0) and CharInSet(AContext.Text[Start], [' ', #9]) do
+    begin
       Dec(Start);
+    end;
     AIndent := Copy(AContext.Text, Start + 1, ANode.StartOffset - Start);
     Result := (Start = 0) or CharInSet(AContext.Text[Start], [#10, #13]);
   end;
@@ -2634,7 +3247,9 @@ var
     Result := nil;
     if (AStatement.Parent = nil) or (AStatement.Parent.Kind <> TSyntaxKind.Block) or
       (AStatement.StartPos.Line <> AStatement.EndPos.Line) or not Indent(AStatement, Outer) then
+    begin
       Exit;
+    end;
     Result := [TRuleFix.Create(Format('In if Assigned(%s) then einschließen', [AField]),
       [TRuleEdit.Create(NodeRange(AStatement), Format('if Assigned(%s) then', [AField]) + LineBreak + Outer + '  ' +
       Trim(Text(AStatement)))])];
@@ -2651,8 +3266,12 @@ var
     begin
       Checked := Checked + [AName];
       for Item in Implications do
+      begin
         if SameText(Item.Guard, AName) then
+        begin
           Checked := Checked + Item.Implied;
+        end;
+      end;
     end;
 
     // Assigned(X), X <> nil, X = nil in E sammeln: danach gilt X als geprüft.
@@ -2671,14 +3290,24 @@ var
           E := Pending.Pop;
           if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and IsName(E[0], 'Assigned') and
             (FreedPath(E[1]) <> '') then
+          begin
             AddChecked(FreedPath(E[1]));
+          end;
           if (E.Kind = TSyntaxKind.BinaryExpr) and (E.ChildCount = 2) then
+          begin
             for Index := 0 to 1 do
+            begin
               if (FreedPath(E[Index]) <> '') and (E[1 - Index].Kind = TSyntaxKind.Literal) and
                 SameText(E[1 - Index].Name, 'nil') then
+              begin
                 AddChecked(FreedPath(E[Index]));
+              end;
+            end;
+          end;
           for Index := E.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(E[Index]);
+          end;
         end;
       finally
         Pending.Free;
@@ -2693,10 +3322,14 @@ var
       case ANode.Kind of
         TSyntaxKind.ParenExpr:
           if ANode.ChildCount = 1 then
+          begin
             CollectShortCircuit(ANode[0]);
+          end;
         TSyntaxKind.Call:
           if (ANode.ChildCount = 2) and IsName(ANode[0], 'Assigned') and (FreedPath(ANode[1]) <> '') then
+          begin
             AddChecked(FreedPath(ANode[1]));
+          end;
         TSyntaxKind.BinaryExpr:
           if ANode.ChildCount = 2 then
           begin
@@ -2706,10 +3339,16 @@ var
               CollectShortCircuit(ANode[1]);
             end
             else if ANode.Name = '<>' then
+            begin
               for Index := 0 to 1 do
+              begin
                 if (FreedPath(ANode[Index]) <> '') and (ANode[1 - Index].Kind = TSyntaxKind.Literal) and
                   SameText(ANode[1 - Index].Name, 'nil') then
+                begin
                   AddChecked(FreedPath(ANode[Index]));
+                end;
+              end;
+            end;
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -2737,20 +3376,34 @@ var
           E := Pending.Pop;
           Statement := PendingStatement.Pop;
           if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+          begin
             Continue;
+          end;
           if E.Kind in FlowStatementKinds + [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement] then
+          begin
             Statement := E;
+          end;
           // if Assigned(FFeld) then …, while FFeld <> nil do …: die Bedingung schützt alles danach.
           if E.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
             TSyntaxKind.CaseStatement] then
+          begin
             for Index := 0 to E.ChildCount - 1 do
+            begin
               if not (E[Index].Kind in FlowStatementKinds) then
+              begin
                 CollectChecks(E[Index]);
+              end;
+            end;
+          end;
           if (E.Kind = TSyntaxKind.BinaryExpr) and SameText(E.Name, 'and') and (E.ChildCount = 2) then
+          begin
             CollectShortCircuit(E[0]);
+          end;
           // Neu zugewiesen im Destruktor: der Wert stammt nicht mehr aus dem Konstruktor.
           if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and (FreedPath(E[0]) <> '') then
+          begin
             Checked := Checked + [FreedPath(E[0])];
+          end;
           if (E.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference]) and
             (E.ChildCount > 0) then
           begin
@@ -2763,11 +3416,15 @@ var
               Reported := Reported + [Field + '@' + IntToStr(Statement.StartOffset)];
               Access := Trim(Text(E));
               if Item.Conditional then
+              begin
                 Message := Format('%s wird im Konstruktor nur bedingt angelegt und kann beim Destruktor nil sein; ' +
-                  '%s stürzt dann ab.', [Field, Access])
+                  '%s stürzt dann ab.', [Field, Access]);
+              end
               else
+              begin
                 Message := Format('Wirft %s, ist %s beim Destruktor noch nil; %s stürzt ab und verdeckt die ' +
                   'eigentliche Exception.', [Item.Raiser, Field, Access]);
+              end;
               AReport.Add(NodeRange(E), Message, TRuleConfidence.High, GuardFix(Statement, Field));
             end;
           end;
@@ -2788,7 +3445,9 @@ var
   begin
     Body := ARoutine.FindChild(TSyntaxKind.Block);
     if Body = nil then
+    begin
       Exit;
+    end;
     Checked := nil;
     Reported := nil;
     Visit(Body);
@@ -2800,11 +3459,15 @@ var
   Classes: TArray<string>;
 begin
   if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'destructor') then
+  begin
     Exit;
+  end;
   OnlyAfterRaising := TRuleOptions.Bool(AContext.Options, 'onlyAfterRaisingCode', True);
   LineBreak := #10;
   if Pos(#13#10, AContext.Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Routines := TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext);
   CollectQuietLocals;
   Classes := nil;
@@ -2812,28 +3475,44 @@ begin
   begin
     QualifiedClass := ClassOf(Routine);
     if (QualifiedClass = '') or Contains(Classes, QualifiedClass) or not StartsWithWord(Routine, 'destructor') then
+    begin
       Continue;
+    end;
     Classes := Classes + [QualifiedClass];
     ClassName := Copy(QualifiedClass, LastDelimiter('.', QualifiedClass) + 1, MaxInt);
     if Pos('<', ClassName) > 0 then
+    begin
       ClassName := Copy(ClassName, 1, Pos('<', ClassName) - 1);
+    end;
     Fields := ClassFields(FindClassType(AContext.Tree.Root, ClassName));
     if Fields = nil then
+    begin
       Continue;
+    end;
     PrivateMethods := PrivateOf(FindClassType(AContext.Tree.Root, ClassName));
     Risky := nil;
     Implications := nil;
     for Other in Routines do
+    begin
       if SameText(ClassOf(Other), QualifiedClass) and StartsWithWord(Other, 'constructor') then
+      begin
         ScanConstructor(Other);
+      end;
+    end;
     if Risky = nil then
+    begin
       Continue;
+    end;
     // Destruktoren und Methoden, die nur sie aufrufen; BeforeDestruction läuft nach einer Exception im
     // Konstruktor nicht.
     for Other in Routines do
+    begin
       if SameText(ClassOf(Other), QualifiedClass) and (StartsWithWord(Other, 'destructor') or
         (not StartsWithWord(Other, 'constructor') and OnlyCalledFromDestructor(Other))) then
+      begin
         CheckBody(Other);
+      end;
+    end;
   end;
 end;
 
@@ -2917,16 +3596,24 @@ var
 begin
   Result := nil;
   for Open in BuiltinHandlePairs do
+  begin
     Result := Result + [Open];
+  end;
   if Trim(AOptions) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     List := TJSONObject(Value).GetValue('pairs');
     if not (List is TJSONArray) then
+    begin
       Exit;
+    end;
     for Item in TJSONArray(List) do
     begin
       Open := '';
@@ -2941,12 +3628,16 @@ begin
       begin
         if not TJSONObject(Item).TryGetValue<string>('open', Open) or
           not TJSONObject(Item).TryGetValue<string>('close', Close) then
+        begin
           Continue;
+        end;
         Open := Trim(Open);
         Close := Trim(Close);
       end;
       if (Open <> '') and (Close <> '') and IsValidIdent(Open, True) and IsValidIdent(Close, True) then
+      begin
         Result := Result + [Open + '|r|' + Close + '(%h)'];
+      end;
     end;
   finally
     Value.Free;
@@ -2971,8 +3662,12 @@ var
     Item: string;
   begin
     for Item in AList do
+    begin
       if SameText(Item, AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -2983,14 +3678,20 @@ var
   begin
     Result := '';
     if (ACall.Kind <> TSyntaxKind.Call) or (ACall.ChildCount = 0) then
+    begin
       Exit;
+    end;
     Callee := ACall[0];
     if Callee.Kind = TSyntaxKind.Identifier then
-      Result := Callee.Name
+    begin
+      Result := Callee.Name;
+    end
     else if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) and
       MatchText(Trim(Text(Callee[0])), ['Windows', 'Winapi.Windows', 'ShellAPI', 'Winapi.ShellAPI', 'TlHelp32',
       'Winapi.TlHelp32', 'WinSvc', 'Winapi.WinSvc']) then
+    begin
       Result := Callee.Name;
+    end;
   end;
 
   // Gleicher Name, auch mit A/W-Endung (CreateFileW).
@@ -3005,11 +3706,13 @@ var
     Pair: THandlePair;
   begin
     for Pair in Table do
+    begin
       if SameRoutine(AName, Pair.Open) then
       begin
         APair := Pair;
         Exit(True);
       end;
+    end;
     Result := False;
   end;
 
@@ -3018,17 +3721,23 @@ var
   begin
     Result := '';
     if ANode.Kind = TSyntaxKind.Identifier then
-      Result := ANode.Name
+    begin
+      Result := ANode.Name;
+    end
     else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
       (ANode[0].Kind = TSyntaxKind.Identifier) then
+    begin
       Result := ANode[0].Name + '.' + ANode.Name;
+    end;
   end;
 
   function CloseText(const APair: THandlePair; ACall: TSyntaxNode; const APath: string): string;
   begin
     Result := StringReplace(APair.Close, '%h', APath, [rfReplaceAll]);
     if (Pos('%0', Result) > 0) and (ACall.ChildCount > 1) then
+    begin
       Result := StringReplace(Result, '%0', Trim(Text(ACall[1])), [rfReplaceAll]);
+    end;
   end;
 
   // Handles, die ACall öffnet; ATarget ist das Ziel einer Zuweisung (nil ohne).
@@ -3042,7 +3751,9 @@ var
   begin
     AHandles := nil;
     if not PairOf(CallName(ACall), Pair) then
+    begin
       Exit(False);
+    end;
     Handle.CloseName := Copy(Pair.Close, 1, Pos('(', Pair.Close) - 1);
     if Pair.Where = 'r' then
     begin
@@ -3068,10 +3779,14 @@ var
       begin
         Index := StrToIntDef(Part, -1) + 1;
         if (Index < 1) or (Index >= ACall.ChildCount) then
+        begin
           Continue;
+        end;
         Arg := PathOf(ACall[Index]);
         if (Arg = '') or (Pos('.', Arg) > 0) or not Contains(Locals, Arg) then
+        begin
           Continue;
+        end;
         Handle.Root := Arg;
         if Fields = nil then
         begin
@@ -3080,12 +3795,14 @@ var
           AHandles := AHandles + [Handle];
         end
         else
+        begin
           for Field in Fields do
           begin
             Handle.Path := Arg + '.' + Field;
             Handle.CloseText := CloseText(Pair, ACall, Handle.Path);
             AHandles := AHandles + [Handle];
           end;
+        end;
       end;
     end;
     Result := AHandles <> nil;
@@ -3097,12 +3814,18 @@ var
   begin
     Result := nil;
     if ANode.Syntax = nil then
+    begin
       Exit;
+    end;
     if ANode.Syntax.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement,
       TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.WithStatement] then
-      Result := [ANode.Syntax]
+    begin
+      Result := [ANode.Syntax];
+    end
     else if ANode.Kind = TFlowNodeKind.Condition then
+    begin
       Result := OwnParts(ANode.Syntax);
+    end;
   end;
 
   // Schließt E das Handle (CloseHandle(PI.hProcess), ReleaseDC(Wnd, DC))?
@@ -3121,13 +3844,23 @@ var
       begin
         E := Pending.Pop;
         if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         if (E.Kind = TSyntaxKind.Call) and SameRoutine(CallName(E), AHandle.CloseName) then
+        begin
           for Index := 1 to E.ChildCount - 1 do
+          begin
             if SameText(PathOf(E[Index]), AHandle.Path) then
+            begin
               Exit(True);
+            end;
+          end;
+        end;
         for Index := E.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(E[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3152,9 +3885,13 @@ var
         if (E.Kind = TSyntaxKind.Identifier) and SameText(E.Name, AHandle.Root) and
           ((E.Parent = nil) or (E.Parent.Kind <> TSyntaxKind.MemberAccess) or (E.Parent[0] <> E) or
           SameText(PathOf(E.Parent), AHandle.Path) or (Pos('.', AHandle.Path) = 0)) then
+        begin
           Exit(True);
+        end;
         for Index := E.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(E[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3169,15 +3906,23 @@ var
     while True do
     begin
       if SameText(PathOf(E), AHandle.Path) or ((E.Kind = TSyntaxKind.Identifier) and SameText(E.Name, AHandle.Root)) then
+      begin
         Exit(True);
+      end;
       if (E.Kind = TSyntaxKind.ParenExpr) and (E.ChildCount = 1) then
-        E := E[0]
+      begin
+        E := E[0];
+      end
       else if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and (E[0].Kind = TSyntaxKind.Identifier) and
         MatchText(E[0].Name, ['THandle', 'HWND', 'HMODULE', 'HKEY', 'HDC', 'HGDIOBJ', 'Integer', 'Cardinal',
         'NativeInt', 'NativeUInt', 'Pointer', 'UIntPtr', 'IntPtr']) then
-        E := E[1]
+      begin
+        E := E[1];
+      end
       else
+      begin
         Exit;
+      end;
     end;
   end;
 
@@ -3201,35 +3946,60 @@ var
         if E.Kind = TSyntaxKind.AnonymousMethod then
         begin
           if Mentions(E, AHandle) then
+          begin
             Exit(True);
+          end;
           Continue;
         end;
         if E.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Continue;
-        if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and IsHandleValue(E[1], AHandle) then
+        end;
+        // [H] in einem Ausdruck (Handles := Handles + [H]): Das Handle landet in einem Array.
+        if (E.Kind = TSyntaxKind.SetConstructor) and Mentions(E, AHandle) then
+        begin
           Exit(True);
+        end;
+        if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and IsHandleValue(E[1], AHandle) then
+        begin
+          Exit(True);
+        end;
         // @Funktion := GetProcAddress(Modul, …) in eine Variable außerhalb der Routine: Das Modul muss geladen
         // bleiben, solange jemand den Zeiger aufrufen kann.
         if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and (E[1].Kind = TSyntaxKind.Call) and
           SameRoutine(CallName(E[1]), 'GetProcAddress') and Mentions(E[1], AHandle) and
           not Contains(Locals, RootName(E[0])) then
+        begin
           Exit(True);
+        end;
         if (E.Kind = TSyntaxKind.InlineVar) and (E.ChildCount > 0) and IsHandleValue(E[E.ChildCount - 1], AHandle) then
+        begin
           Exit(True);
+        end;
         if (E.Kind = TSyntaxKind.WithStatement) and Mentions(E, AHandle) then
+        begin
           Exit(True);
+        end;
         if (E.Kind = TSyntaxKind.Call) and (E <> AOpenCall) then
         begin
           Name := CallName(E);
           if SameText(Name, 'Exit') or not (MatchText(Name, HandleUsers) or SameRoutine(Name, AHandle.CloseName) or
             MatchText(Name, ['Win32Check', 'CheckOSError', 'Assigned', 'Ord', 'Integer', 'Cardinal', 'NativeInt',
             'NativeUInt', 'THandle', 'IntToStr', 'IntToHex', 'Format'])) then
+          begin
             for Index := 1 to E.ChildCount - 1 do
+            begin
               if Mentions(E[Index], AHandle) then
+              begin
                 Exit(True);
+              end;
+            end;
+          end;
         end;
         for Index := E.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(E[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3252,24 +4022,32 @@ var
   begin
     Result := 0;
     if not MatchText(E.Name, ['=', '<>']) then
+    begin
       Exit;
+    end;
     for Index := 0 to 1 do
+    begin
       if (SameText(PathOf(E[Index]), AHandle.Path) or (E[Index] = AOpenCall)) then
       begin
         // RegOpenKeyEx(…) = ERROR_SUCCESS
         if (E[1 - Index].Kind = TSyntaxKind.Identifier) and SameText(E[1 - Index].Name, 'ERROR_SUCCESS') then
         begin
           if E.Name = '=' then
+          begin
             Exit(1);
+          end;
           Exit(-1);
         end;
         if IsFailureValue(E[1 - Index]) then
         begin
           if E.Name = '=' then
+          begin
             Exit(-1);
+          end;
           Exit(1);
         end;
       end;
+    end;
   end;
 
   function Success(ARoot: TSyntaxNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode): Integer;
@@ -3293,18 +4071,26 @@ var
         if Entry.Done then
         begin
           if E.Kind = TSyntaxKind.ParenExpr then
-            Value := Values.Pop
+          begin
+            Value := Values.Pop;
+          end
           else if E.Kind = TSyntaxKind.UnaryExpr then
-            Value := -Values.Pop
+          begin
+            Value := -Values.Pop;
+          end
           else
           begin
             Right := Values.Pop;
             Left := Values.Pop;
             Value := 0;
             if SameText(E.Name, 'and') and ((Left > 0) or (Right > 0)) then
-              Value := 1
+            begin
+              Value := 1;
+            end
             else if SameText(E.Name, 'or') and ((Left < 0) or (Right < 0)) then
+            begin
               Value := -1;
+            end;
           end;
           Values.Push(Value);
           Continue;
@@ -3327,7 +4113,9 @@ var
         end
         // if CreateProcess(…) then, Win32Check(…)
         else if E = AOpenCall then
-          Value := 1
+        begin
+          Value := 1;
+        end
         else if (E.Kind = TSyntaxKind.BinaryExpr) and (E.ChildCount = 2) then
         begin
           Value := ComparisonSuccess(E, AOpenCall, AHandle);
@@ -3370,25 +4158,37 @@ var
     begin
       Condition := nil;
       for Index := 0 to ANode.Syntax.ChildCount - 1 do
+      begin
         if not (ANode.Syntax[Index].Kind in FlowStatementKinds) then
         begin
           if Condition = nil then
+          begin
             Condition := ANode.Syntax[Index];
+          end;
         end
         else if ThenPart = nil then
+        begin
           ThenPart := ANode.Syntax[Index];
+        end;
+      end;
       if Condition <> nil then
+      begin
         Verdict := Success(Condition, AHandle, AOpenCall);
+      end;
     end;
     for Next in ANode.Successors do
     begin
       if ANode.IsImplicitRaiseEdge(Next) or (Next = Graph.RaiseExit) then
+      begin
         Continue;
+      end;
       if Verdict <> 0 then
       begin
         IsThen := (Next.Syntax <> nil) and InRange(Next.Syntax, ThenPart);
         if IsThen <> (Verdict > 0) then
+        begin
           Continue;
+        end;
       end;
       Result := Result + [Next];
     end;
@@ -3413,21 +4213,35 @@ var
       Current := Queue[Head];
       Inc(Head);
       if Visited[Current.Index] or (Current = AOpen) then
+      begin
         Continue;
+      end;
       Visited[Current.Index] := True;
       if Current = Graph.ExitNode then
+      begin
         Exit(True);
+      end;
       Stop := False;
       if Current.Syntax <> nil then
+      begin
         for Part in Parts(Current) do
+        begin
           if Closes(Part, AHandle) or PassesOn(Part, AHandle, AOpenCall) then
+          begin
             Stop := True;
+          end;
+        end;
+      end;
       // Neue Zuweisung an das Handle: das alte wird hier nicht weiter verfolgt.
       if not Stop and (Current.Syntax <> nil) and (Current.Syntax.Kind = TSyntaxKind.AssignStatement) and
         (Current.Syntax.ChildCount = 2) and SameText(PathOf(Current.Syntax[0]), AHandle.Path) then
+      begin
         Stop := True;
+      end;
       if Stop then
+      begin
         Continue;
+      end;
       Queue := Queue + Followed(Current, AHandle, AOpenCall);
     end;
   end;
@@ -3448,7 +4262,9 @@ var
   begin
     Start := ANode.StartOffset;
     while (Start > 0) and CharInSet(AContext.Text[Start], [' ', #9]) do
+    begin
       Dec(Start);
+    end;
     AIndent := Copy(AContext.Text, Start + 1, ANode.StartOffset - Start);
     ALineStart := Start;
     Result := (Start = 0) or CharInSet(AContext.Text[Start], [#10, #13]);
@@ -3461,11 +4277,13 @@ var
     Line := 0;
     LineStart := 0;
     for Index := 1 to AOffset do
+    begin
       if AContext.Text[Index] = #10 then
       begin
         Inc(Line);
         LineStart := Index;
       end;
+    end;
     Result := TTextPosition.Create(Line, AOffset - LineStart);
   end;
 
@@ -3480,26 +4298,40 @@ var
     Result := nil;
     Block := AStatement.Parent;
     if (Block = nil) or (Block.Kind <> TSyntaxKind.Block) then
+    begin
       Exit;
+    end;
     Position := -1;
     for Index := 0 to Block.ChildCount - 1 do
+    begin
       if Block[Index] = AStatement then
+      begin
         Position := Index;
+      end;
+    end;
     if Position < 0 then
+    begin
       Exit;
+    end;
     Closing := '';
     // Umgekehrte Reihenfolge: zuletzt geöffnet, zuerst geschlossen (PI.hThread vor PI.hProcess).
     for Index := High(AHandles) downto 0 do
+    begin
       Closing := Closing + '%s  ' + AHandles[Index].CloseText + ';' + LineBreak;
+    end;
     if not Indent(AStatement, Outer, LineStart) then
+    begin
       Exit;
+    end;
     Closing := StringReplace(Closing, '%s', Outer, [rfReplaceAll]);
     if Position = Block.ChildCount - 1 then
     begin
       // Nichts danach: nur das Schließen anhängen.
       Body := '';
       for Index := High(AHandles) downto 0 do
+      begin
         Body := Body + ';' + LineBreak + Outer + AHandles[Index].CloseText;
+      end;
       Result := [TRuleFix.Create(Format('%s ergänzen', [AHandles[0].CloseName]),
         [TRuleEdit.Create(TTextRange.Create(AStatement.EndPos, AStatement.EndPos), Body)])];
       Exit;
@@ -3507,17 +4339,27 @@ var
     First := Block[Position + 1];
     Last := Block[Block.ChildCount - 1];
     if (First.Kind = TSyntaxKind.EmptyStatement) or not Indent(First, Body, LineStart) then
+    begin
       Exit;
+    end;
     Body := '';
     Lines := Copy(AContext.Text, LineStart + 1, Last.EndOffset - LineStart).Replace(#13#10, #10).Split([#10]);
     for Line in Lines do
+    begin
       if Trim(Line) = '' then
-        Body := Body + LineBreak
+      begin
+        Body := Body + LineBreak;
+      end
       else
+      begin
         Body := Body + '  ' + Line + LineBreak;
+      end;
+    end;
     // Die letzte Anweisung endet vor ihrem Semikolon; das alte Semikolon steht danach hinter end.
     if not Body.TrimRight.EndsWith(';') then
+    begin
       Body := Body.TrimRight + ';' + LineBreak;
+    end;
     Result := [TRuleFix.Create(Format('In try … finally %s einschließen', [AHandles[0].CloseName]),
       [TRuleEdit.Create(TTextRange.Create(PositionAt(LineStart), Last.EndPos),
       Outer + 'try' + LineBreak + Body + Outer + 'finally' + LineBreak + Closing + Outer + 'end')])];
@@ -3539,12 +4381,20 @@ var
       begin
         E := Pending.Pop;
         if (E <> ARoutine) and (E.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+        begin
           Continue;
+        end;
         if E.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+        begin
           for Name in E.Name.Split([',']) do
+          begin
             Result := Result + [Trim(Name)];
+          end;
+        end;
         for Index := E.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(E[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3567,14 +4417,18 @@ var
       begin
         E := Pending.Pop;
         if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         if (E.Kind = TSyntaxKind.Call) and PairOf(CallName(E), Pair) then
         begin
           ACalls := ACalls + [E];
           ATargets := ATargets + [''];
         end;
         for Index := E.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(E[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3596,7 +4450,9 @@ var
   Fixes: TArray<TRuleFix>;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Table := nil;
   for Pair in Pairs(AContext.Options) do
   begin
@@ -3608,70 +4464,102 @@ begin
   end;
   LineBreak := #10;
   if Pos(#13#10, AContext.Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Cache := TRuleDerived.Open(AContext);
   for Routine in TRuleDerived.Routines(Cache, AContext) do
   begin
     Locals := CollectLocals(Routine);
     if Locals = nil then
+    begin
       Continue;
+    end;
     Graph := TRuleDerived.Graph(Cache, AContext, Routine);
     if not Graph.Complete then
+    begin
       Continue;
+    end;
     for Node in Graph.Nodes do
     begin
       if (Node.Syntax = nil) or not (Node.Kind in [TFlowNodeKind.Statement, TFlowNodeKind.Condition]) then
+      begin
         Continue;
+      end;
       Calls := nil;
       Targets := nil;
       // with: die Anweisungen darin sind eigene Knoten.
       if Node.Syntax.Kind = TSyntaxKind.WithStatement then
+      begin
         Continue;
+      end;
       for Part in Parts(Node) do
       begin
         First := Length(Calls);
         CollectOpens(Part, Calls, Targets);
         // H := CreateFile(…) bzw. var H := CreateFile(…): das Ziel nimmt das Handle auf.
         for Index := First to High(Calls) do
+        begin
           if (Part.Kind = TSyntaxKind.AssignStatement) and (Part.ChildCount = 2) and (Calls[Index] = Part[1]) and
             (Part[0].Kind = TSyntaxKind.Identifier) then
-            Targets[Index] := Part[0].Name
+          begin
+            Targets[Index] := Part[0].Name;
+          end
           else if (Part.Kind = TSyntaxKind.InlineVar) and (Calls[Index].Parent = Part) then
+          begin
             Targets[Index] := Trim(Part.Name);
+          end;
+        end;
       end;
       for Index := 0 to High(Calls) do
       begin
         if not Opened(Calls[Index], Targets[Index], Handles) then
+        begin
           Continue;
+        end;
         Leaked := nil;
         Never := True;
         for Handle in Handles do
+        begin
           if LeaksFrom(Node, Handle, Calls[Index]) then
           begin
             Leaked := Leaked + [Handle];
             Never := Never and not ClosedAnywhere(Routine, Handle);
           end;
+        end;
         if Leaked = nil then
+        begin
           Continue;
+        end;
         Names := '';
         for Handle in Leaked do
         begin
           if Names <> '' then
+          begin
             Names := Names + ' und ';
+          end;
           Names := Names + Handle.Path;
         end;
         Verb := 'wird';
         if Length(Leaked) > 1 then
+        begin
           Verb := 'werden';
+        end;
         if Never then
-          Message := Format('%s %s nie mit %s geschlossen (Handle-Leck).', [Names, Verb, Leaked[0].CloseName])
+        begin
+          Message := Format('%s %s nie mit %s geschlossen (Handle-Leck).', [Names, Verb, Leaked[0].CloseName]);
+        end
         else
+        begin
           Message := Format('%s %s nicht auf jedem Weg mit %s geschlossen (Handle-Leck).',
             [Names, Verb, Leaked[0].CloseName]);
+        end;
         Fixes := nil;
         Statement := Node.Syntax;
         if Never and (Node.Kind = TFlowNodeKind.Statement) and (Statement.StartPos.Line = Statement.EndPos.Line) then
+        begin
           Fixes := WrapFix(Statement, Leaked);
+        end;
         AReport.Add(NodeRange(Calls[Index]), Message, TRuleConfidence.Medium, Fixes);
       end;
     end;
@@ -3711,13 +4599,23 @@ begin
     begin
       Node := Pending.Pop;
       if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+      begin
         Continue;
+      end;
       if Node.Kind = TSyntaxKind.Call then
+      begin
         for Index := 1 to Node.ChildCount - 1 do
+        begin
           if (Node[Index].Kind <> TSyntaxKind.Identifier) and SameText(RootName(Node[Index]), AName) then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -3753,9 +4651,11 @@ var
   begin
     Result := '';
     if ANode <> nil then
+    begin
       Result := LowerCase(StringReplace(StringReplace(StringReplace(Copy(AContext.Text, ANode.StartOffset + 1,
         ANode.EndOffset - ANode.StartOffset), ' ', '', [rfReplaceAll]), #13, '', [rfReplaceAll]), #10, '',
         [rfReplaceAll]));
+    end;
   end;
 
   // Das Token "out" vor dem Parameter mit den Namen ANames in AParams.
@@ -3766,19 +4666,25 @@ var
   begin
     Result := False;
     for Inner := 0 to AParams.ChildCount - 1 do
+    begin
       if (AParams[Inner].Kind = TSyntaxKind.Parameter) and SameText(AParams[Inner].Name, ANames) and
         (AParams[Inner].Modifier = TParameterModifier.OutParam) then
+      begin
         for mIndex := AContext.Tree.FirstTokenFrom(AParams[Inner].StartOffset) to High(AContext.Tree.Tokens) do
         begin
           Token := AContext.Tree.Tokens[mIndex];
           if Token.Offset >= AParams[Inner].EndOffset then
+          begin
             Break;
+          end;
           if (Token.Offset >= AParams[Inner].StartOffset) and SameText(Token.Text, 'out') then
           begin
             AToken := Token;
             Exit(True);
           end;
         end;
+      end;
+    end;
   end;
 
   // out -> var in der Implementierung und in jeder Deklaration mit gleicher Parameterliste.
@@ -3811,17 +4717,23 @@ var
           Node := Pending.Pop;
           Owner := PendingOwner.Pop;
           if Node.Kind = TSyntaxKind.TypeDecl then
+          begin
             Owner := Node.Name;
+          end;
           if (Node.Kind = TSyntaxKind.RoutineHeader) and (Node <> Header) and SameText(ShortOf(Node.Name), Short) and
             SameText(Owner, ClassPart) then
           begin
             Other := Node.FindChild(TSyntaxKind.Parameters);
             if (Other <> nil) and (Collapsed(Other) = Key) and OutToken(Other, ANames, Found) then
+            begin
               Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Found.StartPos, Found.EndPos), 'var')];
+            end;
           end;
           // Rümpfe anderer Routinen enthalten keine Deklarationen dieser Routine.
           if Node.Kind = TSyntaxKind.Block then
+          begin
             Continue;
+          end;
           for Child := Node.ChildCount - 1 downto 0 do
           begin
             Pending.Push(Node[Child]);
@@ -3841,13 +4753,19 @@ var
     Short := ShortOf(Routine.Name);
     ClassPart := Copy(Routine.Name, 1, Length(Routine.Name) - Length(Short) - 1);
     if Pos('<', ClassPart) > 0 then
+    begin
       ClassPart := Copy(ClassPart, 1, Pos('<', ClassPart) - 1);
+    end;
     // Deklarationen stehen vor der Implementierung; die Änderungen bleiben nach Stelle sortiert.
     Declarations(AContext.Tree.Root);
     if OutToken(Params, ANames, Token) then
+    begin
       Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), 'var')];
+    end;
     if Edits <> nil then
+    begin
       Result := [TRuleFix.Create('out durch var ersetzen', Edits)];
+    end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode; const ANames: string);
@@ -3866,7 +4784,9 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        begin
           Continue;
+        end;
         if IsName(Node, Name) and not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.AssignStatement) and
           (Node.Parent.ChildCount > 0) and (Node.Parent[0] = Node)) then
         begin
@@ -3875,9 +4795,13 @@ var
             Graph.ReachingDefinitions(Flow, Name).FromEntry then
           begin
             if IsManagedParamType(TypeName) then
-              Detail := Format('bei %s ist er hier immer leer.', [TypeName])
+            begin
+              Detail := Format('bei %s ist er hier immer leer.', [TypeName]);
+            end
             else
+            begin
               Detail := 'sein Wert ist hier undefiniert.';
+            end;
             AReport.Add(NodeRange(Node), Format('out-Parameter %s wird gelesen, bevor er gesetzt ist; %s',
               [Name, Detail]), TRuleConfidence.High, Fix(ANames));
             Reported := True;
@@ -3885,7 +4809,9 @@ var
           end;
         end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -3894,7 +4820,9 @@ var
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Routines := TRuleDerived.Routines(Cache, AContext);
   for Routine in Routines do
@@ -3902,27 +4830,41 @@ begin
     Block := Routine.FindChild(TSyntaxKind.Block);
     Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
     if (Block = nil) or (Header = nil) then
+    begin
       Continue;
+    end;
     Params := Header.FindChild(TSyntaxKind.Parameters);
     if Params = nil then
+    begin
       Continue;
+    end;
     Graph := nil;
     for Index := 0 to Params.ChildCount - 1 do
     begin
       Param := Params[Index];
       if (Param.Kind <> TSyntaxKind.Parameter) or (Param.Modifier <> TParameterModifier.OutParam) then
+      begin
         Continue;
+      end;
       TypeName := '';
       if Param.FindChild(TSyntaxKind.TypeReference) <> nil then
+      begin
         TypeName := Param.FindChild(TSyntaxKind.TypeReference).Name;
+      end;
       for Name in Param.Name.Split([',']) do
       begin
         if HasOpaqueUse(Block, Name.Trim) or PassesPart(Block, Name.Trim) then
+        begin
           Continue;
+        end;
         if Graph = nil then
+        begin
           Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+        end;
         if not Graph.Complete then
+        begin
           Break;
+        end;
         Reported := False;
         Visit(Block, Param.Name);
       end;
@@ -3944,12 +4886,20 @@ begin
   Result := '';
   mDepth := 0;
   for mIndex := 1 to Length(AName) do
+  begin
     if AName[mIndex] = '<' then
-      Inc(mDepth)
+    begin
+      Inc(mDepth);
+    end
     else if AName[mIndex] = '>' then
-      Dec(mDepth)
+    begin
+      Dec(mDepth);
+    end
     else if mDepth = 0 then
+    begin
       Result := Result + AName[mIndex];
+    end;
+  end;
   Result := LowerCase(Result);
 end;
 
@@ -3958,9 +4908,15 @@ var
   mIndex: Integer;
 begin
   if AHeader <> nil then
+  begin
     for mIndex := 0 to AHeader.ChildCount - 1 do
+    begin
       if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, 'noreturn') then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -3971,14 +4927,22 @@ var
   mParent: TSyntaxNode;
 begin
   if (AHeader.Parent <> nil) and (AHeader.Parent.Kind = TSyntaxKind.RoutineDecl) then
+  begin
     Exit(WithoutTypeParams(AHeader.Parent.Name));
+  end;
   mParent := AHeader.Parent;
   while (mParent <> nil) and (mParent.Kind <> TSyntaxKind.TypeDecl) do
+  begin
     mParent := mParent.Parent;
+  end;
   if mParent = nil then
-    Result := WithoutTypeParams(AHeader.Name)
+  begin
+    Result := WithoutTypeParams(AHeader.Name);
+  end
   else
+  begin
     Result := WithoutTypeParams(mParent.Name + '.' + AHeader.Name);
+  end;
 end;
 
 /// <summary>Exit oder Exit(Wert) als eigene Anweisung (nicht TMonitor.Exit).</summary>
@@ -3988,10 +4952,14 @@ var
 begin
   Result := False;
   if (ASyntax = nil) or (ASyntax.Kind <> TSyntaxKind.CallStatement) or (ASyntax.ChildCount = 0) then
+  begin
     Exit;
+  end;
   mCallee := ASyntax[0];
   if (mCallee.Kind = TSyntaxKind.Call) and (mCallee.ChildCount > 0) then
+  begin
     mCallee := mCallee[0];
+  end;
   Result := IsName(mCallee, 'Exit');
 end;
 
@@ -4026,9 +4994,13 @@ var
       begin
         mNode := mPending.Pop;
         for mIndex := 0 to mNode.ChildCount - 1 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
         if mNode.Kind <> TSyntaxKind.RoutineHeader then
+        begin
           Continue;
+        end;
         mShort := LowerCase(ShortName(HeaderFullName(mNode)));
         mKnownShort.AddOrSetValue(mShort, True);
         if HasNoreturn(mNode) then
@@ -4048,12 +5020,20 @@ var
   begin
     Result := TNoreturnCallEffect.Unknown;
     if AContext.Index = nil then
+    begin
       Exit;
+    end;
     for mLocation in AContext.Index.FindSymbols(AShort) do
+    begin
       if mLocation.Symbol.HasDirective('noreturn') then
-        Exit(TNoreturnCallEffect.Ends)
+      begin
+        Exit(TNoreturnCallEffect.Ends);
+      end
       else
+      begin
         Result := TNoreturnCallEffect.Returns;
+      end;
+    end;
   end;
 
   /// <summary>Wirkung der Anweisung ASyntax: Ends bei Halt, RunError und noreturn-Routinen, Unknown bei
@@ -4066,26 +5046,40 @@ var
   begin
     Result := TNoreturnCallEffect.Returns;
     if (ASyntax = nil) or (ASyntax.Kind <> TSyntaxKind.CallStatement) or (ASyntax.ChildCount = 0) then
+    begin
       Exit;
+    end;
     mCallee := ASyntax[0];
     if (mCallee.Kind = TSyntaxKind.Call) and (mCallee.ChildCount > 0) then
+    begin
       mCallee := mCallee[0];
+    end;
     mShort := LowerCase(mCallee.Name);
     if mCallee.Kind = TSyntaxKind.Identifier then
     begin
       if MatchText(mShort, ['halt', 'runerror']) then
+      begin
         Exit(TNoreturnCallEffect.Ends);
+      end;
       // Sprünge modelliert der Graph selbst.
       if MatchText(mShort, ['exit', 'break', 'continue', 'abort']) then
+      begin
         Exit;
+      end;
     end
     else if mCallee.Kind <> TSyntaxKind.MemberAccess then
+    begin
       Exit(TNoreturnCallEffect.Unknown);
+    end;
     if mNoreturnShort.ContainsKey(mShort) then
+    begin
       Exit(TNoreturnCallEffect.Ends);
+    end;
     if mKnownShort.ContainsKey(mShort) or
       ((mCallee.Kind = TSyntaxKind.Identifier) and TFlowSignatures.TryBuiltin(mShort, 0, mMode)) then
+    begin
       Exit;
+    end;
     Result := IndexEffect(mShort);
   end;
 
@@ -4109,11 +5103,13 @@ var
         mEnds := (AStopAtExit and IsExitStatement(mNode.Syntax)) or
           (CallEffect(mNode.Syntax) <> TNoreturnCallEffect.Returns);
         for mNext in mNode.Successors do
+        begin
           if not Result[mNext.Index] and (not mEnds or mNode.IsImplicitRaiseEdge(mNext)) then
           begin
             Result[mNext.Index] := True;
             mPending.Push(mNext);
           end;
+        end;
       end;
     finally
       mPending.Free;
@@ -4128,13 +5124,19 @@ var
     Result := nil;
     mSeen := Reachable(False);
     for mNode in mGraph.Nodes do
+    begin
       if mSeen[mNode.Index] and (mNode.Kind = TFlowNodeKind.Statement) and IsExitStatement(mNode.Syntax) then
+      begin
         Result := Result + [mNode];
+      end;
+    end;
   end;
 
 begin
   if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'noreturn') then
+  begin
     Exit;
+  end;
   mNoreturnFull := TDictionary<string, Boolean>.Create;
   mNoreturnShort := TDictionary<string, Boolean>.Create;
   mKnownShort := TDictionary<string, Boolean>.Create;
@@ -4145,20 +5147,28 @@ begin
     begin
       if not (HasNoreturn(mRoutine.FindChild(TSyntaxKind.RoutineHeader)) or
         mNoreturnFull.ContainsKey(WithoutTypeParams(mRoutine.Name))) then
+      begin
         Continue;
+      end;
       mGraph := TRuleDerived.Graph(mCache, AContext, mRoutine);
       if not mGraph.Complete then
+      begin
         Continue;
+      end;
       mName := ShortName(mRoutine.Name);
       mExits := ExitsReached;
       for mExit in mExits do
+      begin
         AReport.Add(NodeRange(mExit.Syntax),
           Format('Exit verlässt %s normal, obwohl die Routine noreturn ist.', [mName]), TRuleConfidence.High);
+      end;
       mToEnd := Reachable(True);
       if mToEnd[mGraph.ExitNode.Index] then
+      begin
         AReport.Add(HeaderNameRange(AContext, mRoutine),
           Format('%s kann am Ende normal zurückkehren, obwohl die Routine noreturn ist.', [mName]),
           TRuleConfidence.High);
+      end;
     end;
   finally
     mKnownShort.Free;

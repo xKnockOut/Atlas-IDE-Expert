@@ -134,13 +134,17 @@ begin
     Position.AddPair('character', TJSONNumber.Create(ACharacter));
     Arguments.AddElement(Position);
     if ASettings <> '' then
+    begin
       Arguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
+    end;
     Reply := TLspExitPoints.Execute(FStore, FIndex, nil, nil,
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := SameText(AFileName, LoaderFile);
         if Result then
+        begin
           AText := UnitLoader;
+        end;
       end,
       FSettingsFor, Arguments);
   finally
@@ -160,7 +164,9 @@ begin
   begin
     Point := Item as TJSONObject;
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Point.GetValue('kind').Value + '@' + Point.GetValue('line').Value + ':' +
       Point.GetValue('character').Value;
   end;

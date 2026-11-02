@@ -86,7 +86,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -387,7 +389,9 @@ var
 begin
   Result := '';
   for Finding in AFound do
+  begin
     Result := Result + Finding.Message + sLineBreak;
+  end;
 end;
 
 procedure TXmlDocRuleTests.CodesOnlyWhereDccReports;
@@ -407,7 +411,9 @@ begin
       'procedure Machen;'#10'begin'#10'end;'#10'end.');
     Assert.IsTrue(Length(Found) > 0, Text);
     for Finding in Found do
+    begin
       Assert.IsFalse(Pos('(wie ', Finding.Message) > 0, Text + ': ' + Finding.Message);
+    end;
   end;
   // Cm.W1204: dcc meldet W1205 einmal je Kommentar; das Endtag dahinter bleibt ohne Code.
   Found := Findings('unit U;'#10'interface'#10'/// <sum(mary>Text</sum(mary>'#10'procedure Machen;'#10 +

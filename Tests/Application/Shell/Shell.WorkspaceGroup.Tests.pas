@@ -92,7 +92,9 @@ end;
 procedure TShellWorkspaceGroupTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 
@@ -113,7 +115,7 @@ begin
   TFile.WriteAllText(Path('Kunde.pas'), KundeUnit);
   Group := NewGroup(FFolder);
   try
-    Group.Main.ProjectFile := Path('Lauf.dproj');
+    Group.Main.Setup.ProjectFile := Path('Lauf.dproj');
     Group.CacheRoot := Path('Cache');
     Group.Load('');
     Assert.IsTrue(Group.WaitForIndex(60000), 'Index fertig');

@@ -9,6 +9,7 @@ uses
   System.Generics.Collections,
   DUnitX.TestFramework,
   Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings,
   Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
   Atlas.Core.Debug.ExceptionBanner,
@@ -16,6 +17,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasAvTextsTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -340,7 +342,7 @@ begin
   Assert.IsTrue(Explanation.Active and Explanation.Busy);
   Assert.IsTrue(Explanation.Headline.StartsWith('Atlas prüft'), Explanation.Headline);
   Assert.AreEqual('', Explanation.CopyText);
-  Explanation := TAtlasAvTexts.Failed(TAtlasStrings.Text(TAtlasTextId.DebugAvNoChains), 'EAccessViolation');
+  Explanation := TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoChains), 'EAccessViolation');
   Assert.IsFalse(Explanation.Busy);
   Assert.AreEqual('Ursache nicht eindeutig', Explanation.Headline);
   Assert.AreEqual('keine Zugriffskette in der Zeile', Explanation.Detail);

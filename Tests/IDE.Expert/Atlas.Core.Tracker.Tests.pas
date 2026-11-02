@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerTargetTests = class
   public
     [Test]
@@ -31,6 +32,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerNamingTests = class
   public
     /// <summary>Abnahme: „Beginnen“ auf #753 ergibt feature/753-atlas-bereiche-und.</summary>
@@ -44,8 +46,6 @@ type
     procedure BranchNameIsValidRef;
     [Test]
     procedure BranchNameForYouTrackAndSvn;
-    [Test]
-    procedure ValidBranchNames;
     /// <summary>Commit-Muster: Vorgabe „{kennung} “, leer = unverändert, kein doppelter Präfix.</summary>
     [Test]
     procedure CommitPrefixAndPrefixed;
@@ -53,12 +53,10 @@ type
     procedure KeyOfGitHubBranch;
     [Test]
     procedure KeyOfYouTrackBranch;
-    /// <summary>#1286: issues.branchBase, sonst Hauptbranch des Projekts, sonst geraten.</summary>
-    [Test]
-    procedure BasesPreferBranchBaseThenMainBranch;
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasGitHubTrackerTests = class
   public
     [Test]
@@ -80,6 +78,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasYouTrackTrackerTests = class
   public
     /// <summary>Abnahme: dieselbe Abfrage wie in der YouTrack-Oberfläche, mit Projekt.</summary>
@@ -97,6 +96,7 @@ type
   /// <summary>Issue-Vorschau (#1264): ein Issue mit Beschreibung, Feldern, Kommentaren, Anhängen und Verweisen.
   /// </summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerDetailsTests = class
   public
     [Test]
@@ -119,6 +119,7 @@ type
   /// <summary>Checklisten (#1273): Beschreibung ungekürzt lesen und zurückschreiben (GitHub PATCH, YouTrack POST).
   /// </summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerDescriptionsTests = class
   public
     [Test]
@@ -137,6 +138,7 @@ type
   /// <summary>Abhängigkeiten und Unteraufgaben (#1279): Linktypen aus Fixtures (deutsch und englisch),
   /// Beziehungen von GitHub, Abhängigkeiten aus dem Text und die Anfragen beim Anlegen und Verknüpfen.</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerLinkProviderTests = class
   public
     [Test]
@@ -166,6 +168,7 @@ type
 
   /// <summary>Reiter „Entwicklung“ (#1269): was der Tracker zur Entwicklung eines Issues liefert.</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerDevelopmentTests = class
   public
     /// <summary>Abnahme: PR ↔ Kennung über Branch, „Closes #N“ und „#N“ im Titel, mit Zustand und Ampel.</summary>
@@ -179,6 +182,7 @@ type
 
   /// <summary>Meldungen zu meinen Issues (#1271): Änderungen seit der letzten Abfrage je Anbieter.</summary>
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerChangesTests = class
   public
     [Test]
@@ -204,6 +208,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCommitHookTests = class
   private
     FDir: string;
@@ -229,13 +234,17 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Naming,
+  Atlas.Core.Vcs.BranchNames,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommitHook,
-  Atlas.Text.Uris;
+  Atlas.Text.Uris,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang; zählt die Aufrufe.</summary>
@@ -434,21 +443,6 @@ end;
 
 { TAtlasTrackerNamingTests }
 
-procedure TAtlasTrackerNamingTests.BasesPreferBranchBaseThenMainBranch;
-var
-  mBases: TArray<string>;
-begin
-  mBases := TAtlasTrackerNaming.Bases(False, '', '');
-  Assert.AreEqual(2, Integer(Length(mBases)));
-  Assert.AreEqual('main', mBases[0]);
-  Assert.AreEqual('master', mBases[1]);
-  mBases := TAtlasTrackerNaming.Bases(True, '', '');
-  Assert.AreEqual('trunk', string.Join(',', mBases));
-  Assert.AreEqual('develop', string.Join(',', TAtlasTrackerNaming.Bases(False, '', ' develop ')));
-  Assert.AreEqual('develop', string.Join(',', TAtlasTrackerNaming.Bases(True, '', 'develop')));
-  Assert.AreEqual('release', string.Join(',', TAtlasTrackerNaming.Bases(False, 'release', 'develop')));
-end;
-
 procedure TAtlasTrackerNamingTests.BranchNameOfMockupIssue;
 begin
   Assert.AreEqual('feature/753-atlas-bereiche-und', TAtlasTrackerNaming.BranchName(
@@ -482,7 +476,7 @@ begin
   // Muster mit Leerzeichen und Zeichen, die Git verbietet.
   Name := TAtlasTrackerNaming.BranchName(' bug fix/{kennung}..{kurztitel}~^:? ', Issue('#9', 9, 'A'));
   Assert.AreEqual('bug-fix/9.a', Name);
-  Assert.IsTrue(TAtlasTrackerNaming.ValidBranchName(Name));
+  Assert.IsTrue(TAtlasVcsBranchNames.Valid(Name));
   // Ohne Kurztitel kein Strich am Ende.
   Assert.AreEqual('feature/7', TAtlasTrackerNaming.BranchName(TAtlasTrackerNaming.GitBranchPattern,
     Issue('#7', 7, '???')));
@@ -497,18 +491,6 @@ begin
   Assert.AreEqual('feature/ATL-123-tracker-im-plugin', TAtlasTrackerNaming.BranchName(
     TAtlasTrackerNaming.GitBranchPattern, Issue('ATL-123', 123, 'Tracker im Plugin anbinden')));
   Assert.AreEqual('issue/123', TAtlasTrackerNaming.BranchName('issue/{NUMMER}', Issue('ATL-123', 123, '')));
-end;
-
-procedure TAtlasTrackerNamingTests.ValidBranchNames;
-begin
-  Assert.IsTrue(TAtlasTrackerNaming.ValidBranchName('feature/753-x'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName(''));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('-x'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('a/.b'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('a.lock'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('a b'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('a@{b'));
-  Assert.IsFalse(TAtlasTrackerNaming.ValidBranchName('@'));
 end;
 
 procedure TAtlasTrackerNamingTests.CommitPrefixAndPrefixed;
@@ -790,12 +772,14 @@ end;
 
 procedure TAtlasCommitHookTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FDir := TPath.Combine(TPath.GetTempPath, 'atlas-hook-' + IntToStr(Random(1000000)));
   ForceDirectories(FDir);
 end;
 
 procedure TAtlasCommitHookTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FDir) then
     TDirectory.Delete(FDir, True);
   FDir := '';

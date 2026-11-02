@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Designer')]
   TAtlasComponentSearchWindowTests = class
   private
     FWindow: TAtlasComponentSearchWindow;

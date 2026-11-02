@@ -187,30 +187,48 @@ begin
     TSyntaxKind.ExceptBlock]) or (AStatement.StartPos.Line <> AStatement.EndPos.Line) or
     (AStatement.EndPos.Line > High(ALines)) or
     (Trim(Copy(ALines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) <> '') then
+  begin
     Exit;
+  end;
   Rest := Trim(Copy(ALines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt));
   if (Rest <> '') and (Rest <> ';') then
+  begin
     Exit;
+  end;
   // Letzte folgende Anweisung desselben Blocks; sie muss ihre Zeile allein beenden.
   LastSibling := AStatement;
   for Index := 0 to Parent.ChildCount - 1 do
+  begin
     if Parent[Index].StartOffset > AStatement.StartOffset then
+    begin
       LastSibling := Parent[Index];
+    end;
+  end;
   LastLine := LastSibling.EndPos.Line;
   if LastLine > High(ALines) then
+  begin
     Exit;
+  end;
   Rest := Trim(Copy(ALines[LastLine], LastSibling.EndPos.Character + 1, MaxInt));
   if (Rest <> '') and (Rest <> ';') then
+  begin
     Exit;
+  end;
   Indent := Copy(ALines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character);
   UnitIndent := TRoutineBody.IndentUnit(AStyle);
   NewText := Indent + APrefix + TrimLeft(ALines[AStatement.StartPos.Line]) + ALineBreak + Indent + 'try' +
     ALineBreak;
   for Line := AStatement.StartPos.Line + 1 to LastLine do
+  begin
     if Trim(ALines[Line]) = '' then
-      NewText := NewText + ALineBreak
+    begin
+      NewText := NewText + ALineBreak;
+    end
     else
+    begin
       NewText := NewText + UnitIndent + ALines[Line] + ALineBreak;
+    end;
+  end;
   NewText := NewText + Indent + 'finally' + ALineBreak + Indent + UnitIndent + AFree + ALineBreak + Indent +
     'end;' + ALineBreak;
   AEdit := TTextEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, LastLine + 1, 0), NewText);
@@ -230,9 +248,13 @@ class function TOwnedItemFreedRule.CreatesOwning(const ATypeName, AArguments: st
 begin
   AIsDictionary := ContainsText(ATypeName, 'TObjectDictionary');
   if AIsDictionary then
-    Result := ContainsText(AArguments, 'doOwnsValues')
+  begin
+    Result := ContainsText(AArguments, 'doOwnsValues');
+  end
   else
+  begin
     Result := not TRegEx.IsMatch(AArguments, '\bFalse\b', [roIgnoreCase]);
+  end;
 end;
 
 procedure TOwnedItemFreedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -271,14 +293,20 @@ var
   begin
     Depth := 0;
     for Result := AOpen to High(Code) do
+    begin
       if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
       begin
         Dec(Depth);
         if Depth = 0 then
+        begin
           Exit;
+        end;
       end;
+    end;
     Result := -1;
   end;
 
@@ -298,13 +326,17 @@ var
     repeat
       Next := nil;
       for Index := 0 to Result.ChildCount - 1 do
+      begin
         if (AOffset >= Result[Index].StartOffset) and (AOffset < Result[Index].EndOffset) then
         begin
           Next := Result[Index];
           Break;
         end;
+      end;
       if Next <> nil then
+      begin
         Result := Next;
+      end;
     until Next = nil;
   end;
 
@@ -313,8 +345,12 @@ var
     Item: TOwningList;
   begin
     for Item in Lists do
+    begin
       if SameText(Item.Name, AName) then
+      begin
         Exit;
+      end;
+    end;
     Item.Name := AName;
     Item.IsDictionary := AIsDictionary;
     Lists := Lists + [Item];
@@ -326,7 +362,9 @@ var
     Result := APosition;
     while IsWord(Result) and IsSym(Result + 1, '.') and IsWord(Result + 2) and
       not SameText(Token(Result).Text, 'TObjectList') and not SameText(Token(Result).Text, 'TObjectDictionary') do
+    begin
       Inc(Result, 2);
+    end;
   end;
 
   // Position nach den generischen Argumenten "<…>" ab APosition.
@@ -336,21 +374,33 @@ var
   begin
     Result := APosition;
     if not IsSym(Result, '<') then
+    begin
       Exit;
+    end;
     Depth := 0;
     while Result <= High(Code) do
     begin
       if Token(Result).IsSymbol('<') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Result).IsSymbol('>') then
-        Dec(Depth)
+      begin
+        Dec(Depth);
+      end
       else if Token(Result).IsSymbol('>>') then
-        Dec(Depth, 2)
+      begin
+        Dec(Depth, 2);
+      end
       else if Token(Result).IsSymbol(';') then
+      begin
         Exit;
+      end;
       Inc(Result);
       if Depth <= 0 then
+      begin
         Exit;
+      end;
     end;
   end;
 
@@ -370,29 +420,41 @@ var
     for Position := 0 to High(Code) - 2 do
     begin
       if not IsWord(Position) then
+      begin
         Continue;
+      end;
       // Name := TObjectList<T>.Create(…);
       if IsSym(Position + 1, ':=') then
       begin
         TypePosition := SkipUnitPrefix(Position + 2);
         if not IsName(TypePosition, 'TObjectList') and not IsName(TypePosition, 'TObjectDictionary') then
+        begin
           Continue;
+        end;
         After := SkipGenericArgs(TypePosition + 1);
         if not IsSym(After, '.') or not IsName(After + 1, 'Create') then
+        begin
           Continue;
+        end;
         Arguments := '';
         if IsSym(After + 2, '(') then
         begin
           Close := Closing(After + 2);
           if Close > After + 3 then
+          begin
             Arguments := TextBetween(After + 3, Close - 1);
+          end;
         end;
         Created := Created + [Token(Position).Text];
         Owning := CreatesOwning(Token(TypePosition).Text, Arguments, IsDictionary);
         if Owning then
-          AddList(Token(Position).Text, IsDictionary)
+        begin
+          AddList(Token(Position).Text, IsDictionary);
+        end
         else
+        begin
           NotOwning := NotOwning + [Token(Position).Text];
+        end;
         Continue;
       end;
       // Name.OwnsObjects := False;
@@ -410,17 +472,27 @@ var
         begin
           Declared := Declared + [Token(Names).Text];
           if not IsSym(Names - 1, ',') then
+          begin
             Break;
+          end;
           Dec(Names, 2);
         end;
       end;
     end;
     for Index := 0 to High(Declared) do
+    begin
       if IndexText(Declared[Index], Created) < 0 then
+      begin
         AddList(Declared[Index], False);
+      end;
+    end;
     for Index := High(Lists) downto 0 do
+    begin
       if IndexText(Lists[Index].Name, NotOwning) >= 0 then
+      begin
         Delete(Lists, Index, 1);
+      end;
+    end;
   end;
 
   function ListAt(APosition: Integer; out AList: TOwningList): Boolean;
@@ -429,16 +501,22 @@ var
   begin
     Result := False;
     if not IsWord(APosition) then
+    begin
       Exit;
+    end;
     // Nur der Name selbst oder Self.Name, keine fremden Objekte.
     if IsSym(APosition - 1, '.') and not IsName(APosition - 2, 'Self') then
+    begin
       Exit;
+    end;
     for Item in Lists do
+    begin
       if SameText(Item.Name, Token(APosition).Text) then
       begin
         AList := Item;
         Exit(True);
       end;
+    end;
   end;
 
   // Liste[Index] bzw. Liste.Items[Index] ab APosition; liefert die Position nach "]" und den Indextext.
@@ -449,12 +527,18 @@ var
     Result := False;
     Open := APosition + 1;
     if IsSym(Open, '.') and IsName(Open + 1, 'Items') then
+    begin
       Inc(Open, 2);
+    end;
     if not IsSym(Open, '[') then
+    begin
       Exit;
+    end;
     Close := Closing(Open);
     if Close < 0 then
+    begin
       Exit;
+    end;
     AIndex := Trim(TextBetween(Open + 1, Close - 1));
     AAfter := Close + 1;
     Result := True;
@@ -479,15 +563,21 @@ var
     for Position := 0 to AFreePosition - 1 do
     begin
       if (Token(Position).Offset < ABlock.StartOffset) or not IsName(Position, AName) then
+      begin
         Continue;
+      end;
       // V := Liste[I]; V := Liste.Items[I]; V := Liste.First
       if IsSym(Position + 1, ':=') and ListAt(Position + 2, AList) then
       begin
         if ElementAccess(Position + 2, After, Index) and IsSym(After, ';') then
-          Result := True
+        begin
+          Result := True;
+        end
         else if IsSym(Position + 3, '.') and (IsName(Position + 4, 'First') or IsName(Position + 4, 'Last')) and
           IsSym(Position + 5, ';') then
+        begin
           Result := True;
+        end;
         Continue;
       end;
       // for V in Liste do / for V in Dictionary.Values do: nur, wenn die Freigabe in der Schleife steht.
@@ -498,9 +588,13 @@ var
       begin
         Node := NodeAt(AContext.Tree.Root, Token(Position).Offset);
         while (Node <> nil) and (Node.Kind <> TSyntaxKind.ForInStatement) do
+        begin
           Node := Node.Parent;
+        end;
         if (Node <> nil) and (Token(AFreePosition).Offset < Node.EndOffset) then
+        begin
           Result := True;
+        end;
       end;
     end;
   end;
@@ -514,19 +608,29 @@ var
     Result := False;
     Node := NodeAt(AContext.Tree.Root, Token(APosition).Offset);
     while (Node <> nil) and (Node.Kind <> TSyntaxKind.CallStatement) do
+    begin
       Node := Node.Parent;
+    end;
     if (Node = nil) or (Node.Parent = nil) then
+    begin
       Exit;
+    end;
     if (Node.Parent.Kind = TSyntaxKind.ForInStatement) and (Node.Parent[Node.Parent.ChildCount - 1] = Node) then
+    begin
       Node := Node.Parent;
+    end;
     if (Node.Parent = nil) or not (Node.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
       TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
+    begin
       Exit;
+    end;
     if (Node.StartPos.Line > High(Lines)) or (Node.EndPos.Line > High(Lines)) or
       (Trim(Copy(Lines[Node.StartPos.Line], 1, Node.StartPos.Character)) <> '') or
       ((Trim(Copy(Lines[Node.EndPos.Line], Node.EndPos.Character + 1, MaxInt)) <> '') and
       (Trim(Copy(Lines[Node.EndPos.Line], Node.EndPos.Character + 1, MaxInt)) <> ';')) then
+    begin
       Exit;
+    end;
     ANode := Node;
     Result := True;
   end;
@@ -537,8 +641,10 @@ var
   begin
     Result := OwnStatement(APosition, Node);
     if Result then
+    begin
       AFix := TRuleFix.Create('Free entfernen',
         [TTextEdit.Create(TTextRange.Create(Node.StartPos.Line, 0, Node.EndPos.Line + 1, 0), '')]);
+    end;
   end;
 
   // Liste[I].Free → Liste.Delete(I) bzw. Dictionary.Remove(Key).
@@ -549,14 +655,20 @@ var
   begin
     Result := (AFree.IndexText <> '') and OwnStatement(AFree.First, Node) and (Node.Kind = TSyntaxKind.CallStatement);
     if not Result then
+    begin
       Exit;
+    end;
     Method := 'Delete';
     if AFree.List.IsDictionary then
+    begin
       Method := 'Remove';
+    end;
     // "Self.Liste[I].Free": Self. bleibt stehen.
     Prefix := '';
     if IsSym(AFree.First - 1, '.') then
+    begin
       Prefix := 'Self.';
+    end;
     AFix := TRuleFix.Create(Format('%s statt Free', [Method]),
       [TTextEdit.Create(TTextRange.Create(Node.StartPos, Node.EndPos),
       Format('%s%s.%s(%s)', [Prefix, Token(AFree.First).Text, Method, AFree.IndexText]))]);
@@ -576,20 +688,26 @@ var
   begin
     Block := ARoutine.FindChild(TSyntaxKind.Block);
     if Block = nil then
+    begin
       Exit;
+    end;
     // Freigaben sammeln.
     Frees := nil;
     for Position := 0 to High(Code) do
     begin
       if (Token(Position).Offset < Block.StartOffset) or (Token(Position).Offset >= Block.EndOffset) then
+      begin
         Continue;
+      end;
       Item := Default(TItemFree);
       // FreeAndNil(Liste[I]) bzw. FreeAndNil(V)
       if IsName(Position, 'FreeAndNil') and IsSym(Position + 1, '(') then
       begin
         Start := Position + 2;
         if IsName(Start, 'Self') and IsSym(Start + 1, '.') then
+        begin
           Inc(Start, 2);
+        end;
         if ListAt(Start, List) and ElementAccess(Start, After, Index) and IsSym(After, ')') then
         begin
           Item.List := List;
@@ -639,9 +757,13 @@ var
       begin
         if (Token(Position).Offset < Block.StartOffset) or (Token(Position).Offset >= Block.EndOffset) or
           not ListAt(Position, List) or not SameText(List.Name, Item.List.Name) then
+        begin
           Continue;
+        end;
         if IsSym(Position + 1, '.') and (IndexText(Token(Position + 2).Text, ExtractMethods) >= 0) then
-          Extracted := True
+        begin
+          Extracted := True;
+        end
         else if (Removal = '') and IsSym(Position + 1, '.') and
           (IndexText(Token(Position + 2).Text, RemoveMethods) >= 0) then
         begin
@@ -649,29 +771,41 @@ var
           RemovePosition := Position + 2;
         end
         else if (Removal = '') and ElementAccess(Position, After, Index) and IsSym(After, ':=') then
+        begin
           Removal := 'die Zuweisung an ' + Token(Position).Text + '[…]';
+        end;
       end;
       if Extracted then
+      begin
         Continue;
+      end;
       Owns := 'seine Elemente (OwnsObjects)';
       if Item.List.IsDictionary then
+      begin
         Owns := 'seine Werte (doOwnsValues)';
+      end;
       Fixes := nil;
       if Removal <> '' then
       begin
         Message := Format('%s besitzt %s; %s gibt das Element ein zweites Mal frei.', [Item.List.Name, Owns,
           Removal]);
         if RemoveFreeFix(Item.First, Fix) then
+        begin
           Fixes := Fixes + [Fix];
+        end;
         // Remove(V) vor V.Free: Extract nimmt das Element heraus, ohne es freizugeben.
         if (RemovePosition >= 0) and SameText(Token(RemovePosition).Text, 'Remove') and (Item.Alias <> '') then
         begin
           if Item.List.IsDictionary then
+          begin
             Fix := TRuleFix.Create('ExtractPair statt Remove', [TTextEdit.Create(TTextRange.Create(
-              Token(RemovePosition).StartPos, Token(RemovePosition).EndPos), 'ExtractPair')])
+              Token(RemovePosition).StartPos, Token(RemovePosition).EndPos), 'ExtractPair')]);
+          end
           else
+          begin
             Fix := TRuleFix.Create('Extract statt Remove', [TTextEdit.Create(TTextRange.Create(
               Token(RemovePosition).StartPos, Token(RemovePosition).EndPos), 'Extract')]);
+          end;
           Fix.Alternative := Fixes <> nil;
           Fixes := Fixes + [Fix];
         end;
@@ -681,9 +815,13 @@ var
         Message := Format('%s besitzt %s; die Liste gibt das Element beim Freigeben ein zweites Mal frei.',
           [Item.List.Name, Owns]);
         if DeleteFix(Item, Fix) then
-          Fixes := Fixes + [Fix]
-        else if (Item.Alias <> '') and RemoveFreeFix(Item.First, Fix) then
+        begin
           Fixes := Fixes + [Fix];
+        end
+        else if (Item.Alias <> '') and RemoveFreeFix(Item.First, Fix) then
+        begin
+          Fixes := Fixes + [Fix];
+        end;
       end;
       Last := Item.Last;
       AReport.Add(TTextRange.Create(Token(Item.First).StartPos, Token(Last).EndPos), Message, Fixes);
@@ -709,7 +847,9 @@ var
           Continue;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -720,18 +860,28 @@ var
   Index: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   if not ContainsText(AContext.Text, 'TObjectList') and not ContainsText(AContext.Text, 'TObjectDictionary') then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   CollectLists;
   if Lists = nil then
+  begin
     Exit;
+  end;
   Visit(AContext.Tree.Root);
 end;
 
@@ -752,12 +902,18 @@ class function TCreateWithoutAssignmentRule.VariableName(const ATypeName: string
 begin
   Result := ATypeName;
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
   if LooksLikeType(Result) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
   if Result = '' then
+  begin
     Result := 'Objekt';
+  end;
 end;
 
 procedure TCreateWithoutAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -796,9 +952,13 @@ var
     begin
       mMiddle := (Result + mHigh) div 2;
       if Tokens[Code[mMiddle]].Offset < AOffset then
-        Result := mMiddle + 1
+      begin
+        Result := mMiddle + 1;
+      end
       else
+      begin
         mHigh := mMiddle;
+      end;
     end;
   end;
 
@@ -808,14 +968,20 @@ var
   begin
     Depth := 0;
     for Result := AOpen to High(Code) do
+    begin
       if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
       begin
         Dec(Depth);
         if Depth = 0 then
+        begin
           Exit;
+        end;
       end;
+    end;
     Result := -1;
   end;
 
@@ -825,21 +991,33 @@ var
   begin
     Result := APosition;
     if not IsSym(Result, '<') then
+    begin
       Exit;
+    end;
     Depth := 0;
     while Result <= High(Code) do
     begin
       if Token(Result).IsSymbol('<') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Result).IsSymbol('>') then
-        Dec(Depth)
+      begin
+        Dec(Depth);
+      end
       else if Token(Result).IsSymbol('>>') then
-        Dec(Depth, 2)
+      begin
+        Dec(Depth, 2);
+      end
       else if Token(Result).IsSymbol(';') then
+      begin
         Exit;
+      end;
       Inc(Result);
       if Depth <= 0 then
+      begin
         Exit;
+      end;
     end;
   end;
 
@@ -854,8 +1032,12 @@ var
     Pattern: string;
   begin
     for Pattern in SelfRegistering do
+    begin
       if MatchesGlob(Pattern, AClassName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -869,19 +1051,29 @@ var
     // Records (TPoint.Create(1, 2)) belegen keinen Heap.
     Body := TRoutineBody.TypeBody(AContext.Tree.Root, AClassName);
     if (Body <> nil) and (Body.Kind = TSyntaxKind.RecordType) then
+    begin
       Exit(TCreatedKind.Unknown);
+    end;
     Name := AClassName;
     for Depth := 0 to 63 do
     begin
       if SameText(Name, 'TComponent') then
+      begin
         Exit(TCreatedKind.Component);
+      end;
       if SameText(Name, 'TThread') then
+      begin
         Exit(TCreatedKind.Thread);
+      end;
       if SameText(Name, 'TObject') then
+      begin
         Exit(TCreatedKind.Plain);
+      end;
       Name := Ancestry.ParentOf(Name);
       if Name = '' then
+      begin
         Break;
+      end;
     end;
     Result := TCreatedKind.Unknown;
   end;
@@ -896,8 +1088,10 @@ var
     Result := WrapFollowingInTryFinally(Lines, LineBreak, AStatement, Name + ' := ', Name + '.Free;',
       AContext.Formatting, Edit);
     if Result then
+    begin
       AFix := TRuleFix.Create(Format('An %s zuweisen und in try/finally freigeben', [Name]),
         [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, ATypeText, AContext.Formatting), Edit]);
+    end;
   end;
 
   procedure CheckStatement(ARoutine, AStatement: TSyntaxNode);
@@ -911,7 +1105,9 @@ var
   begin
     Position := CodeAt(AStatement.StartOffset);
     if not IsWord(Position) then
+    begin
       Exit;
+    end;
     // Unit.TKlasse<T>.Create(…)
     ClassPosition := Position;
     After := SkipGenericArgs(Position + 1);
@@ -921,7 +1117,9 @@ var
       After := SkipGenericArgs(After + 2);
     end;
     if not IsSym(After, '.') or not IsWord(After + 1) or not SameText(Token(After + 1).Text, 'Create') then
+    begin
       Exit;
+    end;
     Next := After + 2;
     HasArguments := False;
     FirstArgument := '';
@@ -929,30 +1127,42 @@ var
     begin
       Close := Closing(Next);
       if Close < 0 then
+      begin
         Exit;
+      end;
       HasArguments := Close > Next + 1;
       if HasArguments and (IsWord(Next + 1) or Token(Next + 1).IsKeyword('nil')) and
         (IsSym(Next + 2, ',') or IsSym(Next + 2, ')')) then
+      begin
         FirstArgument := Token(Next + 1).Text;
+      end;
       Next := Close + 1;
     end;
     // Die Anweisung endet mit Create(…): nichts wird weitergegeben oder gespeichert.
     if (Next <= High(Code)) and (Token(Next).Offset < AStatement.EndOffset) then
+    begin
       Exit;
+    end;
     ClassName := Token(ClassPosition).Text;
     Kind := KindOf(ClassName);
     if (not LooksLikeType(ClassName) and (Kind = TCreatedKind.Unknown)) or IsSelfRegistering(ClassName) or
       (Kind = TCreatedKind.Thread) then
+    begin
       Exit;
+    end;
     // Komponenten mit Owner gibt der Owner frei; unbekannte Klassen mit Argumenten tragen sich oft selbst ein.
     // Gemeldet werden mit Argumenten nur bekannte Klassen ohne TComponent und Aufrufe mit nil als Owner.
     if HasArguments and not SameText(FirstArgument, 'nil') and
       ((Kind <> TCreatedKind.Plain) or MatchText(FirstArgument, ['Self', 'Owner', 'AOwner', 'Application'])) then
+    begin
       Exit;
+    end;
     TypeText := TextBetween(Position, After - 1);
     Fixes := nil;
     if AssignFix(ARoutine, AStatement, TypeText, Fix) then
+    begin
       Fixes := [Fix];
+    end;
     AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Next - 1).EndPos),
       Format('Das erzeugte %s wird nirgends gespeichert und nie freigegeben (Speicherleck).', [TypeText]), Fixes);
   end;
@@ -971,12 +1181,18 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.CallStatement then
+        begin
           CheckStatement(ARoutine, Node);
+        end;
         // Lokale Routinen prüft Visit für sich.
         if (Node <> ARoutine) and (Node.Kind = TSyntaxKind.RoutineDecl) then
+        begin
           Continue;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -997,9 +1213,13 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           VisitStatements(Node, Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1010,12 +1230,18 @@ var
   Index: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Create') then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   SelfRegistering := TRuleOptions.Strings(AContext.Options, 'selfRegistering', nil);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
@@ -1040,7 +1266,9 @@ var
 begin
   Name := Trim(AType);
   if Pos('<', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('<', Name) - 1);
+  end;
   Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
   Result := (Length(Name) >= 2) and (Name[1] = 'I') and CharInSet(Name[2], ['A'..'Z']);
 end;
@@ -1091,9 +1319,13 @@ var
     begin
       mMiddle := (Result + mHigh) div 2;
       if Tokens[Code[mMiddle]].Offset < AOffset then
-        Result := mMiddle + 1
+      begin
+        Result := mMiddle + 1;
+      end
       else
+      begin
         mHigh := mMiddle;
+      end;
     end;
   end;
 
@@ -1105,11 +1337,19 @@ var
   begin
     Result := nil;
     for Symbol in Ancestry.Local.Symbols do
+    begin
       if SameText(Symbol.Name, AName) then
+      begin
         Result := Result + [Symbol];
+      end;
+    end;
     if AContext.Index <> nil then
+    begin
       for Location in AContext.Index.FindSymbols(AName) do
+      begin
         Result := Result + [Location.Symbol];
+      end;
+    end;
   end;
 
   // Methode AMethod (z. B. _Release) als Rumpf in der Datei: 'TKlasse._Release'.
@@ -1123,7 +1363,9 @@ var
       begin
         if (Found = nil) and (ANode.Kind = TSyntaxKind.RoutineDecl) and
           SameText(ANode.Name, AClassName + '.' + AMethod) and (TRoutineBody.BodyOf(ANode) <> nil) then
+        begin
           Found := ANode;
+        end;
         Result := Found = nil;
       end);
     Result := Found;
@@ -1134,9 +1376,13 @@ var
     Symbol: TIndexSymbol;
   begin
     for Symbol in Ancestry.Local.Symbols do
+    begin
       if SameText(Symbol.Container, AClassName) and SameText(Symbol.Name, AMethod) and
         (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1148,13 +1394,19 @@ var
   begin
     Routine := MethodBody(AClassName, '_Release');
     if Routine = nil then
+    begin
       Exit(False);
+    end;
     for Position := CodeAt(Routine.StartOffset) to High(Code) do
     begin
       if Token(Position).Offset >= Routine.EndOffset then
+      begin
         Break;
+      end;
       if IsName(Position, 'Destroy') or IsName(Position, 'Free') or IsName(Position, 'FreeInstance') then
+      begin
         Exit(True);
+      end;
     end;
     Result := False;
   end;
@@ -1171,14 +1423,18 @@ var
     for Steps := 1 to 32 do
     begin
       if SameText(Current, 'TObject') then
+      begin
         Exit;
+      end;
       if (Current = '') or SameText(Current, 'TInterfacedObject') or Declares(Current, 'NewInstance') then
       begin
         Result := False;
         Exit;
       end;
       if Declares(Current, '_Release') and ReleaseFrees(Current) then
+      begin
         Result := True;
+      end;
       Current := Ancestry.ParentOf(Current);
     end;
     Result := False;
@@ -1196,9 +1452,13 @@ var
     begin
       if not (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) or
         (Length(Symbol.ParamTypes) <= AIndex) then
+      begin
         Continue;
+      end;
       if not IsInterfaceType(Symbol.ParamTypes[AIndex]) then
+      begin
         Exit(False);
+      end;
       Known := True;
     end;
     Result := Known;
@@ -1213,13 +1473,21 @@ var
   begin
     Target := APosition - 2;
     if not IsWord(Target) or (IsSym(Target - 1, '.') and not IsName(Target - 2, 'Self')) then
+    begin
       Exit(False);
+    end;
     TypeName := Types.DeclaredType(Token(Target).Text, Token(Target).StartPos);
     if TypeName = '' then
+    begin
       for Symbol in Ancestry.Local.Symbols do
+      begin
         if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable]) and
           SameText(Symbol.Name, Token(Target).Text) then
+        begin
           TypeName := Symbol.TypeName;
+        end;
+      end;
+    end;
     Result := IsInterfaceType(TypeName);
   end;
 
@@ -1231,18 +1499,28 @@ var
   begin
     Result := False;
     if IsSym(APosition - 1, '.') or IsSym(APosition + 1, '.') then
+    begin
       Exit;
+    end;
     if IsKey(APosition + 1, 'as') and IsWord(APosition + 2) and IsInterfaceType(Token(APosition + 2).Text) then
+    begin
       Exit(True);
+    end;
     if IsSym(APosition - 1, '(') and IsSym(APosition + 1, ')') and IsWord(APosition - 2) and
       IsInterfaceType(Token(APosition - 2).Text) then
+    begin
       Exit(True);
+    end;
     if IsSym(APosition - 1, ':=') and (IsSym(APosition + 1, ';') or IsKey(APosition + 1, 'end') or
       IsKey(APosition + 1, 'else')) then
+    begin
       Exit(TargetIsInterface(APosition));
+    end;
     if not (IsSym(APosition - 1, '(') or IsSym(APosition - 1, ',')) or
       not (IsSym(APosition + 1, ')') or IsSym(APosition + 1, ',')) then
+    begin
       Exit;
+    end;
     // Öffnende Klammer des Aufrufs und Stelle des Arguments.
     Depth := 0;
     Argument := 0;
@@ -1250,27 +1528,39 @@ var
     while Position >= 0 do
     begin
       if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Token(Position).IsSymbol('[') then
       begin
         if Depth = 0 then
+        begin
           Exit;
+        end;
         Dec(Depth);
       end
       else if Token(Position).IsSymbol('(') then
       begin
         if Depth = 0 then
+        begin
           Break;
+        end;
         Dec(Depth);
       end
       else if (Depth = 0) and Token(Position).IsSymbol(',') then
-        Inc(Argument)
+      begin
+        Inc(Argument);
+      end
       else if (Depth = 0) and Token(Position).IsSymbol(';') then
+      begin
         Exit;
+      end;
       Dec(Position);
     end;
     if (Position < 1) or not IsWord(Position - 1) then
+    begin
       Exit;
+    end;
     Result := ExpectsInterface(Token(Position - 1).Text, Argument);
   end;
 
@@ -1280,8 +1570,12 @@ var
     Index: Integer;
   begin
     for Index := 0 to ABlock.ChildCount - 1 do
+    begin
       if (AOffset >= ABlock[Index].StartOffset) and (AOffset < ABlock[Index].EndOffset) then
+      begin
         Exit(ABlock[Index]);
+      end;
+    end;
     Result := nil;
   end;
 
@@ -1306,10 +1600,14 @@ var
     Before := TopStatement(ABlock, AInherited);
     Moved := TopStatement(ABlock, AOffset);
     if (Before = nil) or (Moved = nil) or (Before = Moved) or not OwnLines(Before) or not OwnLines(Moved) then
+    begin
       Exit;
+    end;
     Text := '';
     for Line := Moved.StartPos.Line to Moved.EndPos.Line do
+    begin
       Text := Text + Lines[Line] + LineBreak;
+    end;
     Result := [TRuleFix.Create('Vor inherited verschieben', [
       TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(Before.StartPos.Line, 0),
         TTextPosition.Create(Before.StartPos.Line, 0)), Text),
@@ -1326,42 +1624,64 @@ var
   begin
     First := CodeAt(ARoutine.StartOffset);
     if (Pos('.', ARoutine.Name) = 0) or IsKey(First, 'class') then
+    begin
       Exit;
+    end;
     TypeName := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
     Method := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
     IsAfterConstruction := SameText(Method, 'AfterConstruction');
     if not IsKey(First, 'constructor') and not IsAfterConstruction then
+    begin
       Exit;
+    end;
     Block := TRoutineBody.BodyOf(ARoutine);
     if Block = nil then
+    begin
       Exit;
+    end;
     Counting := OwnCounting(TypeName);
     // Nachfahren von TInterfacedObject: nur AfterConstruction nach inherited (der Schutz ist dann aufgehoben).
     if not Counting and not (IsAfterConstruction and Ancestry.DescendsFrom(TypeName, 'TInterfacedObject')) then
+    begin
       Exit;
+    end;
     if IsKey(First, 'constructor') then
-      Where := 'im Konstruktor'
+    begin
+      Where := 'im Konstruktor';
+    end
     else
+    begin
       Where := 'in AfterConstruction';
+    end;
     InheritedAt := -1;
     for Position := CodeAt(Block.StartOffset) to High(Code) do
     begin
       if Token(Position).Offset >= Block.EndOffset then
+      begin
         Break;
+      end;
       if (InheritedAt < 0) and IsKey(Position, 'inherited') then
+      begin
         InheritedAt := Position;
+      end;
       if not IsName(Position, 'Self') or not PassesAsInterface(Position) or
         (TRoutineBody.RoutineAt(AContext.Tree, Token(Position).Offset) <> ARoutine) then
+      begin
         Continue;
+      end;
       if Counting then
+      begin
         AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
           Format('Self wird %s als Interface übergeben; die eigene Referenzzählung von %s gibt das Objekt ' +
-          'frei, sobald der Zähler danach auf 0 fällt.', [Where, TypeName]))
+          'frei, sobald der Zähler danach auf 0 fällt.', [Where, TypeName]));
+      end
       else if InheritedAt >= 0 then
+      begin
         AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
           'Self wird nach inherited AfterConstruction als Interface übergeben; fällt der Zähler danach auf 0, ' +
           'ist das Objekt schon freigegeben.',
           MoveFix(Block, Token(InheritedAt).Offset, Token(Position).Offset));
+      end;
     end;
   end;
 
@@ -1371,26 +1691,36 @@ var
   Routine: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Self') then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   Routines := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.RoutineDecl then
+      begin
         Routines := Routines + [ANode];
+      end;
       Result := True;
     end);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
   Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     for Routine in Routines do
+    begin
       CheckRoutine(Routine);
+    end;
   finally
     Types.Free;
     Ancestry.Free;
@@ -1425,15 +1755,25 @@ end;
 class function TRawMemoryLeakRule.ReleaseFor(const AAllocator: string): string;
 begin
   if MatchText(AAllocator, ['GetMem', 'AllocMem', 'ReallocMem']) then
-    Result := 'FreeMem'
+  begin
+    Result := 'FreeMem';
+  end
   else if SameText(AAllocator, 'GetMemory') then
-    Result := 'FreeMemory'
+  begin
+    Result := 'FreeMemory';
+  end
   else if SameText(AAllocator, 'New') then
-    Result := 'Dispose'
+  begin
+    Result := 'Dispose';
+  end
   else if MatchText(AAllocator, ['StrAlloc', 'StrNew', 'AnsiStrAlloc']) then
-    Result := 'StrDispose'
+  begin
+    Result := 'StrDispose';
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 procedure TRawMemoryLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1446,8 +1786,12 @@ var
     Prefix: string;
   begin
     for Prefix in APrefixes do
+    begin
       if StartsText(Prefix, AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1456,8 +1800,12 @@ var
     Word: string;
   begin
     for Word in AWords do
+    begin
       if ContainsText(AName, Word) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1468,7 +1816,9 @@ var
   begin
     Result := False;
     if (ACall.ChildCount <> 2) or (ACall[0].Kind <> TSyntaxKind.Identifier) then
+    begin
       Exit;
+    end;
     Name := ACall[0].Name;
     Result := MatchText(Name, ['Pointer', 'NativeInt', 'NativeUInt', 'IntPtr', 'UIntPtr', 'PChar', 'PAnsiChar',
       'PWideChar', 'PByte', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'LongInt', 'LongWord']) or
@@ -1495,19 +1845,27 @@ var
         TSyntaxKind.Call:
           begin
             if Parent[0] = Current then
+            begin
               Exit(TRawMemoryUse.Use);
+            end;
             if Direct and (Parent[1] = Current) and MatchText(Parent.Name, RawAllocCalls) then
             begin
               // ReallocMem(P, 0) gibt frei.
               if SameText(Parent.Name, 'ReallocMem') and (Parent.ChildCount = 3) and
                 (Parent[2].Kind = TSyntaxKind.Literal) and (Parent[2].Name = '0') then
+              begin
                 Exit(TRawMemoryUse.Release);
+              end;
               Exit(TRawMemoryUse.Alloc);
             end;
             if MatchText(Parent.Name, RawReleaseCalls) or ContainsAny(Parent.Name, RawReleaseWords) then
+            begin
               Exit(TRawMemoryUse.Release);
+            end;
             if SameText(Parent.Name, 'Exit') then
+            begin
               Exit(TRawMemoryUse.Escape);
+            end;
             if IsTypeCast(Parent) then
             begin
               Current := Parent;
@@ -1515,7 +1873,9 @@ var
               Continue;
             end;
             if (Parent[0].Kind = TSyntaxKind.MemberAccess) and StartsWithAny(Parent.Name, RawStorePrefixes) then
+            begin
               Exit(TRawMemoryUse.Escape);
+            end;
             // Als Argument zum Lesen oder Füllen weitergegeben (Pruefsumme(P, N), Stream.ReadBuffer(P^, N)).
             Exit(TRawMemoryUse.Use);
           end;
@@ -1528,21 +1888,31 @@ var
           begin
             // Vergleiche lesen nur; P + N rechnet mit dem Zeiger weiter.
             if not MatchText(Parent.Name, ['+', '-']) then
+            begin
               Exit(TRawMemoryUse.Use);
+            end;
             Current := Parent;
             Direct := False;
           end;
         TSyntaxKind.AssignStatement:
           begin
             if Parent[0] <> Current then
+            begin
               Exit(TRawMemoryUse.Escape);
+            end;
             if not Direct then
+            begin
               Exit(TRawMemoryUse.Use);
+            end;
             Value := nil;
             if Parent.ChildCount > 1 then
+            begin
               Value := Parent[1];
+            end;
             if (Value <> nil) and (Value.Kind = TSyntaxKind.Call) and MatchText(Value.Name, RawAllocFunctions) then
+            begin
               Exit(TRawMemoryUse.Alloc);
+            end;
             // Neue Zuweisung (P := Q, P := nil): Herkunft unklar.
             Exit(TRawMemoryUse.Escape);
           end;
@@ -1557,9 +1927,13 @@ var
   function AllocatorOf(ANode: TSyntaxNode): string;
   begin
     if ANode.Parent.Kind = TSyntaxKind.Call then
-      Result := ANode.Parent.Name
+    begin
+      Result := ANode.Parent.Name;
+    end
     else
+    begin
       Result := ANode.Parent[1].Name;
+    end;
   end;
 
   procedure Occurrences(ANode: TSyntaxNode; const AName: string; var AFound: TArray<TSyntaxNode>);
@@ -1578,9 +1952,13 @@ var
         if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) and
           not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.MemberAccess) and (Node.Parent[0] <> Node))
           then
+        begin
           AFound := AFound + [Node];
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1602,9 +1980,13 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.AsmBlock then
+        begin
           Exit(True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1620,7 +2002,9 @@ var
     while (Current <> nil) and (Current <> ARoutine) do
     begin
       if Current.Kind = TSyntaxKind.AnonymousMethod then
+      begin
         Exit(True);
+      end;
       Current := Current.Parent;
     end;
     Result := False;
@@ -1631,7 +2015,9 @@ var
   begin
     Result := ANode;
     while (Result <> nil) and not (Result.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.AssignStatement]) do
+    begin
       Result := Result.Parent;
+    end;
   end;
 
   procedure CheckVariable(ARoutine: TSyntaxNode; const AName: string);
@@ -1651,30 +2037,44 @@ var
     begin
       Use := Classify(Node);
       if InsideAnonymous(Node, ARoutine) then
+      begin
         Use := TRawMemoryUse.Escape;
+      end;
       if Use in [TRawMemoryUse.Release, TRawMemoryUse.Escape] then
+      begin
         Exit;
+      end;
       if (Use = TRawMemoryUse.Alloc) and (First = nil) then
+      begin
         First := Node;
+      end;
     end;
     // Lokale Routinen sehen die Variable ebenfalls: dort könnte sie freigegeben werden.
     for Index := 0 to ARoutine.ChildCount - 1 do
+    begin
       if ARoutine[Index].Kind = TSyntaxKind.RoutineDecl then
       begin
         Found := nil;
         Occurrences(ARoutine[Index], AName, Found);
         if Found <> nil then
+        begin
           Exit;
+        end;
       end;
+    end;
     if First = nil then
+    begin
       Exit;
+    end;
     Allocator := AllocatorOf(First);
     Release := ReleaseFor(Allocator);
     Statement := StatementOf(First);
     Fixes := nil;
     if (Release <> '') and (Statement <> nil) and WrapFollowingInTryFinally(Lines, LineBreak, Statement, '',
       Release + '(' + AName + ');', AContext.Formatting, Edit) then
+    begin
       Fixes := [TRuleFix.Create(Format('try … finally %s(%s) end einfügen', [Release, AName]), [Edit])];
+    end;
     AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
       Format('%s wird mit %s angelegt, aber nie freigegeben.', [AName, Allocator]), TRuleConfidence.Medium,
       Fixes);
@@ -1687,20 +2087,30 @@ var
     Name: string;
   begin
     if HasAsm(ARoutine) then
+    begin
       Exit;
+    end;
     for Index := 0 to ARoutine.ChildCount - 1 do
     begin
       Section := ARoutine[Index];
       if Section.Kind <> TSyntaxKind.VarSection then
+      begin
         Continue;
+      end;
       for Inner := 0 to Section.ChildCount - 1 do
       begin
         Decl := Section[Inner];
         if Decl.Kind <> TSyntaxKind.VarDecl then
+        begin
           Continue;
+        end;
         for Name in Decl.Name.Split([',']) do
+        begin
           if Trim(Name) <> '' then
+          begin
             CheckVariable(ARoutine, Trim(Name));
+          end;
+        end;
       end;
     end;
   end;
@@ -1719,9 +2129,13 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           CheckRoutine(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1733,14 +2147,22 @@ var
   Any: Boolean;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Any := False;
   for Word in RawAllocCalls do
+  begin
     Any := Any or ContainsText(AContext.Text, Word);
+  end;
   for Word in RawAllocFunctions do
+  begin
     Any := Any or ContainsText(AContext.Text, Word);
+  end;
   if not Any then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   Visit(AContext.Tree.Root);
 end;
@@ -1781,11 +2203,17 @@ var
 begin
   Result := '';
   for Index := 1 to Length(AText) do
+  begin
     if not CharInSet(AText[Index], [' ', #9, #10, #13]) then
+    begin
       Result := Result + AText[Index];
+    end;
+  end;
   Result := LowerCase(Result);
   if StartsStr('self.', Result) then
+  begin
     Result := Copy(Result, 6, MaxInt);
+  end;
 end;
 
 procedure TStringListObjectsLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1803,8 +2231,12 @@ var
   function HostIndex(const AKey: string): Integer;
   begin
     for Result := 0 to High(Hosts) do
+    begin
       if Hosts[Result].Key = AKey then
+      begin
         Exit;
+      end;
+    end;
     Result := -1;
   end;
 
@@ -1816,11 +2248,15 @@ var
     Result := nil;
     Access := ANode;
     if (Access.Kind = TSyntaxKind.Call) and (Access.ChildCount > 0) then
+    begin
       Access := Access[0];
+    end;
     if (Access.Kind = TSyntaxKind.MemberAccess) and SameText(Access.Name, 'Create') and (Access.ChildCount = 1) and
       (Access[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(Access[0].Name, AClasses)
       then
+    begin
       Result := ANode;
+    end;
   end;
 
   // Erzeugtes Objekt T.Create(…) ohne Owner: Name der Klasse, sonst ''.
@@ -1835,19 +2271,27 @@ var
     if (Access.Kind = TSyntaxKind.Call) and (Access.ChildCount > 0) then
     begin
       if Access.ChildCount > 1 then
+      begin
         First := TextOf(Access[1]);
+      end;
       Access := Access[0];
     end;
     if (Access.Kind <> TSyntaxKind.MemberAccess) or not SameText(Access.Name, 'Create') or (Access.ChildCount <> 1) or
       not (Access[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+    begin
       Exit;
+    end;
     Name := Access[0].Name;
     // Komponenten mit Owner gibt der Owner frei (wie create-without-assignment).
     if (First <> '') and not SameText(First, 'nil') and (MatchText(First, ['Self', 'Owner', 'AOwner',
       'Application']) or Ancestry.DescendsFrom(Name, 'TComponent')) then
+    begin
       Exit;
+    end;
     if TCreateWithoutAssignmentRule.LooksLikeType(Name) then
+    begin
       Result := Name;
+    end;
   end;
 
   procedure AddHost(const AText: string; ACreation: TSyntaxNode);
@@ -1861,18 +2305,24 @@ var
     Host.Owning := False;
     Host.Handled := False;
     if ACreation <> nil then
+    begin
       // Create(True) besitzt; andere Konstruktoren (QuoteChar, Duplicates) nicht.
       Host.Owning := (ACreation.Kind = TSyntaxKind.Call) and (ACreation.ChildCount = 2) and
         SameText(TextOf(ACreation[1]), 'True');
+    end;
     Index := HostIndex(Host.Key);
     if Index < 0 then
-      Hosts := Hosts + [Host]
+    begin
+      Hosts := Hosts + [Host];
+    end
     else if ACreation <> nil then
     begin
       // Mehrfach erzeugt: besitzend, sobald eine Erzeugung besitzt; die erste bleibt Ziel der Korrektur.
       Hosts[Index].Owning := Hosts[Index].Owning or Host.Owning;
       if Hosts[Index].Creation = nil then
+      begin
         Hosts[Index].Creation := ACreation;
+      end;
     end;
   end;
 
@@ -1893,13 +2343,21 @@ var
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
           (StringListCreate(Node[1], StringListClasses) <> nil) then
+        begin
           AddHost(TextOf(Node[0]), Node[1]);
+        end;
         if (Node.Kind = TSyntaxKind.Field) and (Node.ChildCount > 0) and
           (Node[0].Kind = TSyntaxKind.TypeReference) and MatchText(Node[0].Name, ObjectItemControls) then
+        begin
           for Name in Node.Name.Split([',']) do
+          begin
             AddHost(Trim(Name) + '.Items', nil);
+          end;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1925,10 +2383,14 @@ var
         begin
           Host := HostIndex(KeyOf(TextOf(Node[0][0])));
           if Host >= 0 then
+          begin
             Hosts[Host].Owning := True;
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1951,9 +2413,13 @@ var
         Node := Pending.Pop;
         if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) and
           MatchText(Node.Name, FreeWords) then
+        begin
           Exit(True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -1978,7 +2444,9 @@ var
         begin
           Host := HostIndex(KeyOf(TextOf(Node[0])));
           if (Host >= 0) and ContainsFree(ARoutine) then
+          begin
             Hosts[Host].Handled := True;
+          end;
         end;
         // Die Liste als Argument (FreeObjects(Liste)) oder auf der rechten Seite einer Zuweisung: weitergegeben.
         if (Node.Parent <> nil) and (((Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] <> Node) and
@@ -1989,10 +2457,14 @@ var
         begin
           Host := HostIndex(KeyOf(TextOf(Node)));
           if Host >= 0 then
+          begin
             Hosts[Host].Handled := True;
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2013,9 +2485,13 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           MarkReleases(Node, Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2026,7 +2502,9 @@ var
   begin
     Result := ANode.Parent;
     while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+    begin
       Result := Result.Parent;
+    end;
   end;
 
   // Lokale Variable AName, in der Routine aus T.Create(…) erzeugt und sonst nur gelesen (V.Name) oder an
@@ -2055,14 +2533,20 @@ var
             Parent := Node.Parent;
             if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent[0] = Node) and (Parent.ChildCount = 2) and
               (CreatedClass(Parent[1]) <> '') and (Found = '') then
-              Found := CreatedClass(Parent[1])
+            begin
+              Found := CreatedClass(Parent[1]);
+            end
             // V.Name liest nur; alles andere außer dem AddObject-Argument gibt V weiter oder frei.
             else if not ((Parent.Kind = TSyntaxKind.MemberAccess) and (Parent[0] = Node) and
               not MatchText(Parent.Name, FreeWords)) and (Parent <> AAdd) then
+            begin
               Other := True;
+            end;
           end;
           for Index := Node.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(Node[Index]);
+          end;
         end;
       finally
         Pending.Free;
@@ -2077,18 +2561,32 @@ var
     Result := '';
     Local := False;
     for Index := 0 to ARoutine.ChildCount - 1 do
+    begin
       if ARoutine[Index].Kind = TSyntaxKind.VarSection then
+      begin
         for Inner := 0 to ARoutine[Index].ChildCount - 1 do
+        begin
           for Name in ARoutine[Index][Inner].Name.Split([',']) do
+          begin
             if SameText(Trim(Name), AName) then
+            begin
               Local := True;
+            end;
+          end;
+        end;
+      end;
+    end;
     if not Local then
+    begin
       Exit;
+    end;
     Found := '';
     Other := False;
     Scan(ARoutine);
     if not Other then
+    begin
       Result := Found;
+    end;
   end;
 
   function OwnsFix(const AHost: TObjectsHost; out AFix: TRuleFix): Boolean;
@@ -2100,10 +2598,14 @@ var
     Result := False;
     Creation := AHost.Creation;
     if Creation = nil then
+    begin
       Exit;
+    end;
     Access := Creation;
     if Creation.Kind = TSyntaxKind.Call then
+    begin
       Access := Creation[0];
+    end;
     ClassText := TextOf(Access[0]);
     if (Creation.Kind = TSyntaxKind.MemberAccess) or (Creation.ChildCount = 1) then
     begin
@@ -2122,10 +2624,14 @@ var
     Statement := Creation.Parent;
     if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or
       (Statement.StartPos.Line <> Statement.EndPos.Line) or (Statement.EndPos.Line > High(Lines)) then
+    begin
       Exit;
+    end;
     // Die Zeile muss mit der Anweisung enden.
     if Trim(Copy(Lines[Statement.EndPos.Line], Statement.EndPos.Character + 1, MaxInt)) <> ';' then
+    begin
       Exit;
+    end;
     AFix := TRuleFix.Create('OwnsObjects := True setzen',
       [TTextEdit.Create(TTextRange.Create(Statement.EndPos.Line + 1, 0, Statement.EndPos.Line + 1, 0),
       Copy(Lines[Statement.StartPos.Line], 1, Statement.StartPos.Character) + TextOf(Statement[0]) +
@@ -2142,32 +2648,50 @@ var
     Fixes: TArray<TRuleFix>;
   begin
     if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount < 1) or (ANode[0].Kind <> TSyntaxKind.MemberAccess) then
+    begin
       Exit;
+    end;
     if SameText(ANode.Name, 'AddObject') then
-      ObjectArg := 2
+    begin
+      ObjectArg := 2;
+    end
     else if SameText(ANode.Name, 'InsertObject') then
-      ObjectArg := 3
+    begin
+      ObjectArg := 3;
+    end
     else
+    begin
       Exit;
+    end;
     Access := ANode[0];
     if (ANode.ChildCount <> ObjectArg + 1) or (Access.ChildCount <> 1) then
+    begin
       Exit;
+    end;
     Host := HostIndex(KeyOf(TextOf(Access[0])));
     if (Host < 0) or Hosts[Host].Owning or Hosts[Host].Handled then
+    begin
       Exit;
+    end;
     Argument := ANode[ObjectArg];
     ClassName := CreatedClass(Argument);
     if (ClassName = '') and (Argument.Kind = TSyntaxKind.Identifier) then
     begin
       Routine := EnclosingRoutine(ANode);
       if Routine <> nil then
+      begin
         ClassName := LocalCreatedClass(Routine, Argument.Name, ANode);
+      end;
     end;
     if ClassName = '' then
+    begin
       Exit;
+    end;
     Fixes := nil;
     if OwnsFix(Hosts[Host], Fix) then
+    begin
       Fixes := [Fix];
+    end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
       Format('%s besitzt die Objekte nicht; die %s-Objekte werden nie freigegeben.',
       [TextOf(Access[0]), ClassName]), TRuleConfidence.Medium, Fixes);
@@ -2194,7 +2718,9 @@ var
         end;
         Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
         for Index := Entry.Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+        end;
       end;
     finally
       Pending.Free;
@@ -2204,12 +2730,16 @@ var
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not (ContainsText(AContext.Text, 'AddObject') or
     ContainsText(AContext.Text, 'InsertObject')) then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   Hosts := nil;
   CollectHosts(AContext.Tree.Root);
   if Hosts = nil then
+  begin
     Exit;
+  end;
   CollectOwning(AContext.Tree.Root);
   VisitRoutines(AContext.Tree.Root);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
@@ -2233,8 +2763,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(StoreMethods) do
+  begin
     if SameText(StoreMethods[Index], AMethod) then
+    begin
       Exit(RemoveCounterparts[Index]);
+    end;
+  end;
   Result := '';
 end;
 
@@ -2269,14 +2803,18 @@ var
   begin
     Result := StringReplace(UpperCase(NodeText(ANode)), ' ', '', [rfReplaceAll]);
     if StartsStr('SELF.', Result) then
+    begin
       Result := Copy(Result, 6, MaxInt);
+    end;
   end;
 
   function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
   begin
     Result := ANode;
     while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+    begin
       Result := Result[0];
+    end;
   end;
 
   /// <summary>Äußerster Knoten um ANode, der nur aus Klammern besteht.</summary>
@@ -2284,7 +2822,9 @@ var
   begin
     Result := ANode;
     while (Result.Parent <> nil) and (Result.Parent.Kind = TSyntaxKind.ParenExpr) do
+    begin
       Result := Result.Parent;
+    end;
   end;
 
   /// <summary>Ein einfacher Name (X oder Self.X), außer Self selbst.</summary>
@@ -2322,11 +2862,17 @@ var
     First := ANode;
     while (First.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Call]) and
       (First.ChildCount > 0) do
+    begin
       First := First[0];
+    end;
     if First.Kind <> TSyntaxKind.Identifier then
+    begin
       Exit(True);
+    end;
     if SameText(First.Name, 'Self') then
+    begin
       Exit(False);
+    end;
     Result := Resolver.ResolveChain(AContext.Tree, FileName, [First.Name], First.StartOffset).Kind =
       TResolvedKind.Local;
   end;
@@ -2346,20 +2892,36 @@ var
     for Depth := 0 to 63 do
     begin
       if MatchText(Name, Bases) then
+      begin
         Exit(Name);
+      end;
       if MatchText('TComponent', Bases) and MatchText(Name, KnownComponents) then
+      begin
         Exit('TComponent');
+      end;
       if SameText(Name, 'TInterfacedObject') then
+      begin
         Exit(Name);
+      end;
       if MatchText(Name, ['TObject', 'TInterfacedPersistent']) then
+      begin
         Exit;
+      end;
       if Ancestry.FindClass(Name, Found) then
+      begin
         for Method in Ancestry.Methods(Found) do
+        begin
           if SameText(Method.Name, '_Release') then
+          begin
             Exit;
+          end;
+        end;
+      end;
       Name := Ancestry.ParentOf(Name);
       if Name = '' then
+      begin
         Exit;
+      end;
     end;
   end;
 
@@ -2381,9 +2943,13 @@ var
         Node := Pending.Pop;
         if IsObjectName(Node) and SameText(Normalized(Node), AObject.Name) and Resolve(Node, Symbol, TypeInfo) and
           SameSymbol(Symbol, AObject) then
+        begin
           Exit(True);
+        end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2404,26 +2970,48 @@ var
     begin
       Callee := Call[0];
       if (Callee.Kind <> TSyntaxKind.MemberAccess) or (Callee.ChildCount = 0) then
+      begin
         Continue;
+      end;
       if SameText(Callee.Name, 'FreeNotification') and Resolve(Callee[0], Symbol, TypeInfo) and
         SameSymbol(Symbol, AObject) then
+      begin
         Exit(True);
+      end;
       if not AIsCall or (Call = AStore) or (Normalized(Callee[0]) <> Holder) then
+      begin
         Continue;
+      end;
       if SameText(Callee.Name, 'Clear') then
+      begin
         Exit(True);
+      end;
       for Argument := 1 to Call.ChildCount - 1 do
+      begin
         if Mentions(Call[Argument], AObject) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
     // Clear ohne Klammern ist eine Anweisung aus MemberAccess.
     for Callee in Clears do
+    begin
       if AIsCall and (Normalized(Callee[0]) = Holder) then
+      begin
         Exit(True);
+      end;
+    end;
     if not AIsCall then
+    begin
       for Assignment in Assignments do
+      begin
         if (Assignment <> AStore) and (Normalized(Assignment[0]) = Holder) then
+        begin
           Exit(True);
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -2437,18 +3025,24 @@ var
     Result := False;
     if not TRoutineBody.InList(ARelease.Statement) or
       (ARelease.Statement.StartPos.Line <> ARelease.Statement.EndPos.Line) then
+    begin
       Exit;
+    end;
     if AIsCall then
     begin
       Method := Counterpart(AStore[0].Name);
       // Das Gegenstück muss es am Typ des Empfängers geben.
       if (Method = '') or not Resolve(AHolder, Symbol, TypeInfo) or not Resolver.FindMember(TypeInfo, Method, Member)
         then
+      begin
         Exit;
+      end;
       Line := NodeText(AHolder) + '.' + Method + '(' + NodeText(AArgument) + ');';
     end
     else
+    begin
       Line := NodeText(AHolder) + ' := nil;';
+    end;
     AFix := TRuleFix.Create('Abmeldung vor der Freigabe einfügen',
       [TRoutineBody.InsertBefore(AContext.Text, ARelease.Statement, Line)]);
     Result := True;
@@ -2469,13 +3063,17 @@ var
     Value := Outer(AValue);
     Parent := Value.Parent;
     if Parent = nil then
+    begin
       Exit;
+    end;
     if (AValue.Kind = TSyntaxKind.BinaryExpr) then
     begin
       ObjectNode := Unwrapped(AValue[0]);
       if (AValue[1].Kind <> TSyntaxKind.Identifier) or
         not TSelfAsInterfaceInConstructorRule.IsInterfaceType(AValue[1].Name) then
+      begin
         Exit;
+      end;
       InterfaceName := AValue[1].Name;
     end
     else
@@ -2484,7 +3082,9 @@ var
       InterfaceName := '';
     end;
     if not IsObjectName(ObjectNode) then
+    begin
       Exit;
+    end;
     // Ziel der Speicherung: Feld, globale Variable oder Liste, kein lokaler Name.
     if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent.ChildCount = 2) and (Parent[1] = Value) then
     begin
@@ -2493,7 +3093,9 @@ var
       if InterfaceName = '' then
       begin
         if not Resolve(Holder, Symbol, TypeInfo) or (TypeInfo.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+        begin
           Exit;
+        end;
         InterfaceName := TypeInfo.Name;
       end;
     end
@@ -2507,45 +3109,71 @@ var
       begin
         // Ohne "as" nur Listen von Interfaces: TList<IFoo>, TInterfaceList.
         if not MatchText(Parent[0].Name, ['Add', 'Insert']) or not IsObjectName(Holder) then
+        begin
           Exit;
+        end;
         // Der deklarierte Typ genügt; TList<T> selbst muss nicht im Index stehen.
         if Holder.Kind = TSyntaxKind.Identifier then
-          Symbol := Resolver.ResolveChain(AContext.Tree, FileName, [Holder.Name], Holder.StartOffset)
+        begin
+          Symbol := Resolver.ResolveChain(AContext.Tree, FileName, [Holder.Name], Holder.StartOffset);
+        end
         else
+        begin
           Symbol := Resolver.ResolveChain(AContext.Tree, FileName, ['Self', Holder.Name], Holder.StartOffset);
+        end;
         ListType := Symbol.TypeName;
         if (Symbol.TypeArgs <> '') and (Pos('<', ListType) = 0) then
+        begin
           ListType := ListType + '<' + Symbol.TypeArgs + '>';
+        end;
         if MatchText(ListType, ['TInterfaceList', 'System.Classes.TInterfaceList', 'Classes.TInterfaceList']) then
-          InterfaceName := 'IInterface'
+        begin
+          InterfaceName := 'IInterface';
+        end
         else if StartsText('TList<', ListType) and EndsText('>', ListType) and
           TSelfAsInterfaceInConstructorRule.IsInterfaceType(Copy(ListType, 7, Length(ListType) - 7)) then
-          InterfaceName := Copy(ListType, 7, Length(ListType) - 7)
+        begin
+          InterfaceName := Copy(ListType, 7, Length(ListType) - 7);
+        end
         else
+        begin
           Exit;
+        end;
       end;
     end
     else
+    begin
       Exit;
+    end;
     if IsLocal(Holder) then
+    begin
       Exit;
+    end;
     if not Resolve(ObjectNode, ObjectSymbol, ObjectType) or
       not (ObjectSymbol.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable]) or
       (ObjectType.SymbolKind <> TIndexSymbolKind.ClassType) then
+    begin
       Exit;
+    end;
     Base := ComponentBase(ObjectType.Name);
     if Base = '' then
+    begin
       Exit;
+    end;
     // Erste Freigabe desselben Objekts in der Datei.
     Found := -1;
     for Index := 0 to High(Releases) do
+    begin
       if Resolve(Releases[Index].Target, Symbol, TypeInfo) and SameSymbol(Symbol, ObjectSymbol) then
       begin
         Found := Index;
         Break;
       end;
+    end;
     if Found < 0 then
+    begin
       Exit;
+    end;
     Release := Releases[Found];
     HolderText := NodeText(Holder);
     // Referenzgezählt: Free gibt das Objekt frei, obwohl das gespeicherte Interface es noch hält; eine Abmeldung
@@ -2558,11 +3186,15 @@ var
       Exit;
     end;
     if Unregistered(ObjectSymbol, Parent, Holder, IsCall) then
+    begin
       Exit;
+    end;
     Argument := Value;
     Fixes := nil;
     if UnregisterFix(Parent, Holder, Argument, IsCall, Release, Fix) then
+    begin
       Fixes := [Fix];
+    end;
     AReport.Add(TTextRange.Create(Parent.StartPos, Parent.EndPos), Format('%s ist ein %s ohne Referenzzählung; ' +
       'nach %s hält %s ein ungültiges %s.', [ObjectType.Name, Base, NodeText(Release.Statement), HolderText,
       InterfaceName]), TRuleConfidence.Medium, Fixes);
@@ -2588,7 +3220,9 @@ var
             Calls := Calls + [Node];
           TSyntaxKind.AssignStatement:
             if Node.ChildCount = 2 then
+            begin
               Assignments := Assignments + [Node];
+            end;
           TSyntaxKind.CallStatement:
             if Node.ChildCount > 0 then
             begin
@@ -2596,26 +3230,38 @@ var
               Expression := Node[0];
               if (Expression.Kind = TSyntaxKind.Call) and (Expression.ChildCount > 0) and
                 (Expression[0].Kind = TSyntaxKind.MemberAccess) then
+              begin
                 Expression := Expression[0];
+              end;
               Release.Statement := Node;
               Release.Target := nil;
               if (Expression.Kind = TSyntaxKind.MemberAccess) and (Expression.ChildCount = 1) and
                 MatchText(Expression.Name, FreeMethods) then
-                Release.Target := Expression[0]
+              begin
+                Release.Target := Expression[0];
+              end
               else if (Expression.Kind = TSyntaxKind.Call) and SameText(Expression.Name, 'FreeAndNil') and
                 (Expression.ChildCount = 2) then
+              begin
                 Release.Target := Expression[1];
+              end;
               if (Release.Target <> nil) and IsObjectName(Release.Target) then
+              begin
                 Releases := Releases + [Release];
+              end;
               if (Expression.Kind = TSyntaxKind.MemberAccess) and (Expression.ChildCount = 1) and
                 SameText(Expression.Name, 'Clear') then
+              begin
                 Clears := Clears + [Expression];
+              end;
             end;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2636,12 +3282,18 @@ var
       begin
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.BinaryExpr) and SameText(Node.Name, 'as') and (Node.ChildCount = 2) then
-          Inspect(Node)
+        begin
+          Inspect(Node);
+        end
         else if IsObjectName(Node) and (Outer(Node).Parent <> nil) and
           (Outer(Node).Parent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call]) then
+        begin
           Inspect(Node);
+        end;
         for Child := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Child]);
+        end;
       end;
     finally
       Pending.Free;
@@ -2650,20 +3302,28 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Bases := TRuleOptions.Strings(AContext.Options, 'componentClasses', ['TComponent']);
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Releases := nil;
   Calls := nil;
   Assignments := nil;
   Clears := nil;
   Collect(AContext.Tree.Root);
   if Releases = nil then
+  begin
     Exit;
+  end;
   Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
   try

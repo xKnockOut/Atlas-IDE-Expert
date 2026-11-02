@@ -89,6 +89,8 @@ uses
 
 type
   TXmlNodeKind = (StartTag, EndTag, Text, Done);
+  // Ergebnis von SkipDeclaration: nichts übersprungen, übersprungen, ohne Ende.
+  TXmlSkip = (None, Skipped, Unclosed);
 
   /// <summary>Kleiner Leser für die Berichte; nur innerhalb von Parse benutzt.</summary>
   TXmlCursor = record
@@ -104,7 +106,21 @@ type
     procedure Init(const AText: string);
     function Next: Boolean;
     function Attribute(const AName: string): string;
+    /// <summary>Steht an Position ein Zeichen aus AChars?</summary>
+    function CharIs(const AChars: TSysCharSet): Boolean;
+    procedure SkipWhile(const AChars: TSysCharSet);
+    /// <summary>Text ab Position bis vor das erste Zeichen aus AStops (oder bis zum Ende).</summary>
+    function TakeUntil(const AStops: TSysCharSet): string;
+    function SkipPast(const AClose: string; AFrom: Integer): TXmlSkip;
+    /// <summary>Kommentar, Verarbeitungsanweisung oder Deklaration ab Position überspringen.</summary>
+    function SkipDeclaration: TXmlSkip;
+    procedure ReadCData;
+    procedure ReadAttribute;
+    procedure ReadTag;
   end;
+
+const
+  cXmlSpaces = [' ', #9, #13, #10];
 
 procedure TXmlCursor.Init(const AText: string);
 begin
@@ -115,116 +131,169 @@ end;
 
 function TXmlCursor.Attribute(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AttributeNames) do
-    if SameText(AttributeNames[Index], AName) then
-      Exit(AttributeValues[Index]);
+  for mIndex := 0 to High(AttributeNames) do
+  begin
+    if SameText(AttributeNames[mIndex], AName) then
+    begin
+      Exit(AttributeValues[mIndex]);
+    end;
+  end;
   Result := '';
 end;
 
-function TXmlCursor.Next: Boolean;
+function TXmlCursor.CharIs(const AChars: TSysCharSet): Boolean;
+begin
+  Result := (Position <= Length(Source)) and CharInSet(Source[Position], AChars);
+end;
+
+procedure TXmlCursor.SkipWhile(const AChars: TSysCharSet);
+begin
+  while CharIs(AChars) do
+  begin
+    Inc(Position);
+  end;
+end;
+
+function TXmlCursor.TakeUntil(const AStops: TSysCharSet): string;
 var
-  Start, Stop: Integer;
-  Quote: Char;
-  AttributeName: string;
+  mStart: Integer;
+begin
+  mStart := Position;
+  while (Position <= Length(Source)) and not CharInSet(Source[Position], AStops) do
+  begin
+    Inc(Position);
+  end;
+  Result := Copy(Source, mStart, Position - mStart);
+end;
+
+function TXmlCursor.SkipPast(const AClose: string; AFrom: Integer): TXmlSkip;
+var
+  mStop: Integer;
+begin
+  mStop := PosEx(AClose, Source, AFrom);
+  if mStop = 0 then
+  begin
+    Exit(TXmlSkip.Unclosed);
+  end;
+  Position := mStop + Length(AClose);
+  Result := TXmlSkip.Skipped;
+end;
+
+function TXmlCursor.SkipDeclaration: TXmlSkip;
+begin
+  if Copy(Source, Position, 4) = '<!--' then
+  begin
+    Exit(SkipPast('-->', Position + 4));
+  end;
+  Result := TXmlSkip.None;
+  if (Copy(Source, Position, 2) = '<?') or (Copy(Source, Position, 2) = '<!') then
+  begin
+    Result := SkipPast('>', Position + 2);
+  end;
+end;
+
+procedure TXmlCursor.ReadCData;
+var
+  mStart, mStop: Integer;
+begin
+  mStart := Position + 9;
+  mStop := PosEx(']]>', Source, mStart);
+  if mStop = 0 then
+  begin
+    mStop := Length(Source) + 1;
+  end;
+  Kind := TXmlNodeKind.Text;
+  Value := Copy(Source, mStart, mStop - mStart);
+  Position := mStop + 3;
+end;
+
+procedure TXmlCursor.ReadAttribute;
+var
+  mName: string;
+  mQuote: Char;
+begin
+  mName := TakeUntil(['=', ' ', #9, #13, #10, '>', '/']);
+  SkipWhile(cXmlSpaces);
+  if not CharIs(['=']) then
+  begin
+    Exit;
+  end;
+  Inc(Position);
+  SkipWhile(cXmlSpaces);
+  if not CharIs(['"', '''']) then
+  begin
+    Exit;
+  end;
+  mQuote := Source[Position];
+  Inc(Position);
+  AttributeNames := AttributeNames + [mName];
+  AttributeValues := AttributeValues + [TTextEntities.Decode(TakeUntil([mQuote]))];
+  Inc(Position);
+end;
+
+procedure TXmlCursor.ReadTag;
+begin
+  Inc(Position);
+  Kind := TXmlNodeKind.StartTag;
+  if CharIs(['/']) then
+  begin
+    Kind := TXmlNodeKind.EndTag;
+    Inc(Position);
+  end;
+  Name := TakeUntil([' ', #9, #13, #10, '/', '>']);
+  while Position <= Length(Source) do
+  begin
+    case Source[Position] of
+      '>':
+        begin
+          Inc(Position);
+          Exit;
+        end;
+      '/':
+        begin
+          SelfClosing := True;
+          Inc(Position);
+        end;
+      ' ', #9, #13, #10:
+        Inc(Position);
+    else
+      ReadAttribute;
+    end;
+  end;
+end;
+
+function TXmlCursor.Next: Boolean;
 begin
   Name := '';
   Value := '';
   SelfClosing := False;
   AttributeNames := nil;
   AttributeValues := nil;
+  Result := True;
   while Position <= Length(Source) do
   begin
     if Source[Position] <> '<' then
     begin
-      Start := Position;
-      while (Position <= Length(Source)) and (Source[Position] <> '<') do
-        Inc(Position);
       Kind := TXmlNodeKind.Text;
-      Value := TTextEntities.Decode(Copy(Source, Start, Position - Start));
-      Exit(True);
+      Value := TTextEntities.Decode(TakeUntil(['<']));
+      Exit;
     end;
     if Copy(Source, Position, 9) = '<![CDATA[' then
     begin
-      Start := Position + 9;
-      Stop := PosEx(']]>', Source, Start);
-      if Stop = 0 then
-        Stop := Length(Source) + 1;
-      Kind := TXmlNodeKind.Text;
-      Value := Copy(Source, Start, Stop - Start);
-      Position := Stop + 3;
-      Exit(True);
+      ReadCData;
+      Exit;
     end;
-    if Copy(Source, Position, 4) = '<!--' then
-    begin
-      Stop := PosEx('-->', Source, Position + 4);
-      if Stop = 0 then
+    case SkipDeclaration of
+      TXmlSkip.Skipped:
+        Continue;
+      TXmlSkip.Unclosed:
         Break;
-      Position := Stop + 3;
-      Continue;
+      TXmlSkip.None: ;
     end;
-    if (Copy(Source, Position, 2) = '<?') or (Copy(Source, Position, 2) = '<!') then
-    begin
-      Stop := PosEx('>', Source, Position + 2);
-      if Stop = 0 then
-        Break;
-      Position := Stop + 1;
-      Continue;
-    end;
-    Inc(Position);
-    Kind := TXmlNodeKind.StartTag;
-    if (Position <= Length(Source)) and (Source[Position] = '/') then
-    begin
-      Kind := TXmlNodeKind.EndTag;
-      Inc(Position);
-    end;
-    Start := Position;
-    while (Position <= Length(Source)) and not CharInSet(Source[Position], [' ', #9, #13, #10, '/', '>']) do
-      Inc(Position);
-    Name := Copy(Source, Start, Position - Start);
-    while Position <= Length(Source) do
-    begin
-      case Source[Position] of
-        '>':
-          begin
-            Inc(Position);
-            Exit(True);
-          end;
-        '/':
-          begin
-            SelfClosing := True;
-            Inc(Position);
-          end;
-        ' ', #9, #13, #10:
-          Inc(Position);
-      else
-        Start := Position;
-        while (Position <= Length(Source)) and not CharInSet(Source[Position], ['=', ' ', #9, #13, #10, '>', '/']) do
-          Inc(Position);
-        AttributeName := Copy(Source, Start, Position - Start);
-        while (Position <= Length(Source)) and CharInSet(Source[Position], [' ', #9, #13, #10]) do
-          Inc(Position);
-        if (Position <= Length(Source)) and (Source[Position] = '=') then
-        begin
-          Inc(Position);
-          while (Position <= Length(Source)) and CharInSet(Source[Position], [' ', #9, #13, #10]) do
-            Inc(Position);
-          if (Position <= Length(Source)) and CharInSet(Source[Position], ['"', '''']) then
-          begin
-            Quote := Source[Position];
-            Inc(Position);
-            Start := Position;
-            while (Position <= Length(Source)) and (Source[Position] <> Quote) do
-              Inc(Position);
-            AttributeNames := AttributeNames + [AttributeName];
-            AttributeValues := AttributeValues + [TTextEntities.Decode(Copy(Source, Start, Position - Start))];
-            Inc(Position);
-          end;
-        end;
-      end;
-    end;
-    Exit(True);
+    ReadTag;
+    Exit;
   end;
   Kind := TXmlNodeKind.Done;
   Result := False;
@@ -245,8 +314,12 @@ var
 begin
   Result := 0;
   for Item in Cases do
+  begin
     if Item.Outcome = AOutcome then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TTestRunResult.Total: Integer;
@@ -260,8 +333,12 @@ var
 begin
   Result := nil;
   for Item in Cases do
+  begin
     if Item.IsFailure then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 function TTestRunResult.AllPassed: Boolean;
@@ -278,7 +355,9 @@ var
 begin
   Settings := TFormatSettings.Invariant;
   if not TryStrToFloat(StringReplace(Trim(AText), ',', '.', []), Value, Settings) or (Value < 0) then
+  begin
     Exit(0);
+  end;
   Result := Round(Value * 1000);
 end;
 
@@ -292,9 +371,13 @@ var
     Result := Trim(AValue);
     if (Length(Result) >= 2) and CharInSet(Result[1], ['"', '''', '<']) and
       (Result[Length(Result)] = Result[1]) then
-      Result := Copy(Result, 2, Length(Result) - 2)
-    else if (Length(Result) >= 2) and (Result[1] = '<') and (Result[Length(Result)] = '>') then
+    begin
       Result := Copy(Result, 2, Length(Result) - 2);
+    end
+    else if (Length(Result) >= 2) and (Result[1] = '<') and (Result[Length(Result)] = '>') then
+    begin
+      Result := Copy(Result, 2, Length(Result) - 2);
+    end;
   end;
 
 begin
@@ -310,23 +393,31 @@ begin
     AActual := Copy(Text, ActualAt + 8, MaxInt);
     LineEnd := Pos(#10, AActual);
     if LineEnd > 0 then
+    begin
       AActual := Copy(AActual, 1, LineEnd - 1);
+    end;
     AActual := Unquote(AActual);
     Exit(True);
   end;
   // DUnitX: "Expected 3 but got 4" (dahinter ggf. die eigene Meldung des Tests).
   ExpectedAt := Pos('expected ', LowerCase(Text));
   if ExpectedAt > 0 then
-    ActualAt := PosEx(' but got ', LowerCase(Text), ExpectedAt + 9)
+  begin
+    ActualAt := PosEx(' but got ', LowerCase(Text), ExpectedAt + 9);
+  end
   else
+  begin
     ActualAt := 0;
+  end;
   if (ExpectedAt > 0) and (ActualAt > 0) then
   begin
     AExpected := Unquote(Copy(Text, ExpectedAt + 9, ActualAt - ExpectedAt - 9));
     AActual := Copy(Text, ActualAt + 9, MaxInt);
     LineEnd := Pos(#10, AActual);
     if LineEnd > 0 then
+    begin
       AActual := Copy(AActual, 1, LineEnd - 1);
+    end;
     AActual := Unquote(AActual);
     Exit(True);
   end;
@@ -360,7 +451,9 @@ begin
         ACaseName := Copy(Rest, Index + 1, MaxInt);
       end
       else
+      begin
         AMethod := Rest;
+      end;
       Exit;
     end;
   end;
@@ -372,243 +465,399 @@ begin
     for Index := 0 to High(Parts) - 2 do
     begin
       if AUnitName <> '' then
+      begin
         AUnitName := AUnitName + '.';
+      end;
       AUnitName := AUnitName + Parts[Index];
     end;
   end
   else
+  begin
     AMethod := AFullName;
+  end;
+end;
+
+type
+  /// <summary>Liest einen Bericht Knoten für Knoten; der Zustand gilt für einen Aufruf von Read.</summary>
+  TReportReader = class
+  private
+    FCursor: TXmlCursor;
+    FResult: TTestRunResult;
+    /// <summary>Fixture der umgebenden test-suite je Ebene (NUnit).</summary>
+    FFixtures: TArray<string>;
+    /// <summary>Je offener test-suite: ist sie eine Fixture?</summary>
+    FSuites: TArray<Boolean>;
+    FCurrent: TTestCaseResult;
+    FInCase: Boolean;
+    FInMessage: Boolean;
+    FInStack: Boolean;
+    FInFailure: Boolean;
+    FRunTimeKnown: Boolean;
+    FSumMs: Int64;
+    procedure SetRunTime(const ASeconds: string);
+    procedure DetectFormat(const AElement: string);
+    procedure StartSuite;
+    procedure EndSuite;
+    procedure StartJUnitCase;
+    procedure StartNUnitCase;
+    procedure StartCase;
+    procedure EndCase;
+    procedure TakeMessageAttribute;
+    procedure StartFailure(const AElement: string);
+    procedure StartCaseChild(const AElement: string);
+    procedure OpenElement(const AElement: string);
+    procedure CloseElement(const AElement: string);
+    procedure ReadTextNode;
+  public
+    function Read(const AXml: string): TTestRunResult;
+  end;
+
+function IsCaseElement(const AElement: string): Boolean;
+begin
+  Result := (AElement = 'test-case') or (AElement = 'testcase');
+end;
+
+function IsFailureElement(const AElement: string): Boolean;
+begin
+  Result := (AElement = 'failure') or (AElement = 'error');
+end;
+
+// Ergebnis eines NUnit-Testfalls aus den Attributen result und label (klein geschrieben).
+function NUnitOutcome(const AResult, ALabel: string): TTestOutcome;
+begin
+  case IndexStr(AResult, ['success', 'passed', 'failure', 'failed', 'error']) of
+    0, 1:
+      Result := TTestOutcome.Passed;
+    2, 3:
+      begin
+        Result := TTestOutcome.Failed;
+        if (ALabel = 'error') or (ALabel = 'cancelled') then
+        begin
+          Result := TTestOutcome.Error;
+        end;
+      end;
+    4:
+      Result := TTestOutcome.Error;
+  else
+    // Ignored, Skipped, Inconclusive, NotRunnable
+    Result := TTestOutcome.Skipped;
+  end;
+end;
+
+procedure TReportReader.SetRunTime(const ASeconds: string);
+begin
+  FResult.DurationMs := TTestResults.SecondsToMs(ASeconds);
+  FRunTimeKnown := True;
+end;
+
+procedure TReportReader.DetectFormat(const AElement: string);
+begin
+  case IndexStr(AElement, ['test-results', 'test-run', 'testsuites', 'testsuite']) of
+    0:
+      FResult.Format := 'nunit2';
+    1:
+      FResult.Format := 'nunit3';
+    2, 3:
+      FResult.Format := 'junit';
+  else
+    Exit;
+  end;
+  if FCursor.SelfClosing then
+  begin
+    Exit;
+  end;
+  // Gesamtdauer: NUnit 3 "duration", JUnit "time" an der Wurzel.
+  if FCursor.Attribute('duration') <> '' then
+  begin
+    SetRunTime(FCursor.Attribute('duration'));
+  end
+  else if (FResult.Format = 'junit') and (FCursor.Attribute('time') <> '') then
+  begin
+    SetRunTime(FCursor.Attribute('time'));
+  end;
+end;
+
+procedure TReportReader.StartSuite;
+var
+  mIsFixture: Boolean;
+begin
+  // Äußerste Suite (Assembly): Dauer des ganzen Laufs (NUnit 2).
+  if not FRunTimeKnown and (FCursor.Attribute('time') <> '') then
+  begin
+    SetRunTime(FCursor.Attribute('time'));
+  end;
+  if FCursor.SelfClosing then
+  begin
+    Exit;
+  end;
+  mIsFixture := Pos('fixture', LowerCase(FCursor.Attribute('type'))) > 0;
+  FSuites := FSuites + [mIsFixture];
+  if mIsFixture then
+  begin
+    FFixtures := FFixtures + [FCursor.Attribute('name')];
+  end;
+end;
+
+procedure TReportReader.EndSuite;
+begin
+  if Length(FSuites) = 0 then
+  begin
+    Exit;
+  end;
+  if FSuites[High(FSuites)] and (Length(FFixtures) > 0) then
+  begin
+    SetLength(FFixtures, Length(FFixtures) - 1);
+  end;
+  SetLength(FSuites, Length(FSuites) - 1);
+end;
+
+procedure TReportReader.StartJUnitCase;
+var
+  mClassName: string;
+  mDot: Integer;
+begin
+  mClassName := FCursor.Attribute('classname');
+  FCurrent.Method := FCursor.Attribute('name');
+  FCurrent.FullName := mClassName + '.' + FCurrent.Method;
+  mDot := LastDelimiter('.', mClassName);
+  FCurrent.UnitName := Copy(mClassName, 1, mDot - 1);
+  FCurrent.Fixture := Copy(mClassName, mDot + 1, MaxInt);
+  // Testfall: "Methode.Fall" im Namen.
+  mDot := Pos('.', FCurrent.Method);
+  if mDot > 0 then
+  begin
+    FCurrent.CaseName := Copy(FCurrent.Method, mDot + 1, MaxInt);
+    FCurrent.Method := Copy(FCurrent.Method, 1, mDot - 1);
+  end;
+  FCurrent.DurationMs := TTestResults.SecondsToMs(FCursor.Attribute('time'));
+  FCurrent.Outcome := TTestOutcome.Passed;
+end;
+
+procedure TReportReader.StartNUnitCase;
+var
+  mSuiteFixture, mDuration: string;
+begin
+  FCurrent.FullName := FCursor.Attribute('fullname');
+  if FCurrent.FullName = '' then
+  begin
+    FCurrent.FullName := FCursor.Attribute('name');
+  end;
+  mSuiteFixture := '';
+  if Length(FFixtures) > 0 then
+  begin
+    mSuiteFixture := FFixtures[High(FFixtures)];
+  end;
+  TTestResults.SplitName(FCurrent.FullName, mSuiteFixture, FCurrent.UnitName, FCurrent.Fixture, FCurrent.Method,
+    FCurrent.CaseName);
+  mDuration := FCursor.Attribute('duration');
+  if mDuration = '' then
+  begin
+    mDuration := FCursor.Attribute('time');
+  end;
+  FCurrent.DurationMs := TTestResults.SecondsToMs(mDuration);
+  FCurrent.Outcome := NUnitOutcome(LowerCase(FCursor.Attribute('result')), LowerCase(FCursor.Attribute('label')));
+  // executed="False"
+  if SameText(FCursor.Attribute('executed'), 'False') and (FCurrent.Outcome = TTestOutcome.Passed) then
+  begin
+    FCurrent.Outcome := TTestOutcome.Skipped;
+  end;
+end;
+
+procedure TReportReader.StartCase;
+begin
+  FCurrent := Default(TTestCaseResult);
+  FInCase := True;
+  FInFailure := False;
+  if FResult.Format = 'junit' then
+  begin
+    StartJUnitCase;
+  end
+  else
+  begin
+    StartNUnitCase;
+  end;
+end;
+
+procedure TReportReader.EndCase;
+var
+  mExpected, mActual: string;
+begin
+  FCurrent.Message := Trim(FCurrent.Message);
+  FCurrent.StackTrace := Trim(FCurrent.StackTrace);
+  // JUnit ohne Attribut "message": erste Zeile des Texts.
+  if (FCurrent.Message = '') and FCurrent.IsFailure and (FCurrent.StackTrace <> '') then
+  begin
+    FCurrent.Message := FCurrent.StackTrace;
+    if Pos(#10, FCurrent.Message) > 0 then
+    begin
+      FCurrent.Message := Trim(Copy(FCurrent.Message, 1, Pos(#10, FCurrent.Message) - 1));
+    end;
+  end;
+  if FCurrent.IsFailure and TTestResults.SplitValues(FCurrent.Message, mExpected, mActual) then
+  begin
+    FCurrent.Expected := mExpected;
+    FCurrent.Actual := mActual;
+    FCurrent.HasValues := True;
+  end;
+  Inc(FSumMs, FCurrent.DurationMs);
+  FResult.Cases := FResult.Cases + [FCurrent];
+  FInCase := False;
+  FInMessage := False;
+  FInStack := False;
+end;
+
+procedure TReportReader.TakeMessageAttribute;
+begin
+  if FCursor.Attribute('message') <> '' then
+  begin
+    FCurrent.Message := FCursor.Attribute('message');
+  end;
+end;
+
+procedure TReportReader.StartFailure(const AElement: string);
+begin
+  FInFailure := True;
+  if AElement = 'error' then
+  begin
+    FCurrent.Outcome := TTestOutcome.Error;
+  end
+  else if FCurrent.Outcome = TTestOutcome.Passed then
+  begin
+    FCurrent.Outcome := TTestOutcome.Failed;
+  end;
+  // JUnit: Meldung im Attribut, der Text ist die Aufrufliste.
+  TakeMessageAttribute;
+  FInStack := (FResult.Format = 'junit') and not FCursor.SelfClosing;
+end;
+
+procedure TReportReader.StartCaseChild(const AElement: string);
+begin
+  if IsFailureElement(AElement) then
+  begin
+    StartFailure(AElement);
+  end
+  else if AElement = 'skipped' then
+  begin
+    FCurrent.Outcome := TTestOutcome.Skipped;
+    TakeMessageAttribute;
+  end
+  else if not FCursor.SelfClosing then
+  begin
+    FInMessage := FInMessage or (AElement = 'message');
+    FInStack := FInStack or (AElement = 'stack-trace');
+  end;
+end;
+
+procedure TReportReader.OpenElement(const AElement: string);
+begin
+  if FResult.Format = '' then
+  begin
+    DetectFormat(AElement);
+  end;
+  if AElement = 'test-suite' then
+  begin
+    StartSuite;
+  end
+  else if IsCaseElement(AElement) then
+  begin
+    StartCase;
+    if FCursor.SelfClosing then
+    begin
+      EndCase;
+    end;
+  end
+  else if FInCase then
+  begin
+    StartCaseChild(AElement);
+  end;
+end;
+
+procedure TReportReader.CloseElement(const AElement: string);
+begin
+  if AElement = 'test-suite' then
+  begin
+    EndSuite;
+  end
+  else if FInCase and IsCaseElement(AElement) then
+  begin
+    EndCase;
+  end
+  else if AElement = 'message' then
+  begin
+    FInMessage := False;
+  end
+  else if AElement = 'stack-trace' then
+  begin
+    FInStack := False;
+  end
+  else if IsFailureElement(AElement) then
+  begin
+    FInFailure := False;
+    FInStack := False;
+  end;
+end;
+
+procedure TReportReader.ReadTextNode;
+begin
+  if not FInCase then
+  begin
+    Exit;
+  end;
+  if FInMessage then
+  begin
+    FCurrent.Message := FCurrent.Message + FCursor.Value;
+  end
+  else if FInStack then
+  begin
+    FCurrent.StackTrace := FCurrent.StackTrace + FCursor.Value;
+  end
+  else if FInFailure and (Trim(FCursor.Value) <> '') and (FCurrent.Message = '') then
+  begin
+    FCurrent.Message := FCursor.Value;
+  end;
+end;
+
+function TReportReader.Read(const AXml: string): TTestRunResult;
+begin
+  FResult := Default(TTestRunResult);
+  FCursor.Init(AXml);
+  while FCursor.Next do
+  begin
+    case FCursor.Kind of
+      TXmlNodeKind.StartTag:
+        OpenElement(LowerCase(FCursor.Name));
+      TXmlNodeKind.EndTag:
+        CloseElement(LowerCase(FCursor.Name));
+      TXmlNodeKind.Text:
+        ReadTextNode;
+      TXmlNodeKind.Done: ;
+    end;
+  end;
+  if FResult.Format = '' then
+  begin
+    FResult.Error := 'Kein Testbericht (NUnit oder JUnit) erkannt';
+  end
+  else
+  begin
+    FResult.Valid := True;
+    if not FRunTimeKnown then
+    begin
+      FResult.DurationMs := FSumMs;
+    end;
+  end;
+  Result := FResult;
 end;
 
 class function TTestResults.Parse(const AXml: string): TTestRunResult;
 var
-  Cursor: TXmlCursor;
-  Fixtures: TArray<string>;
-  Suites: TArray<Boolean>;
-  Current: TTestCaseResult;
-  InCase, InMessage, InStack, InFailure, RunTimeKnown: Boolean;
-  Element, SuiteType, ResultText, Label_, ClassName: string;
-  SumMs: Int64;
-
-  procedure StartCase;
-  var
-    UnitName, SuiteFixture, FixtureName, Method, CaseName: string;
-  begin
-    Current := Default(TTestCaseResult);
-    InCase := True;
-    InFailure := False;
-    if Result.Format = 'junit' then
-    begin
-      ClassName := Cursor.Attribute('classname');
-      Current.Method := Cursor.Attribute('name');
-      Current.FullName := ClassName + '.' + Current.Method;
-      if LastDelimiter('.', ClassName) > 0 then
-      begin
-        Current.UnitName := Copy(ClassName, 1, LastDelimiter('.', ClassName) - 1);
-        Current.Fixture := Copy(ClassName, LastDelimiter('.', ClassName) + 1, MaxInt);
-      end
-      else
-        Current.Fixture := ClassName;
-      // Testfall: "Methode.Fall" im Namen.
-      if Pos('.', Current.Method) > 0 then
-      begin
-        Current.CaseName := Copy(Current.Method, Pos('.', Current.Method) + 1, MaxInt);
-        Current.Method := Copy(Current.Method, 1, Pos('.', Current.Method) - 1);
-      end;
-      Current.DurationMs := SecondsToMs(Cursor.Attribute('time'));
-      Current.Outcome := TTestOutcome.Passed;
-      Exit;
-    end;
-    Current.FullName := Cursor.Attribute('fullname');
-    if Current.FullName = '' then
-      Current.FullName := Cursor.Attribute('name');
-    SuiteFixture := '';
-    if Length(Fixtures) > 0 then
-      SuiteFixture := Fixtures[High(Fixtures)];
-    SplitName(Current.FullName, SuiteFixture, UnitName, FixtureName, Method, CaseName);
-    Current.UnitName := UnitName;
-    Current.Fixture := FixtureName;
-    Current.Method := Method;
-    Current.CaseName := CaseName;
-    if Cursor.Attribute('duration') <> '' then
-      Current.DurationMs := SecondsToMs(Cursor.Attribute('duration'))
-    else
-      Current.DurationMs := SecondsToMs(Cursor.Attribute('time'));
-    ResultText := LowerCase(Cursor.Attribute('result'));
-    Label_ := LowerCase(Cursor.Attribute('label'));
-    if (ResultText = 'success') or (ResultText = 'passed') then
-      Current.Outcome := TTestOutcome.Passed
-    else if (ResultText = 'failure') or (ResultText = 'failed') then
-    begin
-      Current.Outcome := TTestOutcome.Failed;
-      if (Label_ = 'error') or (Label_ = 'cancelled') then
-        Current.Outcome := TTestOutcome.Error;
-    end
-    else if ResultText = 'error' then
-      Current.Outcome := TTestOutcome.Error
-    else
-      // Ignored, Skipped, Inconclusive, NotRunnable, executed="False"
-      Current.Outcome := TTestOutcome.Skipped;
-    if SameText(Cursor.Attribute('executed'), 'False') and (Current.Outcome = TTestOutcome.Passed) then
-      Current.Outcome := TTestOutcome.Skipped;
-  end;
-
-  procedure EndCase;
-  var
-    Expected, Actual: string;
-  begin
-    Current.Message := Trim(Current.Message);
-    Current.StackTrace := Trim(Current.StackTrace);
-    // JUnit ohne Attribut "message": erste Zeile des Texts.
-    if (Current.Message = '') and Current.IsFailure and (Current.StackTrace <> '') then
-    begin
-      Current.Message := Current.StackTrace;
-      if Pos(#10, Current.Message) > 0 then
-        Current.Message := Trim(Copy(Current.Message, 1, Pos(#10, Current.Message) - 1));
-    end;
-    if Current.IsFailure and SplitValues(Current.Message, Expected, Actual) then
-    begin
-      Current.Expected := Expected;
-      Current.Actual := Actual;
-      Current.HasValues := True;
-    end;
-    Inc(SumMs, Current.DurationMs);
-    Result.Cases := Result.Cases + [Current];
-    InCase := False;
-    InMessage := False;
-    InStack := False;
-  end;
-
+  mReader: TReportReader;
 begin
-  Result := Default(TTestRunResult);
-  Result.Cases := nil;
-  Cursor.Init(AXml);
-  Fixtures := nil;
-  Suites := nil;
-  InCase := False;
-  InMessage := False;
-  InStack := False;
-  InFailure := False;
-  RunTimeKnown := False;
-  SumMs := 0;
-  while Cursor.Next do
-  begin
-    Element := LowerCase(Cursor.Name);
-    case Cursor.Kind of
-      TXmlNodeKind.StartTag:
-        begin
-          if Result.Format = '' then
-          begin
-            if Element = 'test-results' then
-              Result.Format := 'nunit2'
-            else if Element = 'test-run' then
-              Result.Format := 'nunit3'
-            else if (Element = 'testsuites') or (Element = 'testsuite') then
-              Result.Format := 'junit';
-            if (Result.Format <> '') and not Cursor.SelfClosing then
-            begin
-              // Gesamtdauer: NUnit 3 "duration", JUnit "time" an der Wurzel.
-              if Cursor.Attribute('duration') <> '' then
-              begin
-                Result.DurationMs := SecondsToMs(Cursor.Attribute('duration'));
-                RunTimeKnown := True;
-              end
-              else if (Result.Format = 'junit') and (Cursor.Attribute('time') <> '') then
-              begin
-                Result.DurationMs := SecondsToMs(Cursor.Attribute('time'));
-                RunTimeKnown := True;
-              end;
-            end;
-          end;
-          if Element = 'test-suite' then
-          begin
-            SuiteType := LowerCase(Cursor.Attribute('type'));
-            // Äußerste Suite (Assembly): Dauer des ganzen Laufs (NUnit 2).
-            if not RunTimeKnown and (Cursor.Attribute('time') <> '') then
-            begin
-              Result.DurationMs := SecondsToMs(Cursor.Attribute('time'));
-              RunTimeKnown := True;
-            end;
-            if not Cursor.SelfClosing then
-            begin
-              Suites := Suites + [Pos('fixture', SuiteType) > 0];
-              if Pos('fixture', SuiteType) > 0 then
-                Fixtures := Fixtures + [Cursor.Attribute('name')];
-            end;
-          end
-          else if (Element = 'test-case') or (Element = 'testcase') then
-          begin
-            StartCase;
-            if Cursor.SelfClosing then
-              EndCase;
-          end
-          else if InCase and ((Element = 'failure') or (Element = 'error')) then
-          begin
-            InFailure := True;
-            if Element = 'error' then
-              Current.Outcome := TTestOutcome.Error
-            else if Current.Outcome = TTestOutcome.Passed then
-              Current.Outcome := TTestOutcome.Failed;
-            // JUnit: Meldung im Attribut, der Text ist die Aufrufliste.
-            if Cursor.Attribute('message') <> '' then
-              Current.Message := Cursor.Attribute('message');
-            InStack := (Result.Format = 'junit') and not Cursor.SelfClosing;
-          end
-          else if InCase and (Element = 'skipped') then
-          begin
-            Current.Outcome := TTestOutcome.Skipped;
-            if Cursor.Attribute('message') <> '' then
-              Current.Message := Cursor.Attribute('message');
-          end
-          else if InCase and (Element = 'message') and not Cursor.SelfClosing then
-            InMessage := True
-          else if InCase and (Element = 'stack-trace') and not Cursor.SelfClosing then
-            InStack := True;
-        end;
-      TXmlNodeKind.EndTag:
-        begin
-          if Element = 'test-suite' then
-          begin
-            if Length(Suites) > 0 then
-            begin
-              if Suites[High(Suites)] and (Length(Fixtures) > 0) then
-                SetLength(Fixtures, Length(Fixtures) - 1);
-              SetLength(Suites, Length(Suites) - 1);
-            end;
-          end
-          else if InCase and ((Element = 'test-case') or (Element = 'testcase')) then
-            EndCase
-          else if Element = 'message' then
-            InMessage := False
-          else if Element = 'stack-trace' then
-            InStack := False
-          else if (Element = 'failure') or (Element = 'error') then
-          begin
-            InFailure := False;
-            InStack := False;
-          end;
-        end;
-      TXmlNodeKind.Text:
-        if InCase then
-        begin
-          if InMessage then
-            Current.Message := Current.Message + Cursor.Value
-          else if InStack then
-            Current.StackTrace := Current.StackTrace + Cursor.Value
-          else if InFailure and (Trim(Cursor.Value) <> '') and (Current.Message = '') then
-            Current.Message := Cursor.Value;
-        end;
-      TXmlNodeKind.Done: ;
-    end;
+  mReader := TReportReader.Create;
+  try
+    Result := mReader.Read(AXml);
+  finally
+    mReader.Free;
   end;
-  if Result.Format = '' then
-  begin
-    Result.Error := 'Kein Testbericht (NUnit oder JUnit) erkannt';
-    Exit;
-  end;
-  Result.Valid := True;
-  if not RunTimeKnown then
-    Result.DurationMs := SumMs;
 end;
 
 end.

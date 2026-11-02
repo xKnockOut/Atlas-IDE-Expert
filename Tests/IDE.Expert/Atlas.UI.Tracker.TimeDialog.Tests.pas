@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerTimeDialogTests = class
   private
     FSaved: Integer;
@@ -47,10 +48,10 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Controls,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.TimeLog,
-  Atlas.UI.Strings,
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeDialog,
   Atlas.UI.Tracker.TimeList;
@@ -128,7 +129,7 @@ begin
     mDialog.DurationEdit.Text := 'viel';
     mDialog.BookButton.Click;
     Assert.AreEqual(0, mCalls);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.TimeBookInvalid), mDialog.Note.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid), mDialog.Note.Caption);
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult));
   finally
     mDialog.Free;
@@ -202,7 +203,7 @@ begin
     mPending(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 400, 'Time tracking is disabled'));
     Assert.IsTrue(mDialog.TrackingOff);
     Assert.IsFalse(mDialog.BookButton.Enabled);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.TimeBookOff), mDialog.Note.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookOff), mDialog.Note.Caption);
     Assert.IsTrue(mDialog.LaterButton.Enabled, 'Später bleibt');
     Assert.IsTrue(mDialog.DiscardButton.Enabled, 'Verwerfen bleibt');
   finally

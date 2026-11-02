@@ -92,6 +92,11 @@ type
     /// <summary>Symbole für AFileName: Dateien der Installation mit LibraryDefines, alle anderen mit
     /// denen des Projekts.</summary>
     function DefinesFor(const AFileName: string): TArray<string>;
+    /// <summary>Schlüssel der Defines für AFileName (TUnitIndex.DefinesKey).</summary>
+    function DefinesKeyFor(const AFileName: string): string;
+    /// <summary>Steht AFileName mit Stand AStamp schon passend im Index, z. B. von einem anderen Projekt der
+    /// Gruppe mit denselben Defines? Dann nicht noch einmal übernehmen.</summary>
+    function AlreadyIndexed(const AFileName: string; AStamp: Int64; ALibrary: Boolean): Boolean;
     function IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
     function IncludesUnchanged(const ACached: TUnitIndex): Boolean;
     /// <summary>Indiziert AFileName; liest ein anderer Thread die Datei gerade, wartet es auf ihn und übernimmt sein
@@ -181,13 +186,19 @@ var
 begin
   // Windows-Pfade auch unter anderen Systemen (Tests): beide Trenner gelten.
   for Root in ARoots do
+  begin
     if (Root <> '') and AFileName.StartsWith(Root, True) then
     begin
       if CharInSet(Root[Length(Root)], ['\', '/']) then
+      begin
         Exit(True);
+      end;
       if (Length(AFileName) > Length(Root)) and CharInSet(AFileName[Length(Root) + 1], ['\', '/']) then
+      begin
         Exit(True);
+      end;
     end;
+  end;
   Result := False;
 end;
 
@@ -195,9 +206,32 @@ function TIndexBuilder.DefinesFor(const AFileName: string): TArray<string>;
 begin
   // RTL, VCL und FMX einmal je Compiler und Plattform statt je Projekt-Defines (#647).
   if IsUnder(AFileName, FLibraryRoots) then
-    Result := FLibraryDefines
+  begin
+    Result := FLibraryDefines;
+  end
   else
+  begin
     Result := FDefines;
+  end;
+end;
+
+function TIndexBuilder.DefinesKeyFor(const AFileName: string): string;
+begin
+  Result := AnsiUpperCase(String.Join(';', DefinesFor(AFileName)));
+end;
+
+function TIndexBuilder.AlreadyIndexed(const AFileName: string; AStamp: Int64; ALibrary: Boolean): Boolean;
+var
+  mExisting: TUnitIndex;
+begin
+  // Ohne diese Prüfung übernahm jedes Projekt einer Gruppe die gemeinsamen Units erneut (aus dem Cache oder
+  // geparst) und ersetzte die des vorigen; die Namenslisten des Index behielten die ersetzten Einträge, bis es
+  // mehr tote als lebende gab (Speicher, Rückmeldung 01.11.2026). Bedingungen wie bei CacheFits.
+  Result := FIndex.FindFile(AFileName, mExisting) and (mExisting.Stamp = AStamp) and
+    (mExisting.DefinesKey <> '') and (mExisting.DefinesKey = DefinesKeyFor(AFileName)) and
+    (mExisting.Library_ = ALibrary) and IncludesUnchanged(mExisting) and
+    (mExisting.UsagesIndexed or not WantsUsages(ALibrary)) and
+    (not mExisting.Compact or (ALibrary and (FIndex.Budget > 0)));
 end;
 
 destructor TIndexBuilder.Destroy;
@@ -219,7 +253,9 @@ begin
   try
     // Ob ein kompakter Eintrag taugt, entscheidet CacheFits beim Einlesen.
     for UnitIndex in AUnits do
+    begin
       FCached.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), TIndexCacheEntry.FromUnit(UnitIndex));
+    end;
   finally
     TMonitor.Exit(FCacheLock);
   end;
@@ -232,7 +268,9 @@ begin
   TMonitor.Enter(FCacheLock);
   try
     for Entry in AEntries do
+    begin
       FCached.AddOrSetValue(AnsiUpperCase(Entry.Header.FileName), Entry);
+    end;
   finally
     TMonitor.Exit(FCacheLock);
   end;
@@ -288,8 +326,12 @@ var
 begin
   SetLength(Result, Length(AIncludes));
   for Index := 0 to High(AIncludes) do
+  begin
     if not FFileSystem.FileStamp(AIncludes[Index], Result[Index]) then
+    begin
       Result[Index] := -1;
+    end;
+  end;
 end;
 
 function TIndexBuilder.IncludesUnchanged(const ACached: TUnitIndex): Boolean;
@@ -298,16 +340,24 @@ var
   Stamp: Int64;
 begin
   if Length(ACached.Includes) = 0 then
+  begin
     Exit(True);
+  end;
   // Ältere Einträge ohne Zeitstempel gelten als geändert.
   if Length(ACached.IncludeStamps) <> Length(ACached.Includes) then
+  begin
     Exit(False);
+  end;
   for Index := 0 to High(ACached.Includes) do
   begin
     if not FFileSystem.FileStamp(ACached.Includes[Index], Stamp) then
+    begin
       Exit(False);
+    end;
     if (ACached.IncludeStamps[Index] < 0) or (Stamp <> ACached.IncludeStamps[Index]) then
+    begin
       Exit(False);
+    end;
   end;
   Result := True;
 end;
@@ -339,9 +389,13 @@ begin
   // das, solange ein Budget gilt: der Index würde sie ohnehin wieder kompakt halten. Sonst liefen
   // bei knappem Budget alle Bibliotheken bei jedem Start durch den Parser (Diagnoselog 15.10.2026).
   if AEntry.Header.Compact then
+  begin
     Result := ALibrary and (FIndex.Budget > 0);
+  end;
   if not Result then
+  begin
     AMiss := TIndexCacheMiss.Compact;
+  end;
 end;
 
 function TIndexBuilder.FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
@@ -362,7 +416,9 @@ begin
   AUsages := nil;
   Result := FFileSystem.ReadText(AFileName, Text);
   if Result then
+  begin
     AUsages := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver(), True).Usages;
+  end;
 end;
 
 function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
@@ -385,7 +441,9 @@ begin
     end;
     // Ein anderer Thread hat die Datei eben gelesen: sein Ergebnis gilt, kein zweites Parsen.
     if mWaited and FIndex.FindFile(AFileName, mExisting) then
+    begin
       Exit(True);
+    end;
     FInFlight.Add(mKey, True);
   finally
     TMonitor.Exit(FFlightLock);
@@ -410,7 +468,7 @@ var
   Text, Hash: string;
   Entry: TIndexCacheEntry;
   Cached, UnitIndex: TUnitIndex;
-  HasCache: Boolean;
+  HasCache, Taken: Boolean;
   Watch: TStopwatch;
   Miss: TIndexCacheMiss;
 begin
@@ -418,6 +476,11 @@ begin
   begin
     Inc(AResult.Missing);
     Exit(False);
+  end;
+  if AlreadyIndexed(AFileName, Stamp, ALibrary) then
+  begin
+    Inc(AResult.FromCache);
+    Exit(True);
   end;
   TMonitor.Enter(FCacheLock);
   try
@@ -427,36 +490,39 @@ begin
   end;
   Miss := TIndexCacheMiss.NoEntry;
   if HasCache and not CacheFits(Entry, ALibrary, Miss) then
+  begin
     HasCache := False;
+  end;
   // Zeitstempel oder Inhalt passen: erst jetzt die Symbole dekodieren; ein beschädigter Block
   // zählt wie ein fehlender Cache-Eintrag.
-  if HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached) then
+  Taken := HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached);
+  if not Taken then
   begin
+    if not FFileSystem.ReadText(AFileName, Text) then
+    begin
+      Inc(AResult.Missing);
+      Exit(False);
+    end;
+    Hash := TIndexCache.HashOf(Text);
+    if HasCache and (Entry.Header.Hash = Hash) then
+    begin
+      Taken := FromCache(Entry, ALibrary, Cached);
+      Miss := TIndexCacheMiss.Damaged;
+    end
+    else if HasCache then
+    begin
+      Miss := TIndexCacheMiss.Changed;
+    end;
+  end;
+  if Taken then
+  begin
+    Cached.Stamp := Stamp;
     Cached.Library_ := ALibrary;
+    Cached.DefinesKey := DefinesKeyFor(AFileName);
     FIndex.AddUnit(Cached);
     Inc(AResult.FromCache);
     Exit(True);
   end;
-  if not FFileSystem.ReadText(AFileName, Text) then
-  begin
-    Inc(AResult.Missing);
-    Exit(False);
-  end;
-  Hash := TIndexCache.HashOf(Text);
-  if HasCache and (Entry.Header.Hash = Hash) then
-  begin
-    if FromCache(Entry, ALibrary, Cached) then
-    begin
-      Cached.Stamp := Stamp;
-      Cached.Library_ := ALibrary;
-      FIndex.AddUnit(Cached);
-      Inc(AResult.FromCache);
-      Exit(True);
-    end;
-    Miss := TIndexCacheMiss.Damaged;
-  end
-  else if HasCache then
-    Miss := TIndexCacheMiss.Changed;
   Watch := TStopwatch.StartNew;
   UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver(),
     WantsUsages(ALibrary));
@@ -465,6 +531,7 @@ begin
   UnitIndex.Hash := Hash;
   UnitIndex.IncludeStamps := IncludeStampsOf(UnitIndex.Includes);
   UnitIndex.Library_ := ALibrary;
+  UnitIndex.DefinesKey := DefinesKeyFor(AFileName);
   FIndex.AddUnit(UnitIndex);
   Inc(AResult.Parsed);
   Inc(AResult.Misses[Miss]);
@@ -483,7 +550,9 @@ var
   Watch: TStopwatch;
 begin
   if not Assigned(FResolveUnit) then
+  begin
     Exit;
+  end;
   Pending := TQueue<string>.Create;
   Seen := TDictionary<string, Boolean>.Create;
   try
@@ -491,9 +560,13 @@ begin
     begin
       Seen.AddOrSetValue(UpperCase(UnitIndex.UnitName), True);
       for Name in UnitIndex.InterfaceUses do
+      begin
         Pending.Enqueue(Name);
+      end;
       for Name in UnitIndex.ImplementationUses do
+      begin
         Pending.Enqueue(Name);
+      end;
     end;
     while Pending.Count > 0 do
     begin
@@ -504,31 +577,43 @@ begin
       end;
       Name := Pending.Dequeue;
       if Seen.ContainsKey(UpperCase(Name)) then
+      begin
         Continue;
+      end;
       Seen.Add(UpperCase(Name), True);
       if FIndex.FindUnit(Name, Existing) then
+      begin
         Continue;
+      end;
       Watch := TStopwatch.StartNew;
       FileName := FResolveUnit(Name);
       Inc(AResult.ResolveMs, Watch.ElapsedMilliseconds);
       if FileName = '' then
+      begin
         Continue;
+      end;
       // Unter anderem Namen schon im Index, z. B. "Forms" als Vcl.Forms aus einem anderen Projekt
       // der Gruppe: nicht neu einlesen. Sonst las jedes Projekt dieselben Units erneut (#647).
       if FIndex.FindFile(FileName, Existing) and FFileSystem.FileStamp(FileName, Stamp) and
         (Stamp = Existing.Stamp) then
       begin
         for UsedName in Existing.InterfaceUses do
+        begin
           Pending.Enqueue(UsedName);
+        end;
         Continue;
       end;
       if Assigned(AProgress) then
+      begin
         AProgress(TIndexProgressKind.Report, Name, -1);
+      end;
       if IndexFile(FileName, True, AResult) and FIndex.FindFile(FileName, UnitIndex) then
       begin
         // Nur das interface ist von außen sichtbar; dessen uses reichen.
         for UsedName in UnitIndex.InterfaceUses do
+        begin
           Pending.Enqueue(UsedName);
+        end;
       end;
     end;
   finally
@@ -553,13 +638,19 @@ begin
   for Index := 0 to High(AFiles) do
   begin
     if IsCancelled(ACancelled) then
+    begin
       Exit(False);
+    end;
     // Schon da (anderes Projekt der Gruppe, über uses erreicht): nicht noch einmal lesen.
     if FIndex.FindFile(AFiles[Index], Existing) then
+    begin
       Continue;
+    end;
     if Assigned(AProgress) then
+    begin
       AProgress(TIndexProgressKind.Report, ALabel + ExtractFileName(AFiles[Index]),
         ((ADone + Index) * 100) div ATotal);
+    end;
     IndexFile(AFiles[Index], ALibrary, AResult);
   end;
   Result := True;
@@ -585,16 +676,22 @@ var
   procedure Leave;
   begin
     if ATurn <> nil then
+    begin
       ATurn.Leave;
+    end;
   end;
 
 begin
   Result := Default(TIndexBuildResult);
   Total := Length(AFiles) + Length(ASearchFiles) + Length(ALibraryFiles);
   if Total = 0 then
+  begin
     Total := 1;
+  end;
   if Assigned(AProgress) then
+  begin
     AProgress(TIndexProgressKind.Started, 'Symbolindex', 0);
+  end;
   try
     if not Enter(TIndexStage.Project) then
     begin
@@ -610,7 +707,9 @@ begin
           Exit;
         end;
         if Assigned(AProgress) then
+        begin
           AProgress(TIndexProgressKind.Report, AFiles[Index], (Index * 100) div Total);
+        end;
         IndexFile(AFiles[Index], False, Result);
       end;
       IndexReferenced(Result, AProgress, ACancelled);
@@ -618,9 +717,13 @@ begin
       Leave;
     end;
     if Result.Cancelled then
+    begin
       Exit;
+    end;
     if Assigned(AProjectDone) then
+    begin
       AProjectDone(Result);
+    end;
     if Length(ASearchFiles) > 0 then
     begin
       if not Enter(TIndexStage.SearchPaths) then
@@ -636,7 +739,9 @@ begin
         Leave;
       end;
       if Result.Cancelled then
+      begin
         Exit;
+      end;
     end;
     if Length(ALibraryFiles) > 0 then
     begin
@@ -654,8 +759,10 @@ begin
     end;
   finally
     if Assigned(AProgress) then
+    begin
       AProgress(TIndexProgressKind.Finished,
         Format('%d Units, %d Symbole', [FIndex.UnitCount, FIndex.SymbolCount]), 100);
+    end;
   end;
 end;
 
@@ -667,9 +774,13 @@ var
   Failed: Boolean;
 begin
   if FIndex.FindUnit(AUnitName, Existing) then
+  begin
     Exit(True);
+  end;
   if not Assigned(FResolveUnit) then
+  begin
     Exit(False);
+  end;
   TMonitor.Enter(FFailedLock);
   try
     Failed := FFailedUnits.ContainsKey(UpperCase(AUnitName));
@@ -677,7 +788,9 @@ begin
     TMonitor.Exit(FFailedLock);
   end;
   if Failed then
+  begin
     Exit(False);
+  end;
   FileName := FResolveUnit(AUnitName);
   Ignored := Default(TIndexBuildResult);
   Result := (FileName <> '') and IndexFile(FileName, True, Ignored);
@@ -700,10 +813,14 @@ begin
   Result := False;
   // Nur Units, die der Index kennt; neue Dateien kommen wie bisher beim Speichern dazu.
   if not FIndex.FindFile(AFileName, Existing) then
+  begin
     Exit;
+  end;
   Hash := TIndexCache.HashOf(AText);
   if Hash = Existing.Hash then
+  begin
     Exit;
+  end;
   UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, DefinesFor(AFileName), IncludeResolver(),
     WantsUsages(Existing.Library_));
   // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
@@ -732,15 +849,23 @@ begin
     // Units, die die Datei per $I einbinden, neu einlesen.
     Dependent := nil;
     for UnitIndex in FIndex.Units do
+    begin
       for Include in UnitIndex.Includes do
+      begin
         if SameText(Include, Change.FileName) then
         begin
           Dependent := Dependent + [UnitIndex];
           Break;
         end;
+      end;
+    end;
     for UnitIndex in Dependent do
+    begin
       if IndexFile(UnitIndex.FileName, UnitIndex.Library_, Ignored) then
+      begin
         Inc(Result);
+      end;
+    end;
     Known := FIndex.FindFile(Change.FileName, Existing);
     case Change.Kind of
       TFileChangeKind.Deleted:
@@ -755,7 +880,9 @@ begin
           // IndexFile vergleicht mit dem Cache vom Start; ein geänderter
           // Zeitstempel führt zum Neueinlesen, gleicher Inhalt nicht.
           if IndexFile(Change.FileName, Existing.Library_, Ignored) then
-            Inc(Result)
+          begin
+            Inc(Result);
+          end
           else
           begin
             FIndex.RemoveFile(Change.FileName);

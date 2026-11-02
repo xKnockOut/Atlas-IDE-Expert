@@ -337,7 +337,9 @@ const
       ';', '  ZeroMemory(@' + AVar + ', SizeOf(' + AVar + '));'));
     Result := '';
     if Length(Findings) = 1 then
+    begin
       Result := Findings[0].Message;
+    end;
   end;
 
 begin
@@ -1248,7 +1250,9 @@ begin
   Assert.Contains(Findings[2].Message, 'Ändert die kurzen Monatsnamen');
   // Mehrere Änderungen in der Routine (Zurücksetzen im finally) bzw. kein Aufruf danach: ohne Korrektur.
   for Index := 0 to High(Findings) do
+  begin
     Assert.AreEqual(0, Integer(Length(Findings[Index].Fixes)));
+  end;
   Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10,
     'var'#10'  Alt: Char;'#10, '  Alt := FormatSettings.DecimalSeparator;'#10 +
     '  FormatSettings.DecimalSeparator := ''.'';'#10'  try'#10'    Writeln(FloatToStr(Betrag));'#10'  finally'#10 +

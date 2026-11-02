@@ -64,7 +64,9 @@ var
 begin
   Result := '';
   for Item in AItems do
+  begin
     Result := Result + ' ' + Item.Name;
+  end;
   Result := Result.Trim;
 end;
 
@@ -276,10 +278,16 @@ var
 begin
   Result := '-';
   if TypeConversion(AActual, AExpected, '', 'X', AHelper, Conversion) then
+  begin
     if Conversion.Lossy then
-      Result := 'lossy'
+    begin
+      Result := 'lossy';
+    end
     else
+    begin
       Result := Conversion.Text + ' | ' + string.Join(',', Conversion.Units);
+    end;
+  end;
 end;
 
 procedure TCompletionCollectorTests.TypeConversionPairs;

@@ -93,6 +93,9 @@ type
     procedure OriginExistsWithMissingDrive;
     [Test]
     procedure TouchUseRenewsLastUse;
+    /// <summary>Ohne Bibliotheks- oder Suchpfad-Cache ('') legt TouchUse keine Marke im aktuellen Ordner an.</summary>
+    [Test]
+    procedure TouchUseIgnoresEmptyName;
     [Test]
     procedure RemoveUnusedDeletesOldCaches;
   end;
@@ -150,7 +153,9 @@ begin
     begin
       Disk := TDiskIndexFileSystem.Create;
       for Round := 1 to ARounds do
+      begin
         Disk.WriteText(AFile, AContent);
+      end;
     end);
   Result.FreeOnTerminate := False;
   Result.Start;
@@ -312,9 +317,13 @@ begin
   for Missing in [TPath.Combine(ARoot, 'fehlt-ziel.json'), TPath.Combine(ARoot, 'fehlt-quelle.json')] do
     try
       if Missing.Contains('ziel') then
-        TFile.Replace(Target, Missing, Target + '.bak')
+      begin
+        TFile.Replace(Target, Missing, Target + '.bak');
+      end
       else
+      begin
         TFile.Replace(Missing, Target, Target + '.bak');
+      end;
     except
       on Exception do
         ;
@@ -737,11 +746,13 @@ begin
   {$IFDEF MSWINDOWS}
   // Laufwerk nicht verbunden (USB, Netz): nicht als gelöscht werten.
   for Drive := 'Z' downto 'D' do
+  begin
     if not DirectoryExists(Drive + ':\') then
     begin
       Assert.IsTrue(TIndexCacheDirectory.OriginExists(Drive + ':\Projekte\App.dproj'));
       Break;
     end;
+  end;
   {$ENDIF}
 end;
 
@@ -756,6 +767,20 @@ begin
   TIndexCacheDirectory.TouchUse(Cache);
   Assert.IsTrue(TIndexCacheDirectory.LastUse(Cache) > Now - 1);
   Assert.IsTrue(TFile.GetLastWriteTime(Cache) < Now - 99, 'der Cache selbst bleibt unverändert');
+end;
+
+procedure TIndexCacheDirectoryTests.TouchUseIgnoresEmptyName;
+var
+  mPrevious: string;
+begin
+  mPrevious := GetCurrentDir;
+  SetCurrentDir(FRoot);
+  try
+    TIndexCacheDirectory.TouchUse('');
+  finally
+    SetCurrentDir(mPrevious);
+  end;
+  Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(FRoot))));
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveUnusedDeletesOldCaches;

@@ -102,7 +102,9 @@ begin
   // Die Layouts verweisen auf den Baum: zuerst freigeben.
   Layouts.Free;
   if OwnsTree then
+  begin
     Tree.Free;
+  end;
   inherited;
 end;
 
@@ -119,20 +121,28 @@ var
 begin
   Result := TClassLayout.DeclAt(ATree, ALine, True);
   if Result <> nil then
+  begin
     Exit;
+  end;
   Routine := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
       if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) then
+      begin
         Routine := ANode;
+      end;
     end);
   if (Routine = nil) or (Pos('.', Routine.Name) = 0) then
+  begin
     Exit;
+  end;
   Name := Copy(Routine.Name, 1, LastDelimiter('.', Routine.Name) - 1);
   if Pos('.', Name) > 0 then
+  begin
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  end;
   Result := TClassLayout.DeclNamed(ATree, Name);
 end;
 
@@ -191,10 +201,14 @@ var
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) then
+  begin
     Exit;
+  end;
   Decl := ClassAt(ATree, APosition.Line);
   if Decl = nil then
+  begin
     Exit;
+  end;
   Interfaces := TInlineAccessor.IndexInterfaces(AIndex);
   Layout := TClassLayout.Read(ATree, AText, Decl);
   try
@@ -204,12 +218,18 @@ begin
     Layout.Free;
   end;
   if Found <> nil then
+  begin
     Result := Result + [Action(TInlineAccessor.Title(Found), ScopeHere)];
+  end;
   if not ABulk or ((Found = nil) and not OnHeader) then
+  begin
     Exit;
+  end;
   Count := CountInFile(ATree, AText, AOptions, Interfaces);
   if Count = 0 then
+  begin
     Exit;
+  end;
   Result := Result + [Action(Format('Alle trivialen Zugriffsmethoden der Unit ersetzen (%d)', [Count]), ScopeUnit),
     Action('Alle trivialen Zugriffsmethoden des Projekts ersetzen …', ScopeProject)];
 end;
@@ -264,7 +284,9 @@ var
     begin
       if SameText(Location.FileName, AUnit.FileName) and TInlineAccessor.IsOwnReference(ALayout, AAccessor,
         Location.Range.StartPos) then
+      begin
         Continue;
+      end;
       Result := Result + [Format('%s:%d', [ExtractFileName(Location.FileName), Location.Range.StartPos.Line + 1])];
     end;
   end;
@@ -282,7 +304,9 @@ var
   Before, Check: TSyntaxTree;
 begin
   if not MatchText(AScope, [ScopeHere, ScopeUnit, ScopeProject]) then
+  begin
     raise Fail(Format('Unbekannter Bereich "%s".', [AScope]));
+  end;
   Interfaces := TInlineAccessor.IndexInterfaces(AContext.Index);
   Units := TObjectList<TAccessorUnit>.Create(True);
   Changes := TWorkspaceChanges.Create;
@@ -292,14 +316,18 @@ begin
     begin
       Decl := ClassAt(ATree, APosition.Line);
       if Decl = nil then
+      begin
         raise Fail('Hier steht keine triviale Zugriffsmethode.');
+      end;
       Layout := TClassLayout.Read(ATree, AText, Decl);
       Found := TInlineAccessor.At(Layout, APosition.Line, AContext.Options, Interfaces, Reason);
       if Found = nil then
       begin
         Layout.Free;
         if Reason = '' then
+        begin
           Reason := 'Hier steht keine triviale Zugriffsmethode.';
+        end;
         raise Fail(Reason);
       end;
       CurrentUnit.Layouts.Add(Layout);
@@ -309,17 +337,22 @@ begin
     begin
       AddClasses(CurrentUnit);
       if AScope = ScopeProject then
+      begin
         for FileName in AContext.Files do
         begin
           if not SameText(ExtractFileExt(FileName), '.pas') or SameText(FileName, AFileName) or
             not Assigned(AContext.ReadText) or not AContext.ReadText(FileName, Text) then
+          begin
             Continue;
+          end;
           AddClasses(AddUnit(FileName, Text, TSyntaxTreeCache.Parse(Text), True));
         end;
+      end;
     end;
     // Aufrufe außerhalb der Klasse: die Methode bleibt.
     Total := 0;
     for AccessorUnit in Units do
+    begin
       for Index := 0 to AccessorUnit.Layouts.Count - 1 do
       begin
         Kept := nil;
@@ -327,37 +360,52 @@ begin
         begin
           Uses_ := ForeignUses(AccessorUnit, AccessorUnit.Layouts[Index], Accessor);
           if Uses_ = nil then
-            Kept := Kept + [Accessor]
+          begin
+            Kept := Kept + [Accessor];
+          end
           else
+          begin
             Changes.Warn(Format('%s.%s bleibt: Es wird noch aufgerufen (%s).', [Accessor.ClassName, Accessor.Name,
               string.Join(', ', Uses_)]));
+          end;
         end;
         AccessorUnit.Accessors[Index] := Kept;
         Inc(Total, Length(Kept));
       end;
+    end;
     if Total = 0 then
     begin
       if Changes.Warnings = nil then
+      begin
         raise Fail('Keine triviale Zugriffsmethode gefunden.');
+      end;
       raise Fail(string.Join(' ', Changes.Warnings));
     end;
     for AccessorUnit in Units do
     begin
       Edits := nil;
       for Index := 0 to AccessorUnit.Layouts.Count - 1 do
+      begin
         if AccessorUnit.Accessors[Index] <> nil then
+        begin
           Edits := Edits + TInlineAccessor.Edits(AccessorUnit.Layouts[Index], AccessorUnit.Accessors[Index]);
+        end;
+      end;
       if Edits = nil then
+      begin
         Continue;
+      end;
       // Das Ergebnis muss weiter fehlerfrei parsen.
       NewText := TTextChanges.Apply(AccessorUnit.Text, Edits);
       Before := TSyntaxTreeCache.Parse(AccessorUnit.Text);
       Check := TSyntaxTreeCache.Parse(NewText);
       try
         if Length(Check.Diagnostics) > Length(Before.Diagnostics) then
+        begin
           raise Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
             [ExtractFileName(AccessorUnit.FileName), Check.Diagnostics[0].StartPos.Line + 1,
             Check.Diagnostics[0].Message]));
+        end;
       finally
         Check.Free;
         Before.Free;

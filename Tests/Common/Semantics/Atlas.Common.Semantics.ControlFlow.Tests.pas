@@ -92,12 +92,16 @@ var
   Index: Integer;
 begin
   if ANode.Kind = AKind then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindKind(ANode.Children[Index], AKind);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -108,12 +112,16 @@ var
   Index: Integer;
 begin
   if (ANode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement]) and SameText(ANode.Name, AName) then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindStatement(ANode.Children[Index], AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -132,12 +140,16 @@ var
   Index: Integer;
 begin
   if (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, AName) then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindRoutine(ANode.Children[Index], AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -286,8 +298,12 @@ begin
     Syntax := FindStatement(F.Tree.Root, 'Cleanup');
     OnExitPath := False;
     for Node in F.Graph.Nodes do
+    begin
       if (Node.Syntax = Syntax) and (F.Graph.IsReachable(Node) = TFlowAnswer.Yes) then
+      begin
         OnExitPath := True;
+      end;
+    end;
     Assert.IsTrue(OnExitPath, 'finally läuft');
     Assert.IsTrue(F.Graph.IsReachable(F.Graph.ExitNode) = TFlowAnswer.Yes, 'Routine endet');
     Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No, 'Exit springt');
@@ -626,8 +642,12 @@ var
   begin
     Result := 0;
     for Next in ANode.Successors do
+    begin
       if ANode.IsImplicitRaiseEdge(Next) then
+      begin
         Inc(Result);
+      end;
+    end;
   end;
 
 begin

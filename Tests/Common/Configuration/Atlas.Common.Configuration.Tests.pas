@@ -23,6 +23,8 @@ type
     [Test]
     procedure ReadsQuerySettings;
     [Test]
+    procedure ReadsRuleChecksSwitch;
+    [Test]
     procedure ReadsNavigationSymbolPath;
     [Test]
     procedure ReadsAllSettings;
@@ -270,6 +272,24 @@ begin
   Assert.AreEqual(1, Integer(Length(Settings.Queries)));
   Assert.AreEqual('b', Settings.Queries[0].Name);
   Assert.IsFalse(Settings.QueryEnabled);
+end;
+
+procedure TConfigurationParserTests.ReadsRuleChecksSwitch;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // Modul-Schalter Prüfregeln (#1454): Vorgabe an, aus über settings.json bzw. jede Ebene.
+  Assert.IsTrue(Parse('{}', mIssues).RuleChecksEnabled);
+  mSettings := Parse('{"ruleChecks": {"enabled": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.RuleChecksEnabled);
+  Parse('{"ruleChecks": {"enabled": 1, "x": 2}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)), 'kein Wahrheitswert, unbekannte Angabe');
+  Parse('{"ruleChecks": true}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'kein Objekt');
+  mSettings := TConfigurationParser.ParseLayered('{}', '{"ruleChecks": {"enabled": false}}', mIssues);
+  Assert.IsFalse(mSettings.RuleChecksEnabled);
 end;
 
 procedure TConfigurationParserTests.ReadsArchitectureComparisonSettings;

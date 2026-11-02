@@ -75,11 +75,13 @@ var
   Scope: TDisableWarningScope;
 begin
   for Scope := Low(TDisableWarningScope) to High(TDisableWarningScope) do
+  begin
     if SameText(ScopeNames[Scope], AName) then
     begin
       AScope := Scope;
       Exit(True);
     end;
+  end;
   AScope := TDisableWarningScope.Line;
   Result := False;
 end;
@@ -88,7 +90,9 @@ function SwitchHint(const ASwitch: TDisableWarningSwitch): string;
 begin
   Result := ASwitch.OffText;
   if ASwitch.AllWarnings then
+  begin
     Result := Result + ': betrifft alle Warnungen';
+  end;
 end;
 
 function CommandAction(const ATitle, ACommand: string; AArguments: TJSONArray; APreferred: Boolean): TJSONObject;
@@ -103,7 +107,9 @@ begin
   Result.AddPair('title', ATitle);
   Result.AddPair('kind', TLspDisableWarning.Kind);
   if APreferred then
+  begin
     Result.AddPair('isPreferred', TJSONBool.Create(True));
+  end;
   Result.AddPair('command', Command);
 end;
 
@@ -135,7 +141,9 @@ var
 begin
   Result := nil;
   if not AOptions.Enabled or (ATree = nil) then
+  begin
     Exit;
+  end;
   HasHeader := TDisableWarning.HeaderEndLine(ATree) >= 0;
   Seen := TDictionary<string, Boolean>.Create;
   try
@@ -144,21 +152,29 @@ begin
       if (Message.Line < AFirstLine) or (Message.Line > ALastLine) or
         not TDisableWarning.SwitchFor(Message.Code, AOptions.Version, Switch) or
         Seen.ContainsKey(Switch.Code + '@' + IntToStr(Message.Line)) then
+      begin
         Continue;
+      end;
       Seen.Add(Switch.Code + '@' + IntToStr(Message.Line), True);
       // Ablaufmeldungen prüft der Compiler am Ende der Routine: Ein Schalter um die Zeile wirkte nicht.
       if not Switch.RoutineWide then
+      begin
         Result := Result + [ScopeAction(AOptions, AUri, Message.Line, Switch, TDisableWarningScope.Line,
           Format('%s hier abschalten (%s)', [Switch.Code, SwitchHint(Switch)]), True)];
+      end;
       Routine := TDisableWarning.RoutineAt(ATree, Message.Line);
       if Routine <> nil then
+      begin
         Result := Result + [ScopeAction(AOptions, AUri, Message.Line, Switch, TDisableWarningScope.Routine,
           Format('%s in %s abschalten (%s)', [Switch.Code, Routine.Name, SwitchHint(Switch)]),
           Switch.RoutineWide)];
+      end;
       if HasHeader then
+      begin
         Result := Result + [ScopeAction(AOptions, AUri, Message.Line, Switch, TDisableWarningScope.UnitWide,
           Format('%s in der ganzen Unit abschalten (%s)', [Switch.Code, SwitchHint(Switch)]),
           Switch.RoutineWide and (Routine = nil))];
+      end;
       if Switch.Identifier <> '' then
       begin
         Arguments := TJSONArray.Create;
@@ -187,21 +203,31 @@ var
   Items, Changes: TJSONArray;
 begin
   if (AArguments = nil) or (AArguments.Count < 4) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Argumente "uri", "line", "code" und "scope" fehlen');
+  end;
   Uri := AArguments.Items[0].Value;
   Line := StrToIntDef(AArguments.Items[1].Value, -1);
   if not TryParseScope(AArguments.Items[3].Value, Scope) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Unbekannter Bereich: ' + AArguments.Items[3].Value);
+  end;
   Reason := '';
   if AArguments.Count > 4 then
+  begin
     Reason := AArguments.Items[4].Value;
+  end;
   if not TDisableWarning.SwitchFor(AArguments.Items[2].Value, AVersion, Switch) then
+  begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
       AArguments.Items[2].Value + ' ist keine Warnung und kein Hinweis.');
+  end;
   if not TDisableWarning.Edits(AText, ATree, Line, Switch, Scope, Reason, Edits) then
+  begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
       'An dieser Stelle gibt es keinen passenden Bereich (Zeile, Routine oder Unit-Kopf).');
+  end;
   Items := TJSONArray.Create;
   for Edit in Edits do
   begin

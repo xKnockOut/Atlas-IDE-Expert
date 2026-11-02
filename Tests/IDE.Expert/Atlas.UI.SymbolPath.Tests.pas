@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasSymbolPathUiTests = class
   private
     FForm: TForm;
@@ -47,6 +48,7 @@ uses
   Winapi.Windows,
   Vcl.Controls,
   Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.Core.SymbolPath.Model,
   Atlas.Core.SymbolPath.Model.Tests,
   Atlas.UI.SymbolPath.Chain,
@@ -205,7 +207,7 @@ begin
   try
     // Ohne beide Angaben bleibt der Dialog offen und sagt, was fehlt.
     Assert.IsFalse(Dialog.Validate);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathMissing), Dialog.MessageLabel.Caption);
+    Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMissing), Dialog.MessageLabel.Caption);
     Input := Default(TAtlasSymbolPathRequestInput);
     Input.From := 'TKundenForm';
     Input.MaxSteps := 40;

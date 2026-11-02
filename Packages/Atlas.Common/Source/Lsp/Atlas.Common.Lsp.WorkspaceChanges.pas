@@ -84,13 +84,17 @@ var
   Item: TWorkspaceFileEdits;
 begin
   if AEdits = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FFiles) do
+  begin
     if SameText(FFiles[Index].FileName, AFileName) then
     begin
       FFiles[Index].Edits := FFiles[Index].Edits + AEdits;
       Exit;
     end;
+  end;
   Item.FileName := AFileName;
   Item.Edits := AEdits;
   FFiles := FFiles + [Item];
@@ -120,8 +124,12 @@ var
   Item: TWorkspaceFileEdits;
 begin
   for Item in FFiles do
+  begin
     if SameText(Item.FileName, AFileName) then
+    begin
       Exit(Item.Edits);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -131,7 +139,9 @@ var
 begin
   Result := Length(FCreated) + Length(FDeleted);
   for Item in FFiles do
+  begin
     Inc(Result, Length(Item.Edits));
+  end;
 end;
 
 function TWorkspaceChanges.FileCount: Integer;
@@ -154,9 +164,13 @@ begin
   begin
     Relative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(AProject.MainSource), ANewFile);
     if TUnitTemplates.UnitProgramEdit(Text, AUnitName, Relative, Edit) then
-      Add(AProject.MainSource, [Edit])
+    begin
+      Add(AProject.MainSource, [Edit]);
+    end
     else
+    begin
       Warn(Format('%s hat kein uses bzw. contains für die neue Unit', [ExtractFileName(AProject.MainSource)]));
+    end;
   end;
   ProjectFile := AProject.FileName;
   if Assigned(AReadText) and AReadText(ProjectFile, Text) then
@@ -164,7 +178,9 @@ begin
     Relative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(ProjectFile), ANewFile);
     if (Pos('"' + Relative + '"', Text) = 0) and
       TUnitTemplates.ProjectEdit(Text, Relative, '', TFormKind.Form, False, Edit) then
+    begin
       Add(ProjectFile, [Edit]);
+    end;
   end;
 end;
 
@@ -184,7 +200,9 @@ begin
     Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
     Item.AddPair('newText', Edit.NewText);
     if AAnnotationId <> '' then
+    begin
       Item.AddPair('annotationId', AAnnotationId);
+    end;
     Edits.AddElement(Item);
   end;
   Result := TJSONObject.Create;
@@ -211,13 +229,17 @@ begin
     Options.AddPair('ignoreIfExists', TJSONBool.Create(False));
     Creation.AddPair('options', Options);
     if AAnnotationId <> '' then
+    begin
       Creation.AddPair('annotationId', AAnnotationId);
+    end;
     Changes.AddElement(Creation);
     Changes.AddElement(DocumentEdit(Uri, [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0), NewFile.Text)],
       AAnnotationId));
   end;
   for FileEdits in FFiles do
+  begin
     Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(FileEdits.FileName), FileEdits.Edits, AAnnotationId));
+  end;
   // Gelöschte Dateien zuletzt: Änderungen an anderen Dateien (uses) stehen davor.
   for mDeleted in FDeleted do
   begin
@@ -228,7 +250,9 @@ begin
     Options.AddPair('ignoreIfNotExists', TJSONBool.Create(True));
     Creation.AddPair('options', Options);
     if AAnnotationId <> '' then
+    begin
       Creation.AddPair('annotationId', AAnnotationId);
+    end;
     Changes.AddElement(Creation);
   end;
   Result := TJSONObject.Create;
@@ -256,7 +280,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Warning in FWarnings do
+  begin
     Result.Add(Warning);
+  end;
 end;
 
 end.

@@ -67,21 +67,29 @@ begin
   Result := nil;
   Start := 1;
   for Index := 1 to Length(AText) + 1 do
+  begin
     if (Index > Length(AText)) or (AText[Index] = #10) then
     begin
       Result := Result + [Copy(AText, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   for Index := 0 to High(Result) do
+  begin
     if EndsStr(#13, Result[Index]) then
+    begin
       Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+    end;
+  end;
 end;
 
 function NormalizedWords(const ALine: string): string;
 begin
   Result := LowerCase(Trim(ALine));
   while Pos('  ', Result) > 0 do
+  begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  end;
 end;
 
 function FindClass(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
@@ -101,14 +109,20 @@ begin
       if Entry.Done then
       begin
         if Entry.Node.Kind = TSyntaxKind.ClassType then
+        begin
           Exit(Entry.Node);
+        end;
         Continue;
       end;
       if (Entry.Node.StartPos.Line > ALine) or (Entry.Node.EndPos.Line < ALine) then
+      begin
         Continue;
+      end;
       Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
       for Index := Entry.Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+      end;
     end;
   finally
     Pending.Free;
@@ -124,11 +138,17 @@ begin
   AOther := StartsStr('{$ELSE', Text);
   if StartsStr('{$IFDEF', Text) or StartsStr('{$IFNDEF', Text) or StartsStr('{$IFOPT', Text) or
     StartsStr('{$IF ', Text) or StartsStr('{$IF(', Text) then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else if StartsStr('{$ENDIF', Text) or StartsStr('{$IFEND', Text) then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 function KindRank(const ALine: string; ANodeKind: TSyntaxKind; const AOrder: TArray<string>): Integer;
@@ -137,20 +157,34 @@ var
 begin
   Text := NormalizedWords(ALine);
   if StartsStr('class ', Text) then
+  begin
     Text := Copy(Text, 7, MaxInt);
+  end;
   if StartsStr('constructor', Text) then
-    Kind := 'constructor'
+  begin
+    Kind := 'constructor';
+  end
   else if StartsStr('destructor', Text) then
-    Kind := 'destructor'
+  begin
+    Kind := 'destructor';
+  end
   else if StartsStr('property', Text) then
-    Kind := 'property'
+  begin
+    Kind := 'property';
+  end
   else if ANodeKind = TSyntaxKind.Field then
-    Kind := 'field'
+  begin
+    Kind := 'field';
+  end
   else
+  begin
     Kind := 'method';
+  end;
   Result := IndexText(Kind, AOrder);
   if Result < 0 then
+  begin
     Result := Length(AOrder);
+  end;
 end;
 
 procedure SortItems(var AItems: TArray<TItem>);
@@ -229,7 +263,9 @@ begin
       end
       else if MatchText(Words, ['type', 'const', 'var', 'class var', 'threadvar', 'resourcestring']) or
         StartsText('class var ', Words) then
+      begin
         Section.Nested := True;
+      end;
     end;
     Section.Last := AStop - 1;
     Sections.Add(Section);
@@ -253,13 +289,19 @@ begin
     begin
       Step := DirectiveStep(ALines[Line], Other);
       if (Step <> 0) or Other then
+      begin
         ASections[SectionIndex].Directives := True;
+      end;
       Inc(Depth, -Step);
       if Depth < 0 then
+      begin
         Exit;
+      end;
     end;
     if Depth <> 0 then
+    begin
       Exit;
+    end;
   end;
   Result := True;
 end;
@@ -276,18 +318,28 @@ begin
   begin
     Child := AClass[Index];
     if (Child.Kind in IgnoredKinds) or (Child.StartPos.Line <= AHeader) then
+    begin
       Continue;
+    end;
     for SectionIndex := 0 to High(ASections) do
+    begin
       if (Child.StartPos.Line >= ASections[SectionIndex].First) and
         (Child.StartPos.Line <= ASections[SectionIndex].Last) then
       begin
         if not (Child.Kind in MemberKinds) then
-          ASections[SectionIndex].Nested := True
+        begin
+          ASections[SectionIndex].Nested := True;
+        end
         else if Child.Kind = TSyntaxKind.Field then
+        begin
           ASections[SectionIndex].HasFields := True;
+        end;
         if Child.EndPos.Line > ASections[SectionIndex].Last then
+        begin
           Exit;
+        end;
       end;
+    end;
   end;
   Result := True;
 end;
@@ -304,12 +356,18 @@ begin
   for Section in ASections do
   begin
     if Section.Nested then
+    begin
       Result := False;
+    end;
     if Section.HasFields then
+    begin
       Inc(FieldSections);
+    end;
   end;
   if (FieldSections > 1) and not ASettings.SortFields then
+  begin
     Result := False;
+  end;
 end;
 
 /// <summary>Position je Abschnitt setzen und stabil sortieren; der Abschnitt ohne Schlüsselwort bleibt vorn.</summary>
@@ -323,13 +381,21 @@ begin
   begin
     Rank := IndexText(ASections[SectionIndex].Keyword, ASettings.Sections);
     if Rank < 0 then
+    begin
       Rank := Length(ASettings.Sections);
+    end;
     if ASections[SectionIndex].Header < 0 then
-      ASections[SectionIndex].Position := -1
+    begin
+      ASections[SectionIndex].Position := -1;
+    end
     else if MayMove then
-      ASections[SectionIndex].Position := Rank * 1000 + SectionIndex
+    begin
+      ASections[SectionIndex].Position := Rank * 1000 + SectionIndex;
+    end
     else
+    begin
       ASections[SectionIndex].Position := SectionIndex;
+    end;
   end;
   SortSections(ASections);
 end;
@@ -359,7 +425,9 @@ begin
       Child := AClass[Index];
       if not (Child.Kind in MemberKinds) or (Child.StartPos.Line < ASection.First) or
         (Child.StartPos.Line > ASection.Last) then
+      begin
         Continue;
+      end;
       // Mehrere Knoten in einer Zeile (A, B: Integer) gehören zusammen.
       if (Items.Count > 0) and (Child.StartPos.Line <= Items[Items.Count - 1].Last) then
       begin
@@ -398,21 +466,31 @@ begin
   for Section in ASections do
   begin
     if Section.Header >= 0 then
+    begin
       AOutput.Add(ALines[Section.Header]);
+    end;
     if not SectionSortable(Section, ASettings) then
     begin
       for Line := Section.First to Section.Last do
+      begin
         AOutput.Add(ALines[Line]);
+      end;
       Continue;
     end;
     Items := CollectItems(Section, AClass, ALines, ASettings.Members, Next);
     SortItems(Items);
     for Item in Items do
+    begin
       for Line := Item.First to Item.Last do
+      begin
         AOutput.Add(ALines[Line]);
+      end;
+    end;
     // Was nach dem letzten Mitglied kommt, bleibt am Ende.
     for Line := Next to Section.Last do
+    begin
       AOutput.Add(ALines[Line]);
+    end;
   end;
 end;
 
@@ -422,10 +500,16 @@ var
   Line: Integer;
 begin
   if AOutput.Count <> AStop - AHeader - 1 then
+  begin
     Exit(True);
+  end;
   for Line := AHeader + 1 to AStop - 1 do
+  begin
     if ALines[Line] <> AOutput[Line - AHeader - 1] then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -437,7 +521,9 @@ begin
   Builder := TStringBuilder.Create;
   try
     for Line in AOutput do
+    begin
       Builder.Append(Line).Append(ALineBreak);
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -455,27 +541,37 @@ var
 begin
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) or HasPackedAlignment(AText) then
+  begin
     Exit;
+  end;
   ClassNode := FindClass(ATree.Root, ALine);
   if ClassNode = nil then
+  begin
     Exit;
+  end;
   Lines := SplitText(AText);
   Header := ClassNode.StartPos.Line;
   Stop := ClassNode.EndPos.Line;
   if (Stop - Header < 2) or (Stop > High(Lines)) or ContainsText(Lines[Header], 'packed') or
     not StartsText('end', TrimLeft(Lines[Stop])) then
+  begin
     Exit;
+  end;
   Sections := CollectSections(Lines, Header, Stop);
   // {$IF…}: innerhalb eines Abschnitts nur Einheit, quer dazu keine Aktion.
   if not MarkDirectives(Sections, Lines) or not ClassifyMembers(Sections, ClassNode, Header) then
+  begin
     Exit;
+  end;
   OrderSections(Sections, ASettings);
   Output := TList<string>.Create;
   try
     EmitSections(Lines, Sections, ClassNode, ASettings, Output);
     // Unverändert: keine Aktion.
     if not Changed(Lines, Output, Header, Stop) then
+    begin
       Exit;
+    end;
     AEdit := TTextEdit.Create(TTextRange.Create(Header + 1, 0, Stop, 0),
       JoinLines(Output, TTextLines.LineBreakOf(AText)));
     Result := True;

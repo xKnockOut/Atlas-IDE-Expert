@@ -164,11 +164,13 @@ var
   Info: TDirectiveInfo;
 begin
   for Info in Directives do
+  begin
     if SameText(Info.Name, AName) or ((Length(AName) = 1) and SameText(Info.Letter, AName)) then
     begin
       AInfo := Info;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -181,10 +183,14 @@ function DescribeInfo(const AInfo: TDirectiveInfo; const AVersion, AState: strin
 begin
   Result := '**{$' + AInfo.Name + '}**';
   if AInfo.Letter <> '' then
+  begin
     Result := Result + ' (**{$' + AInfo.Letter + '}**)';
+  end;
   Result := Result + #10#10 + AInfo.Text;
   if AState <> '' then
+  begin
     Result := Result + #10#10 + 'Hier: ' + AState;
+  end;
   Result := Result + #10#10 + '[DocWiki](' + TCompilerDirectives.Url(AVersion, AInfo.Topic) + ')';
 end;
 
@@ -200,32 +206,42 @@ begin
   Name := TDirectiveNames.LeadingName(Text);
   Rest := Trim(Copy(Text, Length(Name) + 1, MaxInt));
   if Name = '' then
+  begin
     Exit(False);
+  end;
   // Kurzschalter, auch mehrere: {$R+,Q-}
   if (Length(Name) = 1) and (Rest <> '') and CharInSet(Rest[1], ['+', '-']) then
   begin
     Parts := nil;
     Start := 1;
     for Index := 1 to Length(Text) + 1 do
+    begin
       if (Index > Length(Text)) or (Text[Index] = ',') then
       begin
         Parts := Parts + [Trim(Copy(Text, Start, Index - Start))];
         Start := Index + 1;
       end;
+    end;
     for Part in Parts do
+    begin
       if (Length(Part) = 2) and CharInSet(Part[2], ['+', '-']) then
       begin
         // I, L und R sind mit Dateinamen andere Direktiven; mit +/- sind es die Schalter.
         Value := IfThen(Part[2] = '+', 'eingeschaltet', 'ausgeschaltet');
         for Info in Directives do
+        begin
           if SameText(Info.Letter, Part[1]) and not MatchText(Info.Name, ['INCLUDE', 'LINK', 'RESOURCE']) then
           begin
             if AMarkdown <> '' then
+            begin
               AMarkdown := AMarkdown + #10#10'---'#10#10;
+            end;
             AMarkdown := AMarkdown + DescribeInfo(Info, ADelphiVersion, Value);
             Break;
           end;
+        end;
       end;
+    end;
     Exit(AMarkdown <> '');
   end;
   // {$I Datei}, {$L Datei}, {$R Datei}: Dateidirektiven
@@ -239,22 +255,32 @@ begin
     end;
   end;
   if not Find(Name, Info) then
+  begin
     Exit(False);
+  end;
   if SameText(Info.Name, 'WARN') then
   begin
     Value := TDirectiveNames.LeadingName(Rest);
     AMarkdown := DescribeInfo(Info, ADelphiVersion, '');
     if TDirectiveNames.IsWarning(Value) then
+    begin
       AMarkdown := AMarkdown + #10#10 + Format('Warnung `%s`: %s', [UpperCase(Value),
         Trim(Copy(Rest, Length(Value) + 1, MaxInt))]);
+    end;
     Exit(True);
   end;
   if MatchText(Rest, ['ON', '+']) then
-    Value := 'eingeschaltet'
+  begin
+    Value := 'eingeschaltet';
+  end
   else if MatchText(Rest, ['OFF', '-']) then
-    Value := 'ausgeschaltet'
+  begin
+    Value := 'ausgeschaltet';
+  end
   else
+  begin
     Value := '';
+  end;
   AMarkdown := DescribeInfo(Info, ADelphiVersion, Value);
   Result := True;
 end;
@@ -271,24 +297,34 @@ begin
   Open := 0;
   // Letzte offene Direktive in der Zeile vor dem Cursor.
   while PosEx('{$', ALineBeforeCursor, Open + 1) > 0 do
+  begin
     Open := PosEx('{$', ALineBeforeCursor, Open + 1);
+  end;
   if (Open = 0) or (PosEx('}', ALineBeforeCursor, Open) > 0) then
+  begin
     Exit(False);
+  end;
   Inner := Copy(ALineBeforeCursor, Open + 2, MaxInt);
   if StartsText('WARN ', Inner) then
   begin
     // Nur der Bezeichner direkt nach WARN, nicht ON/OFF dahinter.
     if Pos(' ', Trim(Copy(Inner, 6, MaxInt))) > 0 then
+    begin
       Exit(False);
+    end;
     AIsWarning := True;
     ANames := Warnings;
     Exit(True);
   end;
   // Nur solange der Name getippt wird.
   if TDirectiveNames.LeadingName(Inner) <> Inner then
+  begin
     Exit(False);
+  end;
   for Info in Directives do
+  begin
     ANames := ANames + [Info.Name];
+  end;
   Result := True;
 end;
 
@@ -300,7 +336,9 @@ var
 begin
   AMarkdown := '';
   if ATree = nil then
+  begin
     Exit(False);
+  end;
   for Token in ATree.Tokens do
   begin
     AfterStart := (Token.StartPos.Line < APosition.Line) or ((Token.StartPos.Line = APosition.Line) and
@@ -308,7 +346,9 @@ begin
     BeforeEnd := (Token.EndPos.Line > APosition.Line) or ((Token.EndPos.Line = APosition.Line) and
       (Token.EndPos.Character > APosition.Character));
     if AfterStart and BeforeEnd then
+    begin
       Exit((Token.Kind = TPascalTokenKind.Directive) and Describe(Token.Text, ADelphiVersion, AMarkdown));
+    end;
   end;
   Result := False;
 end;

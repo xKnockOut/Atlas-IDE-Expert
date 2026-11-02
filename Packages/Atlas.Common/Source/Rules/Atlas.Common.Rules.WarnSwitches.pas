@@ -80,7 +80,9 @@ constructor TRuleWarnSwitches.Create(const AContext: TRuleContext);
 begin
   inherited Create;
   if AContext.Tree <> nil then
+  begin
     FTokens := AContext.Tree.Tokens;
+  end;
   FProjectWarnings := AContext.ProjectWarnings;
   ReadSwitches;
 end;
@@ -91,10 +93,14 @@ var
 begin
   Result := '';
   if not StartsText(cPropertyPrefix, AProperty) then
+  begin
     Exit;
+  end;
   mName := UpperCase(Copy(AProperty, Length(cPropertyPrefix) + 1, MaxInt));
   if (mName <> cWarningsName) and (IndexText(mName, TDirectiveNames.Warnings) < 0) then
+  begin
     Exit;
+  end;
   Result := mName + '=' + LowerCase(Trim(AValue));
 end;
 
@@ -115,16 +121,24 @@ begin
   for mIndex := 0 to High(FTokens) do
   begin
     if FTokens[mIndex].Kind <> TPascalTokenKind.Directive then
+    begin
       Continue;
+    end;
     mName := TPascalLexer.DirectiveName(FTokens[mIndex].Text);
     if (mName <> 'WARN') and (mName <> cWarningsName) then
+    begin
       Continue;
+    end;
     // {$WARN SYMBOL_PLATFORM OFF} bzw. (*$WARNINGS OFF*)
     mBody := FTokens[mIndex].Text;
     if StartsStr('(*', mBody) then
-      mBody := Copy(mBody, 4, Length(mBody) - 5)
+    begin
+      mBody := Copy(mBody, 4, Length(mBody) - 5);
+    end
     else
+    begin
       mBody := Copy(mBody, 3, Length(mBody) - 3);
+    end;
     mWords := mBody.Split([' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty);
     mSwitch := Default(TWarnSwitch);
     mSwitch.Offset := FTokens[mIndex].Offset;
@@ -132,26 +146,40 @@ begin
     if mName = 'WARN' then
     begin
       if Length(mWords) < 3 then
+      begin
         Continue;
+      end;
       mSwitch.Name := UpperCase(mWords[1]);
       mValue := UpperCase(mWords[2]);
     end
     else
     begin
       if Length(mWords) < 2 then
+      begin
         Continue;
+      end;
       mValue := UpperCase(mWords[1]);
     end;
     if mValue = 'ON' then
-      mSwitch.Value := TWarnValue.SetOn
+    begin
+      mSwitch.Value := TWarnValue.SetOn;
+    end
     else if mValue = 'ERROR' then
-      mSwitch.Value := TWarnValue.SetError
+    begin
+      mSwitch.Value := TWarnValue.SetError;
+    end
     else if mValue = 'OFF' then
-      mSwitch.Value := TWarnValue.SetOff
+    begin
+      mSwitch.Value := TWarnValue.SetOff;
+    end
     else if (mValue = 'DEFAULT') and (mName = 'WARN') then
-      mSwitch.Value := TWarnValue.SetDefault
+    begin
+      mSwitch.Value := TWarnValue.SetDefault;
+    end
     else
+    begin
       Continue;
+    end;
     FSwitches := FSwitches + [mSwitch];
   end;
 end;
@@ -163,8 +191,12 @@ begin
   Result := '';
   mPrefix := UpperCase(AName) + '=';
   for mEntry in FProjectWarnings do
+  begin
     if StartsText(mPrefix, mEntry) then
+    begin
       Result := LowerCase(Copy(mEntry, Length(mPrefix) + 1, MaxInt));
+    end;
+  end;
 end;
 
 function TRuleWarnSwitches.MentionsAny(const ANames: array of string): Boolean;
@@ -172,8 +204,12 @@ var
   mSwitch: TWarnSwitch;
 begin
   for mSwitch in FSwitches do
+  begin
     if (mSwitch.Name <> '') and MatchText(mSwitch.Name, ANames) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -183,15 +219,25 @@ var
 begin
   mValue := ProjectValue(AName);
   if mValue = 'true' then
-    Result := TRuleWarnState.Enabled
+  begin
+    Result := TRuleWarnState.Enabled;
+  end
   else if mValue = 'error' then
-    Result := TRuleWarnState.AsError
+  begin
+    Result := TRuleWarnState.AsError;
+  end
   else if mValue = 'false' then
-    Result := TRuleWarnState.Disabled
-  else if ADefaultOn then
-    Result := TRuleWarnState.Enabled
-  else
+  begin
     Result := TRuleWarnState.Disabled;
+  end
+  else if ADefaultOn then
+  begin
+    Result := TRuleWarnState.Enabled;
+  end
+  else
+  begin
+    Result := TRuleWarnState.Disabled;
+  end;
 end;
 
 function TRuleWarnSwitches.StateAtOffset(const AName: string; ADefaultOn: Boolean;
@@ -205,9 +251,13 @@ begin
   begin
     mMiddle := (mLow + mHigh) div 2;
     if FTokens[mMiddle].Offset < AOffset then
-      mLow := mMiddle + 1
+    begin
+      mLow := mMiddle + 1;
+    end
     else
+    begin
       mHigh := mMiddle;
+    end;
   end;
   Result := StateAt(AName, ADefaultOn, mLow);
 end;
@@ -223,33 +273,53 @@ begin
   mBase := ProjectState(mKey, ADefaultOn);
   mState := mBase;
   if ProjectValue(cWarningsName) = 'false' then
-    mWarnings := TRuleWarnState.Disabled
+  begin
+    mWarnings := TRuleWarnState.Disabled;
+  end
   else
+  begin
     mWarnings := TRuleWarnState.Enabled;
+  end;
   if (ATokenIndex < 0) or (ATokenIndex > High(FTokens)) then
+  begin
     Exit(TRuleWarnState.Unknown);
+  end;
   mPath := TConditionalBranches.PathAt(FPaths, ATokenIndex);
   mOffset := FTokens[ATokenIndex].Offset;
   for mSwitch in FSwitches do
   begin
     if mSwitch.Offset >= mOffset then
+    begin
       Break;
+    end;
     if (mSwitch.Name <> '') and (mSwitch.Name <> mKey) then
+    begin
       Continue;
+    end;
     if TConditionalBranches.Exclusive(mPath, mSwitch.Path) then
+    begin
       Continue;
+    end;
     if mSwitch.Name = '' then
     begin
       if not TConditionalBranches.Implies(mPath, mSwitch.Path) then
-        mWarnings := TRuleWarnState.Unknown
+      begin
+        mWarnings := TRuleWarnState.Unknown;
+      end
       else if mSwitch.Value = TWarnValue.SetOff then
-        mWarnings := TRuleWarnState.Disabled
+      begin
+        mWarnings := TRuleWarnState.Disabled;
+      end
       else
+      begin
         mWarnings := TRuleWarnState.Enabled;
+      end;
       Continue;
     end;
     if not TConditionalBranches.Implies(mPath, mSwitch.Path) then
-      mState := TRuleWarnState.Unknown
+    begin
+      mState := TRuleWarnState.Unknown;
+    end
     else
       case mSwitch.Value of
         TWarnValue.SetOn:
@@ -263,9 +333,13 @@ begin
       end;
   end;
   if (mState = TRuleWarnState.Disabled) or (mWarnings = TRuleWarnState.Disabled) then
+  begin
     Exit(TRuleWarnState.Disabled);
+  end;
   if (mState = TRuleWarnState.Unknown) or (mWarnings = TRuleWarnState.Unknown) then
+  begin
     Exit(TRuleWarnState.Unknown);
+  end;
   Result := mState;
 end;
 

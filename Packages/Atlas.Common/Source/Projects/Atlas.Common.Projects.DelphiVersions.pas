@@ -81,11 +81,15 @@ begin
   Result := '';
   Start := Pos('<ProjectVersion>', ADprojText);
   if Start = 0 then
+  begin
     Exit;
+  end;
   Inc(Start, Length('<ProjectVersion>'));
   Stop := Pos('</ProjectVersion>', ADprojText);
   if Stop > Start then
+  begin
     Result := Trim(Copy(ADprojText, Start, Stop - Start));
+  end;
 end;
 
 class function TDelphiVersions.BdsForProjectVersion(const AProjectVersion: string): string;
@@ -96,10 +100,16 @@ begin
   Result := '';
   Value := ToNumber(AProjectVersion);
   if Value < Ranges[0].FromProject then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Ranges) - 1 do
+  begin
     if (Value >= Ranges[Index].FromProject) and (Value < Ranges[Index + 1].FromProject) then
+    begin
       Exit(Ranges[Index].Bds);
+    end;
+  end;
 end;
 
 class function TDelphiVersions.ProductName(const ABdsVersion: string): string;
@@ -107,8 +117,12 @@ var
   Range: TVersionRange;
 begin
   for Range in Ranges do
+  begin
     if (Range.Bds <> '') and (ToNumber(Range.Bds) = ToNumber(ABdsVersion)) then
+    begin
       Exit(Range.Name);
+    end;
+  end;
   Result := 'BDS ' + ABdsVersion;
 end;
 
@@ -118,10 +132,16 @@ var
 begin
   Result := False;
   if ToNumber(ABdsVersion) = 0 then
+  begin
     Exit;
+  end;
   for Version in AInstalled do
+  begin
     if ToNumber(Version) = ToNumber(ABdsVersion) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TDelphiVersions.LatestKnown: string;
@@ -147,7 +167,9 @@ begin
   if AConfigured <> '' then
   begin
     if IsInstalled(AConfigured, AInstalled) then
+    begin
       Exit(AConfigured);
+    end;
     // Fehlt sie, liefe das Projekt ohne Bibliothekspfade; die automatische Wahl greift (#47).
     AConfiguredMissing := True;
   end;
@@ -157,15 +179,25 @@ begin
   if Length(AInstalled) = 0 then
   begin
     if ToNumber(AConfigured) > 0 then
+    begin
       Exit(AConfigured);
+    end;
     if Wanted <> '' then
+    begin
       Exit(Wanted);
+    end;
     Exit(LatestKnown);
   end;
   if Wanted <> '' then
+  begin
     for Version in AInstalled do
+    begin
       if ToNumber(Version) >= ToNumber(Wanted) then
+      begin
         Exit(Version);
+      end;
+    end;
+  end;
   Result := AInstalled[High(AInstalled)];
 end;
 
@@ -178,13 +210,17 @@ var
 begin
   Result := nil;
   if (ASettings.DelphiVersion = '') or IsInstalled(ASettings.DelphiVersion, AInstalled) then
+  begin
     Exit;
+  end;
   Issue := Default(TConfigurationIssue);
   Issue.Range := ASettings.DelphiVersionRange;
   Issue.IsError := False;
   if Length(AInstalled) = 0 then
+  begin
     Issue.Message := Format('%s (BDS %s) ist nicht installiert und keine andere Delphi-Version gefunden; ' +
-      'Bibliothekspfade und RTL-Quellen fehlen', [ProductName(ASettings.DelphiVersion), ASettings.DelphiVersion])
+      'Bibliothekspfade und RTL-Quellen fehlen', [ProductName(ASettings.DelphiVersion), ASettings.DelphiVersion]);
+  end
   else
   begin
     Fallback := Choose(ASettings.DelphiVersion, '', AInstalled, Missing);

@@ -154,13 +154,17 @@ begin
   Result := nil;
   Open := Pos('(', ASignature);
   if Open = 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   Close := 0;
   for Index := Open to Length(ASignature) do
   begin
     if ASignature[Index] = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ASignature[Index] = ')' then
     begin
       Dec(Depth);
@@ -172,16 +176,22 @@ begin
     end;
   end;
   if Close = 0 then
+  begin
     Exit;
+  end;
   Groups := nil;
   Depth := 0;
   Start := Open + 1;
   for Index := Open + 1 to Close do
   begin
     if CharInSet(ASignature[Index], ['(', '[', '<']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if CharInSet(ASignature[Index], [']', '>']) or ((ASignature[Index] = ')') and (Index < Close)) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if ((ASignature[Index] = ';') and (Depth = 0)) or (Index = Close) then
     begin
       Groups := Groups + [Trim(Copy(ASignature, Start, Index - Start))];
@@ -192,16 +202,24 @@ begin
   begin
     Head := Group;
     if Pos(':', Head) > 0 then
+    begin
       Head := Copy(Head, 1, Pos(':', Head) - 1);
+    end;
     Head := Trim(Head);
     Modifier := LowerCase(Copy(Head, 1, Pos(' ', Head + ' ') - 1));
     if MatchText(Modifier, ['const', 'var', 'out', 'constref']) then
-      Head := Trim(Copy(Head, Length(Modifier) + 1, MaxInt))
+    begin
+      Head := Trim(Copy(Head, Length(Modifier) + 1, MaxInt));
+    end
     else
+    begin
       Modifier := '';
+    end;
     Count := Length(Head.Split([',']));
     for Index := 1 to Count do
+    begin
       Result := Result + [Modifier];
+    end;
   end;
 end;
 
@@ -222,7 +240,9 @@ begin
   AShape := Default(TPropertyShape);
   Result := (AStart + 1 <= High(ATokens)) and (ATokens[AStart + 1].Kind = TPascalTokenKind.Identifier);
   if not Result then
+  begin
     Exit;
+  end;
   Index := AStart + 2;
   Depth := 0;
   Bracket := -1;
@@ -232,29 +252,41 @@ begin
     if ATokens[Index].IsSymbol('[') or ATokens[Index].IsSymbol('(') then
     begin
       if (Depth = 0) and ATokens[Index].IsSymbol('[') and (TypeStart < 0) then
+      begin
         Bracket := Index;
+      end;
       Inc(Depth);
     end
     else if ATokens[Index].IsSymbol(']') or ATokens[Index].IsSymbol(')') then
     begin
       Dec(Depth);
       if (Depth = 0) and (Bracket >= 0) and (AShape.IndexText = '') and (Index > Bracket + 1) then
+      begin
         AShape.IndexText := SourceText(AText, ATokens, Bracket + 1, Index - 1);
+      end;
     end
     else if Depth = 0 then
     begin
       if ATokens[Index].IsSymbol(';') then
+      begin
         Break;
+      end;
       if ATokens[Index].IsSymbol(':') and (TypeStart < 0) then
-        TypeStart := Index + 1
+      begin
+        TypeStart := Index + 1;
+      end
       else if IsWord(ATokens[Index], 'read') or IsWord(ATokens[Index], 'write') or IsWord(ATokens[Index], 'index') or
         IsWord(ATokens[Index], 'stored') or IsWord(ATokens[Index], 'default') or
         IsWord(ATokens[Index], 'nodefault') or IsWord(ATokens[Index], 'implements') then
       begin
         if (TypeStart > 0) and (AShape.TypeText = '') and (Index > TypeStart) then
+        begin
           AShape.TypeText := SourceText(AText, ATokens, TypeStart, Index - 1);
+        end;
         if IsWord(ATokens[Index], 'index') then
-          AShape.HasIndex := True
+        begin
+          AShape.HasIndex := True;
+        end
         else if (IsWord(ATokens[Index], 'read') or IsWord(ATokens[Index], 'write')) and (Index < High(ATokens)) and
           (ATokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
         begin
@@ -277,7 +309,9 @@ begin
     Inc(Index);
   end;
   if (TypeStart > 0) and (AShape.TypeText = '') and (Index > TypeStart) and (Index <= High(ATokens)) then
+  begin
     AShape.TypeText := SourceText(AText, ATokens, TypeStart, Index - 1);
+  end;
   AShape.SingleLine := (Index <= High(ATokens)) and (ATokens[Index].StartPos.Line = ATokens[AStart].StartPos.Line);
 end;
 
@@ -301,13 +335,17 @@ var
     Name: string;
   begin
     for Token in AContext.Tree.Tokens do
+    begin
       if (Token.Kind = TPascalTokenKind.Directive) and (Token.StartPos.Line >= AType.Range.StartPos.Line) and
         (Token.StartPos.Line <= AType.Range.EndPos.Line) then
       begin
         Name := TDirectiveNames.LeadingName(TDirectiveNames.Body(Token.Text));
         if SameText(Name, 'I') or SameText(Name, 'INCLUDE') then
+        begin
           Exit(True);
+        end;
       end;
+    end;
     Result := False;
   end;
 
@@ -319,9 +357,15 @@ var
   begin
     Result := nil;
     for Location in AChain do
+    begin
       for Name in Location.Symbol.TypeParams.Split([',']) do
+      begin
         if Trim(Name) <> '' then
+        begin
           Result := Result + [Trim(Name)];
+        end;
+      end;
+    end;
   end;
 
   /// <summary>Mitglieder namens AName auf der nächsten Stufe der Kette, die es dort gibt. False, wenn keine
@@ -340,18 +384,26 @@ var
       for Symbol in Ancestry.Members(AChain[Level]) do
       begin
         if not SameText(Symbol.Name, AName) then
+        begin
           Continue;
+        end;
         Any := True;
         if Symbol.Unavailable then
+        begin
           Exit(False);
+        end;
         // strict private sieht kein Nachfahre, private nur einer in derselben Unit.
         if (Level > 0) and ((Symbol.Visibility = TIndexVisibility.StrictPrivate) or
           ((AChain[Level].FileName <> '') and (Symbol.Visibility = TIndexVisibility.Private))) then
+        begin
           Continue;
+        end;
         AFound := AFound + [Symbol];
       end;
       if Any then
+      begin
         Exit(AFound <> nil);
+      end;
     end;
     Result := AComplete;
   end;
@@ -369,7 +421,9 @@ var
   begin
     Result := nil;
     if (AAccessor.Selectors <> nil) or AShape.IsClass or not AShape.SingleLine or (AShape.TypeText = '') then
+    begin
       Exit;
+    end;
     Plan := Default(TAccessorPlan);
     Plan.PropertyName := AShape.Symbol.Name;
     Plan.PropertyType := AShape.TypeText;
@@ -377,22 +431,36 @@ var
     if AShape.HasIndex then
     begin
       if Plan.IndexParameters <> '' then
+      begin
         Plan.IndexParameters := Plan.IndexParameters + '; ';
+      end;
       Plan.IndexParameters := Plan.IndexParameters + 'AIndex: Integer';
     end;
     Plan.MethodSection := 'private';
     if AContext.AccessorsProtected then
+    begin
       Plan.MethodSection := 'protected';
+    end;
     if SameText(AAccessor.Name, Plan.FieldName) and (Plan.IndexParameters = '') then
-      Plan.Kind := TAccessorKind.Field
+    begin
+      Plan.Kind := TAccessorKind.Field;
+    end
     else if not AAccessor.IsWrite and SameText(AAccessor.Name, 'Get' + Plan.PropertyName) then
-      Plan.Kind := TAccessorKind.Getter
+    begin
+      Plan.Kind := TAccessorKind.Getter;
+    end
     else if AAccessor.IsWrite and SameText(AAccessor.Name, 'Set' + Plan.PropertyName) then
-      Plan.Kind := TAccessorKind.Setter
+    begin
+      Plan.Kind := TAccessorKind.Setter;
+    end
     else
+    begin
       Exit;
+    end;
     if TClassActions.CreateAccessor(AContext.Text, Tokens[AAccessor.First].StartPos.Line, Plan, Actions, Action) then
+    begin
       Result := [TRuleFix.Create(Action.Title, Action.Edits)];
+    end;
   end;
 
   /// <summary>Erwarteter Kopf der Zugriffsmethode, z. B. "function GetName(Index: Integer): string".</summary>
@@ -404,21 +472,31 @@ var
     if AShape.HasIndex then
     begin
       if Params <> '' then
+      begin
         Params := Params + '; ';
+      end;
       Params := Params + 'AIndex: Integer';
     end;
     if AAccessor.IsWrite then
     begin
       if Params <> '' then
+      begin
         Params := Params + '; ';
+      end;
       Result := Format('procedure %s(%sconst Value: %s)', [AAccessor.Name, Params, AShape.TypeText]);
     end
     else if Params <> '' then
-      Result := Format('function %s(%s): %s', [AAccessor.Name, Params, AShape.TypeText])
+    begin
+      Result := Format('function %s(%s): %s', [AAccessor.Name, Params, AShape.TypeText]);
+    end
     else
+    begin
       Result := Format('function %s: %s', [AAccessor.Name, AShape.TypeText]);
+    end;
     if AShape.IsClass then
+    begin
       Result := 'class ' + Result + '; static';
+    end;
   end;
 
   /// <summary>Passt die Methode AMethod als Getter bzw. Setter? Typen zählen nur, wenn beide sicher sind.</summary>
@@ -439,24 +517,42 @@ var
     Wanted := Copy(AShape.Symbol.ParamTypes);
     // Der Indexparameter hat den Typ der Indexkonstante (index aZwei: Aufzählung, PA4); '' passt zu jedem Typ.
     if AShape.HasIndex then
+    begin
       Wanted := Wanted + [''];
+    end;
     if AAccessor.IsWrite then
+    begin
       Wanted := Wanted + [AShape.Symbol.TypeName];
+    end;
     Keyword := LowerCase(AMethod.Signature);
     if StartsStr('class ', Keyword) then
+    begin
       Keyword := Trim(Copy(Keyword, 7, MaxInt));
+    end;
     if AAccessor.IsWrite then
-      Result := StartsStr('procedure', Keyword)
+    begin
+      Result := StartsStr('procedure', Keyword);
+    end
     else
+    begin
       Result := StartsStr('function', Keyword);
+    end;
     Result := Result and (AMethod.MaxArgs = Length(Wanted)) and (Length(AMethod.ParamTypes) = Length(Wanted));
     if not Result then
+    begin
       Exit;
+    end;
     for Index := 0 to High(Wanted) do
+    begin
       if not Same(Wanted[Index], AMethod.ParamTypes[Index]) then
+      begin
         Exit(False);
+      end;
+    end;
     if not AAccessor.IsWrite then
+    begin
       Result := Same(AShape.Symbol.TypeName, AMethod.TypeName);
+    end;
   end;
 
   /// <summary>Feldselektoren ab dem Feld AField prüfen; True mit Meldung bei einem Fehler.</summary>
@@ -478,7 +574,9 @@ var
       if (Current.TypeName = '') or (Current.TypeArgs <> '') or
         not Ancestry.FindAnyType(Copy(Current.TypeName, LastDelimiter('.', Current.TypeName) + 1, MaxInt),
         Location) or (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) then
+      begin
         Exit;
+      end;
       if Location.Symbol.Kind <> TIndexSymbolKind.RecordType then
       begin
         AReport.Add(Range(AAccessor), Format('%s ist vom Typ %s, keinem Record; ein Feldselektor wie %s.%s geht ' +
@@ -488,14 +586,18 @@ var
       Found := False;
       Hit := Default(TIndexSymbol);
       for Member in Ancestry.Members(Location) do
+      begin
         if SameText(Member.Name, Selector) then
         begin
           if Member.Unavailable then
+          begin
             Exit;
+          end;
           Found := True;
           Hit := Member;
           Break;
         end;
+      end;
       if not Found then
       begin
         AReport.Add(Range(AAccessor), Format('%s hat kein Feld %s (wie E2562).', [Location.Symbol.Name, Selector]),
@@ -525,10 +627,14 @@ var
     mRole: string;
   begin
     if not Lookup(AChain, AComplete, AAccessor.Name, Found) then
+    begin
       Exit;
+    end;
     Clause := 'read';
     if AAccessor.IsWrite then
+    begin
       Clause := 'write';
+    end;
     if Found = nil then
     begin
       AReport.Add(Range(AAccessor), Format('%s ist in %s nicht deklariert (wie E2168).', [AAccessor.Name,
@@ -577,25 +683,33 @@ var
     end;
     // Methode (ein Konstruktor ist nie ein passender Getter oder Setter).
     if AAccessor.Selectors <> nil then
+    begin
       Exit;
+    end;
     // Von Überladungen nimmt dcc die passende (PA6, Graphics32); ohne Typ der Property ist das offen.
     if Length(Found) > 1 then
     begin
       if AShape.TypeText = '' then
+      begin
         Exit;
+      end;
       mFitting := False;
       for mCandidate in Found do
+      begin
         if Fits(AShape, AAccessor, mCandidate, AWildcards) then
         begin
           Symbol := mCandidate;
           mFitting := True;
           Break;
         end;
+      end;
       if not mFitting then
       begin
         mRole := 'Getter';
         if AAccessor.IsWrite then
+        begin
           mRole := 'Setter';
+        end;
         // Delphi 13 meldet E2250 (PG3, #1382).
         AReport.Add(Range(AAccessor), Format('%s ist überladen, und keine Überladung passt als %s von %s (wie ' +
           'E2250).', [Symbol.Name, mRole, AShape.Symbol.Name]), TRuleConfidence.High);
@@ -605,12 +719,16 @@ var
     if AShape.IsClass and not (Symbol.HasDirective('class') and Symbol.HasDirective('static')) then
     begin
       if Symbol.HasDirective('class') then
+      begin
         AReport.Add(Range(AAccessor), Format('Die Klassen-Property %s braucht eine class-Methode mit static; %s ' +
-          'ist nicht static (wie E2355).', [AShape.Symbol.Name, Symbol.Name]), TRuleConfidence.High)
+          'ist nicht static (wie E2355).', [AShape.Symbol.Name, Symbol.Name]), TRuleConfidence.High);
+      end
       else
+      begin
         AReport.Add(Range(AAccessor), Format('Die Klassen-Property %s braucht hinter %s eine class var oder eine ' +
           'class-Methode mit static; %s ist eine Instanzmethode (wie E2355).', [AShape.Symbol.Name, Clause,
           Symbol.Name]), TRuleConfidence.High);
+      end;
       Exit;
     end;
     // Eine Klassenmethode ohne static taugt als Getter einer Instanz-Property (PA5, HtmlViewer, Graphics32);
@@ -637,14 +755,20 @@ var
     end;
     // Ohne Typ übernimmt die Property Typ und Indexparameter vom Vorfahren.
     if (AShape.TypeText = '') or Fits(AShape, AAccessor, Symbol, AWildcards) then
+    begin
       Exit;
+    end;
     // Delphi 13 meldet die falsche Signatur als E2008 (Fall Cm.E2234, PG2, #1382).
     if AAccessor.IsWrite then
+    begin
       AReport.Add(Range(AAccessor), Format('%s passt nicht als Setter von %s; erwartet wird %s (wie E2008).',
-        [Symbol.Name, AShape.Symbol.Name, Expected(AShape, AAccessor)]), TRuleConfidence.High)
+        [Symbol.Name, AShape.Symbol.Name, Expected(AShape, AAccessor)]), TRuleConfidence.High);
+    end
     else
+    begin
       AReport.Add(Range(AAccessor), Format('%s passt nicht als Getter von %s; erwartet wird %s (wie E2008).',
         [Symbol.Name, AShape.Symbol.Name, Expected(AShape, AAccessor)]), TRuleConfidence.High);
+    end;
   end;
 
   procedure CheckProperty(AStart: Integer);
@@ -658,9 +782,12 @@ var
     Accessor: TPropertyAccessor;
   begin
     if not ParseProperty(AContext.Text, Tokens, AStart, Shape) or (Shape.Accessors = nil) then
+    begin
       Exit;
+    end;
     Found := False;
     for Symbol in Ancestry.Local.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.Property_) and (Symbol.Container <> '') and
         (Symbol.Range.StartPos.Line = Tokens[AStart].StartPos.Line) and
         (Symbol.Range.StartPos.Character = Tokens[AStart].StartPos.Character) then
@@ -669,26 +796,37 @@ var
         Found := True;
         Break;
       end;
+    end;
     if not Found or Shape.Symbol.Unavailable then
+    begin
       Exit;
+    end;
     Shape.IsClass := Shape.Symbol.HasDirective('class');
     if not Ancestry.FindAnyType(Shape.Symbol.Container, Owner) or (Owner.FileName <> '') or
       not (Owner.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.ObjectType]) or HasInclude(Owner.Symbol) then
+    begin
       Exit;
+    end;
     Chain := [Owner];
     Complete := True;
     if Owner.Symbol.Kind = TIndexSymbolKind.ClassType then
+    begin
       Chain := Chain + Ancestry.Ancestors(Owner.Symbol.Name, Complete, ObjectMissing);
+    end;
     for Accessor in Shape.Accessors do
+    begin
       CheckAccessor(Shape, Accessor, Chain, Complete, Wildcards(Chain));
+    end;
   end;
 
 var
   Index: Integer;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Tokens := TRuleDerived.CodeTokens(Cache, AContext);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
@@ -699,8 +837,12 @@ begin
     Actions.DelphiVersion := AContext.DelphiVersion;
     Actions.Style := AContext.Formatting;
     for Index := 0 to High(Tokens) do
+    begin
       if IsWord(Tokens[Index], 'property') then
+      begin
         CheckProperty(Index);
+      end;
+    end;
   finally
     Ancestry.Free;
   end;
@@ -732,9 +874,13 @@ var
     begin
       if (Tokens[Index].StartPos.Line < ASymbol.Range.StartPos.Line) or
         (Tokens[Index].StartPos.Line > ASymbol.Range.EndPos.Line) then
+      begin
         Continue;
+      end;
       if Tokens[Index].IsSymbol(';') and IsWord(Tokens[Index + 1], 'default') then
+      begin
         Exit(Index + 1);
+      end;
     end;
     Result := -1;
   end;
@@ -745,9 +891,15 @@ var
   begin
     Result := Length(A.ParamTypes) = Length(B.ParamTypes);
     if Result then
+    begin
       for Index := 0 to High(A.ParamTypes) do
+      begin
         if not Ancestry.SameType(A.ParamTypes[Index], B.ParamTypes[Index], nil) then
+        begin
           Exit(False);
+        end;
+      end;
+    end;
   end;
 
   /// <summary>E2132 (default an einer Property ohne Index) und E2131 (zweite default-Property mit gleichen
@@ -764,10 +916,14 @@ var
     begin
       if (Symbol.Kind <> TIndexSymbolKind.Property_) or not Symbol.IsDefault or (Symbol.Container = '') or
         Symbol.Unavailable then
+      begin
         Continue;
+      end;
       Token := DefaultToken(Symbol);
       if Token < 0 then
+      begin
         Continue;
+      end;
       Range := TTextRange.Create(Tokens[Token].StartPos, Tokens[Token].EndPos);
       // Ohne Typ übernimmt eine Neudeklaration (property Items; default;) die Indexparameter des Vorfahren.
       if (Symbol.MaxArgs = 0) and (Symbol.TypeName <> '') then
@@ -776,22 +932,30 @@ var
         Continue;
       end;
       for Earlier in Seen do
+      begin
         if SameText(Earlier.Container, Symbol.Container) and (Symbol.TypeName <> '') and
           (Earlier.TypeName <> '') and (Earlier.Condition = '') and (Symbol.Condition = '') then
         begin
           // Überladene default-Properties gleichen Namens unterscheiden sich in den Indextypen; zwei
           // verschiedene Namen lässt dcc nie zu (Cm.E2131, #1380).
           if not SameText(Earlier.Name, Symbol.Name) then
+          begin
             AReport.Add(Range, Format('%s hat schon die default-Property %s; eine Klasse hat höchstens eine ' +
               'default-Property, überladen nur unter demselben Namen (wie E2131).', [Symbol.Container,
-              Earlier.Name]), TRuleConfidence.High)
+              Earlier.Name]), TRuleConfidence.High);
+          end
           else if SameIndexTypes(Earlier, Symbol) then
+          begin
             AReport.Add(Range, Format('%s hat schon die default-Property %s mit denselben Indextypen (wie E2131).',
-              [Symbol.Container, Earlier.Name]), TRuleConfidence.High)
+              [Symbol.Container, Earlier.Name]), TRuleConfidence.High);
+          end
           else
+          begin
             Continue;
+          end;
           Break;
         end;
+      end;
       Seen := Seen + [Symbol];
     end;
   end;
@@ -807,21 +971,39 @@ var
   begin
     Result := False;
     if not Ancestry.FindClass(ATypeName, Own) or (Own.Symbol.Kind <> TIndexSymbolKind.ClassType) then
+    begin
       Exit;
+    end;
     Chain := [Own] + Ancestry.Ancestors(Own.Symbol.Name, Complete, ObjectMissing);
     if not Complete then
+    begin
       Exit;
+    end;
     for Location in Chain do
+    begin
       for Member in Ancestry.Members(Location) do
+      begin
         if (Member.Kind = TIndexSymbolKind.Property_) and Member.IsDefault then
+        begin
           Exit;
+        end;
+      end;
+    end;
     // Ein Class-Helper der Datei könnte die default-Property liefern.
     for Symbol in Ancestry.Local.Symbols do
+    begin
       if Symbol.Kind = TIndexSymbolKind.HelperType then
+      begin
         for Location in Chain do
+        begin
           if ContainsText(' ' + Symbol.Signature + ' ', ' ' + Location.Symbol.Name + ' ') or
             ContainsText(Symbol.Signature, ' ' + Location.Symbol.Name + ')') then
+          begin
             Exit;
+          end;
+        end;
+      end;
+    end;
     Result := True;
   end;
 
@@ -835,16 +1017,24 @@ var
     Base := ANode[0];
     if not (Base.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
       TSyntaxKind.Call]) then
+    begin
       Exit;
+    end;
     if not Resolver.NodeType(AContext.Tree, FileName, Base, Symbol, TypeInfo, TypeFound) or not TypeFound or
       Symbol.IsType or (TypeInfo.SymbolKind <> TIndexSymbolKind.ClassType) or TypeInfo.Builtin then
+    begin
       Exit;
+    end;
     // Bei einer Array-Property (Items[I]) ist Base selbst schon der indizierte Zugriff.
     if (Symbol.SymbolKind = TIndexSymbolKind.Property_) and (Symbol.MaxArgs > 0) and
       (Base.Kind <> TSyntaxKind.IndexAccess) then
+    begin
       Exit;
+    end;
     if not LacksDefault(TypeInfo.Name) then
+    begin
       Exit;
+    end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s hat keine default-Property; ' +
       '%s[…] braucht eine (wie E2149).', [TypeInfo.Name, Symbol.Name]), TRuleConfidence.High);
   end;
@@ -861,36 +1051,43 @@ var
       Node := Stack[High(Stack)];
       SetLength(Stack, Length(Stack) - 1);
       if (Node.Kind = TSyntaxKind.IndexAccess) and (Node.ChildCount > 1) then
+      begin
         CheckAccess(Node);
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Stack := Stack + [Node[Index]];
+      end;
     end;
   end;
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Tokens := TRuleDerived.CodeTokens(Cache, AContext);
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
   try
     CheckDeclarations;
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
     Resolver := TRuleDerived.Resolver(mCache, AContext);
+    Resolver.PinTree(AContext.Tree, FileName);
     try
-      Resolver.PinTree(AContext.Tree, FileName);
-      try
-        VisitBodies;
-      finally
-        Resolver.UnpinTree;
-      end;
+      VisitBodies;
     finally
+      Resolver.UnpinTree;
     end;
   finally
     Ancestry.Free;
@@ -917,13 +1114,17 @@ var
     Name: string;
   begin
     for Token in AContext.Tree.Tokens do
+    begin
       if (Token.Kind = TPascalTokenKind.Directive) and (Token.StartPos.Line >= AType.Range.StartPos.Line) and
         (Token.StartPos.Line <= AType.Range.EndPos.Line) then
       begin
         Name := TDirectiveNames.LeadingName(TDirectiveNames.Body(Token.Text));
         if SameText(Name, 'I') or SameText(Name, 'INCLUDE') then
+        begin
           Exit(True);
+        end;
       end;
+    end;
     Result := False;
   end;
 
@@ -945,26 +1146,38 @@ var
   begin
     Chain := Ancestry.Ancestors(AOwner.Name, Complete, ObjectMissing);
     if not Complete then
+    begin
       Exit;
+    end;
     Hidden := '';
     Names := nil;
     for Location in Chain do
+    begin
       for Member in Ancestry.Members(Location) do
       begin
         if SameText(Member.Name, AProperty.Name) then
         begin
           // Nur in einem inaktiven Zweig oder kein Property (Feld, Methode): keine sichere Aussage.
           if Member.Unavailable or (Member.Kind <> TIndexSymbolKind.Property_) then
+          begin
             Exit;
+          end;
           if Visible(Location, Member) then
+          begin
             Exit;
+          end;
           if Hidden = '' then
+          begin
             Hidden := Location.Symbol.Name;
+          end;
         end
         else if (Member.Kind = TIndexSymbolKind.Property_) and Visible(Location, Member) and
           not MatchText(Member.Name, Names) then
+        begin
           Names := Names + [Member.Name];
+        end;
       end;
+    end;
     if Hidden <> '' then
     begin
       AReport.Add(AProperty.SelectionRange, Format('Die Property %s von %s ist hier nicht erreichbar (wie E2233).',
@@ -973,15 +1186,21 @@ var
     end;
     Ancestor := 'TObject';
     if Chain <> nil then
+    begin
       Ancestor := Chain[0].Symbol.Name;
+    end;
     Closest := TTextFuzzy.Closest(AProperty.Name, Names);
     if Closest <> '' then
+    begin
       AReport.Add(AProperty.SelectionRange, Format('%s hat keine Property %s; gemeint ist %s (wie E2147).',
         [Ancestor, AProperty.Name, Closest]), TRuleConfidence.High,
-        [TRuleFix.Create(Format('%s verwenden', [Closest]), [TRuleEdit.Create(AProperty.SelectionRange, Closest)])])
+        [TRuleFix.Create(Format('%s verwenden', [Closest]), [TRuleEdit.Create(AProperty.SelectionRange, Closest)])]);
+    end
     else
+    begin
       AReport.Add(AProperty.SelectionRange, Format('%s hat keine Property %s (wie E2147).', [Ancestor,
         AProperty.Name]), TRuleConfidence.High);
+    end;
   end;
 
 var
@@ -989,7 +1208,9 @@ var
   Location: TSymbolLocation;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
   try
@@ -997,14 +1218,20 @@ begin
     begin
       if (Symbol.Kind <> TIndexSymbolKind.ClassType) or (Symbol.Container <> '') or Symbol.Unavailable or
         HasInclude(Symbol) then
+      begin
         Continue;
+      end;
       Location := Default(TSymbolLocation);
       Location.Symbol := Symbol;
       // Neudeklaration: property Caption; bzw. property Align default alClient; (ohne Typ und Index).
       for Member in Ancestry.Members(Location) do
+      begin
         if (Member.Kind = TIndexSymbolKind.Property_) and (Member.TypeName = '') and (Member.MaxArgs = 0) and
           not Member.Unavailable and not Member.HasDirective('class') then
+        begin
           CheckProperty(Symbol, Member);
+        end;
+      end;
     end;
   finally
     Ancestry.Free;
@@ -1029,7 +1256,9 @@ var
   begin
     Result := AName;
     if EndsText('Attribute', Result) and (Length(Result) > Length('Attribute')) then
+    begin
       Result := Copy(Result, 1, Length(Result) - Length('Attribute'));
+    end;
   end;
 
   // Attribute direkt vor der Property ([Name], [A, B(1)], auch vor class property).
@@ -1041,25 +1270,39 @@ var
     Result := False;
     Index := AStart - 1;
     if (Index >= 0) and IsWord(Tokens[Index], 'class') then
+    begin
       Dec(Index);
+    end;
     while (Index >= 0) and Tokens[Index].IsSymbol(']') do
     begin
       Depth := 0;
       while Index >= 0 do
       begin
         if Tokens[Index].IsSymbol(']') or Tokens[Index].IsSymbol(')') then
-          Inc(Depth)
+        begin
+          Inc(Depth);
+        end
         else if Tokens[Index].IsSymbol('[') or Tokens[Index].IsSymbol('(') then
+        begin
           Dec(Depth);
+        end;
         // Name am Anfang eines Attributs: hinter "[" oder "," auf Tiefe 1.
         if (Depth = 1) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and (Index > 0) and
           (Tokens[Index - 1].IsSymbol('[') or Tokens[Index - 1].IsSymbol(',')) then
+        begin
           for Pattern in Allowed do
+          begin
             if SameText(AttributeName(Tokens[Index].Text), AttributeName(Pattern)) then
+            begin
               Exit(True);
+            end;
+          end;
+        end;
         Dec(Index);
         if Depth = 0 then
+        begin
           Break;
+        end;
       end;
     end;
   end;
@@ -1074,20 +1317,32 @@ var
     Result := False;
     Owner := nil;
     for Declaration in Declarations do
+    begin
       if (Declaration.StartOffset <= Tokens[AStart].Offset) and (Declaration.EndOffset > Tokens[AStart].Offset) then
+      begin
         Owner := Declaration.Parent;
+      end;
+    end;
     if (Owner = nil) or not (Owner.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType])
       then
+    begin
       Exit;
+    end;
     for Index := 0 to Owner.ChildCount - 1 do
     begin
       Member := Owner[Index];
       if (Member.Kind = TSyntaxKind.Field) and (Member.ChildCount > 0) then
+      begin
         for Name in Member.Name.Split([',']) do
+        begin
           if SameText(Trim(Name), 'F' + AName) and SameText(StringReplace(Trim(Copy(AContext.Text,
             Member[0].StartOffset + 1, Member[0].EndOffset - Member[0].StartOffset)), ' ', '', [rfReplaceAll]),
             StringReplace(ATypeText, ' ', '', [rfReplaceAll])) then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
     end;
   end;
 
@@ -1102,20 +1357,28 @@ var
   begin
     // Ohne Typ wird eine geerbte Property neu veröffentlicht; ihr read kommt vom Vorfahren.
     if not ParseProperty(AContext.Text, Tokens, AStart, Shape) or (Shape.TypeText = '') then
+    begin
       Exit;
+    end;
     HasRead := False;
     HasWrite := False;
     Writer := Default(TPropertyAccessor);
     for Accessor in Shape.Accessors do
+    begin
       if Accessor.IsWrite then
       begin
         HasWrite := True;
         Writer := Accessor;
       end
       else
+      begin
         HasRead := True;
+      end;
+    end;
     if HasRead or not HasWrite or HasAllowedAttribute(AStart) then
+    begin
       Exit;
+    end;
     Name := Tokens[AStart + 1].Text;
     Fixes := nil;
     if FieldFor(AStart, Name, Shape.TypeText) then
@@ -1134,7 +1397,9 @@ var
   Found: TArray<TSyntaxNode>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Cache := TRuleDerived.Open(AContext);
   Tokens := TRuleDerived.CodeTokens(Cache, AContext);
   Allowed := TRuleOptions.Strings(AContext.Options, 'allowAttributes', nil);
@@ -1143,13 +1408,19 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.PropertyDecl then
+      begin
         Found := Found + [ANode];
+      end;
       Result := True;
     end);
   Declarations := Found;
   for Index := 0 to High(Tokens) - 1 do
+  begin
     if IsWord(Tokens[Index], 'property') then
+    begin
       CheckProperty(Index);
+    end;
+  end;
 end;
 
 procedure RegisterPropertyRules(const ARegistry: TRuleRegistry);

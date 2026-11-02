@@ -132,14 +132,22 @@ var
   Name: string;
 begin
   if ANode.Kind in [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
+  begin
     for Name in ANode.Name.Split([',']) do
+    begin
       if SameText(Trim(Name), AName) then
+      begin
         Exit(ANode);
+      end;
+    end;
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindDeclaration(ANode[Index], AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -161,7 +169,9 @@ begin
     Index := TSymbolIndex.Create;
     Index.AddUnit(TIndexExtractor.ExtractText(ASource, MainFile, nil));
     for Other in AOthers do
+    begin
       Index.AddUnit(TIndexExtractor.ExtractText(Other.Text, Other.FileName, nil));
+    end;
   end;
   Tree := TSyntaxTreeCache.Parse(ASource);
   Resolver := TNameResolver.Create(Index);
@@ -173,12 +183,16 @@ begin
       if Result.Converted then
       begin
         for Other in AOthers do
+        begin
           Conversion.AddFile(Other.Text, Other.FileName);
+        end;
         Result.Converted := Conversion.Finish(Result.Plan);
       end;
       Result.Reason := Conversion.Reason;
       if Result.Converted then
+      begin
         Result.Text := TChangeSignature.ApplyEdits(ASource, Result.Plan.Edits);
+      end;
     finally
       Conversion.Free;
     end;

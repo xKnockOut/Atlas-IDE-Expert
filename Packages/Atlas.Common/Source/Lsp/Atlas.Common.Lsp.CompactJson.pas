@@ -31,7 +31,9 @@ begin
   // sonst wäre der Text kein gültiges JSON mehr.
   Result := nil;
   if AValue <> nil then
+  begin
     Result := TEncoding.UTF8.GetBytes(AValue.ToJSON([TJSONAncestor.TJSONOutputOption.EncodeBelow32]));
+  end;
 end;
 
 class function TCompactJson.UnpackArray(const ABytes: TBytes): TJSONArray;
@@ -40,9 +42,13 @@ var
 begin
   mValue := nil;
   if Length(ABytes) > 0 then
+  begin
     mValue := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetString(ABytes));
+  end;
   if mValue is TJSONArray then
+  begin
     Exit(TJSONArray(mValue));
+  end;
   mValue.Free;
   Result := TJSONArray.Create;
 end;

@@ -103,14 +103,18 @@ begin
       begin
         Result := 'function ' + APlan.Name;
         if APlan.IndexParameters <> '' then
+        begin
           Result := Result + '(' + APlan.IndexParameters + ')';
+        end;
         Result := Result + ': ' + APlan.PropertyType + ';';
       end;
     TAccessorKind.Setter:
       begin
         Index := '';
         if APlan.IndexParameters <> '' then
+        begin
           Index := APlan.IndexParameters + '; ';
+        end;
         Result := Format('procedure %s(%sconst Value: %s);', [APlan.Name, Index, APlan.PropertyType]);
       end;
   else
@@ -138,18 +142,24 @@ var
   Location: TSymbolLocation;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if IsTypeSymbol(Symbol, AName) then
     begin
       ASymbol := Symbol;
       Exit(True);
     end;
+  end;
   if AIndex <> nil then
+  begin
     for Location in AIndex.FindSymbols(AName) do
+    begin
       if IsTypeSymbol(Location.Symbol, AName) then
       begin
         ASymbol := Location.Symbol;
         Exit(True);
       end;
+    end;
+  end;
   ASymbol := Default(TIndexSymbol);
   Result := False;
 end;
@@ -167,22 +177,36 @@ begin
     if StartsText('array', Name) or StartsText('TArray<', Name) or SameText(Name, 'TBytes') or
       StartsText('procedure', Name) or StartsText('function', Name) or StartsText('reference', Name) or
       StartsText('record', Name) then
+    begin
       Exit(False);
+    end;
     if (Name = '') or (Pos('<', Name) > 0) or
       not FindType(Name.Substring(Name.LastIndexOf('.') + 1), AIndex, AUnit, Symbol) then
+    begin
       Exit(True);
+    end;
     if Symbol.Kind = TIndexSymbolKind.RecordType then
+    begin
       Exit(False);
+    end;
     if Symbol.Kind <> TIndexSymbolKind.TypeAlias then
+    begin
       Exit(True);
+    end;
     // "TNotifyEvent = procedure(Sender: TObject) of object", "TPunkte = array of TPunkt", "TName = string".
     Right := Symbol.Signature;
     if Pos('=', Right) > 0 then
+    begin
       Right := Trim(Copy(Right, Pos('=', Right) + 1, MaxInt));
+    end;
     if StartsText('type ', Right) then
+    begin
       Right := Trim(Copy(Right, 6, MaxInt));
+    end;
     if Right = '' then
+    begin
       Exit(True);
+    end;
     Name := Right;
   end;
   Result := True;
@@ -202,14 +226,22 @@ begin
   Result := nil;
   ANext := nil;
   for Index := 0 to ABody.ChildCount - 1 do
+  begin
     if ABody[Index].Kind = TSyntaxKind.Visibility then
+    begin
       if Result = nil then
       begin
         if SameText(ABody[Index].Name, AName) or SameText(ABody[Index].Name, 'strict ' + AName) then
+        begin
           Result := ABody[Index];
+        end;
       end
       else if ANext = nil then
+      begin
         ANext := ABody[Index];
+      end;
+    end;
+  end;
 end;
 
 function HasSection(ABody: TSyntaxNode; const AName: string): Boolean;
@@ -217,8 +249,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ABody.ChildCount - 1 do
+  begin
     if (ABody[Index].Kind = TSyntaxKind.Visibility) and SameText(ABody[Index].Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -245,24 +281,36 @@ begin
       LastField := nil;
       Index := 0;
       while (Index < ABody.ChildCount) and (ABody[Index] <> Section) do
+      begin
         Inc(Index);
+      end;
       for Index := Index + 1 to ABody.ChildCount - 1 do
       begin
         Child := ABody[Index];
         if not (Child.Kind in [TSyntaxKind.Field, TSyntaxKind.VarSection, TSyntaxKind.VarDecl]) then
+        begin
           Break;
+        end;
         LastField := Child;
       end;
       if LastField <> nil then
+      begin
         Exit(ASource.AfterLine(LastField.EndPos.Line, Indent + ADecl));
+      end;
       Exit(ASource.AfterLine(Section.StartPos.Line, Indent + ADecl));
     end;
     if Next <> nil then
-      SectionEnd := Next.StartPos.Line
+    begin
+      SectionEnd := Next.StartPos.Line;
+    end
     else
+    begin
       SectionEnd := AClass.Range.EndPos.Line;
+    end;
     if SectionEnd <= PropertyLine then
+    begin
       Exit(ASource.BeforeLine(SectionEnd, Indent + ADecl));
+    end;
     // Die Eigenschaft steht selbst im Abschnitt.
     Exit(ASource.BeforeLine(PropertyLine, Indent + ADecl));
   end;
@@ -296,7 +344,9 @@ begin
       // Gleicher neuer Abschnitt wie die Einfügung davor: Kopf nur einmal.
       if ANewBlocks[Index] and (Index > 0) and ANewBlocks[Index - 1] and SameText(ASections[Index - 1],
         ASections[Index]) and StartsStr(Header, Text) then
+      begin
         Text := Copy(Text, Length(Header) + 1, MaxInt);
+      end;
       Result[Last].NewText := Result[Last].NewText + Text;
       Continue;
     end;
@@ -304,13 +354,21 @@ begin
     Last := High(Result);
   end;
   if not AnyNew then
+  begin
     Exit;
+  end;
   Current := TInterfaceStubs.LastSection(ASource.Tree.Tokens, AClass.Range.StartPos.Line, ASource.Line);
   if Current = '' then
+  begin
     Current := 'public';
+  end;
   for Index := 0 to High(Result) do
+  begin
     if (Result[Index].Range.StartPos.Line = ASource.Line) and (Result[Index].Range.StartPos.Character = 0) then
+    begin
       Result[Index].NewText := Result[Index].NewText + ClassIndent + Current + ASource.LineBreak;
+    end;
+  end;
 end;
 
 class function TAccessorCreation.Edits(ASource: TCommandSource; const AIndex: ISymbolIndex;
@@ -332,12 +390,18 @@ begin
   Body := BodyOfClass(ASource, AClass);
   if (Body = nil) or FindMember(ASource, AClass, APlan.Name, [TIndexSymbolKind.Field, TIndexSymbolKind.Method,
     TIndexSymbolKind.Property_], Member) then
+  begin
     Exit;
+  end;
   if (APlan.Kind = TAccessorKind.Field) and (APlan.IndexParameters <> '') then
+  begin
     Exit;
+  end;
   FieldSection := 'private';
   if HasSection(Body, 'strict private') then
+  begin
     FieldSection := 'strict private';
+  end;
   LB := ASource.LineBreak;
   HasField := FindMember(ASource, AClass, APlan.FieldName, [TIndexSymbolKind.Field], Member);
   Pending := nil;
@@ -362,28 +426,42 @@ begin
   end;
   AEdits := Merged(ASource, AClass, Pending, NewBlocks, Sections);
   if APlan.Kind = TAccessorKind.Field then
+  begin
     Exit(True);
+  end;
   Params := '';
   if APlan.IndexParameters <> '' then
+  begin
     Params := '(' + APlan.IndexParameters + ')';
+  end;
   if APlan.Kind = TAccessorKind.Getter then
   begin
     Head := Format('function %s.%s%s: %s;', [AClass.Name, APlan.Name, Params, APlan.PropertyType]);
     if HasField and (APlan.IndexParameters = '') then
-      Text := Head + LB + 'begin' + LB + '  Result := ' + APlan.FieldName + ';' + LB + 'end;'
+    begin
+      Text := Head + LB + 'begin' + LB + '  Result := ' + APlan.FieldName + ';' + LB + 'end;';
+    end
     else
+    begin
       Text := Head + LB + 'begin' + LB + '  Result := Default(' + APlan.PropertyType + ');' + LB + 'end;';
+    end;
   end
   else
   begin
     Head := 'procedure ' + AClass.Name + '.' + Copy(Declaration(APlan), Length('procedure ') + 1, MaxInt);
     if APlan.IndexParameters <> '' then
-      Text := Head + LB + 'begin' + LB + 'end;'
+    begin
+      Text := Head + LB + 'begin' + LB + 'end;';
+    end
     else if IsComparable(APlan.PropertyType, AIndex, ASource.UnitIndex) then
+    begin
       Text := Head + LB + TSetterGenerator.Body(APlan.FieldName, 'Value',
-        TSetterGenerator.NotifyCall(ASource, AIndex, AClass), LB)
+        TSetterGenerator.NotifyCall(ASource, AIndex, AClass), LB);
+    end
     else
+    begin
       Text := Head + LB + 'begin' + LB + '  ' + APlan.FieldName + ' := Value;' + LB + 'end;';
+    end;
   end;
   AEdits := AEdits + [ASource.AddBody(AClass.Name, Text)];
   Result := True;

@@ -59,13 +59,21 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       if SameText(ExtractFileName(AFileName), 'Tests.dpr') then
-        AText := cTestProgram
+      begin
+        AText := cTestProgram;
+      end
       else if SameText(ExtractFileName(AFileName), 'Mehr.dpr') then
-        AText := cOtherTestProgram
+      begin
+        AText := cOtherTestProgram;
+      end
       else if SameText(ExtractFileName(AFileName), 'App.dpr') then
-        AText := cApplication
+      begin
+        AText := cApplication;
+      end
       else
+      begin
         AText := '';
+      end;
       Result := AText <> '';
     end;
 end;
@@ -106,7 +114,7 @@ begin
   mMessage := '';
   try
     // Vor jedem Aufruf von git oder svn: Prozess, Index und Resolver bleiben unbenutzt.
-    TShellAffectedTests.Run(nil, mSettings, mQuery, nil, nil, mRequest, ReadText(), nil);
+    TShellAffectedTests.Run(nil, mSettings, mQuery, TShellAffectedSources.New(nil, nil, ReadText()), mRequest, nil);
   except
     on E: EAffectedTestsOff do
       mMessage := E.Message;

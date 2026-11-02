@@ -67,7 +67,9 @@ begin
   for Token in TPascalLexer.Tokenize(AText) do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + KindNames[Token.Kind] + ':' + Token.Text;
   end;
 end;

@@ -133,14 +133,22 @@ begin
     Folder := StringReplace(StringReplace(AContext.Settings.Folder, '/', PathDelim, [rfReplaceAll]), '\', PathDelim,
       [rfReplaceAll]);
     if (Pos(':', Folder) > 0) or Folder.StartsWith(PathDelim) then
-      Result := IncludeTrailingPathDelimiter(Folder)
+    begin
+      Result := IncludeTrailingPathDelimiter(Folder);
+    end
     else
+    begin
       Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(AContext.Root) + Folder);
+    end;
   end
   else if AContext.TestProgram <> '' then
-    Result := ExtractFilePath(AContext.TestProgram)
+  begin
+    Result := ExtractFilePath(AContext.TestProgram);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function IsUnitText(const ATokens: TArray<TPascalToken>): Boolean;
@@ -149,8 +157,12 @@ var
 begin
   Result := False;
   for Token in ATokens do
+  begin
     if Token.Kind = TPascalTokenKind.Keyword then
+    begin
       Exit(Token.IsKeyword('unit'));
+    end;
+  end;
 end;
 
 class function TLspTestUnits.Resolve(const AFileName, AText: string; ALine: Integer;
@@ -169,41 +181,63 @@ begin
   Result.FileName := AFileName;
   Tokens := TPascalLexer.Tokenize(AText);
   if not IsUnitText(Tokens) then
+  begin
     Exit;
+  end;
   Result.Source := ASource;
   Result.UnitName := Result.Source.UnitName;
   if Result.UnitName = '' then
+  begin
     Result.UnitName := ChangeFileExt(ExtractFileName(AFileName), '');
+  end;
   if TTestUnits.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, Tested) and
     TRuleProfiles.IsTestUnit(Tokens) then
   begin
     Result.IsTest := True;
     Result.Counterpart := Tested;
     if Assigned(AContext.FindUnit) then
+    begin
       Result.CounterpartFile := AContext.FindUnit(Tested);
+    end;
     if Result.CounterpartFile = '' then
+    begin
       Result.Reason := Format('Unit %s nicht gefunden', [Tested]);
+    end;
     Exit;
   end;
   Result.Counterpart := TTestUnits.TestUnitName(Result.UnitName, AContext.Settings.Pattern);
   if Assigned(AContext.FindUnit) then
+  begin
     Result.CounterpartFile := AContext.FindUnit(Result.Counterpart);
+  end;
   Folder := TestFolder(AContext);
   if (Result.CounterpartFile = '') and (Folder <> '') and Assigned(AContext.Exists) and
     AContext.Exists(Folder + Result.Counterpart + '.pas') then
+  begin
     Result.CounterpartFile := Folder + Result.Counterpart + '.pas';
+  end;
   if Result.CounterpartFile <> '' then
+  begin
     Exit;
+  end;
   if ALine >= 0 then
+  begin
     Result.ClassName := TTestUnits.ClassAt(Result.Source, ALine);
+  end;
   Result.ClassAtLine := Result.ClassName <> '';
   if Result.ClassName = '' then
+  begin
     Result.ClassName := TTestUnits.FirstClass(Result.Source);
+  end;
   if AContext.TestProgram = '' then
+  begin
     Result.Reason := 'Kein Testprojekt gefunden (DUnitX oder DUnit im Arbeitsbereich); ' +
-      '„testUnits.project“ in atlas.json festlegen'
+      '„testUnits.project“ in atlas.json festlegen';
+  end
   else if (Result.ClassName = '') and (Length(TTestUnits.TestMethods(Result.Source, '')) = 0) then
-    Result.Reason := Format('%s hat weder Klassen noch Routinen im interface', [Result.UnitName])
+  begin
+    Result.Reason := Format('%s hat weder Klassen noch Routinen im interface', [Result.UnitName]);
+  end
   else
   begin
     Result.CanCreate := True;
@@ -242,7 +276,9 @@ var
   Edit: TRuleEdit;
 begin
   if not ATarget.CanCreate then
+  begin
     Exit(nil);
+  end;
   NewUri := TDocumentUris.FromPath(ATarget.NewFile);
   Changes := TJSONArray.Create;
   Creation := TJSONObject.Create;
@@ -258,14 +294,18 @@ begin
   Relative := TTestUnits.RelativePath(ExtractFilePath(AContext.TestProgram), ATarget.NewFile);
   Text := AContext.ReadText(AContext.TestProgram);
   if TUnitTemplates.UnitProgramEdit(Text, ATarget.Counterpart, Relative, Edit) then
+  begin
     Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(AContext.TestProgram), [Edit]));
+  end;
   ProjectFile := ChangeFileExt(AContext.TestProgram, '.dproj');
   if AContext.Exists(ProjectFile) then
   begin
     Text := AContext.ReadText(ProjectFile);
     if (Pos('"' + Relative + '"', Text) = 0) and
       TUnitTemplates.ProjectEdit(Text, Relative, '', TFormKind.Form, False, Edit) then
+    begin
       Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(ProjectFile), [Edit]));
+    end;
   end;
   Result := TJSONObject.Create;
   Result.AddPair('documentChanges', Changes);
@@ -286,7 +326,9 @@ begin
     Result := Resolve(FileName, Document.Text, TIndexExtractor.Extract(Shared.Tree, FileName), ALine, AContext);
   end
   else
+  begin
     Result := Resolve(FileName, AContext.ReadText(FileName), ALine, AContext);
+  end;
 end;
 
 function CommandJson(const ATitle, ACommand, AArgument: string): TJSONObject;
@@ -310,16 +352,24 @@ var
 begin
   Result := nil;
   if not Assigned(FContextFor) or not FContextFor(AUri, Context) then
+  begin
     Exit;
+  end;
   Target := ResolveUri(AUri, ALine, Context);
   if Target.UnitName = '' then
+  begin
     Exit;
+  end;
   if Target.CounterpartFile <> '' then
   begin
     if Target.IsTest then
-      Title := Format('Zur Unit %s wechseln', [Target.Counterpart])
+    begin
+      Title := Format('Zur Unit %s wechseln', [Target.Counterpart]);
+    end
     else
+    begin
       Title := Format('Zur Testunit %s wechseln', [Target.Counterpart]);
+    end;
     Action := TJSONObject.Create;
     Action.AddPair('title', Title);
     Action.AddPair('kind', RewriteKind);
@@ -329,10 +379,14 @@ begin
   end;
   // Anlegen nur auf einer Klasse (#274) oder in einer Unit ohne Klassen.
   if not Target.CanCreate or not (Target.ClassAtLine or (Target.ClassName = '')) then
+  begin
     Exit;
+  end;
   Subject := Target.ClassName;
   if Subject = '' then
+  begin
     Subject := Target.UnitName;
+  end;
   Title := Format('DUnitX-Testunit für %s anlegen', [Subject]);
   Edit := CreateEdit(Target, Context);
   Action := TJSONObject.Create;
@@ -352,11 +406,15 @@ var
   Answer: TJSONObject;
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
+  begin
     raise EArgumentException.Create(Command + ' braucht die URI der Unit');
+  end;
   Uri := AArguments.Items[0].Value;
   Line := -1;
   if AArguments.Count > 1 then
+  begin
     Line := StrToIntDef(AArguments.Items[1].Value, -1);
+  end;
   Answer := TJSONObject.Create;
   Result := Answer;
   if not Assigned(FContextFor) or not FContextFor(Uri, Context) then
@@ -370,9 +428,13 @@ begin
   Answer.AddPair('isTest', TJSONBool.Create(Target.IsTest));
   Answer.AddPair('counterpart', Target.Counterpart);
   if Target.CounterpartFile <> '' then
-    Answer.AddPair('uri', TDocumentUris.FromPath(Target.CounterpartFile))
+  begin
+    Answer.AddPair('uri', TDocumentUris.FromPath(Target.CounterpartFile));
+  end
   else
+  begin
     Answer.AddPair('uri', TJSONNull.Create);
+  end;
   Answer.AddPair('canCreate', TJSONBool.Create(Target.CanCreate));
   if Target.CanCreate then
   begin

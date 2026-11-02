@@ -110,11 +110,17 @@ begin
     Exit(True);
   end;
   if (AFileDefault <> '') and ((Length(AEnabled) = 0) or (IndexText(AFileDefault, AEnabled) >= 0)) then
-    APlatform := AFileDefault
+  begin
+    APlatform := AFileDefault;
+  end
   else if Length(AEnabled) > 0 then
-    APlatform := AEnabled[0]
+  begin
+    APlatform := AEnabled[0];
+  end
   else
+  begin
     APlatform := 'Win32';
+  end;
   Result := True;
 end;
 
@@ -130,32 +136,42 @@ begin
   if AWanted <> '' then
   begin
     for Candidate in ACandidates do
+    begin
       if SameProject(Candidate, AWanted) then
       begin
         AProject := Candidate;
         Exit(True);
       end;
+    end;
     AReason := Format('Projekt "%s" nicht gefunden.', [AWanted]);
     Exit(False);
   end;
   Found := nil;
   for Candidate in ACandidates do
+  begin
     if AIsTestProject(Candidate) then
+    begin
       Found := Found + [Candidate];
+    end;
+  end;
   if Length(Found) = 1 then
   begin
     AProject := Found[0];
     Exit(True);
   end;
   if Length(Found) = 0 then
-    AReason := 'Kein DUnitX-Testprojekt gefunden (Hauptdatei mit uses DUnitX.TestFramework); "project" angeben.'
+  begin
+    AReason := 'Kein DUnitX-Testprojekt gefunden (Hauptdatei mit uses DUnitX.TestFramework); "project" angeben.';
+  end
   else
   begin
     Names := '';
     for Candidate in Found do
     begin
       if Names <> '' then
+      begin
         Names := Names + ', ';
+      end;
       Names := Names + TProjectPaths.BaseName(Candidate) + TProjectPaths.Extension(Candidate);
     end;
     AReason := Format('Mehrere Testprojekte (%s); "project" angeben.', [Names]);
@@ -169,8 +185,12 @@ var
 begin
   // Die letzte Zuweisung gilt (wie in MSBuild).
   for Index := High(AInfo.Properties) downto 0 do
+  begin
     if SameText(AInfo.Properties[Index].Key, AName) then
+    begin
       Exit(AInfo.Properties[Index].Value);
+    end;
+  end;
   Result := '';
 end;
 
@@ -181,11 +201,17 @@ begin
   Directory := TProjectPaths.DirectoryOf(AInfo.FileName);
   Output := PropertyOf(AInfo, 'DCC_ExeOutput');
   if Output <> '' then
+  begin
     Directory := TProjectPaths.Combine(Directory, Output);
+  end;
   if AInfo.MainSource <> '' then
-    Name := TProjectPaths.BaseName(AInfo.MainSource)
+  begin
+    Name := TProjectPaths.BaseName(AInfo.MainSource);
+  end
   else
+  begin
     Name := TProjectPaths.BaseName(AInfo.FileName);
+  end;
   Result := TProjectPaths.Combine(Directory, Name + '.exe');
 end;
 
@@ -196,18 +222,30 @@ var
 begin
   Result := nil;
   if AArguments = nil then
+  begin
     Exit;
+  end;
   Value := AArguments.GetValue('tests');
   if Value is TJSONArray then
   begin
     for Item in TJSONArray(Value) do
+    begin
       if Trim(Item.Value) <> '' then
+      begin
         Result := Result + [Trim(Item.Value)];
+      end;
+    end;
   end
   else if (Value <> nil) and not (Value is TJSONNull) then
+  begin
     for Part in Value.Value.Split([',']) do
+    begin
       if Trim(Part) <> '' then
+      begin
         Result := Result + [Trim(Part)];
+      end;
+    end;
+  end;
 end;
 
 class function TMcpTestTools.Locate(const ACase: TTestCaseResult; const AUnits: TArray<TProjectUnit>;
@@ -219,15 +257,21 @@ begin
   AFileName := '';
   ALine := 0;
   if ACase.UnitName = '' then
+  begin
     Exit(False);
+  end;
   for ProjectUnit in AUnits do
+  begin
     if SameText(ProjectUnit.Name, ACase.UnitName) then
     begin
       AFileName := ProjectUnit.FileName;
       Break;
     end;
+  end;
   if (AFileName = '') and (AProjectDir <> '') then
+  begin
     AFileName := TProjectPaths.Combine(AProjectDir, ACase.UnitName + '.pas');
+  end;
   if (AFileName = '') or not AReadLines(AFileName, Lines) then
   begin
     AFileName := '';
@@ -259,13 +303,21 @@ begin
   Root := TJSONObject.Create;
   try
     if not ARun.Valid then
-      Status := 'noReport'
+    begin
+      Status := 'noReport';
+    end
     else if ARun.Total = 0 then
-      Status := 'noTests'
+    begin
+      Status := 'noTests';
+    end
     else if ARun.AllPassed then
-      Status := 'passed'
+    begin
+      Status := 'passed';
+    end
     else
+    begin
       Status := 'failed';
+    end;
     Root.AddPair('result', Status);
     Root.AddPair('project', ATarget.Project);
     Root.AddPair('configuration', ATarget.Configuration);
@@ -275,7 +327,9 @@ begin
     begin
       Filter := TJSONArray.Create;
       for Line in ATests do
+      begin
         Filter.Add(Line);
+      end;
       Root.AddPair('tests', Filter);
     end;
     Root.AddPair('exitCode', TJSONNumber.Create(AExitCode));
@@ -286,7 +340,9 @@ begin
         'wie in der Vorlage von RAD Studio.');
       Output := TJSONArray.Create;
       for Line in AOutput do
+      begin
         Output.Add(Line);
+      end;
       Root.AddPair('output', Output);
       Exit(Root.Format(2));
     end;
@@ -321,7 +377,9 @@ begin
       begin
         Item.AddPair('file', FileName);
         if LineNumber > 0 then
+        begin
           Item.AddPair('line', TJSONNumber.Create(LineNumber));
+        end;
       end;
     end;
     Result := Root.Format(2);

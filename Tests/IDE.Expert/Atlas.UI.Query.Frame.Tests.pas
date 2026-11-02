@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasCodeQueryFrameTests = class
   private
     FForm: TForm;
@@ -57,7 +58,7 @@ uses
   System.Classes,
   System.SysUtils,
   Vcl.Controls,
-  Atlas.UI.Strings,
+  Atlas.UI.Search.Strings,
   Atlas.Core.Query.Model,
   Atlas.Core.Query.Model.Tests;
 
@@ -160,12 +161,13 @@ begin
   mRows := FFrame.RowText;
   Assert.AreEqual(3, Integer(Length(mRows)));
   Assert.AreEqual('TB | U | 9 | 2 | U.pas:9', mRows[0]);
-  Assert.AreEqual('TA | U | 4 | 10 | U.pas:4 · ' + TAtlasStrings.Text(TAtlasTextId.QueryInferred), mRows[1]);
+  Assert.AreEqual('TA | U | 4 | 10 | U.pas:4 · ' + TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryInferred),
+    mRows[1]);
   // Spalten je Feld und „Datei“.
   Assert.AreEqual(5, FFrame.ResultList.Columns.Count);
   Assert.AreEqual(3, FFrame.ResultList.Items.Count);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.QueryStatusTruncated, [3, 3, 12]) +
-    TAtlasStrings.Fmt(TAtlasTextId.QueryStatusInferred, [1]), FFrame.StatusLabel.Caption);
+  Assert.AreEqual(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatusTruncated, [3, 3, 12]) +
+    TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatusInferred, [1]), FFrame.StatusLabel.Caption);
   Assert.IsTrue(FFrame.CopyCsvButton.Enabled);
   Assert.IsFalse(FFrame.ErrorLabel.Visible);
 end;
@@ -199,14 +201,14 @@ begin
   FFrame.SetRunning(True);
   Assert.IsFalse(FFrame.RunButton.Enabled);
   Assert.IsTrue(FFrame.CancelButton.Enabled);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.QueryRunning), FFrame.StatusLabel.Caption);
+  Assert.AreEqual(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRunning), FFrame.StatusLabel.Caption);
   // Während eine Abfrage läuft, startet keine zweite.
   FRan := '';
   FFrame.Run;
   Assert.AreEqual('', FRan);
   FFrame.CancelButton.Click;
   Assert.IsTrue(FCancelled);
-  FFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryCancelled), True);
+  FFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancelled), True);
   Assert.IsTrue(FFrame.RunButton.Enabled);
   Assert.IsFalse(FFrame.CancelButton.Enabled);
   // Die bisherigen Treffer bleiben stehen.
@@ -222,8 +224,8 @@ begin
     '"error": {"message": "Unbekanntes Feld „methds“", "column": 15, "suggestion": "methods"}}}', mAnswer);
   FFrame.SetAnswer(mAnswer);
   Assert.IsTrue(FFrame.ErrorLabel.Visible);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.QueryError, [15, 'Unbekanntes Feld „methds“']) + ' ' +
-    TAtlasStrings.Fmt(TAtlasTextId.QuerySuggestion, ['methods']), FFrame.ErrorLabel.Caption);
+  Assert.AreEqual(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryError, [15, 'Unbekanntes Feld „methds“']) + ' ' +
+    TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QuerySuggestion, ['methods']), FFrame.ErrorLabel.Caption);
   // Schreibmarke an der Fehlerstelle (Spalte 15 = nach 14 Zeichen).
   Assert.AreEqual(14, FFrame.Input.SelStart);
   Assert.AreEqual(0, Integer(Length(FFrame.RowText)));
@@ -280,12 +282,12 @@ end;
 procedure TAtlasCodeQueryFrameTests.CsvAndMessage;
 begin
   Assert.IsTrue(FFrame.CsvText.StartsWith('name;unit;line;methods;path;inferred'), FFrame.CsvText);
-  FFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.QueryNoServer), False);
+  FFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoServer), False);
   Assert.IsFalse(FFrame.HasAnswer);
   Assert.AreEqual(0, Integer(Length(FFrame.RowText)));
   Assert.AreEqual(0, FFrame.ResultList.Items.Count);
   Assert.IsFalse(FFrame.CopyCsvButton.Enabled);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.QueryNoServer), FFrame.StatusLabel.Caption);
+  Assert.AreEqual(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoServer), FFrame.StatusLabel.Caption);
   Assert.AreEqual('', FFrame.CsvText);
 end;
 

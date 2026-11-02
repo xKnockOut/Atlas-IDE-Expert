@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasNewIssueTests = class
   public
     /// <summary>Abnahme: Die Kennung kommt in alle drei TODO-Schreibweisen, auch mit Optionen der IDE.</summary>
@@ -48,6 +49,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Providers.GitHub,

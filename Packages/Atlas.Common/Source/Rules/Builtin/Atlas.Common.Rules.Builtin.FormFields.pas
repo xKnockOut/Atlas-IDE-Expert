@@ -113,7 +113,9 @@ function ShortName(const AName: string): string;
 begin
   Result := AName;
   if LastDelimiter('.', Result) > 0 then
+  begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
 end;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
@@ -134,20 +136,28 @@ begin
   FFields := TList<TFormField>.Create;
   FObjects := TList<TDfmObject>.Create;
   if (AContext.FormText = '') or (AContext.Tree = nil) then
+  begin
     Exit;
+  end;
   FDocument := TDfmParser.Parse(AContext.FormText);
   if FDocument.Root = nil then
+  begin
     Exit;
+  end;
   FClass := FindClass(AContext.Tree.Root, FDocument.Root.TypeName);
   if FClass = nil then
+  begin
     Exit;
+  end;
   // Ohne Sichtbarkeit gilt published (Formulare werden mit {$M+} übersetzt).
   IsPublished := True;
   for Index := 0 to FClass.ChildCount - 1 do
   begin
     Child := FClass.Children[Index];
     if Child.Kind = TSyntaxKind.Visibility then
-      IsPublished := SameText(Child.Name, 'published')
+    begin
+      IsPublished := SameText(Child.Name, 'published');
+    end
     else if (Child.Kind = TSyntaxKind.Field) and (Child.Name <> '') then
     begin
       Field := Default(TFormField);
@@ -155,7 +165,9 @@ begin
       Field.Node := Child;
       Field.TypeNode := Child.FindChild(TSyntaxKind.TypeReference);
       if Field.TypeNode <> nil then
+      begin
         Field.TypeName := Field.TypeNode.Name;
+      end;
       Field.IsPublished := IsPublished;
       FFields.Add(Field);
     end;
@@ -189,14 +201,20 @@ begin
       begin
         Result := Node.FindChild(TSyntaxKind.ClassType);
         if Result <> nil then
+        begin
           Exit;
+        end;
         Continue;
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         if Node.Children[Index].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile,
           TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
           TSyntaxKind.TypeDecl] then
+        begin
           Pending.Push(Node.Children[Index]);
+        end;
+      end;
     end;
   finally
     Pending.Free;
@@ -209,9 +227,13 @@ var
 begin
   if (AObject <> FDocument.Root) and not AInFrame and (AObject.Name <> '') and
     (AObject.Kind in [TDfmObjectKind.Object_, TDfmObjectKind.Inline_]) then
+  begin
     FObjects.Add(AObject);
+  end;
   for Child in AObject.Children do
+  begin
     CollectObjects(Child, AInFrame or ((AObject <> FDocument.Root) and (AObject.Kind = TDfmObjectKind.Inline_)));
+  end;
 end;
 
 function TFormMatch.Valid: Boolean;
@@ -224,11 +246,13 @@ var
   Field: TFormField;
 begin
   for Field in FFields do
+  begin
     if SameText(Field.Name, AName) then
     begin
       AField := Field;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -237,10 +261,16 @@ var
   Child: TDfmObject;
 begin
   if SameText(AObject.Name, AName) then
+  begin
     Exit(True);
+  end;
   for Child in AObject.Children do
+  begin
     if SearchObject(Child, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -260,7 +290,9 @@ begin
   while (Line < ALine) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   while (Index <= Length(AText)) and CharInSet(AText[Index], [' ', #9]) do
@@ -279,6 +311,7 @@ begin
   ALine := FClass.EndPos.Line;
   First := nil;
   for Index := 0 to FClass.ChildCount - 1 do
+  begin
     if FClass.Children[Index].Kind = TSyntaxKind.Visibility then
     begin
       ALine := FClass.Children[Index].StartPos.Line;
@@ -286,11 +319,18 @@ begin
     end
     else if (First = nil) and (FClass.Children[Index].Kind in [TSyntaxKind.Field, TSyntaxKind.RoutineHeader,
       TSyntaxKind.PropertyDecl]) then
+    begin
       First := FClass.Children[Index];
+    end;
+  end;
   if First <> nil then
-    AIndent := LineIndent(AText, First.StartPos.Line)
+  begin
+    AIndent := LineIndent(AText, First.StartPos.Line);
+  end
   else
+  begin
     AIndent := LineIndent(AText, ALine) + '  ';
+  end;
   Result := ALine > FClass.StartPos.Line;
 end;
 
@@ -310,11 +350,17 @@ begin
   Match := TFormMatch.Create(AContext);
   try
     if not Match.Valid then
+    begin
       Exit;
+    end;
     for Field in Match.Fields do
+    begin
       if Field.IsPublished and not Match.HasObject(Field.Name) then
+      begin
         AReport.Add(NodeRange(Field.Node), Format('Feld %s hat kein Objekt in der Formulardatei; beim Laden ' +
           'bleibt es nil', [Field.Name]));
+      end;
+    end;
   finally
     Match.Free;
   end;
@@ -340,21 +386,27 @@ begin
   Match := TFormMatch.Create(AContext);
   try
     if not Match.Valid then
+    begin
       Exit;
+    end;
     for Obj in Match.Objects do
+    begin
       if not Match.FindField(Obj.Name, Field) then
       begin
         Fixes := nil;
         if Match.FieldInsert(AContext.Text, Line, Indent) then
+        begin
           Fixes := [TRuleFix.Create(Format('Feld %s: %s ergänzen', [Obj.Name, Obj.TypeName]),
             [TRuleEdit.Create(TTextRange.Create(Line, 0, Line, 0),
             Indent + Obj.Name + ': ' + Obj.TypeName + ';' + TTextLines.LineBreakOf(AContext.Text))])];
+        end;
         // Gemeldet wird an der Formularklasse; die Formulardatei ist nicht das geprüfte Dokument.
         AReport.Add(TTextRange.Create(Match.FClass.Parent.StartPos.Line, Match.FClass.Parent.StartPos.Character,
           Match.FClass.Parent.StartPos.Line, Match.FClass.Parent.StartPos.Character +
           Length(Match.FClass.Parent.Name)), Format('Objekt %s: %s der Formulardatei hat kein Feld ' +
           'in %s', [Obj.Name, Obj.TypeName, Match.Document.Root.TypeName]), Fixes);
       end;
+    end;
   finally
     Match.Free;
   end;
@@ -373,10 +425,16 @@ var
   Location: TSymbolLocation;
 begin
   if AIndex = nil then
+  begin
     Exit(True);
+  end;
   for Location in AIndex.FindSymbols(ShortName(AName)) do
+  begin
     if Location.Symbol.Kind = TIndexSymbolKind.ClassType then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -389,14 +447,20 @@ begin
   Match := TFormMatch.Create(AContext);
   try
     if not Match.Valid then
+    begin
       Exit;
+    end;
     for Obj in Match.Objects do
+    begin
       if Match.FindField(Obj.Name, Field) and (Field.TypeNode <> nil) and
         not SameText(ShortName(Field.TypeName), ShortName(Obj.TypeName)) and KnownClass(AContext.Index, Obj.TypeName) then
+      begin
         AReport.Add(NodeRange(Field.TypeNode), Format('Feld %s ist %s, das Objekt in der Formulardatei aber %s',
           [Field.Name, Field.TypeName, Obj.TypeName]),
           [TRuleFix.Create(Format('Typ auf %s ändern', [Obj.TypeName]),
           [TRuleEdit.Create(NodeRange(Field.TypeNode), Obj.TypeName)])]);
+      end;
+    end;
   finally
     Match.Free;
   end;
@@ -426,14 +490,22 @@ begin
   Tokens := TPascalLexer.Tokenize(AMainSource);
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   // Application.CreateForm(TfrmHaupt, frmHaupt);
   for Position := 0 to High(Code) - 7 do
+  begin
     if IsText(Position, 'Application') and IsText(Position + 1, '.') and IsText(Position + 2, 'CreateForm') and
       IsText(Position + 3, '(') and IsText(Position + 5, ',') and IsText(Position + 7, ')') and
       (Tokens[Code[Position + 6]].Kind = TPascalTokenKind.Identifier) then
+    begin
       Result := Result + [Tokens[Code[Position + 6]].Text];
+    end;
+  end;
 end;
 
 class function TFormAccessBeforeCreateRule.FormsOfProgram(const APrograms: TArray<string>;
@@ -442,8 +514,12 @@ var
   Main: string;
 begin
   for Main in APrograms do
+  begin
     if MatchText(AUnitName, TUsesClauses.UsedUnits(TPascalLexer.Tokenize(Main))) then
+    begin
       Exit(AutoCreatedForms(Main));
+    end;
+  end;
   Result := nil;
 end;
 
@@ -457,9 +533,13 @@ begin
     Text := Trim(Line);
     if (Line <> TrimLeft(Line)) and (StartsText('object ', Text) or StartsText('inherited ', Text) or
       StartsText('inline ', Text)) then
+    begin
       Break;
+    end;
     if StartsText('OnCreate = ', Text) then
+    begin
       Exit(Trim(Copy(Text, Length('OnCreate = ') + 1, MaxInt)));
+    end;
   end;
   Result := '';
 end;
@@ -499,17 +579,25 @@ var
     begin
       mMiddle := (Result + mHigh) div 2;
       if Tokens[Code[mMiddle]].Offset < AOffset then
-        Result := mMiddle + 1
+      begin
+        Result := mMiddle + 1;
+      end
       else
+      begin
         mHigh := mMiddle;
+      end;
     end;
   end;
 
   function FormIndex(const AName: string): Integer;
   begin
     for Result := 0 to High(Forms) do
+    begin
       if SameText(Forms[Result], AName) then
+      begin
         Exit;
+      end;
+    end;
     Result := -1;
   end;
 
@@ -523,8 +611,11 @@ var
     Cache := TRuleDerived.Open(AContext);
     Local := TRuleDerived.UnitIndex(Cache, AContext);
     for Symbol in Local.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.Variable) and (Symbol.Container = '') and (FormIndex(Symbol.Name) >= 0) then
+      begin
         for TypeSymbol in Local.Symbols do
+        begin
           if (TypeSymbol.Kind = TIndexSymbolKind.ClassType) and (TypeSymbol.Container = '') and
             SameText(TypeSymbol.Name, Symbol.TypeName) then
           begin
@@ -533,6 +624,9 @@ var
             OwnIndex := FormIndex(Symbol.Name);
             Exit(True);
           end;
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -556,13 +650,23 @@ var
           Child := Node[Index];
           if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
             TSyntaxKind.ConstDecl] then
+          begin
             for Name in SplitString(Child.Name, ',') do
+            begin
               if SameText(Trim(Name), AName) then
+              begin
                 Exit(True);
+              end;
+            end;
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if Node[Index].Kind <> TSyntaxKind.Block then
+          begin
             Pending.Push(Node[Index]);
+          end;
+        end;
       end;
     finally
       Pending.Free;
@@ -575,11 +679,17 @@ var
     Position: Integer;
   begin
     for Position := AFirst to ALast do
+    begin
       if IsName(Position, AName) and not IsSym(Position - 1, '.') then
+      begin
         if (IsSym(Position - 1, '(') and IsName(Position - 2, 'Assigned')) or IsSym(Position + 1, ':=') or
           ((IsSym(Position + 1, '<>') or IsSym(Position + 1, '=')) and (Position + 2 <= High(Code)) and
           Token(Position + 2).IsKeyword('nil')) or (IsSym(Position - 1, ',') and IsName(Position - 4, 'CreateForm')) then
+        begin
           Exit(True);
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -592,20 +702,28 @@ var
   begin
     Body := TRoutineBody.BodyOf(ARoutine);
     if Body = nil then
+    begin
       Exit;
+    end;
     First := CodeAt(Body.StartOffset);
     Last := CodeAt(Body.EndOffset) - 1;
     Reported := nil;
     for Position := First to Last do
     begin
       if (Token(Position).Kind <> TPascalTokenKind.Identifier) or IsSym(Position - 1, '.') then
+      begin
         Continue;
+      end;
       Index := FormIndex(Token(Position).Text);
       if Index <= OwnIndex then
+      begin
         Continue;
+      end;
       Name := Forms[Index];
       if MatchText(Name, Reported) or DeclaresLocally(ARoutine, Name) or Handled(First, Last, Name) then
+      begin
         Continue;
+      end;
       Reported := Reported + [Name];
       AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
         Format('%s wird in der .dpr erst nach %s erzeugt und ist hier noch nil.', [Name, OwnName]),
@@ -620,10 +738,14 @@ var
   begin
     Result := False;
     if not StartsText(OwnClass + '.', ARoutine.Name) then
+    begin
       Exit;
+    end;
     Method := Copy(ARoutine.Name, Length(OwnClass) + 2, MaxInt);
     if Pos('.', Method) > 0 then
+    begin
       Exit;
+    end;
     Result := SameText(Method, 'AfterConstruction') or SameText(Method, Handler) or
       ((Handler = '') and MatchText(Method, ['FormCreate', 'DataModuleCreate'])) or
       Token(CodeAt(ARoutine.StartOffset)).IsKeyword('constructor');
@@ -636,26 +758,40 @@ var
 begin
   Forms := AContext.AutoCreateForms;
   if (Length(Forms) < 2) or (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Code := nil;
   for Index := 0 to High(Tokens) do
+  begin
     if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
       Code := Code + [Index];
+    end;
+  end;
   if not FindOwnForm then
+  begin
     Exit;
+  end;
   Handler := CreateHandler(AContext.FormText);
   Routines := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.RoutineDecl then
+      begin
         Routines := Routines + [ANode];
+      end;
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
   for Routine in Routines do
+  begin
     if IsCreationMethod(Routine) then
+    begin
       CheckRoutine(Routine);
+    end;
+  end;
 end;
 
 procedure RegisterFormFieldRules(const ARegistry: TRuleRegistry);

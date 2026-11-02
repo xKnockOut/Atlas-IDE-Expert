@@ -31,10 +31,14 @@ var
 begin
   Result := APath;
   if APath = '' then
+  begin
     Exit;
+  end;
   Source := UTF8String(APath);
   if realpath(PAnsiChar(Source), @Buffer[0]) = nil then
+  begin
     Exit;
+  end;
   Result := string(UTF8String(PAnsiChar(@Buffer[0])));
 end;
 

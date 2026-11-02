@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCiJobTests = class
   public
     [Test]
@@ -27,6 +28,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCiAddressesTests = class
   public
     /// <summary>Token nur über https und nur an den eingetragenen Server.</summary>
@@ -40,6 +42,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasJenkinsProviderTests = class
   public
     [Test]
@@ -80,6 +83,7 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Ci.Internals.Addresses,
   Atlas.Core.Ci.Providers.Jenkins;
 

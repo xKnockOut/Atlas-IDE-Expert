@@ -116,14 +116,18 @@ function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function RangeOf(const ATokens: TTokens; AFirst, ALast: Integer): TTextRange;
@@ -148,19 +152,29 @@ begin
   while Index <= High(ATokens) do
   begin
     if OpensBlock(ATokens[Index]) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsKeyword('end') then
     begin
       if Depth = 0 then
+      begin
         Exit;
+      end;
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit(Index);
+      end;
     end
     else if (Depth = 0) and (ATokens[Index].IsSymbol(';') or ATokens[Index].IsKeyword('else')) then
+    begin
       Exit;
+    end;
     if not IsTrivia(ATokens[Index]) then
+    begin
       Result := Index;
+    end;
     Inc(Index);
   end;
 end;
@@ -175,20 +189,26 @@ begin
   begin
     // "on" ist kein reserviertes Wort; im except-Teil folgt Name : Typ do oder Typ do.
     if not ((ATokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[Index].Text, 'on')) then
+    begin
       Continue;
+    end;
     Handler := Default(THandler);
     Handler.OnToken := Index;
     Next := NextCode(ATokens, Index + 1);
     Colon := NextCode(ATokens, Next + 1);
     if Colon > High(ATokens) then
+    begin
       Continue;
+    end;
     if ATokens[Colon].IsSymbol(':') then
     begin
       Handler.Name := ATokens[Next].Text;
       Next := NextCode(ATokens, Colon + 1);
     end;
     if (Next > High(ATokens)) or (ATokens[Next].Kind <> TPascalTokenKind.Identifier) then
+    begin
       Continue;
+    end;
     Handler.TypeName := ATokens[Next].Text;
     // Qualifizierter Typ: System.SysUtils.Exception.
     Handler.DoToken := NextCode(ATokens, Next + 1);
@@ -198,10 +218,14 @@ begin
       Handler.DoToken := NextCode(ATokens, NextCode(ATokens, Handler.DoToken + 1) + 1);
     end;
     if (Handler.DoToken > High(ATokens)) or not ATokens[Handler.DoToken].IsKeyword('do') then
+    begin
       Continue;
+    end;
     Handler.First := NextCode(ATokens, Handler.DoToken + 1);
     if Handler.First > High(ATokens) then
+    begin
       Continue;
+    end;
     Handler.Last := StatementEnd(ATokens, Handler.First);
     Result := Result + [Handler];
   end;
@@ -214,7 +238,9 @@ var
 begin
   Result := False;
   if ATokens[AIndex].Kind <> TPascalTokenKind.Identifier then
+  begin
     Exit;
+  end;
   if SameText(ATokens[AIndex].Text, AName) then
   begin
     Dot := NextCode(ATokens, AIndex + 1);
@@ -266,55 +292,81 @@ var
       begin
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.RaiseStatement) and (Node.StartOffset = AOffset) then
-          Raise_ := Node
+        begin
+          Raise_ := Node;
+        end
         else if (Node.StartOffset <= AOffset) and (Node.EndOffset >= AOffset) then
+        begin
           for Child := Node.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(Node[Child]);
+          end;
+        end;
       end;
     finally
       Pending.Free;
     end;
     if (Raise_ = nil) or (Raise_.Parent = nil) or (Raise_.Parent.Kind <> TSyntaxKind.TryStatement) then
+    begin
       Exit;
+    end;
     Try_ := Raise_.Parent;
     Handlers_ := Try_.FindChild(TSyntaxKind.ExceptBlock);
     if Handlers_ = nil then
+    begin
       Exit;
+    end;
     AnyOn := False;
     for Handler in Caught do
+    begin
       if (Tokens[Handler.OnToken].Offset >= Handlers_.StartOffset) and
         (Tokens[Handler.OnToken].Offset < Handlers_.EndOffset) then
       begin
         AnyOn := True;
         if MatchText(Handler.TypeName, ['Exception', 'TObject']) then
+        begin
           Exit(True);
+        end;
       end;
+    end;
     // except ohne on fängt alles.
     Result := not AnyOn;
   end;
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
     if not Tokens[Index].IsKeyword('raise') then
+    begin
       Continue;
+    end;
     Name := NextCode(Tokens, Index + 1);
     // raise SysUtils.Exception.Create bzw. System.SysUtils.Exception.Create
     while (Name + 2 <= High(Tokens)) and MatchText(Tokens[Name].Text, ['System', 'SysUtils']) and
       Tokens[NextCode(Tokens, Name + 1)].IsSymbol('.') do
+    begin
       Name := NextCode(Tokens, NextCode(Tokens, Name + 1) + 1);
+    end;
     Dot := NextCode(Tokens, Name + 1);
     Ctor := NextCode(Tokens, Dot + 1);
     if (Ctor > High(Tokens)) or not SameText(Tokens[Name].Text, 'Exception') or not Tokens[Dot].IsSymbol('.') or
       not StartsText('Create', Tokens[Ctor].Text) then
+    begin
       Continue;
+    end;
     if Caught = nil then
+    begin
       Caught := Handlers(Tokens);
+    end;
     if CaughtRightThere(Tokens[Index].Offset) then
+    begin
       Continue;
+    end;
     AReport.Add(RangeOf(Tokens, Index, Ctor), 'raise Exception lässt sich nicht gezielt abfangen; eine eigene ' +
       'Klasse (z. B. EKundeNichtGefunden = class(Exception)) oder eine passende der RTL verwenden',
       TRuleConfidence.High);
@@ -337,20 +389,30 @@ var
   Raises: Boolean;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   for Handler in Handlers(Tokens) do
   begin
     if not MatchText(Handler.TypeName, ['Exception', 'TObject']) then
+    begin
       Continue;
+    end;
     Raises := False;
     for Index := Handler.First to Handler.Last do
+    begin
       if Tokens[Index].IsKeyword('raise') then
+      begin
         Raises := True;
+      end;
+    end;
     if not Raises then
+    begin
       AReport.Add(RangeOf(Tokens, Handler.OnToken, Handler.DoToken), 'Bibliothekscode fängt jede Exception ab, ' +
         'ohne sie weiterzuwerfen; der Aufrufer erfährt nichts vom Fehler. Gezielt abfangen oder mit raise ' +
         'weiterwerfen', TRuleConfidence.Medium);
+    end;
   end;
 end;
 
@@ -373,16 +435,22 @@ begin
   Offset := ATokens[AIndex].Offset;
   // Iterativ (Bericht M1); die letzte passende Routine in Baumreihenfolge ist die innerste.
   if ATree.Root <> nil then
+  begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.StartOffset <= Offset) and (ANode.EndOffset > Offset) then
+        begin
           Best := ANode;
+        end;
         Result := True;
       end);
+  end;
   Result := Best <> nil;
   if not Result then
+  begin
     Exit;
+  end;
   AFirst := AIndex;
   ALast := AIndex;
   // Nur die Token von Best, binär angesprungen statt die ganze Datei (#1342).
@@ -390,9 +458,13 @@ begin
   while (Index <= High(ATokens)) and (ATokens[Index].Offset < Best.EndOffset) do
   begin
     if Index < AFirst then
+    begin
       AFirst := Index;
+    end;
     if Index > ALast then
+    begin
       ALast := Index;
+    end;
     Inc(Index);
   end;
 end;
@@ -409,39 +481,58 @@ var
     Item: Integer;
   begin
     for Item in Done do
+    begin
       if Item = AToken then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Done := nil;
   // Im Handler: on E: Exception do … E.Free; die RTL gibt E nach dem Handler selbst frei.
   for Handler in Handlers(Tokens) do
+  begin
     if Handler.Name <> '' then
+    begin
       for Index := Handler.First to Handler.Last do
+      begin
         if IsFreeOf(Tokens, Index, Handler.Name) then
         begin
           Done := Done + [Index];
           AReport.Add(RangeOf(Tokens, Index, Index), Format('%s gehört nach dem Handler der RTL und wird dort ' +
             'freigegeben; eigenes Freigeben führt zur doppelten Freigabe', [Handler.Name]), TRuleConfidence.High);
         end;
+      end;
+    end;
+  end;
   // raise X; … X.Free in derselben Routine: Nach raise gehört das Objekt der RTL.
   for Index := 0 to High(Tokens) do
   begin
     if not Tokens[Index].IsKeyword('raise') then
+    begin
       Continue;
+    end;
     Name := NextCode(Tokens, Index + 1);
     Stop := NextCode(Tokens, Name + 1);
     if (Stop > High(Tokens)) or (Tokens[Name].Kind <> TPascalTokenKind.Identifier) or
       not (Tokens[Stop].IsSymbol(';') or Tokens[Stop].IsKeyword('end')) then
+    begin
       Continue;
+    end;
     if not RoutineSpan(AContext.Tree, Tokens, Index, First, Last) then
+    begin
       Continue;
+    end;
     for Inner := First to Last do
+    begin
       if IsFreeOf(Tokens, Inner, Tokens[Name].Text) and not Reported(Inner) then
       begin
         Done := Done + [Inner];
@@ -449,6 +540,7 @@ begin
           'RTL; zusätzliches Freigeben führt zur doppelten Freigabe', [Tokens[Name].Text]), TRuleConfidence.High);
         Break;
       end;
+    end;
   end;
 end;
 
@@ -476,7 +568,9 @@ var
   begin
     Head := RoutineText(ARoutine);
     if StartsText('class', Head) then
+    begin
       Head := TrimLeft(Copy(Head, Length('class') + 1, MaxInt));
+    end;
     Result := StartsText('destructor', Head) and ((Length(Head) = Length('destructor')) or
       CharInSet(Head[Length('destructor') + 1], [' ', #9, #10, #13]));
   end;
@@ -496,11 +590,17 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.InheritedExpr) and (Node.StartOffset < InheritedOffset) then
+        begin
           InheritedOffset := Node.StartOffset;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -528,17 +628,25 @@ var
         Node := Pending.Pop;
         Active := PendingActive.Pop;
         if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        begin
           Continue;
+        end;
         if Node.Kind = TSyntaxKind.RaiseStatement then
         begin
           if not Active then
+          begin
             Continue;
+          end;
           if Node.StartOffset < InheritedOffset then
+          begin
             Message := Format('raise im Destruktor: inherited %s läuft nicht mehr, Felder bleiben liegen.',
-              [RoutineName])
+              [RoutineName]);
+          end
           else
+          begin
             Message := Format('raise im Destruktor: die Ausnahme verlässt %s, der Aufrufer erwartet eine ' +
               'Freigabe ohne Ausnahme.', [RoutineName]);
+          end;
           AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
             Node.StartPos.Character + Length('raise'))), Message, TRuleConfidence.High);
           Continue;
@@ -547,17 +655,25 @@ var
         begin
           HasExcept := False;
           for Index := 0 to Node.ChildCount - 1 do
+          begin
             if Node[Index].Kind = TSyntaxKind.ExceptBlock then
+            begin
               HasExcept := True;
+            end;
+          end;
           for Index := Node.ChildCount - 1 downto 0 do
           begin
             Child := Node[Index];
             Pending.Push(Child);
             // Im try-Teil fängt ein eigenes except die Ausnahme ab; except- und finally-Teil nicht.
             if Child.Kind in [TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
-              PendingActive.Push(Active)
+            begin
+              PendingActive.Push(Active);
+            end
             else
+            begin
               PendingActive.Push(Active and not HasExcept);
+            end;
           end;
           Continue;
         end;
@@ -590,7 +706,9 @@ var
         begin
           RoutineName := Node.Name;
           if LastDelimiter('.', RoutineName) > 0 then
+          begin
             RoutineName := Copy(RoutineName, LastDelimiter('.', RoutineName) + 1, MaxInt);
+          end;
           Body := Node.FindChild(TSyntaxKind.Block);
           if Body <> nil then
           begin
@@ -601,7 +719,9 @@ var
         end;
         // Auch eingebettete Routinen und Klassen in Routinen.
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -610,7 +730,9 @@ var
 
 begin
   if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
+  begin
     Search(AContext.Tree.Root);
+  end;
 end;
 
 { TExceptHandlerOrderRule }
@@ -643,8 +765,12 @@ var
   Entry: string;
 begin
   for Entry in KnownExceptionParents do
+  begin
     if SameText(Copy(Entry, 1, Pos('=', Entry) - 1), AName) then
+    begin
       Exit(Copy(Entry, Pos('=', Entry) + 1, MaxInt));
+    end;
+  end;
   Result := '';
 end;
 
@@ -661,7 +787,9 @@ var
     Result := '';
     Reference := AHandler.FindChild(TSyntaxKind.TypeReference);
     if Reference <> nil then
+    begin
       Result := Copy(Reference.Name, LastDelimiter('.', Reference.Name) + 1, MaxInt);
+    end;
   end;
 
   // Fängt ein Handler für AGeneral auch ASpecial? Über die Datei, den Index und die Tabelle bekannter Klassen.
@@ -671,20 +799,30 @@ var
     Steps: Integer;
   begin
     if SameText(AGeneral, 'TObject') then
+    begin
       Exit(True);
+    end;
     // Alles, was als Exception ausgelöst wird, erbt in der Praxis von Exception.
     if SameText(AGeneral, 'Exception') and not SameText(ASpecial, 'TObject') then
+    begin
       Exit(True);
+    end;
     Current := ASpecial;
     for Steps := 1 to 16 do
     begin
       Parent := Ancestry.ParentOf(Current);
       if (Parent = '') or SameText(Parent, 'TObject') then
+      begin
         Parent := KnownParent(Current);
+      end;
       if Parent = '' then
+      begin
         Exit(False);
+      end;
       if SameText(Parent, AGeneral) then
+      begin
         Exit(True);
+      end;
       Current := Parent;
     end;
     Result := False;
@@ -708,13 +846,19 @@ var
   begin
     Result := nil;
     if not OwnLines(AGeneral) or not OwnLines(ASpecial) or (AGeneral.EndPos.Line >= ASpecial.StartPos.Line) then
+    begin
       Exit;
+    end;
     Text := '';
     for Line := ASpecial.StartPos.Line to ASpecial.EndPos.Line do
+    begin
       Text := Text + Lines[Line] + LineBreak;
+    end;
     // Der letzte Handler darf ohne Semikolon stehen; vor einem anderen braucht er eines.
     if Trim(Copy(Lines[ASpecial.EndPos.Line], ASpecial.EndPos.Character + 1, MaxInt)) = '' then
+    begin
       Text := Copy(Text, 1, Length(Text) - Length(LineBreak)) + ';' + LineBreak;
+    end;
     Result := [TRuleFix.Create(Format('on %s vor on %s verschieben', [TypeOf(ASpecial), TypeOf(AGeneral)]), [
       TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(AGeneral.StartPos.Line, 0),
         TTextPosition.Create(AGeneral.StartPos.Line, 0)), Text),
@@ -732,18 +876,26 @@ var
   begin
     Handlers := nil;
     for Index := 0 to ABlock.ChildCount - 1 do
+    begin
       if ABlock[Index].Kind = TSyntaxKind.ExceptionHandler then
+      begin
         Handlers := Handlers + [ABlock[Index]];
+      end;
+    end;
     for Index := 1 to High(Handlers) do
     begin
       Special := TypeOf(Handlers[Index]);
       if Special = '' then
+      begin
         Continue;
+      end;
       for Earlier := 0 to Index - 1 do
       begin
         General := TypeOf(Handlers[Earlier]);
         if General = '' then
+        begin
           Continue;
+        end;
         Reference := Handlers[Index].FindChild(TSyntaxKind.TypeReference);
         Range := TTextRange.Create(Reference.StartPos, Reference.EndPos);
         if SameText(General, Special) then
@@ -776,9 +928,13 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.ExceptBlock then
+        begin
           CheckBlock(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -787,7 +943,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'except') then
+  begin
     Exit;
+  end;
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
   try
@@ -818,10 +976,14 @@ var
     Position: Integer;
   begin
     for Position := AHandler.First to AHandler.Last do
+    begin
       if SameText(Tokens[Position].Text, 'AcquireExceptionObject') or
         (SameText(Tokens[Position].Text, AHandler.Name) and
         Tokens[NextCode(Tokens, Position + 1)].IsSymbol(':=')) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -831,8 +993,12 @@ var
     Position: Integer;
   begin
     for Position := AHandler.First to ARaise do
+    begin
       if Tokens[Position].IsKeyword('procedure') or Tokens[Position].IsKeyword('function') then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -841,8 +1007,12 @@ var
     Item: Integer;
   begin
     for Item in Done do
+    begin
       if Item = AToken then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -850,29 +1020,41 @@ var
   Fixes: TArray<TRuleFix>;
 begin
   if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'raise') then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Done := nil;
   for Handler in Handlers(Tokens) do
   begin
     if (Handler.Name = '') or OwnsObject(Handler) then
+    begin
       Continue;
+    end;
     for Index := Handler.First to Handler.Last do
     begin
       if not Tokens[Index].IsKeyword('raise') or Reported(Index) then
+      begin
         Continue;
+      end;
       Name := NextCode(Tokens, Index + 1);
       Stop := NextCode(Tokens, Name + 1);
       if (Stop > High(Tokens)) or not SameText(Tokens[Name].Text, Handler.Name) or
         InAnonymousMethod(Handler, Index) then
+      begin
         Continue;
+      end;
       // raise E; raise E end; raise E else; raise E at Adresse (ohne Korrektur).
       Fixes := nil;
       if Tokens[Stop].IsSymbol(';') or Tokens[Stop].IsKeyword('end') or Tokens[Stop].IsKeyword('else') then
+      begin
         Fixes := [TRuleFix.Create(Format('raise %s; durch raise; ersetzen', [Handler.Name]),
-          [TRuleEdit.Create(RangeOf(Tokens, Index, Name), 'raise')])]
+          [TRuleEdit.Create(RangeOf(Tokens, Index, Name), 'raise')])];
+      end
       else if not SameText(Tokens[Stop].Text, 'at') then
+      begin
         Continue;
+      end;
       Done := Done + [Index];
       AReport.Add(RangeOf(Tokens, Index, Name), Format('raise %s löst das Objekt neu aus: Absprungstelle ' +
         '(ExceptAddr) und Aufrufliste zeigen danach auf diesen Handler statt auf den ursprünglichen Fehler; ' +
@@ -897,9 +1079,13 @@ procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const A
     Diagnostic: TSyntaxDiagnostic;
   begin
     for Diagnostic in AContext.Tree.Diagnostics do
+    begin
       if (AScope = nil) or ((Diagnostic.StartPos.Line >= AScope.StartPos.Line) and
         (Diagnostic.StartPos.Line <= AScope.EndPos.Line)) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -948,17 +1134,23 @@ procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const A
             InExcept := True;
           TSyntaxKind.RaiseStatement:
             if (Node.ChildCount = 0) and not InExcept and not Unknown and not Broken(Scope) then
+            begin
               AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
                 Node.StartPos.Character + Length('raise'))),
                 'raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', TRuleConfidence.High);
+            end;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
         Flags := 0;
         if InExcept then
+        begin
           Flags := Flags or InExceptFlag;
+        end;
         if Unknown then
+        begin
           Flags := Flags or UnknownFlag;
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
         begin
           Pending.Push(Node[Index]);
@@ -975,7 +1167,9 @@ procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const A
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'raise') then
+  begin
     Exit;
+  end;
   Visit(AContext.Tree.Root);
 end;
 
@@ -998,9 +1192,13 @@ begin
   begin
     Middle := (Result + Upper) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Result := Middle + 1
+    begin
+      Result := Middle + 1;
+    end
     else
+    begin
       Upper := Middle;
+    end;
   end;
 end;
 
@@ -1022,17 +1220,23 @@ begin
     Dec(Count);
     Node := Stack[Count];
     if Found = Length(Result) then
+    begin
       SetLength(Result, 2 * Found);
+    end;
     Result[Found] := Node;
     Inc(Found);
     if Count + Node.ChildCount > Length(Stack) then
+    begin
       SetLength(Stack, 2 * (Count + Node.ChildCount));
+    end;
     for Index := Node.ChildCount - 1 downto 0 do
+    begin
       if not ASkipRoutines or not (Node[Index].Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
       begin
         Stack[Count] := Node[Index];
         Inc(Count);
       end;
+    end;
   end;
   SetLength(Result, Found);
 end;
@@ -1078,25 +1282,37 @@ var
     Result := nil;
     Statement := ACall;
     while (Statement <> nil) and (Statement.Parent <> ATry) do
+    begin
       Statement := Statement.Parent;
+    end;
     if (Statement = nil) or (ATry.ChildCount = 0) or (ATry[0] <> Statement) or
       (Statement.Kind <> TSyntaxKind.CallStatement) then
+    begin
       Exit;
+    end;
     TryToken := TokenAtOffset(Tokens, ATry.StartOffset);
     // Kommentare zwischen try und Aufruf gingen mit dem Verschieben verloren.
     if (TryToken + 1 > High(Tokens)) or (Tokens[TryToken + 1].Offset <> Statement.StartOffset) then
+    begin
       Exit;
+    end;
     Last := PreviousCode(Tokens, TokenAtOffset(Tokens, Statement.EndOffset));
     Semicolon := NextCode(Tokens, Last + 1);
     Removal := TTextRange.Create(Tokens[TryToken].EndPos, Tokens[Last].EndPos);
     if (Semicolon <= High(Tokens)) and Tokens[Semicolon].IsSymbol(';') then
+    begin
       Removal.EndPos := Tokens[Semicolon].EndPos;
+    end;
     Text := Copy(AContext.Text, Statement.StartOffset + 1, Statement.EndOffset - Statement.StartOffset);
     Before := Trim(Copy(Lines[Tokens[TryToken].StartPos.Line], 1, Tokens[TryToken].StartPos.Character));
     if Before = '' then
-      Text := Text + ';' + LineBreak + TTextLines.IndentOf(Lines[Tokens[TryToken].StartPos.Line])
+    begin
+      Text := Text + ';' + LineBreak + TTextLines.IndentOf(Lines[Tokens[TryToken].StartPos.Line]);
+    end
     else
+    begin
       Text := Text + '; ';
+    end;
     Result := [TRuleFix.Create(Format('%s vor try ziehen', [Trim(Copy(AContext.Text, ACall.StartOffset + 1,
       ACall.EndOffset - ACall.StartOffset))]), [TRuleEdit.Create(TTextRange.Create(Tokens[TryToken].StartPos,
       Tokens[TryToken].StartPos), Text), TRuleEdit.Create(Removal, '')], True)];
@@ -1111,19 +1327,31 @@ var
   begin
     Body := ARoutine.FindChild(TSyntaxKind.Block);
     if Body = nil then
+    begin
       Exit;
+    end;
     Own := ARoutine.Name;
     if LastDelimiter('.', Own) > 0 then
+    begin
       Own := Copy(Own, LastDelimiter('.', Own) + 1, MaxInt);
+    end;
     Calls := nil;
     Trys := nil;
     for Node in NodesBelow(Body, True) do
+    begin
       if IsConstructorCall(Node, Own) then
-        Calls := Calls + [Node]
+      begin
+        Calls := Calls + [Node];
+      end
       else if Node.Kind = TSyntaxKind.TryStatement then
+      begin
         Trys := Trys + [Node];
+      end;
+    end;
     if (Calls = nil) or (Trys = nil) then
+    begin
       Exit;
+    end;
     Reported := nil;
     for Node in Trys do
     begin
@@ -1134,21 +1362,35 @@ var
       for Call in Calls do
       begin
         if TConditionalBranches.Exclusive(TryPath, PathOf(Call)) then
+        begin
           Continue;
+        end;
         if Call.StartOffset < Node.StartOffset then
-          Earlier := True
+        begin
+          Earlier := True;
+        end
         else if After = nil then
+        begin
           After := Call;
+        end;
       end;
       if Earlier or (After = nil) then
+      begin
         Continue;
+      end;
       // Gemeldet wird das erste try; ein späteres nur in einem anderen Zweig.
       Shadowed := False;
       for Call in Reported do
+      begin
         if not TConditionalBranches.Exclusive(TryPath, PathOf(Call)) then
+        begin
           Shadowed := True;
+        end;
+      end;
       if Shadowed then
+      begin
         Continue;
+      end;
       Reported := Reported + [Node];
       AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
         Node.StartPos.Character + Length('try'))), Message, TRuleConfidence.High, MoveBeforeTry(Node, After));
@@ -1159,13 +1401,19 @@ var
   Node: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   for Node in NodesBelow(AContext.Tree.Root, False) do
+  begin
     if (Node.Kind = TSyntaxKind.RoutineDecl) and IsConstructor(Node) then
+    begin
       CheckConstructor(Node);
+    end;
+  end;
 end;
 
 procedure RegisterExceptionRules(const ARegistry: TRuleRegistry);

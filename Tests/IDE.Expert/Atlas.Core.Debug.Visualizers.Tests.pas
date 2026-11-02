@@ -16,6 +16,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TVisualizerTests = class
   private
     FValues: TDictionary<string, string>;
@@ -70,7 +71,7 @@ type
     [Test]
     procedure KindSwitchedOff;
     [Test]
-    procedure DeclaredTypeFromHover;
+    procedure KindFromHoverChain;
   end;
 
 implementation
@@ -556,21 +557,12 @@ begin
     Context));
   Assert.AreEqual(0, Integer(FAsked.Count), 'Abgeschaltet: keine Auswertung');
 end;
-procedure TVisualizerTests.DeclaredTypeFromHover;
+procedure TVisualizerTests.KindFromHoverChain;
 var
   Kind: TAtlasVisualizerKind;
 begin
-  Assert.AreEqual('TObjectList<TKunde>', TAtlasVisualizers.DeclaredType('var Kunden: TObjectList<TKunde>'));
-  Assert.AreEqual('TList<Integer>', TAtlasVisualizers.DeclaredType('property Items: TList<Integer> read FItems'));
-  Assert.AreEqual('TPoint', TAtlasVisualizers.DeclaredType('function Mitte(A, B: Integer): TPoint;'));
-  Assert.AreEqual('TDictionary<string, TKunde>',
-    TAtlasVisualizers.DeclaredType('Index: TDictionary<string, TKunde> = nil'));
-  Assert.AreEqual('System.SysUtils.TBytes', TAtlasVisualizers.DeclaredType('Daten: System.SysUtils.TBytes;'));
-  Assert.AreEqual('array of Byte', TAtlasVisualizers.DeclaredType('Puffer: array of Byte'));
-  Assert.AreEqual('TÜbersicht', TAtlasVisualizers.DeclaredType('Ü: TÜbersicht'));
-  Assert.AreEqual('', TAtlasVisualizers.DeclaredType('procedure Speichern'));
-  // Hover → Art: Typ aus der Deklaration, dann die Vorfahren.
-  Assert.IsTrue(TAtlasVisualizers.KindOfChain([TAtlasVisualizers.DeclaredType('Q: TFDQuery'), 'TFDQuery',
+  // Typkette des Hovers (Typ aus der Deklaration, dann die Vorfahren; TAtlasHoverDeclaration rechnet den Typ).
+  Assert.IsTrue(TAtlasVisualizers.KindOfChain(['TFDQuery', 'TFDQuery',
     'TFDCustomQuery', 'TDataSet'], Kind));
   Assert.AreEqual(Ord(TAtlasVisualizerKind.DataSets), Ord(Kind));
 end;

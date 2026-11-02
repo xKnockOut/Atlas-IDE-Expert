@@ -30,7 +30,7 @@ You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [rele
 **Option A – add the release package by hand:**
 
 1. Download `atlas-ide-expert-<version>.zip` from the release and unpack it into a permanent folder, e.g. `%LOCALAPPDATA%\Programs\Atlas`. Close Delphi first.
-2. Start Delphi, *Component › Install Packages › Add* and select `Win32\Atlas.IDE.Expert370.bpl` from that folder (64-bit IDE: `Win64\…`). The plugin finds the server `AtlasServer.exe` one level above the BPL.
+2. Start Delphi, *Component › Install Packages › Add* and select `Win32\Atlas.IDE.Base370.bpl` from that folder (64-bit IDE: `Win64\…`). The plugin finds the server `AtlasServer.exe` one level above the BPL.
 3. Restart Delphi once.
 
 Up to 1.1.0 the package contained the installer `AtlasSetup.exe`; it was removed in 1.2.0. Details (German): [docs/Installation.md](docs/Installation.md).
@@ -38,8 +38,8 @@ Up to 1.1.0 the package contained the installer `AtlasSetup.exe`; it was removed
 **Option B – today: build it yourself and install the package in the IDE:**
 
 1. Install Delphi 12 or later and clone this repository.
-2. Open `Atlas.groupproj` in Delphi and build all projects for **Win64** (*Build All*). For the classic 32-bit IDE, also build `Atlas.IDE.Expert` for **Win32**.
-3. In Delphi, *Component › Install Packages › Add* and select the BPL: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` for the classic IDE (Delphi 12: `…290.bpl`), `Output\Win64\Debug\Bpl\…` for the 64-bit IDE. The plugin finds the server `Output\Win64\Debug\Bin\AtlasServer.exe` there on its own.
+2. Open `Atlas.groupproj` in Delphi and build all projects for **Win64** (*Build All*). For the classic 32-bit IDE, also build `Atlas.IDE.Base` for **Win32**.
+3. In Delphi, *Component › Install Packages › Add* and select the BPL: `Output\Win32\Debug\Bpl\Atlas.IDE.Base370.bpl` for the classic IDE (Delphi 12: `…290.bpl`), `Output\Win64\Debug\Bpl\…` for the 64-bit IDE. The plugin finds the server `Output\Win64\Debug\Bin\AtlasServer.exe` there on its own. From 2.0, then add every module package from the same folder, e.g. `Atlas.IDE.Debugger370.bpl` (#1456); always the core package `Atlas.IDE.Base` first.
 4. Restart Delphi once.
 
 More: [Installation](#installation).
@@ -215,6 +215,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 
 - *Tools › Options › Third Party › Atlas* as a tree: areas at the top, every feature with its own master switch that also disables its sub-options; next to it the pages *Snippets*, *Tastenkonflikte* (key conflicts) and *Server*
 - Every visible feature can be switched off on its own; experimental features are marked
+- **Module switches** for whole areas: debugging, issue tracker, analysis, tests, build tools, build pipeline, bookmarks, designer, rule checks, search and welcome page (`debug.enabled` … `search.enabled`, `ruleChecks.enabled`, `welcomePage.enabled`); a module that is off turns off its features and commands without a restart, stored values stay. The profile *Nur Code Insight* (code insight only) keeps just the core. If a project's `atlas.json` sets rules while the rule checks module is off, Atlas points this out once
 - Export, import, load profiles and reset settings
 - Team-wide values in the project file `.atlas` (next to the .dproj, in a folder above it up to the Git or SVN root, or next to the .groupproj), server and rule settings in `atlas.json` (*Atlas › Projekt-Einstellungen*), global values in `%APPDATA%\Atlas\settings.json`
 
@@ -232,7 +233,7 @@ Not yet in `main`, tracked as issues:
 
 - Further check rules (sub-issues of #1086)
 - Debugging (#614) and designer features for later versions
-- Splitting the plugin into `Atlas.IDE.Base` and module packages (2.0, ADR 0017); the contracts are in place (#1455, see Structure), the wiring follows
+- Splitting the plugin into `Atlas.IDE.Base` and module packages (2.0, ADR 0017); the debugger, bookmarks (notes, bookmarks, TODO list), build tools (build on open, project tasks, start profiles, compiler switches), the build pipeline (builds on request, check before compiling, release guard, verdict and summary), tests (DUnitX runner, test at cursor, code lens, affected tests), the designer bar, search (Atlas search, unit search, code queries) analysis (architecture, hotspots, unit relations, symbol path), rule checks (baseline, compiler messages into the baseline, DFM property rules, bulk fix) and the issue tracker (issue keys in code, issues in the line history, tracker commands, board and attach menu entries, create issue in the editor context menu, the tiles My issues, Sprint and Test results including build server access; Base reaches create issue from findings and crash cases through a contract; files, environment and shell only through the module's adapters) and the welcome page (its settings in the options dialog are a section of the module) register as modules through the contracts (#1455, see Structure) and live in their own packages (#1456)
 
 ## Installation
 
@@ -240,8 +241,8 @@ Not yet in `main`, tracked as issues:
 
 1. Clone the repository and open `Atlas.groupproj` in RAD Studio.
 2. Build `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` and `AtlasServer` for **Win64** (all four for the same platform). Result: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternatively take `AtlasServer.exe` from a [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); the server does not depend on the Delphi version.
-3. Build `Atlas.IDE.Expert` with the Delphi version the plugin is meant to run in: **Win32** for the classic IDE, **Win64** for the 64-bit IDE. Result: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-bit IDE: `Output\Win64\…`).
-4. *Component › Install Packages › Add* and select the BPL.
+3. Build `Atlas.IDE.Base` with the Delphi version the plugin is meant to run in: **Win32** for the classic IDE, **Win64** for the 64-bit IDE. Result: `Output\Win32\Debug\Bpl\Atlas.IDE.Base370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-bit IDE: `Output\Win64\…`).
+4. *Component › Install Packages › Add* and select the BPL. From 2.0 the contracts between modules live in `Atlas.IDE.Contracts` and every module in its own package (`Atlas.IDE.Debugger`, `.Designer`, `.Rules`, `.Tests`, `.Bookmarks`, `.Analysis`, `.Search`, `.Build`, `.BuildPipeline`, `.Tracker`, `.Welcome`, #1456), compiled against the core package and the contracts: build and install them after `Atlas.IDE.Base` and `Atlas.IDE.Contracts`.
 5. If the server is neither in `Output\…\Bin` nor next to the BPL: *Tools › Options › Third Party › Atlas*, field "Atlas-Server". The page shows whether the server is found.
 6. Restart Delphi once: Atlas switches off the IDE's Help Insight and structural highlighting so nothing appears twice; the IDE reads these switches only at startup.
 
@@ -282,12 +283,12 @@ More: [docs/Installation.md](docs/Installation.md).
 | `Packages/Atlas.Windows` | Package for Windows-specific functions, free of VCL |
 | `Packages/Atlas.Linux` | Linux counterparts of the server's Windows adapters, source only, for the Free Pascal build (ADR 0013) |
 | `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout) |
-| `Packages/Atlas.IDE.Expert` | The IDE plugin (design-time package; Win32 for the classic IDE, Win64 for the 64-bit IDE from Delphi 12.3), layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
+| `Packages/Atlas.IDE.Base` | The IDE plugin (design-time package; Win32 for the classic IDE, Win64 for the 64-bit IDE from Delphi 12.3), layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX tests |
 
 Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
-Contracts for the modules from 2.0 on (#1455, ADR 0017): `Atlas.Core.Modules.Contract` (module, scope, registry with `Provide`/`FindAll` by interface GUID, change notification, contract version), `Atlas.Core.Modules.Registry` (module list built from registrations, unregistering in reverse through the scope), `Atlas.Core.Modules.Handshake` (exported `AtlasCoreContractVersion`), `Atlas.Core.Settings.Contract` and `Atlas.Core.Settings.Parts` (settings parts of the modules, kept centrally in Base; values of missing modules are preserved).
+Contracts for the modules from 2.0 on (#1455, ADR 0017): `Atlas.Core.Modules.Contract` (module, scope, registry with `Provide`/`FindAll` by interface GUID, change notification, contract version), `Atlas.Core.Modules.Registry` (module list built from registrations, unregistering in reverse through the scope), `Atlas.Core.Modules.Handshake` (exported `AtlasCoreContractVersion`), `Atlas.Core.Settings.Contract` and `Atlas.Core.Settings.Parts` (settings parts of the modules, kept centrally in Base; values of missing modules are preserved). Base collects what modules contribute through `Atlas.Core.Modules.Contributions` (commands, Atlas menu and editor context menu entries, keys, settings, theme and editor view listeners, hover values, gutter layers, own bookmarks in the overview ruler); only modules that are running count (a module switched off contributes nothing). It hosts their feature parts in the feature table (`Atlas.Core.Diagnostics.ModuleHosting`); `Atlas.IDE.Foundation.Host` gives modules the server session, background server commands (answers reach a module only while it is registered, `Atlas.Core.Modules.Answer`), the message view, warnings, the log and status field items. Modules so far: the debugger (`Atlas.IDE.Debug.Composition`, id `atlas.debugger`) bookmarks (`Atlas.IDE.Bookmarks.Composition`, id `atlas.bookmarks`: notes, named and quick bookmarks, TODO list) and build tools (`Atlas.IDE.BuildTools.Composition`, id `atlas.build`; it adds compile participants it removes again on stop) and the build pipeline (`Atlas.IDE.BuildPipeline.Composition`, id `atlas.buildpipeline`, switch `buildPipeline`: builds on request with the MCP inbox, check before compiling, release guard with *Check release build*, verdict and build summary; Base hands it the compiler messages and the verdict through `Atlas.Core.Build.Pipeline`, without the module Base judges a build by the compiler alone; other modules and the welcome page build through `IAtlasBuildJobs` in `Atlas.IDE.Contracts.BuildPipeline`; compile events, compiler messages, check on save and the messages of the last build stay in Base) and tests (`Atlas.IDE.Tests.Composition`, id `atlas.tests`; they hear about evaluated builds through `IAtlasBuildVerdictListener`, Base and other modules start tests through `IAtlasTestRunner`, start options and temporary start parameters are in Base, `Atlas.IDE.Foundation.StartOptions`) the designer (`Atlas.IDE.Designer.Composition`, id `atlas.designer`: designer bar), search (`Atlas.IDE.Search.Composition`, id `atlas.search`; menu entries also under View › Atlas, IDE actions a module takes over show up in the key map through `IAtlasTakenActions`, server requests through `TAtlasIdeHost.RunRequestAsync`) and analysis (`Atlas.IDE.Analysis.Composition`, id `atlas.analysis`: architecture, hotspots, unit relations with the interface cost field, symbol path; concurrent server commands through `TAtlasIdeHost.RunServerCommandAsync`, the path view of the results window stays in Base) and rule checks (`Atlas.IDE.Rules.Composition`, id `atlas.rules`, switch `ruleChecks`: baseline commands, DFM property rules, bulk fix in the problems window through `IAtlasBulkFixer`, baseline update for the setup wizard through `IAtlasBaselineSource` in `Atlas.IDE.Contracts.Rules`; checking, the problems window and the baseline file state stay in Base; project summaries are kept by Base, `Atlas.IDE.Projects.Summaries`, also without the welcome page; the rules and tests modules write baseline and test runs there, whoever shows them listens through `IAtlasProjectSummaryListener`) and the welcome page (`Atlas.IDE.Welcome.Composition`, id `atlas.welcome`, switch `welcome`: the page with all its sections, its commands and menu entries, Atlas Start also under View › Atlas; it reaches builds, tests, start profiles, tasks and the baseline only through contracts, `Atlas.IDE.Welcome.Neighbors`, and shows tiles of other modules) and the issue tracker (`Atlas.IDE.Tracker.Composition`, id `atlas.tracker`, switch `issues`: issue keys in code, issues in the line history, tracker commands, board under View › Atlas, attach in the Atlas menu, create issue in the editor context menu and on its key; "My issues", the sprint tile and "Create issue" are tiles of the module on the welcome page and in Atlas Start (`Atlas.IDE.Tracker.Tiles`, through `IAtlasWelcomeTile`), split into context, services, commands, status field, query and start/end parts (`Atlas.IDE.Tracker.Issues*`, `Atlas.IDE.Tracker.IssueStart`); method bodies at a line and branch names are in Base, `TAtlasMethodToggle.BodyAt`, `Atlas.Core.Vcs.BranchNames`; its page in the options dialog is a settings section of the module, `Atlas.UI.Tracker.SettingsSection`, assembled from small parts with the table rules in `Atlas.Core.Tracker.SettingsTables`); menu entries may also come without a command (one per project task); the results window shows module lists with ids (`TAtlasResultsItemList`), the general tooltip is `Atlas.UI.Popup.TitledTip`; contracts between modules live in the package `Atlas.IDE.Contracts` (`IAtlasDebugReportSource` for the debug note when attaching to an issue, `IAtlasBuildToolsSource` and `IAtlasTestsSource` for the welcome page).
 
 ## Requirements
 
@@ -333,7 +334,8 @@ Tests\Tests.bat alle         :: both
 Check scripts (also run as GitHub Actions):
 
 ```powershell
-pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies
+pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies, module boundaries from ADR 0017
+pwsh Tools/Test-PackageDependencies.ps1    # self-test of the module boundaries with deliberate violations
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
 pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use their shared hosts
@@ -345,7 +347,7 @@ pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use th
 
 ## CI
 
-- `server.yml`: build of the project group via the IDE plugin `cc.ps1` (RAD Studio Starter has no msbuild, ADR 0007) for Win64 and Win32, including the plugin BPLs `Atlas.IDE.Expert370.bpl` for the classic and the 64-bit IDE (Win32 and Win64, kept as artifacts), and DUnitX tests (Win64 only, ADR 0008). Results as the check "DUnitX-Ergebnisse" in pull requests.
+- `server.yml`: build of the project group via the IDE plugin `cc.ps1` (RAD Studio Starter has no msbuild, ADR 0007) for Win64 and Win32, including the plugin BPLs `Atlas.IDE.Base370.bpl` for the classic and the 64-bit IDE (Win32 and Win64, kept as artifacts), and DUnitX tests (Win64 only, ADR 0008). Results as the check "DUnitX-Ergebnisse" in pull requests.
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
   - A new push to the same branch cancels the running build (`concurrency`).

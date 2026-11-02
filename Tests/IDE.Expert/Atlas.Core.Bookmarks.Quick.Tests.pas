@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasQuickBookmarkTests = class
   private
     FList: TAtlasBookmarkList;

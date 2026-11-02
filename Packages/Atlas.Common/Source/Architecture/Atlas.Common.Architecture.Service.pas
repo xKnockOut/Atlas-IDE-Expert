@@ -103,7 +103,9 @@ begin
   AAt := 0;
   Result := (AFileName <> '') and FileExists(AFileName) and TArchitectureSnapshots.Load(AFileName, ASnapshot, mError);
   if Result then
+  begin
     AAt := TFile.GetLastWriteTime(AFileName);
+  end;
 end;
 
 /// <summary>Angleichung an den vorigen Stand der Anfrage (#1367): Baseline vor PreviousFile.</summary>
@@ -113,9 +115,13 @@ var
   mAt: TDateTime;
 begin
   if TryLoad(TArchitectureComparer.ResolvePath(ARequest.Root, ARequest.Baseline), mPrevious, mAt) then
-    TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.AlignedBaseline, mAt)
+  begin
+    TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.AlignedBaseline, mAt);
+  end
   else if TryLoad(ARequest.PreviousFile, mPrevious, mAt) then
+  begin
     TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.AlignedLast, mAt);
+  end;
 end;
 
 /// <summary>Ergebnis als zuletzt berechneten Stand ablegen (#1367).</summary>
@@ -143,10 +149,14 @@ var
 begin
   Result := '';
   if not ARequest.KeepPrevious then
+  begin
     Exit;
+  end;
   mFileName := TArchitectureComparer.ResolvePath(ARequest.Root, ARequest.Baseline);
   if (mFileName <> '') and FileExists(mFileName) then
-    Result := FloatToStr(TFile.GetLastWriteTime(mFileName));
+  begin
+    Result := FloatToStr(TFile.GetLastWriteTime(mFileName), TFormatSettings.Invariant);
+  end;
 end;
 
 { TArchitectureRequest }
@@ -168,7 +178,9 @@ begin
   // Der Parser lässt nur group, attach und separate durch; sonst die Vorgabe.
   if not TArchitectureGrouping.TryFoundations(ASettings.ArchitectureGroupingFoundations,
     Result.Grouping.Foundations) then
+  begin
     Result.Grouping.Foundations := TArchitectureFoundations.Separate;
+  end;
 end;
 
 function TArchitectureRequest.Key: string;
@@ -219,7 +231,9 @@ begin
   InScope := TDictionary<string, Boolean>.Create;
   try
     for FileName in ARequest.Files do
+    begin
       InScope.AddOrSetValue(LowerCase(FileName), True);
+    end;
     SetLength(Selected, Length(Units));
     Count := 0;
     for Item in Units do
@@ -227,10 +241,14 @@ begin
       // Packages (.dpk) kennen nur requires und contains, keine uses: in der Karte stünden sie als Unit ohne
       // Beziehung.
       if SameText(ExtractFileExt(Item.FileName), '.dpk') then
+      begin
         Continue;
+      end;
       // Bibliotheks-Units zählt der Graph je nach IncludeLibrary; die Dateiliste betrifft nur Projekt-Units.
       if not Item.Library_ and (InScope.Count > 0) and not InScope.ContainsKey(LowerCase(Item.FileName)) then
+      begin
         Continue;
+      end;
       Selected[Count] := Item;
       Inc(Count);
     end;
@@ -246,9 +264,13 @@ begin
   Graph := TUsesGraph.Create(Selected, Options);
   try
     if ARequest.CentralUnits > 0 then
-      Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, ARequest.CentralUnits, ARequest.Grouping)
+    begin
+      Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, ARequest.CentralUnits, ARequest.Grouping);
+    end
     else
+    begin
       Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, 15, ARequest.Grouping);
+    end;
   finally
     Graph.Free;
   end;
@@ -258,9 +280,13 @@ begin
   if ARequest.KeepPrevious then
   begin
     if not ARequest.Rename then
+    begin
       AlignToPrevious(Result, ARequest);
+    end;
     if ARequest.PreviousFile <> '' then
+    begin
       SavePrevious(Result, ARequest.PreviousFile);
+    end;
   end;
 end;
 

@@ -53,15 +53,20 @@ begin
   Changes := TJSONArray.Create;
   Count := 0;
   if (OldName <> '') and (NewName <> '') and not SameText(OldName, NewName) then
+  begin
     for FileName in AFiles do
     begin
       if not MatchText(ExtractFileExt(FileName), ['.pas', '.dpr', '.dpk', '.inc']) or
         not (Assigned(AReadText) and AReadText(FileName, Text)) or (Pos(LowerCase(OldName), LowerCase(Text)) = 0) then
+      begin
         Continue;
+      end;
       Tree := TSyntaxTreeCache.Parse(Text);
       try
         if not TUnitRename.Edits(FileName, Text, Tree, OldName, NewName, Edits) then
+        begin
           Continue;
+        end;
       finally
         Tree.Free;
       end;
@@ -82,6 +87,7 @@ begin
       Document.AddPair('edits', List);
       Changes.AddElement(Document);
     end;
+  end;
   WorkspaceEdit := TJSONObject.Create;
   WorkspaceEdit.AddPair('documentChanges', Changes);
   Result := TJSONObject.Create;

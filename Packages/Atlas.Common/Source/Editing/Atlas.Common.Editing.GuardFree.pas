@@ -112,21 +112,31 @@ begin
       begin
         Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
         for Index := Entry.Node.ChildCount - 1 downto 0 do
+        begin
           if Covers(Entry.Node[Index], ALine) then
+          begin
             Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+          end;
+        end;
         Continue;
       end;
       for Index := 0 to Entry.Node.ChildCount - 1 do
       begin
         Child := Entry.Node[Index];
         if not Covers(Child, ALine) or (Child.Kind <> TSyntaxKind.RoutineDecl) then
+        begin
           Continue;
+        end;
         Block := Child.FindChild(TSyntaxKind.Block);
         if (Block <> nil) and (Block.StartPos.Line < ALine) and (Block.EndPos.Line > ALine) then
+        begin
           Result := Child;
+        end;
       end;
       if Result <> nil then
+      begin
         Exit;
+      end;
     end;
   finally
     Pending.Free;
@@ -142,13 +152,19 @@ begin
   Source := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   Colon := Pos(':', Source);
   if (Colon = 0) or (Copy(Source, Colon, 2) = ':=') then
+  begin
     Exit('');
+  end;
   Result := Copy(Source, Colon + 1, MaxInt);
   Stop := Pos(':=', Result);
   if Stop = 0 then
+  begin
     Stop := Pos('=', Result);
+  end;
   if Stop > 0 then
+  begin
     Result := Copy(Result, 1, Stop - 1);
+  end;
   Result := Trim(StringReplace(Result, ';', '', [rfReplaceAll]));
 end;
 
@@ -157,8 +173,12 @@ var
   Name: string;
 begin
   for Name in SplitString(ANames, ',') do
+  begin
     if SameText(Trim(Name), AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -184,18 +204,24 @@ begin
       Inner: Integer;
     begin
       if AChild = Root then
+      begin
         Exit(True);
+      end;
       if AChild.StartPos.Line > Line then
+      begin
         Exit(False);
+      end;
       Result := False;
       case AChild.Kind of
         TSyntaxKind.VarSection:
           for Inner := 0 to AChild.ChildCount - 1 do
+          begin
             if (AChild[Inner].Kind = TSyntaxKind.VarDecl) and HasName(AChild[Inner].Name, Name) then
             begin
               Found := TypeOfDecl(Text, AChild[Inner]);
               Any := True;
             end;
+          end;
         TSyntaxKind.InlineVar:
           if HasName(AChild.Name, Name) then
           begin
@@ -211,7 +237,9 @@ begin
     end);
   Result := Any;
   if Any then
+  begin
     AType := Found;
+  end;
 end;
 
 /// <summary>Erstes Argument auf oberster Ebene aus "(A, B(C, D))"; '' ohne.</summary>
@@ -221,7 +249,9 @@ var
 begin
   Result := Trim(AArgs);
   if not StartsStr('(', Result) then
+  begin
     Exit('');
+  end;
   Result := Copy(Result, 2, Length(Result) - 2);
   Depth := 0;
   for Index := 1 to Length(Result) do
@@ -232,7 +262,9 @@ begin
         Dec(Depth);
       ',':
         if Depth = 0 then
+        begin
           Exit(Trim(Copy(Result, 1, Index - 1)));
+        end;
     end;
   Result := Trim(Result);
 end;
@@ -243,8 +275,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ABlock.ChildCount - 1 do
+  begin
     if ABlock[Index].StartPos.Line = ALine then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -265,73 +301,113 @@ begin
   Result := False;
   Lines := TTextLines.SplitLines(AText);
   if (ATree = nil) or (ATree.Root = nil) or (ALine < 0) or (ALine > High(Lines)) then
+  begin
     Exit;
+  end;
   // Einrückung, "var ", Name, ": Typ", Klasse, Konstruktor, Argumente, ";". Leere Alternativen halten jede Gruppe
   // belegt. Erst mit ";"; ohne dürfen die Argumente
   // außerhalb von Strings kein ";" und kein "/" enthalten, sonst zählte ein Kommentar mit.
   Match := TRegEx.Match(Lines[ALine], '^(\s*)(var\s+|)(\w+)\s*(:[^:=]+|):=\s*([A-Za-z_][\w.]*)(<[^;()]*>|)\s*\.\s*' +
     '(Create\w*)\s*(\(.*\)|)\s*(;)\s*(//.*|)$', [roIgnoreCase]);
   if not Match.Success then
+  begin
     Match := TRegEx.Match(Lines[ALine], '^(\s*)(var\s+|)(\w+)\s*(:[^:=]+|):=\s*([A-Za-z_][\w.]*)(<[^;()]*>|)\s*' +
       '\.\s*(Create\w*)\s*(\((?:[^;/'']|''[^'']*'')*\)|)\s*()(//.*|)$', [roIgnoreCase]);
+  end;
   if not Match.Success then
+  begin
     Exit;
+  end;
   AOffer.AddSemicolon := Match.Groups[9].Value = '';
   if Match.Groups[8].Value <> '' then
-    AOffer.StatementEnd := Match.Groups[8].Index + Match.Groups[8].Length - 1
+  begin
+    AOffer.StatementEnd := Match.Groups[8].Index + Match.Groups[8].Length - 1;
+  end
   else
+  begin
     AOffer.StatementEnd := Match.Groups[7].Index + Match.Groups[7].Length - 1;
+  end;
   Name := Match.Groups[3].Value;
   if SameText(Name, 'Result') or SameText(Name, 'Self') then
+  begin
     Exit;
+  end;
   Routine := RoutineAt(ATree.Root, ALine);
   if Routine = nil then
+  begin
     Exit;
+  end;
   Block := Routine.FindChild(TSyntaxKind.Block);
   // Lokal: Inline-Variable in dieser Zeile, sonst var-Abschnitt oder frühere Inline-Variable der Routine.
   if Match.Groups[2].Value <> '' then
-    DeclaredType := Trim(Copy(Match.Groups[4].Value, 2, MaxInt))
+  begin
+    DeclaredType := Trim(Copy(Match.Groups[4].Value, 2, MaxInt));
+  end
   else if not LocalType(Routine, AText, Name, ALine - 1, DeclaredType) then
+  begin
     Exit;
+  end;
   if TRegEx.IsMatch(DeclaredType, '^I[A-Z]') then
+  begin
     Exit;
+  end;
   AOffer.TypeName := Match.Groups[5].Value;
   if Assigned(AKindOf) then
-    Kind := AKindOf(AOffer.TypeName)
+  begin
+    Kind := AKindOf(AOffer.TypeName);
+  end
   else
+  begin
     Kind := TGuardTypeKind.Unknown;
+  end;
   if Kind = TGuardTypeKind.Other then
+  begin
     Exit;
+  end;
   // Owner übernimmt die Freigabe.
   Argument := FirstArgument(Match.Groups[8].Value);
   if MatchText(Argument, Owners) then
+  begin
     Exit;
+  end;
   if (Kind = TGuardTypeKind.Component) and (Argument <> '') and not SameText(Argument, 'nil') then
+  begin
     Exit;
+  end;
   // Schon geschützt: Die nächste Zeile mit Inhalt beginnt mit try. Ohne ";" darf sie den Ausdruck nicht fortsetzen.
   for Index := ALine + 1 to High(Lines) do
   begin
     Next := Trim(Lines[Index]);
     if Next = '' then
+    begin
       Continue;
+    end;
     if TRegEx.IsMatch(Next, '^try\b', [roIgnoreCase]) then
+    begin
       Exit;
+    end;
     if AOffer.AddSemicolon and TRegEx.IsMatch(Next,
       '^([.(\[^+\-*/=<>,:]|(and|or|xor|div|mod|shl|shr|as|is|in|not)\b)', [roIgnoreCase]) then
+    begin
       Exit;
+    end;
     Break;
   end;
   // Rest der Routine: freigegeben, zurückgegeben, zugewiesen oder an eine Liste übergeben?
   Rest := '';
   for Index := ALine + 1 to Min(Block.EndPos.Line, High(Lines)) do
+  begin
     Rest := Rest + Lines[Index] + #10;
+  end;
   Escaped := TRegEx.Escape(Name);
   if TRegEx.IsMatch(Rest, '\b' + Escaped + '\s*\.\s*(Free|DisposeOf|Destroy)\b', [roIgnoreCase]) or
     TRegEx.IsMatch(Rest, '\bFreeAndNil\s*\(\s*' + Escaped + '\s*\)', [roIgnoreCase]) or
     TRegEx.IsMatch(Rest, ':=\s*' + Escaped + '\s*[;)]', [roIgnoreCase]) or
     TRegEx.IsMatch(Rest, '\.\s*(Add|Insert|Push|Enqueue|AddObject|AddPair|AddOrSetValue)\s*\(([^;]*[^\w.])?' +
       Escaped + '\s*[,)]', [roIgnoreCase]) then
+  begin
     Exit;
+  end;
   AOffer.Variable := Name;
   AOffer.Line := ALine;
   AOffer.Indent := Match.Groups[1].Value;
@@ -342,8 +418,12 @@ begin
   begin
     AOffer.CanEnclose := False;
     for Index := ALine + 1 to AOffer.EndLine - 1 do
+    begin
       if Trim(Lines[Index]) <> '' then
+      begin
         AOffer.CanEnclose := True;
+      end;
+    end;
   end;
   Result := True;
 end;
@@ -356,10 +436,14 @@ begin
   AType := '';
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Routine := RoutineAt(ATree.Root, ALine);
   if Routine <> nil then
+  begin
     Result := LocalType(Routine, AText, AName, ALine - 1, AType);
+  end;
 end;
 
 class function TGuardFree.Edit(const AText: string; const AOffer: TGuardOffer; AScope: TGuardScope;
@@ -373,9 +457,13 @@ begin
   LB := TTextLines.LineBreakOf(AText);
   Indent := AOffer.Indent;
   if AStyle = TCompletionFreeStyle.FreeAndNil then
-    Release := 'FreeAndNil(' + AOffer.Variable + ');'
+  begin
+    Release := 'FreeAndNil(' + AOffer.Variable + ');';
+  end
   else
+  begin
     Release := AOffer.Variable + '.Free;';
+  end;
   // Fehlt das ";", beginnt die Änderung hinter der Anweisung und behält einen Kommentar dahinter.
   Start := Length(Lines[AOffer.Line]);
   Head := '';
@@ -400,17 +488,27 @@ begin
   // Bis zum Routinenende: die Zeilen dazwischen um zwei Zeichen einrücken, Cursor hinter die letzte.
   Last := AOffer.Line;
   for Index := AOffer.Line + 1 to AOffer.EndLine - 1 do
+  begin
     if Trim(Lines[Index]) <> '' then
+    begin
       Last := Index;
+    end;
+  end;
   Body := '';
   for Index := AOffer.Line + 1 to AOffer.EndLine - 1 do
   begin
     if Index = AOffer.BlankLine then
+    begin
       Continue;
+    end;
     if Trim(Lines[Index]) <> '' then
+    begin
       Body := Body + '  ' + Lines[Index];
+    end;
     if Index = Last then
+    begin
       Body := Body + '$0';
+    end;
     Body := Body + LB;
   end;
   Result := TTextEdit.Create(TTextRange.Create(AOffer.Line, Start, AOffer.EndLine, 0),

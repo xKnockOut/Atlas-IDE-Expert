@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssuePaletteSearchTests = class
   public
     /// <summary>GitHub: "#" allein, "#42", "#Text"; Kürzel mit "-" gehört den Befehlen.</summary>
@@ -66,6 +67,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,

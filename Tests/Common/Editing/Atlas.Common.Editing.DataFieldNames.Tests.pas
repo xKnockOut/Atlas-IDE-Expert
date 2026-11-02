@@ -79,10 +79,14 @@ begin
   for Item in AItems do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + Item.Name;
     if Item.TypeName <> '' then
+    begin
       Result := Result + ':' + Item.TypeName;
+    end;
   end;
 end;
 
@@ -170,15 +174,25 @@ begin
     begin
       Result := True;
       if SameText(AFileName, MainFile) then
-        AText := MainText
+      begin
+        AText := MainText;
+      end
       else if SameText(AFileName, ChangeFileExt(MainFile, '.dfm')) then
-        AText := Form
+      begin
+        AText := Form;
+      end
       else if SameText(AFileName, ModuleFile) then
-        AText := ModuleText
+      begin
+        AText := ModuleText;
+      end
       else if SameText(AFileName, ChangeFileExt(ModuleFile, '.dfm')) then
-        AText := ModuleForm
+      begin
+        AText := ModuleForm;
+      end
       else
+      begin
         Result := False;
+      end;
     end;
   // Eigene Unit, auch über den Namen des eigenen Formulars.
   Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, Call));

@@ -59,7 +59,9 @@ begin
   try
     Result := not FCancelled;
     if Result then
+    begin
       FRunning.Add(AProcess);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -94,81 +96,130 @@ begin
     FCancelled := True;
     // Unter der Sperre: Run entfernt einen Prozess erst (Untrack), bevor es ihn freigibt.
     for Running in FRunning do
+    begin
       Running.Terminate(CancelledExitCode);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
 end;
 
+procedure RaiseCancelled(const ARequest: TCompilerRequest);
+begin
+  raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
+end;
+
+/// <summary>Zeile ABytes[AFrom .. AFrom + ACount - 1] (UTF-8, ohne #13 am Ende) an AOnLine.</summary>
+procedure EmitLine(const ABytes: TBytes; AFrom, ACount: Integer; const AOnLine: TCompilerLineEvent);
+var
+  mLine: string;
+begin
+  mLine := TEncoding.UTF8.GetString(ABytes, AFrom, ACount);
+  if (mLine <> '') and (mLine[Length(mLine)] = #13) then
+  begin
+    SetLength(mLine, Length(mLine) - 1);
+  end;
+  if Assigned(AOnLine) then
+  begin
+    AOnLine(mLine);
+  end;
+end;
+
+/// <summary>Alle vollständigen Zeilen aus APending ausgeben; der angefangene Rest bleibt in APending.</summary>
+procedure EmitCompleteLines(var APending: TBytes; const AOnLine: TCompilerLineEvent);
+var
+  mStart, mLineEnd: Integer;
+begin
+  mStart := 0;
+  for mLineEnd := 0 to High(APending) do
+  begin
+    if APending[mLineEnd] = 10 then
+    begin
+      EmitLine(APending, mStart, mLineEnd - mStart, AOnLine);
+      mStart := mLineEnd + 1;
+    end;
+  end;
+  APending := Copy(APending, mStart, MaxInt);
+end;
+
+/// <summary>Liest die Ausgabe des Kindprozesses bis zum Ende und gibt sie zeilenweise an AOnLine.</summary>
+procedure ReadOutput(AChild: TProcess; const AOnLine: TCompilerLineEvent);
+var
+  mBuffer: array[0..4095] of Byte;
+  mBytesRead, mStart: Integer;
+  mPending: TBytes;
+begin
+  mPending := nil;
+  repeat
+    mBytesRead := AChild.Output.Read(mBuffer, SizeOf(mBuffer));
+    if mBytesRead <= 0 then
+    begin
+      Break;
+    end;
+    mStart := Length(mPending);
+    SetLength(mPending, mStart + mBytesRead);
+    Move(mBuffer[0], mPending[mStart], mBytesRead);
+    EmitCompleteLines(mPending, AOnLine);
+  until False;
+  if Length(mPending) > 0 then
+  begin
+    EmitLine(mPending, 0, Length(mPending), AOnLine);
+  end;
+end;
+
+/// <summary>Richtet AChild nach ARequest ein und startet ihn ohne stdin.</summary>
+procedure StartChild(AChild: TProcess; const ARequest: TCompilerRequest);
+var
+  mArgument: string;
+begin
+  AChild.Executable := ARequest.Executable;
+  for mArgument in ARequest.Arguments do
+  begin
+    AChild.Parameters.Add(mArgument);
+  end;
+  if ARequest.WorkingDir <> '' then
+  begin
+    AChild.CurrentDirectory := ARequest.WorkingDir;
+  end;
+  AChild.Options := [poUsePipes, poStderrToOutPut, poNoConsole];
+  try
+    AChild.Execute;
+  except
+    on E: EProcess do
+      raise ECompilerError.CreateFmt('%s lässt sich nicht starten: %s', [ARequest.Executable, E.Message]);
+  end;
+  // Kein stdin: Der Kindprozess soll nie auf eine Eingabe warten.
+  AChild.CloseInput;
+end;
+
 function TProcessRunner.Run(const ARequest: TCompilerRequest; const AOnLine: TCompilerLineEvent): Integer;
 var
-  Child: TProcess;
-  Argument: string;
-  Buffer: array[0..4095] of Byte;
-  BytesRead, LineEnd, Start: Integer;
-  Pending: TBytes;
-
-  procedure EmitLine(AFrom, ACount: Integer);
-  var
-    Line: string;
-  begin
-    Line := TEncoding.UTF8.GetString(Pending, AFrom, ACount);
-    if (Line <> '') and (Line[Length(Line)] = #13) then
-      SetLength(Line, Length(Line) - 1);
-    if Assigned(AOnLine) then
-      AOnLine(Line);
-  end;
-
+  mChild: TProcess;
 begin
   if WasCancelled then
-    raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
-  Child := TProcess.Create(nil);
+  begin
+    RaiseCancelled(ARequest);
+  end;
+  mChild := TProcess.Create(nil);
   try
-    Child.Executable := ARequest.Executable;
-    for Argument in ARequest.Arguments do
-      Child.Parameters.Add(Argument);
-    if ARequest.WorkingDir <> '' then
-      Child.CurrentDirectory := ARequest.WorkingDir;
-    Child.Options := [poUsePipes, poStderrToOutPut, poNoConsole];
-    try
-      Child.Execute;
-    except
-      on E: EProcess do
-        raise ECompilerError.CreateFmt('%s lässt sich nicht starten: %s', [ARequest.Executable, E.Message]);
+    StartChild(mChild, ARequest);
+    if not Track(mChild) then
+    begin
+      mChild.Terminate(CancelledExitCode);
     end;
-    // Kein stdin: Der Kindprozess soll nie auf eine Eingabe warten.
-    Child.CloseInput;
-    if not Track(Child) then
-      Child.Terminate(CancelledExitCode);
     try
-      Pending := nil;
-      repeat
-        BytesRead := Child.Output.Read(Buffer, SizeOf(Buffer));
-        if BytesRead <= 0 then
-          Break;
-        Start := Length(Pending);
-        SetLength(Pending, Start + BytesRead);
-        Move(Buffer[0], Pending[Start], BytesRead);
-        Start := 0;
-        for LineEnd := 0 to High(Pending) do
-          if Pending[LineEnd] = 10 then
-          begin
-            EmitLine(Start, LineEnd - Start);
-            Start := LineEnd + 1;
-          end;
-        Pending := Copy(Pending, Start, MaxInt);
-      until False;
-      if Length(Pending) > 0 then
-        EmitLine(0, Length(Pending));
-      Child.WaitOnExit;
-      Result := Child.ExitCode;
+      ReadOutput(mChild, AOnLine);
+      mChild.WaitOnExit;
+      Result := mChild.ExitCode;
     finally
-      Untrack(Child);
+      Untrack(mChild);
     end;
     if WasCancelled then
-      raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
+    begin
+      RaiseCancelled(ARequest);
+    end;
   finally
-    Child.Free;
+    mChild.Free;
   end;
 end;
 

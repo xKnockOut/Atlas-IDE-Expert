@@ -121,13 +121,21 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, PanelsFile) then
-    Result := UnitPanels
+  begin
+    Result := UnitPanels;
+  end
   else if SameText(AFileName, MainFile) then
-    Result := UnitMain
+  begin
+    Result := UnitMain;
+  end
   else if SameText(AFileName, OtherFile) then
-    Result := UnitOther
+  begin
+    Result := UnitOther;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Wendet die Edits aus einem documentChanges-Eintrag auf AText an.</summary>
@@ -184,7 +192,9 @@ begin
       Result := Result + [ExtractFileName(FileName) + '|' + Apply(TextOf(FileName), Document)];
     end;
     for Item in Answer.GetValue('warnings') as TJSONArray do
+    begin
       AWarnings := AWarnings + [Item.Value];
+    end;
     Assert.IsTrue(((Answer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)
       .GetValue(TLspPropertyFromAccessors.AnnotationId) <> nil);
   finally

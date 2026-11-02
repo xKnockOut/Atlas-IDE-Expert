@@ -109,31 +109,45 @@ begin
   for Location in TLspImplementations.AllDescendantsOf(AIndex, ATypeName) do
   begin
     if Length(Result) >= TLspOverrideMarks.MaxTargets then
+    begin
       Break;
+    end;
     if not UnitOf(AIndex, ACurrent, Location.FileName, Owner) then
+    begin
       Continue;
+    end;
     Found := False;
     Overrides := False;
     Count := 0;
     Declaration := Default(TIndexSymbol);
     Body := Default(TIndexSymbol);
     for Symbol in Owner.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Location.Symbol.QualifiedName) and
         SameText(Symbol.Name, AName) then
       begin
         // Die erste Fundstelle ist die Deklaration, die letzte bei mehreren der Rumpf.
         if not Found then
+        begin
           Declaration := Symbol;
+        end;
         Found := True;
         Body := Symbol;
         Inc(Count);
         if Symbol.HasDirective('override') then
+        begin
           Overrides := True;
+        end;
       end;
+    end;
     if not Overrides then
+    begin
       Continue;
+    end;
     if Count < 2 then
+    begin
       Body := Declaration;
+    end;
     Result := Result + [MarkTarget(Location.Symbol.Name + '.' + AName, Owner.FileName, Body.SelectionRange)];
   end;
 end;
@@ -158,46 +172,69 @@ var
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Current := TIndexExtractor.Extract(ATree, AFileName);
   Types := TDictionary<string, TIndexSymbol>.Create;
   Done := TDictionary<string, Boolean>.Create;
   Lines := TDictionary<Integer, TOverrideMark>.Create;
   try
     for Symbol in Current.Symbols do
+    begin
       if Symbol.Kind in TypeKinds then
+      begin
         Types.AddOrSetValue(UpperCase(Symbol.QualifiedName), Symbol);
+      end;
+    end;
     for Symbol in Current.Symbols do
     begin
       if not (Symbol.Kind in RoutineKinds) or (Symbol.Container = '') or
         not Types.TryGetValue(UpperCase(Symbol.Container), TypeSymbol) then
+      begin
         Continue;
+      end;
       // Deklaration und Rumpf (und Überladungen) gehören zusammen: einmal je Typ und Name.
       Key := UpperCase(Symbol.Container + '.' + Symbol.Name);
       if Done.ContainsKey(Key) then
+      begin
         Continue;
+      end;
       Done.Add(Key, True);
       HasOverride := False;
       HasVirtual := False;
       for Other in Current.Symbols do
+      begin
         if (Other.Kind in RoutineKinds) and SameText(Other.Container, Symbol.Container) and
           SameText(Other.Name, Symbol.Name) then
         begin
           if Other.HasDirective('override') then
+          begin
             HasOverride := True;
+          end;
           if Other.IsVirtual then
+          begin
             HasVirtual := True;
+          end;
         end;
+      end;
       Overrides := nil;
       if HasOverride and TLspCodeLens.OverriddenAncestor(AResolver, AIndex, Current, TypeSymbol, Symbol.Name, Owner,
         Ancestor) then
+      begin
         Overrides := [MarkTarget(Owner + '.' + Symbol.Name, Ancestor.FileName, Ancestor.Range)];
+      end;
       Overridden := nil;
       if HasVirtual and (TypeSymbol.Kind <> TIndexSymbolKind.RecordType) then
+      begin
         Overridden := OverridingIn(AIndex, Current, TypeSymbol.QualifiedName, Symbol.Name);
+      end;
       if (Length(Overrides) = 0) and (Length(Overridden) = 0) then
+      begin
         Continue;
+      end;
       for Other in Current.Symbols do
+      begin
         if (Other.Kind in RoutineKinds) and SameText(Other.Container, Symbol.Container) and
           SameText(Other.Name, Symbol.Name) then
         begin
@@ -211,6 +248,7 @@ begin
           Mark.Overridden := Mark.Overridden + Overridden;
           Lines.AddOrSetValue(Line, Mark);
         end;
+      end;
     end;
     Sorted := TList<TOverrideMark>.Create(TComparer<TOverrideMark>.Construct(
       function(const ALeft, ARight: TOverrideMark): Integer
@@ -276,10 +314,14 @@ var
   Resolver: TNameResolver;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
+  begin
     Exit(Json(nil));
+  end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
+  begin
     Exit(Json(nil));
+  end;
   Shared := TSyntaxTreeCache.Get(Document);
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try

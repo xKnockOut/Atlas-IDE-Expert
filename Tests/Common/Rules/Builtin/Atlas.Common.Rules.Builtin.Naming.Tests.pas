@@ -90,7 +90,9 @@ var
 begin
   Result := '';
   for Finding in AFound do
+  begin
     Result := Result + Finding.Message + '|';
+  end;
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
@@ -103,7 +105,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -451,8 +455,12 @@ const
     Found := TRuleAssert.FindingsOfAll([TMagicNumberRule.Create as IRule, TNamingPrefixRule.Create as IRule],
       Source, AConfig);
     for Finding in Found do
+    begin
       if (Finding.RuleId = 'magic-number') and (Length(Finding.Fixes) > 0) then
+      begin
         Result := ApplyFix(Source, Finding.Fixes[0]);
+      end;
+    end;
   end;
 
 var

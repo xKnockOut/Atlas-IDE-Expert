@@ -46,7 +46,9 @@ end;
 destructor TStreamLogSink.Destroy;
 begin
   if FOwnsStream then
+  begin
     FStream.Free;
+  end;
   inherited;
 end;
 

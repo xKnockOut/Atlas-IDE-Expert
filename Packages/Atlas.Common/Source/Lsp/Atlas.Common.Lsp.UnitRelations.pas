@@ -118,9 +118,13 @@ uses
 function PathOf(const AText: string): string;
 begin
   if StartsText('file:', AText) then
-    Result := TDocumentUris.ToPath(AText)
+  begin
+    Result := TDocumentUris.ToPath(AText);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function SameOptions(const A, B: TUsesGraphOptions): Boolean;
@@ -163,14 +167,18 @@ end;
 function TLspUnitRelations.TextOf(const AFileName: string): string;
 begin
   if not (Assigned(FReader) and FReader(AFileName, Result)) then
+  begin
     Result := '';
+  end;
 end;
 
 function TLspUnitRelations.DefinesOf(const AFileName: string): TArray<string>;
 begin
   Result := nil;
   if Assigned(FDefines) then
+  begin
     Result := FDefines(AFileName);
+  end;
 end;
 
 procedure TLspUnitRelations.EntriesOf(const AFileName, AText: string; out AUnused,
@@ -183,14 +191,22 @@ begin
   AOnlyImplementation := nil;
   if (AText = '') or not Assigned(FUsesContextFor) or
     not FUsesContextFor(TDocumentUris.FromPath(AFileName), Context) or not Assigned(Context.Info) then
+  begin
     Exit;
+  end;
   // Dieselbe Analyse wie die abgeblendeten uses im Editor (#621).
   for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), TLspInactiveRegions.Ranges(AText,
     DefinesOf(AFileName)), Context.Info, Context.Keep) do
+  begin
     if Entry.State = TUsesEntryState.Unused then
-      AUnused := AUnused + [Entry.Name]
+    begin
+      AUnused := AUnused + [Entry.Name];
+    end
     else if Entry.State = TUsesEntryState.OnlyImplementation then
+    begin
       AOnlyImplementation := AOnlyImplementation + [Entry.Name];
+    end;
+  end;
 end;
 
 procedure TLspUnitRelations.EnsureOptions(const AFileName: string);
@@ -198,21 +214,29 @@ var
   Options: TUsesGraphOptions;
 begin
   if not Assigned(FOptionsFor) then
+  begin
     Exit;
+  end;
   Options := FOptionsFor(AFileName);
   // Bibliotheks-Units immer: „Verwendet“ zeigt sie mit Datei, soweit der Index sie kennt.
   Options.IncludeLibrary := True;
   if not SameOptions(Options, FGraph.Options) then
+  begin
     FGraph.SetOptions(Options);
+  end;
 end;
 
 function TLspUnitRelations.FileOf(const AArguments: TJSONArray; AIndex: Integer): string;
 begin
   Result := '';
   if (AArguments <> nil) and (AArguments.Count > AIndex) and (AArguments.Items[AIndex] is TJSONString) then
+  begin
     Result := PathOf(Trim(AArguments.Items[AIndex].Value));
+  end;
   if Result = '' then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Datei fehlt');
+  end;
 end;
 
 function TLspUnitRelations.Request(const AParams: TJSONValue): TJSONValue;
@@ -225,18 +249,28 @@ var
   Relations: TUnitRelations;
 begin
   if not (AParams is TJSONObject) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"uri" fehlt');
+  end;
   Params := TJSONObject(AParams);
   FileName := '';
   if Params.GetValue('uri') is TJSONString then
+  begin
     FileName := PathOf(Trim(Params.GetValue('uri').Value));
+  end;
   if FileName = '' then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"uri" fehlt');
+  end;
   Depth := 1;
   if Params.TryGetValue<Double>('depth', Number) then
+  begin
     Depth := Trunc(Number);
+  end;
   if Depth < 0 then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"depth" ist 0 (alle Ebenen) oder größer');
+  end;
   Text := TextOf(FileName);
   EntriesOf(FileName, Text, Unused, OnlyImplementation);
   EnsureOptions(FileName);
@@ -272,8 +306,12 @@ begin
     begin
       Options := TJSONObject(AArguments.Items[1]);
       for Pair in Options do
+      begin
         if Pair.JsonString.Value <> 'uri' then
+        begin
           Params.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+        end;
+      end;
     end;
     Result := Request(Params);
   finally
@@ -316,7 +354,9 @@ begin
   // „schon in uses“ aus dem Text, wie ihn der Editor gerade hat.
   List := TJSONArray.Create;
   for Reference in TUsesLocator.UsesReferences(TextOf(FileName), DefinesOf(FileName)) do
+  begin
     List.Add(Reference.Name);
+  end;
   Answer.AddPair('inUses', List);
   Answer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
   Result := Answer;
@@ -337,6 +377,7 @@ begin
   Found := False;
   Name := AUnit;
   for Reference in TUsesClauses.References(Tokens) do
+  begin
     if (Reference.List = TUsesListKind.UsesList) and SameText(Reference.Name, AUnit) then
     begin
       if Reference.InInterface = (ATarget = TUsesSection.Interface_) then
@@ -347,17 +388,24 @@ begin
       Found := True;
       Name := Reference.Name;
     end;
+  end;
   if not Found then
   begin
     AError := Format('%s steht in keiner uses-Liste', [AUnit]);
     Exit(False);
   end;
   if ATarget = TUsesSection.Implementation_ then
-    Result := TUsesActions.MoveUnits(Tokens, AText, [Name], TTextLines.LineBreakOf(AText), AEdits)
+  begin
+    Result := TUsesActions.MoveUnits(Tokens, AText, [Name], TTextLines.LineBreakOf(AText), AEdits);
+  end
   else
+  begin
     Result := TUsesActions.MoveUnitsToInterface(Tokens, AText, [Name], TTextLines.LineBreakOf(AText), AEdits);
+  end;
   if not Result then
+  begin
     AError := 'Die uses-Listen lassen sich nicht umschreiben (Direktive, Kommentar oder Programm)';
+  end;
 end;
 
 function TLspUnitRelations.Move(const AArguments: TJSONArray): TJSONValue;
@@ -370,20 +418,32 @@ begin
   FileName := FileOf(AArguments, 0);
   if (AArguments.Count < 3) or not (AArguments.Items[1] is TJSONString) or
     not (AArguments.Items[2] is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente: [uri, Unit, interface|implementation]');
+  end;
   UnitName := Trim(AArguments.Items[1].Value);
   Target := Trim(AArguments.Items[2].Value);
   if SameText(Target, 'interface') then
-    Section := TUsesSection.Interface_
+  begin
+    Section := TUsesSection.Interface_;
+  end
   else if SameText(Target, 'implementation') then
-    Section := TUsesSection.Implementation_
+  begin
+    Section := TUsesSection.Implementation_;
+  end
   else
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Ziel ist interface oder implementation');
+  end;
   Extension := LowerCase(ExtractFileExt(FileName));
   if (Extension = '.dpr') or (Extension = '.dpk') then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Programme und Packages haben nur ein uses');
+  end;
   if not MoveEdits(TextOf(FileName), UnitName, Section, Edits, Error) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
+  end;
   Answer := TJSONObject.Create;
   Answer.AddPair('edit', TLspApplyEdit.TextEdits(FileName, Edits));
   Result := Answer;
@@ -400,25 +460,35 @@ var
 begin
   FileName := FileOf(AArguments, 0);
   if (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente: [uri, Unit]');
+  end;
   UnitName := Trim(AArguments.Items[1].Value);
   Text := TextOf(FileName);
   if (Text = '') or not Assigned(FUsesContextFor) or
     not FUsesContextFor(TDocumentUris.FromPath(FileName), Context) or not Assigned(Context.Info) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Ohne Index lässt sich nicht prüfen, ob ' +
       UnitName + ' ungenutzt ist');
+  end;
   Found := False;
   for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(Text), TLspInactiveRegions.Ranges(Text,
     DefinesOf(FileName)), Context.Info, Context.Keep) do
+  begin
     if (Entry.State = TUsesEntryState.Unused) and SameText(Entry.Name, UnitName) then
     begin
       if not TUsesActions.RemoveEntries(Text, [Entry.Range], Edit) then
+      begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, UnitName + ' lässt sich nicht entfernen');
+      end;
       Found := True;
       Break;
     end;
+  end;
   if not Found then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, UnitName + ' wird verwendet oder fehlt');
+  end;
   Answer := TJSONObject.Create;
   Answer.AddPair('edit', TLspApplyEdit.TextEdits(FileName, [Edit]));
   Result := Answer;

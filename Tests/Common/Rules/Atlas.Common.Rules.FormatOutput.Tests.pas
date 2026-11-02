@@ -58,7 +58,9 @@ var
 begin
   mBody := 'procedure P;'#10'begin';
   for mIndex := 1 to 7 do
+  begin
     mBody := mBody + #10'   A := 1;';
+  end;
   mBody := mBody + #10'end;';
   mText := TFormatOutput.Render([FileOf('a.pas', cClean), FileOf('Sub\b.pas', mBody)], TFormatOutputKind.Text, False);
   Assert.IsFalse(mText.Contains('a.pas'), mText);

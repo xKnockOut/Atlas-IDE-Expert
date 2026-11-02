@@ -49,9 +49,12 @@ if (-not (Test-Path $File)) {
 }
 $Json = Get-Content -Raw -Encoding utf8 $File | ConvertFrom-Json
 
-$PluginSource = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source'
-$Sources = (Get-ChildItem -Recurse -Filter '*.pas' $PluginSource | ForEach-Object { Get-Content -Raw $_.FullName }) -join "`n"
-$SettingsUnit = Get-Content -Raw (Join-Path $PluginSource 'Core/Settings/Atlas.Core.Settings.Plugin.pas')
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
+$PluginSources = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+    ForEach-Object { Join-Path $_.FullName 'Source' } | Where-Object { Test-Path $_ })
+$PluginFiles = @($PluginSources | ForEach-Object { Get-ChildItem -Recurse -Filter '*.pas' $_ })
+$Sources = ($PluginFiles | ForEach-Object { Get-Content -Raw $_.FullName }) -join "`n"
+$SettingsUnit = Get-Content -Raw ($PluginFiles | Where-Object Name -eq 'Atlas.Core.Settings.Plugin.pas' | Select-Object -First 1).FullName
 $Settings = [regex]::Matches($SettingsUnit, "Read(Integer|String)\('([A-Za-z]+)'") | ForEach-Object { $_.Groups[2].Value }
 $Templates = Join-Path $Root 'Tools/Tipps/Vorlagen'
 

@@ -128,9 +128,13 @@ begin
   begin
     Middle := (Left + Right) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Left := Middle + 1
+    begin
+      Left := Middle + 1;
+    end
     else
+    begin
       Right := Middle;
+    end;
   end;
   Result := Left;
 end;
@@ -143,7 +147,9 @@ begin
   Index := FirstTokenAt(ATokens, ANode.StartOffset) - 1;
   while (Index >= 0) and ((ATokens[Index].Kind = TPascalTokenKind.Comment) or
     (ATokens[Index].Kind = TPascalTokenKind.Directive)) do
+  begin
     Dec(Index);
+  end;
   Result := (Index >= 0) and ATokens[Index].IsKeyword('else');
 end;
 
@@ -152,9 +158,13 @@ function ElseBranch(const ATokens: TArray<TPascalToken>; AIf: TSyntaxNode): TSyn
 begin
   Result := nil;
   if AIf.ChildCount >= 3 then
-    Result := AIf[2]
+  begin
+    Result := AIf[2];
+  end
   else if (AIf.ChildCount = 2) and AfterElse(ATokens, AIf[1]) then
+  begin
     Result := AIf[1];
+  end;
 end;
 
 function IsLogical(ANode: TSyntaxNode): Boolean;
@@ -169,7 +179,9 @@ var
 begin
   Parent := ANode.Parent;
   while (Parent <> nil) and (Parent.Kind = TSyntaxKind.ParenExpr) do
+  begin
     Parent := Parent.Parent;
+  end;
   Result := (Parent <> nil) and (Parent.Kind = TSyntaxKind.BinaryExpr) and SameText(Parent.Name, ANode.Name);
 end;
 
@@ -179,11 +191,17 @@ var
 begin
   Result := 0;
   if Trim(ANames) = '' then
+  begin
     Exit;
+  end;
   Result := 1;
   for Position := 1 to Length(ANames) do
+  begin
     if ANames[Position] = ',' then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 /// <summary>Exit bzw. Exit(Wert) als Anweisung.</summary>
@@ -193,10 +211,14 @@ var
 begin
   Result := False;
   if (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount = 0) then
+  begin
     Exit;
+  end;
   Target := ANode[0];
   if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+  begin
     Target := Target[0];
+  end;
   Result := (Target.Kind = TSyntaxKind.Identifier) and SameText(Target.Name, 'Exit');
 end;
 
@@ -206,10 +228,16 @@ var
 begin
   Result := nil;
   if ARoutine = nil then
+  begin
     Exit;
+  end;
   for Index := ARoutine.ChildCount - 1 downto 0 do
+  begin
     if ARoutine[Index].Kind = TSyntaxKind.Block then
+    begin
       Exit(ARoutine[Index]);
+    end;
+  end;
 end;
 
 /// <summary>Ein Durchlauf über den Rumpf: Tiefe, zyklomatische und kognitive Komplexität, Operanden, Inline-
@@ -244,9 +272,13 @@ var
     begin
       Count := TMetricsCalculator.Operands(AChild);
       if Count > Flow.Operands then
+      begin
         Flow.Operands := Count;
+      end;
       if AConditions <> nil then
+      begin
         AConditions.Add(AChild);
+      end;
     end;
     Push(AChild, ADepth, ALevel, True);
   end;
@@ -254,7 +286,9 @@ var
   procedure Reach(ADepth: Integer);
   begin
     if ADepth > Flow.Depth then
+    begin
       Flow.Depth := ADepth;
+    end;
   end;
 
 begin
@@ -264,7 +298,9 @@ begin
   Result := Flow;
   Node := BodyOf(ARoutine);
   if Node = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Stack := TStack<TVisit>.Create;
   try
@@ -280,30 +316,45 @@ begin
           Continue;
         TSyntaxKind.CallStatement:
           if not Anonymous and IsExitCall(Node) then
+          begin
             Inc(Flow.Exits);
+          end;
         TSyntaxKind.RaiseStatement:
           if not Anonymous then
+          begin
             Inc(Flow.Exits);
+          end;
         TSyntaxKind.InlineVar:
           if not Anonymous then
+          begin
             Inc(Flow.InlineLocals, NameCount(Node.Name));
+          end;
         TSyntaxKind.IfStatement:
           begin
             Inc(Flow.Cyclomatic);
             Reach(Item.Depth + 1);
             if Item.ElseIf then
-              Inc(Flow.Cognitive)
+            begin
+              Inc(Flow.Cognitive);
+            end
             else
+            begin
               Inc(Flow.Cognitive, 1 + Item.Level);
+            end;
             Branch := ElseBranch(Tokens, Node);
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               if Index = 0 then
-                PushCondition(Node[Index], Item.Depth, Item.Level)
+              begin
+                PushCondition(Node[Index], Item.Depth, Item.Level);
+              end
               else if Node[Index] = Branch then
               begin
                 if Branch.Kind = TSyntaxKind.IfStatement then
+                begin
                   // else if: gleiche Ebene wie das if, +1 beim inneren if.
-                  PushVisit(Visit(Branch, Item.Depth, Item.Level, False, True))
+                  PushVisit(Visit(Branch, Item.Depth, Item.Level, False, True));
+                end
                 else
                 begin
                   Inc(Flow.Cognitive);
@@ -311,7 +362,10 @@ begin
                 end;
               end
               else
+              begin
                 Push(Node[Index], Item.Depth + 1, Item.Level + 1, False);
+              end;
+            end;
             Continue;
           end;
         TSyntaxKind.IfExpr:
@@ -319,10 +373,16 @@ begin
             Inc(Flow.Cyclomatic);
             Inc(Flow.Cognitive, 1 + Item.Level);
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               if Index = 0 then
-                PushCondition(Node[Index], Item.Depth, Item.Level)
+              begin
+                PushCondition(Node[Index], Item.Depth, Item.Level);
+              end
               else
+              begin
                 Push(Node[Index], Item.Depth, Item.Level + 1, False);
+              end;
+            end;
             Continue;
           end;
         TSyntaxKind.CaseStatement:
@@ -330,10 +390,16 @@ begin
             Reach(Item.Depth + 1);
             Inc(Flow.Cognitive, 1 + Item.Level);
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               if Index = 0 then
-                Push(Node[Index], Item.Depth, Item.Level, False)
+              begin
+                Push(Node[Index], Item.Depth, Item.Level, False);
+              end
               else
+              begin
                 Push(Node[Index], Item.Depth + 1, Item.Level + 1, False);
+              end;
+            end;
             Continue;
           end;
         TSyntaxKind.CaseItem:
@@ -343,25 +409,37 @@ begin
             // Nur die Tiefe; kognitiv zählt erst der except-Teil.
             Reach(Item.Depth + 1);
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               Push(Node[Index], Item.Depth + 1, Item.Level, False);
+            end;
             Continue;
           end;
         TSyntaxKind.ExceptBlock:
           begin
             Handlers := 0;
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               if Node[Index].Kind = TSyntaxKind.ExceptionHandler then
+              begin
                 Inc(Handlers);
+              end;
+            end;
             if Handlers = 0 then
             begin
               Inc(Flow.Cyclomatic);
               Inc(Flow.Cognitive, 1 + Item.Level);
             end;
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               if Node[Index].Kind = TSyntaxKind.ExceptionHandler then
-                Push(Node[Index], Item.Depth, Item.Level, False)
+              begin
+                Push(Node[Index], Item.Depth, Item.Level, False);
+              end
               else
+              begin
                 Push(Node[Index], Item.Depth, Item.Level + 1, False);
+              end;
+            end;
             Continue;
           end;
         TSyntaxKind.ExceptionHandler:
@@ -369,7 +447,9 @@ begin
             Inc(Flow.Cyclomatic);
             Inc(Flow.Cognitive, 1 + Item.Level);
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               Push(Node[Index], Item.Depth, Item.Level + 1, False);
+            end;
             Continue;
           end;
         TSyntaxKind.GotoStatement:
@@ -378,7 +458,9 @@ begin
           begin
             Anonymous := True;
             for Index := 0 to Node.ChildCount - 1 do
+            begin
               Push(Node[Index], Item.Depth, Item.Level + 1, False);
+            end;
             Continue;
           end;
         TSyntaxKind.BinaryExpr:
@@ -386,7 +468,9 @@ begin
           begin
             Inc(Flow.Cyclomatic);
             if not ContinuesSequence(Node) then
+            begin
               Inc(Flow.Cognitive);
+            end;
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -395,23 +479,33 @@ begin
       begin
         if not Anonymous and (Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
           TRoutineLocals.IsInlineFor(Tokens, Node) then
+        begin
           Inc(Flow.InlineLocals);
+        end;
         Inc(Flow.Cyclomatic);
         Reach(Item.Depth + 1);
         Inc(Flow.Cognitive, 1 + Item.Level);
         for Index := 0 to Node.ChildCount - 1 do
+        begin
           if ((Node.Kind = TSyntaxKind.WhileStatement) and (Index = 0)) or
             ((Node.Kind = TSyntaxKind.RepeatStatement) and (Index = Node.ChildCount - 1) and
             (Node[Index].Kind in ExpressionKinds)) then
-            PushCondition(Node[Index], Item.Depth, Item.Level)
+          begin
+            PushCondition(Node[Index], Item.Depth, Item.Level);
+          end
           else
+          begin
             Push(Node[Index], Item.Depth + 1, Item.Level + 1, False);
+          end;
+        end;
         Continue;
       end;
       // Alles andere reicht Tiefe und Ebene weiter; die Bedingung nur innerhalb von Ausdrücken.
       Inner := Item.Condition and (Node.Kind in ExpressionKinds);
       for Index := 0 to Node.ChildCount - 1 do
+      begin
         Push(Node[Index], Item.Depth, Item.Level, Inner);
+      end;
     end;
   finally
     Stack.Free;
@@ -435,9 +529,15 @@ begin
   begin
     Section := ARoutine[Index];
     if Section.Kind = TSyntaxKind.VarSection then
+    begin
       for Inner := 0 to Section.ChildCount - 1 do
+      begin
         if Section[Inner].Kind = TSyntaxKind.VarDecl then
+        begin
           Inc(Result, NameCount(Section[Inner].Name));
+        end;
+      end;
+    end;
   end;
 end;
 
@@ -458,17 +558,27 @@ begin
       if Node.Kind = TSyntaxKind.RoutineDecl then
       begin
         if BodyOf(Node) <> nil then
+        begin
           Result := Result + [Node];
+        end;
         // Lokale Routinen stehen als Kinder darin.
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if Node[Index].Kind = TSyntaxKind.RoutineDecl then
+          begin
             Stack.Push(Node[Index]);
+          end;
+        end;
         Continue;
       end;
       if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + ExpressionKinds then
+      begin
         Continue;
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Stack.Push(Node[Index]);
+      end;
     end;
   finally
     Stack.Free;
@@ -485,9 +595,13 @@ begin
   while Parent <> nil do
   begin
     if (Parent.Kind = TSyntaxKind.TypeDecl) and (Result = '') then
-      Result := Parent.Name
+    begin
+      Result := Parent.Name;
+    end
     else if Parent.Kind = TSyntaxKind.TypeDecl then
+    begin
       Result := Parent.Name + '.' + Result;
+    end;
     Parent := Parent.Parent;
   end;
 end;
@@ -512,16 +626,24 @@ begin
         Key := UpperCase(OwnerName(Node) + '.' + Node.Name);
         Count := TMetricsCalculator.ParameterCount(Node);
         if Result.ContainsKey(Key) then
-          Result[Key] := -1
+        begin
+          Result[Key] := -1;
+        end
         else
+        begin
           Result.Add(Key, Count);
+        end;
         Continue;
       end;
       // Rümpfe enthalten keine Typdeklarationen mit Methoden, die hier fehlen würden.
       if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
+      begin
         Continue;
+      end;
       for Index := 0 to Node.ChildCount - 1 do
+      begin
         Stack.Push(Node[Index]);
+      end;
     end;
   finally
     Stack.Free;
@@ -538,9 +660,13 @@ begin
   Index := FirstTokenAt(ATokens, AHeader.StartOffset);
   while (Index < Length(ATokens)) and (ATokens[Index].Offset < AHeader.EndOffset) and
     (ATokens[Index].Kind <> TPascalTokenKind.Identifier) do
+  begin
     Inc(Index);
+  end;
   if (Index >= Length(ATokens)) or (ATokens[Index].Offset >= AHeader.EndOffset) then
+  begin
     Exit;
+  end;
   First := Index;
   Last := Index;
   Inc(Index);
@@ -558,18 +684,24 @@ begin
       while Index < Length(ATokens) do
       begin
         if ATokens[Index].IsSymbol('<') then
-          Inc(Depth)
+        begin
+          Inc(Depth);
+        end
         else if ATokens[Index].IsSymbol('>') then
         begin
           Dec(Depth);
           if Depth = 0 then
+          begin
             Break;
+          end;
         end
         else if ATokens[Index].IsSymbol('>>') then
         begin
           Dec(Depth, 2);
           if Depth <= 0 then
+          begin
             Break;
+          end;
         end;
         Inc(Index);
       end;
@@ -598,22 +730,34 @@ var
 begin
   Result := 0;
   if AHeader = nil then
+  begin
     Exit;
+  end;
   Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
   if Parameters = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Parameters.ChildCount - 1 do
   begin
     Parameter := Parameters[Index];
     if Parameter.Kind <> TSyntaxKind.Parameter then
+    begin
       Continue;
+    end;
     Names := Trim(Parameter.Name);
     if Names = '' then
+    begin
       Continue;
+    end;
     Inc(Result);
     for Position := 1 to Length(Names) do
+    begin
       if Names[Position] = ',' then
+      begin
         Inc(Result);
+      end;
+    end;
   end;
 end;
 
@@ -629,12 +773,18 @@ var
 begin
   Result := 0;
   if ARoutine = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Skips := nil;
   for Index := 0 to ARoutine.ChildCount - 1 do
+  begin
     if ARoutine[Index].Kind = TSyntaxKind.RoutineDecl then
+    begin
       Skips := Skips + [ARoutine[Index]];
+    end;
+  end;
   Lines := TDictionary<Integer, Boolean>.Create;
   try
     Index := FirstTokenAt(Tokens, ARoutine.StartOffset);
@@ -643,15 +793,25 @@ begin
       Token := Tokens[Index];
       Inc(Index);
       if (Token.Kind = TPascalTokenKind.Comment) or (Token.Kind = TPascalTokenKind.Directive) then
+      begin
         Continue;
+      end;
       Inside := False;
       for Skip in Skips do
+      begin
         if (Token.Offset >= Skip.StartOffset) and (Token.Offset < Skip.EndOffset) then
+        begin
           Inside := True;
+        end;
+      end;
       if Inside then
+      begin
         Continue;
+      end;
       for Line := Token.StartPos.Line to Token.EndPos.Line do
+      begin
         Lines.AddOrSetValue(Line, True);
+      end;
     end;
     Result := Lines.Count;
   finally
@@ -684,7 +844,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Known := nil;
   try
     for Node in FindRoutines(ATree) do
@@ -695,15 +857,21 @@ begin
       while Parent <> nil do
       begin
         if Parent.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Metrics.Name := Parent.Name + '.' + Metrics.Name;
+        end;
         Parent := Parent.Parent;
       end;
       Metrics.Range := TTextRange.Create(Node.StartPos, Node.EndPos);
       Header := Node.FindChild(TSyntaxKind.RoutineHeader);
       if Header <> nil then
-        Metrics.NameRange := NameRangeOf(ATree.Tokens, Header)
+      begin
+        Metrics.NameRange := NameRangeOf(ATree.Tokens, Header);
+      end
       else
+      begin
         Metrics.NameRange := TTextRange.Create(Node.StartPos, Node.StartPos);
+      end;
       Metrics.Values[TMetricKind.MethodLength] := CodeLines(ATree, Node);
       Flow := Analyze(ATree, Node);
       Metrics.Values[TMetricKind.NestingDepth] := Flow.Depth;
@@ -717,9 +885,13 @@ begin
       begin
         // procedure TFoo.Bar; ohne Liste: Parameter der Deklaration.
         if Known = nil then
+        begin
           Known := Declarations(ATree);
+        end;
         if Known.TryGetValue(UpperCase(Node.Name), Index) and (Index > 0) then
+        begin
           Count := Index;
+        end;
       end;
       Metrics.Values[TMetricKind.ParameterCount] := Count;
       Result := Result + [Metrics];
@@ -750,9 +922,13 @@ begin
       end
       else if ((Node.Kind = TSyntaxKind.ParenExpr) or ((Node.Kind = TSyntaxKind.UnaryExpr) and
         SameText(Node.Name, 'not'))) and (Node.ChildCount = 1) then
-        Stack.Push(Node[0])
+      begin
+        Stack.Push(Node[0]);
+      end
       else
+      begin
         Inc(Result);
+      end;
     end;
   finally
     Stack.Free;
@@ -767,11 +943,15 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Found := TList<TSyntaxNode>.Create;
   try
     for Routine in FindRoutines(ATree) do
+    begin
       AnalyzeWith(ATree, Routine, Found);
+    end;
     Found.Sort(TComparer<TSyntaxNode>.Construct(
       function(const A, B: TSyntaxNode): Integer
       begin
@@ -807,11 +987,17 @@ begin
       // property Align; hebt nur die Sichtbarkeit an und ist kein neues Member.
       TSyntaxKind.PropertyDecl:
         if Child.FindChild(TSyntaxKind.TypeReference) <> nil then
+        begin
           Inc(Result);
+        end;
       TSyntaxKind.VarSection:
         for Inner := 0 to Child.ChildCount - 1 do
+        begin
           if Child[Inner].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field] then
+          begin
             Inc(Result, NameCount(Child[Inner].Name));
+          end;
+        end;
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
@@ -836,12 +1022,16 @@ var
     Result := TTextRange.Create(ANode.StartPos, ANode.StartPos);
     Name := ANode.Name;
     if Pos('<', Name) > 0 then
+    begin
       Name := Copy(Name, 1, Pos('<', Name) - 1);
+    end;
     Position := FirstTokenAt(Tokens, ANode.StartOffset);
     while (Position < Length(Tokens)) and (Tokens[Position].Offset < ANode.EndOffset) do
     begin
       if (Tokens[Position].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Position].Text, Name) then
+      begin
         Exit(TTextRange.Create(Tokens[Position].StartPos, Tokens[Position].EndPos));
+      end;
       Inc(Position);
     end;
   end;
@@ -849,7 +1039,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Classes := nil;
   UsesTotal := 0;
@@ -861,21 +1053,31 @@ begin
     begin
       Node := Stack.Pop;
       if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + ExpressionKinds then
+      begin
         Continue;
+      end;
       if Node.Kind = TSyntaxKind.UsesClause then
       begin
         if UsesNode = nil then
+        begin
           UsesNode := Node;
+        end;
         for Index := 0 to Node.ChildCount - 1 do
+        begin
           if Node[Index].Kind = TSyntaxKind.UsedUnit then
+          begin
             Inc(UsesTotal);
+          end;
+        end;
         Continue;
       end;
       if Node.Kind = TSyntaxKind.TypeDecl then
       begin
         Body := Node.FindChild(TSyntaxKind.ClassType);
         if Body = nil then
+        begin
           Body := Node.FindChild(TSyntaxKind.ObjectType);
+        end;
         if Body <> nil then
         begin
           Item := Default(TStructureMetrics);
@@ -887,7 +1089,9 @@ begin
         end;
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Stack.Push(Node[Index]);
+      end;
     end;
   finally
     Stack.Free;
@@ -896,7 +1100,9 @@ begin
   begin
     LastLine := 0;
     if Tokens <> nil then
+    begin
       LastLine := Tokens[High(Tokens)].EndPos.Line;
+    end;
     Item := Default(TStructureMetrics);
     Item.Kind := TStructureKind.UnitLength;
     Item.Name := ATree.Root.Name;
@@ -908,7 +1114,9 @@ begin
       Item.Kind := TStructureKind.UsesCount;
       Index := FirstTokenAt(Tokens, UsesNode.StartOffset);
       if Index < Length(Tokens) then
+      begin
         Item.NameRange := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
+      end;
       Item.Value := UsesTotal;
       Result := Result + [Item];
     end;

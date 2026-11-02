@@ -90,7 +90,9 @@ function Compare(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function IsWord(const AToken: TPascalToken): Boolean;
@@ -118,25 +120,39 @@ begin
   begin
     Token := ATokens[Index];
     if Token.IsSymbol('<') or Token.IsSymbol('(') or Token.IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Token.IsSymbol('>') or Token.IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if Token.IsSymbol('>>') then
-      Dec(Depth, 2)
+    begin
+      Dec(Depth, 2);
+    end
     else if Token.IsSymbol(')') then
     begin
       if Depth = 0 then
+      begin
         Break;
+      end;
       Dec(Depth);
     end
     else if (Depth = 0) and (Token.IsSymbol(';') or Token.IsSymbol('=') or Token.IsSymbol(':=') or
       Token.IsSymbol(',') or IsWordIn(Token, ['absolute', 'read', 'write', 'begin', 'end', 'var', 'const'])) then
+    begin
       Break;
+    end;
     if Depth < 0 then
+    begin
       Break;
+    end;
     // Leerzeichen vor Wörtern, außer direkt nach "<", "(", "[" und ".".
     if (Result <> '') and IsWord(Token) and not Glued then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Token.Text;
     Glued := Token.IsSymbol('<') or Token.IsSymbol('(') or Token.IsSymbol('[') or Token.IsSymbol('.');
     Index := TRoutineBody.NextToken(ATokens, Index);
@@ -151,16 +167,20 @@ var
 begin
   Result := ARoot;
   if Result = nil then
+  begin
     Exit;
+  end;
   repeat
     Found := False;
     for Index := 0 to Result.ChildCount - 1 do
+    begin
       if (Result[Index].StartOffset <= AOffset) and (AOffset <= Result[Index].EndOffset) then
       begin
         Result := Result[Index];
         Found := True;
         Break;
       end;
+    end;
   until not Found;
 end;
 
@@ -169,7 +189,9 @@ function Enclosing(ANode: TSyntaxNode; const AKinds: TSyntaxKindSet): TSyntaxNod
 begin
   Result := ANode;
   while (Result <> nil) and not (Result.Kind in AKinds) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 /// <summary>Steht ATokens[AIndex] in der Parameterliste eines Routinenkopfs?</summary>
@@ -183,28 +205,40 @@ begin
   while Index >= 0 do
   begin
     if ATokens[Index].IsSymbol(')') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsSymbol('(') then
     begin
       if Depth = 0 then
+      begin
         Break;
+      end;
       Dec(Depth);
     end
     else if IsWordIn(ATokens[Index], ['begin', 'end', 'type', 'implementation', 'interface', 'uses']) then
+    begin
       Exit;
+    end;
     Index := TRoutineBody.PreviousToken(ATokens, Index);
   end;
   if Index < 0 then
+  begin
     Exit;
+  end;
   // Name der Routine, auch qualifiziert (TFoo.Bar), davor das Schlüsselwort.
   Index := TRoutineBody.PreviousToken(ATokens, Index);
   while (Index >= 0) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) do
   begin
     Index := TRoutineBody.PreviousToken(ATokens, Index);
     if (Index >= 0) and ATokens[Index].IsSymbol('.') then
-      Index := TRoutineBody.PreviousToken(ATokens, Index)
+    begin
+      Index := TRoutineBody.PreviousToken(ATokens, Index);
+    end
     else
+    begin
       Break;
+    end;
   end;
   Result := (Index >= 0) and IsWordIn(ATokens[Index], RoutineWords);
 end;
@@ -223,20 +257,30 @@ begin
   while Index >= 0 do
   begin
     if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol('>') or ATokens[Index].IsSymbol(']') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('<') or ATokens[Index].IsSymbol('[') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and IsWord(ATokens[Index]) then
     begin
       AAt := Index;
       if IsWordIn(ATokens[Index], ['var', 'threadvar']) then
+      begin
         Exit('var');
+      end;
       if IsWordIn(ATokens[Index], VisibilityWords) or IsWordIn(ATokens[Index], ['record', 'object']) then
+      begin
         Exit('type');
+      end;
       // Schlüsselwörter in Typen vorheriger Deklarationen (A: string; B: array of set of T).
       if (ATokens[Index].Kind = TPascalTokenKind.Keyword) and
         not IsWordIn(ATokens[Index], ['string', 'array', 'of', 'set', 'file', 'packed']) then
+      begin
         Exit;
+      end;
     end;
     Index := TRoutineBody.PreviousToken(ATokens, Index);
   end;
@@ -254,16 +298,22 @@ begin
   ASite := Default(TNameSite);
   Result := False;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   // Erstes Token, das am Cursor oder dahinter endet.
   Index := 0;
   while (Index <= High(Tokens)) and (Compare(Tokens[Index].EndPos, APosition) < 0) do
+  begin
     Inc(Index);
+  end;
   Name := -1;
   if (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
     (Compare(Tokens[Index].StartPos, APosition) <= 0) then
+  begin
     Name := Index;
+  end;
   if Name >= 0 then
   begin
     ASite.NameRange := TTextRange.Create(Tokens[Name].StartPos, Tokens[Name].EndPos);
@@ -278,10 +328,14 @@ begin
     Next := Index;
     while (Next <= High(Tokens)) and ((Compare(Tokens[Next].StartPos, APosition) < 0) or
       (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
+    begin
       Inc(Next);
+    end;
     Prev := TRoutineBody.PreviousToken(Tokens, Next);
     if Next <= High(Tokens) then
+    begin
       ASite.Offset := Tokens[Next].Offset;
+    end;
   end;
   // Weitere Namen der Liste (A, |, B: T) bis zum Doppelpunkt.
   Colon := Next;
@@ -289,19 +343,27 @@ begin
   begin
     Colon := TRoutineBody.NextToken(Tokens, Colon);
     if (Colon > High(Tokens)) or (Tokens[Colon].Kind <> TPascalTokenKind.Identifier) then
+    begin
       Exit;
+    end;
     Colon := TRoutineBody.NextToken(Tokens, Colon);
   end;
   if (Colon > High(Tokens)) or not Tokens[Colon].IsSymbol(':') or (Prev < 0) then
+  begin
     Exit;
+  end;
   ASite.TypeText := TypeTextFrom(Tokens, TRoutineBody.NextToken(Tokens, Colon));
   if ASite.TypeText = '' then
+  begin
     Exit;
+  end;
   // Vor dem Namen: Abschnitt, Trenner, Modifizierer oder Attribut.
   if not (Tokens[Prev].IsSymbol(';') or Tokens[Prev].IsSymbol(',') or Tokens[Prev].IsSymbol('(') or
     Tokens[Prev].IsSymbol(']') or IsWordIn(Tokens[Prev], ['var', 'threadvar', 'const', 'out', 'constref']) or
     IsWordIn(Tokens[Prev], VisibilityWords) or IsWordIn(Tokens[Prev], ['record', 'object'])) then
+  begin
     Exit;
+  end;
   if InParameters(Tokens, Prev) then
   begin
     ASite.Kind := TNamingKind.Parameter;
@@ -315,19 +377,29 @@ begin
     Exit(True);
   end;
   if Tokens[Prev].IsKeyword('const') or IsWordIn(Tokens[Prev], ['out', 'constref']) then
+  begin
     Exit;
+  end;
   Section := SectionBefore(Tokens, Prev, At);
   if Section = '' then
+  begin
     Exit;
+  end;
   // Der Abschnitt steht auch bei unfertigem Code an seinem Platz im Baum.
   Node := NodeAt(ATree.Root, Tokens[At].Offset);
   if (Section = 'type') or (Enclosing(Node, [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
     TSyntaxKind.HelperType]) <> nil) then
-    ASite.Kind := TNamingKind.Field
+  begin
+    ASite.Kind := TNamingKind.Field;
+  end
   else if Enclosing(Node, [TSyntaxKind.RoutineDecl]) <> nil then
-    ASite.Kind := TNamingKind.Local
+  begin
+    ASite.Kind := TNamingKind.Local;
+  end
   else
+  begin
     ASite.Global := True;
+  end;
   Result := True;
 end;
 
@@ -340,13 +412,17 @@ begin
   if (Index > 0) and CharInSet(AName[Index], ['A'..'Z']) then
   begin
     while (Index > 1) and CharInSet(AName[Index - 1], ['A'..'Z']) do
+    begin
       Dec(Index);
+    end;
     Exit(Copy(AName, Index, MaxInt));
   end;
   // HTTPClient: das Wort beginnt am letzten Großbuchstaben vor Kleinbuchstaben.
   while (Index > 1) and not (CharInSet(AName[Index], ['A'..'Z']) and
     ((Index = Length(AName)) or not CharInSet(AName[Index + 1], ['A'..'Z']))) do
+  begin
     Dec(Index);
+  end;
   Result := Copy(AName, Index, MaxInt);
 end;
 
@@ -356,14 +432,22 @@ var
 begin
   Result := AWord;
   if AWord = '' then
+  begin
     Exit;
+  end;
   Last := AWord[Length(AWord)];
   if (Last = 'y') and (Length(AWord) > 1) and not CharInSet(AWord[Length(AWord) - 1], ['a', 'e', 'i', 'o', 'u']) then
-    Result := Copy(AWord, 1, Length(AWord) - 1) + 'ies'
+  begin
+    Result := Copy(AWord, 1, Length(AWord) - 1) + 'ies';
+  end
   else if CharInSet(Last, ['s', 'x', 'z']) or EndsStr('ch', AWord) or EndsStr('sh', AWord) then
-    Result := AWord + 'es'
+  begin
+    Result := AWord + 'es';
+  end
   else
+  begin
     Result := AWord + 's';
+  end;
 end;
 
 /// <summary>Elementtyp eines Listen- oder Array-Typs ('' ohne): array of T, TArray&lt;T&gt;, TList&lt;T&gt;.</summary>
@@ -381,14 +465,20 @@ begin
   Open := Pos('<', ATypeText);
   Close := LastDelimiter('>', ATypeText);
   if (Open = 0) or (Close < Open) then
+  begin
     Exit;
+  end;
   AContainer := TCreateMethod.NameFromType(Copy(ATypeText, 1, Open - 1));
   if not MatchText(TNameSuggestions.LastWord(AContainer), ListWords) then
+  begin
     Exit;
+  end;
   Result := Trim(Copy(ATypeText, Open + 1, Close - Open - 1));
   // Nur ein Typargument (TDictionary<K, V> ist keine Liste).
   if Pos(',', Result) > 0 then
+  begin
     Result := '';
+  end;
 end;
 
 class function TNameSuggestions.IsListType(const ATypeText: string): Boolean;
@@ -396,7 +486,9 @@ var
   Container, Base: string;
 begin
   if ElementType(ATypeText, Container) <> '' then
+  begin
     Exit(True);
+  end;
   Base := TCreateMethod.NameFromType(ATypeText);
   Result := (Pos('<', ATypeText) = 0) and MatchText(LastWord(Base), ListWords) and (LastWord(Base) <> Base);
 end;
@@ -411,10 +503,16 @@ var
     Known: string;
   begin
     if (AName = '') or not CharInSet(AName[1], ['A'..'Z', 'a'..'z', '_']) or TPascalLexer.IsReservedWord(AName) then
+    begin
       Exit;
+    end;
     for Known in Names do
+    begin
       if SameText(Known, AName) then
+      begin
         Exit;
+      end;
+    end;
     Names := Names + [AName];
   end;
 
@@ -432,13 +530,17 @@ begin
   begin
     Base := TCreateMethod.NameFromType(ATypeText);
     if IsListType(ATypeText) then
+    begin
       Add(Plural(Copy(Base, 1, Length(Base) - Length(LastWord(Base)))));
+    end;
     Add(Base);
     Add(LastWord(Base));
   end;
   Result := nil;
   for Item in Names do
+  begin
     Result := Result + [Item];
+  end;
 end;
 
 class function TNameSuggestions.UsesPrefix(const ACount: TNamingCount): Boolean;
@@ -450,7 +552,9 @@ class function TNameSuggestions.Prefixed(const AName, APrefix: string): string;
 begin
   Result := AName;
   if (APrefix = '') or (AName = '') or TIndexExtractor.HasNamePrefix(AName, APrefix) then
+  begin
     Exit;
+  end;
   Result := APrefix + UpperCase(Copy(AName, 1, 1)) + Copy(AName, 2, MaxInt);
 end;
 
@@ -465,8 +569,12 @@ begin
   repeat
     Taken := False;
     for Known in ATaken do
+    begin
       if SameText(Known, Result) then
+      begin
         Taken := True;
+      end;
+    end;
     if Taken then
     begin
       Inc(Number);

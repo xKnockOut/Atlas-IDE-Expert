@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerEndDialogTests = class
   private
     FSaved: Integer;
@@ -44,7 +45,7 @@ uses
   System.UITypes,
   Vcl.Controls,
   Vcl.StdCtrls,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Strings,

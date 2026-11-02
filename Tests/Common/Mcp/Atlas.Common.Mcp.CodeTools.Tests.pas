@@ -103,11 +103,17 @@ function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, WorkerFile) then
-    AText := WorkerUnit
+  begin
+    AText := WorkerUnit;
+  end
   else if SameText(AFileName, MainFile) then
-    AText := MainUnit
+  begin
+    AText := MainUnit;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 function NewTools: TMcpCodeTools;
@@ -281,12 +287,18 @@ function TodoText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if AFileName.EndsWith('Kasse.pas') then
+  begin
     AText := 'unit Kasse;'#10'// TODO 1 -oMarco -cGUI : Fokus setzen'#10'{ DONE -oAnna : Rundung }'#10 +
-      '// FIXME: Rabatt doppelt'#10'end.'
+      '// FIXME: Rabatt doppelt'#10'end.';
+  end
   else if AFileName.EndsWith('Lager.pas') then
-    AText := 'unit Lager;'#10'{ TODO 2 -oAnna -cDaten : Index anlegen }'#10'end.'
+  begin
+    AText := 'unit Lager;'#10'{ TODO 2 -oAnna -cDaten : Index anlegen }'#10'end.';
+  end
   else
+  begin
     AText := 'unit Fremd;'#10'// TODO fremd'#10'end.';
+  end;
 end;
 
 procedure TMcpCodeToolsTests.ReportsTodosOfProjectFilesOnly;

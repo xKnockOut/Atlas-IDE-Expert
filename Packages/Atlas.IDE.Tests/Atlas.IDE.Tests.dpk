@@ -1,0 +1,58 @@
+﻿package Atlas.IDE.Tests;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Tests'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Tests (#1456, ADR 0017): Testläufe, betroffene Tests, Test-Linsen und Test am Cursor debuggen.
+// Meldet sich in der Unit-Initialisierung von Atlas.IDE.Tests.Composition über die Registry
+// des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
+// (Regeln 1 bis 4). Requiret nur das Kern-Package und
+// Atlas.IDE.Contracts, kein anderes Modul (Regel 9).
+
+requires
+  rtl,
+  vcl,
+  vclwinx,
+  designide,
+  Atlas.IDE.Base,
+  Atlas.IDE.Contracts;
+
+contains
+  Atlas.UI.Tests.Strings in 'Source\UI\Tests\Atlas.UI.Tests.Strings.pas',
+  Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
+  Atlas.Core.Tests.AffectedHook in 'Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
+  Atlas.Core.Tests.Debug in 'Source\Core\Tests\Atlas.Core.Tests.Debug.pas',
+  Atlas.Core.Tests.ProjectChoice in 'Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas',
+  Atlas.IDE.Tests.Runner in 'Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas',
+  Atlas.IDE.Tests.Composition in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas',
+  Atlas.IDE.Tests.Affected in 'Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas',
+  Atlas.IDE.Tests.Debug in 'Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas',
+  Atlas.IDE.Tests.Lens in 'Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas';
+
+end.

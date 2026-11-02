@@ -98,7 +98,9 @@ function TDataNameCall.DisplayName: string;
 begin
   Result := DataSet;
   if Owner <> '' then
+  begin
     Result := Owner + '.' + DataSet;
+  end;
 end;
 
 type
@@ -154,34 +156,50 @@ begin
   begin
     C := ASql[Index];
     if C <= ' ' then
-      Inc(Index)
+    begin
+      Inc(Index);
+    end
     else if (C = '-') and (Index < Length(ASql)) and (ASql[Index + 1] = '-') then
     begin
       while (Index <= Length(ASql)) and not CharInSet(ASql[Index], [#10, #13]) do
+      begin
         Inc(Index);
+      end;
     end
     else if (C = '/') and (Index < Length(ASql)) and (ASql[Index + 1] = '*') then
     begin
       Start := PosEx('*/', ASql, Index + 2);
       if Start = 0 then
-        Index := Length(ASql) + 1
+      begin
+        Index := Length(ASql) + 1;
+      end
       else
+      begin
         Index := Start + 2;
+      end;
     end
     else if C = '''' then
     begin
       Start := Index;
       Inc(Index);
       while Index <= Length(ASql) do
+      begin
         if ASql[Index] = '''' then
         begin
           if (Index < Length(ASql)) and (ASql[Index + 1] = '''') then
-            Inc(Index, 2)
+          begin
+            Inc(Index, 2);
+          end
           else
+          begin
             Break;
+          end;
         end
         else
+        begin
           Inc(Index);
+        end;
+      end;
       Result := Result + [MakeToken(TSqlTokenKind.Text, Copy(ASql, Start, Index - Start + 1))];
       Inc(Index);
     end
@@ -189,11 +207,15 @@ begin
     begin
       Close := C;
       if C = '[' then
+      begin
         Close := ']';
+      end;
       Start := Index + 1;
       Index := Start;
       while (Index <= Length(ASql)) and (ASql[Index] <> Close) do
+      begin
         Inc(Index);
+      end;
       Result := Result + [MakeToken(TSqlTokenKind.Quoted, Copy(ASql, Start, Index - Start))];
       Inc(Index);
     end
@@ -201,14 +223,18 @@ begin
     begin
       Start := Index;
       while (Index <= Length(ASql)) and IsWordChar(ASql[Index]) do
+      begin
         Inc(Index);
+      end;
       Result := Result + [MakeToken(TSqlTokenKind.Word, Copy(ASql, Start, Index - Start))];
     end
     else if CharInSet(C, ['0'..'9']) then
     begin
       Start := Index;
       while (Index <= Length(ASql)) and CharInSet(ASql[Index], ['0'..'9', '.']) do
+      begin
         Inc(Index);
+      end;
       Result := Result + [MakeToken(TSqlTokenKind.Number, Copy(ASql, Start, Index - Start))];
     end
     else
@@ -241,30 +267,46 @@ begin
   AStar := False;
   Count := Length(ATokens);
   if Count = 0 then
+  begin
     Exit;
+  end;
   if ATokens[Count - 1].IsSymbol('*') then
   begin
     AStar := (Count = 1) or ATokens[Count - 2].IsSymbol('.');
     Exit;
   end;
   if not IsName(ATokens[Count - 1]) or IsKeyword(ATokens[Count - 1]) then
+  begin
     Exit;
+  end;
   // Spalte AS Alias
   if (Count >= 2) and ATokens[Count - 2].IsWord('as') then
+  begin
     Exit(ATokens[Count - 1].Text);
+  end;
   // T.Spalte, Spalte
   Chain := Odd(Count);
   for Index := 0 to Count - 1 do
+  begin
     if Odd(Index) then
-      Chain := Chain and ATokens[Index].IsSymbol('.')
+    begin
+      Chain := Chain and ATokens[Index].IsSymbol('.');
+    end
     else
+    begin
       Chain := Chain and IsName(ATokens[Index]);
+    end;
+  end;
   if Chain then
+  begin
     Exit(ATokens[Count - 1].Text);
+  end;
   // Ausdruck Alias: Alias direkt hinter einem Namen, String, einer Zahl oder ")".
   if (Count >= 2) and not IsKeyword(ATokens[Count - 2]) and ((ATokens[Count - 2].Kind <> TSqlTokenKind.Symbol) or
     ATokens[Count - 2].IsSymbol(')')) then
+  begin
     Result := ATokens[Count - 1].Text;
+  end;
 end;
 
 { TDataFieldNames }
@@ -290,57 +332,85 @@ begin
       Open := Index;
       Inc(Index);
       while Index <= Length(ALine) do
+      begin
         if ALine[Index] = '''' then
         begin
           if (Index < Length(ALine)) and (ALine[Index + 1] = '''') then
-            Inc(Index, 2)
+          begin
+            Inc(Index, 2);
+          end
           else
+          begin
             Break;
+          end;
         end
         else
+        begin
           Inc(Index);
+        end;
+      end;
       Close := Index;
       if (Open <= ACharacter) and (ACharacter <= Close - 1) then
+      begin
         Break;
+      end;
       Open := 0;
       Inc(Index);
     end
     else if (ALine[Index] = '/') and (Index < Length(ALine)) and (ALine[Index + 1] = '/') then
-      Break
+    begin
+      Break;
+    end
     else if ALine[Index] = '{' then
     begin
       Index := PosEx('}', ALine, Index + 1);
       if Index = 0 then
+      begin
         Break;
+      end;
       Inc(Index);
     end
     else if (ALine[Index] = '(') and (Index < Length(ALine)) and (ALine[Index + 1] = '*') then
     begin
       Index := PosEx('*)', ALine, Index + 2);
       if Index = 0 then
+      begin
         Break;
+      end;
       Inc(Index, 2);
     end
     else
+    begin
       Inc(Index);
+    end;
   end;
   if Open = 0 then
+  begin
     Exit;
+  end;
   Match := TRegEx.Match(Copy(ALine, 1, Open - 1),
     '(?:^|[^\w.])((?:\w+\s*\.\s*)*\w+)\s*\.\s*(FieldByName|FindField|ParamByName)\s*\(\s*$', [roIgnoreCase]);
   if not Match.Success then
+  begin
     Exit;
+  end;
   Name := StringReplace(Match.Groups[1].Value, ' ', '', [rfReplaceAll]);
   if StartsText('Self.', Name) then
+  begin
     Delete(Name, 1, 5);
+  end;
   for Suffix in Suffixes do
+  begin
     if EndsText(Suffix, Name) then
     begin
       SetLength(Name, Length(Name) - Length(Suffix));
       Break;
     end;
+  end;
   if (Name = '') or SameText(Name, 'Self') then
+  begin
     Exit;
+  end;
   // DM.qryOrders: Datenmenge eines anderen Datenmoduls; längere Ketten nicht.
   Index := Pos('.', Name);
   if Index > 0 then
@@ -348,14 +418,20 @@ begin
     ACall.Owner := Copy(Name, 1, Index - 1);
     Delete(Name, 1, Index);
     if (ACall.Owner = '') or (Name = '') or (Pos('.', Name) > 0) then
+    begin
       Exit;
+    end;
   end;
   ACall.DataSet := Name;
   ACall.Method := Match.Groups[2].Value;
   if SameText(ACall.Method, 'ParamByName') then
-    ACall.Kind := TDataNameKind.Param
+  begin
+    ACall.Kind := TDataNameKind.Param;
+  end
   else
+  begin
     ACall.Kind := TDataNameKind.Field;
+  end;
   ACall.ContentStart := Open;
   ACall.ContentEnd := Close - 1;
   ACall.Content := StringReplace(Copy(ALine, Open + 1, Close - Open - 1), '''''', '''', [rfReplaceAll]);
@@ -374,7 +450,9 @@ var
     Name := ColumnName(Item, Star);
     AStar := AStar or Star;
     if (Name <> '') and (IndexText(Name, Result) < 0) then
+    begin
       Result := Result + [Name];
+    end;
     Item := nil;
   end;
 
@@ -384,36 +462,56 @@ begin
   Tokens := Tokenize(ASql);
   Index := 0;
   while (Index <= High(Tokens)) and not Tokens[Index].IsWord('select') do
+  begin
     Inc(Index);
+  end;
   if Index > High(Tokens) then
+  begin
     Exit;
+  end;
   Inc(Index);
   // DISTINCT, ALL, TOP n, FIRST n, SKIP n
   while Index <= High(Tokens) do
+  begin
     if Tokens[Index].IsWord('distinct') or Tokens[Index].IsWord('all') or Tokens[Index].IsWord('unique') then
-      Inc(Index)
+    begin
+      Inc(Index);
+    end
     else if (Tokens[Index].IsWord('top') or Tokens[Index].IsWord('first') or Tokens[Index].IsWord('skip')) and
       (Index < High(Tokens)) and (Tokens[Index + 1].Kind = TSqlTokenKind.Number) then
-      Inc(Index, 2)
+    begin
+      Inc(Index, 2);
+    end
     else
+    begin
       Break;
+    end;
+  end;
   Item := nil;
   Depth := 0;
   while Index <= High(Tokens) do
   begin
     if Depth = 0 then
+    begin
       if Tokens[Index].IsWord('from') or Tokens[Index].IsWord('into') or Tokens[Index].IsSymbol(';') then
-        Break
+      begin
+        Break;
+      end
       else if Tokens[Index].IsSymbol(',') then
       begin
         Flush;
         Inc(Index);
         Continue;
       end;
+    end;
     if Tokens[Index].IsSymbol('(') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Tokens[Index].IsSymbol(')') then
+    begin
       Dec(Depth);
+    end;
     Item := Item + [Tokens[Index]];
     Inc(Index);
   end;
@@ -425,12 +523,16 @@ var
   Child: TDfmObject;
 begin
   if (AObject.Kind <> TDfmObjectKind.Item) and SameText(AObject.Name, AName) then
+  begin
     Exit(AObject);
+  end;
   for Child in AObject.Children do
   begin
     Result := FindObject(Child, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -441,12 +543,16 @@ var
 begin
   AText := '';
   for Prop in AObject.Properties do
+  begin
     if SameText(Prop.Name, AName) then
     begin
       if not TStringLiterals.PlainText(Prop.Value, AText) then
+      begin
         AText := Trim(Prop.Value);
+      end;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -456,14 +562,20 @@ var
   Item: TDataName;
 begin
   if AName = '' then
+  begin
     Exit;
+  end;
   for Index := 0 to High(ANames) do
+  begin
     if SameText(ANames[Index].Name, AName) then
     begin
       if ANames[Index].TypeName = '' then
+      begin
         ANames[Index].TypeName := ATypeName;
+      end;
       Exit;
     end;
+  end;
   Item.Name := AName;
   Item.TypeName := ATypeName;
   ANames := ANames + [Item];
@@ -474,9 +586,13 @@ function FieldTypeName(const AClassName: string): string;
 begin
   Result := AClassName;
   if StartsText('T', Result) then
+  begin
     Delete(Result, 1, 1);
+  end;
   if EndsText('Field', Result) then
+  begin
     SetLength(Result, Length(Result) - 5);
+  end;
 end;
 
 class function TDataFieldNames.FromForm(const AFormText, ADataSet: string; AKind: TDataNameKind; out ASql: string;
@@ -496,13 +612,18 @@ begin
   Document := TDfmParser.Parse(AFormText);
   try
     if Document.Root = nil then
+    begin
       Exit;
+    end;
     DataSet := FindObject(Document.Root, ADataSet);
     if DataSet = nil then
+    begin
       Exit;
+    end;
     AFound := True;
     ASql := TSqlText.FromForm(AFormText, ADataSet);
     for Child in DataSet.Children do
+    begin
       if Child.Kind = TDfmObjectKind.Item then
       begin
         // Eintrag der Params-, Parameters- oder ParamData-Sammlung: Name und ParamType bzw. Direction.
@@ -511,29 +632,42 @@ begin
         begin
           PropertyText(Child, 'DataType', DataType);
           if StartsText('ft', DataType) then
+          begin
             Delete(DataType, 1, 2);
+          end;
           if SameText(DataType, 'Unknown') then
+          begin
             DataType := '';
+          end;
           Add(Params, Name, DataType);
         end;
       end
       // Persistentes Feld: Kindobjekt mit FieldName.
       else if (AKind = TDataNameKind.Field) and PropertyText(Child, 'FieldName', Name) then
+      begin
         Add(Result, Name, FieldTypeName(Child.TypeName));
+      end;
+    end;
   finally
     Document.Free;
   end;
   if AKind = TDataNameKind.Field then
   begin
     for Name in SelectColumns(ASql, Star) do
+    begin
       Add(Result, Name, '');
+    end;
   end
   else
   begin
     for Name in TSqlText.Params(ASql) do
+    begin
       Add(Result, Name, '');
+    end;
     for Param in Params do
+    begin
       Add(Result, Param.Name, Param.TypeName);
+    end;
   end;
 end;
 
@@ -546,7 +680,9 @@ class function TDataFieldNames.ShortSql(const ASql: string; AMaxLength: Integer)
 begin
   Result := Trim(TRegEx.Replace(ASql, '\s+', ' '));
   if Length(Result) > AMaxLength then
+  begin
     Result := Copy(Result, 1, AMaxLength - 1) + '…';
+  end;
 end;
 
 /// <summary>Name des Wurzelobjekts der Formulardatei; '' ohne.</summary>
@@ -558,7 +694,9 @@ begin
   Document := TDfmParser.Parse(AFormText);
   try
     if Document.Root <> nil then
+    begin
       Result := Document.Root.Name;
+    end;
   finally
     Document.Free;
   end;
@@ -572,12 +710,16 @@ class function TDataFieldNames.Lookup(const AText, AFileName: string; const ACal
     FormFile, FormText: string;
   begin
     for FormFile in TFormFiles.FormFiles(AUnitFile, AUnitText) do
+    begin
       if AReadText(FormFile, FormText) and (not ARoot or SameText(RootName(FormText), ACall.Owner)) then
       begin
         ANames := FromForm(FormText, ACall.DataSet, ACall.Kind, ASql, AFound);
         if AFound then
+        begin
           Exit(True);
+        end;
       end;
+    end;
     Result := False;
   end;
 
@@ -589,15 +731,23 @@ begin
   ASql := '';
   AFound := False;
   if not Assigned(AReadText) then
+  begin
     Exit;
+  end;
   if FromUnit(AFileName, AText, ACall.Owner <> '', Result) or (ACall.Owner = '') or (AIndex = nil) then
+  begin
     Exit;
+  end;
   // Globale Variable des Datenmoduls: Formulardatei ihrer Unit.
   for Location in AIndex.FindSymbols(ACall.Owner) do
+  begin
     if (Location.Symbol.Kind = TIndexSymbolKind.Variable) and (Location.Symbol.Container = '') and
       not SameText(Location.FileName, AFileName) and AReadText(Location.FileName, UnitText) and
       FromUnit(Location.FileName, UnitText, False, Result) then
+    begin
       Exit;
+    end;
+  end;
   Result := nil;
 end;
 
@@ -606,8 +756,12 @@ var
   Item: TDataName;
 begin
   for Item in ANames do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 

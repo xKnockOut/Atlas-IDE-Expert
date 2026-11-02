@@ -136,16 +136,20 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -193,7 +197,9 @@ var
 begin
   Result := '';
   for Item in AItems.Items do
+  begin
     Result := Result + Item.Name + ' ';
+  end;
   Result := Result.Trim;
 end;
 
@@ -203,8 +209,12 @@ var
 begin
   Result := False;
   for Item in AItems.Items do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TLspCompletionContextTests.PrivateFieldOfOtherUnitIsHidden;
@@ -408,8 +418,12 @@ begin
   Lines := string(UnitEigenschaft).Split([#10]);
   Position := TTextPosition.Create(0, 0);
   for Line := 0 to High(Lines) do
+  begin
     if Pos(AMarker, Lines[Line]) > 0 then
+    begin
       Position := TTextPosition.Create(Line, Pos(AMarker, Lines[Line]) - 1 + Length(AMarker));
+    end;
+  end;
   Tree := TPascalParser.Parse(UnitEigenschaft);
   Request := TCompletionRequest.Create(UnitEigenschaft, HauptFile, Position);
   try
@@ -449,7 +463,9 @@ begin
   // Der Getter hat Deklaration und Rumpf.
   Inserted := '';
   for Edit in Items.Items[1].AdditionalEdits do
+  begin
     Inserted := Inserted + Edit.NewText;
+  end;
   Assert.Contains(Inserted, 'function GetCaption: string;');
   Assert.Contains(Inserted, 'function TFoo.GetCaption: string;');
   // Nach "write " ohne Feld FTitel: „Feld FTitel anlegen“, „SetTitel anlegen“ legt das Feld mit an; danach das
@@ -471,7 +487,9 @@ begin
   Items := AccessorItemsAt(FResolver, 'read Ca', Settings);
   Inserted := '';
   for Edit in Items.Items[1].AdditionalEdits do
+  begin
     Inserted := Inserted + Edit.NewText;
+  end;
   // Kein protected vor der Eigenschaft: eigener Abschnitt, danach weiter public.
   Assert.Contains(Inserted, '  protected'#10'    function GetCaption: string;'#10'  public'#10);
   // Abgeschaltet: nur vorhandene Mitglieder.

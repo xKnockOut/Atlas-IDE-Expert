@@ -57,8 +57,12 @@ var
 begin
   Result := nil;
   for Token in TPascalLexer.Tokenize(AText) do
+  begin
     if Token.Kind <> TPascalTokenKind.Comment then
+    begin
       Result := Result + [Token];
+    end;
+  end;
 end;
 
 /// <summary>Stehen ab AIndex die Tokens von AName (mit Punkten)? AIndex zeigt danach hinter den Namen.</summary>
@@ -75,19 +79,25 @@ begin
     Part := Copy(Rest, 1, Dot - 1);
     Delete(Rest, 1, Dot);
     if (Index > High(ATokens)) or not SameText(ATokens[Index].Text, Part) then
+    begin
       Exit(False);
+    end;
     Inc(Index);
     if Rest <> '' then
     begin
       if (Index > High(ATokens)) or (ATokens[Index].Text <> '.') then
+      begin
         Exit(False);
+      end;
       Inc(Index);
     end;
     Dot := Pos('.', Rest);
   end;
   // Kein Teil eines längeren Namens wie DM.Q oder Q2.
   if (AIndex > 0) and (ATokens[AIndex - 1].Text = '.') then
+  begin
     Exit(False);
+  end;
   AIndex := Index;
   Result := True;
 end;
@@ -97,7 +107,9 @@ function Take(const ATokens: TTokens; var AIndex: Integer; const AText: string):
 begin
   Result := (AIndex <= High(ATokens)) and SameText(ATokens[AIndex].Text, AText);
   if Result then
+  begin
     Inc(AIndex);
+  end;
 end;
 
 /// <summary>Text der Tokens ab AIndex bis vor ein Token AStop auf Klammerebene 0.</summary>
@@ -110,11 +122,17 @@ begin
   while AIndex <= High(ATokens) do
   begin
     if (Depth = 0) and (ATokens[AIndex].Text = AStop) then
+    begin
       Exit;
+    end;
     if ATokens[AIndex].Text = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ATokens[AIndex].Text = ')' then
+    begin
       Dec(Depth);
+    end;
     Result := Result + ' ' + ATokens[AIndex].Text;
     Inc(AIndex);
   end;
@@ -137,24 +155,34 @@ begin
       Quote := ASql[Index];
       Inc(Index);
       while (Index <= Length(ASql)) and (ASql[Index] <> Quote) do
+      begin
         Inc(Index);
+      end;
     end
     else if (ASql[Index] = '-') and (Index < Length(ASql)) and (ASql[Index + 1] = '-') then
     begin
       while (Index <= Length(ASql)) and not CharInSet(ASql[Index], [#10, #13]) do
+      begin
         Inc(Index);
+      end;
     end
     else if (ASql[Index] = ':') and (Index < Length(ASql)) and (ASql[Index + 1] = ':') then
-      Inc(Index)
+    begin
+      Inc(Index);
+    end
     else if (ASql[Index] = ':') and ((Index = 1) or not TTextChars.IsIdentChar(ASql[Index - 1])) and
       (Index < Length(ASql)) and TTextChars.IsIdentChar(ASql[Index + 1]) then
     begin
       Start := Index + 1;
       while (Index < Length(ASql)) and TTextChars.IsIdentChar(ASql[Index + 1]) do
+      begin
         Inc(Index);
+      end;
       Name := Copy(ASql, Start, Index - Start + 1);
       if not Contains(Result, Name) then
+      begin
         Result := Result + [Name];
+      end;
     end;
     Inc(Index);
   end;
@@ -184,9 +212,13 @@ begin
   while Index <= Length(Sql) do
   begin
     while (Index <= Length(Sql)) and (Sql[Index] <= ' ') do
+    begin
       Inc(Index);
+    end;
     if Index > Length(Sql) then
+    begin
       Break;
+    end;
     Start := Index;
     while (Index <= Length(Sql)) and (Sql[Index] > ' ') do
     begin
@@ -195,7 +227,9 @@ begin
         Quote := Sql[Index];
         Inc(Index);
         while (Index <= Length(Sql)) and (Sql[Index] <> Quote) do
+        begin
           Inc(Index);
+        end;
       end;
       Inc(Index);
     end;
@@ -209,12 +243,16 @@ begin
     BreakHere := MatchStr(Word, Breaks) and not ((Word = 'join') and (Index > 0) and
       MatchText(Words[Index - 1], JoinKinds));
     if MatchStr(Word, ['order', 'group']) then
+    begin
       BreakHere := (Index < High(Words)) and SameText(Words[Index + 1], 'by');
+    end;
     if MatchStr(Word, JoinKinds) and not ((Index > 0) and MatchText(Words[Index - 1], JoinKinds)) then
     begin
       Next := Index + 1;
       while (Next <= High(Words)) and MatchText(Words[Next], JoinKinds) do
+      begin
         Inc(Next);
+      end;
       BreakHere := (Next <= High(Words)) and SameText(Words[Next], 'join');
     end;
     if BreakHere and (Line <> '') then
@@ -223,12 +261,18 @@ begin
       Line := '';
     end;
     if Line = '' then
-      Line := Words[Index]
+    begin
+      Line := Words[Index];
+    end
     else
+    begin
       Line := Line + ' ' + Words[Index];
+    end;
   end;
   if Line <> '' then
+  begin
     Result := Result + [Line];
+  end;
 end;
 
 class function TSqlText.FromSource(const AText, AName: string): string;
@@ -249,22 +293,34 @@ begin
       if Take(Tokens, Cursor, 'Text') and Take(Tokens, Cursor, ':=') then
       begin
         if TStringLiterals.PlainText(ExpressionUntil(Tokens, Cursor, ';'), Plain) then
+        begin
           Result := Plain;
+        end;
       end
       else if Take(Tokens, Cursor, 'Add') and Take(Tokens, Cursor, '(') then
       begin
         if TStringLiterals.PlainText(ExpressionUntil(Tokens, Cursor, ')'), Plain) then
+        begin
           if Result = '' then
-            Result := Plain
+          begin
+            Result := Plain;
+          end
           else
+          begin
             Result := Result + #13#10 + Plain;
+          end;
+        end;
       end
       else if Take(Tokens, Cursor, 'Clear') then
+      begin
         Result := '';
+      end;
       Index := Cursor;
     end
     else
+    begin
       Inc(Index);
+    end;
   end;
 end;
 
@@ -273,12 +329,16 @@ var
   Child: TDfmObject;
 begin
   if SameText(AObject.Name, AName) then
+  begin
     Exit(AObject);
+  end;
   for Child in AObject.Children do
   begin
     Result := FindObject(Child, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -292,7 +352,9 @@ begin
   AText := '';
   Value := Trim(AValue);
   if StartsStr('(', Value) and EndsStr(')', Value) then
+  begin
     Value := Copy(Value, 2, Length(Value) - 2);
+  end;
   Continued := True;
   Rest := StringReplace(Value, #13#10, #10, [rfReplaceAll]) + #10;
   Separator := Pos(#10, Rest);
@@ -302,14 +364,18 @@ begin
     Delete(Rest, 1, Separator);
     Separator := Pos(#10, Rest);
     if Line = '' then
+    begin
       Continue;
+    end;
     if not TStringLiterals.PlainText(Line, Plain) then
     begin
       AText := '';
       Exit(False);
     end;
     if not Continued then
+    begin
       AText := AText + #13#10;
+    end;
     AText := AText + Plain;
     // Lange DFM-Zeilen setzen sich mit "+" in der nächsten fort.
     Continued := EndsStr('+', Line);
@@ -328,16 +394,22 @@ begin
   Document := TDfmParser.Parse(AFormText);
   try
     if Document.Root = nil then
+    begin
       Exit;
+    end;
     Found := FindObject(Document.Root, Copy(AName, LastDelimiter('.', AName) + 1, MaxInt));
     if Found = nil then
+    begin
       Exit;
+    end;
     for Prop in Found.Properties do
+    begin
       if SameText(Prop.Name, 'SQL.Strings') or SameText(Prop.Name, 'CommandText') then
       begin
         FormValue(Prop.Value, Result);
         Exit;
       end;
+    end;
   finally
     Document.Free;
   end;
@@ -355,13 +427,19 @@ begin
   begin
     Cursor := Index;
     if not (MatchName(Tokens, Cursor, AName) and Take(Tokens, Cursor, '.')) then
+    begin
       Continue;
+    end;
     if (Take(Tokens, Cursor, 'Params') or Take(Tokens, Cursor, 'Parameters')) and not Take(Tokens, Cursor, '.') then
+    begin
       Continue;
+    end;
     if Take(Tokens, Cursor, 'ParamByName') and Take(Tokens, Cursor, '(') and (Cursor <= High(Tokens)) and
       (Tokens[Cursor].Kind = TPascalTokenKind.StringLiteral) and
       TStringLiterals.PlainText(Tokens[Cursor].Text, Name) and not Contains(Result, Name) then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 
@@ -371,8 +449,12 @@ var
 begin
   Result := nil;
   for Item in AItems do
+  begin
     if not Contains(AOf, Item) then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 end.

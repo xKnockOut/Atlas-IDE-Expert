@@ -140,13 +140,21 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, PanelsFile) then
-    Result := UnitPanels
+  begin
+    Result := UnitPanels;
+  end
   else if SameText(AFileName, MainFile) then
-    Result := UnitMain
+  begin
+    Result := UnitMain;
+  end
   else if SameText(AFileName, MainForm) then
-    Result := FormMain
+  begin
+    Result := FormMain;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function Apply(const AText: string; ADocument: TJSONObject): string;
@@ -206,7 +214,9 @@ begin
       Result := Result + [ExtractFileName(FileName) + '|' + Apply(TextOf(FileName), Document)];
     end;
     for Item in Answer.GetValue('warnings') as TJSONArray do
+    begin
       AWarnings := AWarnings + [Item.Value];
+    end;
   finally
     Answer.Free;
     Resolver.Free;
@@ -219,8 +229,12 @@ var
   Item: string;
 begin
   for Item in AResults do
+  begin
     if SameText(Copy(Item, 1, Pos('|', Item) - 1), AName) then
+    begin
       Exit(Copy(Item, Pos('|', Item) + 1, MaxInt));
+    end;
+  end;
   Result := '';
 end;
 
@@ -341,7 +355,9 @@ begin
         (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       for Action in Actions do
+      begin
         Action.Free;
+      end;
     end;
     Assert.AreEqual(0, Integer(Length(TLspInvertBoolean.Actions(False, Resolver, Tree, PanelsFile,
       'file:///C:/P/Panels.pas', TTextPosition.Create(5, 5), Context(FIndex)))));

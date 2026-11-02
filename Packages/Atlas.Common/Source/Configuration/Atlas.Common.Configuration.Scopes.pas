@@ -83,8 +83,12 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if Item = APath then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -94,12 +98,20 @@ var
 begin
   Result := '"';
   for Ch in AKey do
+  begin
     if (Ch = '"') or (Ch = '\') then
-      Result := Result + '\' + Ch
+    begin
+      Result := Result + '\' + Ch;
+    end
     else if Ord(Ch) < 32 then
-      Result := Result + Format('\u%.4x', [Ord(Ch)])
+    begin
+      Result := Result + Format('\u%.4x', [Ord(Ch)]);
+    end
     else
+    begin
       Result := Result + Ch;
+    end;
+  end;
   Result := Result + '"';
 end;
 
@@ -111,11 +123,15 @@ end;
 function Misplaced(const APath: string; AKeep: TConfigurationScope): string;
 begin
   if AKeep = TConfigurationScope.Project then
+  begin
     Result := Format('"%s" gilt für alle Projekte und gehört in die globalen Einstellungen ' +
-      '(Tools › Optionen › Atlas, Datei %%APPDATA%%\Atlas\settings.json); in atlas.json wird es ignoriert', [APath])
+      '(Tools › Optionen › Atlas, Datei %%APPDATA%%\Atlas\settings.json); in atlas.json wird es ignoriert', [APath]);
+  end
   else
+  begin
     Result := Format('"%s" gehört zum Projekt (atlas.json, Atlas › Projekt-Einstellungen); in den globalen ' +
       'Einstellungen wird es ignoriert', [APath]);
+  end;
 end;
 
 function FilterScope(const AText: string; AKeep: TConfigurationScope;
@@ -128,14 +144,22 @@ var
   Dot: Integer;
 begin
   if Listed(APath, GlobalSettingPaths) and Listed(APath, ProjectSettingPaths) then
+  begin
     Exit(TConfigurationScope.Both);
+  end;
   if Listed(APath, GlobalSettingPaths) then
+  begin
     Exit(TConfigurationScope.Global);
+  end;
   if Listed(APath, ProjectSettingPaths) then
+  begin
     Exit(TConfigurationScope.Project);
+  end;
   Dot := Pos('.', APath);
   if Dot > 0 then
+  begin
     Exit(ScopeOf(Copy(APath, 1, Dot - 1)));
+  end;
   Result := TConfigurationScope.Unknown;
 end;
 
@@ -145,11 +169,19 @@ var
 begin
   Result := False;
   for Item in GlobalSettingPaths do
+  begin
     if Item.StartsWith(AKey + '.') then
+    begin
       Result := True;
+    end;
+  end;
   for Item in ProjectSettingPaths do
+  begin
     if Item.StartsWith(AKey + '.') then
+    begin
       Result := True;
+    end;
+  end;
 end;
 
 class function TConfigurationScopes.Filter(const AText: string; AKeep: TConfigurationScope;
@@ -158,7 +190,9 @@ var
   Forbidden, Ignored: TArray<TConfigurationIssue>;
 begin
   if AKeep <> TConfigurationScope.Project then
+  begin
     Exit(FilterScope(AText, AKeep, AIssues));
+  end;
   // atlas.json gilt für alle im Team (#486): ohne Zugangsdaten und absolute Pfade. Die Meldungen zum Ort beziehen
   // sich auf den Originaltext.
   FilterScope(AText, AKeep, AIssues);
@@ -196,7 +230,9 @@ begin
   AIssues := nil;
   Result := AText;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   try
     Root := TJsonTree.Parse(AText);
   except
@@ -206,7 +242,9 @@ begin
   end;
   try
     if Root.Kind <> TJsonKind.Object_ then
+    begin
       Exit;
+    end;
     Parts := nil;
     Removed := False;
     for Index := 0 to Root.Count - 1 do
@@ -221,7 +259,9 @@ begin
         begin
           Path := Key + '.' + Value.Keys[Sub];
           if Keeps(TConfigurationScopes.ScopeOf(Path)) then
-            Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])]
+          begin
+            Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])];
+          end
           else
           begin
             Report(Value.KeyStarts[Sub], Value.Keys[Sub], Path);
@@ -229,21 +269,29 @@ begin
           end;
         end;
         if not SubRemoved then
-          Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
+        begin
+          Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
+        end
         else
         begin
           Removed := True;
           // Ein leeres Objekt wäre an diesem Ort sinnlos; es fällt ganz weg.
           if Length(Members) > 0 then
+          begin
             Parts := Parts + [QuoteKey(Key) + ': {' + string.Join(', ', Members) + '}'];
+          end;
         end;
         Continue;
       end;
       Scope := TConfigurationScope.Unknown;
       if Key <> '$schema' then
+      begin
         Scope := TConfigurationScopes.ScopeOf(Key);
+      end;
       if Keeps(Scope) then
-        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
+      begin
+        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
+      end
       else
       begin
         Report(Root.KeyStarts[Index], Key, Key);
@@ -251,7 +299,9 @@ begin
       end;
     end;
     if Removed then
+    begin
       Result := '{' + string.Join(', ', Parts) + '}';
+    end;
   finally
     Root.Free;
   end;
@@ -288,7 +338,9 @@ var
 begin
   Result := AText;
   if (Length(APaths) = 0) or (Trim(AText) = '') or ExperimentalEnabled(AText) then
+  begin
     Exit;
+  end;
   try
     Root := TJsonTree.Parse(AText);
   except
@@ -298,7 +350,9 @@ begin
   end;
   try
     if Root.Kind <> TJsonKind.Object_ then
+    begin
       Exit;
+    end;
     Parts := nil;
     Removed := False;
     for Index := 0 to Root.Count - 1 do
@@ -318,12 +372,20 @@ begin
       Members := nil;
       SubRemoved := False;
       for Sub := 0 to Value.Count - 1 do
+      begin
         if Listed(Key + '.' + Value.Keys[Sub], APaths) then
-          SubRemoved := True
+        begin
+          SubRemoved := True;
+        end
         else
+        begin
           Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])];
+        end;
+      end;
       if not SubRemoved then
-        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
+      begin
+        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
+      end
       else
       begin
         Removed := True;
@@ -331,7 +393,9 @@ begin
       end;
     end;
     if Removed then
+    begin
       Result := '{' + string.Join(', ', Parts) + '}';
+    end;
   finally
     Root.Free;
   end;
@@ -341,7 +405,9 @@ class function TConfigurationScopes.GlobalFile(const AAppData: string): string;
 begin
   Result := '';
   if AAppData <> '' then
+  begin
     Result := IncludeTrailingPathDelimiter(AAppData) + GlobalFolder + PathDelim + GlobalName;
+  end;
 end;
 
 end.

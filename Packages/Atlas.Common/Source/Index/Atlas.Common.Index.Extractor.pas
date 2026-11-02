@@ -195,17 +195,29 @@ var
 begin
   Text := LowerCase(Trim(AText));
   if Text = 'strict private' then
-    Result := TIndexVisibility.StrictPrivate
+  begin
+    Result := TIndexVisibility.StrictPrivate;
+  end
   else if Text = 'private' then
-    Result := TIndexVisibility.Private
+  begin
+    Result := TIndexVisibility.Private;
+  end
   else if Text = 'strict protected' then
-    Result := TIndexVisibility.StrictProtected
+  begin
+    Result := TIndexVisibility.StrictProtected;
+  end
   else if Text = 'protected' then
-    Result := TIndexVisibility.Protected
+  begin
+    Result := TIndexVisibility.Protected;
+  end
   else if Text = 'published' then
-    Result := TIndexVisibility.Published
+  begin
+    Result := TIndexVisibility.Published;
+  end
   else
+  begin
     Result := TIndexVisibility.Public;
+  end;
 end;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
@@ -220,7 +232,9 @@ begin
   Start := LastDelimiter('\/', AFileName) + 1;
   Stop := LastDelimiter('.', AFileName);
   if Stop < Start then
+  begin
     Stop := Length(AFileName) + 1;
+  end;
   Result := Copy(AFileName, Start, Stop - Start);
 end;
 
@@ -252,9 +266,13 @@ begin
   begin
     Middle := (Left + Right) div 2;
     if FTokens[Middle].Offset < AOffset then
-      Left := Middle + 1
+    begin
+      Left := Middle + 1;
+    end
     else
+    begin
       Right := Middle;
+    end;
   end;
   Result := Left;
 end;
@@ -269,6 +287,7 @@ begin
   begin
     FScopedKnown := True;
     for Token in FTokens do
+    begin
       if Token.Kind = TPascalTokenKind.Directive then
       begin
         Text := UpperCase(Token.Text);
@@ -279,13 +298,20 @@ begin
           FScopedOn := FScopedOn + [Text.StartsWith('ON')];
         end;
       end;
+    end;
   end;
   Result := False;
   for Index := 0 to High(FScopedOffsets) do
+  begin
     if FScopedOffsets[Index] < AOffset then
-      Result := FScopedOn[Index]
+    begin
+      Result := FScopedOn[Index];
+    end
     else
+    begin
       Break;
+    end;
+  end;
 end;
 
 function TIndexExtractor.NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
@@ -297,7 +323,9 @@ begin
   begin
     if (FTokens[Index].Kind = TPascalTokenKind.Identifier) and
       (SameText(FTokens[Index].Text, AName) or SameText(FTokens[Index].Text, '&' + AName)) then
+    begin
       Exit(TTextRange.Create(FTokens[Index].StartPos, FTokens[Index].EndPos));
+    end;
     Inc(Index);
   end;
   Result := NodeRange(ANode);
@@ -309,9 +337,13 @@ var
 begin
   Index := TokenIndexAt(ANode.StartOffset);
   while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Inc(Index);
+  end;
   if (Index < Length(FTokens)) and FTokens[Index].IsKeyword('class') then
+  begin
     Inc(Index);
+  end;
   Result := (Index < Length(FTokens)) and
     (FTokens[Index].IsKeyword('constructor') or FTokens[Index].IsKeyword('destructor'));
 end;
@@ -322,18 +354,28 @@ var
 begin
   Index := TokenIndexAt(ANode.StartOffset);
   while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Inc(Index);
+  end;
   if (Index < Length(FTokens)) and FTokens[Index].IsKeyword('class') then
+  begin
     Exit(True);
+  end;
   Index := TokenIndexAt(ANode.StartOffset) - 1;
   while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Dec(Index);
+  end;
   if (Index < 0) or not FTokens[Index].IsKeyword('class') then
+  begin
     Exit(False);
+  end;
   // "TFoo = class" bzw. "= packed class" direkt vor dem ersten Mitglied ist der Typ selbst.
   Dec(Index);
   while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Dec(Index);
+  end;
   Result := (Index >= 0) and not FTokens[Index].IsSymbol('=') and not FTokens[Index].IsKeyword('packed');
 end;
 
@@ -355,7 +397,9 @@ var
   TypeText_, mProcedureKind: string;
 begin
   if AName = '' then
+  begin
     Exit;
+  end;
   // Der Index führt die Namen ohne Escape-&, wie die Namensauflösung sie sucht (#1137).
   Symbol.Name := TPascalLexer.PlainName(AName);
   Symbol.Container := TPascalLexer.PlainName(AContainer);
@@ -373,32 +417,48 @@ begin
     // ihn nicht bis AnsiString verfolgen, sonst meldet z. B. suspicious-string-pointer-cast "R ist AnsiString".
     if (AKind = TIndexSymbolKind.TypeAlias) and SameText(Symbol.TypeName, 'AnsiString') and
       (DeclaredTypeNode(ANode).ChildCount > 0) then
+    begin
       Symbol.TypeName := '';
+    end;
     if Symbol.TypeName <> '' then
+    begin
       Symbol.TypeArgs := GenericArgsText(DeclaredTypeNode(ANode));
+    end;
   end
   else
+  begin
     Symbol.TypeName := '';
+  end;
   // Erweiterungen für die Namensauflösung, Stufe 2 (#263).
   Symbol.AncestorArgs := FAncestorArgs;
   Symbol.TypeParams := TypeParamsOf(ANode);
   if (AContainer <> '') and (AKind <> TIndexSymbolKind.EnumMember) then
-    Symbol.Visibility := FVisibility
+  begin
+    Symbol.Visibility := FVisibility;
+  end
   else
+  begin
     Symbol.Visibility := TIndexVisibility.Public;
+  end;
   Symbol.MinArgs := 0;
   Symbol.MaxArgs := 0;
   Symbol.ParamTypes := nil;
   Symbol.IsDefault := False;
   if AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine,
     TIndexSymbolKind.Property_] then
+  begin
     ParamInfo(ANode, Symbol.MinArgs, Symbol.MaxArgs, Symbol.ParamTypes);
+  end;
   if AKind = TIndexSymbolKind.Property_ then
+  begin
     Symbol.IsDefault := IsDefaultProperty(ANode);
+  end;
   Symbol.IsVirtual := (AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and IsVirtualHeader(ANode);
   Symbol.FileName := '';
   if FForward then
+  begin
     FForwards.Add(FSymbols.Count);
+  end;
   Symbol.Condition := '';
   Symbol.Unavailable := False;
   Symbol.VariantBranch := FVariant;
@@ -406,25 +466,33 @@ begin
   // Inhalt für Hover, Detailpanel und Verwendungen ohne erneutes Lesen der Datei (#492).
   TypeText_ := '';
   if Symbol.TypeName <> '' then
+  begin
     TypeText_ := TypeText(DeclaredTypeNode(ANode));
+  end;
   Symbol.Signature := SignatureOf(ANode, AKind, AName, TypeText_);
   Symbol.Directives := DirectivesOf(ANode, AKind, Symbol.DeprecatedText);
   if Symbol.IsDefault and (IndexText('default', Symbol.Directives) < 0) then
+  begin
     Symbol.Directives := Symbol.Directives + ['default'];
+  end;
   // Methodenzeiger und Methodenreferenzen als Merkmal (#1326): Die Signatur kann bei langen Parameterlisten
   // vor "of object" abgeschnitten sein (TIndexSymbol.MaxSignature).
   if AKind = TIndexSymbolKind.TypeAlias then
   begin
     mProcedureKind := ProcedureKindOf(ProcedureTypeOf(ANode));
     if mProcedureKind <> '' then
+    begin
       Symbol.Directives := Symbol.Directives + [mProcedureKind];
+    end;
   end;
   // Klassenmitglieder (class var, class property, class function) tragen "class" vorn, damit Regeln wie
   // property-accessor-invalid (#1001) sie ohne die Datei erkennen.
   if (AContainer <> '') and (((AKind = TIndexSymbolKind.Field) and FClassVar) or
     ((AKind in [TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
     IsClassMember(ANode))) then
+  begin
     Symbol.Directives := ['class'] + Symbol.Directives;
+  end;
   Symbol.Summary := SummaryOf(ANode);
   Symbol.Rationale := RationaleOf(TRationaleScanner.ForNode(FTokens, ANode));
   FSymbols.Add(Symbol);
@@ -448,41 +516,61 @@ begin
     for Index := AFrom to ATo do
     begin
       if (Index < 0) or (Index >= Length(FTokens)) then
+      begin
         Continue;
+      end;
       Token := FTokens[Index];
       // {$I datei.inc} als Wert (#849) bleibt stehen; AddIncluded setzt den Inhalt ein.
       if (Token.Kind = TPascalTokenKind.Comment) or
         ((Token.Kind = TPascalTokenKind.Directive) and
         not TPascalPreprocessor.IncludeFileOf(Token.Text, IncludeName)) then
+      begin
         Continue;
+      end;
       if FirstLine < 0 then
+      begin
         FirstLine := Token.StartPos.Line;
+      end;
       if AFirstLine and (Depth = 0) and (Token.StartPos.Line > FirstLine) then
+      begin
         Break;
+      end;
       // ":" vor "=" (Zuweisung im Standardwert) bleibt ein Wort.
       if (Builder.Length > 0) and (Token.Text <> '') then
+      begin
         if not ((Token.Kind = TPascalTokenKind.Symbol) and (IndexStr(Token.Text, NoSpaceBefore) >= 0)) and
           (IndexStr(Previous, NoSpaceAfter) < 0) then
+        begin
           Builder.Append(' ');
+        end;
+      end;
       // Ein Doppelpunkt trennt Name und Typ: "A: Integer".
       Builder.Append(Token.Text);
       if Token.Kind = TPascalTokenKind.Symbol then
       begin
         if (Token.Text = '(') or (Token.Text = '[') then
-          Inc(Depth)
+        begin
+          Inc(Depth);
+        end
         else if ((Token.Text = ')') or (Token.Text = ']')) and (Depth > 0) then
+        begin
           Dec(Depth);
+        end;
       end;
       Previous := Token.Text;
       if Builder.Length > TIndexSymbol.MaxSignature then
+      begin
         Break;
+      end;
     end;
     Result := Builder.ToString;
   finally
     Builder.Free;
   end;
   if Length(Result) > TIndexSymbol.MaxSignature then
+  begin
     Result := Copy(Result, 1, TIndexSymbol.MaxSignature - 1) + '…';
+  end;
 end;
 
 function TIndexExtractor.SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind;
@@ -494,7 +582,9 @@ var
 begin
   Node := ANode;
   if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+  begin
     Node := Node.FindChild(TSyntaxKind.RoutineHeader);
+  end;
   case AKind of
     TIndexSymbolKind.EnumMember:
       Exit(AName);
@@ -508,8 +598,10 @@ begin
         TypeRef := DeclaredTypeNode(ANode);
         if (TypeRef <> nil) and SameText(TypeRef.Name, 'string') and (TypeRef.ChildCount = 1) and
           (TypeRef[0].Kind <> TSyntaxKind.GenericArgs) then
+        begin
           Suffix := '[' + TokenText(TokenIndexAt(TypeRef[0].StartOffset), TokenIndexAt(TypeRef[0].EndOffset) - 1,
             False) + ']';
+        end;
         Exit(AName + ': ' + ATypeText + Suffix);
       end;
   else
@@ -524,7 +616,9 @@ begin
     not ((AKind = TIndexSymbolKind.TypeAlias) and (ProcedureTypeOf(Node) <> nil)));
   // Ein abschließendes Semikolon gehört nicht zur Anzeige.
   while Result.EndsWith(';') do
+  begin
     Result := Copy(Result, 1, Length(Result) - 1).TrimRight;
+  end;
 end;
 
 class function TIndexExtractor.ProcedureTypeOf(ANode: TSyntaxNode): TSyntaxNode;
@@ -533,15 +627,21 @@ var
 begin
   Result := nil;
   if (ANode = nil) or (ANode.Kind <> TSyntaxKind.TypeDecl) then
+  begin
     Exit;
+  end;
   // Rumpf ist das erste Kind außer Typparametern und Attributen (wie in AddType).
   for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
     if not (ANode[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
     begin
       if ANode[mIndex].Kind = TSyntaxKind.ProcedureType then
+      begin
         Result := ANode[mIndex];
+      end;
       Exit;
     end;
+  end;
 end;
 
 function TIndexExtractor.ProcedureKindOf(AType: TSyntaxNode): string;
@@ -551,9 +651,13 @@ var
 begin
   Result := '';
   if AType = nil then
+  begin
     Exit;
+  end;
   if SameText(AType.Name, 'reference') then
+  begin
     Exit('reference to');
+  end;
   mDepth := 0;
   mLast := TokenIndexAt(AType.EndOffset) - 1;
   mIndex := TokenIndexAt(AType.StartOffset);
@@ -563,18 +667,26 @@ begin
     if mToken.Kind = TPascalTokenKind.Symbol then
     begin
       if (mToken.Text = '(') or (mToken.Text = '[') then
-        Inc(mDepth)
+      begin
+        Inc(mDepth);
+      end
       else if ((mToken.Text = ')') or (mToken.Text = ']')) and (mDepth > 0) then
+      begin
         Dec(mDepth);
+      end;
     end
     else if (mDepth = 0) and mToken.IsKeyword('of') then
     begin
       // Kommentare und Direktiven zwischen "of" und "object" überspringen.
       Inc(mIndex);
       while (mIndex <= mLast) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      begin
         Inc(mIndex);
+      end;
       if (mIndex <= mLast) and SameText(FTokens[mIndex].Text, 'object') then
+      begin
         Result := 'of object';
+      end;
       Exit;
     end;
     Inc(mIndex);
@@ -591,7 +703,9 @@ var
   procedure AddWord(const AWord: string);
   begin
     if IndexText(AWord, Result) < 0 then
+    begin
       Result := Result + [LowerCase(AWord)];
+    end;
   end;
 
   function IsHintAt(APos: Integer): Boolean;
@@ -606,7 +720,9 @@ var
     Result := APos + 1;
     while (Result < Length(FTokens)) and (FTokens[Result].Kind in [TPascalTokenKind.Comment,
       TPascalTokenKind.Directive]) do
+    begin
       Inc(Result);
+    end;
   end;
 
   // Grund hinter deprecated am Token APos: deprecated 'Stattdessen Bar verwenden'.
@@ -616,13 +732,19 @@ var
     Text: string;
   begin
     if (APos < 0) or (APos >= Length(FTokens)) or not SameText(FTokens[APos].Text, 'deprecated') then
+    begin
       Exit;
+    end;
     Next := NextCode(APos);
     if (Next >= Length(FTokens)) or (FTokens[Next].Kind <> TPascalTokenKind.StringLiteral) then
+    begin
       Exit;
+    end;
     Text := FTokens[Next].Text;
     if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
+    begin
       Text := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
+    end;
     ADeprecatedText := Text;
   end;
 
@@ -639,25 +761,33 @@ begin
   ADeprecatedText := '';
   Node := ANode;
   if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+  begin
     Node := Node.FindChild(TSyntaxKind.RoutineHeader);
+  end;
   if Node.Kind = TSyntaxKind.RoutineHeader then
   begin
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if Node[Index].Kind = TSyntaxKind.Directive then
       begin
         AddWord(Node[Index].Name);
         TakeReason(TokenIndexAt(Node[Index].StartOffset));
       end;
+    end;
     Exit;
   end;
   if AKind = TIndexSymbolKind.EnumMember then
+  begin
     Exit;
+  end;
   // Hinweise hinter der Deklaration: "X = 1 deprecated;", "end platform;", "A: Integer platform;".
   Last := TokenIndexAt(Node.EndOffset) - 1;
   Index := Last;
   while (Index > 0) and ((FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive,
     TPascalTokenKind.StringLiteral]) or FTokens[Index].IsSymbol(';')) do
+  begin
     Dec(Index);
+  end;
   while (Index > 0) and IsHintAt(Index) do
   begin
     Word := FTokens[Index].Text;
@@ -666,13 +796,17 @@ begin
     Dec(Index);
     while (Index > 0) and ((FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) or
       FTokens[Index].IsSymbol(',')) do
+    begin
       Dec(Index);
+    end;
   end;
   // Steht der Hinweis hinter dem Ende des Knotens, gehört er trotzdem dazu.
   Index := Last + 1;
   while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive,
     TPascalTokenKind.StringLiteral]) do
+  begin
     Inc(Index);
+  end;
   while IsHintAt(Index) and EndsHint(NextCode(Index)) do
   begin
     AddWord(FTokens[Index].Text);
@@ -680,7 +814,9 @@ begin
     Index := NextCode(Index);
     while (Index < Length(FTokens)) and ((FTokens[Index].Kind = TPascalTokenKind.StringLiteral) or
       FTokens[Index].IsSymbol(',')) do
+    begin
       Index := NextCode(Index);
+    end;
   end;
 end;
 
@@ -699,9 +835,13 @@ begin
     Depth := 0;
     repeat
       if FTokens[Index].IsSymbol(']') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if FTokens[Index].IsSymbol('[') then
+      begin
         Dec(Depth);
+      end;
       Dec(Index);
     until (Index < 0) or (Depth = 0);
   end;
@@ -713,13 +853,17 @@ begin
     Dec(Index);
   end;
   if Length(Lines) = 0 then
+  begin
     Exit;
+  end;
   Doc := TXmlDoc.Parse(String.Join(#10, Lines));
   Text := Doc.Summary;
   // Eine Zeile, Leerraum zusammengefasst.
   Text := TRegEx.Replace(Text, '\s+', ' ').Trim;
   if Length(Text) > TIndexSymbol.MaxSummary then
+  begin
     Text := Copy(Text, 1, TIndexSymbol.MaxSummary - 1) + '…';
+  end;
   Result := Text;
 end;
 
@@ -730,10 +874,16 @@ begin
   // Erster direkter Typverweis: A: TFoo, property P: TFoo, function F: TFoo.
   // Bei RoutineDecl steht der Typ im Kopf.
   if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+  begin
     ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if ANode[Index].Kind = TSyntaxKind.TypeReference then
+    begin
       Exit(ANode[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -743,9 +893,13 @@ var
 begin
   Node := DeclaredTypeNode(ANode);
   if Node <> nil then
-    Result := Node.Name
+  begin
+    Result := Node.Name;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TIndexExtractor.GenericArgsText(ATypeRef: TSyntaxNode): string;
@@ -755,14 +909,20 @@ var
 begin
   Result := '';
   if ATypeRef = nil then
+  begin
     Exit;
+  end;
   Args := ATypeRef.FindChild(TSyntaxKind.GenericArgs);
   if Args = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Args.ChildCount - 1 do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + TypeText(Args[Index]);
   end;
 end;
@@ -773,18 +933,24 @@ var
 begin
   Result := '';
   if ANode = nil then
+  begin
     Exit;
+  end;
   case ANode.Kind of
     TSyntaxKind.TypeReference:
       begin
         Result := ANode.Name;
         Args := GenericArgsText(ANode);
         if Args <> '' then
+        begin
           Result := Result + '<' + Args + '>';
+        end;
       end;
     TSyntaxKind.ArrayType:
       if ANode.FindChild(TSyntaxKind.TypeReference) <> nil then
+      begin
         Result := 'array of ' + TypeText(ANode[ANode.ChildCount - 1]);
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -797,17 +963,25 @@ var
 begin
   Result := '';
   if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+  begin
     ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
+  end;
   Params := ANode.FindChild(TSyntaxKind.GenericParams);
   if Params = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Params.ChildCount - 1 do
+  begin
     if Params[Index].Name <> '' then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + Params[Index].Name;
     end;
+  end;
 end;
 
 class procedure TIndexExtractor.ParamInfo(ANode: TSyntaxNode; out AMin, AMax: Integer; out ATypes: TArray<string>);
@@ -821,30 +995,44 @@ begin
   AMax := 0;
   ATypes := nil;
   if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+  begin
     ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
+  end;
   Params := ANode.FindChild(TSyntaxKind.Parameters);
   if Params = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Params.ChildCount - 1 do
   begin
     Param := Params[Index];
     if Param.Kind <> TSyntaxKind.Parameter then
+    begin
       Continue;
+    end;
     // Kinder: Typ (fehlt bei untypisierten Parametern), danach ggf. der Standardwert.
     TypeNode := nil;
     HasDefault := False;
     for Child := 0 to Param.ChildCount - 1 do
+    begin
       if (TypeNode = nil) and (Param[Child].Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType]) then
-        TypeNode := Param[Child]
+      begin
+        TypeNode := Param[Child];
+      end
       else
+      begin
         HasDefault := True;
+      end;
+    end;
     ParamType := TypeText(TypeNode);
     // A, B: Integer zählt zweimal.
     for Count := 1 to Length(Param.Name.Split([','])) do
     begin
       Inc(AMax);
       if not HasDefault then
+      begin
         Inc(AMin);
+      end;
       ATypes := ATypes + [ParamType];
     end;
   end;
@@ -856,12 +1044,18 @@ var
 begin
   Result := False;
   if ANode.Kind <> TSyntaxKind.RoutineHeader then
+  begin
     Exit;
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if (ANode[Index].Kind = TSyntaxKind.Directive) and (SameText(ANode[Index].Name, 'virtual') or
       SameText(ANode[Index].Name, 'dynamic') or SameText(ANode[Index].Name, 'abstract') or
       SameText(ANode[Index].Name, 'override')) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TIndexExtractor.IsDefaultProperty(ANode: TSyntaxNode): Boolean;
@@ -875,7 +1069,9 @@ begin
   while (Index + 1 < Length(FTokens)) and (FTokens[Index].Offset <= ANode.EndOffset) do
   begin
     if FTokens[Index].IsSymbol(';') and SameText(FTokens[Index + 1].Text, 'default') then
+    begin
       Exit(True);
+    end;
     Inc(Index);
   end;
 end;
@@ -886,7 +1082,9 @@ var
 begin
   // A, B: Integer
   for Name in ANode.Name.Split([',']) do
+  begin
     Add(ANode, Name.Trim, AContainer, AKind);
+  end;
 end;
 
 procedure TIndexExtractor.AddMembers(ABody: TSyntaxNode; const AContainer: string);
@@ -923,9 +1121,13 @@ begin
           // Zweig eines varianten Teils (#846); das Selektorfeld davor steht im äußeren Zweig.
           Outer := FVariant;
           if FVariant = '' then
-            FVariant := Child.Name
+          begin
+            FVariant := Child.Name;
+          end
           else
+          begin
             FVariant := FVariant + ' › ' + Child.Name;
+          end;
           try
             AddMembers(Child, AContainer);
           finally
@@ -943,13 +1145,19 @@ begin
       TSyntaxKind.RoutineHeader:
         // Methodenzuordnung procedure IFoo.Bar = MyBar ist kein Mitglied (#849), sondern steht am Typ.
         if Child.IsMethodResolution then
-          AddResolution(Child)
+        begin
+          AddResolution(Child);
+        end
         else
         begin
           if IsConstructor(Child) then
-            Kind := TIndexSymbolKind.Constructor_
+          begin
+            Kind := TIndexSymbolKind.Constructor_;
+          end
           else
+          begin
             Kind := TIndexSymbolKind.Method;
+          end;
           Add(Child, Child.Name, AContainer, Kind);
         end;
     else
@@ -974,11 +1182,13 @@ begin
   AncestorArgs := nil;
   WithArgs := False;
   for Index := 0 to ADecl.ChildCount - 1 do
+  begin
     if not (ADecl[Index].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
     begin
       Body := ADecl[Index];
       Break;
     end;
+  end;
   Kind := TIndexSymbolKind.TypeAlias;
   Ancestors := TList<string>.Create;
   try
@@ -1003,7 +1213,9 @@ begin
       // Vorfahren: direkte Typverweise des Rumpfs (class(TBase, IFoo), helper for T).
       if Body.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.InterfaceType,
         TSyntaxKind.HelperType] then
+      begin
         for Index := 0 to Body.ChildCount - 1 do
+        begin
           if (Body[Index].Kind = TSyntaxKind.TypeReference) and (Body[Index].Name <> '') then
           begin
             // Typargumente jedes Vorfahren: IComparer<TKunde> an zweiter Stelle braucht sie für den
@@ -1013,9 +1225,13 @@ begin
             AncestorArgs := AncestorArgs + [Args];
             Ancestors.Add(Body[Index].Name);
           end;
+        end;
+      end;
     end;
     if not WithArgs then
+    begin
       AncestorArgs := nil;
+    end;
     FAncestorArgs := AncestorArgs;
     FForward := (Body <> nil) and (Body.Kind = TSyntaxKind.ForwardType);
     FScoped := (Kind = TIndexSymbolKind.EnumType) and ScopedAt(ADecl.StartOffset);
@@ -1030,19 +1246,29 @@ begin
     Ancestors.Free;
   end;
   if Body = nil then
+  begin
     Exit;
+  end;
   if AContainer = '' then
-    Qualified := ADecl.Name
+  begin
+    Qualified := ADecl.Name;
+  end
   else
+  begin
     Qualified := AContainer + '.' + ADecl.Name;
+  end;
   if Body.Kind = TSyntaxKind.EnumType then
   begin
     // Enum-Werte sind ohne SCOPEDENUMS auch auf Unit-Ebene sichtbar; der
     // Container hält den Typ fest, ScopedEnum den Schalter (#849), die Namensauflösung entscheidet.
     try
       for Index := 0 to Body.ChildCount - 1 do
+      begin
         if Body[Index].Kind = TSyntaxKind.Identifier then
+        begin
           Add(Body[Index], Body[Index].Name, Qualified, TIndexSymbolKind.EnumMember);
+        end;
+      end;
     finally
       FScoped := False;
     end;
@@ -1056,7 +1282,9 @@ begin
     Owner := FResolutionOwner;
     FResolutionOwner := -1;
     if FSymbols.Count > Count then
+    begin
       FResolutionOwner := Count;
+    end;
     try
       AddMembers(Body, Qualified);
     finally
@@ -1071,7 +1299,9 @@ var
   Symbol: TIndexSymbol;
 begin
   if (FResolutionOwner < 0) or (AHeader.Name = '') or (AHeader.ResolutionTarget = '') then
+  begin
     Exit;
+  end;
   Symbol := FSymbols[FResolutionOwner];
   Symbol.Resolutions := Symbol.Resolutions + [AHeader.Name + '=' + AHeader.ResolutionTarget];
   FSymbols[FResolutionOwner] := Symbol;
@@ -1091,9 +1321,13 @@ begin
     Container := Name.Substring(0, Dot);
     Name := Name.Substring(Dot + 1);
     if IsConstructor(ANode) then
-      Kind := TIndexSymbolKind.Constructor_
+    begin
+      Kind := TIndexSymbolKind.Constructor_;
+    end
     else
+    begin
       Kind := TIndexSymbolKind.Method;
+    end;
   end
   else
   begin
@@ -1136,15 +1370,23 @@ var
 begin
   Result := nil;
   if ASection = nil then
+  begin
     Exit;
+  end;
   Clause := ASection.FindChild(TSyntaxKind.UsesClause);
   if Clause = nil then
+  begin
     Exit;
+  end;
   Names := TList<string>.Create;
   try
     for Index := 0 to Clause.ChildCount - 1 do
+    begin
       if (Clause[Index].Kind = TSyntaxKind.UsedUnit) and (Clause[Index].Name <> '') then
+      begin
         Names.Add(Clause[Index].Name);
+      end;
+    end;
     Result := Names.ToArray;
   finally
     Names.Free;
@@ -1158,18 +1400,30 @@ var
   Full: TDictionary<string, Boolean>;
 begin
   if FForwards.Count = 0 then
+  begin
     Exit;
+  end;
   SetLength(Forwards, FSymbols.Count);
   for Index in FForwards do
+  begin
     Forwards[Index] := True;
+  end;
   Full := TDictionary<string, Boolean>.Create;
   try
     for Index := 0 to FSymbols.Count - 1 do
+    begin
       if not Forwards[Index] then
+      begin
         Full.AddOrSetValue(UpperCase(FSymbols[Index].QualifiedName), True);
+      end;
+    end;
     for Index := FForwards.Count - 1 downto 0 do
+    begin
       if Full.ContainsKey(UpperCase(FSymbols[FForwards[Index]].QualifiedName)) then
+      begin
         FSymbols.Delete(FForwards[Index]);
+      end;
+    end;
   finally
     Full.Free;
   end;
@@ -1182,8 +1436,12 @@ var
   Name: string;
 begin
   for Name in AList.Split([',']) do
+  begin
     if Name.Trim <> '' then
+    begin
       ANames.AddOrSetValue(LowerCase(TPascalLexer.PlainName(Name.Trim)), True);
+    end;
+  end;
 end;
 
 /// <summary>Liegt ANode in AOuter (oder ist es selbst)?</summary>
@@ -1191,11 +1449,15 @@ function IsInside(ANode, AOuter: TSyntaxNode): Boolean;
 begin
   Result := False;
   if AOuter = nil then
+  begin
     Exit;
+  end;
   while ANode <> nil do
   begin
     if ANode = AOuter then
+    begin
       Exit(True);
+    end;
     ANode := ANode.Parent;
   end;
 end;
@@ -1218,7 +1480,9 @@ var
   procedure AddRef(const ARef: string);
   begin
     if (ARef = '') or Seen.ContainsKey(LowerCase(ARef)) then
+    begin
       Exit;
+    end;
     Seen.Add(LowerCase(ARef), True);
     Refs.Add(ARef);
   end;
@@ -1227,7 +1491,9 @@ var
   begin
     Result := ':' + ASymbol.TypeName;
     if ASymbol.TypeArgs <> '' then
+    begin
       Result := Result + '<' + ASymbol.TypeArgs + '>';
+    end;
   end;
 
   // Wird ANode als Wert weiter benutzt (A.B, A[i])? Dann braucht der Rumpf die Unit seines Typs.
@@ -1248,21 +1514,29 @@ var
     Name := TPascalLexer.PlainName(AIdent.Name);
     Key := LowerCase(Name);
     if (Name = '') or Locals.ContainsKey(Key) then
+    begin
       Exit;
+    end;
     if (AContainer <> '') and Members.TryGetValue(Key, Member) then
     begin
       if Member.Visibility = TIndexVisibility.StrictPrivate then
+      begin
         AddRef('!' + Member.Name);
+      end;
       if IsDereferenced(AIdent) and (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
         (Member.TypeName <> '') then
+      begin
         AddRef(TypeRefOf(Member));
+      end;
       Exit;
     end;
     if Own.TryGetValue(Key, Member) then
     begin
       if IsDereferenced(AIdent) and (Member.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) and
         (Member.TypeName <> '') then
+      begin
         AddRef(TypeRefOf(Member));
+      end;
       Exit;
     end;
     AddRef(Name);
@@ -1276,7 +1550,9 @@ var
     if (Name = '') or SameText(Name, 'string') or SameText(Name, 'const') or SameText(Name, 'file') or
       Locals.ContainsKey(LowerCase(Name)) or Own.ContainsKey(LowerCase(Name)) or
       ((AContainer <> '') and Members.ContainsKey(LowerCase(Name))) then
+    begin
       Exit;
+    end;
     AddRef(':' + Name);
   end;
 
@@ -1289,17 +1565,25 @@ begin
   Members := TDictionary<string, TIndexSymbol>.Create;
   try
     for Symbol in FSymbols do
+    begin
       if Symbol.Container = '' then
-        Own.AddOrSetValue(LowerCase(Symbol.Name), Symbol)
+      begin
+        Own.AddOrSetValue(LowerCase(Symbol.Name), Symbol);
+      end
       else if (AContainer <> '') and SameText(Symbol.Container, AContainer) and
         not Members.ContainsKey(LowerCase(Symbol.Name)) then
+      begin
         Members.Add(LowerCase(Symbol.Name), Symbol);
+      end;
+    end;
     Locals.Add('result', True);
     Locals.Add('self', True);
     AddNameList(Locals, AContainerParams);
     Header := ANode.FindChild(TSyntaxKind.RoutineHeader);
     if Header <> nil then
+    begin
       AddNameList(Locals, TypeParamsOf(Header));
+    end;
     Blocked := False;
     Nodes := TList<TSyntaxNode>.Create;
     try
@@ -1319,37 +1603,55 @@ begin
               Blocked := True;
             TSyntaxKind.RoutineDecl:
               if Child <> ANode then
+              begin
                 Blocked := True;
+              end;
             TSyntaxKind.ArrayType:
               // Offene Array-Parameter verhindern das Einbetten.
               if (Child.Parent <> nil) and (Child.Parent.Kind = TSyntaxKind.Parameter) then
+              begin
                 Blocked := True;
+              end;
           else
             // Übrige Werte bewusst ohne Wirkung.
           end;
           // Den Kopf (Parameter- und Ergebnistypen) kennt der Aufrufer ohnehin.
           if (Child.Kind in [TSyntaxKind.Identifier, TSyntaxKind.TypeReference]) and not IsInside(Child, Header) then
+          begin
             Nodes.Add(Child);
+          end;
           for Index := Child.ChildCount - 1 downto 0 do
+          begin
             Stack.Push(Child[Index]);
+          end;
         end;
       finally
         Stack.Free;
       end;
       if Blocked then
+      begin
         Exit;
+      end;
       for Child in Nodes do
+      begin
         if Child.Kind = TSyntaxKind.Identifier then
-          Identifier(Child)
+        begin
+          Identifier(Child);
+        end
         else
+        begin
           TypeReference(Child);
+        end;
+      end;
     finally
       Nodes.Free;
     end;
     Result := Refs.ToArray;
     // nil heißt „nicht einbettbar“; ohne Verweise bleibt die Routine trotzdem als inline erkennbar (#1381).
     if Length(Result) = 0 then
+    begin
       Result := TArray<string>.Create(TIndexSymbol.InlineWithoutRefs);
+    end;
   finally
     Members.Free;
     Own.Free;
@@ -1366,8 +1668,12 @@ var
 begin
   Result := nil;
   for Index := 0 to AHeader.ChildCount - 1 do
+  begin
     if AHeader[Index].Kind = TSyntaxKind.Directive then
+    begin
       Result := Result + [LowerCase(AHeader[Index].Name)];
+    end;
+  end;
 end;
 
 function SameParamTypes(const A, B: TArray<string>): Boolean;
@@ -1376,9 +1682,15 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for Index := 0 to High(A) do
+    begin
       if not SameText(A[Index], B[Index]) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 function TIndexExtractor.ContainerParams(const AContainer: string): string;
@@ -1387,11 +1699,17 @@ var
 begin
   Result := '';
   if AContainer = '' then
+  begin
     Exit;
+  end;
   for Symbol in FSymbols do
+  begin
     if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and SameText(Symbol.QualifiedName, AContainer) then
+    begin
       Exit(Symbol.TypeParams);
+    end;
+  end;
 end;
 
 procedure TIndexExtractor.SetInlineRefs(APosition: Integer; const ARefs: TArray<string>);
@@ -1418,15 +1736,21 @@ var
   Directive: string;
 begin
   if ASection = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to ASection.ChildCount - 1 do
   begin
     Node := ASection[Index];
     if Node.Kind <> TSyntaxKind.RoutineDecl then
+    begin
       Continue;
+    end;
     Header := Node.FindChild(TSyntaxKind.RoutineHeader);
     if (Header = nil) or (Node.FindChild(TSyntaxKind.Block) = nil) or IsConstructor(Node) then
+    begin
       Continue;
+    end;
     Name := Node.Name;
     Container := '';
     Dot := Name.LastIndexOf('.');
@@ -1451,9 +1775,13 @@ begin
       if not (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
         not SameText(Symbol.Name, Name) or not SameText(Symbol.Container, Container) or
         (Symbol.Range.StartPos = Node.StartPos) then
+      begin
         Continue;
+      end;
       if (Length(Types) > 0) and not SameParamTypes(Symbol.ParamTypes, Types) then
+      begin
         Continue;
+      end;
       if Found >= 0 then
       begin
         // Mehrdeutig (Überladungen ohne Parameterliste in der Implementierung).
@@ -1463,23 +1791,37 @@ begin
       Found := Position;
     end;
     if Found = -2 then
+    begin
       Continue;
+    end;
     if Found >= 0 then
+    begin
       for Directive in FSymbols[Found].Directives do
       begin
         Inline_ := Inline_ or SameText(Directive, 'inline');
         Skip := Skip or (IndexText(Directive, NotInlined) >= 0);
       end;
+    end;
     if not Inline_ or Skip then
+    begin
       Continue;
+    end;
     Refs := InlineRefsOf(Node, Container, ContainerParams(Container));
     if Refs = nil then
+    begin
       Continue;
+    end;
     if Found >= 0 then
+    begin
       SetInlineRefs(Found, Refs);
+    end;
     for Position := 0 to FSymbols.Count - 1 do
+    begin
       if (FSymbols[Position].Range.StartPos = Node.StartPos) and SameText(FSymbols[Position].Name, Name) then
+      begin
         SetInlineRefs(Position, Refs);
+      end;
+    end;
   end;
 end;
 
@@ -1497,21 +1839,29 @@ begin
   for Index := 0 to High(FTokens) do
   begin
     if FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
       Continue;
+    end;
     if not Started then
     begin
       if not ((FTokens[Index].Kind = TPascalTokenKind.Keyword) and SameText(FTokens[Index].Text, 'unit')) then
+      begin
         Exit;
+      end;
       Started := True;
       Continue;
     end;
     if FTokens[Index].IsSymbol(';') then
+    begin
       Exit;
+    end;
     if InName then
     begin
       // Name aus Teilen mit Punkt dazwischen; nach einem Teil ohne folgenden Punkt beginnen die Hinweise.
       if AfterPart and not FTokens[Index].IsSymbol('.') then
-        InName := False
+      begin
+        InName := False;
+      end
       else
       begin
         AfterPart := not FTokens[Index].IsSymbol('.');
@@ -1520,19 +1870,31 @@ begin
     end;
     if not (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) or
       (IndexText(FTokens[Index].Text, HintDirectives) < 0) then
+    begin
       Continue;
+    end;
     if IndexText(FTokens[Index].Text, AUnit.Directives) < 0 then
+    begin
       AUnit.Directives := AUnit.Directives + [LowerCase(FTokens[Index].Text)];
+    end;
     if not SameText(FTokens[Index].Text, 'deprecated') then
+    begin
       Continue;
+    end;
     Next := Index + 1;
     while (Next <= High(FTokens)) and (FTokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    begin
       Inc(Next);
+    end;
     if (Next > High(FTokens)) or (FTokens[Next].Kind <> TPascalTokenKind.StringLiteral) then
+    begin
       Continue;
+    end;
     Text := FTokens[Next].Text;
     if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
+    begin
       Text := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
+    end;
     AUnit.DeprecatedText := Text;
   end;
 end;
@@ -1556,8 +1918,10 @@ begin
     AUnit.ImplementationUses := UsesOf(ARoot.FindChild(TSyntaxKind.ImplementationSection));
   end
   else
+  begin
     // program, library, package: alles gilt als implementation.
     AUnit.ImplementationUses := UsesOf(ARoot);
+  end;
   for Index := 0 to ARoot.ChildCount - 1 do
   begin
     Child := ARoot[Index];
@@ -1579,7 +1943,9 @@ begin
   end;
   DropForwards;
   if ARoot.Kind = TSyntaxKind.UnitFile then
+  begin
     AddInlineRefs(ARoot.FindChild(TSyntaxKind.ImplementationSection));
+  end;
   AUnit.Symbols := FSymbols.ToArray;
   AUnit.Naming := NamingOf(ARoot);
 end;
@@ -1611,13 +1977,21 @@ begin
         Owner := ANode.Parent;
         while (Owner <> nil) and not (Owner.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
           TSyntaxKind.RecordType, TSyntaxKind.HelperType, TSyntaxKind.RoutineDecl]) do
+        begin
           Owner := Owner.Parent;
+        end;
         if Owner = nil then
+        begin
           Exit(False);
+        end;
         if Owner.Kind = TSyntaxKind.RoutineDecl then
-          AKind := TNamingKind.Local
+        begin
+          AKind := TNamingKind.Local;
+        end
         else
+        begin
           AKind := TNamingKind.Field;
+        end;
       end;
   else
     Result := False;
@@ -1630,6 +2004,7 @@ var
 begin
   Counts := Default(TNamingCounts);
   if ARoot <> nil then
+  begin
     ARoot.Walk(
       function(ANode: TSyntaxNode): Boolean
       var
@@ -1638,15 +2013,22 @@ begin
       begin
         Result := True;
         if not NamingKindOf(ANode, Kind) then
+        begin
           Exit;
+        end;
         for Name in ANode.Name.Split([',']) do
+        begin
           if Trim(Name) <> '' then
           begin
             Inc(Counts[Kind].Total);
             if HasNamePrefix(Trim(Name), NamingPrefixes[Kind]) then
+            begin
               Inc(Counts[Kind].Prefixed);
+            end;
           end;
+        end;
       end);
+  end;
   Result := Counts;
 end;
 
@@ -1658,7 +2040,9 @@ begin
   Result.FileName := AFileName;
   Result.UnitName := ATree.Root.Name;
   if Result.UnitName = '' then
+  begin
     Result.UnitName := FileNameToUnitName(AFileName);
+  end;
   Extractor := TIndexExtractor.Create(ATree.Tokens);
   try
     Extractor.Walk(ATree.Root, Result);
@@ -1697,10 +2081,14 @@ var
   begin
     // 1-basiert; über das Textende hinaus wird abgeschnitten.
     if APosition.Line >= LineStarts.Count then
+    begin
       Exit(Length(AText) + 1);
+    end;
     Result := LineStarts[APosition.Line] + APosition.Character;
     if Result > Length(AText) + 1 then
+    begin
       Result := Length(AText) + 1;
+    end;
   end;
 
 begin
@@ -1708,20 +2096,32 @@ begin
   AIncludes := nil;
   AConditionals := nil;
   if Pos('{$', AText) + Pos('(*$', AText) = 0 then
+  begin
     Exit;
+  end;
   Options := TPreprocessorOptions.Default;
   Options.Defines := ADefines;
   Options.FileName := AFileName;
   Options.ResolveInclude := AResolver;
   Processed := TPascalPreprocessor.Process(AText, Options);
   for Index := 1 to High(Processed.Files) do
+  begin
     if IndexText(Processed.Files[Index], AIncludes) < 0 then
+    begin
       AIncludes := AIncludes + [Processed.Files[Index]];
+    end;
+  end;
   for Conditional in Processed.Conditionals do
+  begin
     if Conditional.FileIndex = 0 then
+    begin
       AConditionals := AConditionals + [Conditional];
+    end;
+  end;
   if Length(Processed.InactiveRanges) = 0 then
+  begin
     Exit;
+  end;
   LineStarts := TList<Integer>.Create;
   try
     LineStarts.Add(1);
@@ -1731,22 +2131,32 @@ begin
       if AText[Index] = #13 then
       begin
         if (Index < Length(AText)) and (AText[Index + 1] = #10) then
+        begin
           Inc(Index);
+        end;
         LineStarts.Add(Index + 1);
       end
       else if AText[Index] = #10 then
+      begin
         LineStarts.Add(Index + 1);
+      end;
       Inc(Index);
     end;
     for Range in Processed.InactiveRanges do
     begin
       if Range.FileIndex <> 0 then
+      begin
         Continue;
+      end;
       StartOffset := OffsetOf(Range.Range.StartPos);
       EndOffset := OffsetOf(Range.Range.EndPos);
       for Index := StartOffset to EndOffset - 1 do
+      begin
         if (Index >= 1) and (Index <= Length(Result)) and not CharInSet(Result[Index], [#10, #13]) then
+        begin
           Result[Index] := ' ';
+        end;
+      end;
     end;
   finally
     LineStarts.Free;
@@ -1816,18 +2226,28 @@ begin
   try
     // Die Deklaration selbst ist keine Verwendung; Symbole aus $I-Dateien stehen woanders.
     for Symbol in ASymbols do
+    begin
       if Symbol.FileName = '' then
+      begin
         Declared.AddOrSetValue(PositionKey(Symbol.SelectionRange.StartPos), True);
+      end;
+    end;
     for Token in ATokens do
     begin
       if Token.Kind <> TPascalTokenKind.Identifier then
+      begin
         Continue;
+      end;
       Name := Token.Text;
       if Name.StartsWith('&') then
+      begin
         Name := Copy(Name, 2, MaxInt);
+      end;
       if (Name = '') or SameText(Name, 'Self') or SameText(Name, 'Result') or
         (IndexText(Name, DirectiveWords) >= 0) or Declared.ContainsKey(PositionKey(Token.StartPos)) then
+      begin
         Continue;
+      end;
       Key := UpperCase(Name);
       if not Buckets.TryGetValue(Key, Bucket) then
       begin
@@ -1882,9 +2302,13 @@ var
     // Mitglieder je Typ: gleichnamige Mitglieder anderer Typen sind etwas anderes.
     Key := UpperCase(AName);
     if AContainer <> '' then
+    begin
       Key := UpperCase(AContainer) + '.' + Key;
+    end;
     if Known.ContainsKey(Key) then
+    begin
       Exit;
+    end;
     Known.Add(Key, True);
     Item := Default(TIndexSymbol);
     Item.Name := AName;
@@ -1915,14 +2339,18 @@ var
   begin
     Result := '';
     for Candidate in AUnit.Symbols do
+    begin
       if (Candidate.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
         TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and (Candidate.FileName = '') and
         (Candidate.Range.StartPos.Line < ALine) and (Candidate.Range.EndPos.Line >= ALine) then
+      begin
         if (Result = '') or (Candidate.Range.StartPos.Line >= Best.StartPos.Line) then
         begin
           Result := Candidate.QualifiedName;
           Best := Candidate.Range;
         end;
+      end;
+    end;
   end;
 
   // Mitglied in einem nicht geltenden Zweig innerhalb eines Typrumpfs (#476): Methoden, Properties, Felder.
@@ -1940,9 +2368,13 @@ var
     begin
       Words := LowerCase(Found.Groups[2].Value);
       if Words = 'constructor' then
-        Kind := TIndexSymbolKind.Constructor_
+      begin
+        Kind := TIndexSymbolKind.Constructor_;
+      end
       else
+      begin
         Kind := TIndexSymbolKind.Method;
+      end;
       AddUnavailable(Found.Groups[3].Value, Kind, ALine, Found.Groups[3].Index - 1, ACondition, AOwner);
       Exit;
     end;
@@ -1957,13 +2389,17 @@ var
     Found := TRegEx.Match(ACode, '^\s*((class\s+)?var\s+)?([A-Za-z_]\w*(\s*,\s*[A-Za-z_]\w*)*)\s*:[^=]',
       [roIgnoreCase]);
     if not Found.Success then
+    begin
       Exit;
+    end;
     Column := Found.Groups[3].Index - 1;
     for Name in Found.Groups[3].Value.Split([',']) do
     begin
       Words := Trim(Name);
       if MatchText(Words, ['private', 'protected', 'public', 'published', 'strict', 'case', 'end']) then
+      begin
         Continue;
+      end;
       AddUnavailable(Words, TIndexSymbolKind.Field, ALine, Column + Pos(Words, Found.Groups[3].Value) - 1,
         ACondition, AOwner);
     end;
@@ -1975,15 +2411,25 @@ var
   begin
     Keyword := LowerCase(AMatch.Groups[4].Value);
     if Keyword = 'class' then
-      Kind := TIndexSymbolKind.ClassType
+    begin
+      Kind := TIndexSymbolKind.ClassType;
+    end
     else if Keyword = 'record' then
-      Kind := TIndexSymbolKind.RecordType
+    begin
+      Kind := TIndexSymbolKind.RecordType;
+    end
     else if (Keyword = 'interface') or (Keyword = 'dispinterface') then
-      Kind := TIndexSymbolKind.InterfaceType
+    begin
+      Kind := TIndexSymbolKind.InterfaceType;
+    end
     else if Keyword = '(' then
-      Kind := TIndexSymbolKind.EnumType
+    begin
+      Kind := TIndexSymbolKind.EnumType;
+    end
     else
+    begin
       Kind := TIndexSymbolKind.TypeAlias;
+    end;
     AddUnavailable(AMatch.Groups[1].Value, Kind, ALine, AMatch.Groups[1].Index - 1, ACondition);
   end;
 
@@ -1994,31 +2440,49 @@ begin
   for Index := 0 to High(AUnit.Symbols) do
   begin
     if AUnit.Symbols[Index].FileName <> '' then
+    begin
       Continue;
+    end;
     Best := -1;
     for LineIndex := 0 to High(AConditionals) do
+    begin
       if AConditionals[LineIndex].Active and InRange(AUnit.Symbols[Index].SelectionRange.StartPos,
         AConditionals[LineIndex].Range) then
+      begin
         if (Best < 0) or InRange(AConditionals[LineIndex].Range.StartPos, AConditionals[Best].Range) then
+        begin
           Best := LineIndex;
+        end;
+      end;
+    end;
     if Best >= 0 then
-      AUnit.Symbols[Index].Condition := AConditionals[Best].Condition
+    begin
+      AUnit.Symbols[Index].Condition := AConditionals[Best].Condition;
+    end
     else
     begin
       // Direktive platform an der Deklaration (erste Zeile).
       LineIndex := AUnit.Symbols[Index].SelectionRange.StartPos.Line;
       if (LineIndex >= 0) and (LineIndex <= High(Lines)) and
         TRegEx.IsMatch(Lines[LineIndex], '\bplatform\s*;', [roIgnoreCase]) then
+      begin
         AUnit.Symbols[Index].Condition := 'platform';
+      end;
     end;
   end;
   // Nur wenn ein Zweig nicht gilt, lohnt die Suche nach Deklarationen darin.
   Best := 0;
   for Conditional in AConditionals do
+  begin
     if not Conditional.Active then
+    begin
       Inc(Best);
+    end;
+  end;
   if Best = 0 then
+  begin
     Exit;
+  end;
   // Ein Durchlauf über die Datei: Abschnitt je Zeile und Beginn des implementation-Teils.
   // Große Units (System.pas) haben tausende Zweige; je Zweig neu zu suchen wäre quadratisch.
   ImplementationLine := -1;
@@ -2029,38 +2493,58 @@ begin
     Sections[LineIndex] := Section;
     Line := TrimLeft(Lines[LineIndex]);
     if (Line = '') or not CharInSet(Line[1], ['a'..'z', 'A'..'Z']) then
+    begin
       Continue;
+    end;
     Match := TRegEx.Match(Line, '^(type|const|var|threadvar|resourcestring|implementation|interface)\b',
       [roIgnoreCase]);
     if not Match.Success then
+    begin
       Continue;
+    end;
     Keyword := LowerCase(Match.Groups[1].Value);
     if (Keyword = 'implementation') or (Keyword = 'interface') then
     begin
       Section := '';
       if (Keyword = 'implementation') and (ImplementationLine < 0) then
+      begin
         ImplementationLine := LineIndex;
+      end;
     end
     else
+    begin
       Section := Keyword;
+    end;
   end;
   Known := TDictionary<string, Boolean>.Create;
   try
     // Was in geltenden Zweigen schon deklariert ist, nicht noch einmal (IFDEF WIN32 ... ELSE ... gleicher Name).
     for Symbol in AUnit.Symbols do
+    begin
       if Symbol.Container = '' then
-        Known.AddOrSetValue(UpperCase(Symbol.Name), True)
+      begin
+        Known.AddOrSetValue(UpperCase(Symbol.Name), True);
+      end
       else
+      begin
         Known.AddOrSetValue(UpperCase(Symbol.Container) + '.' + UpperCase(Symbol.Name), True);
+      end;
+    end;
     for Conditional in AConditionals do
     begin
       if Conditional.Active then
+      begin
         Continue;
+      end;
       // Abschnitt am Anfang des Zweigs aus dem einen Durchlauf oben.
       if (Conditional.Range.StartPos.Line >= 0) and (Conditional.Range.StartPos.Line < Length(Sections) - 1) then
-        Section := Sections[Conditional.Range.StartPos.Line + 1]
+      begin
+        Section := Sections[Conditional.Range.StartPos.Line + 1];
+      end
       else
+      begin
         Section := '';
+      end;
       // Im implementation-Teil nur Routinen der Unit (eigene Unit, z. B. "procedure ApplyAppIcon;" unter
       // {$IFDEF FPC}): ein billiger Vergleich am Zeilenanfang je Zeile, denn lange Zweige mit ganzen
       // Implementierungen (System.pas) sollen nichts kosten. Methodenrümpfe "TFoo.Bar" zählen nicht.
@@ -2070,11 +2554,15 @@ begin
         begin
           Line := Lines[LineIndex];
           if not (StartsText('procedure ', Line) or StartsText('function ', Line)) then
+          begin
             Continue;
+          end;
           Match := TRegEx.Match(Line, '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]', [roIgnoreCase]);
           if Match.Success then
+          begin
             AddUnavailable(Match.Groups[2].Value, TIndexSymbolKind.Routine, LineIndex, Match.Groups[2].Index - 1,
               Conditional.Condition);
+          end;
         end;
         Continue;
       end;
@@ -2086,7 +2574,9 @@ begin
         begin
           Code := Lines[LineIndex];
           if Pos('//', Code) > 0 then
+          begin
             Code := Copy(Code, 1, Pos('//', Code) - 1);
+          end;
           AddMember(Code, LineIndex, Owner, Conditional.Condition);
         end;
         Continue;
@@ -2096,14 +2586,18 @@ begin
         Line := Lines[LineIndex];
         Code := Line;
         if Pos('//', Code) > 0 then
+        begin
           Code := Copy(Code, 1, Pos('//', Code) - 1);
+        end;
         Match := TRegEx.Match(Code, '^\s*(type|const|var|threadvar|resourcestring)\b', [roIgnoreCase]);
         if Match.Success then
         begin
           Section := LowerCase(Match.Groups[1].Value);
           Code := Copy(Code, Match.Length + 1, MaxInt);
           if Trim(Code) = '' then
+          begin
             Continue;
+          end;
         end;
         Indent := TTextLines.IndentLength(Line);
         // Routinen auf Unit-Ebene stehen am Zeilenanfang.
@@ -2116,29 +2610,39 @@ begin
           Continue;
         end;
         if Indent > 2 then
+        begin
           Continue;
+        end;
         if Section = 'type' then
         begin
           // Vorwärtsdeklaration "TFoo = class;" zählt nicht.
           if TRegEx.IsMatch(Code, '=\s*(packed\s+)?(class|interface)\s*;', [roIgnoreCase]) then
+          begin
             Continue;
+          end;
           Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*(<[^>]*>)?\s*=\s*(packed\s+)?(\w+|\()', [roIgnoreCase]);
           if Match.Success then
+          begin
             AddType(Match, LineIndex, Conditional.Condition);
+          end;
         end
         else if (Section = 'const') or (Section = 'resourcestring') then
         begin
           Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*(:[^=]+)?=', [roIgnoreCase]);
           if Match.Success then
+          begin
             AddUnavailable(Match.Groups[1].Value, TIndexSymbolKind.Constant, LineIndex, Match.Groups[1].Index - 1,
               Conditional.Condition);
+          end;
         end
         else if (Section = 'var') or (Section = 'threadvar') then
         begin
           Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*:', [roIgnoreCase]);
           if Match.Success then
+          begin
             AddUnavailable(Match.Groups[1].Value, TIndexSymbolKind.Variable, LineIndex, Match.Groups[1].Index - 1,
               Conditional.Condition);
+          end;
         end;
       end;
     end;
@@ -2180,31 +2684,41 @@ begin
   while Index <= Length(AText) do
   begin
     if CharInSet(AText[Index], [#1..' ']) then
-      Inc(Index)
+    begin
+      Inc(Index);
+    end
     else if AText[Index] = '{' then
     begin
       Index := PosEx('}', AText, Index);
       if Index = 0 then
+      begin
         Exit;
+      end;
       Inc(Index);
     end
     else if Copy(AText, Index, 2) = '(*' then
     begin
       Index := PosEx('*)', AText, Index);
       if Index = 0 then
+      begin
         Exit;
+      end;
       Inc(Index, 2);
     end
     else if Copy(AText, Index, 2) = '//' then
     begin
       while (Index <= Length(AText)) and not CharInSet(AText[Index], [#10, #13]) do
+      begin
         Inc(Index);
+      end;
     end
     else
     begin
       Start := Index;
       while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      begin
         Inc(Index);
+      end;
       Exit(LowerCase(Copy(AText, Start, Index - Start)));
     end;
   end;
@@ -2228,16 +2742,22 @@ var
 begin
   Result := nil;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if (ANode[Index].StartOffset < AOffset) and (AOffset < ANode[Index].EndOffset) then
     begin
       if ANode[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
         TSyntaxKind.InterfaceType, TSyntaxKind.HelperType] then
+      begin
         Result := ANode[Index];
+      end;
       Inner := BodyAt(ANode[Index], AOffset);
       if Inner <> nil then
+      begin
         Result := Inner;
+      end;
       Exit;
     end;
+  end;
 end;
 
 /// <summary>Kopf des Hilfstyps für eine .inc an AOffset in ABody: Art des Rumpfs und die dort geltende
@@ -2249,8 +2769,12 @@ var
 begin
   Visibility := '';
   for Index := 0 to ABody.ChildCount - 1 do
+  begin
     if (ABody[Index].Kind = TSyntaxKind.Visibility) and (ABody[Index].StartOffset < AOffset) then
+    begin
       Visibility := ABody[Index].Name;
+    end;
+  end;
   case ABody.Kind of
     TSyntaxKind.RecordType:
       Result := 'record';
@@ -2271,13 +2795,21 @@ var
 begin
   Result := AText;
   for Index := 1 to Length(Result) do
+  begin
     if CharInSet(Result[Index], [#9, #10, #13]) then
+    begin
       Result[Index] := ' ';
+    end;
+  end;
   Result := Trim(Result);
   while Pos('  ', Result) > 0 do
+  begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  end;
   while Result.EndsWith(';') do
+  begin
     Result := Copy(Result, 1, Length(Result) - 1).TrimRight;
+  end;
 end;
 
 class procedure TIndexExtractor.AddIncluded(ATree: TSyntaxTree; const AFileName: string;
@@ -2299,15 +2831,19 @@ var
   Body: TSyntaxNode;
 begin
   if not Assigned(AResolver) or (Length(AStack) > MaxDepth) then
+  begin
     Exit;
+  end;
   IsUnit := ATree.Root.Kind = TSyntaxKind.UnitFile;
   ImplementationOffset := MaxInt;
   for Token in ATree.Tokens do
+  begin
     if Token.IsKeyword('implementation') then
     begin
       ImplementationOffset := Token.Offset;
       Break;
     end;
+  end;
   Section := '';
   Previous := Default(TPascalToken);
   Previous.Kind := TPascalTokenKind.Unknown;
@@ -2318,35 +2854,51 @@ begin
     begin
       // Zuletzt geöffneter Deklarationsabschnitt, für Dateien ohne eigenes Schlüsselwort.
       if (Token.Kind = TPascalTokenKind.Keyword) and (IndexText(Token.Text, SectionWords) >= 0) then
-        Section := LowerCase(Token.Text)
+      begin
+        Section := LowerCase(Token.Text);
+      end
       else if Token.IsKeyword('begin') or Token.IsKeyword('implementation') or Token.IsKeyword('interface') then
+      begin
         Section := '';
+      end;
       if Token.Kind <> TPascalTokenKind.Directive then
       begin
         if Token.Kind <> TPascalTokenKind.Comment then
+        begin
           Previous := Token;
+        end;
         Continue;
       end;
       if not TPascalPreprocessor.IncludeFileOf(Token.Text, Name) then
+      begin
         Continue;
+      end;
       // Nicht gefunden oder Zyklus: überspringen, die Diagnose kommt aus dem Präprozessor.
       if not AResolver(Name, AFileName, IncFile, IncText) or (IndexText(IncFile, AStack) >= 0) then
+      begin
         Continue;
+      end;
       if IndexText(IncFile, AUnit.Includes) < 0 then
+      begin
         AUnit.Includes := AUnit.Includes + [IncFile];
+      end;
       // Wert einer Konstanten (V = {$I commit.inc};, #849): Inhalt in die Signatur, keine Deklarationen.
       if TPascalParser.IncludeAsValue(Previous) then
       begin
         for Position := 0 to Symbols.Count - 1 do
+        begin
           if (Symbols[Position].Kind = TIndexSymbolKind.Constant) and (Symbols[Position].FileName = '') and
             InRange(Token.StartPos, Symbols[Position].Range) then
           begin
             Copied := Symbols[Position];
             Copied.Signature := StringReplace(Copied.Signature, Token.Text, OneLine(IncText), []);
             if Length(Copied.Signature) > TIndexSymbol.MaxSignature then
+            begin
               Copied.Signature := Copy(Copied.Signature, 1, TIndexSymbol.MaxSignature - 1) + '…';
+            end;
             Symbols[Position] := Copied;
           end;
+        end;
         Continue;
       end;
       InInterface := IsUnit and (Token.Offset < ImplementationOffset);
@@ -2373,11 +2925,17 @@ begin
         if HostType <> '' then
         begin
           if SameText(Copied.Container, '') and SameText(Copied.Name, IncludeHost) then
+          begin
             Continue;
+          end;
           if SameText(Copied.Container, IncludeHost) then
-            Copied.Container := HostType
+          begin
+            Copied.Container := HostType;
+          end
           else if StartsText(IncludeHost + '.', Copied.Container) then
+          begin
             Copied.Container := HostType + Copy(Copied.Container, Length(IncludeHost) + 1, MaxInt);
+          end;
         end;
         if Copied.FileName = '' then
         begin
@@ -2390,8 +2948,12 @@ begin
         Symbols.Add(Copied);
       end;
       for Name in Included.Includes do
+      begin
         if IndexText(Name, AUnit.Includes) < 0 then
+        begin
           AUnit.Includes := AUnit.Includes + [Name];
+        end;
+      end;
     end;
     AUnit.Symbols := Symbols.ToArray;
   finally

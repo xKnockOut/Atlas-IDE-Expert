@@ -179,7 +179,9 @@ begin
   while Count < ACount do
   begin
     if Watch.ElapsedMilliseconds >= ATimeoutMs then
+    begin
       Exit(False);
+    end;
     FWritten.WaitFor(ATimeoutMs - Cardinal(Watch.ElapsedMilliseconds));
   end;
   Result := True;
@@ -328,7 +330,9 @@ begin
         TInterlocked.Increment(Calls);
       end;
     for Index := 1 to 5 do
+    begin
       Diagnostics.RefreshLater;
+    end;
     Assert.AreEqual(0, TInterlocked.CompareExchange(Calls, 0, 0), 'erst nach der Pause');
     Sleep(TLspSyntaxDiagnostics.RefreshDelayMs + 500);
     Assert.AreEqual(1, TInterlocked.CompareExchange(Calls, 0, 0));
@@ -393,9 +397,13 @@ begin
   Result := Default(TRuleCheckContext);
   Result.Rules := BuiltinRules;
   if AConfigJson = '' then
-    Result.Settings := TServerSettings.Default
+  begin
+    Result.Settings := TServerSettings.Default;
+  end
   else
+  begin
     Result.Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Result.RelativePath := 'A.pas';
 end;
 
@@ -746,7 +754,9 @@ begin
     try
       Messages := '';
       for Item in Params.GetValue<TJSONArray>('diagnostics') do
+      begin
         Messages := Messages + Item.GetValue<string>('message') + '|';
+      end;
       // Kein Syntaxfehler: Der {$IFNDEF FOO}-Zweig ist abgeblendet, fehlt.inc ein Hinweis.
       Assert.AreEqual('Inaktiv: Bedingung not FOO nicht erfüllt|Include-Datei "fehlt.inc" nicht gefunden|',
         Messages);

@@ -91,10 +91,14 @@ var
   Answer: TMethodOrderResult;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet wird die URI');
+  end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+  end;
   Placement := TMethodPlacement.Declaration;
   Scope := 'all';
   Before := '';
@@ -102,20 +106,30 @@ begin
   begin
     Options := TJSONObject(AArguments.Items[1]);
     if Options.TryGetValue<string>('mode', Mode) then
+    begin
       Placement := TMethodOrder.PlacementOf(Mode);
+    end;
     if not Options.TryGetValue<string>('scope', Scope) then
+    begin
       Scope := 'all';
+    end;
     if not Options.TryGetValue<string>('before', Before) then
+    begin
       Before := '';
+    end;
   end;
   Answer := Default(TMethodOrderResult);
   if Placement <> TMethodPlacement.Off then
   begin
     Shared := TSyntaxTreeCache.Get(Document);
     if SameText(Scope, 'new') then
-      Answer := TMethodOrder.PlaceNew(Shared.Tree, Document.Text, Before, Placement)
+    begin
+      Answer := TMethodOrder.PlaceNew(Shared.Tree, Document.Text, Before, Placement);
+    end
     else
+    begin
       Answer := TMethodOrder.Arrange(Shared.Tree, Document.Text, Placement);
+    end;
   end;
   Result := Json(Answer);
 end;

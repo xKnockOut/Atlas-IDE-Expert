@@ -50,7 +50,9 @@ function TrimDelimiters(const APath: string): string;
 begin
   Result := APath;
   while (Length(Result) > 3) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 /// <summary>Länge eines absoluten Pfads oder einer Datei-URI ab AIndex; 0, wenn dort keiner beginnt.</summary>
@@ -61,19 +63,31 @@ begin
   Result := 0;
   // Nicht mitten im Wort und nicht direkt hinter einer Marke wie <ws>.
   if (AIndex > 1) and (TTextChars.IsIdentChar(AText[AIndex - 1]) or CharInSet(AText[AIndex - 1], ['<', '>'])) then
+  begin
     Exit;
+  end;
   if (AIndex + 2 <= Length(AText)) and CharInSet(AText[AIndex], ['A'..'Z', 'a'..'z']) and
     (AText[AIndex + 1] = ':') and CharInSet(AText[AIndex + 2], ['\', '/']) then
-    Stop := AIndex + 3
+  begin
+    Stop := AIndex + 3;
+  end
   else if (AIndex + 2 <= Length(AText)) and (AText[AIndex] = '\') and (AText[AIndex + 1] = '\') and
     TTextChars.IsIdentChar(AText[AIndex + 2]) then
-    Stop := AIndex + 2
+  begin
+    Stop := AIndex + 2;
+  end
   else if SameText(Copy(AText, AIndex, 7), 'file://') then
-    Stop := AIndex + 7
+  begin
+    Stop := AIndex + 7;
+  end
   else
+  begin
     Exit;
+  end;
   while (Stop <= Length(AText)) and not IsPathEnd(AText[Stop]) do
+  begin
     Inc(Stop);
+  end;
   Result := Stop - AIndex;
 end;
 
@@ -107,60 +121,82 @@ end;
 
 { TTextAnonymizer }
 
-class function TTextAnonymizer.ReplaceQuoted(const AText: string): string;
-var
-  Builder: TStringBuilder;
-  Index, Stop: Integer;
-  Open, Close: Char;
+// Schließendes Anführungszeichen zu AText[AIndex]; #0, wenn dort keins beginnt.
+function ClosingQuote(const AText: string; AIndex: Integer): Char;
 begin
-  Builder := TStringBuilder.Create;
-  try
-    Index := 1;
-    while Index <= Length(AText) do
-    begin
-      Close := #0;
-      Open := AText[Index];
-      if Open = '"' then
-        Close := '"'
-      else if Open = '''' then
+  case AText[AIndex] of
+    '"':
+      Result := '"';
+    '''':
       begin
         // Apostroph im Wort (z. B. „don't“) ist kein Anführungszeichen.
-        if (Index = 1) or not TTextChars.IsIdentChar(AText[Index - 1]) then
-          Close := '''';
-      end
-      else if Open = #$201E then
-        // „…“ (deutsch)
-        Close := #$201C
-      else if Open = #$201C then
-        // “…” (englisch)
-        Close := #$201D
-      else if Open = #$00BB then
-        Close := #$00AB
-      else if Open = #$00AB then
-        Close := #$00BB;
-      Stop := 0;
-      if Close <> #0 then
-      begin
-        Stop := Index + 1;
-        while (Stop <= Length(AText)) and (AText[Stop] <> Close) do
-          Inc(Stop);
-        if Stop > Length(AText) then
-          Stop := 0;
+        Result := #0;
+        if (AIndex = 1) or not TTextChars.IsIdentChar(AText[AIndex - 1]) then
+        begin
+          Result := '''';
+        end;
       end;
-      if (Stop > Index + 1) and (Copy(AText, Index + 1, 1) <> '<') then
+    // „…“ (deutsch)
+    #$201E:
+      Result := #$201C;
+    // “…” (englisch)
+    #$201C:
+      Result := #$201D;
+    #$00BB:
+      Result := #$00AB;
+    #$00AB:
+      Result := #$00BB;
+  else
+    Result := #0;
+  end;
+end;
+
+// Stelle des schließenden Anführungszeichens zu dem bei AIndex; 0 ohne.
+function QuoteEnd(const AText: string; AIndex: Integer): Integer;
+var
+  mClose: Char;
+begin
+  mClose := ClosingQuote(AText, AIndex);
+  if mClose = #0 then
+  begin
+    Exit(0);
+  end;
+  Result := AIndex + 1;
+  while (Result <= Length(AText)) and (AText[Result] <> mClose) do
+  begin
+    Inc(Result);
+  end;
+  if Result > Length(AText) then
+  begin
+    Result := 0;
+  end;
+end;
+
+class function TTextAnonymizer.ReplaceQuoted(const AText: string): string;
+var
+  mBuilder: TStringBuilder;
+  mIndex, mStop: Integer;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mIndex := 1;
+    while mIndex <= Length(AText) do
+    begin
+      mStop := QuoteEnd(AText, mIndex);
+      if (mStop > mIndex + 1) and (Copy(AText, mIndex + 1, 1) <> '<') then
       begin
-        Builder.Append(AText[Index]).Append(ValueLabel).Append(AText[Stop]);
-        Index := Stop + 1;
+        mBuilder.Append(AText[mIndex]).Append(ValueLabel).Append(AText[mStop]);
+        mIndex := mStop + 1;
       end
       else
       begin
-        Builder.Append(AText[Index]);
-        Inc(Index);
+        mBuilder.Append(AText[mIndex]);
+        Inc(mIndex);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -173,17 +209,25 @@ begin
   Result := AText;
   Roots := nil;
   for Root in ARoots do
+  begin
     if TrimDelimiters(Root) <> '' then
+    begin
       Roots := Roots + [TrimDelimiters(Root)];
+    end;
+  end;
   // Längste Wurzel zuerst, damit verschachtelte Arbeitsbereiche vollständig gekürzt werden.
   for Index := 0 to High(Roots) - 1 do
+  begin
     for Other := Index + 1 to High(Roots) do
+    begin
       if Length(Roots[Other]) > Length(Roots[Index]) then
       begin
         Swap := Roots[Index];
         Roots[Index] := Roots[Other];
         Roots[Other] := Swap;
       end;
+    end;
+  end;
   for Root in Roots do
   begin
     Slashed := StringReplace(Root, '\', '/', [rfReplaceAll]);
@@ -198,8 +242,12 @@ begin
   end;
   Result := ReplaceAbsolutePaths(Result);
   for Root in AIdentity do
+  begin
     if Length(Root) >= 3 then
+    begin
       Result := StringReplace(Result, Root, UserLabel, [rfReplaceAll, rfIgnoreCase]);
+    end;
+  end;
 end;
 
 class function TTextAnonymizer.AnonymizeLogLine(const ALine: string; const ARoots, AIdentity: TArray<string>): string;

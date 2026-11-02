@@ -122,11 +122,13 @@ var
   Entry: TTestFile;
 begin
   for Index := 0 to High(Files) do
+  begin
     if SameText(Files[Index].Name, AName) then
     begin
       Files[Index].Text := AText;
       Exit;
     end;
+  end;
   Entry.Name := AName;
   Entry.Text := AText;
   Files := Files + [Entry];
@@ -138,8 +140,12 @@ var
 begin
   Result := '';
   for Entry in Files do
+  begin
     if SameText(Entry.Name, AName) then
+    begin
       Result := Entry.Text;
+    end;
+  end;
 end;
 
 const
@@ -240,12 +246,18 @@ begin
     begin
       Texts.AddOrSetValue(UpperCase(Entry.Name), Entry.Text);
       if not SameText(ExtractFileExt(Entry.Name), '.dfm') then
+      begin
         Index.AddUnit(TIndexExtractor.ExtractText(Entry.Text, Entry.Name, nil, nil, True));
+      end;
     end;
     if AScenario.Config = '' then
-      Settings := TServerSettings.Default
+    begin
+      Settings := TServerSettings.Default;
+    end
     else
+    begin
       Settings := TConfigurationParser.Parse(AScenario.Config, Issues);
+    end;
     Tree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
     try
       Context := Default(TRuleContext);
@@ -264,7 +276,9 @@ begin
         begin
           Result := not Incomplete;
           if Incomplete then
+          begin
             AReason := 'Index läuft (1 von 3 Units)';
+          end;
         end);
       Result := TRuleEngine.Run([TUnusedPublicMemberRule.Create], Settings, Context);
       Context.ProjectFiles := nil;
@@ -282,7 +296,9 @@ var
 begin
   Result := '';
   for Finding in AFindings do
+  begin
     Result := Result + Finding.Message + #10;
+  end;
 end;
 
 procedure TUnusedPublicMemberTests.IssueExample;
@@ -567,9 +583,13 @@ begin
   begin
     Result := TPath.Combine(Directory, TPath.Combine('Tests', 'Referenzprojekt'));
     if TDirectory.Exists(Result) then
+    begin
       Exit;
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   Result := '';
@@ -597,7 +617,9 @@ var
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   // Units von RefApp aus den in-Klauseln der .dpr, Formulare daneben.
   MainFile := TPath.Combine(Folder, 'RefApp.dpr');
   Data := Default(TScenario);
@@ -607,6 +629,7 @@ begin
   Tree := TSyntaxTreeCache.Parse(Data.Text(MainFile));
   try
     for Token in Tree.Tokens do
+    begin
       if (Token.Kind = TPascalTokenKind.StringLiteral) and EndsText('.pas''', Token.Text) then
       begin
         Source := TPath.Combine(Folder, StringReplace(Copy(Token.Text, 2, Length(Token.Text) - 2), '\',
@@ -619,6 +642,7 @@ begin
           Data.Put(ChangeFileExt(Source, '.dfm'), ReadSource(ChangeFileExt(Source, '.dfm')));
         end;
       end;
+    end;
   finally
     Tree.Free;
   end;
@@ -633,11 +657,19 @@ begin
   begin
     Lines := Data.Text(Source).Replace(#13#10, #10).Split([#10]);
     for Index := 0 to High(Lines) do
+    begin
       if Lines[Index].Contains(Marker) then
+      begin
         Expected := Expected + Format('%s:%d'#10, [ExtractFileName(Source), Index + 1]);
+      end;
+    end;
     if SameText(ExtractFileExt(Source), '.pas') then
+    begin
       for Finding in Run(Data, Source) do
+      begin
         Actual := Actual + Format('%s:%d'#10, [ExtractFileName(Source), Finding.Range.StartPos.Line + 1]);
+      end;
+    end;
   end;
   Assert.AreEqual(Expected, Actual);
   Assert.IsTrue(Expected <> '', 'Keine Markierungen im Referenzprojekt');

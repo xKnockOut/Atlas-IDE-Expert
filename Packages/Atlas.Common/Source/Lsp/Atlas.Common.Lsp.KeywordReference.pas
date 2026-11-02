@@ -215,20 +215,26 @@ var
   Info: TKeywordInfo;
 begin
   for Info in Keywords do
+  begin
     if SameText(Info.Name, AName) then
     begin
       AInfo := Info;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
 function VersionLabel(const AVersion: string): string;
 begin
   if AVersion = Delphi13 then
-    Result := 'Delphi 13'
+  begin
+    Result := 'Delphi 13';
+  end
   else
+  begin
     Result := 'BDS ' + AVersion;
+  end;
 end;
 
 class function TKeywordReference.Describe(const AInfo: TKeywordInfo; const ADelphiVersion: string): string;
@@ -236,16 +242,22 @@ var
   Title: string;
 begin
   if AInfo.Name = 'if expression' then
-    Title := 'if … then … else'
+  begin
+    Title := 'if … then … else';
+  end
   else
+  begin
     Title := AInfo.Name;
+  end;
   Result := '**' + Title + '** (' + AInfo.Kind + ')' + #10#10 + AInfo.Text;
   if AInfo.MinVersion <> '' then
   begin
     Result := Result + #10#10 + 'Ab ' + VersionLabel(AInfo.MinVersion) + '.';
     if (TLanguageFeatures.ParseVersion(ADelphiVersion) > 0) and
       (TLanguageFeatures.ParseVersion(ADelphiVersion) < TLanguageFeatures.ParseVersion(AInfo.MinVersion)) then
+    begin
       Result := Result + ' In diesem Projekt (BDS ' + ADelphiVersion + ') nicht verfügbar.';
+    end;
   end;
   Result := Result + #10#10 + '[DocWiki](' + TCompilerDirectives.Url(ADelphiVersion, AInfo.Topic) + ')';
 end;
@@ -263,17 +275,25 @@ begin
   Result := AIndex + AStep;
   while (Result >= 0) and (Result <= High(ATokens)) and
     (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Inc(Result, AStep);
+  end;
   if (Result < 0) or (Result > High(ATokens)) then
+  begin
     Result := -1;
+  end;
 end;
 
 function WordOf(const ATokens: TArray<TPascalToken>; AIndex: Integer): string;
 begin
   if (AIndex < 0) or not (ATokens[AIndex].Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier]) then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := LowerCase(ATokens[AIndex].Text);
+  end;
 end;
 
 class function TKeywordReference.HoverAt(const AText: string; const APosition: TTextPosition;
@@ -288,14 +308,18 @@ begin
   Tokens := TPascalLexer.Tokenize(AText);
   Hit := -1;
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier]) and
       Contains(Tokens[Index].StartPos, Tokens[Index].EndPos, APosition) then
     begin
       Hit := Index;
       Break;
     end;
+  end;
   if Hit < 0 then
+  begin
     Exit(False);
+  end;
   Word := WordOf(Tokens, Hit);
   Prev := Neighbour(Tokens, Hit, -1);
   Next := Neighbour(Tokens, Hit, 1);
@@ -303,26 +327,44 @@ begin
   NextWord := WordOf(Tokens, Next);
   Name := Word;
   if (Word = 'strict') and MatchStr(NextWord, ['private', 'protected']) then
-    Name := 'strict ' + NextWord
+  begin
+    Name := 'strict ' + NextWord;
+  end
   else if (PrevWord = 'strict') and MatchStr(Word, ['private', 'protected']) then
-    Name := 'strict ' + Word
+  begin
+    Name := 'strict ' + Word;
+  end
   else if (Word = 'class') and (NextWord = 'var') then
-    Name := 'class var'
+  begin
+    Name := 'class var';
+  end
   else if (PrevWord = 'class') and (Word = 'var') then
-    Name := 'class var'
+  begin
+    Name := 'class var';
+  end
   else if ((Word = 'is') and (NextWord = 'not')) or ((PrevWord = 'is') and (Word = 'not')) then
-    Name := 'is not'
+  begin
+    Name := 'is not';
+  end
   else if ((Word = 'not') and (NextWord = 'in')) or ((PrevWord = 'not') and (Word = 'in')) then
-    Name := 'not in'
+  begin
+    Name := 'not in';
+  end
   else if (Word = 'if') and (Prev >= 0) and (Tokens[Prev].Kind = TPascalTokenKind.Symbol) and
     (Tokens[Prev].Text <> ';') then
+  begin
     // Hinter :=, (, , usw. ist if ein Ausdruck, keine Anweisung.
-    Name := 'if expression'
+    Name := 'if expression';
+  end
   else if MatchText(Word, CommonWords) then
+  begin
     Exit(False);
+  end;
   Result := Find(Name, Info);
   if Result then
+  begin
     AMarkdown := Describe(Info, ADelphiVersion);
+  end;
 end;
 
 initialization

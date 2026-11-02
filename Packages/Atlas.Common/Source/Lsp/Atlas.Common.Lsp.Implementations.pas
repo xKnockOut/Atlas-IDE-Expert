@@ -80,9 +80,13 @@ const
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
@@ -117,11 +121,13 @@ var
 begin
   Count := 0;
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName) then
     begin
       ABody := Symbol;
       Inc(Count);
     end;
+  end;
   Result := Count >= 2;
 end;
 
@@ -143,14 +149,20 @@ begin
     begin
       Current := Pending.Dequeue;
       if Current.Value >= MaxDepth then
+      begin
         Continue;
+      end;
       for Location in AIndex.Descendants(Current.Key) do
       begin
         if not (Location.Symbol.Kind in TypeKinds) then
+        begin
           Continue;
+        end;
         Key := UpperCase(Location.FileName + '|' + Location.Symbol.QualifiedName);
         if Seen.ContainsKey(Key) then
+        begin
           Continue;
+        end;
         Seen.Add(Key, True);
         Result := Result + [Location];
         Pending.Enqueue(TPair<string, Integer>.Create(Location.Symbol.QualifiedName, Current.Value + 1));
@@ -169,9 +181,13 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if ComparePositions(ATokens[Index].StartPos, APosition) > 0 then
+    begin
       Break;
+    end;
     if ComparePositions(APosition, ATokens[Index].EndPos) <= 0 then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -188,13 +204,17 @@ begin
   begin
     Child := nil;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (Node[Index].StartOffset <= AOffset) and (AOffset <= Node[Index].EndOffset) then
       begin
         Child := Node[Index];
         Break;
       end;
+    end;
     if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) then
+    begin
       Exit(Child.Name);
+    end;
     Node := Child;
   end;
   Result := '';
@@ -214,22 +234,32 @@ begin
   Tokens := ATree.Tokens;
   Next := ATokenIndex + 1;
   while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Inc(Next);
+  end;
   if (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Identifier) then
+  begin
     // inherited Create(...): wie Gehe zu Definition auf dem Namen.
     Exit(TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, Tokens[Next].StartPos, False));
+  end;
   // inherited; → gleichnamige Methode im Vorfahren.
   Name := EnclosingRoutineName(ATree.Root, Tokens[ATokenIndex].Offset);
   if Name = '' then
+  begin
     Exit;
+  end;
   Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
   Resolved := AResolver.ResolveChain(ATree, AFileName, [Name], Tokens[ATokenIndex].Offset, True);
   if not Resolved.Found then
+  begin
     Exit;
+  end;
   Result := [Target(Resolved.FileName, Resolved.Range, Resolved.SelectionRange)];
   if OwnerUnitOf(AIndex, ATree, AFileName, Resolved.FileName, OwnerUnit) and
     FindBody(OwnerUnit, Resolved.Container, Resolved.Name, Body) then
+  begin
     Result := [Target(OwnerUnit.FileName, Body.Range, Body.SelectionRange)];
+  end;
 end;
 
 { TLspImplementations }
@@ -271,14 +301,22 @@ var
 begin
   Result := False;
   if AIndex = nil then
+  begin
     Exit;
+  end;
   Short := ATypeName;
   if Short.LastIndexOf('.') >= 0 then
+  begin
     Short := Copy(Short, Short.LastIndexOf('.') + 2, MaxInt);
+  end;
   for Location in AIndex.FindSymbols(Short) do
+  begin
     if (Location.Symbol.Kind = TIndexSymbolKind.InterfaceType) and
       (SameText(Location.Symbol.QualifiedName, ATypeName) or SameText(Location.Symbol.Name, ATypeName)) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TLspImplementations.ImplementationCount(const AIndex: ISymbolIndex; const AContainer, AName: string;
@@ -290,28 +328,38 @@ var
 begin
   Result := 0;
   if AIndex = nil then
+  begin
     Exit;
+  end;
   // Eine virtuelle Methode ist selbst ein mögliches Ziel; ein Interface hat keinen Rumpf.
   if not AInterface then
+  begin
     Result := 1;
+  end;
   for Location in AllDescendants(AIndex, AContainer) do
   begin
     if not (Location.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) then
+    begin
       Continue;
+    end;
     if AInterface then
     begin
       Inc(Result);
       Continue;
     end;
     if not AIndex.FindFile(Location.FileName, Owner) then
+    begin
       Continue;
+    end;
     for Symbol in Owner.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Location.Symbol.QualifiedName) and
         SameText(Symbol.Name, AName) then
       begin
         Inc(Result);
         Break;
       end;
+    end;
   end;
 end;
 
@@ -333,15 +381,21 @@ var
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
+  end;
   TokenIndex := TokenIndexAt(ATree.Tokens, APosition);
   if (TokenIndex >= 0) and ATree.Tokens[TokenIndex].IsKeyword('inherited') then
+  begin
     Exit(InheritedTargets(AResolver, AIndex, ATree, AFileName, TokenIndex));
+  end;
 
   Resolved := AResolver.Resolve(ATree, AFileName, APosition);
   // Name einer Deklaration (Methode in der Klasse, Typname): die Deklaration selbst.
   if Resolved.Kind = TResolvedKind.None then
+  begin
     for Symbol in TIndexExtractor.Extract(ATree, AFileName).Symbols do
+    begin
       if Within(APosition, Symbol.SelectionRange) then
       begin
         Resolved.Kind := TResolvedKind.Symbol;
@@ -353,44 +407,64 @@ begin
         Resolved.SelectionRange := Symbol.SelectionRange;
         Break;
       end;
+    end;
+  end;
   if Resolved.Kind <> TResolvedKind.Symbol then
+  begin
     Exit;
+  end;
 
   List := TList<TDefinitionTarget>.Create;
   try
     if Resolved.SymbolKind in TypeKinds then
     begin
       for Location in AllDescendants(AIndex, Resolved.QualifiedName) do
+      begin
         List.Add(Target(Location.FileName, Location.Symbol.Range, Location.Symbol.SelectionRange));
+      end;
     end
     else if (Resolved.SymbolKind in RoutineKinds) and (Resolved.Container <> '') then
     begin
       // Eigener Rumpf (fehlt bei abstrakten und Interface-Methoden).
       if OwnerUnitOf(AIndex, ATree, AFileName, Resolved.FileName, OwnerUnit) and
         FindBody(OwnerUnit, Resolved.Container, Resolved.Name, Body) then
+      begin
         List.Add(Target(OwnerUnit.FileName, Body.Range, Body.SelectionRange));
+      end;
       for Location in AllDescendants(AIndex, Resolved.Container) do
       begin
         if List.Count >= MaxTargets then
+        begin
           Break;
+        end;
         if not OwnerUnitOf(AIndex, ATree, AFileName, Location.FileName, DescendantUnit) then
+        begin
           Continue;
+        end;
         TypeName := Location.Symbol.QualifiedName;
         if FindBody(DescendantUnit, TypeName, Resolved.Name, Body) then
-          List.Add(Target(DescendantUnit.FileName, Body.Range, Body.SelectionRange))
+        begin
+          List.Add(Target(DescendantUnit.FileName, Body.Range, Body.SelectionRange));
+        end
         else
+        begin
           // Nur deklariert (z. B. abstrakt wiederholt): die Deklaration.
           for Symbol in DescendantUnit.Symbols do
+          begin
             if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, TypeName) and
               SameText(Symbol.Name, Resolved.Name) then
             begin
               List.Add(Target(DescendantUnit.FileName, Symbol.Range, Symbol.SelectionRange));
               Break;
             end;
+          end;
+        end;
       end;
     end;
     if List.Count > MaxTargets then
+    begin
       List.Count := MaxTargets;
+    end;
     Result := List.ToArray;
   finally
     List.Free;
@@ -409,10 +483,14 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen');
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;

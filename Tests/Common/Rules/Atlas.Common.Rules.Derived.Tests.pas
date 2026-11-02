@@ -148,7 +148,9 @@ begin
     Routines := TRuleDerived.Routines(Cache, ContextOf(Tree, Source));
     Names := '';
     for Routine in Routines do
+    begin
       Names := Names + Routine.Name + ' ';
+    end;
     // forward-Deklaration und Deklaration im interface ohne Rumpf fehlen; Inner nach A (Baumreihenfolge).
     Assert.AreEqual('A Inner Later ', Names);
     Cache := nil;
@@ -171,12 +173,18 @@ begin
     Tokens := TRuleDerived.CodeTokens(Cache, ContextOf(Tree, Source));
     Expected := 0;
     for Token in Tree.Tokens do
+    begin
       if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      begin
         Inc(Expected);
+      end;
+    end;
     Assert.IsTrue(Expected < Length(Tree.Tokens), 'Quelltext enthält Kommentare und Direktiven');
     Assert.AreEqual(Expected, Integer(Length(Tokens)));
     for Token in Tokens do
+    begin
       Assert.IsFalse(Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive], Token.Text);
+    end;
     Cache := nil;
   finally
     Tree.Free;

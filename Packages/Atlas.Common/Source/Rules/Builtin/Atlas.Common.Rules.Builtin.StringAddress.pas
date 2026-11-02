@@ -67,7 +67,9 @@ var
   begin
     AIndex := Unwrapped(AIndex);
     if (AIndex.Kind = TSyntaxKind.Literal) and (mScope.Text(AIndex) = '1') then
+    begin
       Exit(True);
+    end;
     Result := (AIndex.Kind = TSyntaxKind.Call) and (AIndex.ChildCount = 2) and
       (AIndex[0].Kind = TSyntaxKind.Identifier) and SameText(AIndex[0].Name, 'Low') and
       SameText(mScope.Text(Unwrapped(AIndex[1])), mScope.Text(ABase));
@@ -83,18 +85,26 @@ var
     Result := False;
     if not ASymbol.IsParameter or ((ASymbol.Kind <> TResolvedKind.Local) and
       not SameText(ASymbol.FileName, mScope.FileName)) then
+    begin
       Exit;
+    end;
     mTokens := mScope.Tokens;
     mIndex := mScope.TokenAtPosition(ASymbol.SelectionRange.StartPos) - 1;
     while mIndex >= 0 do
     begin
       if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
-        Dec(mIndex)
+      begin
+        Dec(mIndex);
+      end
       else if (mTokens[mIndex].Text = ',') or (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
         not SameText(mTokens[mIndex].Text, 'const') then
-        Dec(mIndex)
+      begin
+        Dec(mIndex);
+      end
       else
+      begin
         Exit(SameText(mTokens[mIndex].Text, 'const'));
+      end;
     end;
   end;
 
@@ -103,11 +113,15 @@ var
   begin
     Result := nil;
     while (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.ParenExpr) do
+    begin
       ANode := ANode.Parent;
+    end;
     if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent.ChildCount = 2) and
       (ANode.Parent[1] = ANode) and (ANode.Parent[0].Kind = TSyntaxKind.Identifier) and
       MatchText(ANode.Parent[0].Name, ['PChar', 'PAnsiChar', 'PWideChar', 'PByte', 'Pointer']) then
+    begin
       Result := ANode.Parent;
+    end;
   end;
 
   procedure CheckAddress(ANode: TSyntaxNode);
@@ -119,24 +133,38 @@ var
     mFixes: TArray<TRuleFix>;
   begin
     if ANode.ChildCount <> 1 then
+    begin
       Exit;
+    end;
     mAccess := Unwrapped(ANode[0]);
     if (mAccess.Kind <> TSyntaxKind.IndexAccess) or (mAccess.ChildCount <> 2) then
+    begin
       Exit;
+    end;
     mBase := mAccess[0];
     if not IsFirstIndex(mAccess[1], mBase) then
+    begin
       Exit;
+    end;
     if not mScope.SureType(mBase, mSymbol, mType) or mSymbol.IsType or
       not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+    begin
       Exit;
+    end;
     if not mType.Builtin and not SameText(mType.UnitName, 'System') then
+    begin
       Exit;
+    end;
     mWidth := TSuspiciousStringPointerCastRule.StringWidth(mType.Name);
     if mWidth = 0 then
+    begin
       Exit;
+    end;
     mPointer := 'PChar';
     if mWidth = 1 then
+    begin
       mPointer := 'PAnsiChar';
+    end;
     mCast := PointerCast(ANode);
     mReplaced := ANode;
     if mCast <> nil then
@@ -154,9 +182,11 @@ var
         [TTextEdit.Create(TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos), mSafe)])];
     end
     else
+    begin
       mMessage := Format('Bei leerem %s löst %s mit Bereichsprüfung einen Fehler aus. Zum Lesen ist %s auch ' +
         'für leere Strings sicher, zum Schreiben vorher UniqueString(%s).', [mScope.Text(mBase), mScope.Text(ANode),
         mSafe, mScope.Text(mBase)]);
+    end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, TRuleConfidence.High, mFixes);
   end;
 
@@ -174,9 +204,13 @@ var
       begin
         mNode := mPending.Pop;
         if mNode.Kind = TSyntaxKind.AddressOf then
+        begin
           CheckAddress(mNode);
+        end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
@@ -185,7 +219,9 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mScope := TTypedScope.Create(AContext);
   try
     Visit(AContext.Tree.Root);

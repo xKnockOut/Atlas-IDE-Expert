@@ -69,6 +69,8 @@ type
     [Test]
     procedure SafeModificationsAreSilent;
     [Test]
+    procedure LaterBreakLeavesLoop;
+    [Test]
     procedure MutatingMethodsOption;
     [Test]
     procedure CollectionModifiedOffAndExclude;
@@ -526,6 +528,27 @@ begin
     '  for I := 0 to 9 do'#10'    Kunden.Delete(0);'#10));
 end;
 
+procedure TStatementRulesTests.LaterBreakLeavesLoop;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Break oder Exit später im selben Block, nach einem Merker und nach einer inneren for-Schleife hinter dem Aufruf
+  // (Modules.Registry, Settings.Parts).
+  TRuleAssert.Silent(TCollectionModifiedInLoopRule.Create,
+    ListBody('  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'    begin'#10 +
+    '      Kunden.Delete(I);'#10'      Gefunden := True;'#10'      Break;'#10'    end;'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'    begin'#10 +
+    '      Kunden.Delete(I);'#10'      for var Name in Namen do'#10'        Schluessel.Remove(Name);'#10 +
+    '      Exit;'#10'    end;'#10));
+  // Bedingtes Break und Break nur der inneren Schleife lassen die Meldung stehen.
+  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
+    ListBody('  for I := 0 to Kunden.Count - 1 do'#10'  begin'#10'    Kunden.Delete(I);'#10 +
+    '    if Fertig then'#10'      Break;'#10'  end;'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    while Weiter do'#10'    begin'#10'      Kunden.Delete(I);'#10 +
+    '      Break;'#10'    end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+end;
+
 procedure TStatementRulesTests.MutatingMethodsOption;
 const
   Source = '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Loeschen(I);'#10 +
@@ -566,23 +589,39 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = EmptyStatementRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = LoopOffByOneRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, LoopOffByOneRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = CollectionModifiedInLoopRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, CollectionModifiedInLoopRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = DestroyCalledDirectlyRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, DestroyCalledDirectlyRuleId);
 end;
 
@@ -1222,7 +1261,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -1237,13 +1278,17 @@ var
 begin
   Edits := Copy(AFix.Edits);
   for Index := 0 to High(Edits) do
+  begin
     for Inner := Index + 1 to High(Edits) do
+    begin
       if OffsetIn(AText, Edits[Inner].Range.StartPos) > OffsetIn(AText, Edits[Index].Range.StartPos) then
       begin
         Swap := Edits[Index];
         Edits[Index] := Edits[Inner];
         Edits[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index := 0 to High(Edits) do
   begin

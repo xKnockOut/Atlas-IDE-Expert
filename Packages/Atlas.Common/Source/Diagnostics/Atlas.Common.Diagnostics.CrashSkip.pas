@@ -127,8 +127,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to FEntries.Count - 1 do
+  begin
     if (FEntries[mIndex].Method = AMethod) and SameText(FEntries[mIndex].Uri, AUri) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -139,7 +143,9 @@ var
 begin
   Result := False;
   if (AMethod = '') or (AUri = '') then
+  begin
     Exit;
+  end;
   System.TMonitor.Enter(FLock);
   try
     mIndex := IndexOf(AMethod, AUri);
@@ -148,7 +154,9 @@ begin
       mEntry := FEntries[mIndex];
       FEntries.Delete(mIndex);
       if mEntry.Checksum <> AChecksum then
+      begin
         mEntry.Crashes := 0;
+      end;
     end
     else
     begin
@@ -159,12 +167,16 @@ begin
     mEntry.Checksum := AChecksum;
     Inc(mEntry.Crashes);
     if ACaseFolder <> '' then
+    begin
       mEntry.CaseFolder := ACaseFolder;
+    end;
     mEntry.ExceptionClass := AExceptionClass;
     // Zuletzt abgestürzt steht hinten; vorne fällt bei Überlauf das Älteste weg.
     FEntries.Add(mEntry);
     while FEntries.Count > MaxEntries do
+    begin
       FEntries.Delete(0);
+    end;
     Result := mEntry.Crashes = Threshold;
   finally
     System.TMonitor.Exit(FLock);
@@ -189,8 +201,12 @@ begin
   System.TMonitor.Enter(FLock);
   try
     for mEntry in FEntries do
+    begin
       if SameText(mEntry.Uri, AUri) then
+      begin
         Exit(True);
+      end;
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -208,7 +224,9 @@ begin
   try
     mIndex := IndexOf(AMethod, AUri);
     if mIndex < 0 then
+    begin
       Exit;
+    end;
     AEntry := FEntries[mIndex];
     if AEntry.Checksum <> AChecksum then
     begin
@@ -230,12 +248,16 @@ begin
   System.TMonitor.Enter(FLock);
   try
     for mIndex := FEntries.Count - 1 downto 0 do
+    begin
       if SameText(FEntries[mIndex].Uri, AUri) and (FEntries[mIndex].Checksum <> AChecksum) then
       begin
         if FEntries[mIndex].Skipping then
+        begin
           Result := Result + [FEntries[mIndex]];
+        end;
         FEntries.Delete(mIndex);
       end;
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -249,12 +271,16 @@ begin
   System.TMonitor.Enter(FLock);
   try
     for mIndex := FEntries.Count - 1 downto 0 do
+    begin
       if (AUri = '') or SameText(FEntries[mIndex].Uri, AUri) then
       begin
         if FEntries[mIndex].Skipping then
+        begin
           Result := Result + [FEntries[mIndex]];
+        end;
         FEntries.Delete(mIndex);
       end;
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -268,8 +294,12 @@ begin
   System.TMonitor.Enter(FLock);
   try
     for mEntry in FEntries do
+    begin
       if mEntry.Skipping then
+      begin
         Result := Result + [mEntry];
+      end;
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -322,7 +352,9 @@ begin
   Result := '';
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := mValue.Value;
+  end;
 end;
 
 procedure TCrashSkips.Load(const AJson: string);
@@ -338,11 +370,15 @@ begin
     try
       FEntries.Clear;
       if not (mRoot is TJSONArray) then
+      begin
         Exit;
+      end;
       for mIndex := 0 to TJSONArray(mRoot).Count - 1 do
       begin
         if not (TJSONArray(mRoot).Items[mIndex] is TJSONObject) then
+        begin
           Continue;
+        end;
         mItem := TJSONObject(TJSONArray(mRoot).Items[mIndex]);
         mEntry := Default(TCrashSkipEntry);
         mEntry.Method := StringOf(mItem, 'method');
@@ -352,12 +388,18 @@ begin
         mEntry.ExceptionClass := StringOf(mItem, 'exception');
         mValue := mItem.GetValue('crashes');
         if mValue is TJSONNumber then
+        begin
           mEntry.Crashes := TJSONNumber(mValue).AsInt;
+        end;
         if (mEntry.Method <> '') and (mEntry.Uri <> '') and (mEntry.Crashes > 0) then
+        begin
           FEntries.Add(mEntry);
+        end;
       end;
       while FEntries.Count > MaxEntries do
+      begin
         FEntries.Delete(0);
+      end;
     finally
       System.TMonitor.Exit(FLock);
     end;

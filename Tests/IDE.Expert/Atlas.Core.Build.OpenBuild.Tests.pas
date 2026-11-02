@@ -7,6 +7,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasOpenBuildTests = class
   public
     /// <summary>Fällig erst nach der Wartezeit seit dem letzten Öffnen und der letzten Eingabe.</summary>
@@ -26,13 +27,10 @@ type
     /// <summary>Ergebnis des Laufs: erfolgreich, fehlgeschlagen, nicht gebaut (Abbruch mit Grund).</summary>
     [Test]
     procedure CountsRunResult;
-    /// <summary>Namen, Schlüssel, Art, Umfang und Ausschlussliste.</summary>
+    /// <summary>Schlüssel und Projektdateien; Namen und Werte der Einstellungen testet
+    /// Atlas.Core.Build.OpenBuildSettings.Tests.</summary>
     [Test]
-    procedure NamesAndSettingsValues;
-    /// <summary>#1293: Vorgabe für Konfiguration und Plattform nur, wenn das Projekt sie kennt, in dessen
-    /// Schreibweise; ohne Vorgabe oder unbekannt gilt die Einstellung des Projekts.</summary>
-    [Test]
-    procedure PicksTargetKnownToProject;
+    procedure KeysAndProjectFiles;
   end;
 
 implementation
@@ -186,45 +184,14 @@ begin
   end;
 end;
 
-procedure TAtlasOpenBuildTests.NamesAndSettingsValues;
-var
-  Exclude: TArray<string>;
+procedure TAtlasOpenBuildTests.KeysAndProjectFiles;
 begin
-  Assert.AreEqual('Atlas.IDE.Expert', TAtlasOpenBuild.NameOf('C:\P\Atlas.IDE.Expert.dproj'));
-  Assert.AreEqual('App', TAtlasOpenBuild.NameOf('/home/p/App.dpr'));
-  Assert.AreEqual('Atlas.Text', TAtlasOpenBuild.NameOf('Atlas.Text'), 'Punkte im Namen bleiben');
   Assert.AreEqual('c:\p\app', TAtlasOpenBuild.KeyOf(' C:\P\App.dproj '));
   Assert.AreEqual(TAtlasOpenBuild.KeyOf('C:\P\App.dpr'), TAtlasOpenBuild.KeyOf('c:\p\APP.DPROJ'));
   Assert.IsTrue(TAtlasOpenBuild.IsGroupFile('C:\P\Atlas.GROUPPROJ'));
   Assert.IsFalse(TAtlasOpenBuild.IsGroupFile('C:\P\App.dproj'));
   Assert.IsTrue(TAtlasOpenBuild.IsProjectFile('C:\P\Pkg.dpk'));
   Assert.IsFalse(TAtlasOpenBuild.IsProjectFile('C:\P\Unit1.pas'));
-  Assert.AreEqual(Ord(TAtlasCompileKind.Check), Ord(TAtlasOpenBuild.KindOf(' Check ')));
-  Assert.AreEqual(Ord(TAtlasCompileKind.Build), Ord(TAtlasOpenBuild.KindOf('build')));
-  Assert.AreEqual(Ord(TAtlasCompileKind.Make), Ord(TAtlasOpenBuild.KindOf('quatsch')));
-  Assert.AreEqual('make', TAtlasOpenBuild.KindName(TAtlasCompileKind.Clean), 'nur check, make, build');
-  Assert.AreEqual(Ord(TAtlasOpenBuildScope.Active), Ord(TAtlasOpenBuild.ScopeOf('ACTIVE')));
-  Assert.AreEqual(Ord(TAtlasOpenBuildScope.All), Ord(TAtlasOpenBuild.ScopeOf('')));
-  Exclude := TAtlasOpenBuild.ParseExclude('Atlas.IDE.Expert.dpk;  Demo' + #13#10 + 'demo, ,');
-  Assert.AreEqual(2, Integer(Length(Exclude)));
-  Assert.AreEqual('Atlas.IDE.Expert', Exclude[0]);
-  Assert.AreEqual('Demo', Exclude[1]);
-  Assert.AreEqual('Atlas.IDE.Expert, Demo', TAtlasOpenBuild.NormalizedExclude('Atlas.IDE.Expert.dpk;Demo;demo'));
-end;
-
-procedure TAtlasOpenBuildTests.PicksTargetKnownToProject;
-var
-  Configurations, Platforms: TArray<string>;
-begin
-  Configurations := TArray<string>.Create('Debug', 'Release', 'CI');
-  Platforms := TArray<string>.Create('Win32', 'Win64');
-  Assert.AreEqual('Debug', TAtlasOpenBuild.PickTarget(' debug ', Configurations), 'Schreibweise des Projekts');
-  Assert.AreEqual('Win64', TAtlasOpenBuild.PickTarget('WIN64', Platforms));
-  Assert.AreEqual('Win64', TAtlasOpenBuild.PickTarget('Win 64', Platforms), 'Leerzeichen wie in der IDE-Anzeige');
-  Assert.AreEqual('', TAtlasOpenBuild.PickTarget('Profil', Configurations), 'unbekannt: wie im Projekt');
-  Assert.AreEqual('', TAtlasOpenBuild.PickTarget('Linux64', Platforms), 'nicht aktiviert: wie im Projekt');
-  Assert.AreEqual('', TAtlasOpenBuild.PickTarget('', Configurations), 'ohne Vorgabe: wie im Projekt');
-  Assert.AreEqual('', TAtlasOpenBuild.PickTarget('Debug', nil), 'Projekt ohne Liste');
 end;
 
 initialization

@@ -56,9 +56,13 @@ function RuleFileName(const AContext: TRuleContext): string;
 begin
   Result := AContext.FileName;
   if Result = '' then
+  begin
     Result := AContext.RelativePath;
+  end;
   if Result = '' then
+  begin
     Result := AContext.UnitName + '.pas';
+  end;
 end;
 
 /// <summary>Steht AName als ganzes Wort (ohne Groß-/Kleinschreibung) in AText?</summary>
@@ -74,12 +78,18 @@ begin
     Before := ' ';
     After := ' ';
     if Position > 1 then
+    begin
       Before := AText[Position - 1];
+    end;
     if Position + Length(AName) <= Length(AText) then
+    begin
       After := AText[Position + Length(AName)];
+    end;
     if not CharInSet(Before, ['A'..'Z', 'a'..'z', '0'..'9', '_']) and
       not CharInSet(After, ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    begin
       Exit(True);
+    end;
     Position := Pos(UpperCase(AName), UpperCase(AText), Position + 1);
   end;
 end;
@@ -94,9 +104,13 @@ begin
   Result := nil;
   Tokens := ATree.Tokens;
   for Index := 0 to High(Tokens) do
+  begin
     if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) and
       not ((Index > 0) and (Tokens[Index - 1].IsKeyword('function') or Tokens[Index - 1].IsKeyword('procedure'))) then
+    begin
       Result := Result + [Tokens[Index].Offset];
+    end;
+  end;
 end;
 
 procedure TMethodWithoutSelfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -111,41 +125,46 @@ var
   Item: TMethodFileEdits;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or AContext.NoMethodKind then
+  begin
     Exit;
+  end;
   FileName := RuleFileName(AContext);
   FormText := AContext.FormText;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Lookup := TMethodLookup.FromResolver(Resolver, AContext.Tree, FileName);
-      // Ereignisse der Formulardatei brauchen eine Methode des Objekts.
-      Lookup.InForm :=
-        function(const AName: string): Boolean
-        begin
-          Result := MentionsWord(FormText, AName);
-        end;
-      for Target in TMethodWithoutSelf.Candidates(AContext.Text, AContext.Tree, Lookup) do
+    Lookup := TMethodLookup.FromResolver(Resolver, AContext.Tree, FileName);
+    // Ereignisse der Formulardatei brauchen eine Methode des Objekts.
+    Lookup.InForm :=
+      function(const AName: string): Boolean
       begin
-        Fixes := nil;
-        if TMethodWithoutSelf.Execute(TMethodSource.Create(FileName, AContext.Text, AContext.Tree,
-          NameOffsets(AContext.Tree, Target.Name)), nil, Target.NamePosition, TMethodConversion.ClassMethod,
-          AContext.MethodKindStatic, Lookup, AContext.Formatting, Converted, Reason) then
-          for Item in Converted.Files do
-            if SameText(Item.FileName, FileName) and (Item.Edits <> nil) then
-              Fixes := [TRuleFix.Create(TMethodWithoutSelf.ClassMethodTitle, Item.Edits, False)];
-        // Mittel: Aufrufe über Methodenzeiger in anderen Units sieht die Regel nicht.
-        AReport.Add(TTextRange.Create(Target.NamePosition, TTextPosition.Create(Target.NamePosition.Line,
-          Target.NamePosition.Character + Length(Target.Name))), Format('%s.%s braucht Self nicht: als ' +
-          'class-Methode, freie Routine oder Record-Helper möglich.', [Target.ClassName, Target.Name]),
-          TRuleConfidence.Medium, Fixes);
+        Result := MentionsWord(FormText, AName);
       end;
-    finally
-      Resolver.UnpinTree;
+    for Target in TMethodWithoutSelf.Candidates(AContext.Text, AContext.Tree, Lookup) do
+    begin
+      Fixes := nil;
+      if TMethodWithoutSelf.Execute(TMethodSource.Create(FileName, AContext.Text, AContext.Tree,
+        NameOffsets(AContext.Tree, Target.Name)), nil, Target.NamePosition, TMethodConversion.ClassMethod,
+        AContext.MethodKindStatic, Lookup, AContext.Formatting, Converted, Reason) then
+      begin
+        for Item in Converted.Files do
+        begin
+          if SameText(Item.FileName, FileName) and (Item.Edits <> nil) then
+          begin
+            Fixes := [TRuleFix.Create(TMethodWithoutSelf.ClassMethodTitle, Item.Edits, False)];
+          end;
+        end;
+      end;
+      // Mittel: Aufrufe über Methodenzeiger in anderen Units sieht die Regel nicht.
+      AReport.Add(TTextRange.Create(Target.NamePosition, TTextPosition.Create(Target.NamePosition.Line,
+        Target.NamePosition.Character + Length(Target.Name))), Format('%s.%s braucht Self nicht: als ' +
+        'class-Methode, freie Routine oder Record-Helper möglich.', [Target.ClassName, Target.Name]),
+        TRuleConfidence.Medium, Fixes);
     end;
   finally
+    Resolver.UnpinTree;
   end;
 end;
 

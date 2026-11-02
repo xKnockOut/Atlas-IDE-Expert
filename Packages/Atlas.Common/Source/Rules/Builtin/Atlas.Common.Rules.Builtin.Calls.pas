@@ -136,15 +136,25 @@ begin
   begin
     Ch := AHeader[Index];
     if Ch = '''' then
+    begin
       InString := not InString;
+    end;
     if InString then
+    begin
       Continue;
+    end;
     if Ch = '<' then
-      Inc(Generic)
+    begin
+      Inc(Generic);
+    end
     else if Ch = '>' then
-      Dec(Generic)
+    begin
+      Dec(Generic);
+    end
     else if Generic > 0 then
-      Continue
+    begin
+      Continue;
+    end
     else if Ch = '(' then
     begin
       Open := Index;
@@ -157,17 +167,25 @@ begin
     end;
   end;
   if Open = 0 then
+  begin
     Exit(True);
+  end;
   Depth := 0;
   for Index := Open to Length(AHeader) do
   begin
     Ch := AHeader[Index];
     if Ch = '''' then
+    begin
       InString := not InString;
+    end;
     if InString then
+    begin
       Continue;
+    end;
     if CharInSet(Ch, ['(', '[']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if CharInSet(Ch, [')', ']']) then
     begin
       Dec(Depth);
@@ -187,13 +205,19 @@ var
 begin
   Result := '';
   if Length(ANames) = 0 then
+  begin
     Exit;
+  end;
   if Length(ANames) = 1 then
+  begin
     Exit(ANames[0] + ' fehlt');
+  end;
   for Index := 0 to High(ANames) - 1 do
   begin
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + ANames[Index];
   end;
   Result := Result + ' und ' + ANames[High(ANames)] + ' fehlen';
@@ -202,19 +226,29 @@ end;
 function ArgumentsText(ACount: Integer): string;
 begin
   if ACount = 1 then
-    Result := '1 Argument'
+  begin
+    Result := '1 Argument';
+  end
   else
+  begin
     Result := IntToStr(ACount) + ' Argumente';
+  end;
 end;
 
 function PassedText(ACount: Integer): string;
 begin
   if ACount = 0 then
-    Result := 'übergeben ist keins'
+  begin
+    Result := 'übergeben ist keins';
+  end
   else if ACount = 1 then
-    Result := 'übergeben ist 1'
+  begin
+    Result := 'übergeben ist 1';
+  end
   else
+  begin
     Result := 'übergeben sind ' + IntToStr(ACount);
+  end;
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
@@ -224,8 +258,12 @@ begin
   Result := False;
   for Word in AText.Replace(';', ' ').Replace(',', ' ').Split([' ', #9, #10, #13],
     TStringSplitOptions.ExcludeEmpty) do
+  begin
     if SameText(Word, AWord) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Letztes Token, das an oder vor APosition beginnt; -1 ohne.</summary>
@@ -246,7 +284,9 @@ begin
       Low := Middle + 1;
     end
     else
+    begin
       High := Middle - 1;
+    end;
   end;
 end;
 
@@ -261,7 +301,9 @@ var
   begin
     Result := '';
     if Paths <> nil then
+    begin
       Result := TConditionalBranches.PathAt(Paths, TokenAt(AContext.Tree.Tokens, APosition));
+    end;
   end;
 
   function NodeText(ANode: TSyntaxNode): string;
@@ -289,16 +331,24 @@ var
         begin
           Header := Node.FindChild(TSyntaxKind.RoutineHeader);
           if Header = nil then
+          begin
             Header := Node;
+          end;
           Result := NodeText(Header);
           if Result <> '' then
+          begin
             Exit;
+          end;
           Continue;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if (Node[Index].StartPos.Line <= ARange.StartPos.Line) and
             (Node[Index].EndPos.Line >= ARange.StartPos.Line) then
+          begin
             Pending.Push(Node[Index]);
+          end;
+        end;
       end;
     finally
       Pending.Free;
@@ -309,7 +359,9 @@ var
   begin
     Result := ASymbol.Signature;
     if (Result = '') and (ASymbol.Kind = TResolvedKind.Local) then
+    begin
       Result := LocalHeader(AContext.Tree.Root, ASymbol.Range);
+    end;
   end;
 
   /// <summary>Die eine Routine hinter ACallee samt Kopf; False bei Überladungen, varargs und allem, was
@@ -326,7 +378,9 @@ var
     CallPath := PathOf(ACallee.StartPos);
     Candidates := Resolver.CallCandidates(AContext.Tree, FileName, ACallee);
     if (Length(Candidates) = 0) or Resolver.MayBeHiddenMember(AContext.Tree, FileName, ACallee, Candidates[0]) then
+    begin
       Exit;
+    end;
     Routines := nil;
     Headers := nil;
     WithList := 0;
@@ -334,38 +388,58 @@ var
     begin
       if Candidate.IsType or Candidate.Builtin or not (Candidate.SymbolKind in RoutineKinds) or
         (Candidate.Condition <> '') or (Length(Candidate.Overloads) > 0) then
+      begin
         Exit;
+      end;
       // Deklaration dieser Datei in einem Zweig, der ohne den Aufruf wegfallen kann.
       if ((Candidate.Kind = TResolvedKind.Local) or SameText(Candidate.FileName, FileName)) and
         not TConditionalBranches.Implies(CallPath, PathOf(Candidate.SelectionRange.StartPos)) then
+      begin
         Exit;
+      end;
       Header := HeaderOf(Candidate);
       if (Header = '') or not SplitHeader(Header, Parameters, Tail) or HasWord(Tail, 'overload') or
         HasWord(Tail, 'varargs') then
+      begin
         Exit;
+      end;
       if Pos('(', Header) > 0 then
+      begin
         Inc(WithList);
+      end;
       Routines := Routines + [Candidate];
       Headers := Headers + [Header];
     end;
     // Ein Rumpf ohne Parameterliste (procedure TKunde.Senden;) gehört zur Deklaration mit Liste.
     Index := -1;
     if Length(Routines) = 1 then
-      Index := 0
+    begin
+      Index := 0;
+    end
     else if WithList = 1 then
+    begin
       for Candidate in Routines do
       begin
         Inc(Index);
         if Pos('(', Headers[Index]) > 0 then
+        begin
           Break;
-      end
+        end;
+      end;
+    end
     else if WithList = 0 then
+    begin
       Index := 0;
+    end;
     if Index < 0 then
+    begin
       Exit;
+    end;
     // Mehrere Köpfe mit Liste: Überladung ohne overload oder Verdeckung; das klärt der Compiler.
     if (Length(Routines) > 1) and (WithList > 1) then
+    begin
       Exit;
+    end;
     ARoutine := Routines[Index];
     SplitHeader(Headers[Index], AParameters, Tail);
     Result := True;
@@ -394,39 +468,59 @@ var
   begin
     if not (ACallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
       not SingleRoutine(ACallee, Routine, ParameterText) then
+    begin
       Exit;
+    end;
     Count := Length(AArguments);
     if (Count >= Routine.MinArgs) and (Count <= Routine.MaxArgs) then
+    begin
       Exit;
+    end;
     Parameters := TChangeSignature.ParseParameters(ParameterText);
     // Der Kopf muss zu den Zahlen des Index passen, sonst stimmt die Zuordnung der Namen nicht.
     if Length(Parameters) <> Routine.MaxArgs then
+    begin
       Exit;
+    end;
     if Count > Routine.MaxArgs then
     begin
       if (Routine.TypeName <> '') and not ResultTypeKnown(ANode) then
+      begin
         Exit;
+      end;
       if Routine.MaxArgs = 0 then
-        Message := Format('%s erwartet keine Argumente, %s (wie E2034).', [Routine.Name, PassedText(Count)])
+      begin
+        Message := Format('%s erwartet keine Argumente, %s (wie E2034).', [Routine.Name, PassedText(Count)]);
+      end
       else if Routine.MinArgs = Routine.MaxArgs then
+      begin
         Message := Format('%s erwartet %s, %s (wie E2034).', [Routine.Name, ArgumentsText(Routine.MaxArgs),
-          PassedText(Count)])
+          PassedText(Count)]);
+      end
       else
+      begin
         Message := Format('%s erwartet höchstens %s, %s (wie E2034).', [Routine.Name,
           ArgumentsText(Routine.MaxArgs), PassedText(Count)]);
+      end;
       Range := TTextRange.Create(AArguments[Routine.MaxArgs].StartPos, AArguments[High(AArguments)].EndPos);
     end
     else
     begin
       Missing := nil;
       for Index := Count to Routine.MinArgs - 1 do
+      begin
         Missing := Missing + [Parameters[Index].Name];
+      end;
       if Routine.MinArgs = Routine.MaxArgs then
+      begin
         Message := Format('%s erwartet %s, %s; %s (wie E2035).', [Routine.Name, ArgumentsText(Routine.MinArgs),
-          PassedText(Count), MissingText(Missing)])
+          PassedText(Count), MissingText(Missing)]);
+      end
       else
+      begin
         Message := Format('%s erwartet mindestens %s, %s; %s (wie E2035).', [Routine.Name,
           ArgumentsText(Routine.MinArgs), PassedText(Count), MissingText(Missing)]);
+      end;
       Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
     end;
     // In die Klammern vor ")"; ohne Klammern erst () hinter den Namen.
@@ -437,8 +531,10 @@ var
       Fix.Edits := [TTextEdit.Create(TTextRange.Create(ACallee.EndPos, ACallee.EndPos), '()')];
     end
     else
+    begin
       Fix := TRuleFix.SignatureHelp('Signaturhilfe öffnen', TTextPosition.Create(ANode.EndPos.Line,
         ANode.EndPos.Character - 1));
+    end;
     AReport.Add(Range, Message, TRuleConfidence.High, [Fix]);
   end;
 
@@ -461,16 +557,24 @@ var
         begin
           Arguments := nil;
           for Index := 1 to Node.ChildCount - 1 do
+          begin
             if Node[Index].Kind <> TSyntaxKind.GenericArgs then
+            begin
               Arguments := Arguments + [Node[Index]];
+            end;
+          end;
           CheckCall(Node, Node[0], Arguments);
         end
         // Versenden; als Anweisung ohne Klammern.
         else if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount = 1) and
           (Node[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+        begin
           CheckCall(Node[0], Node[0], nil);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -479,24 +583,27 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   FileName := AContext.FileName;
   if FileName = '' then
+  begin
     FileName := AContext.RelativePath;
+  end;
   if FileName = '' then
+  begin
     FileName := AContext.UnitName + '.pas';
+  end;
   Paths := TConditionalBranches.Paths(AContext.Tree.Tokens);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Resolver.UnpinTree;
-    end;
+    Visit(AContext.Tree.Root);
   finally
+    Resolver.UnpinTree;
   end;
 end;
 
@@ -525,23 +632,35 @@ const
     TExpressionCategory.Boolean_, TExpressionCategory.Char_, TExpressionCategory.String_];
 begin
   if AParameter = TExpressionCategory.Variant_ then
+  begin
     Exit(TArgumentFit.Fits);
+  end;
   // Zeiger (PChar nimmt String-Literale), Mengen, Klassen, Records mit Operatoren, Variant als Argument …
   if not (AParameter in cDecided) or not (AArgument in cDecided) then
+  begin
     Exit(TArgumentFit.Unknown);
+  end;
   case AArgument of
     TExpressionCategory.Integer_:
       if AParameter in cNumbers then
+      begin
         Exit(TArgumentFit.Fits);
+      end;
     TExpressionCategory.Float, TExpressionCategory.Currency_:
       if AParameter in cFloats then
+      begin
         Exit(TArgumentFit.Fits);
+      end;
     TExpressionCategory.Char_:
       if AParameter in [TExpressionCategory.Char_, TExpressionCategory.String_] then
+      begin
         Exit(TArgumentFit.Fits);
+      end;
   else
     if AParameter = AArgument then
+    begin
       Exit(TArgumentFit.Fits);
+    end;
   end;
   Result := TArgumentFit.Fails;
 end;
@@ -552,13 +671,21 @@ class function TOverloadResolutionRule.SameTypeName(const A, B: string): Boolean
   begin
     Result := AName;
     if StartsText('System.', Result) then
+    begin
       Result := Copy(Result, 8, MaxInt);
+    end;
     if MatchText(Result, ['LongInt', 'Int32', 'FixedInt']) then
-      Result := 'Integer'
+    begin
+      Result := 'Integer';
+    end
     else if SameText(Result, 'UnicodeString') then
-      Result := 'string'
+    begin
+      Result := 'string';
+    end
     else if SameText(Result, 'WideChar') then
+    begin
       Result := 'Char';
+    end;
   end;
 
 begin
@@ -584,7 +711,9 @@ var
   begin
     Result := '';
     if mPaths <> nil then
+    begin
       Result := TConditionalBranches.PathAt(mPaths, TokenAt(AContext.Tree.Tokens, APosition));
+    end;
   end;
 
   /// <summary>Steht AUnitName in uses (auch ohne Namespace-Präfix) oder ist es System?</summary>
@@ -594,8 +723,12 @@ var
   begin
     Result := SameText(AUnitName, 'System') or SameText(AUnitName, 'SysInit');
     for mUsed in mUsedUnits do
+    begin
       if SameText(AUnitName, mUsed) or EndsText('.' + mUsed, AUnitName) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
   /// <summary>Deklariert eine Unit aus uses oder System eine freie Routine AName? dcc nimmt deren Überladungen
@@ -607,9 +740,12 @@ var
   begin
     mKey := UpperCase(AName);
     if mOtherRoutines.TryGetValue(mKey, Result) then
+    begin
       Exit;
+    end;
     Result := False;
     for mLocation in AContext.Index.FindSymbols(AName) do
+    begin
       if (mLocation.Symbol.Kind in RoutineKinds) and (mLocation.Symbol.Container = '') and
         not SameText(mLocation.UnitName, AContext.UnitName) and not SameText(mLocation.FileName, mFileName) and
         InScope(mLocation.UnitName) then
@@ -617,6 +753,7 @@ var
         Result := True;
         Break;
       end;
+    end;
     mOtherRoutines.Add(mKey, Result);
   end;
 
@@ -630,14 +767,20 @@ var
     Result := False;
     mFirst := '';
     for mLocation in AContext.Index.FindSymbols(AName) do
+    begin
       if (mLocation.Symbol.Kind in RoutineKinds) and (mLocation.Symbol.Container = '') and
         (SameText(mLocation.UnitName, AContext.UnitName) or InScope(mLocation.UnitName)) then
       begin
         if mFirst = '' then
-          mFirst := mLocation.UnitName
+        begin
+          mFirst := mLocation.UnitName;
+        end
         else if not SameText(mFirst, mLocation.UnitName) then
+        begin
           Exit(True);
+        end;
       end;
+    end;
   end;
 
   /// <summary>Kennt der Index die ganze Vorfahrenkette des Typs, zu dem die Methode ACandidate gehört?</summary>
@@ -649,7 +792,9 @@ var
     Result := False;
     if not mResolver.DeclaringUnit(ACandidate, mUnit) or
       not mResolver.ResolveTypeFrom(mUnit, ACandidate.Container, mType) then
+    begin
       Exit;
+    end;
     mResolver.AncestorNames(mType, Result);
   end;
 
@@ -663,17 +808,25 @@ var
   begin
     Result := False;
     if HasWord(ASymbol.Signature, 'overload') then
+    begin
       Exit;
+    end;
     for mOther in ASymbols do
+    begin
       if HasWord(mOther.Signature, 'overload') and SameText(mOther.Container, ASymbol.Container) and
         (Length(mOther.ParamTypes) = Length(ASymbol.ParamTypes)) then
       begin
         mSame := True;
         for mIndex := 0 to High(mOther.ParamTypes) do
+        begin
           mSame := mSame and SameText(mOther.ParamTypes[mIndex], ASymbol.ParamTypes[mIndex]);
+        end;
         if mSame then
+        begin
           Exit(True);
+        end;
       end;
+    end;
   end;
 
   /// <summary>Alle Überladungen hinter ACallee mit ihren Parametern; False, wenn die Liste nicht sicher
@@ -690,11 +843,17 @@ var
     mFound := mResolver.CallCandidates(AContext.Tree, mFileName, ACallee);
     mSymbols := nil;
     for mSymbol in mFound do
+    begin
       if not IsBody(mSymbol, mFound) then
+      begin
         mSymbols := mSymbols + [mSymbol];
+      end;
+    end;
     if (Length(mSymbols) < 2) or TUnresolvedNames.IsIntrinsic(ACallee.Name) or
       mResolver.MayBeHiddenMember(AContext.Tree, mFileName, ACallee, mSymbols[0]) then
+    begin
       Exit;
+    end;
     mCallPath := PathOf(ACallee.StartPos);
     for mSymbol in mSymbols do
     begin
@@ -702,23 +861,35 @@ var
         (mSymbol.Kind = TResolvedKind.Local) or (mSymbol.Condition <> '') or (mSymbol.TypeParams <> '') or
         (Length(mSymbol.Bindings) > 0) or (Pos('<', mSymbol.Container) > 0) or
         not HasWord(mSymbol.Signature, 'overload') or HasWord(mSymbol.Signature, 'varargs') then
+      begin
         Exit;
+      end;
       if SameText(mSymbol.FileName, mFileName) and
         not TConditionalBranches.Implies(mCallPath, PathOf(mSymbol.SelectionRange.StartPos)) then
+      begin
         Exit;
+      end;
       if mSymbol.Container = '' then
       begin
         if RoutineElsewhere(mSymbol.Name) then
+        begin
           Exit;
+        end;
       end
       else if not AncestorsKnown(mSymbol) then
+      begin
         Exit;
+      end;
       mCandidate.Symbol := mSymbol;
       if not TArgumentCountMismatchRule.SplitHeader(mSymbol.Signature, mCandidate.ParameterText, mTail) then
+      begin
         Exit;
+      end;
       mCandidate.Parameters := TChangeSignature.ParseParameters(mCandidate.ParameterText);
       if Length(mCandidate.Parameters) <> mSymbol.MaxArgs then
+      begin
         Exit;
+      end;
       AResult := AResult + [mCandidate];
     end;
     // Ein unbekannter Vorfahr der umgebenden Klasse kann weitere Überladungen erben (nach CallCandidates gültig).
@@ -745,27 +916,39 @@ var
       begin
         mNode := mPending.Pop;
         if mNode.Kind = TSyntaxKind.AnonymousMethod then
+        begin
           Exit;
+        end;
         // Der Typ eines überladenen Aufrufs im Argument hängt selbst von der Auswahl ab.
         if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and
           (Length(mResolver.CallCandidates(AContext.Tree, mFileName, mNode[0])) <> 1) then
+        begin
           Exit;
+        end;
         // Freie Routine aus mehreren Units: Welche gilt, entscheidet dcc nach uses-Reihenfolge und Argumenten.
         if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and (mNode[0].Kind = TSyntaxKind.Identifier) and
           RoutineInSeveralUnits(mNode[0].Name) then
+        begin
           Exit;
+        end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
     end;
     mInfo := mTypes.Describe(AArgument);
     if not mInfo.Found then
+    begin
       Exit;
+    end;
     Result := mInfo.TypeName;
     if mInfo.BaseName <> '' then
+    begin
       Result := mInfo.BaseName;
+    end;
     ACategory := TExpressionTypes.CategoryOf(Result, mWidth, mSigned);
     // Konstanten bekommen ihren Typ erst am Aufruf (const X = 'a' ist ein Char, Separator = '›' kein Integer).
     if (AArgument.Kind in [TSyntaxKind.Identifier,
@@ -791,17 +974,25 @@ var
     Result := TExpressionCategory.Unknown;
     mText := Trim(AParameter.TypeName);
     if (mText = '') or StartsText('array', mText) or (Pos('<', mText) > 0) then
+    begin
       Exit;
+    end;
     Result := TExpressionTypes.CategoryOf(mText, mWidth, mSigned);
     if Result <> TExpressionCategory.Other then
+    begin
       Exit;
+    end;
     Result := TExpressionCategory.Unknown;
     if mResolver.DeclaringUnit(ACandidate.Symbol, mUnit) and mResolver.ResolveTypeTextFrom(mUnit, mText, mResolved) and
       not mResolved.Builtin and (mResolved.SymbolKind = TIndexSymbolKind.TypeAlias) and
       mResolver.TypeOf(mResolved, mFollowed) and mFollowed.Builtin then
+    begin
       Result := TExpressionTypes.CategoryOf(mFollowed.Name, mWidth, mSigned);
+    end;
     if Result = TExpressionCategory.Other then
+    begin
       Result := TExpressionCategory.Unknown;
+    end;
   end;
 
   function Fails(const ACandidate: TOverloadCandidate; const ATypes: TArray<string>;
@@ -810,12 +1001,18 @@ var
     mIndex: Integer;
   begin
     if (Length(ATypes) < ACandidate.Symbol.MinArgs) or (Length(ATypes) > ACandidate.Symbol.MaxArgs) then
+    begin
       Exit(True);
+    end;
     Result := False;
     for mIndex := 0 to High(ATypes) do
+    begin
       if Fit(ParameterCategory(ACandidate, ACandidate.Parameters[mIndex]), ACategories[mIndex]) =
         TArgumentFit.Fails then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
   /// <summary>Passt jedes Argument sicher (gleicher Typ wie der Parameter)?</summary>
@@ -825,8 +1022,12 @@ var
   begin
     Result := True;
     for mIndex := 0 to High(ATypes) do
+    begin
       if not SameTypeName(ATypes[mIndex], ACandidate.Parameters[mIndex].TypeName) then
+      begin
         Exit(False);
+      end;
+    end;
   end;
 
   /// <summary>Gleiche Parametertypen und -arten für die ersten ACount Parameter.</summary>
@@ -836,12 +1037,16 @@ var
   begin
     Result := True;
     for mIndex := 0 to ACount - 1 do
+    begin
       if not SameTypeName(A.Parameters[mIndex].TypeName, B.Parameters[mIndex].TypeName) or
         ((Pos('var', LowerCase(A.Parameters[mIndex].Modifier)) > 0) <>
         (Pos('var', LowerCase(B.Parameters[mIndex].Modifier)) > 0)) or
         ((Pos('out', LowerCase(A.Parameters[mIndex].Modifier)) > 0) <>
         (Pos('out', LowerCase(B.Parameters[mIndex].Modifier)) > 0)) then
+      begin
         Exit(False);
+      end;
+    end;
   end;
 
   /// <summary>Vor dem Aufruf deklariert (interface oder weiter oben in dieser Datei)?</summary>
@@ -850,7 +1055,9 @@ var
     mStart: TTextPosition;
   begin
     if not SameText(ACandidate.Symbol.FileName, mFileName) or ACandidate.Symbol.InInterface then
+    begin
       Exit(True);
+    end;
     mStart := ACandidate.Symbol.SelectionRange.StartPos;
     Result := (mStart.Line < ACall.StartPos.Line) or ((mStart.Line = ACall.StartPos.Line) and
       (mStart.Character < ACall.StartPos.Character));
@@ -864,11 +1071,17 @@ var
     for mIndex := 0 to High(ATypes) do
     begin
       if mIndex > 0 then
+      begin
         Result := Result + ', ';
+      end;
       if ATypes[mIndex] = '' then
-        Result := Result + '?'
+      begin
+        Result := Result + '?';
+      end
       else
+      begin
         Result := Result + ATypes[mIndex];
+      end;
     end;
   end;
 
@@ -880,9 +1093,13 @@ var
     for mIndex := 0 to High(ACandidates) do
     begin
       if mIndex = High(ACandidates) then
-        Result := Result + ' und '
+      begin
+        Result := Result + ' und ';
+      end
       else if mIndex > 0 then
+      begin
         Result := Result + ', ';
+      end;
       Result := Result + '(' + ACandidates[mIndex].ParameterText + ')';
     end;
   end;
@@ -896,7 +1113,9 @@ var
     while mNode <> nil do
     begin
       if mNode.Kind = TSyntaxKind.WithStatement then
+      begin
         Exit(True);
+      end;
       mNode := mNode.Parent;
     end;
   end;
@@ -914,34 +1133,52 @@ var
     if not (ACallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
       (ACallee.FindChild(TSyntaxKind.GenericArgs) <> nil) or InWith(ANode) or
       not Candidates(ACallee, mCandidates) then
+    begin
       Exit;
+    end;
     SetLength(mTypes, Length(AArguments));
     SetLength(mCategories, Length(AArguments));
     for mIndex := 0 to High(AArguments) do
+    begin
       mTypes[mIndex] := ArgumentType(AArguments[mIndex], mCategories[mIndex]);
+    end;
     mApplicable := nil;
     for mCandidate in mCandidates do
+    begin
       if not Fails(mCandidate, mTypes, mCategories) then
+      begin
         mApplicable := mApplicable + [mCandidate];
+      end;
+    end;
     if (Length(mApplicable) = 0) and (Length(mTypes) = 0) then
+    begin
       mMessage := Format('Keine der %d Überladungen von %s lässt sich ohne Argumente aufrufen (wie E2250).',
-        [Length(mCandidates), ACallee.Name])
+        [Length(mCandidates), ACallee.Name]);
+    end
     else if Length(mApplicable) = 0 then
+    begin
       mMessage := Format('Keine der %d Überladungen von %s passt zu den Argumenten (%s) (wie E2250).',
-        [Length(mCandidates), ACallee.Name, TypesText(mTypes)])
+        [Length(mCandidates), ACallee.Name, TypesText(mTypes)]);
+    end
     else
     begin
       // Mehrdeutig nur, wenn nichts die Kandidaten unterscheidet: gleiche Typen für alle übergebenen
       // Argumente, dieselbe Klasse bzw. Unit, vor dem Aufruf deklariert, jedes Argument sicher passend.
       if Length(mApplicable) < 2 then
+      begin
         Exit;
+      end;
       for mCandidate in mApplicable do
+      begin
         if not SamePrefix(mApplicable[0], mCandidate, Length(AArguments)) or
           not SameText(mCandidate.Symbol.Container, mApplicable[0].Symbol.Container) or
           not SameText(mCandidate.Symbol.FileName, mApplicable[0].Symbol.FileName) or
           (mCandidate.Symbol.Depth <> mApplicable[0].Symbol.Depth) or not DeclaredBefore(mCandidate, ANode) or
           not SurelyFits(mCandidate, mTypes) then
+        begin
           Exit;
+        end;
+      end;
       mMessage := Format('Aufruf von %s ist mehrdeutig: %s passen gleich gut (wie E2251).',
         [ACallee.Name, ListText(mApplicable)]);
     end;
@@ -952,8 +1189,10 @@ var
       mFix.Edits := [TTextEdit.Create(TTextRange.Create(ACallee.EndPos, ACallee.EndPos), '()')];
     end
     else
+    begin
       mFix := TRuleFix.SignatureHelp('Signaturhilfe öffnen', TTextPosition.Create(ANode.EndPos.Line,
         ANode.EndPos.Character - 1));
+    end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, TRuleConfidence.High, [mFix]);
   end;
 
@@ -976,16 +1215,24 @@ var
         begin
           mArguments := nil;
           for mIndex := 1 to mNode.ChildCount - 1 do
+          begin
             if mNode[mIndex].Kind <> TSyntaxKind.GenericArgs then
+            begin
               mArguments := mArguments + [mNode[mIndex]];
+            end;
+          end;
           CheckCall(mNode, mNode[0], mArguments);
         end
         // Nimm; als Anweisung ohne Klammern.
         else if (mNode.Kind = TSyntaxKind.CallStatement) and (mNode.ChildCount = 1) and
           (mNode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+        begin
           CheckCall(mNode[0], mNode[0], nil);
+        end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
@@ -997,15 +1244,23 @@ var
 begin
   // Ohne System und alle Units in uses im Index ist die Liste der Überladungen nicht sicher vollständig.
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not TUnresolvedNames.Available(AContext.Index) then
+  begin
     Exit;
+  end;
   mUsedUnits := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
   if not TUnresolvedNames.UsesKnown(AContext.Index, mUsedUnits, AContext.Namespaces, AContext.EnsureUnit) then
+  begin
     Exit;
+  end;
   mFileName := AContext.FileName;
   if mFileName = '' then
+  begin
     mFileName := AContext.RelativePath;
+  end;
   if mFileName = '' then
+  begin
     mFileName := AContext.UnitName + '.pas';
+  end;
   mPaths := TConditionalBranches.Paths(AContext.Tree.Tokens);
   mOptions := TExpressionTypeOptions.Default;
   mOptions.Conversions := False;

@@ -175,9 +175,15 @@ var
 begin
   Result := AText <> '';
   if Result then
+  begin
     for Part in AText.Split(['.']) do
+    begin
       if not IsValidIdent(Part) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Steht das Token an APosition in einem {$IF…}-Zweig?</summary>
@@ -188,11 +194,17 @@ var
 begin
   Result := False;
   if APaths = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(ATokens) do
+  begin
     if (ATokens[Index].StartPos.Line = APosition.Line) and
       (ATokens[Index].StartPos.Character = APosition.Character) then
+    begin
       Exit(TConditionalBranches.PathAt(APaths, Index) <> '');
+    end;
+  end;
 end;
 
 { TModuleHeader }
@@ -207,19 +219,33 @@ begin
   Result.Last := -1;
   Index := 0;
   while (Index <= High(ATokens)) and not IsCode(ATokens[Index]) do
+  begin
     Inc(Index);
+  end;
   if Index > High(ATokens) then
+  begin
     Exit;
+  end;
   if ATokens[Index].IsKeyword('unit') then
-    Result.Kind := TModuleKind.UnitModule
+  begin
+    Result.Kind := TModuleKind.UnitModule;
+  end
   else if ATokens[Index].IsKeyword('program') then
-    Result.Kind := TModuleKind.ProgramModule
+  begin
+    Result.Kind := TModuleKind.ProgramModule;
+  end
   else if ATokens[Index].IsKeyword('library') then
-    Result.Kind := TModuleKind.LibraryModule
+  begin
+    Result.Kind := TModuleKind.LibraryModule;
+  end
   else if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[Index].Text, 'package') then
-    Result.Kind := TModuleKind.PackageModule
+  begin
+    Result.Kind := TModuleKind.PackageModule;
+  end
   else
+  begin
     Exit;
+  end;
   Inc(Index);
   while Index <= High(ATokens) do
   begin
@@ -234,19 +260,27 @@ begin
       (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword])) then
     begin
       if Result.First < 0 then
+      begin
         Result.First := Index;
+      end;
       Result.Last := Index;
       Result.Name := Result.Name + ATokens[Index].Text;
     end
     else if ATokens[Index].IsSymbol('.') and (Result.Name <> '') then
-      Result.Name := Result.Name + '.'
+    begin
+      Result.Name := Result.Name + '.';
+    end
     else
+    begin
       Break;
+    end;
     Inc(Index);
   end;
   // Ein Punkt am Ende gehört nicht zum Namen (halb getippt).
   if EndsStr('.', Result.Name) then
+  begin
     Result.Name := Copy(Result.Name, 1, Length(Result.Name) - 1);
+  end;
 end;
 
 { Hilfen }
@@ -260,16 +294,24 @@ begin
   for Token in ATokens do
   begin
     if Token.Offset >= AOffset then
+    begin
       Break;
+    end;
     if Token.Kind <> TPascalTokenKind.Directive then
+    begin
       Continue;
+    end;
     Name := TPascalLexer.DirectiveName(Token.Text);
     Body := TDirectiveNames.Body(Token.Text);
     Rest := UpperCase(Trim(Copy(Body, Length(TDirectiveNames.LeadingName(Body)) + 1, MaxInt)));
     if Name = 'WARNINGS' then
-      Result := Rest <> 'OFF'
+    begin
+      Result := Rest <> 'OFF';
+    end
     else if (Name = 'WARN') and SameText(TDirectiveNames.LeadingName(Rest), AName) then
+    begin
       Result := not EndsStr(' OFF', Rest);
+    end;
   end;
 end;
 
@@ -281,7 +323,9 @@ begin
   AText := '';
   Result := (AFileName <> '') and Assigned(AContext.ReadFile) and AContext.ReadFile(AFileName, Bytes);
   if Result then
+  begin
     AText := TFileEncoding.Decode(Bytes, Format);
+  end;
 end;
 
 { TUnitNameMismatchRule }
@@ -299,7 +343,9 @@ begin
   Name := StringReplace(APath, '\', '/', [rfReplaceAll]);
   Name := Copy(Name, LastDelimiter('/', Name) + 1, MaxInt);
   if not EndsText('.pas', Name) then
+  begin
     Exit('');
+  end;
   Result := Copy(Name, 1, Length(Name) - Length('.pas'));
 end;
 
@@ -314,13 +360,17 @@ var
   Range: TTextRange;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Header := TModuleHeader.Read(Tokens);
   // Kopf der Unit gegen den Dateinamen.
   Path := AContext.FileName;
   if Path = '' then
+  begin
     Path := AContext.RelativePath;
+  end;
   Expected := ExpectedName(Path);
   if (Header.Kind = TModuleKind.UnitModule) and (Header.Name <> '') and (Expected <> '') and
     not SameText(Header.Name, Expected) and WarningEnabled(Tokens, 'UNIT_NAME_MISMATCH', Tokens[Header.First].Offset)
@@ -329,7 +379,9 @@ begin
     Range := RangeOf(Tokens, Header.First, Header.Last);
     Fixes := nil;
     if IsQualifiedName(Expected) then
+    begin
       Fixes := [TRuleFix.Create(Format('Unit-Namen in %s ändern', [Expected]), [TRuleEdit.Create(Range, Expected)])];
+    end;
     AReport.Add(Range, Format('Unit-Name %s passt nicht zur Datei %s.pas (wie E1038).', [Header.Name, Expected]),
       TRuleConfidence.High, Fixes);
   end;
@@ -339,15 +391,23 @@ begin
   begin
     if (Entry.Kind = TUsesListKind.RequiredPackage) or (Entry.InPath = '') or
       not ReadNeighbour(AContext, Entry.InPath, Text) then
+    begin
       Continue;
+    end;
     if InBranch(Tokens, Paths, Entry.Range.StartPos) then
+    begin
       Continue;
+    end;
     Used := TModuleHeader.Read(TPascalLexer.Tokenize(Text));
     if (Used.Kind <> TModuleKind.UnitModule) or (Used.Name = '') or SameText(Used.Name, Entry.Name) then
+    begin
       Continue;
+    end;
     // Ursache in der Unit selbst: Dort meldet dcc E1038 (bzw. diese Regel, wenn die Datei geprüft wird).
     if (ExpectedName(Entry.InPath) <> '') and not SameText(Used.Name, ExpectedName(Entry.InPath)) then
+    begin
       Continue;
+    end;
     AReport.Add(Entry.Range, Format('%s in ''%s'': die Datei deklariert die Unit %s (wie E2085).',
       [Entry.Name, Entry.InPath, Used.Name]), TRuleConfidence.High,
       [TRuleFix.Create(Format('In %s ändern', [Used.Name]), [TRuleEdit.Create(Entry.Range, Used.Name)])]);
@@ -371,24 +431,34 @@ begin
   Result := -1;
   if (AContext.Tree = nil) or (AContext.Tree.Diagnostics <> nil) or (AContext.Tree.Root = nil) or
     (AContext.Tree.Root.ChildCount = 0) then
+  begin
     Exit;
+  end;
   Root := AContext.Tree.Root;
   Tokens := AContext.Tree.Tokens;
   // Hinter dem letzten Abschnitt folgen end und der Punkt; beim Programm gehört end zum Block.
   From := Root.Children[Root.ChildCount - 1].EndOffset;
   Index := 0;
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < From) do
+  begin
     Inc(Index);
+  end;
   while (Index <= High(Tokens)) and not IsCode(Tokens[Index]) do
+  begin
     Inc(Index);
+  end;
   if (Index <= High(Tokens)) and Tokens[Index].IsKeyword('end') then
   begin
     Inc(Index);
     while (Index <= High(Tokens)) and not IsCode(Tokens[Index]) do
+    begin
       Inc(Index);
+    end;
   end;
   if (Index <= High(Tokens)) and Tokens[Index].IsSymbol('.') then
+  begin
     Result := Index;
+  end;
 end;
 
 procedure TTextAfterFinalEndRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -400,26 +470,40 @@ var
 begin
   Dot := FinalDot(AContext);
   if Dot < 0 then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   if TConditionalBranches.PathAt(TConditionalBranches.Paths(Tokens), Dot) <> '' then
+  begin
     Exit;
+  end;
   if not WarningEnabled(Tokens, '', Tokens[Dot].Offset) then
+  begin
     Exit;
+  end;
   AllowComments := TRuleOptions.Bool(AContext.Options, 'allowComments', True);
   First := -1;
   for Index := Dot + 1 to High(Tokens) do
+  begin
     if IsCode(Tokens[Index]) or not AllowComments then
     begin
       First := Index;
       Break;
     end;
+  end;
   if First < 0 then
+  begin
     Exit;
+  end;
   Message := 'Kommentar nach end. wird nicht übersetzt (wie W1011).';
   for Index := First to High(Tokens) do
+  begin
     if IsCode(Tokens[Index]) then
+    begin
       Message := 'Code nach end. wird nicht übersetzt (wie W1011).';
+    end;
+  end;
   // Entfernt wird ab dem Ende des Tokens davor, damit keine Leerzeilen stehen bleiben.
   AReport.Add(RangeOf(Tokens, First, High(Tokens)), Message, TRuleConfidence.High,
     [TRuleFix.Create('Text nach end. entfernen',
@@ -439,7 +523,9 @@ function Unquoted(const AText: string): string;
 begin
   Result := AText;
   if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
     Result := Copy(Result, 2, Length(Result) - 2);
+  end;
   Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
 end;
 
@@ -453,7 +539,9 @@ var
   procedure Finish;
   begin
     if Entry.Name <> '' then
+    begin
       Result := Result + [Entry];
+    end;
     Entry := Default(TExportEntry);
     Entry.First := -1;
     InName := False;
@@ -469,25 +557,35 @@ begin
   for Index := AFirst + 1 to ALast do
   begin
     if not IsCode(ATokens[Index]) then
+    begin
       Continue;
+    end;
     if (Depth = 0) and (ATokens[Index].IsSymbol(',') or ATokens[Index].IsSymbol(';')) then
     begin
       if Entry.HasNameClause and (Literals <> 1) then
+      begin
         Entry.ExportName := '';
+      end;
       Finish;
       Continue;
     end;
     if Entry.First < 0 then
+    begin
       Entry.First := Index;
+    end;
     Entry.Last := Index;
     if ATokens[Index].IsSymbol('(') then
     begin
       Inc(Depth);
       if (Depth = 1) and not AfterName then
+      begin
         InParams := True;
+      end;
     end
     else if ATokens[Index].IsSymbol(')') then
+    begin
       Dec(Depth);
+    end;
     if InParams then
     begin
       Entry.Parameters := Entry.Parameters + UpperCase(ATokens[Index].Text);
@@ -520,7 +618,9 @@ begin
       else if InName then
       begin
         if (ATokens[Index].Kind = TPascalTokenKind.StringLiteral) and (Literals = 0) then
+        begin
           Entry.ExportName := Unquoted(ATokens[Index].Text);
+        end;
         Inc(Literals);
       end;
     end;
@@ -560,31 +660,61 @@ var
             Header := Child.FindChild(TSyntaxKind.RoutineHeader);
             IsLocal := False;
             if Header <> nil then
+            begin
               for Inner := 0 to Header.ChildCount - 1 do
+              begin
                 if (Header.Children[Inner].Kind = TSyntaxKind.Directive) and (Header.Children[Inner].Name = 'local') then
+                begin
                   IsLocal := True;
+                end;
+              end;
+            end;
             if IsLocal then
-              Include(Found, TGlobalKind.LocalRoutine)
+            begin
+              Include(Found, TGlobalKind.LocalRoutine);
+            end
             else
+            begin
               Include(Found, TGlobalKind.Routine);
+            end;
           end;
         TSyntaxKind.VarSection:
           for Inner := 0 to Child.ChildCount - 1 do
+          begin
             if Child.Children[Inner].Kind = TSyntaxKind.VarDecl then
+            begin
               for Name in Child.Children[Inner].Name.Split([',']) do
+              begin
                 if SameText(Trim(Name), AName) then
+                begin
                   if Child.Name = 'threadvar' then
-                    Include(Found, TGlobalKind.ThreadVariable)
+                  begin
+                    Include(Found, TGlobalKind.ThreadVariable);
+                  end
                   else
+                  begin
                     Include(Found, TGlobalKind.Variable);
+                  end;
+                end;
+              end;
+            end;
+          end;
         TSyntaxKind.ConstSection:
           for Inner := 0 to Child.ChildCount - 1 do
+          begin
             if (Child.Children[Inner].Kind = TSyntaxKind.ConstDecl) and SameText(Child.Children[Inner].Name, AName) then
+            begin
               Include(Found, TGlobalKind.Constant);
+            end;
+          end;
         TSyntaxKind.TypeSection:
           for Inner := 0 to Child.ChildCount - 1 do
+          begin
             if (Child.Children[Inner].Kind = TSyntaxKind.TypeDecl) and SameText(Child.Children[Inner].Name, AName) then
+            begin
               Include(Found, TGlobalKind.TypeName);
+            end;
+          end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
@@ -606,7 +736,9 @@ begin
   while Parent <> nil do
   begin
     if Parent.Kind = TSyntaxKind.RoutineDecl then
+    begin
       Exit(True);
+    end;
     Parent := Parent.Parent;
   end;
   Result := False;
@@ -636,7 +768,9 @@ var
   begin
     Result := 0;
     while (Result <= High(Tokens)) and (Tokens[Result].Offset < AOffset) do
+    begin
       Inc(Result);
+    end;
   end;
 
   /// <summary>Entfernt den Eintrag AEntry aus AClause samt Komma; als einziger Eintrag die ganze Klausel.</summary>
@@ -645,12 +779,18 @@ var
     Range: TTextRange;
   begin
     if Length(AClause.Entries) = 1 then
-      Range := RangeOf(Tokens, AClause.First, AClause.Last)
+    begin
+      Range := RangeOf(Tokens, AClause.First, AClause.Last);
+    end
     else if AEntry > 0 then
+    begin
       Range := TTextRange.Create(Tokens[AClause.Entries[AEntry - 1].Last].EndPos,
-        Tokens[AClause.Entries[AEntry].Last].EndPos)
+        Tokens[AClause.Entries[AEntry].Last].EndPos);
+    end
     else
+    begin
       Range := TTextRange.Create(Tokens[AClause.Entries[0].First].StartPos, Tokens[AClause.Entries[1].First].StartPos);
+    end;
     Result := TRuleFix.Create('Doppelten Eintrag entfernen', [TRuleEdit.Create(Range, '')]);
   end;
 
@@ -662,18 +802,24 @@ var
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Nodes := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.ExportsClause then
+      begin
         Nodes := Nodes + [ANode];
+      end;
       Result := True;
     end);
   if Nodes = nil then
+  begin
     Exit;
+  end;
   Paths := TConditionalBranches.Paths(Tokens);
   Clauses := nil;
   for Node in Nodes do
@@ -682,7 +828,9 @@ begin
     Clause.Last := TokenIndexAt(Node.EndOffset) - 1;
     if (Clause.First > High(Tokens)) or not Tokens[Clause.First].IsKeyword('exports') or
       not Tokens[Clause.Last].IsSymbol(';') then
+    begin
       Continue;
+    end;
     if InRoutine(Node) then
     begin
       AReport.Add(RangeOf(Tokens, Clause.First, Clause.First),
@@ -693,6 +841,7 @@ begin
     Clauses := Clauses + [Clause];
   end;
   for ClauseIndex := 0 to High(Clauses) do
+  begin
     for EntryIndex := 0 to High(Clauses[ClauseIndex].Entries) do
     begin
       Entry := Clauses[ClauseIndex].Entries[EntryIndex];
@@ -702,18 +851,28 @@ begin
       begin
         Kinds := GlobalKinds(AContext.Tree.Root, Entry.Name);
         if TGlobalKind.Routine in Kinds then
-          Message := ''
+        begin
+          Message := '';
+        end
         else if TGlobalKind.LocalRoutine in Kinds then
-          Message := Format('%s ist mit local deklariert und kann nicht exportiert werden (wie E2276).', [Entry.Name])
+        begin
+          Message := Format('%s ist mit local deklariert und kann nicht exportiert werden (wie E2276).', [Entry.Name]);
+        end
         else if TGlobalKind.ThreadVariable in Kinds then
-          Message := Format('Die threadvar %s kann nicht exportiert werden (wie E2276).', [Entry.Name])
+        begin
+          Message := Format('Die threadvar %s kann nicht exportiert werden (wie E2276).', [Entry.Name]);
+        end
         // Globale Variablen exportiert dcc (#1383); für einen Typ meldet Delphi 13 E2276, nicht E2121.
         else if Kinds * [TGlobalKind.Constant, TGlobalKind.TypeName] <> [] then
+        begin
           Message := Format('%s ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2276).',
             [Entry.Name]);
+        end;
       end;
       if Message <> '' then
+      begin
         AReport.Add(RangeOf(Tokens, Entry.First, Entry.NameLast), Message, TRuleConfidence.High);
+      end;
       // Derselbe Exportname weiter vorn. Denselben Eintrag zweimal ohne name übersetzt Delphi 13 (#1383).
       Duplicate := False;
       for Other := 0 to ClauseIndex do
@@ -721,23 +880,34 @@ begin
         for OtherEntry := 0 to High(Clauses[Other].Entries) do
         begin
           if (Other = ClauseIndex) and (OtherEntry >= EntryIndex) then
+          begin
             Break;
+          end;
           Earlier := Clauses[Other].Entries[OtherEntry];
           if Exclusive(Earlier.First, Entry.First) then
+          begin
             Continue;
+          end;
           if (Entry.ExportName = '') or (Entry.ExportName <> Earlier.ExportName) then
+          begin
             Continue;
+          end;
           Message := Format('Der Name ''%s'' wird zweimal exportiert (wie E2287).', [Entry.ExportName]);
           Duplicate := True;
           Break;
         end;
         if Duplicate then
+        begin
           Break;
+        end;
       end;
       if Duplicate then
+      begin
         AReport.Add(RangeOf(Tokens, Entry.First, Entry.Last), Message, TRuleConfidence.High,
           [RemoveFix(Clauses[ClauseIndex], EntryIndex)]);
+      end;
     end;
+  end;
 end;
 
 { TUnitNameConflictRule }
@@ -759,33 +929,47 @@ var
   Fixes: TArray<TRuleFix>;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Header := TModuleHeader.Read(Tokens);
   Path := StringReplace(AContext.FileName + '|' + AContext.RelativePath, '\', '/', [rfReplaceAll]);
   if (Header.Kind = TModuleKind.UnitModule) and MatchText(Header.Name, ['System', 'SysInit']) and
     not ContainsText(Path, 'source/rtl/') then
+  begin
     AReport.Add(RangeOf(Tokens, Header.First, Header.Last), Format('Der Unit-Name %s ist für den Compiler ' +
       'reserviert (wie E2272).', [Header.Name]), TRuleConfidence.High);
+  end;
   // {$NOINCLUDE X} braucht eine Unit, die der Compiler kennt.
   if AContext.Units = nil then
+  begin
     Exit;
+  end;
   for Token in Tokens do
   begin
     if (Token.Kind <> TPascalTokenKind.Directive) or (TPascalLexer.DirectiveName(Token.Text) <> 'NOINCLUDE') then
+    begin
       Continue;
+    end;
     Body := TDirectiveNames.Body(Token.Text);
     Name := Trim(Copy(Body, Length(TDirectiveNames.LeadingName(Body)) + 1, MaxInt));
     if not IsQualifiedName(Name) or (Token.StartPos.Line <> Token.EndPos.Line) then
+    begin
       Continue;
+    end;
     if AContext.Units.Find(Name, '', AContext.FileName, [TRuleUnitSource.Project]) <> TRuleUnitAnswer.Missing then
+    begin
       Continue;
+    end;
     At := Pos(Name, Token.Text);
     Range := TTextRange.Create(Token.StartPos.Line, Token.StartPos.Character + At - 1, Token.StartPos.Line,
       Token.StartPos.Character + At - 1 + Length(Name));
     Fixes := nil;
     for Suggestion in TUsesUnitNotFoundRule.Suggestions(Name, AContext.Units.KnownUnits([TRuleUnitSource.Project])) do
+    begin
       Fixes := Fixes + [TRuleFix.Create(Format('%s verwenden', [Suggestion]), [TRuleEdit.Create(Range, Suggestion)])];
+    end;
     AReport.Add(Range, Format('{$NOINCLUDE %s}: %s ist keine bekannte Unit (wie E2242).', [Name, Name]),
       TRuleConfidence.High, Fixes);
   end;
@@ -811,15 +995,23 @@ var
   Fixes: TArray<TRuleFix>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Header := TModuleHeader.Read(Tokens);
   if MatchText(Header.Name, ['System', 'SysInit', 'System.Variants', 'Variants']) then
+  begin
     Exit;
+  end;
   Used := TUsesClauses.UsedUnits(Tokens);
   for Name in Used do
+  begin
     if MatchText(Name, ['System.Variants', 'Variants']) then
+    begin
       Exit;
+    end;
+  end;
   First := nil;
   OwnType := False;
   AContext.Tree.Root.Walk(
@@ -827,21 +1019,33 @@ begin
     begin
       if (ANode.Kind = TSyntaxKind.TypeReference) and (First = nil) and
         MatchText(ANode.Name, ['Variant', 'OleVariant', 'System.Variant', 'System.OleVariant']) then
-        First := ANode
+      begin
+        First := ANode;
+      end
       else if (ANode.Kind = TSyntaxKind.TypeDecl) and MatchText(ANode.Name, ['Variant', 'OleVariant']) then
+      begin
         OwnType := True;
+      end;
       Result := True;
     end);
   if (First = nil) or OwnType or not WarningEnabled(Tokens, 'IMPLICIT_VARIANTS', First.StartOffset) then
+  begin
     Exit;
+  end;
   // Schreibweise wie die übrigen Einträge: ohne Namespace, wenn die Unit SysUtils statt System.SysUtils nennt.
   UnitName := 'System.Variants';
   for Name in Used do
+  begin
     if MatchText(Name, ['SysUtils', 'Classes']) then
+    begin
       UnitName := 'Variants';
+    end;
+  end;
   Fixes := nil;
   if TUsesClauses.AddUnit(Tokens, First.StartOffset, UnitName, TTextLines.LineBreakOf(AContext.Text), Edit) then
+  begin
     Fixes := [TRuleFix.Create(Format('%s in uses aufnehmen', [UnitName]), [Edit], True)];
+  end;
   AReport.Add(TTextRange.Create(First.StartPos, First.EndPos), Format('%s wird ohne System.Variants in uses ' +
     'verwendet (wie W1040).', [First.Name]), TRuleConfidence.High, Fixes);
 end;

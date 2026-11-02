@@ -181,9 +181,13 @@ end;
 function LongerOf(const A, B: string): string;
 begin
   if Length(B) > Length(A) then
-    Result := B
+  begin
+    Result := B;
+  end
   else
+  begin
     Result := A;
+  end;
 end;
 
 { TSlashMenu }
@@ -266,11 +270,13 @@ var
   Item: TSlashMenuEntry;
 begin
   for Item in Catalog do
+  begin
     if SameText(Item.Name, AName) then
     begin
       AEntry := Item;
       Exit(True);
     end;
+  end;
   AEntry := Default(TSlashMenuEntry);
   Result := False;
 end;
@@ -301,16 +307,24 @@ var
 begin
   Result := nil;
   for Place := Low(TSlashPlace) to High(TSlashPlace) do
+  begin
     if Place in APlaces then
+    begin
       Result := Result + [PlaceName(Place)];
+    end;
+  end;
 end;
 
 class function TSlashMenu.GroupName(AGroup: TSlashGroup): string;
 begin
   if AGroup = TSlashGroup.Surround then
-    Result := 'surround'
+  begin
+    Result := 'surround';
+  end
   else
+  begin
     Result := 'generate';
+  end;
 end;
 
 class function TSlashMenu.ArgumentName(AArgument: TSlashArgument): string;
@@ -329,7 +343,9 @@ class function TSlashMenu.Fits(const AEntry: TSlashMenuEntry; APlaces: TSlashPla
 begin
   Result := AEntry.Places * APlaces <> [];
   if AEntry.Group = TSlashGroup.Surround then
+  begin
     Result := Result and AHasSelection;
+  end;
 end;
 
 class function TSlashMenu.Prepare(const AText: string; const ASpot: TSlashSpot; const ACommand: string;
@@ -344,7 +360,9 @@ begin
   AWrapUntil := 0;
   Lines := TTextLines.SplitLines(AText, LineBreak);
   if (ASpot.Line < 0) or (ASpot.Line > High(Lines)) then
+  begin
     Exit(False);
+  end;
   Current := Lines[ASpot.Line];
   if ASpot.HasSelection then
   begin
@@ -352,11 +370,13 @@ begin
     ACommandLine := ASpot.Line;
     Indent := TTextLines.IndentOf(Current);
     for Index := ASpot.Line to Min(ASpot.EndLine, High(Lines)) do
+    begin
       if Trim(Lines[Index]) <> '' then
       begin
         Indent := TTextLines.IndentOf(Lines[Index]);
         Break;
       end;
+    end;
     AWrapUntil := Min(ASpot.EndLine, High(Lines)) + 2;
   end
   else if Trim(Current) = '' then
@@ -365,7 +385,9 @@ begin
     ACommandLine := ASpot.Line;
     Indent := TTextLines.IndentOf(Current);
     if ASpot.Character > Length(Indent) then
+    begin
       Indent := StringOfChar(' ', ASpot.Character);
+    end;
   end
   else
   begin
@@ -373,11 +395,13 @@ begin
     ACommandLine := ASpot.Line + 1;
     Indent := TTextLines.IndentOf(Current);
     for Index := ASpot.Line + 1 to High(Lines) do
+    begin
       if Trim(Lines[Index]) <> '' then
       begin
         Indent := LongerOf(Indent, TTextLines.IndentOf(Lines[Index]));
         Break;
       end;
+    end;
   end;
   Insert(Indent + ACommand, Lines, ACommandLine);
   AVirtual := TTextLines.JoinLines(Lines, LineBreak);
@@ -397,10 +421,14 @@ var
 begin
   Result := [];
   if not Prepare(AText, ASpot, '/x', Virtual, CommandLine, WrapUntil) then
+  begin
     Exit;
+  end;
   Tokens := TPascalLexer.Tokenize(Virtual);
   if not TSlashCommandRegistry.IsCodeLine(Tokens, CommandLine) then
+  begin
     Exit;
+  end;
   Context := Default(TSlashContext);
   Context.Text := Virtual;
   Context.Line := CommandLine;
@@ -408,22 +436,36 @@ begin
   Source := TCommandSource.Create(Context);
   try
     if Source.RoutineAt <> nil then
+    begin
       Include(Result, TSlashPlace.Routine);
+    end;
     if Source.ClassAt(ClassSymbol) then
+    begin
       Include(Result, TSlashPlace.ClassBody);
+    end;
     if Result <> [] then
+    begin
       Exit;
+    end;
     for Symbol in Source.UnitIndex.Symbols do
     begin
       if (Symbol.Range.StartPos.Line >= CommandLine) or (Symbol.Range.EndPos.Line <= CommandLine) then
+      begin
         Continue;
+      end;
       if Symbol.Kind = TIndexSymbolKind.RecordType then
-        Include(Result, TSlashPlace.RecordBody)
+      begin
+        Include(Result, TSlashPlace.RecordBody);
+      end
       else if Symbol.Kind = TIndexSymbolKind.InterfaceType then
+      begin
         Include(Result, TSlashPlace.InterfaceBody);
+      end;
     end;
     if Result <> [] then
+    begin
       Exit;
+    end;
   finally
     Source.Free;
   end;
@@ -433,9 +475,13 @@ begin
   for Token in Tokens do
   begin
     if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
       Continue;
+    end;
     if First and (Token.IsKeyword('program') or Token.IsKeyword('library')) then
+    begin
       Exit([TSlashPlace.ProgramFile]);
+    end;
     First := False;
     if Token.IsKeyword('implementation') then
     begin
@@ -444,9 +490,13 @@ begin
     end;
   end;
   if (ImplementationLine >= 0) and (CommandLine > ImplementationLine) then
-    Result := [TSlashPlace.UnitImplementation]
+  begin
+    Result := [TSlashPlace.UnitImplementation];
+  end
   else
+  begin
     Result := [TSlashPlace.UnitInterface];
+  end;
 end;
 
 /// <summary>Felder mit F-Präfix ohne gleichnamige Property in der Klasse um die Befehlszeile (/encapsulate).</summary>
@@ -460,19 +510,29 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
+    begin
       Exit;
+    end;
     for Symbol in Source.UnitIndex.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
         (Length(Symbol.Name) > 1) and CharInSet(Symbol.Name[1], ['F', 'f']) then
       begin
         HasProperty := False;
         for Other in Source.UnitIndex.Symbols do
+        begin
           if (Other.Kind = TIndexSymbolKind.Property_) and SameText(Other.Container, ClassSymbol.Name) and
             SameText(Other.Name, Copy(Symbol.Name, 2, MaxInt)) then
+          begin
             HasProperty := True;
+          end;
+        end;
         if not HasProperty then
+        begin
           Result := Result + [Symbol.Name];
+        end;
       end;
+    end;
   finally
     Source.Free;
   end;
@@ -488,32 +548,50 @@ var
 begin
   Result := nil;
   if SameText(AName, 'msg') then
+  begin
     Exit(MessageNames);
+  end;
   if SameText(AName, 'operator') then
+  begin
     Exit(OperatorTokens);
+  end;
   if SameText(AName, 'ifdef') then
   begin
     for Symbol in IfdefSymbols do
+    begin
       Result := Result + [Symbol];
+    end;
     Exit;
   end;
   if not Prepare(AText, ASpot, '/' + AName, Virtual, CommandLine, WrapUntil) then
+  begin
     Exit;
+  end;
   Context := Default(TSlashContext);
   Context.Text := Virtual;
   Context.Line := CommandLine;
   Context.Name := AName;
   Context.Index := AIndex;
   if SameText(AName, 'ctor') then
-    Result := CtorFields(Context)
+  begin
+    Result := CtorFields(Context);
+  end
   else if SameText(AName, 'override') then
-    Result := OverrideCandidates(Context)
+  begin
+    Result := OverrideCandidates(Context);
+  end
   else if SameText(AName, 'equals') then
-    Result := EqualsFields(Context)
+  begin
+    Result := EqualsFields(Context);
+  end
   else if SameText(AName, 'encapsulate') then
-    Result := EncapsulateFields(Context)
+  begin
+    Result := EncapsulateFields(Context);
+  end
   else if SameText(AName, 'sort') or SameText(AName, 'filter') then
+  begin
     Result := CollectionChoices(Context, '');
+  end;
 end;
 
 class function TSlashMenu.CurrentWord(const AArguments: string): string;
@@ -522,7 +600,9 @@ var
 begin
   Index := Length(AArguments);
   while (Index > 0) and not CharInSet(AArguments[Index], [' ', ',', ':', #9, '(', ';']) do
+  begin
     Dec(Index);
+  end;
   Result := Copy(AArguments, Index + 1, MaxInt);
 end;
 
@@ -537,25 +617,41 @@ begin
     TStringSplitOptions.ExcludeEmpty));
   Result := TSlashArgumentKind.None;
   if MatchText(AName, ['sort', 'filter']) then
-    Result := TSlashArgumentKind.Collection
+  begin
+    Result := TSlashArgumentKind.Collection;
+  end
   else if MatchText(AName, ['uses', 'open']) then
-    Result := TSlashArgumentKind.Units
+  begin
+    Result := TSlashArgumentKind.Units;
+  end
   else if MatchText(AName, ['var', 'field', 'prop', 'list', 'future']) then
   begin
     // Erst der freie Name, hinter dem ":" der Typ.
     if Pos(':', Trimmed) > 0 then
+    begin
       Result := TSlashArgumentKind.Types;
+    end;
   end
   else if SameText(AName, 'helper') and (Words = 0) then
-    Result := TSlashArgumentKind.Types
+  begin
+    Result := TSlashArgumentKind.Types;
+  end
   else if SameText(AName, 'intf') then
-    Result := TSlashArgumentKind.Interfaces
+  begin
+    Result := TSlashArgumentKind.Interfaces;
+  end
   else if MatchText(AName, ['raise', 'exception']) and (Words = 0) then
-    Result := TSlashArgumentKind.Exceptions
+  begin
+    Result := TSlashArgumentKind.Exceptions;
+  end
   else if SameText(AName, 'override') then
-    Result := TSlashArgumentKind.Overrides
+  begin
+    Result := TSlashArgumentKind.Overrides;
+  end
   else if SameText(AName, 'ignore') and (Words = 0) then
+  begin
     Result := TSlashArgumentKind.Rules;
+  end;
 end;
 
 /// <summary>Namen aus AIndex auf Unit-Ebene zu AKind, die mit APrefix beginnen; nach Namen sortiert, ohne
@@ -570,7 +666,9 @@ var
 begin
   Result := nil;
   if AIndex = nil then
+  begin
     Exit;
+  end;
   Names := TList<string>.Create;
   try
     case AKind of
@@ -587,14 +685,20 @@ begin
       if AKind = TSlashArgumentKind.Units then
       begin
         if StartsText(APrefix, UnitIndex.UnitName) then
+        begin
           Names.Add(UnitIndex.UnitName);
+        end;
         Continue;
       end;
       for Symbol in UnitIndex.Symbols do
+      begin
         if (Symbol.Container = '') and (Symbol.Kind in Wanted) and StartsText(APrefix, Symbol.Name) and
           ((AKind <> TSlashArgumentKind.Exceptions) or
           ((Length(Symbol.Name) > 1) and CharInSet(Symbol.Name[1], ['E', 'e']))) then
+        begin
           Names.Add(Symbol.Name);
+        end;
+      end;
     end;
     Names.Sort(TComparer<string>.Construct(
       function(const A, B: string): Integer
@@ -604,9 +708,13 @@ begin
     for Index := 0 to Names.Count - 1 do
     begin
       if Length(Result) >= TSlashMenu.MaxChoices then
+      begin
         Break;
+      end;
       if (Length(Result) = 0) or not SameText(Result[High(Result)], Names[Index]) then
+      begin
         Result := Result + [Names[Index]];
+      end;
     end;
   finally
     Names.Free;
@@ -619,8 +727,12 @@ var
 begin
   Result := nil;
   for Choice in AChoices do
+  begin
     if StartsText(APrefix, Choice) then
+    begin
       Result := Result + [Choice];
+    end;
+  end;
 end;
 
 class function TSlashMenu.ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
@@ -640,7 +752,9 @@ begin
   Result := nil;
   Kind := ArgumentKind(AName, AArguments);
   if Kind = TSlashArgumentKind.None then
+  begin
     Exit;
+  end;
   Context := Default(TSlashContext);
   Context.Text := AText;
   Context.Line := ALine;
@@ -653,9 +767,13 @@ begin
         // Erst die Sammlung, nach dem Leerzeichen die Mitglieder ihres Elementtyps.
         Space := Pos(' ', TrimLeft(AArguments));
         if Space = 0 then
-          Result := CollectionChoices(Context, '')
+        begin
+          Result := CollectionChoices(Context, '');
+        end
         else
+        begin
           Result := CollectionChoices(Context, Copy(TrimLeft(AArguments), 1, Space - 1));
+        end;
       end;
     TSlashArgumentKind.Overrides:
       Result := Filtered(OverrideCandidates(Context), Prefix);
@@ -692,7 +810,9 @@ begin
   AReason := '';
   Command := '/' + AName;
   if Trim(AArguments) <> '' then
+  begin
     Command := Command + ' ' + Trim(AArguments);
+  end;
   if not Prepare(AText, ASpot, Command, Virtual, CommandLine, WrapUntil) then
   begin
     AReason := 'Die Cursorstelle liegt außerhalb der Datei';
@@ -701,7 +821,9 @@ begin
   Result := ARegistry.Run(Virtual, CommandLine, WrapUntil, nil, ADisabled, AIndex, ADelphiVersion, AUri, AHost,
     AStyle, Edits, AReason);
   if not Result then
+  begin
     Exit;
+  end;
   LineBreak := TTextLines.LineBreakOf(AText);
   Lines := TTextLines.SplitLines(Virtual);
   AEdits := MapEdits(Edits, CommandLine, Lines[CommandLine], LineBreak);
@@ -719,11 +841,17 @@ var
   function Map(const APosition: TTextPosition): TTextPosition;
   begin
     if APosition.Line < ACommandLine then
-      Result := APosition
+    begin
+      Result := APosition;
+    end
     else if APosition.Line = ACommandLine then
-      Result := TTextPosition.Create(ACommandLine, 0)
+    begin
+      Result := TTextPosition.Create(ACommandLine, 0);
+    end
     else
+    begin
       Result := TTextPosition.Create(APosition.Line - 1, APosition.Character);
+    end;
   end;
 
 begin
@@ -738,7 +866,9 @@ begin
   begin
     Edit := AEdits[Index];
     if (Edit.Range.StartPos.Line <= ACommandLine) and (Edit.Range.EndPos.Line > ACommandLine) then
+    begin
       BreakCovered := True;
+    end;
     if (Edit.Range.StartPos.Line = ACommandLine) and (Edit.Range.StartPos.Character < FirstStart) then
     begin
       FirstStart := Edit.Range.StartPos.Character;
@@ -758,18 +888,26 @@ begin
   // Nur die Einrückung vor dem Befehl kann stehen bleiben, nie der Befehl selbst.
   Indent := '';
   if (FirstEdit >= 0) and (FirstStart > 0) then
+  begin
     Indent := Copy(ACommandText, 1, Min(FirstStart, Length(TTextLines.IndentOf(ACommandText))));
+  end;
   Mapped := nil;
   for Index := 0 to High(AEdits) do
   begin
     Edit := TTextEdit.Create(TTextRange.Create(Map(AEdits[Index].Range.StartPos), Map(AEdits[Index].Range.EndPos)),
       AEdits[Index].NewText);
     if Index = FirstEdit then
+    begin
       Edit.NewText := Indent + Edit.NewText;
+    end;
     if (Index = LastEdit) and not BreakCovered then
+    begin
       Edit.NewText := Edit.NewText + ALineBreak;
+    end;
     if (Edit.Range.StartPos = Edit.Range.EndPos) and (Edit.NewText = '') then
+    begin
       Continue;
+    end;
     Mapped := Mapped + [Edit];
   end;
   Result := Mapped;

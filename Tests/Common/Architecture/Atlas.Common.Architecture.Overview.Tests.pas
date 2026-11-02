@@ -178,23 +178,33 @@ var
 begin
   Result := nil;
   for mGroup := 0 to High(cGroups) do
+  begin
     for mItem := 1 to 12 do
     begin
       mUses := nil;
       for mOther := 1 to mItem - 1 do
+      begin
         mUses := mUses + [Format('Big.%s.U%.2d', [cGroups[mGroup], mOther])];
+      end;
       mLinks := nil;
       if (mGroup > 0) and (mItem <= 2) then
+      begin
         mLinks := mLinks + [Format('Big.%s.U%.2d', [cGroups[mGroup - 1], mItem])];
+      end;
       if (mGroup = 2) and (mItem in [3, 4]) then
+      begin
         mLinks := mLinks + [Format('Big.%s.U%.2d', [cGroups[0], mItem])];
+      end;
       Result := Result + [UsesUnit(Format('Big.%s.U%.2d', [cGroups[mGroup], mItem]), nil, mUses + mLinks)];
     end;
+  end;
   for mItem := 1 to 80 do
   begin
     mUses := nil;
     for mOther := 1 to mItem - 1 do
+    begin
       mUses := mUses + [Format('Rest.Core.K%.2d', [mOther])];
+    end;
     Result := Result + [UsesUnit(Format('Rest.Core.K%.2d', [mItem]), mUses, nil)];
   end;
 end;
@@ -245,7 +255,9 @@ begin
   for Item in AUnits do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + AOverview.Units[Item].Name;
   end;
 end;
@@ -399,7 +411,9 @@ begin
   Units := Project;
   SetLength(Reversed, Length(Units));
   for Index := 0 to High(Units) do
+  begin
     Reversed[High(Units) - Index] := Units[Index];
+  end;
   First := Analyze(Units);
   Second := Analyze(Reversed);
   Assert.AreEqual(Integer(Length(First.Subsystems)), Integer(Length(Second.Subsystems)));
@@ -459,7 +473,9 @@ begin
   mOne := AnalyzeWith(Project, 1);
   Assert.AreEqual(Integer(Length(mDefault.Subsystems)), Integer(Length(mOne.Subsystems)));
   for mIndex := 0 to High(mDefault.Units) do
+  begin
     Assert.AreEqual(mDefault.Units[mIndex].Subsystem, mOne.Units[mIndex].Subsystem, mDefault.Units[mIndex].Name);
+  end;
   Assert.AreEqual(Double(1), mDefault.Grouping.Resolution, 1E-9);
   Assert.IsFalse(mDefault.Grouping.ResolutionChanged);
 end;
@@ -623,7 +639,9 @@ var
 begin
   mNames := nil;
   for mUnit in AUnits do
+  begin
     mNames := mNames + [AOverview.Units[mUnit].Name];
+  end;
   TArray.Sort<string>(mNames);
   Result := string.Join(',', mNames);
 end;
@@ -636,7 +654,9 @@ begin
   for mValue in AValues do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + IntToStr(mValue);
   end;
 end;
@@ -647,7 +667,9 @@ begin
   AParts := nil;
   Result := Length(AMembers) >= 2;
   if not Result then
+  begin
     Exit;
+  end;
   SetLength(AParts, 2);
   AParts[0] := Copy(AMembers, 0, Length(AMembers) div 2);
   AParts[1] := Copy(AMembers, Length(AMembers) div 2, MaxInt);
@@ -666,7 +688,9 @@ begin
   mResult := TArchitectureAnalyzer.SplitGroups(mGroups, 1, 2, Halve, mFamilies);
   Assert.AreEqual(5, Integer(Length(mResult)), 'acht Units in zwei Stufen: vier Teile, dazu Gruppe 1');
   for mGroup in mResult do
+  begin
     Assert.AreEqual(2, Integer(Length(mGroup)));
+  end;
   Assert.AreEqual('0,1', IntsText(mResult[0]));
   Assert.AreEqual('8,9', IntsText(mResult[1]));
   Assert.AreEqual(0, mFamilies[0]);
@@ -713,7 +737,9 @@ begin
   Assert.AreEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Dbg.D3'));
   Assert.AreEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Common.Logging'));
   for mSubsystem in mOverview.Subsystems do
+  begin
     Assert.IsFalse(mSubsystem.Foundation);
+  end;
 end;
 
 procedure TOverviewTests.FoundationsSeparate;
@@ -776,7 +802,9 @@ begin
   Assert.AreEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Common.Logging'));
   Assert.AreEqual(SubsystemOf(mOverview, 'App.Common.Logging'), SubsystemOf(mOverview, 'App.Tool.Only'));
   for mSubsystem in mOverview.Subsystems do
+  begin
     Assert.IsFalse(mSubsystem.Foundation);
+  end;
 end;
 
 procedure TOverviewTests.LocalFoundationStays;
@@ -824,8 +852,10 @@ begin
     Result := Result + [UsesUnit(Format('Z.%s.U1', [mGroup]), nil, nil),
       UsesUnit(Format('Z.%s.U2', [mGroup]), [Format('Z.%s.U1', [mGroup])], nil)];
     for mItem := 3 to 5 do
+    begin
       Result := Result + [UsesUnit(Format('Z.%s.U%d', [mGroup, mItem]), [Format('Z.%s.U%d', [mGroup, mItem - 1]),
         Format('Z.%s.U1', [mGroup])], nil)];
+    end;
   end;
   Result := Result + [UsesUnit('Z.Own.Mid', ['Z.Own.U1', 'Z.Own.U2', 'Z.Own.U3', 'Z.Oth.U1', 'Z.Oth.U2'],
     ['Z.Own.U4', 'Z.Own.U5', 'Z.Oth.U3', 'Z.Oth.U4'])];
@@ -940,6 +970,7 @@ begin
   mAssignment := mOverview.Assignment(mOverview.IndexOf('App.Ui.U2'));
   mFound := False;
   for mRow in mAssignment.Rows do
+  begin
     if mOverview.Subsystems[mRow.Subsystem].Foundation then
     begin
       mFound := True;
@@ -947,7 +978,10 @@ begin
       Assert.AreEqual(1, mRow.Interfaces);
     end
     else
+    begin
       Assert.IsTrue(mRow.Counts);
+    end;
+  end;
   Assert.IsTrue(mFound);
   Assert.AreEqual(-1, mAssignment.Rival);
   Assert.IsFalse(mAssignment.Close);
@@ -958,8 +992,12 @@ begin
   // Mitgruppiert gibt es kein Fundament: alle Zeilen zählen.
   mOverview := FoundationsWith(TArchitectureFoundations.Group);
   for mAssignment in mOverview.Assignments do
+  begin
     for mRow in mAssignment.Rows do
+    begin
       Assert.IsTrue(mRow.Counts);
+    end;
+  end;
 end;
 
 procedure TOverviewTests.OutliersMatchAssignments;
@@ -983,9 +1021,13 @@ begin
     for mRow in mAssignment.Rows do
     begin
       if mRow.Subsystem = mOverview.Units[mOutlier.Unit_].Subsystem then
+      begin
         mInside := mRow.Edges;
+      end;
       if mRow.Subsystem = mOutlier.Suggested then
+      begin
         mToward := mRow.Edges;
+      end;
     end;
     Assert.AreEqual(mInside, mOutlier.Inside);
     Assert.AreEqual(mToward, mOutlier.Toward);

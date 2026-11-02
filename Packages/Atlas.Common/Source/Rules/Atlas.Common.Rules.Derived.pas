@@ -135,7 +135,9 @@ class function TRuleDerived.Open(const AContext: TRuleContext): IRuleDerivedCach
 begin
   Result := AContext.Derived;
   if Result = nil then
+  begin
     Result := TRuleDerivedCache.Create;
+  end;
 end;
 
 class function TRuleDerived.Get<T>(const ACache: IRuleDerivedCache; const AKey: string;
@@ -144,7 +146,9 @@ var
   Value: TObject;
 begin
   if ACache.TryGet(AKey, Value) then
+  begin
     Exit(T(Value));
+  end;
   Result := AFactory();
   ACache.Put(AKey, Result);
 end;
@@ -155,10 +159,14 @@ var
   Index: TUnitIndex;
 begin
   if ACache.TryGet(KeyUnitIndex, Value) then
+  begin
     Exit(TRuleDerivedValue<TUnitIndex>(Value).Value);
+  end;
   Index := Default(TUnitIndex);
   if AContext.Tree <> nil then
+  begin
     Index := TIndexExtractor.Extract(AContext.Tree, '');
+  end;
   ACache.Put(KeyUnitIndex, TRuleDerivedValue<TUnitIndex>.Create(Index));
   Result := Index;
 end;
@@ -168,7 +176,9 @@ var
   Value: TObject;
 begin
   if ACache.TryGet(KeyResolver, Value) then
+  begin
     Exit(TNameResolver(Value));
+  end;
   Result := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   Result.Namespaces := AContext.Namespaces;
   ACache.Put(KeyResolver, Result);
@@ -180,7 +190,9 @@ var
   Found: TList<TSyntaxNode>;
 begin
   if ACache.TryGet(KeyRoutines, Value) then
+  begin
     Exit(TRuleDerivedValue<TArray<TSyntaxNode>>(Value).Value);
+  end;
   Result := nil;
   if AContext.Tree <> nil then
   begin
@@ -190,7 +202,9 @@ begin
         function(ANode: TSyntaxNode): Boolean
         begin
           if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil) then
+          begin
             Found.Add(ANode);
+          end;
           Result := True;
         end);
       Result := Found.ToArray;
@@ -207,10 +221,14 @@ var
   Value: TObject;
 begin
   if ACache.TryGet(KeyFlowSignatures, Value) then
+  begin
     Exit(TRuleDerivedValue<TFlowSignatureLookup>(Value).Value);
+  end;
   Result := nil;
   if AContext.Tree <> nil then
+  begin
     Result := TFlowSignatures.FromTree(AContext.Tree.Root);
+  end;
   ACache.Put(KeyFlowSignatures, TRuleDerivedValue<TFlowSignatureLookup>.Create(Result));
 end;
 
@@ -223,7 +241,9 @@ var
 begin
   Key := KeyGraph + IntToStr(ARoutine.StartOffset);
   if ACache.TryGet(Key, Value) then
+  begin
     Exit(TControlFlowGraph(Value));
+  end;
   Lookup := FlowSignatures(ACache, AContext);
   Result := TControlFlowGraph.Build(ARoutine, Lookup);
   ACache.Put(Key, Result);
@@ -238,7 +258,9 @@ var
   Count: Integer;
 begin
   if ACache.TryGet(KeyCodeTokens, Value) then
+  begin
     Exit(TRuleDerivedValue<TArray<TPascalToken>>(Value).Value);
+  end;
   Result := nil;
   if AContext.Tree <> nil then
   begin
@@ -246,11 +268,13 @@ begin
     SetLength(Result, Length(Tokens));
     Count := 0;
     for Token in Tokens do
+    begin
       if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
       begin
         Result[Count] := Token;
         Inc(Count);
       end;
+    end;
     SetLength(Result, Count);
   end;
   ACache.Put(KeyCodeTokens, TRuleDerivedValue<TArray<TPascalToken>>.Create(Result));
@@ -263,7 +287,9 @@ var
   Lines: ITextDocument;
 begin
   if ACache.TryGet(KeyLines, Value) then
-    Lines := TRuleDerivedValue<ITextDocument>(Value).Value
+  begin
+    Lines := TRuleDerivedValue<ITextDocument>(Value).Value;
+  end
   else
   begin
     Lines := TTextDocument.Create('', 'objectpascal', 0, AContext.Text);

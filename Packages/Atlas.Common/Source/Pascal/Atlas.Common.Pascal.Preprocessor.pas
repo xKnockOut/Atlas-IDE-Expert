@@ -383,7 +383,9 @@ begin
   Text := Trim(AText);
   Result := (Length(Text) = 2) and CharInSet(UpCase(Text[1]), ['A'..'Z']) and CharInSet(Text[2], ['+', '-']);
   if not Result then
+  begin
     Exit;
+  end;
   ALetter := UpCase(Text[1]);
   AOn := Text[2] = '+';
 end;
@@ -394,15 +396,21 @@ var
 begin
   Result := TSwitchTable.Create;
   for Letter in ASource.Keys do
+  begin
     Result.Add(Letter, ASource[Letter]);
+  end;
 end;
 
 function ConditionOf(AValue: Boolean): TConditionValue;
 begin
   if AValue then
-    Result := TConditionValue.Yes
+  begin
+    Result := TConditionValue.Yes;
+  end
   else
+  begin
     Result := TConditionValue.No;
+  end;
 end;
 
 function CurrentDeclaredProvider: TDeclaredFunc;
@@ -446,13 +454,17 @@ begin
   begin
     Result := Copy(AText, 3, MaxInt);
     if (Result <> '') and (Result[Length(Result)] = '}') then
+    begin
       Delete(Result, Length(Result), 1);
+    end;
   end
   else
   begin
     Result := Copy(AText, 4, MaxInt);
     if (Length(Result) >= 2) and (Copy(Result, Length(Result) - 1, 2) = '*)') then
+    begin
       Delete(Result, Length(Result) - 1, 2);
+    end;
   end;
   Result := Trim(Result);
 end;
@@ -463,7 +475,9 @@ var
 begin
   I := 1;
   while (I <= Length(ABody)) and CharInSet(ABody[I], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  begin
     Inc(I);
+  end;
   AName := UpperCase(Copy(ABody, 1, I - 1));
   AArgument := Trim(Copy(ABody, I, MaxInt));
 end;
@@ -474,7 +488,9 @@ var
 begin
   I := 1;
   while (I <= Length(AArgument)) and CharInSet(AArgument[I], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) do
+  begin
     Inc(I);
+  end;
   Result := Copy(AArgument, 1, I - 1);
 end;
 
@@ -487,15 +503,21 @@ begin
   begin
     Stop := Pos('''', Copy(Result, 2, MaxInt));
     if Stop > 0 then
-      Result := Copy(Result, 2, Stop - 1)
+    begin
+      Result := Copy(Result, 2, Stop - 1);
+    end
     else
+    begin
       Result := Copy(Result, 2, MaxInt);
+    end;
   end
   else
   begin
     Stop := Pos(' ', Result);
     if Stop > 0 then
+    begin
       Result := Copy(Result, 1, Stop - 1);
+    end;
   end;
 end;
 
@@ -531,11 +553,17 @@ begin
   FParts := TList<TConditionPart>.Create;
   // Zeigergröße und Plattform aus den vordefinierten Symbolen (SizeOf, High, Low).
   if FDefines.ContainsKey('CPU64BITS') or FDefines.ContainsKey('WIN64') then
-    FPointerSize := 8
+  begin
+    FPointerSize := 8;
+  end
   else if FDefines.ContainsKey('CPU32BITS') or FDefines.ContainsKey('WIN32') then
-    FPointerSize := 4
+  begin
+    FPointerSize := 4;
+  end
   else
+  begin
     FPointerSize := 0;
+  end;
   FPlatform := TPascalPreprocessor.PlatformOf(FDefines.Keys.ToArray);
 end;
 
@@ -563,26 +591,38 @@ end;
 function TExpressionEvaluator.BoolText(const AValue: TEvalValue): string;
 begin
   if not AValue.Known then
-    Result := 'unbekannt'
+  begin
+    Result := 'unbekannt';
+  end
   else if AValue.Number <> 0 then
-    Result := 'wahr'
+  begin
+    Result := 'wahr';
+  end
   else
+  begin
     Result := 'falsch';
+  end;
 end;
 
 function TExpressionEvaluator.ProductOrigin: string;
 begin
   Result := '';
   if FOptions.CompilerVersion > 0 then
+  begin
     Result := TPascalPreprocessor.ProductName(FOptions.CompilerVersion);
+  end;
 end;
 
 function TExpressionEvaluator.NumberText(const AValue: TEvalValue): string;
 begin
   if AValue.Known then
-    Result := FloatToStr(AValue.Number, TFormatSettings.Invariant)
+  begin
+    Result := FloatToStr(AValue.Number, TFormatSettings.Invariant);
+  end
   else
+  begin
     Result := 'unbekannt';
+  end;
 end;
 
 function TExpressionEvaluator.AtEnd: Boolean;
@@ -598,13 +638,17 @@ begin
     Result.Kind := TPascalTokenKind.Unknown;
   end
   else
+  begin
     Result := FTokens[FIndex];
+  end;
 end;
 
 function TExpressionEvaluator.Next: TPascalToken;
 begin
   if AtEnd then
+  begin
     raise EPreprocessorExpression.Create('Ausdruck endet unerwartet');
+  end;
   Result := FTokens[FIndex];
   Inc(FIndex);
 end;
@@ -612,7 +656,9 @@ end;
 procedure TExpressionEvaluator.Expect(const ASymbol: string);
 begin
   if AtEnd or not Peek.IsSymbol(ASymbol) then
+  begin
     raise EPreprocessorExpression.CreateFmt('"%s" erwartet', [ASymbol]);
+  end;
   Inc(FIndex);
 end;
 
@@ -625,14 +671,18 @@ end;
 function TExpressionEvaluator.ReadName: string;
 begin
   if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+  begin
     raise EPreprocessorExpression.Create('Name erwartet');
+  end;
   Result := Next.Text;
   // Qualifizierte Namen wie System.SysUtils
   while not AtEnd and Peek.IsSymbol('.') do
   begin
     Inc(FIndex);
     if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+    begin
       raise EPreprocessorExpression.Create('Name erwartet');
+    end;
     Result := Result + '.' + Next.Text;
   end;
 end;
@@ -646,8 +696,12 @@ begin
   Significant := TList<TPascalToken>.Create;
   try
     for Token in TPascalLexer.Tokenize(AExpression) do
+    begin
       if Token.Kind <> TPascalTokenKind.Comment then
+      begin
         Significant.Add(Token);
+      end;
+    end;
     FTokens := Significant.ToArray;
   finally
     Significant.Free;
@@ -655,16 +709,26 @@ begin
   FIndex := 0;
   FParts.Clear;
   if AtEnd then
+  begin
     raise EPreprocessorExpression.Create('Ausdruck fehlt');
+  end;
   Value := ParseOr;
   if not AtEnd then
+  begin
     raise EPreprocessorExpression.CreateFmt('Unerwartet: "%s"', [Peek.Text]);
+  end;
   if not Value.Known then
-    Result := TConditionValue.Unknown
+  begin
+    Result := TConditionValue.Unknown;
+  end
   else if Value.Number <> 0 then
-    Result := TConditionValue.Yes
+  begin
+    Result := TConditionValue.Yes;
+  end
   else
+  begin
     Result := TConditionValue.No;
+  end;
 end;
 
 function TExpressionEvaluator.ParseOr: TEvalValue;
@@ -681,17 +745,27 @@ begin
     if IsXor then
     begin
       if Result.Known and Right.Known then
-        Result := TEvalValue.Make(BooleanValue[(Result.Number <> 0) xor (Right.Number <> 0)])
+      begin
+        Result := TEvalValue.Make(BooleanValue[(Result.Number <> 0) xor (Right.Number <> 0)]);
+      end
       else
+      begin
         Result := TEvalValue.Unknown;
+      end;
     end
     // Ein sicher wahrer Teil macht or wahr, auch neben einem unbekannten.
     else if Result.IsTrue or Right.IsTrue then
-      Result := TEvalValue.Make(1)
+    begin
+      Result := TEvalValue.Make(1);
+    end
     else if Result.Known and Right.Known then
-      Result := TEvalValue.Make(0)
+    begin
+      Result := TEvalValue.Make(0);
+    end
     else
+    begin
       Result := TEvalValue.Unknown;
+    end;
   end;
 end;
 
@@ -705,11 +779,17 @@ begin
     Inc(FIndex);
     Right := ParseComparison;
     if Result.IsFalse or Right.IsFalse then
-      Result := TEvalValue.Make(0)
+    begin
+      Result := TEvalValue.Make(0);
+    end
     else if Result.Known and Right.Known then
-      Result := TEvalValue.Make(1)
+    begin
+      Result := TEvalValue.Make(1);
+    end
     else
+    begin
       Result := TEvalValue.Unknown;
+    end;
   end;
 end;
 
@@ -728,19 +808,33 @@ begin
       Inc(FIndex);
       Right := ParseAdditive;
       if not Result.Known or not Right.Known then
+      begin
         Exit(TEvalValue.Unknown);
+      end;
       if Op = '=' then
-        Value := Result.Number = Right.Number
+      begin
+        Value := Result.Number = Right.Number;
+      end
       else if Op = '<>' then
-        Value := Result.Number <> Right.Number
+      begin
+        Value := Result.Number <> Right.Number;
+      end
       else if Op = '<' then
-        Value := Result.Number < Right.Number
+      begin
+        Value := Result.Number < Right.Number;
+      end
       else if Op = '>' then
-        Value := Result.Number > Right.Number
+      begin
+        Value := Result.Number > Right.Number;
+      end
       else if Op = '<=' then
-        Value := Result.Number <= Right.Number
+      begin
+        Value := Result.Number <= Right.Number;
+      end
       else
+      begin
         Value := Result.Number >= Right.Number;
+      end;
       Result := TEvalValue.Make(BooleanValue[Value]);
     end;
   end;
@@ -757,11 +851,17 @@ begin
     Plus := Next.Text = '+';
     Right := ParseMultiplicative;
     if not Result.Known or not Right.Known then
-      Result := TEvalValue.Unknown
+    begin
+      Result := TEvalValue.Unknown;
+    end
     else if Plus then
-      Result := TEvalValue.Make(Result.Number + Right.Number)
+    begin
+      Result := TEvalValue.Make(Result.Number + Right.Number);
+    end
     else
+    begin
       Result := TEvalValue.Make(Result.Number - Right.Number);
+    end;
   end;
 end;
 
@@ -776,15 +876,25 @@ begin
     Op := LowerCase(Next.Text);
     Right := ParseUnary;
     if (Op <> '*') and Right.IsFalse then
+    begin
       raise EPreprocessorExpression.Create('Division durch null');
+    end;
     if not Result.Known or not Right.Known then
-      Result := TEvalValue.Unknown
+    begin
+      Result := TEvalValue.Unknown;
+    end
     else if Op = '*' then
-      Result := TEvalValue.Make(Result.Number * Right.Number)
+    begin
+      Result := TEvalValue.Make(Result.Number * Right.Number);
+    end
     else if Op = 'div' then
-      Result := TEvalValue.Make(Trunc(Result.Number) div Trunc(Right.Number))
+    begin
+      Result := TEvalValue.Make(Trunc(Result.Number) div Trunc(Right.Number));
+    end
     else
+    begin
       Result := TEvalValue.Make(Trunc(Result.Number) mod Trunc(Right.Number));
+    end;
   end;
 end;
 
@@ -795,17 +905,23 @@ begin
     Inc(FIndex);
     Result := ParseUnary;
     if Result.Known then
+    begin
       Result := TEvalValue.Make(BooleanValue[Result.Number = 0]);
+    end;
   end
   else if not AtEnd and Peek.IsSymbol('-') then
   begin
     Inc(FIndex);
     Result := ParseUnary;
     if Result.Known then
+    begin
       Result := TEvalValue.Make(-Result.Number);
+    end;
   end
   else
+  begin
     Result := ParsePrimary;
+  end;
 end;
 
 function TExpressionEvaluator.Declared(const AName: string; out AOrigin: string): TEvalValue;
@@ -825,18 +941,28 @@ begin
   begin
     AOrigin := ProductOrigin;
     if Constant.Known then
-      Result := TEvalValue.Make(BooleanValue[Constant.Number <> 0])
+    begin
+      Result := TEvalValue.Make(BooleanValue[Constant.Number <> 0]);
+    end
     else
+    begin
       Result := TEvalValue.Unknown;
+    end;
     Exit;
   end;
   for Pair in FOptions.Constants do
+  begin
     if SameText(Pair.Key, AName) then
+    begin
       Exit(TEvalValue.Make(1));
+    end;
+  end;
   // Sonst der Index; ohne Treffer bleibt es unbekannt (die Unit kann noch fehlen).
   Provider := FOptions.Declared;
   if not Assigned(Provider) then
+  begin
     Provider := CurrentDeclaredProvider();
+  end;
   if Assigned(Provider) and Provider(AName) then
   begin
     AOrigin := 'Index';
@@ -857,17 +983,25 @@ begin
   AValue := TEvalValue.Unknown;
   if (Length(AName) <> Length('RTLVersion') + 3) or
     not SameText(Copy(AName, 1, Length('RTLVersion')), 'RTLVersion') then
+  begin
     Exit;
+  end;
   Digits := Copy(AName, Length('RTLVersion') + 1, 3);
   if not TryStrToInt(Digits, Number) then
+  begin
     Exit;
+  end;
   Major := Number div 10;
   Minor := Number mod 10;
   if (Major < 11) or (Minor = 0) then
+  begin
     Exit;
+  end;
   Result := True;
   if FOptions.CompilerVersion <= 0 then
+  begin
     Exit;
+  end;
   Version := Major + 24;
   AValue := TEvalValue.Make(BooleanValue[FOptions.CompilerVersion >= Version]);
 end;
@@ -880,45 +1014,71 @@ begin
   Name := UpperCase(AType);
   AOrigin := '';
   if MatchStr(Name, ['BYTE', 'SHORTINT', 'ANSICHAR', 'BOOLEAN', 'BYTEBOOL', 'INT8', 'UINT8']) then
+  begin
     Exit(1);
+  end;
   if MatchStr(Name, ['WORD', 'SMALLINT', 'CHAR', 'WIDECHAR', 'WORDBOOL', 'INT16', 'UINT16']) then
+  begin
     Exit(2);
+  end;
   if MatchStr(Name, ['INTEGER', 'CARDINAL', 'SINGLE', 'LONGBOOL', 'INT32', 'UINT32', 'FIXEDINT', 'FIXEDUINT']) then
+  begin
     Exit(4);
+  end;
   if MatchStr(Name, ['INT64', 'UINT64', 'DOUBLE', 'CURRENCY', 'COMP', 'TDATETIME', 'REAL']) then
+  begin
     Exit(8);
+  end;
   Result := 0;
   if FPlatform <> '' then
+  begin
     AOrigin := 'Zielplattform ' + FPlatform;
+  end;
   if MatchStr(Name, ['POINTER', 'NATIVEINT', 'NATIVEUINT', 'INTPTR', 'UINTPTR', 'PCHAR', 'PANSICHAR', 'PWIDECHAR',
     'STRING', 'UNICODESTRING', 'ANSISTRING', 'RAWBYTESTRING', 'UTF8STRING', 'WIDESTRING', 'TOBJECT', 'TCLASS',
     'IINTERFACE', 'IUNKNOWN', 'THANDLE', 'HWND', 'WPARAM', 'LPARAM', 'LRESULT']) then
+  begin
     Exit(FPointerSize);
+  end;
   if MatchStr(Name, ['LONGINT', 'LONGWORD']) then
   begin
     // 64-Bit-POSIX: 8, sonst 4.
     if (FPointerSize = 8) and not FDefines.ContainsKey('MSWINDOWS') then
+    begin
       Exit(8);
+    end;
     if FPointerSize > 0 then
+    begin
       Exit(4);
+    end;
     Exit(0);
   end;
   if Name = 'EXTENDED' then
   begin
     if FDefines.ContainsKey('MSWINDOWS') and (FPointerSize = 4) then
+    begin
       Exit(10);
+    end;
     if FDefines.ContainsKey('MSWINDOWS') or FDefines.ContainsKey('CPUARM') then
+    begin
       Exit(8);
+    end;
     if FDefines.ContainsKey('CPUX64') then
+    begin
       Exit(16);
+    end;
     Exit(0);
   end;
   if Name = 'VARIANT' then
   begin
     if FPointerSize = 8 then
+    begin
       Exit(24);
+    end;
     if FPointerSize = 4 then
+    begin
       Exit(16);
+    end;
   end;
   AOrigin := '';
 end;
@@ -954,10 +1114,14 @@ begin
     'NATIVEINT', 'INTPTR', 'LONGINT']);
   if not Signed and not MatchStr(Name, ['BYTE', 'WORD', 'CARDINAL', 'UINT8', 'UINT16', 'UINT32', 'UINT64',
     'FIXEDUINT', 'NATIVEUINT', 'UINTPTR', 'LONGWORD']) then
+  begin
     Exit(False);
+  end;
   Size := TypeSize(Name, AOrigin);
   if Size = 0 then
+  begin
     Exit(False);
+  end;
   if Signed then
   begin
     AHigh := Power(2, Size * 8 - 1) - 1;
@@ -1000,9 +1164,13 @@ begin
     Expect(')');
     Size := TypeSize(Argument, Origin);
     if Size > 0 then
-      AValue := TEvalValue.Make(Size)
+    begin
+      AValue := TEvalValue.Make(Size);
+    end
     else
+    begin
       AValue := TEvalValue.Unknown;
+    end;
     AddPart('SizeOf(' + Argument + ')', NumberText(AValue), Origin);
   end
   else if SameText(AName, 'High') or SameText(AName, 'Low') then
@@ -1011,11 +1179,17 @@ begin
     Argument := ReadName;
     Expect(')');
     if not TypeRange(Argument, LowValue, HighValue, Origin) then
-      AValue := TEvalValue.Unknown
+    begin
+      AValue := TEvalValue.Unknown;
+    end
     else if SameText(AName, 'High') then
-      AValue := TEvalValue.Make(HighValue)
+    begin
+      AValue := TEvalValue.Make(HighValue);
+    end
     else
+    begin
       AValue := TEvalValue.Make(LowValue);
+    end;
     AddPart(AName + '(' + Argument + ')', NumberText(AValue), Origin);
   end
   else if SameText(AName, 'Ord') then
@@ -1028,11 +1202,15 @@ begin
       AValue := TEvalValue.Make(Ord(Token.Text[2]));
     end
     else
+    begin
       AValue := ParseOr;
+    end;
     Expect(')');
   end
   else
+  begin
     Result := False;
+  end;
 end;
 
 function TExpressionEvaluator.ParsePrimary: TEvalValue;
@@ -1054,7 +1232,9 @@ begin
   begin
     Inc(FIndex);
     if not TryStrToFloat(Token.Text, Number, TFormatSettings.Invariant) then
+    begin
       Number := StrToIntDef(Token.Text, 0);
+    end;
     Exit(TEvalValue.Make(Number));
   end;
   if IsWord('True') then
@@ -1069,15 +1249,23 @@ begin
   end;
   Name := ReadName;
   if not AtEnd and Peek.IsSymbol('(') and ParseFunction(Name, Result) then
+  begin
     Exit;
+  end;
   if SameText(Name, 'CompilerVersion') or SameText(Name, 'RTLVersion') then
   begin
     if SameText(Name, 'CompilerVersion') and (FOptions.CompilerVersion > 0) then
-      Result := TEvalValue.Make(FOptions.CompilerVersion)
+    begin
+      Result := TEvalValue.Make(FOptions.CompilerVersion);
+    end
     else if SameText(Name, 'RTLVersion') and (FOptions.RTLVersion > 0) then
-      Result := TEvalValue.Make(FOptions.RTLVersion)
+    begin
+      Result := TEvalValue.Make(FOptions.RTLVersion);
+    end
     else
+    begin
       Result := TEvalValue.Unknown;
+    end;
     AddPart(Name, NumberText(Result), ProductOrigin);
     Exit;
   end;
@@ -1087,11 +1275,17 @@ begin
     Exit;
   end;
   for Pair in FOptions.Constants do
+  begin
     if SameText(Pair.Key, Name) then
+    begin
       Exit(TEvalValue.Make(Pair.Value));
+    end;
+  end;
   // Konstante aus dem Code oder einer anderen Unit: Der Wert ist hier nicht bekannt.
   if not AtEnd and Peek.IsSymbol('(') then
+  begin
     raise EPreprocessorExpression.CreateFmt('Unbekannte Funktion "%s"', [Name]);
+  end;
   Result := TEvalValue.Unknown;
   AddPart(Name, 'unbekannt', 'Konstante aus dem Code');
 end;
@@ -1110,29 +1304,41 @@ begin
   // Ohne ausdrückliche Angabe folgen CompilerVersion und RTLVersion dem VERnnn der Defines,
   // damit {$IF CompilerVersion >= 36} zu den Projektsymbolen passt.
   if FOptions.CompilerVersion = 0 then
+  begin
     FOptions.CompilerVersion := TPascalPreprocessor.CompilerVersionFromDefines(AOptions.Defines);
+  end;
   if FOptions.RTLVersion = 0 then
+  begin
     FOptions.RTLVersion := FOptions.CompilerVersion;
+  end;
   FDefines := TDictionary<string, Boolean>.Create;
   FSwitches := TSwitchTable.Create;
   for Define in AOptions.Defines do
+  begin
     if TPascalPreprocessor.IsSwitchEntry(Define) then
     begin
       // "$R+" aus der .dproj, "$R-*" Vorgabe des Compilers ohne Eintrag dort (#847).
       Entry := Copy(Trim(Define), 2, MaxInt);
       IsDefault := EndsStr('*', Entry);
       if IsDefault then
+      begin
         Entry := Copy(Entry, 1, Length(Entry) - 1);
+      end;
       if ParseSwitch(Entry, Letter, Switch.On_) then
       begin
         Switch.Origin := TPascalPreprocessor.SwitchProperty(Letter);
         if IsDefault then
+        begin
           Switch.Origin := Switch.Origin + ' ' + DefaultSuffix;
+        end;
         FSwitches.AddOrSetValue(Letter, Switch);
       end;
     end
     else if Trim(Define) <> '' then
+    begin
       FDefines.AddOrSetValue(UpperCase(Trim(Define)), True);
+    end;
+  end;
   FSwitchStack := TObjectStack<TSwitchTable>.Create;
   FChecks := TList<TConditionCheck>.Create;
   FTokens := TList<TPascalToken>.Create;
@@ -1170,13 +1376,19 @@ var
   Site: TDefineSite;
 begin
   if AName = '' then
+  begin
     Exit;
+  end;
   Site.FileIndex := AFileIndex;
   Site.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
   if AFileIndex = 0 then
-    Site.RootPos := AToken.StartPos
+  begin
+    Site.RootPos := AToken.StartPos;
+  end
   else
+  begin
     Site.RootPos := FRootRange.StartPos;
+  end;
   Site.Name := AName;
   Site.Undefine := AUndefine;
   FDefineSites.Add(Site);
@@ -1189,9 +1401,13 @@ begin
   Site.FileIndex := AFileIndex;
   Site.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
   if AFileIndex = 0 then
-    Site.RootPos := AToken.StartPos
+  begin
+    Site.RootPos := AToken.StartPos;
+  end
   else
+  begin
     Site.RootPos := FRootRange.StartPos;
+  end;
   Site.Body := Trim(DirectiveBody(AToken.Text));
   FDirectiveSites.Add(Site);
 end;
@@ -1210,9 +1426,13 @@ begin
   Issue.FileIndex := AFileIndex;
   Issue.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
   if AFileIndex = 0 then
-    Issue.RootRange := Issue.Range
+  begin
+    Issue.RootRange := Issue.Range;
+  end
   else
+  begin
     Issue.RootRange := FRootRange;
+  end;
   Issue.Message := AMessage;
   FIssues.Add(Issue);
 end;
@@ -1274,9 +1494,13 @@ begin
   if FSwitches.TryGetValue(Letter, Switch) then
   begin
     if Switch.On_ = Wanted then
-      Result := TConditionValue.Yes
+    begin
+      Result := TConditionValue.Yes;
+    end
     else
+    begin
       Result := TConditionValue.No;
+    end;
     Part.Value := Letter + Copy('-+', Ord(Switch.On_) + 1, 1);
     Part.Origin := Switch.Origin;
   end
@@ -1306,27 +1530,35 @@ begin
   States := nil;
   SplitDirective(ABody, Name, Argument);
   for SwitchName in SwitchNames do
+  begin
     if (Name = SwitchName.Long) and (SameText(Argument, 'ON') or SameText(Argument, 'OFF')) then
     begin
       Letters := [SwitchName.Letter];
       States := [SameText(Argument, 'ON')];
     end;
+  end;
   if Letters = nil then
   begin
     Parts := ABody.Split([',']);
     for Part in Parts do
     begin
       if not ParseSwitch(Part, Letter, On_) then
+      begin
         Exit(False);
+      end;
       Letters := Letters + [Letter];
       States := States + [On_];
     end;
   end;
   Result := Length(Letters) > 0;
   if AFileIndex = 0 then
-    Origin := Format('{$%s} in Zeile %d', [ABody, AToken.StartPos.Line + 1])
+  begin
+    Origin := Format('{$%s} in Zeile %d', [ABody, AToken.StartPos.Line + 1]);
+  end
   else
+  begin
     Origin := Format('{$%s} in %s, Zeile %d', [ABody, ExtractFileName(FFiles[AFileIndex]), AToken.StartPos.Line + 1]);
+  end;
   for Index := 0 to High(Letters) do
   begin
     Switch.On_ := States[Index];
@@ -1341,7 +1573,9 @@ var
   Index: Integer;
 begin
   if AFileIndex = 0 then
+  begin
     FRootRange := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+  end;
   if AName = '' then
   begin
     AddIssue(AFileIndex, AToken, 'Include-Datei fehlt');
@@ -1360,12 +1594,14 @@ begin
     Exit;
   end;
   for Existing in FIncludeStack do
+  begin
     if SameText(Existing, FileName) then
     begin
       AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" bindet sich selbst ein', [AName]),
         TPreprocessorIssueKind.IncludeCycle);
       Exit;
     end;
+  end;
   Index := FFiles.Add(FileName);
   FIncludeStack.Add(FileName);
   try
@@ -1394,13 +1630,19 @@ var
     Conditional: TConditionalRange;
   begin
     if not AState.ParentActive or (AState.Text = '') then
+    begin
       Exit;
+    end;
     Conditional.FileIndex := AFileIndex;
     Conditional.Range := TTextRange.Create(AState.Start, AToken.StartPos);
     if AState.Outer = '' then
-      Conditional.Condition := AState.Text
+    begin
+      Conditional.Condition := AState.Text;
+    end
     else
+    begin
       Conditional.Condition := AState.Outer + ' und ' + AState.Text;
+    end;
     Conditional.Active := AState.Active;
     FConditionals.Add(Conditional);
   end;
@@ -1412,14 +1654,22 @@ var
   begin
     Result := '';
     if Stack.Count = 0 then
+    begin
       Exit;
+    end;
     Top := Stack.Peek;
     if Top.Outer = '' then
-      Result := Top.Text
+    begin
+      Result := Top.Text;
+    end
     else if Top.Text = '' then
-      Result := Top.Outer
+    begin
+      Result := Top.Outer;
+    end
     else
+    begin
       Result := Top.Outer + ' und ' + Top.Text;
+    end;
   end;
 
 begin
@@ -1451,25 +1701,43 @@ begin
         State.InElse := False;
         State.Outer := OuterText;
         if Name = 'IFDEF' then
-          State.IfText := UpperCase(FirstWord(Argument))
+        begin
+          State.IfText := UpperCase(FirstWord(Argument));
+        end
         else if Name = 'IFNDEF' then
-          State.IfText := 'not ' + UpperCase(FirstWord(Argument))
+        begin
+          State.IfText := 'not ' + UpperCase(FirstWord(Argument));
+        end
         else if Name = 'IF' then
-          State.IfText := Trim(Argument)
+        begin
+          State.IfText := Trim(Argument);
+        end
         else
+        begin
           State.IfText := '';
+        end;
         State.Text := State.IfText;
         State.Start := Token.EndPos;
         if not Active then
-          Condition := TConditionValue.No
+        begin
+          Condition := TConditionValue.No;
+        end
         else if Name = 'IFDEF' then
-          Condition := ConditionOf(FDefines.ContainsKey(UpperCase(FirstWord(Argument))))
+        begin
+          Condition := ConditionOf(FDefines.ContainsKey(UpperCase(FirstWord(Argument))));
+        end
         else if Name = 'IFNDEF' then
-          Condition := ConditionOf(not FDefines.ContainsKey(UpperCase(FirstWord(Argument))))
+        begin
+          Condition := ConditionOf(not FDefines.ContainsKey(UpperCase(FirstWord(Argument))));
+        end
         else if Name = 'IF' then
-          Condition := EvaluateCondition(Argument, Name, AFileIndex, Token)
+        begin
+          Condition := EvaluateCondition(Argument, Name, AFileIndex, Token);
+        end
         else
+        begin
           Condition := EvaluateSwitch(Argument, AFileIndex, Token);
+        end;
         // Unbekannt gilt als aktiv, ohne den Zweig zu „nehmen“: ein {$ELSE} gilt dann auch (#847).
         State.Active := Active and (Condition <> TConditionValue.No);
         State.Taken := Active and (Condition = TConditionValue.Yes);
@@ -1486,20 +1754,30 @@ begin
         end;
         State := Stack.Pop;
         if State.InElse then
+        begin
           AddIssue(AFileIndex, Token, Format('$%s nach $ELSE', [Name]));
+        end;
         CloseBranch(State, Token);
         State.Start := Token.EndPos;
         if Name = 'ELSE' then
         begin
           if State.IfText = '' then
-            State.Text := ''
+          begin
+            State.Text := '';
+          end
           else if State.IfText.StartsWith('not ') then
-            State.Text := Copy(State.IfText, 5, MaxInt)
+          begin
+            State.Text := Copy(State.IfText, 5, MaxInt);
+          end
           else
+          begin
             State.Text := 'not ' + State.IfText;
+          end;
         end
         else
+        begin
           State.Text := Trim(Argument);
+        end;
         if Name = 'ELSE' then
         begin
           State.Active := State.ParentActive and not State.Taken;
@@ -1512,7 +1790,9 @@ begin
           State.Taken := Condition = TConditionValue.Yes;
         end
         else
+        begin
           State.Active := False;
+        end;
         Stack.Push(State);
         Active := State.Active;
       end
@@ -1529,7 +1809,9 @@ begin
         Opening.Pop;
       end
       else if not Active then
-        Continue
+      begin
+        Continue;
+      end
       else if Name = 'DEFINE' then
       begin
         FDefines.AddOrSetValue(UpperCase(FirstWord(Argument)), True);
@@ -1541,7 +1823,9 @@ begin
         AddDefineSite(AFileIndex, Token, UpperCase(FirstWord(Argument)), True);
       end
       else if ((Name = 'I') and not IsSwitch(Argument)) or (Name = 'INCLUDE') then
-        Include(IncludeName(Argument), AFileIndex, ADepth, Token)
+      begin
+        Include(IncludeName(Argument), AFileIndex, ADepth, Token);
+      end
       else
       begin
         // Schalterstände für $IFOPT (#847); {$PUSHOPT}/{$POPOPT} sichern bzw. stellen sie wieder her.
@@ -1553,7 +1837,9 @@ begin
         else if Name = 'POPOPT' then
         begin
           if FSwitchStack.Count = 0 then
-            AddIssue(AFileIndex, Token, '$POPOPT ohne $PUSHOPT')
+          begin
+            AddIssue(AFileIndex, Token, '$POPOPT ohne $PUSHOPT');
+          end
           else
           begin
             FSwitches.Free;
@@ -1561,7 +1847,9 @@ begin
           end;
         end
         else
+        begin
           ApplySwitches(DirectiveBody(Token.Text), AFileIndex, Token);
+        end;
         // Für die Compiler-Schalter an einer Stelle (#558).
         AddDirectiveSite(AFileIndex, Token);
         // Andere Direktiven bleiben für spätere Auswertungen erhalten.
@@ -1570,7 +1858,9 @@ begin
       end;
 
       if WasActive and not Active then
-        InactiveStart := Token.EndPos
+      begin
+        InactiveStart := Token.EndPos;
+      end
       else if not WasActive and Active then
       begin
         Range.FileIndex := AFileIndex;
@@ -1580,7 +1870,9 @@ begin
     end;
 
     while Opening.Count > 0 do
+    begin
       AddIssue(AFileIndex, Opening.Pop, '$ENDIF fehlt');
+    end;
     if not Active then
     begin
       Range.FileIndex := AFileIndex;
@@ -1613,7 +1905,9 @@ begin
   Defines := TList<string>.Create;
   try
     for Key in FDefines.Keys do
+    begin
       Defines.Add(Key);
+    end;
     Defines.Sort;
     Result.Defines := Defines.ToArray;
   finally
@@ -1642,7 +1936,9 @@ var
 begin
   Result := Explain(AExpression, AOptions, ADefines, Parts, AError) <> TConditionValue.No;
   if AError <> '' then
+  begin
     Result := False;
+  end;
 end;
 
 class function TPascalPreprocessor.Explain(const AExpression: string; const AOptions: TPreprocessorOptions;
@@ -1657,8 +1953,12 @@ begin
   Defines := TDictionary<string, Boolean>.Create;
   try
     for Define in ADefines do
+    begin
       if not IsSwitchEntry(Define) then
+      begin
         Defines.AddOrSetValue(UpperCase(Define), True);
+      end;
+    end;
     Evaluator := TExpressionEvaluator.Create(AOptions, Defines);
     try
       try
@@ -1687,24 +1987,34 @@ var
 begin
   Result := nil;
   for SwitchName in SwitchNames do
+  begin
     if SwitchName.Prop <> '' then
     begin
       Entry := '';
       for Pair in AProperties do
+      begin
         if SameText(Pair.Key, SwitchName.Prop) then
         begin
           // true/false; DCC_DebugInformation auch 0 (keine), 1 (begrenzt), 2 (voll).
           Value := LowerCase(Trim(Pair.Value));
           if (Value = 'true') or (Value = '1') or (Value = '2') then
-            Entry := '$' + SwitchName.Letter + '+'
+          begin
+            Entry := '$' + SwitchName.Letter + '+';
+          end
           else if (Value = 'false') or (Value = '0') then
+          begin
             Entry := '$' + SwitchName.Letter + '-';
+          end;
         end;
+      end;
       // Ohne Eintrag gilt die Vorgabe des Compilers, markiert mit "*".
       if Entry = '' then
+      begin
         Entry := '$' + SwitchName.Letter + SwitchName.Default + '*';
+      end;
       Result := Result + [Entry];
     end;
+  end;
 end;
 
 class function TPascalPreprocessor.IsSwitchEntry(const ADefine: string): Boolean;
@@ -1720,8 +2030,12 @@ var
   SwitchName: TSwitchName;
 begin
   for SwitchName in SwitchNames do
+  begin
     if SwitchName.Letter = UpCase(ALetter) then
+    begin
       Exit(SwitchName.Prop);
+    end;
+  end;
   Result := '';
 end;
 
@@ -1730,11 +2044,13 @@ var
   SwitchName: TSwitchName;
 begin
   for SwitchName in SwitchNames do
+  begin
     if SameText(SwitchName.Long, Trim(AName)) then
     begin
       ALetter := SwitchName.Letter;
       Exit(True);
     end;
+  end;
   ALetter := #0;
   Result := False;
 end;
@@ -1744,8 +2060,12 @@ var
   SwitchName: TSwitchName;
 begin
   for SwitchName in SwitchNames do
+  begin
     if (SwitchName.Letter = UpCase(ALetter)) and (SwitchName.Default <> '') then
+    begin
       Exit(SwitchName.Default[1]);
+    end;
+  end;
   Result := #0;
 end;
 
@@ -1763,9 +2083,13 @@ class function TPascalPreprocessor.ProductName(ACompilerVersion: Double): string
 begin
   // Ab Delphi 11 (CompilerVersion 35) zählt die Hauptversion mit; davor nur die Zahl.
   if ACompilerVersion >= 35 then
-    Result := Format('Delphi %d', [Trunc(ACompilerVersion) - 24])
+  begin
+    Result := Format('Delphi %d', [Trunc(ACompilerVersion) - 24]);
+  end
   else
+  begin
     Result := 'CompilerVersion ' + FloatToStr(ACompilerVersion, TFormatSettings.Invariant);
+  end;
 end;
 
 class function TPascalPreprocessor.CompilerVersionOfBds(ABdsVersion: Double): Double;
@@ -1784,7 +2108,9 @@ begin
     Digits := Trim(Define);
     if (Length(Digits) > 3) and SameText(Copy(Digits, 1, 3), 'VER') and
       TryStrToInt(Copy(Digits, 4, MaxInt), Number) and (Number > 0) then
+    begin
       Exit(Number / 10);
+    end;
   end;
   Result := 0;
 end;
@@ -1822,8 +2148,12 @@ var
 begin
   Result := nil;
   for Inactive in AResult.InactiveRanges do
+  begin
     if Inactive.FileIndex = 0 then
+    begin
       Result := Result + [Inactive.Range];
+    end;
+  end;
 end;
 
 class function TPascalPreprocessor.MainConditionals(const AResult: TPreprocessorResult): TArray<TConditionalRange>;
@@ -1832,8 +2162,12 @@ var
 begin
   Result := nil;
   for Conditional in AResult.Conditionals do
+  begin
     if Conditional.FileIndex = 0 then
+    begin
       Result := Result + [Conditional];
+    end;
+  end;
 end;
 
 class function TPascalPreprocessor.IncludeFileOf(const ADirective: string; out AName: string): Boolean;
@@ -1844,17 +2178,27 @@ begin
   Result := False;
   Text := ADirective;
   if Text.StartsWith('{$') and Text.EndsWith('}') then
-    Text := Copy(Text, 3, Length(Text) - 3)
+  begin
+    Text := Copy(Text, 3, Length(Text) - 3);
+  end
   else if Text.StartsWith('(*$') and Text.EndsWith('*)') then
-    Text := Copy(Text, 4, Length(Text) - 5)
+  begin
+    Text := Copy(Text, 4, Length(Text) - 5);
+  end
   else
+  begin
     Exit;
+  end;
   Index := 1;
   while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z']) do
+  begin
     Inc(Index);
+  end;
   Word := UpperCase(Copy(Text, 1, Index - 1));
   if (Word <> 'I') and (Word <> 'INCLUDE') then
+  begin
     Exit;
+  end;
   AName := Trim(Copy(Text, Index, MaxInt));
   Result := (AName <> '') and not CharInSet(AName[1], ['+', '-']);
 end;
@@ -1879,7 +2223,9 @@ begin
     Next := Start + 2;
     if (Start > 1) and CharInSet(Upper[Start - 1], ['{', '*']) and (Next <= Length(Upper)) and
       (CharInSet(Upper[Next], [' ', #9, '''']) or (Copy(Upper, Next, 6) = 'NCLUDE')) then
+    begin
       Exit(True);
+    end;
     Start := Pos('$I', Upper, Next);
   end;
   Result := False;
@@ -1892,30 +2238,52 @@ class function TPascalPreprocessor.PlatformOf(const ADefines: TArray<string>): s
     mDefine: string;
   begin
     for mDefine in ADefines do
+    begin
       if SameText(Trim(mDefine), AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   if Has('WIN64') then
-    Result := 'Win64'
+  begin
+    Result := 'Win64';
+  end
   else if Has('WIN32') then
-    Result := 'Win32'
+  begin
+    Result := 'Win32';
+  end
   else if Has('LINUX64') then
-    Result := 'Linux64'
+  begin
+    Result := 'Linux64';
+  end
   else if Has('MACOS64') and Has('CPUARM64') then
-    Result := 'OSXARM64'
+  begin
+    Result := 'OSXARM64';
+  end
   else if Has('MACOS64') and not Has('IOS') then
-    Result := 'OSX64'
+  begin
+    Result := 'OSX64';
+  end
   else if Has('IOS64') then
-    Result := 'iOSDevice64'
+  begin
+    Result := 'iOSDevice64';
+  end
   else if Has('ANDROID64') then
-    Result := 'Android64'
+  begin
+    Result := 'Android64';
+  end
   else if Has('ANDROID') then
-    Result := 'Android'
+  begin
+    Result := 'Android';
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TPascalPreprocessor.PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>;

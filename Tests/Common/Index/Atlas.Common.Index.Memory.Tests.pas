@@ -71,7 +71,9 @@ begin
   Result.ImplementationUses := ['System.Classes'];
   SetLength(Result.Symbols, AInterfaceSymbols + AImplementationSymbols);
   for Index := 0 to High(Result.Symbols) do
+  begin
     Result.Symbols[Index] := MakeSymbol(AName + 'Symbol' + IntToStr(Index), Index < AInterfaceSymbols);
+  end;
 end;
 
 procedure TIndexMemoryTests.PoolReturnsSameStringForEqualValues;
@@ -239,7 +241,9 @@ begin
   Index := TSymbolIndex.Create;
   Index.SetBudget(Budget);
   for Number := 1 to UnitCount do
+  begin
     Index.AddUnit(MakeUnit('Unit' + IntToStr(Number), Number mod 2 = 0, 15, 45));
+  end;
   Assert.AreEqual(UnitCount, Index.UnitCount);
   Assert.IsTrue(Index.MemoryBytes <= Budget, Format('%d > %d', [Index.MemoryBytes, Int64(Budget)]));
   Assert.IsTrue(Index.CompactCount > 0);

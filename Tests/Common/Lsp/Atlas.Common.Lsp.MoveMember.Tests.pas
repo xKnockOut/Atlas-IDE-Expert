@@ -101,15 +101,25 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, ClassesFile) then
-    Result := UnitClasses
+  begin
+    Result := UnitClasses;
+  end
   else if SameText(AFileName, BasisFile) then
-    Result := UnitBasis
+  begin
+    Result := UnitBasis;
+  end
   else if SameText(AFileName, KindFile) then
-    Result := UnitKind
+  begin
+    Result := UnitKind;
+  end
   else if SameText(AFileName, MainFile) then
-    Result := UnitMain
+  begin
+    Result := UnitMain;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function Context(const AIndex: ISymbolIndex): TMoveMemberContext;
@@ -133,7 +143,9 @@ begin
   Result := TJSONObject.Create;
   Members := TJSONArray.Create;
   for Id in AMembers do
+  begin
     Members.AddElement(TJSONNumber.Create(Id));
+  end;
   Result.AddPair('members', Members);
   Targets := TJSONArray.Create;
   Targets.Add(ATarget);
@@ -154,10 +166,14 @@ begin
   begin
     Document := TJSONObject(Item);
     if Document.GetValue('textDocument') = nil then
+    begin
       Continue;
+    end;
     Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
     if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    begin
       Continue;
+    end;
     Edits := nil;
     for Edit in Document.GetValue('edits') as TJSONArray do
     begin
@@ -192,7 +208,9 @@ var
   Item: TJSONObject;
 begin
   for Item in AItems do
+  begin
     Item.Free;
+  end;
 end;
 
 procedure TLspMoveMemberTests.Setup;

@@ -101,9 +101,13 @@ end;
 function TExpressionPart.AtLeast(AMinimum: Integer): string;
 begin
   if Precedence < AMinimum then
-    Result := '(' + Text + ')'
+  begin
+    Result := '(' + Text + ')';
+  end
   else
+  begin
     Result := Text;
+  end;
 end;
 
 { TExpressionText }
@@ -112,7 +116,9 @@ class function TExpressionText.Strip(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode;
   while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+  begin
     Result := Result[0];
+  end;
 end;
 
 class function TExpressionText.OperatorPrecedence(const AOperator: string): Integer;
@@ -121,13 +127,21 @@ var
 begin
   Op := LowerCase(AOperator);
   if MatchStr(Op, ['=', '<>', '<', '>', '<=', '>=', 'in', 'is', 'is not', 'not in']) then
-    Result := PrecedenceRelational
+  begin
+    Result := PrecedenceRelational;
+  end
   else if MatchStr(Op, ['+', '-', 'or', 'xor']) then
-    Result := PrecedenceAdditive
+  begin
+    Result := PrecedenceAdditive;
+  end
   else if MatchStr(Op, ['*', '/', 'div', 'mod', 'and', 'shl', 'shr', 'as']) then
-    Result := PrecedenceMultiplicative
+  begin
+    Result := PrecedenceMultiplicative;
+  end
   else
+  begin
     Result := -1;
+  end;
 end;
 
 class function TExpressionText.Precedence(ANode: TSyntaxNode): Integer;
@@ -137,7 +151,9 @@ begin
     begin
       Result := OperatorPrecedence(ANode.Name);
       if Result < 0 then
+      begin
         Result := PrecedenceRelational;
+      end;
     end;
     TSyntaxKind.UnaryExpr, TSyntaxKind.AddressOf:
       Result := PrecedenceUnary;
@@ -166,10 +182,14 @@ begin
   // Linksassoziativ: links reicht derselbe Vorrang, rechts braucht es einen höheren. Vergleiche lassen sich
   // in Delphi nicht verketten (A = B = C ist A = (B = C) nicht), deshalb dort beidseitig höher.
   if Level = PrecedenceRelational then
+  begin
     Result := TExpressionPart.Create(ALeft.AtLeast(Level + 1) + ' ' + AOperator + ' ' + ARight.AtLeast(Level + 1),
-      Level)
+      Level);
+  end
   else
+  begin
     Result := TExpressionPart.Create(ALeft.AtLeast(Level) + ' ' + AOperator + ' ' + ARight.AtLeast(Level + 1), Level);
+  end;
 end;
 
 class function TExpressionText.InvertedComparison(const AOperator: string): string;
@@ -214,7 +234,9 @@ begin
   Result := PrecedenceIfExpr;
   Parent := ANode.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   case Parent.Kind of
     TSyntaxKind.BinaryExpr:
       if Parent.ChildCount = 2 then
@@ -222,22 +244,32 @@ begin
         // Wie Combine: links derselbe Vorrang, rechts und bei Vergleichen beidseitig ein höherer.
         Level := OperatorPrecedence(Parent.Name);
         if Level < 0 then
+        begin
           Level := PrecedenceRelational;
+        end;
         if (Parent[1] = ANode) or (Level = PrecedenceRelational) then
-          Result := Level + 1
+        begin
+          Result := Level + 1;
+        end
         else
+        begin
           Result := Level;
+        end;
       end;
     TSyntaxKind.UnaryExpr:
       Result := PrecedenceUnary;
     TSyntaxKind.AddressOf, TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.MemberAccess:
       if Parent[0] = ANode then
+      begin
         Result := PrecedenceOperand;
+      end;
     // Bedingung und Wert vor else eines Bedingungsausdrucks: ein innerer Bedingungsausdruck in Klammern
     // (sonst gehörte das else zum inneren).
     TSyntaxKind.IfExpr:
       if (Parent.ChildCount = 3) and (Parent[2] <> ANode) then
+      begin
         Result := PrecedenceIfExpr + 1;
+      end;
   else
     // Übrige Arten: nichts zu tun.
   end;
@@ -284,9 +316,13 @@ begin
       if IsBooleanLiteral(Node) then
       begin
         if SameText(Node.Name, 'True') then
-          Result := TExpressionPart.Create('False', PrecedenceOperand)
+        begin
+          Result := TExpressionPart.Create('False', PrecedenceOperand);
+        end
         else
+        begin
           Result := TExpressionPart.Create('True', PrecedenceOperand);
+        end;
         Exit;
       end;
   else
@@ -302,9 +338,13 @@ var
 begin
   Node := Strip(ANode);
   if (Node.Kind = TSyntaxKind.UnaryExpr) and SameText(Node.Name, 'not') and (Node.ChildCount = 1) then
-    Result := Negate(AText, Node[0])
+  begin
+    Result := Negate(AText, Node[0]);
+  end
   else
+  begin
     Result := Part(AText, Node);
+  end;
 end;
 
 class function TExpressionText.Normalized(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
@@ -324,9 +364,13 @@ begin
     begin
       Word := Tokens[Index].Text;
       if Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+      begin
         Word := LowerCase(Word);
+      end;
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Word;
     end;
     Inc(Index);
@@ -352,9 +396,13 @@ begin
         begin
           Callee := nil;
           if ACandidate.ChildCount > 0 then
+          begin
             Callee := ACandidate[0];
+          end;
           if (Callee = nil) or (Callee.Kind <> TSyntaxKind.Identifier) or not TPureRoutines.IsPure(Callee.Name) then
+          begin
             Result := TSyntaxSearchStep.Found;
+          end;
         end;
         TSyntaxKind.AnonymousMethod, TSyntaxKind.InheritedExpr, TSyntaxKind.Error:
           Result := TSyntaxSearchStep.Found;

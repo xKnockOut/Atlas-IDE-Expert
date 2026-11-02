@@ -84,7 +84,9 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := SameText(AFileName, FormFile);
   if Result then
+  begin
     AText := 'object Kunde: TKunde'#10'  object FLabel: TLabel'#10'  end'#10'end'#10;
+  end;
 end;
 
 procedure TLspPromoteVariableTests.Setup;
@@ -161,7 +163,9 @@ begin
     Assert.AreEqual('FTotal', Arguments.Items[2].Value);
   finally
     for Action in Actions do
+    begin
       Action.Free;
+    end;
   end;
   // Im Rumpf ohne Variable: nichts.
   Actions := ActionsAt(FIndex, 17, 1);

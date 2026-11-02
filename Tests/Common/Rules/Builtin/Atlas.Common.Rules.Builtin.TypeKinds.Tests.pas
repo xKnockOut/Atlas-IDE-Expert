@@ -73,7 +73,9 @@ var
 begin
   Result := '';
   for mLine in ALines do
+  begin
     Result := Result + mLine + #10;
+  end;
 end;
 
 /// <summary>Index mit System (TObject, TClass, PInteger, TextFile) und SysUtils mit TIntegerHelper.</summary>
@@ -392,8 +394,12 @@ var
 begin
   mFound := False;
   for mRule in BuiltinRules do
+  begin
     if mRule.Descriptor.Id = TypeKindRequiredRuleId then
+    begin
       mFound := True;
+    end;
+  end;
   Assert.IsTrue(mFound);
 end;
 
