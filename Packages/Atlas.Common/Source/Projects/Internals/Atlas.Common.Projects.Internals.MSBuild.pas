@@ -40,6 +40,9 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 type
   EConditionError = class(Exception);
 
@@ -56,6 +59,12 @@ type
     function ParsePrimary: Boolean;
     function ParseOperand: string;
     function ParseFunction(const AName: string): Boolean;
+    function ParseQuoted: string;
+    function ParseBare: string;
+    procedure ExpectClose;
+    /// <summary>Name direkt vor "("; True, dann steht die Stelle hinter "(". Sonst bleibt sie unverändert.</summary>
+    function TryFunctionName(out AName: string): Boolean;
+    function ReadComparison: string;
   public
     constructor Create(const AText: string; AProperties: TMSBuildProperties);
     function Run: Boolean;
@@ -252,10 +261,52 @@ begin
   Result := ParsePrimary;
 end;
 
-function TConditionParser.ParseOperand: string;
+function TConditionParser.ParseQuoted: string;
 var
-  Quote: Char;
-  Start: Integer;
+  mQuote: Char;
+  mStart: Integer;
+begin
+  mQuote := FText[FPos];
+  Inc(FPos);
+  mStart := FPos;
+  while (FPos <= Length(FText)) and (FText[FPos] <> mQuote) do
+  begin
+    Inc(FPos);
+  end;
+  if FPos > Length(FText) then
+  begin
+    raise EConditionError.Create('String nicht abgeschlossen');
+  end;
+  Result := FProperties.Expand(Copy(FText, mStart, FPos - mStart));
+  Inc(FPos);
+end;
+
+function TConditionParser.ParseBare: string;
+var
+  mStart: Integer;
+begin
+  // Unquotierte Werte wie true, false, Zahlen oder $(X).
+  mStart := FPos;
+  while (FPos <= Length(FText)) and not CharInSet(FText[FPos], [' ', #9, #10, #13, '=', '!', '<', '>', '(', ')']) do
+  begin
+    if (FText[FPos] = '$') and (FPos < Length(FText)) and (FText[FPos + 1] = '(') then
+    begin
+      FPos := PosEx(')', FText, FPos);
+      if FPos = 0 then
+      begin
+        FPos := Length(FText) + 1;
+      end;
+    end;
+    Inc(FPos);
+  end;
+  if FPos = mStart then
+  begin
+    raise EConditionError.Create('Operand erwartet');
+  end;
+  Result := FProperties.Expand(Copy(FText, mStart, FPos - mStart));
+end;
+
+function TConditionParser.ParseOperand: string;
 begin
   SkipSpace;
   if FPos > Length(FText) then
@@ -264,40 +315,11 @@ begin
   end;
   if CharInSet(FText[FPos], ['''', '"']) then
   begin
-    Quote := FText[FPos];
-    Inc(FPos);
-    Start := FPos;
-    while (FPos <= Length(FText)) and (FText[FPos] <> Quote) do
-    begin
-      Inc(FPos);
-    end;
-    if FPos > Length(FText) then
-    begin
-      raise EConditionError.Create('String nicht abgeschlossen');
-    end;
-    Result := FProperties.Expand(Copy(FText, Start, FPos - Start));
-    Inc(FPos);
+    Result := ParseQuoted;
   end
   else
   begin
-    // Unquotierte Werte wie true, false, Zahlen oder $(X).
-    Start := FPos;
-    while (FPos <= Length(FText)) and not CharInSet(FText[FPos], [' ', #9, #10, #13, '=', '!', '<', '>', '(', ')']) do
-    begin
-      if (FText[FPos] = '$') and (FPos < Length(FText)) and (FText[FPos + 1] = '(') then
-      begin
-        while (FPos <= Length(FText)) and (FText[FPos] <> ')') do
-        begin
-          Inc(FPos);
-        end;
-      end;
-      Inc(FPos);
-    end;
-    if FPos = Start then
-    begin
-      raise EConditionError.Create('Operand erwartet');
-    end;
-    Result := FProperties.Expand(Copy(FText, Start, FPos - Start));
+    Result := ParseBare;
   end;
 end;
 
@@ -306,12 +328,7 @@ var
   Argument: string;
 begin
   Argument := ParseOperand;
-  SkipSpace;
-  if (FPos > Length(FText)) or (FText[FPos] <> ')') then
-  begin
-    raise EConditionError.Create('")" erwartet');
-  end;
-  Inc(FPos);
+  ExpectClose;
   if SameText(AName, 'Exists') then
   begin
     Result := Assigned(FProperties.FFileExists) and FProperties.FFileExists(Argument);
@@ -326,100 +343,131 @@ begin
   end;
 end;
 
+procedure TConditionParser.ExpectClose;
+begin
+  SkipSpace;
+  if (FPos > Length(FText)) or (FText[FPos] <> ')') then
+  begin
+    raise EConditionError.Create('")" erwartet');
+  end;
+  Inc(FPos);
+end;
+
+function TConditionParser.TryFunctionName(out AName: string): Boolean;
+var
+  mStart: Integer;
+begin
+  mStart := FPos;
+  while (FPos <= Length(FText)) and CharInSet(FText[FPos], ['A'..'Z', 'a'..'z']) do
+  begin
+    Inc(FPos);
+  end;
+  Result := (FPos > mStart) and (FPos <= Length(FText)) and (FText[FPos] = '(');
+  if Result then
+  begin
+    AName := Copy(FText, mStart, FPos - mStart);
+    Inc(FPos);
+  end
+  else
+  begin
+    FPos := mStart;
+  end;
+end;
+
+/// <summary>Vergleichsoperator an der Stelle; '' = keiner.</summary>
+function TConditionParser.ReadComparison: string;
+begin
+  Result := Copy(FText, FPos, 2);
+  if (Result = '==') or (Result = '!=') or (Result = '<=') or (Result = '>=') then
+  begin
+    Inc(FPos, 2);
+  end
+  else if (Result <> '') and CharInSet(Result[1], ['<', '>']) then
+  begin
+    Result := Result[1];
+    Inc(FPos);
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Einzelner Wert ohne Vergleich: true oder false.</summary>
+function SingleValue(const AValue: string): Boolean;
+begin
+  if not SameText(AValue, 'true') and not SameText(AValue, 'false') then
+  begin
+    raise EConditionError.Create('Vergleich erwartet');
+  end;
+  Result := SameText(AValue, 'true');
+end;
+
+function CompareNumbers(const ALeft, AOperator, ARight: string): Boolean;
+var
+  mLeft, mRight: Double;
+begin
+  if not (TryStrToFloat(ALeft, mLeft, TFormatSettings.Invariant) and
+    TryStrToFloat(ARight, mRight, TFormatSettings.Invariant)) then
+  begin
+    raise EConditionError.Create('Zahl erwartet');
+  end;
+  case IndexStr(AOperator, ['<', '>', '<=']) of
+    0:
+      Result := mLeft < mRight;
+    1:
+      Result := mLeft > mRight;
+    2:
+      Result := mLeft <= mRight;
+  else
+    Result := mLeft >= mRight;
+  end;
+end;
+
+function Compare(const ALeft, AOperator, ARight: string): Boolean;
+begin
+  if AOperator = '==' then
+  begin
+    Result := SameText(ALeft, ARight);
+  end
+  else if AOperator = '!=' then
+  begin
+    Result := not SameText(ALeft, ARight);
+  end
+  else
+  begin
+    Result := CompareNumbers(ALeft, AOperator, ARight);
+  end;
+end;
+
 function TConditionParser.ParsePrimary: Boolean;
 var
-  Left: string;
-  Right: string;
-  Op: string;
-  Start: Integer;
-  Name: string;
-  LeftNumber: Double;
-  RightNumber: Double;
+  mLeft, mOperator, mName: string;
 begin
   SkipSpace;
   if (FPos <= Length(FText)) and (FText[FPos] = '(') then
   begin
     Inc(FPos);
     Result := ParseOr;
+    ExpectClose;
+  end
+  else if TryFunctionName(mName) then
+  begin
+    // Funktionsaufruf: Name(
+    Result := ParseFunction(mName);
+  end
+  else
+  begin
+    mLeft := ParseOperand;
     SkipSpace;
-    if (FPos > Length(FText)) or (FText[FPos] <> ')') then
+    mOperator := ReadComparison;
+    if mOperator = '' then
     begin
-      raise EConditionError.Create('")" erwartet');
-    end;
-    Inc(FPos);
-    Exit;
-  end;
-
-  // Funktionsaufruf: Name(
-  Start := FPos;
-  while (FPos <= Length(FText)) and CharInSet(FText[FPos], ['A'..'Z', 'a'..'z']) do
-  begin
-    Inc(FPos);
-  end;
-  if (FPos > Start) and (FPos <= Length(FText)) and (FText[FPos] = '(') then
-  begin
-    Name := Copy(FText, Start, FPos - Start);
-    Inc(FPos);
-    Exit(ParseFunction(Name));
-  end;
-  FPos := Start;
-
-  Left := ParseOperand;
-  SkipSpace;
-  Op := Copy(FText, FPos, 2);
-  if (Op = '==') or (Op = '!=') or (Op = '<=') or (Op = '>=') then
-  begin
-    Inc(FPos, 2);
-  end
-  else if (Op <> '') and CharInSet(Op[1], ['<', '>']) then
-  begin
-    Op := Op[1];
-    Inc(FPos);
-  end
-  else
-  begin
-    // Einzelner Wert: true/false.
-    if SameText(Left, 'true') then
-    begin
-      Exit(True);
-    end;
-    if SameText(Left, 'false') then
-    begin
-      Exit(False);
-    end;
-    raise EConditionError.Create('Vergleich erwartet');
-  end;
-  Right := ParseOperand;
-  if Op = '==' then
-  begin
-    Result := SameText(Left, Right);
-  end
-  else if Op = '!=' then
-  begin
-    Result := not SameText(Left, Right);
-  end
-  else
-  begin
-    if not (TryStrToFloat(Left, LeftNumber, TFormatSettings.Invariant) and
-      TryStrToFloat(Right, RightNumber, TFormatSettings.Invariant)) then
-    begin
-      raise EConditionError.Create('Zahl erwartet');
-    end;
-    if Op = '<' then
-    begin
-      Result := LeftNumber < RightNumber;
-    end
-    else if Op = '>' then
-    begin
-      Result := LeftNumber > RightNumber;
-    end
-    else if Op = '<=' then
-    begin
-      Result := LeftNumber <= RightNumber;
+      Result := SingleValue(mLeft);
     end
     else
     begin
-      Result := LeftNumber >= RightNumber;
+      Result := Compare(mLeft, mOperator, ParseOperand);
     end;
   end;
 end;
