@@ -30,7 +30,6 @@ uses
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Atlas.Common.Lsp.CompilerSwitches,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.CodeActions,
@@ -39,11 +38,9 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Pascal.CompilerSwitches,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.Impact,
@@ -75,6 +72,7 @@ uses
   Shell.Composition.Configuration,
   Shell.Composition.FileChanges,
   Shell.Composition.Sources,
+  Shell.Composition.Directives,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Projects.MissingUnit,
@@ -217,6 +215,8 @@ type
     FRuleContext: TShellRuleContext;
     /// <summary>Datenquellen der Übersichten und Analysen (Shell.Composition.Sources).</summary>
     FSources: TShellSources;
+    /// <summary>Direktiven je Datei aus dem Projekt (Shell.Composition.Directives).</summary>
+    FDirectives: TShellDirectives;
     FCompilerProcess: ICompilerProcess;
     /// <summary>Compilerläufe (#40, #261): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.</summary>
     FCompile: TShellCompileHost;
@@ -312,8 +312,6 @@ type
     procedure WireOverviews;
     /// <summary>Teil von WireAnalysis: Baseline, Sammelkorrektur und Baseline der Compilermeldungen.</summary>
     procedure WireBaselines;
-    /// <summary>Defines des Projekts zur Datei AFileName; nil ohne Projekt.</summary>
-    function DefinesOfFile(const AFileName: string): TArray<string>;
     /// <summary>Offene Dokumente bald neu prüfen.</summary>
     procedure RefreshDiagnosticsLater;
     /// <summary>Teil von Create (S-02): Refactorings und Befehle des Debuggers (Shell.Composition.Refactorings).
@@ -401,9 +399,6 @@ type
     /// <summary>Präfixe neuer Namen für Refactorings in AUri: die der Namensregel, wenn sie für die Datei läuft
     /// (dieselbe Entscheidung wie in der Prüfung, TRuleEngine.NewNames).</summary>
     function NewNamesFor(const AUri: string): TPascalNamePrefixes;
-    function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
-    /// <summary>Include-Resolver mit den Suchpfaden des Projekts von AUri (#860).</summary>
-    function IncludeResolverFor(const AUri: string): TIncludeResolver;
     function DelphiVersionFor(const AUri: string): string;
     /// <summary>Sprachstand von AUri (#1126): die ältere aus DelphiVersionFor und minDelphiVersion des Projekts.
     /// Gilt für Diagnosen, Code-Aktionen, Schnellbefehle und Formatieren; Hover und Hilfe-Links nehmen weiter
@@ -416,11 +411,6 @@ type
     function UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
     /// <summary>"completeBlocks.docComment" (#88).</summary>
     function DocCommentsFor(const AUri: string): Boolean;
-    /// <summary>Bedingte Symbole für Hover und Vervollständigung in Direktiven (#102): Symbole des Projekts mit
-    /// Herkunft aus der .dproj, Compiler-Vorgaben, Include-Pfade und der Schalter "directives".</summary>
-    function ConditionalContextFor(const AUri: string): TConditionalContext;
-    /// <summary>Projektstand für atlas/compilerSwitches (#558), unabhängig von directives.*.</summary>
-    function CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
     /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
     /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
     function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
@@ -437,9 +427,6 @@ type
     function FormatStyleFor(const AUri: string): TFormatStyle;
     /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
     function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
-    /// <summary>Zielplattform und Konfiguration des Projekts zu AUri für den Hinweis inaktiver Zweige (#615).
-    /// </summary>
-    function BuildTargetFor(const AUri: string; out APlatform, AConfig: string): Boolean;
     /// <summary>Dienste der Syntaxprüfung; sie lösen erst beim Aufruf auf, die Felder dahinter entstehen in den
     /// späteren Wire-Schritten vor der ersten Nachricht.</summary>
     function SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
@@ -509,7 +496,6 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Pascal.IncludeFiles,
   Shell.Workspace.Setup,
   Shell.Workspace.Jobs,
   Shell.VcsChanges,
@@ -1067,14 +1053,15 @@ begin
     end);
   FRuleContext := TShellRuleContext.Create(RuleContextServices);
   FSources := TShellSources.Create(SourcesServices);
+  FDirectives := TShellDirectives.Create(FWorkspaces, FSettings);
   FIndexScheduler := TIndexScheduler.Create;
   FConfiguration := TShellConfiguration.Create(ConfigurationServices);
   FDocuments.Subscribe(HandleDocumentEvent);
   FConfiguration.Attach(FDispatcher);
   // Editor-Baum nur aus den aktiven Zweigen des Projekts (#845).
-  TSyntaxTreeCache.SetDefinesProvider(DefinesFor);
+  TSyntaxTreeCache.SetDefinesProvider(FDirectives.TreeDefines());
   // $I-Dateien im Editor-Baum, in Syntaxprüfung und Abblenden (#264, #860): Suchpfade des Projekts.
-  TSyntaxTreeCache.SetIncludeProvider(IncludeResolverFor);
+  TSyntaxTreeCache.SetIncludeProvider(FDirectives.TreeIncludes());
 end;
 
 procedure TServerComposition.WireIndex;
@@ -1131,13 +1118,13 @@ begin
       Result := FSettings.Hints(AUri);
     end;
   mServices.RationaleOptionsFor := FSources.RationaleOptions();
-  mServices.ConditionalContextFor := ConditionalContextFor;
+  mServices.ConditionalContextFor := FDirectives.ConditionalContext();
   mServices.HighlightSettingsFor :=
     function(const AUri: string): THighlightSettings
     begin
       Result := FSettings.Highlight(AUri);
     end;
-  mServices.CompilerSwitchContextFor := CompilerSwitchContextFor;
+  mServices.CompilerSwitchContextFor := FDirectives.CompilerSwitchContext();
   mServices.ReferenceSettingsFor :=
     function(const AUri: string): TReferenceSettings
     begin
@@ -1185,7 +1172,7 @@ begin
       Result := FSettings.Hints(AUri);
     end;
   mServices.DocCommentsFor := DocCommentsFor;
-  mServices.SymbolsFor := ConditionalContextFor;
+  mServices.SymbolsFor := FDirectives.ConditionalContext();
   mServices.Notify := NotifyClient;
   mServices.Log := LogDebug;
   FCompletion := TShellCompletion.Create(mServices);
@@ -1248,7 +1235,7 @@ begin
   mServices := Default(TShellOverviewServices);
   mServices.Index := FIndex;
   mServices.ReadText := ReadSourceText;
-  mServices.DefinesOf := DefinesOfFile;
+  mServices.DefinesOf := FDirectives.UsesDefines();
   mServices.EnsureUnit := EnsureUnit;
   mServices.MetricsSourceFor := FSources.MetricsSource();
   mServices.UsesContextFor := UsesContextFor;
@@ -1274,8 +1261,12 @@ begin
     begin
       Result := FRuleContext.RuleContextFor(AUri, AContext);
     end;
-  mServices.DefinesFor := DefinesFor;
-  mServices.IncludeResolverFor := IncludeResolverFor;
+  mServices.DefinesFor := FDirectives.Defines();
+  mServices.IncludeResolverFor :=
+    function(const AUri: string): TIncludeResolver
+    begin
+      Result := FDirectives.IncludeResolver(AUri);
+    end;
   mServices.RefreshLater := RefreshDiagnosticsLater;
   mServices.Logger := FLogger;
   FBaselines := TShellBaselines.Create(mServices);
@@ -1284,14 +1275,6 @@ end;
 procedure TServerComposition.RefreshDiagnosticsLater;
 begin
   FSyntaxDiagnostics.RefreshLater;
-end;
-
-function TServerComposition.DefinesOfFile(const AFileName: string): TArray<string>;
-begin
-  if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
-  begin
-    Result := nil;
-  end;
 end;
 
 procedure TServerComposition.WireRefactorings;
@@ -1357,7 +1340,7 @@ begin
     begin
       Result := FSettings.Refactoring(AUri);
     end;
-  mServices.DefinesFor := DefinesFor;
+  mServices.DefinesFor := FDirectives.Defines();
   mServices.ExtraActions := ExtraCodeActions;
   mServices.LanguageLevelFor := LanguageLevelFor;
   mServices.WorkspaceOf := CodeActionWorkspaceOf;
@@ -1906,6 +1889,7 @@ begin
   FWorkspaces.FreeWorkspaces;
   // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
   FIndexRecheck.Free;
+  FreeAndNil(FDirectives);
   FreeAndNil(FSources);
   FreeAndNil(FRuleContext);
   FreeAndNil(FSettings);
@@ -2346,46 +2330,6 @@ begin
           end;
         end);
     end;
-  end;
-end;
-
-function TServerComposition.IncludeResolverFor(const AUri: string): TIncludeResolver;
-var
-  Workspace: TShellWorkspace;
-  IncludePaths: TArray<string>;
-begin
-  IncludePaths := nil;
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
-    if Workspace <> nil then
-    begin
-      IncludePaths := Workspace.State.IncludePaths;
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  // Ohne Projekt sucht der Resolver im Ordner der Datei.
-  Result := TIncludeFiles.Resolver(IncludePaths);
-end;
-
-function TServerComposition.DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
-var
-  Workspace: TShellWorkspace;
-begin
-  ADefines := nil;
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
-    Result := (Workspace <> nil) and Workspace.State.Defines(ADefines);
-    // Datei keinem Projekt zugeordnet oder dessen Projekt noch nicht geladen (Projektgruppe): wie das
-    // aktive Projekt, das die IDE zuerst meldet. Sonst blieben inaktive Zweige dort ungedimmt (#615).
-    if not Result and (FWorkspaces.Items.Count > 0) then
-    begin
-      Result := FWorkspaces.Items[0].State.Defines(ADefines);
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
   end;
 end;
 
@@ -2903,125 +2847,6 @@ begin
     ReadSourceText);
 end;
 
-function TServerComposition.ConditionalContextFor(const AUri: string): TConditionalContext;
-var
-  Settings: TDirectiveSettings;
-  Workspace: TShellWorkspace;
-  Project: TProjectInfo;
-  HasProject: Boolean;
-  Defines, Predefined, Own: TArray<string>;
-  IncludePaths: TArray<string>;
-  Define: string;
-begin
-  Settings := FSettings.SettingsFor(AUri).Directives;
-  Result := TConditionalContext.Default;
-  Result.CompletionEnabled := Settings.Completion;
-  Result.HoverEnabled := Settings.Hover;
-  Result.FileName := TDocumentUris.ToPath(AUri);
-  if not (Settings.Completion or Settings.Hover) then
-  begin
-    Exit;
-  end;
-  IncludePaths := nil;
-  HasProject := False;
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.Pick(Result.FileName);
-    if Workspace <> nil then
-    begin
-      IncludePaths := Workspace.State.IncludePaths;
-      HasProject := Workspace.State.Project(Project);
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  Result.ResolveInclude := TIncludeFiles.Resolver(IncludePaths);
-  // Dieselben Symbole wie beim Abblenden inaktiver Zweige.
-  Result.HasDefines := DefinesFor(AUri, Defines);
-  if not Result.HasDefines then
-  begin
-    Exit;
-  end;
-  Result.Defines := Defines;
-  if not HasProject then
-  begin
-    Project := Default(TProjectInfo);
-  end;
-  Predefined := TPascalPreprocessor.PredefinedSymbols(Project.Platform,
-    TPascalPreprocessor.CompilerVersionFromDefines(Defines));
-  Result.Config := Project.Config;
-  Result.Platform := Project.Platform;
-  Own := nil;
-  for Define in Defines do
-  begin
-    if (IndexText(Define, Predefined) < 0) and not TPascalPreprocessor.IsSwitchEntry(Define) then
-    begin
-      Own := Own + [Define];
-    end;
-  end;
-  Result.Sources := TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform);
-end;
-
-function TServerComposition.CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
-var
-  Workspace: TShellWorkspace;
-  Project: TProjectInfo;
-  Defines, Predefined, Own: TArray<string>;
-  IncludePaths: TArray<string>;
-  Define: string;
-  Source: TSymbolSource;
-  Kind: TSwitchOriginKind;
-begin
-  Result := Default(TCompilerSwitchContext);
-  Result.FileName := TDocumentUris.ToPath(AUri);
-  IncludePaths := nil;
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.Pick(Result.FileName);
-    if Workspace <> nil then
-    begin
-      IncludePaths := Workspace.State.IncludePaths;
-      Result.HasProject := Workspace.State.Project(Project);
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  Result.ResolveInclude := TIncludeFiles.Resolver(IncludePaths);
-  if not Result.HasProject then
-  begin
-    Project := Default(TProjectInfo);
-  end;
-  Result.Configuration := Project.Config;
-  Result.Platform := Project.Platform;
-  Result.Input.Properties := Project.Properties;
-  // Dieselben Symbole und Schalterstände wie beim Abblenden inaktiver Zweige.
-  if not DefinesFor(AUri, Defines) then
-  begin
-    Exit;
-  end;
-  Result.Input.Defines := Defines;
-  Predefined := TPascalPreprocessor.PredefinedSymbols(Project.Platform,
-    TPascalPreprocessor.CompilerVersionFromDefines(Defines));
-  Own := nil;
-  for Define in Defines do
-  begin
-    if (IndexText(Define, Predefined) < 0) and not TPascalPreprocessor.IsSwitchEntry(Define) then
-    begin
-      Own := Own + [Define];
-    end;
-  end;
-  for Source in TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform) do
-  begin
-    Kind := TSwitchOriginKind.Project;
-    if IndexText(Source.Name, Predefined) >= 0 then
-    begin
-      Kind := TSwitchOriginKind.Default;
-    end;
-    Result.Input.DefineOrigins := Result.Input.DefineOrigins +
-      [TSwitchDefineOrigin.Create(Source.Name, TSwitchOrigin.Make(Kind, Source.Origin))];
-  end;
-end;
-
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
 begin
   Result := FSettings.SettingsFor(AUri).Formatting;
@@ -3040,34 +2865,13 @@ begin
     end);
 end;
 
-function TServerComposition.BuildTargetFor(const AUri: string; out APlatform, AConfig: string): Boolean;
-var
-  Workspace: TShellWorkspace;
-  Project: TProjectInfo;
-begin
-  APlatform := '';
-  AConfig := '';
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
-    Result := (Workspace <> nil) and Workspace.State.Project(Project);
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  if Result then
-  begin
-    APlatform := Project.Platform;
-    AConfig := Project.Config;
-  end;
-end;
-
 function TServerComposition.SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
 begin
   Result := Default(TSyntaxDiagnosticsProviders);
-  Result.Defines := DefinesFor;
+  Result.Defines := FDirectives.Defines();
   // Sprachstand (#1126): minDelphiVersion begrenzt, was die Regeln als verfügbar ansehen.
   Result.Version := LanguageLevelFor;
-  Result.BuildTarget := BuildTargetFor;
+  Result.BuildTarget := FDirectives.BuildTarget();
   Result.Rules :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
