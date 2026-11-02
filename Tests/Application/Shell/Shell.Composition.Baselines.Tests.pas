@@ -1,7 +1,7 @@
 ﻿unit Shell.Composition.Baselines.Tests;
 
 // Baselines des Servers: Dateizugriffe (lesen, atomar schreiben, beiseitelegen) und das Neuprüfen der offenen
-// Dokumente nach dem Schreiben einer Baseline.
+// Dokumente nach dem Schreiben einer Baseline, Anmelden der Befehle.
 
 interface
 
@@ -34,6 +34,9 @@ type
     /// <summary>Nach dem Schreiben einer der beiden Baselines prüfen die offenen Dokumente neu.</summary>
     [Test]
     procedure WrittenRefreshesDiagnostics;
+    /// <summary>Beide Registrierungen melden zusammen die vier Befehle der Baselines an.</summary>
+    [Test]
+    procedure RegistersAllCommands;
   end;
 
 implementation
@@ -41,8 +44,12 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  System.JSON,
+  Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Baseline,
+  Atlas.Common.Lsp.BulkFix,
+  Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Pascal.Preprocessor;
 
@@ -153,6 +160,36 @@ begin
     mBaselines.CompilerBaseline.OnWritten('a.json');
     Assert.AreEqual(2, FRefreshes);
   finally
+    mBaselines.Free;
+  end;
+end;
+
+procedure TShellBaselinesTests.RegistersAllCommands;
+var
+  mBaselines: TShellBaselines;
+  mCommands: TLspCommands;
+  mCapability: TJSONObject;
+  mText: string;
+  mName: string;
+begin
+  mBaselines := TShellBaselines.Create(NewServices);
+  mCommands := TLspCommands.Create;
+  try
+    mBaselines.RegisterCommands(mCommands);
+    mBaselines.RegisterClassifyCommand(mCommands);
+    mCapability := mCommands.Capability;
+    try
+      mText := mCapability.ToJSON;
+    finally
+      mCapability.Free;
+    end;
+    for mName in TArray<string>.Create(TLspBaseline.Command, TLspBulkFix.Command, TLspCompilerBaseline.AddCommand,
+      TLspCompilerBaseline.ClassifyCommand) do
+    begin
+      Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
+    end;
+  finally
+    mCommands.Free;
     mBaselines.Free;
   end;
 end;
