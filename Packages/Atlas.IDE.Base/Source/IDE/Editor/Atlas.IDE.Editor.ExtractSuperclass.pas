@@ -59,7 +59,9 @@ function AsObject(AAnswer: TJSONValue): TJSONObject;
 begin
   Result := nil;
   if AAnswer is TJSONObject then
+  begin
     Result := TJSONObject(AAnswer);
+  end;
 end;
 
 class procedure TAtlasIdeExtractSuperclass.Execute(ASession: TLspSession; const AArgumentsJson: string;
@@ -101,14 +103,18 @@ begin
     end;
     if not TAtlasExtractMembersDialog.Execute(Model,
       TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperTitle, [Model.SourceClass])) then
+    begin
       Exit;
+    end;
     Name := Trim(Model.Name);
     SourceClass := Model.SourceClass;
     // Argumente der Aktion um Name, Ziel, Auswahl und abstrakte Methoden ergänzen.
     Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
     try
       if not (Arguments is TJSONArray) then
+      begin
         Exit;
+      end;
       Values := TJSONArray(Arguments);
       Values.AddElement(Model.RequestJson);
       ApplyArguments := Values.ToJSON;
@@ -131,14 +137,24 @@ begin
       begin
         Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
         if Reply.GetValue('file') is TJSONString then
+        begin
           TargetFile := TLspSession.UriToPath(Reply.GetValue('file').Value);
+        end;
         if Reply.GetValue('moved') is TJSONNumber then
+        begin
           Moved := TJSONNumber(Reply.GetValue('moved')).AsInt;
+        end;
         if Reply.GetValue('line') is TJSONNumber then
+        begin
           TargetLine := TJSONNumber(Reply.GetValue('line')).AsInt;
+        end;
         if Reply.GetValue('warnings') is TJSONArray then
+        begin
           for Item in TJSONArray(Reply.GetValue('warnings')) do
+          begin
             Warnings := Warnings + [Item.Value];
+          end;
+        end;
       end;
     finally
       Answer.Free;
@@ -158,7 +174,9 @@ begin
   // Vorschau wie beim Umbenennen (#400); Hinweise (gehobene Sichtbarkeit, aufgeteilte Konstruktoren) im Hinweis.
   Hint := TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperPreviewHint, [Name, Edit.EditCount, Length(Edit.Files)]);
   for Warning in Warnings do
+  begin
     Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfWarning, [Warning]);
+  end;
   Preview := TAtlasResults.RenamePreview(Edit,
     function(const AFileName: string): string
     begin
@@ -171,7 +189,9 @@ begin
     end;
   if not TAtlasRenamePreview.Execute(TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperTitle, [SourceClass]), Hint,
     TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply), TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.ExtractIntfApply));
   if Outcome.Error <> '' then
   begin
@@ -180,11 +200,17 @@ begin
   end;
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperDone, [Name, Outcome.Edits, Outcome.Files]));
   for Warning in Warnings do
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfWarning, [Warning]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
   if TargetFile <> '' then
+  begin
     TAtlasIdeNavigation.GoToLocation(TargetFile, TargetLine, 0);
+  end;
 end;
 
 end.

@@ -176,7 +176,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasIdeUnwrap.Destroy;
@@ -187,7 +189,9 @@ begin
   FreeAndNil(FMessages);
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   Painted := FPreview >= 0;
@@ -195,14 +199,18 @@ begin
   FEntries := nil;
   FLines := nil;
   if Painted then
+  begin
     Invalidate;
+  end;
   inherited;
 end;
 
 class procedure TAtlasIdeUnwrap.Install(const ASession: TAtlasUnwrapSessionFunc; const AMessage: TProc<string>);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeUnwrap.Create(ASession, AMessage);
+  end;
 end;
 
 class procedure TAtlasIdeUnwrap.Uninstall;
@@ -226,19 +234,25 @@ end;
 class procedure TAtlasIdeUnwrap.Run;
 begin
   if (FInstance <> nil) and Enabled then
+  begin
     FInstance.Execute;
+  end;
 end;
 
 class procedure TAtlasIdeUnwrap.Dismiss;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Close;
+  end;
 end;
 
 class procedure TAtlasIdeUnwrap.EditorModified;
 begin
   if (FInstance <> nil) and not FInstance.FWriting then
+  begin
     FInstance.Close;
+  end;
 end;
 
 class procedure TAtlasIdeUnwrap.Invalidate;
@@ -246,13 +260,17 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 procedure TAtlasIdeUnwrap.Report(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 procedure TAtlasIdeUnwrap.Close;
@@ -263,9 +281,13 @@ begin
   FPreview := -1;
   FEntries := nil;
   if (FWindow <> nil) and FWindow.IsShown then
+  begin
     FWindow.Dismiss;
+  end;
   if Painted then
+  begin
     Invalidate;
+  end;
 end;
 
 procedure TAtlasIdeUnwrap.Execute;
@@ -282,10 +304,14 @@ begin
   Close;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or View.Buffer.IsReadOnly or not IsPascal(View.Buffer.FileName) then
+  begin
     Exit;
+  end;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   if Session = nil then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
@@ -299,7 +325,9 @@ begin
   Line := Cursor.Line - 1;
   CaretLine := '';
   if (Line >= 0) and (Line < Length(FLines)) then
+  begin
     CaretLine := FLines[Line];
+  end;
   Character := Min(TLspSession.ColumnToIndex(CaretLine, Cursor.Col, FTabWidth), Length(CaretLine));
   Arguments := TAtlasUnwrap.Arguments(TLspSession.PathToUri(FFileName), Line, Character,
     TAtlasEditorBuffer.BlockIndent(View.Buffer));
@@ -334,7 +362,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.Preview(AIndex);
+            end;
           end);
       end;
     FWindow.OnAccept :=
@@ -344,7 +374,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.Accept(AIndex);
+            end;
           end);
       end;
     FWindow.OnCancel :=
@@ -354,7 +386,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.Close;
+            end;
           end);
       end;
   end;
@@ -370,13 +404,17 @@ var
   First, Last: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(FEntries)) then
+  begin
     Exit;
+  end;
   FPreview := AIndex;
   // Die Vorschau soll ganz zu sehen sein: oberste Zeile des Konstrukts in den sichtbaren Bereich.
   View := TAtlasEditorBuffer.ActiveView;
   if (View <> nil) and (View.Buffer <> nil) and SameText(View.Buffer.FileName, FFileName) and
     TAtlasUnwrap.LineSpan(FEntries[AIndex], First, Last) and (First + 1 < View.TopRow) then
+  begin
     View.SetTopLeft(First + 1, View.LeftColumn);
+  end;
   Invalidate;
 end;
 
@@ -421,10 +459,14 @@ var
   Key: Word;
 begin
   if (FWindow = nil) or not FWindow.IsShown then
+  begin
     Exit;
+  end;
   Key := Word(Msg.wParam);
   if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+  begin
     Exit;
+  end;
   if (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
     case Key of
       VK_RETURN:
@@ -459,15 +501,21 @@ end;
 procedure TAtlasIdeUnwrap.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Unwrap) or (FWindow = nil) or not FWindow.IsShown then
+  begin
     Exit;
+  end;
   try
     case Msg.message of
       WM_KEYDOWN, WM_SYSKEYDOWN:
         if IsEditorWindow(Msg.hwnd) then
+        begin
           KeyDown(Msg, Handled);
+        end;
       WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
         if not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
+        begin
           Close;
+        end;
     end;
   except
     // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
@@ -494,23 +542,35 @@ var
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FPreview < 0) or (FPreview > High(FEntries)) or
     TAtlasGuard.Disabled(TAtlasFeature.Unwrap) then
+  begin
     Exit;
+  end;
   try
     if not SameText(Context.FileName, FFileName) then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     if LineState = nil then
+    begin
       Exit;
+    end;
     Line := Context.LogicalLineNum - 1;
     if (Line < 0) or (Line >= Length(FLines)) then
+    begin
       Exit;
+    end;
     Spans := TAtlasUnwrap.SpansOnLine(FEntries[FPreview], Line);
     if Length(Spans) = 0 then
+    begin
       Exit;
+    end;
     Text := FLines[Line];
     // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht.
     if TrimRight(LineState.Text) <> TrimRight(Text) then
+    begin
       Exit;
+    end;
     Colors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1));
     DC := Context.Canvas.Handle;
     Code := LineState.CodeRect;
@@ -519,19 +579,25 @@ begin
       COLORREF(ColorToRGB(TColor(Colors.Error))));
     try
       if Code.Right > Code.Left then
+      begin
         IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      end;
       for Span in Spans do
       begin
         Stop := Min(Span.Stop, Length(Text));
         if Stop <= Span.Start then
+        begin
           Continue;
+        end;
         First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Span.Start, FTabWidth),
           Context.EditorLineNum);
         Last := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Stop, FTabWidth),
           Context.EditorLineNum);
         Area := TRect.Create(First.Left, Rect.Top, Max(Last.Left, First.Left + 1), Rect.Bottom);
         if Span.Keep then
-          TAtlasIdeStyle.Blend(DC, Area, COLORREF(ColorToRGB(TColor(Colors.Add))), KeepAlpha)
+        begin
+          TAtlasIdeStyle.Blend(DC, Area, COLORREF(ColorToRGB(TColor(Colors.Add))), KeepAlpha);
+        end
         else
         begin
           TAtlasIdeStyle.Blend(DC, Area, COLORREF(ColorToRGB(TColor(Colors.Error))), RemoveAlpha);
