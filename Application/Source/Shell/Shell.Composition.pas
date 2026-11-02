@@ -353,10 +353,11 @@ type
     procedure WireCompletion;
     /// <summary>Teil von Create (S-02): Signaturhilfe, Hierarchien, Implementierungen, Inlay-Hints, CodeLens, Metriken, TODOs, Baseline, Semantic Tokens.</summary>
     procedure WireAnalysis;
-    /// <summary>Teil von Create (S-02): Code-Aktionen, Testunits, Dokumentlinks und Farben.</summary>
+    /// <summary>Teil von Create (S-02): Refactorings und Befehle des Debuggers (Shell.Composition.Refactorings).
+    /// </summary>
     procedure WireRefactorings;
+    /// <summary>Teil von Create (S-02): Code-Aktionen, Testunits, Dokumentlinks und Farben.</summary>
     procedure WireCodeActions;
-    /// <summary>Teil von Create (S-02): workspace/executeCommand: alle Befehle des Servers.</summary>
     /// <summary>Formulare in Text umwandeln (Logik in Shell.Commands.Build).</summary>
     function RunConvertForms(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Austrittspunkte am Cursor (#698).</summary>
@@ -407,6 +408,7 @@ type
     function RunSelectBuild(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Projekt für Dateien mehrerer Projekte (#46).</summary>
     function RunSelectProject(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Teil von Create (S-02): workspace/executeCommand: alle Befehle des Servers.</summary>
     procedure WireCommands;
     /// <summary>Befehle für Status, Einstellungen, Fehlerbericht, Bau und Index.</summary>
     procedure WireServerCommands;
