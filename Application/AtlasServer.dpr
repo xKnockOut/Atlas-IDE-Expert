@@ -48,6 +48,7 @@ uses
   Shell.Composition.Folders in 'Source\Shell\Shell.Composition.Folders.pas',
   Shell.Composition.CompileSetup in 'Source\Shell\Shell.Composition.CompileSetup.pas',
   Shell.Composition.Stdio in 'Source\Shell\Shell.Composition.Stdio.pas',
+  Shell.Composition.AffectedTests in 'Source\Shell\Shell.Composition.AffectedTests.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',

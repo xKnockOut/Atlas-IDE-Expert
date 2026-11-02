@@ -76,8 +76,7 @@ uses
   Shell.Composition.Folders,
   Shell.Composition.CompileSetup,
   Shell.Composition.Stdio,
-  Atlas.Common.Lsp.AffectedTests,
-  Shell.AffectedTests,
+  Shell.Composition.AffectedTests,
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -373,13 +372,9 @@ type
     /// <summary>Auswirkungsanalyse (#1120): Tiefe aus "navigation", Treffersicherheit, Testunits des Testprogramms
     /// und ein Zeitlimit unter dem der Anfrage, damit die Antwort mit Hinweis statt eines Abbruchs kommt.</summary>
     function ImpactOptionsFor(const AUri: string): TImpactOptions;
-    /// <summary>atlas/affectedTests (#1353): betroffene Tests der Änderungen im Arbeitsbereich von
+    /// <summary>Dienste für atlas/affectedTests (#1353): betroffene Tests der Änderungen im Arbeitsbereich von
     /// textDocument.uri gegenüber "base"; Antwort wie get_affected_tests im Format json.</summary>
-    function HandleAffectedTests(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-    /// <summary>Arbeitsordner, Basis, Tiefe und ungespeicherte Änderungen aus der Anfrage.</summary>
-    function AffectedQueryFor(AParams: TJSONObject; const AUri: string): TShellAffectedQuery;
-    /// <summary>Dateien, Testprogramme und Optionen für betroffene Tests zu AUri.</summary>
-    function AffectedRequestFor(const AUri: string; const ASettings: TServerSettings): TAffectedRequest;
+    function AffectedTestsServices: TShellAffectedTestsServices;
     /// <summary>Dienste der Syntaxprüfung; sie lösen erst beim Aufruf auf, die Felder dahinter entstehen in den
     /// späteren Wire-Schritten vor der ersten Nachricht.</summary>
     function SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
@@ -441,7 +436,6 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Shell.Workspace.Jobs,
-  Shell.VcsChanges,
   Shell.Bootstrap,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Options,
@@ -457,7 +451,6 @@ uses
   Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Editing.SmartPaste,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Index.SymbolIndex,
@@ -1195,7 +1188,7 @@ begin
   mServices.MetricsSourceFor := FSources.MetricsSource();
   FAnalysis := TShellAnalysis.Create(mServices);
   FAnalysis.Attach(FDispatcher);
-  FDispatcher.RegisterConcurrentRequest(TAffectedTests.Method, HandleAffectedTests);
+  TShellAffectedTestsRequest.Attach(FDispatcher, AffectedTestsServices);
   WireOverviews;
   WireBaselines;
 end;
@@ -2325,103 +2318,22 @@ begin
   end;
 end;
 
-/// <summary>Text auf der Platte, ohne ungespeicherte Puffer des Editors.</summary>
-function DiskSourceText(const AFileName: string; out AText: string): Boolean;
+function TServerComposition.AffectedTestsServices: TShellAffectedTestsServices;
 begin
-  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
-end;
-
-function TServerComposition.HandleAffectedTests(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mUri: string;
-  mSettings: TServerSettings;
-  mQuery: TShellAffectedQuery;
-  mRequest: TAffectedRequest;
-  mResolver: TNameResolver;
-  mEnsureUnit: TEnsureUnitFunc;
-  mProcess: ICompilerProcess;
-  mFound: TAffectedResult;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Feld "textDocument.uri" fehlt in ' + TAffectedTests.Method);
-  end;
-  mSettings := FSettings.SettingsFor(mUri);
-  mQuery := AffectedQueryFor(TJSONObject(AParams), mUri);
-  mRequest := AffectedRequestFor(mUri, mSettings);
-  // Typisierte Variable: TNameResolver.Create ist überladen.
-  mEnsureUnit := FFolders.EnsureUnitFunc();
-  mResolver := TNameResolver.Create(FIndex, mEnsureUnit);
-  try
-    mResolver.Namespaces := FAnalysis.Namespaces;
-    try
-      // Eigener Prozessstarter: git/svn laufen neben einem Compilerlauf. Über eine Variable: nie ein frisches
-      // Objekt an einen const-Interface-Parameter.
-      mProcess := TProcessRunner.Create;
-      // git bzw. svn vergleichen die gespeicherten Dateien: Die geänderten Zeilen passen nur zum Text auf der
-      // Platte, nicht zu einem ungespeicherten Puffer im Editor.
-      mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery,
-        TShellAffectedSources.New(mResolver, FIndex, DiskSourceText), mRequest, ACancellation);
-    except
-      on E: EAffectedTestsOff do
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);
-      on E: EVcsChanges do
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);
-    end;
-  finally
-    mResolver.Free;
-  end;
-  Result := TAffectedTests.ToJson(mFound);
-end;
-
-function TServerComposition.AffectedQueryFor(AParams: TJSONObject; const AUri: string): TShellAffectedQuery;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  Result := Default(TShellAffectedQuery);
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mWorkspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
-    if mWorkspace = nil then
+  Result := Default(TShellAffectedTestsServices);
+  Result.Workspaces := FWorkspaces;
+  Result.Settings := FSettings;
+  Result.Index := FIndex;
+  Result.EnsureUnit := FFolders.EnsureUnitFunc();
+  Result.Namespaces :=
+    function: TArray<string>
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, 'Kein Arbeitsbereich zu ' + AUri);
+      Result := FAnalysis.Namespaces;
     end;
-    Result.WorkingDir := mWorkspace.Root;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  if not AParams.TryGetValue<string>('base', Result.Base) then
-  begin
-    Result.Base := '';
-  end;
-  if not AParams.TryGetValue<Boolean>('includeUncommitted', Result.IncludeUncommitted) then
-  begin
-    Result.IncludeUncommitted := True;
-  end;
-  if not AParams.TryGetValue<Integer>('depth', Result.Depth) then
-  begin
-    Result.Depth := 0;
-  end;
-end;
-
-function TServerComposition.AffectedRequestFor(const AUri: string; const ASettings: TServerSettings): TAffectedRequest;
-var
-  mContext: TTestUnitContext;
-begin
-  Result := Default(TAffectedRequest);
-  Result.Files := ProjectSourceFiles;
-  Result.TestPrograms := TShellAffectedTests.TestPrograms(Result.Files, ReadSourceText);
-  if TestUnitContextFor(AUri, mContext) and (mContext.TestProgram <> '') and
-    (IndexText(mContext.TestProgram, Result.TestPrograms) < 0) then
-  begin
-    Result.TestPrograms := Result.TestPrograms + [mContext.TestProgram];
-  end;
-  // Treffersicherheit und Zeitlimit wie atlas/impact; Testunits aus allen Testprogrammen.
-  Result.Options := ImpactOptionsFor(AUri);
-  Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms,
-    ReadSourceText);
+  Result.ReadText := ReadSourceText;
+  Result.ProjectFiles := ProjectSourceFiles;
+  Result.TestUnitContext := TestUnitContextFor;
+  Result.ImpactOptions := ImpactOptionsFor;
 end;
 
 function TServerComposition.SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
