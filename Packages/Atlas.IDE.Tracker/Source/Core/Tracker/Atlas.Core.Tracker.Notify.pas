@@ -216,8 +216,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Unseen) do
+  begin
     if SameText(Unseen[mIndex].Key, AKey) and SameText(Unseen[mIndex].Project, AProject) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -234,8 +238,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Connections) do
+  begin
     if SameText(Connections[mIndex].Id, AId) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -246,9 +254,13 @@ begin
   mIndex := IndexOf(AId);
   Result := mIndex >= 0;
   if Result then
-    AConnection := Connections[mIndex]
+  begin
+    AConnection := Connections[mIndex];
+  end
   else
+  begin
     AConnection := TAtlasTrackerNotifyConnection.Create(AId, 0);
+  end;
 end;
 
 procedure TAtlasTrackerNotifyFile.Put(const AConnection: TAtlasTrackerNotifyConnection);
@@ -257,9 +269,13 @@ var
 begin
   mIndex := IndexOf(AConnection.Id);
   if mIndex >= 0 then
-    Connections[mIndex] := AConnection
+  begin
+    Connections[mIndex] := AConnection;
+  end
   else
+  begin
     Connections := Connections + [AConnection];
+  end;
 end;
 
 { TAtlasTrackerNotifySchedule }
@@ -271,19 +287,27 @@ var
 begin
   mBase := UInt64(TAtlasTrackerNotify.Interval(AIntervalMinutes)) * 60000;
   if UInt64(PollSeconds) * 1000 > mBase then
+  begin
     mBase := UInt64(PollSeconds) * 1000;
+  end;
   Result := mBase;
   if Failures <= 0 then
+  begin
     Exit;
+  end;
   mCap := UInt64(TAtlasTrackerNotify.MaxBackoffMinutes) * 60000;
   if mBase >= mCap then
+  begin
     Exit;
+  end;
   // Verdoppeln je Fehlschlag (ohne Überlauf), höchstens bis zur Grenze.
   for mStep := 1 to Failures do
   begin
     Result := Result * 2;
     if Result >= mCap then
+    begin
       Exit(mCap);
+    end;
   end;
 end;
 
@@ -298,12 +322,18 @@ var
   mWait: UInt64;
 begin
   if not HasAttempt then
+  begin
     Exit(True);
+  end;
   if (Failures > 0) or (ANowMs < LastAttempt) then
+  begin
     Exit(False);
+  end;
   mWait := TAtlasTrackerNotify.OnDemandMs;
   if UInt64(PollSeconds) * 1000 > mWait then
+  begin
     mWait := UInt64(PollSeconds) * 1000;
+  end;
   Result := ANowMs - LastAttempt >= mWait;
 end;
 
@@ -318,14 +348,18 @@ begin
   Failures := 0;
   ErrorReported := False;
   if APollSeconds > 0 then
+  begin
     PollSeconds := APollSeconds;
+  end;
 end;
 
 function TAtlasTrackerNotifySchedule.Failed: Boolean;
 begin
   // Obergrenze genügt: ab hier gilt ohnehin MaxBackoffMinutes.
   if Failures < 16 then
+  begin
     Inc(Failures);
+  end;
   Result := not ErrorReported;
   ErrorReported := True;
 end;
@@ -336,14 +370,18 @@ class function TAtlasTrackerNotify.ConnectionId(const ATarget: TAtlasTrackerTarg
 begin
   Result := '';
   if (ATarget.Provider <> '') and (ATarget.Server <> '') then
+  begin
     Result := LowerCase(ATarget.Provider + '|' + ATarget.Server);
+  end;
 end;
 
 class function TAtlasTrackerNotify.UnseenProject(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := '';
   if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) then
+  begin
     Result := ATarget.Project;
+  end;
 end;
 
 class function TAtlasTrackerNotify.ScopeName(AScope: TAtlasTrackerNotifyScope): string;
@@ -361,18 +399,26 @@ end;
 class function TAtlasTrackerNotify.ScopeOf(const AName: string): TAtlasTrackerNotifyScope;
 begin
   if SameText(Trim(AName), ScopeAssigned) then
-    Result := TAtlasTrackerNotifyScope.Assigned
+  begin
+    Result := TAtlasTrackerNotifyScope.Assigned;
+  end
   else if SameText(Trim(AName), ScopeWatched) then
-    Result := TAtlasTrackerNotifyScope.Watched
+  begin
+    Result := TAtlasTrackerNotifyScope.Watched;
+  end
   else
+  begin
     Result := TAtlasTrackerNotifyScope.AssignedOrCreated;
+  end;
 end;
 
 class function TAtlasTrackerNotify.Interval(AMinutes: Integer): Integer;
 begin
   Result := AMinutes;
   if Result < MinInterval then
+  begin
     Result := MinInterval;
+  end;
 end;
 
 class function TAtlasTrackerNotify.UserActive(AMinimized: Boolean; AIdleMs: UInt64): Boolean;
@@ -387,8 +433,12 @@ var
 begin
   Result := nil;
   for mChange in AChanges do
+  begin
     if (AMe = '') or not SameText(mChange.Author, AMe) then
+    begin
       Result := Result + [mChange];
+    end;
+  end;
 end;
 
 class function TAtlasTrackerNotify.Summarize(const AChanges: TArray<TAtlasTrackerChange>; AMax: Integer;
@@ -409,20 +459,30 @@ begin
     function(const ALeft, ARight: TAtlasTrackerChange): Integer
     begin
       if ALeft.Time < ARight.Time then
+      begin
         Exit(-1);
+      end;
       if ALeft.Time > ARight.Time then
+      begin
         Exit(1);
+      end;
       Result := CompareText(ALeft.Project + '#' + ALeft.Key, ARight.Project + '#' + ARight.Key);
       if Result = 0 then
+      begin
         Result := Ord(ALeft.Kind) - Ord(ARight.Kind);
+      end;
     end));
   mAll := nil;
   for mChange in mSorted do
   begin
     mFound := -1;
     for mIndex := 0 to High(mAll) do
+    begin
       if mAll[mIndex].Matches(mChange.Key, mChange.Project) then
+      begin
         mFound := mIndex;
+      end;
+    end;
     if mFound < 0 then
     begin
       mNotice := Default(TAtlasTrackerNotice);
@@ -434,24 +494,38 @@ begin
       mFound := High(mAll);
     end;
     if mChange.Title <> '' then
+    begin
       mAll[mFound].Title := mChange.Title;
+    end;
     if mChange.Time > mAll[mFound].Time then
+    begin
       mAll[mFound].Time := mChange.Time;
+    end;
     if mChange.Kind <> TAtlasTrackerChangeKind.Other then
+    begin
       mAll[mFound].Other := False;
+    end;
     case mChange.Kind of
       TAtlasTrackerChangeKind.Comment:
         begin
           Inc(mAll[mFound].Comments);
           if mAll[mFound].Anchor = 0 then
+          begin
             mAll[mFound].Anchor := mChange.Time;
+          end;
           mWho := mChange.Who;
           mKnown := mWho = '';
           for mIndex := 0 to High(mAll[mFound].CommentAuthors) do
+          begin
             if SameText(mAll[mFound].CommentAuthors[mIndex], mWho) then
+            begin
               mKnown := True;
+            end;
+          end;
           if not mKnown then
+          begin
             mAll[mFound].CommentAuthors := mAll[mFound].CommentAuthors + [mWho];
+          end;
         end;
       TAtlasTrackerChangeKind.Assigned:
         if mChange.ToMe then
@@ -474,9 +548,13 @@ begin
     function(const ALeft, ARight: TAtlasTrackerNotice): Integer
     begin
       if ALeft.Time > ARight.Time then
+      begin
         Exit(-1);
+      end;
       if ALeft.Time < ARight.Time then
+      begin
         Exit(1);
+      end;
       Result := CompareText(ALeft.Project + '#' + ALeft.Key, ARight.Project + '#' + ARight.Key);
     end));
   ARest := 0;
@@ -492,7 +570,9 @@ class function TAtlasTrackerNotify.NextSince(ASince, ALatest: TDateTime): TDateT
 begin
   Result := ASince;
   if ALatest > Result then
+  begin
     Result := ALatest;
+  end;
 end;
 
 class procedure TAtlasTrackerNotify.MarkUnseen(var AConnection: TAtlasTrackerNotifyConnection;
@@ -509,7 +589,9 @@ begin
     begin
       // Der älteste ungesehene Kommentar bleibt der Anker.
       if AConnection.Unseen[mIndex].Anchor = 0 then
+      begin
         AConnection.Unseen[mIndex].Anchor := mNotice.Anchor;
+      end;
       Continue;
     end;
     mItem.Key := mNotice.Key;
@@ -518,7 +600,9 @@ begin
     AConnection.Unseen := AConnection.Unseen + [mItem];
   end;
   if Length(AConnection.Unseen) > MaxUnseen then
+  begin
     AConnection.Unseen := Copy(AConnection.Unseen, Length(AConnection.Unseen) - MaxUnseen, MaxUnseen);
+  end;
 end;
 
 class function TAtlasTrackerNotify.Seen(var AConnection: TAtlasTrackerNotifyConnection;
@@ -529,7 +613,9 @@ begin
   mIndex := AConnection.IndexOfUnseen(AKey, AProject);
   Result := mIndex >= 0;
   if Result then
+  begin
     Delete(AConnection.Unseen, mIndex, 1);
+  end;
 end;
 
 class function TAtlasTrackerNotify.Fresh(const AId: string; ANowUtc: TDateTime): TAtlasTrackerNotifyConnection;
@@ -545,10 +631,14 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mLogin := TJSONObject(mValue).Values['login'];
     if mLogin is TJSONString then
+    begin
       Result := Trim(TJSONString(mLogin).Value);
+    end;
   finally
     mValue.Free;
   end;
@@ -558,7 +648,9 @@ function IsoOf(AValue: TDateTime): string;
 begin
   Result := '';
   if AValue > 0 then
+  begin
     Result := DateToISO8601(AValue, True);
+  end;
 end;
 
 function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
@@ -569,7 +661,9 @@ begin
   mValue := AObject.Values[AName];
   if not (mValue is TJSONString) or (TJSONString(mValue).Value = '') or
     not TryISO8601ToDate(TJSONString(mValue).Value, Result, True) then
+  begin
     Result := 0;
+  end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -579,7 +673,9 @@ begin
   Result := '';
   mValue := AObject.Values[AName];
   if mValue is TJSONString then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 class function TAtlasTrackerNotify.ToJson(const AFile: TAtlasTrackerNotifyFile): string;
@@ -633,37 +729,53 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mRoot := TJSONObject(mValue);
     if not (mRoot.Values['version'] is TJSONNumber) or
       not TryStrToInt(TJSONNumber(mRoot.Values['version']).Value, mVersion) or (mVersion <> Version) then
+    begin
       Exit;
+    end;
     AFile.Enabled := (mRoot.Values['enabled'] is TJSONBool) and TJSONBool(mRoot.Values['enabled']).AsBoolean;
     mList := mRoot.Values['connections'];
     if mList is TJSONArray then
+    begin
       for mItem in TJSONArray(mList) do
       begin
         if not (mItem is TJSONObject) then
+        begin
           Continue;
+        end;
         mObject := TJSONObject(mItem);
         mConnection := TAtlasTrackerNotifyConnection.Create(Trim(TextOf(mObject, 'id')), TimeOf(mObject, 'since'));
         if (mConnection.Id = '') or (mConnection.Since = 0) or (AFile.IndexOf(mConnection.Id) >= 0) then
+        begin
           Continue;
+        end;
         mConnection.Me := TextOf(mObject, 'me');
         mConnection.LastModified := TextOf(mObject, 'lastModified');
         if mObject.Values['unseen'] is TJSONArray then
+        begin
           for mEntry in TJSONArray(mObject.Values['unseen']) do
           begin
             if not (mEntry is TJSONObject) then
+            begin
               Continue;
+            end;
             mUnseen.Key := Trim(TextOf(TJSONObject(mEntry), 'key'));
             mUnseen.Project := Trim(TextOf(TJSONObject(mEntry), 'project'));
             mUnseen.Anchor := TimeOf(TJSONObject(mEntry), 'anchor');
             if (mUnseen.Key <> '') and (mConnection.IndexOfUnseen(mUnseen.Key, mUnseen.Project) < 0) then
+            begin
               mConnection.Unseen := mConnection.Unseen + [mUnseen];
+            end;
           end;
+        end;
         AFile.Connections := AFile.Connections + [mConnection];
       end;
+    end;
     Result := True;
   finally
     mValue.Free;

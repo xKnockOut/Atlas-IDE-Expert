@@ -288,14 +288,20 @@ begin
   if FAssist <> nil then
   begin
     if (FMemo <> nil) and FMemo.HandleAllocated then
+    begin
       KeepDraft;
+    end;
     FAssist.Cancel;
     FAssist := nil;
   end;
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   if FDraftTimer <> nil then
+  begin
     FDraftTimer.Enabled := False;
+  end;
   FPreviewParts.Free;
   FPreviewParts := nil;
   FMono.Free;
@@ -307,7 +313,9 @@ begin
   inherited;
   // Die Liste liegt auf der Form; geht die zuerst, gibt sie die Liste mit frei.
   if (Operation = opRemove) and (AComponent = FList) then
+  begin
     FList := nil;
+  end;
 end;
 
 function TAtlasCommentEditor.GetText: string;
@@ -345,16 +353,22 @@ var
   mSaved: TDateTime;
 begin
   if FAssist <> nil then
+  begin
     Unbind;
+  end;
   FAssist := AAssist;
   FOfferedDraft := '';
   FDraftRestored := False;
   ShowDraftNote('', '');
   FInitialText := FMemo.Text;
   if (FAssist = nil) or not FEnhanced then
+  begin
     Exit;
+  end;
   if not FAssist.LoadDraft(mText, mSaved) or (Trim(mText) = '') or (MemoText(mText) = FMemo.Text) then
+  begin
     Exit;
+  end;
   mWhen := FormatDateTime('dd.mm. hh:nn', TTimeZone.Local.ToLocalTime(mSaved));
   if Trim(FMemo.Text) = '' then
   begin
@@ -383,7 +397,9 @@ begin
   KeepDraft;
   HideList;
   if FAssist <> nil then
+  begin
     FAssist.Cancel;
+  end;
   FAssist := nil;
   FOfferedDraft := '';
   ShowDraftNote('', '');
@@ -392,9 +408,13 @@ end;
 procedure TAtlasCommentEditor.KeepDraft;
 begin
   if FDraftTimer <> nil then
+  begin
     FDraftTimer.Enabled := False;
+  end;
   if (FAssist = nil) or not FEnhanced or not Changed then
+  begin
     Exit;
+  end;
   // Leer gemacht heißt: kein Entwurf mehr.
   FAssist.SaveDraft(Text);
 end;
@@ -403,7 +423,9 @@ procedure TAtlasCommentEditor.Sent;
 begin
   FDraftTimer.Enabled := False;
   if FAssist <> nil then
+  begin
     FAssist.DeleteDraft;
+  end;
   HideList;
   Previewing := False;
   FChanging := True;
@@ -435,7 +457,9 @@ begin
   else if FDraftRestored then
   begin
     if FAssist <> nil then
+    begin
       FAssist.DeleteDraft;
+    end;
     FChanging := True;
     try
       FMemo.Text := FInitialText;
@@ -446,13 +470,17 @@ begin
     ShowDraftNote('', '');
   end;
   if FMemo.CanFocus and FMemo.Showing then
+  begin
     FMemo.SetFocus;
+  end;
 end;
 
 procedure TAtlasCommentEditor.RestartDraftTimer;
 begin
   if not FEnhanced or (FAssist = nil) then
+  begin
     Exit;
+  end;
   FDraftTimer.Enabled := False;
   FDraftTimer.Enabled := True;
 end;
@@ -461,10 +489,14 @@ procedure TAtlasCommentEditor.DraftTimerTick(Sender: TObject);
 begin
   FDraftTimer.Enabled := False;
   if (FAssist = nil) or not Changed then
+  begin
     Exit;
+  end;
   KeepDraft;
   if not FDraftButton.Visible then
+  begin
     ShowDraftNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorDraftSaved), '');
+  end;
 end;
 
 procedure TAtlasCommentEditor.SetEnhanced(AValue: Boolean);
@@ -473,7 +505,9 @@ begin
   FBar.Visible := AValue;
   FMemo.ShowHint := AValue;
   if AValue then
+  begin
     Exit;
+  end;
   HideList;
   Previewing := False;
   ShowDraftNote('', '');
@@ -483,7 +517,9 @@ procedure TAtlasCommentEditor.SetMonoFont(AValue: TFont);
 begin
   FMono.Assign(AValue);
   if FPreviewing then
+  begin
     BuildPreview;
+  end;
 end;
 
 procedure TAtlasCommentEditor.ApplyColors(const AColors: TAtlasColors);
@@ -492,13 +528,17 @@ begin
   FPreview.Color := ToColor(AColors.Surface);
   FPreview.ParentBackground := False;
   if FPreviewing then
+  begin
     BuildPreview;
+  end;
 end;
 
 procedure TAtlasCommentEditor.MemoChange(Sender: TObject);
 begin
   if FChanging then
+  begin
     Exit;
+  end;
   RestartDraftTimer;
   CheckTrigger;
 end;
@@ -507,7 +547,9 @@ procedure TAtlasCommentEditor.MemoClick(Sender: TObject);
 begin
   // Die Schreibmarke kann in ein anderes Wort gesprungen sein.
   if ListShown or (FTrigger.Kind <> TAtlasCommentTriggerKind.None) then
+  begin
     CheckTrigger;
+  end;
 end;
 
 procedure TAtlasCommentEditor.MemoExit(Sender: TObject);
@@ -517,7 +559,9 @@ begin
   // Ein Klick in die Liste nimmt dem Memo den Fokus: dann bleibt sie offen.
   mForm := GetParentForm(Self);
   if (FList <> nil) and (mForm <> nil) and (mForm.ActiveControl = FList) then
+  begin
     Exit;
+  end;
   HideList;
 end;
 
@@ -553,7 +597,9 @@ begin
   // Zuletzt geöffnete Issues ("ATL-") brauchen kein Netz: sofort.
   if (FRequestDelay <= 0) or ((mTrigger.Kind = TAtlasCommentTriggerKind.Issue) and
     (mTrigger.Query.Kind = TAtlasIssueSearchKind.Recent)) then
-    Request
+  begin
+    Request;
+  end
   else
   begin
     FTimer.Interval := Cardinal(FRequestDelay);
@@ -574,21 +620,27 @@ var
 begin
   FTimer.Enabled := False;
   if (FAssist = nil) or (FTrigger.Kind = TAtlasCommentTriggerKind.None) then
+  begin
     Exit;
+  end;
   mSelf := Self;
   mGeneration := FGeneration;
   if FTrigger.Kind = TAtlasCommentTriggerKind.Mention then
+  begin
     FAssist.FindUsers(FTrigger.Text,
       procedure(const AUsers: TArray<TAtlasTrackerUser>)
       begin
         mSelf.UsersAnswered(mGeneration, AUsers);
-      end)
+      end);
+  end
   else
+  begin
     FAssist.FindIssues(FTrigger.Query,
       procedure(const AIssues: TArray<TAtlasTrackerIssue>)
       begin
         mSelf.IssuesAnswered(mGeneration, AIssues);
       end);
+  end;
 end;
 
 procedure TAtlasCommentEditor.UsersAnswered(AGeneration: Integer; const AUsers: TArray<TAtlasTrackerUser>);
@@ -598,12 +650,16 @@ var
 begin
   // Weitergetippt, geschlossen oder anderes Wort: Die Antwort zählt nicht mehr.
   if (AGeneration <> FGeneration) or (FTrigger.Kind <> TAtlasCommentTriggerKind.Mention) then
+  begin
     Exit;
+  end;
   FUsers := Copy(AUsers, 0, TAtlasCommentEditing.MaxSuggestions);
   FIssues := nil;
   SetLength(mRows, Length(FUsers));
   for mIndex := 0 to High(FUsers) do
+  begin
     mRows[mIndex] := TAtlasCommentEditing.UserRow(FUsers[mIndex]);
+  end;
   ShowRows(TAtlasCommentTriggerKind.Mention, mRows);
 end;
 
@@ -613,12 +669,16 @@ var
   mIndex: Integer;
 begin
   if (AGeneration <> FGeneration) or (FTrigger.Kind <> TAtlasCommentTriggerKind.Issue) then
+  begin
     Exit;
+  end;
   FIssues := Copy(AIssues, 0, TAtlasCommentEditing.MaxSuggestions);
   FUsers := nil;
   SetLength(mRows, Length(FIssues));
   for mIndex := 0 to High(FIssues) do
+  begin
     mRows[mIndex] := TAtlasCommentEditing.IssueRow(FIssues[mIndex]);
+  end;
   ShowRows(TAtlasCommentTriggerKind.Issue, mRows);
 end;
 
@@ -630,7 +690,9 @@ begin
   begin
     FSelected := -1;
     if FList <> nil then
+    begin
       FList.Visible := False;
+    end;
     Exit;
   end;
   FSelected := 0;
@@ -647,7 +709,9 @@ var
 begin
   mForm := GetParentForm(Self);
   if (mForm = nil) or not mForm.HandleAllocated or not FMemo.HandleAllocated then
+  begin
     Exit;
+  end;
   if FList = nil then
   begin
     FList := TListBox.Create(Self);
@@ -659,7 +723,9 @@ begin
   try
     FList.Items.Clear;
     for mRow in FRows do
+    begin
       FList.Items.Add(mRow);
+    end;
   finally
     FList.Items.EndUpdate;
   end;
@@ -667,9 +733,13 @@ begin
   // Unter dem getippten Wort; passt es nicht, darüber.
   mPos := FMemo.Perform(EM_POSFROMCHAR, WPARAM(FTrigger.Start), 0);
   if mPos = -1 then
-    mCaret := Point(0, 0)
+  begin
+    mCaret := Point(0, 0);
+  end
   else
+  begin
     mCaret := Point(SmallInt(LoWord(mPos)), SmallInt(HiWord(mPos)));
+  end;
   mLine := MulDiv(Abs(FMemo.Font.Size), FMemo.CurrentPPI, 72) + MulDiv(6, FMemo.CurrentPPI, 96);
   mWidth := MulDiv(ListWidth, FMemo.CurrentPPI, 96);
   mHeight := Min(Length(FRows), TAtlasCommentEditing.MaxSuggestions) * FList.ItemHeight + 4;
@@ -677,7 +747,9 @@ begin
   mLeft := Max(0, Min(mCaret.X, mForm.ClientWidth - mWidth));
   mTop := mCaret.Y + mLine;
   if (mTop + mHeight > mForm.ClientHeight) and (mCaret.Y - mHeight - 2 >= 0) then
+  begin
     mTop := mCaret.Y - mHeight - 2;
+  end;
   FList.SetBounds(mLeft, mTop, mWidth, mHeight);
   FList.Visible := True;
   FList.BringToFront;
@@ -686,7 +758,9 @@ end;
 procedure TAtlasCommentEditor.HideList;
 begin
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   // Antworten auf alte Anfragen verfallen über die Generation.
   Inc(FGeneration);
   FTrigger := TAtlasCommentTrigger.None;
@@ -695,25 +769,35 @@ begin
   FIssues := nil;
   FSelected := -1;
   if FList <> nil then
+  begin
     FList.Visible := False;
+  end;
 end;
 
 procedure TAtlasCommentEditor.MoveSelection(ADelta: Integer);
 begin
   if not ListShown then
+  begin
     Exit;
+  end;
   FSelected := EnsureRange(FSelected + ADelta, 0, High(FRows));
   if (FList <> nil) and FList.Visible then
+  begin
     FList.ItemIndex := FSelected;
+  end;
 end;
 
 procedure TAtlasCommentEditor.ListClick(Sender: TObject);
 begin
   if FList = nil then
+  begin
     Exit;
+  end;
   Accept(FList.ItemIndex);
   if FMemo.CanFocus and FMemo.Showing then
+  begin
     FMemo.SetFocus;
+  end;
 end;
 
 procedure TAtlasCommentEditor.Accept(AIndex: Integer);
@@ -723,11 +807,17 @@ var
   mTrigger: TAtlasCommentTrigger;
 begin
   if (AIndex < 0) or (AIndex > High(FRows)) or (FTrigger.Kind = TAtlasCommentTriggerKind.None) then
+  begin
     Exit;
+  end;
   if FListKind = TAtlasCommentTriggerKind.Mention then
-    mValue := TAtlasCommentEditing.MentionText(FUsers[AIndex])
+  begin
+    mValue := TAtlasCommentEditing.MentionText(FUsers[AIndex]);
+  end
   else
+  begin
     mValue := Trim(FIssues[AIndex].Key);
+  end;
   mTrigger := FTrigger;
   HideList;
   mText := TAtlasCommentEditing.Replace(FMemo.Text, mTrigger, mValue, mCaret);
@@ -783,10 +873,14 @@ var
   mSelf: TAtlasCommentEditor;
 begin
   if (FAssist = nil) or FMemo.ReadOnly then
+  begin
     Exit;
+  end;
   mSnippets := FAssist.Snippets;
   if (AIndex < 0) or (AIndex > High(mSnippets)) then
+  begin
     Exit;
+  end;
   mText := mSnippets[AIndex].Text;
   mSelf := Self;
   // Werte der Platzhalter kommen aus der IDE (Versionsverwaltung im Hintergrund).
@@ -803,14 +897,20 @@ var
   mCaret: Integer;
 begin
   if FMemo.ReadOnly then
+  begin
     Exit;
+  end;
   if FPreviewing then
+  begin
     Previewing := False;
+  end;
   mText := TAtlasCommentEditing.Insert(FMemo.Text, FMemo.SelStart, FMemo.SelLength,
     TAtlasCommentSnippets.Expand(MemoText(AText), AValues), mCaret);
   ApplyEdit(mText, mCaret, 0);
   if FMemo.CanFocus and FMemo.Showing then
+  begin
     FMemo.SetFocus;
+  end;
 end;
 
 procedure TAtlasCommentEditor.PopupSnippets(const AScreen: TPoint);
@@ -820,7 +920,9 @@ var
   mIndex: Integer;
 begin
   if FAssist = nil then
+  begin
     Exit;
+  end;
   mSnippets := FAssist.Snippets;
   FSnippetMenu.Items.Clear;
   for mIndex := 0 to High(mSnippets) do
@@ -849,7 +951,9 @@ end;
 procedure TAtlasCommentEditor.SnippetItemClick(Sender: TObject);
 begin
   if Sender is TMenuItem then
+  begin
     InsertSnippet(TMenuItem(Sender).Tag);
+  end;
 end;
 
 function TAtlasCommentEditor.CaretScreenPoint: TPoint;
@@ -857,7 +961,9 @@ var
   mCaret: TPoint;
 begin
   if not Winapi.Windows.GetCaretPos(mCaret) then
+  begin
     mCaret := Point(0, 0);
+  end;
   Inc(mCaret.Y, MulDiv(Abs(FMemo.Font.Size), FMemo.CurrentPPI, 72) + 4);
   Result := FMemo.ClientToScreen(mCaret);
 end;
@@ -870,23 +976,33 @@ end;
 procedure TAtlasCommentEditor.SetPreviewing(AValue: Boolean);
 begin
   if AValue = FPreviewing then
+  begin
     Exit;
+  end;
   FPreviewing := AValue;
   HideList;
   if AValue then
-    BuildPreview
+  begin
+    BuildPreview;
+  end
   else
+  begin
     ClearPreview;
+  end;
   FPreview.Visible := AValue;
   FMemo.Visible := not AValue;
   FSnippetButton.Enabled := not AValue;
   if AValue then
-    FPreviewButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorEdit)
+  begin
+    FPreviewButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorEdit);
+  end
   else
   begin
     FPreviewButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreview);
     if FMemo.CanFocus and FMemo.Showing then
+    begin
       FMemo.SetFocus;
+    end;
   end;
 end;
 
@@ -895,9 +1011,13 @@ var
   mPart: TControl;
 begin
   if FPreviewParts = nil then
+  begin
     Exit;
+  end;
   for mPart in FPreviewParts do
+  begin
     mPart.Free;
+  end;
   FPreviewParts.Clear;
 end;
 
@@ -949,9 +1069,13 @@ begin
       mLabel.ShowAccelChar := False;
       mLabel.Font.Color := ToColor(FColors.Muted);
       if mSegment.Image.Text <> '' then
-        mLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorImage, [mSegment.Image.Text])
+      begin
+        mLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorImage, [mSegment.Image.Text]);
+      end
       else
+      begin
         mLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorImage, [mSegment.Image.Url]);
+      end;
     end;
   finally
     FPreview.EnableAlign;
@@ -974,11 +1098,15 @@ begin
     Handled;
     HideList;
     if Assigned(FOnSend) then
+    begin
       FOnSend(Self);
+    end;
     Exit;
   end;
   if not FEnhanced then
+  begin
     Exit;
+  end;
   if ListShown then
     case Key of
       VK_UP:
@@ -1024,7 +1152,9 @@ begin
     Handled;
     KeepDraft;
     if Assigned(FOnCancel) then
+    begin
       FOnCancel(Self);
+    end;
     Exit;
   end;
   if (Key = VK_SPACE) and (Shift = [ssCtrl]) then
@@ -1054,7 +1184,9 @@ begin
   end;
   // Die Schreibmarke verlässt das Wort.
   if ListShown and ((Key = VK_LEFT) or (Key = VK_RIGHT) or (Key = VK_HOME) or (Key = VK_END)) then
+  begin
     HideList;
+  end;
 end;
 
 procedure TAtlasCommentEditor.MemoKeyPress(Sender: TObject; var Key: Char);

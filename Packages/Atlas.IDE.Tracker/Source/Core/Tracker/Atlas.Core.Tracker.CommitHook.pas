@@ -140,7 +140,9 @@ class function TAtlasCommitHook.Install(const AHooksDir: string): Boolean;
 begin
   Result := False;
   if AHooksDir = '' then
+  begin
     Exit;
+  end;
   case State(AHooksDir) of
     TAtlasCommitHookState.Own:
       // Neu schreiben: eine ältere Fassung des Skripts wird so ersetzt.
