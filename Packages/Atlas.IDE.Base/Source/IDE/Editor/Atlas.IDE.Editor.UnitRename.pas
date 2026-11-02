@@ -178,7 +178,9 @@ begin
   Owner := FOwner;
   Project := FProject;
   if (Owner = nil) or (Project = nil) then
+  begin
     Exit;
+  end;
   OldName := AOldFileName;
   NewName := ANewFileName;
   // Keine Exception an die IDE (#493).
@@ -195,7 +197,9 @@ var
 begin
   Owner := FOwner;
   if Owner <> nil then
+  begin
     Owner.Forget(Self);
+  end;
   // Zuletzt: Mit dem Abmelden kann die IDE die letzte Referenz freigeben.
   Detach;
 end;
@@ -212,7 +216,9 @@ begin
   FIndex := -1;
   // Danach keine Felder mehr: RemoveNotifier kann dieses Objekt freigeben.
   if (Project <> nil) and (Index >= 0) then
+  begin
     Project.RemoveNotifier(Index);
+  end;
 end;
 
 { TAtlasIdeUnitRename.TIdeNotifier }
@@ -226,20 +232,26 @@ begin
   Owner := FOwner;
   if (Owner = nil) or not ((NotifyCode = ofnFileOpened) or (NotifyCode = ofnFileClosing)) or
     not IsProjectFile(FileName) then
+  begin
     Exit;
+  end;
   Name := FileName;
   if NotifyCode = ofnFileOpened then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Files,
       procedure
       begin
         Owner.Sweep;
-      end)
+      end);
+  end
   else
+  begin
     TAtlasGuard.Run(TAtlasFeature.Files,
       procedure
       begin
         Owner.Closing(Name);
       end);
+  end;
 end;
 
 procedure TAtlasIdeUnitRename.TIdeNotifier.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
@@ -284,7 +296,9 @@ var
   Notifier: TProjectNotifier;
 begin
   if FInstance = Self then
+  begin
     FInstance := nil;
+  end;
   if FTimer <> nil then
   begin
     FTimer.Enabled := False;
@@ -293,12 +307,18 @@ begin
   FNotice.Free;
   // Erst abmelden, dann freigeben (#493).
   if FNotifier <> nil then
+  begin
     FNotifier.FOwner := nil;
+  end;
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Services.RemoveNotifier(FNotifierIndex);
+  end;
   FNotifierRef := nil;
   for Notifier in FProjects.ToArray do
+  begin
     Notifier.Detach;
+  end;
   FProjects.Free;
   FQueue.Free;
   inherited;
@@ -311,12 +331,18 @@ var
   Index: Integer;
 begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Group := Modules.MainProjectGroup;
   if Group = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Group.ProjectCount - 1 do
+  begin
     Attach(Group.Projects[Index]);
+  end;
 end;
 
 procedure TAtlasIdeUnitRename.Attach(const AProject: IOTAProject);
@@ -325,10 +351,16 @@ var
   Reference: IOTAProjectNotifier;
 begin
   if AProject = nil then
+  begin
     Exit;
+  end;
   for Notifier in FProjects do
+  begin
     if Notifier.FProject = AProject then
+    begin
       Exit;
+    end;
+  end;
   Notifier := TProjectNotifier.Create;
   Notifier.FOwner := Self;
   Notifier.FProject := AProject;
@@ -343,12 +375,14 @@ var
   Notifier: TProjectNotifier;
 begin
   for Notifier in FProjects.ToArray do
+  begin
     if (Notifier.FProject <> nil) and (SameText(Notifier.FProject.FileName, AFileName) or
       SameText(ChangeFileExt(Notifier.FProject.FileName, ExtractFileExt(AFileName)), AFileName)) then
     begin
       FProjects.Remove(Notifier);
       Notifier.Detach;
     end;
+  end;
 end;
 
 procedure TAtlasIdeUnitRename.Forget(ANotifier: TProjectNotifier);
@@ -359,7 +393,9 @@ end;
 procedure TAtlasIdeUnitRename.Renamed(const AProject: IOTAProject; const AOldFileName, ANewFileName: string);
 begin
   if not FQueue.Add(TAtlasUnitRenameEvent.Create(AOldFileName, ANewFileName, AProject.FileName)) then
+  begin
     Exit;
+  end;
   // Anonym: keine Datei- oder Unit-Namen (#647).
   TAtlasGuard.Log('Unit umbenannt (#512)');
   FTimer.Enabled := False;
@@ -373,7 +409,9 @@ begin
   FTimer.Enabled := False;
   try
     for Event in FQueue.Take do
+    begin
       Offer(Event);
+    end;
   except
     // Keine Exception an die IDE (#493).
     on E: Exception do
@@ -384,7 +422,9 @@ end;
 procedure TAtlasIdeUnitRename.Say(const AText: string);
 begin
   if Assigned(FReport) then
+  begin
     FReport(AText);
+  end;
 end;
 
 class function TAtlasIdeUnitRename.RunAction(const AEvent: TAtlasUnitRenameEvent;
@@ -398,7 +438,9 @@ begin
     procedure
     begin
       if FInstance <> nil then
+      begin
         FInstance.Run(Event, AScope);
+      end;
     end;
 end;
 
@@ -411,17 +453,25 @@ var
 begin
   Result := nil;
   if AProject = nil then
+  begin
     Exit;
+  end;
   Mains[0] := ChangeFileExt(AProject.FileName, '.dpr');
   Mains[1] := ChangeFileExt(AProject.FileName, '.dpk');
   for Main in Mains do
+  begin
     if FileExists(Main) then
+    begin
       Result := Result + [Main];
+    end;
+  end;
   for Index := 0 to AProject.GetModuleCount - 1 do
   begin
     Info := AProject.GetModule(Index);
     if (Info <> nil) and (Info.FileName <> '') then
+    begin
       Result := Result + [Info.FileName];
+    end;
   end;
   Result := TAtlasUnitRename.SourceFiles(Result);
 end;
@@ -436,19 +486,29 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   if AScope = TAtlasUnitRenameScope.Group then
   begin
     Group := Modules.MainProjectGroup;
     if Group <> nil then
+    begin
       for Index := 0 to Group.ProjectCount - 1 do
+      begin
         Result := Result + FilesOf(Group.Projects[Index]);
+      end;
+    end;
     Result := TAtlasUnitRename.SourceFiles(Result);
   end;
   // Ohne Gruppe (oder Projekt außerhalb) zählt das Projekt.
   if (AScope = TAtlasUnitRenameScope.Project) or (Result = nil) then
+  begin
     if Supports(Modules.FindModule(AProjectFile), IOTAProject, Project) then
+    begin
       Result := TAtlasUnitRename.SourceFiles(Result + FilesOf(Project));
+    end;
+  end;
 end;
 
 procedure TAtlasIdeUnitRename.Offer(const AEvent: TAtlasUnitRenameEvent);
@@ -470,9 +530,13 @@ var
 begin
   Session := nil;
   if Assigned(FSessionOf) then
+  begin
     Session := FSessionOf();
+  end;
   if Session = nil then
+  begin
     Exit;
+  end;
   Group := ScopeFiles(AEvent.ProjectFile, TAtlasUnitRenameScope.Group);
   Project := ScopeFiles(AEvent.ProjectFile, TAtlasUnitRenameScope.Project);
   TAtlasIdeRename.SyncOpenBuffers(Session);
@@ -493,19 +557,29 @@ begin
   end;
   // refactoring.unitRenameFollowUp = off: wie ohne die Funktion.
   if not Answer.Enabled or (Length(Answer.Files) = 0) then
+  begin
     Exit;
+  end;
   InProject := TAtlasUnitRename.CountIn(Answer, Project);
   InGroup := TAtlasUnitRename.CountIn(Answer, Group);
   Shown := InProject;
   if Shown = 0 then
+  begin
     Shown := InGroup;
+  end;
   if Shown = 1 then
-    Title := TAtlasStrings.Fmt(TAtlasTextId.UnitRenameNoticeOne, [Answer.OldName])
+  begin
+    Title := TAtlasStrings.Fmt(TAtlasTextId.UnitRenameNoticeOne, [Answer.OldName]);
+  end
   else
+  begin
     Title := TAtlasStrings.Fmt(TAtlasTextId.UnitRenameNotice, [Shown, Answer.OldName]);
+  end;
   Text := '';
   if InGroup > InProject then
+  begin
     Text := TAtlasStrings.Fmt(TAtlasTextId.UnitRenameGroupCount, [InGroup]);
+  end;
   Captions := nil;
   Scopes := nil;
   if InProject > 0 then
@@ -524,26 +598,36 @@ begin
   begin
     Action.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRenameProject);
     if Scope = TAtlasUnitRenameScope.Group then
+    begin
       Action.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRenameGroup);
+    end;
     Action.Run := RunAction(Event, Scope);
     Actions := Actions + [Action];
   end;
   Mode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.UnitRename,
     TAtlasNotificationSeverity.Info, Title, Text, Actions);
   if Mode <> TAtlasNotificationMode.Show then
+  begin
     Exit;
+  end;
   Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameReport, [Answer.OldName, Answer.NewName, InProject, InGroup]));
   if FNotice = nil then
+  begin
     FNotice := TAtlasNoticeWindow.Create(nil);
+  end;
   FNotice.OnAction :=
     procedure(AIndex: Integer)
     begin
       if (AIndex >= 0) and (AIndex <= High(Scopes)) then
+      begin
         Run(Event, Scopes[AIndex]);
+      end;
     end;
   Area := Screen.WorkAreaRect;
   if Application.MainForm <> nil then
+  begin
     Area := Application.MainForm.BoundsRect;
+  end;
   FNotice.Colors := TAtlasIdeStyle.Colors;
   FNotice.SetScaling(TAtlasPopupWindow.MonitorPPI(Area.BottomRight), 1, '', 10);
   FNotice.ShowNotice(Title, Text, Captions, Area);
@@ -562,10 +646,14 @@ var
   Outcome: TAtlasWorkspaceEditResult;
 begin
   if FNotice <> nil then
+  begin
     FNotice.Dismiss;
+  end;
   Session := nil;
   if Assigned(FSessionOf) then
+  begin
     Session := FSessionOf();
+  end;
   if Session = nil then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
@@ -581,7 +669,9 @@ begin
     try
       Answer := TAtlasUnitRename.ReadAnswer(Reply);
       if Answer.Enabled and (Reply is TJSONObject) then
+      begin
         Edit := TLspWorkspaceEdit.FromJson(TJSONObject(Reply).GetValue('edit'));
+      end;
     finally
       Reply.Free;
     end;
@@ -593,7 +683,9 @@ begin
     end;
   end;
   if not Answer.Enabled then
+  begin
     Exit;
+  end;
   if Edit.IsEmpty then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameNothing, [Answer.OldName]));
@@ -614,7 +706,9 @@ begin
   // Ablehnen ändert nichts.
   if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle), Hint,
     TAtlasStrings.Text(TAtlasTextId.UnitRenameApply), TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicies.FromSetting(
     TAtlasIdeSettings.Current.OpenForEdits), TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle));
   if Outcome.Error <> '' then
@@ -625,7 +719,9 @@ begin
   Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameDone, [Answer.OldName, Answer.NewName, Outcome.Edits,
     Outcome.Files]));
   if Outcome.Written > 0 then
+  begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
 end;
 
 end.

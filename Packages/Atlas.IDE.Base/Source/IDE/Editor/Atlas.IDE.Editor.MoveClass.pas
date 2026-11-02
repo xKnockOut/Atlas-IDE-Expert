@@ -71,15 +71,21 @@ begin
   Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
   try
     if not (Arguments is TJSONArray) or (TJSONArray(Arguments).Count < 3) then
+    begin
       Exit;
+    end;
     Values := TJSONArray(Arguments);
     Name := Values.Items[2].Value;
     if not InputQuery(TAtlasStrings.Text(TAtlasTextId.MoveClassTitle),
       TAtlasStrings.Text(TAtlasTextId.MoveClassPrompt), Name) then
+    begin
       Exit;
+    end;
     Name := Trim(Name);
     if Name = '' then
+    begin
       Exit;
+    end;
     List := TJSONArray.Create;
     try
       List.AddElement(Values.Items[0].Clone as TJSONValue);
@@ -100,16 +106,24 @@ begin
     try
       Reply := nil;
       if Answer is TJSONObject then
+      begin
         Reply := TJSONObject(Answer);
+      end;
       Edit := TLspWorkspaceEdit.FromJson(nil);
       if Reply <> nil then
       begin
         Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
         if Reply.GetValue('file') is TJSONString then
+        begin
           NewFile := TLspSession.UriToPath(Reply.GetValue('file').Value);
+        end;
         if Reply.GetValue('warnings') is TJSONArray then
+        begin
           for Item in TJSONArray(Reply.GetValue('warnings')) do
+          begin
             Warnings := Warnings + [Item.Value];
+          end;
+        end;
       end;
     finally
       Answer.Free;
@@ -128,7 +142,9 @@ begin
   end;
   Hint := TAtlasStrings.Fmt(TAtlasTextId.MoveClassPreviewHint, [Name, Edit.EditCount, Length(Edit.Files)]);
   for Warning in Warnings do
+  begin
     Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.MoveClassWarning, [Warning]);
+  end;
   Preview := TAtlasResults.RenamePreview(Edit,
     function(const AFileName: string): string
     begin
@@ -141,7 +157,9 @@ begin
     end;
   if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.MoveClassTitle), Hint,
     TAtlasStrings.Text(TAtlasTextId.MoveClassApply), TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveClassTitle));
   if Outcome.Error <> '' then
   begin
@@ -150,11 +168,17 @@ begin
   end;
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveClassDone, [Name, Outcome.Edits, Outcome.Files]));
   for Warning in Warnings do
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveClassWarning, [Warning]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
   if NewFile <> '' then
+  begin
     TAtlasIdeNavigation.GoToLocation(NewFile, 0, 0);
+  end;
 end;
 
 end.

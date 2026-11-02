@@ -229,7 +229,9 @@ var
 begin
   Result := nil;
   for Element := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
+  begin
     Result := Result + [Element];
+  end;
 end;
 
 class function TAtlasDrawnElements.SettingKey(AElement: TAtlasDrawnElement): string;
@@ -243,11 +245,13 @@ var
 begin
   AElement := Low(TAtlasDrawnElement);
   for Element := Low(TAtlasDrawnElement) to High(TAtlasDrawnElement) do
+  begin
     if SameText(SettingKey(Element), AKey) then
     begin
       AElement := Element;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -256,8 +260,12 @@ var
   Index: Integer;
 begin
   for Index := Low(SectionIds) to High(SectionIds) do
+  begin
     if SameText(SectionIds[Index], ASectionId) then
+    begin
       Exit(SectionKeys[Index]);
+    end;
+  end;
   Result := '';
 end;
 
@@ -267,14 +275,18 @@ var
 begin
   Result := nil;
   for Id in SectionIds do
+  begin
     Result := Result + [Id];
+  end;
 end;
 
 class function TAtlasDrawnElements.Anchor(const AText: string): string;
 begin
   Result := TAtlasLineAnchors.Normalize(AText);
   if Length(Result) > MaxAnchorLength then
+  begin
     Result := TrimRight(Copy(Result, 1, MaxAnchorLength));
+  end;
 end;
 
 end.

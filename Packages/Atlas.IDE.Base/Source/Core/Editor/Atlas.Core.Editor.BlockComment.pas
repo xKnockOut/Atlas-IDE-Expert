@@ -120,10 +120,16 @@ var
 begin
   Result := AToken.Text = ';';
   if Result or not AToken.IsWord then
+  begin
     Exit;
+  end;
   for Word in StatementStarts do
+  begin
     if AToken.Text = Word then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function IsWord(const AToken: TAtlasCodeToken; const AWord: string): Boolean;
@@ -135,7 +141,9 @@ function LeadingSpace(const ALine: string): Integer;
 begin
   Result := 0;
   while (Result < Length(ALine)) and CharInSet(ALine[Result + 1], [' ', #9]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 { Lexer }
@@ -204,7 +212,9 @@ begin
           begin
             Open.Kind := TAtlasCommentSpanKind.BraceComment;
             if (Index < Count) and (Text[Index + 1] = '$') then
+            begin
               Open.Kind := TAtlasCommentSpanKind.Directive;
+            end;
             Open.StartPos := Pos2(Line, Index - 1);
             Close := '}';
             Inside := True;
@@ -226,7 +236,9 @@ begin
           begin
             Open.Kind := TAtlasCommentSpanKind.ParenComment;
             if (Index + 1 < Count) and (Text[Index + 2] = '$') then
+            begin
               Open.Kind := TAtlasCommentSpanKind.Directive;
+            end;
             Open.StartPos := Pos2(Line, Index - 1);
             Close := '*)';
             Inside := True;
@@ -246,12 +258,18 @@ begin
               if Text[Index] = '''' then
               begin
                 if (Index < Count) and (Text[Index + 1] = '''') then
-                  Inc(Index, 2)
+                begin
+                  Inc(Index, 2);
+                end
                 else
+                begin
                   Break;
+                end;
               end
               else
+              begin
                 Inc(Index);
+              end;
             end;
             Index := Min(Index + 1, Count + 1);
             AddSpan(TAtlasCommentSpanKind.StringLiteral, Line, Start - 1, Line, Index - 1);
@@ -263,7 +281,9 @@ begin
           Start := Index;
           Inc(Index);
           while (Index <= Count) and TTextChars.IsIdentChar(Text[Index]) do
+          begin
             Inc(Index);
+          end;
           AddToken(LowerCase(Copy(Text, Start, Index - Start)), True, Line, Start - 1, Index - 1);
         end
         else
@@ -276,7 +296,9 @@ begin
   end;
   // Nicht geschlossen: bis zum Textende.
   if Inside and (Length(ALines) > 0) then
+  begin
     AddSpan(Open.Kind, Open.StartPos.Line, Open.StartPos.Character, High(ALines), Length(ALines[High(ALines)]));
+  end;
 end;
 
 { Text }
@@ -287,12 +309,18 @@ var
 begin
   Result := '';
   if Cmp(AStart, AEnd) >= 0 then
+  begin
     Exit;
+  end;
   if AStart.Line = AEnd.Line then
+  begin
     Exit(Copy(ALines[AStart.Line], AStart.Character + 1, AEnd.Character - AStart.Character));
+  end;
   Result := Copy(ALines[AStart.Line], AStart.Character + 1, MaxInt);
   for Line := AStart.Line + 1 to AEnd.Line - 1 do
+  begin
     Result := Result + #10 + ALines[Line];
+  end;
   Result := Result + #10 + Copy(ALines[AEnd.Line], 1, AEnd.Character);
 end;
 
@@ -300,7 +328,9 @@ function Clamp(const ALines: TArray<string>; const APos: TLspTextPosition): TLsp
 begin
   Result := APos;
   if Length(ALines) = 0 then
+  begin
     Exit(Pos2(0, 0));
+  end;
   Result.Line := EnsureRange(Result.Line, 0, High(ALines));
   Result.Character := EnsureRange(Result.Character, 0, Length(ALines[Result.Line]));
 end;
@@ -312,21 +342,33 @@ begin
   while Cmp(AStart, AEnd) < 0 do
   begin
     if AStart.Character >= Length(ALines[AStart.Line]) then
-      AStart := Pos2(AStart.Line + 1, 0)
+    begin
+      AStart := Pos2(AStart.Line + 1, 0);
+    end
     else if CharInSet(ALines[AStart.Line][AStart.Character + 1], [' ', #9]) then
-      Inc(AStart.Character)
+    begin
+      Inc(AStart.Character);
+    end
     else
+    begin
       Break;
+    end;
   end;
   // Hinten ebenso rückwärts.
   while Cmp(AStart, AEnd) < 0 do
   begin
     if AEnd.Character = 0 then
-      AEnd := Pos2(AEnd.Line - 1, Length(ALines[AEnd.Line - 1]))
+    begin
+      AEnd := Pos2(AEnd.Line - 1, Length(ALines[AEnd.Line - 1]));
+    end
     else if CharInSet(ALines[AEnd.Line][AEnd.Character], [' ', #9]) then
-      Dec(AEnd.Character)
+    begin
+      Dec(AEnd.Character);
+    end
     else
+    begin
       Break;
+    end;
   end;
   Result := Cmp(AStart, AEnd) < 0;
 end;
@@ -339,7 +381,9 @@ function AfterInsert(const APos: TLspTextPosition; ALine, AAt, ALength: Integer;
 begin
   Result := APos;
   if (APos.Line = ALine) and ((APos.Character > AAt) or (AAtToo and (APos.Character = AAt))) then
+  begin
     Inc(Result.Character, ALength);
+  end;
 end;
 
 /// <summary>Löschen von ALength Zeichen in ALine ab AAt.</summary>
@@ -347,7 +391,9 @@ function AfterDelete(const APos: TLspTextPosition; ALine, AAt, ALength: Integer)
 begin
   Result := APos;
   if (APos.Line <> ALine) or (APos.Character <= AAt) then
+  begin
     Exit;
+  end;
   Result.Character := Max(AAt, APos.Character - ALength);
 end;
 
@@ -384,12 +430,14 @@ var
 begin
   ASpan := Default(TAtlasCommentSpan);
   for Span in Spans(ALines) do
+  begin
     if (Span.Kind in [TAtlasCommentSpanKind.BraceComment, TAtlasCommentSpanKind.ParenComment]) and
       (Cmp(Span.StartPos, APos) <= 0) and (Cmp(APos, Span.EndPos) <= 0) then
     begin
       ASpan := Span;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -409,21 +457,31 @@ begin
   begin
     Token := List[Index];
     if Token.StartPos.Line <> ACursor.Line then
+    begin
       Continue;
+    end;
     if Cmp(Token.StartPos, ACursor) <= 0 then
-      Current := Index
+    begin
+      Current := Index;
+    end
     else
     begin
       if (Current < 0) or (Cmp(List[Current].EndPos, ACursor) < 0) then
+      begin
         Current := Index;
+      end;
       Break;
     end;
   end;
   if Current < 0 then
+  begin
     Exit(False);
+  end;
   // Direkt hinter dem Semikolon: die Anweisung davor.
   if (List[Current].Text = ';') and (Current > 0) and (List[Current - 1].StartPos.Line = ACursor.Line) then
+  begin
     Dec(Current);
+  end;
   // Rückwärts bis hinter das vorige Semikolon bzw. Schlüsselwort, Klammern übersprungen.
   First := Current;
   Depth := 0;
@@ -431,11 +489,17 @@ begin
   begin
     Token := List[First - 1];
     if (Token.Text = ')') or (Token.Text = ']') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ((Token.Text = '(') or (Token.Text = '[')) and (Depth > 0) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and IsStatementStart(Token) then
+    begin
       Break;
+    end;
     Dec(First);
   end;
   // Vorwärts bis zum Semikolon derselben Ebene.
@@ -449,30 +513,44 @@ begin
   begin
     Token := List[Index];
     if (Token.Text = '(') or (Token.Text = '[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ((Token.Text = ')') or (Token.Text = ']')) and (Depth > 0) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if Depth = 0 then
     begin
       if IsWord(Token, 'begin') or IsWord(Token, 'case') or IsWord(Token, 'try') or IsWord(Token, 'asm') or
         IsWord(Token, 'record') or IsWord(Token, 'repeat') then
-        Inc(Blocks)
+      begin
+        Inc(Blocks);
+      end
       else if IsWord(Token, 'end') or IsWord(Token, 'until') then
       begin
         if Blocks = 0 then
+        begin
           Break;
+        end;
         Dec(Blocks);
       end
       else if (Blocks = 0) and IsWord(Token, 'if') then
-        Inc(Ifs)
+      begin
+        Inc(Ifs);
+      end
       else if (Blocks = 0) and IsWord(Token, 'else') then
       begin
         if Ifs = 0 then
+        begin
           Break;
+        end;
         Dec(Ifs);
       end
       else if (Blocks = 0) and (IsWord(Token, 'except') or IsWord(Token, 'finally')) then
-        Break
+      begin
+        Break;
+      end
       else if (Blocks = 0) and (Token.Text = ';') then
       begin
         AEnd := Token.EndPos;
@@ -517,9 +595,13 @@ begin
       Ord(SelectionStart.Line > CloseLine);
     SelectionEnd.Line := SelectionEnd.Line - Ord(SelectionEnd.Line > OpenLine) - Ord(SelectionEnd.Line > CloseLine);
     if (AStart.Line = OpenLine) or (AStart.Line = CloseLine) then
+    begin
       SelectionStart.Character := 0;
+    end;
     if (AEnd.Line = OpenLine) or (AEnd.Line = CloseLine) then
+    begin
       SelectionEnd.Character := 0;
+    end;
     Result.Lines := Lines;
     Result.SelectionStart := Clamp(Lines, SelectionStart);
     Result.SelectionEnd := Clamp(Lines, SelectionEnd);
@@ -532,7 +614,9 @@ begin
   // Unser Leerzeichen hinter dem Anfang und vor dem Ende, ohne dass sich beide überschneiden.
   if (OpenAt + Size < Length(Lines[OpenLine])) and (Lines[OpenLine][OpenAt + Size + 1] = ' ') and
     ((OpenLine <> CloseLine) or (OpenAt + Size < CloseAt)) then
+  begin
     Inc(OpenLength);
+  end;
   if (CloseAt > 0) and (Lines[CloseLine][CloseAt] = ' ') and
     ((OpenLine <> CloseLine) or (CloseAt - 1 >= OpenAt + OpenLength)) then
   begin
@@ -564,7 +648,9 @@ begin
   for Line := AFirst to ALast do
   begin
     if Trim(Lines[Line]) = '' then
+    begin
       Continue;
+    end;
     Indent := LeadingSpace(Lines[Line]);
     Insert('// ', Lines[Line], Indent + 1);
     Result.SelectionStart := AfterInsert(Result.SelectionStart, Line, Indent, 3, True);
@@ -578,9 +664,13 @@ var
   Span: TAtlasCommentSpan;
 begin
   for Span in TAtlasBlockComment.Spans(ALines) do
+  begin
     if (Span.Kind = TAtlasCommentSpanKind.Directive) and (Cmp(Span.StartPos, AStart) = 0) and
       (Cmp(Span.EndPos, AEnd) = 0) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -601,17 +691,25 @@ begin
   Last := ATo.Line;
   // Nur eine Direktive: mit // auskommentieren, damit kein Kommentar entsteht, der wie eine Direktive aussieht.
   if IsOnlyDirective(ALines, AFrom, ATo) then
+  begin
     Exit(AddLineComments(ALines, First, Last, ASelectionStart, ASelectionEnd));
+  end;
   if AOptions.OwnLines and (First < Last) then
-    Text := TextOf(ALines, Pos2(First, 0), Pos2(Last, Length(ALines[Last])))
+  begin
+    Text := TextOf(ALines, Pos2(First, 0), Pos2(Last, Length(ALines[Last])));
+  end
   else
+  begin
     Text := TextOf(ALines, AFrom, ATo);
+  end;
   CanBraces := Pos('}', Text) = 0;
   CanParens := Pos('*)', Text) = 0;
   if not CanBraces and not CanParens then
   begin
     if AOptions.Fallback = TAtlasBlockCommentFallback.Refuse then
+    begin
       Exit;
+    end;
     Exit(AddLineComments(ALines, First, Last, ASelectionStart, ASelectionEnd));
   end;
   Braces := CanBraces and ((AOptions.Style = TAtlasBlockCommentStyle.Braces) or not CanParens);
@@ -633,9 +731,13 @@ begin
     Insert(Indent + Opener, Lines, First);
     // Die Markierung bleibt auf den Zeilen dazwischen.
     if (SelectionEnd.Line = Last + 1) and (SelectionEnd.Character = 0) then
-      SelectionEnd.Line := Last + 2
+    begin
+      SelectionEnd.Line := Last + 2;
+    end
     else
+    begin
       SelectionEnd.Line := SelectionEnd.Line + Ord(SelectionEnd.Line >= First) + Ord(SelectionEnd.Line > Last);
+    end;
     SelectionStart.Line := SelectionStart.Line + Ord(SelectionStart.Line >= First) +
       Ord(SelectionStart.Line > Last);
   end
@@ -665,7 +767,9 @@ begin
   Result := Default(TAtlasBlockCommentResult);
   Result.Lines := ALines;
   if Length(ALines) = 0 then
+  begin
     Exit;
+  end;
   SelectionStart := Clamp(ALines, ASelectionStart);
   SelectionEnd := Clamp(ALines, ASelectionEnd);
   if Cmp(SelectionEnd, SelectionStart) < 0 then
@@ -682,15 +786,21 @@ begin
   if HasSelection then
   begin
     if not TrimRange(ALines, From, Till) then
+    begin
       Exit;
+    end;
     // In einem Blockkommentar: ihn entfernen.
     if CommentAt(ALines, From, Span) and (Cmp(Till, Span.EndPos) <= 0) then
+    begin
       Exit(RemoveComment(ALines, Span, SelectionStart, SelectionEnd));
+    end;
   end
   else
   begin
     if CommentAt(ALines, SelectionStart, Span) then
+    begin
       Exit(RemoveComment(ALines, Span, SelectionStart, SelectionEnd));
+    end;
     if (AOptions.Scope = TAtlasBlockCommentScope.Line) or
       not StatementRange(ALines, SelectionStart, From, Till) then
     begin
@@ -699,7 +809,9 @@ begin
       Till := Pos2(SelectionStart.Line, Length(TrimRight(Line)));
     end;
     if not TrimRange(ALines, From, Till) then
+    begin
       Exit;
+    end;
   end;
   Result := AddComment(ALines, From, Till, SelectionStart, SelectionEnd, AOptions);
 end;
@@ -708,21 +820,27 @@ class function TAtlasBlockComment.StyleOf(const AValue: string): TAtlasBlockComm
 begin
   Result := TAtlasBlockCommentStyle.Braces;
   if SameText(AValue, 'parens') then
+  begin
     Result := TAtlasBlockCommentStyle.Parens;
+  end;
 end;
 
 class function TAtlasBlockComment.FallbackOf(const AValue: string): TAtlasBlockCommentFallback;
 begin
   Result := TAtlasBlockCommentFallback.LineComments;
   if SameText(AValue, 'refuse') then
+  begin
     Result := TAtlasBlockCommentFallback.Refuse;
+  end;
 end;
 
 class function TAtlasBlockComment.ScopeOf(const AValue: string): TAtlasBlockCommentScope;
 begin
   Result := TAtlasBlockCommentScope.Statement;
   if SameText(AValue, 'line') then
+  begin
     Result := TAtlasBlockCommentScope.Line;
+  end;
 end;
 
 end.
