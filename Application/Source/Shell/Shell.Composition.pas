@@ -77,6 +77,7 @@ uses
   Shell.Composition.CompileSetup,
   Shell.Composition.Stdio,
   Shell.Composition.AffectedTests,
+  Shell.Composition.DfmPropertyRules,
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -349,12 +350,6 @@ type
     function CheckFilesOf(AWorkspace: TShellWorkspace; ASeen: TDictionary<string, Boolean>): TArray<string>;
     /// <summary>Hat die Unit laut Index ein Test-Framework im uses?</summary>
     function IsIndexedTestUnit(const AFileName: string): Boolean;
-    /// <summary>Befehl „Eigenschaftsregeln anwenden“ (#309): WorkspaceEdit über die Formulardateien.</summary>
-    function ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Units im Bereich form, project oder group zur Unit AFileName.</summary>
-    function DfmPropertyUnits(const AFileName, AScope: string): TArray<string>;
-    /// <summary>Befunde nur der Regel dfm-property für eine Unit mit Formulardatei.</summary>
-    function DfmPropertyFindings(const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean;
     /// <summary>Projekt der Datei AFileName für Umbauten mit neuen Units; False ohne Projekt.</summary>
     function RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
     /// <summary>Suche nach AUnitName im Projekt der Datei AFileName vorbereiten (#550).</summary>
@@ -440,7 +435,6 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.FormatArgs,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Diagnostics.CheckProfile,
@@ -448,7 +442,6 @@ uses
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
-  Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Editing.SmartPaste,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Dfm.BinaryForm,
@@ -1419,12 +1412,19 @@ begin
 end;
 
 procedure TServerComposition.WireCommands;
+var
+  mDfmRules: TShellDfmPropertyRulesServices;
 begin
   FCommands := TLspCommands.Create;
   WireStatus;
   WireServerCommands;
   FServerCommands.RegisterConvertCommand(FCommands);
-  FCommands.Register(TLspDfmPropertyRules.Command, ApplyDfmPropertyRules);
+  mDfmRules := Default(TShellDfmPropertyRulesServices);
+  mDfmRules.Logger := FLogger;
+  mDfmRules.Workspaces := FWorkspaces;
+  mDfmRules.RuleContext := FRuleContext;
+  mDfmRules.ReadText := ReadSourceText;
+  TShellDfmPropertyRules.Attach(FCommands, mDfmRules);
   FRefactorings.Register(FCommands);
   WireReportCommands;
   FOverviews.RegisterUnitCommands(FCommands);
@@ -2092,92 +2092,6 @@ var
 begin
   Result := (FIndex <> nil) and FIndex.FindFile(AFileName, mIndexed) and
     TUsesClauses.UsesTestFramework(mIndexed.InterfaceUses + mIndexed.ImplementationUses);
-end;
-
-function TServerComposition.ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
-var
-  mScope: string;
-  mFiles, mEdits: Integer;
-begin
-  // Argumente: URI der Unit oder Formulardatei, Bereich form (Vorgabe), project oder group.
-  if (AArguments = nil) or (AArguments.Count = 0) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument "uri" fehlt');
-  end;
-  mScope := TLspDfmPropertyRules.ScopeForm;
-  if AArguments.Count > 1 then
-  begin
-    mScope := AArguments.Items[1].Value;
-  end;
-  Result := TLspDfmPropertyRules.BuildEdit(
-    DfmPropertyUnits(TLspDfmPropertyRules.UnitOf(TDocumentUris.ToPath(AArguments.Items[0].Value)), mScope),
-    DfmPropertyFindings, mFiles, mEdits);
-  // Nur Zahlen ins Log, keine Pfade (#647).
-  FLogger.Info(Format('Eigenschaftsregeln: %d Änderungen in %d Formulardateien vorgeschlagen', [mEdits, mFiles]));
-end;
-
-function TServerComposition.DfmPropertyUnits(const AFileName, AScope: string): TArray<string>;
-var
-  mWorkspace, mPicked: TShellWorkspace;
-begin
-  if SameText(AScope, TLspDfmPropertyRules.ScopeForm) then
-  begin
-    Result := TArray<string>.Create(AFileName);
-    Exit;
-  end;
-  Result := nil;
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mPicked := FWorkspaces.Pick(AFileName);
-    for mWorkspace in FWorkspaces.Items do
-    begin
-      if SameText(AScope, TLspDfmPropertyRules.ScopeGroup) or (mWorkspace = mPicked) then
-      begin
-        Result := Result + mWorkspace.State.ProjectFiles;
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-/// <summary>Nur die Regeln mit der Kennung AId.</summary>
-function RulesWithId(const ARules: TArray<IRule>; const AId: string): TArray<IRule>;
-var
-  mRule: IRule;
-begin
-  Result := nil;
-  for mRule in ARules do
-  begin
-    if SameText(mRule.Descriptor.Id, AId) then
-    begin
-      Result := Result + [mRule];
-    end;
-  end;
-end;
-
-function TServerComposition.DfmPropertyFindings(const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean;
-var
-  mContext: TRuleCheckContext;
-  mText: string;
-  mTree: TSyntaxTree;
-begin
-  AFindings := nil;
-  Result := SameText(ExtractFileExt(AFileName), '.pas') and
-    FRuleContext.RuleContextFor(TDocumentUris.FromPath(AFileName), mContext) and (mContext.FormFile <> '') and
-    ReadSourceText(AFileName, mText);
-  if not Result then
-  begin
-    Exit;
-  end;
-  // Nur dfm-property; RuleFindings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
-  mContext.Rules := RulesWithId(mContext.Rules, TLspDfmPropertyRules.RuleId);
-  mTree := TSyntaxTreeCache.Parse(mText);
-  try
-    AFindings := TLspSyntaxDiagnostics.RuleFindings(mText, mTree, mContext);
-  finally
-    mTree.Free;
-  end;
 end;
 
 function TServerComposition.RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
