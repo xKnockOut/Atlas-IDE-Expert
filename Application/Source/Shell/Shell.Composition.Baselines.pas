@@ -18,8 +18,6 @@ uses
   Atlas.Common.Pascal.Preprocessor;
 
 type
-  TShellMetricsSourceFunc = reference to function(const AFileName: string; AProject: Boolean;
-    out ASource: TLspMetricsSource): Boolean;
   TShellReadTextFunc = reference to function(const AFileName: string; out AText: string): Boolean;
   TShellRuleContextFunc = reference to function(const AUri: string; out AContext: TRuleCheckContext): Boolean;
   TShellDefinesFunc = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -28,7 +26,7 @@ type
 
   /// <summary>Was die Baselines von der Komposition brauchen.</summary>
   TShellBaselineServices = record
-    MetricsSourceFor: TShellMetricsSourceFunc;
+    MetricsSourceFor: TLspMetricsSourceFunc;
     ReadText: TShellReadTextFunc;
     RuleContextFor: TShellRuleContextFunc;
     DefinesFor: TShellDefinesFunc;

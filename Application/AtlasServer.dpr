@@ -42,6 +42,7 @@ uses
   Shell.Composition.Ide in 'Source\Shell\Shell.Composition.Ide.pas',
   Shell.Composition.Configuration in 'Source\Shell\Shell.Composition.Configuration.pas',
   Shell.Composition.FileChanges in 'Source\Shell\Shell.Composition.FileChanges.pas',
+  Shell.Composition.Sources in 'Source\Shell\Shell.Composition.Sources.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
