@@ -54,7 +54,7 @@ uses
 
 function Options(const AEndStates: string): TAtlasTrackerSyncOptions;
 begin
-  Result := TAtlasTrackerSyncOptions.Create(True, 'Status', '', 'In Arbeit', False, '', AEndStates, '');
+  Result := TAtlasTrackerSyncOptions.Create(True, 'Status', '').WithStart('In Arbeit', False, '').WithEnd(AEndStates, '');
 end;
 
 { TAtlasTrackerEndDialogTests }
