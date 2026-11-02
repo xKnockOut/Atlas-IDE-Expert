@@ -34,7 +34,6 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.CompilerSwitches,
-  Atlas.Common.Lsp.ExpressionCompletion,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Hover,
@@ -81,6 +80,7 @@ uses
   Shell.Composition.Overviews,
   Shell.Composition.Analysis,
   Shell.Composition.Navigation,
+  Shell.Composition.Completion,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -176,8 +176,8 @@ type
     FEndReason: TDiagnosticEndReason;
     /// <summary>Zuletzt gesetztes Zeitlimit für Anfragen, für die Einordnung als timeout.</summary>
     FRequestTimeout: Cardinal;
-    FCompletion: TLspCompletion;
-    FExpressionCompletion: TLspExpressionCompletion;
+    /// <summary>Vervollständigung im Editor und in den Debug-Dialogen (#538).</summary>
+    FCompletion: TShellCompletion;
     /// <summary>Analysen: Signaturhilfe, Hierarchien, Auswirkungen, Datenfluss, Zugriffsketten,
     /// Implementierungen, Inlay-Hinweise, Code-Linsen, Metriken, TODOs, semantische Hervorhebung.</summary>
     FAnalysis: TShellAnalysis;
@@ -357,14 +357,6 @@ type
     function HighlightSettingsFor(const AUri: string): THighlightSettings;
     /// <summary>Teil von Create (S-02): Vervollständigung mit Einstellungen, Postfix-Vorlagen und Teilergebnissen.</summary>
     procedure WireCompletion;
-    function CompletionMatchingFor(const AUri: string): TCompletionMatching;
-    /// <summary>Optionen der Postfix-Vorlagen (#188) für AUri.</summary>
-    function PostfixOptionsFor(const AUri: string): TPostfixOptions;
-    /// <summary>with auflösen über Strg+Leer auf with (#50).</summary>
-    function CompletionWithEdits(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
-    /// <summary>Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472).</summary>
-    function CompletionCreateMethod(ARequest: TCompletionRequest; out ATitle, ADetail: string;
-      out AEdits: TArray<TTextEdit>): Boolean;
     /// <summary>Präfix der Namensvorschläge (#452).</summary>
     function NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
     /// <summary>Teil von Create (S-02): Signaturhilfe, Hierarchien, Implementierungen, Inlay-Hints, CodeLens, Metriken, TODOs, Baseline, Semantic Tokens.</summary>
@@ -1551,90 +1543,34 @@ begin
 end;
 
 procedure TServerComposition.WireCompletion;
+var
+  mServices: TShellCompletionServices;
 begin
-  FCompletion := TLspCompletion.Create(FDocuments, FIndex,
-    EnsureUnit);
-  FCompletion.MatchingFor := CompletionMatchingFor;
-  // Abschnitt für Interface-Methoden (#466), Typumwandlung von Sender (#480).
-  FCompletion.SettingsFor := CompletionSettingsFor;
-  FCompletion.SlashCommandsFor := SlashCommandsFor;
-  FCompletion.RuleIdsFor := SlashRuleIdsAt;
-  // Postfix-Vorlagen (#188): abschaltbar mit completion.postfixTemplates; for var und var Name := nur, wenn die
-  // Sprachversion Inline-Variablen kennt und refactoring.inlineVar sie nicht abschaltet.
-  FCompletion.PostfixFor := PostfixOptionsFor;
-  // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
-  FCompletion.WithFor := CompletionWithEdits;
-  // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
-  FCompletion.CreateFor := CompletionCreateMethod;
-  // Präfix der Namensvorschläge (#452).
-  FCompletion.NamingFor := NamingPrefixFor;
-  // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
-  FCompletion.HintsFor := HintSettingsFor;
-  // „Parameter abgleichen“ in ///-Blöcken (#88) hängt an completeBlocks.docComment.
-  FCompletion.DocCommentsFor := DocCommentsFor;
-  // Bedingte Symbole in {$IFDEF } und Co. (#102).
-  FCompletion.SymbolsFor := ConditionalContextFor;
-  FCompletion.ReadText := ReadSourceText;
-  // Teilergebnisse (#616) als $/progress; Zeiten je Anfrage im Debug-Protokoll.
-  FCompletion.Notify := NotifyClient;
-  FCompletion.Log := LogDebug;
+  mServices := Default(TShellCompletionServices);
+  mServices.Documents := FDocuments;
+  mServices.Index := FIndex;
+  mServices.EnsureUnit := EnsureUnit;
+  mServices.ReadText := ReadSourceText;
+  mServices.CompletionSettingsFor := CompletionSettingsFor;
+  mServices.RefactoringSettingsFor := RefactoringSettingsFor;
+  mServices.LanguageLevelFor := LanguageLevelFor;
+  mServices.RefactoringContextFor :=
+    function(const AUri: string): TRefactoringContext
+    begin
+      Result := FRefactorings.ContextFor(AUri);
+    end;
+  mServices.SlashCommandsFor := SlashCommandsFor;
+  mServices.RuleIdsFor := SlashRuleIdsAt;
+  mServices.NamingFor := NamingPrefixFor;
+  mServices.HintsFor := HintSettingsFor;
+  mServices.DocCommentsFor := DocCommentsFor;
+  mServices.SymbolsFor := ConditionalContextFor;
+  mServices.Notify := NotifyClient;
+  mServices.Log := LogDebug;
+  FCompletion := TShellCompletion.Create(mServices);
   FCompletion.Attach(FDispatcher);
-  // Ausdrücke in den Debug-Dialogen (#538) mit denselben Einträgen wie im Editor.
-  FExpressionCompletion := TLspExpressionCompletion.Create(FDocuments, FCompletion);
-  FExpressionCompletion.Attach(FDispatcher);
   // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
-  FSlashMenu.Completion := FCompletion;
-end;
-
-function TServerComposition.CompletionMatchingFor(const AUri: string): TCompletionMatching;
-begin
-  Result := CompletionSettingsFor(AUri).Matching;
-end;
-
-function TServerComposition.PostfixOptionsFor(const AUri: string): TPostfixOptions;
-begin
-  // Postfix-Vorlagen (#188): abschaltbar mit completion.postfixTemplates; for var und var Name := nur, wenn die
-  // Sprachversion Inline-Variablen kennt und refactoring.inlineVar sie nicht abschaltet.
-  Result := TPostfixOptions.Default;
-  Result.Enabled := CompletionSettingsFor(AUri).PostfixTemplates;
-  Result.InlineVar := RefactoringSettingsFor(AUri).InlineVar and
-    TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri));
-end;
-
-function TServerComposition.CompletionWithEdits(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
-var
-  mContext: TRefactoringContext;
-  mAction: TCodeAction;
-begin
-  AEdits := nil;
-  mContext := FRefactorings.ContextFor(ARequest.Uri);
-  Result := mContext.Settings.ResolveWith and TLspRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
-    ARequest.Text, ARequest.Position, mContext, mAction);
-  if Result then
-  begin
-    AEdits := mAction.Edits;
-  end;
-end;
-
-function TServerComposition.CompletionCreateMethod(ARequest: TCompletionRequest; out ATitle, ADetail: string;
-  out AEdits: TArray<TTextEdit>): Boolean;
-var
-  mContext: TRefactoringContext;
-  mCreated: TCreatedMethod;
-begin
-  ATitle := '';
-  ADetail := '';
-  AEdits := nil;
-  mContext := FRefactorings.ContextFor(ARequest.Uri);
-  // Nur Änderungen in dieser Datei; die Klasse in einer anderen Unit bekommt die Code-Aktion.
-  Result := mContext.Settings.CreateMethod and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
-    ARequest.Text, ARequest.Position, mContext, True, mCreated) and (mCreated.FileEdits = nil);
-  if Result then
-  begin
-    ATitle := mCreated.Title;
-    ADetail := mCreated.Detail;
-    AEdits := mCreated.Edits;
-  end;
+  FSlashMenu.Completion := FCompletion.Completion;
 end;
 
 function TServerComposition.NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
@@ -2682,8 +2618,8 @@ begin
   UpdateLooseSettings;
   FNavigation.Hover.Markdown := TLspHover.ClientSupportsMarkdown(AParams);
   // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
-  FCompletion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
-  FCompletion.DocumentationMarkdown := TLspCompletion.ClientPrefersMarkdown(AParams);
+  FCompletion.Completion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
+  FCompletion.Completion.DocumentationMarkdown := TLspCompletion.ClientPrefersMarkdown(AParams);
 end;
 
 procedure TServerComposition.StartSettingsWatch;
@@ -2820,7 +2756,6 @@ end;
 
 procedure TServerComposition.FreeCodeFeatures;
 begin
-  FreeAndNil(FExpressionCompletion);
   FreeAndNil(FCompletion);
   FreeAndNil(FRefactorings);
   FreeAndNil(FNavigation);
@@ -5711,7 +5646,7 @@ begin
     mGraphOptions.Namespaces := ANamespaces;
     FUsesGraph.SetOptions(mGraphOptions);
   end;
-  FCompletion.Namespaces := ANamespaces;
+  FCompletion.Completion.Namespaces := ANamespaces;
   FAnalysis.SetNamespaces(ANamespaces);
 end;
 
