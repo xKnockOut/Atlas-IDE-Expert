@@ -132,16 +132,24 @@ begin
   mProcess := 0;
   GetWindowThreadProcessId(AWindow, @mProcess);
   if (mProcess <> mCollect.ProcessId) or not IsWindowVisible(AWindow) then
+  begin
     Exit;
+  end;
   if GetWindowText(AWindow, mBuffer, Length(mBuffer)) = 0 then
+  begin
     Exit;
+  end;
   mInfo.Handle := AWindow;
   mInfo.Caption := mBuffer;
   // Das Hauptfenster (ohne Besitzer) zuerst, Dialoge danach.
   if GetWindow(AWindow, GW_OWNER) = 0 then
-    mCollect.Items := [mInfo] + mCollect.Items
+  begin
+    mCollect.Items := [mInfo] + mCollect.Items;
+  end
   else
+  begin
     mCollect.Items := mCollect.Items + [mInfo];
+  end;
 end;
 
 { TAtlasWindowCapture }
@@ -152,7 +160,9 @@ var
 begin
   Result := nil;
   if AProcessId = 0 then
+  begin
     Exit;
+  end;
   mCollect.ProcessId := AProcessId;
   mCollect.Items := nil;
   EnumWindows(@CollectWindow, LPARAM(@mCollect));
@@ -177,14 +187,18 @@ class function TAtlasWindowCapture.RootAt(const APoint: TPoint): HWND;
 begin
   Result := WindowFromPoint(APoint);
   if Result <> 0 then
+  begin
     Result := GetAncestor(Result, GA_ROOT);
+  end;
 end;
 
 /// <summary>Sichtbarer Rahmen ohne den unsichtbaren Rand von Windows 10/11.</summary>
 function FrameOf(AWindow: HWND): TRect;
 begin
   if Failed(DwmGetWindowAttribute(AWindow, DWMWA_EXTENDED_FRAME_BOUNDS, @Result, SizeOf(Result))) then
+  begin
     GetWindowRect(AWindow, Result);
+  end;
 end;
 
 class function TAtlasWindowCapture.Capture(AWindow: HWND): TBitmap;
@@ -196,10 +210,14 @@ var
 begin
   Result := nil;
   if not IsWindow(AWindow) or IsIconic(AWindow) then
+  begin
     Exit;
+  end;
   mRect := FrameOf(AWindow);
   if (mRect.Width <= 0) or (mRect.Height <= 0) then
+  begin
     Exit;
+  end;
   mPrinted := False;
   if Responds(AWindow) then
   begin
@@ -223,7 +241,9 @@ begin
     end;
   end;
   if mPrinted then
+  begin
     Exit;
+  end;
   // Angehalten oder PrintWindow abgelehnt: Bildschirmbereich, ohne dem Fenster eine Nachricht zu schicken.
   Result := TBitmap.Create;
   Result.PixelFormat := pf24bit;
@@ -272,7 +292,9 @@ end;
 procedure Unhook;
 begin
   if PickHook <> 0 then
+  begin
     UnhookWindowsHookEx(PickHook);
+  end;
   PickHook := 0;
 end;
 
@@ -314,9 +336,13 @@ end;
 procedure TAtlasWindowPicker.Tick(Sender: TObject);
 begin
   if PickDone then
-    Finish(PickWindow)
+  begin
+    Finish(PickWindow);
+  end
   else if (GetAsyncKeyState(VK_ESCAPE) < 0) or (GetTickCount64 - FStarted > TimeoutMs) then
+  begin
     Finish(0);
+  end;
 end;
 
 procedure TAtlasWindowPicker.Finish(AWindow: HWND);
@@ -325,18 +351,24 @@ var
 begin
   Unhook;
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   mOnPicked := FOnPicked;
   FOnPicked := nil;
   if Assigned(mOnPicked) then
+  begin
     mOnPicked(AWindow);
+  end;
 end;
 
 procedure TAtlasWindowPicker.Cancel;
 begin
   Unhook;
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   FOnPicked := nil;
 end;
 
@@ -391,7 +423,9 @@ begin
   Result := nil;
   // Ohne PNG-Signatur gar nicht erst laden (TPngImage meldet das mit eigener Ausnahmeklasse).
   if (Length(ABytes) < Length(PngSignature)) or not CompareMem(@ABytes[0], @PngSignature[0], Length(PngSignature)) then
+  begin
     Exit;
+  end;
   mPng := TPngImage.Create;
   mStream := TBytesStream.Create(ABytes);
   try
@@ -418,13 +452,17 @@ var
 begin
   Result := nil;
   if Length(ABitmaps) = 0 then
+  begin
     Exit;
+  end;
   mWidth := 0;
   mHeight := 0;
   for mBitmap in ABitmaps do
   begin
     if mBitmap.Width > mWidth then
+    begin
       mWidth := mBitmap.Width;
+    end;
     Inc(mHeight, mBitmap.Height + AGap);
   end;
   Dec(mHeight, AGap);
